@@ -1,0 +1,101 @@
+/*
+ *            (C) Copyright 2014, 天天讯通 . Co., Ltd.
+ *                    ALL RIGHTS RESERVED
+ *
+ *  cfg_mod_list.txt
+ *
+ *  Created on: 2014-11-17
+ *      Author: Larry
+ *        Todo: 对进程中多定义的模块进行说明
+ *     History:
+ */
+
+
+INCLUDE_EXCEPTION_CATCH
+简述：异常处理模块
+描述：
+备注：
+
+INCLUDE_DEBUG_CLI_SERVER
+简述：控制平台服务器模块
+描述：主要控制cli server模块，接收被控制进程unix的链接，并处理消息功能，以及telnet服务器功能
+备注：
+    1.只有在编译telnet server时才需要打开该模块；
+    2.如果所编译应用程序中包含了cli客户端相关功能，请不要打开该模块
+
+INCLUDE_DEBUG_CLI
+简述：控制平台客户端
+描述：主要控制进程链接cliserver相关代码，以及调试命令相关代码
+备注：
+    1.如果不编译该模块，应用程序将无法通过cli server进行调试
+    2.如果所编译应用程序中包含了cli server相关功能，请不要打开该模块
+
+
+INCLUDE_SYSLOG_ENABLE
+简述：日志模块总开关
+描述：控制日志输出相关代码，屏蔽之后将无法将日志导入到相关日志模块，只能打印到屏幕
+备注：
+    在该模块没有初始化完成之后，所有的日志将被存储在/var/log/dipcc目录中
+
+INCLUDE_SYSLOG_FILE
+简述：文件日志模块开关
+描述：控制想文件中写入日志
+备注：
+    该模块暂时没有实现
+
+INCLUDE_SYSLOG_DB
+简述：数据库日志开关
+描述：控制将日志写入数据库相关代码
+备注：
+    
+
+INCLUDE_SYSLOG_CLI
+简述：命令行控制台日志
+描述：控制将日志传输到命令后控制台
+备注：
+    1.该模块依赖INCLUDE_DEBUG_CLI模块
+
+INCLUDE_SYSLOG_CONSOLE
+简述：本定命令后日志
+描述：控制将日志打印到屏幕的相关代码
+备注：
+
+
+INCLUDE_BH_ENABLE
+简述：心跳模块总开关
+描述：控制心跳模块所有代码
+备注：
+
+
+INCLUDE_BH_SERVER
+简述：心跳服务器模块总开关
+描述：控制心跳务器模块所有代码
+备注：
+
+
+INCLUDE_BH_CLIENT
+简述：心跳客户端模块总开关
+描述：控制心跳客户端模块所有代码
+备注：
+
+
+INCLUDE_MEMORY_MNGT
+简述：dos内存管理模块开关
+描述：
+备注：
+    1.如果启用该文件，将可以使用dos内置的内存泄露调试工具
+    2.如果关闭该模块，将默认使用系统的内存管理函数
+
+
+INCLUDE_XML_CONFIG
+简述：xml配置文件模块开关
+描述：
+备注：
+
+
+INCLUDE_SERVICE_TIMER
+简述：dos实现的定时器模块
+描述：
+备注：
+    1.关闭后使用该定时器的模块将无法正常运行
+

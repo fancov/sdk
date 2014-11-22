@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<config version="1.0">
+    <!-- 配置服务相关信息 -->
+    <service>
+        <!-- 配置服务存储路径相关信息 -->
+        <path>
+            <!-- 服务根目录 -->
+            <param name="service_root" value="/tcom" />
+        </path>
+    </service>
+
+    <!-- 心跳相关配置 -->
+    <heartbeat>
+    	<!-- 心跳间隔3-10 -->
+    	<param name="interval" value="3" />
+    	<!-- 最大失败次数 10-15 -->
+    	<param name="max_fail_cnt" value="10" />
+    	<param name="treatment" value="0" />
+    </heartbeat>
+
+    <!--数据库配置-->
+    <mysql>
+        <!--数据库主机-->
+        <param name="host" value="192.168.1.125" />
+        <!--数据库连接端口-->
+        <param name="port" value="3306" />
+        <!--数据库连接用户名-->
+        <param name="username" value="root" />
+        <!--数据库连接用户密码-->
+        <param name="password" value="admin" />
+        <!--数据库库名-->
+        <param name="dbname" value="billing_new" />
+    </mysql>
+    <!-- 日志模块配置 -->
+    <!-- level 值的范围
+         0 - LOG_LEVEL_EMERG
+         1 - LOG_LEVEL_ALERT,
+         2 - LOG_LEVEL_CIRT,
+         3 - LOG_LEVEL_ERROR,
+         4 - LOG_LEVEL_WARNING,
+         5 - LOG_LEVEL_NOTIC,
+         6 - LOG_LEVEL_INFO,
+         7 - LOG_LEVEL_DEBUG,
+
+	 8 - LOG_LEVEL_INVAILD
+    -->
+    <log>
+    	<console>
+    	    <param name="leval" value="" />
+    	</console>
+    	<db>
+    	    <param name="leval" value="" />
+    	</db>
+    </log>
+</config>
