@@ -13,7 +13,7 @@
 #ifndef __DOS_DEBUG_H__
 #define __DOS_DEBUG_H__
 
-#define dos_printf(format, ...)  dos_vprintf(__FILE__, __LINE__, (format), __VA_ARGS__)
+#define dos_printf(format, args...)  dos_vprintf(__FILE__, __LINE__, (format), ##args)
 
 VOID dos_vprintf(const S8 *pszFile, S32 lLine, const S8 *pszFormat, ...);
 VOID dos_syslog(S32 lLevel, S8 *pszLog);

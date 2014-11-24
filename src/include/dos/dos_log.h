@@ -70,9 +70,9 @@ S32 dos_log_set_cli_level(U32 ulLeval);
     }while(0)
 
 #define dos_log(_iLevel, _iType, _pszMsg) printf(_pszMsg)
-#define dos_vlog(_iLevel, _iType, format, ...) printf(format, __VA_ARGS__)
+#define dos_vlog(_iLevel, _iType, format, args...) printf(format, ##args)
 #define dos_olog(_lLevel, pszOpterator, pszOpterand, ulResult, _pszMsg) printf(_pszMsg)
-#define dos_volog(_lLevel, pszOpterator, pszOpterand, ulResult, format, ...) printf(format, __VA_ARGS__)
+#define dos_volog(_lLevel, pszOpterator, pszOpterand, ulResult, format, args...) printf(format, ##args)
 #define dos_log_set_cli_level(ulLeval) \
     do{ \
         printf("Set cli log level."); \
@@ -80,59 +80,59 @@ S32 dos_log_set_cli_level(U32 ulLeval);
 #endif
 
 /* 告警信息 */
-#define logw_debug(format, ... ) dos_vlog(LOG_LEVEL_DEBUG, LOG_TYPE_WARNING, (format), __VA_ARGS__)
-#define logw_info(format, ... ) dos_vlog(LOG_LEVEL_INFO, LOG_TYPE_WARNING, (format), __VA_ARGS__)
-#define logw_notice(format, ... ) dos_vlog(LOG_LEVEL_NOTIC, LOG_TYPE_WARNING, (format), __VA_ARGS__)
-#define logw_warning(format, ... ) dos_vlog(LOG_LEVEL_WARNING, LOG_TYPE_WARNING, (format), __VA_ARGS__)
-#define logw_error(format, ... ) dos_vlog(LOG_LEVEL_ERROR, LOG_TYPE_WARNING, (format), __VA_ARGS__)
-#define logw_cirt(format, ... ) dos_vlog(LOG_LEVEL_CIRT, LOG_TYPE_WARNING, (format), __VA_ARGS__)
-#define logw_alert(format, ... ) dos_vlog(LOG_LEVEL_ALERT, LOG_TYPE_WARNING, (format), __VA_ARGS__)
-#define logw_emerg(format, ... ) dos_vlog(LOG_LEVEL_EMERG, LOG_TYPE_WARNING, (format), __VA_ARGS__)
+#define logw_debug(format, args... ) dos_vlog(LOG_LEVEL_DEBUG, LOG_TYPE_WARNING, (format), ##args)
+#define logw_info(format, args... ) dos_vlog(LOG_LEVEL_INFO, LOG_TYPE_WARNING, (format), ##args)
+#define logw_notice(format, args... ) dos_vlog(LOG_LEVEL_NOTIC, LOG_TYPE_WARNING, (format), ##args)
+#define logw_warning(format, args... ) dos_vlog(LOG_LEVEL_WARNING, LOG_TYPE_WARNING, (format), ##args)
+#define logw_error(format, args... ) dos_vlog(LOG_LEVEL_ERROR, LOG_TYPE_WARNING, (format), ##args)
+#define logw_cirt(format, args... ) dos_vlog(LOG_LEVEL_CIRT, LOG_TYPE_WARNING, (format), ##args)
+#define logw_alert(format, args... ) dos_vlog(LOG_LEVEL_ALERT, LOG_TYPE_WARNING, (format), ##args)
+#define logw_emerg(format, args... ) dos_vlog(LOG_LEVEL_EMERG, LOG_TYPE_WARNING, (format), ##args)
 
 /* 运行调试日志 */
-#define logr_debug(format, ... ) dos_vlog(LOG_LEVEL_DEBUG, LOG_TYPE_RUNINFO, (format), __VA_ARGS__)
-#define logr_info(format, ... ) dos_vlog(LOG_LEVEL_INFO, LOG_TYPE_RUNINFO, (format), __VA_ARGS__)
-#define logr_notice(format, ... ) dos_vlog(LOG_LEVEL_NOTIC, LOG_TYPE_RUNINFO, (format), __VA_ARGS__)
-#define logr_warning(format, ... ) dos_vlog(LOG_LEVEL_WARNING, LOG_TYPE_RUNINFO, (format), __VA_ARGS__)
-#define logr_error(format, ... ) dos_vlog(LOG_LEVEL_ERROR, LOG_TYPE_RUNINFO, (format), __VA_ARGS__)
-#define logr_cirt(format, ... ) dos_vlog(LOG_LEVEL_CIRT, LOG_TYPE_RUNINFO, (format), __VA_ARGS__)
-#define logr_alert(format, ... ) dos_vlog(LOG_LEVEL_ALERT, LOG_TYPE_RUNINFO, (format), __VA_ARGS__)
-#define logr_emerg(format, ... ) dos_vlog(LOG_LEVEL_EMERG, LOG_TYPE_RUNINFO, (format), __VA_ARGS__)
+#define logr_debug(format, args... ) dos_vlog(LOG_LEVEL_DEBUG, LOG_TYPE_RUNINFO, (format), ##args)
+#define logr_info(format, args... ) dos_vlog(LOG_LEVEL_INFO, LOG_TYPE_RUNINFO, (format), ##args)
+#define logr_notice(format, args... ) dos_vlog(LOG_LEVEL_NOTIC, LOG_TYPE_RUNINFO, (format), ##args)
+#define logr_warning(format, args... ) dos_vlog(LOG_LEVEL_WARNING, LOG_TYPE_RUNINFO, (format), ##args)
+#define logr_error(format, args... ) dos_vlog(LOG_LEVEL_ERROR, LOG_TYPE_RUNINFO, (format), ##args)
+#define logr_cirt(format, args... ) dos_vlog(LOG_LEVEL_CIRT, LOG_TYPE_RUNINFO, (format), ##args)
+#define logr_alert(format, args... ) dos_vlog(LOG_LEVEL_ALERT, LOG_TYPE_RUNINFO, (format), ##args)
+#define logr_emerg(format, args... ) dos_vlog(LOG_LEVEL_EMERG, LOG_TYPE_RUNINFO, (format), ##args)
 
 /* 业务日志 */
-#define logs_debug(format, ... ) dos_vlog(LOG_LEVEL_DEBUG, LOG_TYPE_SERVICE, (format), __VA_ARGS__)
-#define logs_info(format, ... ) dos_vlog(LOG_LEVEL_INFO, LOG_TYPE_SERVICE, (format), __VA_ARGS__)
-#define logs_notice(format, ... ) dos_vlog(LOG_LEVEL_NOTIC, LOG_TYPE_SERVICE, (format), __VA_ARGS__)
-#define logs_warning(format, ... ) dos_vlog(LOG_LEVEL_WARNING, LOG_TYPE_SERVICE, (format), __VA_ARGS__)
-#define logs_error(format, ... ) dos_vlog(LOG_LEVEL_ERROR, LOG_TYPE_SERVICE, (format), __VA_ARGS__)
-#define logs_cirt(format, ... ) dos_vlog(LOG_LEVEL_CIRT, LOG_TYPE_SERVICE, (format), __VA_ARGS__)
-#define logs_alert(format, ... ) dos_vlog(LOG_LEVEL_ALERT, LOG_TYPE_SERVICE, (format), __VA_ARGS__)
-#define logs_emerg(format, ... ) dos_vlog(LOG_LEVEL_EMERG, LOG_TYPE_SERVICE, (format), __VA_ARGS__)
+#define logs_debug(format, args... ) dos_vlog(LOG_LEVEL_DEBUG, LOG_TYPE_SERVICE, (format), ##args)
+#define logs_info(format, args... ) dos_vlog(LOG_LEVEL_INFO, LOG_TYPE_SERVICE, (format), ##args)
+#define logs_notice(format, args... ) dos_vlog(LOG_LEVEL_NOTIC, LOG_TYPE_SERVICE, (format), ##args)
+#define logs_warning(format, args... ) dos_vlog(LOG_LEVEL_WARNING, LOG_TYPE_SERVICE, (format), ##args)
+#define logs_error(format, args... ) dos_vlog(LOG_LEVEL_ERROR, LOG_TYPE_SERVICE, (format), ##args)
+#define logs_cirt(format, args... ) dos_vlog(LOG_LEVEL_CIRT, LOG_TYPE_SERVICE, (format), ##args)
+#define logs_alert(format, args... ) dos_vlog(LOG_LEVEL_ALERT, LOG_TYPE_SERVICE, (format), ##args)
+#define logs_emerg(format, args... ) dos_vlog(LOG_LEVEL_EMERG, LOG_TYPE_SERVICE, (format), ##args)
 
 /* 操作日志 */
-#define logo_debug(_pszOpterator, _pszOpterand, _ulResult, _format, ... ) \
-        dos_volog(LOG_LEVEL_DEBUG, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), __VA_ARGS__)
+#define logo_debug(_pszOpterator, _pszOpterand, _ulResult, _format, args... ) \
+        dos_volog(LOG_LEVEL_DEBUG, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), ##args)
 
-#define logo_info(_pszOpterator, _pszOpterand, _ulResult, _format, ... ) \
-        dos_volog(LOG_LEVEL_INFO, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), __VA_ARGS__)
+#define logo_info(_pszOpterator, _pszOpterand, _ulResult, _format, args... ) \
+        dos_volog(LOG_LEVEL_INFO, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), ##args)
 
-#define logo_notice(_pszOpterator, _pszOpterand, _ulResult, _format, ... ) \
-        dos_volog(LOG_LEVEL_NOTIC, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), __VA_ARGS__)
+#define logo_notice(_pszOpterator, _pszOpterand, _ulResult, _format, args... ) \
+        dos_volog(LOG_LEVEL_NOTIC, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), ##args)
 
-#define logo_warning(_pszOpterator, _pszOpterand, _ulResult, _format, ... ) \
-        dos_volog(LOG_LEVEL_WARNING, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), __VA_ARGS__)
+#define logo_warning(_pszOpterator, _pszOpterand, _ulResult, _format, args... ) \
+        dos_volog(LOG_LEVEL_WARNING, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), ##args)
 
-#define logo_error(_pszOpterator, _pszOpterand, _ulResult, _format, ... ) \
-        dos_volog(LOG_LEVEL_ERROR, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), __VA_ARGS__)
+#define logo_error(_pszOpterator, _pszOpterand, _ulResult, _format, args... ) \
+        dos_volog(LOG_LEVEL_ERROR, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), ##args)
 
-#define logo_cirt(_pszOpterator, _pszOpterand, _ulResult, _format, ... ) \
-        dos_volog(LOG_LEVEL_CIRT, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), __VA_ARGS__)
+#define logo_cirt(_pszOpterator, _pszOpterand, _ulResult, _format, args... ) \
+        dos_volog(LOG_LEVEL_CIRT, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), ##args)
 
-#define logo_alert(_pszOpterator, _pszOpterand, _ulResult, _format, ... ) \
-        dos_volog(LOG_LEVEL_ALERT, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), __VA_ARGS__)
+#define logo_alert(_pszOpterator, _pszOpterand, _ulResult, _format, args... ) \
+        dos_volog(LOG_LEVEL_ALERT, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), ##args)
 
-#define olog_emerg(_pszOpterator, _pszOpterand, _ulResult, _format, ... ) \
-        dos_volog(LOG_LEVEL_EMERG, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), __VA_ARGS__)
+#define olog_emerg(_pszOpterator, _pszOpterand, _ulResult, _format, args... ) \
+        dos_volog(LOG_LEVEL_EMERG, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), ##args)
 
 #ifdef __cplusplus
 }
