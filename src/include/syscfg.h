@@ -2,7 +2,7 @@
  *            (C) Copyright 2014, 天天讯通 . Co., Ltd.
  *                    ALL RIGHTS RESERVED
  *
- *  config.h
+ *  syscfg.h
  *
  *  Created on: 2014-10-31
  *      Author: Larry

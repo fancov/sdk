@@ -13,6 +13,8 @@
 #ifndef __DOSUTIL_H__
 #define __DOSUTIL_H__
 
+#include <env.h>
+
 /* system header files */
 #include <stdio.h>
 #include <stdlib.h>

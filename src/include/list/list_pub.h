@@ -13,8 +13,13 @@ do { \
 
 #define list_is_empty( node ) ( (node)==((node)->next) )
 
+#if OS_64
+#define list_entry(ptr, type, member) \
+        ((type *)((S8*)(ptr)-(U64)(&((type *)0)->member)))
+#elif OS_32
 #define list_entry(ptr, type, member) \
         ((type *)((S8*)(ptr)-(U32)(&((type *)0)->member)))
+#endif
 
 
 typedef struct list_s
