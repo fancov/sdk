@@ -204,8 +204,6 @@ static VOID * tmr_task_loop(VOID *ptr)
                 /* 缓存一下,方便下次循环 */
                 tmrTmp = tmrNode->next;
 
-                /* 更新handle，让外部指针指向null */
-                *(tmrNode->tmrHandle.hTmr) = NULL;
 
                 tmrNode->next->prev = tmrNode->prev;
                 tmrNode->prev->next = tmrNode->next;
@@ -298,7 +296,8 @@ static VOID * tmr_task_loop(VOID *ptr)
 S32 dos_tmr_start(DOS_TMR_ST *hTmrHandle
                     , U32 ulInterval
                     , VOID (*func)(U64 )
-                    , U64 uLParam, U32 ulType)
+                    , U64 uLParam
+                    , U32 ulType)
 {
     TIMER_LIST_NODE_ST *tmrNode;
 
@@ -412,6 +411,7 @@ S32 dos_tmr_stop(DOS_TMR_ST *hTmrHandle)
     {
         pthread_mutex_lock(&g_mutexTmrList);
         hTmr->ulTmrStatus = TIMER_STATUS_WAITING_DEL;
+        *(hTmr->hTmr) = NULL;
         pthread_mutex_unlock(&g_mutexTmrList);
     }
 
