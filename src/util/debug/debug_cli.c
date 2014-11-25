@@ -36,6 +36,8 @@ extern "C"{
 
 #define MAX_KEY_WORDS 16
 
+#define CLI_RE_REG_TIME_LEN   3
+
 /* 模块内部的全局变量 */
 /* 对等待退出标志进行保护 */
 static pthread_mutex_t    g_DebugMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -55,6 +57,9 @@ static S32                g_lTaskWaitingExit = 0;
 /* 连接是否正常标志 */
 static BOOL               g_bIsConnectOK = DOS_FALSE;
 
+/* 定期发送注册消息，作为心跳 */
+static DOS_TMR_ST         g_hTmrReRegTmr = NULL;
+
 /* 外部函数 */
 extern struct tagCommand * debug_cli_cmd_find(S32 argc, S8 **argv);
 
@@ -62,6 +67,15 @@ extern struct tagCommand * debug_cli_cmd_find(S32 argc, S8 **argv);
 S32 debug_cli_reconn();
 S32 debug_cli_send_reg();
 S32 debug_cli_send_cmd_responce(const S8 * _pszMsg, const S32 _lLength, const S32 _lClientIndex);
+
+VOID debug_cli_re_reg_timeout(U64 uLParam)
+{
+    if (debug_cli_send_reg() < 0)
+    {
+        DOS_ASSERT(0);
+        logr_error("Re-registe to the cli server fail. It will re-connect later");
+    }
+}
 
 /**
  * 函数：S32 debug_cli_reg_rsp_proc()
@@ -299,6 +313,9 @@ static VOID * debug_cli_main_loop(VOID *ptr)
 
         if (!g_bIsConnectOK)
         {
+            /* 连接失败了，先停掉定重注册时器 */
+            dos_tmr_stop(&g_hTmrReRegTmr);
+
             /* 轮询链接到服务器 */
             logr_info("%s", "Waiting to connect to the cli server.");
             sleep(1);
@@ -312,6 +329,14 @@ static VOID * debug_cli_main_loop(VOID *ptr)
 
             /* 连接OK，向服务器发送注册报文 */
             debug_cli_send_reg();
+
+            /* 启动定期注册的定时器 */
+            dos_tmr_start(&g_hTmrReRegTmr
+                    , CLI_RE_REG_TIME_LEN * 1000
+                    , debug_cli_re_reg_timeout
+                    , 0
+                    , TIMER_NORMAL_LOOP);
+            dos_printf("Start re-registe timer");
         }
         
         if (g_lCliSocket < 0)
@@ -403,7 +428,6 @@ S32 debug_cli_send_msg(S32 lSocket, struct sockaddr_un *pstAddr, U8 *pszBuffer, 
     {
         dos_printf("%s(%d)", "Send log to the control platfrom fail.", errno);
         DOS_ASSERT(0);
-        g_lCliSocket = -1;
 
         g_bIsConnectOK = DOS_FALSE;
 
@@ -472,8 +496,10 @@ S32 debug_cli_send_log(S8 * _pszMsg, S32 _lLength)
     if (lRet < 0)
     {
         dos_printf("%s(%d)", "Send log to the control platfrom fail.", errno);
+
+        g_bIsConnectOK = DOS_FALSE;
+        
         DOS_ASSERT(0);
-        g_lCliSocket = -1;
         return -1;
     }
 

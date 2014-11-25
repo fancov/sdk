@@ -211,14 +211,14 @@ static VOID * tmr_task_loop(VOID *ptr)
                 tmrNode->next = NULL;
                 tmrNode->prev = NULL;
 
-                dos_dmem_free(tmrNode);
-
-                tmrNode = tmrTmp;
-
                 if (&tmrNode->tmrHandle == *(tmrNode->tmrHandle.hTmr))
                 {
                     *(tmrNode->tmrHandle.hTmr) = NULL;
                 }
+
+                dos_dmem_free(tmrNode);
+
+                tmrNode = tmrTmp;
 
                 pthread_mutex_unlock(&g_mutexTmrList);
                 continue;
