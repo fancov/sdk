@@ -97,8 +97,9 @@ U32 config_get_mysql_host(S8 *pszBuff, U32 ulLen)
 U32 config_get_mysql_port()
 {
     S8 *pszValue;
-    S8 szBuff[32];
+    S8 szBuff[32] = { 0 };
     U16 usDBPort = 0;
+    S32 lPort = 0;
 
     pszValue = _config_get_param(g_pstGlobalCfg, "config/mysql", "host", szBuff, sizeof(szBuff));
     if (!pszValue)
@@ -106,10 +107,14 @@ U32 config_get_mysql_port()
         szBuff[0] = '\0';
     }
 
-    usDBPort = (U16)atol(pszValue);
-    if (0 == usDBPort || usDBPort >= U8_BUTT)
+    usDBPort = (U16)dos_atol(szBuff, &lPort);
+    if (0 == usDBPort || usDBPort >= U16_BUTT)
     {
         usDBPort = 3306;
+    }
+    else
+    {
+        usDBPort = (U16)lPort;
     }
 
     return usDBPort;

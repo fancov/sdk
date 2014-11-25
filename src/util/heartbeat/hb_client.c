@@ -51,8 +51,77 @@ static S8              g_szRecvBuf[MAX_BUFF_LENGTH];
 /* socket连接状态标示 */
 static BOOL            g_bIsConnectOK = DOS_FALSE;
 
+/* 心跳间隔 */
+static U32                  g_ulHBSendInterval = DEFAULT_HB_INTERVAL_MIN;
+
+/* 心跳失败次数 */
+static U32                  g_ulHBMaxFailCnt = DEFAULT_HB_FAIL_CNT_MIN;
+
+
 /* 内部函数申明 */
 S32 hb_client_reconn();
+
+/**
+ * 函数：U32 hb_get_max_fail_cnt()
+ * 功能：获取心跳发送间隔
+ * 参数：
+ * 返回值：心跳发送间隔
+ */
+U32 hb_get_max_send_interval()
+{
+    return g_ulHBSendInterval;
+}
+
+
+/**
+ * 函数：VOID hb_heartbeat_interval_timeout(U64 uLParam)
+ * 功能：心跳发送间隔超时
+ * 参数：
+ *      U64 uLParam：进程控制块编号
+ * 返回值：null
+ */
+VOID hb_heartbeat_interval_timeout(U64 uLParam)
+{
+    PROCESS_INFO_ST *pstProcessInfo = &g_stProcessInfo;
+
+    pstProcessInfo->ulHBCnt++;
+
+    logr_debug("Send heartbeat to the HB server.");
+
+    hb_send_heartbeat(pstProcessInfo);
+}
+
+/**
+ * 函数：VOID hb_heartbeat_recv_timeout(U64 uLParam)
+ * 功能：心跳接收超时回调函数
+ * 参数：
+ *      U64 uLParam：进程控制块编号
+ * 返回值：null
+ */
+VOID hb_heartbeat_recv_timeout(U64 uLParam)
+{
+    PROCESS_INFO_ST *pstProcessInfo = NULL;
+
+    if (uLParam >= DOS_PROCESS_MAX_NUM)
+    {
+        logr_warning("Heartbeat recv timeout, but with an error param \"%lu\".", uLParam);
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstProcessInfo = &g_stProcessInfo;
+    pstProcessInfo->ulHBFailCnt++;
+    pstProcessInfo->hTmrRecvTimeout = NULL;
+
+    logr_debug("Heartbeat recv timeout. process \"%s\"", pstProcessInfo->szProcessName);
+
+    if (pstProcessInfo->ulHBFailCnt >= g_ulHBMaxFailCnt)
+    {
+        pstProcessInfo->ulStatus = PROCESS_HB_INIT;
+        hb_send_reg(pstProcessInfo);
+    }
+}
+
 
 
 /**
@@ -272,6 +341,11 @@ S32 hb_client_init()
     strncpy(g_stProcessInfo.szProcessVersion, dos_get_process_version(), sizeof(g_stProcessInfo.szProcessVersion));
     g_stProcessInfo.szProcessVersion[sizeof(g_stProcessInfo.szProcessVersion) - 1] = '\0';
 
+    g_stProcessInfo.hTmrRecvTimeout = NULL;
+    g_stProcessInfo.hTmrSendInterval = NULL;
+    g_stProcessInfo.hTmrRegInterval = NULL;
+    g_stProcessInfo.ulHBFailCnt = 0;
+
     g_stProcessInfo.lSocket = -1;
     g_stProcessInfo.lSocket = socket (AF_UNIX, SOCK_DGRAM, 0);
     if (g_stProcessInfo.lSocket < 0)
@@ -300,6 +374,20 @@ S32 hb_client_init()
         g_stProcessInfo.lSocket = -1;
         unlink(szBuffSockPath);
         return DOS_FAIL;
+    }
+
+    g_ulHBSendInterval = config_hh_get_send_interval();
+    if (g_ulHBSendInterval < DEFAULT_HB_INTERVAL_MIN
+        || g_ulHBSendInterval > DEFAULT_HB_INTERVAL_MAX)
+    {
+        g_ulHBSendInterval = DEFAULT_HB_INTERVAL_MIN;
+    }
+
+    g_ulHBMaxFailCnt = config_hb_get_max_fail_cnt();
+    if (g_ulHBMaxFailCnt < DEFAULT_HB_FAIL_CNT_MIN
+        || g_ulHBMaxFailCnt < DEFAULT_HB_FAIL_CNT_MAX)
+    {
+        g_ulHBMaxFailCnt = DEFAULT_HB_FAIL_CNT_MIN;
     }
 
     return 0;

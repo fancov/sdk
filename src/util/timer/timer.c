@@ -215,6 +215,11 @@ static VOID * tmr_task_loop(VOID *ptr)
 
                 tmrNode = tmrTmp;
 
+                if (&tmrNode->tmrHandle == *(tmrNode->tmrHandle.hTmr))
+                {
+                    *(tmrNode->tmrHandle.hTmr) = NULL;
+                }
+
                 pthread_mutex_unlock(&g_mutexTmrList);
                 continue;
             }
@@ -411,7 +416,6 @@ S32 dos_tmr_stop(DOS_TMR_ST *hTmrHandle)
     {
         pthread_mutex_lock(&g_mutexTmrList);
         hTmr->ulTmrStatus = TIMER_STATUS_WAITING_DEL;
-        *(hTmr->hTmr) = NULL;
         pthread_mutex_unlock(&g_mutexTmrList);
     }
 

@@ -22,12 +22,15 @@ extern "C"{
 #include "heartbeat.h"
 
 #if INCLUDE_BH_SERVER
-extern VOID hb_heartbeat_recv_timeout(U64 uLParam);
-extern VOID hb_heartbeat_interval_timeout(U64 uLParam);
+VOID hb_recv_timeout(U64 ulParam);
 U32 hb_get_max_send_interval();
+S32 hb_get_max_timeout();
 #endif
 #if INCLUDE_BH_CLIENT
-extern VOID hb_reg_timeout(U64 uLProcessCB);
+VOID hb_heartbeat_recv_timeout(U64 uLParam);
+VOID hb_heartbeat_interval_timeout(U64 uLParam);
+VOID hb_reg_timeout(U64 uLProcessCB);
+U32 hb_get_max_send_interval();
 #endif
 
 extern VOID hb_set_connect_flg(BOOL bConnStatus);
@@ -96,17 +99,17 @@ S32 hb_send_heartbeat(PROCESS_INFO_ST *pstProcessInfo)
 
     pstProcessInfo->ulHBCnt++;
 
-#if INCLUDE_BH_SERVER
+#if INCLUDE_BH_CLIENT
      dos_tmr_start(&pstProcessInfo->hTmrRecvTimeout
                 , HB_TIMEOUT * 1000
                 , hb_heartbeat_recv_timeout
-                , (U64)pstProcessInfo->ulProcessCBNo
+                , 0
                 , TIMER_NORMAL_NO_LOOP);
 
     logr_debug("Start the recv timerout timer for the process \"%s\". %p"
                 , pstProcessInfo->szProcessName, pstProcessInfo->hTmrRecvTimeout);
 #else
-    logr_debug("Process \"%s\" send heartbeat to hb server.", pstProcessInfo->szProcessName);
+    logr_debug("Response heartbeat for hb client \"%s\".", pstProcessInfo->szProcessName);
 #endif
 
     /* 发送数据 */
@@ -220,10 +223,19 @@ S32 hb_reg_responce_proc(PROCESS_INFO_ST *pstProcessInfo)
                 pstProcessInfo->hTmrRegInterval = NULL;
             }
 
+            if (!pstProcessInfo->hTmrSendInterval)
+            {
+                dos_tmr_start(&pstProcessInfo->hTmrSendInterval
+                            , hb_get_max_send_interval() * 1000
+                            , hb_heartbeat_interval_timeout
+                            , 0
+                            , TIMER_NORMAL_LOOP);
+            }
+
             break;
         case PROCESS_HB_DEINIT:
             hb_send_unreg(pstProcessInfo);
-            pstProcessInfo->ulStatus = PROCESS_HB_WORKING;
+            DOS_ASSERT(0);
             break;
         default:
             DOS_ASSERT(0);
@@ -339,10 +351,18 @@ S32 hb_send_unreg_responce(PROCESS_INFO_ST *pstProcessInfo)
  */
 S32 hb_reg_proc(PROCESS_INFO_ST *pstProcessInfo)
 {
+    U32 ulHBTimeout;
+
     if (!pstProcessInfo)
     {
         DOS_ASSERT(0);
         return -1;
+    }
+
+    if (!pstProcessInfo->ulVilad)
+    {
+        DOS_ASSERT(0);
+        return -1;        
     }
 
     switch (pstProcessInfo->ulStatus)
@@ -363,15 +383,14 @@ S32 hb_reg_proc(PROCESS_INFO_ST *pstProcessInfo)
             return -1;
     }
 
-    if (!pstProcessInfo->hTmrSendInterval)
-    {
-         dos_tmr_start(&pstProcessInfo->hTmrSendInterval
-                            , hb_get_max_send_interval() * 1000
-                            , hb_heartbeat_interval_timeout
-                            , (U64)pstProcessInfo->ulProcessCBNo
-                            , TIMER_NORMAL_LOOP);
-        logr_debug("Start the heartbeat sned interval timer for process \"%s\"", pstProcessInfo->szProcessName);
-    }
+    ulHBTimeout = hb_get_max_timeout();
+
+    dos_tmr_start(&pstProcessInfo->hTmrHBTimeout
+                        , hb_get_max_timeout() * 1000
+                        , hb_recv_timeout
+                        , (U64)pstProcessInfo->ulProcessCBNo
+                        , TIMER_NORMAL_NO_LOOP);
+    logr_debug("Start the heartbeat timeout timer for process \"%s\"", pstProcessInfo->szProcessName);
 
     return 0;
 }
@@ -400,9 +419,9 @@ S32 hb_unreg_proc(PROCESS_INFO_ST *pstProcessInfo)
             /* 不需要break */
         case PROCESS_HB_DEINIT:
             hb_send_unreg_responce(pstProcessInfo);
+            dos_tmr_stop(&pstProcessInfo->hTmrHBTimeout);
             pstProcessInfo->ulStatus = PROCESS_HB_DEINIT;
-            dos_tmr_stop(&pstProcessInfo->hTmrRecvTimeout);
-            dos_tmr_stop(&pstProcessInfo->hTmrSendInterval);
+            pstProcessInfo->hTmrHBTimeout = NULL;
             break;
         default:
             DOS_ASSERT(0);
@@ -440,16 +459,18 @@ S32 hb_heartbeat_proc(PROCESS_INFO_ST *pstProcessInfo)
         case PROCESS_HB_WORKING:
             pstProcessInfo->ulStatus = PROCESS_HB_WORKING;
 #if INCLUDE_BH_SERVER
-            //if (pstProcessInfo->hTmrRecvTimeout)
             {
-                dos_tmr_stop(&pstProcessInfo->hTmrRecvTimeout);
-                pstProcessInfo->hTmrRecvTimeout = NULL;
+                dos_tmr_start(&pstProcessInfo->hTmrHBTimeout
+                        , hb_get_max_timeout() * 1000
+                        , hb_recv_timeout
+                        , (U64)pstProcessInfo->ulProcessCBNo
+                        , TIMER_NORMAL_NO_LOOP);
             }
 
-            pstProcessInfo->ulHBFailCnt = 0;
+            hb_send_heartbeat(pstProcessInfo);
 #endif
 #if INCLUDE_BH_CLIENT
-            hb_send_heartbeat(pstProcessInfo);
+            dos_tmr_stop(&pstProcessInfo->hTmrRecvTimeout);
 #endif
             break;
         case PROCESS_HB_DEINIT:

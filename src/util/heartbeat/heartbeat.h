@@ -72,16 +72,17 @@ typedef struct tagProcessInfo{
     S8                 szProcessVersion[HB_MAX_PROCESS_VER_LEN];  /* 版本号 */
 
     U32                ulHBCnt;
+    U32                ulHBFailCnt;                               /* 失败统计 */
 #if INCLUDE_BH_CLIENT
-    DOS_TMR_ST         hTmrRegInterval;                        /* 发送间隔 */
+    DOS_TMR_ST         hTmrRegInterval;                           /* 注册间隔 */
+    DOS_TMR_ST         hTmrSendInterval;                          /* 发送间隔 */
+    DOS_TMR_ST         hTmrRecvTimeout;                           /* 发送超时定时器 */
 #endif
 #if INCLUDE_BH_SERVER
     U32                ulProcessCBNo;                             /* 控制块编号 */
-    U32                ulVilad;                                 /* 该控制块是否有效 */
+    U32                ulVilad;                                   /* 该控制块是否有效 */
     U32                ulActive;                                  /* 该进程是否处于激活状态 */
-    U32                ulHBFailCnt;                               /* 失败统计 */
-    DOS_TMR_ST         hTmrSendInterval;                       /* 发送间隔 */
-    DOS_TMR_ST         hTmrRecvTimeout;                        /* 发送超时定时器 */
+    DOS_TMR_ST         hTmrHBTimeout;                             /* 心跳超市定时器，每次收到心跳重启 */
 #endif
 }PROCESS_INFO_ST;
 

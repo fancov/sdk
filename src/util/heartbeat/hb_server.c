@@ -53,22 +53,51 @@ static S8                   g_szRecvBuf[MAX_BUFF_LENGTH];
 /* 服务器链接是否正常，暂未启用 */
 static BOOL                 g_bIsConnectOK = DOS_FALSE;
 
-/* 心跳间隔 */
-static U32                  g_ulHBSendInterval = DEFAULT_HB_INTERVAL_MIN;
-
-/* 心跳失败次数 */
-static U32                  g_ulHBMaxFailCnt = DEFAULT_HB_FAIL_CNT_MIN;
-
 /**
- * 函数：U32 hb_get_max_fail_cnt()
- * 功能：获取心跳发送间隔
- * 参数：
- * 返回值：心跳发送间隔
+ * 函数: hb_get_max_timeout()
+ * 功能: 获取最大超时时间
+ * 参数:
+ * 返回值
  */
-U32 hb_get_max_send_interval()
+S32 hb_get_max_timeout()
 {
-    return g_ulHBSendInterval;
+    U32 ulHBSendInterval = 0, ulHBMaxFailCnt;
+    ulHBSendInterval = config_hh_get_send_interval();
+    if (ulHBSendInterval < DEFAULT_HB_INTERVAL_MIN
+        || ulHBSendInterval > DEFAULT_HB_INTERVAL_MAX)
+    {
+        ulHBSendInterval = DEFAULT_HB_INTERVAL_MIN;
+    }
+
+    ulHBMaxFailCnt = config_hb_get_max_fail_cnt();
+    if (ulHBMaxFailCnt < DEFAULT_HB_FAIL_CNT_MIN
+        || ulHBMaxFailCnt < DEFAULT_HB_FAIL_CNT_MAX)
+    {
+        ulHBMaxFailCnt = DEFAULT_HB_FAIL_CNT_MIN;
+    }
+
+    return ulHBSendInterval * ulHBMaxFailCnt;
+
 }
+
+VOID hb_recv_timeout(U64 uLParam)
+{
+    PROCESS_INFO_ST *pstProcessInfo = NULL;
+    
+    if (uLParam >= DOS_PROCESS_MAX_NUM)
+    {
+        logr_warning("Heartbeat recv timeout, but with an error param \"%lu\".", uLParam);
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstProcessInfo = g_pstProcessInfo[uLParam];
+    pstProcessInfo->ulHBFailCnt++;
+    pstProcessInfo->hTmrHBTimeout = NULL;
+
+    dos_printf("Process lost.");
+}
+
 
 /**
  * 函数：VOID hb_set_connect_flg(BOOL bConnStatus)
@@ -148,6 +177,12 @@ VOID hb_process_lost(PROCESS_INFO_ST *pstProcessInfo)
 {
     S32 lTreatmentNo;
 
+    if (!pstProcessInfo)
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
     lTreatmentNo = config_hb_get_treatment();
     pstProcessInfo->ulActive = DOS_FALSE;
     if (lTreatmentNo < 0)
@@ -156,62 +191,6 @@ VOID hb_process_lost(PROCESS_INFO_ST *pstProcessInfo)
     }
 
     logr_error("Process \"%s\" lost. Treate as %d", pstProcessInfo->szProcessName, lTreatmentNo);
-}
-
-/**
- * 函数：VOID hb_heartbeat_recv_timeout(U64 uLParam)
- * 功能：心跳接收超时回调函数
- * 参数：
- *      U64 uLParam：进程控制块编号
- * 返回值：null
- */
-VOID hb_heartbeat_recv_timeout(U64 uLParam)
-{
-    PROCESS_INFO_ST *pstProcessInfo = NULL;
-
-    if (uLParam >= DOS_PROCESS_MAX_NUM)
-    {
-        logr_warning("Heartbeat recv timeout, but with an error param \"%lu\".", uLParam);
-        DOS_ASSERT(0);
-        return;
-    }
-
-    pstProcessInfo = g_pstProcessInfo[uLParam];
-    pstProcessInfo->ulHBFailCnt++;
-    pstProcessInfo->hTmrRecvTimeout = NULL;
-
-    logr_debug("Heartbeat recv timeout. process \"%s\"", pstProcessInfo->szProcessName);
-
-    if (pstProcessInfo->ulHBFailCnt >= g_ulHBMaxFailCnt)
-    {
-        hb_process_lost(pstProcessInfo);
-    }
-}
-
-/**
- * 函数：VOID hb_heartbeat_interval_timeout(U64 uLParam)
- * 功能：心跳发送间隔超时
- * 参数：
- *      U64 uLParam：进程控制块编号
- * 返回值：null
- */
-VOID hb_heartbeat_interval_timeout(U64 uLParam)
-{
-    PROCESS_INFO_ST *pstProcessInfo;
-
-    if (uLParam >= DOS_PROCESS_MAX_NUM)
-    {
-        logr_warning("Heartbeat interval timeout, but with an error param \"%lu\".", uLParam);
-        DOS_ASSERT(0);
-        return;
-    }
-
-    pstProcessInfo = g_pstProcessInfo[uLParam];
-    pstProcessInfo->ulHBCnt++;
-
-    logr_debug("Send heartbeat to the process \"%s\"", pstProcessInfo->szProcessName);
-
-    hb_send_heartbeat(pstProcessInfo);
 }
 
 
@@ -306,11 +285,9 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
         pstProcessInfo->ulVilad = DOS_TRUE;
         pstProcessInfo->ulActive = DOS_TRUE;
         pstProcessInfo->ulHBCnt = 0;
-        pstProcessInfo->ulHBFailCnt = 0;
         pstProcessInfo->ulStatus = PROCESS_HB_INIT;
-
-        pstProcessInfo->hTmrRecvTimeout = NULL;
-        pstProcessInfo->hTmrSendInterval = NULL;
+        pstProcessInfo->hTmrHBTimeout = NULL;
+        
 
         dos_strncpy(pstProcessInfo->szProcessName, stHBData.szProcessName, sizeof(pstProcessInfo->szProcessName));
         pstProcessInfo->szProcessName[sizeof(pstProcessInfo->szProcessName) - 1] = '\0';
@@ -467,9 +444,8 @@ S32 heartbeat_init()
         g_pstProcessInfo[i]->ulHBCnt = 0;
         g_pstProcessInfo[i]->ulHBFailCnt = 0;
         g_pstProcessInfo[i]->ulPeerAddrLen = 0;
-        g_pstProcessInfo[i]->hTmrRecvTimeout = NULL;
-        g_pstProcessInfo[i]->hTmrSendInterval = NULL;
         g_pstProcessInfo[i]->ulStatus = PROCESS_HB_BUTT;
+        g_pstProcessInfo[i]->hTmrHBTimeout = NULL;
     }
 
     if (DOS_SUCC == config_hb_init())
@@ -524,20 +500,6 @@ S32 heartbeat_init()
         return DOS_FAIL;
     }
 
-    g_ulHBSendInterval = config_hh_get_send_interval();
-    if (g_ulHBSendInterval < DEFAULT_HB_INTERVAL_MIN
-        || g_ulHBSendInterval > DEFAULT_HB_INTERVAL_MAX)
-    {
-        g_ulHBSendInterval = DEFAULT_HB_INTERVAL_MIN;
-    }
-
-    g_ulHBMaxFailCnt = config_hb_get_max_fail_cnt();
-    if (g_ulHBMaxFailCnt < DEFAULT_HB_FAIL_CNT_MIN
-        || g_ulHBMaxFailCnt < DEFAULT_HB_FAIL_CNT_MAX)
-    {
-        g_ulHBMaxFailCnt = DEFAULT_HB_FAIL_CNT_MIN;
-    }
-
     return 0;
 }
 
@@ -558,7 +520,7 @@ S32 heartbeat_start()
         return -1;
     }
 
-    pthread_join(g_pthIDHBTask, NULL);
+    //pthread_join(g_pthIDHBTask, NULL);
     return 0;
 }
 
