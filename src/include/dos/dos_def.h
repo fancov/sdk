@@ -13,23 +13,30 @@
 #ifndef __DOSDEF_H__
 #define __DOSDEF_H__
 
-/* 定义最大定时器个数 */
-#define TIMER_MAX_NUMBER 1024
-
 #ifdef __cplusplus
 extern "C"{
 #endif /* __cplusplus */
 
-/* 定义进程相关信息 */
-S8 *dos_get_process_name();
-S8 *dos_get_process_version();
-S8 *dos_get_pid_file_path(S8 *pszBuff, S32 lMaxLen);
-S8 *dos_get_sys_root_path();
-S32 dos_set_process_name(S8 *pszName);
+/* 默认最大循环次数 10485759次 */
+#define DOS_DEFAULT_MAX_LOOP       0x9FFFFFL
+
+/* 初始化一个循环变量 */
+#define DOS_LOOP_DETECT_INIT(__var, __limit)  \
+    long __##__var = __limit;
+
+/* 检测循环 */
+#define DOS_LOOP_DETECT(__var)        \
+(__##__var)--;                        \
+if ((__##__var) <= 0)                 \
+{                                     \
+    logr_error("Endless loop detected. File:%s, Line:%d.", dos_get_filename(__FILE__), __LINE__); \
+    break;                            \
+}
 
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif
+#endif /* __DOSDEF_H__ */
+

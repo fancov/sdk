@@ -34,3 +34,14 @@
  * 定义最大进程版本好长度
  */
 #define DOS_MAX_PROCESS_VER_LEN  48
+
+/**
+ * 定义telnet server的监听端口
+ */
+#define DOS_TELNETD_LINSTEN_PORT         2800
+
+/**
+ * 定义内存管理hash表大小
+ */
+#define DOS_MEM_MNGT_HASH_SIZE           128
+

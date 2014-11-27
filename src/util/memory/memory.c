@@ -25,7 +25,7 @@ extern "C"{
 #if INCLUDE_MEMORY_MNGT
 
 /* 定义hash表最大元素个数 */
-#define HASH_MAX_ELEMENT_NUM  16
+#define HASH_MAX_ELEMENT_NUM  DOS_MEM_MNGT_HASH_SIZE
 
 /* 内存分配点描述表 */
 static HASH_TABLE_S     *g_pstHashMemMngtTable;
@@ -102,7 +102,7 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
         //hash_set(g_pstHashFile2Ref, szFileLine, pstFileDescNode);
         hash_add_node(g_pstHashMemMngtTable, (HASH_NODE_S *)pstFileDescNode, ulHashIndex, NULL);
 
-        dos_printf("Create new node for fileline:%s\n", szFileLine);
+        dos_printf("Create new node for fileline:%s", szFileLine);
     }
     pthread_mutex_unlock(&g_mutexMemMngtTable);
     

@@ -1,22 +1,22 @@
 ########################################################################
 #                         Define the Complie                           # 
 ########################################################################
-TARGET                  = ctrl_panel
+TARGET					= moniter
 
 ########################################################################
 #                      Define some                           # 
 ########################################################################
-PROJECT_ROOT            = ../../..
-DOS_LIBS                = -L$(PROJECT_ROOT)/libs
-SROUCE                  = $(PROJECT_ROOT)/src
-DOS_INCLUDES            = -I$(SROUCE)/include
+PROJECT_ROOT			= ../..
+DOS_LIBS				= -L$(PROJECT_ROOT)/libs
+SROUCE					= $(PROJECT_ROOT)/src
+DOS_INCLUDES			= -I$(SROUCE)/include
 
-SUFFIX                  = o
+SUFFIX					= o
 
-LIBS                    = -lpthread -lmysqlclient -lmxml
+LIBS					= -lpthread -lmysqlclient -lmxml
 
-MYSQL_HEADERS           = -I/usr/include/mysql
-MYSQL_LIBS              = -L/usr/lib64/mysql
+MYSQL_HEADERS			= -I/usr/include/mysql
+MYSQL_LIBS				= -L/usr/lib64/mysql
 
 
 ########################################################################
@@ -38,22 +38,22 @@ include $(SROUCE)/service/Makefile
 ########################################################################
 #                              All Files                               # 
 ########################################################################
-ALL_OBJS    = $(C_OBJ_FILE) $(CXX_OBJ_FILE) 
-ALL_SRCS    = $(C_FILE) $(CXX_FILE)
-ALL_HEADERS = $(DOS_INCLUDES) $(MYSQL_HEADERS)
-ALL_LIBS    = $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS) 
+ALL_OBJS	= $(C_OBJ_FILE) $(CXX_OBJ_FILE) 
+ALL_SRCS	= $(C_FILE) $(CXX_FILE)
+ALL_HEADERS	= $(DOS_INCLUDES) $(MYSQL_HEADERS)
+ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS) 
 
 ########################################################################
 #                         Define the Complie                           # 
 ########################################################################
-CC                      = gcc
-CXX                     = g++
-CFLAGS                  = -Wall 
-DEFINES					= -DDIPCC_CTRL_PANEL
+CC						= gcc
+CXX						= g++
+CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char
+DEFINES					= -DDIPCC_MONITER -DDEBUG_VERSION
 
-C_COMPILE               = $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
-CXX_COMPILE             = $(CXX) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS)
-C_LINKS                 = $(CXX) -o $@
+C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
+CXX_COMPILE				= $(CXX) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS)
+C_LINKS					= $(CXX) -o $@
 
 
 ########################################################################
@@ -63,10 +63,10 @@ dep :
 	$(CC) -MM $(ALL_SRCS) $(ALL_HEADERS) $(DEFINES) > $(TARGET).dep
 
 all : $(ALL_OBJS)
-	$(C_LINKS) -o $(TARGET) $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS)
+	$(C_LINKS) -o $(TARGET)d $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS)
 
 clean :
 	rm -f *.o
-	rm -f $(TARGET)
+	rm -f $(TARGET)d
 
 include $(TARGET).dep

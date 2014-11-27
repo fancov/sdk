@@ -26,10 +26,9 @@
 #include <dos/dos_types.h>
 #include <syscfg.h>
 #include <dos/dos_def.h>
-extern "C"{
 #include <dos/dos_debug.h>
 #include <dos/dos_def.h>
-}
+#include <dos/dos_string.h>
 #include <dos/dos_tmr.h>
 #include <dos/dos_cli.h>
 #include <dos/dos_log.h>
@@ -507,6 +506,7 @@ VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *
     if (pszOpterator && pszOpterator[0] != '\0')
     {
         dos_strncpy(pstLogData->szOperator, pszOpterator, sizeof(pstLogData->szOperator));
+        pstLogData->szOperator[sizeof(pstLogData->szOperator) - 1] = '\0';
     }
     else
     {
@@ -516,12 +516,13 @@ VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *
     if (pszOpterand && pszOpterand[0] != '\0')
     {
         dos_strncpy(pstLogData->szOperand, pszOpterand, sizeof(pstLogData->szOperand));
+        pstLogData->szOperand[sizeof(pstLogData->szOperand) - 1] = '\0';
     }
     else
     {
         pstLogData->szOperator[0] = '\0';
     }
-    strncpy(pstLogData->pszMsg, _pszMsg, lMsgLen);
+    dos_strncpy(pstLogData->pszMsg, _pszMsg, lMsgLen);
     pstLogData->pszMsg[lMsgLen-1] = '\0';
 
     /* 加入队列 */

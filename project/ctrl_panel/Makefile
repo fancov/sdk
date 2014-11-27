@@ -1,12 +1,12 @@
 ########################################################################
 #                         Define the Complie                           # 
 ########################################################################
-TARGET					= ctrl_paneld
+TARGET					= ctrl_panel
 
 ########################################################################
 #                      Define some                           # 
 ########################################################################
-PROJECT_ROOT			= ../../..
+PROJECT_ROOT			= ../..
 DOS_LIBS				= -L$(PROJECT_ROOT)/libs
 SROUCE					= $(PROJECT_ROOT)/src
 DOS_INCLUDES			= -I$(SROUCE)/include
@@ -63,7 +63,7 @@ dep :
 	$(CC) -MM $(ALL_SRCS) $(ALL_HEADERS) $(DEFINES) > $(TARGET).dep
 
 all : $(ALL_OBJS)
-	$(C_LINKS) -o $(TARGET) $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS)
+	$(C_LINKS) -o $(TARGET)d $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS)
 
 clean :
 	rm -f *.o

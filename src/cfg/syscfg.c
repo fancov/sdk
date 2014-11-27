@@ -173,6 +173,54 @@ S32 dos_set_process_name(S8 *pszName)
     return 0;
 }
 
+/**
+ * º¯Êı£ºS8 *dos_get_filename(S8* path)
+ * ¹¦ÄÜ£ºº¬ÓĞÂ·¾¶µÄÎÄ¼şÃûÕûÀí³É²»º¬Â·¾¶µÄÎÄ¼şÃû
+ * ²ÎÊı£º
+ *      S8 *pszName : Æô¶¯Ê±µÄ½ø³ÌÃû£¨¿ÉÄÜ»á´øÉÏÈ«Â·¾¶£©
+ * ·µ»ØÖµ
+ *      ³É¹¦·µÎÄ¼şÃûØ0£¬Ê§°Ü·µ»ØNULL
+ */
+const S8 *dos_get_filename(const S8* path)
+{
+    const S8 *pSprit = NULL;
+    const S8 *pNext = NULL;
+
+    if (!path || '\0' == path)
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    /* ¿ÉÄÜ´øÁËÂ·¾¶£¬ÎÒÃÇÖ»ĞèÒª×îºóÒ»¶Î */
+    pSprit = path;
+    pNext = dos_strchr(pSprit, '/');
+    if (!pNext)
+    {
+        return path;
+    }
+
+    while(pNext)
+    {
+        pSprit = pNext + 1;
+        if ('\0' == pSprit[0])
+        {
+            break;
+        }
+
+        pNext = dos_strchr(pSprit, '/');
+    }
+
+    if ('\0' == pSprit[0])
+    {
+        return NULL;
+    }
+    else
+    {
+        return pSprit;
+    }
+}
+
 /*
 #ifdef __cplusplus
 }

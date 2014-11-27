@@ -61,7 +61,7 @@ S8* config_get_service_root(S8 *pszBuff, U32 ulLen);
  * 		U32 ulLen：缓存长度
  * 返回值：成功返回0.失败返回－1
  */
-U32 config_get_mysql_host(S8 *pszBuff, U32 ulLen);
+U32 config_get_db_host(S8 *pszBuff, U32 ulLen);
 
 /**
  * 函数：U32 config_get_mysql_host()
@@ -69,7 +69,7 @@ U32 config_get_mysql_host(S8 *pszBuff, U32 ulLen);
  * 参数：
  * 返回值：成功返回0.失败返回－1
  */
-U32 config_get_mysql_port();
+U32 config_get_db_port();
 
 /**
  * 函数：U32 config_get_mysql_user(S8 *pszBuff, U32 ulLen)
@@ -79,7 +79,7 @@ U32 config_get_mysql_port();
  * 		U32 ulLen：缓存长度
  * 返回值：成功返回0.失败返回－1
  */
-U32 config_get_mysql_user(S8 *pszBuff, U32 ulLen);
+U32 config_get_db_user(S8 *pszBuff, U32 ulLen);
 
 /**
  * 函数：U32 config_get_mysql_password(S8 *pszBuff, U32 ulLen)
@@ -89,7 +89,7 @@ U32 config_get_mysql_user(S8 *pszBuff, U32 ulLen);
  * 		U32 ulLen：缓存长度
  * 返回值：成功返回0.失败返回－1
  */
-U32 config_get_mysql_password(S8 *pszBuff, U32 ulLen);
+U32 config_get_db_password(S8 *pszBuff, U32 ulLen);
 
 /**
  * 函数：U32 config_get_mysql_dbname(S8 *pszBuff, U32 ulLen)
@@ -99,7 +99,7 @@ U32 config_get_mysql_password(S8 *pszBuff, U32 ulLen);
  * 		U32 ulLen：缓存长度
  * 返回值：成功返回0.失败返回－1
  */
-U32 config_get_mysql_dbname(S8 *pszBuff, U32 ulLen);
+U32 config_get_db_dbname(S8 *pszBuff, U32 ulLen);
 
 /**
  * 函数：U32 config_init()

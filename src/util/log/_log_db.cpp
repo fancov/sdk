@@ -40,31 +40,31 @@ S32 CLogDB::log_init()
     S8 szDBName[MAX_DB_INFO_LEN] = {0, };
 
 
-    if (config_get_mysql_host(szDBHost, MAX_DB_INFO_LEN) < 0)
+    if (config_get_db_host(szDBHost, MAX_DB_INFO_LEN) < 0)
     {
         DOS_ASSERT(0);
         return -1;
     }
 
-    if (config_get_mysql_user(szDBUsername, MAX_DB_INFO_LEN) < 0)
+    if (config_get_db_user(szDBUsername, MAX_DB_INFO_LEN) < 0)
     {
         DOS_ASSERT(0);
         return -1;
     }
 
-    if (config_get_mysql_password(szDBPassword, MAX_DB_INFO_LEN) < 0)
+    if (config_get_db_password(szDBPassword, MAX_DB_INFO_LEN) < 0)
     {
         DOS_ASSERT(0);
         return -1;
     }
 
-    if (config_get_mysql_dbname(szDBName, MAX_DB_INFO_LEN) < 0)
+    if (config_get_db_dbname(szDBName, MAX_DB_INFO_LEN) < 0)
     {
         DOS_ASSERT(0);
         return -1;
     }
 
-    usDBPort = config_get_mysql_port();
+    usDBPort = config_get_db_port();
     if (0 == usDBPort || U16_BUTT == usDBPort)
     {
         usDBPort = 3306;

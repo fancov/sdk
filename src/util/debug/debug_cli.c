@@ -314,7 +314,10 @@ static VOID * debug_cli_main_loop(VOID *ptr)
         if (!g_bIsConnectOK)
         {
             /* 连接失败了，先停掉定重注册时器 */
-            dos_tmr_stop(&g_hTmrReRegTmr);
+            if (g_hTmrReRegTmr)
+            {
+                dos_tmr_stop(&g_hTmrReRegTmr);
+            }
 
             /* 轮询链接到服务器 */
             logr_info("%s", "Waiting to connect to the cli server.");
