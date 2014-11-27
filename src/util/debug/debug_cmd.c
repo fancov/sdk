@@ -52,3 +52,4 @@ COMMAND_ST * debug_cli_cmd_find(S32 argc, S8 **argv)
 }
 
 #endif
+

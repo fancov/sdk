@@ -16,16 +16,16 @@
 #if INCLUDE_MEMORY_MNGT
 
 /* 定义魔术字 */
-#define MEM_CCB_MEGIN     0x002B3CF4
+#define MEM_CCB_MEGIC     0x002B3CF4
 
 /* 定义内存类型 */
 #define MEM_TYPE_STATIC   0x01000000
 #define MEM_TYPE_DYNANIC  0x00000000
 
 /* 相关处理过程 */
-#define MEM_SET_MAGIN(p)                             \
+#define MEM_SET_MAGIC(p)                             \
 do {                                                 \
-    (p)->ulMemDesc = (p)->ulMemDesc | MEM_CCB_MEGIN; \
+    (p)->ulMemDesc = (p)->ulMemDesc | MEM_CCB_MEGIC; \
 }while(0)
 
 #define MEM_SET_TYPE(p, type)                      \
@@ -34,7 +34,7 @@ do {                                               \
 }while(0)
 
 
-#define MEM_CHECK_MAGIN(p) (MEM_CCB_MEGIN == (p)->ulMemDesc)
+#define MEM_CHECK_MAGIC(p) (MEM_CCB_MEGIC == (p)->ulMemDesc)
 
 
 typedef struct tagMemInfoNode{
