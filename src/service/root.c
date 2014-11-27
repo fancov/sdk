@@ -16,6 +16,11 @@ extern "C"{
 
 #include <dos.h>
 
+#if INCLUDE_PTC
+    #include <ptc_pts/ipcc.h>
+#endif
+
+
 S32 root(S32 _argc, S8 ** _argv)
 {
 #if INCLUDE_DEBUG_CLI_SERVER

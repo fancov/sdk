@@ -6,7 +6,7 @@ TARGET					= pts
 ########################################################################
 #                      Define some                           # 
 ########################################################################
-PROJECT_ROOT			= ../../..
+PROJECT_ROOT			= ../..
 DOS_LIBS				= -L$(PROJECT_ROOT)/libs
 SROUCE					= $(PROJECT_ROOT)/src
 DOS_INCLUDES			= -I$(SROUCE)/include

@@ -363,7 +363,7 @@ S32 pts_create_cclist_html_callback(void *para, S32 n_column, S8 **column_value,
    {
         sprintf(pcHtml+strlen(pcHtml),
             "<input type=\"button\" id=\"button_%s\" value=\"设置别名\"  \
-            onclick=\"set_alias(%s)\"/><a id=\"a_%s\" href=\"%s\">%s<a/> ?\\
+            onclick=\"set_alias(%s)\"/><a id=\"a_%s\" href=\"%s\">%s<a/> \
             <input type=\"input\" value=\"\" id=\"alise_%s\"  style=\"display:none;\" /> \
             <input type=\"button\" id=\"sure_%s\" value=\"确定\" style=\"display:none;\" onclick=\"make_sure(%s)\"/><br/>"
             ,column_value[0],column_value[0],column_value[0],column_value[0], column_value[0], column_value[0], column_value[0], column_value[0]);
@@ -392,8 +392,8 @@ BOOL pts_deal_with_http_head(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pc
     S8  *pcStr1   = NULL;
     S8  *pcStr2   = NULL;
     U8  *pcCookie = NULL;
-    S8  *pacCClist_html = NULL;
-    S8  achSql[PTS_SQL_STR_SIZE] = {0};
+   /* S8  *pacCClist_html = NULL;*/
+   /* S8  achSql[PTS_SQL_STR_SIZE] = {0};*/
 	BOOL bIsGetID = DOS_FALSE;
 	S8 pcListBuf[PTS_DATA_BUFF_512] = {0};
 	S32 lFd = 0;
@@ -471,8 +471,7 @@ BOOL pts_deal_with_http_head(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pc
         /*更改备注名*/
 
 		/*更新数据库*/
-		 sprintf(achSql, "update ipcc_alias set register=1 where id='%s';", pstMsgDes->aucID);
-         dos_sqlite3_exec(m_stMySqlite, achSql);
+		
 		
 		/*返回结果*/
    		strcpy(pcListBuf,"1");

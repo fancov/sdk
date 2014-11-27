@@ -210,7 +210,7 @@ void *ptc_send_msg2proxy(void *arg)
                             pstStreamNode->lSockFd = lSockfd;
                         }
 
-                        alert("request size: %d", stRecvDataTcp.ulLen - sizeof(PT_MSG_ST));
+                        alert("request size: %d", stRecvDataTcp.ulLen);
                         send(pstStreamNode->lSockFd, stRecvDataTcp.szBuff + sizeof(PT_MSG_ST), stRecvDataTcp.ulLen - sizeof(PT_MSG_ST), 0);
 
                         pstStreamNode->ulCurrSeq++;
@@ -293,7 +293,7 @@ void *ptc_recv_msg_from_proxy(void *arg)
 }
 
 
-void *ptc_get_from_stdin(void *arg)
+/*void *ptc_get_from_stdin(void *arg)
 {
     S8 acInputStr[PTC_DATA_BUFF_512];
     S32 lOperateType = 0;
@@ -319,13 +319,13 @@ void *ptc_get_from_stdin(void *arg)
         ptc_ipcc_send_msg(PT_DATA_CTRL, lOperateType, acInputStr, strlen(acInputStr), DOS_FALSE);
     }
 }
+*/
 
-
-S32 ptc_main(S32 argc, S8 *argv[])
+S32 ptc_main()
 {
     S32 lSocket, lRet;
     U8 achID[IPCC_ID_LEN] = {0};
-    pthread_t tid1, tid2, tid3, tid4, tid5;
+    pthread_t tid1, tid2, tid3, tid4/*, tid5*/;
 
     lSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if (lSocket < 0)
@@ -334,15 +334,8 @@ S32 ptc_main(S32 argc, S8 *argv[])
         return DOS_FAIL;
     }
 
-    if (argc >= 2)
-    {
-       memcpy(achID, argv[1], IPCC_ID_LEN);
-    }
-    else
-    {
-        memcpy(achID, "123456789abcdefg", IPCC_ID_LEN);
-    }
-
+    memcpy(achID, "123456789abcdefg", IPCC_ID_LEN);
+   
     ptc_init_serv_msg();
     ptc_init_send_cache_queue(lSocket, achID);
     ptc_init_recv_cache_queue(lSocket, achID);
@@ -375,18 +368,18 @@ S32 ptc_main(S32 argc, S8 *argv[])
         return DOS_FAIL;
     }
 
-    lRet = pthread_create(&tid5, NULL, ptc_get_from_stdin, NULL);
+   /* lRet = pthread_create(&tid5, NULL, ptc_get_from_stdin, NULL);
     if (lRet < 0)
     {
         alert("Create pthread error!");
         return DOS_FAIL;
-    }
+    }*/
 
     pthread_join(tid1, NULL);
     pthread_join(tid2, NULL);
     pthread_join(tid3, NULL);
     pthread_join(tid4, NULL);
-    pthread_join(tid5, NULL);
+  /*  pthread_join(tid5, NULL);*/
 
     return DOS_SUCC;
 }
