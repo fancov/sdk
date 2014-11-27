@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IPCC链表</title>
+<style>
+
+body {
+    width: 600px;
+    margin: 40px;
+    font-family: 'trebuchet MS', 'Lucida sans', Arial;
+    font-size: 14px;
+    color: #444;
+}
+
+table {
+    *border-collapse: collapse; /* IE7 and lower */
+    border-spacing: 0;
+    width: 200%;    
+}
+
+.bordered {
+    border: solid #ccc 1px;
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    border-radius: 6px;
+    -webkit-box-shadow: 0 1px 1px #ccc; 
+    -moz-box-shadow: 0 1px 1px #ccc; 
+    box-shadow: 0 1px 1px #ccc;         
+}
+
+.bordered tr:hover {
+    background: #fbf8e9;
+    -o-transition: all 0.1s ease-in-out;
+    -webkit-transition: all 0.1s ease-in-out;
+    -moz-transition: all 0.1s ease-in-out;
+    -ms-transition: all 0.1s ease-in-out;
+    transition: all 0.1s ease-in-out;     
+}    
+    
+.bordered td, .bordered th {
+    border-left: 1px solid #ccc;
+    border-top: 1px solid #ccc;
+    padding: 10px;
+    text-align: left;    
+}
+
+.bordered th {
+    background-color: #dce9f9;   
+    border-top: none;
+}
+
+
+.bordered tr:last-child td:first-child {
+    -moz-border-radius: 0 0 0 6px;
+    -webkit-border-radius: 0 0 0 6px;
+    border-radius: 0 0 0 6px;
+}
+
+.bordered tr:last-child td:last-child {
+    -moz-border-radius: 0 0 6px 0;
+    -webkit-border-radius: 0 0 6px 0;
+    border-radius: 0 0 6px 0;
+}
+
+</style>
+</head>
+<script type="text/javascript" src="pt.js"></script>
+
+<body>
+
+<h2>设备列表</h2>
+<table class="bordered">
+    <thead>
+
+    <tr>
+        <th>#</th>        
+        <th>设备ID</th>
+		<th>名称</th>
+        <th>备注名</th>
+    </tr>
+    </thead>
+    <tr>
+        <td>1</td>        
+        <td id="id_a">a</td>
+		<td>设备A</td>
+        <td>
+			<label ></label>
+			<input type="text" disabled='true' id="label_a" value="设备A 备注名" >
+			<input class='url' id='button_a' type='button' value="设置备注名" onclick="set_remark('button_a')" style="display:inline-block"/>
+			<input class='url' id='ensure_a' type='button' value="确定" onclick="make_sure('button_a')" style="display:none"/>
+		</td>
+    </tr>        
+    <tr>
+        <td>2</td>        
+        <td id="id_b">b</td>
+		<td>设备B</td>
+        <td>
+			<input type="text" disabled='true' id="label_b" value="设备B 备注名" >
+			<input class='url' id='button_b' type='button' value="设置备注名" onclick="set_remark('button_b')" style="display:inline-block"/>
+			<input class='url' id='ensure_b' type='button' value="确定" onclick="make_sure('button_b')" style="display:none"/>
+		</td>
+    </tr>
+    <tr>
+
+        <td>3</td>        
+        <td id="id_c">c</td>
+		<td>设备C</td>
+        <td>
+			<input type="text" disabled='true' id="label_c" value="设备C 备注名" >
+			<input class='url' id='button_c' type='button' value="设置备注名" onclick="set_remark('button_c')" style="display:inline-block"/>
+			<input class='url' id='ensure_c' type='button' value="确定" onclick="make_sure('button_c')" style="display:none"/>
+		</td>
+    </tr>    
+    <tr>
+        <td>4</td>        
+        <td id="id_d">d</td>
+		<td>设备D</td>
+        <td>
+			<input type="text" disabled='true' id="label_d" value="设备D 备注名" >
+			<input class='url' id='button_d' type='button' value="设置备注名" onclick="set_remark('button_d')" style="display:inline-block"/>
+			<input class='url' id='ensure_d' type='button' value="确定" onclick="make_sure('button_d')" style="display:none"/>
+		</td>
+
+    </tr> 
+
+</table>
+
+</body>
+</html>

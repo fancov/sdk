@@ -2,7 +2,7 @@
  *            (C) Copyright 2014, 天天讯通 . Co., Ltd.
  *                    ALL RIGHTS RESERVED
  *
- *  syscfg.h
+ *  config.h
  *
  *  Created on: 2014-10-31
  *      Author: Larry
@@ -22,6 +22,16 @@
 
 #	include <cfg/cfg_mod_moniter.h>
 #	define DOS_PROCESS_VERSION "1.0"
+
+#elif defined(DIPCC_PTS)
+
+#   include "cfg/cfg_mod_pts.h"
+#   define DOS_PROCESS_VERSION "1.0"
+
+#elif defined(DIPCC_PTC)
+
+#   include "cfg/cfg_mod_ptc.h"
+#   define DOS_PROCESS_VERSION "1.0"
 
 #else
 #	error "Please special the mod's macro!"

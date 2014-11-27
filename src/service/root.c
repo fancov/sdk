@@ -31,6 +31,11 @@ S32 root(S32 _argc, S8 ** _argv)
 
     heartbeat_start();
 #endif
+    
+#if INCLUDE_PTC
+    ptc_main();
+#endif
+
     while(1)
     {
         sleep(1);
