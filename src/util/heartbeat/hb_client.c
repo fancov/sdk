@@ -58,9 +58,6 @@ static U32                  g_ulHBSendInterval = DEFAULT_HB_INTERVAL_MIN;
 static U32                  g_ulHBMaxFailCnt = DEFAULT_HB_FAIL_CNT_MIN;
 
 
-/* 内部函数申明 */
-S32 hb_client_reconn();
-
 /**
  * 函数：U32 hb_get_max_fail_cnt()
  * 功能：获取心跳发送间隔
@@ -123,20 +120,6 @@ VOID hb_heartbeat_recv_timeout(U64 uLParam)
 }
 
 
-
-/**
- * 函数：VOID hb_set_connect_flg(BOOL bConnStatus)
- * 功能：设置socket连接状态标示
- * 参数：
- *      BOOL bConnStatus：连接状态，true／false
- * 返回值：
- */
-VOID hb_set_connect_flg(BOOL bConnStatus)
-{
-    g_bIsConnectOK = bConnStatus;
-}
-
-
 /**
  * 函数：VOID hb_reg_timeout(U64 uLProcessCB)
  * 功能：心跳客户端注册超时
@@ -154,6 +137,19 @@ VOID hb_reg_timeout(U64 uLProcessCB)
 
     /* 重发注册 */
     hb_send_reg(&g_stProcessInfo);
+}
+
+
+/**
+ * 函数：VOID hb_set_connect_flg(BOOL bConnStatus)
+ * 功能：设置socket连接状态标示
+ * 参数：
+ *      BOOL bConnStatus：连接状态，true／false
+ * 返回值：
+ */
+VOID hb_set_connect_flg(BOOL bConnStatus)
+{
+    g_bIsConnectOK = bConnStatus;
 }
 
 
@@ -213,6 +209,30 @@ S32 hb_client_msg_proc(VOID *pMsg, U32 ulLen)
     return lResult;
 }
 
+/**
+ * 函数：S32 hb_client_reconn()
+ * 功能：客户端重新链接服务器
+ * 参数：
+ * 返回值：成功返回0，是不返回－1
+ */
+S32 hb_client_reconn()
+{
+    S8 szBuffSockPath[256];
+
+    dos_memzero(&g_stProcessInfo.stPeerAddr, sizeof(g_stProcessInfo.stPeerAddr));
+    snprintf(szBuffSockPath, sizeof(szBuffSockPath), "%s/var/run/socket/moniter.sock", dos_get_sys_root_path());
+    g_stProcessInfo.stPeerAddr.sun_family = AF_UNIX;
+    dos_strcpy(g_stProcessInfo.stPeerAddr.sun_path, szBuffSockPath);
+    g_stProcessInfo.ulPeerAddrLen = offsetof(struct sockaddr_un, sun_path) + strlen(szBuffSockPath);
+
+    if (connect(g_stProcessInfo.lSocket, (struct sockaddr *)&g_stProcessInfo.stPeerAddr, g_stProcessInfo.ulPeerAddrLen) < 0)
+    {
+        logr_error("Cannot connect to heartbeat server.(%d)", errno);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
 
 
 /**
@@ -291,31 +311,6 @@ VOID *hb_client_task(VOID *ptr)
     }
 
     return 0;
-}
-
-/**
- * 函数：S32 hb_client_reconn()
- * 功能：客户端重新链接服务器
- * 参数：
- * 返回值：成功返回0，是不返回－1
- */
-S32 hb_client_reconn()
-{
-    S8 szBuffSockPath[256];
-
-    dos_memzero(&g_stProcessInfo.stPeerAddr, sizeof(g_stProcessInfo.stPeerAddr));
-    snprintf(szBuffSockPath, sizeof(szBuffSockPath), "%s/var/run/socket/moniter.sock", dos_get_sys_root_path());
-    g_stProcessInfo.stPeerAddr.sun_family = AF_UNIX;
-    dos_strcpy(g_stProcessInfo.stPeerAddr.sun_path, szBuffSockPath);
-    g_stProcessInfo.ulPeerAddrLen = offsetof(struct sockaddr_un, sun_path) + strlen(szBuffSockPath);
-
-    if (connect(g_stProcessInfo.lSocket, (struct sockaddr *)&g_stProcessInfo.stPeerAddr, g_stProcessInfo.ulPeerAddrLen) < 0)
-    {
-        logr_error("Cannot connect to heartbeat server.(%d)", errno);
-        return DOS_FAIL;
-    }
-
-    return DOS_SUCC;
 }
 
 /**

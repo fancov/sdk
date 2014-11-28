@@ -36,7 +36,7 @@ extern "C"{
 
 #define MAX_KEY_WORDS 16
 
-#define CLI_RE_REG_TIME_LEN   3
+#define CLI_RE_REG_TIME_LEN   10
 
 /* 模块内部的全局变量 */
 /* 对等待退出标志进行保护 */
@@ -63,19 +63,6 @@ static DOS_TMR_ST         g_hTmrReRegTmr = NULL;
 /* 外部函数 */
 extern struct tagCommand * debug_cli_cmd_find(S32 argc, S8 **argv);
 
-/* 模块内部函数申明 */
-S32 debug_cli_reconn();
-S32 debug_cli_send_reg();
-S32 debug_cli_send_cmd_responce(const S8 * _pszMsg, const S32 _lLength, const S32 _lClientIndex);
-
-VOID debug_cli_re_reg_timeout(U64 uLParam)
-{
-    if (debug_cli_send_reg() < 0)
-    {
-        DOS_ASSERT(0);
-        logr_error("Re-registe to the cli server fail. It will re-connect later");
-    }
-}
 
 /**
  * 函数：S32 debug_cli_reg_rsp_proc()
@@ -285,112 +272,7 @@ S32 debug_cli_msg_proc(U8 *_pMsg, U32 ulLen)
     return lRet;
 }
 
-/**
- * 函数：static VOID * debug_cli_main_loop(VOID *ptr)
- * 功能：模块线程函数，主要用于读取苹果发过来的数据，并分发到不同的模块
- */
-static VOID * debug_cli_main_loop(VOID *ptr)
-{
-    S32 lRet, lMaxFd;
-    struct timeval stTimeout={1, 0};
-    U8 szReadBuff[MAX_READ_BUFF] = { 0 };
-    fd_set stFdset;
 
-    pthread_mutex_lock(&g_DebugMutex);
-    g_lTaskWaitingExit = 0;
-    pthread_mutex_unlock(&g_DebugMutex);
-
-    while(1)
-    {
-        pthread_mutex_lock(&g_DebugMutex);
-        if (g_lTaskWaitingExit)
-        {
-            dos_printf("%s", "Cli task finished flag has been set.");
-            pthread_mutex_unlock(&g_DebugMutex);
-            break;
-        }
-        pthread_mutex_unlock(&g_DebugMutex);
-
-        if (!g_bIsConnectOK)
-        {
-            /* 连接失败了，先停掉定重注册时器 */
-            if (g_hTmrReRegTmr)
-            {
-                dos_tmr_stop(&g_hTmrReRegTmr);
-            }
-
-            /* 轮询链接到服务器 */
-            logr_info("%s", "Waiting to connect to the cli server.");
-            sleep(1);
-            if (debug_cli_reconn() != DOS_SUCC)
-            {
-                continue;
-            }
-            logr_info("%s", "Connect to the cli server OK.");
-
-            g_bIsConnectOK = DOS_TRUE;
-
-            /* 连接OK，向服务器发送注册报文 */
-            debug_cli_send_reg();
-
-            /* 启动定期注册的定时器 */
-            dos_tmr_start(&g_hTmrReRegTmr
-                    , CLI_RE_REG_TIME_LEN * 1000
-                    , debug_cli_re_reg_timeout
-                    , 0
-                    , TIMER_NORMAL_LOOP);
-            dos_printf("Start re-registe timer");
-        }
-        
-        if (g_lCliSocket < 0)
-        {
-            dos_printf("%s", "Socket has been closed!");
-            break;
-        }
-
-        FD_ZERO(&stFdset);
-        FD_SET(g_lCliSocket, &stFdset);
-        lMaxFd = g_lCliSocket + 1;
-        szReadBuff[0] = '\0';
-        stTimeout.tv_sec = 1;
-        stTimeout.tv_usec = 0;
-
-        lRet = select(lMaxFd, &stFdset, NULL, NULL, &stTimeout);
-        if (-1 == lRet)
-        {
-            perror("Error happened when select return.");
-            g_lCliSocket = -1;
-            pthread_exit(NULL);
-        }
-        else if (0 == lRet)
-        {
-            continue;
-        }
-
-        if(FD_ISSET(g_lCliSocket, &stFdset))
-        {
-            lRet = recvfrom(g_lCliSocket, szReadBuff, sizeof(szReadBuff), 0, NULL, NULL);
-            if (lRet < 0)
-            {
-                logr_warning("Error happened when read form socket.(%d)", errno);
-                continue;
-            }
-            szReadBuff[lRet] = '\0';
-
-            debug_cli_msg_proc(szReadBuff, lRet);
-        }
-    }
-
-    dos_printf("%s", (S8 *)"Cli task goodbye!");
-
-    if (g_lCliSocket > 0)
-    {
-        close(g_lCliSocket);
-        g_lCliSocket= -1;
-    }
-
-    pthread_exit(NULL);
-}
 
 /**
  * 函数：S32 debug_cli_send_msg(S32 lSocket, struct sockaddr_un *pstAddr, U8 *pszBuffer, S32 lLength)
@@ -620,6 +502,23 @@ S32 debug_cli_send_reg()
     return debug_cli_send_msg(g_lCliSocket, &g_stSrvAddr, szSendBuff, ulMsgLen);
 }
 
+/**
+ * 函数：VOID debug_cli_re_reg_timeout(U64 uLParam)
+ * 功能：注册超市处理函数，主要工作为调用注册函数 重新发起注册
+ */
+VOID debug_cli_re_reg_timeout(U64 uLParam)
+{
+    if (debug_cli_send_reg() < 0)
+    {
+        DOS_ASSERT(0);
+        logr_error("Re-registe to the cli server fail. It will re-connect later");
+    }
+}
+
+/**
+ * 函数：S32 debug_cli_reconn()
+ * 功能：发现服务器连接失败之后重新连接到服务器
+ */
 S32 debug_cli_reconn()
 {
     S8 szBuffSockPath[256] = { 0 };
@@ -641,6 +540,114 @@ S32 debug_cli_reconn()
 
     return DOS_SUCC;
 }
+
+/**
+ * 函数：static VOID * debug_cli_main_loop(VOID *ptr)
+ * 功能：模块线程函数，主要用于读取苹果发过来的数据，并分发到不同的模块
+ */
+static VOID * debug_cli_main_loop(VOID *ptr)
+{
+    S32 lRet, lMaxFd;
+    struct timeval stTimeout={1, 0};
+    U8 szReadBuff[MAX_READ_BUFF] = { 0 };
+    fd_set stFdset;
+
+    pthread_mutex_lock(&g_DebugMutex);
+    g_lTaskWaitingExit = 0;
+    pthread_mutex_unlock(&g_DebugMutex);
+
+    while(1)
+    {
+        pthread_mutex_lock(&g_DebugMutex);
+        if (g_lTaskWaitingExit)
+        {
+            dos_printf("%s", "Cli task finished flag has been set.");
+            pthread_mutex_unlock(&g_DebugMutex);
+            break;
+        }
+        pthread_mutex_unlock(&g_DebugMutex);
+
+        if (!g_bIsConnectOK)
+        {
+            /* 连接失败了，先停掉定重注册时器 */
+            if (g_hTmrReRegTmr)
+            {
+                dos_tmr_stop(&g_hTmrReRegTmr);
+            }
+
+            /* 轮询链接到服务器 */
+            logr_info("%s", "Waiting to connect to the cli server.");
+            sleep(1);
+            if (debug_cli_reconn() != DOS_SUCC)
+            {
+                continue;
+            }
+            logr_info("%s", "Connect to the cli server OK.");
+
+            g_bIsConnectOK = DOS_TRUE;
+
+            /* 连接OK，向服务器发送注册报文 */
+            debug_cli_send_reg();
+
+            /* 启动定期注册的定时器 */
+            dos_tmr_start(&g_hTmrReRegTmr
+                    , CLI_RE_REG_TIME_LEN * 1000
+                    , debug_cli_re_reg_timeout
+                    , 0
+                    , TIMER_NORMAL_LOOP);
+            dos_printf("Start re-registe timer");
+        }
+        
+        if (g_lCliSocket < 0)
+        {
+            dos_printf("%s", "Socket has been closed!");
+            break;
+        }
+
+        FD_ZERO(&stFdset);
+        FD_SET(g_lCliSocket, &stFdset);
+        lMaxFd = g_lCliSocket + 1;
+        szReadBuff[0] = '\0';
+        stTimeout.tv_sec = 1;
+        stTimeout.tv_usec = 0;
+
+        lRet = select(lMaxFd, &stFdset, NULL, NULL, &stTimeout);
+        if (-1 == lRet)
+        {
+            perror("Error happened when select return.");
+            g_lCliSocket = -1;
+            pthread_exit(NULL);
+        }
+        else if (0 == lRet)
+        {
+            continue;
+        }
+
+        if(FD_ISSET(g_lCliSocket, &stFdset))
+        {
+            lRet = recvfrom(g_lCliSocket, szReadBuff, sizeof(szReadBuff), 0, NULL, NULL);
+            if (lRet < 0)
+            {
+                logr_warning("Error happened when read form socket.(%d)", errno);
+                continue;
+            }
+            szReadBuff[lRet] = '\0';
+
+            debug_cli_msg_proc(szReadBuff, lRet);
+        }
+    }
+
+    dos_printf("%s", (S8 *)"Cli task goodbye!");
+
+    if (g_lCliSocket > 0)
+    {
+        close(g_lCliSocket);
+        g_lCliSocket= -1;
+    }
+
+    pthread_exit(NULL);
+}
+
 
 /**
  * 函数：S32 debug_cli_init(S32 _iArgc, S8 **_pszArgv)

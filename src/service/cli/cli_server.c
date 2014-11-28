@@ -177,6 +177,7 @@ PROCESS_INFO_NODE_ST * cli_server_find_active_process(S8 *pszName)
 S32 cli_server_send_reg_rsp2process(PROCESS_INFO_NODE_ST *pstProcess)
 {
     CLI_MSG_HEADER *pstMsgHeader;
+    MSG_UNIT_ST    *pstMsgCmd;
     U32 ulMsgLen = 0, ulRet = 0;
     U8 szSendBuff[MAX_SEND_BUFF];
 
@@ -186,12 +187,29 @@ S32 cli_server_send_reg_rsp2process(PROCESS_INFO_NODE_ST *pstProcess)
         return DOS_FAIL;
     }
 
+    /* 填充消息头 */
     pstMsgHeader = (CLI_MSG_HEADER *)szSendBuff;
     pstMsgHeader->usClientIndex = INVALID_CLIENT_INDEX;
     pstMsgHeader->usProteVersion = 0;
     ulMsgLen += sizeof(CLI_MSG_HEADER);
 
-    ulRet = sendto(g_lSrvSocket, szSendBuff, sizeof(CLI_MSG_HEADER), 0, (struct sockaddr *)&pstProcess->stClientAddr, pstProcess->uiClientAddrLen);
+    /* 检查长度 */
+    if (sizeof(szSendBuff) - ulMsgLen < sizeof(MSG_UNIT_ST))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 填充消息体 */
+    pstMsgCmd = (MSG_UNIT_ST *)pstMsgHeader->pszData;
+    pstMsgCmd->usLength = 0;
+    pstMsgCmd->usType = MSG_TYPE_PROCESS_REG_RSP;
+    ulMsgLen += sizeof(MSG_UNIT_ST) + pstMsgCmd->usLength;
+
+    /* 填充消息长度 */
+    pstMsgHeader->usLength = ulMsgLen - sizeof(CLI_MSG_HEADER);
+
+    ulRet = sendto(g_lSrvSocket, szSendBuff, ulMsgLen, 0, (struct sockaddr *)&pstProcess->stClientAddr, pstProcess->uiClientAddrLen);
     if (ulRet < 0)
     {
         pstProcess->bActive = DOS_FALSE;
@@ -350,6 +368,8 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
         return -1;
     }
 
+    logr_debug("Processing process register message. Process:%s", pszName);
+
     /* 所指定的进程是否已注册了,如果注册了需要更新对端地址 */
     for (i=0; i<MAX_PROCESS_NUM; i++)
     {
@@ -363,7 +383,7 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
     /* 如果没有注册就给分配控制块，并初始化 */
     if (i >= MAX_PROCESS_NUM)
     {
-        logr_info("New process register. Name:%s", pszName);
+        logr_info("New process registe. Name:%s", pszName);
 
         for (i=0; i<MAX_PROCESS_NUM; i++)
         {
@@ -393,16 +413,18 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
         }
     }
 
-    /* 如果不是active状态，就需要给回注册响应 */
     if (!g_pstProcessList[i]->bActive)
     {
         g_pstProcessList[i]->bActive = DOS_TRUE;
-        logr_info("Process %s registe successfully.", pszName);
-        cli_server_send_reg_rsp2process(g_pstProcessList[i]);
+        logr_info("Process \"%s\" registe successfully.", pszName);
     }
+
+    cli_server_send_reg_rsp2process(g_pstProcessList[i]);
 
     dos_memcpy((VOID *)&g_pstProcessList[i]->stClientAddr, pstAddr, sizeof(g_pstProcessList[i]->stClientAddr));
     g_pstProcessList[i]->uiClientAddrLen = ulSockLen;
+
+    logr_debug("Process registe message processed. Process:%s", pszName);
 
     return 0;
 }
