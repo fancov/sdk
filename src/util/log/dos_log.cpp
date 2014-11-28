@@ -26,10 +26,9 @@
 #include <dos/dos_types.h>
 #include <syscfg.h>
 #include <dos/dos_def.h>
-extern "C"{
 #include <dos/dos_debug.h>
 #include <dos/dos_def.h>
-}
+#include <dos/dos_string.h>
 #include <dos/dos_tmr.h>
 #include <dos/dos_cli.h>
 #include <dos/dos_log.h>
@@ -88,10 +87,31 @@ static pthread_mutex_t   g_mutexLogTask = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t    g_condLogTask = PTHREAD_COND_INITIALIZER;
 static pthread_t         g_pthIDLogTask;
 
+static const S8 *g_pszLogType[] = 
+{
+    "RUNINFO",
+    "WARNING",
+    "SERVICE",
+    "OPTERATION",
+    ""
+};
+
+static const S8 *g_pszLogLevel[] = 
+{
+    "EMERG",
+    "ALERT",
+    "CIRT",
+    "ERROR",
+    "WARNING",
+    "NOTICE",
+    "INFO",
+    "DEBUG",
+    ""
+};
+
+
 /* 本地函数申明 */
 static char * dos_log_get_time(time_t _time, S8 *sz_time, S32 i_len);
-static char * dos_log_get_level(S32 _level);
-static char * dos_log_get_type(S32 _type);
 
 /**
  * 函数：S32 dos_log_set_cli_level(U32 ulLeval)
@@ -263,8 +283,8 @@ void *dos_log_main_loop(void *_ptr)
                     if (LOG_TYPE_OPTERATION != pstLogData->lType)
                     {
                         g_pstLogModList[i]->log_write(dos_log_get_time(pstLogData->stTime, szTime, sizeof(szTime))
-                                                , dos_log_get_type(pstLogData->lType)
-                                                , dos_log_get_level(pstLogData->lLevel)
+                                                , pstLogData->lType >= LOG_TYPE_INVAILD ? "" : g_pszLogType[pstLogData->lType]
+                                                , pstLogData->lLevel >= LOG_LEVEL_INVAILD ? "" : g_pszLogLevel[pstLogData->lLevel]
                                                 , pstLogData->pszMsg
                                                 , pstLogData->lLevel);
                     }
@@ -384,13 +404,13 @@ VOID dos_log(S32 _lLevel, S32 _lType, S8 *_pszMsg)
         return;
     }
 
-    if (!dos_log_get_type(_lType))
+    if (_lType >= LOG_TYPE_INVAILD)
     {
         /* 不要断言，这里的断言可能造成死循环 */
         return;
     }
 
-    if (!dos_log_get_level(_lLevel))
+    if (_lLevel >= LOG_LEVEL_INVAILD)
     {
         /* 不要断言，这里的断言可能造成死循环 */
         return;
@@ -403,8 +423,8 @@ VOID dos_log(S32 _lLevel, S32 _lType, S8 *_pszMsg)
         return;
     }
 
-    /* 申请内存，注意四字节对齐 */
-    lMsgLen = ((strlen(_pszMsg) + 1)/4)*4 + 4;
+    /* 申请内存，四字节对齐 */
+    lMsgLen = ((dos_strlen(_pszMsg) + 4) & 0xFFFFFFFC);
     pstLogData->pszMsg = (S8 *)malloc(lMsgLen);
     if (!pstLogData->pszMsg)
     {
@@ -416,7 +436,7 @@ VOID dos_log(S32 _lLevel, S32 _lType, S8 *_pszMsg)
     pstLogData->stTime = time(NULL);
     pstLogData->lLevel = _lLevel;
     pstLogData->lType  = _lType;
-    strncpy(pstLogData->pszMsg, _pszMsg, lMsgLen);
+    memcpy(pstLogData->pszMsg, _pszMsg, strlen(_pszMsg));
     pstLogData->pszMsg[lMsgLen-1] = '\0';
 
     /* 加入队列 */
@@ -477,7 +497,7 @@ VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *
         return;
     }
 
-    if (!dos_log_get_level(_lLevel))
+    if (_lLevel >= LOG_LEVEL_INVAILD)
     {
         /* 不要断言，这里的断言可能造成死循环 */
         return;
@@ -490,8 +510,8 @@ VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *
         return;
     }
 
-    /* 申请内存，注意四字节对齐 */
-    lMsgLen = ((strlen(_pszMsg) + 1)/4)*4 + 4;
+    /* 申请内存，四字节对齐 */
+    lMsgLen = ((dos_strlen(_pszMsg) + 4) & 0xFFFFFFFC);
     pstLogData->pszMsg = (S8 *)malloc(lMsgLen);
     if (!pstLogData->pszMsg)
     {
@@ -507,6 +527,7 @@ VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *
     if (pszOpterator && pszOpterator[0] != '\0')
     {
         dos_strncpy(pstLogData->szOperator, pszOpterator, sizeof(pstLogData->szOperator));
+        pstLogData->szOperator[sizeof(pstLogData->szOperator) - 1] = '\0';
     }
     else
     {
@@ -516,12 +537,13 @@ VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *
     if (pszOpterand && pszOpterand[0] != '\0')
     {
         dos_strncpy(pstLogData->szOperand, pszOpterand, sizeof(pstLogData->szOperand));
+        pstLogData->szOperand[sizeof(pstLogData->szOperand) - 1] = '\0';
     }
     else
     {
         pstLogData->szOperator[0] = '\0';
     }
-    strncpy(pstLogData->pszMsg, _pszMsg, lMsgLen);
+    memcpy(pstLogData->pszMsg, _pszMsg, dos_strlen(_pszMsg));
     pstLogData->pszMsg[lMsgLen-1] = '\0';
 
     /* 加入队列 */
@@ -594,82 +616,6 @@ VOID dos_vlog(S32 _lLevel, S32 _lType, S8 *format, ...)
     dos_log(_lLevel, _lType, buf);
 }
 
-/**
- * 函数：static char * dos_log_get_level(S32 _iLevel)
- * Todo：通过枚举置_iLevel获取日志的级别描述
- * 参数：
- *      日志级别枚举，
- * 返回值：
- *      返回级别描述
- * */
-static char * dos_log_get_level(S32 _lLevel)
-{
-    S8 *pLevel;
-
-    switch(_lLevel)
-    {
-        case LOG_LEVEL_EMERG:
-            pLevel = (S8 *)"EMERG";
-            break;
-        case LOG_LEVEL_ALERT:
-            pLevel = (S8 *)"ALERT";
-            break;
-        case LOG_LEVEL_CIRT:
-            pLevel = (S8 *)"CIRT";
-            break;
-        case LOG_LEVEL_ERROR:
-            pLevel = (S8 *)"ERROR";
-            break;
-        case LOG_LEVEL_WARNING:
-            pLevel = (S8 *)"WARNING";
-            break;
-        case LOG_LEVEL_NOTIC:
-            pLevel = (S8 *)"NOTICE";
-            break;
-        case LOG_LEVEL_INFO:
-            pLevel = (S8 *)"INFO";
-            break;
-        case LOG_LEVEL_DEBUG:
-            pLevel = (S8 *)"DEBUG";
-            break;
-        default:
-            pLevel = NULL;
-            break;
-    }
-
-    return pLevel;
-}
-
-/**
- * 函数：static char * dos_log_get_type(S32 _iType)
- * Todo：通过枚举置_iType获取日志的类别描述
- * 参数：
- *      日志类别枚举，
- * 返回值：
- *      返回类别描述
- * */
-static char * dos_log_get_type(S32 _lType)
-{
-    S8 *pType;
-
-    switch(_lType)
-    {
-        case LOG_TYPE_RUNINFO:
-            pType = (S8 *)"RUNINFO";
-            break;
-        case LOG_TYPE_SERVICE:
-            pType = (S8 *)"SERVICE";
-            break;
-        case LOG_TYPE_OPTERATION:
-            pType = (S8 *)"OPTERATE";
-            break;
-        default:
-            pType = NULL;
-            break;
-    }
-
-    return pType;
-}
 
 /**
  * 函数：static char * dos_log_get_time(time_t _stTime, S8 *szTime, S32 iLen)

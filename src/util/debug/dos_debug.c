@@ -27,7 +27,7 @@ VOID dos_vprintf(const S8 *pszFile, S32 lLine, const S8 *pszFormat, ...)
     S8 szBuff[1024];
 
     va_start( argptr, pszFormat );
-    vsnprintf( szBuff, 511, pszFormat, argptr );
+    vsnprintf( szBuff, sizeof(szBuff) - 1, pszFormat, argptr );
     va_end( argptr );
     szBuff[sizeof(szBuff) -1] = '\0';
 
@@ -44,3 +44,4 @@ VOID dos_syslog(S32 lLevel, S8 *pszLog)
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+

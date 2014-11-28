@@ -1,10 +1,18 @@
 #ifndef __DOS_STRING__
 #define __DOS_STRING__
 
-#include <string.h>
+#ifdef __cplusplus
+extern "C"{
+#endif /* __cplusplus */
 
-#define dos_strcpy(_dst, _src) strcpy((_dst), (_src))
-#define dos_strncpy(_dst, _src, _size) strncpy((_dst), (_src), (_size))
+S32 dos_sscanf(const S8 *pszSrc, const S8 *pszFormat, ...);
+S32 dos_fscanf(FILE *pStream, const S8 *pszFormat, ...);
+S32 dos_snprintf(S8 *pszDstBuff, S32 lBuffLength, const S8 *pszFormat, ...);
+S32 dos_fprintf(FILE *pStream, const S8 *pszFormat, ...);
+
+
+S8* dos_strcpy(S8 *dst, const S8 *src);
+S8* dos_strncpy(S8 *dst, const S8 *src, S32 lMaxLen);
 U32 dos_strlen(const S8 *str);
 S8 *dos_strcat(S8 *dest, const S8 *src);
 S8 *dos_strchr(const S8 *str, S32 i);
@@ -34,4 +42,10 @@ U32 dos_ntohl(U32 ulSrc);
 U16 dos_htons(U16 usSrc);
 U16 dos_ntohs(U16 usSrc);
 
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+
 #endif
+

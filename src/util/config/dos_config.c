@@ -67,7 +67,7 @@ S8* config_get_service_root(S8 *pszBuff, U32 ulLen)
  *      U32 ulLen：缓存长度
  * 返回值：成功返回0.失败返回－1
  */
-U32 config_get_mysql_host(S8 *pszBuff, U32 ulLen)
+U32 config_get_db_host(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue;
 
@@ -94,14 +94,14 @@ U32 config_get_mysql_host(S8 *pszBuff, U32 ulLen)
  * 参数：
  * 返回值：成功返回0.失败返回－1
  */
-U32 config_get_mysql_port()
+U32 config_get_db_port()
 {
     S8 *pszValue;
     S8 szBuff[32] = { 0 };
     U16 usDBPort = 0;
     S32 lPort = 0;
 
-    pszValue = _config_get_param(g_pstGlobalCfg, "config/mysql", "host", szBuff, sizeof(szBuff));
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/mysql", "port", szBuff, sizeof(szBuff));
     if (!pszValue)
     {
         szBuff[0] = '\0';
@@ -128,7 +128,7 @@ U32 config_get_mysql_port()
  *      U32 ulLen：缓存长度
  * 返回值：成功返回0.失败返回－1
  */
-U32 config_get_mysql_user(S8 *pszBuff, U32 ulLen)
+U32 config_get_db_user(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue;
 
@@ -157,7 +157,7 @@ U32 config_get_mysql_user(S8 *pszBuff, U32 ulLen)
  *      U32 ulLen：缓存长度
  * 返回值：成功返回0.失败返回－1
  */
-U32 config_get_mysql_password(S8 *pszBuff, U32 ulLen)
+U32 config_get_db_password(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue;
 
@@ -186,7 +186,7 @@ U32 config_get_mysql_password(S8 *pszBuff, U32 ulLen)
  *      U32 ulLen：缓存长度
  * 返回值：成功返回0.失败返回－1
  */
-U32 config_get_mysql_dbname(S8 *pszBuff, U32 ulLen)
+U32 config_get_db_dbname(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue;
 

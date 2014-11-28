@@ -17,6 +17,39 @@ extern "C"{
 #include <dos.h>
 
 /**
+ * 函数：S8* dos_strcpy(S8 *dst, const S8 *src)
+ * 功能：将src字符串copy到dts所指向的buf中
+ * 参数：
+ */
+S8* dos_strcpy(S8 *dst, const S8 *src)
+{
+    if (DOS_ADDR_INVALID(dst) || DOS_ADDR_INVALID(src))
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    return strcpy(dst, src);
+}
+
+/**
+ * 函数：S8* dos_strcpy(S8 *dst, const S8 *src)
+ * 功能：将src字符串copy到dts所指向的buf中，最多copylmaxlen个字符
+ * 参数：
+ */
+S8* dos_strncpy(S8 *dst, const S8 *src, S32 lMaxLen)
+{
+    if (DOS_ADDR_INVALID(dst) || DOS_ADDR_INVALID(src))
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    return strncpy(dst, src, lMaxLen);
+}
+
+
+/**
  * 函数：U32 dos_strlen(const S8 *str)
  * 功能：计算字符串长度
  * 参数：
@@ -26,7 +59,7 @@ U32 dos_strlen(const S8 *str)
 {
     U32 ulCnt;
 
-    if (DOS_ADDR_VALID( str ))
+    if (DOS_ADDR_VALID(str))
     {
         ulCnt = 0;
         while (*str)
@@ -377,7 +410,7 @@ S32 dos_atol(const S8 *szStr, S32 *pnVal)
 {
     if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pnVal))
     {
-        if (sscanf(szStr, "%d", pnVal) < 1)
+        if (dos_sscanf(szStr, "%d", pnVal) < 1)
         {
             *pnVal = 0;
             return -1;
@@ -400,7 +433,7 @@ S32 dos_atoul(const S8 *szStr, U32 *pulVal)
 
 	if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pulVal))
 	{
-    	if (sscanf(szStr, "%u", &nVal) < 1)
+    	if (dos_sscanf(szStr, "%u", &nVal) < 1)
     	{
     		*pulVal = 0;
     		return -1;
@@ -424,8 +457,8 @@ S32 dos_atolx (const S8 *szStr, S32 *pnVal)
 {
 	if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pnVal))
 	{
-    	if (sscanf(szStr, "%x", pnVal) < 1 &&
-    		sscanf(szStr, "%X", pnVal) < 1)
+    	if (dos_sscanf(szStr, "%x", pnVal) < 1 &&
+    		dos_sscanf(szStr, "%X", pnVal) < 1)
     	{
     		*pnVal = 0;
     		return -1;
@@ -449,8 +482,8 @@ S32 dos_atoulx(const S8 *szStr, U32 *pulVal)
 
 	if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pulVal))
 	{
-    	if (sscanf(szStr, "%x", &nVal) < 1 &&
-    		sscanf(szStr, "%X", &nVal) < 1)
+    	if (dos_sscanf(szStr, "%x", &nVal) < 1 &&
+    		dos_sscanf(szStr, "%X", &nVal) < 1)
     	{
     		*pulVal = 0;
     		return -1;
@@ -473,7 +506,7 @@ S32 dos_ltoa(S32 nVal, S8 *szStr, U32 ulStrLen)
 {
 	if (DOS_ADDR_VALID(szStr) && ulStrLen > 0)
 	{
-    	if (snprintf(szStr, ulStrLen, "%d", nVal) < 1)
+    	if (dos_snprintf(szStr, ulStrLen, "%d", nVal) < 1)
     	{
     		return -1;
     	}
@@ -492,7 +525,7 @@ S32 dos_ltoax(S32 nVal, S8 *szStr, U32 ulStrLen)
 {
 	if (DOS_ADDR_VALID(szStr))
 	{
-    	if (snprintf(szStr, ulStrLen, "%x", nVal) < 1)
+    	if (dos_snprintf(szStr, ulStrLen, "%x", nVal) < 1)
     	{
     		return -1;
     	}
@@ -512,7 +545,7 @@ S32 dos_ultoax (U32 ulVal, S8 *szStr, U32 ulStrLen)
 {
 	if (DOS_ADDR_VALID(szStr))
 	{
-    	if (snprintf(szStr, ulStrLen, "%x", ulVal) < 1)
+    	if (dos_snprintf(szStr, ulStrLen, "%x", ulVal) < 1)
     	{
     		return -1;
     	}
@@ -533,7 +566,7 @@ S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str, U32 ulStrLen)
 {
 	if (DOS_ADDR_VALID(str))
 	{
-    	snprintf(str, ulStrLen, "%d.%d.%d.%d",
+    	dos_snprintf(str, ulStrLen, "%d.%d.%d.%d",
     		ulAddr >> 24, (ulAddr >> 16) & 0xff,
     		(ulAddr >> 8) & 0xff, ulAddr & 0xff);
 
@@ -583,7 +616,7 @@ S32 dos_strtoipaddr(S8 *szStr, U32 *pulIpAddr)
 
 	if (DOS_ADDR_VALID(pulIpAddr))
 	{
-    	if (sscanf(szStr, "%d.%d.%d.%d", &a, &b, &c, &d) == 4)
+    	if (dos_sscanf(szStr, "%d.%d.%d.%d", &a, &b, &c, &d) == 4)
     	{
     		if (a<256 && b<256 && c<256 && d<256)
     		{

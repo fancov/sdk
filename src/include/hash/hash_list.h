@@ -23,11 +23,11 @@ extern "C"{
 /*************************************************
 **** This Macro get the handle value of DLL node ****
 **************************************************/
-#define DLL_GET_HANDLE(pNode)	((pNode)->ulHandle)
+#define DLL_GET_HANDLE(pNode)	((pNode)->pHandle)
 /*************************************************
 **** This Macro set the handle value of DLL node ****
 **************************************************/
-#define DLL_SET_HANDLE(pNode, ulValue)	((pNode)->ulHandle = (U32)(ulValue))
+#define DLL_SET_HANDLE(pNode, pValue)	((pNode)->pHandle = (VOID *)(pValue))
 
 /***  MACRO Definition  ***/
 #define DLL_Init(pList) \
@@ -85,7 +85,7 @@ typedef struct dll_node
 {
     struct dll_node *pNext; /* Points at the next node in the list */
     struct dll_node*pPrev; /* Points at the previous node in the list */
-    U32 ulHandle;          /* reserved for user */
+    VOID  *pHandle;          /* reserved for user */
 }DLL_NODE_S;
 
 typedef struct DLL{

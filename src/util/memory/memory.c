@@ -25,7 +25,7 @@ extern "C"{
 #if INCLUDE_MEMORY_MNGT
 
 /* 定义hash表最大元素个数 */
-#define HASH_MAX_ELEMENT_NUM  16
+#define HASH_MAX_ELEMENT_NUM  DOS_MEM_MNGT_HASH_SIZE
 
 /* 内存分配点描述表 */
 static HASH_TABLE_S     *g_pstHashMemMngtTable;
@@ -102,7 +102,7 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
         //hash_set(g_pstHashFile2Ref, szFileLine, pstFileDescNode);
         hash_add_node(g_pstHashMemMngtTable, (HASH_NODE_S *)pstFileDescNode, ulHashIndex, NULL);
 
-        dos_printf("Create new node for fileline:%s\n", szFileLine);
+        dos_printf("Create new node for fileline:%s", szFileLine);
     }
     pthread_mutex_unlock(&g_mutexMemMngtTable);
     
@@ -123,7 +123,7 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
     
     /* 生成内存控制快，存储在所分配内存的头部 */
     memset((VOID *)&stMemCCB, 0, sizeof(stMemCCB));
-    MEM_SET_MAGIN(&stMemCCB);
+    MEM_SET_MAGIC(&stMemCCB);
     if (ulFlag)
     {
         MEM_SET_TYPE(&stMemCCB, MEM_TYPE_DYNANIC);
@@ -137,7 +137,7 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
     memcpy((VOID *)ptr, (VOID *)&stMemCCB, sizeof(stMemCCB));
     
     /* 返回时不要把控制块给用户使用 */
-    return ptr + sizeof(MEM_CCB_ST);
+    return (VOID *)((U8 *)ptr + sizeof(MEM_CCB_ST));
 }
     
 /*
@@ -160,17 +160,18 @@ VOID _mem_free(VOID *p)
     }
     
     /* 找到内存控制快 */
-    ptr = p - sizeof(MEM_CCB_ST);
+    ptr = (VOID *)((U8 *)p - sizeof(MEM_CCB_ST));
     pstMemCCB = ptr;
     pstFileDescNode = pstMemCCB->pstRefer;
     
     dos_printf("Free memory:%p", ptr);
 
     /* 发现魔术字不正确，打断言之后，使用系统调用释放 */
-    if (!MEM_CHECK_MAGIN(pstMemCCB))
+    if (!MEM_CHECK_MAGIC(pstMemCCB))
     {
+        pstMemCCB->ulMemDesc = 0;
         DOS_ASSERT(0);
-        free(p);
+        free(ptr);
     }
 
     /* 看看内存分配点描述信息正确与否 */
@@ -185,7 +186,7 @@ VOID _mem_free(VOID *p)
         pstFileDescNode->ulRef--;
     }
 
-    if (0 == pstFileDescNode->ulTotalSize)
+    if (pstFileDescNode->ulTotalSize < pstMemCCB->ulSize)
     {
         DOS_ASSERT(0);
     }
@@ -278,7 +279,6 @@ VOID mem_printf(HASH_NODE_S *pNode, U32 ulIndex)
     if (ulLen < sizeof(szBuff))
     {
         szBuff[ulLen] = '\0';
-        ulLen++;
     }
     else
     {

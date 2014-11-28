@@ -26,10 +26,11 @@
 #include <sys/stat.h>
 
 /* dos header files */
+#include <dos/dos_types.h>
 #include <syscfg.h>
 #include <cfg/cfg_resource.h>
-#include <dos/dos_types.h>
 #include <dos/dos_config.h>
+#include <dos/dos_task.h>
 #include <dos/dos_def.h>
 #include <dos/dos_mem.h>
 #include <dos/dos_tmr.h>

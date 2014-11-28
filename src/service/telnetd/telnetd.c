@@ -44,7 +44,7 @@ extern "C"{
 #define MAX_CLIENT_NUMBER       DOS_CLIENT_MAX_NUM
 
 /* 定义telnetserver监听端口 */
-#define TELNETD_LISTEN_PORT     2800
+#define TELNETD_LISTEN_PORT     DOS_TELNETD_LINSTEN_PORT
 
 /* 特殊按键ascii序列 */
 #define TELNETD_SPECIAL_KEY_LEN          8

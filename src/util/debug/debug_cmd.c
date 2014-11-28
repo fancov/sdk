@@ -8,13 +8,20 @@ extern S32 cli_set_log_level(U32 ulIndex, S32 argc, S8 **argv);
 #if INCLUDE_BH_SERVER
 extern S32 bh_process_list(U32 ulIndex, S32 argc, S8 **argv);
 #endif
+#if INCLUDE_SERVICE_TIMER
+extern S32 cli_show_timer(U32 ulIndex, S32 argc, S8 **argv);
+#endif
 
 COMMAND_ST g_stCommandSet[] = {
-    {NULL, "memory",        "Show memory usage",               cli_cmd_mem},
     {NULL, "debug",         "Set the log level",               cli_set_log_level},
+    {NULL, "memory",        "Show memory usage",               cli_cmd_mem},
 #if INCLUDE_BH_SERVER
-    {NULL, "process",       "Show processes reggister in",     bh_process_list}
+    {NULL, "process",       "Show processes reggister in",     bh_process_list},
 #endif
+#if INCLUDE_SERVICE_TIMER
+    {NULL, "timer",         "Show timer usage",                cli_show_timer}
+#endif
+
 };
 
 COMMAND_GROUP_ST g_stCommandRootGrp[] = {
@@ -52,3 +59,4 @@ COMMAND_ST * debug_cli_cmd_find(S32 argc, S8 **argv)
 }
 
 #endif
+

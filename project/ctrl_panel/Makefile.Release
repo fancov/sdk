@@ -1,12 +1,12 @@
 ########################################################################
 #                         Define the Complie                           # 
 ########################################################################
-TARGET                  = moniter
+TARGET                  = ctrl_panel
 
 ########################################################################
 #                      Define some                           # 
 ########################################################################
-PROJECT_ROOT            = ../../..
+PROJECT_ROOT            = ../..
 DOS_LIBS                = -L$(PROJECT_ROOT)/libs
 SROUCE                  = $(PROJECT_ROOT)/src
 DOS_INCLUDES            = -I$(SROUCE)/include
@@ -30,6 +30,7 @@ include $(SROUCE)/util/config/Makefile
 include $(SROUCE)/util/timer/Makefile
 include $(SROUCE)/util/hash/Makefile
 include $(SROUCE)/util/list/Makefile
+include $(SROUCE)/util/task/Makefile
 include $(SROUCE)/util/heartbeat/Makefile
 include $(SROUCE)/cfg/Makefile
 include $(SROUCE)/service/Makefile
@@ -49,7 +50,7 @@ ALL_LIBS    = $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS)
 CC                      = gcc
 CXX                     = g++
 CFLAGS                  = -Wall 
-DEFINES					= -DDIPCC_MONITER
+DEFINES					= -DDIPCC_CTRL_PANEL
 
 C_COMPILE               = $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
 CXX_COMPILE             = $(CXX) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS)
