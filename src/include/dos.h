@@ -30,6 +30,7 @@
 #include <syscfg.h>
 #include <cfg/cfg_resource.h>
 #include <dos/dos_config.h>
+#include <dos/dos_task.h>
 #include <dos/dos_def.h>
 #include <dos/dos_mem.h>
 #include <dos/dos_tmr.h>

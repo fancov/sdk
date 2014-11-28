@@ -30,6 +30,7 @@ include $(SROUCE)/util/config/Makefile
 include $(SROUCE)/util/timer/Makefile
 include $(SROUCE)/util/hash/Makefile
 include $(SROUCE)/util/list/Makefile
+include $(SROUCE)/util/task/Makefile
 include $(SROUCE)/util/heartbeat/Makefile
 include $(SROUCE)/cfg/Makefile
 include $(SROUCE)/service/Makefile
