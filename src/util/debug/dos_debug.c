@@ -35,7 +35,7 @@ VOID dos_vprintf(const S8 *pszFile, S32 lLine, const S8 *pszFormat, ...)
     logr_debug("%s (File:%s, Line:%d)", szBuff, pszFile, lLine);
 }
 
-VOID dos_syslog(S32 lLevel, S8 *pszLog)
+VOID dos_syslog(S32 lLevel, const S8 *pszLog)
 {
     syslog(lLevel, "%s", pszLog);
 }

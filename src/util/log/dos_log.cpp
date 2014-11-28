@@ -87,7 +87,7 @@ static pthread_mutex_t   g_mutexLogTask = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t    g_condLogTask = PTHREAD_COND_INITIALIZER;
 static pthread_t         g_pthIDLogTask;
 
-static const S8 *g_pszLogType[] = 
+static const S8 *g_pszLogType[] =
 {
     "RUNINFO",
     "WARNING",
@@ -96,7 +96,7 @@ static const S8 *g_pszLogType[] =
     ""
 };
 
-static const S8 *g_pszLogLevel[] = 
+static const S8 *g_pszLogLevel[] =
 {
     "EMERG",
     "ALERT",
@@ -384,7 +384,7 @@ VOID dos_log_stop()
  * 参数：
  * 返回值：
  * */
-VOID dos_log(S32 _lLevel, S32 _lType, S8 *_pszMsg)
+VOID dos_log(S32 _lLevel, S32 _lType, const S8 *_pszMsg)
 {
     LOG_DATA_NODE_ST *pstLogData = NULL;
     S32 lMsgLen = 0;
@@ -603,7 +603,7 @@ VOID dos_volog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 
  * 参数：
  * 返回值：
  * */
-VOID dos_vlog(S32 _lLevel, S32 _lType, S8 *format, ...)
+VOID dos_vlog(S32 _lLevel, S32 _lType, const S8 *format, ...)
 {
     va_list argptr;
     char buf[1024];
@@ -630,7 +630,7 @@ VOID dos_vlog(S32 _lLevel, S32 _lType, S8 *format, ...)
 static char * dos_log_get_time(time_t _stTime, S8 *szTime, S32 lLen)
 {
     struct tm *t = NULL;
-    
+
     t = localtime(&_stTime);
     snprintf(szTime, lLen, "%04d-%02d-%02d %02d:%02d:%02d"
             , t->tm_year + 1900
