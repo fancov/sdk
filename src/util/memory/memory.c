@@ -74,7 +74,7 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
     VOID *ptr;
     MEM_CCB_ST stMemCCB;
     U32 ulHashIndex;
-    
+
     /* 生产hash表key */
     snprintf(szFileLine, sizeof(szFileLine), "%s:%d", pszFileName, ulLine);
     _mem_string_hash(szFileLine, &ulHashIndex);
@@ -105,7 +105,7 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
         dos_printf("Create new node for fileline:%s", szFileLine);
     }
     pthread_mutex_unlock(&g_mutexMemMngtTable);
-    
+
     /* 申请内存真正要使用的内存 */
     ptr = malloc(ulSize + sizeof(MEM_CCB_ST));
     if (!ptr)
@@ -113,14 +113,14 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
         DOS_ASSERT(0);
         return NULL;
     }
-    dos_printf("alloc memory:%p, length:%d", ptr, ulSize + sizeof(MEM_CCB_ST));
-    
+    dos_printf("Alloc memory:%p, length:%d", ptr, ulSize + sizeof(MEM_CCB_ST));
+
     /* 更新内存分配点描述信息 */
     pthread_mutex_lock(&g_mutexMemMngtTable);
     pstFileDescNode->ulTotalSize += ulSize;
     pstFileDescNode->ulRef++;
     pthread_mutex_unlock(&g_mutexMemMngtTable);
-    
+
     /* 生成内存控制快，存储在所分配内存的头部 */
     memset((VOID *)&stMemCCB, 0, sizeof(stMemCCB));
     MEM_SET_MAGIC(&stMemCCB);
@@ -133,13 +133,13 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
         MEM_SET_TYPE(&stMemCCB, MEM_TYPE_STATIC);
     }
     stMemCCB.pstRefer = pstFileDescNode;
-    
+
     memcpy((VOID *)ptr, (VOID *)&stMemCCB, sizeof(stMemCCB));
-    
+
     /* 返回时不要把控制块给用户使用 */
     return (VOID *)((U8 *)ptr + sizeof(MEM_CCB_ST));
 }
-    
+
 /*
  * 函数: _mem_free(VOID *p)
  * 功能: 释放指针p所指向的地址空间
@@ -152,18 +152,18 @@ VOID _mem_free(VOID *p)
     MEM_INFO_NODE_ST *pstFileDescNode = NULL;
     MEM_CCB_ST *pstMemCCB;
     VOID *ptr;
-    
+
     if (!p)
     {
         DOS_ASSERT(0);
         return;
     }
-    
+
     /* 找到内存控制快 */
     ptr = (VOID *)((U8 *)p - sizeof(MEM_CCB_ST));
     pstMemCCB = ptr;
     pstFileDescNode = pstMemCCB->pstRefer;
-    
+
     dos_printf("Free memory:%p", ptr);
 
     /* 发现魔术字不正确，打断言之后，使用系统调用释放 */
@@ -320,7 +320,7 @@ S32 cli_cmd_mem(U32 ulIndex, S32 argc, S8 **argv)
 }
 
 #endif
-    
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

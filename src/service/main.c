@@ -118,20 +118,26 @@ int main(int argc, char ** argv)
     printf("%s", szBuff);
     printf("======================================================\n");
 
-#if (INCLUDE_XML_CONFIG)
-    if (config_init() < 0)
-    {
-        dos_printf("%s", "Init config fail. exit");
-        exit(1);
-    }
-#endif
-
 #if INCLUDE_MEMORY_MNGT
     /* 内存管理模块 */
     if (dos_mem_mngt_init() < 0)
     {
         dos_printf("%s", "Init memory management fail. exit");
         exit(2);
+    }
+#endif
+
+    if (dos_assert_init() < 0)
+    {
+        dos_printf("%s", "Init assert module fail.");
+        exit(1);
+    }
+
+#if (INCLUDE_XML_CONFIG)
+    if (config_init() < 0)
+    {
+        dos_printf("%s", "Init config fail. exit");
+        exit(1);
     }
 #endif
 

@@ -50,7 +50,7 @@ static S32  g_lTmrWaitingExit;
 static S32  g_lEpollFD = -1;
 static S32  g_lTmrCurrentCnt = 0;
 
-static S8 *g_pszTimerType[] = 
+static S8 *g_pszTimerType[] =
 {
     "Normal",
     "Loop",
@@ -83,7 +83,7 @@ S32 cli_show_timer(U32 ulIndex, S32 argc, S8 **argv)
     cli_out_string(ulIndex, "-------------------------------------------------------\r\n");
     cli_out_string(ulIndex, szTitle);
     cli_out_string(ulIndex, "-------------------------------------------------------\r\n");
-    
+
     ulTotleCnt = 0;
     pthread_mutex_lock(&g_mutexTmrWaitAddList);
     pstTmrNode = g_TmrWaitAddList->next;
@@ -106,10 +106,10 @@ S32 cli_show_timer(U32 ulIndex, S32 argc, S8 **argv)
     }
     pthread_mutex_unlock(&g_mutexTmrWaitAddList);
     cli_out_string(ulIndex, "\r\n");
-     
+
 
     cli_out_string(ulIndex, "=======================================================\r\n");
-    cli_out_string(ulIndex, "Timer with working add status:\r\n");
+    cli_out_string(ulIndex, "Timer with working status:\r\n");
     cli_out_string(ulIndex, "-------------------------------------------------------\r\n");
     cli_out_string(ulIndex, szTitle);
     cli_out_string(ulIndex, "-------------------------------------------------------\r\n");
