@@ -166,6 +166,53 @@ static VOID _assert_print(HASH_NODE_S *pNode, U32 ulIndex)
 
 }
 
+/**
+ * 函数: static VOID _assert_print(HASH_NODE_S *pNode, U32 ulIndex)
+ * 功能: 遍历hash表时的回调函数，用来打印相关信息
+ * 参数:
+ *      HASH_NODE_S *pNode : 需要处理的节点
+ *      U32 ulIndex        : 附加参数
+ * 返回值: VOID
+ */
+static VOID _assert_record(HASH_NODE_S *pNode, U32 ulIndex)
+{
+    DOS_ASSERT_NODE_ST *pstAssertInfoNode = (DOS_ASSERT_NODE_ST *)pNode;
+    S8 szBuff[512];
+    U32 ulLen;
+    TIME_ST *pstTimeFirst, *pstTimeLast;
+    S8 szTime1[32] = { 0 }, szTime2[32] = { 0 };
+
+    if (!pNode)
+    {
+        return;
+    }
+
+    pstTimeFirst = localtime(&pstAssertInfoNode->stFirstTime);
+    pstTimeLast = localtime(&pstAssertInfoNode->stLastTime);
+
+    strftime(szTime1, sizeof(szTime1), "%Y-%m-%d %H:%M:%S", pstTimeFirst);
+    strftime(szTime2, sizeof(szTime2), "%Y-%m-%d %H:%M:%S", pstTimeLast);
+
+    ulLen = dos_snprintf(szBuff, sizeof(szBuff)
+            , "Assert hannended %4d times, first time: %s, last time: %s. File:%s, line:%d.\r\n"
+            , pstAssertInfoNode->ulTimes
+            , szTime1
+            , szTime2
+            , pstAssertInfoNode->szFilename
+            , pstAssertInfoNode->ulLine);
+    if (ulLen < sizeof(szBuff))
+    {
+        szBuff[ulLen] = '\0';
+    }
+    else
+    {
+        szBuff[sizeof(szBuff) - 1] = '\0';
+    }
+
+    dos_syslog(LOG_LEVEL_EMERG, szBuff);
+}
+
+
 
 /**
  * 函数: S32 dos_assert_print(U32 ulIndex, S32 argc, S8 **argv)
@@ -181,6 +228,23 @@ S32 dos_assert_print(U32 ulIndex, S32 argc, S8 **argv)
 
     pthread_mutex_lock(&g_mutexAssertInfo);
     hash_walk_table(g_pstHashAssert,  ulIndex, _assert_print);
+    pthread_mutex_unlock(&g_mutexAssertInfo);
+
+    return 0;
+}
+
+/**
+ * 函数: S32 dos_assert_record()
+ * 功能: 将断言信息记录到文件中
+ * 参数:
+ * 返回值: 成功返回0 失败返回-1
+ */
+S32 dos_assert_record()
+{
+    dos_syslog(LOG_LEVEL_EMERG, "Assert Info since the service start:\r\n");
+
+    pthread_mutex_lock(&g_mutexAssertInfo);
+    hash_walk_table(g_pstHashAssert,  0, _assert_record);
     pthread_mutex_unlock(&g_mutexAssertInfo);
 
     return 0;

@@ -30,6 +30,8 @@ extern VOID dos_signal_handle_reg();
 S32 dos_assert_init();
 VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 param);
 S32 dos_assert_print(U32 ulIndex, S32 argc, S8 **argv);
+S32 dos_assert_record();
+
 
 #ifdef __cplusplus
 }
