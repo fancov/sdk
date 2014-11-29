@@ -437,7 +437,7 @@ VOID dos_log(S32 _lLevel, S32 _lType, const S8 *_pszMsg)
     pstLogData->lLevel = _lLevel;
     pstLogData->lType  = _lType;
     memcpy(pstLogData->pszMsg, _pszMsg, strlen(_pszMsg));
-    pstLogData->pszMsg[lMsgLen-1] = '\0';
+    pstLogData->pszMsg[strlen(_pszMsg)] = '\0';
 
     /* 加入队列 */
     pthread_mutex_lock(&g_mutexLogTask);
@@ -544,7 +544,7 @@ VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *
         pstLogData->szOperator[0] = '\0';
     }
     memcpy(pstLogData->pszMsg, _pszMsg, dos_strlen(_pszMsg));
-    pstLogData->pszMsg[lMsgLen-1] = '\0';
+    pstLogData->pszMsg[dos_strlen(_pszMsg)] = '\0';
 
     /* 加入队列 */
     pthread_mutex_lock(&g_mutexLogTask);
