@@ -47,6 +47,31 @@
 #include "_log_db.h"
 #include "_log_cli.h"
 
+static const S8 *g_pszLogType[] =
+{
+    "RUNINFO",
+    "WARNING",
+    "SERVICE",
+    "OPTERATION",
+    ""
+};
+
+static const S8 *g_pszLogLevel[] =
+{
+    "EMERG",
+    "ALERT",
+    "CIRT",
+    "ERROR",
+    "WARNING",
+    "NOTICE",
+    "INFO",
+    "DEBUG",
+    ""
+};
+
+
+#if INCLUDE_SYSLOG_ENABLE
+
 enum tagLogMod{
     LOG_MOD_CONSOLE,
     LOG_MOD_CLI,
@@ -55,7 +80,6 @@ enum tagLogMod{
     LOG_MOD_BUTT
 }LOG_MOD_LIST;
 
-#if INCLUDE_SYSLOG_ENABLE
 
 /* 模块内日志正在的形式 */
 typedef struct tagLogDataNode
@@ -86,28 +110,6 @@ static LOG_DATA_NODE_ST  *g_LogCacheList = NULL;
 static pthread_mutex_t   g_mutexLogTask = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t    g_condLogTask = PTHREAD_COND_INITIALIZER;
 static pthread_t         g_pthIDLogTask;
-
-static const S8 *g_pszLogType[] =
-{
-    "RUNINFO",
-    "WARNING",
-    "SERVICE",
-    "OPTERATION",
-    ""
-};
-
-static const S8 *g_pszLogLevel[] =
-{
-    "EMERG",
-    "ALERT",
-    "CIRT",
-    "ERROR",
-    "WARNING",
-    "NOTICE",
-    "INFO",
-    "DEBUG",
-    ""
-};
 
 
 /* 本地函数申明 */
@@ -645,15 +647,72 @@ static char * dos_log_get_time(time_t _stTime, S8 *szTime, S32 lLen)
 
 
 #else
-VOID dos_log(S32 _lLevel, S32 _lType, S8 *_pszMsg)
+
+S32 dos_log_init()
+{
+    dos_printf("Dos log task init. Log task disabled");
+    return 1;
+}
+
+S32 dos_log_start()
+{
+    dos_printf("Dos log task start. Log task disabled");
+    return 1;
+}
+
+VOID dos_log_stop()
+{
+    dos_printf("Dos log task stop. Log task disabled");
+}
+
+VOID dos_log(S32 _lLevel, S32 _lType, const S8 *_pszMsg)
+{
+    struct tm *t = NULL;
+    time_t stTimeT = time(NULL);
+    S8 szTime[32] = { 0 };
+
+    t = localtime(&stTimeT);
+    dos_snprintf(szTime, sizeof(szTime), "%04d-%02d-%02d %02d:%02d:%02d"
+            , t->tm_year + 1900
+            , t->tm_mon + 1
+            , t->tm_mday
+            , t->tm_hour
+            , t->tm_min
+            , t->tm_sec);
+
+    printf("%s[%8s][%8s]%s\r\n", szTime, g_pszLogLevel[_lLevel], g_pszLogType[_lType], _pszMsg);
+}
+
+VOID dos_vlog(S32 _lLevel, S32 _lType, const S8 *format, ...)
+{
+    va_list argptr;
+    char buf[1024];
+
+    va_start( argptr, format );
+    vsnprintf( buf, 511, format, argptr );
+    va_end( argptr );
+    buf[sizeof(buf) -1] = '\0';
+
+    dos_log(_lLevel, _lType, buf);
+
+}
+
+VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *_pszMsg)
 {
 
 }
 
-VOID dos_vlog(S32 _lLevel, S32 _lType, S8 *format, ...)
+VOID dos_volog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *format, ...)
 {
 
 }
+
+S32 dos_log_set_cli_level(U32 ulLeval)
+{
+    return 1;
+}
+
+
 #endif
 
 

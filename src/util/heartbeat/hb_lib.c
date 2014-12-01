@@ -31,9 +31,11 @@ VOID hb_heartbeat_recv_timeout(U64 uLParam);
 VOID hb_heartbeat_interval_timeout(U64 uLParam);
 VOID hb_reg_timeout(U64 uLProcessCB);
 U32 hb_get_max_send_interval();
+VOID hb_set_connect_flg(BOOL bConnStatus);
 #endif
 
-extern VOID hb_set_connect_flg(BOOL bConnStatus);
+
+#if INCLUDE_BH_ENABLE
 
 
 /**
@@ -65,8 +67,9 @@ S32 hb_send_msg(U8 *pszBuff, U32 ulBuffLen, struct sockaddr_un *pstAddr, U32 ulA
         logr_warning("Exception occurred while send hreatbeat msg.(%d)", errno);
         DOS_ASSERT(0);
 
+#if INCLUDE_BH_CLIENT
         hb_set_connect_flg(DOS_FALSE);
-
+#endif
         return -1;
     }
 
@@ -115,6 +118,8 @@ S32 hb_send_heartbeat(PROCESS_INFO_ST *pstProcessInfo)
     /* 发送数据 */
     return hb_send_msg((U8*)&stData, sizeof(stData), &pstProcessInfo->stPeerAddr, pstProcessInfo->ulPeerAddrLen, pstProcessInfo->lSocket);
 }
+
+#endif
 
 #if INCLUDE_BH_CLIENT
 /**
@@ -362,7 +367,7 @@ S32 hb_reg_proc(PROCESS_INFO_ST *pstProcessInfo)
     if (!pstProcessInfo->ulVilad)
     {
         DOS_ASSERT(0);
-        return -1;        
+        return -1;
     }
 
     switch (pstProcessInfo->ulStatus)
@@ -432,7 +437,7 @@ S32 hb_unreg_proc(PROCESS_INFO_ST *pstProcessInfo)
 }
 #endif
 
-
+#if INCLUDE_BH_ENABLE
 
 /**
  *  函数：S32 hb_heartbeat_proc(PROCESS_INFO_ST *pstProcessInfo)
@@ -489,7 +494,7 @@ S32 hb_heartbeat_proc(PROCESS_INFO_ST *pstProcessInfo)
 
     return 0;
 }
-
+#endif
 
 #ifdef __cplusplus
 }

@@ -339,15 +339,19 @@ static VOID * tmr_task_loop(VOID *ptr)
                     }
                     pthread_mutex_lock(&g_mutexTmrList);
 
-                    /* 如果是循环定时器，就重置 */
-                    if (TIMER_NORMAL_LOOP == tmrNode->tmrHandle.eType)
+                    /*  有可能在毁掉函数中有更改定时器状态 */
+                    if (TIMER_STATUS_WAITING_DEL != tmrNode->tmrHandle.ulTmrStatus)
                     {
-                        tmrNode->lTimerPassby = tmrNode->tmrHandle.lInterval;
-                        tmrNode->tmrHandle.ulTmrStatus = TIMER_STATUS_WORKING;
-                    }
-                    else
-                    {
-                        tmrNode->tmrHandle.ulTmrStatus = TIMER_STATUS_TIMEOUT;
+                        /* 如果是循环定时器，就重置 */
+                        if (TIMER_NORMAL_LOOP == tmrNode->tmrHandle.eType)
+                        {
+                            tmrNode->lTimerPassby = tmrNode->tmrHandle.lInterval;
+                            tmrNode->tmrHandle.ulTmrStatus = TIMER_STATUS_WORKING;
+                        }
+                        else
+                        {
+                            tmrNode->tmrHandle.ulTmrStatus = TIMER_STATUS_TIMEOUT;
+                        }
                     }
                 }
             }

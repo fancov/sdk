@@ -1201,7 +1201,7 @@ S32 telnetd_start()
 
     dos_printf("%s", "telnet server start!");
 
-    pthread_join(g_pthTelnetdTask, NULL);
+    //pthread_join(g_pthTelnetdTask, NULL);
 
     return DOS_SUCC;
 }

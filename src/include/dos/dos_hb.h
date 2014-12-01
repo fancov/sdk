@@ -22,7 +22,8 @@ extern "C"{
 S32 heartbeat_init();
 S32 heartbeat_start();
 S32 heartbeat_stop();
-#elif INCLUDE_BH_CLIENT
+#endif
+#if INCLUDE_BH_CLIENT
 S32 hb_client_init();
 S32 hb_client_start();
 S32 hb_client_stop();

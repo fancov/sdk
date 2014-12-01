@@ -50,8 +50,6 @@ static S32                  g_lHBTaskWaitingExit = 0;
 /* 接收数据缓存 */
 static S8                   g_szRecvBuf[MAX_BUFF_LENGTH];
 
-/* 服务器链接是否正常，暂未启用 */
-static BOOL                 g_bIsConnectOK = DOS_FALSE;
 
 /**
  * 函数: hb_get_max_timeout()
@@ -83,7 +81,7 @@ S32 hb_get_max_timeout()
 VOID hb_recv_timeout(U64 uLParam)
 {
     PROCESS_INFO_ST *pstProcessInfo = NULL;
-    
+
     if (uLParam >= DOS_PROCESS_MAX_NUM)
     {
         logr_warning("Heartbeat recv timeout, but with an error param \"%lu\".", uLParam);
@@ -96,19 +94,6 @@ VOID hb_recv_timeout(U64 uLParam)
     pstProcessInfo->hTmrHBTimeout = NULL;
 
     dos_printf("Process lost.");
-}
-
-
-/**
- * 函数：VOID hb_set_connect_flg(BOOL bConnStatus)
- * 功能：设置socket连接状态标示
- * 参数：
- *      BOOL bConnStatus：连接状态，true／false
- * 返回值：
- */
-VOID hb_set_connect_flg(BOOL bConnStatus)
-{
-    g_bIsConnectOK = bConnStatus;
 }
 
 /**
@@ -287,7 +272,7 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
         pstProcessInfo->ulHBCnt = 0;
         pstProcessInfo->ulStatus = PROCESS_HB_INIT;
         pstProcessInfo->hTmrHBTimeout = NULL;
-        
+
 
         dos_strncpy(pstProcessInfo->szProcessName, stHBData.szProcessName, sizeof(pstProcessInfo->szProcessName));
         pstProcessInfo->szProcessName[sizeof(pstProcessInfo->szProcessName) - 1] = '\0';

@@ -42,7 +42,6 @@ enum LOG_TYPE{
 };
 
 /* log模块公共函数 */
-#if INCLUDE_SYSLOG_ENABLE
 S32 dos_log_init();
 S32 dos_log_start();
 VOID dos_log_stop();
@@ -52,32 +51,6 @@ VOID dos_vlog(S32 _iLevel, S32 _iType, const S8 *format, ...);
 VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *_pszMsg);
 VOID dos_volog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *format, ...);
 S32 dos_log_set_cli_level(U32 ulLeval);
-#else
-
-#define dos_log_init() \
-    do{ \
-        printf("Init the log."); \
-    }while(0)
-
-#define dos_log_start()
-    do{ \
-        printf("Start the log."); \
-    }while(0)
-
-#define dos_log_stop()
-    do{ \
-        printf("Stop the log."); \
-    }while(0)
-
-#define dos_log(_iLevel, _iType, _pszMsg) printf(_pszMsg)
-#define dos_vlog(_iLevel, _iType, format, args...) printf(format, ##args)
-#define dos_olog(_lLevel, pszOpterator, pszOpterand, ulResult, _pszMsg) printf(_pszMsg)
-#define dos_volog(_lLevel, pszOpterator, pszOpterand, ulResult, format, args...) printf(format, ##args)
-#define dos_log_set_cli_level(ulLeval) \
-    do{ \
-        printf("Set cli log level."); \
-    }while(0)
-#endif
 
 /* 告警信息 */
 #define logw_debug(format, args... ) dos_vlog(LOG_LEVEL_DEBUG, LOG_TYPE_WARNING, (format), ##args)
