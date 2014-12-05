@@ -783,7 +783,7 @@ do{ \
 
             continue;
         }
-        else 
+        else
 #endif
         if (c == '\r' || c == '\n')
         {
@@ -819,7 +819,7 @@ do{ \
                 continue;
             }
         }
-        else if (c == 0xff || '\0' == c)
+        else if ('\0' == c)
         {
             DOS_ASSERT(0);
             return TELNET_RECV_RESULT_ERROR;
