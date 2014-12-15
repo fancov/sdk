@@ -78,7 +78,7 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
     /* 生产hash表key */
     snprintf(szFileLine, sizeof(szFileLine), "%s:%d", pszFileName, ulLine);
     _mem_string_hash(szFileLine, &ulHashIndex);
-    dos_printf("Fileline:%s, hash index:%d", szFileLine, ulHashIndex);
+    //dos_printf("Fileline:%s, hash index:%d", szFileLine, ulHashIndex);
 
     pthread_mutex_lock(&g_mutexMemMngtTable);
     /* 去hash表里面找内存分配点有没有分配过内存 */
@@ -102,7 +102,7 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
         //hash_set(g_pstHashFile2Ref, szFileLine, pstFileDescNode);
         hash_add_node(g_pstHashMemMngtTable, (HASH_NODE_S *)pstFileDescNode, ulHashIndex, NULL);
 
-        dos_printf("Create new node for fileline:%s", szFileLine);
+        //dos_printf("Create new node for fileline:%s", szFileLine);
     }
     pthread_mutex_unlock(&g_mutexMemMngtTable);
 
@@ -113,7 +113,7 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
         DOS_ASSERT(0);
         return NULL;
     }
-    dos_printf("Alloc memory:%p, length:%d", ptr, ulSize + sizeof(MEM_CCB_ST));
+    //dos_printf("Alloc memory:%p, length:%d", ptr, ulSize + sizeof(MEM_CCB_ST));
 
     /* 更新内存分配点描述信息 */
     pthread_mutex_lock(&g_mutexMemMngtTable);
@@ -164,7 +164,7 @@ VOID _mem_free(VOID *p)
     pstMemCCB = ptr;
     pstFileDescNode = pstMemCCB->pstRefer;
 
-    dos_printf("Free memory:%p", ptr);
+    //dos_printf("Free memory:%p", ptr);
 
     /* 发现魔术字不正确，打断言之后，使用系统调用释放 */
     if (!MEM_CHECK_MAGIC(pstMemCCB))

@@ -16,41 +16,60 @@ extern "C"{
 
 #include <dos.h>
 
-#if INCLUDE_DEBUG_CLI
-
 S32 cli_set_log_level(U32 ulIndex, S32 argc, S8 **argv)
 {
     U32 ulLeval;
 
-    if (argc <= 1)
+    if (2 == argc)
     {
-        goto usage;
-    }
+        ulLeval = (U32)atol(argv[1]);
+        if (ulLeval >= LOG_LEVEL_INVAILD)
+        {
+            goto usage;
+        }
 
-    ulLeval = (U32)atol(argv[1]);
-    if (ulLeval >= LOG_LEVEL_INVAILD)
-    {
-        goto usage;
-    }
-
-    if (dos_log_set_cli_level(ulLeval) < 0)
-    {
-        cli_out_string(ulIndex, "Setting failed.\r\n");
-        return -1;
-    }
+        if (dos_log_set_cli_level(ulLeval) < 0)
+        {
+            cli_out_string(ulIndex, "Setting failed.\r\n");
+            return -1;
+        }
 
     cli_out_string(ulIndex, "Setting successfully.\r\n");
+    }
+    else if (3 == argc)
+    {
+        ulLeval = (U32)atol(argv[2]);
+        if (ulLeval >= LOG_LEVEL_INVAILD)
+        {
+            goto usage;
+        }
+
+        if (0 == dos_stricmp(argv[1], "hb"))
+        {
+#if (INCLUDE_BH_ENABLE)
+            hb_log_set_level(ulLeval);
+#endif
+        }
+        else if (0 == dos_stricmp(argv[1], "cli"))
+        {
+#if (INCLUDE_DEBUG_CLI || INCLUDE_DEBUG_CLI_SERVER)
+            cli_log_set_level(ulLeval);
+#endif
+        }
+        else if (0 == dos_stricmp(argv[1], "timer"))
+        {}
+        else if (0 == dos_stricmp(argv[1], "memory"))
+        {}
+    }
 
     return 0;
 usage:
     cli_out_string(ulIndex, "Invalid parameters\r\n");
     cli_out_string(ulIndex, "Usage:\r\n");
-    cli_out_string(ulIndex, "    debug {0|1|2|3|4|5|6|7} \r\n");
+    cli_out_string(ulIndex, "    debug [<module>] {0|1|2|3|4|5|6|7} \r\n");
 
     return 0;
 }
-
-#endif
 
 #ifdef __cplusplus
 }

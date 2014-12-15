@@ -187,14 +187,14 @@ S32 telnet_set_mode(U32 ulIndex, U32 ulMode)
 
     if (ulIndex >= MAX_CLIENT_NUMBER)
     {
-        logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
+        cli_logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
 
     if (ulMode >= CLIENT_LEVEL_BUTT)
     {
-        logr_debug("Request telnet server send data to client, but given an invalid mode (%d).", ulMode);
+        cli_logr_debug("Request telnet server send data to client, but given an invalid mode (%d).", ulMode);
         DOS_ASSERT(0);
         return -1;
     }
@@ -202,7 +202,7 @@ S32 telnet_set_mode(U32 ulIndex, U32 ulMode)
     pstTelnetClient = g_pstTelnetClientList[ulIndex];
     if (!pstTelnetClient->ulValid)
     {
-        logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
+        cli_logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
@@ -227,14 +227,14 @@ S32 telnet_out_string(U32 ulIndex, S8 *pszBuffer)
 
     if (ulIndex >= MAX_CLIENT_NUMBER)
     {
-        logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
+        cli_logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
 
     if (!pszBuffer)
     {
-        logr_debug("%s", "Request telnet server send data to client, but given an empty buffer.");
+        cli_logr_debug("%s", "Request telnet server send data to client, but given an empty buffer.");
         DOS_ASSERT(0);
         return -1;
     }
@@ -242,14 +242,14 @@ S32 telnet_out_string(U32 ulIndex, S8 *pszBuffer)
     pstTelnetClient = g_pstTelnetClientList[ulIndex];
     if (!pstTelnetClient->ulValid)
     {
-        logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
+        cli_logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
 
     if (pstTelnetClient->lSocket <= 0)
     {
-        logr_debug("Client with the index %d have an invalid socket.", ulIndex);
+        cli_logr_debug("Client with the index %d have an invalid socket.", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
@@ -257,7 +257,7 @@ S32 telnet_out_string(U32 ulIndex, S8 *pszBuffer)
     fprintf(pstTelnetClient->pFDOutput, "%s", (S8 *)pszBuffer);
     fflush(pstTelnetClient->pFDOutput);
 
-    logr_debug("Send data to client, client index:%d", ulIndex);
+    cli_logr_debug("Send data to client, client index:%d", ulIndex);
 
     return 0;
 }
@@ -280,7 +280,7 @@ S32 telnet_send_data(U32 ulIndex, U32 ulType, S8 *pszBuffer, U32 ulLen)
 
     if (!pszBuffer || ulLen<=0)
     {
-        logr_debug("%s", "Request telnet server send data to client, but given an empty buffer.");
+        cli_logr_debug("%s", "Request telnet server send data to client, but given an empty buffer.");
         DOS_ASSERT(0);
         return -1;
     }
@@ -290,13 +290,13 @@ S32 telnet_send_data(U32 ulIndex, U32 ulType, S8 *pszBuffer, U32 ulLen)
 
     if (MSG_TYPE_LOG == ulType)
     {
-        logr_debug("%s", "Request telnet server send log to client.");
+        cli_logr_debug("%s", "Request telnet server send log to client.");
         goto broadcast;
     }
 
     if (ulIndex >= MAX_CLIENT_NUMBER)
     {
-        logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
+        cli_logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
@@ -304,14 +304,14 @@ S32 telnet_send_data(U32 ulIndex, U32 ulType, S8 *pszBuffer, U32 ulLen)
     pstTelnetClient = g_pstTelnetClientList[ulIndex];
     if (!pstTelnetClient->ulValid)
     {
-        logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
+        cli_logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
 
     if (pstTelnetClient->lSocket <= 0)
     {
-        logr_debug("Client with the index %d have an invalid socket.", ulIndex);
+        cli_logr_debug("Client with the index %d have an invalid socket.", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
@@ -319,7 +319,7 @@ S32 telnet_send_data(U32 ulIndex, U32 ulType, S8 *pszBuffer, U32 ulLen)
     fprintf(pstTelnetClient->pFDOutput, "%s", (S8 *)pszBuffer);
     fflush(pstTelnetClient->pFDOutput);
 
-    logr_debug("Send data to client, client index:%d length:%d", ulIndex, ulLen);
+    cli_logr_debug("Send data to client, client index:%d length:%d", ulIndex, ulLen);
 
     return 0;
 
@@ -335,7 +335,7 @@ broadcast:
         }
     }
 
-    logr_debug("Send data to client, client index:%d length:%d", ulIndex, ulLen);
+    cli_logr_debug("Send data to client, client index:%d length:%d", ulIndex, ulLen);
 
     return 0;
 }
@@ -867,7 +867,7 @@ TELNET_CLIENT_INFO_ST *telnetd_client_alloc(S32 lSock)
 
     if (i >= MAX_CLIENT_NUMBER)
     {
-        logr_notice("%s", "Too many user.");
+        cli_logr_notice("%s", "Too many user.");
         DOS_ASSERT(0);
         return NULL;
     }
@@ -920,7 +920,7 @@ VOID *telnetd_client_task(VOID *ptr)
 
     if (!ptr)
     {
-        logr_warning("%s", "New telnet client thread with invalid param, exit.");
+        cli_logr_warning("%s", "New telnet client thread with invalid param, exit.");
         DOS_ASSERT(0);
         pthread_exit(NULL);
     }
@@ -935,20 +935,20 @@ VOID *telnetd_client_task(VOID *ptr)
 
     pstClientInfo->pFDInput = fdopen(pstClientInfo->lSocket, "r");
     if (!pstClientInfo->pFDInput) {
-        logr_warning("%s", "Create input fd fail for the new telnet client.");
+        cli_logr_warning("%s", "Create input fd fail for the new telnet client.");
         DOS_ASSERT(0);
         pthread_exit(NULL);
     }
     pstClientInfo->pFDOutput = fdopen(pstClientInfo->lSocket, "w");
     if (!pstClientInfo->pFDOutput) {
-        logr_warning("%s", "Create output fd fail for the new telnet client.");
+        cli_logr_warning("%s", "Create output fd fail for the new telnet client.");
         DOS_ASSERT(0);
         pthread_exit(NULL);
     }
 
     telentd_negotiate(pstClientInfo->pFDOutput, pstClientInfo->pFDInput);
 
-    dos_printf("%s", "Telnet negotiate finished.");
+    cli_logr_debug("%s", "Telnet negotiate finished.");
 
     fprintf(pstClientInfo->pFDOutput, "Welcome Control Panel!");
     telnetd_client_send_new_line(pstClientInfo->pFDOutput, 1);
@@ -1022,7 +1022,7 @@ VOID *telnetd_main_loop(VOID *ptr)
         pthread_mutex_lock(&g_TelnetdMutex);
         if (g_lTelnetdWaitingExit)
         {
-            logr_info("%d", "Telnetd waiting exit flag has been set. exit");
+            cli_logr_info("%d", "Telnetd waiting exit flag has been set. exit");
             pthread_mutex_unlock(&g_TelnetdMutex);
             break;
         }
@@ -1037,7 +1037,7 @@ VOID *telnetd_main_loop(VOID *ptr)
         lRet = select(lMaxFd, &stFDSet, NULL, NULL, &stTimeout);
         if (lRet < 0)
         {
-            logr_warning("%s", "Error happened when select return.");
+            cli_logr_warning("%s", "Error happened when select return.");
             lConnectSock = -1;
             DOS_ASSERT(0);
             break;
@@ -1051,12 +1051,12 @@ VOID *telnetd_main_loop(VOID *ptr)
         lConnectSock = accept(g_lTelnetdSrvSocket, (struct sockaddr *)&stAddr, &ulLen);
         if (lConnectSock < 0)
         {
-            logr_warning("Telnet server accept connection fail.(%d)", errno);
+            cli_logr_warning("Telnet server accept connection fail.(%d)", errno);
             DOS_ASSERT(0);
             break;
         }
 
-        logr_notice("%s", "New telnet connection.");
+        cli_logr_notice("%s", "New telnet connection.");
 
         pthread_mutex_lock(&g_TelnetdMutex);
         pstClientInfo = telnetd_client_alloc(lConnectSock);
@@ -1074,7 +1074,7 @@ VOID *telnetd_main_loop(VOID *ptr)
         if (lRet < 0)
         {
             DOS_ASSERT(0);
-            logr_warning("%s", "Create thread for telnet client fail.");
+            cli_logr_warning("%s", "Create thread for telnet client fail.");
             close(lConnectSock);
             continue;
         }
@@ -1150,7 +1150,7 @@ S32 telnetd_init()
     g_lTelnetdSrvSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (g_lTelnetdSrvSocket < 0)
     {
-        logr_warning("%s", "Create the telnetd server socket fail.");
+        cli_logr_warning("%s", "Create the telnetd server socket fail.");
         return DOS_FAIL;
     }
     flag = 1;
@@ -1162,7 +1162,7 @@ S32 telnetd_init()
     stListenAddr.sin_port = htons(TELNETD_LISTEN_PORT);
     if (bind(g_lTelnetdSrvSocket, (struct sockaddr *)&stListenAddr, sizeof(stListenAddr)) < 0)
     {
-        logr_error("%s", "Telnet server bind IP/Address fail.");
+        cli_logr_error("%s", "Telnet server bind IP/Address fail.");
         close(g_lTelnetdSrvSocket);
         g_lTelnetdSrvSocket = -1;
         return DOS_FAIL;
@@ -1170,7 +1170,7 @@ S32 telnetd_init()
 
     if (listen(g_lTelnetdSrvSocket, 5) < 0)
     {
-        logr_error("Linsten on port %d fail", TELNETD_LISTEN_PORT);
+        cli_logr_error("Linsten on port %d fail", TELNETD_LISTEN_PORT);
         close(g_lTelnetdSrvSocket);
         g_lTelnetdSrvSocket = -1;
         return DOS_FAIL;
@@ -1193,13 +1193,13 @@ S32 telnetd_start()
     lRet = pthread_create(&g_pthTelnetdTask, 0, telnetd_main_loop, NULL);
     if (lRet < 0)
     {
-        logr_warning("%s", "Create thread for telnetd fail.");
+        cli_logr_warning("%s", "Create thread for telnetd fail.");
         close(g_lTelnetdSrvSocket);
         g_lTelnetdSrvSocket = -1;
         return DOS_FAIL;
     }
 
-    dos_printf("%s", "telnet server start!");
+    cli_logr_debug("%s", "telnet server start!");
 
     //pthread_join(g_pthTelnetdTask, NULL);
 

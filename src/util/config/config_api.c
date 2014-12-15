@@ -157,7 +157,7 @@ S8  *_config_get_param(mxml_node_t *pstXMLRoot, S8 *path, S8 *name, S8 *szBuff, 
 
     if (!pstXMLRoot)
     {
-        dos_printf("%s", "Please special the dom root.");
+        //dos_printf("%s", "Please special the dom root.");
         goto error2;
     }
 

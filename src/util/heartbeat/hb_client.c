@@ -83,7 +83,7 @@ VOID hb_heartbeat_interval_timeout(U64 uLParam)
 
     pstProcessInfo->ulHBCnt++;
 
-    logr_debug("Send heartbeat to the HB server.");
+    hb_logr_debug("Send heartbeat to the HB server.");
 
     hb_send_heartbeat(pstProcessInfo);
 }
@@ -101,7 +101,7 @@ VOID hb_heartbeat_recv_timeout(U64 uLParam)
 
     if (uLParam >= DOS_PROCESS_MAX_NUM)
     {
-        logr_warning("Heartbeat recv timeout, but with an error param \"%lu\".", uLParam);
+        hb_logr_warning("Heartbeat recv timeout, but with an error param \"%lu\".", uLParam);
         DOS_ASSERT(0);
         return;
     }
@@ -110,7 +110,7 @@ VOID hb_heartbeat_recv_timeout(U64 uLParam)
     pstProcessInfo->ulHBFailCnt++;
     pstProcessInfo->hTmrRecvTimeout = NULL;
 
-    logr_debug("Heartbeat recv timeout. process \"%s\"", pstProcessInfo->szProcessName);
+    hb_logr_debug("Heartbeat recv timeout. process \"%s\"", pstProcessInfo->szProcessName);
 
     if (pstProcessInfo->ulHBFailCnt >= g_ulHBMaxFailCnt)
     {
@@ -133,7 +133,7 @@ VOID hb_reg_timeout(U64 uLProcessCB)
     /* 定时器复位 */
     g_stProcessInfo.hTmrRegInterval = NULL;
 
-    logr_warning("%s", "Heartbeat client register timerout. Resend register msg.");
+    hb_logr_warning("%s", "Heartbeat client register timerout. Resend register msg.");
 
     /* 重发注册 */
     hb_send_reg(&g_stProcessInfo);
@@ -169,13 +169,13 @@ S32 hb_client_msg_proc(VOID *pMsg, U32 ulLen)
     if (!pMsg || ulLen <= 0)
     {
         DOS_ASSERT(0);
-        logr_warning("%s", "Heartbeat client recv invalid msg.");
+        hb_logr_warning("%s", "Heartbeat client recv invalid msg.");
         return -1;
     }
 
     memcpy((VOID *)&stHBData, pMsg, sizeof(HEARTBEAT_DATA_ST));
 
-    logr_debug("Recv hb server msg. Name:%s, Version:%s, CMD:%d"
+    hb_logr_debug("Recv hb server msg. Name:%s, Version:%s, CMD:%d"
             , stHBData.szProcessName, stHBData.szProcessVersion, stHBData.ulCommand);
 
     switch (stHBData.ulCommand)
@@ -203,7 +203,7 @@ S32 hb_client_msg_proc(VOID *pMsg, U32 ulLen)
             break;
     }
 
-    logr_debug("BH server msg processed. Name:%s, Version:%s, CMD:%d"
+    hb_logr_debug("BH server msg processed. Name:%s, Version:%s, CMD:%d"
             , stHBData.szProcessName, stHBData.szProcessVersion, stHBData.ulCommand);
 
     return lResult;
@@ -227,7 +227,7 @@ S32 hb_client_reconn()
 
     if (connect(g_stProcessInfo.lSocket, (struct sockaddr *)&g_stProcessInfo.stPeerAddr, g_stProcessInfo.ulPeerAddrLen) < 0)
     {
-        logr_error("Cannot connect to heartbeat server.(%d)", errno);
+        hb_logr_error("Cannot connect to heartbeat server.(%d)", errno);
         return DOS_FAIL;
     }
 
@@ -254,20 +254,20 @@ VOID *hb_client_task(VOID *ptr)
     }
 
 
-    logr_debug("%s", "Start to register to the heartbeat server.");
+    hb_logr_debug("%s", "Start to register to the heartbeat server.");
 
     while (1)
     {
         /* 连接到服务器 */
         if (!g_bIsConnectOK)
         {
-            logr_debug("%s", "Waiting to connect to the heartbeat server.");
+            hb_logr_debug("%s", "Waiting to connect to the heartbeat server.");
             sleep(1);
             if (hb_client_reconn() != DOS_SUCC)
             {
                 continue;
             }
-            logr_debug("%s", "Connect to the heartbeat server OK.");
+            hb_logr_debug("%s", "Connect to the heartbeat server OK.");
 
             g_bIsConnectOK = DOS_TRUE;
 
@@ -286,7 +286,7 @@ VOID *hb_client_task(VOID *ptr)
         {
             perror("Error happened when select return.");
             g_stProcessInfo.lSocket = -1;
-            logr_warning("%s", "Exception occurred in heartbeat client tast.");
+            hb_logr_warning("%s", "Exception occurred in heartbeat client tast.");
             break;
         }
         else if (0 == lRet)

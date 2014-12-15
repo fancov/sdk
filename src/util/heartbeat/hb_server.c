@@ -84,7 +84,7 @@ VOID hb_recv_timeout(U64 uLParam)
 
     if (uLParam >= DOS_PROCESS_MAX_NUM)
     {
-        logr_warning("Heartbeat recv timeout, but with an error param \"%lu\".", uLParam);
+        hb_logr_warning("Heartbeat recv timeout, but with an error param \"%lu\".", uLParam);
         DOS_ASSERT(0);
         return;
     }
@@ -175,7 +175,7 @@ VOID hb_process_lost(PROCESS_INFO_ST *pstProcessInfo)
         lTreatmentNo = 0;
     }
 
-    logr_error("Process \"%s\" lost. Treate as %d", pstProcessInfo->szProcessName, lTreatmentNo);
+    hb_logr_error("Process \"%s\" lost. Treate as %d", pstProcessInfo->szProcessName, lTreatmentNo);
 }
 
 
@@ -247,14 +247,14 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
     if (!pMsg || uiLen < sizeof(HEARTBEAT_DATA_ST))
     {
         DOS_ASSERT(0);
-        logr_warning("%s", "Heartbeat server recv invalid msg.");
+        hb_logr_warning("%s", "Heartbeat server recv invalid msg.");
         return -1;
     }
 
     if (!pstServerAddr)
     {
         DOS_ASSERT(0);
-        logr_warning("%s", "Heartbeat server recv msg with unknow address.");
+        hb_logr_warning("%s", "Heartbeat server recv msg with unknow address.");
         return -1;
     }
 
@@ -264,7 +264,7 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
     pstProcessInfo = hb_find_process(&stHBData);
     if (!pstProcessInfo)
     {
-        logr_info("%s", "New process register, alloc ccb.");
+        hb_logr_info("%s", "New process register, alloc ccb.");
         pstProcessInfo = hb_alloc_process(&stHBData);
 
         pstProcessInfo->ulVilad = DOS_TRUE;
@@ -284,7 +284,7 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
     if (!pstProcessInfo)
     {
         DOS_ASSERT(0);
-        logr_warning("%s", "Cannot alloc process info block.");
+        hb_logr_warning("%s", "Cannot alloc process info block.");
         return -1;
     }
 
@@ -293,7 +293,7 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
     dos_memcpy(&pstProcessInfo->stPeerAddr, pstServerAddr, sizeof(struct sockaddr_un));
     pstProcessInfo->ulPeerAddrLen = lAddrLen;
 
-    logr_debug("Heartbeat server recv msg. Cmd:%d, Length:%d, Process name:%s, Process version:%s, ID:%d, %p"
+    hb_logr_debug("Heartbeat server recv msg. Cmd:%d, Length:%d, Process name:%s, Process version:%s, ID:%d, %p"
                     , stHBData.ulCommand, uiLen
                     , pstProcessInfo->szProcessName
                     , pstProcessInfo->szProcessVersion
@@ -364,7 +364,7 @@ VOID *heartbeat_task(VOID *ptr)
         {
             perror("Error happened when select return.");
             g_lSocket = -1;
-            logr_warning("%s", "Exception occurred in heartbeat client tast.");
+            hb_logr_warning("%s", "Exception occurred in heartbeat client tast.");
             break;
         }
         else if (0 == lRet)
@@ -391,7 +391,7 @@ VOID *heartbeat_task(VOID *ptr)
     }
 
     DOS_ASSERT(0);
-    logr_warning("%s", "Heartbeat server will be exited. The recv socket failed.s");
+    hb_logr_warning("%s", "Heartbeat server will be exited. The recv socket failed.s");
 
     return 0;
 }
@@ -480,7 +480,7 @@ S32 heartbeat_init()
     lRet = bind(g_lSocket, (struct sockaddr*)&g_stServerAddr, lLen);
     if(lRet < 0)
     {
-        logr_error("Cannot bind server socket.(%d)\n", errno);
+        hb_logr_error("Cannot bind server socket.(%d)\n", errno);
         close(g_lSocket);
         return DOS_FAIL;
     }

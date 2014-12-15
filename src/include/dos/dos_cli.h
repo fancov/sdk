@@ -110,4 +110,36 @@ S32 debug_cli_send_cmd_responce(const S8 * _pszMsg, const S32 _lLength, const S3
 
 #endif
 
+#if (INCLUDE_DEBUG_CLI || INCLUDE_DEBUG_CLI_SERVER)
+VOID cli_log_set_level(U32 ulLevel);
+VOID cli_logr_write(U32 ulLevel, S8 *pszFormat, ...);
+
+
+#define cli_logr_debug(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_DEBUG, (_pszFormat), ##args)
+
+#define cli_logr_info(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_INFO, (_pszFormat), ##args)
+
+#define cli_logr_notice(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_NOTIC, (_pszFormat), ##args)
+
+#define cli_logr_warning(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_WARNING, (_pszFormat), ##args)
+
+#define cli_logr_error(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_ERROR, (_pszFormat), ##args)
+
+#define cli_logr_cirt(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_CIRT, (_pszFormat), ##args)
+
+#define cli_logr_alert(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_ALERT, (_pszFormat), ##args)
+
+#define cli_logr_emerg(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_EMERG, (_pszFormat), ##args)
+
 #endif
+
+#endif
+

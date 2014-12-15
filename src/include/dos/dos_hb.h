@@ -29,6 +29,37 @@ S32 hb_client_start();
 S32 hb_client_stop();
 #endif
 
+#if (INCLUDE_BH_SERVER || INCLUDE_BH_CLIENT)
+
+#define hb_logr_debug(_pszFormat, args...) \
+        hb_logr_write(LOG_LEVEL_DEBUG, (_pszFormat), ##args)
+
+#define hb_logr_info(_pszFormat, args...) \
+        hb_logr_write(LOG_LEVEL_INFO, (_pszFormat), ##args)
+
+#define hb_logr_notice(_pszFormat, args...) \
+        hb_logr_write(LOG_LEVEL_NOTIC, (_pszFormat), ##args)
+
+#define hb_logr_warning(_pszFormat, args...) \
+        hb_logr_write(LOG_LEVEL_WARNING, (_pszFormat), ##args)
+
+#define hb_logr_error(_pszFormat, args...) \
+        hb_logr_write(LOG_LEVEL_ERROR, (_pszFormat), ##args)
+
+#define hb_logr_cirt(_pszFormat, args...) \
+        hb_logr_write(LOG_LEVEL_CIRT, (_pszFormat), ##args)
+
+#define hb_logr_alert(_pszFormat, args...) \
+        hb_logr_write(LOG_LEVEL_ALERT, (_pszFormat), ##args)
+
+#define hb_logr_emerg(_pszFormat, args...) \
+        hb_logr_write(LOG_LEVEL_EMERG, (_pszFormat), ##args)
+
+VOID hb_logr_write(U32 ulLevel, S8 *pszFormat, ...);
+VOID hb_log_set_level(U32 ulLevel);
+
+#endif
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

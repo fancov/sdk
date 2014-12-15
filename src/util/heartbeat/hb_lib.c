@@ -21,6 +21,41 @@ extern "C"{
 
 #include "heartbeat.h"
 
+#if INCLUDE_BH_ENABLE
+
+static U32 g_ulHBCurrentLogLevel = LOG_LEVEL_NOTIC;
+
+VOID hb_log_set_level(U32 ulLevel)
+{
+    g_ulHBCurrentLogLevel = ulLevel;
+}
+
+U32 hb_log_current_level()
+{
+    return g_ulHBCurrentLogLevel;
+}
+
+
+VOID hb_logr_write(U32 ulLevel, S8 *pszFormat, ...)
+{
+    va_list argptr;
+    char szBuf[1024];
+
+    va_start(argptr, pszFormat);
+    vsnprintf(szBuf, sizeof(szBuf), pszFormat, argptr);
+    va_end(argptr);
+    szBuf[sizeof(szBuf) -1] = '\0';
+
+    if (ulLevel <= g_ulHBCurrentLogLevel)
+    {
+        dos_log(ulLevel, LOG_TYPE_RUNINFO, szBuf);
+    }
+}
+
+
+#endif
+
+
 #if INCLUDE_BH_SERVER
 VOID hb_recv_timeout(U64 ulParam);
 U32 hb_get_max_send_interval();
@@ -54,7 +89,7 @@ S32 hb_send_msg(U8 *pszBuff, U32 ulBuffLen, struct sockaddr_un *pstAddr, U32 ulA
 
     if (lSocket < 0)
     {
-        logr_warning("%s", "Invalid socket while send heartbeat to process.");
+        hb_logr_warning("%s", "Invalid socket while send heartbeat to process.");
         DOS_ASSERT(0);
         return -1;
     }
@@ -64,7 +99,7 @@ S32 hb_send_msg(U8 *pszBuff, U32 ulBuffLen, struct sockaddr_un *pstAddr, U32 ulA
             , ulAddrLen);
     if (ulBuffLen != lRet)
     {
-        logr_warning("Exception occurred while send hreatbeat msg.(%d)", errno);
+        hb_logr_warning("Exception occurred while send hreatbeat msg.(%d)", errno);
         DOS_ASSERT(0);
 
 #if INCLUDE_BH_CLIENT
@@ -109,10 +144,10 @@ S32 hb_send_heartbeat(PROCESS_INFO_ST *pstProcessInfo)
                 , 0
                 , TIMER_NORMAL_NO_LOOP);
 
-    logr_debug("Start the recv timerout timer for the process \"%s\". %p"
+    hb_logr_debug("Start the recv timerout timer for the process \"%s\". %p"
                 , pstProcessInfo->szProcessName, pstProcessInfo->hTmrRecvTimeout);
 #else
-    logr_debug("Response heartbeat for hb client \"%s\".", pstProcessInfo->szProcessName);
+    hb_logr_debug("Response heartbeat for hb client \"%s\".", pstProcessInfo->szProcessName);
 #endif
 
     /* ·¢ËÍÊý¾Ý */
@@ -144,7 +179,7 @@ S32 hb_send_reg(PROCESS_INFO_ST *pstProcessInfo)
                 , hb_reg_timeout
                 , 0
                 , TIMER_NORMAL_NO_LOOP);
-    logr_debug("%s", "Heartbeat client start register timer.");
+    hb_logr_debug("%s", "Heartbeat client start register timer.");
 
 
     memset((VOID*)&stData, 0, sizeof(stData));
@@ -154,7 +189,7 @@ S32 hb_send_reg(PROCESS_INFO_ST *pstProcessInfo)
     strncpy(stData.szProcessVersion, dos_get_process_version(), sizeof(stData.szProcessVersion));
     stData.szProcessVersion[sizeof(stData.szProcessVersion) - 1] = '\0';
 
-    logr_debug("%s", "Heartbeat client send register to hb server.");
+    hb_logr_debug("%s", "Heartbeat client send register to hb server.");
 
     return hb_send_msg((U8 *)&stData
                     , sizeof(HEARTBEAT_DATA_ST)
@@ -211,7 +246,7 @@ S32 hb_reg_responce_proc(PROCESS_INFO_ST *pstProcessInfo)
         return -1;
     }
 
-    logr_debug("Process registe response.%p", pstProcessInfo->hTmrRegInterval);
+    hb_logr_debug("Process registe response.%p", pstProcessInfo->hTmrRegInterval);
 
     switch (pstProcessInfo->ulStatus)
     {
@@ -223,7 +258,7 @@ S32 hb_reg_responce_proc(PROCESS_INFO_ST *pstProcessInfo)
 
             if (pstProcessInfo->hTmrRegInterval)
             {
-                logr_debug("%s", "Stop registe timer.");
+                hb_logr_debug("%s", "Stop registe timer.");
                 dos_tmr_stop(&pstProcessInfo->hTmrRegInterval);
                 pstProcessInfo->hTmrRegInterval = NULL;
             }
@@ -306,7 +341,7 @@ S32 hb_send_reg_responce(PROCESS_INFO_ST *pstProcessInfo)
         return -1;
     }
 
-    logr_debug("Send reg responce to the process \"%s\"", pstProcessInfo->szProcessName);
+    hb_logr_debug("Send reg responce to the process \"%s\"", pstProcessInfo->szProcessName);
 
     memset((VOID*)&stData, 0, sizeof(stData));
     stData.ulCommand = HEARTBEAT_DATA_REG_RESPONCE;
@@ -395,7 +430,7 @@ S32 hb_reg_proc(PROCESS_INFO_ST *pstProcessInfo)
                         , hb_recv_timeout
                         , (U64)pstProcessInfo->ulProcessCBNo
                         , TIMER_NORMAL_NO_LOOP);
-    logr_debug("Start the heartbeat timeout timer for process \"%s\"", pstProcessInfo->szProcessName);
+    hb_logr_debug("Start the heartbeat timeout timer for process \"%s\"", pstProcessInfo->szProcessName);
 
     return 0;
 }
@@ -454,7 +489,7 @@ S32 hb_heartbeat_proc(PROCESS_INFO_ST *pstProcessInfo)
         return -1;
     }
 
-    logr_debug("Start process heartbeat msg. Status:%d.", pstProcessInfo->ulStatus);
+    hb_logr_debug("Start process heartbeat msg. Status:%d.", pstProcessInfo->ulStatus);
 
     switch (pstProcessInfo->ulStatus)
     {
@@ -490,7 +525,7 @@ S32 hb_heartbeat_proc(PROCESS_INFO_ST *pstProcessInfo)
             return -1;
     }
 
-    logr_debug("%s", "Heartbeat message processed.");
+    hb_logr_debug("%s", "Heartbeat message processed.");
 
     return 0;
 }

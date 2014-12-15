@@ -262,7 +262,7 @@ static VOID * tmr_task_loop(VOID *ptr)
         pthread_mutex_lock(&g_mutexTmrList);
         if (g_lTmrWaitingExit)
         {
-            dos_printf("%s", "Timer task finished flag has been set.");
+            //dos_printf("%s", "Timer task finished flag has been set.");
             pthread_mutex_unlock(&g_mutexTmrList);
             break;
         }
@@ -299,7 +299,7 @@ static VOID * tmr_task_loop(VOID *ptr)
                     *(tmrNode->tmrHandle.hTmr) = NULL;
                 }
 
-                logr_debug("Timer stop. Handle:%p", tmrNode->tmrHandle);
+                //logr_debug("Timer stop. Handle:%p", tmrNode->tmrHandle);
 
                 dos_dmem_free(tmrNode);
                 tmrNode = tmrTmp;
@@ -449,7 +449,7 @@ S32 dos_tmr_start(DOS_TMR_ST *hTmrHandle
     tmrNode->lTimerPassby = ulInterval;
     tmrNode->tmrHandle.hTmr = hTmrHandle;
 
-    logr_debug("Timer start. addr:%p, handle:%p", tmrNode, tmrNode->tmrHandle);
+    //logr_debug("Timer start. addr:%p, handle:%p", tmrNode, tmrNode->tmrHandle);
 
     /* 加入等待队列 */
     pthread_mutex_lock(&g_mutexTmrWaitAddList);
@@ -514,7 +514,7 @@ S32 dos_tmr_stop(DOS_TMR_ST *hTmrHandle)
             tmrNode->next = NULL;
             tmrNode->prev = NULL;
 
-            logr_debug("Timer droped. Status: Waiting. handle:%p", tmrNode->tmrHandle);
+            //logr_debug("Timer droped. Status: Waiting. handle:%p", tmrNode->tmrHandle);
 
             dos_dmem_free(tmrNode);
             tmrNode = NULL;
