@@ -2,4 +2,5 @@ SOURCES = assert.c \
 			debug_cli.c \
 			exception.c \
 			dos_debug.c \
-			debug_cmd.c
+			debug_cmd.c \
+			cli_lib.c
