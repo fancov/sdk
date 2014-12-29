@@ -21,7 +21,7 @@ extern "C"{
  * 功能：将src字符串copy到dts所指向的buf中
  * 参数：
  */
-S8* dos_strcpy(S8 *dst, const S8 *src)
+DLLEXPORT S8* dos_strcpy(S8 *dst, const S8 *src)
 {
     if (DOS_ADDR_INVALID(dst) || DOS_ADDR_INVALID(src))
     {
@@ -37,7 +37,7 @@ S8* dos_strcpy(S8 *dst, const S8 *src)
  * 功能：将src字符串copy到dts所指向的buf中，最多copylmaxlen个字符
  * 参数：
  */
-S8* dos_strncpy(S8 *dst, const S8 *src, S32 lMaxLen)
+DLLEXPORT S8* dos_strncpy(S8 *dst, const S8 *src, S32 lMaxLen)
 {
     if (DOS_ADDR_INVALID(dst) || DOS_ADDR_INVALID(src))
     {
@@ -55,7 +55,7 @@ S8* dos_strncpy(S8 *dst, const S8 *src, S32 lMaxLen)
  * 参数：
  * 	失败返回0，成功返回字符串长度
  */
-U32 dos_strlen(const S8 *str)
+DLLEXPORT U32 dos_strlen(const S8 *str)
 {
     U32 ulCnt;
 
@@ -83,7 +83,7 @@ U32 dos_strlen(const S8 *str)
  * 		const S8 *src：源字符串串
  * 	失败返回null，成功返回目的字符串的手地址
  */
-S8 *dos_strcat(S8 *dest, const S8 *src)
+DLLEXPORT S8 *dos_strcat(S8 *dest, const S8 *src)
 {
 	if (DOS_ADDR_VALID(dest) && DOS_ADDR_VALID(src))
 	{
@@ -102,7 +102,7 @@ S8 *dos_strcat(S8 *dest, const S8 *src)
  * 返回值：
  * 		成功返回字符i相对str首地址偏移地址，失败返回null
  */
-S8 *dos_strchr(const S8 *str, S32 i)
+DLLEXPORT S8 *dos_strchr(const S8 *str, S32 i)
 {
 	if (i >= U8_BUTT)
 	{
@@ -127,7 +127,7 @@ S8 *dos_strchr(const S8 *str, S32 i)
  * 		S8 *key：关键字
  * 返回值：如果没有找到，返回null，如果找到返回key相对source首地址的偏移
  */
-S8* dos_strstr(S8 * source, S8 *key)
+DLLEXPORT S8* dos_strstr(S8 * source, S8 *key)
 {
        char *pCh = key;
        char *pSch = NULL, *pSource = NULL;
@@ -164,7 +164,7 @@ S8* dos_strstr(S8 * source, S8 *key)
  * 参数：
  * 返回值：
  */
-S32 dos_strcmp(const S8 *s1, const S8 *s2)
+DLLEXPORT S32 dos_strcmp(const S8 *s1, const S8 *s2)
 {
 
     if (DOS_ADDR_VALID(s1) && DOS_ADDR_VALID(s2))
@@ -185,7 +185,7 @@ S32 dos_strcmp(const S8 *s1, const S8 *s2)
  * 参数：
  * 返回值：
  */
-S32 dos_stricmp(const S8 *s1, const S8 *s2)
+DLLEXPORT S32 dos_stricmp(const S8 *s1, const S8 *s2)
 {
     S8 cCh1, cCh2;
 
@@ -237,7 +237,7 @@ S32 dos_stricmp(const S8 *s1, const S8 *s2)
  * 参数：
  * 返回值：
  */
-S32 dos_strncmp(const S8 *s1, const S8 *s2, U32 n)
+DLLEXPORT S32 dos_strncmp(const S8 *s1, const S8 *s2, U32 n)
 {
     if (DOS_ADDR_VALID(s1) && DOS_ADDR_VALID(s2))
     {
@@ -253,7 +253,7 @@ S32 dos_strncmp(const S8 *s1, const S8 *s2, U32 n)
  * 参数：
  * 返回值：
  */
-S32 dos_strnicmp(const S8 *s1, const S8 *s2, U32 n)
+DLLEXPORT S32 dos_strnicmp(const S8 *s1, const S8 *s2, U32 n)
 {
     S8	cCh1, cCh2;
 
@@ -305,7 +305,7 @@ S32 dos_strnicmp(const S8 *s1, const S8 *s2, U32 n)
  * 参数：
  * 返回值：
  */
-S32 dos_strnlen(const S8 *s, S32 count)
+DLLEXPORT S32 dos_strnlen(const S8 *s, S32 count)
 {
 	const S8 *sc;
 
@@ -321,12 +321,35 @@ S32 dos_strnlen(const S8 *s, S32 count)
 }
 
 /**
+ * 函数：S32 dos_strndup(const S8 * str, S32 count)
+ * 功能：dump s所指向的字符串，最多count个字节
+ * 参数：
+ * 返回值：
+ */
+DLLEXPORT S8 *dos_strndup(const S8 *s, S32 count)
+{
+    S8 *pStr;
+
+    pStr = (S8 *)dos_dmem_alloc(count);
+    if (!pStr)
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    dos_strncpy(pStr, s, count);
+    pStr[count - 1] ='\0';
+
+    return pStr;
+}
+
+/**
  * 函数：S8 dos_toupper(S8 ch)
  * 功能：将字符转换成大写字母
  * 参数：
  * 返回值：
  */
-S8 dos_toupper(S8 ch)
+DLLEXPORT S8 dos_toupper(S8 ch)
 {
 	if (ch >= 'a' && ch <= 'z')
 	{
@@ -342,7 +365,7 @@ S8 dos_toupper(S8 ch)
  * 参数：
  * 返回值：
  */
-S8 dos_tolower(S8 ch)
+DLLEXPORT S8 dos_tolower(S8 ch)
 {
 	if (ch >= 'A' && ch <= 'Z')
 	{
@@ -358,7 +381,7 @@ S8 dos_tolower(S8 ch)
  * 参数：
  * 返回值：
  */
-VOID dos_uppercase(S8 *str)
+DLLEXPORT VOID dos_uppercase(S8 *str)
 {
     if (DOS_ADDR_INVALID(str))
     {
@@ -382,7 +405,7 @@ VOID dos_uppercase(S8 *str)
  * 参数：
  * 返回值：
  */
-VOID dos_lowercase(S8 *str)
+DLLEXPORT VOID dos_lowercase(S8 *str)
 {
 	if (DOS_ADDR_INVALID(str))
 	{
@@ -406,7 +429,7 @@ VOID dos_lowercase(S8 *str)
  * 参数：
  * 返回值：成功返回－0，失败返回－1
  */
-S32 dos_atol(const S8 *szStr, S32 *pnVal)
+DLLEXPORT S32 dos_atol(const S8 *szStr, S32 *pnVal)
 {
     if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pnVal))
     {
@@ -427,7 +450,7 @@ S32 dos_atol(const S8 *szStr, S32 *pnVal)
  * 参数：
  * 返回值：成功返回－0，失败返回－1
  */
-S32 dos_atoul(const S8 *szStr, U32 *pulVal)
+DLLEXPORT S32 dos_atoul(const S8 *szStr, U32 *pulVal)
 {
 	U32 nVal;
 
@@ -453,7 +476,7 @@ S32 dos_atoul(const S8 *szStr, U32 *pulVal)
  * 参数：
  * 返回值：成功返回－0，失败返回－1
  */
-S32 dos_atolx (const S8 *szStr, S32 *pnVal)
+DLLEXPORT S32 dos_atolx (const S8 *szStr, S32 *pnVal)
 {
 	if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pnVal))
 	{
@@ -476,7 +499,7 @@ S32 dos_atolx (const S8 *szStr, S32 *pnVal)
  * 参数：
  * 返回值：成功返回－0，失败返回－1
  */
-S32 dos_atoulx(const S8 *szStr, U32 *pulVal)
+DLLEXPORT S32 dos_atoulx(const S8 *szStr, U32 *pulVal)
 {
 	U32 nVal;
 
@@ -502,7 +525,7 @@ S32 dos_atoulx(const S8 *szStr, U32 *pulVal)
  * 参数：
  * 返回值：成功返回－0，失败返回－1
  */
-S32 dos_ltoa(S32 nVal, S8 *szStr, U32 ulStrLen)
+DLLEXPORT S32 dos_ltoa(S32 nVal, S8 *szStr, U32 ulStrLen)
 {
 	if (DOS_ADDR_VALID(szStr) && ulStrLen > 0)
 	{
@@ -521,7 +544,7 @@ S32 dos_ltoa(S32 nVal, S8 *szStr, U32 ulStrLen)
  * 参数：
  * 返回值：成功返回－0，失败返回－1
  */
-S32 dos_ltoax(S32 nVal, S8 *szStr, U32 ulStrLen)
+DLLEXPORT S32 dos_ltoax(S32 nVal, S8 *szStr, U32 ulStrLen)
 {
 	if (DOS_ADDR_VALID(szStr))
 	{
@@ -541,7 +564,7 @@ S32 dos_ltoax(S32 nVal, S8 *szStr, U32 ulStrLen)
  * 参数：
  * 返回值：成功返回－0，失败返回－1
  */
-S32 dos_ultoax (U32 ulVal, S8 *szStr, U32 ulStrLen)
+DLLEXPORT S32 dos_ultoax (U32 ulVal, S8 *szStr, U32 ulStrLen)
 {
 	if (DOS_ADDR_VALID(szStr))
 	{
@@ -562,7 +585,7 @@ S32 dos_ultoax (U32 ulVal, S8 *szStr, U32 ulStrLen)
  * 参数：
  * 返回值：成功返回STR首地址，失败返回null
  */
-S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str, U32 ulStrLen)
+DLLEXPORT S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str, U32 ulStrLen)
 {
 	if (DOS_ADDR_VALID(str))
 	{
@@ -582,7 +605,7 @@ S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str, U32 ulStrLen)
  * 参数：
  * 返回值：成功返回0，失败返回-1
  */
-S32 dos_is_digit_str(S8 *str)
+DLLEXPORT S32 dos_is_digit_str(S8 *str)
 {
 	S32 i;
 
@@ -610,7 +633,7 @@ S32 dos_is_digit_str(S8 *str)
  * 参数：
  * 返回值：成功返回STR首地址，失败返回null
  */
-S32 dos_strtoipaddr(S8 *szStr, U32 *pulIpAddr)
+DLLEXPORT S32 dos_strtoipaddr(S8 *szStr, U32 *pulIpAddr)
 {
 	U32 a, b, c, d;
 

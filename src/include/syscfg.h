@@ -38,9 +38,16 @@ extern "C"{
 #   include "cfg/cfg_mod_ptc.h"
 #   define DOS_PROCESS_VERSION "1.0"
 
+#elif defined(DIPCC_FREESWITCH)
+
+#   include <cfg/cfg_mod_fs_core.h>
+#   define DOS_PROCESS_VERSION "1.0"
+
 #else
 #	error "Please special the mod's macro!"
 #endif
+
+
 
 /* 定义进程相关信息获取函数 */
 S8 *dos_get_process_name();

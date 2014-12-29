@@ -67,7 +67,7 @@ U32 _mem_mngt_init()
  * 返回值: NULL
  * 注意: 使用该函数分配的内存
  */
-VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
+DLLEXPORT VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
 {
     S8 szFileLine[256];
     struct tagMemInfoNode *pstFileDescNode;
@@ -147,7 +147,7 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
  * 返回值: NULL
  * 注意: 使用该函数分配的内存
  */
-VOID _mem_free(VOID *p)
+DLLEXPORT VOID _mem_free(VOID *p)
 {
     MEM_INFO_NODE_ST *pstFileDescNode = NULL;
     MEM_CCB_ST *pstMemCCB;

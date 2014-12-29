@@ -212,7 +212,7 @@ S32 telnet_set_mode(U32 ulIndex, U32 ulMode)
 }
 
 /**
- * 函数：S32 telnet_out_string(U32 ulIndex, S8 *pszBuffer)
+ * 函数：S32 telnet_out_string(U32 ulIndex, const S8 *pszBuffer)
  * 功能：
  *      1.index所标示的客户端发送数据
  *      2.提供给外部模块是有
@@ -221,7 +221,7 @@ S32 telnet_set_mode(U32 ulIndex, U32 ulMode)
  *      S8 *pszBuffer：缓存
  * 返回值：成功返回0，失败返回－1
  */
-S32 telnet_out_string(U32 ulIndex, S8 *pszBuffer)
+S32 telnet_out_string(U32 ulIndex, const S8 *pszBuffer)
 {
     TELNET_CLIENT_INFO_ST *pstTelnetClient = NULL;
 

@@ -39,6 +39,7 @@
 #include <dos/dos_hb.h>
 #include <dos/dos_debug.h>
 #include <dos/dos_string.h>
+#include <dos/dos_db.h>
 #include <list/list_pub.h>
 #include <hash/hash.h>
 

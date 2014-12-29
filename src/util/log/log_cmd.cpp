@@ -30,11 +30,11 @@ S32 cli_set_log_level(U32 ulIndex, S32 argc, S8 **argv)
 
         if (dos_log_set_cli_level(ulLeval) < 0)
         {
-            cli_out_string(ulIndex, "Setting failed.\r\n");
+            cli_out_string(ulIndex, (S8 *)"Setting failed.\r\n");
             return -1;
         }
 
-    cli_out_string(ulIndex, "Setting successfully.\r\n");
+    cli_out_string(ulIndex, (S8 *)"Setting successfully.\r\n");
     }
     else if (3 == argc)
     {
@@ -64,9 +64,9 @@ S32 cli_set_log_level(U32 ulIndex, S32 argc, S8 **argv)
 
     return 0;
 usage:
-    cli_out_string(ulIndex, "Invalid parameters\r\n");
-    cli_out_string(ulIndex, "Usage:\r\n");
-    cli_out_string(ulIndex, "    debug [<module>] {0|1|2|3|4|5|6|7} \r\n");
+    cli_out_string(ulIndex, (S8 *)"Invalid parameters\r\n");
+    cli_out_string(ulIndex, (S8 *)"Usage:\r\n");
+    cli_out_string(ulIndex, (S8 *)"    debug [<module>] {0|1|2|3|4|5|6|7} \r\n");
 
     return 0;
 }

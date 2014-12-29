@@ -43,7 +43,7 @@ static inline BOOL test_id_big_endian()
  * 		U32 ulSrc：需要转换的数据
  * 返回值：返回网络序数据
  */
-U32 dos_htonl(U32 ulSrc)
+DLLEXPORT U32 dos_htonl(U32 ulSrc)
 {
 	U32 ulTmp;
 
@@ -67,7 +67,7 @@ U32 dos_htonl(U32 ulSrc)
  * 		U32 ulSrc：需要转换的数据
  * 返回值：返回主机序数据
  */
-U32 dos_ntohl(U32 ulSrc)
+DLLEXPORT U32 dos_ntohl(U32 ulSrc)
 {
 	return dos_htonl(ulSrc);
 }
@@ -80,7 +80,7 @@ U32 dos_ntohl(U32 ulSrc)
  * 		U16 usSrc：需要转换的数据
  * 返回值：返回网络序数据
  */
-U16 dos_htons(U16 usSrc)
+DLLEXPORT U16 dos_htons(U16 usSrc)
 {
 	U16 usTmp;
 
@@ -103,7 +103,7 @@ U16 dos_htons(U16 usSrc)
  * 		U16 usSrc：需要转换的数据
  * 返回值：返回主机序数据
  */
-U16 dos_ntohs(U16 usSrc)
+DLLEXPORT U16 dos_ntohs(U16 usSrc)
 {
 	return dos_htons(usSrc);
 }

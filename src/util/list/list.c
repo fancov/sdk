@@ -16,7 +16,7 @@ typedef struct node_s{
 }node_t;
 
 */
-void __list_add(struct list_s * new_node,
+DLLEXPORT void __list_add(struct list_s * new_node,
                   struct list_s * prev,
                   struct list_s * next)
 {
@@ -26,14 +26,14 @@ void __list_add(struct list_s * new_node,
     prev->next = new_node;
 }
 
-void __list_del(struct list_s *prev, struct list_s *next)
+DLLEXPORT void __list_del(struct list_s *prev, struct list_s *next)
 {
     next->prev = prev;
     prev->next = next;
 }
 
 
-void list_init( struct list_s *list )
+DLLEXPORT void dos_list_init( struct list_s *list )
 {
     if(!list)
     {
@@ -44,7 +44,7 @@ void list_init( struct list_s *list )
     list->next = list;
 }
 
-void list_add_head( struct list_s *list, struct list_s *node )
+DLLEXPORT void dos_list_add_head( struct list_s *list, struct list_s *node )
 {
     if(!list || !node)
     {
@@ -55,7 +55,7 @@ void list_add_head( struct list_s *list, struct list_s *node )
 }
 
 
-void list_add_tail( struct list_s *list, struct list_s *node )
+DLLEXPORT void dos_list_add_tail( struct list_s *list, struct list_s *node )
 {
     if(!list || !node)
     {
@@ -65,7 +65,7 @@ void list_add_tail( struct list_s *list, struct list_s *node )
     __list_add(node, list->prev, list);
 }
 
-struct list_s *list_fetch( struct list_s *list )
+DLLEXPORT struct list_s *dos_list_fetch( struct list_s *list )
 {
     struct list_s *node = NULL;
 
@@ -85,7 +85,7 @@ struct list_s *list_fetch( struct list_s *list )
     return node;
 }
 
-void list_del( struct list_s *node )
+DLLEXPORT void dos_list_del( struct list_s *node )
 {
     if(!node)
     {
@@ -96,6 +96,16 @@ void list_del( struct list_s *node )
     __list_del(node->prev, node->next);
     node->next = NULL;
     node->prev = NULL;
+}
+
+DLLEXPORT struct list_s * dos_list_work(struct list_s *list, struct list_s *node)
+{
+    if (list == node->next)
+    {
+        return NULL;
+    }
+
+    return node->next;
 }
 
 #ifdef __cplusplus

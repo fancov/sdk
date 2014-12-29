@@ -46,11 +46,11 @@ S32 dos_log_init();
 S32 dos_log_start();
 VOID dos_log_stop();
 
-VOID dos_log(S32 _iLevel, S32 _iType, const S8 *_pszMsg);
-VOID dos_vlog(S32 _iLevel, S32 _iType, const S8 *format, ...);
-VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *_pszMsg);
-VOID dos_volog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *format, ...);
-S32 dos_log_set_cli_level(U32 ulLeval);
+DLLEXPORT VOID dos_log(S32 _iLevel, S32 _iType, const S8 *_pszMsg);
+DLLEXPORT VOID dos_vlog(S32 _iLevel, S32 _iType, const S8 *format, ...);
+DLLEXPORT VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *_pszMsg);
+DLLEXPORT VOID dos_volog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *format, ...);
+DLLEXPORT S32 dos_log_set_cli_level(U32 ulLeval);
 
 /* ¸æ¾¯ÐÅÏ¢ */
 #define logw_debug(format, args... ) dos_vlog(LOG_LEVEL_DEBUG, LOG_TYPE_WARNING, (format), ##args)

@@ -15,9 +15,9 @@
 #define __DOSMEM_H_
 
 #if INCLUDE_MEMORY_MNGT
-    U32 _mem_mngt_init();
-    VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag);
-    VOID _mem_free(VOID *p);
+    DLLEXPORT U32 _mem_mngt_init();
+    DLLEXPORT VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag);
+    DLLEXPORT VOID _mem_free(VOID *p);
 
     #define dos_mem_mngt_init() _mem_mngt_init()
     #define dos_dmem_alloc(_size) _mem_alloc(__FILE__, __LINE__, (_size), 1)
