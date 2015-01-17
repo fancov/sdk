@@ -22,6 +22,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <unistd.h>
+#include <asm/errno.h>
 #include <errno.h>
 #include <sys/stat.h>
 
@@ -41,6 +42,8 @@
 #include <dos/dos_string.h>
 #include <list/list_pub.h>
 #include <hash/hash.h>
+#include <pthread.h>
+#include <netinet/in.h>
 
 
 #define DOS_VERSION  "1.0"

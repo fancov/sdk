@@ -31,11 +31,11 @@ extern "C"{
 /*public functions*/
 
 /* find DLL node with special key */
-DLL_NODE_S *dll_find(DLL_S *pList, VOID *pKey, 
+DLL_NODE_S *dll_find(DLL_S *pList, VOID *pKey,
     S32 (*fnValCmp)(VOID *, DLL_NODE_S *))
 {
     DLL_NODE_S *pNode;
-    
+
     DLL_Scan(pList, pNode, DLL_NODE_S *)
     {
         if (!fnValCmp(pKey, pNode))
@@ -122,16 +122,16 @@ VOID dll_delete(DLL_S *pList, DLL_NODE_S *pNode)
 }
 
 /***************************************************************/
-/*  Function Name   : dll_get                              */
+/*  Function Name   : dll_fetch                              */
 /*  Description     : Removes the first node from 'pList' and  */
 /*                    returns the same.                        */
-/*  Input(s)        : pList - Pointer to the Linked List       */ 
+/*  Input(s)        : pList - Pointer to the Linked List       */
 /*  Output(s)       : None                                     */
 /*  Returns         : Pointer to the first Node in the list,   */
 /*                       if the list is not empty              */
 /*                    NULL, otherwise                          */
 /***************************************************************/
-DLL_NODE_S *dll_get (DLL_S *pList)
+DLL_NODE_S *dll_fetch (DLL_S *pList)
 {
     DLL_NODE_S *pRetNode;
 
@@ -171,7 +171,7 @@ S32 dll_walk(DLL_S *pList, VOID (*fnVisit)(DLL_NODE_S *))
 {
     DLL_NODE_S *pNode;
     S32 nCnt;
-    
+
     nCnt = 0;
     DLL_Scan(pList, pNode, DLL_NODE_S *)
     {

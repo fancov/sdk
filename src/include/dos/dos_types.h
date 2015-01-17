@@ -89,6 +89,9 @@
 #define U64_BUTT (U64)-1
 #endif
 
+#define ELEMENT_OFFSET(type,member) \
+/*lint -save -e413*/ ((U64) &((type *)0)->member)/*lint -restore*/
+
 #ifndef DOS_ASSERT
 #define DOS_ASSERT(f)\
 do{\
