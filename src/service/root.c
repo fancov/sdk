@@ -48,10 +48,12 @@ S32 root(S32 _argc, S8 ** _argv)
         return -1;
     }
 #endif
+#ifndef DIPCC_FREESWITCH
     while(1)
     {
         sleep(1);
     }
+#endif
 
     return 0;
 }

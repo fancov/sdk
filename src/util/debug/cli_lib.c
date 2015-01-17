@@ -15,18 +15,18 @@
 
 static U32 g_ulCliCurrentLogLevel = LOG_LEVEL_NOTIC;
 
-VOID cli_log_set_level(U32 ulLevel)
+DLLEXPORT VOID cli_log_set_level(U32 ulLevel)
 {
     g_ulCliCurrentLogLevel = ulLevel;
 }
 
-U32 cli_log_current_level()
+DLLEXPORT U32 cli_log_current_level()
 {
     return g_ulCliCurrentLogLevel;
 }
 
 
-VOID cli_logr_write(U32 ulLevel, S8 *pszFormat, ...)
+DLLEXPORT VOID cli_logr_write(U32 ulLevel, S8 *pszFormat, ...)
 {
     va_list argptr;
     char szBuf[1024];
