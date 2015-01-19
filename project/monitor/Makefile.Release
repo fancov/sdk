@@ -1,7 +1,7 @@
 ########################################################################
 #                         Define the Complie                           # 
 ########################################################################
-TARGET                  = moniter
+TARGET					= monitor
 
 ########################################################################
 #                      Define some                           # 
@@ -49,7 +49,7 @@ ALL_LIBS    = $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS)
 ########################################################################
 CC                      = gcc
 CXX                     = g++
-CFLAGS                  = -Wall 
+CFLAGS                  = -Wall -Os
 DEFINES					= -DDIPCC_MONITER
 
 C_COMPILE               = $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 

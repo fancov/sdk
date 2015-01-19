@@ -202,7 +202,7 @@ S32 mon_get_netcard_data()
 
    stIfc.ifc_len = sizeof(astReq);
    stIfc.ifc_buf = (caddr_t)astReq;
-   if (!ioctl(lFd, SIOCGIFCONF, (char *)&stIfc))
+   if (!ioctl(lFd, SIOCGIFCONF, (S8 *)&stIfc))
    {
       lInterfaceNum = g_lNetCnt= stIfc.ifc_len / sizeof(struct ifreq);
       while (lInterfaceNum > 0)
@@ -228,7 +228,7 @@ S32 mon_get_netcard_data()
             goto failure;
          }
 
-         if (!ioctl(lFd, SIOCGIFHWADDR, (char *)(&astReq[lInterfaceNum])))
+         if (!ioctl(lFd, SIOCGIFHWADDR, (S8 *)(&astReq[lInterfaceNum])))
          {
             memset(szMac, 0, sizeof(szMac));
             dos_snprintf(szMac, sizeof(szMac), "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -240,7 +240,7 @@ S32 mon_get_netcard_data()
                    (unsigned char)astReq[lInterfaceNum].ifr_hwaddr.sa_data[5]);
             /*获得设备Mac地址*/
             dos_strcpy(g_pastNet[lLength]->szMacAddress, szMac);
-            (g_pastNet[lLength]->szMacAddress)[dos_strlen(szMac)] = '\0';
+            g_pastNet[lLength]->szMacAddress[dos_strlen(szMac)] = '\0';
          }
          else
          {
@@ -249,14 +249,14 @@ S32 mon_get_netcard_data()
             goto failure;
          }
              
-         if (!ioctl(lFd, SIOCGIFADDR, (char *)&astReq[lInterfaceNum]))
+         if (!ioctl(lFd, SIOCGIFADDR, (S8 *)&astReq[lInterfaceNum]))
          {
             dos_snprintf(szIPv4Addr, sizeof(szIPv4Addr), "%s",
-               (char *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_addr))->sin_addr));
+               (S8 *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_addr))->sin_addr));
 
             /*获得设备ip地址*/
             dos_strcpy(g_pastNet[lLength]->szIPAddress, szIPv4Addr);
-            (g_pastNet[lLength]->szIPAddress)[dos_strlen(szIPv4Addr)] = '\0';
+            g_pastNet[lLength]->szIPAddress[dos_strlen(szIPv4Addr)] = '\0';
          }
          else
          {
@@ -268,10 +268,10 @@ S32 mon_get_netcard_data()
          if (!ioctl(lFd, SIOCGIFBRDADDR, &astReq[lInterfaceNum]))
          {
             dos_snprintf(szBroadAddr, sizeof(szBroadAddr), "%s",
-               (char *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_broadaddr))->sin_addr));
+               (S8 *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_broadaddr))->sin_addr));
             /*获得设备广播ip地址*/
             dos_strcpy(g_pastNet[lLength]->szBroadIPAddress, szBroadAddr);
-            (g_pastNet[lLength]->szBroadIPAddress)[dos_strlen(szBroadAddr)] = '\0';
+            g_pastNet[lLength]->szBroadIPAddress[dos_strlen(szBroadAddr)] = '\0';
          }
          else
          {
@@ -283,10 +283,10 @@ S32 mon_get_netcard_data()
          if (!ioctl(lFd, SIOCGIFNETMASK, &astReq[lInterfaceNum]))
          {
             dos_snprintf(szSubnetMask, sizeof(szSubnetMask), "%s",
-               (char *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_netmask))->sin_addr));
+               (S8 *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_netmask))->sin_addr));
             /*获得设备子网掩码*/
             dos_strcpy(g_pastNet[lLength]->szNetMask, szSubnetMask);
-            (g_pastNet[lLength]->szNetMask)[dos_strlen(szSubnetMask)] = '\0';
+            g_pastNet[lLength]->szNetMask[dos_strlen(szSubnetMask)] = '\0';
          }
          else
          {
