@@ -17,7 +17,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <mysql/mysql.h>
 #include <dos/dos_types.h>
 #include <syscfg.h>
 extern "C"{
@@ -26,7 +25,7 @@ extern "C"{
 }
 
 #if (INCLUDE_SYSLOG_ENABLE && INCLUDE_SYSLOG_DB)
-
+#include <mysql/mysql.h>
 #include "_log_base.h"
 
 #define MAX_DB_INFO_NUM  6

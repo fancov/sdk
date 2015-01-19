@@ -171,6 +171,73 @@ S32 config_hb_deinit();
  */
 S32 config_hb_save();
 
+/**
+ * 函数：S32 config_hb_get_process_cfg_cnt();
+ * 功能：获取配置的进程个数
+ * 参数：
+ * 返回值：成功配置进程的个数，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_get_process_cfg_cnt();
+
+/**
+ * 函数：S32 config_hb_get_start_cmd(U32 ulIndex, S8 *pszCmd, U32 ulLen);
+ * 功能：获得启动进程的命令
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_get_start_cmd(U32 ulIndex, S8 *pszCmd, U32 ulLen);
+
+
+
+/**
+ * 函数：S32 config_threshold_mem(S32* plMem);
+ * 功能：获取内存占用率阀值
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_threshold_mem(S32* plMem);
+
+
+/**
+ * 函数：S32 config_threshold_mem(S32* plMem);
+ * 功能：获取CPU占用率的阀值
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_threshold_cpu(S32* plAvg, S32* pl5sAvg, S32 *pl1minAvg, S32 *pl10minAvg);
+
+
+/**
+ * 函数：S32 config_threshold_disk(S32 *plPartition, S32* plDisk);
+ * 功能：获取磁盘占用率的阀值
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_threshold_disk(S32 *plPartition, S32* plDisk);
+
+
+/**
+ * 函数：S32 config_hb_threshold_proc(S32* plMem, S32* plCPU);
+ * 功能：获取进程资源占用率的阀值
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_threshold_proc(S32* plMem, S32* plCPU);
+
+
+
 #endif
 
 #endif

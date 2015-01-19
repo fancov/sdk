@@ -5,6 +5,8 @@
 extern "C"{
 #endif /* __cplusplus */
 
+#include <stdio.h>
+
 S32 dos_sscanf(const S8 *pszSrc, const S8 *pszFormat, ...);
 S32 dos_fscanf(FILE *pStream, const S8 *pszFormat, ...);
 S32 dos_snprintf(S8 *pszDstBuff, S32 lBuffLength, const S8 *pszFormat, ...);

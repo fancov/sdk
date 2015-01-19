@@ -78,8 +78,8 @@ S32 dos_log_set_cli_level(U32 ulLeval);
         printf("Set cli log level."); \
     }while(0)
 #endif
+    
 
-/* ¸æ¾¯ÐÅÏ¢ */
 #define logw_debug(format, args... ) dos_vlog(LOG_LEVEL_DEBUG, LOG_TYPE_WARNING, (format), ##args)
 #define logw_info(format, args... ) dos_vlog(LOG_LEVEL_INFO, LOG_TYPE_WARNING, (format), ##args)
 #define logw_notice(format, args... ) dos_vlog(LOG_LEVEL_NOTIC, LOG_TYPE_WARNING, (format), ##args)

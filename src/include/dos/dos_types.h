@@ -45,6 +45,14 @@
 #define U64 unsigned long
 #endif
 
+#ifndef F32 
+#define F32 float
+#endif
+
+#ifndef F64
+#define F64 double
+#endif
+
 #ifndef BOOL
 #define BOOL unsigned int
 #endif
@@ -66,11 +74,11 @@
 #endif
 
 #ifndef DOS_SUCC
-#define DOS_SUCC 0
+#define DOS_SUCC (U32)0
 #endif
 
 #ifndef DOS_FAIL
-#define DOS_FAIL -1
+#define DOS_FAIL (U32)(-1)
 #endif
 
 #ifndef U8_BUTT
