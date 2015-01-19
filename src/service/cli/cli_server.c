@@ -154,7 +154,7 @@ PROCESS_INFO_NODE_ST * cli_server_find_active_process(S8 *pszName)
 
     for (i=0; i<MAX_PROCESS_NUM; i++)
     {
-        dos_printf("%s,%d,%d\n", g_pstProcessList[i]->szProcessName, g_pstProcessList[i]->bVaild, g_pstProcessList[i]->bActive);
+        cli_logr_debug("%s,%d,%d\n", g_pstProcessList[i]->szProcessName, g_pstProcessList[i]->bVaild, g_pstProcessList[i]->bActive);
         if (g_pstProcessList[i]->bVaild
             && g_pstProcessList[i]->bActive
             && dos_stricmp(pszName, g_pstProcessList[i]->szProcessName) == 0)
@@ -242,28 +242,28 @@ S32 cli_server_send_cmd2process(U32 ulClientIndex
     if (!pstProcess || !pstProcess->bVaild)
     {
         DOS_ASSERT(0);
-        logr_warning("%s", "Request send data to process. But have not special a valid process.");
+        cli_logr_warning("%s", "Request send data to process. But have not special a valid process.");
         return DOS_FAIL;
     }
 
     if (!pstProcess || !pstProcess->bActive)
     {
         DOS_ASSERT(0);
-        logr_warning("%s", "Request send data to process. But given an inactive process.");
+        cli_logr_warning("%s", "Request send data to process. But given an inactive process.");
         return DOS_FAIL;
     }
 
     if (!pszBuffer || ulLength <= 0)
     {
         DOS_ASSERT(0);
-        logr_warning("%s", "Request send data to process. But given an empty buffer.");
+        cli_logr_warning("%s", "Request send data to process. But given an empty buffer.");
         return DOS_FAIL;
     }
 
     if (g_lSrvSocket < 0)
     {
         DOS_ASSERT(0);
-        logr_warning("%s", "Request send data to process. But it seems the process is no longer active.");
+        cli_logr_warning("%s", "Request send data to process. But it seems the process is no longer active.");
         g_lSrvSocket = -1;
         return DOS_FAIL;
     }
@@ -273,7 +273,7 @@ S32 cli_server_send_cmd2process(U32 ulClientIndex
     ulMsgLen += sizeof(CLI_MSG_HEADER);
     if (sizeof(szSendBuff) - ulMsgLen < sizeof(MSG_UNIT_ST))
     {
-        logr_warning("%s", "Request send data to process. Buffer not enough.");
+        cli_logr_warning("%s", "Request send data to process. Buffer not enough.");
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
@@ -285,7 +285,7 @@ S32 cli_server_send_cmd2process(U32 ulClientIndex
     ulMsgLen += sizeof(MSG_UNIT_ST);
     if (sizeof(szSendBuff) - ulMsgLen < ulLength)
     {
-        logr_warning("%s", "Request send data to process. Buffer not enough.");
+        cli_logr_warning("%s", "Request send data to process. Buffer not enough.");
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
@@ -300,7 +300,7 @@ S32 cli_server_send_cmd2process(U32 ulClientIndex
     lRet = sendto(g_lSrvSocket, szSendBuff, ulMsgLen, 0, (struct sockaddr *)&pstProcess->stClientAddr, pstProcess->uiClientAddrLen);
     if (lRet < 0)
     {
-        logr_warning("Request send data to process. Send fail.(%d)", errno);
+        cli_logr_warning("Request send data to process. Send fail.(%d)", errno);
         DOS_ASSERT(0);
         pstProcess->bActive = DOS_FALSE;
         return DOS_FAIL;
@@ -358,7 +358,7 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
 
     if (!pszName || '\0' == pszName[0])
     {
-        logr_info("Recv register msg, but without process name.", pszName);
+        cli_logr_info("Recv register msg, but without process name.", pszName);
         return -1;
     }
 
@@ -368,7 +368,7 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
         return -1;
     }
 
-    logr_debug("Processing process register message. Process:%s", pszName);
+    cli_logr_debug("Processing process register message. Process:%s", pszName);
 
     /* 所指定的进程是否已注册了,如果注册了需要更新对端地址 */
     for (i=0; i<MAX_PROCESS_NUM; i++)
@@ -383,7 +383,7 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
     /* 如果没有注册就给分配控制块，并初始化 */
     if (i >= MAX_PROCESS_NUM)
     {
-        logr_info("New process registe. Name:%s", pszName);
+        cli_logr_info("New process registe. Name:%s", pszName);
 
         for (i=0; i<MAX_PROCESS_NUM; i++)
         {
@@ -398,7 +398,7 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
         /* 没有找到啊，那就拒绝注册了 */
         if (i >= MAX_PROCESS_NUM)
         {
-            logr_info("Cannot find a cb for the new process. Name:%s", pszName);
+            cli_logr_info("Cannot find a cb for the new process. Name:%s", pszName);
             return -1;
         }
 
@@ -416,7 +416,7 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
     if (!g_pstProcessList[i]->bActive)
     {
         g_pstProcessList[i]->bActive = DOS_TRUE;
-        logr_info("Process \"%s\" registe successfully.", pszName);
+        cli_logr_info("Process \"%s\" registe successfully.", pszName);
     }
 
     cli_server_send_reg_rsp2process(g_pstProcessList[i]);
@@ -424,7 +424,7 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
     dos_memcpy((VOID *)&g_pstProcessList[i]->stClientAddr, pstAddr, sizeof(g_pstProcessList[i]->stClientAddr));
     g_pstProcessList[i]->uiClientAddrLen = ulSockLen;
 
-    logr_debug("Process registe message processed. Process:%s", pszName);
+    cli_logr_debug("Process registe message processed. Process:%s", pszName);
 
     return 0;
 }
@@ -470,14 +470,14 @@ S32 cli_server_msg_process(VOID *_pMsg, S32 ulLen, struct sockaddr_un *pstAddr, 
     if (!pstAddr || ulAddrLen <= 0)
     {
         DOS_ASSERT(0);
-        logr_warning("%s(%p, %d)", "Recv msg with invalid address.", pstAddr, ulAddrLen);
+        cli_logr_warning("%s(%p, %d)", "Recv msg with invalid address.", pstAddr, ulAddrLen);
         return -1;
     }
 #endif
     if (ulLen < sizeof(CLI_MSG_HEADER))
     {
         DOS_ASSERT(0);
-        logr_warning("Recv msg with invalid length(%d).", ulLen);
+        cli_logr_warning("Recv msg with invalid length(%d).", ulLen);
         return -1;
     }
 
@@ -485,7 +485,7 @@ S32 cli_server_msg_process(VOID *_pMsg, S32 ulLen, struct sockaddr_un *pstAddr, 
     pstMsgHeader = (CLI_MSG_HEADER*)_pMsg;
     if (pstMsgHeader->usLength <= 0)
     {
-        logr_info("%s", "Recv msg without data.");
+        cli_logr_info("%s", "Recv msg without data.");
         return 0;
     }
 
@@ -497,7 +497,7 @@ S32 cli_server_msg_process(VOID *_pMsg, S32 ulLen, struct sockaddr_un *pstAddr, 
     {
         if (pstMsgHeader->usLength - ulLength < sizeof(MSG_UNIT_ST) + pstMsgCmd->usLength)
         {
-            logr_info("%s(%d,%d,%d)", "Recv msg, but data is not cpmplete."
+            cli_logr_info("%s(%d,%d,%d)", "Recv msg, but data is not cpmplete."
                         , pstMsgHeader->usLength, ulLength, pstMsgCmd->usLength);
             break;
         }
@@ -507,34 +507,34 @@ S32 cli_server_msg_process(VOID *_pMsg, S32 ulLen, struct sockaddr_un *pstAddr, 
             case MSG_TYPE_PROCESS_REG:
                 bHasRegCmd = DOS_TRUE;
 
-                dos_printf("%s", "Recv regisrte frame.");
+                cli_logr_info("%s", "Recv regisrte frame.");
                 break;
             case MSG_TYPE_PROCESS_NAME:
                 pszName = (S8 *)pstMsgCmd->pszData;
                 pszName[pstMsgCmd->usLength - 1] = '\0';
 
-                dos_printf("Recv process name frame, name:%s", pszName);
+                cli_logr_info("Recv process name frame, name:%s", pszName);
                 break;
             case MSG_TYPE_PROCESS_VERSION:
                 pszVersion = (S8 *)pstMsgCmd->pszData;
                 pszVersion[pstMsgCmd->usLength - 1] = '\0';
 
-                dos_printf("Recv process version frame, version:%s", pszVersion);
+                cli_logr_info("Recv process version frame, version:%s", pszVersion);
                 break;
             case MSG_TYPE_PROCESS_REG_RSP:
                 DOS_ASSERT(0);
-                logr_info("%s", "Control center template cannot support this cmd.");
+                cli_logr_info("%s", "Control center template cannot support this cmd.");
                 break;
             case MSG_TYPE_PROCESS_UNREG:
                 lRet = cli_server_unreg_proc();
                 break;
             case MSG_TYPE_PROCESS_UNREG_RESPONCE:
                 DOS_ASSERT(0);
-                logr_info("%s", "Control center template cannot support this cmd.");
+                cli_logr_info("%s", "Control center template cannot support this cmd.");
                 break;
             case MSG_TYPE_CMD:
                 DOS_ASSERT(0);
-                logr_info("%s", "Control center template cannot support this cmd.");
+                cli_logr_info("%s", "Control center template cannot support this cmd.");
                 break;
             case MSG_TYPE_CMD_RESPONCE:
                 lRet = telnet_send_data(pstMsgHeader->usClientIndex, MSG_TYPE_CMD_RESPONCE, (S8 *)pstMsgCmd->pszData, pstMsgCmd->usLength);
@@ -621,7 +621,7 @@ VOID *cli_server_main_loop(VOID *p)
         if (lRet < 0)
         {
             DOS_ASSERT(0);
-            logr_warning("%s", "Cli server select fail. exit.");
+            cli_logr_warning("%s", "Cli server select fail. exit.");
             break;
         }
         else if (0 == lRet)
@@ -642,7 +642,7 @@ VOID *cli_server_main_loop(VOID *p)
         /* 异常了，退出 */
         if (lRet < 0)
         {
-            dos_log(LOG_LEVEL_ERROR, LOG_TYPE_RUNINFO, "Unexpection error while select returned. exit.\n");
+            cli_logr_error("", "Unexpection error while select returned. exit.\n");
             DOS_ASSERT(0);
             break;
         }
@@ -660,7 +660,7 @@ VOID *cli_server_main_loop(VOID *p)
     g_bCliSrvWaitingExit = 1;
     pthread_mutex_unlock(&g_mutexCliServer);
 
-    dos_printf("%s", "Cli server task exited.");
+    cli_logr_debug("%s", "Cli server task exited.");
 
     return NULL;
 }
@@ -723,7 +723,7 @@ S32 cli_server_init()
     iRet = bind(g_lSrvSocket, (struct sockaddr*)&stSrvAddr, lLength);
     if(iRet < 0)
     {
-        logr_error("%s", "Cannot bind server address.\n");
+        cli_logr_error("%s", "Cannot bind server address.\n");
         close(g_lSrvSocket);
         g_lSrvSocket = -1;
         unlink(szBuffSockPath);
@@ -768,7 +768,7 @@ S32 cli_server_stop()
     g_bCliSrvWaitingExit = 1;
     pthread_mutex_unlock(&g_mutexCliServer);
 
-    dos_printf("%s", "Cli server will be stopped later.");
+    cli_logr_debug("%s", "Cli server will be stopped later.");
 
     pthread_join(g_pthCliServer, NULL);
 
@@ -815,7 +815,7 @@ COMMAND_ST *cli_server_cmd_find(COMMAND_GROUP_ST *pstCurrentGroup, S32 argc, S8 
 
     if (iCnt >= pstCurrentGroup->ulSize)
     {
-        logr_debug("Cannot find the cmd %s: ", argv[0]);
+        cli_logr_debug("Cannot find the cmd %s: ", argv[0]);
         return NULL;
     }
 
@@ -879,7 +879,7 @@ S32 cli_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
         goto finished;
     }
 
-    dos_printf("%d, %s, %s. %s", iKeyCnt, pszKeyWord[0], pszKeyWord[1], szCMDBak);
+    cli_logr_debug("%d, %s, %s. %s", iKeyCnt, pszKeyWord[0], pszKeyWord[1], szCMDBak);
 
     /* 是否带有进程名 */
     if (iKeyCnt > 1
@@ -909,7 +909,7 @@ S32 cli_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
                 lRet = cli_server_send_broadcast_cmd(ulClientIndex, pRealCMD, dos_strlen(pRealCMD) + 1);
             }
 
-            logo_debug("Cli Server", "CMD", DOS_TRUE, "Control Panel Send CMD:\"%s\" to process \"%s\"", szCMDBak, pszKeyWord[1]);
+            cli_logr_debug("Cli Server", "CMD", DOS_TRUE, "Control Panel Send CMD:\"%s\" to process \"%s\"", szCMDBak, pszKeyWord[1]);
 
             /* 操作结果 */
             if (lRet < 0)
@@ -955,7 +955,7 @@ S32 cli_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
     /* 执行命令 */
     iRet = pstCurrentCmd->func(ulClientIndex, iKeyCnt, pszKeyWord);
 
-    logo_debug("Cli Server", "CMD", DOS_TRUE, "Control Panel Exec Local CMD:\"%s\"", szCMDBak);
+    cli_logr_debug("Cli Server", "CMD", DOS_TRUE, "Control Panel Exec Local CMD:\"%s\"", szCMDBak);
 
 finished:
     for (i=0; i<iKeyCnt; i++)

@@ -258,7 +258,7 @@ S32 dos_assert_record()
  *      const S8 *pszFileName, const U32 ulLine, const U32 param ： 断言描述信息
  * 返回值: VOID
  */
-VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 param)
+DLLEXPORT VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 param)
 {
     U32 ulHashIndex;
     S8 szFileLine[256] = { 0, };

@@ -1,0 +1,37 @@
+C_FILE += $(SROUCE)/service/bs/bs_ini.c \
+			$(SROUCE)/service/bs/bs_lib.c \
+			$(SROUCE)/service/bs/bs_debug.c \
+			$(SROUCE)/service/bs/bs_msg.c \
+			$(SROUCE)/service/bs/bsd_db.c \
+			$(SROUCE)/service/bs/bsd_mngt.c \
+			$(SROUCE)/service/bs/bss_mngt.c
+
+C_OBJ_FILE += bs_ini.$(SUFFIX) \
+				bs_lib.$(SUFFIX) \
+				bs_debug.$(SUFFIX) \
+				bs_msg.$(SUFFIX) \
+				bsd_db.$(SUFFIX) \
+				bsd_mngt.$(SUFFIX) \
+				bss_mngt.$(SUFFIX)
+
+
+bs_ini.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/bs/bs_ini.c
+
+bs_lib.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/bs/bs_lib.c
+
+bs_debug.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/bs/bs_debug.c
+
+bs_msg.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/bs/bs_msg.c
+
+bsd_db.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/bs/bsd_db.c
+
+bsd_mngt.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/bs/bsd_mngt.c
+
+bss_mngt.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/bs/bss_mngt.c

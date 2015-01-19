@@ -92,7 +92,7 @@ S32 cli_server_stop();
 S32 telnetd_init();
 S32 telnetd_start();
 S32 telnetd_stop();
-S32 telnet_out_string(U32 ulIndex, S8 *pszBuffer);
+S32 telnet_out_string(U32 ulIndex, const S8 *pszBuffer);
 
 #define cli_out_string(_lCIndex, _pMsg) \
         telnet_out_string((_lCIndex), (_pMsg))
@@ -105,9 +105,41 @@ S32 debug_cli_stop();
 S32 debug_cli_send_log(S8 * _ucMsg, S32 _iLength);
 S32 debug_cli_send_cmd_responce(const S8 * _pszMsg, const S32 _lLength, const S32 _lClientIndex);
 
-#define cli_out_string(_lClientIndex, _pszMsg) \
-        debug_cli_send_cmd_responce((_pszMsg), dos_strlen(_pszMsg) + 1, (_lClientIndex))
+#define cli_out_string(_lCIndex, _pMsg) \
+        debug_cli_send_cmd_responce((_pMsg), dos_strlen(_pMsg) + 1, (_lCIndex))
+
+#endif
+
+#if (INCLUDE_DEBUG_CLI || INCLUDE_DEBUG_CLI_SERVER)
+VOID cli_log_set_level(U32 ulLevel);
+VOID cli_logr_write(U32 ulLevel, S8 *pszFormat, ...);
+
+
+#define cli_logr_debug(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_DEBUG, (_pszFormat), ##args)
+
+#define cli_logr_info(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_INFO, (_pszFormat), ##args)
+
+#define cli_logr_notice(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_NOTIC, (_pszFormat), ##args)
+
+#define cli_logr_warning(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_WARNING, (_pszFormat), ##args)
+
+#define cli_logr_error(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_ERROR, (_pszFormat), ##args)
+
+#define cli_logr_cirt(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_CIRT, (_pszFormat), ##args)
+
+#define cli_logr_alert(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_ALERT, (_pszFormat), ##args)
+
+#define cli_logr_emerg(_pszFormat, args...) \
+        cli_logr_write(LOG_LEVEL_EMERG, (_pszFormat), ##args)
 
 #endif
 
 #endif
+

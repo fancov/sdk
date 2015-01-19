@@ -65,15 +65,24 @@ S32 root(S32 _argc, S8 ** _argv)
 #endif //INCLUDE_RES_MONITOR
 
 #endif //INCLUDE_DEBUG_CLI_SERVER
-    
+
 #if INCLUDE_PTC
     ptc_main();
 #endif //INCLUDE_PTC
 
+#if INCLUDE_SERVICE_BS
+    if (bs_start() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return -1;
+    }
+#endif
+#ifndef DIPCC_FREESWITCH
     while(1)
     {
         sleep(1);
     }
+#endif
 
     return 0;
 }

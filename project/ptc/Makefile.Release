@@ -22,17 +22,17 @@ MYSQL_LIBS              = -L/usr/lib64/mysql
 ########################################################################
 #                      Collect other makefile                          # 
 ########################################################################
-include $(SROUCE)/util/tools/Makefile
-include $(SROUCE)/util/log/Makefile
-include $(SROUCE)/util/memory/Makefile
-include $(SROUCE)/util/debug/Makefile
-include $(SROUCE)/util/config/Makefile
-include $(SROUCE)/util/timer/Makefile
-include $(SROUCE)/util/hash/Makefile
-include $(SROUCE)/util/list/Makefile
-include $(SROUCE)/util/heartbeat/Makefile
-include $(SROUCE)/cfg/Makefile
-include $(SROUCE)/service/Makefile
+include $(SROUCE)/util/tools/Makefile.mk
+include $(SROUCE)/util/log/Makefile.mk
+include $(SROUCE)/util/memory/Makefile.mk
+include $(SROUCE)/util/debug/Makefile.mk
+include $(SROUCE)/util/config/Makefile.mk
+include $(SROUCE)/util/timer/Makefile.mk
+include $(SROUCE)/util/hash/Makefile.mk
+include $(SROUCE)/util/list/Makefile.mk
+include $(SROUCE)/util/heartbeat/Makefile.mk
+include $(SROUCE)/cfg/Makefile.mk
+include $(SROUCE)/service/Makefile.mk
 
 
 ########################################################################

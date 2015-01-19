@@ -41,6 +41,11 @@
 #   error "Unknow OS type. A x86-64 host is recommended."
 #endif
 
+#ifndef DLLEXPORT
+#   define DLLEXPORT __declspec(dllexport)
+#endif
+
+
 #elif OS_LINUX
 
 #if (bswap_32)
@@ -55,6 +60,10 @@
 #   define  POINTER_WIDTH_IN_BYTE        8
 #else
 #   error "Unknow OS type. A x86-64 host is recommended."
+#endif
+
+#ifndef DLLEXPORT
+#   define DLLEXPORT __attribute((visibility("default")))
 #endif
 
 #else

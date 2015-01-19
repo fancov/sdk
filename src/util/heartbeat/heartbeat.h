@@ -86,9 +86,9 @@ typedef struct tagProcessInfo{
 #endif
 }PROCESS_INFO_ST;
 
-
 S32 hb_heartbeat_proc(PROCESS_INFO_ST *pstProcessInfo);
 S32 hb_send_heartbeat(PROCESS_INFO_ST *pstProcessInfo);
+
 #if INCLUDE_BH_SERVER
 S32 hb_unreg_proc(PROCESS_INFO_ST *pstProcessInfo);
 S32 hb_reg_proc(PROCESS_INFO_ST *pstProcessInfo);

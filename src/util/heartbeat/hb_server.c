@@ -50,8 +50,6 @@ static S32                  g_lHBTaskWaitingExit = 0;
 /* 接收数据缓存 */
 static S8                   g_szRecvBuf[MAX_BUFF_LENGTH];
 
-/* 服务器链接是否正常，暂未启用 */
-static BOOL                 g_bIsConnectOK = DOS_FALSE;
 
 /**
  * 函数: hb_get_max_timeout()
@@ -83,10 +81,10 @@ S32 hb_get_max_timeout()
 VOID hb_recv_timeout(U64 uLParam)
 {
     PROCESS_INFO_ST *pstProcessInfo = NULL;
-    
+
     if (uLParam >= DOS_PROCESS_MAX_NUM)
     {
-        logr_warning("Heartbeat recv timeout, but with an error param \"%lu\".", uLParam);
+        hb_logr_warning("Heartbeat recv timeout, but with an error param \"%lu\".", uLParam);
         DOS_ASSERT(0);
         return;
     }
@@ -96,19 +94,6 @@ VOID hb_recv_timeout(U64 uLParam)
     pstProcessInfo->hTmrHBTimeout = NULL;
 
     dos_printf("Process lost.");
-}
-
-
-/**
- * 函数：VOID hb_set_connect_flg(BOOL bConnStatus)
- * 功能：设置socket连接状态标示
- * 参数：
- *      BOOL bConnStatus：连接状态，true／false
- * 返回值：
- */
-VOID hb_set_connect_flg(BOOL bConnStatus)
-{
-    g_bIsConnectOK = bConnStatus;
 }
 
 /**
@@ -190,7 +175,7 @@ VOID hb_process_lost(PROCESS_INFO_ST *pstProcessInfo)
         lTreatmentNo = 0;
     }
 
-    logr_error("Process \"%s\" lost. Treate as %d", pstProcessInfo->szProcessName, lTreatmentNo);
+    hb_logr_error("Process \"%s\" lost. Treate as %d", pstProcessInfo->szProcessName, lTreatmentNo);
 }
 
 
@@ -262,14 +247,14 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
     if (!pMsg || uiLen < sizeof(HEARTBEAT_DATA_ST))
     {
         DOS_ASSERT(0);
-        logr_warning("%s", "Heartbeat server recv invalid msg.");
+        hb_logr_warning("%s", "Heartbeat server recv invalid msg.");
         return -1;
     }
 
     if (!pstServerAddr)
     {
         DOS_ASSERT(0);
-        logr_warning("%s", "Heartbeat server recv msg with unknow address.");
+        hb_logr_warning("%s", "Heartbeat server recv msg with unknow address.");
         return -1;
     }
 
@@ -279,7 +264,7 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
     pstProcessInfo = hb_find_process(&stHBData);
     if (!pstProcessInfo)
     {
-        logr_info("%s", "New process register, alloc ccb.");
+        hb_logr_info("%s", "New process register, alloc ccb.");
         pstProcessInfo = hb_alloc_process(&stHBData);
 
         pstProcessInfo->ulVilad = DOS_TRUE;
@@ -287,7 +272,7 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
         pstProcessInfo->ulHBCnt = 0;
         pstProcessInfo->ulStatus = PROCESS_HB_INIT;
         pstProcessInfo->hTmrHBTimeout = NULL;
-        
+
 
         dos_strncpy(pstProcessInfo->szProcessName, stHBData.szProcessName, sizeof(pstProcessInfo->szProcessName));
         pstProcessInfo->szProcessName[sizeof(pstProcessInfo->szProcessName) - 1] = '\0';
@@ -299,7 +284,7 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
     if (!pstProcessInfo)
     {
         DOS_ASSERT(0);
-        logr_warning("%s", "Cannot alloc process info block.");
+        hb_logr_warning("%s", "Cannot alloc process info block.");
         return -1;
     }
 
@@ -308,7 +293,7 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
     dos_memcpy(&pstProcessInfo->stPeerAddr, pstServerAddr, sizeof(struct sockaddr_un));
     pstProcessInfo->ulPeerAddrLen = lAddrLen;
 
-    logr_debug("Heartbeat server recv msg. Cmd:%d, Length:%d, Process name:%s, Process version:%s, ID:%d, %p"
+    hb_logr_debug("Heartbeat server recv msg. Cmd:%d, Length:%d, Process name:%s, Process version:%s, ID:%d, %p"
                     , stHBData.ulCommand, uiLen
                     , pstProcessInfo->szProcessName
                     , pstProcessInfo->szProcessVersion
@@ -379,7 +364,7 @@ VOID *heartbeat_task(VOID *ptr)
         {
             perror("Error happened when select return.");
             g_lSocket = -1;
-            logr_warning("%s", "Exception occurred in heartbeat client tast.");
+            hb_logr_warning("%s", "Exception occurred in heartbeat client tast.");
             break;
         }
         else if (0 == lRet)
@@ -406,7 +391,7 @@ VOID *heartbeat_task(VOID *ptr)
     }
 
     DOS_ASSERT(0);
-    logr_warning("%s", "Heartbeat server will be exited. The recv socket failed.s");
+    hb_logr_warning("%s", "Heartbeat server will be exited. The recv socket failed.s");
 
     return 0;
 }
@@ -495,7 +480,7 @@ S32 heartbeat_init()
     lRet = bind(g_lSocket, (struct sockaddr*)&g_stServerAddr, lLen);
     if(lRet < 0)
     {
-        logr_error("Cannot bind server socket.(%d)\n", errno);
+        hb_logr_error("Cannot bind server socket.(%d)\n", errno);
         close(g_lSocket);
         return DOS_FAIL;
     }

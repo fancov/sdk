@@ -115,7 +115,7 @@ S32 debug_cli_cmd_analyse(U32 ulClientIndex, S8 *pszMsg, U32 ulLength)
         pszKeyWord[lKeyCnt] = dos_dmem_alloc(dos_strlen(pWord) + 1);
         if (!pszKeyWord[lKeyCnt])
         {
-            logr_warning("%s", "Alloc fail.");
+            cli_logr_warning("%s", "Alloc fail.");
             lRet = -1;
             goto finished;
         }
@@ -184,12 +184,12 @@ S32 debug_cli_msg_proc(U8 *_pMsg, U32 ulLen)
         return -1;
     }
 
-    logr_info("Recv msg, length:%d", ulLen);
+    cli_logr_info("Recv msg, length:%d", ulLen);
 
     if (ulLen < sizeof(CLI_MSG_HEADER))
     {
         DOS_ASSERT(0);
-        logr_warning("Recv msg with invalid length(%d).", ulLen);
+        cli_logr_warning("Recv msg with invalid length(%d).", ulLen);
         return -1;
     }
 
@@ -197,17 +197,17 @@ S32 debug_cli_msg_proc(U8 *_pMsg, U32 ulLen)
     pstMsgHeader = (CLI_MSG_HEADER*)_pMsg;
     if (pstMsgHeader->usLength <= 0)
     {
-        logr_info("%s", "Recv msg without data.");
+        cli_logr_info("%s", "Recv msg without data.");
         return 0;
     }
 
     if (pstMsgHeader->usLength > ulLen)
     {
-    	logr_info("%s", "Recv invalid msg droped.");
+    	cli_logr_info("%s", "Recv invalid msg droped.");
     	return 0;
     }
 
-    logr_debug("Start process message, total length:%d, body length:%d.", ulLen, pstMsgHeader->usLength);
+    cli_logr_debug("Start process message, total length:%d, body length:%d.", ulLen, pstMsgHeader->usLength);
 
     /* 逐个读取消息体 */
     ulLength = 0;
@@ -223,12 +223,12 @@ S32 debug_cli_msg_proc(U8 *_pMsg, U32 ulLen)
 
         if (pstMsgHeader->usLength - ulLength < sizeof(MSG_UNIT_ST) + pstMsgCmd->usLength)
         {
-            logr_info("%s(%d,%d,%d)", "Recv msg, but data is not cpmplete."
+            cli_logr_info("%s(%d,%d,%d)", "Recv msg, but data is not cpmplete."
                         , pstMsgHeader->usLength, ulLength, pstMsgCmd->usLength);
             break;
         }
 
-        logr_info("Recv cmd. Type:%d, Length:%d", pstMsgCmd->usType, pstMsgCmd->usLength);
+        cli_logr_info("Recv cmd. Type:%d, Length:%d", pstMsgCmd->usType, pstMsgCmd->usLength);
 
         switch (pstMsgCmd->usType)
         {
@@ -239,7 +239,7 @@ S32 debug_cli_msg_proc(U8 *_pMsg, U32 ulLen)
             case MSG_TYPE_CMD_RESPONCE:
             case MSG_TYPE_LOG:
                 DOS_ASSERT(0);
-                logr_info("%s(%d)", "Templately cannot support this cmd.", pstMsgCmd->usType);
+                cli_logr_info("%s(%d)", "Templately cannot support this cmd.", pstMsgCmd->usType);
                 break;
             case MSG_TYPE_PROCESS_REG_RSP:
                 lRet = debug_cli_reg_rsp_proc();
@@ -257,11 +257,11 @@ S32 debug_cli_msg_proc(U8 *_pMsg, U32 ulLen)
                 break;
         }
 
-        logr_info("Recv cmd. Type:%d, Length:%d, process finished.", pstMsgCmd->usType, pstMsgCmd->usLength);
+        cli_logr_info("Recv cmd. Type:%d, Length:%d, process finished.", pstMsgCmd->usType, pstMsgCmd->usLength);
 
         /* 获取下一个信令单元 */
         ulLength += sizeof(MSG_UNIT_ST) + pstMsgCmd->usLength;
-        dos_printf("%d,%d,%d", pstMsgCmd->usLength, ulLength, pstMsgHeader->usLength);
+        cli_logr_debug("%d,%d,%d", pstMsgCmd->usLength, ulLength, pstMsgHeader->usLength);
         if (pstMsgHeader->usLength == ulLength)
         {
             break;
@@ -302,7 +302,7 @@ S32 debug_cli_send_msg(S32 lSocket, struct sockaddr_un *pstAddr, U8 *pszBuffer, 
 
     if (!g_bIsConnectOK)
     {
-        logr_info("%s", "Debug cli init not complete. discard this msg.");
+        cli_logr_info("%s", "Debug cli init not complete. discard this msg.");
         return -1;
     }
 
@@ -311,7 +311,7 @@ S32 debug_cli_send_msg(S32 lSocket, struct sockaddr_un *pstAddr, U8 *pszBuffer, 
     /* 出错之后就直接修改socket的值，避免sigpipe出现 */
     if (lRet < 0)
     {
-        dos_printf("%s(%d)", "Send log to the control platfrom fail.", errno);
+        cli_logr_debug("%s(%d)", "Send log to the control platfrom fail.", errno);
         DOS_ASSERT(0);
 
         g_bIsConnectOK = DOS_FALSE;
@@ -344,13 +344,13 @@ S32 debug_cli_send_log(S8 * _pszMsg, S32 _lLength)
     if (g_lCliSocket < 0)
     {
         printf("%s", _pszMsg);
-        dos_printf("%s", "Invalid socket while send log to cli server.");
+        cli_logr_debug("%s", "Invalid socket while send log to cli server.");
         return -1;
     }
 
     if (!g_bIsConnectOK)
     {
-        dos_printf("%s", "Cli task init not complete.");
+        cli_logr_debug("%s", "Cli task init not complete.");
         return -1;
     }
 
@@ -380,10 +380,10 @@ S32 debug_cli_send_log(S8 * _pszMsg, S32 _lLength)
     /* 出错之后就直接修改socket的值，避免sigpipe出现 */
     if (lRet < 0)
     {
-        dos_printf("%s(%d)", "Send log to the control platfrom fail.", errno);
+        cli_logr_debug("%s(%d)", "Send log to the control platfrom fail.", errno);
 
         g_bIsConnectOK = DOS_FALSE;
-        
+
         DOS_ASSERT(0);
         return -1;
     }
@@ -450,7 +450,7 @@ S32 debug_cli_send_reg()
         return -1;
     }
 
-    logr_info("%s", "Debug cli start to register to the cli server.");
+    cli_logr_info("%s", "Debug cli start to register to the cli server.");
 
     /* 初始化消息头 */
     pstCliMsgHeader = (CLI_MSG_HEADER *)szSendBuff;
@@ -511,7 +511,7 @@ VOID debug_cli_re_reg_timeout(U64 uLParam)
     if (debug_cli_send_reg() < 0)
     {
         DOS_ASSERT(0);
-        logr_error("Re-registe to the cli server fail. It will re-connect later");
+        cli_logr_error("Re-registe to the cli server fail. It will re-connect later");
     }
 }
 
@@ -534,7 +534,7 @@ S32 debug_cli_reconn()
 
     if (connect(g_lCliSocket, (struct sockaddr *)&g_stSrvAddr, lAddrLen) < 0)
     {
-        logr_error("Cannot connect to cli server.(%d)", errno);
+        cli_logr_info("Cannot connect to cli server.(%d)", errno);
         return DOS_FAIL;
     }
 
@@ -561,7 +561,7 @@ static VOID * debug_cli_main_loop(VOID *ptr)
         pthread_mutex_lock(&g_DebugMutex);
         if (g_lTaskWaitingExit)
         {
-            dos_printf("%s", "Cli task finished flag has been set.");
+            cli_logr_debug("%s", "Cli task finished flag has been set.");
             pthread_mutex_unlock(&g_DebugMutex);
             break;
         }
@@ -576,13 +576,13 @@ static VOID * debug_cli_main_loop(VOID *ptr)
             }
 
             /* 轮询链接到服务器 */
-            logr_info("%s", "Waiting to connect to the cli server.");
+            cli_logr_info("%s", "Waiting to connect to the cli server.");
             sleep(1);
             if (debug_cli_reconn() != DOS_SUCC)
             {
                 continue;
             }
-            logr_info("%s", "Connect to the cli server OK.");
+            cli_logr_info("%s", "Connect to the cli server OK.");
 
             g_bIsConnectOK = DOS_TRUE;
 
@@ -595,12 +595,12 @@ static VOID * debug_cli_main_loop(VOID *ptr)
                     , debug_cli_re_reg_timeout
                     , 0
                     , TIMER_NORMAL_LOOP);
-            dos_printf("Start re-registe timer");
+            cli_logr_debug("Start re-registe timer");
         }
-        
+
         if (g_lCliSocket < 0)
         {
-            dos_printf("%s", "Socket has been closed!");
+            cli_logr_debug("%s", "Socket has been closed!");
             break;
         }
 
@@ -628,7 +628,7 @@ static VOID * debug_cli_main_loop(VOID *ptr)
             lRet = recvfrom(g_lCliSocket, szReadBuff, sizeof(szReadBuff), 0, NULL, NULL);
             if (lRet < 0)
             {
-                logr_warning("Error happened when read form socket.(%d)", errno);
+                cli_logr_warning("Error happened when read form socket.(%d)", errno);
                 continue;
             }
             szReadBuff[lRet] = '\0';
@@ -637,7 +637,7 @@ static VOID * debug_cli_main_loop(VOID *ptr)
         }
     }
 
-    dos_printf("%s", (S8 *)"Cli task goodbye!");
+    cli_logr_debug("%s", (S8 *)"Cli task goodbye!");
 
     if (g_lCliSocket > 0)
     {
@@ -692,7 +692,7 @@ S32 debug_cli_init(S32 _iArgc, S8 **_pszArgv)
 
     if(bind(g_lCliSocket, (struct sockaddr*)&stSrvAddr, lAddrLen) < 0)
     {
-        dos_printf("Cannot bind server addr.(%d)", errno);
+        cli_logr_debug("Cannot bind server addr.(%d)", errno);
         close(g_lCliSocket);
         g_lCliSocket = -1;
         unlink(szBuffSockPath);
@@ -741,7 +741,7 @@ S32 debug_cli_stop()
     pthread_mutex_lock(&g_DebugMutex);
     g_lTaskWaitingExit = 1;
     pthread_mutex_unlock(&g_DebugMutex);
-    
+
     //dos_log(LOG_LEVEL_NOTIC, LOG_TYPE_RUNINFO, (S8 *)"Cli task will be stopped!\n");
 
     pthread_join(g_pthDebugTask, NULL);
