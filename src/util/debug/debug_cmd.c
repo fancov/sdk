@@ -17,7 +17,9 @@ extern S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv);
 
 COMMAND_ST g_stCommandSet[] = {
     {NULL, "assert",        "Show assert informationa",        dos_assert_print},
+#if INCLUDE_SERVICE_BS
     {NULL, "bs",            "BS command",                      bs_command_proc},
+#endif
     {NULL, "debug",         "Set the log level",               cli_set_log_level},
     {NULL, "memory",        "Show memory usage",               cli_cmd_mem},
 #if INCLUDE_BH_SERVER
