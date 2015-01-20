@@ -58,7 +58,7 @@ S32  mon_read_mem_file()
    FILE * fp = fopen(m_szMemInfoFile, "r");
    if (!fp)
    {
-      logr_cirt("%s:line %d: mon_get_memory_data |file \'%s\' fp is %p!"
+      logr_cirt("%s:line %d: mon_read_mem_file |file \'%s\' fp is %p!"
                 , dos_get_filename(__FILE__), __LINE__, m_szMemInfoFile, fp);
       goto failure;
    }
@@ -74,7 +74,7 @@ S32  mon_read_mem_file()
          ulRet = mon_analyse_by_reg_expr(szLine, " \t\n", pszAnalyseRslt, sizeof(pszAnalyseRslt)/sizeof(pszAnalyseRslt[0]));
          if(0 > ulRet)
          {
-            logr_error("%s:Line %d:mon_get_memory_data|analyse failure!"
+            logr_error("%s:Line %d:mon_read_mem_file|analyse failure!"
                         , dos_get_filename(__FILE__), __LINE__);
             goto failure;
          }
@@ -82,7 +82,7 @@ S32  mon_read_mem_file()
           lRet = dos_atol(pszAnalyseRslt[1], &lData);
           if(0 > lRet)
           {
-             logr_error("%s:Line %d:mon_get_memory_data|dos_atol failure!"
+             logr_error("%s:Line %d:mon_read_mem_file|dos_atol failure!"
                           , dos_get_filename(__FILE__), __LINE__);
              goto failure;
           }
@@ -129,7 +129,7 @@ S32  mon_read_mem_file()
              lRet = mon_get_mem_data();
              if(DOS_SUCC != lRet)
              {
-                logr_error("%s:Line %d:mon_get_memory_data|get memory data failure"
+                logr_error("%s:Line %d:mon_read_mem_file|get memory data failure"
                             , dos_get_filename(__FILE__), __LINE__);
              }
              goto success;

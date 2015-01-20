@@ -54,7 +54,7 @@ S32 mon_cpu_rslt_malloc()
    g_pstCpuRslt = (MON_CPU_RSLT_S *)dos_dmem_alloc(sizeof(MON_CPU_RSLT_S));
    if(!g_pstCpuRslt)
    {
-      logr_cirt("%s:Line %d:mon_cpu_rslt_struct_obj_alloc_memory |alloc memory failure,pstCpuRslt is %p!"
+      logr_cirt("%s:Line %d:mon_cpu_rslt_malloc |alloc memory failure,pstCpuRslt is %p!"
                 , dos_get_filename(__FILE__), __LINE__, g_pstCpuRslt);
       return DOS_FAIL;
    }
@@ -68,7 +68,7 @@ S32 mon_cpu_rslt_free()
 {
    if(!g_pstCpuRslt)
    {
-      logr_warning("%s:Line %d:mon_cpu_rslt_struct_obj_free_memory|free memory failure,pstCpuRslt is %p!"
+      logr_warning("%s:Line %d:mon_cpu_rslt_free|free memory failure,pstCpuRslt is %p!"
                     , dos_get_filename(__FILE__), __LINE__, g_pstCpuRslt);
       return DOS_FAIL;
    }
@@ -89,7 +89,7 @@ static S32  mon_get_cpu_data(MON_SYS_CPU_TIME_S * pstCpu)
 
    if (!pstCpu)
    {
-      logr_cirt("%s:line %d:mon_get_cpu_struct_obj_data|get cpu data failure,pstCpu is %p!"
+      logr_cirt("%s:line %d:mon_cpu_rslt_free|get cpu data failure,pstCpu is %p!"
                 , dos_get_filename(__FILE__), __LINE__, pstCpu);
       return DOS_FAIL;
    }
@@ -97,7 +97,7 @@ static S32  mon_get_cpu_data(MON_SYS_CPU_TIME_S * pstCpu)
    fp = fopen(m_szMonCPUInfoFile, "r");
    if(!fp)
    {
-      logr_cirt("%s:Line %d:mon_get_cpu_struct_obj_data|get cpu data failure,file \'%s\' fp is %p!"
+      logr_cirt("%s:Line %d:mon_cpu_rslt_free|get cpu data failure,file \'%s\' fp is %p!"
                 , dos_get_filename(__FILE__), __LINE__, m_szMonCPUInfoFile, fp);
       return DOS_FAIL;
    }
@@ -112,7 +112,7 @@ static S32  mon_get_cpu_data(MON_SYS_CPU_TIME_S * pstCpu)
       ulRet = mon_analyse_by_reg_expr(szBuff, " \t\n", pszAnalyseRslt, sizeof(pszAnalyseRslt)/sizeof(pszAnalyseRslt[0]));
       if(DOS_SUCC != ulRet)
       {
-         logr_error("%s:Line %d:mon_get_cpu_data|analyse sentence failure!"
+         logr_error("%s:Line %d:mon_cpu_rslt_free|analyse sentence failure!"
                     , dos_get_filename(__FILE__), __LINE__);
          goto failure;
       }
@@ -122,7 +122,7 @@ static S32  mon_get_cpu_data(MON_SYS_CPU_TIME_S * pstCpu)
          lRet = dos_atol(pszAnalyseRslt[ulRows], &lData);
          if(0 != lRet)
          {
-            logr_error("%s:Line %d:mon_get_cpu_data|dos_atol failure!"
+            logr_error("%s:Line %d:mon_cpu_rslt_free|dos_atol failure!"
                         , dos_get_filename(__FILE__), __LINE__);
             goto failure;
          }
@@ -180,7 +180,7 @@ S32 mon_init_cpu_queue()
    m_pstCPUQueue = (MON_CPU_QUEUE_S *)dos_dmem_alloc(sizeof(MON_CPU_QUEUE_S));
    if (!m_pstCPUQueue)
    {
-       logr_cirt("%s:line %d:mon_init_cpu_struct_obj_queue| init CPU queue failed,pstQueue is %p!"
+       logr_cirt("%s:line %d:mon_init_cpu_queue| init CPU queue failed,pstQueue is %p!"
                     , dos_get_filename(__FILE__),  __LINE__, m_pstCPUQueue);
        return DOS_FAIL;
    }
@@ -193,7 +193,7 @@ S32 mon_init_cpu_queue()
       lRet = mon_cpu_malloc(&pstCpu);
       if(DOS_SUCC != lRet)
       {
-         logr_cirt("%s:Line %d:mon_init_cpu_struct_obj_queue|alloc memory failure,lRet is %d!"
+         logr_cirt("%s:Line %d:mon_init_cpu_queue|alloc memory failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
          return DOS_FAIL;
       }   
@@ -214,7 +214,7 @@ S32 mon_init_cpu_queue()
       lRet = mon_cpu_malloc(&pstCpu);
       if(DOS_SUCC != lRet)
       {
-         logr_cirt("%s:Line %d:mon_init_cpu_struct_obj_queue|alloc memory failure,lRet is %d!"
+         logr_cirt("%s:Line %d:mon_init_cpu_queue|alloc memory failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
          return DOS_FAIL;
       }
@@ -222,7 +222,7 @@ S32 mon_init_cpu_queue()
       lRet = mon_cpu_en_queue(pstCpu);
       if(DOS_SUCC != lRet)
       {
-         logr_error("%s:Line %d:mon_init_cpu_struct_obj_queue|enter queue failure,lRet is %d!"
+         logr_error("%s:Line %d:mon_init_cpu_queue|enter queue failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
          return DOS_FAIL;
       }
@@ -236,7 +236,7 @@ S32 mon_init_cpu_queue()
          m_pstCPUQueue->pstCountdownXII = m_pstCPUQueue->pstRear;
       }
 
-      logr_debug("%s:Line %d:mon_init_cpu_struct_obj_queue|m_pstCPUQueue->lQueueLength = %d!"
+      logr_debug("%s:Line %d:mon_init_cpu_queue|m_pstCPUQueue->lQueueLength = %d!"
                     , dos_get_filename(__FILE__), __LINE__, m_pstCPUQueue->lQueueLength);
    }
 
@@ -248,13 +248,13 @@ static S32  mon_cpu_en_queue(MON_SYS_CPU_TIME_S * pstCpu)
 
       if (!m_pstCPUQueue)
       {
-         logr_cirt("%s:Line %d: mon_cpu_obj_struct_en_queue|enter queue failure,m_pstCPUQueue is %p!"
+         logr_cirt("%s:Line %d: mon_cpu_en_queue|enter queue failure,m_pstCPUQueue is %p!"
                     , dos_get_filename(__FILE__), __LINE__, m_pstCPUQueue);
          return DOS_FAIL;
       }
       if (!pstCpu)
       {
-         logr_cirt("%s:Line %d: mon_cpu_obj_struct_en_queue|enter queue failure,pstCpu is %p!"
+         logr_cirt("%s:Line %d: mon_cpu_en_queue|enter queue failure,pstCpu is %p!"
                     , dos_get_filename(__FILE__), __LINE__, pstCpu);
          return DOS_FAIL;
       }
@@ -285,14 +285,14 @@ static S32  mon_cpu_de_queue()
 {//从队头出队
    if(!m_pstCPUQueue)
    {
-      logr_cirt("%s:line %d:mon_cpu_struct_obj_de_queue|delete queue failure,pstCPUQueue is %p!"
+      logr_cirt("%s:line %d:mon_cpu_de_queue|delete queue failure,pstCPUQueue is %p!"
                 , dos_get_filename(__FILE__), __LINE__, m_pstCPUQueue);
       return DOS_FAIL;
    }
    
    if (!(m_pstCPUQueue->pstHead))
    {
-      logr_cirt("%s:line %d:mon_cpu_struct_obj_de_queue|delete queue failure,pstCPUQueue->pstHead is %p!"
+      logr_cirt("%s:line %d:mon_cpu_de_queue|delete queue failure,pstCPUQueue->pstHead is %p!"
                 ,dos_get_filename(__FILE__), __LINE__, m_pstCPUQueue->pstHead);
       return DOS_FAIL;
    }
@@ -373,7 +373,7 @@ S32  mon_get_cpu_rslt_data()
       lRet = mon_refresh_cpu_queue();
       if(DOS_SUCC != lRet)
       {
-         logr_error("%s:Line %d:mon_get_cpu_rslt_struct_obj_data|refresh cpu queue failure,lRet is %d!"
+         logr_error("%s:Line %d:mon_get_cpu_rslt_data|refresh cpu queue failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
          return DOS_FAIL;
       }
@@ -397,7 +397,7 @@ S32  mon_get_cpu_rslt_data()
       lRet = mon_refresh_cpu_queue();
       if(DOS_SUCC != lRet)
       {
-         logr_error("%s:Line %d:mon_get_cpu_rslt_struct_obj_data|refresh cpu queue failure,lRet is %d!"
+         logr_error("%s:Line %d:mon_get_cpu_rslt_data|refresh cpu queue failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
          return DOS_FAIL;
       }
@@ -419,7 +419,7 @@ S32  mon_get_cpu_rslt_data()
       lRet = mon_refresh_cpu_queue();
       if(DOS_SUCC != lRet)
       {
-         logr_error("%s:Line %d:mon_get_cpu_rslt_struct_obj_data|refresh cpu queue failure,lRet is %d!"
+         logr_error("%s:Line %d:mon_get_cpu_rslt_data|refresh cpu queue failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
          return DOS_FAIL;
       }
@@ -437,7 +437,7 @@ S32  mon_get_cpu_rslt_data()
    lRet = mon_refresh_cpu_queue();
    if(DOS_SUCC != lRet)
    {
-      logr_error("%s:Line %d:mon_get_cpu_rslt_struct_obj_data|refresh cpu queue failure,lRet is %d!"
+      logr_error("%s:Line %d:mon_get_cpu_rslt_data|refresh cpu queue failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
       return DOS_FAIL;
    }
@@ -454,14 +454,14 @@ static S32  mon_refresh_cpu_queue()
    lRet = mon_cpu_malloc(&pstCpu);
    if(DOS_SUCC != lRet)
    {
-      logr_cirt("%s:Line %d:mon_refresh_cpu_struct_obj_queue|resfresh queue failure,lRet is %d!"
+      logr_cirt("%s:Line %d:mon_refresh_cpu_queue|resfresh queue failure,lRet is %d!"
                 , dos_get_filename(__FILE__), __LINE__, lRet);
       return DOS_FAIL;
    }
 
    if(!m_pstCPUQueue)
    {
-      logr_cirt("%s:Line %d:mon_refresh_cpu_struct_obj_queue|refresh queue failure,m_pstCPUQueue is %p!"
+      logr_cirt("%s:Line %d:mon_refresh_cpu_queue|refresh queue failure,m_pstCPUQueue is %p!"
                 , dos_get_filename(__FILE__), __LINE__, m_pstCPUQueue);
       return DOS_FAIL;
    }
@@ -469,7 +469,7 @@ static S32  mon_refresh_cpu_queue()
    lRet = mon_get_cpu_data(pstCpu);
    if(DOS_SUCC != lRet)
    {
-      logr_error("%s:Line %d:mon_refresh_cpu_struct_obj_queue|get cpu data failure,lRet == %d!"
+      logr_error("%s:Line %d:mon_refresh_cpu_queue|get cpu data failure,lRet == %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
       return DOS_FAIL;
    }
@@ -477,14 +477,14 @@ static S32  mon_refresh_cpu_queue()
    lRet = mon_cpu_en_queue(pstCpu);
    if(DOS_SUCC != lRet)
    {
-      logr_error("%s:Line %d:mon_refresh_cpu_struct_obj_queue|lRet == %d!", __FILE__, __LINE__, lRet);
+      logr_error("%s:Line %d:mon_refresh_cpu_queue|lRet == %d!", __FILE__, __LINE__, lRet);
       return DOS_FAIL;
    }
    
    lRet = mon_cpu_de_queue();
    if(DOS_SUCC != lRet)
    {
-      logr_error("%s:Line %d:mon_refresh_cpu_struct_obj_queue|delete queue failure,lRet == %d!"
+      logr_error("%s:Line %d:mon_refresh_cpu_queue|delete queue failure,lRet == %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
       return DOS_FAIL;
    }
@@ -515,14 +515,14 @@ S32  mon_cpu_queue_destroy()
    MON_SYS_CPU_TIME_S * pstCpu = NULL;
    if(!m_pstCPUQueue)
    {
-      logr_cirt("%s:Line %d:mon_cpu_struct_obj_queue_destroy|destory queue failure,m_pstCPUQueue is %p!"
+      logr_cirt("%s:Line %d:mon_cpu_queue_destroy|destory queue failure,m_pstCPUQueue is %p!"
                 , dos_get_filename(__FILE__), __LINE__, m_pstCPUQueue);
       return DOS_FAIL;
    }
 
    if(!(m_pstCPUQueue->pstHead))
    {
-      logr_cirt("%s:Line %d: mon_cpu_struct_obj_queue_destroy|destroy queue failure,m_pstCPUQueue->pstHead is %p!"
+      logr_cirt("%s:Line %d: mon_cpu_queue_destroy|destroy queue failure,m_pstCPUQueue->pstHead is %p!"
                 , dos_get_filename(__FILE__), __LINE__, m_pstCPUQueue->pstHead);
                   
       dos_dmem_free(m_pstCPUQueue);

@@ -34,7 +34,7 @@ S32  mon_proc_malloc()
    pstProc = (MON_PROC_STATUS_S *)dos_dmem_alloc(MAX_PROC_CNT * sizeof(MON_PROC_STATUS_S));
    if(!pstProc)
    {
-      logr_cirt("%s:Line %d:mon_proc_struct_obj_array_alloc_memory|alloc memory failure, pstProc is %p!"
+      logr_cirt("%s:Line %d:mon_proc_malloc|alloc memory failure, pstProc is %p!"
                 , dos_get_filename(__FILE__), __LINE__, pstProc);
       return DOS_FAIL;
    }
@@ -55,7 +55,7 @@ S32 mon_proc_free()
    MON_PROC_STATUS_S * pstProc = g_pastProc[0];
    if(!pstProc)
    {
-      logr_cirt("%s:Line %d:mon_proc_struct_obj_array_free_memory|free memory failure,pstProc is %p!"
+      logr_cirt("%s:Line %d:mon_proc_free|free memory failure,pstProc is %p!"
                 , dos_get_filename(__FILE__), __LINE__ , pstProc);
       return DOS_FAIL;
    }
@@ -279,7 +279,6 @@ static S32   mon_get_threads_count(S32 lPid)
                             , dos_get_filename(__FILE__), __LINE__);
             }
             lThreadsCount = lData;
-            //mon_free_analyse_rslt(pszAnalyseRslt, sizeof(pszAnalyseRslt)/sizeof(pszAnalyseRslt[0]));
             goto success;
          }
       }
@@ -488,7 +487,7 @@ S32 mon_get_process_data()
    lRet = mon_get_proc_pid_list();
    if(DOS_SUCC != lRet)
    {
-      logr_error("%s:Line %d:mon_get_process_struct_obj_array_data|get proc pid list failure,lRet == %d!"
+      logr_error("%s:Line %d:mon_get_process_data|get proc pid list failure,lRet == %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
       return DOS_FAIL;
    }
@@ -497,7 +496,7 @@ S32 mon_get_process_data()
    {
       if(!g_pastProc[lRows])
       {
-          logr_cirt("%s:Line %d:mon_get_process_struct_obj_array_data|get proc data failure,g_pastProc[%d] is %p!"
+          logr_cirt("%s:Line %d:mon_get_process_data|get proc data failure,g_pastProc[%d] is %p!"
                     , dos_get_filename(__FILE__), __LINE__, lRows, g_pastProc[lRows]);
          return DOS_FAIL;
       }
@@ -505,7 +504,7 @@ S32 mon_get_process_data()
       lRet = mon_get_cpu_mem_time_info(g_pastProc[lRows]->lProcId, g_pastProc[lRows]);
       if(DOS_SUCC != lRet)
       {
-         logr_error("%s:Line %d:mon_get_process_struct_obj_array_data|get mem & cpu & time failure,lRet == %d!"
+         logr_error("%s:Line %d:mon_get_process_data|get mem & cpu & time failure,lRet == %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
          return DOS_FAIL;
       }
@@ -513,7 +512,7 @@ S32 mon_get_process_data()
       lRet = mon_get_openfile_count(g_pastProc[lRows]->lProcId);
       if(-1 == lRet)
       {
-         logr_error("%s:Line %d:mon_get_process_struct_obj_array_data|get open file count failure,lRet == %d!"
+         logr_error("%s:Line %d:mon_get_process_data|get open file count failure,lRet == %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
          return DOS_FAIL;
       }
@@ -522,7 +521,7 @@ S32 mon_get_process_data()
       lRet = mon_get_db_conn_count(g_pastProc[lRows]->lProcId);
       if(DOS_FAIL == lRet)
       {
-         logr_error("%s:Line %d:mon_get_process_struct_obj_array_data|get database connection failure,lRet == %d!"
+         logr_error("%s:Line %d:mon_get_process_data|get database connection failure,lRet == %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
          return DOS_FAIL;
       }
@@ -531,7 +530,7 @@ S32 mon_get_process_data()
       lRet = mon_get_threads_count(g_pastProc[lRows]->lProcId);
       if(-1 == lRet)
       {
-         logr_error("%s:Line %d:mon_get_process_struct_obj_array_data|get threads count failure,lRet == %d!"
+         logr_error("%s:Line %d:mon_get_process_data|get threads count failure,lRet == %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
          return DOS_FAIL;
       }
@@ -612,8 +611,6 @@ static S32  mon_check_all_process()
       for(ulCols = 0; ulCols < g_lPidCnt; ulCols++)
       {
          S8 * pszPtr = mon_str_get_name(g_pastProc[ulCols]->szProcName);
-
-         printf("\n====================================================:%s\n", pszPtr);
             
          if(0 == dos_strcmp(szProcName, "monitord"))
          {//当前进程是运行状态，不用查找
@@ -634,7 +631,6 @@ static S32  mon_check_all_process()
       if(DOS_FALSE == bHasStarted)
       {
          lRet = system(szProcCmd);
-         printf("\nExecute command:%s\n", szProcCmd);
          if(0 > lRet)
          {
             logr_error("%s:Line %d:mon_check_all_process|start process \'%s\' failure!"
@@ -797,7 +793,7 @@ S32  mon_get_process_formatted_info()
    lRet = mon_check_all_process();
    if(DOS_SUCC != lRet)
    {
-      logr_error("%s:Line %d:mon_get_process_struct_obj_array_formatted_info|check all process failure, lRet is %d!"
+      logr_error("%s:Line %d:mon_get_process_formatted_info|check all process failure, lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
       return DOS_FAIL;
    }
@@ -808,14 +804,14 @@ S32  mon_get_process_formatted_info()
 
       if(!g_pastProc[lRows])
       {
-         logr_error("%s:Line %d:mon_get_process_struct_obj_array_formatted_info|get proc formatted information failure,g_pastProc[%d] is %p!"
+         logr_error("%s:Line %d:mon_get_process_formatted_info|get proc formatted information failure,g_pastProc[%d] is %p!"
                     , dos_get_filename(__FILE__), __LINE__, lRows, g_pastProc[lRows]);
          return DOS_FAIL;
       }
 
       if(DOS_FALSE == mon_is_pid_valid(g_pastProc[lRows]->lProcId))
       {
-         logr_error("%s:Line %d:mon_get_process_struct_obj_array_formatted_info|proc pid %d is not exist or invalid!"
+         logr_error("%s:Line %d:mon_get_process_formatted_info|proc pid %d is not exist or invalid!"
                     , dos_get_filename(__FILE__), __LINE__, g_pastProc[lRows]->lProcId);
          continue;
       }
@@ -823,7 +819,7 @@ S32  mon_get_process_formatted_info()
       lMemRate = mon_get_proc_total_mem_rate();
       if(-1 == lMemRate)
       {
-         logr_error("%s:Line %d:mon_get_process_struct_obj_array_formatted_info|get all proc total memory rate failure,lMemRate is %d%%!"
+         logr_error("%s:Line %d:mon_get_process_formatted_info|get all proc total memory rate failure,lMemRate is %d%%!"
                     , dos_get_filename(__FILE__), __LINE__, lMemRate);
          return DOS_FAIL;
       }
@@ -831,7 +827,7 @@ S32  mon_get_process_formatted_info()
       lCPURate = mon_get_proc_total_cpu_rate();
       if(-1 == lCPURate)
       {
-         logr_error("%s:Line %d:mon_get_process_struct_obj_array_formatted_info|get all proc total CPU rate failure,lCPURate is %d%%!"
+         logr_error("%s:Line %d:mon_get_process_formatted_info|get all proc total CPU rate failure,lCPURate is %d%%!"
                     , dos_get_filename(__FILE__), __LINE__, lCPURate);
          return DOS_FAIL;
       }

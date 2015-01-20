@@ -71,7 +71,6 @@ VOID *mon_res_monitor(VOID *p)
       S32 lRet = 0;
       sleep(5);
 
-      printf("\n%s:Line %d:monitor start=============\n", dos_get_filename(__FILE__), __LINE__);
       pthread_mutex_lock(&g_stMonMutex); 
       /*  获取资源信息  */
       lRet = mon_get_res_info();
@@ -116,7 +115,6 @@ VOID *mon_res_monitor(VOID *p)
    
       pthread_cond_signal(&g_stMonCond);
       pthread_mutex_unlock(&g_stMonMutex);
-      printf("\n%s:Line %d:monitor ended==============\n", dos_get_filename(__FILE__), __LINE__);
    }
 }
 
@@ -134,7 +132,6 @@ VOID* mon_warning_handle(VOID *p)
      
      while (1)
      {
-        printf("\n%s:Line %d:handle start==============\n", dos_get_filename(__FILE__), __LINE__);
         pthread_mutex_lock(&g_stMonMutex);
         pthread_cond_wait(&g_stMonCond, &g_stMonMutex);
         while (1)
@@ -156,12 +153,10 @@ VOID* mon_warning_handle(VOID *p)
                break;
             case 0xf5000000: //进程异常处理
                {
-                  //lRet = mon_kill_all_monitor_process();
                   if(DOS_SUCC != lRet)
                   {
                      logr_error("%s:Line %d:mon_warning_handle|kill all monitor failure,lRet is %d!"
                                 , dos_get_filename(__FILE__), __LINE__, lRet);
-                     //mon_restart_computer();
                   }
                }
                break;
@@ -189,7 +184,6 @@ VOID* mon_warning_handle(VOID *p)
                         , dos_get_filename(__FILE__), __LINE__, lRet);
        }
        pthread_mutex_unlock(&g_stMonMutex);
-       printf("\n%s:Line %d:handle ended==============\n", dos_get_filename(__FILE__), __LINE__);
    }   
 }
 
@@ -380,7 +374,6 @@ static S32 mon_handle_excp()
        {
           logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
                         , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
-          //return DOS_FAIL;
        }
        pstMsg->ulWarningId = ulRet;
        
@@ -392,7 +385,6 @@ static S32 mon_handle_excp()
        {
           logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
-          //return DOS_FAIL;
        }
        
        lRet = mon_warning_msg_en_queue(pstMsg);
@@ -400,7 +392,6 @@ static S32 mon_handle_excp()
        {
           logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
-          //return DOS_FAIL;
        }
     }
 
@@ -424,7 +415,6 @@ static S32 mon_handle_excp()
           {
              logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
                         , dos_get_filename(__FILE__), __LINE__ , "0x", ulRet);
-             //return DOS_FAIL;
           }
           
           pstMsg->ulWarningId = ulRet;
@@ -436,7 +426,6 @@ static S32 mon_handle_excp()
           {
              logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
-             //return DOS_FAIL;
           }
           
           lRet = mon_warning_msg_en_queue(pstMsg);
@@ -444,7 +433,6 @@ static S32 mon_handle_excp()
           {
              logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
-             //return DOS_FAIL;
           }
           
        }
@@ -455,7 +443,6 @@ static S32 mon_handle_excp()
     {
        logr_error("%s:Line %d:mon_handle_excp|get total disk usage rate failure,lTotalDiskRate is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lTotalDiskRate);
-       //return DOS_FAIL;
     }
               
     if(lTotalDiskRate >= g_pstCond->lDiskThreshold)
@@ -476,7 +463,6 @@ static S32 mon_handle_excp()
        {
           logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,lRet is %s%x!"
                         , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
-          //return DOS_FAIL;
        }
                  
        pstMsg->ulWarningId = ulRet;
@@ -488,7 +474,6 @@ static S32 mon_handle_excp()
        {
           logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
-          //return DOS_FAIL;
        }
        
        lRet = mon_warning_msg_en_queue(pstMsg);
@@ -496,7 +481,6 @@ static S32 mon_handle_excp()
        {
           logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
-          //return DOS_FAIL;
        }
     }
    
@@ -520,7 +504,6 @@ static S32 mon_handle_excp()
        {
           logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,ulRet is %s%x"
                         , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
-          //return DOS_FAIL;
        }
        pstMsg->ulWarningId = ulRet;
        
@@ -532,7 +515,6 @@ static S32 mon_handle_excp()
        {
           logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
-          //return DOS_FAIL;
        }
        
        lRet = mon_warning_msg_en_queue(pstMsg);
@@ -540,7 +522,6 @@ static S32 mon_handle_excp()
        {
           logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
-          //return DOS_FAIL;
        }
     }
 
@@ -563,7 +544,6 @@ static S32 mon_handle_excp()
           {
              logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
                         , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
-             //return DOS_FAIL;
           }
           
           pstMsg->ulWarningId = ulRet;
@@ -575,7 +555,6 @@ static S32 mon_handle_excp()
           {
              logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
-             //return DOS_FAIL;
           }
           
           lRet = mon_warning_msg_en_queue(pstMsg);
@@ -583,7 +562,6 @@ static S32 mon_handle_excp()
           {
              logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
-             //return DOS_FAIL;
           }
        }
     }
@@ -593,7 +571,6 @@ static S32 mon_handle_excp()
     {
        logr_error("%s:Line %d:mon_handle_excp|get all proc total cpu rate failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-       //return DOS_FAIL;
     }
               
     if(lRet > g_pstCond->lProcCPUThreshold)
@@ -613,7 +590,6 @@ static S32 mon_handle_excp()
         {
           logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
                         , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
-          //return DOS_FAIL;
         }
         
         pstMsg->ulWarningId = ulRet;
@@ -625,7 +601,6 @@ static S32 mon_handle_excp()
         {
            logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
-           //return DOS_FAIL;
         }
         
         lRet = mon_warning_msg_en_queue(pstMsg);
@@ -633,7 +608,6 @@ static S32 mon_handle_excp()
         {
            logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
-           //return DOS_FAIL;
         }
         
     }
@@ -643,7 +617,6 @@ static S32 mon_handle_excp()
     {
        logr_error("%s:Line %d:mon_handle_excp|get all proc total memory usage rate failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-       //return DOS_FAIL;
     }
 
     if(lRet >= g_pstCond->lProcMemThreshold)
@@ -663,7 +636,6 @@ static S32 mon_handle_excp()
        {
          logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
                     , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
-         //return DOS_FAIL;
        }
        
        pstMsg->ulWarningId = ulRet;
@@ -676,7 +648,6 @@ static S32 mon_handle_excp()
        {
          logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-         //return DOS_FAIL;
        }
        
        lRet = mon_warning_msg_en_queue(pstMsg);
@@ -684,7 +655,6 @@ static S32 mon_handle_excp()
        {
          logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-         //return DOS_FAIL;
        }
     }
 
@@ -769,7 +739,6 @@ static S32 mon_add_data_to_db()
    {
       logr_error("%s:Line %d:mon_add_data_to_db|sql:%s\nexecute failure, lRet is %d!"
                     ,dos_get_filename(__FILE__), __LINE__, szSQLCmd, lRet);
-      //return DOS_FAIL;
    }
              
    return DOS_SUCC;
@@ -935,7 +904,6 @@ static S32 mon_add_warning_record(U32 ulResId)
    {
       logr_error("%s:Line %d:mon_add_warning_record|sql:%s\n execute failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, szSQLCmd, lRet);
-      //return DOS_FAIL;
    }
 
    return DOS_SUCC;
@@ -1051,7 +1019,6 @@ S32 mon_res_destroy()
    {
       logr_error("%s:Line %d:mon_res_destroy|mem resource destroy failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      //return DOS_FAIL;
    }
    
    lRet = mon_cpu_rslt_free();
@@ -1059,7 +1026,6 @@ S32 mon_res_destroy()
    {
       logr_error("%s:Line %d:mon_res_destroy|cpu rslt resource destroy success,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      //return DOS_FAIL;
    }
 
    lRet = mon_disk_free();
@@ -1067,7 +1033,6 @@ S32 mon_res_destroy()
    {
       logr_error("%s:Line %d:mon_res_destroy|disk resource destroy failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      //return DOS_FAIL;
    }
 
    lRet = mon_netcard_free();
@@ -1075,7 +1040,6 @@ S32 mon_res_destroy()
    {
       logr_error("%s:Line %d:mon_res_destroy|netcard resource destroy failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      //return DOS_FAIL;
    }
 
    lRet = mon_proc_free();
@@ -1083,7 +1047,6 @@ S32 mon_res_destroy()
    {
       logr_error("%s:Line %d:mon_res_destroy|process resource destroy failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      //return DOS_FAIL;
    }
 
    lRet = mon_destroy_warning_msg_queue();
@@ -1091,7 +1054,6 @@ S32 mon_res_destroy()
    {
       logr_error("%s:Line %d:mon_res_destroy|destroy warning msg queue failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      //return DOS_FAIL;
    }
 
    lRet = mon_cpu_queue_destroy();
@@ -1099,7 +1061,6 @@ S32 mon_res_destroy()
    {
       logr_error("%s:Line %d:mon_res_destroy|destroy cpu queue failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      //return DOS_FAIL;
    }
    
    lRet = mon_close_mysql_conn();
@@ -1107,7 +1068,6 @@ S32 mon_res_destroy()
    {
       logr_error("%s:Line %d:mon_res_destroy|close mysql connection failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      //return DOS_FAIL;
    }
 
    lRet = mon_deinit_str_array();

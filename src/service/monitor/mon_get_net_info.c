@@ -212,7 +212,7 @@ S32 mon_get_netcard_data()
 
          if(!g_pastNet[lLength])
          {
-            logr_cirt("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,m_pastNet[%d] is %p!"
+            logr_cirt("%s:Line %d:mon_get_netcard_data|get netcard data failure,m_pastNet[%d] is %p!"
                         , dos_get_filename(__FILE__), __LINE__ ,lLength ,g_pastNet[lLength]);
             goto failure;
          }
@@ -223,7 +223,7 @@ S32 mon_get_netcard_data()
 
          if (ioctl(lFd, SIOCGIFFLAGS, &stIfrcopy))
          {
-            logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,error no is %s"
+            logr_error("%s:Line %d:mon_get_netcard_data|get netcard data failure,error no is %s"
                         , dos_get_filename(__FILE__), __LINE__, strerror(errno));
             goto failure;
          }
@@ -244,13 +244,13 @@ S32 mon_get_netcard_data()
          }
          else
          {
-            logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,error no is %s"
+            logr_error("%s:Line %d:mon_get_netcard_data|get netcard data failure,error no is %s"
                         , dos_get_filename(__FILE__), __LINE__, strerror(errno));
             goto failure;
          }
              
          if (!ioctl(lFd, SIOCGIFADDR, (S8 *)&astReq[lInterfaceNum]))
-         {
+         {     
             dos_snprintf(szIPv4Addr, sizeof(szIPv4Addr), "%s",
                (S8 *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_addr))->sin_addr));
 
@@ -260,7 +260,7 @@ S32 mon_get_netcard_data()
          }
          else
          {
-           logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,error no is %s"
+           logr_error("%s:Line %d:mon_get_netcard_data|get netcard data failure,error no is %s"
                         , dos_get_filename(__FILE__), __LINE__, strerror(errno));
            goto failure;
          }
@@ -275,7 +275,7 @@ S32 mon_get_netcard_data()
          }
          else
          {
-            logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,error no is %s"
+            logr_error("%s:Line %d:mon_get_netcard_data|get netcard data failure,error no is %s"
                         , dos_get_filename(__FILE__), __LINE__, strerror(errno));
             goto failure;
          }
@@ -290,7 +290,7 @@ S32 mon_get_netcard_data()
          }
          else
          {
-             logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,error no is %s"
+             logr_error("%s:Line %d:mon_get_netcard_data|get netcard data failure,error no is %s"
                         , dos_get_filename(__FILE__), __LINE__, strerror(errno));
              goto failure;
          }
@@ -305,7 +305,7 @@ S32 mon_get_netcard_data()
             S32 lRet = mon_get_max_trans_speed(g_pastNet[lLength]->szNetDevName);
             if(-1 == lRet)
             {
-               logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get max transspeed failure,lRet is %d!"
+               logr_error("%s:Line %d:mon_get_netcard_data|get max transspeed failure,lRet is %d!"
                             , dos_get_filename(__FILE__), __LINE__, lRet);
                goto failure;
             }
@@ -317,7 +317,7 @@ S32 mon_get_netcard_data()
    }
    else
    {
-     logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,error no is %s"
+     logr_error("%s:Line %d:mon_get_netcard_data|get netcard data failure,error no is %s"
                 , dos_get_filename(__FILE__), __LINE__, strerror(errno));
      goto failure;
    }
@@ -345,7 +345,7 @@ S32  mon_netcard_formatted_info()
 
        if(!g_pastNet[lRows])
        {
-          logr_cirt("%s:Line %d:mon_netcard_struct_obj_array_formatted_info|get netcard formatted information failure,m_pastNet[%d] is %p!"
+          logr_cirt("%s:Line %d:mon_netcard_formatted_info|get netcard formatted information failure,m_pastNet[%d] is %p!"
                     , dos_get_filename(__FILE__), __LINE__, lRows, g_pastNet[lRows]);
           return DOS_FAIL;
        }

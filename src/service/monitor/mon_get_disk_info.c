@@ -217,7 +217,7 @@ S32 mon_get_partition_formatted_info()
    lDiskKBytes = mon_get_total_disk_kbytes();
    if(DOS_SUCC == lDiskKBytes)
    {
-      logr_error("%s:Line %d:mon_get_partition_struct_obj_array_formatted_info|get total disk bytes failure,lDiskKBytes is %d!", 
+      logr_error("%s:Line %d:mon_get_partition_formatted_info|get total disk bytes failure,lDiskKBytes is %d!", 
                     dos_get_filename(__FILE__), __LINE__, lDiskKBytes);
       return DOS_FAIL;
    }
@@ -225,7 +225,7 @@ S32 mon_get_partition_formatted_info()
    lDiskUsageRate = mon_get_total_disk_usage_rate();
    if(-1 == lDiskUsageRate)
    {
-      logr_error("%s:Line %d:mon_get_partition_struct_obj_array_formatted_info|get total disk usage rate failure,lDiskUsageRate is %d!",
+      logr_error("%s:Line %d:mon_get_partition_formatted_info|get total disk usage rate failure,lDiskUsageRate is %d!",
                  dos_get_filename(__FILE__), __LINE__, lDiskUsageRate);
       return DOS_FAIL;
    }
@@ -233,7 +233,7 @@ S32 mon_get_partition_formatted_info()
    lDiskTemperature = mon_get_disk_temperature();
    if(-1 == lDiskTemperature)
    {
-      logr_error("%s:Line %d:mon_get_partition_struct_obj_array_formatted_info|get disk temperature failure,lDiskTemperature is %d", 
+      logr_error("%s:Line %d:mon_get_partition_formatted_info|get disk temperature failure,lDiskTemperature is %d", 
                  dos_get_filename(__FILE__) ,__LINE__, lDiskTemperature);
       return DOS_FAIL;
    }
@@ -252,7 +252,7 @@ S32 mon_get_partition_formatted_info()
 
       if(!g_pastPartition[lRows])
       {
-         logr_cirt("%s:Line %d:mon_get_partition_struct_obj_array_formatted_info|get partition formatted information failure,m_pastPartition[%d] is %p!"
+         logr_cirt("%s:Line %d:mon_get_partition_formatted_info|get partition formatted information failure,m_pastPartition[%d] is %p!"
                     , dos_get_filename(__FILE__), __LINE__, lRows, g_pastPartition[lRows]);
          return DOS_FAIL;
       }
@@ -302,3 +302,4 @@ S32 mon_get_total_disk_kbytes()
 #ifdef __cplusplus
 }
 #endif
+
