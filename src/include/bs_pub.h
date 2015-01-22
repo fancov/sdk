@@ -17,6 +17,8 @@
 extern "C"{
 #endif /* __cplusplus */
 
+#include "json-c/json.h"
+
 
 #define BS_MSG_INTERFACE_VERSION        0x101   /* 消息版本号 */
 #define BS_MAX_PASSWORD_LEN             16      /* 最大密码长度 */

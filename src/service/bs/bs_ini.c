@@ -408,6 +408,13 @@ S32 bs_start()
         return DOS_FAIL;
     }
 
+    lRet = pthread_create(&tid, NULL, bss_recv_msg_from_web, NULL);
+    if (lRet < 0)
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: create pthread(recv_msg_from_web) error!");
+        return DOS_FAIL;
+    }    
+
     lRet = pthread_create(&tid, NULL, bss_aaa, NULL);
     if (lRet < 0)
     {

@@ -22,6 +22,43 @@ extern "C"{
 #include "bsd_db.h"
 
 
+/* 解析表数据并执行相应操作 */
+S32 bsd_parse_operate_tbl(S8 *pszData, S32 lDataLen)
+{
+    struct json_object  *pstJsonObj, *pstJsonValue;
+
+    if (DOS_ADDR_INVALID(pszData))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstJsonObj = json_tokener_parse(pszData);
+    if (DOS_ADDR_INVALID(pstJsonObj))
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Info: Invalid json format!");
+        return DOS_FAIL;
+    }
+
+    if (!json_object_object_get_ex(pstJsonObj, "table", &pstJsonValue) || !pstJsonValue) {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Info: Do not set the table name!");
+        json_object_put(pstJsonObj);
+        return DOS_FAIL;
+    }
+
+    if (!json_object_object_get_ex(pstJsonObj, "dboperate", &pstJsonValue) || !pstJsonValue) {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Info: Do not set the table operation!");
+        json_object_put(pstJsonObj);
+        return DOS_FAIL;
+    }
+
+    //TODO 加入操作数据表链表,等待处理结束
+
+    /* 释放资源 */
+    json_object_put(pstJsonObj);
+
+    return DOS_SUCC;
+}
 
 /* 表遍历请求处理 */
 S32 bsd_walk_tbl_req(DLL_NODE_S *pMsgNode)

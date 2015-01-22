@@ -13,7 +13,7 @@ DOS_INCLUDES			= -I$(SROUCE)/include
 
 SUFFIX					= o
 
-LIBS					= -lpthread -lmysqlclient -lmxml
+LIBS					= -lpthread -lmysqlclient -lmxml -ljson-c
 
 MYSQL_HEADERS			= -I/usr/include/mysql
 MYSQL_LIBS				= -L/usr/lib64/mysql
@@ -23,20 +23,20 @@ MYSQL_LIBS				= -L/usr/lib64/mysql
 ########################################################################
 #                      Collect other makefile                          # 
 ########################################################################
-include $(SROUCE)/util/tools/Makefile
-include $(SROUCE)/util/log/Makefile
-include $(SROUCE)/util/memory/Makefile
-include $(SROUCE)/util/debug/Makefile
-include $(SROUCE)/util/config/Makefile
-include $(SROUCE)/util/timer/Makefile
-include $(SROUCE)/util/hash/Makefile
-include $(SROUCE)/util/list/Makefile
-include $(SROUCE)/util/task/Makefile
-include $(SROUCE)/util/heartbeat/Makefile
-include $(SROUCE)/cfg/Makefile
-include $(SROUCE)/service/Makefile
-# include $(SROUCE)/service/pts/Makefile
-# include $(SROUCE)/service/ptlib/Makefile
+include $(SROUCE)/util/tools/Makefile.mk
+include $(SROUCE)/util/log/Makefile.mk
+include $(SROUCE)/util/memory/Makefile.mk
+include $(SROUCE)/util/debug/Makefile.mk
+include $(SROUCE)/util/config/Makefile.mk
+include $(SROUCE)/util/timer/Makefile.mk
+include $(SROUCE)/util/hash/Makefile.mk
+include $(SROUCE)/util/list/Makefile.mk
+include $(SROUCE)/util/task/Makefile.mk
+include $(SROUCE)/util/heartbeat/Makefile.mk
+include $(SROUCE)/cfg/Makefile.mk
+include $(SROUCE)/service/Makefile.mk
+# include $(SROUCE)/service/pts/Makefile.mk
+# include $(SROUCE)/service/ptlib/Makefile.mk
 include $(SROUCE)/service/bs/MakeBS
 
 ########################################################################

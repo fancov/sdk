@@ -618,6 +618,7 @@ VOID bs_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...);
 S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv);
 
 /* bsd_mngt.c */
+S32 bsd_parse_operate_tbl(S8 *pszData, S32 lDataLen);
 VOID *bsd_recv_bss_msg(VOID * arg);
 VOID *bsd_backup(VOID *arg);
 
@@ -625,6 +626,7 @@ VOID *bsd_backup(VOID *arg);
 VOID *bss_recv_bsd_msg(VOID * arg);
 VOID *bss_send_msg2app(VOID *arg);
 VOID *bss_recv_msg_from_app(VOID *arg);
+VOID *bss_recv_msg_from_web(VOID *arg);
 VOID *bss_aaa(VOID *arg);
 VOID *bss_cdr(VOID *arg);
 VOID *bss_billing(VOID *arg);
