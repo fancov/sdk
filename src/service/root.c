@@ -27,11 +27,10 @@ extern "C"{
 
 S32 root(S32 _argc, S8 ** _argv)
 {
-    S32 lRet = 0;
 #if INCLUDE_DEBUG_CLI_SERVER
     telnetd_start();
 #elif INCLUDE_BH_SERVER
-
+    S32 lRet = 0;
 
     if (heartbeat_init())
     {

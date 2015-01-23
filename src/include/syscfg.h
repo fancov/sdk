@@ -17,6 +17,7 @@
 extern "C"{
 #endif /* __cplusplus */
 
+#define DB_MYSQL 1
 
 #ifdef DIPCC_CTRL_PANEL
 

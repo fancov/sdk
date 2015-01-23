@@ -17,11 +17,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <dos/dos_types.h>
-#include <syscfg.h>
 extern "C"{
+#include <dos.h>
 #include <dos/dos_debug.h>
 #include <dos/dos_def.h>
+#include <dos/dos_db.h>
 }
 
 #if (INCLUDE_SYSLOG_ENABLE && INCLUDE_SYSLOG_DB)
@@ -34,10 +34,9 @@ extern "C"{
 class CLogDB : virtual public CLog
 {
 private:
-    MYSQL mysql;          /* mysql链接句柄 */
-    BOOL  blInited;       /* mysql是否被初始化了 */
-    S8 sz_table_name[64];
-    U32 ulLogLevel;
+    DB_HANDLE_ST  *pstDBHandle;
+    BOOL          blInited;       /* mysql是否被初始化了 */
+    U32           ulLogLevel;
 public:
     CLogDB();
     ~CLogDB();

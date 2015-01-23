@@ -16,9 +16,8 @@
 
 CLogDB::CLogDB()
 {
-    sz_table_name[0] = '\0';
     blInited = 0;
-    memset(&mysql, 0, sizeof(mysql));
+    pstDBHandle = NULL;
 
     this->ulLogLevel = LOG_LEVEL_INFO;
 }
@@ -26,42 +25,36 @@ CLogDB::CLogDB()
 
 CLogDB::~CLogDB()
 {
-    mysql_close(&mysql);
+    if (pstDBHandle)
+    {
+        db_destroy(&pstDBHandle);
+    }
 }
 
 
 S32 CLogDB::log_init()
 {
-    char value = 1;
     U16 usDBPort;
     S8 szDBHost[MAX_DB_INFO_LEN] = {0, };
     S8 szDBUsername[MAX_DB_INFO_LEN] = {0, };
     S8 szDBPassword[MAX_DB_INFO_LEN] = {0, };
-    S8 szDBName[MAX_DB_INFO_LEN] = {0, };
-
 
     if (config_get_db_host(szDBHost, MAX_DB_INFO_LEN) < 0)
     {
         DOS_ASSERT(0);
-        return -1;
+        goto errno_proc;
     }
 
     if (config_get_db_user(szDBUsername, MAX_DB_INFO_LEN) < 0)
     {
         DOS_ASSERT(0);
-        return -1;
+        goto errno_proc;
     }
 
     if (config_get_db_password(szDBPassword, MAX_DB_INFO_LEN) < 0)
     {
         DOS_ASSERT(0);
-        return -1;
-    }
-
-    if (config_get_db_dbname(szDBName, MAX_DB_INFO_LEN) < 0)
-    {
-        DOS_ASSERT(0);
-        return -1;
+        goto errno_proc;
     }
 
     usDBPort = config_get_db_port();
@@ -70,19 +63,37 @@ S32 CLogDB::log_init()
         usDBPort = 3306;
     }
 
-    mysql_init(&mysql);
-
-    mysql_options(&mysql, MYSQL_OPT_RECONNECT, &value);
-
-    if (!mysql_real_connect(&mysql, szDBHost, szDBUsername, szDBPassword, szDBName, 0, NULL, 0))
+    pstDBHandle = db_create(DB_TYPE_MYSQL);
+    if (!pstDBHandle)
     {
-        dos_printf( "Error connecting to database: %s\n", mysql_error(&mysql));
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    dos_strncpy(pstDBHandle->szHost, szDBHost, sizeof(pstDBHandle->szHost));
+    pstDBHandle->szHost[sizeof(pstDBHandle->szHost) - 1] = '\0';
+    dos_strncpy(pstDBHandle->szUsername, szDBUsername, sizeof(pstDBHandle->szUsername));
+    pstDBHandle->szUsername[sizeof(pstDBHandle->szUsername) - 1] = '\0';
+    dos_strncpy(pstDBHandle->szPassword, szDBPassword, sizeof(pstDBHandle->szUsername));
+    pstDBHandle->szUsername[sizeof(pstDBHandle->szUsername) - 1] = '\0';
+    pstDBHandle->usPort = usDBPort;
+
+    if (db_open(pstDBHandle) < 0)
+    {
+        DOS_ASSERT(0);
+
+        db_destroy(&pstDBHandle);
+        pstDBHandle = NULL;
         return -1;
     }
 
     blInited = 1;
 
     return 0;
+
+errno_proc:
+
+    return -1;
 }
 
 /**
@@ -130,8 +141,8 @@ void CLogDB::log_write(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLev
         return;
     }
 
-    snprintf(szQuery, sizeof(szQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\");"
-                , "dos_log"
+    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\");"
+                , "test.dos_log"
                 , _pszTime
                 , _pszLevel
                 , _pszType
@@ -141,7 +152,7 @@ void CLogDB::log_write(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLev
 
     //printf("%s\n", szQuery);
 
-    mysql_real_query(&mysql, szQuery, (unsigned int)strlen(szQuery));
+    db_query(pstDBHandle, szQuery, NULL, NULL, NULL);
 }
 
 VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_pszOpterand, const S8* _pszResult, const S8 *_pszMsg)
@@ -153,8 +164,8 @@ VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
         return;
     }
 
-    snprintf(szQuery, sizeof(szQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\");"
-                    , "dos_olog"
+    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\");"
+                    , "test.dos_olog"
                     , _pszTime
                     , _pszOpterator
                     , dos_get_process_name()
@@ -164,7 +175,7 @@ VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
 
     //printf("%s", szQuery);
 
-    mysql_real_query(&mysql, szQuery, (unsigned int)strlen(szQuery));
+    db_query(pstDBHandle, szQuery, NULL, NULL, NULL);
 
 }
 
