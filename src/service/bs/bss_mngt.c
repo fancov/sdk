@@ -347,9 +347,8 @@ VOID *bss_send_msg2app(VOID *arg)
 /* 业务层处理来自web 的消息 */
 VOID *bss_recv_msg_from_web(VOID *arg)
 {
-    S32                 lSocket, lAcceptedSocket, lRet, lAddrLen, lDataLen;
+    S32                 lSocket, lAcceptedSocket, lRet, lAddrLen;
     S8                  strBuff[BS_MAX_MSG_LEN];
-    S8                  *pszData;
     BS_MSG_TAG          *pstMsgTag;
     struct sockaddr_un  stAddr, stAddrIn;
     struct timeval stTimeout={2, 0};
@@ -443,20 +442,11 @@ VOID *bss_recv_msg_from_web(VOID *arg)
 
         pstMsgTag = (BS_MSG_TAG *)strBuff;
 
-        /* 读取表数据并解析操作 */
-        pszData = strBuff + sizeof(BS_MSG_TAG);
-        lDataLen = lRet - sizeof(BS_MSG_TAG);
-        lRet = bsd_parse_operate_tbl(pszData, lDataLen);
-        if (DOS_SUCC == lRet)
-        {
-            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Table requested operation: Success.");
+        pthread_mutex_lock(&g_mutexTableUpdate);
+        g_bTableUpdate = TRUE;
+        pthread_mutex_unlock(&g_mutexTableUpdate);
 
-            send(lAcceptedSocket, "1", 1, 0);
-        } else {
-            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Table requested operation: Failure.");
-
-            send(lAcceptedSocket, "0", 1, 0);
-        }
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Table requested operation: Success.");
 
         close(lAcceptedSocket);
     }

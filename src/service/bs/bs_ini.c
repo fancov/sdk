@@ -21,6 +21,9 @@ extern "C"{
 #include "bsd_db.h"
 #include "bs_def.h"
 
+/* Web提醒BS表数据已更新,请求刷新数据 */
+pthread_mutex_t g_mutexTableUpdate = PTHREAD_MUTEX_INITIALIZER;
+BOOL                 g_bTableUpdate = FALSE;
 
 pthread_mutex_t g_mutexCustomerTbl = PTHREAD_MUTEX_INITIALIZER;
 HASH_TABLE_S    *g_astCustomerTbl = NULL;
