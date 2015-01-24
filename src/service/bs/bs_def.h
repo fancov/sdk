@@ -534,6 +534,9 @@ typedef struct stBSS_CB
     DOS_TMR_ST  hHourCycleTmr;              /* Ñ­»·¶¨Ê±Æ÷ */
 }BSS_CB;
 
+extern pthread_mutex_t g_mutexTableUpdate;
+extern BOOL                 g_bTableUpdate;
+
 extern pthread_mutex_t  g_mutexCustomerTbl;
 extern HASH_TABLE_S     *g_astCustomerTbl;
 extern pthread_mutex_t  g_mutexBillingPackageTbl;
@@ -618,7 +621,6 @@ VOID bs_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...);
 S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv);
 
 /* bsd_mngt.c */
-S32 bsd_parse_operate_tbl(S8 *pszData, S32 lDataLen);
 VOID *bsd_recv_bss_msg(VOID * arg);
 VOID *bsd_backup(VOID *arg);
 
