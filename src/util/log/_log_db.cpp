@@ -38,6 +38,7 @@ S32 CLogDB::log_init()
     S8 szDBHost[MAX_DB_INFO_LEN] = {0, };
     S8 szDBUsername[MAX_DB_INFO_LEN] = {0, };
     S8 szDBPassword[MAX_DB_INFO_LEN] = {0, };
+    S8 szDBName[MAX_DB_INFO_LEN] = {0, };
 
     if (config_get_db_host(szDBHost, MAX_DB_INFO_LEN) < 0)
     {
@@ -63,6 +64,13 @@ S32 CLogDB::log_init()
         usDBPort = 3306;
     }
 
+    if (config_get_db_dbname(szDBName, MAX_DB_INFO_LEN) < 0)
+    {
+        DOS_ASSERT(0);
+        goto errno_proc;
+    }
+
+
     pstDBHandle = db_create(DB_TYPE_MYSQL);
     if (!pstDBHandle)
     {
@@ -72,10 +80,16 @@ S32 CLogDB::log_init()
 
     dos_strncpy(pstDBHandle->szHost, szDBHost, sizeof(pstDBHandle->szHost));
     pstDBHandle->szHost[sizeof(pstDBHandle->szHost) - 1] = '\0';
+
     dos_strncpy(pstDBHandle->szUsername, szDBUsername, sizeof(pstDBHandle->szUsername));
     pstDBHandle->szUsername[sizeof(pstDBHandle->szUsername) - 1] = '\0';
-    dos_strncpy(pstDBHandle->szPassword, szDBPassword, sizeof(pstDBHandle->szUsername));
-    pstDBHandle->szUsername[sizeof(pstDBHandle->szUsername) - 1] = '\0';
+
+    dos_strncpy(pstDBHandle->szPassword, szDBPassword, sizeof(pstDBHandle->szPassword));
+    pstDBHandle->szPassword[sizeof(pstDBHandle->szPassword) - 1] = '\0';
+
+    dos_strncpy(pstDBHandle->szDBName, szDBName, sizeof(pstDBHandle->szDBName));
+    pstDBHandle->szDBName[sizeof(pstDBHandle->szDBName) - 1] = '\0';
+
     pstDBHandle->usPort = usDBPort;
 
     if (db_open(pstDBHandle) < 0)

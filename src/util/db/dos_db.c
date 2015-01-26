@@ -177,6 +177,7 @@ FUNCATTR S32 db_open(DB_HANDLE_ST *pstDBHandle)
                             , pstDBHandle->usPort
                             , pstDBHandle->szUsername
                             , pstDBHandle->szPassword
+                            , pstDBHandle->szDBName
                             , NULL) < 0)
             {
                 db_assert(0);
