@@ -17,6 +17,7 @@
 extern "C"{
 #endif /* __cplusplus */
 
+#include <env.h>
 
 #ifdef DIPCC_CTRL_PANEL
 
@@ -55,7 +56,7 @@ S8 *dos_get_process_version();
 S8 *dos_get_pid_file_path(S8 *pszBuff, S32 lMaxLen);
 S8 *dos_get_sys_root_path();
 S32 dos_set_process_name(S8 *pszName);
-const S8 *dos_get_filename(const S8* path);
+DLLEXPORT S8 *dos_get_filename(const S8* path);
 
 
 #ifdef __cplusplus

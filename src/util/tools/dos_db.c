@@ -696,7 +696,7 @@ DLLEXPORT U32 dos_odbc_handle_callback_exec(S8 *file
             y++;
         }
 
-        if (callback(pdata, y, vals, names))
+        if (callback(pdata, y, vals, names) != DOS_SUCC)
         {
             done = 1;
         }

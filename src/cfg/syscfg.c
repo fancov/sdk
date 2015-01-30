@@ -10,10 +10,10 @@
  *     History:
  */
 
-/*
+
 #ifdef __cplusplus
 extern "C"{
-#endif*/ /* __cplusplus */
+#endif /* __cplusplus */
     
 #include <dos.h>
 
@@ -181,7 +181,7 @@ S32 dos_set_process_name(S8 *pszName)
  * ·µ»ØÖµ
  *      ³É¹¦·µÎÄ¼þÃûØ0£¬Ê§°Ü·µ»ØNULL
  */
-const S8 *dos_get_filename(const S8* path)
+DLLEXPORT S8 *dos_get_filename(const S8* path)
 {
     const S8 *pSprit = NULL;
     const S8 *pNext = NULL;
@@ -221,7 +221,7 @@ const S8 *dos_get_filename(const S8* path)
     }
 }
 
-/*
+
 #ifdef __cplusplus
 }
-#endif*/ /* __cplusplus */
+#endif /* __cplusplus */
