@@ -265,7 +265,7 @@ void *dos_log_main_loop(void *_ptr)
     while(1)
     {
         pthread_mutex_lock(&g_mutexLogTask);
-        i=pthread_cond_wait(&g_condLogTask, &g_mutexLogTask);
+        i = pthread_cond_wait(&g_condLogTask, &g_mutexLogTask);
         //printf("wait:%p, %p, ret:%d\n", g_LogCacheList->pstNext, g_LogCacheList, i);
 
         /* 顺序处理所有日志 */
@@ -375,6 +375,7 @@ VOID dos_log_stop()
     pthread_mutex_lock(&g_mutexLogTask);
     g_lLogWaitingExit = 1;
     pthread_mutex_unlock(&g_mutexLogTask);
+	g_lLogInitFinished = 0;
 
     dos_log(LOG_LEVEL_NOTIC, LOG_TYPE_RUNINFO, (S8 *)"log task will be stopped!");
 
@@ -593,7 +594,7 @@ DLLEXPORT VOID dos_volog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulR
     S8 szBuff[1024];
 
     va_start( argptr, format );
-    vsnprintf( szBuff, 511, format, argptr );
+    vsnprintf( szBuff, sizeof(szBuff), format, argptr );
     va_end( argptr );
     szBuff[sizeof(szBuff) -1] = '\0';
 
@@ -612,7 +613,7 @@ DLLEXPORT VOID dos_vlog(S32 _lLevel, S32 _lType, const S8 *format, ...)
     char buf[1024];
 
     va_start( argptr, format );
-    vsnprintf( buf, 511, format, argptr );
+    vsnprintf( buf, sizeof(buf), format, argptr );
     va_end( argptr );
     buf[sizeof(buf) -1] = '\0';
 

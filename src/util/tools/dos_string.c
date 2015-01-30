@@ -16,6 +16,7 @@ extern "C"{
 
 #include <dos.h>
 
+
 /**
  * 函数：S8* dos_strcpy(S8 *dst, const S8 *src)
  * 功能：将src字符串copy到dts所指向的buf中
@@ -31,6 +32,7 @@ DLLEXPORT S8* dos_strcpy(S8 *dst, const S8 *src)
 
     return strcpy(dst, src);
 }
+
 
 /**
  * 函数：S8* dos_strcpy(S8 *dst, const S8 *src)
@@ -75,6 +77,7 @@ DLLEXPORT U32 dos_strlen(const S8 *str)
     return 0;
 }
 
+
 /**
  * 函数：S8 *dos_strcat(S8 *dest, const S8 *src)
  * 功能：字符串拼接功能
@@ -92,6 +95,7 @@ DLLEXPORT S8 *dos_strcat(S8 *dest, const S8 *src)
 
     return NULL;
 }
+
 
 /**
  * 函数：S8 *dos_strchr(const S8 *str, S32 i)
@@ -158,6 +162,7 @@ DLLEXPORT S8* dos_strstr(S8 * source, S8 *key)
        return pSch;
 }
 
+
 /**
  * 函数：S32 dos_strcmp (const S8 *s1, const S8 *s2)
  * 功能：字符串比较
@@ -178,6 +183,7 @@ DLLEXPORT S32 dos_strcmp(const S8 *s1, const S8 *s2)
 
     return -1;/*not equal*/
 }
+
 
 /**
  * 函数：S32 dos_stricmp (const S8 *s1, const S8 *s2)
@@ -231,6 +237,7 @@ DLLEXPORT S32 dos_stricmp(const S8 *s1, const S8 *s2)
     return -1;/*not equal*/
 }
 
+
 /**
  * 函数：S32 dos_strncmp (const S8 *s1, const S8 *s2, U32 n)
  * 功能：比较s1和s2中前面n个字符
@@ -246,6 +253,7 @@ DLLEXPORT S32 dos_strncmp(const S8 *s1, const S8 *s2, U32 n)
 
     return -1;/*not equal*/
 }
+
 
 /**
  * 函数：S32 dos_strnicmp(const S8 *s1, const S8 *s2, U32 n)
@@ -320,6 +328,7 @@ DLLEXPORT S32 dos_strnlen(const S8 *s, S32 count)
    return 0;
 }
 
+
 /**
  * 函数：S32 dos_strndup(const S8 * str, S32 count)
  * 功能：dump s所指向的字符串，最多count个字节
@@ -359,6 +368,7 @@ DLLEXPORT S8 dos_toupper(S8 ch)
 	return ch;
 }
 
+
 /**
  * 函数：S8 dos_tolower(S8 ch)
  * 功能：将字符转换成小写字母
@@ -374,6 +384,7 @@ DLLEXPORT S8 dos_tolower(S8 ch)
 
 	return ch;
 }
+
 
 /**
  * 函数：VOID dos_uppercase (S8 *str)
@@ -399,6 +410,7 @@ DLLEXPORT VOID dos_uppercase(S8 *str)
     }
 }
 
+
 /**
  * 函数：VOID dos_lowercase (S8 *str)
  * 功能：将字符串中所有的大写字符转换成小写
@@ -423,6 +435,7 @@ DLLEXPORT VOID dos_lowercase(S8 *str)
     }
 }
 
+
 /**
  * 函数：S32 dos_atol(const S8 *szStr, S32 *pnVal)
  * 功能：将字符串转换成32位有符号数字
@@ -440,9 +453,9 @@ DLLEXPORT S32 dos_atol(const S8 *szStr, S32 *pnVal)
         }
         return 0;
     }
-
     return -1;
 }
+
 
 /**
  * 函数：S32 dos_atoul (const S8 *szStr, U32 *pulVal)
@@ -493,6 +506,7 @@ DLLEXPORT S32 dos_atolx (const S8 *szStr, S32 *pnVal)
 	return -1;
 }
 
+
 /**
  * 函数：S32 dos_atoulx(const S8 *szStr, U32 *pulVal)
  * 功能：将16进制格式的数字字符串转换成32位无符号数字
@@ -519,6 +533,7 @@ DLLEXPORT S32 dos_atoulx(const S8 *szStr, U32 *pulVal)
 	return -1;
 }
 
+
 /**
  * 函数：S32 dos_ltoa(S32 nVal, S8 *szStr)
  * 功能：将数字转换成字符串
@@ -537,6 +552,7 @@ DLLEXPORT S32 dos_ltoa(S32 nVal, S8 *szStr, U32 ulStrLen)
 	}
 	return -1;
 }
+
 
 /**
  * 函数：S32 dos_ltoax(S32 nVal, S8 *szStr)
@@ -557,6 +573,7 @@ DLLEXPORT S32 dos_ltoax(S32 nVal, S8 *szStr, U32 ulStrLen)
 
     return -1;
 }
+
 
 /**
  * 函数：S32 dos_ultoax (U32 ulVal, S8 *szStr)
@@ -579,6 +596,7 @@ DLLEXPORT S32 dos_ultoax (U32 ulVal, S8 *szStr, U32 ulStrLen)
 	return -1;
 }
 
+
 /**
  * 函数：S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str)
  * 功能：将ulAddr所表示的ip地址转化成点分格式的IP地址
@@ -589,7 +607,7 @@ DLLEXPORT S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str, U32 ulStrLen)
 {
 	if (DOS_ADDR_VALID(str))
 	{
-    	dos_snprintf(str, ulStrLen, "%d.%d.%d.%d",
+    	dos_snprintf(str, ulStrLen, "%u.%u.%u.%u",
     		ulAddr >> 24, (ulAddr >> 16) & 0xff,
     		(ulAddr >> 8) & 0xff, ulAddr & 0xff);
 
@@ -598,6 +616,7 @@ DLLEXPORT S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str, U32 ulStrLen)
 
 	return NULL;
 }
+
 
 /**
  * 函数：S32 dos_is_digit_str(S8 *str)
@@ -626,6 +645,7 @@ DLLEXPORT S32 dos_is_digit_str(S8 *str)
 
 	return -1;
 }
+
 
 /**
  * 函数：S32 dos_strtoipaddr(S8 *szStr, U32 *pulIpAddr)

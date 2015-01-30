@@ -26,8 +26,8 @@ extern "C"{
 #define  INSERT_PRIORTO     1
 #define  INSERT_NEXTTO      2
 
-#define HASH_NODE_S   DLL_NODE_S
-#define HASH_BUCKET_S DLL_S
+typedef DLL_NODE_S HASH_NODE_S;
+typedef DLL_S   HASH_BUCKET_S;
 
 
 typedef  struct HASH_TABLE_S{

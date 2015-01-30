@@ -53,6 +53,14 @@
 /* 定时器模块 */
 #define INCLUDE_SERVICE_TIMER             1
 
+/* 资源监控模块*/ 
+#define INCLUDE_RES_MONITOR               1
+#define INCLUDE_MEM_MONITOR               1
+#define INCLUDE_CPU_MONITOR               1
+#define INCLUDE_DISK_MONITOR              1
+#define INCLUDE_NET_MONITOR               1
+#define INCLUDE_PROC_MONITOR              1
+
 
 #endif /* END __CFG_MOD_MONITER_H__ */
 

@@ -56,5 +56,6 @@
 /* PTCÄ£¿é*/
 #define INCLUDE_PTC                       1
 
+
 #endif /* END __CFG_MOD_PTC_H__ */
 
