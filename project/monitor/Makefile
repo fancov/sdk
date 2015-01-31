@@ -32,6 +32,7 @@ include $(SROUCE)/util/hash/Makefile.mk
 include $(SROUCE)/util/list/Makefile.mk
 include $(SROUCE)/util/heartbeat/Makefile.mk
 include $(SROUCE)/util/task/Makefile.mk
+include $(SROUCE)/util/db/Makefile.mk
 include $(SROUCE)/cfg/Makefile.mk
 include $(SROUCE)/service/Makefile.mk
 

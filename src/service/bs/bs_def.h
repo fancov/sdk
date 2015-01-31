@@ -534,6 +534,9 @@ typedef struct stBSS_CB
     DOS_TMR_ST  hHourCycleTmr;              /* Ñ­»·¶¨Ê±Æ÷ */
 }BSS_CB;
 
+extern pthread_mutex_t g_mutexTableUpdate;
+extern BOOL                 g_bTableUpdate;
+
 extern pthread_mutex_t  g_mutexCustomerTbl;
 extern HASH_TABLE_S     *g_astCustomerTbl;
 extern pthread_mutex_t  g_mutexBillingPackageTbl;
@@ -625,6 +628,7 @@ VOID *bsd_backup(VOID *arg);
 VOID *bss_recv_bsd_msg(VOID * arg);
 VOID *bss_send_msg2app(VOID *arg);
 VOID *bss_recv_msg_from_app(VOID *arg);
+VOID *bss_recv_msg_from_web(VOID *arg);
 VOID *bss_aaa(VOID *arg);
 VOID *bss_cdr(VOID *arg);
 VOID *bss_billing(VOID *arg);

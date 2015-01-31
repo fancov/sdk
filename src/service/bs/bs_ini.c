@@ -21,6 +21,9 @@ extern "C"{
 #include "bsd_db.h"
 #include "bs_def.h"
 
+/* Web提醒BS表数据已更新,请求刷新数据 */
+pthread_mutex_t g_mutexTableUpdate = PTHREAD_MUTEX_INITIALIZER;
+BOOL                 g_bTableUpdate = FALSE;
 
 pthread_mutex_t g_mutexCustomerTbl = PTHREAD_MUTEX_INITIALIZER;
 HASH_TABLE_S    *g_astCustomerTbl = NULL;
@@ -407,6 +410,13 @@ S32 bs_start()
         bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: create pthread(recv_msg_from_app) error!");
         return DOS_FAIL;
     }
+
+    lRet = pthread_create(&tid, NULL, bss_recv_msg_from_web, NULL);
+    if (lRet < 0)
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: create pthread(recv_msg_from_web) error!");
+        return DOS_FAIL;
+    }    
 
     lRet = pthread_create(&tid, NULL, bss_aaa, NULL);
     if (lRet < 0)

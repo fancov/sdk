@@ -264,12 +264,14 @@ static S32 _mem_find_node(VOID *pSymName, HASH_NODE_S *pNode)
  *      U32 ulIndex：客户端索引
  * 返回值：
  */
-VOID mem_printf(HASH_NODE_S *pNode, U32 ulIndex)
+VOID mem_printf(HASH_NODE_S *pNode, VOID *pulIndex)
 {
     MEM_INFO_NODE_ST *pstMemInfoNode = (MEM_INFO_NODE_ST *)pNode;
     S8 szBuff[512];
     U32 ulLen;
+    U32 ulIndex;
 
+    ulIndex = *(U32 *)pulIndex;
 
     ulLen = snprintf(szBuff, sizeof(szBuff)
             , "%-40s%6u%6u\r\n"
@@ -314,7 +316,7 @@ S32 cli_cmd_mem(U32 ulIndex, S32 argc, S8 **argv)
     cli_out_string(ulIndex, szTitle);
 
     pthread_mutex_lock(&g_mutexMemMngtTable);
-    hash_walk_table(g_pstHashMemMngtTable,  ulIndex, mem_printf);
+    hash_walk_table(g_pstHashMemMngtTable,  (VOID *)&ulIndex, mem_printf);
     pthread_mutex_unlock(&g_mutexMemMngtTable);
     return 0;
 }

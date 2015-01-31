@@ -43,6 +43,15 @@ DLLEXPORT void dos_clean_watchdog()
 
 }
 
+DLLEXPORT U32 dos_random(U32 ulMax)
+{
+
+    srand((unsigned)time( NULL ));
+
+    return rand() % ulMax;
+}
+
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
