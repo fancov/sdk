@@ -23,7 +23,13 @@ extern S8 g_szMonNetworkInfo[MAX_NETCARD_CNT * MAX_BUFF_LENGTH];
 extern MON_NET_CARD_PARAM_S * g_pastNet[MAX_NETCARD_CNT];
 extern S32 g_lNetCnt;
 
-
+/**
+ * 功能:为网卡数组分配内存
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_netcard_malloc()
 {
    S32 lRows = 0;
@@ -46,6 +52,13 @@ S32 mon_netcard_malloc()
    return DOS_SUCC;
 }
 
+/**
+ * 功能:释放为网卡数组分配的内存
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_netcard_free()
 {
    S32 lRows = 0;
@@ -66,7 +79,27 @@ S32  mon_netcard_free()
    return DOS_SUCC;
 } 
 
-
+/** ethtool eth0
+ * Settings for eth0:
+ *       Supported ports: [ TP ]
+ *       Supported link modes:   10baseT/Half 10baseT/Full 
+ *                               100baseT/Half 100baseT/Full 
+ *                               1000baseT/Full 
+ *       Supported pause frame use: No
+ *       Supports auto-negotiation: Yes
+ *       Advertised link modes:  10baseT/Half 10baseT/Full 
+ *                               100baseT/Half 100baseT/Full 
+ *  ......
+ *       Wake-on: d
+ *       Current message level: 0x00000007 (7)
+ *                              drv probe link
+ *       Link detected: yes
+ * 功能:判断网卡的网口是否开启
+ * 参数集：
+ *   参数1:const S8 * pszNetCard 网卡名称
+ * 返回值：
+ *   开启则返回DOS_TRUE，否则返回DOS_FALSE
+ */
  BOOL mon_is_netcard_connected(const S8 * pszNetCard)
  {
    S8 szEthCmd[MAX_CMD_LENGTH] = {0};
@@ -96,6 +129,9 @@ S32  mon_netcard_free()
    fseek(fp, 0, SEEK_SET);
    if (NULL != (fgets(szLine, MAX_BUFF_LENGTH, fp)))
    {
+      /**
+       * 判断依据:判断Link detected后边的字符串是否为yes，是则连接正常
+       */
       if (mon_is_ended_with(szLine, "yes\n"))
       {
           goto success;
@@ -116,6 +152,14 @@ failure:
    return DOS_FALSE;
 }
 
+/**
+ * 输出结果参照mon_is_netcard_connected函数
+ * 功能:获取网口的最大传输速率
+ * 参数集：
+ *   参数1:const S8 * pszDevName 网卡名称
+ * 返回值：
+ *   成功返回网口的最大数据传输速率，失败返回-1
+ */
 S32 mon_get_max_trans_speed(const S8 * pszDevName)
 {
    S8  szEthCmd[MAX_CMD_LENGTH] = {0};
@@ -180,6 +224,14 @@ success:
    return lSpeed;
 }
 
+
+/**
+ * 功能:获取网卡数量，所有网卡的MAC地址、IPv4地址、广播IP地址、子网掩码、网卡的网口最大数据传输速率
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_get_netcard_data()
 {
    S32 lFd;
@@ -204,6 +256,7 @@ S32 mon_get_netcard_data()
    stIfc.ifc_buf = (caddr_t)astReq;
    if (!ioctl(lFd, SIOCGIFCONF, (S8 *)&stIfc))
    {
+      /* 获取网卡设备的个数 */
       lInterfaceNum = g_lNetCnt= stIfc.ifc_len / sizeof(struct ifreq);
       while (lInterfaceNum > 0)
       {
@@ -333,6 +386,13 @@ success:
    return DOS_SUCC;
 }
 
+/**
+ * 功能:获取网卡数组信息的格式化信息字符串
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_netcard_formatted_info()
 {
     S32 lRows = 0;

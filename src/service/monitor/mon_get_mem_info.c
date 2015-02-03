@@ -16,7 +16,13 @@ static S8  m_szMemInfoFile[] = "/proc/meminfo";
 extern S8  g_szMonMemInfo[MAX_BUFF_LENGTH];
 extern MON_SYS_MEM_DATA_S * g_pstMem;
 
-
+/**
+ * 功能:为g_pstMem分配内存
+ * 参数集：
+ *     无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_mem_malloc()
 {
    g_pstMem = (MON_SYS_MEM_DATA_S *)dos_dmem_alloc(sizeof(MON_SYS_MEM_DATA_S));
@@ -32,6 +38,14 @@ S32  mon_mem_malloc()
    return DOS_SUCC;
 }
 
+
+/**
+ * 功能:释放为g_pstMem分配内存
+ * 参数集：
+ *     无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_mem_free()
 {
    if (!g_pstMem)
@@ -48,6 +62,25 @@ S32 mon_mem_free()
 }
 
 
+/** "/proc/meminfo"内容
+ * MemTotal:        1688544 kB
+ * MemFree:          649060 kB
+ * Buffers:          103812 kB
+ * Cached:           203864 kB
+ * SwapCached:            0 kB
+ * Active:           640116 kB
+ * ......
+ * Mlocked:               0 kB
+ * SwapTotal:       3125240 kB
+ * SwapFree:        3125240 kB
+ * Dirty:                 4 kB
+ * ......
+ * 功能:从proc文件系统获取内存占用信息的相关数据
+ * 参数集：
+ *     无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_read_mem_file()
 {
    S32 lCount = 0; 
@@ -78,62 +111,62 @@ S32  mon_read_mem_file()
                         , dos_get_filename(__FILE__), __LINE__);
             goto failure;
          }
+      
+         lRet = dos_atol(pszAnalyseRslt[1], &lData);
+         if(0 > lRet)
+         {
+            logr_error("%s:Line %d:mon_read_mem_file|dos_atol failure!"
+                        , dos_get_filename(__FILE__), __LINE__);
+            goto failure;
+         }
+         /* 第一列是内容，第二列为其值，以此类推 */
+         if (0 == dos_strnicmp(pszAnalyseRslt[0], "MemTotal", dos_strlen("MemTotal")))
+         {
+            g_pstMem->lPhysicalMemTotalBytes = lData;
+            ++lCount;
+            continue;
+         }
+         else if(0 == dos_strnicmp(pszAnalyseRslt[0], "MemFree", dos_strlen("MemFree")))
+         {
+            g_pstMem->lPhysicalMemFreeBytes = lData;
+            ++lCount;
+            continue;
+         }
+         else if(0 == dos_strnicmp(pszAnalyseRslt[0], "Buffers", dos_strlen("Buffers")))
+         {
+            g_pstMem->lBuffers = lData;
+            ++lCount;
+            continue;
+         }
+         else if(0 == dos_strnicmp(pszAnalyseRslt[0], "Cached", dos_strlen("Cached")))
+         {
+            g_pstMem->lCached = lData;
+            ++lCount;
+            continue;
+         }
+         else if(0 == dos_strnicmp(pszAnalyseRslt[0], "SwapTotal", dos_strlen("SwapTotal")))
+         {
+            g_pstMem->lSwapTotalBytes = lData;
+            ++lCount;
+            continue;
+         }
+         else if(0 == dos_strnicmp(pszAnalyseRslt[0], "SwapFree", dos_strlen("SwapFree")))
+         {
+            g_pstMem->lSwapFreeBytes = lData;
+            ++lCount;
+            continue;
+         }
 
-          lRet = dos_atol(pszAnalyseRslt[1], &lData);
-          if(0 > lRet)
-          {
-             logr_error("%s:Line %d:mon_read_mem_file|dos_atol failure!"
-                          , dos_get_filename(__FILE__), __LINE__);
-             goto failure;
-          }
-
-          if (0 == dos_strnicmp(pszAnalyseRslt[0], "MemTotal", dos_strlen("MemTotal")))
-          {
-             g_pstMem->lPhysicalMemTotalBytes = lData;
-             ++lCount;
-             continue;
-          }
-          else if(0 == dos_strnicmp(pszAnalyseRslt[0], "MemFree", dos_strlen("MemFree")))
-          {
-             g_pstMem->lPhysicalMemFreeBytes = lData;
-             ++lCount;
-             continue;
-          }
-          else if(0 == dos_strnicmp(pszAnalyseRslt[0], "Buffers", dos_strlen("Buffers")))
-          {
-             g_pstMem->lBuffers = lData;
-             ++lCount;
-             continue;
-          }
-          else if(0 == dos_strnicmp(pszAnalyseRslt[0], "Cached", dos_strlen("Cached")))
-          {
-             g_pstMem->lCached = lData;
-             ++lCount;
-             continue;
-          }
-          else if(0 == dos_strnicmp(pszAnalyseRslt[0], "SwapTotal", dos_strlen("SwapTotal")))
-          {
-             g_pstMem->lSwapTotalBytes = lData;
-             ++lCount;
-             continue;
-          }
-          else if(0 == dos_strnicmp(pszAnalyseRslt[0], "SwapFree", dos_strlen("SwapFree")))
-          {
-             g_pstMem->lSwapFreeBytes = lData;
-             ++lCount;
-             continue;
-          }
-
-          if (MEMBER_COUNT == lCount)
-          {
-             lRet = mon_get_mem_data();
-             if(DOS_SUCC != lRet)
-             {
-                logr_error("%s:Line %d:mon_read_mem_file|get memory data failure"
-                            , dos_get_filename(__FILE__), __LINE__);
-             }
-             goto success;
-          }
+         if (MEMBER_COUNT == lCount)
+         {
+            lRet = mon_get_mem_data();
+            if(DOS_SUCC != lRet)
+            {
+               logr_error("%s:Line %d:mon_read_mem_file|get memory data failure"
+                           , dos_get_filename(__FILE__), __LINE__);
+            }
+            goto success;
+         }
       }
    }
 
@@ -147,6 +180,13 @@ failure:
    return DOS_FAIL;
 }
 
+/**
+ * 功能:获取并计算g_pstMem的相关数据
+ * 参数集：
+ *     无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_get_mem_data()
 {
    S32 lCached      = g_pstMem->lCached;
@@ -158,7 +198,11 @@ S32  mon_get_mem_data()
 
    S32 lBusyMem  = 0;
    S32 lSwapBusy = 0;
-
+   /**
+    * 内存占用率算法:
+    *     如果高速缓存的大小大于RAM大小，那么被占用的就是: busy = total -free
+    *     否则被占用的为: busy = total - free - buffers - cached
+    */
    if (lCached > lPhyMemTotal)
    {
       lBusyMem = 100 * (lPhyMemTotal - lPhyMemFree);
@@ -167,7 +211,9 @@ S32  mon_get_mem_data()
    {
       lBusyMem = 100 * (lPhyMemTotal - lPhyMemFree - lBuffers - lCached);
    }
-
+   /**
+    *  为了取得最精确的整数结果，a/b统一采用 (a + a%b)/b去计算，结果为和算数运算a/b值最接近的一个
+    */
    lSwapBusy = 100 * (lSwapTotal - lSwapFree);
 
    g_pstMem->lPhysicalMemUsageRate = (lBusyMem + lBusyMem % lPhyMemTotal) / lPhyMemTotal;
@@ -176,6 +222,14 @@ S32  mon_get_mem_data()
    return DOS_SUCC;
 }
 
+
+/**
+ * 功能:获取内存信息的格式化输出信息字符串
+ * 参数集：
+ *     无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_get_mem_formatted_info()
 {
    if(!g_pstMem)

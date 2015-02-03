@@ -11,7 +11,13 @@ extern "C"{
 
 static MON_MSG_QUEUE_S * pstMsgQueue;
 
-
+/**
+ * 功能:初始化告警消息队列
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_init_warning_msg_queue()
 {
    pstMsgQueue = (MON_MSG_QUEUE_S *)dos_dmem_alloc(sizeof(MON_MSG_QUEUE_S));
@@ -29,6 +35,13 @@ S32 mon_init_warning_msg_queue()
    return DOS_SUCC;  
 }
 
+/**
+ * 功能:消息入队
+ * 参数集：
+ *   参数1: MON_MSG_S * pstMsg 入队的消息对象地址
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_warning_msg_en_queue(MON_MSG_S * pstMsg)
 {
    
@@ -58,6 +71,14 @@ S32 mon_warning_msg_en_queue(MON_MSG_S * pstMsg)
    return DOS_SUCC;
 }
 
+
+/**
+ * 功能:消息出队
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_warning_msg_de_queue()
 {
    if (0 == pstMsgQueue->lQueueLength)
@@ -95,11 +116,25 @@ BOOL mon_is_warning_msg_queue_empty()
    } 
 }
 
+/**
+ * 功能:获取告警消息队列的队头地址
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回告警消息队列队头指针，失败返回NULL
+ */
 MON_MSG_QUEUE_S * mon_get_warning_msg_queue()
 {
    return pstMsgQueue;
 }
 
+/**
+ * 功能:销毁告警消息队列
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_destroy_warning_msg_queue()
 {
    S32 lRet = 0;

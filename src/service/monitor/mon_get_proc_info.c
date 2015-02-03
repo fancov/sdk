@@ -25,7 +25,13 @@ static S32   mon_get_proc_pid_list();
 static S32   mon_kill_process(S32 lPid);
 static S32   mon_check_all_process();
 
-
+/**
+ * ¹¦ÄÜ:Îª¼à¿Ø½ø³ÌÊı×é·ÖÅäÄÚ´æ
+ * ²ÎÊı¼¯£º
+ *   ÎŞ²ÎÊı
+ * ·µ»ØÖµ£º
+ *   ³É¹¦·µ»ØDOS_SUCC£¬Ê§°Ü·µ»ØDOS_FAIL
+ */
 S32  mon_proc_malloc()
 {
    S32 lRows = 0;
@@ -48,6 +54,13 @@ S32  mon_proc_malloc()
    return DOS_SUCC;
 }
 
+/**
+ * ¹¦ÄÜ:ÊÍ·ÅÎª¼à¿Ø½ø³ÌÊı×é·ÖÅäµÄÄÚ´æ
+ * ²ÎÊı¼¯£º
+ *   ÎŞ²ÎÊı
+ * ·µ»ØÖµ£º
+ *   ³É¹¦·µ»ØDOS_SUCC£¬Ê§°Ü·µ»ØDOS_FAIL
+ */
 S32 mon_proc_free()
 {
    S32 lRows = 0;
@@ -69,6 +82,13 @@ S32 mon_proc_free()
    return DOS_SUCC;
 }
 
+/**
+ * ¹¦ÄÜ:ÅĞ¶Ï½ø³ÌidÖµÊÇ·ñÔÚ½ø³ÌidÖµµÄÓĞĞ§·¶Î§ÄÚ
+ * ²ÎÊı¼¯£º
+ *   ÎŞ²ÎÊı
+ * ·µ»ØÖµ£º
+ *   ÊÇ·µ»ØDOS_TRUE£¬Ê§°Ü·µ»ØDOS_FALSE
+ */
 static BOOL mon_is_pid_valid(S32 lPid)
 {
    if(lPid > MAX_PID_VALUE || lPid <= MIN_PID_VALUE)
@@ -80,7 +100,21 @@ static BOOL mon_is_pid_valid(S32 lPid)
    return DOS_TRUE;
 }
 
-
+/** ps aux
+ * USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+ * root         1  0.0  0.1  19364  1528 ?        Ss   06:34   0:01 /sbin/init
+ * root         2  0.0  0.0      0     0 ?        S    06:34   0:00 [kthreadd]
+ * root         3  0.0  0.0      0     0 ?        S    06:34   0:00 [migration/0]
+ * root         4  0.0  0.0      0     0 ?        S    06:34   0:00 [ksoftirqd/0]
+ * root         5  0.0  0.0      0     0 ?        S    06:34   0:00 [migration/0]
+ * ...........................
+ * ¹¦ÄÜ:¸ù¾İ½ø³Ìid»ñÈ¡½ø³ÌµÄcpuĞÅÏ¢¡¢ÄÚ´æĞÅÏ¢¡¢Ê±¼äĞÅÏ¢
+ * ²ÎÊı¼¯£º
+ *   ²ÎÊı1: S32 lPid ½ø³Ìid
+ *   ²ÎÊı2: MON_PROC_STATUS_S * pstProc 
+ * ·µ»ØÖµ£º
+ *   ÊÇ·µ»ØDOS_TRUE£¬Ê§°Ü·µ»ØDOS_FALSE
+ */
 static S32  mon_get_cpu_mem_time_info(S32 lPid, MON_PROC_STATUS_S * pstProc)
 {//Î´Íê³É
    S8  szPsCmd[MAX_CMD_LENGTH] = {0};
@@ -131,7 +165,9 @@ static S32  mon_get_cpu_mem_time_info(S32 lPid, MON_PROC_STATUS_S * pstProc)
                         , dos_get_filename(__FILE__), __LINE__);
              goto failure;
           }
-          
+          /* ºÜÏÔÈ»£¬µÚ¶şÁĞÊÇ½ø³Ìid£¬µÚÈıÁĞÊÇÄÚ´æÆ½¾ùÕ¼ÓÃÂÊ£
+           * µÚËÄÁĞÊÇcpuµÄÆ½¾ùÕ¼ÓÃÂÊ£¬µÚÊ®ÁĞÊÇcpuµ±Ç°³ÖĞøÊ±¼ä
+           */
           lRet = dos_atol(pszAnalyseRslt[1], &lData);
           if(0 != lRet)
           {
@@ -164,6 +200,21 @@ failure:
    return DOS_FAIL;
 }
 
+/** lsof -p 1  Êä³ö½ø³Ì1´ò¿ªµÄËùÓĞÎÄ¼ş
+ * COMMAND PID USER   FD   TYPE             DEVICE SIZE/OFF   NODE NAME
+ * init      1 root  cwd    DIR              253,0     4096      2 /
+ * init      1 root  rtd    DIR              253,0     4096      2 /
+ * init      1 root  txt    REG              253,0   150352 391923 /sbin/init
+ * ........
+ * init      1 root    7u  unix 0xffff880037d51cc0      0t0   7637 socket
+ * init      1 root    9u  unix 0xffff880037b45980      0t0  12602 socket
+ * ........
+ * ¹¦ÄÜ:»ñÈ¡½ø³Ì´ò¿ªµÄÎÄ¼şÃèÊö·û¸öÊı
+ * ²ÎÊı¼¯£º
+ *   ²ÎÊı1: S32 lPid ½ø³Ìid
+ * ·µ»ØÖµ£º
+ *   ³É¹¦Ôò·µ»Ø´ò¿ªµÄÎÄ¼ş¸öÊı£¬Ê§°Ü·µ»Ø-1
+ */
 static S32  mon_get_openfile_count(S32 lPid)
 {
    S8  szLsofCmd[MAX_CMD_LENGTH] = {0};
@@ -178,7 +229,9 @@ static S32  mon_get_openfile_count(S32 lPid)
                     , dos_get_filename(__FILE__), __LINE__, lPid);
       return -1;
    }
-
+   /**
+    *  Ê¹ÓÃÃüÁî: lsof -p pid | wc -l ¿ÉÒÔÍ³¼Æ³öµ±Ç°½ø³Ì´ò¿ªÁË¶àÉÙÎÄ¼ş
+    */
    dos_snprintf(szLsofCmd, MAX_CMD_LENGTH, "lsof -p %d | wc -l > %s", lPid, szFileName);
    system(szLsofCmd);
 
@@ -216,8 +269,15 @@ failure:
     return -1;
 }
 
+/**
+ * ¹¦ÄÜ:»ñÈ¡½ø³ÌµÄÊı¾İ¿âÁ¬½Ó¸öÊı
+ * ²ÎÊı¼¯£º
+ *   ²ÎÊı1: S32 lPid ½ø³Ìid
+ * ·µ»ØÖµ£º
+ *   ³É¹¦·µ»ØÊı¾İ¿âÁ¬½Ó¸öÊı£¬Ê§°Ü·µ»Ø-1
+ */
 static S32   mon_get_db_conn_count(S32 lPid)
-{ //Î´ÊµÏÖ
+{  /* Ä¿Ç°Ã»ÓĞÕÒµ½ÓĞĞ§µÄ½â¾ö·½°¸ */
    if(DOS_FALSE == mon_is_pid_valid(lPid))
    {
       logr_error("%s:Line %d:mon_get_db_conn_count|get database connections count failure,process pid %d is invalid!", 
@@ -228,6 +288,27 @@ static S32   mon_get_db_conn_count(S32 lPid)
    return DOS_SUCC;
 }
 
+/**
+ * Name:   init
+ * State:  S (sleeping)
+ * Tgid:   1
+ * Pid:    1
+ * PPid:   0
+ * TracerPid:      0
+ * ......
+ * VmPTE:        56 kB
+ * VmSwap:        0 kB
+ * Threads:        1
+ * SigQ:   3/10771
+ * SigPnd: 0000000000000000
+ * ShdPnd: 0000000000000000
+ * ......
+ * ¹¦ÄÜ:»ñÈ¡½ø³ÌµÄÏß³Ì¸öÊı
+ * ²ÎÊı¼¯£º
+ *   ²ÎÊı1: S32 lPid ½ø³Ìid
+ * ·µ»ØÖµ£º
+ *   ³É¹¦·µ»ØÊı¾İ¿âÁ¬½Ó¸öÊı£¬Ê§°Ü·µ»Ø-1
+ */
 static S32   mon_get_threads_count(S32 lPid)
 {
    S8  szPidFile[MAX_CMD_LENGTH] = {0};
@@ -259,6 +340,7 @@ static S32   mon_get_threads_count(S32 lPid)
       memset(szLine, 0, MAX_BUFF_LENGTH * sizeof(S8));
       if (NULL != (fgets(szLine, MAX_BUFF_LENGTH, fp)))
       {
+         /* Threads²ÎÊıºó±ßµÄÄÇ¸öÊı×Ö¾ÍÊÇµ±Ç°½ø³ÌµÄÏß³ÌÊıÁ¿ */
          if (0 == (dos_strncmp(szLine, "Threads", dos_strlen("Threads"))))
          {
             S32 lData = 0;
@@ -293,12 +375,20 @@ success:
    return lThreadsCount;
 }
 
-
+/**
+ * ¹¦ÄÜ:»ñÈ¡ĞèÒª±»¼à¿ØµÄ½ø³ÌÁĞ±í
+ * ²ÎÊı¼¯£º
+ *   ÎŞ²ÎÊı
+ * ·µ»ØÖµ£º
+ *   ³É¹¦·µ»ØDOS_SUCC£¬Ê§°Ü·µ»ØDOS_FAIL
+ */
 static S32 mon_get_proc_pid_list()
 {
    DIR * pstDir;
    struct dirent * pstEntry;
-   S8 szCommPidDir[] = "/ttcom/var/run/pid/";
+   /* ´æ·ÅpidµÄÄ¿Â¼ */
+   S8 szCommPidDir[] = "/tcom/var/run/pid/";
+   /* Êı¾İ¿âµÄpidÎÄ¼şËùÔÚÄ¿Â¼ */
    S8 szDBPidDir[] = "/var/dipcc/";
    g_lPidCnt = 0;
    FILE * fp = NULL;
@@ -312,7 +402,8 @@ static S32 mon_get_proc_pid_list()
    }
 
    while (NULL != (pstEntry = readdir(pstDir)))
-   {
+   {  
+      /*Èç¹ûµ±Ç°ÎÄ¼şÊÇÆÕÍ¨ÎÄ¼ş(ÎªÁË¹ıÂËµô"."ºÍ".."Ä¿Â¼)£¬²¢ÇÒÊÇpidºó×º£¬ÔòÈÏÎªÊÇ½ø³ÌidÎÄ¼ş*/
       if (DT_REG == pstEntry->d_type && DOS_TRUE == mon_is_suffix_true(pstEntry->d_name, "pid"))//Èç¹ûÊÇÆÕÍ¨ÎÄ¼ş
       {
          S8     szProcAllName[64] = {0};
@@ -479,6 +570,13 @@ failure:
 }
 
 
+/**
+ * ¹¦ÄÜ:»ñÈ¡½ø³ÌÊı×éµÄÏà¹ØĞÅÏ¢
+ * ²ÎÊı¼¯£º
+ *   ÎŞ²ÎÊı
+ * ·µ»ØÖµ£º
+ *   ³É¹¦·µ»ØDOS_SUCC£¬Ê§°Ü·µ»ØDOS_FAIL
+ */
 S32 mon_get_process_data()
 {
    S32 lRows = 0;
@@ -540,11 +638,18 @@ S32 mon_get_process_data()
    return DOS_SUCC;
 }
 
- 
+/**
+ * ¹¦ÄÜ:É±ËÀ½ø³Ì
+ * ²ÎÊı¼¯£º
+ *   ²ÎÊı1: S32 lPid  ½ø³Ìid
+ * ·µ»ØÖµ£º
+ *   ³É¹¦·µ»ØDOS_SUCC£¬Ê§°Ü·µ»ØDOS_FAIL
+ */
 static S32  mon_kill_process(S32 lPid)
 {
    S8 szKillCmd[MAX_CMD_LENGTH] = {0};
 
+   /* Ê¹ÓÃ"kill -9 ½ø³Ìid"·½Ê½É±Ãğ½ø³Ì  */
    dos_snprintf(szKillCmd, MAX_CMD_LENGTH, "kill -9 %d", lPid);
    system(szKillCmd);
 
@@ -558,6 +663,13 @@ static S32  mon_kill_process(S32 lPid)
    return DOS_FAIL;
 }
 
+/**
+ * ¹¦ÄÜ:¼ì²âÓĞÃ»ÓĞµôÏßµÄ½ø³Ì£¬Èç¹ûÓĞÔòÖØĞÂÆô¶¯Ö®
+ * ²ÎÊı¼¯£º
+ *   ÎŞ²ÎÊı
+ * ·µ»ØÖµ£º
+ *   ³É¹¦·µ»ØDOS_SUCC£¬Ê§°Ü·µ»ØDOS_FAIL
+ */
 static S32  mon_check_all_process()
 {
    S32 lRet = 0;
@@ -567,7 +679,7 @@ static S32  mon_check_all_process()
    S8  szProcCmd[1024] = {0};
    S32 lCfgProcCnt = 0;
    
-   //»ñÈ¡ÅäÖÃµÄ½ø³ÌÊıÁ¿
+   /* »ñÈ¡µ±Ç°ÅäÖÃ½ø³ÌÊıÁ¿ */
    lCfgProcCnt = config_hb_get_process_cfg_cnt();
    if(0 > lCfgProcCnt)
    {
@@ -577,6 +689,10 @@ static S32  mon_check_all_process()
       return DOS_FAIL;
    }
 
+   /*
+    *  Èç¹ûÅäÖÃµÄ½ø³Ì¸öÊıĞ¡ÓÚ»òÕßµÈÓÚ¼à¿Øµ½µÄ½ø³Ì¸öÊı£¬
+    *  ÄÇÃ´ÈÏÎªËùÓĞµÄ¼à¿Ø½ø³Ì¶¼ÒÑ¾­Æô¶¯
+    */
    if(lCfgProcCnt <= g_lPidCnt)
    {
       logr_info("%s:Line %d:mon_check_all_process|no process lost!"
@@ -587,8 +703,12 @@ static S32  mon_check_all_process()
    for (ulRows = 0; ulRows < lCfgProcCnt; ulRows++)
    {
       U32 ulCols = 0;
-      S32 bHasStarted = DOS_FALSE;//Ä¬ÈÏÎ´Æô¶¯
-         
+      /* Ä¬ÈÏÎ´Æô¶¯ */
+      S32 bHasStarted = DOS_FALSE;
+
+      memset(szProcName, 0, sizeof(szProcName));
+      memset(szProcVersion, 0, sizeof(szProcVersion));
+      /* »ñÈ¡½ø³ÌÃûºÍ½ø³Ì°æ±¾ºÅ */
       lRet = config_hb_get_process_list(ulRows, szProcName, sizeof(szProcName)
                  , szProcVersion, sizeof(szProcVersion));
       if(lRet < 0)
@@ -599,6 +719,8 @@ static S32  mon_check_all_process()
          return DOS_FAIL;
       }
 
+      memset(szProcCmd, 0, sizeof(szProcCmd));
+      /* »ñÈ¡½ø³ÌµÄÆô¶¯ÃüÁî */
       lRet = config_hb_get_start_cmd(ulRows, szProcCmd, sizeof(szProcCmd));
       if(0 > lRet)
       {
@@ -613,16 +735,19 @@ static S32  mon_check_all_process()
          S8 * pszPtr = mon_str_get_name(g_pastProc[ulCols]->szProcName);
             
          if(0 == dos_strcmp(szProcName, "monitord"))
-         {//µ±Ç°½ø³ÌÊÇÔËĞĞ×´Ì¬£¬²»ÓÃ²éÕÒ
+         {
+            /* Èç¹û¼à¿Øµ½µÄÊÇminitord½ø³Ì£¬ÄÇÃ´ÈÏÎªÒÑÆô¶¯ */
             bHasStarted = DOS_TRUE;
             break;
          }
          if(0 == dos_strcmp("monitord", pszPtr))
-         {// µ±Ç°½ø³Ì²»»áÊÇmonitord£¬¼à¿Øµ½monitordÖ±½ÓÌø¹ı
+         { 
+            /* Èç¹ûµ±Ç°½ø³Ì²»ÊÇminitord½ø³Ì£¬Åöµ½monitord½ø³ÌµÄ¶Ô±ÈÖ±½ÓÌø¹ı */
             continue;
          }
          if(0 == dos_strcmp(pszPtr, szProcName))
-         {//ÕÒµ½£¬ÔòÖ±½Ó
+         { 
+            /* ½ø³ÌÕÒµ½£¬ËµÃ÷szProcNameÒÑÆô¶¯ */
             bHasStarted = DOS_TRUE;
             break;
          }
@@ -642,6 +767,14 @@ static S32  mon_check_all_process()
    return DOS_SUCC;
 }
 
+
+/**
+ * ¹¦ÄÜ:É±ËÀËùÓĞ±»¼à¿Ø½ø³Ì
+ * ²ÎÊı¼¯£º
+ *   ÎŞ²ÎÊı
+ * ·µ»ØÖµ£º
+ *   ³É¹¦·µ»ØDOS_SUCC£¬Ê§°Ü·µ»ØDOS_FAIL
+ */
 S32 mon_kill_all_monitor_process()
 {
     S32 lRows = 0;
@@ -667,12 +800,27 @@ S32 mon_kill_all_monitor_process()
     return DOS_SUCC;
 }
 
+
+/**
+ * ¹¦ÄÜ:ÖØÆô¼ÆËã»ú
+ * ²ÎÊı¼¯£º
+ *   ÎŞ²ÎÊı
+ * ·µ»ØÖµ£º
+ *   ³É¹¦·µ»ØDOS_SUCC£¬Ê§°Ü·µ»ØDOS_FAIL
+ */
 S32 mon_restart_computer()
 {
     system("/sbin/reboot");
     return DOS_SUCC;
 }
 
+/**
+ * ¹¦ÄÜ:ÅĞ¶Ï½ø³ÌÊÇ·ñËÀÍö
+ * ²ÎÊı¼¯£º
+ *   ²ÎÊı1: S32 lPid ½ø³Ìid
+ * ·µ»ØÖµ£º
+ *   ËÀÍöÔò·µ»ØDOS_TRUE£¬Ê§°Ü·µ»ØDOS_FALSE
+ */
 BOOL mon_is_proc_dead(S32 lPid)
 {
    S8 szPsCmd[MAX_CMD_LENGTH] = {0};
@@ -725,7 +873,13 @@ BOOL mon_is_proc_dead(S32 lPid)
    return DOS_TRUE;
 }
 
-
+/**
+ * ¹¦ÄÜ:»ñÈ¡ËùÓĞ¼à¿Ø½ø³ÌµÄ×ÜcpuÕ¼ÓÃÂÊ
+ * ²ÎÊı¼¯£º
+ *   ÎŞ²ÎÊı
+ * ·µ»ØÖµ£º
+ *   ³É¹¦Ôò·µ»Ø×ÜCPUÕ¼ÓÃÂÊ£¬Ê§°Ü·µ»Ø-1
+ */
 S32  mon_get_proc_total_cpu_rate()
 {
    F64 fTotalCPURate = 0.0;
@@ -749,10 +903,17 @@ S32  mon_get_proc_total_cpu_rate()
       fTotalCPURate += g_pastProc[lRows]->fCPURate;
    }
 
+   /* Õ¼ÓÃÂÊµÄ½á¹ûÈ¡ËÄÉáÎåÈëÕûÊıÖµ£¬ÏÂÃæº¯ÊıÍ¬Àí */
    return (S32)(fTotalCPURate + 0.5);
 }
 
-
+/**
+ * ¹¦ÄÜ:»ñÈ¡ËùÓĞ¼à¿Ø½ø³ÌµÄ×ÜÄÚ´æÕ¼ÓÃÂÊ
+ * ²ÎÊı¼¯£º
+ *   ÎŞ²ÎÊı
+ * ·µ»ØÖµ£º
+ *   ³É¹¦Ôò·µ»Ø×ÜÄÚ´æÕ¼ÓÃÂÊ£¬Ê§°Ü·µ»Ø-1
+ */
 S32  mon_get_proc_total_mem_rate()
 {
    F64 fTotalMemRate = 0.0;
@@ -779,7 +940,13 @@ S32  mon_get_proc_total_mem_rate()
    return (S32)(fTotalMemRate + 0.5);
 }
 
-
+/**
+ * ¹¦ÄÜ:»ñÈ¡ËùÓĞ¼à¿Ø½ø³ÌĞÅÏ¢µÄ¸ñÊ½»¯ĞÅÏ¢×Ö·û´®
+ * ²ÎÊı¼¯£º
+ *   ÎŞ²ÎÊı
+ * ·µ»ØÖµ£º
+ *   ³É¹¦Ôò·µ»ØDOS_SUCC£¬Ê§°Ü·µ»ØDOS_FAIL
+ */
 S32  mon_get_process_formatted_info()
 {
    S32 lRows = 0;

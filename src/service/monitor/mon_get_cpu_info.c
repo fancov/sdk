@@ -36,6 +36,13 @@ static S32  mon_cpu_de_queue();
 static S32  mon_refresh_cpu_queue();
 
 
+/**
+ * 功能:为cpu节点信息分配内存
+ * 参数集：
+ *     参数1:MON_SYS_CPU_TIME_S ** ppstCpu 存储cpu节点信息结构体指针的地址
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 static S32  mon_cpu_malloc(MON_SYS_CPU_TIME_S ** ppstCpu)
 {
    *ppstCpu = (MON_SYS_CPU_TIME_S *)dos_dmem_alloc(sizeof(MON_SYS_CPU_TIME_S));
@@ -49,6 +56,14 @@ static S32  mon_cpu_malloc(MON_SYS_CPU_TIME_S ** ppstCpu)
    return DOS_SUCC;
 }
 
+
+/**
+ * 功能:为存储cpu占用率的结构体信息分配内存
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_cpu_rslt_malloc()
 {
    g_pstCpuRslt = (MON_CPU_RSLT_S *)dos_dmem_alloc(sizeof(MON_CPU_RSLT_S));
@@ -64,6 +79,13 @@ S32 mon_cpu_rslt_malloc()
    return DOS_SUCC;
 }
 
+/**
+ * 功能:释放为存储cpu占用率的结构体信息分配的内存
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_cpu_rslt_free()
 {
    if(!g_pstCpuRslt)
@@ -79,7 +101,22 @@ S32 mon_cpu_rslt_free()
    return DOS_SUCC;
 }
 
-
+/** "/proc/stat"信息格式(多核cpu)
+ * cpu  29785 76 47029 36906379 9441 1 694 0 0
+ * cpu0 10754 40 16259 18450362 7090 1 689 0 0
+ * cpu1 19031 36 30769 18456017 2351 0 5 0 0
+ * intr 27609954 125 2 0 0 0 0 0 0 1 0 0 0 4 0 0 0 89 0
+ * ......
+ * ctxt 51620134
+ * btime 1422690146
+ * processes 37243
+ * ......
+ * 功能:获取CPU时间戳信息
+ * 参数集：
+ *   参数1:MON_SYS_CPU_TIME_S * pstCpu 存储cpu时间戳信息的节点指针
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 static S32  mon_get_cpu_data(MON_SYS_CPU_TIME_S * pstCpu)
 {
    FILE * fp;
@@ -129,6 +166,9 @@ static S32  mon_get_cpu_data(MON_SYS_CPU_TIME_S * pstCpu)
          
          switch(ulRows)
          {
+           /**
+            * 其详细内容可查看:http://blog.sina.com.cn/s/blog_691c5f870100mmqx.html
+            */
            case 1:
               pstCpu->lUser        = lData;
               break;
@@ -173,6 +213,13 @@ failure:
    return DOS_FAIL;
 }
 
+/**
+ * 功能:初始化cpu时间戳信息队列
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_init_cpu_queue()
 {
    S32 lRet = 0;
@@ -228,7 +275,7 @@ S32 mon_init_cpu_queue()
       }
 
       if (PENULTIMATE == m_pstCPUQueue->lQueueLength)
-      {
+      {/* 增加节点的同时，倒数第二指针和倒数第十二指针往后移动一个单位 */
          m_pstCPUQueue->pstPenultimate = m_pstCPUQueue->pstRear;
       }
       else if (COUNTDOWN_XII == m_pstCPUQueue->lQueueLength)
@@ -243,44 +290,60 @@ S32 mon_init_cpu_queue()
    return DOS_SUCC;
 }
 
+/**
+ * 功能:一个新的cpu时间戳信息对象入队
+ * 参数集：
+ *   参数1:MON_SYS_CPU_TIME_S * pstCpu 待入队的结构体对象地址
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 static S32  mon_cpu_en_queue(MON_SYS_CPU_TIME_S * pstCpu)
 {//从队尾入队
 
-      if (!m_pstCPUQueue)
-      {
-         logr_cirt("%s:Line %d: mon_cpu_en_queue|enter queue failure,m_pstCPUQueue is %p!"
-                    , dos_get_filename(__FILE__), __LINE__, m_pstCPUQueue);
-         return DOS_FAIL;
-      }
-      if (!pstCpu)
-      {
-         logr_cirt("%s:Line %d: mon_cpu_en_queue|enter queue failure,pstCpu is %p!"
-                    , dos_get_filename(__FILE__), __LINE__, pstCpu);
-         return DOS_FAIL;
-      }
+    if (!m_pstCPUQueue)
+    {
+       logr_cirt("%s:Line %d: mon_cpu_en_queue|enter queue failure,m_pstCPUQueue is %p!"
+                  , dos_get_filename(__FILE__), __LINE__, m_pstCPUQueue);
+       return DOS_FAIL;
+    }
+    if (!pstCpu)
+    {
+       logr_cirt("%s:Line %d: mon_cpu_en_queue|enter queue failure,pstCpu is %p!"
+                  , dos_get_filename(__FILE__), __LINE__, pstCpu);
+       return DOS_FAIL;
+    }
 
-      pstCpu->next = NULL;
-      pstCpu->prior = NULL;
+    pstCpu->next = NULL;
+    pstCpu->prior = NULL;
 
-      m_pstCPUQueue->pstRear->next = pstCpu;
-      pstCpu->prior = m_pstCPUQueue->pstRear;
-      m_pstCPUQueue->pstRear = pstCpu;
-
-      if (m_pstCPUQueue->pstPenultimate && m_pstCPUQueue->lQueueLength>= TEN_MINUTE_SAMPLE_ARRAY)
-      {
-         m_pstCPUQueue->pstPenultimate = m_pstCPUQueue->pstPenultimate->next;//第5指针往后移1
-      }
-      if (m_pstCPUQueue->pstCountdownXII && m_pstCPUQueue->lQueueLength >= TEN_MINUTE_SAMPLE_ARRAY)  
-      {
-         m_pstCPUQueue->pstCountdownXII = m_pstCPUQueue->pstCountdownXII->next;//第60指针往后移1
-      }
+    /**
+     *  入队的同时改变队尾指针，并后移倒数第二指针和倒数第十二指针
+     */
+    m_pstCPUQueue->pstRear->next = pstCpu;
+    pstCpu->prior = m_pstCPUQueue->pstRear;
+    m_pstCPUQueue->pstRear = pstCpu;
+    
+    if (m_pstCPUQueue->pstPenultimate && m_pstCPUQueue->lQueueLength>= TEN_MINUTE_SAMPLE_ARRAY)
+    {
+       m_pstCPUQueue->pstPenultimate = m_pstCPUQueue->pstPenultimate->next;//第5指针往后移1
+    }
+    if (m_pstCPUQueue->pstCountdownXII && m_pstCPUQueue->lQueueLength >= TEN_MINUTE_SAMPLE_ARRAY)  
+    {
+       m_pstCPUQueue->pstCountdownXII = m_pstCPUQueue->pstCountdownXII->next;//第60指针往后移1
+    }
  
-      ++(m_pstCPUQueue->lQueueLength);
+    ++(m_pstCPUQueue->lQueueLength);
 
-      return DOS_SUCC;
+    return DOS_SUCC;
 }
 
-
+/**
+ * 功能:队头cpu时间戳结构对象出队
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 static S32  mon_cpu_de_queue()
 {//从队头出队
    if(!m_pstCPUQueue)
@@ -308,6 +371,13 @@ static S32  mon_cpu_de_queue()
    return DOS_SUCC;
 }
 
+/**
+ * 功能:根据cpu队列相关信息计算四个占用率
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_get_cpu_rslt_data()
 {
    S32 lFirstTemp = 0, lSecondTemp = 0, lTwelfthTemp = 0, lLastTemp = 0;
@@ -352,6 +422,11 @@ S32  mon_get_cpu_rslt_data()
              + m_pstCPUQueue->pstRear->lHardirq
              + m_pstCPUQueue->pstRear->lStealstolen
              + m_pstCPUQueue->pstRear->lGuest;
+   /**
+    *  CPU时间占用率为一个平均值，取两个时间采样点，其算法是:
+    *     rate = 1 - (idle2 - idle1)/(total2 - total1)
+    *  其中:total = user + nice + system + idle + iowait + softirq + hardirq + stolen + guest
+    */
              
    if(0 == m_pstCPUQueue->pstRear->lUser)
    {
@@ -445,7 +520,13 @@ S32  mon_get_cpu_rslt_data()
    return DOS_SUCC;
 }
 
-
+/**
+ * 功能:更新一次队列，包括一个入队动作和一个出队动作
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 static S32  mon_refresh_cpu_queue()
 {
    S32 lRet = 0;
@@ -492,6 +573,13 @@ static S32  mon_refresh_cpu_queue()
    return DOS_SUCC;
 }
 
+/**
+ * 功能:获取cpu的4个占用率的格式化信息字符串
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_get_cpu_rslt_formatted_info()
 {
    
@@ -510,6 +598,13 @@ S32  mon_get_cpu_rslt_formatted_info()
    return DOS_SUCC;
 }
 
+/**
+ * 功能:销毁cpu时间戳队列
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_cpu_queue_destroy()
 {
    MON_SYS_CPU_TIME_S * pstCpu = NULL;
