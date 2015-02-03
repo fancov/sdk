@@ -206,7 +206,14 @@ S32 config_hb_save()
     return 0;
 }
 
-//bubble added
+/**
+ * 函数：config_hb_get_process_cfg_cnt
+ * 功能：获取配置的进程数量
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
 S32 config_hb_get_process_cfg_cnt()
 {
    S32 lCfgProcCnt = 0;
@@ -244,7 +251,15 @@ S32 config_hb_get_process_cfg_cnt()
    return lCfgProcCnt;
 }
 
-//bubble added
+
+/**
+ * 函数：config_hb_get_start_cmd
+ * 功能：获取进程的启动命令
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
 S32 config_hb_get_start_cmd(U32 ulIndex, S8 *pszCmd, U32 ulLen)
 {
    S8  szProcCmd[1024] = {0};
@@ -271,6 +286,14 @@ S32 config_hb_get_start_cmd(U32 ulIndex, S8 *pszCmd, U32 ulLen)
    return 0;
 }
 
+/**
+ * 函数：config_hb_threshold_mem
+ * 功能：获取内存占用率的阀值
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
 S32 config_hb_threshold_mem(S32* plMem)
 {
    S8  szNodePath[] = "config/threshold/mem";
@@ -294,7 +317,6 @@ S32 config_hb_threshold_mem(S32* plMem)
    }
 
    lRet = dos_atol(pszMemThreshold, plMem);
-   printf("-_-_-_-_:%d\n", *plMem);
    if(0 > lRet)
    {
       dos_printf("%s", "dos_atol failed.");
@@ -306,6 +328,14 @@ S32 config_hb_threshold_mem(S32* plMem)
 }
 
 
+/**
+ * 函数：config_hb_threshold_cpu
+ * 功能：获取cpu四个占用率的阀值
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
 S32 config_hb_threshold_cpu(S32* plAvg, S32* pl5sAvg, S32 *pl1minAvg, S32 *pl10minAvg)
 {
    S8  szAvgCPURateThreshold[4] = {0};
@@ -399,6 +429,14 @@ S32 config_hb_threshold_cpu(S32* plAvg, S32* pl5sAvg, S32 *pl1minAvg, S32 *pl10m
    return 0;
 }
 
+/**
+ * 函数：config_hb_threshold_disk
+ * 功能：获取硬盘占用率的阀值
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
 S32 config_hb_threshold_disk(S32 *plPartition, S32* plDisk)
 {
    S8  szNodePath[] = "config/threshold/disk";
@@ -454,6 +492,14 @@ S32 config_hb_threshold_disk(S32 *plPartition, S32* plDisk)
    return 0;
 }
 
+/**
+ * 函数：config_hb_threshold_disk
+ * 功能：获取进程内存与CPU占用率阀值
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
 S32 config_hb_threshold_proc(S32* plMem, S32* plCPU)
 {
    S8  szNodePath[] = "config/threshold/proc";

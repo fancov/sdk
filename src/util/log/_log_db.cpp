@@ -35,10 +35,10 @@ CLogDB::~CLogDB()
 S32 CLogDB::log_init()
 {
     U16 usDBPort;
-    S8 szDBHost[MAX_DB_INFO_LEN] = {0, };
-    S8 szDBUsername[MAX_DB_INFO_LEN] = {0, };
-    S8 szDBPassword[MAX_DB_INFO_LEN] = {0, };
-    S8 szDBName[MAX_DB_INFO_LEN] = {0, };
+    S8  szDBHost[MAX_DB_INFO_LEN] = {0, };
+    S8  szDBUsername[MAX_DB_INFO_LEN] = {0, };
+    S8  szDBPassword[MAX_DB_INFO_LEN] = {0, };
+    S8  szDBName[MAX_DB_INFO_LEN] = {0, };
 
     if (config_get_db_host(szDBHost, MAX_DB_INFO_LEN) < 0)
     {
