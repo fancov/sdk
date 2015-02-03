@@ -197,7 +197,7 @@ DLLEXPORT S8 *dos_get_filename(const S8* path)
     pNext = dos_strchr(pSprit, '/');
     if (!pNext)
     {
-        return path;
+        return (S8 *)path;
     }
 
     while(pNext)
@@ -217,7 +217,7 @@ DLLEXPORT S8 *dos_get_filename(const S8* path)
     }
     else
     {
-        return pSprit;
+        return (char *)pSprit;
     }
 }
 
