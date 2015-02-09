@@ -348,7 +348,7 @@ BSS_APP_CONN *bs_get_app_conn(BS_MSG_TAG *pstMsgTag)
 }
 
 /* 保存应用层socket相关信息,目前只实现IPv4 */
-BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, struct sockaddr_in *pstAddrIn, BOOL bIsTcp)
+BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, struct sockaddr_in *pstAddrIn, S32 lAddrLen, BOOL bIsTcp)
 {
     S32                 i, lIdlePos = -1;
     BSS_APP_CONN        *pstAppConn = NULL;
@@ -390,6 +390,10 @@ BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, struct sockaddr_in *pstAddrIn, BOOL 
         pstAppConn->aulIPAddr[1] = 0;
         pstAppConn->aulIPAddr[2] = 0;
         pstAppConn->aulIPAddr[3] = 0;
+        pstAppConn->lAddrLen = lAddrLen;
+        pstAppConn->stAddr.sin_family = AF_INET;
+        pstAppConn->stAddr.sin_port = pstAddrIn->sin_port;
+        pstAppConn->stAddr.sin_addr.s_addr = pstAddrIn->sin_addr.s_addr;
     }
 
     return pstAppConn;

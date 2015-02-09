@@ -15,6 +15,7 @@ extern "C"{
 #endif /* __cplusplus */
 
 #include <dos.h>
+#include <json/dos_json.h>
 #include <bs_pub.h>
 #include "bs_cdr.h"
 #include "bs_stat.h"
@@ -24,6 +25,279 @@ extern "C"{
 #include <sys/un.h>
 
 extern double ceil(double x);
+
+/* 处理遍历WEB CMD临时表的响应 */
+VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
+{
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Start update customer. Opteration:%d", ulOpteration);
+    switch (ulOpteration)
+    {
+        case BS_CMD_UPDATE:
+            break;
+        case BS_CMD_DELETE:
+            break;
+        case BS_CMD_INSERT:
+        {
+            U32             ulHashIndex, ulCustomerType, ulCustomerState;
+            const S8        *pszCustomType, *pszCustomState, *pszCustomID, *pszCustomName, *pszParent;
+            HASH_NODE_S     *pstHashNode = NULL;
+            BS_CUSTOMER_ST  *pstCustomer = NULL, *pstCustomParent = NULL;
+
+            pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: alloc memory fail!");
+                break;
+            }
+            HASH_Init_Node(pstHashNode);
+
+            pstCustomer = dos_dmem_alloc(sizeof(BS_CUSTOMER_ST));
+            if (DOS_ADDR_INVALID(pstCustomer))
+            {
+                dos_dmem_free(pstHashNode);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: alloc memory fail!");
+                break;
+            }
+            bs_init_customer_st(pstCustomer);
+
+            /* 从json对象中获取数据 */
+            pszCustomName = json_get_param(pstJSONObj, "name");
+            pszCustomID = json_get_param(pstJSONObj, "id");
+            pszParent = json_get_param(pstJSONObj, "parent_id");
+            pszCustomState = json_get_param(pstJSONObj, "status");
+            pszCustomType = json_get_param(pstJSONObj, "type");
+            if (DOS_ADDR_INVALID(pszCustomName) || DOS_ADDR_INVALID(pszCustomID)
+                || DOS_ADDR_INVALID(pszParent) || DOS_ADDR_INVALID(pszCustomState)
+                || DOS_ADDR_INVALID(pszCustomType))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Parse json param fail while adding custom.");
+
+                dos_dmem_free(pstCustomer);
+                dos_dmem_free(pstHashNode);
+
+                break;
+            }
+
+            /* 参数合法性 */
+            if (dos_atoul(pszCustomID, &pstCustomer->ulCustomerID) < 0
+                || dos_atoul(pszParent, &pstCustomer->ulParentID) < 0
+                || dos_atoul(pszCustomType, &ulCustomerType) < 0
+                || dos_atoul(pszCustomState, &ulCustomerState) < 0
+                || '\0' == pszCustomName[0])
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Invalid param while adding custom.");
+
+                dos_dmem_free(pstCustomer);
+                dos_dmem_free(pstHashNode);
+
+                break;
+            }
+            pstCustomer->ucCustomerState = (U8)ulCustomerState;
+            pstCustomer->ucCustomerType = (U8)ulCustomerType;
+            dos_strncpy(pstCustomer->szCustomerName, pszCustomName, sizeof(pstCustomer->szCustomerName));
+            pstCustomer->szCustomerName[sizeof(pstCustomer->szCustomerName) - 1] = '\0';
+
+            pstHashNode->pHandle = (VOID *)pstCustomer;
+            ulHashIndex = bs_hash_get_index(BS_HASH_TBL_CUSTOMER_SIZE, pstCustomer->ulCustomerID);
+
+            /* 如果hash表中已经存在，说明有错误 */
+            if (hash_find_node(g_astCustomerTbl,
+                                  ulHashIndex,
+                                  (VOID *)&pstCustomer->ulCustomerID,
+                                  bs_customer_hash_node_match))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: customer(%u:%s) is duplicated in DB !",
+                pstCustomer->ulCustomerID, pstCustomer->szCustomerName);
+                dos_dmem_free(pstHashNode);
+                dos_dmem_free(pstCustomer);
+
+                break;
+            }
+
+            pstCustomParent = bs_get_customer_st(pstCustomer->ulParentID);
+            if (DOS_ADDR_INVALID(pstCustomParent))
+            {
+                /* 没有找到父客户，非法 */
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC
+                        , "ERR: Invalid parent customer id while adding custom.(parent:%d,custom:%d)"
+                        , pstCustomer->ulParentID
+                        , pstCustomer->ulCustomerID);
+
+                dos_dmem_free(pstCustomer);
+                dos_dmem_free(pstHashNode);
+
+                break;
+            }
+
+            /* 上级客户不得是消费者,只有可能是代理商或顶级客户 */
+            if (BS_CUSTOMER_TYPE_CONSUMER == pstCustomParent->ucCustomerType)
+            {
+                bs_trace(BS_TRACE_DB, LOG_LEVEL_ERROR, "ERR: The parent of customer(%u:%s) is a comsuer(%u:%s)!",
+                         pstCustomer->ulCustomerID, pstCustomer->szCustomerName,
+                         pstCustomParent->ulCustomerID, pstCustomParent->szCustomerName);
+
+                dos_dmem_free(pstCustomer);
+                dos_dmem_free(pstHashNode);
+
+                break;
+            }
+
+            /* 往HASH表中保存 */
+            pthread_mutex_lock(&g_mutexCustomerTbl);
+            hash_add_node(g_astCustomerTbl, pstHashNode, ulHashIndex, NULL);
+            g_astCustomerTbl->NodeNum++;
+            pthread_mutex_unlock(&g_mutexCustomerTbl);
+
+            /* 更新客户控制块信息 */
+            pstCustomer->stAccount.LBalanceActive = pstCustomer->stAccount.LBalance;
+            pstCustomer->stNode.pHandle = pstHashNode;
+
+            /* 更新客户树 */
+            pstCustomer->pstParent = pstCustomParent;
+            bs_customer_add_child(pstCustomParent, pstCustomer);
+
+            break;
+        }
+        default:
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Unknow command while update customer");
+            break;
+    }
+
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Finish to update customer. Opteration:%d", ulOpteration);
+}
+
+/* 处理遍历WEB CMD临时表的响应 */
+VOID bss_data_update()
+{
+    const S8                *pszTblName  = NULL;
+    const S8                *pszOpter    = NULL;
+    BS_WEB_CMD_INFO_ST      *pszTblRow   = NULL;
+    DLL_NODE_S              *pstListNode = NULL;
+    JSON_OBJ_ST             *pstJsonNode = NULL;
+    U32                     ulOpteration = 0;
+
+    while (1)
+    {
+        pthread_mutex_lock(&g_mutexWebCMDTbl);
+        pstListNode = dll_fetch(&g_stWebCMDTbl);
+        pthread_mutex_unlock(&g_mutexWebCMDTbl);
+
+        if (DOS_ADDR_INVALID(pstListNode))
+        {
+            break;
+        }
+
+        pszTblRow = pstListNode->pHandle;
+        if (DOS_ADDR_INVALID(pszTblRow))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstListNode);
+            pstListNode = NULL;
+            continue;
+        }
+
+        if (g_ulLastCMDTimestamp >= pszTblRow->ulTimestamp)
+        {
+            DOS_ASSERT(0);
+
+            if (DOS_ADDR_VALID(pszTblRow))
+            {
+                json_deinit(&pszTblRow->pstData);
+                pszTblRow->pstData = NULL;
+            }
+
+            dos_dmem_free(pszTblRow);
+            pszTblRow = NULL;
+
+            dos_dmem_free(pstListNode);
+            pstListNode = NULL;
+            continue;
+        }
+        g_ulLastCMDTimestamp = pszTblRow->ulTimestamp;
+
+        pstJsonNode = pszTblRow->pstData;
+        if (DOS_ADDR_INVALID(pstJsonNode))
+        {
+            dos_dmem_free(pszTblRow);
+            pszTblRow = NULL;
+
+            dos_dmem_free(pstListNode);
+            pstListNode = NULL;
+            continue;
+        }
+
+
+        pszTblName = json_get_param(pstJsonNode,"table");
+        pszOpter = json_get_param(pstJsonNode,"dboperate");
+        if (DOS_ADDR_INVALID(pszTblName) || DOS_ADDR_INVALID(pszOpter))
+        {
+            json_deinit(&pstJsonNode);
+            pszTblRow->pstData = NULL;
+
+            dos_dmem_free(pszTblRow);
+            pszTblRow = NULL;
+            pstListNode->pHandle = NULL;
+
+            dos_dmem_free(pstListNode);
+            pstListNode = NULL;
+
+            continue;
+        }
+
+        if (dos_strcmp(pszOpter, "update") == 0)
+        {
+            ulOpteration = BS_CMD_UPDATE;
+        }
+        else if (dos_strcmp(pszOpter, "insert") == 0)
+        {
+            ulOpteration = BS_CMD_INSERT;
+        }
+        else if (dos_strcmp(pszOpter, "delete") == 0)
+        {
+            ulOpteration = BS_CMD_DELETE;
+        }
+        else
+        {
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "Notice: It's a unknown opterator while deal with the WEB CMD.");
+
+            json_deinit(&pszTblRow->pstData);
+            pszTblRow->pstData = NULL;
+
+            dos_dmem_free(pszTblRow);
+            pszTblRow = NULL;
+            pstListNode->pHandle = NULL;
+
+            dos_dmem_free(pstListNode);
+            pstListNode = NULL;
+
+            continue;
+        }
+
+        if (dos_strcmp(pszTblName, "tbl_customer") == 0)
+        {
+            bss_update_customer(ulOpteration, pstJsonNode);
+        }
+        else if (dos_strcmp(pszTblName, "tbl_agent") == 0)
+        {
+
+        }
+        else
+        {
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "Notice: It's a unknown table while deal with the WEB CMD.");
+        }
+
+        json_deinit(&pszTblRow->pstData);
+        pszTblRow->pstData = NULL;
+
+        dos_dmem_free(pszTblRow);
+        pszTblRow = NULL;
+        pstListNode->pHandle = NULL;
+
+        dos_dmem_free(pstListNode);
+        pstListNode = NULL;
+    }
+}
 
 /* 表遍历请求处理 */
 S32 bss_walk_tbl_rsp(DLL_NODE_S *pMsgNode)
@@ -48,7 +322,9 @@ S32 bss_walk_tbl_rsp(DLL_NODE_S *pMsgNode)
         case BS_TBL_TYPE_SETTLE:
             /* 无需处理 */
             break;
-
+        case BS_TBL_TYPE_TMP_CMD:
+            bss_data_update();
+            break;
         default:
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "Notice: It's a unknown table");
             break;
@@ -171,7 +447,6 @@ VOID bss_add_cdr_list(VOID *pMsg)
 /* 应用层消息处理函数 */
 VOID bss_app_msg_proc(VOID *pMsg)
 {
-    U8              ucRspMsgType;
     S8              szIPStr[128];
     BS_MSG_TAG      *pstMsgTag;
 
@@ -206,16 +481,16 @@ VOID bss_app_msg_proc(VOID *pMsg)
             break;
 
         case BS_MSG_BILLING_START_REQ:
-            ucRspMsgType = BS_MSG_BILLING_START_RSP;
-            /* 注意此处无break */
-        case BS_MSG_BILLING_UPDATE_REQ:
-            ucRspMsgType = BS_MSG_BILLING_UPDATE_RSP;
-            /* 注意此处无break */
-        case BS_MSG_BILLING_STOP_REQ:
-            ucRspMsgType = BS_MSG_BILLING_STOP_RSP;
+            bss_send_rsp_msg2app(pstMsgTag, BS_MSG_BILLING_START_RSP);
+            break;
 
+        case BS_MSG_BILLING_UPDATE_REQ:
+            bss_send_rsp_msg2app(pstMsgTag, BS_MSG_BILLING_UPDATE_RSP);
+            break;
+
+        case BS_MSG_BILLING_STOP_REQ:
             bss_add_cdr_list(pMsg);
-            bss_send_rsp_msg2app(pstMsgTag, ucRspMsgType);
+            bss_send_rsp_msg2app(pstMsgTag, BS_MSG_BILLING_STOP_RSP);
             break;
 
         case BS_MSG_BILLING_RELEASE_ACK:
@@ -292,8 +567,11 @@ VOID *bss_send_msg2app(VOID *arg)
         if (DOS_ADDR_VALID(pstAppConn))
         {
             /* 更新消息序列号 */
+            /* @TODO 只对请求做序列号维护 */
+#if 0
             pstAppConn->ulMsgSeq++;
             pstMsgTag->ulMsgSeq = pstAppConn->ulMsgSeq;
+#endif
             /* 将BS地址信息填入到消息 */
             pstMsgTag->aulIPAddr[0] = 0;        /* IP地址暂时统一填0,以后有多台BS时再改进 */
             pstMsgTag->aulIPAddr[1] = 0;
@@ -313,21 +591,22 @@ VOID *bss_send_msg2app(VOID *arg)
             else
             {
                 lRet = sendto(pstAppConn->lSockfd, pstMsgTag, pstMsgTag->usMsgLen,
-                              0, (struct sockaddr *)&pstAppConn->stAddr, sizeof(pstAppConn->stAddr));
+                              0, (struct sockaddr *)&pstAppConn->stAddr, pstAppConn->lAddrLen);
             }
 
             if (lRet != (S32)pstMsgTag->usMsgLen)
             {
                 bs_trace(BS_TRACE_FS, LOG_LEVEL_NOTIC,
-                         "Notice: send msg to app fail! result:%d, type:%u, len:%u",
-                         lRet, pstMsgTag->ucMsgType, pstMsgTag->usMsgLen);
+                         "Notice: send msg to app fail! result:%d, type:%u, len:%u, errno:%d",
+                         lRet, pstMsgTag->ucMsgType, pstMsgTag->usMsgLen, errno);
             }
             else
             {
                 bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
-                         "Send msg to app succ! type:%u, seq:%u, len:%u, errcode:%u",
+                         "Send msg to app succ! type:%u, seq:%u, len:%u, errcode:%u, addr:%X, port: %d",
                          pstMsgTag->ucMsgType, pstMsgTag->ulMsgSeq,
-                         pstMsgTag->usMsgLen, pstMsgTag->ucErrcode);
+                         pstMsgTag->usMsgLen, pstMsgTag->ucErrcode,
+                         pstAppConn->stAddr.sin_addr.s_addr, dos_htons(pstAppConn->stAddr.sin_port));
             }
         }
         else
@@ -402,10 +681,10 @@ VOID *bss_recv_msg_from_web(VOID *arg)
     while (1)
     {
         bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Watting for a connection from the web...");
-        
+
         lAddrLen = sizeof(struct sockaddr_un);
         lAcceptedSocket = accept(lSocket, (struct sockaddr *)&stAddrIn, (socklen_t *)&lAddrLen);
-        if (lAcceptedSocket < 0) 
+        if (lAcceptedSocket < 0)
         {
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: accept socket fail!");
             break;
@@ -415,7 +694,7 @@ VOID *bss_recv_msg_from_web(VOID *arg)
 
         /* 设置发送接收超时,防止长时间阻塞导致响应不及时 */
         setsockopt(lAcceptedSocket, SOL_SOCKET, SO_SNDTIMEO, (char *)&stTimeout, sizeof(stTimeout));
-        setsockopt(lAcceptedSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&stTimeout, sizeof(stTimeout));        
+        setsockopt(lAcceptedSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&stTimeout, sizeof(stTimeout));
 
         lRet = recv(lAcceptedSocket, strBuff, sizeof(strBuff), 0);
         if (0 == lRet || EINTR == errno || EAGAIN == errno)
@@ -443,7 +722,7 @@ VOID *bss_recv_msg_from_web(VOID *arg)
         pstMsgTag = (BS_MSG_TAG *)strBuff;
 
         pthread_mutex_lock(&g_mutexTableUpdate);
-        g_bTableUpdate = TRUE;
+        g_bTableUpdate = DOS_TRUE;
         pthread_mutex_unlock(&g_mutexTableUpdate);
 
         bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Table requested operation: Success.");
@@ -452,9 +731,33 @@ VOID *bss_recv_msg_from_web(VOID *arg)
     }
 
     close(lSocket);
-    
+
     return NULL;
 }
+
+/* bss 处理WEB客户端的通知消息 */
+VOID *bss_web_msg_proc(VOID *arg)
+{
+    U32 ulTableUpdate;
+
+    while (1)
+    {
+        pthread_mutex_lock(&g_mutexTableUpdate);
+        ulTableUpdate = g_bTableUpdate;
+        g_bTableUpdate= DOS_FALSE;
+        pthread_mutex_unlock(&g_mutexTableUpdate);
+
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "Check update cmd. %X", ulTableUpdate);
+        if (ulTableUpdate)
+        {
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "Send table walk request to dl.");
+            bss_send_walk_req2dl(BS_TBL_TYPE_TMP_CMD);
+        }
+
+        dos_task_delay(20 * 1000);
+    }
+}
+
 
 /* 业务层处理来自应用层的消息 */
 VOID *bss_recv_msg_from_app(VOID *arg)
@@ -467,7 +770,7 @@ VOID *bss_recv_msg_from_app(VOID *arg)
 
 
     /* 初始化socket(暂时只考虑UDP方式) */
-    lSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    lSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if (lSocket < 0)
     {
         bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: create socket fail!");
@@ -555,7 +858,7 @@ VOID *bss_recv_msg_from_app(VOID *arg)
             pstMsgTag->aulIPAddr[0] = stAddrIn.sin_addr.s_addr;
         }
 
-        bs_save_app_conn(lSocket, &stAddrIn, DOS_FALSE);
+        bs_save_app_conn(lSocket, &stAddrIn, lAddrLen, DOS_FALSE);
 
         bss_app_msg_proc((VOID *)strBuff);
 

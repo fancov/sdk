@@ -26,6 +26,11 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+#include <json-c/json.h>
+#include <json-c/json_object.h>
+#include <json-c/json_object_private.h>
+#include <json-c/linkhash.h>
+
 /* dos header files */
 #include <dos/dos_types.h>
 #include <syscfg.h>
@@ -43,6 +48,7 @@
 #include <dos/dos_db.h>
 #include <list/list_pub.h>
 #include <hash/hash.h>
+#include <json/dos_json.h>
 #include <pthread.h>
 #include <netinet/in.h>
 

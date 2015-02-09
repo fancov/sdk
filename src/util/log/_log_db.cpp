@@ -156,7 +156,7 @@ void CLogDB::log_write(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLev
     }
 
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\");"
-                , "test.dos_log"
+                , "tbl_log"
                 , _pszTime
                 , _pszLevel
                 , _pszType
@@ -179,17 +179,16 @@ VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
     }
 
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\");"
-                    , "test.dos_olog"
+                    , "tbl_olog"
                     , _pszTime
                     , _pszOpterator
                     , dos_get_process_name()
                     , _pszOpterand
                     , _pszResult
                     , _pszMsg);
+    db_query(pstDBHandle, szQuery, NULL, NULL, NULL);
 
     //printf("%s", szQuery);
-
-    db_query(pstDBHandle, szQuery, NULL, NULL, NULL);
 
 }
 

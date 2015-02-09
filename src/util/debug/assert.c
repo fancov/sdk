@@ -267,7 +267,7 @@ DLLEXPORT VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 par
     /* Éú²úhash±íkey */
     dos_snprintf(szFileLine, sizeof(szFileLine), "%s:%d", pszFileName, ulLine);
     _assert_string_hash(szFileLine, &ulHashIndex);
-    dos_printf("Assert info. Fileline:%s, hash index:%d", szFileLine, ulHashIndex);
+    //dos_printf("Assert info. Fileline:%s, hash index:%d", szFileLine, ulHashIndex);
 
     pthread_mutex_lock(&g_mutexAssertInfo);
     pstFileDescNode = (DOS_ASSERT_NODE_ST *)hash_find_node(g_pstHashAssert, ulHashIndex, szFileLine, _assert_find_node);
@@ -289,7 +289,7 @@ DLLEXPORT VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 par
         time(&pstFileDescNode->stLastTime);
         hash_add_node(g_pstHashAssert, (HASH_NODE_S *)pstFileDescNode, ulHashIndex, NULL);
 
-        dos_printf("New assert ecord node for fileline:%s, %x", szFileLine, pstFileDescNode);
+        //dos_printf("New assert ecord node for fileline:%s, %x", szFileLine, pstFileDescNode);
     }
 
     pstFileDescNode->ulTimes++;

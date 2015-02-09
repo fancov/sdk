@@ -55,6 +55,10 @@ pthread_cond_t  g_condBSBillingList  = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t g_mutexBSBilling = PTHREAD_MUTEX_INITIALIZER;
 DLL_S           g_stBSBillingList;                          /* 计费话单处理队列 */
 
+pthread_mutex_t g_mutexWebCMDTbl = PTHREAD_MUTEX_INITIALIZER;
+DLL_S           g_stWebCMDTbl;                              /* WEB发起的命令列表 */
+U32             g_ulLastCMDTimestamp = 0;
+
 BSS_CB  g_stBssCB;
 
 VOID bs_init_msg_list(VOID)
@@ -242,6 +246,13 @@ S32 bs_init_agent_tbl(VOID)
     return DOS_SUCC;
 }
 
+S32 bs_init_web_cmd_list(VOID)
+{
+    DLL_Init(&g_stWebCMDTbl);
+
+    return 0;
+}
+
 /* 初始化资费信息结构体 */
 VOID bs_init_billing_package_st(BS_BILLING_PACKAGE_ST *pstBillingPackage)
 {
@@ -347,6 +358,14 @@ S32 bs_start()
     g_stBssCB.pstTopCustomer = NULL;
     g_stBssCB.hDayCycleTmr = NULL;
     g_stBssCB.hHourCycleTmr= NULL;
+    g_stBssCB.ulTraceFlag = U32_BUTT;
+
+    lRet = bs_init_db();
+    if (lRet < 0)
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: create pthread(operate_data) error!");
+        return DOS_FAIL;
+    }
 
     lRet = pthread_create(&tid, NULL, bsd_recv_bss_msg, NULL);
     if (lRet < 0)
@@ -397,6 +416,13 @@ S32 bs_start()
         return DOS_FAIL;
     }
 
+    lRet = bs_init_web_cmd_list();
+    if (lRet < 0)
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: init web cmd list fail!");
+        return DOS_FAIL;
+    }
+
     lRet = pthread_create(&tid, NULL, bss_send_msg2app, NULL);
     if (lRet < 0)
     {
@@ -416,7 +442,14 @@ S32 bs_start()
     {
         bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: create pthread(recv_msg_from_web) error!");
         return DOS_FAIL;
-    }    
+    }
+
+    lRet = pthread_create(&tid, NULL, bss_web_msg_proc, NULL);
+    if (lRet < 0)
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: create pthread(web_msg_proc) error!");
+        return DOS_FAIL;
+    }
 
     lRet = pthread_create(&tid, NULL, bss_aaa, NULL);
     if (lRet < 0)

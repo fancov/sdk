@@ -24,6 +24,9 @@ extern "C"{
     #include <ptc_pts/ipcc.h>
 #endif
 
+#if INCLUDE_SERVICE_BS
+S32 bs_start();
+#endif
 
 S32 root(S32 _argc, S8 ** _argv)
 {
@@ -75,6 +78,8 @@ S32 root(S32 _argc, S8 ** _argv)
         DOS_ASSERT(0);
         return -1;
     }
+
+    logr_info("%s", "BS Start.");
 #endif
 #ifndef DIPCC_FREESWITCH
     while(1)

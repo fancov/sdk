@@ -201,7 +201,7 @@ VOID bss_send_rsp_msg2app(BS_MSG_TAG *pstMsgTag, U8 ucMsgType)
     *pstRspMsg = *pstMsgTag;
     pstRspMsg->ucMsgType = ucMsgType;
     pstRspMsg->usMsgLen = sizeof(BS_MSG_TAG);
-    pstRspMsg->ulMsgSeq = 0;
+    pstRspMsg->ulMsgSeq = pstMsgTag->ulMsgSeq;
     pstRspMsg->ucErrcode = BS_ERR_SUCC;         /* 简单响应,错误码统一为成功 */
     pstMsgNode->pHandle = (VOID *)pstRspMsg;
 

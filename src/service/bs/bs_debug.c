@@ -1366,46 +1366,7 @@ VOID bs_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...)
     va_end(Arg);
     szTraceStr[sizeof(szTraceStr) -1] = '\0';
 
-    switch(ucTraceLevel)
-    {
-        case LOG_LEVEL_EMERG:
-            logr_emerg(szFormat, szTraceStr);
-            break;
-
-        case LOG_LEVEL_ALERT:
-            logr_alert(szFormat, szTraceStr);
-            break;
-
-        case LOG_LEVEL_CIRT:
-            logr_cirt(szFormat, szTraceStr);
-            break;
-
-        case LOG_LEVEL_ERROR:
-            logr_error(szFormat, szTraceStr);
-            break;
-
-        case LOG_LEVEL_WARNING:
-            logr_warning(szFormat, szTraceStr);
-            break;
-
-        case LOG_LEVEL_NOTIC:
-            logr_notice(szFormat, szTraceStr);
-            break;
-
-        case LOG_LEVEL_INFO:
-            logr_info(szFormat, szTraceStr);
-            break;
-
-        case LOG_LEVEL_DEBUG:
-            logr_debug(szFormat, szTraceStr);
-            break;
-
-        default:
-            logr_debug(szFormat, szTraceStr);
-            break;
-
-    }
-
+    dos_log(ucTraceLevel, LOG_TYPE_RUNINFO, szTraceStr);
 }
 #endif
 
