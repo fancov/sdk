@@ -25,6 +25,9 @@
 #include <asm/errno.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <pthread.h>
+#include <netinet/in.h>
+
 
 #include <json-c/json.h>
 #include <json-c/json_object.h>
@@ -49,8 +52,6 @@
 #include <list/list_pub.h>
 #include <hash/hash.h>
 #include <json/dos_json.h>
-#include <pthread.h>
-#include <netinet/in.h>
 
 
 #define DOS_VERSION  "1.0"
