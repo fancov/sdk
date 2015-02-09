@@ -16,6 +16,13 @@ extern "C"{
 
 static S8* pszAnalyseList = NULL;
 
+/**
+ * 功能:为字符串分配内存
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_init_str_array()
 {
    pszAnalyseList = (S8 *)dos_dmem_alloc(MAX_TOKEN_CNT * MAX_TOKEN_LEN * sizeof(S8));
@@ -28,6 +35,13 @@ S32  mon_init_str_array()
    return DOS_SUCC;
 }
 
+/**
+ * 功能:释放为字符串分配的内存
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_deinit_str_array()
 {
    if(!pszAnalyseList)
@@ -41,6 +55,14 @@ S32  mon_deinit_str_array()
    return DOS_SUCC;
 }
 
+/**
+ * 功能:判断pszDest是否为pszSrc的子串
+ * 参数集：
+ *   参数1:S8 * pszSrc  源字符串
+ *   参数2:S8 * pszDest 子字符串
+ * 返回值：
+ *   是则返回DOS_TRUE，否则返回DOS_FALSE
+ */
 BOOL mon_is_substr(S8 * pszSrc, S8 * pszDest)
 {
    S8 * pszStr = pszSrc;
@@ -51,7 +73,8 @@ BOOL mon_is_substr(S8 * pszSrc, S8 * pszDest)
                     , dos_get_filename(__FILE__), __LINE__, pszSrc, pszDest);
       return DOS_FALSE;
    }
-   
+
+   /* 如果pszSrc的长度小于pszDest，那么一定不是子串 */
    if (dos_strlen(pszSrc) < dos_strlen(pszDest))
    {
       logr_warning("%s:Line %d:mon_is_substr|dos_strlen(pszSrc) = %d,dos_strlen(pszDest) = %d!"
@@ -74,6 +97,14 @@ BOOL mon_is_substr(S8 * pszSrc, S8 * pszDest)
    return DOS_FALSE;
 }
 
+/**
+ * 功能:判断pszSentence是否以pszStr结尾
+ * 参数集：
+ *   参数1:S8 * pszSentence  源字符串
+ *   参数2:S8 * pszStr       结尾字符串
+ * 返回值：
+ *   是则返回DOS_TRUE，否则返回DOS_FALSE
+ */
 BOOL mon_is_ended_with(S8 * pszSentence, const S8 * pszStr)
 {
    S8 *pszSrc = NULL, *pszTemp = NULL;
@@ -109,6 +140,14 @@ BOOL mon_is_ended_with(S8 * pszSentence, const S8 * pszStr)
    return DOS_TRUE;
 }
 
+/**
+ * 功能:判断pszFile是否以pszSuffix为文件后缀名
+ * 参数集：
+ *   参数1:S8 * pszFile   源文件名
+ *   参数2:S8 * pszSuffix 文件后缀名
+ * 返回值：
+ *   是则返回DOS_TRUE，否则返回DOS_FALSE
+ */
 BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix)
 {
    S8 * pszFileSrc = NULL;
@@ -137,6 +176,13 @@ BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix)
    return DOS_TRUE;
 }
 
+/**
+ * 功能:获取字符串中的一个整数
+ * 参数集：
+ *   参数1:S8 * pszStr  含有数字字符串的字符串
+ * 返回值：
+ *   成功则返回字符串中的的一个数字，失败则返回DOS_FAIL
+ */
 S32 mon_first_int_from_str(S8 * pszStr)
 {
    S32  lData;
@@ -175,7 +221,16 @@ S32 mon_first_int_from_str(S8 * pszStr)
    return lData;
 }
 
-
+/**
+ * 功能:将字符串pszStr按照pszRegExpr规则去分割，并存储到pszRsltList中l
+ * 参数集：
+ *   参数1:S8 * pszStr       含有数字字符串的字符串
+ *   参数2:S8* pszRegExpr    分界字符串
+ *   参数3:S8* pszRsltList[] 用于存放字符串的首地址
+ *   参数4:U32 ulLen         数组最大长度
+ * 返回值：
+ *   成功则返回DOS_SUCC，失败则返回DOS_FAIL
+ */
 U32  mon_analyse_by_reg_expr(S8* pszStr, S8* pszRegExpr, S8* pszRsltList[], U32 ulLen)
 {
    U32 ulRows = 0;
@@ -194,11 +249,12 @@ U32  mon_analyse_by_reg_expr(S8* pszStr, S8* pszRegExpr, S8* pszRsltList[], U32 
                     , dos_get_filename(__FILE__), __LINE__);
       return DOS_FAIL;
    }
-   
-   memset(pszAnalyseList, 0, MAX_TOKEN_CNT * MAX_TOKEN_LEN * sizeof(char));
 
+   /* 每次使用前初始化为0 */
+   memset(pszAnalyseList, 0, MAX_TOKEN_CNT * MAX_TOKEN_LEN * sizeof(char));
    for(ulRows = 0; ulRows < ulLen; ulRows++)
    {
+      /*把字符串首地址分别置于分配内存的相应位置*/
       pszRsltList[ulRows] = pszAnalyseList + ulRows * MAX_TOKEN_LEN;
    }
 
@@ -221,6 +277,15 @@ U32  mon_analyse_by_reg_expr(S8* pszStr, S8* pszRegExpr, S8* pszRsltList[], U32 
    return DOS_SUCC;
 }
 
+/**
+ * 功能:生成告警id
+ * 参数集：
+ *   参数1:U32 ulResType     资源种类
+ *   参数2:U32 ulNo          资源编号
+ *   参数3:U32 ulErrType     错误类型
+ * 返回值：
+ *   成功则返回告警id，失败则返回(U32)0xff
+ */
 U32 mon_generate_warning_id(U32 ulResType, U32 ulNo, U32 ulErrType)
 {
    if(ulResType >= (U32)0xff || ulNo >= (U32)0xff
@@ -230,10 +295,18 @@ U32 mon_generate_warning_id(U32 ulResType, U32 ulNo, U32 ulErrType)
                     , dos_get_filename(__FILE__), __LINE__, "0x", ulResType, "0x", ulNo, "0x", ulErrType);
       return (U32)0xff;
    }
-   
+   /* 第1个8位存储资源类型，第2个8位存储资源编号，第3个8位存储错误编号 */
    return (ulResType << 24) | (ulNo << 16 ) | (ulErrType & 0xffffffff);
 }
 
+/**
+ * 功能:根据进程id获得进程名
+ * 参数集：
+ *   参数1:S32 lPid  进程id
+ *   参数2:S8 * pszPidName   进程名
+ * 返回值：
+ *   成功则返回进程名，失败则返回NULL
+ */
 S8 * mon_get_proc_name_by_id(S32 lPid, S8 * pszPidName)
 {
    S8   szPsCmd[64] = {0};
@@ -309,8 +382,15 @@ S8 * mon_get_proc_name_by_id(S32 lPid, S8 * pszPidName)
    return NULL;
 }
 
+/**
+ * 功能:为字符串去头去尾，只留下最简单的名字
+ * 参数集：
+ *   参数1:S8 * pszCmd   进程启动命令
+ * 返回值：
+ *   成功则返回去头去尾之后的简单名称，失败则返回NULL
+ */
 S8 * mon_str_get_name(S8 * pszCmd)
-{//去头去尾得命令
+{  
    S8 * pszPtr = pszCmd;
    if(!pszPtr)
    {
@@ -318,13 +398,17 @@ S8 * mon_str_get_name(S8 * pszCmd)
                     , dos_get_filename(__FILE__), __LINE__, pszCmd);
       return NULL;
    }
- 
+
+   /**
+    *  找到第一个空格，前面为命令的绝对路径，后面为命令附带的相关参数
+    */
    while(*pszPtr != ' ' && *pszPtr != '\0' && *pszPtr != '\t')
    {
       ++pszPtr;
    }
    *pszPtr = '\0';
 
+   /*找到最后一个'/'字符，'/'和' '之间的部分是命令的最简化名称*/
    while(*(pszPtr - 1) != '/' && pszPtr != pszCmd)
    {
       --pszPtr;

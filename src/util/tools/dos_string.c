@@ -626,7 +626,7 @@ DLLEXPORT S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str, U32 ulStrLen)
  */
 DLLEXPORT S32 dos_is_digit_str(S8 *str)
 {
-	S32 i;
+	S32 i = 0;
 
 	if (DOS_ADDR_VALID(str))
 	{

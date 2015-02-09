@@ -127,18 +127,21 @@ static S32 _assert_find_node(VOID *pSymName, HASH_NODE_S *pNode)
  *      U32 ulIndex        : 附加参数
  * 返回值: VOID
  */
-static VOID _assert_print(HASH_NODE_S *pNode, U32 ulIndex)
+static VOID _assert_print(HASH_NODE_S *pNode, VOID *pulIndex)
 {
     DOS_ASSERT_NODE_ST *pstAssertInfoNode = (DOS_ASSERT_NODE_ST *)pNode;
+    U32   ulIndex;
     S8 szBuff[512];
     U32 ulLen;
     TIME_ST *pstTimeFirst, *pstTimeLast;
     S8 szTime1[32] = { 0 }, szTime2[32] = { 0 };
 
-    if (!pNode)
+    if (!pNode || !pulIndex)
     {
         return;
     }
+
+    ulIndex = *(U32 *)pulIndex;
 
     pstTimeFirst = localtime(&pstAssertInfoNode->stFirstTime);
     pstTimeLast = localtime(&pstAssertInfoNode->stLastTime);
@@ -174,7 +177,7 @@ static VOID _assert_print(HASH_NODE_S *pNode, U32 ulIndex)
  *      U32 ulIndex        : 附加参数
  * 返回值: VOID
  */
-static VOID _assert_record(HASH_NODE_S *pNode, U32 ulIndex)
+static VOID _assert_record(HASH_NODE_S *pNode, VOID *pParam)
 {
     DOS_ASSERT_NODE_ST *pstAssertInfoNode = (DOS_ASSERT_NODE_ST *)pNode;
     S8 szBuff[512];
@@ -227,7 +230,7 @@ S32 dos_assert_print(U32 ulIndex, S32 argc, S8 **argv)
     cli_out_string(ulIndex, "Assert Info since the service start:\r\n");
 
     pthread_mutex_lock(&g_mutexAssertInfo);
-    hash_walk_table(g_pstHashAssert,  ulIndex, _assert_print);
+    hash_walk_table(g_pstHashAssert,  (VOID *)&ulIndex, _assert_print);
     pthread_mutex_unlock(&g_mutexAssertInfo);
 
     return 0;
@@ -244,7 +247,7 @@ S32 dos_assert_record()
     dos_syslog(LOG_LEVEL_EMERG, "Assert Info since the service start:\r\n");
 
     pthread_mutex_lock(&g_mutexAssertInfo);
-    hash_walk_table(g_pstHashAssert,  0, _assert_record);
+    hash_walk_table(g_pstHashAssert,  NULL, _assert_record);
     pthread_mutex_unlock(&g_mutexAssertInfo);
 
     return 0;

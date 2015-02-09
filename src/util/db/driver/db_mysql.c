@@ -78,6 +78,7 @@ FUNCATTR S32 db_mysql_query(MYSQL *pstMysql, S8 *pszSQL, S32 (*callback)(VOID*, 
     if (mysql_query(pstMysql, pszSQL))
     {
         db_assert(0);
+        printf("\n%s\n", mysql_error(pstMysql));
 
         return DB_ERR_QUERY_FAIL;
     }

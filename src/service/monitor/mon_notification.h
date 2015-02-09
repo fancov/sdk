@@ -17,7 +17,7 @@
 #include <dos/dos_types.h>
 
 
-S32 mon_send_shortmsg(S8 * pszMsg, S8 * pcszTelNo);
+S32 mon_send_shortmsg(S8 * pszMsg, S8 * pszTelNo);
 S32 mon_dial_telephone(S8 * pszMsg, S8 * pszTelNo);
 S32 mon_send_audio(S8 * pszMsg, S8 * pszWechatNo);
 S32 mon_send_web(S8 * pszMsg, S8 * pszURL);

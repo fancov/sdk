@@ -42,8 +42,8 @@ VOID read_xml(const S8 * xml_file, MON_WARNING_COND_S * pCond);
 
 VOID * mon_res_monitor(VOID *p);
 VOID * mon_warning_handle(VOID *p);
-S32 mon_res_generate();
-S32 mon_res_destroy();
+S32    mon_res_alloc();
+S32    mon_res_destroy();
 
 #endif //#if INCLUDE_RES_MONITOR  
 #endif //end _MON_MONITOR_AND_HANDLE_H__

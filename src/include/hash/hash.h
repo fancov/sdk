@@ -77,15 +77,15 @@ typedef  struct HASH_TABLE_S{
 /*extern variables, export*/
 
 /*extern functions, export*/
-HASH_TABLE_S *hash_create_table (U32 ulHashSize, U32 (*pInsertFunc)());
-HASH_NODE_S *hash_find_node(HASH_TABLE_S *pHashTab, U32 ulIndex,
+DLLEXPORT HASH_TABLE_S *hash_create_table (U32 ulHashSize, U32 (*pInsertFunc)());
+DLLEXPORT HASH_NODE_S *hash_find_node(HASH_TABLE_S *pHashTab, U32 ulIndex,
     VOID *pKey, S32 (*fnValCmp)(VOID *, HASH_NODE_S *));
-VOID hash_add_node (HASH_TABLE_S *pHashTab,HASH_NODE_S *pNode,U32 ulHashIndex,U8 *pu1InsertFuncParam);
-VOID hash_delete_node (HASH_TABLE_S *pHashTab,HASH_NODE_S *pNode,U32 ulHashIndex);
-VOID hash_delete_table (HASH_TABLE_S *pHashTab,VOID (*pFreeNodeMemFunc)(VOID *));
-VOID hash_walk_bucket (HASH_TABLE_S *pHashTab, U32 ulHashIndex, VOID (*fnVisit)(HASH_NODE_S *));
-VOID hash_walk_table (HASH_TABLE_S *pHashTab, U32 ulParam, VOID (*fnVisit)(HASH_NODE_S *, U32 ulParam));
-VOID hash_free_allbucket (HASH_TABLE_S *pHashTab, VOID  (*pMemFreeFunc)(VOID *));
+DLLEXPORT VOID hash_add_node (HASH_TABLE_S *pHashTab,HASH_NODE_S *pNode,U32 ulHashIndex,U8 *pu1InsertFuncParam);
+DLLEXPORT VOID hash_delete_node (HASH_TABLE_S *pHashTab,HASH_NODE_S *pNode,U32 ulHashIndex);
+DLLEXPORT VOID hash_delete_table (HASH_TABLE_S *pHashTab,VOID (*pFreeNodeMemFunc)(VOID *));
+DLLEXPORT VOID hash_walk_bucket (HASH_TABLE_S *pHashTab, U32 ulHashIndex, VOID (*fnVisit)(HASH_NODE_S *));
+DLLEXPORT VOID hash_walk_table (HASH_TABLE_S *pHashTab, VOID *pParam, VOID (*fnVisit)(HASH_NODE_S *, VOID *pParam));
+DLLEXPORT VOID hash_free_allbucket (HASH_TABLE_S *pHashTab, VOID  (*pMemFreeFunc)(VOID *));
 
 
 #endif/*__INC_HASH_PUB_H__*/

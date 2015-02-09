@@ -16,7 +16,6 @@ SUFFIX					= o
 LIBS					= -lpthread  -lmxml -lmysqlclient
 
 MYSQL_HEADERS			= -I/usr/include/mysql
-PCAP_HEADERS      = -I$(SROUCE)/include/pcap-dev
 MYSQL_LIBS				= -L/usr/lib64/mysql
 
 
@@ -43,7 +42,7 @@ include $(SROUCE)/service/Makefile.mk
 ########################################################################
 ALL_OBJS	= $(C_OBJ_FILE) $(CXX_OBJ_FILE) 
 ALL_SRCS	= $(C_FILE) $(CXX_FILE)
-ALL_HEADERS	= $(DOS_INCLUDES) $(MYSQL_HEADERS) $(PCAP_HEADERS)
+ALL_HEADERS	= $(DOS_INCLUDES) $(MYSQL_HEADERS)
 ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS) 
 
 ########################################################################

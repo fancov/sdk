@@ -19,7 +19,13 @@ extern  S32 g_lPartCnt;
 static S32  mon_get_disk_temperature();
 static S8 * mon_get_disk_serial_num(S8 * pszPartitionName);
 
-
+/**
+ * 功能:为分区信息数组分配内存
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_disk_malloc()
 {
    S32 lRows = 0;
@@ -43,6 +49,13 @@ S32 mon_disk_malloc()
    return DOS_SUCC;
 }
 
+/**
+ * 功能:释放为分区信息数组分配的内存
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_disk_free()
 {
    S32 lRows = 0;
@@ -63,15 +76,28 @@ S32 mon_disk_free()
    return DOS_SUCC;
 }
 
-
+/**
+ * 功能:获取磁盘的温度
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 static S32  mon_get_disk_temperature()
-{//保留，未完成
-   
+{
+   /* 由于软件包hdparm安装问题，故无法采用 */
    return DOS_SUCC;
 }
 
+/**
+ * 功能:获取磁盘的序列号信息字符串
+ * 参数集：
+ *   参数1: S8 * pszPartitionName 分区名
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
-{//保留，未完成
+{   /* 目前没有有效的方法获得其硬件序列 */
     if(!pszPartitionName)
     {
        logr_cirt("%s:Line %d:mon_get_disk_serial_num|pszPartitionName is %p!",
@@ -82,7 +108,18 @@ static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
     return "IC35L180AVV207-1";
 }
 
-
+/** df命令输出
+ * Filesystem                   1K-blocks     Used Available Use% Mounted on
+ * /dev/mapper/VolGroup-lv_root   8780808  6175596   2159160  75% /
+ * tmpfs                           699708       72    699636   1% /dev/shm
+ * /dev/sda1                       495844    34870    435374   8% /boot
+ * .host:/                      209715196 19219176 190496020  10% /mnt/hgfs
+ * 功能:获取磁盘的序列号信息字符串
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_get_partition_data()
 {
    S8  szDfCmd[MAX_CMD_LENGTH] = {0};
@@ -167,12 +204,24 @@ failure:
    return DOS_FAIL;
 }
 
+
+/**
+ * 功能:获取磁盘的总占用率
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回占用率大小，失败返回DOS_FAIL
+ */
 S32  mon_get_total_disk_usage_rate()
 {
    U32  ulRows = 0;
    S32  lTotal = 0;
    S32  lUsed  = 0;
-   
+
+   /**
+    *  使用率的算法:
+    *     rate = busy/total
+    */
    for (ulRows = 0; ulRows < g_lPartCnt; ulRows++)
    {
       S32 lOneAvail = 0;
@@ -205,7 +254,13 @@ S32  mon_get_total_disk_usage_rate()
    return (lUsed + lUsed % lTotal) / lTotal;
 }
 
-
+/**
+ * 功能:获取磁盘分区数组的格式化信息字符串
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_get_partition_formatted_info()
 {
    S32 lRows = 0;
@@ -217,7 +272,7 @@ S32 mon_get_partition_formatted_info()
    lDiskKBytes = mon_get_total_disk_kbytes();
    if(DOS_SUCC == lDiskKBytes)
    {
-      logr_error("%s:Line %d:mon_get_partition_struct_obj_array_formatted_info|get total disk bytes failure,lDiskKBytes is %d!", 
+      logr_error("%s:Line %d:mon_get_partition_formatted_info|get total disk bytes failure,lDiskKBytes is %d!", 
                     dos_get_filename(__FILE__), __LINE__, lDiskKBytes);
       return DOS_FAIL;
    }
@@ -225,7 +280,7 @@ S32 mon_get_partition_formatted_info()
    lDiskUsageRate = mon_get_total_disk_usage_rate();
    if(-1 == lDiskUsageRate)
    {
-      logr_error("%s:Line %d:mon_get_partition_struct_obj_array_formatted_info|get total disk usage rate failure,lDiskUsageRate is %d!",
+      logr_error("%s:Line %d:mon_get_partition_formatted_info|get total disk usage rate failure,lDiskUsageRate is %d!",
                  dos_get_filename(__FILE__), __LINE__, lDiskUsageRate);
       return DOS_FAIL;
    }
@@ -233,7 +288,7 @@ S32 mon_get_partition_formatted_info()
    lDiskTemperature = mon_get_disk_temperature();
    if(-1 == lDiskTemperature)
    {
-      logr_error("%s:Line %d:mon_get_partition_struct_obj_array_formatted_info|get disk temperature failure,lDiskTemperature is %d", 
+      logr_error("%s:Line %d:mon_get_partition_formatted_info|get disk temperature failure,lDiskTemperature is %d", 
                  dos_get_filename(__FILE__) ,__LINE__, lDiskTemperature);
       return DOS_FAIL;
    }
@@ -252,7 +307,7 @@ S32 mon_get_partition_formatted_info()
 
       if(!g_pastPartition[lRows])
       {
-         logr_cirt("%s:Line %d:mon_get_partition_struct_obj_array_formatted_info|get partition formatted information failure,m_pastPartition[%d] is %p!"
+         logr_cirt("%s:Line %d:mon_get_partition_formatted_info|get partition formatted information failure,m_pastPartition[%d] is %p!"
                     , dos_get_filename(__FILE__), __LINE__, lRows, g_pastPartition[lRows]);
          return DOS_FAIL;
       }
@@ -273,6 +328,13 @@ S32 mon_get_partition_formatted_info()
    return DOS_SUCC;
 }
 
+/**
+ * 功能:获取磁盘的总占用率
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回磁盘总字节数(KBytes)，失败返回DOS_FAIL
+ */
 S32 mon_get_total_disk_kbytes()
 {
    S32 lTotal = 0;
@@ -302,3 +364,4 @@ S32 mon_get_total_disk_kbytes()
 #ifdef __cplusplus
 }
 #endif
+

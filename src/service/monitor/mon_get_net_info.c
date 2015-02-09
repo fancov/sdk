@@ -23,7 +23,13 @@ extern S8 g_szMonNetworkInfo[MAX_NETCARD_CNT * MAX_BUFF_LENGTH];
 extern MON_NET_CARD_PARAM_S * g_pastNet[MAX_NETCARD_CNT];
 extern S32 g_lNetCnt;
 
-
+/**
+ * 功能:为网卡数组分配内存
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_netcard_malloc()
 {
    S32 lRows = 0;
@@ -46,6 +52,13 @@ S32 mon_netcard_malloc()
    return DOS_SUCC;
 }
 
+/**
+ * 功能:释放为网卡数组分配的内存
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_netcard_free()
 {
    S32 lRows = 0;
@@ -66,7 +79,27 @@ S32  mon_netcard_free()
    return DOS_SUCC;
 } 
 
-
+/** ethtool eth0
+ * Settings for eth0:
+ *       Supported ports: [ TP ]
+ *       Supported link modes:   10baseT/Half 10baseT/Full 
+ *                               100baseT/Half 100baseT/Full 
+ *                               1000baseT/Full 
+ *       Supported pause frame use: No
+ *       Supports auto-negotiation: Yes
+ *       Advertised link modes:  10baseT/Half 10baseT/Full 
+ *                               100baseT/Half 100baseT/Full 
+ *  ......
+ *       Wake-on: d
+ *       Current message level: 0x00000007 (7)
+ *                              drv probe link
+ *       Link detected: yes
+ * 功能:判断网卡的网口是否开启
+ * 参数集：
+ *   参数1:const S8 * pszNetCard 网卡名称
+ * 返回值：
+ *   开启则返回DOS_TRUE，否则返回DOS_FALSE
+ */
  BOOL mon_is_netcard_connected(const S8 * pszNetCard)
  {
    S8 szEthCmd[MAX_CMD_LENGTH] = {0};
@@ -96,6 +129,9 @@ S32  mon_netcard_free()
    fseek(fp, 0, SEEK_SET);
    if (NULL != (fgets(szLine, MAX_BUFF_LENGTH, fp)))
    {
+      /**
+       * 判断依据:判断Link detected后边的字符串是否为yes，是则连接正常
+       */
       if (mon_is_ended_with(szLine, "yes\n"))
       {
           goto success;
@@ -116,6 +152,14 @@ failure:
    return DOS_FALSE;
 }
 
+/**
+ * 输出结果参照mon_is_netcard_connected函数
+ * 功能:获取网口的最大传输速率
+ * 参数集：
+ *   参数1:const S8 * pszDevName 网卡名称
+ * 返回值：
+ *   成功返回网口的最大数据传输速率，失败返回-1
+ */
 S32 mon_get_max_trans_speed(const S8 * pszDevName)
 {
    S8  szEthCmd[MAX_CMD_LENGTH] = {0};
@@ -180,6 +224,14 @@ success:
    return lSpeed;
 }
 
+
+/**
+ * 功能:获取网卡数量，所有网卡的MAC地址、IPv4地址、广播IP地址、子网掩码、网卡的网口最大数据传输速率
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32 mon_get_netcard_data()
 {
    S32 lFd;
@@ -202,8 +254,9 @@ S32 mon_get_netcard_data()
 
    stIfc.ifc_len = sizeof(astReq);
    stIfc.ifc_buf = (caddr_t)astReq;
-   if (!ioctl(lFd, SIOCGIFCONF, (char *)&stIfc))
+   if (!ioctl(lFd, SIOCGIFCONF, (S8 *)&stIfc))
    {
+      /* 获取网卡设备的个数 */
       lInterfaceNum = g_lNetCnt= stIfc.ifc_len / sizeof(struct ifreq);
       while (lInterfaceNum > 0)
       {
@@ -212,7 +265,7 @@ S32 mon_get_netcard_data()
 
          if(!g_pastNet[lLength])
          {
-            logr_cirt("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,m_pastNet[%d] is %p!"
+            logr_cirt("%s:Line %d:mon_get_netcard_data|get netcard data failure,m_pastNet[%d] is %p!"
                         , dos_get_filename(__FILE__), __LINE__ ,lLength ,g_pastNet[lLength]);
             goto failure;
          }
@@ -223,12 +276,12 @@ S32 mon_get_netcard_data()
 
          if (ioctl(lFd, SIOCGIFFLAGS, &stIfrcopy))
          {
-            logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,error no is %s"
+            logr_error("%s:Line %d:mon_get_netcard_data|get netcard data failure,error no is %s"
                         , dos_get_filename(__FILE__), __LINE__, strerror(errno));
             goto failure;
          }
 
-         if (!ioctl(lFd, SIOCGIFHWADDR, (char *)(&astReq[lInterfaceNum])))
+         if (!ioctl(lFd, SIOCGIFHWADDR, (S8 *)(&astReq[lInterfaceNum])))
          {
             memset(szMac, 0, sizeof(szMac));
             dos_snprintf(szMac, sizeof(szMac), "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -240,27 +293,27 @@ S32 mon_get_netcard_data()
                    (unsigned char)astReq[lInterfaceNum].ifr_hwaddr.sa_data[5]);
             /*获得设备Mac地址*/
             dos_strcpy(g_pastNet[lLength]->szMacAddress, szMac);
-            (g_pastNet[lLength]->szMacAddress)[dos_strlen(szMac)] = '\0';
+            g_pastNet[lLength]->szMacAddress[dos_strlen(szMac)] = '\0';
          }
          else
          {
-            logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,error no is %s"
+            logr_error("%s:Line %d:mon_get_netcard_data|get netcard data failure,error no is %s"
                         , dos_get_filename(__FILE__), __LINE__, strerror(errno));
             goto failure;
          }
              
-         if (!ioctl(lFd, SIOCGIFADDR, (char *)&astReq[lInterfaceNum]))
-         {
+         if (!ioctl(lFd, SIOCGIFADDR, (S8 *)&astReq[lInterfaceNum]))
+         {     
             dos_snprintf(szIPv4Addr, sizeof(szIPv4Addr), "%s",
-               (char *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_addr))->sin_addr));
+               (S8 *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_addr))->sin_addr));
 
             /*获得设备ip地址*/
             dos_strcpy(g_pastNet[lLength]->szIPAddress, szIPv4Addr);
-            (g_pastNet[lLength]->szIPAddress)[dos_strlen(szIPv4Addr)] = '\0';
+            g_pastNet[lLength]->szIPAddress[dos_strlen(szIPv4Addr)] = '\0';
          }
          else
          {
-           logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,error no is %s"
+           logr_error("%s:Line %d:mon_get_netcard_data|get netcard data failure,error no is %s"
                         , dos_get_filename(__FILE__), __LINE__, strerror(errno));
            goto failure;
          }
@@ -268,14 +321,14 @@ S32 mon_get_netcard_data()
          if (!ioctl(lFd, SIOCGIFBRDADDR, &astReq[lInterfaceNum]))
          {
             dos_snprintf(szBroadAddr, sizeof(szBroadAddr), "%s",
-               (char *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_broadaddr))->sin_addr));
+               (S8 *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_broadaddr))->sin_addr));
             /*获得设备广播ip地址*/
             dos_strcpy(g_pastNet[lLength]->szBroadIPAddress, szBroadAddr);
-            (g_pastNet[lLength]->szBroadIPAddress)[dos_strlen(szBroadAddr)] = '\0';
+            g_pastNet[lLength]->szBroadIPAddress[dos_strlen(szBroadAddr)] = '\0';
          }
          else
          {
-            logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,error no is %s"
+            logr_error("%s:Line %d:mon_get_netcard_data|get netcard data failure,error no is %s"
                         , dos_get_filename(__FILE__), __LINE__, strerror(errno));
             goto failure;
          }
@@ -283,14 +336,14 @@ S32 mon_get_netcard_data()
          if (!ioctl(lFd, SIOCGIFNETMASK, &astReq[lInterfaceNum]))
          {
             dos_snprintf(szSubnetMask, sizeof(szSubnetMask), "%s",
-               (char *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_netmask))->sin_addr));
+               (S8 *)inet_ntoa(((struct sockaddr_in *)&(astReq[lInterfaceNum].ifr_netmask))->sin_addr));
             /*获得设备子网掩码*/
             dos_strcpy(g_pastNet[lLength]->szNetMask, szSubnetMask);
-            (g_pastNet[lLength]->szNetMask)[dos_strlen(szSubnetMask)] = '\0';
+            g_pastNet[lLength]->szNetMask[dos_strlen(szSubnetMask)] = '\0';
          }
          else
          {
-             logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,error no is %s"
+             logr_error("%s:Line %d:mon_get_netcard_data|get netcard data failure,error no is %s"
                         , dos_get_filename(__FILE__), __LINE__, strerror(errno));
              goto failure;
          }
@@ -305,7 +358,7 @@ S32 mon_get_netcard_data()
             S32 lRet = mon_get_max_trans_speed(g_pastNet[lLength]->szNetDevName);
             if(-1 == lRet)
             {
-               logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get max transspeed failure,lRet is %d!"
+               logr_error("%s:Line %d:mon_get_netcard_data|get max transspeed failure,lRet is %d!"
                             , dos_get_filename(__FILE__), __LINE__, lRet);
                goto failure;
             }
@@ -317,7 +370,7 @@ S32 mon_get_netcard_data()
    }
    else
    {
-     logr_error("%s:Line %d:mon_get_netcard_struct_obj_array_data|get netcard data failure,error no is %s"
+     logr_error("%s:Line %d:mon_get_netcard_data|get netcard data failure,error no is %s"
                 , dos_get_filename(__FILE__), __LINE__, strerror(errno));
      goto failure;
    }
@@ -333,6 +386,13 @@ success:
    return DOS_SUCC;
 }
 
+/**
+ * 功能:获取网卡数组信息的格式化信息字符串
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 S32  mon_netcard_formatted_info()
 {
     S32 lRows = 0;
@@ -345,7 +405,7 @@ S32  mon_netcard_formatted_info()
 
        if(!g_pastNet[lRows])
        {
-          logr_cirt("%s:Line %d:mon_netcard_struct_obj_array_formatted_info|get netcard formatted information failure,m_pastNet[%d] is %p!"
+          logr_cirt("%s:Line %d:mon_netcard_formatted_info|get netcard formatted information failure,m_pastNet[%d] is %p!"
                     , dos_get_filename(__FILE__), __LINE__, lRows, g_pastNet[lRows]);
           return DOS_FAIL;
        }
