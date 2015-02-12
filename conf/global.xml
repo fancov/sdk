@@ -57,4 +57,19 @@
     	    <param name="leval" value="" />
     	</db>
     </log>
+	<!--freeswitch数据库配置-->
+    <fs_db>
+       <!--freeswitch数据库主机ip-->
+       <param name="host"     value="172.16.99.100"/>
+       <!--数据库用户名-->
+       <param name="username" value="root"/>
+       <!--密码-->
+       <param name="password" value="admin"/>
+       <!--端口号-->
+       <param name="port"     value="3306"/>
+       <!--数据库名称-->
+       <param name="db_name"  value="ccsys"/>
+	   <!--freeswitch配置文件根路径-->
+	   <param name="cfg_path" value="../conf"/>
+    </fs_db>
 </config>
