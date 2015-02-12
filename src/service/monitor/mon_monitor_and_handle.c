@@ -15,7 +15,7 @@ extern "C"{
 #include <arpa/inet.h>
 #include <dos/dos_config.h>
 #include "../util/config/config_api.h"
-#include "mon_string.h"
+#include "mon_lib.h"
 #include "mon_notification.h"
 #include "mon_get_mem_info.h"
 #include "mon_get_cpu_info.h"
@@ -47,6 +47,8 @@ S8 g_szMonProcessInfo[MAX_PROC_CNT * MAX_BUFF_LENGTH] = {0};
 static DB_HANDLE_ST *         g_pstDBHandle = NULL;
 static MON_MSG_QUEUE_S *      g_pstMsgQueue = NULL;//消息队列
 static MON_THRESHOLD_S *      g_pstCond = NULL;
+
+S8 * g_pszAnalyseList = NULL;
 
 static S32 mon_get_res_info();
 static S32 mon_handle_excp();

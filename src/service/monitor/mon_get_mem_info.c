@@ -10,7 +10,7 @@ extern "C"{
 #if INCLUDE_MEM_MONITOR
 
 #include "mon_get_mem_info.h"
-#include "mon_string.h"
+#include "mon_lib.h"
 
 static S8  m_szMemInfoFile[] = "/proc/meminfo";
 extern S8  g_szMonMemInfo[MAX_BUFF_LENGTH];

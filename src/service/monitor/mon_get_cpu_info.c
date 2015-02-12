@@ -8,7 +8,7 @@ extern "C"{
 #if INCLUDE_RES_MONITOR
 #if INCLUDE_CPU_MONITOR
 
-#include "mon_string.h"
+#include "mon_lib.h"
 #include "mon_get_cpu_info.h"
 
 

@@ -10,7 +10,7 @@ extern "C"{
 
 #include <fcntl.h>
 #include "mon_get_disk_info.h"
-#include "mon_string.h"
+#include "mon_lib.h"
 
 extern  S8 g_szMonDiskInfo[MAX_PARTITION_COUNT * MAX_BUFF_LENGTH];
 extern  MON_SYS_PART_DATA_S * g_pastPartition[MAX_PARTITION_COUNT];
@@ -155,6 +155,11 @@ S32 mon_get_partition_data()
             logr_error("%s:Line %d:mon_get_partition_data|analyse sentence failure!"
                          , dos_get_filename(__FILE__), __LINE__);
             goto failure;
+         }
+
+         if (0 == dos_strncmp("tmpfs", pszAnalyseRslt[0], dos_strlen("tmpfs")))
+         {
+            continue;
          }
             
          dos_strcpy(g_pastPartition[g_lPartCnt]->szPartitionName, pszAnalyseRslt[0]);
