@@ -54,7 +54,10 @@ S32 bsd_walk_tbl_req(DLL_NODE_S *pMsgNode)
             lRet = bsd_walk_settle_tbl(pstMsg);
             bsd_send_walk_rsp2sl(pMsgNode, lRet);
             break;
-
+        case BS_TBL_TYPE_TMP_CMD:
+            lRet = bsd_walk_web_cmd_tbl(pstMsg);
+            bsd_send_walk_rsp2sl(pMsgNode, lRet);
+            break;
         default:
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_WARNING, "Warning: It's a unknown table");
             /* 未知消息,不做处理,释放内存 */
@@ -230,6 +233,7 @@ VOID bsd_sl_msg_proc(DLL_NODE_S *pMsgNode)
 VOID *bsd_recv_bss_msg(VOID *arg)
 {
     DLL_NODE_S *pNode;
+    struct timespec         stTimeout;
 
     while (1)
     {
@@ -237,7 +241,9 @@ VOID *bsd_recv_bss_msg(VOID *arg)
 
         /* 读取消息队列第一个数据 */
         pthread_mutex_lock(&g_mutexBSS2DMsg);
-        pthread_cond_wait(&g_condBSS2DList, &g_mutexBSS2DMsg);
+        stTimeout.tv_sec = time(0) + 1;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&g_condBSS2DList, &g_mutexBSS2DMsg, &stTimeout);
         pNode = dll_fetch(&g_stBSS2DMsgList);
         pthread_mutex_unlock(&g_mutexBSS2DMsg);
 

@@ -17,7 +17,7 @@
 extern "C"{
 #endif /* __cplusplus */
 
-#define BS_ONLY_LISTEN_LOCAL                DOS_TRUE    /* 是否只监听本机 */
+#define BS_ONLY_LISTEN_LOCAL                DOS_FALSE/* 是否只监听本机 */
 #define BS_LOCAL_IP_ADDR                    ((127<<24)|1)
 
 #define BS_HASH_TBL_CUSTOMER_SIZE           (1<<9)      /* 客户信息HASH表大小 */
@@ -53,6 +53,14 @@ enum BS_INTER_ERRCODE_E
 
 };
 
+enum BS_WEB_CMD_OPTERATOR
+{
+    BS_CMD_INSERT,
+    BS_CMD_UPDATE,
+    BS_CMD_DELETE,
+
+    BS_CMD_BUTT
+};
 
 /* 跟踪类型 */
 enum BS_TRACE_TARGET_E
@@ -435,6 +443,16 @@ typedef struct stBS_SETTLE_ST
 }BS_SETTLE_ST;
 
 /*
+ * WEBAPI数据结构体
+ **/
+typedef struct tagBSWEBCMDInfo
+{
+    U32         ulTblIndex;                     /* 被更新的表 */
+    U32         ulTimestamp;                    /* 当前数据创建的时间 */
+    JSON_OBJ_ST *pstData;                   /* JSON对象 */
+}BS_WEB_CMD_INFO_ST;
+
+/*
 任务信息结构体
 设计实现:
 1.主要用于记录任务的统计信息;
@@ -503,6 +521,7 @@ typedef struct stBSS_APP_CONN
 
     U32                 aulIPAddr[4];       /* APP所在IP地址,网络序 */
     S32                 lSockfd;            /* APP对应在本机的socket */
+    S32                 lAddrLen;
     struct sockaddr_in  stAddr;             /* APP对应在本机的连接地址 */
 }BSS_APP_CONN;
 
@@ -566,6 +585,10 @@ extern DLL_S            g_stBSCDRList;
 extern pthread_cond_t   g_condBSBillingList;
 extern pthread_mutex_t  g_mutexBSBilling;
 extern DLL_S            g_stBSBillingList;
+extern pthread_mutex_t  g_mutexWebCMDTbl;
+extern DLL_S            g_stWebCMDTbl;
+extern U32              g_ulLastCMDTimestamp;
+
 
 extern BSS_CB g_stBssCB;
 
@@ -592,7 +615,7 @@ BS_SETTLE_ST *bs_get_settle_st(U16 usTrunkID);
 BS_TASK_ST *bs_get_task_st(U32 ulTaskID);
 VOID bs_customer_add_child(BS_CUSTOMER_ST *pstCustomer, BS_CUSTOMER_ST *pstChildCustomer);
 BSS_APP_CONN *bs_get_app_conn(BS_MSG_TAG *pstMsgTag);
-BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, struct sockaddr_in *pstAddrIn, BOOL bIsTcp);
+BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, struct sockaddr_in *pstAddrIn, S32 lAddrLen, BOOL bIsTcp);
 VOID bs_stat_agent_num(VOID);
 U32 bs_get_settle_packageid(U16 usTrunkID);
 BS_BILLING_PACKAGE_ST *bs_get_billing_package(U32 ulPackageID, U8 ucServType);
@@ -629,6 +652,7 @@ VOID *bss_recv_bsd_msg(VOID * arg);
 VOID *bss_send_msg2app(VOID *arg);
 VOID *bss_recv_msg_from_app(VOID *arg);
 VOID *bss_recv_msg_from_web(VOID *arg);
+VOID *bss_web_msg_proc(VOID *arg);
 VOID *bss_aaa(VOID *arg);
 VOID *bss_cdr(VOID *arg);
 VOID *bss_billing(VOID *arg);
@@ -639,10 +663,12 @@ VOID bss_day_cycle_proc(U64 uLParam);
 VOID bss_hour_cycle_proc(U64 uLParam);
 
 /* bsd_db.c */
+S32 bs_init_db();
 S32 bsd_walk_customer_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_walk_agent_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_walk_settle_tbl(BS_INTER_MSG_WALK *pstMsg);
+S32 bsd_walk_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg);
 VOID bsd_save_original_cdr(BS_INTER_MSG_CDR *pstMsg);
 VOID bsd_save_voice_cdr(BS_INTER_MSG_CDR *pstMsg);
 VOID bsd_save_recording_cdr(BS_INTER_MSG_CDR *pstMsg);

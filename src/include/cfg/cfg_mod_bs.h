@@ -13,7 +13,7 @@
 #ifndef __CFG_MOD_BS_H__
 #define __CFG_MOD_BS_H__
 
-#define INCLUDE_SERVICE_BS              1
+#define INCLUDE_SERVICE_BS                1
 
 /* 异常处理模块 */
 #define INCLUDE_EXCEPTION_CATCH           1
