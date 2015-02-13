@@ -44,6 +44,7 @@ S32  mon_proc_free();
 S32  mon_get_process_data();
 S32  mon_kill_all_monitor_process();
 S32  mon_restart_computer();
+S8*  mon_get_proc_name_by_id(S32 lPid, S8 * pszPidName);
 BOOL mon_is_proc_dead(S32 lPid);
 S32  mon_get_proc_total_cpu_rate();
 S32  mon_get_proc_total_mem_rate();

@@ -35,6 +35,7 @@ include $(SROUCE)/util/task/Makefile.mk
 include $(SROUCE)/util/db/Makefile.mk
 include $(SROUCE)/cfg/Makefile.mk
 include $(SROUCE)/service/Makefile.mk
+include $(SROUCE)/service/monitor/Makefile.mk
 
 
 ########################################################################

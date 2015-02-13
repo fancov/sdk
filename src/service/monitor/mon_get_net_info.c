@@ -17,7 +17,7 @@ extern "C"{
 #include <errno.h>
 
 #include "mon_get_net_info.h"
-#include "mon_string.h"
+#include "mon_lib.h"
 
 extern S8 g_szMonNetworkInfo[MAX_NETCARD_CNT * MAX_BUFF_LENGTH];
 extern MON_NET_CARD_PARAM_S * g_pastNet[MAX_NETCARD_CNT];

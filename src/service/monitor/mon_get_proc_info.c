@@ -10,7 +10,7 @@ extern "C" {
 
 #include <dirent.h>
 #include "mon_get_proc_info.h"
-#include "mon_string.h"
+#include "mon_lib.h"
 
 
 extern S8 g_szMonProcessInfo[MAX_PROC_CNT * MAX_BUFF_LENGTH];
@@ -813,6 +813,91 @@ S32 mon_restart_computer()
     system("/sbin/reboot");
     return DOS_SUCC;
 }
+
+
+/**
+ * 功能:根据进程id获得进程名
+ * 参数集：
+ *   参数1:S32 lPid  进程id
+ *   参数2:S8 * pszPidName   进程名
+ * 返回值：
+ *   成功则返回进程名，失败则返回NULL
+ */
+S8 * mon_get_proc_name_by_id(S32 lPid, S8 * pszPidName)
+{
+   S8   szPsCmd[64] = {0};
+   S8   szMonFile[] = "monstring";
+   S8   szLine[1024] = {0};
+   S8*  pTokenPtr = NULL;
+   FILE * fp;
+
+   if(lPid > MAX_PID_VALUE || lPid <= MIN_PID_VALUE)
+   {
+      logr_emerg("%s:Line %d:mon_get_proc_name_by_id|pid %d is invalid!"
+                    , dos_get_filename(__FILE__), __LINE__, lPid);
+      return NULL;
+   }
+
+   if(!pszPidName)
+   {
+      logr_warning("%s:Line %d:mon_get_proc_name_by_id|pszPidName is %p!"
+                    , dos_get_filename(__FILE__), __LINE__, pszPidName);
+      return NULL;
+   }
+
+   dos_snprintf(szPsCmd, sizeof(szPsCmd), "ps -ef | grep %d > %s"
+                ,lPid, szMonFile);
+   system(szPsCmd);
+
+   fp = fopen(szMonFile, "r");
+   if (!fp)
+   {
+      logr_cirt("%s:Line %d:mon_get_proc_name_by_id|file \'%s\' open failed,fp is %p!"
+                , dos_get_filename(__FILE__), __LINE__, szMonFile, fp);
+      return NULL;
+   }
+
+   fseek(fp, 0, SEEK_SET);
+
+   while(!feof(fp))
+   {
+      S32 lCols = 0;
+      if(NULL != fgets(szLine, sizeof(szLine), fp))
+      {
+         if(lPid != mon_first_int_from_str(szLine))
+         {
+            continue;
+         }
+
+         pTokenPtr = strtok(szLine, " \t\n");
+         while(pTokenPtr)
+         {
+            pTokenPtr = strtok(NULL, " \t\n");
+            if(5 == lCols)
+            {
+               break;
+            }
+            ++lCols;
+         }
+
+         pTokenPtr = strtok(NULL, "\t");
+         *(pTokenPtr + dos_strlen(pTokenPtr) - 1) = '\0';
+
+         fclose(fp);
+         fp = NULL;
+         unlink(szMonFile);
+
+         return pTokenPtr;
+      }
+   }
+
+   fclose(fp);
+   fp = NULL;
+   unlink(szMonFile);
+
+   return NULL;
+}
+
 
 /**
  * 功能:判断进程是否死亡
