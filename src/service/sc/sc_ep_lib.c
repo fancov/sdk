@@ -10,6 +10,16 @@
  *  修改历史:
  */
 
+#include <dos.h>
+
+#include "sc_pub.h"
+#include "sc_task_pub.h"
+#include "sc_debug.h"
+#include "sc_event_process.h"
+
+extern U32       g_ulTaskTraceAll;       /* 是否跟踪所有任务 */
+
+
 U32 sc_get_trunk_id(S8 *pszIPAddr, S8 *pszGatewayName)
 {
     SC_TRACE_IN(pszIPAddr, pszGatewayName, 0, 0);

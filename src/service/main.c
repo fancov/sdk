@@ -105,11 +105,7 @@ S32 dos_destroy_pid_file()
  * 函数: main(int argc, char ** argv)
  * 功能: 系统主函数入口
  */
-#ifdef DIPCC_FREESWITCH
-DLLEXPORT int dos_main(int argc, char ** argv)
-#else
 int main(int argc, char ** argv)
-#endif
 {
     S8  szBuff[256] = { 0 };
 
@@ -294,6 +290,8 @@ int main(int argc, char ** argv)
 #endif
     exit(0);
 #endif
+
+    return 0;
 }
 
 #ifdef __cplusplus

@@ -36,7 +36,7 @@ extern "C"{
 /* declare global params */
 U32       g_ulSCLogLevel        = LOG_LEVEL_DEBUG;       /* 日志级别 */
 
-U32       g_ulTaskTraceAll      = 1;       /* 是否跟踪所有任务 */
+U32       g_ulTaskTraceAll      = 0;       /* 是否跟踪所有任务 */
 
 U32       g_ulCallTraceAll      = 1;     /* 跟踪所有的呼叫 */
 
@@ -456,7 +456,6 @@ VOID sc_show_task_for_custom(U32 ulIndex, U32 ulCustomID)
 VOID sc_show_caller_for_task(U32 ulIndex, U32 ulTaskID)
 {
     S8 szCmdBuff[1024] = { 0 };
-    S8 szWeeks[64] = { 0 };
     U32 i=0, ulTotal;
     SC_TASK_CB_ST *pstTCB;
 

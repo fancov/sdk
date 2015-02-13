@@ -241,7 +241,6 @@ U32 sc_dialer_ccb_hash_del(S8 *pszCallee, S8 *pszCaller)
 U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
 {
     S8    pszCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
-    S8    *pszUUID = NULL;
     S8    *pszAudioFilePath = NULL;
     S8    *pszEventHeader, *pszEventBody;
     U32   ulPlayCnt = 0;

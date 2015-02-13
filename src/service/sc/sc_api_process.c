@@ -36,6 +36,7 @@ U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_call_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_acd_http_req_proc(U32 ulAction, U32 ulGrpID, U32 ulSiteID, S8 *pszExtension);
 
 
 /* global parameters */

@@ -60,7 +60,7 @@ static S8 *g_pszCCBStatus[] =
     "INIT",
     "AUTH",
     "EXEC",
-    "REPORT",
+    "ACTIVE",
     "RELEASE"
     ""
 };
@@ -194,6 +194,9 @@ U32 sc_ccb_init(SC_CCB_ST *pstCCB)
     pstCCB->bValid = DOS_FALSE;                           /* 是否合法 */
     pstCCB->bTraceNo = DOS_FALSE;                         /* 是否跟踪 */
     pstCCB->bNeedConnSite = DOS_FALSE;                    /* 接通后是否需要接通坐席 */
+    pstCCB->bWaitingOtherRelase = DOS_FALSE;
+    pstCCB->bBanlanceWarning = DOS_FALSE;
+    pstCCB->usOtherCCBNo = U16_BUTT;
 
     pstCCB->usTCBNo = U16_BUTT;                           /* 任务控制块编号ID */
     pstCCB->usSiteNo = U16_BUTT;                          /* 坐席编号 */
@@ -1152,7 +1155,7 @@ static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
     pstCallee->ulIndex = ulIndex;
     pstCallee->ucTraceON = 0;
     pstCallee->ucCalleeType = SC_CALL_NUM_TYPE_NORMOAL;
-    dos_strncpy(pstCallee->szNumber, pstCallee, sizeof(pstCallee->szNumber));
+    dos_strncpy(pstCallee->szNumber, pstCallee->szNumber, sizeof(pstCallee->szNumber));
     pstCallee->szNumber[sizeof(pstCallee->szNumber) - 1] = '\0';
 
     pstTCB->ulLastCalleeIndex++;

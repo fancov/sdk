@@ -322,7 +322,6 @@ VOID *sc_task_runtime(VOID *ptr)
 
 U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
 {
-    U8        *aucMem;
     U32       ulIndex;
     S32       lCnt;
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);

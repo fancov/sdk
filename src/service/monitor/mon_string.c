@@ -9,12 +9,12 @@ extern "C"{
 
 #include "mon_string.h"
 
-#ifndef MAX_PID_VALUE 
+#ifndef MAX_PID_VALUE
 #define MAX_PID_VALUE 65535
 #define MIN_PID_VALUE 0
 #endif
 
-static S8* pszAnalyseList = NULL;
+//static S8* pszAnalyseList = NULL;
 
 /**
  * 功能:为字符串分配内存
@@ -93,7 +93,7 @@ BOOL mon_is_substr(S8 * pszSrc, S8 * pszDest)
          }
       }
    }
-   
+
    return DOS_FALSE;
 }
 
@@ -162,7 +162,7 @@ BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix)
 
    pszFileSrc = pszFile + dos_strlen(pszFile) -1;
    pszSuffixSrc = (S8 *)pszSuffix + dos_strlen(pszSuffix) - 1;
-   
+
    for (; pszSuffixSrc >= pszSuffix; pszSuffixSrc--, pszFileSrc--)
    {
       if (*pszFileSrc != *pszSuffixSrc)
@@ -172,7 +172,7 @@ BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix)
          return DOS_FALSE;
       }
    }
-   
+
    return DOS_TRUE;
 }
 
@@ -186,7 +186,7 @@ BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix)
 S32 mon_first_int_from_str(S8 * pszStr)
 {
    S32  lData;
-   S8   szTail[1024] = {0}; 
+   S8   szTail[1024] = {0};
    S8 * pszSrc = pszStr;
    S8 * pszTemp = NULL;
    S32  lRet = 0;
@@ -197,7 +197,7 @@ S32 mon_first_int_from_str(S8 * pszStr)
                     , dos_get_filename(__FILE__), __LINE__, pszStr);
       return -1;
    }
-   
+
    while (!(*pszSrc >= '0' && *pszSrc <= '9'))
    {
       ++pszSrc;
@@ -217,7 +217,7 @@ S32 mon_first_int_from_str(S8 * pszStr)
                     , dos_get_filename(__FILE__), __LINE__, lRet);
       return -1;
    }
-   
+
    return lData;
 }
 
@@ -390,7 +390,7 @@ S8 * mon_get_proc_name_by_id(S32 lPid, S8 * pszPidName)
  *   成功则返回去头去尾之后的简单名称，失败则返回NULL
  */
 S8 * mon_str_get_name(S8 * pszCmd)
-{  
+{
    S8 * pszPtr = pszCmd;
    if(!pszPtr)
    {

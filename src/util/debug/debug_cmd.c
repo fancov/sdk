@@ -15,6 +15,11 @@ extern S32 cli_show_timer(U32 ulIndex, S32 argc, S8 **argv);
 extern S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv);
 #endif
 
+#if INCLUDE_CC_SC
+extern S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv);
+#endif
+
+
 COMMAND_ST g_stCommandSet[] = {
     {NULL, "assert",        "Show assert informationa",        dos_assert_print},
 #if INCLUDE_SERVICE_BS
@@ -26,7 +31,10 @@ COMMAND_ST g_stCommandSet[] = {
     {NULL, "process",       "Show processes reggister in",     bh_process_list},
 #endif
 #if INCLUDE_SERVICE_TIMER
-    {NULL, "timer",         "Show timer usage",                cli_show_timer}
+    {NULL, "timer",         "Show timer usage",                cli_show_timer},
+#endif
+#if INCLUDE_CC_SC
+    {NULL, "cc",            "Debug CC mod",                    cli_cc_process},
 #endif
 
 };

@@ -19,7 +19,6 @@ extern "C"{
 
 #include <dos.h>
 #include <bs_pub.h>
-#include <switch.h>
 
 #include "sc_pub.h"
 #include "bs_pub.h"
@@ -270,7 +269,7 @@ U32 sc_send_usr_auth2bs(SC_CCB_ST *pstCCB)
     pstListNode->ulSeq = pstAuthMsg->stMsgTag.ulMsgSeq;
     pstListNode->blNeedSyn = DOS_FALSE;
     sem_init(&pstListNode->semSyn, 0, 0);
-    dos_tmr_init(&pstListNode->hTmrSendInterval);
+    pstListNode->hTmrSendInterval = NULL;
     HASH_INIT_NODE((HASH_NODE_S *)pstListNode);
 
     pthread_mutex_lock(&g_mutexMsgList);
@@ -417,7 +416,7 @@ U32 sc_send_balance_query2bs(U32 ulUserID, U32 ulCustomID, U32 ulAccountID)
     pstListNode->ulSeq = pstQueryMsg->stMsgTag.ulMsgSeq;
     sem_init(&pstListNode->semSyn, 0, 0);
     pstListNode->blNeedSyn = DOS_FALSE;
-    dos_tmr_init(&pstListNode->hTmrSendInterval);
+   pstListNode->hTmrSendInterval = NULL;
     HASH_INIT_NODE((HASH_NODE_S *)pstListNode);
 
     pthread_mutex_lock(&g_mutexMsgList);
@@ -490,6 +489,7 @@ U32 sc_send_balance_query2bs(U32 ulUserID, U32 ulCustomID, U32 ulAccountID)
 /* 发送终止计费消息 */
 U32 sc_send_billing_stop2bs(SC_CCB_ST *pstCCB)
 {
+#if 0
     BOOL blExternnalLeg = DOS_FALSE, blOutboundCall = DOS_FALSE, blVMCall = DOS_FALSE;
     U32  ulCurrentLeg = 0, ulHashIndex = 0;
     SC_CCB_ST             *pstCCB2 = NULL, *pstFirstCCB = NULL, *pstSecondCCB = NULL;
@@ -798,7 +798,7 @@ prepare_msg:
     pstListNode->ulSeq = pstCDRMsg->stMsgTag.ulMsgSeq;
     pstListNode->blNeedSyn = DOS_FALSE;
     sem_init(&pstListNode->semSyn, 0, 0);
-    dos_tmr_init(&pstListNode->hTmrSendInterval);
+    pstListNode->hTmrSendInterval = NULL;
     HASH_INIT_NODE((HASH_NODE_S *)pstListNode);
 
     /* 加入HASH表 */
@@ -853,7 +853,7 @@ prepare_msg:
         sc_logr_notice("%s", "Send Auth msg fail.");
         return DOS_FAIL;
     }
-
+#endif
     return DOS_SUCC;
 }
 

@@ -62,6 +62,22 @@ do                                                            \
     pthread_mutex_unlock(&(pstCCB)->mutexCCBLock);            \
 }while(0)
 
+#define SC_CCB_SET_SERVICE(pstCCB, ulService)                 \
+do                                                            \
+{                                                             \
+    if (DOS_ADDR_INVALID(pstCCB)                              \
+        || ulService >= SC_MAX_SRV_TYPE_PRE_LEG)              \
+    {                                                         \
+        break;                                                \
+    }                                                         \
+    pthread_mutex_lock(&(pstCCB)->mutexCCBLock);              \
+    sc_call_trace((pstCCB), "CCB Add service.");              \
+    (pstCCB)->aucServiceType[(pstCCB)->ulCurrentSrvInd++]     \
+                = ulService;                                  \
+    pthread_mutex_unlock(&(pstCCB)->mutexCCBLock);            \
+}while(0)
+
+
 
 #define SC_TRACE_HTTPD                  (1<<1)
 #define SC_TRACE_HTTP                   (1<<2)
@@ -79,6 +95,21 @@ typedef enum tagSiteAccompanyingStatus{
     SC_SITE_ACCOM_BUTT                 = 255      /* 分机随行，非法值 */
 }SC_SITE_ACCOM_STATUS_EN;
 
+typedef enum tagIntervalService
+{
+    SC_INTER_SRV_NUMBER_VIRFY            = 0,  /* 号码审核业务 */
+    SC_INTER_SRV_INGROUP_CALL,                 /* 组内呼叫 */        /* * */
+    SC_INTER_SRV_OUTGROUP_CALL,                /* 组外呼叫 */        /* *9 */
+    SC_INTER_SRV_HOTLINE_CALL,                 /* 热线呼叫 */
+    SC_INTER_SRV_SITE_SIGNIN,                  /* 坐席签入呼叫 */    /* *2 */
+
+    SC_INTER_SRV_WARNING,                      /* 告警信息 */
+    SC_INTER_SRV_QUERY_IP,                     /* 查IP信息 */        /* *158 */
+    SC_INTER_SRV_QUERY_EXTENTION,              /* 查分机信息 */      /* *114 */
+    SC_INTER_SRV_QUERY_AMOUNT,                 /* 查余额业务 */      /* *199 */
+
+    SC_INTER_SRV_BUTT
+}SC_INTERVAL_SERVICE_EN;
 
 typedef enum tagSysStatus{
     SC_SYS_NORMAL                      = 3,
@@ -125,10 +156,10 @@ typedef enum tagCallNumType{
 typedef enum tagCCBStatus
 {
     SC_CCB_IDEL                           = 0,     /* CCB状态，空闲状态 */
-    SC_CCB_INIT,
-    SC_CCB_AUTH,                                   /* CCB状态，呼叫递交状态 */
-    SC_CCB_EXEC,                                   /* CCB状态，呼叫接收状态 */
-    SC_CCB_REPORT,                                 /* CCB状态，呼叫接续状态 */
+    SC_CCB_INIT,                                   /* CCB状态，呼叫初始化状态 */
+    SC_CCB_AUTH,                                   /* CCB状态，呼叫认证状态 */
+    SC_CCB_EXEC,                                   /* CCB状态，呼叫执行状态 */
+    SC_CCB_ACTIVE,                                 /* CCB状态，呼叫接通状态状态 */
     SC_CCB_RELEASE,                                /* CCB状态，呼叫释放状态 */
 
     SC_CCB_BUTT
@@ -195,6 +226,8 @@ typedef struct tagTaskAllowPeriod{
 /* 呼叫控制块 */
 typedef struct tagSCCCB{
     U16       usCCBNo;                            /* 编号 */
+    U16       usOtherCCBNo;                       /* 另一个leg的编号 */
+
     U8        ucTerminationFlag;                  /* 业务终止标志 */
     U8        ucTerminationCause;                 /* 业务终止原因 */
 
@@ -202,7 +235,8 @@ typedef struct tagSCCCB{
     U32       bTraceNo:1;                         /* 是否跟踪 */
     U32       bBanlanceWarning:1;                 /* 是否余额告警 */
     U32       bNeedConnSite:1;                    /* 接通后是否需要接通坐席 */
-    U32       ulRes:28;
+    U32       bWaitingOtherRelase:1;              /* 是否在等待另外一跳退释放 */
+    U32       ulRes:27;
 
     U16       usTCBNo;                            /* 任务控制块编号ID */
     U16       usSiteNo;                           /* 坐席编号 */
@@ -366,6 +400,11 @@ U32 sc_ccb_syn_post(S8 *pszUUID);
 U32 sc_ccb_syn_wait(S8 *pszUUID);
 
 SC_SYS_STATUS_EN sc_check_sys_stat();
+
+SC_CCB_ST *sc_ccb_hash_tables_find(S8 *pszUUID);
+U32 sc_ccb_hash_tables_delete(S8 *pszUUID);
+U32 sc_ccb_hash_tables_add(S8 *pszUUID, SC_CCB_ST *pstCCB);
+
 
 
 #if 0

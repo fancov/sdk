@@ -28,6 +28,10 @@ extern "C"{
 S32 bs_start();
 #endif
 
+#if INCLUDE_CC_SC
+U32 mod_dipcc_sc_load();
+U32 mod_dipcc_sc_runtime();
+#endif
 S32 root(S32 _argc, S8 ** _argv)
 {
 #if INCLUDE_DEBUG_CLI_SERVER
@@ -81,12 +85,28 @@ S32 root(S32 _argc, S8 ** _argv)
 
     logr_info("%s", "BS Start.");
 #endif
-#ifndef DIPCC_FREESWITCH
+
+
+
+#ifdef INCLUDE_CC_SC
+
+    if (DOS_SUCC != mod_dipcc_sc_load())
+    {
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    if (DOS_SUCC != mod_dipcc_sc_runtime())
+    {
+        DOS_ASSERT(0);
+        return -1;
+    }
+#endif
+
     while(1)
     {
         sleep(1);
     }
-#endif
 
     return 0;
 }

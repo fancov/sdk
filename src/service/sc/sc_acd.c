@@ -386,7 +386,7 @@ U32 sc_acd_update_site_status(S8 *pszExenstion, U32 ulGrpID, U32 ulAction)
                 pstSiteListNode->pstSiteInfo->bConnected = DOS_FALSE;
                 break;
             case SC_ACD_SITE_ACTION_SIGNOUT:
-                pstSiteListNode->pstSiteInfo->bConnected = DOS_FAIL;
+                pstSiteListNode->pstSiteInfo->bConnected = DOS_FALSE;
                 pstSiteListNode->pstSiteInfo->bConnected = DOS_FALSE;
                 break;
             case SC_ACD_SITE_ACTION_EN_QUEUE:

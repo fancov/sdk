@@ -35,7 +35,7 @@
 
 
 /* 心跳模块开关 */
-#define INCLUDE_BH_ENABLE                 1
+#define INCLUDE_BH_ENABLE                 0
 #if (INCLUDE_BH_ENABLE)
 #define INCLUDE_BH_SERVER                 0
 #define INCLUDE_BH_CLIENT                 (!INCLUDE_BH_SERVER)
@@ -52,6 +52,8 @@
 
 /* 定时器模块 */
 #define INCLUDE_SERVICE_TIMER             1
+
+#define INCLUDE_CC_SC                     1
 
 
 #endif /* END __CFG_MOD_FS_CORE_H__ */

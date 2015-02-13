@@ -14,14 +14,12 @@
 #define _SC_EVENT_PROCESS_H__
 
 #define SC_EP_EVENT_LIST \
+            "CHANNEL_PARK " \
             "CHANNEL_CREATE " \
-            "CHANNEL_DESTROY " \
+            "CHANNEL_EXECUTE_COMPLETE " \
             "CHANNEL_HANGUP " \
             "CHANNEL_HANGUP_COMPLETE " \
-            "CHANNEL_ANSWER " \
             "DTMF " \
-            "CHANNEL_PROGRESS " \
-            "CHANNEL_PROGRESS_MEDIA " \
             "SESSION_HEARTBEAT "
 
 
@@ -53,17 +51,7 @@ enum {
     SC_SERV_MMS_SNED                = 20,  /* 发送彩信 */
 
     SC_SERV_FAX                     = 21,  /* 传真业务 */
-
-    SC_SERV_NUMBER_VIRFY            = 22,  /* 号码审核业务 */
-    SC_SERV_INGROUP_CALL            = 23,  /* 组内呼叫 */        /* * */
-    SC_SERV_OUTGROUP_CALL           = 24,  /* 组外呼叫 */        /* *9 */
-    SC_SERV_HOTLINE_CALL            = 25,  /* 热线呼叫 */
-    SC_SERV_SITE_SIGNIN             = 26,  /* 坐席签入呼叫 */    /* *2 */
-
-    SC_SERV_WARNING                 = 27,  /* 告警信息 */
-    SC_SERV_QUERY_IP                = 28,  /* 查IP信息 */        /* *158 */
-    SC_SERV_QUERY_EXTENTION         = 29,  /* 查分机信息 */      /* *114 */
-    SC_SERV_QUERY_AMOUNT            = 30,  /* 查余额业务 */      /* *199 */
+    SC_SERV_INTERNAL_SERVICE        = 22,  /* 传真业务 */
 
     SC_SERV_BUTT                    = 255
 };
@@ -74,6 +62,13 @@ enum {
     SC_NUM_TYPE_OUTLINE,                   /* 号码为长号 */
 
     SC_NUM_TYPE_BUTT
+};
+
+enum tagCallDirection{
+    SC_DIRECTION_PSTN,                     /* 呼叫方向来自于PSTN */
+    SC_DIRECTION_SIP,                       /* 呼叫方向来自于SIP UA */
+
+    SC_DIRECTION_INVALID                    /* 非法值 */
 };
 
 /* 定义CCBhash表 */

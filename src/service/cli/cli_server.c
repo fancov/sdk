@@ -48,7 +48,7 @@ extern "C"{
 #define MAX_KEY_WORDS          16
 
 /* 定义远程命令行前缀 */
-static S8 g_szRemoteCMDPrefix[] = "o";
+static S8 g_szRemoteCMDPrefix[] = "/";
 
 /* 定义线程句柄 */
 static pthread_t g_pthCliServer;
@@ -881,15 +881,53 @@ S32 cli_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
 
     cli_logr_debug("%d, %s, %s. %s", iKeyCnt, pszKeyWord[0], pszKeyWord[1], szCMDBak);
 
+    /* 先处理本地命令 */
+    if (dos_strnicmp(g_szRemoteCMDPrefix, pszKeyWord[0], dos_strlen(g_szRemoteCMDPrefix)) == 0)
+    {
+        /* 本地命令 */
+        /* 客户端是否处于正确的模式 */
+        if (ulMode > cli_cmdset_get_group_num())
+        {
+            iRet = -1;
+            goto finished;
+        }
+
+        /* 获取当前模式命令集合 */
+        pstCurrentGroup = &g_stCmdRootGrp[ulMode];
+        if (!pstCurrentGroup)
+        {
+            iRet = -1;
+            goto finished;
+        }
+
+        /* 查找命令 */
+        pstCurrentCmd = cli_server_cmd_find(pstCurrentGroup, iKeyCnt, pszKeyWord);
+        if (!pstCurrentCmd)
+        {
+            snprintf(szErrorMsg, sizeof(szErrorMsg), "Cannot find the command: %s\r\n", szBuffer);
+            iRet = -1;
+            goto finished;
+        }
+
+        /* 执行命令 */
+        if (pstCurrentCmd->func)
+        {
+            iRet = pstCurrentCmd->func(ulClientIndex, iKeyCnt, pszKeyWord);
+        }
+
+        cli_logr_debug("Cli Server", "CMD", DOS_TRUE, "Control Panel Exec Local CMD:\"%s\"", szCMDBak);
+
+        goto finished;
+    }
     /* 是否带有进程名 */
-    if (iKeyCnt > 1
-        && dos_stricmp(g_szRemoteCMDPrefix, pszKeyWord[0]) == 0)
+    else if (iKeyCnt > 1
+        && dos_strnicmp(g_szRemoteCMDPrefix, pszKeyWord[0], dos_strlen(g_szRemoteCMDPrefix)) != 0)
     {
         PROCESS_INFO_NODE_ST *pstProcess;
         /* 查找是否有该进程，如果有就直接将命令发送到进程，如果没有几继续查找是否是本地命令 */
-        pstProcess = cli_server_find_active_process(pszKeyWord[1]);
+        pstProcess = cli_server_find_active_process(pszKeyWord[0]);
         if (pstProcess
-            || dos_strcmp(pszKeyWord[1], "all") == 0)
+            || dos_strcmp(pszKeyWord[0], "all") == 0)
         {
             if (pstProcess)
             {
@@ -926,36 +964,6 @@ S32 cli_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
         goto finished;
     }
 
-
-    /* 本地命令 */
-    /* 客户端是否处于正确的模式 */
-    if (ulMode > cli_cmdset_get_group_num())
-    {
-        iRet = -1;
-        goto finished;
-    }
-
-    /* 获取当前模式命令集合 */
-    pstCurrentGroup = &g_stCmdRootGrp[ulMode];
-    if (!pstCurrentGroup)
-    {
-        iRet = -1;
-        goto finished;
-    }
-
-    /* 查找命令 */
-    pstCurrentCmd = cli_server_cmd_find(pstCurrentGroup, iKeyCnt, pszKeyWord);
-    if (!pstCurrentCmd)
-    {
-        snprintf(szErrorMsg, sizeof(szErrorMsg), "Cannot find the command: %s\r\n", szBuffer);
-        iRet = -1;
-        goto finished;
-    }
-
-    /* 执行命令 */
-    iRet = pstCurrentCmd->func(ulClientIndex, iKeyCnt, pszKeyWord);
-
-    cli_logr_debug("Cli Server", "CMD", DOS_TRUE, "Control Panel Exec Local CMD:\"%s\"", szCMDBak);
 
 finished:
     for (i=0; i<iKeyCnt; i++)
