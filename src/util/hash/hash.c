@@ -77,6 +77,8 @@ DLLEXPORT HASH_TABLE_S *hash_create_table (U32 ulHashSize, U32 (*pInsertFunc)())
     for(ulHashIndex = 0; ulHashIndex < ulHashSize; ulHashIndex++){
         HASH_BUCKET_INIT(&pHashTab->HashList[ulHashIndex]);
     }
+
+    pHashTab->NodeNum = 0;
  }
  return(pHashTab);
 }

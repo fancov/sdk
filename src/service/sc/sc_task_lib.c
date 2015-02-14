@@ -859,7 +859,7 @@ VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID)
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
 }
 
-static S32 sc_task_load_site_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
+S32 sc_task_load_site_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
     return -1;
 }

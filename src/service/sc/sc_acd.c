@@ -100,12 +100,17 @@ static U32 sc_acd_hash_func4site(S8 *pszExension, U32 *pulHashIndex)
  **/
 static U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex)
 {
+    if (DOS_ADDR_INVALID(pulHashIndex))
+    {
+        return DOS_FAIL;
+    }
 
     SC_TRACE_IN(ulGrpID, pulHashIndex, 0, 0);
 
-    SC_TRACE_OUT();
+    *pulHashIndex = ulGrpID % SC_ACD_HASH_SIZE;
 
-    return ulGrpID % SC_ACD_HASH_SIZE;
+    SC_TRACE_OUT();
+    return DOS_SUCC;
 }
 
 /*
@@ -224,20 +229,18 @@ U32 sc_acd_add_site(SC_ACD_SITE_DESC_ST *pstSiteInfo, U32 ulGrpID)
     }
 
     /* 加入坐席管理hash表 */
+    HASH_Init_Node(&pstSiteListNode->stHashLink);
     sc_acd_hash_func4site(pstSiteInfo->szExtension, &ulHashVal);
     pthread_mutex_lock(&g_mutexSiteList);
     hash_add_node(g_pstSiteList, (HASH_NODE_S *)pstSiteListNode, ulHashVal, NULL);
     pthread_mutex_unlock(&g_mutexSiteList);
 
+
     /* 添加到队列 */
-    sc_acd_hash_func4grp(ulGrpID, &ulHashVal);
-    pthread_mutex_lock(&pstGroupListNode->mutexSiteQueue);
     dos_memcpy(pstSiteData, pstSiteInfo, sizeof(pstSiteInfo));
     pstSiteListNode->pstSiteInfo = pstSiteData;
     pstSiteListNode->ulID = pstGroupListNode->usCount;
     pstGroupListNode->usCount++;
-    hash_add_node(pstGroupListNode->pstSiteQueue, (HASH_NODE_S *)pstSiteListNode, ulHashVal, NULL);
-    pthread_mutex_unlock(&pstGroupListNode->mutexSiteQueue);
 
     SC_TRACE_OUT();
     return DOS_SUCC;
@@ -493,6 +496,7 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
         return DOS_FAIL;
     }
 
+    HASH_Init_Node(&pstGroupListNode->stHashLink);
     pstGroupListNode->pstSiteQueue = hash_create_table(SC_ACD_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(pstGroupListNode))
     {
@@ -706,19 +710,19 @@ static U32 sc_acd_init_site_queue()
     S8 szSQL[1024] = { 0, };
 
     dos_snprintf(szSQL, sizeof(szSQL)
-                    ,"SELECT "
-                     "    a.id, a.customer_id, a.job_number, a.username, a.extension, a.group1_id, a.group2_id, b.id, a.voice_record, a.class class"
-                     "from "
-                     "    (SELECT "
-                     "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, "
-                     "         tbl_agent.group1_id group1_id, tbl_agent.group2_id group2_id, tbl_sip.extension extension, "
-                     "         tbl_sip.username username, tbl_agent.voice_record voice_record, tbl_agent.class class"
-                     "     FROM "
-                     "         tbl_agent, tbl_sip "
-                     "     WHERE tbl_agent.sip_id = tbl_sip.id) a "
-                     "LEFT JOIN "
-                     "    tbl_group b "
-                     "ON "
+                    ,"SELECT " \
+                     "    a.id, a.customer_id, a.job_number, a.username, a.extension, a.group1_id, a.group2_id, b.id, a.voice_record, a.class class " \
+                     "FROM " \
+                     "    (SELECT " \
+                     "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
+                     "         tbl_agent.group1_id group1_id, tbl_agent.group2_id group2_id, tbl_sip.extension extension, " \
+                     "         tbl_sip.username username, tbl_agent.voice_record voice_record, tbl_agent.class class" \
+                     "     FROM " \
+                     "         tbl_agent, tbl_sip " \
+                     "     WHERE tbl_agent.sip_id = tbl_sip.id) a " \
+                     "LEFT JOIN " \
+                     "    tbl_group b " \
+                     "ON " \
                      "    a.group1_id = b.id OR a.group2_id = b.id;");
 
     if (db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, sc_acd_init_site_queue_cb, NULL, NULL) < 0)
@@ -818,6 +822,7 @@ static VOID sc_ack_site_wolk4init(HASH_NODE_S *pNode, VOID *pParam)
 
             pstSiteNodeNew->pstSiteInfo = pstSiteNode->pstSiteInfo;
 
+            sc_acd_hash_func4site(pstSiteNode->pstSiteInfo->szExtension, &ulHashVal);
             pthread_mutex_lock(&pstGroupNode->mutexSiteQueue);
             pstSiteNodeNew->ulID = pstGroupNode->usCount;
             pstGroupNode->usCount++;
@@ -831,11 +836,17 @@ static VOID sc_ack_site_wolk4init(HASH_NODE_S *pNode, VOID *pParam)
 
 static U32 sc_acd_init_relationship()
 {
+    HASH_NODE_S *pstHashNode = NULL;
+    U32 ulHashIndex = 0;
     SC_TRACE_IN(0, 0, 0, 0);
 
-    pthread_mutex_lock(&g_mutexSiteList);
-    hash_walk_table(g_pstSiteList, NULL, sc_ack_site_wolk4init);
-    pthread_mutex_unlock(&g_mutexSiteList);
+    HASH_Scan_Table(g_pstSiteList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstSiteList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            sc_ack_site_wolk4init(pstHashNode, NULL);
+        }
+    }
 
     SC_TRACE_OUT();
     return DOS_SUCC;
@@ -854,7 +865,7 @@ U32 sc_acd_init()
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
-
+    g_pstGroupList->NodeNum = 0;
 
     g_pstSiteList = hash_create_table(SC_ACD_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(g_pstSiteList))
@@ -868,12 +879,12 @@ U32 sc_acd_init()
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
+    g_pstSiteList->NodeNum = 0;
 
-    if (sc_acd_init_site_queue() != DOS_SUCC)
+    if (sc_acd_init_group_queue() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        sc_acd_trace_error("%s", "Init sites list fail in ACD.");
-
+        sc_acd_trace_error("%s", "Init group list fail in ACD.");
 
         hash_delete_table(g_pstSiteList, NULL);
         g_pstSiteList = NULL;
@@ -881,14 +892,15 @@ U32 sc_acd_init()
         hash_delete_table(g_pstGroupList, NULL);
         g_pstGroupList = NULL;
 
+
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
 
-    if (sc_acd_init_group_queue() != DOS_SUCC)
+    if (sc_acd_init_site_queue() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        sc_acd_trace_error("%s", "Init group list fail in ACD.");
+        sc_acd_trace_error("%s", "Init sites list fail in ACD.");
 
         sc_acd_deinit_site_queue();
 
@@ -897,7 +909,6 @@ U32 sc_acd_init()
 
         hash_delete_table(g_pstGroupList, NULL);
         g_pstGroupList = NULL;
-
 
         SC_TRACE_OUT();
         return DOS_FAIL;
@@ -908,8 +919,8 @@ U32 sc_acd_init()
         DOS_ASSERT(0);
         sc_acd_trace_error("%s", "Init ACD Data FAIL.");
 
-        sc_acd_deinit_site_queue();
         sc_acd_deinit_group_queue();
+        sc_acd_deinit_site_queue();
 
         hash_delete_table(g_pstSiteList, NULL);
         g_pstSiteList = NULL;

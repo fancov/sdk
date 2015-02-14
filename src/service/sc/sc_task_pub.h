@@ -12,11 +12,11 @@
 
 #ifndef __SC_TASK_PUB_H__
 #define __SC_TASK_PUB_H__
-#if 0
+
 #ifdef __cplusplus
 extern "C"{
 #endif /* __cplusplus */
-#endif
+
 /* include public header files */
 
 /* include private header files */
@@ -407,11 +407,10 @@ U32 sc_ccb_hash_tables_add(S8 *pszUUID, SC_CCB_ST *pstCCB);
 
 
 
-#if 0
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
-#endif
 
 #endif /* __SC_TASK_PUB_H__ */
 

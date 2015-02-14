@@ -9,11 +9,11 @@
  *  描    述: 对群呼任务进行管理
  *  修改历史:
  */
-#if 0
+
 #ifdef __cplusplus
 extern "C"{
 #endif /* __cplusplus */
-#endif
+
 /* include public header files */
 #include <dos.h>
 #include <sys/time.h>
@@ -756,8 +756,7 @@ U32 sc_task_mngt_shutdown()
     return DOS_SUCC;
 }
 
-#if 0
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
-#endif
+
