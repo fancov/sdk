@@ -192,14 +192,9 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     pstCCB->ulCustomID = pstTCB->ulCustomID;
     pstCCB->ulTaskID = pstTCB->ulTaskID;
     pstCCB->usTCBNo = pstTCB->usTCBNo;
-    pstCCB->usCallerNo = pstCaller->usNo;
     pstCCB->usSiteNo = U16_BUTT;
     pstCCB->ulTrunkID = U32_BUTT;
-    pstCCB->ulAuthToken = U32_BUTT;
     pstCCB->ulCallDuration = 0;
-    pstCCB->aucServiceType[0] = SC_SERV_OUTBOUND_CALL;
-    pstCCB->aucServiceType[1] = SC_SERV_EXTERNAL_CALL;
-    pstCCB->aucServiceType[2] = SC_SERV_AUTO_DIALING;
 
     dos_strncpy(pstCCB->szCallerNum, pstCaller->szNumber, SC_TEL_NUMBER_LENGTH);
     pstCCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';

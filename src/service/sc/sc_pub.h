@@ -69,7 +69,7 @@ extern "C"{
 #define SC_MAX_SRV_TYPE_PRE_LEG        4
 
 /* 最大呼叫数量 */
-#define SC_MAX_CALL                    2
+#define SC_MAX_CALL                    3000
 
 /* 最大任务数 */
 #define SC_MAX_TASK_NUM                1024

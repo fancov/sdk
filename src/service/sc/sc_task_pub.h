@@ -56,9 +56,9 @@ do                                                            \
     }                                                         \
     pthread_mutex_lock(&(pstCCB)->mutexCCBLock);              \
     sc_call_trace((pstCCB), "CCB Status Change %s -> %s"      \
-                , sc_ccb_get_status((pstCCB)->usStatus)       \
+                , sc_ccb_get_status((pstCCB)->ucStatus)       \
                 , sc_ccb_get_status(ulStatus));               \
-    (pstCCB)->usStatus = ulStatus;                            \
+    (pstCCB)->ucStatus = (U8)ulStatus;                        \
     pthread_mutex_unlock(&(pstCCB)->mutexCCBLock);            \
 }while(0)
 
@@ -66,14 +66,15 @@ do                                                            \
 do                                                            \
 {                                                             \
     if (DOS_ADDR_INVALID(pstCCB)                              \
-        || ulService >= SC_MAX_SRV_TYPE_PRE_LEG)              \
+      || (pstCCB)->ucCurrentSrvInd >= SC_MAX_SRV_TYPE_PRE_LEG \
+	  || ulService >= SC_SERV_BUTT)                           \
     {                                                         \
         break;                                                \
     }                                                         \
     pthread_mutex_lock(&(pstCCB)->mutexCCBLock);              \
     sc_call_trace((pstCCB), "CCB Add service.");              \
-    (pstCCB)->aucServiceType[(pstCCB)->ulCurrentSrvInd++]     \
-                = ulService;                                  \
+    (pstCCB)->aucServiceType[(pstCCB)->ucCurrentSrvInd++]     \
+                = (U8)ulService;                              \
     pthread_mutex_unlock(&(pstCCB)->mutexCCBLock);            \
 }while(0)
 
@@ -226,10 +227,28 @@ typedef struct tagTaskAllowPeriod{
 /* 呼叫控制块 */
 typedef struct tagSCCCB{
     U16       usCCBNo;                            /* 编号 */
-    U16       usOtherCCBNo;                       /* 另一个leg的编号 */
+    U16       usOtherCCBNo;                       /* 另外一个leg的CCB编号 */
 
+    U16       usTCBNo;                            /* 任务控制块编号ID */
+    U16       usSiteNo;                           /* 坐席编号 */
+
+    U32       ulCustomID;                         /* 当前呼叫属于哪个客户 */
+    U32       ulAgentID;                          /* 当前呼叫属于哪个客户 */
+    U32       ulTaskID;                           /* 当前任务ID */
+    U32       ulTrunkID;                          /* 中继ID */
+
+    U8        ucStatus;                           /* 呼叫控制块编号，refer to SC_CCB_STATUS_EN */
     U8        ucTerminationFlag;                  /* 业务终止标志 */
     U8        ucTerminationCause;                 /* 业务终止原因 */
+    U8        ucPayloadType;                      /* 编解码 */
+
+    U8        aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 列表*/
+    U8        ucCurrentSrvInd;                    /* 当前空闲的业务类型索引 */
+    U8        aucRes[3];
+
+    U16       usHoldCnt;                          /* 被hold的次数 */
+    U16       usHoldTotalTime;                    /* 被hold的总时长 */
+    U32       ulLastHoldTimetamp;                 /* 上次hold是的时间戳，解除hold的时候值零 */
 
     U32       bValid:1;                           /* 是否合法 */
     U32       bTraceNo:1;                         /* 是否跟踪 */
@@ -238,25 +257,17 @@ typedef struct tagSCCCB{
     U32       bWaitingOtherRelase:1;              /* 是否在等待另外一跳退释放 */
     U32       ulRes:27;
 
-    U16       usTCBNo;                            /* 任务控制块编号ID */
-    U16       usSiteNo;                           /* 坐席编号 */
-    U16       usCallerNo;                         /* 主叫号码编号 */
-    U16       usStatus;                           /* 呼叫控制块编号，refer to SC_CCB_STATUS_EN */
-
-    U8        aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 */
-    U32       ulCurrentSrvInd;                                /* 当前空闲的业务类型索引 */
-
-    U32       ulCustomID;                         /* 当前呼叫属于哪个客户 */
-    U32       ulAgentID;                          /* 当前呼叫属于哪个客户 */
-    U32       ulTaskID;                           /* 当前任务ID */
-    U32       ulTrunkID;                          /* 中继ID */
-    U32       ulAuthToken;                        /* 与计费模块的关联字段 */
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
-    U32       ulOtherLegID;                       /* 另外一个leg的CCB编号 */
 
-    U16       usHoldCnt;                          /* 被hold的次数 */
-    U16       usHoldTotalTime;                    /* 被hold的总时长 */
-    U32       ulLastHoldTimetamp;                 /* 上次hold是的时间戳，解除hold的时候值零 */
+    U32       ulStartTimeStamp;                   /* 起始时间戳 */
+    U32       ulRingTimeStamp;                    /* 振铃时间戳 */
+    U32       ulAnswerTimeStamp;                  /* 应答时间戳 */
+    U32       ulIVRFinishTimeStamp;               /* IVR播放完成时间戳 */
+    U32       ulDTMFTimeStamp;                    /* (第一个)二次拨号时间戳 */
+    U32       ulBridgeTimeStamp;                  /* LEG桥接时间戳 */
+    U32       ulByeTimeStamp;                     /* 释放时间戳 */
+
+    U32       ulRes1;
 
     S8        szCallerNum[SC_TEL_NUMBER_LENGTH];  /* 主叫号码 */
     S8        szCalleeNum[SC_TEL_NUMBER_LENGTH];  /* 被叫号码 */
@@ -264,8 +275,6 @@ typedef struct tagSCCCB{
     S8        szDialNum[SC_TEL_NUMBER_LENGTH];    /* 用户拨号 */
     S8        szSiteNum[SC_TEL_NUMBER_LENGTH];    /* 坐席号码 */
     S8        szUUID[SC_MAX_UUID_LENGTH];         /* Leg-A UUID */
-
-    U32       ulBSMsgNo;                          /* 和BS通讯使用的资源号 */
 
     sem_t     semCCBSyn;                          /* 用于同步的CCB */
     pthread_mutex_t mutexCCBLock;                 /* 保护CCB的锁 */
@@ -357,7 +366,6 @@ VOID sc_ccb_free(SC_CCB_ST *pstCCB);
 U32 sc_ccb_init(SC_CCB_ST *pstCCB);
 U32 sc_call_set_owner(SC_CCB_ST *pstCCB, U32  ulTaskID, U32 ulCustomID);
 U32 sc_call_set_trunk(SC_CCB_ST *pstCCB, U32 ulTrunkID);
-U32 sc_call_set_auth_token(SC_CCB_ST *pstCCB, U32 ulToken);
 SC_TASK_CB_ST *sc_tcb_find_by_taskid(U32 ulTaskID);
 SC_CCB_ST *sc_ccb_get(U32 ulIndex);
 

@@ -29,6 +29,7 @@ extern "C"{
 #define SC_GW_DOMAIN_LEG        32
 #define SC_IP_USERID_HASH_SIZE  1024
 #define SC_IP_DID_HASH_SIZE     1024
+#define SC_BLACK_LIST_HASH_SIZE 1024
 
 
 /*  DID号码绑定类型 */
@@ -46,6 +47,13 @@ typedef struct tagSCUserIDNode{
     S8   szExtension[SC_TEL_NUMBER_LENGTH];      /* 分机号 */
 }SC_USER_ID_NODE_ST;
 
+/* 黑名单HASH表节点 */
+typedef struct tagSCBlackListNode{
+    U32  ulID;                                   /* 索引 */
+    U32  ulCustomerID;                           /* 用户ID */
+    S8   szNum[SC_TEL_NUMBER_LENGTH];            /* 表达式 */
+    U32  ulType;                                 /* 类型，号码或者正则表达式 */
+}SC_BLACK_LIST_NODE;
 
 /* DIDI号码们描述节点 */
 typedef struct tagSCDIDNode{
@@ -124,6 +132,11 @@ pthread_mutex_t          g_mutexHashSIPUserID = PTHREAD_MUTEX_INITIALIZER;
 /* DID号码hash表 REFER TO SC_DID_NODE_ST */
 HASH_TABLE_S             *g_pstHashDIDNum  = NULL;
 pthread_mutex_t          g_mutexHashDIDNum = PTHREAD_MUTEX_INITIALIZER;
+
+/* 黑名单HASH表 */
+HASH_TABLE_S             *g_pstHashBlackList  = NULL;
+pthread_mutex_t          g_mutexHashBlackList = PTHREAD_MUTEX_INITIALIZER;
+
 
 /**
  * 函数: VOID sc_ep_sip_userid_init(SC_USER_ID_NODE_ST *pstUserID)
@@ -204,6 +217,26 @@ VOID sc_ep_gw_init(SC_GW_NODE_ST *pstGW)
 }
 
 /**
+ * 函数: VOID sc_ep_gw_init(SC_GW_NODE_ST *pstGW)
+ * 功能: 初始化pstGW所指向的网关描述结构
+ * 参数:
+ *      SC_GW_NODE_ST *pstGW 需要别初始化的网关描述结构
+ * 返回值: VOID
+ */
+VOID sc_ep_black_init(SC_BLACK_LIST_NODE *pstBlackListNode)
+{
+    if (pstBlackListNode)
+    {
+        dos_memzero(pstBlackListNode, sizeof(SC_BLACK_LIST_NODE));
+        pstBlackListNode->ulID = U32_BUTT;
+        pstBlackListNode->ulCustomerID = U32_BUTT;
+        pstBlackListNode->ulType = U32_BUTT;
+        pstBlackListNode->szNum[0] = '\0';
+    }
+}
+
+
+/**
  * 函数: static U32 sc_sip_userid_hash_func(S8 *pszUserID)
  * 功能: 通过pszUserID计算SIP User IDHash表的HASH值
  * 参数:
@@ -259,7 +292,166 @@ static U32 sc_sip_did_hash_func(S8 *pszDIDNum)
     return ulHashIndex % SC_IP_USERID_HASH_SIZE;
 }
 
+/**
+ * 函数: static U32 sc_black_list_hash_func(S8 *pszNum)
+ * 功能: 计算黑名单hash节点的hash值
+ * 参数:
+ *      S8 *pszNum : 当前黑名单号码
+ * 返回值: U32 返回hash值
+ */
+static U32 sc_black_list_hash_func(S8 *pszNum)
+{
+    U32 ulIndex;
+    U32 ulHashIndex;
 
+    ulIndex = 0;
+    while(1)
+    {
+        if ('\0' == pszNum[ulIndex])
+        {
+            break;
+        }
+
+        ulHashIndex += (pszNum[ulIndex] << 3);
+
+        ulIndex++;
+    }
+
+    return ulHashIndex % SC_IP_USERID_HASH_SIZE;
+}
+
+
+/**
+ * 函数: S32 sc_load_black_list_cb()
+ * 功能: 加载Black时数据库查询的回调函数，将数据加入黑名单hash表
+ * 参数:
+ *      VOID *pArg: 参数
+ *      S32 lCount: 列数量
+ *      S8 **aszValues: 值裂变
+ *      S8 **aszNames: 字段名列表
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    SC_BLACK_LIST_NODE *pstBlackListNode = NULL;
+    HASH_NODE_S        *pstHashNode      = NULL;
+    BOOL               blProcessOK       = DOS_TRUE;
+    S32                lIndex            = 0;
+    U32                ulHashIndex       = 0;
+
+
+    if (DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstBlackListNode = dos_dmem_alloc(sizeof(SC_BLACK_LIST_NODE));
+    if (DOS_ADDR_INVALID(pstBlackListNode))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_ep_black_init(pstBlackListNode);
+
+    for (blProcessOK = DOS_TRUE, lIndex=0; lIndex<lCount; lIndex++)
+    {
+        if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || dos_atoul(aszValues[lIndex], &pstBlackListNode->ulID) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "customer_id", dos_strlen("customer_id")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || dos_atoul(aszValues[lIndex], &pstBlackListNode->ulCustomerID) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "regex_number", dos_strlen("regex_number")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0])
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            dos_strncpy(pstBlackListNode->szNum, aszValues[lIndex], sizeof(pstBlackListNode->szNum));
+            pstBlackListNode->szNum[sizeof(pstBlackListNode->szNum) - 1] = '\0';
+        }
+    }
+
+    if (!blProcessOK)
+    {
+        DOS_ASSERT(0);
+
+        dos_dmem_free(pstBlackListNode);
+        return DOS_FAIL;
+    }
+
+    pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+    if (DOS_ADDR_INVALID(pstHashNode ))
+    {
+        DOS_ASSERT(0);
+
+        dos_dmem_free(pstBlackListNode);
+        return DOS_FAIL;
+    }
+
+    HASH_Init_Node(pstHashNode);
+    pstHashNode->pHandle = pstBlackListNode;
+    ulHashIndex = sc_black_list_hash_func(pstBlackListNode->szNum);
+
+    pthread_mutex_lock(&g_mutexHashBlackList);
+    hash_add_node(g_pstHashBlackList, pstHashNode, ulHashIndex, NULL);
+    pthread_mutex_unlock(&g_mutexHashBlackList);
+
+    return DOS_SUCC;
+}
+
+
+/**
+ * 函数: U32 sc_load_black_list()
+ * 功能: 加载黑名单数据
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_load_black_list()
+{
+    S8 szSQL[1024] = { 0, };
+
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, regex_number FROM tbl_blacklist;");
+
+    if (db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, sc_load_black_list_cb, NULL, NULL) != DB_ERR_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error("%s", "Load sip account fail.");
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+/**
+ * 函数: S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+ * 功能: 加载SIP账户时数据库查询的回调函数，将数据加入SIP账户的HASH表中
+ * 参数:
+ *      VOID *pArg: 参数
+ *      S32 lCount: 列数量
+ *      S8 **aszValues: 值裂变
+ *      S8 **aszNames: 字段名列表
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     SC_USER_ID_NODE_ST *pstSIPUserIDNode = NULL;
@@ -348,7 +540,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         return DOS_FALSE;
     }
 
-    printf("Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
+    sc_logr_debug("Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
                 , pstSIPUserIDNode->ulSIPID
                 , pstSIPUserIDNode->ulCustomID
                 , pstSIPUserIDNode->szUserID
@@ -365,6 +557,12 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     return DOS_SUCC;
 }
 
+/**
+ * 函数: U32 sc_load_sip_userid()
+ * 功能: 加载SIP账户数据
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_load_sip_userid()
 {
     S8 szSQL[1024] = { 0, };
@@ -382,6 +580,17 @@ U32 sc_load_sip_userid()
     return DOS_SUCC;
 }
 
+
+/**
+ * 函数: S32 sc_load_did_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+ * 功能: 加载DID号码时数据库查询的回调函数，将数据加入DID号码的HASH表中
+ * 参数:
+ *      VOID *pArg: 参数
+ *      S32 lCount: 列数量
+ *      S8 **aszValues: 值裂变
+ *      S8 **aszNames: 字段名列表
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 S32 sc_load_did_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     SC_DID_NODE_ST     *pstDIDNumNode = NULL;
@@ -487,6 +696,12 @@ S32 sc_load_did_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     return DOS_SUCC;
 }
 
+/**
+ * 函数: U32 sc_load_did_number()
+ * 功能: 加载DID号码数据
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_load_did_number()
 {
     S8 szSQL[1024] = { 0, };
@@ -498,7 +713,16 @@ U32 sc_load_did_number()
     return DOS_SUCC;
 }
 
-
+/**
+ * 函数: S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+ * 功能: 加载网关列表数据时数据库查询的回调函数，将数据加入网关加入对于路由的列表中
+ * 参数:
+ *      VOID *pArg: 参数
+ *      S32 lCount: 列数量
+ *      S8 **aszValues: 值裂变
+ *      S8 **aszNames: 字段名列表
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     SC_ROUTE_GRP_NODE_ST *pstRouetGroup = NULL;
@@ -568,6 +792,12 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     return DOS_SUCC;
 }
 
+/**
+ * 函数: U32 sc_load_did_number()
+ * 功能: 加载网关数据
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_load_gateway(SC_ROUTE_GRP_NODE_ST *pszGroupNode)
 {
     S8 szSQL[1024];
@@ -588,6 +818,16 @@ U32 sc_load_gateway(SC_ROUTE_GRP_NODE_ST *pszGroupNode)
     return DOS_SUCC;
 }
 
+/**
+ * 函数: S32 sc_load_route_group_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+ * 功能: 加载路由数据时数据库查询的回调函数，将数据加入路由列表中
+ * 参数:
+ *      VOID *pArg: 参数
+ *      S32 lCount: 列数量
+ *      S8 **aszValues: 值裂变
+ *      S8 **aszNames: 字段名列表
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 S32 sc_load_route_group_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     SC_ROUTE_GRP_NODE_ST *pstRoute      = NULL;
@@ -708,7 +948,12 @@ S32 sc_load_route_group_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames
     return DOS_TRUE;
 }
 
-
+/**
+ * 函数: U32 sc_load_did_number()
+ * 功能: 加载路由数据
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_load_route_group()
 {
     S8 szSQL[1024];
@@ -731,6 +976,18 @@ U32 sc_load_route_group()
     return DOS_SUCC;
 }
 
+/**
+ * 函数: U32 sc_ep_esl_execute(esl_handle_t *pstHandle, const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
+ * 功能: 使用pstHandle所指向的ESL句柄指向命令pszApp，参数为pszArg，对象为pszUUID
+ * 参数:
+ *      esl_handle_t *pstHandle: ESL句柄
+ *      const S8 *pszApp: 执行的命令
+ *      const S8 *pszArg: 命令参数
+ *      const S8 *pszUUID: channel的UUID
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * 注意: 当该函数在执行命令时，如果发现当前句柄已经失去连接，将会重新连接ESL服务器
+ */
 U32 sc_ep_esl_execute(esl_handle_t *pstHandle, const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
 {
     U32 ulRet;
@@ -774,6 +1031,14 @@ U32 sc_ep_esl_execute(esl_handle_t *pstHandle, const S8 *pszApp, const S8 *pszAr
     return DOS_SUCC;
 }
 
+/**
+ * 函数: U32 sc_ep_parse_event(esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
+ * 功能: 从ESL事件pstEvent中获取参数，并存储在pstCCB
+ * 参数:
+ *          esl_event_t *pstEvent : 数据源 ESL事件
+ *          SC_CCB_ST *pstCCB     : SCB，存储数据
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_ep_parse_event(esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
 {
     S8         *pszCaller    = NULL;
@@ -865,11 +1130,26 @@ U32 sc_ep_parse_event(esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
     return DOS_SUCC;
 }
 
+/**
+ * 函数: U32 sc_ep_internal_service_check(esl_event_t *pstEvent)
+ * 功能: 检查当前事件是否是在执行内部业务
+ * 参数:
+ *          esl_event_t *pstEvent : 数据源 ESL事件
+ * 返回值: 成功返回内部业务枚举值，否则返回无效业务枚举
+ */
 U32 sc_ep_internal_service_check(esl_event_t *pstEvent)
 {
     return SC_INTER_SRV_BUTT;
 }
 
+/**
+ * 函数: BOOL sc_ep_check_extension(S8 *pszNum, U32 ulCustomerID)
+ * 功能: 检查pszNum所执行的分机号，是否输入编号为ulCustomerID的客户
+ * 参数:
+ *      S8 *pszNum: 分机号
+ *      U32 ulCustomerID: 客户ID
+ * 返回值: 成功返回DOS_TRUE，否则返回DOS_FALSE
+ */
 BOOL sc_ep_check_extension(S8 *pszNum, U32 ulCustomerID)
 {
     SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
@@ -912,6 +1192,15 @@ BOOL sc_ep_check_extension(S8 *pszNum, U32 ulCustomerID)
     return DOS_FALSE;
 }
 
+/**
+ * 函数: U32 sc_ep_get_extension_by_userid(S8 *pszUserID, S8 *pszExtension, U32 ulLength)
+ * 功能: 获取UserID pszUserID对应的分机号，并copy到缓存pszExtension中，使用ulLength指定缓存的长度
+ * 参数:
+ *      S8 *pszUserID    : User ID
+ *      S8 *pszExtension : 存储分机号的缓存
+ *      U32 ulLength     : 缓存长度
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_ep_get_extension_by_userid(S8 *pszUserID, S8 *pszExtension, U32 ulLength)
 {
     SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
@@ -957,6 +1246,13 @@ U32 sc_ep_get_extension_by_userid(S8 *pszUserID, S8 *pszExtension, U32 ulLength)
     return DOS_FAIL;
 }
 
+/**
+ * 函数: U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum)
+ * 功能: 获取pszNum所指定UserID所属的客户的ID
+ * 参数:
+ *      S8 *pszNum    : User ID
+ * 返回值: 成功返回客户ID值，否则返回U32_BUTT
+ */
 U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum)
 {
     SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
@@ -998,7 +1294,15 @@ U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum)
     return U32_BUTT;
 }
 
-
+/**
+ * 函数: U32 sc_ep_get_bind_info4did(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID)
+ * 功能: 获取pszDidNum所执行的DID号码的绑定信息
+ * 参数:
+ *      S8 *pszDidNum    : DID号码
+ *      U32 *pulBindType : 当前DID号码绑定的类型
+ *      U32 *pulBindID   : 当前DID号码绑定的ID
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_ep_get_bind_info4did(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID)
 {
     SC_DID_NODE_ST     *pstDIDNumNode = NULL;
@@ -1045,7 +1349,13 @@ U32 sc_ep_get_bind_info4did(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID)
 
 }
 
-
+/**
+ * 函数: U32 sc_ep_get_custom_by_did(S8 *pszNum)
+ * 功能: 通过pszNum所指定的DID号码，找到当前DID号码输入那个客户
+ * 参数:
+ *      S8 *pszNum : DID号码
+ * 返回值: 成功返回客户ID，否则返回U32_BUTT
+ */
 U32 sc_ep_get_custom_by_did(S8 *pszNum)
 {
     SC_DID_NODE_ST     *pstDIDNumNode = NULL;
@@ -1086,6 +1396,15 @@ U32 sc_ep_get_custom_by_did(S8 *pszNum)
     return U32_BUTT;
 }
 
+/**
+ * 函数: U32 sc_ep_get_userid_by_id(U32 ulSIPUserID, S8 *pszUserID, U32 ulLength)
+ * 功能: 获取ID为ulSIPUserID SIP User ID，并将SIP USER ID Copy到缓存pszUserID中
+ * 参数:
+ *      U32 ulSIPUserID : SIP User ID的所以
+ *      S8 *pszUserID   : 账户ID缓存
+ *      U32 ulLength    : 缓存长度
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_ep_get_userid_by_id(U32 ulSIPUserID, S8 *pszUserID, U32 ulLength)
 {
     SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
@@ -1130,7 +1449,16 @@ U32 sc_ep_get_userid_by_id(U32 ulSIPUserID, S8 *pszUserID, U32 ulLength)
 
 }
 
-
+/**
+ * 函数: U32 sc_ep_get_userid_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUserID, U32 ulLength)
+ * 功能: 获取客户ID为ulCustomID，分机号为pszExtension的User ID，并将User ID Copy到缓存pszUserID中
+ * 参数:
+ *      U32 ulCustomID  : 客户ID
+ *      S8 *pszExtension: 分机号
+ *      S8 *pszUserID   : 账户ID缓存
+ *      U32 ulLength    : 缓存长度
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_ep_get_userid_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUserID, U32 ulLength)
 {
     SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
@@ -1182,8 +1510,14 @@ U32 sc_ep_get_userid_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUserI
     return DOS_FAIL;
 }
 
-
-U32 sc_ep_search_gw_group(SC_CCB_ST *pstCCB)
+/**
+ * 函数: U32 sc_ep_search_route_group(SC_CCB_ST *pstCCB)
+ * 功能: 获取路由组
+ * 参数:
+ *      SC_CCB_ST *pstCCB : 呼叫控制块，使用主被叫号码
+ * 返回值: 成功返回路由组ID，否则返回U32_BUTT
+ */
+U32 sc_ep_search_route_group(SC_CCB_ST *pstCCB)
 {
     SC_ROUTE_GRP_NODE_ST *pstRouetGroup = NULL;
     DLL_NODE_S           *pstListNode   = NULL;
@@ -1273,7 +1607,17 @@ U32 sc_ep_search_gw_group(SC_CCB_ST *pstCCB)
     return ulRouteGrpID;
 }
 
-U32 sc_ep_get_callee_string(S8 *pszNum, S8 *szCalleeString, U32 ulLength, U32 ulRouteGroupID)
+/**
+ * 函数: U32 sc_ep_get_callee_string(U32 ulRouteGroupID, S8 *pszNum, S8 *szCalleeString, U32 ulLength)
+ * 功能: 通过路由组ID，和被叫号码获取出局呼叫的呼叫字符串，并将结果存储在szCalleeString中
+ * 参数:
+ *      U32 ulRouteGroupID : 路由组ID
+ *      S8 *pszNum         : 被叫号码
+ *      S8 *szCalleeString : 呼叫字符串缓存
+ *      U32 ulLength       : 缓存长度
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_get_callee_string(U32 ulRouteGroupID, S8 *pszNum, S8 *szCalleeString, U32 ulLength)
 {
     SC_ROUTE_GRP_NODE_ST *pstRouetGroup = NULL;
     DLL_NODE_S           *pstListNode   = NULL;
@@ -1350,16 +1694,25 @@ U32 sc_ep_get_callee_string(S8 *pszNum, S8 *szCalleeString, U32 ulLength, U32 ul
     }
 }
 
-BOOL sc_ep_dst_is_did(S8 *pszDstNum)
+/**
+ * 函数: BOOL sc_ep_dst_is_black(S8 *pszNum)
+ * 功能: 判断pszNum所指定的号码是否在黑名单中
+ * 参数:
+ *      S8 *pszNum : 需要被处理的号码
+ * 返回值: 成功返DOS_TRUE，否则返回DOS_FALSE
+ */
+BOOL sc_ep_dst_is_black(S8 *pszNum)
 {
     return DOS_FALSE;
 }
 
-BOOL sc_ep_dst_is_black(S8 *pszDstNum)
-{
-    return DOS_FALSE;
-}
-
+/**
+ * 函数: U32 sc_ep_get_source(esl_event_t *pstEvent)
+ * 功能: 通过esl事件pstEvent判断当前呼叫的来源
+ * 参数:
+ *      esl_event_t *pstEvent : 需要被处理的时间
+ * 返回值: 枚举值 enum tagCallDirection
+ */
 U32 sc_ep_get_source(esl_event_t *pstEvent)
 {
     const S8 *pszCallSource;
@@ -1379,6 +1732,13 @@ U32 sc_ep_get_source(esl_event_t *pstEvent)
     return SC_DIRECTION_PSTN;
 }
 
+/**
+ * 函数: U32 sc_ep_get_source(esl_event_t *pstEvent)
+ * 功能: 通过esl事件pstEvent判断当前呼叫的目的地
+ * 参数:
+ *      esl_event_t *pstEvent : 需要被处理的时间
+ * 返回值: 枚举值 enum tagCallDirection
+ */
 U32 sc_ep_get_destination(esl_event_t *pstEvent)
 {
     S8 *pszDstNum     = NULL;
@@ -1455,7 +1815,16 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
     }
 }
 
-U32 sc_ep_incoming_call_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_CCB_ST *pstCCB)
+/**
+ * 函数: U32 sc_ep_incoming_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
+ * 功能: 处理由PSTN呼入到SIP测的呼叫
+ * 参数:
+ *      esl_event_t *pstEvent   : ESL 事件
+ *      esl_handle_t *pstHandle : 发送数据的handle
+ *      SC_CCB_ST *pstCCB       : 业务控制块
+ * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 sc_ep_incoming_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
 {
     S8    *pszDstNum = NULL;
     S8    *pszUUID = NULL;
@@ -1545,7 +1914,16 @@ U32 sc_ep_incoming_call_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_
     return DOS_SUCC;
 }
 
-U32 sc_ep_outgoing_call_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_CCB_ST *pstCCB)
+/**
+ * 函数: U32 sc_ep_outgoing_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
+ * 功能: 处理由SIP呼入到PSTN测的呼叫
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送数据的handle
+ *      esl_event_t *pstEvent   : ESL 事件
+ *      SC_CCB_ST *pstCCB       : 业务控制块
+ * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 sc_ep_outgoing_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
 {
     U32 ulTrunkGrpID = U32_BUTT;
     S8  szCallString[1024] = { 0, };
@@ -1565,7 +1943,7 @@ U32 sc_ep_outgoing_call_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_
         return DOS_FAIL;
     }
 
-    ulTrunkGrpID = sc_ep_search_gw_group(pstCCB);
+    ulTrunkGrpID = sc_ep_search_route_group(pstCCB);
     if (U32_BUTT == ulTrunkGrpID)
     {
         DOS_ASSERT(0);
@@ -1575,7 +1953,7 @@ U32 sc_ep_outgoing_call_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_
     }
 
     pstCCB->ulTrunkID = ulTrunkGrpID;
-    if (DOS_SUCC != sc_ep_get_callee_string(pstCCB->szCalleeNum, szCallString, sizeof(szCallString), ulTrunkGrpID))
+    if (DOS_SUCC != sc_ep_get_callee_string(ulTrunkGrpID, pstCCB->szCalleeNum, szCallString, sizeof(szCallString)))
     {
         DOS_ASSERT(0);
 
@@ -1601,13 +1979,30 @@ U32 sc_ep_outgoing_call_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_
 
 }
 
-U32 sc_ep_auto_dial(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_CCB_ST *pstCCB)
+/**
+ * 函数: U32 sc_ep_auto_dial(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
+ * 功能: 处理由系统自动发起的呼叫
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送数据的handle
+ *      esl_event_t *pstEvent   : ESL 事件
+ *      SC_CCB_ST *pstCCB       : 业务控制块
+ * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 sc_ep_auto_dial(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
 {
-    return sc_ep_outgoing_call_proc(pstEvent, pstHandle, pstCCB);
+    return sc_ep_outgoing_call_proc(pstHandle, pstEvent, pstCCB);
 }
 
-
-U32 sc_ep_internal_call_process(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_CCB_ST *pstCCB)
+/**
+ * 函数: U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
+ * 功能: 处理内部呼叫
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送数据的handle
+ *      esl_event_t *pstEvent   : ESL 事件
+ *      SC_CCB_ST *pstCCB       : 业务控制块
+ * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
 {
     S8    *pszSrcNum = NULL;
     S8    *pszDstNum = NULL;
@@ -1699,8 +2094,16 @@ U32 sc_ep_internal_call_process(esl_event_t *pstEvent, esl_handle_t *pstHandle, 
 
 }
 
-
-U32 sc_ep_internal_service_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_CCB_ST *pstCCB)
+/**
+ * 函数: U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
+ * 功能: 处理内部呼叫
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送数据的handle
+ *      esl_event_t *pstEvent   : ESL 事件
+ *      SC_CCB_ST *pstCCB       : 业务控制块
+ * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 sc_ep_internal_service_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
 {
     S8    *pszUUID = NULL;
 
@@ -1722,8 +2125,16 @@ U32 sc_ep_internal_service_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, 
     return DOS_SUCC;
 }
 
-
-U32 sc_ep_channel_park_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_CCB_ST *pstCCB)
+/**
+ * 函数: U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
+ * 功能: 处理ESL的CHANNEL PARK事件
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送句柄
+ *      esl_event_t *pstEvent   : 时间
+ *      SC_CCB_ST *pstCCB       : SCB
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
 {
     S8        *pszIsAutoCall = NULL;
     S8        *pszCaller     = NULL;
@@ -1776,7 +2187,7 @@ U32 sc_ep_channel_park_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_C
         SC_CCB_SET_SERVICE(pstCCB, SC_SERV_EXTERNAL_CALL);
         SC_CCB_SET_SERVICE(pstCCB, SC_SERV_AUTO_DIALING);
 
-        return sc_ep_auto_dial(pstEvent, pstHandle, pstCCB);
+        return sc_ep_auto_dial(pstHandle, pstEvent, pstCCB);
     }
     else if (sc_ep_internal_service_check(pstEvent) != SC_INTER_SRV_BUTT)
     {
@@ -1785,7 +2196,7 @@ U32 sc_ep_channel_park_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_C
         SC_CCB_SET_SERVICE(pstCCB, SC_SERV_INTERNAL_CALL);
         SC_CCB_SET_SERVICE(pstCCB, SC_SERV_INTERNAL_SERVICE);
 
-        return sc_ep_internal_service_proc(pstEvent, pstHandle, pstCCB);
+        return sc_ep_internal_service_proc(pstHandle, pstEvent, pstCCB);
     }
     else
     {
@@ -1800,21 +2211,21 @@ U32 sc_ep_channel_park_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_C
             SC_CCB_SET_SERVICE(pstCCB, SC_SERV_INBOUND_CALL);
             SC_CCB_SET_SERVICE(pstCCB, SC_SERV_EXTERNAL_CALL);
 
-            return sc_ep_outgoing_call_proc(pstEvent, pstHandle, pstCCB);
+            return sc_ep_outgoing_call_proc(pstHandle, pstEvent, pstCCB);
         }
         else if (SC_DIRECTION_PSTN == ulCallSrc && SC_DIRECTION_SIP == ulCallDst)
         {
             SC_CCB_SET_SERVICE(pstCCB, SC_SERV_INBOUND_CALL);
             SC_CCB_SET_SERVICE(pstCCB, SC_SERV_EXTERNAL_CALL);
 
-            return sc_ep_incoming_call_proc(pstEvent, pstHandle, pstCCB);
+            return sc_ep_incoming_call_proc(pstHandle, pstEvent, pstCCB);
         }
         else if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_SIP == ulCallDst)
         {
             SC_CCB_SET_SERVICE(pstCCB, SC_SERV_INBOUND_CALL);
             SC_CCB_SET_SERVICE(pstCCB, SC_SERV_INTERNAL_CALL);
 
-            return sc_ep_internal_call_process(pstEvent, pstHandle, pstCCB);
+            return sc_ep_internal_call_process(pstHandle, pstEvent, pstCCB);
         }
         else
         {
@@ -1829,8 +2240,15 @@ hungup_proc:
     return DOS_FAIL;
 }
 
-
-U32 sc_ep_channel_create_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle)
+/**
+ * 函数: U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
+ * 功能: 处理ESL的CHANNEL CREATE事件
+ * 参数:
+ *      esl_event_t *pstEvent   : 时间
+ *      esl_handle_t *pstHandle : 发送句柄
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
 {
     S8          *pszUUID = NULL;
     S8          *pszOtherUUID = NULL;
@@ -1943,7 +2361,16 @@ process_fail:
 }
 
 
-U32 sc_ep_channel_exec_complete_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_CCB_ST *pstCCB)
+/**
+ * 函数: U32 sc_ep_channel_exec_complete_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
+ * 功能: 处理ESL的CHANNEL EXECUTE COMPLETE事件
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送句柄
+ *      esl_event_t *pstEvent   : 时间
+ *      SC_CCB_ST *pstCCB       : SCB
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_channel_exec_complete_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
 {
     S8 *pszAppication = NULL;
     S8 *pszDesc = NULL;
@@ -1986,7 +2413,16 @@ U32 sc_ep_channel_exec_complete_proc(esl_event_t *pstEvent, esl_handle_t *pstHan
 
 }
 
-U32 sc_ep_channel_hungup_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_CCB_ST *pstCCB)
+/**
+ * 函数: U32 sc_ep_channel_hungup_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
+ * 功能: 处理ESL的CHANNEL HANGUP事件
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送句柄
+ *      esl_event_t *pstEvent   : 时间
+ *      SC_CCB_ST *pstCCB       : SCB
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_channel_hungup_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
 {
     SC_TRACE_IN(pstEvent, pstHandle, pstCCB, 0);
 
@@ -2011,7 +2447,16 @@ U32 sc_ep_channel_hungup_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC
 
 }
 
-U32 sc_ep_channel_hungup_complete_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_CCB_ST *pstCCB)
+/**
+ * 函数: U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
+ * 功能: 处理ESL的CHANNEL HANGUP COMPLETE事件
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送句柄
+ *      esl_event_t *pstEvent   : 时间
+ *      SC_CCB_ST *pstCCB       : SCB
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
 {
     U32 ulStatus, ulRet = DOS_SUCC;
     S8  *pszUUID1       = NULL;
@@ -2038,7 +2483,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_event_t *pstEvent, esl_handle_t *pstH
         pstCCBOther = sc_ccb_hash_tables_find(pszUUID2);
     }
 
-    ulStatus = pstCCB->usStatus;
+    ulStatus = pstCCB->ucStatus;
     switch (ulStatus)
     {
         case SC_CCB_IDEL:
@@ -2093,8 +2538,16 @@ U32 sc_ep_channel_hungup_complete_proc(esl_event_t *pstEvent, esl_handle_t *pstH
 
 }
 
-
-U32 sc_ep_dtmf_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_CCB_ST *pstCCB)
+/**
+ * 函数: U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
+ * 功能: 处理ESL的CHANNEL DTMF事件
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送句柄
+ *      esl_event_t *pstEvent   : 时间
+ *      SC_CCB_ST *pstCCB       : SCB
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
 {
     SC_TRACE_IN(pstEvent, pstHandle, pstCCB, 0);
 
@@ -2119,7 +2572,16 @@ U32 sc_ep_dtmf_proc(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_CCB_ST *p
 
 }
 
-U32 sc_ep_session_heartbeat(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_CCB_ST *pstCCB)
+/**
+ * 函数: U32 sc_ep_session_heartbeat(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
+ * 功能: 处理ESL的CHANNEL HEARTBEAT事件
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送句柄
+ *      esl_event_t *pstEvent   : 时间
+ *      SC_CCB_ST *pstCCB       : SCB
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_session_heartbeat(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_CCB_ST *pstCCB)
 {
     SC_TRACE_IN(pstEvent, pstHandle, pstCCB, 0);
 
@@ -2142,7 +2604,15 @@ U32 sc_ep_session_heartbeat(esl_event_t *pstEvent, esl_handle_t *pstHandle, SC_C
 
 }
 
-U32 sc_ep_process(esl_event_t *pstEvent, esl_handle_t *pstHandle)
+/**
+ * 函数: U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
+ * 功能: 分发各种ESL事件
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送句柄
+ *      esl_event_t *pstEvent   : 时间
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
 {
     S8                     *pszUUID = NULL;
     S8                     *pszCallerSource = NULL;
@@ -2197,7 +2667,7 @@ U32 sc_ep_process(esl_event_t *pstEvent, esl_handle_t *pstHandle)
     {
         /* 获取呼叫状态 */
         case ESL_EVENT_CHANNEL_PARK:
-            ulRet = sc_ep_channel_park_proc(pstEvent, pstHandle, pstCCB);
+            ulRet = sc_ep_channel_park_proc(pstHandle, pstEvent, pstCCB);
             if (ulRet != DOS_SUCC)
             {
                 sc_ep_esl_execute(pstHandle, "hangup", NULL, pszUUID);
@@ -2206,7 +2676,7 @@ U32 sc_ep_process(esl_event_t *pstEvent, esl_handle_t *pstHandle)
             break;
 
         case ESL_EVENT_CHANNEL_CREATE:
-            ulRet = sc_ep_channel_create_proc(pstEvent, pstHandle);
+            ulRet = sc_ep_channel_create_proc(pstHandle, pstEvent);
             if (ulRet != DOS_SUCC)
             {
                 sc_ep_esl_execute(pstHandle, "hangup", NULL, pszUUID);
@@ -2215,23 +2685,23 @@ U32 sc_ep_process(esl_event_t *pstEvent, esl_handle_t *pstHandle)
             break;
 
         case ESL_EVENT_CHANNEL_EXECUTE_COMPLETE:
-            ulRet = sc_ep_channel_exec_complete_proc(pstEvent, pstHandle, pstCCB);
+            ulRet = sc_ep_channel_exec_complete_proc(pstHandle, pstEvent, pstCCB);
             break;
 
         case ESL_EVENT_CHANNEL_HANGUP:
-            ulRet = sc_ep_channel_hungup_proc(pstEvent, pstHandle, pstCCB);
+            ulRet = sc_ep_channel_hungup_proc(pstHandle, pstEvent, pstCCB);
             break;
 
         case ESL_EVENT_CHANNEL_HANGUP_COMPLETE:
-            ulRet = sc_ep_channel_hungup_complete_proc(pstEvent, pstHandle, pstCCB);
+            ulRet = sc_ep_channel_hungup_complete_proc(pstHandle, pstEvent, pstCCB);
             break;
 
         case ESL_EVENT_DTMF:
-            ulRet = sc_ep_dtmf_proc(pstEvent, pstHandle, pstCCB);
+            ulRet = sc_ep_dtmf_proc(pstHandle, pstEvent, pstCCB);
             break;
 
         case ESL_EVENT_SESSION_HEARTBEAT:
-            ulRet = sc_ep_session_heartbeat(pstEvent, pstHandle, pstCCB);
+            ulRet = sc_ep_session_heartbeat(pstHandle, pstEvent, pstCCB);
             break;
         default:
             DOS_ASSERT(0);
@@ -2250,6 +2720,12 @@ U32 sc_ep_process(esl_event_t *pstEvent, esl_handle_t *pstHandle)
     return ulRet;
 }
 
+/**
+ * 函数: VOID*sc_ep_process_runtime(VOID *ptr)
+ * 功能: ESL事件处理主线程函数
+ * 参数:
+ * 返回值:
+ */
 VOID*sc_ep_process_runtime(VOID *ptr)
 {
     SC_EP_EVENT_NODE_ST *pstListNode = NULL;
@@ -2304,7 +2780,7 @@ VOID*sc_ep_process_runtime(VOID *ptr)
                         , pstEvent->event_id
                         , esl_event_get_header(pstEvent, "variable_ccb_no"));
 
-        ulRet = sc_ep_process(pstEvent, &g_pstHandle->stSendHandle);
+        ulRet = sc_ep_process(&g_pstHandle->stSendHandle, pstEvent);
         if (ulRet != DOS_SUCC)
         {
             DOS_ASSERT(0);
@@ -2322,7 +2798,12 @@ VOID*sc_ep_process_runtime(VOID *ptr)
     return NULL;
 }
 
-
+/**
+ * 函数: VOID* sc_ep_runtime(VOID *ptr)
+ * 功能: ESL事件接收线程主函数
+ * 参数:
+ * 返回值:
+ */
 VOID* sc_ep_runtime(VOID *ptr)
 {
     U32                  ulRet = ESL_FAIL;
@@ -2417,6 +2898,7 @@ VOID* sc_ep_runtime(VOID *ptr)
     return NULL;
 }
 
+/* 初始化事件处理模块 */
 U32 sc_ep_init()
 {
     SC_TRACE_IN(0, 0, 0, 0);
@@ -2441,6 +2923,9 @@ U32 sc_ep_init()
     if (DOS_ADDR_INVALID(g_pstHashDIDNum))
     {
         DOS_ASSERT(0);
+
+        dos_dmem_free(g_pstHandle);
+
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
@@ -2449,6 +2934,23 @@ U32 sc_ep_init()
     if (DOS_ADDR_INVALID(g_pstHashSIPUserID))
     {
         DOS_ASSERT(0);
+
+        dos_dmem_free(g_pstHandle);
+        hash_delete_table(g_pstHashDIDNum, NULL);
+
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+    }
+
+    g_pstHashBlackList = hash_create_table(SC_BLACK_LIST_HASH_SIZE, NULL);
+    if (DOS_ADDR_INVALID(g_pstHashBlackList))
+    {
+        DOS_ASSERT(0);
+
+        dos_dmem_free(g_pstHandle);
+        hash_delete_table(g_pstHashDIDNum, NULL);
+        hash_delete_table(g_pstHashSIPUserID, NULL);
+
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
@@ -2461,6 +2963,7 @@ U32 sc_ep_init()
     return DOS_SUCC;
 }
 
+/* 启动事件处理模块 */
 U32 sc_ep_start()
 {
     SC_TRACE_IN(0, 0, 0, 0);
@@ -2482,6 +2985,7 @@ U32 sc_ep_start()
     return DOS_SUCC;
 }
 
+/* 停止事件处理模块 */
 U32 sc_ep_shutdown()
 {
     SC_TRACE_IN(0, 0, 0, 0);

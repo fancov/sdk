@@ -191,39 +191,50 @@ U32 sc_ccb_init(SC_CCB_ST *pstCCB)
     sem_destroy(&pstCCB->semCCBSyn);
     sem_init(&pstCCB->semCCBSyn, 0, 0);
 
-    pstCCB->bValid = DOS_FALSE;                           /* 是否合法 */
-    pstCCB->bTraceNo = DOS_FALSE;                         /* 是否跟踪 */
-    pstCCB->bNeedConnSite = DOS_FALSE;                    /* 接通后是否需要接通坐席 */
-    pstCCB->bWaitingOtherRelase = DOS_FALSE;
-    pstCCB->bBanlanceWarning = DOS_FALSE;
-    pstCCB->usOtherCCBNo = U16_BUTT;
+    pstCCB->usOtherCCBNo = U16_BUTT;           /* 另外一个leg的CCB编号 */
 
-    pstCCB->usTCBNo = U16_BUTT;                           /* 任务控制块编号ID */
-    pstCCB->usSiteNo = U16_BUTT;                          /* 坐席编号 */
+    pstCCB->usTCBNo = U16_BUTT;                /* 任务控制块编号ID */
+    pstCCB->usSiteNo = U16_BUTT;               /* 坐席编号 */
 
-    pstCCB->usCallerNo = U16_BUTT;                        /* 主叫号码编号 */
-    pstCCB->usStatus = SC_CCB_IDEL;                       /* 呼叫控制块编号，refer to SC_CCB_STATUS_EN */
+    pstCCB->ulCustomID = U32_BUTT;             /* 当前呼叫属于哪个客户 */
+    pstCCB->ulAgentID = U32_BUTT;              /* 当前呼叫属于哪个客户 */
+    pstCCB->ulTaskID = U32_BUTT;               /* 当前任务ID */
+    pstCCB->ulTrunkID = U32_BUTT;              /* 中继ID */
 
-    pstCCB->ulCustomID = U32_BUTT;                        /* 当前呼叫属于哪个客户 */
-    pstCCB->ulTaskID = U32_BUTT;                          /* 当前任务ID */
-    pstCCB->ulTrunkID = U32_BUTT;                         /* 中继ID */
-    pstCCB->ulAuthToken = U32_BUTT;                       /* 与计费模块的关联字段 */
-    pstCCB->ulCallDuration = 0;                           /* 呼叫时长，防止吊死用，每次心跳时更新 */
+    pstCCB->ucStatus = SC_CCB_IDEL;            /* 呼叫控制块编号，refer to SC_CCB_STATUS_EN */
+    pstCCB->ucTerminationFlag = 0;             /* 业务终止标志 */
+    pstCCB->ucTerminationCause = 0;            /* 业务终止原因 */
+    pstCCB->ucPayloadType = U8_BUTT;           /* 编解码 */
 
-    pstCCB->usHoldCnt = 0;                                /* 被hold的次数 */
-    pstCCB->usHoldTotalTime = 0;                          /* 被hold的总时长 */
-    pstCCB->ulLastHoldTimetamp = 0;                       /* 上次hold是的时间戳，解除hold的时候值零 */
+    pstCCB->usHoldCnt = 0;                     /* 被hold的次数 */
+    pstCCB->usHoldTotalTime = 0;               /* 被hold的总时长 */
+    pstCCB->ulLastHoldTimetamp = 0;            /* 上次hold是的时间戳，解除hold的时候值零 */
 
-    pstCCB->szCallerNum[0] = '\0';                        /* 主叫号码 */
-    pstCCB->szCalleeNum[0] = '\0';                        /* 被叫号码 */
-    pstCCB->szANINum[0] = '\0';                           /* 被叫号码 */
-    pstCCB->szDialNum[0] = '\0';                          /* 用户拨号 */
-    pstCCB->szSiteNum[0] = '\0';                          /* 坐席号码 */
-    pstCCB->szUUID[0]  = '\0';                            /* Leg-A UUID */
+    pstCCB->bValid = DOS_FALSE;                /* 是否合法 */
+    pstCCB->bTraceNo = DOS_FALSE;              /* 是否跟踪 */
+    pstCCB->bBanlanceWarning = DOS_FALSE;      /* 是否余额告警 */
+    pstCCB->bNeedConnSite = DOS_FALSE;         /* 接通后是否需要接通坐席 */
+    pstCCB->bWaitingOtherRelase = DOS_FALSE;   /* 是否在等待另外一跳退释放 */
 
-    pstCCB->ulCurrentSrvInd = 0;
+    pstCCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
+    pstCCB->ulStartTimeStamp = 0;              /* 起始时间戳 */
+    pstCCB->ulRingTimeStamp = 0;               /* 振铃时间戳 */
+    pstCCB->ulAnswerTimeStamp = 0;             /* 应答时间戳 */
+    pstCCB->ulIVRFinishTimeStamp = 0;          /* IVR播放完成时间戳 */
+    pstCCB->ulDTMFTimeStamp = 0;               /* (第一个)二次拨号时间戳 */
+    pstCCB->ulBridgeTimeStamp = 0;             /* LEG桥接时间戳 */
+    pstCCB->ulByeTimeStamp = 0;                /* 释放时间戳 */
 
+    pstCCB->szCallerNum[0] = '\0';             /* 主叫号码 */
+    pstCCB->szCalleeNum[0] = '\0';             /* 被叫号码 */
+    pstCCB->szANINum[0] = '\0';                /* 被叫号码 */
+    pstCCB->szDialNum[0] = '\0';               /* 用户拨号 */
+    pstCCB->szSiteNum[0] = '\0';               /* 坐席号码 */
+    pstCCB->szUUID[0] = '\0';                  /* Leg-A UUID */
+
+    /* 业务类型 列表*/
+    pstCCB->ucCurrentSrvInd = 0;               /* 当前空闲的业务类型索引 */
     for (i=0; i<SC_MAX_SRV_TYPE_PRE_LEG; i++)
     {
         pstCCB->aucServiceType[i] = U8_BUTT;
@@ -605,24 +616,6 @@ U32 sc_call_set_trunk(SC_CCB_ST *pstCCB, U32 ulTrunkID)
 
 }
 
-U32 sc_call_set_auth_token(SC_CCB_ST *pstCCB, U32 ulToken)
-{
-    SC_TRACE_IN((U64)pstCCB, ulToken, 0, 0);
-
-    if (!pstCCB)
-    {
-        SC_TRACE_OUT();
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pthread_mutex_lock(&pstCCB->mutexCCBLock);
-    pstCCB->ulAuthToken = ulToken;
-    pthread_mutex_unlock(&pstCCB->mutexCCBLock);
-
-    SC_TRACE_OUT();
-    return DOS_SUCC;
-}
 
 BOOL sc_tcb_get_valid(SC_TASK_CB_ST *pstTCB)
 {

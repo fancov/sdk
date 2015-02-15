@@ -154,6 +154,164 @@ printf("\r\nDelte msg ..................................\r\n");
     return;
 }
 
+
+U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U32 ulBSSrvCnt)
+{
+    U32        ulIndex          = 0;
+    U32        ulBSSrvIndex     = 0;
+    BOOL       blIsOutboundCall = DOS_FALSE;
+    BOOL       blIsExternalCall = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(aucSCSrvList)
+        || ulSCSrvCnt <= 0
+        || DOS_ADDR_INVALID(aucBSSrvList)
+        || ulBSSrvCnt <= 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulBSSrvIndex = 0;
+    memset(aucBSSrvList, U8_BUTT, ulBSSrvCnt);
+
+    for (ulIndex=0; ulIndex<ulSCSrvCnt; ulIndex++)
+    {
+        if (SC_SERV_OUTBOUND_CALL == aucSCSrvList[ulIndex])
+        {
+            blIsOutboundCall = DOS_TRUE;
+            break;
+        }
+    }
+
+    for (ulIndex=0; ulIndex<ulSCSrvCnt; ulIndex++)
+    {
+        if (SC_SERV_EXTERNAL_CALL == aucSCSrvList[ulIndex])
+        {
+            blIsExternalCall = DOS_TRUE;
+            break;
+        }
+    }
+
+    if (blIsOutboundCall && blIsExternalCall)
+    {
+        if (ulBSSrvIndex < ulBSSrvCnt)
+        {
+            aucBSSrvList[ulBSSrvIndex] = BS_SERV_OUTBAND_CALL;
+            ulBSSrvIndex++;
+        }
+    }
+    else if (blIsOutboundCall && !blIsExternalCall)
+    {
+        if (ulBSSrvIndex < ulBSSrvCnt)
+        {
+            aucBSSrvList[ulBSSrvIndex] = BS_SERV_INBAND_CALL;
+            ulBSSrvIndex++;
+        }
+    }
+    else
+    {
+        if (ulBSSrvIndex < ulBSSrvCnt)
+        {
+            aucBSSrvList[ulBSSrvIndex] = BS_SERV_INTER_CALL;
+            ulBSSrvIndex++;
+        }
+    }
+
+    for (ulIndex=0; ulIndex<ulSCSrvCnt; ulIndex++)
+    {
+        switch (aucSCSrvList[ulIndex])
+        {
+            case SC_SERV_OUTBOUND_CALL:
+            case SC_SERV_INBOUND_CALL:
+            case SC_SERV_INTERNAL_CALL:
+            case SC_SERV_EXTERNAL_CALL:
+                break;
+
+            case SC_SERV_AUTO_DIALING:
+                if (ulBSSrvIndex < ulBSSrvCnt)
+                {
+                    aucBSSrvList[ulBSSrvIndex] = BS_SERV_AUTO_DIALING;
+                    ulBSSrvIndex++;
+                }
+                break;
+
+            case SC_SERV_PREVIEW_DIALING:
+            case SC_SERV_PREDICTIVE_DIALING:
+                DOS_ASSERT(0);
+                break;
+
+            case SC_SERV_RECORDING:
+                if (ulBSSrvIndex < ulBSSrvCnt)
+                {
+                    aucBSSrvList[ulBSSrvIndex] = BS_SERV_RECORDING;
+                    ulBSSrvIndex++;
+                }
+                break;
+
+            case SC_SERV_FORWORD_CFB:
+            case SC_SERV_FORWORD_CFU:
+            case SC_SERV_FORWORD_CFNR:
+                if (ulBSSrvIndex < ulBSSrvCnt)
+                {
+                    aucBSSrvList[ulBSSrvIndex] = BS_SERV_CALL_FORWARD;
+                    ulBSSrvIndex++;
+                }
+                break;
+
+            case SC_SERV_BLIND_TRANSFER:
+            case SC_SERV_ATTEND_TRANSFER:
+                if (ulBSSrvIndex < ulBSSrvCnt)
+                {
+                    aucBSSrvList[ulBSSrvIndex] = BS_SERV_CALL_TRANSFER;
+                    ulBSSrvIndex++;
+                }
+                break;
+
+            case SC_SERV_PICK_UP:
+                if (ulBSSrvIndex < ulBSSrvCnt)
+                {
+                    aucBSSrvList[ulBSSrvIndex] = BS_SERV_PICK_UP;
+                    ulBSSrvIndex++;
+                }
+                break;
+
+            case SC_SERV_CONFERENCE:
+                if (ulBSSrvIndex < ulBSSrvCnt)
+                {
+                    aucBSSrvList[ulBSSrvIndex] = BS_SERV_CONFERENCE;
+                    ulBSSrvIndex++;
+                }
+                break;
+
+            case SC_SERV_VOICE_MAIL_RECORD:
+            case SC_SERV_VOICE_MAIL_GET:
+                if (ulBSSrvIndex < ulBSSrvCnt)
+                {
+                    aucBSSrvList[ulBSSrvIndex] = BS_SERV_VOICE_MAIL;
+                    ulBSSrvIndex++;
+                }
+                break;
+
+            case SC_SERV_SMS_RECV:
+            case SC_SERV_SMS_SEND:
+            case SC_SERV_MMS_RECV:
+            case SC_SERV_MMS_SNED:
+                DOS_ASSERT(0);
+                break;
+
+            case SC_SERV_FAX:
+            case SC_SERV_INTERNAL_SERVICE:
+                DOS_ASSERT(0);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    return DOS_SUCC;
+}
+
 /* 通知释放消息 */
 U32 sc_bs_msg_free(U32 ulSeq)
 {
@@ -495,20 +653,16 @@ U32 sc_send_billing_stop2bs(SC_CCB_ST *pstCCB)
     SC_CCB_ST             *pstCCB2 = NULL, *pstFirstCCB = NULL, *pstSecondCCB = NULL;
     BS_MSG_CDR            *pstCDRMsg = NULL;
     SC_BS_MSG_NODE        *pstListNode = NULL;
-    switch_channel_t      *pstChannel = NULL;
-    switch_core_session_t *pstSession = NULL;
-    switch_channel_timetable_t *pstTimeTable = NULL;
-    switch_codec_implementation_t stCodecImp;
 
     /* 当前呼叫没有关联CCB时，就直接吧当前业务控制块作为主LEG */
-    if (U32_BUTT == pstCCB->ulOtherLegID)
+    if (U16_BUTT == pstCCB->ulOtherLegID)
     {
         pstFirstCCB = pstCCB;
 
         goto prepare_msg;
     }
 
-    pstCCB2 = sc_ccb_get(pstCCB->ulOtherLegID);
+    pstCCB2 = sc_ccb_get(pstCCB->usOtherCCBNo);
     if (DOS_ADDR_INVALID(pstCCB2))
     {
         pstFirstCCB = pstCCB;
@@ -854,7 +1008,7 @@ prepare_msg:
         return DOS_FAIL;
     }
 #endif
-    return DOS_SUCC;
+return DOS_SUCC;
 }
 
 /* 发送初始计费消息 */

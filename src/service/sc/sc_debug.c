@@ -547,13 +547,11 @@ VOID sc_show_scb_detail(U32 ulIndex, U32 ulSCBID)
                    , "\r\n          Trace : %d"
                    , "\r\n         TCB ID : %d"
                    , "\r\n       Agent ID : %d"
-                   , "\r\n      Caller ID : %s"
                    , "\r\n         Status : %d"
                    , "\r\n   Service Type : %d, %d, %d, %d"
                    , "\r\n      Custom ID : %s"
                    , "\r\n        Task ID : %d"
                    , "\r\n       Trunk ID : %d"
-                   , "\r\n       BS Token : %d"
                    , "\r\n     Hold Count : %d"
                    , "\r\nHold Time Count : %d"
                    , "\r\n  Caller Number : %s"
@@ -565,8 +563,7 @@ VOID sc_show_scb_detail(U32 ulIndex, U32 ulSCBID)
                    , pstCCB->bTraceNo ? "Yes" : "No"
                    , pstCCB->usTCBNo
                    , pstCCB->usSiteNo
-                   , pstCCB->usCallerNo
-                   , pstCCB->usStatus
+                   , pstCCB->ucStatus
                    , pstCCB->aucServiceType[0]
                    , pstCCB->aucServiceType[1]
                    , pstCCB->aucServiceType[2]
@@ -574,7 +571,6 @@ VOID sc_show_scb_detail(U32 ulIndex, U32 ulSCBID)
                    , pstCCB->ulCustomID
                    , pstCCB->ulTaskID
                    , pstCCB->ulTrunkID
-                   , pstCCB->ulAuthToken
                    , pstCCB->usHoldCnt
                    , pstCCB->usHoldTotalTime
                    , pstCCB->szCallerNum
@@ -972,11 +968,6 @@ VOID sc_call_trace(SC_CCB_ST *pstCCB, const S8 *szFormat, ...)
         pstTCB = sc_tcb_get_by_id(pstCCB->usTCBNo);
     }
 
-    if (pstTCB && pstCCB->usCallerNo <= SC_MAX_CALLER_NUM)
-    {
-        pstCaller = &pstTCB->pstCallerNumQuery[pstCCB->usCallerNo];
-    }
-
     if (pstTCB && pstCCB->usSiteNo <= SC_MAX_SITE_NUM)
     {
         pstSite = &pstTCB->pstSiteQuery[pstCCB->usSiteNo];
@@ -1012,14 +1003,12 @@ trace:
      *∏Ò Ω: <CCB:No, status, token, caller, callee, uuid, trunk><TCB:No, status, ID, Custom,><CALLER:No, num,><SITE:No, status, SIP, id, externsion>
      */
     sc_logr_debug("Call Trace:%s\r\n"
-                  "\t[CCB Info]: No:%05d, status: %d, token: 0x%X, caller: %s, callee: %s, uuid:%s\r\n"
+                  "\t[CCB Info]: No:%05d, status: %d, caller: %s, callee: %s, uuid:%s\r\n"
                   "\t[TCB Info]: No:%05d, status: %d, Task ID: %d, Custom ID: %d\r\n"
-                  "\t[CALLER  ]: No:%05d, status: %d\r\n"
                   "\t[SITE    ]: No:%05d, status: %d, SIP Account: %s, Extension: %s"
                   , szBuf
                   , pstCCB->usCCBNo
                   , pstCCB->bValid
-                  , pstCCB->ulAuthToken
                   , ('\0' == pstCCB->szCallerNum[0]) ? "NULL" : pstCCB->szCallerNum
                   , ('\0' == pstCCB->szCalleeNum[0]) ? "NULL" : pstCCB->szCalleeNum
                   , ('\0' == pstCCB->szUUID[0]) ? "NULL" : pstCCB->szUUID
@@ -1027,8 +1016,6 @@ trace:
                   , pstTCB ? pstTCB->ucValid : -1
                   , pstTCB ? pstTCB->ulTaskID : -1
                   , pstTCB ? pstTCB->ulCustomID : -1
-                  , pstCaller ? pstCaller->usNo : -1
-                  , pstCaller ? pstCaller->bValid : -1
                   , pstSite ? pstSite->usSCBNo : -1
                   , pstSite ? pstSite->bValid : -1
                   , (pstSite && '\0' != pstSite->szUserID[0]) ? pstSite->szUserID : "NULL"
