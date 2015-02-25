@@ -7,7 +7,6 @@ C_FILE += $(SROUCE)/service/sc/mod_dipcc_sc.c \
 	$(SROUCE)/service/sc/sc_dialer.c \
 	$(SROUCE)/service/sc/sc_ep_bs_adapter.c \
 	$(SROUCE)/service/sc/sc_ep_bs_fsm.c \
-	$(SROUCE)/service/sc/sc_ep_lib.c  \
 	$(SROUCE)/service/sc/sc_event_process.c \
 	$(SROUCE)/service/sc/sc_httpd.c \
 	$(SROUCE)/service/sc/sc_task.c \
@@ -24,7 +23,6 @@ C_OBJ_FILE += mod_dipcc_sc.$(SUFFIX) \
 	sc_dialer.$(SUFFIX) \
 	sc_ep_bs_adapter.$(SUFFIX) \
 	sc_ep_bs_fsm.$(SUFFIX) \
-	sc_ep_lib.$(SUFFIX) \
 	sc_event_process.$(SUFFIX) \
 	sc_httpd.$(SUFFIX) \
 	sc_task.$(SUFFIX) \
@@ -57,9 +55,6 @@ sc_ep_bs_adapter.$(SUFFIX) :
 	
 sc_ep_bs_fsm.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_ep_bs_fsm.c
-
-sc_ep_lib.$(SUFFIX) :
-	$(C_COMPILE) $(SROUCE)/service/sc/sc_ep_lib.c
 	
 sc_event_process.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_event_process.c

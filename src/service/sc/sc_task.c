@@ -9,11 +9,11 @@
  *  描    述: 每一个群呼任务的实现
  *  修改历史:
  */
-#if 0
+
 #ifdef __cplusplus
 extern "C"{
 #endif /* __cplusplus */
-#endif
+
 /* include public header files */
 #include <dos.h>
 
@@ -22,7 +22,6 @@ extern "C"{
 #include "sc_task_pub.h"
 #include "sc_debug.h"
 #include "sc_event_process.h"
-#include "sc_ep_pub.h"
 
 /* define marcos */
 
@@ -561,8 +560,8 @@ U32 sc_task_pause(SC_TASK_CB_ST *pstTCB)
     return DOS_SUCC;
 }
 
-#if 0
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
-#endif
+

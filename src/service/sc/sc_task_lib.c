@@ -53,6 +53,7 @@ const S8 *g_pszSiteList[] = {
 
 extern U32       g_ulTaskTraceAll;
 extern SC_TASK_MNGT_ST   *g_pstTaskMngtInfo;
+extern DB_HANDLE_ST      *g_pstSCDBHandle;
 
 static S8 *g_pszCCBStatus[] =
 {
@@ -1087,7 +1088,7 @@ S32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB)
                 , "SELECT tbl_caller.id as id, tbl_caller.customer_id as customer, tbl_caller.cid as caller from tbl_caller WHERE tbl_caller.customer_id=%d"
                 , pstTCB->ulCustomID);
 
-    ulResult = db_query(g_pstTaskMngtInfo->pstDBHandle
+    ulResult = db_query(g_pstSCDBHandle
                             , szSqlQuery
                             , sc_task_load_caller_callback
                             , pstTCB
@@ -1228,7 +1229,7 @@ S32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
                     , pstTCB->usTCBNo
                     , pstTCB->ulLastCalleeIndex);
 
-    if (DB_ERR_SUCC != db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, sc_task_load_callee_callback, (VOID *)pstTCB, NULL))
+    if (DB_ERR_SUCC != db_query(g_pstSCDBHandle, szSQL, sc_task_load_callee_callback, (VOID *)pstTCB, NULL))
     {
         return DOS_FAIL;
     }
@@ -1345,7 +1346,7 @@ U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB)
 
     dos_snprintf(szSQL, sizeof(szSQL), "SELECT start_time, end_time from tbl_calltask WHERE id=%d;", pstTCB->usTCBNo);
 
-    if (db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, sc_task_load_period_cb, (VOID *)pstTCB, NULL) != DB_ERR_SUCC)
+    if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_period_cb, (VOID *)pstTCB, NULL) != DB_ERR_SUCC)
     {
         sc_logr_debug("Load task time period for task %d fail;", pstTCB->usTCBNo);
 
@@ -1558,7 +1559,7 @@ U32 sc_task_callee_set_recall(SC_TASK_CB_ST *pstTCB, U32 ulIndex)
 
     dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_callee SET tbl_callee.`status`=\"waiting\" WHERE tbl_callee.id = 0;");
 
-    if (DB_ERR_SUCC != db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, NULL, NULL, NULL))
+    if (DB_ERR_SUCC != db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL))
     {
         DOS_ASSERT(0);
 

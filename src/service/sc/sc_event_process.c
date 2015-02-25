@@ -23,112 +23,12 @@ extern "C"{
 #include "sc_task_pub.h"
 #include "sc_debug.h"
 #include "sc_event_process.h"
-
-
-#define SC_NUM_PREFIX_LEN       16
-#define SC_GW_DOMAIN_LEG        32
-#define SC_IP_USERID_HASH_SIZE  1024
-#define SC_IP_DID_HASH_SIZE     1024
-#define SC_BLACK_LIST_HASH_SIZE 1024
-#define SC_GW_GRP_HASH_SIZE     128
-#define SC_GW_HASH_SIZE         128
-
-/*  DID号码绑定类型 */
-typedef enum tagSCDIDBindType{
-    SC_DID_BIND_TYPE_SIP     = 1,               /* DID号码被绑定到SIP账户 */
-    SC_DID_BIND_TYPE_QUEUE   = 2,               /* DID号码被绑定到坐席队列 */
-    SC_DID_BIND_TYPE_BUTT
-}SC_DID_BIND_TYPE_EN;
-
-/*  路由目的地类型 */
-typedef enum tagSCDestType{
-    SC_DEST_TYPE_GATEWAY     = 1,               /* 呼叫目的为网关 */
-    SC_DEST_TYPE_GW_GRP      = 2,               /* 呼叫目的为网关组 */
-    SC_DEST_TYPE_BUTT
-}SC_DEST_TYPE_EN;
-
-
-/* User ID 描述节点 */
-typedef struct tagSCUserIDNode{
-    U32  ulCustomID;                             /* 用户 ID */
-    U32  ulSIPID;                                /* 账户 ID */
-    S8   szUserID[SC_TEL_NUMBER_LENGTH];         /* SIP账户 */
-    S8   szExtension[SC_TEL_NUMBER_LENGTH];      /* 分机号 */
-}SC_USER_ID_NODE_ST;
-
-/* 黑名单HASH表节点 */
-typedef struct tagSCBlackListNode{
-    U32  ulID;                                   /* 索引 */
-    U32  ulCustomerID;                           /* 用户ID */
-    S8   szNum[SC_TEL_NUMBER_LENGTH];            /* 表达式 */
-    U32  ulType;                                 /* 类型，号码或者正则表达式 */
-}SC_BLACK_LIST_NODE;
-
-/* DIDI号码们描述节点 */
-typedef struct tagSCDIDNode{
-    U32   ulCustomID;                             /* 用户ID */
-    U32   ulDIDID;                                /* DID 号码ID */
-    S8    szDIDNum[SC_TEL_NUMBER_LENGTH];         /* DID 号码 */
-    U32   ulBindType;                             /* 绑定类型 refer to SC_DID_BIND_TYPE_EN */
-    U32   ulBindID;                               /* 绑定结果 */
-}SC_DID_NODE_ST;
-
-/* 网关描述节点 */
-typedef struct tagSCGWNode
-{
-    U32 ulGWID;                                    /* 网关ID */
-    S8  szGWDomain[SC_GW_DOMAIN_LEG];              /* 网关的域，暂时没有用的 */
-}SC_GW_NODE_ST;
-
-/* 中继组 */
-typedef struct tagGatewayGrpNode
-{
-    U32 ulGWGrpID;                                /* 网关组ID */
-
-    DLL_S      stGWList;                          /* 网关列表 refer to SC_GW_NODE_ST */
-    pthread_mutex_t  mutexGWList;                 /* 路由组的锁 */
-}SC_GW_GRP_NODE_ST;
-
-/* 路由描述节点 */
-typedef struct tagSCRouteNode
-{
-    U32        ulID;
-
-    U8         ucHourBegin;                       /* 开始时间，小时 */
-    U8         ucMinuteBegin;                     /* 开始时间，分钟 */
-    U8         ucHourEnd;                         /* 结束时间，小时 */
-    U8         ucMinuteEnd;                       /* 结束时间，分钟 */
-
-    S8         szCallerPrefix[SC_NUM_PREFIX_LEN]; /* 前缀长度 */
-    S8         szCalleePrefix[SC_NUM_PREFIX_LEN]; /* 前缀长度 */
-
-    U32        ulDestType;                        /* 目的类型 */
-    U32        ulDestID;                          /* 目的ID */
-}SC_ROUTE_NODE_ST;
-
-/* 事件队列 */
-typedef struct tagSCEventNode
-{
-    list_t stLink;
-
-    esl_event_t *pstEvent;
-}SC_EP_EVENT_NODE_ST;
-
-/* ESL客户端控制块 */
-typedef struct tagSCEventProcessHandle
-{
-    pthread_t           pthID;
-    esl_handle_t        stRecvHandle;                /*  esl 接收 句柄 */
-    esl_handle_t        stSendHandle;                /*  esl 发送 句柄 */
-
-    BOOL                blIsESLRunning;              /* ESL是否连接正常 */
-    BOOL                blIsWaitingExit;             /* 任务是否正在等待退出 */
-    U32                 ulESLDebugLevel;             /* ESL调试级别 */
-}SC_EP_HANDLE_ST;
+#include "sc_ep.h"
 
 /* 应用外部变量 */
 extern U32               g_ulTaskTraceAll;
-extern SC_TASK_MNGT_ST   *g_pstTaskMngtInfo;
+extern DB_HANDLE_ST         *g_pstSCDBHandle;
+
 
 /* ESL 句柄维护 */
 SC_EP_HANDLE_ST          *g_pstHandle = NULL;
@@ -531,7 +431,7 @@ U32 sc_load_black_list()
 
     dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, regex_number FROM tbl_blacklist;");
 
-    if (db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, sc_load_black_list_cb, NULL, NULL) != DB_ERR_SUCC)
+    if (db_query(g_pstSCDBHandle, szSQL, sc_load_black_list_cb, NULL, NULL) != DB_ERR_SUCC)
     {
         DOS_ASSERT(0);
 
@@ -669,7 +569,7 @@ U32 sc_load_sip_userid()
 
     dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,username FROM tbl_sip;");
 
-    if (db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, sc_load_sip_userid_cb, NULL, NULL) != DB_ERR_SUCC)
+    if (db_query(g_pstSCDBHandle, szSQL, sc_load_sip_userid_cb, NULL, NULL) != DB_ERR_SUCC)
     {
         DOS_ASSERT(0);
 
@@ -808,7 +708,7 @@ U32 sc_load_did_number()
 
     dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, did_number, bind_type, bind_id FROM tbl_sipassign;");
 
-    db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, sc_load_did_number_cb, NULL, NULL);
+    db_query(g_pstSCDBHandle, szSQL, sc_load_did_number_cb, NULL, NULL);
 
     return DOS_SUCC;
 }
@@ -906,7 +806,7 @@ U32 sc_load_gateway()
     dos_snprintf(szSQL, sizeof(szSQL)
                     , "SELECT id, realm FROM tbl_relaygrp;");
 
-    db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, sc_load_gateway_cb, NULL, NULL);
+    db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_cb, NULL, NULL);
 
     return DOS_SUCC;
 }
@@ -991,7 +891,7 @@ U32 sc_load_gateway_grp()
     dos_snprintf(szSQL, sizeof(szSQL)
                     , "SELECT id FROM tbl_gateway_grp;");
 
-    db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, sc_load_gateway_grp_cb, NULL, NULL);
+    db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_grp_cb, NULL, NULL);
 
     return DOS_SUCC;
 }
@@ -1111,7 +1011,7 @@ U32 sc_load_relationship()
 
             dos_snprintf(szSQL, sizeof(szSQL), "SELECT gateway_id FROM tbl_gateway_assign WHERE route_grp_id=%d;", pstGWGrp->ulGWGrpID);
 
-            db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, sc_load_relationship_cb, (VOID *)pstGWGrp, NULL);
+            db_query(g_pstSCDBHandle, szSQL, sc_load_relationship_cb, (VOID *)pstGWGrp, NULL);
         }
     }
 
@@ -1287,7 +1187,7 @@ U32 sc_load_route()
     dos_snprintf(szSQL, sizeof(szSQL)
                     , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route_grp;");
 
-    db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, sc_load_route_cb, NULL, NULL);
+    db_query(g_pstSCDBHandle, szSQL, sc_load_route_cb, NULL, NULL);
 
     return DOS_SUCC;
 }

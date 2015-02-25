@@ -9,11 +9,11 @@
  *  描    述: 处理HTTP请求，并将HTTP请求中所携带的命令分发到各个处理模块
  *  修改历史:
  */
-#if 0
+
 #ifdef __cplusplus
 extern "C"{
 #endif /* __cplusplus */
-#endif
+
 
 /* include public header files */
 #include <dos.h>
@@ -650,8 +650,8 @@ cmd_prase_fail1:
     SC_TRACE_OUT();
     return DOS_FAIL;
 }
-#if 0
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
-#endif
+

@@ -28,10 +28,11 @@ extern "C"{
 
 /* define global variable */
 extern U32       g_ulTaskTraceAll;
+extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
 SC_TASK_MNGT_ST   *g_pstTaskMngtInfo;
 
-#if 1
+
 /* declare functions */
 static S32 sc_task_load_callback(VOID *pArg, S32 argc, S8 **argv, S8 **columnNames)
 {
@@ -80,20 +81,12 @@ U32 sc_task_mngt_load_task()
 
     SC_TRACE_IN(0, 0, 0, 0);
 
-    if (!g_pstTaskMngtInfo)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
     ulLength = dos_snprintf(szSqlQuery
                 , sizeof(szSqlQuery)
                 , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask WHERE tbl_calltask.status=%d"
                 , SC_TASK_STATUS_DB_START);
 
-    ulResult = db_query(g_pstTaskMngtInfo->pstDBHandle
+    ulResult = db_query(g_pstSCDBHandle
                             , szSqlQuery
                             , sc_task_load_callback
                             , NULL
@@ -110,7 +103,6 @@ U32 sc_task_mngt_load_task()
     SC_TRACE_OUT();
     return DOS_SUCC;
 }
-#endif
 
 /* 启动一个已经暂停的任务 */
 U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
@@ -575,43 +567,8 @@ U32 sc_task_mngt_init()
     SC_TASK_CB_ST   *pstTCB = NULL;
     SC_CCB_ST       *pstCCB = NULL;
     U32             ulIndex    = 0;
-    U16             usDBPort;
-    S8              szDBHost[DB_MAX_STR_LEN] = {0, };
-    S8              szDBUsername[DB_MAX_STR_LEN] = {0, };
-    S8              szDBPassword[DB_MAX_STR_LEN] = {0, };
-    S8              szDBName[DB_MAX_STR_LEN] = {0, };
 
     SC_TRACE_IN(0, 0, 0, 0);
-
-    if (config_get_db_host(szDBHost, DB_MAX_STR_LEN) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    if (config_get_db_user(szDBUsername, DB_MAX_STR_LEN) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    if (config_get_db_password(szDBPassword, DB_MAX_STR_LEN) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    usDBPort = config_get_db_port();
-    if (0 == usDBPort || U16_BUTT == usDBPort)
-    {
-        usDBPort = 3306;
-    }
-
-    if (config_get_db_dbname(szDBName, DB_MAX_STR_LEN) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
 
     /* 申请管理任务的相关变量 */
     g_pstTaskMngtInfo = (SC_TASK_MNGT_ST *)dos_dmem_alloc(sizeof(SC_TASK_MNGT_ST));
@@ -624,43 +581,6 @@ U32 sc_task_mngt_init()
     }
     dos_memzero(g_pstTaskMngtInfo, sizeof(SC_TASK_MNGT_ST));
 
-    /* 申请数据库句柄的内存 */
-    g_pstTaskMngtInfo->pstDBHandle = db_create(DB_TYPE_MYSQL);
-    if (!g_pstTaskMngtInfo->pstDBHandle)
-    {
-        DOS_ASSERT(0);
-
-        dos_smem_free(g_pstTaskMngtInfo);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    dos_strncpy(g_pstTaskMngtInfo->pstDBHandle->szHost, szDBHost, sizeof(g_pstTaskMngtInfo->pstDBHandle->szHost));
-    g_pstTaskMngtInfo->pstDBHandle->szHost[sizeof(g_pstTaskMngtInfo->pstDBHandle->szHost) - 1] = '\0';
-
-    dos_strncpy(g_pstTaskMngtInfo->pstDBHandle->szUsername, szDBUsername, sizeof(g_pstTaskMngtInfo->pstDBHandle->szUsername));
-    g_pstTaskMngtInfo->pstDBHandle->szUsername[sizeof(g_pstTaskMngtInfo->pstDBHandle->szUsername) - 1] = '\0';
-
-    dos_strncpy(g_pstTaskMngtInfo->pstDBHandle->szPassword, szDBPassword, sizeof(g_pstTaskMngtInfo->pstDBHandle->szPassword));
-    g_pstTaskMngtInfo->pstDBHandle->szPassword[sizeof(g_pstTaskMngtInfo->pstDBHandle->szPassword) - 1] = '\0';
-
-    dos_strncpy(g_pstTaskMngtInfo->pstDBHandle->szDBName, szDBName, sizeof(g_pstTaskMngtInfo->pstDBHandle->szDBName));
-    g_pstTaskMngtInfo->pstDBHandle->szDBName[sizeof(g_pstTaskMngtInfo->pstDBHandle->szDBName) - 1] = '\0';
-
-    g_pstTaskMngtInfo->pstDBHandle->usPort = usDBPort;
-
-
-    /* 连接数据库 */
-    if (db_open(g_pstTaskMngtInfo->pstDBHandle) != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        db_destroy(&g_pstTaskMngtInfo->pstDBHandle);
-        dos_smem_free(g_pstTaskMngtInfo);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
 
     /* 初始化其他全局变量 */
     pthread_mutex_init(&g_pstTaskMngtInfo->mutexCMDList, NULL);
@@ -674,9 +594,6 @@ U32 sc_task_mngt_init()
     if (!g_pstTaskMngtInfo->pstCallCCBHash)
     {
         DOS_ASSERT(0);
-
-        db_close(g_pstTaskMngtInfo->pstDBHandle);
-        db_destroy(&g_pstTaskMngtInfo->pstDBHandle);
 
         dos_smem_free(g_pstTaskMngtInfo);
         g_pstTaskMngtInfo = NULL;
@@ -704,9 +621,6 @@ U32 sc_task_mngt_init()
             dos_smem_free(g_pstTaskMngtInfo->pstCallCCBList);
             g_pstTaskMngtInfo->pstCallCCBList = NULL;
         }
-
-        db_close(g_pstTaskMngtInfo->pstDBHandle);
-        db_destroy(&g_pstTaskMngtInfo->pstDBHandle);
 
         dos_smem_free(g_pstTaskMngtInfo);
         g_pstTaskMngtInfo = NULL;

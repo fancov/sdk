@@ -38,7 +38,7 @@
 #include "sc_acd_pub.h"
 #include "sc_acd.h"
 
-extern SC_TASK_MNGT_ST   *g_pstTaskMngtInfo;
+extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
 
 /* 坐席组的hash表 */
@@ -725,7 +725,7 @@ static U32 sc_acd_init_site_queue()
                      "ON " \
                      "    a.group1_id = b.id OR a.group2_id = b.id;");
 
-    if (db_query(g_pstTaskMngtInfo->pstDBHandle, szSQL, sc_acd_init_site_queue_cb, NULL, NULL) < 0)
+    if (db_query(g_pstSCDBHandle, szSQL, sc_acd_init_site_queue_cb, NULL, NULL) < 0)
     {
         return DOS_FAIL;
     }
@@ -765,7 +765,7 @@ static U32 sc_acd_init_group_queue()
 
     dos_snprintf(szSql, sizeof(szSql), "SELECT id,customer_id,acd_policy,`name` from tbl_group;");
 
-    if (db_query(g_pstTaskMngtInfo->pstDBHandle, szSql, sc_acd_init_group_queue_cb, NULL, NULL) < 0)
+    if (db_query(g_pstSCDBHandle, szSql, sc_acd_init_group_queue_cb, NULL, NULL) < 0)
     {
         return DOS_FAIL;
     }

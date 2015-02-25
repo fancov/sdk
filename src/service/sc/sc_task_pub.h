@@ -354,7 +354,6 @@ typedef struct tagTaskMngtInfo{
     U32                  ulTaskCount;             /* 当前正在执行的任务数 */
 
     U32                  ulMaxCall;               /* 历史最大呼叫并发数 */
-    DB_HANDLE_ST         *pstDBHandle;            /* 数据库句柄 */
 
     SC_SYS_STATUS_EN     enSystemStatus;          /* 系统状态 */
 }SC_TASK_MNGT_ST;
