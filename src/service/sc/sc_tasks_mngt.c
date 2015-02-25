@@ -27,7 +27,6 @@ extern "C"{
 
 
 /* define global variable */
-extern U32       g_ulTaskTraceAll;
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
 SC_TASK_MNGT_ST   *g_pstTaskMngtInfo;
@@ -336,7 +335,7 @@ U32 sc_task_cmd_queue_del(SC_TASK_CTRL_CMD_ST *pstCMD)
 
         pstCMDNode = dos_list_entry(pstListNode, SC_TASK_CTRL_CMD_ST, stLink);
 
-        sc_logr_debug("Work list, Current Node Addr: %p, (%p)", pstCMDNode, pstCMD);
+        sc_logr_debug(SC_TASK_MNGT, "Work list, Current Node Addr: %p, (%p)", pstCMDNode, pstCMD);
         if (pstCMDNode && pstCMDNode == pstCMD)
         {
             break;
@@ -372,7 +371,7 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
         return;
     }
 
-    sc_logr_debug("Process CMD. CMD: %d, Action:%d, Task: %d, CustomID: %d"
+    sc_logr_debug(SC_TASK_MNGT, "Process CMD. CMD: %d, Action:%d, Task: %d, CustomID: %d"
                     , pstCMD->ulCMD, pstCMD->ulAction, pstCMD->ulTaskID, pstCMD->ulCustomID);
 
     switch (pstCMD->ulCMD)
@@ -403,7 +402,7 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
                 }
                 default:
                 {
-                    sc_logr_notice("CMD templately not support. CMD:%d, ACTION: %d", pstCMD->ulCMD, pstCMD->ulAction);
+                    sc_logr_notice(SC_TASK_MNGT, "CMD templately not support. CMD:%d, ACTION: %d", pstCMD->ulCMD, pstCMD->ulAction);
                     DOS_ASSERT(0);
                     break;
                 }
@@ -425,7 +424,7 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
                 }
                 default:
                 {
-                    sc_logr_notice("CMD templately not support. CMD:%d, ACTION: %d", pstCMD->ulCMD, pstCMD->ulAction);
+                    sc_logr_notice(SC_TASK_MNGT, "CMD templately not support. CMD:%d, ACTION: %d", pstCMD->ulCMD, pstCMD->ulAction);
                     DOS_ASSERT(0);
                     break;
                 }
@@ -435,14 +434,14 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
         }
         default:
         {
-            sc_logr_notice("CMD templately not support. CMD:%d, ACTION: %d", pstCMD->ulCMD, pstCMD->ulAction);
+            sc_logr_notice(SC_TASK_MNGT, "CMD templately not support. CMD:%d, ACTION: %d", pstCMD->ulCMD, pstCMD->ulAction);
 
             DOS_ASSERT(0);
             break;
         }
     }
 
-    sc_logr_debug("CMD Process finished. CMD:%d , Action: %d, ErrCode:%d"
+    sc_logr_debug(SC_TASK_MNGT, "CMD Process finished. CMD:%d , Action: %d, ErrCode:%d"
                     , pstCMD->ulCMD, pstCMD->ulAction, pstCMD->ulCMDErrCode);
 }
 
@@ -542,7 +541,7 @@ U32 sc_task_mngt_start()
             if (sc_task_init(pstTCB) != DOS_SUCC)
             {
                 SC_TASK_TRACE(pstTCB, "%s", "Task init fail");
-                sc_logr_notice("Task init fail. Custom ID: %d, Task ID: %d", pstTCB->ulCustomID, pstTCB->ulTaskID);
+                sc_logr_notice(SC_TASK_MNGT, "Task init fail. Custom ID: %d, Task ID: %d", pstTCB->ulCustomID, pstTCB->ulTaskID);
 
                 sc_tcb_free(pstTCB);
                 continue;
@@ -551,7 +550,7 @@ U32 sc_task_mngt_start()
             if (sc_task_start(pstTCB) != DOS_SUCC)
             {
                 SC_TASK_TRACE(pstTCB, "%s", "Task init fail");
-                sc_logr_notice("Task start fail. Custom ID: %d, Task ID: %d", pstTCB->ulCustomID, pstTCB->ulTaskID);
+                sc_logr_notice(SC_TASK_MNGT, "Task start fail. Custom ID: %d, Task ID: %d", pstTCB->ulCustomID, pstTCB->ulTaskID);
 
                 sc_tcb_free(pstTCB);
                 continue;

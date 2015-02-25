@@ -29,7 +29,6 @@ extern "C"{
 
 /* define structs */
 
-extern U32 g_ulTaskTraceAll;
 
 /* declare functions */
 inline U32 sc_random(U32 ulMax)
@@ -58,14 +57,14 @@ SC_TEL_NUM_QUERY_NODE_ST *sc_task_get_callee(SC_TASK_CB_ST *pstTCB)
     if (dos_list_is_empty(&pstTCB->stCalleeNumQuery))
     {
         ulCount = sc_task_load_callee(pstTCB);
-        sc_logr_info("Load callee number for task %d. Load result : %d", pstTCB->ulTaskID, ulCount);
+        sc_logr_info(SC_TASK, "Load callee number for task %d. Load result : %d", pstTCB->ulTaskID, ulCount);
     }
 
     if (dos_list_is_empty(&pstTCB->stCalleeNumQuery))
     {
         pstTCB->ucTaskStatus = SC_TASK_STOP;
 
-        sc_logr_info("Task %d has finished. or there is no callees.", pstTCB->ulTaskID);
+        sc_logr_info(SC_TASK, "Task %d has finished. or there is no callees.", pstTCB->ulTaskID);
 
         return NULL;
     }
@@ -95,7 +94,7 @@ SC_TEL_NUM_QUERY_NODE_ST *sc_task_get_callee(SC_TASK_CB_ST *pstTCB)
     pstCallee->stLink.next = NULL;
     pstCallee->stLink.prev = NULL;
 
-    sc_logr_info("Select callee %s for new call.", pstCallee->szNumber);
+    sc_logr_info(SC_TASK, "Select callee %s for new call.", pstCallee->szNumber);
 
     return pstCallee;
 }
@@ -136,11 +135,11 @@ SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
 
     if (pstCaller)
     {
-        sc_logr_info("Select caller %s for new call", pstCaller->szNumber);
+        sc_logr_info(SC_TASK, "Select caller %s for new call", pstCaller->szNumber);
     }
     else
     {
-        sc_logr_info("%s", "There is no caller for new call");
+        sc_logr_info(SC_TASK, "%s", "There is no caller for new call");
     }
 
     SC_TRACE_OUT();
@@ -176,7 +175,7 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     pstCCB = sc_ccb_alloc();
     if (!pstCCB)
     {
-        sc_logr_notice("%s", "Make call for task %d fail. Alloc CCB fail.");
+        sc_logr_notice(SC_TASK, "%s", "Make call for task %d fail. Alloc CCB fail.");
         goto fail;
     }
 
@@ -246,7 +245,7 @@ VOID *sc_task_runtime(VOID *ptr)
 
     if (!ptr)
     {
-        sc_logr_error("%s", "Fail to start the thread for task, invalid parameter");
+        sc_logr_error(SC_TASK, "%s", "Fail to start the thread for task, invalid parameter");
         pthread_exit(0);
     }
 
@@ -264,7 +263,7 @@ VOID *sc_task_runtime(VOID *ptr)
             if (!pstTCB->ulConcurrency)
             {
                 sc_task_trace(pstTCB, "%s", "Task will be finished.");
-                sc_logr_notice("Task will be finished.(%lu)", pstTCB->ulTaskID);
+                sc_logr_notice(SC_TASK, "Task will be finished.(%lu)", pstTCB->ulTaskID);
                 break;
             }
         }
@@ -305,7 +304,7 @@ VOID *sc_task_runtime(VOID *ptr)
         /* ·¢Æðºô½Ð */
         if (sc_task_make_call(pstTCB))
         {
-            sc_logr_notice("%s", "Make call fail.");
+            sc_logr_notice(SC_TASK, "%s", "Make call fail.");
         }
     }
 
@@ -378,27 +377,27 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
     if (lCnt <= 0)
     {
         DOS_ASSERT(0);
-        sc_logr_error("Load callee for task %d failed, Or there in no callee number.", pstTCB->ulTaskID);
+        sc_logr_error(SC_TASK, "Load callee for task %d failed, Or there in no callee number.", pstTCB->ulTaskID);
 
         goto init_fail;
     }
-    sc_logr_info("Task %d has been loaded %d callee(s).", pstTCB->ulTaskID, lCnt);
+    sc_logr_info(SC_TASK, "Task %d has been loaded %d callee(s).", pstTCB->ulTaskID, lCnt);
 
     lCnt = sc_task_load_caller(pstTCB);
     if (lCnt <= 0)
     {
         DOS_ASSERT(0);
-        sc_logr_error("Load caller for task %d failed, Or there in no caller number.", pstTCB->ulTaskID);
+        sc_logr_error(SC_TASK, "Load caller for task %d failed, Or there in no caller number.", pstTCB->ulTaskID);
 
         goto init_fail;
     }
-    sc_logr_info("Task %d has been loaded %d caller(s).", pstTCB->ulTaskID, lCnt);
+    sc_logr_info(SC_TASK, "Task %d has been loaded %d caller(s).", pstTCB->ulTaskID, lCnt);
     pstTCB->usCallerCount = (U16)lCnt;
 
     if (sc_task_load_period(pstTCB) <= 0)
     {
         DOS_ASSERT(0);
-        sc_logr_error("Load period for task %d failed.", pstTCB->ulTaskID);
+        sc_logr_error(SC_TASK, "Load period for task %d failed.", pstTCB->ulTaskID);
 
         SC_TRACE_OUT();
         return DOS_FAIL;
@@ -408,22 +407,22 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
     if (sc_task_load_site(pstTCB) <= 0)
     {
         DOS_ASSERT(0);
-        sc_logr_error("Load site queue for task %d failed, or there is no site queue.", pstTCB->ulTaskID);
+        sc_logr_error(SC_TASK, "Load site queue for task %d failed, or there is no site queue.", pstTCB->ulTaskID);
 
         goto init_fail;
     }
-    sc_logr_info("Task %d has been loaded %d site(s).", pstTCB->ulTaskID, lCnt);
+    sc_logr_info(SC_TASK, "Task %d has been loaded %d site(s).", pstTCB->ulTaskID, lCnt);
     pstTCB->usSiteCount = (S16)lCnt;
 
     if (sc_task_load_audio(pstTCB) <= 0)
     {
         DOS_ASSERT(0);
-        sc_logr_error("Load audio file for task %d failed, or the do not exist.", pstTCB->ulTaskID);
+        sc_logr_error(SC_TASK, "Load audio file for task %d failed, or the do not exist.", pstTCB->ulTaskID);
 
         goto init_fail;
     }
 
-    sc_logr_notice("Load data for task %d finished.", pstTCB->ulTaskID);
+    sc_logr_notice(SC_TASK, "Load data for task %d finished.", pstTCB->ulTaskID);
     SC_TRACE_OUT();
     return DOS_SUCC;
 
@@ -461,13 +460,13 @@ U32 sc_task_start(SC_TASK_CB_ST *pstTCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice("Start task %d faild", pstTCB->ulTaskID);
+        sc_logr_notice(SC_TASK, "Start task %d faild", pstTCB->ulTaskID);
 
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
 
-    sc_logr_notice("Start task %d finished.", pstTCB->ulTaskID);
+    sc_logr_notice(SC_TASK, "Start task %d finished.", pstTCB->ulTaskID);
 
     return DOS_SUCC;
 }
@@ -488,7 +487,7 @@ U32 sc_task_stop(SC_TASK_CB_ST *pstTCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info("Cannot stop the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
+        sc_logr_info(SC_TASK, "Cannot stop the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
 
         SC_TRACE_OUT();
         return DOS_FAIL;
@@ -517,7 +516,7 @@ U32 sc_task_continue(SC_TASK_CB_ST *pstTCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info("Cannot stop the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
+        sc_logr_info(SC_TASK, "Cannot stop the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
 
         SC_TRACE_OUT();
         return DOS_FAIL;
@@ -547,7 +546,7 @@ U32 sc_task_pause(SC_TASK_CB_ST *pstTCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info("Cannot stop the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
+        sc_logr_info(SC_TASK, "Cannot stop the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
 
         SC_TRACE_OUT();
         return DOS_FAIL;

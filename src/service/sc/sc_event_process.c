@@ -26,7 +26,6 @@ extern "C"{
 #include "sc_ep.h"
 
 /* 应用外部变量 */
-extern U32               g_ulTaskTraceAll;
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
 
@@ -289,7 +288,7 @@ static U32 sc_sip_did_hash_func(S8 *pszDIDNum)
         ulIndex++;
     }
 
-    return ulHashIndex % SC_IP_USERID_HASH_SIZE;
+    return ulHashIndex % SC_IP_DID_HASH_SIZE;
 }
 
 /**
@@ -435,7 +434,7 @@ U32 sc_load_black_list()
     {
         DOS_ASSERT(0);
 
-        sc_logr_error("%s", "Load sip account fail.");
+        sc_logr_error(SC_ESL, "%s", "Load sip account fail.");
         return DOS_FAIL;
     }
 
@@ -540,7 +539,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         return DOS_FALSE;
     }
 
-    sc_logr_debug("Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
+    sc_logr_debug(SC_ESL, "Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
                 , pstSIPUserIDNode->ulSIPID
                 , pstSIPUserIDNode->ulCustomID
                 , pstSIPUserIDNode->szUserID
@@ -573,7 +572,7 @@ U32 sc_load_sip_userid()
     {
         DOS_ASSERT(0);
 
-        sc_logr_error("%s", "Load sip account fail.");
+        sc_logr_error(SC_ESL, "%s", "Load sip account fail.");
         return DOS_FAIL;
     }
 
@@ -1222,7 +1221,7 @@ U32 sc_ep_esl_execute(esl_handle_t *pstHandle, const S8 *pszApp, const S8 *pszAr
         if (ESL_SUCCESS != ulRet)
         {
             esl_disconnect(pstHandle);
-            sc_logr_notice("ELS for send event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, pstHandle->err);
+            sc_logr_notice(SC_ESL, "ELS for send event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, pstHandle->err);
 
             DOS_ASSERT(0);
 
@@ -1235,7 +1234,7 @@ U32 sc_ep_esl_execute(esl_handle_t *pstHandle, const S8 *pszApp, const S8 *pszAr
     if (ESL_SUCCESS != esl_execute(pstHandle, pszApp, pszArg, pszUUID))
     {
         DOS_ASSERT(0);
-        sc_logr_notice("ESL execute command fail. Result:%d, APP: %s, ARG : %s, UUID: %s"
+        sc_logr_notice(SC_ESL, "ESL execute command fail. Result:%d, APP: %s, ARG : %s, UUID: %s"
                         , ulRet
                         , pszApp
                         , DOS_ADDR_VALID(pszArg) ? pszArg : "NULL"
@@ -1760,7 +1759,7 @@ U32 sc_ep_search_route(SC_CCB_ST *pstCCB)
             continue;
         }
 
-        sc_logr_debug("Search Route: %d:%d, %d:%d, %s, %s"
+        sc_logr_debug(SC_ESL, "Search Route: %d:%d, %d:%d, %s, %s"
                 , pstRouetEntry->ucHourBegin, pstRouetEntry->ucMinuteBegin
                 , pstRouetEntry->ucHourEnd, pstRouetEntry->ucMinuteEnd
                 , pstRouetEntry->szCalleePrefix
@@ -1818,7 +1817,7 @@ U32 sc_ep_search_route(SC_CCB_ST *pstCCB)
         }
     }
 
-    sc_logr_debug("Search Route Finished. Result: %s, Route ID: %d"
+    sc_logr_debug(SC_ESL, "Search Route Finished. Result: %s, Route ID: %d"
             , U32_BUTT == ulRouteGrpID ? "FAIL" : "SUCC"
             , ulRouteGrpID);
 
@@ -2019,7 +2018,7 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
 
     if (sc_ep_dst_is_black(pszDstNum))
     {
-        sc_logr_notice("The destination is in black list. %s", pszDstNum);
+        sc_logr_notice(SC_ESL, "The destination is in black list. %s", pszDstNum);
 
         return SC_DIRECTION_INVALID;
     }
@@ -2032,7 +2031,7 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
         {
             DOS_ASSERT(0);
 
-            sc_logr_info("Source number %s is not invalid sip user id. Reject Call", pszSrcNum);
+            sc_logr_info(SC_ESL, "Source number %s is not invalid sip user id. Reject Call", pszSrcNum);
             return DOS_FAIL;
         }
 
@@ -2058,7 +2057,7 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
         {
             DOS_ASSERT(0);
 
-            sc_logr_notice("The destination %s is not a DID number. Reject Call.", pszDstNum);
+            sc_logr_notice(SC_ESL, "The destination %s is not a DID number. Reject Call.", pszDstNum);
             return SC_DIRECTION_INVALID;
         }
 
@@ -2119,7 +2118,7 @@ U32 sc_ep_incoming_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_
         {
             DOS_ASSERT(0);
 
-            sc_logr_info("Cannot get the bind info for the DID number %s, Reject Call.", pszDstNum);
+            sc_logr_info(SC_ESL, "Cannot get the bind info for the DID number %s, Reject Call.", pszDstNum);
             return DOS_FAIL;
         }
 
@@ -2130,7 +2129,7 @@ U32 sc_ep_incoming_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_
                 {
                     DOS_ASSERT(0);
 
-                    sc_logr_info("DID number %s seems donot bind a SIP User ID, Reject Call.", pszDstNum);
+                    sc_logr_info(SC_ESL, "DID number %s seems donot bind a SIP User ID, Reject Call.", pszDstNum);
                     return DOS_FAIL;
                 }
 
@@ -2146,7 +2145,7 @@ U32 sc_ep_incoming_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_
             default:
                 DOS_ASSERT(0);
 
-                sc_logr_info("DID number %s has bind an error number, Reject Call.", pszDstNum);
+                sc_logr_info(SC_ESL, "DID number %s has bind an error number, Reject Call.", pszDstNum);
                 return DOS_FAIL;
                 break;
         }
@@ -2157,7 +2156,7 @@ U32 sc_ep_incoming_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_
     {
         DOS_ASSERT(0);
 
-        sc_logr_info("Destination is not a DID number, Reject Call. Destination: %s", pszDstNum);
+        sc_logr_info(SC_ESL, "Destination is not a DID number, Reject Call. Destination: %s", pszDstNum);
         return DOS_FAIL;
 
     }
@@ -2202,7 +2201,7 @@ U32 sc_ep_outgoing_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_
         sc_call_trace(pstCCB,"Find trunk gruop FAIL. The call will be hungup later. UUID: %s", pstCCB->szUUID);
         return DOS_FAIL;
     }
-    sc_logr_info("Search Route SUCC. Route ID: %d", ulRouteID);
+    sc_logr_info(SC_ESL, "Search Route SUCC. Route ID: %d", ulRouteID);
 
     pstCCB->ulTrunkID = ulRouteID;
     if (DOS_SUCC != sc_ep_get_callee_string(ulRouteID, pstCCB->szCalleeNum, szCallString, sizeof(szCallString)))
@@ -2212,7 +2211,7 @@ U32 sc_ep_outgoing_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_
         sc_call_trace(pstCCB,"Make call string FAIL. The call will be hungup later. UUID: %s", pstCCB->szUUID);
         return DOS_FAIL;
     }
-    sc_logr_info("Make Call String SUCC. Call String: %s", szCallString);
+    sc_logr_info(SC_ESL, "Make Call String SUCC. Call String: %s", szCallString);
 #if 0
     if (sc_send_usr_auth2bs(pstCCB))
     {
@@ -2306,7 +2305,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
     {
         DOS_ASSERT(0);
 
-        sc_logr_info("The source number %s seem not beyound to any customer, Reject Call", pszSrcNum);
+        sc_logr_info(SC_ESL, "The source number %s seem not beyound to any customer, Reject Call", pszSrcNum);
         return DOS_FAIL;
     }
 
@@ -2323,7 +2322,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
         {
             DOS_ASSERT(0);
 
-            sc_logr_info("Cannot call other customer direct, Reject Call. Src %s is owned by customer %d, Dst %s is owned by customer %d"
+            sc_logr_info(SC_ESL, "Cannot call other customer direct, Reject Call. Src %s is owned by customer %d, Dst %s is owned by customer %d"
                             , pszSrcNum, ulCustomerID, pszDstNum, ulCustomerID1);
             return DOS_FAIL;
         }
@@ -2334,7 +2333,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
         {
             DOS_ASSERT(0);
 
-            sc_logr_info("Destination number %s is not seems a SIP User ID or Extension. Reject Call", pszDstNum);
+            sc_logr_info(SC_ESL, "Destination number %s is not seems a SIP User ID or Extension. Reject Call", pszDstNum);
             return DOS_FAIL;
         }
 
@@ -2360,7 +2359,7 @@ U32 sc_ep_internal_service_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
 {
     S8    *pszUUID = NULL;
 
-    sc_logr_info("%s", "Start exec internal service.");
+    sc_logr_info(SC_ESL, "%s", "Start exec internal service.");
 
     pszUUID = esl_event_get_header(pstEvent, "Unique-ID");
     if (DOS_ADDR_INVALID(pszUUID))
@@ -2432,7 +2431,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_C
     pszIsAutoCall = esl_event_get_header(pstEvent, "variable_auto_call");
     pszCaller     = esl_event_get_header(pstEvent, "Caller-Caller-ID-Number");
     pszCallee     = esl_event_get_header(pstEvent, "Caller-Destination-Number");
-    sc_logr_info("Route Call Start: Auto Call Flag: %s, Caller: %s, Callee: %d"
+    sc_logr_info(SC_ESL, "Route Call Start: Auto Call Flag: %s, Caller: %s, Callee: %d"
                 , NULL == pszIsAutoCall ? "NULL" : pszIsAutoCall
                 , NULL == pszCaller ? "NULL" : pszCaller
                 , NULL == pszCallee ? "NULL" : pszCallee);
@@ -2462,7 +2461,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_C
         ulCallSrc = sc_ep_get_source(pstEvent);
         ulCallDst = sc_ep_get_destination(pstEvent);
 
-        sc_logr_info("Get call source and dest. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
+        sc_logr_info(SC_ESL, "Get call source and dest. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
 
         if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_PSTN == ulCallDst)
         {
@@ -2487,7 +2486,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_C
         }
         else
         {
-            sc_logr_info("Invalid call source or destension. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
+            sc_logr_info(SC_ESL, "Invalid call source or destension. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
             goto hungup_proc;
         }
     }
@@ -2591,7 +2590,7 @@ process_fail:
         if (!pstCCB)
         {
             DOS_ASSERT(0);
-            sc_logr_error("%s", "Alloc CCB FAIL.");
+            sc_logr_error(SC_ESL, "%s", "Alloc CCB FAIL.");
 
             SC_CCB_SET_STATUS(pstCCB, SC_CCB_RELEASE);
 
@@ -2649,7 +2648,7 @@ U32 sc_ep_channel_exec_complete_proc(esl_handle_t *pstHandle, esl_event_t *pstEv
     pszAppication = esl_event_get_header(pstEvent, "Application");
     pszDesc = esl_event_get_header(pstEvent, "variable_originate_disposition");
 
-    sc_logr_debug("Exec application %s, result %s", pszAppication, pszDesc);
+    sc_logr_debug(SC_ESL, "Exec application %s, result %s", pszAppication, pszDesc);
 
     if (DOS_ADDR_VALID(pszAppication)
         && 0 == dos_stricmp(pszAppication, "bridge"))
@@ -2760,7 +2759,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
 
                 sc_ep_esl_execute(pstHandle, "hangup", NULL, pszUUID2);
 
-                sc_logr_info("Waiting other leg hangup.Curretn Leg UUID: %s, Other Leg UUID: %s"
+                sc_logr_info(SC_ESL, "Waiting other leg hangup.Curretn Leg UUID: %s, Other Leg UUID: %s"
                                 , pszUUID1 ? pszUUID1 : "NULL"
                                 , pszUUID2 ? pszUUID2 : "NULL");
                 break;
@@ -2918,7 +2917,7 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         }
     }
 
-    sc_logr_info("Start process event: %s(%d), CCB No:%d"
+    sc_logr_info(SC_ESL, "Start process event: %s(%d), CCB No:%d"
                     , esl_event_get_header(pstEvent, "Event-Name")
                     , pstEvent->event_id
                     , esl_event_get_header(pstEvent, "ccb_number"));
@@ -2931,7 +2930,7 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             if (ulRet != DOS_SUCC)
             {
                 sc_ep_esl_execute(pstHandle, "hangup", NULL, pszUUID);
-                sc_logr_info("Hangup for process event %s fail. UUID: %s", esl_event_get_header(pstEvent, "Event-Name"), pszUUID);
+                sc_logr_info(SC_ESL, "Hangup for process event %s fail. UUID: %s", esl_event_get_header(pstEvent, "Event-Name"), pszUUID);
             }
             break;
 
@@ -2940,7 +2939,7 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             if (ulRet != DOS_SUCC)
             {
                 sc_ep_esl_execute(pstHandle, "hangup", NULL, pszUUID);
-                sc_logr_info("Hangup for process event %s fail. UUID: %s", esl_event_get_header(pstEvent, "Event-Name"), pszUUID);
+                sc_logr_info(SC_ESL, "Hangup for process event %s fail. UUID: %s", esl_event_get_header(pstEvent, "Event-Name"), pszUUID);
             }
             break;
 
@@ -2967,11 +2966,11 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             DOS_ASSERT(0);
             ulRet = DOS_FAIL;
 
-            sc_logr_info("Recv unhandled event: %s(%d)", esl_event_get_header(pstEvent, "Event-Name"), pstEvent->event_id);
+            sc_logr_info(SC_ESL, "Recv unhandled event: %s(%d)", esl_event_get_header(pstEvent, "Event-Name"), pstEvent->event_id);
             break;
     }
 
-    sc_logr_info("Process finished event: %s(%d). Result:%s"
+    sc_logr_info(SC_ESL, "Process finished event: %s(%d). Result:%s"
                     , esl_event_get_header(pstEvent, "Event-Name")
                     , pstEvent->event_id
                     , (DOS_SUCC == ulRet) ? "Successfully" : "FAIL");
@@ -3034,7 +3033,7 @@ VOID*sc_ep_process_runtime(VOID *ptr)
         dos_dmem_free(pstListNode);
         pstListNode = NULL;
 
-        sc_logr_info("ESL event process START. %s(%d), CCB No:%s"
+        sc_logr_info(SC_ESL, "ESL event process START. %s(%d), CCB No:%s"
                         , esl_event_get_header(pstEvent, "Event-Name")
                         , pstEvent->event_id
                         , esl_event_get_header(pstEvent, "variable_ccb_no"));
@@ -3045,7 +3044,7 @@ VOID*sc_ep_process_runtime(VOID *ptr)
             DOS_ASSERT(0);
         }
 
-        sc_logr_info("ESL event process FINISHED. %s(%d), CCB No:%s Processed, Result: %d"
+        sc_logr_info(SC_ESL, "ESL event process FINISHED. %s(%d), CCB No:%s Processed, Result: %d"
                         , esl_event_get_header(pstEvent, "Event-Name")
                         , pstEvent->event_id
                         , esl_event_get_header(pstEvent, "variable_ccb_no")
@@ -3075,7 +3074,7 @@ VOID* sc_ep_runtime(VOID *ptr)
         /* 如果退出标志被置上，就准备退出了 */
         if (g_pstHandle->blIsWaitingExit)
         {
-            sc_logr_notice("%s", "Dialer exit flag has been set. the task will be exit.");
+            sc_logr_notice(SC_ESL, "%s", "Dialer exit flag has been set. the task will be exit.");
             break;
         }
 
@@ -3085,13 +3084,13 @@ VOID* sc_ep_runtime(VOID *ptr)
          **/
         if (!g_pstHandle->blIsESLRunning)
         {
-            sc_logr_notice("%s", "ELS for event connection has been down, re-connect.");
+            sc_logr_notice(SC_ESL, "%s", "ELS for event connection has been down, re-connect.");
             g_pstHandle->stRecvHandle.event_lock = 1;
             ulRet = esl_connect(&g_pstHandle->stRecvHandle, "127.0.0.1", 8021, NULL, "ClueCon");
             if (ESL_SUCCESS != ulRet)
             {
                 esl_disconnect(&g_pstHandle->stRecvHandle);
-                sc_logr_notice("ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstHandle->stRecvHandle.err);
+                sc_logr_notice(SC_ESL, "ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstHandle->stRecvHandle.err);
 
                 sleep(1);
                 continue;
@@ -3102,7 +3101,7 @@ VOID* sc_ep_runtime(VOID *ptr)
             esl_global_set_default_logger(g_pstHandle->ulESLDebugLevel);
             esl_events(&g_pstHandle->stRecvHandle, ESL_EVENT_TYPE_PLAIN, SC_EP_EVENT_LIST);
 
-            sc_logr_notice("%s", "ELS for event connect Back to Normal.");
+            sc_logr_notice(SC_ESL, "%s", "ELS for event connect Back to Normal.");
         }
 
         ulRet = esl_recv_event(&g_pstHandle->stRecvHandle, 1, NULL);
@@ -3127,7 +3126,7 @@ VOID* sc_ep_runtime(VOID *ptr)
             continue;
         }
 
-        sc_logr_info("ESL recv event %s(%d)."
+        sc_logr_info(SC_ESL, "ESL recv event %s(%d)."
                         , esl_event_get_header(pstEvent, "Event-Name")
                         , pstEvent->event_id);
 
@@ -3136,7 +3135,7 @@ VOID* sc_ep_runtime(VOID *ptr)
         {
             DOS_ASSERT(0);
 
-            sc_logr_info("ESL recv event %s(%d). Alloc memory fail. Drop"
+            sc_logr_info(SC_ESL, "ESL recv event %s(%d). Alloc memory fail. Drop"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id);
 

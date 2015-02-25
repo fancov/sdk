@@ -48,7 +48,6 @@ typedef struct tagSCDialerHandle
     S8                  *pszCMDBuff;
 }SC_DIALER_HANDLE_ST;
 
-extern U32 g_ulTaskTraceAll;
 extern S8 *sc_task_get_audio_file(U32 ulTCBNo);
 
 
@@ -313,12 +312,12 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
                 , ulPlayCnt
                 , pszAudioFilePath);
 
-    sc_logr_debug("ESL CMD: %s", pszCMDBuff);
+    sc_logr_debug(SC_DIALER, "ESL CMD: %s", pszCMDBuff);
 
     if (esl_send_recv(&g_pstDialerHandle->stHandle, pszCMDBuff) != ESL_SUCCESS)
     {
         DOS_ASSERT(0);
-        sc_logr_notice("ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
+        sc_logr_notice(SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
 
         goto esl_exec_fail;
     }
@@ -326,7 +325,7 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
     if (!g_pstDialerHandle->stHandle.last_sr_event)
     {
         DOS_ASSERT(0);
-        sc_logr_notice("%s", "ESL request call successfully. But the reply event is NULL.");
+        sc_logr_notice(SC_DIALER, "%s", "ESL request call successfully. But the reply event is NULL.");
 
         goto esl_exec_fail;
     }
@@ -336,7 +335,7 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
         || dos_strcmp(pszEventHeader, "command/reply") != 0)
     {
         DOS_ASSERT(0);
-        sc_logr_notice("ESL request call successfully. But the reply event an invalid content-type.(Type:%s)", pszEventHeader);
+        sc_logr_notice(SC_DIALER, "ESL request call successfully. But the reply event an invalid content-type.(Type:%s)", pszEventHeader);
 
         goto esl_exec_fail;
 
@@ -346,7 +345,7 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
     if (!pszEventBody || '\0' == pszEventBody[0])
     {
         DOS_ASSERT(0);
-        sc_logr_notice("ESL request call successfully. But the reply event an invalid reply-text.(Type:%s)", pszEventBody);
+        sc_logr_notice(SC_DIALER, "ESL request call successfully. But the reply event an invalid reply-text.(Type:%s)", pszEventBody);
 
         goto esl_exec_fail;
     }
@@ -354,7 +353,7 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
     if (dos_strnicmp(pszEventBody, "+OK", dos_strlen("+OK")) != 0)
     {
         DOS_ASSERT(0);
-        sc_logr_notice("ESL exec fail. (Reply-Text:%s)", pszEventBody);
+        sc_logr_notice(SC_DIALER, "ESL exec fail. (Reply-Text:%s)", pszEventBody);
 
         goto esl_exec_fail;
     }
@@ -364,7 +363,7 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
         goto esl_exec_fail;
     }
 #endif
-    sc_logr_info("Make call successfully. Caller:%s, Callee:%s", pstCCB->szCallerNum, pstCCB->szCalleeNum);
+    sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstCCB->szCallerNum, pstCCB->szCalleeNum);
     sc_call_trace(pstCCB, "Make call successfully.");
 
     SC_TRACE_OUT();
@@ -372,7 +371,7 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
 
 esl_exec_fail:
 
-    sc_logr_info("%s", "ESL Exec fail, the call will be dos_dmem_free.");
+    sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be dos_dmem_free.");
 
     if (DOS_ADDR_VALID(pstCCB))
     {
@@ -397,7 +396,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
         /* 如果退出标志被置上，就准备退出了 */
         if (g_pstDialerHandle->blIsWaitingExit)
         {
-            sc_logr_notice("%s", "Dialer exit flag has been set. the task will be exit.");
+            sc_logr_notice(SC_DIALER, "%s", "Dialer exit flag has been set. the task will be exit.");
             break;
         }
 
@@ -407,12 +406,12 @@ VOID *sc_dialer_runtime(VOID * ptr)
          **/
         if (!g_pstDialerHandle->blIsESLRunning)
         {
-            sc_logr_notice("%s", "ELS connection has been down, re-connect.");
+            sc_logr_notice(SC_DIALER, "%s", "ELS connection has been down, re-connect.");
             ulRet = esl_connect(&g_pstDialerHandle->stHandle, "127.0.0.1", 8021, NULL, "ClueCon");
             if (ESL_SUCCESS != ulRet)
             {
                 esl_disconnect(&g_pstDialerHandle->stHandle);
-                sc_logr_notice("ELS re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstDialerHandle->stHandle.err);
+                sc_logr_notice(SC_DIALER, "ELS re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstDialerHandle->stHandle.err);
 
                 sleep(1);
                 continue;
@@ -420,7 +419,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
 
             g_pstDialerHandle->blIsESLRunning = DOS_TRUE;
 
-            sc_logr_notice("%s", "ELS connect Back to Normal.");
+            sc_logr_notice(SC_DIALER, "%s", "ELS connect Back to Normal.");
         }
 
         pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);

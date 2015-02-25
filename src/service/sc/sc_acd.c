@@ -48,9 +48,6 @@ pthread_mutex_t   g_mutexSiteList     = PTHREAD_MUTEX_INITIALIZER;
 HASH_TABLE_S      *g_pstGroupList     = NULL;
 pthread_mutex_t   g_mutexGroupList    = PTHREAD_MUTEX_INITIALIZER;
 
-
-extern U32       g_ulTaskTraceAll;
-
 /* 坐席组个数 */
 U32               g_ulGroupCount    = 0;
 
@@ -204,7 +201,7 @@ U32 sc_acd_add_site(SC_ACD_SITE_DESC_ST *pstSiteInfo, U32 ulGrpID)
     {
         DOS_ASSERT(0);
 
-        sc_acd_trace_error("Cannot find the group \"%d\" for the site %s.", ulGrpID, pstSiteInfo->szExtension);
+        sc_logr_error(SC_ACD, "Cannot find the group \"%d\" for the site %s.", ulGrpID, pstSiteInfo->szExtension);
 
         SC_TRACE_OUT();
         return DOS_FAIL;
@@ -311,7 +308,7 @@ U32 sc_acd_delete_site(S8 *pszExenstion)
     {
         DOS_ASSERT(0);
 
-        sc_acd_trace_error("Connot find the Site \"%s\" while delete", pszExenstion);
+        sc_logr_error(SC_ACD, "Connot find the Site \"%s\" while delete", pszExenstion);
         pthread_mutex_unlock(&g_mutexSiteList);
 
         SC_TRACE_OUT();
@@ -358,7 +355,7 @@ U32 sc_acd_update_site_status(S8 *pszExenstion, U32 ulGrpID, U32 ulAction)
     {
         DOS_ASSERT(0);
 
-        sc_acd_trace_error("Cannot find the group \"%d\" for the site %s.", ulGrpID, pszExenstion);
+        sc_logr_error(SC_ACD, "Cannot find the group \"%d\" for the site %s.", ulGrpID, pszExenstion);
 
         SC_TRACE_OUT();
         return DOS_FAIL;
@@ -477,7 +474,7 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
     {
         DOS_ASSERT(0);
 
-        sc_acd_trace_error("Group \"%d\" Already in the list.", ulGroupID);
+        sc_logr_error(SC_ACD, "Group \"%d\" Already in the list.", ulGroupID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         SC_TRACE_OUT();
@@ -490,7 +487,7 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
     {
         DOS_ASSERT(0);
 
-        sc_acd_trace_error("%s", "Add group fail. Alloc memory fail");
+        sc_logr_error(SC_ACD, "%s", "Add group fail. Alloc memory fail");
 
         SC_TRACE_OUT();
         return DOS_FAIL;
@@ -502,7 +499,7 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
     {
         DOS_ASSERT(0);
 
-        sc_acd_trace_error("%s", "Add group fail. Alloc memory fail");
+        sc_logr_error(SC_ACD, "%s", "Add group fail. Alloc memory fail");
         dos_dmem_free(pstGroupListNode);
         pstGroupListNode = NULL;
 
@@ -553,7 +550,7 @@ U32 sc_acd_delete_queue(U32 ulGroupID)
     {
         DOS_ASSERT(0);
 
-        sc_acd_trace_error("Connot find the Group \"%d\".", ulGroupID);
+        sc_logr_error(SC_ACD, "Connot find the Group \"%d\".", ulGroupID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         SC_TRACE_OUT();
@@ -626,7 +623,7 @@ SC_ACD_SITE_DESC_ST  *sc_acd_get_site_by_grpid(U32 ulGroupID)
     {
         DOS_ASSERT(0);
 
-        sc_acd_trace_error("Cannot fine the group with the ID \"%s\".", ulGroupID);
+        sc_logr_error(SC_ACD, "Cannot fine the group with the ID \"%s\".", ulGroupID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         SC_TRACE_OUT();
@@ -860,7 +857,7 @@ U32 sc_acd_init()
     if (DOS_ADDR_INVALID(g_pstGroupList))
     {
         DOS_ASSERT(0);
-        sc_acd_trace_error("%s", "Init Group Hash Table Fail.");
+        sc_logr_error(SC_ACD, "%s", "Init Group Hash Table Fail.");
 
         SC_TRACE_OUT();
         return DOS_FAIL;
@@ -871,7 +868,7 @@ U32 sc_acd_init()
     if (DOS_ADDR_INVALID(g_pstSiteList))
     {
         DOS_ASSERT(0);
-        sc_acd_trace_error("%s", "Init Site Hash Table Fail.");
+        sc_logr_error(SC_ACD, "%s", "Init Site Hash Table Fail.");
 
         hash_delete_table(g_pstGroupList, NULL);
         g_pstGroupList = NULL;
@@ -884,7 +881,7 @@ U32 sc_acd_init()
     if (sc_acd_init_group_queue() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        sc_acd_trace_error("%s", "Init group list fail in ACD.");
+        sc_logr_error(SC_ACD, "%s", "Init group list fail in ACD.");
 
         hash_delete_table(g_pstSiteList, NULL);
         g_pstSiteList = NULL;
@@ -900,7 +897,7 @@ U32 sc_acd_init()
     if (sc_acd_init_site_queue() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        sc_acd_trace_error("%s", "Init sites list fail in ACD.");
+        sc_logr_error(SC_ACD, "%s", "Init sites list fail in ACD.");
 
         sc_acd_deinit_site_queue();
 
@@ -917,7 +914,7 @@ U32 sc_acd_init()
     if (sc_acd_init_relationship() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        sc_acd_trace_error("%s", "Init ACD Data FAIL.");
+        sc_logr_error(SC_ACD, "%s", "Init ACD Data FAIL.");
 
         sc_acd_deinit_group_queue();
         sc_acd_deinit_site_queue();

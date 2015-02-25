@@ -49,9 +49,6 @@ U32 sc_httpd_shutdown();
 U32 sc_task_mngt_shutdown();
 U32 sc_dialer_shutdown();
 
-
-extern U32 g_ulTaskTraceAll;
-
 /* define marcos */
 
 /* define enums */

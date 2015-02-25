@@ -1,6 +1,5 @@
 C_FILE += $(SROUCE)/service/sc/mod_dipcc_sc.c \
 	$(SROUCE)/service/sc/sc_acd.c \
-	$(SROUCE)/service/sc/sc_acd_debug.c \
 	$(SROUCE)/service/sc/sc_api_process.c \
 	$(SROUCE)/service/sc/sc_config_update.c  \
 	$(SROUCE)/service/sc/sc_debug.c \
@@ -17,7 +16,6 @@ C_FILE += $(SROUCE)/service/sc/mod_dipcc_sc.c \
 C_OBJ_FILE += mod_dipcc_sc.$(SUFFIX) \
 	sc_api_process.$(SUFFIX) \
 	sc_acd.$(SUFFIX) \
-	sc_acd_debug.$(SUFFIX) \
 	sc_config_update.$(SUFFIX) \
 	sc_debug.$(SUFFIX) \
 	sc_dialer.$(SUFFIX) \
@@ -37,9 +35,6 @@ sc_api_process.$(SUFFIX) :
 	
 sc_acd.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_acd.c
-	
-sc_acd_debug.$(SUFFIX) :
-	$(C_COMPILE) $(SROUCE)/service/sc/sc_acd_debug.c
 
 sc_config_update.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_config_update.c

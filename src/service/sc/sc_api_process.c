@@ -29,8 +29,6 @@ extern "C"{
 #include "sc_http_api.h"
 #include "sc_acd_pub.h"
 
-extern U32 g_ulTaskTraceAll;
-
 U32 sc_http_api_reload_xml(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient);
@@ -470,7 +468,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
         goto cmd_prase_fail1;
     }
 
-    sc_logr_debug("HTTP Request: %s", pstClient->stDataBuff.pszBuff);
+    sc_logr_debug(SC_HTTP_API, "HTTP Request: %s", pstClient->stDataBuff.pszBuff);
 
     /* 获取请求的文件 */
     pStart = dos_strstr(pstClient->stDataBuff.pszBuff, "GET /");
@@ -514,7 +512,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
     dos_strncpy(szReqLine, pStart, pEnd - pStart);
     szReqLine[pEnd - pStart] = '\0';
 
-    sc_logr_debug("HTTP Request Line: %s?%s", szReqBuffer, szReqLine);
+    sc_logr_debug(SC_HTTP_API, "HTTP Request Line: %s?%s", szReqBuffer, szReqLine);
 
     /* 获取 key=value 字符串 */
     lKeyCnt = 0;
@@ -543,7 +541,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
         goto cmd_prase_fail1;
     }
 
-    sc_logr_debug("%s", "Start prase the http request.");
+    sc_logr_debug(SC_HTTP_API, "%s", "Start prase the http request.");
 
     /* 解析key=value，并将结果存入链表 */
     dos_list_init(&pstClient->stParamList);
@@ -554,7 +552,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
             continue;
         }
 
-        sc_logr_debug("Process Token: %s", pszKeyWord[lParamIndex]);
+        sc_logr_debug(SC_HTTP_API, "Process Token: %s", pszKeyWord[lParamIndex]);
 
         pWord = dos_strstr(pszKeyWord[lParamIndex], "=");
         pValue = pWord;
@@ -586,7 +584,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
         dos_list_add_tail(&(pstClient->stParamList), &pstParamsList->stList);
     }
 
-    sc_logr_debug("%s", "Prase the http request finished.");
+    sc_logr_debug(SC_HTTP_API, "%s", "Prase the http request finished.");
 
     ulRet = DOS_FAIL;
     for (ulIndex=0; ulIndex<(sizeof(g_pstHttpReqRegTable)/sizeof(SC_HTTP_REQ_REG_TABLE_SC)); ulIndex++)
@@ -603,7 +601,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
         }
     }
 
-    sc_logr_notice("HTTP Request process finished. Return code: %d", ulRet);
+    sc_logr_notice(SC_HTTP_API, "HTTP Request process finished. Return code: %d", ulRet);
 
     while (1)
     {

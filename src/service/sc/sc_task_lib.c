@@ -51,7 +51,6 @@ const S8 *g_pszSiteList[] = {
 
 /* define structs */
 
-extern U32       g_ulTaskTraceAll;
 extern SC_TASK_MNGT_ST   *g_pstTaskMngtInfo;
 extern DB_HANDLE_ST      *g_pstSCDBHandle;
 
@@ -331,7 +330,7 @@ U32 sc_ccb_hash_tables_add(S8 *pszUUID, SC_CCB_ST *pstCCB)
     pstCCBHashNode = (SC_CCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallCCBHash, ulHashIndex, pszUUID, sc_ccb_hash_find);
     if (pstCCBHashNode)
     {
-        sc_logr_info("UUID %s has been added to hash list sometimes before.", pszUUID);
+        sc_logr_info(SC_TASK, "UUID %s has been added to hash list sometimes before.", pszUUID);
         if (DOS_ADDR_INVALID(pstCCBHashNode->pstCCB)
             && DOS_ADDR_VALID(pstCCB))
         {
@@ -348,7 +347,7 @@ U32 sc_ccb_hash_tables_add(S8 *pszUUID, SC_CCB_ST *pstCCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_warning("%s", "Alloc memory fail");
+        sc_logr_warning(SC_TASK, "%s", "Alloc memory fail");
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
 
         SC_TRACE_OUT();
@@ -371,7 +370,7 @@ U32 sc_ccb_hash_tables_add(S8 *pszUUID, SC_CCB_ST *pstCCB)
 
     hash_add_node(g_pstTaskMngtInfo->pstCallCCBHash, (HASH_NODE_S *)pstCCBHashNode, ulHashIndex, NULL);
 
-    sc_logr_warning("Add CCB with the UUID %s to the hash table.", pszUUID);
+    sc_logr_warning(SC_TASK, "Add CCB with the UUID %s to the hash table.", pszUUID);
 
     pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
 
@@ -409,7 +408,7 @@ U32 sc_ccb_hash_tables_delete(S8 *pszUUID)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info("Connot find the CCB with the UUID %s where delete the hash node.", pszUUID);
+        sc_logr_info(SC_TASK, "Connot find the CCB with the UUID %s where delete the hash node.", pszUUID);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
         SC_TRACE_OUT();
         return DOS_SUCC;
@@ -454,7 +453,7 @@ SC_CCB_ST *sc_ccb_hash_tables_find(S8 *pszUUID)
     pstCCBHashNode = (SC_CCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallCCBHash, ulHashIndex, pszUUID, sc_ccb_hash_find);
     if (!pstCCBHashNode)
     {
-        sc_logr_info("Connot find the CCB with the UUID %s.", pszUUID);
+        sc_logr_info(SC_TASK, "Connot find the CCB with the UUID %s.", pszUUID);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
 
         SC_TRACE_OUT();
@@ -496,7 +495,7 @@ U32 sc_ccb_syn_wait(S8 *pszUUID)
     pstCCBHashNode = (SC_CCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallCCBHash, ulHashIndex, pszUUID, sc_ccb_hash_find);
     if (!pstCCBHashNode)
     {
-        sc_logr_info("Connot find the CCB with the UUID %s.", pszUUID);
+        sc_logr_info(SC_TASK, "Connot find the CCB with the UUID %s.", pszUUID);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
 
         SC_TRACE_OUT();
@@ -540,7 +539,7 @@ U32 sc_ccb_syn_post(S8 *pszUUID)
     pstCCBHashNode = (SC_CCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallCCBHash, ulHashIndex, pszUUID, sc_ccb_hash_find);
     if (!pstCCBHashNode)
     {
-        sc_logr_info("Connot find the CCB with the UUID %s.", pszUUID);
+        sc_logr_info(SC_TASK, "Connot find the CCB with the UUID %s.", pszUUID);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
 
         SC_TRACE_OUT();
@@ -1348,7 +1347,7 @@ U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB)
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_period_cb, (VOID *)pstTCB, NULL) != DB_ERR_SUCC)
     {
-        sc_logr_debug("Load task time period for task %d fail;", pstTCB->usTCBNo);
+        sc_logr_debug(SC_TASK, "Load task time period for task %d fail;", pstTCB->usTCBNo);
 
         return DOS_FAIL;
     }
@@ -1563,7 +1562,7 @@ U32 sc_task_callee_set_recall(SC_TASK_CB_ST *pstTCB, U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice("Set callee to waiting status FAIL. index:%d", ulIndex);
+        sc_logr_notice(SC_TASK, "Set callee to waiting status FAIL. index:%d", ulIndex);
 
         return DOS_FALSE;
     }

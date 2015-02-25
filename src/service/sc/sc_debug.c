@@ -40,7 +40,11 @@ U32       g_ulTaskTraceAll      = 0;       /* 是否跟踪所有任务 */
 
 U32       g_ulCallTraceAll      = 1;     /* 跟踪所有的呼叫 */
 
+#ifdef DEBUG_VERSION
+U32       g_ulTraceFlags        = 1;
+#else
 U32       g_ulTraceFlags        = 0;
+#endif
 
 extern SC_HTTPD_CB_ST        **g_pstHTTPDList;
 extern SC_HTTP_CLIENT_CB_S   **g_pstHTTPClientList;
@@ -923,29 +927,80 @@ cc_usage:
 }
 
 
-/**
- * 函数: sc_logr_write
- * 功能: 业务控制模块日志控制函数
- * 参数:
- * 返回值:
- * 示例:
- * 特殊说明:
- */
-VOID sc_logr_write(U32 ulLevel, S8 *pszFormat, ...)
+VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
 {
-    va_list argptr;
-    char szBuf[1024];
+    va_list         Arg;
+    U32             ulTraceTagLen;
+    S8              szTraceStr[1024];
+    BOOL            bIsOutput = DOS_FALSE;
 
-    va_start(argptr, pszFormat);
-    vsnprintf(szBuf, sizeof(szBuf), pszFormat, argptr);
-    va_end(argptr);
-    szBuf[sizeof(szBuf) -1] = '\0';
-
-    if (ulLevel <= g_ulSCLogLevel)
+    if (ulLevel >= LOG_LEVEL_INVAILD)
     {
-        dos_log(ulLevel, LOG_TYPE_RUNINFO, szBuf);
+        return;
     }
+
+    /* warning级别以上强制输出 */
+    if (ulLevel <= LOG_LEVEL_WARNING)
+    {
+        bIsOutput = DOS_TRUE;
+    }
+
+    if (!bIsOutput
+        && ulSubMod&g_ulTraceFlags
+        && g_ulSCLogLevel <= ulLevel)
+    {
+        bIsOutput = DOS_TRUE;
+    }
+
+    if(!bIsOutput)
+    {
+        return;
+    }
+
+    switch(ulSubMod)
+    {
+        case SC_FUNC:
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_FUNC:");
+            break;
+        case SC_HTTPD:
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_HTTPD:");
+            break;
+        case SC_HTTP_API:
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_HTTP_API:");
+            break;
+        case SC_ACD:
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_ACD:");
+            break;
+        case SC_TASK_MNGT:
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_TASK:");
+            break;
+        case SC_TASK:
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_TASK:");
+            break;
+        case SC_DIALER:
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_DIALER:");
+            break;
+        case SC_ESL:
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_ESL:");
+            break;
+        case SC_BS:
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_BS:");
+            break;
+        default:
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC:");
+            break;
+    }
+
+    ulTraceTagLen = dos_strlen(szTraceStr);
+
+    va_start(Arg, szFormat);
+    vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, szFormat, Arg);
+    va_end(Arg);
+    szTraceStr[sizeof(szTraceStr) -1] = '\0';
+
+    dos_log(ulLevel, LOG_TYPE_RUNINFO, szTraceStr);
 }
+
 
 VOID sc_call_trace(SC_CCB_ST *pstCCB, const S8 *szFormat, ...)
 {
@@ -1002,7 +1057,7 @@ trace:
     /*
      *格式: <CCB:No, status, token, caller, callee, uuid, trunk><TCB:No, status, ID, Custom,><CALLER:No, num,><SITE:No, status, SIP, id, externsion>
      */
-    sc_logr_debug("Call Trace:%s\r\n"
+    sc_logr_debug(SC_ESL, "Call Trace:%s\r\n"
                   "\t[CCB Info]: No:%05d, status: %d, caller: %s, callee: %s, uuid:%s\r\n"
                   "\t[TCB Info]: No:%05d, status: %d, Task ID: %d, Custom ID: %d\r\n"
                   "\t[SITE    ]: No:%05d, status: %d, SIP Account: %s, Extension: %s"
@@ -1042,7 +1097,6 @@ VOID sc_task_trace(SC_TASK_CB_ST *pstTCB, const S8* szFormat, ...)
      * 格式: <任务控制块号，任务ID, 用户ID, 状态>
      **/
 }
-
 
 #ifdef __cplusplus
 }

@@ -59,31 +59,5 @@ typedef struct tagACDFindSiteParam
     SC_ACD_SITE_DESC_ST *pstResult;
 }SC_ACD_FIND_SITE_PARAM_ST;
 
-VOID sc_acd_trace(U32 ulLevel, S8 *pszFormat, ...);
-
-#define sc_acd_trace_debug(format, args...) \
-        sc_acd_trace(LOG_LEVEL_DEBUG, (format), ##args)
-
-#define sc_acd_trace_info(format, args...) \
-        sc_acd_trace(LOG_LEVEL_INFO, (format), ##args)
-
-#define sc_acd_trace_notice(format, args...) \
-        sc_acd_trace(LOG_LEVEL_NOTIC, (format), ##args)
-
-#define sc_acd_trace_warning(format, args...) \
-        sc_acd_trace(LOG_LEVEL_WARNING, (format), ##args)
-
-#define sc_acd_trace_error(format, args...) \
-        sc_acd_trace(LOG_LEVEL_ERROR, (format), ##args)
-
-#define sc_acd_trace_cirt(format, args...) \
-        sc_acd_trace(LOG_LEVEL_CIRT, (format), ##args)
-
-#define sc_acd_trace_alert(format, args...) \
-        sc_acd_trace(LOG_LEVEL_ALERT, (format), ##args)
-
-#define sc_acd_trace_emerg(format, args...) \
-        sc_acd_trace(LOG_LEVEL_EMERG, (format), ##args)
-
 #endif
 
