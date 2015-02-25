@@ -1221,7 +1221,7 @@ S32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
                       "    LEFT JOIN "
                       "      tbl_calltask d "
                       "    ON "
-                      "      c.id = d.callee_id AND d.id = 0) b "
+                      "      c.id = d.callee_id AND d.id = %d) b "
                       "ON "
                       "  a.calleefile_id = b.id AND a.`status` <> \"done\"; "
                       "LIMIT %d, 1000;"

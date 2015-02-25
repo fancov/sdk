@@ -302,7 +302,7 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
     dos_snprintf(pszCMDBuff
                 , SC_ESL_CMD_BUFF_LEN
                 , "bgapi originate {ignore_early_media=true,origination_caller_id_number=%s,"
-                  "origination_caller_id_name=%s,ccb_number=%d,task_id=%d,originate_timeout=%d}loopback/%s "
+                  "origination_caller_id_name=%s,ccb_number=%d,task_id=%d,auto_call=true,originate_timeout=%d}loopback/%s "
                   "&loop_playback('+%d %s') \r\n"
                 , pstCCB->szCallerNum
                 , pstCCB->szCallerNum

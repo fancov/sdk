@@ -64,7 +64,7 @@ BOOL g_blSCIsRunning = DOS_FALSE;
 
 U32 mod_dipcc_sc_load()
 {
-#if 0
+#if 1
     if (sc_httpd_init() != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -76,7 +76,7 @@ U32 mod_dipcc_sc_load()
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-#if 0
+#if 1
     if (sc_dialer_init() != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -94,7 +94,7 @@ U32 mod_dipcc_sc_load()
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-#if 0
+#if 1
     if (DOS_SUCC != sc_bs_fsm_init())
     {
         DOS_ASSERT(0);
@@ -106,7 +106,7 @@ U32 mod_dipcc_sc_load()
 
 U32 mod_dipcc_sc_runtime()
 {
-#if 0
+#if 1
     if (sc_httpd_start() != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -118,7 +118,7 @@ U32 mod_dipcc_sc_runtime()
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-#if 0
+#if 1
     if (sc_dialer_start() != DOS_SUCC)
     {
         DOS_ASSERT(0);
