@@ -27,12 +27,20 @@ extern "C"{
 
 
 /* define global variable */
+/* 业务控制模块数据库句柄 */
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
+/* 任务控制模块相关控制全集变量 */
 SC_TASK_MNGT_ST   *g_pstTaskMngtInfo;
 
-
 /* declare functions */
+/*
+ * 函数: S32 sc_task_load_callback(VOID *pArg, S32 argc, S8 **argv, S8 **columnNames)
+ * 功能: 任务控制模块加载任务回调函数
+ * 参数:
+ * 返回值
+ *      成功返回DOS_SUCC,失败返回DOS_FAIL
+ **/
 static S32 sc_task_load_callback(VOID *pArg, S32 argc, S8 **argv, S8 **columnNames)
 {
     SC_TASK_CB_ST *pstTCB;
@@ -73,6 +81,13 @@ static S32 sc_task_load_callback(VOID *pArg, S32 argc, S8 **argv, S8 **columnNam
     return DOS_SUCC;
 }
 
+/*
+ * 函数: U32 sc_task_mngt_load_task()
+ * 功能: 初始化时任务控制模块加载任务
+ * 参数:
+ * 返回值
+ *      成功返回DOS_SUCC,失败返回DOS_FAIL
+ **/
 U32 sc_task_mngt_load_task()
 {
     S8 szSqlQuery[128]= { 0 };
@@ -103,7 +118,16 @@ U32 sc_task_mngt_load_task()
     return DOS_SUCC;
 }
 
-/* 启动一个已经暂停的任务 */
+/*
+ * 函数: U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
+ * 功能: 启动一个已经暂停的任务
+ * 参数:
+ *      U32 ulTaskID   : 任务ID
+ *      U32 ulCustomID : 任务所属客户ID
+ * 返回值
+ *      返回HTTP API错误码
+ * 该函数切勿阻塞
+ **/
 U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
 {
     SC_TASK_CB_ST *pstTCB = NULL;
@@ -145,7 +169,16 @@ U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
 }
 
 
-/* 暂停一个在运行的任务 */
+/*
+ * 函数: U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
+ * 功能: 暂停一个在运行的任务
+ * 参数:
+ *      U32 ulTaskID   : 任务ID
+ *      U32 ulCustomID : 任务所属客户ID
+ * 返回值
+ *      返回HTTP API错误码
+ * 该函数切勿阻塞
+ **/
 U32 sc_task_mngt_pause_task(U32 ulTaskID, U32 ulCustomID)
 {
     SC_TASK_CB_ST *pstTCB = NULL;
@@ -188,7 +221,17 @@ U32 sc_task_mngt_pause_task(U32 ulTaskID, U32 ulCustomID)
 
 }
 
-/* 启动一个新的任务 */
+
+/*
+ * 函数: U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
+ * 功能: 启动一个新的任务
+ * 参数:
+ *      U32 ulTaskID   : 任务ID
+ *      U32 ulCustomID : 任务所属客户ID
+ * 返回值
+ *      返回HTTP API错误码
+ * 该函数切勿阻塞
+ **/
 U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
 {
     SC_TASK_CB_ST *pstTCB = NULL;
@@ -243,7 +286,16 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
 }
 
 
-/* 停止一个在运行的任务 */
+/*
+ * 函数: U32 sc_task_mngt_stop_task(U32 ulTaskID, U32 ulCustomID)
+ * 功能: 停止一个在运行的任务
+ * 参数:
+ *      U32 ulTaskID   : 任务ID
+ *      U32 ulCustomID : 任务所属客户ID
+ * 返回值
+ *      返回HTTP API错误码
+ * 该函数切勿阻塞
+ **/
 U32 sc_task_mngt_stop_task(U32 ulTaskID, U32 ulCustomID)
 {
     SC_TASK_CB_ST *pstTCB = NULL;
@@ -285,7 +337,15 @@ U32 sc_task_mngt_stop_task(U32 ulTaskID, U32 ulCustomID)
     return SC_HTTP_ERRNO_SUCC;
 }
 
-
+/*
+ * 函数: U32 sc_task_cmd_queue_add(SC_TASK_CTRL_CMD_ST *pstCMD)
+ * 功能: 向API命令列表中添加命令
+ * 参数:
+ *      SC_TASK_CTRL_CMD_ST *pstCMD: API命令数据
+ * 返回值
+ *      成功返回DOS_SUC，失败返回DOS_FAIL
+ * 该函数切勿阻塞
+ **/
 U32 sc_task_cmd_queue_add(SC_TASK_CTRL_CMD_ST *pstCMD)
 {
     SC_TRACE_IN((U64)pstCMD, 0, 0, 0);
@@ -307,6 +367,15 @@ U32 sc_task_cmd_queue_add(SC_TASK_CTRL_CMD_ST *pstCMD)
     return DOS_SUCC;
 }
 
+/*
+ * 函数: U32 sc_task_cmd_queue_del(SC_TASK_CTRL_CMD_ST *pstCMD)
+ * 功能: 从API命令列表中删除命令
+ * 参数:
+ *      SC_TASK_CTRL_CMD_ST *pstCMD: API命令数据
+ * 返回值
+ *      成功返回DOS_SUC，失败返回DOS_FAIL
+ * 该函数切勿阻塞
+ **/
 U32 sc_task_cmd_queue_del(SC_TASK_CTRL_CMD_ST *pstCMD)
 {
     list_t                *pstListNode;
@@ -360,7 +429,14 @@ U32 sc_task_cmd_queue_del(SC_TASK_CTRL_CMD_ST *pstCMD)
     return ulResult;
 }
 
-
+/*
+ * 函数: VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
+ * 功能: 处理任务控制，呼叫控制API
+ * 参数:
+ *      SC_TASK_CTRL_CMD_ST *pstCMD: API命令数据
+ * 返回值
+ * 该函数切勿阻塞
+ **/
 VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
 {
     SC_TRACE_IN((U64)pstCMD, 0, 0, 0);
@@ -445,6 +521,11 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
                     , pstCMD->ulCMD, pstCMD->ulAction, pstCMD->ulCMDErrCode);
 }
 
+/*
+ * 函数: VOID *sc_task_mngt_runtime(VOID *ptr)
+ * 功能: 呼叫任务控制模块线程主函数
+ * 参数:
+ **/
 VOID *sc_task_mngt_runtime(VOID *ptr)
 {
     struct timespec       stTimeout;
@@ -516,6 +597,12 @@ VOID *sc_task_mngt_runtime(VOID *ptr)
     return NULL;
 }
 
+/*
+ * 函数: U32 sc_task_mngt_start()
+ * 功能: 启动呼叫控制模块，同时启动已经被加载的呼叫任务
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC， 失败返回DOS_FAIL
+ **/
 U32 sc_task_mngt_start()
 {
     SC_TASK_CB_ST    *pstTCB = NULL;
@@ -561,6 +648,12 @@ U32 sc_task_mngt_start()
     return DOS_SUCC;
 }
 
+/*
+ * 函数: U32 sc_task_mngt_init()
+ * 功能: 初始化呼叫管理模块
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC， 失败返回DOS_FAIL
+ **/
 U32 sc_task_mngt_init()
 {
     SC_TASK_CB_ST   *pstTCB = NULL;
@@ -662,6 +755,12 @@ U32 sc_task_mngt_init()
     return DOS_SUCC;
 }
 
+/*
+ * 函数: U32 sc_task_mngt_shutdown()
+ * 功能: 停止任务管理模块
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC， 失败返回DOS_FAIL
+ **/
 U32 sc_task_mngt_shutdown()
 {
     g_pstTaskMngtInfo->blWaitingExitFlag = 1;

@@ -308,16 +308,16 @@ typedef struct tagTaskCB
     U32        ulTaskID;                          /* 呼叫任务ID */
     U32        ulCustomID;                        /* 呼叫任务所属 */
     U32        ulConcurrency;                     /* 当前并发数 */
+    U32        ulAgentQueueID;                    /* 坐席队列编号 */
 
     U16        usSiteCount;                       /* 坐席数量 */
     U16        usCallerCount;                     /* 当前主叫号码数量 */
     U32        ulLastCalleeIndex;                 /* 用于数据分页 */
 
     list_t     stCalleeNumQuery;                  /* 被叫号码缓存 refer to struct tagTelNumQueryNode */
-    S8         szAudioFileLen[SC_MAX_AUDIO_FILENAME_LEN];      /* 语言文件文件名 */
-    SC_CALLER_QUERY_NODE_ST *pstCallerNumQuery;    /* 主叫号码缓存 refer to struct tagTelNumQueryNode */
-    SC_SITE_QUERY_NODE_ST   *pstSiteQuery;         /* 主叫号码缓存 refer to struct tagSiteQueryNode*/
-    SC_TASK_ALLOW_PERIOD_ST astPeriod[SC_MAX_PERIOD_NUM];   /* 任务执行时间段 */
+    S8         szAudioFileLen[SC_MAX_AUDIO_FILENAME_LEN];  /* 语言文件文件名 */
+    SC_CALLER_QUERY_NODE_ST *pstCallerNumQuery;            /* 主叫号码缓存 refer to struct tagTelNumQueryNode */
+    SC_TASK_ALLOW_PERIOD_ST astPeriod[SC_MAX_PERIOD_NUM];  /* 任务执行时间段 */
 
     /* 统计相关 */
     U32        ulTotalCall;                       /* 总呼叫数 */
@@ -374,10 +374,10 @@ U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB);
 VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID);
 VOID sc_task_set_current_call_cnt(SC_TASK_CB_ST *pstTCB, U32 ulCurrentCall);
 U32 sc_task_get_current_call_cnt(SC_TASK_CB_ST *pstTCB);
-S32 sc_task_load_site(SC_TASK_CB_ST *pstTCB);
 S32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB);
 S32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB);
+U32 sc_task_load_agent_info(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_update_stat(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB);

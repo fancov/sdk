@@ -26,6 +26,7 @@ extern "C"{
 #include "sc_event_process.h"
 
 
+/* 定义开发是内置测试数据 */
 #define SC_USE_BUILDIN_DATA 0
 #if SC_USE_BUILDIN_DATA
 const S8 *g_pszCallerList[] = {
@@ -41,9 +42,8 @@ const S8 *g_pszCalledList[] = {
 const S8 *g_pszSiteList[] = {
     "2000", "2001", "2002"
 };
-
 #endif
-
+/* 定义开发是内置测试数据END */
 
 /* define marcos */
 
@@ -51,9 +51,13 @@ const S8 *g_pszSiteList[] = {
 
 /* define structs */
 
+/* 呼叫任务控制模块控制句柄 */
 extern SC_TASK_MNGT_ST   *g_pstTaskMngtInfo;
+
+/* 业务控制模块数据库句柄 */
 extern DB_HANDLE_ST      *g_pstSCDBHandle;
 
+/* 业务控制块状态 */
 static S8 *g_pszSCBStatus[] =
 {
     "IDEL",
@@ -65,6 +69,13 @@ static S8 *g_pszSCBStatus[] =
     ""
 };
 
+/*
+ * 函数: S8 *sc_scb_get_status(U32 ulStatus)
+ * 功能: 根据ulStatus所指定的状态，获取业务控制块的状态
+ * 参数:
+ *      U32 ulStatus
+ * 返回值:
+ */
 S8 *sc_scb_get_status(U32 ulStatus)
 {
     if (ulStatus >= SC_SCB_BUTT)
@@ -78,6 +89,13 @@ S8 *sc_scb_get_status(U32 ulStatus)
 }
 
 /* declare functions */
+/*
+ * 函数: SC_SCB_ST *sc_scb_alloc()
+ * 功能: 向业务控制模块申请业务控制块
+ * 参数:
+ * 返回值:
+ *      成功返回业务控制的的指针，失败返回NULL
+ */
 SC_SCB_ST *sc_scb_alloc()
 {
     static U32 ulIndex = 0;
@@ -132,6 +150,13 @@ SC_SCB_ST *sc_scb_alloc()
     return NULL;
 }
 
+/*
+ * 函数: VOID sc_scb_free(SC_SCB_ST *pstSCB)
+ * 功能: 释放pstSCB所指向的业务控制块
+ * 参数:
+ *      SC_SCB_ST *pstSCB : 需要被释放的业务控制块
+ * 返回值:
+ */
 VOID sc_scb_free(SC_SCB_ST *pstSCB)
 {
     SC_TRACE_IN((U64)pstSCB, 0, 0, 0);
@@ -154,6 +179,14 @@ VOID sc_scb_free(SC_SCB_ST *pstSCB)
     return;
 }
 
+/*
+ * 函数: BOOL sc_scb_is_valid(SC_SCB_ST *pstSCB)
+ * 功能: 检测pstSCB所指向的业务控制释放已经被分配
+ * 参数:
+ *      SC_SCB_ST *pstSCB : 当前处理的业务控制块
+ * 返回值:
+ *      返回业务控制的是否已经被分配
+ */
 BOOL sc_scb_is_valid(SC_SCB_ST *pstSCB)
 {
     BOOL ulValid = DOS_FALSE;
@@ -174,7 +207,14 @@ BOOL sc_scb_is_valid(SC_SCB_ST *pstSCB)
     return ulValid;
 }
 
-
+/*
+ * 函数: U32 sc_scb_init(SC_SCB_ST *pstSCB)
+ * 功能: 初始化pstSCB所指向的业务控制块
+ * 参数:
+ *      SC_SCB_ST *pstSCB : 当前处理的业务控制块
+ * 返回值:
+ *      成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 U32 sc_scb_init(SC_SCB_ST *pstSCB)
 {
     U32 i;
@@ -244,6 +284,14 @@ U32 sc_scb_init(SC_SCB_ST *pstSCB)
     return DOS_SUCC;
 }
 
+/*
+ * 函数: SC_SCB_ST *sc_scb_get(U32 ulIndex)
+ * 功能: 根据业务控制块编号获取业务控制
+ * 参数:
+ *      U32 ulIndex: 业务控制的标号
+ * 返回值:
+ *      成功返回业务控制块指向，失败返回NULL
+ */
 SC_SCB_ST *sc_scb_get(U32 ulIndex)
 {
     if (ulIndex >= SC_MAX_SCB_NUM)
@@ -254,6 +302,14 @@ SC_SCB_ST *sc_scb_get(U32 ulIndex)
     return &g_pstTaskMngtInfo->pstCallSCBList[ulIndex];
 }
 
+/*
+ * 函数: static S32 sc_scb_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
+ * 功能: 业务控制块hash表中查找一个业务控制块
+ * 参数:
+ *      VOID *pSymName, HASH_NODE_S *pNode
+ * 返回值:
+ *      成功返回业务控制块指向，失败返回NULL
+ */
 static S32 sc_scb_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 {
     SC_SCB_HASH_NODE_ST *pstSCBHashNode = (SC_SCB_HASH_NODE_ST *)pNode;
@@ -271,6 +327,14 @@ static S32 sc_scb_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
     return DOS_SUCC;
 }
 
+/*
+ * 函数: static U32 sc_scb_hash_index_get(S8 *pszUUID)
+ * 功能: 计算业务控制块hash节点的函数
+ * 参数:
+ *      S8 *pszUUID 由FS参数的UUID
+ * 返回值:
+ *      成功返回hash值，失败返回U32_BUTT
+ */
 static U32 sc_scb_hash_index_get(S8 *pszUUID)
 {
     S8   szUUIDHead[16] = { 0 };
@@ -555,7 +619,15 @@ U32 sc_scb_syn_post(S8 *pszUUID)
 
 }
 
-
+/*
+ * 函数: BOOL sc_call_check_service(SC_SCB_ST *pstSCB, U32 ulService)
+ * 功能: 判断当前业务控制块是否包含ulService所指定的业务
+ * 参数:
+ *      SC_SCB_ST *pstSCB: 业务控制块
+ *      U32 ulService:     业务类型
+ * 返回值:
+ *      如果包含就返回TRUE，不包含返回DOS_FALSE
+ */
 BOOL sc_call_check_service(SC_SCB_ST *pstSCB, U32 ulService)
 {
     U32 ulIndex;
@@ -576,25 +648,6 @@ BOOL sc_call_check_service(SC_SCB_ST *pstSCB, U32 ulService)
     return DOS_FALSE;
 }
 
-U32 sc_call_owner(SC_SCB_ST *pstSCB, U16  usTaskID, U32 ulCustomID)
-{
-    SC_TRACE_IN((U64)pstSCB, usTaskID, ulCustomID, 0);
-
-    if (!pstSCB)
-    {
-        SC_TRACE_OUT();
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pthread_mutex_lock(&pstSCB->mutexSCBLock);
-    pstSCB->usTCBNo = usTaskID;
-    pstSCB->ulCustomID = ulCustomID;
-    pthread_mutex_unlock(&pstSCB->mutexSCBLock);
-
-    SC_TRACE_OUT();
-    return DOS_SUCC;
-}
 
 U32 sc_call_set_trunk(SC_SCB_ST *pstSCB, U32 ulTrunkID)
 {
@@ -733,11 +786,11 @@ U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulCustomID = U32_BUTT;
     pstTCB->ulConcurrency = 0;
     pstTCB->usSiteCount = 0;
+    pstTCB->ulAgentQueueID = U32_BUTT;
     pstTCB->ucAudioPlayCnt = 0;
 
     dos_list_init(&pstTCB->stCalleeNumQuery);    /* TODO: 释放所有节点 */
     pstTCB->pstCallerNumQuery = NULL;   /* TODO: 初始化所有节点 */
-    pstTCB->pstSiteQuery = NULL;        /* TODO: 初始化所有节点*/
     pstTCB->szAudioFileLen[0] = '\0';
     dos_memzero(pstTCB->astPeriod, sizeof(pstTCB->astPeriod));
 
@@ -850,60 +903,6 @@ VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID)
     pstTCB->ulTaskID = ulTaskID;
     pstTCB->ulCustomID = ulCustomID;
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
-}
-
-S32 sc_task_load_site_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
-{
-    return -1;
-}
-
-S32 sc_task_load_site(SC_TASK_CB_ST *pstTCB)
-{
-#if SC_USE_BUILDIN_DATA
-    SC_SITE_QUERY_NODE_ST *pszSiteNode;
-    U32 ulIndex;
-    S32 lCNT;
-
-    SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
-
-    if (DOS_ADDR_INVALID(pstTCB))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return -1;
-    }
-
-    if (!g_pstTaskMngtInfo)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return -1;
-    }
-
-    lCNT = 0;
-
-    for (ulIndex=0; ulIndex<sizeof(g_pszSiteList)/sizeof(S8 *); ulIndex++)
-    {
-        pstTCB->pstSiteQuery[ulIndex].bValid = 1;
-        pstTCB->pstSiteQuery[ulIndex].bTraceON = 1;
-        pstTCB->pstSiteQuery[ulIndex].ulSiteID = ulIndex;
-        pstTCB->pstSiteQuery[ulIndex].ulStatus = SC_SITE_ACCOM_ENABLE;
-        dos_strncpy(pstTCB->pstSiteQuery[ulIndex].szUserID, g_pszSiteList[ulIndex], SC_TEL_NUMBER_LENGTH);
-        pstTCB->pstSiteQuery[ulIndex].szUserID[SC_TEL_NUMBER_LENGTH - 1] = '\0';
-        dos_strncpy(pstTCB->pstSiteQuery[ulIndex].szExtension, g_pszSiteList[ulIndex], SC_TEL_NUMBER_LENGTH);
-        pstTCB->pstSiteQuery[ulIndex].szExtension[SC_TEL_NUMBER_LENGTH - 1] = '\0';
-        dos_strncpy(pstTCB->pstSiteQuery[ulIndex].szEmpNo, g_pszSiteList[ulIndex], SC_EMP_NUMBER_LENGTH);
-
-        lCNT++;
-    }
-
-    SC_TRACE_OUT();
-    return lCNT;
-#else
-    return 0;
-#endif
 }
 
 static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
@@ -1354,6 +1353,94 @@ U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB)
 
     return DOS_SUCC;
 #endif
+}
+
+S32 sc_task_load_agent_queue_id_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
+{
+    U32 ulAgentQueueID;
+
+    if (DOS_ADDR_INVALID(pArg)
+        || lColumnCount<= 0
+        || DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(aszValues[0])
+        || '\0' == aszValues[0][0]
+        || dos_atoul(aszValues[0], &ulAgentQueueID) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    *(U32 *)pArg = ulAgentQueueID;
+    return DOS_SUCC;
+}
+
+S32 sc_task_load_agent_number_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
+{
+    U32 ulAgentCount;
+
+    if (DOS_ADDR_INVALID(pArg)
+        || lColumnCount<= 0
+        || DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(aszValues[0])
+        || '\0' == aszValues[0][0]
+        || dos_atoul(aszValues[0], &ulAgentCount) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    *(U32 *)pArg = ulAgentCount;
+    return DOS_SUCC;
+
+}
+
+U32 sc_task_load_agent_info(SC_TASK_CB_ST *pstTCB)
+{
+    /* 初始化坐席队列编号 */
+    S8 szSQL[128] = { 0, };
+
+    if (DOS_ADDR_INVALID(pstTCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT group_id FROM tbl_calltask WHERE tbl_calltask.id = %d;"
+                    , pstTCB->ulTaskID);
+    if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_agent_queue_id_cb, (VOID *)&pstTCB->ulAgentQueueID, NULL) != DB_ERR_SUCC)
+    {
+        DOS_ASSERT(0);
+        sc_logr_debug(SC_TASK, "Load agent queue ID for task %d FAIL;", pstTCB->ulTaskID);
+
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT count(*) as number FROM tbl_agent WHERE tbl_agent.group1_id=%d OR tbl_agent.group2_id=%d;"
+                    , pstTCB->ulAgentQueueID
+                    , pstTCB->ulAgentQueueID);
+    if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_agent_number_cb, (VOID *)&pstTCB->usSiteCount, NULL) != DB_ERR_SUCC)
+    {
+        DOS_ASSERT(0);
+        sc_logr_debug(SC_TASK, "Load agent number for task %d FAIL;", pstTCB->ulTaskID);
+
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
 }
 
 U32 sc_task_update_stat(SC_TASK_CB_ST *pstTCB)

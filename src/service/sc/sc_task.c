@@ -21,7 +21,6 @@ extern "C"{
 #include "sc_pub.h"
 #include "sc_task_pub.h"
 #include "sc_debug.h"
-#include "sc_event_process.h"
 
 /* define marcos */
 
@@ -39,7 +38,14 @@ inline U32 sc_random(U32 ulMax)
     return rand() % ulMax;
 }
 
-
+/*
+ * 函数: SC_TEL_NUM_QUERY_NODE_ST *sc_task_get_callee(SC_TASK_CB_ST *pstTCB)
+ * 功能: 获取被叫号码
+ * 参数:
+ *      SC_TASK_CB_ST *pstTCB: 任务控制块
+ * 返回值: 成功返回被叫号码控制块指针(已经出队列了，所以使用完之后要释放资源)，否则返回NULL
+ * 调用该函数之后，如果返回了合法值，需要释放该资源
+ */
 SC_TEL_NUM_QUERY_NODE_ST *sc_task_get_callee(SC_TASK_CB_ST *pstTCB)
 {
     SC_TEL_NUM_QUERY_NODE_ST *pstCallee = NULL;
@@ -99,6 +105,13 @@ SC_TEL_NUM_QUERY_NODE_ST *sc_task_get_callee(SC_TASK_CB_ST *pstTCB)
     return pstCallee;
 }
 
+/*
+ * 函数: SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
+ * 功能: 获取主叫号码，在主叫号码列表里面随即选择一个
+ * 参数:
+ *      SC_TASK_CB_ST *pstTCB: 任务控制块
+ * 返回值: 成功返回主叫号码控制块指针，否则返回NULL
+ */
 SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
 {
     U32                      ulCallerIndex = 0;
@@ -146,6 +159,13 @@ SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
     return pstCaller;
 }
 
+/*
+ * 函数: U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
+ * 功能: 申请业务控制块，并将呼叫添加到拨号器模块，等待呼叫
+ * 参数:
+ *      SC_TASK_CB_ST *pstTCB: 任务控制块
+ * 返回值: 成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
 U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
 {
     SC_SCB_ST                 *pstSCB    = NULL;
@@ -237,6 +257,11 @@ fail:
     return DOS_FAIL;
 }
 
+/*
+ * 函数: VOID *sc_task_runtime(VOID *ptr)
+ * 功能: 单个呼叫任务的线程主函数
+ * 参数:
+ */
 VOID *sc_task_runtime(VOID *ptr)
 {
     SC_TASK_CB_ST   *pstTCB;
@@ -313,6 +338,13 @@ VOID *sc_task_runtime(VOID *ptr)
     return NULL;
 }
 
+/*
+ * 函数: U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
+ * 功能: 初始化呼叫任务
+ * 参数:
+ *      SC_TASK_CB_ST *pstTCB: 任务控制块
+ * 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
 {
     U32       ulIndex;
@@ -347,32 +379,6 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
         pstTCB->pstCallerNumQuery[ulIndex].ulIndexInDB = U32_BUTT;
     }
 
-    pstTCB->pstSiteQuery = (SC_SITE_QUERY_NODE_ST *)dos_dmem_alloc(sizeof(SC_SITE_QUERY_NODE_ST) * SC_MAX_SITE_NUM);
-    if (!pstTCB->pstSiteQuery)
-    {
-        DOS_ASSERT(0);
-
-        dos_dmem_free(pstTCB->pstCallerNumQuery);
-        pstTCB->pstCallerNumQuery = NULL;
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    dos_memzero(pstTCB->pstSiteQuery, sizeof(SC_SITE_QUERY_NODE_ST) * SC_MAX_SITE_NUM);
-    for (ulIndex=0; ulIndex<SC_MAX_CALLER_NUM; ulIndex++)
-    {
-        pstTCB->pstSiteQuery[ulIndex].usSCBNo = ulIndex;
-        pstTCB->pstSiteQuery[ulIndex].bValid = 0;
-        pstTCB->pstSiteQuery[ulIndex].szEmpNo[0] = '\0';
-        pstTCB->pstSiteQuery[ulIndex].szExtension[0] = '\0';
-        pstTCB->pstSiteQuery[ulIndex].szUserID[0] = '\0';
-        pstTCB->pstSiteQuery[ulIndex].ulSiteID = U32_BUTT;
-        pstTCB->pstSiteQuery[ulIndex].ulStatus = SC_SITE_ACCOM_BUTT;
-        pstTCB->pstSiteQuery[ulIndex].bAllowAccompanying = 0;
-        pstTCB->pstSiteQuery[ulIndex].bTraceON = 0;
-    }
-
     lCnt = sc_task_load_callee(pstTCB);
     if (lCnt <= 0)
     {
@@ -403,21 +409,18 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    lCnt = sc_task_load_site(pstTCB);
-    if (sc_task_load_site(pstTCB) <= 0)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_TASK, "Load site queue for task %d failed, or there is no site queue.", pstTCB->ulTaskID);
-
-        goto init_fail;
-    }
-    sc_logr_info(SC_TASK, "Task %d has been loaded %d site(s).", pstTCB->ulTaskID, lCnt);
-    pstTCB->usSiteCount = (S16)lCnt;
-
     if (sc_task_load_audio(pstTCB) <= 0)
     {
         DOS_ASSERT(0);
-        sc_logr_error(SC_TASK, "Load audio file for task %d failed, or the do not exist.", pstTCB->ulTaskID);
+        sc_logr_error(SC_TASK, "Load audio file for task %d FAILED.", pstTCB->ulTaskID);
+
+        goto init_fail;
+    }
+
+    if (sc_task_load_agent_info(pstTCB) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_TASK, "Load agent info for task %d FAILED.", pstTCB->ulTaskID);
 
         goto init_fail;
     }
@@ -433,16 +436,17 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
         pstTCB->pstCallerNumQuery = NULL;
     }
 
-    if (pstTCB->pstSiteQuery)
-    {
-        dos_dmem_free(pstTCB->pstSiteQuery);
-        pstTCB->pstSiteQuery = NULL;
-    }
-
     SC_TRACE_OUT();
     return DOS_FAIL;
 }
 
+/*
+ * 函数: U32 sc_task_start(SC_TASK_CB_ST *pstTCB)
+ * 功能: 启动呼叫化任务
+ * 参数:
+ *      SC_TASK_CB_ST *pstTCB: 任务控制块
+ * 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_task_start(SC_TASK_CB_ST *pstTCB)
 {
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
@@ -471,6 +475,13 @@ U32 sc_task_start(SC_TASK_CB_ST *pstTCB)
     return DOS_SUCC;
 }
 
+/*
+ * 函数: U32 sc_task_stop(SC_TASK_CB_ST *pstTCB)
+ * 功能: 停止呼叫化任务
+ * 参数:
+ *      SC_TASK_CB_ST *pstTCB: 任务控制块
+ * 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_task_stop(SC_TASK_CB_ST *pstTCB)
 {
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
@@ -500,6 +511,13 @@ U32 sc_task_stop(SC_TASK_CB_ST *pstTCB)
     return DOS_SUCC;
 }
 
+/*
+ * 函数: U32 sc_task_continue(SC_TASK_CB_ST *pstTCB)
+ * 功能: 恢复呼叫化任务
+ * 参数:
+ *      SC_TASK_CB_ST *pstTCB: 任务控制块
+ * 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_task_continue(SC_TASK_CB_ST *pstTCB)
 {
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
@@ -530,6 +548,13 @@ U32 sc_task_continue(SC_TASK_CB_ST *pstTCB)
     return DOS_SUCC;
 }
 
+/*
+ * 函数: U32 sc_task_pause(SC_TASK_CB_ST *pstTCB)
+ * 功能: 暂停呼叫化任务
+ * 参数:
+ *      SC_TASK_CB_ST *pstTCB: 任务控制块
+ * 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_task_pause(SC_TASK_CB_ST *pstTCB)
 {
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
@@ -559,8 +584,8 @@ U32 sc_task_pause(SC_TASK_CB_ST *pstTCB)
     return DOS_SUCC;
 }
 
-
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+
 

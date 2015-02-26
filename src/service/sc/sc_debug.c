@@ -241,7 +241,7 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID)
                 , pstTCB->ulCustomID
                 , pstTCB->ulConcurrency
                 , pstTCB->usSiteCount
-                , pstTCB->usSiteCount
+                , pstTCB->ulAgentQueueID
                 , sc_debug_make_weeks(pstTCB->astPeriod[0].ucWeekMask, szWeeks, sizeof(szWeeks))
                 , pstTCB->astPeriod[0].ucHourBegin
                 , pstTCB->astPeriod[0].ucMinuteBegin
@@ -1006,7 +1006,6 @@ VOID sc_call_trace(SC_SCB_ST *pstSCB, const S8 *szFormat, ...)
 {
     SC_TASK_CB_ST                 *pstTCB      = NULL;
     SC_CALLER_QUERY_NODE_ST       *pstCaller   = NULL;
-    SC_SITE_QUERY_NODE_ST         *pstSite     = NULL;
     va_list argptr;
     char szBuf[1024];
 
@@ -1021,11 +1020,6 @@ VOID sc_call_trace(SC_SCB_ST *pstSCB, const S8 *szFormat, ...)
     if (pstSCB->usTCBNo <= SC_MAX_TASK_NUM)
     {
         pstTCB = sc_tcb_get_by_id(pstSCB->usTCBNo);
-    }
-
-    if (pstTCB && pstSCB->usSiteNo <= SC_MAX_SITE_NUM)
-    {
-        pstSite = &pstTCB->pstSiteQuery[pstSCB->usSiteNo];
     }
 
     if (g_ulCallTraceAll)
@@ -1043,11 +1037,6 @@ VOID sc_call_trace(SC_SCB_ST *pstSCB, const S8 *szFormat, ...)
         goto trace;
     }
 
-    if (pstSite && pstSite->bTraceON)
-    {
-        goto trace;
-    }
-
     return;
 
 trace:
@@ -1060,7 +1049,6 @@ trace:
     sc_logr_debug(SC_ESL, "Call Trace:%s\r\n"
                   "\t[SCB Info]: No:%05d, status: %d, caller: %s, callee: %s, uuid:%s\r\n"
                   "\t[TCB Info]: No:%05d, status: %d, Task ID: %d, Custom ID: %d\r\n"
-                  "\t[SITE    ]: No:%05d, status: %d, SIP Account: %s, Extension: %s"
                   , szBuf
                   , pstSCB->usSCBNo
                   , pstSCB->bValid
@@ -1070,11 +1058,7 @@ trace:
                   , pstTCB ? pstTCB->usTCBNo : -1
                   , pstTCB ? pstTCB->ucValid : -1
                   , pstTCB ? pstTCB->ulTaskID : -1
-                  , pstTCB ? pstTCB->ulCustomID : -1
-                  , pstSite ? pstSite->usSCBNo : -1
-                  , pstSite ? pstSite->bValid : -1
-                  , (pstSite && '\0' != pstSite->szUserID[0]) ? pstSite->szUserID : "NULL"
-                  , (pstSite && '\0' != pstSite->szExtension[0]) ? pstSite->szExtension : "NULL");
+                  , pstTCB ? pstTCB->ulCustomID : -1);
 }
 
 VOID sc_task_trace(SC_TASK_CB_ST *pstTCB, const S8* szFormat, ...)
