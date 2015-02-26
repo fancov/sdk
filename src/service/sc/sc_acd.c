@@ -32,10 +32,9 @@
  */
 
 #include <dos.h>
-#include "sc_pub.h"
-#include "sc_task_pub.h"
+#include "sc_def.h"
 #include "sc_debug.h"
-#include "sc_acd_pub.h"
+#include "sc_acd_def.h"
 #include "sc_acd.h"
 
 extern DB_HANDLE_ST         *g_pstSCDBHandle;

@@ -16,17 +16,13 @@ extern "C"{
 
 /* include public header files */
 #include <dos.h>
-#include "sc_pub.h"
-#include "sc_task_pub.h"
-#include "sc_debug.h"
+#include <bs_pub.h>
 
 /* include private header files */
-#include "bs_pub.h"
+#include "sc_def.h"
+#include "sc_debug.h"
 #include "sc_httpd.h"
-#include "sc_httpd_pub.h"
-#include "sc_pub.h"
-#include "sc_bs_pub.h"
-#include "sc_task_pub.h"
+#include "sc_httpd_def.h"
 #include "sc_debug.h"
 #include "sc_event_process.h"
 

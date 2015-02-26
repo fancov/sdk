@@ -19,8 +19,7 @@ extern "C"{
 #include <esl.h>
 #include <sys/time.h>
 #include <pthread.h>
-#include "sc_pub.h"
-#include "sc_task_pub.h"
+#include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_event_process.h"
 #include "sc_ep.h"

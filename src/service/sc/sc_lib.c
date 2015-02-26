@@ -19,8 +19,7 @@ extern "C"{
 #include <time.h>
 
 /* include private header files */
-#include "sc_pub.h"
-#include "sc_task_pub.h"
+#include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_httpd.h"
 #include "sc_event_process.h"

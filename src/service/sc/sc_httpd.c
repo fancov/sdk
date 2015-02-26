@@ -22,11 +22,10 @@ extern "C"{
 #include <sys/select.h>
 
 /* include private header files */
-#include "sc_pub.h"
-#include "sc_task_pub.h"
+#include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_httpd.h"
-#include "sc_httpd_pub.h"
+#include "sc_httpd_def.h"
 #include "sc_http_api.h"
 
 /* define marcos */

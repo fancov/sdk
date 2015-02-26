@@ -19,9 +19,8 @@ extern "C"{
 #include <bs_pub.h>
 #include <sys/select.h>
 
-#include "sc_pub.h"
-#include "sc_bs_pub.h"
-#include "sc_task_pub.h"
+#include "sc_def.h"
+#include "sc_bs_def.h"
 #include "sc_debug.h"
 
 extern HASH_TABLE_S     *g_pstMsgList; /* refer to SC_BS_MSG_NODE */

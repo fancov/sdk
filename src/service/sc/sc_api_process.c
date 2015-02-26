@@ -22,12 +22,11 @@ extern "C"{
 
 
 /* include private header files */
-#include "sc_pub.h"
-#include "sc_task_pub.h"
+#include "sc_def.h"
 #include "sc_debug.h"
-#include "sc_httpd_pub.h"
+#include "sc_httpd_def.h"
 #include "sc_http_api.h"
-#include "sc_acd_pub.h"
+#include "sc_acd_def.h"
 
 U32 sc_http_api_reload_xml(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
