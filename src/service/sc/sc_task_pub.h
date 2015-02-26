@@ -31,51 +31,51 @@ extern "C"{
     && (pstTCB)->ulCustomID != 0                              \
     && (pstTCB)->ulCustomID != U32_BUTT)
 
-#define SC_CCB_HAS_VALID_OWNER(pstCCB)                        \
-    ((pstCCB)                                                 \
-    && (pstCCB)->ulTaskID != 0                                \
-    && (pstCCB)->ulTaskID != U32_BUTT                         \
-    && (pstCCB)->ulCustomID != 0                              \
-    && (pstCCB)->ulCustomID != U32_BUTT)
+#define SC_SCB_HAS_VALID_OWNER(pstSCB)                        \
+    ((pstSCB)                                                 \
+    && (pstSCB)->ulTaskID != 0                                \
+    && (pstSCB)->ulTaskID != U32_BUTT                         \
+    && (pstSCB)->ulCustomID != 0                              \
+    && (pstSCB)->ulCustomID != U32_BUTT)
 
 
 #define SC_TCB_VALID(pstTCB)                                  \
     ((pstTCB)                                                 \
     && (pstTCB)->ulTaskID != 0)
 
-#define SC_CCB_IS_VALID(pstCCB)                               \
-    ((pstCCB) && (pstCCB)->bValid)
+#define SC_SCB_IS_VALID(pstSCB)                               \
+    ((pstSCB) && (pstSCB)->bValid)
 
-#define SC_CCB_SET_STATUS(pstCCB, ulStatus)                   \
+#define SC_SCB_SET_STATUS(pstSCB, ulStatus)                   \
 do                                                            \
 {                                                             \
-    if (DOS_ADDR_INVALID(pstCCB)                              \
-        || ulStatus >= SC_CCB_BUTT)                           \
+    if (DOS_ADDR_INVALID(pstSCB)                              \
+        || ulStatus >= SC_SCB_BUTT)                           \
     {                                                         \
         break;                                                \
     }                                                         \
-    pthread_mutex_lock(&(pstCCB)->mutexCCBLock);              \
-    sc_call_trace((pstCCB), "CCB Status Change %s -> %s"      \
-                , sc_ccb_get_status((pstCCB)->ucStatus)       \
-                , sc_ccb_get_status(ulStatus));               \
-    (pstCCB)->ucStatus = (U8)ulStatus;                        \
-    pthread_mutex_unlock(&(pstCCB)->mutexCCBLock);            \
+    pthread_mutex_lock(&(pstSCB)->mutexSCBLock);              \
+    sc_call_trace((pstSCB), "SCB Status Change %s -> %s"      \
+                , sc_scb_get_status((pstSCB)->ucStatus)       \
+                , sc_scb_get_status(ulStatus));               \
+    (pstSCB)->ucStatus = (U8)ulStatus;                        \
+    pthread_mutex_unlock(&(pstSCB)->mutexSCBLock);            \
 }while(0)
 
-#define SC_CCB_SET_SERVICE(pstCCB, ulService)                 \
+#define SC_SCB_SET_SERVICE(pstSCB, ulService)                 \
 do                                                            \
 {                                                             \
-    if (DOS_ADDR_INVALID(pstCCB)                              \
-      || (pstCCB)->ucCurrentSrvInd >= SC_MAX_SRV_TYPE_PRE_LEG \
+    if (DOS_ADDR_INVALID(pstSCB)                              \
+      || (pstSCB)->ucCurrentSrvInd >= SC_MAX_SRV_TYPE_PRE_LEG \
 	  || ulService >= SC_SERV_BUTT)                           \
     {                                                         \
         break;                                                \
     }                                                         \
-    pthread_mutex_lock(&(pstCCB)->mutexCCBLock);              \
-    sc_call_trace((pstCCB), "CCB Add service.");              \
-    (pstCCB)->aucServiceType[(pstCCB)->ucCurrentSrvInd++]     \
+    pthread_mutex_lock(&(pstSCB)->mutexSCBLock);              \
+    sc_call_trace((pstSCB), "SCB Add service.");              \
+    (pstSCB)->aucServiceType[(pstSCB)->ucCurrentSrvInd++]     \
                 = (U8)ulService;                              \
-    pthread_mutex_unlock(&(pstCCB)->mutexCCBLock);            \
+    pthread_mutex_unlock(&(pstSCB)->mutexSCBLock);            \
 }while(0)
 
 
@@ -154,17 +154,17 @@ typedef enum tagCallNumType{
 }SC_CALL_NUM_TYPE_EN;
 
 
-typedef enum tagCCBStatus
+typedef enum tagSCBStatus
 {
-    SC_CCB_IDEL                           = 0,     /* CCB状态，空闲状态 */
-    SC_CCB_INIT,                                   /* CCB状态，呼叫初始化状态 */
-    SC_CCB_AUTH,                                   /* CCB状态，呼叫认证状态 */
-    SC_CCB_EXEC,                                   /* CCB状态，呼叫执行状态 */
-    SC_CCB_ACTIVE,                                 /* CCB状态，呼叫接通状态状态 */
-    SC_CCB_RELEASE,                                /* CCB状态，呼叫释放状态 */
+    SC_SCB_IDEL                           = 0,     /* SCB状态，空闲状态 */
+    SC_SCB_INIT,                                   /* SCB状态，呼叫初始化状态 */
+    SC_SCB_AUTH,                                   /* SCB状态，呼叫认证状态 */
+    SC_SCB_EXEC,                                   /* SCB状态，呼叫执行状态 */
+    SC_SCB_ACTIVE,                                 /* SCB状态，呼叫接通状态状态 */
+    SC_SCB_RELEASE,                                /* SCB状态，呼叫释放状态 */
 
-    SC_CCB_BUTT
-}SC_CCB_STATUS_EN;
+    SC_SCB_BUTT
+}SC_SCB_STATUS_EN;
 
 typedef struct tagCallerQueryNode{
     U16        usNo;                              /* 编号 */
@@ -225,9 +225,9 @@ typedef struct tagTaskAllowPeriod{
 
 
 /* 呼叫控制块 */
-typedef struct tagSCCCB{
-    U16       usCCBNo;                            /* 编号 */
-    U16       usOtherCCBNo;                       /* 另外一个leg的CCB编号 */
+typedef struct tagSCSCB{
+    U16       usSCBNo;                            /* 编号 */
+    U16       usOtherSCBNo;                       /* 另外一个leg的SCB编号 */
 
     U16       usTCBNo;                            /* 任务控制块编号ID */
     U16       usSiteNo;                           /* 坐席编号 */
@@ -237,7 +237,7 @@ typedef struct tagSCCCB{
     U32       ulTaskID;                           /* 当前任务ID */
     U32       ulTrunkID;                          /* 中继ID */
 
-    U8        ucStatus;                           /* 呼叫控制块编号，refer to SC_CCB_STATUS_EN */
+    U8        ucStatus;                           /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
     U8        ucTerminationFlag;                  /* 业务终止标志 */
     U8        ucTerminationCause;                 /* 业务终止原因 */
     U8        ucPayloadType;                      /* 编解码 */
@@ -276,20 +276,20 @@ typedef struct tagSCCCB{
     S8        szSiteNum[SC_TEL_NUMBER_LENGTH];    /* 坐席号码 */
     S8        szUUID[SC_MAX_UUID_LENGTH];         /* Leg-A UUID */
 
-    sem_t     semCCBSyn;                          /* 用于同步的CCB */
-    pthread_mutex_t mutexCCBLock;                 /* 保护CCB的锁 */
-}SC_CCB_ST;
+    sem_t     semSCBSyn;                          /* 用于同步的SCB */
+    pthread_mutex_t mutexSCBLock;                 /* 保护SCB的锁 */
+}SC_SCB_ST;
 
-/* 定义CCBhash表 */
-typedef struct tagCCBHashNode
+/* 定义SCBhash表 */
+typedef struct tagSCBHashNode
 {
     HASH_NODE_S     stNode;                       /* hash链表节点 */
 
     S8              szUUID[SC_MAX_UUID_LENGTH];   /* UUID */
-    SC_CCB_ST       *pstCCB;                      /* CCB指针 */
+    SC_SCB_ST       *pstSCB;                      /* SCB指针 */
 
-    sem_t           semCCBSyn;
-}SC_CCB_HASH_NODE_ST;
+    sem_t           semSCBSyn;
+}SC_SCB_HASH_NODE_ST;
 
 
 typedef struct tagTaskCB
@@ -348,8 +348,8 @@ typedef struct tagTaskMngtInfo{
     U32                  blWaitingExitFlag;       /* 等待退出标示 */
 
     list_t               stCMDList;               /* 命令队列(节点由HTTP Server创建，有HTTP Server释放) */
-    SC_CCB_ST            *pstCallCCBList;         /* 呼叫控制块列表 (需要hash表存储) */
-    HASH_TABLE_S         *pstCallCCBHash;         /* 呼叫控制块的hash索引 */
+    SC_SCB_ST            *pstCallSCBList;         /* 呼叫控制块列表 (需要hash表存储) */
+    HASH_TABLE_S         *pstCallSCBHash;         /* 呼叫控制块的hash索引 */
     SC_TASK_CB_ST        *pstTaskList;            /* 任务列表 refer to struct tagTaskCB*/
     U32                  ulTaskCount;             /* 当前正在执行的任务数 */
 
@@ -360,13 +360,13 @@ typedef struct tagTaskMngtInfo{
 
 
 /* declare functions */
-SC_CCB_ST *sc_ccb_alloc();
-VOID sc_ccb_free(SC_CCB_ST *pstCCB);
-U32 sc_ccb_init(SC_CCB_ST *pstCCB);
-U32 sc_call_set_owner(SC_CCB_ST *pstCCB, U32  ulTaskID, U32 ulCustomID);
-U32 sc_call_set_trunk(SC_CCB_ST *pstCCB, U32 ulTrunkID);
+SC_SCB_ST *sc_scb_alloc();
+VOID sc_scb_free(SC_SCB_ST *pstSCB);
+U32 sc_scb_init(SC_SCB_ST *pstSCB);
+U32 sc_call_set_owner(SC_SCB_ST *pstSCB, U32  ulTaskID, U32 ulCustomID);
+U32 sc_call_set_trunk(SC_SCB_ST *pstSCB, U32 ulTrunkID);
 SC_TASK_CB_ST *sc_tcb_find_by_taskid(U32 ulTaskID);
-SC_CCB_ST *sc_ccb_get(U32 ulIndex);
+SC_SCB_ST *sc_scb_get(U32 ulIndex);
 
 SC_TASK_CB_ST *sc_tcb_alloc();
 VOID sc_tcb_free(SC_TASK_CB_ST *pstTCB);
@@ -387,30 +387,30 @@ U32 sc_task_cmd_queue_add(SC_TASK_CTRL_CMD_ST *pstCMD);
 U32 sc_task_cmd_queue_del(SC_TASK_CTRL_CMD_ST *pstCMD);
 U32 sc_task_audio_playcnt(U32 ulTCBNo);
 U32 sc_task_get_timeout_for_noanswer(U32 ulTCBNo);
-U32 sc_dialer_add_call(SC_CCB_ST *pstCCB);
-VOID sc_call_trace(SC_CCB_ST *pstCCB, const S8 *szFormat, ...);
+U32 sc_dialer_add_call(SC_SCB_ST *pstSCB);
+VOID sc_call_trace(SC_SCB_ST *pstSCB, const S8 *szFormat, ...);
 U32 sc_task_callee_set_recall(SC_TASK_CB_ST *pstTCB, U32 ulIndex);
 U32 sc_task_load_audio(SC_TASK_CB_ST *pstTCB);
-BOOL sc_ccb_is_valid(SC_CCB_ST *pstCCB);
+BOOL sc_scb_is_valid(SC_SCB_ST *pstSCB);
 U32 sc_task_init(SC_TASK_CB_ST *pstTCB);
-BOOL sc_call_check_service(SC_CCB_ST *pstCCB, U32 ulService);
+BOOL sc_call_check_service(SC_SCB_ST *pstSCB, U32 ulService);
 
 U32 sc_task_continue(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_pause(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_start(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_stop(SC_TASK_CB_ST *pstTCB);
-S8 *sc_ccb_get_status(U32 ulStatus);
-U32 sc_ccb_hash_tables_add(S8 *pszUUID, SC_CCB_ST *pstCCB);
-U32 sc_ccb_hash_tables_delete(S8 *pszUUID);
-SC_CCB_ST *sc_ccb_hash_tables_find(S8 *pszUUID);
-U32 sc_ccb_syn_post(S8 *pszUUID);
-U32 sc_ccb_syn_wait(S8 *pszUUID);
+S8 *sc_scb_get_status(U32 ulStatus);
+U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
+U32 sc_scb_hash_tables_delete(S8 *pszUUID);
+SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
+U32 sc_scb_syn_post(S8 *pszUUID);
+U32 sc_scb_syn_wait(S8 *pszUUID);
 
 SC_SYS_STATUS_EN sc_check_sys_stat();
 
-SC_CCB_ST *sc_ccb_hash_tables_find(S8 *pszUUID);
-U32 sc_ccb_hash_tables_delete(S8 *pszUUID);
-U32 sc_ccb_hash_tables_add(S8 *pszUUID, SC_CCB_ST *pstCCB);
+SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
+U32 sc_scb_hash_tables_delete(S8 *pszUUID);
+U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
 
 
 

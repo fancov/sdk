@@ -32,7 +32,7 @@ extern "C"{
 typedef struct tagSCCallQueueNode
 {
     list_t      stList;                         /* 呼叫队列链表 */
-    SC_CCB_ST   *pstCCB;                        /* 呼叫控制块 */
+    SC_SCB_ST   *pstSCB;                        /* 呼叫控制块 */
 }SC_CALL_QUEUE_NODE_ST;
 
 typedef struct tagSCDialerHandle
@@ -52,14 +52,14 @@ extern S8 *sc_task_get_audio_file(U32 ulTCBNo);
 
 
 SC_DIALER_HANDLE_ST  *g_pstDialerHandle = NULL;
-HASH_TABLE_S         *g_pstMapCCBTask;
-pthread_mutex_t      g_mutexMapCCBTask = PTHREAD_MUTEX_INITIALIZER;
+HASH_TABLE_S         *g_pstMapSCBTask;
+pthread_mutex_t      g_mutexMapSCBTask = PTHREAD_MUTEX_INITIALIZER;
 
 #if 0
-static S32 sc_dialer_ccb_hash_find_cb(VOID *pSymName, HASH_NODE_S *pNode)
+static S32 sc_dialer_scb_hash_find_cb(VOID *pSymName, HASH_NODE_S *pNode)
 {
-    SC_HMAP_CCB_CALLEE_NODE_ST *pstHashNode = NULL;
-    SC_HMAP_CCB_CALLEE_NODE_ST *pstSourceNode = NULL;
+    SC_HMAP_SCB_CALLEE_NODE_ST *pstHashNode = NULL;
+    SC_HMAP_SCB_CALLEE_NODE_ST *pstSourceNode = NULL;
 
     SC_TRACE_IN(pSymName, pNode, 0, 0);
 
@@ -70,7 +70,7 @@ static S32 sc_dialer_ccb_hash_find_cb(VOID *pSymName, HASH_NODE_S *pNode)
     }
 
     pstSourceNode = pSymName;
-    pstHashNode = (SC_HMAP_CCB_CALLEE_NODE_ST *)pNode;
+    pstHashNode = (SC_HMAP_SCB_CALLEE_NODE_ST *)pNode;
 
     if (0 == dos_strnicmp(pstSourceNode->szCllee, pstHashNode->szCllee, sizeof(pstHashNode->szCllee))
         && 0 == dos_strnicmp(pstSourceNode->szCller, pstHashNode->szCller, sizeof(pstHashNode->szCllee)))
@@ -83,7 +83,7 @@ static S32 sc_dialer_ccb_hash_find_cb(VOID *pSymName, HASH_NODE_S *pNode)
     }
 }
 
-static U32 sc_dialer_ccb_hash_func(S8 *pszCallee)
+static U32 sc_dialer_scb_hash_func(S8 *pszCallee)
 {
     S8 *pszCurrent = NULL;
     U32 ulHashIndex = 0;
@@ -109,14 +109,14 @@ static U32 sc_dialer_ccb_hash_func(S8 *pszCallee)
     return ulHashIndex;
 }
 
-U32 sc_dialer_ccb_hash_add(S8 *pszCallee, S8 *pszCaller, SC_CCB_ST *pstCCB)
+U32 sc_dialer_scb_hash_add(S8 *pszCallee, S8 *pszCaller, SC_SCB_ST *pstSCB)
 {
-    SC_HMAP_CCB_CALLEE_NODE_ST *pstHashNode = NULL;
+    SC_HMAP_SCB_CALLEE_NODE_ST *pstHashNode = NULL;
     U32   ulIndex;
 
-    SC_TRACE_IN(pszCallee, pszCaller, pstCCB, 0);
+    SC_TRACE_IN(pszCallee, pszCaller, pstSCB, 0);
 
-    if (DOS_ADDR_INVALID(pszCallee) || DOS_ADDR_INVALID(pszCaller) || DOS_ADDR_INVALID(pstCCB))
+    if (DOS_ADDR_INVALID(pszCallee) || DOS_ADDR_INVALID(pszCaller) || DOS_ADDR_INVALID(pstSCB))
     {
         DOS_ASSERT(0);
 
@@ -138,19 +138,19 @@ U32 sc_dialer_ccb_hash_add(S8 *pszCallee, S8 *pszCaller, SC_CCB_ST *pstCCB)
     pstHashNode->szCllee[sizeof(pstHashNode->szCllee) - 1] = '\0';
     dos_strncpy(pstHashNode->szCller, pszCaller, sizeof(pstHashNode->szCller));
     pstHashNode->szCller[sizeof(pstHashNode->szCller) - 1] = '\0';
-    pstHashNode = pstCCB;
+    pstHashNode = pstSCB;
 
-    ulIndex = sc_dialer_ccb_hash_func(pszCallee);
-    hash_add_node(&g_pstMapCCBTask, (HASH_NODE_S *)pstHashNode, ulIndex, NULL);
+    ulIndex = sc_dialer_scb_hash_func(pszCallee);
+    hash_add_node(&g_pstMapSCBTask, (HASH_NODE_S *)pstHashNode, ulIndex, NULL);
 
     SC_TRACE_OUT();
     return DOS_SUCC;
 }
 
-SC_CCB_ST sc_dialer_ccb_hash_find(S8 *pszCallee, S8 *pszCaller)
+SC_SCB_ST sc_dialer_scb_hash_find(S8 *pszCallee, S8 *pszCaller)
 {
-    SC_HMAP_CCB_CALLEE_NODE_ST *pstHashNode = NULL;
-    SC_HMAP_CCB_CALLEE_NODE_ST  stSourceNode;
+    SC_HMAP_SCB_CALLEE_NODE_ST *pstHashNode = NULL;
+    SC_HMAP_CSCB_CALLEE_NODE_ST  stSourceNode;
     U32   ulIndex;
 
     SC_TRACE_IN(pszCallee, pszCaller, 0, 0);
@@ -170,11 +170,11 @@ SC_CCB_ST sc_dialer_ccb_hash_find(S8 *pszCallee, S8 *pszCaller)
     stSourceNode.szCller[sizeof(stSourceNode.szCller) - 1] = '\0';
 
 
-    ulIndex = sc_dialer_ccb_hash_func(pszCallee);
-    pstHashNode = (SC_HMAP_CCB_CALLEE_NODE_ST *)hash_find_node(g_pstMapCCBTask
+    ulIndex = sc_dialer_scb_hash_func(pszCallee);
+    pstHashNode = (SC_HMAP_SCB_CALLEE_NODE_ST *)hash_find_node(g_pstMapSCBTask
                             , ulIndex
                             , &stSourceNode
-                            , sc_dialer_ccb_hash_find_cb);
+                            , sc_dialer_scb_hash_find_cb);
     if (DOS_ADDR_INVALID(pstHashNode))
     {
         DOS_ASSERT(0);
@@ -184,13 +184,13 @@ SC_CCB_ST sc_dialer_ccb_hash_find(S8 *pszCallee, S8 *pszCaller)
     }
 
     SC_TRACE_OUT();
-    return pstHashNode->pstCCB;
+    return pstHashNode->pstSCB;
 }
 
-U32 sc_dialer_ccb_hash_del(S8 *pszCallee, S8 *pszCaller)
+U32 sc_dialer_scb_hash_del(S8 *pszCallee, S8 *pszCaller)
 {
-    SC_HMAP_CCB_CALLEE_NODE_ST *pstHashNode = NULL;
-    SC_HMAP_CCB_CALLEE_NODE_ST  stSourceNode;
+    SC_HMAP_SCB_CALLEE_NODE_ST *pstHashNode = NULL;
+    SC_HMAP_SCB_CALLEE_NODE_ST  stSourceNode;
     U32   ulIndex;
 
     SC_TRACE_IN(pszCallee, pszCaller, 0, 0);
@@ -210,11 +210,11 @@ U32 sc_dialer_ccb_hash_del(S8 *pszCallee, S8 *pszCaller)
     stSourceNode.szCller[sizeof(stSourceNode.szCller) - 1] = '\0';
 
 
-    ulIndex = sc_dialer_ccb_hash_func(pszCallee);
-    pstHashNode = (SC_HMAP_CCB_CALLEE_NODE_ST *)hash_find_node(
+    ulIndex = sc_dialer_scb_hash_func(pszCallee);
+    pstHashNode = (SC_HMAP_SCB_CALLEE_NODE_ST *)hash_find_node(
                             , ulIndex
                             , &stSourceNode
-                            , sc_dialer_ccb_hash_find_cb);
+                            , sc_dialer_scb_hash_find_cb);
     if (DOS_ADDR_INVALID(pstHashNode))
     {
         DOS_ASSERT(0);
@@ -223,21 +223,21 @@ U32 sc_dialer_ccb_hash_del(S8 *pszCallee, S8 *pszCaller)
         return DOS_FAIL;
     }
 
-    hash_delete_node(g_pstMapCCBTask, (HASH_NODE_S *)pstHashNode, ulIndex);
-    pstHashNode->pstCCB = NULL;
+    hash_delete_node(g_pstMapSCBTask, (HASH_NODE_S *)pstHashNode, ulIndex);
+    pstHashNode->pstSCB = NULL;
     pstHashNode->szCllee[0] = '\0';
     pstHashNode->szCller[0] = '\0';
     dos_dmem_free(pstHashNode);
 
     SC_TRACE_OUT();
-    return pstHashNode->pstCCB;
+    return pstHashNode->pstSCB;
 
 }
 #endif
 
 
 /* declare functions */
-U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
+U32 sc_dialer_make_call(SC_SCB_ST *pstSCB)
 {
     S8    pszCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
     S8    *pszAudioFilePath = NULL;
@@ -245,7 +245,7 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
     U32   ulPlayCnt = 0;
     U32   ulTimeoutForNoAnswer;
 
-    SC_TRACE_IN((U64)pstCCB, 0, 0, 0);
+    SC_TRACE_IN((U64)pstSCB, 0, 0, 0);
 #if 0
     pszCMDBuff = g_pstDialerHandle->pszCMDBuff;
     if (!pszCMDBuff)
@@ -256,29 +256,29 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
         return DOS_FAIL;
     }
 #endif
-    if (DOS_ADDR_INVALID(pstCCB))
+    if (DOS_ADDR_INVALID(pstSCB))
     {
         DOS_ASSERT(0);
 
         goto esl_exec_fail;
     }
 
-    if (!SC_CCB_HAS_VALID_OWNER(pstCCB))
+    if (!SC_SCB_HAS_VALID_OWNER(pstSCB))
     {
         DOS_ASSERT(0);
 
         goto esl_exec_fail;
     }
 
-    if ('\0' == pstCCB->szCalleeNum[0]
-        || '\0' == pstCCB->szCallerNum[0])
+    if ('\0' == pstSCB->szCalleeNum[0]
+        || '\0' == pstSCB->szCallerNum[0])
     {
         DOS_ASSERT(0);
 
         goto esl_exec_fail;
     }
 
-    pszAudioFilePath = sc_task_get_audio_file((U32)pstCCB->usTCBNo);
+    pszAudioFilePath = sc_task_get_audio_file((U32)pstSCB->usTCBNo);
     if (!pszAudioFilePath || '\0' == pszAudioFilePath[0])
     {
         DOS_ASSERT(0);
@@ -286,13 +286,13 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
         goto esl_exec_fail;
     }
 
-    ulPlayCnt = sc_task_audio_playcnt((U32)pstCCB->usTCBNo);
+    ulPlayCnt = sc_task_audio_playcnt((U32)pstSCB->usTCBNo);
     if (0 == ulPlayCnt)
     {
         ulPlayCnt = SC_DEFAULT_PLAYCNT;
     }
 
-    ulTimeoutForNoAnswer = sc_task_get_timeout_for_noanswer(pstCCB->usTCBNo);
+    ulTimeoutForNoAnswer = sc_task_get_timeout_for_noanswer(pstSCB->usTCBNo);
     if (ulTimeoutForNoAnswer < SC_MAX_TIMEOUT4NOANSWER)
     {
         ulTimeoutForNoAnswer = SC_MAX_TIMEOUT4NOANSWER;
@@ -301,14 +301,14 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
     dos_snprintf(pszCMDBuff
                 , SC_ESL_CMD_BUFF_LEN
                 , "bgapi originate {ignore_early_media=true,origination_caller_id_number=%s,"
-                  "origination_caller_id_name=%s,ccb_number=%d,task_id=%d,auto_call=true,originate_timeout=%d}loopback/%s "
+                  "origination_caller_id_name=%s,scb_number=%d,task_id=%d,auto_call=true,originate_timeout=%d}loopback/%s "
                   "&loop_playback('+%d %s') \r\n"
-                , pstCCB->szCallerNum
-                , pstCCB->szCallerNum
-                , pstCCB->usCCBNo
-                , pstCCB->ulTaskID
+                , pstSCB->szCallerNum
+                , pstSCB->szCallerNum
+                , pstSCB->usSCBNo
+                , pstSCB->ulTaskID
                 , ulTimeoutForNoAnswer
-                , pstCCB->szCalleeNum
+                , pstSCB->szCalleeNum
                 , ulPlayCnt
                 , pszAudioFilePath);
 
@@ -358,13 +358,13 @@ U32 sc_dialer_make_call(SC_CCB_ST *pstCCB)
         goto esl_exec_fail;
     }
 #if 0
-    if (sc_dialer_ccb_hash_add(pstCCB->szCalleeNum, pstCCB->szCallerNum, pstCCB) != DOS_SUCC)
+    if (sc_dialer_scb_hash_add(pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB) != DOS_SUCC)
     {
         goto esl_exec_fail;
     }
 #endif
-    sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstCCB->szCallerNum, pstCCB->szCalleeNum);
-    sc_call_trace(pstCCB, "Make call successfully.");
+    sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
+    sc_call_trace(pstSCB, "Make call successfully.");
 
     SC_TRACE_OUT();
     return DOS_SUCC;
@@ -373,10 +373,10 @@ esl_exec_fail:
 
     sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be dos_dmem_free.");
 
-    if (DOS_ADDR_VALID(pstCCB))
+    if (DOS_ADDR_VALID(pstSCB))
     {
-        sc_ccb_free(pstCCB);
-        pstCCB = NULL;
+        sc_scb_free(pstSCB);
+        pstSCB = NULL;
     }
 
     SC_TRACE_OUT();
@@ -387,7 +387,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
 {
     list_t                  *pstList;
     SC_CALL_QUEUE_NODE_ST   *pstListNode;
-    SC_CCB_ST               *pstCCB;
+    SC_SCB_ST               *pstSCB;
     struct timespec         stTimeout;
     U32                     ulRet = ESL_FAIL;
 
@@ -452,16 +452,16 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 continue;
             }
 
-            pstCCB = pstListNode->pstCCB;
-            if (!pstCCB)
+            pstSCB = pstListNode->pstSCB;
+            if (!pstSCB)
             {
                 continue;
             }
 
-            sc_dialer_make_call(pstCCB);
+            sc_dialer_make_call(pstSCB);
 
-            /* CCB是预分配的，所以这里只需要把队列节点释放一下就好 */
-            pstListNode->pstCCB = NULL;
+            /* SCB是预分配的，所以这里只需要把队列节点释放一下就好 */
+            pstListNode->pstSCB = NULL;
             pstListNode->stList.next = NULL;
             pstListNode->stList.prev = NULL;
             dos_dmem_free(pstListNode);
@@ -474,12 +474,12 @@ VOID *sc_dialer_runtime(VOID * ptr)
     return NULL;
 }
 
-U32 sc_dialer_add_call(SC_CCB_ST *pstCCB)
+U32 sc_dialer_add_call(SC_SCB_ST *pstSCB)
 {
     SC_CALL_QUEUE_NODE_ST *pstNode;
-    SC_TRACE_IN((U64)pstCCB, 0, 0, 0);
+    SC_TRACE_IN((U64)pstSCB, 0, 0, 0);
 
-    if (DOS_ADDR_INVALID(pstCCB))
+    if (DOS_ADDR_INVALID(pstSCB))
     {
         DOS_ASSERT(0);
 
@@ -487,7 +487,7 @@ U32 sc_dialer_add_call(SC_CCB_ST *pstCCB)
         return DOS_FAIL;
     }
 
-    sc_call_trace(pstCCB, "Dialer recv call request.");
+    sc_call_trace(pstSCB, "Dialer recv call request.");
 
     pstNode = (SC_CALL_QUEUE_NODE_ST *)dos_dmem_alloc(sizeof(SC_CALL_QUEUE_NODE_ST));
     if (!pstNode)
@@ -498,11 +498,11 @@ U32 sc_dialer_add_call(SC_CCB_ST *pstCCB)
         return DOS_FAIL;
     }
 
-    pstNode->pstCCB = pstCCB;
+    pstNode->pstSCB = pstSCB;
     pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
     dos_list_add_tail(&g_pstDialerHandle->stCallList, &(pstNode->stList));
 
-    sc_call_trace(pstCCB, "Call request has been accepted by the dialer.");
+    sc_call_trace(pstSCB, "Call request has been accepted by the dialer.");
 
     pthread_cond_signal(&g_pstDialerHandle->condCallQueue);
     pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
@@ -515,8 +515,8 @@ U32 sc_dialer_init()
 {
     SC_TRACE_IN(0, 0, 0, 0);
 
-    g_pstMapCCBTask = hash_create_table(SC_MAX_CCB_HASH_NUM, NULL);
-    if (!g_pstMapCCBTask)
+    g_pstMapSCBTask = hash_create_table(SC_MAX_SCB_HASH_NUM, NULL);
+    if (!g_pstMapSCBTask)
     {
         DOS_ASSERT(0);
 

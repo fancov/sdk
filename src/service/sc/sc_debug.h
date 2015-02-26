@@ -99,7 +99,7 @@ while(0)
 
 /* declare functions */
 VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...);
-VOID sc_call_trace(SC_CCB_ST *pstCCB, const S8 *szFormat, ...);
+VOID sc_call_trace(SC_SCB_ST *pstSCB, const S8 *szFormat, ...);
 VOID sc_task_trace(SC_TASK_CB_ST *pstTCB, const S8* szFormat, ...);
 
 #ifdef __cplusplus

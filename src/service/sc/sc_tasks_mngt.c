@@ -564,7 +564,7 @@ U32 sc_task_mngt_start()
 U32 sc_task_mngt_init()
 {
     SC_TASK_CB_ST   *pstTCB = NULL;
-    SC_CCB_ST       *pstCCB = NULL;
+    SC_SCB_ST       *pstSCB = NULL;
     U32             ulIndex    = 0;
 
     SC_TRACE_IN(0, 0, 0, 0);
@@ -589,8 +589,8 @@ U32 sc_task_mngt_init()
     pthread_cond_init(&g_pstTaskMngtInfo->condCMDList, NULL);
     dos_list_init(&g_pstTaskMngtInfo->stCMDList);
 
-    g_pstTaskMngtInfo->pstCallCCBHash = hash_create_table(SC_MAX_CCB_HASH_NUM, NULL);
-    if (!g_pstTaskMngtInfo->pstCallCCBHash)
+    g_pstTaskMngtInfo->pstCallSCBHash = hash_create_table(SC_MAX_SCB_HASH_NUM, NULL);
+    if (!g_pstTaskMngtInfo->pstCallSCBHash)
     {
         DOS_ASSERT(0);
 
@@ -604,8 +604,8 @@ U32 sc_task_mngt_init()
 
     /* 初始化呼叫控制块和任务控制块 */
     g_pstTaskMngtInfo->pstTaskList = (SC_TASK_CB_ST *)dos_smem_alloc(sizeof(SC_TASK_CB_ST) * SC_MAX_TASK_NUM);
-    g_pstTaskMngtInfo->pstCallCCBList = (SC_CCB_ST *)dos_smem_alloc(sizeof(SC_CCB_ST) * SC_MAX_CCB_NUM);
-    if (!g_pstTaskMngtInfo->pstTaskList || !g_pstTaskMngtInfo->pstCallCCBList)
+    g_pstTaskMngtInfo->pstCallSCBList = (SC_SCB_ST *)dos_smem_alloc(sizeof(SC_SCB_ST) * SC_MAX_SCB_NUM);
+    if (!g_pstTaskMngtInfo->pstTaskList || !g_pstTaskMngtInfo->pstCallSCBList)
     {
         DOS_ASSERT(0);
 
@@ -615,10 +615,10 @@ U32 sc_task_mngt_init()
             g_pstTaskMngtInfo->pstTaskList = NULL;
         }
 
-        if (g_pstTaskMngtInfo->pstCallCCBList)
+        if (g_pstTaskMngtInfo->pstCallSCBList)
         {
-            dos_smem_free(g_pstTaskMngtInfo->pstCallCCBList);
-            g_pstTaskMngtInfo->pstCallCCBList = NULL;
+            dos_smem_free(g_pstTaskMngtInfo->pstCallSCBList);
+            g_pstTaskMngtInfo->pstCallSCBList = NULL;
         }
 
         dos_smem_free(g_pstTaskMngtInfo);
@@ -628,15 +628,15 @@ U32 sc_task_mngt_init()
         return DOS_FAIL;
     }
 
-    dos_memzero(g_pstTaskMngtInfo->pstCallCCBList, sizeof(SC_CCB_ST) * SC_MAX_CCB_NUM);
-    for (ulIndex = 0; ulIndex < SC_MAX_CCB_NUM; ulIndex++)
+    dos_memzero(g_pstTaskMngtInfo->pstCallSCBList, sizeof(SC_SCB_ST) * SC_MAX_SCB_NUM);
+    for (ulIndex = 0; ulIndex < SC_MAX_SCB_NUM; ulIndex++)
     {
-        pstCCB = &g_pstTaskMngtInfo->pstCallCCBList[ulIndex];
-        pthread_mutex_init(&pstCCB->mutexCCBLock, NULL);
-        pthread_mutex_lock(&pstCCB->mutexCCBLock);
-        pstCCB->usCCBNo = (U16)ulIndex;
-        sc_ccb_init(pstCCB);
-        pthread_mutex_unlock(&pstCCB->mutexCCBLock);
+        pstSCB = &g_pstTaskMngtInfo->pstCallSCBList[ulIndex];
+        pthread_mutex_init(&pstSCB->mutexSCBLock, NULL);
+        pthread_mutex_lock(&pstSCB->mutexSCBLock);
+        pstSCB->usSCBNo = (U16)ulIndex;
+        sc_scb_init(pstSCB);
+        pthread_mutex_unlock(&pstSCB->mutexSCBLock);
     }
 
     dos_memzero(g_pstTaskMngtInfo->pstTaskList, sizeof(SC_TASK_CB_ST) * SC_MAX_TASK_NUM);

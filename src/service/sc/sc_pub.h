@@ -75,10 +75,10 @@ extern "C"{
 #define SC_MAX_TASK_NUM                1024
 
 /* 最大呼叫数 */
-#define SC_MAX_CCB_NUM                 SC_MAX_CALL*2
+#define SC_MAX_SCB_NUM                 SC_MAX_CALL*2
 
-/* CCB hash表最大数 */
-#define SC_MAX_CCB_HASH_NUM            4096
+/* SCB hash表最大数 */
+#define SC_MAX_SCB_HASH_NUM            4096
 
 /* 每个任务的坐席最大数 */
 #define SC_MAX_SITE_NUM                1024

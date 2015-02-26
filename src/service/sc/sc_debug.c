@@ -532,18 +532,18 @@ VOID sc_show_callee_for_task(U32 ulIndex, U32 ulTaskID)
 
 VOID sc_show_scb_detail(U32 ulIndex, U32 ulSCBID)
 {
-    SC_CCB_ST *pstCCB = NULL;
+    SC_SCB_ST *pstSCB = NULL;
     S8 szCmdBuff[1024] = { 0 };
 
-    if (ulSCBID >= SC_MAX_CCB_NUM
-        || !g_pstTaskMngtInfo->pstCallCCBList[ulSCBID].bValid)
+    if (ulSCBID >= SC_MAX_SCB_NUM
+        || !g_pstTaskMngtInfo->pstCallSCBList[ulSCBID].bValid)
     {
         cli_out_string(ulIndex, "\r\nError:"
                         "\r\n    Invalid SCB ID\r\n");
         return;
     }
 
-    pstCCB = &g_pstTaskMngtInfo->pstCallCCBList[ulSCBID];
+    pstSCB = &g_pstTaskMngtInfo->pstCallSCBList[ulSCBID];
     cli_out_string(ulIndex, "\r\nList the SCB Information:");
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
@@ -563,25 +563,25 @@ VOID sc_show_scb_detail(U32 ulIndex, U32 ulSCBID)
                    , "\r\n            ANI : %s"
                    , "\r\n    Site Number : %s"
                    , "\r\n           UUID : %s\r\n"
-                   , pstCCB->usCCBNo
-                   , pstCCB->bTraceNo ? "Yes" : "No"
-                   , pstCCB->usTCBNo
-                   , pstCCB->usSiteNo
-                   , pstCCB->ucStatus
-                   , pstCCB->aucServiceType[0]
-                   , pstCCB->aucServiceType[1]
-                   , pstCCB->aucServiceType[2]
-                   , pstCCB->aucServiceType[3]
-                   , pstCCB->ulCustomID
-                   , pstCCB->ulTaskID
-                   , pstCCB->ulTrunkID
-                   , pstCCB->usHoldCnt
-                   , pstCCB->usHoldTotalTime
-                   , pstCCB->szCallerNum
-                   , pstCCB->szCalleeNum
-                   , pstCCB->szANINum
-                   , pstCCB->szSiteNum
-                   , pstCCB->szUUID);
+                   , pstSCB->usSCBNo
+                   , pstSCB->bTraceNo ? "Yes" : "No"
+                   , pstSCB->usTCBNo
+                   , pstSCB->usSiteNo
+                   , pstSCB->ucStatus
+                   , pstSCB->aucServiceType[0]
+                   , pstSCB->aucServiceType[1]
+                   , pstSCB->aucServiceType[2]
+                   , pstSCB->aucServiceType[3]
+                   , pstSCB->ulCustomID
+                   , pstSCB->ulTaskID
+                   , pstSCB->ulTrunkID
+                   , pstSCB->usHoldCnt
+                   , pstSCB->usHoldTotalTime
+                   , pstSCB->szCallerNum
+                   , pstSCB->szCalleeNum
+                   , pstSCB->szANINum
+                   , pstSCB->szSiteNum
+                   , pstSCB->szUUID);
     cli_out_string(ulIndex, szCmdBuff);
 }
 
@@ -1002,7 +1002,7 @@ VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
 }
 
 
-VOID sc_call_trace(SC_CCB_ST *pstCCB, const S8 *szFormat, ...)
+VOID sc_call_trace(SC_SCB_ST *pstSCB, const S8 *szFormat, ...)
 {
     SC_TASK_CB_ST                 *pstTCB      = NULL;
     SC_CALLER_QUERY_NODE_ST       *pstCaller   = NULL;
@@ -1010,22 +1010,22 @@ VOID sc_call_trace(SC_CCB_ST *pstCCB, const S8 *szFormat, ...)
     va_list argptr;
     char szBuf[1024];
 
-    SC_TRACE_IN((U64)pstCCB, 0, 0, 0);
+    SC_TRACE_IN((U64)pstSCB, 0, 0, 0);
 
-    if (!pstCCB)
+    if (!pstSCB)
     {
         SC_TRACE_OUT();
         return;
     }
 
-    if (pstCCB->usTCBNo <= SC_MAX_TASK_NUM)
+    if (pstSCB->usTCBNo <= SC_MAX_TASK_NUM)
     {
-        pstTCB = sc_tcb_get_by_id(pstCCB->usTCBNo);
+        pstTCB = sc_tcb_get_by_id(pstSCB->usTCBNo);
     }
 
-    if (pstTCB && pstCCB->usSiteNo <= SC_MAX_SITE_NUM)
+    if (pstTCB && pstSCB->usSiteNo <= SC_MAX_SITE_NUM)
     {
-        pstSite = &pstTCB->pstSiteQuery[pstCCB->usSiteNo];
+        pstSite = &pstTCB->pstSiteQuery[pstSCB->usSiteNo];
     }
 
     if (g_ulCallTraceAll)
@@ -1055,18 +1055,18 @@ trace:
     vsnprintf(szBuf, sizeof(szBuf), szFormat, argptr);
     va_end(argptr);
     /*
-     *格式: <CCB:No, status, token, caller, callee, uuid, trunk><TCB:No, status, ID, Custom,><CALLER:No, num,><SITE:No, status, SIP, id, externsion>
+     *格式: <SCB:No, status, token, caller, callee, uuid, trunk><TCB:No, status, ID, Custom,><CALLER:No, num,><SITE:No, status, SIP, id, externsion>
      */
     sc_logr_debug(SC_ESL, "Call Trace:%s\r\n"
-                  "\t[CCB Info]: No:%05d, status: %d, caller: %s, callee: %s, uuid:%s\r\n"
+                  "\t[SCB Info]: No:%05d, status: %d, caller: %s, callee: %s, uuid:%s\r\n"
                   "\t[TCB Info]: No:%05d, status: %d, Task ID: %d, Custom ID: %d\r\n"
                   "\t[SITE    ]: No:%05d, status: %d, SIP Account: %s, Extension: %s"
                   , szBuf
-                  , pstCCB->usCCBNo
-                  , pstCCB->bValid
-                  , ('\0' == pstCCB->szCallerNum[0]) ? "NULL" : pstCCB->szCallerNum
-                  , ('\0' == pstCCB->szCalleeNum[0]) ? "NULL" : pstCCB->szCalleeNum
-                  , ('\0' == pstCCB->szUUID[0]) ? "NULL" : pstCCB->szUUID
+                  , pstSCB->usSCBNo
+                  , pstSCB->bValid
+                  , ('\0' == pstSCB->szCallerNum[0]) ? "NULL" : pstSCB->szCallerNum
+                  , ('\0' == pstSCB->szCalleeNum[0]) ? "NULL" : pstSCB->szCalleeNum
+                  , ('\0' == pstSCB->szUUID[0]) ? "NULL" : pstSCB->szUUID
                   , pstTCB ? pstTCB->usTCBNo : -1
                   , pstTCB ? pstTCB->ucValid : -1
                   , pstTCB ? pstTCB->ulTaskID : -1

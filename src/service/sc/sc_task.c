@@ -148,7 +148,7 @@ SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
 
 U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
 {
-    SC_CCB_ST                 *pstCCB    = NULL;
+    SC_SCB_ST                 *pstSCB    = NULL;
     SC_TEL_NUM_QUERY_NODE_ST  *pstCallee = NULL;
     SC_CALLER_QUERY_NODE_ST   *pstCaller = NULL;
 
@@ -172,46 +172,46 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    pstCCB = sc_ccb_alloc();
-    if (!pstCCB)
+    pstSCB = sc_scb_alloc();
+    if (!pstSCB)
     {
-        sc_logr_notice(SC_TASK, "%s", "Make call for task %d fail. Alloc CCB fail.");
+        sc_logr_notice(SC_TASK, "%s", "Make call for task %d fail. Alloc SCB fail.");
         goto fail;
     }
 
-//    SC_CCB_SET_STATUS(pstCCB, SC_CCB_INIT);
+//    SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
 
-    pthread_mutex_lock(&pstCCB->mutexCCBLock);
-    if (pstTCB->bTraceCallON || pstCCB->bTraceNo
+    pthread_mutex_lock(&pstSCB->mutexSCBLock);
+    if (pstTCB->bTraceCallON || pstSCB->bTraceNo
         || pstCallee->ucTraceON || pstCaller->bTraceON)
     {
-        pstCCB->bTraceNo  = 1;
+        pstSCB->bTraceNo  = 1;
     }
-    pstCCB->ulCustomID = pstTCB->ulCustomID;
-    pstCCB->ulTaskID = pstTCB->ulTaskID;
-    pstCCB->usTCBNo = pstTCB->usTCBNo;
-    pstCCB->usSiteNo = U16_BUTT;
-    pstCCB->ulTrunkID = U32_BUTT;
-    pstCCB->ulCallDuration = 0;
+    pstSCB->ulCustomID = pstTCB->ulCustomID;
+    pstSCB->ulTaskID = pstTCB->ulTaskID;
+    pstSCB->usTCBNo = pstTCB->usTCBNo;
+    pstSCB->usSiteNo = U16_BUTT;
+    pstSCB->ulTrunkID = U32_BUTT;
+    pstSCB->ulCallDuration = 0;
 
-    dos_strncpy(pstCCB->szCallerNum, pstCaller->szNumber, SC_TEL_NUMBER_LENGTH);
-    pstCCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
-    dos_strncpy(pstCCB->szCalleeNum, pstCallee->szNumber, SC_TEL_NUMBER_LENGTH);
-    pstCCB->szCalleeNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
-    pstCCB->szSiteNum[0] = '\0';
-    pstCCB->szUUID[0] = '\0';
+    dos_strncpy(pstSCB->szCallerNum, pstCaller->szNumber, SC_TEL_NUMBER_LENGTH);
+    pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+    dos_strncpy(pstSCB->szCalleeNum, pstCallee->szNumber, SC_TEL_NUMBER_LENGTH);
+    pstSCB->szCalleeNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+    pstSCB->szSiteNum[0] = '\0';
+    pstSCB->szUUID[0] = '\0';
 
-    pthread_mutex_unlock(&pstCCB->mutexCCBLock);
+    pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
-    if (sc_dialer_add_call(pstCCB) != DOS_SUCC)
+    if (sc_dialer_add_call(pstSCB) != DOS_SUCC)
     {
-        sc_call_trace(pstCCB, "Make call failed.");
+        sc_call_trace(pstSCB, "Make call failed.");
 
         sc_task_callee_set_recall(pstTCB, pstCallee->ulIndex);
         goto fail;
     }
 
-    sc_call_trace(pstCCB, "Make call for task %d successfully.", pstTCB->ulTaskID);
+    sc_call_trace(pstSCB, "Make call for task %d successfully.", pstTCB->ulTaskID);
 
     if (pstCallee)
     {
@@ -228,10 +228,10 @@ fail:
         pstCallee = NULL;
     }
 
-    if (pstCCB)
+    if (pstSCB)
     {
-        sc_ccb_free(pstCCB);
-        pstCCB = NULL;
+        sc_scb_free(pstSCB);
+        pstSCB = NULL;
     }
 
     return DOS_FAIL;

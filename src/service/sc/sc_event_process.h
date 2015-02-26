@@ -71,15 +71,15 @@ enum tagCallDirection{
     SC_DIRECTION_INVALID                    /* 非法值 */
 };
 
-/* 定义CCBhash表 */
-typedef struct tagHMapCCBCalleNode
+/* 定义SCBhash表 */
+typedef struct tagHMapSCBCalleNode
 {
     HASH_NODE_S     stNode;                       /* hash链表节点 */
 
     S8              szCllee[SC_TEL_NUMBER_LENGTH]; /* 电话号码 */
     S8              szCller[SC_TEL_NUMBER_LENGTH]; /* 电话号码 */
-    SC_CCB_ST       *pstCCB;                      /* CCB指针 */
-}SC_HMAP_CCB_CALLEE_NODE_ST;
+    SC_SCB_ST       *pstSCB;                      /* SCB指针 */
+}SC_HMAP_SCB_CALLEE_NODE_ST;
 
 
 #endif /* end of _SC_EVENT_PROCESS_H__ */
