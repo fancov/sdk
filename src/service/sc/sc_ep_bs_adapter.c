@@ -20,10 +20,8 @@ extern "C"{
 #include <dos.h>
 #include <bs_pub.h>
 
-#include "sc_pub.h"
-#include "bs_pub.h"
-#include "sc_bs_pub.h"
-#include "sc_task_pub.h"
+#include "sc_def.h"
+#include "sc_bs_def.h"
 #include "sc_event_process.h"
 #include "sc_debug.h"
 

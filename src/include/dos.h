@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include <netinet/in.h>
+#include <semaphore.h>
 
 
 #include <json-c/json.h>

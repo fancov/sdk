@@ -49,7 +49,7 @@ while(0)
 do{                                                                    \
     if ((ulSubmod) < SC_SUB_MOD_BUTT)                                  \
     {                                                                  \
-        (ulCtrlFrame) = (ulCtrlFrame) & (~(0x00000001 << (ulSubmod)));\
+        (ulCtrlFrame) = (ulCtrlFrame) & (~(0x00000001 << (ulSubmod))); \
     }                                                                  \
 while(0)
 
@@ -80,18 +80,18 @@ while(0)
 
 #define SC_TRACE_IN(param0, param1, param2, param3) \
         sc_logr_debug(SC_FUNC, "SC Trace in %s (0x%X, 0x%X, 0x%X, 0x%X)" \
-                        , __FUNCTION__, (U64)(param0), (U64)(param1), (U64)(param2), (U64)(param3));\
+                        , __FUNCTION__, (U64)(param0), (U64)(param1), (U64)(param2), (U64)(param3));
 
 #define SC_TRACE_OUT() \
-        sc_logr_debug(SC_FUNC, "SC Trace out %s", __FUNCTION__);\
+        sc_logr_debug(SC_FUNC, "SC Trace out %s", __FUNCTION__);
 
 #define SC_HTTPD_TRACE(param0, param1, param2, param3) \
         sc_logr_debug(SC_HTTPD, "SC Trace Func:%s (%s:%d) Srv: %lu, Client: %lu, RspCode:%lu, Errno:0x%X" \
-                        , __FUNCTION__, dos_get_filename(__FILE__), __LINE__, (param0), (param1), (param2), (param3));\
+                        , __FUNCTION__, dos_get_filename(__FILE__), __LINE__, (param0), (param1), (param2), (param3));
 
 #define SC_TASK_TRACE(pstTCB, format, ...) \
         sc_logr_debug(SC_TASK, "SC Trace Func:%s (%s:%d) CustomID: %lu, TaskID: %lu" \
-                        , __FUNCTION__, dos_get_filename(__FILE__), __LINE__, (pstTCB)->ulCustomID, (pstTCB)->ulTaskID);\
+                        , __FUNCTION__, dos_get_filename(__FILE__), __LINE__, (pstTCB)->ulCustomID, (pstTCB)->ulTaskID);
 
 /* define enums */
 

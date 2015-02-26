@@ -9,7 +9,7 @@ C_FILE += $(SROUCE)/service/sc/mod_dipcc_sc.c \
 	$(SROUCE)/service/sc/sc_event_process.c \
 	$(SROUCE)/service/sc/sc_httpd.c \
 	$(SROUCE)/service/sc/sc_task.c \
-	$(SROUCE)/service/sc/sc_task_lib.c \
+	$(SROUCE)/service/sc/sc_lib.c \
 	$(SROUCE)/service/sc/sc_tasks_mngt.c
 	
 
@@ -24,7 +24,7 @@ C_OBJ_FILE += mod_dipcc_sc.$(SUFFIX) \
 	sc_event_process.$(SUFFIX) \
 	sc_httpd.$(SUFFIX) \
 	sc_task.$(SUFFIX) \
-	sc_task_lib.$(SUFFIX) \
+	sc_lib.$(SUFFIX) \
 	sc_tasks_mngt.$(SUFFIX)
 
 mod_dipcc_sc.$(SUFFIX) :
@@ -60,8 +60,8 @@ sc_httpd.$(SUFFIX) :
 sc_task.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_task.c
 	
-sc_task_lib.$(SUFFIX) :
-	$(C_COMPILE) $(SROUCE)/service/sc/sc_task_lib.c
+sc_lib.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/sc/sc_lib.c
 
 sc_tasks_mngt.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_tasks_mngt.c

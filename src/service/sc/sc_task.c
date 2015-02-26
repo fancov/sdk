@@ -18,8 +18,7 @@ extern "C"{
 #include <dos.h>
 
 /* include private header files */
-#include "sc_pub.h"
-#include "sc_task_pub.h"
+#include "sc_def.h"
 #include "sc_debug.h"
 
 /* define marcos */

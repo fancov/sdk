@@ -21,10 +21,9 @@ extern "C"{
 /* include private header files */
 #include "sc_httpd.h"
 #include "sc_http_api.h"
-#include "sc_pub.h"
-#include "sc_task_pub.h"
+#include "sc_def.h"
 #include "sc_debug.h"
-#include "sc_acd_pub.h"
+#include "sc_acd_def.h"
 #include "sc_acd.h"
 
 /* define marcos */
@@ -41,7 +40,7 @@ U32       g_ulTaskTraceAll      = 0;       /* 是否跟踪所有任务 */
 U32       g_ulCallTraceAll      = 1;     /* 跟踪所有的呼叫 */
 
 #ifdef DEBUG_VERSION
-U32       g_ulTraceFlags        = 1;
+U32       g_ulTraceFlags        = 0xFFFFFFFF;
 #else
 U32       g_ulTraceFlags        = 0;
 #endif
@@ -946,8 +945,14 @@ VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
     }
 
     if (!bIsOutput
+        && ulSubMod >= SC_SUB_MOD_BUTT)
+    {
+        bIsOutput = DOS_TRUE;
+    }
+
+    if (!bIsOutput
         && ulSubMod&g_ulTraceFlags
-        && g_ulSCLogLevel <= ulLevel)
+        && ulLevel <= g_ulSCLogLevel)
     {
         bIsOutput = DOS_TRUE;
     }
@@ -960,31 +965,31 @@ VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
     switch(ulSubMod)
     {
         case SC_FUNC:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_FUNC:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_FNC:");
             break;
         case SC_HTTPD:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_HTTPD:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_HTD:");
             break;
         case SC_HTTP_API:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_HTTP_API:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_API:");
             break;
         case SC_ACD:
             dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_ACD:");
             break;
         case SC_TASK_MNGT:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_TASK:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_TSK:");
             break;
         case SC_TASK:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_TASK:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_TSK:");
             break;
         case SC_DIALER:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_DIALER:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_DLR:");
             break;
         case SC_ESL:
             dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_ESL:");
             break;
         case SC_BS:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_BS:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_BSS:");
             break;
         default:
             dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC:");
@@ -998,6 +1003,7 @@ VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
     va_end(Arg);
     szTraceStr[sizeof(szTraceStr) -1] = '\0';
 
+    //printf("%s\r\n", szTraceStr);
     dos_log(ulLevel, LOG_TYPE_RUNINFO, szTraceStr);
 }
 
