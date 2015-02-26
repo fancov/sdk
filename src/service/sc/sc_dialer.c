@@ -29,12 +29,14 @@ extern "C"{
 /* define enums */
 
 /* define structs */
+/* 呼叫队列 */
 typedef struct tagSCCallQueueNode
 {
     list_t      stList;                         /* 呼叫队列链表 */
     SC_SCB_ST   *pstSCB;                        /* 呼叫控制块 */
 }SC_CALL_QUEUE_NODE_ST;
 
+/* dialer模块控制块 */
 typedef struct tagSCDialerHandle
 {
     esl_handle_t        stHandle;                /*  esl 句柄 */
@@ -50,193 +52,18 @@ typedef struct tagSCDialerHandle
 
 extern S8 *sc_task_get_audio_file(U32 ulTCBNo);
 
-
+/* dialer模块控制块示例 */
 SC_DIALER_HANDLE_ST  *g_pstDialerHandle = NULL;
-HASH_TABLE_S         *g_pstMapSCBTask;
-pthread_mutex_t      g_mutexMapSCBTask = PTHREAD_MUTEX_INITIALIZER;
-
-#if 0
-static S32 sc_dialer_scb_hash_find_cb(VOID *pSymName, HASH_NODE_S *pNode)
-{
-    SC_HMAP_SCB_CALLEE_NODE_ST *pstHashNode = NULL;
-    SC_HMAP_SCB_CALLEE_NODE_ST *pstSourceNode = NULL;
-
-    SC_TRACE_IN(pSymName, pNode, 0, 0);
-
-    if (DOS_ADDR_INVALID(pSymName) || DOS_ADDR_INVALID(pNode))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstSourceNode = pSymName;
-    pstHashNode = (SC_HMAP_SCB_CALLEE_NODE_ST *)pNode;
-
-    if (0 == dos_strnicmp(pstSourceNode->szCllee, pstHashNode->szCllee, sizeof(pstHashNode->szCllee))
-        && 0 == dos_strnicmp(pstSourceNode->szCller, pstHashNode->szCller, sizeof(pstHashNode->szCllee)))
-    {
-        return DOS_SUCC;
-    }
-    else
-    {
-        return DOS_FAIL;
-    }
-}
-
-static U32 sc_dialer_scb_hash_func(S8 *pszCallee)
-{
-    S8 *pszCurrent = NULL;
-    U32 ulHashIndex = 0;
-    SC_TRACE_IN(pszCallee, 0, 0, 0);
-
-    if (DOS_ADDR_INVALID(pszCallee))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return 0;
-    }
-
-    while (pszCurrent)
-    {
-        ulHashIndex += ((*pszCurrent) << 4 + (*pszCurrent));
-
-        pszCurrent++;
-    }
-
-    SC_TRACE_OUT();
-
-    return ulHashIndex;
-}
-
-U32 sc_dialer_scb_hash_add(S8 *pszCallee, S8 *pszCaller, SC_SCB_ST *pstSCB)
-{
-    SC_HMAP_SCB_CALLEE_NODE_ST *pstHashNode = NULL;
-    U32   ulIndex;
-
-    SC_TRACE_IN(pszCallee, pszCaller, pstSCB, 0);
-
-    if (DOS_ADDR_INVALID(pszCallee) || DOS_ADDR_INVALID(pszCaller) || DOS_ADDR_INVALID(pstSCB))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    pstHashNode = dos_dmem_alloc(sizeof(pszCaller));
-    if (DOS_ADDR_INVALID(pstHashNode))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-    dos_memzero(pstHashNode, sizeof(pszCaller));
-
-    dos_strncpy(pstHashNode->szCllee, pszCallee, sizeof(pstHashNode->szCllee));
-    pstHashNode->szCllee[sizeof(pstHashNode->szCllee) - 1] = '\0';
-    dos_strncpy(pstHashNode->szCller, pszCaller, sizeof(pstHashNode->szCller));
-    pstHashNode->szCller[sizeof(pstHashNode->szCller) - 1] = '\0';
-    pstHashNode = pstSCB;
-
-    ulIndex = sc_dialer_scb_hash_func(pszCallee);
-    hash_add_node(&g_pstMapSCBTask, (HASH_NODE_S *)pstHashNode, ulIndex, NULL);
-
-    SC_TRACE_OUT();
-    return DOS_SUCC;
-}
-
-SC_SCB_ST sc_dialer_scb_hash_find(S8 *pszCallee, S8 *pszCaller)
-{
-    SC_HMAP_SCB_CALLEE_NODE_ST *pstHashNode = NULL;
-    SC_HMAP_CSCB_CALLEE_NODE_ST  stSourceNode;
-    U32   ulIndex;
-
-    SC_TRACE_IN(pszCallee, pszCaller, 0, 0);
-
-    if (DOS_ADDR_INVALID(pszCallee) || DOS_ADDR_INVALID(pszCaller))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return NULL;
-    }
-
-    dos_memzero(&stSourceNode, sizeof(stSourceNode));
-    dos_strncpy(stSourceNode.szCllee, pszCallee, sizeof(stSourceNode.szCllee));
-    stSourceNode.szCllee[sizeof(stSourceNode.szCllee) - 1] = '\0';
-    dos_strncpy(stSourceNode.szCller, pszCaller, sizeof(stSourceNode.szCller));
-    stSourceNode.szCller[sizeof(stSourceNode.szCller) - 1] = '\0';
-
-
-    ulIndex = sc_dialer_scb_hash_func(pszCallee);
-    pstHashNode = (SC_HMAP_SCB_CALLEE_NODE_ST *)hash_find_node(g_pstMapSCBTask
-                            , ulIndex
-                            , &stSourceNode
-                            , sc_dialer_scb_hash_find_cb);
-    if (DOS_ADDR_INVALID(pstHashNode))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return NULL;
-    }
-
-    SC_TRACE_OUT();
-    return pstHashNode->pstSCB;
-}
-
-U32 sc_dialer_scb_hash_del(S8 *pszCallee, S8 *pszCaller)
-{
-    SC_HMAP_SCB_CALLEE_NODE_ST *pstHashNode = NULL;
-    SC_HMAP_SCB_CALLEE_NODE_ST  stSourceNode;
-    U32   ulIndex;
-
-    SC_TRACE_IN(pszCallee, pszCaller, 0, 0);
-
-    if (DOS_ADDR_INVALID(pszCallee) || DOS_ADDR_INVALID(pszCaller))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    dos_memzero(&stSourceNode, sizeof(stSourceNode));
-    dos_strncpy(stSourceNode.szCllee, pszCallee, sizeof(stSourceNode.szCllee));
-    stSourceNode.szCllee[sizeof(stSourceNode.szCllee) - 1] = '\0';
-    dos_strncpy(stSourceNode.szCller, pszCaller, sizeof(stSourceNode.szCller));
-    stSourceNode.szCller[sizeof(stSourceNode.szCller) - 1] = '\0';
-
-
-    ulIndex = sc_dialer_scb_hash_func(pszCallee);
-    pstHashNode = (SC_HMAP_SCB_CALLEE_NODE_ST *)hash_find_node(
-                            , ulIndex
-                            , &stSourceNode
-                            , sc_dialer_scb_hash_find_cb);
-    if (DOS_ADDR_INVALID(pstHashNode))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    hash_delete_node(g_pstMapSCBTask, (HASH_NODE_S *)pstHashNode, ulIndex);
-    pstHashNode->pstSCB = NULL;
-    pstHashNode->szCllee[0] = '\0';
-    pstHashNode->szCller[0] = '\0';
-    dos_dmem_free(pstHashNode);
-
-    SC_TRACE_OUT();
-    return pstHashNode->pstSCB;
-
-}
-#endif
 
 
 /* declare functions */
+/*
+ * 函数: U32 sc_dialer_make_call(SC_SCB_ST *pstSCB)
+ * 功能: 通过ESL发起一个呼叫
+ * 参数:
+ *      SC_SCB_ST *pstSCB : 呼叫控制块
+ * 成功返回DOS_SUCC, 否则返回DOS_FAIL;
+ */
 U32 sc_dialer_make_call(SC_SCB_ST *pstSCB)
 {
     S8    pszCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
@@ -246,16 +73,7 @@ U32 sc_dialer_make_call(SC_SCB_ST *pstSCB)
     U32   ulTimeoutForNoAnswer;
 
     SC_TRACE_IN((U64)pstSCB, 0, 0, 0);
-#if 0
-    pszCMDBuff = g_pstDialerHandle->pszCMDBuff;
-    if (!pszCMDBuff)
-    {
-        DOS_ASSERT(0);
 
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-#endif
     if (DOS_ADDR_INVALID(pstSCB))
     {
         DOS_ASSERT(0);
@@ -357,12 +175,7 @@ U32 sc_dialer_make_call(SC_SCB_ST *pstSCB)
 
         goto esl_exec_fail;
     }
-#if 0
-    if (sc_dialer_scb_hash_add(pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB) != DOS_SUCC)
-    {
-        goto esl_exec_fail;
-    }
-#endif
+
     sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
     sc_call_trace(pstSCB, "Make call successfully.");
 
@@ -371,7 +184,7 @@ U32 sc_dialer_make_call(SC_SCB_ST *pstSCB)
 
 esl_exec_fail:
 
-    sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be dos_dmem_free.");
+    sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
 
     if (DOS_ADDR_VALID(pstSCB))
     {
@@ -383,6 +196,11 @@ esl_exec_fail:
     return DOS_FAIL;
 }
 
+/*
+ * 函数: VOID *sc_dialer_runtime(VOID * ptr)
+ * 功能: 拨号模块主函数
+ * 参数:
+ */
 VOID *sc_dialer_runtime(VOID * ptr)
 {
     list_t                  *pstList;
@@ -474,6 +292,13 @@ VOID *sc_dialer_runtime(VOID * ptr)
     return NULL;
 }
 
+/*
+ * 函数: U32 sc_dialer_add_call(SC_SCB_ST *pstSCB)
+ * 功能: 向拨号模块添加一个呼叫
+ * 参数:
+ *      SC_SCB_ST *pstSCB: 呼叫控制块
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_dialer_add_call(SC_SCB_ST *pstSCB)
 {
     SC_CALL_QUEUE_NODE_ST *pstNode;
@@ -511,19 +336,15 @@ U32 sc_dialer_add_call(SC_SCB_ST *pstSCB)
     return DOS_SUCC;
 }
 
+/*
+ * 函数: U32 sc_dialer_init()
+ * 功能: 初始化拨号模块
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_dialer_init()
 {
     SC_TRACE_IN(0, 0, 0, 0);
-
-    g_pstMapSCBTask = hash_create_table(SC_MAX_SCB_HASH_NUM, NULL);
-    if (!g_pstMapSCBTask)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
 
     g_pstDialerHandle = (SC_DIALER_HANDLE_ST *)dos_dmem_alloc(sizeof(SC_DIALER_HANDLE_ST));
     if (!g_pstDialerHandle)
@@ -556,6 +377,12 @@ U32 sc_dialer_init()
     return DOS_SUCC;
 }
 
+/*
+ * 函数: U32 sc_dialer_start()
+ * 功能: 启动拨号模块
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_dialer_start()
 {
     SC_TRACE_IN(0, 0, 0, 0);
@@ -569,6 +396,12 @@ U32 sc_dialer_start()
     return DOS_SUCC;
 }
 
+/*
+ * 函数: U32 sc_dialer_shutdown()
+ * 功能: 停止拨号模块
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
 U32 sc_dialer_shutdown()
 {
     SC_TRACE_IN(0, 0, 0, 0);
