@@ -947,7 +947,7 @@ S32 cli_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
                 lRet = cli_server_send_broadcast_cmd(ulClientIndex, pRealCMD, dos_strlen(pRealCMD) + 1);
             }
 
-            cli_logr_debug("Cli Server", "CMD", DOS_TRUE, "Control Panel Send CMD:\"%s\" to process \"%s\"", szCMDBak, pszKeyWord[1]);
+            cli_logr_debug("Cli Server", "CMD", DOS_TRUE, "Control Panel Send CMD:\"%s\" to process \"%s\"", szCMDBak, pszKeyWord[0]);
 
             /* ²Ù×÷½á¹û */
             if (lRet < 0)
@@ -959,7 +959,7 @@ S32 cli_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
             goto finished;
         }
 
-        snprintf(szErrorMsg, sizeof(szErrorMsg), "Cannot find the process you are looking for(%s).\r\n", pszKeyWord[1]);
+        snprintf(szErrorMsg, sizeof(szErrorMsg), "Cannot find the process you are looking for(%s).\r\n", pszKeyWord[0]);
         iRet = -1;
         goto finished;
     }

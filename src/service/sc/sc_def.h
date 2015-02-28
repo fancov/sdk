@@ -159,7 +159,6 @@ do                                                            \
 }while(0)
 
 
-
 #define SC_TRACE_HTTPD                  (1<<1)
 #define SC_TRACE_HTTP                   (1<<2)
 #define SC_TRACE_TASK                   (1<<3)
@@ -220,6 +219,15 @@ typedef enum tagTaskStatus{
     SC_TASK_BUTT                       = 255      /* 任务状态，非法值 */
 }SC_TASK_STATUS_EN;
 
+typedef enum tagTaskMode{
+    SC_TASK_MODE_KEY4AGETN           = 1,         /* 呼叫任务模式，放音，按键之后转坐席 */
+    SC_TASK_MODE_DIRECT4AGETN,                    /* 呼叫任务模式，接通后直接转坐席 */
+    SC_TASK_MODE_AUDIO_ONLY,                      /* 呼叫任务模式，放音后结束 */
+    SC_TASK_MODE_AGENT_AFTER_AUDIO,               /* 呼叫任务模式，放音后转坐席 */
+
+    SC_TASK_MODE_BUTT
+}SC_TASK_MODE_EN;
+
 typedef enum tagTaskPriority{
     SC_TASK_PRI_LOW                       = 0,    /* 任务优先级，低优先级 */
     SC_TASK_PRI_NORMAL,                           /* 任务优先级，正常优先级 */
@@ -237,11 +245,11 @@ typedef enum tagCallNumType{
 typedef enum tagSCBStatus
 {
     SC_SCB_IDEL                           = 0,     /* SCB状态，空闲状态 */
-    SC_SCB_INIT,                                   /* SCB状态，呼叫初始化状态 */
-    SC_SCB_AUTH,                                   /* SCB状态，呼叫认证状态 */
-    SC_SCB_EXEC,                                   /* SCB状态，呼叫执行状态 */
-    SC_SCB_ACTIVE,                                 /* SCB状态，呼叫接通状态状态 */
-    SC_SCB_RELEASE,                                /* SCB状态，呼叫释放状态 */
+    SC_SCB_INIT,                                   /* SCB状态，业务初始化状态 */
+    SC_SCB_AUTH,                                   /* SCB状态，业务认证状态 */
+    SC_SCB_EXEC,                                   /* SCB状态，业务执行状态 */
+    SC_SCB_ACTIVE,                                 /* SCB状态，业务激活状态 */
+    SC_SCB_RELEASE,                                /* SCB状态，业务释放状态 */
 
     SC_SCB_BUTT
 }SC_SCB_STATUS_EN;
@@ -377,10 +385,14 @@ typedef struct tagTaskCB
     U16        usTCBNo;                           /* 编号 */
     U8         ucValid;                           /* 是否被使用 */
     U8         ucTaskStatus;                      /* 任务状态 refer to SC_TASK_STATUS_EN */
+
     U8         ucPriority;                        /* 任务优先级 */
     U8         ucAudioPlayCnt;                    /* 语言播放次数 */
     U8         bTraceON;                          /* 是否跟踪 */
     U8         bTraceCallON;                      /* 是否跟踪呼叫 */
+
+    U8         ucMode;                            /* 任务模式 refer to SC_TASK_MODE_EN*/
+    U8         aucRess[3];
 
     pthread_t  pthID;                             /* 线程ID */
     pthread_mutex_t  mutexTaskList;               /* 保护任务队列使用的互斥量 */
@@ -392,6 +404,7 @@ typedef struct tagTaskCB
 
     U16        usSiteCount;                       /* 坐席数量 */
     U16        usCallerCount;                     /* 当前主叫号码数量 */
+    U32        ulCalleeCount;
     U32        ulLastCalleeIndex;                 /* 用于数据分页 */
 
     list_t     stCalleeNumQuery;                  /* 被叫号码缓存 refer to struct tagTelNumQueryNode */
@@ -454,10 +467,11 @@ U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB);
 VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID);
 VOID sc_task_set_current_call_cnt(SC_TASK_CB_ST *pstTCB, U32 ulCurrentCall);
 U32 sc_task_get_current_call_cnt(SC_TASK_CB_ST *pstTCB);
-S32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB);
-S32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB);
+U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB);
+U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_agent_info(SC_TASK_CB_ST *pstTCB);
+S32 sc_task_load_mode(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_update_stat(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB);
@@ -465,8 +479,11 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_set_recall(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_cmd_queue_add(SC_TASK_CTRL_CMD_ST *pstCMD);
 U32 sc_task_cmd_queue_del(SC_TASK_CTRL_CMD_ST *pstCMD);
+S8 *sc_task_get_audio_file(U32 ulTCBNo);
 U32 sc_task_audio_playcnt(U32 ulTCBNo);
+U32 sc_task_get_mode(U32 ulTCBNo);
 U32 sc_task_get_timeout_for_noanswer(U32 ulTCBNo);
+U32 sc_task_get_agent_queue(U32 ulTCBNo);
 U32 sc_dialer_add_call(SC_SCB_ST *pstSCB);
 VOID sc_call_trace(SC_SCB_ST *pstSCB, const S8 *szFormat, ...);
 U32 sc_task_callee_set_recall(SC_TASK_CB_ST *pstTCB, U32 ulIndex);
@@ -474,7 +491,6 @@ U32 sc_task_load_audio(SC_TASK_CB_ST *pstTCB);
 BOOL sc_scb_is_valid(SC_SCB_ST *pstSCB);
 U32 sc_task_init(SC_TASK_CB_ST *pstTCB);
 BOOL sc_call_check_service(SC_SCB_ST *pstSCB, U32 ulService);
-
 U32 sc_task_continue(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_pause(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_start(SC_TASK_CB_ST *pstTCB);

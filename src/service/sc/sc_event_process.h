@@ -16,7 +16,8 @@
 #define SC_EP_EVENT_LIST \
             "CHANNEL_PARK " \
             "CHANNEL_CREATE " \
-            "CHANNEL_EXECUTE_COMPLETE " \
+            "CHANNEL_ANSWER " \
+            "PLAYBACK_STOP " \
             "CHANNEL_HANGUP " \
             "CHANNEL_HANGUP_COMPLETE " \
             "DTMF " \

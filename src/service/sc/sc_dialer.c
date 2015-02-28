@@ -49,8 +49,6 @@ typedef struct tagSCDialerHandle
     S8                  *pszCMDBuff;
 }SC_DIALER_HANDLE_ST;
 
-extern S8 *sc_task_get_audio_file(U32 ulTCBNo);
-
 /* dialerÄ£¿é¿ØÖÆ¿éÊ¾Àý */
 SC_DIALER_HANDLE_ST  *g_pstDialerHandle = NULL;
 
@@ -119,15 +117,13 @@ U32 sc_dialer_make_call(SC_SCB_ST *pstSCB)
                 , SC_ESL_CMD_BUFF_LEN
                 , "bgapi originate {ignore_early_media=true,origination_caller_id_number=%s,"
                   "origination_caller_id_name=%s,scb_number=%d,task_id=%d,auto_call=true,originate_timeout=%d}loopback/%s "
-                  "&loop_playback('+%d %s') \r\n"
+                  "&park() \r\n"
                 , pstSCB->szCallerNum
                 , pstSCB->szCallerNum
                 , pstSCB->usSCBNo
                 , pstSCB->ulTaskID
                 , ulTimeoutForNoAnswer
-                , pstSCB->szCalleeNum
-                , ulPlayCnt
-                , pszAudioFilePath);
+                , pstSCB->szCalleeNum);
 
     sc_logr_debug(SC_DIALER, "ESL CMD: %s", pszCMDBuff);
 

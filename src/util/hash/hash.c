@@ -126,6 +126,7 @@ DLLEXPORT VOID hash_add_node (HASH_TABLE_S *pHashTab, HASH_NODE_S *pNode, U32 ul
 
  if(pHashTab->pInsertFunc == NULL){
     HASH_ADD_NODE(&pHashTab->HashList[ulHashIndex],pNode);
+    pHashTab->NodeNum++;
  }
  else{
     HASH_Scan_Bucket(pHashTab,ulHashIndex,pTmpNodePtr,HASH_NODE_S *){

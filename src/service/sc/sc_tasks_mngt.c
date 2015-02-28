@@ -66,16 +66,17 @@ static S32 sc_task_load_callback(VOID *pArg, S32 argc, S8 **argv, S8 **columnNam
                 return DOS_FAIL;
             }
         }
-
-        pstTCB = sc_tcb_alloc();
-        if (pstTCB)
-        {
-            DOS_ASSERT(0);
-            continue;
-        }
-
-        sc_task_set_owner(pstTCB, ulTaskID, ulCustomID);
     }
+
+    pstTCB = sc_tcb_alloc();
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_task_set_owner(pstTCB, ulTaskID, ulCustomID);
+
 
     return DOS_SUCC;
 }
@@ -96,8 +97,7 @@ U32 sc_task_mngt_load_task()
 
     ulLength = dos_snprintf(szSqlQuery
                 , sizeof(szSqlQuery)
-                , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask WHERE tbl_calltask.status=%d"
-                , SC_TASK_STATUS_DB_START);
+                , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask;");
 
     ulResult = db_query(g_pstSCDBHandle
                             , szSqlQuery
@@ -611,12 +611,6 @@ U32 sc_task_mngt_start()
 
     pthread_create(&g_pstTaskMngtInfo->pthID, NULL, sc_task_mngt_runtime, NULL);
 
-    if (!g_pstTaskMngtInfo->ulTaskCount)
-    {
-        SC_TRACE_OUT();
-        return DOS_SUCC;
-    }
-
     for (ulIndex=0; ulIndex<SC_MAX_TASK_NUM; ulIndex++)
     {
         pstTCB = &g_pstTaskMngtInfo->pstTaskList[ulIndex];
@@ -641,8 +635,12 @@ U32 sc_task_mngt_start()
                 sc_tcb_free(pstTCB);
                 continue;
             }
+
+            g_pstTaskMngtInfo->ulTaskCount++;
         }
     }
+
+    sc_logr_info(SC_TASK, "Start call task mngt service finished. Total load %d call task(s).", g_pstTaskMngtInfo->ulTaskCount);
 
     return DOS_SUCC;
 }

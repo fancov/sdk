@@ -50,6 +50,31 @@ pthread_mutex_t   g_mutexGroupList    = PTHREAD_MUTEX_INITIALIZER;
 /* 坐席组个数 */
 U32               g_ulGroupCount    = 0;
 
+
+/*
+ * 函  数: sc_acd_hash_func4site
+ * 功  能: 坐席的hash函数，通过分机号计算一个hash值
+ * 参  数:
+ *         S8 *pszExension  : 分机号
+ *         U32 *pulHashIndex: 输出参数，计算之后的hash值
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ **/
+U32 sc_acd_agent_update_status(SC_ACD_SITE_DESC_ST *pstAgent, U32 ulStatus)
+{
+    if (DOS_ADDR_INVALID(pstAgent)
+        || ulStatus < SC_ACD_BUTT)
+    {
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&pstAgent->mutexLock);
+    pstAgent->usStatus = (U16)ulStatus;
+    pthread_mutex_unlock(&pstAgent->mutexLock);
+
+
+    return DOS_SUCC;
+}
+
 /*
  * 函  数: sc_acd_hash_func4site
  * 功  能: 坐席的hash函数，通过分机号计算一个hash值
@@ -233,7 +258,8 @@ U32 sc_acd_add_site(SC_ACD_SITE_DESC_ST *pstSiteInfo, U32 ulGrpID)
 
 
     /* 添加到队列 */
-    dos_memcpy(pstSiteData, pstSiteInfo, sizeof(pstSiteInfo));
+    dos_memcpy(pstSiteData, pstSiteInfo, sizeof(SC_ACD_SITE_DESC_ST));
+    pthread_mutex_init(&pstSiteData->mutexLock, NULL);
     pstSiteListNode->pstSiteInfo = pstSiteData;
     pstSiteListNode->ulID = pstGroupListNode->usCount;
     pstGroupListNode->usCount++;
@@ -465,6 +491,8 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
         return DOS_FAIL;
     }
 
+    sc_logr_debug(SC_ACD, "Load Group. ID:%d, Customer:%d, Policy: %d, Name: %s", ulGroupID, ulCustomID, ulPolicy, pszGroupName);
+
     /* 确定队列 */
     sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
@@ -570,6 +598,8 @@ static VOID sc_acd_site_hash_wolk4acd(HASH_NODE_S * pNode, VOID * pSymName)
     SC_ACD_SITE_HASH_NODE_ST   *pstSiteHashNode = NULL;
     SC_ACD_FIND_SITE_PARAM_ST  *pstFindParam   = NULL;
 
+    printf("1!!!!!!\r\n");
+
     pstSiteHashNode = (SC_ACD_SITE_HASH_NODE_ST *)pNode;
     pstFindParam    = (SC_ACD_FIND_SITE_PARAM_ST  *)pSymName;
     if (DOS_ADDR_INVALID(pstSiteHashNode)
@@ -579,7 +609,7 @@ static VOID sc_acd_site_hash_wolk4acd(HASH_NODE_S * pNode, VOID * pSymName)
         return;
     }
 
-    if (DOS_SUCC == pstFindParam->pstResult)
+    if (DOS_SUCC == pstFindParam->ulResult)
     {
         return;
     }
@@ -605,6 +635,9 @@ static VOID sc_acd_site_hash_wolk4acd(HASH_NODE_S * pNode, VOID * pSymName)
         pstFindParam->pstResult = pstSiteHashNode->pstSiteInfo;
         pstFindParam->ulResult  = DOS_SUCC;
     }
+
+    printf("2!!!!!!\r\n");
+
 
     return;
 }
@@ -632,6 +665,7 @@ SC_ACD_SITE_DESC_ST  *sc_acd_get_site_by_grpid(U32 ulGroupID)
 
     pthread_mutex_lock(&pstGroupListNode->mutexSiteQueue);
     stFindParam.pstResult = NULL;
+    stFindParam.ulResult = DOS_FAIL;
     stFindParam.ulPolocy = pstGroupListNode->ucACDPolicy;
     stFindParam.ulLastSieUsed = pstGroupListNode->usLastUsedSite;
     hash_walk_table(pstGroupListNode->pstSiteQueue, (VOID *)&stFindParam, sc_acd_site_hash_wolk4acd);
@@ -640,6 +674,7 @@ SC_ACD_SITE_DESC_ST  *sc_acd_get_site_by_grpid(U32 ulGroupID)
     if (DOS_SUCC != stFindParam.ulResult
         || NULL == stFindParam.pstResult)
     {
+        DOS_ASSERT(0);
         return NULL;
     }
 
@@ -649,7 +684,7 @@ SC_ACD_SITE_DESC_ST  *sc_acd_get_site_by_grpid(U32 ulGroupID)
 static S32 sc_acd_init_site_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
 {
     SC_ACD_SITE_DESC_ST        stSiteInfo;
-    U32 ulSiteID, ulCustomID, ulGroupID, ulRecordFlag, ulIsHeader;
+    U32 ulSiteID, ulCustomID, ulGroupID, ulGroupID1, ulRecordFlag, ulIsHeader;
     S8  *pszSiteID, *pszCustomID, *pszGroupID1, *pszGroupID2
         , *pszExten, *pszGroupID, *pszJobNum, *pszUserID, *pszRecordFlag
         , *pszIsHeader;
@@ -675,7 +710,8 @@ static S32 sc_acd_init_site_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **p
         || DOS_ADDR_INVALID(pszIsHeader)
         || dos_atoul(pszSiteID, &ulSiteID) < 0
         || dos_atoul(pszCustomID, &ulCustomID) < 0
-        || dos_atoul(pszGroupID, &ulGroupID) < 0
+        || dos_atoul(pszGroupID1, &ulGroupID) < 0
+        || dos_atoul(pszGroupID2, &ulGroupID1) < 0
         || dos_atoul(pszRecordFlag, &ulRecordFlag) < 0
         || dos_atoul(pszIsHeader, &ulIsHeader) < 0)
     {
@@ -686,9 +722,14 @@ static S32 sc_acd_init_site_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **p
     stSiteInfo.ulSiteID = ulSiteID;
     stSiteInfo.ulCustomerID = ulCustomID;
     stSiteInfo.aulGroupID[0] = ulGroupID;
+    stSiteInfo.aulGroupID[1] = ulGroupID1;
     stSiteInfo.bValid = DOS_TRUE;
+    stSiteInfo.usStatus = SC_ACD_IDEL;
     stSiteInfo.bRecord = ulRecordFlag;
     stSiteInfo.bGroupHeader = ulIsHeader;
+
+    sc_logr_debug(SC_ACD, "Load Agent. ID: %d, Customer: %d, Group1: %d, Group2: %d", ulSiteID, ulCustomID, ulGroupID, ulGroupID1);
+    sc_logr_debug(SC_ACD, "Load Agent. ID: %s, Customer: %s, Group1: %s, Group2: %s", pszSiteID, pszCustomID, pszGroupID1, pszGroupID2);
 
     dos_strncpy(stSiteInfo.szUserID, pszUserID, sizeof(stSiteInfo.szUserID));
     stSiteInfo.szUserID[sizeof(stSiteInfo.szUserID) - 1] = '\0';
@@ -779,7 +820,7 @@ static U32 sc_acd_deinit_group_queue()
     return DOS_SUCC;
 }
 
-static VOID sc_ack_site_wolk4init(HASH_NODE_S *pNode, VOID *pParam)
+static VOID sc_acd_site_wolk4init(HASH_NODE_S *pNode, VOID *pParam)
 {
     SC_ACD_GRP_HASH_NODE_ST  *pstGroupNode = NULL;
     SC_ACD_SITE_HASH_NODE_ST *pstSiteNode = NULL, *pstSiteNodeNew = NULL;
@@ -805,6 +846,10 @@ static VOID sc_ack_site_wolk4init(HASH_NODE_S *pNode, VOID *pParam)
                             , sc_acd_grp_hash_find);
             if (DOS_ADDR_INVALID(pstGroupNode))
             {
+                sc_logr_error(SC_ACD, "Find some agent not in any group. Agent ID: %d, Group ID:%d"
+                                        , pstSiteNode->pstSiteInfo->ulSiteID
+                                        , pstSiteNode->pstSiteInfo->aulGroupID[ulIndex]);
+
                 pthread_mutex_unlock(&g_mutexGroupList);
                 continue;
             }
@@ -812,6 +857,9 @@ static VOID sc_ack_site_wolk4init(HASH_NODE_S *pNode, VOID *pParam)
             pstSiteNodeNew = (SC_ACD_SITE_HASH_NODE_ST *)dos_dmem_alloc(sizeof(SC_ACD_SITE_HASH_NODE_ST));
             if (DOS_ADDR_INVALID(pstSiteNodeNew))
             {
+                sc_logr_error(SC_ACD, "Add agent to group FAILED, Alloc memory fail. Agent ID: %d, Group ID:%d"
+                        , pstSiteNode->pstSiteInfo->ulSiteID
+                        , pstSiteNode->pstSiteInfo->aulGroupID[ulIndex]);
                 pthread_mutex_unlock(&g_mutexGroupList);
                 continue;
             }
@@ -840,7 +888,7 @@ static U32 sc_acd_init_relationship()
     {
         HASH_Scan_Bucket(g_pstSiteList, ulHashIndex, pstHashNode, HASH_NODE_S *)
         {
-            sc_ack_site_wolk4init(pstHashNode, NULL);
+            sc_acd_site_wolk4init(pstHashNode, NULL);
         }
     }
 
@@ -892,6 +940,8 @@ U32 sc_acd_init()
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
+    sc_logr_info(SC_ACD, "Init group list finished. Load %d agent group(s).", g_pstGroupList->NodeNum);
+
 
     if (sc_acd_init_site_queue() != DOS_SUCC)
     {
@@ -909,6 +959,7 @@ U32 sc_acd_init()
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
+    sc_logr_info(SC_ACD, "Init agent list finished. Load %d agent(s).", g_pstSiteList->NodeNum);
 
     if (sc_acd_init_relationship() != DOS_SUCC)
     {
