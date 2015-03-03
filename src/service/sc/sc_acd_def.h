@@ -90,6 +90,7 @@ typedef struct tagACDSiteDesc{
 
 U32 sc_acd_init();
 SC_ACD_SITE_DESC_ST  *sc_acd_get_site_by_grpid(U32 ulGroupID);
+U32 sc_acd_agent_update_status(SC_ACD_SITE_DESC_ST *pstAgent, U32 ulStatus);
 
 #endif
 

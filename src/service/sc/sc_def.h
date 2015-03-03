@@ -168,6 +168,70 @@ do                                                            \
 #define SC_TRACE_FUNC                   (1<<7)
 #define SC_TRACE_ALL                    0xFFFFFFFF
 
+
+#define SC_EP_EVENT_LIST \
+            "CHANNEL_PARK " \
+            "CHANNEL_CREATE " \
+            "CHANNEL_ANSWER " \
+            "PLAYBACK_STOP " \
+            "CHANNEL_HANGUP " \
+            "CHANNEL_HANGUP_COMPLETE " \
+            "DTMF " \
+            "SESSION_HEARTBEAT "
+
+
+enum {
+    SC_SERV_OUTBOUND_CALL           = 0,   /* 由FS向外部(包括SIP、PSTN)发起的呼叫 */
+    SC_SERV_INBOUND_CALL            = 1,   /* 由外部(包括SIP、PSTN)向FS发起的呼叫 */
+    SC_SERV_INTERNAL_CALL           = 2,   /* FS和SIP终端之间的呼叫 */
+    SC_SERV_EXTERNAL_CALL           = 3,   /* FS和PSTN之间的呼叫 */
+
+    SC_SERV_AUTO_DIALING            = 4,   /* 自动拨号外乎，比例呼叫 */
+    SC_SERV_PREVIEW_DIALING         = 5,   /* 预览外乎 */
+    SC_SERV_PREDICTIVE_DIALING      = 6,   /* 预测外乎 */
+
+    SC_SERV_RECORDING               = 7,   /* 录音业务 */
+    SC_SERV_FORWORD_CFB             = 8,   /* 忙转业务 */
+    SC_SERV_FORWORD_CFU             = 9,   /* 无条件转业务 */
+    SC_SERV_FORWORD_CFNR            = 10,   /* 无应答转业务 */
+    SC_SERV_BLIND_TRANSFER          = 11,  /* 忙转业务 */
+    SC_SERV_ATTEND_TRANSFER         = 12,  /* 协商转业务 */
+
+    SC_SERV_PICK_UP                 = 13,  /* 代答业务 */        /* ** */
+    SC_SERV_CONFERENCE              = 14,  /* 会议 */
+    SC_SERV_VOICE_MAIL_RECORD       = 15,  /* 语言邮箱 */
+    SC_SERV_VOICE_MAIL_GET          = 16,  /* 语言邮箱 */
+
+    SC_SERV_SMS_RECV                = 17,  /* 接收短信 */
+    SC_SERV_SMS_SEND                = 18,  /* 发送短信 */
+    SC_SERV_MMS_RECV                = 19,  /* 接收彩信 */
+    SC_SERV_MMS_SNED                = 20,  /* 发送彩信 */
+
+    SC_SERV_FAX                     = 21,  /* 传真业务 */
+    SC_SERV_INTERNAL_SERVICE        = 22,  /* 内部业务 */
+
+    SC_SERV_AGENT_CALLBACK          = 23,  /* 回呼坐席 */
+    SC_SERV_AGENT_SIGNIN            = 24,  /* 坐席签入 */
+
+    SC_SERV_BUTT                    = 255
+};
+
+enum {
+    SC_NUM_TYPE_USERID              = 0,   /* 号码为SIP User ID */
+    SC_NUM_TYPE_EXTENSION,                 /* 号码为分机号 */
+    SC_NUM_TYPE_OUTLINE,                   /* 号码为长号 */
+
+    SC_NUM_TYPE_BUTT
+};
+
+enum tagCallDirection{
+    SC_DIRECTION_PSTN,                     /* 呼叫方向来自于PSTN */
+    SC_DIRECTION_SIP,                       /* 呼叫方向来自于SIP UA */
+
+    SC_DIRECTION_INVALID                    /* 非法值 */
+};
+
+
 typedef enum tagSiteAccompanyingStatus{
     SC_SITE_ACCOM_DISABLE              = 0,       /* 分机随行，禁止 */
     SC_SITE_ACCOM_ENABLE,                         /* 分机随行，允许 */
@@ -220,7 +284,7 @@ typedef enum tagTaskStatus{
 }SC_TASK_STATUS_EN;
 
 typedef enum tagTaskMode{
-    SC_TASK_MODE_KEY4AGETN           = 1,         /* 呼叫任务模式，放音，按键之后转坐席 */
+    SC_TASK_MODE_KEY4AGENT           = 1,         /* 呼叫任务模式，放音，按键之后转坐席 */
     SC_TASK_MODE_DIRECT4AGETN,                    /* 呼叫任务模式，接通后直接转坐席 */
     SC_TASK_MODE_AUDIO_ONLY,                      /* 呼叫任务模式，放音后结束 */
     SC_TASK_MODE_AGENT_AFTER_AUDIO,               /* 呼叫任务模式，放音后转坐席 */
@@ -253,6 +317,7 @@ typedef enum tagSCBStatus
 
     SC_SCB_BUTT
 }SC_SCB_STATUS_EN;
+
 
 typedef struct tagCallerQueryNode{
     U16        usNo;                              /* 编号 */
@@ -332,7 +397,8 @@ typedef struct tagSCSCB{
 
     U8        aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 列表*/
     U8        ucCurrentSrvInd;                    /* 当前空闲的业务类型索引 */
-    U8        aucRes[3];
+    U8        ucCurrentPlyCnt;                    /* 当前放音次数 */
+    U8        aucRes;
 
     U16       usHoldCnt;                          /* 被hold的次数 */
     U16       usHoldTotalTime;                    /* 被hold的总时长 */
@@ -508,6 +574,9 @@ SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
 U32 sc_scb_hash_tables_delete(S8 *pszUUID);
 U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
 
+
+U32 sc_ep_search_route(SC_SCB_ST *pstSCB);
+U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 ulLength);
 
 
 
