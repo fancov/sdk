@@ -8,7 +8,12 @@
 import file_info
 
 def generate_customer_head(filename, doc):
-    if filename is '':
+    '''
+    @param filename: 文件名
+    @param doc: 文件对象 
+    @todo: 生成客户配置文件的头部
+    '''
+    if str(filename).strip() == '':
         print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'file name is',filename
         return
     if doc is None:

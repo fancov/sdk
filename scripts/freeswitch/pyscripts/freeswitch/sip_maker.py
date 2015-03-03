@@ -14,42 +14,29 @@ import file_info
 from xml.dom.minidom import Document
 
 def make_sip(sip_id, customer_id = 'default', path = '../cfg/'):
+    '''
+    @param sip_id: sip账户id
+    @param customer_id: 客户id
+    @param path: sip账户配置文件路径
+    @todo: 生成sip账户配置文件
+    '''
     if sip_id == '':
         print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'sip_id is ', sip_id
         return
-    flag_sip = 0
-    flag_customer = 0
-    if path[-1] <> '/':
-        path = path + '/'
-    
-    if type(customer_id) is types.IntType:
-        path = path + str(customer_id) + '/'
-    elif type(customer_id) is types.StringType:
-        path = path + customer_id + '/'
-        flag_customer = 1
-        
-    if not os.path.exists(path):
-        os.makedirs(path)
-        
-    if type(sip_id) is types.IntType:
-        path = path + str(sip_id) + '.xml'
-    elif type(sip_id) is types.StringType:
-        path = path + sip_id + '.xml'
-        flag_sip = 1
-    
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), path
+
+    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'path:',path
         
     doc = Document()
     
     params_node = doc.createElement('params')
     variables_node = doc.createElement('variables')
     
-    param_dict = {'password':'$${default_password}', 'vm-password':sip_id if flag_sip == 1 else str(sip_id)}
+    param_dict = {'password':'$${default_password}', 'vm-password':sip_id}
     variable_dict = {'toll_allow':'domestic,international,local',
-            'accountcode':sip_id if flag_sip == 1 else str(sip_id),
-            'user_context':customer_id if flag_customer == 1 else str(customer_id),
-            'effective_caller_id_name':sip_id if flag_sip == 1 else str(sip_id),
-            'effective_caller_id_number':sip_id if flag_sip == 1 else str(sip_id),
+            'accountcode':sip_id,
+            'user_context':customer_id,
+            'effective_caller_id_name':sip_id,
+            'effective_caller_id_number':sip_id,
             'outbound_caller_id_name':'$${outbound_caller_name}',
             'outbound_caller_id_number':'$${outbound_caller_id}',
             'callgroup':'techsupport'
@@ -59,8 +46,8 @@ def make_sip(sip_id, customer_id = 'default', path = '../cfg/'):
     loop = 0
     for key in param_dict:
         param_node = doc.createElement('param')
-        param_node.setAttribute('name', key)
-        param_node.setAttribute('value', param_dict[key])
+        param_node.setAttribute('name', str(key))
+        param_node.setAttribute('value', str(param_dict[key]))
         prms_node.append(param_node)
         params_node.appendChild(prms_node[loop])
         loop = loop + 1
@@ -69,8 +56,8 @@ def make_sip(sip_id, customer_id = 'default', path = '../cfg/'):
     loop = 0
     for key in variable_dict:
         variable_node = doc.createElement('variable')
-        variable_node.setAttribute('name', key)
-        variable_node.setAttribute('value', variable_dict[key])
+        variable_node.setAttribute('name', str(key))
+        variable_node.setAttribute('value', str(variable_dict[key]))
         vari_node.append(variable_node)
         variables_node.appendChild(vari_node[loop])
         loop = loop + 1
@@ -84,6 +71,6 @@ def make_sip(sip_id, customer_id = 'default', path = '../cfg/'):
     include_node.appendChild(user_node)
     doc.appendChild(include_node)
     dom_to_xml.dom_to_pretty_xml(path, doc)
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),path
+    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'path:',path
     
         

@@ -13,12 +13,15 @@ from db_conn import CONN
 import dom_to_xml
 
 def phone_route():
+    '''
+    @todo: 生成网关配置
+    '''
     global CONN
-    
     doc = Document()
-    
     db_conn.connect_db()
-    sql_cmd = 'select distinct CONVERT(id, CHAR(10)) as id from tbl_relaygrp'
+  
+    # 查找出所有中继组id
+    sql_cmd = 'SELECT DISTINCT CONVERT(id, CHAR(10)) AS id FROM tbl_relaygrp'
     print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'SQL:', sql_cmd
     cursor = db_conn.CONN.cursor()
     cursor.execute(sql_cmd)
@@ -38,16 +41,17 @@ def phone_route():
         cfg_path = cfg_dir + results[loop][0] + '.xml'
         dom_to_xml.dom_to_pretty_xml(cfg_path, doc)
         dom_to_xml.del_xml_head(cfg_path)
-        
-    
     
 def get_route_param(id):
     '''
-    @todo: create router table
+    @param id: 网关id
+    @todo: 创建一个路由表
     '''
     global CONN 
     db_conn.connect_db()
-    sql_cmd = 'select name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) as register,reg_transport,CONVERT(retry_secs, CHAR(20)) as retry_secs, CONVERT(cid_in_from,CHAR(20)) as cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20))as exten_in_contact,CONVERT(ping, CHAR(20)) as ping from tbl_relaygrp where id=%d' % (id)
+    
+    # 查找出所有的网关参数值
+    sql_cmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_relaygrp WHERE id=%d' % (id)
     print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'SQL:',sql_cmd
     cursor = db_conn.CONN.cursor()
     cursor.execute(sql_cmd)
@@ -57,6 +61,11 @@ def get_route_param(id):
     return results
 
 def make_route(id, doc):
+    '''
+    @param id: 网关id
+    @param doc: 文档对象
+    @todo: 生成一个网关配置DOM
+    '''
     results = get_route_param(id)  
     gateway_node = doc.createElement('gateway')
     gateway_node.setAttribute('name', results[0][0])
@@ -67,6 +76,8 @@ def make_route(id, doc):
     for loop in range(len(param_names)):
         param_node = doc.createElement('param')
         param_node.setAttribute('name', param_names[loop].strip())
+        
+        # 参数'register'和'caller-id-in-from'的参数值使用布尔值去表示
         if param_names[loop].strip() == 'register' or param_names[loop].strip() == 'caller-id-in-from':
             if param_values[loop].strip() == '0':     
                 param_node.setAttribute('value', 'false')
