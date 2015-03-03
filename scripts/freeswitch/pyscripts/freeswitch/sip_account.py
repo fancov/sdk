@@ -16,6 +16,8 @@ import db_config
 
 def generate_sip_account(sip_id, customer_id):
     '''
+    @param sip_id: sip账户id
+    @param customer_id: sip账户所属客户id
     @todo: generate sip account configuration
     '''
     if str(sip_id).strip() == '':
@@ -28,7 +30,7 @@ def generate_sip_account(sip_id, customer_id):
     cfg_path = db_config.get_db_param()['cfg_path']
     if cfg_path[-1] != '/':
         cfg_path = cfg_path + '/'
-    if os.path.exists(cfg_path) is not True:
+    if os.path.exists(cfg_path) is False:
         os.makedirs(cfg_path) 
     sip_path = cfg_path + 'directory/' + str(customer_id) + '/' + str(sip_id) + '.xml'
     
