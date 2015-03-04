@@ -1185,7 +1185,7 @@ U32 sc_load_route()
     S8 szSQL[1024];
 
     dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 0;");
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 1;");
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_route_cb, NULL, NULL);
 
@@ -2136,6 +2136,82 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
 }
 
 /**
+ * 函数: U32 sc_ep_call_agent(esl_handle_t *pstHandle, SC_SCB_ST *pstSCB)
+ * 功能: 群呼任务之后接通坐席
+ * 参数:
+ *      esl_event_t *pstEvent   : ESL 事件
+ *      SC_SCB_ST *pstSCB       : 业务控制块
+ * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 sc_ep_call_agent(esl_handle_t *pstHandle, SC_SCB_ST *pstSCB)
+{
+    U32 ulTaskAgentQueueID = U32_BUTT;
+    S8            szAPPParam[512] = { 0 };
+    SC_ACD_AGENT_INFO_ST stAgentInfo;
+
+    if (DOS_ADDR_INVALID(pstHandle)
+        || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
+    ulTaskAgentQueueID = sc_task_get_agent_queue(pstSCB->usTCBNo);
+    if (U32_BUTT == ulTaskAgentQueueID)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(SC_ESL, "Cannot get the agent queue for the task %d", pstSCB->ulTaskID);
+        goto proc_error;
+    }
+
+    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_notice(SC_ESL, "There is no useable agent for the task %d. Queue: %d. ", pstSCB->ulTaskID, ulTaskAgentQueueID);
+        goto proc_error;
+    }
+
+    sc_logr_info(SC_ESL, "Select agent for call OK. Agent ID: %d, User ID: %s, Externsion: %s, Job-Num: %s"
+                    , stAgentInfo.ulSiteID
+                    , stAgentInfo.szUserID
+                    , stAgentInfo.szExtension
+                    , stAgentInfo.szEmpNo);
+
+    dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                    , "bgapi originate {other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}user/%s &park() \r\n"
+                    , pstSCB->usSCBNo
+                    , SC_SERV_AGENT_CALLBACK
+                    , pstSCB->szCalleeNum
+                    , pstSCB->szCalleeNum
+                    , stAgentInfo.szUserID);
+
+    if (sc_ep_esl_execute_cmd(pstHandle, szAPPParam) != DOS_SUCC)
+    {
+        /* @TODO 用户体验优化 */
+        goto proc_error;
+    }
+    else
+    {
+        /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
+        esl_send(pstHandle, szAPPParam);
+        sc_acd_agent_update_status(stAgentInfo.szUserID, SC_ACD_BUSY);
+
+        sc_ep_esl_execute(pstHandle, "sleep", "1000", pstSCB->szUUID);
+        sc_ep_esl_execute(pstHandle, "speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
+    }
+
+    return DOS_SUCC;
+
+proc_error:
+    sc_ep_esl_execute(pstHandle, "hangup", NULL, pstSCB->szUUID);
+    return DOS_FAIL;
+}
+
+/**
  * 函数: U32 sc_ep_incoming_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
  * 功能: 处理由PSTN呼入到SIP测的呼叫
  * 参数:
@@ -2209,9 +2285,11 @@ U32 sc_ep_incoming_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_
                 sc_ep_esl_execute(pstHandle, "bridge", szCallString, pszUUID);
                 sc_ep_esl_execute(pstHandle, "hangup", szCallString, pszUUID);
                 break;
+
             case SC_DID_BIND_TYPE_QUEUE:
-                /* @TODO 呼叫坐席 */
+                sc_ep_call_agent(pstHandle, pstSCB);
                 break;
+
             default:
                 DOS_ASSERT(0);
 
@@ -2333,8 +2411,6 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
 {
     S8      szAPPParam[512]    = { 0, };
     U32     ulTaskMode         = U32_BUTT;
-    U32     ulTaskAgentQueueID = U32_BUTT;
-    SC_ACD_AGENT_INFO_ST stAgent;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -2392,51 +2468,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
 
         /* 直接接通坐席 */
         case SC_TASK_MODE_DIRECT4AGETN:
-            /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
-            ulTaskAgentQueueID = sc_task_get_agent_queue(pstSCB->usTCBNo);
-            if (U32_BUTT == ulTaskAgentQueueID)
-            {
-                DOS_ASSERT(0);
-
-                sc_logr_info(SC_ESL, "Cannot get the agent queue for the task %d", pstSCB->ulTaskID);
-                goto auto_call_proc_error;
-            }
-
-            if (sc_acd_get_agent_by_grpid(&stAgent, ulTaskAgentQueueID) != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-
-                sc_logr_notice(SC_ESL, "There is no useable agent for the task %d. Queue: %d. ", pstSCB->ulTaskID, ulTaskAgentQueueID);
-                goto auto_call_proc_error;
-            }
-
-            sc_logr_info(SC_ESL, "Select agent for call OK. Agent ID: %d, User ID: %s, Externsion: %s, Job-Num: %s"
-                        , stAgent.ulSiteID
-                        , stAgent.szUserID
-                        , stAgent.szExtension
-                        , stAgent.szEmpNo);
-
-            dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                            , "bgapi originate {other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}user/%s &park() \r\n"
-                            , pstSCB->usSCBNo
-                            , SC_SERV_AGENT_CALLBACK
-                            , pstSCB->szCalleeNum
-                            , pstSCB->szCalleeNum
-                            , stAgent.szUserID);
-
-            if (sc_ep_esl_execute_cmd(pstHandle, szAPPParam) != DOS_SUCC)
-            {
-                /* @TODO 用户体验优化 */
-                sc_ep_esl_execute(pstHandle, "hangup", NULL, pstSCB->szUUID);
-            }
-            else
-            {
-                /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
-                sc_acd_agent_update_status(stAgent.szUserID, SC_ACD_BUSY);
-
-                sc_ep_esl_execute(pstHandle, "sleep", "1000", pstSCB->szUUID);
-                sc_ep_esl_execute(pstHandle, "speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
-            }
+            sc_ep_call_agent(pstHandle, pstSCB);
 
             break;
 
@@ -3235,11 +3267,8 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
 U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     U32           ulTaskMode = 0;
-    U32           ulTaskAgentQueueID = U32_BUTT;
     U32           ulMainService = U32_BUTT;
-    S8            szAPPParam[512] = { 0 };
     S8            *pszMainService = NULL;
-    SC_ACD_AGENT_INFO_ST stAgentInfo;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -3299,52 +3328,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                         /* 放音后接通坐席 */
                         case SC_TASK_MODE_AGENT_AFTER_AUDIO:
                             /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
-                             ulTaskAgentQueueID = sc_task_get_agent_queue(pstSCB->usTCBNo);
-                             if (U32_BUTT == ulTaskAgentQueueID)
-                             {
-                                 DOS_ASSERT(0);
-
-                                 sc_logr_info(SC_ESL, "Cannot get the agent queue for the task %d", pstSCB->ulTaskID);
-                                 goto proc_error;
-                             }
-
-                             if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID) != DOS_SUCC)
-                             {
-                                 DOS_ASSERT(0);
-
-                                 sc_logr_notice(SC_ESL, "There is no useable agent for the task %d. Queue: %d. ", pstSCB->ulTaskID, ulTaskAgentQueueID);
-                                 goto proc_error;
-                             }
-
-                             sc_logr_info(SC_ESL, "Select agent for call OK. Agent ID: %d, User ID: %s, Externsion: %s, Job-Num: %s"
-                                         , stAgentInfo.ulSiteID
-                                         , stAgentInfo.szUserID
-                                         , stAgentInfo.szExtension
-                                         , stAgentInfo.szEmpNo);
-
-                             dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                                             , "bgapi originate {other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}user/%s &park() \r\n"
-                                             , pstSCB->usSCBNo
-                                             , SC_SERV_AGENT_CALLBACK
-                                             , pstSCB->szCalleeNum
-                                             , pstSCB->szCalleeNum
-                                             , stAgentInfo.szUserID);
-
-                             if (sc_ep_esl_execute_cmd(pstHandle, szAPPParam) != DOS_SUCC)
-                             {
-                                 /* @TODO 用户体验优化 */
-                                 sc_ep_esl_execute(pstHandle, "hangup", NULL, pstSCB->szUUID);
-                             }
-                             else
-                             {
-                                 /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
-                                 esl_send(pstHandle, szAPPParam);
-                                 sc_acd_agent_update_status(stAgentInfo.szUserID, SC_ACD_BUSY);
-
-                                 sc_ep_esl_execute(pstHandle, "sleep", "1000", pstSCB->szUUID);
-                                 sc_ep_esl_execute(pstHandle, "speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
-                             }
-
+                            sc_ep_call_agent(pstHandle, pstSCB);
                             break;
 
                         /* 这个地方出故障了 */
