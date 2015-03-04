@@ -22,7 +22,6 @@ extern "C"{
 #include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_acd_def.h"
-#include "sc_event_process.h"
 #include "sc_ep.h"
 
 /* 应用外部变量 */
@@ -2333,7 +2332,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     S8      szAPPParam[512]    = { 0, };
     U32     ulTaskMode         = U32_BUTT;
     U32     ulTaskAgentQueueID = U32_BUTT;
-    SC_ACD_SITE_DESC_ST *pszAgent;
+    SC_ACD_AGENT_INFO_ST *pszAgent;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -2401,7 +2400,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                 goto auto_call_proc_error;
             }
 
-            pszAgent = sc_acd_get_site_by_grpid(ulTaskAgentQueueID);
+            pszAgent = sc_acd_get_agent_by_grpid(ulTaskAgentQueueID);
             if (DOS_ADDR_INVALID(pszAgent))
             {
                 DOS_ASSERT(0);
@@ -3136,7 +3135,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     U32           ulMainService = U32_BUTT;
     S8            szAPPParam[512] = { 0 };
     S8            *pszMainService = NULL;
-    SC_ACD_SITE_DESC_ST *pszAgent = NULL;
+    SC_ACD_AGENT_INFO_ST *pszAgent = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -3205,7 +3204,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                                  goto proc_error;
                              }
 
-                             pszAgent = sc_acd_get_site_by_grpid(ulTaskAgentQueueID);
+                             pszAgent = sc_acd_get_agent_by_grpid(ulTaskAgentQueueID);
                              if (DOS_ADDR_INVALID(pszAgent))
                              {
                                  DOS_ASSERT(0);

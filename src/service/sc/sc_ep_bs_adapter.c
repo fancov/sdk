@@ -22,7 +22,6 @@ extern "C"{
 
 #include "sc_def.h"
 #include "sc_bs_def.h"
-#include "sc_event_process.h"
 #include "sc_debug.h"
 
 HASH_TABLE_S     *g_pstMsgList; /* refer to SC_BS_MSG_NODE */

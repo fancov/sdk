@@ -33,8 +33,7 @@ U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_call_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_acd_http_req_proc(U32 ulAction, U32 ulGrpID, U32 ulSiteID, S8 *pszExtension);
-
+U32 sc_acd_http_req_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
 
 /* global parameters */
 SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
@@ -43,7 +42,7 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
     {"task",                     sc_http_api_task_ctrl},
     {"verify",                   sc_http_api_num_verify},
     {"callctrl",                 sc_http_api_call_ctrl},
-    {"agent-action",             sc_http_api_agent_action},
+    {"agent",                    sc_http_api_agent_action},
 
     {"",                         NULL}
 };
@@ -356,11 +355,10 @@ U32 sc_http_api_call_ctrl(SC_HTTP_CLIENT_CB_S *pstClient)
 
 U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient)
 {
-    S8 *pszGrpID      = NULL;
     S8 *pszAgentID    = NULL;
-    S8 *pszExtension  = NULL;
+    S8 *pszUserID     = NULL;
     S8 *pszAction     = NULL;
-    U32 ulGrpID = U32_BUTT, ulAgentID = U32_BUTT, ulAction = U32_BUTT;
+    U32 ulAgentID = U32_BUTT, ulAction = U32_BUTT;
 
     if (DOS_ADDR_INVALID(pstClient))
     {
@@ -372,39 +370,36 @@ U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient)
     SC_TRACE_IN(pstClient, 0, 0, 0);
 
 
-    pszGrpID = sc_http_api_get_value(&pstClient->stParamList, "grpid");
-    pszAgentID = sc_http_api_get_value(&pstClient->stParamList, "agentid");
-    pszExtension = sc_http_api_get_value(&pstClient->stParamList, "extension");
+    pszAgentID = sc_http_api_get_value(&pstClient->stParamList, "agent_id");
+    pszUserID = sc_http_api_get_value(&pstClient->stParamList, "sip_userid");
     pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
-    if (DOS_ADDR_INVALID(pszGrpID)
-        || DOS_ADDR_INVALID(pszAgentID)
-        || DOS_ADDR_INVALID(pszExtension)
+    if (DOS_ADDR_INVALID(pszAgentID)
+        || DOS_ADDR_INVALID(pszUserID)
         || DOS_ADDR_INVALID(pszAction))
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    if (dos_atoul(pszGrpID, &ulGrpID) < 0
-        || dos_atoul(pszAgentID, &ulAgentID) < 0)
+    if (dos_atoul(pszAgentID, &ulAgentID) < 0)
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    if (dos_strncmp(pszAction, "signin",sizeof("signin")) == 0)
+    if (dos_strncmp(pszAction, "signin", sizeof("signin")) == 0)
     {
         ulAction = SC_ACD_SITE_ACTION_SIGNIN;
     }
-    else if (dos_strncmp(pszAction, "signout",sizeof("signout")) == 0)
+    else if (dos_strncmp(pszAction, "signout", sizeof("signout")) == 0)
     {
         ulAction = SC_ACD_SITE_ACTION_SIGNOUT;
     }
-    else if (dos_strncmp(pszAction, "online",sizeof("online")) == 0)
+    else if (dos_strncmp(pszAction, "login", sizeof("login")) == 0)
     {
         ulAction = SC_ACD_SITE_ACTION_ONLINE;
     }
-    else if (dos_strncmp(pszAction, "offline",sizeof("offline")) == 0)
+    else if (dos_strncmp(pszAction, "logout",sizeof("logout")) == 0)
     {
         ulAction = SC_ACD_SITE_ACTION_OFFLINE;
     }
@@ -426,7 +421,7 @@ U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient)
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    if (sc_acd_http_req_proc(ulAction, ulGrpID, ulAgentID, pszExtension) != DOS_SUCC)
+    if (sc_acd_http_req_proc(ulAction, ulAgentID, pszUserID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;

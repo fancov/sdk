@@ -22,7 +22,6 @@ extern "C"{
 #include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_httpd.h"
-#include "sc_event_process.h"
 
 
 /* 定义开发是内置测试数据 */

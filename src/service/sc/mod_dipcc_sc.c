@@ -24,7 +24,6 @@ extern "C"{
 #include "sc_httpd.h"
 #include "sc_httpd_def.h"
 #include "sc_debug.h"
-#include "sc_event_process.h"
 
 /* Êý¾Ý¿â¾ä±ú */
 DB_HANDLE_ST         *g_pstSCDBHandle = NULL;
