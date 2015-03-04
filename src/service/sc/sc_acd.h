@@ -34,7 +34,7 @@ typedef struct tagACDQueryMngtNode
 {
     U16       usID;                                /* 当前坐席组编号 */
     U16       usCount;                             /* 当前坐席组坐席数量 */
-    U16       usLastUsedSite;                      /* 上一次接电话的坐席编号 */
+    U16       usLastUsedAgent;                     /* 上一次接电话的坐席编号 */
     U8        ucACDPolicy;                         /* 组呼叫分配策略 */
     U8        ucWaitingDelete;                     /* 是否等待删除 */
 

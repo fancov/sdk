@@ -58,30 +58,6 @@ U32               g_ulGroupCount       = 0;
 
 
 /*
- * 函  数: U32 sc_acd_agent_update_status(SC_ACD_AGENT_INFO_ST *pstAgent, U32 ulStatus)
- * 功  能: 更新坐席状态
- * 参  数:
- *      SC_ACD_AGENT_INFO_ST *pstAgent,
- *      U32 ulStatus
- * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
- **/
-U32 sc_acd_agent_update_status(SC_ACD_AGENT_INFO_ST *pstAgent, U32 ulStatus)
-{
-    if (DOS_ADDR_INVALID(pstAgent)
-        || ulStatus < SC_ACD_BUTT)
-    {
-        return DOS_FAIL;
-    }
-
-    pthread_mutex_lock(&pstAgent->mutexLock);
-    pstAgent->usStatus = (U16)ulStatus;
-    pthread_mutex_unlock(&pstAgent->mutexLock);
-
-
-    return DOS_SUCC;
-}
-
-/*
  * 函  数: sc_acd_hash_func4agent
  * 功  能: 坐席的hash函数，通过分机号计算一个hash值
  * 参  数:
@@ -241,6 +217,52 @@ static S32 sc_acd_agent_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
     return DOS_SUCC;
 }
 
+/*
+ * 函  数: U32 sc_acd_agent_update_status(S8 *pszUserID, U32 ulStatus)
+ * 功  能: 更新坐席状态
+ * 参  数:
+ *      S8 *pszUserID : 坐席的SIP USER ID
+ *      U32 ulStatus  : 新状态
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ **/
+U32 sc_acd_agent_update_status(S8 *pszUserID, U32 ulStatus)
+{
+    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueInfo = NULL;
+    HASH_NODE_S                 *pstHashNode       = NULL;
+    U32                         ulHashIndex        = 0;
+
+    if (DOS_ADDR_INVALID(pszUserID)
+        || ulStatus >= SC_ACD_BUTT)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_acd_hash_func4agent(pszUserID, &ulHashIndex);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, (VOID *)pszUserID, sc_acd_agent_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstAgentQueueInfo = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo->pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
+    pstAgentQueueInfo->pstAgentInfo->usStatus = (U16)ulStatus;
+    pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
+
+    return DOS_SUCC;
+}
 
 /*
  * 函  数: sc_acd_add_agent
@@ -253,7 +275,6 @@ static S32 sc_acd_agent_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
  **/
 U32 sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGrpID)
 {
-    SC_ACD_GRP_HASH_NODE_ST      *pstGroupListNode   = NULL;
     SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode  = NULL;
     SC_ACD_AGENT_INFO_ST         *pstAgentData       = NULL;
     HASH_NODE_S                  *pstHashNode        = NULL;
@@ -320,13 +341,12 @@ U32 sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGrpID)
     hash_add_node(g_pstAgentList, pstHashNode, ulHashVal, NULL);
     pthread_mutex_unlock(&g_mutexAgentList);
 
+    sc_logr_debug(SC_ACD, "Load Agent. ID: %d, Customer: %d, Group1: %d, Group2: %d", pstAgentInfo->ulSiteID, pstAgentInfo->ulCustomerID, pstAgentInfo->aulGroupID[0], pstAgentInfo->aulGroupID[1]);
 
     /* 添加到队列 */
     dos_memcpy(pstAgentData, pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
     pthread_mutex_init(&pstAgentData->mutexLock, NULL);
     pstAgentQueueNode->pstAgentInfo = pstAgentData;
-    pstAgentQueueNode->ulID = pstGroupListNode->usCount;
-    pstGroupListNode->usCount++;
 
     SC_TRACE_OUT();
     return DOS_SUCC;
@@ -618,7 +638,9 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
     pstGroupListNode->ulGroupID  = ulGroupID;
     pstGroupListNode->ucACDPolicy = (U8)ulPolicy;
     pstGroupListNode->usCount = 0;
+    pstGroupListNode->usLastUsedAgent = 0;
     pstGroupListNode->usID = (U16)g_ulGroupCount;
+    pstGroupListNode->ucWaitingDelete = DOS_FALSE;
     if (pszGroupName[0] != '\0')
     {
         dos_strncpy(pstGroupListNode->szGroupName, pszGroupName, sizeof(pstGroupListNode->szGroupName));
@@ -677,13 +699,340 @@ U32 sc_acd_delete_queue(U32 ulGroupID)
 }
 
 
-SC_ACD_AGENT_INFO_ST  *sc_acd_get_agent_by_grpid(U32 ulGroupID)
+SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
 {
-    SC_ACD_GRP_HASH_NODE_ST    *pstGroupListNode = NULL;
-    SC_ACD_FIND_SITE_PARAM_ST  stFindParam;
-    HASH_NODE_S                *pstHashNode = NULL;
-    DLL_NODE_S                 *pstDLLNode = NULL;
-    U32                        ulHashVal = 0;
+    U32     ulRandomAgent      = 0;
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentQueueNode = NULL;
+    SC_ACD_AGENT_INFO_ST       *pstAgentInfo      = NULL;
+    DLL_NODE_S                 *pstDLLNode        = NULL;
+
+    if (DOS_ADDR_INVALID(pstGroupListNode))
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    /*
+     * 随机一个编号，然后从这个编号开始查找一个可用的坐席。如果到队尾了还没有找到就再从头来
+     */
+
+    ulRandomAgent = dos_random(pstGroupListNode->usCount);
+
+    sc_logr_debug(SC_ACD, "Select agent in random. Start find agent %d in group %d, count: %d."
+                    , ulRandomAgent
+                    , pstGroupListNode->ulGroupID
+                    , pstGroupListNode->stAgentList.ulCount);
+
+    DLL_Scan(&pstGroupListNode->stAgentList, pstDLLNode, DLL_NODE_S*)
+    {
+        if (DOS_ADDR_INVALID(pstDLLNode)
+            || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+        {
+            sc_logr_debug(SC_ACD, "Group List node has no data. Group: %d."
+                                        , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        pstAgentQueueNode = pstDLLNode->pHandle;
+        if (DOS_ADDR_INVALID(pstAgentQueueNode)
+            || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+        {
+            sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %d."
+                            , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        if (pstAgentQueueNode->ulID <= ulRandomAgent)
+        {
+            sc_logr_debug(SC_ACD, "Found an agent. But the agent's order(%d) is less then last agent order(%d). coutinue.(Agent %d in Group %d)"
+                            , pstAgentQueueNode->ulID
+                            , ulRandomAgent
+                            , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                            , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        if (!SC_ACD_SITE_IS_USEABLE(pstAgentQueueNode->pstAgentInfo))
+        {
+            sc_logr_debug(SC_ACD, "There found an agent. But the agent is not useable. coutinue.(Agent %d in Group %d)"
+                            , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                            , pstGroupListNode->ulGroupID);
+
+            continue;
+        }
+
+        sc_logr_notice(SC_ACD, "Found an uaeable agent.(Agent %d in Group %d)"
+                        , pstAgentInfo->ulSiteID
+                        , pstGroupListNode->ulGroupID);
+
+        pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+        break;
+    }
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        sc_logr_debug(SC_ACD, "Select agent in random form header. Start find agent %d in group %d, count: %d."
+                        , ulRandomAgent
+                        , pstGroupListNode->ulGroupID
+                        , pstGroupListNode->stAgentList.ulCount);
+
+        DLL_Scan(&pstGroupListNode->stAgentList, pstDLLNode, DLL_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstDLLNode)
+                || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+            {
+                sc_logr_debug(SC_ACD, "Group List node has no data. Group: %d."
+                                            , pstGroupListNode->ulGroupID);
+                continue;
+            }
+
+            pstAgentQueueNode = pstDLLNode->pHandle;
+            if (DOS_ADDR_INVALID(pstAgentQueueNode)
+                || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+            {
+                sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %d."
+                                , pstGroupListNode->ulGroupID);
+                continue;
+            }
+
+            /* 邋到这里已经查找过所有的的坐席了 */
+            if (pstAgentQueueNode->ulID >= ulRandomAgent)
+            {
+                sc_logr_debug(SC_ACD, "The end of the select loop.(Group %d)"
+                                , pstGroupListNode->ulGroupID);
+                break;
+            }
+
+            if (!SC_ACD_SITE_IS_USEABLE(pstAgentQueueNode->pstAgentInfo))
+            {
+                sc_logr_debug(SC_ACD, "There found an agent. But the agent is not useable. coutinue.(Agent %d in Group %d)"
+                                , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                                , pstGroupListNode->ulGroupID);
+                continue;
+            }
+
+            pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+            sc_logr_notice(SC_ACD, "Found an uaeable agent.(Agent %d in Group %d)"
+                            , pstAgentInfo->ulSiteID
+                            , pstGroupListNode->ulGroupID);
+
+            break;
+        }
+    }
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        return NULL;
+    }
+
+    return pstAgentQueueNode;
+}
+
+SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
+{
+    U32     usLastUsedAgent      = 0;
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentQueueNode = NULL;
+    SC_ACD_AGENT_INFO_ST       *pstAgentInfo      = NULL;
+    DLL_NODE_S                 *pstDLLNode        = NULL;
+
+    if (DOS_ADDR_INVALID(pstGroupListNode))
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    /*
+     * 从上次使用的编号开始查找一个可用的坐席。如果到队尾了还没有找到就再从头来
+     */
+
+    usLastUsedAgent = pstGroupListNode->usLastUsedAgent;
+
+    sc_logr_debug(SC_ACD, "Select agent in order. Start find agent %d in group %d, Count : %d"
+                    , usLastUsedAgent
+                    , pstGroupListNode->ulGroupID
+                    , pstGroupListNode->stAgentList.ulCount);
+
+    DLL_Scan(&pstGroupListNode->stAgentList, pstDLLNode, DLL_NODE_S*)
+    {
+        if (DOS_ADDR_INVALID(pstDLLNode)
+            || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+        {
+            sc_logr_debug(SC_ACD, "Group List node has no data. Group: %d."
+                            , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        pstAgentQueueNode = pstDLLNode->pHandle;
+        if (DOS_ADDR_INVALID(pstAgentQueueNode)
+            || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+        {
+            sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %d."
+                            , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        if (pstAgentQueueNode->ulID <= usLastUsedAgent)
+        {
+            sc_logr_debug(SC_ACD, "Found an agent. But the agent's order(%d) is less then last agent order(%d). coutinue.(Agent %d in Group %d)"
+                            , pstAgentQueueNode->ulID
+                            , usLastUsedAgent
+                            , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                            , pstGroupListNode->ulGroupID);
+
+            continue;
+        }
+
+        if (!SC_ACD_SITE_IS_USEABLE(pstAgentQueueNode->pstAgentInfo))
+        {
+
+            sc_logr_debug(SC_ACD, "There found an agent. But the agent is not useable. coutinue.(Agent %d in Group %d)"
+                            , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                            , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+        sc_logr_notice(SC_ACD, "Found an uaeable agent.(Agent %d in Group %d)"
+                        , pstAgentInfo->ulSiteID
+                        , pstGroupListNode->ulGroupID);
+
+        break;
+    }
+
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        sc_logr_debug(SC_ACD, "Select agent in order from head. Start find agent %d in group %d, Count : %d"
+                        , usLastUsedAgent
+                        , pstGroupListNode->ulGroupID
+                        , pstGroupListNode->stAgentList.ulCount);
+
+        DLL_Scan(&pstGroupListNode->stAgentList, pstDLLNode, DLL_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstDLLNode)
+                || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+            {
+                sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %d."
+                                , pstGroupListNode->ulGroupID);
+                continue;
+            }
+
+            pstAgentQueueNode = pstDLLNode->pHandle;
+            if (DOS_ADDR_INVALID(pstAgentQueueNode)
+                || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+            {
+                sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %d."
+                                , pstGroupListNode->ulGroupID);
+                continue;
+            }
+
+            /* 邋到这里已经查找过所有的的坐席了 */
+            if (pstAgentQueueNode->ulID >= usLastUsedAgent)
+            {
+                sc_logr_debug(SC_ACD, "The end of the select loop.(Group %d)"
+                                , pstGroupListNode->ulGroupID);
+                break;
+            }
+
+            if (!SC_ACD_SITE_IS_USEABLE(pstAgentQueueNode->pstAgentInfo))
+            {
+                sc_logr_debug(SC_ACD, "There found an agent. But the agent is not useable. coutinue.(Agent %d in Group %d)"
+                            , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                            , pstGroupListNode->ulGroupID);
+                continue;
+            }
+
+            pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+            sc_logr_notice(SC_ACD, "Found an uaeable agent.(Agent %d in Group %d)"
+                            , pstAgentInfo->ulSiteID
+                            , pstGroupListNode->ulGroupID);
+            break;
+        }
+    }
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        return NULL;
+    }
+
+    return pstAgentQueueNode;
+}
+
+SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_call_count(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
+{
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentQueueNode = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode      = NULL;
+    DLL_NODE_S                 *pstDLLNode        = NULL;
+
+    if (DOS_ADDR_INVALID(pstGroupListNode))
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    sc_logr_debug(SC_ACD, "Select agent by the min call count. Start find agent in group %d."
+                    , pstGroupListNode->ulGroupID);
+
+    DLL_Scan(&pstGroupListNode->stAgentList, pstDLLNode, DLL_NODE_S*)
+    {
+        if (DOS_ADDR_INVALID(pstDLLNode)
+            || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+        {
+            sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %d."
+                            , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        pstAgentQueueNode = pstDLLNode->pHandle;
+        if (DOS_ADDR_INVALID(pstAgentQueueNode)
+            || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+        {
+            sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %d."
+                            , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        if (!SC_ACD_SITE_IS_USEABLE(pstAgentQueueNode->pstAgentInfo))
+        {
+            sc_logr_debug(SC_ACD, "There found an agent. But the agent is not useable. coutinue.(Agent %d in Group %d)"
+                        , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                        , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        if (DOS_ADDR_INVALID(pstAgentNode))
+        {
+            pstAgentNode = pstAgentQueueNode;
+        }
+
+        sc_logr_notice(SC_ACD, "Found an uaeable agent. Call Count: %d. (Agent %d in Group %d)"
+                        , pstAgentQueueNode->pstAgentInfo->ulCallCnt
+                        , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                        , pstGroupListNode->ulGroupID);
+        if (pstAgentNode->pstAgentInfo->ulCallCnt > pstAgentQueueNode->pstAgentInfo->ulCallCnt)
+        {
+            pstAgentNode = pstAgentQueueNode;
+        }
+    }
+
+    return pstAgentNode;
+}
+
+U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID)
+{
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode      = NULL;
+    SC_ACD_GRP_HASH_NODE_ST    *pstGroupListNode  = NULL;
+    HASH_NODE_S                *pstHashNode       = NULL;
+    U32                        ulHashVal          = 0;
+    U32                        ulResult           = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstAgentBuff)
+        || 0 == ulGroupID
+        || U32_BUTT == ulGroupID)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
     sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
@@ -697,30 +1046,54 @@ SC_ACD_AGENT_INFO_ST  *sc_acd_get_agent_by_grpid(U32 ulGroupID)
         pthread_mutex_unlock(&g_mutexGroupList);
 
         SC_TRACE_OUT();
-        return NULL;
+        return DOS_FAIL;
+    }
+
+    pstGroupListNode = pstHashNode->pHandle;
+
+    pthread_mutex_lock(&pstGroupListNode->mutexSiteQueue);
+
+    switch (pstGroupListNode->ucACDPolicy)
+    {
+        case SC_ACD_POLICY_IN_ORDER:
+            pstAgentNode = sc_acd_get_agent_by_inorder(pstGroupListNode);
+            break;
+
+        case SC_ACD_POLICY_MIN_CALL:
+            pstAgentNode = sc_acd_get_agent_by_call_count(pstGroupListNode);
+            break;
+
+        case SC_ACD_POLICY_RANDOM:
+            pstAgentNode = sc_acd_get_agent_by_random(pstGroupListNode);
+            break;
+
+        case SC_ACD_POLICY_RECENT:
+        case SC_ACD_POLICY_GROUP:
+            sc_logr_notice(SC_ACD, "Template not support policy %d", pstGroupListNode->ucACDPolicy);
+            break;
+        default:
+            break;
+    }
+
+    pthread_mutex_unlock(&pstGroupListNode->mutexSiteQueue);
+
+    if (DOS_ADDR_VALID(pstAgentNode)
+        && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+    {
+        pstGroupListNode->usLastUsedAgent = pstAgentNode->ulID;
+        pstAgentNode->pstAgentInfo->ulCallCnt++;
+
+        dos_memcpy(pstAgentBuff, pstAgentNode->pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
+        ulResult = DOS_SUCC;
+    }
+    else
+    {
+        dos_memzero(pstAgentBuff, sizeof(SC_ACD_AGENT_INFO_ST));
+        ulResult = DOS_FAIL;
     }
     pthread_mutex_unlock(&g_mutexGroupList);
 
-    pstGroupListNode = pstHashNode->pHandle;
-    pthread_mutex_lock(&pstGroupListNode->mutexSiteQueue);
-    stFindParam.pstResult = NULL;
-    stFindParam.ulResult = DOS_FAIL;
-    stFindParam.ulPolocy = pstGroupListNode->ucACDPolicy;
-    stFindParam.ulLastSieUsed = pstGroupListNode->usLastUsedSite;
-    DLL_Scan(&pstGroupListNode->stAgentList, pstDLLNode, DLL_NODE_S*)
-    {
-        /* @TODO */
-    }
-    pthread_mutex_unlock(&pstGroupListNode->mutexSiteQueue);
-
-    if (DOS_SUCC != stFindParam.ulResult
-        || NULL == stFindParam.pstResult)
-    {
-        DOS_ASSERT(0);
-        return NULL;
-    }
-
-    return stFindParam.pstResult;
+    return ulResult;
 }
 
 static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
@@ -769,11 +1142,9 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.aulGroupID[0] = ulGroupID;
     stSiteInfo.aulGroupID[1] = ulGroupID1;
     stSiteInfo.bValid = DOS_TRUE;
-    stSiteInfo.usStatus = SC_ACD_IDEL;
+    stSiteInfo.usStatus = SC_ACD_OFFLINE;
     stSiteInfo.bRecord = ulRecordFlag;
     stSiteInfo.bGroupHeader = ulIsHeader;
-
-    sc_logr_debug(SC_ACD, "Load Agent. ID: %d, Customer: %d, Group1: %d, Group2: %d", ulSiteID, ulCustomID, ulGroupID, ulGroupID1);
 
     dos_strncpy(stSiteInfo.szUserID, pszUserID, sizeof(stSiteInfo.szUserID));
     stSiteInfo.szUserID[sizeof(stSiteInfo.szUserID) - 1] = '\0';
@@ -800,7 +1171,7 @@ static U32 sc_acd_init_agent_queue()
                      "         tbl_sip.username username, tbl_agent.voice_record voice_record, tbl_agent.class class" \
                      "     FROM " \
                      "         tbl_agent, tbl_sip " \
-                     "     WHERE tbl_agent.sip_id = tbl_sip.id) a " \
+                     "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 1) a " \
                      "LEFT JOIN " \
                      "    tbl_group b " \
                      "ON " \
@@ -866,15 +1237,22 @@ static U32 sc_acd_deinit_group_queue()
 
 static VOID sc_acd_agent_wolk4init(HASH_NODE_S *pNode, VOID *pParam)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode    = NULL;
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNodeNew = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode    = NULL;
     SC_ACD_GRP_HASH_NODE_ST     *pstGroupNode         = NULL;
     HASH_NODE_S                 *pstHashNode          = NULL;
     DLL_NODE_S                  *pstDLLNode           = NULL;
     U32                         ulHashVal             = 0;
     U32                         ulIndex               = 0;
 
-    pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)pNode;
+    if (DOS_ADDR_INVALID(pNode)
+        || DOS_ADDR_INVALID(pNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        return ;
+    }
+
+    pstAgentQueueNode = pNode->pHandle;
     if (DOS_ADDR_INVALID(pstAgentQueueNode)
         || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
     {

@@ -53,15 +53,15 @@ enum {
     SC_ACD_SITE_ACTION_BUTT              /* 坐席签出(长连) */
 };
 
-enum {
-    SC_ACD_POLICY_INCREASE               /* 增加 */,
-    SC_ACD_POLICY_INCREASE_LOOP,         /* 循环增加 */
-    SC_ACD_POLICY_REDUCTION,             /* 递减 */
-    SC_ACD_POLICY_REDUCTION_LOOP,        /* 循环递减 */
-    SC_ACD_POLICY_MIN_CALL,
+typedef enum tagSCACDPolicy{
+    SC_ACD_POLICY_IN_ORDER,               /* 顺序选择 */
+    SC_ACD_POLICY_MIN_CALL,               /* 最少呼叫 */
+    SC_ACD_POLICY_RANDOM,                 /* 随机 */
+    SC_ACD_POLICY_RECENT,                 /* 最近呼叫 */
+    SC_ACD_POLICY_GROUP,                  /* 全部 */
 
     SC_ACD_POLICY_BUTT
-};
+}SC_ACD_POLICY_EN;
 
 typedef struct tagACDSiteDesc{
     U16        usSCBNo;
@@ -89,8 +89,8 @@ typedef struct tagACDSiteDesc{
 }SC_ACD_AGENT_INFO_ST;
 
 U32 sc_acd_init();
-SC_ACD_AGENT_INFO_ST  *sc_acd_get_agent_by_grpid(U32 ulGroupID);
-U32 sc_acd_agent_update_status(SC_ACD_AGENT_INFO_ST *pstAgent, U32 ulStatus);
+U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGroupID);
+U32 sc_acd_agent_update_status(S8 *pszUserID, U32 ulStatus);
 
 #endif
 

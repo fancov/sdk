@@ -446,7 +446,7 @@ U32 sc_load_sip_userid()
 {
     S8 szSQL[1024] = { 0, };
 
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,username FROM tbl_sip;");
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,username FROM tbl_sip where tbl_sip.status = 1;");
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_load_sip_userid_cb, NULL, NULL) != DB_ERR_SUCC)
     {
@@ -706,7 +706,7 @@ U32 sc_load_did_number()
 {
     S8 szSQL[1024] = { 0, };
 
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, did_number, bind_type, bind_id FROM tbl_sipassign;");
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, did_number, bind_type, bind_id FROM tbl_sipassign where tbl_sipassign.status = 1;");
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_did_number_cb, NULL, NULL);
 
@@ -804,7 +804,7 @@ U32 sc_load_gateway()
     S8 szSQL[1024];
 
     dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, realm FROM tbl_relaygrp;");
+                    , "SELECT id, realm FROM tbl_relaygrp WHERE tbl_relaygrp.status = 1;");
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_cb, NULL, NULL);
 
@@ -890,7 +890,7 @@ U32 sc_load_gateway_grp()
     S8 szSQL[1024];
 
     dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id FROM tbl_gateway_grp;");
+                    , "SELECT id FROM tbl_gateway_grp WHERE tbl_gateway_grp.status = 1;");
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_grp_cb, NULL, NULL);
 
@@ -1185,7 +1185,7 @@ U32 sc_load_route()
     S8 szSQL[1024];
 
     dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route;");
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 0;");
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_route_cb, NULL, NULL);
 
@@ -1296,6 +1296,8 @@ U32 sc_ep_esl_execute_cmd(esl_handle_t *pstHandle, const S8 *pszCmd)
 
         return DOS_FAIL;
     }
+
+    sc_logr_notice(SC_ESL, "ESL execute command SUCC. CMD: %s", pszCmd);
 
     return DOS_SUCC;
 }
@@ -2332,7 +2334,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     S8      szAPPParam[512]    = { 0, };
     U32     ulTaskMode         = U32_BUTT;
     U32     ulTaskAgentQueueID = U32_BUTT;
-    SC_ACD_AGENT_INFO_ST *pszAgent;
+    SC_ACD_AGENT_INFO_ST stAgent;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -2400,8 +2402,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                 goto auto_call_proc_error;
             }
 
-            pszAgent = sc_acd_get_agent_by_grpid(ulTaskAgentQueueID);
-            if (DOS_ADDR_INVALID(pszAgent))
+            if (sc_acd_get_agent_by_grpid(&stAgent, ulTaskAgentQueueID) != DOS_SUCC)
             {
                 DOS_ASSERT(0);
 
@@ -2410,10 +2411,10 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
             }
 
             sc_logr_info(SC_ESL, "Select agent for call OK. Agent ID: %d, User ID: %s, Externsion: %s, Job-Num: %s"
-                        , pszAgent->ulSiteID
-                        , pszAgent->szUserID
-                        , pszAgent->szExtension
-                        , pszAgent->szEmpNo);
+                        , stAgent.ulSiteID
+                        , stAgent.szUserID
+                        , stAgent.szExtension
+                        , stAgent.szEmpNo);
 
             dos_snprintf(szAPPParam, sizeof(szAPPParam)
                             , "bgapi originate {other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}user/%s &park() \r\n"
@@ -2421,7 +2422,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                             , SC_SERV_AGENT_CALLBACK
                             , pstSCB->szCalleeNum
                             , pstSCB->szCalleeNum
-                            , pszAgent->szUserID);
+                            , stAgent.szUserID);
 
             if (sc_ep_esl_execute_cmd(pstHandle, szAPPParam) != DOS_SUCC)
             {
@@ -2431,7 +2432,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
             else
             {
                 /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
-                sc_acd_agent_update_status(pszAgent, SC_ACD_BUSY);
+                sc_acd_agent_update_status(stAgent.szUserID, SC_ACD_BUSY);
 
                 sc_ep_esl_execute(pstHandle, "sleep", "1000", pstSCB->szUUID);
                 sc_ep_esl_execute(pstHandle, "speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
@@ -2793,6 +2794,109 @@ proc_finished:
     return ulRet;
 }
 
+U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
+{
+    S8    *pszEventBody   = NULL;
+    S8    *pszAppName     = NULL;
+    S8    *pszAppArg      = NULL;
+    S8    *pszStart       = NULL;
+    S8    *pszEnd         = NULL;
+    S8    szSCBNo[16]      = { 0 };
+    U32   ulProcessResult = DOS_SUCC;
+    U32   ulOtherSCBNo    = 0;
+    SC_SCB_ST   *pstSCB = NULL;
+
+    if (DOS_ADDR_INVALID(pstHandle)
+        || DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pszEventBody = esl_event_get_body(pstEvent);
+    pszAppName   = esl_event_get_header(pstEvent, "Job-Command");
+    pszAppArg    = esl_event_get_header(pstEvent, "Job-Command-Arg");
+    if (DOS_ADDR_VALID(pszEventBody)
+        && DOS_ADDR_VALID(pszAppName)
+        && DOS_ADDR_VALID(pszAppArg))
+    {
+        if (0 == dos_strnicmp(pszEventBody, "+OK", dos_strlen("+OK")))
+        {
+            ulProcessResult = DOS_SUCC;
+        }
+        else
+        {
+            ulProcessResult = DOS_FAIL;
+        }
+
+        sc_logr_info(SC_ESL, "Execute command %s %s %s, Info: %s."
+                        , pszAppName
+                        , pszAppArg
+                        , DOS_SUCC == ulProcessResult ? "SUCC" : "FAIL"
+                        , pszEventBody);
+
+        if (DOS_SUCC == ulProcessResult)
+        {
+            goto process_finished;
+        }
+
+        pszStart = dos_strstr(pszAppArg, "other_leg_scb=");
+        if (DOS_ADDR_INVALID(pszStart))
+        {
+            DOS_ASSERT(0);
+            goto process_fail;
+        }
+
+        pszStart += dos_strlen("other_leg_scb=");
+        if (DOS_ADDR_INVALID(pszStart))
+        {
+            DOS_ASSERT(0);
+            goto process_fail;
+        }
+
+        pszEnd = dos_strstr(pszStart, ",");
+        if (DOS_ADDR_VALID(pszEnd))
+        {
+            dos_strncpy(szSCBNo, pszStart, pszEnd-pszStart);
+            szSCBNo[pszEnd-pszStart] = '\0';
+        }
+        else
+        {
+            dos_strncpy(szSCBNo, pszStart, sizeof(szSCBNo));
+            szSCBNo[sizeof(szSCBNo)-1] = '\0';
+        }
+
+        if (dos_atoul(szSCBNo, &ulOtherSCBNo) < 0)
+        {
+            DOS_ASSERT(0);
+            goto process_fail;
+        }
+
+        pstSCB = sc_scb_get(ulOtherSCBNo);
+        if (DOS_ADDR_INVALID(pstSCB))
+        {
+            DOS_ASSERT(0);
+            goto process_fail;
+        }
+
+        if (dos_stricmp(pszAppName, "originate") == 0)
+        {
+            sc_ep_esl_execute(pstHandle, "hangup", NULL, pstSCB->szUUID);
+        }
+        else if (dos_stricmp(pszAppName, "bridge") == 0)
+        {
+            sc_ep_esl_execute(pstHandle, "hangup", NULL, pstSCB->szUUID);
+        }
+    }
+
+process_finished:
+    return DOS_SUCC;
+
+process_fail:
+    return DOS_FAIL;
+}
+
+
 /**
  * 函数: U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
  * 功能: 处理ESL的CHANNEL CREATE事件
@@ -3135,7 +3239,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     U32           ulMainService = U32_BUTT;
     S8            szAPPParam[512] = { 0 };
     S8            *pszMainService = NULL;
-    SC_ACD_AGENT_INFO_ST *pszAgent = NULL;
+    SC_ACD_AGENT_INFO_ST stAgentInfo;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -3204,8 +3308,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                                  goto proc_error;
                              }
 
-                             pszAgent = sc_acd_get_agent_by_grpid(ulTaskAgentQueueID);
-                             if (DOS_ADDR_INVALID(pszAgent))
+                             if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID) != DOS_SUCC)
                              {
                                  DOS_ASSERT(0);
 
@@ -3214,10 +3317,10 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                              }
 
                              sc_logr_info(SC_ESL, "Select agent for call OK. Agent ID: %d, User ID: %s, Externsion: %s, Job-Num: %s"
-                                         , pszAgent->ulSiteID
-                                         , pszAgent->szUserID
-                                         , pszAgent->szExtension
-                                         , pszAgent->szEmpNo);
+                                         , stAgentInfo.ulSiteID
+                                         , stAgentInfo.szUserID
+                                         , stAgentInfo.szExtension
+                                         , stAgentInfo.szEmpNo);
 
                              dos_snprintf(szAPPParam, sizeof(szAPPParam)
                                              , "bgapi originate {other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}user/%s &park() \r\n"
@@ -3225,7 +3328,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                                              , SC_SERV_AGENT_CALLBACK
                                              , pstSCB->szCalleeNum
                                              , pstSCB->szCalleeNum
-                                             , pszAgent->szUserID);
+                                             , stAgentInfo.szUserID);
 
                              if (sc_ep_esl_execute_cmd(pstHandle, szAPPParam) != DOS_SUCC)
                              {
@@ -3236,7 +3339,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                              {
                                  /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
                                  esl_send(pstHandle, szAPPParam);
-                                 sc_acd_agent_update_status(pszAgent, SC_ACD_BUSY);
+                                 sc_acd_agent_update_status(stAgentInfo.szUserID, SC_ACD_BUSY);
 
                                  sc_ep_esl_execute(pstHandle, "sleep", "1000", pstSCB->szUUID);
                                  sc_ep_esl_execute(pstHandle, "speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
@@ -3323,7 +3426,6 @@ U32 sc_ep_session_heartbeat(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
 {
     S8                     *pszUUID = NULL;
-    S8                     *pszCallerSource = NULL;
     SC_SCB_ST              *pstSCB = NULL;
     U32                    ulRet = DOS_FAIL;
 
@@ -3338,22 +3440,15 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     }
 
     /* 获取事件的UUID */
+    if (ESL_EVENT_BACKGROUND_JOB == pstEvent->event_id)
+    {
+        return sc_ep_backgroud_job_proc(pstHandle, pstEvent);
+    }
+
     pszUUID = esl_event_get_header(pstEvent, "Caller-Unique-ID");
     if (DOS_ADDR_INVALID(pszUUID))
     {
         DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    /* 如果某个事件确实没有Caller-Source ?*/
-    pszCallerSource = esl_event_get_header(pstEvent, "Caller-Source");
-    if (DOS_ADDR_INVALID(pszCallerSource))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
         return DOS_FAIL;
     }
 

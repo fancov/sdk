@@ -97,7 +97,7 @@ U32 sc_task_mngt_load_task()
 
     ulLength = dos_snprintf(szSqlQuery
                 , sizeof(szSqlQuery)
-                , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask;");
+                , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask WHERE tbl_calltask.status <> 1;");
 
     ulResult = db_query(g_pstSCDBHandle
                             , szSqlQuery

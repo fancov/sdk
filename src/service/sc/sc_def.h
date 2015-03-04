@@ -170,6 +170,7 @@ do                                                            \
 
 
 #define SC_EP_EVENT_LIST \
+            "BACKGROUND_JOB " \
             "CHANNEL_PARK " \
             "CHANNEL_CREATE " \
             "CHANNEL_ANSWER " \
