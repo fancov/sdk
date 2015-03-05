@@ -297,12 +297,18 @@ VOID *sc_task_runtime(VOID *ptr)
     {
         /* 根据当前呼叫量，确定发起呼叫的间隔，如果当前任务已经处于受限状态，就要强制调整间隔 */
         ulTaskInterval = sc_task_get_call_interval(pstTCB);
+        if (pstTCB->ulMaxConcurrency >= pstTCB->ulCurrentConcurrency)
+        {
+            usleep(1000);
+            continue;
+        }
+
         if (!blIsNormal && ulTaskInterval <= 100)
         {
             ulTaskInterval = 1;
 
             /* 如果呼叫量已经为0就退出任务 */
-            if (!pstTCB->ulConcurrency)
+            if (!pstTCB->ulCurrentConcurrency)
             {
                 sc_task_trace(pstTCB, "%s", "Task will be finished.");
                 sc_logr_notice(SC_TASK, "Task will be finished.(%lu)", pstTCB->ulTaskID);
@@ -321,7 +327,7 @@ VOID *sc_task_runtime(VOID *ptr)
         /* 如果被停止了，就检测还有没有呼叫，如果有呼叫，就等待，等待没有呼叫时退出任务 */
         if (SC_TASK_STOP == pstTCB->ucTaskStatus)
         {
-            if (pstTCB->ulConcurrency >= 0)
+            if (pstTCB->ulCurrentConcurrency >= 0)
             {
                 blIsNormal = DOS_FALSE;
                 continue;

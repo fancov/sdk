@@ -784,7 +784,7 @@ U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
 
     pstTCB->ulTaskID = U32_BUTT;
     pstTCB->ulCustomID = U32_BUTT;
-    pstTCB->ulConcurrency = 0;
+    pstTCB->ulCurrentConcurrency = 0;
     pstTCB->usSiteCount = 0;
     pstTCB->ulAgentQueueID = U32_BUTT;
     pstTCB->ucAudioPlayCnt = 0;
@@ -854,7 +854,7 @@ VOID sc_task_set_current_call_cnt(SC_TASK_CB_ST *pstTCB, U32 ulCurrentCall)
     }
 
     pthread_mutex_lock(&pstTCB->mutexTaskList);
-    pstTCB->ulConcurrency = ulCurrentCall;
+    pstTCB->ulCurrentConcurrency = ulCurrentCall;
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
 }
 
@@ -870,7 +870,7 @@ U32 sc_task_get_current_call_cnt(SC_TASK_CB_ST *pstTCB)
         return U32_BUTT;
     }
 
-    return pstTCB->ulConcurrency;
+    return pstTCB->ulCurrentConcurrency;
 }
 
 VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID)
@@ -1625,7 +1625,7 @@ U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB)
         return DOS_FALSE;
     }
 
-    if (pstTCB->ulConcurrency >= (pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE))
+    if (pstTCB->ulCurrentConcurrency >= (pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE))
     {
         SC_TRACE_OUT();
         return DOS_FALSE;
@@ -1649,9 +1649,9 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
         return 1000;
     }
 
-    if (pstTCB->ulConcurrency)
+    if (pstTCB->ulCurrentConcurrency)
     {
-        ulPercentage = ((pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE) * 100) / pstTCB->ulConcurrency;
+        ulPercentage = ((pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE) * 100) / pstTCB->ulCurrentConcurrency;
     }
     else
     {
@@ -1719,6 +1719,72 @@ U32 sc_task_audio_playcnt(U32 ulTCBNo)
 
     return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
 }
+
+U32 sc_task_concurrency_add(U32 ulTCBNo)
+{
+    SC_TRACE_IN(ulTCBNo, 0, 0, 0);
+    if (ulTCBNo > SC_MAX_TASK_NUM)
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return 0;
+    }
+
+    if (!g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucValid)
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return 0;
+    }
+
+    pthread_mutex_lock(g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
+    g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency++;
+    if (g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency
+        > g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulMaxConcurrency)
+    {
+        DOS_ASSERT(0);
+    }
+    pthread_mutex_unlock(g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
+
+    return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
+}
+
+U32 sc_task_concurrency_minus (U32 ulTCBNo)
+{
+    SC_TRACE_IN(ulTCBNo, 0, 0, 0);
+    if (ulTCBNo > SC_MAX_TASK_NUM)
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return 0;
+    }
+
+    if (!g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucValid)
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return 0;
+    }
+
+    pthread_mutex_lock(g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
+    if (g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency > 0)
+    {
+        g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency++;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+    }
+    pthread_mutex_unlock(g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
+
+    return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
+}
+
+
 
 U32 sc_task_get_timeout_for_noanswer(U32 ulTCBNo)
 {

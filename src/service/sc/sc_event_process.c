@@ -3014,6 +3014,7 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         pstSCB->szUUID[sizeof(pstSCB->szUUID) - 1] = '\0';
 
         sc_scb_hash_tables_add(pszUUID, pstSCB);
+        sc_task_concurrency_add(pstSCB->usTCBNo);
 
         goto process_finished;
 
@@ -3190,6 +3191,11 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                 , pszUUID1 ? pszUUID1 : "NULL"
                                 , pszUUID2 ? pszUUID2 : "NULL");
                 break;
+            }
+
+            if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+            {
+                sc_task_concurrency_minus(pstSCB->usTCBNo);
             }
 
             /* ·¢ËÍ»°µ¥ */
@@ -3754,6 +3760,8 @@ U32 sc_ep_start()
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
+
+
 
 
     SC_TRACE_OUT();

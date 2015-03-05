@@ -238,7 +238,7 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID)
                 , pstTCB->bTraceCallON
                 , pstTCB->ulTaskID
                 , pstTCB->ulCustomID
-                , pstTCB->ulConcurrency
+                , pstTCB->ulCurrentConcurrency
                 , pstTCB->usSiteCount
                 , pstTCB->ulAgentQueueID
                 , sc_debug_make_weeks(pstTCB->astPeriod[0].ucWeekMask, szWeeks, sizeof(szWeeks))
