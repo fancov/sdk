@@ -226,12 +226,13 @@ VOID bss_send_aaa_rsp2app(DLL_NODE_S *pMsgNode)
     /* 不重新分配链表节点,重用请求消息节点;地址信息&序列号信息待socket发送时再填写 */
     pstMsg = (BS_MSG_AUTH *)pMsgNode->pHandle;
     pstMsg->stMsgTag.ulMsgSeq = 0;
+#if 0
     pstMsg->stMsgTag.usPort = 0;
     pstMsg->stMsgTag.aulIPAddr[0] = 0;
     pstMsg->stMsgTag.aulIPAddr[1] = 0;
     pstMsg->stMsgTag.aulIPAddr[2] = 0;
     pstMsg->stMsgTag.aulIPAddr[3] = 0;
-
+#endif
     bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
              "Send rsp msg to app, type:%u, len:%u, errcode:%d",
              pstMsg->stMsgTag.ucMsgType,

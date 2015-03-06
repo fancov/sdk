@@ -242,8 +242,7 @@ U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->ucStatus = SC_SCB_IDEL;            /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
     pstSCB->ucTerminationFlag = 0;             /* 业务终止标志 */
     pstSCB->ucTerminationCause = 0;            /* 业务终止原因 */
-    pstSCB->ucPayloadType = U8_BUTT;           /* 编解码 */
-
+    pstSCB->ucLegRole = SC_CALL_ROLE_BUTT;
     pstSCB->usHoldCnt = 0;                     /* 被hold的次数 */
     pstSCB->usHoldTotalTime = 0;               /* 被hold的总时长 */
     pstSCB->ulLastHoldTimetamp = 0;            /* 上次hold是的时间戳，解除hold的时候值零 */
@@ -255,14 +254,6 @@ U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bWaitingOtherRelase = DOS_FALSE;   /* 是否在等待另外一跳退释放 */
 
     pstSCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
-
-    pstSCB->ulStartTimeStamp = 0;              /* 起始时间戳 */
-    pstSCB->ulRingTimeStamp = 0;               /* 振铃时间戳 */
-    pstSCB->ulAnswerTimeStamp = 0;             /* 应答时间戳 */
-    pstSCB->ulIVRFinishTimeStamp = 0;          /* IVR播放完成时间戳 */
-    pstSCB->ulDTMFTimeStamp = 0;               /* (第一个)二次拨号时间戳 */
-    pstSCB->ulBridgeTimeStamp = 0;             /* LEG桥接时间戳 */
-    pstSCB->ulByeTimeStamp = 0;                /* 释放时间戳 */
 
     pstSCB->szCallerNum[0] = '\0';             /* 主叫号码 */
     pstSCB->szCalleeNum[0] = '\0';             /* 被叫号码 */
@@ -1739,14 +1730,14 @@ U32 sc_task_concurrency_add(U32 ulTCBNo)
         return 0;
     }
 
-    pthread_mutex_lock(g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
+    pthread_mutex_lock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
     g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency++;
     if (g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency
         > g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulMaxConcurrency)
     {
         DOS_ASSERT(0);
     }
-    pthread_mutex_unlock(g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
+    pthread_mutex_unlock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
 
     return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
 }
@@ -1770,7 +1761,7 @@ U32 sc_task_concurrency_minus (U32 ulTCBNo)
         return 0;
     }
 
-    pthread_mutex_lock(g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
+    pthread_mutex_lock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
     if (g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency > 0)
     {
         g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency++;
@@ -1779,7 +1770,7 @@ U32 sc_task_concurrency_minus (U32 ulTCBNo)
     {
         DOS_ASSERT(0);
     }
-    pthread_mutex_unlock(g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
+    pthread_mutex_unlock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
 
     return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
 }

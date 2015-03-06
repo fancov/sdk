@@ -319,6 +319,13 @@ typedef enum tagSCBStatus
     SC_SCB_BUTT
 }SC_SCB_STATUS_EN;
 
+typedef enum tagSCCallRole
+{
+    SC_CALLEE,
+    SC_CALLER,
+
+    SC_CALL_ROLE_BUTT
+}SC_CALL_ROLE_EN;
 
 typedef struct tagCallerQueryNode{
     U16        usNo;                              /* 编号 */
@@ -377,6 +384,21 @@ typedef struct tagTaskAllowPeriod{
     U32        ulRes;
 }SC_TASK_ALLOW_PERIOD_ST;
 
+typedef struct tagSCBExtraData
+{
+    U32             ulStartTimeStamp;           /* 起始时间戳 */
+    U32             ulRingTimeStamp;            /* 振铃时间戳 */
+    U32             ulAnswerTimeStamp;          /* 应答时间戳 */
+    U32             ulIVRFinishTimeStamp;       /* IVR播放完成时间戳 */
+    U32             ulDTMFTimeStamp;            /* (第一个)二次拨号时间戳 */
+    U32             ulBridgeTimeStamp;          /* LEG桥接时间戳 */
+    U32             ulByeTimeStamp;             /* 释放时间戳 */
+    U32             ulPeerTrunkID;              /* 对端中继ID */
+
+    U8              ucPayloadType;              /* 媒体类型 */
+    U8              ucPacketLossRate;           /* 收包丢包率,0-100 */
+}SC_SCB_EXTRA_DATA_ST;
+
 
 /* 呼叫控制块 */
 typedef struct tagSCSCB{
@@ -394,12 +416,13 @@ typedef struct tagSCSCB{
     U8        ucStatus;                           /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
     U8        ucTerminationFlag;                  /* 业务终止标志 */
     U8        ucTerminationCause;                 /* 业务终止原因 */
-    U8        ucPayloadType;                      /* 编解码 */
+    U8        ucCurrentPlyCnt;                    /* 当前放音次数 */
 
     U8        aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 列表*/
+
     U8        ucCurrentSrvInd;                    /* 当前空闲的业务类型索引 */
-    U8        ucCurrentPlyCnt;                    /* 当前放音次数 */
-    U8        aucRes;
+    U8        ucLegRole;                          /* 主被叫标示 */
+    U8        aucRes[2];
 
     U16       usHoldCnt;                          /* 被hold的次数 */
     U16       usHoldTotalTime;                    /* 被hold的总时长 */
@@ -414,14 +437,6 @@ typedef struct tagSCSCB{
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
-    U32       ulStartTimeStamp;                   /* 起始时间戳 */
-    U32       ulRingTimeStamp;                    /* 振铃时间戳 */
-    U32       ulAnswerTimeStamp;                  /* 应答时间戳 */
-    U32       ulIVRFinishTimeStamp;               /* IVR播放完成时间戳 */
-    U32       ulDTMFTimeStamp;                    /* (第一个)二次拨号时间戳 */
-    U32       ulBridgeTimeStamp;                  /* LEG桥接时间戳 */
-    U32       ulByeTimeStamp;                     /* 释放时间戳 */
-
     U32       ulRes1;
 
     S8        szCallerNum[SC_TEL_NUMBER_LENGTH];  /* 主叫号码 */
@@ -430,6 +445,8 @@ typedef struct tagSCSCB{
     S8        szDialNum[SC_TEL_NUMBER_LENGTH];    /* 用户拨号 */
     S8        szSiteNum[SC_TEL_NUMBER_LENGTH];    /* 坐席号码 */
     S8        szUUID[SC_MAX_UUID_LENGTH];         /* Leg-A UUID */
+
+    SC_SCB_EXTRA_DATA_ST *pstExtraData;           /* 结算话单是需要的额外数据 */
 
     sem_t     semSCBSyn;                          /* 用于同步的SCB */
     pthread_mutex_t mutexSCBLock;                 /* 保护SCB的锁 */
@@ -528,7 +545,10 @@ U32 sc_call_set_owner(SC_SCB_ST *pstSCB, U32  ulTaskID, U32 ulCustomID);
 U32 sc_call_set_trunk(SC_SCB_ST *pstSCB, U32 ulTrunkID);
 SC_TASK_CB_ST *sc_tcb_find_by_taskid(U32 ulTaskID);
 SC_SCB_ST *sc_scb_get(U32 ulIndex);
-
+U32 sc_ep_terminate_call(SC_SCB_ST *pstSCB);
+U32 sc_ep_outgoing_call_proc(SC_SCB_ST *pstSCB);
+U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB);
+U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService);
 SC_TASK_CB_ST *sc_tcb_alloc();
 VOID sc_tcb_free(SC_TASK_CB_ST *pstTCB);
 U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB);
@@ -553,6 +573,8 @@ U32 sc_task_get_mode(U32 ulTCBNo);
 U32 sc_task_get_timeout_for_noanswer(U32 ulTCBNo);
 U32 sc_task_get_agent_queue(U32 ulTCBNo);
 U32 sc_dialer_add_call(SC_SCB_ST *pstSCB);
+U32 sc_task_concurrency_minus (U32 ulTCBNo);
+U32 sc_task_concurrency_add(U32 ulTCBNo);
 VOID sc_call_trace(SC_SCB_ST *pstSCB, const S8 *szFormat, ...);
 U32 sc_task_callee_set_recall(SC_TASK_CB_ST *pstTCB, U32 ulIndex);
 U32 sc_task_load_audio(SC_TASK_CB_ST *pstTCB);
@@ -580,6 +602,8 @@ U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
 U32 sc_ep_search_route(SC_SCB_ST *pstSCB);
 U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 ulLength);
 
+U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB);
+U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB);
 
 
 #ifdef __cplusplus

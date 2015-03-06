@@ -99,6 +99,11 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
             pstHashNode->pHandle = (VOID *)pstCustomer;
             ulHashIndex = bs_hash_get_index(BS_HASH_TBL_CUSTOMER_SIZE, pstCustomer->ulCustomerID);
+            if (U32_BUTT == ulHashIndex)
+            {
+                DOS_ASSERT(0);
+                break;
+            }
 
             /* 如果hash表中已经存在，说明有错误 */
             if (hash_find_node(g_astCustomerTbl,
@@ -436,6 +441,9 @@ VOID bss_add_cdr_list(VOID *pMsg)
 
     /* 消息入队 */
     *pstMsg = *(BS_MSG_CDR *)pMsg;
+
+    printf ("%s:%d, %d, %d\r\n", __FUNCTION__, __LINE__, pstMsg->ucLegNum, ((BS_MSG_CDR *)pMsg)->ucLegNum);
+
     pstMsgNode->pHandle = (VOID *)pstMsg;
     pthread_mutex_lock(&g_mutexBSCDR);
     DLL_Add(&g_stBSCDRList, pstMsgNode);
@@ -509,6 +517,7 @@ VOID bss_app_msg_proc(VOID *pMsg)
 VOID *bss_recv_bsd_msg(VOID *arg)
 {
     DLL_NODE_S *pNode;
+    struct timespec stTimeout;
 
     while (1)
     {
@@ -516,7 +525,9 @@ VOID *bss_recv_bsd_msg(VOID *arg)
 
         /* 读取消息队列第一个数据 */
         pthread_mutex_lock(&g_mutexBSD2SMsg);
-        pthread_cond_wait(&g_condBSD2SList, &g_mutexBSD2SMsg);
+        stTimeout.tv_sec = time(0) + 1;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&g_condBSD2SList, &g_mutexBSD2SMsg, &stTimeout);
         pNode = dll_fetch(&g_stBSD2SMsgList);
         pthread_mutex_unlock(&g_mutexBSD2SMsg);
 
@@ -537,6 +548,7 @@ VOID *bss_send_msg2app(VOID *arg)
     DLL_NODE_S      *pNode;
     BSS_APP_CONN    *pstAppConn;
     BS_MSG_TAG      *pstMsgTag;
+    struct timespec stTimeout;
 
     while (1)
     {
@@ -544,7 +556,9 @@ VOID *bss_send_msg2app(VOID *arg)
 
         /* 读取消息队列第一个数据 */
         pthread_mutex_lock(&g_mutexBSAppMsgSend);
-        pthread_cond_wait(&g_condBSAppSendList, &g_mutexBSAppMsgSend);
+        stTimeout.tv_sec = time(0) + 1;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&g_condBSAppSendList, &g_mutexBSAppMsgSend, &stTimeout);
         pNode = dll_fetch(&g_stBSAppMsgSendList);
         pthread_mutex_unlock(&g_mutexBSAppMsgSend);
 
@@ -852,10 +866,14 @@ VOID *bss_recv_msg_from_app(VOID *arg)
         {
             bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
                      "Refresh app addr. old:0x%X:%u, new:0x%X:%u",
-                     pstMsgTag->aulIPAddr[0], dos_ntohs(pstMsgTag->usPort),
-                     stAddrIn.sin_addr.s_addr, dos_ntohs(stAddrIn.sin_port));
+                     dos_ntohl(pstMsgTag->aulIPAddr[0]), dos_ntohs(pstMsgTag->usPort),
+                     dos_ntohl(stAddrIn.sin_addr.s_addr), dos_ntohs(stAddrIn.sin_port));
             pstMsgTag->usPort = stAddrIn.sin_port;
             pstMsgTag->aulIPAddr[0] = stAddrIn.sin_addr.s_addr;
+            pstMsgTag->aulIPAddr[1] = 0;
+            pstMsgTag->aulIPAddr[2] = 0;
+            pstMsgTag->aulIPAddr[3] = 0;
+
         }
 
         bs_save_app_conn(lSocket, &stAddrIn, lAddrLen, DOS_FALSE);
@@ -966,7 +984,7 @@ VOID bss_user_auth(DLL_NODE_S *pMsgNode)
 
     bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
              "User auth, customer:%u, account:%u, userid:%u, agentid:%u, "
-             "%s, session id:%s, session num:%s, agent:%s, caller:%s, callee:%s",
+             "%s, session id:%s, session num:%d, agent:%s, caller:%s, callee:%s",
              pstMsg->ulCustomerID, pstMsg->ulAccountID,
              pstMsg->ulUserID, pstMsg->ulAgentID,
              szServType, pstMsg->szSessionID,
@@ -976,7 +994,7 @@ VOID bss_user_auth(DLL_NODE_S *pMsgNode)
     if (0 == ulServNum)
     {
         DOS_ASSERT(0);
-        bs_trace(BS_TRACE_FS, LOG_LEVEL_ERROR, "Err: no server type in auth msg!");
+        bs_trace(BS_TRACE_FS, LOG_LEVEL_ERROR, "%s", "Err: no server type in auth msg!");
         ucErrCode = BS_ERR_PARAM_ERR;
         goto auth_fail;
     }
@@ -985,7 +1003,7 @@ VOID bss_user_auth(DLL_NODE_S *pMsgNode)
     {
         /* 目前系统设计,FS与BS共用数据库,一定会有客户信息送过来;目前一个客户一个账户 */
         DOS_ASSERT(0);
-        bs_trace(BS_TRACE_FS, LOG_LEVEL_ERROR, "Err: no customer info in auth msg!");
+        bs_trace(BS_TRACE_FS, LOG_LEVEL_ERROR, "%s", "Err: no customer info in auth msg!");
         ucErrCode = BS_ERR_PARAM_ERR;
         goto auth_fail;
     }
@@ -993,7 +1011,7 @@ VOID bss_user_auth(DLL_NODE_S *pMsgNode)
     pstCustomer = bs_get_customer_st(pstMsg->ulCustomerID);
     if (NULL == pstCustomer)
     {
-        bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG, "Can't find customer!");
+        bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG, "%s", "Can't find customer!");
         ucErrCode = BS_ERR_NOT_EXIST;
         goto auth_fail;
     }
@@ -1817,6 +1835,7 @@ VOID bss_billing_stop(DLL_NODE_S *pMsgNode)
 
     /* 前面已经判断过地址合法性,此处直接使用即可 */
     pstMsg = pMsgNode->pHandle;
+
     for (i = 0; i < (S32)pstMsg->ucLegNum && i < BS_MAX_SESSION_LEG_IN_BILL; i++)
     {
         pstSessionLeg = &pstMsg->astSessionLeg[i];
@@ -3498,6 +3517,7 @@ VOID *bss_aaa(VOID *arg)
 {
     DLL_NODE_S      *pMsgNode;
     BS_MSG_AUTH     *pstMsg;
+    struct timespec stTimeout;
 
     while (1)
     {
@@ -3505,7 +3525,9 @@ VOID *bss_aaa(VOID *arg)
 
         /* 读取消息队列第一个数据 */
         pthread_mutex_lock(&g_mutexBSAAAMsg);
-        pthread_cond_wait(&g_condBSAAAList, &g_mutexBSAAAMsg);
+        stTimeout.tv_sec = time(0) + 1;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&g_condBSAAAList, &g_mutexBSAAAMsg, &stTimeout);
         pMsgNode = dll_fetch(&g_stBSAAAMsgList);
         pthread_mutex_unlock(&g_mutexBSAAAMsg);
 
@@ -3558,6 +3580,7 @@ VOID *bss_cdr(VOID *arg)
 {
     DLL_NODE_S      *pMsgNode;
     BS_MSG_CDR      *pstMsg;
+    struct timespec stTimeout;
 
     while (1)
     {
@@ -3565,7 +3588,9 @@ VOID *bss_cdr(VOID *arg)
 
         /* 读取消息队列第一个数据 */
         pthread_mutex_lock(&g_mutexBSCDR);
-        pthread_cond_wait(&g_condBSCDRList, &g_mutexBSCDR);
+        stTimeout.tv_sec = time(0) + 1;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&g_condBSCDRList, &g_mutexBSCDR, &stTimeout);
         pMsgNode = dll_fetch(&g_stBSCDRList);
         pthread_mutex_unlock(&g_mutexBSCDR);
 
@@ -3618,6 +3643,7 @@ VOID *bss_billing(VOID *arg)
 {
     DLL_NODE_S      *pMsgNode;
     BS_CDR_TAG      *pstMsgTag;
+    struct timespec stTimeout;
 
     while (1)
     {
@@ -3625,7 +3651,9 @@ VOID *bss_billing(VOID *arg)
 
         /* 读取消息队列第一个数据 */
         pthread_mutex_lock(&g_mutexBSBilling);
-        pthread_cond_wait(&g_condBSBillingList, &g_mutexBSBilling);
+        stTimeout.tv_sec = time(0) + 1;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&g_condBSBillingList, &g_mutexBSBilling, &stTimeout);
         pMsgNode = dll_fetch(&g_stBSBillingList);
         pthread_mutex_unlock(&g_mutexBSBilling);
 

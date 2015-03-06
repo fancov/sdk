@@ -202,6 +202,11 @@ HASH_NODE_S *bs_get_customer_node(U32 ulCustomerID)
     HASH_NODE_S     *pstHashNode = NULL;
 
     ulHashIndex = bs_hash_get_index(BS_HASH_TBL_CUSTOMER_SIZE, ulCustomerID);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
 
     pthread_mutex_lock(&g_mutexCustomerTbl);
     pstHashNode = hash_find_node(g_astCustomerTbl, ulHashIndex,
@@ -235,6 +240,11 @@ BS_AGENT_ST *bs_get_agent_st(U32 ulAgentID)
     HASH_NODE_S     *pstHashNode = NULL;
 
     ulHashIndex = bs_hash_get_index(BS_HASH_TBL_AGENT_SIZE, ulAgentID);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
 
     pthread_mutex_lock(&g_mutexAgentTbl);
     pstHashNode = hash_find_node(g_astAgentTbl, ulHashIndex,
@@ -258,6 +268,12 @@ BS_SETTLE_ST *bs_get_settle_st(U16 usTrunkID)
     BS_SETTLE_ST    stSettle;
 
     ulHashIndex = bs_hash_get_index(BS_HASH_TBL_SETTLE_SIZE, usTrunkID);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
     stSettle.usTrunkID = usTrunkID;
     pthread_mutex_lock(&g_mutexSettleTbl);
     pstHashNode = hash_find_node(g_astSettleTbl, ulHashIndex,
@@ -280,6 +296,11 @@ BS_TASK_ST *bs_get_task_st(U32 ulTaskID)
     HASH_NODE_S     *pstHashNode = NULL;
 
     ulHashIndex = bs_hash_get_index(BS_HASH_TBL_TASK_SIZE, ulTaskID);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
 
     pthread_mutex_lock(&g_mutexTaskTbl);
     pstHashNode = hash_find_node(g_astTaskTbl, ulHashIndex,
@@ -435,9 +456,7 @@ VOID bs_stat_agent_num(VOID)
             }
 
             /* 获取客户信息结构体 */
-            pthread_mutex_unlock(&g_mutexCustomerTbl);
             pstCustomer = bs_get_customer_st(pstAgent->ulCustomerID);
-            pthread_mutex_lock(&g_mutexCustomerTbl);
             if (NULL == pstCustomer)
             {
                 /* 找不到 */
@@ -467,6 +486,11 @@ U32 bs_get_settle_packageid(U16 usTrunkID)
 
     stSettle.usTrunkID = usTrunkID;
     ulHashIndex = bs_hash_get_index(BS_HASH_TBL_SETTLE_SIZE, usTrunkID);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        return U32_BUTT;
+    }
 
     pthread_mutex_lock(&g_mutexSettleTbl);
     pstHashNode = hash_find_node(g_astSettleTbl,
@@ -509,6 +533,11 @@ BS_BILLING_PACKAGE_ST *bs_get_billing_package(U32 ulPackageID, U8 ucServType)
     stMatch.ulPackageID = ulPackageID;
     stMatch.ucServType = ucServType;
     ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulPackageID);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
 
     pthread_mutex_lock(&g_mutexBillingPackageTbl);
     pstHashNode = hash_find_node(g_astBillingPackageTbl, ulHashIndex,

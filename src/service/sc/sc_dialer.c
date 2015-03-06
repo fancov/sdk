@@ -20,6 +20,7 @@ extern "C"{
 
 /* include private header files */
 #include <esl.h>
+#include <bs_pub.h>
 #include "sc_def.h"
 #include "sc_debug.h"
 
@@ -171,16 +172,27 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         return DOS_FAIL;
     }
 
-
-    /* 认证 */
-
-    dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                    , "bgapi originate {scb_number=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s &park \r\n"
-                    , pstSCB->usSCBNo
-                    , ulMainService
-                    , pstSCB->szCallerNum
-                    , pstSCB->szCallerNum
-                    , szCallString);
+    if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+    {
+        dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
+                        , "bgapi originate {scb_number=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s &park \r\n"
+                        , pstSCB->usSCBNo
+                        , ulMainService
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCallerNum
+                        , szCallString);
+    }
+    else
+    {
+        dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
+                        , "bgapi originate {scb_number=%d,other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s &park \r\n"
+                        , pstSCB->usSCBNo
+                        , pstSCB->usOtherSCBNo
+                        , ulMainService
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCallerNum
+                        , szCallString);
+    }
 
     sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
 
@@ -227,6 +239,9 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 
         goto esl_exec_fail;
     }
+
+    /* 这个地方客户那边已经接通了，所以直接到ACTIVE */
+    SC_SCB_SET_STATUS(pstSCB, SC_SCB_ACTIVE);
 
     sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
     sc_call_trace(pstSCB, "Make call successfully.");
@@ -322,7 +337,23 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 continue;
             }
 
-            sc_dialer_make_call2pstn(pstSCB, SC_SERV_AUTO_DIALING);
+            /* 认证 */
+            if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+            {
+                pstSCB->ucTerminationFlag = DOS_TRUE;
+                pstSCB->ucTerminationCause = BS_ERR_SYSTEM;
+
+                SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
+
+                sc_scb_free(pstSCB);
+                pstSCB = NULL;
+            }
+            else
+            {
+                SC_SCB_SET_STATUS(pstSCB, SC_SCB_AUTH);
+            }
+
+            //sc_dialer_make_call2pstn(pstSCB, SC_SERV_AUTO_DIALING);
 
             /* SCB是预分配的，所以这里只需要把队列节点释放一下就好 */
             pstListNode->pstSCB = NULL;

@@ -209,7 +209,7 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         goto fail;
     }
 
-//    SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
+    SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
 
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstTCB->bTraceCallON || pstSCB->bTraceNo
@@ -223,6 +223,7 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     pstSCB->usSiteNo = U16_BUTT;
     pstSCB->ulTrunkID = U32_BUTT;
     pstSCB->ulCallDuration = 0;
+    pstSCB->ucLegRole = SC_CALLER;
 
     dos_strncpy(pstSCB->szCallerNum, pstCaller->szNumber, SC_TEL_NUMBER_LENGTH);
     pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
@@ -232,6 +233,10 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     pstSCB->szUUID[0] = '\0';
 
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
+
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AUTO_DIALING);
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
 
     if (sc_dialer_add_call(pstSCB) != DOS_SUCC)
     {

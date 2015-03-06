@@ -52,6 +52,7 @@ static S32 bsd_record_cnt_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszField
 static S32 bsd_walk_customer_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFields)
 {
     U32             ulCnt = 0, ulHashIndex, ulCustomerType, ulCustomerState;
+    U32             ulBallingPageage, ulBanlance;
     HASH_NODE_S     *pstHashNode = NULL;
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
@@ -76,7 +77,9 @@ static S32 bsd_walk_customer_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
     if (dos_atoul(aszData[0], &pstCustomer->ulCustomerID) < 0
         || dos_atoul(aszData[2], &pstCustomer->ulParentID) < 0
         || dos_atoul(aszData[3], &ulCustomerType)
-        || dos_atoul(aszData[4], &ulCustomerState) < 0)
+        || dos_atoul(aszData[4], &ulCustomerState) < 0
+        || dos_atoul(aszData[5], &ulBallingPageage) < 0
+        || dos_atoul(aszData[6], &ulBanlance) < 0)
     {
         DOS_ASSERT(0);
         dos_dmem_free(pstHashNode);
@@ -88,11 +91,20 @@ static S32 bsd_walk_customer_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
 
     pstCustomer->ucCustomerType = (U8)ulCustomerType;
     pstCustomer->ucCustomerState = (U8)ulCustomerState;
+    pstCustomer->stAccount.ulAccountID = pstCustomer->ulCustomerID;
+    pstCustomer->stAccount.ulBillingPackageID = ulBallingPageage;
+    pstCustomer->stAccount.LBalanceActive = ulBanlance;
     dos_strncpy(pstCustomer->szCustomerName, aszData[1], sizeof(pstCustomer->szCustomerName));
     pstCustomer->szCustomerName[sizeof(pstCustomer->szCustomerName) - 1] = '\0';
 
     pstHashNode->pHandle = (VOID *)pstCustomer;
     ulHashIndex = bs_hash_get_index(BS_HASH_TBL_CUSTOMER_SIZE, pstCustomer->ulCustomerID);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        return -1;
+    }
+
 
     pthread_mutex_lock(&g_mutexCustomerTbl);
     /* 存放到哈希表之前先查下,确定是否有重复 */
@@ -125,7 +137,7 @@ S32 bsd_walk_customer_tbl(BS_INTER_MSG_WALK *pstMsg)
     HASH_NODE_S     *pstHashNode = NULL;
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT `id`,`name`,`parent_id`,`type`,`status` from tbl_customer;");
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT `id`,`name`,`parent_id`,`type`,`status`, `billing_package_id`, `balance` from tbl_customer;");
     if (db_query(g_pstDBHandle, szQuery, bsd_walk_customer_tbl_cb, NULL, NULL) != DB_ERR_SUCC)
     {
         bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read customers from DB FAIL!");
@@ -227,6 +239,11 @@ static S32 bsd_walk_agent_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszF
 
     pstHashNode->pHandle = (VOID *)pstAgent;
     ulHashIndex = bs_hash_get_index(BS_HASH_TBL_AGENT_SIZE, pstAgent->ulAgentID);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        return -1;
+    }
 
     pthread_mutex_lock(&g_mutexAgentTbl);
     /* 存放到哈希表之前先查下,确定是否有重复 */
@@ -346,6 +363,11 @@ static S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData,
 
     pstHashNode->pHandle = (VOID *)pstBillingPackage;
     ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, pstBillingPackage->ulPackageID);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        return -1;
+    }
 
     pthread_mutex_lock(&g_mutexBillingPackageTbl);
     /* 存放到哈希表之前先查下,确定是否有重复 */
@@ -596,6 +618,7 @@ VOID bsd_save_original_cdr(BS_INTER_MSG_CDR *pstMsg)
     U32             i;
     BS_MSG_CDR      *pstCDR;
     S8              szQuery[1024] = { 0, };
+    S8              szTime[128];
 
     pstCDR = (BS_MSG_CDR *)pstMsg->pCDR;
     if (DOS_ADDR_INVALID(pstCDR))
@@ -616,15 +639,15 @@ VOID bsd_save_original_cdr(BS_INTER_MSG_CDR *pstMsg)
     {
 
         //TODO:存储话单到数据库中
-        dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO"
+        dos_snprintf(szQuery, sizeof(szQuery), "INSERT IGNORE INTO "
                     	"tbl_cdr (id, customer_id, account_id, user_id, task_id, type1, type2, type3"
                     	", record_file, caller, callee, CID, agent_num, start_time, ring_time"
                     	", answer_time, ivr_end_time, dtmf_time, hold_cnt, hold_times, peer_trunk_id"
                     	", terminate_cause, release_part, payload_type, package_loss_rate, cdr_mark"
                     	", sessionID, bridge_time, bye_time, peer_ip1, peer_ip2, tbl_cdr.peer_ip3, peer_ip4)"
-                    "VALUES(NULL, %lu, %lu, %lu, %lu, %lu, %lu, %lu, \"%s\", \"%s\", \"%s\", \"%s\""
-                        ", \"%s\", %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, \"%s\""
-                        ",%lu, %lu, %lu, %lu, %lu, %lu);"
+                    "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, \"%s\", \"%s\", \"%s\", \"%s\""
+                        ", \"%s\", FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), %u, %u, %u, %u, %u, %u, %u, %u, \"%s\""
+                        ", FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), %u, %u, %u, %u);"
                     , pstCDR->astSessionLeg[i].ulCustomerID
                     , pstCDR->astSessionLeg[i].ulAccountID
                     , pstCDR->astSessionLeg[i].ulUserID
@@ -689,9 +712,9 @@ VOID bsd_save_voice_cdr(BS_INTER_MSG_CDR *pstMsg)
                 	"`time_len`,`hold_cnt`,`hold_times`,`peer_trunk_id`,`terminate_cause`,`release_part`,"
                 	"`payload_type`,`package_loss_rate`,`record_flag`,`agent_level`,`cdr_mark`,`cdr_type`,"
                 	"`peer_ip1`,`peer_ip2`,`peer_ip3`,`peer_ip4`)"
-                "VALUES(NULL, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, \"%s\", \"%s\", \"%s\""
-                	", \"%s\", \"%s\", %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu"
-                	", %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu);"
+                "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\", \"%s\", \"%s\""
+                	", \"%s\", \"%s\", %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u"
+                	", %u, %u, %u, %u, %u, %u, %u, %u);"
                 	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID
                 	, pstCDR->ulTaskID, pstCDR->ulRuleID, pstCDR->ucServType
                 	, pstCDR->aulFee[0], pstCDR->aulFee[1], pstCDR->aulFee[2]
@@ -733,8 +756,8 @@ VOID bsd_save_recording_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`fee_l1`,`fee_l2`,`fee_l3`,`fee_l4`,`fee_l5`,"
                       "`record_file`,`caller`,`callee`,`CID`,`agent_num`,"
                       "`start_time`,`time_len`,`agent_level`,`cdr_mark`,`cdr_type`)"
-                    "VALUES(NULL, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, \"%s\""
-                    		, "\%s\", \"%s\", \"%s\", \"%s\", %lu, %lu, %lu, %lu, %lu);"
+                    "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\""
+                    		, "\%s\", \"%s\", \"%s\", \"%s\", %u, %u, %u, %u, %u);"
                 	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID
                 	, pstCDR->ulTaskID, pstCDR->ulRuleID, pstCDR->aulFee[0]
                 	, pstCDR->aulFee[1], pstCDR->aulFee[2], pstCDR->aulFee[3]
@@ -772,9 +795,9 @@ VOID bsd_save_message_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`agent_num`,`deal_time`,`arrived_time`,`msg_len`,`peer_trunk_id`,"
                       "`terminate_cause`,`agent_level`,`cdr_mark`,`cdr_type`,`peer_ip1`,"
                       "`peer_ip2`,`peer_ip3`,`peer_ip4`)"
-                    "VALUES (%lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu"
-                    	", \"%s\", \"%s\", \"%s\", %lu, %lu, %lu, %lu, %lu, %lu"
-                    	", %lu, %lu, %lu, %lu, %lu, %lu);"
+                    "VALUES (%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u"
+                    	", \"%s\", \"%s\", \"%s\", %u, %u, %u, %u, %u, %u"
+                    	", %u, %u, %u, %u, %u, %u);"
                 	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID, 0
                 	, pstCDR->ulRuleID, pstCDR->ucServType, pstCDR->aulFee[0]
                 	, pstCDR->aulFee[1], pstCDR->aulFee[2], pstCDR->aulFee[3]
@@ -813,8 +836,8 @@ VOID bsd_save_settle_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`type`,`fee`,`caller`,`callee`,`deal_times`,`peer_trunk_id`,"
                       "`terminate_cause`,`cdr_mark`,`cdr_type`,`peer_ip1`,"
                       "`peer_ip2`,`peer_ip3`,`peer_ip4`)"
-                    "VALUES(NULL, %lu, %lu, %lu, %lu, %lu, \"%s\", \"%s\", %lu"
-                    	", %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu);"
+                    "VALUES(NULL, %u, %u, %u, %u, %u, \"%s\", \"%s\", %u"
+                    	", %u, %u, %u, %u, %u, %u, %u, %u);"
                 	, pstCDR->ulSPID, pstCDR->ulRuleID, pstCDR->ulTimeStamp
                 	, pstCDR->ucServType, pstCDR->ulFee, pstCDR->szCaller
                 	, pstCDR->szCallee, pstCDR->ulTimeStamp, pstCDR->usPeerTrunkID
@@ -849,7 +872,7 @@ VOID bsd_save_rent_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`id`,`customer_id`,`account_id`,`billing_rule_id`,`ctime`,"
                       "`type`,`fee_l1`,`fee_l2`,`fee_l3`,`fee_l4`,`fee_l5`,"
                       "`agent_level`,`cdr_mark`,`cdr_type`)"
-                    "VALUES(NULL, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu);"
+                    "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u);"
                 	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulRuleID, pstCDR->ulTimeStamp
                 	, pstCDR->ucAttrType, pstCDR->aulFee[0], pstCDR->aulFee[1], pstCDR->aulFee[2]
                 	, pstCDR->aulFee[3], pstCDR->aulFee[4], pstCDR->ucAgentLevel, pstCDR->stCDRTag.ulCDRMark
@@ -878,11 +901,11 @@ VOID bsd_save_account_cdr(BS_INTER_MSG_CDR *pstMsg)
         return;
     }
 
-    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO `tbl_cdr_account` ("
+    dos_snprintf(szQuery, sizeof(szQuery), "INSERT IGNORE INTO `tbl_cdr_account` ("
                       "`id`,`customer_id`,`account_id`,`ctime`,"
                       "`type`,`money`,`balance`,`peer_account_id`,"
                       "`operator_id`,`note`)"
-                    "VALUES(NULL, %lu, %lu, %lu, %lu, %lu, %lu, %lu, %lu, \"%s\");"
+                    "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\");"
                 	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulTimeStamp
                 	, pstCDR->ucOperateType, pstCDR->lMoney, pstCDR->LBalance
                 	, pstCDR->ulPeeAccount, pstCDR->ulOperatorID, pstCDR->szRemark);
