@@ -414,15 +414,16 @@ typedef struct tagSCSCB{
     U32       ulTrunkID;                          /* 中继ID */
 
     U8        ucStatus;                           /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
+    U8        ucServStatus;                       /* 业务状态 */
     U8        ucTerminationFlag;                  /* 业务终止标志 */
     U8        ucTerminationCause;                 /* 业务终止原因 */
-    U8        ucCurrentPlyCnt;                    /* 当前放音次数 */
 
     U8        aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 列表*/
 
     U8        ucCurrentSrvInd;                    /* 当前空闲的业务类型索引 */
     U8        ucLegRole;                          /* 主被叫标示 */
-    U8        aucRes[2];
+    U8        ucCurrentPlyCnt;                    /* 当前放音次数 */
+    U8        aucRes[1];
 
     U16       usHoldCnt;                          /* 被hold的次数 */
     U16       usHoldTotalTime;                    /* 被hold的总时长 */
@@ -448,7 +449,6 @@ typedef struct tagSCSCB{
 
     SC_SCB_EXTRA_DATA_ST *pstExtraData;           /* 结算话单是需要的额外数据 */
 
-    sem_t     semSCBSyn;                          /* 用于同步的SCB */
     pthread_mutex_t mutexSCBLock;                 /* 保护SCB的锁 */
 }SC_SCB_ST;
 

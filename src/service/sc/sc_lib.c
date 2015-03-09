@@ -226,9 +226,6 @@ U32 sc_scb_init(SC_SCB_ST *pstSCB)
         return DOS_FAIL;
     }
 
-    sem_destroy(&pstSCB->semSCBSyn);
-    sem_init(&pstSCB->semSCBSyn, 0, 0);
-
     pstSCB->usOtherSCBNo = U16_BUTT;           /* 另外一个leg的SCB编号 */
 
     pstSCB->usTCBNo = U16_BUTT;                /* 任务控制块编号ID */
@@ -240,6 +237,7 @@ U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->ulTrunkID = U32_BUTT;              /* 中继ID */
 
     pstSCB->ucStatus = SC_SCB_IDEL;            /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
+    pstSCB->ucServStatus = 0;
     pstSCB->ucTerminationFlag = 0;             /* 业务终止标志 */
     pstSCB->ucTerminationCause = 0;            /* 业务终止原因 */
     pstSCB->ucLegRole = SC_CALL_ROLE_BUTT;

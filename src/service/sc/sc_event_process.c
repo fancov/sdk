@@ -3431,6 +3431,10 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
  */
 U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
+    S8 *pszDTMFDigit = NULL;
+    U32 ulTaskMode   = U32_BUTT;
+
+
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
     if (DOS_ADDR_INVALID(pstEvent)
@@ -3445,12 +3449,43 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
 
     sc_call_trace(pstSCB, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
 
+    pszDTMFDigit = esl_event_get_header(pstEvent, "DTMF-Digit");
+    if (DOS_ADDR_INVALID(pszDTMFDigit))
+    {
+        DOS_ASSERT(0);
+        goto process_fail;
+    }
 
+    /* 自动外呼，拨0接通坐席 */
+    if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
+        && '0' == pszDTMFDigit[0])
+    {
+
+        ulTaskMode = sc_task_get_mode(pstSCB->usTCBNo);
+        if (ulTaskMode >= SC_TASK_MODE_BUTT)
+        {
+            DOS_ASSERT(0);
+            /* 要不要挂断 ? */
+            goto process_fail;
+        }
+
+        if (SC_TASK_MODE_KEY4AGENT == ulTaskMode)
+        {
+            sc_ep_call_agent(pstSCB);
+        }
+    }
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
 
     SC_TRACE_OUT();
     return DOS_SUCC;
+
+process_fail:
+    sc_call_trace(pstSCB, "Finished to process %s event. FAIL.", esl_event_get_header(pstEvent, "Event-Name"));
+
+    SC_TRACE_OUT();
+    return DOS_FAIL;
+
 }
 
 /**
