@@ -20,6 +20,7 @@ extern "C"{
 #include <sys/time.h>
 #include <pthread.h>
 #include <bs_pub.h>
+#include <libcurl/curl.h>
 #include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_acd_def.h"
@@ -67,6 +68,59 @@ pthread_mutex_t          g_mutexHashDIDNum = PTHREAD_MUTEX_INITIALIZER;
 HASH_TABLE_S             *g_pstHashBlackList  = NULL;
 pthread_mutex_t          g_mutexHashBlackList = PTHREAD_MUTEX_INITIALIZER;
 
+
+CURL *g_pstCurlHandle;
+
+
+U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
+{
+    S8 szURL[256] = { 0, };
+    U32 ulTimeout = 2;
+    U32 ulRet = 0;
+
+    if (DOS_ADDR_INVALID(pstAgentInfo)
+        || DOS_ADDR_INVALID(szCaller))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(g_pstCurlHandle))
+    {
+        g_pstCurlHandle = curl_easy_init();
+        if (DOS_ADDR_INVALID(g_pstCurlHandle))
+        {
+            DOS_ASSERT(0);
+
+            return DOS_FAIL;
+        }
+    }
+
+    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%d_%s_%s"
+                , pstAgentInfo->ulSiteID
+                , pstAgentInfo->szEmpNo
+                , pstAgentInfo->szExtension);
+
+    curl_easy_reset(g_pstCurlHandle);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_URL, szURL);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_POSTFIELDS, szCaller);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_TIMEOUT, ulTimeout);
+    ulRet = curl_easy_perform(g_pstCurlHandle);
+    if(CURLE_OK != ulRet)
+    {
+        sc_logr_notice(SC_ESL, "CURL post FAIL.Caller:%d.", szCaller);
+
+        return DOS_FAIL;
+    }
+    else
+    {
+        sc_logr_notice(SC_ESL, "CURL post SUCC.Caller:%d.", szCaller);
+
+        return DOS_SUCC;
+    }
+
+}
 
 /**
  * 函数: VOID sc_ep_sip_userid_init(SC_USER_ID_NODE_ST *pstUserID)
@@ -2285,29 +2339,6 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
         goto proc_error;
     }
 
-    dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                    , "bgapi originate {scb_number=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}user/%s &park() \r\n"
-                    , pstSCBNew->usSCBNo
-                    , SC_SERV_AGENT_CALLBACK
-                    , pstSCB->szCalleeNum
-                    , pstSCB->szCalleeNum
-                    , stAgentInfo.szUserID);
-
-    if (sc_ep_esl_execute_cmd(szAPPParam) != DOS_SUCC)
-    {
-        /* @TODO 用户体验优化 */
-        goto proc_error;
-    }
-    else
-    {
-        /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
-        sc_ep_esl_execute_cmd(szAPPParam);
-        sc_acd_agent_update_status(stAgentInfo.szUserID, SC_ACD_BUSY);
-
-        sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
-        sc_ep_esl_execute("speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
-    }
-
     pthread_mutex_lock(&pstSCBNew->mutexSCBLock);
 
     pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
@@ -2332,6 +2363,36 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_AGENT_CALLBACK);
 
     SC_SCB_SET_STATUS(pstSCBNew, SC_SCB_EXEC);
+
+
+    dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                    , "bgapi originate {scb_number=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}user/%s &park() \r\n"
+                    , pstSCBNew->usSCBNo
+                    , SC_SERV_AGENT_CALLBACK
+                    , pstSCB->szCalleeNum
+                    , pstSCB->szCalleeNum
+                    , stAgentInfo.szUserID);
+
+    if (sc_ep_esl_execute_cmd(szAPPParam) != DOS_SUCC)
+    {
+        /* @TODO 用户体验优化 */
+        goto proc_error;
+    }
+    else
+    {
+        /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
+        sc_ep_esl_execute_cmd(szAPPParam);
+        sc_acd_agent_update_status(stAgentInfo.szUserID, SC_ACD_BUSY);
+
+        sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
+        sc_ep_esl_execute("speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
+    }
+
+    if (sc_ep_call_notify(&stAgentInfo, pstSCBNew->szCallerNum))
+    {
+        DOS_ASSERT(0);
+    }
+
 
     return DOS_SUCC;
 
@@ -3087,10 +3148,6 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         {
             sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
         }
-        else if (dos_stricmp(pszAppName, "bridge") == 0)
-        {
-            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
-        }
     }
 
 process_finished:
@@ -3473,6 +3530,12 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         {
             sc_ep_call_agent(pstSCB);
         }
+    }
+    else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
+    {
+        /* AGENT按键对客户评级 */
+
+        /* todo写数据 */
     }
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
