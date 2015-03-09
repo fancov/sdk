@@ -222,43 +222,6 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
 
     for (ulIndex=0; ulIndex<ulSCSrvCnt; ulIndex++)
     {
-        if (SC_SERV_OUTBOUND_CALL == aucSCSrvList[ulIndex])
-        {
-            blIsOutboundCall = DOS_TRUE;
-        }
-        else if (SC_SERV_EXTERNAL_CALL == aucSCSrvList[ulIndex])
-        {
-            blIsExternalCall = DOS_TRUE;
-        }
-    }
-
-    if (blIsOutboundCall && blIsExternalCall)
-    {
-        if (ulBSSrvIndex < ulBSSrvCnt)
-        {
-            aucBSSrvList[ulBSSrvIndex] = BS_SERV_OUTBAND_CALL;
-            ulBSSrvIndex++;
-        }
-    }
-    else if (!blIsOutboundCall && blIsExternalCall)
-    {
-        if (ulBSSrvIndex < ulBSSrvCnt)
-        {
-            aucBSSrvList[ulBSSrvIndex] = BS_SERV_INBAND_CALL;
-            ulBSSrvIndex++;
-        }
-    }
-    else
-    {
-        if (ulBSSrvIndex < ulBSSrvCnt)
-        {
-            aucBSSrvList[ulBSSrvIndex] = BS_SERV_INTER_CALL;
-            ulBSSrvIndex++;
-        }
-    }
-
-    for (ulIndex=0; ulIndex<ulSCSrvCnt; ulIndex++)
-    {
         switch (aucSCSrvList[ulIndex])
         {
             case SC_SERV_OUTBOUND_CALL:
@@ -346,6 +309,44 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
 
             default:
                 break;
+        }
+    }
+
+
+    for (ulIndex=0; ulIndex<ulSCSrvCnt; ulIndex++)
+    {
+        if (SC_SERV_OUTBOUND_CALL == aucSCSrvList[ulIndex])
+        {
+            blIsOutboundCall = DOS_TRUE;
+        }
+        else if (SC_SERV_EXTERNAL_CALL == aucSCSrvList[ulIndex])
+        {
+            blIsExternalCall = DOS_TRUE;
+        }
+    }
+
+    if (blIsOutboundCall && blIsExternalCall)
+    {
+        if (ulBSSrvIndex < ulBSSrvCnt)
+        {
+            aucBSSrvList[ulBSSrvIndex] = BS_SERV_OUTBAND_CALL;
+            ulBSSrvIndex++;
+        }
+    }
+    else if (!blIsOutboundCall && blIsExternalCall)
+    {
+        if (ulBSSrvIndex < ulBSSrvCnt)
+        {
+            aucBSSrvList[ulBSSrvIndex] = BS_SERV_INBAND_CALL;
+            ulBSSrvIndex++;
+        }
+    }
+    else
+    {
+        if (ulBSSrvIndex < ulBSSrvCnt)
+        {
+            aucBSSrvList[ulBSSrvIndex] = BS_SERV_INTER_CALL;
+            ulBSSrvIndex++;
         }
     }
 
@@ -809,11 +810,11 @@ prepare_msg:
         pstCDRMsg->stMsgTag.usMsgLen  = sizeof(BS_MSG_BALANCE_QUERY);
 
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ulCDRMark = 0;
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulUserID = pstFirstSCB->ulCustomID;
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAgentID = pstFirstSCB->ulAgentID;
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulCustomerID = pstFirstSCB->ulCustomID;
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAccountID = pstFirstSCB->ulCustomID;
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulTaskID = pstFirstSCB->ulTaskID;
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulUserID = (U32_BUTT == pstFirstSCB->ulCustomID) ? 0 : pstFirstSCB->ulCustomID;
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAgentID = (U32_BUTT == pstFirstSCB->ulAgentID) ? 0 : pstFirstSCB->ulAgentID;
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulCustomerID = (U32_BUTT == pstFirstSCB->ulCustomID) ? 0 : pstFirstSCB->ulCustomID;
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAccountID = (U32_BUTT == pstFirstSCB->ulCustomID) ? 0 : pstFirstSCB->ulCustomID;
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulTaskID = (U32_BUTT == pstFirstSCB->ulTaskID) ? 0 : pstFirstSCB->ulTaskID;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile[0] = '\0';
 
         dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID, pstFirstSCB->szUUID, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID));
@@ -851,7 +852,7 @@ prepare_msg:
         pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[1] = 0;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[2] = 0;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[3] = 0;
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = pstFirstSCB->ulTrunkID;
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstFirstSCB->ulTrunkID) ? 0 : pstFirstSCB->ulTrunkID;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstFirstSCB->ucTerminationCause;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
         sc_bs_srv_type_adapter(pstFirstSCB->aucServiceType
@@ -868,9 +869,9 @@ prepare_msg:
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ulCDRMark = 0;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ulUserID = (U32_BUTT == pstSecondSCB->ulCustomID) ? 0 : pstSecondSCB->ulCustomID;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAgentID = (U32_BUTT == pstSecondSCB->ulAgentID) ? 0 : pstSecondSCB->ulAgentID;
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulCustomerID = pstSecondSCB->ulCustomID;
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAccountID = pstSecondSCB->ulCustomID;
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulTaskID = pstSecondSCB->ulTaskID;
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulCustomerID = (U32_BUTT == pstSecondSCB->ulCustomID) ? 0 : pstSecondSCB->ulCustomID;
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAccountID = (U32_BUTT == pstSecondSCB->ulCustomID) ? 0 : pstSecondSCB->ulCustomID;
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulTaskID = (U32_BUTT == pstSecondSCB->ulTaskID) ? 0 : pstSecondSCB->ulTaskID;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile[0] = '\0';
 
         dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID, pstSecondSCB->szUUID, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID));
@@ -908,7 +909,7 @@ prepare_msg:
         pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[1] = 0;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[2] = 0;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[3] = 0;
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = pstSecondSCB->ulTrunkID;
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstSecondSCB->ulTrunkID) ? 0 : pstSecondSCB->ulTrunkID;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstSecondSCB->ucTerminationCause;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
         sc_bs_srv_type_adapter(pstSecondSCB->aucServiceType

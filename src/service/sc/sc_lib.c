@@ -776,6 +776,7 @@ U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulTaskID = U32_BUTT;
     pstTCB->ulCustomID = U32_BUTT;
     pstTCB->ulCurrentConcurrency = 0;
+    pstTCB->ulMaxConcurrency = 10;
     pstTCB->usSiteCount = 0;
     pstTCB->ulAgentQueueID = U32_BUTT;
     pstTCB->ucAudioPlayCnt = 0;
@@ -1357,9 +1358,11 @@ U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB)
 #endif
 }
 
-S32 sc_task_load_mode_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
+S32 sc_task_load_other_info_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
 {
     U32 ulTaskMode;
+    U32 ulMaxConcurrency;
+    SC_TASK_CB_ST *pstTCB;
 
     if (DOS_ADDR_INVALID(pArg)
         || lColumnCount<= 0
@@ -1370,6 +1373,8 @@ S32 sc_task_load_mode_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszN
         return DOS_FAIL;
     }
 
+    pstTCB = (SC_TASK_CB_ST *)pArg;
+
     if (DOS_ADDR_INVALID(aszValues[0])
         || '\0' == aszValues[0][0]
         || dos_atoul(aszValues[0], &ulTaskMode) < 0)
@@ -1378,15 +1383,23 @@ S32 sc_task_load_mode_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszN
         return DOS_FAIL;
     }
 
-    *(U32 *)pArg = ulTaskMode;
+    if (DOS_ADDR_INVALID(aszValues[1])
+        || '\0' == aszValues[1][0]
+        || dos_atoul(aszValues[1], &ulMaxConcurrency) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstTCB->ucMode = (U8)ulTaskMode;
+    pstTCB->ulMaxConcurrency = ulMaxConcurrency;
     return DOS_SUCC;
 
 }
 
-S32 sc_task_load_mode(SC_TASK_CB_ST *pstTCB)
+S32 sc_task_load_other_info(SC_TASK_CB_ST *pstTCB)
 {
     S8 szSQL[128] = { 0, };
-    U32 ulTaskMode;
 
     if (DOS_ADDR_INVALID(pstTCB))
     {
@@ -1394,23 +1407,14 @@ S32 sc_task_load_mode(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT mode from tbl_calltask WHERE id=%d;", pstTCB->ulTaskID);
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT mode,max_concurrent from tbl_calltask WHERE id=%d;", pstTCB->ulTaskID);
 
-    if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_mode_cb, (VOID *)&ulTaskMode, NULL) != DB_ERR_SUCC)
+    if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_other_info_cb, (VOID *)pstTCB, NULL) != DB_ERR_SUCC)
     {
         sc_logr_debug(SC_TASK, "Load task time period for task %d fail;", pstTCB->usTCBNo);
 
         return DOS_FAIL;
     }
-
-    if (ulTaskMode >= SC_TASK_MODE_BUTT)
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    pstTCB->ucMode = (U8)ulTaskMode;
 
     return DOS_SUCC;
 
@@ -1764,7 +1768,7 @@ U32 sc_task_concurrency_minus (U32 ulTCBNo)
     pthread_mutex_lock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
     if (g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency > 0)
     {
-        g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency++;
+        g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency--;
     }
     else
     {

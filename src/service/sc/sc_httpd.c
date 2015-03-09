@@ -490,8 +490,8 @@ U32 sc_httpd_srv_init()
 
         memset(&stListenAddr, 0, sizeof(stListenAddr));
         stListenAddr.sin_family = AF_INET;
-        stListenAddr.sin_addr.s_addr = htonl(g_pstHTTPDList[ulIndex]->aulIPAddr[0]);
-        stListenAddr.sin_port = htons(g_pstHTTPDList[ulIndex]->usPort);
+        stListenAddr.sin_addr.s_addr = dos_htonl(g_pstHTTPDList[ulIndex]->aulIPAddr[0]);
+        stListenAddr.sin_port = dos_htons(g_pstHTTPDList[ulIndex]->usPort);
         if (bind(g_pstHTTPDList[ulIndex]->lListenSocket, (struct sockaddr *)&stListenAddr, sizeof(stListenAddr)) < 0)
         {
             sc_logr_error(SC_HTTPD, "%s", "HTTP server bind IP/Address fail.");
@@ -502,7 +502,7 @@ U32 sc_httpd_srv_init()
 
         if (listen(g_pstHTTPDList[ulIndex]->lListenSocket, 5) < 0)
         {
-            sc_logr_error(SC_HTTPD, "Linsten on port %d fail", 18250);
+            sc_logr_error(SC_HTTPD, "Linsten on port %d fail", g_pstHTTPDList[ulIndex]->usPort);
             close(g_pstHTTPDList[ulIndex]->lListenSocket);
             g_pstHTTPDList[ulIndex]->lListenSocket = -1;
             continue;

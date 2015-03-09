@@ -559,7 +559,7 @@ U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_agent_info(SC_TASK_CB_ST *pstTCB);
-S32 sc_task_load_mode(SC_TASK_CB_ST *pstTCB);
+S32 sc_task_load_other_info(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_update_stat(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB);
