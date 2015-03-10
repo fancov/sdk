@@ -33,11 +33,11 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     switch (ulOpteration)
     {
         case BS_CMD_UPDATE:
-            U32  ulCustomID, ulHashIndex;
-            S8   *pszCustomID;
-            HASH_NODE_S     *pstHashNode = NULL, pstHashNodeParent = NULL;
-            BS_CUSTOMER_ST  *pstCustomer = NULL, *pstCustomParent = NULL;
-            U32             ulHashIndex, ulCustomerType, ulCustomerState;
+        {
+            HASH_NODE_S     *pstHashNode = NULL;
+            BS_CUSTOMER_ST  *pstCustomer = NULL;
+            U32             ulHashIndex, ulCustomerType, ulCustomerState, ulCustomID;
+            U32             ulPackageID, ulBanlanceWarning;
             const S8        *pszCustomType, *pszCustomState, *pszCustomID, *pszCustomName, *pszParent;
             const S8        *pszBillingPkg, *pszBalanceWarning, *pszExpiry, *pszBalance;
 
@@ -102,6 +102,8 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 || dos_atoul(pszParent, &pstCustomer->ulParentID) < 0
                 || dos_atoul(pszCustomType, &ulCustomerType) < 0
                 || dos_atoul(pszCustomState, &ulCustomerState) < 0
+                || dos_atoul(pszBillingPkg, &ulPackageID) < 0
+                || dos_atoul(pszBalanceWarning, &ulBanlanceWarning) < 0
                 || '\0' == pszCustomName[0])
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Invalid param while adding custom.");
@@ -112,15 +114,16 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
 
-            pstCustomer->stAccount.ulBillingPackageID = pszBillingPkg;
-            pstCustomer->stAccount.lBalanceWarning = pszBalanceWarning;
+            pstCustomer->stAccount.ulBillingPackageID = ulPackageID;
+            pstCustomer->stAccount.lBalanceWarning = ulBanlanceWarning;
 
             break;
-
+        }
         case BS_CMD_DELETE:
+        {
             U32  ulCustomID, ulHashIndex;
-            S8   *pszCustomID;
-            HASH_NODE_S     *pstHashNode = NULL, pstHashNodeParent = NULL;
+            const S8   *pszCustomID;
+            HASH_NODE_S     *pstHashNode = NULL, *pstHashNodeParent = NULL;
             BS_CUSTOMER_ST  *pstCustomer = NULL, *pstCustomParent = NULL;
 
             pszCustomID = json_get_param(pstJSONObj, "id");
@@ -181,8 +184,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
 
-
-            dll_delete(pstCustomParent->stChildrenList, pstCustomer);
+            dll_delete(&pstCustomParent->stChildrenList, (DLL_NODE_S *)pstCustomer);
             hash_delete_node(g_astCustomerTbl, pstHashNode, ulHashIndex);
             dos_dmem_free(pstCustomer);
             pstCustomer = NULL;
@@ -193,7 +195,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pthread_mutex_unlock(&g_mutexCustomerTbl);
 
             break;
-
+        }
         case BS_CMD_INSERT:
         {
             U32             ulHashIndex, ulCustomerType, ulCustomerState;
