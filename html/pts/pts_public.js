@@ -159,7 +159,6 @@ function switch_pts()
             var result = xmlhttp.responseText.indexOf("succ");
             if (result >= 0)
             {
-                //setTimeout("refersh('1')", 2000);
                 location.reload();
             }
             else
@@ -311,82 +310,6 @@ function submit_create_user_url(url)
     xmlhttp.send();
 }
 
-function create_user_reset()
-{
-    document.getElementById("u14").value = "";
-    document.getElementById("u15").value = "";
-    document.getElementById("u16").value = "";
-
-    return true;
-}
-
-/* change_password.html */
-function change_password()
-{
-    var name = document.getElementById("u14").value;
-    var pw_old = document.getElementById("u15").value;
-    var pw1 = document.getElementById("u16").value;
-    var pw2 = document.getElementById("u18").value;
-    var url = "/cgi-bin/ptsChangePassword?";
-
-    if(name == '' || pw_old == '' || pw1 == '' || pw2 == '')
-    {
-        alert("请输入完整信息");
-        return false;
-    }
-    
-    if(pw1 != pw2)
-    {
-        alert("两次密码输入不对应");
-        return false;
-    }
-    if (pw_old == pw1)
-    {
-        alert("新密码不能和原密码一样");
-        return false;
-    }
-    
-    url += "username="+name+"&password_old="+pw_old+"&password="+pw1;
-    
-    submit_change_passwd_url(url);
-}
-
-function submit_change_passwd_url(url)
-{
-    var xmlhttp = null;
-    if (window.XMLHttpRequest)
-    {
-        xmlhttp=new XMLHttpRequest();
-    }
-    else
-    {
-        xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
-    }
-    xmlhttp.onreadystatechange=function()
-    {
-        if (xmlhttp.readyState==4 && xmlhttp.status==200)
-        {
-            var start = xmlhttp.responseText.indexOf("<p>")+3;
-            var end = xmlhttp.responseText.indexOf("</p>");
-            alert(xmlhttp.responseText.substring(start, end));
-            change_password_reset();
-        }
-    }
-    xmlhttp.open("GET", url, true);
-    xmlhttp.setRequestHeader("If-Modified-Since", "0");
-    xmlhttp.send();
-}
-
-function change_password_reset()
-{
-    document.getElementById("u14").value = "";
-    document.getElementById("u15").value = "";
-    document.getElementById("u16").value = "";
-    document.getElementById("u18").value = "";
-
-    return true;
-}
-
 function form_check_package()
 {
     if (document.getElementById("PackageFile").value == "")
@@ -431,14 +354,14 @@ function form_check_package()
 function checkna()
 {
     var na = form1.name.value;
-	if( na.length <1 || na.length >12)  
-	{      
-        divname.innerHTML='<font class="tips_false">长度是1~12个字符</font>';
+	if (na.length <1 || na.length >12)
+	{
+        	divname.innerHTML='<font class="tips_false">长度是1~12个字符</font>';
 	}
 	else
-	{  
-        divname.innerHTML='<font class="tips_true">输入正确</font>';
-	}  
+	{
+        	divname.innerHTML='<font class="tips_true">输入正确</font>';
+	}
    
   }
 //验证密码
@@ -449,26 +372,26 @@ function checkpsd1()
     var flagSZ=false ; 
     var flagQT=false ;
     if(psd1.length<6 || psd1.length>12)
-    {   
+    {
         divpassword1.innerHTML='<font class="tips_false">长度错误</font>';
     }
     else
-    {   
+    {
         divpassword1.innerHTML='<font class="tips_true">输入正确</font>';
     }
 }
-//验证确认密码 
+
 function checkpsd2()
 {
     var psw1 = form1.password.value;
     var psw2 = form1.password2.value;
 
-    if(psw1 != psw2 || psw1 == "") 
+    if(psw1 != psw2 || psw1 == "")
     { 
          divpassword2.innerHTML='<font class="tips_false">您两次输入的密码不一样</font>';
-    } 
+    }
     else 
-    { 
+    {
          divpassword2.innerHTML='<font class="tips_true">输入正确</font>';
     }
 }
@@ -491,4 +414,95 @@ function checkmail()
 function exit()
 {
     document.execCommand('ClearAuthenticationCache'); 
+}
+
+function del_user()
+{
+    var url = "/cgi-bin/del_users?"
+    var ptcs = document.getElementsByName("PtcCheckBox");
+    var name = "";
+    var xmlhttp = null;
+
+    for(var i = 0; i < ptcs.length; i++) 
+    {
+        if (ptcs[i].type=='checkbox' && ptcs[i].checked)
+        {
+            if (ptcs[i].value == "admin")
+            {
+                alert("admin不可被删除");
+                return false;
+            }
+
+            if (name == "")
+            {
+                name = ptcs[i].value;
+            }
+            else
+            {
+                name += "!"+ptcs[i].value;
+            }
+        }
+    }
+
+    if (name == "")
+    {
+        alert("please select user");
+        return false;
+    }
+
+    url += "name="+name;
+
+    if (window.XMLHttpRequest)
+    {
+        xmlhttp=new XMLHttpRequest();
+    }
+    else
+    {
+        xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    xmlhttp.onreadystatechange=function()
+    {
+        if (xmlhttp.readyState==4 && xmlhttp.status==200)
+        {
+            //setTimeout("refersh('1')", 2000);
+            location.reload();
+        }
+    }
+    
+    xmlhttp.open("GET", url, true);
+    xmlhttp.setRequestHeader("If-Modified-Since", "0");
+    xmlhttp.send();
+}
+
+function change_password()
+{
+    var ptcs = document.getElementsByName("PtcCheckBox");
+    var url = "";
+    var selectBoxCount = 0; 
+    var name = "";
+
+    for(var i = 0; i < ptcs.length; i++) 
+    {
+        if (ptcs[i].type=='checkbox' && ptcs[i].checked)
+        {
+            selectBoxCount++;
+            name = ptcs[i].value;
+        }
+    }
+
+
+    if (selectBoxCount < 1)
+    {
+        alert("请选择一个需要修改的用户");
+        return false;
+    }
+    else if (selectBoxCount > 1)
+    {
+        alert("只能选择一个用户");
+        return false;
+    }
+
+    url = "change_pwd.html?name=" + name;
+
+    window.open(url, '_self');
 }

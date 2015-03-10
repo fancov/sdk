@@ -13,7 +13,7 @@ DOS_INCLUDES			= -I$(SROUCE)/include
 
 SUFFIX					= o
 
-LIBS					= -lpthread -lmysqlclient -lmxml_x64 -lsqlite3_x64
+LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86 
 
 MYSQL_HEADERS			= -I/usr/include/mysql
 MYSQL_LIBS				= -L/usr/lib64/mysql
@@ -32,7 +32,6 @@ include $(SROUCE)/util/timer/Makefile.mk
 include $(SROUCE)/util/hash/Makefile.mk
 include $(SROUCE)/util/list/Makefile.mk
 include $(SROUCE)/util/heartbeat/Makefile.mk
-include $(SROUCE)/util/db/Makefile.mk
 include $(SROUCE)/cfg/Makefile.mk
 include $(SROUCE)/service/Makefile.mk
 include $(SROUCE)/service/ptc/Makefile.mk

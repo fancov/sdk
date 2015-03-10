@@ -20,7 +20,6 @@ extern "C"{
 
 /* include the dos header files */
 #include <pt/dos_sqlite3.h>
-#include <pt/des.h>
 #include <pt/md5.h>
 #include <dos.h>
 #include <pt/pts.h>
