@@ -82,6 +82,26 @@ enum tagAPICMDActionList
     SC_API_CMD_ACTION_SIP_ADD,                           /* 增加一个sip账户 */
     SC_API_CMD_ACTION_SIP_DELETE,                        /* 删除一个sip账户 */
     SC_API_CMD_ACTION_SIP_UPDATE,                        /* 更新一个sip账户 */
+
+    SC_API_CMD_ACTION_ROUTE_ADD,                         /* 增加一个路由 */
+    SC_API_CMD_ACTION_ROUTE_DELETE,                      /* 删除一个路由 */
+    SC_API_CMD_ACTION_ROUTE_UPDATE,                      /* 路由更新 */
+
+    SC_API_CMD_ACTION_GW_GROUP_ADD,                      /* 增加一个网关组 */
+    SC_API_CMD_ACTION_GW_GROUP_DELETE,                   /* 删除一个网关组 */
+    SC_API_CMD_ACTION_GW_GROUP_UPDATE,                   /* 更新一个网关组 */
+
+    SC_API_CMD_ACTION_DID_ADD,                           /* 添加一个did */
+    SC_API_CMD_ACTION_DID_DELETE,                        /* 删除一个did */
+    SC_API_CMD_ACTION_DID_UPDATE,                        /* 更新一个did */
+
+    SC_API_CMD_ACTION_BLACK_ADD,                         /* 添加黑名单 */
+    SC_API_CMD_ACTION_BLACK_DELETE,                      /* 删除黑名单 */
+    SC_API_CMD_ACTION_BLACK_UPDATE,                      /* 更新黑名单 */
+
+    SC_API_CMD_ACTION_CALLER_ADD,                        /* 添加主叫 */
+    SC_API_CMD_ACTION_CALLER_DELETE,                     /* 删除主叫 */
+    SC_API_CMD_ACTION_CALLER_UPDATE,                     /* 主叫更新 */
     //---------------------------------------------------
 
     SC_API_CMD_ACTION_BUTT

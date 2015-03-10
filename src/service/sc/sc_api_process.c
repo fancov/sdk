@@ -35,12 +35,12 @@ U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_call_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_route_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_gw_group_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_did_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_black_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_caller_action(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_acd_http_req_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
-
-extern U32 sc_gateway_proc(U32 ulAction, U32 ulGatewayID);
-extern U32 sc_SIP_proc(U32 ulAction, U32 ulSIPID, U32 ulAgentID, U32 ulCustomerID);
-
-
 
 
 /* global parameters */
@@ -53,6 +53,11 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
     {"agent-action",             sc_http_api_agent_action},
     {"gateway",                  sc_http_api_gateway_action},
     {"sip",                      sc_http_api_sip_action},
+    {"route",                    sc_http_api_route_action},
+    {"gw_group",                 sc_http_api_gw_group_action},
+    {"did",                      sc_http_api_did_action},
+    {"black",                    sc_http_api_black_action},
+    {"caller",                   sc_http_api_caller_action},
 
     {"",                         NULL}
 };
@@ -371,7 +376,6 @@ U32 sc_http_api_gateway_action(SC_HTTP_CLIENT_CB_S *pstClient)
    if (DOS_ADDR_INVALID(pstClient))
    {
        DOS_ASSERT(0);
-
        return SC_HTTP_ERRNO_INVALID_REQUEST;
    }
 
@@ -379,34 +383,31 @@ U32 sc_http_api_gateway_action(SC_HTTP_CLIENT_CB_S *pstClient)
 
    /* 获取网关id */
    pszGateWayID = sc_http_api_get_value(&pstClient->stParamList, "gateway_id");
-   if (!pszGateWayID || '\0' == pszGateWayID[0])
+   /* 获取动作 */
+   pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
+
+   if (DOS_ADDR_INVALID(pszGateWayID)
+       || DOS_ADDR_INVALID(pszAction))
    {
        DOS_ASSERT(0);
-       goto invalid_params;
+       return SC_HTTP_ERRNO_INVALID_REQUEST;
    }
+  
    if (dos_atoul(pszGateWayID, &ulGatewayID) < 0)
    {
        DOS_ASSERT(0);
        goto invalid_params;
    }
 
-   /* 获取动作 */
-   pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
-   if (!pszAction || '\0' == pszAction[0])
-   {
-       DOS_ASSERT(0);
-       goto invalid_params;
-   }
-
-   if(0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+   if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
    {
       ulAction = SC_API_CMD_ACTION_GATEWAY_ADD;
    }
-   else if(0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+   else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
    {
       ulAction = SC_API_CMD_ACTION_GATEWAY_DELETE;
    }
-   else if(0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+   else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
    {
       ulAction = SC_API_CMD_ACTION_GATEWAY_UPDATE;
    }
@@ -416,13 +417,13 @@ U32 sc_http_api_gateway_action(SC_HTTP_CLIENT_CB_S *pstClient)
        goto invalid_params;
    }
 
-   if (sc_gateway_proc(ulAction, ulGatewayID) != DOS_SUCC)
+   if (sc_http_gateway_update_proc(ulAction, ulGatewayID) != DOS_SUCC)
    {
        DOS_ASSERT(0);
        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
    }
 
-   return DOS_SUCC;
+   return SC_HTTP_ERRNO_SUCC;
 
 invalid_params:
    pstClient->ulResponseCode = 200;
@@ -434,7 +435,7 @@ invalid_params:
 
 U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
 {
-    S8  *pszSIPID, *pszAction, *pszAgentID, *pszCustomerID;
+    S8  *pszSipID, *pszAction, *pszAgentID, *pszCustomerID;
     U32 ulSIPID, ulAction, ulAgentID, ulCustomerID;
 
     if (DOS_ADDR_INVALID(pstClient))
@@ -447,48 +448,39 @@ U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
     SC_TRACE_IN(pstClient, 0, 0, 0);
 
     /* 获取sip账户id */
-    pszSIPID = sc_http_api_get_value(&pstClient->stParamList, "id");
-    if (!pszSIPID || '\0' == pszSIPID[0])
-    {
-       DOS_ASSERT(0);
-       return DOS_FAIL;
-    }
+    pszSipID = sc_http_api_get_value(&pstClient->stParamList, "id");
+    /* 获取sip账户对应的坐席ID */
+    pszAgentID = sc_http_api_get_value(&pstClient->stParamList, "agent_id");
+    /* 获取SIP账户所属客户ID */
+    pszCustomerID = sc_http_api_get_value(&pstClient->stParamList, "customer_id");
+    /* 获取动作 */
+    pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
 
-    if (dos_atoul(pszSIPID, &ulSIPID) < 0)
+    if (DOS_ADDR_INVALID(pszSipID)
+        || DOS_ADDR_INVALID(pszAgentID)
+        || DOS_ADDR_INVALID(pszCustomerID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+   
+    if (dos_atoul(pszSipID, &ulSIPID) < 0)
     {
        DOS_ASSERT(0);
        goto invalid_params;
     }
-    /* 获取sip账户对应的坐席ID */
-    pszAgentID = sc_http_api_get_value(&pstClient->stParamList, "agent_id");
-    if (!pszAgentID)
-    {
-        DOS_ASSERT(0);
-    }
-
+    
     if (dos_atoul(pszAgentID, &ulAgentID) < 0)
     {
         DOS_ASSERT(0);
-    }
-
-    /* 获取SIP账户所属客户ID */
-    pszCustomerID = sc_http_api_get_value(&pstClient->stParamList, "customer_id");
-    if (!pszCustomerID)
-    {
-        DOS_ASSERT(0);
+        goto invalid_params;
     }
 
     if (dos_atoul(pszCustomerID, &ulCustomerID) < 0)
     {
         DOS_ASSERT(0);
-    }
-
-    /* 获取动作 */
-    pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
-    if (!pszAction || '\0' == pszAction)
-    {
-       DOS_ASSERT(0);
-       return DOS_FAIL;
+        goto invalid_params;
     }
 
     if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
@@ -509,11 +501,13 @@ U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
        goto invalid_params;
     }
 
-    if (sc_SIP_proc(ulAction, ulSIPID, ulAgentID, ulCustomerID) != DOS_SUCC)
+    if (sc_http_sip_update_proc(ulAction, ulSIPID, ulAgentID, ulCustomerID) != DOS_SUCC)
     {
        DOS_ASSERT(0);
        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }
+
+    return SC_HTTP_ERRNO_SUCC;
     
 invalid_params:
        pstClient->ulResponseCode = 200;
@@ -608,6 +602,250 @@ U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient)
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    return SC_HTTP_ERRNO_SUCC;
+}
+
+U32 sc_http_api_route_action(SC_HTTP_CLIENT_CB_S *pstClient)
+{ //待完成
+    S8   *pszRouteID, *pszAction;
+    U32  ulAction, ulRouteID;
+
+    if (DOS_ADDR_INVALID(pstClient))
+    {
+        DOS_ASSERT(0);
+
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    SC_TRACE_IN(pstClient, 0, 0, 0);
+
+    pszRouteID = sc_http_api_get_value(&pstClient->stParamList, "route_id");
+    pszAction  = sc_http_api_get_value(&pstClient->stParamList, "action");
+
+    if (DOS_ADDR_INVALID(pszRouteID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (dos_atoul(pszRouteID, &ulRouteID) < 0)
+    {
+       DOS_ASSERT(0);
+       return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_ROUTE_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_ROUTE_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_ROUTE_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    return SC_HTTP_ERRNO_SUCC;
+}
+
+U32 sc_http_api_gw_group_action(SC_HTTP_CLIENT_CB_S *pstClient)
+{// 待完成
+    S8   *pszGwGroupID, *pszAction;
+    U32   ulGwGroupID, ulAction;
+
+    if (DOS_ADDR_INVALID(pstClient))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    pszGwGroupID = sc_http_api_get_value(&pstClient->stParamList, "gw_group_id");
+    pszAction    = sc_http_api_get_value(&pstClient->stParamList, "action");
+
+    if (DOS_ADDR_INVALID(pszGwGroupID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (dos_atoul(pszGwGroupID, &ulGwGroupID) < 0)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_GW_GROUP_ADD;
+    } 
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_GW_GROUP_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_GW_GROUP_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    return SC_HTTP_ERRNO_SUCC;
+}
+
+U32 sc_http_api_did_action(SC_HTTP_CLIENT_CB_S *pstClient)
+{// 待完成
+    S8  *pszDidID, *pszAction;
+    U32  ulDidID, ulAction;
+
+    if (DOS_ADDR_INVALID(pstClient))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    pszDidID  = sc_http_api_get_value(&pstClient->stParamList, "did_id");
+    pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
+
+    if (DOS_ADDR_INVALID(pszDidID) 
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (dos_atoul(pszDidID, &ulDidID) < 0)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_DID_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_DID_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_DID_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    return SC_HTTP_ERRNO_SUCC;
+}
+
+U32 sc_http_api_black_action(SC_HTTP_CLIENT_CB_S *pstClient)
+{//待完成
+    S8  *pszBlackID, *pszAction;
+    U32  ulAction, ulBlackID;
+
+    if (DOS_ADDR_INVALID(pstClient))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    pszBlackID = sc_http_api_get_value(&pstClient->stParamList, "black_id");
+    pszAction  = sc_http_api_get_value(&pstClient->stParamList, "action");
+
+    if (DOS_ADDR_INVALID(pszBlackID) 
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (dos_atoul(pszBlackID, &ulBlackID) < 0)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_BLACK_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_BLACK_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_BLACK_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    return SC_HTTP_ERRNO_SUCC;
+}
+
+U32 sc_http_api_caller_action(SC_HTTP_CLIENT_CB_S *pstClient)
+{//待完成
+    S8  *pszCallerID, *pszAction;
+    U32  ulCallerID, ulAction;
+
+    if (DOS_ADDR_INVALID(pstClient))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    /* 获取主叫号码 */
+    pszCallerID = sc_http_api_get_value(&pstClient->stParamList, "caller_id");
+    pszAction   = sc_http_api_get_value(&pstClient->stParamList, "action");
+
+    if (DOS_ADDR_INVALID(pszCallerID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (dos_atoul(pszCallerID, &ulCallerID) < 0)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
     return SC_HTTP_ERRNO_SUCC;
