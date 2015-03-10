@@ -50,7 +50,7 @@ S8* config_get_service_root(S8 *pszBuff, U32 ulLen)
     }
 
     pszValue = _config_get_param(g_pstGlobalCfg, "config/service/path", "service_root", pszBuff, ulLen);
-    if (!pszValue)
+    if (!pszValue || *pszValue == '\0')
     {
         pszBuff[0] = '\0';
         return NULL;

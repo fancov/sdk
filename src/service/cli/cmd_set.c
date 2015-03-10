@@ -26,17 +26,17 @@ extern S32 cli_show_timer(U32 ulIndex, S32 argc, S8 **argv);
 
 
 COMMAND_ST g_stConfigCommand[] = {
-    {NULL, "^ada",          "Enter the log mode",              cli_enter_log_mode},
-    {NULL, "assert",        "Show assert informationa",        dos_assert_print},
-    {NULL, "memory",        "Show memory usage",               cli_cmd_mem},
-    {NULL, "process",       "Show process info",               cli_server_process_print},
+    {NULL, "/ada",          "Enter the log mode",              cli_enter_log_mode},
+    {NULL, "/assert",        "Show assert informationa",        dos_assert_print},
+    {NULL, "/memory",        "Show memory usage",               cli_cmd_mem},
+    {NULL, "/process",       "Show process info",               cli_server_process_print},
 #if INCLUDE_SERVICE_TIMER
-        {NULL, "timer",         "Show timer usage",                cli_show_timer}
+    {NULL, "/timer",         "Show timer usage",                cli_show_timer}
 #endif
 };
 
 COMMAND_ST g_stLogCommand[] = {
-    {NULL, "exit",          "Exit the log mode",               cli_exit_log_mode}
+    {NULL, "/exit",          "Exit the log mode",               cli_exit_log_mode}
 };
 
 COMMAND_GROUP_ST g_stCmdRootGrp[] = {

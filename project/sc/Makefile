@@ -1,7 +1,7 @@
 ########################################################################
 #                         Define the Complie                           # 
 ########################################################################
-TARGET					= moniter
+TARGET					= sc
 
 ########################################################################
 #                      Define some                           # 
@@ -9,7 +9,7 @@ TARGET					= moniter
 PROJECT_ROOT			= ../..
 DOS_LIBS				= -L$(PROJECT_ROOT)/libs
 SROUCE					= $(PROJECT_ROOT)/src
-DOS_INCLUDES			= -I$(SROUCE)/include
+DOS_INCLUDES			= -I$(SROUCE)/include -I$(SROUCE)/include/esl
 
 SUFFIX					= o
 
@@ -22,18 +22,21 @@ MYSQL_LIBS				= -L/usr/lib64/mysql
 ########################################################################
 #                      Collect other makefile                          # 
 ########################################################################
-include $(SROUCE)/util/tools/Makefile
-include $(SROUCE)/util/log/Makefile
-include $(SROUCE)/util/memory/Makefile
-include $(SROUCE)/util/debug/Makefile
-include $(SROUCE)/util/config/Makefile
-include $(SROUCE)/util/timer/Makefile
-include $(SROUCE)/util/hash/Makefile
-include $(SROUCE)/util/list/Makefile
-include $(SROUCE)/util/heartbeat/Makefile
-include $(SROUCE)/util/task/Makefile
-include $(SROUCE)/cfg/Makefile
-include $(SROUCE)/service/Makefile
+include $(SROUCE)/util/tools/Makefile.mk
+include $(SROUCE)/util/log/Makefile.mk
+include $(SROUCE)/util/memory/Makefile.mk
+include $(SROUCE)/util/debug/Makefile.mk
+include $(SROUCE)/util/config/Makefile.mk
+include $(SROUCE)/util/timer/Makefile.mk
+include $(SROUCE)/util/hash/Makefile.mk
+include $(SROUCE)/util/list/Makefile.mk
+include $(SROUCE)/util/task/Makefile.mk
+include $(SROUCE)/util/heartbeat/Makefile.mk
+include $(SROUCE)/util/db/Makefile.mk
+include $(SROUCE)/cfg/Makefile.mk
+include $(SROUCE)/service/Makefile.mk
+include $(SROUCE)/service/esl/Makefile.mk
+include $(SROUCE)/service/sc/Makefile.mk
 
 
 ########################################################################
@@ -50,7 +53,7 @@ ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS)
 CC						= gcc
 CXX						= g++
 CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char
-DEFINES					= -DDIPCC_MONITER -DDEBUG_VERSION
+DEFINES					= -DDIPCC_FREESWITCH -DDEBUG_VERSION
 
 C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
 CXX_COMPILE				= $(CXX) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS)

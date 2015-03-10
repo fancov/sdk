@@ -68,14 +68,14 @@ extern "C"{
 
 /*********************************************************************
 **** This Macro Is Useful For Scanning Through The Entire List    ****
-**** 'pNode' Is A Temp. Variable Of Type 'TypeCast'. pList is the **** 
+**** 'pNode' Is A Temp. Variable Of Type 'TypeCast'. pList is the ****
 **** Pointer To linked_list                                       ****
 **********************************************************************/
 #define DLL_Scan(pList,pNode,TypeCast) \
         for(pNode = (TypeCast)(DLL_First((pList))); \
             pNode != NULL; \
             pNode = (TypeCast)(DLL_Next((pList),((DLL_NODE_S *)(pNode)))))
-            
+
 /*enums*/
 
 /*error codes*/
@@ -96,14 +96,14 @@ typedef struct DLL{
 /*extern variables, export*/
 
 /*extern functions, export*/
-DLL_NODE_S *dll_find(DLL_S *pList, VOID *pKey, 
+DLL_NODE_S *dll_find(DLL_S *pList, VOID *pKey,
 S32 (*fnValCmp)(VOID *, DLL_NODE_S *));
 VOID  dll_insert_in_middle (DLL_S *pList, DLL_NODE_S *pPrev, DLL_NODE_S *pMid, DLL_NODE_S *pNext);
 #undef dll_insert
 VOID  dll_insert (DLL_S *pList, DLL_NODE_S *pPrev, DLL_NODE_S *pNode);
 VOID  dll_delete_in_middle (DLL_S *pList, DLL_NODE_S *pPrev, DLL_NODE_S *pNode, DLL_NODE_S *pNext);
 VOID  dll_delete(DLL_S *pList, DLL_NODE_S *pNode);
-DLL_NODE_S *dll_get (DLL_S *pList);
+DLL_NODE_S *dll_fetch (DLL_S *pList);
 VOID dll_free_all (DLL_S *pList, VOID (*fnFree)(VOID *));
 S32 dll_walk(DLL_S *pList, VOID (*fnVisit)(DLL_NODE_S *));
 

@@ -44,7 +44,7 @@ VOID hash_free_allbucket (HASH_TABLE_S *pHashTab, VOID  (*pMemFreeFunc)(VOID *))
 /*                    If it is NULL, the Node is added to the  */
 /*                    end of the list. The template for        */
 /*                    pInsertFunc Is.                          */
-/*                                                             */ 
+/*                                                             */
 /*                    U8 insert_fn ARG_LIST((HASH_NODE_S */
 /*                         *pNode, U8 *pInsertFunc_param)); */
 /*                    pInsertFunc_param is the parameter to be */
@@ -63,7 +63,7 @@ VOID hash_free_allbucket (HASH_TABLE_S *pHashTab, VOID  (*pMemFreeFunc)(VOID *))
 /*  Output(s)       : None                                     */
 /*  Returns         : Pointer to the Hash Table                */
 /***************************************************************/
-HASH_TABLE_S *hash_create_table (U32 ulHashSize, U32 (*pInsertFunc)())
+DLLEXPORT HASH_TABLE_S *hash_create_table (U32 ulHashSize, U32 (*pInsertFunc)())
 {
  HASH_TABLE_S *pHashTab;
  U32           ulHashIndex,ulHashMemSize;
@@ -77,16 +77,18 @@ HASH_TABLE_S *hash_create_table (U32 ulHashSize, U32 (*pInsertFunc)())
     for(ulHashIndex = 0; ulHashIndex < ulHashSize; ulHashIndex++){
         HASH_BUCKET_INIT(&pHashTab->HashList[ulHashIndex]);
     }
+
+    pHashTab->NodeNum = 0;
  }
  return(pHashTab);
 }
 
 /* find SLL node with special key */
-HASH_NODE_S *hash_find_node(HASH_TABLE_S *pHashTab, U32 ulIndex, 
+DLLEXPORT HASH_NODE_S *hash_find_node(HASH_TABLE_S *pHashTab, U32 ulIndex,
     VOID *pKey, S32 (*fnValCmp)(VOID *, HASH_NODE_S *))
 {
     HASH_NODE_S *pNode;
-    
+
     HASH_Scan_Bucket(pHashTab, ulIndex, pNode, HASH_NODE_S *)
     {
         if (!fnValCmp(pKey, pNode))
@@ -110,12 +112,12 @@ HASH_NODE_S *hash_find_node(HASH_TABLE_S *pHashTab, U32 ulIndex,
 /*                    pNode - Pointer to the node which has to */
 /*                              be added                       */
 /*                    ulHashIndex - Value of the Hash Index    */
-/*                    pu1InsertFuncParam - Parameter which will*/ 
+/*                    pu1InsertFuncParam - Parameter which will*/
 /*                         be passed to the Insert Routine     */
 /*  Output(s)       : None                                     */
 /*  Returns         : None                                     */
 /***************************************************************/
-VOID hash_add_node (HASH_TABLE_S *pHashTab, HASH_NODE_S *pNode, U32 ulHashIndex, U8 *pu1InsertFuncParam)
+DLLEXPORT VOID hash_add_node (HASH_TABLE_S *pHashTab, HASH_NODE_S *pNode, U32 ulHashIndex, U8 *pu1InsertFuncParam)
 {
  U8 u1Found = DOS_FALSE;
  HASH_NODE_S *pTmpNodePtr;
@@ -124,6 +126,7 @@ VOID hash_add_node (HASH_TABLE_S *pHashTab, HASH_NODE_S *pNode, U32 ulHashIndex,
 
  if(pHashTab->pInsertFunc == NULL){
     HASH_ADD_NODE(&pHashTab->HashList[ulHashIndex],pNode);
+    pHashTab->NodeNum++;
  }
  else{
     HASH_Scan_Bucket(pHashTab,ulHashIndex,pTmpNodePtr,HASH_NODE_S *){
@@ -138,15 +141,15 @@ VOID hash_add_node (HASH_TABLE_S *pHashTab, HASH_NODE_S *pNode, U32 ulHashIndex,
     }
 
     if(u1Found == DOS_FALSE) pTmpNodePtr = HASH_LAST_NODE(&pHashTab->HashList[ulHashIndex]);
-    
+
     /* The new has node needs to be inserted prior to the current node */
     if (i4InsertPos == INSERT_PRIORTO) {
        if (pPrevNodePtr)
           HASH_INSERT_NODE(&pHashTab->HashList[ulHashIndex], pPrevNodePtr, pNode);
        else  /* Needs to be added as the root/head node */
           HASH_INSERT_NODE(&pHashTab->HashList[ulHashIndex], NULL, pNode);
-    } 
-    else /* Insert next to the current node */   
+    }
+    else /* Insert next to the current node */
        HASH_INSERT_NODE(&pHashTab->HashList[ulHashIndex], pTmpNodePtr, pNode);
  }
 }
@@ -162,7 +165,7 @@ VOID hash_add_node (HASH_TABLE_S *pHashTab, HASH_NODE_S *pNode, U32 ulHashIndex,
 /*  Output(s)       : None                                     */
 /*  Returns         : None                                     */
 /***************************************************************/
-VOID hash_delete_node (HASH_TABLE_S *pHashTab, HASH_NODE_S  *pNode, U32 ulHashIndex) 
+DLLEXPORT VOID hash_delete_node (HASH_TABLE_S *pHashTab, HASH_NODE_S  *pNode, U32 ulHashIndex)
 {
  HASH_DELETE_NODE(&pHashTab->HashList[ulHashIndex],pNode);
 }
@@ -182,10 +185,10 @@ VOID hash_delete_node (HASH_TABLE_S *pHashTab, HASH_NODE_S  *pNode, U32 ulHashIn
 /*  Output(s)       : None                                     */
 /*  Returns         : None                                     */
 /***************************************************************/
-VOID hash_free_allbucket (HASH_TABLE_S *pHashTab, VOID  (*pMemFreeFunc)(VOID *))
+DLLEXPORT VOID hash_free_allbucket (HASH_TABLE_S *pHashTab, VOID  (*pMemFreeFunc)(VOID *))
 {
  U32           ulHashIndex;
- 
+
  HASH_Scan_Table(pHashTab,ulHashIndex){
    HASH_Bucket_FreeAll(pHashTab, ulHashIndex, pMemFreeFunc);
  }
@@ -206,13 +209,13 @@ VOID hash_free_allbucket (HASH_TABLE_S *pHashTab, VOID  (*pMemFreeFunc)(VOID *))
 /*  Output(s)       : None                                     */
 /*  Returns         : None                                     */
 /***************************************************************/
-VOID hash_delete_table (HASH_TABLE_S *pHashTab, VOID  (*pMemFreeFunc)(VOID *))
+DLLEXPORT VOID hash_delete_table (HASH_TABLE_S *pHashTab, VOID  (*pMemFreeFunc)(VOID *))
 {
     hash_free_allbucket(pHashTab, pMemFreeFunc);
 /*  HASH_FREE(pHashTab);*/
 }
 
-VOID hash_walk_bucket (HASH_TABLE_S *pHashTab, U32 ulHashIndex, VOID (*fnVisit)(HASH_NODE_S *))
+DLLEXPORT VOID hash_walk_bucket (HASH_TABLE_S *pHashTab, U32 ulHashIndex, VOID (*fnVisit)(HASH_NODE_S *))
 {
     HASH_NODE_S *pNode;
 
@@ -222,7 +225,7 @@ VOID hash_walk_bucket (HASH_TABLE_S *pHashTab, U32 ulHashIndex, VOID (*fnVisit)(
     }
 }
 
-VOID hash_walk_table (HASH_TABLE_S *pHashTab, U32 ulParam, VOID (*fnVisit)(HASH_NODE_S *, U32 ulParam))
+DLLEXPORT VOID hash_walk_table (HASH_TABLE_S *pHashTab, VOID *pParam, VOID (*fnVisit)(HASH_NODE_S *, VOID *pParam))
 {
     U32 ulHashIndex;
     HASH_NODE_S *pNode;
@@ -231,7 +234,7 @@ VOID hash_walk_table (HASH_TABLE_S *pHashTab, U32 ulParam, VOID (*fnVisit)(HASH_
     {
         HASH_Scan_Bucket(pHashTab, ulHashIndex, pNode, HASH_NODE_S *)
         {
-            fnVisit(pNode, ulParam);
+            fnVisit(pNode, pParam);
         }
     }
 }

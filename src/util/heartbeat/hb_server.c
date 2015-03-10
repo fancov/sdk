@@ -437,7 +437,7 @@ S32 heartbeat_init()
     {
         S32 ulRes;
 
-        for (i=0; i<DOS_PROCESS_MAX_NUM; i++)
+        for (i = 0; i < DOS_PROCESS_MAX_NUM; i++)
         {
             ulRes = config_hb_get_process_list(i
                     , g_pstProcessInfo[i]->szProcessName

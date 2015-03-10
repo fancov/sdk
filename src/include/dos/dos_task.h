@@ -16,6 +16,7 @@ extern "C"{
 
 VOID dos_task_delay(U32 ulMSec);
 void dos_clean_watchdog();
+DLLEXPORT U32 dos_random(U32 ulMax);
 
 #ifdef __cplusplus
 }

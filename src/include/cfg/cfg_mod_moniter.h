@@ -23,9 +23,9 @@
 #define INCLUDE_SYSLOG_ENABLE             1
 #if (INCLUDE_SYSLOG_ENABLE)
 #define INCLUDE_SYSLOG_FILE               0
-#define INCLUDE_SYSLOG_DB                 1
+#define INCLUDE_SYSLOG_DB                 0
 #define INCLUDE_SYSLOG_CLI                INCLUDE_DEBUG_CLI
-#define INCLUDE_SYSLOG_CONSOLE            1
+#define INCLUDE_SYSLOG_CONSOLE            0
 #else
 #define INCLUDE_SYSLOG_FILE               0
 #define INCLUDE_SYSLOG_DB                 0
@@ -52,6 +52,14 @@
 
 /* 定时器模块 */
 #define INCLUDE_SERVICE_TIMER             1
+
+/* 资源监控模块*/
+#define INCLUDE_RES_MONITOR               1
+#define INCLUDE_MEM_MONITOR               1
+#define INCLUDE_CPU_MONITOR               1
+#define INCLUDE_DISK_MONITOR              1
+#define INCLUDE_NET_MONITOR               1
+#define INCLUDE_PROC_MONITOR              1
 
 
 #endif /* END __CFG_MOD_MONITER_H__ */

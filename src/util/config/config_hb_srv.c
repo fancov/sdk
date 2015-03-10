@@ -206,9 +206,358 @@ S32 config_hb_save()
     return 0;
 }
 
-#endif
+/**
+ * 函数：config_hb_get_process_cfg_cnt
+ * 功能：获取配置的进程数量
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_get_process_cfg_cnt()
+{
+   S32 lCfgProcCnt = 0;
+   S8  szCfgProcCnt[4] = {0};
+   S8* pszCfgProcCnt = NULL;
+   S8  szBuff[32] = {0};
+   S32 lRet = 0;
+   
+   if(!g_pstHBSrvCfg)
+   {
+      dos_printf("%s", "Init hb-srv.xml config fail.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+   dos_strncpy(szBuff, "config/process", dos_strlen("config/process"));
+   szBuff[dos_strlen("config/process")] = '\0';
 
-#endif
+   pszCfgProcCnt = _config_get_param(g_pstHBSrvCfg, szBuff, "count"
+                    , szCfgProcCnt, sizeof(szCfgProcCnt));
+   if(!pszCfgProcCnt)
+   {
+      dos_printf("%s", "get configured process count failure.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   lRet = dos_atol(pszCfgProcCnt, &lCfgProcCnt);
+   if(0 != lRet)
+   {
+      dos_printf("%s","dos_atol failure!");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   return lCfgProcCnt;
+}
+
+
+/**
+ * 函数：config_hb_get_start_cmd
+ * 功能：获取进程的启动命令
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_get_start_cmd(U32 ulIndex, S8 *pszCmd, U32 ulLen)
+{
+   S8  szProcCmd[1024] = {0};
+   S8  szNodePath[32] = {0}; 
+   S8* pszValue = NULL;
+   
+   if(!g_pstHBSrvCfg)
+   {
+      dos_printf("%s", "get start process command failed!");
+      DOS_ASSERT(0);
+      return -1;
+   }
+   dos_snprintf(szNodePath, sizeof(szNodePath), "config/process/%u", ulIndex);
+
+   pszValue = _config_get_param(g_pstHBSrvCfg, szNodePath, "startcmd", szProcCmd, sizeof(szProcCmd));
+   if(!pszCmd && *pszCmd == '\0')
+   {
+      dos_printf("%s", "get start process command failed!");
+      DOS_ASSERT(0);
+      return -1;
+   }
+   dos_strncpy(pszCmd, pszValue, dos_strlen(pszValue));
+   pszCmd[dos_strlen(pszValue)] = '\0';
+   return 0;
+}
+
+/**
+ * 函数：config_hb_threshold_mem
+ * 功能：获取内存占用率的阀值
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_threshold_mem(S32* plMem)
+{
+   S8  szNodePath[] = "config/threshold/mem";
+   S8  szMemThreshold[4] = {0};
+   S8* pszMemThreshold = NULL;
+   S32 lRet = 0;
+
+   if(!g_pstHBSrvCfg) 
+   {
+      dos_printf("%s", "Init hb-srv.xml config fail.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   pszMemThreshold = _config_get_param(g_pstHBSrvCfg, szNodePath, "rate", szMemThreshold, sizeof(szMemThreshold));
+   if(!pszMemThreshold)
+   {
+      dos_printf("%s", "get memory threshold value failed.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   lRet = dos_atol(pszMemThreshold, plMem);
+   if(0 > lRet)
+   {
+      dos_printf("%s", "dos_atol failed.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   return 0;
+}
+
+
+/**
+ * 函数：config_hb_threshold_cpu
+ * 功能：获取cpu四个占用率的阀值
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_threshold_cpu(S32* plAvg, S32* pl5sAvg, S32 *pl1minAvg, S32 *pl10minAvg)
+{
+   S8  szAvgCPURateThreshold[4] = {0};
+   S8  sz5sAvgCPURateThreshold[4] = {0};
+   S8  sz1minAvgCPURateThreshold[4] = {0};
+   S8  sz10minAvgCPURateThreshold[4] = {0};
+   S8  szNodePath[] = "config/threshold/cpu";
+
+   S8* pszAvgCPURateThreshold = NULL;
+   S8* psz5sAvgCPURateThreshold = NULL;
+   S8* psz1minAvgCPURateThreshold = NULL;
+   S8* psz10minAvgCPURateThreshold = NULL;
+
+   S32 lRet = 0;
+
+   if(!g_pstHBSrvCfg) 
+   {
+      dos_printf("%s", "Init hb-srv.xml config fail.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   pszAvgCPURateThreshold = _config_get_param(g_pstHBSrvCfg, szNodePath, "avgRate"
+                            , szAvgCPURateThreshold, sizeof(szAvgCPURateThreshold));
+   if(!pszAvgCPURateThreshold)
+   {
+      dos_printf("%s", "Init hb-srv.xml config fail.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   psz5sAvgCPURateThreshold = _config_get_param(g_pstHBSrvCfg, szNodePath, "5sAvgRate"
+                                , sz5sAvgCPURateThreshold, sizeof(sz5sAvgCPURateThreshold));
+   if(!psz5sAvgCPURateThreshold)
+   {
+      dos_printf("%s", "Init hb-srv.xml config fail.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   psz1minAvgCPURateThreshold = _config_get_param(g_pstHBSrvCfg, szNodePath, "1minAvgRate"
+                                , sz1minAvgCPURateThreshold, sizeof(sz1minAvgCPURateThreshold));
+   if(!psz1minAvgCPURateThreshold)
+   {
+      dos_printf("%s", "Init hb-srv.xml config fail.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   psz10minAvgCPURateThreshold = _config_get_param(g_pstHBSrvCfg, szNodePath, "10minAvgRate"
+                                    , sz10minAvgCPURateThreshold, sizeof(sz10minAvgCPURateThreshold));
+   if(!psz10minAvgCPURateThreshold)
+   {
+      dos_printf("%s", "Init hb-srv.xml config fail.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   lRet = dos_atol(pszAvgCPURateThreshold, plAvg);
+   if(0 > lRet)
+   {
+      dos_printf("%s", "dos_atol failed.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   lRet = dos_atol(psz5sAvgCPURateThreshold, pl5sAvg);
+   if(0 > lRet)
+   {
+      dos_printf("%s", "dos_atol failed.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   lRet = dos_atol(psz1minAvgCPURateThreshold, pl1minAvg);
+   if(0 > lRet)
+   {
+      dos_printf("%s", "dos_atol failed.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   lRet = dos_atol(psz10minAvgCPURateThreshold, pl10minAvg);
+   if(0 > lRet)
+   {
+      dos_printf("%s", "dos_atol failed.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   return 0;
+}
+
+/**
+ * 函数：config_hb_threshold_disk
+ * 功能：获取硬盘占用率的阀值
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_threshold_disk(S32 *plPartition, S32* plDisk)
+{
+   S8  szNodePath[] = "config/threshold/disk";
+   S8  szPartitionRate[4] = {0};
+   S8  szDiskRate[4] = {0};
+
+   S8* pszPartitionRate = NULL;
+   S8* pszDiskRate = NULL;
+
+   S32 lRet = 0;
+
+   if(!g_pstHBSrvCfg)
+   {
+      dos_printf("%s", "Init hb-srv.xml config fail.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   pszPartitionRate = _config_get_param(g_pstHBSrvCfg, szNodePath, "partitionRate"
+                        , szPartitionRate, sizeof(szPartitionRate));
+   if(!pszPartitionRate)
+   {
+      dos_printf("%s", "Init hb-srv.xml config fail.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   pszDiskRate = _config_get_param(g_pstHBSrvCfg, szNodePath, "diskRate"
+                    , szDiskRate, sizeof(szDiskRate));
+   if(!pszDiskRate)
+   {
+      dos_printf("%s", "Init hb-srv.xml config fail.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   lRet = dos_atol(pszPartitionRate, plPartition);
+   if(0 > lRet)
+   {
+      dos_printf("%s", "dos_atol failed.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   lRet = dos_atol(pszDiskRate, plDisk);
+   if(0 > lRet)
+   {
+      dos_printf("%s", "dos_atol failed.");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   return 0;
+}
+
+/**
+ * 函数：config_hb_threshold_disk
+ * 功能：获取进程内存与CPU占用率阀值
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_threshold_proc(S32* plMem, S32* plCPU)
+{
+   S8  szNodePath[] = "config/threshold/proc";
+   S8  szProcMemThres[4] = {0};
+   S8  szProcCPUThres[4] = {0};
+
+   S8* pszProcMemThres = NULL;
+   S8* pszProcCPUThres = NULL;
+
+   S32 lRet = 0;
+
+   if(!g_pstHBSrvCfg)
+   {
+      dos_printf("%s", ".Init hb-srv.xml config fail!");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   pszProcMemThres = _config_get_param(g_pstHBSrvCfg, szNodePath, "memRate"
+                        , szProcMemThres, sizeof(szProcMemThres));
+   if(!pszProcMemThres)
+   {
+      dos_printf("%s", ".Init hb-srv.xml config fail!");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   pszProcCPUThres = _config_get_param(g_pstHBSrvCfg, szNodePath, "CPURate"
+                        , szProcCPUThres, sizeof(szProcCPUThres));
+   if(!pszProcCPUThres)
+   {
+      dos_printf("%s", ".Init hb-srv.xml config fail!");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   lRet = dos_atol(pszProcMemThres, plMem); 
+   if(0 > lRet)
+   {
+      dos_printf("%s", "dos_atol failed!");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   lRet = dos_atol(pszProcCPUThres, plCPU);
+   if(0 > lRet)
+   {
+      dos_printf("%s", "dos_atol failed!");
+      DOS_ASSERT(0);
+      return -1;
+   }
+
+   return 0;
+}
+
+#endif //end  #if (INCLUDE_XML_CONFIG)
+
+#endif //end  #if INCLUDE_BH_SERVER
 
 #ifdef __cplusplus
 }

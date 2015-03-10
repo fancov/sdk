@@ -67,7 +67,7 @@ U32 _mem_mngt_init()
  * 返回值: NULL
  * 注意: 使用该函数分配的内存
  */
-VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
+DLLEXPORT VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
 {
     S8 szFileLine[256];
     struct tagMemInfoNode *pstFileDescNode;
@@ -147,7 +147,7 @@ VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
  * 返回值: NULL
  * 注意: 使用该函数分配的内存
  */
-VOID _mem_free(VOID *p)
+DLLEXPORT VOID _mem_free(VOID *p)
 {
     MEM_INFO_NODE_ST *pstFileDescNode = NULL;
     MEM_CCB_ST *pstMemCCB;
@@ -264,12 +264,14 @@ static S32 _mem_find_node(VOID *pSymName, HASH_NODE_S *pNode)
  *      U32 ulIndex：客户端索引
  * 返回值：
  */
-VOID mem_printf(HASH_NODE_S *pNode, U32 ulIndex)
+VOID mem_printf(HASH_NODE_S *pNode, VOID *pulIndex)
 {
     MEM_INFO_NODE_ST *pstMemInfoNode = (MEM_INFO_NODE_ST *)pNode;
     S8 szBuff[512];
     U32 ulLen;
+    U32 ulIndex;
 
+    ulIndex = *(U32 *)pulIndex;
 
     ulLen = snprintf(szBuff, sizeof(szBuff)
             , "%-40s%6u%6u\r\n"
@@ -314,7 +316,7 @@ S32 cli_cmd_mem(U32 ulIndex, S32 argc, S8 **argv)
     cli_out_string(ulIndex, szTitle);
 
     pthread_mutex_lock(&g_mutexMemMngtTable);
-    hash_walk_table(g_pstHashMemMngtTable,  ulIndex, mem_printf);
+    hash_walk_table(g_pstHashMemMngtTable,  (VOID *)&ulIndex, mem_printf);
     pthread_mutex_unlock(&g_mutexMemMngtTable);
     return 0;
 }

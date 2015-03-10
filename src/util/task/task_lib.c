@@ -22,7 +22,7 @@ extern "C"{
  * 参数: U32 ulMSEC睡眠的毫秒数
  * 返回值: void
  */
-VOID dos_task_delay(U32 ulMSec)
+DLLEXPORT VOID dos_task_delay(U32 ulMSec)
 {
     if (0 == ulMSec)
     {
@@ -38,10 +38,19 @@ VOID dos_task_delay(U32 ulMSec)
  * 参数: NULL
  * 返回值: void
  */
-void dos_clean_watchdog()
+DLLEXPORT void dos_clean_watchdog()
 {
 
 }
+
+DLLEXPORT U32 dos_random(U32 ulMax)
+{
+
+    srand((unsigned)time( NULL ));
+
+    return rand() % ulMax;
+}
+
 
 #ifdef __cplusplus
 }

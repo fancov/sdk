@@ -250,6 +250,8 @@ int main(int argc, char ** argv)
         exit(254);
     }
 
+#ifndef DIPCC_FREESWITCH
+
 #if INCLUDE_SERVICE_TIMER
     /* Í£Ö¹¶¨Ê±Æ÷Ä£¿é */
     tmr_task_stop();
@@ -295,6 +297,9 @@ int main(int argc, char ** argv)
     config_deinit();
 #endif
     exit(0);
+#endif
+
+    return 0;
 }
 
 #ifdef __cplusplus

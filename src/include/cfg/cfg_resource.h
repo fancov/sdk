@@ -39,6 +39,12 @@
  * 定义telnet server的监听端口
  */
 #define DOS_TELNETD_LINSTEN_PORT         2801
+/* 定义BS监听端口 */
+#define BS_UDP_LINSTEN_PORT             2765
+#define BS_TCP_LINSTEN_PORT             2765
+
+/* 中继最大数量 */
+#define DOS_MAX_TRUNK_NUM               64
 
 /**
  * 定义内存管理hash表大小

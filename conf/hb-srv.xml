@@ -2,13 +2,36 @@
 
 <config version="1.0">
     <process>
-    	<0>
-    	    <param name="name" value="client1" />
-	    <param name="version" value="1.0" />
-    	</0>
-    	<1>
-    	    <param name="name" value="client2" />
-    	    <param name="version" value="2.0" />
-    	</1>
+    	    <param name="count" value="5"/>
+    		  <0>
+    		  	 <param name="name" value="freeswitch"/>
+    		     <param name="startcmd" value="/usr/local/freeswitch/bin/freeswitch -nc &amp;" /><!--此value表示被监控的进程-->
+    		     <param name="version" value="1.0"/>
+    		     <param name="heartbeat" value="true" /><!--此参数表示是否配置心跳，默认为true表配置-->
+    		  </0>
+    		  <1>
+    		  	 <param name="name" value="monitord" />
+    		  	 <param name="startcmd" value="/home/bubble/mnt/res_monitor/sdk/project/monitor/monitord" />
+    		  	 <param name="version" value="1.0"/>
+    		  	 <param name="heartbeat" value="true" />
+    		  </1>
+    		  <2>
+    		  	 <param name="name" value="ctrl_paneld" />
+    		  	 <param name="startcmd" value="/home/bubble/mnt/res_monitor/sdk/project/ctrl_panel/ctrl_paneld &amp;" />
+    		  	 <param name="version"  value="1.0"/>
+    		  	 <param name="heartbeat" value="true" />
+    		  </2>
+			  <3>
+			     <param name="name" value="bsd" />
+    		  	 <param name="startcmd" value="/mnt/hgfs/workspace/sdk/project/bs/bsd &amp;" />
+    		  	 <param name="version"  value="1.0"/>
+    		  	 <param name="heartbeat" value="true" />
+			  </3>
+			  <4>
+			     <param name="name" value="ptcd" />
+    		  	 <param name="startcmd" value="/mnt/hgfs/workspace/pts-ptc/ptc/ptcd &amp;" />
+    		  	 <param name="version"  value="1.0"/>
+    		  	 <param name="heartbeat" value="true" />
+			  </4>
     </process>
 </config>

@@ -127,18 +127,21 @@ static S32 _assert_find_node(VOID *pSymName, HASH_NODE_S *pNode)
  *      U32 ulIndex        : 附加参数
  * 返回值: VOID
  */
-static VOID _assert_print(HASH_NODE_S *pNode, U32 ulIndex)
+static VOID _assert_print(HASH_NODE_S *pNode, VOID *pulIndex)
 {
     DOS_ASSERT_NODE_ST *pstAssertInfoNode = (DOS_ASSERT_NODE_ST *)pNode;
+    U32   ulIndex;
     S8 szBuff[512];
     U32 ulLen;
     TIME_ST *pstTimeFirst, *pstTimeLast;
     S8 szTime1[32] = { 0 }, szTime2[32] = { 0 };
 
-    if (!pNode)
+    if (!pNode || !pulIndex)
     {
         return;
     }
+
+    ulIndex = *(U32 *)pulIndex;
 
     pstTimeFirst = localtime(&pstAssertInfoNode->stFirstTime);
     pstTimeLast = localtime(&pstAssertInfoNode->stLastTime);
@@ -174,7 +177,7 @@ static VOID _assert_print(HASH_NODE_S *pNode, U32 ulIndex)
  *      U32 ulIndex        : 附加参数
  * 返回值: VOID
  */
-static VOID _assert_record(HASH_NODE_S *pNode, U32 ulIndex)
+static VOID _assert_record(HASH_NODE_S *pNode, VOID *pParam)
 {
     DOS_ASSERT_NODE_ST *pstAssertInfoNode = (DOS_ASSERT_NODE_ST *)pNode;
     S8 szBuff[512];
@@ -227,7 +230,7 @@ S32 dos_assert_print(U32 ulIndex, S32 argc, S8 **argv)
     cli_out_string(ulIndex, "Assert Info since the service start:\r\n");
 
     pthread_mutex_lock(&g_mutexAssertInfo);
-    hash_walk_table(g_pstHashAssert,  ulIndex, _assert_print);
+    hash_walk_table(g_pstHashAssert,  (VOID *)&ulIndex, _assert_print);
     pthread_mutex_unlock(&g_mutexAssertInfo);
 
     return 0;
@@ -244,7 +247,7 @@ S32 dos_assert_record()
     dos_syslog(LOG_LEVEL_EMERG, "Assert Info since the service start:\r\n");
 
     pthread_mutex_lock(&g_mutexAssertInfo);
-    hash_walk_table(g_pstHashAssert,  0, _assert_record);
+    hash_walk_table(g_pstHashAssert,  NULL, _assert_record);
     pthread_mutex_unlock(&g_mutexAssertInfo);
 
     return 0;
@@ -258,7 +261,7 @@ S32 dos_assert_record()
  *      const S8 *pszFileName, const U32 ulLine, const U32 param ： 断言描述信息
  * 返回值: VOID
  */
-VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 param)
+DLLEXPORT VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 param)
 {
     U32 ulHashIndex;
     S8 szFileLine[256] = { 0, };
@@ -267,7 +270,7 @@ VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 param)
     /* 生产hash表key */
     dos_snprintf(szFileLine, sizeof(szFileLine), "%s:%d", pszFileName, ulLine);
     _assert_string_hash(szFileLine, &ulHashIndex);
-    dos_printf("Assert info. Fileline:%s, hash index:%d", szFileLine, ulHashIndex);
+    //dos_printf("Assert info. Fileline:%s, hash index:%d", szFileLine, ulHashIndex);
 
     pthread_mutex_lock(&g_mutexAssertInfo);
     pstFileDescNode = (DOS_ASSERT_NODE_ST *)hash_find_node(g_pstHashAssert, ulHashIndex, szFileLine, _assert_find_node);
@@ -289,7 +292,7 @@ VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 param)
         time(&pstFileDescNode->stLastTime);
         hash_add_node(g_pstHashAssert, (HASH_NODE_S *)pstFileDescNode, ulHashIndex, NULL);
 
-        dos_printf("New assert ecord node for fileline:%s, %x", szFileLine, pstFileDescNode);
+        //dos_printf("New assert ecord node for fileline:%s, %x", szFileLine, pstFileDescNode);
     }
 
     pstFileDescNode->ulTimes++;

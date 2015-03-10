@@ -21,7 +21,8 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <unistd.h>
-
+#include <dos.h>
+#if 0
 /* dos header files */
 #include <dos/dos_types.h>
 #include <syscfg.h>
@@ -33,7 +34,7 @@
 #include <dos/dos_cli.h>
 #include <dos/dos_log.h>
 #include <dos/dos_string.h>
-
+#endif
 /* 操作对象缓存长度 */
 #define MAX_OPERAND_LENGTH    32
 
@@ -122,7 +123,7 @@ static char * dos_log_get_time(time_t _time, S8 *sz_time, S32 i_len);
  *      U32 ulLeval：日志级别
  * 返回值：成功返回0，失败返回－1
  */
-S32 dos_log_set_cli_level(U32 ulLeval)
+DLLEXPORT S32 dos_log_set_cli_level(U32 ulLeval)
 {
     if (!g_pstLogModList[LOG_MOD_CLI])
     {
@@ -264,7 +265,7 @@ void *dos_log_main_loop(void *_ptr)
     while(1)
     {
         pthread_mutex_lock(&g_mutexLogTask);
-        i=pthread_cond_wait(&g_condLogTask, &g_mutexLogTask);
+        i = pthread_cond_wait(&g_condLogTask, &g_mutexLogTask);
         //printf("wait:%p, %p, ret:%d\n", g_LogCacheList->pstNext, g_LogCacheList, i);
 
         /* 顺序处理所有日志 */
@@ -374,6 +375,7 @@ VOID dos_log_stop()
     pthread_mutex_lock(&g_mutexLogTask);
     g_lLogWaitingExit = 1;
     pthread_mutex_unlock(&g_mutexLogTask);
+	g_lLogInitFinished = 0;
 
     dos_log(LOG_LEVEL_NOTIC, LOG_TYPE_RUNINFO, (S8 *)"log task will be stopped!");
 
@@ -386,7 +388,7 @@ VOID dos_log_stop()
  * 参数：
  * 返回值：
  * */
-VOID dos_log(S32 _lLevel, S32 _lType, const S8 *_pszMsg)
+DLLEXPORT VOID dos_log(S32 _lLevel, S32 _lType, const S8 *_pszMsg)
 {
     LOG_DATA_NODE_ST *pstLogData = NULL;
     S32 lMsgLen = 0;
@@ -480,7 +482,7 @@ VOID dos_log(S32 _lLevel, S32 _lType, const S8 *_pszMsg)
  *      U32 ulResult : 操作结果
  * 返回值：
  * */
-VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *_pszMsg)
+DLLEXPORT VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *_pszMsg)
 {
     LOG_DATA_NODE_ST *pstLogData = NULL;
     S32 lMsgLen = 0;
@@ -586,13 +588,13 @@ VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *
  *      U32 ulResult : 操作结果
  * 返回值：
  * */
-VOID dos_volog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *format, ...)
+DLLEXPORT VOID dos_volog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *format, ...)
 {
     va_list argptr;
     S8 szBuff[1024];
 
     va_start( argptr, format );
-    vsnprintf( szBuff, 511, format, argptr );
+    vsnprintf( szBuff, sizeof(szBuff), format, argptr );
     va_end( argptr );
     szBuff[sizeof(szBuff) -1] = '\0';
 
@@ -605,13 +607,13 @@ VOID dos_volog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 
  * 参数：
  * 返回值：
  * */
-VOID dos_vlog(S32 _lLevel, S32 _lType, const S8 *format, ...)
+DLLEXPORT VOID dos_vlog(S32 _lLevel, S32 _lType, const S8 *format, ...)
 {
     va_list argptr;
     char buf[1024];
 
     va_start( argptr, format );
-    vsnprintf( buf, 511, format, argptr );
+    vsnprintf( buf, sizeof(buf), format, argptr );
     va_end( argptr );
     buf[sizeof(buf) -1] = '\0';
 
@@ -665,7 +667,7 @@ VOID dos_log_stop()
     dos_printf("Dos log task stop. Log task disabled");
 }
 
-VOID dos_log(S32 _lLevel, S32 _lType, const S8 *_pszMsg)
+DLLEXPORT VOID dos_log(S32 _lLevel, S32 _lType, const S8 *_pszMsg)
 {
     struct tm *t = NULL;
     time_t stTimeT = time(NULL);
@@ -683,7 +685,7 @@ VOID dos_log(S32 _lLevel, S32 _lType, const S8 *_pszMsg)
     printf("%s[%8s][%8s]%s\r\n", szTime, g_pszLogLevel[_lLevel], g_pszLogType[_lType], _pszMsg);
 }
 
-VOID dos_vlog(S32 _lLevel, S32 _lType, const S8 *format, ...)
+DLLEXPORT VOID dos_vlog(S32 _lLevel, S32 _lType, const S8 *format, ...)
 {
     va_list argptr;
     char buf[1024];
@@ -697,17 +699,17 @@ VOID dos_vlog(S32 _lLevel, S32 _lType, const S8 *format, ...)
 
 }
 
-VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *_pszMsg)
+DLLEXPORT VOID dos_olog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *_pszMsg)
 {
 
 }
 
-VOID dos_volog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *format, ...)
+DLLEXPORT VOID dos_volog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulResult, S8 *format, ...)
 {
 
 }
 
-S32 dos_log_set_cli_level(U32 ulLeval)
+DLLEXPORT S32 dos_log_set_cli_level(U32 ulLeval)
 {
     return 1;
 }
