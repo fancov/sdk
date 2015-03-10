@@ -227,7 +227,7 @@ S32 hb_client_reconn()
 
     if (connect(g_stProcessInfo.lSocket, (struct sockaddr *)&g_stProcessInfo.stPeerAddr, g_stProcessInfo.ulPeerAddrLen) < 0)
     {
-        hb_logr_error("Cannot connect to heartbeat server.(%d)", errno);
+        hb_logr_info("Cannot connect to heartbeat server.(%d)", errno);
         return DOS_FAIL;
     }
 

@@ -38,7 +38,7 @@
 /**
  * 定义telnet server的监听端口
  */
-#define DOS_TELNETD_LINSTEN_PORT         2800
+#define DOS_TELNETD_LINSTEN_PORT         2801
 /* 定义BS监听端口 */
 #define BS_UDP_LINSTEN_PORT             2765
 #define BS_TCP_LINSTEN_PORT             2765
@@ -51,3 +51,22 @@
  */
 #define DOS_MEM_MNGT_HASH_SIZE           128
 
+/**
+ * 定义pts telnet server的监听端口
+ */
+#define  DOS_PTS_TELNETD_LINSTEN_PORT   28200
+
+/**
+ * 定义pts goahead的监听端口
+ */
+#define  DOS_PTS_WEB_SERVER_PORT        8080
+
+/**
+ * 定义pts web server的监听端口
+ */
+#define  DOS_PTS_PROXY_PORT             28000
+
+/**
+ * 定义pts server的监听端口
+ */
+#define  DOS_PTS_SERVER_PORT            28100

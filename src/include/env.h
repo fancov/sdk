@@ -59,7 +59,12 @@
 #   define  POINTER_WIDTH_IN_BIT         64
 #   define  POINTER_WIDTH_IN_BYTE        8
 #else
-#   error "Unknow OS type. A x86-64 host is recommended."
+//#   error "Unknow OS type. A x86-64 host is recommended."
+#   define  OS_32                        1
+#   define  OS_64                        0
+#   define  POINTER_WIDTH_IN_BIT         32
+#   define  POINTER_WIDTH_IN_BYTE        4
+
 #endif
 
 #ifndef DLLEXPORT

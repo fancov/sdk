@@ -618,7 +618,6 @@ VOID bsd_save_original_cdr(BS_INTER_MSG_CDR *pstMsg)
     U32             i;
     BS_MSG_CDR      *pstCDR;
     S8              szQuery[1024] = { 0, };
-    S8              szTime[128];
 
     pstCDR = (BS_MSG_CDR *)pstMsg->pCDR;
     if (DOS_ADDR_INVALID(pstCDR))

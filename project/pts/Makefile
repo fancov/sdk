@@ -13,7 +13,7 @@ DOS_INCLUDES			= -I$(SROUCE)/include
 
 SUFFIX					= o
 
-LIBS					= -lpthread -lmysqlclient -lmxml -lsqlite3
+LIBS					= -lpthread -lmysqlclient -lmxml_x64 -lsqlite3_x64 -lwebs_x64
 
 MYSQL_HEADERS			= -I/usr/include/mysql
 MYSQL_LIBS				= -L/usr/lib64/mysql
@@ -34,7 +34,7 @@ include $(SROUCE)/util/list/Makefile.mk
 include $(SROUCE)/util/heartbeat/Makefile.mk
 include $(SROUCE)/util/db/Makefile.mk
 include $(SROUCE)/cfg/Makefile.mk
-# include $(SROUCE)/service/Makefile
+include $(SROUCE)/service/Makefile
 include $(SROUCE)/service/pts/Makefile.mk
 include $(SROUCE)/service/ptlib/Makefile.mk
 
@@ -67,7 +67,7 @@ dep :
 	$(CC) -MM $(ALL_SRCS) $(ALL_HEADERS) $(DEFINES) > $(TARGET).dep
 
 all : $(ALL_OBJS)
-	$(C_LINKS) -o $(TARGET)d $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS)
+	$(C_LINKS) -o $(TARGET)d $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS) 
 
 clean :
 	rm -f *.o

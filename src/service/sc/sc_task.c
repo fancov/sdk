@@ -279,6 +279,13 @@ VOID *sc_task_runtime(VOID *ptr)
     {
         /* 根据当前呼叫量，确定发起呼叫的间隔，如果当前任务已经处于受限状态，就要强制调整间隔 */
         ulTaskInterval = sc_task_get_call_interval(pstTCB);
+        if (pstTCB->ulCurrentConcurrency >= pstTCB->ulMaxConcurrency)
+        {
+            sc_logr_info(SC_TASK, "Cannot make call for reach the max concurrency. Task : %u.", pstTCB->ulTaskID);
+            usleep(ulTaskInterval * 1000);
+            continue;
+        }
+
         if (!blIsNormal && ulTaskInterval <= 100)
         {
             ulTaskInterval = 1;
@@ -297,6 +304,7 @@ VOID *sc_task_runtime(VOID *ptr)
         if (SC_TASK_PAUSED == pstTCB->ucTaskStatus)
         {
             blIsNormal = DOS_FALSE;
+            sc_logr_info(SC_TASK, "Cannot make call for puased status. Task : %u.", pstTCB->ulTaskID);
             continue;
         }
 
@@ -306,8 +314,11 @@ VOID *sc_task_runtime(VOID *ptr)
             if (pstTCB->ulConcurrency >= 0)
             {
                 blIsNormal = DOS_FALSE;
+                sc_logr_info(SC_TASK, "Cannot make call for stop status. Task : %u.", pstTCB->ulTaskID);
                 continue;
             }
+
+            /* 任务结束了，退出主循环 */
             break;
         }
 
@@ -315,6 +326,7 @@ VOID *sc_task_runtime(VOID *ptr)
         if (sc_task_check_can_call_by_time(pstTCB) != DOS_TRUE)
         {
             blIsNormal = DOS_FALSE;
+            sc_logr_info(SC_TASK, "Cannot make call for invalid time period. Task : %u.", pstTCB->ulTaskID);
             continue;
         }
 
@@ -322,17 +334,19 @@ VOID *sc_task_runtime(VOID *ptr)
         if (sc_task_check_can_call_by_status(pstTCB) != DOS_TRUE)
         {
             blIsNormal = DOS_FALSE;
+            sc_logr_info(SC_TASK, "Cannot make call for system busy. Task : %u.", pstTCB->ulTaskID);
             continue;
         }
 
         /* 发起呼叫 */
         if (sc_task_make_call(pstTCB))
         {
-            sc_logr_notice(SC_TASK, "%s", "Make call fail.");
+            sc_logr_info(SC_TASK, "%s", "Make call fail.");
         }
     }
 
     /* TODO: 释放相关资源 */
+    sc_logr_info(SC_TASK, "Task %d finished.", pstTCB->ulTaskID);
 
     return NULL;
 }
@@ -417,6 +431,14 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
     }
 
     if (sc_task_load_agent_info(pstTCB) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_TASK, "Load agent info for task %d FAILED.", pstTCB->ulTaskID);
+
+        goto init_fail;
+    }
+
+    if (sc_task_load_other_info(pstTCB) != DOS_SUCC)
     {
         DOS_ASSERT(0);
         sc_logr_error(SC_TASK, "Load agent info for task %d FAILED.", pstTCB->ulTaskID);

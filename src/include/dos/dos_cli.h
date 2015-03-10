@@ -13,6 +13,12 @@
 #ifndef __DBEUG_CLI_H__
 #define __DBEUG_CLI_H__
 
+
+#ifdef __cplusplus
+extern "C"{
+#endif /* __cplusplus */
+
+
 /* 定义非法客户端index，可以被用来发送控制消息 */
 #define INVALID_CLIENT_INDEX   0xFFFF
 
@@ -84,7 +90,7 @@ typedef struct tagCommand
     S32 (*func)(U32 ulIndex, S32 argc, S8 **argv);
 }COMMAND_ST;
 
-#if INCLUDE_DEBUG_CLI_SERVER
+#if INCLUDE_DEBUG_CLI_SERVER || INCLUDE_PTS
 
 S32 cli_server_init();
 S32 cli_server_start();
@@ -94,10 +100,13 @@ S32 telnetd_start();
 S32 telnetd_stop();
 S32 telnet_out_string(U32 ulIndex, const S8 *pszBuffer);
 
+#if INCLUDE_DEBUG_CLI_SERVER
 #define cli_out_string(_lCIndex, _pMsg) \
         telnet_out_string((_lCIndex), (_pMsg))
+#endif
+#endif
 
-#elif INCLUDE_DEBUG_CLI
+#if INCLUDE_DEBUG_CLI
 
 S32 debug_cli_init(S32 _argc, S8 **_argv);
 S32 debug_cli_start();
@@ -140,6 +149,12 @@ VOID cli_logr_write(U32 ulLevel, S8 *pszFormat, ...);
         cli_logr_write(LOG_LEVEL_EMERG, (_pszFormat), ##args)
 
 #endif
+
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
 
 #endif
 

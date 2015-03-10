@@ -227,9 +227,6 @@ U32 sc_scb_init(SC_SCB_ST *pstSCB)
         return DOS_FAIL;
     }
 
-    sem_destroy(&pstSCB->semSCBSyn);
-    sem_init(&pstSCB->semSCBSyn, 0, 0);
-
     pstSCB->usOtherSCBNo = U16_BUTT;           /* 另外一个leg的SCB编号 */
 
     pstSCB->usTCBNo = U16_BUTT;                /* 任务控制块编号ID */
@@ -241,6 +238,7 @@ U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->ulTrunkID = U32_BUTT;              /* 中继ID */
 
     pstSCB->ucStatus = SC_SCB_IDEL;            /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
+    pstSCB->ucServStatus = 0;
     pstSCB->ucTerminationFlag = 0;             /* 业务终止标志 */
     pstSCB->ucTerminationCause = 0;            /* 业务终止原因 */
     pstSCB->ucPayloadType = U8_BUTT;           /* 编解码 */
@@ -784,6 +782,7 @@ U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulTaskID = U32_BUTT;
     pstTCB->ulCustomID = U32_BUTT;
     pstTCB->ulConcurrency = 0;
+    pstTCB->ulMaxConcurrency = 10;
     pstTCB->usSiteCount = 0;
     pstTCB->ulAgentQueueID = U32_BUTT;
     pstTCB->ucAudioPlayCnt = 0;
@@ -1354,6 +1353,68 @@ U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB)
 #endif
 }
 
+S32 sc_task_load_other_info_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
+{
+    U32 ulTaskMode;
+    U32 ulMaxConcurrency;
+    SC_TASK_CB_ST *pstTCB;
+
+    if (DOS_ADDR_INVALID(pArg)
+        || lColumnCount<= 0
+        || DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstTCB = (SC_TASK_CB_ST *)pArg;
+
+    if (DOS_ADDR_INVALID(aszValues[0])
+        || '\0' == aszValues[0][0]
+        || dos_atoul(aszValues[0], &ulTaskMode) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(aszValues[1])
+        || '\0' == aszValues[1][0]
+        || dos_atoul(aszValues[1], &ulMaxConcurrency) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstTCB->ucMode = (U8)ulTaskMode;
+    pstTCB->ulMaxConcurrency = ulMaxConcurrency;
+    return DOS_SUCC;
+
+}
+
+S32 sc_task_load_other_info(SC_TASK_CB_ST *pstTCB)
+{
+    S8 szSQL[128] = { 0, };
+
+    if (DOS_ADDR_INVALID(pstTCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT mode,max_concurrent from tbl_calltask WHERE id=%d;", pstTCB->ulTaskID);
+
+    if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_other_info_cb, (VOID *)pstTCB, NULL) != DB_ERR_SUCC)
+    {
+        sc_logr_debug(SC_TASK, "Load task time period for task %d fail;", pstTCB->usTCBNo);
+
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+
+}
+
 S32 sc_task_load_agent_queue_id_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
 {
     U32 ulAgentQueueID;
@@ -1631,6 +1692,72 @@ U32 sc_task_audio_playcnt(U32 ulTCBNo)
 
     return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
 }
+
+U32 sc_task_concurrency_add(U32 ulTCBNo)
+{
+    SC_TRACE_IN(ulTCBNo, 0, 0, 0);
+    if (ulTCBNo > SC_MAX_TASK_NUM)
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return 0;
+    }
+
+    if (!g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucValid)
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return 0;
+    }
+
+    pthread_mutex_lock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
+    g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency++;
+    if (g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency
+        > g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulMaxConcurrency)
+    {
+        DOS_ASSERT(0);
+    }
+    pthread_mutex_unlock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
+
+    return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
+}
+
+U32 sc_task_concurrency_minus (U32 ulTCBNo)
+{
+    SC_TRACE_IN(ulTCBNo, 0, 0, 0);
+    if (ulTCBNo > SC_MAX_TASK_NUM)
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return 0;
+    }
+
+    if (!g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucValid)
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return 0;
+    }
+
+    pthread_mutex_lock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
+    if (g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency > 0)
+    {
+        g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency--;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+    }
+    pthread_mutex_unlock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
+
+    return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
+}
+
+
 
 U32 sc_task_get_timeout_for_noanswer(U32 ulTCBNo)
 {

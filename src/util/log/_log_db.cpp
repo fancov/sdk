@@ -150,12 +150,18 @@ void CLogDB::log_write(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLev
         return;
     }
 
+    if (!pstDBHandle
+        || DB_STATE_CONNECTED != pstDBHandle->ulDBStatus)
+    {
+        return;
+    }
+
     if (_ulLevel > this->ulLogLevel)
     {
         return;
     }
 
-    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\");"
+    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
                 , "tbl_log"
                 , _pszTime
                 , _pszLevel
@@ -178,7 +184,13 @@ VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
         return;
     }
 
-    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\");"
+    if (!pstDBHandle
+        || DB_STATE_CONNECTED != pstDBHandle->ulDBStatus)
+    {
+        return;
+    }
+
+    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
                     , "tbl_olog"
                     , _pszTime
                     , _pszOpterator

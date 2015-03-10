@@ -327,13 +327,15 @@ typedef struct tagSCSCB
     U32       ulTrunkID;                          /* 中继ID */
 
     U8        ucStatus;                           /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
+    U8        ucServStatus;                       /* 业务状态 */
     U8        ucTerminationFlag;                  /* 业务终止标志 */
     U8        ucTerminationCause;                 /* 业务终止原因 */
-    U8        ucPayloadType;                      /* 编解码 */
 
     U8        aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 列表*/
     U8        ucCurrentSrvInd;                    /* 当前空闲的业务类型索引 */
-    U8        aucRes[3];
+    U8        ucLegRole;                          /* 主被叫标示 */
+    U8        ucCurrentPlyCnt;                    /* 当前放音次数 */
+    U8        aucRes[1];
 
     U16       usHoldCnt;                          /* 被hold的次数 */
     U16       usHoldTotalTime;                    /* 被hold的总时长 */
@@ -365,7 +367,6 @@ typedef struct tagSCSCB
     S8        szSiteNum[SC_TEL_NUMBER_LENGTH];    /* 坐席号码 */
     S8        szUUID[SC_MAX_UUID_LENGTH];         /* Leg-A UUID */
 
-    sem_t     semSCBSyn;                          /* 用于同步的SCB */
     pthread_mutex_t mutexSCBLock;                 /* 保护SCB的锁 */
 }SC_SCB_ST;
 
@@ -470,6 +471,7 @@ S32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB);
 S32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_agent_info(SC_TASK_CB_ST *pstTCB);
+S32 sc_task_load_other_info(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_update_stat(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB);

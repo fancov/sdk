@@ -23,13 +23,9 @@
 #include <sys/un.h>
 #include <dos/dos_types.h>
 #include <syscfg.h>
-extern "C"{
 #include <dos/dos_debug.h>
 #include <dos/dos_def.h>
 #include <dos/dos_cli.h>
-}
-
-
 
 #if (INCLUDE_SYSLOG_ENABLE && INCLUDE_SYSLOG_CLI)
 

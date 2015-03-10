@@ -33,9 +33,167 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     switch (ulOpteration)
     {
         case BS_CMD_UPDATE:
+            U32  ulCustomID, ulHashIndex;
+            S8   *pszCustomID;
+            HASH_NODE_S     *pstHashNode = NULL, pstHashNodeParent = NULL;
+            BS_CUSTOMER_ST  *pstCustomer = NULL, *pstCustomParent = NULL;
+            U32             ulHashIndex, ulCustomerType, ulCustomerState;
+            const S8        *pszCustomType, *pszCustomState, *pszCustomID, *pszCustomName, *pszParent;
+            const S8        *pszBillingPkg, *pszBalanceWarning, *pszExpiry, *pszBalance;
+
+            pszCustomID = json_get_param(pstJSONObj, "id");
+            if (DOS_ADDR_INVALID(pszCustomID)
+                || dos_atoul(pszCustomID, &ulCustomID) < 0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Invalid msg for delete user.");
+                break;
+            }
+
+            ulHashIndex = bs_hash_get_index(BS_HASH_TBL_CUSTOMER_SIZE, ulCustomID);
+            if (U32_BUTT == ulHashIndex)
+            {
+                DOS_ASSERT(0);
+                break;
+            }
+
+            /* 如果hash表中已经存在，说明有错误 */
+            pstHashNode = hash_find_node(g_astCustomerTbl
+                                    , ulHashIndex
+                                    , (VOID *)&ulCustomID
+                                    , bs_customer_hash_node_match);
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find the customer with the id %d.", ulCustomID);
+                break;
+            }
+
+            pstCustomer = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstCustomer))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find the customer with the id %d.(Invalid Data)", ulCustomID);
+                break;
+            }
+
+            pszCustomName = json_get_param(pstJSONObj, "name");
+            pszCustomID = json_get_param(pstJSONObj, "id");
+            pszParent = json_get_param(pstJSONObj, "parent_id");
+            pszCustomState = json_get_param(pstJSONObj, "status");
+            pszCustomType = json_get_param(pstJSONObj, "type");
+            pszBillingPkg = json_get_param(pstJSONObj, "billing_package_id");
+            pszBalanceWarning = json_get_param(pstJSONObj, "balance_warning");
+            pszExpiry = json_get_param(pstJSONObj, "expiry");
+            pszBalance = json_get_param(pstJSONObj, "balance");
+            if (DOS_ADDR_INVALID(pszCustomName) || DOS_ADDR_INVALID(pszCustomID)
+                || DOS_ADDR_INVALID(pszParent) || DOS_ADDR_INVALID(pszCustomState)
+                || DOS_ADDR_INVALID(pszCustomType) || DOS_ADDR_INVALID(pszBillingPkg)
+                || DOS_ADDR_INVALID(pszBalanceWarning) || DOS_ADDR_INVALID(pszExpiry)
+                || DOS_ADDR_INVALID(pszBalance))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Parse json param fail while adding custom.");
+
+                dos_dmem_free(pstCustomer);
+                dos_dmem_free(pstHashNode);
+
+                break;
+            }
+
+            /* 参数合法性 */
+            if (dos_atoul(pszCustomID, &pstCustomer->ulCustomerID) < 0
+                || dos_atoul(pszParent, &pstCustomer->ulParentID) < 0
+                || dos_atoul(pszCustomType, &ulCustomerType) < 0
+                || dos_atoul(pszCustomState, &ulCustomerState) < 0
+                || '\0' == pszCustomName[0])
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Invalid param while adding custom.");
+
+                dos_dmem_free(pstCustomer);
+                dos_dmem_free(pstHashNode);
+
+                break;
+            }
+
+            pstCustomer->stAccount.ulBillingPackageID = pszBillingPkg;
+            pstCustomer->stAccount.lBalanceWarning = pszBalanceWarning;
+
             break;
+
         case BS_CMD_DELETE:
+            U32  ulCustomID, ulHashIndex;
+            S8   *pszCustomID;
+            HASH_NODE_S     *pstHashNode = NULL, pstHashNodeParent = NULL;
+            BS_CUSTOMER_ST  *pstCustomer = NULL, *pstCustomParent = NULL;
+
+            pszCustomID = json_get_param(pstJSONObj, "id");
+            if (DOS_ADDR_INVALID(pszCustomID)
+                || dos_atoul(pszCustomID, &ulCustomID) < 0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Invalid msg for delete user.");
+                break;
+            }
+
+            ulHashIndex = bs_hash_get_index(BS_HASH_TBL_CUSTOMER_SIZE, ulCustomID);
+            if (U32_BUTT == ulHashIndex)
+            {
+                DOS_ASSERT(0);
+                break;
+            }
+
+            /* 如果hash表中已经存在，说明有错误 */
+            pstHashNode = hash_find_node(g_astCustomerTbl
+                                    , ulHashIndex
+                                    , (VOID *)&ulCustomID
+                                    , bs_customer_hash_node_match);
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find the customer with the id %d.", ulCustomID);
+                break;
+            }
+
+            pstCustomer = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstCustomer))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find the customer with the id %d.(Invalid Data)", ulCustomID);
+                break;
+            }
+
+            pstHashNodeParent = hash_find_node(g_astCustomerTbl
+                                    , ulHashIndex
+                                    , (VOID *)&pstCustomer->ulParentID
+                                    , bs_customer_hash_node_match);
+            if (DOS_ADDR_INVALID(pstHashNodeParent))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find parent for the customer with the id %d, parent: %d.", ulCustomID, pstCustomer->ulParentID);
+                break;
+            }
+
+            pstCustomParent = pstHashNodeParent->pHandle;
+            if (DOS_ADDR_INVALID(pstCustomParent))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find patent for the customer with the id %d, parent: %d.(Invalid Data)", ulCustomID, pstCustomer->ulParentID);
+                break;
+            }
+
+            pthread_mutex_lock(&g_mutexCustomerTbl);
+            if (0 != pstCustomer->stChildrenList.ulCount)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot delete the customer with the id %d.(Customer have childen)", pstCustomer->ulParentID);
+                pthread_mutex_unlock(&g_mutexCustomerTbl);
+                break;
+            }
+
+
+            dll_delete(pstCustomParent->stChildrenList, pstCustomer);
+            hash_delete_node(g_astCustomerTbl, pstHashNode, ulHashIndex);
+            dos_dmem_free(pstCustomer);
+            pstCustomer = NULL;
+            pstHashNode->pHandle = NULL;
+            dos_dmem_free(pstHashNode);
+            pstHashNode = NULL;
+
+            pthread_mutex_unlock(&g_mutexCustomerTbl);
+
             break;
+
         case BS_CMD_INSERT:
         {
             U32             ulHashIndex, ulCustomerType, ulCustomerState;
@@ -279,13 +437,10 @@ VOID bss_data_update()
             continue;
         }
 
-        if (dos_strcmp(pszTblName, "tbl_customer") == 0)
+        if (dos_strcmp(pszTblName, "tbl_customer") == 0
+            || dos_strcmp(pszTblName, "tbl_agent") == 0)
         {
             bss_update_customer(ulOpteration, pstJsonNode);
-        }
-        else if (dos_strcmp(pszTblName, "tbl_agent") == 0)
-        {
-
         }
         else
         {
