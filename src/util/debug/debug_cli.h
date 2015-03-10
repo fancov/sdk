@@ -13,6 +13,10 @@
 #ifndef __DEBUG_CLI_H_
 #define __DEBUG_CLI_H_
 
+#ifdef __cplusplus
+extern "C"{
+#endif /* __cplusplus */
+
 #if INCLUDE_DEBUG_CLI
 
 #define UNIX_SOCKET_PATH "/ttcom/run/socket"
@@ -26,5 +30,9 @@ extern S32 debug_cli_stop();
 extern S32 debug_cli_send_log(S8 * _ucMsg, S32 _lLength);
 
 #endif
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif

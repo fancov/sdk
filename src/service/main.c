@@ -183,7 +183,7 @@ int main(int argc, char ** argv)
 #endif
 
 #if (INCLUDE_DEBUG_CLI)
-    /* 启动cli日志模块 */
+    /* ???ˉcliè????￡?é */
     if (debug_cli_init(argc, argv) !=  DOS_SUCC)
     {
         dos_printf("%s", "Init the debug cli task fail.");
@@ -197,6 +197,14 @@ int main(int argc, char ** argv)
         exit(255);
     }
     dos_printf("%s", "Debug cli start successfully.");
+#endif
+
+#if (INCLUDE_PTS)
+    if (telnetd_init() < 0)
+    {
+        dos_printf("%s", "Init the telnet server task fail.");
+        exit(255);
+    }
 #endif
 
 #if INCLUDE_SYSLOG_ENABLE

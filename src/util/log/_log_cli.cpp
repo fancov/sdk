@@ -14,6 +14,8 @@
 
 #if (INCLUDE_SYSLOG_ENABLE && INCLUDE_SYSLOG_CLI)
 
+extern "C" S32 debug_cli_send_log(S8 * _pszMsg, S32 _lLength);
+
 CLogCli::CLogCli()
 {
     this->ulCurrentLevel = LOG_LEVEL_INVAILD;

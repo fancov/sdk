@@ -17,7 +17,7 @@ extern "C"{
 
 #include <dos.h>
 
-#if INCLUDE_DEBUG_CLI_SERVER
+#if INCLUDE_DEBUG_CLI_SERVER || INCLUDE_PTS
 
 /* include sys header files */
 #include <pthread.h>
@@ -36,6 +36,8 @@ extern "C"{
 /* include private header files */
 #include "telnetd.h"
 #include "../cli/cli_server.h"
+#include "../pts/pts_telnet.h"
+#include "../pts/pts_goahead.h"
 
 /* 定义最大接收缓存，用在命令行接收输入时 */
 #define MAX_RECV_BUFF_LENGTH    512
@@ -101,7 +103,12 @@ typedef struct tagTelnetClinetInfo{
     FILE   *pFDOutput;  /* 输出描述符 */
 
     U32    ulMode;      /* 但前客户端处于什么模式 */
-
+    S32    bIsLogin;    /* 是否登陆 */
+    S32    bIsConnect;  /* 是否连接ptc */
+    S32    bIsGetLineEnd; /* 是否获得行末回车符 */
+    S32    bIsRecvLFOrNUL; /* 回车符中是否包含/n或者/0 */
+    U32    ulLoginFailCount;
+    DOS_TMR_ST stTimerHandle;
     pthread_t pthClientTask; /* 线程id */
 }TELNET_CLIENT_INFO_ST;
 
@@ -144,6 +151,9 @@ static U8 g_taucTelnetWillack[TELNET_MAX_OPTIONS] = { 0 };
 static U8 g_aucTelnetDoSet[TELNET_MAX_OPTIONS]  = { 0 };
 static U8 g_aucTelnetWillSet[TELNET_MAX_OPTIONS]= { 0 };
 
+/* 终端类型，默认为ansi */
+static S8 g_szTermTye[TELNET_NEGO_BUFF_LENGTH] = {'a','n','s','i', 0};
+
 /*
  * 特殊按键定义,
  *
@@ -170,7 +180,6 @@ static const S8 g_szSpecialKey[][TELNETD_SPECIAL_KEY_LEN] = {
         {'\0'}
 };
 
-
 /**
  * 函数：S32 telnet_set_mode(U32 ulIndex, U32 ulMode)
  * 功能：
@@ -187,14 +196,14 @@ S32 telnet_set_mode(U32 ulIndex, U32 ulMode)
 
     if (ulIndex >= MAX_CLIENT_NUMBER)
     {
-        cli_logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
+        logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
 
     if (ulMode >= CLIENT_LEVEL_BUTT)
     {
-        cli_logr_debug("Request telnet server send data to client, but given an invalid mode (%d).", ulMode);
+        logr_debug("Request telnet server send data to client, but given an invalid mode (%d).", ulMode);
         DOS_ASSERT(0);
         return -1;
     }
@@ -202,7 +211,7 @@ S32 telnet_set_mode(U32 ulIndex, U32 ulMode)
     pstTelnetClient = g_pstTelnetClientList[ulIndex];
     if (!pstTelnetClient->ulValid)
     {
-        cli_logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
+        logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
@@ -227,14 +236,14 @@ S32 telnet_out_string(U32 ulIndex, const S8 *pszBuffer)
 
     if (ulIndex >= MAX_CLIENT_NUMBER)
     {
-        cli_logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
+        logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
 
     if (!pszBuffer)
     {
-        cli_logr_debug("%s", "Request telnet server send data to client, but given an empty buffer.");
+        logr_debug("%s", "Request telnet server send data to client, but given an empty buffer.");
         DOS_ASSERT(0);
         return -1;
     }
@@ -242,14 +251,14 @@ S32 telnet_out_string(U32 ulIndex, const S8 *pszBuffer)
     pstTelnetClient = g_pstTelnetClientList[ulIndex];
     if (!pstTelnetClient->ulValid)
     {
-        cli_logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
+        logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
 
     if (pstTelnetClient->lSocket <= 0)
     {
-        cli_logr_debug("Client with the index %d have an invalid socket.", ulIndex);
+        logr_debug("Client with the index %d have an invalid socket.", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
@@ -257,10 +266,219 @@ S32 telnet_out_string(U32 ulIndex, const S8 *pszBuffer)
     fprintf(pstTelnetClient->pFDOutput, "%s", (S8 *)pszBuffer);
     fflush(pstTelnetClient->pFDOutput);
 
-    cli_logr_debug("Send data to client, client index:%d", ulIndex);
+    logr_debug("Send data to client, client index:%d", ulIndex);
 
     return 0;
 }
+
+VOID pts_telnet_disconnect_callback(U64 ulIndex)
+{
+    if (ulIndex >= MAX_CLIENT_NUMBER)
+    {
+        logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
+        DOS_ASSERT(0);
+        return;
+    }
+
+    g_pstTelnetClientList[ulIndex]->bIsConnect = DOS_FALSE;
+}
+
+VOID telnet_close_client(U32 ulIndex)
+{
+    S32 lResult = 0;
+    TELNET_CLIENT_INFO_ST *pstTelnetClient;
+    DOS_TMR_ST pstACKTmrHandle = NULL;
+    if (ulIndex >= MAX_CLIENT_NUMBER)
+    {
+        logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
+        DOS_ASSERT(0);
+        return;
+    }
+    pstTelnetClient = g_pstTelnetClientList[ulIndex];
+    if (DOS_TRUE == pstTelnetClient->bIsConnect)
+    {
+        pstTelnetClient->bIsConnect = DOS_FALSE;
+    }
+    else
+    {
+        lResult = dos_tmr_start(&pstACKTmrHandle, PTS_TELNET_DISCONNECT_TIME, pts_telnet_disconnect_callback, ulIndex, TIMER_NORMAL_NO_LOOP);
+        if (lResult < 0)
+        {
+            //pt_logr_info("telnet_close_client : start timer fail");
+        }
+    }
+    fwrite("\r\n", 2, 1, pstTelnetClient->pFDOutput);
+    fwrite(" >", 2, 1, pstTelnetClient->pFDOutput);
+    fflush(pstTelnetClient->pFDOutput);
+}
+
+#if 1
+
+VOID telentd_negotiate_cmd_server(U32 ulIndex, S8 *szBuff, U32 ulLen)
+{
+    if (NULL == szBuff)
+    {
+        return;
+    }
+
+    /* Various pieces for the telnet communication */
+    S8 szNegoResult[TELNET_NEGO_BUFF_LENGTH] = { 0 };
+    S32 lDone = 0, lSBMode = 0, lSBLen = 0;
+    U8 opt, ch;
+    S32 i = 0;
+    S8 szSendBuf[100] = {0};
+
+   // for (i=0; i<ulLen; i++)
+   // {
+   //     printf("%02x ", (U8)szBuff[i], (U8)szBuff[i]);
+   // }
+    while (i < ulLen && lDone < 1)
+    {
+        /* Get either IAC (start command) or a regular character (break, unless in SB mode) */
+        ch = (U8)szBuff[i++];
+        if (IAC == ch)
+        {
+            ch = (U8)szBuff[i++];
+            switch (ch)
+            {
+                case SE:
+                    /* End of extended option mode */
+                    lSBMode = 0;
+                    //sprintf(szSendBuf, "%c%c", IAC, SE);
+                    //pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 2);
+                    break;
+                case NOP:
+                    /* No Op */
+                    //telnetd_send_cmd2client(output, NOP, 0);
+                    sprintf(szSendBuf, "%c%c", NOP, 0);
+                    pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 2);
+                    break;
+                case WILL:
+                    opt = (U8)szBuff[i++];
+                    if (ECHO == opt || SGA == opt)
+                    {
+                        sprintf(szSendBuf, "%c%c%c", IAC, DO, opt);
+                        pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 3);
+                    }
+                    else
+                    {
+                        sprintf(szSendBuf, "%c%c%c", IAC, g_taucTelnetWillack[opt], opt);
+                        pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 3);
+                    }
+                    break;
+                case WONT:
+                    /* Will / Won't Negotiation */
+                    opt = (U8)szBuff[i++];
+
+                    if (NAWS != opt || NAOFFD != opt || NAOLFD != opt)
+                    {
+                        if (!g_taucTelnetWillack[opt])
+                        {
+                            /* We default to WONT */
+                            g_taucTelnetWillack[opt] = DONT;
+                        }
+                        sprintf(szSendBuf, "%c%c%c", IAC, g_taucTelnetWillack[opt], opt);
+                        pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 3);
+                    }
+
+                    break;
+                case DO:
+                    opt = (U8)szBuff[i++];
+                    if (TTYPE == opt)
+                    {
+                         sprintf(szSendBuf, "%c%c%c", IAC, WILL, TTYPE);
+                         pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 3);
+                         sprintf(szSendBuf, "%c%c%c", IAC, WILL, NAWS);
+                         pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 3);
+                         //sprintf(szSendBuf, "%c%c%c", IAC, DO, NAOLFD);
+                         //pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 3);
+
+                         //sprintf(szSendBuf, "%c%c%c", IAC, WONT, NAOCRD);
+                         //pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 3);
+                         /*
+                         sprintf(szSendBuf, "%c%c%c", IAC, DO, NAOFFD);
+                         pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 3);
+                         */
+                    }
+                    else
+                    {
+                         if (!g_aucTelnetOptions[opt])
+                         {
+                             /* We default to DONT */
+                             g_aucTelnetOptions[opt] = WONT;
+                         }
+
+                         sprintf(szSendBuf, "%c%c%c", IAC, g_aucTelnetOptions[opt], opt);
+                         pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 3);
+                    }
+                    break;
+                case DONT:
+                    /* Do / Don't Negotiation */
+                    opt = (U8)szBuff[i++];
+                    if (NAWS == opt)
+                    {
+                       // sprintf(szSendBuf, "%c%c%c", IAC, WONT, NAWS);
+                       // pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 3);
+                    }
+                    else
+                    {
+                        if (!g_aucTelnetOptions[opt])
+                        {
+                             /* We default to DONT */
+                             g_aucTelnetOptions[opt] = WONT;
+                        }
+                        sprintf(szSendBuf, "%c%c%c", IAC, g_aucTelnetOptions[opt], opt);
+                        pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 3);
+                    }
+                    break;
+                case SB:
+                    /* Begin Extended Option Mode */
+                    opt = (U8)szBuff[i++];
+                    if (TTYPE == opt)
+                    {
+                        /* 终端类型 */
+                        opt = (U8)szBuff[i++];
+                        if (SEND == opt)
+                        {
+                             sprintf(szSendBuf, "%c%c%c%c%s%c%c", IAC, SB, TTYPE, IS, g_szTermTye, IAC, SE);
+                             pts_telnet_send_msg2ptc(ulIndex, szSendBuf, 6+dos_strlen(g_szTermTye));
+                        }
+                        else if (IS == opt)
+                        {
+                            lSBMode = 1;
+                            lSBLen  = 0;
+                            memset(szNegoResult, 0, sizeof(szNegoResult));
+                        }
+                    }
+                    break;
+                case IAC:
+                    /* IAC IAC? That's probably not right. */
+                    lDone = 2;
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (lSBMode)
+        {
+            /* Extended Option Mode -> Accept character */
+            if (lSBLen < (sizeof(szNegoResult) - 1))
+            {
+                /* Append this character to the SB string,
+                 * but only if it doesn't put us over
+                 * our limit; honestly, we shouldn't hit
+                 * the limit, as we're only collecting characters
+                 * for a terminal type or window size, but better safe than
+                 * sorry (and vulnerable).
+                 */
+                szNegoResult[lSBLen++] = ch;
+            }
+        }
+    }
+
+}
+
+#endif
 
 /**
  * 函数：S32 telnet_out_string(U32 ulIndex, S8 *pszBuffer)
@@ -277,26 +495,29 @@ S32 telnet_send_data(U32 ulIndex, U32 ulType, S8 *pszBuffer, U32 ulLen)
 {
     TELNET_CLIENT_INFO_ST *pstTelnetClient;
     U32 i;
-
+#if INCLUDE_PTS
+    //S8 szNegotiateEnd[4] = {0};
+    S8 *pStrstr = NULL;
+#endif
     if (!pszBuffer || ulLen<=0)
     {
-        cli_logr_debug("%s", "Request telnet server send data to client, but given an empty buffer.");
+        logr_debug("%s", "Request telnet server send data to client, but given an empty buffer.");
         DOS_ASSERT(0);
         return -1;
     }
 
     /* 强制给结束符 */
-    pszBuffer[ulLen] = '\0';
+    //pszBuffer[ulLen] = '\0';
 
     if (MSG_TYPE_LOG == ulType)
     {
-        cli_logr_debug("%s", "Request telnet server send log to client.");
+        logr_debug("%s", "Request telnet server send log to client.");
         goto broadcast;
     }
 
     if (ulIndex >= MAX_CLIENT_NUMBER)
     {
-        cli_logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
+        logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
@@ -304,22 +525,56 @@ S32 telnet_send_data(U32 ulIndex, U32 ulType, S8 *pszBuffer, U32 ulLen)
     pstTelnetClient = g_pstTelnetClientList[ulIndex];
     if (!pstTelnetClient->ulValid)
     {
-        cli_logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
+        logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
 
     if (pstTelnetClient->lSocket <= 0)
     {
-        cli_logr_debug("Client with the index %d have an invalid socket.", ulIndex);
+        logr_debug("Client with the index %d have an invalid socket.", ulIndex);
         DOS_ASSERT(0);
         return -1;
     }
 
-    fprintf(pstTelnetClient->pFDOutput, "%s", (S8 *)pszBuffer);
-    fflush(pstTelnetClient->pFDOutput);
-
-    cli_logr_debug("Send data to client, client index:%d length:%d", ulIndex, ulLen);
+#if INCLUDE_PTS
+    pStrstr = memchr(pszBuffer, 0xff, ulLen);
+    if (pStrstr != NULL)
+    {
+        printf("**********telnet*************\n");
+        S32 k = 0;
+        for (k=0; k<ulLen-(pStrstr - pszBuffer); k++)
+        {
+            printf("%02x ", (U8)pStrstr[k]);
+        }
+        printf("\n");
+        printf("**********end*************\n");
+        telentd_negotiate_cmd_server(ulIndex, pStrstr, ulLen-(pStrstr - pszBuffer));
+        //sprintf(szNegotiateEnd, "%c%c", IAC, IAC);
+        //pts_telnet_send_msg2ptc(ulIndex, szNegotiateEnd, 2);
+        pStrstr = strstr(pszBuffer, "\r\n");
+        if (pStrstr != NULL)
+        {
+            printf("********data*************\n");
+            S32 k = 0;
+            for (k=0; k<ulLen-(pStrstr - pszBuffer); k++)
+            {
+                printf("%02x ", (U8)pStrstr[k]);
+            }
+            printf("\n");
+            printf("**********end*************\n");
+            fwrite((S8 *)pStrstr, ulLen-(pStrstr - pszBuffer), 1, pstTelnetClient->pFDOutput);
+            fflush(pstTelnetClient->pFDOutput);
+        }
+    }
+    else
+#endif
+    {
+    //fwrite(pstTelnetClient->pFDOutput, "%s", (S8 *)pszBuffer);
+        fwrite((S8 *)pszBuffer, ulLen, 1, pstTelnetClient->pFDOutput);
+        fflush(pstTelnetClient->pFDOutput);
+    }
+    //logr_debug("Send data to client, client index:%d length:%d", ulIndex, ulLen);
 
     return 0;
 
@@ -335,7 +590,7 @@ broadcast:
         }
     }
 
-    cli_logr_debug("Send data to client, client index:%d length:%d", ulIndex, ulLen);
+    logr_debug("Send data to client, client index:%d length:%d", ulIndex, ulLen);
 
     return 0;
 }
@@ -350,7 +605,7 @@ broadcast:
 VOID telnetd_opt_init()
 {
     dos_memzero(g_aucTelnetOptions, sizeof(g_aucTelnetOptions));
-    dos_memzero(g_aucTelnetOptions, sizeof(g_aucTelnetOptions));
+    dos_memzero(g_taucTelnetWillack, sizeof(g_taucTelnetWillack));
 
     dos_memzero(g_aucTelnetDoSet, sizeof(g_aucTelnetDoSet));
     dos_memzero(g_aucTelnetWillSet, sizeof(g_aucTelnetWillSet));
@@ -379,7 +634,7 @@ VOID telnetd_send_cmd2client(FILE *output, S32 lCmd, S32 lOpt)
     if (lCmd == DO || lCmd == DONT)
     {
         /* DO commands say what the client should do. */
-        if (((lCmd == DO) && (g_aucTelnetDoSet[lOpt] != DO)) || ((lCmd == DONT) && (g_aucTelnetDoSet[lCmd] != DONT)))
+        if (((lCmd == DO) && (g_aucTelnetDoSet[lOpt] != DO)) || ((lCmd == DONT) && (g_aucTelnetDoSet[lOpt] != DONT)))
         {
             /* And we only send them if there is a disagreement */
             g_aucTelnetDoSet[lOpt] = lCmd;
@@ -424,6 +679,8 @@ VOID telnetd_set_options4client(FILE *output)
     /* We will not set new environments */
     g_aucTelnetOptions[NEW_ENVIRON] = WONT;
 
+    g_taucTelnetWillack[NAOLFD] = DO;
+
     /* The client should not echo its own input */
     g_taucTelnetWillack[ECHO] = DONT;
     /* The client can set a graphics mode */
@@ -453,6 +710,22 @@ VOID telnetd_set_options4client(FILE *output)
             telnetd_send_cmd2client(output, g_taucTelnetWillack[option], option);
         }
     }
+
+#if 0
+    fprintf(output, "%c%c%c", IAC, WILL, ECHO);
+    fprintf(output, "%c%c%c", IAC, WILL, SGA);
+    fprintf(output, "%c%c%c", IAC, WONT, NEW_ENVIRON);
+    fflush(output);
+    fprintf(output, "%c%c%c", IAC, DONT, ECHO);
+    fprintf(output, "%c%c%c", IAC, DO, SGA);
+    fprintf(output, "%c%c%c", IAC, DO, TTYPE);
+    fprintf(output, "%c%c%c", IAC, DONT, NAWS);
+    fprintf(output, "%c%c%c", IAC, DONT, LINEMODE);
+    fprintf(output, "%c%c%c", IAC, DO, NEW_ENVIRON);
+
+    fflush(output);
+#endif
+
 }
 
 /*
@@ -461,7 +734,7 @@ VOID telnetd_set_options4client(FILE *output)
 VOID telentd_negotiate(FILE *output, FILE *input)
 {
     /* The default terminal is ANSI */
-    S8 szTerm[TELNET_NEGO_BUFF_LENGTH] = {'a','n','s','i', 0};
+    //S8 szTerm[TELNET_NEGO_BUFF_LENGTH] = {'a','n','s','i', 0};
     /* Various pieces for the telnet communication */
     S8 szNegoResult[TELNET_NEGO_BUFF_LENGTH] = { 0 };
     S32 lDone = 0, lSBMode = 0, lDoEcho = 0, lSBLen = 0, lMaxNegoTime = 0;
@@ -504,8 +777,8 @@ VOID telentd_negotiate(FILE *output, FILE *input)
                         //is_telnet_client = 1;
                         /* This was a response to the TTYPE command, meaning
                          * that this should be a terminal type */
-                        strncpy(szTerm, &szNegoResult[2], sizeof(szTerm) - 1);
-                        szTerm[sizeof(szTerm) - 1] = 0;
+                        strncpy(g_szTermTye, &szNegoResult[2], sizeof(g_szTermTye) - 1);
+                        g_szTermTye[sizeof(g_szTermTye) - 1] = 0;
                         ++lDone;
                     }
                     break;
@@ -518,17 +791,17 @@ VOID telentd_negotiate(FILE *output, FILE *input)
                 case WONT:
                     /* Will / Won't Negotiation */
                     opt = getc(input);
-                    if (opt < 0 || opt >= sizeof(g_aucTelnetOptions))
+                    if (opt < 0 || opt >= sizeof(g_taucTelnetWillack))
                     {
                         DOS_ASSERT(0);
                         return;
                     }
-                    if (!g_aucTelnetOptions[opt])
+                    if (!g_taucTelnetWillack[opt])
                     {
                         /* We default to WONT */
-                        g_aucTelnetOptions[opt] = WONT;
+                        g_taucTelnetWillack[opt] = WONT;
                     }
-                    telnetd_send_cmd2client(output, g_aucTelnetOptions[opt], opt);
+                    telnetd_send_cmd2client(output, g_taucTelnetWillack[opt], opt);
                     fflush(output);
                     if ((WILL == i) && (TTYPE == opt))
                     {
@@ -556,7 +829,7 @@ VOID telentd_negotiate(FILE *output, FILE *input)
                     if (opt == ECHO)
                     {
                         lDoEcho = (i == DO);
-                        DOS_ASSERT(lDoEcho);
+                        //DOS_ASSERT(lDoEcho);
                     }
                     fflush(output);
                     break;
@@ -604,13 +877,22 @@ VOID telentd_negotiate(FILE *output, FILE *input)
  */
 VOID telnetd_client_output_prompt(FILE *output, U32 ulMode)
 {
+#define check_fd1(_fd) \
+do{ \
+    if (feof(_fd)) \
+    { \
+        DOS_ASSERT(0); \
+        return; \
+    }\
+}while(0)
+    check_fd1(output);
     if (CLIENT_LEVEL_LOG == ulMode)
     {
-        fprintf(output, " #");
+        fprintf(output, "\r #");
     }
     else
     {
-        fprintf(output, " >");
+        fprintf(output, "\r >");
     }
     fflush(output);
 }
@@ -634,6 +916,7 @@ VOID telnetd_client_send_new_line(FILE* output, S32 ulLines)
         putc('\r', output);
         putc(0, output);
         putc('\n', output);
+        //fflush(output);
     }
 }
 #if 0
@@ -659,6 +942,16 @@ S32 telnet_client_special_key_proc(U32 ulKey, FILE *pfOutput, S8 *pszCurrCmd, S3
 
 }
 #endif
+
+VOID pts_recv_cr_timeout(U64 ulParam)
+{
+    TELNET_CLIENT_INFO_ST *pstClientInfo = (TELNET_CLIENT_INFO_ST *)ulParam;
+    pstClientInfo->bIsGetLineEnd = DOS_TRUE;
+    pstClientInfo->stTimerHandle = NULL;
+
+    printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+}
+
 /**
  * 函数：S32 telnet_read_line(FILE *input, FILE *output, S8 *szBuffer, S32 lSize, S32 lMask)
  * 功能：读取客户端输入，直到回车
@@ -671,16 +964,18 @@ S32 telnet_client_special_key_proc(U32 ulKey, FILE *pfOutput, S8 *pszCurrCmd, S3
  * 返回值：
  *      成功返回接收缓存的长度，失败返回－1
  */
-S32 telnetd_client_read_line(FILE *input, FILE *output, S8 *szBuffer, S32 lSize, S32 lMask)
+S32 telnetd_client_read_line(TELNET_CLIENT_INFO_ST *pstClientInfo, S8 *szBuffer, S32 lSize, S32 lMask)
 {
     S32 lLength;
     U8  c;
+    struct stat buf;
     KEY_LIST_BUFF_ST stKeyList;
+    S32 lResult = 0;
 #if 0
     S32 lLoop, lSpecialKeyMatchRet;
 #endif
 
-    if (!input || ! output)
+    if (!pstClientInfo->pFDInput || !pstClientInfo->pFDOutput)
     {
         DOS_ASSERT(0);
         return TELNET_RECV_RESULT_ERROR;
@@ -703,11 +998,15 @@ do{ \
 }while(0)
 
     /* We make sure to restore the cursor. */
-    fprintf(output, "\033[?25h");
-    check_fd(output);
-    fflush(output);
 
-    if (feof(input))
+    if (fstat(fileno(pstClientInfo->pFDOutput), &buf) != -1)
+    {
+        fprintf(pstClientInfo->pFDOutput, "\033[?25h");
+        check_fd(pstClientInfo->pFDOutput);
+        fflush(pstClientInfo->pFDOutput);
+    }
+
+    if (feof(pstClientInfo->pFDInput))
     {
         DOS_ASSERT(0);
         return TELNET_RECV_RESULT_ERROR;
@@ -718,9 +1017,8 @@ do{ \
 
     for (lLength=0; lLength<lSize-1; lLength++)
     {
-        c = getc(input);
-        check_fd(input);
-
+        c = getc(pstClientInfo->pFDInput);
+        check_fd(pstClientInfo->pFDInput);
 #if 0
         if (TAB_ASCII_CODE == c)
         {
@@ -785,14 +1083,39 @@ do{ \
         }
         else
 #endif
-        if (c == '\r' || c == '\n')
+        if (c == '\r')
         {
-            if (c == '\r')
-            {
+           // if (c == '\r')
+            //{
             /* the next char is either \n or \0, which we can discard. */
-                getc(input);
+            //    c = getc(input);
+            //}
+            if (!pstClientInfo->bIsGetLineEnd)
+            {
+                lResult = dos_tmr_start(&pstClientInfo->stTimerHandle, PTS_TELNET_CR_TIME, pts_recv_cr_timeout, (U64)pstClientInfo, TIMER_NORMAL_NO_LOOP);
+                if (lResult < 0)
+                {
+                    pt_logr_info("telnetd_client_task : start timer fail");
+                }
+                telnetd_client_send_new_line(pstClientInfo->pFDOutput, 1);
+                continue;
             }
-            telnetd_client_send_new_line(output, 1);
+            else
+            {
+                if (pstClientInfo->bIsRecvLFOrNUL)
+                {
+                    getc(pstClientInfo->pFDInput);
+                }
+                telnetd_client_send_new_line(pstClientInfo->pFDOutput, 1);
+                break;
+            }
+        }
+        else if (c == '\0' || c == '\n')
+        {
+            if (!pstClientInfo->bIsGetLineEnd)
+            {
+                pstClientInfo->bIsRecvLFOrNUL = DOS_TRUE;
+            }
             break;
         }
         else if (c == '\b' || c == 0x7f)
@@ -804,22 +1127,27 @@ do{ \
             }
             if (lMask)
             {
-                fprintf(output, "\033[%dD\033[K", lLength);
-                check_fd(output);
-                fflush(output);
+                fprintf(pstClientInfo->pFDOutput, "\033[%dD\033[K", lLength);
+                check_fd(pstClientInfo->pFDOutput);
+                fflush(pstClientInfo->pFDOutput);
                 lLength = -1;
                 continue;
             }
             else
             {
-                fprintf(output, "\b \b");
-                check_fd(output);
-                fflush(output);
+                fprintf(pstClientInfo->pFDOutput, "\b \b");
+                check_fd(pstClientInfo->pFDOutput);
+                fflush(pstClientInfo->pFDOutput);
                 lLength -= 2;
                 continue;
             }
         }
-        else if ('\0' == c)
+#if INCLUDE_PTS
+        else if (c == 0xff)
+        /* 客户端退出 */
+#else
+        else if (c == 0xff || '\0' == c)
+#endif
         {
             DOS_ASSERT(0);
             return TELNET_RECV_RESULT_ERROR;
@@ -831,20 +1159,91 @@ do{ \
         }
 
         szBuffer[lLength] = c;
-        putc(lMask ? '*' : c, output);
-        check_fd(output);
-        fflush(output);
+        putc(lMask ? '*' : c, pstClientInfo->pFDOutput);
+        check_fd(pstClientInfo->pFDOutput);
+        fflush(pstClientInfo->pFDOutput);
     }
     szBuffer[lLength] = 0;
 
     /* And we hide it again at the end. */
-    fprintf(output, "\033[?25l");
-    check_fd(output);
-    fflush(output);
+    fprintf(pstClientInfo->pFDOutput, "\033[?25l");
+    check_fd(pstClientInfo->pFDOutput);
+    fflush(pstClientInfo->pFDOutput);
 
     return TELNET_RECV_RESULT_NORMAL;
 }
 
+S32 telnetd_client_read_char(TELNET_CLIENT_INFO_ST *pstClientInfo, S8 *szBuffer)
+{
+    U8  c;
+    S32 lSize = 1;
+    KEY_LIST_BUFF_ST stKeyList;
+#if 0
+    S32 lLoop, lSpecialKeyMatchRet;
+#endif
+
+    if (!pstClientInfo->pFDInput || !pstClientInfo->pFDOutput)
+    {
+        DOS_ASSERT(0);
+        return TELNET_RECV_RESULT_ERROR;
+    }
+
+    if (!szBuffer || lSize <= 0)
+    {
+        DOS_ASSERT(0);
+        return TELNET_RECV_RESULT_ERROR;
+    }
+
+#define check_fd(_fd) \
+do{ \
+    if (feof(_fd)) \
+    { \
+        DOS_ASSERT(0); \
+        return TELNET_RECV_RESULT_ERROR; \
+    }\
+}while(0)
+
+    /* We make sure to restore the cursor. */
+    fprintf(pstClientInfo->pFDOutput, "\033[?25h");
+    check_fd(pstClientInfo->pFDOutput);
+    fflush(pstClientInfo->pFDOutput);
+
+    if (feof(pstClientInfo->pFDInput))
+    {
+        DOS_ASSERT(0);
+        return TELNET_RECV_RESULT_ERROR;
+    }
+
+    stKeyList.ulLength = 0;
+    stKeyList.szKeyBuff[0] = '\0';
+    c = getc(pstClientInfo->pFDInput);
+    check_fd(pstClientInfo->pFDInput);
+#if 0
+    if (c == 0xff)
+    {
+        /* 客户端退出 */
+        DOS_ASSERT(0);
+        return TELNET_RECV_RESULT_ERROR;
+    }
+#endif
+    *szBuffer = c;
+
+    if ('\r' == c)
+    {
+        if (pstClientInfo->bIsRecvLFOrNUL)
+        {
+            getc(pstClientInfo->pFDInput);
+        }
+        *szBuffer = '\n';
+    }
+
+    //putc(c, output);
+    //check_fd(output);
+    //fflush(output);
+
+    return TELNET_RECV_RESULT_NORMAL;
+
+}
 /**
  * 函数：TELNET_CLIENT_INFO_ST *telnetd_client_alloc(S32 lSock)
  * 功能：
@@ -867,7 +1266,7 @@ TELNET_CLIENT_INFO_ST *telnetd_client_alloc(S32 lSock)
 
     if (i >= MAX_CLIENT_NUMBER)
     {
-        cli_logr_notice("%s", "Too many user.");
+        logr_notice("%s", "Too many user.");
         DOS_ASSERT(0);
         return NULL;
     }
@@ -877,6 +1276,12 @@ TELNET_CLIENT_INFO_ST *telnetd_client_alloc(S32 lSock)
     g_pstTelnetClientList[i]->pFDInput = NULL;
     g_pstTelnetClientList[i]->pFDOutput = NULL;
     g_pstTelnetClientList[i]->ulMode = CLIENT_LEVEL_CONFIG;
+    g_pstTelnetClientList[i]->bIsLogin = DOS_FALSE;
+    g_pstTelnetClientList[i]->bIsConnect = DOS_FALSE;
+    g_pstTelnetClientList[i]->bIsGetLineEnd = DOS_FALSE;
+    g_pstTelnetClientList[i]->bIsRecvLFOrNUL = DOS_FALSE;
+    g_pstTelnetClientList[i]->stTimerHandle = NULL;
+    g_pstTelnetClientList[i]->ulLoginFailCount = 0;
 
     return g_pstTelnetClientList[i];
 }
@@ -903,6 +1308,7 @@ U32 telnetd_client_count()
     return ulCount;
 }
 
+
 /**
  * 函数：VOID *telnetd_client_task(VOID *ptr)
  * 功能：
@@ -915,12 +1321,18 @@ VOID *telnetd_client_task(VOID *ptr)
     TELNET_CLIENT_INFO_ST *pstClientInfo;
     struct rlimit limit;
     S8 szRecvBuff[MAX_RECV_BUFF_LENGTH];
+    S8 szUseName[MAX_RECV_BUFF_LENGTH];
+    S8 cRecvChar;
+    //S8 aucRecvStr[2];
     S32 lLen;
     S8 szCmd[16] = { 0 };
+    S8 *pcPassWord = NULL;
+    S32 lResult = 0;
+    S8 *pPassWordMd5 = NULL;
 
     if (!ptr)
     {
-        cli_logr_warning("%s", "New telnet client thread with invalid param, exit.");
+        logr_warning("%s", "New telnet client thread with invalid param, exit.");
         DOS_ASSERT(0);
         pthread_exit(NULL);
     }
@@ -935,32 +1347,39 @@ VOID *telnetd_client_task(VOID *ptr)
 
     pstClientInfo->pFDInput = fdopen(pstClientInfo->lSocket, "r");
     if (!pstClientInfo->pFDInput) {
-        cli_logr_warning("%s", "Create input fd fail for the new telnet client.");
+        logr_warning("%s", "Create input fd fail for the new telnet client.");
         DOS_ASSERT(0);
         pthread_exit(NULL);
     }
     pstClientInfo->pFDOutput = fdopen(pstClientInfo->lSocket, "w");
     if (!pstClientInfo->pFDOutput) {
-        cli_logr_warning("%s", "Create output fd fail for the new telnet client.");
+        logr_warning("%s", "Create output fd fail for the new telnet client.");
         DOS_ASSERT(0);
         pthread_exit(NULL);
     }
 
     telentd_negotiate(pstClientInfo->pFDOutput, pstClientInfo->pFDInput);
 
-    cli_logr_debug("%s", "Telnet negotiate finished.");
+    dos_printf("%s", "Telnet negotiate finished.");
 
+#if INCLUDE_DEBUG_CLI_SERVER
     fprintf(pstClientInfo->pFDOutput, "Welcome Control Panel!");
     telnetd_client_send_new_line(pstClientInfo->pFDOutput, 1);
     fflush(pstClientInfo->pFDOutput);
+#else
+    fprintf(pstClientInfo->pFDOutput, "Welcome to AMC!\n\rPlease input Enter.");
+    telnetd_client_read_line(pstClientInfo, szRecvBuff, sizeof(szRecvBuff), 0);
+#endif
+
 
     while (1)
     {
+#if INCLUDE_DEBUG_CLI_SERVER
         /* 输出提示符 */
         telnetd_client_output_prompt(pstClientInfo->pFDOutput, pstClientInfo->ulMode);
 
         /* 读取命令行输入 */
-        lLen = telnetd_client_read_line(pstClientInfo->pFDInput, pstClientInfo->pFDOutput, szRecvBuff, sizeof(szRecvBuff), 0);
+        lLen = telnetd_client_read_line(pstClientInfo, szRecvBuff, sizeof(szRecvBuff), 0);
         if (lLen < 0)
         {
             logo_notice("Telnetd", "Telnet Exit", DOS_TRUE, "%s", "Telnet client exit.");
@@ -971,9 +1390,134 @@ VOID *telnetd_client_task(VOID *ptr)
         {
             continue;
         }
-
         /* 分析并执行命令 */
         cli_server_cmd_analyse(pstClientInfo->ulIndex, pstClientInfo->ulMode, szRecvBuff, lLen);
+
+        /* PTS TELNET */
+#else
+        /* 读取命令行输入 */
+        if (!pstClientInfo->bIsLogin)
+        {
+            pstClientInfo->ulLoginFailCount++;
+            if (pstClientInfo->ulLoginFailCount > 3)
+            {
+                /* 密码输入错误三次 */
+                break;
+            }
+
+            fprintf(pstClientInfo->pFDOutput, "\rUsername:");
+            lLen = telnetd_client_read_line(pstClientInfo, szRecvBuff, sizeof(szRecvBuff), 0);
+            if (lLen < 0)
+            {
+                logo_notice("Telnetd", "Telnet Exit", DOS_TRUE, "%s", "Telnet client exit.");
+                break;
+            }
+
+            if (0 == lLen)
+            {
+                continue;
+            }
+
+            pcPassWord = (S8 *)dos_dmem_alloc(PTS_PASSWORD_SIZE);
+            if (NULL == pcPassWord)
+            {
+                perror("dos_dmem_alloc");
+                break;
+            }
+            dos_memzero(pcPassWord, PTS_PASSWORD_SIZE);
+            lResult = pts_get_password(szRecvBuff, pcPassWord, PTS_PASSWORD_SIZE);
+            if (lResult < 0)
+            {
+                dos_dmem_free(pcPassWord);
+                pcPassWord = NULL;
+                continue;
+            }
+            else
+            {
+                dos_strncpy(szUseName, szRecvBuff, MAX_RECV_BUFF_LENGTH);
+                fprintf(pstClientInfo->pFDOutput, "\rPassword:");
+                lLen = telnetd_client_read_line(pstClientInfo, szRecvBuff, sizeof(szRecvBuff), 1);
+                if (lLen < 0)
+                {
+                    logo_notice("Telnetd", "Telnet Exit", DOS_TRUE, "%s", "Telnet client exit\n");
+                    dos_dmem_free(pcPassWord);
+                    pcPassWord = NULL;
+                    break;
+                }
+
+                if (0 == lLen)
+                {
+                    dos_dmem_free(pcPassWord);
+                    pcPassWord = NULL;
+                    continue;
+                }
+
+                pPassWordMd5 = pts_md5_encrypt(szUseName, szRecvBuff);
+                if (!dos_strcmp(pcPassWord, pPassWordMd5))
+                {
+                    dos_dmem_free(pcPassWord);
+                    pcPassWord = NULL;
+                    pts_goAhead_free(pPassWordMd5);
+                    pPassWordMd5 = NULL;
+                    pstClientInfo->bIsLogin = DOS_TRUE;
+                    pstClientInfo->ulLoginFailCount = 0;
+                }
+                else
+                {
+                    dos_dmem_free(pcPassWord);
+                    pcPassWord = NULL;
+                    pts_goAhead_free(pPassWordMd5);
+                    pPassWordMd5 = NULL;
+                    //fprintf(pstClientInfo->pFDOutput, "password error\n");
+                    continue;
+                }
+
+            }
+
+        }
+        if (!pstClientInfo->bIsConnect)
+        {
+            /* 输出提示符 */
+            telnetd_client_output_prompt(pstClientInfo->pFDOutput, pstClientInfo->ulMode);
+            /* 读取命令行输入 */
+            lLen = telnetd_client_read_line(pstClientInfo, szRecvBuff, sizeof(szRecvBuff), 0);
+            if (lLen < 0)
+            {
+                logo_notice("Telnetd", "Telnet Exit", DOS_TRUE, "%s", "Telnet client exit.");
+                break;
+            }
+            if (0 == lLen)
+            {
+                continue;
+            }
+
+            lResult = pts_server_cmd_analyse(pstClientInfo->ulIndex, pstClientInfo->ulMode, szRecvBuff, lLen);
+            if (PT_TELNET_CONNECT == lResult)
+            {
+                /* connect ptc */
+                pstClientInfo->bIsConnect = DOS_TRUE;
+            }
+        }
+        else
+        {
+            lLen = telnetd_client_read_char(pstClientInfo, &cRecvChar);
+            if (lLen < 0)
+            {
+                logo_notice("Telnetd", "Telnet Exit", DOS_TRUE, "%s", "Telnet client exit.");
+                /* 通知pts ptc释放资源 */
+                pts_cmd_client_delete(pstClientInfo->ulIndex);
+                break;
+            }
+
+            if (0 == lLen)
+            {
+                continue;
+            }
+
+            pts_telnet_send_msg2ptc(pstClientInfo->ulIndex, &cRecvChar, 1);
+        }
+
+        #endif
     }
 
     fclose(pstClientInfo->pFDOutput);
@@ -985,12 +1529,21 @@ VOID *telnetd_client_task(VOID *ptr)
     pstClientInfo->pFDInput = NULL;
     pstClientInfo->ulValid = DOS_FALSE;
     pstClientInfo->lSocket = -1;
+    pstClientInfo->bIsLogin = DOS_FALSE;
+    pstClientInfo->bIsConnect = DOS_FALSE;
+    pstClientInfo->bIsGetLineEnd = DOS_FALSE;
+    pstClientInfo->bIsRecvLFOrNUL = DOS_FALSE;
+    pstClientInfo->stTimerHandle = NULL;
+    pstClientInfo->ulLoginFailCount = 0;
 
     /* 如果所有客户端都关闭了，强制关闭控制台日志 */
     if (!telnetd_client_count())
     {
         snprintf(szCmd, sizeof(szCmd), "debug 0 ");
+        #if INCLUDE_DEBUG_CLI_SERVER
         cli_server_send_broadcast_cmd(INVALID_CLIENT_INDEX, szCmd, dos_strlen(szCmd) + 1);
+        #else
+        #endif
     }
 
     return NULL;
@@ -1022,7 +1575,7 @@ VOID *telnetd_main_loop(VOID *ptr)
         pthread_mutex_lock(&g_TelnetdMutex);
         if (g_lTelnetdWaitingExit)
         {
-            cli_logr_info("%d", "Telnetd waiting exit flag has been set. exit");
+            logr_info("%d", "Telnetd waiting exit flag has been set. exit");
             pthread_mutex_unlock(&g_TelnetdMutex);
             break;
         }
@@ -1037,7 +1590,7 @@ VOID *telnetd_main_loop(VOID *ptr)
         lRet = select(lMaxFd, &stFDSet, NULL, NULL, &stTimeout);
         if (lRet < 0)
         {
-            cli_logr_warning("%s", "Error happened when select return.");
+            logr_warning("%s", "Error happened when select return.");
             lConnectSock = -1;
             DOS_ASSERT(0);
             break;
@@ -1051,12 +1604,12 @@ VOID *telnetd_main_loop(VOID *ptr)
         lConnectSock = accept(g_lTelnetdSrvSocket, (struct sockaddr *)&stAddr, &ulLen);
         if (lConnectSock < 0)
         {
-            cli_logr_warning("Telnet server accept connection fail.(%d)", errno);
+            logr_warning("Telnet server accept connection fail.(%d)", errno);
             DOS_ASSERT(0);
             break;
         }
 
-        cli_logr_notice("%s", "New telnet connection.");
+        logr_notice("%s", "New telnet connection.");
 
         pthread_mutex_lock(&g_TelnetdMutex);
         pstClientInfo = telnetd_client_alloc(lConnectSock);
@@ -1074,7 +1627,7 @@ VOID *telnetd_main_loop(VOID *ptr)
         if (lRet < 0)
         {
             DOS_ASSERT(0);
-            cli_logr_warning("%s", "Create thread for telnet client fail.");
+            logr_warning("%s", "Create thread for telnet client fail.");
             close(lConnectSock);
             continue;
         }
@@ -1150,19 +1703,24 @@ S32 telnetd_init()
     g_lTelnetdSrvSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (g_lTelnetdSrvSocket < 0)
     {
-        cli_logr_warning("%s", "Create the telnetd server socket fail.");
+        logr_warning("%s", "Create the telnetd server socket fail.");
         return DOS_FAIL;
     }
     flag = 1;
     setsockopt(g_lTelnetdSrvSocket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 
-    memset(&stListenAddr, 0, sizeof(stListenAddr));
+    dos_memzero(&stListenAddr, sizeof(stListenAddr));
     stListenAddr.sin_family = AF_INET;
     stListenAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    #if INCLUDE_DEBUG_CLI_SERVER
     stListenAddr.sin_port = htons(TELNETD_LISTEN_PORT);
+    #else
+    stListenAddr.sin_port = dos_htons(config_get_pts_telnet_server_port());
+    #endif
     if (bind(g_lTelnetdSrvSocket, (struct sockaddr *)&stListenAddr, sizeof(stListenAddr)) < 0)
     {
-        cli_logr_error("%s", "Telnet server bind IP/Address fail.");
+        perror("bind");
+        logr_error("%s", "Telnet server bind IP/Address fail.");
         close(g_lTelnetdSrvSocket);
         g_lTelnetdSrvSocket = -1;
         return DOS_FAIL;
@@ -1170,7 +1728,7 @@ S32 telnetd_init()
 
     if (listen(g_lTelnetdSrvSocket, 5) < 0)
     {
-        cli_logr_error("Linsten on port %d fail", TELNETD_LISTEN_PORT);
+        logr_error("Linsten on port %d fail", TELNETD_LISTEN_PORT);
         close(g_lTelnetdSrvSocket);
         g_lTelnetdSrvSocket = -1;
         return DOS_FAIL;
@@ -1193,13 +1751,13 @@ S32 telnetd_start()
     lRet = pthread_create(&g_pthTelnetdTask, 0, telnetd_main_loop, NULL);
     if (lRet < 0)
     {
-        cli_logr_warning("%s", "Create thread for telnetd fail.");
+        logr_warning("%s", "Create thread for telnetd fail.");
         close(g_lTelnetdSrvSocket);
         g_lTelnetdSrvSocket = -1;
         return DOS_FAIL;
     }
 
-    cli_logr_debug("%s", "telnet server start!");
+    dos_printf("%s", "telnet server start!");
 
     //pthread_join(g_pthTelnetdTask, NULL);
 

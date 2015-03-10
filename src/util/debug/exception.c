@@ -92,11 +92,10 @@ VOID dos_signal_handle(S32 lSig)
             dos_backtrace(lSig);
             break;
         case SIGINT:
-            dos_backtrace(lSig);
             break;
+      //  case SIGPIPE:
+      //      return;
     }
-
-    dos_printf("%s", "\nexit()\n");
 
     if (dos_get_pid_file_path(szBuff, sizeof(szBuff))
         && (pszProcessName = dos_get_process_name()))

@@ -21,7 +21,9 @@ extern "C"{
 #endif
 
 #if INCLUDE_PTC
-    #include <ptc_pts/ipcc.h>
+    #include <pt/ptc.h>
+#elif INCLUDE_PTS
+    #include <pt/pts.h>
 #endif
 
 #if INCLUDE_SERVICE_BS
@@ -74,7 +76,9 @@ S32 root(S32 _argc, S8 ** _argv)
 
 #if INCLUDE_PTC
     ptc_main();
-#endif //INCLUDE_PTC
+#elif INCLUDE_PTS
+    pts_main();
+#endif
 
 #if INCLUDE_SERVICE_BS
     if (bs_start() != DOS_SUCC)

@@ -55,7 +55,7 @@ DLLEXPORT S8* dos_strncpy(S8 *dst, const S8 *src, S32 lMaxLen)
  * 函数：U32 dos_strlen(const S8 *str)
  * 功能：计算字符串长度
  * 参数：
- * 	失败返回0，成功返回字符串长度
+ *  失败返回0，成功返回字符串长度
  */
 DLLEXPORT U32 dos_strlen(const S8 *str)
 {
@@ -82,16 +82,16 @@ DLLEXPORT U32 dos_strlen(const S8 *str)
  * 函数：S8 *dos_strcat(S8 *dest, const S8 *src)
  * 功能：字符串拼接功能
  * 参数：
- * 		S8 *dest： 目的字符串
- * 		const S8 *src：源字符串串
- * 	失败返回null，成功返回目的字符串的手地址
+ *      S8 *dest： 目的字符串
+ *      const S8 *src：源字符串串
+ *  失败返回null，成功返回目的字符串的手地址
  */
 DLLEXPORT S8 *dos_strcat(S8 *dest, const S8 *src)
 {
-	if (DOS_ADDR_VALID(dest) && DOS_ADDR_VALID(src))
-	{
-	    return strcat(dest, src);
-	}
+    if (DOS_ADDR_VALID(dest) && DOS_ADDR_VALID(src))
+    {
+        return strcat(dest, src);
+    }
 
     return NULL;
 }
@@ -101,18 +101,18 @@ DLLEXPORT S8 *dos_strcat(S8 *dest, const S8 *src)
  * 函数：S8 *dos_strchr(const S8 *str, S32 i)
  * 功能：在str中查找字符查找字符i
  * 参数：
- * 		const S8 *str：源字符串
- * 		S32 i：字符
+ *      const S8 *str：源字符串
+ *      S32 i：字符
  * 返回值：
- * 		成功返回字符i相对str首地址偏移地址，失败返回null
+ *      成功返回字符i相对str首地址偏移地址，失败返回null
  */
 DLLEXPORT S8 *dos_strchr(const S8 *str, S32 i)
 {
-	if (i >= U8_BUTT)
-	{
-		DOS_ASSERT(0);
-		return NULL;
-	}
+    if (i >= U8_BUTT)
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
 
     if (DOS_ADDR_VALID(str))
     {
@@ -127,8 +127,8 @@ DLLEXPORT S8 *dos_strchr(const S8 *str, S32 i)
  * 函数：S8* dos_strstr(S8 * source,  S8 *key)
  * 功能：在字符串srouce中查找字符串key
  * 参数：
- * 		S8 * source：源字符串
- * 		S8 *key：关键字
+ *      S8 * source：源字符串
+ *      S8 *key：关键字
  * 返回值：如果没有找到，返回null，如果找到返回key相对source首地址的偏移
  */
 DLLEXPORT S8* dos_strstr(S8 * source, S8 *key)
@@ -138,8 +138,8 @@ DLLEXPORT S8* dos_strstr(S8 * source, S8 *key)
 
        if (DOS_ADDR_INVALID(source) || DOS_ADDR_INVALID(key))
        {
-    	   DOS_ASSERT(0);
-    	   return NULL;
+           DOS_ASSERT(0);
+           return NULL;
        }
 
        pSource = source;
@@ -178,7 +178,7 @@ DLLEXPORT S32 dos_strcmp(const S8 *s1, const S8 *s2)
     }
     else
     {
-    	DOS_ASSERT(0);
+        DOS_ASSERT(0);
     }
 
     return -1;/*not equal*/
@@ -231,7 +231,7 @@ DLLEXPORT S32 dos_stricmp(const S8 *s1, const S8 *s2)
     }
     else
     {
-    	DOS_ASSERT(0);
+        DOS_ASSERT(0);
     }
 
     return -1;/*not equal*/
@@ -263,7 +263,7 @@ DLLEXPORT S32 dos_strncmp(const S8 *s1, const S8 *s2, U32 n)
  */
 DLLEXPORT S32 dos_strnicmp(const S8 *s1, const S8 *s2, U32 n)
 {
-    S8	cCh1, cCh2;
+    S8  cCh1, cCh2;
 
     if (DOS_ADDR_VALID(s1) && DOS_ADDR_VALID(s2))
     {
@@ -315,14 +315,14 @@ DLLEXPORT S32 dos_strnicmp(const S8 *s1, const S8 *s2, U32 n)
  */
 DLLEXPORT S32 dos_strnlen(const S8 *s, S32 count)
 {
-	const S8 *sc;
+    const S8 *sc;
 
     if(DOS_ADDR_VALID(s))
     {
-    	for (sc = s; count-- && *sc != '\0'; ++sc)
-   		/* nothing */;
+        for (sc = s; count-- && *sc != '\0'; ++sc)
+        /* nothing */;
 
-    	return (S32)(sc - s);
+        return (S32)(sc - s);
     }
 
    return 0;
@@ -360,12 +360,12 @@ DLLEXPORT S8 *dos_strndup(const S8 *s, S32 count)
  */
 DLLEXPORT S8 dos_toupper(S8 ch)
 {
-	if (ch >= 'a' && ch <= 'z')
-	{
-		return (S8)(ch + 'A' - 'a');
-	}
+    if (ch >= 'a' && ch <= 'z')
+    {
+        return (S8)(ch + 'A' - 'a');
+    }
 
-	return ch;
+    return ch;
 }
 
 
@@ -377,12 +377,12 @@ DLLEXPORT S8 dos_toupper(S8 ch)
  */
 DLLEXPORT S8 dos_tolower(S8 ch)
 {
-	if (ch >= 'A' && ch <= 'Z')
-	{
-		return (S8)(ch + 'a' - 'A');
-	}
+    if (ch >= 'A' && ch <= 'Z')
+    {
+        return (S8)(ch + 'a' - 'A');
+    }
 
-	return ch;
+    return ch;
 }
 
 
@@ -396,17 +396,17 @@ DLLEXPORT VOID dos_uppercase(S8 *str)
 {
     if (DOS_ADDR_INVALID(str))
     {
-    	DOS_ASSERT(0);
-    	return;
+        DOS_ASSERT(0);
+        return;
     }
 
     while (*str)
     {
-    	if (*str >= 'a' && *str <= 'z')
-    	{
-    		*str = (S8)((*str) + 'A' - 'a');
-    	}
-    	str++;
+        if (*str >= 'a' && *str <= 'z')
+        {
+            *str = (S8)((*str) + 'A' - 'a');
+        }
+        str++;
     }
 }
 
@@ -419,19 +419,19 @@ DLLEXPORT VOID dos_uppercase(S8 *str)
  */
 DLLEXPORT VOID dos_lowercase(S8 *str)
 {
-	if (DOS_ADDR_INVALID(str))
-	{
-		DOS_ASSERT(0);
-		return;
-	}
+    if (DOS_ADDR_INVALID(str))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
 
     while (*str)
     {
-    	if (*str >= 'A' && *str <= 'Z')
-    	{
-    		*str = (S8)((*str) + 'a' - 'A');
-    	}
-    	str++;
+        if (*str >= 'A' && *str <= 'Z')
+        {
+            *str = (S8)((*str) + 'a' - 'A');
+        }
+        str++;
     }
 }
 
@@ -465,21 +465,21 @@ DLLEXPORT S32 dos_atol(const S8 *szStr, S32 *pnVal)
  */
 DLLEXPORT S32 dos_atoul(const S8 *szStr, U32 *pulVal)
 {
-	U32 nVal;
+    U32 nVal;
 
-	if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pulVal))
-	{
-    	if (dos_sscanf(szStr, "%u", &nVal) < 1)
-    	{
-    		*pulVal = 0;
-    		return -1;
-    	}
+    if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pulVal))
+    {
+        if (dos_sscanf(szStr, "%u", &nVal) < 1)
+        {
+            *pulVal = 0;
+            return -1;
+        }
 
-    	*pulVal = nVal;
+        *pulVal = nVal;
         return 0;
-	}
+    }
 
-	return -1;
+    return -1;
 }
 
 
@@ -491,19 +491,19 @@ DLLEXPORT S32 dos_atoul(const S8 *szStr, U32 *pulVal)
  */
 DLLEXPORT S32 dos_atolx (const S8 *szStr, S32 *pnVal)
 {
-	if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pnVal))
-	{
-    	if (dos_sscanf(szStr, "%x", pnVal) < 1 &&
-    		dos_sscanf(szStr, "%X", pnVal) < 1)
-    	{
-    		*pnVal = 0;
-    		return -1;
-    	}
+    if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pnVal))
+    {
+        if (dos_sscanf(szStr, "%x", pnVal) < 1 &&
+            dos_sscanf(szStr, "%X", pnVal) < 1)
+        {
+            *pnVal = 0;
+            return -1;
+        }
 
         return 0;
-	}
+    }
 
-	return -1;
+    return -1;
 }
 
 
@@ -515,22 +515,22 @@ DLLEXPORT S32 dos_atolx (const S8 *szStr, S32 *pnVal)
  */
 DLLEXPORT S32 dos_atoulx(const S8 *szStr, U32 *pulVal)
 {
-	U32 nVal;
+    U32 nVal;
 
-	if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pulVal))
-	{
-    	if (dos_sscanf(szStr, "%x", &nVal) < 1 &&
-    		dos_sscanf(szStr, "%X", &nVal) < 1)
-    	{
-    		*pulVal = 0;
-    		return -1;
-    	}
+    if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pulVal))
+    {
+        if (dos_sscanf(szStr, "%x", &nVal) < 1 &&
+            dos_sscanf(szStr, "%X", &nVal) < 1)
+        {
+            *pulVal = 0;
+            return -1;
+        }
 
-    	*pulVal = nVal;
+        *pulVal = nVal;
         return 0;
-	}
+    }
 
-	return -1;
+    return -1;
 }
 
 
@@ -542,15 +542,15 @@ DLLEXPORT S32 dos_atoulx(const S8 *szStr, U32 *pulVal)
  */
 DLLEXPORT S32 dos_ltoa(S32 nVal, S8 *szStr, U32 ulStrLen)
 {
-	if (DOS_ADDR_VALID(szStr) && ulStrLen > 0)
-	{
-    	if (dos_snprintf(szStr, ulStrLen, "%d", nVal) < 1)
-    	{
-    		return -1;
-    	}
+    if (DOS_ADDR_VALID(szStr) && ulStrLen > 0)
+    {
+        if (dos_snprintf(szStr, ulStrLen, "%d", nVal) < 1)
+        {
+            return -1;
+        }
         return 0;
-	}
-	return -1;
+    }
+    return -1;
 }
 
 
@@ -562,14 +562,14 @@ DLLEXPORT S32 dos_ltoa(S32 nVal, S8 *szStr, U32 ulStrLen)
  */
 DLLEXPORT S32 dos_ltoax(S32 nVal, S8 *szStr, U32 ulStrLen)
 {
-	if (DOS_ADDR_VALID(szStr))
-	{
-    	if (dos_snprintf(szStr, ulStrLen, "%x", nVal) < 1)
-    	{
-    		return -1;
-    	}
+    if (DOS_ADDR_VALID(szStr))
+    {
+        if (dos_snprintf(szStr, ulStrLen, "%x", nVal) < 1)
+        {
+            return -1;
+        }
         return 0;
-	}
+    }
 
     return -1;
 }
@@ -583,17 +583,17 @@ DLLEXPORT S32 dos_ltoax(S32 nVal, S8 *szStr, U32 ulStrLen)
  */
 DLLEXPORT S32 dos_ultoax (U32 ulVal, S8 *szStr, U32 ulStrLen)
 {
-	if (DOS_ADDR_VALID(szStr))
-	{
-    	if (dos_snprintf(szStr, ulStrLen, "%x", ulVal) < 1)
-    	{
-    		return -1;
-    	}
+    if (DOS_ADDR_VALID(szStr))
+    {
+        if (dos_snprintf(szStr, ulStrLen, "%x", ulVal) < 1)
+        {
+            return -1;
+        }
 
         return 0;
-	}
+    }
 
-	return -1;
+    return -1;
 }
 
 
@@ -605,16 +605,16 @@ DLLEXPORT S32 dos_ultoax (U32 ulVal, S8 *szStr, U32 ulStrLen)
  */
 DLLEXPORT S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str, U32 ulStrLen)
 {
-	if (DOS_ADDR_VALID(str))
-	{
-    	dos_snprintf(str, ulStrLen, "%u.%u.%u.%u",
-    		ulAddr >> 24, (ulAddr >> 16) & 0xff,
-    		(ulAddr >> 8) & 0xff, ulAddr & 0xff);
+    if (DOS_ADDR_VALID(str))
+    {
+        dos_snprintf(str, ulStrLen, "%d.%d.%d.%d",
+            ulAddr >> 24, (ulAddr >> 16) & 0xff,
+            (ulAddr >> 8) & 0xff, ulAddr & 0xff);
 
-    	return str;
-	}
+        return str;
+    }
 
-	return NULL;
+    return NULL;
 }
 
 
@@ -628,22 +628,22 @@ DLLEXPORT S32 dos_is_digit_str(S8 *str)
 {
 	S32 i = 0;
 
-	if (DOS_ADDR_VALID(str))
-	{
-		while ('\0' != str[i])
-		{
-			if (str[i]< '0' || str[i] > '9')
-			{
-				return -1;
-			}
+    if (DOS_ADDR_VALID(str))
+    {
+        while ('\0' != str[i])
+        {
+            if (str[i]< '0' || str[i] > '9')
+            {
+                return -1;
+            }
 
-			i++;
-		}
+            i++;
+        }
 
-		return 0;
-	}
+        return 0;
+    }
 
-	return -1;
+    return -1;
 }
 
 
@@ -655,21 +655,21 @@ DLLEXPORT S32 dos_is_digit_str(S8 *str)
  */
 DLLEXPORT S32 dos_strtoipaddr(S8 *szStr, U32 *pulIpAddr)
 {
-	U32 a, b, c, d;
+    U32 a, b, c, d;
 
-	if (DOS_ADDR_VALID(pulIpAddr))
-	{
-    	if (dos_sscanf(szStr, "%d.%d.%d.%d", &a, &b, &c, &d) == 4)
-    	{
-    		if (a<256 && b<256 && c<256 && d<256)
-    		{
-    			*pulIpAddr = (a<<24) | (b<<16) | (c<<8) | d;
-    			return 0;
-    		}
-    	}
-	}
+    if (DOS_ADDR_VALID(pulIpAddr))
+    {
+        if (dos_sscanf(szStr, "%d.%d.%d.%d", &a, &b, &c, &d) == 4)
+        {
+            if (a<256 && b<256 && c<256 && d<256)
+            {
+                *pulIpAddr = (a<<24) | (b<<16) | (c<<8) | d;
+                return 0;
+            }
+        }
+    }
 
-	return -1;
+    return -1;
 }
 
 #ifdef __cplusplus

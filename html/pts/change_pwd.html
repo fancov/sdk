@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
+<title>AMC</title>
+<SCRIPT src="ddsmoothmenu.js" type=text/javascript></SCRIPT>
+<SCRIPT src="pts_public.js" type=text/javascript></SCRIPT>
+
+<LINK href="ddsmoothmenu.css" type=text/css rel=stylesheet>
+<link href="create_user.css" type="text/css" rel="stylesheet">
+<style>
+	*{font-family: "微软雅黑"}
+	.content_body{margin: auto 25px; font-size: 13px;}
+	.content_title{border-bottom:1px solid #000000; padding-bottom:2px; margin-bottom: 10px;}
+	.content_title p{padding-bottom:0; margin-bottom: 0px;}
+	.nav_content{margin:0; width:100%; height:50px; background-color:#747474; font-size: 14px; }
+	.nav_left{float:left;}
+	.nav_right{float:right; margin-right:25px;}
+</style>
+
+</head>
+
+<body style="margin:0; padding:0; background:#fafafa;">
+
+<div class="nav_content">
+	<div class="ddsmoothmenu nav_left" id="smoothmenu1">
+	<UL>
+	  <LI><A href="index.html">远程访问</A></LI>
+	  <LI><A href="#">PTC管理</A> 
+		<UL>
+			<LI><A href="pts_switch.html">PTS切换</A> </LI>
+			<LI><A href="pts_config.html">PTC配置</A> </LI>
+			<LI><A href="pts_upgrades.html">PTC升级</A> </LI>
+		</UL>
+	  </LI>
+	  <LI><A href="pts_user.html">用户管理</A></LI>
+	</UL>
+	</div>
+	<div class="nav_right" ><p><a href="server_exit"> Exit </a></p></div>
+</div>
+<br>
+
+<div class="content_body">
+	<form name="form1" method="post" action="/goform/change_pwd">
+		<ul>
+			<li>
+				<label>用户名：</label>
+				<input type="text" name="name" placeholder="请输入用户名"  onblur="checkna()" required/><span class="tips" id="divname">长度1~12个字符</span>
+			</li>
+			<li>
+				<label>原密码：</label>
+				<input type="password" name="password" placeholder="请输入你的密码" onBlur="" required/><span class="tips" id="divpassword1"></span>
+			</li>
+			<li>
+				<label>新密码：</label>
+				<input type="password" name="new_password" placeholder="请输入你的密码" onBlur="" required/><span class="tips" id="divpassword1"></span>
+			</li>
+			<li>
+				<label>确认密码：</label>
+				<input type="password" name="new_password2" placeholder="请再次输入你的密码" onBlur="" required/><span class="tips" id="divpassword2">两次密码需要相同</span>
+			</li>
+		</ul>
+		<div style="margin: 50px 500px auto;">
+			<input type="submit" value="提交" />&nbsp;&nbsp;&nbsp;&nbsp;
+			<input type="reset" value="取消" />
+		</div>
+	</form>
+</div>
+</body>
+</html>
+
+

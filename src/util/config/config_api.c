@@ -262,6 +262,7 @@ U32 _config_set_param(mxml_node_t *pstXMLRoot, S8 *path, S8 *name, S8 *value)
     }
     else
     {
+        printf("value : %s\n", value);
         mxmlElementSetAttr(node, "value", value);
     }
     pthread_mutex_unlock(&g_mutexXMLLock);
