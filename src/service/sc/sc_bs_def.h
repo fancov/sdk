@@ -18,6 +18,8 @@
 
 #define SC_BS_MEG_BUFF_LEN   1024
 
+#define SC_BS_NEED_RESEND    0
+
 /* 客户端状态 */
 enum{
     SC_BS_STATUS_INVALID         = 0, /* 没有初始化 */
@@ -62,7 +64,8 @@ typedef struct tagBSMsgNode
 
 U32 sc_send_release_ind2bs(BS_MSG_TAG *pstMsg);
 U32 sc_send_hello2bs(U32 ulClientIndex);
+#if SC_BS_NEED_RESEND
 U32 sc_bs_msg_free(U32 ulSeq);
-
+#endif
 #endif
 

@@ -48,9 +48,6 @@ enum tagAPICMDList
     SC_API_CMD_TASK_CTRL,                         /* API命令字，呼叫任务控制 */
     SC_API_CMD_CALL_CTRL,                         /* API命令字，呼叫干预 */
     SC_API_CMD_NUM_VERIFY,                        /* API命令字，号码审核 */
-    // ------------------------------------------------------------
-    SC_API_CMD_GATEWAY,                           /* API命令字，网关控制 */
-    //------------------------------------------------------------
 
     SC_API_CMD_BUTT
 };
@@ -73,16 +70,6 @@ enum tagAPICMDActionList
     SC_API_CMD_ACTION_SIGNOFF,                    /* 坐席签出，登出 */
     SC_API_CMD_ACTION_ONLINE,                     /* 坐席上线，置闲 */
     SC_API_CMD_ACTION_OFFLINE,                    /* 坐席离线，置忙 */
-
-    //---------------------------------------------------
-    SC_API_CMD_ACTION_GATEWAY_ADD,                       /* 增加一个网关 */
-    SC_API_CMD_ACTION_GATEWAY_DELETE,                    /* 删除一个网关 */
-    SC_API_CMD_ACTION_GATEWAY_UPDATE,                    /* 网关更新     */
-
-    SC_API_CMD_ACTION_SIP_ADD,                           /* 增加一个sip账户 */
-    SC_API_CMD_ACTION_SIP_DELETE,                        /* 删除一个sip账户 */
-    SC_API_CMD_ACTION_SIP_UPDATE,                        /* 更新一个sip账户 */
-    //---------------------------------------------------
 
     SC_API_CMD_ACTION_BUTT
 };

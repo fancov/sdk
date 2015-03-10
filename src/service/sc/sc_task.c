@@ -31,6 +31,10 @@ extern "C"{
 /* declare functions */
 inline U32 sc_random(U32 ulMax)
 {
+    if (!ulMax)
+    {
+        return U32_BUTT;
+    }
 
     srand((unsigned)time( NULL ));
 
@@ -136,6 +140,13 @@ SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
         }
 
         ulCallerIndex = sc_random((U32)pstTCB->usCallerCount);
+        if (ulCallerIndex >= SC_MAX_CALLER_NUM)
+        {
+            DOS_ASSERT(0);
+            SC_TRACE_OUT();
+            break;
+        }
+
         if (!pstTCB->pstCallerNumQuery[ulCallerIndex].bValid)
         {
             continue;
@@ -198,7 +209,7 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         goto fail;
     }
 
-//    SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
+    SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
 
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstTCB->bTraceCallON || pstSCB->bTraceNo
@@ -212,6 +223,7 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     pstSCB->usSiteNo = U16_BUTT;
     pstSCB->ulTrunkID = U32_BUTT;
     pstSCB->ulCallDuration = 0;
+    pstSCB->ucLegRole = SC_CALLER;
 
     dos_strncpy(pstSCB->szCallerNum, pstCaller->szNumber, SC_TEL_NUMBER_LENGTH);
     pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
@@ -221,6 +233,10 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     pstSCB->szUUID[0] = '\0';
 
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
+
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AUTO_DIALING);
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
 
     if (sc_dialer_add_call(pstSCB) != DOS_SUCC)
     {
@@ -274,6 +290,13 @@ VOID *sc_task_runtime(VOID *ptr)
     }
 
     pstTCB = (SC_TASK_CB_ST *)ptr;
+    if (DOS_ADDR_INVALID(pstTCB))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_TASK, "%s", "Start task without pointer a TCB.");
+        return NULL;
+    }
 
     while (1)
     {
@@ -291,7 +314,7 @@ VOID *sc_task_runtime(VOID *ptr)
             ulTaskInterval = 1;
 
             /* 如果呼叫量已经为0就退出任务 */
-            if (!pstTCB->ulConcurrency)
+            if (!pstTCB->ulCurrentConcurrency)
             {
                 sc_task_trace(pstTCB, "%s", "Task will be finished.");
                 sc_logr_notice(SC_TASK, "Task will be finished.(%lu)", pstTCB->ulTaskID);
@@ -311,7 +334,7 @@ VOID *sc_task_runtime(VOID *ptr)
         /* 如果被停止了，就检测还有没有呼叫，如果有呼叫，就等待，等待没有呼叫时退出任务 */
         if (SC_TASK_STOP == pstTCB->ucTaskStatus)
         {
-            if (pstTCB->ulConcurrency >= 0)
+            if (pstTCB->ulCurrentConcurrency >= 0)
             {
                 blIsNormal = DOS_FALSE;
                 sc_logr_info(SC_TASK, "Cannot make call for stop status. Task : %u.", pstTCB->ulTaskID);
@@ -361,7 +384,7 @@ VOID *sc_task_runtime(VOID *ptr)
 U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
 {
     U32       ulIndex;
-    S32       lCnt;
+    U32       lRet;
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
 
     if (!pstTCB)
@@ -392,28 +415,27 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
         pstTCB->pstCallerNumQuery[ulIndex].ulIndexInDB = U32_BUTT;
     }
 
-    lCnt = sc_task_load_callee(pstTCB);
-    if (lCnt <= 0)
+    lRet = sc_task_load_callee(pstTCB);
+    if (lRet != DOS_SUCC)
     {
         DOS_ASSERT(0);
         sc_logr_error(SC_TASK, "Load callee for task %d failed, Or there in no callee number.", pstTCB->ulTaskID);
 
         goto init_fail;
     }
-    sc_logr_info(SC_TASK, "Task %d has been loaded %d callee(s).", pstTCB->ulTaskID, lCnt);
+    sc_logr_info(SC_TASK, "Task %d has been loaded %d callee(s).", pstTCB->ulTaskID, pstTCB->ulCalleeCount);
 
-    lCnt = sc_task_load_caller(pstTCB);
-    if (lCnt <= 0)
+    lRet = sc_task_load_caller(pstTCB);
+    if (lRet != DOS_SUCC)
     {
         DOS_ASSERT(0);
         sc_logr_error(SC_TASK, "Load caller for task %d failed, Or there in no caller number.", pstTCB->ulTaskID);
 
         goto init_fail;
     }
-    sc_logr_info(SC_TASK, "Task %d has been loaded %d caller(s).", pstTCB->ulTaskID, lCnt);
-    pstTCB->usCallerCount = (U16)lCnt;
+    sc_logr_info(SC_TASK, "Task %d has been loaded %d caller(s).", pstTCB->ulTaskID, pstTCB->usCallerCount);
 
-    if (sc_task_load_period(pstTCB) <= 0)
+    if (sc_task_load_period(pstTCB) != DOS_SUCC)
     {
         DOS_ASSERT(0);
         sc_logr_error(SC_TASK, "Load period for task %d failed.", pstTCB->ulTaskID);
@@ -422,7 +444,7 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    if (sc_task_load_audio(pstTCB) <= 0)
+    if (sc_task_load_audio(pstTCB) != DOS_SUCC)
     {
         DOS_ASSERT(0);
         sc_logr_error(SC_TASK, "Load audio file for task %d FAILED.", pstTCB->ulTaskID);

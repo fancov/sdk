@@ -42,7 +42,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         return DOS_FAIL;
     }
 
-    if (pstMsg->usMsgLen != sizeof(BS_MSG_AUTH))
+    if (pstMsg->usMsgLen != sizeof(BS_MSG_AUTH ))
     {
         DOS_ASSERT(0);
 
@@ -63,7 +63,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "Invalid RC NO. Max: %d, Current: %s", SC_MAX_SCB_NUM, pstMsg->ulCRNo);
+        sc_logr_debug(SC_BS, "Invalid RC NO. Max: %d, Current: %d", SC_MAX_SCB_NUM, pstMsg->ulCRNo);
         return DOS_FAIL;
     }
 
@@ -100,10 +100,36 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     pstSCB->ucTerminationCause = pstMsg->ucErrcode;
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
+    if (pstSCB->ucTerminationFlag)
+    {
+        sc_logr_notice(SC_BS, "Terminate call for the auth fail; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
+        sc_ep_terminate_call(pstSCB);
+    }
+    else
+    {
+        sc_logr_notice(SC_BS, "Auth successfully. RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
+
+        if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+        {
+            sc_dialer_make_call2pstn(pstSCB, SC_SERV_AUTO_DIALING);
+        }
+        else if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL)
+            && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
+        {
+            sc_dialer_make_call2pstn(pstSCB, SC_SERV_OUTBOUND_CALL);
+        }
+        else if (sc_call_check_service(pstSCB, SC_SERV_INTERNAL_CALL)
+            && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
+        {
+            sc_ep_incoming_call_proc(pstSCB);
+        }
+    }
+
     sc_logr_debug(SC_BS, "%s", "Process auth response finished.");
 
+#if SC_BS_NEED_RESEND
     sc_bs_msg_free(pstMsg->ulMsgSeq);
-
+#endif
     return DOS_SUCC;
 }
 
@@ -153,8 +179,10 @@ U32 sc_bs_billing_start_rsp_proc(BS_MSG_TAG *pstMsg)
 
     sc_logr_debug(SC_BS, "%s", "Process billing start response msg finished.");
 
+#if SC_BS_NEED_RESEND
     /* 通知删除消息 */
     sc_bs_msg_free(pstMsg->ulMsgSeq);
+#endif
 
     return DOS_SUCC;
 }
@@ -205,8 +233,10 @@ U32 sc_bs_billing_update_rsp_proc(BS_MSG_TAG *pstMsg)
 
     sc_logr_debug(SC_BS, "%s", "Process billing update response msg finished.");
 
+#if 0
     /* 通知删除消息 */
     sc_bs_msg_free(pstMsg->ulMsgSeq);
+#endif
 
     return DOS_SUCC;
 
@@ -214,8 +244,6 @@ U32 sc_bs_billing_update_rsp_proc(BS_MSG_TAG *pstMsg)
 
 U32 sc_bs_billing_stop_rsp_proc(BS_MSG_TAG *pstMsg)
 {
-    SC_SCB_ST   *pstSCB = NULL;
-
     if (DOS_ADDR_INVALID(pstMsg))
     {
         DOS_ASSERT(0);
@@ -224,42 +252,13 @@ U32 sc_bs_billing_stop_rsp_proc(BS_MSG_TAG *pstMsg)
         return DOS_FAIL;
     }
 
-    if (pstMsg->ulCRNo >= SC_MAX_SCB_NUM)
-    {
-        DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid RC NO. Max: %d, Current: %s", SC_MAX_SCB_NUM, pstMsg->ulCRNo);
-        return DOS_FAIL;
-    }
+    sc_logr_debug(SC_BS, "Process billing stop response msg finished.ERRNO: %d", pstMsg->ucErrcode);
 
-    pstSCB = sc_scb_get(pstMsg->ulCRNo);
-    if (!SC_SCB_IS_VALID(pstSCB))
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_debug(SC_BS, "%s", "Invalid SCB.");
-        return DOS_FAIL;
-    }
-
-    sc_logr_debug(SC_BS, "%s", "Start process billing stop response msg.");
-
-    pthread_mutex_lock(&pstSCB->mutexSCBLock);
-    if (pstMsg->ucErrcode != BS_ERR_SUCC)
-    {
-        pstSCB->ucTerminationFlag = DOS_TRUE;
-    }
-    else
-    {
-        pstSCB->ucTerminationFlag = DOS_FALSE;
-    }
-
-    pstSCB->ucTerminationCause = pstMsg->ucErrcode;
-    pthread_mutex_unlock(&pstSCB->mutexSCBLock);
-
-    sc_logr_debug(SC_BS, "%s", "Process billing start response msg finished.");
-
+#if 0
     /* 通知删除消息 */
     sc_bs_msg_free(pstMsg->ulMsgSeq);
+#endif
 
     return DOS_SUCC;
 }

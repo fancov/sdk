@@ -40,14 +40,14 @@ U32       g_ulTaskTraceAll      = 0;       /* 是否跟踪所有任务 */
 U32       g_ulCallTraceAll      = 1;     /* 跟踪所有的呼叫 */
 
 #ifdef DEBUG_VERSION
-U32       g_ulTraceFlags        = 1;
+U32       g_ulTraceFlags        = 0xFFFFFFFF;
 #else
 U32       g_ulTraceFlags        = 0;
 #endif
 
 extern SC_HTTPD_CB_ST        **g_pstHTTPDList;
 extern SC_HTTP_CLIENT_CB_S   **g_pstHTTPClientList;
-extern HASH_TABLE_S          *g_pstSiteList;
+extern HASH_TABLE_S          *g_pstAgentList;
 extern SC_TASK_MNGT_ST       *g_pstTaskMngtInfo;
 
 
@@ -238,7 +238,7 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID)
                 , pstTCB->bTraceCallON
                 , pstTCB->ulTaskID
                 , pstTCB->ulCustomID
-                , pstTCB->ulConcurrency
+                , pstTCB->ulCurrentConcurrency
                 , pstTCB->usSiteCount
                 , pstTCB->ulAgentQueueID
                 , sc_debug_make_weeks(pstTCB->astPeriod[0].ucWeekMask, szWeeks, sizeof(szWeeks))
@@ -286,7 +286,8 @@ VOID sc_show_agent(U32 ulIndex, U32 ulGroupID, U32 ulCustomID)
 {
     U32 ulHashIndex, i, blNeddPrint, ulTotal;
     S8  szCmdBuff[1024] = { 0 };
-    SC_ACD_SITE_HASH_NODE_ST   *pstSiteListNode = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode = NULL;
+    HASH_NODE_S  *pstHashNode = NULL;
 
     if (U32_BUTT != ulGroupID)
     {
@@ -300,11 +301,18 @@ VOID sc_show_agent(U32 ulIndex, U32 ulGroupID, U32 ulCustomID)
         cli_out_string(ulIndex, szCmdBuff);
 
         ulTotal = 0;
-        HASH_Scan_Table(g_pstSiteList, ulHashIndex)
+        HASH_Scan_Table(g_pstAgentList, ulHashIndex)
         {
-            HASH_Scan_Bucket(g_pstSiteList, ulHashIndex, pstSiteListNode, SC_ACD_SITE_HASH_NODE_ST *)
+            HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S*)
             {
-                if (DOS_ADDR_INVALID(pstSiteListNode->pstSiteInfo))
+                if (DOS_ADDR_INVALID(pstHashNode)
+                    || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                {
+                    continue;
+                }
+
+                pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST   *)pstHashNode->pHandle;
+                if (DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
                 {
                     continue;
                 }
@@ -312,7 +320,7 @@ VOID sc_show_agent(U32 ulIndex, U32 ulGroupID, U32 ulCustomID)
                 blNeddPrint = DOS_FALSE;
                 for (i=0; i<MAX_GROUP_PER_SITE; i++)
                 {
-                    if (pstSiteListNode->pstSiteInfo->aulGroupID[i] == ulGroupID)
+                    if (pstAgentQueueNode->pstAgentInfo->aulGroupID[i] == ulGroupID)
                     {
                         blNeddPrint = DOS_TRUE;
                         break;
@@ -326,16 +334,16 @@ VOID sc_show_agent(U32 ulIndex, U32 ulGroupID, U32 ulCustomID)
 
                 dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                             , "\r\n%6d%10d%10d%10d%7s%6s%7s%12s%12s%12s"
-                            , pstSiteListNode->ulID
-                            , pstSiteListNode->pstSiteInfo->usStatus
-                            , pstSiteListNode->pstSiteInfo->ulSiteID
-                            , pstSiteListNode->pstSiteInfo->ulCustomerID
-                            , pstSiteListNode->pstSiteInfo->bRecord ? "Y" : "N"
-                            , pstSiteListNode->pstSiteInfo->bTraceON ? "Y" : "N"
-                            , pstSiteListNode->pstSiteInfo->bGroupHeader ? "Y" : "N"
-                            , pstSiteListNode->pstSiteInfo->szUserID
-                            , pstSiteListNode->pstSiteInfo->szExtension
-                            , pstSiteListNode->pstSiteInfo->szEmpNo);
+                            , pstAgentQueueNode->ulID
+                            , pstAgentQueueNode->pstAgentInfo->usStatus
+                            , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                            , pstAgentQueueNode->pstAgentInfo->ulCustomerID
+                            , pstAgentQueueNode->pstAgentInfo->bRecord ? "Y" : "N"
+                            , pstAgentQueueNode->pstAgentInfo->bTraceON ? "Y" : "N"
+                            , pstAgentQueueNode->pstAgentInfo->bGroupHeader ? "Y" : "N"
+                            , pstAgentQueueNode->pstAgentInfo->szUserID
+                            , pstAgentQueueNode->pstAgentInfo->szExtension
+                            , pstAgentQueueNode->pstAgentInfo->szEmpNo);
                 cli_out_string(ulIndex, szCmdBuff);
 
                 ulTotal++;
@@ -358,33 +366,40 @@ VOID sc_show_agent(U32 ulIndex, U32 ulGroupID, U32 ulCustomID)
         cli_out_string(ulIndex, szCmdBuff);
 
         ulTotal = 0;
-        HASH_Scan_Table(g_pstSiteList, ulHashIndex)
+        HASH_Scan_Table(g_pstAgentList, ulHashIndex)
         {
-            HASH_Scan_Bucket(g_pstSiteList, ulHashIndex, pstSiteListNode, SC_ACD_SITE_HASH_NODE_ST *)
+            HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S*)
             {
-                if (DOS_ADDR_INVALID(pstSiteListNode->pstSiteInfo))
+                if (DOS_ADDR_INVALID(pstHashNode)
+                    || DOS_ADDR_INVALID(pstHashNode->pHandle))
                 {
                     continue;
                 }
 
-                if (pstSiteListNode->pstSiteInfo->ulCustomerID != ulCustomID)
+                pstAgentQueueNode = pstHashNode->pHandle;
+                if (DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+                {
+                    continue;
+                }
+
+                if (pstAgentQueueNode->pstAgentInfo->ulCustomerID != ulCustomID)
                 {
                     continue;
                 }
 
                 dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                             , "\r\n%6d%10d%10d%10d%10d%7s%6s%7s%12s%12s%12s"
-                            , pstSiteListNode->ulID
-                            , pstSiteListNode->pstSiteInfo->usStatus
-                            , pstSiteListNode->pstSiteInfo->ulSiteID
-                            , pstSiteListNode->pstSiteInfo->aulGroupID[0]
-                            , pstSiteListNode->pstSiteInfo->aulGroupID[1]
-                            , pstSiteListNode->pstSiteInfo->bRecord ? "Y" : "N"
-                            , pstSiteListNode->pstSiteInfo->bTraceON ? "Y" : "N"
-                            , pstSiteListNode->pstSiteInfo->bGroupHeader ? "Y" : "N"
-                            , pstSiteListNode->pstSiteInfo->szUserID
-                            , pstSiteListNode->pstSiteInfo->szExtension
-                            , pstSiteListNode->pstSiteInfo->szEmpNo);
+                            , pstAgentQueueNode->ulID
+                            , pstAgentQueueNode->pstAgentInfo->usStatus
+                            , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                            , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
+                            , pstAgentQueueNode->pstAgentInfo->aulGroupID[1]
+                            , pstAgentQueueNode->pstAgentInfo->bRecord ? "Y" : "N"
+                            , pstAgentQueueNode->pstAgentInfo->bTraceON ? "Y" : "N"
+                            , pstAgentQueueNode->pstAgentInfo->bGroupHeader ? "Y" : "N"
+                            , pstAgentQueueNode->pstAgentInfo->szUserID
+                            , pstAgentQueueNode->pstAgentInfo->szExtension
+                            , pstAgentQueueNode->pstAgentInfo->szEmpNo);
                 cli_out_string(ulIndex, szCmdBuff);
 
                 ulTotal++;
@@ -945,8 +960,14 @@ VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
     }
 
     if (!bIsOutput
+        && ulSubMod >= SC_SUB_MOD_BUTT)
+    {
+        bIsOutput = DOS_TRUE;
+    }
+
+    if (!bIsOutput
         && ulSubMod&g_ulTraceFlags
-        && g_ulSCLogLevel <= ulLevel)
+        && ulLevel <= g_ulSCLogLevel)
     {
         bIsOutput = DOS_TRUE;
     }
@@ -959,31 +980,31 @@ VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
     switch(ulSubMod)
     {
         case SC_FUNC:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_FUNC:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_FNC:");
             break;
         case SC_HTTPD:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_HTTPD:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_HTD:");
             break;
         case SC_HTTP_API:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_HTTP_API:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_API:");
             break;
         case SC_ACD:
             dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_ACD:");
             break;
         case SC_TASK_MNGT:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_TASK:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_TSK:");
             break;
         case SC_TASK:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_TASK:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_TSK:");
             break;
         case SC_DIALER:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_DIALER:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_DLR:");
             break;
         case SC_ESL:
             dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_ESL:");
             break;
         case SC_BS:
-            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_BS:");
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_BSS:");
             break;
         default:
             dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC:");
@@ -997,6 +1018,7 @@ VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
     va_end(Arg);
     szTraceStr[sizeof(szTraceStr) -1] = '\0';
 
+    //printf("%s\r\n", szTraceStr);
     dos_log(ulLevel, LOG_TYPE_RUNINFO, szTraceStr);
 }
 
