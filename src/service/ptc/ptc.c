@@ -426,7 +426,7 @@ VOID *ptc_send_msg2proxy(VOID *arg)
                 break;
             }
 
-            pstNeedRecvNode = list_entry(pstNendRecvList, PT_NEND_RECV_NODE_ST, stListNode);
+            pstNeedRecvNode = dos_list_entry(pstNendRecvList, PT_NEND_RECV_NODE_ST, stListNode);
             if (pstNendRecvList == pstNendRecvList->next)
             {
                 pstNendRecvList = NULL;
@@ -434,7 +434,7 @@ VOID *ptc_send_msg2proxy(VOID *arg)
             else
             {
                 pstNendRecvList = pstNendRecvList->next;
-                list_del(&pstNeedRecvNode->stListNode);
+                dos_list_del(&pstNeedRecvNode->stListNode);
             }
 
             if (PT_DATA_WEB == pstNeedRecvNode->enDataType)

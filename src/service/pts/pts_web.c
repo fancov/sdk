@@ -215,11 +215,11 @@ list_t *pts_clinetCB_insert(list_t *psthead, S32 lSockfd, struct sockaddr_in stC
     if (NULL == psthead)
     {
         psthead = &(stNewNode->stList);
-        list_init(psthead);
+        dos_list_init(psthead);
     }
     else
     {
-        list_add_tail(psthead, &(stNewNode->stList));
+        dos_list_add_tail(psthead, &(stNewNode->stList));
     }
 
     return psthead;
@@ -243,11 +243,11 @@ PTS_CLIENT_CB_ST* pts_clinetCB_search_by_sockfd(list_t *pstHead, S32 lSockfd)
     }
 
     pstNode = pstHead;
-    pstData = list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
+    pstData = dos_list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
     while (pstData->lSocket != lSockfd && pstNode->next != pstHead)
     {
         pstNode = pstNode->next;
-        pstData = (PTS_CLIENT_CB_ST *)list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
+        pstData = (PTS_CLIENT_CB_ST *)dos_list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
     }
     if (pstData->lSocket == lSockfd)
     {
@@ -278,11 +278,11 @@ PTS_CLIENT_CB_ST* pts_clinetCB_search_by_stream(list_t* pstHead, U32 ulStreamID)
     }
 
     pstNode = pstHead;
-    pstData = list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
+    pstData = dos_list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
     while (pstData->ulStreamID!=ulStreamID && pstNode->next!=pstHead)
     {
         pstNode = pstNode->next;
-        pstData = list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
+        pstData = dos_list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
     }
     if (pstData->ulStreamID == ulStreamID)
     {
@@ -314,7 +314,7 @@ list_t *pts_clinetCB_delete_node(list_t* pstHead, PTS_CLIENT_CB_ST* pstNode)
         }
     }
 
-    list_del(&pstNode->stList);
+    dos_list_del(&pstNode->stList);
     pstNode->lSocket = -1;
     dos_dmem_free(pstNode);
 
@@ -339,12 +339,12 @@ list_t *pts_clinetCB_delete_by_sockfd(list_t* pstHead, S32 lSockfd)
     }
 
     pstNode = pstHead;
-    pstData = list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
+    pstData = dos_list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
 
     while (pstData->lSocket != lSockfd && pstNode->next != pstHead)
     {
         pstNode = pstNode->next;
-        pstData = list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
+        pstData = dos_list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
     }
     if (pstData->lSocket == lSockfd)
     {
@@ -359,7 +359,7 @@ list_t *pts_clinetCB_delete_by_sockfd(list_t* pstHead, S32 lSockfd)
                 pstHead = pstNode->next;
             }
         }
-        list_del(pstNode);
+        dos_list_del(pstNode);
         pstData->lSocket = -1;
         dos_dmem_free(pstData);
         pstData = NULL;
@@ -390,12 +390,12 @@ list_t *pts_clinetCB_delete_by_stream(list_t* pstHead, U32 ulStreamID)
     }
 
     pstNode = pstHead;
-    pstData = list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
+    pstData = dos_list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
 
     while (pstData->ulStreamID != ulStreamID && pstNode->next != pstHead)
     {
         pstNode = pstNode->next;
-        pstData = list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
+        pstData = dos_list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
     }
     if (pstData->ulStreamID == ulStreamID)
     {
@@ -410,7 +410,7 @@ list_t *pts_clinetCB_delete_by_stream(list_t* pstHead, U32 ulStreamID)
                 pstHead = pstNode->next;
             }
         }
-        list_del(pstNode);
+        dos_list_del(pstNode);
         close(pstData->lSocket);
         FD_CLR(pstData->lSocket, &g_ReadFds);
         dos_dmem_free(pstData);

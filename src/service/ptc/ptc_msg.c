@@ -1498,7 +1498,7 @@ VOID *ptc_send_msg2pts(VOID *arg)
             {
                 break;
             }
-            pstNeedSendNode = list_entry(pstNendSendList, PT_NEND_SEND_NODE_ST, stListNode);
+            pstNeedSendNode = dos_list_entry(pstNendSendList, PT_NEND_SEND_NODE_ST, stListNode);
             if (pstNendSendList == pstNendSendList->next)
             {
                 pstNendSendList = NULL;
@@ -1506,7 +1506,7 @@ VOID *ptc_send_msg2pts(VOID *arg)
             else
             {
                 pstNendSendList = pstNendSendList->next;
-                list_del(&pstNeedSendNode->stListNode);
+                dos_list_del(&pstNeedSendNode->stListNode);
             }
 
             dos_memzero(&stMsgDes, sizeof(PT_MSG_TAG));

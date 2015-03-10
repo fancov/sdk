@@ -372,7 +372,7 @@ PT_STREAM_CB_ST *pt_stream_node_create(U32 ulStreamID)
     stStreamNode->pstLostParam = NULL;
 
     pstHead = &(stStreamNode->stStreamListNode);
-    list_init(pstHead);
+    dos_list_init(pstHead);
 
     return stStreamNode;
 }
@@ -568,11 +568,11 @@ list_t *pt_ptc_list_insert(list_t *pstPtcListHead, PT_CC_CB_ST *pstPtcNode)
     if (NULL == pstPtcListHead)
     {
         pstPtcListHead = &(pstPtcNode->stCCListNode);
-        list_init(pstPtcListHead);
+        dos_list_init(pstPtcListHead);
     }
     else
     {
-        list_add_tail(pstPtcListHead, &(pstPtcNode->stCCListNode));
+        dos_list_add_tail(pstPtcListHead, &(pstPtcNode->stCCListNode));
     }
 
     return pstPtcListHead;
@@ -597,11 +597,11 @@ list_t *pt_stream_queue_insert(list_t *pstHead, list_t  *pstStreamNode)
     if (NULL == pstHead)
     {
         pstHead = pstStreamNode;
-        list_init(pstHead);
+        dos_list_init(pstHead);
     }
     else
     {
-        list_add_tail(pstHead, pstStreamNode);
+        dos_list_add_tail(pstHead, pstStreamNode);
     }
 
     return pstHead;
@@ -629,12 +629,12 @@ PT_STREAM_CB_ST *pt_stream_queue_search(list_t *pstStreamListHead, U32 ulStreamI
     PT_STREAM_CB_ST *pstData = NULL;
 
     pstNode = pstStreamListHead;
-    pstData = list_entry(pstNode, PT_STREAM_CB_ST, stStreamListNode);
+    pstData = dos_list_entry(pstNode, PT_STREAM_CB_ST, stStreamListNode);
 
     while (pstData->ulStreamID != ulStreamID && pstNode->next != pstStreamListHead)
     {
         pstNode = pstNode->next;
-        pstData = list_entry(pstNode, PT_STREAM_CB_ST, stStreamListNode);
+        pstData = dos_list_entry(pstNode, PT_STREAM_CB_ST, stStreamListNode);
     }
 
     if (pstData->ulStreamID == ulStreamID)
@@ -664,7 +664,7 @@ list_t *pt_delete_stream_node(list_t *pstStreamListHead, list_t *pstStreamListNo
     {
         return pstStreamListHead;
     }
-    PT_STREAM_CB_ST *pstStreamNode = list_entry(pstStreamListNode, PT_STREAM_CB_ST, stStreamListNode);
+    PT_STREAM_CB_ST *pstStreamNode = dos_list_entry(pstStreamListNode, PT_STREAM_CB_ST, stStreamListNode);
     if (pstStreamListHead == pstStreamListNode)
     {
         /* 释放第一个节点，头结点发生改变 */
@@ -677,7 +677,7 @@ list_t *pt_delete_stream_node(list_t *pstStreamListHead, list_t *pstStreamListNo
             pstStreamListHead = pstStreamListNode->next;
         }
     }
-    list_del(pstStreamListNode);
+    dos_list_del(pstStreamListNode);
 
     if (g_aenDataProtType[enDataType] == PT_UDP)
     {
@@ -751,7 +751,7 @@ list_t *pt_delete_ptc_node(list_t *stPtcListHead, PT_CC_CB_ST *pstPtcNode)
             stPtcListHead = stPtcListHead->next;
         }
     }
-    list_del(&pstPtcNode->stCCListNode);
+    dos_list_del(&pstPtcNode->stCCListNode);
     dos_dmem_free(pstPtcNode);
     pstPtcNode = NULL;
     return stPtcListHead;
@@ -783,11 +783,11 @@ PT_CC_CB_ST *pt_ptc_list_search(list_t* pstHead, U8 *pucID)
     }
 
     pstNode = pstHead;
-    pstData = list_entry(pstNode, PT_CC_CB_ST, stCCListNode);
+    pstData = dos_list_entry(pstNode, PT_CC_CB_ST, stCCListNode);
     while (dos_memcmp(pstData->aucID, pucID, PTC_ID_LEN) && pstNode->next!=pstHead)
     {
         pstNode = pstNode->next;
-        pstData = list_entry(pstNode, PT_CC_CB_ST, stCCListNode);
+        pstData = dos_list_entry(pstNode, PT_CC_CB_ST, stCCListNode);
     }
 
     lResult = dos_memcmp(pstData->aucID, pucID, PTC_ID_LEN);
@@ -822,7 +822,7 @@ list_t *pt_need_recv_node_list_search(list_t *pstHead, U32 ulStreamID)
     }
 
     pstNode = pstHead;
-    pstData = list_entry(pstNode, PT_NEND_RECV_NODE_ST, stListNode);
+    pstData = dos_list_entry(pstNode, PT_NEND_RECV_NODE_ST, stListNode);
     while (pstNode->next != pstHead)
     {
         if (pstData->ulStreamID == ulStreamID)
@@ -834,7 +834,7 @@ list_t *pt_need_recv_node_list_search(list_t *pstHead, U32 ulStreamID)
 
         }
         pstNode = pstNode->next;
-        pstData = list_entry(pstNode, PT_NEND_RECV_NODE_ST, stListNode);
+        pstData = dos_list_entry(pstNode, PT_NEND_RECV_NODE_ST, stListNode);
     }
 
     if (pstData->ulStreamID == ulStreamID)
@@ -878,11 +878,11 @@ list_t *pt_need_recv_node_list_insert(list_t *pstHead, PT_MSG_TAG *pstMsgDes)
     if (NULL == pstHead)
     {
         pstHead = &(pstNewNode->stListNode);
-        list_init(pstHead);
+        dos_list_init(pstHead);
     }
     else
     {
-        list_add_tail(pstHead, &(pstNewNode->stListNode));
+        dos_list_add_tail(pstHead, &(pstNewNode->stListNode));
     }
 
     return pstHead;
@@ -907,7 +907,7 @@ list_t *pt_need_send_node_list_search(list_t *pstHead, U32 ulStreamID)
     }
 
     pstNode = pstHead;
-    pstData = list_entry(pstNode, PT_NEND_SEND_NODE_ST, stListNode);
+    pstData = dos_list_entry(pstNode, PT_NEND_SEND_NODE_ST, stListNode);
     while (pstNode->next != pstHead)
     {
         if (pstData->ulStreamID == ulStreamID)
@@ -919,7 +919,7 @@ list_t *pt_need_send_node_list_search(list_t *pstHead, U32 ulStreamID)
         }
 
         pstNode = pstNode->next;
-        pstData = list_entry(pstNode, PT_NEND_SEND_NODE_ST, stListNode);
+        pstData = dos_list_entry(pstNode, PT_NEND_SEND_NODE_ST, stListNode);
     }
 
     if (pstData->ulStreamID == ulStreamID)
@@ -966,11 +966,11 @@ list_t *pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *ps
     if (NULL == pstHead)
     {
         pstHead = &pstNewNode->stListNode;
-        list_init(pstHead);
+        dos_list_init(pstHead);
     }
     else
     {
-        list_add_tail(pstHead, &pstNewNode->stListNode);
+        dos_list_add_tail(pstHead, &pstNewNode->stListNode);
     }
 
     return pstHead;
