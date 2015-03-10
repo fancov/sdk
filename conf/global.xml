@@ -72,4 +72,8 @@
 	   <!--freeswitch配置文件根路径-->
 	   <param name="cfg_path" value="../conf"/>
     </fs_db>
+	<!--Python脚本路径配置-->
+	<py_path>
+	   <param name="path" value="../scripts/freeswitch/pyscripts/freeswitch/"/>
+	</py_path>
 </config>

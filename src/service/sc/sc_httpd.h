@@ -12,6 +12,7 @@
 
 #ifndef __SC_HTTPD_H__
 #define __SC_HTTPD_H__
+
 #if 0
 #ifdef __cplusplus
 extern "C"{
@@ -44,6 +45,7 @@ typedef struct tagHTTPDServerCB
 }SC_HTTPD_CB_ST;
 
 /* declare functions */
+
 #if 0
 #ifdef __cplusplus
 }

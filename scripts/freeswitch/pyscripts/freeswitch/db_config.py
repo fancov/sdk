@@ -1,4 +1,5 @@
 # coding=utf-8
+
 '''
 @author: bubble
 @copyright: Shenzhen dipcc technologies co.,ltd
@@ -19,20 +20,20 @@ def get_db_param():
     # 首先查看"/etc/global.xml"文件是否存在
     # 如果不存在，则查找"../etc/global.xml是否存在"
     # 如果存在则读取数据，否则返回空值
-    global_cfg_file = '../../../../conf/global.xml'
+    #seqGlobalCfgFile = '../../../../conf/global.xml'
     
-    #global_cfg_file = '/etc/global.xml'
-    if os.path.exists(global_cfg_file) is False:
-        global_cfg_file = '../etc/global.xml'
-        if os.path.exists(global_cfg_file) is False:
+    seqGlobalCfgFile = '/etc/global.xml'
+    if os.path.exists(seqGlobalCfgFile) is False:
+        seqGlobalCfgFile = '../etc/global.xml'
+        if os.path.exists(seqGlobalCfgFile) is False:
             return None
         
-    parser = ET.parse(global_cfg_file)
-    fs_param = parser.findall('./fs_db/param')
+    parser = ET.parse(seqGlobalCfgFile)
+    domFsParam = parser.findall('./fs_db/param')
    
     dict = {}
     for loop in range(6):
-        dict[fs_param[loop].get('name')] = fs_param[loop].get('value')
+        dict[domFsParam[loop].get('name')] = domFsParam[loop].get('value')
     print file_info.get_file_name(), file_info.get_line_number(),file_info.get_function_name(),'dict is', dict
     
     # dict[0]: 用户名

@@ -20,7 +20,6 @@ extern "C"{
 
 /* include private header files */
 #include <esl.h>
-#include <bs_pub.h>
 #include "sc_def.h"
 #include "sc_debug.h"
 
@@ -50,102 +49,42 @@ typedef struct tagSCDialerHandle
     S8                  *pszCMDBuff;
 }SC_DIALER_HANDLE_ST;
 
+extern S8 *sc_task_get_audio_file(U32 ulTCBNo);
+
 /* dialer模块控制块示例 */
 SC_DIALER_HANDLE_ST  *g_pstDialerHandle = NULL;
 
-/* 这个地方有个问题。 g_pstDialerHandle->stHandle 被多个线程使用，会不会出现，一个线程刚刚发送了呼叫命令。名外一个线程收到了响应?*/
-U32 sc_dial_make_call2ip(S8 *pszCaller, S8 *pszCallee, U32 ulMainService)
+
+/* declare functions */
+/*
+ * 函数: U32 sc_dialer_make_call(SC_SCB_ST *pstSCB)
+ * 功能: 通过ESL发起一个呼叫
+ * 参数:
+ *      SC_SCB_ST *pstSCB : 呼叫控制块
+ * 成功返回DOS_SUCC, 否则返回DOS_FAIL;
+ */
+U32 sc_dialer_make_call(SC_SCB_ST *pstSCB)
 {
-    S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
-    S8    *pszEventHeader = NULL, *pszEventBody = NULL;
+    S8    pszCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
+    S8    *pszAudioFilePath = NULL;
+    S8    *pszEventHeader, *pszEventBody;
+    U32   ulPlayCnt = 0;
+    U32   ulTimeoutForNoAnswer;
 
-    if (DOS_ADDR_INVALID(pszCaller)
-        || DOS_ADDR_INVALID(pszCallee))
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                    , "bgapi originate {main_service=%s,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s &park \r\n"
-                    , ulMainService
-                    , pszCaller
-                    , pszCaller
-                    , pszCallee);
-
-    sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
-
-    if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
-    {
-        DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
-
-        goto esl_exec_fail;
-    }
-
-    if (!g_pstDialerHandle->stHandle.last_sr_event)
-    {
-        DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "%s", "ESL request call successfully. But the reply event is NULL.");
-
-        goto esl_exec_fail;
-    }
-
-    pszEventHeader = esl_event_get_header(g_pstDialerHandle->stHandle.last_sr_event, "Content-Type");
-    if (!pszEventHeader || '\0' == pszEventHeader[0]
-        || dos_strcmp(pszEventHeader, "command/reply") != 0)
-    {
-        DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL request call successfully. But the reply event an invalid content-type.(Type:%s)", pszEventHeader);
-
-        goto esl_exec_fail;
-
-    }
-
-    pszEventBody = esl_event_get_header(g_pstDialerHandle->stHandle.last_sr_event, "reply-text");
-    if (!pszEventBody || '\0' == pszEventBody[0])
-    {
-        DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL request call successfully. But the reply event an invalid reply-text.(Type:%s)", pszEventBody);
-
-        goto esl_exec_fail;
-    }
-
-    if (dos_strnicmp(pszEventBody, "+OK", dos_strlen("+OK")) != 0)
-    {
-        DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL exec fail. (Reply-Text:%s)", pszEventBody);
-
-        goto esl_exec_fail;
-    }
-
-    sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pszCaller, pszCallee);
-
-    SC_TRACE_OUT();
-    return DOS_SUCC;
-
-esl_exec_fail:
-
-    sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
-
-    SC_TRACE_OUT();
-    return DOS_FAIL;
-
-}
-
-U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
-{
-    S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
-    S8    szCallString[SC_ESL_CMD_BUFF_LEN] = { 0 };
-    U32   ulRouteID = U32_BUTT;
-    S8    *pszEventHeader = NULL, *pszEventBody = NULL;
+    SC_TRACE_IN((U64)pstSCB, 0, 0, 0);
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
         DOS_ASSERT(0);
 
-        return DOS_FAIL;
+        goto esl_exec_fail;
+    }
+
+    if (!SC_SCB_HAS_VALID_OWNER(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        goto esl_exec_fail;
     }
 
     if ('\0' == pstSCB->szCalleeNum[0]
@@ -153,50 +92,46 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     {
         DOS_ASSERT(0);
 
-        return DOS_FAIL;
+        goto esl_exec_fail;
     }
 
-
-    ulRouteID = sc_ep_search_route(pstSCB);
-    if (U32_BUTT == ulRouteID)
+    pszAudioFilePath = sc_task_get_audio_file((U32)pstSCB->usTCBNo);
+    if (!pszAudioFilePath || '\0' == pszAudioFilePath[0])
     {
         DOS_ASSERT(0);
 
-        return DOS_FAIL;
+        goto esl_exec_fail;
     }
 
-    if (sc_ep_get_callee_string(ulRouteID, pstSCB->szCalleeNum, szCallString, sizeof(szCallString)) != DOS_SUCC)
+    ulPlayCnt = sc_task_audio_playcnt((U32)pstSCB->usTCBNo);
+    if (0 == ulPlayCnt)
     {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
+        ulPlayCnt = SC_DEFAULT_PLAYCNT;
     }
 
-    if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+    ulTimeoutForNoAnswer = sc_task_get_timeout_for_noanswer(pstSCB->usTCBNo);
+    if (ulTimeoutForNoAnswer < SC_MAX_TIMEOUT4NOANSWER)
     {
-        dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "bgapi originate {scb_number=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s &park \r\n"
-                        , pstSCB->usSCBNo
-                        , ulMainService
-                        , pstSCB->szCallerNum
-                        , pstSCB->szCallerNum
-                        , szCallString);
-    }
-    else
-    {
-        dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "bgapi originate {scb_number=%d,other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s &park \r\n"
-                        , pstSCB->usSCBNo
-                        , pstSCB->usOtherSCBNo
-                        , ulMainService
-                        , pstSCB->szCallerNum
-                        , pstSCB->szCallerNum
-                        , szCallString);
+        ulTimeoutForNoAnswer = SC_MAX_TIMEOUT4NOANSWER;
     }
 
-    sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
+    dos_snprintf(pszCMDBuff
+                , SC_ESL_CMD_BUFF_LEN
+                , "bgapi originate {ignore_early_media=true,origination_caller_id_number=%s,"
+                  "origination_caller_id_name=%s,scb_number=%d,task_id=%d,auto_call=true,originate_timeout=%d}loopback/%s "
+                  "&loop_playback('+%d %s') \r\n"
+                , pstSCB->szCallerNum
+                , pstSCB->szCallerNum
+                , pstSCB->usSCBNo
+                , pstSCB->ulTaskID
+                , ulTimeoutForNoAnswer
+                , pstSCB->szCalleeNum
+                , ulPlayCnt
+                , pszAudioFilePath);
 
-    if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
+    sc_logr_debug(SC_DIALER, "ESL CMD: %s", pszCMDBuff);
+
+    if (esl_send_recv(&g_pstDialerHandle->stHandle, pszCMDBuff) != ESL_SUCCESS)
     {
         DOS_ASSERT(0);
         sc_logr_notice(SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
@@ -239,9 +174,6 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 
         goto esl_exec_fail;
     }
-
-    /* 这个地方客户那边已经接通了，所以直接到ACTIVE */
-    SC_SCB_SET_STATUS(pstSCB, SC_SCB_ACTIVE);
 
     sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
     sc_call_trace(pstSCB, "Make call successfully.");
@@ -252,6 +184,12 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 esl_exec_fail:
 
     sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
+
+    if (DOS_ADDR_VALID(pstSCB))
+    {
+        sc_scb_free(pstSCB);
+        pstSCB = NULL;
+    }
 
     SC_TRACE_OUT();
     return DOS_FAIL;
@@ -337,23 +275,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 continue;
             }
 
-            /* 认证 */
-            if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
-            {
-                pstSCB->ucTerminationFlag = DOS_TRUE;
-                pstSCB->ucTerminationCause = BS_ERR_SYSTEM;
-
-                SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
-
-                sc_scb_free(pstSCB);
-                pstSCB = NULL;
-            }
-            else
-            {
-                SC_SCB_SET_STATUS(pstSCB, SC_SCB_AUTH);
-            }
-
-            //sc_dialer_make_call2pstn(pstSCB, SC_SERV_AUTO_DIALING);
+            sc_dialer_make_call(pstSCB);
 
             /* SCB是预分配的，所以这里只需要把队列节点释放一下就好 */
             pstListNode->pstSCB = NULL;

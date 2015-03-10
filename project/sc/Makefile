@@ -13,7 +13,7 @@ DOS_INCLUDES			= -I$(SROUCE)/include -I$(SROUCE)/include/esl
 
 SUFFIX					= o
 
-LIBS					= -lpthread -lmysqlclient -lmxml
+LIBS					= -lpthread -lmysqlclient -lmxml -lpython2.6
 
 MYSQL_HEADERS			= -I/usr/include/mysql
 MYSQL_LIBS				= -L/usr/lib64/mysql

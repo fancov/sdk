@@ -102,6 +102,17 @@ U32 config_get_db_password(S8 *pszBuff, U32 ulLen);
 U32 config_get_db_dbname(S8 *pszBuff, U32 ulLen);
 
 /**
+ * 函数：U32 config_get_py_path(S8 *pszBuff, U32 ulLen);
+ * 功能：获取Python脚本路径
+ * 参数：
+ * 		S8 *pszBuff： 缓存
+ * 		U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_py_path(S8 *pszBuff, U32 ulLen);
+
+
+/**
  * 函数：U32 config_init()
  * 功能： 初始化配置模块
  * 参数：

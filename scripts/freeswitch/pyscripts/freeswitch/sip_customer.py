@@ -1,4 +1,4 @@
-# -*- coding:UTF-8 -*-
+# coding=utf-8
 
 '''
 @author: bubble
@@ -22,28 +22,28 @@ def generate_customer():
     db_conn.connect_db()
     
     # 查询出所有客户id
-    sql_cmd = 'SELECT CONVERT(id, CHAR(10)) AS id FROM tbl_customer'
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'SQL:',sql_cmd
+    seqSQLCmd = 'SELECT CONVERT(id, CHAR(10)) AS id FROM tbl_customer'
+    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'SQL:',seqSQLCmd
     cursor = db_conn.CONN.cursor()
     if cursor is None:
         print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'The database connection does not exist.'
         return
-    count = cursor.execute(sql_cmd) # get count of results
+    ulCount = cursor.execute(seqSQLCmd) # get count of results
     results = cursor.fetchall()     # get all record results
     if len(results) == 0:
         print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'len(results) is', len(results)
         return
     print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'results is:',results
     
-    cfg_curdir = db_config.get_db_param()['cfg_path']
-    if cfg_curdir[-1] != '/':
-        cfg_curdir = cfg_curdir + '/'
-    cfg_curdir = cfg_curdir + 'directory/'
+    seqCfgCurDir = db_config.get_db_param()['cfg_path']
+    if seqCfgCurDir[-1] != '/':
+        seqCfgCurDir = seqCfgCurDir + '/'
+    seqCfgCurDir = seqCfgCurDir + 'directory/'
     
-    for loop in range(0, count):
-        cfg_path = cfg_curdir + str(results[loop][0]) + '/'
-        if not os.path.exists(cfg_path):
-            os.makedirs(cfg_path)
+    for loop in range(0, ulCount):
+        seqCfgPath = seqCfgCurDir + str(results[loop][0]) + '/'
+        if not os.path.exists(seqCfgPath):
+            os.makedirs(seqCfgPath)
         
         # 生成客户文件
         customer_file.generate_customer_file(results[loop][0])

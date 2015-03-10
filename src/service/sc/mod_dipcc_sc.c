@@ -24,6 +24,8 @@ extern "C"{
 #include "sc_httpd.h"
 #include "sc_httpd_def.h"
 #include "sc_debug.h"
+#include "sc_event_process.h"
+#include "dos/dos_py.h"
 
 /* Êý¾Ý¿â¾ä±ú */
 DB_HANDLE_ST         *g_pstSCDBHandle = NULL;
@@ -141,122 +143,94 @@ U32 sc_init_db()
 
 U32 mod_dipcc_sc_load()
 {
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start init SC.");
+#if 1
+    if (py_init_py() != DOS_SUCC)
+    {
+       DOS_ASSERT(0);
+       return DOS_FAIL;
+    }
+#endif
 
     if (sc_init_db() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init DB Handle FAIL.");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init DB Handle Successfully.");
 
+#if 1
     if (sc_httpd_init() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init httpd server FAIL.");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init httpd server Successfully.");
-
+#endif
     if (sc_task_mngt_init() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init task mngt FAIL.");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init task mngt Successfully.");
-
+#if 1
     if (sc_dialer_init() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init dialer FAIL.");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init dialer Successfully.");
-
+#endif
     if (sc_ep_init() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init event process module FAIL.");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init event process module Successfully.");
 
     if (DOS_SUCC != sc_acd_init())
     {
         DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init acd module FAIL.");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init acd module Successfully.");
-
+#if 1
     if (DOS_SUCC != sc_bs_fsm_init())
     {
         DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init bs client FAIL.");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init bs client Successfully.");
-
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Finished to init SC.");
-
+#endif
     return DOS_SUCC;
 }
 
 U32 mod_dipcc_sc_runtime()
 {
-
+#if 1
     if (sc_httpd_start() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start the httpd FAIL");
         return DOS_FAIL;;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start the httpd task Successfully.");
-
+#endif
     if (sc_task_mngt_start() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start mngt service FAIL");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start mngt service Successfully.");
-
+#if 1
     if (sc_dialer_start() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start dialer FAIL");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start dialer Successfully.");
 
     if (DOS_SUCC != sc_bs_fsm_start())
     {
         DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start bs client FAIL");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start bs client Successfully.");
+#endif
+
 
     if (sc_ep_start() != DOS_SUCC)
     {
         DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start start event process task FAIL");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start start event process task Successfully.");
 
     return DOS_SUCC;
 }
@@ -266,7 +240,7 @@ U32 mod_dipcc_sc_shutdown()
     sc_httpd_shutdown();
     sc_task_mngt_shutdown();
     sc_dialer_shutdown();
-
+    py_deinit_py();
     return DOS_SUCC;
 }
 

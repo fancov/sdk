@@ -22,6 +22,7 @@ extern "C"{
 #include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_httpd.h"
+#include "sc_event_process.h"
 
 
 /* 定义开发是内置测试数据 */
@@ -242,7 +243,8 @@ U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->ucStatus = SC_SCB_IDEL;            /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
     pstSCB->ucTerminationFlag = 0;             /* 业务终止标志 */
     pstSCB->ucTerminationCause = 0;            /* 业务终止原因 */
-    pstSCB->ucLegRole = SC_CALL_ROLE_BUTT;
+    pstSCB->ucPayloadType = U8_BUTT;           /* 编解码 */
+
     pstSCB->usHoldCnt = 0;                     /* 被hold的次数 */
     pstSCB->usHoldTotalTime = 0;               /* 被hold的总时长 */
     pstSCB->ulLastHoldTimetamp = 0;            /* 上次hold是的时间戳，解除hold的时候值零 */
@@ -254,6 +256,14 @@ U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bWaitingOtherRelase = DOS_FALSE;   /* 是否在等待另外一跳退释放 */
 
     pstSCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
+
+    pstSCB->ulStartTimeStamp = 0;              /* 起始时间戳 */
+    pstSCB->ulRingTimeStamp = 0;               /* 振铃时间戳 */
+    pstSCB->ulAnswerTimeStamp = 0;             /* 应答时间戳 */
+    pstSCB->ulIVRFinishTimeStamp = 0;          /* IVR播放完成时间戳 */
+    pstSCB->ulDTMFTimeStamp = 0;               /* (第一个)二次拨号时间戳 */
+    pstSCB->ulBridgeTimeStamp = 0;             /* LEG桥接时间戳 */
+    pstSCB->ulByeTimeStamp = 0;                /* 释放时间戳 */
 
     pstSCB->szCallerNum[0] = '\0';             /* 主叫号码 */
     pstSCB->szCalleeNum[0] = '\0';             /* 被叫号码 */
@@ -423,7 +433,7 @@ U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB)
 
     hash_add_node(g_pstTaskMngtInfo->pstCallSCBHash, (HASH_NODE_S *)pstSCBHashNode, ulHashIndex, NULL);
 
-    sc_logr_warning(SC_TASK, "Add SCB %d with the UUID %s to the hash table.", pstSCB->usSCBNo, pszUUID);
+    sc_logr_warning(SC_TASK, "Add SCB with the UUID %s to the hash table.", pszUUID);
 
     pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
 
@@ -608,7 +618,6 @@ U32 sc_scb_syn_post(S8 *pszUUID)
 
 }
 
-
 /*
  * 函数: BOOL sc_call_check_service(SC_SCB_ST *pstSCB, U32 ulService)
  * 功能: 判断当前业务控制块是否包含ulService所指定的业务
@@ -692,7 +701,7 @@ SC_TASK_CB_ST *sc_tcb_alloc()
 
     for (; ulIndex<SC_MAX_TASK_NUM; ulIndex++)
     {
-        if (!g_pstTaskMngtInfo->pstTaskList[ulIndex].ucValid)
+        if (sc_tcb_get_valid(&g_pstTaskMngtInfo->pstTaskList[ulIndex]))
         {
             pstTCB = &g_pstTaskMngtInfo->pstTaskList[ulIndex];
             break;
@@ -703,7 +712,7 @@ SC_TASK_CB_ST *sc_tcb_alloc()
     {
         for (ulIndex = 0; ulIndex < ulLastIndex; ulIndex++)
         {
-            if (!g_pstTaskMngtInfo->pstTaskList[ulIndex].ucValid)
+            if (sc_tcb_get_valid(&g_pstTaskMngtInfo->pstTaskList[ulIndex]))
             {
                 pstTCB = &g_pstTaskMngtInfo->pstTaskList[ulIndex];
                 break;
@@ -768,19 +777,16 @@ U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     }
 
     pstTCB->ucTaskStatus = SC_TASK_BUTT;
-    pstTCB->ucMode = SC_TASK_MODE_BUTT;
     pstTCB->ucPriority = SC_TASK_PRI_NORMAL;
     pstTCB->bTraceON = 0;
     pstTCB->bTraceCallON = 0;
 
     pstTCB->ulTaskID = U32_BUTT;
     pstTCB->ulCustomID = U32_BUTT;
-    pstTCB->ulCurrentConcurrency = 0;
+    pstTCB->ulConcurrency = 0;
     pstTCB->usSiteCount = 0;
     pstTCB->ulAgentQueueID = U32_BUTT;
     pstTCB->ucAudioPlayCnt = 0;
-    pstTCB->ulCalleeCount = 0;
-    pstTCB->usCallerCount = 0;
 
     dos_list_init(&pstTCB->stCalleeNumQuery);    /* TODO: 释放所有节点 */
     pstTCB->pstCallerNumQuery = NULL;   /* TODO: 初始化所有节点 */
@@ -845,7 +851,7 @@ VOID sc_task_set_current_call_cnt(SC_TASK_CB_ST *pstTCB, U32 ulCurrentCall)
     }
 
     pthread_mutex_lock(&pstTCB->mutexTaskList);
-    pstTCB->ulCurrentConcurrency = ulCurrentCall;
+    pstTCB->ulConcurrency = ulCurrentCall;
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
 }
 
@@ -861,7 +867,7 @@ U32 sc_task_get_current_call_cnt(SC_TASK_CB_ST *pstTCB)
         return U32_BUTT;
     }
 
-    return pstTCB->ulCurrentConcurrency;
+    return pstTCB->ulConcurrency;
 }
 
 VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID)
@@ -943,15 +949,15 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
     {
         if (dos_strcmp(pszNames[ulIndex], "id") == 0)
         {
-            pszID = pszValues[ulIndex];
+            pszID = pszNames[ulIndex];
         }
         else if (dos_strcmp(pszNames[ulIndex], "customer") == 0)
         {
-            pszCustmerID = pszValues[ulIndex];
+            pszCustmerID = pszNames[ulIndex];
         }
         else if (dos_strcmp(pszNames[ulIndex], "caller") == 0)
         {
-            pszCaller = pszValues[ulIndex];
+            pszCaller = pszNames[ulIndex];
         }
     }
 
@@ -1011,7 +1017,7 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         }
     }
 
-    if (ulFirstInvalidNode >= SC_MAX_CALLER_NUM)
+    if (ulFirstInvalidNode < SC_MAX_CALLER_NUM)
     {
         DOS_ASSERT(0);
 
@@ -1019,24 +1025,17 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         return DOS_FAIL;
     }
 
-    if (!blNeedAdd)
-    {
-        SC_TRACE_OUT();
-        return DOS_SUCC;
-    }
-
-    pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
-    pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulIndexInDB = ulID;
-    pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
-    dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCaller, SC_MAX_CALLER_NUM);
-    pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
-    pstTCB->usCallerCount++;
+    pstTCB->pstCallerNumQuery[ulIndex].bValid = 1;
+    pstTCB->pstCallerNumQuery[ulIndex].ulIndexInDB = ulID;
+    pstTCB->pstCallerNumQuery[ulIndex].bTraceON = pstTCB->bTraceCallON;
+    dos_strncpy(pstTCB->pstCallerNumQuery[ulIndex].szNumber, pszCaller, SC_MAX_CALLER_NUM);
+    pstTCB->pstCallerNumQuery[ulIndex].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
 
     SC_TRACE_OUT();
     return DOS_TRUE;
 }
 
-U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB)
+S32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB)
 {
 #if SC_USE_BUILDIN_DATA
     U32 ulIndex;
@@ -1147,17 +1146,16 @@ static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
     pstCallee->ulIndex = ulIndex;
     pstCallee->ucTraceON = 0;
     pstCallee->ucCalleeType = SC_CALL_NUM_TYPE_NORMOAL;
-    dos_strncpy(pstCallee->szNumber, pszNum, sizeof(pstCallee->szNumber));
+    dos_strncpy(pstCallee->szNumber, pstCallee->szNumber, sizeof(pstCallee->szNumber));
     pstCallee->szNumber[sizeof(pstCallee->szNumber) - 1] = '\0';
 
-    pstTCB->ulCalleeCount++;
     pstTCB->ulLastCalleeIndex++;
     dos_list_add_tail(&pstTCB->stCalleeNumQuery, (struct list_s *)pstCallee);
 
     return 0;
 }
 
-U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
+S32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
 {
 #if SC_USE_BUILDIN_DATA
     SC_TEL_NUM_QUERY_NODE_ST *pstCalledNode;
@@ -1207,7 +1205,6 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
         return -1;
     }
 
-    pstTCB->ulCalleeCount = 0;
 
     dos_snprintf(szSQL, sizeof(szSQL)
                     , "SELECT "
@@ -1224,7 +1221,7 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
                       "    ON "
                       "      c.id = d.callee_id AND d.id = %d) b "
                       "ON "
-                      "  a.calleefile_id = b.id AND a.`status` <> 3 "
+                      "  a.calleefile_id = b.id AND a.`status` <> \"done\"; "
                       "LIMIT %d, 1000;"
                     , pstTCB->usTCBNo
                     , pstTCB->ulLastCalleeIndex);
@@ -1288,7 +1285,7 @@ static S32 sc_task_load_period_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, 
         }
     }
 
-    if (ulIndex >= SC_MAX_PERIOD_NUM)
+    if (SC_MAX_PERIOD_NUM <= ulIndex)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
@@ -1344,7 +1341,7 @@ U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT start_time, end_time from tbl_calltask WHERE id=%d;", pstTCB->ulTaskID);
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT start_time, end_time from tbl_calltask WHERE id=%d;", pstTCB->usTCBNo);
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_period_cb, (VOID *)pstTCB, NULL) != DB_ERR_SUCC)
     {
@@ -1355,65 +1352,6 @@ U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB)
 
     return DOS_SUCC;
 #endif
-}
-
-S32 sc_task_load_mode_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
-{
-    U32 ulTaskMode;
-
-    if (DOS_ADDR_INVALID(pArg)
-        || lColumnCount<= 0
-        || DOS_ADDR_INVALID(aszValues)
-        || DOS_ADDR_INVALID(aszNames))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    if (DOS_ADDR_INVALID(aszValues[0])
-        || '\0' == aszValues[0][0]
-        || dos_atoul(aszValues[0], &ulTaskMode) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    *(U32 *)pArg = ulTaskMode;
-    return DOS_SUCC;
-
-}
-
-S32 sc_task_load_mode(SC_TASK_CB_ST *pstTCB)
-{
-    S8 szSQL[128] = { 0, };
-    U32 ulTaskMode;
-
-    if (DOS_ADDR_INVALID(pstTCB))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT mode from tbl_calltask WHERE id=%d;", pstTCB->ulTaskID);
-
-    if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_mode_cb, (VOID *)&ulTaskMode, NULL) != DB_ERR_SUCC)
-    {
-        sc_logr_debug(SC_TASK, "Load task time period for task %d fail;", pstTCB->usTCBNo);
-
-        return DOS_FAIL;
-    }
-
-    if (ulTaskMode >= SC_TASK_MODE_BUTT)
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    pstTCB->ucMode = (U8)ulTaskMode;
-
-    return DOS_SUCC;
-
 }
 
 S32 sc_task_load_agent_queue_id_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
@@ -1462,7 +1400,7 @@ S32 sc_task_load_agent_number_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S
         return DOS_FAIL;
     }
 
-    *(U16 *)pArg = (U16)ulAgentCount;
+    *(U32 *)pArg = ulAgentCount;
     return DOS_SUCC;
 
 }
@@ -1529,18 +1467,7 @@ U32 sc_task_load_audio(SC_TASK_CB_ST *pstTCB)
     SC_TRACE_OUT();
     return 1;
 #else
-    if (DOS_ADDR_INVALID(pstTCB))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    dos_strncpy(pstTCB->szAudioFileLen, "/usr/local/freeswitch/sounds/en/us/callie/ivr/8000/ivr-you_lose.wav", sizeof(pstTCB->szAudioFileLen));
-    pstTCB->szAudioFileLen[sizeof(pstTCB->szAudioFileLen) - 1] = '\0';
-    pstTCB->ucAudioPlayCnt = 3;
-    return DOS_SUCC;
+    return 0;
 #endif
 }
 
@@ -1566,18 +1493,12 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
     ulHour = timenow->tm_hour;
     ulMinute = timenow->tm_min;
 
-    printf("Current Time %02d:%02d\r\n", ulHour, ulMinute);
-
     for (ulIndex=0; ulIndex<SC_MAX_PERIOD_NUM; ulIndex++)
     {
         if (!pstTCB->astPeriod[ulIndex].ucValid)
         {
             continue;
         }
-
-        printf("Time peroid: %02d:%02d-%02d:%02d\r\n"
-                , pstTCB->astPeriod[ulIndex].ucHourBegin, pstTCB->astPeriod[ulIndex].ucMinuteBegin
-                , pstTCB->astPeriod[ulIndex].ucHourEnd, pstTCB->astPeriod[ulIndex].ucMinuteEnd);
 
         if (!((pstTCB->astPeriod[ulIndex].ucWeekMask >> ulWeek) & 0x01))
         {
@@ -1616,7 +1537,7 @@ U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB)
         return DOS_FALSE;
     }
 
-    if (pstTCB->ulCurrentConcurrency >= (pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE))
+    if (pstTCB->ulConcurrency >= (pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE))
     {
         SC_TRACE_OUT();
         return DOS_FALSE;
@@ -1640,9 +1561,9 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
         return 1000;
     }
 
-    if (pstTCB->ulCurrentConcurrency)
+    if (pstTCB->ulConcurrency)
     {
-        ulPercentage = ((pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE) * 100) / pstTCB->ulCurrentConcurrency;
+        ulPercentage = ((pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE) * 100) / pstTCB->ulConcurrency;
     }
     else
     {
@@ -1711,72 +1632,6 @@ U32 sc_task_audio_playcnt(U32 ulTCBNo)
     return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
 }
 
-U32 sc_task_concurrency_add(U32 ulTCBNo)
-{
-    SC_TRACE_IN(ulTCBNo, 0, 0, 0);
-    if (ulTCBNo > SC_MAX_TASK_NUM)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return 0;
-    }
-
-    if (!g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucValid)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return 0;
-    }
-
-    pthread_mutex_lock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
-    g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency++;
-    if (g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency
-        > g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulMaxConcurrency)
-    {
-        DOS_ASSERT(0);
-    }
-    pthread_mutex_unlock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
-
-    return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
-}
-
-U32 sc_task_concurrency_minus (U32 ulTCBNo)
-{
-    SC_TRACE_IN(ulTCBNo, 0, 0, 0);
-    if (ulTCBNo > SC_MAX_TASK_NUM)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return 0;
-    }
-
-    if (!g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucValid)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return 0;
-    }
-
-    pthread_mutex_lock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
-    if (g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency > 0)
-    {
-        g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency++;
-    }
-    else
-    {
-        DOS_ASSERT(0);
-    }
-    pthread_mutex_unlock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
-
-    return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
-}
-
-
-
 U32 sc_task_get_timeout_for_noanswer(U32 ulTCBNo)
 {
     return 10;
@@ -1800,51 +1655,6 @@ U32 sc_task_callee_set_recall(SC_TASK_CB_ST *pstTCB, U32 ulIndex)
 
     return DOS_TRUE;
 }
-
-U32 sc_task_get_mode(U32 ulTCBNo)
-{
-    SC_TRACE_IN(ulTCBNo, 0, 0, 0);
-    if (ulTCBNo > SC_MAX_TASK_NUM)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return U32_BUTT;
-    }
-
-    if (!g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucValid)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return U32_BUTT;
-    }
-
-    return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucMode;
-}
-
-U32 sc_task_get_agent_queue(U32 ulTCBNo)
-{
-    SC_TRACE_IN(ulTCBNo, 0, 0, 0);
-    if (ulTCBNo > SC_MAX_TASK_NUM)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return U32_BUTT;
-    }
-
-    if (!g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucValid)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return U32_BUTT;
-    }
-
-    return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulAgentQueueID;
-}
-
 
 SC_SYS_STATUS_EN sc_check_sys_stat()
 {

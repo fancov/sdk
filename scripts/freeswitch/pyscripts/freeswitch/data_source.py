@@ -1,4 +1,5 @@
-# -*- encoding=utf-8 -*-
+# coding=utf-8
+
 '''
 @author: bubble
 @copyright: Shenzhen dipcc technologies co.,ltd
@@ -32,7 +33,7 @@ def is_list_contains(list, seq):
     
 
 #采用列举法生成sip账户
-def generate_by_enum(list, customer_id = 'default', path = '../cfg/' ):
+def generate_by_enum(list, ulCustomerID = 'default', seqPath = '../cfg/' ):
     '''
     @param list: sip账户列表
     @param customer_id: 客户id，默认为'default'
@@ -43,42 +44,42 @@ def generate_by_enum(list, customer_id = 'default', path = '../cfg/' ):
         print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'list is',list
         return None
     print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'list is',list
-    flag_path = 0
-    flag_customer = 0
-    sip_list = []
+    ulFlagPath = 0
+    ulFlagCustomer = 0
+    listSIPList = []
     if is_list_contains(list, '-PATH'):
-        flag_path = 1
+        ulFlagPath = 1
     if is_list_contains(list, '-CUSTOMER'):
-        flag_customer = 1
+        ulFlagCustomer = 1
         
-    if flag_path == 1 and flag_customer == 1:
-        sip_list = list[:-4]
-        path_index = list.index('-PATH')
-        customer_index = list.index('-CUSTOMER')
-        path = list[path_index + 1]
-        if path[-1] <> '/':
-            path = path + '/'
-        customer_id = list[customer_index + 1]
+    if ulFlagPath == 1 and ulFlagCustomer == 1:
+        listSIPList = list[:-4]
+        ulPathIndex = list.index('-PATH')
+        ulCustomerIndex = list.index('-CUSTOMER')
+        seqPath = list[ulPathIndex + 1]
+        if seqPath[-1] <> '/':
+            seqPath = seqPath + '/'
+        ulCustomerID = list[ulCustomerIndex + 1]
         
-    elif flag_path == 1 and flag_customer == 0:
-        sip_list = list[:-2]
-        path_index = list.index('-PATH')
-        path = list[path_index + 1]
-        if path[-1] <> '/':
-            path = path + '/'
+    elif ulFlagPath == 1 and ulFlagCustomer == 0:
+        listSIPList = list[:-2]
+        ulPathIndex = list.index('-PATH')
+        seqPath = list[ulPathIndex + 1]
+        if seqPath[-1] <> '/':
+            seqPath = seqPath + '/'
         
-    elif flag_customer == 1 and flag_path == 0:
-        sip_list = list[:-2] 
-        customer_index = list.index('-CUSTOMER')
-        customer_id = list[customer_id + 1]
+    elif ulFlagCustomer == 1 and ulFlagPath == 0:
+        listSIPList = list[:-2] 
+        ulCustomerIndex = list.index('-CUSTOMER')
+        ulCustomerID = list[ulCustomerID + 1]
     else:
-        sip_list = list
+        listSIPList = list
         
-    for item in sip_list:
-        sip_maker.make_sip(item, customer_id, path)
+    for item in listSIPList:
+        sip_maker.make_sip(item, ulCustomerID, seqPath)
     
             
-def generate_by_range(list, customer_id = 'default', path = '../cfg/' ):
+def generate_by_range(list, ulCustomerID = 'default', seqPath = '../cfg/' ):
     '''
     @param list: sip账户列表
     @param customer_id: 客户id，默认为'default'
@@ -89,36 +90,36 @@ def generate_by_range(list, customer_id = 'default', path = '../cfg/' ):
         print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'list is',list
         return None
     print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'list is',list
-    flag_path = 0
-    flag_customer = 0
+    ulFlagPath = 0
+    ulFlagCustomer = 0
     if is_list_contains(list, '-PATH'):
-        flag_path = 1
+        ulFlagPath = 1
     if is_list_contains(list, '-CUSTOMER'):
-        flag_customer = 1
+        ulFlagCustomer = 1
         
-    if flag_path == 1 and flag_customer == 1:
-        path_index = list.index('-PATH')
-        customer_index = list.index('-CUSTOMER')
-        path = list[path_index + 1]
-        if path[-1] <> '/':
-            path = path + '/'
-        customer_id = list[customer_index + 1]
+    if ulFlagPath == 1 and ulFlagCustomer == 1:
+        ulPathIndex = list.index('-PATH')
+        ulCustomerIndex = list.index('-CUSTOMER')
+        seqPath = list[ulPathIndex + 1]
+        if seqPath[-1] <> '/':
+            seqPath = seqPath + '/'
+        ulCustomerID = list[ulCustomerIndex + 1]
         
-    elif flag_path == 1 and flag_customer == 0:
-        path_index = list.index('-PATH')
-        path = list[path_index + 1]
-        if path[-1] <> '/':
-            path = path + '/'
+    elif ulFlagPath == 1 and ulFlagCustomer == 0:
+        ulPathIndex = list.index('-PATH')
+        seqPath = list[ulPathIndex + 1]
+        if seqPath[-1] <> '/':
+            seqPath = seqPath + '/'
         
-    elif flag_customer == 1 and flag_path == 0:
-        customer_index = list.index('-CUSTOMER')
-        customer_id = list[customer_id + 1]
+    elif ulFlagCustomer == 1 and ulFlagPath == 0:
+        ulCustomerIndex = list.index('-CUSTOMER')
+        ulCustomerID = list[ulCustomerID + 1]
       
-    sip_list = list[:2]  
-    for item in range(int(sip_list[0]), int(sip_list[1]) + 1):
-        sip_maker.make_sip(item, customer_id, path)
+    listSIPList = list[:2]  
+    for item in range(int(listSIPList[0]), int(listSIPList[1]) + 1):
+        sip_maker.make_sip(item, ulCustomerID, seqPath)
         
-def generate_by_excel(list, customer_id = 'default', path = '../cfg/'):
+def generate_by_excel(list, ulCustomerID = 'default', seqPath = '../cfg/'):
     '''
     @param list: sip账户列表
     @param customer_id: 客户id，默认为'default'
@@ -129,37 +130,37 @@ def generate_by_excel(list, customer_id = 'default', path = '../cfg/'):
         print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'list is',list
         return None
     print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'list is',list
-    flag_path = 0
-    flag_customer = 0
+    ulFlagPath = 0
+    ulFlagCustomer = 0
     if is_list_contains(list, '-PATH'):
-        flag_path = 1
+        ulFlagPath = 1
     if is_list_contains(list, '-CUSTOMER'):
-        flag_customer = 1
+        ulFlagCustomer = 1
         
-    if flag_path == 1 and flag_customer == 1:
-        path_index = list.index('-PATH')
-        customer_index = list.index('-CUSTOMER')
-        path = list[path_index + 1]
-        if path[-1] <> '/':
-            path = path + '/'
-        customer_id = list[customer_index + 1]
+    if ulFlagPath == 1 and ulFlagCustomer == 1:
+        ulPathIndex = list.index('-PATH')
+        ulCustomerIndex = list.index('-CUSTOMER')
+        seqPath = list[ulPathIndex + 1]
+        if seqPath[-1] <> '/':
+            seqPath = seqPath + '/'
+        ulCustomerID = list[ulCustomerIndex + 1]
         
-    elif flag_path == 1 and flag_customer == 0:
-        path_index = list.index('-PATH')
-        path = list[path_index + 1]
-        if path[-1] <> '/':
-            path = path + '/'
+    elif ulFlagPath == 1 and ulFlagCustomer == 0:
+        ulPathIndex = list.index('-PATH')
+        seqPath = list[ulPathIndex + 1]
+        if seqPath[-1] <> '/':
+            seqPath = seqPath + '/'
         
-    elif flag_customer == 1 and flag_path == 0:
-        customer_index = list.index('-CUSTOMER')
-        customer_id = list[customer_id + 1] + '/'
+    elif ulFlagCustomer == 1 and ulFlagPath == 0:
+        ulCustomerIndex = list.index('-CUSTOMER')
+        ulCustomerID = list[ulCustomerID + 1] + '/'
         
-    sip_list = excel.excel_table_by_col(list[0])
-    for loop in range(len(sip_list)):
-        sip_maker.make_sip(sip_list[loop], customer_id, path)
+    listSIPList = excel.excel_table_by_col(list[0])
+    for loop in range(len(listSIPList)):
+        sip_maker.make_sip(listSIPList[loop], ulCustomerID, seqPath)
     
     
-def generate_by_txt(list, customer_id = 'default', path = '../cfg/'):
+def generate_by_txt(list, ulCustomerID = 'default', seqPath = '../cfg/'):
     '''
     @param list: sip账户列表
     @param customer_id: 客户id，默认为'default'
@@ -170,36 +171,36 @@ def generate_by_txt(list, customer_id = 'default', path = '../cfg/'):
         print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'list is',list
         return None
     print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'list is',list
-    flag_path = 0
-    flag_customer = 0
+    ulFlagPath = 0
+    ulFlagCustomer = 0
     if is_list_contains(list, '-PATH'):
-        flag_path = 1
+        ulFlagPath = 1
     if is_list_contains(list, '-CUSTOMER'):
-        flag_customer = 1
+        ulFlagCustomer = 1
         
-    if flag_path == 1 and flag_customer == 1:
-        path_index = list.index('-PATH')
-        customer_index = list.index('-CUSTOMER')
-        path = list[path_index + 1]
-        if path[-1] <> '/' :
-            path = path + '/'
-        customer_id = list[customer_index + 1]
+    if ulFlagPath == 1 and ulFlagCustomer == 1:
+        ulPathIndex = list.index('-PATH')
+        ulCustomerIndex = list.index('-CUSTOMER')
+        seqPath = list[ulPathIndex + 1]
+        if seqPath[-1] <> '/' :
+            seqPath = seqPath + '/'
+        ulCustomerID = list[ulCustomerIndex + 1]
         
-    elif flag_path == 1 and flag_customer == 0:
-        path_index = list.index('-PATH')
-        path = list[path_index + 1]
-        if path[-1] <> '/':
-            path = path + '/'
+    elif ulFlagPath == 1 and ulFlagCustomer == 0:
+        ulPathIndex = list.index('-PATH')
+        seqPath = list[ulPathIndex + 1]
+        if seqPath[-1] <> '/':
+            seqPath = seqPath + '/'
         
-    elif flag_customer == 1 and flag_path == 0:
-        customer_index = list.index('-CUSTOMER')
-        customer_id = list[customer_id + 1] 
+    elif ulFlagCustomer == 1 and ulFlagPath == 0:
+        ulCustomerIndex = list.index('-CUSTOMER')
+        ulCustomerID = list[ulCustomerID + 1] 
         
-    sip_list = text.get_data_from_txt(list[0])
-    for item in sip_list:
-        sip_maker.make_sip(item, customer_id, path)
+    listSIPList = text.get_data_from_txt(list[0])
+    for item in listSIPList:
+        sip_maker.make_sip(item, ulCustomerID, seqPath)
         
-def generate_by_db(list, customer_id = 'default', path = '../cfg/'):
+def generate_by_db(list, ulCustomerID = 'default', seqPath = '../cfg/'):
     '''
     @param list: sip账户列表
     @param customer_id: 客户id，默认为'default'
@@ -210,32 +211,32 @@ def generate_by_db(list, customer_id = 'default', path = '../cfg/'):
         print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'list is',list
         return None
     print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'list is',list
-    flag_path = 0
-    flag_customer = 0
+    ulFlagPath = 0
+    ulFlagCustomer = 0
     if is_list_contains(list, '-PATH'):
-        flag_path = 1
+        ulFlagPath = 1
     if is_list_contains(list, '-CUSTOMER'):
-        flag_customer = 1
+        ulFlagCustomer = 1
         
-    if flag_path == 1 and flag_customer == 1:
-        path_index = list.index('-PATH')
-        customer_index = list.index('-CUSTOMER')
-        path = list[path_index + 1]
-        if path[-1] <> '/':
-            path = path + '/'
-        customer_id = list[customer_index + 1]
+    if ulFlagPath == 1 and ulFlagCustomer == 1:
+        ulPathIndex = list.index('-PATH')
+        ulCustomerIndex = list.index('-CUSTOMER')
+        seqPath = list[ulPathIndex + 1]
+        if seqPath[-1] <> '/':
+            seqPath = seqPath + '/'
+        ulCustomerID = list[ulCustomerIndex + 1]
         
-    elif flag_path == 1 and flag_customer == 0:
-        path_index = list.index('-PATH')
-        path = list[path_index + 1]
-        if path[-1] <> '/':
-            path = path + '/'
+    elif ulFlagPath == 1 and ulFlagCustomer == 0:
+        ulPathIndex = list.index('-PATH')
+        seqPath = list[ulPathIndex + 1]
+        if seqPath[-1] <> '/':
+            seqPath = seqPath + '/'
         
-    elif flag_customer == 1 and flag_path == 0:
-        customer_index = list.index('-CUSTOMER')
-        customer_id = list[customer_id + 1]
+    elif ulFlagCustomer == 1 and ulFlagPath == 0:
+        ulCustomerIndex = list.index('-CUSTOMER')
+        ulCustomerID = list[ulCustomerID + 1]
         
     conn = db.get_db_conn(list[0], list[1], list[2], list[3])
-    sip_lists = db.get_field_value(list[4], list[5], conn)
-    for loop in range(len(sip_lists)):
-        sip_maker.make_sip(int(sip_lists[loop][0]), customer_id, path)
+    listSIPLists = db.get_field_value(list[4], list[5], conn)
+    for loop in range(len(listSIPLists)):
+        sip_maker.make_sip(int(listSIPLists[loop][0]), ulCustomerID, seqPath)

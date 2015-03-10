@@ -1,4 +1,5 @@
-# -*- encoding=utf-8 -*-
+# coding=utf-8
+
 '''
 @author: bubble
 @copyright: Shenzhen dipcc technologies co.,ltd
@@ -12,69 +13,69 @@ import types
 import file_info
  
   
-def get_data_from_table(filename, sheet_idx = 0):
+def get_data_from_table(seqFileName, ulSheetIdx = 0):
     '''
     @param filename: 文件名
     @param sheet_idx: Excel表单编号，第一张表单为编号0，默认从编号为0的表单读取数据
     @todo: 从Excel文件中获取数据
     '''
-    if filename.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', filename
+    if seqFileName.strip() == '':
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', seqFileName
         return None
-    if sheet_idx < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sheet_idx is', sheet_idx
+    if ulSheetIdx < 0:
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sheet_idx is', ulSheetIdx
         return None
-    book = xlrd.open_workbook(filename, 'rb')
-    return book.sheet_by_index(sheet_idx) #sheet_idx index
+    book = xlrd.open_workbook(seqFileName, 'rb')
+    return book.sheet_by_index(ulSheetIdx) #sheet_idx index
         
-def excel_table_by_row(filename, row = 0, sheet_idx = 0):
+def excel_table_by_row(seqFileName, ulRow = 0, ulSheetIdx = 0):
     '''
     @param filename: 文件名
     @param row: sip数据列表所在的行编号，第1行编号为0，默认从编号为0的行读取数据
     @param sheet_idx: sip数据所在的表单编号，第一张表编号为0,默认从编号为0的表单读取数据
     @todo:  读取Excel某行数据
     '''
-    if filename.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', filename
+    if seqFileName.strip() == '':
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', seqFileName
         return None
-    if row < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'row is', row
+    if ulRow < 0:
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'row is', ulRow
         return None
-    if sheet_idx < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sheet_idx is', sheet_idx
+    if ulSheetIdx < 0:
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sheet_idx is', ulSheetIdx
         return None
-    table = get_data_from_table(filename, sheet_idx)
-    rowlist = table.row_values(row)
-    for loop in range(len(rowlist)):
-        rowlist[loop] = float_to_int(rowlist[loop])
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'rowlist is:', rowlist
-    return rowlist
+    table = get_data_from_table(seqFileName, ulSheetIdx)
+    listRowList = table.row_values(ulRow)
+    for loop in range(len(listRowList)):
+        listRowList[loop] = float_to_int(listRowList[loop])
+    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'rowlist is:', listRowList
+    return listRowList
 
 
-def excel_table_by_col(filename, col = 0, sheet_idx = 0):
+def excel_table_by_col(seqFileName, ulCol = 0, ulSheetIdx = 0):
     '''
     @param filename: 文件名
     @param col: sip数据列表所在的列编号，第1列编号为0，默认从编号为0的列读取数据
     @param sheet_idx: sip数据所在的表单编号，第一张表编号为0,默认从编号为0的表单读取数据
     @todo:  读取Excel某列数据
     '''
-    if filename.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', filename
+    if seqFileName.strip() == '':
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', seqFileName
         return None
-    if col < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'col is', col
+    if ulCol < 0:
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'col is', ulCol
         return None
-    if sheet_idx < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sheet_idx is', sheet_idx
+    if ulSheetIdx < 0:
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sheet_idx is', ulSheetIdx
         return None
-    table = get_data_from_table(filename, sheet_idx)
-    collist = table.col_values(col)
-    for loop in range(len(collist)):
-        collist[loop] = float_to_int(collist[loop])
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'collist is:', collist
-    return collist
+    table = get_data_from_table(seqFileName, ulSheetIdx)
+    listColList = table.col_values(ulCol)
+    for loop in range(len(listColList)):
+        listColList[loop] = float_to_int(listColList[loop])
+    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'collist is:', listColList
+    return listColList
 
-def excel_table_by_cell(filename, row = 0, col = 0, sheet_idx = 0):
+def excel_table_by_cell(seqFileName, ulRow = 0, ulCol = 0, ulSheetIdx = 0):
     '''
     @param filename: 文件名
     @param row: 单元格所在行编号，第一行的行编号为0，默认为编号为0的行
@@ -82,59 +83,59 @@ def excel_table_by_cell(filename, row = 0, col = 0, sheet_idx = 0):
     @param sheet_idx: sip数据所在的表单编号，第一张表编号为0,默认从编号为0的表单读取数据
     @todo: 获取某一个单元格的数据
     '''
-    if filename.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', filename
+    if seqFileName.strip() == '':
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', seqFileName
         return None
-    if row < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'row is', row
+    if ulRow < 0:
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'row is', ulRow
         return None
-    if col < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'col is', col
+    if ulCol < 0:
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'col is', ulCol
         return None
-    if sheet_idx < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sheet_idx is', sheet_idx
+    if ulSheetIdx < 0:
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sheet_idx is', ulSheetIdx
         return None
-    table = get_data_from_table(filename, sheet_idx)
-    value = table.cell(row, col).value
+    table = get_data_from_table(seqFileName, ulSheetIdx)
+    value = table.cell(ulRow, ulCol).value
     value = float_to_int(value)
     print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'value is', value
     return value
 
 
-def excel_table_by_table(filename, sheet_idx = 0):
+def excel_table_by_table(seqFileName, ulSheetIdx = 0):
     '''
     @param filename: 文件名
     @param sheet_idx: sip数据所在的表单编号，第一张表编号为0,默认从编号为0的表单读取数据
     @todo: 获取某一张Excel表格中的所有数据
     '''
-    if filename.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', filename
+    if seqFileName.strip() == '':
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', seqFileName
         return None
-    table = get_data_from_table(filename, sheet_idx)
+    table = get_data_from_table(seqFileName, ulSheetIdx)
     list = []
-    nrows = table.nrows
-    for loop in range(nrows):
-        rowlist = excel_table_by_row(filename, loop, sheet_idx)
+    nRows = table.nrows
+    for loop in range(nRows):
+        rowlist = excel_table_by_row(seqFileName, loop, ulSheetIdx)
         list.append(rowlist)
     print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'list is:', list
     return list
 
-def is_float_str(num):
+def is_float_str(ulNum):
     '''
     @param num: 数字
     @todo: 判断是否为浮点数
     '''
-    if str(num).endswith('.0'):
+    if str(ulNum).endswith('.0'):
         return True
     return False
 
-def float_to_int(num):
+def float_to_int(ulNum):
     '''
     @param num: 数字
     @todo: 浮点型转换为整形
     '''
-    if type(num) == types.FloatType:
-        return str(int(num))
-    elif  type(num) == types.StringType and is_float_str(num):
-        num = num[:-2] #去掉结尾的‘.0’子串
-        return num
+    if type(ulNum) == types.FloatType:
+        return str(int(ulNum))
+    elif  type(ulNum) == types.StringType and is_float_str(ulNum):
+        ulNum = ulNum[:-2] #去掉结尾的‘.0’子串
+        return ulNum

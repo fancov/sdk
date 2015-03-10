@@ -1,4 +1,4 @@
-# -*- encoding=utf-8 -*-
+# coding=utf-8
 '''
 @author: bubble
 @copyright: Shenzhen dipcc technologies co.,ltd
@@ -14,55 +14,55 @@ import file_info
 import db_config
 import os
 
-def generate_customer_file(customer_id):
+def generate_customer_file(ulCustomerID):
     '''
     @param customer_id: 客户id
     @todo: 生成客户配置文件
     '''
-    if str(customer_id).strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', customer_id
+    if str(ulCustomerID).strip() == '':
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', ulCustomerID
         return None
     
     # 查找出所有customer id是`customer_id`的 group id
-    sql_cmd = 'SELECT DISTINCT CONVERT(id, CHAR(10)) AS id FROM tbl_group WHERE tbl_group.customer_id = %s' % customer_id
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'SQL:', sql_cmd
+    seqSQLCmd = 'SELECT DISTINCT CONVERT(id, CHAR(10)) AS id FROM tbl_group WHERE tbl_group.customer_id = %s' % ulCustomerID
+    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'SQL:', seqSQLCmd
     doc = Document()
     
-    cfg_path = db_config.get_db_param()['cfg_path']
-    if cfg_path[-1] != '/':
-        cfg_path = cfg_path + '/'
+    seqCfgPath = db_config.get_db_param()['cfg_path']
+    if seqCfgPath[-1] != '/':
+        seqCfgPath = seqCfgPath + '/'
     
-    if os.path.exists(cfg_path) is False:
-        os.makedirs(cfg_path)
+    if os.path.exists(seqCfgPath) is False:
+        os.makedirs(seqCfgPath)
         
-    mgnt_dir = cfg_path + 'directory/' + str(customer_id) + '/'
-    if os.path.exists(mgnt_dir) is False:
-        os.mkdir(mgnt_dir)
+    seqMgntDir = seqCfgPath + 'directory/' + str(ulCustomerID) + '/'
+    if os.path.exists(seqMgntDir) is False:
+        os.mkdir(seqMgntDir)
         
-    cfg_path = cfg_path + 'directory/' + str(customer_id) + '.xml'
+    seqCfgPath = seqCfgPath + 'directory/' + str(ulCustomerID) + '.xml'
     db_conn.connect_db()
     cursor = db_conn.CONN.cursor()
     if cursor is None:
         print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'The database connection does not exist.'
         return
-    cus_count = cursor.execute(sql_cmd)
-    grps_result = cursor.fetchall()
-    if len(grps_result) == 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'len(grps_result) is', len(grps_result)
+    ulCusCount = cursor.execute(seqSQLCmd)
+    arrGroupResult = cursor.fetchall()
+    if len(arrGroupResult) == 0:
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'len(grps_result) is', len(arrGroupResult)
         return 
     db_conn.CONN.close()
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'grp_rslt:', grps_result
+    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'grp_rslt:', arrGroupResult
     
     # 生成客户配置文件头部
-    (include_node ,groups_node) = customer_head.generate_customer_head(cfg_path, doc)
-    for loop in range(0, cus_count):
+    (domIncludeNode , domGroupsNode) = customer_head.generate_customer_head(seqSQLCmd, doc)
+    for loop in range(0, ulCusCount):
         # 生成座席组并返回组节点DOM Node指针
-        group_node = group.generate_group(doc, grps_result[loop][0], customer_id)
+        domGroupNode = group.generate_group(doc, arrGroupResult[loop][0], ulCustomerID)
         # 将group添加至groups
-        groups_node.appendChild(group_node)
+        domGroupsNode.appendChild(domGroupNode)
         # 将include节点添加至doc
-        doc.appendChild(include_node)
+        doc.appendChild(domIncludeNode)
         # 生成xml
-        dom_to_xml.dom_to_pretty_xml(cfg_path, doc)
+        dom_to_xml.dom_to_pretty_xml(seqSQLCmd, doc)
         # 去掉xml文件头部的xml声明
-        dom_to_xml.del_xml_head(cfg_path)
+        dom_to_xml.del_xml_head(seqSQLCmd)

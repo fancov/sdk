@@ -1,4 +1,4 @@
-# -*- encoding:utf-8 -*-
+# coding=utf-8
 
 '''
 @author: bubble
@@ -13,64 +13,65 @@ import dom_to_xml
 import file_info
 from xml.dom.minidom import Document
 
-def make_sip(sip_id, customer_id = 'default', path = '../cfg/'):
+def make_sip(ulSIPID, ulCustomerID = 'default', seqPath = '../cfg/'):
     '''
     @param sip_id: sip账户id
     @param customer_id: 客户id
     @param path: sip账户配置文件路径
     @todo: 生成sip账户配置文件
     '''
-    if sip_id == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'sip_id is ', sip_id
+    if ulSIPID == '':
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'sip_id is ', ulSIPID
         return
 
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'path:',path
+    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'path:', seqPath
         
     doc = Document()
     
-    params_node = doc.createElement('params')
-    variables_node = doc.createElement('variables')
+    domParamsNode = doc.createElement('params')
+    domVariablesNode = doc.createElement('variables')
     
-    param_dict = {'password':'$${default_password}', 'vm-password':sip_id}
-    variable_dict = {'toll_allow':'domestic,international,local',
-            'accountcode':sip_id,
-            'user_context':customer_id,
-            'effective_caller_id_name':sip_id,
-            'effective_caller_id_number':sip_id,
+    dictParam = {'password':'$${default_password}', 'vm-password':ulSIPID}
+    dictVariable = {'toll_allow':'domestic,international,local',
+            'accountcode':ulSIPID,
+            'user_context':ulCustomerID,
+            'effective_caller_id_name':ulSIPID,
+            'effective_caller_id_number':ulSIPID,
             'outbound_caller_id_name':'$${outbound_caller_name}',
             'outbound_caller_id_number':'$${outbound_caller_id}',
             'callgroup':'techsupport'
     }
     
-    prms_node = []
+    listParamsNode = []
     loop = 0
-    for key in param_dict:
-        param_node = doc.createElement('param')
-        param_node.setAttribute('name', str(key))
-        param_node.setAttribute('value', str(param_dict[key]))
-        prms_node.append(param_node)
-        params_node.appendChild(prms_node[loop])
+    for key in dictParam:
+        domParamNode = doc.createElement('param')
+        domParamNode.setAttribute('name', str(key))
+        domParamNode.setAttribute('value', str(dictParam[key]))
+        listParamsNode.append(domParamNode)
+        domParamsNode.appendChild(listParamsNode[loop])
         loop = loop + 1
         
-    vari_node = []
+    listVariNode = []
     loop = 0
-    for key in variable_dict:
-        variable_node = doc.createElement('variable')
-        variable_node.setAttribute('name', str(key))
-        variable_node.setAttribute('value', str(variable_dict[key]))
-        vari_node.append(variable_node)
-        variables_node.appendChild(vari_node[loop])
+    for key in dictVariable:
+        domVariableNode = doc.createElement('variable')
+        domVariableNode.setAttribute('name', str(key))
+        domVariableNode.setAttribute('value', str(dictVariable[key]))
+        listVariNode.append(domVariableNode)
+        domVariablesNode.appendChild(listVariNode[loop])
         loop = loop + 1
         
-    user_node = doc.createElement('user')
-    user_node.setAttribute('id', str(sip_id))
-    user_node.appendChild(params_node)
-    user_node.appendChild(variables_node)
+    domUserNode = doc.createElement('user')
+    domUserNode.setAttribute('id', str(ulSIPID))
+    domUserNode.appendChild(domParamsNode)
+    domUserNode.appendChild(domVariablesNode)
     
-    include_node = doc.createElement('include')
-    include_node.appendChild(user_node)
-    doc.appendChild(include_node)
-    dom_to_xml.dom_to_pretty_xml(path, doc)
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'path:',path
+    domIncludeNode = doc.createElement('include')
+    domIncludeNode.appendChild(domUserNode)
+    doc.appendChild(domIncludeNode)
+    dom_to_xml.dom_to_pretty_xml(seqPath, doc)
+    dom_to_xml.del_xml_head(seqPath)
+    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'path:',seqPath
     
         
