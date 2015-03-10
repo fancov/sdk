@@ -17,7 +17,6 @@ extern "C"{
 
 #include <dos.h>
 #include <pt/pt.h>
-#include <pt/des.h>
 #include <pt/md5.h>
 
 PT_PROT_TYPE_EN g_aenDataProtType[PT_DATA_BUTT] = {PT_TCP, PT_TCP, PT_TCP};

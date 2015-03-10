@@ -25,7 +25,6 @@ extern "C"{
 #include <pt/goahead/um.h>
 #include <pt/goahead/wsIntrn.h>
 #include <pt/goahead/websda.h>
-#include <pt/des.h>
 
 #include "pts_msg.h"
 #include "pts_web.h"
@@ -48,8 +47,10 @@ extern "C"{
 #endif
 
 #define CREATE_NEW_USER "<a href=\"create_user.html\"><input type=\"button\" value=\"创建新用户\"/></a>&nbsp;&nbsp;&nbsp;&nbsp;\
-<a href=\"change_pwd.html\"><input type=\"button\" value=\"修改密码\" /></a>"
+<input type=\"button\" value=\"修改密码\" onclick=\"change_password()\" />&nbsp;&nbsp;&nbsp;&nbsp;<input type=\"button\" value=\"删除用户\" onclick=\"del_user()\" />"
 #define PTS_SELECT_PTC_MAX_COUNT 100
+#define PTS_DELECT_USER_MAX_COUNT 10
+
 /*********************************** Locals ***********************************/
 /*
  *  Change configuration here
@@ -96,6 +97,8 @@ int change_domain(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
         char_t *url, char_t *path, char_t* query);
 int websHttpUploadHandler(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                           char_t *url, char_t *path, char_t *query);
+int pts_del_users(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
+        char_t *url, char_t *path, char_t* query);
 static int pts_webs_redirect_pts_server(webs_t wp, char_t *urlPrefix, char_t *webDir,
     int arg, char_t *url, char_t *path, char_t *query);
 static int pts_webs_auto_redirect(webs_t wp, char_t *urlPrefix, char_t *webDir,
@@ -199,14 +202,14 @@ enum
 /*文件标签数据结构*/
 typedef  struct tagFileHeadStruct
 {
-    U32    ulFileLength;                    /*文件长度,不含tag*/
-    U32    ulCompressTag;                   /*是否经过压缩*/
-    U32    ulFileType;                      /*文件类型/软件类型*/
-    U32    ulDate;                          /*日期*/
-    U32    ulTime;                          /*时间*/
-    U32    ulVersionID;                     /*版本*/
-    U32    usCRC;                           /*CRC校验码*/
-    S8     szFileName[MAX_FILENAME_LEN];   /*版本文件名*/
+    U32    ulFileLength;                    /* 文件长度,不含tag */
+    U32    ulCompressTag;                   /* 是否经过压缩 */
+    U32    ulFileType;                      /* 文件类型/软件类型 */
+    U32    ulDate;                          /* 日期 */
+    U32    ulTime;                          /* 时间 */
+    U32    ulVersionID;                     /* 版本 */
+    U32    usCRC;                           /* CRC校验码 */
+    S8     szFileName[MAX_FILENAME_LEN];    /* 版本文件名 */
 } LOAD_FILE_TAG;
 
 
@@ -419,6 +422,7 @@ static int initWebs(int demo)
     websUrlHandlerDefine(T("/cgi-bin/ptsSortByLoginTime"), NULL, 0, pts_sort_by_loginTime, 0);  /* 按登陆时间排序 */
     websUrlHandlerDefine(T("/cgi-bin/ptsFilter"), NULL, 0, pts_filter, 0);                      /* 筛选 */
     websUrlHandlerDefine(T("/cgi-bin/change_domain"), NULL, 0, change_domain, 0);               /* 修改主备域名 */
+    websUrlHandlerDefine(T("/cgi-bin/del_users"), NULL, 0, pts_del_users, 0);                   /* 删除用户 */
     websUrlHandlerDefine(T("/visit_device"), NULL, 0, pts_webs_redirect_pts_server, 0);         /* 手动访问设备 */
     websUrlHandlerDefine(T("/internetIP="), NULL, 0, pts_webs_auto_redirect, 0);                /* 自动访问设备 */
     websUrlHandlerDefine(T("/editable_ajax.html"), NULL, 0, pts_set_remark, 0);                 /* 设置备注名 */
@@ -809,12 +813,49 @@ int change_domain(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
         stCtrlData.enCtrlType = PT_CTRL_PTS_MINOR_DOMAIN;
     }
 
-    printf("stCtrlData.achPtsMajorDomain : %s\n", stCtrlData.achPtsMajorDomain);
-
     for (i=0; i<lPtcCount; i++)
     {
         pts_save_msg_into_cache((U8*)pszPtcID[i], PT_DATA_CTRL, (U32)stCtrlData.enCtrlType, (S8 *)&stCtrlData, sizeof(PT_CTRL_DATA_ST), NULL, 0);
         usleep(20);
+    }
+
+    websError(wp, 200, T(""));
+    return 1;
+}
+
+int pts_del_users(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
+        char_t *url, char_t *path, char_t* query)
+{
+    S8 pszUserName[PTS_DELECT_USER_MAX_COUNT][PT_DATA_BUFF_32];
+    S8 *pPtcIDStart = NULL;
+    S8 *pSelectPtcID = NULL;
+    U32 ulUserCount = 0;
+    S32 i = 0;
+    S8  achSql[PTS_SQL_STR_SIZE] = {0};
+
+    pPtcIDStart = dos_strstr(url, "name=") + dos_strlen("name=");
+    pSelectPtcID = strtok(pPtcIDStart, "!");
+    while (pSelectPtcID)
+    {
+        dos_strncpy(pszUserName[ulUserCount], pSelectPtcID, PT_DATA_BUFF_32-1);
+        pszUserName[ulUserCount][PT_DATA_BUFF_32 - 1] = '\0';
+        ulUserCount++;
+        pSelectPtcID = strtok(NULL, "!");
+        if (NULL == pSelectPtcID)
+        {
+            break;
+        }
+
+        if (ulUserCount >= PTS_DELECT_USER_MAX_COUNT)
+        {
+            break;
+        }
+    }
+
+    for (i=0; i<ulUserCount; i++)
+    {
+        dos_snprintf(achSql, PTS_SQL_STR_SIZE, "delete from pts_user where name='%s'", pszUserName[i]);
+        dos_sqlite3_exec(g_stMySqlite, achSql);
     }
 
     websError(wp, 200, T(""));
@@ -1424,7 +1465,7 @@ S32 pts_user_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_n
     PTS_SQLITE_PARAM_ST* pstSqliteParam = (PTS_SQLITE_PARAM_ST *)para;
 
     pstSqliteParam->ulResCount++;
-    pstSqliteParam->ulBuffLen += snprintf(pstSqliteParam->pszBuff+pstSqliteParam->ulBuffLen, pstSqliteParam->ulMallocSize-pstSqliteParam->ulBuffLen, "[\"<INPUT name='PtcCheckBox'  type='radio' value='%s' >\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"],"
+    pstSqliteParam->ulBuffLen += snprintf(pstSqliteParam->pszBuff+pstSqliteParam->ulBuffLen, pstSqliteParam->ulMallocSize-pstSqliteParam->ulBuffLen, "[\"<INPUT name='PtcCheckBox'  type='checkbox' value='%s' >\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"],"
         ,column_value[0], column_value[0], column_value[2], column_value[3], column_value[4], column_value[5], column_value[6]);
 
     return 0;
@@ -1664,7 +1705,7 @@ static void formTest(webs_t wp, char_t *path, char_t *query)
 static void pts_create_user(webs_t wp, char_t *path, char_t *query)
 {
     char_t  *szname, *szPassWd, *szUserName, *szFixedTel, *szMobile, *szMailbox;
-    S32 lResult = 0;
+    //S32 lResult = 0;
     S8  pcListBuf[PT_DATA_BUFF_512] = {0};
     S8  achSql[PTS_SQL_STR_SIZE] = {0};
     S8 *pPassWordMd5 = NULL;
@@ -1692,7 +1733,7 @@ static void pts_create_user(webs_t wp, char_t *path, char_t *query)
         pPassWordMd5 = NULL;
     }
 
-    websDone(wp, 200);
+    websRedirect(wp, "pts_user.html");
 }
 
 

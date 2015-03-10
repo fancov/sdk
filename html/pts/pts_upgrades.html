@@ -43,7 +43,7 @@ $(document).ready(function() {
 					"sLast": "尾页"
 			        }
 		      },
-		      "aoColumnDefs": [{"className": "ptc_ardio",  "bSort": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [9]}, {"className": "ptc_nice", "aTargets": [3]}],
+		      "aoColumnDefs": [{"className": "checkBox",  "bSort": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [9]}, {"className": "ptc_nice", "aTargets": [3]}],
 
 			 "fnDrawCallback":function(){ $('#example tbody td.ptc_nice').editable('editable_ajax.html', {
 					"callback": function(sValue, y) {
@@ -60,17 +60,17 @@ $(document).ready(function() {
 			})}
 		});
 		
-		$('#example tbody tr').live('click', function () { 
-				alert("click");
-					if ($(this).parent().children("td.ptc_ardio").checked) 
-					{ 
-						$(this).parent().children("td.ptc_ardio").checked = false;	
-					} 
-					else 
-					{ 
-						$(this).parent().children("td.ptc_ardio").checked = true; 
-					}
-				});
+		$('#example tbody').on( 'click', 'tr', function () {
+			var _checked_ = $(this).children("td.checkBox").children("input").prop('checked'); 
+			if (_checked_) 
+			{
+				$(this).children("td.checkBox").children("input").prop('checked', false); 
+			} 
+			else 
+			{ 
+				$(this).children("td.checkBox").children("input").prop('checked', true); 
+			}
+    	});
 		// 
 	// $('.OperatingArea').html($("#OperatingAreaHTML").html());
 	// <"OperatingArea">
@@ -84,7 +84,7 @@ $(document).ready(function() {
 <div class="nav_content">
 	<div class="ddsmoothmenu nav_left" id="smoothmenu1">
 	<UL>
-	  <LI><A href="index.html">远程WEB</A></LI>
+	  <LI><A href="index.html">远程访问</A></LI>
 	  <LI><A href="#">PTC管理</A> 
 		<UL>
 			<LI><A href="pts_switch.html">PTS切换</A> </LI>
