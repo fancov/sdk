@@ -123,6 +123,8 @@ U32 config_init();
  */
 U32 config_deinit();
 
+S32 config_save();
+
 #if INCLUDE_BH_SERVER
 
 /**
@@ -172,6 +174,31 @@ S32 config_hb_deinit();
 S32 config_hb_save();
 
 #endif
+
+#ifdef INCLUDE_PTS
+
+U32 config_get_pts_port();
+U32 config_get_web_server_port();
+U32 config_get_pts_proxy_port();
+U32 config_get_pts_telnet_server_port();
+//U32 config_get_pts_domain(S8 *pszBuff, U32 ulLen);
+
+#endif
+
+#ifdef INCLUDE_PTC
+
+U32 config_get_pts_major_domain(S8 *pszBuff, U32 ulLen);
+U32 config_get_pts_minor_domain(S8 *pszBuff, U32 ulLen);
+U32 config_get_pts_major_port();
+U32 config_get_pts_minor_port();
+U32 config_get_ptc_name(S8 *pszBuff, U32 ulLen);
+U32 config_set_pts_major_domain(S8 *pszBuff);
+U32 config_set_pts_minor_domain(S8 *pszBuff);
+U32 config_set_pts_major_port(S8 *pszBuff);
+U32 config_set_pts_minor_port(S8 *pszBuff);
+
+#endif
+
 
 #endif
 

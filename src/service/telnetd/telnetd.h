@@ -88,6 +88,7 @@
 
 S32 telnet_send_data(U32 ulIndex, U32 ulType, S8 *pszBuffer, U32 ulLen);
 S32 telnet_set_mode(U32 ulIndex, U32 ulMode);
+VOID telnet_close_client(U32 ulIndex);
 
 #endif
 

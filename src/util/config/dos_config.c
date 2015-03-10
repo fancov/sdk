@@ -355,6 +355,419 @@ U32 config_deinit()
     return lRet;
 }
 
+S32 config_save()
+{
+     S8 szBuffFilename[256];
+
+     snprintf(szBuffFilename, sizeof(szBuffFilename)
+                , "%s/%s", GLB_CONFIG_FILE_PATH1, GLB_CONFIG_FILE_NAME);
+
+    if (access(szBuffFilename, R_OK|W_OK) < 0)
+    {
+        dos_printf("Cannon find the global config file in system etc. (%s)", szBuffFilename);
+
+        snprintf(szBuffFilename, sizeof(szBuffFilename)
+                        , "%s/%s", GLB_CONFIG_FILE_PATH2, GLB_CONFIG_FILE_NAME);
+        if (access(szBuffFilename, R_OK|W_OK) < 0)
+        {
+            dos_printf("Cannon find the global config file in service etc. (%s)", szBuffFilename);
+            dos_printf("%s", "Cannon find the global config. Config init failed.");
+            DOS_ASSERT(0);
+            return -1;
+        }
+    }
+
+    if (_config_save(g_pstGlobalCfg, szBuffFilename) < 0)
+    {
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    return 0;
+}
+
+/* pts配置接口 */
+#ifdef INCLUDE_PTS
+
+/**
+ * 函数：U32 config_get_pts_port()
+ * 功能：获取pts的端口
+ * 参数：
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_pts_port()
+{
+    S8 *pszValue;
+    S8 szBuff[32] = { 0 };
+    U16 usDBPort = 0;
+    S32 lPort = 0;
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/pts", "pts_port", szBuff, sizeof(szBuff));
+    if (!pszValue)
+    {
+        szBuff[0] = '\0';
+    }
+
+    usDBPort = (U16)dos_atol(szBuff, &lPort);
+    if (0 != usDBPort || usDBPort >= U16_BUTT)
+    {
+        usDBPort = DOS_PTS_SERVER_PORT;
+    }
+    else
+    {
+        usDBPort = (U16)lPort;
+    }
+
+    return usDBPort;
+}
+
+
+/**
+ * 函数：U32 config_get_goahead_server_port()
+ * 功能：获取pts的web server的端口
+ * 参数：
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_web_server_port()
+{
+    S8 *pszValue;
+    S8 szBuff[32] = { 0 };
+    U16 usDBPort = 0;
+    S32 lPort = 0;
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/pts", "web_server_port", szBuff, sizeof(szBuff));
+    if (!pszValue)
+    {
+        szBuff[0] = '\0';
+    }
+
+    usDBPort = (U16)dos_atol(szBuff, &lPort);
+    if (0 != usDBPort || usDBPort >= U16_BUTT)
+    {
+        usDBPort = DOS_PTS_WEB_SERVER_PORT;
+    }
+    else
+    {
+        usDBPort = (U16)lPort;
+    }
+
+    return usDBPort;
+}
+
+/**
+ * 函数：U32 config_get_pts_proxy_port()
+ * 功能：获取pts的web server的端口
+ * 参数：
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_pts_proxy_port()
+{
+    S8 *pszValue;
+    S8 szBuff[32] = { 0 };
+    U16 usDBPort = 0;
+    S32 lPort = 0;
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/pts", "proxy_port", szBuff, sizeof(szBuff));
+    if (!pszValue)
+    {
+        szBuff[0] = '\0';
+    }
+
+    usDBPort = (U16)dos_atol(szBuff, &lPort);
+    if (0 != usDBPort || usDBPort >= U16_BUTT)
+    {
+        usDBPort = DOS_PTS_PROXY_PORT;
+    }
+    else
+    {
+        usDBPort = (U16)lPort;
+    }
+
+    return usDBPort;
+}
+
+/**
+ * 函数：U32 config_get_pts_telnet_server_port()
+ * 功能：获取pts的telnet server的端口
+ * 参数：
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_pts_telnet_server_port()
+{
+    S8 *pszValue;
+    S8 szBuff[32] = { 0 };
+    U16 usDBPort = 0;
+    S32 lPort = 0;
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/pts", "telnet_server_port", szBuff, sizeof(szBuff));
+    if (!pszValue)
+    {
+        szBuff[0] = '\0';
+    }
+
+    usDBPort = (U16)dos_atol(szBuff, &lPort);
+    if (0 != usDBPort || usDBPort >= U16_BUTT)
+    {
+        usDBPort = DOS_PTS_TELNETD_LINSTEN_PORT;
+    }
+    else
+    {
+        usDBPort = (U16)lPort;
+    }
+
+    return usDBPort;
+}
+
+/**
+ * 函数：U32 config_get_pts_domain_dbname(S8 *pszBuff, U32 ulLen)
+ * 功能：获取pts的域名
+ * 参数：
+ *      S8 *pszBuff： 缓存
+ *      U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+/*U32 config_get_pts_domain(S8 *pszBuff, U32 ulLen)
+{
+    S8 *pszValue;
+
+    if (!pszBuff || ulLen < 0)
+    {
+        DOS_ASSERT(0);
+        pszBuff[0] = '\0';
+        return DOS_FAIL;
+    }
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/pts", "pts_domain", pszBuff, ulLen);
+    if (!pszValue)
+    {
+        pszBuff[0] = '\0';
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}*/
+
+#endif
+
+/* ptc配置接口 */
+#ifdef INCLUDE_PTC
+
+/**
+ * 函数：U32 config_get_pts_domain_dbname(S8 *pszBuff, U32 ulLen)
+ * 功能：获取pts的域名
+ * 参数：
+ *      S8 *pszBuff： 缓存
+ *      U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_pts_major_domain(S8 *pszBuff, U32 ulLen)
+{
+    S8 *pszValue;
+
+    if (!pszBuff || ulLen < 0)
+    {
+        DOS_ASSERT(0);
+        pszBuff[0] = '\0';
+        return DOS_FAIL;
+    }
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/ptc", "pts_major_domain", pszBuff, ulLen);
+    if (!pszValue)
+    {
+        pszBuff[0] = '\0';
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+U32 config_set_pts_major_domain(S8 *pszBuff)
+{
+    if (!pszBuff)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    S32 lResult = 0;
+
+    lResult = _config_set_param(g_pstGlobalCfg, "config/ptc", "pts_major_domain", pszBuff);
+    if (lResult < 0)
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+U32 config_get_pts_minor_domain(S8 *pszBuff, U32 ulLen)
+{
+    S8 *pszValue;
+
+    if (!pszBuff || ulLen < 0)
+    {
+        DOS_ASSERT(0);
+        pszBuff[0] = '\0';
+        return DOS_FAIL;
+    }
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/ptc", "pts_minor_domain", pszBuff, ulLen);
+    if (!pszValue)
+    {
+        pszBuff[0] = '\0';
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+U32 config_set_pts_minor_domain(S8 *pszBuff)
+{
+    if (!pszBuff)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    S32 lResult = 0;
+
+    lResult = _config_set_param(g_pstGlobalCfg, "config/ptc", "pts_minor_domain", pszBuff);
+    if (lResult < 0)
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+/**
+ * 函数：U32 config_get_pts_port()
+ * 功能：获取pts的端口
+ * 参数：
+ * 返回值：
+ */
+U32 config_get_pts_major_port()
+{
+    S8 *pszValue;
+    S8 szBuff[32] = { 0 };
+    U16 usDBPort = 0;
+    S32 lPort = 0;
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/ptc", "pts_major_port", szBuff, sizeof(szBuff));
+    if (!pszValue)
+    {
+        szBuff[0] = '\0';
+    }
+
+    usDBPort = (U16)dos_atol(szBuff, &lPort);
+    if (0 != usDBPort || usDBPort >= U16_BUTT)
+    {
+        usDBPort = DOS_PTS_SERVER_PORT;
+    }
+    else
+    {
+        usDBPort = (U16)lPort;
+    }
+
+    return usDBPort;
+}
+
+U32 config_set_pts_major_port(S8 *pszBuff)
+{
+    if (!pszBuff)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    S32 lResult = 0;
+
+    lResult = _config_set_param(g_pstGlobalCfg, "config/ptc", "pts_major_port", pszBuff);
+    if (lResult < 0)
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+/**
+ * 函数：U32 config_get_pts_port()
+ * 功能：获取pts的端口
+ * 参数：
+ * 返回值：
+ */
+U32 config_get_pts_minor_port()
+{
+    S8 *pszValue;
+    S8 szBuff[32] = { 0 };
+    U16 usDBPort = 0;
+    S32 lPort = 0;
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/ptc", "pts_minor_port", szBuff, sizeof(szBuff));
+    if (!pszValue)
+    {
+        szBuff[0] = '\0';
+    }
+
+    usDBPort = (U16)dos_atol(szBuff, &lPort);
+    if (0 != usDBPort || usDBPort >= U16_BUTT)
+    {
+        usDBPort = DOS_PTS_SERVER_PORT;
+    }
+    else
+    {
+        usDBPort = (U16)lPort;
+    }
+
+    return usDBPort;
+}
+
+U32 config_set_pts_minor_port(S8 *pszBuff)
+{
+    if (!pszBuff)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    S32 lResult = 0;
+
+    lResult = _config_set_param(g_pstGlobalCfg, "config/ptc", "pts_minor_port", pszBuff);
+    if (lResult < 0)
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+/**
+ * 函数：U32 config_get_ptc_name(S8 *pszBuff, U32 ulLen)
+ * 功能：获取ptc的ID
+ * 参数：
+ *      S8 *pszBuff： 缓存
+ *      U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_ptc_name(S8 *pszBuff, U32 ulLen)
+{
+    S8 *pszValue;
+
+    if (!pszBuff || ulLen < 0)
+    {
+        DOS_ASSERT(0);
+        pszBuff[0] = '\0';
+        return DOS_FAIL;
+    }
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/ptc", "ptc_name", pszBuff, ulLen);
+    if (!pszValue)
+    {
+        pszBuff[0] = '\0';
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+#endif
+
 #endif
 
 #ifdef __cplusplus

@@ -17,7 +17,9 @@ extern "C"{
 #include <dos.h>
 
 #if INCLUDE_PTC
-    #include <ptc_pts/ipcc.h>
+    #include <pt/ptc.h>
+#elif INCLUDE_PTS
+    #include <pt/pts.h>
 #endif
 
 
@@ -36,9 +38,11 @@ S32 root(S32 _argc, S8 ** _argv)
 
     heartbeat_start();
 #endif
-    
+
 #if INCLUDE_PTC
     ptc_main();
+#elif INCLUDE_PTS
+    pts_main();
 #endif
 
     while(1)

@@ -431,6 +431,7 @@ S32 dos_tmr_start(DOS_TMR_ST *hTmrHandle
         return -1;
     }
 
+    pthread_mutex_lock(&g_mutexTmrWaitAddList);
     /* 分配资源 */
     tmrNode = (TIMER_LIST_NODE_ST *)dos_dmem_alloc(sizeof(TIMER_LIST_NODE_ST));
     if (!tmrNode)
@@ -452,7 +453,6 @@ S32 dos_tmr_start(DOS_TMR_ST *hTmrHandle
     //logr_debug("Timer start. addr:%p, handle:%p", tmrNode, tmrNode->tmrHandle);
 
     /* 加入等待队列 */
-    pthread_mutex_lock(&g_mutexTmrWaitAddList);
     if (g_TmrWaitAddList == g_TmrWaitAddList->next)
     {
         g_TmrWaitAddList->next = tmrNode;
@@ -499,12 +499,17 @@ S32 dos_tmr_stop(DOS_TMR_ST *hTmrHandle)
     /* 还没加入工作队列，就直接删除 */
     if (TIMER_STATUS_WAITING_ADD == hTmr->ulTmrStatus)
     {
+        DOS_LOOP_DETECT_INIT(loop, DOS_TIMER_MAX_NUM + 1);
+
         pthread_mutex_lock(&g_mutexTmrWaitAddList);
         tmrNode = g_TmrWaitAddList->next;
         while(tmrNode != tmrNode->next)
         {
+            DOS_LOOP_DETECT(loop);
+
             if (&(tmrNode->tmrHandle) != hTmr)
             {
+                tmrNode = tmrNode->next;
                 continue;
             }
 

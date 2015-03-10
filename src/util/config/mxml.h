@@ -19,7 +19,7 @@
  */
 
 #ifndef _mxml_h_
-#  define _mxml_h_
+#define _mxml_h_
 
 /*
  * Include necessary headers...
