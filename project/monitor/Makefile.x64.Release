@@ -1,22 +1,22 @@
 ########################################################################
 #                         Define the Complie                           # 
 ########################################################################
-TARGET					= ctrl_panel
+TARGET					= monitor
 
 ########################################################################
 #                      Define some                           # 
 ########################################################################
 PROJECT_ROOT			= ../..
-DOS_LIBS				= -L$(PROJECT_ROOT)/libs
-SROUCE					= $(PROJECT_ROOT)/src
+DOS_LIBS			= -L$(PROJECT_ROOT)/libs
+SROUCE				= $(PROJECT_ROOT)/src
 DOS_INCLUDES			= -I$(SROUCE)/include
 
-SUFFIX					= o
+SUFFIX				= o
 
-LIBS					= -lpthread -lmysqlclient -lmxml_x64 -lpython2.6
+LIBS				= -lpthread  -lmxml_x64 -lmysqlclient -lpython2.6
 
 MYSQL_HEADERS			= -I/usr/include/mysql
-MYSQL_LIBS				= -L/usr/lib64/mysql
+MYSQL_LIBS			= -L/usr/lib64/mysql
 
 
 ########################################################################
@@ -30,11 +30,12 @@ include $(SROUCE)/util/config/Makefile.mk
 include $(SROUCE)/util/timer/Makefile.mk
 include $(SROUCE)/util/hash/Makefile.mk
 include $(SROUCE)/util/list/Makefile.mk
-include $(SROUCE)/util/task/Makefile.mk
 include $(SROUCE)/util/heartbeat/Makefile.mk
+include $(SROUCE)/util/task/Makefile.mk
 include $(SROUCE)/util/db/Makefile.mk
 include $(SROUCE)/cfg/Makefile.mk
 include $(SROUCE)/service/Makefile.mk
+include $(SROUCE)/service/monitor/Makefile.mk
 
 
 ########################################################################
@@ -48,10 +49,10 @@ ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS)
 ########################################################################
 #                         Define the Complie                           # 
 ########################################################################
-CC						= gcc
-CXX						= g++
-CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char
-DEFINES					= -DDIPCC_CTRL_PANEL -DDEBUG_VERSION
+CC					= gcc
+CXX					= g++
+CFLAGS					= -Wall
+DEFINES					= -DDIPCC_MONITER
 
 C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
 CXX_COMPILE				= $(CXX) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS)
@@ -65,10 +66,10 @@ dep :
 	$(CC) -MM $(ALL_SRCS) $(ALL_HEADERS) $(DEFINES) > $(TARGET).dep
 
 all : $(ALL_OBJS)
-	$(C_LINKS) -o $(TARGET)d $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS)
+	$(C_LINKS) -o $(TARGET) $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS)
 
 clean :
 	rm -f *.o
-	rm -f $(TARGET)d
+	rm -f $(TARGET)
 
 include $(TARGET).dep
