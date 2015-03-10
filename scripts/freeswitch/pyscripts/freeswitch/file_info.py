@@ -1,4 +1,5 @@
-# -*- encoding=utf-8 -*-
+# coding=utf-8
+
 '''
 @author: bubble
 @copyright: Shenzhen dipcc technologies co.,ltd
@@ -13,27 +14,27 @@ def get_file_name():
     @todo: 获取当前的文件名
     '''
     f = sys._getframe(1)
-    file_name = f.f_code.co_filename
+    seqFileName = f.f_code.co_filename
     if is_windows():
-        file_name = file_name.split('\\')[-1]
+        seqFileName = seqFileName.split('\\')[-1]
     elif is_linux():
-        file_name = file_name.split('/')[-1]
-    return file_name
+        seqFileName = seqFileName.split('/')[-1]
+    return seqFileName
 
 def get_line_number():
     '''
     @todo: 获取当前所在的行号
     '''
     f = sys._getframe(1)
-    line_number = f.f_lineno
-    return line_number
+    ulLineNumber = f.f_lineno
+    return ulLineNumber
 
 def get_function_name():
     '''
     @todo: 获取当前的函数名
     '''
-    f_name = sys._getframe(1).f_code.co_name
-    return f_name
+    seqFileName = sys._getframe(1).f_code.co_name
+    return seqFileName
 
 def is_windows():
     '''

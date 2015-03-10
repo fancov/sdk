@@ -17,6 +17,7 @@ extern "C"{
 /* include public header files */
 #include <dos.h>
 #include <bs_pub.h>
+#include <dos/dos_py.h>
 
 /* include private header files */
 #include "sc_def.h"
@@ -141,6 +142,14 @@ U32 sc_init_db()
 
 U32 mod_dipcc_sc_load()
 {
+#if 1
+    if (py_init_py() != DOS_SUCC)
+    {
+       DOS_ASSERT(0);
+       return DOS_FAIL;
+    }
+#endif
+
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start init SC.");
 
     if (sc_init_db() != DOS_SUCC)
@@ -266,7 +275,7 @@ U32 mod_dipcc_sc_shutdown()
     sc_httpd_shutdown();
     sc_task_mngt_shutdown();
     sc_dialer_shutdown();
-
+    py_deinit_py();
     return DOS_SUCC;
 }
 

@@ -27,6 +27,8 @@ extern "C"{
 #include "sc_httpd.h"
 #include "sc_httpd_def.h"
 #include "sc_http_api.h"
+#include <dos/dos_config.h>
+#include <dos/dos_py.h>
 
 /* define marcos */
 #define SC_HTTP_RSP_HEADER_FMT "HTTP/1.1 %s\r\n" \
@@ -767,6 +769,85 @@ U32 sc_httpd_shutdown()
 
     return DOS_SUCC;
 }
+
+//------------------------------------------------------
+
+U32 sc_gateway_proc(U32 ulAction, U32 ulGatewayID)
+{
+   U32   ulRet = 0;
+   
+   if (ulAction >= SC_API_CMD_ACTION_BUTT)
+   {
+      DOS_ASSERT(0);
+      return DOS_FAIL;
+   }
+   
+   switch(ulAction)
+   {
+      case SC_API_CMD_ACTION_GATEWAY_ADD:
+      case SC_API_CMD_ACTION_GATEWAY_UPDATE:
+         ulRet = py_c_call_py("router", "make_route", "(i)", ulGatewayID);
+         if (DOS_SUCC != ulRet)
+         {
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+         }
+         break;
+      case SC_API_CMD_ACTION_GATEWAY_DELETE: 
+         ulRet = py_c_call_py("router", "del_route", "(i)", ulGatewayID);
+         if (DOS_SUCC != ulRet)
+         {
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+         }
+         break;
+      default:
+         break;
+   }
+
+   return DOS_SUCC;
+}
+
+U32 sc_SIP_proc(U32 ulAction, U32 ulSIPID, U32 ulAgentID, U32 ulCustomerID)
+{
+   U32 ulRet = 0;
+
+   if (ulAction >= SC_API_CMD_ACTION_BUTT)
+   {
+      DOS_ASSERT(0);
+      return DOS_FAIL;
+   }
+
+   switch(ulAction)
+   {
+      case SC_API_CMD_ACTION_SIP_ADD:
+      case SC_API_CMD_ACTION_SIP_UPDATE:
+          ulRet = py_c_call_py("sip_mgnt", "add_sip","(i)", ulSIPID);
+          if (ulRet != DOS_SUCC)
+          {
+              DOS_ASSERT(0);
+              return DOS_FAIL;
+          }
+          break;
+      case SC_API_CMD_ACTION_SIP_DELETE:
+          ulRet = py_c_call_py("sip_mgnt", "del_sip_from_group","(i,i)", ulAgentID, ulCustomerID);
+          if (ulRet != DOS_SUCC)
+          {
+              DOS_ASSERT(0);
+              return DOS_FAIL;
+          }
+          break;
+      default:
+          break;
+   }
+
+   return DOS_SUCC;
+}
+
+
+//--------------------------------------------------
+
+
 #if 0
 #ifdef __cplusplus
 }

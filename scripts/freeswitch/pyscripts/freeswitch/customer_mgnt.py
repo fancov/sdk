@@ -1,4 +1,4 @@
-# -*- encoding=utf-8 -*-
+# coding=utf-8
 '''
 @author: bubble
 @copyright: Shenzhen dipcc technologies co.,ltd
@@ -10,39 +10,36 @@ import file_info
 import customer_file
 import os
 
-def add_customer(customer_id):
+def add_customer(ulCustomerID):
     '''
     @param customer_id: 客户id
     @todo: 增加一个客户
     '''
-    if str(customer_id).strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', customer_id
+    if str(ulCustomerID).strip() == '':
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', ulCustomerID
         return None
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', customer_id
+    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', ulCustomerID
     
     #生成该账户的配置文件
-    customer_file.generate_customer_file(customer_id)
+    customer_file.generate_customer_file(ulCustomerID)
          
-def del_customer(customer_id):
+def del_customer(ulCustomerID):
     '''
     @param customer_id: 被删除的客户id
     @todo: 删除一个客户
     '''
-    if str(customer_id).strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', customer_id
+    if str(ulCustomerID).strip() == '':
+        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', ulCustomerID
         return None
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', customer_id
-    cfg_path = db_config.get_db_param()['cfg_path']
-    if cfg_path[-1] != '/':
-        cfg_path = cfg_path + '/'
+    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', ulCustomerID
+    seqCfgPath = db_config.get_db_param()['cfg_path']
+    if seqCfgPath[-1] != '/':
+        seqCfgPath = seqCfgPath + '/'
         
     # 删除客户信息
-    mgnt_dir = cfg_path + 'directory/' + str(customer_id) + '/'
-    mgnt_xml = cfg_path + 'directory/' + str(customer_id) + '.xml'
-    if os.path.exists(mgnt_dir):
-        os.system('rm -rf %s' % mgnt_dir)
-    if os.path.exists(mgnt_xml):
-        os.system('rm %s' % mgnt_xml)
-    
-    
-    
+    sqeMgntDir = seqCfgPath + 'directory/' + str(ulCustomerID) + '/'
+    seqMgntXml = seqCfgPath + 'directory/' + str(ulCustomerID) + '.xml'
+    if os.path.exists(sqeMgntDir):
+        os.system('rm -rf %s' % sqeMgntDir)
+    if os.path.exists(seqMgntXml):
+        os.system('rm %s' % seqMgntXml)

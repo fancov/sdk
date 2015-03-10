@@ -30,10 +30,18 @@ extern "C"{
 
 U32 sc_http_api_reload_xml(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_gateway_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_call_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient);
 U32 sc_acd_http_req_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
+
+extern U32 sc_gateway_proc(U32 ulAction, U32 ulGatewayID);
+extern U32 sc_SIP_proc(U32 ulAction, U32 ulSIPID, U32 ulAgentID, U32 ulCustomerID);
+
+
+
 
 /* global parameters */
 SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
@@ -42,7 +50,9 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
     {"task",                     sc_http_api_task_ctrl},
     {"verify",                   sc_http_api_num_verify},
     {"callctrl",                 sc_http_api_call_ctrl},
-    {"agent",                    sc_http_api_agent_action},
+    {"agent-action",             sc_http_api_agent_action},
+    {"gateway",                  sc_http_api_gateway_action},
+    {"sip",                      sc_http_api_sip_action},
 
     {"",                         NULL}
 };
@@ -342,6 +352,179 @@ exec_fail:
     SC_TRACE_OUT();
     return DOS_FAIL;
 }
+
+//////////////////////////////////////////////////////
+
+/**
+ * 函数: U32 sc_http_api_gateway(SC_HTTP_CLIENT_CB_S *pstClient)
+ * 功能:
+ *      网关配置文件控制
+ * 参数:
+ *      SC_HTTP_CLIENT_CB_S *pstClient: 客户端指针
+ * 返回值: 成功则返回DOS_TRUE,否则返回DOS_FALSE
+ */
+U32 sc_http_api_gateway_action(SC_HTTP_CLIENT_CB_S *pstClient)
+{
+   S8*  pszGateWayID, *pszAction;
+   U32  ulGatewayID, ulAction;
+ 
+   if (DOS_ADDR_INVALID(pstClient))
+   {
+       DOS_ASSERT(0);
+
+       return SC_HTTP_ERRNO_INVALID_REQUEST;
+   }
+
+   SC_TRACE_IN(pstClient, 0, 0, 0);
+
+   /* 获取网关id */
+   pszGateWayID = sc_http_api_get_value(&pstClient->stParamList, "gateway_id");
+   if (!pszGateWayID || '\0' == pszGateWayID[0])
+   {
+       DOS_ASSERT(0);
+       goto invalid_params;
+   }
+   if (dos_atoul(pszGateWayID, &ulGatewayID) < 0)
+   {
+       DOS_ASSERT(0);
+       goto invalid_params;
+   }
+
+   /* 获取动作 */
+   pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
+   if (!pszAction || '\0' == pszAction[0])
+   {
+       DOS_ASSERT(0);
+       goto invalid_params;
+   }
+
+   if(0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+   {
+      ulAction = SC_API_CMD_ACTION_GATEWAY_ADD;
+   }
+   else if(0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+   {
+      ulAction = SC_API_CMD_ACTION_GATEWAY_DELETE;
+   }
+   else if(0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+   {
+      ulAction = SC_API_CMD_ACTION_GATEWAY_UPDATE;
+   }
+   else
+   {
+       DOS_ASSERT(0);
+       goto invalid_params;
+   }
+
+   if (sc_gateway_proc(ulAction, ulGatewayID) != DOS_SUCC)
+   {
+       DOS_ASSERT(0);
+       return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+   }
+
+   return DOS_SUCC;
+
+invalid_params:
+   pstClient->ulResponseCode = 200;
+   pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
+
+   SC_TRACE_OUT();
+   return DOS_FAIL;
+}
+
+U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
+{
+    S8  *pszSIPID, *pszAction, *pszAgentID, *pszCustomerID;
+    U32 ulSIPID, ulAction, ulAgentID, ulCustomerID;
+
+    if (DOS_ADDR_INVALID(pstClient))
+    {
+        DOS_ASSERT(0);
+
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    SC_TRACE_IN(pstClient, 0, 0, 0);
+
+    /* 获取sip账户id */
+    pszSIPID = sc_http_api_get_value(&pstClient->stParamList, "id");
+    if (!pszSIPID || '\0' == pszSIPID[0])
+    {
+       DOS_ASSERT(0);
+       return DOS_FAIL;
+    }
+
+    if (dos_atoul(pszSIPID, &ulSIPID) < 0)
+    {
+       DOS_ASSERT(0);
+       goto invalid_params;
+    }
+    /* 获取sip账户对应的坐席ID */
+    pszAgentID = sc_http_api_get_value(&pstClient->stParamList, "agent_id");
+    if (!pszAgentID)
+    {
+        DOS_ASSERT(0);
+    }
+
+    if (dos_atoul(pszAgentID, &ulAgentID) < 0)
+    {
+        DOS_ASSERT(0);
+    }
+
+    /* 获取SIP账户所属客户ID */
+    pszCustomerID = sc_http_api_get_value(&pstClient->stParamList, "customer_id");
+    if (!pszCustomerID)
+    {
+        DOS_ASSERT(0);
+    }
+
+    if (dos_atoul(pszCustomerID, &ulCustomerID) < 0)
+    {
+        DOS_ASSERT(0);
+    }
+
+    /* 获取动作 */
+    pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
+    if (!pszAction || '\0' == pszAction)
+    {
+       DOS_ASSERT(0);
+       return DOS_FAIL;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+       ulAction = SC_API_CMD_ACTION_SIP_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+       ulAction = SC_API_CMD_ACTION_SIP_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("delete")))
+    {
+       ulAction = SC_API_CMD_ACTION_SIP_UPDATE;
+    }
+    else
+    {
+       DOS_ASSERT(0);
+       goto invalid_params;
+    }
+
+    if (sc_SIP_proc(ulAction, ulSIPID, ulAgentID, ulCustomerID) != DOS_SUCC)
+    {
+       DOS_ASSERT(0);
+       return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+    
+invalid_params:
+       pstClient->ulResponseCode = 200;
+       pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
+    
+       SC_TRACE_OUT();
+       return DOS_FAIL;
+}
+
+ ////////////////////////////////////////////////////
+
 
 U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient)
 {

@@ -91,4 +91,8 @@
         <!--pts id-->
         <param name="ptc_id" value="123456789abcdefg" />
     </ptc>
+	<!--Python脚本路径配置-->
+	<py_path>
+	   <param name="path" value="../scripts/freeswitch/pyscripts/freeswitch/"/>
+	</py_path>
 </config>

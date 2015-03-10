@@ -207,6 +207,27 @@ U32 config_get_db_dbname(S8 *pszBuff, U32 ulLen)
     return 0;
 }
 
+U32 config_get_py_path(S8 *pszBuff, U32 ulLen)
+{
+   S8 *pszValue;
+
+   if (!pszBuff || ulLen < 0)
+    {
+        DOS_ASSERT(0);
+        pszBuff[0] = '\0';
+        return -1;
+    }
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/py_path", "path", pszBuff, ulLen);
+    if (!pszValue)
+    {
+        pszBuff[0] = '\0';
+        return -1;
+    }
+
+    return 0;
+}
+
 
 /**
  * º¯Êý£ºU32 config_hh_get_send_interval()
