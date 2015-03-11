@@ -55,6 +55,8 @@
 
 #define INCLUDE_CC_SC                     1
 
+#define INCLUDE_SERVICE_PYTHON            1
+
 
 #endif /* END __CFG_MOD_FS_CORE_H__ */
 

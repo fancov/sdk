@@ -2,8 +2,10 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include <unistd.h>
-#include <stdarg.h>
+#include <dos.h>
+
+#if INCLUDE_SERVICE_PYTHON
+
 #include <python2.6/Python.h>
 #include <dos/dos_types.h>
 #include <dos/dos_config.h>
@@ -58,10 +60,10 @@ U32   py_c_call_py(const char *pszModule, const char *pszFunc, const char *pszPy
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-   
+
     /* 设置工作路径 */
     ulRet = config_get_py_path(szPyScriptPath, sizeof(szPyScriptPath));
-    if (0 > ulRet) 
+    if (0 > ulRet)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
@@ -151,6 +153,8 @@ U32  py_deinit_py()
 
     return DOS_SUCC;
 }
+
+#endif /* endof INCLUDE_SERVICE_PYTHON */
 
 #ifdef __cplusplus
 }

@@ -605,6 +605,9 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 u
 U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB);
 U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB);
 
+U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
+U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSIPID, U32 ulAgentID, U32 ulCustomerID);
+
 
 #ifdef __cplusplus
 }

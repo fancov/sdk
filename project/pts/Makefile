@@ -6,17 +6,18 @@ TARGET					= pts
 ########################################################################
 #                      Define some                           # 
 ########################################################################
-PROJECT_ROOT			= ../..
+PROJECT_ROOT				= ../..
 DOS_LIBS				= -L$(PROJECT_ROOT)/libs
 SROUCE					= $(PROJECT_ROOT)/src
-DOS_INCLUDES			= -I$(SROUCE)/include
+DOS_INCLUDES				= -I$(SROUCE)/include
 
 SUFFIX					= o
 
-LIBS					= -lpthread -lmysqlclient -lmxml_x64 -lsqlite3_x64 -lwebs_x64
+LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86 -lwebs_x86
 
-MYSQL_HEADERS			= -I/usr/include/mysql
-MYSQL_LIBS				= -L/usr/lib64/mysql
+MYSQL_HEADERS				= -I/usr/include/mysql
+#MYSQL_LIBS				= -L/usr/lib64/mysql
+MYSQL_LIBS				= -L/lib/mysql
 
 
 
@@ -32,9 +33,8 @@ include $(SROUCE)/util/timer/Makefile.mk
 include $(SROUCE)/util/hash/Makefile.mk
 include $(SROUCE)/util/list/Makefile.mk
 include $(SROUCE)/util/heartbeat/Makefile.mk
-include $(SROUCE)/util/db/Makefile.mk
 include $(SROUCE)/cfg/Makefile.mk
-include $(SROUCE)/service/Makefile
+include $(SROUCE)/service/Makefile.mk
 include $(SROUCE)/service/pts/Makefile.mk
 include $(SROUCE)/service/ptlib/Makefile.mk
 
@@ -52,8 +52,8 @@ ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS)
 ########################################################################
 CC						= gcc
 CXX						= g++
-CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char
-DEFINES					= -DDIPCC_PTS -DDEBUG_VERSION
+CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char -m32
+DEFINES					= -DDIPCC_PTS -DDEBUG_VERSION -DDIGEST_ACCESS_SUPPORT
 
 C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
 CXX_COMPILE				= $(CXX) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS)

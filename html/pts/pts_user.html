@@ -43,9 +43,9 @@ $(document).ready(function() {
 					"sLast": "尾页"
 			        }
 		      },
-		      "aoColumnDefs": [{"className": "user_name",  "bSort": false, "aTargets": [0]}, {"className": "pts_name", "aTargets": [2]}, {"className": "fixedTel", "aTargets": [3]}, {"className": "mobile", "aTargets": [4]}, {"className": "mailbox", "aTargets": [5]}],
+		      "aoColumnDefs": [{"className": "checkBox",  "bSort": false, "aTargets": [0]}, {"className": "user_name",  "bSort": false, "aTargets": [1]}, {"className": "edit_pts_name", "aTargets": [2]}, {"className": "edit_fixedTel", "aTargets": [3]}, {"className": "edit_mobile", "aTargets": [4]}, {"className": "edit_mailbox", "aTargets": [5]}],
 
-			 "fnDrawCallback":function(){ $('#example tbody td.pts_name').editable('change_info.html', {
+			 "fnDrawCallback":function(){ $('#example tbody td.edit_pts_name, #example tbody td.edit_fixedTel, #example tbody td.edit_mobile, #example tbody td.edit_mailbox').editable('change_info.html', {
 					"callback": function(sValue, y) {
 						// var aPos = oTable.fnGetPosition(this);
 						var aPos = oTable.fnGetPosition(this);
@@ -58,35 +58,19 @@ $(document).ready(function() {
 						};
 					}
 			})}
-
-			 // "selctTr":function(){
-			 // 	$('#example tbody tr').click('click', function () {
-			 // 		alert("click"); 
-			 // 	})
-			 // }
-
 		});
 
-		$('#example tbody').on( 'click', 'tr', function () {
-			$('#example tbody input:radio[name=PtcCheckBox]').each(function(index,domEle){
-				alert(domEle.checked);
-			     domEle.attr('checked');
-			});
-			var _checked_ = $(this).children("td.user_name").children("input").attr('checked'); 
-			if (_checked_ != "checked"
-				|| _checked_ != "undefined") 
-			{ 
-				$(this).children("td.user_name").children("input").attr('checked', 'false'); 
+		$('#example tbody').on('click', 'tr', function () {
+			var _checked_ = $(this).children("td.checkBox").children("input").prop('checked'); 
+			if (_checked_) 
+			{
+				$(this).children("td.checkBox").children("input").prop('checked', false); 
 			} 
 			else 
 			{ 
-				$(this).children("td.user_name").children("input").attr('checked', 'true'); 
+				$(this).children("td.checkBox").children("input").prop('checked', true); 
 			}
     	});
-				
-		
-	// $('.OperatingArea').html($("#OperatingAreaHTML").html());
-	// <"OperatingArea">
 });
 
 </script>
@@ -97,7 +81,7 @@ $(document).ready(function() {
 <div class="nav_content">
 	<div class="ddsmoothmenu nav_left" id="smoothmenu1">
 	<UL>
-	  <LI><A href="index.html">远程WEB</A></LI>
+	  <LI><A href="index.html">远程访问</A></LI>
 	  <LI><A href="#">PTC管理</A> 
 		<UL>
 			<LI><A href="pts_switch.html">PTS切换</A> </LI>

@@ -3,6 +3,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
 <title>AMC</title>
+<script type="text/javascript" language="javascript" src="jquery.js"></script>
 <SCRIPT src="ddsmoothmenu.js" type=text/javascript></SCRIPT>
 <SCRIPT src="pts_public.js" type=text/javascript></SCRIPT>
 
@@ -17,7 +18,19 @@
 	.nav_left{float:left;}
 	.nav_right{float:right; margin-right:25px;}
 </style>
+<script>
+	function set_user_name()
+	{
+		var href = window.location.href;
+		var words = href.split('=');
+		var username = words[words.length - 1];
 
+	 	document.getElementById('username').value = username;	
+
+	 	return true;
+	}
+	setTimeout("set_user_name()", 0);
+</script> 
 </head>
 
 <body style="margin:0; padding:0; background:#fafafa;">
@@ -45,7 +58,7 @@
 		<ul>
 			<li>
 				<label>用户名：</label>
-				<input type="text" name="name" placeholder="请输入用户名"  onblur="checkna()" required/><span class="tips" id="divname">长度1~12个字符</span>
+				<input type="text" name="name" id="username" placeholder="请输入用户名"  onblur="checkna()" required/><span class="tips" id="divname">长度1~12个字符</span>
 			</li>
 			<li>
 				<label>原密码：</label>
