@@ -459,6 +459,44 @@ S32 sc_ep_black_list_find(VOID *pObj, HASH_NODE_S *pstHashNode)
     return DOS_FAIL;
 }
 
+/* É¾³ýSIPÕË»§ */
+U32 sc_ep_sip_userid_delete(U32 ulSIPUserID, S8 *pszUserID)
+{
+    SC_USER_ID_NODE_ST *pstUserID   = NULL;
+    HASH_NODE_S        *pstHashNode = NULL;
+    U32                ulHashIndex  = U32_BUTT;
+
+
+    if (DOS_ADDR_INVALID(pszUserID))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    ulHashIndex= sc_sip_userid_hash_func(pszUserID);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pszUserID, sc_ep_sip_userid_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    hash_delete_node(g_pstHashSIPUserID, pstHashNode, ulHashIndex);
+    pstUserID = pstHashNode->pHandle;
+    HASH_Init_Node(pstHashNode);
+    pstHashNode->pHandle = NULL;
+
+    dos_dmem_free(pstUserID);
+    pstUserID = NULL;
+    dos_dmem_free(pstHashNode);
+    pstHashNode = NULL;
+
+    return DOS_SUCC;
+}
+
 U32 sc_gateway_delete(U32 ulGatewayID)
 {
     HASH_NODE_S   *pstHashNode = NULL;
@@ -986,7 +1024,7 @@ U32 sc_load_black_list(U32 ulIndex)
     }
     else
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, regex_number FROM tbl_blacklist id=%u;", ulIndex);
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, regex_number FROM tbl_blacklist WHERE id=%u;", ulIndex);
     }
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_load_black_list_cb, NULL, NULL) != DB_ERR_SUCC)
