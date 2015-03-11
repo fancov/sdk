@@ -103,6 +103,8 @@ extern "C"{
 #define SC_CPU_THRESHOLD_VAL0          90         /* 系统状态阀值，CPU占用率阀值0 */
 #define SC_CPU_THRESHOLD_VAL1          95         /* 系统状态阀值，CPU占用率阀值0 */
 
+#define SC_INVALID_INDEX               0
+
 /* 检测一个TCB是有正常的Task和CustomID */
 #define SC_TCB_HAS_VALID_OWNER(pstTCB)                        \
     ((pstTCB)                                                 \

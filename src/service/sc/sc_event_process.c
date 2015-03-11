@@ -293,25 +293,9 @@ static U32 sc_sip_did_hash_func(S8 *pszDIDNum)
  *      S8 *pszNum : 当前黑名单号码
  * 返回值: U32 返回hash值
  */
-static U32 sc_black_list_hash_func(S8 *pszNum)
+static U32 sc_ep_black_list_hash_func(U32 ulID)
 {
-    U32 ulIndex;
-    U32 ulHashIndex;
-
-    ulIndex = 0;
-    for(;;)
-    {
-        if ('\0' == pszNum[ulIndex])
-        {
-            break;
-        }
-
-        ulHashIndex += (pszNum[ulIndex] << 3);
-
-        ulIndex++;
-    }
-
-    return ulHashIndex % SC_IP_USERID_HASH_SIZE;
+    return ulID % SC_IP_USERID_HASH_SIZE;
 }
 
 
@@ -427,6 +411,53 @@ S32 sc_ep_sip_userid_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
     return DOS_SUCC;
 }
 
+/* 查找路由 */
+S32 sc_ep_route_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
+{
+    SC_ROUTE_NODE_ST *pstRouteCurrent, *pstRouteNew;
+
+    if (DOS_ADDR_INVALID(pKey)
+        || DOS_ADDR_INVALID(pstDLLNode)
+        || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+    {
+        return DOS_FAIL;
+    }
+
+    pstRouteNew = pKey;
+    pstRouteCurrent = pstDLLNode->pHandle;
+
+    if (pstRouteNew->ulID == pstRouteCurrent->ulID)
+    {
+        return DOS_SUCC;
+    }
+
+    return DOS_FAIL;
+}
+
+/* 查找黑名单 */
+S32 sc_ep_black_list_find(VOID *pObj, HASH_NODE_S *pstHashNode)
+{
+    SC_BLACK_LIST_NODE *pstBlackList = NULL;
+    U32  ulID;
+
+    if (DOS_ADDR_INVALID(pObj)
+        || DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        return DOS_FAIL;
+    }
+
+    ulID = *(U32 *)pObj;
+    pstBlackList = pstHashNode->pHandle;
+
+    if (ulID == pstBlackList->ulID)
+    {
+        return DOS_SUCC;
+    }
+
+    return DOS_FAIL;
+}
+
 
 /**
  * 函数: S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
@@ -440,6 +471,7 @@ S32 sc_ep_sip_userid_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
  */
 S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
+    SC_USER_ID_NODE_ST *pstSIPUserIDNodeNew = NULL;
     SC_USER_ID_NODE_ST *pstSIPUserIDNode = NULL;
     HASH_NODE_S        *pstHashNode      = NULL;
     BOOL               blProcessOK       = DOS_FALSE;
@@ -454,20 +486,20 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         return DOS_FAIL;
     }
 
-    pstSIPUserIDNode = (SC_USER_ID_NODE_ST *)dos_dmem_alloc(sizeof(SC_USER_ID_NODE_ST));
-    if (DOS_ADDR_INVALID(pstSIPUserIDNode))
+    pstSIPUserIDNodeNew = (SC_USER_ID_NODE_ST *)dos_dmem_alloc(sizeof(SC_USER_ID_NODE_ST));
+    if (DOS_ADDR_INVALID(pstSIPUserIDNodeNew))
     {
         DOS_ASSERT(0);
 
         return DOS_FAIL;
     }
-    sc_ep_sip_userid_init(pstSIPUserIDNode);
+    sc_ep_sip_userid_init(pstSIPUserIDNodeNew);
 
     for (lIndex=0, blProcessOK=DOS_TRUE; lIndex<lCount; lIndex++)
     {
         if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
         {
-            if (dos_atoul(aszValues[lIndex], &pstSIPUserIDNode->ulSIPID) < 0)
+            if (dos_atoul(aszValues[lIndex], &pstSIPUserIDNodeNew->ulSIPID) < 0)
             {
                 blProcessOK = DOS_FALSE;
                 break;
@@ -475,7 +507,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "customer_id", dos_strlen("customer_id")))
         {
-            if (dos_atoul(aszValues[lIndex], &pstSIPUserIDNode->ulCustomID) < 0)
+            if (dos_atoul(aszValues[lIndex], &pstSIPUserIDNodeNew->ulCustomID) < 0)
             {
                 blProcessOK = DOS_FALSE;
                 break;
@@ -490,8 +522,8 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
 
-            dos_strncpy(pstSIPUserIDNode->szUserID, aszValues[lIndex], sizeof(pstSIPUserIDNode->szUserID));
-            pstSIPUserIDNode->szUserID[sizeof(pstSIPUserIDNode->szUserID) - 1] = '\0';
+            dos_strncpy(pstSIPUserIDNodeNew->szUserID, aszValues[lIndex], sizeof(pstSIPUserIDNodeNew->szUserID));
+            pstSIPUserIDNodeNew->szUserID[sizeof(pstSIPUserIDNodeNew->szUserID) - 1] = '\0';
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "extension", dos_strlen("extension")))
         {
@@ -502,8 +534,8 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
 
-            dos_strncpy(pstSIPUserIDNode->szExtension, aszValues[lIndex], sizeof(pstSIPUserIDNode->szExtension));
-            pstSIPUserIDNode->szExtension[sizeof(pstSIPUserIDNode->szExtension) - 1] = '\0';
+            dos_strncpy(pstSIPUserIDNodeNew->szExtension, aszValues[lIndex], sizeof(pstSIPUserIDNodeNew->szExtension));
+            pstSIPUserIDNodeNew->szExtension[sizeof(pstSIPUserIDNodeNew->szExtension) - 1] = '\0';
         }
     }
 
@@ -511,33 +543,66 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     {
         DOS_ASSERT(0);
 
-        dos_dmem_free(pstSIPUserIDNode);
-        pstSIPUserIDNode = NULL;
+        dos_dmem_free(pstSIPUserIDNodeNew);
+        pstSIPUserIDNodeNew = NULL;
         return DOS_FALSE;
     }
-
-    pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
-    if (DOS_ADDR_INVALID(pstHashNode))
-    {
-        DOS_ASSERT(0);
-
-        dos_dmem_free(pstSIPUserIDNode);
-        pstSIPUserIDNode = NULL;
-        return DOS_FALSE;
-    }
-
-    sc_logr_debug(SC_ESL, "Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
-                , pstSIPUserIDNode->ulSIPID
-                , pstSIPUserIDNode->ulCustomID
-                , pstSIPUserIDNode->szUserID
-                , pstSIPUserIDNode->szExtension);
-
-    HASH_Init_Node(pstHashNode);
-    pstHashNode->pHandle = pstSIPUserIDNode;
-    ulHashIndex = sc_sip_userid_hash_func(pstSIPUserIDNode->szUserID);
 
     pthread_mutex_lock(&g_mutexHashSIPUserID);
-    hash_add_node(g_pstHashSIPUserID, (HASH_NODE_S *)pstHashNode, ulHashIndex, NULL);
+    ulHashIndex = sc_sip_userid_hash_func(pstSIPUserIDNodeNew->szUserID);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pstSIPUserIDNodeNew->szUserID, sc_ep_sip_userid_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode))
+    {
+        pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+        if (DOS_ADDR_INVALID(pstHashNode))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstSIPUserIDNodeNew);
+            pstSIPUserIDNodeNew = NULL;
+            pthread_mutex_unlock(&g_mutexHashSIPUserID);
+            return DOS_FALSE;
+        }
+
+        sc_logr_debug(SC_ESL, "Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
+                    , pstSIPUserIDNodeNew->ulSIPID
+                    , pstSIPUserIDNodeNew->ulCustomID
+                    , pstSIPUserIDNodeNew->szUserID
+                    , pstSIPUserIDNodeNew->szExtension);
+
+        HASH_Init_Node(pstHashNode);
+        pstHashNode->pHandle = pstSIPUserIDNodeNew;
+        ulHashIndex = sc_sip_userid_hash_func(pstSIPUserIDNodeNew->szUserID);
+
+        hash_add_node(g_pstHashSIPUserID, (HASH_NODE_S *)pstHashNode, ulHashIndex, NULL);
+    }
+    else
+    {
+        pstSIPUserIDNode = pstHashNode->pHandle;
+        if (DOS_ADDR_INVALID(pstSIPUserIDNode))
+        {
+            sc_logr_debug(SC_ESL, "%d", "Invalid data while update the sip user id.");
+
+            dos_dmem_free(pstSIPUserIDNodeNew);
+            pstSIPUserIDNodeNew = NULL;
+
+            pthread_mutex_unlock(&g_mutexHashSIPUserID);
+            return DOS_FAIL;
+        }
+
+        pstSIPUserIDNode->ulCustomID = pstSIPUserIDNodeNew->ulCustomID;
+        pstSIPUserIDNode->ulSIPID = pstSIPUserIDNodeNew->ulSIPID;
+
+        dos_strncpy(pstSIPUserIDNode->szUserID, pstSIPUserIDNodeNew->szUserID, sizeof(pstSIPUserIDNode->szUserID));
+        pstSIPUserIDNode->szUserID[sizeof(pstSIPUserIDNode->szUserID) - 1] = '\0';
+
+        dos_strncpy(pstSIPUserIDNode->szExtension, pstSIPUserIDNodeNew->szExtension, sizeof(pstSIPUserIDNode->szExtension));
+        pstSIPUserIDNode->szExtension[sizeof(pstSIPUserIDNode->szExtension) - 1] = '\0';
+
+        dos_dmem_free(pstSIPUserIDNodeNew);
+        pstSIPUserIDNodeNew = NULL;
+    }
+
     pthread_mutex_unlock(&g_mutexHashSIPUserID);
 
     return DOS_SUCC;
@@ -549,11 +614,18 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
  * 参数:
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  */
-U32 sc_load_sip_userid()
+U32 sc_load_sip_userid(U32 ulIndex)
 {
     S8 szSQL[1024] = { 0, };
 
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,username FROM tbl_sip where tbl_sip.status = 1;");
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,username FROM tbl_sip where tbl_sip.status = 1;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,username FROM tbl_sip where tbl_sip.status = 1 AND id=%d;", ulIndex);
+    }
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_load_sip_userid_cb, NULL, NULL) != DB_ERR_SUCC)
     {
@@ -579,6 +651,7 @@ U32 sc_load_sip_userid()
 S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     SC_BLACK_LIST_NODE *pstBlackListNode = NULL;
+    SC_BLACK_LIST_NODE *pstBlackListTmp  = NULL;
     HASH_NODE_S        *pstHashNode      = NULL;
     BOOL               blProcessOK       = DOS_TRUE;
     S32                lIndex            = 0;
@@ -643,22 +716,46 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         return DOS_FAIL;
     }
 
-    pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
-    if (DOS_ADDR_INVALID(pstHashNode ))
+    ulHashIndex = sc_ep_black_list_hash_func(pstBlackListNode->ulID);
+    pstHashNode = hash_find_node(g_pstHashBlackList, ulHashIndex, (VOID *)&pstBlackListNode->ulID, sc_ep_black_list_find);
+    if (DOS_ADDR_INVALID(pstHashNode))
     {
-        DOS_ASSERT(0);
+        pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+        if (DOS_ADDR_INVALID(pstHashNode ))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstBlackListNode);
+            return DOS_FAIL;
+        }
+
+        HASH_Init_Node(pstHashNode);
+        pstHashNode->pHandle = pstBlackListNode;
+        ulHashIndex = sc_ep_black_list_hash_func(pstBlackListNode->ulID);
+
+        pthread_mutex_lock(&g_mutexHashBlackList);
+        hash_add_node(g_pstHashBlackList, pstHashNode, ulHashIndex, NULL);
+        pthread_mutex_unlock(&g_mutexHashBlackList);
+    }
+    else
+    {
+        pstBlackListTmp = pstHashNode->pHandle;
+        if (DOS_ADDR_INVALID(pstBlackListTmp))
+        {
+            DOS_ASSERT(0);
+            dos_dmem_free(pstBlackListNode);
+            pstBlackListNode = 0;
+            return DOS_FAIL;
+        }
+
+        pstBlackListTmp->ulType = pstBlackListNode->ulType;
+
+        dos_strncpy(pstBlackListTmp->szNum, pstBlackListNode->szNum, sizeof(pstBlackListTmp->szNum));
+        pstBlackListTmp->szNum[sizeof(pstBlackListTmp->szNum) - 1] = '\0';
 
         dos_dmem_free(pstBlackListNode);
-        return DOS_FAIL;
+        pstBlackListNode = 0;
     }
-
-    HASH_Init_Node(pstHashNode);
-    pstHashNode->pHandle = pstBlackListNode;
-    ulHashIndex = sc_black_list_hash_func(pstBlackListNode->szNum);
-
-    pthread_mutex_lock(&g_mutexHashBlackList);
-    hash_add_node(g_pstHashBlackList, pstHashNode, ulHashIndex, NULL);
-    pthread_mutex_unlock(&g_mutexHashBlackList);
 
     return DOS_SUCC;
 }
@@ -670,11 +767,18 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
  * 参数:
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  */
-U32 sc_load_black_list()
+U32 sc_load_black_list(U32 ulIndex)
 {
     S8 szSQL[1024] = { 0, };
 
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, regex_number FROM tbl_blacklist;");
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, regex_number FROM tbl_blacklist;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, regex_number FROM tbl_blacklist id=%u;", ulIndex);
+    }
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_load_black_list_cb, NULL, NULL) != DB_ERR_SUCC)
     {
@@ -700,7 +804,8 @@ U32 sc_load_black_list()
  */
 S32 sc_load_did_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
-    SC_DID_NODE_ST     *pstDIDNumNode = NULL;
+    SC_DID_NODE_ST     *pstDIDNumNode    = NULL;
+    SC_DID_NODE_ST     *pstDIDNumTmp     = NULL;
     HASH_NODE_S        *pstHashNode      = NULL;
     BOOL               blProcessOK       = DOS_FALSE;
     U32                ulHashIndex       = 0;
@@ -782,22 +887,53 @@ S32 sc_load_did_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         return DOS_FALSE;
     }
 
-    pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+    pthread_mutex_lock(&g_mutexHashDIDNum);
+    ulHashIndex = sc_sip_did_hash_func(pstDIDNumNode->szDIDNum);
+    pstHashNode = hash_find_node(g_pstHashDIDNum, ulHashIndex, (VOID *)pstDIDNumNode->szDIDNum, sc_ep_did_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode))
     {
-        DOS_ASSERT(0);
+        pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+        if (DOS_ADDR_INVALID(pstHashNode))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstDIDNumNode);
+            pstDIDNumNode = NULL;
+            pthread_mutex_unlock(&g_mutexHashDIDNum);
+            return DOS_FALSE;
+        }
+
+        HASH_Init_Node(pstHashNode);
+        pstHashNode->pHandle = pstDIDNumNode;
+        ulHashIndex = sc_sip_did_hash_func(pstDIDNumNode->szDIDNum);
+
+        hash_add_node(g_pstHashDIDNum, (HASH_NODE_S *)pstHashNode, ulHashIndex, NULL);
+
+    }
+    else
+    {
+        pstDIDNumTmp = pstHashNode->pHandle;
+        if (DOS_ADDR_INVALID(pstDIDNumTmp))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstDIDNumNode);
+            pstDIDNumNode = NULL;
+
+            pthread_mutex_unlock(&g_mutexHashDIDNum);
+            return DOS_FAIL;
+        }
+
+        pstDIDNumTmp->ulCustomID = pstDIDNumNode->ulCustomID;
+        pstDIDNumTmp->ulDIDID = pstDIDNumNode->ulDIDID;
+        pstDIDNumTmp->ulBindType = pstDIDNumNode->ulBindType;
+        pstDIDNumTmp->ulBindID  = pstDIDNumNode->ulBindID;
+        dos_strncpy(pstDIDNumTmp->szDIDNum, pstDIDNumNode->szDIDNum, sizeof(pstDIDNumTmp->szDIDNum));
+        pstDIDNumTmp->szDIDNum[sizeof(pstDIDNumTmp->szDIDNum) - 1] = '\0';
 
         dos_dmem_free(pstDIDNumNode);
         pstDIDNumNode = NULL;
-        return DOS_FALSE;
     }
-
-    HASH_Init_Node(pstHashNode);
-    pstHashNode->pHandle = pstDIDNumNode;
-    ulHashIndex = sc_sip_did_hash_func(pstDIDNumNode->szDIDNum);
-
-    pthread_mutex_lock(&g_mutexHashDIDNum);
-    hash_add_node(g_pstHashDIDNum, (HASH_NODE_S *)pstHashNode, ulHashIndex, NULL);
     pthread_mutex_unlock(&g_mutexHashDIDNum);
 
     return DOS_SUCC;
@@ -809,11 +945,18 @@ S32 sc_load_did_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
  * 参数:
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  */
-U32 sc_load_did_number()
+U32 sc_load_did_number(U32 ulIndex)
 {
     S8 szSQL[1024] = { 0, };
 
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, did_number, bind_type, bind_id FROM tbl_sipassign where tbl_sipassign.status = 1;");
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, did_number, bind_type, bind_id FROM tbl_sipassign where tbl_sipassign.status = 1;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, did_number, bind_type, bind_id FROM tbl_sipassign where tbl_sipassign.status = 1 AND id=%u;", ulIndex);
+    }
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_did_number_cb, NULL, NULL);
 
@@ -858,43 +1001,64 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         return DOS_FAIL;
     }
 
-    pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+    pthread_mutex_lock(&g_mutexHashGW);
+    ulHashIndex = sc_ep_gw_hash_func(ulID);
+    pstHashNode = hash_find_node(g_pstHashGW, ulHashIndex, (VOID *)&ulID, sc_ep_gw_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode))
     {
-        DOS_ASSERT(0);
+        pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+        if (DOS_ADDR_INVALID(pstHashNode))
+        {
+            DOS_ASSERT(0);
 
-        return DOS_FAIL;
-    }
+            pthread_mutex_unlock(&g_mutexHashGW);
+            return DOS_FAIL;
+        }
 
-    pstGWNode = dos_dmem_alloc(sizeof(SC_GW_NODE_ST));
-    if (DOS_ADDR_INVALID(pstGWNode))
-    {
-        DOS_ASSERT(0);
+        pstGWNode = dos_dmem_alloc(sizeof(SC_GW_NODE_ST));
+        if (DOS_ADDR_INVALID(pstGWNode))
+        {
+            DOS_ASSERT(0);
 
-        dos_dmem_free(pstHashNode);
-        return DOS_FAIL;
-    }
+            dos_dmem_free(pstHashNode);
 
-    sc_ep_gw_init(pstGWNode);
+            pthread_mutex_unlock(&g_mutexHashGW);
+            return DOS_FAIL;
+        }
 
-    pstGWNode->ulGWID = ulID;
-    if ('\0' == pszDomain[0])
-    {
-        dos_strncpy(pstGWNode->szGWDomain, pszDomain, sizeof(pstGWNode->szGWDomain));
-        pstGWNode->szGWDomain[sizeof(pstGWNode->szGWDomain) - 1] = '\0';
+        sc_ep_gw_init(pstGWNode);
+
+        pstGWNode->ulGWID = ulID;
+        if ('\0' == pszDomain[0])
+        {
+            dos_strncpy(pstGWNode->szGWDomain, pszDomain, sizeof(pstGWNode->szGWDomain));
+            pstGWNode->szGWDomain[sizeof(pstGWNode->szGWDomain) - 1] = '\0';
+        }
+        else
+        {
+            pstGWNode->szGWDomain[0] = '\0';
+        }
+
+        HASH_Init_Node(pstHashNode);
+        pstHashNode->pHandle = pstGWNode;
+
+        ulHashIndex = sc_ep_gw_hash_func(pstGWNode->ulGWID);
+        hash_add_node(g_pstHashGW, pstHashNode, ulHashIndex, NULL);
     }
     else
     {
-        pstGWNode->szGWDomain[0] = '\0';
+        pstGWNode = pstHashNode->pHandle;
+        if (DOS_ADDR_INVALID(pstGWNode))
+        {
+            DOS_ASSERT(0);
+
+            pthread_mutex_unlock(&g_mutexHashGW);
+            return DOS_FAIL;
+        }
+
+        dos_strncpy(pstGWNode->szGWDomain, pszDomain, sizeof(pstGWNode->szGWDomain));
+        pstGWNode->szGWDomain[sizeof(pstGWNode->szGWDomain) - 1] = '\0';
     }
-
-    HASH_Init_Node(pstHashNode);
-    pstHashNode->pHandle = pstGWNode;
-
-    ulHashIndex = sc_ep_gw_hash_func(pstGWNode->ulGWID);
-
-    pthread_mutex_lock(&g_mutexHashGW);
-    hash_add_node(g_pstHashGW, pstHashNode, ulHashIndex, NULL);
     pthread_mutex_unlock(&g_mutexHashGW);
 
     return DOS_SUCC;
@@ -906,12 +1070,20 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
  * 参数:
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  */
-U32 sc_load_gateway()
+U32 sc_load_gateway(U32 ulIndex)
 {
     S8 szSQL[1024];
 
-    dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, realm FROM tbl_relaygrp WHERE tbl_relaygrp.status = 1;");
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                        , "SELECT id, realm FROM tbl_relaygrp WHERE tbl_relaygrp.status = 1;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                        , "SELECT id, realm FROM tbl_relaygrp WHERE tbl_relaygrp.status = 1 AND id=%d;", ulIndex);
+    }
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_cb, NULL, NULL);
 
@@ -992,12 +1164,21 @@ S32 sc_load_gateway_grp_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames
  * 参数:
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  */
-U32 sc_load_gateway_grp()
+U32 sc_load_gateway_grp(U32 ulIndex)
 {
     S8 szSQL[1024];
 
-    dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id FROM tbl_gateway_grp WHERE tbl_gateway_grp.status = 1;");
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                        , "SELECT id FROM tbl_gateway_grp WHERE tbl_gateway_grp.status = 1;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                        , "SELECT id FROM tbl_gateway_grp WHERE tbl_gateway_grp.status = 1 AND id = %d;"
+                        , ulIndex);
+    }
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_grp_cb, NULL, NULL);
 
@@ -1139,6 +1320,7 @@ U32 sc_load_relationship()
 S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     SC_ROUTE_NODE_ST     *pstRoute      = NULL;
+    SC_ROUTE_NODE_ST     *pstRouteTmp   = NULL;
     DLL_NODE_S           *pstListNode   = NULL;
     S32                  lIndex;
     S32                  lSecond;
@@ -1263,18 +1445,45 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         return DOS_FAIL;
     }
 
-    pstListNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
+    pthread_mutex_lock(&g_mutexRouteList);
+    pstListNode = dll_find(&g_stRouteList, &pstRoute, sc_ep_route_find);
     if (DOS_ADDR_INVALID(pstListNode))
     {
-        DOS_ASSERT(0);
-        dos_dmem_free(pstRoute);
-        return DOS_FAIL;
-    }
+        pstListNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
+        if (DOS_ADDR_INVALID(pstListNode))
+        {
+            DOS_ASSERT(0);
 
-    DLL_Init_Node(pstListNode);
-    pstListNode->pHandle = pstRoute;
-    pthread_mutex_lock(&g_mutexRouteList);
-    DLL_Add(&g_stRouteList, pstListNode);
+            dos_dmem_free(pstRoute);
+            pstRoute = NULL;
+
+            pthread_mutex_unlock(&g_mutexRouteList);
+            return DOS_FAIL;
+        }
+
+        DLL_Init_Node(pstListNode);
+        pstListNode->pHandle = pstRoute;
+        DLL_Add(&g_stRouteList, pstListNode);
+    }
+    else
+    {
+        pstRouteTmp = pstListNode->pHandle;
+        if (DOS_ADDR_INVALID(pstRouteTmp))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstRoute);
+            pstRoute = NULL;
+
+            pthread_mutex_unlock(&g_mutexRouteList);
+            return DOS_FAIL;
+        }
+
+        dos_memcpy(pstRouteTmp, pstListNode, sizeof(SC_ROUTE_NODE_ST));
+
+        dos_dmem_free(pstRoute);
+        pstRoute = NULL;
+    }
     pthread_mutex_unlock(&g_mutexRouteList);
 
     return DOS_TRUE;
@@ -1287,12 +1496,21 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
  * 参数:
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  */
-U32 sc_load_route()
+U32 sc_load_route(U32 ulIndex)
 {
     S8 szSQL[1024];
 
-    dos_snprintf(szSQL, sizeof(szSQL)
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
                     , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 1;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 1 AND id=%d;"
+                    , ulIndex);
+    }
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_route_cb, NULL, NULL);
 
@@ -4042,13 +4260,13 @@ U32 sc_ep_init()
     DLL_Init(&g_stRouteList);
 
     /* 以下三项加载顺序不能更改 */
-    sc_load_gateway();
-    sc_load_gateway_grp();
+    sc_load_gateway(SC_INVALID_INDEX);
+    sc_load_gateway_grp(SC_INVALID_INDEX);
     sc_load_relationship();
 
-    sc_load_route();
-    sc_load_did_number();
-    sc_load_sip_userid();
+    sc_load_route(SC_INVALID_INDEX);
+    sc_load_did_number(SC_INVALID_INDEX);
+    sc_load_sip_userid(SC_INVALID_INDEX);
 
     SC_TRACE_OUT();
     return DOS_SUCC;
