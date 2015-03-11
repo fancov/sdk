@@ -777,7 +777,7 @@ U32 sc_load_black_list(U32 ulIndex)
     }
     else
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, regex_number FROM tbl_blacklist id=%u;", ulIndex);
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, regex_number FROM tbl_blacklist WHERE id=%u;", ulIndex);
     }
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_load_black_list_cb, NULL, NULL) != DB_ERR_SUCC)
