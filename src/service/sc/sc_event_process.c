@@ -538,37 +538,37 @@ U32 sc_gateway_delete(U32 ulGatewayID)
 
 U32 sc_route_delete(U32 ulRouteID)
 {
-	DLL_NODE_S       *pstDLLNode   = NULL;
-	SC_ROUTE_NODE_ST *pstRouteNode = NULL;
+    DLL_NODE_S       *pstDLLNode   = NULL;
+    SC_ROUTE_NODE_ST *pstRouteNode = NULL;
 
-	pthread_mutex_lock(&g_mutexRouteList);
-	pstDLLNode = dll_find(&g_stRouteList, (VOID *)&ulRouteID, sc_ep_route_find);
-	if (DOS_ADDR_INVALID(pstDLLNode))
-	{
-	    pthread_mutex_unlock(&g_mutexRouteList);
-	    DOS_ASSERT(0);
-	    return DOS_FAIL;
-	}
-	pstRouteNode = pstDLLNode->pHandle;
-	pstDLLNode->pHandle =  NULL;
-	
-	dll_delete(&g_stRouteList, pstDLLNode);
+    pthread_mutex_lock(&g_mutexRouteList);
+    pstDLLNode = dll_find(&g_stRouteList, (VOID *)&ulRouteID, sc_ep_route_find);
+    if (DOS_ADDR_INVALID(pstDLLNode))
+    {
+        pthread_mutex_unlock(&g_mutexRouteList);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    pstRouteNode = pstDLLNode->pHandle;
+    pstDLLNode->pHandle =  NULL;
+    
+    dll_delete(&g_stRouteList, pstDLLNode);
 
-	if (pstRouteNode)
-	{
-		dos_dmem_free(pstRouteNode);
-		pstRouteNode = NULL;
-	}
+    if (pstRouteNode)
+    {
+        dos_dmem_free(pstRouteNode);
+        pstRouteNode = NULL;
+    }
 
-	if (pstDLLNode)
-	{
-		dos_dmem_free(pstDLLNode);
-		pstDLLNode = NULL;
-	}
-	
-	pthread_mutex_unlock(&g_mutexRouteList);
+    if (pstDLLNode)
+    {
+        dos_dmem_free(pstDLLNode);
+        pstDLLNode = NULL;
+    }
+    
+    pthread_mutex_unlock(&g_mutexRouteList);
 
-	return DOS_SUCC;
+    return DOS_SUCC;
 }
 
 U32 sc_gateway_grp_delete(U32 ulGwGroupID)
@@ -585,15 +585,15 @@ U32 sc_gateway_grp_delete(U32 ulGwGroupID)
     /* 查找网关组节点首地址 */
     pstHashNode = hash_find_node(g_pstHashGWGrp, ulIndex, (VOID *)&ulGwGroupID, sc_ep_gw_grp_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
-    	|| DOS_ADDR_INVALID(pstHashNode->pHandle))
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-	    pthread_mutex_unlock(&g_mutexHashGW); 
-	    DOS_ASSERT(0);
-		return DOS_FAIL;
+        pthread_mutex_unlock(&g_mutexHashGW); 
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
 
-	pstGwGroupNode = pstHashNode->pHandle;
-	pstHashNode->pHandle = NULL;
+    pstGwGroupNode = pstHashNode->pHandle;
+    pstHashNode->pHandle = NULL;
 
     /* 删除节点 */
     hash_delete_node(g_pstHashGWGrp, pstHashNode, ulIndex);
