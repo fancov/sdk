@@ -204,7 +204,41 @@ process_finished:
 /* 处理遍历WEB CMD临时表的响应 */
 VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 {
+    S32 lMonery = 0;
+    U32 ulCustomerID = 0;
+    const S8 *pszMonery = NULL;
+    const S8 *pszCustomID = NULL;
+    BS_CUSTOMER_ST  *pstCustomer = NULL;
+
+    /* 处理余额变动 */
+    pszMonery = json_get_param(pstJSONObj, "money");
+    if (DOS_ADDR_VALID(pszMonery))
+    {
+        if (dos_atol(pszMonery, &lMonery) < 0)
+        {
+            goto process_finished;
+        }
+
+        pszCustomID = json_get_param(pstJSONObj, "id");
+        if (DOS_ADDR_INVALID(pszCustomID)
+            || dos_atoul(pszCustomID, &ulCustomerID) < 0)
+        {
+            goto process_finished;
+        }
+
+        pstCustomer = bs_get_customer_st(ulCustomerID);
+        if (DOS_ADDR_INVALID(pstCustomer))
+        {
+            goto process_finished;
+        }
+
+        pstCustomer->stAccount.LBalanceActive += (lMonery * 100);
+
+        goto process_finished;
+    }
+
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Start update customer. Opteration:%d", ulOpteration);
+
     switch (ulOpteration)
     {
         case BS_CMD_UPDATE:
@@ -502,6 +536,8 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Unknow command while update customer");
             break;
     }
+
+process_finished:
 
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Finish to update customer. Opteration:%d", ulOpteration);
 }
