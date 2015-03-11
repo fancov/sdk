@@ -401,6 +401,31 @@ S32 sc_ep_did_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
     return DOS_SUCC;
 }
 
+/* ²éÕÒSIP User ID */
+S32 sc_ep_sip_userid_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
+{
+    S8 *pszDIDNum = NULL;
+    SC_USER_ID_NODE_ST *pstSIPInfo = NULL;
+
+    if (DOS_ADDR_INVALID(pObj)
+        || DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pszDIDNum = (S8 *)pObj;
+    pstSIPInfo = pstHashNode->pHandle;
+
+    if (dos_strnicmp(pstSIPInfo->szUserID, pszDIDNum, sizeof(pstSIPInfo->szUserID)))
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
 
 
 /**
@@ -1676,34 +1701,26 @@ U32 sc_ep_get_extension_by_userid(S8 *pszUserID, S8 *pszExtension, U32 ulLength)
         return DOS_FAIL;
     }
 
-
     pthread_mutex_lock(&g_mutexHashSIPUserID);
-    HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
+    ulHashIndex = sc_sip_userid_hash_func(pszUserID);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pszUserID, sc_ep_sip_userid_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        HASH_Scan_Bucket(g_pstHashSIPUserID, ulHashIndex, pstHashNode, HASH_NODE_S*)
-        {
-            if (DOS_ADDR_INVALID(pstHashNode))
-            {
-                continue;
-            }
+        DOS_ASSERT(0);
 
-            pstUserIDNode = pstHashNode->pHandle;
-            if (DOS_ADDR_INVALID(pstUserIDNode))
-            {
-                continue;
-            }
-
-            if (0 == dos_strnicmp(pstUserIDNode->szUserID, pszUserID, sizeof(pstUserIDNode->szUserID)))
-            {
-                dos_strncpy(pszExtension, pstUserIDNode->szExtension, ulLength);
-                pszExtension[ulLength - 1] = '\0';
-                pthread_mutex_unlock(&g_mutexHashSIPUserID);
-                return DOS_SUCC;
-            }
-        }
+        pthread_mutex_unlock(&g_mutexHashSIPUserID);
+        return DOS_FAIL;
     }
+
+    pstUserIDNode = pstHashNode->pHandle;
+
+    dos_strncpy(pszExtension, pstUserIDNode->szExtension, ulLength);
+    pszExtension[ulLength - 1] = '\0';
+
     pthread_mutex_unlock(&g_mutexHashSIPUserID);
-    return DOS_FAIL;
+
+    return DOS_SUCC;
 }
 
 /**
@@ -1718,6 +1735,7 @@ U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum)
     SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
     HASH_NODE_S        *pstHashNode   = NULL;
     U32                ulHashIndex    = 0;
+    U32                ulCustomerID   = 0;
 
     if (DOS_ADDR_INVALID(pszNum))
     {
@@ -1726,32 +1744,24 @@ U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum)
         return U32_BUTT;
     }
 
-
     pthread_mutex_lock(&g_mutexHashSIPUserID);
-    HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
+    ulHashIndex = sc_sip_userid_hash_func(pszNum);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pszNum, sc_ep_sip_userid_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        HASH_Scan_Bucket(g_pstHashSIPUserID, ulHashIndex, pstHashNode, HASH_NODE_S*)
-        {
-            if (DOS_ADDR_INVALID(pstHashNode))
-            {
-                continue;
-            }
+        DOS_ASSERT(0);
 
-            pstUserIDNode = pstHashNode->pHandle;
-            if (DOS_ADDR_INVALID(pstUserIDNode))
-            {
-                continue;
-            }
-
-            if (0 == dos_strnicmp(pstUserIDNode->szUserID, pszNum, sizeof(pstUserIDNode->szUserID)))
-            {
-                pthread_mutex_unlock(&g_mutexHashSIPUserID);
-                return pstUserIDNode->ulCustomID;
-            }
-        }
+        pthread_mutex_unlock(&g_mutexHashSIPUserID);
+        return U32_BUTT;
     }
+
+    pstUserIDNode = pstHashNode->pHandle;
+
+    ulCustomerID = pstUserIDNode->ulCustomID;
     pthread_mutex_unlock(&g_mutexHashSIPUserID);
-    return U32_BUTT;
+
+    return ulCustomerID;
 }
 
 /**
@@ -1766,7 +1776,7 @@ U32 sc_ep_get_custom_by_did(S8 *pszNum)
     SC_DID_NODE_ST     *pstDIDNumNode = NULL;
     HASH_NODE_S        *pstHashNode   = NULL;
     U32                ulHashIndex    = 0;
-    U32                ulCustomerID;
+    U32                ulCustomerID   = 0;
 
     if (DOS_ADDR_INVALID(pszNum))
     {
@@ -1789,7 +1799,7 @@ U32 sc_ep_get_custom_by_did(S8 *pszNum)
 
     pstDIDNumNode = pstHashNode->pHandle;
 
-    ulCustomerID = pstDIDNumNode->ulCustomID
+    ulCustomerID = pstDIDNumNode->ulCustomID;
 
     pthread_mutex_unlock(&g_mutexHashDIDNum);
 
