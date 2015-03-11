@@ -611,8 +611,18 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
 U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSIPID, U32 ulAgentID, U32 ulCustomerID);
 U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID);
 U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID);
-U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID);
-
+U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID, S8* pszDidNum);
+U32 sc_gateway_delete(U32 ulGatewayID);
+U32 sc_load_gateway(U32 ulIndex);
+U32 sc_load_route(U32 ulIndex);
+U32 sc_route_delete(U32 ulRouteID);
+U32 sc_load_gateway_grp(U32 ulIndex);
+U32 sc_gateway_grp_delete(U32 ulGwGroupID);
+U32 sc_load_did_number(U32 ulIndex);
+U32 sc_load_black_list(U32 ulIndex);
+U32 sc_black_list_delete(U32 ulBlackListID);
+U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID);
+U32 sc_did_delete(U32 ulDidID, S8* pszDidNum);
 
 
 #ifdef __cplusplus

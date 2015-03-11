@@ -1872,24 +1872,35 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
    {
       case SC_API_CMD_ACTION_GATEWAY_ADD:
       case SC_API_CMD_ACTION_GATEWAY_UPDATE:
+          {
+              sc_load_gateway(ulGatewayID);
 #if INCLUDE_SERVICE_PYTHON
-         ulRet = py_exec_func("router", "make_route", "(k)", (U64)ulGatewayID);
-         if (DOS_SUCC != ulRet)
-         {
-            DOS_ASSERT(0);
-            return DOS_FAIL;
-         }
+              ulRet = py_exec_func("router", "make_route", "(k)", (U64)ulGatewayID);
+              if (DOS_SUCC != ulRet)
+              {
+                  DOS_ASSERT(0);
+                  return DOS_FAIL;
+              }
 #endif
+          }
          break;
       case SC_API_CMD_ACTION_GATEWAY_DELETE: 
+          {
+              ulRet = sc_gateway_delete(ulGatewayID);
+              if (ulRet != DOS_SUCC)
+              {
+                 DOS_ASSERT(0);
+                 return DOS_FAIL;
+              }
 #if INCLUDE_SERVICE_PYTHON
-         ulRet = py_exec_func("router", "del_route", "(k)", (U64)ulGatewayID);
-         if (DOS_SUCC != ulRet)
-         {
-            DOS_ASSERT(0);
-            return DOS_FAIL;
-         }
+              ulRet = py_exec_func("router", "del_route", "(k)", (U64)ulGatewayID);
+              if (DOS_SUCC != ulRet)
+              {
+                  DOS_ASSERT(0);
+                  return DOS_FAIL;
+              }
 #endif
+          }
          break;
       default:
          break;
@@ -1912,14 +1923,16 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSIPID, U32 ulAgentID, U32 ulCust
    {
       case SC_API_CMD_ACTION_SIP_ADD:
       case SC_API_CMD_ACTION_SIP_UPDATE:
-#if INCLUDE_SERVICE_PYTHON
-          ulRet = py_exec_func("sip_mgnt", "add_sip","(i)", ulSIPID);
-          if (ulRet != DOS_SUCC)
           {
-              DOS_ASSERT(0);
-              return DOS_FAIL;
-          }
+#if INCLUDE_SERVICE_PYTHON
+              ulRet = py_exec_func("sip_mgnt", "add_sip","(i)", ulSIPID);
+              if (ulRet != DOS_SUCC)
+              {
+                  DOS_ASSERT(0);
+                  return DOS_FAIL;
+              }
 #endif
+          }
           break;
       case SC_API_CMD_ACTION_SIP_DELETE:
 #if INCLUDE_SERVICE_PYTHON
@@ -1941,6 +1954,8 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSIPID, U32 ulAgentID, U32 ulCust
 
 U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID)
 {
+    U32 ulRet = U32_BUTT;
+
     if (ulAction > SC_API_CMD_ACTION_BUTT)
     {
         DOS_ASSERT(0);
@@ -1950,8 +1965,19 @@ U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID)
     switch(ulAction)
     {
         case SC_API_CMD_ACTION_ROUTE_ADD:
+		case SC_API_CMD_ACTION_ROUTE_UPDATE:
+			sc_load_route(ulRouteID);
+			break;
+
         case SC_API_CMD_ACTION_ROUTE_DELETE:
-        case SC_API_CMD_ACTION_ROUTE_UPDATE:
+            {
+                ulRet = sc_route_delete(ulRouteID);
+	            if (ulRet != DOS_SUCC)
+	            {
+	                DOS_ASSERT(0);
+	                return DOS_FAIL;
+	            }
+            }      
             break;
         default:
             break;
@@ -1961,6 +1987,8 @@ U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID)
 
 U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID)
 {
+    U32  ulRet = U32_BUTT;
+
     if (ulAction > SC_API_CMD_ACTION_BUTT)
     {
         DOS_ASSERT(0);
@@ -1970,7 +1998,17 @@ U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID)
     switch(ulAction)
     {
         case SC_API_CMD_ACTION_GW_GROUP_ADD:
+            sc_load_gateway_grp(ulGwGroupID);
+            break;
         case SC_API_CMD_ACTION_GW_GROUP_DELETE:
+            {
+                ulRet = sc_gateway_grp_delete(ulGwGroupID);
+                if (ulRet != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                    return DOS_FAIL;
+                }
+            }
             break;
         default:
             break;
@@ -1978,8 +2016,10 @@ U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID)
     return DOS_SUCC;
 }
 
-U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID)
+U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID, S8 *pszDidNum)
 {
+    U32 ulRet = U32_BUTT;
+
     if (ulAction > SC_API_CMD_ACTION_BUTT)
     {
         DOS_ASSERT(0);
@@ -1989,12 +2029,55 @@ U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID)
     switch(ulAction)
     {
         case SC_API_CMD_ACTION_DID_ADD:
-        case SC_API_CMD_ACTION_DID_DELETE:
         case SC_API_CMD_ACTION_DID_UPDATE:
+            sc_load_did_number(ulDidID);
+            break;
+        case SC_API_CMD_ACTION_DID_DELETE:
+            {
+                ulRet = sc_did_delete(ulDidID, pszDidNum);
+                if (ulRet != DOS_SUCC)
+                {
+                   DOS_ASSERT(0);
+                   return DOS_FAIL;
+                }
+            }
             break;
         default:
             break;
     }
+    return DOS_SUCC;
+}
+
+U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID)
+{
+    U32 ulRet = U32_BUTT;
+   
+    if (ulAction > SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch(ulAction)
+    {
+        case SC_API_CMD_ACTION_BLACK_ADD:
+        case SC_API_CMD_ACTION_BLACK_UPDATE:
+            sc_load_black_list(ulBlackID);
+            break;
+        case SC_API_CMD_ACTION_BLACK_DELETE:
+            {
+                ulRet = sc_black_list_delete(ulBlackID);
+                if (ulRet != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                    return DOS_FAIL;
+                }
+            }
+            break;
+        default:
+            break;
+    }
+    
     return DOS_SUCC;
 }
 

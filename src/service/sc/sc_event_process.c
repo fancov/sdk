@@ -414,7 +414,8 @@ S32 sc_ep_sip_userid_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
 /* 查找路由 */
 S32 sc_ep_route_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
 {
-    SC_ROUTE_NODE_ST *pstRouteCurrent, *pstRouteNew;
+    SC_ROUTE_NODE_ST *pstRouteCurrent;
+    U32 ulIndex;
 
     if (DOS_ADDR_INVALID(pKey)
         || DOS_ADDR_INVALID(pstDLLNode)
@@ -423,10 +424,10 @@ S32 sc_ep_route_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
         return DOS_FAIL;
     }
 
-    pstRouteNew = pKey;
+    ulIndex = *(U32 *)pKey;
     pstRouteCurrent = pstDLLNode->pHandle;
 
-    if (pstRouteNew->ulID == pstRouteCurrent->ulID)
+    if (ulIndex == pstRouteCurrent->ulID)
     {
         return DOS_SUCC;
     }
@@ -456,6 +457,214 @@ S32 sc_ep_black_list_find(VOID *pObj, HASH_NODE_S *pstHashNode)
     }
 
     return DOS_FAIL;
+}
+
+U32 sc_gateway_delete(U32 ulGatewayID)
+{
+    HASH_NODE_S   *pstHashNode = NULL;
+    SC_GW_NODE_ST *pstGateway  = NULL;
+    U32  ulIndex = U32_BUTT;
+
+    ulIndex = sc_ep_gw_hash_func(ulGatewayID);
+    pthread_mutex_lock(&g_mutexHashGW);
+    pstHashNode = hash_find_node(g_pstHashGW, ulIndex, (VOID *)&ulGatewayID, sc_ep_gw_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexHashGW);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstGateway = pstHashNode->pHandle;
+    pstHashNode->pHandle = NULL;
+
+    hash_delete_node(g_pstHashGW, pstHashNode, ulIndex);
+
+    if (pstHashNode)
+    {
+        dos_dmem_free(pstHashNode);
+        pstHashNode = NULL;
+    }
+
+    if (pstGateway)
+    {
+        dos_dmem_free(pstGateway);
+        pstHashNode = NULL;
+    }
+    
+    pthread_mutex_unlock(&g_mutexHashGW);
+
+    return DOS_SUCC;
+}
+
+U32 sc_route_delete(U32 ulRouteID)
+{
+	DLL_NODE_S       *pstDLLNode   = NULL;
+	SC_ROUTE_NODE_ST *pstRouteNode = NULL;
+
+	pthread_mutex_lock(&g_mutexRouteList);
+	pstDLLNode = dll_find(&g_stRouteList, (VOID *)&ulRouteID, sc_ep_route_find);
+	if (DOS_ADDR_INVALID(pstDLLNode))
+	{
+	    pthread_mutex_unlock(&g_mutexRouteList);
+	    DOS_ASSERT(0);
+	    return DOS_FAIL;
+	}
+	pstRouteNode = pstDLLNode->pHandle;
+	pstDLLNode->pHandle =  NULL;
+	
+	dll_delete(&g_stRouteList, pstDLLNode);
+
+	if (pstRouteNode)
+	{
+		dos_dmem_free(pstRouteNode);
+		pstRouteNode = NULL;
+	}
+
+	if (pstDLLNode)
+	{
+		dos_dmem_free(pstDLLNode);
+		pstDLLNode = NULL;
+	}
+	
+	pthread_mutex_unlock(&g_mutexRouteList);
+
+	return DOS_SUCC;
+}
+
+U32 sc_gateway_grp_delete(U32 ulGwGroupID)
+{
+    HASH_NODE_S        *pstHashNode    = NULL;
+    SC_GW_GRP_NODE_ST  *pstGwGroupNode = NULL;
+    U32 ulIndex = U32_BUTT;
+
+    /* 获得网关组索引 */
+    ulIndex = sc_ep_gw_grp_hash_func(ulGwGroupID);
+    
+    pthread_mutex_lock(&g_mutexHashGWGrp); 
+
+    /* 查找网关组节点首地址 */
+    pstHashNode = hash_find_node(g_pstHashGWGrp, ulIndex, (VOID *)&ulGwGroupID, sc_ep_gw_grp_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+    	|| DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+	    pthread_mutex_unlock(&g_mutexHashGW); 
+	    DOS_ASSERT(0);
+		return DOS_FAIL;
+    }
+
+	pstGwGroupNode = pstHashNode->pHandle;
+	pstHashNode->pHandle = NULL;
+
+    /* 删除节点 */
+    hash_delete_node(g_pstHashGWGrp, pstHashNode, ulIndex);
+
+    if (pstGwGroupNode)
+    {
+        dos_dmem_free(pstGwGroupNode);
+        pstGwGroupNode = NULL;
+    }
+
+    if (pstHashNode)
+    {
+       dos_dmem_free(pstHashNode);
+       pstHashNode = NULL;
+    }
+    
+    pthread_mutex_unlock(&g_mutexHashGWGrp);
+
+    return DOS_SUCC;
+}
+
+U32 sc_did_delete(U32 ulDidID, S8* pszDidNum)
+{
+    HASH_NODE_S     *pstHashNode = NULL;
+    SC_DID_NODE_ST  *pstDidNode  = NULL;
+    U32 ulIndex = U32_BUTT;
+
+    #if 0
+    if (dos_ltoa(ulDidID, szDidNum, sizeof(szDidNum)) < 0)
+    {
+       DOS_ASSERT(0);
+       return DOS_FAIL;
+    }
+    szDidNum[sizeof(szDidNum) - 1] = '\0'; 
+    #endif
+
+    ulIndex = sc_sip_did_hash_func(pszDidNum);
+
+    pthread_mutex_lock(&g_mutexHashDIDNum);
+    pstHashNode = hash_find_node(g_pstHashDIDNum, ulIndex, (VOID *)pszDidNum, sc_ep_did_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexHashDIDNum);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstDidNode = pstHashNode->pHandle;
+    pstHashNode->pHandle = NULL;
+
+    /* 删除节点 */
+    hash_delete_node(g_pstHashDIDNum, pstHashNode, ulIndex);
+
+    if (pstHashNode)
+    {
+        dos_dmem_free(pstHashNode);
+        pstHashNode = NULL;
+    }
+
+    if (pstDidNode)
+    {
+       dos_dmem_free(pstDidNode);
+       pstDidNode = NULL;
+    }
+    
+    pthread_mutex_unlock(&g_mutexHashDIDNum);
+
+    return DOS_SUCC;
+}
+
+U32 sc_black_list_delete(U32 ulBlackListID)
+{
+    HASH_NODE_S        *pstHashNode  = NULL;
+    SC_BLACK_LIST_NODE *pstBlackList = NULL;
+    U32  ulIndex = U32_BUTT;
+
+    ulIndex = sc_ep_black_list_hash_func(ulBlackListID);
+
+    pthread_mutex_lock(&g_mutexHashBlackList);
+
+    pstHashNode = hash_find_node(g_pstHashBlackList, ulIndex, (VOID *)&ulBlackListID, sc_ep_black_list_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexHashBlackList);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    pstBlackList = pstHashNode->pHandle;
+    pstHashNode->pHandle = NULL;
+
+    hash_delete_node(g_pstHashBlackList, pstHashNode, ulIndex);
+    
+    if (pstHashNode)
+    {
+        dos_dmem_free(pstHashNode);
+        pstHashNode = NULL;
+    }
+
+    if (pstBlackList)
+    {
+        dos_dmem_free(pstBlackList);
+        pstBlackList = NULL;
+    }
+    
+    pthread_mutex_unlock(&g_mutexHashBlackList);
+
+    return DOS_SUCC;
 }
 
 
@@ -1446,7 +1655,7 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     }
 
     pthread_mutex_lock(&g_mutexRouteList);
-    pstListNode = dll_find(&g_stRouteList, &pstRoute, sc_ep_route_find);
+    pstListNode = dll_find(&g_stRouteList, &pstRoute->ulID, sc_ep_route_find);
     if (DOS_ADDR_INVALID(pstListNode))
     {
         pstListNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));

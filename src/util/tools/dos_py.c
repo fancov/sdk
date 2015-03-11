@@ -113,7 +113,7 @@ U32   py_exec_func(const char *pszModule, const char *pszFunc, const char *pszPy
 
     /* 创建参数 */
     va_start(vargs, pszPyFormat);
-    pstParam = Py_VaBuildValue( pszPyFormat, vargs );
+    pstParam = Py_VaBuildValue( pszPyFormat, vargs);
     if (!pstParam)
     {
         DOS_ASSERT(0);
