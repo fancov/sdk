@@ -13,12 +13,12 @@ extern "C" {
 
 
 /*
- * 函数名: U32 py_init_py()
+ * 函数名: U32 py_init()
  * 参数:   无参数
  * 功能:   初始化Python库
  * 返回值: 初始化失败则返回DOS_FAIL，成功则返回DOS_SUCC
  **/
-U32 py_init_py()
+U32 py_init()
 {
     /*初始化Python*/
     Py_Initialize();
@@ -33,7 +33,7 @@ U32 py_init_py()
 
 
 /*
- * 函数名: U32   py_c_call_py(const char *pszModule, const char *pszFunc, const char *pszPyFormat, ...)
+ * 函数名: U32   py_exec_func(const char *pszModule, const char *pszFunc, const char *pszPyFormat, ...)
  * 参数:   const char *pszModule:  被调用的Python模块名
  *         const char *pszFunc:    需要调用的Python接口名称
  *         const char *pszPyFormat:Python格式化参数
@@ -41,16 +41,30 @@ U32 py_init_py()
  * 返回值: 执行失败则返回DOS_FAIL;执行成功时若存在返回值则返回Python的返回值，否则返回DOS_SUCC
  *  !!!!!!!!!!!!!!!特别说明!!!!!!!!!!!!!!!!!!
  *  参数pszPyFormat格式为Python参数格式，而非C语言参数格式，具体如下:
- *      s: 表示字符串
- *      i: 整型变量
- *      f: 表示浮点数
- *      O: 表示一个Python对象
- *  其中参数格式列表需要使用括号括起来，具体使用见: http://blog.chinaunix.net/uid-22920230-id-3443571.html
+ *      "s": (string) [char *] 
+ *      "z": (string or None) [char *] 将以NULL结尾的C字符串String转换为Python对象，如果字符串为空则返回None
+ *      "u": (Unicode string) [Py_UNICODE *] Unicode(UCS-2或UCS-4)字符串转为Python Unicode对象，如果为空则返回None
+ *      "i": (integer) [int] 
+ *      "b": (integer) [char] 
+ *      "h": (integer) [short int] 
+ *      "l": (integer) [long int] 
+ *      "B": (integer) [unsigned char] 
+ *      "H": (integer) [unsigned short int] 
+ *      "I": (integer/long) [unsigned int] 
+ *      "k": (integer/long) [unsigned long] 
+ *      "d": (float) [double] 
+ *      "f": (float) [float]
+ *      "O": 表示一个Python对象
+ *  其中参数格式列表需要使用括号括起来
+ * 
+ *  使用示例
+ *  ulRet = py_exec_func("router", "del_route", "(i)", ulGatewayID);
  **/
-U32   py_c_call_py(const char *pszModule, const char *pszFunc, const char *pszPyFormat, ...)
+U32   py_exec_func(const char *pszModule, const char *pszFunc, const char *pszPyFormat, ...)
 {
     S8   szPyScriptPath[MAX_PY_SCRIPT_LEN] = {0,};
-    U32  ulRet;
+    U32  ulRet = DOS_SUCC;
+    S32  lRet = 0;
     S8   szImportPath[MAX_PY_SCRIPT_LEN] = {0,};
     PyObject *pstPyMod, *pstPyFunc, *pstParam, *pstRetVal;
     va_list vargs;
@@ -58,7 +72,8 @@ U32   py_c_call_py(const char *pszModule, const char *pszFunc, const char *pszPy
     if (!pszModule || !pszFunc || !pszPyFormat)
     {
         DOS_ASSERT(0);
-        return DOS_FAIL;
+        ulRet = DOS_FAIL;
+        goto py_finished;
     }
 
     /* 设置工作路径 */
@@ -66,6 +81,7 @@ U32   py_c_call_py(const char *pszModule, const char *pszFunc, const char *pszPy
     if (0 > ulRet)
     {
         DOS_ASSERT(0);
+        ulRet = DOS_FAIL;
         return DOS_FAIL;
     }
 
@@ -73,7 +89,6 @@ U32   py_c_call_py(const char *pszModule, const char *pszFunc, const char *pszPy
                 , dos_get_filename(__FILE__), __LINE__, szPyScriptPath);
 
     dos_snprintf(szImportPath, sizeof(szImportPath), "sys.path.append(\'%s\')", szPyScriptPath);
-    szImportPath[ MAX_PY_SCRIPT_LEN - 1] = '\0';
 
     PyRun_SimpleString("import sys");
     PyRun_SimpleString(szImportPath);
@@ -83,7 +98,8 @@ U32   py_c_call_py(const char *pszModule, const char *pszFunc, const char *pszPy
     if (!pstPyMod)
     {
         DOS_ASSERT(0);
-        return DOS_FAIL;
+        ulRet = DOS_FAIL;
+        goto py_finished;
     }
 
     /* 查找函数 */
@@ -91,7 +107,8 @@ U32   py_c_call_py(const char *pszModule, const char *pszFunc, const char *pszPy
     if (!pstPyFunc)
     {
         DOS_ASSERT(0);
-        return DOS_FAIL;
+        ulRet = DOS_FAIL;
+        goto py_finished;
     }
 
     /* 创建参数 */
@@ -100,7 +117,8 @@ U32   py_c_call_py(const char *pszModule, const char *pszFunc, const char *pszPy
     if (!pstParam)
     {
         DOS_ASSERT(0);
-        return DOS_FAIL;
+        ulRet = DOS_FAIL;
+        goto py_finished;
     }
     va_end(vargs);
 
@@ -109,44 +127,50 @@ U32   py_c_call_py(const char *pszModule, const char *pszFunc, const char *pszPy
     if (!pstRetVal)
     {
         DOS_ASSERT(0);
-        return DOS_FAIL;
+        ulRet = DOS_FAIL;
+        goto py_finished;
     }
 
+    PyArg_Parse(pstRetVal, "i", &lRet);
+    if (ulRet < 0)
+    {
+        DOS_ASSERT(0);
+        ulRet = DOS_FAIL;
+        goto py_finished;
+    }
+
+py_finished:
     if (pstRetVal)
     {
         Py_DECREF(pstRetVal);
         pstRetVal = NULL;
     }
-
     if (pstParam)
     {
         Py_DECREF(pstParam);
         pstParam= NULL;
     }
-
     if (pstPyFunc)
     {
         Py_DECREF(pstPyFunc);
         pstPyFunc = NULL;
     }
-
     if (pstPyMod)
     {
         Py_DECREF(pstPyMod);
         pstPyMod= NULL;
     }
-
-    return DOS_SUCC;
+    return ulRet;
 }
 
 
 /*
- * 函数名: U32  py_deinit_py()
+ * 函数名: U32  py_deinit()
  * 参数:   无参数
  * 功能:   卸载Python库
  * 返回值: 卸载失败则返回DOS_FAIL，成功则返回DOS_SUCC
  **/
-U32  py_deinit_py()
+U32  py_deinit()
 {
     /* 卸载Python模块 */
     Py_Finalize();

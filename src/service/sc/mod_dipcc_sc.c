@@ -142,8 +142,8 @@ U32 sc_init_db()
 
 U32 mod_dipcc_sc_load()
 {
-#if 1
-    if (py_init_py() != DOS_SUCC)
+#if INCLUDE_SERVICE_PYTHON
+    if (py_init() != DOS_SUCC)
     {
        DOS_ASSERT(0);
        return DOS_FAIL;
@@ -275,7 +275,11 @@ U32 mod_dipcc_sc_shutdown()
     sc_httpd_shutdown();
     sc_task_mngt_shutdown();
     sc_dialer_shutdown();
-    py_deinit_py();
+    
+#if INCLUDE_SERVICE_PYTHON
+    py_deinit();
+#endif
+
     return DOS_SUCC;
 }
 

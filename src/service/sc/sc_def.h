@@ -607,6 +607,10 @@ U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB);
 
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
 U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSIPID, U32 ulAgentID, U32 ulCustomerID);
+U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID);
+U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID);
+U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID);
+
 
 
 #ifdef __cplusplus

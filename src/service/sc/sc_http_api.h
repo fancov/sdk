@@ -89,7 +89,6 @@ enum tagAPICMDActionList
 
     SC_API_CMD_ACTION_GW_GROUP_ADD,                      /* 增加一个网关组 */
     SC_API_CMD_ACTION_GW_GROUP_DELETE,                   /* 删除一个网关组 */
-    SC_API_CMD_ACTION_GW_GROUP_UPDATE,                   /* 更新一个网关组 */
 
     SC_API_CMD_ACTION_DID_ADD,                           /* 添加一个did */
     SC_API_CMD_ACTION_DID_DELETE,                        /* 删除一个did */

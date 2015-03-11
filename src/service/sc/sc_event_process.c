@@ -875,7 +875,7 @@ U32 sc_load_gateway()
  *      S8 **aszValues: 值裂变
  *      S8 **aszNames: 字段名列表
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
- */
+ **/
 S32 sc_load_gateway_grp_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     SC_GW_GRP_NODE_ST    *pstGWGrpNode  = NULL;

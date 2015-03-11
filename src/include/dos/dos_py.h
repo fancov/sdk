@@ -6,9 +6,9 @@
 
 #if INCLUDE_SERVICE_PYTHON
 
-U32   py_init_py();
-U32   py_c_call_py(const char *pszModule, const char *pszFunc, const char *pszPyFormat, ...);
-U32   py_deinit_py();
+U32   py_init();
+U32   py_exec_func(const char *pszModule, const char *pszFunc, const char *pszPyFormat, ...);
+U32   py_deinit();
 
 #endif /* INCLUDE_SERVICE_PYTHON */
 
