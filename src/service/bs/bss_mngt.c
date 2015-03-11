@@ -26,10 +26,219 @@ extern "C"{
 
 extern double ceil(double x);
 
+/* 处理WEB通知更新坐席的请求 */
+VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
+{
+    U32 ulCustomerID = U32_BUTT, ulGroupID1 = U32_BUTT, ulGroupID2 = U32_BUTT, ulAgentID = U32_BUTT;
+    U32 ulHashIndex;
+    const S8  *pszCustomID = NULL, *pszGroupID1 = NULL, *pszGroupID2 = NULL, *pszAgentID;
+    HASH_NODE_S *pstHashNode = NULL;
+    BS_AGENT_ST *pstAgentInfo = NULL;
+    BS_CUSTOMER_ST  *pstCustomer = NULL;
+
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Start update agent. Opteration:%d", ulOpteration);
+
+    pszAgentID  = json_get_param(pstJSONObj, "id");
+    pszCustomID = json_get_param(pstJSONObj, "customer_id");
+    pszGroupID1 = json_get_param(pstJSONObj, "group1_id");
+    pszGroupID2 = json_get_param(pstJSONObj, "group2_id");
+
+    if (DOS_ADDR_INVALID(pszAgentID)
+        || DOS_ADDR_INVALID(pszCustomID)
+        || DOS_ADDR_INVALID(pszGroupID1)
+        || DOS_ADDR_INVALID(pszGroupID2)
+        || dos_atoul(pszAgentID, &ulAgentID) < 0
+        || dos_atoul(pszCustomID, &ulCustomerID) < 0
+        || dos_atoul(pszGroupID1, &ulGroupID1) < 0
+        || dos_atoul(pszGroupID2, &ulGroupID2) < 0)
+    {
+        DOS_ASSERT(0);
+
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Invalid parameter while process agent update msg. Opteration:%d", ulOpteration);
+
+        goto process_finished;
+    }
+
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Update agent. Opteration:%d, Agent:%d, Custom:%d, Group1:%d, Group2:%d"
+                , ulOpteration, ulAgentID, ulCustomerID, ulGroupID1, ulGroupID2);
+
+    ulHashIndex = bs_hash_get_index(BS_HASH_TBL_AGENT_SIZE, ulAgentID);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get hash index fail while process agent update msg. Opteration:%d", ulOpteration);
+
+        goto process_finished;
+    }
+
+    switch (ulOpteration)
+    {
+        case BS_CMD_UPDATE:
+            pthread_mutex_lock(&g_mutexAgentTbl);
+            pstHashNode = hash_find_node(g_astAgentTbl, ulHashIndex, (VOID *)&ulAgentID, bs_agent_hash_node_match);
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                pthread_mutex_unlock(&g_mutexAgentTbl);
+
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Cannot find the agent while update. Opteration:%d", ulOpteration);
+
+                break;
+            }
+
+            pstAgentInfo = (BS_AGENT_ST *)pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstAgentInfo))
+            {
+                pthread_mutex_unlock(&g_mutexAgentTbl);
+
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Invalid hash node while update. Opteration:%d", ulOpteration);
+
+                break;
+            }
+
+            pstCustomer = bs_get_customer_st(pstAgentInfo->ulCustomerID);
+            if (DOS_ADDR_INVALID(pstCustomer))
+            {
+                pthread_mutex_unlock(&g_mutexAgentTbl);
+
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Connat find the customer with the id %u.(%u) Opteration:%d"
+                            , pstAgentInfo->ulAgentID
+                            , pszCustomID
+                            , ulOpteration);
+
+                break;
+            }
+
+            pstAgentInfo->ulGroup1 = ulGroupID1;
+            pstAgentInfo->ulGroup2 = ulGroupID2;
+
+            pthread_mutex_unlock(&g_mutexAgentTbl);
+            break;
+
+        case BS_CMD_DELETE:
+            pthread_mutex_lock(&g_mutexAgentTbl);
+            pstHashNode = hash_find_node(g_astAgentTbl, ulHashIndex, (VOID *)&ulAgentID, bs_agent_hash_node_match);
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                pthread_mutex_unlock(&g_mutexAgentTbl);
+
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Cannot find the agent while update. Opteration:%d", ulOpteration);
+
+                break;
+            }
+
+            pstAgentInfo = pstHashNode->pHandle;
+            pstCustomer = bs_get_customer_st(pstAgentInfo->ulCustomerID);
+            if (DOS_ADDR_INVALID(pstCustomer))
+            {
+                pthread_mutex_unlock(&g_mutexAgentTbl);
+
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Connat find the customer with the id %u.(%u) Opteration:%d"
+                            , pstAgentInfo->ulAgentID
+                            , pszCustomID
+                            , ulOpteration);
+
+                break;
+            }
+
+            hash_delete_node(g_astAgentTbl, pstHashNode, ulHashIndex);
+            pthread_mutex_lock(&g_mutexCustomerTbl);
+            pstCustomer->ulAgentNum--;
+            pthread_mutex_unlock(&g_mutexCustomerTbl);
+
+            pthread_mutex_unlock(&g_mutexAgentTbl);
+            break;
+
+        case BS_CMD_INSERT:
+            pstCustomer = bs_get_customer_st(ulCustomerID);
+            if (DOS_ADDR_INVALID(pstCustomer))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Connat find the customer with the id %u. Opteration:%u"
+                            , ulCustomerID
+                            , ulOpteration);
+
+                break;
+            }
+
+            pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Cannot alloc memory while update agent. Opteration:%d", ulOpteration);
+
+                break;
+            }
+            HASH_Init_Node(pstHashNode);
+
+            pstAgentInfo = dos_dmem_alloc(sizeof(BS_AGENT_ST));
+            if (DOS_ADDR_INVALID(pstAgentInfo))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Cannot alloc memory while update agent. Opteration:%d", ulOpteration);
+
+                break;
+            }
+
+            pstAgentInfo->ulAgentID = ulAgentID;
+            pstAgentInfo->ulCustomerID = ulCustomerID;
+            pstAgentInfo->ulGroup1 = ulGroupID1;
+            pstAgentInfo->ulGroup2 = ulGroupID2;
+            pstHashNode->pHandle = pstAgentInfo;
+
+            pthread_mutex_lock(&g_mutexAgentTbl);
+            hash_add_node(g_astAgentTbl, pstHashNode, ulHashIndex, NULL);
+            pthread_mutex_lock(&g_mutexCustomerTbl);
+            pstCustomer->ulAgentNum++;
+            pthread_mutex_unlock(&g_mutexCustomerTbl);
+            pthread_mutex_unlock(&g_mutexAgentTbl);
+
+            break;
+
+        default:
+            break;
+    }
+
+process_finished:
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Update agent finished. Opteration:%d", ulOpteration);
+}
+
 /* 处理遍历WEB CMD临时表的响应 */
 VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 {
+    S32 lMonery = 0;
+    U32 ulCustomerID = 0;
+    const S8 *pszMonery = NULL;
+    const S8 *pszCustomID = NULL;
+    BS_CUSTOMER_ST  *pstCustomer = NULL;
+
+    /* 处理余额变动 */
+    pszMonery = json_get_param(pstJSONObj, "money");
+    if (DOS_ADDR_VALID(pszMonery))
+    {
+        if (dos_atol(pszMonery, &lMonery) < 0)
+        {
+            goto process_finished;
+        }
+
+        pszCustomID = json_get_param(pstJSONObj, "id");
+        if (DOS_ADDR_INVALID(pszCustomID)
+            || dos_atoul(pszCustomID, &ulCustomerID) < 0)
+        {
+            goto process_finished;
+        }
+
+        pstCustomer = bs_get_customer_st(ulCustomerID);
+        if (DOS_ADDR_INVALID(pstCustomer))
+        {
+            goto process_finished;
+        }
+
+        pstCustomer->stAccount.LBalanceActive += (lMonery * 100);
+
+        goto process_finished;
+    }
+
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Start update customer. Opteration:%d", ulOpteration);
+
     switch (ulOpteration)
     {
         case BS_CMD_UPDATE:
@@ -328,6 +537,8 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             break;
     }
 
+process_finished:
+
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Finish to update customer. Opteration:%d", ulOpteration);
 }
 
@@ -439,10 +650,13 @@ VOID bss_data_update()
             continue;
         }
 
-        if (dos_strcmp(pszTblName, "tbl_customer") == 0
-            || dos_strcmp(pszTblName, "tbl_agent") == 0)
+        if (dos_strcmp(pszTblName, "tbl_customer") == 0)
         {
             bss_update_customer(ulOpteration, pstJsonNode);
+        }
+        if (dos_strcmp(pszTblName, "tbl_agent") == 0)
+        {
+            bss_update_agent(ulOpteration, pstJsonNode);
         }
         else
         {
