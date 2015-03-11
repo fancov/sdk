@@ -228,66 +228,6 @@ U32 sc_ep_gw_hash_func(U32 ulGWID)
     return ulGWID % SC_GW_GRP_HASH_SIZE;
 }
 
-/* 网关组hash表查找函数 */
-S32 sc_ep_gw_grp_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
-{
-    SC_GW_GRP_NODE_ST *pstGWGrpNode;
-
-    U32 ulGWGrpIndex = 0;
-
-    if (DOS_ADDR_INVALID(pObj)
-        || DOS_ADDR_INVALID(pstHashNode)
-        || DOS_ADDR_INVALID(pstHashNode->pHandle))
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    ulGWGrpIndex = *(U32 *)pObj;
-    pstGWGrpNode = pstHashNode->pHandle;
-
-    if (ulGWGrpIndex == pstGWGrpNode->ulGWGrpID)
-    {
-        return DOS_SUCC;
-    }
-    else
-    {
-        return DOS_FAIL;
-    }
-}
-
-/* 网关hash表查找函数 */
-S32 sc_ep_gw_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
-{
-    SC_GW_NODE_ST *pstGWNode;
-
-    U32 ulGWIndex = 0;
-
-    if (DOS_ADDR_INVALID(pObj)
-        || DOS_ADDR_INVALID(pstHashNode)
-        || DOS_ADDR_INVALID(pstHashNode->pHandle))
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    ulGWIndex = *(U32 *)pObj;
-    pstGWNode = pstHashNode->pHandle;
-
-    if (ulGWIndex == pstGWNode->ulGWID)
-    {
-        return DOS_SUCC;
-    }
-    else
-    {
-        return DOS_FAIL;
-    }
-
-}
-
-
 /**
  * 函数: static U32 sc_sip_userid_hash_func(S8 *pszUserID)
  * 功能: 通过pszUserID计算SIP User IDHash表的HASH值
@@ -372,6 +312,93 @@ static U32 sc_black_list_hash_func(S8 *pszNum)
     }
 
     return ulHashIndex % SC_IP_USERID_HASH_SIZE;
+}
+
+
+/* 网关组hash表查找函数 */
+S32 sc_ep_gw_grp_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
+{
+    SC_GW_GRP_NODE_ST *pstGWGrpNode;
+
+    U32 ulGWGrpIndex = 0;
+
+    if (DOS_ADDR_INVALID(pObj)
+        || DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    ulGWGrpIndex = *(U32 *)pObj;
+    pstGWGrpNode = pstHashNode->pHandle;
+
+    if (ulGWGrpIndex == pstGWGrpNode->ulGWGrpID)
+    {
+        return DOS_SUCC;
+    }
+    else
+    {
+        return DOS_FAIL;
+    }
+}
+
+/* 网关hash表查找函数 */
+S32 sc_ep_gw_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
+{
+    SC_GW_NODE_ST *pstGWNode;
+
+    U32 ulGWIndex = 0;
+
+    if (DOS_ADDR_INVALID(pObj)
+        || DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    ulGWIndex = *(U32 *)pObj;
+    pstGWNode = pstHashNode->pHandle;
+
+    if (ulGWIndex == pstGWNode->ulGWID)
+    {
+        return DOS_SUCC;
+    }
+    else
+    {
+        return DOS_FAIL;
+    }
+
+}
+
+
+/* 查找DID号码 */
+S32 sc_ep_did_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
+{
+    S8 *pszDIDNum = NULL;
+    SC_DID_NODE_ST *pstDIDInfo = NULL;
+
+    if (DOS_ADDR_INVALID(pObj)
+        || DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pszDIDNum = (S8 *)pObj;
+    pstDIDInfo = pstHashNode->pHandle;
+
+    if (dos_strnicmp(pstDIDInfo->szDIDNum, pszDIDNum, sizeof(pstDIDInfo->szDIDNum)))
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
 }
 
 
@@ -1739,6 +1766,7 @@ U32 sc_ep_get_custom_by_did(S8 *pszNum)
     SC_DID_NODE_ST     *pstDIDNumNode = NULL;
     HASH_NODE_S        *pstHashNode   = NULL;
     U32                ulHashIndex    = 0;
+    U32                ulCustomerID;
 
     if (DOS_ADDR_INVALID(pszNum))
     {
@@ -1747,31 +1775,25 @@ U32 sc_ep_get_custom_by_did(S8 *pszNum)
         return U32_BUTT;
     }
 
+    ulHashIndex = sc_sip_did_hash_func(pszNum);
     pthread_mutex_lock(&g_mutexHashDIDNum);
-    HASH_Scan_Table(g_pstHashDIDNum, ulHashIndex)
+    pstHashNode = hash_find_node(g_pstHashDIDNum, ulHashIndex, (VOID *)pszNum, sc_ep_did_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        HASH_Scan_Bucket(g_pstHashDIDNum, ulHashIndex, pstHashNode, HASH_NODE_S*)
-        {
-            if (DOS_ADDR_INVALID(pstHashNode))
-            {
-                continue;
-            }
+        DOS_ASSERT(0);
 
-            pstDIDNumNode = pstHashNode->pHandle;
-            if (DOS_ADDR_INVALID(pstDIDNumNode))
-            {
-                continue;
-            }
-
-            if (0 == dos_strnicmp(pstDIDNumNode->szDIDNum, pszNum, sizeof(pstDIDNumNode->szDIDNum)))
-            {
-                pthread_mutex_unlock(&g_mutexHashDIDNum);
-                return pstDIDNumNode->ulCustomID;
-            }
-        }
+        pthread_mutex_unlock(&g_mutexHashDIDNum);
+        return U32_BUTT;
     }
+
+    pstDIDNumNode = pstHashNode->pHandle;
+
+    ulCustomerID = pstDIDNumNode->ulCustomID
+
     pthread_mutex_unlock(&g_mutexHashDIDNum);
-    return U32_BUTT;
+
+    return ulCustomerID;
 }
 
 
@@ -1799,35 +1821,26 @@ U32 sc_ep_get_bind_info4did(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID)
         return DOS_FAIL;
     }
 
+    ulHashIndex = sc_sip_did_hash_func(pszDidNum);
     pthread_mutex_lock(&g_mutexHashDIDNum);
-    HASH_Scan_Table(g_pstHashDIDNum, ulHashIndex)
+    pstHashNode = hash_find_node(g_pstHashDIDNum, ulHashIndex, (VOID *)pszDidNum, sc_ep_did_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        HASH_Scan_Bucket(g_pstHashDIDNum, ulHashIndex, pstHashNode, HASH_NODE_S*)
-        {
-            if (DOS_ADDR_INVALID(pstHashNode))
-            {
-                continue;
-            }
+        DOS_ASSERT(0);
 
-            pstDIDNumNode = pstHashNode->pHandle;
-            if (DOS_ADDR_INVALID(pstDIDNumNode))
-            {
-                continue;
-            }
-
-            if (0 == dos_strnicmp(pstDIDNumNode->szDIDNum, pszDidNum, sizeof(pstDIDNumNode->szDIDNum)))
-            {
-                *pulBindType = pstDIDNumNode->ulBindType;
-                *pulBindID   = pstDIDNumNode->ulBindID;
-
-                pthread_mutex_unlock(&g_mutexHashDIDNum);
-                return DOS_SUCC;
-            }
-        }
+        pthread_mutex_unlock(&g_mutexHashDIDNum);
+        return DOS_FAIL;
     }
-    pthread_mutex_unlock(&g_mutexHashDIDNum);
-    return DOS_FAIL;
 
+    pstDIDNumNode = pstHashNode->pHandle;
+
+    *pulBindType = pstDIDNumNode->ulBindType;
+    *pulBindID = pstDIDNumNode->ulBindID;
+
+    pthread_mutex_unlock(&g_mutexHashDIDNum);
+
+    return DOS_SUCC;
 }
 
 
