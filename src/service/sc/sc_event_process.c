@@ -458,6 +458,42 @@ S32 sc_ep_black_list_find(VOID *pObj, HASH_NODE_S *pstHashNode)
     return DOS_FAIL;
 }
 
+/* É¾³ýSIPÕË»§ */
+U32 sc_ep_sip_userid_delete(U32 ulSIPUserID, S8 *pszUserID)
+{
+    SC_USER_ID_NODE_ST *pstUserID   = NULL;
+    HASH_NODE_S        *pstHashNode = NULL;
+    U32                ulHashIndex  = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pszUserID))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    ulHashIndex= sc_sip_userid_hash_func(pszUserID);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pszUserID, sc_ep_sip_userid_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    hash_delete_node(g_pstHashSIPUserID, pstHashNode, ulHashIndex);
+    pstUserID = pstHashNode->pHandle;
+    HASH_Init_Node(pstHashNode);
+    pstHashNode->pHandle = NULL;
+
+    dos_dmem_free(pstUserID);
+    pstUserID = NULL;
+    dos_dmem_free(pstHashNode);
+    pstHashNode = NULL;
+
+    return DOS_SUCC;
+}
 
 /**
  * º¯Êý: S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)

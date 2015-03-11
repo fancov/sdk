@@ -1223,16 +1223,17 @@ U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID)
 static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
-    SC_ACD_AGENT_INFO_ST        stSiteInfo = NULL;
     HASH_NODE_S                 *pstHashNode = NULL;
-    U32                         ulSiteID   = 0, ulCustomID   = 0, ulGroupID  = 0;
-    U32                         ulGroupID1 = 0, ulRecordFlag = 0, ulIsHeader = 0;
-    U32                         ulHashIndex = 0, ulIndex = 0, ulRest = 0;
     S8                          *pszSiteID     = NULL, *pszCustomID = NULL;
     S8                          *pszGroupID1   = NULL, *pszGroupID2 = NULL;
     S8                          *pszExten      = NULL, *pszGroupID  = NULL;
     S8                          *pszJobNum     = NULL, *pszUserID   = NULL;
     S8                          *pszRecordFlag = NULL, *pszIsHeader = NULL;
+    SC_ACD_AGENT_INFO_ST        stSiteInfo;
+    U32                         ulSiteID   = 0, ulCustomID   = 0, ulGroupID  = 0;
+    U32                         ulGroupID1 = 0, ulRecordFlag = 0, ulIsHeader = 0;
+    U32                         ulHashIndex = 0, ulIndex = 0, ulRest = 0;
+
 
     pszSiteID = pszData[0];
     pszCustomID = pszData[1];
