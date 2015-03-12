@@ -61,12 +61,12 @@ FUNCATTR S32 db_mysql_close(MYSQL *pstMysql, S8 **pszErrMsg)
 
 FUNCATTR S32 db_mysql_query(MYSQL *pstMysql, S8 *pszSQL, S32 (*callback)(VOID*, S32, S8**, S8**), VOID *pParamObj, S8 **pszErrMsg)
 {
-    MYSQL_RES   *pstResource;
-    MYSQL_FIELD *pstField;
+    MYSQL_RES   *pstResource = NULL;
+    MYSQL_FIELD *pstField = NULL;
     S8          *pszFields[MAX_DB_FIELDS] = { NULL };
     S8          *pszDatas[MAX_DB_FIELDS] = { NULL };
     MYSQL_ROW   stRow;
-    S32         i, ulNameLen, ulValLen, ulFieldCnt, ulResult;
+    S32         i, lNameLen, lValLen, lFieldCnt, lResult = 0;
 
     if (!pstMysql || !pszSQL)
     {
@@ -86,9 +86,9 @@ FUNCATTR S32 db_mysql_query(MYSQL *pstMysql, S8 *pszSQL, S32 (*callback)(VOID*, 
     pstResource = mysql_store_result(pstMysql);
     if (!pstResource)
     {
-        ulFieldCnt = mysql_field_count(pstMysql);
+        lFieldCnt = mysql_field_count(pstMysql);
         /* 如果是0，说明是非select查询 */
-        if (0 == ulFieldCnt)
+        if (0 == lFieldCnt)
         {
             //return mysql_affected_rows(pstMysql);
             return DB_ERR_SUCC;
@@ -102,7 +102,7 @@ FUNCATTR S32 db_mysql_query(MYSQL *pstMysql, S8 *pszSQL, S32 (*callback)(VOID*, 
     }
 
     i = 0;
-    ulFieldCnt = mysql_field_count(pstMysql);
+    lFieldCnt = mysql_field_count(pstMysql);
     while ((pstField = mysql_fetch_field(pstResource)) && i<MAX_DB_FIELDS)
     {
         if (!pstField->name)
@@ -110,30 +110,30 @@ FUNCATTR S32 db_mysql_query(MYSQL *pstMysql, S8 *pszSQL, S32 (*callback)(VOID*, 
             continue;
         }
 
-        ulNameLen = db_strlen(pstField->name) + 1;
-        pszFields[i] = db_mem_alloc(ulNameLen);
-        db_strncpy(pszFields[i], pstField->name, ulNameLen);
-        pszFields[i][ulNameLen - 1] = '\0';
+        lNameLen = db_strlen(pstField->name) + 1;
+        pszFields[i] = db_mem_alloc(lNameLen);
+        db_strncpy(pszFields[i], pstField->name, lNameLen);
+        pszFields[i][lNameLen - 1] = '\0';
 
         i++;
     }
 
     while ((stRow = mysql_fetch_row(pstResource)))
     {
-        ulResult   = 0;
-        for (i=0; i<MAX_DB_FIELDS && i<ulFieldCnt; i++)
+        lResult   = 0;
+        for (i=0; i<MAX_DB_FIELDS && i<lFieldCnt; i++)
         {
             if (stRow[i] && stRow[i][0] != '\0')
             {
-                ulValLen = db_strlen(stRow[i]) + 1;
-                pszDatas[i] = db_mem_alloc(ulValLen);
+                lValLen = db_strlen(stRow[i]) + 1;
+                pszDatas[i] = db_mem_alloc(lValLen);
                 if (!pszDatas[i])
                 {
-                    ulResult = (U32)-1;
+                    lResult = (U32)-1;
                     break;
                 }
 
-                db_snprintf(pszDatas[i], ulValLen, "%s", stRow[i]);
+                db_snprintf(pszDatas[i], lValLen, "%s", stRow[i]);
             }
             else
             {
@@ -141,9 +141,9 @@ FUNCATTR S32 db_mysql_query(MYSQL *pstMysql, S8 *pszSQL, S32 (*callback)(VOID*, 
             }
         }
 
-        if (!ulResult && callback)
+        if (!lResult && callback)
         {
-            callback(pParamObj, (S32)ulFieldCnt, pszDatas, pszFields);
+            callback(pParamObj, lFieldCnt, pszDatas, pszFields);
         }
 
         for (i=0; i<MAX_DB_FIELDS; i++)
@@ -155,7 +155,7 @@ FUNCATTR S32 db_mysql_query(MYSQL *pstMysql, S8 *pszSQL, S32 (*callback)(VOID*, 
             }
         }
 
-        if (ulResult)
+        if (lResult)
         {
             break;
         }
@@ -178,7 +178,7 @@ FUNCATTR S32 db_mysql_query(MYSQL *pstMysql, S8 *pszSQL, S32 (*callback)(VOID*, 
 
     mysql_free_result(pstResource);
 
-    if (ulResult)
+    if (lResult)
     {
         return DB_ERR_QUERY_FETCH_FAIL;
     }
