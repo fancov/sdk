@@ -1047,4 +1047,3 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
 #ifdef  __cplusplus
 }
 #endif  /* end of __cplusplus */
-

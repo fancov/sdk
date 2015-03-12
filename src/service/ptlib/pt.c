@@ -537,12 +537,12 @@ PT_CC_CB_ST *pt_ptc_node_create(U8 *pcIpccId, S8 *szPtcVersion, struct sockaddr_
     pstNewNode->usHBOutTimeCount = 0;
     pstNewNode->stHBTmrHandle = NULL;
 
-    if (dos_strcmp(szPtcVersion, "1.1") == 0)
-    {
+    //if (dos_strcmp(szPtcVersion, "1.1") == 0)
+    //{
         /* 1.1版本，支持web和cmd */
-        pstNewNode->astDataTypes[PT_DATA_WEB].bValid = DOS_TRUE;
-        pstNewNode->astDataTypes[PT_DATA_CMD].bValid = DOS_TRUE;
-    }
+    pstNewNode->astDataTypes[PT_DATA_WEB].bValid = DOS_TRUE;
+    pstNewNode->astDataTypes[PT_DATA_CMD].bValid = DOS_TRUE;
+    //}
 
     return pstNewNode;
 }
@@ -978,3 +978,4 @@ list_t *pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *ps
 #ifdef  __cplusplus
 }
 #endif  /* end of __cplusplus */
+

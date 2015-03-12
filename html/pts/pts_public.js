@@ -312,7 +312,8 @@ function submit_create_user_url(url)
 
 function form_check_package()
 {
-    if (document.getElementById("PackageFile").value == "")
+    var filename = document.getElementById("PackageFile").value; 
+    if (filename == "")
     {
         alert("软件包: 请选择一个软件包文件!");
         return false;
@@ -344,7 +345,7 @@ function form_check_package()
 
     url += "id="+id;
 
-    document.getElementById('HttpPackageUpload').action=url;
+    document.getElementById('HttpPackageUpload').action = url;
     
     return true;
 }
@@ -411,10 +412,6 @@ function checkmail()
     }
 }
 
-function exit()
-{
-    document.execCommand('ClearAuthenticationCache'); 
-}
 
 function del_user()
 {
@@ -506,3 +503,71 @@ function change_password()
 
     window.open(url, '_self');
 }
+
+/* 退出按钮 */
+function exit()
+{
+    try  
+    {  
+      if(navigator.userAgent.indexOf("MSIE")>0)         //IE浏览器实现注销功能  
+      {  
+        document.execCommand("ClearAuthenticationCache");  
+      }  
+      else if(isFirefox=navigator.userAgent.indexOf("Firefox")>0)       //Firefox实现注销功能  
+      {  
+        var xmlhttp = createXMLObject();  
+        xmlhttp.open("GET",".force_logout_offer_login_mozilla",true,"logout","logout");  
+        xmlhttp.send("");  
+        xmlhttp.abort();  
+      }  
+      else       //Google Chrome等浏览器实现注销功能  
+      {  
+         var xmlHttp = false;  
+         if(window.XMLHttpRequest)  
+         {  
+            xmlHttp = new XMLHttpRequest();  
+         }  
+         xmlHttp.open("GET", "./", false, "logout", "logout");    
+         xmlHttp.send(null);  
+         xmlHttp.abort();  
+      }  
+    }  
+    catch(e)  
+    {  
+        alert("there was an error");  
+        return false;  
+    }  
+    window.location = "index.html";
+}
+
+
+function select_all()
+{
+    var ptcs = document.getElementsByName("PtcCheckBox");
+    var checkbox_state = document.getElementById("select_all").checked;
+    var i;
+
+    if (checkbox_state)
+    {
+        for(i = 0; i < ptcs.length; i++) 
+        {
+            ptcs[i].checked = true;
+        }
+    }
+    else
+    {
+        for(i = 0; i < ptcs.length; i++) 
+        {
+            ptcs[i].checked = false;
+        }
+    }
+
+    return true;
+}
+
+// function test()
+// {
+//     var url = "/ipcc_internetIP=172.16.100.249&intranetIP=172.16.99.211&port=80"
+
+//     window.open(url);
+// }
