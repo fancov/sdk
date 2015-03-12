@@ -40,7 +40,7 @@ static mxml_node_t *g_pstGlobalCfg;
  */
 S8* config_get_service_root(S8 *pszBuff, U32 ulLen)
 {
-    S8 *pszValue;
+    S8 *pszValue = NULL;
 
     if (!pszBuff || ulLen < 0)
     {
@@ -69,7 +69,7 @@ S8* config_get_service_root(S8 *pszBuff, U32 ulLen)
  */
 U32 config_get_db_host(S8 *pszBuff, U32 ulLen)
 {
-    S8 *pszValue;
+    S8 *pszValue = NULL;
 
     if (!pszBuff || ulLen < 0)
     {
@@ -90,13 +90,13 @@ U32 config_get_db_host(S8 *pszBuff, U32 ulLen)
 
 /**
  * 函数：U32 config_get_mysql_host()
- * 功能：获取数据库主机名
+ * 功能：获取数据库端口号
  * 参数：
  * 返回值：成功返回0.失败返回－1
  */
 U32 config_get_db_port()
 {
-    S8 *pszValue;
+    S8 *pszValue = NULL;
     S8 szBuff[32] = { 0 };
     U16 usDBPort = 0;
     S32 lPort = 0;
@@ -122,7 +122,7 @@ U32 config_get_db_port()
 
 /**
  * 函数：U32 config_get_mysql_user(S8 *pszBuff, U32 ulLen)
- * 功能：获取数据库主机名
+ * 功能：获取数据库用户名
  * 参数：
  *      S8 *pszBuff： 缓存
  *      U32 ulLen：缓存长度
@@ -130,7 +130,7 @@ U32 config_get_db_port()
  */
 U32 config_get_db_user(S8 *pszBuff, U32 ulLen)
 {
-    S8 *pszValue;
+    S8 *pszValue = NULL;
 
     if (!pszBuff || ulLen < 0)
     {
@@ -151,7 +151,7 @@ U32 config_get_db_user(S8 *pszBuff, U32 ulLen)
 
 /**
  * 函数：U32 config_get_mysql_password(S8 *pszBuff, U32 ulLen)
- * 功能：获取数据库主机名
+ * 功能：获取数据库密码
  * 参数：
  *      S8 *pszBuff： 缓存
  *      U32 ulLen：缓存长度
@@ -159,7 +159,7 @@ U32 config_get_db_user(S8 *pszBuff, U32 ulLen)
  */
 U32 config_get_db_password(S8 *pszBuff, U32 ulLen)
 {
-    S8 *pszValue;
+    S8 *pszValue = NULL;
 
     if (!pszBuff || ulLen < 0)
     {
@@ -180,7 +180,7 @@ U32 config_get_db_password(S8 *pszBuff, U32 ulLen)
 
 /**
  * 函数：U32 config_get_mysql_dbname(S8 *pszBuff, U32 ulLen)
- * 功能：获取数据库主机名
+ * 功能：获取数据库名
  * 参数：
  *      S8 *pszBuff： 缓存
  *      U32 ulLen：缓存长度
@@ -188,7 +188,7 @@ U32 config_get_db_password(S8 *pszBuff, U32 ulLen)
  */
 U32 config_get_db_dbname(S8 *pszBuff, U32 ulLen)
 {
-    S8 *pszValue;
+    S8 *pszValue = NULL;
 
     if (!pszBuff || ulLen < 0)
     {
@@ -207,18 +207,56 @@ U32 config_get_db_dbname(S8 *pszBuff, U32 ulLen)
     return 0;
 }
 
-U32 config_get_py_path(S8 *pszBuff, U32 ulLen)
+/**
+ * 函数：U32 config_get_syssrc_db_dbname(S8 *pszBuff, U32 ulLen)
+ * 功能：获取系统资源数据库名
+ * 参数：
+ *      S8 *pszBuff： 缓存
+ *      U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_syssrc_db_dbname(S8 *pszBuff, U32 ulLen)
 {
-   S8 *pszValue;
+    S8  *pszValue = NULL;
 
-   if (!pszBuff || ulLen < 0)
+    if (!pszBuff || ulLen < 0)
     {
         DOS_ASSERT(0);
         pszBuff[0] = '\0';
         return -1;
     }
 
-    pszValue = _config_get_param(g_pstGlobalCfg, "config/py_path", "path", pszBuff, ulLen);
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/mysql", "src_dbname", pszBuff, ulLen);
+
+    if (!pszValue)
+    {
+        pszBuff[0] = '\0';
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * 函数：U32 config_get_py_path(S8 *pszBuff, U32 ulLen)
+ * 功能：获取Python脚本路径
+ * 参数：
+ *      S8 *pszBuff： 缓存
+ *      U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_py_path(S8 *pszBuff, U32 ulLen)
+{
+    S8 *pszValue = NULL;
+
+    if (!pszBuff || ulLen < 0)
+    {
+        DOS_ASSERT(0);
+        pszBuff[0] = '\0';
+        return -1;
+    }
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/service/path/freeswitch", "fs_scripts_path", pszBuff, ulLen);
     if (!pszValue)
     {
         pszBuff[0] = '\0';

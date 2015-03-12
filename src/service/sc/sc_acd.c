@@ -131,6 +131,13 @@ static S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
     SC_ACD_GRP_HASH_NODE_ST    *pstGrpHashNode = NULL;
     U32                        ulIndex         = 0;
 
+    if (DOS_ADDR_INVALID(pNode)
+        || DOS_ADDR_INVALID(pNode))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
     pstGrpHashNode = (SC_ACD_GRP_HASH_NODE_ST  *)pNode->pHandle;
     ulIndex = (U32)*((U32 *)pSymName);
 
@@ -324,12 +331,15 @@ U32 sc_acd_group_remove_agent(U32 ulGroupID, S8 *pszUserID)
     pstAgentQueueNode = pstDLLNode->pHandle;
     pstDLLNode->pHandle = NULL;
     dos_dmem_free(pstDLLNode);
+    pstDLLNode = NULL;
 
     /*
      * pstAgentQueueNode->pstAgentInfo 这个成员不能释放，这个成员是agent hash表里面申请的
      */
+     
     pstAgentQueueNode->pstAgentInfo = NULL;
     dos_dmem_free(pstAgentQueueNode);
+    pstAgentQueueNode = NULL;
 
     pstGroupNode->usCount--;
 
@@ -526,6 +536,13 @@ static VOID sc_acd_grp_wolk4delete_agent(HASH_NODE_S *pNode, VOID *pszUserID)
         return;
     }
 
+    if (DOS_ADDR_INVALID(pNode)
+        || DOS_ADDR_INVALID(pNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
     pstGroupListNode = (SC_ACD_GRP_HASH_NODE_ST *)pNode->pHandle;
     sc_acd_hash_func4agent(pszUserID, &ulHashVal);
     pthread_mutex_lock(&pstGroupListNode->mutexSiteQueue);
@@ -684,6 +701,14 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
 
     SC_TRACE_IN(ulGroupID, ulCustomID, ulPolicy, pszGroupName);
 
+    if (DOS_ADDR_INVALID(pszGroupName))
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+    }
+
     if (0 == ulGroupID
         || 0 == ulCustomID
         || ulPolicy >= SC_ACD_POLICY_BUTT)
@@ -705,8 +730,6 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
     {
         pstGroupListNode = pstHashNode->pHandle;
 
-        pstGroupListNode->ulCustomID = ulCustomID;
-        pstGroupListNode->ulGroupID  = ulGroupID;
         pstGroupListNode->ucACDPolicy = (U8)ulPolicy;
         pstGroupListNode->usCount = 0;
         pstGroupListNode->usLastUsedAgent = 0;
@@ -1023,7 +1046,6 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST
         break;
     }
 
-
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
         sc_logr_debug(SC_ACD, "Select agent in order from head. Start find agent %d in group %d, Count : %d"
@@ -1234,6 +1256,12 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     U32                         ulGroupID1 = 0, ulRecordFlag = 0, ulIsHeader = 0;
     U32                         ulHashIndex = 0, ulIndex = 0, ulRest = 0;
 
+    if (DOS_ADDR_INVALID(pszData)
+        || DOS_ADDR_INVALID(pszField))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
     pszSiteID = pszData[0];
     pszCustomID = pszData[1];

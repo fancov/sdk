@@ -7,8 +7,11 @@
         <path>
             <!-- 服务根目录 -->
             <param name="service_root" value="/tcom" />
-			<param name="fs_scripts_path" value="/root/bubble/res_monitor/sdk/scripts/freeswitch/pyscripts" /><!--脚本路径-->
-			<param name="fs_config_path"  value="/root/bubble/res_monitor/sdk/scripts/freeswitch/cfg" /><!--freeswitch配置文件路径-->
+			<!--freeswitch相关配置-->
+			<freeswitch>
+			    <param name="fs_scripts_path" value="" /><!--脚本路径-->
+			    <param name="fs_config_path"  value="" /><!--freeswitch配置文件路径-->
+			</freeswitch>
         </path>
     </service>
 
@@ -24,17 +27,17 @@
     <!--数据库配置-->
     <mysql>
         <!--数据库主机-->
-        <param name="host" value="192.168.1.125" />
+        <param name="host" value="172.16.99.100" />
         <!--数据库连接端口-->
         <param name="port" value="3306" />
         <!--数据库连接用户名-->
         <param name="username" value="root" />
         <!--数据库连接用户密码-->
         <param name="password" value="admin" />
-        <!--数据库库名-->
-        <param name="dbname" value="billing_new" />
-		<!--数据库名-->
-		<param name="database" value=""/>
+        <!--业务数据库库名-->
+        <param name="dbname" value="ccsys" />
+		<!--系统资源数据库名-->
+		<param name="src_dbname" value="syssrc"/>
     </mysql>
     <!-- 日志模块配置 -->
     <!-- level 值的范围
@@ -57,21 +60,6 @@
     	    <param name="leval" value="" />
     	</db>
     </log>
-    <!--freeswitch数据库配置-->
-    <fs_db>
-       <!--freeswitch数据库主机ip-->
-       <param name="host"     value="172.16.99.100"/>
-       <!--数据库用户名-->
-       <param name="username" value="root"/>
-       <!--密码-->
-       <param name="password" value="admin"/>
-       <!--端口号-->
-       <param name="port"     value="3306"/>
-       <!--数据库名称-->
-       <param name="db_name"  value="ccsys"/>
-       <!--freeswitch配置文件根路径-->
-       <param name="cfg_path" value="../conf"/>
-    </fs_db>    <!--pts配置-->
     <pts>
         <!--pts 服务器端口-->
         <param name="pts_port" value="50000" />
@@ -93,8 +81,4 @@
         <!--ptc 名称-->
         <param name="ptc_name" value="ptc11" />
     </ptc>
-	<!--Python脚本路径配置-->
-	<py_path>
-	   <param name="path" value="../scripts/freeswitch/pyscripts/freeswitch/"/>
-	</py_path>
 </config>

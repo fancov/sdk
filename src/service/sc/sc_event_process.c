@@ -921,18 +921,19 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     sc_ep_black_init(pstBlackListNode);
 
-    for (blProcessOK = DOS_TRUE, lIndex=0; lIndex<lCount; lIndex++)
+    for (blProcessOK = DOS_FALSE, lIndex=0; lIndex<lCount; lIndex++)
     {
-        if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
+        if (0 == dos_strnicmp(aszNames[lIndex], "i1d", dos_strlen("id")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || dos_atoul(aszValues[lIndex], &pstBlackListNode->ulID) < 0)
             {
                 blProcessOK = DOS_FALSE;
+                
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "customer_id", dos_strlen("customer_id")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "customer_id1", dos_strlen("customer_id")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || dos_atoul(aszValues[lIndex], &pstBlackListNode->ulCustomerID) < 0)
@@ -941,7 +942,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "regex_number", dos_strlen("regex_number")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "regex_numbe1r", dos_strlen("regex_number")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || '\0' == aszValues[lIndex][0])
@@ -949,10 +950,12 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 blProcessOK = DOS_FALSE;
                 break;
             }
-
+            
             dos_strncpy(pstBlackListNode->szNum, aszValues[lIndex], sizeof(pstBlackListNode->szNum));
             pstBlackListNode->szNum[sizeof(pstBlackListNode->szNum) - 1] = '\0';
         }
+
+        blProcessOK = DOS_TRUE;
     }
 
     if (!blProcessOK)

@@ -680,11 +680,11 @@ static S32 mon_add_data_to_db()
    time(&lCur);
    pstCurTime = localtime(&lCur);
 
-   dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "insert into tbl_syssrc%04d%02d(datetime,phymem," \
+   dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO tbl_syssrc%04d%02d(datetime,phymem," \
      "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate," \
-     "procmem_pct,proccpu_pct) values(\'%04d-%02d-%02d %02d:%02d:%02d\',%d,%d," \
-     "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)",
-     pstCurTime->tm_year + 1900
+     "procmem_pct,proccpu_pct) VALUES(\'%04d-%02d-%02d %02d:%02d:%02d\',%d,%d," \
+     "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)"
+     , pstCurTime->tm_year + 1900
      , pstCurTime->tm_mon + 1
      , pstCurTime->tm_year + 1900
      , pstCurTime->tm_mon + 1
@@ -872,24 +872,24 @@ static S32 mon_add_warning_record(U32 ulResId)
    time(&lCur);
    pstCurTime = localtime(&lCur);
    
-   dos_snprintf(szSQLCmd, SQL_CMD_MAX_LENGTH, "insert into mon_warning_db(warningId," \
-               "time,warning_cause,warning_type,warning_obj,warning_level,simple_desc," \
-               "warning_cycle) values(concat(\'%s\', lower(hex(%u))),\'%04d-%02d-%02d %02d:%02d:%02d\',%d,%d," \
-               "%d,%d,\'%s\',%d)"
-               , "0x"
-               , ulResId
+   dos_snprintf(szSQLCmd, SQL_CMD_MAX_LENGTH, "INSERT INTO tbl_alarmlog(" \
+               "ctime,warning,cause,type,object,content,cycle,status)" \
+               "VALUES(\'%04d-%02d-%02d %02d:%02d:%02d\',concat(\'%s\', lower(hex(%u))),%d,%d," \
+               "%d,\'%s\',%d,%d)"
                , pstCurTime->tm_year + 1900
                , pstCurTime->tm_mon + 1
                , pstCurTime->tm_mday
                , pstCurTime->tm_hour
                , pstCurTime->tm_min
                , pstCurTime->tm_sec
-               , 0
-               , 0
+               , "0x"
+               , ulResId
+               , ((ulResId & 0x0fffffff) >> 24) - 1
                , 0
                , 0
                , szSmpDesc
                , 5
+               , 1
               );
 
    lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
@@ -937,7 +937,7 @@ static S32 mon_init_db_conn()
       return DOS_FAIL;
    }
 
-   if(config_get_db_dbname(szDBName, sizeof(szDBName)) < 0 )
+   if(config_get_syssrc_db_dbname(szDBName, sizeof(szDBName)) < 0 )
    {
       DOS_ASSERT(0);
       return DOS_FAIL;
