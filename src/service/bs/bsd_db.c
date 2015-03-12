@@ -290,120 +290,162 @@ S32 bsd_walk_agent_tbl(BS_INTER_MSG_WALK *pstMsg)
 }
 
 
-static S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFields)
+static S32 bsd_walk_billing_rule_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFields)
 {
-    U32                     ulCnt = 0, ulHashIndex;
-    HASH_NODE_S             *pstHashNode = NULL;
-    HASH_NODE_S             *pstMatchNode = NULL;
+    BS_BILLING_RULE_ST      stBillingRule;
     BS_BILLING_PACKAGE_ST   *pstBillingPackage = NULL;
-    BS_BILLING_PACKAGE_ST   *pstMatchPackage = NULL;
     U32                     ulSrcAttrType1, ulSrcAttrType2, ulDstAttrType1, ulDstAttrType2;
-    U32                     ulServType, ulFirstBillingCnt, ulNextBillingCnt, ulServType1;
-    U32                     ulBillingType;
+    U32                     ulFirstBillingCnt, ulNextBillingCnt, ulServType1;
+    U32                     ulBillingType, ulIndex;
 
-    pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+    if (DOS_ADDR_INVALID(pParam)
+        || DOS_ADDR_INVALID(aszData)
+        || DOS_ADDR_INVALID(aszFields))
+    {
+        DOS_ASSERT(0);
+
+        return -1;
+    }
+
+    pstBillingPackage = pParam;
+
+    if (dos_atoul(aszData[0], &stBillingRule.ulRuleID) < 0
+        || dos_atoul(aszData[3], &ulSrcAttrType1) < 0
+        || dos_atoul(aszData[4], &ulSrcAttrType2) < 0
+        || dos_atoul(aszData[5], &ulDstAttrType1) < 0
+        || dos_atoul(aszData[6], &ulDstAttrType2) < 0
+        || dos_atoul(aszData[7], &stBillingRule.ulSrcAttrValue1) < 0
+        || dos_atoul(aszData[8], &stBillingRule.ulSrcAttrValue2) < 0
+        || dos_atoul(aszData[8], &stBillingRule.ulDstAttrValue1) < 0
+        || dos_atoul(aszData[10], &stBillingRule.ulDstAttrValue2) < 0
+        || dos_atoul(aszData[11], &stBillingRule.ulFirstBillingUnit) < 0
+        || dos_atoul(aszData[12], &stBillingRule.ulNextBillingUnit) < 0
+        || dos_atoul(aszData[13], &ulFirstBillingCnt) < 0
+        || dos_atoul(aszData[14], &ulNextBillingCnt) < 0
+        || dos_atoul(aszData[15], &ulServType1) < 0
+        || dos_atoul(aszData[16], &ulBillingType) < 0
+        || dos_atoul(aszData[17], &stBillingRule.ulBillingRate) < 0
+        || dos_atoul(aszData[18], &stBillingRule.ulEffectTimestamp) < 0
+        || dos_atoul(aszData[19], &stBillingRule.ulExpireTimestamp) < 0
+        || dos_atoul(aszData[20], &stBillingRule.ulPackageID) < 0)
+    {
+        DOS_ASSERT(0);
+
+        return -1;
+    }
+
+    stBillingRule.ulPackageID = pstBillingPackage->ulPackageID;
+    stBillingRule.ucSrcAttrType1 = (U8)ulSrcAttrType1;
+    stBillingRule.ucSrcAttrType2 = (U8)ulSrcAttrType2;
+    stBillingRule.ucDstAttrType1 = (U8)ulDstAttrType1;
+    stBillingRule.ucDstAttrType2 = (U8)ulDstAttrType2;
+    stBillingRule.ucFirstBillingCnt = (U8)ulFirstBillingCnt;
+    stBillingRule.ucNextBillingCnt = (U8)ulNextBillingCnt;
+    stBillingRule.ucServType = (U8)ulServType1;
+    stBillingRule.ucBillingType = (U8)ulBillingType;
+
+    /* 遍历找到一个没有使用的插进去 */
+    for (ulIndex=0; ulIndex<BS_MAX_BILLING_RULE_IN_PACKAGE; ulIndex++)
+    {
+        if (!pstBillingPackage->astRule[ulIndex].ucValid)
+        {
+            dos_memcpy(&pstBillingPackage->astRule[ulIndex], &stBillingRule, sizeof(stBillingRule));
+
+            pstBillingPackage->astRule[ulIndex].ucValid = DOS_TRUE;
+
+            break;
+        }
+    }
+
+    return 0;
+}
+
+S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFields)
+{
+    U32 ulServType   = U32_BUTT;
+    U32 ulPkgID      = U32_BUTT;
+    U32 ulCount      = 0;
+    S32 lIndex       = 0;
+    U32 ulHashIndex  = 0;
+    HASH_NODE_S  *pstHashNode = NULL;
+    BS_BILLING_PACKAGE_ST *pstBillingPkg = NULL;
+
+    if (DOS_ADDR_INVALID(aszData)
+        || DOS_ADDR_INVALID(aszFields))
+    {
+        DOS_ASSERT(0);
+
+        return -1;
+    }
+
+    for (ulCount=0, lIndex=0; lIndex<lCnt; lIndex++)
+    {
+        if (0 == dos_strnicmp(aszFields[lIndex], "id", dos_strlen("id")))
+        {
+            if (DOS_ADDR_INVALID(aszData[lIndex])
+                || dos_atoul(aszData[lIndex], &ulPkgID) < 0)
+            {
+                DOS_ASSERT(0);
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszFields[lIndex], "type", dos_strlen("type")))
+        {
+            if (DOS_ADDR_INVALID(aszData[lIndex])
+                || dos_atoul(aszData[lIndex], &ulServType) < 0)
+            {
+                DOS_ASSERT(0);
+                break;
+            }
+        }
+
+        ulCount++;
+    }
+
+    if (ulCount != 2)
+    {
+        DOS_ASSERT(0);
+
+        return -1;
+    }
+
+    pstBillingPkg = (BS_BILLING_PACKAGE_ST *)dos_dmem_alloc(sizeof(BS_BILLING_PACKAGE_ST));
+    if (DOS_ADDR_INVALID(pstBillingPkg))
+    {
+        DOS_ASSERT(0);
+
+        return -1;
+    }
+    dos_memzero(pstBillingPkg, sizeof(BS_BILLING_PACKAGE_ST));
+
+    pstHashNode = (HASH_NODE_S *)dos_dmem_alloc(sizeof(BS_BILLING_PACKAGE_ST));
     if (DOS_ADDR_INVALID(pstHashNode))
     {
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: alloc memory fail!");
-        return BS_INTER_ERR_MEM_ALLOC_FAIL;
+        DOS_ASSERT(0);
+
+        dos_dmem_free(pstBillingPkg);
+        pstBillingPkg = NULL;
+
+        return -1;
     }
     HASH_Init_Node(pstHashNode);
 
-    pstBillingPackage = dos_dmem_alloc(sizeof(BS_BILLING_PACKAGE_ST));
-    if (DOS_ADDR_INVALID(pstBillingPackage))
-    {
-        dos_dmem_free(pstHashNode);
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: alloc memory fail!");
-        return BS_INTER_ERR_MEM_ALLOC_FAIL;
-    }
-    bs_init_billing_package_st(pstBillingPackage);
+    pstBillingPkg->ucServType = (U8)ulServType;
+    pstBillingPkg->ulPackageID = ulPkgID;
+    pstHashNode->pHandle = pstBillingPkg;
 
-    /* 资费规则先存到数组0号下标中 */
-    if (dos_atoul(aszData[0], &pstBillingPackage->ulPackageID) < 0
-        || dos_atoul(aszData[1], &ulServType) < 0
-        || dos_atoul(aszData[2], &pstBillingPackage->astRule[0].ulPackageID) < 0
-        || dos_atoul(aszData[3], &pstBillingPackage->astRule[0].ulRuleID) < 0
-        || dos_atoul(aszData[4], &ulSrcAttrType1) < 0
-        || dos_atoul(aszData[5], &ulSrcAttrType2) < 0
-        || dos_atoul(aszData[6], &ulDstAttrType1) < 0
-        || dos_atoul(aszData[7], &ulDstAttrType2) < 0
-        || dos_atoul(aszData[8], &pstBillingPackage->astRule[0].ulSrcAttrValue1) < 0
-        || dos_atoul(aszData[9], &pstBillingPackage->astRule[0].ulSrcAttrValue2) < 0
-        || dos_atoul(aszData[10], &pstBillingPackage->astRule[0].ulDstAttrValue1) < 0
-        || dos_atoul(aszData[11], &pstBillingPackage->astRule[0].ulDstAttrValue2) < 0
-        || dos_atoul(aszData[12], &pstBillingPackage->astRule[0].ulFirstBillingUnit) < 0
-        || dos_atoul(aszData[13], &pstBillingPackage->astRule[0].ulNextBillingUnit) < 0
-        || dos_atoul(aszData[14], &ulFirstBillingCnt) < 0
-        || dos_atoul(aszData[15], &ulNextBillingCnt) < 0
-        || dos_atoul(aszData[16], &ulServType1) < 0
-        || dos_atoul(aszData[17], &ulBillingType) < 0
-        || dos_atoul(aszData[18], &pstBillingPackage->astRule[0].ulBillingRate) < 0
-        || dos_atoul(aszData[19], &pstBillingPackage->astRule[0].ulEffectTimestamp) < 0
-        || dos_atoul(aszData[20], &pstBillingPackage->astRule[0].ulExpireTimestamp) < 0
-        || dos_atoul(aszData[21], &pstBillingPackage->astRule[0].ulPackageID) < 0)
-    {
-        /* 不用创建hash表节点,释放内存 */
-        dos_dmem_free(pstHashNode);
-        dos_dmem_free(pstBillingPackage);
-        pstHashNode = NULL;
-        pstBillingPackage = NULL;
-
-        return -1;
-    }
-
-    pstBillingPackage->ucServType = (U8)ulServType;
-    pstBillingPackage->astRule[0].ucSrcAttrType1 = (U8)ulSrcAttrType1;
-    pstBillingPackage->astRule[0].ucSrcAttrType2 = (U8)ulSrcAttrType2;
-    pstBillingPackage->astRule[0].ucDstAttrType1 = (U8)ulDstAttrType1;
-    pstBillingPackage->astRule[0].ucDstAttrType2 = (U8)ulDstAttrType2;
-    pstBillingPackage->astRule[0].ucFirstBillingCnt = (U8)ulFirstBillingCnt;
-    pstBillingPackage->astRule[0].ucNextBillingCnt = (U8)ulNextBillingCnt;
-    pstBillingPackage->astRule[0].ucServType = (U8)ulServType1;
-    pstBillingPackage->astRule[0].ucBillingType = (U8)ulBillingType;
-
-    pstHashNode->pHandle = (VOID *)pstBillingPackage;
-    ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, pstBillingPackage->ulPackageID);
+    ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulPkgID);
     if (U32_BUTT == ulHashIndex)
     {
-        DOS_ASSERT(0);
-        return -1;
+        dos_dmem_free(pstBillingPkg);
+        pstBillingPkg = NULL;
+
+        dos_dmem_free(pstHashNode);
+        pstHashNode = NULL;
     }
 
     pthread_mutex_lock(&g_mutexBillingPackageTbl);
-    /* 存放到哈希表之前先查下,确定是否有重复 */
-    pstMatchNode = hash_find_node(g_astBillingPackageTbl,
-                                  ulHashIndex,
-                                  (VOID *)&pstBillingPackage,
-                                  bs_billing_package_hash_node_match);
-    if(DOS_ADDR_INVALID(pstMatchNode))
-    {
-        ulCnt++;
-        hash_add_node(g_astBillingPackageTbl, pstHashNode, ulHashIndex, NULL);
-        g_astBillingPackageTbl->NodeNum++;
-    }
-    else
-    {
-        /* 每个业务有多条计费规则,如果冲突,直接覆盖 */
-
-        U8  ucPriority;
-
-        ucPriority = pstBillingPackage->astRule[0].ucPriority;
-        if (ucPriority >= BS_MAX_BILLING_RULE_IN_PACKAGE)
-        {
-            bs_trace(BS_TRACE_DB, LOG_LEVEL_ERROR,
-                     "ERR: priority(%u) of billing rule(package:%u, service:%u) is wrong in DB !",
-                     ucPriority, pstBillingPackage->ulPackageID, pstBillingPackage->ucServType);
-        }
-        else
-        {
-            pstMatchPackage = (BS_BILLING_PACKAGE_ST *)pstMatchNode->pHandle;
-            pstMatchPackage->astRule[ucPriority] = pstBillingPackage->astRule[0];
-        }
-
-        /* 不用创建hash表节点,释放内存 */
-        dos_dmem_free(pstHashNode);
-        dos_dmem_free(pstBillingPackage);
-    }
+    hash_add_node(g_astBillingPackageTbl, pstHashNode, ulHashIndex, NULL);
     pthread_mutex_unlock(&g_mutexBillingPackageTbl);
 
     return 0;
@@ -414,8 +456,11 @@ static S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData,
 S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
 {
     S8 szQuery[1024] = {0, };
+    U32 ulHashIndex = 0;
+    HASH_NODE_S *pstHashNode = NULL;
+    BS_BILLING_PACKAGE_ST *pstBillingPkg = NULL;
 
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT * FROM tbl_billing_rule t1 LEFT JOIN tbl_billing_package t2 ON t1.billing_package_id = t2.id;");
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT id, type FROM tbl_billing_business;");
 
     if (db_query(g_pstDBHandle, szQuery, bsd_walk_billing_package_tbl_cb, NULL, NULL) != DB_ERR_SUCC)
     {
@@ -424,6 +469,47 @@ S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
     }
 
     bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read billing package from DB OK!");
+
+    pthread_mutex_lock(&g_mutexBillingPackageTbl);
+    HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstBillingPkg = pstHashNode->pHandle;
+
+            dos_snprintf(szQuery
+                          , sizeof(szQuery)
+                          , "SELECT "
+                            "	* "
+                            "FROM "
+                            "	tbl_billing_rule t1 "
+                            "LEFT JOIN "
+                            "	tbl_billing_business t2 "
+                            "ON "
+                            "	t1.id IN (t2.billing_rule_1,t2.billing_rule_2,t2.billing_rule_3,"
+                            "				t2.billing_rule_4,t2.billing_rule_6,t2.billing_rule_6,"
+                            "				t2.billing_rule_7,t2.billing_rule_8,t2.billing_rule_9,"
+                            "				t2.billing_rule_10)"
+                            "	AND t2.id = %d;"
+                          , pstBillingPkg->ulPackageID);
+
+            if (db_query(g_pstDBHandle, szQuery, bsd_walk_billing_rule_tbl_cb, pstHashNode, NULL) != DB_ERR_SUCC)
+            {
+                bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read billing package from DB FAIL!");
+
+                pthread_mutex_unlock(&g_mutexBillingPackageTbl);
+                return BS_INTER_ERR_FAIL;
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_mutexBillingPackageTbl);
+
     return BS_INTER_ERR_SUCC;
 
 }
