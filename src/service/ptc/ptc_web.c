@@ -328,6 +328,7 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                             fclose(pFileFd);
                             pFileFd = NULL;
                             /* fork 一个进程，重启ptc */
+                            #if 1
                             ppid = getpid();
                             pid = fork();
                             if (pid < 0)
@@ -347,6 +348,7 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                                 }
                                 exit(0);
                             }
+                            #endif
                         }
                         dos_dmem_free(g_pPackageBuff);
                         g_pPackageBuff = NULL;
@@ -399,3 +401,4 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
 #ifdef  __cplusplus
 }
 #endif  /* end of __cplusplus */
+
