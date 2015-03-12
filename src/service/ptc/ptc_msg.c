@@ -385,19 +385,15 @@ S32 ptc_key_convert(S8 *szKey, S8 *szDest)
 
     S32 i = 0;
 
-    if (dos_strncmp(ptc_get_version(), "1.1", dos_strlen("1.1")) == 0)
-    {
+    //if (dos_strncmp(ptc_get_version(), "1.1", dos_strlen("1.1")) == 0)
+    //{
         /* 1.1版本验证方法 */
         for (i=0; i<PT_LOGIN_VERIFY_SIZE-1; i++)
         {
             szDest[i] = szKey[i]&0xA9;
         }
         szDest[PT_LOGIN_VERIFY_SIZE] = '\0';
-    }
-    else
-    {
-        return DOS_FAIL;
-    }
+    //}
 
     return DOS_SUCC;
 }
@@ -1817,3 +1813,4 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
 #ifdef  __cplusplus
 }
 #endif  /* end of __cplusplus */
+

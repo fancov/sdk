@@ -350,15 +350,15 @@ S32 pts_key_convert(S8 *szKey, S8 *szDest, S8 *szPtcVersion)
 
     S32 i = 0;
 
-    if (dos_strncmp(szPtcVersion, "1.1", dos_strlen("1.1")) == 0)
-    {
+    //if (dos_strncmp(szPtcVersion, "1.1", dos_strlen("1.1")) == 0)
+    //{
         /* TODO 1.1版本验证方法 */
         for (i=0; i<PT_LOGIN_VERIFY_SIZE-1; i++)
         {
             szDest[i] = szKey[i]&0xA9;
         }
         szDest[PT_LOGIN_VERIFY_SIZE] = '\0';
-    }
+    //}
 
     return DOS_SUCC;
 }
@@ -1502,7 +1502,6 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
             if (pstCtrlData->achPtsMinorDomain[0] != '\0')
             {
                 sprintf(achSql, "update ipcc_alias set achPtsMinorDomain='%s' where sn='%.*s';", pstCtrlData->achPtsMinorDomain, PTC_ID_LEN, pstMsgDes->aucID);
-                printf("achSql : %s\n", achSql);
                 dos_sqlite3_exec(g_stMySqlite, achSql);
             }
             if (pstCtrlData->usPtsMinorPort != 0)
@@ -2178,3 +2177,4 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
 #ifdef  __cplusplus
 }
 #endif  /* end of __cplusplus */
+

@@ -43,7 +43,7 @@ $(document).ready(function() {
 					"sLast": "尾页"
 			        }
 		      },
-		      "aoColumnDefs": [{"className": "ptc_ardio",  "bSort": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [8]}, {"className": "ptc_nice", "aTargets": [3]}],
+		      "aoColumnDefs": [{"className": "ptc_ardio",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [8]}, {"className": "ptc_nice", "aTargets": [3]}],
 
 			 "fnDrawCallback":function(){ $('#example tbody td.ptc_nice').editable('editable_ajax.html', {
 					"callback": function(sValue, y) {
@@ -60,16 +60,19 @@ $(document).ready(function() {
 			})}
 		});
 		
-
-		$('#example tbody').on( 'click', 'tr', function () {
-			var _checked_ = $(this).children("td.ptc_ardio").children("input").prop('checked'); 
+		$('#example tbody').on('click', 'td', function () {
+			if ($(this).find("input").val())
+			{
+				return true;
+			}
+			var _checked_ = $(this).parent().children("td.ptc_ardio").children("input").prop('checked'); 
 			if (_checked_) 
 			{ 
-				$(this).children("td.ptc_ardio").children("input").prop('checked', false); 
+				$(this).parent().children("td.ptc_ardio").children("input").prop('checked', false); 
 			} 
 			else 
 			{ 
-				$(this).children("td.ptc_ardio").children("input").prop('checked', true); 
+				$(this).parent().children("td.ptc_ardio").children("input").prop('checked', true); 
 			}
     	});
 });
@@ -93,7 +96,7 @@ $(document).ready(function() {
 	  <LI><A href="pts_user.html">用户管理</A></LI>
 	</UL>
 	</div>
-	<div class="nav_right" ><p><a href="javascript:;" onclcik="exit()"> Exit </a></p></div>
+	<div class="nav_right" ><p><a href="javascript:;" onclick="exit()"> Exit </a></p></div>
 </div>
 <br>
 <div class="content_body">

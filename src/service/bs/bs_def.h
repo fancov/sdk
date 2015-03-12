@@ -326,7 +326,8 @@ typedef struct stBS_BILLING_RULE_ST
     U32     ulExpireTimestamp;              /* 失效时间戳,0为永久有效 */
     U8      ucPriority;                     /* 优先级,0-9,越小优先级越高 */
 
-    U8      aucReserv[3];
+    U8      ucValid;
+    U8      aucReserv[2];
 
 }BS_BILLING_RULE_ST;
 

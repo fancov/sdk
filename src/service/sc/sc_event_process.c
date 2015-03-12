@@ -530,7 +530,7 @@ U32 sc_gateway_delete(U32 ulGatewayID)
         dos_dmem_free(pstGateway);
         pstHashNode = NULL;
     }
-    
+
     pthread_mutex_unlock(&g_mutexHashGW);
 
     return DOS_SUCC;
@@ -551,7 +551,7 @@ U32 sc_route_delete(U32 ulRouteID)
     }
     pstRouteNode = pstDLLNode->pHandle;
     pstDLLNode->pHandle =  NULL;
-    
+
     dll_delete(&g_stRouteList, pstDLLNode);
 
     if (pstRouteNode)
@@ -565,7 +565,7 @@ U32 sc_route_delete(U32 ulRouteID)
         dos_dmem_free(pstDLLNode);
         pstDLLNode = NULL;
     }
-    
+
     pthread_mutex_unlock(&g_mutexRouteList);
 
     return DOS_SUCC;
@@ -579,15 +579,15 @@ U32 sc_gateway_grp_delete(U32 ulGwGroupID)
 
     /* 获得网关组索引 */
     ulIndex = sc_ep_gw_grp_hash_func(ulGwGroupID);
-    
-    pthread_mutex_lock(&g_mutexHashGWGrp); 
+
+    pthread_mutex_lock(&g_mutexHashGWGrp);
 
     /* 查找网关组节点首地址 */
     pstHashNode = hash_find_node(g_pstHashGWGrp, ulIndex, (VOID *)&ulGwGroupID, sc_ep_gw_grp_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        pthread_mutex_unlock(&g_mutexHashGW); 
+        pthread_mutex_unlock(&g_mutexHashGW);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
@@ -609,7 +609,7 @@ U32 sc_gateway_grp_delete(U32 ulGwGroupID)
        dos_dmem_free(pstHashNode);
        pstHashNode = NULL;
     }
-    
+
     pthread_mutex_unlock(&g_mutexHashGWGrp);
 
     return DOS_SUCC;
@@ -627,7 +627,7 @@ U32 sc_did_delete(U32 ulDidID, S8* pszDidNum)
        DOS_ASSERT(0);
        return DOS_FAIL;
     }
-    szDidNum[sizeof(szDidNum) - 1] = '\0'; 
+    szDidNum[sizeof(szDidNum) - 1] = '\0';
     #endif
 
     ulIndex = sc_sip_did_hash_func(pszDidNum);
@@ -659,7 +659,7 @@ U32 sc_did_delete(U32 ulDidID, S8* pszDidNum)
        dos_dmem_free(pstDidNode);
        pstDidNode = NULL;
     }
-    
+
     pthread_mutex_unlock(&g_mutexHashDIDNum);
 
     return DOS_SUCC;
@@ -687,7 +687,7 @@ U32 sc_black_list_delete(U32 ulBlackListID)
     pstHashNode->pHandle = NULL;
 
     hash_delete_node(g_pstHashBlackList, pstHashNode, ulIndex);
-    
+
     if (pstHashNode)
     {
         dos_dmem_free(pstHashNode);
@@ -699,7 +699,7 @@ U32 sc_black_list_delete(U32 ulBlackListID)
         dos_dmem_free(pstBlackList);
         pstBlackList = NULL;
     }
-    
+
     pthread_mutex_unlock(&g_mutexHashBlackList);
 
     return DOS_SUCC;
@@ -1327,12 +1327,12 @@ U32 sc_load_gateway(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id, realm FROM tbl_relaygrp WHERE tbl_relaygrp.status = 1;");
+                        , "SELECT id, realm FROM tbl_gateway WHERE tbl_gateway.status = 1;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id, realm FROM tbl_relaygrp WHERE tbl_relaygrp.status = 1 AND id=%d;", ulIndex);
+                        , "SELECT id, realm FROM tbl_gateway WHERE tbl_gateway.status = 1 AND id=%d;", ulIndex);
     }
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_cb, NULL, NULL);
