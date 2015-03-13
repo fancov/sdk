@@ -6,11 +6,11 @@ if [ $? -ne 0 ]; then
 	exit -1;
 fi
 
-#./make-ctrl-plan.sh "DEBUG"
-#if [ $? -ne 0 ]; then
-#	echo "Make bs debug version."
-#	exit -1;
-#fi
+./make-ctrl-panel.sh "DEBUG"
+if [ $? -ne 0 ]; then
+	echo "Make ctrl_panel debug version."
+	exit -1;
+fi
 
 ./make-monitor.sh "DEBUG"
 if [ $? -ne 0 ]; then
