@@ -1126,8 +1126,8 @@ int websHttpUploadHandler(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
 
     /* 发送 MD5验证 */
     stUpgrade.ulPackageLen = dos_htonl(ulFileLen);
-    strncpy(stUpgrade.szMD5Verify, pFileMD5, PT_MD5_LEN);
-
+    dos_strncpy(stUpgrade.szMD5Verify, pFileMD5, PT_MD5_LEN);
+    bfreeSafe(B_L, pFileMD5);
     websSendFileToPtc(url, &stUpgrade, szFileName);
     websError(wp, 200, T(""));
     return 1;
@@ -1516,7 +1516,7 @@ static int pts_get_ptc_list_from_db_switch(int eid, webs_t wp, int argc, char_t 
 {
     S8 szPtcListFields[PTS_SWITCH_FILELDS_COUNT][PT_DATA_BUFF_32] = {"", "lastLoginTime", "name", "remark", "ptcType", "internetIP", "intranetIP", "szMac", "szPtsHistoryIp1", "szPtsHistoryIp2", "szPtsHistoryIp3", "sn"};
 
-    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_SWITCH_FILELDS_COUNT, pts_ptc_list_switch_callback, "ipcc_alias", "register = 1", dos_strlen("register = 1"));
+    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_SWITCH_FILELDS_COUNT, pts_ptc_list_switch_callback, "ipcc_alias", "register = 1 AND ptcType != 'WINDOWS'", dos_strlen("register = 1 AND ptcType != 'WINDOWS'"));
 }
 
 
@@ -1524,7 +1524,7 @@ static int pts_get_ptc_list_from_db_config(int eid, webs_t wp, int argc, char_t 
 {
     S8 szPtcListFields[PTS_CONFIG_FILELDS_COUNT][PT_DATA_BUFF_32] = {"", "lastLoginTime", "name", "remark", "ptcType", "internetIP", "intranetIP", "szMac", "achPtsMajorDomain", "achPtsMinorDomain", "sn"};
 
-    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_CONFIG_FILELDS_COUNT, pts_ptc_list_config_callback, "ipcc_alias", "register = 1", dos_strlen("register = 1"));
+    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_CONFIG_FILELDS_COUNT, pts_ptc_list_config_callback, "ipcc_alias", "register = 1 AND ptcType != 'WINDOWS'", dos_strlen("register = 1 AND ptcType != 'WINDOWS'"));
 }
 
 static int pts_get_ptc_list_from_db_upgrades(int eid, webs_t wp, int argc, char_t **argv)
@@ -1861,11 +1861,11 @@ void pts_webs_auto_Redirect(webs_t wp, char_t *url)
         }
 
     /* 解析url */
-    lResult = sscanf(url,"%*[^=]=%[^&]%*[^=]=%[^&]%*[^=]=%s", pDestInternetIp, pDestIntranetIp, pDestPort);
-    if (lResult < 0)
+    lResult = sscanf(url,"%*[^=]=%[^&]%*[^=]=%[^&]%*[^=]=%[^&]", pDestInternetIp, pDestIntranetIp, pDestPort);
+    if (lResult != 3)
     {
         perror("sscanf");
-        websError(wp, 403, T("sscanf fail\n"));
+        websError(wp, 403, T("param error!\n"));
         return;
     }
     printf(" %s, %s, %s\n", pDestInternetIp, pDestIntranetIp, pDestPort);
@@ -1924,8 +1924,36 @@ void pts_webs_auto_Redirect(webs_t wp, char_t *url)
 int pts_recv_from_ipcc_req(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
         char_t *url, char_t *path, char_t* query)
 {
-    pts_webs_auto_Redirect(wp, wp->url);
-    return 1;
+    /* 身份验证 */
+    printf("!!!!url = %s\n", wp->url);
+    S8 *pStrrchr = NULL;
+    S8 szUrlVerify[PT_DATA_BUFF_256] = {0};
+    S8 *pLocalMd5 = NULL;
+    S8 *pMd5 = NULL;
+
+    pStrrchr = strrchr(wp->url, '&');
+    if (pStrrchr != NULL)
+    {
+        pStrrchr[0] = '\0';
+        dos_snprintf(szUrlVerify, PT_DATA_BUFF_256, "%s&Authentication", wp->url);
+        pLocalMd5 = websMD5(szUrlVerify);
+        printf("url : %s, pLocalMd5 : %s\n", szUrlVerify, pLocalMd5);
+        pMd5 = strchr(pStrrchr+1, '=');
+        if (pMd5 != NULL)
+        {
+            if (0 == dos_strcmp(pLocalMd5, pMd5+1))
+            {
+                bfreeSafe(B_L, pLocalMd5);
+                pStrrchr[0] = '&';
+                pts_webs_auto_Redirect(wp, wp->url);
+                return 1;
+            }
+        }
+
+        bfreeSafe(B_L, pLocalMd5);
+    }
+
+    return 0;
 }
 
 static int pts_webs_redirect_pts_server(webs_t wp, char_t *urlPrefix, char_t *webDir,

@@ -567,7 +567,7 @@ function select_all()
 
 // function test()
 // {
-//     var url = "/ipcc_internetIP=172.16.100.249&intranetIP=172.16.99.211&port=80"
+//     var url = "/ipcc_internetIP=172.16.100.249&intranetIP=172.16.99.211&port=80&response=dbddb27513d3c48c05875858786f8637" Authentication
 
 //     window.open(url);
 // }

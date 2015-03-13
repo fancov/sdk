@@ -16,7 +16,7 @@ SUFFIX					= o
 LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86
 
 MYSQL_HEADERS			= -I/usr/include/mysql
-MYSQL_LIBS				= -L/usr/lib64/mysql
+MYSQL_LIBS				= -L/usr/lib/mysql
 
 
 
@@ -51,7 +51,7 @@ ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS)
 ########################################################################
 CC						= gcc
 CXX						= g++
-CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char
+CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char -m32
 DEFINES					= -DDIPCC_PTC -DDEBUG_VERSION
 
 C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
@@ -66,7 +66,7 @@ dep :
 	$(CC) -MM $(ALL_SRCS) $(ALL_HEADERS) $(DEFINES) > $(TARGET).dep
 
 all : $(ALL_OBJS)
-	$(C_LINKS) -o $(TARGET)d $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS)
+	$(C_LINKS) -o $(TARGET)d $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS) -m32
 
 clean :
 	rm -f *.o

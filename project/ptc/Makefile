@@ -13,10 +13,10 @@ DOS_INCLUDES			= -I$(SROUCE)/include
 
 SUFFIX					= o
 
-LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86 
+LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86
 
 MYSQL_HEADERS			= -I/usr/include/mysql
-MYSQL_LIBS				= -L/usr/lib64/mysql
+MYSQL_LIBS				= -L/usr/lib/mysql
 
 
 
@@ -51,7 +51,7 @@ ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS)
 ########################################################################
 CC						= gcc
 CXX						= g++
-CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char
+CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char -m32
 DEFINES					= -DDIPCC_PTC -DDEBUG_VERSION
 
 C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 

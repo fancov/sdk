@@ -1233,6 +1233,11 @@ S32 pts_create_recv_cache(S32 lSockfd, PT_MSG_TAG *pstMsgDes, S8 *szPtcVersion, 
  */
 S32 pts_login_verify(S32 lSockfd, PT_MSG_TAG *pstMsgDes, S8 *pData, struct sockaddr_in stClientAddr, S8 *szPtcVersion)
 {
+    if (NULL == pstMsgDes || NULL == pData || NULL == szPtcVersion)
+    {
+        return DOS_FAIL;
+    }
+
     S32 lResult = 0;
     S32 lRet = DOS_FAIL;
     S8 szKey[PT_LOGIN_VERIFY_SIZE] = {0};
@@ -1276,6 +1281,7 @@ S32 pts_login_verify(S32 lSockfd, PT_MSG_TAG *pstMsgDes, S8 *pData, struct socka
         {
             if (dos_memcmp(szDestKey, pstCtrlData->szLoginVerify, PT_LOGIN_VERIFY_SIZE))
             {
+                printf("login : verify fail\n");
                 pt_logr_info("login : verify fail");
                 /* 验证失败 */
                 pstPtcNode = pt_ptc_list_search(g_pstPtcListSend, pstMsgDes->aucID);
@@ -1287,6 +1293,7 @@ S32 pts_login_verify(S32 lSockfd, PT_MSG_TAG *pstMsgDes, S8 *pData, struct socka
             }
             else
             {
+                printf("login : verify succ\n");
                 pt_logr_info("login : verify succ");
                 lRet = DOS_SUCC;
             }
@@ -1407,7 +1414,8 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
         case PT_CTRL_LOGIN_RSP:
             /* 登陆验证, 添加结果到接收缓存，若验证成功，开启心跳定时器 */
             printf("login rsp\n");
-            lResult= pts_login_verify(lSockfd, pstMsgDes, pData, stClientAddr, pstCtrlData->szVersion);
+            lResult = pts_login_verify(lSockfd, pstMsgDes, pData, stClientAddr, pstCtrlData->szVersion);
+            printf("lResult : %d\n", lResult);
             if (DOS_SUCC == lResult)
             {
                 inet_ntop(AF_INET, (void *)(pstMsgDes->aulServIp), szPtcIntranetIP, IPV6_SIZE);
@@ -1429,6 +1437,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
                     default:
                         break;
                 }
+                printf("%d\n", __LINE__);
 
                 sprintf(achSql,"select count(*) from ipcc_alias where sn='%.*s'", PTC_ID_LEN, pstMsgDes->aucID);
                 if (dos_sqlite3_record_is_exist(g_stMySqlite, achSql))  /* 判断是否存在 */
