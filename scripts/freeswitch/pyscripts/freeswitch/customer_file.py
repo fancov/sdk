@@ -28,7 +28,7 @@ def generate_customer_file(ulCustomerID):
     print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'SQL:', seqSQLCmd
     doc = Document()
     
-    seqCfgPath = db_config.get_db_param()['cfg_path']
+    seqCfgPath = db_config.get_db_param()['fs_config_path']
     if seqCfgPath[-1] != '/':
         seqCfgPath = seqCfgPath + '/'
     
@@ -37,7 +37,7 @@ def generate_customer_file(ulCustomerID):
         
     seqMgntDir = seqCfgPath + 'directory/' + str(ulCustomerID) + '/'
     if os.path.exists(seqMgntDir) is False:
-        os.mkdir(seqMgntDir)
+        os.makedirs(seqMgntDir)
         
     seqCfgPath = seqCfgPath + 'directory/' + str(ulCustomerID) + '.xml'
     db_conn.connect_db()

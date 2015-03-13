@@ -6,7 +6,7 @@
         <!-- 配置服务存储路径相关信息 -->
         <path>
             <!-- 服务根目录 -->
-            <param name="service_root" value="/tcom" />
+            <param name="service_root"   value="/tcom" />
 			<!--freeswitch相关配置-->
 			<freeswitch>
 			    <!--freeswitch脚本路径-->

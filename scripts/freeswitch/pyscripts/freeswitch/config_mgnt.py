@@ -15,11 +15,11 @@ import customer_mgnt
 
 def config_operation(ulOpObj, ulOpType, ulObjID, seqParam1, seqParam2):
     '''
-    @param op_obj: 表示操作对象，为sip账户、座席组、客户中的某一个对象
-    @param op_type: 表示操作类型，包括增加、删除、更改、Load中的一个
-    @param obj_id: 操作对象的id
-    @param param1: 待定参数1，由操作对象和操作类型共同决定
-    @param param2: 待定参数2，由操作对象和操作类型共同决定
+    @param ulOpObj: 表示操作对象，为sip账户、座席组、客户中的某一个对象
+    @param ulOpType: 表示操作类型，包括增加、删除、更改、Load中的一个
+    @param ulObjID: 操作对象的id
+    @param seqParam1: 待定参数1，由操作对象和操作类型共同决定
+    @param seqParam2: 待定参数2，由操作对象和操作类型共同决定
     @todo: 操作配置文件，具体操作由操作对象和操作类型共同决定
     '''
     if str(ulOpObj).strip() == '':

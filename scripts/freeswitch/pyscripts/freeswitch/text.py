@@ -8,7 +8,6 @@
 '''
 
 import file_info
-import router
 
 def get_data_from_txt(seqFileName):
     '''

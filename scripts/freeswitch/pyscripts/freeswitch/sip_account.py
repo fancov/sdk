@@ -26,7 +26,7 @@ def generate_sip_account(ulSIPID, ulCustomerID):
         print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer id is', ulCustomerID    
         return
     
-    seqCfgPath = db_config.get_db_param()['cfg_path']
+    seqCfgPath = db_config.get_db_param()['fs_config_path']
     if seqCfgPath[-1] != '/':
         seqCfgPath = seqCfgPath + '/'
     if os.path.exists(seqCfgPath) is False:
