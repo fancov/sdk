@@ -1,0 +1,71 @@
+#!/bin/bash
+
+if [ $# -lt 1 ];then
+	echo "Please input the paramaters"
+	exit -1
+fi
+
+CURRENT_PATH=`pwd`
+
+MAKE_PATH=../project/ptc
+
+if [ -n $2 ]; then
+	HOST_ARCH=$2
+else
+	HOST_ARCH=""
+fi
+
+
+case $1 in
+	DEBUG)
+		APPNAME=ptcd
+		MAKEFILE_NAME="Makefile"
+	;;
+	RELEASE)
+		APPNAME=ptc
+		MAKEFILE_NAME="Makefile.Realse"
+	;;
+	*)
+		echo "Cannot determine the Makefile. Please chech the paramaters."
+		exit -1
+	;;
+esac
+
+if [ -d $MAKE_PATH ];then
+	cd $MAKE_PATH
+else
+	echo "Dir ${MAKE_PATH} not exist."
+	exit -1
+fi
+
+if [ ! -f ptc.dep ]; then
+	touch ptc.dep
+fi
+
+make dep -f $MAKEFILE_NAME
+if [ $? -ne 0 ]; then
+	echo "Make dep FAIL. App:"${APPNAME}
+	exit 255
+fi
+
+make clean -f $MAKEFILE_NAME
+if [ $? -ne 0 ]; then
+	echo "Make clean FAIL. App:"${APPNAME}
+	exit 255
+fi
+
+make all -f $MAKEFILE_NAME
+if [ $? -ne 0 ]; then
+	echo "Make all FAIL. App:"${APPNAME}
+	exit 255
+fi
+
+if [ ! -d ${CURRENT_PATH}/apps ];then
+	mkdir -p ${CURRENT_PATH}/apps
+fi 
+
+cp $APPNAME ${CURRENT_PATH}/apps/
+
+cd $CURRENT_PATH
+
+exit 0
