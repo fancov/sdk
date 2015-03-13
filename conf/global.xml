@@ -10,7 +10,7 @@
 			<!--freeswitch相关配置-->
 			<freeswitch>
 			    <param name="fs_scripts_path" value="" /><!--脚本路径-->
-			    <param name="fs_config_path"  value="" /><!--freeswitch配置文件路径-->
+			    <param name="fs_config_path"  value="../conf" /><!--freeswitch配置文件路径-->
 			</freeswitch>
         </path>
     </service>
