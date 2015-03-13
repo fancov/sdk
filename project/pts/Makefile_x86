@@ -17,7 +17,7 @@ LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86 -lwebs_x86
 
 MYSQL_HEADERS				= -I/usr/include/mysql
 #MYSQL_LIBS				= -L/usr/lib64/mysql
-MYSQL_LIBS				= -L/lib/mysql
+MYSQL_LIBS				= -L/usr/lib/mysql
 
 
 

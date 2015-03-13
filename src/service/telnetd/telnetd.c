@@ -39,6 +39,10 @@ extern "C"{
 #include "../pts/pts_telnet.h"
 #include "../pts/pts_goahead.h"
 
+VOID telnetd_opt_init();
+VOID telnetd_set_options4client(FILE *output);
+VOID telnetd_send_cmd2client(FILE *output, S32 lCmd, S32 lOpt);
+
 /* 定义最大接收缓存，用在命令行接收输入时 */
 #define MAX_RECV_BUFF_LENGTH    512
 
@@ -312,8 +316,7 @@ VOID telnet_close_client(U32 ulIndex)
     fflush(pstTelnetClient->pFDOutput);
 }
 
-#if 1
-
+#if INCLUDE_PTS
 VOID telentd_negotiate_cmd_server(U32 ulIndex, S8 *szBuff, U32 ulLen)
 {
     if (NULL == szBuff)
@@ -477,8 +480,146 @@ VOID telentd_negotiate_cmd_server(U32 ulIndex, S8 *szBuff, U32 ulLen)
     }
 
 }
-
 #endif
+
+/*
+ * Negotiate the telnet options.
+ */
+VOID telentd_negotiate(FILE *output, FILE *input)
+{
+    /* The default terminal is ANSI */
+    //S8 szTerm[TELNET_NEGO_BUFF_LENGTH] = {'a','n','s','i', 0};
+    /* Various pieces for the telnet communication */
+    S8 szNegoResult[TELNET_NEGO_BUFF_LENGTH] = { 0 };
+    S32 lDone = 0, lSBMode = 0, lDoEcho = 0, lSBLen = 0, lMaxNegoTime = 0;
+    U8 opt, i;
+
+    if (!output || !input)
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    telnetd_opt_init();
+
+    /* Set the default options. */
+    telnetd_set_options4client(output);
+
+    /* Let's do this */
+    while (!feof(stdin) && lDone < 1)
+    {
+        if (lMaxNegoTime > TELNET_MAX_NEGO_TIME)
+        {
+            DOS_ASSERT(0);
+            return;
+        }
+
+        /* Get either IAC (start command) or a regular character (break, unless in SB mode) */
+        i = getc(input);
+        if (IAC == i)
+        {
+            /* If IAC, get the command */
+            i = getc(input);
+            switch (i)
+            {
+                case SE:
+                    /* End of extended option mode */
+                    lSBMode = 0;
+                    if (TTYPE == szNegoResult[0])
+                    {
+                        //alarm(0);
+                        //is_telnet_client = 1;
+                        /* This was a response to the TTYPE command, meaning
+                         * that this should be a terminal type */
+                        strncpy(g_szTermTye, &szNegoResult[2], sizeof(g_szTermTye) - 1);
+                        g_szTermTye[sizeof(g_szTermTye) - 1] = 0;
+                        ++lDone;
+                    }
+                    break;
+                case NOP:
+                    /* No Op */
+                    telnetd_send_cmd2client(output, NOP, 0);
+                    fflush(output);
+                    break;
+                case WILL:
+                case WONT:
+                    /* Will / Won't Negotiation */
+                    opt = getc(input);
+                    if (opt < 0 || opt >= sizeof(g_taucTelnetWillack))
+                    {
+                        DOS_ASSERT(0);
+                        return;
+                    }
+                    if (!g_taucTelnetWillack[opt])
+                    {
+                        /* We default to WONT */
+                        g_taucTelnetWillack[opt] = WONT;
+                    }
+                    telnetd_send_cmd2client(output, g_taucTelnetWillack[opt], opt);
+                    fflush(output);
+                    if ((WILL == i) && (TTYPE == opt))
+                    {
+                        /* WILL TTYPE? Great, let's do that now! */
+                        fprintf(output, "%c%c%c%c%c%c", IAC, SB, TTYPE, SEND, IAC, SE);
+                        fflush(output);
+                    }
+                    break;
+                case DO:
+                case DONT:
+                    /* Do / Don't Negotiation */
+                    opt = getc(input);
+                    if (opt < 0 || opt >= sizeof(g_aucTelnetOptions))
+                    {
+                        DOS_ASSERT(0);
+                        return;
+                    }
+                    if (!g_aucTelnetOptions[opt])
+                    {
+                        /* We default to DONT */
+                        g_aucTelnetOptions[opt] = DONT;
+                    }
+                    telnetd_send_cmd2client(output, g_aucTelnetOptions[opt], opt);
+
+                    if (opt == ECHO)
+                    {
+                        lDoEcho = (i == DO);
+                        //DOS_ASSERT(lDoEcho);
+                    }
+                    fflush(output);
+                    break;
+                case SB:
+                    /* Begin Extended Option Mode */
+                    lSBMode = 1;
+                    lSBLen  = 0;
+                    memset(szNegoResult, 0, sizeof(szNegoResult));
+                    break;
+                case IAC:
+                    /* IAC IAC? That's probably not right. */
+                    lDone = 2;
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (lSBMode)
+        {
+            /* Extended Option Mode -> Accept character */
+            if (lSBLen < (sizeof(szNegoResult) - 1))
+            {
+                /* Append this character to the SB string,
+                 * but only if it doesn't put us over
+                 * our limit; honestly, we shouldn't hit
+                 * the limit, as we're only collecting characters
+                 * for a terminal type or window size, but better safe than
+                 * sorry (and vulnerable).
+                 */
+                szNegoResult[lSBLen++] = i;
+            }
+        }
+    }
+    /* What shall we now do with term, ttype, do_echo, and terminal_width? */
+}
+
 
 /**
  * 函数：S32 telnet_out_string(U32 ulIndex, S8 *pszBuffer)
@@ -728,143 +869,6 @@ VOID telnetd_set_options4client(FILE *output)
 
 }
 
-/*
- * Negotiate the telnet options.
- */
-VOID telentd_negotiate(FILE *output, FILE *input)
-{
-    /* The default terminal is ANSI */
-    //S8 szTerm[TELNET_NEGO_BUFF_LENGTH] = {'a','n','s','i', 0};
-    /* Various pieces for the telnet communication */
-    S8 szNegoResult[TELNET_NEGO_BUFF_LENGTH] = { 0 };
-    S32 lDone = 0, lSBMode = 0, lDoEcho = 0, lSBLen = 0, lMaxNegoTime = 0;
-    U8 opt, i;
-
-    if (!output || !input)
-    {
-        DOS_ASSERT(0);
-        return;
-    }
-
-    telnetd_opt_init();
-
-    /* Set the default options. */
-    telnetd_set_options4client(output);
-
-    /* Let's do this */
-    while (!feof(stdin) && lDone < 1)
-    {
-        if (lMaxNegoTime > TELNET_MAX_NEGO_TIME)
-        {
-            DOS_ASSERT(0);
-            return;
-        }
-
-        /* Get either IAC (start command) or a regular character (break, unless in SB mode) */
-        i = getc(input);
-        if (IAC == i)
-        {
-            /* If IAC, get the command */
-            i = getc(input);
-            switch (i)
-            {
-                case SE:
-                    /* End of extended option mode */
-                    lSBMode = 0;
-                    if (TTYPE == szNegoResult[0])
-                    {
-                        //alarm(0);
-                        //is_telnet_client = 1;
-                        /* This was a response to the TTYPE command, meaning
-                         * that this should be a terminal type */
-                        strncpy(g_szTermTye, &szNegoResult[2], sizeof(g_szTermTye) - 1);
-                        g_szTermTye[sizeof(g_szTermTye) - 1] = 0;
-                        ++lDone;
-                    }
-                    break;
-                case NOP:
-                    /* No Op */
-                    telnetd_send_cmd2client(output, NOP, 0);
-                    fflush(output);
-                    break;
-                case WILL:
-                case WONT:
-                    /* Will / Won't Negotiation */
-                    opt = getc(input);
-                    if (opt < 0 || opt >= sizeof(g_taucTelnetWillack))
-                    {
-                        DOS_ASSERT(0);
-                        return;
-                    }
-                    if (!g_taucTelnetWillack[opt])
-                    {
-                        /* We default to WONT */
-                        g_taucTelnetWillack[opt] = WONT;
-                    }
-                    telnetd_send_cmd2client(output, g_taucTelnetWillack[opt], opt);
-                    fflush(output);
-                    if ((WILL == i) && (TTYPE == opt))
-                    {
-                        /* WILL TTYPE? Great, let's do that now! */
-                        fprintf(output, "%c%c%c%c%c%c", IAC, SB, TTYPE, SEND, IAC, SE);
-                        fflush(output);
-                    }
-                    break;
-                case DO:
-                case DONT:
-                    /* Do / Don't Negotiation */
-                    opt = getc(input);
-                    if (opt < 0 || opt >= sizeof(g_aucTelnetOptions))
-                    {
-                        DOS_ASSERT(0);
-                        return;
-                    }
-                    if (!g_aucTelnetOptions[opt])
-                    {
-                        /* We default to DONT */
-                        g_aucTelnetOptions[opt] = DONT;
-                    }
-                    telnetd_send_cmd2client(output, g_aucTelnetOptions[opt], opt);
-
-                    if (opt == ECHO)
-                    {
-                        lDoEcho = (i == DO);
-                        //DOS_ASSERT(lDoEcho);
-                    }
-                    fflush(output);
-                    break;
-                case SB:
-                    /* Begin Extended Option Mode */
-                    lSBMode = 1;
-                    lSBLen  = 0;
-                    memset(szNegoResult, 0, sizeof(szNegoResult));
-                    break;
-                case IAC:
-                    /* IAC IAC? That's probably not right. */
-                    lDone = 2;
-                    break;
-                default:
-                    break;
-            }
-        }
-        else if (lSBMode)
-        {
-            /* Extended Option Mode -> Accept character */
-            if (lSBLen < (sizeof(szNegoResult) - 1))
-            {
-                /* Append this character to the SB string,
-                 * but only if it doesn't put us over
-                 * our limit; honestly, we shouldn't hit
-                 * the limit, as we're only collecting characters
-                 * for a terminal type or window size, but better safe than
-                 * sorry (and vulnerable).
-                 */
-                szNegoResult[lSBLen++] = i;
-            }
-        }
-    }
-    /* What shall we now do with term, ttype, do_echo, and terminal_width? */
-}
 
 /**
  * 函数：VOID telnetd_client_output_prompt(FILE *output, U32 ulMode)
@@ -1095,7 +1099,7 @@ do{ \
                 lResult = dos_tmr_start(&pstClientInfo->stTimerHandle, PTS_TELNET_CR_TIME, pts_recv_cr_timeout, (U64)pstClientInfo, TIMER_NORMAL_NO_LOOP);
                 if (lResult < 0)
                 {
-                    pt_logr_info("telnetd_client_task : start timer fail");
+                   // pt_logr_info("telnetd_client_task : start timer fail");
                 }
                 telnetd_client_send_new_line(pstClientInfo->pFDOutput, 1);
                 continue;
@@ -1321,15 +1325,15 @@ VOID *telnetd_client_task(VOID *ptr)
     TELNET_CLIENT_INFO_ST *pstClientInfo;
     struct rlimit limit;
     S8 szRecvBuff[MAX_RECV_BUFF_LENGTH];
-    S8 szUseName[MAX_RECV_BUFF_LENGTH];
-    S8 cRecvChar;
-    //S8 aucRecvStr[2];
     S32 lLen;
     S8 szCmd[16] = { 0 };
+#if INCLUDE_PTS
+    S8 szUseName[MAX_RECV_BUFF_LENGTH];
+    S8 cRecvChar;
     S8 *pcPassWord = NULL;
     S32 lResult = 0;
     S8 *pPassWordMd5 = NULL;
-
+#endif
     if (!ptr)
     {
         logr_warning("%s", "New telnet client thread with invalid param, exit.");
