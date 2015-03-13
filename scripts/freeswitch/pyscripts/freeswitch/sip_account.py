@@ -20,13 +20,16 @@ def generate_sip_account(ulSIPID, ulCustomerID):
     @todo: generate sip account configuration
     '''
     if str(ulSIPID).strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sip id is', ulSIPID
-        return
+        file_info.get_cur_runtime_info('ulSIPID is %s' % str(ulSIPID))
+        return -1
     if str(ulCustomerID).strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer id is', ulCustomerID    
-        return
+        file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
+        return -1
     
     seqCfgPath = db_config.get_db_param()['fs_config_path']
+    if seqCfgPath is None or seqCfgPath == '' or seqCfgPath == -1:
+        file_info.get_cur_runtime_info('The param is invalid.')
+        return -1
     if seqCfgPath[-1] != '/':
         seqCfgPath = seqCfgPath + '/'
     if os.path.exists(seqCfgPath) is False:
@@ -49,7 +52,7 @@ def generate_sip_account(ulSIPID, ulCustomerID):
             'callgroup':'techsupport'
     }
     
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name,'variable_dict is', dictVariable
+    file_info.get_cur_runtime_info(dictVariable)
     listParamsNode = []
     loop = 0
     for key in dictParam:
@@ -79,5 +82,13 @@ def generate_sip_account(ulSIPID, ulCustomerID):
     domIncludeNode.appendChild(domUserNode)
     doc.appendChild(domIncludeNode)
     
-    dom_to_xml.dom_to_pretty_xml(seqSIPPath, doc)
-    dom_to_xml.del_xml_head(seqSIPPath)
+    lRet = dom_to_xml.dom_to_pretty_xml(seqSIPPath, doc)
+    if -1 == lRet:
+        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+        return -1
+    lRet = dom_to_xml.del_xml_head(seqSIPPath)
+    if -1 == lRet:
+        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+        return -1
+    
+    return 1

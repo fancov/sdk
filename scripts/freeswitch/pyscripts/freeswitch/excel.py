@@ -7,7 +7,6 @@
 @todo: operation about Excel files
 '''
 
-import xdrlib, sys
 import xlrd
 import types
 import file_info
@@ -20,11 +19,11 @@ def get_data_from_table(seqFileName, ulSheetIdx = 0):
     @todo: 从Excel文件中获取数据
     '''
     if seqFileName.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', seqFileName
-        return None
+        file_info.get_cur_runtime_info('seqFileName is %s' % seqFileName)
+        return -1
     if ulSheetIdx < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sheet_idx is', ulSheetIdx
-        return None
+        file_info.get_cur_runtime_info('ulSheetIdx is %d' % ulSheetIdx)
+        return -1
     book = xlrd.open_workbook(seqFileName, 'rb')
     return book.sheet_by_index(ulSheetIdx) #sheet_idx index
         
@@ -36,19 +35,27 @@ def excel_table_by_row(seqFileName, ulRow = 0, ulSheetIdx = 0):
     @todo:  读取Excel某行数据
     '''
     if seqFileName.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', seqFileName
-        return None
+        file_info.get_cur_runtime_info('seqFileName is %s' % seqFileName)
+        return -1
     if ulRow < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'row is', ulRow
-        return None
+        file_info.get_cur_runtime_info('ulRow is %s' % str(ulRow))
+        return -1
     if ulSheetIdx < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sheet_idx is', ulSheetIdx
-        return None
+        file_info.get_cur_runtime_info('ulSheetIdx is %s' % str(ulSheetIdx))
+        return -1
+    
     table = get_data_from_table(seqFileName, ulSheetIdx)
+    if table is None:
+        file_info.get_cur_runtime_info('tabe is %p' % table)
+        return -1
     listRowList = table.row_values(ulRow)
+    if listRowList == []:
+        file_info.get_cur_runtime_info(listRowList)
+        return -1
     for loop in range(len(listRowList)):
         listRowList[loop] = float_to_int(listRowList[loop])
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'rowlist is:', listRowList
+    
+    file_info.get_cur_runtime_info(listRowList)
     return listRowList
 
 
@@ -60,19 +67,23 @@ def excel_table_by_col(seqFileName, ulCol = 0, ulSheetIdx = 0):
     @todo:  读取Excel某列数据
     '''
     if seqFileName.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', seqFileName
-        return None
+        file_info.get_cur_runtime_info('seqFileName is %s' % seqFileName)
+        return -1
     if ulCol < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'col is', ulCol
-        return None
+        file_info.get_cur_runtime_info('ulCol is %d' % ulCol)
+        return -1
     if ulSheetIdx < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sheet_idx is', ulSheetIdx
-        return None
+        file_info.get_cur_runtime_info('ulSheetIdx is %d' % ulSheetIdx)
+        return -1
     table = get_data_from_table(seqFileName, ulSheetIdx)
     listColList = table.col_values(ulCol)
+    if listColList == []:
+        file_info.get_cur_runtime_info(listColList)
+        return -1
     for loop in range(len(listColList)):
         listColList[loop] = float_to_int(listColList[loop])
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'collist is:', listColList
+    
+    file_info.get_cur_runtime_info(listColList)
     return listColList
 
 def excel_table_by_cell(seqFileName, ulRow = 0, ulCol = 0, ulSheetIdx = 0):
@@ -84,21 +95,23 @@ def excel_table_by_cell(seqFileName, ulRow = 0, ulCol = 0, ulSheetIdx = 0):
     @todo: 获取某一个单元格的数据
     '''
     if seqFileName.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', seqFileName
-        return None
+        file_info.get_cur_runtime_info('seqFileName is %s' % seqFileName)
+        return -1
     if ulRow < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'row is', ulRow
-        return None
+        file_info.get_cur_runtime_info('ulRow is %d' % ulRow)
+        return -1
     if ulCol < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'col is', ulCol
-        return None
+        file_info.get_cur_runtime_info('ulCol is %d' % ulCol)
+        return -1
     if ulSheetIdx < 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'sheet_idx is', ulSheetIdx
-        return None
+        file_info.get_cur_runtime_info('ulSheetIdx is %d' % ulSheetIdx)
+        return -1
     table = get_data_from_table(seqFileName, ulSheetIdx)
+    if table is None:
+        return -1
     value = table.cell(ulRow, ulCol).value
     value = float_to_int(value)
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'value is', value
+    file_info.get_cur_runtime_info('value is %s' % str(value))
     return value
 
 
@@ -109,16 +122,22 @@ def excel_table_by_table(seqFileName, ulSheetIdx = 0):
     @todo: 获取某一张Excel表格中的所有数据
     '''
     if seqFileName.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'filename is', seqFileName
-        return None
+        file_info.get_cur_runtime_info('seqFileName is %s' % seqFileName)
+        return -1
     table = get_data_from_table(seqFileName, ulSheetIdx)
-    list = []
+    if table is None:
+        file_info.get_cur_runtime_info('table is %p' % table)
+        return -1
+    _list = []
     nRows = table.nrows
     for loop in range(nRows):
         rowlist = excel_table_by_row(seqFileName, loop, ulSheetIdx)
-        list.append(rowlist)
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'list is:', list
-    return list
+        if rowlist == -1:
+            return -1
+        _list.append(rowlist)
+
+    file_info.get_cur_runtime_info(_list)
+    return _list
 
 def is_float_str(ulNum):
     '''

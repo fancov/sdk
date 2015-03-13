@@ -7,8 +7,6 @@
 @todo: generate a sip account
 '''
 
-import types
-import os
 import dom_to_xml
 import file_info
 from xml.dom.minidom import Document
@@ -21,10 +19,10 @@ def make_sip(ulSIPID, ulCustomerID = 'default', seqPath = '../cfg/'):
     @todo: 生成sip账户配置文件
     '''
     if ulSIPID == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'sip_id is ', ulSIPID
-        return
+        file_info.get_cur_runtime_info('ulSIPID is %s' % str(ulSIPID))
+        return -1
 
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'path:', seqPath
+    file_info.get_cur_runtime_info('ulSIPID is %s' % str(ulSIPID))
         
     doc = Document()
     
@@ -70,8 +68,14 @@ def make_sip(ulSIPID, ulCustomerID = 'default', seqPath = '../cfg/'):
     domIncludeNode = doc.createElement('include')
     domIncludeNode.appendChild(domUserNode)
     doc.appendChild(domIncludeNode)
-    dom_to_xml.dom_to_pretty_xml(seqPath, doc)
-    dom_to_xml.del_xml_head(seqPath)
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'path:',seqPath
+    
+    
+    lRet = dom_to_xml.dom_to_pretty_xml(seqPath, doc)
+    if -1 == lRet:
+        return -1
+    lRet = dom_to_xml.del_xml_head(seqPath)
+    if -1 == lRet:
+        return -1
+    return 1
     
         

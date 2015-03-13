@@ -11,27 +11,32 @@ import db_conn
 import file_info
 import db_config
 import os
-from db_conn import CONN
 import dom_to_xml
 from __builtin__ import str
+from _ast import Str
 
 def phone_route():
     '''
     @todo: 生成网关配置
     '''
     global CONN
-    db_conn.connect_db()
+    lRet = db_conn.connect_db()
+    if -1 == lRet:
+        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+        return -1
   
     # 查找出所有中继组id
     seqSQLCmd = 'SELECT DISTINCT CONVERT(id, CHAR(10)) AS id FROM tbl_relaygrp'
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'SQL:', seqSQLCmd
+    file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
     cursor = db_conn.CONN.cursor()
     cursor.execute(seqSQLCmd)
     results = cursor.fetchall()
         
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'results:', results
+    file_info.get_cur_runtime_info(results)
     for loop in range(len(results)):
-        include_node = make_route(int(results[loop][0]))
+        make_route(int(results[loop][0]))
+    
+    return 1
     
 def get_route_param(id):
     '''
@@ -39,15 +44,18 @@ def get_route_param(id):
     @todo: 创建一个路由表
     '''
     global CONN 
-    db_conn.connect_db()
+    lRet = db_conn.connect_db()
+    if -1 == lRet:
+        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+        return -1
     
     # 查找出所有的网关参数值
     seqSQLCmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_relaygrp WHERE id=%d' % (id)
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'SQL:',seqSQLCmd
+    file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
     cursor = db_conn.CONN.cursor()
     cursor.execute(seqSQLCmd)
     results = cursor.fetchall()
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'results:',results
+    file_info.get_cur_runtime_info(results)
     db_conn.CONN.close()
     return results
 
@@ -59,6 +67,9 @@ def make_route(ulGatewayID):
     '''
     doc = Document()
     results = get_route_param(ulGatewayID)  
+    if -1 == results:
+        file_info.get_cur_runtime_info('results is %d' % results)
+        return -1
     domGatewayNode = doc.createElement('gateway')
     domGatewayNode.setAttribute('name', results[0][0])
     
@@ -85,6 +96,9 @@ def make_route(ulGatewayID):
     doc.appendChild(domIncludeNode)
     
     seqCfgDir = db_config.get_db_param()['cfg_path']
+    if -1 == seqCfgDir:
+        file_info.get_cur_runtime_info('seqCfgDir is %d' % seqCfgDir)
+        return -1
     if seqCfgDir[-1] != '/':
         seqCfgDir = seqCfgDir + '/'
     
@@ -93,11 +107,22 @@ def make_route(ulGatewayID):
         os.makedirs(seqCfgDir)
     
     seqCfgPath = seqCfgDir + str(ulGatewayID) + '.xml'
-    dom_to_xml.dom_to_pretty_xml(seqCfgPath, doc)
-    dom_to_xml.del_xml_head(seqCfgPath)
+    lRet = dom_to_xml.dom_to_pretty_xml(seqCfgPath, doc)
+    if -1 == lRet:
+        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+        return -1
+    lRet = dom_to_xml.del_xml_head(seqCfgPath)
+    if -1 == lRet:
+        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+        return -1
+    
+    return 1
     
 def del_route(ulGatewayID):
-    seqCfgDir = db_config.get_db_param()['cfg_path']
+    if str(ulGatewayID).strip() == '':
+        file_info.get_cur_runtime_info('ulGatewayID is %s' % str(ulGatewayID))
+        return -1
+    seqCfgDir = db_config.get_db_param()['fs_config_path']
     if seqCfgDir[-1] != '/':
         seqCfgDir = seqCfgDir + '/'
     
@@ -109,5 +134,7 @@ def del_route(ulGatewayID):
     
     if os.path.exists(seqCfgPath):
         os.system("rm %s" % (seqCfgPath))
+        
+    return 1
     
     

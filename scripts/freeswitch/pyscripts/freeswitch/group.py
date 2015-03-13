@@ -20,31 +20,34 @@ def generate_group(doc, ulGroupID, ulCustomerID):
     @todo: 生成座席组  
     '''
     if doc is None:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'doc is', doc
-        return
+        file_info.get_cur_runtime_info('doc is %p' % doc)
+        return -1
     if ulGroupID == '' or ulGroupID is None:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'grp_id is',ulGroupID
-        return
+        file_info.get_cur_runtime_info('ulGroupID is %s' % str(ulGroupID))
+        return -1
     if ulCustomerID == '' or ulCustomerID is None:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is',ulCustomerID
-        return
+        file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
+        return -1
     
     # 查找出所有group1_id或者group2_id为`grp_id`的座席id
     seqSQLCmd = 'SELECT CONVERT(id, CHAR(10)) AS id FROM tbl_agent WHERE tbl_agent.group1_id = %s OR tbl_agent.group2_id = %s' % (ulGroupID, ulGroupID)
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'SQL:', seqSQLCmd
+    file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
     
-    db_conn.connect_db()
+    lRet = db_conn.connect_db()
+    if lRet == -1:
+        file_info.get_cur_runtime_info('The database connected failed.')
+        return -1
     cursor = db_conn.CONN.cursor()
     if cursor is None:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'The database connection does not exist.'
-        return
+        file_info.get_cur_runtime_info('The database connection does not exist.')
+        return -1
     ulMemCnt = cursor.execute(seqSQLCmd)
     listGroupRslt = cursor.fetchall() # get all results
     if len(listGroupRslt) == 0:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'len(grp_rslt) is', len(listGroupRslt)
-        return
+        file_info.get_cur_runtime_info('len(listGroupRslt) is %d' % len(listGroupRslt))
+        return -1
     db_conn.CONN.close()
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'grp_rslt is', listGroupRslt
+    file_info.get_cur_runtime_info(listGroupRslt)
     
     domGroupNode = doc.createElement('group')
     domGroupNode.setAttribute('name', str(ulCustomerID) + '-' + str(ulGroupID))
@@ -54,7 +57,10 @@ def generate_group(doc, ulGroupID, ulCustomerID):
         domUserNode.setAttribute('id', str(listGroupRslt[loop][0]) if type(listGroupRslt[loop][0]) == types.IntType else listGroupRslt[loop][0])
         domUserNode.setAttribute('type', 'pointer')
         domUsersNode.appendChild(domUserNode)
-        sip_account.generate_sip_account( listGroupRslt[loop][0], ulCustomerID)
+        lRet = sip_account.generate_sip_account( listGroupRslt[loop][0], ulCustomerID)
+        if -1 == lRet:
+            file_info.get_cur_runtime_info('lRet is %d' % lRet)
+            return -1
     
     domGroupNode.appendChild(domUsersNode)
     return domGroupNode

@@ -16,12 +16,16 @@ def add_customer(ulCustomerID):
     @todo: 增加一个客户
     '''
     if str(ulCustomerID).strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', ulCustomerID
-        return None
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', ulCustomerID
+        file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
+        return -1
+    file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
     
     #生成该账户的配置文件
-    customer_file.generate_customer_file(ulCustomerID)
+    lRet = customer_file.generate_customer_file(ulCustomerID)
+    if lRet == -1:
+        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+        return -1
+    return 1
          
 def del_customer(ulCustomerID):
     '''
@@ -29,10 +33,13 @@ def del_customer(ulCustomerID):
     @todo: 删除一个客户
     '''
     if str(ulCustomerID).strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', ulCustomerID
-        return None
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'customer_id is', ulCustomerID
-    seqCfgPath = db_config.get_db_param()['cfg_path']
+        file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
+        return -1
+    file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
+    seqCfgPath = db_config.get_db_param()['fs_config_path']
+    if -1 == seqCfgPath:
+        file_info.get_cur_runtime_info('seqCfgPath is %d' % seqCfgPath)
+        return -1
     if seqCfgPath[-1] != '/':
         seqCfgPath = seqCfgPath + '/'
         
@@ -43,3 +50,6 @@ def del_customer(ulCustomerID):
         os.system('rm -rf %s' % sqeMgntDir)
     if os.path.exists(seqMgntXml):
         os.system('rm %s' % seqMgntXml)
+    
+    return 1
+        

@@ -15,11 +15,11 @@ def generate_customer_head(seqFileName, doc):
     @todo: 生成客户配置文件的头部
     '''
     if str(seqFileName).strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'file name is',seqFileName
-        return
+        file_info.get_cur_runtime_info('seqFileName is %s' % seqFileName)
+        return -1
     if doc is None:
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'doc is', doc
-        return
+        file_info.get_cur_runtime_info('doc is %p' % doc)
+        return -1
     domParamNode = doc.createElement('param')
     domParamNode.setAttribute('name', 'dial-string')
     domParamNode.setAttribute('value', '{^^:sip_invite_domain=${dialed_domain}:presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(*/${dialed_user}@${dialed_domain})}')
@@ -27,18 +27,18 @@ def generate_customer_head(seqFileName, doc):
     domParamsNode = doc.createElement('params')
     domParamsNode.appendChild(domParamNode)
     
-    dict = {'record_stereo':'true', 'default_gateway':'$${default_provider}'
+    _dict = {'record_stereo':'true', 'default_gateway':'$${default_provider}'
             , 'default_areacode':'$${default_areacode}', 'transfer_fallback_extension':'operator'}
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'dict is', dict
+    file_info.get_cur_runtime_info(_dict)
     domVariablesNode = doc.createElement('variables')
     arrVariNode = []
     loop = 0
-    for key in dict:
+    for key in _dict:
         variable = doc.createElement('variable')
         arrVariNode.append(variable)
         arrVariNode[loop] = doc.createElement('variable') 
         arrVariNode[loop].setAttribute('name', key)
-        arrVariNode[loop].setAttribute('value', dict[key])
+        arrVariNode[loop].setAttribute('value', _dict[key])
         domVariablesNode.appendChild(arrVariNode[loop])
         loop = loop + 1
         

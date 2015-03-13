@@ -13,4 +13,7 @@ def get_param():
     '''
     @todo: 获取Python命令行参数列表
     '''
+    _list = sys.argv
+    if len(_list) == 0:
+        return -1
     return sys.argv

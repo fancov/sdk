@@ -19,19 +19,23 @@ def get_db_conn(seqDBHost, seqDBUsername, seqDBPassword, seqDBName):
     @todo: 连接数据库
     '''
     if seqDBHost.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'db_host is', seqDBHost
-        return
+        file_info.get_cur_runtime_info('seqDBHost is %s' % seqDBHost)
+        return -1
     if seqDBUsername.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'db_username is', seqDBUsername
-        return
+        file_info.get_cur_runtime_info('seqDBUsername is %s' % seqDBUsername)
+        return -1
     if seqDBPassword.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'db_password is', seqDBPassword
-        return
+        file_info.get_cur_runtime_info('seqDBPassword is %s' % seqDBPassword)
+        return -1
     if seqDBName.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'db_name is', seqDBName
-        return
-    print  file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),seqDBHost,seqDBUsername,seqDBPassword,seqDBName
+        file_info.get_cur_runtime_info('seqDBName is %s' % seqDBName)
+        return -1
+    
+    file_info.get_cur_runtime_info("%s %s %s %s" % (seqDBHost, seqDBUsername, seqDBPassword, seqDBName))
     conn = MySQLdb.connect(seqDBHost,  seqDBUsername, seqDBPassword, seqDBName)
+    if conn is None:
+        file_info.get_cur_runtime_info('conn is %p' % conn)
+        return -1
     return conn
 
 def get_field_value(seqTableName, szFieldName, conn):
@@ -42,15 +46,15 @@ def get_field_value(seqTableName, szFieldName, conn):
     @todo: 从数据库字段中获取sip列表
     '''
     if seqTableName.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'table_name is', seqTableName
-        return
+        file_info.get_cur_runtime_info('seqTableName is %s' % seqTableName)
+        return -1
     if szFieldName.strip() == '':
-        print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'field_name is', szFieldName
-        return
+        file_info.get_cur_runtime_info('szFieldName is %s' % szFieldName)
+        return -1
     seqSQLCmd = 'SELECT DISTINCT %s FROM %s' % (szFieldName, seqTableName)
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(),'execute SQL:', seqSQLCmd
+    file_info.get_cur_runtime_info('execute SQL:%s' % seqSQLCmd)
     cursor = conn.cursor()
     cursor.execute(seqSQLCmd)
     results = cursor.fetchall()
-    print file_info.get_file_name(),file_info.get_line_number(),file_info.get_function_name(), 'executed results is:', results
+    file_info.get_cur_runtime_info(results)
     return results
