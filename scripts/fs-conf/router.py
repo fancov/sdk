@@ -17,7 +17,7 @@ from _ast import Str
 
 def phone_route():
     '''
-    @todo: Éú³ÉÍø¹ØÅäÖÃ
+    @todo: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     '''
     global CONN
     lRet = db_conn.connect_db()
@@ -25,7 +25,7 @@ def phone_route():
         file_info.get_cur_runtime_info('lRet is %d' % lRet)
         return -1
   
-    # ²éÕÒ³öËùÓÐÖÐ¼Ì×éid
+    # ï¿½ï¿½ï¿½Ò³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¼ï¿½ï¿½ï¿½id
     seqSQLCmd = 'SELECT DISTINCT CONVERT(id, CHAR(10)) AS id FROM tbl_relaygrp'
     file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
     cursor = db_conn.CONN.cursor()
@@ -40,8 +40,8 @@ def phone_route():
     
 def get_route_param(id):
     '''
-    @param id: Íø¹Øid
-    @todo: ´´½¨Ò»¸öÂ·ÓÉ±í
+    @param id: ï¿½ï¿½ï¿½ï¿½id
+    @todo: ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½Â·ï¿½É±ï¿½
     '''
     global CONN 
     lRet = db_conn.connect_db()
@@ -49,7 +49,7 @@ def get_route_param(id):
         file_info.get_cur_runtime_info('lRet is %d' % lRet)
         return -1
     
-    # ²éÕÒ³öËùÓÐµÄÍø¹Ø²ÎÊýÖµ
+    # ï¿½ï¿½ï¿½Ò³ï¿½ï¿½ï¿½ï¿½Ðµï¿½ï¿½ï¿½ï¿½Ø²ï¿½ï¿½ï¿½Öµ
     seqSQLCmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_relaygrp WHERE id=%d' % (id)
     file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
     cursor = db_conn.CONN.cursor()
@@ -61,9 +61,9 @@ def get_route_param(id):
 
 def make_route(ulGatewayID):
     '''
-    @param id: Íø¹Øid
-    @param doc: ÎÄµµ¶ÔÏó
-    @todo: Éú³ÉÒ»¸öÍø¹ØÅäÖÃDOM
+    @param id: ï¿½ï¿½ï¿½ï¿½id
+    @param doc: ï¿½Äµï¿½ï¿½ï¿½ï¿½ï¿½
+    @todo: ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½DOM
     '''
     doc = Document()
     results = get_route_param(ulGatewayID)  
@@ -80,7 +80,7 @@ def make_route(ulGatewayID):
         domParamNode = doc.createElement('param')
         domParamNode.setAttribute('name', listParamNames[loop].strip())
         
-        # ²ÎÊý'register'ºÍ'caller-id-in-from'µÄ²ÎÊýÖµÊ¹ÓÃ²¼¶ûÖµÈ¥±íÊ¾
+        # ï¿½ï¿½ï¿½ï¿½'register'ï¿½ï¿½'caller-id-in-from'ï¿½Ä²ï¿½ï¿½ï¿½ÖµÊ¹ï¿½Ã²ï¿½ï¿½ï¿½ÖµÈ¥ï¿½ï¿½Ê¾
         if listParamNames[loop].strip() == 'register' or listParamNames[loop].strip() == 'caller-id-in-from':
             if listParamValues[loop].strip() == '0':     
                 domParamNode.setAttribute('value', 'false')
@@ -137,4 +137,5 @@ def del_route(ulGatewayID):
         
     return 1
     
+make_route(1)
     
