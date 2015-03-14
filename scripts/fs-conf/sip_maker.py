@@ -13,10 +13,10 @@ from xml.dom.minidom import Document
 
 def make_sip(ulSIPID, ulCustomerID = 'default', seqPath = '../cfg/'):
     '''
-    @param sip_id: sipÕË»§id
-    @param customer_id: ¿Í»§id
-    @param path: sipÕË»§ÅäÖÃÎÄ¼şÂ·¾¶
-    @todo: Éú³ÉsipÕË»§ÅäÖÃÎÄ¼ş
+    @param sip_id: sipï¿½Ë»ï¿½id
+    @param customer_id: ï¿½Í»ï¿½id
+    @param path: sipï¿½Ë»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½Â·ï¿½ï¿½
+    @todo: ï¿½ï¿½ï¿½ï¿½sipï¿½Ë»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½
     '''
     if ulSIPID == '':
         file_info.get_cur_runtime_info('ulSIPID is %s' % str(ulSIPID))
@@ -77,5 +77,4 @@ def make_sip(ulSIPID, ulCustomerID = 'default', seqPath = '../cfg/'):
     if -1 == lRet:
         return -1
     return 1
-    
-        
+ 

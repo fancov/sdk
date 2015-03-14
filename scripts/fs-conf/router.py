@@ -50,7 +50,7 @@ def get_route_param(id):
         return -1
     
     # ���ҳ����е����ز���ֵ
-    seqSQLCmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_relaygrp WHERE id=%d' % (id)
+    seqSQLCmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_gateway WHERE id=%d' % (id)
     file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
     cursor = db_conn.CONN.cursor()
     cursor.execute(seqSQLCmd)
@@ -87,15 +87,14 @@ def make_route(ulGatewayID):
             else:
                 domParamNode.setAttribute('value', 'true')
         else:
-            domParamNode.setAttribute('value', listParamValues[loop].strip())
-        
+            domParamNode.setAttribute('value', str(listParamValues[loop]).strip())
         domGatewayNode.appendChild(domParamNode)
         
     domIncludeNode = doc.createElement('include')
     domIncludeNode.appendChild(domGatewayNode)
     doc.appendChild(domIncludeNode)
     
-    seqCfgDir = db_config.get_db_param()['cfg_path']
+    seqCfgDir = db_config.get_db_param()['fs_config_path']
     if -1 == seqCfgDir:
         file_info.get_cur_runtime_info('seqCfgDir is %d' % seqCfgDir)
         return -1
@@ -137,5 +136,5 @@ def del_route(ulGatewayID):
         
     return 1
     
-make_route(1)
+
     

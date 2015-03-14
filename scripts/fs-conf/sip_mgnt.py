@@ -6,22 +6,23 @@
 @time: Feburary 10th,2015
 @todo: operation of sip account
 '''
+
+import os
+import sip_maker
 import db_conn
 import file_info
 import db_config
-import os
-import sip_maker
 
 def add_sip(ulSIPID):
     '''
-    @param: sip_id  sipÕË»§id
-    @todo: Ìí¼ÓÒ»¸ösipÕË»§
+    @param: sip_id  sipï¿½Ë»ï¿½id
+    @todo: ï¿½ï¿½ï¿½Ò»ï¿½ï¿½sipï¿½Ë»ï¿½
     '''
     if str(ulSIPID).strip() == '':
         file_info.get_cur_runtime_info('ulSIPID is %s', str(ulSIPID))
         return -1
     
-    #»ñÈ¡sipÕË»§µÄgroup id
+    #ï¿½ï¿½È¡sipï¿½Ë»ï¿½ï¿½ï¿½group id
     ulGroupID = get_grp_id(ulSIPID)
     if ulGroupID == -1:
         file_info.get_cur_runtime_info('ulGroupID is %s' % str(ulGroupID))
@@ -29,30 +30,28 @@ def add_sip(ulSIPID):
     
     for item in ulGroupID[0]:
         if str(item).strip() == '0':
-            # É¾³ýgroup idÎª0µÄÏî
+            # É¾ï¿½ï¿½group idÎª0ï¿½ï¿½ï¿½ï¿½
             del item
         else:
-            # ½«sipÕË»§Ìí¼Óµ½×ùÏ¯×é
+            # ï¿½ï¿½sipï¿½Ë»ï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½Ï¯ï¿½ï¿½
             add_sip_to_group(ulSIPID, int(item))
             
 
 def get_grp_id(ulSIPID):
     '''
-    @param: sip_id sipÕË»§id
-    @todo: »ñÈ¡sipÕË»§ËùÔÚµÄ×ùÏ¯×éidÁÐ±í
+    @param: sip_id sipï¿½Ë»ï¿½id
+    @todo: ï¿½ï¿½È¡sipï¿½Ë»ï¿½ï¿½ï¿½ï¿½Úµï¿½ï¿½ï¿½Ï¯ï¿½ï¿½idï¿½Ð±ï¿½
     '''
-    
+    global CONN 
     if str(ulSIPID).strip() == '':
         file_info.get_cur_runtime_info('ulSIPID is %s' % str(ulSIPID))
         return -1
-    
-    global CONN
     lRet = db_conn.connect_db()
     if -1 == lRet:
         file_info.get_cur_runtime_info('lRet is %d' % lRet)
         return -1
     
-    #²éÕÒËùÓÐsipÕË»§idÎªsip_idµÄ×ùÏ¯×éid
+    #ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½sipï¿½Ë»ï¿½idÎªsip_idï¿½ï¿½ï¿½ï¿½Ï¯ï¿½ï¿½id
     seqSQLCmd = 'SELECT CONVERT(tbl_agent.group1_id,CHAR(10)) AS group1_id,CONVERT(tbl_agent.group2_id,CHAR(10)) AS group2_id FROM tbl_agent WHERE tbl_agent.sip_id = %d' % (ulSIPID)
     file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
     
@@ -68,13 +67,13 @@ def get_grp_id(ulSIPID):
     db_conn.CONN.close()
     file_info.get_cur_runtime_info('ulGroupID is %s' % str(ulGroupID))
     
-    #·µ»Ø×ùÏ¯×éidÁÐ±í£¬ÒòÎªÒ»¸ösipÕË»§ºÜ¿ÉÄÜÊôÓÚ¶à¸öÕË»§
+    #ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¯ï¿½ï¿½idï¿½Ð±ï¿½ï¿½ï¿½ÎªÒ»ï¿½ï¿½sipï¿½Ë»ï¿½ï¿½Ü¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú¶ï¿½ï¿½ï¿½Ë»ï¿½
     return ulGroupID
 
 def get_customer_id(ulSIPID, ulGroupID):
     '''
-    @param: sip_id sipÕË»§id; grp_id sipÕË»§ËùÔÚµÄ×ùÏ¯×éid
-    @todo: ¸ù¾ÝsipµÄid»ñÈ¡ËüËùÊô¿Í»§µÄid
+    @param: sip_id sipï¿½Ë»ï¿½id; grp_id sipï¿½Ë»ï¿½ï¿½ï¿½ï¿½Úµï¿½ï¿½ï¿½Ï¯ï¿½ï¿½id
+    @todo: ï¿½ï¿½ï¿½ï¿½sipï¿½ï¿½idï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í»ï¿½ï¿½ï¿½id
     '''
     
     global CONN
@@ -89,7 +88,7 @@ def get_customer_id(ulSIPID, ulGroupID):
     if lRet == -1:
         file_info.get_cur_runtime_info('lRet is %d' % lRet)
         return -1
-    # »ñÈ¡×ùÏ¯×éidÎªgrp_idËùÊôµÄ¿Í»§id
+    # ï¿½ï¿½È¡ï¿½ï¿½Ï¯ï¿½ï¿½idÎªgrp_idï¿½ï¿½ï¿½ï¿½ï¿½Ä¿Í»ï¿½id
     seqSQLCmd = 'SELECT CONVERT(tbl_group.customer_id,CHAR(10)) AS customer_id FROM tbl_group WHERE tbl_group.id = %s' % (ulGroupID)
     file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
     cursor = db_conn.CONN.cursor()
@@ -107,8 +106,8 @@ def get_customer_id(ulSIPID, ulGroupID):
 
 def get_agent_by_sip(ulSIPID):
     '''
-    @param: sip_id sipÕË»§id
-    @todo: »ñÈ¡sipÕË»§¶ÔÓ¦µÄ×ùÏ¯×éid
+    @param: sip_id sipï¿½Ë»ï¿½id
+    @todo: ï¿½ï¿½È¡sipï¿½Ë»ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½Ï¯ï¿½ï¿½id
     '''
     global CONN
     if str(ulSIPID).strip() == '':
@@ -119,7 +118,7 @@ def get_agent_by_sip(ulSIPID):
         file_info.get_cur_runtime_info('lRet is %d' % lRet)
         return -1
     
-    # »ñÈ¡sip idÊÇsip_idµÄagent id
+    # ï¿½ï¿½È¡sip idï¿½ï¿½sip_idï¿½ï¿½agent id
     seqSQLCmd = 'SELECT CONVERT(id, CHAR(10)) AS id FROM tbl_agent WHERE tbl_agent.sip_id = %d' % (ulSIPID)
     file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
     cursor = db_conn.CONN.cursor()
@@ -137,8 +136,8 @@ def get_agent_by_sip(ulSIPID):
 
 def add_sip_to_group(ulSIPID, ulGroupID):
     '''
-    @param: sip_id sipÕË»§id; grp_id sipÕË»§ËùÊô×ùÏ¯×éid
-    @todo: ½«sipÕË»§Ìí¼Óµ½groupÖÐ
+    @param: sip_id sipï¿½Ë»ï¿½id; grp_id sipï¿½Ë»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¯ï¿½ï¿½id
+    @todo: ï¿½ï¿½sipï¿½Ë»ï¿½ï¿½ï¿½Óµï¿½groupï¿½ï¿½
     '''
     if str(ulSIPID).strip() == '':
         file_info.get_cur_runtime_info('ulSIPID is %s' % str(ulSIPID))
@@ -152,42 +151,54 @@ def add_sip_to_group(ulSIPID, ulGroupID):
         return -1
     file_info.get_cur_runtime_info(result)
     
-    #»ñÈ¡¿Í»§id
+    #ï¿½ï¿½È¡ï¿½Í»ï¿½id
     ulCustomerID = result[0][0]
-    #»ñÈ¡×ùÏ¯×éid
+    #ï¿½ï¿½È¡ï¿½ï¿½Ï¯ï¿½ï¿½id
     ulAgentID = get_agent_by_sip(ulSIPID)[0][0]
     if -1 == ulAgentID:
         file_info.get_cur_runtime_info('ulAgentID is %s' % str(ulAgentID))
         return -1
     
-    seqCfgPath = db_config.get_db_param()['cfg_path']
+    seqCfgPath = db_config.get_db_param()['fs_config_path']
     if seqCfgPath == -1:
         file_info.get_cur_runtime_info('seqCfgPath is %s' % str(seqCfgPath))
         return -1
-    #¹¹ÔìÒÔ'/'½áÎ²µÄÂ·¾¶×Ö·û´®
+    #ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½'/'ï¿½ï¿½Î²ï¿½ï¿½Â·ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½
     if seqCfgPath[-1] != '/':
         seqCfgPath = seqCfgPath + '/'
     file_info.get_cur_runtime_info('seqCfgPath is %s' % str(seqCfgPath))
     
-    # ¿Í»§ÅäÖÃÎÄ¼þËùÔÚÂ·¾¶ÉèÖÃ:¼ÙÈçcustomer idÊÇ1£¬ÄÇÃ´¿Í»§ÅäÖÃÎÄ¼þÊÇ %cfg_path%/directory/1.xml
+    # ï¿½Í»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:ï¿½ï¿½ï¿½ï¿½customer idï¿½ï¿½1ï¿½ï¿½ï¿½ï¿½Ã´ï¿½Í»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ %cfg_path%/directory/1.xml
+    seqCustomerDir = seqCfgPath + 'directory/' + ulCustomerID + '/'
+    if os.path.exists(seqCustomerDir) is False:
+        os.makedirs(seqCustomerDir)
+        
     seqCustomerPath = seqCfgPath + 'directory/' + ulCustomerID + '.xml'
-    if os.path.exists(seqCustomerPath) is False:
-        file_info.get_cur_runtime_info('seqCustomerPath is %s' % seqCustomerPath)
-        return -1
+    
     file_info.get_cur_runtime_info('seqCustomerPath is %s' % seqCustomerPath)
     
-    # sipÕË»§ÅäÖÃÎÄ¼þÂ·¾¶ÉèÖÃ£º¼ÙÉècustomer idÊÇ1£¬×ùÏ¯×éidÊÇ100£¬ÄÇÃ´sipÕË»§ÅäÖÃÎÄ¼þÊÇ %cfg_path%/directory/1/100.xml
+    # sipï¿½Ë»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½Ã£ï¿½ï¿½ï¿½ï¿½ï¿½customer idï¿½ï¿½1ï¿½ï¿½ï¿½ï¿½Ï¯ï¿½ï¿½idï¿½ï¿½100ï¿½ï¿½ï¿½ï¿½Ã´sipï¿½Ë»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ %cfg_path%/directory/1/100.xml
+    seqSipDir = seqCfgPath + 'directory/' + ulCustomerID + '/' + ulAgentID + '/'
+    if os.path.exists(seqSipDir):
+        os.makedirs(seqSipDir)
     seqSIPPath = seqCfgPath + 'directory/' + ulCustomerID + '/' + ulAgentID + '.xml'
     file_info.get_cur_runtime_info('seqSIPPath is %s' % seqSIPPath)
     
-    # ¶ÁÈ¡ÅäÖÃÎÄ¼þ£¬°´ÐÐ¶ÁÈ¡²¢×é³ÉPythonÁÐ±í
+    # ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½Pythonï¿½Ð±ï¿½
+    if os.path.exists(seqCustomerPath) is False:
+        ulAgentID = get_agent_by_sip(ulSIPID)
+        if -1 == ulAgentID:
+            file_info.get_cur_runtime_info('ulAgentID is %s' % str(ulAgentID))
+            return -1
+        sip_maker.make_sip(ulAgentID[0][0], ulCustomerID, seqSIPPath)
+        return 1
     seqMgntText = open(seqCustomerPath, 'r').readlines()
     if seqMgntText == []:
         file_info.get_cur_runtime_info('mgnt_text is empty.')
         return -1
     file_info.get_cur_runtime_info('seqMgntText is %s' % seqMgntText)
     
-    # ¹¹ÔìÐÂµÄsipÅäÖÃ×Ö·û´®²¢Ìí¼Ó
+    # ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½sipï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     seqAddText = '     <user id=\"%s\" type=\"pointer\"/>\n' % (ulAgentID)
     if seqAddText in seqMgntText:
         return -1
@@ -199,7 +210,7 @@ def add_sip_to_group(ulSIPID, ulGroupID):
             return  -1
         seqMgntText.insert(ulMgntIndex + 2, seqAddText)
         open(seqCustomerPath, 'w').writelines(seqMgntText)
-        # Éú³ÉsipÕË»§
+        # ï¿½ï¿½ï¿½ï¿½sipï¿½Ë»ï¿½
         lRet = sip_maker.make_sip(ulSIPID, ulCustomerID, seqSIPPath)
         if lRet == -1:
             file_info.get_cur_runtime_info('lRet is %d' % lRet)
@@ -210,8 +221,8 @@ def add_sip_to_group(ulSIPID, ulGroupID):
 
 def del_sip_from_group(ulAgentID, ulCustomerID):
     '''
-    @param: agent_id ×ùÏ¯×éid; customer_id¿Í»§id
-    @todo: ½«Ò»¸ösipÕË»§´ÓÒ»¸ö×ùÏ¯×éÖÐÉ¾³ý
+    @param: agent_id ï¿½ï¿½Ï¯ï¿½ï¿½id; customer_idï¿½Í»ï¿½id
+    @todo: ï¿½ï¿½Ò»ï¿½ï¿½sipï¿½Ë»ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½Ï¯ï¿½ï¿½ï¿½ï¿½É¾ï¿½ï¿½
     '''
     if str(ulAgentID).strip() == '':
         file_info.get_cur_runtime_info('ulAgentID is %s' % str(ulAgentID))
@@ -244,9 +255,9 @@ def del_sip_from_group(ulAgentID, ulCustomerID):
    
 def change_agent_group(ulSIPID, ulNewGroupID):
     '''
-    @param sip_id: sipÕË»§id
-    @param new_grp_id: ÐÂµÄ×ùÏ¯×éid
-    @todo:½«sipÕË»§¸ü¸Äµ½ÁíÍâÒ»×ùÏ¯×é
+    @param sip_id: sipï¿½Ë»ï¿½id
+    @param new_grp_id: ï¿½Âµï¿½ï¿½ï¿½Ï¯ï¿½ï¿½id
+    @todo:ï¿½ï¿½sipï¿½Ë»ï¿½ï¿½ï¿½ï¿½Äµï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½Ï¯ï¿½ï¿½
     '''
     if str(ulSIPID).strip() == '':
         file_info.get_cur_runtime_info('ulSIPID is %s' % str(ulSIPID))
@@ -255,14 +266,14 @@ def change_agent_group(ulSIPID, ulNewGroupID):
         file_info.get_cur_runtime_info('ulNewGroupID is %s' % str(ulNewGroupID))
         return -1
     
-    # »ñÈ¡µ½×ùÏ¯×éid
+    # ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½Ï¯ï¿½ï¿½id
     result = get_agent_by_sip(ulSIPID)
     if -1 == result:
         file_info.get_cur_runtime_info(result)
         return -1
     file_info.get_cur_runtime_info(result)
     
-    #»ñÈ¡µ½customer id
+    #ï¿½ï¿½È¡ï¿½ï¿½customer id
     ulCustomerID = get_customer_id(ulSIPID, ulNewGroupID)[0][0]
     if -1 == ulCustomerID:
         file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
@@ -301,10 +312,10 @@ def change_agent_group(ulSIPID, ulNewGroupID):
     
 def modify_param_value(ulSIPID, seqParamName, seqParamValue):
     '''
-    @param sip_id: sipÕË»§id
-    @param param_name: ²ÎÊýÃû×Ö
-    @param param_value: ²ÎÊýÖµ
-    @todo: ÐÞ¸Ä²ÎÊýµÄÖµ
+    @param sip_id: sipï¿½Ë»ï¿½id
+    @param param_name: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    @param param_value: ï¿½ï¿½ï¿½ï¿½Öµ
+    @todo: ï¿½Þ¸Ä²ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
     '''
     if str(ulSIPID).strip() == '':
         file_info.get_cur_runtime_info('ulSIPID is %s' % str(ulSIPID))
@@ -316,14 +327,14 @@ def modify_param_value(ulSIPID, seqParamName, seqParamValue):
         file_info.get_cur_runtime_info('seqParamValue is %s' % seqParamValue)
         return -1
     
-    # »ñÈ¡×ùÏ¯id
+    # ï¿½ï¿½È¡ï¿½ï¿½Ï¯id
     result = get_agent_by_sip(ulSIPID)
     if -1 == result:
         file_info.get_cur_runtime_info('result is %d' % result)
         return -1
     ulAgentID = result[0][0]
     
-    # »ñÈ¡×ùÏ¯×éid
+    # ï¿½ï¿½È¡ï¿½ï¿½Ï¯ï¿½ï¿½id
     ulIDValue = get_grp_id(ulSIPID)
     if -1 == ulIDValue:
         file_info.get_cur_runtime_info('ulIDValue is %d' % ulIDValue)
