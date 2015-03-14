@@ -42,9 +42,9 @@ extern "C"{
 
 /* global variables */
 
-SC_HTTP_CLIENT_CB_S   *g_pstHTTPClientList[SC_MAX_HTTP_CLIENT_NUM];
+SC_HTTP_CLIENT_CB_S   *g_pstHTTPClientList[SC_MAX_HTTP_CLIENT_NUM] = { NULL };
 
-SC_HTTPD_CB_ST        *g_pstHTTPDList[SC_MAX_HTTPD_NUM];
+SC_HTTPD_CB_ST        *g_pstHTTPDList[SC_MAX_HTTPD_NUM] = { NULL };
 
 pthread_t             g_pthHTTPDThread;
 
