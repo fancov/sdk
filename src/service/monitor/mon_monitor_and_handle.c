@@ -679,7 +679,6 @@ static S32 mon_add_data_to_db()
 
    time(&lCur);
    pstCurTime = localtime(&lCur);
-
    dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO tbl_syssrc%04d%02d(ctime,phymem," \
      "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate," \
      "procmem_pct,proccpu_pct) VALUES(\'%04d-%02d-%02d %02d:%02d:%02d\',%d,%d," \
