@@ -66,7 +66,7 @@ U32   py_exec_func(const char *pszModule, const char *pszFunc, const char *pszPy
     U32  ulRet = DOS_SUCC;
     S32  lRet = 0;
     S8   szImportPath[MAX_PY_SCRIPT_LEN] = {0,};
-    PyObject *pstPyMod, *pstPyFunc, *pstParam, *pstRetVal;
+    PyObject *pstPyMod = NULL, *pstPyFunc = NULL, *pstParam = NULL, *pstRetVal = NULL;
     va_list vargs;
 
     if (!pszModule || !pszFunc || !pszPyFormat)

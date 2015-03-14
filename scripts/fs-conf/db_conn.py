@@ -14,16 +14,16 @@ CONN = None
 
 def connect_db():
     '''
-    @todo: Á¬½ÓÊý¾Ý¿â
+    @todo: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý¿ï¿½
     '''
     global CONN
     
-    # ´ÓÅäÖÃÎÄ¼þ»ñÈ¡Êý¾Ý¿âÅäÖÃÐÅÏ¢
+    # ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½È¡ï¿½ï¿½ï¿½Ý¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
     _dict = db_config.get_db_param()
     if _dict == []:
         return -1
         
-    # Á¬½ÓÊý¾Ý¿â MySQLdb.connect(hostname, username, password, dbname, port)
+    # ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý¿ï¿½ MySQLdb.connect(hostname, username, password, dbname, port)
     CONN = MySQLdb.connect(_dict['host'], _dict['username'], _dict['password'], _dict['dbname'], int(_dict['port'])) 
     if CONN is None:
         return -1

@@ -8,8 +8,8 @@
 '''
 
 from xml.etree import ElementTree as ET
-import file_info
 import os
+import file_info
 
 def get_db_param():
     '''
@@ -20,15 +20,15 @@ def get_db_param():
     # ���Ȳ鿴"/etc/global.xml"�ļ��Ƿ����
     # ��������ڣ������"../etc/global.xml�Ƿ����"
     # ����������ȡ���ݣ����򷵻ؿ�ֵ
-    #seqGlobalCfgFile = '../../../../conf/global.xml'
-    
-    seqGlobalCfgFile = '/etc/global.xml'
+    seqGlobalCfgFile = '../../conf/global.xml'
+    #seqGlobalCfgFile = '/etc/global.xml'
     if os.path.exists(seqGlobalCfgFile) is False:
         seqGlobalCfgFile = '../etc/global.xml'
         if os.path.exists(seqGlobalCfgFile) is False:
             return -1
-        
+    print '----------------------------'
     parser = ET.parse(seqGlobalCfgFile)
+    print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
     domFsParam = parser.findall('./mysql/param')
    
     _dict = {}
