@@ -1362,7 +1362,6 @@ U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB)
 S32 sc_task_load_other_info_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
 {
     U32 ulTaskMode;
-    U32 ulMaxConcurrency;
     SC_TASK_CB_ST *pstTCB;
 
     if (DOS_ADDR_INVALID(pArg)
@@ -1384,16 +1383,7 @@ S32 sc_task_load_other_info_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 
         return DOS_FAIL;
     }
 
-    if (DOS_ADDR_INVALID(aszValues[1])
-        || '\0' == aszValues[1][0]
-        || dos_atoul(aszValues[1], &ulMaxConcurrency) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
     pstTCB->ucMode = (U8)ulTaskMode;
-    pstTCB->ulMaxConcurrency = ulMaxConcurrency;
     return DOS_SUCC;
 
 }
@@ -1408,7 +1398,7 @@ S32 sc_task_load_other_info(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT mode,max_concurrent from tbl_calltask WHERE id=%d;", pstTCB->ulTaskID);
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT mode from tbl_calltask WHERE id=%d;", pstTCB->ulTaskID);
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_other_info_cb, (VOID *)pstTCB, NULL) != DB_ERR_SUCC)
     {
@@ -1861,13 +1851,13 @@ SC_SYS_STATUS_EN sc_check_sys_stat()
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
 {
     U32   ulRet = 0;
-   
+
     if (ulAction >= SC_API_CMD_ACTION_BUTT)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-   
+
     switch(ulAction)
     {
         case SC_API_CMD_ACTION_GATEWAY_ADD:
@@ -1885,7 +1875,7 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
             sc_load_gateway(ulGatewayID);
         }
         break;
-        case SC_API_CMD_ACTION_GATEWAY_DELETE: 
+        case SC_API_CMD_ACTION_GATEWAY_DELETE:
         {
 #if INCLUDE_SERVICE_PYTHON
             ulRet = py_exec_func("router", "del_route", "(k)", (U64)ulGatewayID);
@@ -1989,7 +1979,7 @@ U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID)
 	                DOS_ASSERT(0);
 	                return DOS_FAIL;
 	            }
-            }      
+            }
             break;
         default:
             break;
@@ -2063,7 +2053,7 @@ U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID, S8 *pszDidNum)
 U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID)
 {
     U32 ulRet = U32_BUTT;
-   
+
     if (ulAction > SC_API_CMD_ACTION_BUTT)
     {
         DOS_ASSERT(0);
@@ -2089,7 +2079,7 @@ U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID)
         default:
             break;
     }
-    
+
     return DOS_SUCC;
 }
 

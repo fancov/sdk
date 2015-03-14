@@ -468,6 +468,8 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
         goto init_fail;
     }
 
+    pstTCB->ulMaxConcurrency = pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE;
+
     sc_logr_notice(SC_TASK, "Load data for task %d finished.", pstTCB->ulTaskID);
     SC_TRACE_OUT();
     return DOS_SUCC;
