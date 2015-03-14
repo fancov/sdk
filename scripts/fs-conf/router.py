@@ -76,7 +76,9 @@ def make_route(ulGatewayID):
     listParamNames  = ['username', 'realm', 'from-user', 'from-domain', 'password', 'extension', 'proxy', 'register-proxy', 'expire-seconds', 'register', 'reg_transport', 'retry_secs', 'caller-id-in-from', 'contact_params','exten_in_contact', 'ping']
     listParamValues = [results[0][1], results[0][3], results[0][4], results[0][5], results[0][2], results[0][6], results[0][7], results[0][9], results[0][8], results[0][10], results[0][11], results[0][12], results[0][13], results[0][14], results[0][15], results[0][16]]
     
-    for loop in range(len(listParamNames)):
+    for loop in range(len(listParamNames)): 
+        if str(listParamValues[loop]).strip() == '' or str(listParamValues[loop]).strip() == 'None':
+            continue
         domParamNode = doc.createElement('param')
         domParamNode.setAttribute('name', listParamNames[loop].strip())
         
