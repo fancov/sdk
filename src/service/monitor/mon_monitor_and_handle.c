@@ -762,6 +762,7 @@ static S32 mon_print_data_log()
                 , dos_get_filename(__FILE__), __LINE__
                 , g_szMonDiskInfo);
 
+
    lRet = mon_netcard_formatted_info();
    if(DOS_SUCC != lRet)
    {
