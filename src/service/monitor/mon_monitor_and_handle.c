@@ -940,6 +940,7 @@ static S32 mon_init_db_conn()
    if(config_get_syssrc_db_dbname(szDBName, sizeof(szDBName)) < 0 )
    {
       DOS_ASSERT(0);
+      
       return DOS_FAIL;
    }
 
