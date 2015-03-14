@@ -219,6 +219,7 @@ U32 config_get_syssrc_db_dbname(S8 *pszBuff, U32 ulLen)
 {
     S8  *pszValue = NULL;
 
+
     if (!pszBuff || ulLen < 0)
     {
         DOS_ASSERT(0);
@@ -227,6 +228,7 @@ U32 config_get_syssrc_db_dbname(S8 *pszBuff, U32 ulLen)
     }
 
     pszValue = _config_get_param(g_pstGlobalCfg, "config/mysql", "src_dbname", pszBuff, ulLen);
+
 
     if (!pszValue)
     {

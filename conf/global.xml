@@ -12,7 +12,7 @@
 			    <!--freeswitch脚本路径-->
 			    <param name="fs_scripts_path" value="" />
 				<!--freeswitch配置文件路径-->
-			    <param name="fs_config_path"  value="../conf" />
+			    <param name="fs_config_path" value="../conf" />
 			</freeswitch>
         </path>
     </service>
@@ -20,24 +20,24 @@
     <!-- 心跳相关配置 -->
     <heartbeat>
     	<!-- 心跳间隔3-10 -->
-    	<param name="interval" value="3" />
+    	<param name="interval" value="3"/>
     	<!-- 最大失败次数 10-15 -->
-    	<param name="max_fail_cnt" value="10" />
+    	<param name="max_fail_cnt" value="10"/>
     	<param name="treatment" value="0" />
     </heartbeat>
 
     <!--数据库配置-->
     <mysql>
         <!--数据库主机-->
-        <param name="host" value="172.16.99.100" />
+        <param name="host" value="172.16.99.100"/>
         <!--数据库连接端口-->
-        <param name="port" value="3306" />
+        <param name="port" value="3306"/>
         <!--数据库连接用户名-->
-        <param name="username" value="root" />
+        <param name="username" value="root"/>
         <!--数据库连接用户密码-->
-        <param name="password" value="admin" />
+        <param name="password" value="admin"/>
         <!--业务数据库库名-->
-        <param name="dbname" value="ccsys" />
+        <param name="dbname" value="ccsys"/>
 		<!--系统资源数据库名-->
 		<param name="src_dbname" value="syssrc"/>
     </mysql>
@@ -56,31 +56,31 @@
     -->
     <log>
     	<console>
-    	    <param name="leval" value="" />
+    	    <param name="leval" value=""/>
     	</console>
     	<db>
-    	    <param name="leval" value="" />
+    	    <param name="leval" value=""/>
     	</db>
     </log>
     <pts>
         <!--pts 服务器端口-->
-        <param name="pts_port" value="50000" />
+        <param name="pts_port" value="50000"/>
 	<!--goahead server端口-->
-        <param name="web_server_port" value="9000" />
+        <param name="web_server_port" value="9000"/>
         <!--pts web server端口-->
-        <param name="proxy_port" value="55000" />
+        <param name="proxy_port" value="55000"/>
         <!--pts 服务器端口-->
-        <param name="telnet_server_port" value="54000" />
+        <param name="telnet_server_port" value="54000"/>
     </pts>
     <!--ptc配置-->
     <ptc>
         <!--pts 域名-->
-        <param name="pts_major_domain" value="172.16.100.251" />
-        <param name="pts_minor_domain" value="www.dipcc.com" />
+        <param name="pts_major_domain" value="172.16.100.251"/>
+        <param name="pts_minor_domain" value="www.dipcc.com"/>
         <!--pts 端口-->
-        <param name="pts_major_port" value="50000" />
-        <param name="pts_minor_port" value="50000" />
+        <param name="pts_major_port" value="50000"/>
+        <param name="pts_minor_port" value="50000" 
         <!--ptc 名称-->
-        <param name="ptc_name" value="ptc11" />
+        <param name="ptc_name" value="ptc11"/>
     </ptc>
 </config>
