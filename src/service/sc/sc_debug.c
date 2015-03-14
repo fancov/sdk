@@ -45,8 +45,8 @@ U32       g_ulTraceFlags        = 0xFFFFFFFF;
 U32       g_ulTraceFlags        = 0;
 #endif
 
-extern SC_HTTPD_CB_ST        **g_pstHTTPDList;
-extern SC_HTTP_CLIENT_CB_S   **g_pstHTTPClientList;
+extern SC_HTTPD_CB_ST        *g_pstHTTPDList[SC_MAX_HTTPD_NUM];
+extern SC_HTTP_CLIENT_CB_S   *g_pstHTTPClientList[SC_MAX_HTTP_CLIENT_NUM];
 extern HASH_TABLE_S          *g_pstAgentList;
 extern SC_TASK_MNGT_ST       *g_pstTaskMngtInfo;
 
@@ -75,6 +75,11 @@ VOID sc_debug_show_httpd(U32 ulIndex)
 
     for (ulActive=0, ulHttpdIndex=0; ulHttpdIndex<SC_MAX_HTTPD_NUM; ulHttpdIndex++)
     {
+        if (!g_pstHTTPDList[ulHttpdIndex])
+        {
+            continue;
+        }
+
         if (!dos_ipaddrtostr(g_pstHTTPDList[ulHttpdIndex]->aulIPAddr[0], szIPAddr, sizeof(szIPAddr)))
         {
             szIPAddr[0] = '\0';
