@@ -1544,6 +1544,7 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
     time_t     now;
     struct tm  *timenow;
     U32 ulWeek, ulHour, ulMinute, ulIndex;
+    U32 ulStartTime, ulEndTime, ulCurrentTime;
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
 
@@ -1579,20 +1580,15 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
             continue;
         }
 
-        if ((ulHour < pstTCB->astPeriod[ulIndex].ucHourBegin
-            || ulHour > pstTCB->astPeriod[ulIndex].ucHourEnd))
-        {
-            continue;
-        }
+        ulStartTime = pstTCB->astPeriod[ulIndex].ucHourBegin * 60 + pstTCB->astPeriod[ulIndex].ucMinuteBegin;
+        ulEndTime = pstTCB->astPeriod[ulIndex].ucHourEnd * 60 + pstTCB->astPeriod[ulIndex].ucMinuteEnd;
+        ulCurrentTime = ulHour * 60 + ulMinute;
 
-        if (ulMinute < pstTCB->astPeriod[ulIndex].ucMinuteBegin
-            || ulMinute > pstTCB->astPeriod[ulIndex].ucMinuteEnd)
+        if (ulCurrentTime >= ulStartTime && ulCurrentTime < ulEndTime)
         {
-            continue;
+            SC_TRACE_OUT();
+            return DOS_TRUE;
         }
-
-        SC_TRACE_OUT();
-        return DOS_TRUE;
     }
 
     DOS_ASSERT(0);
@@ -1633,6 +1629,13 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
         DOS_ASSERT(0);
         SC_TRACE_OUT();
         return 1000;
+    }
+
+    if (SC_TASK_PAUSED == pstTCB->ucTaskStatus
+        || SC_TASK_STOP == pstTCB->ucTaskStatus)
+    {
+        SC_TRACE_OUT();
+        return 3000;
     }
 
     if (pstTCB->ulCurrentConcurrency)
