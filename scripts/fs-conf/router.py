@@ -137,6 +137,3 @@ def del_route(ulGatewayID):
         os.system("rm %s" % (seqCfgPath))
         
     return 1
-    
-
-    

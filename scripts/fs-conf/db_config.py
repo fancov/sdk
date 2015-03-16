@@ -28,19 +28,22 @@ def get_db_param():
         if os.path.exists(seqGlobalCfgFile) is False:
             return -1
         
-    parser = ET.parse(seqGlobalCfgFile)
-    domFsParam = parser.findall('./mysql/param')
-   
-    _dict = {}
-    for loop in range(len(domFsParam)):
-        _dict[domFsParam[loop].get('name')] = domFsParam[loop].get('value')
-    print _dict
+    parser = None
+    try:
+        parser = ET.parse(seqGlobalCfgFile)
+    except Exception, err:
+        file_info.get_cur_runtime_info('Catch Exception:%s' % str(err))
+        return -1
+    else:
+        domFsParam = parser.findall('./mysql/param')
+        _dict = {}
+        for loop in range(len(domFsParam)):
+            _dict[domFsParam[loop].get('name')] = domFsParam[loop].get('value')
+        domFsParam = parser.findall('./service/path/freeswitch/param')
+        for loop in range(len(domFsParam)):
+            _dict[domFsParam[loop].get('name')] = domFsParam[loop].get('value')
 
-    domFsParam = parser.findall('./service/path/freeswitch/param')
-    for loop in range(len(domFsParam)):
-        _dict[domFsParam[loop].get('name')] = domFsParam[loop].get('value')
-    
-    file_info.get_cur_runtime_info(_dict)
+        file_info.get_cur_runtime_info(_dict)
     
     # dict[0]: ���ݿ��û���
     # dict[1]: Python�ű�·��
