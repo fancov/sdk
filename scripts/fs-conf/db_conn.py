@@ -9,6 +9,7 @@
 
 import MySQLdb
 import db_config
+import file_info
 
 CONN = None
 
@@ -18,14 +19,21 @@ def connect_db():
     '''
     global CONN
     
-    # �������ļ���ȡ���ݿ�������Ϣ
-    _dict = db_config.get_db_param()
-    if _dict == []:
+    # 连接数据库
+    try:
+        _dict = db_config.get_db_param()
+    except Exception,err:
+        file_info.get_cur_runtime_info('Catch Exception:%s' % str(err))
         return -1
+    else:
+        if _dict == []:
+            return -1
         
-    # �������ݿ� MySQLdb.connect(hostname, username, password, dbname, port)
-    CONN = MySQLdb.connect(_dict['host'], _dict['username'], _dict['password'], _dict['dbname'], int(_dict['port'])) 
-    if CONN is None:
-        return -1
-    
-    return 1
+        try:
+            # 连接数据库MySQLdb.connect(hostname, username, password, dbname, port)
+            CONN = MySQLdb.connect(_dict['host'], _dict['username'], _dict['password'], _dict['dbname'], int(_dict['port']))
+        except Exception,err:
+            file_info.get_cur_runtime_info('Catch Exception:%s' % str(err))
+            return -1
+        else:
+            return 1

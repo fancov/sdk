@@ -23,18 +23,24 @@ def add_sip(ulSIPID):
         return -1
     
     #��ȡsip�˻���group id
-    ulGroupID = get_grp_id(ulSIPID)
-    if ulGroupID == -1:
-        file_info.get_cur_runtime_info('ulGroupID is %s' % str(ulGroupID))
+    try:
+        ulGroupID = get_grp_id(ulSIPID)
+    except Exception, err:
+        file_info.get_cur_runtime_info('Catch Exception:%s' % str(err))
         return -1
+    else:
+        if ulGroupID == -1:
+            file_info.get_cur_runtime_info('ulGroupID is %s' % str(ulGroupID))
+            return -1
     
-    for item in ulGroupID[0]:
-        if str(item).strip() == '0':
-            # ɾ��group idΪ0����
-            del item
-        else:
-            # ��sip�˻���ӵ���ϯ��
-            add_sip_to_group(ulSIPID, int(item))
+        for item in ulGroupID[0]:
+            if str(item).strip() == '0':
+                # ɾ��group idΪ0����
+                del item
+            else:
+                # ��sip�˻���ӵ���ϯ��
+                add_sip_to_group(ulSIPID, int(item))
+        return 1
             
 
 def get_grp_id(ulSIPID):
@@ -46,29 +52,35 @@ def get_grp_id(ulSIPID):
     if str(ulSIPID).strip() == '':
         file_info.get_cur_runtime_info('ulSIPID is %s' % str(ulSIPID))
         return -1
-    lRet = db_conn.connect_db()
-    if -1 == lRet:
-        file_info.get_cur_runtime_info('lRet is %d' % lRet)
-        return -1
     
-    #��������sip�˻�idΪsip_id����ϯ��id
-    seqSQLCmd = 'SELECT CONVERT(tbl_agent.group1_id,CHAR(10)) AS group1_id,CONVERT(tbl_agent.group2_id,CHAR(10)) AS group2_id FROM tbl_agent WHERE tbl_agent.sip_id = %d' % (ulSIPID)
-    file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
+    try:
+        lRet = db_conn.connect_db()
+    except Exception,err:
+        file_info.get_cur_runtime_info('Catch Exception:%s.' % str(err))
+        return -1
+    else:
+        if -1 == lRet:
+            file_info.get_cur_runtime_info('lRet is %d' % lRet)
+            return -1
     
-    cursor = db_conn.CONN.cursor()
-    if cursor is None:
-        file_info.get_cur_runtime_info('The database connection does not exist.')
-        return -1
-    cursor.execute(seqSQLCmd)
-    ulGroupID = cursor.fetchall()
-    if len(ulGroupID) == 0:
-        file_info.get_cur_runtime_info('len(ulGroupID) is %d' % len(ulGroupID))
-        return -1
-    db_conn.CONN.close()
-    file_info.get_cur_runtime_info('ulGroupID is %s' % str(ulGroupID))
+        # 查找sip属于那个座席
+        seqSQLCmd = 'SELECT CONVERT(tbl_agent.group1_id,CHAR(10)) AS group1_id,CONVERT(tbl_agent.group2_id,CHAR(10)) AS group2_id FROM tbl_agent WHERE tbl_agent.sip_id = %d' % (ulSIPID)
+        file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
+    
+        cursor = db_conn.CONN.cursor()
+        if cursor is None:
+            file_info.get_cur_runtime_info('The database connection does not exist.')
+            return -1
+        cursor.execute(seqSQLCmd)
+        ulGroupID = cursor.fetchall()
+        if len(ulGroupID) == 0:
+            file_info.get_cur_runtime_info('len(ulGroupID) is %d' % len(ulGroupID))
+            return -1
+        db_conn.CONN.close()
+        file_info.get_cur_runtime_info('ulGroupID is %s' % str(ulGroupID))
     
     #������ϯ��id�б���Ϊһ��sip�˻��ܿ������ڶ���˻�
-    return ulGroupID
+        return ulGroupID
 
 def get_customer_id(ulSIPID, ulGroupID):
     '''
@@ -84,25 +96,30 @@ def get_customer_id(ulSIPID, ulGroupID):
         file_info.get_cur_runtime_info('ulGroupID is %s' % str(ulGroupID))
         return -1
     
-    lRet = db_conn.connect_db()
-    if lRet == -1:
-        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+    try:
+        lRet = db_conn.connect_db()
+    except Exception, err:
+        file_info.get_cur_runtime_info('Catch Exception:%s' % str(err))
         return -1
-    # ��ȡ��ϯ��idΪgrp_id�����Ŀͻ�id
-    seqSQLCmd = 'SELECT CONVERT(tbl_group.customer_id,CHAR(10)) AS customer_id FROM tbl_group WHERE tbl_group.id = %s' % (ulGroupID)
-    file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
-    cursor = db_conn.CONN.cursor()
-    if cursor is None:
-        file_info.get_cur_runtime_info('The database connection does not exist.')
-        return -1
-    cursor.execute(seqSQLCmd)
-    ulCustomerID = cursor.fetchall()
-    db_conn.CONN.close()
-    if len(ulCustomerID) == 0:
+    else:
+        if lRet == -1:
+            file_info.get_cur_runtime_info('lRet is %d' % lRet)
+            return -1
+        # ��ȡ��ϯ��idΪgrp_id�����Ŀͻ�id
+        seqSQLCmd = 'SELECT CONVERT(tbl_group.customer_id,CHAR(10)) AS customer_id FROM tbl_group WHERE tbl_group.id = %s' % (ulGroupID)
+        file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
+        cursor = db_conn.CONN.cursor()
+        if cursor is None:
+            file_info.get_cur_runtime_info('The database connection does not exist.')
+            return -1
+        cursor.execute(seqSQLCmd)
+        ulCustomerID = cursor.fetchall()
+        db_conn.CONN.close()
+        if len(ulCustomerID) == 0:
+            file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
+            return -1
         file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
-        return -1
-    file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
-    return ulCustomerID
+        return ulCustomerID
 
 def get_agent_by_sip(ulSIPID):
     '''
@@ -145,7 +162,7 @@ def add_sip_to_group(ulSIPID, ulGroupID):
     if str(ulGroupID).strip() == '':
         file_info.get_cur_runtime_info('ulGroupID is %s' % str(ulGroupID))
         return -1
-    result = get_customer_id(ulSIPID, ulSIPID)
+    result = get_customer_id(ulSIPID, ulGroupID)
     if result is None or result == -1:
         file_info.get_cur_runtime_info(result)
         return -1
@@ -153,11 +170,6 @@ def add_sip_to_group(ulSIPID, ulGroupID):
     
     #��ȡ�ͻ�id
     ulCustomerID = result[0][0]
-    #��ȡ��ϯ��id
-    ulAgentID = get_agent_by_sip(ulSIPID)[0][0]
-    if -1 == ulAgentID:
-        file_info.get_cur_runtime_info('ulAgentID is %s' % str(ulAgentID))
-        return -1
     
     seqCfgPath = db_config.get_db_param()['fs_config_path']
     if seqCfgPath == -1:
@@ -174,85 +186,89 @@ def add_sip_to_group(ulSIPID, ulGroupID):
         os.makedirs(seqCustomerDir)
         
     seqCustomerPath = seqCfgPath + 'directory/' + ulCustomerID + '.xml'
+    seqSipPath = seqCustomerDir + str(ulSIPID) + '.xml' 
     
     file_info.get_cur_runtime_info('seqCustomerPath is %s' % seqCustomerPath)
     
-    # sip�˻������ļ�·�����ã�����customer id��1����ϯ��id��100����ôsip�˻������ļ��� %cfg_path%/directory/1/100.xml
-    seqSipDir = seqCfgPath + 'directory/' + ulCustomerID + '/' + ulAgentID + '/'
-    if os.path.exists(seqSipDir):
-        os.makedirs(seqSipDir)
-    seqSIPPath = seqCfgPath + 'directory/' + ulCustomerID + '/' + ulAgentID + '.xml'
-    file_info.get_cur_runtime_info('seqSIPPath is %s' % seqSIPPath)
-    
-    # ��ȡ�����ļ������ж�ȡ�����Python�б�
     if os.path.exists(seqCustomerPath) is False:
-        ulAgentID = get_agent_by_sip(ulSIPID)
-        if -1 == ulAgentID:
-            file_info.get_cur_runtime_info('ulAgentID is %s' % str(ulAgentID))
-            return -1
-        sip_maker.make_sip(ulAgentID[0][0], ulCustomerID, seqSIPPath)
+        sip_maker.make_sip(ulSIPID, ulCustomerID, seqSipPath)
         return 1
+    
     seqMgntText = open(seqCustomerPath, 'r').readlines()
     if seqMgntText == []:
         file_info.get_cur_runtime_info('mgnt_text is empty.')
         return -1
     file_info.get_cur_runtime_info('seqMgntText is %s' % seqMgntText)
-    
     # �����µ�sip�����ַ��������
-    seqAddText = '     <user id=\"%s\" type=\"pointer\"/>\n' % (ulAgentID)
+    seqAddText = '     <user id=\"%s\" type=\"pointer\"/>\n' % (ulSIPID)
     if seqAddText in seqMgntText:
         return -1
     file_info.get_cur_runtime_info('seqAddText is %s' % seqAddText)
     try:
-        ulMgntIndex = seqMgntText.index('   <group name=\"%s-%s\">\n' % (ulCustomerID, ulSIPID))
+        ulMgntIndex = seqMgntText.index('   <group name=\"%s-%s\">\n' % (ulCustomerID, ulGroupID))
         if ulMgntIndex < 0:
             file_info.get_cur_runtime_info('mgnt_text does not exist.')
             return  -1
         seqMgntText.insert(ulMgntIndex + 2, seqAddText)
         open(seqCustomerPath, 'w').writelines(seqMgntText)
         # ����sip�˻�
-        lRet = sip_maker.make_sip(ulSIPID, ulCustomerID, seqSIPPath)
+        lRet = sip_maker.make_sip(ulSIPID, ulCustomerID, seqSipPath)
         if lRet == -1:
             file_info.get_cur_runtime_info('lRet is %d' % lRet)
             return -1
         return 1
     except Exception as e:
-        print str(e)
+        file_info.get_cur_runtime_info('Catch Exception:%s' % str(e))
+        return -1
 
-def del_sip_from_group(ulAgentID, ulCustomerID):
+
+def del_sip(ulSIPID, ulCustomerID):
     '''
-    @param: agent_id ��ϯ��id; customer_id�ͻ�id
-    @todo: ��һ��sip�˻���һ����ϯ����ɾ��
+    @todo: 删除一个sip账户
     '''
-    if str(ulAgentID).strip() == '':
-        file_info.get_cur_runtime_info('ulAgentID is %s' % str(ulAgentID))
+    if str(ulSIPID).strip() == '':
+        file_info.get_cur_runtime_info('ulSIPID is %s' % str(ulSIPID))
         return -1
     if str(ulCustomerID).strip() == '':
         file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
         return -1
+    
+    # 找到配置文件根目录
     seqCfgPath = db_config.get_db_param()['fs_config_path']
     if -1 == seqCfgPath:
         file_info.get_cur_runtime_info('seqCfgPath is %d' % seqCfgPath)
         return -1
+    
     if seqCfgPath[-1] != '/':
         seqCfgPath = seqCfgPath + '/'
-    seqSIPPath = seqCfgPath + 'directory/' + str(ulCustomerID) + '/' + str(ulAgentID) + '.xml'
+        
+    # 找到sip账户配置文件
+    seqSIPPath = seqCfgPath + 'directory/' + str(ulCustomerID) + '/' + str(ulSIPID) + '.xml'
     if os.path.exists(seqSIPPath):
         os.remove(seqSIPPath)
-        
-    seqMgntPath = seqCfgPath + 'directory/' + str(ulCustomerID) + '.xml'
+    
+    # 找到sip账户的管理文件
+    seqMgntPath = seqCfgPath + 'directory/' + str(ulCustomerID) + '.xml'  
+    if os.path.exists(seqMgntPath) is False:
+        file_info.get_cur_runtime_info('The mgnt file does not exist.')
+        return -1
+    
+    # 读取文件
     listMgntText = open(seqMgntPath,'r').readlines()
     if listMgntText == []:
         file_info.get_cur_runtime_info(listMgntText)
         return -1
-    ulIndex = listMgntText.index('     <user id=\"%d\" type=\"pointer\"/>\n' % ulAgentID)
+    
+    # 找到该sip账户的信息
+    ulIndex = listMgntText.index('     <user id=\"%d\" type=\"pointer\"/>\n' % ulSIPID)
     if ulIndex < 0:
         file_info.get_cur_runtime_info('The index does not exist')
         return -1
+    
     del listMgntText[ulIndex]
     open(seqMgntPath, 'w').writelines(listMgntText)
     return 1
-   
+
 def change_agent_group(ulSIPID, ulNewGroupID):
     '''
     @param sip_id: sip�˻�id
@@ -350,7 +366,7 @@ def modify_param_value(ulSIPID, seqParamName, seqParamValue):
         file_info.get_cur_runtime_info('_res is %d' % _res)
         return -1
     ulCustomerID = _res[0][0]
-    seqCfgPath = db_config.get_db_param()['cfg_path']
+    seqCfgPath = db_config.get_db_param()['fs_config_path']
     if -1 == seqCfgPath:
         file_info.get_cur_runtime_info('seqCfgPath is %d' % seqCfgPath)
         return -1

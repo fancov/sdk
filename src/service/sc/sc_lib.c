@@ -1876,6 +1876,13 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
 #endif
 
             sc_load_gateway(ulGatewayID);
+            
+            ulRet = sc_ep_esl_execute_cmd("bgapi sofia  profile external restart");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
         }
         break;
         case SC_API_CMD_ACTION_GATEWAY_DELETE:
@@ -1903,7 +1910,7 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
    return DOS_SUCC;
 }
 
-U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSIPID, U32 ulAgentID, U32 ulCustomerID, S8* pszUserID)
+U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSIPID, U32 ulCustomerID, S8* pszUserID)
 {
     U32 ulRet = 0;
 
@@ -1933,7 +1940,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSIPID, U32 ulAgentID, U32 ulCust
         case SC_API_CMD_ACTION_SIP_DELETE:
         {
 #if INCLUDE_SERVICE_PYTHON
-            ulRet = py_exec_func("sip_mgnt", "del_sip_from_group","(i,i)", ulAgentID, ulCustomerID);
+            ulRet = py_exec_func("sip_mgnt", "del_sip","(i)", ulCustomerID);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);

@@ -6,22 +6,30 @@
 @time: February 6th,2015
 @todo: get the data of python interpreter
 '''
-
+import os
 import file_info
 
 def get_data_from_txt(seqFileName):
     '''
-    @param filename: ÎÄ¼þÃû
-    @todo: ´ÓtxtÎÄ¼þÖÐ»ñÈ¡sipÕË»§idÁÐ±í
+    @param filename: ï¿½Ä¼ï¿½ï¿½ï¿½
+    @todo: ï¿½ï¿½txtï¿½Ä¼ï¿½ï¿½Ð»ï¿½È¡sipï¿½Ë»ï¿½idï¿½Ð±ï¿½
     '''
     if seqFileName.strip() == '':
         file_info.get_cur_runtime_info('seqFileName is %s' % seqFileName)
         return -1
     if is_txt_file(seqFileName) is False:
+        file_info.get_cur_runtime_info('%s is not a txt file' % seqFileName)
+        return -1
+    
+    if os.path.exists(seqFileName) is False:
+        file_info.get_cur_runtime_info('File %s does not exist.' % seqFileName)
         return -1
     listText = open(seqFileName, 'r').readlines()
+    if [] == listText:
+        file_info.get_cur_runtime_info('File %s is empty.' % seqFileName)
+        return -1
     
-    # È¥µô½áÎ²µÄ»»ÐÐ·û
+    # È¥ï¿½ï¿½ï¿½ï¿½Î²ï¿½Ä»ï¿½ï¿½Ð·ï¿½
     for loop in range(len(listText)):
         if listText[loop].endswith('\n'):
             listText[loop] = listText[loop][:-1]
@@ -31,8 +39,8 @@ def get_data_from_txt(seqFileName):
 
 def is_txt_file(seqFileName):
     '''
-    @param filename: ÎÄ¼þÃû
-    @todo: ÅÐ¶ÏÎÄ¼þºó×ºÃûÊÇ·ñÎª.txtºó×º
+    @param filename: ï¿½Ä¼ï¿½ï¿½ï¿½
+    @todo: ï¿½Ð¶ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½×ºï¿½ï¿½ï¿½Ç·ï¿½Îª.txtï¿½ï¿½×º
     '''
     if seqFileName.endswith('.txt'):
         file_info.get_cur_runtime_info(seqFileName)
