@@ -158,7 +158,50 @@ VOID sc_show_http(U32 ulIndex, U32 ulID)
  */
 VOID sc_show_scb(U32 ulIndex, U32 ulID)
 {
+    SC_SCB_ST   *pstSCB = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    U32 ulHashIndex;
+    S8  szCmdBuff[1024];
 
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow the SCB List:");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                    , "\r\n%7s%10s%12s%12s%7s%12s%24s%24s"
+                    , "Index", "Ref Index", "Cusomer", "Agent", "Sttus", "Trunk ID", "Caller", "Callee");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallHash);
+    HASH_Scan_Table(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstSCB = pstHashNode->pHandle;
+
+            if (U32_BUTT != ulID && ulID != pstSCB->usSCBNo);
+
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                            , "\r\n%7d%10d%12d%12d%7s%12d%24s%24s"
+                            , pstSCB->usSCBNo
+                            , pstSCB->usOtherSCBNo
+                            , pstSCB->ulCustomID == U32_BUTT ? 0 : pstSCB->ulCustomID
+                            , pstSCB->ulAgentID == U32_BUTT ? 0 : pstSCB->ulAgentID
+                            , sc_scb_get_status(pstSCB->ucStatus)
+                            , pstSCB->ulTrunkID == U32_BUTT ? 0 : pstSCB->ulTrunkID
+                            , pstSCB->szCallerNum
+                            , pstSCB->szCalleeNum);
+            cli_out_string(ulIndex, szCmdBuff);
+        }
+    }
+    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
 }
 
 static S8* sc_debug_make_weeks(U32 ulWeekMask, S8 *pszWeeks, U32 ulLength)
