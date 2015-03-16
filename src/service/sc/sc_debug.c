@@ -884,9 +884,9 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
             if (dos_strnicmp(argv[3], "all", dos_strlen("all")) == 0
                 || dos_atoul(argv[3], &ulID) == 0)
             {
-                if (dos_strnicmp(argv[3], "off", dos_strlen("off")) == 0)
+                if (dos_strnicmp(argv[4], "off", dos_strlen("off")) == 0)
                 {}
-                else if (dos_strnicmp(argv[3], "on", dos_strlen("on")) == 0)
+                else if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
                 {}
                 else
                 {
@@ -911,11 +911,11 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
         {
             if (dos_strnicmp(argv[3], "all", dos_strlen("all")) == 0)
             {
-                if (dos_strnicmp(argv[3], "off", dos_strlen("off")) == 0)
+                if (dos_strnicmp(argv[4], "off", dos_strlen("off")) == 0)
                 {
                     g_ulTaskTraceAll = 0;
                 }
-                else if (dos_strnicmp(argv[3], "on", dos_strlen("on")) == 0)
+                else if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
                 {
                     g_ulTaskTraceAll = 1;
                 }
@@ -934,11 +934,11 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
                     return -1;
                 }
 
-                if (dos_strnicmp(argv[3], "off", dos_strlen("off")) == 0)
+                if (dos_strnicmp(argv[4], "off", dos_strlen("off")) == 0)
                 {
                     pstTCB->bTraceON = DOS_FALSE;
                 }
-                else if (dos_strnicmp(argv[3], "on", dos_strlen("on")) == 0)
+                else if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
                 {
                     pstTCB->bTraceON = DOS_TRUE;
                 }
@@ -1163,6 +1163,10 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
                 return -1;
             }
         }
+        else
+        {
+            return -1;
+        }
     }
     else if (dos_strnicmp(argv[2], "http", dos_strlen("http")) == 0)
     {
@@ -1182,6 +1186,10 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
                 return -1;
             }
         }
+        else
+        {
+            return -1;
+        }
     }
     else if (dos_strnicmp(argv[2], "gateway", dos_strlen("gateway")) == 0)
     {
@@ -1200,6 +1208,10 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
                 cli_out_string(ulIndex, "\r\n\tERRNO: Invalid gateway ID while show the gateway(s).\r\n");
                 return -1;
             }
+        }
+        else
+        {
+            return -1;
         }
     }
     else if (dos_strnicmp(argv[2], "gwgrp", dos_strlen("gwgrp")) == 0)
@@ -1238,6 +1250,10 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
                 cli_out_string(ulIndex, "\r\n\tERROR: Invalid SCB ID while show the SCB.\r\n");
                 return -1;
             }
+        }
+        else
+        {
+            return -1;
         }
     }
     else if (dos_strnicmp(argv[2], "task", dos_strlen("task")) == 0)
@@ -1336,19 +1352,19 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
                 return -1;
             }
         }
-        else if (6 == argc)
+        else if (5 == argc)
         {
-            if (dos_atoul(argv[5], &ulID) < 0)
+            if (dos_atoul(argv[4], &ulID) < 0)
             {
                 cli_out_string(ulIndex, "\r\n\tERROR: Invalid Agent Group ID while show the Agent Group(s).\r\n");
                 return -1;
             }
 
-            if (dos_strnicmp(argv[4], "custom", dos_strlen("custom")) == 0)
+            if (dos_strnicmp(argv[3], "custom", dos_strlen("custom")) == 0)
             {
                 sc_show_agent(ulIndex, U32_BUTT, ulID, U32_BUTT);
             }
-            else if (dos_strnicmp(argv[4], "group", dos_strlen("group")) == 0)
+            else if (dos_strnicmp(argv[3], "group", dos_strlen("group")) == 0)
             {
                 sc_show_agent(ulIndex, U32_BUTT, U32_BUTT, ulID);
             }
@@ -1380,19 +1396,19 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
                 return -1;
             }
         }
-        else if (6 == argc)
+        else if (5 == argc)
         {
-            if (dos_atoul(argv[5], &ulID) < 0)
+            if (dos_atoul(argv[4], &ulID) < 0)
             {
                 cli_out_string(ulIndex, "\r\n\tERROR: Invalid Agent Group ID while show the Agent Group(s).\r\n");
                 return -1;
             }
 
-            if (dos_strnicmp(argv[4], "custom", dos_strlen("custom")) == 0)
+            if (dos_strnicmp(argv[3], "custom", dos_strlen("custom")) == 0)
             {
                 sc_show_agent_group(ulIndex, ulID, U32_BUTT);
             }
-            else if (dos_strnicmp(argv[4], "group", dos_strlen("group")) == 0)
+            else if (dos_strnicmp(argv[3], "group", dos_strlen("group")) == 0)
             {
                 sc_show_agent_group(ulIndex, U32_BUTT, ulID);
             }
@@ -1469,7 +1485,7 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
         goto cc_usage;
     }
 
-    if (argc < 2)
+    if (argc < 3)
     {
         goto cc_usage;
     }
