@@ -43,7 +43,7 @@ do{                                                                    \
     {                                                                  \
         (ulCtrlFrame) = (ulCtrlFrame) | (0x00000001 << (ulSubmod));    \
     }                                                                  \
-while(0)
+}while(0)
 
 #define SC_NODEBUG_SUBMOD(ulCtrlFrame, ulSubmod)                       \
 do{                                                                    \
@@ -51,7 +51,10 @@ do{                                                                    \
     {                                                                  \
         (ulCtrlFrame) = (ulCtrlFrame) & (~(0x00000001 << (ulSubmod))); \
     }                                                                  \
-while(0)
+}while(0)
+
+#define SC_CHECK_SUBMOD(ulCtrlFrame, ulSubmod)                         \
+    ((ulSubmod) < SC_SUB_MOD_BUTT) && (ulCtrlFrame & (0x00000001 << (ulSubmod)))
 
 
 #define sc_logr_debug(_ulSubmod, _pszFormat, ...) \

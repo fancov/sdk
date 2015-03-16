@@ -65,7 +65,7 @@ U32               g_ulGroupCount       = 0;
  *         U32 *pulHashIndex: 输出参数，计算之后的hash值
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-static U32 sc_acd_hash_func4agent(S8 *pszUserID, U32 *pulHashIndex)
+U32 sc_acd_hash_func4agent(S8 *pszUserID, U32 *pulHashIndex)
 {
     U32   ulHashVal = 0;
     U32   i         = 0;
@@ -103,7 +103,7 @@ static U32 sc_acd_hash_func4agent(S8 *pszUserID, U32 *pulHashIndex)
  *         U32 *pulHashIndex: 输出参数，计算之后的hash值
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-static U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex)
+U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex)
 {
     if (DOS_ADDR_INVALID(pulHashIndex))
     {
@@ -126,7 +126,7 @@ static U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex)
  *         HASH_NODE_S *pNode: HASH节点
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-static S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
+S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 {
     SC_ACD_GRP_HASH_NODE_ST    *pstGrpHashNode = NULL;
     U32                        ulIndex         = 0;
@@ -336,7 +336,7 @@ U32 sc_acd_group_remove_agent(U32 ulGroupID, S8 *pszUserID)
     /*
      * pstAgentQueueNode->pstAgentInfo 这个成员不能释放，这个成员是agent hash表里面申请的
      */
-     
+
     pstAgentQueueNode->pstAgentInfo = NULL;
     dos_dmem_free(pstAgentQueueNode);
     pstAgentQueueNode = NULL;

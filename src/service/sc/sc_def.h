@@ -625,6 +625,8 @@ U32 sc_load_black_list(U32 ulIndex);
 U32 sc_black_list_delete(U32 ulBlackListID);
 U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID);
 U32 sc_did_delete(U32 ulDidID, S8* pszDidNum);
+U32 sc_ep_gw_grp_hash_func(U32 ulGWGrpID);
+S32 sc_ep_gw_grp_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);
 
 
 #ifdef __cplusplus
