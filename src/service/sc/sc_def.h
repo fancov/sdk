@@ -627,7 +627,8 @@ U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID);
 U32 sc_did_delete(U32 ulDidID, S8* pszDidNum);
 U32 sc_ep_esl_execute_cmd(const S8* pszCmd);
 U32 sc_ep_get_userid_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
-
+U32 sc_ep_esl_execute_cmd(const S8* pszCmd);
+U32 sc_ep_get_userid_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
 
 
 

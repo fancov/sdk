@@ -902,14 +902,15 @@ VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID)
 
 static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
-    SC_TASK_CB_ST            *pstTCB;
-    S8                       *pszCustmerID = NULL, *pszCaller = NULL, *pszID = NULL;
+    SC_TASK_CB_ST            *pstTCB = NULL;
+    S8                       *pszCallers = NULL, *pszCourse = NULL;;
     U32                      ulFirstInvalidNode = U32_BUTT, ulIndex = 0;
-    U32                      ulCustomerID = 0, ulID = 0;
+    U32                      ulMaxLen = 0;
     BOOL                     blNeedAdd = DOS_TRUE;
 
     pstTCB = (SC_TASK_CB_ST *)pArg;
-    if (DOS_ADDR_INVALID(pstTCB))
+    if (DOS_ADDR_INVALID(pstTCB)
+        || DOS_ADDR_INVALID(pstTCB->pstCallerNumQuery))
     {
         DOS_ASSERT(0);
 
@@ -917,7 +918,8 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         return DOS_FAIL;
     }
 
-    if (DOS_ADDR_INVALID(pszValues) || DOS_ADDR_INVALID(pszNames))
+    if (DOS_ADDR_INVALID(pszValues) || DOS_ADDR_INVALID(pszNames)
+        || DOS_ADDR_INVALID(pszValues[0]) || '\0' == pszValues[0][0])
     {
         DOS_ASSERT(0);
 
@@ -925,7 +927,9 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         return DOS_FAIL;
     }
 
-    if (DOS_ADDR_INVALID(pstTCB->pstCallerNumQuery))
+    ulMaxLen = dos_strlen(pszValues[0]) + 1;
+    pszCallers = dos_dmem_alloc(ulMaxLen);
+    if (DOS_ADDR_INVALID(pszCallers))
     {
         DOS_ASSERT(0);
 
@@ -933,106 +937,58 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         return DOS_FAIL;
     }
 
-    if (lArgc < 3)
-    {
-        DOS_ASSERT(0);
+    dos_strncpy(pszCallers, pszValues[0], ulMaxLen);
+    pszCallers[ulMaxLen - 1] = '\0';
 
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    for (ulIndex=0; ulIndex<lArgc; ulIndex++)
+    pszCourse = strtok(pszCallers, ",");
+    while (pszCourse)
     {
-        if (dos_strcmp(pszNames[ulIndex], "id") == 0)
+        /* 检测号码是否重复了，并且找到一个空闲的控制块 */
+        for (ulIndex=0; ulIndex<SC_MAX_CALLER_NUM; ulIndex++)
         {
-            pszID = pszValues[ulIndex];
-        }
-        else if (dos_strcmp(pszNames[ulIndex], "customer") == 0)
-        {
-            pszCustmerID = pszValues[ulIndex];
-        }
-        else if (dos_strcmp(pszNames[ulIndex], "caller") == 0)
-        {
-            pszCaller = pszValues[ulIndex];
-        }
-    }
+            if (!pstTCB->pstCallerNumQuery[ulIndex].bValid
+                && U32_BUTT == ulFirstInvalidNode)
+            {
+                ulFirstInvalidNode = ulIndex;
+            }
 
-    if (DOS_ADDR_INVALID(pszID) || DOS_ADDR_INVALID(pszCustmerID) || DOS_ADDR_INVALID(pszCaller))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    if ('\0' == pszID[0] || '\0' == pszCustmerID[0] || '\0' == pszCaller[0])
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    if (dos_atoul(pszID, &ulID) < 0)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    if (dos_atoul(pszCustmerID, &ulCustomerID) < 0)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    if (dos_strlen(pszCaller) >= SC_TEL_NUMBER_LENGTH)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    /* 检测号码是否重复了，并且找到一个空闲的控制块 */
-    for (ulIndex=0; ulIndex<SC_MAX_CALLER_NUM; ulIndex++)
-    {
-        if (!pstTCB->pstCallerNumQuery[ulIndex].bValid
-            && U32_BUTT == ulFirstInvalidNode)
-        {
-            ulFirstInvalidNode = ulIndex;
+            if (pstTCB->pstCallerNumQuery[ulIndex].bValid
+                && dos_strcmp(pstTCB->pstCallerNumQuery[ulIndex].szNumber, pszCourse) == 0)
+            {
+                blNeedAdd = DOS_FALSE;
+            }
         }
 
-        if (pstTCB->pstCallerNumQuery[ulIndex].bValid
-            && dos_strcmp(pstTCB->pstCallerNumQuery[ulIndex].szNumber, pszCaller) == 0)
+        if (ulFirstInvalidNode >= SC_MAX_CALLER_NUM)
         {
-            blNeedAdd = DOS_FALSE;
+            DOS_ASSERT(0);
+
+            break;
+        }
+
+        if (!blNeedAdd)
+        {
+            continue;
+        }
+
+        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
+        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulIndexInDB = 0;
+        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
+        dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCourse, SC_MAX_CALLER_NUM);
+        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
+        pstTCB->usCallerCount++;
+
+        pszCourse = strtok(NULL, ",");
+        if (NULL == pszCourse)
+        {
+            break;
         }
     }
 
-    if (ulFirstInvalidNode >= SC_MAX_CALLER_NUM)
+    if (pszCallers)
     {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
+        dos_dmem_free(pszCallers);
     }
-
-    if (!blNeedAdd)
-    {
-        SC_TRACE_OUT();
-        return DOS_SUCC;
-    }
-
-    pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
-    pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulIndexInDB = ulID;
-    pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
-    dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCaller, SC_MAX_CALLER_NUM);
-    pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
-    pstTCB->usCallerCount++;
 
     SC_TRACE_OUT();
     return DOS_TRUE;
@@ -1085,7 +1041,7 @@ U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB)
 
     ulLength = dos_snprintf(szSqlQuery
                 , sizeof(szSqlQuery)
-                , "SELECT tbl_caller.id as id, tbl_caller.customer_id as customer, tbl_caller.cid as caller from tbl_caller WHERE tbl_caller.customer_id=%d"
+                , "SELECT tbl_calltask.callers  FROM tbl_calltask WHERE id=%d;"
                 , pstTCB->ulCustomID);
 
     ulResult = db_query(g_pstSCDBHandle
@@ -1876,7 +1832,7 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
 #endif
 
             sc_load_gateway(ulGatewayID);
-            
+
             ulRet = sc_ep_esl_execute_cmd("bgapi sofia  profile external restart");
             if (ulRet != DOS_SUCC)
             {

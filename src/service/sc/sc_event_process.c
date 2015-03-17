@@ -929,7 +929,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 || dos_atoul(aszValues[lIndex], &pstBlackListNode->ulID) < 0)
             {
                 blProcessOK = DOS_FALSE;
-                
+
                 break;
             }
         }
@@ -950,7 +950,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 blProcessOK = DOS_FALSE;
                 break;
             }
-            
+
             dos_strncpy(pstBlackListNode->szNum, aszValues[lIndex], sizeof(pstBlackListNode->szNum));
             pstBlackListNode->szNum[sizeof(pstBlackListNode->szNum) - 1] = '\0';
         }
