@@ -142,16 +142,24 @@ U32 sc_init_db()
 
 U32 mod_dipcc_sc_load()
 {
-#if INCLUDE_SERVICE_PYTHON
-    if (py_init() != DOS_SUCC)
-    {
-       DOS_ASSERT(0);
-       return DOS_FAIL;
-    }
-#endif
-
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start init SC.");
 
+#if INCLUDE_SERVICE_PYTHON
+    /* 全局初始化python模块 */
+    if (py_init() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 全局加载freeswitch配置文件xml */
+    if (py_exec_func("sip_customer", "generate_customer", "") != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+#endif
+    
     if (sc_init_db() != DOS_SUCC)
     {
         DOS_ASSERT(0);

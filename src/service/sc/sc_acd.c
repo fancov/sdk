@@ -1425,7 +1425,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
                      "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class" \
                      "     FROM " \
                      "         tbl_agent, tbl_sip " \
-                     "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 1 AND tbl_agent.id = %d) a " \
+                     "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 1 AND tbl_agent.id = %u) a " \
                      "LEFT JOIN " \
                      "    tbl_group b " \
                      "ON " \

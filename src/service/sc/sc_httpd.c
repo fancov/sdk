@@ -34,7 +34,7 @@ extern "C"{
 #define SC_HTTP_RSP_HEADER_FMT "HTTP/1.1 %s\r\n" \
                                 "Server: DIPCC Service Control Server/1.1\r\n" \
                                 "Content-Type: text/json\r\n" \
-                                "Content-Length: %d\r\n\r\n%s"
+                                "Content-Length: %u\r\n\r\n%s"
 
 /* define enums */
 
@@ -510,7 +510,7 @@ U32 sc_httpd_srv_init()
             continue;
         }
 
-        sc_logr_info(SC_HTTPD, "HTTP Server create OK. On port %d.", g_pstHTTPDList[ulIndex]->usPort);
+        sc_logr_info(SC_HTTPD, "HTTP Server create OK. On port %u.", g_pstHTTPDList[ulIndex]->usPort);
     }
 
     /* 如果所有服务器都不好使，就认为错误了 */
