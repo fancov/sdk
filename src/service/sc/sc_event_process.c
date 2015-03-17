@@ -460,7 +460,7 @@ S32 sc_ep_black_list_find(VOID *pObj, HASH_NODE_S *pstHashNode)
 }
 
 /* 删除SIP账户 */
-U32 sc_ep_sip_userid_delete(U32 ulSIPUserID, S8 *pszUserID)
+U32 sc_ep_sip_userid_delete(U32 ulSipIDID, S8 *pszUserID)
 {
     SC_USER_ID_NODE_ST *pstUserID   = NULL;
     HASH_NODE_S        *pstHashNode = NULL;
@@ -760,7 +760,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "username", dos_strlen("username")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "userid", dos_strlen("userid")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || '\0' == aszValues[lIndex][0])
@@ -867,11 +867,11 @@ U32 sc_load_sip_userid(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,username FROM tbl_sip where tbl_sip.status = 1;");
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,userid FROM tbl_sip where tbl_sip.status = 1;");
     }
     else
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,username FROM tbl_sip where tbl_sip.status = 1 AND id=%d;", ulIndex);
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,userid FROM tbl_sip where tbl_sip.status = 1 AND id=%d;", ulIndex);
     }
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_load_sip_userid_cb, NULL, NULL) != DB_ERR_SUCC)
@@ -2331,7 +2331,7 @@ U32 sc_ep_get_bind_info4did(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID)
  *      U32 ulLength    : 缓存长度
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  */
-U32 sc_ep_get_userid_by_id(U32 ulSIPUserID, S8 *pszUserID, U32 ulLength)
+U32 sc_ep_get_userid_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength)
 {
     SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
     HASH_NODE_S        *pstHashNode   = NULL;
@@ -2361,7 +2361,7 @@ U32 sc_ep_get_userid_by_id(U32 ulSIPUserID, S8 *pszUserID, U32 ulLength)
                 continue;
             }
 
-            if (ulSIPUserID == pstUserIDNode->ulSIPID)
+            if (ulSipID == pstUserIDNode->ulSIPID)
             {
                 dos_strncpy(pszUserID, pstUserIDNode->szUserID, ulLength);
                 pszUserID[ulLength - 1] = '\0';

@@ -12,36 +12,126 @@ import sip_maker
 import db_conn
 import file_info
 import db_config
+from __builtin__ import str
 
-def add_sip(ulSIPID):
+def add_sip(seqUserName):
     '''
-    @param: sip_id  sip�˻�id
-    @todo: ���һ��sip�˻�
+    @todo: 增加sip账户
     '''
-    if str(ulSIPID).strip() == '':
-        file_info.get_cur_runtime_info('ulSIPID is %s', str(ulSIPID))
+    if seqUserName.strip() == '':
+        file_info.get_cur_runtime_info('seqUserName is %s' % seqUserName)
+        return -1
+    # 查找到sip账户的编号
+    lRet = get_sipid_by_userid(seqUserName)
+    if lRet == -1:
+        file_info.get_cur_runtime_info('lRet is %d' % lRet)
         return -1
     
-    #��ȡsip�˻���group id
+    ulSipID = lRet[0][0]
+    # 查找sip账户所属的组编号
+    seqSQLCmd = 'SELECT group1_id, group2_id FROM tbl_agent WHERE sip_id = %d' % int(ulSipID)
+    file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
+    
     try:
-        ulGroupID = get_grp_id(ulSIPID)
+        lRet = db_conn.connect_db()
     except Exception, err:
         file_info.get_cur_runtime_info('Catch Exception:%s' % str(err))
         return -1
     else:
-        if ulGroupID == -1:
-            file_info.get_cur_runtime_info('ulGroupID is %s' % str(ulGroupID))
+        if -1 == lRet:
+            file_info.get_cur_runtime_info('lRet is %d' % lRet)
             return -1
-    
-        for item in ulGroupID[0]:
-            if str(item).strip() == '0':
-                # ɾ��group idΪ0����
+        cursor = db_conn.CONN.cursor()
+        if cursor is None:
+            file_info.get_cur_runtime_info('The database connection does not exist.')
+            return -1
+        
+        cursor.execute(seqSQLCmd)
+        listResult = cursor.fetchall()
+        if len(listResult) == 0:
+            file_info.get_cur_runtime_info('len(listResult) is %d' % len(listResult))
+            return -1
+        
+        file_info.get_cur_runtime_info(listResult)
+        
+        for item in listResult[0]:
+            if str(item) == '0':
                 del item
             else:
-                # ��sip�˻���ӵ���ϯ��
-                add_sip_to_group(ulSIPID, int(item))
+                add_sip_to_group(ulSipID, item)
+        
         return 1
-            
+        
+def get_sipid_by_userid(seqUserID):
+    '''
+    @todo: 根据用户名获得sip账户编号
+    '''
+    if seqUserID.strip() == '':
+        file_info.get_cur_runtime_info('seqUserName is: %s' % seqUserID)
+        return -1
+    
+    #查找出id
+    seqSQLCmd = 'SELECT id FROM tbl_sip WHERE userid = \'%s\' ' % seqUserID
+    file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
+    
+    try:
+        lRet = db_conn.connect_db()
+    except Exception, err:
+        file_info.get_cur_runtime_info('Catch Exception:%s' % str(err))
+    else:
+        if -1 == lRet:
+            file_info.get_cur_runtime_info('lRet is %d' % lRet)
+            return -1
+        cursor = db_conn.CONN.cursor()
+        if cursor is None:
+            file_info.get_cur_runtime_info('The database connection does not exist.')
+            return -1
+        
+        cursor.execute(seqSQLCmd)
+        listResult = cursor.fetchall()
+        if len(listResult) == 0:
+            file_info.get_cur_runtime_info('len(listResult) is %d' % len(listResult))
+            return -1
+    
+        file_info.get_cur_runtime_info(listResult)
+        db_conn.CONN.close()
+        
+        return listResult
+    
+def get_username_by_sipid(ulSipID):
+    '''
+    @todo: 根据sip编号获得username
+    '''
+    if str(ulSipID).strip() == '':
+        file_info.get_cur_runtime_info('ulSipID is %s' % str(ulSipID))
+        return -1
+    
+    seqSQLCmd = 'SELECT userid FROM tbl_sip WHERE id = %d' % int(ulSipID)
+    file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
+    
+    try:
+        lRet = db_conn.connect_db()
+    except Exception, err:
+        file_info.get_cur_runtime_info('Catch Exception:%s' % str(err))
+        return -1
+    else:
+        if -1 == lRet:
+            file_info.get_cur_runtime_info('lRet is %d' % lRet)
+            return -1
+        cursor = db_conn.CONN.cursor()
+        if cursor is None:
+            file_info.get_cur_runtime_info('The database connection does not exist')
+            return -1
+        cursor.execute(seqSQLCmd)
+        listResult = cursor.fetchall()
+        if len(listResult) == 0:
+            file_info.get_cur_runtime_info('len(listResult) is %d' % len(listResult))
+            return -1
+        
+        file_info.get_cur_runtime_info(listResult)
+        db_conn.CONN.close()
+        
+        return listResult
 
 def get_grp_id(ulSIPID):
     '''
@@ -168,25 +258,33 @@ def add_sip_to_group(ulSIPID, ulGroupID):
         return -1
     file_info.get_cur_runtime_info(result)
     
-    #��ȡ�ͻ�id
+    # 获取客户id
     ulCustomerID = result[0][0]
+    
+    # 获取用户名
+    listResult = get_username_by_sipid(ulSIPID)
+    if len(listResult) == 0:
+        file_info.get_cur_runtime_info('len(listResult) is %d' % len(listResult))
+        return -1
+    
+    seqUserName = listResult[0][0]
     
     seqCfgPath = db_config.get_db_param()['fs_config_path']
     if seqCfgPath == -1:
         file_info.get_cur_runtime_info('seqCfgPath is %s' % str(seqCfgPath))
         return -1
-    #������'/'��β��·���ַ���
+    #构造以'/'结尾的路径字符串
     if seqCfgPath[-1] != '/':
         seqCfgPath = seqCfgPath + '/'
     file_info.get_cur_runtime_info('seqCfgPath is %s' % str(seqCfgPath))
     
-    # �ͻ������ļ�����·������:����customer id��1����ô�ͻ������ļ��� %cfg_path%/directory/1.xml
+    # customer的id为1的路径为 %seqCfgPath%\directory\1
     seqCustomerDir = seqCfgPath + 'directory/' + ulCustomerID + '/'
     if os.path.exists(seqCustomerDir) is False:
         os.makedirs(seqCustomerDir)
         
     seqCustomerPath = seqCfgPath + 'directory/' + ulCustomerID + '.xml'
-    seqSipPath = seqCustomerDir + str(ulSIPID) + '.xml' 
+    seqSipPath = seqCustomerDir + seqUserName + '.xml' 
     
     file_info.get_cur_runtime_info('seqCustomerPath is %s' % seqCustomerPath)
     
@@ -222,12 +320,12 @@ def add_sip_to_group(ulSIPID, ulGroupID):
         return -1
 
 
-def del_sip(ulSIPID, ulCustomerID):
+def del_sip(seqUserID, ulCustomerID):
     '''
     @todo: 删除一个sip账户
     '''
-    if str(ulSIPID).strip() == '':
-        file_info.get_cur_runtime_info('ulSIPID is %s' % str(ulSIPID))
+    if seqUserID.strip() == '':
+        file_info.get_cur_runtime_info('seqUserID is %s' % seqUserID)
         return -1
     if str(ulCustomerID).strip() == '':
         file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
@@ -243,7 +341,7 @@ def del_sip(ulSIPID, ulCustomerID):
         seqCfgPath = seqCfgPath + '/'
         
     # 找到sip账户配置文件
-    seqSIPPath = seqCfgPath + 'directory/' + str(ulCustomerID) + '/' + str(ulSIPID) + '.xml'
+    seqSIPPath = seqCfgPath + 'directory/' + str(ulCustomerID) + '/' + seqUserID + '.xml'
     if os.path.exists(seqSIPPath):
         os.remove(seqSIPPath)
     
@@ -251,7 +349,7 @@ def del_sip(ulSIPID, ulCustomerID):
     seqMgntPath = seqCfgPath + 'directory/' + str(ulCustomerID) + '.xml'  
     if os.path.exists(seqMgntPath) is False:
         file_info.get_cur_runtime_info('The mgnt file does not exist.')
-        return -1
+        return 1
     
     # 读取文件
     listMgntText = open(seqMgntPath,'r').readlines()
@@ -260,7 +358,7 @@ def del_sip(ulSIPID, ulCustomerID):
         return -1
     
     # 找到该sip账户的信息
-    ulIndex = listMgntText.index('     <user id=\"%d\" type=\"pointer\"/>\n' % ulSIPID)
+    ulIndex = listMgntText.index('     <user id=\"%s\" type=\"pointer\"/>\n' % seqUserID)
     if ulIndex < 0:
         file_info.get_cur_runtime_info('The index does not exist')
         return -1

@@ -15,12 +15,12 @@ import customer_mgnt
 
 def config_operation(ulOpObj, ulOpType, ulObjID, seqParam1, seqParam2):
     '''
-    @param op_obj: ±íÊ¾²Ù×÷¶ÔÏó£¬ÎªsipÕË»§¡¢×ùÏ¯×é¡¢¿Í»§ÖĞµÄÄ³Ò»¸ö¶ÔÏó
-    @param op_type: ±íÊ¾²Ù×÷ÀàĞÍ£¬°üÀ¨Ôö¼Ó¡¢É¾³ı¡¢¸ü¸Ä¡¢LoadÖĞµÄÒ»¸ö
-    @param obj_id: ²Ù×÷¶ÔÏóµÄid
-    @param param1: ´ı¶¨²ÎÊı1£¬ÓÉ²Ù×÷¶ÔÏóºÍ²Ù×÷ÀàĞÍ¹²Í¬¾ö¶¨
-    @param param2: ´ı¶¨²ÎÊı2£¬ÓÉ²Ù×÷¶ÔÏóºÍ²Ù×÷ÀàĞÍ¹²Í¬¾ö¶¨
-    @todo: ²Ù×÷ÅäÖÃÎÄ¼ş£¬¾ßÌå²Ù×÷ÓÉ²Ù×÷¶ÔÏóºÍ²Ù×÷ÀàĞÍ¹²Í¬¾ö¶¨
+    @param op_obj: è¡¨ç¤ºæ“ä½œå¯¹è±¡ï¼Œä¸ºsipè´¦æˆ·ã€åº§å¸­ç»„ã€å®¢æˆ·ä¸­çš„æŸä¸€ä¸ªå¯¹è±¡
+    @param op_type: è¡¨ç¤ºæ“ä½œç±»å‹ï¼ŒåŒ…æ‹¬å¢åŠ ã€åˆ é™¤ã€æ›´æ”¹ã€Loadä¸­çš„ä¸€ä¸ª
+    @param obj_id: æ“ä½œå¯¹è±¡çš„id
+    @param param1: å¾…å®šå‚æ•°1ï¼Œç”±æ“ä½œå¯¹è±¡å’Œæ“ä½œç±»å‹å…±åŒå†³å®š
+    @param param2: å¾…å®šå‚æ•°2ï¼Œç”±æ“ä½œå¯¹è±¡å’Œæ“ä½œç±»å‹å…±åŒå†³å®š
+    @todo: æ“ä½œé…ç½®æ–‡ä»¶ï¼Œå…·ä½“æ“ä½œç”±æ“ä½œå¯¹è±¡å’Œæ“ä½œç±»å‹å…±åŒå†³å®š
     '''
     if str(ulOpObj).strip() == '':
         file_info.get_cur_runtime_info('ulOpObj is %s' % str(ulOpObj))
@@ -32,99 +32,99 @@ def config_operation(ulOpObj, ulOpType, ulObjID, seqParam1, seqParam2):
         file_info.get_cur_runtime_info('ulObjID is %s' % str(ulObjID))
         return -1
     
-    # Èç¹ûop_typeÖµÎª0, Ôò²Ù×÷ÀàĞÍÎªLoad£¬ÄÇÃ´¼ÓÔØËùÓĞµÄÅäÖÃ£¬ÆäËû²ÎÊı¾ùÎªÎŞĞ§²ÎÊı
+    # å¦‚æœop_typeå€¼ä¸º0, åˆ™æ“ä½œç±»å‹ä¸ºLoadï¼Œé‚£ä¹ˆåŠ è½½æ‰€æœ‰çš„é…ç½®ï¼Œå…¶ä»–å‚æ•°å‡ä¸ºæ— æ•ˆå‚æ•°
     if str(ulOpType).strip() == '0': #Load
         ulOpObj = -1
         ulObjID = -1
         seqParam1 = None  #set it to be invalid data
         seqParam2 = None  #set it to be invalid data
     
-        lRet = sip_customer.generate_customer()  #²âÊÔ³É¹¦
+        lRet = sip_customer.generate_customer()  #æµ‹è¯•æˆåŠŸ
         if -1 == lRet:
             file_info.get_cur_runtime_info('lRet is %d' % lRet)
             return -1
         return 1
     
-    # Èç¹ûop_typeÖµÎª1£¬ Ôò±íÊ¾Ôö¼Ó²Ù×÷
+    # å¦‚æœop_typeå€¼ä¸º1ï¼Œ åˆ™è¡¨ç¤ºå¢åŠ æ“ä½œ
     elif str(ulOpType).strip() == '1':  #Add
         seqParam1 = None  #set it to be invalid data
         seqParam2 = None  #set it to be invalid data
-        # Èç¹ûop_objÖµÎª0£¬Ôò±íÊ¾Ôö¼ÓÒ»¸ösipÕË»§£¬obj_id´ú±ísipÕË»§id
+        # å¦‚æœop_objå€¼ä¸º0ï¼Œåˆ™è¡¨ç¤ºå¢åŠ ä¸€ä¸ªsipè´¦æˆ·ï¼Œobj_idä»£è¡¨sipè´¦æˆ·id
         if str(ulOpObj).strip() == '0':  #Add sip
-            lRet = sip_mgnt.add_sip(ulObjID)  #²âÊÔ³É¹¦
+            lRet = sip_mgnt.add_sip(ulObjID)  #æµ‹è¯•æˆåŠŸ
             if -1 == lRet:
                 file_info.get_cur_runtime_info('lRet is %d' % lRet)
                 return -1
             return 1
-        # Èç¹ûop_objÎª1£¬Ôò±íÊ¾Ôö¼ÓÒ»¸ö×ùÏ¯×é£¬obj_id´ú±í×ùÏ¯×éid
+        # å¦‚æœop_objä¸º1ï¼Œåˆ™è¡¨ç¤ºå¢åŠ ä¸€ä¸ªåº§å¸­ç»„ï¼Œobj_idä»£è¡¨åº§å¸­ç»„id
         elif str(ulOpObj).strip() == '1':  #Add group
-            lRet = group_mgnt.add_group(ulObjID) # ²âÊÔ³É¹¦
+            lRet = group_mgnt.add_group(ulObjID) # æµ‹è¯•æˆåŠŸ
             if -1 == lRet:
                 file_info.get_cur_runtime_info('lRet is %d' % lRet)
                 return -1
             return 1
-        # Èç¹ûop_objÎª2£¬Ôò±íÊ¾Ôö¼ÓÒ»¸ö¿Í»§£¬obj_id´ú±í¿Í»§id
+        # å¦‚æœop_objä¸º2ï¼Œåˆ™è¡¨ç¤ºå¢åŠ ä¸€ä¸ªå®¢æˆ·ï¼Œobj_idä»£è¡¨å®¢æˆ·id
         elif str(ulOpObj).strip() == '2':  #Add customer
-            lRet = customer_mgnt.add_customer(ulObjID) # ²âÊÔ³É¹¦
+            lRet = customer_mgnt.add_customer(ulObjID) # æµ‹è¯•æˆåŠŸ
             if -1 == lRet:
                 file_info.get_cur_runtime_info('lRet is %d' % lRet)
                 return -1
             return 1
         
-    # Èç¹ûop_typeÖµÎª2£¬Ôò±íÊ¾É¾³ı²Ù×÷
+    # å¦‚æœop_typeå€¼ä¸º2ï¼Œåˆ™è¡¨ç¤ºåˆ é™¤æ“ä½œ
     elif str(ulOpType).strip() == '2': #Delete
-        # Èç¹ûop_objÎª0£¬±íÊ¾É¾³ıÒ»¸ösipÕË»§£¬ÄÇÃ´²ÎÊıparam2±ØĞëÎª"delete"£¬²ÎÊıparam1ÎªsipËùÊô¿Í»§µÄid×Ö·û´®£¬obj_idÎªsipÕË»§id
+        # å¦‚æœop_objä¸º0ï¼Œè¡¨ç¤ºåˆ é™¤ä¸€ä¸ªsipè´¦æˆ·ï¼Œé‚£ä¹ˆå‚æ•°param2å¿…é¡»ä¸º"delete"ï¼Œå‚æ•°param1ä¸ºsipæ‰€å±å®¢æˆ·çš„idå­—ç¬¦ä¸²ï¼Œobj_idä¸ºsipè´¦æˆ·id
         if str(ulOpObj).strip() == '0': #Delete sip
             if seqParam2.lower().strip() == 'delete':
                 ulCustomerID = int(seqParam1)
-                lRet = sip_mgnt.del_sip_from_group(ulObjID, ulCustomerID) # ²âÊÔ³É¹¦
+                lRet = sip_mgnt.del_sip(ulObjID, ulCustomerID) # æµ‹è¯•æˆåŠŸ
                 if -1 == lRet:
                     file_info.get_cur_runtime_info('lRet is %d' % lRet)
                     return -1
                 return 1
-        # Èç¹ûop_objÎª1£¬Ôò±íÊ¾É¾³ıÒ»¸ö×ùÏ¯×é£¬ÄÇÃ´²ÎÊıparam2±ØĞëÎª"delete"£¬²ÎÊıparam1Îª¸Ã×ùÏ¯×éËùÊô¿Í»§µÄid×Ö·û´®£¬obj_idÎª×ùÏ¯×éid
+        # å¦‚æœop_objä¸º1ï¼Œåˆ™è¡¨ç¤ºåˆ é™¤ä¸€ä¸ªåº§å¸­ç»„ï¼Œé‚£ä¹ˆå‚æ•°param2å¿…é¡»ä¸º"delete"ï¼Œå‚æ•°param1ä¸ºè¯¥åº§å¸­ç»„æ‰€å±å®¢æˆ·çš„idå­—ç¬¦ä¸²ï¼Œobj_idä¸ºåº§å¸­ç»„id
         elif str(ulOpObj).strip() == '1':#Delete group
             if seqParam2.lower().strip() == 'delete':
                 ulCustomerID = int(seqParam1)
-                lRet = group_mgnt.del_group(ulObjID, ulCustomerID)  # ²âÊÔ³É¹¦
+                lRet = group_mgnt.del_group(ulObjID, ulCustomerID)  # æµ‹è¯•æˆåŠŸ
                 if -1 == lRet:
                     file_info.get_cur_runtime_info('lRet is %d' % lRet)
                     return -1
                 return 1
-        # Èç¹ûop_objÎª2£¬Ôò±íÊ¾É¾³ıÒ»¸ö¿Í»§£¬ÄÇÃ´param2±ØĞëÎª"delete"£¬²ÎÊıparam1±ØĞëÎªNone£¬obj_idÎª¿Í»§id  
+        # å¦‚æœop_objä¸º2ï¼Œåˆ™è¡¨ç¤ºåˆ é™¤ä¸€ä¸ªå®¢æˆ·ï¼Œé‚£ä¹ˆparam2å¿…é¡»ä¸º"delete"ï¼Œå‚æ•°param1å¿…é¡»ä¸ºNoneï¼Œobj_idä¸ºå®¢æˆ·id  
         elif str(ulOpObj).strip() == '2':#Delete customer
             if seqParam2.lower().strip() == 'delete' and seqParam1 == None:
-                lRet = customer_mgnt.del_customer(ulObjID)  # ²âÊÔ³É¹¦
+                lRet = customer_mgnt.del_customer(ulObjID)  # æµ‹è¯•æˆåŠŸ
                 if -1 == lRet:
                     file_info.get_cur_runtime_info('lRet is %d' % lRet)
                     return -1
                 return 1
-    # Èç¹ûop_typeÖµÊÇ3£¬ÄÇÃ´±íÊ¾¸üĞÂ²Ù×÷          
+    # å¦‚æœop_typeå€¼æ˜¯3ï¼Œé‚£ä¹ˆè¡¨ç¤ºæ›´æ–°æ“ä½œ          
     elif str(ulOpType).strip() == '3': # Update
-        # Èç¹ûop_objÎª0£¬Ôò±íÊ¾¸üĞÂsipÕË»§µÄÏà¹ØÄÚÈİ
+        # å¦‚æœop_objä¸º0ï¼Œåˆ™è¡¨ç¤ºæ›´æ–°sipè´¦æˆ·çš„ç›¸å…³å†…å®¹
         if str(ulOpObj).strip() == '0': #Update sip
-            # Èç¹ûparam2Îª×Ö·û´®"change"£¬Ôò±íÊ¾½«sipÕË»§¸ü¸Äµ½ĞÂµÄ×ùÏ¯×é£¬obj_idÎªsipÕË»§id£¬param1ÎªĞÂµÄ×ùÏ¯×éid×Ö·û´®
+            # å¦‚æœparam2ä¸ºå­—ç¬¦ä¸²"change"ï¼Œåˆ™è¡¨ç¤ºå°†sipè´¦æˆ·æ›´æ”¹åˆ°æ–°çš„åº§å¸­ç»„ï¼Œobj_idä¸ºsipè´¦æˆ·idï¼Œparam1ä¸ºæ–°çš„åº§å¸­ç»„idå­—ç¬¦ä¸²
             if seqParam2.lower().strip() == 'change':
                 ulNewGroupID = int(seqParam1)
-                lRet = sip_mgnt.change_agent_group(ulObjID, ulNewGroupID)   # ²âÊÔ³É¹¦
+                lRet = sip_mgnt.change_agent_group(ulObjID, ulNewGroupID)   # æµ‹è¯•æˆåŠŸ
                 if -1 == lRet:
                     file_info.get_cur_runtime_info('lRet is %d' % lRet)
                     return -1
                 return 1
-            # Èç¹ûparam1²»Îª¿Õ£¬ÇÒparam2²»ÊÇ"change"£¬ÄÇÃ´±íÊ¾ĞŞ¸ÄsipÕË»§µÄ²ÎÊıÖµ£¬ÆäÖĞobj_idÎªsipÕË»§id£¬param1ÎªÅäÖÃÎÄ¼şµÄ²ÎÊıÃû
-            # param2ÎªÅäÖÃÎÄ¼şµÄ²ÎÊıÃû¶ÔÓ¦µÄ²ÎÊıÖµ
+            # å¦‚æœparam1ä¸ä¸ºç©ºï¼Œä¸”param2ä¸æ˜¯"change"ï¼Œé‚£ä¹ˆè¡¨ç¤ºä¿®æ”¹sipè´¦æˆ·çš„å‚æ•°å€¼ï¼Œå…¶ä¸­obj_idä¸ºsipè´¦æˆ·idï¼Œparam1ä¸ºé…ç½®æ–‡ä»¶çš„å‚æ•°å
+            # param2ä¸ºé…ç½®æ–‡ä»¶çš„å‚æ•°åå¯¹åº”çš„å‚æ•°å€¼
             elif seqParam1.strip() != '':
-                lRet = sip_mgnt.modify_param_value(ulObjID, seqParam1, seqParam2) # ²âÊÔ³É¹¦
+                lRet = sip_mgnt.modify_param_value(ulObjID, seqParam1, seqParam2) # æµ‹è¯•æˆåŠŸ
                 if -1 == lRet:
                     file_info.get_cur_runtime_info('lRet is %d' % lRet)
                     return -1
                 return 1
-        # Èç¹ûop_objÎª1£¬Ôò±íÊ¾¸üĞÂgroupÏà¹ØÄÚÈİ
+        # å¦‚æœop_objä¸º1ï¼Œåˆ™è¡¨ç¤ºæ›´æ–°groupç›¸å…³å†…å®¹
         elif str(ulOpObj).strip() == '1': #Update group
-            # Èç¹ûparam2Îª"change"£¬ÄÇÃ´param1ÎªĞÂµÄ×ùÏ¯×éid×Ö·û´®£¬obj_idÊÇÔ­×ùÏ¯×éid
+            # å¦‚æœparam2ä¸º"change"ï¼Œé‚£ä¹ˆparam1ä¸ºæ–°çš„åº§å¸­ç»„idå­—ç¬¦ä¸²ï¼Œobj_idæ˜¯åŸåº§å¸­ç»„id
             if seqParam2.lower().strip() == 'change':
                 ulNewGroupID = int(seqParam1)
-                lRet = group_mgnt.modify_group_name(ulObjID, ulNewGroupID) # ²âÊÔ³É¹¦
+                lRet = group_mgnt.modify_group_name(ulObjID, ulNewGroupID) # æµ‹è¯•æˆåŠŸ
                 if -1 == lRet:
                     file_info.get_cur_runtime_info('lRet is %d' % lRet)
                     return -1

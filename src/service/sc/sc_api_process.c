@@ -437,7 +437,7 @@ invalid_params:
 U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
 {
     S8  *pszSipID = NULL, *pszAction = NULL, *pszCustomerID = NULL, *pszUserID = NULL;
-    U32 ulSIPID, ulAction, ulCustomerID;
+    U32 ulSipID, ulAction, ulCustomerID;
 
     if (DOS_ADDR_INVALID(pstClient))
     {
@@ -465,14 +465,14 @@ U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
-   
-    if (dos_atoul(pszSipID, &ulSIPID) < 0)
-    {
-       DOS_ASSERT(0);
-       goto invalid_params;
-    }
 
     if (dos_atoul(pszCustomerID, &ulCustomerID) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (dos_atoul(pszSipID, &ulSipID) < 0)
     {
         DOS_ASSERT(0);
         goto invalid_params;
@@ -496,7 +496,7 @@ U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
        goto invalid_params;
     }
 
-    if (sc_http_sip_update_proc(ulAction, ulSIPID, ulCustomerID, pszUserID) != DOS_SUCC)
+    if (sc_http_sip_update_proc(ulAction, ulSipID, ulCustomerID, pszUserID) != DOS_SUCC)
     {
        DOS_ASSERT(0);
        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
