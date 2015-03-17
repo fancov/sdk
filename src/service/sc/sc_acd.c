@@ -1399,12 +1399,12 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
                     ,"SELECT " \
-                     "    a.id, a.customer_id, a.job_number, a.username, a.extension, a.group1_id, a.group2_id, b.id, a.voice_record, a.class class " \
+                     "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, a.voice_record, a.class class " \
                      "FROM " \
                      "    (SELECT " \
                      "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
                      "         tbl_agent.group1_id group1_id, tbl_agent.group2_id group2_id, tbl_sip.extension extension, " \
-                     "         tbl_sip.username username, tbl_agent.voice_record voice_record, tbl_agent.class class" \
+                     "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class" \
                      "     FROM " \
                      "         tbl_agent, tbl_sip " \
                      "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 1) a " \
@@ -1417,12 +1417,12 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
                    , "SELECT " \
-                     "    a.id, a.customer_id, a.job_number, a.username, a.extension, a.group1_id, a.group2_id, b.id, a.voice_record, a.class class " \
+                     "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, a.voice_record, a.class class " \
                      "FROM " \
                      "    (SELECT " \
                      "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
                      "         tbl_agent.group1_id group1_id, tbl_agent.group2_id group2_id, tbl_sip.extension extension, " \
-                     "         tbl_sip.username username, tbl_agent.voice_record voice_record, tbl_agent.class class" \
+                     "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class" \
                      "     FROM " \
                      "         tbl_agent, tbl_sip " \
                      "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 1 AND tbl_agent.id = %d) a " \

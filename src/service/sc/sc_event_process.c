@@ -760,7 +760,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "username", dos_strlen("username")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "userid", dos_strlen("userid")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || '\0' == aszValues[lIndex][0])
@@ -867,11 +867,11 @@ U32 sc_load_sip_userid(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,username FROM tbl_sip where tbl_sip.status = 1;");
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,userid FROM tbl_sip where tbl_sip.status = 1;");
     }
     else
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,username FROM tbl_sip where tbl_sip.status = 1 AND id=%d;", ulIndex);
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,userid FROM tbl_sip where tbl_sip.status = 1 AND id=%d;", ulIndex);
     }
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_load_sip_userid_cb, NULL, NULL) != DB_ERR_SUCC)
@@ -929,7 +929,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 || dos_atoul(aszValues[lIndex], &pstBlackListNode->ulID) < 0)
             {
                 blProcessOK = DOS_FALSE;
-                
+
                 break;
             }
         }
@@ -950,7 +950,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 blProcessOK = DOS_FALSE;
                 break;
             }
-            
+
             dos_strncpy(pstBlackListNode->szNum, aszValues[lIndex], sizeof(pstBlackListNode->szNum));
             pstBlackListNode->szNum[sizeof(pstBlackListNode->szNum) - 1] = '\0';
         }
