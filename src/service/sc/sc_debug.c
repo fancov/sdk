@@ -96,7 +96,7 @@ VOID sc_show_httpd(U32 ulIndex, U32 ulID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%10d%32s%16d%10d%10s"
+                        , "\r\n%10u%32s%16u%10u%10s"
                         , g_pstHTTPDList[ulHttpdIndex]->ulIndex
                         , '\0' == szIPAddr[0] ? "NULL" : szIPAddr
                         , g_pstHTTPDList[ulHttpdIndex]->usPort
@@ -137,7 +137,7 @@ VOID sc_show_http(U32 ulIndex, U32 ulID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%16d%16d%16d"
+                        , "\r\n%16u%16u%16u"
                         , g_pstHTTPClientList[ulHttpClientIndex]->ulIndex
                         , g_pstHTTPClientList[ulHttpClientIndex]->ulValid
                         , g_pstHTTPClientList[ulHttpClientIndex]->ulCurrentSrv);
@@ -188,7 +188,7 @@ VOID sc_show_scb(U32 ulIndex, U32 ulID)
             if (U32_BUTT != ulID && ulID != pstSCB->usSCBNo);
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n%7d%10d%12d%12d%7s%12d%24s%24s"
+                            , "\r\n%7u%10u%12u%12u%7s%12u%24s%24s"
                             , pstSCB->usSCBNo
                             , pstSCB->usOtherSCBNo
                             , pstSCB->ulCustomID == U32_BUTT ? 0 : pstSCB->ulCustomID
@@ -292,7 +292,7 @@ VOID sc_show_task_list(U32 ulIndex, U32 ulCustomID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%6d%7d%9d%-4s|%1s%10s%10s%10s%10"
+                        , "\r\n%6u%7u%9u%6s%10s%10u%10u%10u"
                         , pstTCB->usTCBNo
                         , pstTCB->ucTaskStatus
                         , pstTCB->ucPriority
@@ -340,33 +340,33 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                   "\r\n---------------Detail Information---------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                , "\r\n                   ID : %d"
-                  "\r\n               Status : %d"
-                  "\r\n             Priority : %d"
-                  "\r\n  Voice File Play Cnt : %d"
+                , "\r\n                   ID : %u"
+                  "\r\n               Status : %u"
+                  "\r\n             Priority : %u"
+                  "\r\n  Voice File Play Cnt : %u"
                   "\r\n      Voice File Path : %s"
-                  "\r\n                Trace : %d"
-                  "\r\n           Trace Call : %d"
-                  "\r\n             ID in DB : %d"
-                  "\r\n          Customer ID : %d"
-                  "\r\n  Current Concurrency : %d"
-                  "\r\n          Agent Count : %d"
-                  "\r\n       Agent Queue ID : %d"
+                  "\r\n                Trace : %s"
+                  "\r\n           Trace Call : %s"
+                  "\r\n             ID in DB : %u"
+                  "\r\n          Customer ID : %u"
+                  "\r\n  Current Concurrency : %u"
+                  "\r\n          Agent Count : %u"
+                  "\r\n       Agent Queue ID : %u"
                   "\r\nTime Period 1 Weekday : %s"
-                  "\r\n        Time Period 1 : %d:%d - %d:%d"
+                  "\r\n        Time Period 1 : %u:%u - %u:%u"
                   "\r\nTime Period 2 Weekday : %s"
-                  "\r\n        Time Period 2 : %d:%d - %d:%d"
+                  "\r\n        Time Period 2 : %u:%u - %u:%u"
                   "\r\nTime Period 3 Weekday : %s"
-                  "\r\n        Time Period 3 : %d:%d - %d:%d"
+                  "\r\n        Time Period 3 : %u:%u - %u:%u"
                   "\r\nTime Period 4 Weekday : %s"
-                  "\r\n        Time Period 4 : %d:%d - %d:%d"
+                  "\r\n        Time Period 4 : %u:%u - %u:%u"
                 , pstTCB->ulTaskID
                 , pstTCB->ucTaskStatus
                 , pstTCB->ucPriority
                 , pstTCB->ucAudioPlayCnt
                 , pstTCB->szAudioFileLen
-                , pstTCB->bTraceON
-                , pstTCB->bTraceCallON
+                , pstTCB->bTraceON ? "Y" : "N"
+                , pstTCB->bTraceCallON ? "Y" : "N"
                 , pstTCB->ulTaskID
                 , pstTCB->ulCustomID
                 , pstTCB->ulCurrentConcurrency
@@ -399,9 +399,9 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
     cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                , "\r\n       Total Call(s) : %d"
-                  "\r\n         Call Failed : %d"
-                  "\r\n      Call Connected : %d"
+                , "\r\n       Total Call(s) : %u"
+                  "\r\n         Call Failed : %u"
+                  "\r\n      Call Connected : %u"
                 , pstTCB->ulTotalCall
                 , pstTCB->ulCallFailed
                 , pstTCB->ulCallConnected);
@@ -444,18 +444,18 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n----------Group Parameters----------");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n           Index:%d", pstAgentGrouop->ulGroupID);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n           Index:%u", pstAgentGrouop->ulGroupID);
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n            Name:%d", pstAgentGrouop->ulGroupID);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n            Name:%u", pstAgentGrouop->ulGroupID);
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n     Customer ID:%d", pstAgentGrouop->ulCustomID);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n     Customer ID:%u", pstAgentGrouop->ulCustomID);
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n     Agent Count:%d", pstAgentGrouop->usCount);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n     Agent Count:%u", pstAgentGrouop->usCount);
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n      ACD Policy:%d", pstAgentGrouop->ucACDPolicy);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n      ACD Policy:%u", pstAgentGrouop->ucACDPolicy);
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n      ACD Policy:%d", pstAgentGrouop->ucACDPolicy);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n      ACD Policy:%u", pstAgentGrouop->ucACDPolicy);
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------");
 
@@ -483,7 +483,7 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%6d%10d%10d%10d%10d%7s%6s%7s%12s%12s%12s"
+                    , "\r\n%6u%10u%10u%10u%10u%10u%7s%6s%7s%12s%12s%12s"
                     , pstAgentQueueNode->ulID
                     , pstAgentQueueNode->pstAgentInfo->usStatus
                     , pstAgentQueueNode->pstAgentInfo->ulSiteID
@@ -558,7 +558,7 @@ VOID sc_show_agent_group(U32 ulIndex, U32 ulCustomID, U32 ulGroupID)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n%6d%10d%10d%10d%10d%16s"
+                            , "\r\n%6u%10u%10u%10u%10u%16s"
                             , "#", "Index", "Customer", "Agent Cnt" "ACD Policy", "Name"
                             , pstAgentGrouop->usID
                             , pstAgentGrouop->ulGroupID
@@ -587,15 +587,15 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
 
     if (U32_BUTT != ulGroupID)
     {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the agents in the Group %d:", ulGroupID);
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the agents in the Group %u:", ulGroupID);
     }
     else if (U32_BUTT != ulCustomID)
     {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the agents own by Customer %d: ", ulCustomID);
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the agents own by Customer %u: ", ulCustomID);
     }
     else if (U32_BUTT != ulID)
     {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the agents %d: ", ulID);
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the agents %u: ", ulID);
     }
     else
     {
@@ -666,7 +666,7 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%6d%10d%10d%10d%10d%7s%6s%7s%12s%12s%12s"
+                        , "\r\n%6u%10u%10u%10u%10u%10u%7s%6s%7s%12s%12s%12s"
                         , pstAgentQueueNode->ulID
                         , pstAgentQueueNode->pstAgentInfo->usStatus
                         , pstAgentQueueNode->pstAgentInfo->ulSiteID
@@ -725,7 +725,7 @@ VOID sc_show_caller_for_task(U32 ulIndex, U32 ulTaskID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%6d%6s%10d%16s"
+                        , "\r\n%6u%6s%10u%16s"
                         , pstTCB->pstCallerNumQuery[i].usNo
                         , pstTCB->pstCallerNumQuery[i].bTraceON ? "Y" : "N"
                         , pstTCB->pstCallerNumQuery[i].ulIndexInDB
@@ -783,17 +783,17 @@ VOID sc_show_scb_detail(U32 ulIndex, U32 ulSCBID)
     cli_out_string(ulIndex, "\r\nList the SCB Information:");
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                   , "\r\n             ID : %d"
-                   , "\r\n          Trace : %d"
-                   , "\r\n         TCB ID : %d"
-                   , "\r\n       Agent ID : %d"
-                   , "\r\n         Status : %d"
-                   , "\r\n   Service Type : %d, %d, %d, %d"
-                   , "\r\n      Custom ID : %s"
-                   , "\r\n        Task ID : %d"
-                   , "\r\n       Trunk ID : %d"
-                   , "\r\n     Hold Count : %d"
-                   , "\r\nHold Time Count : %d"
+                   , "\r\n             ID : %u"
+                   , "\r\n          Trace : %s"
+                   , "\r\n         TCB ID : %u"
+                   , "\r\n       Agent ID : %u"
+                   , "\r\n         Status : %u"
+                   , "\r\n   Service Type : %u, %u, %u, %u"
+                   , "\r\n      Custom ID : %u"
+                   , "\r\n        Task ID : %u"
+                   , "\r\n       Trunk ID : %u"
+                   , "\r\n     Hold Count : %u"
+                   , "\r\nHold Time Count : %u"
                    , "\r\n  Caller Number : %s"
                    , "\r\n  Callee Number : %s"
                    , "\r\n            ANI : %s"
@@ -852,7 +852,7 @@ VOID sc_show_gateway(U32 ulIndex, U32 ulID)
                 continue;
             }
 
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12d%36s", pstGWNode->ulGWID, pstGWNode->szGWDomain);
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12u%36s", pstGWNode->ulGWID, pstGWNode->szGWDomain);
             cli_out_string(ulIndex, szCmdBuff);
         }
     }
@@ -895,7 +895,7 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
 
         pstGWNode = pstDLLNode->pHandle;
 
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12d%36s", pstGWNode->ulGWID, pstGWNode->szGWDomain);
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12u%36s", pstGWNode->ulGWID, pstGWNode->szGWDomain);
         cli_out_string(ulIndex, szCmdBuff);
     }
 
