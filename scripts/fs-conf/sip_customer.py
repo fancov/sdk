@@ -33,6 +33,7 @@ def generate_customer():
     
     # 执行SQL
     ulCount = cursor.execute(seqSQLCmd) # get count of results
+    
     # 获得所有执行结果
     results = cursor.fetchall()     # get all record results
     if len(results) == 0:
@@ -56,6 +57,7 @@ def generate_customer():
             os.makedirs(seqCfgPath)
         
         # 生成客户文件
+        #lRet = customer_file.generate_customer_file(results[loop][0])
         lRet = customer_file.generate_customer_file(results[loop][0])
         if lRet == -1:
             file_info.get_cur_runtime_info('lRet is %d' % lRet)

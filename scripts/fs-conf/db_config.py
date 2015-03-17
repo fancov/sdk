@@ -20,9 +20,9 @@ def get_db_param():
     # ���Ȳ鿴"/etc/global.xml"�ļ��Ƿ����
     # ��������ڣ������"../etc/global.xml�Ƿ����"
     # ����������ȡ���ݣ����򷵻ؿ�ֵ
-    seqGlobalCfgFile = '../../conf/global.xml'
+    #seqGlobalCfgFile = '../../conf/global.xml'
     
-    #seqGlobalCfgFile = '/etc/global.xml'
+    seqGlobalCfgFile = '/etc/global.xml'
     if os.path.exists(seqGlobalCfgFile) is False:
         seqGlobalCfgFile = '../etc/global.xml'
         if os.path.exists(seqGlobalCfgFile) is False:
