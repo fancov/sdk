@@ -11,13 +11,17 @@ import file_info
 
 def dom_to_pretty_xml(seqFileName, doc):
     '''
-    @param filename: ÎÄ¼þÃû
-    @param doc: ÎÄ¼þ¶ÔÏó
-    @todo: ½«DOM¶ÔÏó×ª»»ÎªÓÅÑÅµÄXML¸ñÊ½²¢Éú³Éµ½ÎÄ¼þ
+    @param filename: ï¿½Ä¼ï¿½ï¿½ï¿½
+    @param doc: ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½
+    @todo: ï¿½ï¿½DOMï¿½ï¿½ï¿½ï¿½×ªï¿½ï¿½Îªï¿½ï¿½ï¿½Åµï¿½XMLï¿½ï¿½Ê½ï¿½ï¿½ï¿½ï¿½ï¿½Éµï¿½ï¿½Ä¼ï¿½
     ''' 
     
     if seqFileName.strip() == '':
         file_info.get_cur_runtime_info('filename is %s' % seqFileName)
+        return -1
+    
+    if doc is None:
+        file_info.get_cur_runtime_info('doc is %p' % doc)
         return -1
     
     file_info.get_cur_runtime_info('filename is %s' % seqFileName)
@@ -29,15 +33,17 @@ def dom_to_pretty_xml(seqFileName, doc):
         return -1
     
     try:
+        #open(seqFileName, 'w').write('hello')
         open(seqFileName, 'w').write(doc.toprettyxml(indent = ' '))
         return 1
-    except Exception as e:
-        print str(e)
+    except Exception, err:
+        file_info.get_cur_runtime_info('Catch Exception: %s' % str(err))
+        return -1
 
 def del_xml_head(szFileName):
     '''
-    @param filename: XMLÎÄ¼þÃû
-    @todo: È¥µôXMLÎÄ¼þµÄÉùÃ÷
+    @param filename: XMLï¿½Ä¼ï¿½ï¿½ï¿½
+    @todo: È¥ï¿½ï¿½XMLï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     '''   
     
     if szFileName == '':

@@ -16,14 +16,14 @@ import os
 
 def generate_customer_file(ulCustomerID):
     '''
-    @param customer_id: ¿Í»§id
-    @todo: Éú³É¿Í»§ÅäÖÃÎÄ¼ş
+    @param customer_id: å®¢æˆ·id
+    @todo: ç”Ÿæˆå®¢æˆ·æ–‡ä»¶
     '''
     if str(ulCustomerID).strip() == '':
         file_info.get_cur_runtime_info('ulCustomerID is %d' % ulCustomerID)
         return -1
     
-    # ²éÕÒ³öËùÓĞcustomer idÊÇ`customer_id`µÄ group id
+    # è·å–æ‰€æœ‰customer idä¸ºulCustomerIDçš„åº§å¸­ç»„id
     seqSQLCmd = 'SELECT DISTINCT CONVERT(id, CHAR(10)) AS id FROM tbl_group WHERE tbl_group.customer_id = %s' % ulCustomerID
     file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
     doc = Document()
@@ -40,15 +40,20 @@ def generate_customer_file(ulCustomerID):
         os.mkdir(seqMgntDir)
         
     seqCfgPath = seqCfgPath + 'directory/' + str(ulCustomerID) + '.xml'
+    
+    # è¿æ¥æ•°æ®åº“
     lRet = db_conn.connect_db()
     if -1 == lRet:
         file_info.get_cur_runtime_info('lRet is %d' % lRet)
         return -1
+    
+    # é‡ç½®æ¸¸æ ‡
     cursor = db_conn.CONN.cursor()
     if cursor is None:
         file_info.get_cur_runtime_info('The database connection does not exist.')
         return -1
     ulCusCount = cursor.execute(seqSQLCmd)
+    # è·å–åˆ°æ‰€æœ‰çš„group id
     arrGroupResult = cursor.fetchall()
     if len(arrGroupResult) == 0:
         file_info.get_cur_runtime_info('len(arrGroupResult) is %d' % len(arrGroupResult))
@@ -56,27 +61,27 @@ def generate_customer_file(ulCustomerID):
     db_conn.CONN.close()
     file_info.get_cur_runtime_info(arrGroupResult)
     
-    # Éú³É¿Í»§ÅäÖÃÎÄ¼şÍ·²¿
+    # ç”Ÿæˆå¤´éƒ¨
     lRet = customer_head.generate_customer_head(seqCfgPath, doc)
     if lRet == -1:
         return -1
     (domIncludeNode , domGroupsNode) = lRet
     for loop in range(0, ulCusCount):
-        # Éú³É×ùÏ¯×é²¢·µ»Ø×é½ÚµãDOM NodeÖ¸Õë
+        # ç”Ÿæˆç¾¤ç»„
         domGroupNode = group.generate_group(doc, arrGroupResult[loop][0], ulCustomerID)
         if -1 == domGroupNode:
             file_info.get_cur_runtime_info('domGroupNode is %d' % domGroupNode)
             return -1
-        # ½«groupÌí¼ÓÖÁgroups
+        # ï¿½ï¿½groupï¿½ï¿½ï¿½ï¿½ï¿½groups
         domGroupsNode.appendChild(domGroupNode)
-        # ½«include½ÚµãÌí¼ÓÖÁdoc
+        # ï¿½ï¿½includeï¿½Úµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½doc
         doc.appendChild(domIncludeNode)
-        # Éú³Éxml
+        # ï¿½ï¿½ï¿½ï¿½xml
         lRet = dom_to_xml.dom_to_pretty_xml(seqCfgPath, doc)
         if -1 == lRet:
             file_info.get_cur_runtime_info('lRet is %d' % lRet)
             return -1
-        # È¥µôxmlÎÄ¼şÍ·²¿µÄxmlÉùÃ÷
+        # È¥ï¿½ï¿½xmlï¿½Ä¼ï¿½Í·ï¿½ï¿½ï¿½ï¿½xmlï¿½ï¿½ï¿½ï¿½
         lRet = dom_to_xml.del_xml_head(seqCfgPath)
         if -1 == lRet:
             file_info.get_cur_runtime_info('lRet is %d' % lRet)

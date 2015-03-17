@@ -10,9 +10,9 @@ import file_info
 
 def generate_customer_head(seqFileName, doc):
     '''
-    @param filename: �ļ���
-    @param doc: �ļ����� 
-    @todo: ���ɿͻ������ļ���ͷ��
+    @param filename: 生成客户文件头部
+    @param doc: 文件对象
+    @todo: 生成头部
     '''
     if str(seqFileName).strip() == '':
         file_info.get_cur_runtime_info('seqFileName is %s' % seqFileName)

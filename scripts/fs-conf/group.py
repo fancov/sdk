@@ -11,13 +11,14 @@ import sip_account
 import db_conn
 import file_info
 import types
+import sip_maker
 
 def generate_group(doc, ulGroupID, ulCustomerID):
     '''
-    @param doc: ÎÄ¼ş¶ÔÏó
-    @param grp_id: ×ùÏ¯×éid
-    @param customer_id: ¿Í»§id
-    @todo: Éú³É×ùÏ¯×é  
+    @param doc: æ–‡ä»¶å¯¹è±¡
+    @param ulGroupID: åº§å¸­ç»„id
+    @param ulCustomerID: å®¢æˆ·id
+    @todo: ç”Ÿæˆç»„
     '''
     if doc is None:
         file_info.get_cur_runtime_info('doc is %p' % doc)
@@ -29,7 +30,7 @@ def generate_group(doc, ulGroupID, ulCustomerID):
         file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
         return -1
     
-    # ²éÕÒ³öËùÓĞgroup1_id»òÕßgroup2_idÎª`grp_id`µÄ×ùÏ¯id
+    # æ‰¾å‡ºåº§å¸­ç»„idä¸ºulGroupIDçš„åº§å¸­
     seqSQLCmd = 'SELECT CONVERT(id, CHAR(10)) AS id FROM tbl_agent WHERE tbl_agent.group1_id = %s OR tbl_agent.group2_id = %s' % (ulGroupID, ulGroupID)
     file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
     
@@ -53,14 +54,58 @@ def generate_group(doc, ulGroupID, ulCustomerID):
     domGroupNode.setAttribute('name', str(ulCustomerID) + '-' + str(ulGroupID))
     domUsersNode = doc.createElement('users')
     for loop in range(0, ulMemCnt):
+        # æ ¹æ®åå¸­idè·å–sipè´¦æˆ·id
+        lRet = sip_account.get_sipid_by_agent(int(listGroupRslt[loop][0]))
+        if -1 == lRet:
+            file_info.get_cur_runtime_info('lRet is %d' % lRet)
+            return -1
+        # æ ¹æ®sipè´¦æˆ·idè·å–sipuserid
+        seqUserID = get_userid_by_sipid(lRet)
+           
         domUserNode = doc.createElement('user')
-        domUserNode.setAttribute('id', str(listGroupRslt[loop][0]) if type(listGroupRslt[loop][0]) == types.IntType else listGroupRslt[loop][0])
+        domUserNode.setAttribute('id', seqUserID)
         domUserNode.setAttribute('type', 'pointer')
         domUsersNode.appendChild(domUserNode)
-        lRet = sip_account.generate_sip_account( listGroupRslt[loop][0], ulCustomerID)
+        #sip_maker.make_sip(ulSIPID, ulCustomerID, seqPath)
+        lRet = sip_account.generate_sip_account(seqUserID, ulCustomerID)
         if -1 == lRet:
             file_info.get_cur_runtime_info('lRet is %d' % lRet)
             return -1
     
     domGroupNode.appendChild(domUsersNode)
     return domGroupNode
+
+
+def get_userid_by_sipid(ulSipID):
+    '''
+    @todo: æ ¹æ®sip idè·å¾—userid
+    '''
+    if str(ulSipID).strip() == '':
+        file_info.get_cur_runtime_info('ulSipID is %s' % str(ulSipID))
+        return -1
+    
+    seqSQLCmd = 'SELECT userid FROM tbl_sip WHERE id = %d' % ulSipID
+    file_info.get_cur_runtime_info('seqSQLCmd is:%s' % seqSQLCmd)
+    
+    try:
+        lRet = db_conn.connect_db()
+    except Exception, err:
+        file_info.get_cur_runtime_info('Catch Exception: %s' % str(err))
+        return -1
+    else:
+        if -1 == lRet:
+            file_info.get_cur_runtime_info('lRet is %d' % lRet)
+            return -1
+        
+        cursor = db_conn.CONN.cursor()
+        cursor.execute(seqSQLCmd)
+        
+        listResult = cursor.fetchall()
+        
+        if len(listResult) == 0:
+            file_info.get_cur_runtime_info('len(listResult) is %d' % len(listResult))
+            return -1
+        
+        seqUserID = str(listResult[0][0])
+        return seqUserID
+    

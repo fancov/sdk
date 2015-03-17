@@ -10,17 +10,19 @@
 from xml.dom.minidom import Document
 import dom_to_xml
 import os
+import db_conn
 import file_info
 import db_config
+import sip_maker
 
-def generate_sip_account(ulSIPID, ulCustomerID):
+def generate_sip_account(seqUserID, ulCustomerID):
     '''
-    @param sip_id: sip�˻�id
-    @param customer_id: sip�˻������ͻ�id
+    @param sip_id: sip�˻�id
+    @param customer_id: sip�˻������ͻ�id
     @todo: generate sip account configuration
     '''
-    if str(ulSIPID).strip() == '':
-        file_info.get_cur_runtime_info('ulSIPID is %s' % str(ulSIPID))
+    if str(seqUserID).strip() == '':
+        file_info.get_cur_runtime_info('ulSIPID is %s' % seqUserID)
         return -1
     if str(ulCustomerID).strip() == '':
         file_info.get_cur_runtime_info('ulCustomerID is %s' % str(ulCustomerID))
@@ -34,61 +36,95 @@ def generate_sip_account(ulSIPID, ulCustomerID):
         seqCfgPath = seqCfgPath + '/'
     if os.path.exists(seqCfgPath) is False:
         os.makedirs(seqCfgPath) 
-    seqSIPPath = seqCfgPath + 'directory/' + str(ulCustomerID) + '/' + str(ulSIPID) + '.xml'
+    seqSIPPath = seqCfgPath + 'directory/' + str(ulCustomerID) + '/' + str(seqUserID) + '.xml'
     
-    doc = Document()
-    
-    domParamsNode = doc.createElement('params')
-    domVariablesNode = doc.createElement('variables')
-    
-    dictParam = {'password':'$${default_password}', 'vm-password':str(ulSIPID)}
-    dictVariable = {'toll_allow':'domestic,international,local',
-            'accountcode':str(ulSIPID),
-            'user_context':str(ulCustomerID),
-            'effective_caller_id_name':str(ulSIPID),
-            'effective_caller_id_number':str(ulSIPID),
-            'outbound_caller_id_name':'$${outbound_caller_name}',
-            'outbound_caller_id_number':'$${outbound_caller_id}',
-            'callgroup':'techsupport'
-    }
-    
-    file_info.get_cur_runtime_info(dictVariable)
-    listParamsNode = []
-    loop = 0
-    for key in dictParam:
-        domParamNode = doc.createElement('param')
-        domParamNode.setAttribute('name', key)
-        domParamNode.setAttribute('value', dictParam[key])
-        listParamsNode.append(domParamNode)
-        domParamsNode.appendChild(listParamsNode[loop])
-        loop = loop + 1
-        
-    listVariNode = []
-    loop = 0
-    for key in dictVariable:
-        domVariableNode = doc.createElement('variable')
-        domVariableNode.setAttribute('name', key)
-        domVariableNode.setAttribute('value', dictVariable[key])
-        listVariNode.append(domVariableNode)
-        domVariablesNode.appendChild(listVariNode[loop])
-        loop = loop + 1
-        
-    domUserNode = doc.createElement('user')
-    domUserNode.setAttribute('id', str(ulSIPID))
-    domUserNode.appendChild(domParamsNode)
-    domUserNode.appendChild(domVariablesNode)
-    
-    domIncludeNode = doc.createElement('include')
-    domIncludeNode.appendChild(domUserNode)
-    doc.appendChild(domIncludeNode)
-    
-    lRet = dom_to_xml.dom_to_pretty_xml(seqSIPPath, doc)
-    if -1 == lRet:
-        file_info.get_cur_runtime_info('lRet is %d' % lRet)
-        return -1
-    lRet = dom_to_xml.del_xml_head(seqSIPPath)
-    if -1 == lRet:
-        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+    # 获取sip相关信息
+    listResult = get_sipinfo_by_userid(seqUserID)
+    if -1 == listResult:
+        file_info.get_cur_runtime_info('listResult is %d' % listResult)
         return -1
     
+    
+    lRet = sip_maker.make_sip(listResult[0][0], ulCustomerID, seqSIPPath)
+    if -1 == lRet:
+        return -1
     return 1
+
+def get_sipid_by_agent(ulAgentID):
+    '''
+    @todo: 根据坐席id获取sip账户id
+    '''
+    
+    if str(ulAgentID).strip() == '':
+        file_info.get_cur_runtime_info('ulAgentID is %s' % str(ulAgentID))
+        return -1
+    
+    seqSQLCmd = 'SELECT sip_id FROM tbl_agent WHERE id=%d' % ulAgentID
+    file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
+    
+    try:
+        lRet = db_conn.connect_db()
+    except Exception, err:
+        file_info.get_cur_runtime_info('Catch Exception:%s' % str(err))
+        return -1
+    else:
+        if lRet == -1:
+            file_info.get_cur_runtime_info('lRet is %d' % lRet)
+            return -1
+        
+        cursor = db_conn.CONN.cursor()
+        if cursor is None:
+            file_info.get_cur_runtime_info('The database connection does not exist.')
+            return -1
+        
+        cursor.execute(seqSQLCmd)
+        listResult = cursor.fetchall()
+        if len(listResult) == 0:
+            file_info.get_cur_runtime_info('len(listResult) is %d' % len(listResult))
+            return -1
+        
+        db_conn.CONN.close()
+        
+        ulSipID = int(listResult[0][0])
+        
+        return ulSipID
+    
+def get_sipinfo_by_userid(seqUserID):
+    '''
+    @todo: 根据userid获取sip账户信息
+    '''
+    
+    if str(seqUserID).strip() == '':
+        file_info.get_cur_runtime_info('seqUserID is %s' % seqUserID)
+        return -1
+    
+    seqSQLCmd = 'SELECT customer_id, extension, dispname, authname, auth_password FROM tbl_sip WHERE userid = \'%s\' ' % seqUserID
+    file_info.get_cur_runtime_info('seqSQLCmd is: %s' % seqSQLCmd)
+    
+    try:
+        lRet = db_conn.connect_db()
+    except Exception, err:
+        file_info.get_cur_runtime_info('Catch Exception:%s' % str(err))
+        return -1
+    else:
+        if -1 == lRet:
+            file_info.get_cur_runtime_info('lRet is %d' % lRet)
+            return -1
+        
+        cursor = db_conn.CONN.cursor()
+        if cursor is None:
+            file_info.get_cur_runtime_info('The database connection does not exist.')
+            return -1
+        
+        cursor.execute(seqSQLCmd)
+        listResult = cursor.fetchall()
+        
+        if len(listResult) == 0:
+            file_info.get_cur_runtime_info('len(listResult) is %d' % len(listResult))
+            return -1
+    
+        file_info.get_cur_runtime_info(listResult)
+        db_conn.CONN.close()
+        
+        print file_info
+        return listResult
