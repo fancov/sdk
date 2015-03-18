@@ -216,11 +216,9 @@ BOOL sc_scb_is_valid(SC_SCB_ST *pstSCB)
  * 返回值:
  *      成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-U32 sc_scb_init(SC_SCB_ST *pstSCB)
+inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
 {
     U32 i;
-
-    SC_TRACE_IN((U64)pstSCB, 0, 0, 0);
 
     if (!pstSCB)
     {
@@ -270,7 +268,6 @@ U32 sc_scb_init(SC_SCB_ST *pstSCB)
         pstSCB->aucServiceType[i] = U8_BUTT;
     }
 
-    SC_TRACE_OUT();
     return DOS_SUCC;
 }
 
@@ -757,10 +754,8 @@ VOID sc_tcb_free(SC_TASK_CB_ST *pstTCB)
     return;
 }
 
-U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
+inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
 {
-    SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
-
     if (!pstTCB)
     {
         SC_TRACE_OUT();
@@ -794,7 +789,6 @@ U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulCallFailed = 0;
     pstTCB->ulCallConnected = 0;
 
-    SC_TRACE_OUT();
     return DOS_SUCC;
 }
 
@@ -1896,7 +1890,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
-            
+
             ulRet = sc_ep_esl_execute_cmd("reloadxml");
             if (DOS_SUCC != ulRet)
             {
@@ -1920,7 +1914,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
-#endif           
+#endif
             ulRet = sc_ep_sip_userid_delete(szUserID);
             if (ulRet != DOS_SUCC)
             {
