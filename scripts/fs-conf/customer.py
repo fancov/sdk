@@ -201,4 +201,4 @@ def generate_customer_file(ulCustomerID):
             file_info.print_file_info('lRet is %d' % lRet)
             return -1
         
-        return 1
+    return 1
