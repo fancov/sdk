@@ -496,7 +496,7 @@ U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
        goto invalid_params;
     }
 
-    if (sc_http_sip_update_proc(ulAction, ulSipID, ulCustomerID, pszUserID) != DOS_SUCC)
+    if (sc_http_sip_update_proc(ulAction, ulSipID, ulCustomerID) != DOS_SUCC)
     {
        DOS_ASSERT(0);
        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;

@@ -1,4 +1,4 @@
-# coding=utf-8
+#coding=utf-8
 
 '''
 @author: bubble
@@ -8,30 +8,32 @@
 '''
 
 import sys
+import time
 
 def is_windows():
     '''
-    @TODO: ÅÐ¶Ïµ±Ç°ÔËÐÐÆ½Ì¨ÊÇ·ñÎªWindowsÆ½Ì¨
+    @todo: åˆ¤æ–­æ˜¯å¦ä¸ºwindowsç³»ç»Ÿ
     '''
     if 'win' in sys.platform:
-        return True
-    else:
         return False
+    else:
+        return True
     
 def is_linux():
     '''
-    @TODO: ÅÐ¶Ïµ±Ç°ÔËÐÐÆ½Ì¨ÊÇ·ñÎª»ùÓÚLinuxÆ½Ì¨
+    @todo: åˆ¤æ–­æ˜¯å¦ä¸ºlinuxå†…æ ¸çš„ç³»ç»Ÿ
     '''
     if 'linux' in sys.platform:
         return True
     else:
         return False
     
-def get_cur_runtime_info(sequence):
+def print_file_info(info):
     '''
-    @TODO: ´òÓ¡µ±Ç°ÎÄ¼þµÄÐÅÏ¢
+    @todo: æ‰“å°æ–‡ä»¶ç›¸å…³ä¿¡æ¯
     '''
     
+    # å®šä¹‰æ˜¯å¦è¾“å‡ºï¼Œä¸º1åˆ™è¡¨ç¤ºè¾“å‡ºï¼Œå¦åˆ™ä¸è¾“å‡º
     IS_OUTPUT = 1
     
     if IS_OUTPUT == 0:
@@ -39,18 +41,25 @@ def get_cur_runtime_info(sequence):
     
     f = sys._getframe(1)
     
-    # »ñÈ¡µ±Ç°ÎÄ¼þÃû
+    # èŽ·å–å½“å‰æ–‡ä»¶å
     seqFileName = f.f_code.co_filename
     if is_windows():
         seqFileName = seqFileName.split('\\')[-1]
     elif is_linux():
         seqFileName = seqFileName.split('/')[-1]
-    
-    # »ñÈ¡µ±Ç°ÐÐºÅ
+        
+    #èŽ·å–å½“å‰æ–‡ä»¶è¡Œå·
     ulLineNumber = f.f_lineno
     
-    # »ñÈ¡µ±Ç°ËùÔÚº¯Êý
-    seqFunName   = f.f_code.co_name
+    # èŽ·å–å½“å‰å‡½æ•°å
+    seqFuncName = f.f_code.co_name
+
+    _info = '%s:Line %d:In function %s:' % (seqFileName, ulLineNumber, seqFuncName)
+    output = time.strftime('%Y-%m-%d %H:%M:%S %A')
+    print output, '=>', _info, info
+
+    f = open('py-conf.log', 'a')
+    print >>f, output, '=>', _info, info
     
-    print '%s:Line %d:In function %s:' % (seqFileName, ulLineNumber, seqFunName), sequence
     return 1
+    

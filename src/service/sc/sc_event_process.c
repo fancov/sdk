@@ -460,22 +460,14 @@ S32 sc_ep_black_list_find(VOID *pObj, HASH_NODE_S *pstHashNode)
 }
 
 /* É¾³ýSIPÕË»§ */
-U32 sc_ep_sip_userid_delete(U32 ulSipIDID, S8 *pszUserID)
+U32 sc_ep_sip_userid_delete(S8 * pszSipID)
 {
     SC_USER_ID_NODE_ST *pstUserID   = NULL;
     HASH_NODE_S        *pstHashNode = NULL;
     U32                ulHashIndex  = U32_BUTT;
 
-
-    if (DOS_ADDR_INVALID(pszUserID))
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    ulHashIndex= sc_sip_userid_hash_func(pszUserID);
-    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pszUserID, sc_ep_sip_userid_hash_find);
+    ulHashIndex= sc_sip_userid_hash_func(pszSipID);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pszSipID, sc_ep_sip_userid_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {

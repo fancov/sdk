@@ -608,11 +608,11 @@ U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB);
 U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB);
 
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
-U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSIPID, U32 ulCustomerID, S8* pszUserID);
+U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID);
 U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID);
 U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID);
 U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID, S8* pszDidNum);
-U32 sc_ep_sip_userid_delete(U32 ulSIPUserID, S8 *pszUserID);
+U32 sc_ep_sip_userid_delete(S8 * pszSipID);
 U32 sc_gateway_delete(U32 ulGatewayID);
 U32 sc_load_sip_userid(U32 ulIndex);
 U32 sc_load_gateway(U32 ulIndex);

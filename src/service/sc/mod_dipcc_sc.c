@@ -153,7 +153,7 @@ U32 mod_dipcc_sc_load()
     }
 
     /* 全局加载freeswitch配置文件xml */
-    if (py_exec_func("sip_customer", "generate_customer", "()") != DOS_SUCC)
+    if (py_exec_func("customer", "generate_customer", "()") != DOS_SUCC)
     {
         logr_error("mod_dipcc_sc_load: load xml failure.");
         DOS_ASSERT(0);

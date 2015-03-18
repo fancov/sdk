@@ -1,39 +1,39 @@
-# coding=utf-8
+#coding=utf-8
 
 '''
 @author: bubble
 @copyright: Shenzhen dipcc technologies co.,ltd
-@time: Feburary 3rd,2015
-@todo: get the database connection
+@time: February 6th,2015
+@togo: connect database
 '''
-
 import MySQLdb
 import db_config
 import file_info
 
-CONN = None
-
 def connect_db():
     '''
-    @todo: �������ݿ�
+    @todo: 连接数据库
     '''
-    global CONN
-    
-    # 连接数据库
     try:
+        # 获取配置参数
         _dict = db_config.get_db_param()
-    except Exception,err:
-        file_info.get_cur_runtime_info('Catch Exception:%s' % str(err))
+    except Exception, err:
+        file_info.print_file_info('Catch Exception:%s' % str(err))
         return -1
     else:
-        if _dict == []:
+        if [] == _dict:
+            file_info.print_file_info('_dict is empty...........')
+            return -1
+        
+        if -1 == _dict:
+            file_info.print_file_info('Get param failure.........')
             return -1
         
         try:
-            # 连接数据库MySQLdb.connect(hostname, username, password, dbname, port)
-            CONN = MySQLdb.connect(_dict['host'], _dict['username'], _dict['password'], _dict['dbname'], int(_dict['port']))
-        except Exception,err:
-            file_info.get_cur_runtime_info('Catch Exception:%s' % str(err))
+            # 连接数据库 MySQLdb.connect(hostname, username, password, dbname, port)
+            conn = MySQLdb.connect(_dict['host'], _dict['username'], _dict['password'], _dict['dbname'], int(_dict['port']))
+        except Exception, err:
+            file_info.print_file_info('Catch Exception:%s' % str(err))
             return -1
         else:
-            return 1
+            return conn
