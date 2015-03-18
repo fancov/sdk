@@ -436,7 +436,7 @@ invalid_params:
 
 U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
 {
-    S8  *pszSipID = NULL, *pszAction = NULL, *pszCustomerID = NULL, *pszUserID = NULL;
+    S8  *pszSipID = NULL, *pszAction = NULL, *pszCustomerID = NULL;
     U32 ulSipID, ulAction, ulCustomerID;
 
     if (DOS_ADDR_INVALID(pstClient))
@@ -449,18 +449,15 @@ U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
     SC_TRACE_IN(pstClient, 0, 0, 0);
 
     /* 获取sip账户id */
-    pszSipID = sc_http_api_get_value(&pstClient->stParamList, "id");
+    pszSipID = sc_http_api_get_value(&pstClient->stParamList, "sip_id");
     /* 获取SIP账户所属客户ID */
     pszCustomerID = sc_http_api_get_value(&pstClient->stParamList, "customer_id");
     /* 获取动作 */
     pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
-    /* 获取sip_userid */
-    pszUserID = sc_http_api_get_value(&pstClient->stParamList, "sip_userid");
 
     if (DOS_ADDR_INVALID(pszSipID)
         || DOS_ADDR_INVALID(pszCustomerID)
-        || DOS_ADDR_INVALID(pszAction)
-        || DOS_ADDR_INVALID(pszUserID))
+        || DOS_ADDR_INVALID(pszAction))
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_INVALID_REQUEST;
