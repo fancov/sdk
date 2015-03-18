@@ -237,8 +237,8 @@ U32 sc_ep_gw_hash_func(U32 ulGWID)
  */
 static U32 sc_sip_userid_hash_func(S8 *pszUserID)
 {
-    U32 ulIndex;
-    U32 ulHashIndex;
+    U32 ulIndex = 0;
+    U32 ulHashIndex = 0;
 
     ulIndex = 0;
     for (;;)
@@ -3391,7 +3391,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     pszIsAutoCall = esl_event_get_header(pstEvent, "variable_auto_call");
     pszCaller     = esl_event_get_header(pstEvent, "Caller-Caller-ID-Number");
     pszCallee     = esl_event_get_header(pstEvent, "Caller-Destination-Number");
-    sc_logr_info(SC_ESL, "Route Call Start: Auto Call Flag: %s, Caller: %s, Callee: %d"
+    sc_logr_info(SC_ESL, "Route Call Start: Auto Call Flag: %s, Caller: %s, Callee: %s"
                 , NULL == pszIsAutoCall ? "NULL" : pszIsAutoCall
                 , NULL == pszCaller ? "NULL" : pszCaller
                 , NULL == pszCallee ? "NULL" : pszCallee);
