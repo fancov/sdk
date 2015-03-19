@@ -532,6 +532,9 @@ BS_BILLING_PACKAGE_ST *bs_get_billing_package(U32 ulPackageID, U8 ucServType)
 
     stMatch.ulPackageID = ulPackageID;
     stMatch.ucServType = ucServType;
+
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Get billing package %d for service %d", ulPackageID, ucServType);
+
     ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulPackageID);
     if (U32_BUTT == ulHashIndex)
     {

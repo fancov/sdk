@@ -265,8 +265,8 @@ static U32 sc_sip_userid_hash_func(S8 *pszUserID)
  */
 static U32 sc_sip_did_hash_func(S8 *pszDIDNum)
 {
-    U32 ulIndex;
-    U32 ulHashIndex;
+    U32 ulIndex = 0;
+    U32 ulHashIndex = 0;
 
     ulIndex = 0;
     for(;;)
@@ -766,15 +766,12 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "extension", dos_strlen("extension")))
         {
-            if (DOS_ADDR_INVALID(aszValues[lIndex])
-                || '\0' == aszValues[lIndex][0])
+            if (DOS_ADDR_VALID(aszValues[lIndex])
+                && '\0' != aszValues[lIndex][0])
             {
-                blProcessOK = DOS_FALSE;
-                break;
+                dos_strncpy(pstSIPUserIDNodeNew->szExtension, aszValues[lIndex], sizeof(pstSIPUserIDNodeNew->szExtension));
+                pstSIPUserIDNodeNew->szExtension[sizeof(pstSIPUserIDNodeNew->szExtension) - 1] = '\0';
             }
-
-            dos_strncpy(pstSIPUserIDNodeNew->szExtension, aszValues[lIndex], sizeof(pstSIPUserIDNodeNew->szExtension));
-            pstSIPUserIDNodeNew->szExtension[sizeof(pstSIPUserIDNodeNew->szExtension) - 1] = '\0';
         }
     }
 
@@ -788,9 +785,30 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     }
 
     pthread_mutex_lock(&g_mutexHashSIPUserID);
-    ulHashIndex = sc_sip_userid_hash_func(pstSIPUserIDNodeNew->szUserID);
-    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pstSIPUserIDNodeNew->szUserID, sc_ep_sip_userid_hash_find);
-    if (DOS_ADDR_INVALID(pstHashNode))
+    HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashSIPUserID, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                break;
+            }
+
+            pstSIPUserIDNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                continue;
+            }
+
+            if (pstSIPUserIDNode->ulSIPID == pstSIPUserIDNodeNew->ulSIPID)
+            {
+                break;
+            }
+        }
+    }
+
+    if (DOS_ADDR_INVALID(pstSIPUserIDNode)
+        || pstSIPUserIDNode->ulSIPID != pstSIPUserIDNodeNew->ulSIPID)
     {
         pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
         if (DOS_ADDR_INVALID(pstHashNode))
@@ -803,7 +821,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             return DOS_FALSE;
         }
 
-        sc_logr_debug(SC_ESL, "Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
+        sc_logr_info(SC_ESL, "Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
                     , pstSIPUserIDNodeNew->ulSIPID
                     , pstSIPUserIDNodeNew->ulCustomID
                     , pstSIPUserIDNodeNew->szUserID
@@ -814,23 +832,11 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         ulHashIndex = sc_sip_userid_hash_func(pstSIPUserIDNodeNew->szUserID);
 
         hash_add_node(g_pstHashSIPUserID, (HASH_NODE_S *)pstHashNode, ulHashIndex, NULL);
+
     }
     else
     {
-        pstSIPUserIDNode = pstHashNode->pHandle;
-        if (DOS_ADDR_INVALID(pstSIPUserIDNode))
-        {
-            sc_logr_debug(SC_ESL, "%d", "Invalid data while update the sip user id.");
-
-            dos_dmem_free(pstSIPUserIDNodeNew);
-            pstSIPUserIDNodeNew = NULL;
-
-            pthread_mutex_unlock(&g_mutexHashSIPUserID);
-            return DOS_FAIL;
-        }
-
         pstSIPUserIDNode->ulCustomID = pstSIPUserIDNodeNew->ulCustomID;
-        pstSIPUserIDNode->ulSIPID = pstSIPUserIDNodeNew->ulSIPID;
 
         dos_strncpy(pstSIPUserIDNode->szUserID, pstSIPUserIDNodeNew->szUserID, sizeof(pstSIPUserIDNode->szUserID));
         pstSIPUserIDNode->szUserID[sizeof(pstSIPUserIDNode->szUserID) - 1] = '\0';
@@ -859,11 +865,11 @@ U32 sc_load_sip_userid(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,userid FROM tbl_sip where tbl_sip.status = 1;");
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,userid FROM tbl_sip where tbl_sip.status = 0;");
     }
     else
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,userid FROM tbl_sip where tbl_sip.status = 1 AND id=%d;", ulIndex);
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,userid FROM tbl_sip where tbl_sip.status = 0 AND id=%d;", ulIndex);
     }
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_load_sip_userid_cb, NULL, NULL) != DB_ERR_SUCC)
@@ -2442,6 +2448,7 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
     struct tm            *pstTime;
     time_t               timep;
     U32                  ulRouteGrpID;
+    U32                  ulStartTime, ulEndTime, ulCurrentTime;
 
     timep = time(NULL);
     pstTime = localtime(&timep);
@@ -2462,23 +2469,21 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
             continue;
         }
 
-        sc_logr_debug(SC_ESL, "Search Route: %d:%d, %d:%d, %s, %s"
+        sc_logr_info(SC_ESL, "Search Route: %d:%d, %d:%d, %s, %s"
                 , pstRouetEntry->ucHourBegin, pstRouetEntry->ucMinuteBegin
                 , pstRouetEntry->ucHourEnd, pstRouetEntry->ucMinuteEnd
                 , pstRouetEntry->szCalleePrefix
                 , pstRouetEntry->szCallerPrefix);
 
-        /* 先看看小时是否匹配 */
-        if (pstTime->tm_hour < pstRouetEntry->ucHourBegin
-            || pstTime->tm_hour > pstRouetEntry->ucHourEnd)
-        {
-            continue;
-        }
+        ulStartTime = pstRouetEntry->ucHourBegin * 60 + pstRouetEntry->ucMinuteBegin;
+        ulEndTime = pstRouetEntry->ucHourEnd* 60 + pstRouetEntry->ucMinuteEnd;
+        ulCurrentTime = pstTime->tm_hour *60 + pstTime->tm_min;
 
-        /* 判断分钟对不对 */
-        if (pstTime->tm_min < pstRouetEntry->ucMinuteBegin
-            || pstTime->tm_min > pstRouetEntry->ucMinuteEnd)
+        if (ulCurrentTime < ulStartTime || ulCurrentTime > ulEndTime)
         {
+            sc_logr_info(SC_ESL, "Search Route(FAIL): Time not match: Peroid:%u-:%u, Current:%u"
+                    , ulStartTime, ulEndTime, ulCurrentTime);
+
             continue;
         }
 
@@ -2517,6 +2522,15 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
                     break;
                 }
             }
+        }
+
+        if (ulCurrentTime < ulStartTime || ulCurrentTime > ulEndTime)
+        {
+            sc_logr_info(SC_ESL, "Search Route(FAIL): Prefix not match: Caller:%s(%s), Callee: %s(%s)"
+                        , pstRouetEntry->szCallerPrefix, pstSCB->szCallerNum
+                        , pstRouetEntry->szCalleePrefix, pstSCB->szCalleeNum);
+
+            continue;
         }
     }
 

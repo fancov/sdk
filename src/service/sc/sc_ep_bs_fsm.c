@@ -118,10 +118,15 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         {
             sc_dialer_make_call2pstn(pstSCB, SC_SERV_OUTBOUND_CALL);
         }
-        else if (sc_call_check_service(pstSCB, SC_SERV_INTERNAL_CALL)
+        else if (sc_call_check_service(pstSCB, SC_SERV_INBOUND_CALL)
             && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
         {
             sc_ep_incoming_call_proc(pstSCB);
+        }
+        else
+        {
+            sc_logr_notice(SC_BS, "Terminate call for the invalid service type; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
+            sc_ep_terminate_call(pstSCB);
         }
     }
 
