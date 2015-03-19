@@ -788,9 +788,30 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     }
 
     pthread_mutex_lock(&g_mutexHashSIPUserID);
-    ulHashIndex = sc_sip_userid_hash_func(pstSIPUserIDNodeNew->szUserID);
-    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pstSIPUserIDNodeNew->szUserID, sc_ep_sip_userid_hash_find);
-    if (DOS_ADDR_INVALID(pstHashNode))
+    HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashSIPUserID, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                break;
+            }
+
+            pstSIPUserIDNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                continue;
+            }
+
+            if (pstSIPUserIDNode->ulSIPID == pstSIPUserIDNodeNew->ulSIPID)
+            {
+                break;
+            }
+        }
+    }
+
+    if (DOS_ADDR_INVALID(pstSIPUserIDNode)
+        || pstSIPUserIDNode->ulSIPID != pstSIPUserIDNodeNew->ulSIPID)
     {
         pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
         if (DOS_ADDR_INVALID(pstHashNode))
@@ -814,23 +835,11 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         ulHashIndex = sc_sip_userid_hash_func(pstSIPUserIDNodeNew->szUserID);
 
         hash_add_node(g_pstHashSIPUserID, (HASH_NODE_S *)pstHashNode, ulHashIndex, NULL);
+
     }
     else
     {
-        pstSIPUserIDNode = pstHashNode->pHandle;
-        if (DOS_ADDR_INVALID(pstSIPUserIDNode))
-        {
-            sc_logr_debug(SC_ESL, "%d", "Invalid data while update the sip user id.");
-
-            dos_dmem_free(pstSIPUserIDNodeNew);
-            pstSIPUserIDNodeNew = NULL;
-
-            pthread_mutex_unlock(&g_mutexHashSIPUserID);
-            return DOS_FAIL;
-        }
-
         pstSIPUserIDNode->ulCustomID = pstSIPUserIDNodeNew->ulCustomID;
-        pstSIPUserIDNode->ulSIPID = pstSIPUserIDNodeNew->ulSIPID;
 
         dos_strncpy(pstSIPUserIDNode->szUserID, pstSIPUserIDNodeNew->szUserID, sizeof(pstSIPUserIDNode->szUserID));
         pstSIPUserIDNode->szUserID[sizeof(pstSIPUserIDNode->szUserID) - 1] = '\0';
