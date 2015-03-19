@@ -3256,6 +3256,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
 
     /* 判断被叫号码是否是分机号，如果是分机号，就要找到对应的SIP账户，再呼叫，同时呼叫之前还需要获取主叫的分机号，修改ANI为主叫的分机号 */
     ulCustomerID = sc_ep_get_custom_by_sip_userid(pszSrcNum);
+    pstSCB->ulCustomID = ulCustomerID;
     if (U32_BUTT == ulCustomerID)
     {
         DOS_ASSERT(0);
