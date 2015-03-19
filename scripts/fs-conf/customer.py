@@ -4,201 +4,211 @@
 @author: bubble
 @copyright: Shenzhen dipcc technologies co.,ltd
 @time: February 6th,2015
-@todo: handle the customer
+@todo: 
 '''
 
-import os
 from xml.dom.minidom import Document
-import file_info
+import os
 import db_exec
-import db_config
-import group
+import conf_path
+import file_info
 import dom_to_xml
+import sip
+import log
 
-def generate_customer():
+
+def generate_all_customer():
     '''
-    @todo: 生成一个客户
+    @todo: 生成客户
     '''
-    
-    # 获取customer列表
-    listCustomer = get_all_customer()
-    if -1 == listCustomer:
-        file_info.print_file_info('listCustomer is %d' % listCustomer)
+    # 创建'/var/log/dipcc/'
+    lRet = log.create_fs_log_dir()
+    if -1 == lRet:
+        file_info.print_file_info('mkdir directory \'/var/log/dipcc\' failed!')
+        return -1
+    # 清空所有账户
+    clean_all_customer()
+    # 获取所有客户
+    listCus = get_all_customer()
+    if -1 == listCus:
+        file_info.print_file_info('listCus is %d' % listCus)
         return -1
     
-    # 获取配置文件路径
-    _dict = db_config.get_db_param()
-    if -1 == _dict:
-        file_info.print_file_info('_dict is %d' % _dict)
-        return -1
-    seqFsPath = _dict['fs_config_path']
-    
-    # 构造以'/'为结尾的路径字符串
-    if seqFsPath[-1] != '/':
-        seqFsPath = seqFsPath + '/'
-    
-    # 设置customer目录
-    seqCusDir = seqFsPath + 'directory/'
-    if os.path.exists(seqCusDir) is False:
-        os.makedirs(seqCusDir)
-    
-    # 生成客户配置
-    for loop in range(len(listCustomer)):
-        seqSipPath = seqCusDir + str(listCustomer[loop][0]) + '/'
-        if os.path.exists(seqSipPath) is False:
-            os.makedirs(seqSipPath)
-        
-        lRet = generate_customer_file(int(listCustomer[loop][0]))
+    for loop in range(len(listCus)):
+        lRet = generate_customer(int(listCus[loop][0]))
         if -1 == lRet:
-            file_info.print_file_info('lRet is %d' % lRet)
-            return -1
-        
+            file_info.print_file_info('Customer %d generated failed!' % int(listCus[loop][0]))
     return 1
-    
+
 
 def get_all_customer():
     '''
-    @todo: 获取所有的customer
+    @todo: 获取所有的客户
     '''
-    
-    # 获取所有的customer
-    seqSQLCmd = 'SELECT DISTINCT customer_id FROM tbl_sip'
-    listResult = db_exec.exec_SQL(seqSQLCmd)
-    
-    if -1 == listResult:
-        file_info.print_file_info('listResult is %d' % listResult)
+
+    seqSQLCmd = 'SELECT DISTINCT customer_id FROM tbl_sip;'
+    listCus = db_exec.exec_SQL(seqSQLCmd)
+    if -1 == listCus:
+        file_info.print_file_info(seqSQLCmd)
         return -1
-    
-    return listResult
 
+    return listCus
 
-def generate_customer_head(seqFileName, doc):
+def get_sip_by_customer(ulCustomerID):
     '''
-    @todo: 生成customer配置文件头部
+    @todo: 根据customer获取所有sip账户
     '''
-    
-    if seqFileName.strip() == '':
-        file_info.print_file_info('seqFileName does not exist.')
-        return -1
-    
-    # 将XML转转为DOM对象
-    domParamNode = doc.createElement('param')
-    domParamNode.setAttribute('name', 'dial-string')
-    domParamNode.setAttribute('value', '{^^:sip_invite_domain=${dialed_domain}:presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(*/${dialed_user}@${dialed_domain})}')
-        
-    domParamsNode = doc.createElement('params')
-    domParamsNode.appendChild(domParamNode)
-        
-    _dict = {'record_stereo':'true', 'default_gateway':'$${default_provider}'
-                , 'default_areacode':'$${default_areacode}', 'transfer_fallback_extension':'operator'}
-    file_info.print_file_info(_dict)
-    domVariablesNode = doc.createElement('variables')
-    arrVariNode = []
-    loop = 0
-    for key in _dict:
-        variable = doc.createElement('variable')
-        arrVariNode.append(variable)
-        arrVariNode[loop] = doc.createElement('variable') 
-        arrVariNode[loop].setAttribute('name', key)
-        arrVariNode[loop].setAttribute('value', _dict[key])
-        domVariablesNode.appendChild(arrVariNode[loop])
-        loop = loop + 1
-            
-    domPreNode = doc.createElement('X-PRE-PROCESS')
-    domPreNode.setAttribute('cmd', 'include')
-    seqFName = seqFileName[:-4].split('/')[-1]
-    
-    domPreNode.setAttribute('data', seqFName + '/*.xml')
-        
-    domUsersNode = doc.createElement('users')
-    domUsersNode.appendChild(domPreNode)
-        
-    domGroupNode = doc.createElement('group')
-    domGroupNode.setAttribute('name', seqFName)
-    domGroupNode.appendChild(domUsersNode)
-        
-    domGroupsNode = doc.createElement('groups')
-    domGroupsNode.appendChild(domGroupNode)
-        
-    domDomainNode = doc.createElement('domain')
-    domDomainNode.setAttribute('name', '$${domain}')
-    domDomainNode.appendChild(domParamsNode)
-    domDomainNode.appendChild(domVariablesNode)
-    domDomainNode.appendChild(domGroupsNode)
-        
-    domIncludeNode = doc.createElement('include')
-    domIncludeNode.appendChild(domDomainNode)
-        
-    return (domIncludeNode, domGroupsNode)
 
-def generate_customer_file(ulCustomerID):
-    '''
-    @todo: 生成客户配置文件
-    '''
-    
     if str(ulCustomerID).strip() == '':
-        file_info.print_file_info()
+        file_info.print_file_info('ulCustomerID does not exist...')
         return -1
-    
-    # 找出所有的Group
-    seqSQLCmd = 'SELECT DISTINCT id FROM tbl_group WHERE tbl_group.customer_id = %d' % int(ulCustomerID)
-    listGroup = db_exec.exec_SQL(seqSQLCmd)
-    if -1 == listGroup:
-        file_info.print_file_info('listGroup is %d' % listGroup)
+
+    seqSQLCmd = 'SELECT DISTINCT id FROM tbl_sip WHERE customer_id = %d;' % ulCustomerID
+    listSip = db_exec.exec_SQL(seqSQLCmd)
+    if -1 == listSip:
+        file_info.print_file_info('listSip is %d' % listSip)
         return -1
-    
-    # 获取数据库配置信息
-    _dict = db_config.get_db_param()
-    if -1 == _dict:
-        file_info.print_file_info('_dict is %d' % _dict)
+
+    return listSip
+
+def generate_customer(ulCustomerID):
+    '''
+    @todo: 生成客户相关文件
+    '''
+
+    if str(ulCustomerID).strip() == '':
+        file_info.print_file_info('ulCustomerID does not exist...')
         return -1
-    # 获取FreeSwitch配置文件路径
-    seqFsPath = _dict['fs_config_path']
-    # 构造以'/'结尾的字符串
+
+    # 根据客户id获取sip列表
+    listSip = get_sip_by_customer(ulCustomerID)
+    if -1 == listSip:
+        file_info.print_file_info('listSip is %d' % listSip)
+        return -1
+
+    # 获取配置文件路径
+    seqFsPath = conf_path.get_config_path()
+
+    # 构造以'/'为结尾的路径字符串
     if seqFsPath[-1] != '/':
         seqFsPath = seqFsPath + '/'
-    if os.path.exists(seqFsPath) is False:
-        os.makedirs(seqFsPath)
+        
+    seqFsPath = seqFsPath + 'directory/'
+    seqMgntFile = (seqFsPath + 'default.xml' if ulCustomerID == 0 else seqFsPath + str(ulCustomerID) + '.xml')
     
-    # 构造客户目录
-    seqCusDir = seqFsPath + 'directory/' + str(ulCustomerID) + '/'
-    if os.path.exists(seqCusDir) is False:
-        os.makedirs(seqCusDir)
-    
-    # 构造管理配置文件
-    seqCusFile = seqFsPath + 'directory/' + str(ulCustomerID) + '.xml'
-    
+    seqMgntDir = (seqFsPath + 'default' + '/' if ulCustomerID == 0 else seqFsPath + str(ulCustomerID) + '/')
+    if os.path.exists(seqMgntDir) is False:
+        os.makedirs(seqMgntDir)
+        
     doc = Document()
     
-    # xml生成头部
-    lRet = generate_customer_head(seqCusFile, doc)
+    (domIncludeNode, domGroupsNode) = create_customer_head(doc)
+    
+    domGroupNode = doc.createElement('group')
+    domGroupNode.setAttribute('name', 'default')
+    
+    domUsersNode = doc.createElement('users')
+    domGroupNode.appendChild(domUsersNode)
+    domPreNode = doc.createElement('X-PRE-PROCESS')
+    domPreNode.setAttribute('cmd', 'include')
+    domPreNode.setAttribute('data', 'default.xml' if ulCustomerID == 0 else str(ulCustomerID) + '/*.xml')
+    domUsersNode.appendChild(domPreNode)
+    
+    _domGroupNode = doc.createElement('group')
+    _domGroupNode.setAttribute('name', 'all')
+    _domUsersNode = doc.createElement('users')
+    _domGroupNode.appendChild(_domUsersNode)
+        
+    for loop in range(len(listSip)):
+        # 根据sipid获取userid
+        seqUserID = sip.get_userid_by_sipid(int(listSip[loop][0]))
+        if seqUserID == -1:
+            file_info.print_file_info('seqUserID is %d' % seqUserID)
+            return -1
+        lRet = sip.generate_sip(seqUserID)
+        if -1 == lRet:
+            file_info.print_file_info('lRet is %d' % lRet)
+            return -1
+        _domUserNode = doc.createElement('user')
+        _domUserNode.setAttribute('id', seqUserID)
+        _domUserNode.setAttribute('type', 'pointer')
+        _domUsersNode.appendChild(_domUserNode)
+    
+    domGroupsNode.appendChild(domGroupNode)
+    domGroupsNode.appendChild(_domGroupNode)
+    doc.appendChild(domIncludeNode)
+    
+    lRet = dom_to_xml.dom_to_xml(seqMgntFile, doc)
+    if -1 == lRet:
+        file_info.print_file_info('lRet is %d' % lRet)
+        return -1
+    lRet = dom_to_xml.del_xml_head(seqMgntFile)
     if -1 == lRet:
         file_info.print_file_info('lRet is %d' % lRet)
         return -1
     
-    # 取得根节点和Groups节点
-    (domIncludeNode, domGroupsNode) = lRet
-    
-    # 生成sip群
-    for loop in range(len(listGroup)):
-        domGroupNode = group.generate_group(doc, int(listGroup[loop][0]), ulCustomerID)
-        if -1 == domGroupNode:
-            file_info.print_file_info('domGroupNode is %d' % domGroupNode)
-            return -1
-        
-        domGroupsNode.appendChild(domGroupNode)
-        doc.appendChild(domIncludeNode)
-        
-        # 将DOM转换为XML
-        lRet = dom_to_xml.dom_to_xml(seqCusFile, doc)
-        if lRet == -1:
-            file_info.print_file_info('lRet is %d' % lRet)
-            return -1
-        
-        # 删除XML头部声明
-        lRet = dom_to_xml.del_xml_head(seqCusFile)
-        if -1 == lRet:
-            file_info.print_file_info('lRet is %d' % lRet)
-            return -1
-        
     return 1
+              
+def create_customer_head(doc):   
+    '''
+    @todo: 生成客户文件的头部
+    '''   
+    
+    domIncludeNode = doc.createElement('include')
+    domDomainNode  = doc.createElement('domain')
+    domDomainNode.setAttribute('name', '$${domain}')
+    domIncludeNode.appendChild(domDomainNode)
+    
+    domParamsNode = doc.createElement('params')
+    domParamNode  = doc.createElement('param')
+    domParamNode.setAttribute('name', 'dial-string')
+    domParamNode.setAttribute('value', '{^^:sip_invite_domain=${dialed_domain}:presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(*/${dialed_user}@${dialed_domain})}')
+    domParamsNode.appendChild(domParamNode)
+    
+    listParam = ['record_stereo', 'default_gateway', 'default_areacode', 'transfer_fallback_extension']
+    listValue = ['true', '$${default_provider}', '$${default_areacode}', 'operator']
+    domVariablesNode = doc.createElement('variables')
+    for loop in range(len(listParam)):
+        domVariableNode = doc.createElement('variable')
+        domVariableNode.setAttribute('name', listParam[loop])
+        domVariableNode.setAttribute('value', listValue[loop])
+        domVariablesNode.appendChild(domVariableNode)
+        
+    domDomainNode.appendChild(domParamsNode)
+    domDomainNode.appendChild(domVariablesNode)
+    
+    domGroupsNode = doc.createElement('groups')
+    domDomainNode.appendChild(domGroupsNode)
+    
+    return (domIncludeNode, domGroupsNode)
+
+def clean_all_customer():
+    '''
+    @todo: 清空所有的账户
+    '''
+
+    # 获取配置文件路径
+    seqFsPath = conf_path.get_config_path()
+    
+    # 构造以'/'结尾的路径字符串
+    if seqFsPath[-1] != '/':
+        seqFsPath = seqFsPath + '/'
+        
+    # 构造客户目录
+    seqCusDir = seqFsPath + 'directory/'
+    if os.path.exists(seqCusDir) is False:
+        file_info.print_file_info('All customers were cleand.')
+        return 1
+    
+    # 遍历目录并删掉所有文件
+    listFile = os.listdir(seqCusDir)
+    for item in listFile:
+        # 如果是目录，则执行'rm -rf dirname'
+        if os.path.isdir(item):
+            os.system('rm -rf %s' % os.path.abspath(item))
+        else:
+            os.system('rm %s' % os.path.abspath(item))
+    
+    file_info.print_file_info('Customers clean finished.')
+    return 1
+	

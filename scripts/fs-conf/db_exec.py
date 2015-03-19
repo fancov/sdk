@@ -16,10 +16,10 @@ def exec_SQL(seqSQLCmd):
     '''
     
     if seqSQLCmd.strip() == '':
-        file_info.print_file_info('seqSQLCmd is %s' % seqSQLCmd)
+        file_info.print_file_info('seqSQLCmd is:%s' % seqSQLCmd)
         return -1
     
-    file_info.print_file_info('seqSQLCmd is %s' % seqSQLCmd)
+    file_info.print_file_info('seqSQLCmd is:%s' % seqSQLCmd)
     
     try:
         conn = db_conn.connect_db()
@@ -44,7 +44,7 @@ def exec_SQL(seqSQLCmd):
         listResult = cursor.fetchall()
         
         if len(listResult) == 0:
-            file_info.print_file_info('len(listResult) is %d' % len(listResult))
+            file_info.print_file_info('len(listResult) is: %d' % len(listResult))
             return -1
         
         conn.close()

@@ -1908,7 +1908,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
                 return DOS_FAIL;
             }
 #if INCLUDE_SERVICE_PYTHON
-            ulRet = py_exec_func("sip", "del_sip","(s,i)", szUserID, ulCustomerID);
+            ulRet = py_exec_func("sip", "del_sip","(i,s,i)", ulSipID, szUserID, ulCustomerID);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);

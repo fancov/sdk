@@ -14,7 +14,7 @@ def is_windows():
     '''
     @todo: 判断是否为windows系统
     '''
-    if 'win' in sys.platform:
+    if sys.platform.find('win') < 0:
         return False
     else:
         return True
@@ -23,10 +23,10 @@ def is_linux():
     '''
     @todo: 判断是否为linux内核的系统
     '''
-    if 'linux' in sys.platform:
-        return True
-    else:
+    if sys.platform.find('linux') < 0:
         return False
+    else:
+        return True
     
 def print_file_info(info):
     '''
@@ -57,9 +57,10 @@ def print_file_info(info):
     _info = '%s:Line %d:In function %s:' % (seqFileName, ulLineNumber, seqFuncName)
     output = time.strftime('%Y-%m-%d %H:%M:%S %A')
     print output, '=>', _info, info
+    
+    seqLogPath = '/var/log/dipcc/fsconf' + time.strftime('%Y%m%d') + '.log'
 
-    f = open('py-conf.log', 'a')
-    print >>f, output, '=>', _info, info
+    f = open(seqLogPath, 'a')
+    print >> f, output, '=>', _info, info
     
     return 1
-    
