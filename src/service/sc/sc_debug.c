@@ -54,7 +54,8 @@ extern SC_TASK_MNGT_ST       *g_pstTaskMngtInfo;
 extern HASH_TABLE_S          *g_pstGroupList;
 extern HASH_TABLE_S          *g_pstAgentList;
 extern HASH_TABLE_S          *g_pstHashGW;
-HASH_TABLE_S                 *g_pstHashGWGrp;
+extern HASH_TABLE_S          *g_pstHashSIPUserID;
+extern HASH_TABLE_S          *g_pstHashGWGrp;
 
 /* declare functions */
 extern SC_TASK_CB_ST *sc_tcb_get_by_id(U32 ulTCBNo);
@@ -903,6 +904,48 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
     cli_out_string(ulIndex, szCmdBuff);
 }
 
+VOID sc_show_sip_acc(U32 ulIndex, S32 argc, S8 **argv)
+{
+    HASH_NODE_S *pstHashNode = NULL;
+    SC_USER_ID_NODE_ST *pstUserID = NULL;
+    U32 ulHashIndex = 0;
+    S8 szBuff[1024];
+
+    cli_out_string(ulIndex, "\r\nList All the SIP User ID:");
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12s%12s%32s%32s", "Index", "Customer", "User ID", "Extension");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n----------------------------------------------------------------------------------------");
+
+    HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashSIPUserID, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                break;
+            }
+
+            pstUserID = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstUserID))
+            {
+                continue;
+            }
+
+            dos_snprintf(szBuff, sizeof(szBuff)
+                        , "\r\n%12d%12d%32s%32s"
+                        , pstUserID->ulSIPID
+                        , pstUserID->ulCustomID
+                        , '\0' == pstUserID->szUserID[0] ? "NULL" : pstUserID->szUserID
+                        , '\0' == pstUserID->szExtension[0] ? "NULL" : pstUserID->szExtension);
+            cli_out_string(ulIndex, szBuff);
+        }
+    }
+
+    cli_out_string(ulIndex, "\r\n----------------------------------------------------------------------------------------\r\n\r\n");
+}
+
+
 S32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
 {
     return 0;
@@ -1187,8 +1230,11 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     {
         return -1;
     }
-
-    if (dos_strnicmp(argv[2], "httpd", dos_strlen("httpd")) == 0)
+    if (dos_strnicmp(argv[2], "sip", dos_strlen("sip")) == 0)
+    {
+        sc_show_sip_acc(ulIndex, argc, argv);
+    }
+    else if (dos_strnicmp(argv[2], "httpd", dos_strlen("httpd")) == 0)
     {
         if (3 == argc)
         {

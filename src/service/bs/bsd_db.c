@@ -460,7 +460,19 @@ S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
     HASH_NODE_S *pstHashNode = NULL;
     BS_BILLING_PACKAGE_ST *pstBillingPkg = NULL;
 
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT id, type FROM tbl_billing_business;");
+    dos_snprintf(szQuery
+                , sizeof(szQuery)
+                , "SELECT "
+                  "  t2.id as id, t1.type "
+                  "FROM "
+                  "  tbl_billing_business t1 "
+                  "LEFT JOIN "
+                  "  tbl_billing_package t2 "
+                  "ON t1.id IN (t2.outgoing_calls, t2.incoming_calls, t2.call_forward, t2.call_pickup,"
+                  "          t2.call_transfer, t2.conference_call, t2.internal_calls, t2.mms_receive,"
+                  "          t2.mms_send, t2.predictive_outbound, t2.recording_business, t2.rent_business,"
+                  "          t2.preview_outbound, t2.voice_mail, t2.settle_business, t2.automatic_outbound,"
+                  "          t2.sms_receive, t2.sms_send);");
 
     if (db_query(g_pstDBHandle, szQuery, bsd_walk_billing_package_tbl_cb, NULL, NULL) != DB_ERR_SUCC)
     {
@@ -485,21 +497,23 @@ S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
 
             dos_snprintf(szQuery
                           , sizeof(szQuery)
-                          , "SELECT "
-                            "	* "
-                            "FROM "
-                            "	tbl_billing_rule t1 "
-                            "LEFT JOIN "
-                            "	tbl_billing_business t2 "
-                            "ON "
-                            "	t1.id IN (t2.billing_rule_1,t2.billing_rule_2,t2.billing_rule_3,"
-                            "				t2.billing_rule_4,t2.billing_rule_6,t2.billing_rule_6,"
-                            "				t2.billing_rule_7,t2.billing_rule_8,t2.billing_rule_9,"
-                            "				t2.billing_rule_10)"
-                            "	AND t2.id = %d;"
-                          , pstBillingPkg->ulPackageID);
+                          , "SELECT " \
+                            "  * " \
+                            "FROM " \
+                            "  tbl_billing_rule t1 " \
+                            "LEFT JOIN  " \
+                            "  tbl_billing_business t2 " \
+                            "ON " \
+                            "  t1.id IN (t2.billing_rule_1,t2.billing_rule_2,t2.billing_rule_3, " \
+                            "    t2.billing_rule_4,t2.billing_rule_6,t2.billing_rule_6, " \
+                            "    t2.billing_rule_7,t2.billing_rule_8,t2.billing_rule_9, " \
+                            "    t2.billing_rule_10) " \
+                            "  AND t2.id = %u " \
+                            "WHERE t1.serv_type = %u;"
+                          , pstBillingPkg->ulPackageID
+                          , pstBillingPkg->ucServType);
 
-            if (db_query(g_pstDBHandle, szQuery, bsd_walk_billing_rule_tbl_cb, pstHashNode, NULL) != DB_ERR_SUCC)
+            if (db_query(g_pstDBHandle, szQuery, bsd_walk_billing_rule_tbl_cb, pstBillingPkg, NULL) != DB_ERR_SUCC)
             {
                 bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read billing package from DB FAIL!");
 

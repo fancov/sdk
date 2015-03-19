@@ -108,7 +108,7 @@ def generate_sip(SIPAccountInfo):
 	dictParam = {'password':'$${default_password}' if SIPAccountInfo == [] else seqAuthPassword, 'vm-password':ulID}
 	dictVariable = {'toll_allow':'domestic,international,local',
 				'accountcode':seqAuthName,
-				'user_context':ulCustomerID,
+				'user_context':'default',
 				'effective_caller_id_name':'' if SIPAccountInfo == [] else seqDispName,
 				'effective_caller_id_number':seqUserID,
 				'outbound_caller_id_name':'$${outbound_caller_name}',

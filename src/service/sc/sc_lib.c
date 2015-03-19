@@ -1874,10 +1874,9 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
     switch(ulAction)
     {
         case SC_API_CMD_ACTION_SIP_ADD:
-        case SC_API_CMD_ACTION_SIP_UPDATE:
         {
 #if INCLUDE_SERVICE_PYTHON
-            ulRet = py_exec_func("sip", "add_sip","(i)", ulSipID);
+            ulRet = py_exec_func("sip_gen", "sip_add","(i)", ulSipID);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -1899,6 +1898,33 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
             }
             break;
         }
+
+        case SC_API_CMD_ACTION_SIP_UPDATE:
+        {
+            ulRet = sc_ep_get_userid_by_id(ulSipID, szUserID, sizeof(szUserID));
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+#if INCLUDE_SERVICE_PYTHON
+            ulRet = py_exec_func("sip_gen", "sip_update","(i,i,s)", ulCustomerID, ulSipID, szUserID);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+#endif
+            ulRet = sc_ep_sip_userid_delete(szUserID);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+
+            break;
+        }
+
         case SC_API_CMD_ACTION_SIP_DELETE:
         {
             ulRet = sc_ep_get_userid_by_id(ulSipID, szUserID, sizeof(szUserID));
@@ -1908,7 +1934,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
                 return DOS_FAIL;
             }
 #if INCLUDE_SERVICE_PYTHON
-            ulRet = py_exec_func("sip", "del_sip","(s,i)", szUserID, ulCustomerID);
+            ulRet = py_exec_func("sip_gen", "sip_delete","(i,i,s)", ulCustomerID, ulSipID, szUserID);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
