@@ -48,7 +48,7 @@ extern "C"{
 #define SC_TEL_NUMBER_LENGTH           24
 
 /* 工号长度最大值 */
-#define SC_EMP_NUMBER_LENGTH           8
+#define SC_EMP_NUMBER_LENGTH           12
 
 /* 每个任务最多时间段描述节点 */
 #define SC_MAX_PERIOD_NUM              4

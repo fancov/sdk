@@ -2953,7 +2953,6 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
 
                 dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d}user/%s", pstSCB->usSCBNo,szCallee);
 
-                sc_ep_esl_execute("answer", "", pstSCB->szUUID);
                 sc_ep_esl_execute("bridge", szCallString, pstSCB->szUUID);
                 sc_ep_esl_execute("hangup", szCallString, pstSCB->szUUID);
                 break;
@@ -3460,6 +3459,8 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
         }
 
+        sc_ep_esl_execute("answer", NULL, pszUUID);
+        sc_ep_esl_execute("answer", NULL, pstSCBOther->szUUID);
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_ACTIVE);
 
         sc_logr_info(SC_ESL, "Agent has benn connected. UUID: %s <> %s. SCBNo: %d <> %d."
@@ -3489,8 +3490,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
         if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_PSTN == ulCallDst)
         {
-            sc_ep_esl_execute("answer", NULL, pszUUID);
-
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INBOUND_CALL);
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
 
