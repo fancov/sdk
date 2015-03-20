@@ -428,7 +428,7 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
         return;
     }
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nThe detail info for the Agent Group %s:", ulID);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nThe detail info for the Agent Group %u:", ulID);
     cli_out_string(ulIndex, szCmdBuff);
 
     sc_acd_hash_func4grp(ulID, &ulHashIndex);
@@ -436,7 +436,7 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n\r\n\tERROR: Cannot find the agent group with id %s!", ulID);
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n\r\n\tERROR: Cannot find the agent group with id %u!", ulID);
         cli_out_string(ulIndex, szCmdBuff);
         return;
     }
@@ -459,14 +459,15 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n      ACD Policy:%u", pstAgentGrouop->ucACDPolicy);
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n\r\nGroup Members");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n----------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%6s%10s%10s%10d%10s%10s%7s%6s%7s%12s%12s%12s"
-                    , "Index", "Status", "ID", "Customer" "Group1", "Group2", "Record", "Trace", "Leader", "SIP Acc" "szExtension", "Emp NO.");
+                    , "\r\n%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s"
+                    , "ID", "Status", "Customer", "Group1", "Group2", "Record", "Trace", "Leader", "SIP Acc", "szExtension", "Emp NO.");
     cli_out_string(ulIndex, szCmdBuff);
 
     DLL_Scan(&pstAgentGrouop->stAgentList, pstDLLNode, DLL_NODE_S *)
@@ -484,10 +485,9 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%6u%10u%10u%10u%10u%10u%7s%6s%7s%12s%12s%12s"
-                    , pstAgentQueueNode->ulID
-                    , pstAgentQueueNode->pstAgentInfo->usStatus
+                    , "\r\n%10u%10u%10u%10u%10u%8s%7s%8s%12s%12s%12s"
                     , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                    , pstAgentQueueNode->pstAgentInfo->usStatus
                     , pstAgentQueueNode->pstAgentInfo->ulCustomerID
                     , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
                     , pstAgentQueueNode->pstAgentInfo->aulGroupID[1]
@@ -500,7 +500,7 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
         cli_out_string(ulIndex, szCmdBuff);
     }
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n----------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
 }
 
@@ -525,11 +525,11 @@ VOID sc_show_agent_group(U32 ulIndex, U32 ulCustomID, U32 ulGroupID)
     }
 
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n----------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%6s%10s%10s%10d%10s%16s"
-                    , "#", "Index", "Customer", "Agent Cnt" "ACD Policy", "Name");
+                    , "\r\n%6s%10s%10s%10s%10s%16s"
+                    , "#", "Index", "Customer", "Agent Cnt", "ACD Policy", "Name");
     cli_out_string(ulIndex, szCmdBuff);
 
     HASH_Scan_Table(g_pstGroupList, ulHashIndex)
@@ -560,7 +560,6 @@ VOID sc_show_agent_group(U32 ulIndex, U32 ulCustomID, U32 ulGroupID)
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                             , "\r\n%6u%10u%10u%10u%10u%16s"
-                            , "#", "Index", "Customer", "Agent Cnt" "ACD Policy", "Name"
                             , pstAgentGrouop->usID
                             , pstAgentGrouop->ulGroupID
                             , pstAgentGrouop->ulCustomID
@@ -572,7 +571,7 @@ VOID sc_show_agent_group(U32 ulIndex, U32 ulCustomID, U32 ulGroupID)
             ulTotal++;
         }
     }
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal : %d\r\n", ulTotal);
     cli_out_string(ulIndex, szCmdBuff);
@@ -600,15 +599,16 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
     }
     else
     {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the agents List");
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the agents: ");
     }
 
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n----------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%6s%10s%10s%10d%10s%10s%7s%6s%7s%12s%12s%12s"
-                    , "Index", "Status", "ID", "Customer" "Group1", "Group2", "Record", "Trace", "Leader", "SIP Acc" "szExtension", "Emp NO.");
+                    , "\r\n%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s"
+                    , "ID", "Status", "Custom", "Group1", "Group2"
+                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.");
     cli_out_string(ulIndex, szCmdBuff);
 
 
@@ -667,10 +667,9 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%6u%10u%10u%10u%10u%10u%7s%6s%7s%12s%12s%12s"
-                        , pstAgentQueueNode->ulID
-                        , pstAgentQueueNode->pstAgentInfo->usStatus
+                        , "\r\n%10u%10u%10u%10u%10u%8s%7s%8s%12s%12s%12s"
                         , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                        , pstAgentQueueNode->pstAgentInfo->usStatus
                         , pstAgentQueueNode->pstAgentInfo->ulCustomerID
                         , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
                         , pstAgentQueueNode->pstAgentInfo->aulGroupID[1]
@@ -686,7 +685,7 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
             ulTotal++;
         }
     }
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal : %d\r\n", ulTotal);
     cli_out_string(ulIndex, szCmdBuff);
@@ -1423,50 +1422,6 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (dos_strnicmp(argv[2], "agent", dos_strlen("agent")) == 0)
-    {
-        if (3 == argc)
-        {
-            sc_show_agent(ulIndex, U32_BUTT, U32_BUTT, U32_BUTT);
-        }
-        else if (4 == argc)
-        {
-            if (dos_atoul(argv[3], &ulID) == 0)
-            {
-                sc_show_agent(ulIndex, ulID, U32_BUTT, U32_BUTT);
-            }
-            else
-            {
-                cli_out_string(ulIndex, "\r\n\tERROR: Invalid Agent Group ID while show the Agent Group(s).\r\n");
-                return -1;
-            }
-        }
-        else if (5 == argc)
-        {
-            if (dos_atoul(argv[4], &ulID) < 0)
-            {
-                cli_out_string(ulIndex, "\r\n\tERROR: Invalid Agent Group ID while show the Agent Group(s).\r\n");
-                return -1;
-            }
-
-            if (dos_strnicmp(argv[3], "custom", dos_strlen("custom")) == 0)
-            {
-                sc_show_agent(ulIndex, U32_BUTT, ulID, U32_BUTT);
-            }
-            else if (dos_strnicmp(argv[3], "group", dos_strlen("group")) == 0)
-            {
-                sc_show_agent(ulIndex, U32_BUTT, U32_BUTT, ulID);
-            }
-            else
-            {
-                return -1;
-            }
-        }
-        else
-        {
-            return -1;
-        }
-    }
     else if (dos_strnicmp(argv[2], "agentgrp", dos_strlen("agentgrp")) == 0)
     {
         if (3 == argc)
@@ -1500,6 +1455,50 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             else if (dos_strnicmp(argv[3], "group", dos_strlen("group")) == 0)
             {
                 sc_show_agent_group(ulIndex, U32_BUTT, ulID);
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        else
+        {
+            return -1;
+        }
+    }
+    else if (dos_strnicmp(argv[2], "agent", dos_strlen("agent")) == 0)
+    {
+        if (3 == argc)
+        {
+            sc_show_agent(ulIndex, U32_BUTT, U32_BUTT, U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) == 0)
+            {
+                sc_show_agent(ulIndex, ulID, U32_BUTT, U32_BUTT);
+            }
+            else
+            {
+                cli_out_string(ulIndex, "\r\n\tERROR: Invalid Agent Group ID while show the Agent Group(s).\r\n");
+                return -1;
+            }
+        }
+        else if (5 == argc)
+        {
+            if (dos_atoul(argv[4], &ulID) < 0)
+            {
+                cli_out_string(ulIndex, "\r\n\tERROR: Invalid Agent Group ID while show the Agent Group(s).\r\n");
+                return -1;
+            }
+
+            if (dos_strnicmp(argv[3], "custom", dos_strlen("custom")) == 0)
+            {
+                sc_show_agent(ulIndex, U32_BUTT, ulID, U32_BUTT);
+            }
+            else if (dos_strnicmp(argv[3], "group", dos_strlen("group")) == 0)
+            {
+                sc_show_agent(ulIndex, U32_BUTT, U32_BUTT, ulID);
             }
             else
             {
