@@ -1306,7 +1306,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.szUserID[sizeof(stSiteInfo.szUserID) - 1] = '\0';
     dos_strncpy(stSiteInfo.szExtension, pszExten, sizeof(stSiteInfo.szExtension));
     stSiteInfo.szExtension[sizeof(stSiteInfo.szExtension) - 1] = '\0';
-    dos_strncpy(stSiteInfo.szEmpNo, pszExten, sizeof(stSiteInfo.szEmpNo));
+    dos_strncpy(stSiteInfo.szEmpNo, pszJobNum, sizeof(stSiteInfo.szEmpNo));
     stSiteInfo.szEmpNo[sizeof(stSiteInfo.szEmpNo) - 1] = '\0';
     pthread_mutex_init(&stSiteInfo.mutexLock, NULL);
 
@@ -1407,7 +1407,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
                      "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class" \
                      "     FROM " \
                      "         tbl_agent, tbl_sip " \
-                     "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 1) a " \
+                     "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 0) a " \
                      "LEFT JOIN " \
                      "    tbl_group b " \
                      "ON " \
@@ -1425,7 +1425,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
                      "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class" \
                      "     FROM " \
                      "         tbl_agent, tbl_sip " \
-                     "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 1 AND tbl_agent.id = %u) a " \
+                     "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 0 AND tbl_agent.id = %u) a " \
                      "LEFT JOIN " \
                      "    tbl_group b " \
                      "ON " \

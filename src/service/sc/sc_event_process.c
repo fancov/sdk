@@ -109,13 +109,13 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
     ulRet = curl_easy_perform(g_pstCurlHandle);
     if(CURLE_OK != ulRet)
     {
-        sc_logr_notice(SC_ESL, "CURL post FAIL.Caller:%d.", szCaller);
+        sc_logr_notice(SC_ESL, "CURL post FAIL.Caller:%s.", szCaller);
 
         return DOS_FAIL;
     }
     else
     {
-        sc_logr_notice(SC_ESL, "CURL post SUCC.Caller:%d.", szCaller);
+        sc_logr_notice(SC_ESL, "CURL post SUCC.Caller:%s.", szCaller);
 
         return DOS_SUCC;
     }
@@ -2783,15 +2783,14 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
 }
 
 /**
- * 函数: U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
+ * 函数: U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulAgentQueue)
  * 功能: 群呼任务之后接通坐席
  * 参数:
  *      SC_SCB_ST *pstSCB       : 业务控制块
  * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
  */
-U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
+U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
 {
-    U32 ulTaskAgentQueueID = U32_BUTT;
     S8            szAPPParam[512] = { 0 };
     SC_ACD_AGENT_INFO_ST stAgentInfo;
     SC_SCB_ST *pstSCBNew = NULL;
@@ -2804,7 +2803,6 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
     }
 
     /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
-    ulTaskAgentQueueID = sc_task_get_agent_queue(pstSCB->usTCBNo);
     if (U32_BUTT == ulTaskAgentQueueID)
     {
         DOS_ASSERT(0);
@@ -2836,7 +2834,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
         goto proc_error;
     }
 
-    pthread_mutex_lock(&pstSCBNew->mutexSCBLock);
+    //pthread_mutex_lock(&pstSCBNew->mutexSCBLock);
 
     pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
     pstSCBNew->ulCustomID = pstSCB->ulCustomID;
@@ -2846,7 +2844,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
 
     dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
     pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
-    dos_strncpy(pstSCBNew->szANINum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szANINum));
+    dos_strncpy(pstSCBNew->szANINum, pstSCB->szCallerNum, sizeof(pstSCBNew->szANINum));
     pstSCBNew->szANINum[sizeof(pstSCBNew->szANINum) - 1] = '\0';
     dos_strncpy(pstSCBNew->szCalleeNum, stAgentInfo.szUserID, sizeof(pstSCBNew->szCalleeNum));
     pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
@@ -2854,7 +2852,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
     pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
     dos_strncpy(pstSCBNew->szSiteNum, stAgentInfo.szEmpNo, sizeof(pstSCBNew->szSiteNum));
     pstSCBNew->szSiteNum[sizeof(pstSCBNew->szSiteNum) - 1] = '\0';
-    pthread_mutex_unlock(&pstSCB->mutexSCBLock);
+    //pthread_mutex_unlock(&pstSCB->mutexSCBLock);
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_AGENT_CALLBACK);
@@ -2863,8 +2861,9 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
 
 
     dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                    , "bgapi originate {scb_number=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}user/%s &park() \r\n"
+                    , "bgapi originate {scb_number=%u,other_leg_scb=%u,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}user/%s &park() \r\n"
                     , pstSCBNew->usSCBNo
+                    , pstSCBNew->usOtherSCBNo
                     , SC_SERV_AGENT_CALLBACK
                     , pstSCB->szCalleeNum
                     , pstSCB->szCalleeNum
@@ -2878,14 +2877,13 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
     else
     {
         /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
-        sc_ep_esl_execute_cmd(szAPPParam);
         sc_acd_agent_update_status(stAgentInfo.szUserID, SC_ACD_BUSY);
 
         sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
         sc_ep_esl_execute("speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
     }
 
-    if (sc_ep_call_notify(&stAgentInfo, pstSCBNew->szCallerNum))
+    if (sc_ep_call_notify(&stAgentInfo, pstSCBNew->szANINum))
     {
         DOS_ASSERT(0);
     }
@@ -2958,7 +2956,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 break;
 
             case SC_DID_BIND_TYPE_QUEUE:
-                sc_ep_call_agent(pstSCB);
+                sc_ep_call_agent(pstSCB, ulBindID);
                 break;
 
             default:
@@ -3171,7 +3169,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
 
         /* 直接接通坐席 */
         case SC_TASK_MODE_DIRECT4AGETN:
-            sc_ep_call_agent(pstSCB);
+            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
 
             break;
 
@@ -4025,7 +4023,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
 
         if (SC_TASK_MODE_KEY4AGENT == ulTaskMode)
         {
-            sc_ep_call_agent(pstSCB);
+            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
         }
     }
     else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
@@ -4121,7 +4119,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                         /* 放音后接通坐席 */
                         case SC_TASK_MODE_AGENT_AFTER_AUDIO:
                             /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
-                            sc_ep_call_agent(pstSCB);
+                            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
                             break;
 
                         /* 这个地方出故障了 */
