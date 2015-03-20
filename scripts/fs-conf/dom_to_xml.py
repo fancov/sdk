@@ -25,11 +25,13 @@ def dom_to_xml(seqFileName, doc):
     file_info.print_file_info('seqFileName is %s' % seqFileName)
     
     try:
-        open(seqFileName, 'w').write(doc.toprettyxml(indent = ' '))
-    except Exception, err:
-        file_info.print_file_info('Catch Exception:%s' % str(err))
+        fp = open(seqFileName, 'w')
+    except IOError, err:
+        file_info.print_file_info('Catch IOException:%s' % str(err))
         return -1
     else:
+        fp.write(doc.toprettyxml(indent = ' '))
+        fp.close()
         return 1
     
 def del_xml_head(seqFileName):
@@ -42,11 +44,21 @@ def del_xml_head(seqFileName):
         return -1
     
     try:
-        seqLines = open(seqFileName, 'r').readlines()
-    except Exception, err:
-        file_info.print_file_info('Catch Exception: %s' % str(err))
+        fp = open(seqFileName, 'r')
+    except IOError, err:
+        file_info.print_file_info('Catch IOException: %s' % str(err))
         return -1
     else:
-        open(seqFileName, 'w').writelines(seqLines[1:])
-        
+        seqLines = fp.readlines()
+        fp.close()
+        try:
+            #将数据重新写进去
+            fp = open(seqFileName, 'w')
+        except IOError, err:
+            file_info.print_file_info('Catch IOException: %s' % str(err))
+            return -1
+        else:
+            fp.writelines(seqLines[1:])
+            fp.close()
+            
         return 1

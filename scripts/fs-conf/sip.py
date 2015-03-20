@@ -202,11 +202,13 @@ def add_sip(ulSipID):
     
     # 读取管理xml
     try:
-        listText = open(seqMgntFile, 'r').readlines()
-    except Exception, err:
-        file_info.print_file_info('Catch Exception: %s' % str(err))
+        fp = open(seqMgntFile, 'r')
+    except IOError, err:
+        file_info.print_file_info('Catch IOException: %s' % str(err))
         return -1
     else:
+        listText = fp.readlines()
+        fp.close()
         # 构造需要添加的行
         seqAddText = '     <user id=\"%s\" type=\"pointer\"/>\n' % seqUserID
         # 构造需要查找的行
@@ -225,9 +227,16 @@ def add_sip(ulSipID):
             else:
                 listText.insert(ulIndex + 3, seqAddText)
             # 重新写进文件
-            open(seqMgntFile, 'w').writelines(listText)
-            
-            return 1
+            try:
+                fp = open(seqMgntFile, 'w')
+            except IOError, err:
+                file_info.print_file_info('Catch IOException: %s' % str(err))
+                return -1
+            else:
+                fp.writelines(listText)   
+                fp.close()      
+                return 1
+    
         
 def del_sip(ulSipID, seqUserID, ulCustomerID):
     '''
@@ -265,16 +274,18 @@ def del_sip(ulSipID, seqUserID, ulCustomerID):
     
     # 读取管理文件
     try:
-        listText = open(seqMgntFile, 'r').readlines()
-    except Exception, err:
-        file_info.print_file_info('Catch Exception: %s' % str(err))
+        fp = open(seqMgntFile, 'r')
+    except IOError, err:
+        file_info.print_file_info('Catch IOException: %s' % str(err))
         return -1
     else:
+        listText = fp.readlines()
+        fp.close()
         # 构造删除行
         seqDelText = '     <user id=\"%s\" type=\"pointer\"/>\n' % seqUserID
         
         while seqDelText in listText:
-            # 找到删除航
+            # 找到删除行
             try:
                 ulIndex = listText.index(seqDelText)
             except Exception, err:
@@ -284,7 +295,14 @@ def del_sip(ulSipID, seqUserID, ulCustomerID):
                 del listText[ulIndex]
         
         # 重新写进xml
-        open(seqMgntFile, 'w').writelines(listText)
+        try:
+            fp = open(seqMgntFile, 'w')
+        except IOError, err:
+            file_info.print_file_info('Catch IOException: %s' % str(err))
+            return -1
+        else:
+            fp.writelines(listText)
+            fp.close()
         
-        return 1
+            return 1
     

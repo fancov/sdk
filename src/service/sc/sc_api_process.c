@@ -483,7 +483,7 @@ U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
     {
        ulAction = SC_API_CMD_ACTION_SIP_DELETE;
     }
-    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("delete")))
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
     {
        ulAction = SC_API_CMD_ACTION_SIP_UPDATE;
     }

@@ -27,9 +27,4 @@ def get_config_path():
     
     # 获取FreeSwitch配置文件路径
     seqFsPath = _dict['fs_config_path']
-    
     return seqFsPath
-    
-    
-    
-    

@@ -149,16 +149,19 @@ U32 mod_dipcc_sc_load()
     if (py_init() != DOS_SUCC)
     {
         DOS_ASSERT(0);
+        logr_error("mod_dipcc_sc_load: Init pythonlib FAIL.");
         return DOS_FAIL;
     }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load xml SUCCESS.");
 
     /* 全局加载freeswitch配置文件xml */
     if (py_exec_func("customer", "generate_all_customer", "()") != DOS_SUCC)
     {
-        logr_error("mod_dipcc_sc_load: load xml failure.");
         DOS_ASSERT(0);
+        logr_error("mod_dipcc_sc_load: load xml FAIL.");
         return DOS_FAIL;
     }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load xml SUCCESS.");
 #endif
 
     if (sc_init_db() != DOS_SUCC)

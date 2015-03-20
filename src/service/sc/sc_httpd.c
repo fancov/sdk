@@ -446,7 +446,7 @@ U32 sc_httpd_init()
     }
 
     g_pstHTTPDList[0]->ulValid = DOS_TRUE;
-    dos_strtoipaddr("127.0.0.1", &(g_pstHTTPDList[0]->aulIPAddr[0]));
+    dos_strtoipaddr("172.16.99.100", &(g_pstHTTPDList[0]->aulIPAddr[0]));
     g_pstHTTPDList[0]->usPort = 18250;
 
     SC_TRACE_OUT();

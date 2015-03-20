@@ -59,8 +59,17 @@ def print_file_info(info):
     print output, '=>', _info, info
     
     seqLogPath = '/var/log/dipcc/fsconf' + time.strftime('%Y%m%d') + '.log'
-
-    f = open(seqLogPath, 'a')
-    print >> f, output, '=>', _info, info
     
-    return 1
+    fp = open(seqLogPath, 'a')
+
+    try:
+        fp = open(seqLogPath, 'a')
+    except Exception, err:
+        print 'Catch IOException: %s.....................' % str(err)
+        # 不能返回-1，防止将程序退出了
+        return 1
+    else:
+        print >> fp, output, '=>', _info, info
+        fp.close()
+    
+        return 1

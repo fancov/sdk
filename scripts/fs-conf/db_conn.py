@@ -9,6 +9,7 @@
 import MySQLdb
 import db_config
 import file_info
+from _mysql import DatabaseError
 
 def connect_db():
     '''
@@ -32,8 +33,8 @@ def connect_db():
         try:
             # 连接数据库 MySQLdb.connect(hostname, username, password, dbname, port)
             conn = MySQLdb.connect(_dict['host'], _dict['username'], _dict['password'], _dict['dbname'], int(_dict['port']))
-        except Exception, err:
-            file_info.print_file_info('Catch Exception:%s' % str(err))
+        except DatabaseError, err:
+            file_info.print_file_info('Catch DatabaseError:%s' % str(err))
             return -1
         else:
             return conn
