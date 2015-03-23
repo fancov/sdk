@@ -921,7 +921,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     for (blProcessOK = DOS_FALSE, lIndex=0; lIndex<lCount; lIndex++)
     {
-        if (0 == dos_strnicmp(aszNames[lIndex], "i1d", dos_strlen("id")))
+        if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || dos_atoul(aszValues[lIndex], &pstBlackListNode->ulID) < 0)
@@ -931,7 +931,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "customer_id1", dos_strlen("customer_id")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "customer_id", dos_strlen("customer_id")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || dos_atoul(aszValues[lIndex], &pstBlackListNode->ulCustomerID) < 0)
@@ -940,7 +940,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "regex_numbe1r", dos_strlen("regex_number")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "regex_number", dos_strlen("regex_number")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || '\0' == aszValues[lIndex][0])
@@ -4558,6 +4558,7 @@ U32 sc_ep_init()
     sc_load_route(SC_INVALID_INDEX);
     sc_load_did_number(SC_INVALID_INDEX);
     sc_load_sip_userid(SC_INVALID_INDEX);
+    sc_load_black_list(SC_INVALID_INDEX);
 
     SC_TRACE_OUT();
     return DOS_SUCC;
