@@ -973,14 +973,7 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
     DLL_NODE_S * pstDLLNode = NULL;
     U32  ulRouteCnt = 0;
 
-    if (U32_BUTT != ulRouteID)
-    {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the route %u: ", ulRouteID);
-    }
-    else
-    {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the route list.");
-    }
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the route list.");
     cli_out_string(ulIndex, szCmdBuff);
 
     /*制作表头*/
@@ -1022,27 +1015,47 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
         }
 
         /*打印数据*/
-
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+        if (U32_BUTT == ulRouteID)
+        {
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                     , "\r\n|%14u| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%14u|"
                     , pstRoute->ulID
                     , pstRoute->ucHourBegin
                     , pstRoute->ucMinuteBegin
                     , pstRoute->ucHourEnd
                     , pstRoute->ucMinuteEnd
-                    , pstRoute->szCalleePrefix[0] == '\0'? "NULL":pstRoute->szCalleePrefix
-                    , pstRoute->szCallerPrefix[0] == '\0'? "NULL":pstRoute->szCallerPrefix
-                    , pstRoute->ulDestType == SC_DEST_TYPE_GATEWAY? "GATEWAY": (pstRoute->ulDestType == SC_DEST_TYPE_GW_GRP? "GATEWAY_GROUP":"UNKNOWN")
+                    , pstRoute->szCalleePrefix[0] == '\0' ? "NULL" : pstRoute->szCalleePrefix
+                    , pstRoute->szCallerPrefix[0] == '\0' ? "NULL" : pstRoute->szCallerPrefix
+                    , pstRoute->ulDestType == SC_DEST_TYPE_GATEWAY ? "GATEWAY": (pstRoute->ulDestType == SC_DEST_TYPE_GW_GRP ? "GATEWAY_GROUP" : "UNKNOWN")
                     , pstRoute->ulDestID);
-        cli_out_string(ulIndex, szCmdBuff);
-        ++ulRouteCnt;
+            cli_out_string(ulIndex, szCmdBuff);
+            ++ulRouteCnt;
+        }
+        else
+        {
+            if (ulRouteID == pstRoute->ulID)
+            {
+                dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                    , "\r\n|%14u| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%14u|"
+                    , pstRoute->ulID
+                    , pstRoute->ucHourBegin
+                    , pstRoute->ucMinuteBegin
+                    , pstRoute->ucHourEnd
+                    , pstRoute->ucMinuteEnd
+                    , pstRoute->szCalleePrefix[0] == '\0' ? "NULL" : pstRoute->szCalleePrefix
+                    , pstRoute->szCallerPrefix[0] == '\0' ? "NULL" : pstRoute->szCallerPrefix
+                    , pstRoute->ulDestType == SC_DEST_TYPE_GATEWAY ? "GATEWAY" : (pstRoute->ulDestType == SC_DEST_TYPE_GW_GRP ? "GATEWAY_GROUP" : "UNKNOWN")
+                    , pstRoute->ulDestID);
+                cli_out_string(ulIndex, szCmdBuff);
+            }
+        }
     }
 
     pthread_mutex_unlock(&g_mutexRouteList);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+--------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal:%d routes.\r\n\r\n", ulRouteCnt);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal:%d routes.\r\n\r\n", U32_BUTT == ulRouteID ? ulRouteCnt : 1);
     cli_out_string(ulIndex, szCmdBuff);
 }
 
@@ -1054,14 +1067,7 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
     U32   ulHashIndex = 0;
     S8    szCmdBuff[1024] = {0, };
 
-    if (NULL != pszDidNum)
-    {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the did %s: ", pszDidNum);
-    }
-    else
-    {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the did list.");
-    }
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the did list.");
     cli_out_string(ulIndex,szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+----------------------------------------------------------------------------------+");
@@ -1096,16 +1102,35 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
             {
                 continue;
             }
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+
+            if (NULL == pszDidNum)
+            {
+                dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                             , "\r\n|%14u|%15u|%-24s|%-11s|%14u|"
                             , pstDid->ulDIDID
                             , pstDid->ulCustomID
-                            , pstDid->szDIDNum[0] == '\0'? "NULL": pstDid->szDIDNum
-                            , pstDid->ulBindType == SC_DID_BIND_TYPE_SIP ? "SIP" : (pstDid->ulBindType == SC_DID_BIND_TYPE_QUEUE ? "QUEUE":"UNKNOWN")
+                            , pstDid->szDIDNum[0] == '\0' ? "NULL": pstDid->szDIDNum
+                            , pstDid->ulBindType == SC_DID_BIND_TYPE_SIP ? "SIP" : (pstDid->ulBindType == SC_DID_BIND_TYPE_QUEUE ? "QUEUE" : "UNKNOWN")
                             , pstDid->ulBindID
                             );
-            cli_out_string(ulIndex, szCmdBuff);
-            ++ulDidCnt;
+                cli_out_string(ulIndex, szCmdBuff);
+                ++ulDidCnt;
+            }
+            else
+            {
+                if (0 == dos_strcmp(pszDidNum, pstDid->szDIDNum))
+                {
+                    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                            , "\r\n|%14u|%15u|%-24s|%-11s|%14u|"
+                            , pstDid->ulDIDID
+                            , pstDid->ulCustomID
+                            , pstDid->szDIDNum[0] == '\0' ? "NULL": pstDid->szDIDNum
+                            , pstDid->ulBindType == SC_DID_BIND_TYPE_SIP ? "SIP" : (pstDid->ulBindType == SC_DID_BIND_TYPE_QUEUE ? "QUEUE" : "UNKNOWN")
+                            , pstDid->ulBindID
+                            );
+                    cli_out_string(ulIndex, szCmdBuff);
+                }
+            }
         }
     }
 
@@ -1114,7 +1139,7 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
     cli_out_string(ulIndex,szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d did numbers.\r\n\r\n", ulDidCnt);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d did numbers.\r\n\r\n", NULL == pszDidNum ? ulDidCnt : 1);
     cli_out_string(ulIndex,szCmdBuff);
 }
 
@@ -1126,14 +1151,7 @@ VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
     U32 ulBlackListCnt = 0;
     S8    szCmdBuff[1024] = {0, };
 
-    if (U32_BUTT != ulBlackListID)
-    {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "List the black list %d", ulBlackListID);
-    }
-    else
-    {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "List the black list.");
-    }
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "List the black list.");
     cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+-----------------------------------------------------------+");
@@ -1168,13 +1186,29 @@ VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
             {
                 continue;
             }
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+
+            if (U32_BUTT == ulBlackListID)
+            {
+                dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                             , "\r\n|%14u|%15u|%28s|"
                             , pstBlackList->ulID
                             , pstBlackList->ulCustomerID
-                            , pstBlackList->szNum[0] == '\0'?"NULL":pstBlackList->szNum);
-            cli_out_string(ulIndex, szCmdBuff);
-            ++ulBlackListCnt;
+                            , pstBlackList->szNum[0] == '\0' ? "NULL" : pstBlackList->szNum);
+                cli_out_string(ulIndex, szCmdBuff);
+                ++ulBlackListCnt;
+            }
+            else
+            {
+                if (ulBlackListID == pstBlackList->ulID)
+                {
+                    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                            , "\r\n|%14u|%15u|%28s|"
+                            , pstBlackList->ulID
+                            , pstBlackList->ulCustomerID
+                            , pstBlackList->szNum[0] == '\0'? "NULL" : pstBlackList->szNum);
+                    cli_out_string(ulIndex, szCmdBuff);
+                }
+            }
         }
     }
 
@@ -1183,7 +1217,7 @@ VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+----------------------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d Black Lists...\r\n\r\n", ulBlackListCnt);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d Black Lists.\r\n\r\n", U32_BUTT == ulBlackListID ? ulBlackListCnt : 1);
     cli_out_string(ulIndex, szCmdBuff);
 }
 
@@ -1807,24 +1841,19 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     }
     else if (0 == dos_strnicmp(argv[2], "route", dos_strlen("route")))
     {
-        if (3 == argc)
-        {
-            sc_show_route(ulIndex, U32_BUTT);
-        }
-        else if (4 == argc)
+        if (4 == argc)
         {
             if (dos_atoul(argv[3], &ulID) < 0)
             {
                 DOS_ASSERT(0);
                 return -1;
             }
-
-            sc_show_route(ulIndex, ulID);
         }
-        else
-        {//待完成
-            return -1;
+        else if (3 == argc)
+        {
+            ulID = U32_BUTT;
         }
+        sc_show_route(ulIndex, ulID);
     }
     else if (0 == dos_strnicmp(argv[2], "did", dos_strlen("did")))
     {
@@ -1836,31 +1865,22 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
         {
             sc_show_did(ulIndex, argv[3]);
         }
-        else
-        {//待完成
-            return -1;
-        }
     }
     else if (0 == dos_strnicmp(argv[2], "blacklist", dos_strlen("blacklist")))
     {
-        if (3 == argc)
-        {
-            sc_show_black_list(ulIndex, U32_BUTT);
-        }
-        else if (4 == argc)
+        if (4 == argc)
         {
             if (dos_atoul(argv[3], &ulID) < 0)
             {
                 DOS_ASSERT(0);
                 return -1;
             }
-
-            sc_show_black_list(ulIndex, ulID);
         }
-        else
-        {//待完成
-            return -1;
+        else if (3 == argc)
+        {
+            ulID = U32_BUTT;
         }
+        sc_show_black_list(ulIndex, ulID);
     }
 
     return 0;

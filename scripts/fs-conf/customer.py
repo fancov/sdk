@@ -94,9 +94,9 @@ def generate_customer(ulCustomerID):
         seqFsPath = seqFsPath + '/'
         
     seqFsPath = seqFsPath + 'directory/'
-    seqMgntFile = (seqFsPath + 'default.xml' if ulCustomerID == 0 else seqFsPath + str(ulCustomerID) + '.xml')
+    seqMgntFile = (seqFsPath + 'default.xml')
     
-    seqMgntDir = (seqFsPath + 'default' + '/' if ulCustomerID == 0 else seqFsPath + str(ulCustomerID) + '/')
+    seqMgntDir = (seqFsPath + 'default' + '/')
     if os.path.exists(seqMgntDir) is False:
         os.makedirs(seqMgntDir)
         
@@ -111,7 +111,7 @@ def generate_customer(ulCustomerID):
     domGroupNode.appendChild(domUsersNode)
     domPreNode = doc.createElement('X-PRE-PROCESS')
     domPreNode.setAttribute('cmd', 'include')
-    domPreNode.setAttribute('data', 'default.xml' if ulCustomerID == 0 else str(ulCustomerID) + '/*.xml')
+    domPreNode.setAttribute('data', 'default/*.xml')
     domUsersNode.appendChild(domPreNode)
     
     _domGroupNode = doc.createElement('group')
@@ -211,4 +211,3 @@ def clean_all_customer():
     
     file_info.print_file_info('Customers clean finished.')
     return 1
-	

@@ -17,7 +17,7 @@ from __builtin__ import str
 
 def phone_route():
     '''
-    @todo: ������������
+    @todo: 电话路由
     '''
     global CONN
     lRet = db_conn.connect_db()
@@ -40,8 +40,8 @@ def phone_route():
     
 def get_route_param(id):
     '''
-    @param id: ����id
-    @todo: ����һ��·�ɱ�
+    @param id: 网关id
+    @todo: 获取路由参数
     '''
     global CONN 
     lRet = db_conn.connect_db()
@@ -61,9 +61,8 @@ def get_route_param(id):
 
 def make_route(ulGatewayID):
     '''
-    @param id: ����id
-    @param doc: �ĵ�����
-    @todo: ����һ����������DOM
+    @param id: ulGatewayID 网关ID
+    @todo: 生成网关路由
     '''
     doc = Document()
     results = get_route_param(ulGatewayID)  
@@ -120,6 +119,9 @@ def make_route(ulGatewayID):
     return 1
     
 def del_route(ulGatewayID):
+    '''
+    @todo： 网关ID
+    '''
     if str(ulGatewayID).strip() == '':
         file_info.print_file_info('ulGatewayID is %s' % str(ulGatewayID))
         return -1
