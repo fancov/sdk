@@ -3836,7 +3836,6 @@ process_finished:
 U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     S8 *pszWaitingPark = NULL;
-    S8 szCMDBuff[512] = { 0 };
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -4361,58 +4360,60 @@ VOID*sc_ep_process_runtime(VOID *ptr)
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condEventList, &g_mutexEventList, &stTimeout);
 
-        if (dos_list_is_empty(&g_stEventList))
+        while (1)
         {
-            pthread_mutex_unlock(&g_mutexEventList);
-            continue;
-        }
+            if (dos_list_is_empty(&g_stEventList))
+            {
+                break;
+            }
 
-        pstListLink = dos_list_fetch(&g_stEventList);
-        if (DOS_ADDR_INVALID(pstListLink))
-        {
-            pthread_mutex_unlock(&g_mutexEventList);
-            continue;
-        }
-        pthread_mutex_unlock(&g_mutexEventList);
+            pstListLink = dos_list_fetch(&g_stEventList);
+            if (DOS_ADDR_INVALID(pstListLink))
+            {
+                continue;
+            }
 
-        pstListNode = dos_list_entry(pstListLink, SC_EP_EVENT_NODE_ST, stLink);
-        if (DOS_ADDR_INVALID(pstListNode))
-        {
-            continue;
-        }
+            pstListNode = dos_list_entry(pstListLink, SC_EP_EVENT_NODE_ST, stLink);
+            if (DOS_ADDR_INVALID(pstListNode))
+            {
+                continue;
+            }
 
-        if (DOS_ADDR_INVALID(pstListNode->pstEvent))
-        {
+            if (DOS_ADDR_INVALID(pstListNode->pstEvent))
+            {
+                dos_dmem_free(pstListNode);
+                pstListNode = NULL;
+                continue;
+            }
+
+            pstEvent = pstListNode->pstEvent;
+
+            pstListNode->pstEvent = NULL;
             dos_dmem_free(pstListNode);
             pstListNode = NULL;
-            continue;
+
+            sc_logr_info(SC_ESL, "ESL event process START. %s(%d), SCB No:%s, Channel Name: %s"
+                            , esl_event_get_header(pstEvent, "Event-Name")
+                            , pstEvent->event_id
+                            , esl_event_get_header(pstEvent, "variable_scb_no")
+                            , esl_event_get_header(pstEvent, "Channel-Name"));
+
+            ulRet = sc_ep_process(&g_pstHandle->stSendHandle, pstEvent);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+
+            sc_logr_info(SC_ESL, "ESL event process FINISHED. %s(%d), SCB No:%s Processed, Result: %d"
+                            , esl_event_get_header(pstEvent, "Event-Name")
+                            , pstEvent->event_id
+                            , esl_event_get_header(pstEvent, "variable_scb_no")
+                            , ulRet);
+
+            esl_event_destroy(&pstEvent);
         }
 
-        pstEvent = pstListNode->pstEvent;
-
-        pstListNode->pstEvent = NULL;
-        dos_dmem_free(pstListNode);
-        pstListNode = NULL;
-
-        sc_logr_info(SC_ESL, "ESL event process START. %s(%d), SCB No:%s, Channel Name: %s"
-                        , esl_event_get_header(pstEvent, "Event-Name")
-                        , pstEvent->event_id
-                        , esl_event_get_header(pstEvent, "variable_scb_no")
-                        , esl_event_get_header(pstEvent, "Channel-Name"));
-
-        ulRet = sc_ep_process(&g_pstHandle->stSendHandle, pstEvent);
-        if (ulRet != DOS_SUCC)
-        {
-            DOS_ASSERT(0);
-        }
-
-        sc_logr_info(SC_ESL, "ESL event process FINISHED. %s(%d), SCB No:%s Processed, Result: %d"
-                        , esl_event_get_header(pstEvent, "Event-Name")
-                        , pstEvent->event_id
-                        , esl_event_get_header(pstEvent, "variable_scb_no")
-                        , ulRet);
-
-        esl_event_destroy(&pstEvent);
+        pthread_mutex_unlock(&g_mutexEventList);
     }
 
     return NULL;

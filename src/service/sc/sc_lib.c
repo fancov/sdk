@@ -103,7 +103,7 @@ SC_SCB_ST *sc_scb_alloc()
     U32 ulLastIndex;
     SC_SCB_ST   *pstSCB = NULL;
 
-    SC_TRACE_IN(ulIndex, 0, 0, 0);
+    //SC_TRACE_IN(ulIndex, 0, 0, 0);
 
     pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallList);
 
@@ -139,7 +139,7 @@ SC_SCB_ST *sc_scb_alloc()
         sc_call_trace(pstSCB, "Alloc SCB.");
         pthread_mutex_unlock(&pstSCB->mutexSCBLock);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallList);
-        SC_TRACE_OUT();
+        //SC_TRACE_OUT();
         return pstSCB;
     }
 
@@ -147,7 +147,7 @@ SC_SCB_ST *sc_scb_alloc()
     DOS_ASSERT(0);
 
     pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallList);
-    SC_TRACE_OUT();
+    //SC_TRACE_OUT();
     return NULL;
 }
 
@@ -197,7 +197,7 @@ BOOL sc_scb_is_valid(SC_SCB_ST *pstSCB)
 {
     BOOL ulValid = DOS_FALSE;
 
-    SC_TRACE_IN(pstSCB, 0, 0, 0);
+    //SC_TRACE_IN(pstSCB, 0, 0, 0);
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -208,7 +208,7 @@ BOOL sc_scb_is_valid(SC_SCB_ST *pstSCB)
     ulValid = pstSCB->bValid;
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
-    SC_TRACE_OUT();
+    //SC_TRACE_OUT();
 
     return ulValid;
 }
@@ -227,7 +227,6 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
 
     if (!pstSCB)
     {
-        SC_TRACE_OUT();
         DOS_ASSERT(0);
         return DOS_FAIL;
     }

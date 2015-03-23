@@ -76,7 +76,7 @@ static S32 sc_task_load_callback(VOID *pArg, S32 argc, S8 **argv, S8 **columnNam
     }
 
     sc_task_set_owner(pstTCB, ulTaskID, ulCustomID);
-
+    pstTCB->ucTaskStatus = SC_TASK_INIT;
 
     return DOS_SUCC;
 }
