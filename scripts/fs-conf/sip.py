@@ -44,7 +44,7 @@ def generate_sip(userid):
         os.makedirs(seqFsPath)
 
     #构造sip目录
-    seqSipDir = (seqFsPath + 'default/' if ulCustomerID == 0 else seqFsPath + str(ulCustomerID) + '/')
+    seqSipDir = seqFsPath + 'default/'
     if os.path.exists(seqSipDir) is False:
         os.makedirs(seqSipDir)
 
@@ -60,12 +60,12 @@ def generate_sip(userid):
     dictParam = {'password':'$${default_password}' if listSipInfo == [] else seqAuthPassword, 'vm-password':ulSipID}
     dictVariable = {'toll_allow':'domestic,international,local',
                 'accountcode':seqAuthName,
-                'user_context':str(ulCustomerID) if ulCustomerID != 0 else 'default',
+                'user_context':'default',
                 'effective_caller_id_name':userid if listSipInfo == [] else seqDispName,
                 'effective_caller_id_number':userid,
                 'outbound_caller_id_name':'$${outbound_caller_name}',
                 'outbound_caller_id_number':'$${outbound_caller_id}',
-                'callgroup':'techsupport'
+                'callgroup':'all'
         }
     
     listParamsNode = []
@@ -192,7 +192,7 @@ def add_sip(ulSipID):
     seqFsPath = seqFsPath + 'directory/'
     
     #获取管理xml
-    seqMgntFile = seqFsPath + ('default.xml' if ulCustomerID == 0 else str(ulCustomerID) + '.xml')
+    seqMgntFile = seqFsPath + 'default.xml'
     
     # 生成sip配置文件
     lRet = generate_sip(seqUserID)
@@ -265,12 +265,12 @@ def del_sip(ulSipID, seqUserID, ulCustomerID):
     seqMgntDir = seqFsPath + 'directory/'
     
     # 获取sip文件并删除
-    seqSipPath = seqMgntDir + ('default/' if ulCustomerID == 0 else str(ulCustomerID) + '/') + str(ulSipID) + '.xml'
+    seqSipPath = seqMgntDir + 'default/' + str(ulSipID) + '.xml'
     if os.path.exists(seqSipPath):
         os.remove(seqSipPath)
     
     # 构造管理文件
-    seqMgntFile = seqMgntDir + ('default.xml' if ulCustomerID == 0 else str(ulCustomerID) + '.xml')
+    seqMgntFile = seqMgntDir + 'default.xml'
     
     # 读取管理文件
     try:
@@ -305,4 +305,3 @@ def del_sip(ulSipID, seqUserID, ulCustomerID):
             fp.close()
         
             return 1
-    
