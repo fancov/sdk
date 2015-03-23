@@ -172,6 +172,11 @@ VOID sc_scb_free(SC_SCB_ST *pstSCB)
     pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallList);
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     sc_call_trace(pstSCB, "Free SCB.");
+    if (pstSCB->pstExtraData)
+    {
+        dos_dmem_free(pstSCB->pstExtraData);
+        pstSCB->pstExtraData = NULL;
+    }
     sc_scb_init(pstSCB);
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
     pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallList);
@@ -250,6 +255,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bTraceNo = DOS_FALSE;              /* 是否跟踪 */
     pstSCB->bBanlanceWarning = DOS_FALSE;      /* 是否余额告警 */
     pstSCB->bNeedConnSite = DOS_FALSE;         /* 接通后是否需要接通坐席 */
+    pstSCB->bRecord = DOS_FALSE;
     pstSCB->bWaitingOtherRelase = DOS_FALSE;   /* 是否在等待另外一跳退释放 */
 
     pstSCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
@@ -260,6 +266,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->szDialNum[0] = '\0';               /* 用户拨号 */
     pstSCB->szSiteNum[0] = '\0';               /* 坐席号码 */
     pstSCB->szUUID[0] = '\0';                  /* Leg-A UUID */
+    pstSCB->pstExtraData = NULL;
 
     /* 业务类型 列表*/
     pstSCB->ucCurrentSrvInd = 0;               /* 当前空闲的业务类型索引 */
@@ -657,6 +664,28 @@ U32 sc_call_set_trunk(SC_SCB_ST *pstSCB, U32 ulTrunkID)
 
 }
 
+U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszCaller, S8 *pszCallee)
+{
+    struct tm            *pstTime;
+    time_t               timep;
+
+    timep = time(NULL);
+    pstTime = localtime(&timep);
+
+
+    dos_snprintf(pszBuff, ulMaxLen, "/var/%04d%02d%02d-%02d%02d%02d-%u-%s-%s.wav"
+            , pstTime->tm_year + 1900
+            , pstTime->tm_mon + 1
+            , pstTime->tm_mday
+            , pstTime->tm_hour
+            , pstTime->tm_min
+            , pstTime->tm_sec
+            , ulCustomerID
+            , pszCallee
+            , pszCaller);
+
+    return DOS_SUCC;
+}
 
 BOOL sc_tcb_get_valid(SC_TASK_CB_ST *pstTCB)
 {
@@ -937,6 +966,9 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
     pszCourse = strtok(pszCallers, ",");
     while (pszCourse)
     {
+        blNeedAdd = DOS_TRUE;
+        ulFirstInvalidNode = U32_BUTT;
+
         /* 检测号码是否重复了，并且找到一个空闲的控制块 */
         for (ulIndex=0; ulIndex<SC_MAX_CALLER_NUM; ulIndex++)
         {
@@ -952,6 +984,8 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
                 blNeedAdd = DOS_FALSE;
             }
         }
+
+        sc_logr_debug(SC_TASK, "Load Caller for task %d. Caller: %s, Index: %d", pstTCB->usTCBNo, pszCourse, ulFirstInvalidNode);
 
         if (ulFirstInvalidNode >= SC_MAX_CALLER_NUM)
         {
@@ -1036,7 +1070,7 @@ U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB)
     ulLength = dos_snprintf(szSqlQuery
                 , sizeof(szSqlQuery)
                 , "SELECT tbl_calltask.callers  FROM tbl_calltask WHERE id=%d;"
-                , pstTCB->ulCustomID);
+                , pstTCB->ulTaskID);
 
     ulResult = db_query(g_pstSCDBHandle
                             , szSqlQuery
@@ -1482,7 +1516,7 @@ U32 sc_task_load_audio(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    dos_strncpy(pstTCB->szAudioFileLen, "/usr/local/freeswitch/sounds/en/us/callie/ivr/8000/ivr-you_lose.wav", sizeof(pstTCB->szAudioFileLen));
+    dos_strncpy(pstTCB->szAudioFileLen, "/usr/local/freeswitch/sounds/en/us/callie/ivr/8000/test1", sizeof(pstTCB->szAudioFileLen));
     pstTCB->szAudioFileLen[sizeof(pstTCB->szAudioFileLen) - 1] = '\0';
     pstTCB->ucAudioPlayCnt = 3;
     return DOS_SUCC;

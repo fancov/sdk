@@ -309,7 +309,7 @@ VOID sc_show_task_list(U32 ulIndex, U32 ulCustomID)
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal : %s\r\n",ulTotal);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal : %u\r\n",ulTotal);
     cli_out_string(ulIndex, szCmdBuff);
 }
 
@@ -463,11 +463,12 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n\r\nGroup Members");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s"
-                    , "ID", "Status", "Customer", "Group1", "Group2", "Record", "Trace", "Leader", "SIP Acc", "szExtension", "Emp NO.");
+                    , "\r\n%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s%5s%12s%12s"
+                    , "ID", "Status", "Custom", "Group1", "Group2"
+                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "Bind", "Telephone", "Mobile");
     cli_out_string(ulIndex, szCmdBuff);
 
     DLL_Scan(&pstAgentGrouop->stAgentList, pstDLLNode, DLL_NODE_S *)
@@ -485,9 +486,9 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%10u%10u%10u%10u%10u%8s%7s%8s%12s%12s%12s"
+                    , "\r\n%10u%10u%10u%10u%10u%8s%7s%8s%12s%12s%12s%5d%12s%12s"
                     , pstAgentQueueNode->pstAgentInfo->ulSiteID
-                    , pstAgentQueueNode->pstAgentInfo->usStatus
+                    , pstAgentQueueNode->pstAgentInfo->ucStatus
                     , pstAgentQueueNode->pstAgentInfo->ulCustomerID
                     , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
                     , pstAgentQueueNode->pstAgentInfo->aulGroupID[1]
@@ -496,11 +497,17 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
                     , pstAgentQueueNode->pstAgentInfo->bGroupHeader ? "Y" : "N"
                     , pstAgentQueueNode->pstAgentInfo->szUserID
                     , pstAgentQueueNode->pstAgentInfo->szExtension
-                    , pstAgentQueueNode->pstAgentInfo->szEmpNo);
+                    , pstAgentQueueNode->pstAgentInfo->szEmpNo
+                    , pstAgentQueueNode->pstAgentInfo->ucBindType
+                    , pstAgentQueueNode->pstAgentInfo->szTelePhone
+                    , pstAgentQueueNode->pstAgentInfo->szMobile);
+
         cli_out_string(ulIndex, szCmdBuff);
     }
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n** Bind : 0 -- SIP User ID, 1 -- Telephone, 2 -- Mobile\r\n");
     cli_out_string(ulIndex, szCmdBuff);
 }
 
@@ -603,12 +610,12 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
     }
 
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s"
+                    , "\r\n%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s%5s%12s%12s"
                     , "ID", "Status", "Custom", "Group1", "Group2"
-                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.");
+                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "Bind", "Telephone", "Mobile");
     cli_out_string(ulIndex, szCmdBuff);
 
 
@@ -667,9 +674,9 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%10u%10u%10u%10u%10u%8s%7s%8s%12s%12s%12s"
+                        , "\r\n%10u%10u%10u%10u%10u%8s%7s%8s%12s%12s%12s%5d%12s%12s"
                         , pstAgentQueueNode->pstAgentInfo->ulSiteID
-                        , pstAgentQueueNode->pstAgentInfo->usStatus
+                        , pstAgentQueueNode->pstAgentInfo->ucStatus
                         , pstAgentQueueNode->pstAgentInfo->ulCustomerID
                         , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
                         , pstAgentQueueNode->pstAgentInfo->aulGroupID[1]
@@ -678,14 +685,19 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
                         , pstAgentQueueNode->pstAgentInfo->bGroupHeader ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->szUserID
                         , pstAgentQueueNode->pstAgentInfo->szExtension
-                        , pstAgentQueueNode->pstAgentInfo->szEmpNo);
+                        , pstAgentQueueNode->pstAgentInfo->szEmpNo
+                        , pstAgentQueueNode->pstAgentInfo->ucBindType
+                        , pstAgentQueueNode->pstAgentInfo->szTelePhone
+                        , pstAgentQueueNode->pstAgentInfo->szMobile);
             cli_out_string(ulIndex, szCmdBuff);
 
 
             ulTotal++;
         }
     }
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n** Bind : 0 -- SIP User ID, 1 -- Telephone, 2 -- Mobile");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal : %d\r\n", ulTotal);
     cli_out_string(ulIndex, szCmdBuff);

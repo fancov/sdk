@@ -199,7 +199,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         }
 
         dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "{instant_ringback=true,scb_number=%d,other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s"
+                        , "{instant_ringback=true,scb_number=%d,other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s}%s"
                         , pstSCB->usSCBNo
                         , pstSCB->usOtherSCBNo
                         , ulMainService

@@ -266,7 +266,7 @@ U32 sc_acd_agent_update_status(S8 *pszUserID, U32 ulStatus)
     }
 
     pthread_mutex_lock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
-    pstAgentQueueInfo->pstAgentInfo->usStatus = (U16)ulStatus;
+    pstAgentQueueInfo->pstAgentInfo->ucStatus = (U8)ulStatus;
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
     return DOS_SUCC;
@@ -1251,10 +1251,12 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     S8                          *pszExten      = NULL, *pszGroupID  = NULL;
     S8                          *pszJobNum     = NULL, *pszUserID   = NULL;
     S8                          *pszRecordFlag = NULL, *pszIsHeader = NULL;
+    S8                          *pszTelePhone  = NULL, *pszMobile   = NULL;
+    S8                          *pszSelectType = NULL;
     SC_ACD_AGENT_INFO_ST        stSiteInfo;
     U32                         ulSiteID   = 0, ulCustomID   = 0, ulGroupID  = 0;
     U32                         ulGroupID1 = 0, ulRecordFlag = 0, ulIsHeader = 0;
-    U32                         ulHashIndex = 0, ulIndex = 0, ulRest = 0;
+    U32                         ulHashIndex = 0, ulIndex = 0, ulRest = 0, ulSelectType = 0;
 
     if (DOS_ADDR_INVALID(pszData)
         || DOS_ADDR_INVALID(pszField))
@@ -1273,6 +1275,9 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     pszGroupID = pszData[7];
     pszRecordFlag = pszData[8];
     pszIsHeader = pszData[9];
+    pszSelectType = pszData[10];
+    pszTelePhone = pszData[11];
+    pszMobile = pszData[12];
 
     if (DOS_ADDR_INVALID(pszSiteID)
         || DOS_ADDR_INVALID(pszCustomID)
@@ -1282,13 +1287,37 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         || DOS_ADDR_INVALID(pszGroupID)
         || DOS_ADDR_INVALID(pszRecordFlag)
         || DOS_ADDR_INVALID(pszIsHeader)
+        || DOS_ADDR_INVALID(pszSelectType)
         || dos_atoul(pszSiteID, &ulSiteID) < 0
         || dos_atoul(pszCustomID, &ulCustomID) < 0
         || dos_atoul(pszGroupID1, &ulGroupID) < 0
         || dos_atoul(pszGroupID2, &ulGroupID1) < 0
         || dos_atoul(pszRecordFlag, &ulRecordFlag) < 0
-        || dos_atoul(pszIsHeader, &ulIsHeader) < 0)
+        || dos_atoul(pszIsHeader, &ulIsHeader) < 0
+        || dos_atoul(pszSelectType, &ulSelectType) < 0)
     {
+        return 0;
+    }
+
+    if (AGENT_BIND_SIP == ulSelectType
+        && DOS_ADDR_INVALID(pszUserID))
+    {
+        DOS_ASSERT(0);
+
+        return 0;
+    }
+    else if (AGENT_BIND_TELE == ulSelectType
+        && DOS_ADDR_INVALID(pszTelePhone))
+    {
+        DOS_ASSERT(0);
+
+        return 0;
+    }
+    else if (AGENT_BIND_MOBILE == ulSelectType
+        && DOS_ADDR_INVALID(pszTelePhone))
+    {
+        DOS_ASSERT(0);
+
         return 0;
     }
 
@@ -1298,17 +1327,41 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.aulGroupID[0] = ulGroupID;
     stSiteInfo.aulGroupID[1] = ulGroupID1;
     stSiteInfo.bValid = DOS_TRUE;
-    stSiteInfo.usStatus = SC_ACD_OFFLINE;
+    stSiteInfo.ucStatus = SC_ACD_OFFLINE;
     stSiteInfo.bRecord = ulRecordFlag;
     stSiteInfo.bGroupHeader = ulIsHeader;
-
-    dos_strncpy(stSiteInfo.szUserID, pszUserID, sizeof(stSiteInfo.szUserID));
-    stSiteInfo.szUserID[sizeof(stSiteInfo.szUserID) - 1] = '\0';
-    dos_strncpy(stSiteInfo.szExtension, pszExten, sizeof(stSiteInfo.szExtension));
-    stSiteInfo.szExtension[sizeof(stSiteInfo.szExtension) - 1] = '\0';
-    dos_strncpy(stSiteInfo.szEmpNo, pszJobNum, sizeof(stSiteInfo.szEmpNo));
-    stSiteInfo.szEmpNo[sizeof(stSiteInfo.szEmpNo) - 1] = '\0';
+    stSiteInfo.ucBindType = ulSelectType;
     pthread_mutex_init(&stSiteInfo.mutexLock, NULL);
+
+    if ('\0' != pszUserID[0])
+    {
+        dos_strncpy(stSiteInfo.szUserID, pszUserID, sizeof(stSiteInfo.szUserID));
+        stSiteInfo.szUserID[sizeof(stSiteInfo.szUserID) - 1] = '\0';
+    }
+
+    if ('\0' != pszExten[0])
+    {
+        dos_strncpy(stSiteInfo.szExtension, pszExten, sizeof(stSiteInfo.szExtension));
+        stSiteInfo.szExtension[sizeof(stSiteInfo.szExtension) - 1] = '\0';
+    }
+
+    if ('\0' != pszJobNum[0])
+    {
+        dos_strncpy(stSiteInfo.szEmpNo, pszJobNum, sizeof(stSiteInfo.szEmpNo));
+        stSiteInfo.szEmpNo[sizeof(stSiteInfo.szEmpNo) - 1] = '\0';
+    }
+
+    if (pszTelePhone && '\0' != pszTelePhone[0])
+    {
+        dos_strncpy(stSiteInfo.szTelePhone, pszTelePhone, sizeof(stSiteInfo.szTelePhone));
+        stSiteInfo.szTelePhone[sizeof(stSiteInfo.szTelePhone) - 1] = '\0';
+    }
+
+    if (pszMobile && '\0' != pszMobile[0])
+    {
+        dos_strncpy(stSiteInfo.szMobile, pszMobile, sizeof(stSiteInfo.szMobile));
+        stSiteInfo.szMobile[sizeof(stSiteInfo.szMobile) - 1] = '\0';
+    }
 
     /* 查看当前要添加的坐席是否已经存在，如果存在，就准备更新就好 */
     sc_acd_hash_func4agent(stSiteInfo.szUserID, &ulHashIndex);
@@ -1372,6 +1425,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
             pstAgentQueueNode->pstAgentInfo->bRecord = stSiteInfo.bRecord;
             pstAgentQueueNode->pstAgentInfo->bAllowAccompanying = stSiteInfo.bAllowAccompanying;
             pstAgentQueueNode->pstAgentInfo->bGroupHeader = stSiteInfo.bGroupHeader;
+            pstAgentQueueNode->pstAgentInfo->ucBindType = stSiteInfo.ucBindType;
 
             dos_strncpy(pstAgentQueueNode->pstAgentInfo->szEmpNo, stSiteInfo.szEmpNo,SC_EMP_NUMBER_LENGTH);
             pstAgentQueueNode->pstAgentInfo->szEmpNo[SC_EMP_NUMBER_LENGTH - 1] = '\0';
@@ -1379,6 +1433,18 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
             pstAgentQueueNode->pstAgentInfo->szExtension[SC_TEL_NUMBER_LENGTH - 1] = '\0';
             dos_strncpy(pstAgentQueueNode->pstAgentInfo->szUserID, stSiteInfo.szUserID,SC_TEL_NUMBER_LENGTH);
             pstAgentQueueNode->pstAgentInfo->szUserID[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+
+            if (pszTelePhone && '\0' != pszTelePhone[0])
+            {
+                dos_strncpy(pstAgentQueueNode->pstAgentInfo->szTelePhone, stSiteInfo.szTelePhone,SC_TEL_NUMBER_LENGTH);
+                pstAgentQueueNode->pstAgentInfo->szTelePhone[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+            }
+
+            if (pszMobile && '\0' != pszMobile[0])
+            {
+                dos_strncpy(pstAgentQueueNode->pstAgentInfo->szMobile, stSiteInfo.szMobile,SC_TEL_NUMBER_LENGTH);
+                pstAgentQueueNode->pstAgentInfo->szMobile[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+            }
         }
 
 
@@ -1399,12 +1465,14 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
                     ,"SELECT " \
-                     "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, a.voice_record, a.class class " \
+                     "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, " \
+                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number " \
                      "FROM " \
                      "    (SELECT " \
                      "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
                      "         tbl_agent.group1_id group1_id, tbl_agent.group2_id group2_id, tbl_sip.extension extension, " \
-                     "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class" \
+                     "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class, " \
+                     "         tbl_agent.select_type, tbl_agent.fixed_telephone, tbl_agent.mobile_number" \
                      "     FROM " \
                      "         tbl_agent, tbl_sip " \
                      "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 0) a " \
@@ -1417,12 +1485,14 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
                    , "SELECT " \
-                     "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, a.voice_record, a.class class " \
+                     "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, " \
+                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number " \
                      "FROM " \
                      "    (SELECT " \
                      "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
                      "         tbl_agent.group1_id group1_id, tbl_agent.group2_id group2_id, tbl_sip.extension extension, " \
-                     "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class" \
+                     "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class, " \
+                     "         tbl_agent.select_type, tbl_agent.fixed_telephone, tbl_agent.mobile_number " \
                      "     FROM " \
                      "         tbl_agent, tbl_sip " \
                      "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 0 AND tbl_agent.id = %u) a " \

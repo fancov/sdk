@@ -2841,27 +2841,54 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     pstSCBNew->ulAgentID = stAgentInfo.ulSiteID;
     pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
     pstSCBNew->ucLegRole = SC_CALLEE;
-
+    pstSCBNew->bRecord = stAgentInfo.bRecord;
     dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
     pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
     dos_strncpy(pstSCBNew->szANINum, pstSCB->szCallerNum, sizeof(pstSCBNew->szANINum));
     pstSCBNew->szANINum[sizeof(pstSCBNew->szANINum) - 1] = '\0';
-    dos_strncpy(pstSCBNew->szCalleeNum, stAgentInfo.szUserID, sizeof(pstSCBNew->szCalleeNum));
-    pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
-    dos_strncpy(pstSCBNew->szCalleeNum, stAgentInfo.szUserID, sizeof(pstSCBNew->szCalleeNum));
-    pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
+    switch (stAgentInfo.ucBindType)
+    {
+        case AGENT_BIND_SIP:
+            dos_strncpy(pstSCBNew->szCalleeNum, stAgentInfo.szUserID, sizeof(pstSCBNew->szCalleeNum));
+            pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
+            break;
+        case AGENT_BIND_TELE:
+            dos_strncpy(pstSCBNew->szCalleeNum, stAgentInfo.szTelePhone, sizeof(pstSCBNew->szCalleeNum));
+            pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
+            break;
+        case AGENT_BIND_MOBILE:
+            dos_strncpy(pstSCBNew->szCalleeNum, stAgentInfo.szMobile, sizeof(pstSCBNew->szCalleeNum));
+            pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
+            break;
+    }
+
     dos_strncpy(pstSCBNew->szSiteNum, stAgentInfo.szEmpNo, sizeof(pstSCBNew->szSiteNum));
     pstSCBNew->szSiteNum[sizeof(pstSCBNew->szSiteNum) - 1] = '\0';
     //pthread_mutex_unlock(&pstSCB->mutexSCBLock);
-    SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
-    SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_AGENT_CALLBACK);
 
     SC_SCB_SET_STATUS(pstSCBNew, SC_SCB_EXEC);
 
+    if (AGENT_BIND_SIP != stAgentInfo.ucBindType)
+    {
+        SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
+        SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
+
+        if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
+        {
+            sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCBNew->usSCBNo);
+
+            goto proc_error;
+        }
+
+        return DOS_SUCC;
+    }
+
+    SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
+    SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
 
     dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                    , "bgapi originate {scb_number=%u,other_leg_scb=%u,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}user/%s &park() \r\n"
+                    , "{scb_number=%u,other_leg_scb=%u,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s"
                     , pstSCBNew->usSCBNo
                     , pstSCBNew->usOtherSCBNo
                     , SC_SERV_AGENT_CALLBACK
@@ -2869,7 +2896,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
                     , pstSCB->szCalleeNum
                     , stAgentInfo.szUserID);
 
-    if (sc_ep_esl_execute_cmd(szAPPParam) != DOS_SUCC)
+    if (sc_ep_esl_execute("bridge", szAPPParam, pstSCB->szUUID) != DOS_SUCC)
     {
         /* @TODO 用户体验优化 */
         goto proc_error;
@@ -2883,6 +2910,14 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         sc_ep_esl_execute("speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
     }
 
+#if 0
+    if (pstSCB->bRecord)
+    {
+        sc_get_record_file_path(szAPPParam, sizeof(szAPPParam), pstSCB->ulCustomID, pstSCB->szCallerNum, pstSCB->szCalleeNum);
+        sc_ep_esl_execute("record", szAPPParam, pstSCB->szUUID);
+    }
+#endif
+
     if (sc_ep_call_notify(&stAgentInfo, pstSCBNew->szANINum))
     {
         DOS_ASSERT(0);
@@ -2894,7 +2929,8 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
 proc_error:
     if (pstSCBNew)
     {
-        sc_scb_free(pstSCB);
+        sc_scb_free(pstSCBNew);
+        pstSCBNew = NULL;
     }
 
     sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
@@ -3457,8 +3493,8 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
         }
 
-        sc_ep_esl_execute("answer", NULL, pszUUID);
-        sc_ep_esl_execute("answer", NULL, pstSCBOther->szUUID);
+        //sc_ep_esl_execute("answer", NULL, pszUUID);
+        //sc_ep_esl_execute("answer", NULL, pstSCBOther->szUUID);
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_ACTIVE);
 
         sc_logr_info(SC_ESL, "Agent has benn connected. UUID: %s <> %s. SCBNo: %d <> %d."
@@ -3800,6 +3836,7 @@ process_finished:
 U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     S8 *pszWaitingPark = NULL;
+    S8 szCMDBuff[512] = { 0 };
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -3822,7 +3859,6 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     {
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_ACTIVE);
     }
-
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
 
     SC_TRACE_OUT();

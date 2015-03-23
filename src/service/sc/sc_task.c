@@ -118,7 +118,7 @@ SC_TEL_NUM_QUERY_NODE_ST *sc_task_get_callee(SC_TASK_CB_ST *pstTCB)
 SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
 {
     U32                      ulCallerIndex = 0;
-    S32                      lMaxSelectTime  = 16;
+    S32                      lMaxSelectTime  = 0;
     SC_CALLER_QUERY_NODE_ST  *pstCaller = NULL;
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
@@ -131,8 +131,8 @@ SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
 
     while (1)
     {
-        lMaxSelectTime--;
-        if (lMaxSelectTime < 0)
+        lMaxSelectTime++;
+        if (lMaxSelectTime > pstTCB->usCallerCount)
         {
             DOS_ASSERT(0);
             SC_TRACE_OUT();
@@ -336,6 +336,7 @@ VOID *sc_task_runtime(VOID *ptr)
         {
             if (pstTCB->ulCurrentConcurrency >= 0)
             {
+                ulTaskInterval = 1000;
                 blIsNormal = DOS_FALSE;
                 sc_logr_info(SC_TASK, "Cannot make call for stop status. Task : %u.", pstTCB->ulTaskID);
                 continue;
