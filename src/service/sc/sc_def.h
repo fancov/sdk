@@ -593,20 +593,14 @@ U32 sc_scb_hash_tables_delete(S8 *pszUUID);
 SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
 U32 sc_scb_syn_post(S8 *pszUUID);
 U32 sc_scb_syn_wait(S8 *pszUUID);
-
 SC_SYS_STATUS_EN sc_check_sys_stat();
-
 SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
 U32 sc_scb_hash_tables_delete(S8 *pszUUID);
 U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
-
-
 U32 sc_ep_search_route(SC_SCB_ST *pstSCB);
 U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 ulLength);
-
 U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB);
 U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB);
-
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
 U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID);
 U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID);
@@ -625,8 +619,7 @@ U32 sc_load_black_list(U32 ulIndex);
 U32 sc_black_list_delete(U32 ulBlackListID);
 U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID);
 U32 sc_did_delete(U32 ulDidID, S8* pszDidNum);
-U32 sc_ep_esl_execute_cmd(const S8* pszCmd);
-U32 sc_ep_get_userid_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
+U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID);
 U32 sc_ep_esl_execute_cmd(const S8* pszCmd);
 U32 sc_ep_get_userid_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
 S32 sc_ep_gw_grp_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);

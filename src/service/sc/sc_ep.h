@@ -74,6 +74,7 @@ typedef struct tagSCDIDNode{
     U32   ulBindID;                               /* 绑定结果 */
 }SC_DID_NODE_ST;
 
+
 /* 网关描述节点 */
 typedef struct tagSCGWNode
 {

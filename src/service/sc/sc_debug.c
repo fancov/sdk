@@ -56,6 +56,16 @@ extern HASH_TABLE_S          *g_pstAgentList;
 extern HASH_TABLE_S          *g_pstHashGW;
 extern HASH_TABLE_S          *g_pstHashSIPUserID;
 extern HASH_TABLE_S          *g_pstHashGWGrp;
+extern HASH_TABLE_S          *g_pstHashDIDNum;
+extern HASH_TABLE_S          *g_pstHashBlackList;
+extern pthread_mutex_t        g_mutexHashDIDNum;
+extern pthread_mutex_t        g_mutexHashBlackList;
+extern pthread_mutex_t        g_mutexRouteList;
+extern DLL_S                  g_stRouteList;
+
+
+
+
 
 /* declare functions */
 extern SC_TASK_CB_ST *sc_tcb_get_by_id(U32 ulTCBNo);
@@ -170,7 +180,7 @@ VOID sc_show_scb(U32 ulIndex, U32 ulID)
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                     , "\r\n%7s%10s%12s%12s%7s%12s%24s%24s"
-                    , "Index", "Ref Index", "Cusomer", "Agent", "Sttus", "Trunk ID", "Caller", "Callee");
+                    , "Index", "Ref Index", "Cusomer", "Agent", "Status", "Trunk ID", "Caller", "Callee");
     cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallHash);
@@ -944,6 +954,279 @@ VOID sc_show_sip_acc(U32 ulIndex, S32 argc, S8 **argv)
     cli_out_string(ulIndex, "\r\n----------------------------------------------------------------------------------------\r\n\r\n");
 }
 
+VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
+{
+    SC_ROUTE_NODE_ST *pstRoute = NULL;
+    S8  szCmdBuff[1024] = {0,};
+    DLL_NODE_S * pstDLLNode = NULL;
+    U32  ulRouteCnt = 0;
+
+    if (U32_BUTT != ulRouteID)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the route %u: ", ulRouteID);
+    }
+    else
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the route list.");
+    }
+    cli_out_string(ulIndex, szCmdBuff);
+
+    /*制作表头*/
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+-----------------------------------------------------------------------------------------------+");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                          Route List                                           |");
+    cli_out_string(ulIndex, szCmdBuff);
+    
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+---------------------------------+---------------+--------------+");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              |     Time      |             Prefix              |               |              |");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|      ID      +-------+-------+----------------+----------------+   Dest Type   |    Dest ID   |");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              | Start |  End  |     Callee     |     Caller     |               |              |");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|--------------+-------+-------+----------------+----------------+---------------+--------------+");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    pthread_mutex_lock(&g_mutexRouteList);
+    
+    DLL_Scan(&g_stRouteList, pstDLLNode, DLL_NODE_S *)
+    {
+        if (DOS_ADDR_INVALID(pstDLLNode)
+            || DOS_ADDR_INVALID(pstDLLNode))
+        {
+            continue;
+        }
+        pstRoute = (SC_ROUTE_NODE_ST *)pstDLLNode->pHandle;
+        if (DOS_ADDR_INVALID(pstRoute->szCalleePrefix)
+            || DOS_ADDR_INVALID(pstRoute->szCallerPrefix))
+        {
+            continue;
+        }
+
+        /*打印数据*/
+
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                    , "\r\n|%14u| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%14u|"
+                    , pstRoute->ulID
+                    , pstRoute->ucHourBegin
+                    , pstRoute->ucMinuteBegin
+                    , pstRoute->ucHourEnd
+                    , pstRoute->ucMinuteEnd
+                    , pstRoute->szCalleePrefix[0] == '\0'? "NULL":pstRoute->szCalleePrefix
+                    , pstRoute->szCallerPrefix[0] == '\0'? "NULL":pstRoute->szCallerPrefix
+                    , pstRoute->ulDestType == SC_DEST_TYPE_GATEWAY? "GATEWAY": (pstRoute->ulDestType == SC_DEST_TYPE_GW_GRP? "GATEWAY_GROUP":"UNKNOWN")
+                    , pstRoute->ulDestID);
+        cli_out_string(ulIndex, szCmdBuff);
+        ++ulRouteCnt;
+    }
+
+    pthread_mutex_unlock(&g_mutexRouteList);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+--------------+");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal:%d routes.\r\n\r\n", ulRouteCnt);
+    cli_out_string(ulIndex, szCmdBuff);
+}
+
+VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
+{
+    SC_DID_NODE_ST *pstDid      = NULL;
+    HASH_NODE_S    *pstHashNode = NULL;
+    U32  ulDidCnt = 0;
+    U32   ulHashIndex = 0;
+    S8    szCmdBuff[1024] = {0, };
+
+    if (NULL != pszDidNum)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the did %s: ", pszDidNum);
+    }
+    else
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the did list.");
+    }
+    cli_out_string(ulIndex,szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+----------------------------------------------------------------------------------+");
+    cli_out_string(ulIndex,szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                     Did List                                     |");
+    cli_out_string(ulIndex,szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
+    cli_out_string(ulIndex,szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|    Did ID    |  Customer ID  |        Did Num         | Bind Type |    Bind ID   |");
+    cli_out_string(ulIndex,szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
+    cli_out_string(ulIndex,szCmdBuff);
+
+    pthread_mutex_lock(&g_mutexHashDIDNum);
+
+    HASH_Scan_Table(g_pstHashDIDNum,ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashDIDNum, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                    || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstDid = (SC_DID_NODE_ST *)pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstDid->szDIDNum))
+            {
+                continue;
+            }
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                            , "\r\n|%14u|%15u|%-24s|%-11s|%14u|"
+                            , pstDid->ulDIDID
+                            , pstDid->ulCustomID
+                            , pstDid->szDIDNum[0] == '\0'? "NULL": pstDid->szDIDNum
+                            , pstDid->ulBindType == SC_DID_BIND_TYPE_SIP ? "SIP" : (pstDid->ulBindType == SC_DID_BIND_TYPE_QUEUE ? "QUEUE":"UNKNOWN")
+                            , pstDid->ulBindID
+                            );
+            cli_out_string(ulIndex, szCmdBuff);
+            ++ulDidCnt;
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexHashDIDNum);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
+    cli_out_string(ulIndex,szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d did numbers.\r\n\r\n", ulDidCnt);
+    cli_out_string(ulIndex,szCmdBuff);
+}
+
+VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
+{
+    SC_BLACK_LIST_NODE *pstBlackList = NULL;
+    HASH_NODE_S * pstHashNode = NULL;
+    U32 ulHashIndex = 0;
+    U32 ulBlackListCnt = 0;
+    S8    szCmdBuff[1024] = {0, };
+
+    if (U32_BUTT != ulBlackListID)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "List the black list %d", ulBlackListID);
+    }
+    else
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "List the black list.");
+    }
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+-----------------------------------------------------------+");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                        Black List                         |");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+----------------------------+");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|      ID      |  Customer ID  |            Num             |");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+----------------------------+");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    pthread_mutex_lock(&g_mutexHashBlackList);
+
+    HASH_Scan_Table(g_pstHashBlackList,ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashBlackList,ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode))
+            {
+                continue;
+            }
+
+            pstBlackList = (SC_BLACK_LIST_NODE *)pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstBlackList->szNum))
+            {
+                continue;
+            }
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                            , "\r\n|%14u|%15u|%28s|"
+                            , pstBlackList->ulID
+                            , pstBlackList->ulCustomerID
+                            , pstBlackList->szNum[0] == '\0'?"NULL":pstBlackList->szNum);
+            cli_out_string(ulIndex, szCmdBuff);
+            ++ulBlackListCnt;
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexHashBlackList);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+----------------------------+");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d Black Lists...\r\n\r\n", ulBlackListCnt);
+    cli_out_string(ulIndex, szCmdBuff);
+}
+
+VOID sc_show_sip(U32 ulIndex, S8 *szSipUserID)
+{/*
+    SC_USER_ID_NODE_ST * pstSip = NULL;
+    HASH_NODE_S * pstHashNode = NULL;
+    U32  ulHashIndex = 0;
+    S8   szCmdBuff[1024] = {0, };
+
+    if (DOS_ADDR_INVALID(szSipUserID))
+    {
+        DOS_ASSERT(0);
+        return ;
+    }
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "Show sip %s", szSipUserID);
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+    
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                    , "\r\n%12s%07s%24s%12s"
+                    , "CustomerID", "SipID", "UserID", "Extension");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    pthread_mutex_lock(&g_mutexHashSIPUserID);
+
+    HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashSIPUserID,ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                    || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstSip = (SC_USER_ID_NODE_ST *)pstHashNode->pHandle;
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                    , "\r\n%12u%07u%24s%12s"
+                    , pstSip->ulCustomID,
+                    , pstSip->ulSIPID
+                    , pstSip->szUserID
+                    , pstSip->szExtension);
+            cli_out_string(ulIndex, szCmdBuff);   
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexHashSIPUserID);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------\r\n\r\n");
+    cli_out_string(ulIndex, szCmdBuff); */        
+}
 
 S32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
 {
@@ -1507,6 +1790,63 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
         }
         else
         {
+            return -1;
+        }
+    }
+    else if (0 == dos_strnicmp(argv[2], "route", dos_strlen("route")))
+    {
+        if (3 == argc)
+        {
+            sc_show_route(ulIndex, U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return -1;
+            }
+
+            sc_show_route(ulIndex, ulID);
+        }
+        else
+        {//待完成
+            return -1;
+        }
+    }
+    else if (0 == dos_strnicmp(argv[2], "did", dos_strlen("did")))
+    {
+        if (3 == argc)
+        {
+            sc_show_did(ulIndex, NULL);
+        }
+        else if (4 == argc)
+        {
+            sc_show_did(ulIndex, argv[3]);
+        }
+        else
+        {//待完成
+            return -1;
+        }
+    }
+    else if (0 == dos_strnicmp(argv[2], "blacklist", dos_strlen("blacklist")))
+    {
+        if (3 == argc)
+        {
+            sc_show_black_list(ulIndex, U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return -1;
+            }
+
+            sc_show_black_list(ulIndex, ulID);
+        }
+        else
+        {//待完成
             return -1;
         }
     }
