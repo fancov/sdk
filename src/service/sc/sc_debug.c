@@ -1003,9 +1003,12 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
         }
 
         /*´òÓ¡Êý¾Ý*/
-        if (U32_BUTT == ulRouteID)
+        if (U32_BUTT != ulRouteID && ulRouteID != pstRoute->ulID)
         {
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+            continue;
+        }
+
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                     , "\r\n|%14u| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%14u|"
                     , pstRoute->ulID
                     , pstRoute->ucHourBegin
@@ -1016,34 +1019,15 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
                     , pstRoute->szCallerPrefix[0] == '\0' ? "NULL" : pstRoute->szCallerPrefix
                     , pstRoute->ulDestType == SC_DEST_TYPE_GATEWAY ? "GATEWAY": (pstRoute->ulDestType == SC_DEST_TYPE_GW_GRP ? "GATEWAY_GROUP" : "UNKNOWN")
                     , pstRoute->ulDestID);
-            cli_out_string(ulIndex, szCmdBuff);
-            ++ulRouteCnt;
-        }
-        else
-        {
-            if (ulRouteID == pstRoute->ulID)
-            {
-                dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n|%14u| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%14u|"
-                    , pstRoute->ulID
-                    , pstRoute->ucHourBegin
-                    , pstRoute->ucMinuteBegin
-                    , pstRoute->ucHourEnd
-                    , pstRoute->ucMinuteEnd
-                    , pstRoute->szCalleePrefix[0] == '\0' ? "NULL" : pstRoute->szCalleePrefix
-                    , pstRoute->szCallerPrefix[0] == '\0' ? "NULL" : pstRoute->szCallerPrefix
-                    , pstRoute->ulDestType == SC_DEST_TYPE_GATEWAY ? "GATEWAY" : (pstRoute->ulDestType == SC_DEST_TYPE_GW_GRP ? "GATEWAY_GROUP" : "UNKNOWN")
-                    , pstRoute->ulDestID);
-                cli_out_string(ulIndex, szCmdBuff);
-            }
-        }
+        cli_out_string(ulIndex, szCmdBuff);
+        ++ulRouteCnt;
     }
 
     pthread_mutex_unlock(&g_mutexRouteList);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+--------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal:%d routes.\r\n\r\n", U32_BUTT == ulRouteID ? ulRouteCnt : 1);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal:%d routes.\r\n\r\n", ulRouteCnt);
     cli_out_string(ulIndex, szCmdBuff);
 }
 
@@ -1051,27 +1035,27 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
 {
     SC_DID_NODE_ST *pstDid      = NULL;
     HASH_NODE_S    *pstHashNode = NULL;
-    U32  ulDidCnt = 0;
+    U32   ulDidCnt = 0;
     U32   ulHashIndex = 0;
     S8    szCmdBuff[1024] = {0, };
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the did list.");
-    cli_out_string(ulIndex,szCmdBuff);
+    cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+----------------------------------------------------------------------------------+");
-    cli_out_string(ulIndex,szCmdBuff);
+    cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                     Did List                                     |");
     cli_out_string(ulIndex,szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
-    cli_out_string(ulIndex,szCmdBuff);
+    cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|    Did ID    |  Customer ID  |        Did Num         | Bind Type |    Bind ID   |");
-    cli_out_string(ulIndex,szCmdBuff);
+    cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
-    cli_out_string(ulIndex,szCmdBuff);
+    cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexHashDIDNum);
 
@@ -1091,9 +1075,12 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
                 continue;
             }
 
-            if (NULL == pszDidNum)
+            if (NULL != pszDidNum && 0 != dos_strcmp(pszDidNum, pstDid->szDIDNum))
             {
-                dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                continue;
+            }
+
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                             , "\r\n|%14u|%15u|%-24s|%-11s|%14u|"
                             , pstDid->ulDIDID
                             , pstDid->ulCustomID
@@ -1101,34 +1088,18 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
                             , pstDid->ulBindType == SC_DID_BIND_TYPE_SIP ? "SIP" : (pstDid->ulBindType == SC_DID_BIND_TYPE_QUEUE ? "QUEUE" : "UNKNOWN")
                             , pstDid->ulBindID
                             );
-                cli_out_string(ulIndex, szCmdBuff);
-                ++ulDidCnt;
-            }
-            else
-            {
-                if (0 == dos_strcmp(pszDidNum, pstDid->szDIDNum))
-                {
-                    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n|%14u|%15u|%-24s|%-11s|%14u|"
-                            , pstDid->ulDIDID
-                            , pstDid->ulCustomID
-                            , pstDid->szDIDNum[0] == '\0' ? "NULL": pstDid->szDIDNum
-                            , pstDid->ulBindType == SC_DID_BIND_TYPE_SIP ? "SIP" : (pstDid->ulBindType == SC_DID_BIND_TYPE_QUEUE ? "QUEUE" : "UNKNOWN")
-                            , pstDid->ulBindID
-                            );
-                    cli_out_string(ulIndex, szCmdBuff);
-                }
-            }
+            cli_out_string(ulIndex, szCmdBuff);
+            ++ulDidCnt;
         }
     }
 
     pthread_mutex_unlock(&g_mutexHashDIDNum);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
-    cli_out_string(ulIndex,szCmdBuff);
+    cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d did numbers.\r\n\r\n", NULL == pszDidNum ? ulDidCnt : 1);
-    cli_out_string(ulIndex,szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d did numbers.\r\n\r\n", ulDidCnt);
+    cli_out_string(ulIndex, szCmdBuff);
 }
 
 VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
@@ -1175,28 +1146,17 @@ VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
                 continue;
             }
 
-            if (U32_BUTT == ulBlackListID)
+            if (U32_BUTT != ulBlackListID && ulBlackListID != pstBlackList->ulID)
             {
-                dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n|%14u|%15u|%28s|"
-                            , pstBlackList->ulID
-                            , pstBlackList->ulCustomerID
-                            , pstBlackList->szNum[0] == '\0' ? "NULL" : pstBlackList->szNum);
-                cli_out_string(ulIndex, szCmdBuff);
-                ++ulBlackListCnt;
+                continue;
             }
-            else
-            {
-                if (ulBlackListID == pstBlackList->ulID)
-                {
-                    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                             , "\r\n|%14u|%15u|%28s|"
                             , pstBlackList->ulID
                             , pstBlackList->ulCustomerID
                             , pstBlackList->szNum[0] == '\0'? "NULL" : pstBlackList->szNum);
-                    cli_out_string(ulIndex, szCmdBuff);
-                }
-            }
+            cli_out_string(ulIndex, szCmdBuff);
+            ++ulBlackListCnt;
         }
     }
 
@@ -1205,7 +1165,7 @@ VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+----------------------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d Black Lists.\r\n\r\n", U32_BUTT == ulBlackListID ? ulBlackListCnt : 1);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d Black Lists.\r\n\r\n", ulBlackListCnt);
     cli_out_string(ulIndex, szCmdBuff);
 }
 
@@ -1975,7 +1935,8 @@ cc_usage:
 
     cli_out_string(ulIndex, "\r\n");
     cli_out_string(ulIndex, "cc show gwgrp id\r\n");
-    cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb [id]\r\n");
+    cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb|route|blacklist [id]\r\n");
+    cli_out_string(ulIndex, "cc show did [did_number]\r\n");
     cli_out_string(ulIndex, "cc show task [custom] id\r\n");
     cli_out_string(ulIndex, "cc show caller|callee taskid\r\n");
     cli_out_string(ulIndex, "cc show agent|agentgrp [custom|group] id\r\n");
