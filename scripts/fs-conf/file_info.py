@@ -1,4 +1,4 @@
-# coding=utf-8
+#coding=utf-8
 
 '''
 @author: bubble
@@ -8,30 +8,32 @@
 '''
 
 import sys
+import time
 
 def is_windows():
     '''
-    @TODO: �жϵ�ǰ����ƽ̨�Ƿ�ΪWindowsƽ̨
+    @todo: 判断是否为windows系统
     '''
-    if 'win' in sys.platform:
-        return True
-    else:
+    if sys.platform.find('win') < 0:
         return False
+    else:
+        return True
     
 def is_linux():
     '''
-    @TODO: �жϵ�ǰ����ƽ̨�Ƿ�Ϊ����Linuxƽ̨
+    @todo: 判断是否为linux内核的系统
     '''
-    if 'linux' in sys.platform:
-        return True
-    else:
+    if sys.platform.find('linux') < 0:
         return False
+    else:
+        return True
     
-def get_cur_runtime_info(sequence):
+def print_file_info(info):
     '''
-    @TODO: ��ӡ��ǰ�ļ�����Ϣ
+    @todo: 打印文件相关信息
     '''
     
+    # 定义是否输出，为1则表示输出，否则不输出
     IS_OUTPUT = 1
     
     if IS_OUTPUT == 0:
@@ -39,18 +41,35 @@ def get_cur_runtime_info(sequence):
     
     f = sys._getframe(1)
     
-    # ��ȡ��ǰ�ļ���
+    # 获取当前文件名
     seqFileName = f.f_code.co_filename
     if is_windows():
         seqFileName = seqFileName.split('\\')[-1]
     elif is_linux():
         seqFileName = seqFileName.split('/')[-1]
-    
-    # ��ȡ��ǰ�к�
+        
+    #获取当前文件行号
     ulLineNumber = f.f_lineno
     
-    # ��ȡ��ǰ���ں���
-    seqFunName   = f.f_code.co_name
+    # 获取当前函数名
+    seqFuncName = f.f_code.co_name
+
+    _info = '%s:Line %d:In function %s:' % (seqFileName, ulLineNumber, seqFuncName)
+    output = time.strftime('%Y-%m-%d %H:%M:%S %A')
+    print output, '=>', _info, info
     
-    print '%s:Line %d:In function %s:' % (seqFileName, ulLineNumber, seqFunName), sequence
-    return 1
+    seqLogPath = '/var/log/dipcc/fsconf' + time.strftime('%Y%m%d') + '.log'
+    
+    fp = open(seqLogPath, 'a')
+
+    try:
+        fp = open(seqLogPath, 'a')
+    except Exception, err:
+        print 'Catch IOException: %s.....................' % str(err)
+        # 不能返回-1，防止将程序退出了
+        return 1
+    else:
+        print >> fp, output, '=>', _info, info
+        fp.close()
+    
+        return 1

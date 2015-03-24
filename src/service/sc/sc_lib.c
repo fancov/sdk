@@ -216,11 +216,9 @@ BOOL sc_scb_is_valid(SC_SCB_ST *pstSCB)
  * 返回值:
  *      成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-U32 sc_scb_init(SC_SCB_ST *pstSCB)
+inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
 {
     U32 i;
-
-    SC_TRACE_IN((U64)pstSCB, 0, 0, 0);
 
     if (!pstSCB)
     {
@@ -270,7 +268,6 @@ U32 sc_scb_init(SC_SCB_ST *pstSCB)
         pstSCB->aucServiceType[i] = U8_BUTT;
     }
 
-    SC_TRACE_OUT();
     return DOS_SUCC;
 }
 
@@ -757,10 +754,8 @@ VOID sc_tcb_free(SC_TASK_CB_ST *pstTCB)
     return;
 }
 
-U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
+inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
 {
-    SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
-
     if (!pstTCB)
     {
         SC_TRACE_OUT();
@@ -794,7 +789,6 @@ U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulCallFailed = 0;
     pstTCB->ulCallConnected = 0;
 
-    SC_TRACE_OUT();
     return DOS_SUCC;
 }
 
@@ -902,14 +896,15 @@ VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID)
 
 static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
-    SC_TASK_CB_ST            *pstTCB;
-    S8                       *pszCustmerID = NULL, *pszCaller = NULL, *pszID = NULL;
+    SC_TASK_CB_ST            *pstTCB = NULL;
+    S8                       *pszCallers = NULL, *pszCourse = NULL;;
     U32                      ulFirstInvalidNode = U32_BUTT, ulIndex = 0;
-    U32                      ulCustomerID = 0, ulID = 0;
+    U32                      ulMaxLen = 0;
     BOOL                     blNeedAdd = DOS_TRUE;
 
     pstTCB = (SC_TASK_CB_ST *)pArg;
-    if (DOS_ADDR_INVALID(pstTCB))
+    if (DOS_ADDR_INVALID(pstTCB)
+        || DOS_ADDR_INVALID(pstTCB->pstCallerNumQuery))
     {
         DOS_ASSERT(0);
 
@@ -917,7 +912,8 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         return DOS_FAIL;
     }
 
-    if (DOS_ADDR_INVALID(pszValues) || DOS_ADDR_INVALID(pszNames))
+    if (DOS_ADDR_INVALID(pszValues) || DOS_ADDR_INVALID(pszNames)
+        || DOS_ADDR_INVALID(pszValues[0]) || '\0' == pszValues[0][0])
     {
         DOS_ASSERT(0);
 
@@ -925,7 +921,9 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         return DOS_FAIL;
     }
 
-    if (DOS_ADDR_INVALID(pstTCB->pstCallerNumQuery))
+    ulMaxLen = dos_strlen(pszValues[0]) + 1;
+    pszCallers = dos_dmem_alloc(ulMaxLen);
+    if (DOS_ADDR_INVALID(pszCallers))
     {
         DOS_ASSERT(0);
 
@@ -933,106 +931,58 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         return DOS_FAIL;
     }
 
-    if (lArgc < 3)
-    {
-        DOS_ASSERT(0);
+    dos_strncpy(pszCallers, pszValues[0], ulMaxLen);
+    pszCallers[ulMaxLen - 1] = '\0';
 
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    for (ulIndex=0; ulIndex<lArgc; ulIndex++)
+    pszCourse = strtok(pszCallers, ",");
+    while (pszCourse)
     {
-        if (dos_strcmp(pszNames[ulIndex], "id") == 0)
+        /* 检测号码是否重复了，并且找到一个空闲的控制块 */
+        for (ulIndex=0; ulIndex<SC_MAX_CALLER_NUM; ulIndex++)
         {
-            pszID = pszValues[ulIndex];
-        }
-        else if (dos_strcmp(pszNames[ulIndex], "customer") == 0)
-        {
-            pszCustmerID = pszValues[ulIndex];
-        }
-        else if (dos_strcmp(pszNames[ulIndex], "caller") == 0)
-        {
-            pszCaller = pszValues[ulIndex];
-        }
-    }
+            if (!pstTCB->pstCallerNumQuery[ulIndex].bValid
+                && U32_BUTT == ulFirstInvalidNode)
+            {
+                ulFirstInvalidNode = ulIndex;
+            }
 
-    if (DOS_ADDR_INVALID(pszID) || DOS_ADDR_INVALID(pszCustmerID) || DOS_ADDR_INVALID(pszCaller))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    if ('\0' == pszID[0] || '\0' == pszCustmerID[0] || '\0' == pszCaller[0])
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    if (dos_atoul(pszID, &ulID) < 0)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    if (dos_atoul(pszCustmerID, &ulCustomerID) < 0)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    if (dos_strlen(pszCaller) >= SC_TEL_NUMBER_LENGTH)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    /* 检测号码是否重复了，并且找到一个空闲的控制块 */
-    for (ulIndex=0; ulIndex<SC_MAX_CALLER_NUM; ulIndex++)
-    {
-        if (!pstTCB->pstCallerNumQuery[ulIndex].bValid
-            && U32_BUTT == ulFirstInvalidNode)
-        {
-            ulFirstInvalidNode = ulIndex;
+            if (pstTCB->pstCallerNumQuery[ulIndex].bValid
+                && dos_strcmp(pstTCB->pstCallerNumQuery[ulIndex].szNumber, pszCourse) == 0)
+            {
+                blNeedAdd = DOS_FALSE;
+            }
         }
 
-        if (pstTCB->pstCallerNumQuery[ulIndex].bValid
-            && dos_strcmp(pstTCB->pstCallerNumQuery[ulIndex].szNumber, pszCaller) == 0)
+        if (ulFirstInvalidNode >= SC_MAX_CALLER_NUM)
         {
-            blNeedAdd = DOS_FALSE;
+            DOS_ASSERT(0);
+
+            break;
+        }
+
+        if (!blNeedAdd)
+        {
+            continue;
+        }
+
+        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
+        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulIndexInDB = 0;
+        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
+        dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCourse, SC_MAX_CALLER_NUM);
+        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
+        pstTCB->usCallerCount++;
+
+        pszCourse = strtok(NULL, ",");
+        if (NULL == pszCourse)
+        {
+            break;
         }
     }
 
-    if (ulFirstInvalidNode >= SC_MAX_CALLER_NUM)
+    if (pszCallers)
     {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
+        dos_dmem_free(pszCallers);
     }
-
-    if (!blNeedAdd)
-    {
-        SC_TRACE_OUT();
-        return DOS_SUCC;
-    }
-
-    pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
-    pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulIndexInDB = ulID;
-    pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
-    dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCaller, SC_MAX_CALLER_NUM);
-    pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
-    pstTCB->usCallerCount++;
 
     SC_TRACE_OUT();
     return DOS_TRUE;
@@ -1085,7 +1035,7 @@ U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB)
 
     ulLength = dos_snprintf(szSqlQuery
                 , sizeof(szSqlQuery)
-                , "SELECT tbl_caller.id as id, tbl_caller.customer_id as customer, tbl_caller.cid as caller from tbl_caller WHERE tbl_caller.customer_id=%d"
+                , "SELECT tbl_calltask.callers  FROM tbl_calltask WHERE id=%d;"
                 , pstTCB->ulCustomID);
 
     ulResult = db_query(g_pstSCDBHandle
@@ -1362,7 +1312,6 @@ U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB)
 S32 sc_task_load_other_info_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
 {
     U32 ulTaskMode;
-    U32 ulMaxConcurrency;
     SC_TASK_CB_ST *pstTCB;
 
     if (DOS_ADDR_INVALID(pArg)
@@ -1384,16 +1333,7 @@ S32 sc_task_load_other_info_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 
         return DOS_FAIL;
     }
 
-    if (DOS_ADDR_INVALID(aszValues[1])
-        || '\0' == aszValues[1][0]
-        || dos_atoul(aszValues[1], &ulMaxConcurrency) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
     pstTCB->ucMode = (U8)ulTaskMode;
-    pstTCB->ulMaxConcurrency = ulMaxConcurrency;
     return DOS_SUCC;
 
 }
@@ -1408,7 +1348,7 @@ S32 sc_task_load_other_info(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT mode,max_concurrent from tbl_calltask WHERE id=%d;", pstTCB->ulTaskID);
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT mode from tbl_calltask WHERE id=%d;", pstTCB->ulTaskID);
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_other_info_cb, (VOID *)pstTCB, NULL) != DB_ERR_SUCC)
     {
@@ -1554,6 +1494,7 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
     time_t     now;
     struct tm  *timenow;
     U32 ulWeek, ulHour, ulMinute, ulIndex;
+    U32 ulStartTime, ulEndTime, ulCurrentTime;
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
 
@@ -1589,20 +1530,15 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
             continue;
         }
 
-        if ((ulHour < pstTCB->astPeriod[ulIndex].ucHourBegin
-            || ulHour > pstTCB->astPeriod[ulIndex].ucHourEnd))
-        {
-            continue;
-        }
+        ulStartTime = pstTCB->astPeriod[ulIndex].ucHourBegin * 60 + pstTCB->astPeriod[ulIndex].ucMinuteBegin;
+        ulEndTime = pstTCB->astPeriod[ulIndex].ucHourEnd * 60 + pstTCB->astPeriod[ulIndex].ucMinuteEnd;
+        ulCurrentTime = ulHour * 60 + ulMinute;
 
-        if (ulMinute < pstTCB->astPeriod[ulIndex].ucMinuteBegin
-            || ulMinute > pstTCB->astPeriod[ulIndex].ucMinuteEnd)
+        if (ulCurrentTime >= ulStartTime && ulCurrentTime < ulEndTime)
         {
-            continue;
+            SC_TRACE_OUT();
+            return DOS_TRUE;
         }
-
-        SC_TRACE_OUT();
-        return DOS_TRUE;
     }
 
     DOS_ASSERT(0);
@@ -1643,6 +1579,13 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
         DOS_ASSERT(0);
         SC_TRACE_OUT();
         return 1000;
+    }
+
+    if (SC_TASK_PAUSED == pstTCB->ucTaskStatus
+        || SC_TASK_STOP == pstTCB->ucTaskStatus)
+    {
+        SC_TRACE_OUT();
+        return 3000;
     }
 
     if (pstTCB->ulCurrentConcurrency)
@@ -1861,13 +1804,13 @@ SC_SYS_STATUS_EN sc_check_sys_stat()
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
 {
     U32   ulRet = 0;
-   
+
     if (ulAction >= SC_API_CMD_ACTION_BUTT)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-   
+
     switch(ulAction)
     {
         case SC_API_CMD_ACTION_GATEWAY_ADD:
@@ -1883,9 +1826,16 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
 #endif
 
             sc_load_gateway(ulGatewayID);
+
+            ulRet = sc_ep_esl_execute_cmd("bgapi sofia  profile external restart");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
         }
         break;
-        case SC_API_CMD_ACTION_GATEWAY_DELETE: 
+        case SC_API_CMD_ACTION_GATEWAY_DELETE:
         {
 #if INCLUDE_SERVICE_PYTHON
             ulRet = py_exec_func("router", "del_route", "(k)", (U64)ulGatewayID);
@@ -1910,9 +1860,10 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
    return DOS_SUCC;
 }
 
-U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSIPID, U32 ulAgentID, U32 ulCustomerID, S8* pszUserID)
+U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
 {
-    U32 ulRet = 0;
+    U32  ulRet = 0;
+    S8   szUserID[32] = {0,};
 
     if (ulAction >= SC_API_CMD_ACTION_BUTT)
     {
@@ -1926,28 +1877,45 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSIPID, U32 ulAgentID, U32 ulCust
         case SC_API_CMD_ACTION_SIP_UPDATE:
         {
 #if INCLUDE_SERVICE_PYTHON
-            ulRet = py_exec_func("sip_mgnt", "add_sip","(i)", ulSIPID);
+            ulRet = py_exec_func("sip", "add_sip","(i)", ulSipID);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
 #endif
-            sc_load_sip_userid(ulSIPID);
+            ulRet = sc_load_sip_userid(ulSipID);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
 
+            ulRet = sc_ep_esl_execute_cmd("reloadxml");
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
             break;
         }
         case SC_API_CMD_ACTION_SIP_DELETE:
         {
+            ulRet = sc_ep_get_userid_by_id(ulSipID, szUserID, sizeof(szUserID));
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
 #if INCLUDE_SERVICE_PYTHON
-            ulRet = py_exec_func("sip_mgnt", "del_sip_from_group","(i,i)", ulAgentID, ulCustomerID);
+            ulRet = py_exec_func("sip", "del_sip","(i,s,i)", ulSipID, szUserID, ulCustomerID);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
 #endif
-            ulRet = sc_ep_sip_userid_delete(ulSIPID, pszUserID);
+            ulRet = sc_ep_sip_userid_delete(szUserID);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -1989,7 +1957,7 @@ U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID)
 	                DOS_ASSERT(0);
 	                return DOS_FAIL;
 	            }
-            }      
+            }
             break;
         default:
             break;
@@ -2063,7 +2031,7 @@ U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID, S8 *pszDidNum)
 U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID)
 {
     U32 ulRet = U32_BUTT;
-   
+
     if (ulAction > SC_API_CMD_ACTION_BUTT)
     {
         DOS_ASSERT(0);
@@ -2089,7 +2057,7 @@ U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID)
         default:
             break;
     }
-    
+
     return DOS_SUCC;
 }
 

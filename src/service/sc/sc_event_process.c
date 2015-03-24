@@ -109,13 +109,13 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
     ulRet = curl_easy_perform(g_pstCurlHandle);
     if(CURLE_OK != ulRet)
     {
-        sc_logr_notice(SC_ESL, "CURL post FAIL.Caller:%d.", szCaller);
+        sc_logr_notice(SC_ESL, "CURL post FAIL.Caller:%s.", szCaller);
 
         return DOS_FAIL;
     }
     else
     {
-        sc_logr_notice(SC_ESL, "CURL post SUCC.Caller:%d.", szCaller);
+        sc_logr_notice(SC_ESL, "CURL post SUCC.Caller:%s.", szCaller);
 
         return DOS_SUCC;
     }
@@ -237,8 +237,8 @@ U32 sc_ep_gw_hash_func(U32 ulGWID)
  */
 static U32 sc_sip_userid_hash_func(S8 *pszUserID)
 {
-    U32 ulIndex;
-    U32 ulHashIndex;
+    U32 ulIndex = 0;
+    U32 ulHashIndex = 0;
 
     ulIndex = 0;
     for (;;)
@@ -265,8 +265,8 @@ static U32 sc_sip_userid_hash_func(S8 *pszUserID)
  */
 static U32 sc_sip_did_hash_func(S8 *pszDIDNum)
 {
-    U32 ulIndex;
-    U32 ulHashIndex;
+    U32 ulIndex = 0;
+    U32 ulHashIndex = 0;
 
     ulIndex = 0;
     for(;;)
@@ -460,22 +460,14 @@ S32 sc_ep_black_list_find(VOID *pObj, HASH_NODE_S *pstHashNode)
 }
 
 /* 删除SIP账户 */
-U32 sc_ep_sip_userid_delete(U32 ulSIPUserID, S8 *pszUserID)
+U32 sc_ep_sip_userid_delete(S8 * pszSipID)
 {
     SC_USER_ID_NODE_ST *pstUserID   = NULL;
     HASH_NODE_S        *pstHashNode = NULL;
     U32                ulHashIndex  = U32_BUTT;
 
-
-    if (DOS_ADDR_INVALID(pszUserID))
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    ulHashIndex= sc_sip_userid_hash_func(pszUserID);
-    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pszUserID, sc_ep_sip_userid_hash_find);
+    ulHashIndex= sc_sip_userid_hash_func(pszSipID);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pszSipID, sc_ep_sip_userid_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
@@ -760,7 +752,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "username", dos_strlen("username")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "userid", dos_strlen("userid")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || '\0' == aszValues[lIndex][0])
@@ -774,15 +766,12 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "extension", dos_strlen("extension")))
         {
-            if (DOS_ADDR_INVALID(aszValues[lIndex])
-                || '\0' == aszValues[lIndex][0])
+            if (DOS_ADDR_VALID(aszValues[lIndex])
+                && '\0' != aszValues[lIndex][0])
             {
-                blProcessOK = DOS_FALSE;
-                break;
+                dos_strncpy(pstSIPUserIDNodeNew->szExtension, aszValues[lIndex], sizeof(pstSIPUserIDNodeNew->szExtension));
+                pstSIPUserIDNodeNew->szExtension[sizeof(pstSIPUserIDNodeNew->szExtension) - 1] = '\0';
             }
-
-            dos_strncpy(pstSIPUserIDNodeNew->szExtension, aszValues[lIndex], sizeof(pstSIPUserIDNodeNew->szExtension));
-            pstSIPUserIDNodeNew->szExtension[sizeof(pstSIPUserIDNodeNew->szExtension) - 1] = '\0';
         }
     }
 
@@ -796,9 +785,30 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     }
 
     pthread_mutex_lock(&g_mutexHashSIPUserID);
-    ulHashIndex = sc_sip_userid_hash_func(pstSIPUserIDNodeNew->szUserID);
-    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pstSIPUserIDNodeNew->szUserID, sc_ep_sip_userid_hash_find);
-    if (DOS_ADDR_INVALID(pstHashNode))
+    HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashSIPUserID, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                break;
+            }
+
+            pstSIPUserIDNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                continue;
+            }
+
+            if (pstSIPUserIDNode->ulSIPID == pstSIPUserIDNodeNew->ulSIPID)
+            {
+                break;
+            }
+        }
+    }
+
+    if (DOS_ADDR_INVALID(pstSIPUserIDNode)
+        || pstSIPUserIDNode->ulSIPID != pstSIPUserIDNodeNew->ulSIPID)
     {
         pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
         if (DOS_ADDR_INVALID(pstHashNode))
@@ -811,7 +821,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             return DOS_FALSE;
         }
 
-        sc_logr_debug(SC_ESL, "Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
+        sc_logr_info(SC_ESL, "Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
                     , pstSIPUserIDNodeNew->ulSIPID
                     , pstSIPUserIDNodeNew->ulCustomID
                     , pstSIPUserIDNodeNew->szUserID
@@ -822,23 +832,11 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         ulHashIndex = sc_sip_userid_hash_func(pstSIPUserIDNodeNew->szUserID);
 
         hash_add_node(g_pstHashSIPUserID, (HASH_NODE_S *)pstHashNode, ulHashIndex, NULL);
+
     }
     else
     {
-        pstSIPUserIDNode = pstHashNode->pHandle;
-        if (DOS_ADDR_INVALID(pstSIPUserIDNode))
-        {
-            sc_logr_debug(SC_ESL, "%d", "Invalid data while update the sip user id.");
-
-            dos_dmem_free(pstSIPUserIDNodeNew);
-            pstSIPUserIDNodeNew = NULL;
-
-            pthread_mutex_unlock(&g_mutexHashSIPUserID);
-            return DOS_FAIL;
-        }
-
         pstSIPUserIDNode->ulCustomID = pstSIPUserIDNodeNew->ulCustomID;
-        pstSIPUserIDNode->ulSIPID = pstSIPUserIDNodeNew->ulSIPID;
 
         dos_strncpy(pstSIPUserIDNode->szUserID, pstSIPUserIDNodeNew->szUserID, sizeof(pstSIPUserIDNode->szUserID));
         pstSIPUserIDNode->szUserID[sizeof(pstSIPUserIDNode->szUserID) - 1] = '\0';
@@ -867,11 +865,11 @@ U32 sc_load_sip_userid(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,username FROM tbl_sip where tbl_sip.status = 1;");
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,userid FROM tbl_sip where tbl_sip.status = 0;");
     }
     else
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,username FROM tbl_sip where tbl_sip.status = 1 AND id=%d;", ulIndex);
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, extension,userid FROM tbl_sip where tbl_sip.status = 0 AND id=%d;", ulIndex);
     }
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_load_sip_userid_cb, NULL, NULL) != DB_ERR_SUCC)
@@ -923,17 +921,17 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     for (blProcessOK = DOS_FALSE, lIndex=0; lIndex<lCount; lIndex++)
     {
-        if (0 == dos_strnicmp(aszNames[lIndex], "i1d", dos_strlen("id")))
+        if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || dos_atoul(aszValues[lIndex], &pstBlackListNode->ulID) < 0)
             {
                 blProcessOK = DOS_FALSE;
-                
+
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "customer_id1", dos_strlen("customer_id")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "customer_id", dos_strlen("customer_id")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || dos_atoul(aszValues[lIndex], &pstBlackListNode->ulCustomerID) < 0)
@@ -942,7 +940,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "regex_numbe1r", dos_strlen("regex_number")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "regex_number", dos_strlen("regex_number")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || '\0' == aszValues[lIndex][0])
@@ -950,7 +948,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 blProcessOK = DOS_FALSE;
                 break;
             }
-            
+
             dos_strncpy(pstBlackListNode->szNum, aszValues[lIndex], sizeof(pstBlackListNode->szNum));
             pstBlackListNode->szNum[sizeof(pstBlackListNode->szNum) - 1] = '\0';
         }
@@ -2331,7 +2329,7 @@ U32 sc_ep_get_bind_info4did(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID)
  *      U32 ulLength    : 缓存长度
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  */
-U32 sc_ep_get_userid_by_id(U32 ulSIPUserID, S8 *pszUserID, U32 ulLength)
+U32 sc_ep_get_userid_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength)
 {
     SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
     HASH_NODE_S        *pstHashNode   = NULL;
@@ -2361,7 +2359,7 @@ U32 sc_ep_get_userid_by_id(U32 ulSIPUserID, S8 *pszUserID, U32 ulLength)
                 continue;
             }
 
-            if (ulSIPUserID == pstUserIDNode->ulSIPID)
+            if (ulSipID == pstUserIDNode->ulSIPID)
             {
                 dos_strncpy(pszUserID, pstUserIDNode->szUserID, ulLength);
                 pszUserID[ulLength - 1] = '\0';
@@ -2450,6 +2448,7 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
     struct tm            *pstTime;
     time_t               timep;
     U32                  ulRouteGrpID;
+    U32                  ulStartTime, ulEndTime, ulCurrentTime;
 
     timep = time(NULL);
     pstTime = localtime(&timep);
@@ -2470,23 +2469,21 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
             continue;
         }
 
-        sc_logr_debug(SC_ESL, "Search Route: %d:%d, %d:%d, %s, %s"
+        sc_logr_info(SC_ESL, "Search Route: %d:%d, %d:%d, %s, %s"
                 , pstRouetEntry->ucHourBegin, pstRouetEntry->ucMinuteBegin
                 , pstRouetEntry->ucHourEnd, pstRouetEntry->ucMinuteEnd
                 , pstRouetEntry->szCalleePrefix
                 , pstRouetEntry->szCallerPrefix);
 
-        /* 先看看小时是否匹配 */
-        if (pstTime->tm_hour < pstRouetEntry->ucHourBegin
-            || pstTime->tm_hour > pstRouetEntry->ucHourEnd)
-        {
-            continue;
-        }
+        ulStartTime = pstRouetEntry->ucHourBegin * 60 + pstRouetEntry->ucMinuteBegin;
+        ulEndTime = pstRouetEntry->ucHourEnd* 60 + pstRouetEntry->ucMinuteEnd;
+        ulCurrentTime = pstTime->tm_hour *60 + pstTime->tm_min;
 
-        /* 判断分钟对不对 */
-        if (pstTime->tm_min < pstRouetEntry->ucMinuteBegin
-            || pstTime->tm_min > pstRouetEntry->ucMinuteEnd)
+        if (ulCurrentTime < ulStartTime || ulCurrentTime > ulEndTime)
         {
+            sc_logr_info(SC_ESL, "Search Route(FAIL): Time not match: Peroid:%u-:%u, Current:%u"
+                    , ulStartTime, ulEndTime, ulCurrentTime);
+
             continue;
         }
 
@@ -2525,6 +2522,15 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
                     break;
                 }
             }
+        }
+
+        if (ulCurrentTime < ulStartTime || ulCurrentTime > ulEndTime)
+        {
+            sc_logr_info(SC_ESL, "Search Route(FAIL): Prefix not match: Caller:%s(%s), Callee: %s(%s)"
+                        , pstRouetEntry->szCallerPrefix, pstSCB->szCallerNum
+                        , pstRouetEntry->szCalleePrefix, pstSCB->szCalleeNum);
+
+            continue;
         }
     }
 
@@ -2777,15 +2783,14 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
 }
 
 /**
- * 函数: U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
+ * 函数: U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulAgentQueue)
  * 功能: 群呼任务之后接通坐席
  * 参数:
  *      SC_SCB_ST *pstSCB       : 业务控制块
  * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
  */
-U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
+U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
 {
-    U32 ulTaskAgentQueueID = U32_BUTT;
     S8            szAPPParam[512] = { 0 };
     SC_ACD_AGENT_INFO_ST stAgentInfo;
     SC_SCB_ST *pstSCBNew = NULL;
@@ -2798,7 +2803,6 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
     }
 
     /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
-    ulTaskAgentQueueID = sc_task_get_agent_queue(pstSCB->usTCBNo);
     if (U32_BUTT == ulTaskAgentQueueID)
     {
         DOS_ASSERT(0);
@@ -2830,7 +2834,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
         goto proc_error;
     }
 
-    pthread_mutex_lock(&pstSCBNew->mutexSCBLock);
+    //pthread_mutex_lock(&pstSCBNew->mutexSCBLock);
 
     pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
     pstSCBNew->ulCustomID = pstSCB->ulCustomID;
@@ -2840,7 +2844,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
 
     dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
     pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
-    dos_strncpy(pstSCBNew->szANINum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szANINum));
+    dos_strncpy(pstSCBNew->szANINum, pstSCB->szCallerNum, sizeof(pstSCBNew->szANINum));
     pstSCBNew->szANINum[sizeof(pstSCBNew->szANINum) - 1] = '\0';
     dos_strncpy(pstSCBNew->szCalleeNum, stAgentInfo.szUserID, sizeof(pstSCBNew->szCalleeNum));
     pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
@@ -2848,7 +2852,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
     pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
     dos_strncpy(pstSCBNew->szSiteNum, stAgentInfo.szEmpNo, sizeof(pstSCBNew->szSiteNum));
     pstSCBNew->szSiteNum[sizeof(pstSCBNew->szSiteNum) - 1] = '\0';
-    pthread_mutex_unlock(&pstSCB->mutexSCBLock);
+    //pthread_mutex_unlock(&pstSCB->mutexSCBLock);
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_AGENT_CALLBACK);
@@ -2857,8 +2861,9 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
 
 
     dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                    , "bgapi originate {scb_number=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}user/%s &park() \r\n"
+                    , "bgapi originate {scb_number=%u,other_leg_scb=%u,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}user/%s &park() \r\n"
                     , pstSCBNew->usSCBNo
+                    , pstSCBNew->usOtherSCBNo
                     , SC_SERV_AGENT_CALLBACK
                     , pstSCB->szCalleeNum
                     , pstSCB->szCalleeNum
@@ -2872,14 +2877,13 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB)
     else
     {
         /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
-        sc_ep_esl_execute_cmd(szAPPParam);
         sc_acd_agent_update_status(stAgentInfo.szUserID, SC_ACD_BUSY);
 
         sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
         sc_ep_esl_execute("speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
     }
 
-    if (sc_ep_call_notify(&stAgentInfo, pstSCBNew->szCallerNum))
+    if (sc_ep_call_notify(&stAgentInfo, pstSCBNew->szANINum))
     {
         DOS_ASSERT(0);
     }
@@ -2947,13 +2951,12 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
 
                 dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d}user/%s", pstSCB->usSCBNo,szCallee);
 
-                sc_ep_esl_execute("answer", "", pstSCB->szUUID);
                 sc_ep_esl_execute("bridge", szCallString, pstSCB->szUUID);
                 sc_ep_esl_execute("hangup", szCallString, pstSCB->szUUID);
                 break;
 
             case SC_DID_BIND_TYPE_QUEUE:
-                sc_ep_call_agent(pstSCB);
+                sc_ep_call_agent(pstSCB, ulBindID);
                 break;
 
             default:
@@ -3166,7 +3169,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
 
         /* 直接接通坐席 */
         case SC_TASK_MODE_DIRECT4AGETN:
-            sc_ep_call_agent(pstSCB);
+            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
 
             break;
 
@@ -3250,6 +3253,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
 
     /* 判断被叫号码是否是分机号，如果是分机号，就要找到对应的SIP账户，再呼叫，同时呼叫之前还需要获取主叫的分机号，修改ANI为主叫的分机号 */
     ulCustomerID = sc_ep_get_custom_by_sip_userid(pszSrcNum);
+    pstSCB->ulCustomID = ulCustomerID;
     if (U32_BUTT == ulCustomerID)
     {
         DOS_ASSERT(0);
@@ -3391,7 +3395,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     pszIsAutoCall = esl_event_get_header(pstEvent, "variable_auto_call");
     pszCaller     = esl_event_get_header(pstEvent, "Caller-Caller-ID-Number");
     pszCallee     = esl_event_get_header(pstEvent, "Caller-Destination-Number");
-    sc_logr_info(SC_ESL, "Route Call Start: Auto Call Flag: %s, Caller: %s, Callee: %d"
+    sc_logr_info(SC_ESL, "Route Call Start: Auto Call Flag: %s, Caller: %s, Callee: %s"
                 , NULL == pszIsAutoCall ? "NULL" : pszIsAutoCall
                 , NULL == pszCaller ? "NULL" : pszCaller
                 , NULL == pszCallee ? "NULL" : pszCallee);
@@ -3453,6 +3457,8 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
         }
 
+        sc_ep_esl_execute("answer", NULL, pszUUID);
+        sc_ep_esl_execute("answer", NULL, pstSCBOther->szUUID);
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_ACTIVE);
 
         sc_logr_info(SC_ESL, "Agent has benn connected. UUID: %s <> %s. SCBNo: %d <> %d."
@@ -3482,8 +3488,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
         if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_PSTN == ulCallDst)
         {
-            sc_ep_esl_execute("answer", NULL, pszUUID);
-
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INBOUND_CALL);
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
 
@@ -4019,7 +4023,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
 
         if (SC_TASK_MODE_KEY4AGENT == ulTaskMode)
         {
-            sc_ep_call_agent(pstSCB);
+            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
         }
     }
     else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
@@ -4115,7 +4119,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                         /* 放音后接通坐席 */
                         case SC_TASK_MODE_AGENT_AFTER_AUDIO:
                             /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
-                            sc_ep_call_agent(pstSCB);
+                            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
                             break;
 
                         /* 这个地方出故障了 */
@@ -4517,6 +4521,7 @@ U32 sc_ep_init()
     sc_load_route(SC_INVALID_INDEX);
     sc_load_did_number(SC_INVALID_INDEX);
     sc_load_sip_userid(SC_INVALID_INDEX);
+    sc_load_black_list(SC_INVALID_INDEX);
 
     SC_TRACE_OUT();
     return DOS_SUCC;

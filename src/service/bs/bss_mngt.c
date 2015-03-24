@@ -1420,6 +1420,12 @@ VOID bss_user_auth(DLL_NODE_S *pMsgNode)
         aulMaxSession[i] = 0;
         ulMinSession = U32_BUTT;
         pstPackage = NULL;
+
+        bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG
+                , "Get billing package %d for service %d"
+                , pstCustomer->stAccount.ulBillingPackageID
+                , pstMsg->aucServType[i]);
+
         pstPackage = bs_get_billing_package(pstCustomer->stAccount.ulBillingPackageID, pstMsg->aucServType[i]);
         if (NULL == pstPackage)
         {

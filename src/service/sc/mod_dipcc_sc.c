@@ -142,15 +142,27 @@ U32 sc_init_db()
 
 U32 mod_dipcc_sc_load()
 {
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start init SC.");
+
 #if INCLUDE_SERVICE_PYTHON
+    /* 全局初始化python模块 */
     if (py_init() != DOS_SUCC)
     {
-       DOS_ASSERT(0);
-       return DOS_FAIL;
+        DOS_ASSERT(0);
+        logr_error("mod_dipcc_sc_load: Init pythonlib FAIL.");
+        return DOS_FAIL;
     }
-#endif
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load xml SUCCESS.");
 
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start init SC.");
+    /* 全局加载freeswitch配置文件xml */
+    if (py_exec_func("customer", "generate_all_customer", "()") != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        logr_error("mod_dipcc_sc_load: load xml FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load xml SUCCESS.");
+#endif
 
     if (sc_init_db() != DOS_SUCC)
     {
@@ -275,7 +287,7 @@ U32 mod_dipcc_sc_shutdown()
     sc_httpd_shutdown();
     sc_task_mngt_shutdown();
     sc_dialer_shutdown();
-    
+
 #if INCLUDE_SERVICE_PYTHON
     py_deinit();
 #endif

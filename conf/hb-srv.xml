@@ -34,4 +34,24 @@
     		  	 <param name="heartbeat" value="true" />
 			  </4>
     </process>
+	<!--该配置项配置资源占用阀值-->
+	<threshold>
+	        <mem>
+			  <param param="rate" value="90"/>
+			</mem>
+			<cpu>
+			  <param name="avgRate" value="100"/>
+			  <param name="5sAvgRate" value="100"/>
+			  <param name="1minAvgRate" value="100"/>
+			  <param name="10minAvgRate" value="100"/>
+			</cpu>
+			<disk>
+			  <param name="partitionRate" value="90"/>
+			  <param name="diskRate" value="90"/>
+			</disk>
+			<proc>
+			  <param name="memRate" value="10"/>
+			  <param name="CPURate" value="10"/>
+			</proc>
+	</threshold>
 </config>

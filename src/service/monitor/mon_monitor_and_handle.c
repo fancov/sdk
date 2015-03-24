@@ -679,8 +679,7 @@ static S32 mon_add_data_to_db()
 
    time(&lCur);
    pstCurTime = localtime(&lCur);
-
-   dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO tbl_syssrc%04d%02d(datetime,phymem," \
+   dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO tbl_syssrc%04d%02d(ctime,phymem," \
      "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate," \
      "procmem_pct,proccpu_pct) VALUES(\'%04d-%02d-%02d %02d:%02d:%02d\',%d,%d," \
      "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)"
@@ -698,13 +697,13 @@ static S32 mon_add_data_to_db()
      , g_pstMem->lSwapUsageRate
      , lTotalDiskKBytes
      , lTotalDiskRate
-     , g_pstCpuRslt->lCPUUsageRate
-     , g_pstCpuRslt->lCPU5sUsageRate
-     , g_pstCpuRslt->lCPU1minUsageRate
-     , g_pstCpuRslt->lCPU10minUsageRate
+     , g_pstCpuRslt->lCPUUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPUUsageRate > 100 ? 100: g_pstCpuRslt->lCPUUsageRate)
+     , g_pstCpuRslt->lCPU5sUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPU5sUsageRate > 100 ? 100: g_pstCpuRslt->lCPU5sUsageRate < 0)
+     , g_pstCpuRslt->lCPU1minUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPU1minUsageRate > 100 ? 100 : g_pstCpuRslt->lCPU1minUsageRate)
+     , g_pstCpuRslt->lCPU10minUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPU10minUsageRate > 100 ? 100 : g_pstCpuRslt->lCPU10minUsageRate)
      , g_pastNet[0]->lRWSpeed
      , lProcTotalMemRate
-     , lProcTotalCPURate
+     , lProcTotalCPURate < 0 ? 0 : (lProcTotalCPURate > 100 ? 100 : lProcTotalCPURate)
    );
    
    lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
@@ -762,6 +761,7 @@ static S32 mon_print_data_log()
    logr_info("%s:Line %d:mon_print_data_log|g_szMonDiskInfo is \n%s"
                 , dos_get_filename(__FILE__), __LINE__
                 , g_szMonDiskInfo);
+
 
    lRet = mon_netcard_formatted_info();
    if(DOS_SUCC != lRet)

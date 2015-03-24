@@ -140,6 +140,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     S8    szCallString[SC_ESL_CMD_BUFF_LEN] = { 0 };
     U32   ulRouteID = U32_BUTT;
     S8    *pszEventHeader = NULL, *pszEventBody = NULL;
+    SC_SCB_ST *pstSCBOther = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -172,27 +173,52 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         return DOS_FAIL;
     }
 
-    if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+    /* 如果不是auto dialing，就直接bridge就好 */
+    if (!sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
     {
+#if 0
         dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "bgapi originate {scb_number=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s &park \r\n"
-                        , pstSCB->usSCBNo
-                        , ulMainService
-                        , pstSCB->szCallerNum
-                        , pstSCB->szCallerNum
-                        , szCallString);
-    }
-    else
-    {
-        dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "bgapi originate {scb_number=%d,other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s &park \r\n"
+                        , "bgapi originate {instant_ringback=true,scb_number=%d,other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s &park \r\n"
                         , pstSCB->usSCBNo
                         , pstSCB->usOtherSCBNo
                         , ulMainService
                         , pstSCB->szCallerNum
                         , pstSCB->szCallerNum
                         , szCallString);
+#endif
+        pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+        if (DOS_ADDR_INVALID(pstSCBOther))
+        {
+            DOS_ASSERT(0);
+
+            sc_logr_info(SC_ESL, "Invalid originate SCB while make call to pstn. Current SCB:%d, Other SCB:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+
+            sc_scb_free(pstSCB);
+
+            return DOS_FAIL;
+        }
+
+        dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
+                        , "{instant_ringback=true,scb_number=%d,other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s"
+                        , pstSCB->usSCBNo
+                        , pstSCB->usOtherSCBNo
+                        , ulMainService
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCallerNum
+                        , szCallString);
+
+        sc_ep_esl_execute("bridge", szCMDBuff, pstSCBOther->szUUID);
+
+        return DOS_SUCC;
     }
+
+    dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
+                        , "bgapi originate {scb_number=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s &park \r\n"
+                        , pstSCB->usSCBNo
+                        , ulMainService
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCallerNum
+                        , szCallString);
 
     sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
 

@@ -1,31 +1,40 @@
-# coding=utf-8
+#coding=utf-8
 
 '''
 @author: bubble
 @copyright: Shenzhen dipcc technologies co.,ltd
-@time: Feburary 3rd,2015
-@todo: get the database connection
+@time: February 6th,2015
+@togo: connect database
 '''
-
 import MySQLdb
 import db_config
-
-CONN = None
+import file_info
+from _mysql import DatabaseError
 
 def connect_db():
     '''
-    @todo: Á¬½ÓÊı¾İ¿â
+    @todo: è¿æ¥æ•°æ®åº“
     '''
-    global CONN
-    
-    # ´ÓÅäÖÃÎÄ¼ş»ñÈ¡Êı¾İ¿âÅäÖÃĞÅÏ¢
-    _dict = db_config.get_db_param()
-    if _dict == []:
+    try:
+        # è·å–é…ç½®å‚æ•°
+        _dict = db_config.get_db_param()
+    except Exception, err:
+        file_info.print_file_info('Catch Exception:%s' % str(err))
         return -1
+    else:
+        if [] == _dict:
+            file_info.print_file_info('_dict is empty...........')
+            return -1
         
-    # Á¬½ÓÊı¾İ¿â MySQLdb.connect(hostname, username, password, dbname, port)
-    CONN = MySQLdb.connect(_dict['host'], _dict['username'], _dict['password'], _dict['dbname'], int(_dict['port'])) 
-    if CONN is None:
-        return -1
-    
-    return 1
+        if -1 == _dict:
+            file_info.print_file_info('Get param failure.........')
+            return -1
+        
+        try:
+            # è¿æ¥æ•°æ®åº“ MySQLdb.connect(hostname, username, password, dbname, port) socket
+            conn = MySQLdb.connect(_dict['host'], _dict['username'], _dict['password'], _dict['dbname'], int(_dict['port']), '/tmp/mysql.sock')
+        except DatabaseError, err:
+            file_info.print_file_info('Catch DatabaseError:%s' % str(err))
+            return -1
+        else:
+            return conn

@@ -4,46 +4,61 @@
 @author: bubble
 @copyright: Shenzhen dipcc technologies co.,ltd
 @time: Feburary 3rd,2015
-@todo: convert the dom to xml file
+@todo: handle the XML files
 '''
 
 import file_info
 
-def dom_to_pretty_xml(seqFileName, doc):
+def dom_to_xml(seqFileName, doc):
     '''
-    @param filename: 文件名
-    @param doc: 文件对象
-    @todo: 将DOM对象转换为优雅的XML格式并生成到文件
-    ''' 
+    @todo:灏咲OM杞寲涓篨ML
+    '''
     
     if seqFileName.strip() == '':
-        file_info.get_cur_runtime_info('filename is %s' % seqFileName)
+        file_info.print_file_info('seqFileName is %s' % seqFileName)
         return -1
     
-    file_info.get_cur_runtime_info('filename is %s' % seqFileName)
     if doc is None:
-        file_info.get_cur_runtime_info('doc is %p' % doc)
+        file_info.print_file_info('doc is %p' % doc)
         return -1
+    
+    file_info.print_file_info('seqFileName is %s' % seqFileName)
+    
+    try:
+        fp = open(seqFileName, 'w')
+    except IOError, err:
+        file_info.print_file_info('Catch IOException:%s' % str(err))
+        return -1
+    else:
+        fp.write(doc.toprettyxml(indent = ' '))
+        fp.close()
+        return 1
+    
+def del_xml_head(seqFileName):
+    '''
+    @todo: 鍘绘帀XML澶撮儴鐨刋ML澹版槑
+    '''
+    
     if seqFileName.strip() == '':
-        file_info.get_cur_runtime_info('seqFileName is %s' % seqFileName)
+        file_info.print_file_info('seqFileName is %s' % str(seqFileName))
         return -1
     
     try:
-        open(seqFileName, 'w').write(doc.toprettyxml(indent = ' '))
-        return 1
-    except Exception as e:
-        print str(e)
-
-def del_xml_head(szFileName):
-    '''
-    @param filename: XML文件名
-    @todo: 去掉XML文件的声明
-    '''   
-    
-    if szFileName == '':
-        file_info.get_cur_runtime_info('szFileName is %s' % szFileName)
+        fp = open(seqFileName, 'r')
+    except IOError, err:
+        file_info.print_file_info('Catch IOException: %s' % str(err))
         return -1
-    seqLines = open(szFileName, 'r').readlines()
-    open(szFileName, 'w').writelines(seqLines[1:])
-    return 1
-    
+    else:
+        seqLines = fp.readlines()
+        fp.close()
+        try:
+            #灏嗘暟鎹噸鏂板啓杩涘幓
+            fp = open(seqFileName, 'w')
+        except IOError, err:
+            file_info.print_file_info('Catch IOException: %s' % str(err))
+            return -1
+        else:
+            fp.writelines(seqLines[1:])
+            fp.close()
+            
+        return 1

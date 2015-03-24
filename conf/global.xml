@@ -79,7 +79,7 @@
         <param name="pts_minor_domain" value="www.dipcc.com"/>
         <!--pts 端口-->
         <param name="pts_major_port" value="50000"/>
-        <param name="pts_minor_port" value="50000" 
+        <param name="pts_minor_port" value="50000"/>
         <!--ptc 名称-->
         <param name="ptc_name" value="ptc11"/>
     </ptc>

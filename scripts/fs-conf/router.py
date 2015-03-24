@@ -12,27 +12,27 @@ import file_info
 import db_config
 import os
 import dom_to_xml
+import db_exec
 from __builtin__ import str
-from _ast import Str
 
 def phone_route():
     '''
-    @todo: Éú³ÉÍø¹ØÅäÖÃ
+    @todo: ç”µè¯è·¯ç”±
     '''
     global CONN
     lRet = db_conn.connect_db()
     if -1 == lRet:
-        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+        file_info.print_file_info('lRet is %d' % lRet)
         return -1
   
-    # ²éÕÒ³öËùÓĞÖĞ¼Ì×éid
+    # ï¿½ï¿½ï¿½Ò³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ğ¼ï¿½ï¿½ï¿½id
     seqSQLCmd = 'SELECT DISTINCT CONVERT(id, CHAR(10)) AS id FROM tbl_relaygrp'
-    file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
-    cursor = db_conn.CONN.cursor()
-    cursor.execute(seqSQLCmd)
-    results = cursor.fetchall()
-        
-    file_info.get_cur_runtime_info(results)
+    file_info.print_file_info('seqSQLCmd is %s' % seqSQLCmd)
+    results = db_exec.exec_SQL(seqSQLCmd)
+    if -1 == results:
+        file_info.print_file_info(results)
+        return -1
+    
     for loop in range(len(results)):
         make_route(int(results[loop][0]))
     
@@ -40,64 +40,64 @@ def phone_route():
     
 def get_route_param(id):
     '''
-    @param id: Íø¹Øid
-    @todo: ´´½¨Ò»¸öÂ·ÓÉ±í
+    @param id: ç½‘å…³id
+    @todo: è·å–è·¯ç”±å‚æ•°
     '''
     global CONN 
     lRet = db_conn.connect_db()
     if -1 == lRet:
-        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+        file_info.print_file_info('lRet is %d' % lRet)
         return -1
     
-    # ²éÕÒ³öËùÓĞµÄÍø¹Ø²ÎÊıÖµ
-    seqSQLCmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_relaygrp WHERE id=%d' % (id)
-    file_info.get_cur_runtime_info('seqSQLCmd is %s' % seqSQLCmd)
-    cursor = db_conn.CONN.cursor()
-    cursor.execute(seqSQLCmd)
-    results = cursor.fetchall()
-    file_info.get_cur_runtime_info(results)
-    db_conn.CONN.close()
+    # è·å–è·¯ç”±ä¿¡æ¯
+    seqSQLCmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_gateway WHERE id=%d' % (id)
+    file_info.print_file_info('seqSQLCmd is %s' % seqSQLCmd)
+    
+    results = db_exec.exec_SQL(seqSQLCmd)
+    if -1 == results:
+        file_info.print_file_info(results)
+        return -1
     return results
 
 def make_route(ulGatewayID):
     '''
-    @param id: Íø¹Øid
-    @param doc: ÎÄµµ¶ÔÏó
-    @todo: Éú³ÉÒ»¸öÍø¹ØÅäÖÃDOM
+    @param id: ulGatewayID ç½‘å…³ID
+    @todo: ç”Ÿæˆç½‘å…³è·¯ç”±
     '''
     doc = Document()
     results = get_route_param(ulGatewayID)  
     if -1 == results:
-        file_info.get_cur_runtime_info('results is %d' % results)
+        file_info.print_file_info('results is %d' % results)
         return -1
     domGatewayNode = doc.createElement('gateway')
-    domGatewayNode.setAttribute('name', results[0][0])
+    domGatewayNode.setAttribute('name', str(ulGatewayID))
     
     listParamNames  = ['username', 'realm', 'from-user', 'from-domain', 'password', 'extension', 'proxy', 'register-proxy', 'expire-seconds', 'register', 'reg_transport', 'retry_secs', 'caller-id-in-from', 'contact_params','exten_in_contact', 'ping']
     listParamValues = [results[0][1], results[0][3], results[0][4], results[0][5], results[0][2], results[0][6], results[0][7], results[0][9], results[0][8], results[0][10], results[0][11], results[0][12], results[0][13], results[0][14], results[0][15], results[0][16]]
     
-    for loop in range(len(listParamNames)):
+    for loop in range(len(listParamNames)): 
+        if str(listParamValues[loop]).strip() == '' or str(listParamValues[loop]).strip() == 'None':
+            continue
         domParamNode = doc.createElement('param')
         domParamNode.setAttribute('name', listParamNames[loop].strip())
         
-        # ²ÎÊı'register'ºÍ'caller-id-in-from'µÄ²ÎÊıÖµÊ¹ÓÃ²¼¶ûÖµÈ¥±íÊ¾
+        # ï¿½ï¿½ï¿½ï¿½'register'ï¿½ï¿½'caller-id-in-from'ï¿½Ä²ï¿½ï¿½ï¿½ÖµÊ¹ï¿½Ã²ï¿½ï¿½ï¿½ÖµÈ¥ï¿½ï¿½Ê¾
         if listParamNames[loop].strip() == 'register' or listParamNames[loop].strip() == 'caller-id-in-from':
             if listParamValues[loop].strip() == '0':     
                 domParamNode.setAttribute('value', 'false')
             else:
                 domParamNode.setAttribute('value', 'true')
         else:
-            domParamNode.setAttribute('value', listParamValues[loop].strip())
-        
+            domParamNode.setAttribute('value', str(listParamValues[loop]).strip())
         domGatewayNode.appendChild(domParamNode)
         
     domIncludeNode = doc.createElement('include')
     domIncludeNode.appendChild(domGatewayNode)
     doc.appendChild(domIncludeNode)
     
-    seqCfgDir = db_config.get_db_param()['cfg_path']
+    seqCfgDir = db_config.get_db_param()['fs_config_path']
     if -1 == seqCfgDir:
-        file_info.get_cur_runtime_info('seqCfgDir is %d' % seqCfgDir)
+        file_info.print_file_info('seqCfgDir is %d' % seqCfgDir)
         return -1
     if seqCfgDir[-1] != '/':
         seqCfgDir = seqCfgDir + '/'
@@ -107,20 +107,23 @@ def make_route(ulGatewayID):
         os.makedirs(seqCfgDir)
     
     seqCfgPath = seqCfgDir + str(ulGatewayID) + '.xml'
-    lRet = dom_to_xml.dom_to_pretty_xml(seqCfgPath, doc)
+    lRet = dom_to_xml.dom_to_xml(seqCfgPath, doc)
     if -1 == lRet:
-        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+        file_info.print_file_info('lRet is %d' % lRet)
         return -1
     lRet = dom_to_xml.del_xml_head(seqCfgPath)
     if -1 == lRet:
-        file_info.get_cur_runtime_info('lRet is %d' % lRet)
+        file_info.print_file_info('lRet is %d' % lRet)
         return -1
     
     return 1
     
 def del_route(ulGatewayID):
+    '''
+    @todoï¼š ç½‘å…³ID
+    '''
     if str(ulGatewayID).strip() == '':
-        file_info.get_cur_runtime_info('ulGatewayID is %s' % str(ulGatewayID))
+        file_info.print_file_info('ulGatewayID is %s' % str(ulGatewayID))
         return -1
     seqCfgDir = db_config.get_db_param()['fs_config_path']
     if seqCfgDir[-1] != '/':
@@ -136,5 +139,3 @@ def del_route(ulGatewayID):
         os.system("rm %s" % (seqCfgPath))
         
     return 1
-    
-    

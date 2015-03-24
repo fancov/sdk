@@ -91,6 +91,8 @@ typedef struct tagACDSiteDesc{
 U32 sc_acd_init();
 U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGroupID);
 U32 sc_acd_agent_update_status(S8 *pszUserID, U32 ulStatus);
+S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
+U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);
 
 #endif
 
