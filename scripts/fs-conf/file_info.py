@@ -65,9 +65,9 @@ def print_file_info(info):
     try:
         fp = open(seqLogPath, 'a')
     except Exception, err:
-        print 'Catch IOException: %s.....................' % str(err)
+        print 'Catch IOException: %s' % str(err)
         # 不能返回-1，防止将程序退出了
-        return 1
+        return -1
     else:
         print >> fp, output, '=>', _info, info
         fp.close()

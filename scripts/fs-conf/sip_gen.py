@@ -13,7 +13,6 @@ from xml.dom.minidom import Document
 import file_info
 import db_exec
 import db_config
-import group
 import conf_path
 import dom_to_xml
 
@@ -92,8 +91,8 @@ def generate_sip(SIPAccountInfo):
 		return -1
 
 	ulID = int(SIPAccountInfo[0])
-	ulCustomerID = int(SIPAccountInfo[1])
-	seqExtension = SIPAccountInfo[2]
+	#ulCustomerID = int(SIPAccountInfo[1])
+	#seqExtension = SIPAccountInfo[2]
 	seqDispName = SIPAccountInfo[3]
 	seqUserID = SIPAccountInfo[4]
 	seqAuthName = SIPAccountInfo[5]
@@ -228,7 +227,7 @@ def sip_gen_all():
 		domDomainNode.setAttribute('type', 'pointer')
 
 		# 创建客户配置文件
-		lret = generate_sip(SIPUserIDList[i])
+		lRet = generate_sip(SIPUserIDList[i])
 		if -1 == lRet:
 			return -1
 		

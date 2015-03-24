@@ -27,8 +27,8 @@ def generate_sip(userid):
         file_info.print_file_info('listSipInfo is %d' % listSipInfo)
         return -1
     ulSipID = int(listSipInfo[0][0])
-    ulCustomerID = int(listSipInfo[0][1])
-    seqExtension = listSipInfo[0][2]
+    #ulCustomerID = int(listSipInfo[0][1])
+    #seqExtension = listSipInfo[0][2]
     seqDispName = listSipInfo[0][3]
     seqAuthName = listSipInfo[0][4]
     seqAuthPassword = listSipInfo[0][5]

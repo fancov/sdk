@@ -50,7 +50,7 @@ def get_route_param(id):
         return -1
     
     # 获取路由信息
-    seqSQLCmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_gateway WHERE id=%d' % (id)
+    seqSQLCmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_gateway WHERE id=%d;' % (id)
     file_info.print_file_info('seqSQLCmd is %s' % seqSQLCmd)
     
     results = db_exec.exec_SQL(seqSQLCmd)

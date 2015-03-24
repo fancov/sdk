@@ -38,8 +38,10 @@
         <param name="password" value="admin"/>
         <!--业务数据库库名-->
         <param name="dbname" value="ccsys"/>
-		<!--系统资源数据库名-->
-		<param name="src_dbname" value="syssrc"/>
+	<!--系统资源数据库名-->
+	<param name="src_dbname" value="syssrc"/>
+	<!--mysql数据库的socket文件路径-->
+	<param name="sockpath" value="/tmp/mysql.sock"/>
     </mysql>
     <!-- 日志模块配置 -->
     <!-- level 值的范围

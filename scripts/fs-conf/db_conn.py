@@ -31,8 +31,8 @@ def connect_db():
             return -1
         
         try:
-            # 连接数据库 MySQLdb.connect(hostname, username, password, dbname, port) socket
-            conn = MySQLdb.connect(_dict['host'], _dict['username'], _dict['password'], _dict['dbname'], int(_dict['port']), '/tmp/mysql.sock')
+            # 连接数据库 MySQLdb.connect(hostname, username, password, dbname, port, sockfile)
+            conn = MySQLdb.connect(_dict['host'], _dict['username'], _dict['password'], _dict['dbname'], int(_dict['port']), _dict['sockpath'])
         except DatabaseError, err:
             file_info.print_file_info('Catch DatabaseError:%s' % str(err))
             return -1
