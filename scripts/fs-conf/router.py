@@ -25,8 +25,8 @@ def phone_route():
         file_info.print_file_info('lRet is %d' % lRet)
         return -1
   
-    # ���ҳ������м���id
-    seqSQLCmd = 'SELECT DISTINCT CONVERT(id, CHAR(10)) AS id FROM tbl_relaygrp'
+    # 查找所有的路由id
+    seqSQLCmd = 'SELECT DISTINCT CONVERT(id, CHAR(10)) AS id FROM tbl_gateway;'
     file_info.print_file_info('seqSQLCmd is %s' % seqSQLCmd)
     results = db_exec.exec_SQL(seqSQLCmd)
     if -1 == results:
@@ -81,7 +81,7 @@ def make_route(ulGatewayID):
         domParamNode = doc.createElement('param')
         domParamNode.setAttribute('name', listParamNames[loop].strip())
         
-        # ����'register'��'caller-id-in-from'�Ĳ���ֵʹ�ò���ֵȥ��ʾ
+        # 将参数register与caller-id-in-from的属性设置为false或者true.
         if listParamNames[loop].strip() == 'register' or listParamNames[loop].strip() == 'caller-id-in-from':
             if listParamValues[loop].strip() == '0':     
                 domParamNode.setAttribute('value', 'false')

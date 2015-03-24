@@ -883,7 +883,7 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        cli_out_string(ulIndex, "\r\n\tERROR: Invalid gateway group ID while show the gateway group(s).\r\n");
+        cli_out_string(ulIndex, "\r\n\tERROR:Invalid gateway group ID while show the gateway group(s).\r\n");
         return;
     }
     pstGWGrpNode = pstHashNode->pHandle;
@@ -1589,7 +1589,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             }
             else
             {
-                cli_out_string(ulIndex, "\r\n\tERROR: Invalid gateway group ID while show the gateway group(s).\r\n");
+                cli_out_string(ulIndex, "\r\n\tERROR:Invalid gateway group ID while show the gateway group(s).\r\n");
                 return -1;
             }
         }

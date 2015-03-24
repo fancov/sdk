@@ -1277,7 +1277,7 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         sc_ep_gw_init(pstGWNode);
 
         pstGWNode->ulGWID = ulID;
-        if ('\0' == pszDomain[0])
+        if ('\0' != pszDomain[0])
         {
             dos_strncpy(pstGWNode->szGWDomain, pszDomain, sizeof(pstGWNode->szGWDomain));
             pstGWNode->szGWDomain[sizeof(pstGWNode->szGWDomain) - 1] = '\0';
@@ -1320,7 +1320,7 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
  */
 U32 sc_load_gateway(U32 ulIndex)
 {
-    S8 szSQL[1024];
+    S8 szSQL[1024] = {0,};
 
     if (SC_INVALID_INDEX == ulIndex)
     {
@@ -1360,7 +1360,6 @@ S32 sc_load_gateway_grp_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames
         || DOS_ADDR_INVALID(aszValues))
     {
         DOS_ASSERT(0);
-
         return DOS_FAIL;
     }
 
