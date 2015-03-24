@@ -69,7 +69,7 @@ BOOL pt_is_or_not_ip(S8 *szIp)
  *      VOID *arg :通道通信的sockfd
  * 返回值：void *
  */
-S32 pt_DNS_resolution(S8 *szDomainName, U8 paucIPAddr[IPV6_SIZE])
+S32 pt_DNS_analyze(S8 *szDomainName, U8 paucIPAddr[IPV6_SIZE])
 {
     S8 **pptr = NULL;
     struct hostent *hptr = NULL;
@@ -816,7 +816,7 @@ list_t *pt_need_recv_node_list_search(list_t *pstHead, U32 ulStreamID)
 
     if (NULL == pstHead)
     {
-        pt_logr_debug("search need recv node list : empty list!");
+        //pt_logr_debug("search need recv node list : empty list!");
         return NULL;
     }
 

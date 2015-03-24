@@ -17,7 +17,12 @@
 extern "C"{
 #endif /* __cplusplus */
 
+#ifdef DIPCC_PTC
+#define DB_MYSQL 0
+#else
 #define DB_MYSQL 1
+#endif
+
 #include <env.h>
 
 #ifdef DIPCC_CTRL_PANEL

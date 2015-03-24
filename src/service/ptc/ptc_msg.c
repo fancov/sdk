@@ -36,6 +36,8 @@ U32 g_ulSendTimeSleep = 20;
 static S32 g_lUdpSocket = 0;
 U32 g_ulConnectPtsCount = 0;
 PT_PTC_TYPE_EN g_enPtcType = PT_PTC_TYPE_IPCC;
+struct timeval g_stHBStartTime;
+S32 g_lHBTimeInterval = 0;         /* ns */
 
 S8 *ptc_get_current_time()
 {
@@ -410,6 +412,7 @@ VOID ptc_hd_ack_timeout_callback(U64 lSockfd)
 {
     g_ulHDTimeoutCount++;
     pt_logr_debug("Heartbeat response timeout : %d", g_ulHDTimeoutCount);
+    g_lHBTimeInterval = -1;
     if (g_ulHDTimeoutCount >= PTC_HB_TIMEOUT_COUNT_MAX)
     {
         /* 连续多次无法收到心跳响应，重新发送登陆请求 */
@@ -446,10 +449,13 @@ VOID ptc_send_hb_req(U64 lSockfd)
     stMsgDes.usServPort = g_stServMsg.usLocalPort;
     dos_memcpy(acBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
     stVerRet.enCtrlType = PT_CTRL_HB_REQ;
+    stVerRet.lHBTimeInterval = g_lHBTimeInterval;
     dos_memcpy(acBuff+sizeof(PT_MSG_TAG), (VOID *)&stVerRet, sizeof(PT_CTRL_DATA_ST));
 
+    gettimeofday(&g_stHBStartTime, NULL);
     sendto(lSockfd, acBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
     /* 启动定时器，判断心跳响应是否超时 */
+    logr_info("send hd to pts");
     lResult = dos_tmr_start(&g_stACKTmrHandle, PTC_WAIT_HB_ACK_TIME, ptc_hd_ack_timeout_callback, lSockfd, TIMER_NORMAL_NO_LOOP);
     if (lResult < 0)
     {
@@ -1002,6 +1008,22 @@ VOID ptc_update_pts_history_file(U8 aulServIp[IPV6_SIZE], U16 usServPort)
 }
 
 /**
+ * 函数：void ptc_get_hb_time_interval(struct timeval stHBEndTime)
+ * 功能：
+ *      1.计算心跳和心跳响应之间的时间间隔
+ * 参数
+ *
+ * 返回值：无
+ */
+void ptc_get_hb_time_interval(struct timeval stHBEndTime)
+{
+    S32 lSec = stHBEndTime.tv_sec - g_stHBStartTime.tv_sec;
+    S32 lUsec = stHBEndTime.tv_usec - g_stHBStartTime.tv_usec;
+
+    g_lHBTimeInterval = lSec * 1000 * 1000 + lUsec;
+}
+
+/**
  * 函数：VOID ptc_ctrl_msg_handle(U32 ulStreamID, S8 *pData)
  * 功能：
  *      1.处理控制消息
@@ -1009,7 +1031,7 @@ VOID ptc_update_pts_history_file(U8 aulServIp[IPV6_SIZE], U16 usServPort)
  *
  * 返回值：无
  */
-VOID ptc_ctrl_msg_handle(PT_MSG_TAG *pstMsgDes, S8 *pData)
+VOID ptc_ctrl_msg_handle(S8 *pData, U32 lRecvLen)
 {
     if (NULL == pData)
     {
@@ -1025,9 +1047,11 @@ VOID ptc_ctrl_msg_handle(PT_MSG_TAG *pstMsgDes, S8 *pData)
     S8 szPtsPort[PT_DATA_BUFF_16] = {0};
     U8 paucIPAddr[IPV6_SIZE] = {0};
     PT_CTRL_DATA_ST stCtrlData;
+    PT_MSG_TAG *pstMsgDes = (PT_MSG_TAG *)pData;
+    struct timeval stHBEndTime;
 
     pstCtrlData = (PT_CTRL_DATA_ST *)(pData + sizeof(PT_MSG_TAG));
-    switch (pstCtrlData->enCtrlType)
+    switch (pstMsgDes->ulStreamID)   //pstCtrlData->enCtrlType
     {
         case PT_CTRL_LOGIN_RSP:
             /* 登陆验证 */
@@ -1092,7 +1116,9 @@ VOID ptc_ctrl_msg_handle(PT_MSG_TAG *pstMsgDes, S8 *pData)
             break;
         case PT_CTRL_HB_RSP:
             /* 心跳响应，关闭定时器 */
-            pt_logr_debug("recv from pts hb rsp");
+            gettimeofday(&stHBEndTime, NULL);
+            ptc_get_hb_time_interval(stHBEndTime);
+            logr_info("recv from pts hb rsp");
             if (g_stACKTmrHandle != NULL)
             {
                 dos_tmr_stop(&g_stACKTmrHandle);
@@ -1134,7 +1160,7 @@ VOID ptc_ctrl_msg_handle(PT_MSG_TAG *pstMsgDes, S8 *pData)
                 }
                 else
                 {
-                    lResult = pt_DNS_resolution(pstCtrlData->achPtsMajorDomain, paucIPAddr);
+                    lResult = pt_DNS_analyze(pstCtrlData->achPtsMajorDomain, paucIPAddr);
                     if (lResult <= 0)
                     {
                         logr_info("1DNS fail");
@@ -1194,7 +1220,7 @@ VOID ptc_ctrl_msg_handle(PT_MSG_TAG *pstMsgDes, S8 *pData)
                 }
                 else
                 {
-                    lResult = pt_DNS_resolution(pstCtrlData->achPtsMinorDomain, paucIPAddr);
+                    lResult = pt_DNS_analyze(pstCtrlData->achPtsMinorDomain, paucIPAddr);
                     if (lResult <= 0)
                     {
                         logr_info("1DNS fail");
@@ -1230,6 +1256,10 @@ VOID ptc_ctrl_msg_handle(PT_MSG_TAG *pstMsgDes, S8 *pData)
             }
 
             ptc_save_msg_into_cache(PT_DATA_CTRL, PT_CTRL_PTS_MINOR_DOMAIN, (S8 *)&stCtrlData, sizeof(PT_CTRL_DATA_ST));
+            break;
+        case PT_CTRL_PING:
+            printf("recv ping \n");
+            ptc_save_msg_into_cache(PT_DATA_CTRL, PT_CTRL_PING_ACK, pData + sizeof(PT_MSG_TAG), lRecvLen - sizeof(PT_MSG_TAG));
             break;
         default:
             break;
@@ -1767,7 +1797,7 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
             if (pstMsgDes->enDataType == PT_DATA_CTRL)
             {
                 /* 控制消息 */
-                ptc_ctrl_msg_handle(pstMsgDes, acRecvBuf);
+                ptc_ctrl_msg_handle(acRecvBuf, lRecvLen);
                 #if PT_MUTEX_DEBUG
                 ptc_recv_pthread_mutex_unlock(__FILE__, __LINE__);
                 #else

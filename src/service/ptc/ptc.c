@@ -196,7 +196,7 @@ VOID ptc_init_serv_msg(S32 lSockfd)
     }
     else
     {
-        lResult = pt_DNS_resolution(szMajorDoMain, paucIPAddr);
+        lResult = pt_DNS_analyze(szMajorDoMain, paucIPAddr);
         if (lResult <= 0)
         {
             logr_info("1DNS fail");
@@ -217,7 +217,7 @@ VOID ptc_init_serv_msg(S32 lSockfd)
     }
     else
     {
-        lResult = pt_DNS_resolution(szMinorDoMain, paucIPAddr);
+        lResult = pt_DNS_analyze(szMinorDoMain, paucIPAddr);
         if (lResult <= 0)
         {
             logr_info("2DNS fail");
@@ -518,6 +518,7 @@ S32 ptc_get_ptc_id(U8 *szPtcID, S32 lSockfd)
     struct ifreq stIfreq;
     S32 i = 0;
     S8 *ip = NULL;
+//    S8 szIDFilePath[PT_DATA_BUFF_32] = {0};
 
     pFileFd = fopen("./.id", "r");
     if (pFileFd != NULL)
@@ -584,11 +585,10 @@ S32 ptc_get_ptc_id(U8 *szPtcID, S32 lSockfd)
         perror("ioctl");
         return DOS_FAIL;
     }
-
+    //(lTimeStemp&0x0f000000)>>24, (lTimeStemp&0x000f0000)>>16, (lTimeStemp&0x00000f00)>>8, lTimeStemp&0x0000000f
     pTr = (U8 *)&stIfreq.ifr_ifru.ifru_hwaddr.sa_data[0];
     lTimeStemp = time((time_t *)NULL);
-    snprintf((S8 *)szPtcID, PTC_ID_LEN+1, "%d00000%x%x%x%x%x%x%x%x%x%x", g_enPtcType, (lTimeStemp&0x0f000000)>>24, (lTimeStemp&0x000f0000)>>16, (lTimeStemp&0x00000f00)>>8, lTimeStemp&0x0000000f
-        , *pTr & 0x0f, *(pTr+1) & 0x0f, *(pTr+2) & 0x0f, *(pTr+3) & 0x0f, *(pTr+4) & 0x0f, *(pTr+5) & 0x0f);
+    snprintf((S8 *)szPtcID, PTC_ID_LEN+1, "%d0%08x%x%x%x%x%x%x", g_enPtcType, lTimeStemp, *pTr & 0x0f, *(pTr+1) & 0x0f, *(pTr+2) & 0x0f, *(pTr+3) & 0x0f, *(pTr+4) & 0x0f, *(pTr+5) & 0x0f);
 
     fwrite(szPtcID, PTC_ID_LEN, 1, pFileFd);
     fclose(pFileFd);

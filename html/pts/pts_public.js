@@ -1,10 +1,10 @@
-/* index.html ×Ô¶¯·ÃÎÊ */
+/* index.html è‡ªåŠ¨è®¿é—® */
 function auto_access()
 {
     var internetIP = document.getElementById("auto_internet_ip").value;
     if (internetIP == "")
     {
-        alert("Ä¿µÄ¹«Íøip²»ÄÜÎª¿Õ");
+        alert("ç›®çš„å…¬ç½‘ipä¸èƒ½ä¸ºç©º");
         return false;
     }
     var intranetIP = document.getElementById("auto_intranet_ip").value;
@@ -23,7 +23,7 @@ function auto_access()
     window.open(href);
 }
 
-/* ¼ì²éIP */
+/* æ£€æŸ¥IP */
 function check_IP(ip)
 {
     var re=/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
@@ -35,7 +35,7 @@ function check_IP(ip)
     return false;
 }
 
-/* ÊÖ¶¯·ÃÎÊ */
+/* æ‰‹åŠ¨è®¿é—® */
 function visit_dev()
 {
     var id = "";
@@ -52,7 +52,7 @@ function visit_dev()
 
     if (id == "")
     {
-        alert("please select ptc");
+        alert("è¯·é€‰æ‹©PTC");
         return false;
     }
     pms += "id="+id+"&";
@@ -97,7 +97,7 @@ function visit_dev()
     window.open(href);
 }
 
-/* ptc_manage.html ÇĞ»» */
+/* ptc_manage.html åˆ‡æ¢ */
 function switch_pts()
 {
     var id = "";
@@ -122,7 +122,7 @@ function switch_pts()
 
     if (id == "")
     {
-        alert("please select ptc");
+        alert("è¯·é€‰æ‹©PTC");
         return false;
     }
     var domain = document.getElementById("switch_domain").value;
@@ -143,7 +143,7 @@ function switch_pts()
 
     var url = "/cgi-bin/ptcSwitchpts?id="+id;
     url += "&domain="+domain+"&port="+port;
-
+    show_cover();
     if (window.XMLHttpRequest)
     {
         xmlhttp=new XMLHttpRequest();
@@ -157,14 +157,17 @@ function switch_pts()
         if (xmlhttp.readyState==4 && xmlhttp.status==200)
         {
             var result = xmlhttp.responseText.indexOf("succ");
+            
             if (result >= 0)
             {
-                location.reload();
+                setTimeout("location.reload()", 1000);
             }
             else
             {
-                 alert("fail");
+                hide_cover();
+                alert("fail");
             }
+
         }
     }
     
@@ -205,7 +208,7 @@ function change_domain(type)
 
     if (domain == "nil" && port == "nil")
     {
-        alert("ÓòÃûºÍ¶Ë¿Ú²»ÄÜÍ¬Ê±Îª¿Õ");
+        alert("åŸŸåå’Œç«¯å£ä¸èƒ½åŒæ—¶ä¸ºç©º");
         return false;
     }
 
@@ -228,12 +231,12 @@ function change_domain(type)
 
     if (id == "")
     {
-        alert("please select ptc");
+        alert("è¯·é€‰æ‹©PTC");
         return false;
     }
 
     url += "type="+type+"&domain="+domain+"&port="+port+"&id="+id;
-
+    show_cover();
     submit_change_domain_url(url);
 }
 
@@ -254,6 +257,8 @@ function submit_change_domain_url(url)
         {
             setTimeout("location.reload()", 2000);
         }
+        setTimeout("hide_cover()", 2000);
+
     }
     xmlhttp.open("GET",url,true);
     xmlhttp.setRequestHeader("If-Modified-Since", "0");
@@ -270,12 +275,12 @@ function create_user()
 
     if (username == '' || password == ''|| password2 == '')
     {
-        alert("ÇëÊäÈëÍêÕûĞÅÏ¢");
+        alert("è¯·è¾“å…¥å®Œæ•´ä¿¡æ¯");
         return false;
     }
     if (password != password2)
     {
-        alert("Á½´ÎÃÜÂëÊäÈë²»¶ÔÓ¦");
+        alert("ä¸¤æ¬¡å¯†ç è¾“å…¥ä¸å¯¹åº”");
         return false;
     }
     
@@ -315,7 +320,7 @@ function form_check_package()
     var filename = document.getElementById("PackageFile").value; 
     if (filename == "")
     {
-        alert("Èí¼ş°ü: ÇëÑ¡ÔñÒ»¸öÈí¼ş°üÎÄ¼ş!");
+        alert("è½¯ä»¶åŒ…: è¯·é€‰æ‹©ä¸€ä¸ªè½¯ä»¶åŒ…æ–‡ä»¶!");
         return false;
     }
     var url = document.HttpPackageUpload.action;
@@ -339,46 +344,86 @@ function form_check_package()
 
     if (id == "")
     {
-        alert("please select ptc");
+        alert("è¯·é€‰æ‹©PTC");
         return false;
     }
 
     url += "id="+id;
 
     document.getElementById('HttpPackageUpload').action = url;
-    
+    show_cover();
+    return true;
+}
+
+/* å…¨ç½‘å‡çº§ */
+function form_check_package_all()
+{
+    var filename = document.getElementById("PackageFileAll").value; 
+    if (filename == "")
+    {
+        alert("è½¯ä»¶åŒ…: è¯·é€‰æ‹©ä¸€ä¸ªè½¯ä»¶åŒ…æ–‡ä»¶!");
+        return false;
+    }
+
+    //document.getElementById("upgrade").disabled = true;
+    //document.getElementById("upgrade_all").disabled = true;
+    //document.getElementById("upgrade_end").style.display = "block";
+
+    show_cover();
+
+    return true;
+}
+
+function get_ifream_content()
+{
+    var doc;
+    if (document.all)
+    {//IE
+      doc = document.frames["hidden_frame"].document;
+    }
+    else
+    {//Firefox   
+      doc = document.getElementById("hidden_frame").contentDocument;
+    }
+
+    if (doc.body.innerHTML != "")
+    {
+        //hide_cover();
+        location.reload();
+    }
+
     return true;
 }
 
 
-/* ´´½¨ĞÂÓÃ»§ */
+/* åˆ›å»ºæ–°ç”¨æˆ· */
 function checkna()
 {
     var na = form1.name.value;
 	if (na.length <1 || na.length >12)
 	{
-        	divname.innerHTML='<font class="tips_false">³¤¶ÈÊÇ1~12¸ö×Ö·û</font>';
+        	divname.innerHTML='<font class="tips_false">é•¿åº¦æ˜¯1~12ä¸ªå­—ç¬¦</font>';
 	}
 	else
 	{
-        	divname.innerHTML='<font class="tips_true">ÊäÈëÕıÈ·</font>';
+        	divname.innerHTML='<font class="tips_true">è¾“å…¥æ­£ç¡®</font>';
 	}
    
   }
-//ÑéÖ¤ÃÜÂë
+//éªŒè¯å¯†ç 
 function checkpsd1()
 {
     var psd1=form1.password.value;  
     var flagZM=false ;
     var flagSZ=false ; 
     var flagQT=false ;
-    if(psd1.length<6 || psd1.length>12)
+    if(psd1.length > 0)
     {
-        divpassword1.innerHTML='<font class="tips_false">³¤¶È´íÎó</font>';
+        divpassword1.innerHTML='<font class="tips_true">è¾“å…¥æ­£ç¡®</font>';
     }
     else
     {
-        divpassword1.innerHTML='<font class="tips_true">ÊäÈëÕıÈ·</font>';
+        divpassword1.innerHTML='<font class="tips_false">é•¿åº¦é”™è¯¯</font>';
     }
 }
 
@@ -389,26 +434,26 @@ function checkpsd2()
 
     if(psw1 != psw2 || psw1 == "")
     { 
-         divpassword2.innerHTML='<font class="tips_false">ÄúÁ½´ÎÊäÈëµÄÃÜÂë²»Ò»Ñù</font>';
+         divpassword2.innerHTML='<font class="tips_false">æ‚¨ä¸¤æ¬¡è¾“å…¥çš„å¯†ç ä¸ä¸€æ ·</font>';
     }
     else 
     {
-         divpassword2.innerHTML='<font class="tips_true">ÊäÈëÕıÈ·</font>';
+         divpassword2.innerHTML='<font class="tips_true">è¾“å…¥æ­£ç¡®</font>';
     }
 }
-//ÑéÖ¤ÓÊÏä
+//éªŒè¯é‚®ç®±
 
 function checkmail()
 {
     apos=form1.mailbox.value.indexOf("@");
     dotpos=form1.mailbox.value.lastIndexOf(".");
-    if (apos<1 || dotpos-apos<2) 
+    if (apos<1 || dotpos-apos<2)
     {
-        divmail.innerHTML='<font class="tips_false">ÊäÈë´íÎó</font>' ;
+        divmail.innerHTML='<font class="tips_false">è¾“å…¥é”™è¯¯</font>' ;
     }
     else
     {
-        divmail.innerHTML='<font class="tips_true">ÊäÈëÕıÈ·</font>' ;
+        divmail.innerHTML='<font class="tips_true">è¾“å…¥æ­£ç¡®</font>' ;
     }
 }
 
@@ -426,7 +471,7 @@ function del_user()
         {
             if (ptcs[i].value == "admin")
             {
-                alert("admin²»¿É±»É¾³ı");
+                alert("adminä¸å¯è¢«åˆ é™¤");
                 return false;
             }
 
@@ -490,12 +535,12 @@ function change_password()
 
     if (selectBoxCount < 1)
     {
-        alert("ÇëÑ¡ÔñÒ»¸öĞèÒªĞŞ¸ÄµÄÓÃ»§");
+        alert("è¯·é€‰æ‹©ä¸€ä¸ªéœ€è¦ä¿®æ”¹çš„ç”¨æˆ·");
         return false;
     }
     else if (selectBoxCount > 1)
     {
-        alert("Ö»ÄÜÑ¡ÔñÒ»¸öÓÃ»§");
+        alert("åªèƒ½é€‰æ‹©ä¸€ä¸ªç”¨æˆ·");
         return false;
     }
 
@@ -504,26 +549,26 @@ function change_password()
     window.open(url, '_self');
 }
 
-/* ÍË³ö°´Å¥ */
+/* é€€å‡ºæŒ‰é’® */
 function exit()
 {
     try  
     {  
-      if(navigator.userAgent.indexOf("MSIE")>0)         //IEä¯ÀÀÆ÷ÊµÏÖ×¢Ïú¹¦ÄÜ  
+      if(navigator.userAgent.indexOf("MSIE")>0)         //IEæµè§ˆå™¨å®ç°æ³¨é”€åŠŸèƒ½  
       {  
         document.execCommand("ClearAuthenticationCache");  
       }  
-      else if(isFirefox=navigator.userAgent.indexOf("Firefox")>0)       //FirefoxÊµÏÖ×¢Ïú¹¦ÄÜ  
+      else if(navigator.userAgent.indexOf("Firefox")>0)       //Firefoxå®ç°æ³¨é”€åŠŸèƒ½  
       {  
         var xmlhttp = createXMLObject();  
         xmlhttp.open("GET",".force_logout_offer_login_mozilla",true,"logout","logout");  
         xmlhttp.send("");  
         xmlhttp.abort();  
       }  
-      else       //Google ChromeµÈä¯ÀÀÆ÷ÊµÏÖ×¢Ïú¹¦ÄÜ  
+      else       //Google Chromeç­‰æµè§ˆå™¨å®ç°æ³¨é”€åŠŸèƒ½  
       {  
          var xmlHttp = false;  
-         if(window.XMLHttpRequest)  
+         if(window.XMLHttpRequest)
          {  
             xmlHttp = new XMLHttpRequest();  
          }  
@@ -532,7 +577,7 @@ function exit()
          xmlHttp.abort();  
       }  
     }  
-    catch(e)  
+    catch(e)
     {  
         alert("there was an error");  
         return false;  
@@ -540,6 +585,26 @@ function exit()
     window.location = "index.html";
 }
 
+function createXMLObject()  
+{  
+    try  
+    {  
+        if(window.XMLHttpRequest)  
+        {  
+            xmlhttp = new XMLHttpRequest();  
+        }  
+        // code for IE5ã€IE6  
+        else if(window.ActiveXObject)  
+        {  
+            xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");  
+        }  
+    }  
+    catch(e)  
+    {  
+        xmlhttp=false;  
+    }  
+    return xmlhttp;  
+}  
 
 function select_all()
 {
@@ -565,9 +630,236 @@ function select_all()
     return true;
 }
 
-// function test()
-// {
-//     var url = "/ipcc_internetIP=172.16.100.249&intranetIP=172.16.99.211&port=80&response=dbddb27513d3c48c05875858786f8637" Authentication
+/* é‚®ç®±åœ°å€åˆæ³•æ€§æ£€æµ‹ */
+function check_mail_format()
+{
+    var mail_value = document.getElementsByName("mailbox")[0].value;
 
-//     window.open(url);
-// }
+    var regu = "^(([0-9a-zA-Z]+)|([0-9a-zA-Z]+[_.0-9a-zA-Z-]*[0-9a-zA-Z]+))@([a-zA-Z0-9-]+[.])+([a-zA-Z]{2}|net|NET|com|COM|gov|GOV|mil|MIL|org|ORG|edu|EDU|int|INT)$"
+    var re = new RegExp(regu);
+    if (mail_value.search(re) != -1) 
+    {
+        return true;
+    } 
+    else 
+    {
+        window.alert ("è¯·è¾“å…¥æœ‰æ•ˆåˆæ³•çš„E-mailåœ°å€ ï¼")
+        return false;
+    }
+}
+
+
+function formatSysTime() 
+{
+    var week_desc = new Array("æ˜ŸæœŸæ—¥", "æ˜ŸæœŸä¸€", "æ˜ŸæœŸäºŒ", "æ˜ŸæœŸä¸‰", "æ˜ŸæœŸå››", "æ˜ŸæœŸäº”", "æ˜ŸæœŸå…­");
+    var dt = new Date();
+    var year = dt.getFullYear();
+    var month = dt.getMonth() + 1;
+    var date = dt.getDate();
+    var day = dt.getDay();
+    var hours = dt.getHours();
+    var minutes = dt.getMinutes();
+    var seconds = dt.getSeconds();
+    return checkTime(year) + '-' + checkTime(month) + '-' + checkTime(date) + ' ' + week_desc[day] + ' ' +
+            checkTime(hours) + ':' + checkTime(minutes) + ':' + checkTime(seconds);
+}
+
+function updateTime() 
+{
+    if ($('#system-time').length > 0) 
+    {
+        var fmt_time = formatSysTime();
+        $('#system-time').html(fmt_time);
+    }
+
+    setTimeout('updateTime()', 1000);
+}
+
+function checkTime(i) 
+{
+    if (i < 10) {
+        i = '0' + i;
+    }
+    return i;
+}
+
+function show_cover(){ 
+    var cover = document.getElementById("cover"); 
+    var covershow = document.getElementById("coverShow"); 
+    cover.style.display = "block"; 
+    covershow.style.display = "block"; 
+} 
+
+function hide_cover(){ 
+    var cover = document.getElementById("cover"); 
+    var covershow = document.getElementById("coverShow"); 
+    cover.style.display = "none"; 
+    covershow.style.display = "none"; 
+} 
+
+function set_ping_dest(ping_dest)
+{
+    document.getElementById("PingDest").value = ping_dest;
+
+    return true;
+}
+
+
+function is_number(num_string,nMin,nMax){
+    var c;
+    var ch = "-0123456789";
+    if(num_string.length == 0){
+        return false;
+    }
+    for (var i = 0; i < num_string.length; i++){
+        c = num_string.charAt(i);
+        if (ch.indexOf(c) == -1)
+            return false;
+    }
+    if(parseInt(num_string) < nMin || parseInt(num_string) > nMax)
+        return false;
+    return true;
+}
+
+var g_ping_flag = false;
+var g_time;
+
+function StartPing()
+{
+    var PtcID = "";
+    var PingNum = document.getElementById("PingNum").value;
+    var PingPacketSize = document.getElementById("PingPacketSize").value;
+    var ptcs = document.getElementsByName("PtcCheckBox");
+
+    for(var i = 0; i < ptcs.length; i++) 
+    {
+        if (ptcs[i].checked)
+        {
+            PtcID = ptcs[i].value;
+        }
+    }
+
+    if (PtcID == "")
+    {
+        alert("è¯·é€‰æ‹©PTC!");
+        return false;
+    }   
+        
+    if(!is_number(PingNum, 1, 100))
+    {
+        alert("'Pingçš„æ¬¡æ•°' èŒƒå›´ä¸º1-100!");
+        return false;
+    }       
+        
+    if(!is_number(PingPacketSize, 56, 1024))
+    {
+        alert("'åŒ…é•¿'èŒƒå›´ä¸º56-1024!");
+        return false;
+    }
+
+    document.getElementById("InfoPing").value = "";
+    var url = "/cgi-bin/startPing?ptcID="+PtcID+"&PingPacketSize="+PingPacketSize;
+    g_ping_flag = true;
+    submit_ping_url(url, PtcID, PingNum, 0);
+}
+
+function StopPing()
+{
+    g_ping_flag = false;
+    clearTimeout(g_time);
+    return true;
+}
+
+function submit_ping_url(url, PtcID, PingNum, seq)
+{
+    var urlOriginal = url;
+    if (seq < PingNum - 1)
+    {
+        if (g_ping_flag == true)
+        {
+            setTimeout(function(){submit_ping_url(urlOriginal, PtcID, PingNum, seq+1); }, 2000);        
+        }
+        else
+        {
+            return true;
+        }
+    }
+    url += "&seq="+seq;
+    var xmlhttp = null;
+    if (window.XMLHttpRequest)
+    {
+        xmlhttp=new XMLHttpRequest();
+    }
+    else
+    {
+        xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    xmlhttp.onreadystatechange=function()
+    {
+        if (xmlhttp.readyState==4 && xmlhttp.status==200)
+        {
+            //var value = document.getElementById("InfoPing").value;
+            //value += xmlhttp.responseText;
+            //document.getElementById("InfoPing").value = value;
+            /* è·å¾—ç»“æœä»æ•°æ®åº“ä¸­ */
+            g_time = setTimeout(function(){get_ping_result_from_db(PtcID, seq); }, 3000);
+        }
+    }
+    xmlhttp.open("GET",url,true);
+    xmlhttp.setRequestHeader("If-Modified-Since", "0");
+    xmlhttp.send();
+}
+
+
+function get_ping_result_from_db(PtcID, seq)
+{
+    var url = "/cgi-bin/get_ping_result?ptcID="+PtcID+"&seq="+seq;
+    var xmlhttp = null;
+
+    if (window.XMLHttpRequest)
+    {
+        xmlhttp=new XMLHttpRequest();
+    }
+    else
+    {
+        xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    xmlhttp.onreadystatechange=function()
+    {
+        if (xmlhttp.readyState==4 && xmlhttp.status==200)
+        {
+            var value = document.getElementById("InfoPing").value;
+            value += xmlhttp.responseText;
+            document.getElementById("InfoPing").value = value;
+        }
+    }
+    xmlhttp.open("GET",url,true);
+    xmlhttp.setRequestHeader("If-Modified-Since", "0");
+    xmlhttp.send();
+}
+
+
+function cancel_upgrade()
+{
+    var url = "/cgi-bin/cancel_upgrade";
+
+    var xmlhttp = null;
+    if (window.XMLHttpRequest)
+    {
+        xmlhttp=new XMLHttpRequest();
+    }
+    else
+    {
+        xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    xmlhttp.onreadystatechange=function()
+    {
+        if (xmlhttp.readyState==4 && xmlhttp.status==200)
+        {
+            location.reload();
+        }
+    }
+    xmlhttp.open("GET",url,true);
+    xmlhttp.setRequestHeader("If-Modified-Since", "0");
+    xmlhttp.send();
+}

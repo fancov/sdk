@@ -1293,7 +1293,6 @@ S32 pts_login_verify(S32 lSockfd, PT_MSG_TAG *pstMsgDes, S8 *pData, struct socka
             }
             else
             {
-                printf("login : verify succ\n");
                 pt_logr_info("login : verify succ");
                 lRet = DOS_SUCC;
             }
@@ -1354,6 +1353,27 @@ VOID pts_send_exit_notify2ptc(PT_CC_CB_ST *pstPtcNode, PT_NEND_RECV_NODE_ST *pst
     sendto(pstPtcNode->lSocket, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG), 0,  (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
 }
 
+void tv_sub(struct timeval *recvtime,struct timeval *sendtime)
+{
+    long sec = recvtime->tv_sec - sendtime->tv_sec;
+    long usec = recvtime->tv_usec - sendtime->tv_usec;
+    if(usec >= 0){
+        recvtime->tv_sec = sec;
+        recvtime->tv_usec = usec;
+    }else{
+        recvtime->tv_sec = sec - 1;
+        recvtime->tv_usec = -usec;
+    }
+}
+
+S32 pts_get_curr_position_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name)
+{
+    *(S32 *)para = atoi(column_value[0]);
+
+    return 0;
+}
+
+
 /**
  * 函数：VOID pts_ctrl_msg_handle(S32 lSockfd, U32 ulStreamID, S8 *pData, struct sockaddr_in stClientAddr)
  * 功能：
@@ -1380,6 +1400,12 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
     U16 usPtcIntranetPort = 0;
     U16 usPtcInternetPort = 0;
     S8 szPtcType[PT_DATA_BUFF_10] = {0};
+    PT_PING_PACKET_ST *pstPingPacket = NULL;
+    struct timeval stEndTime;
+    U32 ulPingTime;
+    S32 lCurPosition = -1;
+    U32 ulDataField = 0;
+    double dHBTimeInterval = 0.0;
 
     pstMsgDes = (PT_MSG_TAG *)pData;
     pstCtrlData = (PT_CTRL_DATA_ST *)(pData + sizeof(PT_MSG_TAG));
@@ -1392,11 +1418,10 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
 
     dos_memcpy(szID, pstMsgDes->aucID, PTC_ID_LEN);
     szID[PTC_ID_LEN] = '\0';
-    switch (pstCtrlData->enCtrlType)
+    switch (pstMsgDes->ulStreamID) //pstCtrlData->enCtrlType
     {
         case PT_CTRL_LOGIN_REQ:
             /* 登陆请求 */
-            printf("recv login req\n");
             if (pts_is_ptc_id(szID))
             {
                 pt_logr_debug("request login ipcc id is %s", szID);
@@ -1413,9 +1438,8 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
             break;
         case PT_CTRL_LOGIN_RSP:
             /* 登陆验证, 添加结果到接收缓存，若验证成功，开启心跳定时器 */
-            printf("login rsp\n");
+            printf("login rsp : %.16s\n", pstMsgDes->aucID);
             lResult = pts_login_verify(lSockfd, pstMsgDes, pData, stClientAddr, pstCtrlData->szVersion);
-            printf("lResult : %d\n", lResult);
             if (DOS_SUCC == lResult)
             {
                 inet_ntop(AF_INET, (void *)(pstMsgDes->aulServIp), szPtcIntranetIP, IPV6_SIZE);
@@ -1429,7 +1453,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
                         strcpy(szPtcType, "OEM");
                         break;
                     case PT_PTC_TYPE_WINDOWS:
-                        strcpy(szPtcType, "WINDOWS");
+                        strcpy(szPtcType, "PC");
                         break;
                     case PT_PTC_TYPE_IPCC:
                         strcpy(szPtcType, "IPCC");
@@ -1437,37 +1461,37 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
                     default:
                         break;
                 }
-                printf("%d\n", __LINE__);
-
-                sprintf(achSql,"select count(*) from ipcc_alias where sn='%.*s'", PTC_ID_LEN, pstMsgDes->aucID);
+                sprintf(achSql, "select count(*) from ipcc_alias where sn='%.*s'", PTC_ID_LEN, pstMsgDes->aucID);
                 if (dos_sqlite3_record_is_exist(g_stMySqlite, achSql))  /* 判断是否存在 */
                 {
                     /* 存在，更新IPCC的注册状态 */
                     pt_logr_debug("pts_send_msg2client : db existed");
-                    sprintf(achSql, "update ipcc_alias set register=1, name='%s', version='%s', lastLoginTime=datetime('now','localtime'), intranetIP='%s'\
-                        , intranetPort=%d, internetIP='%s', internetPort=%d, ptcType='%s', achPtsMajorDomain='%s', achPtsMinorDomain='%s'\
-                        , usPtsMajorPort=%d, usPtsMinorPort=%d, szPtsHistoryIp1='%s', szPtsHistoryIp2='%s', szPtsHistoryIp3='%s'\
-                        , usPtsHistoryPort1=%d, usPtsHistoryPort2=%d, usPtsHistoryPort3=%d, szMac='%s' where sn='%.*s';"
-                        , pstCtrlData->szPtcName, pstCtrlData->szVersion, szPtcIntranetIP, usPtcIntranetPort, szPtcInternetIP, usPtcInternetPort
-                        , szPtcType, pstCtrlData->achPtsMajorDomain, pstCtrlData->achPtsMinorDomain, dos_ntohs(pstCtrlData->usPtsMajorPort)
-                        , dos_ntohs(pstCtrlData->usPtsMinorPort), pstCtrlData->szPtsHistoryIp1, pstCtrlData->szPtsHistoryIp2, pstCtrlData->szPtsHistoryIp3
-                        , dos_ntohs(pstCtrlData->usPtsHistoryPort1), dos_ntohs(pstCtrlData->usPtsHistoryPort2), dos_ntohs(pstCtrlData->usPtsHistoryPort3)
-                        , pstCtrlData->szMac, PTC_ID_LEN, pstMsgDes->aucID);
+                    dos_snprintf(achSql, PTS_SQL_STR_SIZE, "update ipcc_alias set register=1, name='%s', version='%s', lastLoginTime=datetime('now','localtime'), intranetIP='%s'\
+, intranetPort=%d, internetIP='%s', internetPort=%d, ptcType='%s', achPtsMajorDomain='%s', achPtsMinorDomain='%s'\
+, usPtsMajorPort=%d, usPtsMinorPort=%d, szPtsHistoryIp1='%s', szPtsHistoryIp2='%s', szPtsHistoryIp3='%s'\
+, usPtsHistoryPort1=%d, usPtsHistoryPort2=%d, usPtsHistoryPort3=%d, szMac='%s' where sn='%.*s';"
+                    , pstCtrlData->szPtcName, pstCtrlData->szVersion, szPtcIntranetIP, usPtcIntranetPort, szPtcInternetIP, usPtcInternetPort
+                    , szPtcType, pstCtrlData->achPtsMajorDomain, pstCtrlData->achPtsMinorDomain, dos_ntohs(pstCtrlData->usPtsMajorPort)
+                    , dos_ntohs(pstCtrlData->usPtsMinorPort), pstCtrlData->szPtsHistoryIp1, pstCtrlData->szPtsHistoryIp2, pstCtrlData->szPtsHistoryIp3
+                    , dos_ntohs(pstCtrlData->usPtsHistoryPort1), dos_ntohs(pstCtrlData->usPtsHistoryPort2), dos_ntohs(pstCtrlData->usPtsHistoryPort3)
+                    , pstCtrlData->szMac, PTC_ID_LEN, pstMsgDes->aucID);
 
-                    dos_sqlite3_exec(g_stMySqlite, achSql);
+                    lResult = dos_sqlite3_exec(g_stMySqlite, achSql);
                 }
                 else
                 {
                     /* 不存在，添加IPCC到DB */
                     pt_logr_debug("pts_send_msg2client : db insert");
-                    sprintf(achSql, "INSERT INTO ipcc_alias (\"id\", \"sn\", \"name\", \"remark\", \"version\", \"register\", \"domain\", \"intranetIP\", \"internetIP\", \"intranetPort\"\
-                        , \"internetPort\", \"ptcType\", \"achPtsMajorDomain\", \"achPtsMinorDomain\", \"usPtsMajorPort\", \"usPtsMinorPort\", \"szPtsHistoryIp1\", \"szPtsHistoryIp2\", \"szPtsHistoryIp3\"\
-                        , \"usPtsHistoryPort1\", \"usPtsHistoryPort2\", \"usPtsHistoryPort3\", \"szMac\") VALUES (NULL, '%s', '%s', NULL, '%s', %d, NULL, '%s', '%s', %d, %d, '%s', '%s', '%s', %d, %d, '%s', '%s', '%s', %d, %d, %d, '%s');"
+                    dos_snprintf(achSql, PTS_SQL_STR_SIZE, "INSERT INTO ipcc_alias (\"id\", \"sn\", \"name\", \"remark\", \"version\", \"register\", \"domain\", \"intranetIP\", \"internetIP\", \"intranetPort\"\
+, \"internetPort\", \"ptcType\", \"achPtsMajorDomain\", \"achPtsMinorDomain\", \"usPtsMajorPort\", \"usPtsMinorPort\", \"szPtsHistoryIp1\", \"szPtsHistoryIp2\", \"szPtsHistoryIp3\"\
+, \"usPtsHistoryPort1\", \"usPtsHistoryPort2\", \"usPtsHistoryPort3\", \"szMac\") VALUES (NULL, '%s', '%s', NULL, '%s', %d, NULL, '%s', '%s', %d, %d, '%s', '%s', '%s', %d, %d, '%s', '%s', '%s', %d, %d, %d, '%s');"
                         , szID, pstCtrlData->szPtcName, pstCtrlData->szVersion, DOS_TRUE, szPtcIntranetIP, szPtcInternetIP, usPtcIntranetPort, usPtcInternetPort, szPtcType
                         , pstCtrlData->achPtsMajorDomain, pstCtrlData->achPtsMinorDomain, dos_ntohs(pstCtrlData->usPtsMajorPort), dos_ntohs(pstCtrlData->usPtsMinorPort)
                         , pstCtrlData->szPtsHistoryIp1, pstCtrlData->szPtsHistoryIp2, pstCtrlData->szPtsHistoryIp3, dos_ntohs(pstCtrlData->usPtsHistoryPort1)
                         , dos_ntohs(pstCtrlData->usPtsHistoryPort2), dos_ntohs(pstCtrlData->usPtsHistoryPort3), pstCtrlData->szMac);
-                    dos_sqlite3_exec(g_stMySqlite, achSql);
+
+                    lResult = dos_sqlite3_exec(g_stMySqlite, achSql);
+                    printf("lResult :%d\n", lResult);
                 }
             }
 
@@ -1479,11 +1503,16 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
             break;
         case PT_CTRL_HB_REQ:
             /* 心跳, 修改ptc中的usHBOutTimeCount */
-            pt_logr_debug("recv hb from ptc");
+            pt_logr_debug("recv hb from ptc : %s\n", pstMsgDes->aucID);
+            dHBTimeInterval = (double)pstCtrlData->lHBTimeInterval/1000;
+            /* 将心跳和响应之间的时间差，更新到数据库 */
+            dos_snprintf(achSql, PTS_SQL_STR_SIZE, "update ipcc_alias set heartbeatTime=%.2f where sn='%.*s';", dHBTimeInterval, PTC_ID_LEN, pstMsgDes->aucID);
+            lResult = dos_sqlite3_exec(g_stMySqlite, achSql);
             pstPtcNode = pt_ptc_list_search(g_pstPtcListRecv, pstMsgDes->aucID);
             if(NULL == pstPtcNode)
             {
                 pt_logr_info("pts_ctrl_msg_handle : can not found ptc id = %.16s", pstMsgDes->aucID);
+                printf("pts_ctrl_msg_handle : can not found ptc id = %.16s\n", pstMsgDes->aucID);
                 break;
             }
             else
@@ -1517,6 +1546,42 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
             {
                 sprintf(achSql, "update ipcc_alias set usPtsMinorPort=%d where sn='%.*s';", dos_ntohs(pstCtrlData->usPtsMinorPort), PTC_ID_LEN, pstMsgDes->aucID);
                 dos_sqlite3_exec(g_stMySqlite, achSql);
+            }
+            break;
+        case PT_CTRL_PING_ACK:
+            pstPingPacket = (PT_PING_PACKET_ST *)(pData + sizeof(PT_MSG_TAG));
+            gettimeofday(&stEndTime, NULL);
+            /* 计算时间差 */
+            ulPingTime = (stEndTime.tv_sec - pstPingPacket->stStartTime.tv_sec) * 1000 * 1000 + (stEndTime.tv_usec - pstPingPacket->stStartTime.tv_usec);
+            /* 不超过超时时间 */
+            if (ulPingTime < (PTS_PING_TIMEOUT)*1000)
+            {
+                dos_tmr_stop(&pstPingPacket->hTmrHandle);
+                pstPingPacket->hTmrHandle = NULL;
+                sprintf(achSql,"select curr_position from ping_result where sn='%.*s' limit 1 ", PTC_ID_LEN, pstMsgDes->aucID);
+                lResult = dos_sqlite3_exec_callback(g_stMySqlite, achSql, pts_get_curr_position_callback, (VOID *)&lCurPosition);
+                if (lResult != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                    return;
+                }
+
+                if (lCurPosition < 0)
+                {
+                    dos_snprintf(achSql, PTS_SQL_STR_SIZE, "INSERT INTO ping_result (\"id\", \"sn\", \"curr_position\", \"timer0\") VALUES (NULL, '%.*s', 0, %d)", PTC_ID_LEN, pstMsgDes->aucID, ulPingTime);
+                }
+                else
+                {
+                    ulDataField = lCurPosition + 1;
+                    if (ulDataField > 7)
+                    {
+                        ulDataField = 0;
+                    }
+
+                    dos_snprintf(achSql, PTS_SQL_STR_SIZE, "update ping_result set curr_position=%d, timer%d=%d where sn='%.*s'", ulDataField, ulDataField, ulPingTime, PTC_ID_LEN, pstMsgDes->aucID);
+                }
+
+                lResult = dos_sqlite3_exec(g_stMySqlite, achSql);
             }
             break;
         default:
@@ -1833,7 +1898,7 @@ VOID *pts_send_msg2ptc(VOID *arg)
     PT_STREAM_CB_ST  *pstStreamNode   = NULL;
     PT_DATA_TCP_ST   *pstSendDataHead = NULL;
     PT_DATA_TCP_ST   stSendDataNode;
-    S8 acBuff[PT_SEND_DATA_SIZE]      = {0};
+    S8 acBuff[PT_SEND_DATA_SIZE] = {0};
     PT_NEND_SEND_NODE_ST *pstNeedSendNode = NULL;
     PT_DATA_TCP_ST    stRecvDataTcp;
     S32 lResult = 0;
@@ -1989,7 +2054,6 @@ VOID *pts_send_msg2ptc(VOID *arg)
                     dos_memcpy(acBuff+sizeof(PT_MSG_TAG), stRecvDataTcp.szBuff, stRecvDataTcp.ulLen);
                     pt_logr_info("send data to ptc, streamID : %d", pstNeedSendNode->ulStreamID);
                     sendto(lSockfd, acBuff, stRecvDataTcp.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
-
                 }
                 else
                 {

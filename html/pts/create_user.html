@@ -1,23 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <title>AMC</title>
 <SCRIPT src="ddsmoothmenu.js" type=text/javascript></SCRIPT>
 <SCRIPT src="pts_public.js" type=text/javascript></SCRIPT>
-
+<link rel="shortcut icon" href="../images/favicon.png">
 <LINK href="ddsmoothmenu.css" type=text/css rel=stylesheet>
 <link href="create_user.css" type="text/css" rel="stylesheet">
 <style>
-	*{font-family: "Î¢ÈíÑÅºÚ"}
+	*{font-family: "å¾®è½¯é›…é»‘"}
 	.content_body{margin: auto 25px; font-size: 13px;}
 	.content_title{border-bottom:1px solid #000000; padding-bottom:2px; margin-bottom: 10px;}
 	.content_title p{padding-bottom:0; margin-bottom: 0px;}
 	.nav_content{margin:0; width:100%; height:50px; background-color:#747474; font-size: 14px; }
 	.nav_left{float:left;}
-	.nav_right{float:right; margin-right:25px;}
+	.nav_right{float:right; margin-right:15px; margin-top: 0px; width: 200px; height:50px; over-flow:auto;}
+	.nav_right p{line-height: 14px; margin: 0px; padding: 0px;}
+	.nav_right td{ margin: 0px; padding: 0px; border: 0px;}
+	.longin_user{margin-right:100px;color: #F4F4F4;}
+	.longout{float:right; margin-right:0px; border: 0px;}
+	.longout img{border: 0px;}
 </style>
-
+<script type="text/javascript">
+updateTime();
+</script>
 </head>
 
 <body style="margin:0; padding:0; background:#fafafa;">
@@ -25,59 +32,74 @@
 <div class="nav_content">
 	<div class="ddsmoothmenu nav_left" id="smoothmenu1">
 	<UL>
-	  <LI><A href="index.html">Ô¶³Ì·ÃÎÊ</A></LI>
-	  <LI><A href="#">PTC¹ÜÀí</A> 
+	  <LI><A href="index.html">è¿œç¨‹è®¿é—®</A></LI>
+	  <LI><A href="#">PTCç®¡ç†</A> 
 		<UL>
-			<LI><A href="pts_switch.html">PTSÇĞ»»</A> </LI>
-			<LI><A href="pts_config.html">PTCÅäÖÃ</A> </LI>
-			<LI><A href="pts_upgrades.html">PTCÉı¼¶</A> </LI>
+			<LI><A href="pts_switch.html">PTSåˆ‡æ¢</A> </LI>
+			<LI><A href="pts_config.html">PTCé…ç½®</A> </LI>
+			<LI><A href="pts_upgrades.html">PTCå‡çº§</A> </LI>
 		</UL>
 	  </LI>
-	  <LI><A href="pts_user.html">ÓÃ»§¹ÜÀí</A></LI>
+	  <LI><A href="pts_user.html">ç”¨æˆ·ç®¡ç†</A></LI>
+	  <LI><A href="#">å·¥å…·</A>
+      <UL>
+        <LI><A href="pts_ping.html">Pingæµ‹è¯•</A></LI>
+      </UL>
+    </LI>
 	</UL>
 	</div>
-	<div class="nav_right" ><p><a href="javascript:;" onclick="exit()"> Exit </a></p></div>
+	<div class="nav_right" > 
+		<table style="height:48px; border-spacing: 0px; border-collapse:collapse;">
+			<tr>
+				<td style="width:180px;"><p class="longin_user"> <% curr_user(); %> æ‚¨å¥½ï¼</p></td>
+				<td rowspan="2"><div class="longout"><a href="javascript:;" onclick="exit()"><img  src="../images/logout.png" /></a></div></td>
+			</tr>
+			<tr>
+				<td style="width:180px; padding: 0px;" ><p id="system-time" style="font:11px tahoma;height:10px;width:160px;color: #F4F4F4;"></p></td>
+			</tr>
+		</table>
+	</div>
 </div>
 <br>
 
 <div class="content_body">
-	<form name="form1" method="post" action="/goform/create_user">
+	<form name="form1" method="post" action="/goform/create_user" accept-charset="gb2312">
 		<ul>
 			<li>
-				<label>ÓÃ»§Ãû£º</label>
-				<input type="text" name="name" placeholder="ÇëÊäÈëÓÃ»§Ãû"  onblur="checkna()" required/><span class="tips" id="divname">³¤¶È1~12¸ö×Ö·û</span>
+				<label>ç”¨æˆ·åï¼š</label>
+				<input type="text" name="name" placeholder="è¯·è¾“å…¥ç”¨æˆ·å"  onblur="checkna()" onkeyup="this.value=this.value.replace(/[\W]/g,'')" maxlength="12"  required/><span class="tips" id="divname">é•¿åº¦1~12ä¸ªå­—ç¬¦</span>
 			</li>
 			<li>
-				<label>ÃÜÂë£º</label>
-				<input type="password" name="password" placeholder="ÇëÊäÈëÄãµÄÃÜÂë" onBlur="checkpsd1()" required/><span class="tips" id="divpassword1">ÃÜÂë±ØĞëÓÉ×ÖÄ¸ºÍÊı×Ö×é³É</span>
+				<label>å¯†ç ï¼š</label>
+				<input type="password" name="password" placeholder="è¯·è¾“å…¥ä½ çš„å¯†ç " onBlur="checkpsd1()" maxlength="16"  required/><span class="tips" id="divpassword1">å¯†ç å¿…é¡»ç”±å­—æ¯å’Œæ•°å­—ç»„æˆ</span>
 			</li>
 			<li>
-				<label>È·ÈÏÃÜÂë£º</label>
-				<input type="password" name="password2" placeholder="ÇëÔÙ´ÎÊäÈëÄãµÄÃÜÂë" onBlur="checkpsd2()" required/><span class="tips" id="divpassword2">Á½´ÎÃÜÂëĞèÒªÏàÍ¬</span>
+				<label>ç¡®è®¤å¯†ç ï¼š</label>
+				<input type="password" name="password2" placeholder="è¯·å†æ¬¡è¾“å…¥ä½ çš„å¯†ç " onBlur="checkpsd2()" maxlength="16"  required/><span class="tips" id="divpassword2">ä¸¤æ¬¡å¯†ç éœ€è¦ç›¸åŒ</span>
 			</li>
 			<li>
-				<label>ĞÕÃû£º</label>
-				<input type="text" name="userName" placeholder="ÇëÊäÈëÄãµÄĞÕÃû" onBlur="" /><span class="tips" id="divmail"></span>
+				<label>å§“åï¼š</label>
+				<input type="text" name="userName" placeholder="è¯·è¾“å…¥ä½ çš„å§“å" onBlur="" maxlength="32"/><span class="tips" id="divmail"></span>
 			</li>
 			<li>
-				<label>¹Ì»°£º</label>
-				<input type="text" name="fixedTel" placeholder="ÇëÊäÈëÄãµÄ¹Ì¶¨µç»°" onBlur="" /><span class="tips" id="divmail"></span>
+				<label>å›ºè¯ï¼š</label>
+				<input type="text" name="fixedTel" placeholder="è¯·è¾“å…¥ä½ çš„å›ºå®šç”µè¯"  onkeyup="this.value=this.value.replace(/\D/g,'')" maxlength="14" /><span class="tips" id="divmail"></span>
 			</li>
 			<li>
-				<label>ÊÖ»ú£º</label>
-				<input type="text" name="mobile" placeholder="ÇëÊäÈëÄãµÄÊÖ»úºÅ" onBlur="" /><span class="tips" id="divmail"></span>
+				<label>æ‰‹æœºï¼š</label>
+				<input type="text" name="mobile" placeholder="è¯·è¾“å…¥ä½ çš„æ‰‹æœºå·" onkeyup="this.value=this.value.replace(/\D/g,'')" maxlength="11" /><span class="tips" id="divmail"></span>
 			</li>
 			<li>
-				<label>µç×ÓÓÊÏä£º</label>
-				<input type="text" name="mailbox" placeholder="ÇëÊäÈëÄãµÄÓÊÏä" onBlur="" /><span class="tips" id="divmail"></span>
-			</li>
-			<li style="border-bottom:0;">
-				<p align="center">
-					<input type="submit" value="Ìá½»" />&nbsp;&nbsp;&nbsp;&nbsp;
-					<input type="reset" value="È¡Ïû" />
-				</p>
+				<label>ç”µå­é‚®ç®±ï¼š</label>
+				<input type="text" name="mailbox" placeholder="è¯·è¾“å…¥ä½ çš„é‚®ç®±" onBlur="check_mail_format()" /><span class="tips" id="divmail"></span>
 			</li>
 		</ul>
+		<div style="border-bottom:0;">
+			<p align="center">
+				<input type="submit" value="æäº¤" />&nbsp;&nbsp;&nbsp;&nbsp;
+				<input type="reset" value="å–æ¶ˆ" />
+			</p>
+		</div>
 	</form>
 </div>
 </body>

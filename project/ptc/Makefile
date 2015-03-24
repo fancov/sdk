@@ -13,12 +13,7 @@ DOS_INCLUDES			= -I$(SROUCE)/include
 
 SUFFIX					= o
 
-LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86
-
-MYSQL_HEADERS			= -I/usr/include/mysql
-MYSQL_LIBS				= -L/usr/lib/mysql
-
-
+LIBS					= -lpthread -lmxml_x86
 
 ########################################################################
 #                      Collect other makefile                          # 
@@ -43,8 +38,8 @@ include $(SROUCE)/service/ptlib/Makefile.mk
 ########################################################################
 ALL_OBJS	= $(C_OBJ_FILE) $(CXX_OBJ_FILE) 
 ALL_SRCS	= $(C_FILE) $(CXX_FILE)
-ALL_HEADERS	= $(DOS_INCLUDES) $(MYSQL_HEADERS)
-ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS) 
+ALL_HEADERS	= $(DOS_INCLUDES)
+ALL_LIBS	= $(DOS_LIBS) $(LIBS) 
 
 ########################################################################
 #                         Define the Complie                           # 
