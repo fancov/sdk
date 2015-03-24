@@ -259,7 +259,6 @@ FUNCATTR S32 db_query(DB_HANDLE_ST *pstDBHandle, S8 *pszSQL, S32 (*callback)(VOI
     if (!pstDBHandle)
     {
         db_assert(0);
-
         return DB_ERR_INVALID_PARAMS;
     }
 

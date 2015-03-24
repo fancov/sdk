@@ -4,6 +4,7 @@
 extern "C"{
 #endif /* __cplusplus */
 #include <dos.h>
+#include <dos/dos_config.h>
 #include "db_mysql.h"
 
 #if DB_MYSQL
@@ -12,6 +13,7 @@ FUNCATTR S32 db_mysql_open(MYSQL *pstMysql, S8 *pszHost, U16 usPort, S8 *pszUser
 {
     S8 value = 1;
     U32 ulTimeout = 1;
+    S8  szSockPath[64] = {0, };
 
     if (!pstMysql || !pszHost)
     {
@@ -27,11 +29,17 @@ FUNCATTR S32 db_mysql_open(MYSQL *pstMysql, S8 *pszHost, U16 usPort, S8 *pszUser
         return -1;
     }
 
+    if (0 > config_get_mysqlsock_path(szSockPath, sizeof(szSockPath)))
+    {
+        db_assert(0);
+        return -1;
+    }
+
     /* …Ë÷√∂¡–¥≥¨ ±£¨±‹√‚◊Ë»˚ */
     mysql_options(pstMysql, MYSQL_OPT_READ_TIMEOUT , &ulTimeout);
     mysql_options(pstMysql, MYSQL_OPT_WRITE_TIMEOUT , &ulTimeout);
 
-    if (!mysql_real_connect(pstMysql, pszHost, pszUsername, pszPassword, pszDBName, usPort,  "/tmp/mysql.sock", 0))
+    if (!mysql_real_connect(pstMysql, pszHost, pszUsername, pszPassword, pszDBName, usPort,  szSockPath, 0))
     {
         db_assert(0);
 
