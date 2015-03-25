@@ -316,7 +316,7 @@ static S32 bsd_walk_billing_rule_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8
         || dos_atoul(aszData[6], &ulDstAttrType2) < 0
         || dos_atoul(aszData[7], &stBillingRule.ulSrcAttrValue1) < 0
         || dos_atoul(aszData[8], &stBillingRule.ulSrcAttrValue2) < 0
-        || dos_atoul(aszData[8], &stBillingRule.ulDstAttrValue1) < 0
+        || dos_atoul(aszData[9], &stBillingRule.ulDstAttrValue1) < 0
         || dos_atoul(aszData[10], &stBillingRule.ulDstAttrValue2) < 0
         || dos_atoul(aszData[11], &stBillingRule.ulFirstBillingUnit) < 0
         || dos_atoul(aszData[12], &stBillingRule.ulNextBillingUnit) < 0
@@ -385,6 +385,7 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
             if (DOS_ADDR_INVALID(aszData[lIndex])
                 || dos_atoul(aszData[lIndex], &ulPkgID) < 0)
             {
+                /* 这个地方时有可能的，如果一个计费业务中没有任何计费规则时，就会有么个业务不存在任何计费规则 */
                 DOS_ASSERT(0);
                 break;
             }
@@ -451,6 +452,153 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
     return 0;
 }
 
+S32 bsd_walk_billing_package_tbl_cb1(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFields)
+{
+    U32                     ulBillPkgID, ulServType, ulHashIndex, ulIndex;
+    U32                     ulSrcAttrType1, ulSrcAttrType2, ulDstAttrType1, ulDstAttrType2;
+    U32                     ulFirstBillingCnt, ulNextBillingCnt, ulBillingType;
+    BOOL                    blFound;
+    HASH_NODE_S             *pstHashNode = NULL;
+    BS_BILLING_RULE_ST      stBillingRule;
+    BS_BILLING_PACKAGE_ST   *pstBillingPkg = NULL;
+
+    if (DOS_ADDR_INVALID(aszData)
+        || DOS_ADDR_INVALID(aszFields))
+    {
+        DOS_ASSERT(0);
+
+        return -1;
+    }
+
+    if (dos_atoul(aszData[0], &ulBillPkgID) < 0
+        || dos_atoul(aszData[1], &ulServType) < 0)
+    {
+        return -1;
+    }
+
+    if (dos_atoul(aszData[2], &stBillingRule.ulRuleID) < 0
+        || dos_atoul(aszData[5], &ulSrcAttrType1) < 0
+        || dos_atoul(aszData[6], &ulSrcAttrType2) < 0
+        || dos_atoul(aszData[7], &ulDstAttrType1) < 0
+        || dos_atoul(aszData[8], &ulDstAttrType2) < 0
+        || dos_atoul(aszData[9], &stBillingRule.ulSrcAttrValue1) < 0
+        || dos_atoul(aszData[10], &stBillingRule.ulSrcAttrValue2) < 0
+        || dos_atoul(aszData[11], &stBillingRule.ulDstAttrValue1) < 0
+        || dos_atoul(aszData[12], &stBillingRule.ulDstAttrValue2) < 0
+        || dos_atoul(aszData[13], &stBillingRule.ulFirstBillingUnit) < 0
+        || dos_atoul(aszData[14], &stBillingRule.ulNextBillingUnit) < 0
+        || dos_atoul(aszData[15], &ulFirstBillingCnt) < 0
+        || dos_atoul(aszData[16], &ulNextBillingCnt) < 0
+        || dos_atoul(aszData[18], &ulBillingType) < 0
+        || dos_atoul(aszData[19], &stBillingRule.ulBillingRate) < 0
+        || dos_atoul(aszData[20], &stBillingRule.ulEffectTimestamp) < 0
+        || dos_atoul(aszData[21], &stBillingRule.ulExpireTimestamp) < 0)
+    {
+        DOS_ASSERT(0);
+
+        return -1;
+    }
+
+    stBillingRule.ulPackageID = ulBillPkgID;
+    stBillingRule.ucSrcAttrType1 = (U8)ulSrcAttrType1;
+    stBillingRule.ucSrcAttrType2 = (U8)ulSrcAttrType2;
+    stBillingRule.ucDstAttrType1 = (U8)ulDstAttrType1;
+    stBillingRule.ucDstAttrType2 = (U8)ulDstAttrType2;
+    stBillingRule.ucFirstBillingCnt = (U8)ulFirstBillingCnt;
+    stBillingRule.ucNextBillingCnt = (U8)ulNextBillingCnt;
+    stBillingRule.ucServType = (U8)ulServType;
+    stBillingRule.ucBillingType = (U8)ulBillingType;
+
+    pthread_mutex_lock(&g_mutexBillingPackageTbl);
+    blFound = DOS_FALSE;
+    HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                break;
+            }
+
+            pstBillingPkg = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstBillingPkg))
+            {
+                continue;
+            }
+
+            if (pstBillingPkg->ulPackageID == ulBillPkgID
+                && pstBillingPkg->ucServType == ulServType)
+            {
+                /* 遍历找到一个没有使用的插进去 */
+                for (ulIndex=0; ulIndex<BS_MAX_BILLING_RULE_IN_PACKAGE; ulIndex++)
+                {
+                    if (!pstBillingPkg->astRule[ulIndex].ucValid)
+                    {
+                        dos_memcpy(&pstBillingPkg->astRule[ulIndex], &stBillingRule, sizeof(stBillingRule));
+
+                        pstBillingPkg->astRule[ulIndex].ucValid = DOS_TRUE;
+
+                        break;
+                    }
+                }
+
+                blFound = DOS_TRUE;
+                break;
+            }
+        }
+    }
+
+    if (!blFound)
+    {
+        ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulBillPkgID);
+        if (U32_BUTT == ulHashIndex)
+        {
+            pthread_mutex_unlock(&g_mutexBillingPackageTbl);
+
+            return DOS_FAIL;
+        }
+
+        pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+        if (DOS_ADDR_INVALID(pstHashNode))
+        {
+            DOS_ASSERT(0);
+            pthread_mutex_unlock(&g_mutexBillingPackageTbl);
+
+            return DOS_FAIL;
+        }
+
+        pstBillingPkg = dos_dmem_alloc(sizeof(BS_BILLING_PACKAGE_ST));
+        if (DOS_ADDR_INVALID(pstBillingPkg))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstHashNode);
+            pstHashNode = NULL;
+            pthread_mutex_unlock(&g_mutexBillingPackageTbl);
+
+            return DOS_FAIL;
+        }
+
+        dos_memzero(pstBillingPkg, sizeof(BS_BILLING_PACKAGE_ST));
+
+        pstBillingPkg->ulPackageID = ulBillPkgID;
+        pstBillingPkg->ucServType = (S8)ulServType;
+
+        dos_memcpy(&pstBillingPkg->astRule[0], &stBillingRule, sizeof(stBillingRule));
+        pstBillingPkg->astRule[0].ucValid = DOS_TRUE;
+
+        HASH_INIT_NODE(pstHashNode);
+        pstHashNode->pHandle = pstBillingPkg;
+
+        hash_add_node(g_astBillingPackageTbl, pstHashNode, ulHashIndex, NULL);
+    }
+
+    pthread_mutex_unlock(&g_mutexBillingPackageTbl);
+
+    return DOS_SUCC;
+}
+
+
 
 /* 遍历资费数据表 */
 S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
@@ -459,6 +607,58 @@ S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
     U32 ulHashIndex = 0;
     HASH_NODE_S *pstHashNode = NULL;
     BS_BILLING_PACKAGE_ST *pstBillingPkg = NULL;
+
+    dos_snprintf(szQuery, sizeof(szQuery)
+                   , "SELECT "
+                     "    t1.id, t2.type, t3.* "
+                     "FROM "
+                     "   tbl_billing_package t1, "
+                     "   tbl_billing_business t2, "
+                     "   tbl_billing_rule t3 "
+                     "WHERE "
+                     "   t2.id IN ( "
+                     "       t1.outgoing_calls, "
+                     "       t1.incoming_calls, "
+                     "       t1.call_forward, "
+                     "       t1.call_pickup, "
+                     "       t1.call_transfer, "
+                     "       t1.conference_call, "
+                     "       t1.internal_calls, "
+                     "       t1.mms_receive, "
+                     "       t1.mms_send, "
+                     "       t1.predictive_outbound, "
+                     "       t1.recording_business, "
+                     "       t1.rent_business, "
+                     "       t1.preview_outbound, "
+                     "       t1.voice_mail, "
+                     "       t1.settle_business, "
+                     "       t1.automatic_outbound, "
+                     "       t1.sms_receive, "
+                     "       t1.sms_send "
+                     "   ) "
+                     "AND t3.id IN ( "
+                     "   t2.billing_rule_1, "
+                     "   t2.billing_rule_2, "
+                     "   t2.billing_rule_3, "
+                     "   t2.billing_rule_4, "
+                     "   t2.billing_rule_6, "
+                     "   t2.billing_rule_6, "
+                     "   t2.billing_rule_7, "
+                     "   t2.billing_rule_8, "
+                     "   t2.billing_rule_9, "
+                     "   t2.billing_rule_10 "
+                     "); ");
+
+    if (db_query(g_pstDBHandle, szQuery, bsd_walk_billing_package_tbl_cb1, NULL, NULL) != DB_ERR_SUCC)
+    {
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read billing package from DB FAIL!");
+        return BS_INTER_ERR_FAIL;
+    }
+
+    bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read billing package from DB OK!(%u)", g_astBillingPackageTbl->NodeNum);
+
+
+    return DOS_SUCC;
 
     dos_snprintf(szQuery
                 , sizeof(szQuery)
@@ -498,7 +698,7 @@ S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
             dos_snprintf(szQuery
                           , sizeof(szQuery)
                           , "SELECT " \
-                            "  * " \
+                            "  *, t2.id " \
                             "FROM " \
                             "  tbl_billing_rule t1 " \
                             "LEFT JOIN  " \
@@ -804,15 +1004,15 @@ VOID bsd_save_voice_cdr(BS_INTER_MSG_CDR *pstMsg)
         return;
     }
 
-    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_cdr_voice("
+    dos_snprintf(szQuery, sizeof(szQuery), "INSERT IGNORE INTO tbl_cdr_voice("
                 	"`id`,`customer_id`,`account_id`,`user_id`,`task_id`,`billing_rule_id`,`type`,`fee_l1`,"
                 	"`fee_l2`,`fee_l3`,`fee_l4`,`fee_l5`,`record_file`,`caller`,`callee`,`CID`,`agent_num`,"
-                	"`pdd_len`,`ring_times`,`answer_times`,`ivr_end_times`,`dtmf_times`,`wait_agent_times`,"
+                	"`pdd_len`,`ring_times`,`answer_time`,`ivr_end_times`,`dtmf_times`,`wait_agent_times`,"
                 	"`time_len`,`hold_cnt`,`hold_times`,`peer_trunk_id`,`terminate_cause`,`release_part`,"
                 	"`payload_type`,`package_loss_rate`,`record_flag`,`agent_level`,`cdr_mark`,`cdr_type`,"
                 	"`peer_ip1`,`peer_ip2`,`peer_ip3`,`peer_ip4`)"
                 "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\", \"%s\", \"%s\""
-                	", \"%s\", \"%s\", %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u"
+                	", \"%s\", \"%s\", %u, %u, FROM_UNIXTIME(%u), %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u"
                 	", %u, %u, %u, %u, %u, %u, %u, %u);"
                 	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID
                 	, pstCDR->ulTaskID, pstCDR->ulRuleID, pstCDR->ucServType

@@ -1987,7 +1987,7 @@ U32 sc_ep_parse_event(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 U32 sc_rp_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     S8 *pszTmp = NULL;
-    U32 ulTmp  = 0;
+    U64 uLTmp  = 0;
 
     if (DOS_ADDR_INVALID(pstEvent)
         || DOS_ADDR_INVALID(pstSCB)
@@ -1999,39 +1999,43 @@ U32 sc_rp_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 
     pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Created-Time");
     if (DOS_ADDR_VALID(pszTmp)
-        && dos_atoul(pszTmp, &ulTmp) == 0)
+        && dos_atoull(pszTmp, &uLTmp) == 0)
     {
-        pstSCB->pstExtraData->ulStartTimeStamp = ulTmp;
+        pstSCB->pstExtraData->ulStartTimeStamp = uLTmp / 1000000;
+        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Created-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulStartTimeStamp);
     }
 
     pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Answered-Time");
     if (DOS_ADDR_VALID(pszTmp)
-        && dos_atoul(pszTmp, &ulTmp) == 0)
+        && dos_atoull(pszTmp, &uLTmp) == 0)
     {
-        pstSCB->pstExtraData->ulAnswerTimeStamp = ulTmp;
+        pstSCB->pstExtraData->ulAnswerTimeStamp = uLTmp / 1000000;
+        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulAnswerTimeStamp);
     }
 
     pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Progress-Time");
     if (DOS_ADDR_VALID(pszTmp)
-        && dos_atoul(pszTmp, &ulTmp) == 0)
+        && dos_atoull(pszTmp, &uLTmp) == 0)
     {
-        pstSCB->pstExtraData->ulRingTimeStamp = ulTmp;
+        pstSCB->pstExtraData->ulRingTimeStamp = uLTmp / 1000000;
+        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Progress-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulRingTimeStamp);
     }
 
     pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Progress-Media-Time");
     if (DOS_ADDR_VALID(pszTmp)
-        && dos_atoul(pszTmp, &ulTmp) == 0)
+        && dos_atoull(pszTmp, &uLTmp) == 0)
     {
-        pstSCB->pstExtraData->ulBridgeTimeStamp= ulTmp;
+        pstSCB->pstExtraData->ulBridgeTimeStamp= uLTmp / 1000000;
+        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Progress-Media-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulBridgeTimeStamp);
     }
 
     pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Hangup-Time");
     if (DOS_ADDR_VALID(pszTmp)
-        && dos_atoul(pszTmp, &ulTmp) == 0)
+        && dos_atoull(pszTmp, &uLTmp) == 0)
     {
-        pstSCB->pstExtraData->ulByeTimeStamp = ulTmp;
+        pstSCB->pstExtraData->ulByeTimeStamp = uLTmp / 1000000;
+        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Hangup-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulByeTimeStamp);
     }
-
 
     return DOS_SUCC;
 }
@@ -4470,12 +4474,14 @@ VOID* sc_ep_runtime(VOID *ptr)
         ulRet = esl_recv_event(&g_pstHandle->stRecvHandle, 1, NULL);
         if (ESL_FAIL == ulRet)
         {
+            sc_logr_info(SC_ESL, "%s", "ESL Recv event fail, continue.");
             continue;
         }
 
         esl_event_t *pstEvent = g_pstHandle->stRecvHandle.last_ievent;
         if (DOS_ADDR_INVALID(pstEvent))
         {
+            sc_logr_info(SC_ESL, "%s", "ESL get event fail, continue.");
             continue;
         }
 
