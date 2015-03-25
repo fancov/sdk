@@ -9,11 +9,10 @@ extern "C"{
 
 #if DB_MYSQL
 
-FUNCATTR S32 db_mysql_open(MYSQL *pstMysql, S8 *pszHost, U16 usPort, S8 *pszUsername, S8 *pszPassword, S8 *pszDBName, S8 **pszErrMsg)
+FUNCATTR S32 db_mysql_open(MYSQL *pstMysql, S8 *pszHost, U16 usPort, S8 *pszUsername, S8 *pszPassword, S8 *pszDBName, S8* pszSockPath, S8 **pszErrMsg)
 {
     S8 value = 1;
     U32 ulTimeout = 1;
-    S8  szSockPath[64] = {0, };
 
     if (!pstMysql || !pszHost)
     {
@@ -29,17 +28,11 @@ FUNCATTR S32 db_mysql_open(MYSQL *pstMysql, S8 *pszHost, U16 usPort, S8 *pszUser
         return -1;
     }
 
-    if (0 > config_get_mysqlsock_path(szSockPath, sizeof(szSockPath)))
-    {
-        db_assert(0);
-        return -1;
-    }
-
     /* …Ë÷√∂¡–¥≥¨ ±£¨±‹√‚◊Ë»˚ */
     mysql_options(pstMysql, MYSQL_OPT_READ_TIMEOUT , &ulTimeout);
     mysql_options(pstMysql, MYSQL_OPT_WRITE_TIMEOUT , &ulTimeout);
 
-    if (!mysql_real_connect(pstMysql, pszHost, pszUsername, pszPassword, pszDBName, usPort,  szSockPath, 0))
+    if (!mysql_real_connect(pstMysql, pszHost, pszUsername, pszPassword, pszDBName, usPort,  pszSockPath, 0))
     {
         db_assert(0);
 

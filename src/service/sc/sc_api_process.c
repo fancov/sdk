@@ -628,7 +628,7 @@ U32 sc_http_api_route_action(SC_HTTP_CLIENT_CB_S *pstClient)
     if (dos_atoul(pszRouteID, &ulRouteID) < 0)
     {
        DOS_ASSERT(0);
-       goto invalid_params;;
+       goto invalid_params;
     }
 
     if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))

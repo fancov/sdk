@@ -456,6 +456,7 @@ S32 sc_ep_black_list_find(VOID *pObj, HASH_NODE_S *pstHashNode)
         return DOS_SUCC;
     }
 
+
     return DOS_FAIL;
 }
 
@@ -919,7 +920,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     sc_ep_black_init(pstBlackListNode);
 
-    for (blProcessOK = DOS_FALSE, lIndex=0; lIndex<lCount; lIndex++)
+    for (blProcessOK = DOS_FALSE, lIndex = 0; lIndex < lCount; lIndex++)
     {
         if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
         {
@@ -974,6 +975,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             DOS_ASSERT(0);
 
             dos_dmem_free(pstBlackListNode);
+            pstBlackListNode = NULL;
             return DOS_FAIL;
         }
 
@@ -992,7 +994,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         {
             DOS_ASSERT(0);
             dos_dmem_free(pstBlackListNode);
-            pstBlackListNode = 0;
+            pstBlackListNode = NULL;
             return DOS_FAIL;
         }
 
@@ -1000,9 +1002,8 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
         dos_strncpy(pstBlackListTmp->szNum, pstBlackListNode->szNum, sizeof(pstBlackListTmp->szNum));
         pstBlackListTmp->szNum[sizeof(pstBlackListTmp->szNum) - 1] = '\0';
-
         dos_dmem_free(pstBlackListNode);
-        pstBlackListNode = 0;
+        pstBlackListNode = NULL;
     }
 
     return DOS_SUCC;
@@ -1545,7 +1546,7 @@ U32 sc_load_relationship()
                 continue;
             }
 
-            dos_snprintf(szSQL, sizeof(szSQL), "SELECT gateway_id FROM tbl_gateway_assign WHERE route_grp_id=%d;", pstGWGrp->ulGWGrpID);
+            dos_snprintf(szSQL, sizeof(szSQL), "SELECT gateway_id FROM tbl_gateway_assign WHERE gateway_grp_id=%d;", pstGWGrp->ulGWGrpID);
 
             db_query(g_pstSCDBHandle, szSQL, sc_load_relationship_cb, (VOID *)pstGWGrp, NULL);
         }
@@ -1572,7 +1573,7 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     S32                  lIndex;
     S32                  lSecond;
     S32                  lRet;
-    BOOL                 blProcessOK = 0;
+    BOOL                 blProcessOK = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(aszValues)
         || DOS_ADDR_INVALID(aszNames))
@@ -1593,7 +1594,7 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     sc_ep_route_init(pstRoute);
 
 
-    for (blProcessOK=DOS_TRUE, lIndex=0; lIndex<lCount; lIndex++)
+    for (blProcessOK = DOS_TRUE, lIndex = 0; lIndex < lCount; lIndex++)
     {
         if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
         {
@@ -1689,6 +1690,7 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     {
         DOS_ASSERT(0);
         dos_dmem_free(pstRoute);
+        pstRoute = NULL;
         return DOS_FAIL;
     }
 
@@ -1726,7 +1728,7 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             return DOS_FAIL;
         }
 
-        dos_memcpy(pstRouteTmp, pstListNode, sizeof(SC_ROUTE_NODE_ST));
+        dos_memcpy(pstRouteTmp, pstRoute, sizeof(SC_ROUTE_NODE_ST));
 
         dos_dmem_free(pstRoute);
         pstRoute = NULL;
