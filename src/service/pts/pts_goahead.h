@@ -19,10 +19,9 @@ extern "C"{
 
 typedef struct tagSqliteParam
 {
+   webs_t wp;
    S8 *pszBuff;
    U32 ulResCount;             /* 结果的个数 */
-   U32 ulBuffLen;              /* 已经使用的大小 */
-   U32 ulMallocSize;           /* 空间的大小 */
 
 }PTS_SQLITE_PARAM_ST;
 
