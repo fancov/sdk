@@ -104,7 +104,7 @@ FUNCATTR S32 db_mysql_query(MYSQL *pstMysql, S8 *pszSQL, S32 (*callback)(VOID*, 
 
     i = 0;
     lFieldCnt = mysql_field_count(pstMysql);
-    while ((pstField = mysql_fetch_field(pstResource)) && i<MAX_DB_FIELDS)
+    while ((pstField = mysql_fetch_field(pstResource)) && i < MAX_DB_FIELDS)
     {
         if (!pstField->name)
         {

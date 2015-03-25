@@ -60,6 +60,7 @@ typedef struct tagSCUserIDNode{
 /* 黑名单HASH表节点 */
 typedef struct tagSCBlackListNode{
     U32  ulID;                                   /* 索引 */
+    U32  ulFileID;                                   /* 索引 */
     U32  ulCustomerID;                           /* 用户ID */
     S8   szNum[SC_TEL_NUMBER_LENGTH];            /* 表达式 */
     U32  ulType;                                 /* 类型，号码或者正则表达式 */
