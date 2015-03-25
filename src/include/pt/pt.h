@@ -160,6 +160,8 @@ typedef enum
     PT_CTRL_PTS_MAJOR_DOMAIN,
     PT_CTRL_PTS_MINOR_DOMAIN,
     PT_CTRL_PTC_PACKAGE,
+    PT_CTRL_PING,
+    PT_CTRL_PING_ACK,
 
     PT_CTRL_BUTT
 
@@ -195,6 +197,8 @@ typedef struct tagCtrlData
     U16     usPtsMajorPort;                         /* pts主域名端口 */
     U16     usPtsMinorPort;                         /* pts备域名端口 */
 
+    S32     lHBTimeInterval;                        /* 心跳和心跳响应的间隔，查看网络情况 */
+
     U8      enCtrlType;                             /* 控制消息类型 PT_CTRL_TYPE_EN */
     U8      ucLoginRes;                             /* 登陆结果 */
     U8      enPtcType;                              /* ptc类型 PT_PTC_TYPE_EN */
@@ -205,9 +209,13 @@ typedef struct tagCtrlData
 /* 发起ptc升级的结构体 */
 typedef struct tagPtcUpgrade
 {
-    U32 ulPackageLen;
-    S8  szMD5Verify[PT_MD5_LEN];
-    S8  Reserver[3];
+    U32         ulPackageLen;
+    FILE        *pPackageFileFd;
+    DOS_TMR_ST  hTmrHandle;                  /* 定时器 */
+    S8          szVision[PT_DATA_BUFF_16];   /* 版本号 */
+    S8          szMD5Verify[PT_MD5_LEN];
+
+    S8          Reserver[3];
 
 }PT_PTC_UPGRADE_ST;
 
@@ -249,6 +257,19 @@ typedef struct tagNendSendNode
 }PT_NEND_SEND_NODE_ST;
 
 
+/* ping */
+typedef struct tagPingPacket
+{
+   U32              ulSeq;
+   U32              ulPacketSize;
+   U32              ulPingNum;
+   struct timeval   stStartTime;
+   void             *pWpHandle;
+   DOS_TMR_ST       hTmrHandle;     /* 定时器 */
+
+}PT_PING_PACKET_ST;
+
+
 PT_CC_CB_ST *pt_ptc_node_create(U8 *pcIpccId, S8 *szPtcVersion, struct sockaddr_in stDestAddr, S32 lSocket);
 list_t *pt_delete_ptc_node(list_t *stPtcListHead, PT_CC_CB_ST *pstPtcNode);
 list_t *pt_ptc_list_insert(list_t *pstPtcListHead, PT_CC_CB_ST *pstPtcNode);
@@ -275,7 +296,7 @@ S8 *pt_get_gmt_time(U32 ulExpiresTime);
 BOOL pt_is_or_not_ip(S8 *szIp);
 BOOL pts_is_ptc_id(S8* pcUrl);
 BOOL pts_is_int(S8* pcUrl);
-S32 pt_DNS_resolution(S8 *szDomainName, U8 paucIPAddr[IPV6_SIZE]);
+S32 pt_DNS_analyze(S8 *szDomainName, U8 paucIPAddr[IPV6_SIZE]);
 S32 pt_md5_encrypt(S8 *szEncrypt, S8 *szDecrypt);
 
 #ifdef  __cplusplus

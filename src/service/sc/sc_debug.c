@@ -79,8 +79,8 @@ extern SC_TASK_CB_ST *sc_tcb_get_by_id(U32 ulTCBNo);
 VOID sc_show_httpd(U32 ulIndex, U32 ulID)
 {
     U32 ulHttpdIndex, ulActive;
-    S8 szCmdBuff[1024];
-    S8 szIPAddr[32];
+    S8 szCmdBuff[1024] = {0, };
+    S8 szIPAddr[32] = {0, };
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nHTTP Server List for WEB CMD:");
     cli_out_string(ulIndex, szCmdBuff);
@@ -130,7 +130,7 @@ VOID sc_show_httpd(U32 ulIndex, U32 ulID)
  */
 VOID sc_show_http(U32 ulIndex, U32 ulID)
 {
-    S8 szCmdBuff[1024];
+    S8 szCmdBuff[1024] = {0, };
     U32 ulHttpClientIndex = 0;
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nHTTP Client List for WEB CMD:");
@@ -172,7 +172,7 @@ VOID sc_show_scb(U32 ulIndex, U32 ulID)
     SC_SCB_ST   *pstSCB = NULL;
     HASH_NODE_S *pstHashNode = NULL;
     U32 ulHashIndex;
-    S8  szCmdBuff[1024];
+    S8  szCmdBuff[1024] = {0, };
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow the SCB List:");
     cli_out_string(ulIndex, szCmdBuff);
@@ -325,8 +325,8 @@ VOID sc_show_task_list(U32 ulIndex, U32 ulCustomID)
 
 VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
 {
-    S8 szCmdBuff[1024] = { 0 };
-    S8 szWeeks[64] = { 0 };
+    S8 szCmdBuff[1024] = {0, };
+    S8 szWeeks[64] = {0, };
     SC_TASK_CB_ST *pstTCB;
 
     /* 如果没有指定task id，或者指定了customer id，就需要使用列表的形式显示任务概要 */
@@ -431,7 +431,7 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
     HASH_NODE_S  *pstHashNode = NULL;
     DLL_NODE_S   *pstDLLNode  = NULL;
     U32 ulHashIndex = 0;
-    S8  szCmdBuff[1024] = { 0 };
+    S8  szCmdBuff[1024] = {0, };
 
     if (U32_BUTT == ulID)
     {
@@ -526,7 +526,7 @@ VOID sc_show_agent_group(U32 ulIndex, U32 ulCustomID, U32 ulGroupID)
     SC_ACD_GRP_HASH_NODE_ST   *pstAgentGrouop = NULL;
     HASH_NODE_S  *pstHashNode = NULL;
     U32 ulHashIndex, ulTotal = 0;
-    S8  szCmdBuff[1024] = { 0 };
+    S8  szCmdBuff[1024] = {0, };
 
     if (U32_BUTT != ulGroupID)
     {
@@ -598,7 +598,7 @@ VOID sc_show_agent_group(U32 ulIndex, U32 ulCustomID, U32 ulGroupID)
 VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
 {
     U32 ulHashIndex, i, blNeddPrint, ulTotal = 0;
-    S8  szCmdBuff[1024] = { 0 };
+    S8  szCmdBuff[1024] = {0, };
     SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode = NULL;
     HASH_NODE_S  *pstHashNode = NULL;
 
@@ -717,9 +717,9 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
 
 VOID sc_show_caller_for_task(U32 ulIndex, U32 ulTaskID)
 {
-    S8 szCmdBuff[1024] = { 0 };
-    U32 i=0, ulTotal;
-    SC_TASK_CB_ST *pstTCB;
+    S8 szCmdBuff[1024] = {0, };
+    U32 i = 0, ulTotal;
+    SC_TASK_CB_ST *pstTCB = NULL;
 
     pstTCB = sc_tcb_find_by_taskid(ulTaskID);
     if (DOS_ADDR_INVALID(pstTCB))
@@ -738,7 +738,7 @@ VOID sc_show_caller_for_task(U32 ulIndex, U32 ulTaskID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%6s%6s%10s%16s", "No.", "Trace", "ID", "Number");
     cli_out_string(ulIndex, szCmdBuff);
 
-    for (i=0, ulTotal=0; i<SC_MAX_CALLER_NUM; i++)
+    for (i = 0, ulTotal = 0; i < SC_MAX_CALLER_NUM; i++)
     {
         if (DOS_ADDR_INVALID(pstTCB->pstCallerNumQuery)
             || !pstTCB->pstCallerNumQuery[i].bValid)
@@ -791,7 +791,7 @@ VOID sc_show_callee_for_task(U32 ulIndex, U32 ulTaskID)
 VOID sc_show_scb_detail(U32 ulIndex, U32 ulSCBID)
 {
     SC_SCB_ST *pstSCB = NULL;
-    S8 szCmdBuff[1024] = { 0 };
+    S8 szCmdBuff[1024] = {0, };
 
     if (ulSCBID >= SC_MAX_SCB_NUM
         || !g_pstTaskMngtInfo->pstCallSCBList[ulSCBID].bValid)
@@ -847,7 +847,7 @@ VOID sc_show_gateway(U32 ulIndex, U32 ulID)
 {
     SC_GW_NODE_ST        *pstGWNode     = NULL;
     HASH_NODE_S          *pstHashNode   = NULL;
-    S8 szCmdBuff[1024] = { 0 };
+    S8 szCmdBuff[1024] = {0, };
     U32 ulHashIndex;
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList all the gateway:");
@@ -887,7 +887,7 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
     SC_GW_NODE_ST        *pstGWNode     = NULL;
     HASH_NODE_S          *pstHashNode   = NULL;
     DLL_NODE_S           *pstDLLNode    = NULL;
-    S8 szCmdBuff[1024] = { 0 };
+    S8 szCmdBuff[1024] = {0, };
     U32 ulHashIndex;
 
     ulHashIndex = sc_ep_gw_grp_hash_func(ulID);
@@ -895,7 +895,7 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        cli_out_string(ulIndex, "\r\n\tERROR: Invalid gateway group ID while show the gateway group(s).\r\n");
+        cli_out_string(ulIndex, "\r\n\tERROR:Invalid gateway group ID while show the gateway group(s).\r\n");
         return;
     }
     pstGWGrpNode = pstHashNode->pHandle;
@@ -930,7 +930,7 @@ VOID sc_show_sip_acc(U32 ulIndex, S32 argc, S8 **argv)
     HASH_NODE_S *pstHashNode = NULL;
     SC_USER_ID_NODE_ST *pstUserID = NULL;
     U32 ulHashIndex = 0;
-    S8 szBuff[1024];
+    S8 szBuff[1024] = {0, };
 
     cli_out_string(ulIndex, "\r\nList All the SIP User ID:");
 
@@ -995,7 +995,7 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              | Start |  End  |     Callee     |     Caller     |               |              |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|--------------+-------+-------+----------------+----------------+---------------+--------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+--------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexRouteList);
@@ -1015,9 +1015,12 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
         }
 
         /*打印数据*/
-        if (U32_BUTT == ulRouteID)
+        if (U32_BUTT != ulRouteID && ulRouteID != pstRoute->ulID)
         {
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+            continue;
+        }
+
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                     , "\r\n|%14u| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%14u|"
                     , pstRoute->ulID
                     , pstRoute->ucHourBegin
@@ -1028,34 +1031,15 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
                     , pstRoute->szCallerPrefix[0] == '\0' ? "NULL" : pstRoute->szCallerPrefix
                     , pstRoute->ulDestType == SC_DEST_TYPE_GATEWAY ? "GATEWAY": (pstRoute->ulDestType == SC_DEST_TYPE_GW_GRP ? "GATEWAY_GROUP" : "UNKNOWN")
                     , pstRoute->ulDestID);
-            cli_out_string(ulIndex, szCmdBuff);
-            ++ulRouteCnt;
-        }
-        else
-        {
-            if (ulRouteID == pstRoute->ulID)
-            {
-                dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n|%14u| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%14u|"
-                    , pstRoute->ulID
-                    , pstRoute->ucHourBegin
-                    , pstRoute->ucMinuteBegin
-                    , pstRoute->ucHourEnd
-                    , pstRoute->ucMinuteEnd
-                    , pstRoute->szCalleePrefix[0] == '\0' ? "NULL" : pstRoute->szCalleePrefix
-                    , pstRoute->szCallerPrefix[0] == '\0' ? "NULL" : pstRoute->szCallerPrefix
-                    , pstRoute->ulDestType == SC_DEST_TYPE_GATEWAY ? "GATEWAY" : (pstRoute->ulDestType == SC_DEST_TYPE_GW_GRP ? "GATEWAY_GROUP" : "UNKNOWN")
-                    , pstRoute->ulDestID);
-                cli_out_string(ulIndex, szCmdBuff);
-            }
-        }
+        cli_out_string(ulIndex, szCmdBuff);
+        ++ulRouteCnt;
     }
 
     pthread_mutex_unlock(&g_mutexRouteList);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+--------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal:%d routes.\r\n\r\n", U32_BUTT == ulRouteID ? ulRouteCnt : 1);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal:%d routes.\r\n\r\n", ulRouteCnt);
     cli_out_string(ulIndex, szCmdBuff);
 }
 
@@ -1063,27 +1047,27 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
 {
     SC_DID_NODE_ST *pstDid      = NULL;
     HASH_NODE_S    *pstHashNode = NULL;
-    U32  ulDidCnt = 0;
+    U32   ulDidCnt = 0;
     U32   ulHashIndex = 0;
     S8    szCmdBuff[1024] = {0, };
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the did list.");
-    cli_out_string(ulIndex,szCmdBuff);
+    cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+----------------------------------------------------------------------------------+");
-    cli_out_string(ulIndex,szCmdBuff);
+    cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                     Did List                                     |");
     cli_out_string(ulIndex,szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
-    cli_out_string(ulIndex,szCmdBuff);
+    cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|    Did ID    |  Customer ID  |        Did Num         | Bind Type |    Bind ID   |");
-    cli_out_string(ulIndex,szCmdBuff);
+    cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
-    cli_out_string(ulIndex,szCmdBuff);
+    cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexHashDIDNum);
 
@@ -1103,9 +1087,12 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
                 continue;
             }
 
-            if (NULL == pszDidNum)
+            if (NULL != pszDidNum && 0 != dos_strcmp(pszDidNum, pstDid->szDIDNum))
             {
-                dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                continue;
+            }
+
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                             , "\r\n|%14u|%15u|%-24s|%-11s|%14u|"
                             , pstDid->ulDIDID
                             , pstDid->ulCustomID
@@ -1113,34 +1100,18 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
                             , pstDid->ulBindType == SC_DID_BIND_TYPE_SIP ? "SIP" : (pstDid->ulBindType == SC_DID_BIND_TYPE_QUEUE ? "QUEUE" : "UNKNOWN")
                             , pstDid->ulBindID
                             );
-                cli_out_string(ulIndex, szCmdBuff);
-                ++ulDidCnt;
-            }
-            else
-            {
-                if (0 == dos_strcmp(pszDidNum, pstDid->szDIDNum))
-                {
-                    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n|%14u|%15u|%-24s|%-11s|%14u|"
-                            , pstDid->ulDIDID
-                            , pstDid->ulCustomID
-                            , pstDid->szDIDNum[0] == '\0' ? "NULL": pstDid->szDIDNum
-                            , pstDid->ulBindType == SC_DID_BIND_TYPE_SIP ? "SIP" : (pstDid->ulBindType == SC_DID_BIND_TYPE_QUEUE ? "QUEUE" : "UNKNOWN")
-                            , pstDid->ulBindID
-                            );
-                    cli_out_string(ulIndex, szCmdBuff);
-                }
-            }
+            cli_out_string(ulIndex, szCmdBuff);
+            ++ulDidCnt;
         }
     }
 
     pthread_mutex_unlock(&g_mutexHashDIDNum);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
-    cli_out_string(ulIndex,szCmdBuff);
+    cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d did numbers.\r\n\r\n", NULL == pszDidNum ? ulDidCnt : 1);
-    cli_out_string(ulIndex,szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d did numbers.\r\n\r\n", ulDidCnt);
+    cli_out_string(ulIndex, szCmdBuff);
 }
 
 VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
@@ -1187,28 +1158,17 @@ VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
                 continue;
             }
 
-            if (U32_BUTT == ulBlackListID)
+            if (U32_BUTT != ulBlackListID && ulBlackListID != pstBlackList->ulID)
             {
-                dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n|%14u|%15u|%28s|"
-                            , pstBlackList->ulID
-                            , pstBlackList->ulCustomerID
-                            , pstBlackList->szNum[0] == '\0' ? "NULL" : pstBlackList->szNum);
-                cli_out_string(ulIndex, szCmdBuff);
-                ++ulBlackListCnt;
+                continue;
             }
-            else
-            {
-                if (ulBlackListID == pstBlackList->ulID)
-                {
-                    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                             , "\r\n|%14u|%15u|%28s|"
                             , pstBlackList->ulID
                             , pstBlackList->ulCustomerID
                             , pstBlackList->szNum[0] == '\0'? "NULL" : pstBlackList->szNum);
-                    cli_out_string(ulIndex, szCmdBuff);
-                }
-            }
+            cli_out_string(ulIndex, szCmdBuff);
+            ++ulBlackListCnt;
         }
     }
 
@@ -1217,7 +1177,7 @@ VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+----------------------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d Black Lists.\r\n\r\n", U32_BUTT == ulBlackListID ? ulBlackListCnt : 1);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d Black Lists.\r\n\r\n", ulBlackListCnt);
     cli_out_string(ulIndex, szCmdBuff);
 }
 
@@ -1641,7 +1601,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             }
             else
             {
-                cli_out_string(ulIndex, "\r\n\tERROR: Invalid gateway group ID while show the gateway group(s).\r\n");
+                cli_out_string(ulIndex, "\r\n\tERROR:Invalid gateway group ID while show the gateway group(s).\r\n");
                 return -1;
             }
         }
@@ -1987,7 +1947,8 @@ cc_usage:
 
     cli_out_string(ulIndex, "\r\n");
     cli_out_string(ulIndex, "cc show gwgrp id\r\n");
-    cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb [id]\r\n");
+    cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb|route|blacklist [id]\r\n");
+    cli_out_string(ulIndex, "cc show did [did_number]\r\n");
     cli_out_string(ulIndex, "cc show task [custom] id\r\n");
     cli_out_string(ulIndex, "cc show caller|callee taskid\r\n");
     cli_out_string(ulIndex, "cc show agent|agentgrp [custom|group] id\r\n");
@@ -2005,7 +1966,7 @@ VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
 {
     va_list         Arg;
     U32             ulTraceTagLen;
-    S8              szTraceStr[1024];
+    S8              szTraceStr[1024] = {0, };
     BOOL            bIsOutput = DOS_FALSE;
 
     if (ulLevel >= LOG_LEVEL_INVAILD)
@@ -2093,7 +2054,7 @@ VOID sc_call_trace(SC_SCB_ST *pstSCB, const S8 *szFormat, ...)
     SC_TASK_CB_ST                 *pstTCB      = NULL;
     SC_CALLER_QUERY_NODE_ST       *pstCaller   = NULL;
     va_list argptr;
-    char szBuf[1024];
+    char szBuf[1024] = {0, };
 
     SC_TRACE_IN((U64)pstSCB, 0, 0, 0);
 

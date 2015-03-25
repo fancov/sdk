@@ -8,7 +8,7 @@
 <SCRIPT src="pts_public.js" type=text/javascript></SCRIPT>
 <script type="text/javascript" language="javascript" src="jquery.jeditable.js"></script>
 <script type="text/javascript" language="javascript" src="jquery.dataTables.min.js"></script>
-
+<link rel="shortcut icon" href="../images/favicon.png">
 <link rel="stylesheet" type="text/css" href="jquery.dataTables.min.css">
 <LINK href="ddsmoothmenu.css" type=text/css rel=stylesheet>
 <style>
@@ -18,7 +18,12 @@
 	.content_title p{padding-bottom:0; margin-bottom: 0px;}
 	.nav_content{margin:0; width:100%; height:50px; background-color:#747474; font-size: 14px; }
 	.nav_left{float:left;}
-	.nav_right{float:right; margin-right:25px;}
+	.nav_right{float:right; margin-right:15px; margin-top: 0px; width: 200px; height:50px; over-flow:auto;}
+	.nav_right p{line-height: 14px; margin: 0px; padding: 0px;}
+	.nav_right td{ margin: 0px; padding: 0px; border: 0px;}
+	.longin_user{margin-right:100px;color: #F4F4F4;}
+	.longout{float:right; margin-right:0px; border: 0px;}
+	.longout img{border: 0px;}
 </style>
 <script type="text/javascript" language="javascript" class="init">
 
@@ -77,6 +82,33 @@ $(document).ready(function() {
     	});
 });
 
+//setInterval("timeStr=new Date().toLocaleString();timer.innerText=timeStr;", 1000);
+
+function formatSysTime_utf8() {
+    var week_desc = new Array("星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六");
+    var dt = new Date();
+    var year = dt.getFullYear();
+    var month = dt.getMonth() + 1;
+    var date = dt.getDate();
+    var day = dt.getDay();
+    var hours = dt.getHours();
+    var minutes = dt.getMinutes();
+    var seconds = dt.getSeconds();
+    return checkTime(year) + '-' + checkTime(month) + '-' + checkTime(date) + ' ' + week_desc[day] + ' ' +
+            checkTime(hours) + ':' + checkTime(minutes) + ':' + checkTime(seconds);
+}
+
+function updateTime_utf8() {
+    if ($('#system-time').length > 0) {
+        var fmt_time = formatSysTime_utf8();
+        $('#system-time').html(fmt_time);
+    }
+
+    setTimeout('updateTime_utf8()', 1000);
+}
+
+updateTime_utf8();
+
 </script>
 </head>
 
@@ -94,9 +126,24 @@ $(document).ready(function() {
 		</UL>
 	  </LI>
 	  <LI><A href="pts_user.html">用户管理</A></LI>
+	  <LI><A href="#">工具</A>
+      <UL>
+        <LI><A href="pts_ping.html">Ping测试</A></LI>
+      </UL>
+    </LI>
 	</UL>
 	</div>
-	<div class="nav_right" ><p><a href="javascript:;" onclick="exit()"> Exit </a></p></div>
+	<div class="nav_right" > 
+		<table style="height:48px; border-spacing: 0px; border-collapse:collapse;">
+			<tr>
+				<td style="width:180px;"><p class="longin_user"> <% curr_user(); %> 您好！</p></td>
+				<td rowspan="2"><div class="longout"><a href="javascript:;" onclick="exit()"><img  src="../images/logout.png" /></a></div></td>
+			</tr>
+			<tr>
+				<td style="width:180px; padding: 0px;" ><p id="system-time" style="font:11px tahoma;height:10px;width:160px;color: #F4F4F4;"></p></td>
+			</tr>
+		</table>
+	</div>
 </div>
 <br>
 <div class="content_body">

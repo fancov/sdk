@@ -7,8 +7,9 @@ extern "C"{
 
 #include <semaphore.h>
 #include <pt/pt.h>
+#include <pt/goahead/webs.h>
 
-#define PTS_SQL_STR_SIZE            1024            /* 存放sql语句数组的大小 */
+#define PTS_SQL_STR_SIZE            1024           /* 存放sql语句数组的大小 */
 #define PTS_LISTEN_COUNT            10             /* listen 个数 */
 #define PTS_WAIT_HB_TIME            5000           /* 等待心跳超时的时间 */
 #define PTS_HB_TIMEOUT_COUNT_MAX    3              /* 心跳超时的次数，超过，则认为掉线 */
@@ -18,7 +19,7 @@ extern "C"{
 #define PTS_WEB_COOKIE_EXPIRES      600
 #define PTS_WEB_SERVER_MAX_SIZE     64
 #define PTS_WEB_TIMEOUT             640000       /* 浏览器不操作超时时间 5分钟 */
-#define PTS_DES_ENCRYPT_KEY         "abcdefgh"
+#define PTS_PING_TIMEOUT            2000
 
 typedef struct tagClientCB
 {
@@ -49,6 +50,17 @@ typedef struct tagServListenSocket
     DOS_TMR_ST      hTmrHandle;     /* 定时器 */
 }PTS_SERV_SOCKET_ST;
 
+typedef struct tagPingStatsNode
+{
+    webs_t  wp;
+    S8      szPtcID[PTC_ID_LEN+1];
+    double  TotalTime;
+    double  MaxTime;
+    double  MinTime;
+    U32     ulReceivedNum;
+
+}PTS_PING_STATS_NODE_ST;
+
 extern list_t *g_pstPtcListRecv;
 extern list_t *g_pstPtcListSend;
 extern PTS_SERV_MSG_ST  g_stPtsMsg;
@@ -74,6 +86,7 @@ VOID pts_recv_pthread_cond_timedwait(struct timespec *timeout, S8 *szFileName, U
 S8 *pts_get_current_time();
 VOID pts_send_exit_notify_to_ptc(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcSendNode);
 S32 pts_find_ptc_by_dest_addr(S8 *pDestInternetIp, S8 *pDestIntranetIp, S8 *aucDestID);
+S32 pts_get_curr_position_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name);
 
 #ifdef  __cplusplus
 }

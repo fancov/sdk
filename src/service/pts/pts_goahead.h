@@ -5,11 +5,17 @@
 extern "C"{
 #endif
 
-#define PTS_VISIT_FILELDS_COUNT 9
-#define PTS_SWITCH_FILELDS_COUNT 12
-#define PTS_CONFIG_FILELDS_COUNT 11
-#define PTS_UPGRADES_FILELDS_COUNT 10
-#define PTS_USER_COUNT 7
+#include <pt/goahead/webs.h>
+
+#define PTS_VISIT_FILELDS_COUNT     10
+#define PTS_SWITCH_FILELDS_COUNT    12
+#define PTS_CONFIG_FILELDS_COUNT    11
+#define PTS_UPGRADES_FILELDS_COUNT  10
+#define PTS_USER_COUNT              7
+#define PTS_PTC_UPGRADE_TIMER       1000 * 60 * 30
+#define PTS_UPGRADE_PTC_COUNT       5
+#define PTS_SELECT_PTC_MAX_COUNT    100
+#define PTS_DELECT_USER_MAX_COUNT   10
 
 typedef struct tagSqliteParam
 {
@@ -20,6 +26,21 @@ typedef struct tagSqliteParam
 
 }PTS_SQLITE_PARAM_ST;
 
+typedef struct tagPingTimeoutParam
+{
+   U32     ulSeq;
+   S8      szPtcId[PTC_ID_LEN+1];
+
+}PTS_PING_TIMEOUT_PARAM_ST;
+
+typedef struct tagUpgradePtc
+{
+   list_t           stNextNode;
+
+   S8               szPtcId[PTC_ID_LEN + 1];
+
+}PTS_UPGRADE_PTC_ST;
+
 VOID *pts_goahead_service(VOID *arg);
 S8 *pts_md5_encrypt(S8 *szUserName, S8 *szPassWord);
 VOID pts_goAhead_free(S8 *pPoint);
@@ -29,3 +50,4 @@ VOID pts_goAhead_free(S8 *pPoint);
 #endif  /* end of __cplusplus */
 
 #endif
+

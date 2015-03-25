@@ -578,7 +578,7 @@ VOID* sc_httpd_runtime(VOID *ptr)
     struct sockaddr_in   stClientAddr;
     S32                  lMacSocket, lClientSock, lRet;
     U32                  ulIndex, ulClientAddrLen;
-    S8                   szRecvBuff[SC_HTTP_MAX_RECV_BUFF_LEN];
+    S8                   szRecvBuff[SC_HTTP_MAX_RECV_BUFF_LEN] = {0, };
 
     SC_TRACE_IN(0, 0, 0, 0);
 
@@ -657,7 +657,10 @@ VOID* sc_httpd_runtime(VOID *ptr)
                 lClientSock = accept(g_pstHTTPDList[ulIndex]->lListenSocket, (struct sockaddr *)&stClientAddr, &ulClientAddrLen);
                 if (lClientSock < 0)
                 {
-                    DOS_ASSERT(0);
+                    close(g_pstHTTPDList[ulIndex]->lListenSocket);
+                    g_pstHTTPDList[ulIndex]->lListenSocket = -1;
+                    logr_error("%s:Line %d: errno is %d, err msg:%s"
+                                , dos_get_filename(__FILE__), __LINE__, errno, strerror(errno));
                     continue;
                 }
 
