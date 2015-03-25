@@ -25,8 +25,8 @@ def phone_route():
         file_info.print_file_info('lRet is %d' % lRet)
         return -1
   
-    # ���ҳ������м���id
-    seqSQLCmd = 'SELECT DISTINCT CONVERT(id, CHAR(10)) AS id FROM tbl_relaygrp'
+    # 查找所有的路由id
+    seqSQLCmd = 'SELECT DISTINCT CONVERT(id, CHAR(10)) AS id FROM tbl_gateway;'
     file_info.print_file_info('seqSQLCmd is %s' % seqSQLCmd)
     results = db_exec.exec_SQL(seqSQLCmd)
     if -1 == results:
@@ -50,7 +50,7 @@ def get_route_param(id):
         return -1
     
     # 获取路由信息
-    seqSQLCmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_gateway WHERE id=%d' % (id)
+    seqSQLCmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_gateway WHERE id=%d;' % (id)
     file_info.print_file_info('seqSQLCmd is %s' % seqSQLCmd)
     
     results = db_exec.exec_SQL(seqSQLCmd)
@@ -81,7 +81,7 @@ def make_route(ulGatewayID):
         domParamNode = doc.createElement('param')
         domParamNode.setAttribute('name', listParamNames[loop].strip())
         
-        # ����'register'��'caller-id-in-from'�Ĳ���ֵʹ�ò���ֵȥ��ʾ
+        # 将参数register与caller-id-in-from的属性设置为false或者true.
         if listParamNames[loop].strip() == 'register' or listParamNames[loop].strip() == 'caller-id-in-from':
             if listParamValues[loop].strip() == '0':     
                 domParamNode.setAttribute('value', 'false')

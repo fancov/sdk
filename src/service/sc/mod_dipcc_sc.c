@@ -152,16 +152,24 @@ U32 mod_dipcc_sc_load()
         logr_error("mod_dipcc_sc_load: Init pythonlib FAIL.");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load xml SUCCESS.");
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load xml SUCC.");
 
     /* 全局加载freeswitch配置文件xml */
     if (py_exec_func("customer", "generate_all_customer", "()") != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        logr_error("mod_dipcc_sc_load: load xml FAIL.");
+        logr_error("mod_dipcc_sc_load: load sip xml FAIL.");
         return DOS_FAIL;
     }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load xml SUCCESS.");
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load sip xml SUCC.");
+
+    if (py_exec_func("router", "phone_route", "()") != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        logr_error("mod_dipcc_sc_load: Load gateway xml FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load gateway xml SUCC.");
 #endif
 
     if (sc_init_db() != DOS_SUCC)

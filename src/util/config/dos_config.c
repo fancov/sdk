@@ -270,6 +270,37 @@ U32 config_get_py_path(S8 *pszBuff, U32 ulLen)
 
 
 /**
+ * 函数：U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen)
+ * 功能：获取MySQL的sock文件路径
+ * 参数：
+ *      S8 *pszBuff： 缓存
+ *      U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen)
+{
+    S8 *pszValue = NULL;
+
+    if (DOS_ADDR_INVALID(pszBuff)
+        || ulLen < 0)
+    {
+        DOS_ASSERT(0);
+        pszBuff[0] = '\0';
+        return -1;
+    }
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/mysql", "sockpath", pszBuff, ulLen);
+    if (!pszValue)
+    {
+        pszBuff[0] = '\0';
+        return -1;
+    }
+
+    return 0;
+}
+
+
+/**
  * 函数：U32 config_hh_get_send_interval()
  * 功能：获取心跳发送间隔
  * 参数：

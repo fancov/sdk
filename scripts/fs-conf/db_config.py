@@ -46,10 +46,8 @@ def get_db_param():
         domFsParam = parser.findall('./service/path/freeswitch/param')
             
         for loop in range(len(domFsParam)):
-             _dict[domFsParam[loop].get('name')] = domFsParam[loop].get('value')
+            _dict[domFsParam[loop].get('name')] = domFsParam[loop].get('value')
                 
         file_info.print_file_info(_dict)
-
         # 返回字典
         return _dict
-            

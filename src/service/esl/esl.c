@@ -1123,10 +1123,10 @@ ESL_DECLARE(esl_status_t) esl_connect_timeout(esl_handle_t *handle, const char *
  fail:
 
 	handle->connected = 0;
-/*
+
     closesocket(handle->sock);
     handle->sock = ESL_SOCK_INVALID;
-*/
+
 	return ESL_FAIL;
 }
 
