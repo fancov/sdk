@@ -133,8 +133,7 @@ updateTime();
           <input type="hidden" value="" id="PingDest" name="PingDest"  />
           <label>PING次数(1-100)：</label>
           <input type="text" id="PingNum" maxlength="3" name="PingNum" size="18" value="4" required />&nbsp;&nbsp;&nbsp;&nbsp;
-          <label>包长(56-1024 字节)：</label>
-          <input type="text" id="PingPacketSize" maxlength="4" name="PingPacketSize" size="18" value="56" required />&nbsp;&nbsp;
+          <input type="hidden" id="PingPacketSize" maxlength="4" name="PingPacketSize" size="18" value="56" required />&nbsp;&nbsp;
           <input type="button" value="开始" onclick="StartPing();"/>&nbsp;&nbsp;&nbsp;&nbsp;
           <input type="button" value="结束" onclick="StopPing();" />
         <!-- </form> -->

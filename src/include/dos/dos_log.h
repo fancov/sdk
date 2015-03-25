@@ -59,12 +59,12 @@ DLLEXPORT S32 dos_log_set_cli_level(U32 ulLeval);
         printf("Init the log."); \
     }while(0)
 
-#define dos_log_start()
+#define dos_log_start() \
     do{ \
         printf("Start the log."); \
     }while(0)
 
-#define dos_log_stop()
+#define dos_log_stop() \
     do{ \
         printf("Stop the log."); \
     }while(0)
@@ -78,7 +78,7 @@ DLLEXPORT S32 dos_log_set_cli_level(U32 ulLeval);
         printf("Set cli log level."); \
     }while(0)
 #endif
-    
+
 
 #define logw_debug(format, args... ) dos_vlog(LOG_LEVEL_DEBUG, LOG_TYPE_WARNING, (format), ##args)
 #define logw_info(format, args... ) dos_vlog(LOG_LEVEL_INFO, LOG_TYPE_WARNING, (format), ##args)
