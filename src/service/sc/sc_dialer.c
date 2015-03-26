@@ -162,7 +162,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     if (U32_BUTT == ulRouteID)
     {
         DOS_ASSERT(0);
-
+        sc_logr_info(SC_ESL, "%s", "Search route fail while make call to patn.");
         return DOS_FAIL;
     }
 

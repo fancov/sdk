@@ -1676,10 +1676,15 @@ VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType)
     pstCDR->ulAccountID = pstSessionLeg->ulAccountID;
     pstCDR->ulTaskID = pstSessionLeg->ulTaskID;
     dos_strncpy(pstCDR->szCaller, pstSessionLeg->szCaller, sizeof(pstCDR->szCaller));
+    pstCDR->szCaller[sizeof(pstCDR->szCaller) - 1] = '\0';
     dos_strncpy(pstCDR->szCallee, pstSessionLeg->szCallee, sizeof(pstCDR->szCallee));
+    pstCDR->szCallee[sizeof(pstCDR->szCallee) - 1] = '\0';
     dos_strncpy(pstCDR->szCID, pstSessionLeg->szCID, sizeof(pstCDR->szCID));
+    pstCDR->szCID[sizeof(pstCDR->szCID) - 1] = '\0';
     dos_strncpy(pstCDR->szAgentNum, pstSessionLeg->szAgentNum, sizeof(pstCDR->szAgentNum));
+    pstCDR->szAgentNum[sizeof(pstCDR->szAgentNum) - 1] = '\0';
     dos_strncpy(pstCDR->szRecordFile, pstSessionLeg->szRecordFile, sizeof(pstCDR->szRecordFile));
+    pstCDR->szRecordFile[sizeof(pstCDR->szRecordFile) - 1] = '\0';
     pstCDR->ulPDDLen = pstSessionLeg->ulRingTimeStamp - pstSessionLeg->ulStartTimeStamp;
     pstCDR->ulRingTime = pstSessionLeg->ulRingTimeStamp;
     pstCDR->ulAnswerTimeStamp = pstSessionLeg->ulAnswerTimeStamp;

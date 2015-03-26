@@ -1816,6 +1816,10 @@ U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
         return DOS_FAIL;
     }
 
+    sc_logr_debug(SC_ESL, "ESL execute command SUCC. APP: %s, Param: %s"
+                    , pszApp
+                    , DOS_ADDR_VALID(pszArg) ? pszArg : "NULL");
+
     return DOS_SUCC;
 }
 
@@ -2472,11 +2476,13 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
             continue;
         }
 
-        sc_logr_info(SC_ESL, "Search Route: %d:%d, %d:%d, %s, %s"
+        sc_logr_info(SC_ESL, "Search Route: %d:%d, %d:%d, %s, %s. Caller:%s, Callee:%s"
                 , pstRouetEntry->ucHourBegin, pstRouetEntry->ucMinuteBegin
                 , pstRouetEntry->ucHourEnd, pstRouetEntry->ucMinuteEnd
+                , pstRouetEntry->szCallerPrefix
                 , pstRouetEntry->szCalleePrefix
-                , pstRouetEntry->szCallerPrefix);
+                , pstSCB->szCallerNum
+                , pstSCB->szCalleeNum);
 
         ulStartTime = pstRouetEntry->ucHourBegin * 60 + pstRouetEntry->ucMinuteBegin;
         ulEndTime = pstRouetEntry->ucHourEnd* 60 + pstRouetEntry->ucMinuteEnd;
@@ -2499,7 +2505,7 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
             }
             else
             {
-                if (0 == dos_strnicmp(pstRouetEntry->szCalleePrefix, pstSCB->szCalleeNum, dos_strlen(pstRouetEntry->szCalleePrefix)))
+                if (0 == dos_strnicmp(pstRouetEntry->szCallerPrefix, pstSCB->szCallerNum, dos_strlen(pstRouetEntry->szCallerPrefix)))
                 {
                     ulRouteGrpID = pstRouetEntry->ulID;
                     break;
@@ -2510,7 +2516,7 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
         {
             if ('\0' == pstRouetEntry->szCallerPrefix[0])
             {
-                if (0 == dos_strnicmp(pstRouetEntry->szCallerPrefix, pstSCB->szCallerNum, dos_strlen(pstRouetEntry->szCallerPrefix)))
+                if (0 == dos_strnicmp(pstRouetEntry->szCalleePrefix, pstSCB->szCalleeNum, dos_strlen(pstRouetEntry->szCalleePrefix)))
                 {
                     ulRouteGrpID = pstRouetEntry->ulID;
                     break;
@@ -2525,15 +2531,6 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
                     break;
                 }
             }
-        }
-
-        if (ulCurrentTime < ulStartTime || ulCurrentTime > ulEndTime)
-        {
-            sc_logr_info(SC_ESL, "Search Route(FAIL): Prefix not match: Caller:%s(%s), Callee: %s(%s)"
-                        , pstRouetEntry->szCallerPrefix, pstSCB->szCallerNum
-                        , pstRouetEntry->szCalleePrefix, pstSCB->szCalleeNum);
-
-            continue;
         }
     }
 
