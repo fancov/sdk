@@ -1945,18 +1945,18 @@ U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID)
     switch(ulAction)
     {
         case SC_API_CMD_ACTION_ROUTE_ADD:
-		case SC_API_CMD_ACTION_ROUTE_UPDATE:
-			sc_load_route(ulRouteID);
-			break;
+        case SC_API_CMD_ACTION_ROUTE_UPDATE:
+            sc_load_route(ulRouteID);
+            break;
 
         case SC_API_CMD_ACTION_ROUTE_DELETE:
             {
                 ulRet = sc_route_delete(ulRouteID);
-	            if (ulRet != DOS_SUCC)
-	            {
-	                DOS_ASSERT(0);
-	                return DOS_FAIL;
-	            }
+                if (ulRet != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                    return DOS_FAIL;
+                }
             }
             break;
         default:

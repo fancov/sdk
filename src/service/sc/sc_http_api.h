@@ -27,17 +27,17 @@ extern "C"{
 /* HTTP响应数据错误码 */
 enum SC_HTTP_ERRNO
 {
-	SC_HTTP_ERRNO_SUCC = 0,                      /* 无错误 */
-	SC_HTTP_ERRNO_INVALID_USR = 0xF0000001,      /* 请求校验失败，不合法的用户 */
-	SC_HTTP_ERRNO_INVALID_DATA,                  /* 请求校验失败，不合法的数据 */
-	SC_HTTP_ERRNO_INVALID_TASK_STATUS,           /* 请求校验失败，不合法的数据 */
-	SC_HTTP_ERRNO_INVALID_REQUEST,               /* 请求校验失败，不合法的请求 */
-	SC_HTTP_ERRNO_INVALID_CMD,                   /* 请求校验失败，不合法的命令字 */
-	SC_HTTP_ERRNO_INVALID_PARAM,                 /* 请求校验失败，不合法的参数 */
-	SC_HTTP_ERRNO_CMD_EXEC_FAIL,                 /* 请求执行失败 */
-	SC_HTTP_ERRNO_SERVER_ERROR,                  /* 请求执行失败 */
+    SC_HTTP_ERRNO_SUCC = 0,                      /* 无错误 */
+    SC_HTTP_ERRNO_INVALID_USR = 0xF0000001,      /* 请求校验失败，不合法的用户 */
+    SC_HTTP_ERRNO_INVALID_DATA,                  /* 请求校验失败，不合法的数据 */
+    SC_HTTP_ERRNO_INVALID_TASK_STATUS,           /* 请求校验失败，不合法的数据 */
+    SC_HTTP_ERRNO_INVALID_REQUEST,               /* 请求校验失败，不合法的请求 */
+    SC_HTTP_ERRNO_INVALID_CMD,                   /* 请求校验失败，不合法的命令字 */
+    SC_HTTP_ERRNO_INVALID_PARAM,                 /* 请求校验失败，不合法的参数 */
+    SC_HTTP_ERRNO_CMD_EXEC_FAIL,                 /* 请求执行失败 */
+    SC_HTTP_ERRNO_SERVER_ERROR,                  /* 请求执行失败 */
 
-	SC_HTTP_ERRNO_BUTT
+    SC_HTTP_ERRNO_BUTT
 };
 
 
@@ -142,15 +142,15 @@ typedef struct tagHttpClientCB
     U32               ulIndex;                  /* 当前编号 */
     U32               ulCurrentSrv;             /* 当前服务器编号 */
 
-	S32               lSock;                    /* 当前连接的socket */
+    S32               lSock;                    /* 当前连接的socket */
 
-	U32               ulResponseCode;           /* HTTP响应码 */
+    U32               ulResponseCode;           /* HTTP响应码 */
     U32               ulErrCode;                /* HTTP响应码 */
 
     SC_DATA_BUF_ST    stDataBuff;
 
     list_t  stParamList;                        /* 请求参数列表 */
-	list_t  stResponseDataList;   /* 数据域节点  refer to RESULT_DATA_NODE_ST */
+    list_t  stResponseDataList;   /* 数据域节点  refer to RESULT_DATA_NODE_ST */
 }SC_HTTP_CLIENT_CB_S;
 
 

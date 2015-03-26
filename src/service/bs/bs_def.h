@@ -350,7 +350,6 @@ typedef struct stBS_BILLING_PACKAGE_ST
 
 }BS_BILLING_PACKAGE_ST;
 
-
 /* 账户信息结构体 */
 typedef struct stBS_ACCOUNT_ST
 {

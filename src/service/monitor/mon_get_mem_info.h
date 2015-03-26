@@ -22,11 +22,11 @@
 
 typedef struct tagMonSysMemData
 {
-	S32  lPhysicalMemTotalBytes; //物理内存总大小KBytes 
+    S32  lPhysicalMemTotalBytes; //物理内存总大小KBytes 
     S32  lPhysicalMemFreeBytes;  //空闲物理内存大小KBytes
     S32  lBuffers;               //Buffers大小
     S32  lCached;                //Cached大小
-	S32  lSwapTotalBytes;        //Swap交换分区大小
+    S32  lSwapTotalBytes;        //Swap交换分区大小
     S32  lSwapFreeBytes;         //Swap空闲分区大小
     S32  lPhysicalMemUsageRate;  //物理内存使用率
     S32  lSwapUsageRate;         //Swap交换分区占用率

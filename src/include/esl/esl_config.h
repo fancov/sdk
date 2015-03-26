@@ -82,13 +82,13 @@ extern "C" {
   \return true or false 
 */
 static __inline__ int esl_true(const char *expr) {
-	return (expr && (!strcasecmp(expr, "yes")
-					 || !strcasecmp(expr, "on")
-					 || !strcasecmp(expr, "true")
-					 || !strcasecmp(expr, "enabled")
-					 || !strcasecmp(expr, "active")
-					 || !strcasecmp(expr, "allow")
-					 || atoi(expr)));
+    return (expr && (!strcasecmp(expr, "yes")
+                     || !strcasecmp(expr, "on")
+                     || !strcasecmp(expr, "true")
+                     || !strcasecmp(expr, "enabled")
+                     || !strcasecmp(expr, "active")
+                     || !strcasecmp(expr, "allow")
+                     || atoi(expr)));
 }
 
 /*!
@@ -97,37 +97,37 @@ static __inline__ int esl_true(const char *expr) {
   \return true or false 
 */
 static __inline__ int esl_false(const char *expr) {
-	return (expr && (!strcasecmp(expr, "no")
-					 || !strcasecmp(expr, "off")
-					 || !strcasecmp(expr, "false")
-					 || !strcasecmp(expr, "disabled")
-					 || !strcasecmp(expr, "inactive")
-					 || !strcasecmp(expr, "disallow")
-					 || !atoi(expr)));
+    return (expr && (!strcasecmp(expr, "no")
+                     || !strcasecmp(expr, "off")
+                     || !strcasecmp(expr, "false")
+                     || !strcasecmp(expr, "disabled")
+                     || !strcasecmp(expr, "inactive")
+                     || !strcasecmp(expr, "disallow")
+                     || !atoi(expr)));
 }
 
 typedef struct esl_config esl_config_t;
 
 /*! \brief A simple file handle representing an open configuration file **/
 struct esl_config {
-	/*! FILE stream buffer to the opened file */
-	FILE *file;
-	/*! path to the file */
-	char path[512];
-	/*! current category */
-	char category[256];
-	/*! current section */
-	char section[256];
-	/*! buffer of current line being read */
-	char buf[1024];
-	/*! current line number in file */
-	int lineno;
-	/*! current category number in file */
-	int catno;
-	/*! current section number in file */
-	int sectno;
+    /*! FILE stream buffer to the opened file */
+    FILE *file;
+    /*! path to the file */
+    char path[512];
+    /*! current category */
+    char category[256];
+    /*! current section */
+    char section[256];
+    /*! buffer of current line being read */
+    char buf[1024];
+    /*! current line number in file */
+    int lineno;
+    /*! current category number in file */
+    int catno;
+    /*! current section number in file */
+    int sectno;
 
-	int lockto;
+    int lockto;
 };
 
 /*!

@@ -35,9 +35,9 @@ typedef struct tagHTTPDServerCB
     U32 ulValid;            /* 是否可用状态 */
     U32 ulIndex;            /* 当前编号 */
 
-	S32 lListenSocket;      /* 当前socket监听的socket */
-	U32 aulIPAddr[4];       /* ip地址，如果是IPv4就只使用第一个U32，如果是IPv6就全部使用 */
-	U16 usPort;             /* 当前httpd监听的端口 */
+    S32 lListenSocket;      /* 当前socket监听的socket */
+    U32 aulIPAddr[4];       /* ip地址，如果是IPv4就只使用第一个U32，如果是IPv6就全部使用 */
+    U16 usPort;             /* 当前httpd监听的端口 */
     U32 ulStatus;           /* 状态 */
 
     U32 ulReqCnt;           /* 请求统计 */

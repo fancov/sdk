@@ -36,7 +36,7 @@ VOID dos_backtrace(S32 lSig)
     U32 ulSize = 0;
     char **strFrame = NULL;
     U32 i = 0;
-	S8 szBuff[512] = { 0 };
+    S8 szBuff[512] = { 0 };
     time_t stTime;
     struct tm *pstTime;
     S8 szTime[32] = { 0 };

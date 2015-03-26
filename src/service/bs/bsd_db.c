@@ -1148,6 +1148,13 @@ S32 bs_init_db()
         g_pstDBHandle->usPort = 3306;
     }
 
+    if (config_get_mysqlsock_path(g_pstDBHandle->szSockPath, DB_MAX_STR_LEN) < 0)
+    {
+        DOS_ASSERT(0);
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get DB sock path fail !");
+        goto errno_proc;
+    }
+
     if (config_get_db_dbname(g_pstDBHandle->szDBName, DB_MAX_STR_LEN) < 0)
     {
         DOS_ASSERT(0);

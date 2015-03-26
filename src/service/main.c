@@ -108,7 +108,6 @@ S32 dos_destroy_pid_file()
 int main(int argc, char ** argv)
 {
     S8  szBuff[256] = { 0 };
-
     dos_set_process_name(argv[0]);
 
     printf("\n======================================================\n");
