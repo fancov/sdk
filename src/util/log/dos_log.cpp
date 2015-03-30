@@ -279,6 +279,7 @@ void *dos_log_main_loop(void *_ptr)
             pstLogData->pstNext = NULL;
             pstLogData->pstPrev = NULL;
 
+            pthread_mutex_unlock(&g_mutexLogTask);
             for (i=0; i<MAX_LOG_TYPE; i++)
             {
                 if (g_pstLogModList[i])
@@ -301,6 +302,7 @@ void *dos_log_main_loop(void *_ptr)
                     }
                 }
             }
+            pthread_mutex_lock(&g_mutexLogTask);
 
             //printf("%p, %p\n", log->msg, log);
             //printf("%s\n", log->msg);

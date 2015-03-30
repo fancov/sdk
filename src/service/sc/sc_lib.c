@@ -672,7 +672,7 @@ U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *psz
     pstTime = localtime(&timep);
 
 
-    dos_snprintf(pszBuff, ulMaxLen, "/var/%04d%02d%02d-%02d%02d%02d-%u-%s-%s.wav"
+    dos_snprintf(pszBuff, ulMaxLen, "/var/record/%04d%02d%02d-%02d%02d%02d-%u-%s-%s.wav"
             , pstTime->tm_year + 1900
             , pstTime->tm_mon + 1
             , pstTime->tm_mday
@@ -1487,6 +1487,28 @@ U32 sc_task_update_stat(SC_TASK_CB_ST *pstTCB)
     return 0;
 }
 
+S32 sc_task_load_audio_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
+{
+    SC_TASK_CB_ST *pstTCB = NULL;
+    S8 *pszFilePath = NULL;
+
+
+    pstTCB = pArg;
+    pszFilePath = pszValues[0];
+    if (DOS_ADDR_INVALID(pstTCB)
+        || DOS_ADDR_INVALID(pszFilePath)
+        || '\0' == pszFilePath[0])
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(pstTCB->szAudioFileLen, sizeof(pstTCB->szAudioFileLen), "%s/%d", SC_TASK_AUDIO_PATH, pszFilePath);
+
+    return DOS_SUCC;
+}
+
 U32 sc_task_load_audio(SC_TASK_CB_ST *pstTCB)
 {
 #if SC_USE_BUILDIN_DATA
@@ -1507,17 +1529,19 @@ U32 sc_task_load_audio(SC_TASK_CB_ST *pstTCB)
     SC_TRACE_OUT();
     return 1;
 #else
+    S8 szSQL[512] = { 0 };
+
     if (DOS_ADDR_INVALID(pstTCB))
     {
         DOS_ASSERT(0);
 
-        SC_TRACE_OUT();
         return DOS_FAIL;
     }
 
-    dos_strncpy(pstTCB->szAudioFileLen, "/usr/local/freeswitch/sounds/en/us/callie/ivr/8000/test1", sizeof(pstTCB->szAudioFileLen));
-    pstTCB->szAudioFileLen[sizeof(pstTCB->szAudioFileLen) - 1] = '\0';
-    pstTCB->ucAudioPlayCnt = 3;
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT audio_id FROM tbl_calltask WHERE id = %d;", pstTCB->usTCBNo);
+
+    db_query(g_pstSCDBHandle, szSQL, sc_task_load_audio_cb, pstTCB, NULL);
+
     return DOS_SUCC;
 #endif
 }
@@ -2079,7 +2103,7 @@ U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID)
             sc_load_black_list(ulBlackID);
             break;
         case SC_API_CMD_ACTION_BLACK_DELETE:
-            {  
+            {
                 /*注明: 该参数代表的是黑名单文件ID*/
                 ulRet = sc_black_list_delete(ulBlackID);
                 if (ulRet != DOS_SUCC)

@@ -672,10 +672,10 @@ U32 sc_black_list_delete(U32 ulFileID)
         {
             if (DOS_ADDR_INVALID(pstHashNode)
                 || DOS_ADDR_INVALID(pstHashNode->pHandle))
-            {  
+            {
                 continue;
             }
-            
+
             pstBlackList = (SC_BLACK_LIST_NODE *)pstHashNode->pHandle;
             /* 如果找到和该fileID相同，则从哈希表中删除*/
             if (pstBlackList->ulFileID == ulFileID)
@@ -2954,11 +2954,12 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         sc_ep_esl_execute("speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
     }
 
-#if 0
+#if 1
     if (pstSCB->bRecord)
     {
         sc_get_record_file_path(szAPPParam, sizeof(szAPPParam), pstSCB->ulCustomID, pstSCB->szCallerNum, pstSCB->szCalleeNum);
         sc_ep_esl_execute("record", szAPPParam, pstSCB->szUUID);
+        sc_ep_esl_execute("sleep", "200", pstSCB->szUUID);
     }
 #endif
 

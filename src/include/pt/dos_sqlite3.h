@@ -4,7 +4,7 @@
 #ifdef  __cplusplus
 extern "C"{
 #endif
-#if INCLUDE_PTS
+#ifndef ARM_VERSION
 #include <sqlite3.h>
 #include <dos/dos_types.h>
 

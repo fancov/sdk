@@ -105,6 +105,10 @@ extern "C"{
 
 #define SC_INVALID_INDEX               0
 
+#define SC_TASK_AUDIO_PATH             "/var/voice"
+
+#define SC_RECORD_FILE_PATH            "/var/record"
+
 /* 检测一个TCB是有正常的Task和CustomID */
 #define SC_TCB_HAS_VALID_OWNER(pstTCB)                        \
     ((pstTCB)                                                 \
