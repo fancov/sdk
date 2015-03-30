@@ -12,6 +12,9 @@
 <link rel="stylesheet" type="text/css" href="jquery.dataTables.min.css">
 <LINK href="ddsmoothmenu.css" type=text/css rel=stylesheet>
 <LINK href="pts_public.css" type=text/css rel=stylesheet>
+<style>
+  *{font-family: "微软雅黑"}
+</style>
 <script type="text/javascript" language="javascript" class="init">
 
 $(document).ready(function() {
@@ -97,7 +100,7 @@ updateTime();
     <div class="nav_right" > 
         <table style="height:48px; border-spacing: 0px; border-collapse:collapse;">
             <tr>
-                <td style="width:180px;"><p class="longin_user"> <% curr_user(); %> Ping测试</p></td>
+                <td style="width:180px;"><p class="longin_user"> <% curr_user(); %> 您好!</p></td>
                 <td rowspan="2"><div class="longout"><a href="javascript:;" onclick="exit()"><img  src="../images/logout.png" /></a></div></td>
             </tr>
             <tr>
@@ -115,9 +118,13 @@ updateTime();
         <div>
             <form action="/goform/HttpSoftUploadSelected?" enctype="multipart/form-data" method="post" name="HttpPackageUpload" id="HttpPackageUpload"  target="hidden_frame">
                 <p class="content_body">
-                    <label>软件包：</label>
-                    <input type="file" value="" id="PackageFile" name="PackageFile"  size="32" />&nbsp;&nbsp;&nbsp;&nbsp;
-                    <% ptc_upgrade_button(); %>
+                    <table  class="content_body">
+                        <tr>
+                            <td><label>软件包：</label></td>
+                            <td><input type="file" value="" id="PackageFile" name="PackageFile"  size="32" /></td>
+                            <% ptc_upgrade_button(); %>
+                        </tr>
+                    </table>
                 </p>
                 <iframe name='hidden_frame' id="hidden_frame" style='display:none' onload="get_ifream_content()"></iframe>
             </form>
@@ -131,9 +138,13 @@ updateTime();
         <div>
             <form action="/goform/HttpSoftUploadAll?" enctype="multipart/form-data" method="post" name="HttpPackageUploadAll" id="HttpPackageUploadAll"  target="hidden_frame">
                 <p class="content_body">
-                    <label>软件包：</label>
-                    <input type="file" value="" id="PackageFileAll" name="PackageFileAll"  size="32" />&nbsp;&nbsp;&nbsp;&nbsp;
-                    <% all_ptc_upgrade_button(); %>
+                    <table  class="content_body">
+                        <tr>
+                            <td><label>软件包：</label></td>
+                            <td><input type="file" value="" id="PackageFileAll" name="PackageFileAll"  size="32" /></td>
+                            <% all_ptc_upgrade_button(); %>
+                        </tr>
+                    </table>
                 </p>
             </form>
         </div>

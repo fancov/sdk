@@ -223,6 +223,124 @@ void *ptc_recv_msg_from_web(void *arg)
 }
 
 /**
+ * 函数：BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
+ * 功能：
+ *      1.接收升级包，升级ptc
+ * 参数
+ * 返回值： DOS_TRUE  : break;
+ *          DOS_FALSE : continue;
+ */
+BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
+{
+    PT_PTC_UPGRADE_ST *pstUpgrade = NULL;
+    S8 szDecrypt[PT_MD5_LEN] = {0};
+    FILE *pFileFd = NULL;
+    S32 lResult = 0;
+    pid_t pid, ppid;
+    S32 lFd = 0;
+    S8 szKillCmd[PT_DATA_BUFF_64] = {0};
+
+    if (NULL == g_pPackageBuff)
+    {
+        if (pstRecvDataTcp->ulLen == sizeof(PT_PTC_UPGRADE_ST))
+        {
+            g_ulReceivedLen = 0;
+            pstUpgrade = (PT_PTC_UPGRADE_ST *)pstRecvDataTcp->szBuff;
+            dos_strncpy(szPackageMD5, pstUpgrade->szMD5Verify, PT_MD5_LEN);
+            g_ulPackageLen = dos_ntohl(pstUpgrade->ulPackageLen);
+            if (g_ulPackageLen <= 0)
+            {
+                /* 失败 */
+                logr_info("recv upgrade package fail");
+            }
+            else
+            {
+                logr_debug("start recv upgrade package");
+                g_pPackageBuff = (S8 *)dos_dmem_alloc(g_ulPackageLen);
+                if (NULL == g_pPackageBuff)
+                {
+                    DOS_ASSERT(0);
+                    logr_debug("malloc fail\n");
+                }
+                else
+                {
+                    dos_memzero(g_pPackageBuff, g_ulPackageLen);
+                }
+            }
+        }
+        else
+        {
+            /* 失败 */
+            logr_info("recv upgrade package fail");
+        }
+        return DOS_FALSE;
+    }
+
+    dos_memcpy(g_pPackageBuff+g_ulReceivedLen, pstRecvDataTcp->szBuff, pstRecvDataTcp->ulLen);
+    g_ulReceivedLen += pstRecvDataTcp->ulLen;
+    if (pstRecvDataTcp->ulLen < PT_RECV_DATA_SIZE)
+    {
+        /* 接收完成，验证是否正确 */
+        pt_md5_encrypt(g_pPackageBuff, szDecrypt);
+        if (dos_strcmp(szDecrypt, szPackageMD5) == 0)
+        {
+            logr_debug("recv upgrade package succ");
+            /* 验证通过，保存到文件中 */
+            system("mv ptcd ptcd_old");
+
+            pFileFd = fopen("./ptcd", "w");
+            if (NULL == pFileFd)
+            {
+                pt_logr_info("create file file\n");
+                system("mv ptcd_old ptcd");
+            }
+            else
+            {
+                lFd = fileno(pFileFd);
+                fchmod(lFd, 0777);
+                fwrite(g_pPackageBuff, g_ulPackageLen, 1, pFileFd);
+                fclose(pFileFd);
+                pFileFd = NULL;
+                /* fork 一个进程，重启ptc */
+                ppid = getpid();
+                pid = fork();
+                if (pid < 0)
+                {
+                    printf("fork() error.errno:%d error:%s\n", errno, strerror(errno));
+                }
+
+                if (pid == 0)
+                {
+                    /* 杀死父进程 */
+                    sprintf(szKillCmd, "kill -9 %d", ppid);
+                    system(szKillCmd);
+                    lResult = execl("ptc.sh", "ptc.sh", "ptcd", NULL);
+                    if (lResult < 0)
+                    {
+                        logr_info("execv ret:%d errno:%d error:%s", lResult, errno, strerror(errno));
+                    }
+                    exit(0);
+                }
+            }
+            dos_dmem_free(g_pPackageBuff);
+            g_pPackageBuff = NULL;
+        }
+        else
+        {
+            /* 验证不通过 */
+            logr_info("upgrade package error : md5 error");
+        }
+
+        ptc_delete_recv_stream_node(pstStreamNode->ulStreamID, PT_DATA_WEB, DOS_FALSE);
+        ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID);
+
+        return DOS_TRUE;
+    }
+
+    return DOS_FALSE;
+}
+
+/**
  * 函数：void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
  * 功能：
  *      1.发送请求到web服务器
@@ -236,13 +354,7 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     U32               ulArraySub       = 0;
     list_t            *pstStreamList   = NULL;
     PT_STREAM_CB_ST   *pstStreamNode   = NULL;
-    PT_PTC_UPGRADE_ST *pstUpgrade      = NULL;
     PT_DATA_TCP_ST    stRecvDataTcp;
-    S8 szDecrypt[PT_MD5_LEN] = {0};
-    FILE *pFileFd = NULL;
-    pid_t pid, ppid;
-    S32 lFd = 0;
-    S8 szKillCmd[PT_DATA_BUFF_64] = {0};
 
     pstStreamList = g_pstPtcRecv->astDataTypes[pstNeedRecvNode->enDataType].pstStreamQueHead;
     if (NULL == pstStreamList)
@@ -272,98 +384,16 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
         {
             if (PT_CTRL_PTC_PACKAGE == pstStreamNode->ulStreamID)
             {
-                //printf("len = %d, seq : %d\n", stRecvDataTcp.ulLen, pstStreamNode->lCurrSeq);
-                if (NULL == g_pPackageBuff)
+                /* 升级 */
+                lResult = ptc_upgrade(&stRecvDataTcp, pstStreamNode);
+                if (lResult)
                 {
-                    if (stRecvDataTcp.ulLen == sizeof(PT_PTC_UPGRADE_ST))
-                    {
-                        g_ulReceivedLen = 0;
-                        pstUpgrade = (PT_PTC_UPGRADE_ST *)stRecvDataTcp.szBuff;
-                        dos_strncpy(szPackageMD5, pstUpgrade->szMD5Verify, PT_MD5_LEN);
-                        g_ulPackageLen = dos_ntohl(pstUpgrade->ulPackageLen);
-                        if (g_ulPackageLen <= 0)
-                        {
-                            /* 失败 TODO */
-                            printf("1fail\n");
-                        }
-                        else
-                        {
-                            printf("1succ\n");
-                            g_pPackageBuff = (S8 *)dos_dmem_alloc(g_ulPackageLen);
-                            dos_memzero(g_pPackageBuff, g_ulPackageLen);
-                        }
-                    }
-                    else
-                    {
-                        /* 失败 TODO */
-                        printf("1fail\n");
-                    }
-                    continue;
-                }
-                //fwrite(stRecvDataTcp.szBuff, stRecvDataTcp.ulLen, 1, g_pPackageBuff);
-
-                dos_memcpy(g_pPackageBuff+g_ulReceivedLen, stRecvDataTcp.szBuff, stRecvDataTcp.ulLen);
-                g_ulReceivedLen += stRecvDataTcp.ulLen;
-                if (stRecvDataTcp.ulLen < PT_RECV_DATA_SIZE)
-                {
-                    /* 接收完成，验证是否正确 */
-                    pt_md5_encrypt(g_pPackageBuff, szDecrypt);
-                    if (dos_strcmp(szDecrypt, szPackageMD5) == 0)
-                    {
-                        printf("recv succ\n");
-                        /* 验证通过，保存到文件中 */
-                        system("mv ptcd ptcd_old");
-
-                        pFileFd = fopen("./ptcd", "w");
-                        if (NULL == pFileFd)
-                        {
-                            pt_logr_info("create file file\n");
-                            system("mv ptcd_old ptcd");
-                        }
-                        else
-                        {
-                            lFd = fileno(pFileFd);
-                            fchmod(lFd, 0777);
-                            fwrite(g_pPackageBuff, g_ulPackageLen, 1, pFileFd);
-                            fclose(pFileFd);
-                            pFileFd = NULL;
-                            /* fork 一个进程，重启ptc */
-                            #if 1
-                            ppid = getpid();
-                            pid = fork();
-                            if (pid < 0)
-                            {
-                                printf("fork() error.errno:%d error:%s\n", errno, strerror(errno));
-                            }
-
-                            if (pid == 0)
-                            {
-                                /* 杀死父进程 */
-                                sprintf(szKillCmd, "kill -9 %d", ppid);
-                                system(szKillCmd);
-                                lResult = execl("ptc.sh", "ptc.sh", "ptcd", NULL);
-                                if (lResult < 0)
-                                {
-                                    printf("execv ret:%d errno:%d error:%s\n", lResult, errno, strerror(errno));
-                                }
-                                exit(0);
-                            }
-                            #endif
-                        }
-                        dos_dmem_free(g_pPackageBuff);
-                        g_pPackageBuff = NULL;
-                    }
-                    else
-                    {
-                        printf("recv fail\n");
-                        /* 验证不通过 */
-                    }
-
-                    ptc_delete_recv_stream_node(pstStreamNode->ulStreamID, PT_DATA_WEB, DOS_FALSE);
-                    ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID);
                     break;
                 }
-                continue;
+                else
+                {
+                    continue;
+                }
             }
 
             lSockfd = ptc_get_socket_by_streamID(pstStreamNode->ulStreamID);
@@ -372,8 +402,7 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 lSockfd = ptc_create_socket_proxy(pstStreamNode->aulServIp, pstStreamNode->usServPort);
                 if (lSockfd <= 0)
                 {
-                    /* create sockfd fail */
-                    //ptc_save_msg_into_cache(PT_DATA_WEB, pstStreamNode->ulStreamID, "", 0);
+                    /* 创建socket失败，通知pts结束 */
                     ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID);
                     break;
                 }
@@ -383,14 +412,15 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                     /* socket 数量已满 */
                     break;
                 }
-                lResult = write(g_lPipeWRFd, "s", 1);
+                write(g_lPipeWRFd, "s", 1);
             }
             lResult = send(lSockfd, stRecvDataTcp.szBuff, stRecvDataTcp.ulLen, 0);
             pt_logr_debug("send to web server, len : %d", stRecvDataTcp.ulLen);
         }
         else
         {
-            pstStreamNode->lCurrSeq--; /* 这个seq没有发送，减一 */
+            /* 这个seq没有发送，减一 */
+            pstStreamNode->lCurrSeq--;
             break;
         }
     }

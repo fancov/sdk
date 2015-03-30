@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
 <title>AMC</title>
 <script type="text/javascript" language="javascript" src="jquery.js"></script>
 <SCRIPT src="ddsmoothmenu.js" type=text/javascript></SCRIPT>
@@ -11,19 +11,9 @@
 <link rel="shortcut icon" href="../images/favicon.png">
 <link rel="stylesheet" type="text/css" href="jquery.dataTables.min.css">
 <LINK href="ddsmoothmenu.css" type=text/css rel=stylesheet>
+<LINK href="pts_public.css" type=text/css rel=stylesheet>
 <style>
-	*{font-family: "å¾®è½¯é›…é»‘"}
-	.content_body{margin: auto 25px; font-size: 13px;}
-	.content_title{border-bottom:1px solid #000000; padding-bottom:2px; margin-bottom: 10px;}
-	.content_title p{padding-bottom:0; margin-bottom: 0px;}
-	.nav_content{margin:0; width:100%; height:50px; background-color:#747474; font-size: 14px; }
-	.nav_left{float:left;}
-	.nav_right{float:right; margin-right:15px; margin-top: 0px; width: 200px; height:50px; over-flow:auto;}
-	.nav_right p{line-height: 14px; margin: 0px; padding: 0px;}
-	.nav_right td{ margin: 0px; padding: 0px; border: 0px;}
-	.longin_user{margin-right:100px;color: #F4F4F4;}
-	.longout{float:right; margin-right:0px; border: 0px;}
-	.longout img{border: 0px;}
+	*{font-family: "Î¢ÈíÑÅºÚ"}
 </style>
 <script type="text/javascript" language="javascript" class="init">
 
@@ -34,18 +24,18 @@ $(document).ready(function() {
 			"sDom": '<"top"f>rt<"bottom"lp>',
 			"sAjaxSource": "/ptc_list.html",
 			"oLanguage": {
-				"sLengthMenu": "æ¯é¡µæ˜¾ç¤º _MENU_æ¡",
-				"sZeroRecords": "æ²¡æœ‰æ‰¾åˆ°ç¬¦åˆæ¡ä»¶çš„æ•°æ®",
-				"sProcessing": "&lt;p&gt;&lt;img src=â€™./loading.gifâ€™ /&gt;åŠ è½½ä¸­......&lt;/p&gt;",
-				"sInfo": "å½“å‰ç¬¬ _START_ - _END_ æ¡ã€€å…±è®¡ _TOTAL_ æ¡",
-				"sInfoEmpty": "æœ¨æœ‰è®°å½•",
-				"sInfoFiltered": "(ä» _MAX_ æ¡è®°å½•ä¸­è¿‡æ»¤)",
-				"sSearch": "æœç´¢ï¼š",
+				"sLengthMenu": "Ã¿Ò³ÏÔÊ¾ _MENU_Ìõ",
+				"sZeroRecords": "Ã»ÓĞÕÒµ½·ûºÏÌõ¼şµÄÊı¾İ",
+				"sProcessing": "&lt;p&gt;&lt;img src=¡¯./loading.gif¡¯ /&gt;¼ÓÔØÖĞ......&lt;/p&gt;",
+				"sInfo": "µ±Ç°µÚ _START_ - _END_ Ìõ¡¡¹²¼Æ _TOTAL_ Ìõ",
+				"sInfoEmpty": "Ä¾ÓĞ¼ÇÂ¼",
+				"sInfoFiltered": "(´Ó _MAX_ Ìõ¼ÇÂ¼ÖĞ¹ıÂË)",
+				"sSearch": "ËÑË÷£º",
 				"oPaginate": {
-					"sFirst": "é¦–é¡µ",
-					"sPrevious": "å‰ä¸€é¡µ",
-					"sNext": "åä¸€é¡µ",
-					"sLast": "å°¾é¡µ"
+					"sFirst": "Ê×Ò³",
+					"sPrevious": "Ç°Ò»Ò³",
+					"sNext": "ºóÒ»Ò³",
+					"sLast": "Î²Ò³"
 			        }
 		      },
 		      "aoColumnDefs": [{"className": "ptc_ardio",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [8]}, {"className": "ptc_nice", "aTargets": [3]}],
@@ -90,18 +80,18 @@ updateTime();
 <div class="nav_content">
 	<div class="ddsmoothmenu nav_left" id="smoothmenu1">
 	<UL>
-	  <LI><A href="index.html">è¿œç¨‹è®¿é—®</A></LI>
-	  <LI><A href="#">PTCç®¡ç†</A> 
+	  <LI><A href="index.html">Ô¶³Ì·ÃÎÊ</A></LI>
+	  <LI><A href="#">PTC¹ÜÀí</A> 
 		<UL>
-			<LI><A href="pts_switch.html">PTSåˆ‡æ¢</A> </LI>
-			<LI><A href="pts_config.html">PTCé…ç½®</A> </LI>
-			<LI><A href="pts_upgrades.html">PTCå‡çº§</A> </LI>
+			<LI><A href="pts_switch.html">PTSÇĞ»»</A> </LI>
+			<LI><A href="pts_config.html">PTCÅäÖÃ</A> </LI>
+			<LI><A href="pts_upgrades.html">PTCÉı¼¶</A> </LI>
 		</UL>
 	  </LI>
-	  <LI><A href="pts_user.html">ç”¨æˆ·ç®¡ç†</A></LI>
-	  <LI><A href="#">å·¥å…·</A>
+	  <LI><A href="pts_user.html">ÓÃ»§¹ÜÀí</A></LI>
+	  <LI><A href="#">¹¤¾ß</A>
 	  	<UL>
-	  		<LI><A href="pts_ping.html">Pingæµ‹è¯•</A></LI>
+	  		<LI><A href="pts_ping.html">Ping²âÊÔ</A></LI>
 	  	</UL>
 	  </LI>
 	</UL>
@@ -109,7 +99,7 @@ updateTime();
 	<div class="nav_right" > 
 		<table style="height:48px; border-spacing: 0px; border-collapse:collapse;">
 			<tr>
-				<td style="width:180px;"><p class="longin_user"> <% curr_user(); %> æ‚¨å¥½ï¼</p></td>
+				<td style="width:180px;"><p class="longin_user"> <% curr_user(); %> ÄúºÃ£¡</p></td>
 				<td rowspan="2"><div class="longout"><a href="javascript:;" onclick="exit()"><img  src="../images/logout.png" /></a></div></td>
 			</tr>
 			<tr>
@@ -122,32 +112,32 @@ updateTime();
 <div class="content_body">
 	<div>
 		<div class="content_title">
-			<p><b>è‡ªåŠ¨é€‰æ‹©è®¿é—®ï¼š</b></p>
+			<p><b>×Ô¶¯Ñ¡Ôñ·ÃÎÊ£º</b></p>
 		</div>
 		<div>
 			<p class="content_body">
-				<label>ç›®çš„å…¬ç½‘IPï¼š</label>
+				<label>Ä¿µÄ¹«ÍøIP£º</label>
 				<input type="text" value="" id="auto_internet_ip" />&nbsp;&nbsp;&nbsp;&nbsp;
-				<label>ç›®çš„ç§ç½‘IPï¼š</label>
+				<label>Ä¿µÄË½ÍøIP£º</label>
 				<input type="text" value="" id="auto_intranet_ip" />&nbsp;&nbsp;
-				<label>ç›®çš„ç§ç½‘ç«¯å£ï¼š</label>
+				<label>Ä¿µÄË½Íø¶Ë¿Ú£º</label>
 				<input type="text" value="" id="auto_port" />&nbsp;&nbsp;
-				<input type="button" value="è®¿é—®" onclick="auto_access()" />
+				<input type="button" value="·ÃÎÊ" onclick="auto_access()" />
 			</p>
 		</div>
 	</div>
 	<br>
 	<div>
 		<div class="content_title">
-			<p><b>æ‰‹åŠ¨é€‰æ‹©è®¿é—®ï¼š</b></p>
+			<p><b>ÊÖ¶¯Ñ¡Ôñ·ÃÎÊ£º</b></p>
 		</div>
 		<div>
 			<p class="content_body">
-				<label>ç›®çš„ç§ç½‘IPï¼š</label>
+				<label>Ä¿µÄË½ÍøIP£º</label>
 				<input type="text" value="" id="manual_intranet_ip" />&nbsp;&nbsp;
-				<label>ç›®çš„ç§ç½‘ç«¯å£ï¼š</label>
+				<label>Ä¿µÄË½Íø¶Ë¿Ú£º</label>
 				<input type="text" value=""  id="manual_port" />&nbsp;&nbsp;
-				<input type="button" value="è®¿é—®" onclick="visit_dev()" />
+				<input type="button" value="·ÃÎÊ" onclick="visit_dev()" />
 			</p>			
 		</div>
 	</div>
@@ -157,15 +147,15 @@ updateTime();
 		<thead>
 			<tr>
 				<th width="20px"> </th>        
-		        <th>æ³¨å†Œæ—¶é—´</th>
-		        <th>åç§°</th>
-		        <th>å¤‡æ³¨å(ç‚¹å‡»ä¿®æ”¹)</th>
-		        <th>ç±»å‹</th>
-		        <th>å…¬ç½‘IP</th>
-		        <th>ç§ç½‘IP</th>
-		        <th>MACåœ°å€</th>
+		        <th>×¢²áÊ±¼ä</th>
+		        <th>Ãû³Æ</th>
+		        <th>±¸×¢Ãû(µã»÷ĞŞ¸Ä)</th>
+		        <th>ÀàĞÍ</th>
+		        <th>¹«ÍøIP</th>
+		        <th>Ë½ÍøIP</th>
+		        <th>MACµØÖ·</th>
 		        <th>SN</th>
-		        <th>å¿ƒè·³(ms)</th>
+		        <th>ĞÄÌø(ms)</th>
 			</tr>
 		</thead>
 		<tbody>
