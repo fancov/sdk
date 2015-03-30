@@ -695,12 +695,6 @@ S32 ptc_main()
         logr_debug("create pthread succ : ptc_recv_msg_from_cmd!");
     }
 
-    pthread_detach(tid1);
-    pthread_detach(tid2);
-    pthread_detach(tid3);
-    pthread_detach(tid4);
-    pthread_detach(tid5);
-
     sleep(2);
     ptc_send_login2pts(lSocket);
 

@@ -22,7 +22,7 @@ extern "C"{
 #include <signal.h>
 #include <time.h>
 #include <execinfo.h>
-
+#ifndef ARM_VERSION
 /**
  * Function: dos_backtrace(S32 iSig)
  *  Params :
@@ -69,7 +69,7 @@ VOID dos_backtrace(S32 lSig)
     /* ¼ÇÂ¼¶ÏÑÔ */
     dos_assert_record();
 }
-
+#endif
 /**
  * Function: dos_signal_handle(S32 iSig)
  *  Params :
@@ -89,7 +89,9 @@ VOID dos_signal_handle(S32 lSig)
         case SIGTERM:
         case SIGQUIT:
         case SIGKILL:
+#ifndef ARM_VERSION
             dos_backtrace(lSig);
+#endif
             break;
         case SIGINT:
             break;

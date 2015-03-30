@@ -1,0 +1,70 @@
+########################################################################
+#                         Define the Complie                           # 
+########################################################################
+TARGET					= ptc
+
+########################################################################
+#                      Define some                           # 
+########################################################################
+PROJECT_ROOT			= ../..
+DOS_LIBS				= -L$(PROJECT_ROOT)/libs
+SROUCE					= $(PROJECT_ROOT)/src
+DOS_INCLUDES			= -I$(SROUCE)/include
+
+SUFFIX					= o
+
+LIBS					= -lpthread -lmxml_armuc
+
+########################################################################
+#                      Collect other makefile                          # 
+########################################################################
+include $(SROUCE)/util/tools/Makefile.mk
+include $(SROUCE)/util/log/Makefile.mk
+include $(SROUCE)/util/memory/Makefile.mk
+include $(SROUCE)/util/debug/Makefile.mk
+include $(SROUCE)/util/config/Makefile.mk
+include $(SROUCE)/util/timer/Makefile.mk
+include $(SROUCE)/util/hash/Makefile.mk
+include $(SROUCE)/util/list/Makefile.mk
+include $(SROUCE)/util/heartbeat/Makefile.mk
+include $(SROUCE)/cfg/Makefile.mk
+include $(SROUCE)/service/Makefile.mk
+include $(SROUCE)/service/ptc/Makefile.mk
+include $(SROUCE)/service/ptlib/Makefile.mk
+
+
+########################################################################
+#                              All Files                               # 
+########################################################################
+ALL_OBJS	= $(C_OBJ_FILE) $(CXX_OBJ_FILE) 
+ALL_SRCS	= $(C_FILE) $(CXX_FILE)
+ALL_HEADERS	= $(DOS_INCLUDES)
+ALL_LIBS	= $(DOS_LIBS) $(LIBS) 
+
+########################################################################
+#                         Define the Complie                           # 
+########################################################################
+CC						= /opt/OpenWrt/staging_dir/toolchain-arm_gcc-4.3.4_uClibc-0.9.30.1/usr/bin/arm-openwrt-linux-gcc
+CXX						= /opt/OpenWrt/staging_dir/toolchain-arm_gcc-4.3.4_uClibc-0.9.30.1/usr/bin/arm-openwrt-linux-g++
+CFLAGS					= -Wall -Os
+DEFINES					= -DDIPCC_PTC -DDEBUG_VERSION -DARM_VERSION 
+
+C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
+CXX_COMPILE				= $(CXX) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS)
+C_LINKS					= $(CXX) -o $@
+
+
+########################################################################
+#                               Target                                 # 
+######################################################################## 
+dep :
+	$(CC) -MM $(ALL_SRCS) $(ALL_HEADERS) $(DEFINES) > $(TARGET).dep
+
+all : $(ALL_OBJS)
+	$(C_LINKS) -o $(TARGET)d $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS)
+
+clean :
+	rm -f *.o
+	rm -f $(TARGET)d
+
+include $(TARGET).dep

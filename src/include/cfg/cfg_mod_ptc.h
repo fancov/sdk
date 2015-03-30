@@ -35,7 +35,12 @@
 
 
 /* 心跳模块开关 */
+#ifndef ARM_VERSION
 #define INCLUDE_BH_ENABLE                 1
+#else
+#define INCLUDE_BH_ENABLE                 0
+#endif
+
 #if (INCLUDE_BH_ENABLE)
 #define INCLUDE_BH_SERVER                 0
 #define INCLUDE_BH_CLIENT                 (!INCLUDE_BH_SERVER)
@@ -44,8 +49,12 @@
 #define INCLUDE_BH_CLIENT                 0
 #endif
 
+#ifndef ARM_VERSION
 /* 是否包含dos内存管理模块 */
 #define INCLUDE_MEMORY_MNGT               1
+#else
+#define INCLUDE_MEMORY_MNGT               0
+#endif
 
 /* xml配置文件模块 */
 #define INCLUDE_XML_CONFIG                1

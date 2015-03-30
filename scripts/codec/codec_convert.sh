@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CODEC_APP="./codec_convert"
+CODEC_APP="/usr/bin/codec_convert"
 SOX_APP="sox"
 
 print_usage()
@@ -24,15 +24,15 @@ fi
 INPUT_FILE_PATH=$2
 OUTPUT_FILE_PATH=$3
 
-INPUT_FILE="$FILE_PATH/$4"
+INPUT_FILE="$INPUT_FILE_PATH/$4"
 if [ ! -f $INPUT_FILE ]; then
     exit 2
 fi
 
 if [ -z $5 ]; then
-    OUTPUT_FILE=${INPUT_FILE%.*}
+    OUTPUT_FILE=$OUTPUT_FILE_PATH/${INPUT_FILE%.*}
 else
-    OUTPUT_FILE=$5
+    OUTPUT_FILE=$OUTPUT_FILE_PATH/$5
 fi
 
 case $1 in

@@ -26,7 +26,9 @@ COMMAND_ST g_stCommandSet[] = {
     {NULL, "bs",            "BS command",                      bs_command_proc},
 #endif
     {NULL, "debug",         "Set the log level",               cli_set_log_level},
+#if INCLUDE_MEMORY_MNGT
     {NULL, "memory",        "Show memory usage",               cli_cmd_mem},
+#endif
 #if INCLUDE_BH_SERVER
     {NULL, "process",       "Show processes reggister in",     bh_process_list},
 #endif
