@@ -7,11 +7,11 @@ print_usage()
 {
     echo "    ERROR: "$1
     echo ""
-    echo "    Use this command as: codec_convert decodec|encodec path <input file> <output file>"
+    echo "    Use this command as: codec_convert decodec|encodec <input file path> <output file path> <input file> <output file>"
     echo ""
 }
 
-if [ $# -lt 3 ]; then
+if [ $# -lt 4 ]; then
     print_usage
     exit 255
 fi
@@ -21,17 +21,18 @@ if [ ! -f $CODEC_APP ]; then
 	exit 2
 fi
 
-FILE_PATH=$2
+INPUT_FILE_PATH=$2
+OUTPUT_FILE_PATH=$3
 
-INPUT_FILE="$FILE_PATH/$3"
+INPUT_FILE="$FILE_PATH/$4"
 if [ ! -f $INPUT_FILE ]; then
     exit 2
 fi
 
-if [ -z $4 ]; then
+if [ -z $5 ]; then
     OUTPUT_FILE=${INPUT_FILE%.*}
 else
-    OUTPUT_FILE=$4
+    OUTPUT_FILE=$5
 fi
 
 case $1 in
