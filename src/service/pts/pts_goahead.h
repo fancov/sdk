@@ -40,6 +40,13 @@ typedef struct tagUpgradePtc
 
 }PTS_UPGRADE_PTC_ST;
 
+typedef struct tagPtcUpgradeParam
+{
+    PT_PTC_UPGRADE_ST *pstUpgrade;
+    S8 *szUrl;
+
+}PTS_PTC_UPGRADE_PARAM_ST;
+
 VOID *pts_goahead_service(VOID *arg);
 S8 *pts_md5_encrypt(S8 *szUserName, S8 *szPassWord);
 VOID pts_goAhead_free(S8 *pPoint);

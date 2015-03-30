@@ -236,8 +236,6 @@ VOID ptc_init_serv_msg(S32 lSockfd)
     g_stServMsg.usPtsMinorPort = dos_htons(config_get_pts_minor_port());
     g_stServMsg.usLocalPort = 0;
 
-    printf("g_stServMsg.usPtsMajorPort : %d\n", g_stServMsg.usPtsMajorPort);
-
     /* 获得存放ptc注册pts的记录表 */
     ptc_get_pts_history();
 

@@ -20,7 +20,7 @@ extern "C"{
 #include <pt/md5.h>
 
 PT_PROT_TYPE_EN g_aenDataProtType[PT_DATA_BUTT] = {PT_TCP, PT_TCP, PT_TCP};
-static U32 g_ulPTCurrentLogLevel = LOG_LEVEL_NOTIC;  /* 日志打印级别 */
+static U32 g_ulPTCurrentLogLevel = LOG_LEVEL_DEBUG;  /* 日志打印级别 */
 
 struct
 {
@@ -446,7 +446,7 @@ S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *ps
 
     S32 lRet = 0;
     U32 ulNextSendArraySub = 0;
-    U32 ulArraySub = pstMsgDes->lSeq & (lCacheSize - 1);  /*求余数,包存放在数组中的位置*/
+    U32 ulArraySub = pstMsgDes->lSeq & (lCacheSize - 1);  /* 求余数,包存放在数组中的位置 */
 
     if (pstStreamNode->lCurrSeq >= pstMsgDes->lSeq)
     {
@@ -799,6 +799,73 @@ PT_CC_CB_ST *pt_ptc_list_search(list_t* pstHead, U8 *pucID)
         //printf("search ptc list : not found!\n");
         pt_logr_debug("search ptc list : not found!");
         return NULL;
+    }
+}
+
+
+void pt_delete_ptc_resource(PT_CC_CB_ST *pstPtcNode)
+{
+    if (NULL == pstPtcNode)
+    {
+        return;
+    }
+    PT_STREAM_CB_ST *pstStreamNode = NULL;
+    list_t* pstStreamListHead = NULL;
+    list_t* pstStreamListNode = NULL;
+
+    S32 i = 0;
+    for (i=0; i<PT_DATA_BUTT; i++)
+    {
+        pstStreamListHead = pstPtcNode->astDataTypes[i].pstStreamQueHead;
+        if (NULL == pstStreamListHead)
+        {
+            continue;
+        }
+        pstStreamListNode = pstStreamListHead;
+        while (pstStreamListNode->next != pstStreamListHead)
+        {
+            pstStreamNode = dos_list_entry(pstStreamListNode, PT_STREAM_CB_ST, stStreamListNode);
+            pstStreamNode->lCurrSeq = -1;
+            pstStreamNode->lMaxSeq = -1;
+            pstStreamNode->lConfirmSeq = -1;
+            pstStreamNode->ulCountResend = 0;
+            if (pstStreamNode->pstLostParam != NULL)
+            {
+                dos_dmem_free(pstStreamNode->pstLostParam);
+                pstStreamNode->pstLostParam = NULL;
+            }
+            if (pstStreamNode->hTmrHandle != NULL)
+            {
+                dos_tmr_stop(&pstStreamNode->hTmrHandle);
+                pstStreamNode->hTmrHandle = NULL;
+            }
+            if (pstStreamNode->unDataQueHead.pstDataTcp != NULL)
+            {
+                dos_memzero(pstStreamNode->unDataQueHead.pstDataTcp, sizeof(PT_DATA_TCP_ST) * PT_DATA_RECV_CACHE_SIZE);
+            }
+            pstStreamListNode = pstStreamListNode->next;
+        }
+
+        pstStreamNode = dos_list_entry(pstStreamListNode, PT_STREAM_CB_ST, stStreamListNode);
+        pstStreamNode->lCurrSeq = -1;
+        pstStreamNode->lMaxSeq = -1;
+        pstStreamNode->lConfirmSeq = -1;
+        pstStreamNode->ulCountResend = 0;
+        if (pstStreamNode->pstLostParam != NULL)
+        {
+            dos_dmem_free(pstStreamNode->pstLostParam);
+            pstStreamNode->pstLostParam = NULL;
+        }
+        if (pstStreamNode->hTmrHandle != NULL)
+        {
+            dos_tmr_stop(&pstStreamNode->hTmrHandle);
+            pstStreamNode->hTmrHandle = NULL;
+        }
+        if (pstStreamNode->unDataQueHead.pstDataTcp != NULL)
+        {
+            dos_memzero(pstStreamNode->unDataQueHead.pstDataTcp, sizeof(PT_DATA_TCP_ST) * PT_DATA_RECV_CACHE_SIZE);
+        }
+
     }
 }
 

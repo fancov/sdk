@@ -1,10 +1,10 @@
-/* index.html è‡ªåŠ¨è®¿é—® */
+/* index.html ×Ô¶¯·ÃÎÊ */
 function auto_access()
 {
     var internetIP = document.getElementById("auto_internet_ip").value;
     if (internetIP == "")
     {
-        alert("ç›®çš„å…¬ç½‘ipä¸èƒ½ä¸ºç©º");
+        alert("Ä¿µÄ¹«Íøip²»ÄÜÎª¿Õ");
         return false;
     }
     var intranetIP = document.getElementById("auto_intranet_ip").value;
@@ -23,7 +23,7 @@ function auto_access()
     window.open(href);
 }
 
-/* æ£€æŸ¥IP */
+/* ¼ì²éIP */
 function check_IP(ip)
 {
     var re=/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
@@ -35,7 +35,7 @@ function check_IP(ip)
     return false;
 }
 
-/* æ‰‹åŠ¨è®¿é—® */
+/* ÊÖ¶¯·ÃÎÊ */
 function visit_dev()
 {
     var id = "";
@@ -52,7 +52,7 @@ function visit_dev()
 
     if (id == "")
     {
-        alert("è¯·é€‰æ‹©PTC");
+        alert("ÇëÑ¡ÔñPTC");
         return false;
     }
     pms += "id="+id+"&";
@@ -97,7 +97,7 @@ function visit_dev()
     window.open(href);
 }
 
-/* ptc_manage.html åˆ‡æ¢ */
+/* ptc_manage.html ÇĞ»» */
 function switch_pts()
 {
     var id = "";
@@ -122,7 +122,7 @@ function switch_pts()
 
     if (id == "")
     {
-        alert("è¯·é€‰æ‹©PTC");
+        alert("ÇëÑ¡ÔñPTC");
         return false;
     }
     var domain = document.getElementById("switch_domain").value;
@@ -208,7 +208,7 @@ function change_domain(type)
 
     if (domain == "nil" && port == "nil")
     {
-        alert("åŸŸåå’Œç«¯å£ä¸èƒ½åŒæ—¶ä¸ºç©º");
+        alert("ÓòÃûºÍ¶Ë¿Ú²»ÄÜÍ¬Ê±Îª¿Õ");
         return false;
     }
 
@@ -231,7 +231,7 @@ function change_domain(type)
 
     if (id == "")
     {
-        alert("è¯·é€‰æ‹©PTC");
+        alert("ÇëÑ¡ÔñPTC");
         return false;
     }
 
@@ -275,12 +275,12 @@ function create_user()
 
     if (username == '' || password == ''|| password2 == '')
     {
-        alert("è¯·è¾“å…¥å®Œæ•´ä¿¡æ¯");
+        alert("ÇëÊäÈëÍêÕûĞÅÏ¢");
         return false;
     }
     if (password != password2)
     {
-        alert("ä¸¤æ¬¡å¯†ç è¾“å…¥ä¸å¯¹åº”");
+        alert("Á½´ÎÃÜÂëÊäÈë²»¶ÔÓ¦");
         return false;
     }
     
@@ -320,7 +320,7 @@ function form_check_package()
     var filename = document.getElementById("PackageFile").value; 
     if (filename == "")
     {
-        alert("è½¯ä»¶åŒ…: è¯·é€‰æ‹©ä¸€ä¸ªè½¯ä»¶åŒ…æ–‡ä»¶!");
+        alert("Èí¼ş°ü: ÇëÑ¡ÔñÒ»¸öÈí¼ş°üÎÄ¼ş!");
         return false;
     }
     var url = document.HttpPackageUpload.action;
@@ -344,7 +344,7 @@ function form_check_package()
 
     if (id == "")
     {
-        alert("è¯·é€‰æ‹©PTC");
+        alert("ÇëÑ¡ÔñPTC");
         return false;
     }
 
@@ -355,13 +355,13 @@ function form_check_package()
     return true;
 }
 
-/* å…¨ç½‘å‡çº§ */
+/* È«ÍøÉı¼¶ */
 function form_check_package_all()
 {
     var filename = document.getElementById("PackageFileAll").value; 
     if (filename == "")
     {
-        alert("è½¯ä»¶åŒ…: è¯·é€‰æ‹©ä¸€ä¸ªè½¯ä»¶åŒ…æ–‡ä»¶!");
+        alert("Èí¼ş°ü: ÇëÑ¡ÔñÒ»¸öÈí¼ş°üÎÄ¼ş!");
         return false;
     }
 
@@ -396,21 +396,21 @@ function get_ifream_content()
 }
 
 
-/* åˆ›å»ºæ–°ç”¨æˆ· */
+/* ´´½¨ĞÂÓÃ»§ */
 function checkna()
 {
     var na = form1.name.value;
 	if (na.length <1 || na.length >12)
 	{
-        	divname.innerHTML='<font class="tips_false">é•¿åº¦æ˜¯1~12ä¸ªå­—ç¬¦</font>';
+        	divname.innerHTML='<font class="tips_false">³¤¶ÈÊÇ1~12¸ö×Ö·û</font>';
 	}
 	else
 	{
-        	divname.innerHTML='<font class="tips_true">è¾“å…¥æ­£ç¡®</font>';
+        	divname.innerHTML='<font class="tips_true">ÊäÈëÕıÈ·</font>';
 	}
    
   }
-//éªŒè¯å¯†ç 
+//ÑéÖ¤ÃÜÂë
 function checkpsd1()
 {
     var psd1=form1.password.value;  
@@ -419,11 +419,11 @@ function checkpsd1()
     var flagQT=false ;
     if(psd1.length > 0)
     {
-        divpassword1.innerHTML='<font class="tips_true">è¾“å…¥æ­£ç¡®</font>';
+        divpassword1.innerHTML='<font class="tips_true">ÊäÈëÕıÈ·</font>';
     }
     else
     {
-        divpassword1.innerHTML='<font class="tips_false">é•¿åº¦é”™è¯¯</font>';
+        divpassword1.innerHTML='<font class="tips_false">³¤¶È´íÎó</font>';
     }
 }
 
@@ -434,14 +434,14 @@ function checkpsd2()
 
     if(psw1 != psw2 || psw1 == "")
     { 
-         divpassword2.innerHTML='<font class="tips_false">æ‚¨ä¸¤æ¬¡è¾“å…¥çš„å¯†ç ä¸ä¸€æ ·</font>';
+         divpassword2.innerHTML='<font class="tips_false">ÄúÁ½´ÎÊäÈëµÄÃÜÂë²»Ò»Ñù</font>';
     }
     else 
     {
-         divpassword2.innerHTML='<font class="tips_true">è¾“å…¥æ­£ç¡®</font>';
+         divpassword2.innerHTML='<font class="tips_true">ÊäÈëÕıÈ·</font>';
     }
 }
-//éªŒè¯é‚®ç®±
+//ÑéÖ¤ÓÊÏä
 
 function checkmail()
 {
@@ -449,11 +449,11 @@ function checkmail()
     dotpos=form1.mailbox.value.lastIndexOf(".");
     if (apos<1 || dotpos-apos<2)
     {
-        divmail.innerHTML='<font class="tips_false">è¾“å…¥é”™è¯¯</font>' ;
+        divmail.innerHTML='<font class="tips_false">ÊäÈë´íÎó</font>' ;
     }
     else
     {
-        divmail.innerHTML='<font class="tips_true">è¾“å…¥æ­£ç¡®</font>' ;
+        divmail.innerHTML='<font class="tips_true">ÊäÈëÕıÈ·</font>' ;
     }
 }
 
@@ -471,7 +471,7 @@ function del_user()
         {
             if (ptcs[i].value == "admin")
             {
-                alert("adminä¸å¯è¢«åˆ é™¤");
+                alert("admin²»¿É±»É¾³ı");
                 return false;
             }
 
@@ -535,12 +535,12 @@ function change_password()
 
     if (selectBoxCount < 1)
     {
-        alert("è¯·é€‰æ‹©ä¸€ä¸ªéœ€è¦ä¿®æ”¹çš„ç”¨æˆ·");
+        alert("ÇëÑ¡ÔñÒ»¸öĞèÒªĞŞ¸ÄµÄÓÃ»§");
         return false;
     }
     else if (selectBoxCount > 1)
     {
-        alert("åªèƒ½é€‰æ‹©ä¸€ä¸ªç”¨æˆ·");
+        alert("Ö»ÄÜÑ¡ÔñÒ»¸öÓÃ»§");
         return false;
     }
 
@@ -549,23 +549,23 @@ function change_password()
     window.open(url, '_self');
 }
 
-/* é€€å‡ºæŒ‰é’® */
+/* ÍË³ö°´Å¥ */
 function exit()
 {
     try  
     {  
-      if(navigator.userAgent.indexOf("MSIE")>0)         //IEæµè§ˆå™¨å®ç°æ³¨é”€åŠŸèƒ½  
+      if(navigator.userAgent.indexOf("MSIE")>0)         //IEä¯ÀÀÆ÷ÊµÏÖ×¢Ïú¹¦ÄÜ  
       {  
         document.execCommand("ClearAuthenticationCache");  
       }  
-      else if(navigator.userAgent.indexOf("Firefox")>0)       //Firefoxå®ç°æ³¨é”€åŠŸèƒ½  
+      else if(navigator.userAgent.indexOf("Firefox")>0)       //FirefoxÊµÏÖ×¢Ïú¹¦ÄÜ  
       {  
         var xmlhttp = createXMLObject();  
         xmlhttp.open("GET",".force_logout_offer_login_mozilla",true,"logout","logout");  
         xmlhttp.send("");  
         xmlhttp.abort();  
       }  
-      else       //Google Chromeç­‰æµè§ˆå™¨å®ç°æ³¨é”€åŠŸèƒ½  
+      else       //Google ChromeµÈä¯ÀÀÆ÷ÊµÏÖ×¢Ïú¹¦ÄÜ  
       {  
          var xmlHttp = false;  
          if(window.XMLHttpRequest)
@@ -593,7 +593,7 @@ function createXMLObject()
         {  
             xmlhttp = new XMLHttpRequest();  
         }  
-        // code for IE5ã€IE6  
+        // code for IE5¡¢IE6  
         else if(window.ActiveXObject)  
         {  
             xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");  
@@ -630,7 +630,7 @@ function select_all()
     return true;
 }
 
-/* é‚®ç®±åœ°å€åˆæ³•æ€§æ£€æµ‹ */
+/* ÓÊÏäµØÖ·ºÏ·¨ĞÔ¼ì²â */
 function check_mail_format()
 {
     var mail_value = document.getElementsByName("mailbox")[0].value;
@@ -643,7 +643,7 @@ function check_mail_format()
     } 
     else 
     {
-        window.alert ("è¯·è¾“å…¥æœ‰æ•ˆåˆæ³•çš„E-mailåœ°å€ ï¼")
+        window.alert ("ÇëÊäÈëÓĞĞ§ºÏ·¨µÄE-mailµØÖ· £¡")
         return false;
     }
 }
@@ -651,7 +651,7 @@ function check_mail_format()
 
 function formatSysTime() 
 {
-    var week_desc = new Array("æ˜ŸæœŸæ—¥", "æ˜ŸæœŸä¸€", "æ˜ŸæœŸäºŒ", "æ˜ŸæœŸä¸‰", "æ˜ŸæœŸå››", "æ˜ŸæœŸäº”", "æ˜ŸæœŸå…­");
+    var week_desc = new Array("ĞÇÆÚÈÕ", "ĞÇÆÚÒ»", "ĞÇÆÚ¶ş", "ĞÇÆÚÈı", "ĞÇÆÚËÄ", "ĞÇÆÚÎå", "ĞÇÆÚÁù");
     var dt = new Date();
     var year = dt.getFullYear();
     var month = dt.getMonth() + 1;
@@ -741,23 +741,23 @@ function StartPing()
 
     if (PtcID == "")
     {
-        alert("è¯·é€‰æ‹©PTC!");
+        alert("ÇëÑ¡ÔñPTC!");
         return false;
     }   
         
     if(!is_number(PingNum, 1, 100))
     {
-        alert("'Pingçš„æ¬¡æ•°' èŒƒå›´ä¸º1-100!");
+        alert("'PingµÄ´ÎÊı' ·¶Î§Îª1-100!");
         return false;
     }       
         
     if(!is_number(PingPacketSize, 56, 1024))
     {
-        alert("'åŒ…é•¿'èŒƒå›´ä¸º56-1024!");
+        alert("'°ü³¤'·¶Î§Îª56-1024!");
         return false;
     }
 
-    document.getElementById("InfoPing").value = "";
+    document.getElementById("InfoPing").value = "Start Ping "+ PtcID +" :\n";
     var url = "/cgi-bin/startPing?ptcID="+PtcID+"&PingPacketSize="+PingPacketSize;
     g_ping_flag = true;
     submit_ping_url(url, PtcID, PingNum, 0);
@@ -767,6 +767,10 @@ function StopPing()
 {
     g_ping_flag = false;
     clearTimeout(g_time);
+    var value = document.getElementById("InfoPing").value;
+    value += "End\n"
+    document.getElementById("InfoPing").value = value;
+
     return true;
 }
 
@@ -801,8 +805,8 @@ function submit_ping_url(url, PtcID, PingNum, seq)
             //var value = document.getElementById("InfoPing").value;
             //value += xmlhttp.responseText;
             //document.getElementById("InfoPing").value = value;
-            /* è·å¾—ç»“æœä»æ•°æ®åº“ä¸­ */
-            g_time = setTimeout(function(){get_ping_result_from_db(PtcID, seq); }, 3000);
+            /* »ñµÃ½á¹û´ÓÊı¾İ¿âÖĞ */
+            g_time = setTimeout(function(){get_ping_result_from_db(PtcID, PingNum, seq); }, 3000);
         }
     }
     xmlhttp.open("GET",url,true);
@@ -811,7 +815,7 @@ function submit_ping_url(url, PtcID, PingNum, seq)
 }
 
 
-function get_ping_result_from_db(PtcID, seq)
+function get_ping_result_from_db(PtcID, PingNum, seq)
 {
     var url = "/cgi-bin/get_ping_result?ptcID="+PtcID+"&seq="+seq;
     var xmlhttp = null;
@@ -829,7 +833,11 @@ function get_ping_result_from_db(PtcID, seq)
         if (xmlhttp.readyState==4 && xmlhttp.status==200)
         {
             var value = document.getElementById("InfoPing").value;
-            value += xmlhttp.responseText;
+            value = value+"seq="+seq+" : "+xmlhttp.responseText;
+            if (seq == PingNum-1)
+            {
+                value += "end\n"
+            }
             document.getElementById("InfoPing").value = value;
         }
     }
