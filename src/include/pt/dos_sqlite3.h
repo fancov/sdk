@@ -4,7 +4,7 @@
 #ifdef  __cplusplus
 extern "C"{
 #endif
-
+#ifndef ARM_VERSION
 #include <sqlite3.h>
 #include <dos/dos_types.h>
 
@@ -34,7 +34,7 @@ S32 dos_sqlite3_exec(DOS_SQLITE_ST, S8 *);
 S32 dos_sqlite3_record_is_exist(DOS_SQLITE_ST, S8 *);
 S32 dos_sqlite3_exec_callback(DOS_SQLITE_ST, S8 *, my_sqlite_callback, void *);
 S32 dos_sqlite3_close(DOS_SQLITE_ST);
-
+#endif
 #ifdef  __cplusplus
 }
 #endif  /* end of __cplusplus */

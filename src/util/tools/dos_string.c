@@ -482,6 +482,32 @@ DLLEXPORT S32 dos_atoul(const S8 *szStr, U32 *pulVal)
     return -1;
 }
 
+/**
+ * 函数：S32 dos_atoull(const S8 *szStr, U32 *pulVal)
+ * 功能：将字符串转换成32位无符号数字
+ * 参数：
+ * 返回值：成功返回－0，失败返回－1
+ */
+DLLEXPORT S32 dos_atoull(const S8 *szStr, U64 *pulVal)
+{
+    U64 nVal;
+
+    if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pulVal))
+    {
+        if (dos_sscanf(szStr, "%lu", &nVal) < 1)
+        {
+            *pulVal = 0;
+            return -1;
+        }
+
+        *pulVal = nVal;
+        return 0;
+    }
+
+    return -1;
+}
+
+
 
 /**
  * 函数：S32 dos_atolx (const S8 *szStr, S32 *pnVal)

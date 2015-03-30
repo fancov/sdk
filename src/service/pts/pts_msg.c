@@ -1,5 +1,5 @@
 #ifdef  __cplusplus
-extern "C"{
+extern "C" {
 #endif
 
 #include <pthread.h>
@@ -89,11 +89,11 @@ VOID pts_recv_pthread_cond_timedwait(struct timespec *timeout, S8 *szFileName, U
  */
 S32 pts_find_ptc_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name)
 {
-     S8 *pcDestID = (S8 *)para;
-     dos_strncpy(pcDestID, column_value[0], PTC_ID_LEN);
-     pcDestID[PTC_ID_LEN] = '\0';
+    S8 *pcDestID = (S8 *)para;
+    dos_strncpy(pcDestID, column_value[0], PTC_ID_LEN);
+    pcDestID[PTC_ID_LEN] = '\0';
 
-     return 0;
+    return 0;
 }
 
 /**
@@ -163,7 +163,7 @@ VOID pts_data_lose(PT_MSG_TAG *pstMsgDes, S32 lLoseSeq)
     PT_CMD_EN enCmdValue = PT_CMD_RESEND;
     pstMsgDes->lSeq = lLoseSeq;
 
-    pt_logr_info("send lose data, type = %d, stream = %d, seq = %d", pstMsgDes->enDataType, pstMsgDes->ulStreamID, lLoseSeq);
+    pt_logr_info("send lose data : stream = %d, seq = %d", pstMsgDes->ulStreamID, lLoseSeq);
     g_pstPtsNendSendNode = pt_need_send_node_list_insert(g_pstPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend);
 
     pthread_cond_signal(&g_pts_cond_send);
@@ -199,11 +199,11 @@ VOID pts_send_lost_data_req(U64 ulLoseMsg)
     {
         return;
     }
-    pt_logr_info("pstStreamNode->ulCountResend = %d , stream = %d", pstStreamNode->ulCountResend, pstStreamNode->ulStreamID);
 
     if (pstStreamNode->ulCountResend >= 3)
     {
-        /* TODO 3秒后，未收到包。关闭定时器、sockfd */
+        /* 3秒后，未收到包。关闭定时器、sockfd */
+        pt_logr_error("stream resend fail, close。stream is %d", pstStreamNode->ulStreamID);
         dos_tmr_stop(&pstStreamNode->hTmrHandle);
         pstStreamNode->hTmrHandle= NULL;
         pts_delete_recv_stream_node(&pstLoseMsg->stMsg, NULL, DOS_TRUE);
@@ -234,27 +234,31 @@ VOID pts_send_lost_data_req(U64 ulLoseMsg)
             }
         }
     }
-    pt_logr_info("send lose data count : %d", ulCount);
+    pt_logr_debug("send lose data count : %d", ulCount);
 
     if (0 == ulCount)
     {
+        #if 0
         if (pstLoseMsg->stMsg.enDataType != PT_DATA_CMD)
         {
-             ulArraySub = pstStreamNode->lMaxSeq & (PT_DATA_SEND_CACHE_SIZE - 1);
-             if (pstStreamNode->unDataQueHead.pstDataTcp[ulArraySub].ulLen == 0)
-             {
-                 dos_tmr_stop(&pstStreamNode->hTmrHandle);
-             }
-             else
-             {
-                 pstStreamNode->ulCountResend = 0;
-                 pts_data_lose(&pstLoseMsg->stMsg, pstStreamNode->lMaxSeq+1);
-             }
+            ulArraySub = pstStreamNode->lMaxSeq & (PT_DATA_SEND_CACHE_SIZE - 1);
+            if (pstStreamNode->unDataQueHead.pstDataTcp[ulArraySub].ulLen == 0)
+            {
+                dos_tmr_stop(&pstStreamNode->hTmrHandle);
+            }
+            else
+            {
+                pstStreamNode->ulCountResend = 0;
+                pts_data_lose(&pstLoseMsg->stMsg, pstStreamNode->lMaxSeq+1);
+            }
         }
         else
         {
             dos_tmr_stop(&pstStreamNode->hTmrHandle);
         }
+        #endif
+        dos_tmr_stop(&pstStreamNode->hTmrHandle);
+        pstStreamNode->hTmrHandle = NULL;
     }
 }
 
@@ -378,7 +382,7 @@ S32 pts_key_convert(S8 *szKey, S8 *szDest, S8 *szPtcVersion)
 
     //if (dos_strncmp(szPtcVersion, "1.1", dos_strlen("1.1")) == 0)
     //{
-        /* TODO 1.1版本验证方法 */
+    /* TODO 1.1版本验证方法 */
     for (i=0; i<PT_LOGIN_VERIFY_SIZE-1; i++)
     {
         szDest[i] = szKey[i]&0xA9;
@@ -431,13 +435,13 @@ S32 pts_get_key(PT_MSG_TAG *pstMsgDes, S8 *szKey, U32 ulLoginVerSeq)
     pstStreamHead = pstCCNode->astDataTypes[pstMsgDes->enDataType].pstStreamQueHead;
     if (NULL == pstStreamHead)
     {
-         pt_logr_debug("pts_get_key : not found stream list");
+        pt_logr_debug("pts_get_key : not found stream list");
 #if PT_MUTEX_DEBUG
-         pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
+        pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
 #else
-         pthread_mutex_unlock(&g_pts_mutex_send);
+        pthread_mutex_unlock(&g_pts_mutex_send);
 #endif
-         return DOS_FAIL;
+        return DOS_FAIL;
     }
 
     pstStreamNode = pt_stream_queue_search(pstStreamHead, PT_CTRL_LOGIN_RSP);
@@ -606,29 +610,29 @@ S32 pts_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 
     PT_CC_CB_ST        *pstSendPtcNode     = NULL;
 
     /* 判断stream是否在发送队列中存在，若不存在，说明这个stream已经结束 */
-    #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
     pts_send_pthread_mutex_lock(__FILE__, __LINE__);
-    #else
+#else
     pthread_mutex_lock(&g_pts_mutex_send);
-    #endif
+#endif
     pstSendPtcNode = pt_ptc_list_search(g_pstPtcListSend, pstMsgDes->aucID);
     if(NULL == pstSendPtcNode)
     {
-        #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
         pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_pts_mutex_send);
-        #endif
+#endif
         return PT_SAVE_DATA_FAIL;
     }
     pstStreamListHead = pstSendPtcNode->astDataTypes[pstMsgDes->enDataType].pstStreamQueHead;
     if (NULL == pstStreamListHead)
     {
-        #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
         pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_pts_mutex_send);
-        #endif
+#endif
         return PT_SAVE_DATA_FAIL;
     }
     else
@@ -636,19 +640,19 @@ S32 pts_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 
         pstStreamNode = pt_stream_queue_search(pstStreamListHead, pstMsgDes->ulStreamID);
         if (NULL == pstStreamNode)
         {
-            #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
             pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
-            #else
+#else
             pthread_mutex_unlock(&g_pts_mutex_send);
-            #endif
+#endif
             return PT_SAVE_DATA_FAIL;
         }
     }
-    #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
     pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
-    #else
+#else
     pthread_mutex_unlock(&g_pts_mutex_send);
-    #endif
+#endif
     pstStreamListHead = pstPtcNode->astDataTypes[pstMsgDes->enDataType].pstStreamQueHead;
     if (NULL == pstStreamListHead)
     {
@@ -663,10 +667,11 @@ S32 pts_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 
 
         pstStreamListHead = &(pstStreamNode->stStreamListNode);
         pstPtcNode->astDataTypes[pstMsgDes->enDataType].pstStreamQueHead = pstStreamListHead;
+        #if 0
         if (pstMsgDes->enDataType != PT_DATA_CMD)
         {
             /* 创建定时器 */
-            pt_logr_info("create timer, %d streamID : %d", __LINE__, pstMsgDes->ulStreamID);
+            pt_logr_info("create timer streamID : %d",  pstMsgDes->ulStreamID);
             pstLoseMsg = (PT_LOSE_BAG_MSG_ST *)dos_dmem_alloc(sizeof(PT_LOSE_BAG_MSG_ST));
             if (NULL == pstLoseMsg)
             {
@@ -684,6 +689,7 @@ S32 pts_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 
                 return PT_SAVE_DATA_FAIL;
             }
         }
+        #endif
     }
     else
     {
@@ -700,6 +706,7 @@ S32 pts_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 
             }
             /* 插入 stream list中 */
             pstStreamListHead = pt_stream_queue_insert(pstStreamListHead, &(pstStreamNode->stStreamListNode));
+            #if 0
             if (pstMsgDes->enDataType != PT_DATA_CMD)
             {
                 pt_logr_info("create timer, %d streamID : %d", __LINE__, pstMsgDes->ulStreamID);
@@ -721,6 +728,7 @@ S32 pts_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 
                     return PT_SAVE_DATA_FAIL;
                 }
             }
+            #endif
         }
     }
     pstDataQueue = pstStreamNode->unDataQueHead.pstDataTcp;
@@ -737,6 +745,7 @@ S32 pts_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 
 
         pstStreamNode->unDataQueHead.pstDataTcp = pstDataQueue;
     }
+    #if 0
     /* 统计包的数量 */
     if (pstMsgDes->lSeq > pstStreamNode->lMaxSeq)
     {
@@ -744,7 +753,7 @@ S32 pts_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 
         pstPtcNode->ulUdpLostDataCount += (pstMsgDes->lSeq - pstStreamNode->lMaxSeq -1);
         //printf("loss rate : %d\n", pstPtcNode->ulUdpLostDataCount*100/(pstPtcNode->ulUdpRecvDataCount+pstPtcNode->ulUdpLostDataCount));
     }
-
+    #endif
     /* 将数据插入到data queue中 */
     lResult = pt_recv_data_tcp_queue_insert(pstStreamNode, pstMsgDes, acRecvBuf, lDataLen, PT_DATA_RECV_CACHE_SIZE);
     if (lResult < 0)
@@ -786,7 +795,7 @@ S32 pts_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 
         {
             if (NULL != pstStreamNode->hTmrHandle)
             {
-               /* 如果存在定时器，则这个包为丢失的最小包 */
+                /* 如果存在定时器，则这个包为丢失的最小包 */
                 pstStreamNode->ulCountResend = 0;
             }
             return PT_SAVE_DATA_SUCC;
@@ -836,7 +845,7 @@ S32 pts_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 
                 lResult = dos_tmr_start(&pstStreamNode->hTmrHandle, PT_SEND_LOSE_DATA_TIMER, pts_send_lost_data_req, (U64)pstStreamNode->pstLostParam, TIMER_NORMAL_LOOP);
                 if (PT_SAVE_DATA_FAIL == lResult)
                 {
-                     pt_logr_debug("pts_save_into_recv_cache : start timer fail");
+                    pt_logr_debug("pts_save_into_recv_cache : start timer fail");
                     return PT_SAVE_DATA_FAIL;
                 }
 
@@ -856,7 +865,7 @@ S32 pts_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 
  */
 S32 pts_save_login_ack_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen)
 {
-   if (NULL == pstPtcNode || NULL == pstMsgDes || NULL == acRecvBuf)
+    if (NULL == pstPtcNode || NULL == pstMsgDes || NULL == acRecvBuf)
     {
         return DOS_FAIL;
     }
@@ -948,16 +957,19 @@ VOID pts_handle_logout_req(PT_MSG_TAG *pstMsgDes)
 
     /* 退出登录，删除ptc node，通知数据修改ptc状态 */
     pstPtcRecvNode = pt_ptc_list_search(g_pstPtcListRecv, pstMsgDes->aucID);
-    dos_tmr_stop(&pstPtcRecvNode->stHBTmrHandle);
-    g_pstPtcListRecv = pt_delete_ptc_node(g_pstPtcListRecv, pstPtcRecvNode);
-    pstPtcSendNode = pt_ptc_list_search(g_pstPtcListSend, pstMsgDes->aucID);
-    g_pstPtcListSend = pt_delete_ptc_node(g_pstPtcListSend, pstPtcSendNode);
-    /* 通知pts，修改数据库 */
-    dos_snprintf(szSql, PT_DATA_BUFF_128, "update ipcc_alias set register=0 where sn='%.*s';", PTC_ID_LEN, pstMsgDes->aucID);
-    lRet = dos_sqlite3_exec(g_stMySqlite, szSql);
-    if (lRet!= DOS_SUCC)
+    if (pstPtcRecvNode != NULL)
     {
-        pt_logr_info("logout update db fail");
+        dos_tmr_stop(&pstPtcRecvNode->stHBTmrHandle);
+        g_pstPtcListRecv = pt_delete_ptc_node(g_pstPtcListRecv, pstPtcRecvNode);
+        pstPtcSendNode = pt_ptc_list_search(g_pstPtcListSend, pstMsgDes->aucID);
+        g_pstPtcListSend = pt_delete_ptc_node(g_pstPtcListSend, pstPtcSendNode);
+        /* 通知pts，修改数据库 */
+        dos_snprintf(szSql, PT_DATA_BUFF_128, "update ipcc_alias set register=0 where sn='%.*s';", PTC_ID_LEN, pstMsgDes->aucID);
+        lRet = dos_sqlite3_exec(g_stMySqlite, szSql);
+        if (lRet!= DOS_SUCC)
+        {
+            pt_logr_info("logout update db fail");
+        }
     }
 
     return;
@@ -1016,6 +1028,8 @@ VOID pts_handle_login_req(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr_in
         }
         else
         {
+            /* 清空ptc资源 */
+            pt_delete_ptc_resource(pstPtcNode);
             pstPtcNode->stDestAddr = stClientAddr;
         }
     }
@@ -1143,7 +1157,7 @@ VOID pts_hd_timeout_callback(U64 param)
     S8 szSql[PT_DATA_BUFF_128] = {0};
     U8 aucID[PTC_ID_LEN] = {0};
     pstPtcRecvNode->usHBOutTimeCount++;
-    pt_logr_debug("%.*s hd rsp timeout : %d", PTC_ID_LEN, aucID, pstPtcRecvNode->usHBOutTimeCount);
+    pt_logr_debug("%.16s hd rsp timeout : %d", aucID, pstPtcRecvNode->usHBOutTimeCount);
     if (pstPtcRecvNode->usHBOutTimeCount > PTS_HB_TIMEOUT_COUNT_MAX)
     {
         /* 连续多次无法收到心跳，ptc掉线 */
@@ -1155,7 +1169,7 @@ VOID pts_hd_timeout_callback(U64 param)
         stMsgDes.ulStreamID = PT_CTRL_LOGOUT;
         stMsgDes.enDataType = PT_DATA_CTRL;
         dos_memcpy(stMsgDes.aucID, pstPtcRecvNode->aucID, PTC_ID_LEN);
-         /* 释放ptc接收缓存 */
+        /* 释放ptc接收缓存 */
 #if PT_MUTEX_DEBUG
         pts_recv_pthread_mutex_lock(__FILE__, __LINE__);
 #else
@@ -1322,7 +1336,6 @@ S32 pts_login_verify(S32 lSockfd, PT_MSG_TAG *pstMsgDes, S8 *pData, struct socka
         {
             if (dos_memcmp(szDestKey, pstCtrlData->szLoginVerify, PT_LOGIN_VERIFY_SIZE))
             {
-                printf("login : verify fail\n");
                 pt_logr_info("login : verify fail");
                 /* 验证失败 */
                 pstPtcNode = pt_ptc_list_search(g_pstPtcListSend, pstMsgDes->aucID);
@@ -1469,207 +1482,207 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
     szID[PTC_ID_LEN] = '\0';
     switch (pstMsgDes->ulStreamID) //pstCtrlData->enCtrlType
     {
-        case PT_CTRL_LOGIN_REQ:
-            /* 登陆请求 */
-            if (pts_is_ptc_id(szID))
+    case PT_CTRL_LOGIN_REQ:
+        /* 登陆请求 */
+        if (pts_is_ptc_id(szID))
+        {
+            pt_logr_debug("request login ipcc id is %s", szID);
+        }
+        else
+        {
+            /* ptc id错误 */
+            pt_logr_error("request login ipcc id(%s) format error", szID);
+            pts_send_login_fail2ptc(lSockfd, pstMsgDes, stClientAddr);
+            break;
+        }
+        pts_handle_login_req(lSockfd, pstMsgDes, stClientAddr, pstCtrlData->szLoginVerify);
+
+        break;
+    case PT_CTRL_LOGIN_RSP:
+        /* 登陆验证, 添加结果到接收缓存，若验证成功，开启心跳定时器 */
+        logr_debug("login rsp : %.16s", pstMsgDes->aucID);
+        lResult = pts_login_verify(lSockfd, pstMsgDes, pData, stClientAddr, pstCtrlData->szVersion);
+        if (DOS_SUCC == lResult)
+        {
+            inet_ntop(AF_INET, (void *)(pstMsgDes->aulServIp), szPtcIntranetIP, IPV6_SIZE);
+            usPtcIntranetPort = dos_ntohs(pstMsgDes->usServPort);
+            inet_ntop(AF_INET, &stClientAddr.sin_addr, szPtcInternetIP, IPV6_SIZE);
+            usPtcInternetPort = dos_ntohs(stClientAddr.sin_port);
+
+            switch (pstCtrlData->enPtcType)
             {
-                pt_logr_debug("request login ipcc id is %s", szID);
-            }
-            else
-            {
-                /* ptc id错误 */
-                pt_logr_error("request login ipcc id(%s) format error", szID);
-                pts_send_login_fail2ptc(lSockfd, pstMsgDes, stClientAddr);
+            case PT_PTC_TYPE_OEM:
+                strcpy(szPtcType, "OEM");
+                break;
+            case PT_PTC_TYPE_WINDOWS:
+                strcpy(szPtcType, "PC");
+                break;
+            case PT_PTC_TYPE_IPCC:
+                strcpy(szPtcType, "IPCC");
+                break;
+            default:
                 break;
             }
-            pts_handle_login_req(lSockfd, pstMsgDes, stClientAddr, pstCtrlData->szLoginVerify);
-
-            break;
-        case PT_CTRL_LOGIN_RSP:
-            /* 登陆验证, 添加结果到接收缓存，若验证成功，开启心跳定时器 */
-            logr_debug("login rsp : %.16s", pstMsgDes->aucID);
-            lResult = pts_login_verify(lSockfd, pstMsgDes, pData, stClientAddr, pstCtrlData->szVersion);
-            if (DOS_SUCC == lResult)
+            dos_snprintf(szSql, PTS_SQL_STR_SIZE, "select count(*) from ipcc_alias where sn='%.*s'", PTC_ID_LEN, pstMsgDes->aucID);
+            if (dos_sqlite3_record_is_exist(g_stMySqlite, szSql))  /* 判断是否存在 */
             {
-                inet_ntop(AF_INET, (void *)(pstMsgDes->aulServIp), szPtcIntranetIP, IPV6_SIZE);
-                usPtcIntranetPort = dos_ntohs(pstMsgDes->usServPort);
-                inet_ntop(AF_INET, &stClientAddr.sin_addr, szPtcInternetIP, IPV6_SIZE);
-                usPtcInternetPort = dos_ntohs(stClientAddr.sin_port);
-
-                switch (pstCtrlData->enPtcType)
-                {
-                    case PT_PTC_TYPE_OEM:
-                        strcpy(szPtcType, "OEM");
-                        break;
-                    case PT_PTC_TYPE_WINDOWS:
-                        strcpy(szPtcType, "PC");
-                        break;
-                    case PT_PTC_TYPE_IPCC:
-                        strcpy(szPtcType, "IPCC");
-                        break;
-                    default:
-                        break;
-                }
-                dos_snprintf(szSql, PTS_SQL_STR_SIZE, "select count(*) from ipcc_alias where sn='%.*s'", PTC_ID_LEN, pstMsgDes->aucID);
-                if (dos_sqlite3_record_is_exist(g_stMySqlite, szSql))  /* 判断是否存在 */
-                {
-                    /* 存在，更新IPCC的注册状态 */
-                    pt_logr_debug("pts_send_msg2client : db existed");
-                    dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set register=1, name='%s', version='%s', lastLoginTime=datetime('now','localtime'), intranetIP='%s'\
+                /* 存在，更新IPCC的注册状态 */
+                pt_logr_debug("pts_send_msg2client : db existed");
+                dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set register=1, name='%s', version='%s', lastLoginTime=datetime('now','localtime'), intranetIP='%s'\
 , intranetPort=%d, internetIP='%s', internetPort=%d, ptcType='%s', achPtsMajorDomain='%s', achPtsMinorDomain='%s'\
 , usPtsMajorPort=%d, usPtsMinorPort=%d, szPtsHistoryIp1='%s', szPtsHistoryIp2='%s', szPtsHistoryIp3='%s'\
 , usPtsHistoryPort1=%d, usPtsHistoryPort2=%d, usPtsHistoryPort3=%d, szMac='%s' where sn='%.*s';"
-                    , pstCtrlData->szPtcName, pstCtrlData->szVersion, szPtcIntranetIP, usPtcIntranetPort, szPtcInternetIP, usPtcInternetPort
-                    , szPtcType, pstCtrlData->achPtsMajorDomain, pstCtrlData->achPtsMinorDomain, dos_ntohs(pstCtrlData->usPtsMajorPort)
-                    , dos_ntohs(pstCtrlData->usPtsMinorPort), pstCtrlData->szPtsHistoryIp1, pstCtrlData->szPtsHistoryIp2, pstCtrlData->szPtsHistoryIp3
-                    , dos_ntohs(pstCtrlData->usPtsHistoryPort1), dos_ntohs(pstCtrlData->usPtsHistoryPort2), dos_ntohs(pstCtrlData->usPtsHistoryPort3)
-                    , pstCtrlData->szMac, PTC_ID_LEN, pstMsgDes->aucID);
+                             , pstCtrlData->szPtcName, pstCtrlData->szVersion, szPtcIntranetIP, usPtcIntranetPort, szPtcInternetIP, usPtcInternetPort
+                             , szPtcType, pstCtrlData->achPtsMajorDomain, pstCtrlData->achPtsMinorDomain, dos_ntohs(pstCtrlData->usPtsMajorPort)
+                             , dos_ntohs(pstCtrlData->usPtsMinorPort), pstCtrlData->szPtsHistoryIp1, pstCtrlData->szPtsHistoryIp2, pstCtrlData->szPtsHistoryIp3
+                             , dos_ntohs(pstCtrlData->usPtsHistoryPort1), dos_ntohs(pstCtrlData->usPtsHistoryPort2), dos_ntohs(pstCtrlData->usPtsHistoryPort3)
+                             , pstCtrlData->szMac, PTC_ID_LEN, pstMsgDes->aucID);
 
-                    lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
-                    if (lResult != DOS_SUCC)
-                    {
-                        DOS_ASSERT(0);
-                        pt_logr_info("update db state fail : %.*s", PTC_ID_LEN, pstMsgDes->aucID);
-                    }
-                }
-                else
+                lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+                if (lResult != DOS_SUCC)
                 {
-                    /* 不存在，添加IPCC到DB */
-                    pt_logr_debug("pts_send_msg2client : db insert");
-                    dos_snprintf(szSql, PTS_SQL_STR_SIZE, "INSERT INTO ipcc_alias (\"id\", \"sn\", \"name\", \"remark\", \"version\", \"register\", \"domain\", \"intranetIP\", \"internetIP\", \"intranetPort\"\
-, \"internetPort\", \"ptcType\", \"achPtsMajorDomain\", \"achPtsMinorDomain\", \"usPtsMajorPort\", \"usPtsMinorPort\", \"szPtsHistoryIp1\", \"szPtsHistoryIp2\", \"szPtsHistoryIp3\"\
-, \"usPtsHistoryPort1\", \"usPtsHistoryPort2\", \"usPtsHistoryPort3\", \"szMac\") VALUES (NULL, '%s', '%s', NULL, '%s', %d, NULL, '%s', '%s', %d, %d, '%s', '%s', '%s', %d, %d, '%s', '%s', '%s', %d, %d, %d, '%s');"
-                        , szID, pstCtrlData->szPtcName, pstCtrlData->szVersion, DOS_TRUE, szPtcIntranetIP, szPtcInternetIP, usPtcIntranetPort, usPtcInternetPort, szPtcType
-                        , pstCtrlData->achPtsMajorDomain, pstCtrlData->achPtsMinorDomain, dos_ntohs(pstCtrlData->usPtsMajorPort), dos_ntohs(pstCtrlData->usPtsMinorPort)
-                        , pstCtrlData->szPtsHistoryIp1, pstCtrlData->szPtsHistoryIp2, pstCtrlData->szPtsHistoryIp3, dos_ntohs(pstCtrlData->usPtsHistoryPort1)
-                        , dos_ntohs(pstCtrlData->usPtsHistoryPort2), dos_ntohs(pstCtrlData->usPtsHistoryPort3), pstCtrlData->szMac);
-
-                    lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
-                    if (lResult != DOS_SUCC)
-                    {
-                        DOS_ASSERT(0);
-                        pt_logr_info("insert db state fail : %.*s", PTC_ID_LEN, pstMsgDes->aucID);
-                    }
+                    DOS_ASSERT(0);
+                    pt_logr_info("update db state fail : %.*s", PTC_ID_LEN, pstMsgDes->aucID);
                 }
-            }
-
-            break;
-        case PT_CTRL_LOGOUT:
-            /* 退出登陆 */
-            pts_handle_logout_req(pstMsgDes);
-
-            break;
-        case PT_CTRL_HB_REQ:
-            /* 心跳, 修改ptc中的usHBOutTimeCount */
-            pt_logr_debug("recv hb from ptc : %s\n", pstMsgDes->aucID);
-            dHBTimeInterval = (double)pstCtrlData->lHBTimeInterval/1000;
-            /* 将心跳和响应之间的时间差，更新到数据库 */
-            dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set heartbeatTime=%.2f where sn='%.*s';", dHBTimeInterval, PTC_ID_LEN, pstMsgDes->aucID);
-            lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
-            if (lResult != DOS_SUCC)
-            {
-                pt_logr_info("hb time, update db fail");
-            }
-
-            pstPtcNode = pt_ptc_list_search(g_pstPtcListRecv, pstMsgDes->aucID);
-            if(NULL == pstPtcNode)
-            {
-                pt_logr_info("pts_ctrl_msg_handle : can not found ptc id = %.16s", pstMsgDes->aucID);
-                break;
             }
             else
             {
-                pstPtcNode->usHBOutTimeCount = 0;
-            }
-
-            pts_send_hb_rsp(lSockfd, pstMsgDes, stClientAddr);
-            break;
-        case PT_CTRL_PTS_MAJOR_DOMAIN:
-            if (pstCtrlData->achPtsMajorDomain[0] != '\0')
-            {
-                dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set achPtsMajorDomain='%s' where sn='%.*s';", pstCtrlData->achPtsMajorDomain, PTC_ID_LEN, pstMsgDes->aucID);
-                lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
-                if (lResult != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
-                    pt_logr_info("change major domain, update db fail");
-                }
-            }
-            if (pstCtrlData->usPtsMajorPort != 0)
-            {
-                dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set usPtsMajorPort=%d where sn='%.*s';", dos_ntohs(pstCtrlData->usPtsMajorPort), PTC_ID_LEN, pstMsgDes->aucID);
-                lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
-                if (lResult != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
-                    pt_logr_info("change major port, update db fail");
-                }
-            }
-            break;
-        case PT_CTRL_PTS_MINOR_DOMAIN:
-            if (pstCtrlData->achPtsMinorDomain[0] != '\0')
-            {
-                dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set achPtsMinorDomain='%s' where sn='%.*s';", pstCtrlData->achPtsMinorDomain, PTC_ID_LEN, pstMsgDes->aucID);
-                lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
-                if (lResult != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
-                    pt_logr_info("change minor domain, update db fail");
-                }
-            }
-            if (pstCtrlData->usPtsMinorPort != 0)
-            {
-                dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set usPtsMinorPort=%d where sn='%.*s';", dos_ntohs(pstCtrlData->usPtsMinorPort), PTC_ID_LEN, pstMsgDes->aucID);
-                lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
-                if (lResult != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
-                    pt_logr_info("change minor port, update db fail");
-                }
-            }
-            break;
-        case PT_CTRL_PING_ACK:
-            pstPingPacket = (PT_PING_PACKET_ST *)(pData + sizeof(PT_MSG_TAG));
-            gettimeofday(&stEndTime, NULL);
-            /* 计算时间差 */
-            ulPingTime = (stEndTime.tv_sec - pstPingPacket->stStartTime.tv_sec) * 1000 * 1000 + (stEndTime.tv_usec - pstPingPacket->stStartTime.tv_usec);
-            /* 不超过超时时间 */
-            if (ulPingTime < (PTS_PING_TIMEOUT)*1000)
-            {
-                dos_tmr_stop(&pstPingPacket->hTmrHandle);
-                pstPingPacket->hTmrHandle = NULL;
-                dos_snprintf(szSql, PTS_SQL_STR_SIZE, "select curr_position from ping_result where sn='%.*s' limit 1 ", PTC_ID_LEN, pstMsgDes->aucID);
-                lResult = dos_sqlite3_exec_callback(g_stMySqlite, szSql, pts_get_curr_position_callback, (VOID *)&lCurPosition);
-                if (lResult != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
-                    return;
-                }
-
-                if (lCurPosition < 0)
-                {
-                    dos_snprintf(szSql, PTS_SQL_STR_SIZE, "INSERT INTO ping_result (\"id\", \"sn\", \"curr_position\", \"timer0\") VALUES (NULL, '%.*s', 0, %d)", PTC_ID_LEN, pstMsgDes->aucID, ulPingTime);
-                }
-                else
-                {
-                    ulDataField = lCurPosition + 1;
-                    if (ulDataField > 7)
-                    {
-                        ulDataField = 0;
-                    }
-
-                    dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ping_result set curr_position=%d, timer%d=%d where sn='%.*s'", ulDataField, ulDataField, ulPingTime, PTC_ID_LEN, pstMsgDes->aucID);
-                }
+                /* 不存在，添加IPCC到DB */
+                pt_logr_debug("pts_send_msg2client : db insert");
+                dos_snprintf(szSql, PTS_SQL_STR_SIZE, "INSERT INTO ipcc_alias (\"id\", \"sn\", \"name\", \"remark\", \"version\", \"register\", \"domain\", \"intranetIP\", \"internetIP\", \"intranetPort\"\
+, \"internetPort\", \"ptcType\", \"achPtsMajorDomain\", \"achPtsMinorDomain\", \"usPtsMajorPort\", \"usPtsMinorPort\", \"szPtsHistoryIp1\", \"szPtsHistoryIp2\", \"szPtsHistoryIp3\"\
+, \"usPtsHistoryPort1\", \"usPtsHistoryPort2\", \"usPtsHistoryPort3\", \"szMac\") VALUES (NULL, '%s', '%s', NULL, '%s', %d, NULL, '%s', '%s', %d, %d, '%s', '%s', '%s', %d, %d, '%s', '%s', '%s', %d, %d, %d, '%s');"
+                             , szID, pstCtrlData->szPtcName, pstCtrlData->szVersion, DOS_TRUE, szPtcIntranetIP, szPtcInternetIP, usPtcIntranetPort, usPtcInternetPort, szPtcType
+                             , pstCtrlData->achPtsMajorDomain, pstCtrlData->achPtsMinorDomain, dos_ntohs(pstCtrlData->usPtsMajorPort), dos_ntohs(pstCtrlData->usPtsMinorPort)
+                             , pstCtrlData->szPtsHistoryIp1, pstCtrlData->szPtsHistoryIp2, pstCtrlData->szPtsHistoryIp3, dos_ntohs(pstCtrlData->usPtsHistoryPort1)
+                             , dos_ntohs(pstCtrlData->usPtsHistoryPort2), dos_ntohs(pstCtrlData->usPtsHistoryPort3), pstCtrlData->szMac);
 
                 lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
                 if (lResult != DOS_SUCC)
                 {
-                    pt_logr_info("update hb time fail : %.*s", PTC_ID_LEN, pstMsgDes->aucID);
+                    DOS_ASSERT(0);
+                    pt_logr_info("insert db state fail : %.*s", PTC_ID_LEN, pstMsgDes->aucID);
                 }
             }
+        }
+
+        break;
+    case PT_CTRL_LOGOUT:
+        /* 退出登陆 */
+        pts_handle_logout_req(pstMsgDes);
+
+        break;
+    case PT_CTRL_HB_REQ:
+        /* 心跳, 修改ptc中的usHBOutTimeCount */
+        pt_logr_debug("recv hb from ptc : %.16s", pstMsgDes->aucID);
+        dHBTimeInterval = (double)pstCtrlData->lHBTimeInterval/1000;
+        /* 将心跳和响应之间的时间差，更新到数据库 */
+        dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set heartbeatTime=%.2f where sn='%.*s';", dHBTimeInterval, PTC_ID_LEN, pstMsgDes->aucID);
+        lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+        if (lResult != DOS_SUCC)
+        {
+            pt_logr_info("hb time, update db fail");
+        }
+
+        pstPtcNode = pt_ptc_list_search(g_pstPtcListRecv, pstMsgDes->aucID);
+        if(NULL == pstPtcNode)
+        {
+            pt_logr_info("pts_ctrl_msg_handle : can not found ptc id = %.16s", pstMsgDes->aucID);
             break;
-        default:
-            break;
+        }
+        else
+        {
+            pstPtcNode->usHBOutTimeCount = 0;
+        }
+
+        pts_send_hb_rsp(lSockfd, pstMsgDes, stClientAddr);
+        break;
+    case PT_CTRL_PTS_MAJOR_DOMAIN:
+        if (pstCtrlData->achPtsMajorDomain[0] != '\0')
+        {
+            dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set achPtsMajorDomain='%s' where sn='%.*s';", pstCtrlData->achPtsMajorDomain, PTC_ID_LEN, pstMsgDes->aucID);
+            lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+            if (lResult != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                pt_logr_info("change major domain, update db fail");
+            }
+        }
+        if (pstCtrlData->usPtsMajorPort != 0)
+        {
+            dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set usPtsMajorPort=%d where sn='%.*s';", dos_ntohs(pstCtrlData->usPtsMajorPort), PTC_ID_LEN, pstMsgDes->aucID);
+            lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+            if (lResult != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                pt_logr_info("change major port, update db fail");
+            }
+        }
+        break;
+    case PT_CTRL_PTS_MINOR_DOMAIN:
+        if (pstCtrlData->achPtsMinorDomain[0] != '\0')
+        {
+            dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set achPtsMinorDomain='%s' where sn='%.*s';", pstCtrlData->achPtsMinorDomain, PTC_ID_LEN, pstMsgDes->aucID);
+            lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+            if (lResult != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                pt_logr_info("change minor domain, update db fail");
+            }
+        }
+        if (pstCtrlData->usPtsMinorPort != 0)
+        {
+            dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set usPtsMinorPort=%d where sn='%.*s';", dos_ntohs(pstCtrlData->usPtsMinorPort), PTC_ID_LEN, pstMsgDes->aucID);
+            lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+            if (lResult != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                pt_logr_info("change minor port, update db fail");
+            }
+        }
+        break;
+    case PT_CTRL_PING_ACK:
+        pstPingPacket = (PT_PING_PACKET_ST *)(pData + sizeof(PT_MSG_TAG));
+        gettimeofday(&stEndTime, NULL);
+        /* 计算时间差 */
+        ulPingTime = (stEndTime.tv_sec - pstPingPacket->stStartTime.tv_sec) * 1000 * 1000 + (stEndTime.tv_usec - pstPingPacket->stStartTime.tv_usec);
+        /* 不超过超时时间 */
+        if (ulPingTime < (PTS_PING_TIMEOUT)*1000)
+        {
+            dos_tmr_stop(&pstPingPacket->hTmrHandle);
+            pstPingPacket->hTmrHandle = NULL;
+            dos_snprintf(szSql, PTS_SQL_STR_SIZE, "select curr_position from ping_result where sn='%.*s' limit 1 ", PTC_ID_LEN, pstMsgDes->aucID);
+            lResult = dos_sqlite3_exec_callback(g_stMySqlite, szSql, pts_get_curr_position_callback, (VOID *)&lCurPosition);
+            if (lResult != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return;
+            }
+
+            if (lCurPosition < 0)
+            {
+                dos_snprintf(szSql, PTS_SQL_STR_SIZE, "INSERT INTO ping_result (\"id\", \"sn\", \"curr_position\", \"timer0\") VALUES (NULL, '%.*s', 0, %d)", PTC_ID_LEN, pstMsgDes->aucID, ulPingTime);
+            }
+            else
+            {
+                ulDataField = lCurPosition + 1;
+                if (ulDataField > 7)
+                {
+                    ulDataField = 0;
+                }
+
+                dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ping_result set curr_position=%d, timer%d=%d where sn='%.*s'", ulDataField, ulDataField, ulPingTime, PTC_ID_LEN, pstMsgDes->aucID);
+            }
+
+            lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+            if (lResult != DOS_SUCC)
+            {
+                pt_logr_info("update hb time fail : %.*s", PTC_ID_LEN, pstMsgDes->aucID);
+            }
+        }
+        break;
+    default:
+        break;
     }
 
 }
@@ -1927,7 +1940,7 @@ VOID pts_save_msg_into_cache(U8 *pcIpccId, PT_DATA_TYPE_EN enDataType, U32 ulStr
         if (lResult < 0)
         {
             /* 添加发送消息失败 */
-             return;
+            return;
         }
         else
         {
@@ -2136,7 +2149,7 @@ VOID *pts_send_msg2ptc(VOID *arg)
 
                     dos_memcpy(szBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
                     dos_memcpy(szBuff+sizeof(PT_MSG_TAG), stRecvDataTcp.szBuff, stRecvDataTcp.ulLen);
-                    pt_logr_info("send data to ptc, streamID : %d", pstNeedSendNode->ulStreamID);
+                    pt_logr_debug("send data to ptc, streamID is %d, seq is %d, size is %d", pstNeedSendNode->ulStreamID, pstStreamNode->lCurrSeq, stRecvDataTcp.ulLen);
                     sendto(lSockfd, szBuff, stRecvDataTcp.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
                 }
                 else
@@ -2299,7 +2312,7 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
                     }
 #endif
 
-                    pt_logr_info("pts recv data from ptc, seq : %d, streamID = %d, lRecvLen = %d", pstMsgDes->lSeq, pstMsgDes->ulStreamID, lRecvLen);
+                    pt_logr_debug("pts recv data from ptc, seq : %d, streamID = %d, lRecvLen = %d", pstMsgDes->lSeq, pstMsgDes->ulStreamID, lRecvLen);
                     lResult = pts_save_into_recv_cache(pstPtcNode, pstMsgDes, acRecvBuf+sizeof(PT_MSG_TAG), lRecvLen-sizeof(PT_MSG_TAG));
                     if (lResult < 0)
                     {

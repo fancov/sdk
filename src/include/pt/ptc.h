@@ -4,8 +4,9 @@
 #ifdef  __cplusplus
 extern "C"{
 #endif
-
+#if INCLUDE_PTS
 #include <pt/dos_sqlite3.h>
+#endif
 #include <dos/dos_types.h>
 
 #define PTC_SOCKET_CACHE     1024 * 1024            /* socket 收发缓存大小 */

@@ -118,7 +118,7 @@ SC_TEL_NUM_QUERY_NODE_ST *sc_task_get_callee(SC_TASK_CB_ST *pstTCB)
 SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
 {
     U32                      ulCallerIndex = 0;
-    S32                      lMaxSelectTime  = 16;
+    S32                      lMaxSelectTime  = 0;
     SC_CALLER_QUERY_NODE_ST  *pstCaller = NULL;
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
@@ -131,8 +131,8 @@ SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
 
     while (1)
     {
-        lMaxSelectTime--;
-        if (lMaxSelectTime < 0)
+        lMaxSelectTime++;
+        if (lMaxSelectTime > pstTCB->usCallerCount)
         {
             DOS_ASSERT(0);
             SC_TRACE_OUT();
@@ -281,7 +281,6 @@ VOID *sc_task_runtime(VOID *ptr)
 {
     SC_TASK_CB_ST   *pstTCB;
     U32             ulTaskInterval;
-    U32             blIsNormal = DOS_TRUE;
 
     if (!ptr)
     {
@@ -298,6 +297,7 @@ VOID *sc_task_runtime(VOID *ptr)
         return NULL;
     }
 
+    pstTCB->ucTaskStatus = SC_TASK_WORKING;
     while (1)
     {
         /* 根据当前呼叫量，确定发起呼叫的间隔，如果当前任务已经处于受限状态，就要强制调整间隔 */
@@ -305,10 +305,10 @@ VOID *sc_task_runtime(VOID *ptr)
         if (pstTCB->ulCurrentConcurrency >= pstTCB->ulMaxConcurrency)
         {
             sc_logr_info(SC_TASK, "Cannot make call for reach the max concurrency. Task : %u.", pstTCB->ulTaskID);
-            usleep(ulTaskInterval * 1000);
+            usleep(1000 * 1000);
             continue;
         }
-
+#if 0
         if (!blIsNormal && ulTaskInterval <= 100)
         {
             ulTaskInterval = 1;
@@ -321,12 +321,12 @@ VOID *sc_task_runtime(VOID *ptr)
                 break;
             }
         }
+#endif
         usleep(ulTaskInterval * 1000);
 
         /* 如果暂停了就继续等待 */
         if (SC_TASK_PAUSED == pstTCB->ucTaskStatus)
         {
-            blIsNormal = DOS_FALSE;
             sc_logr_info(SC_TASK, "Cannot make call for puased status. Task : %u.", pstTCB->ulTaskID);
             continue;
         }
@@ -336,7 +336,7 @@ VOID *sc_task_runtime(VOID *ptr)
         {
             if (pstTCB->ulCurrentConcurrency >= 0)
             {
-                blIsNormal = DOS_FALSE;
+                ulTaskInterval = 1000;
                 sc_logr_info(SC_TASK, "Cannot make call for stop status. Task : %u.", pstTCB->ulTaskID);
                 continue;
             }
@@ -348,7 +348,6 @@ VOID *sc_task_runtime(VOID *ptr)
         /* 检查当前是否在允许的时间段 */
         if (sc_task_check_can_call_by_time(pstTCB) != DOS_TRUE)
         {
-            blIsNormal = DOS_FALSE;
             sc_logr_info(SC_TASK, "Cannot make call for invalid time period. Task : %u.", pstTCB->ulTaskID);
             continue;
         }
@@ -356,7 +355,6 @@ VOID *sc_task_runtime(VOID *ptr)
         /* 检测当时任务是否可以发起呼叫 */
         if (sc_task_check_can_call_by_status(pstTCB) != DOS_TRUE)
         {
-            blIsNormal = DOS_FALSE;
             sc_logr_info(SC_TASK, "Cannot make call for system busy. Task : %u.", pstTCB->ulTaskID);
             continue;
         }

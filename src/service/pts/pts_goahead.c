@@ -169,10 +169,11 @@ static int          finished = 0;                  /* Finished flag */
     static int      debugSecurity = 0;
 #endif
 
-BOOL                bIsUpdating     = DOS_FALSE;   /* 是否正在进行全网 */
-U16                 crc_tab[256];                  /* Function init_crc_tab() will initialize it */
+BOOL                m_bIsUpdatingAll  = DOS_FALSE;   /* 是否正在进行全网 */
+BOOL                m_bIsUpdating     = DOS_FALSE;   /* 是否正在进行部分升级 */
+U16                 crc_tab[256];                    /* Function init_crc_tab() will initialize it */
 U8                  gucIsTableInit  = 0;
-U8                  g_LangType      = 0;           /* 0-en, 1-chn */
+U8                  g_LangType      = 0;             /* 0-en, 1-chn */
 PT_PTC_UPGRADE_ST  *g_pstUpgrade    = NULL;
 /****************************** Forward Declarations **************************/
 
@@ -475,7 +476,7 @@ static int initWebs(int demo)
     return 0;
 }
 
-U16 load_calc_crc( U8* pBuffer, U32 ulCount  )
+U16 load_calc_crc( U8* pBuffer, U32 ulCount)
 {
 
     U16 usTemp = 0;
@@ -724,7 +725,7 @@ int cancel_upgrade(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
             dos_tmr_stop(&g_pstUpgrade->hTmrHandle);
             g_pstUpgrade->hTmrHandle = NULL;
         }
-        bIsUpdating = DOS_FALSE;
+        m_bIsUpdatingAll = DOS_FALSE;
         dos_dmem_free(g_pstUpgrade);
         g_pstUpgrade = NULL;
     }
@@ -1031,8 +1032,11 @@ int websReadForUpload(char_t *pStr, U32 ulLen, char_t *boundry, U32 *pulFileLen,
 
 }
 
-void websSendFileToPtc(char_t *url, PT_PTC_UPGRADE_ST *pstUpgrade)
+void *websSendFileToPtc(void *arg)
 {
+    PTS_PTC_UPGRADE_PARAM_ST *pstParam = (PTS_PTC_UPGRADE_PARAM_ST *)arg;
+    S8 *url = pstParam->szUrl;
+    PT_PTC_UPGRADE_ST *pstUpgrade = pstParam->pstUpgrade;
     U32 ulReadLen = 0;
     U32 ulReadCount = 0;
     FILE *pFileFd = NULL;
@@ -1073,12 +1077,12 @@ void websSendFileToPtc(char_t *url, PT_PTC_UPGRADE_ST *pstUpgrade)
     pFileFd  = fopen("./package", "r");
     if(NULL == pFileFd)
     {
-        return;
+        goto end;
     }
     for (i=0; i<lPtcCount; i++)
     {
         fseek(pFileFd, 0L, SEEK_SET);
-        printf("upgrade ptc sn : %s\n", pszPtcIds[i]);
+        logr_debug("send file to ptc : %s", pszPtcIds[i]);
         pts_save_msg_into_cache((U8*)pszPtcIds[i], PT_DATA_WEB, PT_CTRL_PTC_PACKAGE, (S8 *)pstUpgrade, sizeof(PT_PTC_UPGRADE_ST), NULL, 0);
         do
         {
@@ -1099,6 +1103,11 @@ void websSendFileToPtc(char_t *url, PT_PTC_UPGRADE_ST *pstUpgrade)
     }
 
     fclose(pFileFd);
+end:
+    dos_dmem_free(pstUpgrade);
+    dos_dmem_free(url);
+    m_bIsUpdating = DOS_FALSE;
+    return NULL;
 }
 
 void pts_send_ipgrade_package2ptc(S8 *szPtcId, PT_PTC_UPGRADE_ST *pstUpgrade)
@@ -1220,7 +1229,7 @@ S32 websHttpUploadHandler(webs_t wp, char_t *query, PT_PTC_UPGRADE_ST *pstUpgrad
         return DOS_FAIL;
     }
     clen = websGetVar(wp, T("CONTENT_LENGTH"), T(""));
-    printf("clen = %s\n", clen);
+    logr_debug("file clen is %s", clen);
 
     if(NULL == clen)
     {
@@ -1233,7 +1242,6 @@ S32 websHttpUploadHandler(webs_t wp, char_t *query, PT_PTC_UPGRADE_ST *pstUpgrad
     }
 
     ctype = websGetVar(wp, T("CONTENT_TYPE"), T(""));
-    printf("ctype = %s\n", ctype);
     if(NULL == ctype)
     {
         return DOS_FAIL;
@@ -1254,7 +1262,7 @@ S32 websHttpUploadHandler(webs_t wp, char_t *query, PT_PTC_UPGRADE_ST *pstUpgrad
         return DOS_FAIL;
     }
 
-    /* 发送 MD5验证 */
+    /* MD5验证 */
     pstUpgrade->ulPackageLen = dos_htonl(ulFileLen);
     dos_strncpy(pstUpgrade->szMD5Verify, pFileMD5, PT_MD5_LEN);
     bfreeSafe(B_L, pFileMD5);
@@ -1265,16 +1273,26 @@ S32 websHttpUploadHandler(webs_t wp, char_t *query, PT_PTC_UPGRADE_ST *pstUpgrad
 int pts_upgrade_selected_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                              char_t *url, char_t *path, char_t *query)
 {
-    PT_PTC_UPGRADE_ST stUpgrade;
+    PT_PTC_UPGRADE_ST *pstUpgrade = NULL;
+    PTS_PTC_UPGRADE_PARAM_ST stPthreadParam;
     S8 szFileName[PT_DATA_BUFF_128] = {0};
     S8 *ptr = NULL;
     S32 lResult = 0;
+    pthread_t tid;
 
     a_assert(websValid(wp));
     a_assert(url && *url);
     a_assert(path);
     a_assert(query);
 
+    pstUpgrade = (PT_PTC_UPGRADE_ST *)dos_dmem_alloc(sizeof(PT_PTC_UPGRADE_ST));
+    if (NULL == pstUpgrade)
+    {
+        websError(wp, 200, T("fail"));
+        m_bIsUpdating = DOS_FALSE;
+
+        return 1;
+    }
     /* 获取文件名 */
     ptr = dos_strstr(query, "filename=");
     if (ptr != NULL)
@@ -1290,26 +1308,79 @@ int pts_upgrade_selected_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int a
         goto err_proc;
     }
 
-    lResult = sscanf(szFileName, "%*[^_]_%15s", stUpgrade.szVision);
+    lResult = sscanf(szFileName, "%*[^_]_%15s", pstUpgrade->szVision);
     if (lResult != 1)
     {
         goto err_proc;
     }
-    printf("version : %s\n", stUpgrade.szVision);
+    logr_debug("ptc package version is %s", pstUpgrade->szVision);
     /* 下载文件 */
-    lResult = websHttpUploadHandler(wp, query, &stUpgrade);
+    lResult = websHttpUploadHandler(wp, query, pstUpgrade);
     if (lResult != DOS_SUCC)
     {
         goto err_proc;
     }
+    logr_debug("download finish!!");
+    //websSendFileToPtc(url, &stUpgrade);
+    stPthreadParam.pstUpgrade = pstUpgrade;
+    stPthreadParam.szUrl = (char_t *)dos_dmem_alloc(dos_strlen(url) + 1);
+    if (NULL == stPthreadParam.szUrl)
+    {
+        dos_dmem_free(pstUpgrade);
+        pstUpgrade = NULL;
+        websError(wp, 200, T("fail"));
+        m_bIsUpdating = DOS_FALSE;
 
-    websSendFileToPtc(url, &stUpgrade);
-    websError(wp, 200, T("succ"));
+        return 1;
+    }
+
+    dos_strcpy(stPthreadParam.szUrl, url);
+
+    /* 开启线程 */
+    lResult = pthread_create(&tid, NULL, websSendFileToPtc, (VOID *)&stPthreadParam);
+    if (lResult < 0)
+    {
+        dos_dmem_free(pstUpgrade);
+        pstUpgrade = NULL;
+        dos_dmem_free(stPthreadParam.szUrl);
+        stPthreadParam.szUrl = NULL;
+        websError(wp, 200, T("fail"));
+        m_bIsUpdating = DOS_FALSE;
+    }
+    else
+    {
+        websError(wp, 200, T("succ"));
+        m_bIsUpdating = DOS_TRUE;
+    }
+
+    pthread_detach(tid);
+
     return 1;
 
 err_proc:
     websError(wp, 200, T("fail"));
     return 1;
+}
+
+void *websSendFileToPtcALL(void *arg)
+{
+    S32 lResult = 0;
+    PT_PTC_UPGRADE_ST *pstUpgrade = (PT_PTC_UPGRADE_ST *)arg;
+     /* 开启定时器 */
+    lResult = dos_tmr_start(&pstUpgrade->hTmrHandle, PTS_PTC_UPGRADE_TIMER, websSendFileToAllPtc, (U64)pstUpgrade, TIMER_NORMAL_LOOP);
+    if (lResult < 0)
+    {
+        m_bIsUpdatingAll = DOS_FALSE;
+        printf("upgrade all ptc : start timer fail\n");
+    }
+    else
+    {
+        m_bIsUpdatingAll = DOS_TRUE;
+    }
+
+    websSendFileToAllPtc((U64)pstUpgrade);
+
+    return NULL;
 }
 
 int pts_upgrade_all_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
@@ -1319,6 +1390,7 @@ int pts_upgrade_all_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
     S8 szFileName[PT_DATA_BUFF_128] = {0};
     S8 *ptr = NULL;
     S32 lResult = 0;
+    pthread_t tid;
 
     a_assert(websValid(wp));
     a_assert(url && *url);
@@ -1328,8 +1400,10 @@ int pts_upgrade_all_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
     pstUpgrade = (PT_PTC_UPGRADE_ST *)dos_dmem_alloc(sizeof(PT_PTC_UPGRADE_ST));
     if (NULL == pstUpgrade)
     {
-        perror("malloc");
-        goto err_proc;
+        logr_debug("malloc fail");
+        m_bIsUpdatingAll = DOS_FALSE;
+        websError(wp, 200, T("fail"));
+        return 1;
     }
     pstUpgrade->hTmrHandle = NULL;
     g_pstUpgrade = pstUpgrade;
@@ -1353,7 +1427,7 @@ int pts_upgrade_all_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
     {
         goto err_proc;
     }
-    logr_debug("version : %s", pstUpgrade->szVision);
+    logr_debug("ptc package version is %s", pstUpgrade->szVision);
 
     /* 下载文件 */
     lResult = websHttpUploadHandler(wp, query, pstUpgrade);
@@ -1361,25 +1435,25 @@ int pts_upgrade_all_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
     {
         goto err_proc;
     }
+    logr_debug("download finish!!");
 
-    /* 开启定时器 */
-    lResult = dos_tmr_start(&pstUpgrade->hTmrHandle, PTS_PTC_UPGRADE_TIMER, websSendFileToAllPtc, (U64)pstUpgrade, TIMER_NORMAL_LOOP);
+    lResult = pthread_create(&tid, NULL, websSendFileToPtcALL, (VOID *)pstUpgrade);
     if (lResult < 0)
     {
-        bIsUpdating = DOS_FALSE;
-        printf("upgrade all ptc : start timer fail\n");
+        goto err_proc;
     }
     else
     {
-        bIsUpdating = DOS_TRUE;
+        pthread_detach(tid);
+        m_bIsUpdatingAll = DOS_TRUE;
+        websError(wp, 200, T("succ"));
+        return 1;
     }
 
-    websSendFileToAllPtc((U64)pstUpgrade);
-
-    websError(wp, 200, T("succ"));
-    return 1;
-
 err_proc:
+    m_bIsUpdatingAll = DOS_FALSE;
+    dos_dmem_free(pstUpgrade);
+    pstUpgrade = NULL;
     websError(wp, 200, T("fail"));
     return 1;
 }
@@ -1822,14 +1896,24 @@ static int curr_user(int eid, webs_t wp, int argc, char_t **argv)
 
 static int ptc_upgrade_button(int eid, webs_t wp, int argc, char_t **argv)
 {
-    S8 szButtonHtml[PT_DATA_BUFF_128] = {0};
-    if (bIsUpdating)
+    S8 szButtonHtml[PT_DATA_BUFF_256] = {0};
+    if (m_bIsUpdatingAll)
     {
-        dos_snprintf(szButtonHtml, PT_DATA_BUFF_128, "<input id='upgrade' type='submit' value='升级' onclick='return form_check_package()' disabled />");
+         dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade' type='submit' value='升级' onclick='return form_check_package()' disabled /></td>\
+<td><input id='upgrade_end' type='button' value='结束' onclick='' style=\"display:none\" /></td>");
     }
     else
     {
-        dos_snprintf(szButtonHtml, PT_DATA_BUFF_128, "<input id='upgrade' type='submit' value='升级' onclick='return form_check_package()' />");
+        if (m_bIsUpdating)
+        {
+            dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade' type='submit' value='升级' onclick='return form_check_package()' disabled /></td>\
+<td><input id='upgrade_end' type='button' value='结束' onclick='' style=\"display:block\" /></td>");
+        }
+        else
+        {
+            dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade' type='submit' value='升级' onclick='return form_check_package()' /></td>\
+<td><input id='upgrade_end' type='button' value='结束' onclick='' style=\"display:none\" /></td>");
+        }
     }
     return websWrite(wp, T("%s"), szButtonHtml);
 }
@@ -1837,18 +1921,27 @@ static int ptc_upgrade_button(int eid, webs_t wp, int argc, char_t **argv)
 static int all_ptc_upgrade_button(int eid, webs_t wp, int argc, char_t **argv)
 {
     S8 szButtonHtml[PT_DATA_BUFF_256] = {0};
-    if (bIsUpdating)
+    if (m_bIsUpdating)
     {
-        dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<input id='upgrade_all' type='submit' value='升级' onclick='return form_check_package_all()' disabled />\
-        <input id='upgrade_end' type='button' value='结束' onclick='cancel_upgrade()' style=\"display:block\" />");
+        dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade_all' type='submit' value='升级' onclick='return form_check_package_all()' disabled /></td>\
+<td><input id='upgrade_end_all' type='button' value='结束' onclick='cancel_upgrade()' style=\"display:none\" /></td>");
     }
     else
     {
-        dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<input id='upgrade_all' type='submit' value='升级' onclick='return form_check_package_all()' />\
-        <input id='upgrade_end' type='button' value='结束' onclick='cancel_upgrade()' style=\"display:none\" />");
+        if (m_bIsUpdatingAll)
+        {
+            dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade_all' type='submit' value='升级' onclick='return form_check_package_all()' disabled /></td>\
+<td><input id='upgrade_end_all' type='button' value='结束' onclick='cancel_upgrade()' style=\"display:block\" /></td>");
+        }
+        else
+        {
+            dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade_all' type='submit' value='升级' onclick='return form_check_package_all()' /></td>\
+<td><input id='upgrade_end_all' type='button' value='结束' onclick='cancel_upgrade()' style=\"display:none\" /></td>");
+        }
     }
     return websWrite(wp, T("%s"), szButtonHtml);
 }
+
 
 /******************************************************************************/
 /*
@@ -1949,7 +2042,6 @@ static void pts_change_password(webs_t wp, char_t *path, char_t *query)
                     {
                         sprintf(pcListBuf, "%s succ", szName);
                     }
-
                 }
                 else
                 {

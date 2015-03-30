@@ -582,13 +582,13 @@ VOID pts_telnet_send_msg2ptc(U32 ulClientIndex, S8 *szBuff, U32 ulLen)
     }
     else
     {
-        printf("*********send data**************\n");
+#if PTS_DEBUG
         S32 i = 0;
         for (i=0; i<ulLen; i++)
         {
             printf("%02x ", (U8)szBuff[i]);
         }
-        printf("\n*********send end**************\n");
+#endif
         pts_save_msg_into_cache(g_astCmdClient[lResult].aucID, PT_DATA_CMD, g_astCmdClient[lResult].ulStreamID, szBuff, ulLen, NULL, 0);
     }
 }

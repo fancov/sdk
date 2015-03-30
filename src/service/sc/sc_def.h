@@ -105,6 +105,10 @@ extern "C"{
 
 #define SC_INVALID_INDEX               0
 
+#define SC_TASK_AUDIO_PATH             "/var/voice"
+
+#define SC_RECORD_FILE_PATH            "/var/record"
+
 /* 检测一个TCB是有正常的Task和CustomID */
 #define SC_TCB_HAS_VALID_OWNER(pstTCB)                        \
     ((pstTCB)                                                 \
@@ -436,6 +440,7 @@ typedef struct tagSCSCB{
     U32       bBanlanceWarning:1;                 /* 是否余额告警 */
     U32       bNeedConnSite:1;                    /* 接通后是否需要接通坐席 */
     U32       bWaitingOtherRelase:1;              /* 是否在等待另外一跳退释放 */
+    U32       bRecord:1;                          /* 是否录音 */
     U32       ulRes:27;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
@@ -599,6 +604,7 @@ U32 sc_scb_hash_tables_delete(S8 *pszUUID);
 U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
 U32 sc_ep_search_route(SC_SCB_ST *pstSCB);
 U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 ulLength);
+U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszCaller, S8 *pszCallee);
 U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB);
 U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB);
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
@@ -624,7 +630,8 @@ U32 sc_ep_esl_execute_cmd(const S8* pszCmd);
 U32 sc_ep_get_userid_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
 S32 sc_ep_gw_grp_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);
 U32 sc_ep_gw_grp_hash_func(U32 ulGWGrpID);
-
+U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID);
+U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase);
 
 #ifdef __cplusplus
 }
