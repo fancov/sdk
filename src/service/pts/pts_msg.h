@@ -18,8 +18,9 @@ extern "C"{
 #define PTS_DOMAIN_SIZE             64
 #define PTS_WEB_COOKIE_EXPIRES      600
 #define PTS_WEB_SERVER_MAX_SIZE     64
-#define PTS_WEB_TIMEOUT             640000       /* 浏览器不操作超时时间 5分钟 */
+#define PTS_WEB_TIMEOUT             640000          /* 浏览器不操作超时时间 5分钟 */
 #define PTS_PING_TIMEOUT            2000
+#define PTS_SEND_CONFIRM_MSG_COUNT  3               /* 确认消息的发送次数 */
 
 typedef struct tagClientCB
 {
@@ -85,7 +86,7 @@ VOID pts_recv_pthread_mutex_unlock(S8 *szFileName, U32 ulLine);
 VOID pts_recv_pthread_cond_timedwait(struct timespec *timeout, S8 *szFileName, U32 ulLine);
 S8 *pts_get_current_time();
 VOID pts_send_exit_notify_to_ptc(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcSendNode);
-S32 pts_find_ptc_by_dest_addr(S8 *pDestInternetIp, S8 *pDestIntranetIp, S8 *aucDestID);
+S32 pts_find_ptc_by_dest_addr(S8 *pDestInternetIp, S8 *pDestIntranetIp, S8 *szDestSN);
 S32 pts_get_curr_position_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name);
 
 #ifdef  __cplusplus
@@ -93,3 +94,4 @@ S32 pts_get_curr_position_callback(VOID *para, S32 n_column, S8 **column_value, 
 #endif  /* end of __cplusplus */
 
 #endif
+

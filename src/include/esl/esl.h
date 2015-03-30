@@ -48,15 +48,15 @@ typedef struct esl_event_header esl_event_header_t;
 typedef struct esl_event esl_event_t;
 
 typedef enum {
-	ESL_POLL_READ = (1 << 0),
-	ESL_POLL_WRITE = (1 << 1),
-	ESL_POLL_ERROR = (1 << 2)
+    ESL_POLL_READ = (1 << 0),
+    ESL_POLL_WRITE = (1 << 1),
+    ESL_POLL_ERROR = (1 << 2)
 } esl_poll_t;
 
 typedef enum {
-	ESL_EVENT_TYPE_PLAIN,
-	ESL_EVENT_TYPE_XML,
-	ESL_EVENT_TYPE_JSON
+    ESL_EVENT_TYPE_PLAIN,
+    ESL_EVENT_TYPE_XML,
+    ESL_EVENT_TYPE_JSON
 } esl_event_type_t;
 
 #ifdef WIN32
@@ -88,9 +88,9 @@ typedef enum {
 #define ESL_SEQ_CLEARSCR_CHAR0 '2'
 #define ESL_SEQ_CLEARSCR_CHAR1 'J'
 #define ESL_SEQ_CLEARSCR_CHAR "2J"
-#define ESL_SEQ_DEFAULT_COLOR ESL_SEQ_ESC ESL_SEQ_END_COLOR	/* Reset to Default fg/bg color */
-#define ESL_SEQ_AND_COLOR ";"	/* To add multiple color definitions */
-#define ESL_SEQ_END_COLOR "m"	/* To end color definitions */
+#define ESL_SEQ_DEFAULT_COLOR ESL_SEQ_ESC ESL_SEQ_END_COLOR /* Reset to Default fg/bg color */
+#define ESL_SEQ_AND_COLOR ";"   /* To add multiple color definitions */
+#define ESL_SEQ_END_COLOR "m"   /* To end color definitions */
 /* Foreground colors values */
 #define ESL_SEQ_F_BLACK "30"
 #define ESL_SEQ_F_RED "31"
@@ -154,7 +154,7 @@ typedef enum {
 #ifndef __inline__
 #define __inline__ __inline
 #endif
-#if (_MSC_VER >= 1400)			/* VC8+ */
+#if (_MSC_VER >= 1400)          /* VC8+ */
 #ifndef _CRT_SECURE_NO_DEPRECATE
 #define _CRT_SECURE_NO_DEPRECATE
 #endif
@@ -204,7 +204,7 @@ typedef enum {
 #endif
 #include <assert.h>
 
-#if (_MSC_VER >= 1400)			// VC8+
+#if (_MSC_VER >= 1400)          // VC8+
 #define esl_assert(expr) assert(expr);__analysis_assume( expr )
 #endif
 
@@ -236,17 +236,17 @@ typedef int esl_filehandle_t;
 #define ESL_SOCK_INVALID INVALID_SOCKET
 #define strerror_r(num, buf, size) strerror_s(buf, size, num)
 #if defined(ESL_DECLARE_STATIC)
-#define ESL_DECLARE(type)			type __stdcall
-#define ESL_DECLARE_NONSTD(type)		type __cdecl
+#define ESL_DECLARE(type)           type __stdcall
+#define ESL_DECLARE_NONSTD(type)        type __cdecl
 #define ESL_DECLARE_DATA
 #elif defined(ESL_EXPORTS)
-#define ESL_DECLARE(type)			__declspec(dllexport) type __stdcall
-#define ESL_DECLARE_NONSTD(type)		__declspec(dllexport) type __cdecl
-#define ESL_DECLARE_DATA				__declspec(dllexport)
+#define ESL_DECLARE(type)           __declspec(dllexport) type __stdcall
+#define ESL_DECLARE_NONSTD(type)        __declspec(dllexport) type __cdecl
+#define ESL_DECLARE_DATA                __declspec(dllexport)
 #else
-#define ESL_DECLARE(type)			__declspec(dllimport) type __stdcall
-#define ESL_DECLARE_NONSTD(type)		__declspec(dllimport) type __cdecl
-#define ESL_DECLARE_DATA				__declspec(dllimport)
+#define ESL_DECLARE(type)           __declspec(dllimport) type __stdcall
+#define ESL_DECLARE_NONSTD(type)        __declspec(dllimport) type __cdecl
+#define ESL_DECLARE_DATA                __declspec(dllimport)
 #endif
 #else
 #define ESL_DECLARE(type) type
@@ -272,11 +272,11 @@ typedef int16_t esl_port_t;
 typedef size_t esl_size_t;
 
 typedef enum {
-	ESL_SUCCESS,
-	ESL_FAIL,
-	ESL_BREAK,
-	ESL_DISCONNECTED,
-	ESL_GENERR
+    ESL_SUCCESS,
+    ESL_FAIL,
+    ESL_BREAK,
+    ESL_DISCONNECTED,
+    ESL_GENERR
 } esl_status_t;
 
 #define BUF_CHUNK 65536 * 50
@@ -288,39 +288,39 @@ typedef enum {
 /*! \brief A handle that will hold the socket information and
            different events received. */
 typedef struct {
-	struct sockaddr_storage sockaddr;
-	struct hostent hostent;
-	char hostbuf[256];
-	esl_socket_t sock;
-	/*! In case of socket error, this will hold the error description as reported by the OS */
-	char err[256];
-	/*! The error number reported by the OS */
-	int errnum;
-	/*! The inner contents received by the socket. Used only internally. */
-	esl_buffer_t *packet_buf;
-	char socket_buf[65536];
-	/*! Last command reply */
-	char last_reply[1024];
-	/*! Last command reply when called with esl_send_recv */
-	char last_sr_reply[1024];
-	/*! Last event received. Only populated when **save_event is NULL */
-	esl_event_t *last_event;
-	/*! Last event received when called by esl_send_recv */
-	esl_event_t *last_sr_event;
-	/*! This will hold already processed events queued by esl_recv_event */
-	esl_event_t *race_event;
-	/*! Events that have content-type == text/plain and a body */
-	esl_event_t *last_ievent;
-	/*! For outbound socket. Will hold reply information when connect\n\n is sent */
-	esl_event_t *info_event;
-	/*! Socket is connected or not */
-	int connected;
-	struct sockaddr_in addr;
-	/*! Internal mutex */
-	esl_mutex_t *mutex;
-	int async_execute;
-	int event_lock;
-	int destroyed;
+    struct sockaddr_storage sockaddr;
+    struct hostent hostent;
+    char hostbuf[256];
+    esl_socket_t sock;
+    /*! In case of socket error, this will hold the error description as reported by the OS */
+    char err[256];
+    /*! The error number reported by the OS */
+    int errnum;
+    /*! The inner contents received by the socket. Used only internally. */
+    esl_buffer_t *packet_buf;
+    char socket_buf[65536];
+    /*! Last command reply */
+    char last_reply[1024];
+    /*! Last command reply when called with esl_send_recv */
+    char last_sr_reply[1024];
+    /*! Last event received. Only populated when **save_event is NULL */
+    esl_event_t *last_event;
+    /*! Last event received when called by esl_send_recv */
+    esl_event_t *last_sr_event;
+    /*! This will hold already processed events queued by esl_recv_event */
+    esl_event_t *race_event;
+    /*! Events that have content-type == text/plain and a body */
+    esl_event_t *last_ievent;
+    /*! For outbound socket. Will hold reply information when connect\n\n is sent */
+    esl_event_t *info_event;
+    /*! Socket is connected or not */
+    int connected;
+    struct sockaddr_in addr;
+    /*! Internal mutex */
+    esl_mutex_t *mutex;
+    int async_execute;
+    int event_lock;
+    int destroyed;
 } esl_handle_t;
 
 #define esl_test_flag(obj, flag) ((obj)->flags & flag)
@@ -329,8 +329,8 @@ typedef struct {
 
 /*! \brief Used internally for truth test */
 typedef enum {
-	ESL_TRUE = 1,
-	ESL_FALSE = 0
+    ESL_TRUE = 1,
+    ESL_FALSE = 0
 } esl_bool_t;
 
 #ifndef __FUNCTION__
@@ -415,7 +415,7 @@ ESL_DECLARE(esl_status_t) esl_sendevent(esl_handle_t *handle, esl_event_t *event
     \brief Send an event as a message to be parsed
     \param handle Handle to which the event should be sent
     \param event Event to be sent
-	\param uuid a specific uuid if not the default
+    \param uuid a specific uuid if not the default
 */
 ESL_DECLARE(esl_status_t) esl_sendmsg(esl_handle_t *handle, esl_event_t *event, const char *uuid);
 
@@ -426,7 +426,7 @@ ESL_DECLARE(esl_status_t) esl_sendmsg(esl_handle_t *handle, esl_event_t *event, 
     \param port Port to be connected
     \param password FreeSWITCH server username (optional)
     \param password FreeSWITCH server password
-	\param timeout Connection timeout, in miliseconds
+    \param timeout Connection timeout, in miliseconds
 */
 ESL_DECLARE(esl_status_t) esl_connect_timeout(esl_handle_t *handle, const char *host, esl_port_t port, const char *user, const char *password, uint32_t timeout);
 #define esl_connect(_handle, _host, _port, _user, _password) esl_connect_timeout(_handle, _host, _port, _user, _password, 0)
@@ -488,11 +488,11 @@ ESL_DECLARE(unsigned int) esl_separate_string_string(char *buf, const char *deli
 
 static __inline__ int esl_safe_strcasecmp(const char *s1, const char *s2)
 {
-	if (!(s1 && s2)) {
-		return 1;
-	}
+    if (!(s1 && s2)) {
+        return 1;
+    }
 
-	return strcasecmp(s1, s2);
+    return strcasecmp(s1, s2);
 }
 
 #ifdef __cplusplus

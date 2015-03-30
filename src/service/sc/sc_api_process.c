@@ -628,7 +628,7 @@ U32 sc_http_api_route_action(SC_HTTP_CLIENT_CB_S *pstClient)
     if (dos_atoul(pszRouteID, &ulRouteID) < 0)
     {
        DOS_ASSERT(0);
-       goto invalid_params;;
+       goto invalid_params;
     }
 
     if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
@@ -649,20 +649,20 @@ U32 sc_http_api_route_action(SC_HTTP_CLIENT_CB_S *pstClient)
         goto invalid_params;
     }
 
-	if (sc_http_route_update_proc(ulAction, ulRouteID) != DOS_SUCC)
-	{
-	    DOS_ASSERT(0);
-	    return DOS_FAIL;
-	}
+    if (sc_http_route_update_proc(ulAction, ulRouteID) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
     SC_TRACE_OUT();
     return DOS_SUCC;
-	
+    
 invalid_params:
     pstClient->ulResponseCode = 200;
     pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
     SC_TRACE_OUT();
-	return DOS_FAIL;
+    return DOS_FAIL;
 }
 
 U32 sc_http_api_gw_group_action(SC_HTTP_CLIENT_CB_S *pstClient)
@@ -719,7 +719,7 @@ invalid_params:
     pstClient->ulResponseCode = 200;
     pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
     SC_TRACE_OUT();
-	return DOS_FAIL;
+    return DOS_FAIL;
 
 }
 
@@ -783,7 +783,7 @@ invalid_params:
     pstClient->ulResponseCode = 200;
     pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
     SC_TRACE_OUT();
-	return DOS_FAIL;
+    return DOS_FAIL;
 }
 
 U32 sc_http_api_black_action(SC_HTTP_CLIENT_CB_S *pstClient)
@@ -837,14 +837,14 @@ U32 sc_http_api_black_action(SC_HTTP_CLIENT_CB_S *pstClient)
         return DOS_FAIL;
     }
 
-	SC_TRACE_OUT();
+    SC_TRACE_OUT();
     return DOS_SUCC;
 
 invalid_params:
     pstClient->ulResponseCode = 200;
     pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
     SC_TRACE_OUT();
-	return DOS_FAIL;
+    return DOS_FAIL;
 }
 
 U32 sc_http_api_caller_action(SC_HTTP_CLIENT_CB_S *pstClient)
@@ -900,7 +900,7 @@ invalid_params:
     pstClient->ulResponseCode = 200;
     pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
     SC_TRACE_OUT();
-	return DOS_FAIL;
+    return DOS_FAIL;
 
 }
 

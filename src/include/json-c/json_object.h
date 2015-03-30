@@ -67,9 +67,9 @@ extern const char *json_hex_chars;
 /* CAW: added for ANSI C iteration correctness */
 struct json_object_iter
 {
-	char *key;
-	struct json_object *val;
-	struct lh_entry *entry;
+    char *key;
+    struct json_object *val;
+    struct lh_entry *entry;
 };
 
 /* forward structure definitions */
@@ -91,9 +91,9 @@ typedef void (json_object_delete_fn)(struct json_object *jso, void *userdata);
  * Type of a custom serialization function.  See json_object_set_serializer.
  */
 typedef int (json_object_to_json_string_fn)(struct json_object *jso,
-						struct printbuf *pb,
-						int level,
-						int flags);
+                        struct printbuf *pb,
+                        int level,
+                        int flags);
 
 /* supported object types */
 
@@ -206,9 +206,9 @@ flags);
  * @param user_delete an optional function from freeing userdata
  */
 extern void json_object_set_serializer(json_object *jso,
-	json_object_to_json_string_fn to_string_func,
-	void *userdata,
-	json_object_delete_fn *user_delete);
+    json_object_to_json_string_fn to_string_func,
+    void *userdata,
+    json_object_delete_fn *user_delete);
 
 /**
  * Simply call free on the userdata pointer.
@@ -273,7 +273,7 @@ extern int json_object_object_length(struct json_object* obj);
  * @param val a json_object or NULL member to associate with the given field
  */
 extern void json_object_object_add(struct json_object* obj, const char *key,
-				   struct json_object *val);
+                   struct json_object *val);
 
 /** Get the json_object associate with a given object field
  *
@@ -293,7 +293,7 @@ extern void json_object_object_add(struct json_object* obj, const char *key,
  * @deprecated Please use json_object_object_get_ex
  */
 THIS_FUNCTION_IS_DEPRECATED(extern struct json_object* json_object_object_get(struct json_object* obj,
-						  const char *key));
+                          const char *key));
 
 /** Get the json_object associated with a given object field.  
  *
@@ -314,7 +314,7 @@ THIS_FUNCTION_IS_DEPRECATED(extern struct json_object* json_object_object_get(st
  * @returns whether or not the key exists
  */
 extern json_bool json_object_object_get_ex(struct json_object* obj,
-						  const char *key,
+                          const char *key,
                                                   struct json_object **value);
 
 /** Delete the given json_object field
@@ -344,30 +344,30 @@ extern void json_object_object_del(struct json_object* obj, const char *key);
 #if defined(__GNUC__) && !defined(__STRICT_ANSI__) && __STDC_VERSION__ >= 199901L
 
 # define json_object_object_foreach(obj,key,val) \
-	char *key; \
-	struct json_object *val __attribute__((__unused__)); \
-	for(struct lh_entry *entry ## key = json_object_get_object(obj)->head, *entry_next ## key = NULL; \
-		({ if(entry ## key) { \
-			key = (char*)entry ## key->k; \
-			val = (struct json_object*)entry ## key->v; \
-			entry_next ## key = entry ## key->next; \
-		} ; entry ## key; }); \
-		entry ## key = entry_next ## key )
+    char *key; \
+    struct json_object *val __attribute__((__unused__)); \
+    for(struct lh_entry *entry ## key = json_object_get_object(obj)->head, *entry_next ## key = NULL; \
+        ({ if(entry ## key) { \
+            key = (char*)entry ## key->k; \
+            val = (struct json_object*)entry ## key->v; \
+            entry_next ## key = entry ## key->next; \
+        } ; entry ## key; }); \
+        entry ## key = entry_next ## key )
 
 #else /* ANSI C or MSC */
 
 # define json_object_object_foreach(obj,key,val) \
-	char *key;\
-	struct json_object *val; \
-	struct lh_entry *entry ## key; \
-	struct lh_entry *entry_next ## key = NULL; \
-	for(entry ## key = json_object_get_object(obj)->head; \
-		(entry ## key ? ( \
-			key = (char*)entry ## key->k, \
-			val = (struct json_object*)entry ## key->v, \
-			entry_next ## key = entry ## key->next, \
-			entry ## key) : 0); \
-		entry ## key = entry_next ## key)
+    char *key;\
+    struct json_object *val; \
+    struct lh_entry *entry ## key; \
+    struct lh_entry *entry_next ## key = NULL; \
+    for(entry ## key = json_object_get_object(obj)->head; \
+        (entry ## key ? ( \
+            key = (char*)entry ## key->k, \
+            val = (struct json_object*)entry ## key->v, \
+            entry_next ## key = entry ## key->next, \
+            entry ## key) : 0); \
+        entry ## key = entry_next ## key)
 
 #endif /* defined(__GNUC__) && !defined(__STRICT_ANSI__) && __STDC_VERSION__ >= 199901L */
 
@@ -417,7 +417,7 @@ extern void json_object_array_sort(struct json_object *jso, int(*sort_fn)(const 
  * @param val the json_object to be added
  */
 extern int json_object_array_add(struct json_object *obj,
-				 struct json_object *val);
+                 struct json_object *val);
 
 /** Insert or replace an element at a specified index in an array (a json_object of type json_type_array)
  *
@@ -435,7 +435,7 @@ extern int json_object_array_add(struct json_object *obj,
  * @param val the json_object to be added
  */
 extern int json_object_array_put_idx(struct json_object *obj, int idx,
-				     struct json_object *val);
+                     struct json_object *val);
 
 /** Get the element at specificed index of the array (a json_object of type json_type_array)
  * @param obj the json_object instance
@@ -443,7 +443,7 @@ extern int json_object_array_put_idx(struct json_object *obj, int idx,
  * @returns the json_object at the specified index (or NULL)
  */
 extern struct json_object* json_object_array_get_idx(struct json_object *obj,
-						     int idx);
+                             int idx);
 
 /* json_bool type methods */
 

@@ -76,10 +76,10 @@ json_object_iter_init_default(void);
 
 /** Retrieves an iterator to the first pair of the JSON Object.
  *
- * @warning 	Any modification of the underlying pair invalidates all
- * 		iterators to that pair.
+ * @warning     Any modification of the underlying pair invalidates all
+ *      iterators to that pair.
  *
- * @param obj	JSON Object instance (MUST be of type json_object)
+ * @param obj   JSON Object instance (MUST be of type json_object)
  *
  * @return json_object_iterator If the JSON Object has at
  *              least one pair, on return, the iterator refers
@@ -141,8 +141,8 @@ json_object_iter_end(const struct json_object* obj);
 
 /** Returns an iterator to the next pair, if any
  *
- * @warning	Any modification of the underlying pair
- *       	invalidates all iterators to that pair.
+ * @warning Any modification of the underlying pair
+ *          invalidates all iterators to that pair.
  *
  * @param iter [IN/OUT] Pointer to iterator that references a
  *         name/value pair; MUST be a valid, non-end iterator.
@@ -164,8 +164,8 @@ json_object_iter_next(struct json_object_iterator* iter);
  * @param iter pointer to iterator that references a name/value
  *             pair; MUST be a valid, non-end iterator.
  *
- * @warning	bad things will happen if an invalid or
- *             	"end" iterator is passed.
+ * @warning bad things will happen if an invalid or
+ *              "end" iterator is passed.
  *
  * @return const char* Pointer to the name of the referenced
  *         name/value pair.  The name memory belongs to the
@@ -181,10 +181,10 @@ json_object_iter_peek_name(const struct json_object_iterator* iter);
  *  value of the referenced name/value pair, without altering
  *  the instance's reference count.
  *
- * @param iter 	pointer to iterator that references a name/value
- *             	pair; MUST be a valid, non-end iterator.
+ * @param iter  pointer to iterator that references a name/value
+ *              pair; MUST be a valid, non-end iterator.
  *
- * @warning	bad things will happen if invalid or
+ * @warning bad things will happen if invalid or
  *             "end" iterator is passed.
  *
  * @return struct json_object* Pointer to the json-c value
@@ -217,10 +217,10 @@ json_object_iter_peek_value(const struct json_object_iterator* iter);
  * @param iter1 Pointer to first valid, non-NULL iterator
  * @param iter2 POinter to second valid, non-NULL iterator
  *
- * @warning	if a NULL iterator pointer or an uninitialized
- *       	or invalid iterator, or iterators derived from
- *       	different JSON Object instances are passed, bad things
- *       	will happen!
+ * @warning if a NULL iterator pointer or an uninitialized
+ *          or invalid iterator, or iterators derived from
+ *          different JSON Object instances are passed, bad things
+ *          will happen!
  *
  * @return json_bool non-zero if iterators are equal (i.e., both
  *         reference the same name/value pair or are both at

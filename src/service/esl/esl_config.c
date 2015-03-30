@@ -36,212 +36,212 @@
 
 ESL_DECLARE(int) esl_config_open_file(esl_config_t *cfg, const char *file_path)
 {
-	FILE *f;
-	const char *path = NULL;
-	char path_buf[1024];
+    FILE *f;
+    const char *path = NULL;
+    char path_buf[1024];
 
-	if (file_path[0] == '/') {
-		path = file_path;
-	} else {
-		esl_snprintf(path_buf, sizeof(path_buf), "%s%s%s", ESL_CONFIG_DIR, ESL_PATH_SEPARATOR, file_path);
-		path = path_buf;
-	}
+    if (file_path[0] == '/') {
+        path = file_path;
+    } else {
+        esl_snprintf(path_buf, sizeof(path_buf), "%s%s%s", ESL_CONFIG_DIR, ESL_PATH_SEPARATOR, file_path);
+        path = path_buf;
+    }
 
-	if (!path) {
-		return 0;
-	}
+    if (!path) {
+        return 0;
+    }
 
-	memset(cfg, 0, sizeof(*cfg));
-	cfg->lockto = -1;
-	esl_log(ESL_LOG_DEBUG, "Configuration file is %s.\n", path);
-	f = fopen(path, "r");
+    memset(cfg, 0, sizeof(*cfg));
+    cfg->lockto = -1;
+    esl_log(ESL_LOG_DEBUG, "Configuration file is %s.\n", path);
+    f = fopen(path, "r");
 
-	if (!f) {
-		if (file_path[0] != '/') {
-			int last = -1;
-			char *var, *val;
+    if (!f) {
+        if (file_path[0] != '/') {
+            int last = -1;
+            char *var, *val;
 
-			esl_snprintf(path_buf, sizeof(path_buf), "%s%sopenesl.conf", ESL_CONFIG_DIR, ESL_PATH_SEPARATOR);
-			path = path_buf;
+            esl_snprintf(path_buf, sizeof(path_buf), "%s%sopenesl.conf", ESL_CONFIG_DIR, ESL_PATH_SEPARATOR);
+            path = path_buf;
 
-			if ((f = fopen(path, "r")) == 0) {
-				return 0;
-			}
+            if ((f = fopen(path, "r")) == 0) {
+                return 0;
+            }
 
-			cfg->file = f;
-			esl_set_string(cfg->path, path);
+            cfg->file = f;
+            esl_set_string(cfg->path, path);
 
-			while (esl_config_next_pair(cfg, &var, &val)) {
-				if ((cfg->sectno != last) && !strcmp(cfg->section, file_path)) {
-					cfg->lockto = cfg->sectno;
-					return 1;
-				}
-			}
+            while (esl_config_next_pair(cfg, &var, &val)) {
+                if ((cfg->sectno != last) && !strcmp(cfg->section, file_path)) {
+                    cfg->lockto = cfg->sectno;
+                    return 1;
+                }
+            }
 
-			esl_config_close_file(cfg);
-			memset(cfg, 0, sizeof(*cfg));
-			return 0;
-		}
+            esl_config_close_file(cfg);
+            memset(cfg, 0, sizeof(*cfg));
+            return 0;
+        }
 
-		return 0;
-	} else {
-		cfg->file = f;
-		esl_set_string(cfg->path, path);
-		return 1;
-	}
+        return 0;
+    } else {
+        cfg->file = f;
+        esl_set_string(cfg->path, path);
+        return 1;
+    }
 }
 
 ESL_DECLARE(void) esl_config_close_file(esl_config_t *cfg)
 {
 
-	if (cfg->file) {
-		fclose(cfg->file);
-	}
+    if (cfg->file) {
+        fclose(cfg->file);
+    }
 
-	memset(cfg, 0, sizeof(*cfg));
+    memset(cfg, 0, sizeof(*cfg));
 }
 
 
 
 ESL_DECLARE(int) esl_config_next_pair(esl_config_t *cfg, char **var, char **val)
 {
-	int ret = 0;
-	char *p, *end;
+    int ret = 0;
+    char *p, *end;
 
-	*var = *val = NULL;
+    *var = *val = NULL;
 
-	if (!cfg || !cfg->file) {
-		return 0;
-	}
+    if (!cfg || !cfg->file) {
+        return 0;
+    }
 
-	for (;;) {
-		cfg->lineno++;
+    for (;;) {
+        cfg->lineno++;
 
-		if (!fgets(cfg->buf, sizeof(cfg->buf), cfg->file)) {
-			ret = 0;
-			break;
-		}
-		*var = cfg->buf;
+        if (!fgets(cfg->buf, sizeof(cfg->buf), cfg->file)) {
+            ret = 0;
+            break;
+        }
+        *var = cfg->buf;
 
-		if (**var == '[' && (end = strchr(*var, ']')) != 0) {
-			*end = '\0';
-			(*var)++;
-			if (**var == '+') {
-				(*var)++;
-				esl_copy_string(cfg->section, *var, sizeof(cfg->section));
-				cfg->sectno++;
+        if (**var == '[' && (end = strchr(*var, ']')) != 0) {
+            *end = '\0';
+            (*var)++;
+            if (**var == '+') {
+                (*var)++;
+                esl_copy_string(cfg->section, *var, sizeof(cfg->section));
+                cfg->sectno++;
 
-				if (cfg->lockto > -1 && cfg->sectno != cfg->lockto) {
-					break;
-				}
-				cfg->catno = 0;
-				cfg->lineno = 0;
-				*var = (char *) "";
-				*val = (char *) "";
-				return 1;
-			} else {
-				esl_copy_string(cfg->category, *var, sizeof(cfg->category));
-				cfg->catno++;
-			}
-			continue;
-		}
-
-
-
-		if (**var == '#' || **var == ';' || **var == '\n' || **var == '\r') {
-			continue;
-		}
-
-		if (!strncmp(*var, "__END__", 7)) {
-			break;
-		}
+                if (cfg->lockto > -1 && cfg->sectno != cfg->lockto) {
+                    break;
+                }
+                cfg->catno = 0;
+                cfg->lineno = 0;
+                *var = (char *) "";
+                *val = (char *) "";
+                return 1;
+            } else {
+                esl_copy_string(cfg->category, *var, sizeof(cfg->category));
+                cfg->catno++;
+            }
+            continue;
+        }
 
 
-		if ((end = strchr(*var, ';')) && *(end+1) == *end) {
-			*end = '\0';
-			end--;
-		} else if ((end = strchr(*var, '\n')) != 0) {
-			if (*(end - 1) == '\r') {
-				end--;
-			}
-			*end = '\0';
-		}
 
-		p = *var;
-		while ((*p == ' ' || *p == '\t') && p != end) {
-			*p = '\0';
-			p++;
-		}
-		*var = p;
+        if (**var == '#' || **var == ';' || **var == '\n' || **var == '\r') {
+            continue;
+        }
+
+        if (!strncmp(*var, "__END__", 7)) {
+            break;
+        }
 
 
-		if ((*val = strchr(*var, '=')) == 0) {
-			ret = -1;
-			/* log_printf(0, server.log, "Invalid syntax on %s: line %d\n", cfg->path, cfg->lineno); */
-			continue;
-		} else {
-			p = *val - 1;
-			*(*val) = '\0';
-			(*val)++;
-			if (*(*val) == '>') {
-				*(*val) = '\0';
-				(*val)++;
-			}
+        if ((end = strchr(*var, ';')) && *(end+1) == *end) {
+            *end = '\0';
+            end--;
+        } else if ((end = strchr(*var, '\n')) != 0) {
+            if (*(end - 1) == '\r') {
+                end--;
+            }
+            *end = '\0';
+        }
 
-			while ((*p == ' ' || *p == '\t') && p != *var) {
-				*p = '\0';
-				p--;
-			}
-
-			p = *val;
-			while ((*p == ' ' || *p == '\t') && p != end) {
-				*p = '\0';
-				p++;
-			}
-			*val = p;
-			ret = 1;
-			break;
-		}
-	}
+        p = *var;
+        while ((*p == ' ' || *p == '\t') && p != end) {
+            *p = '\0';
+            p++;
+        }
+        *var = p;
 
 
-	return ret;
+        if ((*val = strchr(*var, '=')) == 0) {
+            ret = -1;
+            /* log_printf(0, server.log, "Invalid syntax on %s: line %d\n", cfg->path, cfg->lineno); */
+            continue;
+        } else {
+            p = *val - 1;
+            *(*val) = '\0';
+            (*val)++;
+            if (*(*val) == '>') {
+                *(*val) = '\0';
+                (*val)++;
+            }
+
+            while ((*p == ' ' || *p == '\t') && p != *var) {
+                *p = '\0';
+                p--;
+            }
+
+            p = *val;
+            while ((*p == ' ' || *p == '\t') && p != end) {
+                *p = '\0';
+                p++;
+            }
+            *val = p;
+            ret = 1;
+            break;
+        }
+    }
+
+
+    return ret;
 
 }
 
 ESL_DECLARE(int) esl_config_get_cas_bits(char *strvalue, unsigned char *outbits)
 {
-	char cas_bits[5];
-	unsigned char bit = 0x8;
-	char *double_colon = strchr(strvalue, ':');
-	int x = 0;
+    char cas_bits[5];
+    unsigned char bit = 0x8;
+    char *double_colon = strchr(strvalue, ':');
+    int x = 0;
 
-	if (!double_colon) {
-		esl_log(ESL_LOG_ERROR, "No CAS bits specified: %s, :xxxx definition expected, where x is 1 or 0\n", double_colon);
-		return -1;
-	}
+    if (!double_colon) {
+        esl_log(ESL_LOG_ERROR, "No CAS bits specified: %s, :xxxx definition expected, where x is 1 or 0\n", double_colon);
+        return -1;
+    }
 
-	double_colon++;
-	*outbits = 0;
-	cas_bits[4] = 0;
+    double_colon++;
+    *outbits = 0;
+    cas_bits[4] = 0;
 
-	if (sscanf(double_colon, "%c%c%c%c", &cas_bits[0], &cas_bits[1], &cas_bits[2], &cas_bits[3]) != 4) {
-		esl_log(ESL_LOG_ERROR, "Invalid CAS bits specified: %s, :xxxx definition expected, where x is 1 or 0\n", double_colon);
-		return -1;
-	}
+    if (sscanf(double_colon, "%c%c%c%c", &cas_bits[0], &cas_bits[1], &cas_bits[2], &cas_bits[3]) != 4) {
+        esl_log(ESL_LOG_ERROR, "Invalid CAS bits specified: %s, :xxxx definition expected, where x is 1 or 0\n", double_colon);
+        return -1;
+    }
 
-	esl_log(ESL_LOG_DEBUG, "CAS bits specification found: %s\n", cas_bits);
+    esl_log(ESL_LOG_DEBUG, "CAS bits specification found: %s\n", cas_bits);
 
-	for (; cas_bits[x]; x++) {
-		if ('1' == cas_bits[x]) {
-			*outbits |= bit;
-		} else if ('0' != cas_bits[x]) {
-			esl_log(ESL_LOG_ERROR, "Invalid CAS pattern specified: %s, just 0 or 1 allowed for each bit\n");
-			return -1;
-		}
-		bit >>= 1;
-	}
-	return 0;
+    for (; cas_bits[x]; x++) {
+        if ('1' == cas_bits[x]) {
+            *outbits |= bit;
+        } else if ('0' != cas_bits[x]) {
+            esl_log(ESL_LOG_ERROR, "Invalid CAS pattern specified: %s, just 0 or 1 allowed for each bit\n");
+            return -1;
+        }
+        bit >>= 1;
+    }
+    return 0;
 }
 
 /* For Emacs:

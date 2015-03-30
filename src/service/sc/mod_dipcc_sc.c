@@ -65,6 +65,7 @@ U32 sc_init_db()
     S8              szDBUsername[DB_MAX_STR_LEN] = {0, };
     S8              szDBPassword[DB_MAX_STR_LEN] = {0, };
     S8              szDBName[DB_MAX_STR_LEN] = {0, };
+    S8              szDBSockPath[DB_MAX_STR_LEN] = {0, };
 
     SC_TRACE_IN(0, 0, 0, 0);
 
@@ -102,6 +103,13 @@ U32 sc_init_db()
         return DOS_FAIL;
     }
 
+    if (config_get_mysqlsock_path(szDBSockPath, DB_MAX_STR_LEN) <0)
+    {
+        DOS_ASSERT(0);
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+    }
+
     g_pstSCDBHandle = db_create(DB_TYPE_MYSQL);
     if (!g_pstSCDBHandle)
     {
@@ -122,6 +130,9 @@ U32 sc_init_db()
 
     dos_strncpy(g_pstSCDBHandle->szDBName, szDBName, sizeof(g_pstSCDBHandle->szDBName));
     g_pstSCDBHandle->szDBName[sizeof(g_pstSCDBHandle->szDBName) - 1] = '\0';
+
+    dos_strncpy(g_pstSCDBHandle->szSockPath, szDBSockPath, sizeof(g_pstSCDBHandle->szSockPath));
+    g_pstSCDBHandle->szSockPath[sizeof(g_pstSCDBHandle->szSockPath) - 1] = '\0';
 
     g_pstSCDBHandle->usPort = usDBPort;
 

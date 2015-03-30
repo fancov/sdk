@@ -201,15 +201,16 @@ VOID ptc_get_udp_use_ip()
         exit(DOS_FAIL);
     }
 
-ptc_connect: lError = connect(lSockfd,(struct sockaddr*)&stServAddr,sizeof(stServAddr));
-     if (lError < 0)
-     {
-        perror("connect pts");
-        sleep(2);
-        /* 重连 */
-        goto ptc_connect;
-        exit(DOS_FAIL);
-     }
+ptc_connect:
+    lError = connect(lSockfd,(struct sockaddr*)&stServAddr,sizeof(stServAddr));
+    if (lError < 0)
+    {
+       perror("connect pts");
+       sleep(2);
+       /* 重连 */
+       goto ptc_connect;
+       exit(DOS_FAIL);
+    }
 
     lError = getsockname(lSockfd,(struct sockaddr*)&stAddrCli, &lAddrLen);
     if (lError != 0)

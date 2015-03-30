@@ -1978,18 +1978,18 @@ U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID)
     switch(ulAction)
     {
         case SC_API_CMD_ACTION_ROUTE_ADD:
-		case SC_API_CMD_ACTION_ROUTE_UPDATE:
-			sc_load_route(ulRouteID);
-			break;
+        case SC_API_CMD_ACTION_ROUTE_UPDATE:
+            sc_load_route(ulRouteID);
+            break;
 
         case SC_API_CMD_ACTION_ROUTE_DELETE:
             {
                 ulRet = sc_route_delete(ulRouteID);
-	            if (ulRet != DOS_SUCC)
-	            {
-	                DOS_ASSERT(0);
-	                return DOS_FAIL;
-	            }
+                if (ulRet != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                    return DOS_FAIL;
+                }
             }
             break;
         default:
@@ -2075,10 +2075,12 @@ U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID)
     {
         case SC_API_CMD_ACTION_BLACK_ADD:
         case SC_API_CMD_ACTION_BLACK_UPDATE:
+            /* 注明: 该ID为黑名单在数据库中的索引 */
             sc_load_black_list(ulBlackID);
             break;
         case SC_API_CMD_ACTION_BLACK_DELETE:
-            {
+            {  
+                /*注明: 该参数代表的是黑名单文件ID*/
                 ulRet = sc_black_list_delete(ulBlackID);
                 if (ulRet != DOS_SUCC)
                 {

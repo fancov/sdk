@@ -60,22 +60,22 @@ typedef int (lh_equal_fn) (const void *k1, const void *k2);
  * An entry in the hash table
  */
 struct lh_entry {
-	/**
-	 * The key.
-	 */
-	void *k;
-	/**
-	 * The value.
-	 */
-	const void *v;
-	/**
-	 * The next entry
-	 */
-	struct lh_entry *next;
-	/**
-	 * The previous entry.
-	 */
-	struct lh_entry *prev;
+    /**
+     * The key.
+     */
+    void *k;
+    /**
+     * The value.
+     */
+    const void *v;
+    /**
+     * The next entry
+     */
+    struct lh_entry *next;
+    /**
+     * The previous entry.
+     */
+    struct lh_entry *prev;
 };
 
 
@@ -83,63 +83,63 @@ struct lh_entry {
  * The hash table structure.
  */
 struct lh_table {
-	/**
-	 * Size of our hash.
-	 */
-	int size;
-	/**
-	 * Numbers of entries.
-	 */
-	int count;
+    /**
+     * Size of our hash.
+     */
+    int size;
+    /**
+     * Numbers of entries.
+     */
+    int count;
 
-	/**
-	 * Number of collisions.
-	 */
-	int collisions;
+    /**
+     * Number of collisions.
+     */
+    int collisions;
 
-	/**
-	 * Number of resizes.
-	 */
-	int resizes;
+    /**
+     * Number of resizes.
+     */
+    int resizes;
 
-	/**
-	 * Number of lookups.
-	 */
-	int lookups;
+    /**
+     * Number of lookups.
+     */
+    int lookups;
 
-	/**
-	 * Number of inserts.
-	 */
-	int inserts;
+    /**
+     * Number of inserts.
+     */
+    int inserts;
 
-	/**
-	 * Number of deletes.
-	 */
-	int deletes;
+    /**
+     * Number of deletes.
+     */
+    int deletes;
 
-	/**
-	 * Name of the hash table.
-	 */
-	const char *name;
+    /**
+     * Name of the hash table.
+     */
+    const char *name;
 
-	/**
-	 * The first entry.
-	 */
-	struct lh_entry *head;
+    /**
+     * The first entry.
+     */
+    struct lh_entry *head;
 
-	/**
-	 * The last entry.
-	 */
-	struct lh_entry *tail;
+    /**
+     * The last entry.
+     */
+    struct lh_entry *tail;
 
-	struct lh_entry *table;
+    struct lh_entry *table;
 
-	/**
-	 * A pointer onto the function responsible for freeing an entry.
-	 */
-	lh_entry_free_fn *free_fn;
-	lh_hash_fn *hash_fn;
-	lh_equal_fn *equal_fn;
+    /**
+     * A pointer onto the function responsible for freeing an entry.
+     */
+    lh_entry_free_fn *free_fn;
+    lh_hash_fn *hash_fn;
+    lh_equal_fn *equal_fn;
 };
 
 
@@ -185,9 +185,9 @@ for(entry = table->head; entry && ((tmp = entry->next) || 1); entry = tmp)
  * @return a pointer onto the linkhash table.
  */
 extern struct lh_table* lh_table_new(int size, const char *name,
-				     lh_entry_free_fn *free_fn,
-				     lh_hash_fn *hash_fn,
-				     lh_equal_fn *equal_fn);
+                     lh_entry_free_fn *free_fn,
+                     lh_hash_fn *hash_fn,
+                     lh_equal_fn *equal_fn);
 
 /**
  * Convenience function to create a new linkhash
@@ -198,7 +198,7 @@ extern struct lh_table* lh_table_new(int size, const char *name,
  * @return a pointer onto the linkhash table.
  */
 extern struct lh_table* lh_kchar_table_new(int size, const char *name,
-					   lh_entry_free_fn *free_fn);
+                       lh_entry_free_fn *free_fn);
 
 
 /**
@@ -210,7 +210,7 @@ extern struct lh_table* lh_kchar_table_new(int size, const char *name,
  * @return a pointer onto the linkhash table.
  */
 extern struct lh_table* lh_kptr_table_new(int size, const char *name,
-					  lh_entry_free_fn *free_fn);
+                      lh_entry_free_fn *free_fn);
 
 
 /**

@@ -131,6 +131,7 @@ U32   py_exec_func(const char *pszModule, const char *pszFunc, const char *pszPy
         goto py_finished;
     }
 
+    /* 获取python函数返回值 */
     PyArg_Parse(pstRetVal, "i", &lRet);
     if (ulRet < 0)
     {

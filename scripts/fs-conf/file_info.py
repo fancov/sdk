@@ -34,7 +34,7 @@ def print_file_info(info):
     '''
     
     # 定义是否输出，为1则表示输出，否则不输出
-    IS_OUTPUT = 1
+    IS_OUTPUT = 0
     
     if IS_OUTPUT == 0:
         return -1

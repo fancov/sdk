@@ -106,7 +106,7 @@ const S8 *bs_trace_level_str(U32 ulTraceLevel)
 
 S32 bs_show_trace_info(U32 ulIndex)
 {
-    S8      szBuf[BS_TRACE_BUFF_LEN];
+    S8      szBuf[BS_TRACE_BUFF_LEN] = {0, };
 
     dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s",
                  "FS", "WEB", "DB", "CDR",
@@ -142,8 +142,8 @@ S32 bs_show_cb(U32 ulIndex)
 {
     time_t  stTime;
     U32     i;
-    S8      szIP[64], szDayBase[32], szHourBase[32];
-    S8      szBuf[BS_TRACE_BUFF_LEN];
+    S8      szIP[64] = {0,}, szDayBase[32] = {0,}, szHourBase[32]= {0,};
+    S8      szBuf[BS_TRACE_BUFF_LEN] = {0,};
 
     stTime = (time_t)g_stBssCB.ulStatDayBase;
     strftime(szDayBase, sizeof(szDayBase), "%Y-%m-%d %H:%M:%S", localtime(&stTime));
@@ -238,8 +238,8 @@ S32 bs_show_cb(U32 ulIndex)
 /* 显示坐席信息 */
 S32 bs_show_agent(U32 ulIndex, U32 ulObjectID)
 {
-    S8          szBuf[BS_TRACE_BUFF_LEN];
-    BS_AGENT_ST *pstAgent;
+    S8          szBuf[BS_TRACE_BUFF_LEN] = {0, };
+    BS_AGENT_ST *pstAgent = NULL;
 
     pstAgent = bs_get_agent_st(ulObjectID);
     if (NULL == pstAgent)
@@ -456,9 +456,9 @@ S32 bs_show_agent(U32 ulIndex, U32 ulObjectID)
 /* 显示客户信息 */
 S32 bs_show_customer(U32 ulIndex, U32 ulObjectID)
 {
-    S8              szBuf[BS_TRACE_BUFF_LEN];
-    BS_CUSTOMER_ST  *pstCustomer;
-    BS_ACCOUNT_ST   *pstAccount;
+    S8              szBuf[BS_TRACE_BUFF_LEN] = {0, };
+    BS_CUSTOMER_ST  *pstCustomer = NULL;
+    BS_ACCOUNT_ST   *pstAccount = NULL;
 
     pstCustomer = bs_get_customer_st(ulObjectID);
     if (NULL == pstCustomer)
@@ -726,8 +726,8 @@ S32 bs_show_customer(U32 ulIndex, U32 ulObjectID)
 /* 显示任务信息 */
 S32 bs_show_task(U32 ulIndex, U32 ulObjectID)
 {
-    S8          szBuf[BS_TRACE_BUFF_LEN];
-    BS_TASK_ST  *pstTask;
+    S8          szBuf[BS_TRACE_BUFF_LEN] = {0, };
+    BS_TASK_ST  *pstTask = NULL;
 
     pstTask = bs_get_task_st(ulObjectID);
     if (NULL == pstTask)
@@ -934,8 +934,8 @@ S32 bs_show_task(U32 ulIndex, U32 ulObjectID)
 /* 显示中继信息 */
 S32 bs_show_trunk(U32 ulIndex, U32 ulObjectID)
 {
-    S8              szBuf[BS_TRACE_BUFF_LEN];
-    BS_SETTLE_ST    *pstSettle;
+    S8              szBuf[BS_TRACE_BUFF_LEN] = {0,};
+    BS_SETTLE_ST    *pstSettle = NULL;
 
     pstSettle = bs_get_settle_st(ulObjectID);
     if (NULL == pstSettle)
