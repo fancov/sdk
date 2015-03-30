@@ -114,7 +114,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         {
             if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_AUTO_DIALING) != DOS_SUCC)
             {
-                sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+                sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
 
                 ulRet = DOS_FAIL;
             }
@@ -124,7 +124,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         {
             if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_OUTBOUND_CALL) != DOS_SUCC)
             {
-                sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+                sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
                 ulRet = DOS_FAIL;
             }
         }

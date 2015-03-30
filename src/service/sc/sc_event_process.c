@@ -1874,6 +1874,37 @@ U32 sc_ep_esl_execute_cmd(const S8 *pszCmd)
     return DOS_SUCC;
 }
 
+U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase)
+{
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (ulTernmiteCase >= BS_TERM_BUTT )
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if ('\0' == pstSCB->szUUID[0])
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+    pstSCB->ucTerminationCause = ulTernmiteCase;
+    pstSCB->ucTerminationFlag = DOS_TRUE;
+
+    return DOS_SUCC;
+}
+
+
 
 /**
  * 函数: U32 sc_ep_parse_event(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
@@ -2792,8 +2823,9 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
 U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
 {
     S8            szAPPParam[512] = { 0 };
+    U32           ulErrCode = BS_TERM_NONE;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
-    SC_SCB_ST *pstSCBNew = NULL;
+    SC_SCB_ST            *pstSCBNew = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -2808,6 +2840,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         DOS_ASSERT(0);
 
         sc_logr_info(SC_ESL, "Cannot get the agent queue for the task %d", pstSCB->ulTaskID);
+        ulErrCode = BS_TERM_QUEUE_INVALID;
         goto proc_error;
     }
 
@@ -2816,6 +2849,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         DOS_ASSERT(0);
 
         sc_logr_notice(SC_ESL, "There is no useable agent for the task %d. Queue: %d. ", pstSCB->ulTaskID, ulTaskAgentQueueID);
+        ulErrCode = BS_TERM_QUEUE_INVALID;
         goto proc_error;
     }
 
@@ -2831,6 +2865,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         DOS_ASSERT(0);
 
         sc_logr_error(SC_ESL, "%s", "Allc SCB FAIL.");
+        ulErrCode = BS_TERM_SCB_LEEK;
         goto proc_error;
     }
 
@@ -2877,7 +2912,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
         {
             sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCBNew->usSCBNo);
-
+            ulErrCode = BS_TERM_COMM_FAIL;
             goto proc_error;
         }
 
@@ -2899,6 +2934,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     if (sc_ep_esl_execute("bridge", szAPPParam, pstSCB->szUUID) != DOS_SUCC)
     {
         /* @TODO 用户体验优化 */
+        ulErrCode = BS_TERM_COMM_FAIL;
         goto proc_error;
     }
     else
@@ -2933,7 +2969,7 @@ proc_error:
         pstSCBNew = NULL;
     }
 
-    sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+    sc_ep_hangup_call(pstSCB, ulErrCode);
     return DOS_FAIL;
 }
 
@@ -2953,6 +2989,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
     U32   ulBindID = U32_BUTT;
     S8    szCallString[512] = { 0, };
     S8    szCallee[32] = { 0, };
+    U32   ulErrCode = BS_TERM_NONE;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -2971,6 +3008,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
             DOS_ASSERT(0);
 
             sc_logr_info(SC_ESL, "Cannot get the bind info for the DID number %s, Reject Call.", pstSCB->szCalleeNum);
+            ulErrCode = BS_TERM_NUM_INVALID;
             goto proc_fail;
         }
 
@@ -2982,6 +3020,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                     DOS_ASSERT(0);
 
                     sc_logr_info(SC_ESL, "DID number %s seems donot bind a SIP User ID, Reject Call.", pstSCB->szCalleeNum);
+                    ulErrCode = BS_TERM_INTERNAL_ERR;
                     goto proc_fail;
                 }
 
@@ -3018,7 +3057,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
 proc_fail:
     if (pstSCB)
     {
-        sc_ep_esl_execute("hangup", szCallString, pstSCB->szUUID);
+        sc_ep_hangup_call(pstSCB, ulErrCode);
     }
 
     return DOS_FAIL;
@@ -3148,6 +3187,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
 {
     S8      szAPPParam[512]    = { 0, };
     U32     ulTaskMode         = U32_BUTT;
+    U32     ulErrCode          = BS_TERM_NONE;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -3169,6 +3209,8 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
 
         sc_logr_debug(SC_ESL, "Process event %s finished. SCB do not include service auto call."
                             , esl_event_get_header(pstEvent, "Event-Name"));
+
+        ulErrCode = BS_TERM_SERV_FAIL;
         goto auto_call_proc_error;
     }
 
@@ -3180,6 +3222,8 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         sc_logr_debug(SC_ESL, "Process event %s finished. Cannot get the task mode for task %d."
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstSCB->usTCBNo);
+
+        ulErrCode = BS_TERM_TASK_PARAM_ERR;
         goto auto_call_proc_error;
     }
 
@@ -3211,6 +3255,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
 
         default:
             DOS_ASSERT(0);
+            ulErrCode = BS_TERM_TASK_PARAM_ERR;
             goto auto_call_proc_error;
     }
 
@@ -3227,7 +3272,7 @@ auto_call_proc_error:
     if (DOS_ADDR_VALID(pstSCB))
     {
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
-        sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+        sc_ep_hangup_call(pstSCB, ulErrCode);
     }
 
     return DOS_FAIL;
@@ -3251,6 +3296,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
     S8    szCallString[512] = { 0, };
     U32   ulCustomerID = U32_BUTT;
     U32   ulCustomerID1 = U32_BUTT;
+    U32   ulErrCode = BS_TERM_NONE;
 
     if (DOS_ADDR_INVALID(pstEvent) || DOS_ADDR_INVALID(pstHandle) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -3266,6 +3312,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
+        ulErrCode = BS_TERM_UNKNOW;
         goto process_fail;
     }
 
@@ -3274,6 +3321,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
     {
         DOS_ASSERT(0);
 
+        ulErrCode = BS_TERM_UNKNOW;
         goto process_fail;
     }
 
@@ -3284,6 +3332,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
     {
         DOS_ASSERT(0);
 
+        ulErrCode = BS_TERM_UNKNOW;
         goto process_fail;
     }
 
@@ -3295,6 +3344,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
         DOS_ASSERT(0);
 
         sc_logr_info(SC_ESL, "The source number %s seem not beyound to any customer, Reject Call", pszSrcNum);
+        ulErrCode = BS_TERM_CUSTOM_INVALID;
         goto process_fail;
     }
 
@@ -3313,6 +3363,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
 
             sc_logr_info(SC_ESL, "Cannot call other customer direct, Reject Call. Src %s is owned by customer %d, Dst %s is owned by customer %d"
                             , pszSrcNum, ulCustomerID, pszDstNum, ulCustomerID1);
+            ulErrCode = BS_TERM_SERV_FORBID;
             goto process_fail;
         }
     }
@@ -3323,6 +3374,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
             DOS_ASSERT(0);
 
             sc_logr_info(SC_ESL, "Destination number %s is not seems a SIP User ID or Extension. Reject Call", pszDstNum);
+            ulErrCode = BS_TERM_INTERNAL_ERR;
             goto process_fail;
         }
 
@@ -3336,7 +3388,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
 process_fail:
     if (pstSCB)
     {
-        sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+        sc_ep_hangup_call(pstSCB, ulErrCode);
     }
 
     return DOS_FAIL;
@@ -3370,8 +3422,10 @@ U32 sc_ep_internal_service_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
     sc_ep_esl_execute("sleep", "1000", pszUUID);
     sc_ep_esl_execute("speak", "flite|kal|Temporary not support.", pszUUID);
     sc_ep_esl_execute("hangup", NULL, pszUUID);
+    sc_ep_hangup_call(pstSCB, BS_TERM_SERV_INVALID);
     return DOS_SUCC;
 }
+
 
 /**
  * 函数: U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
@@ -3462,6 +3516,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             DOS_ASSERT(0);
 
             sc_ep_esl_execute("hangup", NULL, pszUUID);
+            sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
             ulRet = DOS_FAIL;
 
             goto proc_finished;
@@ -3472,7 +3527,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         {
             DOS_ASSERT(0);
 
-            sc_ep_esl_execute("hangup", NULL, pszUUID);
+            sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
             ulRet = DOS_FAIL;
 
             goto proc_finished;
@@ -3485,16 +3540,14 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
         if (sc_ep_esl_execute_cmd(szCMDBuff) != DOS_SUCC)
         {
-            sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
-            sc_ep_esl_execute("hangup", NULL, pszUUID);
+            sc_ep_hangup_call(pstSCBOther, BS_TERM_INTERNAL_ERR);
+            sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
             ulRet = DOS_FAIL;
 
             goto proc_finished;
 
         }
 
-        //sc_ep_esl_execute("answer", NULL, pszUUID);
-        //sc_ep_esl_execute("answer", NULL, pstSCBOther->szUUID);
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_ACTIVE);
 
         sc_logr_info(SC_ESL, "Agent has benn connected. UUID: %s <> %s. SCBNo: %d <> %d."
@@ -3529,20 +3582,29 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
             /* 更改不同的主叫，获取当前呼叫时哪一个客户 */
             pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
-            if (U32_BUTT == pstSCB->ulCustomID
-                || sc_ep_outgoing_call_proc(pstSCB) != DOS_SUCC)
+            if (U32_BUTT != pstSCB->ulCustomID)
+            {
+                if (sc_ep_outgoing_call_proc(pstSCB) != DOS_SUCC)
+                {
+                    sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
+
+                    SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
+                    ulRet = DOS_FAIL;
+                }
+                else
+                {
+                    SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
+                }
+            }
+            else
             {
                 pstSCB->ucTerminationFlag = DOS_TRUE;
                 pstSCB->ucTerminationCause = BS_ERR_SYSTEM;
 
-                sc_ep_esl_execute("hangup", NULL, pszUUID);
+                sc_ep_hangup_call(pstSCB, BS_TERM_CUSTOM_INVALID);
 
                 SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
                 ulRet = DOS_FAIL;
-            }
-            else
-            {
-                SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
             }
         }
         else if (SC_DIRECTION_PSTN == ulCallSrc && SC_DIRECTION_SIP == ulCallDst)
@@ -3551,20 +3613,26 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
 
             pstSCB->ulCustomID = sc_ep_get_custom_by_did(pstSCB->szCalleeNum);
-            if (pstSCB->ulCustomID != U32_BUTT
-                && sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+            if (pstSCB->ulCustomID == U32_BUTT)
             {
-                pstSCB->ucTerminationFlag = DOS_TRUE;
-                pstSCB->ucTerminationCause = BS_ERR_SYSTEM;
+                if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+                {
+                    sc_ep_hangup_call(pstSCB, BS_TERM_COMM_FAIL);
 
-                sc_ep_esl_execute("hangup", NULL, pszUUID);
-
-                SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
-                ulRet = DOS_FAIL;
+                    SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
+                    ulRet = DOS_FAIL;
+                }
+                else
+                {
+                    SC_SCB_SET_STATUS(pstSCB, SC_SCB_AUTH);
+                }
             }
             else
             {
-                SC_SCB_SET_STATUS(pstSCB, SC_SCB_AUTH);
+                sc_ep_hangup_call(pstSCB, BS_TERM_CUSTOM_INVALID);
+
+                SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
+                ulRet = DOS_FAIL;
             }
         }
         else if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_SIP == ulCallDst)
@@ -3799,7 +3867,7 @@ process_fail:
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
     }
 
-    /* 根据参数  叫唤SCB No */
+    /* 根据参数  交换SCB No */
     pszOtherSCBNo = esl_event_get_header(pstEvent, "variable_other_leg_scb");
     if (DOS_ADDR_INVALID(pszOtherSCBNo)
         && dos_atoul(pszOtherSCBNo, &ulOtherSCBNo) < 0)
@@ -3952,9 +4020,9 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             if (DOS_ADDR_VALID(pstSCBOther)
                 && !pstSCBOther->bWaitingOtherRelase)
             {
-                pstSCB->bWaitingOtherRelase = DOS_TRUE;
+                sc_ep_hangup_call(pstSCBOther, BS_TERM_HANGUP);
 
-                sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
+                pstSCB->bWaitingOtherRelase = DOS_TRUE;
 
                 sc_logr_info(SC_ESL, "Waiting other leg hangup.Curretn Leg UUID: %s, Other Leg UUID: %s"
                                 , pstSCB->szUUID ? pstSCB->szUUID : "NULL"
@@ -4094,6 +4162,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
 {
     U32           ulTaskMode = 0;
     U32           ulMainService = U32_BUTT;
+    U32           ulErrCode = BS_TERM_NONE;
     S8            *pszMainService = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
@@ -4125,6 +4194,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
             DOS_ASSERT(0);
 
             sc_logr_error(SC_ESL, "SCB %d donot have the service %d.", pstSCB->usSCBNo, ulMainService);
+            ulErrCode = BS_TERM_SERV_INVALID;
             goto proc_error;
         }
 
@@ -4140,6 +4210,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                     if (ulTaskMode >= SC_TASK_MODE_BUTT)
                     {
                         DOS_ASSERT(0);
+                        ulErrCode = BS_TERM_TASK_PARAM_ERR;
                         goto proc_error;
                     }
 
@@ -4161,6 +4232,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                         case SC_TASK_MODE_DIRECT4AGETN:
                         default:
                             DOS_ASSERT(0);
+                            ulErrCode = BS_TERM_TASK_PARAM_ERR;
                             goto proc_error;
                     }
                 }
@@ -4187,7 +4259,7 @@ proc_error:
 
     sc_call_trace(pstSCB,"FAILED to process %s event. Call will be hangup.", esl_event_get_header(pstEvent, "Event-Name"));
 
-    sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+    sc_ep_hangup_call(pstSCB, ulErrCode);
 
     return DOS_FAIL;
 }
@@ -4285,7 +4357,6 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             ulRet = sc_ep_channel_park_proc(pstHandle, pstEvent, pstSCB);
             if (ulRet != DOS_SUCC)
             {
-                //sc_ep_esl_execute("hangup", NULL, pszUUID);
                 sc_logr_info(SC_ESL, "Hangup for process event %s fail. UUID: %s", esl_event_get_header(pstEvent, "Event-Name"), pszUUID);
             }
             break;

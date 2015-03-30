@@ -438,9 +438,6 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
 S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
 {
     S8 szQuery[1024] = {0, };
-    U32 ulHashIndex = 0;
-    HASH_NODE_S *pstHashNode = NULL;
-    BS_BILLING_PACKAGE_ST *pstBillingPkg = NULL;
 
     dos_snprintf(szQuery, sizeof(szQuery)
                    , "SELECT "
