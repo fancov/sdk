@@ -367,6 +367,7 @@ typedef struct stBS_ACCOUNT_ST
     S32     lRebate;                        /* 未出账返点,单位:1/100分,毫 */
     S64     LBalanceActive;                 /* 动态账户余额,用于实时扣费尚未出账的临时状态;单位:1/100分 */
     U32     ulAccountingTime;               /* 出账时间 */
+    U32     ulExpiryTime;                   /* 失效时间 */
 
 }BS_ACCOUNT_ST;
 
@@ -464,7 +465,6 @@ typedef struct stBS_TASK_ST
     BS_STAT_SERV_ST     stStat;             /* 统计信息 */
 
     U32     ulTaskID;                       /* 任务ID,要求全数字,不超过10位,最高位小于4 */
-
     U8      aucReserv[3];
 
 }BS_TASK_ST;
