@@ -100,6 +100,7 @@ DLL_NODE_S *dll_find(DLL_S *pList, VOID *pKey,
 S32 (*fnValCmp)(VOID *, DLL_NODE_S *));
 VOID  dll_insert_in_middle (DLL_S *pList, DLL_NODE_S *pPrev, DLL_NODE_S *pMid, DLL_NODE_S *pNext);
 #undef dll_insert
+
 VOID  dll_insert (DLL_S *pList, DLL_NODE_S *pPrev, DLL_NODE_S *pNode);
 VOID  dll_delete_in_middle (DLL_S *pList, DLL_NODE_S *pPrev, DLL_NODE_S *pNode, DLL_NODE_S *pNext);
 VOID  dll_delete(DLL_S *pList, DLL_NODE_S *pNode);

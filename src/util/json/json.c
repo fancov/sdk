@@ -41,7 +41,7 @@ const S8 *json_get_param(JSON_OBJ_ST *pstJsonObj, S8 *szKey)
 
     json_object *jsonVal = (json_object *)pstEntry->v;
     if (DOS_ADDR_INVALID(jsonVal ))
-    {
+    {   
         DOS_ASSERT(0);
 
         pthread_mutex_unlock(&pstJsonObj->mutexObj);

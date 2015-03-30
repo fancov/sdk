@@ -244,17 +244,25 @@ VOID *bsd_recv_bss_msg(VOID *arg)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condBSS2DList, &g_mutexBSS2DMsg, &stTimeout);
-        pNode = dll_fetch(&g_stBSS2DMsgList);
-        pthread_mutex_unlock(&g_mutexBSS2DMsg);
 
-        if (NULL == pNode)
+        while (1)
         {
-            continue;
+            if (DLL_Count(&g_stBSS2DMsgList) <= 0)
+            {
+                break;
+            }
+
+            pNode = dll_fetch(&g_stBSS2DMsgList);
+            if (NULL == pNode)
+            {
+                continue;
+            }
+
+            /* 队列消息处理 */
+            bsd_sl_msg_proc(pNode);
         }
 
-        /* 队列消息处理 */
-        bsd_sl_msg_proc(pNode);
-
+        pthread_mutex_unlock(&g_mutexBSS2DMsg);
     }
 }
 

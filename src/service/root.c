@@ -92,6 +92,8 @@ S32 root(S32 _argc, S8 ** _argv)
 
 
 
+
+
 #ifdef INCLUDE_CC_SC
 
     if (DOS_SUCC != mod_dipcc_sc_load())

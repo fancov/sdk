@@ -33,6 +33,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 {
     SC_SCB_ST   *pstSCB = NULL;
     BS_MSG_AUTH *pstAuthMsg = NULL;
+    U32 ulRet = DOS_SUCC;
 
     if (DOS_ADDR_INVALID(pstMsg))
     {
@@ -111,12 +112,21 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 
         if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
         {
-            sc_dialer_make_call2pstn(pstSCB, SC_SERV_AUTO_DIALING);
+            if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_AUTO_DIALING) != DOS_SUCC)
+            {
+                sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
+
+                ulRet = DOS_FAIL;
+            }
         }
         else if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL)
             && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
         {
-            sc_dialer_make_call2pstn(pstSCB, SC_SERV_OUTBOUND_CALL);
+            if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_OUTBOUND_CALL) != DOS_SUCC)
+            {
+                sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
+                ulRet = DOS_FAIL;
+            }
         }
         else if (sc_call_check_service(pstSCB, SC_SERV_INBOUND_CALL)
             && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
@@ -135,7 +145,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 #if SC_BS_NEED_RESEND
     sc_bs_msg_free(pstMsg->ulMsgSeq);
 #endif
-    return DOS_SUCC;
+    return ulRet;
 }
 
 U32 sc_bs_billing_start_rsp_proc(BS_MSG_TAG *pstMsg)

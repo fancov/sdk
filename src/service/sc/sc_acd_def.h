@@ -63,9 +63,19 @@ typedef enum tagSCACDPolicy{
     SC_ACD_POLICY_BUTT
 }SC_ACD_POLICY_EN;
 
+typedef enum tagAgentBindType{
+    AGENT_BIND_SIP        = 0,
+    AGENT_BIND_TELE,
+    AGENT_BIND_MOBILE,
+
+    AGENT_BIND_BUTT
+}SC_AGENT_BIND_TYPE_EN;
+
 typedef struct tagACDSiteDesc{
     U16        usSCBNo;
-    U16        usStatus;                          /* 坐席状态 refer to SC_SITE_STATUS_EN */
+    U8         ucStatus;                          /* 坐席状态 refer to SC_SITE_STATUS_EN */
+    U8         ucBindType;                        /* 坐席绑定类型 refer to SC_AGENT_BIND_TYPE_EN */
+
     U32        ulSiteID;                          /* 坐席数据库编号 */
     U32        ulCallCnt;                         /* 呼叫总数 */
     U32        ulCustomerID;                      /* 呼叫总数 */
@@ -84,6 +94,8 @@ typedef struct tagACDSiteDesc{
     S8         szUserID[SC_TEL_NUMBER_LENGTH];    /* SIP User ID */
     S8         szExtension[SC_TEL_NUMBER_LENGTH]; /* 分机号 */
     S8         szEmpNo[SC_EMP_NUMBER_LENGTH];     /* 工号 */
+    S8         szTelePhone[SC_TEL_NUMBER_LENGTH]; /* 固化号码 */
+    S8         szMobile[SC_TEL_NUMBER_LENGTH];    /* 移动电话 */
 
     pthread_mutex_t  mutexLock;
 }SC_ACD_AGENT_INFO_ST;

@@ -20,9 +20,8 @@
 
 #define SC_ACD_SITE_IS_USEABLE(pstSiteDesc)        \
     DOS_ADDR_VALID(pstSiteDesc)                    \
-    && (SC_ACD_IDEL == pstSiteDesc->usStatus       \
-    || SC_ACD_CONNECTED == pstSiteDesc->usStatus)
-
+    && (SC_ACD_IDEL == pstSiteDesc->ucStatus       \
+    || SC_ACD_CONNECTED == pstSiteDesc->ucStatus)
 
 typedef struct tagACDQueueNode{
     U32                     ulID;             /* 当前节点在当前队列里面的编号 */

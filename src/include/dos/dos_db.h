@@ -83,6 +83,7 @@ typedef struct tagDBHandle
     S8      szUsername[DB_MAX_STR_LEN];
     S8      szPassword[DB_MAX_STR_LEN];
     S8      szDBName[DB_MAX_STR_LEN];
+    S8      szSockPath[DB_MAX_STR_LEN];
     U16     usPort;
 #endif
 #if DB_SQLTE

@@ -899,16 +899,24 @@ VOID *bss_recv_bsd_msg(VOID *arg)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condBSD2SList, &g_mutexBSD2SMsg, &stTimeout);
-        pNode = dll_fetch(&g_stBSD2SMsgList);
-        pthread_mutex_unlock(&g_mutexBSD2SMsg);
-
-        if (NULL == pNode)
+        while (1)
         {
-            continue;
+            if (DLL_Count(&g_stBSD2SMsgList) <= 0)
+            {
+                break;
+            }
+
+            pNode = dll_fetch(&g_stBSD2SMsgList);
+            if (NULL == pNode)
+            {
+                continue;
+            }
+
+            /* 队列消息处理 */
+            bss_dl_msg_proc(pNode);
         }
 
-        /* 队列消息处理 */
-        bss_dl_msg_proc(pNode);
+        pthread_mutex_unlock(&g_mutexBSD2SMsg);
     }
 }
 
@@ -930,81 +938,88 @@ VOID *bss_send_msg2app(VOID *arg)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condBSAppSendList, &g_mutexBSAppMsgSend, &stTimeout);
-        pNode = dll_fetch(&g_stBSAppMsgSendList);
-        pthread_mutex_unlock(&g_mutexBSAppMsgSend);
 
-        if (NULL == pNode)
+        while (1)
         {
-            /* 队列中没有消息 */
-            continue;
-        }
-
-        pstMsgTag = (BS_MSG_TAG *)pNode->pHandle;
-        if (DOS_ADDR_INVALID(pstMsgTag))
-        {
-            DOS_ASSERT(0);
-            dos_dmem_free(pNode);
-            continue;
-        }
-
-        /* 获取socket连接信息 */
-        pstAppConn = bs_get_app_conn(pstMsgTag);
-        if (DOS_ADDR_VALID(pstAppConn))
-        {
-            /* 更新消息序列号 */
-            /* @TODO 只对请求做序列号维护 */
-#if 0
-            pstAppConn->ulMsgSeq++;
-            pstMsgTag->ulMsgSeq = pstAppConn->ulMsgSeq;
-#endif
-            /* 将BS地址信息填入到消息 */
-            pstMsgTag->aulIPAddr[0] = 0;        /* IP地址暂时统一填0,以后有多台BS时再改进 */
-            pstMsgTag->aulIPAddr[1] = 0;
-            pstMsgTag->aulIPAddr[2] = 0;
-            pstMsgTag->aulIPAddr[3] = 0;
-            pstMsgTag->usPort = g_stBssCB.usUDPListenPort;
-            /* 系统处于维护状态,统一错误码 */
-            if (DOS_TRUE == g_stBssCB.bIsMaintain)
+            if (DLL_Count(&g_stBSAppMsgSendList) <= 0)
             {
-                pstMsgTag->ucErrcode = BS_ERR_MAINTAIN;
+                break;
             }
 
-            if (pstAppConn->bIsTCP)
+            pNode = dll_fetch(&g_stBSAppMsgSendList);
+            if (NULL == pNode)
             {
-                lRet = send(pstAppConn->lSockfd, pstMsgTag, pstMsgTag->usMsgLen, 0);
+                /* 队列中没有消息 */
+                continue;
+            }
+
+            pstMsgTag = (BS_MSG_TAG *)pNode->pHandle;
+            if (DOS_ADDR_INVALID(pstMsgTag))
+            {
+                DOS_ASSERT(0);
+                dos_dmem_free(pNode);
+                continue;
+            }
+
+            /* 获取socket连接信息 */
+            pstAppConn = bs_get_app_conn(pstMsgTag);
+            if (DOS_ADDR_VALID(pstAppConn))
+            {
+                /* 更新消息序列号 */
+                /* @TODO 只对请求做序列号维护 */
+#if 0
+                pstAppConn->ulMsgSeq++;
+                pstMsgTag->ulMsgSeq = pstAppConn->ulMsgSeq;
+#endif
+                /* 将BS地址信息填入到消息 */
+                pstMsgTag->aulIPAddr[0] = 0;        /* IP地址暂时统一填0,以后有多台BS时再改进 */
+                pstMsgTag->aulIPAddr[1] = 0;
+                pstMsgTag->aulIPAddr[2] = 0;
+                pstMsgTag->aulIPAddr[3] = 0;
+                pstMsgTag->usPort = g_stBssCB.usUDPListenPort;
+                /* 系统处于维护状态,统一错误码 */
+                if (DOS_TRUE == g_stBssCB.bIsMaintain)
+                {
+                    pstMsgTag->ucErrcode = BS_ERR_MAINTAIN;
+                }
+
+                if (pstAppConn->bIsTCP)
+                {
+                    lRet = send(pstAppConn->lSockfd, pstMsgTag, pstMsgTag->usMsgLen, 0);
+                }
+                else
+                {
+                    lRet = sendto(pstAppConn->lSockfd, pstMsgTag, pstMsgTag->usMsgLen,
+                                  0, (struct sockaddr *)&pstAppConn->stAddr, pstAppConn->lAddrLen);
+                }
+
+                if (lRet != (S32)pstMsgTag->usMsgLen)
+                {
+                    bs_trace(BS_TRACE_FS, LOG_LEVEL_NOTIC,
+                             "Notice: send msg to app fail! result:%d, type:%u, len:%u, errno:%d",
+                             lRet, pstMsgTag->ucMsgType, pstMsgTag->usMsgLen, errno);
+                }
+                else
+                {
+                    bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
+                             "Send msg to app succ! type:%u, seq:%u, len:%u, errcode:%u, addr:%X, port: %d",
+                             pstMsgTag->ucMsgType, pstMsgTag->ulMsgSeq,
+                             pstMsgTag->usMsgLen, pstMsgTag->ucErrcode,
+                             pstAppConn->stAddr.sin_addr.s_addr, dos_htons(pstAppConn->stAddr.sin_port));
+                }
             }
             else
-            {
-                lRet = sendto(pstAppConn->lSockfd, pstMsgTag, pstMsgTag->usMsgLen,
-                              0, (struct sockaddr *)&pstAppConn->stAddr, pstAppConn->lAddrLen);
-            }
-
-            if (lRet != (S32)pstMsgTag->usMsgLen)
             {
                 bs_trace(BS_TRACE_FS, LOG_LEVEL_NOTIC,
-                         "Notice: send msg to app fail! result:%d, type:%u, len:%u, errno:%d",
-                         lRet, pstMsgTag->ucMsgType, pstMsgTag->usMsgLen, errno);
+                         "Notice: send msg fail! can't find conn info! addr:0x%X:%u",
+                         pstMsgTag->aulIPAddr[0], pstMsgTag->usPort);
             }
-            else
-            {
-                bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
-                         "Send msg to app succ! type:%u, seq:%u, len:%u, errcode:%u, addr:%X, port: %d",
-                         pstMsgTag->ucMsgType, pstMsgTag->ulMsgSeq,
-                         pstMsgTag->usMsgLen, pstMsgTag->ucErrcode,
-                         pstAppConn->stAddr.sin_addr.s_addr, dos_htons(pstAppConn->stAddr.sin_port));
-            }
-        }
-        else
-        {
-            bs_trace(BS_TRACE_FS, LOG_LEVEL_NOTIC,
-                     "Notice: send msg fail! can't find conn info! addr:0x%X:%u",
-                     pstMsgTag->aulIPAddr[0], pstMsgTag->usPort);
-        }
 
-        /* 处理完毕后,释放本节点 */
-        dos_dmem_free(pNode->pHandle);
-        dos_dmem_free(pNode);
-
+            /* 处理完毕后,释放本节点 */
+            dos_dmem_free(pNode->pHandle);
+            dos_dmem_free(pNode);
+        }
+        pthread_mutex_unlock(&g_mutexBSAppMsgSend);
     }
 }
 
@@ -1661,10 +1676,15 @@ VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType)
     pstCDR->ulAccountID = pstSessionLeg->ulAccountID;
     pstCDR->ulTaskID = pstSessionLeg->ulTaskID;
     dos_strncpy(pstCDR->szCaller, pstSessionLeg->szCaller, sizeof(pstCDR->szCaller));
+    pstCDR->szCaller[sizeof(pstCDR->szCaller) - 1] = '\0';
     dos_strncpy(pstCDR->szCallee, pstSessionLeg->szCallee, sizeof(pstCDR->szCallee));
+    pstCDR->szCallee[sizeof(pstCDR->szCallee) - 1] = '\0';
     dos_strncpy(pstCDR->szCID, pstSessionLeg->szCID, sizeof(pstCDR->szCID));
+    pstCDR->szCID[sizeof(pstCDR->szCID) - 1] = '\0';
     dos_strncpy(pstCDR->szAgentNum, pstSessionLeg->szAgentNum, sizeof(pstCDR->szAgentNum));
+    pstCDR->szAgentNum[sizeof(pstCDR->szAgentNum) - 1] = '\0';
     dos_strncpy(pstCDR->szRecordFile, pstSessionLeg->szRecordFile, sizeof(pstCDR->szRecordFile));
+    pstCDR->szRecordFile[sizeof(pstCDR->szRecordFile) - 1] = '\0';
     pstCDR->ulPDDLen = pstSessionLeg->ulRingTimeStamp - pstSessionLeg->ulStartTimeStamp;
     pstCDR->ulRingTime = pstSessionLeg->ulRingTimeStamp;
     pstCDR->ulAnswerTimeStamp = pstSessionLeg->ulAnswerTimeStamp;
@@ -3905,47 +3925,54 @@ VOID *bss_aaa(VOID *arg)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condBSAAAList, &g_mutexBSAAAMsg, &stTimeout);
-        pMsgNode = dll_fetch(&g_stBSAAAMsgList);
-        pthread_mutex_unlock(&g_mutexBSAAAMsg);
-
-        if (NULL == pMsgNode)
+        while (1)
         {
-            /* 队列中没有消息 */
-            continue;
-        }
-
-        pstMsg = (BS_MSG_AUTH *)pMsgNode->pHandle;
-        if (DOS_ADDR_INVALID(pstMsg))
-        {
-            DOS_ASSERT(0);
-            dos_dmem_free(pMsgNode);
-            continue;
-        }
-
-        switch (pstMsg->stMsgTag.ucMsgType)
-        {
-            case BS_MSG_BALANCE_QUERY_REQ:
-                bss_query_balance(pMsgNode);
+            if (DLL_Count(&g_stBSAAAMsgList) <= 0)
+            {
                 break;
+            }
 
-            case BS_MSG_USER_AUTH_REQ:
-                bss_user_auth(pMsgNode);
-                break;
+            pMsgNode = dll_fetch(&g_stBSAAAMsgList);
+            if (NULL == pMsgNode)
+            {
+                /* 队列中没有消息 */
+                continue;
+            }
 
-            case BS_MSG_ACCOUNT_AUTH_REQ:
-                bss_account_auth(pMsgNode);
-                break;
-
-            default:
+            pstMsg = (BS_MSG_AUTH *)pMsgNode->pHandle;
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
                 DOS_ASSERT(0);
-                bs_trace(BS_TRACE_FS, LOG_LEVEL_ERROR, "Err: unexpected msg, type:%u",
-                         pstMsg->stMsgTag.ucMsgType);
-                /* 未知消息,不做处理,释放内存 */
-                dos_dmem_free(pMsgNode->pHandle);
-                pMsgNode->pHandle = NULL;
                 dos_dmem_free(pMsgNode);
-                break;
+                continue;
+            }
+
+            switch (pstMsg->stMsgTag.ucMsgType)
+            {
+                case BS_MSG_BALANCE_QUERY_REQ:
+                    bss_query_balance(pMsgNode);
+                    break;
+
+                case BS_MSG_USER_AUTH_REQ:
+                    bss_user_auth(pMsgNode);
+                    break;
+
+                case BS_MSG_ACCOUNT_AUTH_REQ:
+                    bss_account_auth(pMsgNode);
+                    break;
+
+                default:
+                    DOS_ASSERT(0);
+                    bs_trace(BS_TRACE_FS, LOG_LEVEL_ERROR, "Err: unexpected msg, type:%u",
+                             pstMsg->stMsgTag.ucMsgType);
+                    /* 未知消息,不做处理,释放内存 */
+                    dos_dmem_free(pMsgNode->pHandle);
+                    pMsgNode->pHandle = NULL;
+                    dos_dmem_free(pMsgNode);
+                    break;
+            }
         }
+        pthread_mutex_unlock(&g_mutexBSAAAMsg);
     }
 
     return NULL;
@@ -3968,47 +3995,56 @@ VOID *bss_cdr(VOID *arg)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condBSCDRList, &g_mutexBSCDR, &stTimeout);
-        pMsgNode = dll_fetch(&g_stBSCDRList);
-        pthread_mutex_unlock(&g_mutexBSCDR);
 
-        if (NULL == pMsgNode)
+        while (1)
         {
-            /* 队列中没有消息 */
-            continue;
-        }
-
-        pstMsg = (BS_MSG_CDR *)pMsgNode->pHandle;
-        if (DOS_ADDR_INVALID(pstMsg))
-        {
-            DOS_ASSERT(0);
-            dos_dmem_free(pMsgNode);
-            continue;
-        }
-
-        switch (pstMsg->stMsgTag.ucMsgType)
-        {
-            case BS_MSG_BILLING_START_REQ:
-                bss_billing_start(pMsgNode);
+            if (DLL_Count(&g_stBSCDRList) <= 0)
+            {
                 break;
+            }
 
-            case BS_MSG_BILLING_UPDATE_REQ:
-                bss_billing_update(pMsgNode);
-                break;
+            pMsgNode = dll_fetch(&g_stBSCDRList);
+            if (NULL == pMsgNode)
+            {
+                /* 队列中没有消息 */
+                continue;
+            }
 
-            case BS_MSG_BILLING_STOP_REQ:
-                bss_billing_stop(pMsgNode);
-                break;
-
-            default:
+            pstMsg = (BS_MSG_CDR *)pMsgNode->pHandle;
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
                 DOS_ASSERT(0);
-                bs_trace(BS_TRACE_FS, LOG_LEVEL_ERROR, "Err: unexpected msg, type:%u",
-                         pstMsg->stMsgTag.ucMsgType);
-                /* 未知消息,不做处理,释放内存 */
-                dos_dmem_free(pMsgNode->pHandle);
-                pMsgNode->pHandle = NULL;
                 dos_dmem_free(pMsgNode);
-                break;
+                continue;
+            }
+
+            switch (pstMsg->stMsgTag.ucMsgType)
+            {
+                case BS_MSG_BILLING_START_REQ:
+                    bss_billing_start(pMsgNode);
+                    break;
+
+                case BS_MSG_BILLING_UPDATE_REQ:
+                    bss_billing_update(pMsgNode);
+                    break;
+
+                case BS_MSG_BILLING_STOP_REQ:
+                    bss_billing_stop(pMsgNode);
+                    break;
+
+                default:
+                    DOS_ASSERT(0);
+                    bs_trace(BS_TRACE_FS, LOG_LEVEL_ERROR, "Err: unexpected msg, type:%u",
+                             pstMsg->stMsgTag.ucMsgType);
+                    /* 未知消息,不做处理,释放内存 */
+                    dos_dmem_free(pMsgNode->pHandle);
+                    pMsgNode->pHandle = NULL;
+                    dos_dmem_free(pMsgNode);
+                    break;
+            }
         }
+
+        pthread_mutex_unlock(&g_mutexBSCDR);
     }
 
     return NULL;
@@ -4031,51 +4067,61 @@ VOID *bss_billing(VOID *arg)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condBSBillingList, &g_mutexBSBilling, &stTimeout);
-        pMsgNode = dll_fetch(&g_stBSBillingList);
-        pthread_mutex_unlock(&g_mutexBSBilling);
 
-        if (NULL == pMsgNode)
+        while (1)
         {
-            /* 队列中没有消息 */
-            continue;
-        }
-
-        pstMsgTag = (BS_CDR_TAG *)pMsgNode->pHandle;
-        if (DOS_ADDR_INVALID(pstMsgTag))
-        {
-            DOS_ASSERT(0);
-            dos_dmem_free(pMsgNode);
-            continue;
-        }
-
-        switch (pstMsgTag->ucCDRType)
-        {
-            case BS_CDR_VOICE:
-                bss_voice_cdr_proc(pMsgNode);
+            if (DLL_Count(&g_stBSBillingList) <= 0)
+            {
                 break;
+            }
 
-            case BS_CDR_RECORDING:
-                bss_recording_cdr_proc(pMsgNode);
-                break;
+            pMsgNode = dll_fetch(&g_stBSBillingList);
+            if (NULL == pMsgNode)
+            {
+                /* 队列中没有消息 */
+                continue;
+            }
 
-            case BS_CDR_MESSAGE:
-                bss_message_cdr_proc(pMsgNode);
-                break;
-
-            case BS_CDR_SETTLE:
-                bss_settle_cdr_proc(pMsgNode);
-                break;
-
-            default:
+            pstMsgTag = (BS_CDR_TAG *)pMsgNode->pHandle;
+            if (DOS_ADDR_INVALID(pstMsgTag))
+            {
                 DOS_ASSERT(0);
-                bs_trace(BS_TRACE_BILLING, LOG_LEVEL_ERROR, "Err: unexpected cdr, type:%u",
-                         pstMsgTag->ucCDRType);
-                /* 未知消息,不做处理,释放内存 */
-                dos_dmem_free(pMsgNode->pHandle);
-                pMsgNode->pHandle = NULL;
                 dos_dmem_free(pMsgNode);
-                break;
+                continue;
+            }
+
+            switch (pstMsgTag->ucCDRType)
+            {
+                case BS_CDR_VOICE:
+                    bss_voice_cdr_proc(pMsgNode);
+
+                    break;
+
+                case BS_CDR_RECORDING:
+                    bss_recording_cdr_proc(pMsgNode);
+                    break;
+
+                case BS_CDR_MESSAGE:
+                    bss_message_cdr_proc(pMsgNode);
+                    break;
+
+                case BS_CDR_SETTLE:
+                    bss_settle_cdr_proc(pMsgNode);
+                    break;
+
+                default:
+                    DOS_ASSERT(0);
+                    bs_trace(BS_TRACE_BILLING, LOG_LEVEL_ERROR, "Err: unexpected cdr, type:%u",
+                             pstMsgTag->ucCDRType);
+                    /* 未知消息,不做处理,释放内存 */
+                    dos_dmem_free(pMsgNode->pHandle);
+                    pMsgNode->pHandle = NULL;
+                    dos_dmem_free(pMsgNode);
+                    break;
+            }
         }
+
+        pthread_mutex_unlock(&g_mutexBSBilling);
     }
 
     return NULL;
