@@ -917,31 +917,37 @@ static S32 mon_init_db_conn()
    S8  szDBUsername[48] = {0};
    S8  szDBPassword[48] = {0};
    S8  szDBName[48] = {0};
+   S8  szDBSockPath[48] = {0,};
    U16 usDBPort = 0;
 
    if(config_get_db_host(szDBHost, sizeof(szDBHost)) < 0 )
    {
-      DOS_ASSERT(0);
-      return DOS_FAIL;
+        DOS_ASSERT(0);
+        return DOS_FAIL;
    }
    
    if(config_get_db_user(szDBUsername, sizeof(szDBUsername)) < 0 )
    {
-      DOS_ASSERT(0);
-      return DOS_FAIL;
+        DOS_ASSERT(0);
+        return DOS_FAIL;
    }
       
    if(config_get_db_password(szDBPassword, sizeof(szDBPassword)) < 0 )
    {
-      DOS_ASSERT(0);
-      return DOS_FAIL;
+        DOS_ASSERT(0);
+        return DOS_FAIL;
    }
 
    if(config_get_syssrc_db_dbname(szDBName, sizeof(szDBName)) < 0 )
    {
-      DOS_ASSERT(0);
+        DOS_ASSERT(0);
       
-      return DOS_FAIL;
+        return DOS_FAIL;
+   }
+
+   if (config_get_mysqlsock_path(szDBSockPath, sizeof(szDBSockPath)) < 0)
+   {
+        szDBSockPath[0] = '\0';
    }
 
    usDBPort = config_get_db_port();
@@ -968,6 +974,16 @@ static S32 mon_init_db_conn()
 
    dos_strncpy(g_pstDBHandle->szDBName, szDBName, sizeof(g_pstDBHandle->szDBName));
    g_pstDBHandle->szDBName[sizeof(g_pstDBHandle->szDBName) - 1] = '\0';
+
+   if ('\0' != szDBSockPath[0])
+   {
+        dos_strncpy(g_pstDBHandle->szSockPath, szDBSockPath, sizeof(szDBSockPath));
+        g_pstDBHandle->szSockPath[sizeof(g_pstDBHandle->szSockPath) - 1] = '\0';
+   }
+   else
+   {
+        g_pstDBHandle->szSockPath[0] = '\0';
+   }
 
    g_pstDBHandle->usPort = usDBPort;
 
