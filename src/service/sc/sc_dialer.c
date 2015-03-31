@@ -80,7 +80,7 @@ U32 sc_dial_make_call2ip(S8 *pszCaller, S8 *pszCallee, U32 ulMainService)
     {
         DOS_ASSERT(0);
         sc_logr_notice(SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
-
+        g_pstDialerHandle->blIsESLRunning = DOS_FALSE;
         goto esl_exec_fail;
     }
 
@@ -226,6 +226,8 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     {
         DOS_ASSERT(0);
         sc_logr_notice(SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
+
+        g_pstDialerHandle->blIsESLRunning = DOS_FALSE;
 
         goto esl_exec_fail;
     }

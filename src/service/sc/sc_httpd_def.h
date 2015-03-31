@@ -13,11 +13,10 @@
 #ifndef __SC_HTTPD_PUB_H__
 #define __SC_HTTPD_PUB_H__
 
-#if 0
 #ifdef __cplusplus
 extern "C"{
 #endif /* __cplusplus */
-#endif
+
 /* include public header files */
 #include <dos.h>
 
@@ -85,10 +84,9 @@ typedef struct tagResultDataList
 }SC_RESULT_DATA_NODE_ST;
 
 /* declare functions */
-#if 0
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
-#endif
+
 #endif /* __SC_HTTPD_PUB_H__ */
 

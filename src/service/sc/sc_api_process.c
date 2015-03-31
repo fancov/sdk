@@ -28,20 +28,6 @@ extern "C"{
 #include "sc_http_api.h"
 #include "sc_acd_def.h"
 
-U32 sc_http_api_reload_xml(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_gateway_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_call_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_route_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_gw_group_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_did_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_black_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_caller_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_acd_http_req_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
-
 
 /* global parameters */
 SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
@@ -50,7 +36,8 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
     {"task",                     sc_http_api_task_ctrl},
     {"verify",                   sc_http_api_num_verify},
     {"callctrl",                 sc_http_api_call_ctrl},
-    {"agent-action",             sc_http_api_agent_action},
+    {"agent",                    sc_http_api_agent_action},
+    {"agentgrp",                 sc_http_api_agent_grp},
     {"gateway",                  sc_http_api_gateway_action},
     {"sip",                      sc_http_api_sip_action},
     {"route",                    sc_http_api_route_action},
@@ -372,7 +359,7 @@ U32 sc_http_api_gateway_action(SC_HTTP_CLIENT_CB_S *pstClient)
 {
    S8   *pszGateWayID = NULL, *pszAction = NULL;
    U32  ulGatewayID, ulAction;
- 
+
    if (DOS_ADDR_INVALID(pstClient))
    {
        DOS_ASSERT(0);
@@ -392,7 +379,7 @@ U32 sc_http_api_gateway_action(SC_HTTP_CLIENT_CB_S *pstClient)
        DOS_ASSERT(0);
        return SC_HTTP_ERRNO_INVALID_REQUEST;
    }
-  
+
    if (dos_atoul(pszGateWayID, &ulGatewayID) < 0)
    {
        DOS_ASSERT(0);
@@ -501,11 +488,11 @@ U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
 
     SC_TRACE_OUT();
     return DOS_SUCC;
-    
+
 invalid_params:
        pstClient->ulResponseCode = 200;
        pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
-    
+
        SC_TRACE_OUT();
        return DOS_FAIL;
 }
@@ -521,6 +508,64 @@ U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient)
 U32 sc_http_api_call_ctrl(SC_HTTP_CLIENT_CB_S *pstClient)
 {
     return DOS_FAIL;
+}
+
+U32 sc_http_api_agent_grp(SC_HTTP_CLIENT_CB_S *pstClient)
+{
+    S8 *pszAgentGrpID = NULL;
+    S8 *pszAction     = NULL;
+    U32 ulAgentGrpID = U32_BUTT, ulAction = U32_BUTT;
+
+    pszAgentGrpID = sc_http_api_get_value(&pstClient->stParamList, "agentgrp_id");
+    pszAction  = sc_http_api_get_value(&pstClient->stParamList, "action");
+
+    if (DOS_ADDR_INVALID(pszAgentGrpID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (dos_atoul(pszAgentGrpID, &ulAgentGrpID) < 0)
+    {
+       DOS_ASSERT(0);
+       goto invalid_params;
+    }
+
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_AGENTGREP_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_AGENTGREP_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_AGENTGREP_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (sc_acd_http_agentgrp_update_proc(ulAction, ulAgentGrpID) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    SC_TRACE_OUT();
+    return DOS_SUCC;
+
+invalid_params:
+    pstClient->ulResponseCode = 200;
+    pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
+    SC_TRACE_OUT();
+    return DOS_FAIL;
+
 }
 
 U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient)
@@ -591,7 +636,7 @@ U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient)
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    if (sc_acd_http_req_proc(ulAction, ulAgentID, pszUserID) != DOS_SUCC)
+    if (sc_acd_http_agent_update_proc(ulAction, ulAgentID, pszUserID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
@@ -657,7 +702,7 @@ U32 sc_http_api_route_action(SC_HTTP_CLIENT_CB_S *pstClient)
 
     SC_TRACE_OUT();
     return DOS_SUCC;
-    
+
 invalid_params:
     pstClient->ulResponseCode = 200;
     pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
@@ -695,7 +740,7 @@ U32 sc_http_api_gw_group_action(SC_HTTP_CLIENT_CB_S *pstClient)
     if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
     {
         ulAction = SC_API_CMD_ACTION_GW_GROUP_ADD;
-    } 
+    }
     else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
     {
         ulAction = SC_API_CMD_ACTION_GW_GROUP_DELETE;
@@ -725,7 +770,7 @@ invalid_params:
 
 U32 sc_http_api_did_action(SC_HTTP_CLIENT_CB_S *pstClient)
 {
-    S8  *pszDidID = NULL, *pszAction = NULL, *pszDidNum = NULL;
+    S8  *pszDidID = NULL, *pszAction = NULL;
     U32  ulDidID, ulAction;
 
     if (DOS_ADDR_INVALID(pstClient))
@@ -736,11 +781,9 @@ U32 sc_http_api_did_action(SC_HTTP_CLIENT_CB_S *pstClient)
 
     pszDidID  = sc_http_api_get_value(&pstClient->stParamList, "did_id");
     pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
-    pszDidNum = sc_http_api_get_value(&pstClient->stParamList, "did_num");
 
-    if (DOS_ADDR_INVALID(pszDidID) 
-        || DOS_ADDR_INVALID(pszAction)
-        || DOS_ADDR_INVALID(pszDidNum))
+    if (DOS_ADDR_INVALID(pszDidID)
+        || DOS_ADDR_INVALID(pszAction))
     {
         DOS_ASSERT(0);
         goto invalid_params;
@@ -770,7 +813,7 @@ U32 sc_http_api_did_action(SC_HTTP_CLIENT_CB_S *pstClient)
         goto invalid_params;
     }
 
-    if (sc_http_did_update_proc(ulAction, ulDidID, pszDidNum) != DOS_SUCC)
+    if (sc_http_did_update_proc(ulAction, ulDidID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
@@ -800,7 +843,7 @@ U32 sc_http_api_black_action(SC_HTTP_CLIENT_CB_S *pstClient)
     pszBlackID = sc_http_api_get_value(&pstClient->stParamList, "black_id");
     pszAction  = sc_http_api_get_value(&pstClient->stParamList, "action");
 
-    if (DOS_ADDR_INVALID(pszBlackID) 
+    if (DOS_ADDR_INVALID(pszBlackID)
         || DOS_ADDR_INVALID(pszAction))
     {
         DOS_ASSERT(0);

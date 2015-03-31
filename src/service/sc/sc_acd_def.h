@@ -50,6 +50,10 @@ enum {
     SC_ACD_SITE_ACTION_EN_QUEUE,         /* 坐席长连 */
     SC_ACD_SITE_ACTION_DN_QUEUE,         /* 坐席退出长连 */
 
+    SC_API_CMD_ACTION_AGENTGREP_ADD,
+    SC_API_CMD_ACTION_AGENTGREP_DELETE,
+    SC_API_CMD_ACTION_AGENTGREP_UPDATE,
+
     SC_ACD_SITE_ACTION_BUTT              /* 坐席签出(长连) */
 };
 

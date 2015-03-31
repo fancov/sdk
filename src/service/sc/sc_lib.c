@@ -177,6 +177,11 @@ VOID sc_scb_free(SC_SCB_ST *pstSCB)
         dos_dmem_free(pstSCB->pstExtraData);
         pstSCB->pstExtraData = NULL;
     }
+    if (pstSCB->pszRecordFile)
+    {
+        dos_dmem_free(pstSCB->pszRecordFile);
+        pstSCB->pszRecordFile = NULL;
+    }
     sc_scb_init(pstSCB);
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
     pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallList);
@@ -266,6 +271,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->szSiteNum[0] = '\0';               /* 坐席号码 */
     pstSCB->szUUID[0] = '\0';                  /* Leg-A UUID */
     pstSCB->pstExtraData = NULL;
+    pstSCB->pszRecordFile = NULL;
 
     /* 业务类型 列表*/
     pstSCB->ucCurrentSrvInd = 0;               /* 当前空闲的业务类型索引 */
@@ -672,7 +678,7 @@ U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *psz
     pstTime = localtime(&timep);
 
 
-    dos_snprintf(pszBuff, ulMaxLen, "/var/record/%04d%02d%02d-%02d%02d%02d-%u-%s-%s.wav"
+    dos_snprintf(pszBuff, ulMaxLen, "%04d%02d%02d-%02d%02d%02d-%u-%s-%s"
             , pstTime->tm_year + 1900
             , pstTime->tm_mon + 1
             , pstTime->tm_mday
@@ -1988,7 +1994,6 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
     return DOS_SUCC;
 }
 
-
 U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID)
 {
     U32 ulRet = U32_BUTT;
@@ -2053,7 +2058,7 @@ U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID)
     return DOS_SUCC;
 }
 
-U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID, S8 *pszDidNum)
+U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID)
 {
     U32 ulRet = U32_BUTT;
 
@@ -2071,7 +2076,7 @@ U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID, S8 *pszDidNum)
             break;
         case SC_API_CMD_ACTION_DID_DELETE:
             {
-                ulRet = sc_did_delete(ulDidID, pszDidNum);
+                ulRet = sc_did_delete(ulDidID);
                 if (ulRet != DOS_SUCC)
                 {
                    DOS_ASSERT(0);

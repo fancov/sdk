@@ -103,6 +103,7 @@ enum tagAPICMDActionList
     SC_API_CMD_ACTION_CALLER_UPDATE,                     /* Ö÷½Ð¸üÐÂ */
     //---------------------------------------------------
 
+
     SC_API_CMD_ACTION_BUTT
 };
 
@@ -164,6 +165,21 @@ typedef struct tagHttpRequestProcess
 
 /* declare functions */
 U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_reload_xml(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_gateway_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_call_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_agent_grp(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_route_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_gw_group_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_did_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_black_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_caller_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
+U32 sc_acd_http_agentgrp_update_proc(U32 ulAction, U32 ulGrpID);
 
 
 #ifdef __cplusplus

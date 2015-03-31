@@ -790,8 +790,8 @@ VOID bsd_save_recording_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`fee_l1`,`fee_l2`,`fee_l3`,`fee_l4`,`fee_l5`,"
                       "`record_file`,`caller`,`callee`,`CID`,`agent_num`,"
                       "`start_time`,`time_len`,`agent_level`,`cdr_mark`,`cdr_type`)"
-                    "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\""
-                    		, "\%s\", \"%s\", \"%s\", \"%s\", %u, %u, %u, %u, %u);"
+                    "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\", "
+                      "\"%s\", \"%s\", \"%s\", \"%s\", FROM_UNIXTIME(%u), %u, %u, %u, %u);"
                 	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID
                 	, pstCDR->ulTaskID, pstCDR->ulRuleID, pstCDR->aulFee[0]
                 	, pstCDR->aulFee[1], pstCDR->aulFee[2], pstCDR->aulFee[3]

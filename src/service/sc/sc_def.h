@@ -454,6 +454,8 @@ typedef struct tagSCSCB{
     S8        szSiteNum[SC_TEL_NUMBER_LENGTH];    /* 坐席号码 */
     S8        szUUID[SC_MAX_UUID_LENGTH];         /* Leg-A UUID */
 
+    S8        *pszRecordFile;
+
     SC_SCB_EXTRA_DATA_ST *pstExtraData;           /* 结算话单是需要的额外数据 */
 
     pthread_mutex_t mutexSCBLock;                 /* 保护SCB的锁 */
@@ -611,7 +613,7 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
 U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID);
 U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID);
 U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID);
-U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID, S8* pszDidNum);
+U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID);
 U32 sc_ep_sip_userid_delete(S8 * pszSipID);
 U32 sc_gateway_delete(U32 ulGatewayID);
 U32 sc_load_sip_userid(U32 ulIndex);
@@ -624,7 +626,7 @@ U32 sc_load_did_number(U32 ulIndex);
 U32 sc_load_black_list(U32 ulIndex);
 U32 sc_black_list_delete(U32 ulBlackListID);
 U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID);
-U32 sc_did_delete(U32 ulDidID, S8* pszDidNum);
+U32 sc_did_delete(U32 ulDidID);
 U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID);
 U32 sc_ep_esl_execute_cmd(const S8* pszCmd);
 U32 sc_ep_get_userid_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
@@ -632,6 +634,7 @@ S32 sc_ep_gw_grp_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);
 U32 sc_ep_gw_grp_hash_func(U32 ulGWGrpID);
 U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID);
 U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase);
+
 
 #ifdef __cplusplus
 }

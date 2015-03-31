@@ -244,11 +244,7 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
                 break;
 
             case SC_SERV_RECORDING:
-                if (ulBSSrvIndex < ulBSSrvCnt)
-                {
-                    aucBSSrvList[ulBSSrvIndex] = BS_SERV_RECORDING;
-                    ulBSSrvIndex++;
-                }
+                /* 这个是辅助业务，在后面处理 */
                 break;
 
             case SC_SERV_FORWORD_CFB:
@@ -349,6 +345,67 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
             ulBSSrvIndex++;
         }
     }
+
+    for (ulIndex=0; ulIndex<ulSCSrvCnt; ulIndex++)
+    {
+        switch (aucSCSrvList[ulIndex])
+        {
+            case SC_SERV_OUTBOUND_CALL:
+            case SC_SERV_INBOUND_CALL:
+            case SC_SERV_INTERNAL_CALL:
+            case SC_SERV_EXTERNAL_CALL:
+            case SC_SERV_AUTO_DIALING:
+                break;
+
+            case SC_SERV_PREVIEW_DIALING:
+            case SC_SERV_PREDICTIVE_DIALING:
+                DOS_ASSERT(0);
+                break;
+
+            case SC_SERV_RECORDING:
+                if (ulBSSrvIndex < ulBSSrvCnt)
+                {
+                    aucBSSrvList[ulBSSrvIndex] = BS_SERV_RECORDING;
+                    ulBSSrvIndex++;
+                }
+                break;
+
+            case SC_SERV_FORWORD_CFB:
+            case SC_SERV_FORWORD_CFU:
+            case SC_SERV_FORWORD_CFNR:
+                break;
+
+            case SC_SERV_BLIND_TRANSFER:
+            case SC_SERV_ATTEND_TRANSFER:
+                break;
+
+            case SC_SERV_PICK_UP:
+                break;
+
+            case SC_SERV_CONFERENCE:
+                break;
+
+            case SC_SERV_VOICE_MAIL_RECORD:
+            case SC_SERV_VOICE_MAIL_GET:
+                break;
+
+            case SC_SERV_SMS_RECV:
+            case SC_SERV_SMS_SEND:
+            case SC_SERV_MMS_RECV:
+            case SC_SERV_MMS_SNED:
+                DOS_ASSERT(0);
+                break;
+
+            case SC_SERV_FAX:
+            case SC_SERV_INTERNAL_SERVICE:
+                DOS_ASSERT(0);
+                break;
+
+            default:
+                break;
+        }
+    }
+
 
     return DOS_SUCC;
 }
@@ -843,7 +900,12 @@ prepare_msg:
             pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstFirstSCB->pstExtraData->ulByeTimeStamp;
             pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstFirstSCB->pstExtraData->ucPayloadType;
             pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstFirstSCB->pstExtraData->ucPacketLossRate;
+        }
 
+        if (pstFirstSCB->pszRecordFile)
+        {
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile, pstFirstSCB->pszRecordFile, BS_MAX_RECORD_FILE_NAME_LEN);
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile[BS_MAX_RECORD_FILE_NAME_LEN - 1] = '\0';
         }
 
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldCnt = pstFirstSCB->usHoldCnt;
@@ -902,6 +964,11 @@ prepare_msg:
             pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstSecondSCB->pstExtraData->ucPacketLossRate;
         }
 
+        if (pstSecondSCB->pszRecordFile)
+        {
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile, pstSecondSCB->pszRecordFile, BS_MAX_RECORD_FILE_NAME_LEN);
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile[BS_MAX_RECORD_FILE_NAME_LEN - 1] = '\0';
+        }
 
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldCnt = pstSecondSCB->usHoldCnt;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldTimeLen = pstSecondSCB->usHoldTotalTime;

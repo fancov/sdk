@@ -2227,6 +2227,7 @@ VOID bss_billing_stop(DLL_NODE_S *pMsgNode)
     S32             i, j;
     U32             ulStrLen;
     S8              szServType[128] = {'\0',};
+    U8              ucRecordServIndex = U8_BUTT;
     BS_MSG_CDR      *pstMsg;
     BS_BILL_SESSION_LEG *pstSessionLeg;
 
@@ -2236,6 +2237,7 @@ VOID bss_billing_stop(DLL_NODE_S *pMsgNode)
     for (i = 0; i < (S32)pstMsg->ucLegNum && i < BS_MAX_SESSION_LEG_IN_BILL; i++)
     {
         pstSessionLeg = &pstMsg->astSessionLeg[i];
+        ucRecordServIndex = U8_BUTT;
         for (j = 0; j < BS_MAX_SERVICE_TYPE_IN_SESSION; j++)
         {
             if (0 == pstSessionLeg->aucServType[j]
@@ -2243,6 +2245,12 @@ VOID bss_billing_stop(DLL_NODE_S *pMsgNode)
                 || BS_SERV_BUTT < pstSessionLeg->aucServType[j])
             {
                 break;
+            }
+
+            if (BS_SERV_RECORDING == pstSessionLeg->aucServType[j]
+                && ucRecordServIndex == U8_BUTT)
+            {
+                ucRecordServIndex = j;
             }
 
             ulStrLen = dos_strlen(szServType);
@@ -2283,7 +2291,7 @@ VOID bss_billing_stop(DLL_NODE_S *pMsgNode)
                  pstSessionLeg->ucReleasePart, pstSessionLeg->usTerminateCause);
 
         /* 录音业务是一个附属业务,与坐席息息相关, 这里直接根据LEG生成录音话单 */
-        if (BS_SERV_RECORDING == pstSessionLeg->aucServType[j])
+        if (ucRecordServIndex != U8_BUTT)
         {
             bss_generate_record_cdr(pstSessionLeg);
         }
