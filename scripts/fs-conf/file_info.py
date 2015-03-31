@@ -8,6 +8,8 @@
 '''
 
 import sys
+import os
+import log
 import time
 
 def is_windows():
@@ -59,6 +61,8 @@ def print_file_info(info):
     print output, '=>', _info, info
     
     seqLogPath = '/var/log/dipcc/fsconf' + time.strftime('%Y%m%d') + '.log'
+    if os.path.exists(seqLogPath) is False:
+        log.create_fs_log_dir()
     
     fp = open(seqLogPath, 'a')
 

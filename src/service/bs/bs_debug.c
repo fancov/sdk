@@ -982,7 +982,7 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
                     , "\r\n\r\n       RuleID SAT1 SAT2 DAT1 DAT2        SAV1        SAV2        DAV1        DAV2         FBU         NBU FBC NBC  BT          BR      Effect     Expire  Priority");
     cli_out_string(ulIndex, szBuff);
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szBuff);
 
     for (ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
