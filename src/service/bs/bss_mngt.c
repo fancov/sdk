@@ -14,6 +14,7 @@
 extern "C"{
 #endif /* __cplusplus */
 
+#include <time.h>
 #include <dos.h>
 #include <json/dos_json.h>
 #include <bs_pub.h>
@@ -25,30 +26,28 @@ extern "C"{
 #include <sys/un.h>
 
 extern double ceil(double x);
+extern S8 *strptime(const S8 *s, const S8 *format, struct tm *tm);
+
 
 /* 处理WEB通知更新坐席的请求 */
 VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 {
-    U32 ulCustomerID = U32_BUTT, ulGroupID1 = U32_BUTT, ulGroupID2 = U32_BUTT, ulAgentID = U32_BUTT;
+    U32 ulCustomerID = U32_BUTT, ulGroupID1 = U32_BUTT, ulGroupID2 = U32_BUTT, ulAgentID = U32_BUTT, ulJobNumber = U32_BUTT;
     U32 ulHashIndex;
-    const S8  *pszCustomID = NULL, *pszGroupID1 = NULL, *pszGroupID2 = NULL, *pszAgentID;
+    const S8  *pszCustomID = NULL, *pszGroupID1 = NULL, *pszGroupID2 = NULL, *pszAgentID = NULL, *pszJobNumber = NULL;
+    const S8  *pszWhere = NULL;
     HASH_NODE_S *pstHashNode = NULL;
+    JSON_OBJ_ST *pstJsonWhere = NULL;
     BS_AGENT_ST *pstAgentInfo = NULL;
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Start update agent. Opteration:%d", ulOpteration);
 
-    pszAgentID  = json_get_param(pstJSONObj, "id");
-    pszCustomID = json_get_param(pstJSONObj, "customer_id");
     pszGroupID1 = json_get_param(pstJSONObj, "group1_id");
     pszGroupID2 = json_get_param(pstJSONObj, "group2_id");
 
-    if (DOS_ADDR_INVALID(pszAgentID)
-        || DOS_ADDR_INVALID(pszCustomID)
-        || DOS_ADDR_INVALID(pszGroupID1)
+    if (DOS_ADDR_INVALID(pszGroupID1)
         || DOS_ADDR_INVALID(pszGroupID2)
-        || dos_atoul(pszAgentID, &ulAgentID) < 0
-        || dos_atoul(pszCustomID, &ulCustomerID) < 0
         || dos_atoul(pszGroupID1, &ulGroupID1) < 0
         || dos_atoul(pszGroupID2, &ulGroupID2) < 0)
     {
@@ -59,30 +58,76 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
         goto process_finished;
     }
 
-    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Update agent. Opteration:%d, Agent:%d, Custom:%d, Group1:%d, Group2:%d"
-                , ulOpteration, ulAgentID, ulCustomerID, ulGroupID1, ulGroupID2);
-
-    ulHashIndex = bs_hash_get_index(BS_HASH_TBL_AGENT_SIZE, ulAgentID);
-    if (U32_BUTT == ulHashIndex)
-    {
-        DOS_ASSERT(0);
-
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get hash index fail while process agent update msg. Opteration:%d", ulOpteration);
-
-        goto process_finished;
-    }
-
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Update agent. Opteration:%d,Group1:%d, Group2:%d"
+                , ulOpteration, ulGroupID1, ulGroupID2);
+                
     switch (ulOpteration)
     {
         case BS_CMD_UPDATE:
+            /*获取where内容*/
+            pszWhere = json_get_param(pstJSONObj, "where");
+            if (DOS_ADDR_INVALID(pszWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get where param fail.");
+                break;
+            }
+            /*构造json对象*/
+            pstJsonWhere= json_init((S8 *)pszWhere);
+            if (DOS_ADDR_INVALID(pstJsonWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Init json node fail.");
+                break;
+            }
+
+            /*获取id和customer id、job number*/
+            pszAgentID = json_get_param(pstJsonWhere, "id");
+            if (DOS_ADDR_INVALID(pszAgentID))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Agent ID fail.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+            pszCustomID = json_get_param(pstJsonWhere,"customer_id");
+            if (DOS_ADDR_INVALID(pszCustomID))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Customer ID fail.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+            pszJobNumber = json_get_param(pstJsonWhere, "job_number");
+            if (DOS_ADDR_INVALID(pszJobNumber))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Job Number fail.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+
+            if (dos_atoul(pszCustomID, &ulCustomerID) < 0
+                || dos_atoul(pszAgentID, &ulAgentID) < 0
+                || dos_atoul(pszJobNumber, &ulJobNumber) <0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "bss atol fail.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+            pstAgentInfo->ulCustomerID = ulCustomerID;
+
+            ulHashIndex = bs_hash_get_index(BS_HASH_TBL_AGENT_SIZE, ulAgentID);
+            if (U32_BUTT == ulHashIndex)
+            {
+                DOS_ASSERT(0);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get hash index fail while process agent update msg. Opteration:%d", ulOpteration);
+                json_deinit(&pstJsonWhere);
+                goto process_finished;
+            }
+            
             pthread_mutex_lock(&g_mutexAgentTbl);
             pstHashNode = hash_find_node(g_astAgentTbl, ulHashIndex, (VOID *)&ulAgentID, bs_agent_hash_node_match);
             if (DOS_ADDR_INVALID(pstHashNode))
             {
                 pthread_mutex_unlock(&g_mutexAgentTbl);
-
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Cannot find the agent while update. Opteration:%d", ulOpteration);
-
+                json_deinit(&pstJsonWhere);
                 break;
             }
 
@@ -92,7 +137,7 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 pthread_mutex_unlock(&g_mutexAgentTbl);
 
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Invalid hash node while update. Opteration:%d", ulOpteration);
-
+                json_deinit(&pstJsonWhere);
                 break;
             }
 
@@ -105,7 +150,7 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                             , pstAgentInfo->ulAgentID
                             , pszCustomID
                             , ulOpteration);
-
+                json_deinit(&pstJsonWhere);
                 break;
             }
 
@@ -113,32 +158,71 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pstAgentInfo->ulGroup2 = ulGroupID2;
 
             pthread_mutex_unlock(&g_mutexAgentTbl);
+            json_deinit(&pstJsonWhere);
             break;
 
         case BS_CMD_DELETE:
+            /*获取where内容*/
+            pszWhere = json_get_param(pstJSONObj, "where");
+            if (DOS_ADDR_INVALID(pszWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get where param fail.");
+                break;
+            }
+            /*构造json对象*/
+            pstJsonWhere = json_init((S8 *)pszWhere);
+            if (DOS_ADDR_INVALID(pstJsonWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Init json obj fail.");
+                break;
+            }
+            /*获取id和customer id*/
+            pszAgentID = json_get_param(pstJsonWhere, "id");
+            if (DOS_ADDR_INVALID(pszAgentID))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Agent ID fail.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+            pszCustomID = json_get_param(pstJsonWhere, "customer_id");
+            if (DOS_ADDR_INVALID(pszCustomID))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Customer ID fail.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+
+            ulHashIndex = bs_hash_get_index(BS_HASH_TBL_AGENT_SIZE, ulAgentID);
+            if (U32_BUTT == ulHashIndex)
+            {
+                DOS_ASSERT(0);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get hash index fail while process agent update msg. Opteration:%d", ulOpteration);
+                json_deinit(&pstJsonWhere);
+                goto process_finished;
+            }
+            
             pthread_mutex_lock(&g_mutexAgentTbl);
             pstHashNode = hash_find_node(g_astAgentTbl, ulHashIndex, (VOID *)&ulAgentID, bs_agent_hash_node_match);
             if (DOS_ADDR_INVALID(pstHashNode)
                 || DOS_ADDR_INVALID(pstHashNode->pHandle))
             {
                 pthread_mutex_unlock(&g_mutexAgentTbl);
-
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Cannot find the agent while update. Opteration:%d", ulOpteration);
-
+                json_deinit(&pstJsonWhere);
                 break;
             }
 
             pstAgentInfo = pstHashNode->pHandle;
+            pstAgentInfo->ulCustomerID = ulCustomerID;
             pstCustomer = bs_get_customer_st(pstAgentInfo->ulCustomerID);
             if (DOS_ADDR_INVALID(pstCustomer))
             {
                 pthread_mutex_unlock(&g_mutexAgentTbl);
-
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Connat find the customer with the id %u.(%u) Opteration:%d"
                             , pstAgentInfo->ulAgentID
                             , pszCustomID
                             , ulOpteration);
-
+                json_deinit(&pstJsonWhere);
                 break;
             }
 
@@ -146,11 +230,23 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pthread_mutex_lock(&g_mutexCustomerTbl);
             pstCustomer->ulAgentNum--;
             pthread_mutex_unlock(&g_mutexCustomerTbl);
-
+            json_deinit(&pstJsonWhere);
             pthread_mutex_unlock(&g_mutexAgentTbl);
             break;
 
         case BS_CMD_INSERT:
+            /*获取id和customer id*/
+            pszAgentID = json_get_param(pstJSONObj, "id");
+            pszCustomID = json_get_param(pstJSONObj, "customer_id");
+            if (DOS_ADDR_INVALID(pszAgentID)
+                || DOS_ADDR_INVALID(pszCustomID)
+                || dos_atoul(pszAgentID, &ulAgentID) < 0
+                || dos_atoul(pszCustomID, &ulCustomerID) < 0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Invalid param or dos_atoul fail.");
+                break;
+            }
+            
             pstCustomer = bs_get_customer_st(ulCustomerID);
             if (DOS_ADDR_INVALID(pstCustomer))
             {
@@ -171,6 +267,8 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             HASH_Init_Node(pstHashNode);
 
             pstAgentInfo = dos_dmem_alloc(sizeof(BS_AGENT_ST));
+            bs_init_agent_st(pstAgentInfo);
+            
             if (DOS_ADDR_INVALID(pstAgentInfo))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Cannot alloc memory while update agent. Opteration:%d", ulOpteration);
@@ -178,11 +276,23 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
 
+            memset(pstAgentInfo, 0, sizeof(BS_AGENT_ST));
             pstAgentInfo->ulAgentID = ulAgentID;
             pstAgentInfo->ulCustomerID = ulCustomerID;
             pstAgentInfo->ulGroup1 = ulGroupID1;
             pstAgentInfo->ulGroup2 = ulGroupID2;
             pstHashNode->pHandle = pstAgentInfo;
+
+            ulHashIndex = bs_hash_get_index(BS_HASH_TBL_AGENT_SIZE, ulAgentID);
+            if (U32_BUTT == ulHashIndex)
+            {
+                dos_dmem_free(pstAgentInfo);
+                pstAgentInfo = NULL;
+                pstHashNode->pHandle = NULL;
+
+                dos_dmem_free(pstHashNode);
+                pstHashNode = NULL;
+            }
 
             pthread_mutex_lock(&g_mutexAgentTbl);
             hash_add_node(g_astAgentTbl, pstHashNode, ulHashIndex, NULL);
@@ -206,9 +316,27 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 {
     S32 lMonery = 0;
     U32 ulCustomerID = 0;
-    const S8 *pszMonery = NULL;
-    const S8 *pszCustomID = NULL;
+    time_t ulExpiryTime = 0;
+    S8  *pszRet = NULL;
+    struct tm stExpiryTm = {0};
+    const S8 *pszMonery = NULL, *pszWhere  = NULL, *pszCustomID = NULL, *pszExpireTime = NULL;
+    const S8 szTimeFormat[8] = "%Y-%m-%d";
+    JSON_OBJ_ST  *pstJsonWhere = NULL;
     BS_CUSTOMER_ST  *pstCustomer = NULL;
+
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Start update customer. Opteration:%d", ulOpteration);
+    /* 将当前时间转换为时间戳 */
+    pszExpireTime = json_get_param(pstJSONObj, "expiry");
+    if (DOS_ADDR_INVALID(pszExpireTime))
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Expiry Time fail.");
+    }
+    pszRet = strptime(pszExpireTime, szTimeFormat, &stExpiryTm);
+    if (DOS_ADDR_INVALID(pszRet))
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "strptime fail.");
+    }
+    ulExpiryTime = mktime(&stExpiryTm);
 
     /* 处理余额变动 */
     pszMonery = json_get_param(pstJSONObj, "money");
@@ -219,10 +347,28 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             goto process_finished;
         }
 
-        pszCustomID = json_get_param(pstJSONObj, "id");
-        if (DOS_ADDR_INVALID(pszCustomID)
-            || dos_atoul(pszCustomID, &ulCustomerID) < 0)
+        /*获取where内容*/
+        pszWhere = json_get_param(pstJSONObj, "where");
+        if (DOS_ADDR_INVALID(pszWhere))
         {
+            DOS_ASSERT(0);
+            goto process_finished;
+        }
+
+        /*将where转换为json obj*/
+        pstJsonWhere = json_init((S8 *)pszWhere);
+        if (DOS_ADDR_INVALID(pstJsonWhere))
+        {
+            DOS_ASSERT(0);
+            goto process_finished;
+        }
+
+        /*获取customer id*/
+        pszCustomID = json_get_param(pstJsonWhere, "id");
+        if (DOS_ADDR_INVALID(pszCustomID)
+            || dos_atoul(pszCustomID, &ulCustomerID) <0)
+        {
+            DOS_ASSERT(0);
             goto process_finished;
         }
 
@@ -245,16 +391,36 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
         {
             HASH_NODE_S     *pstHashNode = NULL;
             BS_CUSTOMER_ST  *pstCustomer = NULL;
+            JSON_OBJ_ST     *pstSubJsonWhere = NULL;
             U32             ulHashIndex, ulCustomerType, ulCustomerState, ulCustomID;
             U32             ulPackageID, ulBanlanceWarning;
             const S8        *pszCustomType, *pszCustomState, *pszCustomID, *pszCustomName, *pszParent;
-            const S8        *pszBillingPkg, *pszBalanceWarning, *pszExpiry, *pszBalance;
+            const S8        *pszBillingPkg, *pszBalanceWarning, *pszBalance, *pszExpiry;
+            const S8        *pszSubWhere = NULL;
 
-            pszCustomID = json_get_param(pstJSONObj, "id");
+            /*获取where字段*/
+            pszSubWhere = json_get_param(pstJSONObj, "where");
+            if (DOS_ADDR_INVALID(pszSubWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get where param fail.");
+                break;
+            }
+
+            /*构造where json对象*/
+            pstSubJsonWhere = json_init((S8 *)pszSubWhere);
+            if (DOS_ADDR_INVALID(pstSubJsonWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Make Json Object fail.");
+                break;
+            }
+
+            /*根据json对象获取customer id*/
+            pszCustomID = json_get_param(pstSubJsonWhere, "id");
             if (DOS_ADDR_INVALID(pszCustomID)
                 || dos_atoul(pszCustomID, &ulCustomID) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Invalid msg for delete user.");
+                json_deinit(&pstSubJsonWhere);
                 break;
             }
 
@@ -262,6 +428,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             if (U32_BUTT == ulHashIndex)
             {
                 DOS_ASSERT(0);
+                json_deinit(&pstSubJsonWhere);
                 break;
             }
 
@@ -273,6 +440,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             if (DOS_ADDR_INVALID(pstHashNode))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find the customer with the id %d.", ulCustomID);
+                json_deinit(&pstSubJsonWhere);
                 break;
             }
 
@@ -280,14 +448,14 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             if (DOS_ADDR_INVALID(pstCustomer))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find the customer with the id %d.(Invalid Data)", ulCustomID);
+                json_deinit(&pstSubJsonWhere);
                 break;
             }
 
-            pszCustomName = json_get_param(pstJSONObj, "name");
-            pszCustomID = json_get_param(pstJSONObj, "id");
+            pszCustomName = json_get_param(pstSubJsonWhere, "name");
             pszParent = json_get_param(pstJSONObj, "parent_id");
             pszCustomState = json_get_param(pstJSONObj, "status");
-            pszCustomType = json_get_param(pstJSONObj, "type");
+            pszCustomType = json_get_param(pstSubJsonWhere, "type");
             pszBillingPkg = json_get_param(pstJSONObj, "billing_package_id");
             pszBalanceWarning = json_get_param(pstJSONObj, "balance_warning");
             pszExpiry = json_get_param(pstJSONObj, "expiry");
@@ -302,7 +470,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
                 dos_dmem_free(pstCustomer);
                 dos_dmem_free(pstHashNode);
-
+                json_deinit(&pstSubJsonWhere);
                 break;
             }
 
@@ -319,23 +487,39 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
                 dos_dmem_free(pstCustomer);
                 dos_dmem_free(pstHashNode);
-
+                json_deinit(&pstSubJsonWhere);
                 break;
             }
 
             pstCustomer->stAccount.ulBillingPackageID = ulPackageID;
             pstCustomer->stAccount.lBalanceWarning = ulBanlanceWarning;
-
+            pstCustomer->stAccount.ulExpiryTime = (U32)ulExpiryTime;
+            json_deinit(&pstSubJsonWhere);
             break;
         }
         case BS_CMD_DELETE:
         {
             U32  ulCustomID, ulHashIndex;
             const S8   *pszCustomID;
+            const S8   *pszSubWhere = NULL;
+            JSON_OBJ_ST *pstSubJsonWhere = NULL;
             HASH_NODE_S     *pstHashNode = NULL, *pstHashNodeParent = NULL;
             BS_CUSTOMER_ST  *pstCustomer = NULL, *pstCustomParent = NULL;
 
-            pszCustomID = json_get_param(pstJSONObj, "id");
+            /*获取where*/
+            pszSubWhere = json_get_param(pstJSONObj, "where");
+            if (DOS_ADDR_INVALID(pszSubWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get where param fail.");
+                break;
+            }
+            pstSubJsonWhere = json_init((S8 *)pszSubWhere);
+            if (DOS_ADDR_INVALID(pstSubJsonWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: json init where fail.");
+                break;
+            }
+            pszCustomID = json_get_param(pstSubJsonWhere, "id");
             if (DOS_ADDR_INVALID(pszCustomID)
                 || dos_atoul(pszCustomID, &ulCustomID) < 0)
             {
@@ -407,8 +591,9 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
         }
         case BS_CMD_INSERT:
         {
-            U32             ulHashIndex, ulCustomerType, ulCustomerState;
+            U32             ulHashIndex, ulCustomerType, ulCustomerState, ulBillingPackageID, ulCreditLine, ulBalanceWarning, ulBalance;
             const S8        *pszCustomType, *pszCustomState, *pszCustomID, *pszCustomName, *pszParent;
+            const S8        *pszBillingPackageID = NULL, *pszCreditLine = NULL, *pszBalanceWarning = NULL, *pszBalance = NULL;
             HASH_NODE_S     *pstHashNode = NULL;
             BS_CUSTOMER_ST  *pstCustomer = NULL, *pstCustomParent = NULL;
 
@@ -435,9 +620,16 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pszParent = json_get_param(pstJSONObj, "parent_id");
             pszCustomState = json_get_param(pstJSONObj, "status");
             pszCustomType = json_get_param(pstJSONObj, "type");
+            pszBillingPackageID = json_get_param(pstJSONObj, "billing_package_id");
+            pszCreditLine = json_get_param(pstJSONObj, "credit_line");
+            pszBalanceWarning = json_get_param(pstJSONObj, "balance_warning");
+            pszBalance = json_get_param(pstJSONObj, "balance");
+            
             if (DOS_ADDR_INVALID(pszCustomName) || DOS_ADDR_INVALID(pszCustomID)
                 || DOS_ADDR_INVALID(pszParent) || DOS_ADDR_INVALID(pszCustomState)
-                || DOS_ADDR_INVALID(pszCustomType))
+                || DOS_ADDR_INVALID(pszCustomType) || DOS_ADDR_INVALID(pszBillingPackageID)
+                || DOS_ADDR_INVALID(pszCreditLine) || DOS_ADDR_INVALID(pszBalanceWarning)
+                || DOS_ADDR_INVALID(pszBalance))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Parse json param fail while adding custom.");
 
@@ -452,6 +644,10 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 || dos_atoul(pszParent, &pstCustomer->ulParentID) < 0
                 || dos_atoul(pszCustomType, &ulCustomerType) < 0
                 || dos_atoul(pszCustomState, &ulCustomerState) < 0
+                || dos_atoul(pszBillingPackageID, &ulBillingPackageID) < 0
+                || dos_atoul(pszCreditLine, &ulCreditLine) < 0
+                || dos_atoul(pszBalanceWarning, &ulBalanceWarning) < 0
+                || dos_atoul(pszBalance, &ulBalance) < 0
                 || '\0' == pszCustomName[0])
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Invalid param while adding custom.");
@@ -463,6 +659,11 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             }
             pstCustomer->ucCustomerState = (U8)ulCustomerState;
             pstCustomer->ucCustomerType = (U8)ulCustomerType;
+            pstCustomer->stAccount.ulBillingPackageID = ulBillingPackageID;
+            pstCustomer->stAccount.lCreditLine = (S32)ulCreditLine;
+            pstCustomer->stAccount.lBalanceWarning = (S32)ulBalanceWarning;
+            pstCustomer->stAccount.LBalance = (S64)ulBalance;
+            pstCustomer->stAccount.ulExpiryTime = (U32)ulExpiryTime;
             dos_strncpy(pstCustomer->szCustomerName, pszCustomName, sizeof(pstCustomer->szCustomerName));
             pstCustomer->szCustomerName[sizeof(pstCustomer->szCustomerName) - 1] = '\0';
 
@@ -471,6 +672,8 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             if (U32_BUTT == ulHashIndex)
             {
                 DOS_ASSERT(0);
+                dos_dmem_free(pstHashNode);
+                dos_dmem_free(pstCustomer);
                 break;
             }
 
@@ -538,11 +741,738 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     }
 
 process_finished:
-
+    if (DOS_ADDR_VALID(pstJsonWhere))
+    {
+        json_deinit(&pstJsonWhere);
+    }
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Finish to update customer. Opteration:%d", ulOpteration);
 }
 
-/* 处理遍历WEB CMD临时表的响应 */
+VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
+{
+    BS_BILLING_PACKAGE_ST *pstPkg = NULL;
+    struct tm stEffectTime, stExpiryTime;
+    time_t ulEffectTime = 0, ulExpiryTime = 0;
+    JSON_OBJ_ST  *pstJsonWhere = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    const S8 *pszPkgID = NULL, *pszRuleID = NULL, *pszTable = NULL, *pszServType = NULL, *pszBillingType = NULL, *pszBillingRate = NULL;
+    const S8 *pszSrcAttrType1 = NULL, *pszSrcAttrType2 = NULL, *pszSrcAttrValue1 = NULL, *pszSrcAttrValue2 = NULL;
+    const S8 *pszFirstBillingUnit = NULL, *pszNextBillingUnit = NULL, *pszFirstBillingCnt = NULL, *pszNextBillingCnt = NULL;
+    const S8 *pszDstAttrType1 = NULL, *pszDstAttrType2 = NULL, *pszDstAttrValue1 = NULL, *pszDstAttrValue2 = NULL;
+    const S8 *pszEffectTime = NULL, *pszExpiryTime = NULL;
+    const S8 *pszWhere = NULL;
+    const S8 szTimeFormat[] = "%Y-%m-%d";
+    S8       *pszRet = NULL;
+    U32 ulPkgID = U32_BUTT, ulRuleID = U32_BUTT, ulServType = U32_BUTT;
+    U32 ulSrcAttrType1 = U32_BUTT, ulSrcAttrType2 = U32_BUTT, ulSrcAttrValue1 = U32_BUTT, ulSrcAttrValue2 = U32_BUTT;
+    U32 ulDstAttrType1 = U32_BUTT, ulDstAttrType2 = U32_BUTT, ulDstAttrValue1 = U32_BUTT, ulDstAttrValue2 = U32_BUTT;
+    U32 ulFirstBillingUnit = U32_BUTT, ulNextBillingUnit = U32_BUTT, ulFirstBillingCnt = U32_BUTT, ulNextBillingCnt= U32_BUTT;
+    U32 ulBillingType = U32_BUTT, ulBillingRate = U32_BUTT;
+    U32 ulHashIndex = 0;
+    U32 ulLoop = 0;
+    BOOL bFound = DOS_FALSE, bFoundRule = DOS_FALSE;
+
+    pszTable = json_get_param(pstJSONObj, "table");
+    if (DOS_ADDR_INVALID(pszTable))
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get param value fail.");
+        return ;
+    } 
+    /*将时间字符串转为时间戳*/
+    pszEffectTime = json_get_param(pstJSONObj, "effect_time");
+    pszExpiryTime = json_get_param(pstJSONObj, "expire_time");
+
+    if (DOS_ADDR_INVALID(pszEffectTime)
+        || DOS_ADDR_INVALID(pszExpiryTime))
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Effect Time & Expiry Time fail.");
+    }
+
+    pszRet = strptime(pszEffectTime, szTimeFormat, &stEffectTime);
+    if (DOS_ADDR_INVALID(pszRet))
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Transfer time str to time_t fail.");
+    }
+    pszRet = strptime(pszExpiryTime, szTimeFormat, &stExpiryTime);
+    if (DOS_ADDR_INVALID(pszRet))
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Transfer time str to time_t fail.");
+    }
+
+    ulEffectTime = mktime(&stEffectTime);
+    ulExpiryTime = mktime(&stExpiryTime);
+    
+    switch(ulOpteration)
+    {
+        case BS_CMD_UPDATE:
+        {
+            pszPkgID = json_get_param(pstJSONObj, "billing_package_id");
+            if (DOS_ADDR_INVALID(pszPkgID))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Billing Package ID fail.");
+                break;
+            }
+            if (dos_atoul(pszPkgID, &ulPkgID) < 0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul failure.");
+                break;
+            }
+
+            /*如果是运营商编辑*/
+            if (0 == dos_strcmp(pszTable, "tbl_billing_rule"))
+            {
+                pszServType = json_get_param(pstJSONObj, "serv_type");
+                if (DOS_ADDR_INVALID(pszServType))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Service Type fail.");
+                    break;
+                }
+                if (dos_atoul(pszServType, &ulServType) < 0)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul fail.");
+                    break;
+                }
+                
+                ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulPkgID);
+                if (U32_BUTT == ulHashIndex)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Package ID %u does not exist.", ulPkgID);
+                    break;
+                }
+                pstHashNode = hash_find_node(g_astBillingPackageTbl, ulHashIndex, (VOID *)&ulPkgID, bs_billing_package_hash_node_match);
+                if (DOS_ADDR_INVALID(pstHashNode)
+                    || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Package ID %u does not exist.", ulPkgID);
+                    break;
+                }
+                pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
+                /*如果说服务类型不匹配，那么更新没有任何意义*/
+                if (pstPkg->ucServType != ulServType)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "The node found,but service type does not match.");
+                    break;
+                }
+
+                /*获取计费规则ID*/
+                pszWhere = json_get_param(pstJSONObj, "where");
+                if (DOS_ADDR_INVALID(pszWhere))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get where param fail.");
+                    break;
+                }
+                pstJsonWhere = json_init((S8 *)pszWhere);
+                if (DOS_ADDR_INVALID(pstJsonWhere))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Init json node fail.");
+                    break;
+                }
+                pszRuleID = json_get_param(pstJsonWhere, "id");
+                if (DOS_ADDR_INVALID(pszRuleID))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Rule ID fail.");
+                    json_deinit(&pstJsonWhere);
+                    break;
+                }
+                if (dos_atoul(pszRuleID, &ulRuleID) < 0)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul fail.");
+                    json_deinit(&pstJsonWhere);
+                    break;
+                }
+
+                for(ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
+                {
+                    /*如果找到该资费规则并且可用*/
+                    if (pstPkg->astRule[ulLoop].ulRuleID == ulRuleID && 1 == pstPkg->astRule[ulLoop].ucValid)
+                    {
+                        pszSrcAttrType1 = json_get_param(pstJSONObj, "src_attr_type1");
+                        pszSrcAttrType2 = json_get_param(pstJSONObj, "src_attr_type2");
+                        pszSrcAttrValue1 = json_get_param(pstJSONObj, "src_attr_value1");
+                        pszSrcAttrValue2 = json_get_param(pstJSONObj, "src_attr_value2");
+                        pszFirstBillingUnit = json_get_param(pstJSONObj, "first_billing_unit");
+                        pszNextBillingUnit = json_get_param(pstJSONObj, "next_billing_unit");
+                        pszFirstBillingCnt = json_get_param(pstJSONObj, "first_billing_cnt");
+                        pszNextBillingCnt = json_get_param(pstJSONObj, "next_billing_cnt");
+                        pszBillingType = json_get_param(pstJSONObj, "billing_type");
+                        pszBillingRate = json_get_param(pstJSONObj, "billing_rate");
+
+                        if (DOS_ADDR_INVALID(pszSrcAttrType1) || DOS_ADDR_INVALID(pszSrcAttrType2)
+                            || DOS_ADDR_INVALID(pszSrcAttrValue1) || DOS_ADDR_INVALID(pszSrcAttrValue2)
+                            || DOS_ADDR_INVALID(pszFirstBillingUnit) || DOS_ADDR_INVALID(pszNextBillingUnit)
+                            || DOS_ADDR_INVALID(pszFirstBillingCnt) || DOS_ADDR_INVALID(pszNextBillingCnt)
+                            || DOS_ADDR_INVALID(pszBillingType) || DOS_ADDR_INVALID(pszBillingRate))
+                        {
+                            bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Invalid Param.");
+                            json_deinit(&pstJsonWhere);
+                            break;
+                        }
+
+                        if (dos_atoul(pszSrcAttrType1, &ulSrcAttrType1) < 0
+                            || dos_atoul(pszSrcAttrType2, &ulSrcAttrType2) < 0
+                            || dos_atoul(pszSrcAttrValue1, &ulSrcAttrValue1) < 0
+                            || dos_atoul(pszSrcAttrValue2, &ulSrcAttrValue2) < 0
+                            || dos_atoul(pszFirstBillingUnit, &ulFirstBillingUnit) < 0
+                            || dos_atoul(pszNextBillingUnit, &ulNextBillingUnit) < 0
+                            || dos_atoul(pszFirstBillingCnt, &ulFirstBillingCnt) < 0
+                            || dos_atoul(pszNextBillingCnt, &ulNextBillingCnt) < 0
+                            || dos_atoul(pszBillingType, &ulBillingType) < 0
+                            || dos_atoul(pszBillingRate, &ulBillingRate) < 0)
+                        {
+                            bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul fail.");
+                            json_deinit(&pstJsonWhere);
+                            break;
+                        }
+
+                        pstPkg->astRule[ulLoop].ucSrcAttrType1 = (U8)ulSrcAttrType1;
+                        pstPkg->astRule[ulLoop].ucSrcAttrType2 = (U8)ulSrcAttrType2;
+                        pstPkg->astRule[ulLoop].ulSrcAttrValue1 = ulSrcAttrValue1;
+                        pstPkg->astRule[ulLoop].ulSrcAttrValue2 = ulSrcAttrValue2;
+                        pstPkg->astRule[ulLoop].ulFirstBillingUnit = ulFirstBillingUnit;
+                        pstPkg->astRule[ulLoop].ulNextBillingUnit = ulNextBillingUnit;
+                        pstPkg->astRule[ulLoop].ucFirstBillingCnt = (U8)ulFirstBillingCnt;
+                        pstPkg->astRule[ulLoop].ucNextBillingCnt = (U8)ulNextBillingCnt;
+                        pstPkg->astRule[ulLoop].ucBillingType = (U8)ulBillingType;
+                        pstPkg->astRule[ulLoop].ulBillingRate = ulBillingRate;
+                        pstPkg->astRule[ulLoop].ulEffectTimestamp = (U32)ulEffectTime;
+                        pstPkg->astRule[ulLoop].ulExpireTimestamp = (U32)ulExpiryTime;
+
+                        bFound = DOS_TRUE;
+                    }
+                }
+                if (DOS_FALSE == bFound)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Package Billing Rule does Not found.");
+                    json_deinit(&pstJsonWhere);
+                    break;
+                }
+            }
+            /*如果是代理商编辑*/
+            else if(0 == dos_strcmp(pszTable, "tbl_billing_rate"))
+            {
+                pszBillingRate = json_get_param(pstJSONObj, "billing_rate");
+                if (DOS_ADDR_INVALID(pszBillingRate))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Billing Rate fail.");
+                    break;
+                }
+                if (dos_atoul(pszBillingRate, &ulBillingRate) < 0)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul fail.");
+                    break;
+                }
+
+                pszWhere = json_get_param(pstJSONObj, "where");
+                if (DOS_ADDR_INVALID(pszWhere))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get where param fail.");
+                    break;
+                }
+                pstJsonWhere = json_init((S8 *)pszWhere);
+                if (DOS_ADDR_INVALID(pstJsonWhere))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Init json fail.");
+                    break;
+                }
+
+                pszRuleID = json_get_param(pstJsonWhere, "billing_rule_id");
+                if (DOS_ADDR_INVALID(pszRuleID))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Billing Rule ID fail.");
+                    json_deinit(&pstJsonWhere);
+                    break;
+                }
+                if (dos_atoul(pszRuleID, &ulRuleID) <0)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul fail.");
+                    json_deinit(&pstJsonWhere);
+                    break;
+                }
+
+                for (ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
+                {
+                    if (ulRuleID == pstPkg->astRule[ulLoop].ulRuleID && 1 == pstPkg->astRule[ulLoop].ucValid)
+                    {
+                        pstPkg->astRule[ulLoop].ulBillingRate = ulBillingRate;
+                        bFound = DOS_TRUE;
+                    }
+                }
+                if (DOS_FALSE == bFound)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Package Billing Rule does not found.");
+                    json_deinit(&pstJsonWhere);
+                    break;
+                }
+            }
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Package Billing Updated SUCC.");
+            json_deinit(&pstJsonWhere);
+            break;
+        }
+        case BS_CMD_DELETE:
+        {
+            pszWhere = json_get_param(pstJSONObj, "where");
+            if (DOS_ADDR_INVALID(pszWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get where param fail.");
+                break;
+            }
+            pstJsonWhere = json_init((S8 *)pszWhere);
+            if (DOS_ADDR_INVALID(pstJsonWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Init json fail.");
+                break;
+            }
+            pszRuleID = json_get_param(pstJsonWhere, "id");
+            if (DOS_ADDR_INVALID(pszRuleID))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Rule ID fail.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+            if (dos_atoul(pszRuleID, &ulRuleID) < 0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul fail.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+
+            HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
+            {
+                HASH_Scan_Bucket(g_astBillingPackageTbl,ulHashIndex, pstHashNode, HASH_NODE_S *)
+                {
+                    if (DOS_ADDR_INVALID(pstHashNode)
+                        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                    {
+                        continue;
+                    }
+
+                    pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
+                    for (ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
+                    {
+                        if (pstPkg->astRule[ulLoop].ulRuleID == ulRuleID)
+                        {
+                            pstPkg->astRule[ulLoop].ucBillingType = U8_BUTT;
+                            pstPkg->astRule[ulLoop].ucDstAttrType1 = U8_BUTT;
+                            pstPkg->astRule[ulLoop].ucDstAttrType2 = U8_BUTT;
+                            pstPkg->astRule[ulLoop].ucFirstBillingCnt = U8_BUTT;
+                            pstPkg->astRule[ulLoop].ucNextBillingCnt = U8_BUTT;
+                            pstPkg->astRule[ulLoop].ucPriority = U8_BUTT;
+                            pstPkg->astRule[ulLoop].ucServType = BS_SERV_BUTT;
+                            pstPkg->astRule[ulLoop].ucSrcAttrType1 = U8_BUTT;
+                            pstPkg->astRule[ulLoop].ucSrcAttrType2 = U8_BUTT;
+                            pstPkg->astRule[ulLoop].ucValid = 0;
+                            pstPkg->astRule[ulLoop].ulBillingRate = U32_BUTT;
+                            pstPkg->astRule[ulLoop].ulDstAttrValue1 = U32_BUTT;
+                            pstPkg->astRule[ulLoop].ulDstAttrValue2 = U32_BUTT;
+                            pstPkg->astRule[ulLoop].ulEffectTimestamp = U32_BUTT;
+                            pstPkg->astRule[ulLoop].ulExpireTimestamp = U32_BUTT;
+                            pstPkg->astRule[ulLoop].ulFirstBillingUnit = U32_BUTT;
+                            pstPkg->astRule[ulLoop].ulNextBillingUnit = U32_BUTT;
+                            pstPkg->astRule[ulLoop].ulPackageID = U32_BUTT;
+                            pstPkg->astRule[ulLoop].ulRuleID = U32_BUTT;
+                            pstPkg->astRule[ulLoop].ulSrcAttrValue1 = U32_BUTT;
+                            pstPkg->astRule[ulLoop].ulSrcAttrValue2 = U32_BUTT;
+                        }
+                    }
+                }
+            }
+            json_deinit(&pstJsonWhere);
+            break;
+        }
+        case BS_CMD_INSERT:
+        {
+            pszPkgID = json_get_param(pstJSONObj, "billing_package_id");
+            pszSrcAttrType1 = json_get_param(pstJSONObj, "src_attr_type1");
+            pszSrcAttrType2 = json_get_param(pstJSONObj, "src_attr_type2");
+            pszDstAttrType1 = json_get_param(pstJSONObj, "dst_attr_type1");
+            pszDstAttrType2 = json_get_param(pstJSONObj, "dst_attr_type2");
+            pszSrcAttrValue1 = json_get_param(pstJSONObj, "src_attr_value1");
+            pszSrcAttrValue2 = json_get_param(pstJSONObj, "src_attr_value2");
+            pszDstAttrValue1 = json_get_param(pstJSONObj, "dst_attr_value1");
+            pszDstAttrValue2 = json_get_param(pstJSONObj, "dst_attr_value2");
+            pszServType = json_get_param(pstJSONObj, "serv_type");
+            pszBillingType = json_get_param(pstJSONObj, "billing_type");
+            pszFirstBillingUnit = json_get_param(pstJSONObj, "first_billing_unit");
+            pszNextBillingUnit = json_get_param(pstJSONObj, "next_billing_unit");
+            pszFirstBillingCnt = json_get_param(pstJSONObj, "first_billing_cnt");
+            pszNextBillingCnt = json_get_param(pstJSONObj, "next_billing_cnt");
+            pszBillingRate = json_get_param(pstJSONObj, "billing_rate");
+            pszRuleID = json_get_param(pstJSONObj, "id");
+
+            if (DOS_ADDR_INVALID(pszPkgID)|| DOS_ADDR_INVALID(pszSrcAttrType1)
+                || DOS_ADDR_INVALID(pszSrcAttrType2) || DOS_ADDR_INVALID(pszDstAttrType1)
+                || DOS_ADDR_INVALID(pszDstAttrType2) || DOS_ADDR_INVALID(pszSrcAttrValue1)
+                || DOS_ADDR_INVALID(pszSrcAttrValue2) || DOS_ADDR_INVALID(pszDstAttrValue1)
+                || DOS_ADDR_INVALID(pszDstAttrValue2) || DOS_ADDR_INVALID(pszServType)
+                || DOS_ADDR_INVALID(pszBillingType) || DOS_ADDR_INVALID(pszFirstBillingUnit)
+                || DOS_ADDR_INVALID(pszNextBillingUnit) || DOS_ADDR_INVALID(pszFirstBillingCnt)
+                || DOS_ADDR_INVALID(pszNextBillingCnt) || DOS_ADDR_INVALID(pszBillingRate)
+                || DOS_ADDR_INVALID(pszRuleID))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Invalid param.");
+                break;
+            }
+            if (dos_atoul(pszPkgID, &ulPkgID) < 0
+                || dos_atoul(pszSrcAttrType1, &ulSrcAttrType1) < 0
+                || dos_atoul(pszSrcAttrType2, &ulSrcAttrType2) < 0
+                || dos_atoul(pszDstAttrType1, &ulDstAttrType1) < 0
+                || dos_atoul(pszDstAttrType2, &ulDstAttrType2) < 0
+                || dos_atoul(pszSrcAttrValue1, &ulSrcAttrValue1) < 0
+                || dos_atoul(pszSrcAttrValue2, &ulSrcAttrValue2) < 0
+                || dos_atoul(pszDstAttrValue1, &ulDstAttrValue1) < 0
+                || dos_atoul(pszDstAttrValue2, &ulDstAttrValue2) < 0
+                || dos_atoul(pszServType, &ulServType) < 0
+                || dos_atoul(pszBillingType, &ulBillingType) < 0
+                || dos_atoul(pszFirstBillingUnit, &ulFirstBillingUnit) < 0
+                || dos_atoul(pszNextBillingUnit, &ulNextBillingUnit) < 0
+                || dos_atoul(pszFirstBillingCnt, &ulFirstBillingCnt) < 0
+                || dos_atoul(pszNextBillingCnt, &ulNextBillingCnt) < 0
+                || dos_atoul(pszBillingRate, &ulBillingRate) < 0
+                || dos_atoul(pszRuleID, &ulRuleID) < 0) 
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul fail.");
+                break;
+            }
+
+            HASH_Scan_Table(g_astBillingPackageTbl,ulHashIndex)
+            {
+                HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
+                {
+                    if (DOS_ADDR_INVALID(pstHashNode)
+                        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                    {
+                        continue;
+                    }
+
+                    pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
+                    if (pstPkg->ulPackageID == ulPkgID)
+                    {
+                        bFound = DOS_TRUE;
+                        break;
+                    }
+                }
+                if (bFound == DOS_TRUE)
+                {
+                    break;
+                }
+            }
+            /*如果哈希表中存在该资费包*/
+            if (DOS_TRUE == bFound)
+            {
+                ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulPkgID);
+                pstHashNode = hash_find_node(g_astBillingPackageTbl, ulHashIndex, (VOID *)&ulPkgID, bs_billing_package_hash_node_match);
+                pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
+
+                for (ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
+                { 
+                    /*如果存在该计费规则*/
+                    if (pstPkg->astRule[ulLoop].ulRuleID == ulRuleID)
+                    {
+                        pstPkg->astRule[ulLoop].ucBillingType = (U8)ulBillingType;
+                        pstPkg->astRule[ulLoop].ucDstAttrType1 = (U8)ulDstAttrType1;
+                        pstPkg->astRule[ulLoop].ucDstAttrType2 = (U8)ulDstAttrType2;
+                        pstPkg->astRule[ulLoop].ucFirstBillingCnt = (U8)ulFirstBillingCnt;
+                        pstPkg->astRule[ulLoop].ucNextBillingCnt = (U8)ulNextBillingCnt;
+                        pstPkg->astRule[ulLoop].ucPriority = 0;
+                        pstPkg->astRule[ulLoop].ucServType = (U8)ulServType;
+                        pstPkg->astRule[ulLoop].ucSrcAttrType1 = (U8)ulSrcAttrType1;
+                        pstPkg->astRule[ulLoop].ucSrcAttrType2 = (U8)ulSrcAttrType2;
+                        pstPkg->astRule[ulLoop].ucValid = 1;
+                        pstPkg->astRule[ulLoop].ulBillingRate = ulBillingRate;
+                        pstPkg->astRule[ulLoop].ulDstAttrValue1 = ulDstAttrValue1;
+                        pstPkg->astRule[ulLoop].ulDstAttrValue2 = ulDstAttrValue2;
+                        pstPkg->astRule[ulLoop].ulEffectTimestamp = ulEffectTime;
+                        pstPkg->astRule[ulLoop].ulExpireTimestamp = ulExpiryTime;
+                        pstPkg->astRule[ulLoop].ulFirstBillingUnit = ulFirstBillingUnit;
+                        pstPkg->astRule[ulLoop].ulNextBillingUnit = ulNextBillingUnit;
+                        pstPkg->astRule[ulLoop].ulPackageID = ulPkgID;
+                        pstPkg->astRule[ulLoop].ulSrcAttrValue1 = ulSrcAttrValue1;
+                        pstPkg->astRule[ulLoop].ulSrcAttrValue2 = ulSrcAttrValue2;
+                        bFoundRule = DOS_TRUE;
+                        break;
+                    }
+                }
+                if (DOS_FALSE == bFoundRule)
+                {
+                    for (ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
+                    { 
+                        /*找到第一个不可用的节点去存放*/
+                        if (0 == pstPkg->astRule[ulLoop].ucValid)
+                        {
+                            pstPkg->astRule[ulLoop].ucBillingType = (U8)ulBillingType;
+                            pstPkg->astRule[ulLoop].ucDstAttrType1 = (U8)ulDstAttrType1;
+                            pstPkg->astRule[ulLoop].ucDstAttrType2 = (U8)ulDstAttrType2;
+                            pstPkg->astRule[ulLoop].ucFirstBillingCnt = (U8)ulFirstBillingCnt;
+                            pstPkg->astRule[ulLoop].ucNextBillingCnt = (U8)ulNextBillingCnt;
+                            pstPkg->astRule[ulLoop].ucPriority = 0;
+                            pstPkg->astRule[ulLoop].ucServType = (U8)ulServType;
+                            pstPkg->astRule[ulLoop].ucSrcAttrType1 = (U8)ulSrcAttrType1;
+                            pstPkg->astRule[ulLoop].ucSrcAttrType2 = (U8)ulSrcAttrType2;
+                            pstPkg->astRule[ulLoop].ucValid = 1;
+                            pstPkg->astRule[ulLoop].ulBillingRate = ulBillingRate;
+                            pstPkg->astRule[ulLoop].ulDstAttrValue1 = ulDstAttrValue1;
+                            pstPkg->astRule[ulLoop].ulDstAttrValue2 = ulDstAttrValue2;
+                            pstPkg->astRule[ulLoop].ulEffectTimestamp = ulEffectTime;
+                            pstPkg->astRule[ulLoop].ulExpireTimestamp = ulExpiryTime;
+                            pstPkg->astRule[ulLoop].ulFirstBillingUnit = ulFirstBillingUnit;
+                            pstPkg->astRule[ulLoop].ulNextBillingUnit = ulNextBillingUnit;
+                            pstPkg->astRule[ulLoop].ulPackageID = ulPkgID;
+                            pstPkg->astRule[ulLoop].ulSrcAttrValue1 = ulSrcAttrValue1;
+                            pstPkg->astRule[ulLoop].ulSrcAttrValue2 = ulSrcAttrValue2;
+                            break;
+                        }
+                     }
+                 }
+            }            
+            /*资费包不在哈希表中*/
+            else
+            {
+                pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+                if (DOS_ADDR_INVALID(pstHashNode))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: alloc memory fail!");
+                    break;
+                }
+                HASH_Init_Node(pstHashNode);
+
+                pstPkg = dos_dmem_alloc(sizeof(BS_BILLING_PACKAGE_ST));
+                memset(pstPkg, 0, sizeof(BS_BILLING_PACKAGE_ST));
+                if (DOS_ADDR_INVALID(pstPkg))
+                {
+                    dos_dmem_free(pstHashNode);
+                    pstHashNode = NULL;
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: alloc memory fail!");
+                    break;
+                }
+                bs_init_billing_package_st(pstPkg);
+
+                pstPkg->ulPackageID = ulPkgID;
+                pstPkg->ucServType = ulServType;
+
+                pstPkg->astRule[0].ucBillingType = (U8)ulBillingType;
+                pstPkg->astRule[0].ucDstAttrType1 = (U8)ulDstAttrType1;
+                pstPkg->astRule[0].ucDstAttrType2 = (U8)ulDstAttrType2;
+                pstPkg->astRule[0].ucFirstBillingCnt = (U8)ulFirstBillingCnt;
+                pstPkg->astRule[0].ucNextBillingCnt = (U8)ulNextBillingCnt;
+                pstPkg->astRule[0].ucPriority = 0;
+                pstPkg->astRule[0].ucServType = (U8)ulServType;
+                pstPkg->astRule[0].ucSrcAttrType1 = (U8)ulSrcAttrType1;
+                pstPkg->astRule[0].ucSrcAttrType2 = (U8)ulSrcAttrType2;
+                pstPkg->astRule[0].ucValid = 1;
+                pstPkg->astRule[0].ulBillingRate = ulBillingRate;
+                pstPkg->astRule[0].ulDstAttrValue1 = ulDstAttrValue1;
+                pstPkg->astRule[0].ulDstAttrValue2 = ulDstAttrValue2;
+                pstPkg->astRule[0].ulEffectTimestamp = ulEffectTime;
+                pstPkg->astRule[0].ulExpireTimestamp = ulExpiryTime;
+                pstPkg->astRule[0].ulFirstBillingUnit = ulFirstBillingUnit;
+                pstPkg->astRule[0].ulNextBillingUnit = ulNextBillingUnit;
+                pstPkg->astRule[0].ulPackageID = ulPkgID;
+                pstPkg->astRule[0].ulSrcAttrValue1 = ulSrcAttrValue1;
+                pstPkg->astRule[0].ulSrcAttrValue2 = ulSrcAttrValue2;
+
+                pstHashNode->pHandle = (VOID *)pstPkg;
+                ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulPkgID);
+                if (U32_BUTT == ulHashIndex)
+                {
+                    dos_dmem_free(pstPkg);
+                    pstPkg = NULL;
+                    pstHashNode->pHandle = NULL;
+
+                    dos_dmem_free(pstHashNode);
+                    pstHashNode = NULL;
+                    break;
+                }
+
+                pthread_mutex_lock(&g_mutexBillingPackageTbl);
+                hash_add_node(g_astCustomerTbl, pstHashNode, ulHashIndex, NULL);
+                g_astBillingPackageTbl->NodeNum++;
+                pthread_mutex_unlock(&g_mutexBillingPackageTbl);
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+VOID bss_update_call_task(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
+{
+    BS_TASK_ST *pstTask = NULL;
+    JSON_OBJ_ST *pstJsonWhere = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    const S8   *pszTaskID = NULL, *pszWhere = NULL;
+    U32 ulHashIndex = 0;
+    U32 ulTaskID = U32_BUTT;
+    
+    switch (ulOpteration)
+    {
+        case BS_CMD_UPDATE:
+        {
+            pszWhere = json_get_param(pstJSONObj, "where");
+            if (DOS_ADDR_INVALID(pszWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get where param fail.");
+                break;
+            }
+            pstJsonWhere = json_init((S8 *)pszWhere);
+            if (DOS_ADDR_INVALID(pstJsonWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Init json fail.");
+                break;
+            }
+            pszTaskID = json_get_param(pstJSONObj, "id");
+            if (DOS_ADDR_INVALID(pszTaskID))
+            {
+                json_deinit(&pstJsonWhere);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Task ID fail.");
+                break;
+            }
+            if (dos_atoul(pszTaskID, &ulTaskID) < 0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul fail.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+
+            ulHashIndex = bs_hash_get_index(BS_HASH_TBL_TASK_SIZE, ulTaskID);
+            if (U32_BUTT == ulHashIndex)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Task ID %u does not exist.", ulTaskID);
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+            pstHashNode = hash_find_node(g_astTaskTbl, ulHashIndex, (VOID *)&ulTaskID, bs_task_hash_node_match);
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Hash Node does not exist.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+            pstTask = (BS_TASK_ST *)pstHashNode->pHandle;
+            /*更新相关的内容，暂时不做*/
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Tasks Update SUCC.");
+            json_deinit(&pstJsonWhere);
+            break;
+        }
+        case BS_CMD_DELETE:
+        {
+            pszWhere = json_get_param(pstJSONObj, "where");
+            if (DOS_ADDR_INVALID(pszWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get where param fail.");
+                break;
+            }
+            pstJsonWhere = json_init((S8 *)pszWhere);
+            if (DOS_ADDR_INVALID(pstJsonWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Init json fail.");
+                break;
+            }
+            pszTaskID = json_get_param(pstJSONObj, "id");
+            if (DOS_ADDR_INVALID(pszTaskID))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Task ID fail.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+            if (dos_atoul(pszTaskID, &ulTaskID) < 0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul fail.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+
+            ulHashIndex = bs_hash_get_index(BS_HASH_TBL_TASK_SIZE, ulTaskID);
+            if (U32_BUTT == ulHashIndex)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Task ID %u does not exist.", ulTaskID);
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+
+            pstHashNode = hash_find_node(g_astTaskTbl, ulHashIndex, (VOID *)&ulTaskID, bs_task_hash_node_match);
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Task ID %u does not exist.", ulTaskID);
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+            pstTask = (BS_TASK_ST *)pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstTask))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Task not found.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+            /*如果不等，说明没有找到*/
+            if (pstTask->ulTaskID != ulTaskID)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Task not found.");
+                json_deinit(&pstJsonWhere);
+                break;
+            }
+            hash_delete_node(g_astTaskTbl, pstHashNode, ulHashIndex);
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Delete Task ID %u SUCC.", ulTaskID);
+            json_deinit(&pstJsonWhere);
+            break;
+        }
+        case BS_CMD_INSERT:
+        {
+            pszTaskID = json_get_param(pstJSONObj, "id");
+            if (DOS_ADDR_INVALID(pszTaskID))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get id param fail.");
+                break;
+            }
+            if (dos_atoul(pszTaskID, &ulTaskID) < 0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul fail.");
+                break;
+            }
+
+            ulHashIndex = bs_hash_get_index(BS_HASH_TBL_TASK_SIZE, ulTaskID);
+            if (U32_BUTT == ulHashIndex)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Task ID %u does not exist.", ulTaskID);
+                break;
+            }
+
+            pstHashNode = hash_find_node(g_astTaskTbl, ulHashIndex, (VOID *)&ulTaskID, bs_task_hash_node_match);
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Task ID %u does not exist, it will be added.", ulTaskID);
+                pstHashNode = (HASH_NODE_S *)dos_dmem_alloc(sizeof(HASH_NODE_S));
+                if (DOS_ADDR_INVALID(pstHashNode))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Alloc mem fail.");
+                    break;
+                }
+                pstTask = (BS_TASK_ST *)dos_dmem_alloc(sizeof(BS_TASK_ST));
+                if (DOS_ADDR_INVALID(pstTask))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Alloc mem fail.");
+                    dos_dmem_free(pstHashNode);
+                    pstHashNode = NULL;
+                    break;
+                }
+
+                pstHashNode->pHandle = (VOID *)pstTask;
+                HASH_Init_Node(pstHashNode);
+
+                hash_add_node(g_astTaskTbl, pstHashNode, ulHashIndex, NULL);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Add Task SUCC.");
+                break;
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+
 VOID bss_data_update()
 {
     const S8                *pszTblName  = NULL;
@@ -657,6 +1587,14 @@ VOID bss_data_update()
         if (dos_strcmp(pszTblName, "tbl_agent") == 0)
         {
             bss_update_agent(ulOpteration, pstJsonNode);
+        }
+        if (dos_strcmp(pszTblName, "tbl_billing_package") == 0)
+        {
+            bss_update_billing_package(ulOpteration, pstJsonNode);
+        }
+        if (dos_strcmp(pszTblName, "tbl_calltask") == 0)
+        {
+            bss_update_call_task(ulOpteration, pstJsonNode);
         }
         else
         {

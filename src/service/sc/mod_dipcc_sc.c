@@ -106,8 +106,7 @@ U32 sc_init_db()
     if (config_get_mysqlsock_path(szDBSockPath, DB_MAX_STR_LEN) <0)
     {
         DOS_ASSERT(0);
-        SC_TRACE_OUT();
-        return DOS_FAIL;
+        szDBSockPath[0] = '\0';
     }
 
     g_pstSCDBHandle = db_create(DB_TYPE_MYSQL);
@@ -131,8 +130,16 @@ U32 sc_init_db()
     dos_strncpy(g_pstSCDBHandle->szDBName, szDBName, sizeof(g_pstSCDBHandle->szDBName));
     g_pstSCDBHandle->szDBName[sizeof(g_pstSCDBHandle->szDBName) - 1] = '\0';
 
-    dos_strncpy(g_pstSCDBHandle->szSockPath, szDBSockPath, sizeof(g_pstSCDBHandle->szSockPath));
-    g_pstSCDBHandle->szSockPath[sizeof(g_pstSCDBHandle->szSockPath) - 1] = '\0';
+    if ('\0' != szDBSockPath[0])
+    {
+        dos_strncpy(g_pstSCDBHandle->szSockPath, szDBSockPath, sizeof(g_pstSCDBHandle->szSockPath));
+        g_pstSCDBHandle->szSockPath[sizeof(g_pstSCDBHandle->szSockPath) - 1] = '\0';
+    }
+    else
+    {
+        g_pstSCDBHandle->szSockPath[0] = '\0';
+    }
+    
 
     g_pstSCDBHandle->usPort = usDBPort;
 
@@ -252,34 +259,6 @@ U32 mod_dipcc_sc_load()
 
 U32 mod_dipcc_sc_runtime()
 {
-
-    if (sc_httpd_start() != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start the httpd FAIL");
-        return DOS_FAIL;;
-    }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start the httpd task Successfully.");
-
-    if (sc_task_mngt_start() != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start mngt service FAIL");
-        return DOS_FAIL;
-    }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start mngt service Successfully.");
-
-    if (sc_dialer_start() != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start dialer FAIL");
-        return DOS_FAIL;
-    }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start dialer Successfully.");
-
     if (DOS_SUCC != sc_bs_fsm_start())
     {
         DOS_ASSERT(0);
@@ -297,6 +276,33 @@ U32 mod_dipcc_sc_runtime()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start start event process task Successfully.");
+
+    if (sc_dialer_start() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start dialer FAIL");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start dialer Successfully.");
+
+    if (sc_task_mngt_start() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start mngt service FAIL");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start mngt service Successfully.");
+
+    if (sc_httpd_start() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start the httpd FAIL");
+        return DOS_FAIL;;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start the httpd task Successfully.");
 
     return DOS_SUCC;
 }

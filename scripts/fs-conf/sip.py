@@ -178,11 +178,6 @@ def add_sip(ulSipID):
     if -1 == seqUserID:
         file_info.print_file_info('seqUserID is %d' % seqUserID)
         return -1
-    # 根据sipid获取customerid
-    ulCustomerID = get_customerid_by_sipid(ulSipID)
-    if -1 == ulCustomerID:
-        file_info.print_file_info('ulCustomerID is %d' % ulCustomerID)
-        return -1
     # 获取配置文件路径
     seqFsPath = conf_path.get_config_path()
     if seqFsPath[-1] != '/':

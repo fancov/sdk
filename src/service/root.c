@@ -90,10 +90,6 @@ S32 root(S32 _argc, S8 ** _argv)
     logr_info("%s", "BS Start.");
 #endif
 
-
-
-
-
 #ifdef INCLUDE_CC_SC
 
     if (DOS_SUCC != mod_dipcc_sc_load())

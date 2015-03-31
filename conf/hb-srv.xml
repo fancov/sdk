@@ -37,7 +37,7 @@
 	<!--该配置项配置资源占用阀值-->
 	<threshold>
 	        <mem>
-			  <param param="rate" value="90"/>
+			  <param name="rate" value="90"/>
 			</mem>
 			<cpu>
 			  <param name="avgRate" value="100"/>
