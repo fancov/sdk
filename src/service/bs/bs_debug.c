@@ -931,6 +931,109 @@ S32 bs_show_task(U32 ulIndex, U32 ulObjectID)
 
 }
 
+S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
+{
+    BS_BILLING_PACKAGE_ST  *pstPkg = NULL;
+    HASH_NODE_S            *pstHashNode = NULL;
+    S8                      szBuff[BS_TRACE_BUFF_LEN] = {0, };
+    U32 ulHashIndex = 0, ulLoop = 0;
+
+    ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulObjectID);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n Err: Billing Package ID %u does not exist.\r\n", ulObjectID);
+        cli_out_string(ulIndex, szBuff);
+        return DOS_FAIL;
+    }
+
+    pstHashNode = hash_find_node(g_astBillingPackageTbl, ulHashIndex, (VOID *)&ulObjectID, bs_billing_package_hash_node_match);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n Err: Billing Package ID %u does not exist.\r\n", ulObjectID);
+        cli_out_string(ulIndex, szBuff);
+        return DOS_FAIL;
+    }
+
+    pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
+    if (pstPkg->ulPackageID != ulObjectID)
+    {
+        DOS_ASSERT(0);
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n Err: Billing Package ID %u does not exist.\r\n", ulObjectID);
+        cli_out_string(ulIndex, szBuff);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Package ID %u.\r\n", ulObjectID);
+    cli_out_string(ulIndex, szBuff);
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------\r\n");
+    cli_out_string(ulIndex, szBuff);
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n    Package ID     Service Type    \r\n");
+    cli_out_string(ulIndex, szBuff);
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%14u%17u\r\n", pstPkg->ulPackageID, pstPkg->ucServType);
+    cli_out_string(ulIndex, szBuff);
+
+    dos_snprintf(szBuff, sizeof(szBuff)
+                    , "\r\n\r\n       RuleID SAT1 SAT2 DAT1 DAT2        SAV1        SAV2        DAV1        DAV2         FBU         NBU FBC NBC  BT          BR      Effect     Expire  Priority");
+    cli_out_string(ulIndex, szBuff);
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szBuff);
+
+    for (ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
+    {
+        if (0 == pstPkg->astRule[ulLoop].ucValid)
+        {
+            continue;
+        }
+
+        dos_snprintf(szBuff, sizeof(szBuff)
+                        , "\r\n%13u%5u%5u%5u%5u%12u%12u%12u%12u%12u%12u%4u%4u%4u%12u%12u%12u%9u"
+                        , pstPkg->astRule[ulLoop].ulRuleID
+                        , pstPkg->astRule[ulLoop].ucSrcAttrType1
+                        , pstPkg->astRule[ulLoop].ucSrcAttrType2
+                        , pstPkg->astRule[ulLoop].ucDstAttrType1
+                        , pstPkg->astRule[ulLoop].ucDstAttrType2
+                        , pstPkg->astRule[ulLoop].ulSrcAttrValue1
+                        , pstPkg->astRule[ulLoop].ulSrcAttrValue2
+                        , pstPkg->astRule[ulLoop].ulDstAttrValue1
+                        , pstPkg->astRule[ulLoop].ulDstAttrValue2
+                        , pstPkg->astRule[ulLoop].ulFirstBillingUnit
+                        , pstPkg->astRule[ulLoop].ulNextBillingUnit
+                        , pstPkg->astRule[ulLoop].ucFirstBillingCnt
+                        , pstPkg->astRule[ulLoop].ucNextBillingCnt
+                        , pstPkg->astRule[ulLoop].ucBillingType
+                        , pstPkg->astRule[ulLoop].ulBillingRate
+                        , pstPkg->astRule[ulLoop].ulEffectTimestamp
+                        , pstPkg->astRule[ulLoop].ulExpireTimestamp
+                        , pstPkg->astRule[ulLoop].ucPriority);
+        cli_out_string(ulIndex, szBuff);
+    }
+
+    dos_snprintf(szBuff, sizeof(szBuff)
+                    , "\r\n\r\n\r\nNotes:");
+    cli_out_string(ulIndex, szBuff);
+
+    dos_snprintf(szBuff, sizeof(szBuff)
+                    , "\r\n    SAT: Source Attribute Type\r\n    DAT: Destination Attribute Type\r\n    SAV: Source Attribute Value\r\n    DAV: Destination Attribute Value");
+    cli_out_string(ulIndex, szBuff);
+
+    dos_snprintf(szBuff, sizeof(szBuff)
+                    , "\r\n    FBU: First Billing Unit\r\n    NBU: Next Billing Unit\r\n    FBC: First Billing Count\r\n    NBC: Next Billing Count");
+    cli_out_string(ulIndex, szBuff);
+
+    dos_snprintf(szBuff, sizeof(szBuff)
+                    , "\r\n    BT:  Billing Type\r\n    BR:  Billing Rate\r\n");
+    cli_out_string(ulIndex, szBuff);
+
+    return DOS_SUCC;
+}
+
 /* 显示中继信息 */
 S32 bs_show_trunk(U32 ulIndex, U32 ulObjectID)
 {
@@ -1195,6 +1298,10 @@ S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv)
         {
             return bs_show_trunk(ulIndex, ulObjectID);
         }
+        else if (0 == dos_strncmp(argv[2], "billing", dos_strlen(argv[2])))
+        {
+            return bs_show_billing_package(ulIndex, ulObjectID);
+        }
         else
         {
             goto help;
@@ -1283,7 +1390,7 @@ S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv)
 help:
     cli_out_string(ulIndex, "\r\nInvalid parameters");
     cli_out_string(ulIndex, "\r\nUsage:");
-    cli_out_string(ulIndex, "\r\n1. bs show <object:agent|cb|customer|task|trunk> <object id>");
+    cli_out_string(ulIndex, "\r\n1. bs show <object:agent|cb|customer|task|trunk|billing> <object id>");
     cli_out_string(ulIndex, "\r\n2. bs debug <module:all|off|account|audit|bill|cdr|db|fs|maintain|run|stat|web> <level:0|1|2|3|4|5|6|7>");
 
     cli_out_string(ulIndex, "\r\n\r\n");
