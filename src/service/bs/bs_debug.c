@@ -19,6 +19,7 @@ extern "C"{
 #include "bs_cdr.h"
 #include "bs_stat.h"
 #include "bs_def.h"
+#include "bsd_db.h"
 
 
 
@@ -1475,8 +1476,67 @@ VOID bs_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...)
 
     dos_log(ucTraceLevel, LOG_TYPE_RUNINFO, szTraceStr);
 }
-#endif
 
+
+S32  bs_ctrl_send2dl(U32 ulIndex, S32 argc, S8 **argv)
+{
+    S8   szBuff[MAX_BUFF_LENGTH] = {0, };
+    U32  ulType = BS_TBL_TYPE__BUTT;
+    
+    if (U32_BUTT == ulIndex)
+    { 
+        DOS_ASSERT(0);
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nErr: Invalid Index.\r\n");
+        cli_out_string(ulIndex, szBuff);
+        return -1;
+    }
+
+    if (2 != argc)
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nErr: Invalid input.\r\n");
+        cli_out_string(ulIndex, szBuff);
+        goto help;
+    }
+
+    if (0 == dos_stricmp(argv[1], "agent"))
+    {
+        ulType = BS_TBL_TYPE_AGENT;
+    }
+    else if (0 == dos_stricmp(argv[1], "customer"))
+    {
+        ulType = BS_TBL_TYPE_CUSTOMER;
+    }
+    else if (0 == dos_stricmp(argv[1], "billing"))
+    {
+        ulType = BS_TBL_TYPE_BILLING_PACKAGE;
+    }
+    else if (0 == dos_stricmp(argv[1], "settle"))
+    {
+        ulType = BS_TBL_TYPE_SETTLE;
+    }
+    else if (0 == dos_stricmp(argv[1], "cmd"))
+    {
+        ulType = BS_TBL_TYPE_TMP_CMD;
+    }
+    else
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nErr: Invalid input.\r\n");
+        cli_out_string(ulIndex, szBuff);
+        ulType = BS_TBL_TYPE__BUTT;
+        goto help;
+    }
+
+    bss_send_walk_req2dl(ulType);
+    return DOS_SUCC;
+    
+help:
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\nHelp:\r\n    bsd bsc agent|customer|billing|settle|cmd\r\n");
+    cli_out_string(ulIndex, szBuff);
+    return DOS_FAIL;
+}
+
+
+#endif
 
 #ifdef __cplusplus
 }
