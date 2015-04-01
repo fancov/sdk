@@ -53,6 +53,32 @@ typedef struct tagSCDialerHandle
 /* dialer模块控制块示例 */
 SC_DIALER_HANDLE_ST  *g_pstDialerHandle = NULL;
 
+U8 sc_dial_make_call_for_verify(S8 *pszCaller, S8 *pszNumber, S8 *pszPassword)
+{
+    SC_SCB_ST *pstSCB = NULL;
+    S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
+
+    if (!pszCaller)
+    {
+        pszCaller = "8888888888";
+    }
+
+    pstSCB = sc_scb_alloc();
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return DOS_FAIL;
+    }
+
+    dos_strncpy(pstSCB->szCalleeNum, pszNumber, sizeof(pstSCB->szCalleeNum));
+    pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+    dos_strncpy(pstSCB->szCallerNum, pszCaller, sizeof(pstSCB->szCallerNum));
+    pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+
+}
+
 /* 这个地方有个问题。 g_pstDialerHandle->stHandle 被多个线程使用，会不会出现，一个线程刚刚发送了呼叫命令。名外一个线程收到了响应?*/
 U32 sc_dial_make_call2ip(S8 *pszCaller, S8 *pszCallee, U32 ulMainService)
 {

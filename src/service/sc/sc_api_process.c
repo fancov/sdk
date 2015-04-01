@@ -502,6 +502,28 @@ invalid_params:
 
 U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient)
 {
+    S8 *pszCaller   = NULL;
+    S8 *pszNUmber   = NULL;
+    S8 *pszPassword = NULL;
+
+    pszCaller = sc_http_api_get_value(&pstClient->stParamList, "caller");
+    pszNUmber = sc_http_api_get_value(&pstClient->stParamList, "number");
+    pszPassword = sc_http_api_get_value(&pstClient->stParamList, "password");
+    if (DOS_ADDR_INVALID(pszNUmber)
+        || DOS_ADDR_INVALID(pszPassword))
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    sc_dial_make_call_for_verify(pszCaller, pszNUmber, pszPassword);
+
+    return DOS_SUCC;
+
+invalid_params:
+    pstClient->ulResponseCode = 200;
+    pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
+    SC_TRACE_OUT();
     return DOS_FAIL;
 }
 
