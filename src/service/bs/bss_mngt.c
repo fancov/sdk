@@ -5085,6 +5085,7 @@ VOID *bss_accounting(VOID *arg)
 {
     U8                      ucOperateType;
     S32                     lMoney;
+    U32                     ulOperateDir;
     U32                     ulTimeStamp, ulPeeAccount;
     U32                     ulCnt, ulHashIndex;
     S8                      szTimeStamp[32];
@@ -5187,6 +5188,7 @@ VOID *bss_accounting(VOID *arg)
                     pstCDR->ulPeeAccount = ulPeeAccount;
                     pstCDR->ulTimeStamp = ulTimeStamp;
                     pstCDR->ulOperatorID = BS_SYS_OPERATOR_ID;
+                    pstCDR->ulOperateDir = BS_ACCOUNT_PAY;
                     dos_strncpy(pstCDR->szRemark, szTimeStamp, sizeof(pstCDR->szRemark));
 
                     pstMsgNode->pHandle = (VOID *)pstCDR;
@@ -5256,6 +5258,7 @@ VOID *bss_accounting(VOID *arg)
                     if (BS_CUSTOMER_TYPE_TOP == pstCustomer->ucCustomerType)
                     {
                         /* 顶级客户是返点的支付方 */
+                        ulOperateDir = BS_ACCOUNT_PAY;
                         ucOperateType = BS_ACCOUNT_REBATE_PAY;
                         ulPeeAccount = 0;
                     }
@@ -5263,6 +5266,7 @@ VOID *bss_accounting(VOID *arg)
                     {
                         /* 代理商是返点的获得方 */
                         ucOperateType = BS_ACCOUNT_REBATE_GET;
+                        ulOperateDir = BS_ACCOUNT_GET;
                         ulPeeAccount = g_stBssCB.pstTopCustomer->stAccount.ulAccountID;
                     }
 
@@ -5276,6 +5280,7 @@ VOID *bss_accounting(VOID *arg)
                     pstCDR->ulPeeAccount = 0;
                     pstCDR->ulTimeStamp = ulTimeStamp;
                     pstCDR->ulOperatorID = BS_SYS_OPERATOR_ID;
+                    pstCDR->ulOperateDir = ulOperateDir;
                     dos_strncpy(pstCDR->szRemark, szTimeStamp, sizeof(pstCDR->szRemark));
 
                     pstMsgNode->pHandle = (VOID *)pstCDR;

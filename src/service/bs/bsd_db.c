@@ -963,8 +963,17 @@ VOID bsd_save_account_cdr(BS_INTER_MSG_CDR *pstMsg)
     }
 
 
-    dos_snprintf(szQuery, sizeof(szQuery), "UPDATE tbl_customer SET balance=balance + %d WHERE id = %u;"
-                    , pstCDR->lMoney, pstCDR->ulCustomerID);
+    if (BS_ACCOUNT_GET == pstCDR->ulOperateDir)
+    {
+        dos_snprintf(szQuery, sizeof(szQuery), "UPDATE tbl_customer SET balance=balance + %d WHERE id = %u;"
+                        , pstCDR->lMoney, pstCDR->ulCustomerID);
+    }
+    else
+    {
+        dos_snprintf(szQuery, sizeof(szQuery), "UPDATE tbl_customer SET balance=balance - %d WHERE id = %u;"
+                        , pstCDR->lMoney, pstCDR->ulCustomerID);
+    }
+
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
         bs_trace(BS_TRACE_DB, LOG_LEVEL_ERROR, "Update customer balance FAIL! (%s)", szQuery);

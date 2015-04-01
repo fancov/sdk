@@ -189,6 +189,7 @@ typedef struct
     U32             ulPeeAccount;               /* 对端账户ID,要求全数字,不超过10位,最高位小于4 */
     U32             ulTimeStamp;                /* 时间戳 */
     U32             ulOperatorID;               /* 操作员 */
+    U32             ulOperateDir;               /* 方向 */
     S8              szRemark[BS_MAX_REMARK_LEN];                  /* 备注 */
 
 }BS_CDR_ACCOUNT_ST;
