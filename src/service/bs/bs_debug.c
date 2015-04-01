@@ -491,7 +491,7 @@ S32 bs_show_customer(U32 ulIndex, U32 ulObjectID)
     cli_out_string(ulIndex, szBuf);
     cli_out_string(ulIndex, "\r\n--------------------------------------------------"
                    "--------------------------------------------------");
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%10d%10d%10d%10d%10d%10u",
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%10d%10d%10ld%10ld%10d%10u",
                  pstAccount->ulAccountID, pstAccount->ulCustomerID,
                  pstAccount->ulBillingPackageID, pstAccount->lCreditLine,
                  pstAccount->lBalanceWarning, pstAccount->LBalance,

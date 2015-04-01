@@ -52,7 +52,9 @@ static S32 bsd_record_cnt_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszField
 static S32 bsd_walk_customer_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFields)
 {
     U32             ulCnt = 0, ulHashIndex, ulCustomerType, ulCustomerState;
-    U32             ulBallingPageage, ulBanlance;
+    S64             LBanlance = 0;
+    U32             ulCreditLine, ulWarningLine;
+    U32             ulBallingPageage;
     HASH_NODE_S     *pstHashNode = NULL;
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
@@ -79,7 +81,9 @@ static S32 bsd_walk_customer_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
         || dos_atoul(aszData[3], &ulCustomerType)
         || dos_atoul(aszData[4], &ulCustomerState) < 0
         || dos_atoul(aszData[5], &ulBallingPageage) < 0
-        || dos_atoul(aszData[6], &ulBanlance) < 0)
+        || dos_atoll(aszData[6], &LBanlance) < 0
+        || dos_atoul(aszData[7], &ulCreditLine) < 0
+        || dos_atoul(aszData[8], &ulWarningLine) < 0)
     {
         DOS_ASSERT(0);
         dos_dmem_free(pstHashNode);
@@ -92,8 +96,13 @@ static S32 bsd_walk_customer_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
     pstCustomer->ucCustomerType = (U8)ulCustomerType;
     pstCustomer->ucCustomerState = (U8)ulCustomerState;
     pstCustomer->stAccount.ulAccountID = pstCustomer->ulCustomerID;
+    pstCustomer->stAccount.ulCustomerID= pstCustomer->ulCustomerID;
     pstCustomer->stAccount.ulBillingPackageID = ulBallingPageage;
-    pstCustomer->stAccount.LBalanceActive = ulBanlance;
+    pstCustomer->stAccount.LBalance = LBanlance;
+    pstCustomer->stAccount.LBalanceActive = LBanlance;
+    pstCustomer->stAccount.lBalanceWarning = ulWarningLine;
+    pstCustomer->stAccount.lCreditLine = ulCreditLine;
+    pstCustomer->stAccount.lRebate = 0;
     dos_strncpy(pstCustomer->szCustomerName, aszData[1], sizeof(pstCustomer->szCustomerName));
     pstCustomer->szCustomerName[sizeof(pstCustomer->szCustomerName) - 1] = '\0';
 
@@ -137,7 +146,7 @@ S32 bsd_walk_customer_tbl(BS_INTER_MSG_WALK *pstMsg)
     HASH_NODE_S     *pstHashNode = NULL;
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT `id`,`name`,`parent_id`,`type`,`status`, `billing_package_id`, `balance` from tbl_customer;");
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT `id`,`name`,`parent_id`,`type`,`status`, `billing_package_id`, `balance`, `credit_line`, `balance_warning` from tbl_customer;");
     if (db_query(g_pstDBHandle, szQuery, bsd_walk_customer_tbl_cb, NULL, NULL) != DB_ERR_SUCC)
     {
         bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read customers from DB FAIL!");
@@ -321,10 +330,10 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
         || dos_atoul(aszData[10], &stBillingRule.ulDstAttrValue2) < 0
         || dos_atoul(aszData[11], &ulServType) < 0
         || dos_atoul(aszData[12], &ulBillingType) < 0
-        || dos_atoul(aszData[13], &ulFirstBillingCnt) < 0
-        || dos_atoul(aszData[14], &ulNextBillingCnt) < 0
-        || dos_atoul(aszData[15], &stBillingRule.ulFirstBillingUnit) < 0
-        || dos_atoul(aszData[16], &stBillingRule.ulNextBillingUnit) < 0
+        || dos_atoul(aszData[13], &stBillingRule.ulFirstBillingUnit) < 0
+        || dos_atoul(aszData[14], &stBillingRule.ulNextBillingUnit) < 0
+        || dos_atoul(aszData[15], &ulFirstBillingCnt) < 0
+        || dos_atoul(aszData[16], &ulNextBillingCnt) < 0
         || dos_atoul(aszData[17], &stBillingRule.ulEffectTimestamp) < 0
         || dos_atoul(aszData[18], &stBillingRule.ulExpireTimestamp) < 0)
     {
@@ -444,7 +453,7 @@ S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
                      "   t1.billing_package_id, t1.billing_rate, t2.id, t2.src_attr_type1, t2.src_attr_type2, "
                      "   t2.dst_attr_type1, t2.dst_attr_type2, src_attr_value1, src_attr_value2, dst_attr_value1, dst_attr_value2, "
                      "   serv_type, billing_type, first_billing_unit, next_billing_unit, first_billing_cnt, next_billing_cnt, "
-                     "   effect_time,expire_time "
+                     "   UNIX_TIMESTAMP(effect_time), UNIX_TIMESTAMP(expire_time) "
                      "FROM "
                      "   tbl_billing_rate t1 "
                      "LEFT JOIN "
@@ -939,7 +948,7 @@ VOID bsd_save_account_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`id`,`customer_id`,`account_id`,`ctime`,"
                       "`type`,`money`,`balance`,`peer_account_id`,"
                       "`operator_id`,`note`)"
-                    "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\");"
+                    "VALUES(NULL, %u, %u, FROM_UNIXTIME(%u), %u, %u, %ld, %u, %u, \"%s\");"
                 	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulTimeStamp
                 	, pstCDR->ucOperateType, pstCDR->lMoney, pstCDR->LBalance
                 	, pstCDR->ulPeeAccount, pstCDR->ulOperatorID, pstCDR->szRemark);
@@ -953,6 +962,17 @@ VOID bsd_save_account_cdr(BS_INTER_MSG_CDR *pstMsg)
         bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save CDR in DB !");
     }
 
+
+    dos_snprintf(szQuery, sizeof(szQuery), "UPDATE tbl_customer SET balance=balance + %d WHERE id = %u;"
+                    , pstCDR->lMoney, pstCDR->ulCustomerID);
+    if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
+    {
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_ERROR, "Update customer balance FAIL! (%s)", szQuery);
+    }
+    else
+    {
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Update customer balance SUCC!");
+    }
 
 }
 
