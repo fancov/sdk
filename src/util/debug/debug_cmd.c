@@ -13,6 +13,7 @@ extern S32 cli_show_timer(U32 ulIndex, S32 argc, S8 **argv);
 #endif
 #if INCLUDE_SERVICE_BS
 extern S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv);
+extern S32 bs_ctrl_send2dl(U32 ulIndex,S32 argc,S8 * * argv);
 #endif
 
 #if INCLUDE_CC_SC
@@ -24,6 +25,8 @@ COMMAND_ST g_stCommandSet[] = {
     {NULL, "assert",        "Show assert informationa",        dos_assert_print},
 #if INCLUDE_SERVICE_BS
     {NULL, "bs",            "BS command",                      bs_command_proc},
+    /*??bs????????*/ 
+    {NULL, "bsc",           "BS debug",                        bs_ctrl_send2dl},
 #endif
     {NULL, "debug",         "Set the log level",               cli_set_log_level},
 #if INCLUDE_MEMORY_MNGT
@@ -38,7 +41,6 @@ COMMAND_ST g_stCommandSet[] = {
 #if INCLUDE_CC_SC
     {NULL, "cc",            "Debug CC mod",                    cli_cc_process},
 #endif
-
 };
 
 COMMAND_GROUP_ST g_stCommandRootGrp[] = {

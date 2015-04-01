@@ -31,6 +31,8 @@ extern "C"{
 #define BS_MAX_AGENT_LEVEL              5       /* 代理商最大层级 */
 #define BS_MAX_REMARK_LEN               32      /* 备注最大长度 */
 
+#define BS_MAX_RULE_ITEM                20      /* 资费规则的字段数 */
+
 
 
 /* 定义错误码 */

@@ -17,6 +17,10 @@
 extern "C"{
 #endif /* __cplusplus */
 
+#ifndef MAX_BUFF_LENGTH
+#define MAX_BUFF_LENGTH 1024
+#endif
+
 
 /* 操作的表类型定义 */
 enum BS_TABLE_TYPE_E
