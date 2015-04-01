@@ -320,7 +320,6 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     S8  *pszRet = NULL;
     struct tm stExpiryTm = {0};
     const S8 *pszMonery = NULL, *pszWhere  = NULL, *pszCustomID = NULL, *pszExpireTime = NULL;
-    const S8 szTimeFormat[8] = "%Y-%m-%d";
     JSON_OBJ_ST  *pstJsonWhere = NULL;
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
@@ -331,7 +330,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     {
         bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Expiry Time fail.");
     }
-    pszRet = strptime(pszExpireTime, szTimeFormat, &stExpiryTm);
+    pszRet = strptime(pszExpireTime, "%Y-%m-%d", &stExpiryTm);
     if (DOS_ADDR_INVALID(pszRet))
     {
         bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "strptime fail.");
