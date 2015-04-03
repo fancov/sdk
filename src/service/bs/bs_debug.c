@@ -22,9 +22,16 @@ extern "C"{
 #include "bsd_db.h"
 
 
-
 #if (INCLUDE_SYSLOG_ENABLE)
 
+extern DLL_S g_stWebCMDTbl;
+extern pthread_mutex_t g_mutexWebCMDTbl;
+extern U32 g_ulLastCMDTimestamp ;
+
+extern VOID bss_update_agent(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
+extern VOID bss_update_billing_package(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
+extern VOID bss_update_customer(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
+extern VOID bss_update_call_task(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
 
 const S8 *g_aszBsTraceTarget[] =
 {
@@ -249,12 +256,12 @@ S32 bs_show_agent(U32 ulIndex, U32 ulObjectID)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s%10s%10s%10s",
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s %10s%10s%10s",
                  "AgentID", "CustomerID", "Group1", "Group2");
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
-    cli_out_string(ulIndex, "\r\n----------------------------------------");
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%10u",
+    cli_out_string(ulIndex, "\r\n-------------------------------------------");
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%11u%10u%10u",
                  pstAgent->ulAgentID, pstAgent->ulCustomerID,
                  pstAgent->ulGroup1, pstAgent->ulGroup2);
     szBuf[sizeof(szBuf) - 1] = '\0';
@@ -485,14 +492,14 @@ S32 bs_show_customer(U32 ulIndex, U32 ulObjectID)
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
 
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s%10s%10s%10s%10s%10s%10s%10s%10s",
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s %10s%10s%10s%10s%10s%10s%10s%10s",
                  "AccID", "CustmID", "PackageID", "CreditLn",
                  "WarnLn", "Balance", "ActBalnc", "Rebate", "AccTime");
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
     cli_out_string(ulIndex, "\r\n--------------------------------------------------"
                    "--------------------------------------------------");
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%10d%10d%10d%10d%10d%10u",
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u %10u%10u%10d%10d%10d%10d%10d%10u",
                  pstAccount->ulAccountID, pstAccount->ulCustomerID,
                  pstAccount->ulBillingPackageID, pstAccount->lCreditLine,
                  pstAccount->lBalanceWarning, pstAccount->LBalance,
@@ -948,103 +955,98 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
            , "Service Type", "Billing Type", "Billing Rate", "Effect Time", "Expire Time", "Priority"
            , "Valid"
     };
-    
-    ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulObjectID);
-    if (U32_BUTT == ulHashIndex)
+
+    HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
     {
-        DOS_ASSERT(0);
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n Err: Billing Package ID %u does not exist.\r\n", ulObjectID);
-        cli_out_string(ulIndex, szBuff);
-        return DOS_FAIL;
+        HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
+            if (pstPkg->ulPackageID == ulObjectID)
+            {
+                dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Package ID %u.", ulObjectID);
+                cli_out_string(ulIndex, szBuff);
+            }
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------");
+            cli_out_string(ulIndex, szBuff);
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n    Package ID     Service Type    ");
+            cli_out_string(ulIndex, szBuff);
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%14u%17u", pstPkg->ulPackageID, pstPkg->ucServType);
+            cli_out_string(ulIndex, szBuff);
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------\r\n");
+            cli_out_string(ulIndex, szBuff);
+
+            for (ulCol = 0; ulCol < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulCol)
+            {
+                aulRule[0][ulCol]  = pstPkg->astRule[ulCol].ulPackageID;
+                aulRule[1][ulCol]  = pstPkg->astRule[ulCol].ucSrcAttrType1;
+                aulRule[2][ulCol]  = pstPkg->astRule[ulCol].ucSrcAttrType2;
+                aulRule[3][ulCol]  = pstPkg->astRule[ulCol].ucDstAttrType1;
+                aulRule[4][ulCol]  = pstPkg->astRule[ulCol].ucDstAttrType2;
+                aulRule[5][ulCol]  = pstPkg->astRule[ulCol].ulSrcAttrValue1;
+                aulRule[6][ulCol]  = pstPkg->astRule[ulCol].ulSrcAttrValue2;
+                aulRule[7][ulCol]  = pstPkg->astRule[ulCol].ulDstAttrValue1;
+                aulRule[8][ulCol]  = pstPkg->astRule[ulCol].ulDstAttrValue2;
+                aulRule[9][ulCol]  = pstPkg->astRule[ulCol].ulFirstBillingUnit;
+                aulRule[10][ulCol] = pstPkg->astRule[ulCol].ulNextBillingUnit;
+                aulRule[11][ulCol] = pstPkg->astRule[ulCol].ucFirstBillingCnt;
+                aulRule[12][ulCol] = pstPkg->astRule[ulCol].ucNextBillingCnt;
+                aulRule[13][ulCol] = pstPkg->astRule[ulCol].ucServType;
+                aulRule[14][ulCol] = pstPkg->astRule[ulCol].ucBillingType;
+                aulRule[15][ulCol] = pstPkg->astRule[ulCol].ulBillingRate;
+                aulRule[16][ulCol] = pstPkg->astRule[ulCol].ulEffectTimestamp;
+                aulRule[17][ulCol] = pstPkg->astRule[ulCol].ulExpireTimestamp;
+                aulRule[18][ulCol] = pstPkg->astRule[ulCol].ucPriority;
+                aulRule[19][ulCol] = pstPkg->astRule[ulCol].ucValid;
+            }
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Rule");
+            cli_out_string(ulIndex, szBuff);
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------------");
+            cli_out_string(ulIndex, szBuff);
+            
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n  %-20s|%12u %12u %12u %12u %12u %12u %12u %12u %12u %12u", "Billing Rule Record", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+            cli_out_string(ulIndex, szBuff);
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------------");
+            cli_out_string(ulIndex, szBuff);
+
+            for (ulRow = 0; ulRow < BS_MAX_RULE_ITEM; ++ulRow)
+            {
+                dos_snprintf(szBuff, sizeof(szBuff)
+                            , "\r\n  %-20s|%12u %12u %12u %12u %12u %12u %12u %12u %12u %12u"
+                            , aszRule[ulRow]
+                            , aulRule[ulRow][0]
+                            , aulRule[ulRow][1]
+                            , aulRule[ulRow][2]
+                            , aulRule[ulRow][3]
+                            , aulRule[ulRow][4]
+                            , aulRule[ulRow][5]
+                            , aulRule[ulRow][6]
+                            , aulRule[ulRow][7]
+                            , aulRule[ulRow][8]
+                            , aulRule[ulRow][9]);
+                cli_out_string(ulIndex, szBuff);
+            }
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------------");
+            cli_out_string(ulIndex, szBuff);
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n\r\nList the Billing Rule finished.\r\n");
+            cli_out_string(ulIndex, szBuff);
+        }
     }
-
-    pstHashNode = hash_find_node(g_astBillingPackageTbl, ulHashIndex, (VOID *)&ulObjectID, bs_billing_package_hash_node_match);
-    if (DOS_ADDR_INVALID(pstHashNode)
-        || DOS_ADDR_INVALID(pstHashNode->pHandle))
-    {
-        DOS_ASSERT(0);
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n Err: Billing Package ID %u does not exist.\r\n", ulObjectID);
-        cli_out_string(ulIndex, szBuff);
-        return DOS_FAIL;
-    }
-
-    pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
-    if (pstPkg->ulPackageID != ulObjectID)
-    {
-        DOS_ASSERT(0);
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n Err: Billing Package ID %u does not exist.\r\n", ulObjectID);
-        cli_out_string(ulIndex, szBuff);
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Package ID %u.", ulObjectID);
-    cli_out_string(ulIndex, szBuff);
-
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------");
-    cli_out_string(ulIndex, szBuff);
-
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n    Package ID     Service Type    ");
-    cli_out_string(ulIndex, szBuff);
-
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%14u%17u", pstPkg->ulPackageID, pstPkg->ucServType);
-    cli_out_string(ulIndex, szBuff);
-    
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------\r\n");
-    cli_out_string(ulIndex, szBuff);
-
-    for (ulCol = 0; ulCol < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulCol)
-    {
-        aulRule[0][ulCol] = pstPkg->astRule[ulCol].ulPackageID;
-        aulRule[1][ulCol] = pstPkg->astRule[ulCol].ucSrcAttrType1;
-        aulRule[2][ulCol] = pstPkg->astRule[ulCol].ucSrcAttrType2;
-        aulRule[3][ulCol] = pstPkg->astRule[ulCol].ucDstAttrType1;
-        aulRule[4][ulCol] = pstPkg->astRule[ulCol].ucDstAttrType2;
-        aulRule[5][ulCol] = pstPkg->astRule[ulCol].ulSrcAttrValue1;
-        aulRule[6][ulCol] = pstPkg->astRule[ulCol].ulSrcAttrValue2;
-        aulRule[7][ulCol] = pstPkg->astRule[ulCol].ulDstAttrValue1;
-        aulRule[8][ulCol] = pstPkg->astRule[ulCol].ulDstAttrValue2;
-        aulRule[9][ulCol] = pstPkg->astRule[ulCol].ulFirstBillingUnit;
-        aulRule[10][ulCol] = pstPkg->astRule[ulCol].ulNextBillingUnit;
-        aulRule[11][ulCol] = pstPkg->astRule[ulCol].ucFirstBillingCnt;
-        aulRule[12][ulCol] = pstPkg->astRule[ulCol].ucNextBillingCnt;
-        aulRule[13][ulCol] = pstPkg->astRule[ulCol].ucServType;
-        aulRule[14][ulCol] = pstPkg->astRule[ulCol].ucBillingType;
-        aulRule[15][ulCol] = pstPkg->astRule[ulCol].ulBillingRate;
-        aulRule[16][ulCol] = pstPkg->astRule[ulCol].ulEffectTimestamp;
-        aulRule[17][ulCol] = pstPkg->astRule[ulCol].ulExpireTimestamp;
-        aulRule[18][ulCol] = pstPkg->astRule[ulCol].ucPriority;
-        aulRule[19][ulCol] = pstPkg->astRule[ulCol].ucValid;
-    }
-
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Rule");
-    cli_out_string(ulIndex, szBuff);
-
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------------------------------");
-    cli_out_string(ulIndex, szBuff);
-
-    for (ulRow = 0; ulRow < BS_MAX_RULE_ITEM; ++ulRow)
-    {
-        dos_snprintf(szBuff, sizeof(szBuff)
-                    , "\r\n  %-20s|%12u%12u%12u%12u%12u%12u%12u%12u%12u%12u"
-                    , aszRule[ulRow]
-                    , aulRule[ulRow][0]
-                    , aulRule[ulRow][1]
-                    , aulRule[ulRow][2]
-                    , aulRule[ulRow][3]
-                    , aulRule[ulRow][4]
-                    , aulRule[ulRow][5]
-                    , aulRule[ulRow][6]
-                    , aulRule[ulRow][7]
-                    , aulRule[ulRow][8]
-                    , aulRule[ulRow][9]);
-        cli_out_string(ulIndex, szBuff);
-    }
-
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------------------------------");
-    cli_out_string(ulIndex, szBuff);
-
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n\r\nList the Billing Rule finished.\r\n");
-    cli_out_string(ulIndex, szBuff);
+        
     return DOS_SUCC;
 }
 
@@ -1490,64 +1492,196 @@ VOID bs_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...)
     dos_log(ucTraceLevel, LOG_TYPE_RUNINFO, szTraceStr);
 }
 
-
-S32  bs_ctrl_send2dl(U32 ulIndex, S32 argc, S8 **argv)
+S32 bs_update_test(U32 ulIndex, S32 argc, S8 **argv)
 {
-    S8   szBuff[MAX_BUFF_LENGTH] = {0, };
-    U32  ulType = BS_TBL_TYPE__BUTT;
-    
-    if (U32_BUTT == ulIndex)
-    { 
-        DOS_ASSERT(0);
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\nErr: Invalid Index.\r\n");
-        cli_out_string(ulIndex, szBuff);
-        return -1;
-    }
+    U32 ulType = BS_TBL_TYPE_TMP_CMD, ulOperation = BS_CMD_BUTT;
+    S32 lRet = -1;
+    BS_WEB_CMD_INFO_ST *pszTblRow   = NULL;
+    const S8  *pszOperation  = NULL, *pszTableName = NULL;
+    S8  szCmdBuff[1024] = {0, };
+    DLL_NODE_S *pstNode = NULL, *pstListNode = NULL;
+    BS_INTER_MSG_TAG    *pstMsgTag = NULL;
+    BS_INTER_MSG_WALK   *pstMsg = NULL;
+    JSON_OBJ_ST         *pstJsonNode = NULL;
 
-    if (2 != argc)
-    {
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\nErr: Invalid input.\r\n");
-        cli_out_string(ulIndex, szBuff);
-        goto help;
-    }
-
-    if (0 == dos_stricmp(argv[1], "agent"))
-    {
-        ulType = BS_TBL_TYPE_AGENT;
-    }
-    else if (0 == dos_stricmp(argv[1], "customer"))
-    {
-        ulType = BS_TBL_TYPE_CUSTOMER;
-    }
-    else if (0 == dos_stricmp(argv[1], "billing"))
-    {
-        ulType = BS_TBL_TYPE_BILLING_PACKAGE;
-    }
-    else if (0 == dos_stricmp(argv[1], "settle"))
-    {
-        ulType = BS_TBL_TYPE_SETTLE;
-    }
-    else if (0 == dos_stricmp(argv[1], "cmd"))
-    {
-        ulType = BS_TBL_TYPE_TMP_CMD;
-    }
-    else
-    {
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\nErr: Invalid input.\r\n");
-        cli_out_string(ulIndex, szBuff);
-        ulType = BS_TBL_TYPE__BUTT;
-        goto help;
-    }
-
+    /* 发送遍历请求到数据层 */
     bss_send_walk_req2dl(ulType);
-    return DOS_SUCC;
     
+    while(1)
+    {
+        if (DLL_Count(&g_stBSS2DMsgList) <= 0)
+        {
+            break;
+        }
+
+        /* 获取消息 */
+        pthread_mutex_lock(&g_mutexBSS2DMsg);
+        pstNode = dll_fetch(&g_stBSS2DMsgList);
+        pthread_mutex_unlock(&g_mutexBSS2DMsg);
+        if (NULL == pstNode)
+        {
+            continue;
+        }
+
+        /*获取消息内容*/
+        pstMsgTag = (BS_INTER_MSG_TAG *)pstNode->pHandle;
+        if (DOS_ADDR_INVALID(pstMsgTag))
+        {
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                        , "\r\npstMsgTag is %p\r\n", pstMsgTag);
+            cli_out_string(ulIndex, szCmdBuff);
+            goto help;
+        }
+
+        /*设置消息类型*/
+        pstMsgTag->ucMsgType = BS_INTER_MSG_WALK_REQ;
+        pstMsg = (BS_INTER_MSG_WALK *)pstNode->pHandle;
+        pstMsg->ulTblType = BS_TBL_TYPE_TMP_CMD;
+
+        lRet = bsd_walk_web_cmd_tbl(pstMsg);
+        if (lRet < 0)
+        {
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nlRet is %d\r\n", lRet);
+            cli_out_string(ulIndex, szCmdBuff);
+            goto help;/*goto help;*/
+        }
+
+        pthread_mutex_lock(&g_mutexWebCMDTbl);
+        pstListNode = dll_fetch(&g_stWebCMDTbl);
+        pthread_mutex_unlock(&g_mutexWebCMDTbl);
+        
+        if (DOS_ADDR_INVALID(pstListNode))
+        {
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npstListNode is %p.\r\n", pstListNode);
+            cli_out_string(ulIndex, szCmdBuff);
+            goto help;
+        }
+        pszTblRow = (BS_WEB_CMD_INFO_ST *)pstListNode->pHandle;
+        if (DOS_ADDR_INVALID(pszTblRow))
+        {
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npszTblRow is %p.\r\n", pszTblRow);
+            cli_out_string(ulIndex, szCmdBuff);
+            goto help;
+        }
+        
+        /* 获取json格式数据 */
+        pstJsonNode = pszTblRow->pstData;
+        if (DOS_ADDR_INVALID(pstJsonNode))
+        {   
+            DOS_ASSERT(0);/*json格式数据*/
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npstJsonNode is %p.\r\n", pstJsonNode);
+            cli_out_string(ulIndex, szCmdBuff);
+            
+            goto help;
+        }
+
+        pszOperation = json_get_param(pstJsonNode, "dboperate");
+        pszTableName = json_get_param(pstJsonNode, "table");
+        if (DOS_ADDR_INVALID(pszOperation))
+        {
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npszOperation is %p.\r\n", pszOperation);/* goto help; */
+            cli_out_string(ulIndex, szCmdBuff);
+        }
+
+        if (0 == dos_stricmp(pszOperation, "insert"))
+        {
+            ulOperation = BS_CMD_INSERT;
+        }
+        else if (0 == dos_stricmp(pszOperation, "update"))
+        {
+            ulOperation = BS_CMD_UPDATE;
+        }
+        else if (0 == dos_stricmp(pszOperation, "delete"))
+        {
+            ulOperation = BS_CMD_DELETE;
+        }
+        else
+        {
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nUnknown operation \"%s\". ╰_╯\r\n", pszOperation);
+            cli_out_string(ulIndex, szCmdBuff);
+            goto help;
+        }
+
+        if (2 != argc)
+        {
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nOnly need 2 params,but you input %d param(s). ╰_╯\r\n", argc);
+            cli_out_string(ulIndex, szCmdBuff);
+            goto help;
+        }
+
+        if (0 != dos_stricmp(argv[1], "update"))
+        {
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nThe param 1 must be \"%s\",but your input is \"%s\". ╰_╯\r\n", "update", argv[1]);
+            cli_out_string(ulIndex, szCmdBuff);
+            goto help;
+        }
+
+        if (0 == dos_stricmp(pszTableName, "tbl_customer"))
+        {
+            bss_update_customer(ulOperation, pstJsonNode);
+        }
+        else if (0 == dos_stricmp(pszTableName, "tbl_agent"))
+        {
+            bss_update_agent(ulOperation, pstJsonNode);
+        }
+        else if (0 == dos_stricmp(pszTableName, "tbl_billing_rule")
+                    || 0 == dos_stricmp(pszTableName, "tbl_billing_rate"))
+        {
+            bss_update_billing_package(ulOperation, pstJsonNode);
+        }
+        else if (0 == dos_stricmp(pszTableName, "tbl_calltask"))
+        {
+            bss_update_call_task(ulOperation, pstJsonNode);
+        }
+        else
+        {
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nOh,My God! The table name is %s, What do you want to do? ╰_╯\r\n", pszTableName);
+            cli_out_string(ulIndex, szCmdBuff);
+            goto help;
+        }
+
+        return DOS_SUCC; 
+    }
+
 help:
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\nHelp:\r\n    bsd bsc agent|customer|billing|settle|cmd\r\n");
-    cli_out_string(ulIndex, szBuff);
+    if (DOS_ADDR_VALID(pstNode))
+    {
+        dos_dmem_free(pstNode);
+        pstNode = NULL;
+    }
+    if (DOS_ADDR_VALID(pstListNode))
+    {
+        dos_dmem_free(pstListNode);
+        pstListNode = NULL;
+    }
+    if (DOS_ADDR_VALID(pstMsgTag))
+    {
+        dos_dmem_free(pstMsgTag);
+        pstMsgTag = NULL;
+    }
+    if (DOS_ADDR_VALID(pstMsg))
+    {
+        dos_dmem_free(pstMsg);
+        pstMsg = NULL;
+    }
+    if (DOS_ADDR_VALID(pszTblRow))
+    {
+        dos_dmem_free(pszTblRow);
+        pszTblRow = NULL;
+    }
+    if (DOS_ADDR_VALID(pstJsonNode))
+    {
+        json_deinit(&pstJsonNode);
+    }
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nHelp:\r\n    bsd bst update agent|customer|billing|task\r\n");
+    cli_out_string(ulIndex, szCmdBuff);
+    
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n\r\nUpdate test fail. It\'s a pity! =_=\" .\r\n");
+    cli_out_string(ulIndex, szCmdBuff);
+    
     return DOS_FAIL;
 }
-
 
 #endif
 

@@ -642,7 +642,8 @@ VOID bss_send_aaa_rsp2app(DLL_NODE_S *pMsgNode);
 /* bs_debug.c */
 VOID bs_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...);
 S32  bs_command_proc(U32 ulIndex, S32 argc, S8 **argv);
-S32  bs_ctrl_send2dl(U32 ulIndex, S32 argc, S8 **argv);
+S32  bs_update_test(U32 ulIndex, S32 argc, S8 **argv);
+
 
 
 /* bsd_mngt.c */
