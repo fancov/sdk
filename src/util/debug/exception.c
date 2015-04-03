@@ -23,6 +23,9 @@ extern "C"{
 #include <time.h>
 #include <execinfo.h>
 #ifndef ARM_VERSION
+
+extern S32 dos_destroy_pid_file();
+
 /**
  * Function: dos_backtrace(S32 iSig)
  *  Params :
