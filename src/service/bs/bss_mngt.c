@@ -42,6 +42,7 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Start update agent. Opteration:%d", ulOpteration);           
+
     switch (ulOpteration)
     {
         case BS_CMD_UPDATE:
@@ -54,15 +55,9 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 || dos_atoul(pszGroupID2, &ulGroupID2) < 0)
             {        DOS_ASSERT(0);
 
-        goto process_finished;
-    }
-
-    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Update agent. Opteration:%d,Group1:%d, Group2:%d"
-                , ulOpteration, ulGroupID1, ulGroupID2);
-
-    switch (ulOpteration)
-    {
-        case BS_CMD_UPDATE:
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Invalid parameter while process agent update msg. Opteration:%d", ulOpteration);
+                goto process_finished;
+            }
             /*获取where内容*/
             pszWhere = json_get_param(pstJSONObj, "where");
             if (DOS_ADDR_INVALID(pszWhere))
@@ -336,18 +331,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Start update customer. Opteration:%d", ulOpteration);
-    /* 将当前时间转换为时间戳 */
-    pszExpireTime = json_get_param(pstJSONObj, "expiry");
-    if (DOS_ADDR_INVALID(pszExpireTime))
-    {
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Expiry Time fail.");
-    }
-    pszRet = strptime(pszExpireTime, "%Y-%m-%d", &stExpiryTm);
-    if (DOS_ADDR_INVALID(pszRet))
-    {
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "strptime fail.");
-    }
-    ulExpiryTime = mktime(&stExpiryTm);
+    
 
     /* 处理余额变动 */
     pszMonery = json_get_param(pstJSONObj, "money");
@@ -404,10 +388,23 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             BS_CUSTOMER_ST  *pstCustomer = NULL;
             JSON_OBJ_ST     *pstSubJsonWhere = NULL;
             U32             ulHashIndex, ulCustomerType, ulCustomerState, ulCustomID;
-            U32             ulPackageID, ulBanlanceWarning;
-            const S8        *pszCustomType, *pszCustomState, *pszCustomID, *pszCustomName, *pszParent;
-            const S8        *pszBillingPkg, *pszBalanceWarning, *pszBalance, *pszExpiry;
+            U32             ulPackageID, ulBanlanceWarning, ulCreditLine;
+            const S8        *pszCustomType, *pszCustomState, *pszCustomID, *pszCustomName, *pszCreditLine;
+            const S8        *pszBillingPkg, *pszBalanceWarning, *pszExpiry;
             const S8        *pszSubWhere = NULL;
+
+            /*将当前时间转换为时间戳 */
+            pszExpireTime = json_get_param(pstJSONObj, "expiry");
+            if (DOS_ADDR_INVALID(pszExpireTime))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Expiry Time fail.");
+            }
+            pszRet = strptime(pszExpireTime, "%Y-%m-%d", &stExpiryTm);
+            if (DOS_ADDR_INVALID(pszRet))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "strptime fail.");
+            }
+            ulExpiryTime = mktime(&stExpiryTm);
 
             /*获取where字段*/
             pszSubWhere = json_get_param(pstJSONObj, "where");
@@ -464,18 +461,19 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             }
 
             pszCustomName = json_get_param(pstSubJsonWhere, "name");
-            pszParent = json_get_param(pstJSONObj, "parent_id");
+            pszCreditLine = json_get_param(pstJSONObj, "credit_line");
+           
             pszCustomState = json_get_param(pstJSONObj, "status");
             pszCustomType = json_get_param(pstSubJsonWhere, "type");
             pszBillingPkg = json_get_param(pstJSONObj, "billing_package_id");
+            
             pszBalanceWarning = json_get_param(pstJSONObj, "balance_warning");
             pszExpiry = json_get_param(pstJSONObj, "expiry");
-            pszBalance = json_get_param(pstJSONObj, "balance");
-            if (DOS_ADDR_INVALID(pszCustomName) || DOS_ADDR_INVALID(pszCustomID)
-                || DOS_ADDR_INVALID(pszParent) || DOS_ADDR_INVALID(pszCustomState)
-                || DOS_ADDR_INVALID(pszCustomType) || DOS_ADDR_INVALID(pszBillingPkg)
-                || DOS_ADDR_INVALID(pszBalanceWarning) || DOS_ADDR_INVALID(pszExpiry)
-                || DOS_ADDR_INVALID(pszBalance))
+            
+            if (DOS_ADDR_INVALID(pszCustomName) || DOS_ADDR_INVALID(pszCustomState)
+			   || DOS_ADDR_INVALID(pszCustomType) || DOS_ADDR_INVALID(pszBillingPkg)
+               || DOS_ADDR_INVALID(pszBalanceWarning) || DOS_ADDR_INVALID(pszExpiry)
+               || DOS_ADDR_INVALID(pszCreditLine))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Parse json param fail while adding custom.");
 
@@ -487,11 +485,11 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
             /* 参数合法性 */
             if (dos_atoul(pszCustomID, &pstCustomer->ulCustomerID) < 0
-                || dos_atoul(pszParent, &pstCustomer->ulParentID) < 0
                 || dos_atoul(pszCustomType, &ulCustomerType) < 0
                 || dos_atoul(pszCustomState, &ulCustomerState) < 0
                 || dos_atoul(pszBillingPkg, &ulPackageID) < 0
                 || dos_atoul(pszBalanceWarning, &ulBanlanceWarning) < 0
+                || dos_atoul(pszCreditLine, &ulCreditLine) < 0
                 || '\0' == pszCustomName[0])
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Invalid param while adding custom.");
@@ -505,6 +503,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pstCustomer->stAccount.ulBillingPackageID = ulPackageID;
             pstCustomer->stAccount.lBalanceWarning = ulBanlanceWarning;
             pstCustomer->stAccount.ulExpiryTime = (U32)ulExpiryTime;
+            pstCustomer->stAccount.lCreditLine  = (S32)ulCreditLine;
             json_deinit(&pstSubJsonWhere);
             break;
         }
@@ -607,6 +606,19 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             const S8        *pszBillingPackageID = NULL, *pszCreditLine = NULL, *pszBalanceWarning = NULL, *pszBalance = NULL;
             HASH_NODE_S     *pstHashNode = NULL;
             BS_CUSTOMER_ST  *pstCustomer = NULL, *pstCustomParent = NULL;
+
+            /*将当前时间转换为时间戳 */
+            pszExpireTime = json_get_param(pstJSONObj, "expiry");
+            if (DOS_ADDR_INVALID(pszExpireTime))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Expiry Time fail.");
+            }
+            pszRet = strptime(pszExpireTime, "%Y-%m-%d", &stExpiryTm);
+            if (DOS_ADDR_INVALID(pszRet))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "strptime fail.");
+            }
+            ulExpiryTime = mktime(&stExpiryTm);
 
             pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
             if (DOS_ADDR_INVALID(pstHashNode))
@@ -1543,26 +1555,7 @@ VOID bss_data_update()
             dos_dmem_free(pstListNode);
             pstListNode = NULL;
             continue;
-        }
-
-        if (g_ulLastCMDTimestamp >= pszTblRow->ulTimestamp)
-        {
-            DOS_ASSERT(0);
-
-            if (DOS_ADDR_VALID(pszTblRow))
-            {
-                json_deinit(&pszTblRow->pstData);
-                pszTblRow->pstData = NULL;
-            }
-
-            dos_dmem_free(pszTblRow);
-            pszTblRow = NULL;
-
-            dos_dmem_free(pstListNode);
-            pstListNode = NULL;
-            continue;
-        }
-        g_ulLastCMDTimestamp = pszTblRow->ulTimestamp;
+        }  
 
         pstJsonNode = pszTblRow->pstData;
         if (DOS_ADDR_INVALID(pstJsonNode))
@@ -1898,6 +1891,7 @@ VOID *bss_recv_bsd_msg(VOID *arg)
 
         pthread_mutex_unlock(&g_mutexBSD2SMsg);
     }
+    return NULL;
 }
 
 /* 业务层发送消息到应用层 */
@@ -2001,6 +1995,7 @@ VOID *bss_send_msg2app(VOID *arg)
         }
         pthread_mutex_unlock(&g_mutexBSAppMsgSend);
     }
+    return NULL;
 }
 
 /* 业务层处理来自web 的消息 */
@@ -2136,6 +2131,7 @@ VOID *bss_web_msg_proc(VOID *arg)
 
         dos_task_delay(20 * 1000);
     }
+    return NULL;
 }
 
 

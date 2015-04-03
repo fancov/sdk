@@ -1494,154 +1494,117 @@ VOID bs_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...)
 
 S32 bs_update_test(U32 ulIndex, S32 argc, S8 **argv)
 {
-    U32 ulType = BS_TBL_TYPE_TMP_CMD, ulOperation = BS_CMD_BUTT;
+    U32  ulOperation = BS_CMD_BUTT;
     S32 lRet = -1;
     BS_WEB_CMD_INFO_ST *pszTblRow   = NULL;
     const S8  *pszOperation  = NULL, *pszTableName = NULL;
     S8  szCmdBuff[1024] = {0, };
     DLL_NODE_S *pstNode = NULL, *pstListNode = NULL;
-    BS_INTER_MSG_TAG    *pstMsgTag = NULL;
-    BS_INTER_MSG_WALK   *pstMsg = NULL;
     JSON_OBJ_ST         *pstJsonNode = NULL;
 
-    /* 发送遍历请求到数据层 */
-    bss_send_walk_req2dl(ulType);
-    
-    while(1)
+    lRet = bsd_walk_web_cmd_tbl(NULL);
+    if (lRet < 0)
     {
-        if (DLL_Count(&g_stBSS2DMsgList) <= 0)
-        {
-            break;
-        }
-
-        /* 获取消息 */
-        pthread_mutex_lock(&g_mutexBSS2DMsg);
-        pstNode = dll_fetch(&g_stBSS2DMsgList);
-        pthread_mutex_unlock(&g_mutexBSS2DMsg);
-        if (NULL == pstNode)
-        {
-            continue;
-        }
-
-        /*获取消息内容*/
-        pstMsgTag = (BS_INTER_MSG_TAG *)pstNode->pHandle;
-        if (DOS_ADDR_INVALID(pstMsgTag))
-        {
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\npstMsgTag is %p\r\n", pstMsgTag);
-            cli_out_string(ulIndex, szCmdBuff);
-            goto help;
-        }
-
-        /*设置消息类型*/
-        pstMsgTag->ucMsgType = BS_INTER_MSG_WALK_REQ;
-        pstMsg = (BS_INTER_MSG_WALK *)pstNode->pHandle;
-        pstMsg->ulTblType = BS_TBL_TYPE_TMP_CMD;
-
-        lRet = bsd_walk_web_cmd_tbl(pstMsg);
-        if (lRet < 0)
-        {
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nlRet is %d\r\n", lRet);
-            cli_out_string(ulIndex, szCmdBuff);
-            goto help;/*goto help;*/
-        }
-
-        pthread_mutex_lock(&g_mutexWebCMDTbl);
-        pstListNode = dll_fetch(&g_stWebCMDTbl);
-        pthread_mutex_unlock(&g_mutexWebCMDTbl);
-        
-        if (DOS_ADDR_INVALID(pstListNode))
-        {
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npstListNode is %p.\r\n", pstListNode);
-            cli_out_string(ulIndex, szCmdBuff);
-            goto help;
-        }
-        pszTblRow = (BS_WEB_CMD_INFO_ST *)pstListNode->pHandle;
-        if (DOS_ADDR_INVALID(pszTblRow))
-        {
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npszTblRow is %p.\r\n", pszTblRow);
-            cli_out_string(ulIndex, szCmdBuff);
-            goto help;
-        }
-        
-        /* 获取json格式数据 */
-        pstJsonNode = pszTblRow->pstData;
-        if (DOS_ADDR_INVALID(pstJsonNode))
-        {   
-            DOS_ASSERT(0);/*json格式数据*/
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npstJsonNode is %p.\r\n", pstJsonNode);
-            cli_out_string(ulIndex, szCmdBuff);
-            
-            goto help;
-        }
-
-        pszOperation = json_get_param(pstJsonNode, "dboperate");
-        pszTableName = json_get_param(pstJsonNode, "table");
-        if (DOS_ADDR_INVALID(pszOperation))
-        {
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npszOperation is %p.\r\n", pszOperation);/* goto help; */
-            cli_out_string(ulIndex, szCmdBuff);
-        }
-
-        if (0 == dos_stricmp(pszOperation, "insert"))
-        {
-            ulOperation = BS_CMD_INSERT;
-        }
-        else if (0 == dos_stricmp(pszOperation, "update"))
-        {
-            ulOperation = BS_CMD_UPDATE;
-        }
-        else if (0 == dos_stricmp(pszOperation, "delete"))
-        {
-            ulOperation = BS_CMD_DELETE;
-        }
-        else
-        {
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nUnknown operation \"%s\". ╰_╯\r\n", pszOperation);
-            cli_out_string(ulIndex, szCmdBuff);
-            goto help;
-        }
-
-        if (2 != argc)
-        {
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nOnly need 2 params,but you input %d param(s). ╰_╯\r\n", argc);
-            cli_out_string(ulIndex, szCmdBuff);
-            goto help;
-        }
-
-        if (0 != dos_stricmp(argv[1], "update"))
-        {
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nThe param 1 must be \"%s\",but your input is \"%s\". ╰_╯\r\n", "update", argv[1]);
-            cli_out_string(ulIndex, szCmdBuff);
-            goto help;
-        }
-
-        if (0 == dos_stricmp(pszTableName, "tbl_customer"))
-        {
-            bss_update_customer(ulOperation, pstJsonNode);
-        }
-        else if (0 == dos_stricmp(pszTableName, "tbl_agent"))
-        {
-            bss_update_agent(ulOperation, pstJsonNode);
-        }
-        else if (0 == dos_stricmp(pszTableName, "tbl_billing_rule")
-                    || 0 == dos_stricmp(pszTableName, "tbl_billing_rate"))
-        {
-            bss_update_billing_package(ulOperation, pstJsonNode);
-        }
-        else if (0 == dos_stricmp(pszTableName, "tbl_calltask"))
-        {
-            bss_update_call_task(ulOperation, pstJsonNode);
-        }
-        else
-        {
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nOh,My God! The table name is %s, What do you want to do? ╰_╯\r\n", pszTableName);
-            cli_out_string(ulIndex, szCmdBuff);
-            goto help;
-        }
-
-        return DOS_SUCC; 
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nlRet is %d\r\n", lRet);
+        cli_out_string(ulIndex, szCmdBuff);
+        goto help;/*goto help;*/
     }
+
+    pthread_mutex_lock(&g_mutexWebCMDTbl);
+    pstListNode = dll_fetch(&g_stWebCMDTbl);
+    pthread_mutex_unlock(&g_mutexWebCMDTbl);
+
+    if (DOS_ADDR_INVALID(pstListNode))
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npstListNode is %p.\r\n", pstListNode);
+        cli_out_string(ulIndex, szCmdBuff);
+        goto help;
+    }
+    pszTblRow = (BS_WEB_CMD_INFO_ST *)pstListNode->pHandle;
+    if (DOS_ADDR_INVALID(pszTblRow))
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npszTblRow is %p.\r\n", pszTblRow);
+        cli_out_string(ulIndex, szCmdBuff);
+        goto help;
+    }
+
+      /* 获取json格式数据 */
+    pstJsonNode = pszTblRow->pstData;
+    if (DOS_ADDR_INVALID(pstJsonNode))
+    {   
+        DOS_ASSERT(0);/*json格式数据*/
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npstJsonNode is %p.\r\n", pstJsonNode);
+        cli_out_string(ulIndex, szCmdBuff);
+        
+        goto help;
+    }
+
+    pszOperation = json_get_param(pstJsonNode, "dboperate");
+    pszTableName = json_get_param(pstJsonNode, "table");
+    if (DOS_ADDR_INVALID(pszOperation))
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npszOperation is %p.\r\n", pszOperation);/* goto help; */
+        cli_out_string(ulIndex, szCmdBuff);
+    }
+
+    if (0 == dos_stricmp(pszOperation, "insert"))
+    {
+        ulOperation = BS_CMD_INSERT;
+    }
+    else if (0 == dos_stricmp(pszOperation, "update"))
+    {
+        ulOperation = BS_CMD_UPDATE;
+    }
+    else if (0 == dos_stricmp(pszOperation, "delete"))
+    {
+        ulOperation = BS_CMD_DELETE;
+    }
+    else
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nUnknown operation \"%s\". ╰_╯\r\n", pszOperation);
+        cli_out_string(ulIndex, szCmdBuff);
+        goto help;
+    }
+
+    if (2 != argc)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nOnly need 2 params,but you input %d param(s). ╰_╯\r\n", argc);
+        cli_out_string(ulIndex, szCmdBuff);
+        goto help;
+    }
+
+    if (0 != dos_stricmp(argv[1], "update"))
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nThe param 1 must be \"%s\",but your input is \"%s\". ╰_╯\r\n", "update", argv[1]);
+        cli_out_string(ulIndex, szCmdBuff);
+        goto help;
+    }
+
+    if (0 == dos_stricmp(pszTableName, "tbl_customer"))
+    {
+        bss_update_customer(ulOperation, pstJsonNode);
+    }
+    else if (0 == dos_stricmp(pszTableName, "tbl_agent"))
+    {
+        bss_update_agent(ulOperation, pstJsonNode);
+    }
+    else if (0 == dos_stricmp(pszTableName, "tbl_billing_rule")
+                || 0 == dos_stricmp(pszTableName, "tbl_billing_rate"))
+    {
+        bss_update_billing_package(ulOperation, pstJsonNode);
+    }
+    else if (0 == dos_stricmp(pszTableName, "tbl_calltask"))
+    {
+        bss_update_call_task(ulOperation, pstJsonNode);
+    }
+    else
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nOh,My God! The table name is %s, What do you want to do? ╰_╯\r\n", pszTableName);
+        cli_out_string(ulIndex, szCmdBuff);
+        goto help;
+    }
+
+    return DOS_SUCC; 
 
 help:
     if (DOS_ADDR_VALID(pstNode))
@@ -1653,16 +1616,6 @@ help:
     {
         dos_dmem_free(pstListNode);
         pstListNode = NULL;
-    }
-    if (DOS_ADDR_VALID(pstMsgTag))
-    {
-        dos_dmem_free(pstMsgTag);
-        pstMsgTag = NULL;
-    }
-    if (DOS_ADDR_VALID(pstMsg))
-    {
-        dos_dmem_free(pstMsg);
-        pstMsg = NULL;
     }
     if (DOS_ADDR_VALID(pszTblRow))
     {
