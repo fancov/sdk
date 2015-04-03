@@ -108,6 +108,8 @@ VOID dos_signal_handle(S32 lSig)
 
     dos_syslog(LOG_LEVEL_EMERG, "The programm will be exited soon.\r\n");
 
+    dos_destroy_pid_file();
+
     /* ³ÌÐòÍË³ö */
     exit(lSig);
 }

@@ -30,6 +30,7 @@ DLLEXPORT S32 dos_is_digit_str(S8 *str);
 DLLEXPORT S32 dos_atol(const S8 *szStr, S32 *pnVal);
 DLLEXPORT S32 dos_atoul(const S8 *szStr, U32 *pulVal);
 DLLEXPORT S32 dos_atoull(const S8 *szStr, U64 *pulVal);
+DLLEXPORT S32 dos_atoll(const S8 *szStr, S64 *pulVal);
 DLLEXPORT S32 dos_atolx (const S8 *szStr, S32 *pnVal);
 DLLEXPORT S32 dos_atoulx(const S8 *szStr, U32 *pulVal);
 DLLEXPORT S32 dos_ltoa(S32 nVal, S8 *szStr, U32 ulStrLen);

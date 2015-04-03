@@ -178,6 +178,13 @@ enum enBS_ACCOUNT_OPERATE_TYPE_E
     BS_ACCOUNT_OPERATE_TYPE_BUTT    = 255
 };
 
+enum enBS_ACCOUNT_OPERATE_DIR_E
+{
+    BS_ACCOUNT_PAY                  = 1,
+    BS_ACCOUNT_GET,
+
+    BS_ACCOUNT_OPERATE_DIR_BUTT
+};
 
 /* 内部消息类型定义,0为无效值 */
 enum BS_INTER_MSG_TYPE_E

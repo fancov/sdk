@@ -585,10 +585,10 @@ BOOL bs_billing_rule_is_properly(BS_BILLING_RULE_ST  *pstRule)
             ulMatch = (1<<BS_BILLING_ATTR_REGION)|(1<<BS_BILLING_ATTR_TEL_OPERATOR)
                       |(1<<BS_BILLING_ATTR_NUMBER_TYPE)|(1<<BS_BILLING_ATTR_TIME)
                       |(1<<BS_BILLING_ATTR_ACCUMULATE_TIMELEN);
-            if ((1<<pstRule->ucSrcAttrType1)&ulMatch
-                && (1<<pstRule->ucSrcAttrType2)&ulMatch
-                && (1<<pstRule->ucDstAttrType1)&ulMatch
-                && (1<<pstRule->ucDstAttrType2)&ulMatch)
+            if (((0 == pstRule->ucSrcAttrType1) || ((1<<pstRule->ucSrcAttrType1)&ulMatch))
+                && ((0 == pstRule->ucSrcAttrType2) || ((1<<pstRule->ucSrcAttrType2)&ulMatch))
+                && ((0 == pstRule->ucDstAttrType1) || ((1<<pstRule->ucDstAttrType1)&ulMatch))
+                && ((0 == pstRule->ucDstAttrType2) || ((1<<pstRule->ucDstAttrType2)&ulMatch)))
             {
                 bIsProperly = DOS_TRUE;
             }
@@ -598,10 +598,10 @@ BOOL bs_billing_rule_is_properly(BS_BILLING_RULE_ST  *pstRule)
             ulMatch = (1<<BS_BILLING_ATTR_REGION)|(1<<BS_BILLING_ATTR_TEL_OPERATOR)
                       |(1<<BS_BILLING_ATTR_NUMBER_TYPE)|(1<<BS_BILLING_ATTR_TIME)
                       |(1<<BS_BILLING_ATTR_ACCUMULATE_COUNT);
-            if ((1<<pstRule->ucSrcAttrType1)&ulMatch
-                && (1<<pstRule->ucSrcAttrType2)&ulMatch
-                && (1<<pstRule->ucDstAttrType1)&ulMatch
-                && (1<<pstRule->ucDstAttrType2)&ulMatch)
+            if (((0 == pstRule->ucSrcAttrType1) || ((1<<pstRule->ucSrcAttrType1)&ulMatch))
+                && ((0 == pstRule->ucSrcAttrType2) || ((1<<pstRule->ucSrcAttrType2)&ulMatch))
+                && ((0 == pstRule->ucDstAttrType1) || ((1<<pstRule->ucDstAttrType1)&ulMatch))
+                && ((0 == pstRule->ucDstAttrType2) || ((1<<pstRule->ucDstAttrType2)&ulMatch)))
             {
                 bIsProperly = DOS_TRUE;
             }
@@ -618,10 +618,10 @@ BOOL bs_billing_rule_is_properly(BS_BILLING_RULE_ST  *pstRule)
                       |(1<<BS_BILLING_ATTR_RESOURCE_NUMBER)
                       |(1<<BS_BILLING_ATTR_RESOURCE_LINE);
             if (BS_SERV_RENT == pstRule->ucServType
-                && (1<<pstRule->ucSrcAttrType1)&ulMatch
-                && (1<<pstRule->ucSrcAttrType2)&ulMatch
-                && (1<<pstRule->ucDstAttrType1)&ulMatch
-                && (1<<pstRule->ucDstAttrType2)&ulMatch
+                && ((0 == pstRule->ucSrcAttrType1) || ((1<<pstRule->ucSrcAttrType1)&ulMatch))
+                && ((0 == pstRule->ucSrcAttrType2) || ((1<<pstRule->ucSrcAttrType2)&ulMatch))
+                && ((0 == pstRule->ucDstAttrType1) || ((1<<pstRule->ucDstAttrType1)&ulMatch))
+                && ((0 == pstRule->ucDstAttrType2) || ((1<<pstRule->ucDstAttrType2)&ulMatch))
                 && pstRule->ulBillingRate != 0)
             {
                 bIsProperly = DOS_TRUE;
@@ -645,6 +645,11 @@ VOID *bs_get_attr_input(BS_BILLING_MATCH_ST *pstBillingMatch, U8 ucAttrType, BOO
     {
         DOS_ASSERT(0);
         return pAddr;
+    }
+
+    if (U8_BUTT == ucAttrType && 0 == ucAttrType)
+    {
+        return NULL;
     }
 
     switch (ucAttrType)
@@ -1669,7 +1674,7 @@ S32 bs_match_billing_attr(U8 ucAttrType, U32 ulAttrValue, VOID *pInput, U32 *pul
         return lMatchResult;
     }
 
-    if (U8_BUTT == ucAttrType)
+    if (U8_BUTT == ucAttrType || 0 == ucAttrType)
     {
         /* 不限定属性 */
         return DOS_SUCC;
