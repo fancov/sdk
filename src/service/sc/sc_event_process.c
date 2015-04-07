@@ -3302,6 +3302,54 @@ auto_call_proc_error:
 }
 
 /**
+ * 函数: U32 sc_ep_num_verify(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
+ * 功能: 执行语音验证码业务
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送数据的handle
+ *      esl_event_t *pstEvent   : ESL 事件
+ *      SC_SCB_ST *pstSCB       : 业务控制块
+ * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 sc_ep_num_verify(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
+{
+    S8 szCmdParam[128] = { 0 };
+    S32 ulIndex = SC_NUM_VERIFY_TIME;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pstHandle)
+        || DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+
+        sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szCmdParam, sizeof(szCmdParam), "en NAME_PHONETIC %s", pstSCB->szDialNum);
+
+    sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
+    sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
+
+    while (ulIndex-- > 0)
+    {
+        sc_ep_esl_execute("speak", "flite|kal|You Verify Code is: ", pstSCB->szUUID);
+        sc_ep_esl_execute("say", szCmdParam, pstSCB->szUUID);
+        sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
+    }
+
+    sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+
+    return DOS_SUCC;
+}
+
+/**
  * 函数: U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
  * 功能: 处理内部呼叫
  * 参数:
@@ -3525,6 +3573,10 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     {
         /* 自动外呼处理 */
         ulRet = sc_ep_auto_dial_proc(pstHandle, pstEvent, pstSCB);
+    }
+    else if (SC_SERV_NUM_VERIFY == ulMainService)
+    {
+        ulRet = sc_ep_num_verify(pstHandle, pstEvent, pstSCB);
     }
     /* 如果是回呼到坐席的呼叫。就需要连接客户和坐席 */
     else if (SC_SERV_AGENT_CALLBACK == ulMainService

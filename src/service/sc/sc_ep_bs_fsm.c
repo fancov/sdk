@@ -119,6 +119,15 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
                 ulRet = DOS_FAIL;
             }
         }
+        else if (sc_call_check_service(pstSCB, SC_SERV_NUM_VERIFY))
+        {
+            if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_NUM_VERIFY) != DOS_SUCC)
+            {
+                sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
+
+                ulRet = DOS_FAIL;
+            }
+        }
         else if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL)
             && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
         {

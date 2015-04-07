@@ -502,21 +502,32 @@ invalid_params:
 
 U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient)
 {
+    S8 *pszCustomer = NULL;
     S8 *pszCaller   = NULL;
-    S8 *pszNUmber   = NULL;
+    S8 *pszCallee   = NULL;
     S8 *pszPassword = NULL;
+    U32 ulCustomer = U32_BUTT;
 
+    pszCustomer = sc_http_api_get_value(&pstClient->stParamList, "customer");
     pszCaller = sc_http_api_get_value(&pstClient->stParamList, "caller");
-    pszNUmber = sc_http_api_get_value(&pstClient->stParamList, "number");
-    pszPassword = sc_http_api_get_value(&pstClient->stParamList, "password");
-    if (DOS_ADDR_INVALID(pszNUmber)
+    pszCallee = sc_http_api_get_value(&pstClient->stParamList, "number");
+    pszPassword = sc_http_api_get_value(&pstClient->stParamList, "verify_num");
+    if (DOS_ADDR_INVALID(pszCustomer)
+        || DOS_ADDR_INVALID(pszCaller)
+        || DOS_ADDR_INVALID(pszCallee)
         || DOS_ADDR_INVALID(pszPassword))
     {
         DOS_ASSERT(0);
         goto invalid_params;
     }
 
-    sc_dial_make_call_for_verify(pszCaller, pszNUmber, pszPassword);
+    if (dos_atoul(pszCustomer, &ulCustomer) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    sc_dial_make_call_for_verify(ulCustomer, pszCaller, pszCallee, pszPassword);
 
     return DOS_SUCC;
 

@@ -124,6 +124,8 @@ enum BS_SERV_TYPE_E
     BS_SERV_RENT                = 17,       /* 租金业务 */
     BS_SERV_SETTLE              = 18,       /* 结算业务 */
 
+    BS_SERV_VERIFY              = 19,       /* 语音验证码业务 */
+
     BS_SERV_BUTT                = 31
 };
 

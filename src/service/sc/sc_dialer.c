@@ -53,30 +53,76 @@ typedef struct tagSCDialerHandle
 /* dialer模块控制块示例 */
 SC_DIALER_HANDLE_ST  *g_pstDialerHandle = NULL;
 
-U8 sc_dial_make_call_for_verify(S8 *pszCaller, S8 *pszNumber, S8 *pszPassword)
+U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S8 *pszPassword)
 {
     SC_SCB_ST *pstSCB = NULL;
-    S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
+    U32   ulRouteID;
 
-    if (!pszCaller)
+    if (0 == ulCustomer || U32_BUTT == ulCustomer)
     {
-        pszCaller = "8888888888";
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pszCaller)
+        || DOS_ADDR_INVALID(pszNumber)
+        || DOS_ADDR_INVALID(pszPassword))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
     }
 
     pstSCB = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCB))
     {
+        DOS_ASSERT(0);
+
         return DOS_FAIL;
     }
 
+    pstSCB->ulCustomID = ulCustomer;
     dos_strncpy(pstSCB->szCalleeNum, pszNumber, sizeof(pstSCB->szCalleeNum));
     pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
     dos_strncpy(pstSCB->szCallerNum, pszCaller, sizeof(pstSCB->szCallerNum));
     pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
-    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_NUM_VERIFY);
 
+    ulRouteID = sc_ep_search_route(pstSCB);
+    if (U32_BUTT == ulRouteID)
+    {
+        DOS_ASSERT(0);
+        sc_logr_info(SC_ESL, "%s", "Search route fail while make call to patn.");
+        goto proc_fail;
+    }
+
+    /* 认证 */
+    if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        sc_logr_info(SC_ESL, "%s", "Send auth msg FAIL.");
+        goto proc_fail;
+    }
+    else
+    {
+        SC_SCB_SET_STATUS(pstSCB, SC_SCB_AUTH);
+    }
+
+    return DOS_SUCC;
+
+proc_fail:
+    pstSCB->ucTerminationFlag = DOS_TRUE;
+    pstSCB->ucTerminationCause = BS_ERR_SYSTEM;
+
+    SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
+
+    sc_scb_free(pstSCB);
+    pstSCB = NULL;
+
+    return DOS_FAIL;
 }
 
 /* 这个地方有个问题。 g_pstDialerHandle->stHandle 被多个线程使用，会不会出现，一个线程刚刚发送了呼叫命令。名外一个线程收到了响应?*/

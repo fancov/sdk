@@ -105,6 +105,8 @@ extern "C"{
 
 #define SC_INVALID_INDEX               0
 
+#define SC_NUM_VERIFY_TIME             3          /* 语音验证码播放次数 */
+
 #define SC_TASK_AUDIO_PATH             "/var/voice"
 
 #define SC_RECORD_FILE_PATH            "/var/record"
@@ -609,6 +611,7 @@ U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
 U32 sc_ep_search_route(SC_SCB_ST *pstSCB);
 U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 ulLength);
 U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszCaller, S8 *pszCallee);
+U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S8 *pszPassword);
 U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB);
 U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB);
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
