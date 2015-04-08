@@ -178,6 +178,13 @@ enum enBS_ACCOUNT_OPERATE_TYPE_E
     BS_ACCOUNT_OPERATE_TYPE_BUTT    = 255
 };
 
+enum enBS_ACCOUNT_OPERATE_DIR_E
+{
+    BS_ACCOUNT_PAY                  = 1,
+    BS_ACCOUNT_GET,
+
+    BS_ACCOUNT_OPERATE_DIR_BUTT
+};
 
 /* 内部消息类型定义,0为无效值 */
 enum BS_INTER_MSG_TYPE_E
@@ -641,7 +648,10 @@ VOID bss_send_aaa_rsp2app(DLL_NODE_S *pMsgNode);
 
 /* bs_debug.c */
 VOID bs_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...);
-S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv);
+S32  bs_command_proc(U32 ulIndex, S32 argc, S8 **argv);
+S32  bs_update_test(U32 ulIndex, S32 argc, S8 **argv);
+
+
 
 /* bsd_mngt.c */
 VOID *bsd_recv_bss_msg(VOID * arg);

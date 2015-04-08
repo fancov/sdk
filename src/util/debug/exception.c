@@ -23,6 +23,9 @@ extern "C"{
 #include <time.h>
 #include <execinfo.h>
 #ifndef ARM_VERSION
+
+extern S32 dos_destroy_pid_file();
+
 /**
  * Function: dos_backtrace(S32 iSig)
  *  Params :
@@ -79,8 +82,7 @@ VOID dos_backtrace(S32 lSig)
  */
 VOID dos_signal_handle(S32 lSig)
 {
-    S8 szBuff[215] = { 0 };
-    S8 *pszProcessName = NULL;
+
 
     switch (lSig)
     {
@@ -99,14 +101,9 @@ VOID dos_signal_handle(S32 lSig)
       //      return;
     }
 
-    if (dos_get_pid_file_path(szBuff, sizeof(szBuff))
-        && (pszProcessName = dos_get_process_name()))
-    {
-        snprintf(szBuff, sizeof(szBuff), "%s/%s.pid", szBuff, pszProcessName);
-        unlink(szBuff);
-    }
-
     dos_syslog(LOG_LEVEL_EMERG, "The programm will be exited soon.\r\n");
+
+    dos_destroy_pid_file();
 
     /* ³ÌÐòÍË³ö */
     exit(lSig);
@@ -133,7 +130,7 @@ VOID dos_signal_handle_reg()
     sigaction(SIGSTOP, &act, NULL);
     sigaction(SIGHUP, &act, NULL);
 
-    act.sa_flags = SA_SIGINFO;
+    //act.sa_flags = SA_SIGINFO;
     sigaction(SIGINT, &act, NULL);
     sigaction(SIGSEGV, &act, NULL);
     sigaction(SIGPIPE, &act, NULL);

@@ -13,6 +13,8 @@ extern S32 cli_show_timer(U32 ulIndex, S32 argc, S8 **argv);
 #endif
 #if INCLUDE_SERVICE_BS
 extern S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv);
+extern S32 bs_update_test(U32 ulIndex, S32 argc, S8 **argv);
+
 #endif
 
 #if INCLUDE_CC_SC
@@ -24,6 +26,8 @@ COMMAND_ST g_stCommandSet[] = {
     {NULL, "assert",        "Show assert informationa",        dos_assert_print},
 #if INCLUDE_SERVICE_BS
     {NULL, "bs",            "BS command",                      bs_command_proc},
+    /*bs?web????*/ 
+    {NULL, "bst",           "bs test",                         bs_update_test},
 #endif
     {NULL, "debug",         "Set the log level",               cli_set_log_level},
 #if INCLUDE_MEMORY_MNGT
@@ -38,7 +42,6 @@ COMMAND_ST g_stCommandSet[] = {
 #if INCLUDE_CC_SC
     {NULL, "cc",            "Debug CC mod",                    cli_cc_process},
 #endif
-
 };
 
 COMMAND_GROUP_ST g_stCommandRootGrp[] = {

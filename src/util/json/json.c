@@ -74,18 +74,16 @@ JSON_OBJ_ST *json_init(S8 *pszJsonString)
     }
 
     pthread_mutex_init(&pstJSONObj->mutexObj, NULL);
-    pthread_mutex_lock(&pstJSONObj->mutexObj);
     pstJSONObj->jsonObj = json_tokener_parse(pszJsonString);
     if (DOS_ADDR_INVALID(pstJSONObj->jsonObj))
     {
+        pthread_mutex_destroy(&pstJSONObj->mutexObj);
+
         dos_dmem_free(pstJSONObj);
         pstJSONObj = NULL;
-        pthread_mutex_unlock(&pstJSONObj->mutexObj);
-        pthread_mutex_destroy(&pstJSONObj->mutexObj);
 
         return NULL;
     }
-    pthread_mutex_unlock(&pstJSONObj->mutexObj);
 
     return pstJSONObj;
 }
