@@ -123,6 +123,121 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
 }
 
 /**
+ * 函数: BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum)
+ * 功能: 检查pszNum是否被黑名单过滤
+ * 参数:
+ *       U32 ulCustomerID : 客户编号，如果是非法值，将会只对全局黑名单过滤
+ *       S8 *pszNum       : 需要检查的号码
+ * 返回值: 如果pszNum被黑名单过滤，将返回DOS_FALSE，否则返回TRUE
+ */
+BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum)
+{
+    BOOL               blIsMatch = DOS_TRUE;
+    U32                ulHashIndex;
+    U32                ulCurrentIndex;
+    HASH_NODE_S        *pstHashNode = NULL;
+    SC_BLACK_LIST_NODE *pstBlackListNode = NULL;
+
+
+    if (DOS_ADDR_INVALID(pszNum))
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+
+    sc_logr_debug(SC_ESL, "Check num %s is in black list for customer %u", pszNum, ulCustomerID);
+
+    pthread_mutex_lock(&g_mutexHashBlackList);
+    HASH_Scan_Table(g_pstHashBlackList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashBlackList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                DOS_ASSERT(0);
+                break;
+            }
+
+            pstBlackListNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstBlackListNode))
+            {
+                DOS_ASSERT(0);
+                continue;
+            }
+
+            if (SC_TOP_USER_ID != pstBlackListNode->ulCustomerID
+                && ulCustomerID != pstBlackListNode->ulCustomerID)
+            {
+                continue;
+            }
+
+            if (dos_strlen(pszNum) != dos_strlen(pstBlackListNode->szNum))
+            {
+                continue;
+            }
+
+            if (dos_strchr(pstBlackListNode->szNum, '*'))
+            {
+                blIsMatch = DOS_TRUE;
+                ulCurrentIndex = 0;
+                /* 这个地方被比较的号码和正则表达式应该是一样的长度，所以while循环中数组下标可以随意用 */
+                while (ulCurrentIndex < sizeof(pstBlackListNode->szNum)
+                    && '\0' != pstBlackListNode->szNum[ulCurrentIndex]
+                    && '\0' != pszNum[ulCurrentIndex])
+                {
+                    if ('\0' == pstBlackListNode->szNum[ulCurrentIndex]
+                        || '\0' == pszNum[ulCurrentIndex])
+                    {
+                        break;
+                    }
+
+                    if ('*' != pstBlackListNode->szNum[ulCurrentIndex])
+                    {
+                        if (pstBlackListNode->szNum[ulCurrentIndex] != pszNum[ulCurrentIndex])
+                        {
+                            blIsMatch = DOS_FALSE;
+                            break;
+                        }
+                    }
+
+                    ulCurrentIndex++;
+                }
+
+                if (blIsMatch)
+                {
+                    sc_logr_debug(SC_ESL, "Num %s is matched black list item %s, id %u. (Customer:%u)"
+                                , pszNum
+                                , pstBlackListNode->szNum
+                                , pstBlackListNode->ulID
+                                , ulCustomerID);
+
+                    pthread_mutex_unlock(&g_mutexHashBlackList);
+                    return DOS_FALSE;
+                }
+            }
+            else
+            {
+                if (0 == dos_strnicmp(pstBlackListNode->szNum, pszNum, sizeof(pstBlackListNode->szNum)))
+                {
+                    sc_logr_debug(SC_ESL, "Num %s is matched black list item %s, id %u. (Customer:%u)"
+                                , pszNum
+                                , pstBlackListNode->szNum
+                                , pstBlackListNode->ulID
+                                , ulCustomerID);
+
+                    pthread_mutex_unlock(&g_mutexHashBlackList);
+                    return DOS_FALSE;
+                }
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_mutexHashBlackList);
+
+    sc_logr_debug(SC_ESL, "Num %s is not matched any black list. (Customer:%u)", pszNum, ulCustomerID);
+    return DOS_TRUE;
+}
+
+/**
  * 函数: VOID sc_ep_sip_userid_init(SC_USER_ID_NODE_ST *pstUserID)
  * 功能: 初始化pstUserID所指向的User ID描述结构
  * 参数:
@@ -2937,6 +3052,13 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
         SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
 
+        if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pstSCBNew->szCalleeNum))
+        {
+            DOS_ASSERT(0);
+            sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCBNew->szCalleeNum);
+            goto proc_error;
+        }
+
         if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
         {
             sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCBNew->usSCBNo);
@@ -3135,6 +3257,13 @@ U32 sc_ep_outgoing_call_proc(SC_SCB_ST *pstSCB)
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
     SC_SCB_SET_STATUS(pstSCBNew, SC_SCB_INIT);
 
+    if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pstSCBNew->szCalleeNum))
+    {
+        DOS_ASSERT(0);
+        sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCBNew->szCalleeNum);
+        goto proc_fail;
+    }
+
     if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
     {
         sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCBNew->usSCBNo);
@@ -3191,7 +3320,7 @@ proc_fail:
 
     if (DOS_ADDR_VALID(pstSCBNew))
     {
-        dos_dmem_free(pstSCBNew);
+        sc_scb_free(pstSCBNew);
     }
 
     return DOS_FAIL;

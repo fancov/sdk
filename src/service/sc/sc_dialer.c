@@ -103,6 +103,13 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S
         goto proc_fail;
     }
 
+    if (!sc_ep_black_list_check(ulCustomer, pszNumber))
+    {
+        DOS_ASSERT(0);
+        sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pszNumber);
+        goto proc_fail;
+    }
+
     /* хож╓ */
     if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
     {

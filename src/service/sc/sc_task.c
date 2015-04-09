@@ -238,6 +238,13 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
 
+    if (!sc_ep_black_list_check(pstSCB->ulCustomID, pstSCB->szCalleeNum))
+    {
+        DOS_ASSERT(0);
+        sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
+        goto fail;
+    }
+
     if (sc_dialer_add_call(pstSCB) != DOS_SUCC)
     {
         sc_call_trace(pstSCB, "Make call failed.");

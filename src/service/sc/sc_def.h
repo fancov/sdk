@@ -109,7 +109,8 @@ extern "C"{
 #define SC_NUM_VERIFY_TIME_MAX         10         /* 语音验证码播放次数 */
 #define SC_NUM_VERIFY_TIME_MIN         2          /* 语音验证码播放次数 */
 
-
+/* 定义运营商的ID */
+#define SC_TOP_USER_ID                 1
 
 #define SC_TASK_AUDIO_PATH             "/var/voice"
 
@@ -643,6 +644,7 @@ S32 sc_ep_gw_grp_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);
 U32 sc_ep_gw_grp_hash_func(U32 ulGWGrpID);
 U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID);
 U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase);
+BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum);
 
 
 #ifdef __cplusplus
