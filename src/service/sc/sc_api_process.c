@@ -506,12 +506,15 @@ U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient)
     S8 *pszCaller   = NULL;
     S8 *pszCallee   = NULL;
     S8 *pszPassword = NULL;
+    S8 *pszPlaycnt = NULL;
     U32 ulCustomer = U32_BUTT;
+    U32 ulPlayCnt  = 0;
 
     pszCustomer = sc_http_api_get_value(&pstClient->stParamList, "customer");
     pszCaller = sc_http_api_get_value(&pstClient->stParamList, "caller");
-    pszCallee = sc_http_api_get_value(&pstClient->stParamList, "number");
+    pszCallee = sc_http_api_get_value(&pstClient->stParamList, "callee");
     pszPassword = sc_http_api_get_value(&pstClient->stParamList, "verify_num");
+    pszPlaycnt = sc_http_api_get_value(&pstClient->stParamList, "play_cnt");
     if (DOS_ADDR_INVALID(pszCustomer)
         || DOS_ADDR_INVALID(pszCaller)
         || DOS_ADDR_INVALID(pszCallee)
@@ -521,13 +524,21 @@ U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient)
         goto invalid_params;
     }
 
+    if (DOS_ADDR_INVALID(pszPlaycnt)
+        || dos_atoul(pszPlaycnt, &ulPlayCnt) < 0
+        || ulPlayCnt < SC_NUM_VERIFY_TIME_MIN
+        || ulPlayCnt > SC_NUM_VERIFY_TIME_MAX)
+    {
+        ulPlayCnt = SC_NUM_VERIFY_TIME;
+    }
+
     if (dos_atoul(pszCustomer, &ulCustomer) < 0)
     {
         DOS_ASSERT(0);
         goto invalid_params;
     }
 
-    sc_dial_make_call_for_verify(ulCustomer, pszCaller, pszCallee, pszPassword);
+    sc_dial_make_call_for_verify(ulCustomer, pszCaller, pszCallee, pszPassword, ulPlayCnt);
 
     return DOS_SUCC;
 

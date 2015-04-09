@@ -303,6 +303,14 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
                 DOS_ASSERT(0);
                 break;
 
+            case SC_SERV_NUM_VERIFY:
+                if (ulBSSrvIndex < ulBSSrvCnt)
+                {
+                    aucBSSrvList[ulBSSrvIndex] = BS_SERV_VERIFY;
+                    ulBSSrvIndex++;
+                }
+                break;
+
             default:
                 break;
         }

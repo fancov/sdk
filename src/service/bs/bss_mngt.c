@@ -41,7 +41,7 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     BS_AGENT_ST *pstAgentInfo = NULL;
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
-    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Start update agent. Opteration:%d", ulOpteration);           
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Start update agent. Opteration:%d", ulOpteration);
 
     switch (ulOpteration)
     {
@@ -321,7 +321,7 @@ process_finished:
 /* 处理遍历WEB CMD临时表的响应 */
 VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 {
-    S32 lMonery = 0;
+    S64 LMonery = 0;
     U32 ulCustomerID = 0;
     time_t ulExpiryTime = 0;
     S8  *pszRet = NULL;
@@ -331,13 +331,13 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Start update customer. Opteration:%d", ulOpteration);
-    
+
 
     /* 处理余额变动 */
     pszMonery = json_get_param(pstJSONObj, "money");
     if (DOS_ADDR_VALID(pszMonery))
     {
-        if (dos_atol(pszMonery, &lMonery) < 0)
+        if (dos_atoll(pszMonery, &LMonery) < 0)
         {
             goto process_finished;
         }
@@ -373,7 +373,8 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             goto process_finished;
         }
 
-        pstCustomer->stAccount.LBalanceActive += (lMonery * 10000);
+        pstCustomer->stAccount.LBalanceActive += (LMonery * 10000);
+        pstCustomer->stAccount.LBalance += (LMonery * 10000);
 
         goto process_finished;
     }
@@ -462,14 +463,14 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
             pszCustomName = json_get_param(pstSubJsonWhere, "name");
             pszCreditLine = json_get_param(pstJSONObj, "credit_line");
-           
+
             pszCustomState = json_get_param(pstJSONObj, "status");
             pszCustomType = json_get_param(pstSubJsonWhere, "type");
             pszBillingPkg = json_get_param(pstJSONObj, "billing_package_id");
-            
+
             pszBalanceWarning = json_get_param(pstJSONObj, "balance_warning");
             pszExpiry = json_get_param(pstJSONObj, "expiry");
-            
+
             if (DOS_ADDR_INVALID(pszCustomName) || DOS_ADDR_INVALID(pszCustomState)
 			   || DOS_ADDR_INVALID(pszCustomType) || DOS_ADDR_INVALID(pszBillingPkg)
                || DOS_ADDR_INVALID(pszBalanceWarning) || DOS_ADDR_INVALID(pszExpiry)
@@ -831,7 +832,7 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
                 ulEffectTime = mktime(&stEffectTime);
                 ulExpiryTime = mktime(&stExpiryTime);
-                
+
                 pszPkgID = json_get_param(pstJSONObj, "billing_package_id");
                 if (DOS_ADDR_INVALID(pszPkgID))
                 {
@@ -843,7 +844,7 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul failure.");
                     break;
                 }
-                
+
                 pszServType = json_get_param(pstJSONObj, "serv_type");
                 if (DOS_ADDR_INVALID(pszServType))
                 {
@@ -1007,7 +1008,7 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                     json_deinit(&pstJsonWhere);
                     break;
                 }
-                
+
                 HASH_Scan_Table(g_astBillingPackageTbl,ulHashIndex)
                 {
                     HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -1028,7 +1029,7 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                             }
                         }
                     }
-                }          
+                }
             }
             if (DOS_FALSE == bFound)
             {
@@ -1555,7 +1556,7 @@ VOID bss_data_update()
             dos_dmem_free(pstListNode);
             pstListNode = NULL;
             continue;
-        }  
+        }
 
         pstJsonNode = pszTblRow->pstData;
         if (DOS_ADDR_INVALID(pstJsonNode))
@@ -1619,15 +1620,15 @@ VOID bss_data_update()
         {
             bss_update_customer(ulOpteration, pstJsonNode);
         }
-        if (dos_strcmp(pszTblName, "tbl_agent") == 0)
+        else if (dos_strcmp(pszTblName, "tbl_agent") == 0)
         {
             bss_update_agent(ulOpteration, pstJsonNode);
         }
-        if (dos_strcmp(pszTblName, "tbl_billing_package") == 0)
+        else if (dos_strcmp(pszTblName, "tbl_billing_package") == 0)
         {
             bss_update_billing_package(ulOpteration, pstJsonNode);
         }
-        if (dos_strcmp(pszTblName, "tbl_calltask") == 0)
+        else if (dos_strcmp(pszTblName, "tbl_calltask") == 0)
         {
             bss_update_call_task(ulOpteration, pstJsonNode);
         }

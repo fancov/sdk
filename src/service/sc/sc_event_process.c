@@ -3313,7 +3313,15 @@ auto_call_proc_error:
 U32 sc_ep_num_verify(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     S8 szCmdParam[128] = { 0 };
-    S32 ulIndex = SC_NUM_VERIFY_TIME;
+    U32 ulPlayCnt = 0;
+
+    ulPlayCnt = pstSCB->ucCurrentPlyCnt;
+    if (ulPlayCnt < SC_NUM_VERIFY_TIME_MIN
+        || ulPlayCnt > SC_NUM_VERIFY_TIME_MAX)
+    {
+        ulPlayCnt = SC_NUM_VERIFY_TIME;
+    }
+
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -3332,14 +3340,14 @@ U32 sc_ep_num_verify(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *
         return DOS_FAIL;
     }
 
-    dos_snprintf(szCmdParam, sizeof(szCmdParam), "en NAME_PHONETIC %s", pstSCB->szDialNum);
+    dos_snprintf(szCmdParam, sizeof(szCmdParam), "en name_spelled iterated %s", pstSCB->szDialNum);
 
     sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
     sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
 
-    while (ulIndex-- > 0)
+    while (ulPlayCnt-- > 0)
     {
-        sc_ep_esl_execute("speak", "flite|kal|You Verify Code is: ", pstSCB->szUUID);
+        sc_ep_esl_execute("speak", "flite|kal|You verification code is: ", pstSCB->szUUID);
         sc_ep_esl_execute("say", szCmdParam, pstSCB->szUUID);
         sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
     }
@@ -4355,6 +4363,9 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                     }
                 }
 
+                break;
+
+            case SC_SERV_NUM_VERIFY:
                 break;
 
             default:

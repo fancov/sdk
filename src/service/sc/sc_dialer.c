@@ -53,7 +53,7 @@ typedef struct tagSCDialerHandle
 /* dialer模块控制块示例 */
 SC_DIALER_HANDLE_ST  *g_pstDialerHandle = NULL;
 
-U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S8 *pszPassword)
+U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt)
 {
     SC_SCB_ST *pstSCB = NULL;
     U32   ulRouteID;
@@ -87,6 +87,10 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S
     pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
     dos_strncpy(pstSCB->szCallerNum, pszCaller, sizeof(pstSCB->szCallerNum));
     pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+    dos_strncpy(pstSCB->szDialNum, pszPassword, sizeof(pstSCB->szDialNum));
+    pstSCB->szDialNum[sizeof(pstSCB->szDialNum) - 1] = '\0';
+    pstSCB->ucCurrentPlyCnt = ulPlayCnt;
+
     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_NUM_VERIFY);
@@ -245,8 +249,9 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         return DOS_FAIL;
     }
 
-    /* 如果不是auto dialing，就直接bridge就好 */
-    if (!sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+    /* 如果当前控制块有另外一通呼叫，直接bridge就好，否则需要发起新呼叫 */
+    pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+    if (DOS_ADDR_VALID(pstSCBOther))
     {
 #if 0
         dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
@@ -257,7 +262,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , pstSCB->szCallerNum
                         , pstSCB->szCallerNum
                         , szCallString);
-#endif
+
         pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
         if (DOS_ADDR_INVALID(pstSCBOther))
         {
@@ -269,6 +274,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 
             return DOS_FAIL;
         }
+#endif
 
         dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
                         , "{instant_ringback=true,scb_number=%d,other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s}%s"
@@ -280,6 +286,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , szCallString);
 
         sc_ep_esl_execute("bridge", szCMDBuff, pstSCBOther->szUUID);
+        sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
 
         return DOS_SUCC;
     }
