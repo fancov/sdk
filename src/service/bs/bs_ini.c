@@ -250,6 +250,8 @@ S32 bs_init_web_cmd_list(VOID)
 {
     DLL_Init(&g_stWebCMDTbl);
 
+    bss_send_walk_req2dl(BS_TBL_TYPE_TMP_CMD_DEL);
+
     return 0;
 }
 

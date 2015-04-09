@@ -622,6 +622,24 @@ error_proc:
     return -1;
 }
 
+S32 bsd_delete_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg)
+{
+    S8 szQuery[256] = {0, };
+
+    dos_snprintf(szQuery, sizeof(szQuery), "delete from tmp_tbl_modify;");
+    db_transaction_begin(g_pstDBHandle);
+    if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) != DB_ERR_SUCC)
+    {
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_NOTIC, "DB query failed. (%s)", szQuery);
+        db_transaction_rollback(g_pstDBHandle);
+        return -1;
+    }
+    db_transaction_commit(g_pstDBHandle);
+
+    return 0;
+}
+
+
 /* 遍历WEB命令的临时表 */
 S32 bsd_walk_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg)
 {

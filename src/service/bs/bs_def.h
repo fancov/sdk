@@ -679,6 +679,7 @@ S32 bsd_walk_agent_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_walk_settle_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_walk_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg);
+S32 bsd_delete_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg);
 VOID bsd_save_original_cdr(BS_INTER_MSG_CDR *pstMsg);
 VOID bsd_save_voice_cdr(BS_INTER_MSG_CDR *pstMsg);
 VOID bsd_save_recording_cdr(BS_INTER_MSG_CDR *pstMsg);
