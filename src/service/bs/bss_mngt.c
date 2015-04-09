@@ -2556,6 +2556,7 @@ VOID bss_generate_settle_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
             || BS_SERV_AUTO_DIALING == pstSessionLeg->aucServType[i]
             || BS_SERV_PREVIEW_DIALING == pstSessionLeg->aucServType[i]
             || BS_SERV_PREDICTIVE_DIALING == pstSessionLeg->aucServType[i]
+            || BS_SERV_VERIFY == pstSessionLeg->aucServType[i]
             || BS_SERV_SMS_SEND == pstSessionLeg->aucServType[i]
             || BS_SERV_MMS_SEND == pstSessionLeg->aucServType[i])
         {
@@ -3043,6 +3044,7 @@ VOID bss_cdr_factoring(BS_BILL_SESSION_LEG *pstSessionLeg)
             case BS_SERV_CALL_FORWARD:
             case BS_SERV_CALL_TRANSFER:
             case BS_SERV_PICK_UP:
+            case BS_SERV_VERIFY:
                 bss_generate_voice_cdr(pstSessionLeg, ucServType);
                 break;
 
