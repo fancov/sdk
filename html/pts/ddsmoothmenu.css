@@ -8,16 +8,16 @@
 	PADDING-RIGHT: 0px; PADDING-LEFT: 0px;BACKGROUND: #747474;  Z-INDEX: 100; FLOAT: left; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px; LIST-STYLE-TYPE: none; HEIGHT:50PX;
 }
 .ddsmoothmenu UL LI {
-	DISPLAY: block; FLOAT: left; WIDTH: 81px; LINE-HEIGHT: 31px; POSITION: relative; TEXT-ALIGN: center
+	DISPLAY: block; FLOAT: left; WIDTH: 120px; LINE-HEIGHT: 31px; POSITION: relative; TEXT-ALIGN: center
 }
 
 .ddsmoothmenu UL LI :hover{ BACKGROUND: #9c9c9c; }
 
  HTML .ddsmoothmenu UL LI {
-	FLOAT: left; WIDTH: 81px; LINE-HEIGHT: 50px; POSITION: relative; TEXT-ALIGN: center
+	FLOAT: left; WIDTH: 120px; LINE-HEIGHT: 50px; POSITION: relative; TEXT-ALIGN: center
 }
 .ddsmoothmenu UL LI A {
-	DISPLAY: block; FONT-WEIGHT: bold; WIDTH: 81px; TEXT-DECORATION: none
+	DISPLAY: block; FONT-WEIGHT: bold; WIDTH: 120px; TEXT-DECORATION: none
 }
 .ddsmoothmenu UL LI A:link {
 	COLOR: #f4f4f4
@@ -32,10 +32,10 @@
 	LEFT: 0px; VISIBILITY: hidden; POSITION: absolute
 }
 .ddsmoothmenu UL LI UL LI {
-	BACKGROUND: #747474; FLOAT: left; WIDTH: 81px; LINE-HEIGHT: 35px; BORDER-BOTTOM: #9c9c9c 1px solid; MARGIN-BOTTOM: #a1a1ac 1px solid
+	BACKGROUND: #747474; FLOAT: left; WIDTH: 120px; BORDER-BOTTOM: #9c9c9c 1px solid; MARGIN-BOTTOM: #a1a1ac 1px solid
 }
 .ddsmoothmenu UL LI UL LI A {
-	DISPLAY: block; WIDTH: 81px; TEXT-DECORATION: none
+	DISPLAY: block; WIDTH: 120px; TEXT-DECORATION: none
 }
 .ddsmoothmenu UL LI UL LI A:hover {
 	BACKGROUND: #9c9c9c

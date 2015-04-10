@@ -2,7 +2,7 @@
 extern "C" {
 #endif
 
-    /* include sys header files */
+/* include sys header files */
 
 #include <pthread.h>
 #include <sys/types.h>
@@ -18,19 +18,21 @@ extern "C" {
 #include <semaphore.h>
 #include <signal.h>
 
-    /* include the dos header files */
+/* include the dos header files */
 #include <pt/dos_sqlite3.h>
 #include <pt/md5.h>
 #include <dos.h>
 #include <pt/pts.h>
 
-    /* include provate header file */
+/* include provate header file */
 #include "pts_msg.h"
 #include "pts_web.h"
 #include "pts_telnet.h"
 #include "pts_goahead.h"
 #include "../telnetd/telnetd.h"
-    /* 用户数据库 */
+
+
+/* 用户数据库 */
 #define PTS_CREATE_USER_DB "CREATE TABLE pts_user (\
 name  varchar(100) NOT NULL,\
 password  varchar(33) NOT NULL,\
@@ -41,7 +43,9 @@ mailbox  varchar(50),\
 regiestTime TimeStamp NOT NULL DEFAULT (datetime('now','localtime')),\
 PRIMARY KEY (\"name\" ASC))"
 
-    /* PTC数据库 */
+
+
+/* PTC数据库 */
 #define PTS_CREATE_PTC_DB "create table ipcc_alias(\
 id  INTEGER NOT NULL,\
 sn  varchar(20) NOT NULL ON CONFLICT FAIL,\
@@ -71,7 +75,7 @@ heartbeatTime INTEGER,\
 PRIMARY KEY (\"id\" ASC) ON CONFLICT REPLACE,\
 UNIQUE (\"id\" COLLATE RTRIM ASC, \"sn\" ASC))"
 
-    /* 存放正在进行的ping操作的ptc的结果 */
+/* 存放正在进行的ping操作的ptc的结果 */
 #define PTS_CREATE_PING_RESULT_DB "create table ping_result(\
 id  INTEGER NOT NULL,\
 sn  varchar(20) NOT NULL,\
@@ -87,7 +91,7 @@ timer7 integer,\
 PRIMARY KEY (\"id\" ASC) ON CONFLICT REPLACE,\
 UNIQUE (\"id\" COLLATE RTRIM ASC))"
 
-DOS_SQLITE_ST  g_stMySqlite;              /* 数据库sqlite3结构体 */
+DOS_SQLITE_ST  *g_pstMySqlite = NULL;              /* 数据库sqlite3结构体 */
 
 /**
  * 函数：U32 pts_create_stream_id()
@@ -232,7 +236,7 @@ VOID pts_handle_ctrl_msg(PT_NEND_RECV_NODE_ST *pstNeedRevNode)
     {
         /* 退出登陆/掉线 */
         dos_snprintf(szSql, PT_DATA_BUFF_128, "update ipcc_alias set register=0 where sn='%s';", pstNeedRevNode->aucID);
-        lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+        lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
         {
             DOS_ASSERT(0);
         }
@@ -256,7 +260,7 @@ VOID pts_handle_ctrl_msg(PT_NEND_RECV_NODE_ST *pstNeedRevNode)
     pstStreamNode = pt_stream_queue_search(pstStreamList, pstNeedRevNode->ulStreamID);
     if (NULL == pstStreamNode)
     {
-        pt_logr_debug("pts send msg to proxy : not found stream node of id is %d", pstNeedRevNode->ulStreamID);
+        pt_logr_debug("pts send msg to proxy : not found stream : %d", pstNeedRevNode->ulStreamID);
         return;
     }
 
@@ -279,14 +283,19 @@ VOID pts_handle_ctrl_msg(PT_NEND_RECV_NODE_ST *pstNeedRevNode)
             {
             case PT_CTRL_LOGIN_ACK:
                 /* 登陆成功 */
-                dos_snprintf(szSql, PT_DATA_BUFF_128, "select count(*) from ipcc_alias where sn='%s'", pstNeedRevNode->aucID);
-                if (dos_sqlite3_record_is_exist(g_stMySqlite, szSql))  /* 判断是否存在 */
+                dos_snprintf(szSql, PT_DATA_BUFF_128, "select * from ipcc_alias where sn='%s'", pstNeedRevNode->aucID);
+                lResult = dos_sqlite3_record_is_exist(g_pstMySqlite, szSql);
+                if (lResult < 0)
+                {
+                    DOS_ASSERT(0);
+                }
+                else if (lResult)  /* 判断是否存在 */
                 {
                     /* 存在，更新IPCC的注册状态 */
                     pt_logr_debug("pts_send_msg2client : db existed");
                     dos_snprintf(szSql, PT_DATA_BUFF_128, "update ipcc_alias set register=1, name='%s', version='%s' where sn='%s';", pstCtrlData->szPtcName, pstCtrlData->szVersion, pstNeedRevNode->aucID);
 
-                    lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+                    lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
                     if (lResult != DOS_SUCC)
                     {
                         DOS_ASSERT(0);
@@ -299,7 +308,7 @@ VOID pts_handle_ctrl_msg(PT_NEND_RECV_NODE_ST *pstNeedRevNode)
                     dos_memcpy(szID, pstNeedRevNode->aucID, PTC_ID_LEN);
                     szID[PTC_ID_LEN] = '\0';
                     dos_snprintf(szSql, PT_DATA_BUFF_128, "INSERT INTO ipcc_alias (\"id\", \"sn\", \"name\", \"remark\", \"version\", \"register\", \"lastLoginTime\", \"domain\", \"intranetIP\", \"internetIP\", \"intranetPort\", \"internetPort\") VALUES (NULL, '%s', '%s', NULL, '%s', %d, 3123, NULL, NULL, NULL, NULL, NULL);", szID, pstCtrlData->szPtcName, pstCtrlData->szVersion, DOS_TRUE);
-                    lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+                    lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
                     if (lResult != DOS_SUCC)
                     {
                         DOS_ASSERT(0);
@@ -389,7 +398,6 @@ VOID *pts_send_msg2proxy(VOID *arg)
             if (pstNeedRevNode->enDataType == PT_DATA_WEB)
             {
                 /* web */
-                pt_logr_debug("will send to web client");
                 pts_send_msg2web(pstNeedRevNode);
                 dos_dmem_free(pstNeedRevNode);
                 pstNeedRevNode = NULL;
@@ -437,9 +445,16 @@ VOID pts_init_serv_msg()
         exit(-1);
     }
 
-    snprintf(g_stMySqlite.pchDbPath, SQLITE_DB_PATH_LEN, "%s/%s", szServiceRoot, PTS_SQLITE_DB_PATH);
+    g_pstMySqlite = (DOS_SQLITE_ST *)dos_dmem_alloc(sizeof(DOS_SQLITE_ST));
+    if (NULL == g_pstMySqlite)
+    {
+        logr_error("malloc fail");
+        exit(-1);
+    }
 
-    logr_debug("db path : %s", g_stMySqlite.pchDbPath);
+    snprintf(g_pstMySqlite->pchDbPath, SQLITE_DB_PATH_LEN, "%s/%s", szServiceRoot, PTS_SQLITE_DB_PATH);
+
+    logr_debug("db path : %s", g_pstMySqlite->pchDbPath);
     return;
 }
 
@@ -467,31 +482,42 @@ S32 pts_main()
         exit(DOS_FAIL);
     }
 
-    setsockopt(lSocket, SOL_SOCKET, SO_SNDBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
-    setsockopt(lSocket, SOL_SOCKET, SO_RCVBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
+    lRet = setsockopt(lSocket, SOL_SOCKET, SO_SNDBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
+    if (lRet != 0)
+    {
+        logr_error("setsockopt error : %d", lRet);
+        return DOS_FAIL;
+    }
 
-    lRet = dos_sqlite3_create_db(&g_stMySqlite);
+    lRet = setsockopt(lSocket, SOL_SOCKET, SO_RCVBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
+    if (lRet != 0)
+    {
+        logr_error("setsockopt error : %d", lRet);
+        return DOS_FAIL;
+    }
+
+    lRet = dos_sqlite3_create_db(g_pstMySqlite);
     if (lRet < 0)
     {
         return DOS_FAIL;
     }
 
-    lRet = dos_sqlite3_creat_table(g_stMySqlite, PTS_CREATE_PTC_DB);
+    lRet = dos_sqlite3_creat_table(g_pstMySqlite, PTS_CREATE_PTC_DB);
     if (PT_SLITE3_FAIL == lRet)
     {
         return DOS_FAIL;
     }
 
-    lRet = dos_sqlite3_creat_table(g_stMySqlite, PTS_CREATE_PING_RESULT_DB);
+    lRet = dos_sqlite3_creat_table(g_pstMySqlite, PTS_CREATE_PING_RESULT_DB);
     if (PT_SLITE3_FAIL == lRet)
     {
         return DOS_FAIL;
     }
     /* 清空 ping_result 中数据 */
     dos_snprintf(szSql, PT_DATA_BUFF_128, "delete from ping_result;");
-    dos_sqlite3_exec(g_stMySqlite, szSql);
+    dos_sqlite3_exec(g_pstMySqlite, szSql);
 
-    lRet = dos_sqlite3_creat_table(g_stMySqlite, PTS_CREATE_USER_DB);
+    lRet = dos_sqlite3_creat_table(g_pstMySqlite, PTS_CREATE_USER_DB);
     if (PT_SLITE3_FAIL == lRet)
     {
         return DOS_FAIL;
@@ -501,7 +527,7 @@ S32 pts_main()
         /* 创建默认账户 */
         pPassWordMd5 = pts_md5_encrypt("admin", "admin");
         dos_snprintf(szSql, PT_DATA_BUFF_128, "INSERT INTO pts_user (\"name\", \"password\") VALUES ('admin', '%s');", pPassWordMd5);
-        lRet = dos_sqlite3_exec(g_stMySqlite, szSql);
+        lRet = dos_sqlite3_exec(g_pstMySqlite, szSql);
         if (lRet != DOS_SUCC)
         {
             DOS_ASSERT(0);
@@ -512,7 +538,7 @@ S32 pts_main()
     }
 
     dos_snprintf(szSql, PT_DATA_BUFF_128, "update ipcc_alias set register=0 where register=1;");
-    lRet = dos_sqlite3_exec(g_stMySqlite, szSql);
+    lRet = dos_sqlite3_exec(g_pstMySqlite, szSql);
     if (lRet != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -591,11 +617,17 @@ S32 pts_main()
     pthread_join(tid5, NULL);
     telnetd_stop();
 
-    lRet = dos_sqlite3_close(g_stMySqlite);
+    lRet = dos_sqlite3_close(g_pstMySqlite);
     if (lRet)
     {
+        dos_dmem_free(g_pstMySqlite);
+        g_pstMySqlite = NULL;
+
         return DOS_FAIL;
     }
+    dos_dmem_free(g_pstMySqlite);
+    g_pstMySqlite = NULL;
+
     return DOS_SUCC;
 }
 

@@ -206,7 +206,7 @@ typedef struct tagCtrlData
 
 }PT_CTRL_DATA_ST;
 
-/* 发起ptc升级的结构体 */
+/* 发起ptc升级的消息结构体 */
 typedef struct tagPtcUpgrade
 {
     U32         ulPackageLen;
@@ -218,6 +218,13 @@ typedef struct tagPtcUpgrade
     S8          Reserver[3];
 
 }PT_PTC_UPGRADE_ST;
+
+/* ptc升级包，包头的结构体 */
+typedef struct tagPtcUpgradeDes
+{
+    S8  szVision[PT_DATA_BUFF_16];   /* 版本号 */
+
+}PT_PTC_UPGRADE_DES_ST;
 
 
 /* 定时器回调函数的参数 */

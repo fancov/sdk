@@ -138,7 +138,7 @@ void *ptc_recv_msg_from_cmd(void *arg)
                 dos_memzero(cRecvBuf, PT_RECV_DATA_SIZE);
                 lRecvLen = recv(i, cRecvBuf, PT_RECV_DATA_SIZE, 0);
 
-                pt_logr_debug("ptc recv from telnet server len : %d",lRecvLen);
+                pt_logr_info("ptc recv from telnet server len : %d", lRecvLen);
 
                 lStreamID = ptc_cmd_get_streamID_by_socket(i);
                 if (DOS_FAIL == lStreamID)
@@ -169,8 +169,9 @@ void *ptc_recv_msg_from_cmd(void *arg)
                 }
                 else
                 {
-                    #if PTC_DEBUG
+#if 0//PTC_DEBUG
                     S32 j = 0;
+                    printf("-recv------------------------------------\n");
                     for (j=0; j<lRecvLen; j++)
                     {
                         if (j%16 == 0)
@@ -180,7 +181,7 @@ void *ptc_recv_msg_from_cmd(void *arg)
                         printf("%02x ", (U8)(cRecvBuf[j]));
                     }
                     printf("\n-------------------------------------\n");
-                    #endif
+#endif
 
                     ptc_save_msg_into_cache(PT_DATA_CMD, lStreamID, cRecvBuf, lRecvLen);
 
@@ -266,7 +267,22 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
             }
 
             lSendCount = send(lSockfd, stRecvDataTcp.szBuff, stRecvDataTcp.ulLen, 0);
-            pt_logr_debug("ptc send to telnet server, stream : %d, len : %d, lSendCount = %d, buff : %s", pstStreamNode->ulStreamID, stRecvDataTcp.ulLen, lSendCount, stRecvDataTcp.szBuff);
+            pt_logr_info("ptc send to telnet server, stream : %d, len : %d, lSendCount = %d, buff : %c ", pstStreamNode->ulStreamID, stRecvDataTcp.ulLen, lSendCount, stRecvDataTcp.szBuff);
+
+#if 0//PTC_DEBUG
+            S32 j = 0;
+            printf("-send------------------------------------\n");
+            for (j=0; j<stRecvDataTcp.ulLen; j++)
+            {
+                if (j%16 == 0)
+                {
+                    printf("\n");
+                }
+                printf("%02x ", (U8)(stRecvDataTcp.szBuff[j]));
+            }
+            printf("\n-------------------------------------\n");
+#endif
+
         }
         else
         {

@@ -166,7 +166,7 @@ void *ptc_recv_msg_from_web(void *arg)
                 }
                 dos_memzero(cRecvBuf, PT_RECV_DATA_SIZE);
                 lRecvLen = recv(i, cRecvBuf, PT_RECV_DATA_SIZE, 0);
-                pt_logr_debug("ptc recv from web server len : %d\n",lRecvLen);
+                pt_logr_debug("ptc recv from web server len : %d, socket : %d", lRecvLen, i);
 #if PTC_DEBUG
                 U32 k = 0;
                 for (k=0; k<lRecvLen; k++)
@@ -176,13 +176,12 @@ void *ptc_recv_msg_from_web(void *arg)
                       pt_logr_debug("\n");
                     }
                     printf("%02x ", (U8)(cRecvBuf[k]));
-                    printf("ptc recv from web server len : %d\n",lRecvLen);
                 }
 #endif
                 if (lRecvLen == 0)
                 {
                     FD_CLR(i, &ReadFds);
-                    pt_logr_info("recv %d, socket : %d", lRecvLen, i);
+                    printf("recv %d, socket : %d\n", lRecvLen, i);
                     lResult = ptc_get_streamID_by_socket(i);
                     if (DOS_FAIL == lResult)
                     {
@@ -199,7 +198,7 @@ void *ptc_recv_msg_from_web(void *arg)
                 }
                 else if (lRecvLen < 0)
                 {
-                    pt_logr_info("fail to recv, streamID is %d", i);
+                    printf("fail to recv, socket is %d\n", i);
                     ptc_save_msg_into_cache(PT_DATA_WEB, lResult, "", 0);
                     ptc_delete_client(i);
                     close(i);
@@ -213,7 +212,6 @@ void *ptc_recv_msg_from_web(void *arg)
                     }
                     else
                     {
-                        pt_logr_debug("ptc recv msg from web server response, len : %d", lRecvLen);
                         ptc_save_msg_into_cache(PT_DATA_WEB, lResult, cRecvBuf, lRecvLen);
                     }
                 }
@@ -276,8 +274,10 @@ BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
         return DOS_FALSE;
     }
 
-    dos_memcpy(g_pPackageBuff+g_ulReceivedLen, pstRecvDataTcp->szBuff, pstRecvDataTcp->ulLen);
-    g_ulReceivedLen += pstRecvDataTcp->ulLen;
+
+   dos_memcpy(g_pPackageBuff+g_ulReceivedLen, pstRecvDataTcp->szBuff, pstRecvDataTcp->ulLen);
+   g_ulReceivedLen += pstRecvDataTcp->ulLen;
+
     if (pstRecvDataTcp->ulLen < PT_RECV_DATA_SIZE)
     {
         /* 接收完成，验证是否正确 */
@@ -298,7 +298,7 @@ BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
             {
                 lFd = fileno(pFileFd);
                 fchmod(lFd, 0777);
-                fwrite(g_pPackageBuff, g_ulPackageLen, 1, pFileFd);
+                fwrite(g_pPackageBuff+sizeof(PT_PTC_UPGRADE_DES_ST), g_ulPackageLen-sizeof(PT_PTC_UPGRADE_DES_ST), 1, pFileFd);
                 fclose(pFileFd);
                 pFileFd = NULL;
                 /* fork 一个进程，重启ptc */
@@ -406,16 +406,18 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                     ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID);
                     break;
                 }
+                printf("create socket : %d, stream : %d\n", lSockfd, pstStreamNode->ulStreamID);
                 lResult = ptc_add_client(pstStreamNode->ulStreamID, lSockfd);
                 if (lResult != DOS_SUCC)
                 {
                     /* socket 数量已满 */
+                    printf("aocket is full\n");
                     break;
                 }
                 write(g_lPipeWRFd, "s", 1);
             }
             lResult = send(lSockfd, stRecvDataTcp.szBuff, stRecvDataTcp.ulLen, 0);
-            pt_logr_debug("send to web server, len : %d", stRecvDataTcp.ulLen);
+            //pt_logr_debug("send to web server, len : %d", stRecvDataTcp.ulLen);
         }
         else
         {

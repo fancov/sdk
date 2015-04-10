@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
-<title>AMC</title>
+<title>OK-RAS</title>
 <script type="text/javascript" language="javascript" src="jquery.js"></script>
 <SCRIPT src="ddsmoothmenu.js" type=text/javascript></SCRIPT>
 <SCRIPT src="pts_public.js" type=text/javascript></SCRIPT>
@@ -21,23 +21,11 @@ $(document).ready(function() {
 	var oTable = $('#example').DataTable({
 			"info" : true, 
 			"aaSorting": [[1, "asc"]],
+			"stateSave": true,
+			"serverSide": true,
 			"sDom": '<"top"f>rt<"bottom"lp>',
 			"sAjaxSource": "/pts_user_list.html",
-			"oLanguage": {
-				"sLengthMenu": "每页显示 _MENU_条",
-				"sZeroRecords": "没有找到符合条件的数据",
-				"sProcessing": "&lt;p&gt;&lt;img src=’./loading.gif’ /&gt;加载中......&lt;/p&gt;",
-				"sInfo": "当前第 _START_ - _END_ 条　共计 _TOTAL_ 条",
-				"sInfoEmpty": "木有记录",
-				"sInfoFiltered": "(从 _MAX_ 条记录中过滤)",
-				"sSearch": "搜索：",
-				"oPaginate": {
-					"sFirst": "首页",
-					"sPrevious": "前一页",
-					"sNext": "后一页",
-					"sLast": "尾页"
-			        }
-		      },
+			<% dataTablesLang(); %>
 		      "aoColumnDefs": [{"className": "checkBox", "orderable": false, "aTargets": [0]}, {"className": "user_name",  "bSort": false, "aTargets": [1]}, {"className": "edit_pts_name", "aTargets": [2]}, {"className": "edit_fixedTel", "aTargets": [3]}, {"className": "edit_mobile", "aTargets": [4]}, {"className": "edit_mailbox", "aTargets": [5]}],
 
 			 "fnDrawCallback":function(){ $('#example tbody td.edit_pts_name, #example tbody td.edit_fixedTel, #example tbody td.edit_mobile, #example tbody td.edit_mailbox').editable('change_info.html', {
@@ -72,33 +60,8 @@ $(document).ready(function() {
     	});
 });
 
-//setInterval("timeStr=new Date().toLocaleString();timer.innerText=timeStr;", 1000);
-
-function formatSysTime_utf8() {
-    var week_desc = new Array("星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六");
-    var dt = new Date();
-    var year = dt.getFullYear();
-    var month = dt.getMonth() + 1;
-    var date = dt.getDate();
-    var day = dt.getDay();
-    var hours = dt.getHours();
-    var minutes = dt.getMinutes();
-    var seconds = dt.getSeconds();
-    return checkTime(year) + '-' + checkTime(month) + '-' + checkTime(date) + ' ' + week_desc[day] + ' ' +
-            checkTime(hours) + ':' + checkTime(minutes) + ':' + checkTime(seconds);
-}
-
-function updateTime_utf8() {
-    if ($('#system-time').length > 0) {
-        var fmt_time = formatSysTime_utf8();
-        $('#system-time').html(fmt_time);
-    }
-
-    setTimeout('updateTime_utf8()', 1000);
-}
-
-updateTime_utf8();
-
+get_lang_type(<% lang_type(); %>);
+updateTime();
 </script>
 </head>
 
@@ -107,26 +70,26 @@ updateTime_utf8();
 <div class="nav_content">
 	<div class="ddsmoothmenu nav_left" id="smoothmenu1">
 	<UL>
-	  <LI><A href="index.html">远程访问</A></LI>
-	  <LI><A href="#">PTC管理</A> 
+	  <LI><A href="index.html"><% htmlLang(0); %></A></LI>
+	  <LI><A href="#"><% htmlLang(1); %></A> 
 		<UL>
-			<LI><A href="pts_switch.html">PTS切换</A> </LI>
-			<LI><A href="pts_config.html">PTC配置</A> </LI>
-			<LI><A href="pts_upgrades.html">PTC升级</A> </LI>
+			<LI><A href="pts_switch.html"><% htmlLang(2); %></A> </LI>
+			<LI><A href="pts_config.html"><% htmlLang(3); %></A> </LI>
+			<LI><A href="pts_upgrades.html"><% htmlLang(4); %></A> </LI>
 		</UL>
 	  </LI>
-	  <LI><A href="pts_user.html">用户管理</A></LI>
-	  <LI><A href="#">工具</A>
-      <UL>
-        <LI><A href="pts_ping.html">Ping测试</A></LI>
-      </UL>
-    </LI>
+	  <LI><A href="pts_user.html"><% htmlLang(5); %></A></LI>
+	  <LI><A href="#"><% htmlLang(6); %></A>
+	  	<UL>
+	  		<LI><A href="pts_ping.html"><% htmlLang(7); %></A></LI>
+	  	</UL>
+	  </LI>
 	</UL>
 	</div>
 	<div class="nav_right" > 
 		<table style="height:48px; border-spacing: 0px; border-collapse:collapse;">
 			<tr>
-				<td style="width:180px;"><p class="longin_user"> <% curr_user(); %> 您好！</p></td>
+				<td style="width:180px;"><p class="longin_user"> <% curr_user(); %></p></td>
 				<td rowspan="2"><div class="longout"><a href="javascript:;" onclick="exit()"><img  src="../images/logout.png" /></a></div></td>
 			</tr>
 			<tr>
@@ -139,7 +102,7 @@ updateTime_utf8();
 <div class="content_body">
 	<div>
 		<div class="content_title">
-			<p><b>用户管理：</b></p>
+			<p><b><% htmlLang(42); %></b></p>
 		</div>
 		<div>
 			<p class="content_body">
@@ -153,12 +116,12 @@ updateTime_utf8();
 		<thead>
 			<tr>
 				<th width="20px"><input type="checkbox" id="select_all" onclick="select_all()" /></th>        
-		        <th>用户</th>
-		        <th>姓名(点击修改)</th>
-		        <th>固话(点击修改)</th>
-		        <th>手机(点击修改)</th>
-		        <th>邮箱(点击修改)</th>
-		        <th>注册日期</th>
+		        <th><% htmlLang(43); %></th>
+		        <th><% htmlLang(44); %></th>
+		        <th><% htmlLang(45); %></th>
+		        <th><% htmlLang(46); %></th>
+		        <th><% htmlLang(47); %></th>
+		        <th><% htmlLang(48); %></th>
 			</tr>
 		</thead>
 		<tbody>

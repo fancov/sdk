@@ -24,11 +24,14 @@ extern "C"{
 #include "../telnetd/telnetd.h"
 #include "pts_msg.h"
 
-#define PTS_TELNET_HTLP "\rlist    : list [公网ip]\r\n\
-\rlook    : look id\r\n\
-\rconnect : connect id/sn [ip][port]\r\n"
+#define PTS_TELNET_HTLP "Usage:\r\n\
+\r\tlist [PublicIP]\r\n\
+\r\tshow Id\r\n\
+\r\tsearch PATTERN\r\n\
+\r\tconnect Id|Sn|PublicIP [PrivateIP] [Port]\r\n"
 
 PTS_CMD_CLIENT_CB_ST g_astCmdClient[PTS_MAX_CLIENT_NUMBER];
+
 
 U32 pts_get_port_from_string(S8 *szParam, U16 *pusPort)
 {
@@ -191,8 +194,8 @@ S32 pts_send_ptc_list2cmd_callback(VOID *para, S32 n_column, S8 **column_value, 
 {
     U32 ulClientIndex = *(U32 *)para;
 
-    S8 szPtcListNode[PT_DATA_BUFF_128] = {0};
-    snprintf(szPtcListNode, sizeof(szPtcListNode), "\r%-20s%-20s%-20s%-20s\n", column_value[0], column_value[1], column_value[2], column_value[3]);
+    S8 szPtcListNode[PT_DATA_BUFF_256] = {0};
+    dos_snprintf(szPtcListNode, PT_DATA_BUFF_256, "\r%5s%20s%15s%17s%17s\n", column_value[0], column_value[6], column_value[2], column_value[8], column_value[9]);
 
     telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szPtcListNode, dos_strlen(szPtcListNode));
     return DOS_SUCC;
@@ -206,25 +209,100 @@ S32 pts_send_ptc_list2cmd_callback(VOID *para, S32 n_column, S8 **column_value, 
  */
 VOID pts_send_ptc_list2cmd(U32 ulClientIndex)
 {
-    S8  achSql[PTS_SQL_STR_SIZE] = {0};
-    S8 szPtcListHead[PT_DATA_BUFF_128] = {0};
-    snprintf(szPtcListHead, sizeof(szPtcListHead), "%-20s%-20s%-20s%-20s\n", "ID", "SN", "name", "alias");
+    S8 achSql[PTS_SQL_STR_SIZE] = {0};
+    S8 szPtcListHead[PT_DATA_BUFF_256] = {0};
+    S8 szSeparator[80] = {0};
 
+    memset(szSeparator, '-', 80);
+    szSeparator[0] = '\r';
+    szSeparator[78] = '\n';
+    szSeparator[79] = '\0';
+
+    snprintf(szPtcListHead, sizeof(szPtcListHead), "%5s%20s%15s%17s%17s\n", "Id", "LastLoginTime", "Name", "Private IP", "Public IP");
     telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szPtcListHead, dos_strlen(szPtcListHead));
+    telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szSeparator, dos_strlen(szSeparator));
     sprintf(achSql, "select * from ipcc_alias where register = 1");
-    dos_sqlite3_exec_callback(g_stMySqlite, achSql, pts_send_ptc_list2cmd_callback, &ulClientIndex);
+    dos_sqlite3_exec_callback(g_pstMySqlite, achSql, pts_send_ptc_list2cmd_callback, &ulClientIndex);
 }
 
 VOID pts_send_ptc_list2cmd_by_internetIP(U32 ulClientIndex, S8 *szInternetIP)
 {
     S8  achSql[PTS_SQL_STR_SIZE] = {0};
-    S8 szPtcListHead[PT_DATA_BUFF_128] = {0};
-    snprintf(szPtcListHead, sizeof(szPtcListHead), "%-20s%-20s%-20s%-20s\n", "ID", "SN", "name", "alias");
+    S8 szPtcListHead[PT_DATA_BUFF_256] = {0};
+    S8 szSeparator[80] = {0};
 
+    memset(szSeparator, '-', 80);
+    szSeparator[0] = '\r';
+    szSeparator[78] = '\n';
+    szSeparator[79] = '\0';
+
+    snprintf(szPtcListHead, sizeof(szPtcListHead), "%5s%20s%15s%17s%17s\n", "Id", "LastLoginTime", "Name", "Private IP", "Public IP");
     telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szPtcListHead, dos_strlen(szPtcListHead));
+    telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szSeparator, dos_strlen(szSeparator));
+
     sprintf(achSql, "select * from ipcc_alias where register = 1 and internetIP = '%s'", szInternetIP);
-    dos_sqlite3_exec_callback(g_stMySqlite, achSql, pts_send_ptc_list2cmd_callback, &ulClientIndex);
+    dos_sqlite3_exec_callback(g_pstMySqlite, achSql, pts_send_ptc_list2cmd_callback, &ulClientIndex);
 }
+
+VOID ptc_fuzzy_search(U32 ulClientIndex, S8 *szKeyWord)
+{
+    S8 szPtcListFields[10][PT_DATA_BUFF_32] = {"", "lastLoginTime", "name", "remark", "ptcType", "internetIP", "intranetIP", "szMac", "sn", "heartbeatTime"};
+    S8 *szSql = NULL;
+    S8 *szWhere = NULL;
+    S32 i = 0;
+    U32 ulLen = 0;
+    S8 szSeparator[80] = {0};
+    S8 szPtcListHead[PT_DATA_BUFF_256] = {0};
+
+    memset(szSeparator, '-', 80);
+    szSeparator[0] = '\r';
+    szSeparator[78] = '\n';
+    szSeparator[79] = '\0';
+
+    snprintf(szPtcListHead, sizeof(szPtcListHead), "%5s%20s%15s%17s%17s\n", "Id", "LastLoginTime", "Name", "Private IP", "Public IP");
+    telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szPtcListHead, dos_strlen(szPtcListHead));
+    telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szSeparator, dos_strlen(szSeparator));
+
+    szSql = (S8 *)dos_dmem_alloc(PT_DATA_BUFF_1024 * 2);
+    if (NULL == szSql)
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+    szWhere = (S8 *)dos_dmem_alloc(PT_DATA_BUFF_1024);
+    if (NULL == szWhere)
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(szSql);
+        return;
+    }
+
+    dos_memzero(szSql, PT_DATA_BUFF_1024 * 2);
+    dos_memzero(szWhere, PT_DATA_BUFF_1024);
+
+    dos_strcpy(szWhere, "(");
+    ulLen = dos_strlen("(");
+
+    for (i=1; i<10; i++)
+    {
+        ulLen += dos_snprintf(szWhere+ulLen, PT_DATA_BUFF_1024-ulLen, "%s LIKE '%%%s%%' OR ", szPtcListFields[i], szKeyWord);
+        if (ulLen + 1 >= PT_DATA_BUFF_1024)
+        {
+            DOS_ASSERT(0);
+            dos_dmem_free(szSql);
+            dos_dmem_free(szWhere);
+            return;
+        }
+    }
+
+    szWhere[dos_strlen(szWhere) - 3] = '\0';
+    ulLen -= 3;
+    dos_snprintf(szWhere+ulLen, PT_DATA_BUFF_1024-ulLen, ")");
+    dos_snprintf(szSql, PT_DATA_BUFF_1024 * 2, "select * from ipcc_alias where register = 1 and %s", szWhere);
+
+    dos_sqlite3_exec_callback(g_pstMySqlite, szSql, pts_send_ptc_list2cmd_callback, &ulClientIndex);
+}
+
 
 /**
  * 函数：S32 pts_get_password(S8 *szUserName, S8 *pcPassWord, S32 lPasswLen)
@@ -238,7 +316,7 @@ S32 pts_get_password(S8 *szUserName, S8 *pcPassWord, S32 lPasswLen)
 
     dos_memzero(pcPassWord, lPasswLen);
     sprintf(achSql, "select password from pts_user where name='%s';", szUserName);
-    dos_sqlite3_exec_callback(g_stMySqlite, achSql, pts_get_password_callback, (void *)pcPassWord);
+    dos_sqlite3_exec_callback(g_pstMySqlite, achSql, pts_get_password_callback, (void *)pcPassWord);
     if (dos_strlen(pcPassWord) > 0)
     {
         return PTS_GET_PASSW_SUCC;
@@ -256,7 +334,7 @@ S32 pts_get_sn_by_id(S8 *szID, S8 *szSN, S32 lLen)
 
     dos_memzero(szSN, lLen);
     sprintf(achSql, "select sn from ipcc_alias where id=%s and register = 1;", szID);
-    dos_sqlite3_exec_callback(g_stMySqlite, achSql, pts_get_password_callback, (void *)szSN);
+    dos_sqlite3_exec_callback(g_pstMySqlite, achSql, pts_get_password_callback, (void *)szSN);
     if (dos_strlen(szSN) > 0)
     {
         return DOS_SUCC;
@@ -271,15 +349,34 @@ S32 pts_get_sn_by_id(S8 *szID, S8 *szSN, S32 lLen)
 S32 pts_look_ptc_detail_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name)
 {
     U32 ulClientIndex = *(U32 *)para;
+    S8 szSeparator[100] = {0};
 
-    S8 szPtcListNode[PT_DATA_BUFF_128] = {0};
-    snprintf(szPtcListNode, sizeof(szPtcListNode), "%-20s%-20s%-20s%-20s\n", "ID", "SN", "name", "alias");
+    memset(szSeparator, '-', 100);
+    szSeparator[0] = '\r';
+    szSeparator[98] = '\n';
+    szSeparator[99] = '\0';
+
+    S8 szPtcListNode[PT_DATA_BUFF_256] = {0};
+    dos_snprintf(szPtcListNode, PT_DATA_BUFF_256, "%5s%10s%20s%15s%15s%10s%20s\n", "Id", "Register", "LastLoginTime", "Name", "Alias", "Version", "Sn");
     telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szPtcListNode, dos_strlen(szPtcListNode));
-    snprintf(szPtcListNode, sizeof(szPtcListNode), "\r%-20s%-20s%-20s%-20s\n", column_value[0], column_value[1], column_value[2], column_value[3]);
+    telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szSeparator, dos_strlen(szSeparator));
+    if (*column_value[5] == '0')
+    {
+        dos_snprintf(szPtcListNode, PT_DATA_BUFF_256, "\r%5s%10s%20s%15s%15s%10s%20s\n\n", column_value[0], "No", column_value[6], column_value[2], column_value[3], column_value[4], column_value[1]);
+    }
+    else
+    {
+        dos_snprintf(szPtcListNode, PT_DATA_BUFF_256, "\r%5s%10s%20s%15s%15s%10s%20s\n\n", column_value[0], "Yes", column_value[6], column_value[2], column_value[3], column_value[4], column_value[1]);
+    }
+
     telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szPtcListNode, dos_strlen(szPtcListNode));
-    snprintf(szPtcListNode, sizeof(szPtcListNode), "\r%-20s%-20s%-20s%-20s\n", "version", "LastLoginTime", "IntranetIP", "IntranetPort");
+
+    dos_snprintf(szPtcListNode, PT_DATA_BUFF_256, "\r%7s%17s%13s%17s%13s%18s%10s\n", "Type", "Private IP", "Private Port", "Public IP", "Public Port", "Mac", "RTT(ms)");
     telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szPtcListNode, dos_strlen(szPtcListNode));
-    snprintf(szPtcListNode, sizeof(szPtcListNode), "\r%-20s%-20s%-20s%-20s\n", column_value[4], column_value[6], column_value[8], column_value[10]);
+    telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szSeparator, dos_strlen(szSeparator));
+
+    dos_snprintf(szPtcListNode, PT_DATA_BUFF_256, "\r%7s%17s%13s%17s%13s%18s%10s\n\n", column_value[12], column_value[8], column_value[10], column_value[9], column_value[11], column_value[23], column_value[24]);
+
     telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szPtcListNode, dos_strlen(szPtcListNode));
 
     return DOS_SUCC;
@@ -294,7 +391,7 @@ VOID pts_look_ptc_detail_msg(U32 ulClientIndex, S8 *szPtcID)
 
     S8  achSql[PTS_SQL_STR_SIZE] = {0};
     sprintf(achSql, "select * from ipcc_alias where id = %s;", szPtcID);
-    dos_sqlite3_exec_callback(g_stMySqlite, achSql, pts_look_ptc_detail_callback, &ulClientIndex);
+    dos_sqlite3_exec_callback(g_pstMySqlite, achSql, pts_look_ptc_detail_callback, &ulClientIndex);
 }
 
 /**
@@ -323,7 +420,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
     S8 szDestIp[IPV6_SIZE] = {0};
     U16 usDestPort = 0;
     S8 achSql[PTS_SQL_STR_SIZE] = {0};
-    S8 szSN[PT_DATA_BUFF_128] = {0};
+    S8 szSN[PT_DATA_BUFF_64] = {0};
 
     if (!szBuffer || !ulLength)
     {
@@ -379,12 +476,12 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
 
         return PT_TELNET_LIST;
     }
-    else if (dos_strcmp(pszKeyWord[0], "look") == 0)
+    else if (dos_strcmp(pszKeyWord[0], "show") == 0)
     {
         /* 查看设备详情 */
         if (lKeyCnt < 2)
         {
-            snprintf(szErrorMsg, sizeof(szErrorMsg), "look id\r\n");
+            snprintf(szErrorMsg, sizeof(szErrorMsg), "  Usage : show Id\r\n");
             lRet = PT_TELNET_FAIL;
             goto finished;
         }
@@ -392,10 +489,10 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
         {
             if (pts_is_int(pszKeyWord[1]))
             {
-                sprintf(achSql,"select count(*) from ipcc_alias where id=%s", pszKeyWord[1]);
-                if (!dos_sqlite3_record_is_exist(g_stMySqlite, achSql))  /* 判断是否存在 */
+                sprintf(achSql,"select * from ipcc_alias where id=%s", pszKeyWord[1]);
+                if (!dos_sqlite3_record_is_exist(g_pstMySqlite, achSql))  /* 判断是否存在 */
                 {
-                    snprintf(szErrorMsg, sizeof(szErrorMsg), "ptc not exit id(%s)\r\n", pszKeyWord[1]);
+                    snprintf(szErrorMsg, sizeof(szErrorMsg), "  PTC is not exit sn(%s)\r\n", pszKeyWord[1]);
                     lRet = PT_TELNET_FAIL;
                     goto finished;
                 }
@@ -403,10 +500,23 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
             }
             else
             {
-                snprintf(szErrorMsg, sizeof(szErrorMsg), "please input right id\r\n");
+                snprintf(szErrorMsg, sizeof(szErrorMsg), "  Please input right sn\r\n");
                 lRet = PT_TELNET_FAIL;
                 goto finished;
             }
+        }
+    }
+    else if (dos_strcmp(pszKeyWord[0], "search") == 0)
+    {
+        if (lKeyCnt < 2)
+        {
+            snprintf(szErrorMsg, sizeof(szErrorMsg), "  Usage : search PATTERN\r\n");
+            lRet = PT_TELNET_FAIL;
+            goto finished;
+        }
+        else
+        {
+            ptc_fuzzy_search(ulClientIndex, pszKeyWord[1]);
         }
     }
     else if (dos_strcmp(pszKeyWord[0], "connect") == 0)
@@ -414,7 +524,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
         /* 连接ptc */
         if (lKeyCnt < 2)
         {
-            snprintf(szErrorMsg, sizeof(szErrorMsg), "connect id/sn [ip] [port]\r\n");
+            snprintf(szErrorMsg, sizeof(szErrorMsg), "  Usage : connect Id|Sn|PublicIP [PrivateIP] [Port]\r\n");
             lRet = PT_TELNET_FAIL;
             goto finished;
         }
@@ -422,32 +532,75 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
         {
             if (pts_is_ptc_id(pszKeyWord[1]))
             {
-                dos_strcpy(szSN, pszKeyWord[1]);
+                dos_strncpy(szSN, pszKeyWord[1], PT_DATA_BUFF_64);
+
+                sprintf(achSql,"select * from ipcc_alias where sn='%s'", szSN);
+                if (!dos_sqlite3_record_is_exist(g_pstMySqlite, achSql))  /* 判断是否存在 */
+                {
+                    snprintf(szErrorMsg, sizeof(szErrorMsg), "  PTC is not exist\r\n");
+                    lRet = PT_TELNET_FAIL;
+                    goto finished;
+                }
+
+                sprintf(achSql,"select * from ipcc_alias where sn='%s' and register = 1", szSN);
+                if (!dos_sqlite3_record_is_exist(g_pstMySqlite, achSql))  /* 是否登陆 */
+                {
+                    snprintf(szErrorMsg, sizeof(szErrorMsg), " PTC logout\r\n");
+                    lRet = PT_TELNET_FAIL;
+                    goto finished;
+                }
+
             }
             else if (pts_is_int(pszKeyWord[1]))
             {
                 lResult = pts_get_sn_by_id(pszKeyWord[1], szSN, PT_DATA_BUFF_128);
                 if (lResult != DOS_SUCC)
                 {
-                    snprintf(szErrorMsg, sizeof(szErrorMsg), "get sn fail by id(%s)\r\n", pszKeyWord[1]);
+                    snprintf(szErrorMsg, sizeof(szErrorMsg), "  Get sn fail by id(%s)\r\n", pszKeyWord[1]);
                     lRet = PT_TELNET_FAIL;
                     goto finished;
                 }
             }
-            else if(pt_is_or_not_ip(pszKeyWord[1]) && lKeyCnt == 4)
+            else if(pt_is_or_not_ip(pszKeyWord[1]))
             {
-                lResult = pts_find_ptc_by_dest_addr(pszKeyWord[1], pszKeyWord[2], szSN);
+                if (lKeyCnt == 2)
+                {
+                    dos_strncpy(szDestIp, PTS_TEL_SERV_IP_DEFAULT, IPV6_SIZE);
+                }
+                else if (lKeyCnt == 3)
+                {
+                    if (pt_is_or_not_ip(pszKeyWord[2]))
+                    {
+                        dos_strncpy(szDestIp, pszKeyWord[2], IPV6_SIZE);
+                    }
+                    else
+                    {
+                        dos_strncpy(szDestIp, PTS_TEL_SERV_IP_DEFAULT, IPV6_SIZE);
+                    }
+                }
+                else if (lKeyCnt == 4)
+                {
+                    dos_strncpy(szDestIp, pszKeyWord[2], IPV6_SIZE);
+                }
+                else
+                {
+                    snprintf(szErrorMsg, sizeof(szErrorMsg), "  Usage : connect Id|Sn|PublicIP [PrivateIP] [Port]\r\n");
+                    lRet = PT_TELNET_FAIL;
+                    goto finished;
+                }
+
+                lResult = pts_find_ptc_by_dest_addr(pszKeyWord[1], szDestIp, szSN);
                 if (lResult != DOS_SUCC)
                 {
                     /* 没有找到ptc */
-                    snprintf(szErrorMsg, sizeof(szErrorMsg), "not found ptc\r\n");
+                    snprintf(szErrorMsg, sizeof(szErrorMsg), "  Can not found ptc\r\n");
                     lRet = PT_TELNET_FAIL;
                     goto finished;
                 }
             }
             else
             {
-                snprintf(szErrorMsg, sizeof(szErrorMsg), "connect id/sn [ip] [port]\r\n");
+                snprintf(szErrorMsg, sizeof(szErrorMsg), "  Usage : connect Id|Sn|PublicIP [PrivateIP] [Port]\r\n");
                 lRet = PT_TELNET_FAIL;
                 goto finished;
             }
@@ -455,29 +608,6 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
 
         if (pts_is_ptc_id(szSN))
         {
-            /* 验证ptc ID是否是登陆状态 */
-            sprintf(achSql,"select count(*) from ipcc_alias where sn='%s'", szSN);
-            if (!dos_sqlite3_record_is_exist(g_stMySqlite, achSql))  /* 判断是否存在 */
-            {
-                snprintf(szErrorMsg, sizeof(szErrorMsg), "ptc not exit\r\n");
-                lRet = PT_TELNET_FAIL;
-                goto finished;
-            }
-            //sprintf(achSql,"select count(*) from ipcc_alias where sn='%s'", pszKeyWord[1]);
-            //if (!dos_sqlite3_record_is_exist(g_stMySqlite, achSql))  /* 是否支持命令行 */
-            //{
-            //    snprintf(szErrorMsg, sizeof(szErrorMsg), "ptc not support cmd\r\n");
-            //    lRet = -1;
-            //    goto finished;
-            //}
-            sprintf(achSql,"select count(*) from ipcc_alias where sn='%s' and register = 1", szSN);
-            if (!dos_sqlite3_record_is_exist(g_stMySqlite, achSql))  /* 是否登陆 */
-            {
-                snprintf(szErrorMsg, sizeof(szErrorMsg), "ptc not login\r\n");
-                lRet = PT_TELNET_FAIL;
-                goto finished;
-            }
-
             ulStreamID = pts_create_stream_id();
             lResult = pts_cmd_client_list_add(ulClientIndex, ulStreamID, (U8 *)szSN);
             if (lResult < 0)
@@ -505,7 +635,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
                 }
                 else
                 {
-                    snprintf(szErrorMsg, sizeof(szErrorMsg), "connect id/sn [ip] [port]\r\n");
+                    snprintf(szErrorMsg, sizeof(szErrorMsg), "  Usage : connect Id|Sn|PublicIP [PrivateIP] [Port]\r\n");
                     lRet = PT_TELNET_FAIL;
                     goto finished;
                 }
@@ -518,21 +648,21 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
                 }
                 else
                 {
-                    snprintf(szErrorMsg, sizeof(szErrorMsg), "ip format error\r\n");
+                    snprintf(szErrorMsg, sizeof(szErrorMsg), "  IP format error\r\n");
                     lRet = PT_TELNET_FAIL;
                     goto finished;
 
                 }
                 if (pts_get_port_from_string(pszKeyWord[3], &usDestPort) != DOS_SUCC)
                 {
-                    snprintf(szErrorMsg, sizeof(szErrorMsg), "port error\r\n");
+                    snprintf(szErrorMsg, sizeof(szErrorMsg), "  Port error\r\n");
                     lRet = PT_TELNET_FAIL;
                     goto finished;
                 }
             }
             else
             {
-                snprintf(szErrorMsg, sizeof(szErrorMsg), "connect [ip] [port]\r\n");
+                snprintf(szErrorMsg, sizeof(szErrorMsg), "  Usage : connect Id|Sn|PublicIP [PrivateIP] [Port]\r\n");
                 lRet = PT_TELNET_FAIL;
                 goto finished;
             }
@@ -541,7 +671,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
         }
         else
         {
-             snprintf(szErrorMsg, sizeof(szErrorMsg), "please input right ptc ID\r\n");
+             snprintf(szErrorMsg, sizeof(szErrorMsg), "  Please input right ptc ID\r\n");
              lRet = PT_TELNET_FAIL;
         }
     }
@@ -575,7 +705,7 @@ VOID pts_telnet_send_msg2ptc(U32 ulClientIndex, S8 *szBuff, U32 ulLen)
     lResult = pts_cmd_client_search_by_socket(ulClientIndex);
     if (lResult < 0)
     {
-        snprintf(szErrorMsg, sizeof(szErrorMsg), "can not found ptc\r\n");
+        snprintf(szErrorMsg, sizeof(szErrorMsg), "  Can not found ptc\r\n");
         telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szErrorMsg, dos_strlen(szErrorMsg));
         snprintf(szErrorMsg, sizeof(szErrorMsg), "\r >");
         telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szErrorMsg, dos_strlen(szErrorMsg));
@@ -644,7 +774,7 @@ VOID pts_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     pstStreamNode = pt_stream_queue_search(pstStreamList, pstNeedRecvNode->ulStreamID);
     if (NULL == pstStreamNode)
     {
-        pt_logr_debug("pts send msg to proxy : not found stream node of id is %d", pstNeedRecvNode->ulStreamID);
+        pt_logr_debug("pts send msg to proxy : not found stream : %d", pstNeedRecvNode->ulStreamID);
         return;
     }
 
@@ -677,22 +807,6 @@ VOID pts_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
             printf("---------------------\n");
 #endif
 
-#if 0
-            static S32 i = 0;
-            i++;
-            if (i == 30)
-            {
-                S8 szSendBuf[8] = {0};
-                sprintf(szSendBuf, "%c%c%c", IAC, DO, NAOLFD);
-                telnet_send_data(stClientCB.lSocket, MSG_TYPE_CMD_RESPONCE, szSendBuf, 3);
-
-                //sprintf(szSendBuf, "%c%c%c", IAC, WILL, SGA);
-                //telnet_send_data(stClientCB.lSocket, MSG_TYPE_CMD_RESPONCE, szSendBuf, 3);
-                //sprintf(szSendBuf, "%c%c%c", IAC, DO, TTYPE);
-                //telnet_send_data(stClientCB.lSocket, MSG_TYPE_CMD_RESPONCE, szSendBuf, 3);
-            }
-            printf("!!!!!!!!!!!!!!!!i = %d\n\n", i);
-#endif
             telnet_send_data(stClientCB.lSocket, MSG_TYPE_CMD_RESPONCE, pcSendMsg, pstDataTcp[ulArraySub].ulLen);
             pt_logr_debug("pts send msg to cmd serv len is: %d, stream : %d", pstDataTcp[ulArraySub].ulLen, stClientCB.ulStreamID);
         }

@@ -1,5 +1,5 @@
 #ifdef  __cplusplus
-extern "C"{
+extern "C" {
 #endif
 
 /* include sys header files */
@@ -360,6 +360,12 @@ S32 ptc_create_socket_proxy(U8 *alServIp, U16 usServPort)
     S32 lSockfd = 0;
     struct sockaddr_in stServerAddr;
     //socklen_t addrlen = 1;
+    unsigned long ul = 1;
+    struct timeval tm;
+    fd_set set;
+    S32 error = -1;
+    S32 len = sizeof(int);
+    BOOL lRet = DOS_FALSE;
 
     lSockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (lSockfd <= 0)
@@ -374,8 +380,43 @@ S32 ptc_create_socket_proxy(U8 *alServIp, U16 usServPort)
     stServerAddr.sin_port = usServPort;
     stServerAddr.sin_addr.s_addr = *(U32 *)alServIp;
 
+    ioctl(lSockfd, FIONBIO, &ul);  //设置为非阻塞模式
+
     lResult = connect(lSockfd, (struct sockaddr*)(&stServerAddr), sizeof(stServerAddr));
     if (lResult < 0)
+    {
+        tm.tv_sec  = TIME_OUT_TIME;
+        tm.tv_usec = 0;
+        FD_ZERO(&set);
+        FD_SET(lSockfd, &set);
+        if (select(lSockfd+1, NULL, &set, NULL, &tm) > 0)
+        {
+            getsockopt(lSockfd, SOL_SOCKET, SO_ERROR, &error, (socklen_t *)&len);
+            if (error == 0)
+            {
+                lRet = DOS_TRUE;
+            }
+            else
+            {
+                lRet = DOS_FALSE;
+            }
+
+        }
+        else
+        {
+            lRet = DOS_FALSE;
+        }
+
+    }
+    else
+    {
+        lRet = DOS_TRUE;
+    }
+
+    ul = 0;
+    ioctl(lSockfd, FIONBIO, &ul);  //设置为阻塞模式
+
+    if (!lRet)
     {
         perror("socket connect");
         close(lSockfd);
@@ -399,17 +440,17 @@ VOID *ptc_send_msg2proxy(VOID *arg)
 
     while (1)
     {
-        #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
         ptc_recv_pthread_mutex_lock(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_lock(&g_mutex_recv);
-        #endif
+#endif
         sem_post(&g_SemPtcRecv);
-        #if PT_PTC_MUTEX_DEBUG
+#if PT_PTC_MUTEX_DEBUG
         ptc_recv_pthread_cond_wait(__FILE__, __LINE__);
-        #else
+#else
         pthread_cond_wait(&g_cond_recv, &g_mutex_recv);
-        #endif
+#endif
         /* 循环发送g_pstPtsNendRecvNode中的stream */
         pstNendRecvList = g_pstPtcNendRecvNode;
         DOS_LOOP_DETECT_INIT(lLoopMaxCount, DOS_DEFAULT_MAX_LOOP);
@@ -449,74 +490,46 @@ VOID *ptc_send_msg2proxy(VOID *arg)
                 pstNeedRecvNode = NULL;
                 continue;
             }
-         }
+            else
+            {
+                dos_dmem_free(pstNeedRecvNode);
+                pstNeedRecvNode = NULL;
+            }
+        }
         g_pstPtcNendRecvNode = pstNendRecvList;
-        #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
         ptc_recv_pthread_mutex_unlock(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_mutex_recv);
-        #endif
+#endif
         //pthread_mutex_unlock(&g_mutex_recv);
     }
+
+    return NULL;
 }
 
 /**
- * 函数：VOID *ptc_get_from_stdin(VOID *arg)
+ * 函数：S32 ptc_get_ptc_id(U8 *szPtcID, S32 lSockfd)
  * 功能：
- *      1.线程 获得终端输入，进行ptc登陆，登出
+ *      1.获得ptc 的id
  * 参数
  * 返回值：
  */
-// VOID *ptc_get_from_stdin(VOID *arg)
-// {
-//     S32 lSockfd = *(S32*)arg;
-//     S8 acInputStr[PT_DATA_BUFF_512];
-//     S32 lOperateType = 0;
-//     PT_CTRL_DATA_ST stVerRet;
-//     S8 acBuff[sizeof(PT_CTRL_DATA_ST)] = {0};
-
-//     while (1)
-//     {
-//         acInputStr[0] = '\0';
-
-//         if (NULL == fgets(acInputStr, PT_DATA_BUFF_512, stdin))
-//         {
-//             perror("fgets");
-//             continue;
-//         }
-
-//         acInputStr[dos_strlen(acInputStr)-1] = '\0';
-//         lOperateType = atoi(acInputStr);
-
-//         stVerRet.enCtrlType = PT_CTRL_LOGIN_REQ;
-//         dos_memcpy(acBuff, (VOID *)&stVerRet, sizeof(PT_CTRL_DATA_ST));
-
-//         if (lOperateType == 1)
-//         {
-//             /* 登陆 */
-//             ptc_send_login2pts(lSockfd);
-//         }
-//         else
-//         {
-//             /* 登出 */
-//             ptc_send_logout2pts(lSockfd);
-//         }
-//     }
-// }
-
 S32 ptc_get_ptc_id(U8 *szPtcID, S32 lSockfd)
 {
-    FILE *pFileFd = NULL;
+
     S32 lResult = 0;
     S32 lTimeStemp = 0;
-    S8 buf[PT_DATA_BUFF_512];
-    struct ifreq *ifreq;
-    struct ifconf ifconf;
-    U8 *pTr = NULL;
-    struct ifreq stIfreq;
     S32 i = 0;
-    S8 *ip = NULL;
-//    S8 szIDFilePath[PT_DATA_BUFF_32] = {0};
+    FILE *pFileFd = NULL;
+    U8 *pucTr = NULL;
+    S8 *pIp= NULL;
+    S8 buf[PT_DATA_BUFF_512] = {0};
+    struct ifreq *pstIfreq = NULL;
+    struct ifconf stIfconf;
+    struct ifreq stIfreq;
+
+
 
     pFileFd = fopen("./.id", "r");
     if (pFileFd != NULL)
@@ -554,39 +567,39 @@ S32 ptc_get_ptc_id(U8 *szPtcID, S32 lSockfd)
     }
 
     /* 获得mac地址 */
-    ifconf.ifc_len = PT_DATA_BUFF_512;
-    ifconf.ifc_buf = buf;
+    stIfconf.ifc_len = PT_DATA_BUFF_512;
+    stIfconf.ifc_buf = buf;
 
     /* 获取所有接口信息 */
-    if (ioctl(lSockfd, SIOCGIFCONF, &ifconf) < 0)
+    if (ioctl(lSockfd, SIOCGIFCONF, &stIfconf) < 0)
     {
         perror("ioctl");
         return DOS_FAIL;
     }
-    ifreq = (struct ifreq*)buf;
-    i = ifconf.ifc_len/sizeof(struct ifreq);
+    pstIfreq = (struct ifreq*)buf;
+    i = stIfconf.ifc_len/sizeof(struct ifreq);
     for (; i>0; i--)
     {
-        ip = inet_ntoa(((struct sockaddr_in*)&(ifreq->ifr_addr))->sin_addr);
+        pIp = inet_ntoa(((struct sockaddr_in*)&(pstIfreq->ifr_addr))->sin_addr);
 
-        if(dos_strcmp(ip, "127.0.0.1") == 0)
+        if(dos_strcmp(pIp, "127.0.0.1") == 0)
         {
-            ifreq++;
+            pstIfreq++;
             continue;
         }
         break;
     }
 
-    dos_strcpy(stIfreq.ifr_name, ifreq->ifr_name);
+    dos_strcpy(stIfreq.ifr_name, pstIfreq->ifr_name);
     if (ioctl(lSockfd, SIOCGIFHWADDR, &stIfreq) < 0)
     {
         perror("ioctl");
         return DOS_FAIL;
     }
-    //(lTimeStemp&0x0f000000)>>24, (lTimeStemp&0x000f0000)>>16, (lTimeStemp&0x00000f00)>>8, lTimeStemp&0x0000000f
-    pTr = (U8 *)&stIfreq.ifr_ifru.ifru_hwaddr.sa_data[0];
+
+    pucTr = (U8 *)&stIfreq.ifr_ifru.ifru_hwaddr.sa_data[0];
     lTimeStemp = time((time_t *)NULL);
-    snprintf((S8 *)szPtcID, PTC_ID_LEN+1, "%d0%08x%x%x%x%x%x%x", g_enPtcType, lTimeStemp, *pTr & 0x0f, *(pTr+1) & 0x0f, *(pTr+2) & 0x0f, *(pTr+3) & 0x0f, *(pTr+4) & 0x0f, *(pTr+5) & 0x0f);
+    snprintf((S8 *)szPtcID, PTC_ID_LEN+1, "%d0%08x%x%x%x%x%x%x", g_enPtcType, lTimeStemp, *pucTr & 0x0f, *(pucTr+1) & 0x0f, *(pucTr+2) & 0x0f, *(pucTr+3) & 0x0f, *(pucTr+4) & 0x0f, *(pucTr+5) & 0x0f);
 
     fwrite(szPtcID, PTC_ID_LEN, 1, pFileFd);
     fclose(pFileFd);
@@ -603,23 +616,36 @@ S32 ptc_get_ptc_id(U8 *szPtcID, S32 lSockfd)
  */
 S32 ptc_main()
 {
-    S32 lSocket, lRet;
-    U8 achID[PTC_ID_LEN+1] = {0};
+    S32 lSocket = 0;
+    S32 lRet = 0;
+    U8 aucID[PTC_ID_LEN+1] = {0};
     pthread_t tid1, tid2, tid3, tid4, tid5;
 
-    U32 ulSocketSendCache = PTC_SOCKET_CACHE;
+    U32 ulSocketCache = PTC_SOCKET_CACHE;
     lSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if (lSocket < 0)
     {
         perror("create socket error!");
         return DOS_FAIL;
     }
-    lRet = setsockopt(lSocket, SOL_SOCKET, SO_SNDBUF, (char*)&ulSocketSendCache, sizeof(ulSocketSendCache));
+    lRet = setsockopt(lSocket, SOL_SOCKET, SO_SNDBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
+    if (lRet != 0)
+    {
+        logr_error("setsockopt error : %d", lRet);
+        return DOS_FAIL;
+    }
 
-    lRet = ptc_get_ptc_id(achID, lSocket);
+    lRet = setsockopt(lSocket, SOL_SOCKET, SO_RCVBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
+    if (lRet != 0)
+    {
+        logr_error("setsockopt error : %d", lRet);
+        return DOS_FAIL;
+    }
+
+    lRet = ptc_get_ptc_id(aucID, lSocket);
     if (DOS_SUCC == lRet)
     {
-        logr_info("ptc id is : %s", achID);
+        logr_info("ptc id is : %s", aucID);
     }
     else
     {
@@ -627,17 +653,10 @@ S32 ptc_main()
         return DOS_FAIL;
     }
 
-    /*lRet = config_get_ptc_id((S8 *)achID, PTC_ID_LEN+1);
-    if (lRet != DOS_SUCC)
-    {
-        pt_logr_info("get ptc id fail");
-        exit(DOS_FAIL);
-    }
-    */
     ptc_init_serv_msg(lSocket);
     //ptc_get_udp_use_ip();
-    ptc_init_send_cache_queue(lSocket, achID);
-    ptc_init_recv_cache_queue(lSocket, achID);
+    ptc_init_send_cache_queue(lSocket, aucID);
+    ptc_init_recv_cache_queue(lSocket, aucID);
     lRet = pthread_create(&tid1, NULL, ptc_send_msg2pts, (VOID *)&lSocket);
     if (lRet < 0)
     {

@@ -20,7 +20,7 @@ extern "C"{
 #include <pt/md5.h>
 
 PT_PROT_TYPE_EN g_aenDataProtType[PT_DATA_BUTT] = {PT_TCP, PT_TCP, PT_TCP};
-static U32 g_ulPTCurrentLogLevel = LOG_LEVEL_DEBUG;  /* 日志打印级别 */
+static U32 g_ulPTCurrentLogLevel = LOG_LEVEL_NOTIC;  /* 日志打印级别 */
 
 struct
 {
@@ -410,7 +410,7 @@ S32 pt_send_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, S8 *acSendBuf,
     pstDataQueHead[ulArraySub].lSeq = lSeq;
     pstDataQueHead[ulArraySub].ulLen = lDataLen;
     pstDataQueHead[ulArraySub].ExitNotifyFlag = DOS_FALSE;
-    pt_logr_debug("save into send cache data seq : %d,  currSeq : %d, array :%d, stream : %d , data len : %d", lSeq , pstStreamNode->lCurrSeq, ulArraySub, pstStreamNode->ulStreamID, lDataLen);
+    pt_logr_debug("save into send cache seq : %d,  currSeq : %d, array :%d, stream : %d , data len : %d", lSeq , pstStreamNode->lCurrSeq, ulArraySub, pstStreamNode->ulStreamID, lDataLen);
     /* 每64包，发送一次 */
     if (lSeq - pstStreamNode->lConfirmSeq >= PT_CONFIRM_RECV_MSG_SIZE)
     {
@@ -642,7 +642,7 @@ PT_STREAM_CB_ST *pt_stream_queue_search(list_t *pstStreamListHead, U32 ulStreamI
     }
     else
     {
-        pt_logr_debug("search stream node in list : not found!");
+        pt_logr_debug("search stream node in list : not found, stream is %d", ulStreamID);
         return NULL;
     }
 }
@@ -968,7 +968,6 @@ list_t *pt_need_send_node_list_search(list_t *pstHead, U32 ulStreamID)
 
     if (NULL == pstHead)
     {
-        pt_logr_debug("search need send node list : empty list!");
         return NULL;
     }
 
