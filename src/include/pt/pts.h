@@ -15,7 +15,7 @@ extern "C"{
 #define PTS_TEL_SERV_PORT_DEFAULT  23          /* 请求proxy的默认端口 */
 #define PTS_SOCKET_CACHE           1024 * 1024 /* socket 收发缓存大小 */
 
-extern DOS_SQLITE_ST  g_stMySqlite;
+extern DOS_SQLITE_ST *g_pstMySqlite;
 
 S32 pts_main();
 U32 pts_create_stream_id();

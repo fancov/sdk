@@ -46,8 +46,8 @@ extern "C" {
 #define umGetAccessLimit(url) NULL
 #endif
 
-#define CREATE_NEW_USER "<a href=\"create_user.html\"><input type=\"button\" value=\"创建新用户\"/></a>&nbsp;&nbsp;&nbsp;&nbsp;\
-<input type=\"button\" value=\"修改密码\" onclick=\"change_password()\" />&nbsp;&nbsp;&nbsp;&nbsp;<input type=\"button\" value=\"删除用户\" onclick=\"del_user()\" />"
+#define CREATE_NEW_USER "<a href=\"create_user.html\"><input type=\"button\" value=\"%s\"/></a>&nbsp;&nbsp;&nbsp;&nbsp;\
+<input type=\"button\" value=\"%s\" onclick=\"change_password()\" />&nbsp;&nbsp;&nbsp;&nbsp;<input type=\"button\" value=\"%s\" onclick=\"del_user()\" />"
 
 #define  MAX_FILENAME_LEN      20
 
@@ -173,8 +173,66 @@ BOOL                m_bIsUpdatingAll  = DOS_FALSE;   /* 是否正在进行全网 */
 BOOL                m_bIsUpdating     = DOS_FALSE;   /* 是否正在进行部分升级 */
 U16                 crc_tab[256];                    /* Function init_crc_tab() will initialize it */
 U8                  gucIsTableInit  = 0;
-U8                  g_LangType      = 0;             /* 0-en, 1-chn */
+U8                  g_LangType      = 1;             /* 0-en, 1-chn */
 PT_PTC_UPGRADE_ST  *g_pstUpgrade    = NULL;
+
+S8 g_szDataTablesLang[PT_DATA_BUFF_1024] = "\"oLanguage\": {\
+                \"sLengthMenu\": \"每页显示 _MENU_条\",\
+                \"sZeroRecords\": \"没有找到符合条件的数据\",\
+                \"sProcessing\": \"&lt;p&gt;&lt;img src=’./loading.gif’ /&gt;加载中......&lt;/p&gt;\",\
+                \"sInfo\": \"当前第 _START_ - _END_ 条　共计 _TOTAL_ 条\",\
+                \"sInfoEmpty\": \"木有记录\",\
+                \"sInfoFiltered\": \"(从 _MAX_ 条记录中过滤)\",\
+                \"sSearch\": \"搜索：\",\
+                \"oPaginate\": {\
+                    \"sFirst\": \"首页\",\
+                    \"sPrevious\": \"前一页\",\
+                    \"sNext\": \"后一页\",\
+                    \"sLast\": \"尾页\"\
+                    }\
+              },";
+/* 对语言格式的说明
+* 1     : 菜单          0 ~ 8
+* 2     : 远程访问      9 ~ 23
+* 4     : PTS切换      24 ~ 28
+* 5     : PTC配置      29 ~ 35
+* 6     : PTC升级      36 ~ 41
+* 7     : 用户管理     42 ~ 51
+* 9     : 新增用户     52 ~ 70
+* 13    : 修改密码     71 ~ 72
+* 14    : ping         73 ~ 77
+*/
+S8 *g_apLangCN[PTS_LANG_ARRAY_SIZE] = {"远程访问", "PTC管理", "PTS切换", "PTC配置", "PTC升级", "用户管理", "工具", "Ping测试", "您好"
+                        , "自动选择访问：", "目的公网IP：", "目的私网IP：", "目的私网端口：", "手动选择访问："
+                            , "访问", "注册时间", "名称", "备注名(点击修改)", "类型", "公网IP", "私网IP", "MAC地址", "SN", "RTT(ms)"
+                        , "PTS切换：", "PTS域名：", "PTS端口：", "切换", "PTS历史记录"
+                        , "主PTS配置：", "PTS域名：", "PTS端口：", "修改", "备PTS配置：", "主PTS", "备PTS"
+                        , "PTC升级：", "软件包：", "全网升级：", "升级", "结束", "版本号"
+                        , "用户管理：", "用户", "姓名(点击修改)", "固话(点击修改)", "手机(点击修改)", "邮箱(点击修改)", "注册日期"
+                            , "创建新用户", "修改密码", "删除用户"
+                        , "用户名：", "密码：", "确认密码：", "姓名：", "固话：", "手机：", "电子邮箱：", "提交", "取消"
+                            , "请输入用户名", "请输入你的密码", "请再次输入你的密码", "请输入你的姓名"
+                            , "请输入你的固定电话", "请输入你的手机号", "请输入你的邮箱", "长度1~12个字符"
+                            , "密码必须由字母和数字组成", "两次密码需要相同"
+                        , "原密码：", "新密码："
+                        , "PING测试", "PING次数(1-100)：", "开始", "结束", "信息："
+                   };
+S8 *g_apLangEN[PTS_LANG_ARRAY_SIZE] = {"Remote&nbsp;Access", "PTC&nbsp;Manage", "PTS&nbsp;Switch", "PTC&nbsp;Configure", "PTC&nbsp;Upgrade", "User&nbsp;Control", "Tools", "Ping", "Hello"
+                        , "Auto&nbsp;Visit: ", "public&nbsp;IP: ", "Private&nbsp;IP: ", "Private&nbsp;Port: ", "manual&nbsp;Visit: "
+                            , "Visit", "Registration&nbsp;Time", "Name", "Remark(Click to edit)", "Type", "public&nbsp;IP", "Private&nbsp;IP", "MAC&nbsp;Addr", "SN", "RTT(ms)"
+                        , "PTS&nbsp;Switch : ", "PTS&nbsp;Domain : ", "PTS&nbsp;Port : ", "Switch", "PTS&nbsp;History"
+                        , "Major&nbsp;PTS&nbsp;Configure : ", "PTS&nbsp;Domain : ", "PTS&nbsp;Port : ", "Change", "Minor&nbsp;PTS&nbsp;Configure : ", "Major&nbsp;PTS", "Minor&nbsp;PTS"
+                        , "PTC&nbsp;Upgrade : ", "Package : ", "Upgrade&nbsp;All", "Upgrade", "End", "Version"
+                        , "User&nbsp;Control : ", "User", "Name(Click to edit)", "Phone(Click to edit)", "Cellphone(Click to edit)", "Mailbox(Click to edit)", "Record&nbsp;Date"
+                            , "Create&nbsp;User", "Change&nbsp;Password", "Delete&nbsp;User"
+                        , "UserName : ", "PassWord : ", "Confirm&nbsp;Password", "Name : ", "Phone : ", "Cellphone : ", "Email : ", "Submit", "Cancel"
+                            , "Please enter user name", "Please enter your password", "Please enter your password again", "Please enter your name"
+                            , "Please enter your landline", "Please enter your mobile phone number", "Please enter your email", "The length of the 1 ~ 12 char"
+                            , "Must consist of letters and Numbers", "Two password needs to be the same"
+                        , "Old&nbsp;Password : ", "New&nbsp;Password : "
+                        , "PING", "PING&nbsp;Count(1-100)：", "Start", "End", "Message: "
+                    };
+
 /****************************** Forward Declarations **************************/
 
 static int  initWebs(int demo);
@@ -193,8 +251,6 @@ int pts_set_remark(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                    char_t *url, char_t *path, char_t* query);
 int pts_change_user_info(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                          char_t *url, char_t *path, char_t* query);
-int pts_create_new_user(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
-                        char_t *url, char_t *path, char_t* query);
 int pts_notify_ptc_switch_pts(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                               char_t *url, char_t *path, char_t* query);
 int change_domain(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
@@ -226,6 +282,9 @@ static int pts_user_list(int eid, webs_t wp, int argc, char_t **argv);
 static int curr_user(int eid, webs_t wp, int argc, char_t **argv);
 static int ptc_upgrade_button(int eid, webs_t wp, int argc, char_t **argv);
 static int all_ptc_upgrade_button(int eid, webs_t wp, int argc, char_t **argv);
+static int pts_data_tables_lang(int eid, webs_t wp, int argc, char_t **argv);
+static int pts_html_lang(int eid, webs_t wp, int argc, char_t **argv);
+static int pts_get_lang_type(int eid, webs_t wp, int argc, char_t **argv);
 S32 pts_get_password_from_sqlite_db(char_t *userid, S8 *szWebsPassword);
 S32 pts_get_local_ip(S8 *szLocalIp);
 S32 pts_send_ptc_list2web_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name);
@@ -436,7 +495,6 @@ static int initWebs(int demo)
     websUrlHandlerDefine(T("/editable_ajax.html"), NULL, 0, pts_set_remark, 0);              /* 设置备注名 */
     websUrlHandlerDefine(T("/goform/HttpSoftUploadSelected"), NULL, 0, pts_upgrade_selected_ptc, 0); /* 升级选中的ptc */
     websUrlHandlerDefine(T("/goform/HttpSoftUploadAll"), NULL, 0, pts_upgrade_all_ptc, 0);   /* 全网升级 */
-    websUrlHandlerDefine(T("/cgi-bin/ptsCreateNewUser"), NULL, 0, pts_create_new_user, 0);   /* 创建新用户 */
     websUrlHandlerDefine(T("/cgi-bin/del_users"), NULL, 0, pts_del_users, 0);                /* 删除用户 */
     websUrlHandlerDefine(T("/change_info.html"), NULL, 0, pts_change_user_info, 0);          /* 修改客户的信息 */
     websUrlHandlerDefine(T("/ipcc_internetIP"), NULL, 0, pts_recv_from_ipcc_req, 0);         /* IPCC访问接口 */
@@ -448,19 +506,24 @@ static int initWebs(int demo)
      *  Now define two test procedures. Replace these with your application
      *  relevant ASP script procedures and form functions.
      */
-    websAspDefine(T("ptcList"), pts_get_ptc_list_from_db);                   /* 手动选择列表 */
-    websAspDefine(T("ptcListSwitch"), pts_get_ptc_list_from_db_switch);      /* 切换功能的列表 */
-    websAspDefine(T("ptcListConfig"), pts_get_ptc_list_from_db_config);      /* 配置ptc的ptc列表 */
-    websAspDefine(T("ptcListUpgrades"), pts_get_ptc_list_from_db_upgrades);  /* 升级的ptc列表 */
-    websAspDefine(T("createUser"), pts_create_user_button);                  /* admin用户 创建、删除、修改密码功能 */
-    websAspDefine(T("ptcUserList"), pts_user_list);                          /* 用户列表 */
-    websAspDefine(T("curr_user"), curr_user);                                /* 用户列表 */
-    websAspDefine(T("ptc_upgrade_button"), ptc_upgrade_button);              /* ptc升级按钮 */
-    websAspDefine(T("all_ptc_upgrade_button"), all_ptc_upgrade_button);      /* ptc全网升级按钮 */
+    websAspDefine(T("ptcList"), pts_get_ptc_list_from_db);                  /* 手动选择列表 */
+    websAspDefine(T("ptcListSwitch"), pts_get_ptc_list_from_db_switch);     /* 切换功能的列表 */
+    websAspDefine(T("ptcListConfig"), pts_get_ptc_list_from_db_config);     /* 配置ptc的ptc列表 */
+    websAspDefine(T("ptcListUpgrades"), pts_get_ptc_list_from_db_upgrades); /* 升级的ptc列表 */
+    websAspDefine(T("ptcUserList"), pts_user_list);                         /* 用户列表 */
+    websAspDefine(T("curr_user"), curr_user);                               /* 当前登陆的用户 */
 
-    websFormDefine(T("create_user"), pts_create_user);      /* 创建用户 */
-    websFormDefine(T("change_pwd"), pts_change_password);   /* 修改密码 */
-    websFormDefine(T("EiaPingGoStart"), pts_ping);          /* ping */
+    websAspDefine(T("createUser"), pts_create_user_button);                 /* admin用户 创建、删除、修改密码功能 */
+    websAspDefine(T("ptc_upgrade_button"), ptc_upgrade_button);             /* ptc升级按钮 */
+    websAspDefine(T("all_ptc_upgrade_button"), all_ptc_upgrade_button);     /* ptc全网升级按钮 */
+
+    websAspDefine(T("dataTablesLang"), pts_data_tables_lang);               /* 设置datatable的语言 */
+    websAspDefine(T("htmlLang"), pts_html_lang);                            /* 设置前台页面的语言 */
+    websAspDefine(T("lang_type"), pts_get_lang_type);                       /* 获得语言的类型 */
+
+    websFormDefine(T("create_user"), pts_create_user);                      /* 创建用户 */
+    websFormDefine(T("change_pwd"), pts_change_password);                   /* 修改密码 */
+    websFormDefine(T("EiaPingGoStart"), pts_ping);                          /* ping */
 
     /*
      *  Create the Form handlers for the User Management pages
@@ -571,55 +634,6 @@ void redirect_web_page(webs_t wp, char_t *page)
     szBuf[sizeof(szBuf)-1] = '\0';
 
     websRedirect(wp, szBuf);
-}
-
-int pts_create_new_user(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
-                        char_t *url, char_t *path, char_t* query)
-{
-    S32 lResult = 0;
-    S8  szUserName[PT_DATA_BUFF_64] = {0};
-    S8  szPassWord[PT_DATA_BUFF_64] = {0};
-    S8  pcListBuf[PT_DATA_BUFF_512] = {0};
-    S8  szSql[PT_DATA_BUFF_128] = {0};
-    S8 *pPassWordMd5 = NULL;
-
-    lResult = sscanf(url,"%*[^=]=%[^&]%*[^=]=%s", szUserName, szPassWord);
-    if (lResult < 0)
-    {
-        perror("sscanf");
-        dos_strcpy(pcListBuf, "0");
-    }
-    else
-    {
-        printf("szUserName = %s, szPassWord = %s\n", szUserName, szPassWord);
-        /* 判断username是否已存在 */
-        dos_snprintf(szSql, PT_DATA_BUFF_128, "select count(*) from pts_user where name='%s'", szUserName);
-        if (dos_sqlite3_record_is_exist(g_stMySqlite, szSql))  /* 判断是否存在 */
-        {
-            /* 已存在 */
-            sprintf(pcListBuf, "%s existed", szUserName);
-        }
-        else
-        {
-            pPassWordMd5 = pts_md5_encrypt(szUserName, szPassWord);
-            dos_snprintf(szSql, PT_DATA_BUFF_128, "INSERT INTO pts_user (\"name\", \"password\") VALUES ('%s', '%s');", szUserName, pPassWordMd5);
-            lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
-            if (lResult != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-                sprintf(pcListBuf, "insert db fail");
-            }
-            else
-            {
-                sprintf(pcListBuf, "succ");
-            }
-            pts_goAhead_free(pPassWordMd5);
-            pPassWordMd5 = NULL;
-        }
-    }
-
-    websError(wp, 200, T("%s"), pcListBuf);
-    return 1;
 }
 
 int change_domain(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
@@ -766,7 +780,7 @@ int pts_del_users(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
     for (i=0; i<ulUserCount; i++)
     {
         dos_snprintf(szSql, PT_DATA_BUFF_128, "delete from pts_user where name='%s'", pszUserName[i]);
-        lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+        lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
         if (lResult != DOS_SUCC)
         {
             DOS_ASSERT(0);
@@ -1049,7 +1063,7 @@ void *websSendFileToPtc(void *arg)
     S8 szPtcId[PTC_ID_LEN + 1] = {0};
     S8 szPtcVersion[PT_DATA_BUFF_16] = {0};        /* 版本号 */
 
-    /* 获取id */
+    /* 获取需要升级的ptc的sn */
     pPtcIDStart = dos_strstr(url, "id=") + dos_strlen("id=");
     pSelectPtcID = strtok(pPtcIDStart, "!");
     while (pSelectPtcID)
@@ -1082,7 +1096,7 @@ void *websSendFileToPtc(void *arg)
     for (i=0; i<lPtcCount; i++)
     {
         fseek(pFileFd, 0L, SEEK_SET);
-        logr_debug("send file to ptc : %s", pszPtcIds[i]);
+        printf("!!!!!!send file to ptc : %s\n", pszPtcIds[i]);
         pts_save_msg_into_cache((U8*)pszPtcIds[i], PT_DATA_WEB, PT_CTRL_PTC_PACKAGE, (S8 *)pstUpgrade, sizeof(PT_PTC_UPGRADE_ST), NULL, 0);
         do
         {
@@ -1183,7 +1197,7 @@ void websSendFileToAllPtc(U64 param)
     /* 查询数据库, 将ptc都保存到内存中 */
     dos_memzero(pszPtcIds, PTS_UPGRADE_PTC_COUNT*(PTC_ID_LEN+1));
     dos_strncpy(achSql, "select * from ipcc_alias where version!='%s' and ptcType!='PC' and register=1 order by lastLoginTime desc;", PTS_SQL_STR_SIZE);
-    lResult = dos_sqlite3_exec_callback(g_stMySqlite, achSql, pts_upgrade_ptcs, (VOID *)&pstListHead);
+    lResult = dos_sqlite3_exec_callback(g_pstMySqlite, achSql, pts_upgrade_ptcs, (VOID *)&pstListHead);
     if (lResult != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -1275,10 +1289,12 @@ int pts_upgrade_selected_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int a
 {
     PT_PTC_UPGRADE_ST *pstUpgrade = NULL;
     PTS_PTC_UPGRADE_PARAM_ST stPthreadParam;
-    S8 szFileName[PT_DATA_BUFF_128] = {0};
-    S8 *ptr = NULL;
+    S8 aucBuff[sizeof(PT_PTC_UPGRADE_DES_ST)] = {0};
     S32 lResult = 0;
     pthread_t tid;
+    FILE *pFileFd = NULL;
+    U32 ulReadCount = 0;
+    PT_PTC_UPGRADE_DES_ST *pstUpgradeDes = NULL;
 
     a_assert(websValid(wp));
     a_assert(url && *url);
@@ -1293,27 +1309,7 @@ int pts_upgrade_selected_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int a
 
         return 1;
     }
-    /* 获取文件名 */
-    ptr = dos_strstr(query, "filename=");
-    if (ptr != NULL)
-    {
-        lResult = sscanf(ptr, "%*[^\"]\"%[^\"]", szFileName);
-        if (lResult != 1)
-        {
-            goto err_proc;
-        }
-    }
-    else
-    {
-        goto err_proc;
-    }
 
-    lResult = sscanf(szFileName, "%*[^_]_%15s", pstUpgrade->szVision);
-    if (lResult != 1)
-    {
-        goto err_proc;
-    }
-    logr_debug("ptc package version is %s", pstUpgrade->szVision);
     /* 下载文件 */
     lResult = websHttpUploadHandler(wp, query, pstUpgrade);
     if (lResult != DOS_SUCC)
@@ -1321,7 +1317,23 @@ int pts_upgrade_selected_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int a
         goto err_proc;
     }
     logr_debug("download finish!!");
-    //websSendFileToPtc(url, &stUpgrade);
+
+    /* 获得版本号 */
+    pFileFd  = fopen("./package", "r");
+    if (NULL == pFileFd)
+    {
+        goto err_proc;
+    }
+    ulReadCount = fread(aucBuff, sizeof(PT_PTC_UPGRADE_DES_ST), 1, pFileFd);
+    if (ulReadCount < 1)
+    {
+        fclose(pFileFd);
+        goto err_proc;
+    }
+    pstUpgradeDes = (PT_PTC_UPGRADE_DES_ST *)aucBuff;
+    dos_strncpy(pstUpgrade->szVision, pstUpgradeDes->szVision, PT_DATA_BUFF_16);
+
+    printf("!!!!!!version is %s\n", pstUpgrade->szVision);
     stPthreadParam.pstUpgrade = pstUpgrade;
     stPthreadParam.szUrl = (char_t *)dos_dmem_alloc(dos_strlen(url) + 1);
     if (NULL == stPthreadParam.szUrl)
@@ -1358,6 +1370,9 @@ int pts_upgrade_selected_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int a
     return 1;
 
 err_proc:
+    m_bIsUpdating = DOS_FALSE;
+    dos_dmem_free(pstUpgrade);
+    pstUpgrade = NULL;
     websError(wp, 200, T("fail"));
     return 1;
 }
@@ -1387,10 +1402,12 @@ int pts_upgrade_all_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                         char_t *url, char_t *path, char_t *query)
 {
     PT_PTC_UPGRADE_ST *pstUpgrade = NULL;
-    S8 szFileName[PT_DATA_BUFF_128] = {0};
-    S8 *ptr = NULL;
+    S8 aucBuff[sizeof(PT_PTC_UPGRADE_DES_ST)] = {0};
     S32 lResult = 0;
     pthread_t tid;
+    FILE *pFileFd = NULL;
+    U32 ulReadCount = 0;
+    PT_PTC_UPGRADE_DES_ST *pstUpgradeDes = NULL;
 
     a_assert(websValid(wp));
     a_assert(url && *url);
@@ -1407,27 +1424,6 @@ int pts_upgrade_all_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
     }
     pstUpgrade->hTmrHandle = NULL;
     g_pstUpgrade = pstUpgrade;
-    /* 获取文件名 */
-    ptr = dos_strstr(query, "filename=");
-    if (ptr != NULL)
-    {
-        lResult = sscanf(ptr, "%*[^\"]\"%[^\"]", szFileName);
-        if (lResult != 1)
-        {
-            goto err_proc;
-        }
-    }
-    else
-    {
-        goto err_proc;
-    }
-
-    lResult = sscanf(szFileName, "%*[^_]_%15s", pstUpgrade->szVision);
-    if (lResult != 1)
-    {
-        goto err_proc;
-    }
-    logr_debug("ptc package version is %s", pstUpgrade->szVision);
 
     /* 下载文件 */
     lResult = websHttpUploadHandler(wp, query, pstUpgrade);
@@ -1436,6 +1432,21 @@ int pts_upgrade_all_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
         goto err_proc;
     }
     logr_debug("download finish!!");
+
+    /* 获得版本号 */
+    pFileFd  = fopen("./package", "r");
+    if (NULL == pFileFd)
+    {
+        goto err_proc;
+    }
+    ulReadCount = fread(aucBuff, sizeof(PT_PTC_UPGRADE_DES_ST), 1, pFileFd);
+    if (ulReadCount < 1)
+    {
+        fclose(pFileFd);
+        goto err_proc;
+    }
+    pstUpgradeDes = (PT_PTC_UPGRADE_DES_ST *)aucBuff;
+    dos_strncpy(pstUpgrade->szVision, pstUpgradeDes->szVision, PT_DATA_BUFF_16);
 
     lResult = pthread_create(&tid, NULL, websSendFileToPtcALL, (VOID *)pstUpgrade);
     if (lResult < 0)
@@ -1479,7 +1490,7 @@ int pts_set_remark(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
 
         /* 更新数据库 */
         dos_snprintf(szSql, PT_DATA_BUFF_128, "update ipcc_alias set remark='%s' where sn='%s';", szRemark, aucID);
-        lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+        lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
         if (lResult != DOS_SUCC)
         {
             /* 失败 */
@@ -1538,7 +1549,7 @@ int pts_change_user_info(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
 
         /* 更新数据库 */
         dos_snprintf(szSql, PT_DATA_BUFF_128, "update pts_user set %s='%s' where name='%s';", szColumnName, szValue, szName);
-        lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+        lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
         if (lResult < 0)
         {
             /* 失败 */
@@ -1788,7 +1799,7 @@ static int pts_search_db(int eid, webs_t wp, int argc, char_t **argv, S8 szPtcLi
         {
             if (ulLen + ulOtherLen + 3 <= PT_DATA_BUFF_1024)
             {
-                dos_snprintf(szWhere+ulLen, PT_DATA_BUFF_1024-ulLen, ") %s ", szOtherCondition);
+                dos_snprintf(szWhere+ulLen, PT_DATA_BUFF_1024-ulLen, ") AND %s ", szOtherCondition);
             }
         }
     }
@@ -1802,7 +1813,8 @@ static int pts_search_db(int eid, webs_t wp, int argc, char_t **argv, S8 szPtcLi
 
     websWrite(wp, T("%s"), "{\"aaData\":[");
     dos_snprintf(szSql, PT_DATA_BUFF_1024*2, "select * from %s %s %s %s;", szTableName, szWhere, szOrder, szLimit);
-    lResult = dos_sqlite3_exec_callback(g_stMySqlite, szSql, psqlites_callback, (VOID *)&stSqliteParam);
+
+    lResult = dos_sqlite3_exec_callback(g_pstMySqlite, szSql, psqlites_callback, (VOID *)&stSqliteParam);
     if (lResult != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -1870,49 +1882,111 @@ static int pts_get_ptc_list_from_db_upgrades(int eid, webs_t wp, int argc, char_
 
 static int pts_user_list(int eid, webs_t wp, int argc, char_t **argv)
 {
+    S8 szSelect[PT_DATA_BUFF_128] = {0};
     S8 szPtcListFields[PTS_USER_COUNT][PT_DATA_BUFF_32] = {"", "name", "userName", "fixedTel", "mobile", "mailbox", "regiestTime"};
 
-    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_USER_COUNT, pts_user_callback, "pts_user", NULL, 0);
+    if (0 == dos_strcmp(wp->userName, "admin"))
+    {
+        return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_USER_COUNT, pts_user_callback, "pts_user", NULL, 0);
+    }
+    else
+    {
+        dos_snprintf(szSelect, PT_DATA_BUFF_128, "name = '%s' ", wp->userName);
+        return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_USER_COUNT, pts_user_callback, "pts_user", szSelect, dos_strlen(szSelect));
+    }
 }
 
 
 static int pts_create_user_button(int eid, webs_t wp, int argc, char_t **argv)
 {
+    S8 szCreateUserButton[PT_DATA_BUFF_512] = {0};
+
     if (dos_strcmp(wp->userName, "admin") == 0)
     {
         /* admin用户，可创建用户 */
-        return websWrite(wp, T("%s"), CREATE_NEW_USER);
+        if (g_LangType)
+        {
+            dos_snprintf(szCreateUserButton, PT_DATA_BUFF_512, CREATE_NEW_USER, g_apLangCN[49], g_apLangCN[50], g_apLangCN[51]);
+        }
+        else
+        {
+            dos_snprintf(szCreateUserButton, PT_DATA_BUFF_512, CREATE_NEW_USER, g_apLangEN[49], g_apLangEN[50], g_apLangEN[51]);
+        }
     }
     else
     {
-        return websWrite(wp, T(""));
+        if (g_LangType)
+        {
+            dos_snprintf(szCreateUserButton, PT_DATA_BUFF_512, "<input type=\"button\" value=\"%s\" onclick=\"change_password()\" />", g_apLangCN[50]);
+        }
+        else
+        {
+            dos_snprintf(szCreateUserButton, PT_DATA_BUFF_512, "<input type=\"button\" value=\"%s\" onclick=\"change_password()\" />", g_apLangEN[50]);
+        }
     }
+
+    return websWrite(wp, T("%s"), szCreateUserButton);
 }
 
 static int curr_user(int eid, webs_t wp, int argc, char_t **argv)
 {
-    return websWrite(wp, T("%s"), wp->userName);
+    if (g_LangType)
+    {
+        websWrite(wp, T("%s"), wp->userName);
+        websWrite(wp, T(" 您好!"));
+    }
+    else
+    {
+        websWrite(wp, T("Hello, "));
+        websWrite(wp, T("%s"), wp->userName);
+    }
+    return 1;
 }
 
 static int ptc_upgrade_button(int eid, webs_t wp, int argc, char_t **argv)
 {
     S8 szButtonHtml[PT_DATA_BUFF_256] = {0};
-    if (m_bIsUpdatingAll)
+
+    if (g_LangType)
     {
-         dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade' type='submit' value='升级' onclick='return form_check_package()' disabled /></td>\
-<td><input id='upgrade_end' type='button' value='结束' onclick='' style=\"display:none\" /></td>");
-    }
-    else
-    {
-        if (m_bIsUpdating)
+        if (m_bIsUpdatingAll)
         {
-            dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade' type='submit' value='升级' onclick='return form_check_package()' disabled /></td>\
-<td><input id='upgrade_end' type='button' value='结束' onclick='' style=\"display:block\" /></td>");
+             dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade' type='submit' value='%s' onclick='return form_check_package()' disabled /></td>\
+<td><input id='upgrade_end' type='button' value='%s' onclick='' style=\"display:none\" /></td>", g_apLangCN[39], g_apLangCN[40]);
         }
         else
         {
-            dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade' type='submit' value='升级' onclick='return form_check_package()' /></td>\
-<td><input id='upgrade_end' type='button' value='结束' onclick='' style=\"display:none\" /></td>");
+            if (m_bIsUpdating)
+            {
+                dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade' type='submit' value='%s' onclick='return form_check_package()' disabled /></td>\
+<td><input id='upgrade_end' type='button' value='%s' onclick='' style=\"display:block\" /></td>", g_apLangCN[39], g_apLangCN[40]);
+            }
+            else
+            {
+                dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade' type='submit' value='%s' onclick='return form_check_package()' /></td>\
+<td><input id='upgrade_end' type='button' value='%s' onclick='' style=\"display:none\" /></td>", g_apLangCN[39], g_apLangCN[40]);
+            }
+        }
+    }
+    else
+    {
+        if (m_bIsUpdatingAll)
+        {
+             dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade' type='submit' value='%s' onclick='return form_check_package()' disabled /></td>\
+<td><input id='upgrade_end' type='button' value='%s' onclick='' style=\"display:none\" /></td>", g_apLangEN[39], g_apLangEN[40]);
+        }
+        else
+        {
+            if (m_bIsUpdating)
+            {
+                dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade' type='submit' value='%s' onclick='return form_check_package()' disabled /></td>\
+<td><input id='upgrade_end' type='button' value='%s' onclick='' style=\"display:block\" /></td>", g_apLangEN[39], g_apLangEN[40]);
+            }
+            else
+            {
+                dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade' type='submit' value='%s' onclick='return form_check_package()' /></td>\
+<td><input id='upgrade_end' type='button' value='%s' onclick='' style=\"display:none\" /></td>", g_apLangEN[39], g_apLangEN[40]);
+            }
         }
     }
     return websWrite(wp, T("%s"), szButtonHtml);
@@ -1921,27 +1995,92 @@ static int ptc_upgrade_button(int eid, webs_t wp, int argc, char_t **argv)
 static int all_ptc_upgrade_button(int eid, webs_t wp, int argc, char_t **argv)
 {
     S8 szButtonHtml[PT_DATA_BUFF_256] = {0};
-    if (m_bIsUpdating)
+    if (g_LangType)
     {
-        dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade_all' type='submit' value='升级' onclick='return form_check_package_all()' disabled /></td>\
-<td><input id='upgrade_end_all' type='button' value='结束' onclick='cancel_upgrade()' style=\"display:none\" /></td>");
-    }
-    else
-    {
-        if (m_bIsUpdatingAll)
+        if (m_bIsUpdating)
         {
-            dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade_all' type='submit' value='升级' onclick='return form_check_package_all()' disabled /></td>\
-<td><input id='upgrade_end_all' type='button' value='结束' onclick='cancel_upgrade()' style=\"display:block\" /></td>");
+            dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade_all' type='submit' value='%s' onclick='return form_check_package_all()' disabled /></td>\
+<td><input id='upgrade_end_all' type='button' value='%s' onclick='cancel_upgrade()' style=\"display:none\" /></td>", g_apLangCN[39], g_apLangCN[40]);
         }
         else
         {
-            dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade_all' type='submit' value='升级' onclick='return form_check_package_all()' /></td>\
-<td><input id='upgrade_end_all' type='button' value='结束' onclick='cancel_upgrade()' style=\"display:none\" /></td>");
+            if (m_bIsUpdatingAll)
+            {
+                dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade_all' type='submit' value='%s' onclick='return form_check_package_all()' disabled /></td>\
+<td><input id='upgrade_end_all' type='button' value='%s' onclick='cancel_upgrade()' style=\"display:block\" /></td>", g_apLangCN[39], g_apLangCN[40]);
+            }
+            else
+            {
+                dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade_all' type='submit' value='%s' onclick='return form_check_package_all()' /></td>\
+<td><input id='upgrade_end_all' type='button' value='%s' onclick='cancel_upgrade()' style=\"display:none\" /></td>", g_apLangCN[39], g_apLangCN[40]);
+            }
+        }
+    }
+    else
+    {
+        if (m_bIsUpdating)
+        {
+            dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade_all' type='submit' value='%s' onclick='return form_check_package_all()' disabled /></td>\
+<td><input id='upgrade_end_all' type='button' value='%s' onclick='cancel_upgrade()' style=\"display:none\" /></td>", g_apLangEN[39], g_apLangEN[40]);
+        }
+        else
+        {
+            if (m_bIsUpdatingAll)
+            {
+                dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade_all' type='submit' value='%s' onclick='return form_check_package_all()' disabled /></td>\
+<td><input id='upgrade_end_all' type='button' value='%s' onclick='cancel_upgrade()' style=\"display:block\" /></td>", g_apLangEN[39], g_apLangEN[40]);
+            }
+            else
+            {
+                dos_snprintf(szButtonHtml, PT_DATA_BUFF_256, "<td><input id='upgrade_all' type='submit' value='%s' onclick='return form_check_package_all()' /></td>\
+<td><input id='upgrade_end_all' type='button' value='%s' onclick='cancel_upgrade()' style=\"display:none\" /></td>", g_apLangEN[39], g_apLangEN[40]);
+            }
         }
     }
     return websWrite(wp, T("%s"), szButtonHtml);
 }
 
+static int pts_data_tables_lang(int eid, webs_t wp, int argc, char_t **argv)
+{
+    if (g_LangType)
+    {
+        return websWrite(wp, T("%s"), g_szDataTablesLang);
+    }
+    else
+    {
+        return websWrite(wp, T(""));
+    }
+}
+
+static int pts_html_lang(int eid, webs_t wp, int argc, char_t **argv)
+{
+    S32 i;
+    if (ejArgs(argc, argv, T("%d"), &i) < 1)
+    {
+        websWrite(wp, T(""));
+        return -1;
+    }
+
+    if (i < 0 || i >= PTS_LANG_ARRAY_SIZE)
+    {
+        websWrite(wp, T(""));
+        return -1;
+    }
+
+    if (g_LangType)
+    {
+        return websWrite(wp, T("%s"), g_apLangCN[i]);
+    }
+    else
+    {
+        return websWrite(wp, T("%s"), g_apLangEN[i]);
+    }
+}
+
+static int pts_get_lang_type(int eid, webs_t wp, int argc, char_t **argv)
+{
+    return websWrite(wp, T("%d"), g_LangType);
+}
 
 /******************************************************************************/
 /*
@@ -1964,26 +2103,33 @@ static void pts_create_user(webs_t wp, char_t *path, char_t *query)
     szMobile = websGetVar(wp, T("mobile"), T(""));
     szMailbox = websGetVar(wp, T("mailbox"), T(""));
 
-    dos_snprintf(szSql, PT_DATA_BUFF_256, "select count(*) from pts_user where name='%s'", szName);
-    if (dos_sqlite3_record_is_exist(g_stMySqlite, szSql))  /* 判断是否存在 */
+    dos_snprintf(szSql, PT_DATA_BUFF_256, "select * from pts_user where name='%s'", szName);
+    lResult = dos_sqlite3_record_is_exist(g_pstMySqlite, szSql);
+    if (lResult < 0)
+    {
+        DOS_ASSERT(0);
+        websError(wp, 200, T("Query the database to fail!"));
+    }
+    else if (lResult)  /* 判断是否存在 */
     {
         /* 已存在 */
         DOS_ASSERT(0);
+        websError(wp, 200, T("User already exists!"));
     }
     else
     {
         pPassWordMd5 = pts_md5_encrypt(szName, szPassWd);
         dos_snprintf(szSql, PT_DATA_BUFF_256, "INSERT INTO pts_user (\"name\", \"password\", \"userName\", \"fixedTel\", \"mobile\", \"mailbox\") VALUES ('%s', '%s', '%s', '%s', '%s', '%s');", szName, pPassWordMd5, szUserName, szFixedTel, szMobile, szMailbox);
-        lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+        lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
         if (lResult != DOS_SUCC)
         {
             DOS_ASSERT(0);
         }
         pts_goAhead_free(pPassWordMd5);
         pPassWordMd5 = NULL;
-    }
 
-    websRedirect(wp, "pts_user.html");
+        websRedirect(wp, "pts_user.html");
+    }
 }
 
 
@@ -2003,8 +2149,13 @@ static void pts_change_password(webs_t wp, char_t *path, char_t *query)
     szPassWd = websGetVar(wp, T("new_password"), T(""));
 
     /* 判断user是否存在 */
-    dos_snprintf(szSql, PT_DATA_BUFF_128, "select count(*) from pts_user where name='%s'", szName);
-    if (!dos_sqlite3_record_is_exist(g_stMySqlite, szSql))  /* 判断是否存在 */
+    dos_snprintf(szSql, PT_DATA_BUFF_128, "select * from pts_user where name='%s'", szName);
+    lResult = dos_sqlite3_record_is_exist(g_pstMySqlite, szSql);
+    if (lResult < 0)
+    {
+        DOS_ASSERT(0);
+    }
+    else if (!lResult)  /* 判断是否存在 */
     {
         /* 不存在 */
         sprintf(pcListBuf, "%s is not existed", szName);
@@ -2033,7 +2184,7 @@ static void pts_change_password(webs_t wp, char_t *path, char_t *query)
                     /* 修改密码 */
                     pNewPassWordMd5 = pts_md5_encrypt(szName, szPassWd);
                     sprintf(szSql, "update pts_user set password='%s' where name='%s';", pNewPassWordMd5, szName);
-                    lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+                    lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
                     if (lResult != DOS_SUCC)
                     {
                         sprintf(pcListBuf, "update db fail");
@@ -2407,7 +2558,7 @@ void pts_ping_timeout(U64 param)
     S32 lCurPosition = -1;
 
     dos_snprintf(szSql, PT_DATA_BUFF_128, "select curr_position from ping_result where sn='%.*s' limit 1 ", PTC_ID_LEN, pstTimeOutParam->szPtcId);
-    lResult = dos_sqlite3_exec_callback(g_stMySqlite, szSql, pts_get_curr_position_callback, (VOID *)&lCurPosition);
+    lResult = dos_sqlite3_exec_callback(g_pstMySqlite, szSql, pts_get_curr_position_callback, (VOID *)&lCurPosition);
     if (lResult != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -2429,7 +2580,7 @@ void pts_ping_timeout(U64 param)
         dos_snprintf(szSql, PT_DATA_BUFF_128, "update ping_result set curr_position=%d, timer%d=-1 where sn='%.*s'", ulDataField, ulDataField, PTC_ID_LEN, pstTimeOutParam->szPtcId);
     }
 
-    lResult = dos_sqlite3_exec(g_stMySqlite, szSql);
+    lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
     if (lResult != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -2525,7 +2676,7 @@ int get_ping_result(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
         ulSeq = atoi(szPacketSeq);
         //ulDataField = ulSeq & 7;
         dos_snprintf(szSql, PT_DATA_BUFF_128, "select * from ping_result where sn='%s';", szPtcID);
-        lResult = dos_sqlite3_exec_callback(g_stMySqlite, szSql, pts_get_ping_result_callback, (VOID *)wp);
+        lResult = dos_sqlite3_exec_callback(g_pstMySqlite, szSql, pts_get_ping_result_callback, (VOID *)wp);
         if (lResult != DOS_SUCC)
         {
             DOS_ASSERT(0);
@@ -2772,7 +2923,7 @@ S32 pts_get_password_from_sqlite_db(char_t *userid, S8 *szWebsPassword)
 
     dos_memzero(szWebsPassword, WEBS_MAX_PASS);
     dos_snprintf(szSql, PT_DATA_BUFF_128, "select password from pts_user where name='%s';", userid);
-    dos_sqlite3_exec_callback(g_stMySqlite, szSql, pts_get_password_callback, (VOID *)szWebsPassword);
+    dos_sqlite3_exec_callback(g_pstMySqlite, szSql, pts_get_password_callback, (VOID *)szWebsPassword);
     if (dos_strlen(szWebsPassword) > 0)
     {
         return DOS_SUCC;

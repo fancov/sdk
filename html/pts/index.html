@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
-<title>AMC</title>
+<title>OK-RAS</title>
 <script type="text/javascript" language="javascript" src="jquery.js"></script>
 <SCRIPT src="ddsmoothmenu.js" type=text/javascript></SCRIPT>
 <SCRIPT src="pts_public.js" type=text/javascript></SCRIPT>
@@ -13,7 +13,9 @@
 <LINK href="ddsmoothmenu.css" type=text/css rel=stylesheet>
 <LINK href="pts_public.css" type=text/css rel=stylesheet>
 <style>
-	*{font-family: "微软雅黑"}
+	*{font-family: "脦垄脠铆脩脜潞脷"}
+	.refush{margin:0; padding:0; float:left;}
+	.refush p{margin:0; padding:0}
 </style>
 <script type="text/javascript" language="javascript" class="init">
 
@@ -21,23 +23,11 @@ $(document).ready(function() {
 	var oTable = $('#example').DataTable({
 			"info" : true, 
 			"aaSorting": [[1, "asc"]],
-			"sDom": '<"top"f>rt<"bottom"lp>',
+			"stateSave": true,
+			"serverSide": true,
+			"sDom": '<"top"<"refush">f>rt<"bottom"lp>',
 			"sAjaxSource": "/ptc_list.html",
-			"oLanguage": {
-				"sLengthMenu": "每页显示 _MENU_条",
-				"sZeroRecords": "没有找到符合条件的数据",
-				"sProcessing": "&lt;p&gt;&lt;img src=’./loading.gif’ /&gt;加载中......&lt;/p&gt;",
-				"sInfo": "当前第 _START_ - _END_ 条　共计 _TOTAL_ 条",
-				"sInfoEmpty": "木有记录",
-				"sInfoFiltered": "(从 _MAX_ 条记录中过滤)",
-				"sSearch": "搜索：",
-				"oPaginate": {
-					"sFirst": "首页",
-					"sPrevious": "前一页",
-					"sNext": "后一页",
-					"sLast": "尾页"
-			        }
-		      },
+			<% dataTablesLang(); %>
 		      "aoColumnDefs": [{"className": "ptc_ardio",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [8]}, {"className": "ptc_nice", "aTargets": [3]}],
 
 			 "fnDrawCallback":function(){ $('#example tbody td.ptc_nice').editable('editable_ajax.html', {
@@ -54,7 +44,9 @@ $(document).ready(function() {
 					}
 			})}
 		});
-		
+
+		$('.refush').html("<span id='RefushButton'> Refush </span>");
+
 		$('#example tbody').on('click', 'td', function () {
 			if ($(this).find("input").val())
 			{
@@ -70,8 +62,43 @@ $(document).ready(function() {
 				$(this).parent().children("td.ptc_ardio").children("input").prop('checked', true); 
 			}
     	});
+
+    	$('#example tbody').on('dblclick', 'td', function () {
+			$(this).parent().children("td.ptc_ardio").children("input").prop('checked', true); 
+			visit_dev();
+    	});
+
+    	$('#RefushButton').click(function(){
+    		// alert(oTable);
+    		// oTable.fnDestroy();
+    		// oTable.fnClearTable();
+		    // oTable.fnDraw(); 
+		    // oTable.fnClearTable();
+      //   	$.each(data, function (n, value) {
+      //   		 i = 0;
+      //            $.each(value, function(n, value){
+      //           	 row[i] = value;
+      //           	 i++;
+      //            });
+      //            oTable.fnAddData(row);
+      //        });  
+        	 
+
+      //   	oTable.fnDraw();
+
+			return true;		
+    	});
 });
+/*
+function refush()
+{
+	
+}
+*/
+get_lang_type(<% lang_type(); %>);
 updateTime();
+
+//oTable.fnDraw();
 </script>
 </head>
 
@@ -80,18 +107,18 @@ updateTime();
 <div class="nav_content">
 	<div class="ddsmoothmenu nav_left" id="smoothmenu1">
 	<UL>
-	  <LI><A href="index.html">远程访问</A></LI>
-	  <LI><A href="#">PTC管理</A> 
+	  <LI><A href="index.html"><% htmlLang(0); %></A></LI>
+	  <LI><A href="#"><% htmlLang(1); %></A> 
 		<UL>
-			<LI><A href="pts_switch.html">PTS切换</A> </LI>
-			<LI><A href="pts_config.html">PTC配置</A> </LI>
-			<LI><A href="pts_upgrades.html">PTC升级</A> </LI>
+			<LI><A href="pts_switch.html"><% htmlLang(2); %></A> </LI>
+			<LI><A href="pts_config.html"><% htmlLang(3); %></A> </LI>
+			<LI><A href="pts_upgrades.html"><% htmlLang(4); %></A> </LI>
 		</UL>
 	  </LI>
-	  <LI><A href="pts_user.html">用户管理</A></LI>
-	  <LI><A href="#">工具</A>
+	  <LI><A href="pts_user.html"><% htmlLang(5); %></A></LI>
+	  <LI><A href="#"><% htmlLang(6); %></A>
 	  	<UL>
-	  		<LI><A href="pts_ping.html">Ping测试</A></LI>
+	  		<LI><A href="pts_ping.html"><% htmlLang(7); %></A></LI>
 	  	</UL>
 	  </LI>
 	</UL>
@@ -99,7 +126,7 @@ updateTime();
 	<div class="nav_right" > 
 		<table style="height:48px; border-spacing: 0px; border-collapse:collapse;">
 			<tr>
-				<td style="width:180px;"><p class="longin_user"> <% curr_user(); %> 您好！</p></td>
+				<td style="width:180px;"><p class="longin_user"> <% curr_user(); %></p></td>
 				<td rowspan="2"><div class="longout"><a href="javascript:;" onclick="exit()"><img  src="../images/logout.png" /></a></div></td>
 			</tr>
 			<tr>
@@ -112,32 +139,32 @@ updateTime();
 <div class="content_body">
 	<div>
 		<div class="content_title">
-			<p><b>自动选择访问：</b></p>
+			<p><b><% htmlLang(9); %></b></p>
 		</div>
 		<div>
 			<p class="content_body">
-				<label>目的公网IP：</label>
+				<label><% htmlLang(10); %></label>
 				<input type="text" value="" id="auto_internet_ip" />&nbsp;&nbsp;&nbsp;&nbsp;
-				<label>目的私网IP：</label>
+				<label><% htmlLang(11); %></label>
 				<input type="text" value="" id="auto_intranet_ip" />&nbsp;&nbsp;
-				<label>目的私网端口：</label>
+				<label><% htmlLang(12); %></label>
 				<input type="text" value="" id="auto_port" />&nbsp;&nbsp;
-				<input type="button" value="访问" onclick="auto_access()" />
+				<input type="button" value="<% htmlLang(14); %>" onclick="auto_access()" />
 			</p>
 		</div>
 	</div>
 	<br>
 	<div>
 		<div class="content_title">
-			<p><b>手动选择访问：</b></p>
+			<p><b><% htmlLang(13); %></b></p>
 		</div>
 		<div>
 			<p class="content_body">
-				<label>目的私网IP：</label>
+				<label><% htmlLang(11); %></label>
 				<input type="text" value="" id="manual_intranet_ip" />&nbsp;&nbsp;
-				<label>目的私网端口：</label>
+				<label><% htmlLang(12); %></label>
 				<input type="text" value=""  id="manual_port" />&nbsp;&nbsp;
-				<input type="button" value="访问" onclick="visit_dev()" />
+				<input type="button" value="<% htmlLang(14); %>" onclick="visit_dev()" />
 			</p>			
 		</div>
 	</div>
@@ -147,15 +174,15 @@ updateTime();
 		<thead>
 			<tr>
 				<th width="20px"> </th>        
-		        <th>注册时间</th>
-		        <th>名称</th>
-		        <th>备注名(点击修改)</th>
-		        <th>类型</th>
-		        <th>公网IP</th>
-		        <th>私网IP</th>
-		        <th>MAC地址</th>
-		        <th>SN</th>
-		        <th>心跳(ms)</th>
+		        <th><% htmlLang(15); %></th>
+		        <th><% htmlLang(16); %></th>
+		        <th><% htmlLang(17); %></th>
+		        <th><% htmlLang(18); %></th>
+		        <th><% htmlLang(19); %></th>
+		        <th><% htmlLang(20); %></th>
+		        <th><% htmlLang(21); %></th>
+		        <th><% htmlLang(22); %></th>
+		        <th><% htmlLang(23); %></th>
 			</tr>
 		</thead>
 		<tbody>

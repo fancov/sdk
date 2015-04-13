@@ -1,10 +1,28 @@
+var g_lang_type = 1;
+
+function get_lang_type(langType)
+{
+    g_lang_type = langType;
+
+    return true;
+}
+
 /* index.html 自动访问 */
 function auto_access()
 {
     var internetIP = document.getElementById("auto_internet_ip").value;
     if (internetIP == "")
     {
-        alert("目的公网ip不能为空");
+        if (g_lang_type)
+        {
+            alert("目的公网ip不能为空");    
+        }
+        else
+        {
+
+            alert("Public IP can not be empty");
+        }
+        
         return false;
     }
     var intranetIP = document.getElementById("auto_intranet_ip").value;
@@ -52,7 +70,14 @@ function visit_dev()
 
     if (id == "")
     {
-        alert("请选择PTC");
+        if (g_lang_type)
+        {
+            alert("请选择PTC");    
+        }
+        else
+        {
+            alert("Please select PTC");
+        }
         return false;
     }
     pms += "id="+id+"&";
@@ -79,7 +104,14 @@ function visit_dev()
     {
         if (port > 65535)
         {
-            alert("port error");
+            if (g_lang_type)
+            {
+                alert("请输入正确的端口");    
+            }
+            else
+            {
+                alert("Please enter right Port");
+            }
             return false;
         }
         else
@@ -122,7 +154,14 @@ function switch_pts()
 
     if (id == "")
     {
-        alert("请选择PTC");
+        if (g_lang_type)
+        {
+            alert("请选择PTC");    
+        }
+        else
+        {
+            alert("Please select PTC");
+        }
         return false;
     }
     var domain = document.getElementById("switch_domain").value;
@@ -132,7 +171,14 @@ function switch_pts()
     {
         if (port > 65535)
         {
-            alert("port error");
+            if (g_lang_type)
+            {
+                alert("请输入正确的端口");    
+            }
+            else
+            {
+                alert("Please enter right Port");
+            }
             return false;
         }
     }
@@ -208,7 +254,15 @@ function change_domain(type)
 
     if (domain == "nil" && port == "nil")
     {
-        alert("域名和端口不能同时为空");
+        if (g_lang_type)
+        {
+            alert("域名和端口不能同时为空");    
+        }
+        else
+        {
+            alert("Domain name or port can't be empty");
+        }
+        
         return false;
     }
 
@@ -231,7 +285,15 @@ function change_domain(type)
 
     if (id == "")
     {
-        alert("请选择PTC");
+        if (g_lang_type)
+        {
+            alert("请选择PTC");
+        }
+        else
+        {
+            alert("Please select PTC");
+        }
+        
         return false;
     }
 
@@ -265,62 +327,20 @@ function submit_change_domain_url(url)
     xmlhttp.send();
 }
 
-/* system_config.html */
-function create_user()
-{
-    var username = document.getElementById("u14").value;
-    var password = document.getElementById("u15").value;
-    var password2 = document.getElementById("u16").value;
-    var url = "/cgi-bin/ptsCreateNewUser?";
-
-    if (username == '' || password == ''|| password2 == '')
-    {
-        alert("请输入完整信息");
-        return false;
-    }
-    if (password != password2)
-    {
-        alert("两次密码输入不对应");
-        return false;
-    }
-    
-    url += "username="+username+"&password="+password;
-    
-    submit_create_user_url(url);
-}
-
-function submit_create_user_url(url)
-{
-    var xmlhttp = null;
-    if (window.XMLHttpRequest)
-    {
-        xmlhttp=new XMLHttpRequest();
-    }
-    else
-    {
-        xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
-    }
-    xmlhttp.onreadystatechange=function()
-    {
-        if (xmlhttp.readyState==4 && xmlhttp.status==200)
-        {
-            var start = xmlhttp.responseText.indexOf("<p>")+3;
-            var end = xmlhttp.responseText.indexOf("</p>");
-            alert(xmlhttp.responseText.substring(start, end));
-            create_user_reset();
-        }
-    }
-    xmlhttp.open("GET",url,true);
-    xmlhttp.setRequestHeader("If-Modified-Since", "0");
-    xmlhttp.send();
-}
-
 function form_check_package()
 {
     var filename = document.getElementById("PackageFile").value; 
     if (filename == "")
     {
-        alert("软件包: 请选择一个软件包文件!");
+        if (g_lang_type)
+        {
+            alert("请选择一个软件包文件!");    
+        }
+        else
+        {
+            alert("Please select a package file!");
+        }
+        
         return false;
     }
     var url = document.HttpPackageUpload.action;
@@ -344,7 +364,15 @@ function form_check_package()
 
     if (id == "")
     {
-        alert("请选择PTC");
+        if (g_lang_type)
+        {
+            alert("请选择PTC");
+        }
+        else
+        {
+            alert("Please select PTC");
+        }
+        
         return false;
     }
 
@@ -361,13 +389,16 @@ function form_check_package_all()
     var filename = document.getElementById("PackageFileAll").value; 
     if (filename == "")
     {
-        alert("软件包: 请选择一个软件包文件!");
+        if (g_lang_type)
+        {
+            alert("请选择一个软件包文件!");    
+        }
+        else
+        {
+            alert("Please select a package file!");
+        }
         return false;
     }
-
-    //document.getElementById("upgrade").disabled = true;
-    //document.getElementById("upgrade_all").disabled = true;
-    //document.getElementById("upgrade_end").style.display = "block";
 
     show_cover();
 
@@ -402,11 +433,25 @@ function checkna()
     var na = form1.name.value;
 	if (na.length <1 || na.length >12)
 	{
+        if (g_lang_type)
+        {
         	divname.innerHTML='<font class="tips_false">长度是1~12个字符</font>';
+        }
+        else
+        {
+            divname.innerHTML='<font class="tips_false">Length is 1 ~ 12 characters</font>';   
+        }
 	}
 	else
 	{
+        if (g_lang_type)
+        {
         	divname.innerHTML='<font class="tips_true">输入正确</font>';
+        }
+        else
+        {
+            divname.innerHTML='<font class="tips_true">Input right</font>';   
+        }
 	}
    
   }
@@ -419,11 +464,26 @@ function checkpsd1()
     var flagQT=false ;
     if(psd1.length > 0)
     {
-        divpassword1.innerHTML='<font class="tips_true">输入正确</font>';
+        if (g_lang_type)
+        {
+            divpassword1.innerHTML='<font class="tips_true">输入正确</font>';
+        }
+        else
+        {
+            divpassword1.innerHTML='<font class="tips_true">Input right</font>';
+        }
     }
     else
     {
-        divpassword1.innerHTML='<font class="tips_false">长度错误</font>';
+        if (g_lang_type)
+        {
+            divpassword1.innerHTML='<font class="tips_false">长度错误</font>';
+        }
+        else
+        {
+            divpassword1.innerHTML='<font class="tips_false">The length of the error</font>';
+        }
+        
     }
 }
 
@@ -434,11 +494,25 @@ function checkpsd2()
 
     if(psw1 != psw2 || psw1 == "")
     { 
-         divpassword2.innerHTML='<font class="tips_false">您两次输入的密码不一样</font>';
+        if (g_lang_type)
+        {
+            divpassword2.innerHTML='<font class="tips_false">您两次输入的密码不一样</font>';
+        }
+        else
+        {
+            divpassword2.innerHTML='<font class="tips_false">The two time you enter the password is not the same</font>';   
+        }
     }
     else 
     {
-         divpassword2.innerHTML='<font class="tips_true">输入正确</font>';
+        if (g_lang_type)
+        {
+            divpassword2.innerHTML='<font class="tips_true">输入正确</font>';
+        }
+        else
+        {
+            divpassword2.innerHTML='<font class="tips_true">Input right</font>';   
+        }
     }
 }
 //验证邮箱
@@ -449,11 +523,25 @@ function checkmail()
     dotpos=form1.mailbox.value.lastIndexOf(".");
     if (apos<1 || dotpos-apos<2)
     {
-        divmail.innerHTML='<font class="tips_false">输入错误</font>' ;
+        if (g_lang_type)
+        {
+            divmail.innerHTML='<font class="tips_false">输入错误</font>' ;
+        }
+        else
+        {
+            divmail.innerHTML='<font class="tips_false">Input error</font>' ;   
+        }
     }
     else
     {
-        divmail.innerHTML='<font class="tips_true">输入正确</font>' ;
+        if (g_lang_type)
+        {
+            divmail.innerHTML='<font class="tips_true">输入正确</font>' ;
+        }
+        else
+        {
+            divmail.innerHTML='<font class="tips_true">Input right</font>' ;   
+        }
     }
 }
 
@@ -471,7 +559,14 @@ function del_user()
         {
             if (ptcs[i].value == "admin")
             {
-                alert("admin不可被删除");
+                if (g_lang_type)
+                {
+                    alert("admin不可被删除");
+                }
+                else
+                {
+                    alert("admin can not be deleted");   
+                }
                 return false;
             }
 
@@ -535,12 +630,26 @@ function change_password()
 
     if (selectBoxCount < 1)
     {
-        alert("请选择一个需要修改的用户");
+        if (g_lang_type)
+        {
+            alert("请选择一个需要修改的用户");
+        }
+        else
+        {
+            alert("Please select a user to modify");   
+        }
         return false;
     }
     else if (selectBoxCount > 1)
     {
-        alert("只能选择一个用户");
+        if (g_lang_type)
+        {
+            alert("只能选择一个用户");
+        }
+        else
+        {
+            alert("You can only select one user");
+        }
         return false;
     }
 
@@ -643,7 +752,14 @@ function check_mail_format()
     } 
     else 
     {
-        window.alert ("请输入有效合法的E-mail地址 ！")
+        if (g_lang_type)
+        {
+            window.alert ("请输入有效合法的E-mail地址 ！")
+        }
+        else
+        {
+            window.alert ("Please enter a valid E-mail address!")   
+        }
         return false;
     }
 }
@@ -651,7 +767,15 @@ function check_mail_format()
 
 function formatSysTime() 
 {
-    var week_desc = new Array("星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六");
+    var week_desc;
+    if (g_lang_type)
+    {
+        week_desc = new Array("星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六");        
+    }
+    else
+    {
+        week_desc = new Array("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");    
+    }
     var dt = new Date();
     var year = dt.getFullYear();
     var month = dt.getMonth() + 1;
@@ -672,7 +796,7 @@ function updateTime()
         $('#system-time').html(fmt_time);
     }
 
-    setTimeout('updateTime()', 1000);
+    setTimeout(function(){updateTime();}, 1000);
 }
 
 function checkTime(i) 
@@ -741,13 +865,27 @@ function StartPing()
 
     if (PtcID == "")
     {
-        alert("请选择PTC!");
+        if (g_lang_type)
+        {
+            alert("请选择PTC!");
+        }
+        else
+        {
+            alert("Please select PTC!");   
+        }
         return false;
     }   
         
     if(!is_number(PingNum, 1, 100))
     {
-        alert("'Ping的次数' 范围为1-100!");
+        if (g_lang_type)
+        {
+            alert("The range of Ping is 1-100!");
+        }
+        else
+        {
+
+        }
         return false;
     }       
         

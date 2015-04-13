@@ -1,5 +1,5 @@
 #ifdef  __cplusplus
-extern "C"{
+extern "C" {
 #endif
 
 #include <pthread.h>
@@ -68,17 +68,17 @@ VOID pts_web_free_stream(PT_NEND_RECV_NODE_ST *pstNeedRecvNode, PT_STREAM_CB_ST 
 VOID pts_web_close_socket(S32 lSocket)
 {
     FD_CLR(lSocket, &g_ReadFds);
-    #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
     pts_web_sem_wait(__FILE__, __LINE__);
-    #else
+#else
     pthread_mutex_lock(&g_web_client_mutex);
-    #endif
+#endif
     m_stClinetCBList = pts_clinetCB_delete_by_sockfd(m_stClinetCBList, lSocket);
-    #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
     pts_web_sem_post(__FILE__, __LINE__);
-    #else
+#else
     pthread_mutex_unlock(&g_web_client_mutex);
-    #endif
+#endif
     close(lSocket);
 }
 
@@ -99,75 +99,75 @@ VOID pts_web_free_resource(S32 lSocket)
     PTS_CLIENT_CB_ST stClientMsg;
     PTS_CLIENT_CB_ST *pstClient = NULL;
 
-    #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
     pts_web_sem_wait(__FILE__, __LINE__);
-    #else
+#else
     pthread_mutex_lock(&g_web_client_mutex);
-    #endif
+#endif
     pstClient = pts_clinetCB_search_by_sockfd(m_stClinetCBList, lSocket);
     if (pstClient == NULL)
     {
-        #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
         pts_web_sem_post(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_web_client_mutex);
-        #endif
+#endif
         return;
     }
     stClientMsg = *pstClient;
     m_stClinetCBList = pts_clinetCB_delete_node(m_stClinetCBList, pstClient);
     //m_stClinetCBList = pts_clinetCB_delete_by_sockfd(m_stClinetCBList, lSocket);
-    #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
     pts_web_sem_post(__FILE__, __LINE__);
-    #else
+#else
     pthread_mutex_unlock(&g_web_client_mutex);
-    #endif
+#endif
 
-    #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
     pts_send_pthread_mutex_lock(__FILE__, __LINE__);
-    #else
+#else
     pthread_mutex_lock(&g_pts_mutex_send);
-    #endif
+#endif
     pstCCNode = pt_ptc_list_search(g_pstPtcListSend, stClientMsg.aucID);
     if(NULL == pstCCNode)
     {
-        #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
         pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_pts_mutex_send);
-        #endif
+#endif
         return;
     }
 
     pstStreamList = pstCCNode->astDataTypes[PT_DATA_WEB].pstStreamQueHead;
     if (NULL == pstStreamList)
     {
-        #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
         pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_pts_mutex_send);
-        #endif
+#endif
         return;
     }
 
     pstStreamNode = pt_stream_queue_search(pstStreamList, stClientMsg.ulStreamID);
     if (NULL == pstStreamNode)
     {
-        #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
         pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_pts_mutex_send);
-        #endif
+#endif
         return;
     }
 
     if (NULL == pstStreamNode->unDataQueHead.pstDataTcp)
     {
-        #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
         pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_pts_mutex_send);
-        #endif
+#endif
         return;
     }
 
@@ -180,11 +180,11 @@ VOID pts_web_free_resource(S32 lSocket)
 
     /* 释放收发缓存 */
     pts_delete_send_stream_node(&stMsgDes, pstCCNode, DOS_FALSE);
-    #if PT_MUTEX_DEBUG
+#if PT_MUTEX_DEBUG
     pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
-    #else
+#else
     pthread_mutex_unlock(&g_pts_mutex_send);
-    #endif
+#endif
 
     pts_delete_recv_stream_node(&stMsgDes, NULL, DOS_TRUE);
     pts_send_exit_notify2ptc(pstCCNode, &stNeedRecvNode);
@@ -666,7 +666,7 @@ VOID pts_web_timeout_callback(U64 arg)
     FD_CLR(g_lPtsServSocket[ulArraySub].lSocket, &g_ReadFds);
     close(g_lPtsServSocket[ulArraySub].lSocket);
     g_lPtsServSocket[ulArraySub].lSocket = -1;
-    pt_logr_debug("timer timeout port : %d\n", g_lPtsServSocket[ulArraySub].usServPort);
+    pt_logr_debug("timer timeout port : %d", g_lPtsServSocket[ulArraySub].usServPort);
 }
 
 VOID pts_create_web_serv_socket(U32 ulArraySeq)
@@ -887,21 +887,21 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     socklen_t optlen = sizeof(S32);
     S32 tcpinfo;
 
-    #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
     pts_web_sem_wait(__FILE__, __LINE__);
-    #else
+#else
     pthread_mutex_lock(&g_web_client_mutex);
-    #endif
+#endif
     pstClinetCB = pts_clinetCB_search_by_stream(m_stClinetCBList, pstNeedRecvNode->ulStreamID);
     if(NULL == pstClinetCB)
     {
         /* 没有找到stream对应的套接字 */
         pt_logr_debug("pts send msg to proxy : error not found stockfd");
-        #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
         pts_web_sem_post(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_web_client_mutex);
-        #endif
+#endif
         return;
     }
 
@@ -909,11 +909,11 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     {
         /* 关闭socket */
         pts_web_close_socket_without_sem(pstClinetCB->lSocket);
-        #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
         pts_web_sem_post(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_web_client_mutex);
-        #endif
+#endif
         return;
     }
 
@@ -921,11 +921,11 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     if(NULL == pstCCNode)
     {
         pt_logr_debug("pts send msg to proxy : not found ptc id is %s", pstNeedRecvNode->aucID);
-        #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
         pts_web_sem_post(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_web_client_mutex);
-        #endif
+#endif
         return;
     }
 
@@ -933,34 +933,34 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     if (NULL == pstStreamList)
     {
         pt_logr_debug("pts send msg to proxy : not found stream list of type is %d", pstNeedRecvNode->enDataType);
-        #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
         pts_web_sem_post(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_web_client_mutex);
-        #endif
+#endif
         return;
     }
 
     pstStreamNode = pt_stream_queue_search(pstStreamList, pstNeedRecvNode->ulStreamID);
     if (NULL == pstStreamNode)
     {
-        pt_logr_debug("pts send msg to proxy : not found stream node of id is %d", pstNeedRecvNode->ulStreamID);
-        #if PT_WEB_MUTEX_DEBUG
+        pt_logr_debug("pts send msg to proxy : not found stream : %d", pstNeedRecvNode->ulStreamID);
+#if PT_WEB_MUTEX_DEBUG
         pts_web_sem_post(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_web_client_mutex);
-        #endif
+#endif
         return;
     }
 
     if (NULL == pstStreamNode->unDataQueHead.pstDataTcp)
     {
         pt_logr_debug("pts send msg to proxy : not found data queue");
-        #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
         pts_web_sem_post(__FILE__, __LINE__);
-        #else
+#else
         pthread_mutex_unlock(&g_web_client_mutex);
-        #endif
+#endif
         return;
     }
 
@@ -976,11 +976,11 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
             {
                 pts_web_close_socket_without_sem(pstClinetCB->lSocket);
                 write(g_lPtsPipeWRFd, "s", 1);
-                #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
                 pts_web_sem_post(__FILE__, __LINE__);
-                #else
+#else
                 pthread_mutex_unlock(&g_web_client_mutex);
-                #endif
+#endif
                 pts_web_free_stream(pstNeedRecvNode, pstStreamNode, pstCCNode);
                 return;
             }
@@ -989,11 +989,11 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
             {
                 if (pstClinetCB->lSocket < 0)
                 {
-                    #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
                     pts_web_sem_post(__FILE__, __LINE__);
-                    #else
+#else
                     pthread_mutex_unlock(&g_web_client_mutex);
-                    #endif
+#endif
                     return;
                 }
                 if (getsockopt(pstClinetCB->lSocket, IPPROTO_TCP, TCP_INFO, &tcpinfo, &optlen) < 0)
@@ -1005,11 +1005,11 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 if (TCP_CLOSE == tcpinfo || TCP_CLOSE_WAIT == tcpinfo || TCP_CLOSING == tcpinfo)
                 {
                     pts_web_close_socket_without_sem(pstClinetCB->lSocket);
-                    #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
                     pts_web_sem_post(__FILE__, __LINE__);
-                    #else
+#else
                     pthread_mutex_unlock(&g_web_client_mutex);
-                    #endif
+#endif
                     pts_web_free_stream(pstNeedRecvNode, pstStreamNode, pstCCNode);
                     return;
                 }
@@ -1019,16 +1019,16 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 {
                     pt_logr_info("send result : %d, socket : %d", lResult, pstClinetCB->lSocket);
                     pts_web_close_socket_without_sem(pstClinetCB->lSocket);
-                    #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
                     pts_web_sem_post(__FILE__, __LINE__);
-                    #else
+#else
                     pthread_mutex_unlock(&g_web_client_mutex);
-                    #endif
+#endif
                     pts_web_free_stream(pstNeedRecvNode, pstStreamNode, pstCCNode);
                     return;
                 }
             }
-           //pt_logr_notic("pts send msg to web len : %d, seq : %d, stream : %d", pstDataTcp[ulArraySub].ulLen, pstStreamNode->lCurrSeq, pstClinetCB->ulStreamID);
+            pt_logr_info("pts send msg to web len : %d, seq : %d, stream : %d", pstDataTcp[ulArraySub].ulLen, pstStreamNode->lCurrSeq, pstClinetCB->ulStreamID);
         }
         else
         {
@@ -1036,11 +1036,11 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
             break;
         }
     } /* end of while(1) */
-    #if PT_WEB_MUTEX_DEBUG
+#if PT_WEB_MUTEX_DEBUG
     pts_web_sem_post(__FILE__, __LINE__);
-    #else
+#else
     pthread_mutex_unlock(&g_web_client_mutex);
-    #endif
+#endif
     return;
 }
 

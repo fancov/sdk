@@ -28,12 +28,13 @@ typedef struct tagMySqlite3
 typedef int (*my_sqlite_callback)(void*,int,char**,char**);
 
 
-S32 dos_sqlite3_create_db(DOS_SQLITE_ST *);
-S32 dos_sqlite3_creat_table(DOS_SQLITE_ST, S8 *);
-S32 dos_sqlite3_exec(DOS_SQLITE_ST, S8 *);
-S32 dos_sqlite3_record_is_exist(DOS_SQLITE_ST, S8 *);
-S32 dos_sqlite3_exec_callback(DOS_SQLITE_ST, S8 *, my_sqlite_callback, void *);
-S32 dos_sqlite3_close(DOS_SQLITE_ST);
+S32 dos_sqlite3_create_db(DOS_SQLITE_ST *pstMySqlite);
+S32 dos_sqlite3_creat_table(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql);
+S32 dos_sqlite3_exec(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql);
+S32 dos_sqlite3_exec_callback(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql, my_sqlite_callback callback, void *pFristArg);
+S32 dos_sqlite3_close(DOS_SQLITE_ST *pstMySqlite);
+S32 dos_sqlite3_record_is_exist(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql);
+
 #endif
 #ifdef  __cplusplus
 }

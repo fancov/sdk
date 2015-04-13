@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
-<title>AMC</title>
+<title>OK-RAS</title>
+<script type="text/javascript" language="javascript" src="jquery.js"></script>
 <SCRIPT src="ddsmoothmenu.js" type=text/javascript></SCRIPT>
 <SCRIPT src="pts_public.js" type=text/javascript></SCRIPT>
 <link rel="shortcut icon" href="../images/favicon.png">
@@ -23,7 +24,8 @@
 	.longout img{border: 0px;}
 </style>
 <script type="text/javascript">
-updateTime();
+	get_lang_type(<% lang_type(); %>);
+	updateTime();
 </script>
 </head>
 
@@ -32,26 +34,26 @@ updateTime();
 <div class="nav_content">
 	<div class="ddsmoothmenu nav_left" id="smoothmenu1">
 	<UL>
-	  <LI><A href="index.html">远程访问</A></LI>
-	  <LI><A href="#">PTC管理</A> 
+	  <LI><A href="index.html"><% htmlLang(0); %></A></LI>
+	  <LI><A href="#"><% htmlLang(1); %></A> 
 		<UL>
-			<LI><A href="pts_switch.html">PTS切换</A> </LI>
-			<LI><A href="pts_config.html">PTC配置</A> </LI>
-			<LI><A href="pts_upgrades.html">PTC升级</A> </LI>
+			<LI><A href="pts_switch.html"><% htmlLang(2); %></A> </LI>
+			<LI><A href="pts_config.html"><% htmlLang(3); %></A> </LI>
+			<LI><A href="pts_upgrades.html"><% htmlLang(4); %></A> </LI>
 		</UL>
 	  </LI>
-	  <LI><A href="pts_user.html">用户管理</A></LI>
-	  <LI><A href="#">工具</A>
-      <UL>
-        <LI><A href="pts_ping.html">Ping测试</A></LI>
-      </UL>
-    </LI>
+	  <LI><A href="pts_user.html"><% htmlLang(5); %></A></LI>
+	  <LI><A href="#"><% htmlLang(6); %></A>
+	  	<UL>
+	  		<LI><A href="pts_ping.html"><% htmlLang(7); %></A></LI>
+	  	</UL>
+	  </LI>
 	</UL>
 	</div>
 	<div class="nav_right" > 
 		<table style="height:48px; border-spacing: 0px; border-collapse:collapse;">
 			<tr>
-				<td style="width:180px;"><p class="longin_user"> <% curr_user(); %> 您好！</p></td>
+				<td style="width:180px;"><p class="longin_user"> <% curr_user(); %></p></td>
 				<td rowspan="2"><div class="longout"><a href="javascript:;" onclick="exit()"><img  src="../images/logout.png" /></a></div></td>
 			</tr>
 			<tr>
@@ -66,38 +68,38 @@ updateTime();
 	<form name="form1" method="post" action="/goform/create_user" accept-charset="gb2312">
 		<ul>
 			<li>
-				<label>用户名：</label>
-				<input type="text" name="name" placeholder="请输入用户名"  onblur="checkna()" onkeyup="this.value=this.value.replace(/[\W]/g,'')" maxlength="12"  required/><span class="tips" id="divname">长度1~12个字符</span>
+				<label><% htmlLang(52); %></label>
+				<input type="text" name="name" placeholder="<% htmlLang(61); %>"  onblur="checkna()" onkeyup="this.value=this.value.replace(/[^\w\.@]/g,'')" maxlength="30"  required/><span class="tips" id="divname"><% htmlLang(68); %></span>
 			</li>
 			<li>
-				<label>密码：</label>
-				<input type="password" name="password" placeholder="请输入你的密码" onBlur="checkpsd1()" maxlength="16"  required/><span class="tips" id="divpassword1">密码必须由字母和数字组成</span>
+				<label><% htmlLang(53); %></label>
+				<input type="password" name="password" placeholder="<% htmlLang(62); %>" onBlur="checkpsd1()" maxlength="16"  required/><span class="tips" id="divpassword1"><% htmlLang(69); %></span>
 			</li>
 			<li>
-				<label>确认密码：</label>
-				<input type="password" name="password2" placeholder="请再次输入你的密码" onBlur="checkpsd2()" maxlength="16"  required/><span class="tips" id="divpassword2">两次密码需要相同</span>
+				<label><% htmlLang(54); %></label>
+				<input type="password" name="password2" placeholder="<% htmlLang(63); %>" onBlur="checkpsd2()" maxlength="16"  required/><span class="tips" id="divpassword2"><% htmlLang(70); %></span>
 			</li>
 			<li>
-				<label>姓名：</label>
-				<input type="text" name="userName" placeholder="请输入你的姓名" onBlur="" maxlength="32"/><span class="tips" id="divmail"></span>
+				<label><% htmlLang(55); %></label>
+				<input type="text" name="userName" placeholder="<% htmlLang(64); %>" onBlur="" maxlength="32"/><span class="tips" id="divmail"></span>
 			</li>
 			<li>
-				<label>固话：</label>
-				<input type="text" name="fixedTel" placeholder="请输入你的固定电话"  onkeyup="this.value=this.value.replace(/\D/g,'')" maxlength="14" /><span class="tips" id="divmail"></span>
+				<label><% htmlLang(56); %></label>
+				<input type="text" name="fixedTel" placeholder="<% htmlLang(65); %>"  onkeyup="this.value=this.value.replace(/\D/g,'')" maxlength="14" /><span class="tips" id="divmail"></span>
 			</li>
 			<li>
-				<label>手机：</label>
-				<input type="text" name="mobile" placeholder="请输入你的手机号" onkeyup="this.value=this.value.replace(/\D/g,'')" maxlength="11" /><span class="tips" id="divmail"></span>
+				<label><% htmlLang(57); %></label>
+				<input type="text" name="mobile" placeholder="<% htmlLang(66); %>" onkeyup="this.value=this.value.replace(/\D/g,'')" maxlength="11" /><span class="tips" id="divmail"></span>
 			</li>
 			<li>
-				<label>电子邮箱：</label>
-				<input type="text" name="mailbox" placeholder="请输入你的邮箱" onBlur="check_mail_format()" /><span class="tips" id="divmail"></span>
+				<label><% htmlLang(58); %></label>
+				<input type="text" name="mailbox" placeholder="<% htmlLang(67); %>" onBlur="check_mail_format()" /><span class="tips" id="divmail"></span>
 			</li>
 		</ul>
 		<div style="border-bottom:0;">
 			<p align="center">
-				<input type="submit" value="提交" />&nbsp;&nbsp;&nbsp;&nbsp;
-				<input type="reset" value="取消" />
+				<input type="submit" value="<% htmlLang(59); %>" />&nbsp;&nbsp;&nbsp;&nbsp;
+				<input type="reset" value="<% htmlLang(60); %>" />
 			</p>
 		</div>
 	</form>

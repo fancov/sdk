@@ -263,14 +263,14 @@ S32 telnet_out_string(U32 ulIndex, const S8 *pszBuffer)
     if (pstTelnetClient->lSocket <= 0)
     {
         logr_debug("Client with the index %d have an invalid socket.", ulIndex);
+        pstTelnetClient->pFDOutput = NULL;
+        pstTelnetClient->pFDOutput = NULL;
         DOS_ASSERT(0);
         return -1;
     }
 
     fprintf(pstTelnetClient->pFDOutput, "%s", (S8 *)pszBuffer);
     fflush(pstTelnetClient->pFDOutput);
-
-    logr_debug("Send data to client, client index:%d", ulIndex);
 
     return 0;
 }
@@ -674,36 +674,19 @@ S32 telnet_send_data(U32 ulIndex, U32 ulType, S8 *pszBuffer, U32 ulLen)
     if (pstTelnetClient->lSocket <= 0)
     {
         logr_debug("Client with the index %d have an invalid socket.", ulIndex);
+        pstTelnetClient->pFDOutput = NULL;
+        pstTelnetClient->pFDOutput = NULL;
         DOS_ASSERT(0);
         return -1;
     }
-
 #if INCLUDE_PTS
     pStrstr = memchr(pszBuffer, 0xff, ulLen);
     if (pStrstr != NULL)
     {
-        printf("**********telnet*************\n");
-        S32 k = 0;
-        for (k=0; k<ulLen-(pStrstr - pszBuffer); k++)
-        {
-            printf("%02x ", (U8)pStrstr[k]);
-        }
-        printf("\n");
-        printf("**********end*************\n");
         telentd_negotiate_cmd_server(ulIndex, pStrstr, ulLen-(pStrstr - pszBuffer));
-        //sprintf(szNegotiateEnd, "%c%c", IAC, IAC);
-        //pts_telnet_send_msg2ptc(ulIndex, szNegotiateEnd, 2);
         pStrstr = strstr(pszBuffer, "\r\n");
         if (pStrstr != NULL)
         {
-            printf("********data*************\n");
-            S32 k = 0;
-            for (k=0; k<ulLen-(pStrstr - pszBuffer); k++)
-            {
-                printf("%02x ", (U8)pStrstr[k]);
-            }
-            printf("\n");
-            printf("**********end*************\n");
             fwrite((S8 *)pStrstr, ulLen-(pStrstr - pszBuffer), 1, pstTelnetClient->pFDOutput);
             fflush(pstTelnetClient->pFDOutput);
         }
@@ -711,11 +694,9 @@ S32 telnet_send_data(U32 ulIndex, U32 ulType, S8 *pszBuffer, U32 ulLen)
     else
 #endif
     {
-    //fwrite(pstTelnetClient->pFDOutput, "%s", (S8 *)pszBuffer);
         fwrite((S8 *)pszBuffer, ulLen, 1, pstTelnetClient->pFDOutput);
         fflush(pstTelnetClient->pFDOutput);
     }
-    //logr_debug("Send data to client, client index:%d length:%d", ulIndex, ulLen);
 
     return 0;
 
@@ -952,8 +933,6 @@ VOID pts_recv_cr_timeout(U64 ulParam)
     TELNET_CLIENT_INFO_ST *pstClientInfo = (TELNET_CLIENT_INFO_ST *)ulParam;
     pstClientInfo->bIsGetLineEnd = DOS_TRUE;
     pstClientInfo->stTimerHandle = NULL;
-
-    printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 }
 
 /**
@@ -974,7 +953,7 @@ S32 telnetd_client_read_line(TELNET_CLIENT_INFO_ST *pstClientInfo, S8 *szBuffer,
     U8  c;
     struct stat buf;
     KEY_LIST_BUFF_ST stKeyList;
-    S32 lResult = 0;
+    S32 lRes = 0;
 #if 0
     S32 lLoop, lSpecialKeyMatchRet;
 #endif
@@ -1005,7 +984,12 @@ do{ \
 
     if (fstat(fileno(pstClientInfo->pFDOutput), &buf) != -1)
     {
-        fprintf(pstClientInfo->pFDOutput, "\033[?25h");
+        lRes = fprintf(pstClientInfo->pFDOutput, "\033[?25h");
+        if (lRes < 0)
+        {
+            DOS_ASSERT(0);
+            return TELNET_RECV_RESULT_ERROR;
+        }
         check_fd(pstClientInfo->pFDOutput);
         fflush(pstClientInfo->pFDOutput);
     }
@@ -1087,19 +1071,21 @@ do{ \
         }
         else
 #endif
+
+#if INCLUDE_PTS
         if (c == '\r')
         {
-           // if (c == '\r')
+            //if (c == '\r')
             //{
             /* the next char is either \n or \0, which we can discard. */
             //    c = getc(input);
             //}
             if (!pstClientInfo->bIsGetLineEnd)
             {
-                lResult = dos_tmr_start(&pstClientInfo->stTimerHandle, PTS_TELNET_CR_TIME, pts_recv_cr_timeout, (U64)pstClientInfo, TIMER_NORMAL_NO_LOOP);
-                if (lResult < 0)
+                lRes = dos_tmr_start(&pstClientInfo->stTimerHandle, PTS_TELNET_CR_TIME, pts_recv_cr_timeout, (U64)pstClientInfo, TIMER_NORMAL_NO_LOOP);
+                if (lRes < 0)
                 {
-                   // pt_logr_info("telnetd_client_task : start timer fail");
+                    DOS_ASSERT(0);
                 }
                 telnetd_client_send_new_line(pstClientInfo->pFDOutput, 1);
                 continue;
@@ -1122,6 +1108,19 @@ do{ \
             }
             break;
         }
+#else
+        if (c == '\r' || c == '\n')
+        {
+            if (c == '\r')
+            {
+            /* the next char is either \n or \0, which we can discard. */
+                getc(pstClientInfo->pFDInput);
+            }
+            telnetd_client_send_new_line(pstClientInfo->pFDOutput, 1);
+
+            break;
+        }
+#endif
         else if (c == '\b' || c == 0x7f)
         {
             if (!lLength)
@@ -1131,7 +1130,12 @@ do{ \
             }
             if (lMask)
             {
-                fprintf(pstClientInfo->pFDOutput, "\033[%dD\033[K", lLength);
+                lRes = fprintf(pstClientInfo->pFDOutput, "\033[%dD\033[K", lLength);
+                if (lRes < 0)
+                {
+                    DOS_ASSERT(0);
+                    return TELNET_RECV_RESULT_ERROR;
+                }
                 check_fd(pstClientInfo->pFDOutput);
                 fflush(pstClientInfo->pFDOutput);
                 lLength = -1;
@@ -1139,7 +1143,12 @@ do{ \
             }
             else
             {
-                fprintf(pstClientInfo->pFDOutput, "\b \b");
+                lRes = fprintf(pstClientInfo->pFDOutput, "\b \b");
+                if (lRes < 0)
+                {
+                    DOS_ASSERT(0);
+                    return TELNET_RECV_RESULT_ERROR;
+                }
                 check_fd(pstClientInfo->pFDOutput);
                 fflush(pstClientInfo->pFDOutput);
                 lLength -= 2;
@@ -1170,7 +1179,12 @@ do{ \
     szBuffer[lLength] = 0;
 
     /* And we hide it again at the end. */
-    fprintf(pstClientInfo->pFDOutput, "\033[?25l");
+    lRes = fprintf(pstClientInfo->pFDOutput, "\033[?25l");
+    if (lRes < 0)
+    {
+        DOS_ASSERT(0);
+        return TELNET_RECV_RESULT_ERROR;
+    }
     check_fd(pstClientInfo->pFDOutput);
     fflush(pstClientInfo->pFDOutput);
 
@@ -1182,6 +1196,7 @@ S32 telnetd_client_read_char(TELNET_CLIENT_INFO_ST *pstClientInfo, S8 *szBuffer)
     U8  c;
     S32 lSize = 1;
     KEY_LIST_BUFF_ST stKeyList;
+    S32 lRes = 0;
 #if 0
     S32 lLoop, lSpecialKeyMatchRet;
 #endif
@@ -1208,8 +1223,14 @@ do{ \
 }while(0)
 
     /* We make sure to restore the cursor. */
-    fprintf(pstClientInfo->pFDOutput, "\033[?25h");
+    lRes = fprintf(pstClientInfo->pFDOutput, "\033[?25h");
+    if (lRes < 0)
+    {
+        DOS_ASSERT(0);
+        return TELNET_RECV_RESULT_ERROR;
+    }
     check_fd(pstClientInfo->pFDOutput);
+
     fflush(pstClientInfo->pFDOutput);
 
     if (feof(pstClientInfo->pFDInput))
@@ -1240,7 +1261,11 @@ do{ \
         }
         *szBuffer = '\n';
     }
-
+    else if (c == 0xff)
+    {
+        DOS_ASSERT(0);
+        return TELNET_RECV_RESULT_ERROR;
+    }
     //putc(c, output);
     //check_fd(output);
     //fflush(output);
@@ -1647,16 +1672,19 @@ VOID *telnetd_main_loop(VOID *ptr)
             if (g_pstTelnetClientList[i]->pFDInput)
             {
                 fclose(g_pstTelnetClientList[i]->pFDInput);
+                g_pstTelnetClientList[i]->pFDInput = NULL;
             }
 
             if (g_pstTelnetClientList[i]->pFDOutput)
             {
                 fclose(g_pstTelnetClientList[i]->pFDOutput);
+                g_pstTelnetClientList[i]->pFDOutput = NULL;
             }
 
             if (g_pstTelnetClientList[i]->lSocket)
             {
                 close(g_pstTelnetClientList[i]->lSocket);
+                g_pstTelnetClientList[i]->lSocket = -1;
             }
         }
     }

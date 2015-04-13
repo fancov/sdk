@@ -202,7 +202,7 @@ VOID ptc_get_udp_use_ip()
     }
 
 ptc_connect:
-    lError = connect(lSockfd,(struct sockaddr*)&stServAddr,sizeof(stServAddr));
+    lError = connect(lSockfd,(struct sockaddr*)&stServAddr, sizeof(stServAddr));
     if (lError < 0)
     {
         perror("connect pts");
@@ -319,8 +319,7 @@ VOID ptc_send_lost_data_req(U64 ulLoseMsg)
     if (pstStreamNode->ulCountResend >= PT_RESEND_REQ_MAX_COUNT)
     {
         /* 丢包重发PTC_RESEND_MAX_COUNT次，仍未收到 */
-        //ptc_save_msg_into_cache(pstMsg->enDataType, pstMsg->ulStreamID, "", 0, DOS_TRUE); /* 通知pts关闭sockfd */
-        ptc_send_exit_notify_to_pts(pstMsg->enDataType, pstMsg->ulStreamID);
+        ptc_send_exit_notify_to_pts(pstMsg->enDataType, pstMsg->ulStreamID);    /* 通知pts关闭sockfd */
         /* 清空ptc中，stream的资源 */
         if (NULL != g_pstPtcRecv)
         {
@@ -914,21 +913,21 @@ S32 ptc_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, S8 *acRecvBuf, S32 lDataLe
         }
         else
         {
-            if (pstStreamNode->lCurrSeq != -1)
-            {
+            //if (pstStreamNode->lCurrSeq != -1)
+            //{
                 ulNextSendArraySub = (pstStreamNode->lCurrSeq + 1) & (PT_DATA_RECV_CACHE_SIZE - 1);
                 if (pstDataQueue[ulNextSendArraySub].lSeq == pstStreamNode->lCurrSeq + 1)
                 {
                     return PT_SAVE_DATA_SUCC;
                 }
-            }
-            else
-            {
-                if (pstMsgDes->lSeq == 0)
-                {
-                    return PT_SAVE_DATA_SUCC;
-                }
-            }
+            //}
+            //else
+            //{
+            //    if (pstMsgDes->lSeq == 0)
+            //    {
+            //        return PT_SAVE_DATA_SUCC;
+            //    }
+            //}
 
             /* 丢包，如果没有定时器的，创建定时器 */
             if (NULL == pstStreamNode->hTmrHandle)
@@ -1059,6 +1058,7 @@ VOID ptc_ctrl_msg_handle(S8 *pData, U32 lRecvLen)
     {
     case PT_CTRL_LOGIN_RSP:
         /* 登陆验证 */
+        pt_logr_debug("recv login response");
         ptc_get_udp_use_ip();  /* 获取本机ip */
         lResult = ptc_key_convert(pstCtrlData->szLoginVerify, szDestKey);
         if (lResult < 0)
@@ -1635,6 +1635,10 @@ VOID *ptc_send_msg2pts(VOID *arg)
                 /* 发送data，直到不连续 */
                 pstStreamNode->lCurrSeq++;
                 ulArraySub = (pstStreamNode->lCurrSeq) & (PT_DATA_SEND_CACHE_SIZE - 1);
+                if (NULL == pstStreamNode->unDataQueHead.pstDataTcp)
+                {
+                    break;
+                }
                 stRecvDataTcp = pstStreamNode->unDataQueHead.pstDataTcp[ulArraySub];
                 if (stRecvDataTcp.lSeq == pstStreamNode->lCurrSeq)
                 {
@@ -1655,7 +1659,7 @@ VOID *ptc_send_msg2pts(VOID *arg)
 
                     //usleep(g_ulSendTimeSleep);
                     lResult = sendto(lSockfd, acBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
-                    pt_logr_debug("send data to pts : length:%d, seq:%d, stream:%d, result:%d", stRecvDataTcp.ulLen, pstStreamNode->lCurrSeq, pstNeedSendNode->ulStreamID, lResult);
+                    pt_logr_debug("send data to pts : length:%d, stream:%d, seq:%d", stRecvDataTcp.ulLen, pstNeedSendNode->ulStreamID, pstStreamNode->lCurrSeq);
                 }
                 else
                 {
@@ -1675,7 +1679,10 @@ VOID *ptc_send_msg2pts(VOID *arg)
 #else
         pthread_mutex_unlock(&g_mutex_send);
 #endif
+
     }
+
+    return NULL;
 }
 
 /**
@@ -1729,6 +1736,7 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
                 perror("recvfrom");
                 continue;
             }
+
             sem_wait(&g_SemPtcRecv);
 #if PT_MUTEX_DEBUG
             ptc_recv_pthread_mutex_lock(__FILE__, __LINE__);
@@ -1740,11 +1748,20 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
             /* 字节序转换 */
             pstMsgDes->ulStreamID = dos_ntohl(pstMsgDes->ulStreamID);
             pstMsgDes->lSeq = dos_ntohl(pstMsgDes->lSeq);
-            pt_logr_debug("ptc recv msg from pts, stream is %d, seq is %d,data size:%d", pstMsgDes->ulStreamID, pstMsgDes->lSeq, lRecvLen);
-            if (pstMsgDes->lSeq == 0 && pstMsgDes->ulStreamID > PT_CTRL_HB_RSP)
+
+            if (pstMsgDes->enDataType == PT_DATA_CTRL)
             {
-                pt_logr_info("ptc recv msg from pts, stream is %d, seq is %d,data size:%d", pstMsgDes->ulStreamID, pstMsgDes->lSeq, lRecvLen);
+                /* 控制消息 */
+                ptc_ctrl_msg_handle(acRecvBuf, lRecvLen);
+#if PT_MUTEX_DEBUG
+                ptc_recv_pthread_mutex_unlock(__FILE__, __LINE__);
+#else
+                pthread_mutex_unlock(&g_mutex_recv);
+#endif
+                sem_post(&g_SemPtcRecv);
+                continue;
             }
+
             if (pstMsgDes->enCmdValue == PT_CMD_RESEND)
             {
                 /* 重传请求 */
@@ -1801,19 +1818,6 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
                 continue;
             }
 
-            if (pstMsgDes->enDataType == PT_DATA_CTRL)
-            {
-                /* 控制消息 */
-                ptc_ctrl_msg_handle(acRecvBuf, lRecvLen);
-#if PT_MUTEX_DEBUG
-                ptc_recv_pthread_mutex_unlock(__FILE__, __LINE__);
-#else
-                pthread_mutex_unlock(&g_mutex_recv);
-#endif
-                sem_post(&g_SemPtcRecv);
-                continue;
-            }
-
             lResult = ptc_save_into_recv_cache(g_pstPtcRecv, acRecvBuf, lRecvLen, lSockfd);
             if (lResult < 0)
             {
@@ -1827,7 +1831,7 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
                 continue;
             }
 
-            pt_logr_debug("ptc recv from pts length:%d, seq:%d, stream:%d", lRecvLen, pstMsgDes->lSeq, pstMsgDes->ulStreamID);
+            pt_logr_debug("ptc recv from pts stream : %d, seq : %d", pstMsgDes->ulStreamID, pstMsgDes->lSeq);
             if (NULL == pt_need_recv_node_list_search(g_pstPtcNendRecvNode, pstMsgDes->ulStreamID))
             {
                 g_pstPtcNendRecvNode = pt_need_recv_node_list_insert(g_pstPtcNendRecvNode, pstMsgDes);
