@@ -22,9 +22,9 @@ extern "C"{
 
 typedef enum
 {
-    PT_TELNET_FAIL = -1,          /* */
-    PT_TELNET_LIST = 0,           /* */
-    PT_TELNET_CONNECT,            /* */
+    PT_TELNET_FAIL = -1,
+    PT_TELNET_CONNECT,            /* 连接命令 */
+    PT_TELNET_OTHER,              /* 其他  */
     PT_TELNET_BUTT
 
 }PT_TELNET_CMD_ANALYSE;

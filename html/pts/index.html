@@ -8,14 +8,12 @@
 <SCRIPT src="pts_public.js" type=text/javascript></SCRIPT>
 <script type="text/javascript" language="javascript" src="jquery.jeditable.js"></script>
 <script type="text/javascript" language="javascript" src="jquery.dataTables.min.js"></script>
-<link rel="shortcut icon" href="../images/favicon.png">
+<link rel="shortcut icon" href="favicon.ico">
 <link rel="stylesheet" type="text/css" href="jquery.dataTables.min.css">
 <LINK href="ddsmoothmenu.css" type=text/css rel=stylesheet>
 <LINK href="pts_public.css" type=text/css rel=stylesheet>
 <style>
-	*{font-family: "Î¢ÈíÑÅºÚ"}
-	.refush{margin:0; padding:0; float:left;}
-	.refush p{margin:0; padding:0}
+	*{font-family: "΢���ź�"}
 </style>
 <script type="text/javascript" language="javascript" class="init">
 
@@ -25,7 +23,7 @@ $(document).ready(function() {
 			"aaSorting": [[1, "asc"]],
 			"stateSave": true,
 			"serverSide": true,
-			"sDom": '<"top"<"refush">f>rt<"bottom"lp>',
+			"sDom": '<"top"f<"refush">>rt<"bottom"lp>',
 			"sAjaxSource": "/ptc_list.html",
 			<% dataTablesLang(); %>
 		      "aoColumnDefs": [{"className": "ptc_ardio",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [8]}, {"className": "ptc_nice", "aTargets": [3]}],
@@ -36,6 +34,7 @@ $(document).ready(function() {
 						var aPos = oTable.fnGetPosition(this);
 						oTable.fnUpdate( sValue, aPos[0], aPos[1]);
 					},
+
 					"submitdata": function ( value, settings ) {
 						return {
 							"row_id": $(this).parent().children("td.ptc_sn").html(),
@@ -45,7 +44,7 @@ $(document).ready(function() {
 			})}
 		});
 
-		$('.refush').html("<span id='RefushButton'> Refush </span>");
+		$('.refush').html("<p id='RefushButton'> <input type='button' value ='<% htmlLang(78); %>'></p>");
 
 		$('#example tbody').on('click', 'td', function () {
 			if ($(this).find("input").val())
@@ -68,23 +67,9 @@ $(document).ready(function() {
 			visit_dev();
     	});
 
-    	$('#RefushButton').click(function(){
-    		// alert(oTable);
-    		// oTable.fnDestroy();
-    		// oTable.fnClearTable();
-		    // oTable.fnDraw(); 
-		    // oTable.fnClearTable();
-      //   	$.each(data, function (n, value) {
-      //   		 i = 0;
-      //            $.each(value, function(n, value){
-      //           	 row[i] = value;
-      //           	 i++;
-      //            });
-      //            oTable.fnAddData(row);
-      //        });  
-        	 
+    	$('.refush').click(function(){
 
-      //   	oTable.fnDraw();
+		    location.reload();
 
 			return true;		
     	});
@@ -144,11 +129,11 @@ updateTime();
 		<div>
 			<p class="content_body">
 				<label><% htmlLang(10); %></label>
-				<input type="text" value="" id="auto_internet_ip" />&nbsp;&nbsp;&nbsp;&nbsp;
+				<input type="text" value="" id="auto_internet_ip"  />&nbsp;&nbsp;&nbsp;&nbsp;
 				<label><% htmlLang(11); %></label>
-				<input type="text" value="" id="auto_intranet_ip" />&nbsp;&nbsp;
+				<input type="text" value="" id="auto_intranet_ip"  placeholder ="127.0.0.1"/>&nbsp;&nbsp;
 				<label><% htmlLang(12); %></label>
-				<input type="text" value="" id="auto_port" />&nbsp;&nbsp;
+				<input type="text" value="" id="auto_port" placeholder="80" />&nbsp;&nbsp;
 				<input type="button" value="<% htmlLang(14); %>" onclick="auto_access()" />
 			</p>
 		</div>
@@ -161,9 +146,9 @@ updateTime();
 		<div>
 			<p class="content_body">
 				<label><% htmlLang(11); %></label>
-				<input type="text" value="" id="manual_intranet_ip" />&nbsp;&nbsp;
+				<input type="text" value="" id="manual_intranet_ip" placeholder ="127.0.0.1"/>&nbsp;&nbsp;
 				<label><% htmlLang(12); %></label>
-				<input type="text" value=""  id="manual_port" />&nbsp;&nbsp;
+				<input type="text" value=""  id="manual_port" placeholder="80"/>&nbsp;&nbsp;
 				<input type="button" value="<% htmlLang(14); %>" onclick="visit_dev()" />
 			</p>			
 		</div>

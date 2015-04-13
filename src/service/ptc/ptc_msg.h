@@ -71,7 +71,7 @@ VOID ptc_send_pthread_mutex_unlock(S8 *szFileName, U32 ulLine);
 VOID ptc_recv_pthread_mutex_lock(S8 *szFileName, U32 ulLine);
 VOID ptc_recv_pthread_mutex_unlock(S8 *szFileName, U32 ulLine);
 VOID ptc_recv_pthread_cond_wait(S8 *szFileName, U32 ulLine);
-VOID ptc_send_exit_notify_to_pts(PT_DATA_TYPE_EN enDataType, U32 ulStreamID);
+VOID ptc_send_exit_notify_to_pts(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S32 lSeq);
 VOID ptc_delete_send_stream_node(U32 ulStreamID, PT_DATA_TYPE_EN enDataType, BOOL bIsMutex);
 VOID ptc_delete_recv_stream_node(U32 ulStreamID, PT_DATA_TYPE_EN enDataType, BOOL bIsMutex);
 

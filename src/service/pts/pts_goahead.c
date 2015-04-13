@@ -216,6 +216,7 @@ S8 *g_apLangCN[PTS_LANG_ARRAY_SIZE] = {"Ô¶³Ì·ÃÎÊ", "PTC¹ÜÀí", "PTSÇĞ»»", "PTCÅäÖ
                             , "ÃÜÂë±ØĞëÓÉ×ÖÄ¸ºÍÊı×Ö×é³É", "Á½´ÎÃÜÂëĞèÒªÏàÍ¬"
                         , "Ô­ÃÜÂë£º", "ĞÂÃÜÂë£º"
                         , "PING²âÊÔ", "PING´ÎÊı(1-100)£º", "¿ªÊ¼", "½áÊø", "ĞÅÏ¢£º"
+                        , "Ë¢ĞÂ"
                    };
 S8 *g_apLangEN[PTS_LANG_ARRAY_SIZE] = {"Remote&nbsp;Access", "PTC&nbsp;Manage", "PTS&nbsp;Switch", "PTC&nbsp;Configure", "PTC&nbsp;Upgrade", "User&nbsp;Control", "Tools", "Ping", "Hello"
                         , "Auto&nbsp;Visit: ", "public&nbsp;IP: ", "Private&nbsp;IP: ", "Private&nbsp;Port: ", "manual&nbsp;Visit: "
@@ -231,6 +232,7 @@ S8 *g_apLangEN[PTS_LANG_ARRAY_SIZE] = {"Remote&nbsp;Access", "PTC&nbsp;Manage", 
                             , "Must consist of letters and Numbers", "Two password needs to be the same"
                         , "Old&nbsp;Password : ", "New&nbsp;Password : "
                         , "PING", "PING&nbsp;Count(1-100)£º", "Start", "End", "Message: "
+                        , "Refush"
                     };
 
 /****************************** Forward Declarations **************************/
@@ -520,6 +522,8 @@ static int initWebs(int demo)
     websAspDefine(T("dataTablesLang"), pts_data_tables_lang);               /* ÉèÖÃdatatableµÄÓïÑÔ */
     websAspDefine(T("htmlLang"), pts_html_lang);                            /* ÉèÖÃÇ°Ì¨Ò³ÃæµÄÓïÑÔ */
     websAspDefine(T("lang_type"), pts_get_lang_type);                       /* »ñµÃÓïÑÔµÄÀàĞÍ */
+
+//    websAspDefine(T("status_statistics"), status_statistics);               /* ×´Ì¬ Í³¼Æ */
 
     websFormDefine(T("create_user"), pts_create_user);                      /* ´´½¨ÓÃ»§ */
     websFormDefine(T("change_pwd"), pts_change_password);                   /* ĞŞ¸ÄÃÜÂë */
@@ -2081,6 +2085,11 @@ static int pts_get_lang_type(int eid, webs_t wp, int argc, char_t **argv)
 {
     return websWrite(wp, T("%d"), g_LangType);
 }
+
+//static int status_statistics(int eid, webs_t wp, int argc, char_t **argv)
+//{
+//    return websWrite(wp, T("%d"), g_LangType);
+//}
 
 /******************************************************************************/
 /*

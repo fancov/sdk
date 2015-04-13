@@ -940,6 +940,7 @@ list_t *pt_need_recv_node_list_insert(list_t *pstHead, PT_MSG_TAG *pstMsgDes)
     pstNewNode->enDataType = pstMsgDes->enDataType;
     pstNewNode->ulStreamID = pstMsgDes->ulStreamID;
     pstNewNode->ExitNotifyFlag = pstMsgDes->ExitNotifyFlag;
+    pstNewNode->lSeq = pstMsgDes->lSeq;
 
     if (NULL == pstHead)
     {

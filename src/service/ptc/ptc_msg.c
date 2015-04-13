@@ -274,7 +274,7 @@ VOID ptc_data_lose(PT_MSG_TAG *pstMsgDes)
     return;
 }
 
-VOID ptc_send_exit_notify_to_pts(PT_DATA_TYPE_EN enDataType, U32 ulStreamID)
+VOID ptc_send_exit_notify_to_pts(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S32 lSeq)
 {
     PT_MSG_TAG stMsgDes;
     S8 acBuff[PT_DATA_BUFF_512] = {0};
@@ -283,7 +283,7 @@ VOID ptc_send_exit_notify_to_pts(PT_DATA_TYPE_EN enDataType, U32 ulStreamID)
     dos_memcpy(stMsgDes.aucID, g_pstPtcSend->aucID, PTC_ID_LEN);
     stMsgDes.ulStreamID = dos_htonl(ulStreamID);
     stMsgDes.ExitNotifyFlag = DOS_TRUE;
-    stMsgDes.lSeq = 0;
+    stMsgDes.lSeq = dos_htonl(lSeq);
     stMsgDes.enCmdValue = PT_CMD_NORMAL;
     stMsgDes.bIsEncrypt = DOS_FALSE;
     stMsgDes.bIsCompress = DOS_FALSE;
@@ -319,7 +319,7 @@ VOID ptc_send_lost_data_req(U64 ulLoseMsg)
     if (pstStreamNode->ulCountResend >= PT_RESEND_REQ_MAX_COUNT)
     {
         /* 丢包重发PTC_RESEND_MAX_COUNT次，仍未收到 */
-        ptc_send_exit_notify_to_pts(pstMsg->enDataType, pstMsg->ulStreamID);    /* 通知pts关闭sockfd */
+        ptc_send_exit_notify_to_pts(pstMsg->enDataType, pstMsg->ulStreamID, 0);    /* 通知pts关闭sockfd */
         /* 清空ptc中，stream的资源 */
         if (NULL != g_pstPtcRecv)
         {
@@ -500,20 +500,29 @@ VOID ptc_send_login_req(U64 arg)
         if (g_pstPtcSend->stDestAddr.sin_addr.s_addr == *(U32 *)(g_stServMsg.achPtsMajorIP))
         {
             /* 主域名注册不上，切换pts到副域名 */
-            g_pstPtcSend->stDestAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achPtsMinorIP);
-            g_pstPtcSend->stDestAddr.sin_port = g_stServMsg.usPtsMinorPort;
+            if (g_stServMsg.usPtsMinorPort != 0)
+            {
+                g_pstPtcSend->stDestAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achPtsMinorIP);
+                g_pstPtcSend->stDestAddr.sin_port = g_stServMsg.usPtsMinorPort;
+            }
         }
         else if (g_pstPtcSend->stDestAddr.sin_addr.s_addr == *(U32 *)(g_stServMsg.achPtsMinorIP))
         {
             /* 副域名注册不上，切换到主域名 */
-            g_pstPtcSend->stDestAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achPtsMajorIP);
-            g_pstPtcSend->stDestAddr.sin_port = g_stServMsg.usPtsMajorPort;
+            if (g_stServMsg.usPtsMajorPort != 0)
+            {
+                g_pstPtcSend->stDestAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achPtsMajorIP);
+                g_pstPtcSend->stDestAddr.sin_port = g_stServMsg.usPtsMajorPort;
+            }
         }
         else
         {
             /* 其它域名注册不上，切换到主域名 */
-            g_pstPtcSend->stDestAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achPtsMajorIP);
-            g_pstPtcSend->stDestAddr.sin_port = g_stServMsg.usPtsMajorPort;
+            if (g_stServMsg.usPtsMajorPort != 0)
+            {
+                g_pstPtcSend->stDestAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achPtsMajorIP);
+                g_pstPtcSend->stDestAddr.sin_port = g_stServMsg.usPtsMajorPort;
+            }
         }
     }
     /* 登陆消息描述赋值 */
@@ -534,9 +543,12 @@ VOID ptc_send_login_req(U64 arg)
 
     dos_memcpy(acBuff+sizeof(PT_MSG_TAG), (VOID *)&stVerRet, sizeof(PT_CTRL_DATA_ST));
 
-    inet_ntop(AF_INET, (void *)(&g_pstPtcSend->stDestAddr.sin_addr.s_addr), szDestIp, PT_IP_ADDR_SIZE);
-    sendto(lSockfd, acBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
-    logr_debug("ptc send login request to pts : ip : %s:%u", szDestIp, dos_ntohs(g_pstPtcSend->stDestAddr.sin_port));
+    if (dos_ntohs(g_pstPtcSend->stDestAddr.sin_port) != 0)
+    {
+        sendto(lSockfd, acBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+        inet_ntop(AF_INET, (void *)(&g_pstPtcSend->stDestAddr.sin_addr.s_addr), szDestIp, PT_IP_ADDR_SIZE);
+        logr_debug("ptc send login request to pts : ip : %s:%u", szDestIp, dos_ntohs(g_pstPtcSend->stDestAddr.sin_port));
+    }
 
     /* 获取ptc一侧udp的私网端口号 -- sendto后，才能获取端口号 */
     if (g_stServMsg.usLocalPort == 0)
@@ -1116,7 +1128,7 @@ VOID ptc_ctrl_msg_handle(S8 *pData, U32 lRecvLen)
         }
         /* 通知pts，清除登录的缓存 */
         ptc_delete_send_stream_node(PT_CTRL_LOGIN_RSP, PT_DATA_CTRL, DOS_TRUE);
-        ptc_send_exit_notify_to_pts(PT_DATA_CTRL, PT_CTRL_LOGIN_RSP);
+        ptc_send_exit_notify_to_pts(PT_DATA_CTRL, PT_CTRL_LOGIN_RSP, 0);
         break;
     case PT_CTRL_HB_RSP:
         /* 心跳响应，关闭定时器 */

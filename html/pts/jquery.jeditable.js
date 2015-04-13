@@ -531,10 +531,10 @@
         width      : 'auto',
         height     : 'auto',
         event      : 'click.editable',
-        onblur     : 'cancel',
+        onblur     : 'submit',
         loadtype   : 'GET',
         loadtext   : 'Loading...',
-        placeholder: 'Click to edit',
+        placeholder: '',
         loaddata   : {},
         submitdata : {},
         ajaxoptions: {}

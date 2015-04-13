@@ -401,7 +401,6 @@ VOID *pts_send_msg2proxy(VOID *arg)
                 pts_send_msg2web(pstNeedRevNode);
                 dos_dmem_free(pstNeedRevNode);
                 pstNeedRevNode = NULL;
-                continue;
             }
             else if (pstNeedRevNode->enDataType == PT_DATA_CMD)
             {
@@ -409,9 +408,13 @@ VOID *pts_send_msg2proxy(VOID *arg)
                 pts_send_msg2cmd(pstNeedRevNode);
                 dos_dmem_free(pstNeedRevNode);
                 pstNeedRevNode = NULL;
-                continue;
             }
-        }/*end of while(1)*/
+            else
+            {
+                dos_dmem_free(pstNeedRevNode);
+                pstNeedRevNode = NULL;
+            }
+        } /* end of while(1) */
         g_pstPtsNendRecvNode = pstNendRecvList;
 #if PT_MUTEX_DEBUG
         pts_recv_pthread_mutex_unlock(__FILE__, __LINE__);
@@ -419,8 +422,7 @@ VOID *pts_send_msg2proxy(VOID *arg)
         pthread_mutex_unlock(&g_pts_mutex_recv);
 #endif
 
-
-    }/*end of while(1)*/
+    } /* end of while(1) */
 
 }
 

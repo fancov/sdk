@@ -54,7 +54,7 @@
  *  By license terms the software name and version defined in this section of
  *  code must not be modified.
  */
-#define WEBS_NAME               T("AMC")
+#define WEBS_NAME               T("OK-RAS")
 #define WEBS_VERSION            T("2.1.0")
 #ifdef WEBS_SSL_SUPPORT
 #define SSL_NAME                T("PeerSec-MatrixSSL")

@@ -86,7 +86,7 @@ S32 ptc_get_mac(S8 *szName, S32 lSockfd, S8 *szMac, U32 ulMacLen)
     }
 
     pTr = (U8 *)&stIfreq.ifr_ifru.ifru_hwaddr.sa_data[0];
-    snprintf(szMac, ulMacLen, "%02X:%02X:%02X:%02X:%02X:%02X",*pTr,*(pTr+1),*(pTr+2),*(pTr+3),*(pTr+4),*(pTr+5));
+    snprintf(szMac, ulMacLen, "%02X-%02X-%02X-%02X-%02X-%02X",*pTr,*(pTr+1),*(pTr+2),*(pTr+3),*(pTr+4),*(pTr+5));
 
     return DOS_SUCC;
 }
@@ -164,6 +164,8 @@ VOID ptc_init_serv_msg(S32 lSockfd)
     S8 szMajorDoMain[PTC_PTS_DOMAIN_SIZE] = {0}; /* 主域名 */
     S8 szMinorDoMain[PTC_PTS_DOMAIN_SIZE] = {0}; /* 副域名 */
     S8 szServiceRoot[PT_DATA_BUFF_256] = {0};
+    BOOL bIsGetMajorDomain = DOS_FALSE;
+    BOOL bIsGetMinorDomain = DOS_FALSE;
 
     if (config_get_service_root(szServiceRoot, sizeof(szServiceRoot)) == NULL)
     {
@@ -175,65 +177,106 @@ VOID ptc_init_serv_msg(S32 lSockfd)
     if (lResult != DOS_SUCC)
     {
         logr_info("get domain fail");
-        exit(DOS_FAIL);
+        bIsGetMajorDomain = DOS_FALSE;
     }
+    else
+    {
+        bIsGetMajorDomain = DOS_TRUE;
+    }
+
     /* 获取备域名*/
     lResult = config_get_pts_minor_domain(szMinorDoMain, PTC_PTS_DOMAIN_SIZE);
     if (lResult != DOS_SUCC)
     {
         logr_info("get domain fail");
-        exit(DOS_FAIL);
+        bIsGetMinorDomain = DOS_FALSE;
     }
+    else
+    {
+        bIsGetMinorDomain = DOS_TRUE;
+    }
+
     logr_debug("major domain name is : %s, minor domain is : %s", szMajorDoMain, szMinorDoMain);
     /* 保存主/副域名 */
-    dos_strncpy(g_stServMsg.achPtsMajorDomain, szMajorDoMain, PT_DATA_BUFF_64-1);
-    dos_strncpy(g_stServMsg.achPtsMinorDomain, szMinorDoMain, PT_DATA_BUFF_64-1);
+    if (bIsGetMajorDomain)
+    {
+        dos_strncpy(g_stServMsg.achPtsMajorDomain, szMajorDoMain, PT_DATA_BUFF_64-1);
+    }
+
+    if (bIsGetMinorDomain)
+    {
+        dos_strncpy(g_stServMsg.achPtsMinorDomain, szMinorDoMain, PT_DATA_BUFF_64-1);
+    }
 
     /* 获得主域名 ip */
-    if (pt_is_or_not_ip(szMajorDoMain))
+    if (bIsGetMajorDomain)
     {
-        dos_strncpy(szPtsIp, szMajorDoMain, PT_IP_ADDR_SIZE);
-    }
-    else
-    {
-        lResult = pt_DNS_analyze(szMajorDoMain, paucIPAddr);
-        if (lResult <= 0)
+        if (pt_is_or_not_ip(szMajorDoMain))
         {
-            logr_info("1DNS fail");
-            exit(DOS_FAIL);
+            dos_strncpy(szPtsIp, szMajorDoMain, PT_IP_ADDR_SIZE);
         }
         else
         {
-            inet_ntop(AF_INET, (void *)(paucIPAddr), szPtsIp, PT_IP_ADDR_SIZE);
-            logr_debug("domain name is : %s, ip : %s", szMajorDoMain, szPtsIp);
+            lResult = pt_DNS_analyze(szMajorDoMain, paucIPAddr);
+            if (lResult <= 0)
+            {
+                logr_info("major domain DNS fail");
+                bIsGetMajorDomain = DOS_FALSE;
+            }
+            else
+            {
+                inet_ntop(AF_INET, (void *)(paucIPAddr), szPtsIp, PT_IP_ADDR_SIZE);
+                logr_debug("domain name is : %s, ip : %s", szMajorDoMain, szPtsIp);
+            }
         }
+
+        inet_pton(AF_INET, szPtsIp, (VOID *)(g_stServMsg.achPtsMajorIP));
     }
-    inet_pton(AF_INET, szPtsIp, (VOID *)(g_stServMsg.achPtsMajorIP));
 
     /* 获得副域名 ip */
-    if (pt_is_or_not_ip(szMinorDoMain))
+    if (bIsGetMinorDomain)
     {
-        dos_strncpy(szPtsIp, szMinorDoMain, PT_IP_ADDR_SIZE);
-    }
-    else
-    {
-        lResult = pt_DNS_analyze(szMinorDoMain, paucIPAddr);
-        if (lResult <= 0)
+        if (pt_is_or_not_ip(szMinorDoMain))
         {
-            logr_info("2DNS fail");
-            exit(DOS_FAIL);
+            dos_strncpy(szPtsIp, szMinorDoMain, PT_IP_ADDR_SIZE);
         }
         else
         {
-            inet_ntop(AF_INET, (void *)(paucIPAddr), szPtsIp, PT_IP_ADDR_SIZE);
-            logr_debug("domain name is : %s, ip : %s", szMinorDoMain, szPtsIp);
+            lResult = pt_DNS_analyze(szMinorDoMain, paucIPAddr);
+            if (lResult <= 0)
+            {
+                logr_info("mainor domain DNS fail");
+                bIsGetMinorDomain = DOS_FALSE;
+            }
+            else
+            {
+                inet_ntop(AF_INET, (void *)(paucIPAddr), szPtsIp, PT_IP_ADDR_SIZE);
+                logr_debug("domain name is : %s, ip : %s", szMinorDoMain, szPtsIp);
+            }
         }
+
+        inet_pton(AF_INET, szPtsIp, (VOID *)(g_stServMsg.achPtsMinorIP));
     }
-    inet_pton(AF_INET, szPtsIp, (VOID *)(g_stServMsg.achPtsMinorIP));
 
     /* 获得主/副域名的端口 */
-    g_stServMsg.usPtsMajorPort = dos_htons(config_get_pts_major_port());
-    g_stServMsg.usPtsMinorPort = dos_htons(config_get_pts_minor_port());
+    if (bIsGetMajorDomain)
+    {
+        g_stServMsg.usPtsMajorPort = dos_htons(config_get_pts_major_port());
+    }
+    else
+    {
+        g_stServMsg.usPtsMajorPort = 0;
+    }
+
+    if (bIsGetMinorDomain)
+    {
+        g_stServMsg.usPtsMinorPort = dos_htons(config_get_pts_minor_port());
+    }
+    else
+    {
+        g_stServMsg.usPtsMinorPort = 0;
+    }
+
     g_stServMsg.usLocalPort = 0;
 
     /* 获得存放ptc注册pts的记录表 */
@@ -270,8 +313,21 @@ VOID ptc_init_send_cache_queue(S32 lSocket, U8 *pcID)
     bzero(&stDestAddr, sizeof(stDestAddr));
     stDestAddr.sin_family = AF_INET;
 
-    stDestAddr.sin_port = g_stServMsg.usPtsMajorPort;
-    stDestAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achPtsMajorIP);
+    if (g_stServMsg.usPtsMajorPort != 0)
+    {
+        stDestAddr.sin_port = g_stServMsg.usPtsMajorPort;
+        stDestAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achPtsMajorIP);
+    }
+    else if (g_stServMsg.usPtsMinorPort != 0)
+    {
+        stDestAddr.sin_port = g_stServMsg.usPtsMinorPort;
+        stDestAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achPtsMinorIP);
+    }
+    else
+    {
+        stDestAddr.sin_port = 0;
+        stDestAddr.sin_addr.s_addr = 0;
+    }
 
     g_pstPtcSend->lSocket = lSocket;
     g_pstPtcSend->stDestAddr = stDestAddr;
@@ -306,7 +362,7 @@ VOID ptc_init_recv_cache_queue(S32 lSocket, U8 *pcID)
         return;
     }
 
-    struct sockaddr_in stDestAddr;
+   // struct sockaddr_in stDestAddr;
 
     g_pstPtcRecv = (PT_CC_CB_ST *)dos_dmem_alloc(sizeof(PT_CC_CB_ST));
     if (NULL == g_pstPtcRecv)
@@ -314,17 +370,31 @@ VOID ptc_init_recv_cache_queue(S32 lSocket, U8 *pcID)
         perror("recv cache malloc");
         exit(DOS_FAIL);
     }
-
-    dos_memcpy(g_pstPtcSend->aucID, pcID, PTC_ID_LEN);
+#if 0
+    dos_memcpy(g_pstPtcRecv->aucID, pcID, PTC_ID_LEN);
 
     bzero(&stDestAddr, sizeof(stDestAddr));
     stDestAddr.sin_family = AF_INET;
 
-    stDestAddr.sin_port = g_stServMsg.usPtsMajorPort;
-    stDestAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achPtsMajorIP);
+    if (g_stServMsg.usPtsMajorPort != 0)
+    {
+        stDestAddr.sin_port = g_stServMsg.usPtsMajorPort;
+        stDestAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achPtsMajorIP);
+    }
+    else if (g_stServMsg.usPtsMinorPort != 0)
+    {
+        stDestAddr.sin_port = g_stServMsg.usPtsMinorPort;
+        stDestAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achPtsMinorIP);
+    }
+    else
+    {
+        stDestAddr.sin_port = 0;
+        stDestAddr.sin_addr.s_addr = 0;
+    }
 
     g_pstPtcRecv->lSocket = lSocket;
     g_pstPtcRecv->stDestAddr = stDestAddr;
+#endif
 
     g_pstPtcRecv->astDataTypes[PT_DATA_CTRL].enDataType = PT_DATA_CTRL;
     g_pstPtcRecv->astDataTypes[PT_DATA_CTRL].bValid = DOS_TRUE;
@@ -599,7 +669,7 @@ S32 ptc_get_ptc_id(U8 *szPtcID, S32 lSockfd)
 
     pucTr = (U8 *)&stIfreq.ifr_ifru.ifru_hwaddr.sa_data[0];
     lTimeStemp = time((time_t *)NULL);
-    snprintf((S8 *)szPtcID, PTC_ID_LEN+1, "%d0%08x%x%x%x%x%x%x", g_enPtcType, lTimeStemp, *pucTr & 0x0f, *(pucTr+1) & 0x0f, *(pucTr+2) & 0x0f, *(pucTr+3) & 0x0f, *(pucTr+4) & 0x0f, *(pucTr+5) & 0x0f);
+    snprintf((S8 *)szPtcID, PTC_ID_LEN+1, "%d0%08X%X%X%X%X%X%X", g_enPtcType, lTimeStemp, *pucTr & 0x0f, *(pucTr+1) & 0x0f, *(pucTr+2) & 0x0f, *(pucTr+3) & 0x0f, *(pucTr+4) & 0x0f, *(pucTr+5) & 0x0f);
 
     fwrite(szPtcID, PTC_ID_LEN, 1, pFileFd);
     fclose(pFileFd);

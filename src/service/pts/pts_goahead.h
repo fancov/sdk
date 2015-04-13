@@ -16,7 +16,7 @@ extern "C"{
 #define PTS_UPGRADE_PTC_COUNT       5
 #define PTS_SELECT_PTC_MAX_COUNT    100
 #define PTS_DELECT_USER_MAX_COUNT   10
-#define PTS_LANG_ARRAY_SIZE         78
+#define PTS_LANG_ARRAY_SIZE         79
 
 typedef struct tagSqliteParam
 {

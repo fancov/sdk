@@ -243,6 +243,7 @@ typedef struct tagNendRecvNode
     U8                  aucID[PTC_ID_LEN];          /* PTC ID */
     PT_DATA_TYPE_EN     enDataType;                 /* ¿‡–Õ */
     U32                 ulStreamID;                 /* stream ID */
+    S32                 lSeq;
     U8                  ExitNotifyFlag;
     S8                  Reserver[3];
 

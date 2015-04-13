@@ -80,7 +80,7 @@ VOID ptc_cmd_delete_client(S32 lSocket)
             g_austCmdClients[i].lSocket = -1;
 
             /* 发送退出通知给pts */
-            ptc_send_exit_notify_to_pts(PT_DATA_CMD, g_austCmdClients[i].ulStreamID);
+            ptc_send_exit_notify_to_pts(PT_DATA_CMD, g_austCmdClients[i].ulStreamID, 0);
             return;
         }
     }
@@ -244,7 +244,8 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 if (lSockfd <= 0)
                 {
                     /* create sockfd fail */
-                    ptc_send_exit_notify_to_pts(PT_DATA_CMD, pstStreamNode->ulStreamID);
+                    ptc_send_exit_notify_to_pts(PT_DATA_CMD, pstStreamNode->ulStreamID, 1);
+                    ptc_delete_recv_stream_node(pstStreamNode->ulStreamID, PT_DATA_CMD, DOS_FALSE);
                     return;
                 }
                 lResult = ptc_cmd_add_client(pstStreamNode->ulStreamID, lSockfd);

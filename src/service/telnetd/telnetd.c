@@ -312,7 +312,7 @@ VOID telnet_close_client(U32 ulIndex)
         }
     }
     fwrite("\r\n", 2, 1, pstTelnetClient->pFDOutput);
-    fwrite(" >", 2, 1, pstTelnetClient->pFDOutput);
+    //fwrite(" >", 2, 1, pstTelnetClient->pFDOutput);
     fflush(pstTelnetClient->pFDOutput);
 }
 
@@ -1396,7 +1396,7 @@ VOID *telnetd_client_task(VOID *ptr)
     telnetd_client_send_new_line(pstClientInfo->pFDOutput, 1);
     fflush(pstClientInfo->pFDOutput);
 #else
-    fprintf(pstClientInfo->pFDOutput, "Welcome to AMC!\n\rPlease input Enter.");
+    fprintf(pstClientInfo->pFDOutput, "Welcome to OK-RAS!\n\rPlease input Enter.");
     telnetd_client_read_line(pstClientInfo, szRecvBuff, sizeof(szRecvBuff), 0);
 #endif
 
@@ -1546,7 +1546,7 @@ VOID *telnetd_client_task(VOID *ptr)
             pts_telnet_send_msg2ptc(pstClientInfo->ulIndex, &cRecvChar, 1);
         }
 
-        #endif
+#endif
     }
 
     fclose(pstClientInfo->pFDOutput);
@@ -1569,10 +1569,10 @@ VOID *telnetd_client_task(VOID *ptr)
     if (!telnetd_client_count())
     {
         snprintf(szCmd, sizeof(szCmd), "debug 0 ");
-        #if INCLUDE_DEBUG_CLI_SERVER
+#if INCLUDE_DEBUG_CLI_SERVER
         cli_server_send_broadcast_cmd(INVALID_CLIENT_INDEX, szCmd, dos_strlen(szCmd) + 1);
-        #else
-        #endif
+#else
+#endif
     }
 
     return NULL;

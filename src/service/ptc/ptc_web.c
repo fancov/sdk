@@ -332,7 +332,7 @@ BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
         }
 
         ptc_delete_recv_stream_node(pstStreamNode->ulStreamID, PT_DATA_WEB, DOS_FALSE);
-        ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID);
+        ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID, 0);
 
         return DOS_TRUE;
     }
@@ -403,7 +403,7 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 if (lSockfd <= 0)
                 {
                     /* 创建socket失败，通知pts结束 */
-                    ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID);
+                    ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID, 0);
                     break;
                 }
                 printf("create socket : %d, stream : %d\n", lSockfd, pstStreamNode->ulStreamID);
