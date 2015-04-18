@@ -552,7 +552,8 @@ BOOL pts_deal_with_http_head(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pc
     S8 szUrl[PT_DATA_BUFF_128] = {0};
     BOOL bIsGetID = DOS_FALSE;
 
-    pt_logr_info("send req socket : %d, ulStreamID : %d", ulConnfd, ulStreamID);
+    logr_info("send req socket : %d, ulStreamID : %d", ulConnfd, ulStreamID);
+
     bIsGetID = pts_request_ptc_proxy(pcRequest, ulConnfd, ulStreamID, pcIpccId, lReqLen, szUrl);
 
     return bIsGetID;
@@ -772,7 +773,9 @@ VOID *pts_recv_msg_from_web(VOID *arg)
         {
             logr_error("Could not create fifo %s\n", szPtsFifoName);
             perror("mkfifo");
-            exit(EXIT_FAILURE);
+            DOS_ASSERT(0);
+
+            return NULL;
         }
     }
 
@@ -791,7 +794,9 @@ VOID *pts_recv_msg_from_web(VOID *arg)
         if (lResult < 0)
         {
             perror("pts recv msg from proxy  : fail to select");
-            exit(DOS_FAIL);
+            DOS_ASSERT(0);
+            sleep(1);
+            continue;
         }
         else if (0 == lResult)
         {
@@ -813,8 +818,12 @@ VOID *pts_recv_msg_from_web(VOID *arg)
                     pt_logr_debug("%s", "new connect from client to  web service of pts");
                     if ((lConnFd = accept(i, (struct sockaddr*)&stClientAddr, &ulCliaddrLen)) < 0)
                     {
-                        perror("pts recv msg from proxy accept");
-                        exit(DOS_FAIL);
+                        perror("accept");
+                        DOS_ASSERT(0);
+                        //exit(DOS_FAIL);
+                        sleep(1);
+
+                        continue;
                     }
 
                     FD_SET(lConnFd, &g_ReadFds);
@@ -999,7 +1008,13 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 if (getsockopt(pstClinetCB->lSocket, IPPROTO_TCP, TCP_INFO, &tcpinfo, &optlen) < 0)
                 {
                     pt_logr_info("get info fail");
-                    exit(1);
+                    DOS_ASSERT(0);
+#if PT_WEB_MUTEX_DEBUG
+                    pts_web_sem_post(__FILE__, __LINE__);
+#else
+                    pthread_mutex_unlock(&g_web_client_mutex);
+#endif
+                    return;
                 }
 
                 if (TCP_CLOSE == tcpinfo || TCP_CLOSE_WAIT == tcpinfo || TCP_CLOSING == tcpinfo)

@@ -21,10 +21,10 @@
 $(document).ready(function() {
     var oTable = $('#example').DataTable({
             "info" : true, 
-            "aaSorting": [[1, "asc"]],
+            "aaSorting": [[1, "desc"]],
             "stateSave": true,
             "serverSide": true,
-            "sDom": '<"top"f>rt<"bottom"lp>',
+            "sDom": '<"top"f<"refush">>rt<"bottom"lp>',
             "sAjaxSource": "/pts_switch_list.html",
             <% dataTablesLang(); %>
               "aoColumnDefs": [{"className": "checkBox",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [11]}, {"className": "ptc_nice", "aTargets": [3]}],
@@ -44,6 +44,8 @@ $(document).ready(function() {
             })}
         });
         
+        $('.refush').html("<p id='RefushButton'> <input type='button' value ='<% htmlLang(78); %>'></p>");
+
 		$('#example tbody').on( 'click', 'td', function () {
             if ($(this).find("input").val())
             {
@@ -59,6 +61,11 @@ $(document).ready(function() {
                 $(this).parent().children("td.checkBox").children("input").prop('checked', true); 
             }
         });
+
+        $('.refush').click(function(){
+            location.reload();
+            return true;    
+        });
 });
 get_lang_type(<% lang_type(); %>);
 updateTime();
@@ -69,6 +76,13 @@ updateTime();
 
 <div class="nav_content">
     <div class="ddsmoothmenu nav_left" id="smoothmenu1">
+    <UL>
+        <LI class="logo_li">
+            <a href="http://www.dipcc.com" target="_blank">
+                <img src="images/logo.png" title="深圳市天天讯通科技有限公司"  />
+            </a>
+        </LI>
+    </UL>
     <UL>
       <LI><A href="index.html"><% htmlLang(0); %></A></LI>
       <LI><A href="#"><% htmlLang(1); %></A> 

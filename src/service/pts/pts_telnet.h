@@ -38,6 +38,8 @@ typedef struct tagCmdClientCB
     S8     Reserver[3];
 }PTS_CMD_CLIENT_CB_ST;
 
+extern PTS_CMD_CLIENT_CB_ST g_astCmdClient[PTS_MAX_CLIENT_NUMBER];
+
 S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLength);
 VOID pts_telnet_send_msg2ptc(U32 ulClientIndex, S8 *szBuff, U32 ulLen);
 VOID pts_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode);

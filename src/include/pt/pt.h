@@ -162,6 +162,7 @@ typedef enum
     PT_CTRL_PTC_PACKAGE,
     PT_CTRL_PING,
     PT_CTRL_PING_ACK,
+    PT_CTRL_COMMAND,                /* pts发送命令到ptc，获取ptc的信息 */
 
     PT_CTRL_BUTT
 
@@ -170,9 +171,9 @@ typedef enum
 /* 传输的数据类型 */
 typedef enum
 {
-    PT_PTC_TYPE_OEM = 0,
-    PT_PTC_TYPE_WINDOWS,
-    PT_PTC_TYPE_IPCC,
+    PT_PTC_TYPE_OEM = 0,        /* EMBEDDED */
+    PT_PTC_TYPE_WINDOWS,        /* WINDOWS */
+    PT_PTC_TYPE_IPCC,           /* LINUX */
 
     PT_PTC_TYPE_BUTT
 
@@ -182,7 +183,7 @@ typedef enum
 typedef struct tagCtrlData
 {
     S8      szLoginVerify[PT_LOGIN_VERIFY_SIZE];    /* 用于登陆验证的随机字符串 */
-    S8      szVersion[PT_VERSION_LEN];              /* 版本号 */
+    U8      szVersion[PT_VERSION_LEN];              /* 版本号 */
     S8      szPtcName[PT_PTC_NAME_LEN];             /* ptc名称 */
     U32     ulLginVerSeq;                           /* 登陆验证随机字符串在发送缓存中存储的包包编号 */
     S8      achPtsMajorDomain[PT_DATA_BUFF_64];     /* pts主域名地址 */
@@ -277,6 +278,12 @@ typedef struct tagPingPacket
 
 }PT_PING_PACKET_ST;
 
+typedef struct tagPtcCommand
+{
+    U32 ulIndex;
+    S8 szCommand[PT_DATA_BUFF_16];
+
+}PT_PTC_COMMAND_ST;
 
 PT_CC_CB_ST *pt_ptc_node_create(U8 *pcIpccId, S8 *szPtcVersion, struct sockaddr_in stDestAddr, S32 lSocket);
 list_t *pt_delete_ptc_node(list_t *stPtcListHead, PT_CC_CB_ST *pstPtcNode);
@@ -303,7 +310,7 @@ U32 pt_log_current_level();
 VOID pt_logr_write(U32 ulLevel, S8 *pszFormat, ...);
 S8 *pt_get_gmt_time(U32 ulExpiresTime);
 BOOL pt_is_or_not_ip(S8 *szIp);
-BOOL pts_is_ptc_id(S8* pcUrl);
+BOOL pts_is_ptc_sn(S8* pcUrl);
 BOOL pts_is_int(S8* pcUrl);
 S32 pt_DNS_analyze(S8 *szDomainName, U8 paucIPAddr[IPV6_SIZE]);
 S32 pt_md5_encrypt(S8 *szEncrypt, S8 *szDecrypt);

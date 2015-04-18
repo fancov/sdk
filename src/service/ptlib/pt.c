@@ -79,7 +79,7 @@ S32 pt_DNS_analyze(S8 *szDomainName, U8 paucIPAddr[IPV6_SIZE])
     hptr = gethostbyname(szDomainName);
     if (NULL == hptr)
     {
-        pt_logr_info("gethostbyname error for host:%s\n", szDomainName);
+        pt_logr_info("gethostbyname error for host:%s", szDomainName);
         return DOS_FAIL;
     }
 
@@ -230,7 +230,7 @@ S32 pt_des_encrypt_or_decrypt(U8 *ulDesKey, S16 sProcessMode, U8 *ucData, U32 ul
  * 参数
  * 返回值：
  */
-BOOL pts_is_ptc_id(S8* pcUrl)
+BOOL pts_is_ptc_sn(S8* pcUrl)
 {
     S32 i = 0;
 

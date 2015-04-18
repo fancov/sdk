@@ -7,7 +7,7 @@ extern "C"{
 
 #include <semaphore.h>
 #include <pt/pt.h>
-#include <pt/goahead/webs.h>
+#include <webs/webs.h>
 
 #define PTS_SQL_STR_SIZE            1024           /* 存放sql语句数组的大小 */
 #define PTS_LISTEN_COUNT            10             /* listen 个数 */

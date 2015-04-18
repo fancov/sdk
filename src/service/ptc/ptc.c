@@ -156,7 +156,7 @@ VOID ptc_get_pts_history()
  * 参数
  * 返回值：
  */
-VOID ptc_init_serv_msg(S32 lSockfd)
+S32 ptc_init_serv_msg(S32 lSockfd)
 {
     S32 lResult = 0;
     U8 paucIPAddr[IPV6_SIZE] = {0};
@@ -169,7 +169,7 @@ VOID ptc_init_serv_msg(S32 lSockfd)
 
     if (config_get_service_root(szServiceRoot, sizeof(szServiceRoot)) == NULL)
     {
-        exit(DOS_FAIL);
+        return DOS_FAIL;
     }
 
     /* 获取主域名*/
@@ -282,7 +282,7 @@ VOID ptc_init_serv_msg(S32 lSockfd)
     /* 获得存放ptc注册pts的记录表 */
     ptc_get_pts_history();
 
-    return;
+    return DOS_SUCC;
 }
 
 /**
@@ -292,11 +292,11 @@ VOID ptc_init_serv_msg(S32 lSockfd)
  * 参数
  * 返回值：
  */
-VOID ptc_init_send_cache_queue(S32 lSocket, U8 *pcID)
+S32 ptc_init_send_cache_queue(S32 lSocket, U8 *pcID)
 {
     if (NULL == pcID)
     {
-        return;
+        return DOS_FAIL;
     }
 
     struct sockaddr_in stDestAddr;
@@ -305,7 +305,8 @@ VOID ptc_init_send_cache_queue(S32 lSocket, U8 *pcID)
     if (NULL == g_pstPtcSend)
     {
         perror("send cache malloc");
-        exit(DOS_FAIL);
+
+        return DOS_FAIL;
     }
 
     dos_memcpy(g_pstPtcSend->aucID, pcID, PTC_ID_LEN);
@@ -345,7 +346,7 @@ VOID ptc_init_send_cache_queue(S32 lSocket, U8 *pcID)
     g_pstPtcSend->astDataTypes[PT_DATA_CMD].pstStreamQueHead = NULL;
     g_pstPtcSend->astDataTypes[PT_DATA_CMD].ulStreamNumInQue = 0;
 
-    return;
+    return DOS_SUCC;
 }
 
 /**
@@ -355,11 +356,11 @@ VOID ptc_init_send_cache_queue(S32 lSocket, U8 *pcID)
  * 参数
  * 返回值：
  */
-VOID ptc_init_recv_cache_queue(S32 lSocket, U8 *pcID)
+S32 ptc_init_recv_cache_queue(S32 lSocket, U8 *pcID)
 {
     if (NULL == pcID)
     {
-        return;
+        return DOS_FAIL;
     }
 
    // struct sockaddr_in stDestAddr;
@@ -368,7 +369,8 @@ VOID ptc_init_recv_cache_queue(S32 lSocket, U8 *pcID)
     if (NULL == g_pstPtcRecv)
     {
         perror("recv cache malloc");
-        exit(DOS_FAIL);
+
+        return DOS_FAIL;
     }
 #if 0
     dos_memcpy(g_pstPtcRecv->aucID, pcID, PTC_ID_LEN);
@@ -409,7 +411,7 @@ VOID ptc_init_recv_cache_queue(S32 lSocket, U8 *pcID)
     g_pstPtcRecv->astDataTypes[PT_DATA_CMD].pstStreamQueHead = NULL;
     g_pstPtcRecv->astDataTypes[PT_DATA_CMD].ulStreamNumInQue = 0;
 
-    return;
+    return DOS_SUCC;
 }
 
 /**
@@ -614,7 +616,7 @@ S32 ptc_get_ptc_id(U8 *szPtcID, S32 lSockfd)
         else
         {
             szPtcID[PTC_ID_LEN] = '\0';
-            if (pts_is_ptc_id((S8 *)szPtcID))
+            if (pts_is_ptc_sn((S8 *)szPtcID))
             {
                 fclose(pFileFd);
                 pFileFd = NULL;
@@ -689,7 +691,7 @@ S32 ptc_main()
     S32 lSocket = 0;
     S32 lRet = 0;
     U8 aucID[PTC_ID_LEN+1] = {0};
-    pthread_t tid1, tid2, tid3, tid4, tid5;
+    pthread_t tid1, tid2, tid3, tid4, tid5, tid6;
 
     U32 ulSocketCache = PTC_SOCKET_CACHE;
     lSocket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -723,15 +725,30 @@ S32 ptc_main()
         return DOS_FAIL;
     }
 
-    ptc_init_serv_msg(lSocket);
+    lRet = ptc_init_serv_msg(lSocket);
+    if (lRet != DOS_SUCC)
+    {
+        return -1;
+    }
+
     //ptc_get_udp_use_ip();
-    ptc_init_send_cache_queue(lSocket, aucID);
-    ptc_init_recv_cache_queue(lSocket, aucID);
+    lRet = ptc_init_send_cache_queue(lSocket, aucID);
+    if (lRet != DOS_SUCC)
+    {
+        return -1;
+    }
+
+    lRet = ptc_init_recv_cache_queue(lSocket, aucID);
+    if (lRet != DOS_SUCC)
+    {
+        return -1;
+    }
+
     lRet = pthread_create(&tid1, NULL, ptc_send_msg2pts, (VOID *)&lSocket);
     if (lRet < 0)
     {
         logr_info("create pthread error : ptc_send_msg2pts!");
-        return DOS_FAIL;
+        return -1;
     }
     else
     {
@@ -780,6 +797,17 @@ S32 ptc_main()
     else
     {
         logr_debug("create pthread succ : ptc_recv_msg_from_cmd!");
+    }
+
+    lRet = pthread_create(&tid6, NULL, ptc_deal_with_pts_command, NULL);
+    if (lRet < 0)
+    {
+        logr_info("create pthread error : ptc_deal_with_pts_command!");
+        return DOS_FAIL;
+    }
+    else
+    {
+        logr_debug("create pthread succ : ptc_deal_with_pts_command!");
     }
 
     sleep(2);

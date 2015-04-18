@@ -21,10 +21,10 @@ extern "C" {
 #include <dos.h>
 #include <pt/dos_sqlite3.h>
 #include <pt/pts.h>
-#include <pt/goahead/webs.h>
-#include <pt/goahead/um.h>
-#include <pt/goahead/wsIntrn.h>
-#include <pt/goahead/websda.h>
+#include <webs/webs.h>
+#include <webs/um.h>
+#include <webs/wsIntrn.h>
+#include <webs/websda.h>
 
 #include "pts_msg.h"
 #include "pts_web.h"
@@ -287,6 +287,7 @@ static int all_ptc_upgrade_button(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_data_tables_lang(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_html_lang(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_get_lang_type(int eid, webs_t wp, int argc, char_t **argv);
+static int status_statistics(int eid, webs_t wp, int argc, char_t **argv);
 S32 pts_get_password_from_sqlite_db(char_t *userid, S8 *szWebsPassword);
 S32 pts_get_local_ip(S8 *szLocalIp);
 S32 pts_send_ptc_list2web_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name);
@@ -451,7 +452,10 @@ static int initWebs(int demo)
     */
     if (config_get_service_root(szServiceRoot, sizeof(szServiceRoot)) == NULL)
     {
-        exit(-1);
+        //exit(-1);
+        DOS_ASSERT(0);
+
+        return -1;
     }
 
     sprintf(webdir, "%s/%s", szServiceRoot, rootWeb);
@@ -523,7 +527,7 @@ static int initWebs(int demo)
     websAspDefine(T("htmlLang"), pts_html_lang);                            /* 设置前台页面的语言 */
     websAspDefine(T("lang_type"), pts_get_lang_type);                       /* 获得语言的类型 */
 
-//    websAspDefine(T("status_statistics"), status_statistics);               /* 状态 统计 */
+    websAspDefine(T("status_statistics"), status_statistics);               /* 状态 统计 */
 
     websFormDefine(T("create_user"), pts_create_user);                      /* 创建用户 */
     websFormDefine(T("change_pwd"), pts_change_password);                   /* 修改密码 */
@@ -643,10 +647,10 @@ void redirect_web_page(webs_t wp, char_t *page)
 int change_domain(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                   char_t *url, char_t *path, char_t* query)
 {
-    S32 lResult = 0;
     S8 cDomainType;
-    S8 szDomain[PT_DATA_BUFF_128] = {0};
-    S8 szPort[PT_DATA_BUFF_16] = {0};
+    S8 *szDomain = NULL;
+    S8 *szType = NULL;
+    S8 *szPort = NULL;
     S8 *pPtcIDStart = NULL;
     S8 *pSelectPtcID = NULL;
     S8 pszPtcID[PTS_SELECT_PTC_MAX_COUNT][PTC_ID_LEN + 1];
@@ -655,7 +659,10 @@ int change_domain(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
     S32 i = 0;
     PT_CTRL_DATA_ST stCtrlData;
 
-    lResult = sscanf(url,"%*[^=]=%[^&]%*[^=]=%[^&]%*[^=]=%[^&]", &cDomainType, szDomain, szPort);
+    szDomain = websGetVar(wp, T("domain"), T(""));
+    szType = websGetVar(wp, T("type"), T(""));
+    szPort = websGetVar(wp, T("port"), T(""));
+    cDomainType = szType[0];
 
     printf("cDomainType = %c, szDomain = %s, szPort = %s\n", cDomainType, szDomain, szPort);
     pPtcIDStart = dos_strstr(url, "id=") + dos_strlen("id=");
@@ -800,8 +807,8 @@ int pts_notify_ptc_switch_pts(webs_t wp, char_t *urlPrefix, char_t *webDir, int 
                               char_t *url, char_t *path, char_t* query)
 {
     S32 lResult = 0;
-    S8 szDomain[PT_DATA_BUFF_128] = {0};
-    S8 szPort[PT_DATA_BUFF_16] = {0};
+    S8 *szDomain = NULL;
+    S8 *szPort = NULL;
     S8 szPtsIp[PT_IP_ADDR_SIZE] = {0};
     U8 paucIPAddr[IPV6_SIZE] = {0};
     S8 pcListBuf[PT_DATA_BUFF_512] = {0};
@@ -814,67 +821,61 @@ int pts_notify_ptc_switch_pts(webs_t wp, char_t *urlPrefix, char_t *webDir, int 
     S32 lPtcCount = 0;
     S32 i = 0;
 
-    lResult = sscanf(url,"%*[^=]=%*[^=]=%[^&]%*[^=]=%s", szDomain, szPort);
-    if (lResult < 0)
+    szDomain = websGetVar(wp, T("domain"), T(""));
+    szPort = websGetVar(wp, T("port"), T(""));
+    usPort = atoi(szPort);
+    printf("domain : %s, port : %d\n", szDomain, usPort);
+    /* 域名解析 */
+    if (pt_is_or_not_ip(szDomain))
     {
-        perror("sscanf");
-        //dos_strcpy(pcListBuf,"");
+        dos_strncpy(szPtsIp, szDomain, PT_IP_ADDR_SIZE);
     }
     else
     {
-        usPort = atoi(szPort);
-        printf("domain : %s, port : %d\n", szDomain, usPort);
-        /* 域名解析 */
-        if (pt_is_or_not_ip(szDomain))
+        lResult = pt_DNS_analyze(szDomain, paucIPAddr);
+        if (lResult <= 0)
         {
-            dos_strncpy(szPtsIp, szDomain, PT_IP_ADDR_SIZE);
+            sprintf(pcListBuf, "0&域名错误");
+            websError(wp, 200, T(pcListBuf));
+            return 1;
         }
         else
         {
-            lResult = pt_DNS_analyze(szDomain, paucIPAddr);
-            if (lResult <= 0)
-            {
-                sprintf(pcListBuf, "0&域名错误");
-                websError(wp, 200, T(pcListBuf));
-                return 1;
-            }
-            else
-            {
-                inet_ntop(AF_INET, (void *)(paucIPAddr), szPtsIp, sizeof(szPtsIp));
-            }
+            inet_ntop(AF_INET, (void *)(paucIPAddr), szPtsIp, sizeof(szPtsIp));
         }
-
-        pPtcIDStart = dos_strstr(url, "id=") + dos_strlen("id=");
-        pPtcIDEnd = dos_strstr(url, "&");
-        pPtcIDEnd = '\0';
-        pSelectPtcID = strtok(pPtcIDStart, "!");
-        while (pSelectPtcID)
-        {
-            dos_strncpy(pszPtcID[lPtcCount], pSelectPtcID, PTC_ID_LEN);
-            pszPtcID[lPtcCount][PTC_ID_LEN] = '\0';
-            lPtcCount++;
-            pSelectPtcID = strtok(NULL, "!");
-            if (NULL == pSelectPtcID)
-            {
-                break;
-            }
-
-            if (lPtcCount >= PTS_SELECT_PTC_MAX_COUNT)
-            {
-                break;
-            }
-        }
-
-        logr_debug("domain name is : %s, ip : %s", szDomain, szPtsIp);
-        stCtrlData.enCtrlType = PT_CTRL_SWITCH_PTS;
-        for (i=0; i<lPtcCount; i++)
-        {
-            pts_save_msg_into_cache((U8*)pszPtcID[i], PT_DATA_CTRL, PT_CTRL_SWITCH_PTS, (S8 *)&stCtrlData, sizeof(PT_CTRL_DATA_ST), szPtsIp, usPort);
-            usleep(20);
-        }
-        sprintf(pcListBuf, "succ");
-        websError(wp, 200, T(pcListBuf));
     }
+
+    pPtcIDStart = dos_strstr(url, "id=") + dos_strlen("id=");
+    pPtcIDEnd = dos_strstr(url, "&");
+    pPtcIDEnd = '\0';
+    pSelectPtcID = strtok(pPtcIDStart, "!");
+    while (pSelectPtcID)
+    {
+        dos_strncpy(pszPtcID[lPtcCount], pSelectPtcID, PTC_ID_LEN);
+        pszPtcID[lPtcCount][PTC_ID_LEN] = '\0';
+        lPtcCount++;
+        pSelectPtcID = strtok(NULL, "!");
+        if (NULL == pSelectPtcID)
+        {
+            break;
+        }
+
+        if (lPtcCount >= PTS_SELECT_PTC_MAX_COUNT)
+        {
+            break;
+        }
+    }
+
+    logr_debug("domain name is : %s, ip : %s", szDomain, szPtsIp);
+    stCtrlData.enCtrlType = PT_CTRL_SWITCH_PTS;
+    for (i=0; i<lPtcCount; i++)
+    {
+        pts_save_msg_into_cache((U8*)pszPtcID[i], PT_DATA_CTRL, PT_CTRL_SWITCH_PTS, (S8 *)&stCtrlData, sizeof(PT_CTRL_DATA_ST), szPtsIp, usPort);
+        usleep(20);
+    }
+    sprintf(pcListBuf, "succ");
+    websError(wp, 200, T(pcListBuf));
+
 
     return 1;
 }
@@ -1477,39 +1478,31 @@ int pts_set_remark(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                    char_t *url, char_t *path, char_t* query)
 {
     S32 lResult = 0;
-    U8  aucID[PTC_ID_LEN + 1]  = {0};
-    S8  szRemark[PT_DATA_BUFF_512] = {0};
+    S8  *aucID  = NULL;
+    S8  *szRemark = NULL;
     S8  szSql[PT_DATA_BUFF_128] = {0};
 
-    lResult = sscanf(query,"%*[^=]=%*[^=]=%*[^=]=%[^&]%*[^=]=%s", aucID, szRemark);
-    if (lResult < 0)
+    szRemark = websGetVar(wp, T("column"), T(""));
+    aucID = websGetVar(wp, T("row_id"), T(""));
+
+    /* 更新数据库 */
+    dos_snprintf(szSql, PT_DATA_BUFF_128, "update ipcc_alias set remark='%s' where sn='%s';", szRemark, aucID);
+    lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
+    if (lResult != DOS_SUCC)
     {
+        /* 失败 */
         DOS_ASSERT(0);
-        perror("sscanf");
+        websDone(wp, 200);
     }
     else
     {
-        aucID[PTC_ID_LEN] = '\0';
-        pt_logr_debug("id= %s , remark = %s", aucID, szRemark);
-
-        /* 更新数据库 */
-        dos_snprintf(szSql, PT_DATA_BUFF_128, "update ipcc_alias set remark='%s' where sn='%s';", szRemark, aucID);
-        lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
-        if (lResult != DOS_SUCC)
-        {
-            /* 失败 */
-            DOS_ASSERT(0);
-            websDone(wp, 200);
-        }
-        else
-        {
-            /* 成功 */
-            websHeader(wp);
-            websWrite(wp, T("%s"), szRemark);
-            websFooter(wp);
-            websDone(wp, 200);
-        }
+        /* 成功 */
+        websHeader(wp);
+        websWrite(wp, T("%s"), szRemark);
+        websFooter(wp);
+        websDone(wp, 200);
     }
+
 
     return 1;
 }
@@ -1519,12 +1512,16 @@ int pts_change_user_info(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
 {
     S32 lResult = 0;
     U32 ulColumn = 0;
-    S8  szName[PT_DATA_BUFF_32]  = {0};
-    S8  szValue[PT_DATA_BUFF_256] = {0};
+    S8  *szName  = NULL;
+    S8  *szValue = NULL;
+    S8  *szColumn = NULL;
     S8  szSql[PT_DATA_BUFF_128] = {0};
     S8  szColumnName[PT_DATA_BUFF_32] = {0};
 
-    lResult = sscanf(query,"%*[^=]=%[^&]&%*[^=]=%*[^=]=%[^&]%*[^=]=%d", szValue, szName, &ulColumn);
+    szValue = websGetVar(wp, T("value"), "");
+    szName = websGetVar(wp, T("row_id"), "");
+    szColumn = websGetVar(wp, T("column"), "");
+    ulColumn = atoi(szColumn);
 
     if (dos_strcmp("admin", wp->userName) && dos_strcmp(szName, wp->userName))
     {
@@ -1865,7 +1862,7 @@ static int pts_get_ptc_list_from_db_switch(int eid, webs_t wp, int argc, char_t 
 {
     S8 szPtcListFields[PTS_SWITCH_FILELDS_COUNT][PT_DATA_BUFF_32] = {"", "lastLoginTime", "name", "remark", "ptcType", "internetIP", "intranetIP", "szMac", "szPtsHistoryIp1", "szPtsHistoryIp2", "szPtsHistoryIp3", "sn"};
 
-    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_SWITCH_FILELDS_COUNT, pts_ptc_list_switch_callback, "ipcc_alias", "register = 1 AND ptcType != 'PC'", dos_strlen("register = 1 AND ptcType != 'PC'"));
+    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_SWITCH_FILELDS_COUNT, pts_ptc_list_switch_callback, "ipcc_alias", "register = 1 AND ptcType != 'Windows'", dos_strlen("register = 1 AND ptcType != 'Windows'"));
 }
 
 
@@ -1873,7 +1870,7 @@ static int pts_get_ptc_list_from_db_config(int eid, webs_t wp, int argc, char_t 
 {
     S8 szPtcListFields[PTS_CONFIG_FILELDS_COUNT][PT_DATA_BUFF_32] = {"", "lastLoginTime", "name", "remark", "ptcType", "internetIP", "intranetIP", "szMac", "achPtsMajorDomain", "achPtsMinorDomain", "sn"};
 
-    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_CONFIG_FILELDS_COUNT, pts_ptc_list_config_callback, "ipcc_alias", "register = 1 AND ptcType != 'PC'", dos_strlen("register = 1 AND ptcType != 'PC'"));
+    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_CONFIG_FILELDS_COUNT, pts_ptc_list_config_callback, "ipcc_alias", "register = 1 AND ptcType != 'Windows'", dos_strlen("register = 1 AND ptcType != 'Windows'"));
 }
 
 static int pts_get_ptc_list_from_db_upgrades(int eid, webs_t wp, int argc, char_t **argv)
@@ -1881,7 +1878,7 @@ static int pts_get_ptc_list_from_db_upgrades(int eid, webs_t wp, int argc, char_
 
     S8 szPtcListFields[PTS_UPGRADES_FILELDS_COUNT][PT_DATA_BUFF_32] = {"", "lastLoginTime", "name", "remark", "ptcType", "internetIP", "intranetIP", "szMac", "version", "sn"};
 
-    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_UPGRADES_FILELDS_COUNT, pts_ptc_list_upgrades_callback, "ipcc_alias", "register = 1 AND ptcType != 'PC'", dos_strlen("register = 1 AND ptcType != 'PC'"));
+    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_UPGRADES_FILELDS_COUNT, pts_ptc_list_upgrades_callback, "ipcc_alias", "register = 1 AND ptcType != 'Windows'", dos_strlen("register = 1 AND ptcType != 'Windows'"));
 }
 
 static int pts_user_list(int eid, webs_t wp, int argc, char_t **argv)
@@ -2086,10 +2083,52 @@ static int pts_get_lang_type(int eid, webs_t wp, int argc, char_t **argv)
     return websWrite(wp, T("%d"), g_LangType);
 }
 
-//static int status_statistics(int eid, webs_t wp, int argc, char_t **argv)
-//{
-//    return websWrite(wp, T("%d"), g_LangType);
-//}
+static int status_statistics(int eid, webs_t wp, int argc, char_t **argv)
+{
+    list_t *pstHead = g_pstPtcListRecv;
+    list_t  *pstNode = NULL;
+    PT_CC_CB_ST *pstData = NULL;
+    S32 lCount = 0;
+    S8 *szEcho = NULL;
+
+    szEcho = websGetVar(wp, T("sEcho"), T(""));
+
+    if (NULL == pstHead)
+    {
+        websWrite(wp, T("{\"aaData\":[], \"sEcho\":\"%s\", \"iTotalDisplayRecords\":\"0\"}"), szEcho);
+        return 0;
+    }
+    pstNode = pstHead;
+    websWrite(wp, T("%s"), "{\"aaData\":[");
+    while (pstNode->next != pstHead)
+    {
+        pstData = dos_list_entry(pstNode, PT_CC_CB_ST, stCCListNode);
+        if (0 == lCount)
+        {
+            websWrite(wp, T("[\"%.*s\", \"%d\", \"%d\"]"), PTC_ID_LEN, pstData->aucID, pstData->ulUdpRecvDataCount, pstData->ulUdpLostDataCount);
+        }
+        else
+        {
+            websWrite(wp, T(",[\"%.*s\", \"%d\", \"%d\"]"), PTC_ID_LEN, pstData->aucID, pstData->ulUdpRecvDataCount, pstData->ulUdpLostDataCount);
+        }
+        pstNode = pstNode->next;
+        lCount++;
+    }
+    pstData = dos_list_entry(pstNode, PT_CC_CB_ST, stCCListNode);
+    if (0 == lCount)
+    {
+        websWrite(wp, T("[\"%.*s\", \"%d\", \"%d\"]"), PTC_ID_LEN, pstData->aucID, pstData->ulUdpRecvDataCount, pstData->ulUdpLostDataCount);
+    }
+    else
+    {
+        websWrite(wp, T(",[\"%.*s\", \"%d\", \"%d\"]"), PTC_ID_LEN, pstData->aucID, pstData->ulUdpRecvDataCount, pstData->ulUdpLostDataCount);
+    }
+    lCount++;
+
+    websWrite(wp, T("],\"sEcho\":\"%s\", \"iTotalDisplayRecords\":\"%d\"}"), szEcho, lCount);
+
+    return 0;
+}
 
 /******************************************************************************/
 /*
@@ -2358,14 +2397,13 @@ void pts_websResponse(webs_t wp, int code, char_t *message, char_t *redirect, ch
 void pts_websRedirect(webs_t wp, char_t *url)
 {
     char_t  *msgbuf, *urlbuf, *redirectFmt;
-    S8 szDestIp[PT_IP_ADDR_SIZE] = {0};
     S8 szSetCookie[PT_DATA_BUFF_256] = {0};
     PTS_SERV_SOCKET_ST stServSocket;
     U16 usDestPort = 0;
-    S8 szDestPort[PT_DATA_BUFF_16] = {0};
-    S8 szPtcID[PTC_ID_LEN + 1] = {0};
+    S8 *szDestIp = NULL;
+    S8 *szDestPort = NULL;
+    S8 *szPtcID = NULL;
     websRec stWpCpy;
-    S32 lResult = 0;
     S32 i = 0;
 
     a_assert(websValid(wp));
@@ -2377,13 +2415,9 @@ void pts_websRedirect(webs_t wp, char_t *url)
     /*
      *  Some browsers require a http://host qualified URL for redirection
      */
-    lResult = sscanf(url,"%*[^=]=%[^&]%*[^=]=%[^&]%*[^=]=%s", szPtcID, szDestIp, szDestPort);
-    if (lResult < 0)
-    {
-        websError(wp, 403, T("%s"), strerror(errno));
-        return;
-    }
-    szPtcID[PTC_ID_LEN] = '\0';
+    szPtcID = websGetVar(wp, T("id"), "");
+    szDestIp = websGetVar(wp, T("ip"), "");
+    szDestPort = websGetVar(wp, T("port"), "");
     usDestPort = atoi(szDestPort);
 
     redirectFmt = T("http://%s:%d/%s");
@@ -2437,9 +2471,9 @@ void pts_webs_auto_Redirect(webs_t wp, char_t *url)
     S8 szSetCookie[PT_DATA_BUFF_256] = {0};
     PTS_SERV_SOCKET_ST stServSocket;
     U16 usDestPort = 0;
-    S8 pDestInternetIp[PT_DATA_BUFF_64] = {0};
-    S8 pDestIntranetIp[PT_DATA_BUFF_64] = {0};
-    S8 pDestPort[PT_DATA_BUFF_64] = {0};
+    S8 *pDestInternetIp = NULL;
+    S8 *pDestIntranetIp = NULL;
+    S8 *pDestPort = NULL;
     S32 i = 0;
     S32 lResult = 0;
 
@@ -2460,14 +2494,9 @@ void pts_webs_auto_Redirect(webs_t wp, char_t *url)
     }
 
     /* 解析url */
-    lResult = sscanf(url,"%*[^=]=%[^&]%*[^=]=%[^&]%*[^=]=%[^&]", pDestInternetIp, pDestIntranetIp, pDestPort);
-    if (lResult != 3)
-    {
-        perror("sscanf");
-        websError(wp, 403, T("param error!\n"));
-        return;
-    }
-    printf(" %s, %s, %s\n", pDestInternetIp, pDestIntranetIp, pDestPort);
+    pDestInternetIp = websGetVar(wp, T("internetIP"), "");
+    pDestIntranetIp = websGetVar(wp, T("intranetIP"), "");
+    pDestPort = websGetVar(wp, T("port"), "");
     /* 查找ptc */
     lResult = pts_find_ptc_by_dest_addr(pDestInternetIp, pDestIntranetIp, aucDestID);
     if (lResult != DOS_SUCC)
@@ -2602,38 +2631,34 @@ int pts_start_ping(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                    char_t *url, char_t *path, char_t* query)
 {
     S32 lResult = 0;
-    S8 szPtcID[PTC_ID_LEN + 1] = {0};
-    S8 szPingPacketSize[PT_DATA_BUFF_10] = {0};
-    S8 szPacketSeq[PT_DATA_BUFF_10] = {0};
+    S8 *szPtcID = NULL;
+    S8 *szPingPacketSize = NULL;
+    S8 *szPacketSeq = NULL;
     S8 szBuff[PT_SEND_DATA_SIZE] = {0};
     PT_PING_PACKET_ST stPingPacket;
     PTS_PING_TIMEOUT_PARAM_ST stTimeOutParam;
 
-    lResult = sscanf(url,"%*[^=]=%[^&]%*[^=]=%[^&]%*[^=]=%[^&]", szPtcID, szPingPacketSize, szPacketSeq);
-    if (lResult != 3)
+    szPtcID = websGetVar(wp, T("ptcID"), "");
+    szPingPacketSize = websGetVar(wp, T("PingPacketSize"), "");
+    szPacketSeq = websGetVar(wp, T("seq"), "");
+
+    dos_strcpy(stTimeOutParam.szPtcId, szPtcID);
+    stTimeOutParam.ulSeq = atoi(szPacketSeq);
+    stPingPacket.hTmrHandle = NULL;
+
+    /* 超时 */
+    lResult = dos_tmr_start(&stPingPacket.hTmrHandle, PTS_PING_TIMEOUT, pts_ping_timeout, (U64)&stTimeOutParam, TIMER_NORMAL_NO_LOOP);
+    if (PT_SAVE_DATA_FAIL == lResult)
     {
-        DOS_ASSERT(0);
+        pt_logr_debug("pts_save_into_recv_cache : start timer fail");
         return 0;
     }
-    else
-    {
-        dos_strcpy(stTimeOutParam.szPtcId, szPtcID);
-        stTimeOutParam.ulSeq = atoi(szPacketSeq);
-        stPingPacket.hTmrHandle = NULL;
+    stPingPacket.pWpHandle = (void *)wp;
+    stPingPacket.ulSeq = atoi(szPacketSeq);
+    gettimeofday(&stPingPacket.stStartTime, NULL);
+    dos_memcpy(szBuff, &stPingPacket, sizeof(stPingPacket));
+    pts_save_msg_into_cache((U8*)szPtcID, PT_DATA_CTRL, PT_CTRL_PING, szBuff, sizeof(stPingPacket), NULL, 0);
 
-        /* 超时 */
-        lResult = dos_tmr_start(&stPingPacket.hTmrHandle, PTS_PING_TIMEOUT, pts_ping_timeout, (U64)&stTimeOutParam, TIMER_NORMAL_NO_LOOP);
-        if (PT_SAVE_DATA_FAIL == lResult)
-        {
-            pt_logr_debug("pts_save_into_recv_cache : start timer fail");
-            return 0;
-        }
-        stPingPacket.pWpHandle = (void *)wp;
-        stPingPacket.ulSeq = atoi(szPacketSeq);
-        gettimeofday(&stPingPacket.stStartTime, NULL);
-        dos_memcpy(szBuff, &stPingPacket, sizeof(stPingPacket));
-        pts_save_msg_into_cache((U8*)szPtcID, PT_DATA_CTRL, PT_CTRL_PING, szBuff, sizeof(stPingPacket), NULL, 0);
-    }
     websError(wp, 200, T(""));
     return 0;
 }
@@ -2667,31 +2692,26 @@ int get_ping_result(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                     char_t *url, char_t *path, char_t* query)
 {
     S32 lResult = 0;
-    S8 szPtcID[PTC_ID_LEN + 1] = {0};
-    S8 szPacketSeq[PT_DATA_BUFF_10] = {0};
+    S8 *szPtcID = NULL;
+    S8 *szPacketSeq = NULL;
     S8 szSql[PT_DATA_BUFF_128] = {0};
     U32 ulSeq = 0;
     //U32 ulDataField = 0;
 
-    lResult = sscanf(url,"%*[^=]=%[^&]%*[^=]=%[^&]", szPtcID, szPacketSeq);
-    if (lResult != 2)
+    szPtcID = websGetVar(wp, T("ptcID"), "");
+    szPacketSeq = websGetVar(wp, T("seq"), "");
+
+    /* 查询数据库 */
+    ulSeq = atoi(szPacketSeq);
+    //ulDataField = ulSeq & 7;
+    dos_snprintf(szSql, PT_DATA_BUFF_128, "select * from ping_result where sn='%s';", szPtcID);
+    lResult = dos_sqlite3_exec_callback(g_pstMySqlite, szSql, pts_get_ping_result_callback, (VOID *)wp);
+    if (lResult != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        return 0;
     }
-    else
-    {
-        /* 查询数据库 */
-        ulSeq = atoi(szPacketSeq);
-        //ulDataField = ulSeq & 7;
-        dos_snprintf(szSql, PT_DATA_BUFF_128, "select * from ping_result where sn='%s';", szPtcID);
-        lResult = dos_sqlite3_exec_callback(g_pstMySqlite, szSql, pts_get_ping_result_callback, (VOID *)wp);
-        if (lResult != DOS_SUCC)
-        {
-            DOS_ASSERT(0);
-        }
-        websDone(wp, 200);
-    }
+    websDone(wp, 200);
+
 
     return 0;
 }

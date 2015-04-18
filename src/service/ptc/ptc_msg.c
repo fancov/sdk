@@ -2,7 +2,7 @@
 extern "C" {
 #endif
 
-    /* include sys header files */
+/* include sys header files */
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -12,10 +12,11 @@ extern "C" {
 #include <sys/time.h>
 #include <semaphore.h>
 #include <time.h>
-    /* include provate header file */
+/* include provate header file */
 #include <pt/dos_sqlite3.h>
 #include <pt/ptc.h>
 #include "ptc_msg.h"
+
 
 sem_t g_SemPtc;                             /* 控制缓存信号量 */
 sem_t g_SemPtcRecv;
@@ -181,7 +182,7 @@ VOID ptc_delete_recv_stream_node(U32 ulStreamID, PT_DATA_TYPE_EN enDataType, BOO
     }
 }
 
-VOID ptc_get_udp_use_ip()
+S32 ptc_get_udp_use_ip()
 {
     S32 lSockfd = 0;
     S32 lError  = 0;
@@ -198,7 +199,8 @@ VOID ptc_get_udp_use_ip()
     if (lSockfd < 0)
     {
         perror("create tcp socket");
-        exit(DOS_FAIL);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
 
 ptc_connect:
@@ -209,14 +211,14 @@ ptc_connect:
         sleep(2);
         /* 重连 */
         goto ptc_connect;
-        exit(DOS_FAIL);
     }
 
     lError = getsockname(lSockfd,(struct sockaddr*)&stAddrCli, &lAddrLen);
     if (lError != 0)
     {
         pt_logr_info("Get sockname Error!");
-        exit(DOS_FAIL);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
     g_stServMsg.usLocalPort = dos_ntohs(stAddrCli.sin_port);
     dos_strcpy(szLocalIp, inet_ntoa(stAddrCli.sin_addr));
@@ -225,18 +227,21 @@ ptc_connect:
     if (lError != DOS_SUCC)
     {
         pt_logr_info("Get ifr name Error!");
-        exit(DOS_FAIL);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
     lError = ptc_get_mac(szIfrName, lSockfd, szMac, PT_DATA_BUFF_64);
     if (lError != DOS_SUCC)
     {
         pt_logr_info("Get mac Error!");
-        exit(DOS_FAIL);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
     dos_strncpy(g_stServMsg.szMac, szMac, PT_DATA_BUFF_64);
     logr_debug("local ip : %s, irf name : %s, mac : %s", szLocalIp, szIfrName, szMac);
 
     close(lSockfd);
+    return DOS_SUCC;
 }
 
 /**
@@ -539,7 +544,6 @@ VOID ptc_send_login_req(U64 arg)
     dos_memcpy(acBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
     /* 登陆内容赋值 */
     stVerRet.enCtrlType = PT_CTRL_LOGIN_REQ;
-    dos_strncpy(stVerRet.szVersion, ptc_get_version(), PT_VERSION_LEN);
 
     dos_memcpy(acBuff+sizeof(PT_MSG_TAG), (VOID *)&stVerRet, sizeof(PT_CTRL_DATA_ST));
 
@@ -1071,7 +1075,12 @@ VOID ptc_ctrl_msg_handle(S8 *pData, U32 lRecvLen)
     case PT_CTRL_LOGIN_RSP:
         /* 登陆验证 */
         pt_logr_debug("recv login response");
-        ptc_get_udp_use_ip();  /* 获取本机ip */
+        lResult = ptc_get_udp_use_ip();  /* 获取本机ip */
+        if (lResult != DOS_SUCC)
+        {
+            return;
+        }
+
         lResult = ptc_key_convert(pstCtrlData->szLoginVerify, szDestKey);
         if (lResult < 0)
         {
@@ -1099,7 +1108,7 @@ VOID ptc_ctrl_msg_handle(S8 *pData, U32 lRecvLen)
         dos_strcpy(stVerRet.achPtsMinorDomain, g_stServMsg.achPtsMinorDomain);
         stVerRet.usPtsMajorPort = g_stServMsg.usPtsMajorPort;
         stVerRet.usPtsMinorPort = g_stServMsg.usPtsMinorPort;
-        dos_strncpy(stVerRet.szVersion, ptc_get_version(), PT_VERSION_LEN);
+        ptc_get_version(stVerRet.szVersion);
         dos_strcpy(stVerRet.szPtsHistoryIp1, g_stServMsg.szPtsLasterIP1);
         dos_strcpy(stVerRet.szPtsHistoryIp2, g_stServMsg.szPtsLasterIP2);
         dos_strcpy(stVerRet.szPtsHistoryIp3, g_stServMsg.szPtsLasterIP3);
@@ -1345,9 +1354,16 @@ S32 ptc_deal_with_confirm_msg(PT_MSG_TAG *pstMsgDes)
  * 参数
  * 返回值：
  */
-S8 *ptc_get_version()
+S32 ptc_get_version(U8 *szVersion)
 {
-    return PTC_VERSION;
+    if (NULL == szVersion)
+    {
+        return DOS_FALSE;
+    }
+
+    inet_pton(AF_INET, PTC_VERSION, (VOID *)szVersion);
+
+    return DOS_SUCC;
 }
 
 /**
@@ -1729,11 +1745,14 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
     {
         stTimeValCpy = stTimeVal;
         ReadFdsCpio = ReadFds;
+
         lResult = select(MaxFdp + 1, &ReadFdsCpio, NULL, NULL, &stTimeValCpy);
         if (lResult < 0)
         {
             perror("ptc_recv_msg_from_pts : fail to select");
-            exit(DOS_FAIL);
+            DOS_ASSERT(0);
+            sleep(1);
+            continue;
         }
         else if (0 == lResult)
         {

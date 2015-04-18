@@ -123,7 +123,8 @@ void *ptc_recv_msg_from_web(void *arg)
         {
             logr_error("Could not create fifo %s\n", szFifoName);
             perror("mkfifo");
-            exit(EXIT_FAILURE);
+            DOS_ASSERT(0);
+            return NULL;
         }
     }
 
@@ -148,7 +149,10 @@ void *ptc_recv_msg_from_web(void *arg)
         if (lResult < 0)
         {
             perror("fail to select");
-            exit(DOS_FAIL);
+            //exit(DOS_FAIL);
+            DOS_ASSERT(0);
+            sleep(1);
+            continue;
         }
         else if (0 == lResult)
         {
@@ -178,27 +182,28 @@ void *ptc_recv_msg_from_web(void *arg)
                     printf("%02x ", (U8)(cRecvBuf[k]));
                 }
 #endif
+                lResult = ptc_get_streamID_by_socket(i);
+                if (DOS_FAIL == lResult)
+                {
+                    pt_logr_debug("not found socket, streamID is %d", i);
+                    FD_CLR(i, &ReadFds);
+                    close(i);
+                    continue;
+                }
+                printf("recv from web server, stream : %d, socket : %d, len : %d\n", lResult, i, lRecvLen);
                 if (lRecvLen == 0)
                 {
+                    /* sockfd结束，通知pts */
                     FD_CLR(i, &ReadFds);
-                    printf("recv %d, socket : %d\n", lRecvLen, i);
-                    lResult = ptc_get_streamID_by_socket(i);
-                    if (DOS_FAIL == lResult)
-                    {
-                        pt_logr_debug("not found socket, streamID is %d", i);
-                    }
-                    else
-                    {
-                        /* sockfd结束，通知pts */
-                        pt_logr_debug("sockfd end, streamID is %d", lResult);
-                        ptc_save_msg_into_cache(PT_DATA_WEB, lResult, "", 0);
-                        ptc_delete_client(i);
-                        close(i);
-                    }
+                    pt_logr_debug("sockfd end, streamID is %d", lResult);
+                    ptc_save_msg_into_cache(PT_DATA_WEB, lResult, "", 0);
+                    ptc_delete_client(i);
+                    close(i);
                 }
                 else if (lRecvLen < 0)
                 {
-                    printf("fail to recv, socket is %d\n", i);
+                    pt_logr_debug("fail to recv, socket is %d", i);
+                    FD_CLR(i, &ReadFds);
                     ptc_save_msg_into_cache(PT_DATA_WEB, lResult, "", 0);
                     ptc_delete_client(i);
                     close(i);
@@ -233,10 +238,7 @@ BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
     PT_PTC_UPGRADE_ST *pstUpgrade = NULL;
     S8 szDecrypt[PT_MD5_LEN] = {0};
     FILE *pFileFd = NULL;
-    S32 lResult = 0;
-    pid_t pid, ppid;
     S32 lFd = 0;
-    S8 szKillCmd[PT_DATA_BUFF_64] = {0};
 
     if (NULL == g_pPackageBuff)
     {
@@ -301,26 +303,9 @@ BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
                 fwrite(g_pPackageBuff+sizeof(PT_PTC_UPGRADE_DES_ST), g_ulPackageLen-sizeof(PT_PTC_UPGRADE_DES_ST), 1, pFileFd);
                 fclose(pFileFd);
                 pFileFd = NULL;
-                /* fork 一个进程，重启ptc */
-                ppid = getpid();
-                pid = fork();
-                if (pid < 0)
-                {
-                    printf("fork() error.errno:%d error:%s\n", errno, strerror(errno));
-                }
+                /* ptc 退出程序, 等待升级 */
+                exit(0);
 
-                if (pid == 0)
-                {
-                    /* 杀死父进程 */
-                    sprintf(szKillCmd, "kill -9 %d", ppid);
-                    system(szKillCmd);
-                    lResult = execl("ptc.sh", "ptc.sh", "ptcd", NULL);
-                    if (lResult < 0)
-                    {
-                        logr_info("execv ret:%d errno:%d error:%s", lResult, errno, strerror(errno));
-                    }
-                    exit(0);
-                }
             }
             dos_dmem_free(g_pPackageBuff);
             g_pPackageBuff = NULL;
@@ -384,7 +369,7 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
         {
             if (PT_CTRL_PTC_PACKAGE == pstStreamNode->ulStreamID)
             {
-                /* 升级 */
+                /* PTC 升级 */
                 lResult = ptc_upgrade(&stRecvDataTcp, pstStreamNode);
                 if (lResult)
                 {
@@ -416,6 +401,8 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 }
                 write(g_lPipeWRFd, "s", 1);
             }
+
+            pt_logr_debug("send msg to web server, stream : %d, seq : %d, len : %d", pstStreamNode->ulStreamID, pstStreamNode->lCurrSeq, stRecvDataTcp.ulLen);
             lResult = send(lSockfd, stRecvDataTcp.szBuff, stRecvDataTcp.ulLen, 0);
             //pt_logr_debug("send to web server, len : %d", stRecvDataTcp.ulLen);
         }

@@ -162,8 +162,6 @@ S32 dos_sqlite3_record_is_exist(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql)
         return -1;
     }
 
-    printf("!!!!!!!count = %d\n", count);
-
     if (count > 0)
     {
         return DOS_TRUE;

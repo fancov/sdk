@@ -20,52 +20,16 @@
 $(document).ready(function() {
 	var oTable = $('#example').DataTable({
 			"info" : true, 
-			"aaSorting": [[1, "desc"]],
+			"aaSorting": [[0, "desc"]],
 			"stateSave": true,
 			"serverSide": true,
 			"sDom": '<"top"f<"refush">>rt<"bottom"lp>',
-			"sAjaxSource": "/ptc_list.html",
+			"sAjaxSource": "/stats_list.html",
 			<% dataTablesLang(); %>
-		      "aoColumnDefs": [{"className": "ptc_ardio",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [8]}, {"className": "ptc_nice", "aTargets": [3]}],
 
-			 "fnDrawCallback":function(){ $('#example tbody td.ptc_nice').editable('editable_ajax.html', {
-					"callback": function(sValue, y) {
-						// var aPos = oTable.fnGetPosition(this);
-						var aPos = oTable.fnGetPosition(this);
-						oTable.fnUpdate( sValue, aPos[0], aPos[1]);
-					},
-
-					"submitdata": function ( value, settings ) {
-						return {
-							"row_id": $(this).parent().children("td.ptc_sn").html(),
-							"column": $(this).find("input").val()
-						};
-					}
-			})}
 		});
 
 		$('.refush').html("<p id='RefushButton'> <input type='button' value ='<% htmlLang(78); %>'></p>");
-
-		$('#example tbody').on('click', 'td', function () {
-			if ($(this).find("input").val())
-			{
-				return true;
-			}
-			var _checked_ = $(this).parent().children("td.ptc_ardio").children("input").prop('checked'); 
-			if (_checked_) 
-			{ 
-				$(this).parent().children("td.ptc_ardio").children("input").prop('checked', false); 
-			} 
-			else 
-			{ 
-				$(this).parent().children("td.ptc_ardio").children("input").prop('checked', true); 
-			}
-    	});
-
-    	$('#example tbody').on('dblclick', 'td', function () {
-			$(this).parent().children("td.ptc_ardio").children("input").prop('checked', true); 
-			visit_dev();
-    	});
 
     	$('.refush').click(function(){
 		    location.reload();
@@ -121,52 +85,12 @@ updateTime();
 </div>
 <br>
 <div class="content_body">
-	<div>
-		<div class="content_title">
-			<p><b><% htmlLang(9); %></b></p>
-		</div>
-		<div>
-			<p class="content_body">
-				<label><% htmlLang(10); %></label>
-				<input type="text" value="" id="auto_internet_ip"  />&nbsp;&nbsp;&nbsp;&nbsp;
-				<label><% htmlLang(11); %></label>
-				<input type="text" value="" id="auto_intranet_ip"  placeholder ="127.0.0.1"/>&nbsp;&nbsp;
-				<label><% htmlLang(12); %></label>
-				<input type="text" value="" id="auto_port" placeholder="80" />&nbsp;&nbsp;
-				<input type="button" value="<% htmlLang(14); %>" onclick="auto_access()" />
-			</p>
-		</div>
-	</div>
-	<br>
-	<div>
-		<div class="content_title">
-			<p><b><% htmlLang(13); %></b></p>
-		</div>
-		<div>
-			<p class="content_body">
-				<label><% htmlLang(11); %></label>
-				<input type="text" value="" id="manual_intranet_ip" placeholder ="127.0.0.1"/>&nbsp;&nbsp;
-				<label><% htmlLang(12); %></label>
-				<input type="text" value=""  id="manual_port" placeholder="80"/>&nbsp;&nbsp;
-				<input type="button" value="<% htmlLang(14); %>" onclick="visit_dev()" />
-			</p>			
-		</div>
-	</div>
-</div>
-<div class="content_body">
 	<table id="example" class="display" cellspacing="0" style="text-align:center">
 		<thead>
 			<tr>
-				<th width="20px"> </th>        
-		        <th><% htmlLang(15); %></th>
-		        <th><% htmlLang(16); %></th>
-		        <th><% htmlLang(17); %></th>
-		        <th><% htmlLang(18); %></th>
-		        <th><% htmlLang(19); %></th>
-		        <th><% htmlLang(20); %></th>
-		        <th><% htmlLang(21); %></th>
-		        <th><% htmlLang(22); %></th>
-		        <th><% htmlLang(23); %></th>
+				<th>SN</th>        
+		        <th>接收的包的数量</th>
+		        <th>丢失的包的数量</th>
 			</tr>
 		</thead>
 		<tbody>

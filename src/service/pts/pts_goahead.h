@@ -5,7 +5,7 @@
 extern "C"{
 #endif
 
-#include <pt/goahead/webs.h>
+#include <webs/webs.h>
 
 #define PTS_VISIT_FILELDS_COUNT     10
 #define PTS_SWITCH_FILELDS_COUNT    12

@@ -51,7 +51,7 @@ id  INTEGER NOT NULL,\
 sn  varchar(20) NOT NULL ON CONFLICT FAIL,\
 name  varchar(64),\
 remark  varchar(64),\
-version  varchar(10) NOT NULL,\
+version  varchar(17) NOT NULL,\
 register  integer,\
 lastLoginTime  TimeStamp NOT NULL DEFAULT (datetime('now','localtime')),\
 domain  INTEGER,\
@@ -118,7 +118,7 @@ U32 pts_create_stream_id()
  * 参数
  * 返回值：
  */
-U32 pts_create_udp_socket(U16 usUdpPort)
+S32 pts_create_udp_socket(U16 usUdpPort)
 {
     S32 lSockfd = 0;
     S32 lError  = 0;
@@ -128,7 +128,9 @@ U32 pts_create_udp_socket(U16 usUdpPort)
     if (lSockfd < 0)
     {
         perror("udp create socket");
-        exit(DOS_FAIL);
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
     }
 
     dos_memzero(&stMyAddr, sizeof(stMyAddr));
@@ -142,7 +144,9 @@ U32 pts_create_udp_socket(U16 usUdpPort)
     {
         perror("udp server bind");
         close(lSockfd);
-        exit(DOS_FAIL);
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
     }
 
     return lSockfd;
@@ -172,7 +176,8 @@ U32 pts_create_tcp_socket(U16 usTcpPort)
     if (lSockfd < 0)
     {
         perror("create tcp socket");
-        exit(DOS_FAIL);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
 
     /* 设置端口快速重用 */
@@ -184,6 +189,7 @@ U32 pts_create_tcp_socket(U16 usTcpPort)
     {
         perror("web service bind");
         close(lSockfd);
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
@@ -192,6 +198,7 @@ U32 pts_create_tcp_socket(U16 usTcpPort)
     {
         perror("web service listen");
         close(lSockfd);
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
@@ -293,7 +300,7 @@ VOID pts_handle_ctrl_msg(PT_NEND_RECV_NODE_ST *pstNeedRevNode)
                 {
                     /* 存在，更新IPCC的注册状态 */
                     pt_logr_debug("pts_send_msg2client : db existed");
-                    dos_snprintf(szSql, PT_DATA_BUFF_128, "update ipcc_alias set register=1, name='%s', version='%s' where sn='%s';", pstCtrlData->szPtcName, pstCtrlData->szVersion, pstNeedRevNode->aucID);
+                    dos_snprintf(szSql, PT_DATA_BUFF_128, "update ipcc_alias set register=1, name='%s', version='%d' where sn='%s';", pstCtrlData->szPtcName, pstCtrlData->szVersion, pstNeedRevNode->aucID);
 
                     lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
                     if (lResult != DOS_SUCC)
@@ -307,7 +314,7 @@ VOID pts_handle_ctrl_msg(PT_NEND_RECV_NODE_ST *pstNeedRevNode)
                     pt_logr_debug("pts_send_msg2client : db insert");
                     dos_memcpy(szID, pstNeedRevNode->aucID, PTC_ID_LEN);
                     szID[PTC_ID_LEN] = '\0';
-                    dos_snprintf(szSql, PT_DATA_BUFF_128, "INSERT INTO ipcc_alias (\"id\", \"sn\", \"name\", \"remark\", \"version\", \"register\", \"lastLoginTime\", \"domain\", \"intranetIP\", \"internetIP\", \"intranetPort\", \"internetPort\") VALUES (NULL, '%s', '%s', NULL, '%s', %d, 3123, NULL, NULL, NULL, NULL, NULL);", szID, pstCtrlData->szPtcName, pstCtrlData->szVersion, DOS_TRUE);
+                    dos_snprintf(szSql, PT_DATA_BUFF_128, "INSERT INTO ipcc_alias (\"id\", \"sn\", \"name\", \"remark\", \"version\", \"register\", \"lastLoginTime\", \"domain\", \"intranetIP\", \"internetIP\", \"intranetPort\", \"internetPort\") VALUES (NULL, '%s', '%s', NULL, '%d', %d, 3123, NULL, NULL, NULL, NULL, NULL);", szID, pstCtrlData->szPtcName, pstCtrlData->szVersion, DOS_TRUE);
                     lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
                     if (lResult != DOS_SUCC)
                     {
@@ -433,7 +440,7 @@ VOID *pts_send_msg2proxy(VOID *arg)
  * 参数
  * 返回值：
  */
-VOID pts_init_serv_msg()
+S32 pts_init_serv_msg()
 {
     S8 szServiceRoot[PT_DATA_BUFF_256] = {0};
 
@@ -444,20 +451,25 @@ VOID pts_init_serv_msg()
 
     if (config_get_service_root(szServiceRoot, sizeof(szServiceRoot)) == NULL)
     {
-        exit(-1);
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
     }
 
     g_pstMySqlite = (DOS_SQLITE_ST *)dos_dmem_alloc(sizeof(DOS_SQLITE_ST));
     if (NULL == g_pstMySqlite)
     {
-        logr_error("malloc fail");
-        exit(-1);
+        logr_info("malloc fail");
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
     }
 
     snprintf(g_pstMySqlite->pchDbPath, SQLITE_DB_PATH_LEN, "%s/%s", szServiceRoot, PTS_SQLITE_DB_PATH);
 
     logr_debug("db path : %s", g_pstMySqlite->pchDbPath);
-    return;
+
+    return DOS_SUCC;
 }
 
 /**
@@ -475,13 +487,22 @@ S32 pts_main()
     U32 ulSocketCache = PTS_SOCKET_CACHE;    /* socket 收发缓存 */
     S8 *pPassWordMd5 = NULL;
 
-    pts_init_serv_msg();
+    lRet = pts_init_serv_msg();
+    if (lRet != DOS_SUCC)
+    {
+        return DOS_FAIL;
+    }
+
     lSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort);
+    if (lSocket < 0)
+    {
+        return DOS_FAIL;
+    }
 
     lRet = pts_create_tcp_socket(g_stPtsMsg.usPtsPort);
     if (lRet <= 0)
     {
-        exit(DOS_FAIL);
+        return DOS_FAIL;
     }
 
     lRet = setsockopt(lSocket, SOL_SOCKET, SO_SNDBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));

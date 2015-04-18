@@ -22,8 +22,8 @@ $(document).ready(function() {
       "info" : true, 
       "stateSave": true,
       "serverSide": true,
-      "aaSorting": [[1, "asc"]],
-      "sDom": '<"top"f>rt<"bottom"lp>',
+      "aaSorting": [[1, "desc"]],
+      "sDom": '<"top"f<"refush">>rt<"bottom"lp>',
       "sAjaxSource": "/ptc_list.html",
       <% dataTablesLang(); %>
           "aoColumnDefs": [{"className": "ptc_ardio",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [8]}, {"className": "ptc_nice", "aTargets": [3]}, {"className": "ptc_internet_ip", "aTargets": [5]}],
@@ -43,6 +43,8 @@ $(document).ready(function() {
       })}
     });
     
+    $('.refush').html("<p id='RefushButton'> <input type='button' value ='<% htmlLang(78); %>'></p>");
+
     $('#example tbody').on('click', 'td', function () {
       if ($(this).find("input").val())
       {
@@ -60,6 +62,11 @@ $(document).ready(function() {
         set_ping_dest($(this).parent().children("td.ptc_sn").html());
       }
       });
+
+     $('.refush').click(function(){
+        location.reload();
+        return true;    
+      });
 });
 
 get_lang_type(<% lang_type(); %>);
@@ -71,6 +78,13 @@ updateTime();
 
 <div class="nav_content">
   <div class="ddsmoothmenu nav_left" id="smoothmenu1">
+  <UL>
+    <LI class="logo_li">
+      <a href="http://www.dipcc.com" target="_blank">
+        <img src="images/logo.png" title="深圳市天天讯通科技有限公司"  />
+      </a>
+    </LI>
+  </UL>
   <UL>
     <LI><A href="index.html"><% htmlLang(0); %></A></LI>
     <LI><A href="#"><% htmlLang(1); %></A> 

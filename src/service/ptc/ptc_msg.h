@@ -14,11 +14,12 @@ extern "C" {
 #define PTC_HB_TIMEOUT_COUNT_MAX    4          /* 心跳响应最大连续超时次数，超过则认为掉线，重新发送登陆请求 */
 //#define PTC_DNS_IP_SIZE           2          /* 保存DNS解析出IP的数组的大小 */
 #define PTC_DEBUG                   0          /* 调试宏 */
-#define PTC_VERSION                 "1.5"      /* ptc 版本号 */
+#define PTC_VERSION                 "1.3.0.1"  /* ptc 版本号 */
 #define PTC_WAIT_CONFIRM_TIMEOUT    5          /* 等待确认接收消息的超时时间 s */
 #define PTC_WEB_SOCKET_MAX_COUNT    16         /* 访问proxy的最大socket */
 #define PTC_CMD_SOCKET_MAX_COUNT    10         /* 访问proxy的最大socket */
 #define PTC_TIME_SIZE               24
+#define PTC_RECV_FROM_PTS_CMD_SIZE  8
 
 typedef struct tagServMsg
 {
@@ -63,17 +64,17 @@ VOID  ptc_save_msg_into_cache(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S8 *pc
 VOID *ptc_send_msg2pts(VOID *arg);
 VOID *ptc_recv_msg_from_pts(VOID *arg);
 VOID  ptc_send_heartbeat2pts(S32 lSockfd);
-VOID ptc_send_login2pts(S32 lSockfd);
-VOID ptc_send_logout2pts(S32 lSockfd);
-S8 *ptc_get_version();
-VOID ptc_send_pthread_mutex_lock(S8 *szFileName, U32 ulLine);
-VOID ptc_send_pthread_mutex_unlock(S8 *szFileName, U32 ulLine);
-VOID ptc_recv_pthread_mutex_lock(S8 *szFileName, U32 ulLine);
-VOID ptc_recv_pthread_mutex_unlock(S8 *szFileName, U32 ulLine);
-VOID ptc_recv_pthread_cond_wait(S8 *szFileName, U32 ulLine);
-VOID ptc_send_exit_notify_to_pts(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S32 lSeq);
-VOID ptc_delete_send_stream_node(U32 ulStreamID, PT_DATA_TYPE_EN enDataType, BOOL bIsMutex);
-VOID ptc_delete_recv_stream_node(U32 ulStreamID, PT_DATA_TYPE_EN enDataType, BOOL bIsMutex);
+VOID  ptc_send_login2pts(S32 lSockfd);
+VOID  ptc_send_logout2pts(S32 lSockfd);
+VOID  ptc_send_pthread_mutex_lock(S8 *szFileName, U32 ulLine);
+VOID  ptc_send_pthread_mutex_unlock(S8 *szFileName, U32 ulLine);
+VOID  ptc_recv_pthread_mutex_lock(S8 *szFileName, U32 ulLine);
+VOID  ptc_recv_pthread_mutex_unlock(S8 *szFileName, U32 ulLine);
+VOID  ptc_recv_pthread_cond_wait(S8 *szFileName, U32 ulLine);
+VOID  ptc_send_exit_notify_to_pts(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S32 lSeq);
+VOID  ptc_delete_send_stream_node(U32 ulStreamID, PT_DATA_TYPE_EN enDataType, BOOL bIsMutex);
+VOID  ptc_delete_recv_stream_node(U32 ulStreamID, PT_DATA_TYPE_EN enDataType, BOOL bIsMutex);
+S32   ptc_get_version(U8 *szVersion);
 
 #ifdef  __cplusplus
 }

@@ -13,12 +13,18 @@ extern "C" {
 #include <limits.h>
 #include <netdb.h>
 #include <ctype.h>
+#include <semaphore.h>
+#include <sys/time.h>
 /* include provate header file */
 #include <pt/ptc.h>
 #include <netinet/tcp.h>
 #include "ptc_msg.h"
+#include "ptc_telnet.h"
 
+extern S32 cli_cmd_get_mem_info(S8 *szInfoBuff, U32 ulBuffSize);
 PTC_CLIENT_CB_ST g_austCmdClients[PTC_CMD_SOCKET_MAX_COUNT];
+PT_PTC_RECV_CMD_ST g_austPtcRecvCmds[PTC_RECV_FROM_PTS_CMD_SIZE];
+sem_t g_SemCmdDispose;
 
 S32 ptc_cmd_get_socket_by_streamID(U32 ulStreamID)
 {
@@ -86,6 +92,100 @@ VOID ptc_cmd_delete_client(S32 lSocket)
     }
 }
 
+S32 ptc_save_into_cmd_array(PT_PTC_COMMAND_ST *pstCommand)
+{
+    if (NULL == pstCommand)
+    {
+        return DOS_FALSE;
+    }
+
+    S32 i = 0;
+
+    for (i=0; i<PTC_RECV_FROM_PTS_CMD_SIZE; i++)
+    {
+        if (g_austPtcRecvCmds[i].bIsValid == DOS_FALSE)
+        {
+            dos_strcpy(g_austPtcRecvCmds[i].szCommand, pstCommand->szCommand);
+            g_austPtcRecvCmds[i].ulIndex = pstCommand->ulIndex;
+            g_austPtcRecvCmds[i].bIsValid = DOS_TRUE;
+
+            return DOS_SUCC;
+        }
+    }
+
+    return DOS_FALSE;
+}
+
+void *ptc_deal_with_pts_command(void *arg)
+{
+    S32 i = 0 ;
+    struct timespec stSemTime;
+    struct timeval now;
+    PT_PTC_COMMAND_ST stPtcCommand;
+    S8 *szInfoBuff = NULL;
+    S8 *szInfoBuffCpy = NULL;
+    U32 ulInfoBuffLen = 0;
+
+    S8 szCmdAck[PT_RECV_DATA_SIZE] = {0};
+
+    for (i=0; i<PTC_RECV_FROM_PTS_CMD_SIZE; i++)
+    {
+        g_austPtcRecvCmds[i].bIsValid = DOS_FALSE;
+    }
+
+    while (1)
+    {
+        gettimeofday(&now, NULL);
+        stSemTime.tv_sec = now.tv_sec + 5;
+        stSemTime.tv_nsec = now.tv_usec * 1000;
+        pt_logr_debug("wair make sure msg");
+        sem_timedwait(&g_SemCmdDispose, &stSemTime);
+
+        for (i = 0; i<PTC_RECV_FROM_PTS_CMD_SIZE; i++)
+        {
+            if (g_austPtcRecvCmds[i].bIsValid == DOS_TRUE)
+            {
+                /* 处理命令 */
+                szInfoBuff = (S8 *)dos_dmem_alloc(PT_DATA_BUFF_2048);
+                if (NULL == szInfoBuff)
+                {
+                    DOS_ASSERT(0);
+                    continue;
+                }
+
+                cli_cmd_get_mem_info(szInfoBuff, PT_DATA_BUFF_2048);
+                ulInfoBuffLen = dos_strlen(szInfoBuff);
+                szInfoBuffCpy = szInfoBuff;
+
+
+                dos_strcpy(stPtcCommand.szCommand, g_austPtcRecvCmds[i].szCommand);
+                stPtcCommand.ulIndex = g_austPtcRecvCmds[i].ulIndex;
+                dos_memzero(szCmdAck, PT_RECV_DATA_SIZE);
+                dos_memcpy(szCmdAck, &stPtcCommand, sizeof(PT_PTC_COMMAND_ST));
+
+                while (ulInfoBuffLen > 0)
+                {
+                    if (ulInfoBuffLen > PT_RECV_DATA_SIZE - sizeof(PT_PTC_COMMAND_ST))
+                    {
+                        dos_memcpy(szCmdAck+sizeof(PT_PTC_COMMAND_ST), szInfoBuffCpy, PT_RECV_DATA_SIZE - sizeof(PT_PTC_COMMAND_ST));
+                        ptc_save_msg_into_cache(PT_DATA_CMD, PT_CTRL_COMMAND, szCmdAck, PT_RECV_DATA_SIZE);
+                        szInfoBuffCpy += (PT_RECV_DATA_SIZE - sizeof(PT_PTC_COMMAND_ST));
+                        ulInfoBuffLen -= (PT_RECV_DATA_SIZE - sizeof(PT_PTC_COMMAND_ST));
+                    }
+                    else
+                    {
+                        dos_memcpy(szCmdAck+sizeof(PT_PTC_COMMAND_ST), szInfoBuffCpy, ulInfoBuffLen);
+                        ptc_save_msg_into_cache(PT_DATA_CMD, PT_CTRL_COMMAND, szCmdAck, sizeof(PT_PTC_COMMAND_ST)+ ulInfoBuffLen);
+                        ulInfoBuffLen = 0;
+                    }
+                }
+                g_austPtcRecvCmds[i].bIsValid = DOS_FALSE;
+                dos_dmem_free(szInfoBuff);
+            }
+        }
+    }
+}
+
 /**
  * 函数：void *ptc_recv_msg_from_cmd(void *arg)
  * 功能：
@@ -123,8 +223,11 @@ void *ptc_recv_msg_from_cmd(void *arg)
         lResult = select(ulMaxFd + 1, &ReadFds, NULL, NULL, &stTimeValCpy);
         if (lResult < 0)
         {
+            DOS_ASSERT(0);
             perror("fail to select");
-            exit(DOS_FAIL);
+            //exit(DOS_FAIL);
+            sleep(1);
+            continue;
         }
         else if (0 == lResult)
         {
@@ -169,20 +272,6 @@ void *ptc_recv_msg_from_cmd(void *arg)
                 }
                 else
                 {
-#if 0//PTC_DEBUG
-                    S32 j = 0;
-                    printf("-recv------------------------------------\n");
-                    for (j=0; j<lRecvLen; j++)
-                    {
-                        if (j%16 == 0)
-                        {
-                            printf("\n");
-                        }
-                        printf("%02x ", (U8)(cRecvBuf[j]));
-                    }
-                    printf("\n-------------------------------------\n");
-#endif
-
                     ptc_save_msg_into_cache(PT_DATA_CMD, lStreamID, cRecvBuf, lRecvLen);
 
                 }
@@ -205,10 +294,11 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     S32              lSendCount       = 0;
     list_t          *pstStreamList    = NULL;
     PT_STREAM_CB_ST *pstStreamNode    = NULL;
-    PT_DATA_TCP_ST   stRecvDataTcp;
+    PT_DATA_TCP_ST  *pstRecvDataTcp   = NULL;
     S32              lResult          = 0;
     socklen_t optlen = sizeof(S32);
     S32 tcpinfo;
+    PT_PTC_COMMAND_ST *pstCommand = NULL;
 
     pstStreamList = g_pstPtcRecv->astDataTypes[pstNeedRecvNode->enDataType].pstStreamQueHead;
     if (NULL == pstStreamList)
@@ -229,14 +319,32 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
         pt_logr_info("send data to proxy : data queue is NULL\n");
         return;
     }
+
     while (1)
     {
         pstStreamNode->lCurrSeq++;
         ulArraySub = (pstStreamNode->lCurrSeq) & (PT_DATA_RECV_CACHE_SIZE - 1);
-        stRecvDataTcp = pstStreamNode->unDataQueHead.pstDataTcp[ulArraySub];
-
-        if (stRecvDataTcp.lSeq == pstStreamNode->lCurrSeq)
+        pstRecvDataTcp = &pstStreamNode->unDataQueHead.pstDataTcp[ulArraySub];
+        if (pstRecvDataTcp->lSeq == pstStreamNode->lCurrSeq)
         {
+            if (PT_CTRL_COMMAND == pstStreamNode->ulStreamID)
+            {
+                /* pts 发送的命令 */
+                pstCommand = (PT_PTC_COMMAND_ST *)pstRecvDataTcp->szBuff;
+                lResult = ptc_save_into_cmd_array(pstCommand);
+                if (lResult != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                }
+                else
+                {
+                    sem_post(&g_SemCmdDispose);
+                }
+
+                continue;
+            }
+
+
             lSockfd = ptc_cmd_get_socket_by_streamID(pstStreamNode->ulStreamID);
             if (DOS_FAIL == lSockfd)
             {
@@ -259,7 +367,8 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
             if (getsockopt(lSockfd, IPPROTO_TCP, TCP_INFO, &tcpinfo, &optlen) < 0)
             {
                 pt_logr_info("get info fail");
-                exit(1);
+                DOS_ASSERT(0);
+                break;
             }
 
             if (TCP_CLOSE == tcpinfo || TCP_CLOSE_WAIT == tcpinfo || TCP_CLOSING == tcpinfo)
@@ -267,23 +376,8 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 break;
             }
 
-            lSendCount = send(lSockfd, stRecvDataTcp.szBuff, stRecvDataTcp.ulLen, 0);
-            pt_logr_info("ptc send to telnet server, stream : %d, len : %d, lSendCount = %d, buff : %c ", pstStreamNode->ulStreamID, stRecvDataTcp.ulLen, lSendCount, stRecvDataTcp.szBuff);
-
-#if 0//PTC_DEBUG
-            S32 j = 0;
-            printf("-send------------------------------------\n");
-            for (j=0; j<stRecvDataTcp.ulLen; j++)
-            {
-                if (j%16 == 0)
-                {
-                    printf("\n");
-                }
-                printf("%02x ", (U8)(stRecvDataTcp.szBuff[j]));
-            }
-            printf("\n-------------------------------------\n");
-#endif
-
+            lSendCount = send(lSockfd, pstRecvDataTcp->szBuff, pstRecvDataTcp->ulLen, 0);
+            pt_logr_info("ptc send to telnet server, stream : %d, len : %d, lSendCount = %d, buff : %c ", pstStreamNode->ulStreamID, pstRecvDataTcp->ulLen, lSendCount, pstRecvDataTcp->szBuff);
         }
         else
         {
