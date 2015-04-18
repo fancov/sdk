@@ -50,6 +50,8 @@ extern "C"{
 
 #define gettid() syscall(__NR_gettid)       /* 获得线程号 */
 
+extern S32 g_ulUdpSocket;
+
 /* 传输的数据类型 */
 typedef enum
 {

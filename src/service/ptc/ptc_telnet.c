@@ -138,7 +138,6 @@ void *ptc_deal_with_pts_command(void *arg)
         gettimeofday(&now, NULL);
         stSemTime.tv_sec = now.tv_sec + 5;
         stSemTime.tv_nsec = now.tv_usec * 1000;
-        pt_logr_debug("wair make sure msg");
         sem_timedwait(&g_SemCmdDispose, &stSemTime);
 
         for (i = 0; i<PTC_RECV_FROM_PTS_CMD_SIZE; i++)

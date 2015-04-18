@@ -20,7 +20,8 @@ extern "C"{
 #include <pt/md5.h>
 
 PT_PROT_TYPE_EN g_aenDataProtType[PT_DATA_BUTT] = {PT_TCP, PT_TCP, PT_TCP};
-static U32 g_ulPTCurrentLogLevel = LOG_LEVEL_NOTIC;  /* 日志打印级别 */
+static U32 g_ulPTCurrentLogLevel = LOG_LEVEL_DEBUG;  /* 日志打印级别 */
+S32 g_ulUdpSocket = 0;
 
 struct
 {

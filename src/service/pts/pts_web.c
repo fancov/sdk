@@ -29,7 +29,7 @@ S32 m_lPtcSeq = 0;
 fd_set g_ReadFds;                 /* 客户端套接字集合 */
 S32 g_lMaxSocket = 0;
 S32 g_lWebServSocket = 0;
-const S8 *szPtsFifoName = "/tmp/pts_fifo";
+const S8 *g_szPtsFifoName = "/tmp/pts_fifo";
 S32 g_lPtsPipeWRFd = -1;
 
 VOID pts_web_sem_wait(S8 *szFileName, U32 ulLine)
@@ -765,13 +765,13 @@ VOID *pts_recv_msg_from_web(VOID *arg)
     g_lWebServSocket = g_stPtsMsg.usWebServPort;
 
     /* 创建管道 */
-    if(access(szPtsFifoName, F_OK) == -1)
+    if(access(g_szPtsFifoName, F_OK) == -1)
     {
         /* 管道文件不存在,创建命名管道 */
-        lResult = mkfifo(szPtsFifoName, 0777);
+        lResult = mkfifo(g_szPtsFifoName, 0777);
         if(lResult != 0)
         {
-            logr_error("Could not create fifo %s\n", szPtsFifoName);
+            logr_error("Could not create fifo %s\n", g_szPtsFifoName);
             perror("mkfifo");
             DOS_ASSERT(0);
 
@@ -779,8 +779,8 @@ VOID *pts_recv_msg_from_web(VOID *arg)
         }
     }
 
-    lPipeFd = open(szPtsFifoName, O_RDONLY | O_NONBLOCK);
-    g_lPtsPipeWRFd = open(szPtsFifoName, O_WRONLY);
+    lPipeFd = open(g_szPtsFifoName, O_RDONLY | O_NONBLOCK);
+    g_lPtsPipeWRFd = open(g_szPtsFifoName, O_WRONLY);
     FD_ZERO(&g_ReadFds);
     FD_SET(lPipeFd, &g_ReadFds);
     g_lMaxSocket = lPipeFd;

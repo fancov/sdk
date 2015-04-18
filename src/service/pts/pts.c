@@ -159,14 +159,14 @@ S32 pts_create_udp_socket(U16 usUdpPort)
  * 参数
  * 返回值：
  */
-U32 pts_create_tcp_socket(U16 usTcpPort)
+S32 pts_create_tcp_socket(U16 usTcpPort)
 {
     S32 lSockfd = 0;
     S32 lError  = 0;
     socklen_t addrlen;
     struct sockaddr_in stMyAddr;
 
-    pt_logr_debug("create proxy socket, port is %d\n", usTcpPort);
+    pt_logr_debug("create proxy socket, port is %d", usTcpPort);
     dos_memzero(&stMyAddr, sizeof(stMyAddr));
     stMyAddr.sin_family = AF_INET;
     stMyAddr.sin_port = dos_htons(usTcpPort);
@@ -499,6 +499,7 @@ S32 pts_main()
         return DOS_FAIL;
     }
 
+
     lRet = pts_create_tcp_socket(g_stPtsMsg.usPtsPort);
     if (lRet <= 0)
     {
@@ -518,6 +519,8 @@ S32 pts_main()
         logr_error("setsockopt error : %d", lRet);
         return DOS_FAIL;
     }
+
+    g_ulUdpSocket = lSocket;
 
     lRet = dos_sqlite3_create_db(g_pstMySqlite);
     if (lRet < 0)
@@ -567,7 +570,7 @@ S32 pts_main()
         DOS_ASSERT(0);
     }
 
-    lRet = pthread_create(&tid1, NULL, pts_send_msg2ptc, (VOID *)&lSocket);
+    lRet = pthread_create(&tid1, NULL, pts_send_msg2ptc, NULL);
     if (lRet < 0)
     {
         logr_info("create pthread error : pts_send_msg2ptc!");
@@ -578,7 +581,7 @@ S32 pts_main()
         logr_debug("create pthread succ : pts_send_msg2ptc!");
     }
 
-    lRet = pthread_create(&tid2, NULL, pts_recv_msg_from_ptc, (VOID *)&lSocket);
+    lRet = pthread_create(&tid2, NULL, pts_recv_msg_from_ptc, NULL);
     if (lRet < 0)
     {
         logr_info("create pthread error : pts_recv_msg_from_ptc!");
@@ -633,6 +636,7 @@ S32 pts_main()
         logr_debug("telnetd_start succ!");
     }
 
+#if 0
     pthread_join(tid1, NULL);
     pthread_join(tid2, NULL);
     pthread_join(tid3, NULL);
@@ -650,6 +654,7 @@ S32 pts_main()
     }
     dos_dmem_free(g_pstMySqlite);
     g_pstMySqlite = NULL;
+#endif
 
     return DOS_SUCC;
 }

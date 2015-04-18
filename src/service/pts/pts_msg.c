@@ -2,6 +2,7 @@
 extern "C" {
 #endif
 
+#include <iconv.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -24,13 +25,14 @@ list_t   *g_pstPtcListSend     = NULL;      /* 发送缓存 */
 list_t   *g_pstPtcListRecv     = NULL;      /* 接收缓存 */
 list_t   *g_pstPtsNendRecvNode = NULL;      /* pts需要接收的数据 */
 list_t   *g_pstPtsNendSendNode = NULL;      /* pts需要发送的数据 */
-static S32 g_lPtsUdpSocket     = 0;         /* UDP通道的套接字 */
 PTS_SERV_MSG_ST g_stPtsMsg;                 /* 存放从配置文件中读取到的pts的信息 */
 pthread_mutex_t g_pts_mutex_send  = PTHREAD_MUTEX_INITIALIZER;      /* 发送线程锁 */
 pthread_cond_t  g_pts_cond_send   = PTHREAD_COND_INITIALIZER;       /* 发送条件变量 */
 pthread_mutex_t g_pts_mutex_recv  = PTHREAD_MUTEX_INITIALIZER;      /* 接收线程锁 */
 pthread_cond_t  g_pts_cond_recv   = PTHREAD_COND_INITIALIZER;       /* 接收条件变量 */
 PTS_SERV_SOCKET_ST g_lPtsServSocket[PTS_WEB_SERVER_MAX_SIZE];
+
+extern S32 pts_create_udp_socket(U16 usUdpPort);
 
 S8 *pts_get_current_time()
 {
@@ -1438,6 +1440,32 @@ S32 pts_get_curr_position_callback(VOID *para, S32 n_column, S8 **column_value, 
     return 0;
 }
 
+S32 code_convert(S8 *from_charset, S8 *to_charset, S8 *inbuf, size_t inlen, S8 *outbuf, size_t outlen)
+{
+    iconv_t cd;
+    S8 **pin = &inbuf;
+    S8 **pout = &outbuf;
+
+    cd = iconv_open(to_charset, from_charset);
+    if (0 == cd)
+    {
+        return DOS_FAIL;
+    }
+    dos_memzero(outbuf, outlen);
+    if (-1 == iconv(cd, pin, &inlen, pout, &outlen))
+    {
+        return DOS_FAIL;
+    }
+
+    iconv_close(cd);
+
+    return DOS_SUCC;
+}
+
+S32 g2u(S8 *inbuf, size_t inlen, char *outbuf, size_t outlen)
+{
+    return code_convert("gb2312", "utf-8", inbuf, inlen, outbuf, outlen);
+}
 
 /**
  * 函数：VOID pts_ctrl_msg_handle(S32 lSockfd, U32 ulStreamID, S8 *pData, struct sockaddr_in stClientAddr)
@@ -1472,6 +1500,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
     U32 ulDataField = 0;
     double dHBTimeInterval = 0.0;
     S8 szVersion[PT_IP_ADDR_SIZE] = {0};
+    S8 szPtcName[PT_DATA_BUFF_64] = {0};
     //S8 szNameDecode[PT_DATA_BUFF_64] = {0};
 
     pstMsgDes = (PT_MSG_TAG *)pData;
@@ -1528,16 +1557,25 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
             {
             case PT_PTC_TYPE_OEM:
                 strcpy(szPtcType, "Embedded");
+                dos_strncpy(szPtcName, pstCtrlData->szPtcName, PT_DATA_BUFF_64);
                 break;
             case PT_PTC_TYPE_WINDOWS:
                 strcpy(szPtcType, "Windows");
+                lResult = g2u(pstCtrlData->szPtcName, dos_strlen(pstCtrlData->szPtcName), szPtcName, PT_DATA_BUFF_64);
+                if (lResult != DOS_SUCC)
+                {
+                    pt_logr_info("ptc name iconv fail");
+                    dos_strncpy(szPtcName, pstCtrlData->szPtcName, PT_DATA_BUFF_64);
+                }
                 break;
             case PT_PTC_TYPE_IPCC:
                 strcpy(szPtcType, "Linux");
+                dos_strncpy(szPtcName, pstCtrlData->szPtcName, PT_DATA_BUFF_64);
                 break;
             default:
                 break;
             }
+
 
             dos_snprintf(szSql, PTS_SQL_STR_SIZE, "select * from ipcc_alias where sn='%.*s'", PTC_ID_LEN, pstMsgDes->aucID);
             lResult = dos_sqlite3_record_is_exist(g_pstMySqlite, szSql);
@@ -1553,7 +1591,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
 , intranetPort=%d, internetIP='%s', internetPort=%d, ptcType='%s', achPtsMajorDomain='%s', achPtsMinorDomain='%s'\
 , usPtsMajorPort=%d, usPtsMinorPort=%d, szPtsHistoryIp1='%s', szPtsHistoryIp2='%s', szPtsHistoryIp3='%s'\
 , usPtsHistoryPort1=%d, usPtsHistoryPort2=%d, usPtsHistoryPort3=%d, szMac='%s' where sn='%.*s';"
-                             , pstCtrlData->szPtcName, szVersion, szPtcIntranetIP, usPtcIntranetPort, szPtcInternetIP, usPtcInternetPort
+                             , szPtcName, szVersion, szPtcIntranetIP, usPtcIntranetPort, szPtcInternetIP, usPtcInternetPort
                              , szPtcType, pstCtrlData->achPtsMajorDomain, pstCtrlData->achPtsMinorDomain, dos_ntohs(pstCtrlData->usPtsMajorPort)
                              , dos_ntohs(pstCtrlData->usPtsMinorPort), pstCtrlData->szPtsHistoryIp1, pstCtrlData->szPtsHistoryIp2, pstCtrlData->szPtsHistoryIp3
                              , dos_ntohs(pstCtrlData->usPtsHistoryPort1), dos_ntohs(pstCtrlData->usPtsHistoryPort2), dos_ntohs(pstCtrlData->usPtsHistoryPort3)
@@ -1573,7 +1611,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
                 dos_snprintf(szSql, PTS_SQL_STR_SIZE, "INSERT INTO ipcc_alias (\"id\", \"sn\", \"name\", \"remark\", \"version\", \"register\", \"domain\", \"intranetIP\", \"internetIP\", \"intranetPort\"\
 , \"internetPort\", \"ptcType\", \"achPtsMajorDomain\", \"achPtsMinorDomain\", \"usPtsMajorPort\", \"usPtsMinorPort\", \"szPtsHistoryIp1\", \"szPtsHistoryIp2\", \"szPtsHistoryIp3\"\
 , \"usPtsHistoryPort1\", \"usPtsHistoryPort2\", \"usPtsHistoryPort3\", \"szMac\") VALUES (NULL, '%s', '%s', NULL, '%s', %d, NULL, '%s', '%s', %d, %d, '%s', '%s', '%s', %d, %d, '%s', '%s', '%s', %d, %d, %d, '%s');"
-                             , szID, pstCtrlData->szPtcName, szVersion, DOS_TRUE, szPtcIntranetIP, szPtcInternetIP, usPtcIntranetPort, usPtcInternetPort, szPtcType
+                             , szID, szPtcName, szVersion, DOS_TRUE, szPtcIntranetIP, szPtcInternetIP, usPtcIntranetPort, usPtcInternetPort, szPtcType
                              , pstCtrlData->achPtsMajorDomain, pstCtrlData->achPtsMinorDomain, dos_ntohs(pstCtrlData->usPtsMajorPort), dos_ntohs(pstCtrlData->usPtsMinorPort)
                              , pstCtrlData->szPtsHistoryIp1, pstCtrlData->szPtsHistoryIp2, pstCtrlData->szPtsHistoryIp3, dos_ntohs(pstCtrlData->usPtsHistoryPort1)
                              , dos_ntohs(pstCtrlData->usPtsHistoryPort2), dos_ntohs(pstCtrlData->usPtsHistoryPort3), pstCtrlData->szMac);
@@ -1981,7 +2019,7 @@ VOID pts_save_msg_into_cache(U8 *pcIpccId, PT_DATA_TYPE_EN enDataType, U32 ulStr
         gettimeofday(&now, NULL);
         stSemTime.tv_sec = now.tv_sec + 5;
         stSemTime.tv_nsec = now.tv_usec * 1000;
-        pt_logr_debug("wair make sure msg");
+        pt_logr_debug("wait make sure msg");
         sem_timedwait(&g_SemPts, &stSemTime);
     }
     else
@@ -2005,7 +2043,6 @@ VOID pts_save_msg_into_cache(U8 *pcIpccId, PT_DATA_TYPE_EN enDataType, U32 ulStr
  */
 VOID *pts_send_msg2ptc(VOID *arg)
 {
-    S32              lSockfd         = *(S32 *)arg;
     PT_CC_CB_ST      *pstPtcNode     = NULL;
     U32              ulArraySub      = 0;
     U32              ulSendCount     = 0;
@@ -2073,7 +2110,10 @@ VOID *pts_send_msg2ptc(VOID *arg)
                 stMsgDes.bIsEncrypt = DOS_FALSE;
                 stMsgDes.bIsCompress = DOS_FALSE;
 
-                lResult = sendto(lSockfd, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG), 0,  (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                if (g_ulUdpSocket > 0)
+                {
+                    lResult = sendto(g_ulUdpSocket, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG), 0,  (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                }
                 dos_dmem_free(pstNeedSendNode);
                 pstNeedSendNode = NULL;
                 continue;
@@ -2137,7 +2177,10 @@ VOID *pts_send_msg2ptc(VOID *arg)
                     while (ulSendCount)
                     {
                         pt_logr_info("send data to ptc, stream : %d, seq : %d, size : %d", pstNeedSendNode->ulStreamID, pstNeedSendNode->lSeqResend, stSendDataNode.ulLen);
-                        sendto(lSockfd, szBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                        if (g_ulUdpSocket > 0)
+                        {
+                            sendto(g_ulUdpSocket, szBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                        }
                         ulSendCount--;
                     }
 
@@ -2171,7 +2214,10 @@ VOID *pts_send_msg2ptc(VOID *arg)
                     dos_memcpy(szBuff+sizeof(PT_MSG_TAG), stRecvDataTcp.szBuff, stRecvDataTcp.ulLen);
                     pt_logr_debug("pts send data to ptc, streamID is %d, seq is %d ", pstNeedSendNode->ulStreamID, pstStreamNode->lCurrSeq);
                     //printf("send msg to ptc, stream : %d, seq : %d, len : %d\n", pstNeedSendNode->ulStreamID, pstStreamNode->lCurrSeq, stRecvDataTcp.ulLen);
-                    sendto(lSockfd, szBuff, stRecvDataTcp.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                    if (g_ulUdpSocket > 0)
+                    {
+                        sendto(g_ulUdpSocket, szBuff, stRecvDataTcp.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                    }
                 }
                 else
                 {
@@ -2208,7 +2254,6 @@ VOID *pts_send_msg2ptc(VOID *arg)
  */
 VOID *pts_recv_msg_from_ptc(VOID *arg)
 {
-    S32  lSockfd   = *(S32 *)arg;
     S32  lRecvLen  = 0;
     S32  lResult   = 0;
     struct sockaddr_in  stClientAddr;
@@ -2216,22 +2261,22 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
     PT_MSG_TAG         *pstMsgDes      = NULL;
     PT_CC_CB_ST        *pstPtcNode     = NULL;
     S8                  acRecvBuf[PT_SEND_DATA_SIZE] = {0};
-    U32                 MaxFdp = lSockfd;
-    fd_set              ReadFdsCpio;
+    U32                 MaxFdp = g_ulUdpSocket;
     fd_set              ReadFds;
     struct timeval stTimeVal = {1, 0};
     struct timeval stTimeValCpy;
-    FD_ZERO(&ReadFds);
-    FD_SET(lSockfd, &ReadFds);
+    S32 lSocket = 0;
+    U32 ulSocketCache = PTS_SOCKET_CACHE;
     /* 初始化信号量 */
     sem_init(&g_SemPtsRecv, 0, 1);
-    g_lPtsUdpSocket = lSockfd;
 
     while(1)
     {
         stTimeValCpy = stTimeVal;
-        ReadFdsCpio = ReadFds;
-        lResult = select(MaxFdp + 1, &ReadFdsCpio, NULL, NULL, &stTimeValCpy);
+        FD_ZERO(&ReadFds);
+        FD_SET(g_ulUdpSocket, &ReadFds);
+
+        lResult = select(MaxFdp + 1, &ReadFds, NULL, NULL, &stTimeValCpy);
         if (lResult < 0)
         {
             perror("pts_recv_msg_from_ptc select");
@@ -2243,9 +2288,48 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
         {
             continue;
         }
-        if (FD_ISSET(lSockfd, &ReadFdsCpio))
+        if (FD_ISSET(g_ulUdpSocket, &ReadFds))
         {
-            lRecvLen = recvfrom(lSockfd, acRecvBuf, PT_SEND_DATA_SIZE, 0, (struct sockaddr*)&stClientAddr, &lCliaddrLen);
+            lCliaddrLen = sizeof(stClientAddr);
+            lRecvLen = recvfrom(g_ulUdpSocket, acRecvBuf, PT_SEND_DATA_SIZE, 0, (struct sockaddr*)&stClientAddr, &lCliaddrLen);
+            if (lRecvLen < 0)
+            {
+                close(g_ulUdpSocket);
+                g_ulUdpSocket = -1;
+create_socket:
+                lSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort);
+                if (lSocket < 0)
+                {
+                    pt_logr_error("create udp socket fail");
+                    DOS_ASSERT(0);
+                    sleep(2);
+                    goto create_socket;
+                }
+
+                lResult = setsockopt(lSocket, SOL_SOCKET, SO_SNDBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
+                if (lResult != 0)
+                {
+                    logr_error("setsockopt error : %d", lResult);
+                    close(lSocket);
+                    DOS_ASSERT(0);
+                    sleep(2);
+                    goto create_socket;
+                }
+
+                lResult = setsockopt(lSocket, SOL_SOCKET, SO_RCVBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
+                if (lResult != 0)
+                {
+                    logr_error("setsockopt error : %d", lResult);
+                    close(lSocket);
+                    DOS_ASSERT(0);
+                    sleep(2);
+                    goto create_socket;
+                }
+
+                g_ulUdpSocket = lSocket;
+                continue;
+            }
+
             sem_wait(&g_SemPtsRecv);
 #if PT_MUTEX_DEBUG
             pts_recv_pthread_mutex_lock(__FILE__, __LINE__);
@@ -2261,7 +2345,7 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
             if (pstMsgDes->enDataType == PT_DATA_CTRL)
             {
                 /* 控制消息 */
-                pts_ctrl_msg_handle(lSockfd, acRecvBuf, stClientAddr);
+                pts_ctrl_msg_handle(g_ulUdpSocket, acRecvBuf, stClientAddr);
                 sem_post(&g_SemPtsRecv);
             }
             else

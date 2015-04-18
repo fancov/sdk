@@ -19,12 +19,12 @@ extern "C" {
 #include "ptc_msg.h"
 
 PTC_CLIENT_CB_ST g_austClients[PTC_WEB_SOCKET_MAX_COUNT];
-const S8 *szFifoName = "/tmp/ptc_fifo";
+const S8 *g_szFifoName = "/tmp/ptc_fifo";
 S32 g_lPipeWRFd = -1;
 S8 *g_pPackageBuff = NULL;
 U32 g_ulPackageLen = 0;
 U32 g_ulReceivedLen = 0;
-S8 szPackageMD5[PT_MD5_LEN] = {0};
+S8 g_szPackageMD5[PT_MD5_LEN] = {0};
 
 S32 ptc_get_socket_by_streamID(U32 ulStreamID)
 {
@@ -115,21 +115,21 @@ void *ptc_recv_msg_from_web(void *arg)
     S32 lPipeFd = -1;
 
     /* 创建管道 */
-    if(access(szFifoName, F_OK) == -1)
+    if(access(g_szFifoName, F_OK) == -1)
     {
         /* 管道文件不存在,创建命名管道 */
-        lResult = mkfifo(szFifoName, 0777);
+        lResult = mkfifo(g_szFifoName, 0777);
         if(lResult != 0)
         {
-            logr_error("Could not create fifo %s\n", szFifoName);
+            logr_error("Could not create fifo %s\n", g_szFifoName);
             perror("mkfifo");
             DOS_ASSERT(0);
             return NULL;
         }
     }
 
-    lPipeFd = open(szFifoName, O_RDONLY | O_NONBLOCK);
-    g_lPipeWRFd = open(szFifoName, O_WRONLY);
+    lPipeFd = open(g_szFifoName, O_RDONLY | O_NONBLOCK);
+    g_lPipeWRFd = open(g_szFifoName, O_WRONLY);
     while (1)
     {
         stTimeValCpy = stTimeVal;
@@ -246,7 +246,7 @@ BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
         {
             g_ulReceivedLen = 0;
             pstUpgrade = (PT_PTC_UPGRADE_ST *)pstRecvDataTcp->szBuff;
-            dos_strncpy(szPackageMD5, pstUpgrade->szMD5Verify, PT_MD5_LEN);
+            dos_strncpy(g_szPackageMD5, pstUpgrade->szMD5Verify, PT_MD5_LEN);
             g_ulPackageLen = dos_ntohl(pstUpgrade->ulPackageLen);
             if (g_ulPackageLen <= 0)
             {
@@ -284,7 +284,7 @@ BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
     {
         /* 接收完成，验证是否正确 */
         pt_md5_encrypt(g_pPackageBuff, szDecrypt);
-        if (dos_strcmp(szDecrypt, szPackageMD5) == 0)
+        if (dos_strcmp(szDecrypt, g_szPackageMD5) == 0)
         {
             logr_debug("recv upgrade package succ");
             /* 验证通过，保存到文件中 */
