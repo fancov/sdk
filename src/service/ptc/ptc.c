@@ -172,6 +172,7 @@ S32 ptc_init_serv_msg(S32 lSockfd)
         return DOS_FAIL;
     }
 
+get_domain:
     /* 获取主域名*/
     lResult = config_get_pts_major_domain(szMajorDoMain, PTC_PTS_DOMAIN_SIZE);
     if (lResult != DOS_SUCC)
@@ -214,6 +215,7 @@ S32 ptc_init_serv_msg(S32 lSockfd)
         if (pt_is_or_not_ip(szMajorDoMain))
         {
             dos_strncpy(szPtsIp, szMajorDoMain, PT_IP_ADDR_SIZE);
+            bIsGetMajorDomain = DOS_TRUE;
         }
         else
         {
@@ -227,6 +229,7 @@ S32 ptc_init_serv_msg(S32 lSockfd)
             {
                 inet_ntop(AF_INET, (void *)(paucIPAddr), szPtsIp, PT_IP_ADDR_SIZE);
                 logr_debug("domain name is : %s, ip : %s", szMajorDoMain, szPtsIp);
+                bIsGetMajorDomain = DOS_TRUE;
             }
         }
 
@@ -239,6 +242,7 @@ S32 ptc_init_serv_msg(S32 lSockfd)
         if (pt_is_or_not_ip(szMinorDoMain))
         {
             dos_strncpy(szPtsIp, szMinorDoMain, PT_IP_ADDR_SIZE);
+            bIsGetMinorDomain = DOS_TRUE;
         }
         else
         {
@@ -252,10 +256,17 @@ S32 ptc_init_serv_msg(S32 lSockfd)
             {
                 inet_ntop(AF_INET, (void *)(paucIPAddr), szPtsIp, PT_IP_ADDR_SIZE);
                 logr_debug("domain name is : %s, ip : %s", szMinorDoMain, szPtsIp);
+                bIsGetMinorDomain = DOS_TRUE;
             }
         }
 
         inet_pton(AF_INET, szPtsIp, (VOID *)(g_stServMsg.achPtsMinorIP));
+    }
+
+    if (DOS_FALSE == bIsGetMajorDomain && DOS_FALSE == bIsGetMinorDomain)
+    {
+        sleep(2);
+        goto get_domain;
     }
 
     /* 获得主/副域名的端口 */

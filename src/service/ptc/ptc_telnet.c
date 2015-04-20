@@ -151,8 +151,9 @@ void *ptc_deal_with_pts_command(void *arg)
                     DOS_ASSERT(0);
                     continue;
                 }
-
+#ifndef ARM_VERSION
                 cli_cmd_get_mem_info(szInfoBuff, PT_DATA_BUFF_2048);
+#endif
                 ulInfoBuffLen = dos_strlen(szInfoBuff);
                 szInfoBuffCpy = szInfoBuff;
 
