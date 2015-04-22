@@ -20,8 +20,10 @@ extern "C"{
 #include <pt/md5.h>
 
 PT_PROT_TYPE_EN g_aenDataProtType[PT_DATA_BUTT] = {PT_TCP, PT_TCP, PT_TCP};
-static U32 g_ulPTCurrentLogLevel = LOG_LEVEL_DEBUG;  /* 日志打印级别 */
+static U32 g_ulPTCurrentLogLevel = LOG_LEVEL_INFO;  /* 日志打印级别 */
 S32 g_ulUdpSocket = 0;
+U8  gucIsTableInit  = 0;
+U16 g_crc_tab[256];                    /* Function init_crc_tab() will initialize it */
 
 struct
 {
@@ -61,6 +63,52 @@ BOOL pt_is_or_not_ip(S8 *szIp)
         return DOS_FALSE;
     }
 }
+
+void init_crc_tab( void )
+{
+    U16     i, j;
+    U16     value;
+
+    if ( gucIsTableInit )
+        return;
+
+    for ( i=0; i<256; i++ )
+    {
+        value = (U16)(i << 8);
+        for ( j=0; j<8; j++ )
+        {
+            if ( (value&0x8000) != 0 )
+                value = (U16)((value<<1) ^ CRC16_POLY);
+            else
+                value <<= 1;
+        }
+
+        g_crc_tab[i] = value;
+    }
+    gucIsTableInit = 1;
+
+}
+
+U16 load_calc_crc(U8* pBuffer, U32 ulCount)
+{
+
+    U16 usTemp = 0;
+
+    init_crc_tab();
+
+    while ( ulCount-- != 0 )
+    {
+        /* The masked statements can make out the REVERSE crc of ccitt-16b
+        temp1 = (crc>>8) & 0x00FFL;
+        temp2 = crc_tab[ ( (_US)crc ^ *buffer++ ) & 0xff ];
+        crc   = temp1 ^ temp2;
+        */
+        usTemp = (U16)(( usTemp<<8 ) ^ g_crc_tab[ ( usTemp>>8 ) ^ *pBuffer++ ]);
+    }
+
+    return usTemp;
+}
+
 
 /**
  * 函数：S32 ptc_DNS_resolution(S8 *szDomainName, U8 paucIPAddr[][IPV6_SIZE], U32 ulIPSize)
@@ -500,7 +548,7 @@ S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *ps
  *      S32 lSocket     : udp 套接字
  * 返回值：void *
  */
-PT_CC_CB_ST *pt_ptc_node_create(U8 *pcIpccId, S8 *szPtcVersion, struct sockaddr_in stDestAddr, S32 lSocket)
+PT_CC_CB_ST *pt_ptc_node_create(U8 *pcIpccId, S8 *szPtcVersion, struct sockaddr_in stDestAddr)
 {
     PT_CC_CB_ST *pstNewNode = NULL;
 
@@ -518,7 +566,6 @@ PT_CC_CB_ST *pt_ptc_node_create(U8 *pcIpccId, S8 *szPtcVersion, struct sockaddr_
     }
 
     dos_memcpy(pstNewNode->aucID, pcIpccId, PTC_ID_LEN);
-    pstNewNode->lSocket = lSocket;
     pstNewNode->stDestAddr = stDestAddr;
 
     pstNewNode->astDataTypes[PT_DATA_CTRL].enDataType = PT_DATA_CTRL;

@@ -21,6 +21,9 @@ extern S32 bs_update_test(U32 ulIndex, S32 argc, S8 **argv);
 extern S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv);
 #endif
 
+#if INCLUDE_PTS
+extern S32 pts_send_command_to_ptc(U32 ulIndex, S32 argc, S8 **argv);
+#endif
 
 COMMAND_ST g_stCommandSet[] = {
     {NULL, "assert",        "Show assert informationa",        dos_assert_print},
@@ -41,6 +44,9 @@ COMMAND_ST g_stCommandSet[] = {
 #endif
 #if INCLUDE_CC_SC
     {NULL, "cc",            "Debug CC mod",                    cli_cc_process},
+#endif
+#if INCLUDE_PTS
+    {NULL, "ptc",           "send cmd to ptc",                 pts_send_command_to_ptc},
 #endif
 };
 

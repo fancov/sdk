@@ -24,7 +24,7 @@ S32 g_lPipeWRFd = -1;
 S8 *g_pPackageBuff = NULL;
 U32 g_ulPackageLen = 0;
 U32 g_ulReceivedLen = 0;
-S8 g_szPackageMD5[PT_MD5_LEN] = {0};
+U32 g_usCrc = 0;
 
 S32 ptc_get_socket_by_streamID(U32 ulStreamID)
 {
@@ -149,7 +149,6 @@ void *ptc_recv_msg_from_web(void *arg)
         if (lResult < 0)
         {
             perror("fail to select");
-            //exit(DOS_FAIL);
             DOS_ASSERT(0);
             sleep(1);
             continue;
@@ -235,45 +234,42 @@ void *ptc_recv_msg_from_web(void *arg)
  */
 BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
 {
-    PT_PTC_UPGRADE_ST *pstUpgrade = NULL;
-    S8 szDecrypt[PT_MD5_LEN] = {0};
+    LOAD_FILE_TAG *pstUpgrade = NULL;
     FILE *pFileFd = NULL;
     S32 lFd = 0;
+    U32 usCrc = 0;
 
     if (NULL == g_pPackageBuff)
     {
-        if (pstRecvDataTcp->ulLen == sizeof(PT_PTC_UPGRADE_ST))
-        {
-            g_ulReceivedLen = 0;
-            pstUpgrade = (PT_PTC_UPGRADE_ST *)pstRecvDataTcp->szBuff;
-            dos_strncpy(g_szPackageMD5, pstUpgrade->szMD5Verify, PT_MD5_LEN);
-            g_ulPackageLen = dos_ntohl(pstUpgrade->ulPackageLen);
-            if (g_ulPackageLen <= 0)
-            {
-                /* 失败 */
-                logr_info("recv upgrade package fail");
-            }
-            else
-            {
-                logr_debug("start recv upgrade package");
-                g_pPackageBuff = (S8 *)dos_dmem_alloc(g_ulPackageLen);
-                if (NULL == g_pPackageBuff)
-                {
-                    DOS_ASSERT(0);
-                    logr_debug("malloc fail\n");
-                }
-                else
-                {
-                    dos_memzero(g_pPackageBuff, g_ulPackageLen);
-                }
-            }
-        }
-        else
+        g_ulReceivedLen = 0;
+        pstUpgrade = (LOAD_FILE_TAG *)pstRecvDataTcp->szBuff;
+        g_ulPackageLen = dos_ntohl(pstUpgrade->ulFileLength);
+        g_usCrc = dos_ntohl(pstUpgrade->usCRC);
+        if (g_ulPackageLen <= 0)
         {
             /* 失败 */
             logr_info("recv upgrade package fail");
         }
-        return DOS_FALSE;
+        else
+        {
+            logr_debug("start recv upgrade package");
+            g_pPackageBuff = (S8 *)dos_dmem_alloc(g_ulPackageLen + sizeof(LOAD_FILE_TAG));
+            if (NULL == g_pPackageBuff)
+            {
+                DOS_ASSERT(0);
+                logr_debug("malloc fail\n");
+                return DOS_FALSE;
+            }
+            else
+            {
+                dos_memzero(g_pPackageBuff, g_ulPackageLen + sizeof(LOAD_FILE_TAG));
+            }
+        }
+
+        dos_memcpy(g_pPackageBuff+g_ulReceivedLen, pstRecvDataTcp->szBuff, pstRecvDataTcp->ulLen);
+        g_ulReceivedLen += pstRecvDataTcp->ulLen;
+
+        return DOS_TRUE;
     }
 
 
@@ -282,9 +278,10 @@ BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
 
     if (pstRecvDataTcp->ulLen < PT_RECV_DATA_SIZE)
     {
-        /* 接收完成，验证是否正确 */
-        pt_md5_encrypt(g_pPackageBuff, szDecrypt);
-        if (dos_strcmp(szDecrypt, g_szPackageMD5) == 0)
+        /* 接收完成，CRC验证 */
+        usCrc = load_calc_crc((U8 *)g_pPackageBuff + sizeof(LOAD_FILE_TAG), g_ulReceivedLen-sizeof(LOAD_FILE_TAG));
+        printf("g_usCrc : %u, usCrc = %u, file len : %u, recv len : %u\n\n", g_usCrc, usCrc, g_ulPackageLen, g_ulReceivedLen);
+        if (usCrc == g_usCrc)
         {
             logr_debug("recv upgrade package succ");
             /* 验证通过，保存到文件中 */
@@ -300,7 +297,7 @@ BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
             {
                 lFd = fileno(pFileFd);
                 fchmod(lFd, 0777);
-                fwrite(g_pPackageBuff+sizeof(PT_PTC_UPGRADE_DES_ST), g_ulPackageLen-sizeof(PT_PTC_UPGRADE_DES_ST), 1, pFileFd);
+                fwrite(g_pPackageBuff+sizeof(LOAD_FILE_TAG), g_ulPackageLen-sizeof(LOAD_FILE_TAG), 1, pFileFd);
                 fclose(pFileFd);
                 pFileFd = NULL;
                 /* ptc 退出程序, 等待升级 */
@@ -319,10 +316,10 @@ BOOL ptc_upgrade(PT_DATA_TCP_ST *pstRecvDataTcp, PT_STREAM_CB_ST *pstStreamNode)
         ptc_delete_recv_stream_node(pstStreamNode->ulStreamID, PT_DATA_WEB, DOS_FALSE);
         ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID, 0);
 
-        return DOS_TRUE;
+        return DOS_FALSE;
     }
 
-    return DOS_FALSE;
+    return DOS_TRUE;
 }
 
 /**
@@ -371,7 +368,7 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
             {
                 /* PTC 升级 */
                 lResult = ptc_upgrade(&stRecvDataTcp, pstStreamNode);
-                if (lResult)
+                if (!lResult)
                 {
                     break;
                 }

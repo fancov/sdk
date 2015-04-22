@@ -118,35 +118,60 @@ U32 pts_create_stream_id()
  * 参数
  * 返回值：
  */
-S32 pts_create_udp_socket(U16 usUdpPort)
+S32 pts_create_udp_socket(U16 usUdpPort, U32 ulSocketCache)
 {
     S32 lSockfd = 0;
     S32 lError  = 0;
     struct sockaddr_in stMyAddr;
 
-    lSockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (lSockfd < 0)
+    while (1)
     {
-        perror("udp create socket");
-        DOS_ASSERT(0);
+        lSockfd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (lSockfd < 0)
+        {
+            perror("udp create socket");
+            DOS_ASSERT(0);
+			sleep(1);
+            continue;
+        }
 
-        return DOS_FAIL;
-    }
+        dos_memzero(&stMyAddr, sizeof(stMyAddr));
+        stMyAddr.sin_family = AF_INET;
+        stMyAddr.sin_port = dos_htons(usUdpPort);
+        stMyAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    dos_memzero(&stMyAddr, sizeof(stMyAddr));
-    stMyAddr.sin_family = AF_INET;
-    stMyAddr.sin_port = dos_htons(usUdpPort);
-    stMyAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+        pt_logr_debug("udp channel server port: %d", usUdpPort);
+        lError = bind(lSockfd, (struct sockaddr*)&stMyAddr, sizeof(stMyAddr));
+        if (lError != 0)
+        {
+            perror("udp server bind");
+            close(lSockfd);
+            DOS_ASSERT(0);
+			sleep(1);
+            continue;
+        }
 
-    pt_logr_debug("udp channel server port: %d", usUdpPort);
-    lError = bind(lSockfd, (struct sockaddr*)&stMyAddr, sizeof(stMyAddr));
-    if (lError != 0)
-    {
-        perror("udp server bind");
-        close(lSockfd);
-        DOS_ASSERT(0);
+        lError = setsockopt(lSockfd, SOL_SOCKET, SO_SNDBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
+        if (lError != 0)
+        {
+            logr_error("setsockopt error : %d", lError);
+            close(lSockfd);
+            DOS_ASSERT(0);
 
-        return DOS_FAIL;
+            continue;
+        }
+
+        lError = setsockopt(lSockfd, SOL_SOCKET, SO_RCVBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
+        if (lError != 0)
+        {
+            logr_error("setsockopt error : %d", lError);
+            close(lSockfd);
+            DOS_ASSERT(0);
+
+            continue;
+        }
+
+        break;
     }
 
     return lSockfd;
@@ -177,6 +202,8 @@ S32 pts_create_tcp_socket(U16 usTcpPort)
     {
         perror("create tcp socket");
         DOS_ASSERT(0);
+        sleep(1);
+
         return DOS_FAIL;
     }
 
@@ -190,6 +217,8 @@ S32 pts_create_tcp_socket(U16 usTcpPort)
         perror("web service bind");
         close(lSockfd);
         DOS_ASSERT(0);
+        sleep(1);
+
         return DOS_FAIL;
     }
 
@@ -199,6 +228,8 @@ S32 pts_create_tcp_socket(U16 usTcpPort)
         perror("web service listen");
         close(lSockfd);
         DOS_ASSERT(0);
+        sleep(1);
+
         return DOS_FAIL;
     }
 
@@ -493,30 +524,11 @@ S32 pts_main()
         return DOS_FAIL;
     }
 
-    lSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort);
-    if (lSocket < 0)
-    {
-        return DOS_FAIL;
-    }
-
+    lSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, ulSocketCache);
 
     lRet = pts_create_tcp_socket(g_stPtsMsg.usPtsPort);
     if (lRet <= 0)
     {
-        return DOS_FAIL;
-    }
-
-    lRet = setsockopt(lSocket, SOL_SOCKET, SO_SNDBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
-    if (lRet != 0)
-    {
-        logr_error("setsockopt error : %d", lRet);
-        return DOS_FAIL;
-    }
-
-    lRet = setsockopt(lSocket, SOL_SOCKET, SO_RCVBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
-    if (lRet != 0)
-    {
-        logr_error("setsockopt error : %d", lRet);
         return DOS_FAIL;
     }
 

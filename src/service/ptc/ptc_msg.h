@@ -20,9 +20,11 @@ extern "C" {
 #define PTC_CMD_SOCKET_MAX_COUNT    10         /* 访问proxy的最大socket */
 #define PTC_TIME_SIZE               24
 #define PTC_RECV_FROM_PTS_CMD_SIZE  8
+#define PTC_HISTORY_PATH            "var/pts_history"      /* history 的文件目录 */
 
 typedef struct tagServMsg
 {
+    S8                    szHistoryPath[PT_DATA_BUFF_128];             /* history 的路径 */
     S8                    achPtsMajorDomain[PT_DATA_BUFF_64];         /* pts主域名地址 */
     S8                    achPtsMinorDomain[PT_DATA_BUFF_64];         /* pts备域名地址 */
     U8                    achPtsMajorIP[IPV6_SIZE];          /* PTS 主 IP */
@@ -63,9 +65,9 @@ extern PT_PTC_TYPE_EN g_enPtcType;
 VOID  ptc_save_msg_into_cache(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S8 *pcData, S32 lDataLen);
 VOID *ptc_send_msg2pts(VOID *arg);
 VOID *ptc_recv_msg_from_pts(VOID *arg);
-VOID  ptc_send_heartbeat2pts(S32 lSockfd);
-VOID  ptc_send_login2pts(S32 lSockfd);
-VOID  ptc_send_logout2pts(S32 lSockfd);
+VOID  ptc_send_heartbeat2pts();
+VOID  ptc_send_login2pts();
+VOID  ptc_send_logout2pts();
 VOID  ptc_send_pthread_mutex_lock(S8 *szFileName, U32 ulLine);
 VOID  ptc_send_pthread_mutex_unlock(S8 *szFileName, U32 ulLine);
 VOID  ptc_recv_pthread_mutex_lock(S8 *szFileName, U32 ulLine);
@@ -75,6 +77,7 @@ VOID  ptc_send_exit_notify_to_pts(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S3
 VOID  ptc_delete_send_stream_node(U32 ulStreamID, PT_DATA_TYPE_EN enDataType, BOOL bIsMutex);
 VOID  ptc_delete_recv_stream_node(U32 ulStreamID, PT_DATA_TYPE_EN enDataType, BOOL bIsMutex);
 S32   ptc_get_version(U8 *szVersion);
+S32   ptc_create_udp_socket(U32 ulSocketCache);
 
 #ifdef  __cplusplus
 }

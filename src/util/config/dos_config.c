@@ -20,7 +20,12 @@ extern "C"{
 #if (INCLUDE_XML_CONFIG)
 
 /* provate macro */
-#define GLB_CONFIG_FILE_PATH1 "/etc"
+#ifdef PTC_OEM_DINSTAR_IAD
+    #define GLB_CONFIG_FILE_PATH1 "/flash/apps/ptc/etc"
+#else
+    #define GLB_CONFIG_FILE_PATH1 "/etc"
+#endif
+
 #define GLB_CONFIG_FILE_PATH2 "../etc"
 
 #define GLB_CONFIG_FILE_NAME "global.xml"

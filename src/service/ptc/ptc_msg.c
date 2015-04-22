@@ -34,9 +34,8 @@ pthread_cond_t  g_cond_send   = PTHREAD_COND_INITIALIZER;        /* 发送条件变量
 pthread_mutex_t g_mutex_recv  = PTHREAD_MUTEX_INITIALIZER;       /* 接收线程锁 */
 pthread_cond_t  g_cond_recv   = PTHREAD_COND_INITIALIZER;        /* 接收条件变量 */
 U32 g_ulSendTimeSleep = 20;
-static S32 g_lUdpSocket = 0;
 U32 g_ulConnectPtsCount = 0;
-PT_PTC_TYPE_EN g_enPtcType = PT_PTC_TYPE_IPCC;
+PT_PTC_TYPE_EN g_enPtcType = PT_PTC_TYPE_LINUX;
 struct timeval g_stHBStartTime;
 S32 g_lHBTimeInterval = 0;         /* ns */
 
@@ -86,6 +85,47 @@ VOID ptc_recv_pthread_cond_wait(S8 *szFileName, U32 ulLine)
     printf("%s %d %.*s : recv wait\n", szFileName, ulLine, PTC_TIME_SIZE, ptc_get_current_time());
     pthread_cond_wait(&g_cond_recv, &g_mutex_recv);
     printf("%s %d %.*s : recv wait in\n", szFileName, ulLine, PTC_TIME_SIZE, ptc_get_current_time());
+}
+
+S32 ptc_create_udp_socket(U32 ulSocketCache)
+{
+    S32 lSocket = 0;
+    S32 lRet = 0;
+
+    while (1)
+    {
+        lSocket = socket(AF_INET, SOCK_DGRAM, 0);
+        if (lSocket < 0)
+        {
+            perror("create socket error!");
+            sleep(1);
+
+            continue;
+        }
+        lRet = setsockopt(lSocket, SOL_SOCKET, SO_SNDBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
+        if (lRet != 0)
+        {
+            logr_error("setsockopt error : %d", lRet);
+            close(lSocket);
+            sleep(1);
+
+            continue;
+        }
+
+        lRet = setsockopt(lSocket, SOL_SOCKET, SO_RCVBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
+        if (lRet != 0)
+        {
+            logr_error("setsockopt error : %d", lRet);
+            close(lSocket);
+            sleep(1);
+
+            continue;
+        }
+
+        break;
+    }
+
+    return lSocket;
 }
 
 /**
@@ -182,7 +222,7 @@ VOID ptc_delete_recv_stream_node(U32 ulStreamID, PT_DATA_TYPE_EN enDataType, BOO
     }
 }
 
-S32 ptc_get_udp_use_ip()
+S32 ptc_get_udp_user_ip()
 {
     S32 lSockfd = 0;
     S32 lError  = 0;
@@ -241,6 +281,7 @@ ptc_connect:
     logr_debug("local ip : %s, irf name : %s, mac : %s", szLocalIp, szIfrName, szMac);
 
     close(lSockfd);
+
     return DOS_SUCC;
 }
 
@@ -283,6 +324,7 @@ VOID ptc_send_exit_notify_to_pts(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S32
 {
     PT_MSG_TAG stMsgDes;
     S8 acBuff[PT_DATA_BUFF_512] = {0};
+    S32 lResult = 0;
 
     stMsgDes.enDataType = enDataType;
     dos_memcpy(stMsgDes.aucID, g_pstPtcSend->aucID, PTC_ID_LEN);
@@ -294,8 +336,16 @@ VOID ptc_send_exit_notify_to_pts(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S32
     stMsgDes.bIsCompress = DOS_FALSE;
 
     dos_memcpy(acBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
-
-    sendto(g_lUdpSocket, acBuff, sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+    if (g_ulUdpSocket > 0)
+    {
+        lResult = sendto(g_ulUdpSocket, acBuff, sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+        if (lResult < 0)
+        {
+            close(g_ulUdpSocket);
+            g_ulUdpSocket = -1;
+            g_ulUdpSocket = ptc_create_udp_socket(PTC_SOCKET_CACHE);
+        }
+    }
 }
 
 /**
@@ -413,7 +463,7 @@ S32 ptc_key_convert(S8 *szKey, S8 *szDest)
  *      U64 lSockfd ：udp通信套接字
  * 返回值：无
  */
-VOID ptc_hd_ack_timeout_callback(U64 lSockfd)
+VOID ptc_hd_ack_timeout_callback()
 {
     g_ulHDTimeoutCount++;
     pt_logr_debug("Heartbeat response timeout : %d", g_ulHDTimeoutCount);
@@ -424,7 +474,7 @@ VOID ptc_hd_ack_timeout_callback(U64 lSockfd)
         logr_debug("can not connect PTS!!!");
         pt_delete_ptc_resource(g_pstPtcSend);
         pt_delete_ptc_resource(g_pstPtcRecv);
-        ptc_send_login2pts(lSockfd);
+        ptc_send_login2pts();
         g_bIsOnLine = DOS_FALSE;
     }
 }
@@ -437,7 +487,7 @@ VOID ptc_hd_ack_timeout_callback(U64 lSockfd)
  *      U64 lSockfd ：udp通信套接字
  * 返回值：无
  */
-VOID ptc_send_hb_req(U64 lSockfd)
+VOID ptc_send_hb_req()
 {
     PT_MSG_TAG stMsgDes;
     PT_CTRL_DATA_ST stVerRet;
@@ -461,10 +511,21 @@ VOID ptc_send_hb_req(U64 lSockfd)
     dos_memcpy(acBuff+sizeof(PT_MSG_TAG), (VOID *)&stVerRet, sizeof(PT_CTRL_DATA_ST));
 
     gettimeofday(&g_stHBStartTime, NULL);
-    sendto(lSockfd, acBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+
+    if (g_ulUdpSocket > 0)
+    {
+        lResult = sendto(g_ulUdpSocket, acBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+        if (lResult < 0)
+        {
+            close(g_ulUdpSocket);
+            g_ulUdpSocket = -1;
+            g_ulUdpSocket = ptc_create_udp_socket(PTC_SOCKET_CACHE);
+        }
+    }
+
     /* 启动定时器，判断心跳响应是否超时 */
     pt_logr_debug("send hd to pts");
-    lResult = dos_tmr_start(&g_stACKTmrHandle, PTC_WAIT_HB_ACK_TIME, ptc_hd_ack_timeout_callback, lSockfd, TIMER_NORMAL_NO_LOOP);
+    lResult = dos_tmr_start(&g_stACKTmrHandle, PTC_WAIT_HB_ACK_TIME, ptc_hd_ack_timeout_callback, 0, TIMER_NORMAL_NO_LOOP);
     if (lResult < 0)
     {
         pt_logr_info("ptc_send_hb_req : start timer fail");
@@ -482,7 +543,6 @@ VOID ptc_send_hb_req(U64 lSockfd)
 VOID ptc_send_login_req(U64 arg)
 {
     S32 lResult = 0;
-    S32 lSockfd = (S32)arg;
     PT_MSG_TAG stMsgDes;
     PT_CTRL_DATA_ST stVerRet;
     S8 acBuff[PT_DATA_BUFF_512] = {0};
@@ -494,7 +554,7 @@ VOID ptc_send_login_req(U64 arg)
     {
         /* 已登陆,关闭定时器。发送心跳 */
         dos_tmr_stop(&g_stHBTmrHandle);
-        ptc_send_heartbeat2pts(lSockfd);
+        ptc_send_heartbeat2pts();
 
         return;
     }
@@ -549,7 +609,16 @@ VOID ptc_send_login_req(U64 arg)
 
     if (dos_ntohs(g_pstPtcSend->stDestAddr.sin_port) != 0)
     {
-        sendto(lSockfd, acBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+        if (g_ulUdpSocket > 0)
+        {
+            lResult = sendto(g_ulUdpSocket, acBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+            if (lResult  < 0)
+            {
+                close(g_ulUdpSocket);
+                g_ulUdpSocket = -1;
+                g_ulUdpSocket = ptc_create_udp_socket(PTC_SOCKET_CACHE);
+            }
+        }
         inet_ntop(AF_INET, (void *)(&g_pstPtcSend->stDestAddr.sin_addr.s_addr), szDestIp, PT_IP_ADDR_SIZE);
         logr_debug("ptc send login request to pts : ip : %s:%u", szDestIp, dos_ntohs(g_pstPtcSend->stDestAddr.sin_port));
     }
@@ -557,7 +626,7 @@ VOID ptc_send_login_req(U64 arg)
     /* 获取ptc一侧udp的私网端口号 -- sendto后，才能获取端口号 */
     if (g_stServMsg.usLocalPort == 0)
     {
-        lResult = getsockname(lSockfd,(struct sockaddr*)&stAddrCli, &lAddrLen);
+        lResult = getsockname(g_ulUdpSocket,(struct sockaddr*)&stAddrCli, &lAddrLen);
         if (lResult != 0)
         {
             pt_logr_info("Get sockname Error!");
@@ -577,10 +646,10 @@ VOID ptc_send_login_req(U64 arg)
  */
 VOID ptc_send_logout_req(U64 arg)
 {
-    S32 lSockfd = (S32)arg;
     PT_MSG_TAG stMsgDes;
     PT_CTRL_DATA_ST stVerRet;
     S8 acBuff[PT_DATA_BUFF_512] = {0};
+    S32 lResult = 0;
 
     stMsgDes.enDataType = PT_DATA_CTRL;
     dos_memcpy(stMsgDes.aucID, g_pstPtcSend->aucID, PTC_ID_LEN);
@@ -597,8 +666,16 @@ VOID ptc_send_logout_req(U64 arg)
 
     stVerRet.enCtrlType = PT_CTRL_LOGOUT;
     dos_memcpy(acBuff+sizeof(PT_MSG_TAG), (VOID *)&stVerRet, sizeof(PT_CTRL_DATA_ST));
-
-    sendto(lSockfd, acBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+    if (g_ulUdpSocket > 0)
+    {
+        lResult = sendto(g_ulUdpSocket, acBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+        if (lResult  < 0)
+        {
+            close(g_ulUdpSocket);
+            g_ulUdpSocket = -1;
+            g_ulUdpSocket = ptc_create_udp_socket(PTC_SOCKET_CACHE);
+        }
+    }
     pt_logr_debug("ptc send logout request to pts");
 }
 
@@ -805,7 +882,7 @@ S32 ptc_save_into_send_cache(PT_MSG_TAG *pstMsgDes, S8 *acSendBuf, S32 lDataLen)
  *      PT_SAVE_DATA_FAIL 失败
  *      PT_NEED_CUT_PTHREAD 缓存已存满
  */
-S32 ptc_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, S8 *acRecvBuf, S32 lDataLen, S32 lSockfd)
+S32 ptc_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, S8 *acRecvBuf, S32 lDataLen)
 {
     if (NULL == pstPtcNode || NULL == acRecvBuf)
     {
@@ -960,7 +1037,6 @@ S32 ptc_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, S8 *acRecvBuf, S32 lDataLe
 
                     pstLoseMsg->stMsg = *pstMsgDes;
                     pstLoseMsg->pstStreamNode = pstStreamNode;
-                    pstLoseMsg->lSocket = lSockfd;
 
                     pstStreamNode->pstLostParam = pstLoseMsg;
                 }
@@ -987,7 +1063,7 @@ VOID ptc_update_pts_history_file(U8 aulServIp[IPV6_SIZE], U16 usServPort)
     S8 szPtsHistory[3][PT_DATA_BUFF_64];
 
     inet_ntop(AF_INET, (void *)(aulServIp), szPtsIp, PT_IP_ADDR_SIZE);
-    pFileHandle = fopen("pts_history", "r");
+    pFileHandle = fopen(g_stServMsg.szHistoryPath, "r");
     if (NULL == pFileHandle)
     {
         return;
@@ -1002,7 +1078,7 @@ VOID ptc_update_pts_history_file(U8 aulServIp[IPV6_SIZE], U16 usServPort)
     fclose(pFileHandle);
     lPtsHistoryConut--;
     printf("switch pts count : %d\n", lPtsHistoryConut);
-    pFileHandle = fopen("pts_history", "w");
+    pFileHandle = fopen(g_stServMsg.szHistoryPath, "w");
     if (NULL == pFileHandle)
     {
         return;
@@ -1075,7 +1151,7 @@ VOID ptc_ctrl_msg_handle(S8 *pData, U32 lRecvLen)
     case PT_CTRL_LOGIN_RSP:
         /* 登陆验证 */
         pt_logr_debug("recv login response");
-        lResult = ptc_get_udp_use_ip();  /* 获取本机ip */
+        lResult = ptc_get_udp_user_ip();  /* 获取本机ip */
         if (lResult != DOS_SUCC)
         {
             return;
@@ -1153,14 +1229,14 @@ VOID ptc_ctrl_msg_handle(S8 *pData, U32 lRecvLen)
         break;
     case PT_CTRL_SWITCH_PTS:
         /* 切换pts */
-        ptc_send_logout2pts(g_lUdpSocket);
+        ptc_send_logout2pts();
         g_pstPtcSend->stDestAddr.sin_addr.s_addr = *(U32 *)(pstMsgDes->aulServIp);
         g_pstPtcSend->stDestAddr.sin_port = pstMsgDes->usServPort;
 
         /* 写入文件,记录注册的pts的历史记录 */
         //if (*(U32 *)pstMsgDes->aulServIp != *(U32 *)g_stServMsg.achPtsMajorIP && *(U32 *)pstMsgDes->aulServIp != *(U32 *)g_stServMsg.achPtsMinorIP)
         ptc_update_pts_history_file(pstMsgDes->aulServIp, pstMsgDes->usServPort);
-        ptc_send_login2pts(g_lUdpSocket);
+        ptc_send_login2pts();
         break;
     case PT_CTRL_PTS_MAJOR_DOMAIN:
         /* 修改主域名 */
@@ -1373,11 +1449,11 @@ S32 ptc_get_version(U8 *szVersion)
  * 参数
  * 返回值：
  */
-VOID ptc_send_heartbeat2pts(S32 lSockfd)
+VOID ptc_send_heartbeat2pts()
 {
     S32 lResult = 0;
 
-    lResult = dos_tmr_start(&g_stHBTmrHandle, PTC_SEND_HB_TIME, ptc_send_hb_req, (U64)lSockfd, TIMER_NORMAL_LOOP);
+    lResult = dos_tmr_start(&g_stHBTmrHandle, PTC_SEND_HB_TIME, ptc_send_hb_req, (U64)g_ulUdpSocket, TIMER_NORMAL_LOOP);
     if (lResult < 0)
     {
         pt_logr_info("ptc_send_heartbeat2pts : start timer fail");
@@ -1391,11 +1467,11 @@ VOID ptc_send_heartbeat2pts(S32 lSockfd)
  * 参数
  * 返回值：
  */
-VOID ptc_send_login2pts(S32 lSockfd)
+VOID ptc_send_login2pts()
 {
     S32 lResult = 0;
-    ptc_send_login_req((U64)lSockfd);
-    lResult = dos_tmr_start(&g_stHBTmrHandle, PTC_SEND_HB_TIME, ptc_send_login_req, (U64)lSockfd, TIMER_NORMAL_LOOP);
+    ptc_send_login_req(0);
+    lResult = dos_tmr_start(&g_stHBTmrHandle, PTC_SEND_HB_TIME, ptc_send_login_req, 0, TIMER_NORMAL_LOOP);
     if (lResult < 0)
     {
         pt_logr_info("ptc_send_login2pts : start timer fail");
@@ -1409,11 +1485,11 @@ VOID ptc_send_login2pts(S32 lSockfd)
  * 参数
  * 返回值：
  */
-VOID ptc_send_logout2pts(S32 lSockfd)
+VOID ptc_send_logout2pts()
 {
     g_bIsOnLine = DOS_FALSE;
     dos_tmr_stop(&g_stHBTmrHandle);
-    ptc_send_logout_req((U64)lSockfd);
+    ptc_send_logout_req(0);
 }
 
 
@@ -1503,7 +1579,6 @@ VOID ptc_save_msg_into_cache(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S8 *pcD
  */
 VOID *ptc_send_msg2pts(VOID *arg)
 {
-    S32              lSockfd          = *(S32 *)arg;
     U32              ulArraySub       = 0;
     U32              ulSendCount      = 0;
     list_t           *pstStreamHead   = NULL;
@@ -1582,8 +1657,16 @@ VOID *ptc_send_msg2pts(VOID *arg)
                 dos_memcpy(stMsgDes.aulServIp, g_stServMsg.achLocalIP, IPV6_SIZE);
                 stMsgDes.usServPort = g_stServMsg.usLocalPort;
                 pt_logr_debug("ptc_send_msg2pts : lost/resend/confirm/exitNotify request, seq : %d", pstNeedSendNode->lSeqResend);
-                sendto(lSockfd, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG), 0,  (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
-
+                if (g_ulUdpSocket > 0)
+                {
+                    lResult = sendto(g_ulUdpSocket, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG), 0,  (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+                    if (lResult < 0)
+                    {
+                        close(g_ulUdpSocket);
+                        g_ulUdpSocket = -1;
+                        g_ulUdpSocket = ptc_create_udp_socket(PTC_SOCKET_CACHE);
+                    }
+                }
                 dos_dmem_free(pstNeedSendNode);
                 pstNeedSendNode = NULL;
                 continue;
@@ -1647,7 +1730,16 @@ VOID *ptc_send_msg2pts(VOID *arg)
                     while (ulSendCount)
                     {
                         //usleep(g_ulSendTimeSleep);
-                        lResult = sendto(lSockfd, acBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+                        if (g_ulUdpSocket > 0)
+                        {
+                            lResult = sendto(g_ulUdpSocket, acBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+                            if (lResult  < 0)
+                            {
+                                close(g_ulUdpSocket);
+                                g_ulUdpSocket = -1;
+                                g_ulUdpSocket = ptc_create_udp_socket(PTC_SOCKET_CACHE);
+                            }
+                        }
                         ulSendCount--;
                         pt_logr_debug("send resend data seq : %d, stream, result = %d", pstNeedSendNode->lSeqResend, pstNeedSendNode->ulStreamID, lResult);
 
@@ -1685,8 +1777,37 @@ VOID *ptc_send_msg2pts(VOID *arg)
                     dos_memcpy(acBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
                     dos_memcpy(acBuff+sizeof(PT_MSG_TAG), stSendDataNode.szBuff, stSendDataNode.ulLen);
 
-                    //usleep(g_ulSendTimeSleep);
-                    lResult = sendto(lSockfd, acBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+                    if (0 == stSendDataNode.ulLen)
+                    {
+                        ulSendCount = PT_RESEND_RSP_COUNT;
+                        while (ulSendCount)
+                        {
+                            if (g_ulUdpSocket > 0)
+                            {
+                                lResult = sendto(g_ulUdpSocket, acBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+                                if (lResult  < 0)
+                                {
+                                    close(g_ulUdpSocket);
+                                    g_ulUdpSocket = -1;
+                                    g_ulUdpSocket = ptc_create_udp_socket(PTC_SOCKET_CACHE);
+                                }
+                            }
+                            ulSendCount--;
+                        }
+                    }
+                    else
+                    {
+                        if (g_ulUdpSocket > 0)
+                        {
+                            lResult = sendto(g_ulUdpSocket, acBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&g_pstPtcSend->stDestAddr, sizeof(g_pstPtcSend->stDestAddr));
+                            if (lResult  < 0)
+                            {
+                                close(g_ulUdpSocket);
+                                g_ulUdpSocket = -1;
+                                g_ulUdpSocket = ptc_create_udp_socket(PTC_SOCKET_CACHE);
+                            }
+                        }
+                    }
                     pt_logr_debug("send data to pts : length:%d, stream:%d, seq:%d", stRecvDataTcp.ulLen, pstNeedSendNode->ulStreamID, pstStreamNode->lCurrSeq);
                 }
                 else
@@ -1723,30 +1844,33 @@ VOID *ptc_send_msg2pts(VOID *arg)
  */
 VOID *ptc_recv_msg_from_pts(VOID *arg)
 {
-    S32         lSockfd    = *(S32*)arg;
     S32         lRecvLen   = 0;
     S32         lResult    = 0;
-    U32         MaxFdp     = lSockfd;
+    U32         MaxFdp     = 0;
     PT_MSG_TAG *pstMsgDes  = NULL;
     struct sockaddr_in stClientAddr = g_pstPtcSend->stDestAddr;
     socklen_t          ulCliaddrLen = sizeof(stClientAddr);
-    fd_set             ReadFdsCpio;
     fd_set             ReadFds;
     struct timeval stTimeVal = {1, 0};
     struct timeval stTimeValCpy;
-    FD_ZERO(&ReadFds);
-    FD_SET(lSockfd, &ReadFds);
+
     S8 acRecvBuf[PT_SEND_DATA_SIZE]  = {0};
     struct timeval now;
-    sem_init(&g_SemPtcRecv, 0, 1);  /* 初始化信号量 */
-    g_lUdpSocket = lSockfd;
+    sem_init(&g_SemPtcRecv, 0, 1);              /* 初始化信号量 */
 
     while (1)
     {
+        if (g_ulUdpSocket < 0)
+        {
+            sleep(1);
+            continue;
+        }
         stTimeValCpy = stTimeVal;
-        ReadFdsCpio = ReadFds;
+        MaxFdp = g_ulUdpSocket;
+        FD_ZERO(&ReadFds);
+        FD_SET(g_ulUdpSocket, &ReadFds);
 
-        lResult = select(MaxFdp + 1, &ReadFdsCpio, NULL, NULL, &stTimeValCpy);
+        lResult = select(MaxFdp + 1, &ReadFds, NULL, NULL, &stTimeValCpy);
         if (lResult < 0)
         {
             perror("ptc_recv_msg_from_pts : fail to select");
@@ -1759,12 +1883,16 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
             continue;
         }
 
-        if (FD_ISSET(lSockfd, &ReadFdsCpio))
+        if (FD_ISSET(g_ulUdpSocket, &ReadFds))
         {
-            lRecvLen = recvfrom(lSockfd, acRecvBuf, PT_SEND_DATA_SIZE, 0, (struct sockaddr*)&stClientAddr, &ulCliaddrLen);
+            lRecvLen = recvfrom(g_ulUdpSocket, acRecvBuf, PT_SEND_DATA_SIZE, 0, (struct sockaddr*)&stClientAddr, &ulCliaddrLen);
             if (lRecvLen < 0)
             {
-                perror("recvfrom");
+                pt_logr_info("recvfrom fail ,create socket again");
+                close(g_ulUdpSocket);
+                g_ulUdpSocket = -1;
+                g_ulUdpSocket = ptc_create_udp_socket(PTC_SOCKET_CACHE);
+
                 continue;
             }
 
@@ -1849,7 +1977,7 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
                 continue;
             }
 
-            lResult = ptc_save_into_recv_cache(g_pstPtcRecv, acRecvBuf, lRecvLen, lSockfd);
+            lResult = ptc_save_into_recv_cache(g_pstPtcRecv, acRecvBuf, lRecvLen);
             if (lResult < 0)
             {
                 pt_logr_info("ptc add data into recv cache fail, result : %d", lResult);

@@ -32,7 +32,7 @@ pthread_mutex_t g_pts_mutex_recv  = PTHREAD_MUTEX_INITIALIZER;      /* ½ÓÊÕÏß³ÌË
 pthread_cond_t  g_pts_cond_recv   = PTHREAD_COND_INITIALIZER;       /* ½ÓÊÕÌõ¼þ±äÁ¿ */
 PTS_SERV_SOCKET_ST g_lPtsServSocket[PTS_WEB_SERVER_MAX_SIZE];
 
-extern S32 pts_create_udp_socket(U16 usUdpPort);
+extern S32 pts_create_udp_socket(U16 usUdpPort, U32 ulSocketCache);
 
 S8 *pts_get_current_time()
 {
@@ -138,7 +138,6 @@ S32 pts_find_ptc_by_dest_addr(S8 *pDestInternetIp, S8 *pDestIntranetIp, S8 *pcDe
             return DOS_SUCC;
         }
     }
-
     return DOS_FAIL;
 }
 
@@ -1009,7 +1008,7 @@ VOID pts_handle_login_req(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr_in
     /* Ìí¼ÓµÇÂ½ÑéÖ¤µÄËæ»ú×Ö·û´®µ½·¢ËÍ¶ÓÁÐ */
     if (NULL == g_pstPtcListSend)
     {
-        pstPtcNode = pt_ptc_node_create(pstMsgDes->aucID, szPtcVersion, stClientAddr, lSockfd);
+        pstPtcNode = pt_ptc_node_create(pstMsgDes->aucID, szPtcVersion, stClientAddr);
         if (NULL == pstPtcNode)
         {
             pt_logr_debug("login req : create ptc node fail");
@@ -1022,7 +1021,7 @@ VOID pts_handle_login_req(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr_in
         pstPtcNode = pt_ptc_list_search(g_pstPtcListSend, pstMsgDes->aucID);
         if(NULL == pstPtcNode)
         {
-            pstPtcNode = pt_ptc_node_create(pstMsgDes->aucID, szPtcVersion, stClientAddr, lSockfd);
+            pstPtcNode = pt_ptc_node_create(pstMsgDes->aucID, szPtcVersion, stClientAddr);
             if (NULL == pstPtcNode)
             {
                 pt_logr_debug("create ptc node fail");
@@ -1057,7 +1056,7 @@ VOID pts_handle_login_req(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr_in
  *
  * ·µ»ØÖµ£º
  */
-VOID pts_send_hb_rsp(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr)
+VOID pts_send_hb_rsp(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr)
 {
     if (NULL == pstMsgDes)
     {
@@ -1067,6 +1066,7 @@ VOID pts_send_hb_rsp(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr_in stCl
     PT_CTRL_DATA_ST stLoginRes;
     S8 szBuff[PT_SEND_DATA_SIZE] = {0};
     PT_MSG_TAG stMsgDes;
+    S32 lResult = 0;
 
     stLoginRes.enCtrlType = PT_CTRL_HB_RSP;
     stMsgDes.enDataType = PT_DATA_CTRL;
@@ -1081,9 +1081,17 @@ VOID pts_send_hb_rsp(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr_in stCl
     dos_memcpy(szBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
     dos_memcpy(szBuff+sizeof(PT_MSG_TAG), (VOID *)&stLoginRes, sizeof(PT_CTRL_DATA_ST));
 
-    sendto(lSockfd, szBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&stClientAddr, sizeof(stClientAddr));
-    pt_logr_debug("send hb response to ptc : %.16s", pstMsgDes->aucID);
-
+    if (g_ulUdpSocket > 0)
+    {
+        lResult = sendto(g_ulUdpSocket, szBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&stClientAddr, sizeof(stClientAddr));
+        if (lResult < 0)
+        {
+            close(g_ulUdpSocket);
+            g_ulUdpSocket = -1;
+            g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+        }
+        pt_logr_debug("send hb response to ptc : %.16s", pstMsgDes->aucID);
+    }
     return;
 }
 
@@ -1096,6 +1104,7 @@ VOID pts_send_exit_notify_to_ptc(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcSendN
 
     PT_MSG_TAG stMsgDes;
     S8 szBuff[PT_DATA_BUFF_512] = {0};
+    S32 lResult = 0;
 
     stMsgDes.enDataType = pstMsgDes->enDataType;
     dos_memcpy(stMsgDes.aucID, pstPtcSendNode->aucID, PTC_ID_LEN);
@@ -1107,13 +1116,20 @@ VOID pts_send_exit_notify_to_ptc(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcSendN
     stMsgDes.bIsCompress = DOS_FALSE;
 
     dos_memcpy(szBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
-
-    sendto(pstPtcSendNode->lSocket, szBuff, sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcSendNode->stDestAddr, sizeof(pstPtcSendNode->stDestAddr));
-
+    if (g_ulUdpSocket > 0)
+    {
+        lResult = sendto(g_ulUdpSocket, szBuff, sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcSendNode->stDestAddr, sizeof(pstPtcSendNode->stDestAddr));
+        if (lResult < 0)
+        {
+            close(g_ulUdpSocket);
+            g_ulUdpSocket = -1;
+            g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+        }
+    }
     return;
 }
 
-VOID pts_send_login_fail2ptc(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr)
+VOID pts_send_login_fail2ptc(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr)
 {
     if (NULL == pstMsgDes)
     {
@@ -1123,6 +1139,7 @@ VOID pts_send_login_fail2ptc(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr
     PT_CTRL_DATA_ST stLoginRes;
     S8 szBuff[PT_SEND_DATA_SIZE] = {0};
     PT_MSG_TAG stMsgDes;
+    S32 lResult = 0;
 
     stLoginRes.enCtrlType = PT_CTRL_LOGIN_ACK;
     stLoginRes.ucLoginRes = DOS_FALSE;
@@ -1139,7 +1156,17 @@ VOID pts_send_login_fail2ptc(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr
     dos_memcpy(szBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
     dos_memcpy(szBuff+sizeof(PT_MSG_TAG), (VOID *)&stLoginRes, sizeof(PT_CTRL_DATA_ST));
 
-    sendto(lSockfd, szBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&stClientAddr, sizeof(stClientAddr));
+    if (g_ulUdpSocket > 0)
+    {
+        lResult = sendto(g_ulUdpSocket, szBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&stClientAddr, sizeof(stClientAddr));
+        if (lResult < 0)
+        {
+            close(g_ulUdpSocket);
+            g_ulUdpSocket = -1;
+            g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+        }
+    }
+
     pt_logr_debug("send login response to ptc : %.16s", pstMsgDes->aucID);
 
     return;
@@ -1214,7 +1241,7 @@ VOID pts_hd_timeout_callback(U64 param)
     }
 }
 
-S32 pts_create_recv_cache(S32 lSockfd, PT_MSG_TAG *pstMsgDes, S8 *szPtcVersion, struct sockaddr_in stClientAddr)
+S32 pts_create_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *szPtcVersion, struct sockaddr_in stClientAddr)
 {
     if (NULL == pstMsgDes)
     {
@@ -1227,7 +1254,7 @@ S32 pts_create_recv_cache(S32 lSockfd, PT_MSG_TAG *pstMsgDes, S8 *szPtcVersion, 
 
     if (NULL == g_pstPtcListRecv)
     {
-        pstPtcNode = pt_ptc_node_create(pstMsgDes->aucID, szPtcVersion, stClientAddr, lSockfd);
+        pstPtcNode = pt_ptc_node_create(pstMsgDes->aucID, szPtcVersion, stClientAddr);
         if (NULL == pstPtcNode)
         {
             pt_logr_info("pts_login_verify : create ptc node fail");
@@ -1240,7 +1267,7 @@ S32 pts_create_recv_cache(S32 lSockfd, PT_MSG_TAG *pstMsgDes, S8 *szPtcVersion, 
         pstPtcNode = pt_ptc_list_search(g_pstPtcListRecv, pstMsgDes->aucID);
         if(NULL == pstPtcNode)
         {
-            pstPtcNode = pt_ptc_node_create(pstMsgDes->aucID, szPtcVersion, stClientAddr, lSockfd);
+            pstPtcNode = pt_ptc_node_create(pstMsgDes->aucID, szPtcVersion, stClientAddr);
             if (NULL == pstPtcNode)
             {
                 pt_logr_info("pts_login_verify : create ptc node fail");
@@ -1291,7 +1318,7 @@ S32 pts_create_recv_cache(S32 lSockfd, PT_MSG_TAG *pstMsgDes, S8 *szPtcVersion, 
  *
  * ·µ»ØÖµ£º
  */
-S32 pts_login_verify(S32 lSockfd, PT_MSG_TAG *pstMsgDes, S8 *pData, struct sockaddr_in stClientAddr, S8 *szPtcVersion)
+S32 pts_login_verify(PT_MSG_TAG *pstMsgDes, S8 *pData, struct sockaddr_in stClientAddr, S8 *szPtcVersion)
 {
     if (NULL == pstMsgDes || NULL == pData || NULL == szPtcVersion)
     {
@@ -1385,12 +1412,20 @@ S32 pts_login_verify(S32 lSockfd, PT_MSG_TAG *pstMsgDes, S8 *pData, struct socka
     dos_memcpy(acSendToPtcBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
     dos_memcpy(acSendToPtcBuff+sizeof(PT_MSG_TAG), (VOID *)&stLoginRes, sizeof(PT_CTRL_DATA_ST));
 
-    sendto(lSockfd, acSendToPtcBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&stClientAddr, sizeof(stClientAddr));
-
+    if (g_ulUdpSocket > 0)
+    {
+        sendto(g_ulUdpSocket, acSendToPtcBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&stClientAddr, sizeof(stClientAddr));
+        if (lResult < 0)
+        {
+            close(g_ulUdpSocket);
+            g_ulUdpSocket = -1;
+            g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+        }
+    }
     /* Èç¹ûµÇÂ¼³É¹¦£¬´´½¨½ÓÊÕ»º´æ */
     if (DOS_SUCC == lRet)
     {
-        lRet = pts_create_recv_cache(lSockfd, pstMsgDes, szPtcVersion, stClientAddr);
+        lRet = pts_create_recv_cache(pstMsgDes, szPtcVersion, stClientAddr);
     }
 
     return lRet;
@@ -1412,6 +1447,7 @@ VOID pts_send_exit_notify2ptc(PT_CC_CB_ST *pstPtcNode, PT_NEND_RECV_NODE_ST *pst
     }
 
     PT_MSG_TAG stMsgDes;
+    S32 lResult = 0;
 
     stMsgDes.enDataType = pstNeedRecvNode->enDataType;
     dos_memcpy(stMsgDes.aucID, pstNeedRecvNode->aucID, PTC_ID_LEN);
@@ -1422,7 +1458,16 @@ VOID pts_send_exit_notify2ptc(PT_CC_CB_ST *pstPtcNode, PT_NEND_RECV_NODE_ST *pst
     stMsgDes.bIsEncrypt = DOS_FALSE;
     stMsgDes.bIsCompress = DOS_FALSE;
 
-    sendto(pstPtcNode->lSocket, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG), 0,  (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+    if (g_ulUdpSocket > 0)
+    {
+        lResult = sendto(g_ulUdpSocket, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG), 0,  (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+        if (lResult < 0)
+        {
+            close(g_ulUdpSocket);
+            g_ulUdpSocket = -1;
+            g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+        }
+    }
 }
 
 /**
@@ -1526,7 +1571,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
         {
             /* ptc id´íÎó */
             pt_logr_error("request login ipcc id(%s) format error", szID);
-            pts_send_login_fail2ptc(lSockfd, pstMsgDes, stClientAddr);
+            pts_send_login_fail2ptc(pstMsgDes, stClientAddr);
             break;
         }
         pts_handle_login_req(lSockfd, pstMsgDes, stClientAddr, pstCtrlData->szLoginVerify);
@@ -1545,7 +1590,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
             dos_strcpy(szVersion, (S8 *)pstCtrlData->szVersion);
         }
 
-        lResult = pts_login_verify(lSockfd, pstMsgDes, pData, stClientAddr, szVersion);
+        lResult = pts_login_verify(pstMsgDes, pData, stClientAddr, szVersion);
         if (DOS_SUCC == lResult)
         {
             inet_ntop(AF_INET, (void *)(pstMsgDes->aulServIp), szPtcIntranetIP, IPV6_SIZE);
@@ -1555,7 +1600,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
 
             switch (pstCtrlData->enPtcType)
             {
-            case PT_PTC_TYPE_OEM:
+            case PT_PTC_TYPE_EMBEDDED:
                 strcpy(szPtcType, "Embedded");
                 dos_strncpy(szPtcName, pstCtrlData->szPtcName, PT_DATA_BUFF_64);
                 break;
@@ -1568,7 +1613,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
                     dos_strncpy(szPtcName, pstCtrlData->szPtcName, PT_DATA_BUFF_64);
                 }
                 break;
-            case PT_PTC_TYPE_IPCC:
+            case PT_PTC_TYPE_LINUX:
                 strcpy(szPtcType, "Linux");
                 dos_strncpy(szPtcName, pstCtrlData->szPtcName, PT_DATA_BUFF_64);
                 break;
@@ -1652,9 +1697,10 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
         else
         {
             pstPtcNode->usHBOutTimeCount = 0;
+            pstPtcNode->stDestAddr = stClientAddr;
         }
 
-        pts_send_hb_rsp(lSockfd, pstMsgDes, stClientAddr);
+        pts_send_hb_rsp(pstMsgDes, stClientAddr);
         break;
     case PT_CTRL_PTS_MAJOR_DOMAIN:
         if (pstCtrlData->achPtsMajorDomain[0] != '\0')
@@ -2113,6 +2159,12 @@ VOID *pts_send_msg2ptc(VOID *arg)
                 if (g_ulUdpSocket > 0)
                 {
                     lResult = sendto(g_ulUdpSocket, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG), 0,  (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                    if (lResult < 0)
+                    {
+                        close(g_ulUdpSocket);
+                        g_ulUdpSocket = -1;
+                        g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+                    }
                 }
                 dos_dmem_free(pstNeedSendNode);
                 pstNeedSendNode = NULL;
@@ -2179,7 +2231,13 @@ VOID *pts_send_msg2ptc(VOID *arg)
                         pt_logr_info("send data to ptc, stream : %d, seq : %d, size : %d", pstNeedSendNode->ulStreamID, pstNeedSendNode->lSeqResend, stSendDataNode.ulLen);
                         if (g_ulUdpSocket > 0)
                         {
-                            sendto(g_ulUdpSocket, szBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                            lResult = sendto(g_ulUdpSocket, szBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                            if (lResult < 0)
+                            {
+                                close(g_ulUdpSocket);
+                                g_ulUdpSocket = -1;
+                                g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+                            }
                         }
                         ulSendCount--;
                     }
@@ -2216,7 +2274,13 @@ VOID *pts_send_msg2ptc(VOID *arg)
                     //printf("send msg to ptc, stream : %d, seq : %d, len : %d\n", pstNeedSendNode->ulStreamID, pstStreamNode->lCurrSeq, stRecvDataTcp.ulLen);
                     if (g_ulUdpSocket > 0)
                     {
-                        sendto(g_ulUdpSocket, szBuff, stRecvDataTcp.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                        lResult = sendto(g_ulUdpSocket, szBuff, stRecvDataTcp.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                        if (lResult < 0)
+                        {
+                            close(g_ulUdpSocket);
+                            g_ulUdpSocket = -1;
+                            g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+                        }
                     }
                 }
                 else
@@ -2261,20 +2325,25 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
     PT_MSG_TAG         *pstMsgDes      = NULL;
     PT_CC_CB_ST        *pstPtcNode     = NULL;
     S8                  acRecvBuf[PT_SEND_DATA_SIZE] = {0};
-    U32                 MaxFdp = g_ulUdpSocket;
+    U32                 MaxFdp = 0;
     fd_set              ReadFds;
     struct timeval stTimeVal = {1, 0};
     struct timeval stTimeValCpy;
-    S32 lSocket = 0;
-    U32 ulSocketCache = PTS_SOCKET_CACHE;
     /* ³õÊ¼»¯ÐÅºÅÁ¿ */
     sem_init(&g_SemPtsRecv, 0, 1);
 
     while(1)
     {
+        if (g_ulUdpSocket <= 0)
+        {
+            sleep(1);
+            continue;
+        }
+
         stTimeValCpy = stTimeVal;
         FD_ZERO(&ReadFds);
         FD_SET(g_ulUdpSocket, &ReadFds);
+        MaxFdp = g_ulUdpSocket;
 
         lResult = select(MaxFdp + 1, &ReadFds, NULL, NULL, &stTimeValCpy);
         if (lResult < 0)
@@ -2294,39 +2363,12 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
             lRecvLen = recvfrom(g_ulUdpSocket, acRecvBuf, PT_SEND_DATA_SIZE, 0, (struct sockaddr*)&stClientAddr, &lCliaddrLen);
             if (lRecvLen < 0)
             {
+                pt_logr_info("recvfrom fail ,create socket again");
                 close(g_ulUdpSocket);
                 g_ulUdpSocket = -1;
-create_socket:
-                lSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort);
-                if (lSocket < 0)
-                {
-                    pt_logr_error("create udp socket fail");
-                    DOS_ASSERT(0);
-                    sleep(2);
-                    goto create_socket;
-                }
+                g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
 
-                lResult = setsockopt(lSocket, SOL_SOCKET, SO_SNDBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
-                if (lResult != 0)
-                {
-                    logr_error("setsockopt error : %d", lResult);
-                    close(lSocket);
-                    DOS_ASSERT(0);
-                    sleep(2);
-                    goto create_socket;
-                }
 
-                lResult = setsockopt(lSocket, SOL_SOCKET, SO_RCVBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
-                if (lResult != 0)
-                {
-                    logr_error("setsockopt error : %d", lResult);
-                    close(lSocket);
-                    DOS_ASSERT(0);
-                    sleep(2);
-                    goto create_socket;
-                }
-
-                g_ulUdpSocket = lSocket;
                 continue;
             }
 

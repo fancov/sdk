@@ -19,6 +19,7 @@ extern "C"{
 #define PT_DATA_BUFF_512            512
 #define PT_DATA_BUFF_1024           1024
 #define PT_DATA_BUFF_2048           2048
+#define MAX_FILENAME_LEN            24
 #define PT_DATA_RECV_CACHE_SIZE     1024    /* 发送缓存的个数 */
 #define PT_DATA_SEND_CACHE_SIZE     512     /* 接收缓存的个数 */
 #define PT_SEND_DATA_SIZE           700     /* 接收数据包时，使用的数组的大小 */
@@ -44,6 +45,7 @@ extern "C"{
 #define pt_logr_notic(_pszFormat, args...)   pt_logr_write(LOG_LEVEL_NOTIC, (_pszFormat), ##args)
 #define pt_logr_info(_pszFormat, args...)    pt_logr_write(LOG_LEVEL_INFO, (_pszFormat), ##args)
 #define pt_logr_debug(_pszFormat, args...)   pt_logr_write(LOG_LEVEL_DEBUG, (_pszFormat), ##args)
+#define CRC16_POLY                  0x1021
 #define PT_MUTEX_DEBUG              0
 #define PT_PTC_MUTEX_DEBUG          0
 #define PT_WEB_MUTEX_DEBUG          0
@@ -51,6 +53,8 @@ extern "C"{
 #define gettid() syscall(__NR_gettid)       /* 获得线程号 */
 
 extern S32 g_ulUdpSocket;
+extern U8  gucIsTableInit;
+extern U16 g_crc_tab[256];
 
 /* 传输的数据类型 */
 typedef enum
@@ -173,13 +177,27 @@ typedef enum
 /* 传输的数据类型 */
 typedef enum
 {
-    PT_PTC_TYPE_OEM = 0,        /* EMBEDDED */
+    PT_PTC_TYPE_EMBEDDED = 0,        /* EMBEDDED */
     PT_PTC_TYPE_WINDOWS,        /* WINDOWS */
-    PT_PTC_TYPE_IPCC,           /* LINUX */
+    PT_PTC_TYPE_LINUX,           /* LINUX */
 
     PT_PTC_TYPE_BUTT
 
 }PT_PTC_TYPE_EN;
+
+/* 产品类型 */
+typedef enum
+{
+    PT_TYPE_PTS_LINUX = 1,
+    PT_TYPE_PTS_WINDOWS,
+    PT_TYPE_PTC_LINUX,
+    PT_TYPE_PTC_WINDOWS,
+    PT_TYPE_PTC_EMBEDDED,
+
+    PT_TYPE_BUTT
+
+}PT_PRODUCT_TYPE_EN;
+
 
 /* 控制消息内容 */
 typedef struct tagCtrlData
@@ -208,27 +226,6 @@ typedef struct tagCtrlData
     S8      Reserver[1];
 
 }PT_CTRL_DATA_ST;
-
-/* 发起ptc升级的消息结构体 */
-typedef struct tagPtcUpgrade
-{
-    U32         ulPackageLen;
-    FILE        *pPackageFileFd;
-    DOS_TMR_ST  hTmrHandle;                  /* 定时器 */
-    S8          szVision[PT_DATA_BUFF_16];   /* 版本号 */
-    S8          szMD5Verify[PT_MD5_LEN];
-
-    S8          Reserver[3];
-
-}PT_PTC_UPGRADE_ST;
-
-/* ptc升级包，包头的结构体 */
-typedef struct tagPtcUpgradeDes
-{
-    S8  szVision[PT_DATA_BUFF_16];   /* 版本号 */
-
-}PT_PTC_UPGRADE_DES_ST;
-
 
 /* 定时器回调函数的参数 */
 typedef struct tagLoseBagMsg
@@ -287,7 +284,20 @@ typedef struct tagPtcCommand
 
 }PT_PTC_COMMAND_ST;
 
-PT_CC_CB_ST *pt_ptc_node_create(U8 *pcIpccId, S8 *szPtcVersion, struct sockaddr_in stDestAddr, S32 lSocket);
+
+/* ptc升级包，包头的结构体 */
+typedef  struct tagFileHeadStruct
+{
+    U32 usCRC;                           /* CRC校验码 */
+    S8  szFileName[MAX_FILENAME_LEN];    /* 版本文件名 */
+    U32 ulVision;                        /* 版本号 */
+    U32 ulFileLength;                    /* 文件长度,不含tag */
+    U32 ulDate;                          /* 日期 */
+    U32 ulOSType;                        /* 操作系统类型 */
+
+}LOAD_FILE_TAG;
+
+PT_CC_CB_ST *pt_ptc_node_create(U8 *pcIpccId, S8 *szPtcVersion, struct sockaddr_in stDestAddr);
 list_t *pt_delete_ptc_node(list_t *stPtcListHead, PT_CC_CB_ST *pstPtcNode);
 list_t *pt_ptc_list_insert(list_t *pstPtcListHead, PT_CC_CB_ST *pstPtcNode);
 PT_CC_CB_ST *pt_ptc_list_search(list_t* pstHead, U8 *pucID);
@@ -316,6 +326,7 @@ BOOL pts_is_ptc_sn(S8* pcUrl);
 BOOL pts_is_int(S8* pcUrl);
 S32 pt_DNS_analyze(S8 *szDomainName, U8 paucIPAddr[IPV6_SIZE]);
 S32 pt_md5_encrypt(S8 *szEncrypt, S8 *szDecrypt);
+U16 load_calc_crc(U8* pBuffer, U32 ulCount);
 
 #ifdef  __cplusplus
 }

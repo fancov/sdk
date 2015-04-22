@@ -470,6 +470,11 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
         lRet = PT_TELNET_OTHER;
         goto finished;
     }
+    else if (dos_strncmp(pszKeyWord[0], "exit", dos_strlen(pszKeyWord[0])) == 0 || dos_strncmp(pszKeyWord[0], "quit", dos_strlen(pszKeyWord[0])) == 0 )
+    {
+        lRet = PT_TELNET_EXIT;
+        goto finished;
+    }
     else if (dos_strncmp(pszKeyWord[0], "list", dos_strlen(pszKeyWord[0])) == 0)
     {
         /* 设备列表 */

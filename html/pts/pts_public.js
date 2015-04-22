@@ -431,15 +431,15 @@ function get_ifream_content()
 function checkna()
 {
     var na = form1.name.value;
-	if (na.length <1 || na.length >12)
+	if (na.length <1 || na.length >30)
 	{
         if (g_lang_type)
         {
-        	divname.innerHTML='<font class="tips_false">长度是1~12个字符</font>';
+        	divname.innerHTML='<font class="tips_false">长度是1~30个字符</font>';
         }
         else
         {
-            divname.innerHTML='<font class="tips_false">Length is 1 ~ 12 characters</font>';   
+            divname.innerHTML='<font class="tips_false">Length is 1 ~ 30 characters</font>';   
         }
 	}
 	else
