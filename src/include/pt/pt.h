@@ -297,6 +297,11 @@ typedef  struct tagFileHeadStruct
 
 }LOAD_FILE_TAG;
 
+typedef struct tagHeartbeatRTT
+{
+    S32 lHBTimeInterval;                        /* 心跳和心跳响应的间隔，查看网络情况 */
+}HEART_BEAT_RTT_TSG;
+
 PT_CC_CB_ST *pt_ptc_node_create(U8 *pcIpccId, S8 *szPtcVersion, struct sockaddr_in stDestAddr);
 list_t *pt_delete_ptc_node(list_t *stPtcListHead, PT_CC_CB_ST *pstPtcNode);
 list_t *pt_ptc_list_insert(list_t *pstPtcListHead, PT_CC_CB_ST *pstPtcNode);

@@ -17,7 +17,7 @@ extern "C" {
 #define PTC_VERSION                 "1.3.0.1"  /* ptc 版本号 */
 #define PTC_WAIT_CONFIRM_TIMEOUT    5          /* 等待确认接收消息的超时时间 s */
 #define PTC_WEB_SOCKET_MAX_COUNT    16         /* 访问proxy的最大socket */
-#define PTC_CMD_SOCKET_MAX_COUNT    10         /* 访问proxy的最大socket */
+#define PTC_CMD_SOCKET_MAX_COUNT    8          /* 访问proxy的最大socket */
 #define PTC_TIME_SIZE               24
 #define PTC_RECV_FROM_PTS_CMD_SIZE  8
 #define PTC_HISTORY_PATH            "var/pts_history"      /* history 的文件目录 */

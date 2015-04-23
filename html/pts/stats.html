@@ -23,18 +23,14 @@ $(document).ready(function() {
 			"aaSorting": [[0, "desc"]],
 			"stateSave": true,
 			"serverSide": true,
-			"sDom": '<"top"f<"refush">>rt<"bottom"lp>',
+			"sDom": '<"top"<"version">f>rt<"bottom"lp>',
 			"sAjaxSource": "/stats_list.html",
 			<% dataTablesLang(); %>
 
 		});
 
-		$('.refush').html("<p id='RefushButton'> <input type='button' value ='<% htmlLang(78); %>'></p>");
+	$('.version').html("<p id='RefushButton'><lable><% version(); %></lable></p>");
 
-    	$('.refush').click(function(){
-		    location.reload();
-			return true;		
-    	});
 });
 
 get_lang_type(<% lang_type(); %>);

@@ -13,6 +13,9 @@
 #ifndef __CFG_MOD_PTS_H__
 #define __CFG_MOD_PTS_H__
 
+/* 版本号 */
+#define PTS_VERSION                       "1.1.0.2"
+
 /* 异常处理模块 */
 #define INCLUDE_EXCEPTION_CATCH           1
 

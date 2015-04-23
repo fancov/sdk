@@ -165,6 +165,7 @@ VOID pts_data_lose(PT_MSG_TAG *pstMsgDes, S32 lLoseSeq)
     pstMsgDes->lSeq = lLoseSeq;
 
     pt_logr_info("send lose data : stream = %d, seq = %d", pstMsgDes->ulStreamID, lLoseSeq);
+
     g_pstPtsNendSendNode = pt_need_send_node_list_insert(g_pstPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend);
 
     pthread_cond_signal(&g_pts_cond_send);
@@ -1520,7 +1521,7 @@ S32 g2u(S8 *inbuf, size_t inlen, char *outbuf, size_t outlen)
  *
  * 返回值：
  */
-VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr)
+VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr, S32 lDataLen)
 {
     if (NULL == pData)
     {
@@ -1528,6 +1529,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
     }
 
     PT_CTRL_DATA_ST *pstCtrlData = NULL;
+    HEART_BEAT_RTT_TSG *pstHbRTT = NULL;
     S32 lResult = 0;
     PT_MSG_TAG * pstMsgDes = NULL;
     PT_CC_CB_ST *pstPtcNode = NULL;
@@ -1679,7 +1681,15 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
     case PT_CTRL_HB_REQ:
         /* 心跳, 修改ptc中的usHBOutTimeCount */
         pt_logr_debug("recv hb from ptc : %.16s", pstMsgDes->aucID);
-        dHBTimeInterval = (double)pstCtrlData->lHBTimeInterval/1000;
+        if (lDataLen - sizeof(PT_MSG_TAG) > sizeof(HEART_BEAT_RTT_TSG))
+        {
+            dHBTimeInterval = (double)pstCtrlData->lHBTimeInterval/1000;
+        }
+        else
+        {
+            pstHbRTT =  (HEART_BEAT_RTT_TSG *)(pData + sizeof(PT_MSG_TAG));
+            dHBTimeInterval = (double)pstHbRTT->lHBTimeInterval/1000;
+        }
         /* 将心跳和响应之间的时间差，更新到数据库 */
         dos_snprintf(szSql, PTS_SQL_STR_SIZE, "update ipcc_alias set heartbeatTime=%.2f where sn='%.*s';", dHBTimeInterval, PTC_ID_LEN, pstMsgDes->aucID);
         lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
@@ -2387,7 +2397,7 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
             if (pstMsgDes->enDataType == PT_DATA_CTRL)
             {
                 /* 控制消息 */
-                pts_ctrl_msg_handle(g_ulUdpSocket, acRecvBuf, stClientAddr);
+                pts_ctrl_msg_handle(g_ulUdpSocket, acRecvBuf, stClientAddr, lRecvLen);
                 sem_post(&g_SemPtsRecv);
             }
             else
@@ -2415,7 +2425,6 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
 #endif
                     BOOL bIsResend = DOS_TRUE;
                     PT_CMD_EN enCmdValue = PT_CMD_NORMAL;
-
                     g_pstPtsNendSendNode = pt_need_send_node_list_insert(g_pstPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend);
 
                     pthread_cond_signal(&g_pts_cond_send);

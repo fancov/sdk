@@ -449,6 +449,7 @@ S32 ptc_create_socket_proxy(U8 *alServIp, U16 usServPort)
     S32 error = -1;
     S32 len = sizeof(int);
     BOOL lRet = DOS_FALSE;
+    S32 ulIPAddr = 0;
 
     lSockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (lSockfd <= 0)
@@ -462,6 +463,10 @@ S32 ptc_create_socket_proxy(U8 *alServIp, U16 usServPort)
     stServerAddr.sin_family = AF_INET;
     stServerAddr.sin_port = usServPort;
     stServerAddr.sin_addr.s_addr = *(U32 *)alServIp;
+
+    ulIPAddr = *(U32 *)alServIp;
+
+    pt_logr_info("create socket, ip : %u.%u.%u.%u, port :%d", ulIPAddr&0xff, (ulIPAddr&0xff00) >> 8, (ulIPAddr&0xff0000) >> 16, (ulIPAddr&0xff000000) >> 24, dos_ntohs(usServPort));
 
     ioctl(lSockfd, FIONBIO, &ul);  //设置为非阻塞模式
 

@@ -26,9 +26,10 @@ extern "C"{
 
 #define PTS_TELNET_HTLP "Usage:\r\n\
 \r\tlist [Internet IP]\r\n\
-\r\tshow <ID>\r\n\
+\r\tshow <ID|version>\r\n\
 \r\tsearch <any information>\r\n\
-\r\tconnect <ID|SN|Internet IP> [LAN IP] [Port]\r\n"
+\r\tconnect <ID|SN|Internet IP> [LAN IP] [Port]\r\n\
+\r\texit\r\n"
 
 PTS_CMD_CLIENT_CB_ST g_astCmdClient[PTS_MAX_CLIENT_NUMBER];
 
@@ -79,12 +80,12 @@ S32 pts_cmd_client_list_add(S32 lSocket, U32 ulStreamID, U8 *pucPtcID)
         return DOS_FAIL;
     }
 
-    if (ulStreamID == PT_CTRL_COMMAND)
-    {
-        g_astCmdClient[0].bIsValid = DOS_TRUE;
-    }
+    //if (ulStreamID == PT_CTRL_COMMAND)
+    //{
+    //    g_astCmdClient[0].bIsValid = DOS_TRUE;
+    //}
 
-    for (i=1; i<PTS_MAX_CLIENT_NUMBER; i++)
+    for (i=0; i<PTS_MAX_CLIENT_NUMBER; i++)
     {
         if (!g_astCmdClient[i].bIsValid)
         {
@@ -152,40 +153,39 @@ S32 pts_cmd_client_search_by_stream(U32 ulStream)
  */
 VOID pts_cmd_client_delete(U32 ulClientIndex)
 {
-    S32 i = 0;
     PT_CC_CB_ST *pstPtcSendNode = NULL;
     PT_MSG_TAG stMsgDes;
 
-    for (i=0; i< PTS_MAX_CLIENT_NUMBER; i++)
+    if (ulClientIndex >= PTS_MAX_CLIENT_NUMBER)
     {
-        if (g_astCmdClient[i].lSocket == ulClientIndex)
-        {
-            g_astCmdClient[i].bIsValid = DOS_FALSE;
-            /* 释放pts收发缓存, 通知ptc释放资源 */
-            dos_memcpy(stMsgDes.aucID, g_astCmdClient[i].aucID, PTC_ID_LEN);
-            stMsgDes.enDataType = PT_DATA_CMD;
-            stMsgDes.ulStreamID = g_astCmdClient[i].ulStreamID;
-#if PT_MUTEX_DEBUG
-            pts_send_pthread_mutex_lock(__FILE__, __LINE__);
-#else
-            pthread_mutex_lock(&g_pts_mutex_send);
-#endif
-            pstPtcSendNode = pt_ptc_list_search(g_pstPtcListSend, g_astCmdClient[i].aucID);
-            if (pstPtcSendNode != NULL)
-            {
-                pts_send_exit_notify_to_ptc(&stMsgDes, pstPtcSendNode);
-                pts_delete_send_stream_node(&stMsgDes, pstPtcSendNode, DOS_FALSE);
-            }
-#if PT_MUTEX_DEBUG
-            pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
-#else
-            pthread_mutex_unlock(&g_pts_mutex_send);
-#endif
-            pts_delete_recv_stream_node(&stMsgDes, NULL, DOS_FALSE);
-            return;
-        }
-
+        return;
     }
+
+    if (g_astCmdClient[ulClientIndex].bIsValid)
+    {
+        /* 释放pts收发缓存, 通知ptc释放资源 */
+        dos_memcpy(stMsgDes.aucID, g_astCmdClient[ulClientIndex].aucID, PTC_ID_LEN);
+        stMsgDes.enDataType = PT_DATA_CMD;
+        stMsgDes.ulStreamID = g_astCmdClient[ulClientIndex].ulStreamID;
+        pthread_mutex_lock(&g_pts_mutex_send);
+        pstPtcSendNode = pt_ptc_list_search(g_pstPtcListSend, g_astCmdClient[ulClientIndex].aucID);
+        if (pstPtcSendNode != NULL)
+        {
+            pts_send_exit_notify_to_ptc(&stMsgDes, pstPtcSendNode);
+            pts_delete_send_stream_node(&stMsgDes, pstPtcSendNode, DOS_FALSE);
+        }
+        pthread_mutex_unlock(&g_pts_mutex_send);
+
+        pts_delete_recv_stream_node(&stMsgDes, NULL, DOS_FALSE);
+        g_astCmdClient[ulClientIndex].bIsValid = DOS_FALSE;
+        g_astCmdClient[ulClientIndex].aucID[0] = '\0';
+        g_astCmdClient[ulClientIndex].ulStreamID = U32_BUTT;
+        g_astCmdClient[ulClientIndex].lSocket = -1;
+
+        return;
+    }
+
+
     pt_logr_debug("telnet not found Client, ClientIndex is %d", ulClientIndex);
 }
 
@@ -324,11 +324,11 @@ S32 pts_get_password(S8 *szUserName, S8 *pcPassWord, S32 lPasswLen)
     dos_sqlite3_exec_callback(g_pstMySqlite, achSql, pts_get_password_callback, (void *)pcPassWord);
     if (dos_strlen(pcPassWord) > 0)
     {
-        return PTS_GET_PASSW_SUCC;
+        return DOS_SUCC;
     }
     else
     {
-        return PTS_USER_NO_EXITED;
+        return DOS_FAIL;
     }
 
 }
@@ -413,14 +413,15 @@ VOID pts_look_ptc_detail_msg(U32 ulClientIndex, S8 *szPtcID)
 S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLength)
 {
     S8 *pszKeyWord[MAX_KEY_WORDS] = {0};
-    S8 szErrorMsg[PT_DATA_BUFF_128], szCMDBak[MAX_CMD_LENGTH];
+    S8 szErrorMsg[PT_DATA_BUFF_128] = {0};
+    S8 szCMDBak[MAX_CMD_LENGTH] = {0};
     S32 lRet = PT_TELNET_FAIL;
     S32 lKeyCnt = 0;
     S8 *pWord = NULL;
     S32 i=0;
     dos_strncpy(szCMDBak, szBuffer, MAX_CMD_LENGTH);
     szCMDBak[MAX_CMD_LENGTH - 1] = '\0';
-    U32 ulStreamID = 0;
+    U32 ulStreamID = U32_BUTT;
     S32 lResult = 0;
     S8 szDestIp[IPV6_SIZE] = {0};
     U16 usDestPort = 0;
@@ -509,7 +510,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
         /* 查看设备详情 */
         if (lKeyCnt != 2)
         {
-            snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : show <ID>\r\n");
+            snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : show <ID|version>\r\n");
             lRet = PT_TELNET_FAIL;
             goto finished;
         }
@@ -517,7 +518,13 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
         {
             if (dos_strcmp(pszKeyWord[1], "?") == 0)
             {
-                snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : show <ID>\r\n");
+                snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : show <ID|version>\r\n");
+                lRet = PT_TELNET_FAIL;
+                goto finished;
+            }
+            else if (dos_strcmp(pszKeyWord[1], "version") == 0)
+            {
+                snprintf(szErrorMsg, sizeof(szErrorMsg), "version : %s\r\n", PTS_VERSION);
                 lRet = PT_TELNET_FAIL;
                 goto finished;
             }
@@ -659,6 +666,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
             lResult = pts_cmd_client_list_add(ulClientIndex, ulStreamID, (U8 *)szSN);
             if (lResult < 0)
             {
+                snprintf(szErrorMsg, sizeof(szErrorMsg), "Too many connection!\r\n");
                 lRet = PT_TELNET_FAIL;
                 goto finished;
             }
@@ -740,6 +748,19 @@ finished:
 
     if (lRet < 0)
     {
+        if (ulStreamID != U32_BUTT)
+        {
+            for (i=0; i<PTS_MAX_CLIENT_NUMBER; i++)
+            {
+                if (g_astCmdClient[i].bIsValid && g_astCmdClient[i].ulStreamID == ulStreamID)
+                {
+                    g_astCmdClient[i].ulStreamID = U32_BUTT;
+                    g_astCmdClient[i].lSocket = -1;
+                    g_astCmdClient[i].bIsValid = DOS_FALSE;
+                }
+            }
+        }
+
         telnet_send_data(ulClientIndex, MSG_TYPE_CMD, szErrorMsg, dos_strlen(szErrorMsg));
     }
 
@@ -789,6 +810,7 @@ VOID pts_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     PT_DATA_TCP_ST   *pstDataTcp             = NULL;
     PT_PTC_COMMAND_ST *pstPtcCommand         = NULL;
     PTS_CMD_CLIENT_CB_ST stClientCB;
+    S8  szExitReason[PT_DATA_BUFF_128] = {0};
 
     lClientSub = pts_cmd_client_search_by_stream(pstNeedRecvNode->ulStreamID);
     if(lClientSub < 0)
@@ -802,13 +824,25 @@ VOID pts_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     if (pstNeedRecvNode->ExitNotifyFlag)
     {
         /* 响应结束 */
-        if (0 == pstNeedRecvNode->lSeq)
+        switch (pstNeedRecvNode->lSeq)
         {
-            telnet_send_data(stClientCB.lSocket, MSG_TYPE_CMD_RESPONCE, "\r\nPlease enter any key.", dos_strlen("\r\nPlease enter any key."));
+            case 0:
+                dos_snprintf(szExitReason, PT_DATA_BUFF_128, "Connection closed by foreign host.\r\nPlease enter any key to continue.");
+                break;
+            case 1:
+                dos_snprintf(szExitReason, PT_DATA_BUFF_128, "Can not connect server.\r\nPlease enter any key to continue.");
+                break;
+            case 2:
+                dos_snprintf(szExitReason, PT_DATA_BUFF_128, "PTC have too many connection.\r\nPlease enter any key to continue.\r\n");
+                break;
+            default:
+                szExitReason[0] = '\0';
+                break;
         }
-        else
+
+        if (dos_strlen(szExitReason) > 0)
         {
-            telnet_send_data(stClientCB.lSocket, MSG_TYPE_CMD_RESPONCE, "Can not connect server.\r\nPlease enter any key.", dos_strlen("Can not connect server.\r\nPlease enter any key."));
+            telnet_send_data(stClientCB.lSocket, MSG_TYPE_CMD_RESPONCE, szExitReason, dos_strlen(szExitReason));
         }
         pts_cmd_client_delete(lClientSub);
         telnet_close_client(stClientCB.lSocket);
@@ -928,6 +962,24 @@ S32 pts_send_command_to_ptc(U32 ulIndex, S32 argc, S8 **argv)
     stCommand.ulIndex = ulIndex;
     dos_strncpy(stCommand.szCommand, argv[2], PT_DATA_BUFF_16);
     pts_save_msg_into_cache((U8 *)szSN, PT_DATA_CMD, PT_CTRL_COMMAND, (S8 *)&stCommand, sizeof(PT_PTC_COMMAND_ST), NULL, 0);
+
+    return 0;
+}
+
+S32 pts_printf_telnet_msg(U32 ulIndex, S32 argc, S8 **argv)
+{
+    S32 i = 0;
+    U32 ulLen = 0;
+    S8 szBuff[PT_DATA_BUFF_512] = {0};
+
+    ulLen = snprintf(szBuff, sizeof(szBuff), "\r\n%20s%10s%10s%10s\r\n", "aucID", "ulStreamID", "lSocket", "bIsValid");
+    cli_out_string(ulIndex, szBuff);
+
+    for (i=0; i<PTS_MAX_CLIENT_NUMBER; i++)
+    {
+        snprintf(szBuff, sizeof(szBuff), "%.16s%10d%10d%10d\r\n", g_astCmdClient[i].aucID, g_astCmdClient[i].ulStreamID, g_astCmdClient[i].lSocket, g_astCmdClient[i].bIsValid);
+        cli_out_string(ulIndex, szBuff);
+    }
 
     return 0;
 }

@@ -23,13 +23,18 @@ extern S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv);
 
 #if INCLUDE_PTS
 extern S32 pts_send_command_to_ptc(U32 ulIndex, S32 argc, S8 **argv);
+extern S32 pts_printf_telnet_msg(U32 ulIndex, S32 argc, S8 **argv);
+#endif
+
+#if INCLUDE_PTC
+extern S32 ptc_printf_telnet_msg(U32 ulIndex, S32 argc, S8 **argv);
 #endif
 
 COMMAND_ST g_stCommandSet[] = {
     {NULL, "assert",        "Show assert informationa",        dos_assert_print},
 #if INCLUDE_SERVICE_BS
     {NULL, "bs",            "BS command",                      bs_command_proc},
-    /*bs?web????*/ 
+    /*bs?web????*/
     {NULL, "bst",           "bs test",                         bs_update_test},
 #endif
     {NULL, "debug",         "Set the log level",               cli_set_log_level},
@@ -47,6 +52,10 @@ COMMAND_ST g_stCommandSet[] = {
 #endif
 #if INCLUDE_PTS
     {NULL, "ptc",           "send cmd to ptc",                 pts_send_command_to_ptc},
+    {NULL, "print",         "send cmd to ptc",                 pts_printf_telnet_msg},
+#endif
+#if INCLUDE_PTC
+    {NULL, "telnet",        "send cmd to ptc",                 ptc_printf_telnet_msg},
 #endif
 };
 

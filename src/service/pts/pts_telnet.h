@@ -11,10 +11,7 @@ extern "C"{
 
 #define MAX_KEY_WORDS               16
 #define MAX_CMD_LENGTH              512     /* 定义命令最大长度 */
-#define PTS_MAX_CLIENT_NUMBER       8
-#define PTS_GET_PASSW_SUCC          0       /* 获取密码成功 */
-#define PTS_GET_PASSW_FAIL          -1      /* 获取密码失败 */
-#define PTS_USER_NO_EXITED          -2      /* 用户不存 */
+#define PTS_MAX_CLIENT_NUMBER       32
 #define PTS_PASSWORD_SIZE           128
 #define PTS_MAX_PORT                65535
 #define PTS_TELNET_DISCONNECT_TIME  2000

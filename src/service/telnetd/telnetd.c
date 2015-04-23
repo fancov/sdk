@@ -107,13 +107,18 @@ typedef struct tagTelnetClinetInfo{
     FILE   *pFDOutput;  /* 输出描述符 */
 
     U32    ulMode;      /* 但前客户端处于什么模式 */
+    pthread_t pthClientTask; /* 线程id */
+
+#if INCLUDE_PTS
+    S32    bIsExit;
     S32    bIsLogin;    /* 是否登陆 */
     S32    bIsConnect;  /* 是否连接ptc */
     S32    bIsGetLineEnd; /* 是否获得行末回车符 */
     S32    bIsRecvLFOrNUL; /* 回车符中是否包含/n或者/0 */
     U32    ulLoginFailCount;
     DOS_TMR_ST stTimerHandle;
-    pthread_t pthClientTask; /* 线程id */
+#endif
+
 }TELNET_CLIENT_INFO_ST;
 
 /**
@@ -275,23 +280,11 @@ S32 telnet_out_string(U32 ulIndex, const S8 *pszBuffer)
     return 0;
 }
 
-VOID pts_telnet_disconnect_callback(U64 ulIndex)
-{
-    if (ulIndex >= MAX_CLIENT_NUMBER)
-    {
-        logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
-        DOS_ASSERT(0);
-        return;
-    }
-
-    g_pstTelnetClientList[ulIndex]->bIsConnect = DOS_FALSE;
-}
+#if INCLUDE_PTS
 
 VOID telnet_close_client(U32 ulIndex)
 {
-    S32 lResult = 0;
     TELNET_CLIENT_INFO_ST *pstTelnetClient;
-    DOS_TMR_ST pstACKTmrHandle = NULL;
     if (ulIndex >= MAX_CLIENT_NUMBER)
     {
         logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
@@ -299,24 +292,16 @@ VOID telnet_close_client(U32 ulIndex)
         return;
     }
     pstTelnetClient = g_pstTelnetClientList[ulIndex];
-    if (DOS_TRUE == pstTelnetClient->bIsConnect)
+    if (pstTelnetClient  != NULL)
     {
         pstTelnetClient->bIsConnect = DOS_FALSE;
+        fwrite("\r\n", 2, 1, pstTelnetClient->pFDOutput);
+        //fwrite(" >", 2, 1, pstTelnetClient->pFDOutput);
+        fflush(pstTelnetClient->pFDOutput);
     }
-    else
-    {
-        lResult = dos_tmr_start(&pstACKTmrHandle, PTS_TELNET_DISCONNECT_TIME, pts_telnet_disconnect_callback, ulIndex, TIMER_NORMAL_NO_LOOP);
-        if (lResult < 0)
-        {
-            //pt_logr_info("telnet_close_client : start timer fail");
-        }
-    }
-    fwrite("\r\n", 2, 1, pstTelnetClient->pFDOutput);
-    //fwrite(" >", 2, 1, pstTelnetClient->pFDOutput);
-    fflush(pstTelnetClient->pFDOutput);
 }
 
-#if INCLUDE_PTS
+
 VOID telentd_negotiate_cmd_server(U32 ulIndex, S8 *szBuff, U32 ulLen)
 {
     if (NULL == szBuff)
@@ -331,10 +316,6 @@ VOID telentd_negotiate_cmd_server(U32 ulIndex, S8 *szBuff, U32 ulLen)
     S32 i = 0;
     S8 szSendBuf[100] = {0};
 
-   // for (i=0; i<ulLen; i++)
-   // {
-   //     printf("%02x ", (U8)szBuff[i], (U8)szBuff[i]);
-   // }
     while (i < ulLen && lDone < 1)
     {
         /* Get either IAC (start command) or a regular character (break, unless in SB mode) */
@@ -480,6 +461,14 @@ VOID telentd_negotiate_cmd_server(U32 ulIndex, S8 *szBuff, U32 ulLen)
     }
 
 }
+
+VOID pts_recv_cr_timeout(U64 ulParam)
+{
+    TELNET_CLIENT_INFO_ST *pstClientInfo = (TELNET_CLIENT_INFO_ST *)ulParam;
+    pstClientInfo->bIsGetLineEnd = DOS_TRUE;
+    pstClientInfo->stTimerHandle = NULL;
+}
+
 #endif
 
 /*
@@ -928,13 +917,6 @@ S32 telnet_client_special_key_proc(U32 ulKey, FILE *pfOutput, S8 *pszCurrCmd, S3
 }
 #endif
 
-VOID pts_recv_cr_timeout(U64 ulParam)
-{
-    TELNET_CLIENT_INFO_ST *pstClientInfo = (TELNET_CLIENT_INFO_ST *)ulParam;
-    pstClientInfo->bIsGetLineEnd = DOS_TRUE;
-    pstClientInfo->stTimerHandle = NULL;
-}
-
 /**
  * 函数：S32 telnet_read_line(FILE *input, FILE *output, S8 *szBuffer, S32 lSize, S32 lMask)
  * 功能：读取客户端输入，直到回车
@@ -1075,11 +1057,6 @@ do{ \
 #if INCLUDE_PTS
         if (c == '\r')
         {
-            //if (c == '\r')
-            //{
-            /* the next char is either \n or \0, which we can discard. */
-            //    c = getc(input);
-            //}
             if (!pstClientInfo->bIsGetLineEnd)
             {
                 lRes = dos_tmr_start(&pstClientInfo->stTimerHandle, PTS_TELNET_CR_TIME, pts_recv_cr_timeout, (U64)pstClientInfo, TIMER_NORMAL_NO_LOOP);
@@ -1191,6 +1168,8 @@ do{ \
     return TELNET_RECV_RESULT_NORMAL;
 }
 
+#if INCLUDE_PTS
+
 S32 telnetd_client_read_char(TELNET_CLIENT_INFO_ST *pstClientInfo, S8 *szBuffer)
 {
     U8  c;
@@ -1273,6 +1252,9 @@ do{ \
     return TELNET_RECV_RESULT_NORMAL;
 
 }
+
+#endif
+
 /**
  * 函数：TELNET_CLIENT_INFO_ST *telnetd_client_alloc(S32 lSock)
  * 功能：
@@ -1305,13 +1287,15 @@ TELNET_CLIENT_INFO_ST *telnetd_client_alloc(S32 lSock)
     g_pstTelnetClientList[i]->pFDInput = NULL;
     g_pstTelnetClientList[i]->pFDOutput = NULL;
     g_pstTelnetClientList[i]->ulMode = CLIENT_LEVEL_CONFIG;
+#if INCLUDE_PTS
+    g_pstTelnetClientList[i]->bIsExit = DOS_FALSE;
     g_pstTelnetClientList[i]->bIsLogin = DOS_FALSE;
     g_pstTelnetClientList[i]->bIsConnect = DOS_FALSE;
     g_pstTelnetClientList[i]->bIsGetLineEnd = DOS_FALSE;
     g_pstTelnetClientList[i]->bIsRecvLFOrNUL = DOS_FALSE;
     g_pstTelnetClientList[i]->stTimerHandle = NULL;
     g_pstTelnetClientList[i]->ulLoginFailCount = 0;
-
+#endif
     return g_pstTelnetClientList[i];
 }
 
@@ -1396,14 +1380,14 @@ VOID *telnetd_client_task(VOID *ptr)
     telnetd_client_send_new_line(pstClientInfo->pFDOutput, 1);
     fflush(pstClientInfo->pFDOutput);
 #else
-    fprintf(pstClientInfo->pFDOutput, "Welcome to OK-RAS!\n\rPlease input Enter.");
+    fprintf(pstClientInfo->pFDOutput, "Welcome to OK-RAS!\n\rPlease input Enter to continue.");
     telnetd_client_read_line(pstClientInfo, szRecvBuff, sizeof(szRecvBuff), 0);
 #endif
 
 
+#if INCLUDE_DEBUG_CLI_SERVER
     while (1)
     {
-#if INCLUDE_DEBUG_CLI_SERVER
         /* 输出提示符 */
         telnetd_client_output_prompt(pstClientInfo->pFDOutput, pstClientInfo->ulMode);
 
@@ -1422,9 +1406,10 @@ VOID *telnetd_client_task(VOID *ptr)
         /* 分析并执行命令 */
         cli_server_cmd_analyse(pstClientInfo->ulIndex, pstClientInfo->ulMode, szRecvBuff, lLen);
 
-        /* PTS TELNET */
+    }
 #else
-        /* 读取命令行输入 */
+    while (!pstClientInfo->bIsExit)
+    {
         if (!pstClientInfo->bIsLogin)
         {
             pstClientInfo->ulLoginFailCount++;
@@ -1457,54 +1442,48 @@ VOID *telnetd_client_task(VOID *ptr)
             lResult = pts_get_password(szRecvBuff, pcPassWord, PTS_PASSWORD_SIZE);
             if (lResult < 0)
             {
+                pcPassWord[0] = '\0';
+            }
+
+            dos_strncpy(szUseName, szRecvBuff, MAX_RECV_BUFF_LENGTH);
+            fprintf(pstClientInfo->pFDOutput, "\rPassword:");
+            lLen = telnetd_client_read_line(pstClientInfo, szRecvBuff, sizeof(szRecvBuff), 1);
+            if (lLen < 0)
+            {
+                logo_notice("Telnetd", "Telnet Exit", DOS_TRUE, "%s", "Telnet client exit\n");
+                dos_dmem_free(pcPassWord);
+                pcPassWord = NULL;
+                break;
+            }
+
+            if (0 == lLen)
+            {
                 dos_dmem_free(pcPassWord);
                 pcPassWord = NULL;
                 continue;
             }
+
+            pPassWordMd5 = pts_md5_encrypt(szUseName, szRecvBuff);
+            if (dos_strcmp(pcPassWord, pPassWordMd5) == 0)
+            {
+                dos_dmem_free(pcPassWord);
+                pcPassWord = NULL;
+                pts_goAhead_free(pPassWordMd5);
+                pPassWordMd5 = NULL;
+                pstClientInfo->bIsLogin = DOS_TRUE;
+                pstClientInfo->ulLoginFailCount = 0;
+            }
             else
             {
-                dos_strncpy(szUseName, szRecvBuff, MAX_RECV_BUFF_LENGTH);
-                fprintf(pstClientInfo->pFDOutput, "\rPassword:");
-                lLen = telnetd_client_read_line(pstClientInfo, szRecvBuff, sizeof(szRecvBuff), 1);
-                if (lLen < 0)
-                {
-                    logo_notice("Telnetd", "Telnet Exit", DOS_TRUE, "%s", "Telnet client exit\n");
-                    dos_dmem_free(pcPassWord);
-                    pcPassWord = NULL;
-                    break;
-                }
-
-                if (0 == lLen)
-                {
-                    dos_dmem_free(pcPassWord);
-                    pcPassWord = NULL;
-                    continue;
-                }
-
-                pPassWordMd5 = pts_md5_encrypt(szUseName, szRecvBuff);
-                if (!dos_strcmp(pcPassWord, pPassWordMd5))
-                {
-                    dos_dmem_free(pcPassWord);
-                    pcPassWord = NULL;
-                    pts_goAhead_free(pPassWordMd5);
-                    pPassWordMd5 = NULL;
-                    pstClientInfo->bIsLogin = DOS_TRUE;
-                    pstClientInfo->ulLoginFailCount = 0;
-                }
-                else
-                {
-                    dos_dmem_free(pcPassWord);
-                    pcPassWord = NULL;
-                    pts_goAhead_free(pPassWordMd5);
-                    pPassWordMd5 = NULL;
-                    //fprintf(pstClientInfo->pFDOutput, "password error\n");
-                    continue;
-                }
-
+                dos_dmem_free(pcPassWord);
+                pcPassWord = NULL;
+                pts_goAhead_free(pPassWordMd5);
+                pPassWordMd5 = NULL;
+                continue;
             }
 
         }
-        if (!pstClientInfo->bIsConnect)
+        else if (!pstClientInfo->bIsConnect)
         {
             /* 输出提示符 */
             telnetd_client_output_prompt(pstClientInfo->pFDOutput, pstClientInfo->ulMode);
@@ -1526,6 +1505,10 @@ VOID *telnetd_client_task(VOID *ptr)
                 /* connect ptc */
                 pstClientInfo->bIsConnect = DOS_TRUE;
             }
+            else if (PT_TELNET_EXIT == lResult)
+            {
+                pstClientInfo->bIsExit = DOS_TRUE;
+            }
         }
         else
         {
@@ -1542,12 +1525,13 @@ VOID *telnetd_client_task(VOID *ptr)
             {
                 continue;
             }
-
-            pts_telnet_send_msg2ptc(pstClientInfo->ulIndex, &cRecvChar, 1);
+            if (pstClientInfo->bIsConnect)
+            {
+                pts_telnet_send_msg2ptc(pstClientInfo->ulIndex, &cRecvChar, 1);
+            }
         }
-
-#endif
     }
+#endif
 
     fclose(pstClientInfo->pFDOutput);
     fclose(pstClientInfo->pFDInput);
@@ -1558,13 +1542,15 @@ VOID *telnetd_client_task(VOID *ptr)
     pstClientInfo->pFDInput = NULL;
     pstClientInfo->ulValid = DOS_FALSE;
     pstClientInfo->lSocket = -1;
+#if INCLUDE_PTS
+    pstClientInfo->bIsExit = DOS_FALSE;
     pstClientInfo->bIsLogin = DOS_FALSE;
     pstClientInfo->bIsConnect = DOS_FALSE;
     pstClientInfo->bIsGetLineEnd = DOS_FALSE;
     pstClientInfo->bIsRecvLFOrNUL = DOS_FALSE;
     pstClientInfo->stTimerHandle = NULL;
     pstClientInfo->ulLoginFailCount = 0;
-
+#endif
     /* 如果所有客户端都关闭了，强制关闭控制台日志 */
     if (!telnetd_client_count())
     {

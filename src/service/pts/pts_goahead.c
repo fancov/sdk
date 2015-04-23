@@ -30,6 +30,8 @@ extern "C" {
 #include "pts_web.h"
 #include "pts_goahead.h"
 
+#if INCLUDE_PTS
+
 /********************************** Defines ***********************************/
 /*
  *  The following #defines change the behaviour of security in the absence
@@ -271,6 +273,7 @@ static int pts_data_tables_lang(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_html_lang(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_get_lang_type(int eid, webs_t wp, int argc, char_t **argv);
 static int status_statistics(int eid, webs_t wp, int argc, char_t **argv);
+static int pts_get_version(int eid, webs_t wp, int argc, char_t **argv);
 S32 pts_get_password_from_sqlite_db(char_t *userid, S8 *szWebsPassword);
 S32 pts_get_local_ip(S8 *szLocalIp);
 S32 pts_send_ptc_list2web_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name);
@@ -511,6 +514,8 @@ static int initWebs(int demo)
     websAspDefine(T("lang_type"), pts_get_lang_type);                       /* 获得语言的类型 */
 
     websAspDefine(T("status_statistics"), status_statistics);               /* 状态 统计 */
+
+    websAspDefine(T("version"), pts_get_version);                           /* 获得版本号 */
 
     websFormDefine(T("create_user"), pts_create_user);                      /* 创建用户 */
     websFormDefine(T("change_pwd"), pts_change_password);                   /* 修改密码 */
@@ -2024,6 +2029,12 @@ static int status_statistics(int eid, webs_t wp, int argc, char_t **argv)
     return 0;
 }
 
+
+static int pts_get_version(int eid, webs_t wp, int argc, char_t **argv)
+{
+    return websWrite(wp, T("%s"), PTS_VERSION);
+}
+
 /******************************************************************************/
 /*
  *  Test form for posted data (in-memory CGI). This will be called when the
@@ -2032,18 +2043,29 @@ static int status_statistics(int eid, webs_t wp, int argc, char_t **argv)
 
 static void pts_create_user(webs_t wp, char_t *path, char_t *query)
 {
-    char_t  *szName, *szPassWd, *szUserName, *szFixedTel, *szMobile, *szMailbox;
+    char_t  *szName, *szPassWd, *pszUserName, *szFixedTel, *szMobile, *szMailbox;
     //S32 lResult = 0;
     S8  szSql[PT_DATA_BUFF_256] = {0};
     S8 *pPassWordMd5 = NULL;
     S32 lResult = 0;
+    S8 szUserName[PT_DATA_BUFF_64] = {0};
 
     szName = websGetVar(wp, T("name"), T(""));
     szPassWd = websGetVar(wp, T("password"), T(""));
-    szUserName = websGetVar(wp, T("userName"), T(""));
+    pszUserName = websGetVar(wp, T("userName"), T(""));
     szFixedTel = websGetVar(wp, T("fixedTel"), T(""));
     szMobile = websGetVar(wp, T("mobile"), T(""));
     szMailbox = websGetVar(wp, T("mailbox"), T(""));
+
+    if (pszUserName[0] != '\0')
+    {
+        lResult = g2u(pszUserName, dos_strlen(pszUserName), szUserName, PT_DATA_BUFF_64);
+        if (lResult != DOS_SUCC)
+        {
+            pt_logr_info("ptc name iconv fail");
+            szUserName[0] = '\0';
+        }
+    }
 
     dos_snprintf(szSql, PT_DATA_BUFF_256, "select * from pts_user where name='%s'", szName);
     lResult = dos_sqlite3_record_is_exist(g_pstMySqlite, szSql);
@@ -2942,6 +2964,8 @@ VOID pts_goAhead_free(S8 *pPoint)
     a_assert(pPoint);
     bfreeSafe(B_L, pPoint);
 }
+
+#endif
 
 #ifdef  __cplusplus
 }
