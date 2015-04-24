@@ -18,8 +18,7 @@
 <script type="text/javascript" language="javascript" class="init">
 
 $(document).ready(function() {
-	var oTable = $('#example').DataTable({
-			"info" : true, 
+	var oTable = $('#dataTable').DataTable({
 			"aaSorting": [[0, "desc"]],
 			"stateSave": true,
 			"serverSide": true,
@@ -81,7 +80,7 @@ updateTime();
 </div>
 <br>
 <div class="content_body">
-	<table id="example" class="display" cellspacing="0" style="text-align:center">
+	<table id="dataTable" class="display" cellspacing="0" style="text-align:center" width="100%">
 		<thead>
 			<tr>
 				<th>SN</th>        

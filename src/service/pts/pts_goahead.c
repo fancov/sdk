@@ -175,7 +175,7 @@ S8 g_szDataTablesLang[PT_DATA_BUFF_1024] = "\"oLanguage\": {\
                     \"sNext\": \"后一页\",\
                     \"sLast\": \"尾页\"\
                     }\
-              },";
+              }";
 /* 对语言格式的说明
 * 1     : 菜单          0 ~ 8
 * 2     : 远程访问      9 ~ 23

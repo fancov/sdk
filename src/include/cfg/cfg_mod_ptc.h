@@ -13,6 +13,8 @@
 #ifndef __CFG_MOD_PTC_H__
 #define __CFG_MOD_PTC_H__
 
+#define PTC_VERSION                       "1.3.0.2"
+
 /* 异常处理模块 */
 #define INCLUDE_EXCEPTION_CATCH           1
 

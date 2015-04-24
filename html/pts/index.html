@@ -18,35 +18,32 @@
 <script type="text/javascript" language="javascript" class="init">
 
 $(document).ready(function() {
-	var oTable = $('#example').DataTable({
-			"info" : true, 
+	var oTable = $('#dataTable').DataTable({
 			"aaSorting": [[1, "desc"]],
 			"stateSave": true,
 			"serverSide": true,
 			"sDom": '<"top"f<"refush">>rt<"bottom"lp>',
 			"sAjaxSource": "/ptc_list.html",
+			"aoColumnDefs": [{"className": "ptc_ardio",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [8]}, {"className": "ptc_nice", "aTargets": [3]}],
+			"fnDrawCallback":function(){ $('#dataTable tbody td.ptc_nice').editable('editable_ajax.html', {
+				"callback": function(sValue, y) {
+					var aPos = oTable.fnGetPosition(this);
+					oTable.fnUpdate( sValue, aPos[0], aPos[1]);
+				},
+
+				"submitdata": function ( value, settings ) {
+					return {
+						"row_id": $(this).parent().children("td.ptc_sn").html(),
+						"column": $(this).find("input").val()
+					};
+				}
+			})},
 			<% dataTablesLang(); %>
-		      "aoColumnDefs": [{"className": "ptc_ardio",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [8]}, {"className": "ptc_nice", "aTargets": [3]}],
-
-			 "fnDrawCallback":function(){ $('#example tbody td.ptc_nice').editable('editable_ajax.html', {
-					"callback": function(sValue, y) {
-						// var aPos = oTable.fnGetPosition(this);
-						var aPos = oTable.fnGetPosition(this);
-						oTable.fnUpdate( sValue, aPos[0], aPos[1]);
-					},
-
-					"submitdata": function ( value, settings ) {
-						return {
-							"row_id": $(this).parent().children("td.ptc_sn").html(),
-							"column": $(this).find("input").val()
-						};
-					}
-			})}
 		});
 
 		$('.refush').html("<p id='RefushButton'> <input type='button' value ='<% htmlLang(78); %>'></p>");
 
-		$('#example tbody').on('click', 'td', function () {
+		$('#dataTable tbody').on('click', 'td', function () {
 			if ($(this).find("input").val())
 			{
 				return true;
@@ -62,7 +59,7 @@ $(document).ready(function() {
 			}
     	});
 
-    	$('#example tbody').on('dblclick', 'td', function () {
+    	$('#dataTable tbody').on('dblclick', 'td', function () {
 			$(this).parent().children("td.ptc_ardio").children("input").prop('checked', true); 
 			visit_dev();
     	});
@@ -154,7 +151,7 @@ updateTime();
 	</div>
 </div>
 <div class="content_body">
-	<table id="example" class="display" cellspacing="0" style="text-align:center">
+	<table id="dataTable" class="display" cellspacing="0" style="text-align:center" width="100%">
 		<thead>
 			<tr>
 				<th width="20px"> </th>        

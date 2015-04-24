@@ -1532,7 +1532,8 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
     HEART_BEAT_RTT_TSG *pstHbRTT = NULL;
     S32 lResult = 0;
     PT_MSG_TAG * pstMsgDes = NULL;
-    PT_CC_CB_ST *pstPtcNode = NULL;
+    PT_CC_CB_ST *pstPtcRecvNode = NULL;
+    PT_CC_CB_ST *pstPtcSendNode = NULL;
     S8 szSql[PTS_SQL_STR_SIZE] = {0};
     S8 szID[PTC_ID_LEN+1] = {0};
     S8 szPtcIntranetIP[IPV6_SIZE] = {0};   /* ÄÚÍøIP */
@@ -1698,16 +1699,24 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
             pt_logr_info("hb time, update db fail");
         }
 
-        pstPtcNode = pt_ptc_list_search(g_pstPtcListRecv, pstMsgDes->aucID);
-        if(NULL == pstPtcNode)
+        pstPtcRecvNode = pt_ptc_list_search(g_pstPtcListRecv, pstMsgDes->aucID);
+        if(NULL == pstPtcRecvNode)
         {
             pt_logr_info("pts_ctrl_msg_handle : can not found ptc id = %.16s", pstMsgDes->aucID);
             break;
         }
         else
         {
-            pstPtcNode->usHBOutTimeCount = 0;
-            pstPtcNode->stDestAddr = stClientAddr;
+            pstPtcRecvNode->usHBOutTimeCount = 0;
+            if (pstPtcRecvNode->stDestAddr.sin_addr.s_addr != stClientAddr.sin_addr.s_addr)
+            {
+                pstPtcRecvNode->stDestAddr = stClientAddr;
+                pstPtcSendNode = pt_ptc_list_search(g_pstPtcListSend, pstMsgDes->aucID);
+                if (NULL != pstPtcSendNode)
+                {
+                    pstPtcSendNode->stDestAddr = stClientAddr;
+                }
+            }
         }
 
         pts_send_hb_rsp(pstMsgDes, stClientAddr);

@@ -18,19 +18,16 @@
 <script type="text/javascript" language="javascript" class="init">
 
 $(document).ready(function() {
-    var oTable = $('#example').DataTable({
-            "info" : true, 
+    var oTable = $('#dataTable').DataTable({
             "aaSorting": [[1, "desc"]],
             "stateSave": true,
             "serverSide": true,
             "sDom": '<"top"f<"refush">>rt<"bottom"lp>',
             "sAjaxSource": "/pts_upgrades_list.html",
-            <% dataTablesLang(); %>
-              "aoColumnDefs": [{"className": "checkBox",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [9]}, {"className": "ptc_nice", "aTargets": [3]}],
+            "aoColumnDefs": [{"className": "checkBox",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [9]}, {"className": "ptc_nice", "aTargets": [3]}],
 
-             "fnDrawCallback":function(){ $('#example tbody td.ptc_nice').editable('editable_ajax.html', {
+            "fnDrawCallback":function(){ $('#dataTable tbody td.ptc_nice').editable('editable_ajax.html', {
                     "callback": function(sValue, y) {
-                        // var aPos = oTable.fnGetPosition(this);
                         var aPos = oTable.fnGetPosition(this);
                         oTable.fnUpdate( sValue, aPos[0], aPos[1]);
                     },
@@ -40,12 +37,14 @@ $(document).ready(function() {
                             "column": $(this).find("input").val()
                         };
                     }
-            })}
+            })},
+             
+            <% dataTablesLang(); %>
         });
         
         $('.refush').html("<p id='RefushButton'> <input type='button' value ='<% htmlLang(78); %>'></p>");
 
-        $('#example tbody').on( 'click', 'td', function () {
+        $('#dataTable tbody').on( 'click', 'td', function () {
             if ($(this).find("input").val())
             {
                 return true;
@@ -154,7 +153,7 @@ updateTime();
     </div>
 </div>
 <div class="content_body">
-    <table id="example" class="display" cellspacing="0" style="text-align:center">
+    <table id="dataTable" class="display" cellspacing="0" style="text-align:center" width="100%">
         <thead>
             <tr>
                 <th width="20px"><input type="checkbox" onclick="select_all()" /></th>        
