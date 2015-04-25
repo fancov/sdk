@@ -51,24 +51,6 @@ extern "C" {
 #define CREATE_NEW_USER "<a href=\"create_user.html\"><input type=\"button\" value=\"%s\"/></a>&nbsp;&nbsp;&nbsp;&nbsp;\
 <input type=\"button\" value=\"%s\" onclick=\"change_password()\" />&nbsp;&nbsp;&nbsp;&nbsp;<input type=\"button\" value=\"%s\" onclick=\"del_user()\" />"
 
-#if defined(MIPS)&&defined(UCLINUX)&&!defined(MIPS32)
-#define AOS_NTOHL(x) (x)
-#define AOS_NTOHS(x) (x)
-#define AOS_HTONL(x) (x)
-#define AOS_HTONS(x) (x)
-
-#else
-#define AOS_NTOHL(x) ((((x) & 0xFF000000)>>24) |  (((x) & 0x00FF0000)>>8) | \
-                      (((x) & 0x0000FF00)<<8 ) |  (((x) & 0x000000FF)<<24)  \
-                     )
-#define AOS_NTOHS(x)  ((((x)& 0xFF00)>>8) |  (((x) & 0x00FF)<<8))
-#define AOS_HTONL(x)  AOS_NTOHL(x)
-#define AOS_HTONS(x)  AOS_NTOHS(x)
-#endif
-
-#define AOS_SUCC 0
-#define AOS_FAIL (-1)
-
 #define LOAD_GET_OS_TYPE_FLAG(a) ((a)>>24)
 #define LOAD_GET_CPU_TYPE_FLAG(a) (((a)>>16)&0xff)
 #define LOAD_GET_PRODUCT_TYPE_FLAG(a) ((a)&0xffff)

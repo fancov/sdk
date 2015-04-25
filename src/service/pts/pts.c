@@ -131,7 +131,7 @@ S32 pts_create_udp_socket(U16 usUdpPort, U32 ulSocketCache)
         {
             perror("udp create socket");
             DOS_ASSERT(0);
-			sleep(1);
+            sleep(1);
             continue;
         }
 
@@ -147,7 +147,7 @@ S32 pts_create_udp_socket(U16 usUdpPort, U32 ulSocketCache)
             perror("udp server bind");
             close(lSockfd);
             DOS_ASSERT(0);
-			sleep(1);
+            sleep(1);
             continue;
         }
 

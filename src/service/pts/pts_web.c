@@ -22,6 +22,8 @@ extern "C" {
 #include "pts_msg.h"
 #include "pts_web.h"
 
+#define PTS_VISIT_WEB_ERROE_1 "<!DOCTYPE HTML><HTML><HEAD><TITLE>Error</TITLE><META http-equiv=Content-Type content=\"text/html; charset=gb2312\"><STYLE type=text/css>BODY {BACKGROUND: #fff; MARGIN: 80px auto; FONT: 14px/150% Verdana, Georgia, Sans-Serif; COLOR: #000; TEXT-ALIGN: center}H1 {PADDING-RIGHT: 4px; PADDING-LEFT: 4px; FONT-SIZE: 14px; BACKGROUND: #eee; PADDING-BOTTOM: 4px; MARGIN: 0px; PADDING-TOP: 4px; BORDER-BOTTOM: #84b0c7 1px solid} DIV{BORDER-RIGHT: #84b0c7 1px solid; BORDER-TOP: #84b0c7 1px solid; BACKGROUND: #e5eef5; MARGIN: 0px auto; BORDER-LEFT: #84b0c7 1px solid; WIDTH: 500px; BORDER-BOTTOM: #84b0c7 1px solid}</STYLE></HEAD><BODY><DIV><H1>提示：您访问的地址无法建立连接</H1></DIV></BODY></HTML>"
+#define PTS_VISIT_WEB_ERROE_2 "<!DOCTYPE HTML><HTML><HEAD><TITLE>Error</TITLE><META http-equiv=Content-Type content=\"text/html; charset=gb2312\"><STYLE type=text/css>BODY {BACKGROUND: #fff; MARGIN: 80px auto; FONT: 14px/150% Verdana, Georgia, Sans-Serif; COLOR: #000; TEXT-ALIGN: center}H1 {PADDING-RIGHT: 4px; PADDING-LEFT: 4px; FONT-SIZE: 14px; BACKGROUND: #eee; PADDING-BOTTOM: 4px; MARGIN: 0px; PADDING-TOP: 4px; BORDER-BOTTOM: #84b0c7 1px solid} DIV{BORDER-RIGHT: #84b0c7 1px solid; BORDER-TOP: #84b0c7 1px solid; BACKGROUND: #e5eef5; MARGIN: 0px auto; BORDER-LEFT: #84b0c7 1px solid; WIDTH: 500px; BORDER-BOTTOM: #84b0c7 1px solid}</STYLE></HEAD><BODY><DIV><H1>提示：用该PTC的连接过多，请稍后再试</H1></DIV></BODY></HTML>"
 
 list_t  *m_stClinetCBList = NULL; /* 客户端请求链表 */
 pthread_mutex_t g_web_client_mutex  = PTHREAD_MUTEX_INITIALIZER;   /* 保护 m_stClinetCBList 的信号量 */
@@ -892,7 +894,7 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     PT_STREAM_CB_ST  *pstStreamNode             = NULL;
     PTS_CLIENT_CB_ST *pstClinetCB               = NULL;
     PT_DATA_TCP_ST   *pstDataTcp                = NULL;
-    //S8             cookie[PT_DATA_BUFF_128]   = {0};
+    S8  szExitReason[PT_DATA_BUFF_1024] = {0};
     socklen_t optlen = sizeof(S32);
     S32 tcpinfo;
 
@@ -916,7 +918,22 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
 
     if (pstNeedRecvNode->ExitNotifyFlag)
     {
+        /* 响应结束 */
+        switch (pstNeedRecvNode->lSeq)
+        {
+            case 1:
+                dos_snprintf(szExitReason, PT_DATA_BUFF_1024, PTS_VISIT_WEB_ERROE_1);
+                break;
+            case 2:
+                dos_snprintf(szExitReason, PT_DATA_BUFF_1024, PTS_VISIT_WEB_ERROE_2);
+                break;
+            default:
+                szExitReason[0] = '\0';
+                break;
+        }
+
         /* 关闭socket */
+        send(pstClinetCB->lSocket, szExitReason, dos_strlen(szExitReason), 0);
         pts_web_close_socket_without_sem(pstClinetCB->lSocket);
 #if PT_WEB_MUTEX_DEBUG
         pts_web_sem_post(__FILE__, __LINE__);

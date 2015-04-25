@@ -20,8 +20,8 @@ extern "C"{
 #define PT_DATA_BUFF_1024           1024
 #define PT_DATA_BUFF_2048           2048
 #define MAX_FILENAME_LEN            24
-#define PT_DATA_RECV_CACHE_SIZE     1024    /* 发送缓存的个数 */
-#define PT_DATA_SEND_CACHE_SIZE     512     /* 接收缓存的个数 */
+#define PT_DATA_RECV_CACHE_SIZE     1024    /* 接收缓存的个数 */
+#define PT_DATA_SEND_CACHE_SIZE     512     /* 发送缓存的个数 */
 #define PT_SEND_DATA_SIZE           700     /* 接收数据包时，使用的数组的大小 */
 #define PT_RECV_DATA_SIZE           512     /* socket 每数据的大小 */
 #define PT_SEND_LOSE_DATA_TIMER     1000    /* 发送丢包请求的间隔 */
