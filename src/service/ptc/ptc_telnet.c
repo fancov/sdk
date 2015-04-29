@@ -313,6 +313,9 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     if (pstNeedRecvNode->ExitNotifyFlag)
     {
         ptc_cmd_delete_client_by_stream(pstNeedRecvNode->ulStreamID);
+        ptc_send_exit_notify_to_pts(PT_DATA_CMD, pstNeedRecvNode->ulStreamID, 1);
+        ptc_delete_recv_stream_node(pstNeedRecvNode->ulStreamID, PT_DATA_CMD, DOS_FALSE);
+        ptc_delete_send_stream_node(pstNeedRecvNode->ulStreamID, PT_DATA_CMD, DOS_TRUE);
 
         return;
     }

@@ -531,7 +531,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
             else if (pts_is_int(pszKeyWord[1]))
             {
                 dos_snprintf(achSql, PTS_SQL_STR_SIZE, "select * from ipcc_alias where id=%s", pszKeyWord[1]);
-                if (!dos_sqlite3_record_is_exist(g_pstMySqlite, achSql))  /* ÅÐ¶ÏÊÇ·ñ´æÔÚ */
+                if (!dos_sqlite3_record_count(g_pstMySqlite, achSql))  /* ÅÐ¶ÏÊÇ·ñ´æÔÚ */
                 {
                     snprintf(szErrorMsg, sizeof(szErrorMsg), "PTC is not exit sn(%s)\r\n", pszKeyWord[1]);
                     lRet = PT_TELNET_FAIL;
@@ -589,7 +589,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
                 dos_strncpy(szSN, pszKeyWord[1], PT_DATA_BUFF_64);
 
                 dos_snprintf(achSql, PTS_SQL_STR_SIZE, "select * from ipcc_alias where sn='%s'", szSN);
-                if (!dos_sqlite3_record_is_exist(g_pstMySqlite, achSql))  /* ÅÐ¶ÏÊÇ·ñ´æÔÚ */
+                if (!dos_sqlite3_record_count(g_pstMySqlite, achSql))  /* ÅÐ¶ÏÊÇ·ñ´æÔÚ */
                 {
                     snprintf(szErrorMsg, sizeof(szErrorMsg), "  PTC is not exist\r\n");
                     lRet = PT_TELNET_FAIL;
@@ -597,7 +597,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
                 }
 
                 dos_snprintf(achSql, PTS_SQL_STR_SIZE, "select * from ipcc_alias where sn='%s' and register = 1", szSN);
-                if (!dos_sqlite3_record_is_exist(g_pstMySqlite, achSql))  /* ÊÇ·ñµÇÂ½ */
+                if (!dos_sqlite3_record_count(g_pstMySqlite, achSql))  /* ÊÇ·ñµÇÂ½ */
                 {
                     snprintf(szErrorMsg, sizeof(szErrorMsg), " PTC logout\r\n");
                     lRet = PT_TELNET_FAIL;
@@ -928,7 +928,7 @@ S32 pts_send_command_to_ptc(U32 ulIndex, S32 argc, S8 **argv)
         dos_strncpy(szSN, argv[1], PT_DATA_BUFF_64);
 
         dos_snprintf(achSql, PT_DATA_BUFF_512, "select * from ipcc_alias where sn='%s'", szSN);
-        if (!dos_sqlite3_record_is_exist(g_pstMySqlite, achSql))  /* ÅÐ¶ÏÊÇ·ñ´æÔÚ */
+        if (!dos_sqlite3_record_count(g_pstMySqlite, achSql))  /* ÅÐ¶ÏÊÇ·ñ´æÔÚ */
         {
             cli_out_string(ulIndex, "PTC is not exist.\r\n");
 
@@ -936,7 +936,7 @@ S32 pts_send_command_to_ptc(U32 ulIndex, S32 argc, S8 **argv)
         }
 
         dos_snprintf(achSql, PT_DATA_BUFF_512, "select * from ipcc_alias where sn='%s' and register = 1", szSN);
-        if (!dos_sqlite3_record_is_exist(g_pstMySqlite, achSql))  /* ÊÇ·ñµÇÂ½ */
+        if (!dos_sqlite3_record_count(g_pstMySqlite, achSql))  /* ÊÇ·ñµÇÂ½ */
         {
             cli_out_string(ulIndex, "PTC is not login.\r\n");
 

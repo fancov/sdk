@@ -1332,7 +1332,7 @@ U32 telnetd_client_count()
 VOID *telnetd_client_task(VOID *ptr)
 {
     TELNET_CLIENT_INFO_ST *pstClientInfo;
-    struct rlimit limit;
+    // struct rlimit limit;
     S8 szRecvBuff[MAX_RECV_BUFF_LENGTH];
     S32 lLen;
     S8 szCmd[16] = { 0 };
@@ -1353,10 +1353,10 @@ VOID *telnetd_client_task(VOID *ptr)
     pstClientInfo = (TELNET_CLIENT_INFO_ST *)ptr;
 
     /* ÅäÖÃ£¯Ð­ÉÌtelnet */
-    limit.rlim_cur = limit.rlim_max = 90;
-    setrlimit(RLIMIT_CPU, &limit);
-    limit.rlim_cur = limit.rlim_max = 0;
-    setrlimit(RLIMIT_NPROC, &limit);
+    // limit.rlim_cur = limit.rlim_max = 90;
+    // setrlimit(RLIMIT_CPU, &limit);
+    // limit.rlim_cur = limit.rlim_max = 0;
+    // setrlimit(RLIMIT_NPROC, &limit);
 
     pstClientInfo->pFDInput = fdopen(pstClientInfo->lSocket, "r");
     if (!pstClientInfo->pFDInput) {

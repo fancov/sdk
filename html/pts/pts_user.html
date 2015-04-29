@@ -18,19 +18,16 @@
 <script type="text/javascript" language="javascript" class="init">
 
 $(document).ready(function() {
-	var oTable = $('#example').DataTable({
-			"info" : true, 
+	var oTable = $('#dataTable').DataTable({
 			"aaSorting": [[1, "desc"]],
 			"stateSave": true,
 			"serverSide": true,
 			"sDom": '<"top"f<"refush">>rt<"bottom"lp>',
 			"sAjaxSource": "/pts_user_list.html",
-			<% dataTablesLang(); %>
-		      "aoColumnDefs": [{"className": "checkBox", "orderable": false, "aTargets": [0]}, {"className": "user_name",  "bSort": false, "aTargets": [1]}, {"className": "edit_pts_name", "aTargets": [2]}, {"className": "edit_fixedTel", "aTargets": [3]}, {"className": "edit_mobile", "aTargets": [4]}, {"className": "edit_mailbox", "aTargets": [5]}],
+		     "aoColumnDefs": [{"className": "checkBox", "orderable": false, "aTargets": [0]}, {"className": "user_name",  "bSort": false, "aTargets": [1]}, {"className": "edit_pts_name", "aTargets": [2]}, {"className": "edit_fixedTel", "aTargets": [3]}, {"className": "edit_mobile", "aTargets": [4]}, {"className": "edit_mailbox", "aTargets": [5]}],
 
-			 "fnDrawCallback":function(){ $('#example tbody td.edit_pts_name, #example tbody td.edit_fixedTel, #example tbody td.edit_mobile, #example tbody td.edit_mailbox').editable('change_info.html', {
+			 "fnDrawCallback":function(){ $('#dataTable tbody td.edit_pts_name, #dataTable tbody td.edit_fixedTel, #dataTable tbody td.edit_mobile, #dataTable tbody td.edit_mailbox').editable('change_info.html', {
 					"callback": function(sValue, y) {
-						// var aPos = oTable.fnGetPosition(this);
 						var aPos = oTable.fnGetPosition(this);
 						oTable.fnUpdate( sValue, aPos[0], aPos[1]);
 					},
@@ -40,12 +37,14 @@ $(document).ready(function() {
 							"column": $(this).parents("tr").find("td").index($(this))
 						};
 					}
-			})}
+			})},
+			 
+			<% dataTablesLang(); %>
 		});
 		
 		$('.refush').html("<p id='RefushButton'> <input type='button' value ='<% htmlLang(78); %>'></p>");
 
-		$('#example tbody').on( 'click', 'td', function () {
+		$('#dataTable tbody').on( 'click', 'td', function () {
 			if ($(this).find("input").val())
 			{
 				return true;
@@ -126,7 +125,7 @@ updateTime();
 	</div>
 </div>
 <div class="content_body">
-	<table id="example" class="display" cellspacing="0" style="text-align:center">
+	<table id="dataTable" class="display" cellspacing="0" style="text-align:center" width="100%">
 		<thead>
 			<tr>
 				<th width="20px"><input type="checkbox" id="select_all" onclick="select_all()" /></th>        

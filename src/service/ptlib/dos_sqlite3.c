@@ -153,7 +153,7 @@ S32 dos_get_count_callback(VOID *para, S32 n_column, S8 **column_value, S8 **col
     return 0;
 }
 
-S32 dos_sqlite3_record_is_exist(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql)
+S32 dos_sqlite3_record_count(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql)
 {
     U32 count = 0;
     S32 lRes = 0;
@@ -164,12 +164,8 @@ S32 dos_sqlite3_record_is_exist(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql)
         return -1;
     }
 
-    if (count > 0)
-    {
-        return DOS_TRUE;
-    }
+    return count;
 
-    return DOS_FALSE;
 }
 
 #endif

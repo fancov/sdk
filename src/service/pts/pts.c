@@ -131,7 +131,7 @@ S32 pts_create_udp_socket(U16 usUdpPort, U32 ulSocketCache)
         {
             perror("udp create socket");
             DOS_ASSERT(0);
-			sleep(1);
+            sleep(1);
             continue;
         }
 
@@ -147,7 +147,7 @@ S32 pts_create_udp_socket(U16 usUdpPort, U32 ulSocketCache)
             perror("udp server bind");
             close(lSockfd);
             DOS_ASSERT(0);
-			sleep(1);
+            sleep(1);
             continue;
         }
 
@@ -322,7 +322,7 @@ VOID pts_handle_ctrl_msg(PT_NEND_RECV_NODE_ST *pstNeedRevNode)
             case PT_CTRL_LOGIN_ACK:
                 /* µÇÂ½³É¹¦ */
                 dos_snprintf(szSql, PT_DATA_BUFF_128, "select * from ipcc_alias where sn='%s'", pstNeedRevNode->aucID);
-                lResult = dos_sqlite3_record_is_exist(g_pstMySqlite, szSql);
+                lResult = dos_sqlite3_record_count(g_pstMySqlite, szSql);
                 if (lResult < 0)
                 {
                     DOS_ASSERT(0);

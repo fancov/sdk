@@ -28,6 +28,7 @@ extern S32 pts_printf_telnet_msg(U32 ulIndex, S32 argc, S8 **argv);
 
 #if INCLUDE_PTC
 extern S32 ptc_printf_telnet_msg(U32 ulIndex, S32 argc, S8 **argv);
+extern S32 ptc_printf_web_msg(U32 ulIndex, S32 argc, S8 **argv);
 #endif
 
 COMMAND_ST g_stCommandSet[] = {
@@ -55,7 +56,8 @@ COMMAND_ST g_stCommandSet[] = {
     {NULL, "print",         "send cmd to ptc",                 pts_printf_telnet_msg},
 #endif
 #if INCLUDE_PTC
-    {NULL, "telnet",        "send cmd to ptc",                 ptc_printf_telnet_msg},
+    {NULL, "telnet",        "",                                 ptc_printf_telnet_msg},
+    {NULL, "web",           "",                                 ptc_printf_web_msg},
 #endif
 };
 

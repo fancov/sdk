@@ -90,6 +90,32 @@ VOID ptc_delete_client(S32 lSocket)
             //printf("del stream %d, socket %d\n", g_austClients[i].ulStreamID, lSocket);
             g_austClients[i].bIsValid = DOS_FALSE;
             g_austClients[i].lSocket = -1;
+            g_austClients[i].ulStreamID = U32_BUTT;
+
+            return;
+        }
+    }
+}
+
+VOID ptc_delete_client_by_streamID(U32 ulStreamID)
+{
+    S32 i = 0;
+    //static S32 lDelSocket = 0;
+    //lDelSocket++;
+    //printf("del %d\n", lDelSocket);
+    for (i=0; i<PTC_WEB_SOCKET_MAX_COUNT; i++)
+    {
+        if (g_austClients[i].bIsValid && g_austClients[i].ulStreamID == ulStreamID)
+        {
+            //printf("del stream %d, socket %d\n", g_austClients[i].ulStreamID, lSocket);
+            g_austClients[i].bIsValid = DOS_FALSE;
+            if (g_austClients[i].lSocket > 0)
+            {
+                close(g_austClients[i].lSocket);
+            }
+            g_austClients[i].lSocket = -1;
+            g_austClients[i].ulStreamID = U32_BUTT;
+
             return;
         }
     }
@@ -190,19 +216,11 @@ void *ptc_recv_msg_from_web(void *arg)
                     continue;
                 }
                 printf("recv from web server, stream : %d, socket : %d, len : %d\n", lResult, i, lRecvLen);
-                if (lRecvLen == 0)
+                if (lRecvLen <= 0)
                 {
                     /* sockfd结束，通知pts */
                     FD_CLR(i, &ReadFds);
                     pt_logr_debug("sockfd end, streamID is %d", lResult);
-                    ptc_save_msg_into_cache(PT_DATA_WEB, lResult, "", 0);
-                    ptc_delete_client(i);
-                    close(i);
-                }
-                else if (lRecvLen < 0)
-                {
-                    pt_logr_debug("fail to recv, socket is %d", i);
-                    FD_CLR(i, &ReadFds);
                     ptc_save_msg_into_cache(PT_DATA_WEB, lResult, "", 0);
                     ptc_delete_client(i);
                     close(i);
@@ -338,6 +356,16 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     PT_STREAM_CB_ST   *pstStreamNode   = NULL;
     PT_DATA_TCP_ST    stRecvDataTcp;
 
+    if (pstNeedRecvNode->ExitNotifyFlag)
+    {
+        ptc_delete_client_by_streamID(pstNeedRecvNode->ulStreamID);
+        ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstNeedRecvNode->ulStreamID, 2);
+        ptc_delete_recv_stream_node(pstNeedRecvNode->ulStreamID, PT_DATA_WEB, DOS_FALSE);
+        ptc_delete_send_stream_node(pstNeedRecvNode->ulStreamID, PT_DATA_CMD, DOS_TRUE);
+
+        return;
+    }
+
     pstStreamList = g_pstPtcRecv->astDataTypes[pstNeedRecvNode->enDataType].pstStreamQueHead;
     if (NULL == pstStreamList)
     {
@@ -385,7 +413,9 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 if (lSockfd <= 0)
                 {
                     /* 创建socket失败，通知pts结束 */
-                    ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID, 0);
+                    ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID, 1);
+                    ptc_delete_recv_stream_node(pstStreamNode->ulStreamID, PT_DATA_WEB, DOS_FALSE);
+
                     break;
                 }
                 printf("create socket : %d, stream : %d\n", lSockfd, pstStreamNode->ulStreamID);
@@ -394,6 +424,10 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 {
                     /* socket 数量已满 */
                     printf("aocket is full\n");
+                    close(lSockfd);
+                    ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID, 2);
+                    ptc_delete_recv_stream_node(pstStreamNode->ulStreamID, PT_DATA_WEB, DOS_FALSE);
+
                     break;
                 }
                 write(g_lPipeWRFd, "s", 1);
@@ -412,6 +446,25 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     }
 
     return;
+}
+
+S32 ptc_printf_web_msg(U32 ulIndex, S32 argc, S8 **argv)
+{
+    S32 i = 0;
+    U32 ulLen = 0;
+    S8 szBuff[PT_DATA_BUFF_512] = {0};
+
+    ulLen = snprintf(szBuff, sizeof(szBuff), "\r\n%10s%10s%10s\r\n", "ulStreamID", "lSocket", "bIsValid");
+    cli_out_string(ulIndex, szBuff);
+
+    for (i=0; i<PTC_CMD_SOCKET_MAX_COUNT; i++)
+    {
+        snprintf(szBuff, sizeof(szBuff), "%10d%10d%10d\r\n", g_austClients[i].ulStreamID, g_austClients[i].lSocket, g_austClients[i].bIsValid);
+        cli_out_string(ulIndex, szBuff);
+    }
+
+    return 0;
+
 }
 
 #ifdef  __cplusplus

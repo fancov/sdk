@@ -51,24 +51,6 @@ extern "C" {
 #define CREATE_NEW_USER "<a href=\"create_user.html\"><input type=\"button\" value=\"%s\"/></a>&nbsp;&nbsp;&nbsp;&nbsp;\
 <input type=\"button\" value=\"%s\" onclick=\"change_password()\" />&nbsp;&nbsp;&nbsp;&nbsp;<input type=\"button\" value=\"%s\" onclick=\"del_user()\" />"
 
-#if defined(MIPS)&&defined(UCLINUX)&&!defined(MIPS32)
-#define AOS_NTOHL(x) (x)
-#define AOS_NTOHS(x) (x)
-#define AOS_HTONL(x) (x)
-#define AOS_HTONS(x) (x)
-
-#else
-#define AOS_NTOHL(x) ((((x) & 0xFF000000)>>24) |  (((x) & 0x00FF0000)>>8) | \
-                      (((x) & 0x0000FF00)<<8 ) |  (((x) & 0x000000FF)<<24)  \
-                     )
-#define AOS_NTOHS(x)  ((((x)& 0xFF00)>>8) |  (((x) & 0x00FF)<<8))
-#define AOS_HTONL(x)  AOS_NTOHL(x)
-#define AOS_HTONS(x)  AOS_NTOHS(x)
-#endif
-
-#define AOS_SUCC 0
-#define AOS_FAIL (-1)
-
 #define LOAD_GET_OS_TYPE_FLAG(a) ((a)>>24)
 #define LOAD_GET_CPU_TYPE_FLAG(a) (((a)>>16)&0xff)
 #define LOAD_GET_PRODUCT_TYPE_FLAG(a) ((a)&0xffff)
@@ -175,7 +157,7 @@ S8 g_szDataTablesLang[PT_DATA_BUFF_1024] = "\"oLanguage\": {\
                     \"sNext\": \"后一页\",\
                     \"sLast\": \"尾页\"\
                     }\
-              },";
+              }";
 /* 对语言格式的说明
 * 1     : 菜单          0 ~ 8
 * 2     : 远程访问      9 ~ 23
@@ -1629,6 +1611,7 @@ static int pts_search_db(int eid, webs_t wp, int argc, char_t **argv, S8 szPtcLi
     S32 lSortCol = 0;
     S32 i = 0;
     S32 lResult = 0;
+    S32 lConut = 0;
 
     szSql = (S8 *)dos_dmem_alloc(PT_DATA_BUFF_1024 * 2);
     if (NULL == szSql)
@@ -1712,6 +1695,15 @@ static int pts_search_db(int eid, webs_t wp, int argc, char_t **argv, S8 szPtcLi
     }
 
     websWrite(wp, T("%s"), "{\"aaData\":[");
+    /* 查询总数 */
+    dos_snprintf(szSql, PT_DATA_BUFF_1024*2, "select * from %s %s %s;", szTableName, szWhere, szOrder);
+    lConut = dos_sqlite3_record_count(g_pstMySqlite, szSql);
+    if (lConut < 0)
+    {
+        DOS_ASSERT(0);
+        goto error;
+    }
+
     dos_snprintf(szSql, PT_DATA_BUFF_1024*2, "select * from %s %s %s %s;", szTableName, szWhere, szOrder, szLimit);
 
     lResult = dos_sqlite3_exec_callback(g_pstMySqlite, szSql, psqlites_callback, (VOID *)&stSqliteParam);
@@ -1721,7 +1713,7 @@ static int pts_search_db(int eid, webs_t wp, int argc, char_t **argv, S8 szPtcLi
         goto error;
     }
 
-    websWrite(wp, T("],\"sEcho\":\"%s\", \"iTotalDisplayRecords\":\"%d\"}"), szEcho, stSqliteParam.ulResCount);
+    websWrite(wp, T("],\"sEcho\":\"%s\", \"iTotalDisplayRecords\":\"%d\"}"), szEcho, lConut);
 
     if (szSql)
     {
@@ -2068,7 +2060,7 @@ static void pts_create_user(webs_t wp, char_t *path, char_t *query)
     }
 
     dos_snprintf(szSql, PT_DATA_BUFF_256, "select * from pts_user where name='%s'", szName);
-    lResult = dos_sqlite3_record_is_exist(g_pstMySqlite, szSql);
+    lResult = dos_sqlite3_record_count(g_pstMySqlite, szSql);
     if (lResult < 0)
     {
         DOS_ASSERT(0);
@@ -2114,7 +2106,7 @@ static void pts_change_password(webs_t wp, char_t *path, char_t *query)
 
     /* 判断user是否存在 */
     dos_snprintf(szSql, PT_DATA_BUFF_128, "select * from pts_user where name='%s'", szName);
-    lResult = dos_sqlite3_record_is_exist(g_pstMySqlite, szSql);
+    lResult = dos_sqlite3_record_count(g_pstMySqlite, szSql);
     if (lResult < 0)
     {
         DOS_ASSERT(0);

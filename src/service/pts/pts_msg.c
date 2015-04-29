@@ -193,6 +193,7 @@ VOID pts_send_lost_data_req(U64 ulLoseMsg)
 
     PT_LOSE_BAG_MSG_ST *pstLoseMsg = (PT_LOSE_BAG_MSG_ST *)ulLoseMsg;
     PT_STREAM_CB_ST *pstStreamNode = pstLoseMsg->pstStreamNode;
+    PT_CC_CB_ST *pstPtcSendNode = NULL;
 
     S32 i = 0;
     U32 ulCount = 0;
@@ -209,7 +210,18 @@ VOID pts_send_lost_data_req(U64 ulLoseMsg)
         dos_tmr_stop(&pstStreamNode->hTmrHandle);
         pstStreamNode->hTmrHandle= NULL;
         pts_delete_recv_stream_node(&pstLoseMsg->stMsg, NULL, DOS_TRUE);
-        pts_delete_send_stream_node(&pstLoseMsg->stMsg, NULL, DOS_TRUE);
+
+        pthread_mutex_lock(&g_pts_mutex_send);
+        pstPtcSendNode = pt_ptc_list_search(g_pstPtcListSend, pstLoseMsg->stMsg.aucID);
+        if (NULL != pstPtcSendNode)
+        {
+            pts_send_exit_notify_to_ptc(&pstLoseMsg->stMsg, pstPtcSendNode);
+            pts_delete_send_stream_node(&pstLoseMsg->stMsg, pstPtcSendNode, DOS_FALSE);
+        }
+        pthread_mutex_unlock(&g_pts_mutex_send);
+
+
+
         return;
     }
     else
@@ -861,86 +873,6 @@ S32 pts_save_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 
 }
 
 /**
- * 函数：S32 pts_save_login_ack_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen)
- * 功能：
- *      1.添加登陆结果到接收缓存，通知pts修改数据库
- * 参数
- *
- * 返回值：
- */
-S32 pts_save_login_ack_into_recv_cache(PT_CC_CB_ST *pstPtcNode, PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen)
-{
-    if (NULL == pstPtcNode || NULL == pstMsgDes || NULL == acRecvBuf)
-    {
-        return DOS_FAIL;
-    }
-
-    S32                lResult             = 0;
-    list_t             *pstStreamListHead  = NULL;
-    PT_STREAM_CB_ST    *pstStreamNode      = NULL;
-    PT_DATA_TCP_ST     *pstDataQueue       = NULL;
-
-    pstStreamListHead = pstPtcNode->astDataTypes[pstMsgDes->enDataType].pstStreamQueHead;
-    if (NULL == pstStreamListHead)
-    {
-        /* 创建stream list head */
-        pstStreamNode = pt_stream_node_create(pstMsgDes->ulStreamID);
-        if (NULL == pstStreamNode)
-        {
-            /* stream node创建失败 */
-            pt_logr_info("pts_save_login_ack_into_recv_cache : create stream node fail");
-            return DOS_FAIL;
-        }
-
-        pstStreamListHead = &(pstStreamNode->stStreamListNode);
-        pstPtcNode->astDataTypes[pstMsgDes->enDataType].pstStreamQueHead = pstStreamListHead;
-    }
-    else
-    {
-        pstStreamNode = pt_stream_queue_search(pstStreamListHead, pstMsgDes->ulStreamID);
-        if (NULL == pstStreamNode)
-        {
-            /* 创建stream node */
-            pstStreamNode = pt_stream_node_create(pstMsgDes->ulStreamID);
-            if (NULL == pstStreamNode)
-            {
-                /* stream node创建失败 */
-                pt_logr_info("pts_save_login_ack_into_recv_cache : create stream node fail");
-                return DOS_FAIL;
-            }
-            /* 插入 stream list中 */
-            pstStreamListHead = pt_stream_queue_insert(pstStreamListHead, &(pstStreamNode->stStreamListNode));
-
-        }
-    }
-
-    pstDataQueue = pstStreamNode->unDataQueHead.pstDataTcp;
-    if (NULL == pstDataQueue)
-    {
-        /* 创建tcp data queue */
-        pstDataQueue = pt_data_tcp_queue_create(PT_DATA_RECV_CACHE_SIZE);
-        if (NULL == pstDataQueue)
-        {
-            /* 创建data queue失败 */
-            pt_logr_info("pts_save_login_ack_into_recv_cache : create data queue fail");
-            return DOS_FAIL;
-        }
-
-        pstStreamNode->unDataQueHead.pstDataTcp = pstDataQueue;
-    }
-
-    /* 将数据插入到data queue中 */
-    lResult = pt_send_data_tcp_queue_insert(pstStreamNode, acRecvBuf, lDataLen, PT_DATA_RECV_CACHE_SIZE);
-    if (lResult < 0)
-    {
-        pt_logr_info("pts_save_login_ack_into_recv_cache : add data into send cache fail");
-        return DOS_FAIL;
-    }
-
-    return DOS_SUCC;
-}
-
-/**
  * 函数：VOID pts_handle_logout_req(PT_MSG_TAG *pstMsgDes)
  * 功能：
  *      1.处理退出登陆请求
@@ -1130,7 +1062,7 @@ VOID pts_send_exit_notify_to_ptc(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcSendN
     return;
 }
 
-VOID pts_send_login_fail2ptc(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr)
+VOID pts_send_login_res2ptc(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr, BOOL bLoginRes)
 {
     if (NULL == pstMsgDes)
     {
@@ -1143,7 +1075,7 @@ VOID pts_send_login_fail2ptc(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientA
     S32 lResult = 0;
 
     stLoginRes.enCtrlType = PT_CTRL_LOGIN_ACK;
-    stLoginRes.ucLoginRes = DOS_FALSE;
+    stLoginRes.ucLoginRes = bLoginRes;
 
     stMsgDes.enDataType = PT_DATA_CTRL;
     dos_memcpy(stMsgDes.aucID, pstMsgDes->aucID, PTC_ID_LEN);
@@ -1331,11 +1263,7 @@ S32 pts_login_verify(PT_MSG_TAG *pstMsgDes, S8 *pData, struct sockaddr_in stClie
     S8 szKey[PT_LOGIN_VERIFY_SIZE] = {0};
     S8 szDestKey[PT_LOGIN_VERIFY_SIZE] = {0};
     PT_CTRL_DATA_ST *pstCtrlData = NULL;
-    PT_CTRL_DATA_ST stLoginRes;
-    S8 szBuff[sizeof(PT_CTRL_DATA_ST)] = {0};
-    S8 acSendToPtcBuff[sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG)] = {0};
     PT_CC_CB_ST *pstPtcNode = NULL;
-    PT_MSG_TAG stMsgDes;
 
     pstCtrlData = (PT_CTRL_DATA_ST *)(pData+sizeof(PT_MSG_TAG));
     pstCtrlData->ulLginVerSeq = dos_ntohl(pstCtrlData->ulLginVerSeq);
@@ -1384,49 +1312,6 @@ S32 pts_login_verify(PT_MSG_TAG *pstMsgDes, S8 *pData, struct sockaddr_in stClie
                 lRet = DOS_SUCC;
             }
         }
-    }
-
-    /* 发送验证结果到ptc */
-    stLoginRes.enCtrlType = PT_CTRL_LOGIN_ACK;
-    if (lRet != DOS_SUCC)
-    {
-        stLoginRes.ucLoginRes = DOS_FALSE;
-    }
-    else
-    {
-        stLoginRes.ucLoginRes = DOS_TRUE;
-    }
-
-    dos_memcpy(stLoginRes.szPtcName, pstCtrlData->szPtcName, PT_PTC_NAME_LEN);
-
-    dos_memcpy(szBuff, (VOID *)&stLoginRes, sizeof(PT_CTRL_DATA_ST));
-    //pts_save_msg_into_cache(pstMsgDes->aucID, PT_DATA_CTRL, PT_CTRL_LOGIN_ACK, acBuff, sizeof(PT_CTRL_DATA_ST), DOS_FALSE);
-    stMsgDes.enDataType = PT_DATA_CTRL;
-    dos_memcpy(stMsgDes.aucID, pstMsgDes->aucID, PTC_ID_LEN);
-    stMsgDes.ulStreamID = dos_htonl(PT_CTRL_LOGIN_ACK);
-    stMsgDes.ExitNotifyFlag = DOS_FALSE;
-    stMsgDes.lSeq = 0;
-    stMsgDes.enCmdValue = PT_CMD_NORMAL;
-    stMsgDes.bIsEncrypt = DOS_FALSE;
-    stMsgDes.bIsCompress = DOS_FALSE;
-
-    dos_memcpy(acSendToPtcBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
-    dos_memcpy(acSendToPtcBuff+sizeof(PT_MSG_TAG), (VOID *)&stLoginRes, sizeof(PT_CTRL_DATA_ST));
-
-    if (g_ulUdpSocket > 0)
-    {
-        sendto(g_ulUdpSocket, acSendToPtcBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&stClientAddr, sizeof(stClientAddr));
-        if (lResult < 0)
-        {
-            close(g_ulUdpSocket);
-            g_ulUdpSocket = -1;
-            g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
-        }
-    }
-    /* 如果登录成功，创建接收缓存 */
-    if (DOS_SUCC == lRet)
-    {
-        lRet = pts_create_recv_cache(pstMsgDes, szPtcVersion, stClientAddr);
     }
 
     return lRet;
@@ -1531,8 +1416,10 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
     PT_CTRL_DATA_ST *pstCtrlData = NULL;
     HEART_BEAT_RTT_TSG *pstHbRTT = NULL;
     S32 lResult = 0;
+    S32 lLoginRes = 0;
     PT_MSG_TAG * pstMsgDes = NULL;
-    PT_CC_CB_ST *pstPtcNode = NULL;
+    PT_CC_CB_ST *pstPtcRecvNode = NULL;
+    PT_CC_CB_ST *pstPtcSendNode = NULL;
     S8 szSql[PTS_SQL_STR_SIZE] = {0};
     S8 szID[PTC_ID_LEN+1] = {0};
     S8 szPtcIntranetIP[IPV6_SIZE] = {0};   /* 内网IP */
@@ -1573,7 +1460,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
         {
             /* ptc id错误 */
             pt_logr_error("request login ipcc id(%s) format error", szID);
-            pts_send_login_fail2ptc(pstMsgDes, stClientAddr);
+            pts_send_login_res2ptc(pstMsgDes, stClientAddr, DOS_FALSE);
             break;
         }
         pts_handle_login_req(lSockfd, pstMsgDes, stClientAddr, pstCtrlData->szLoginVerify);
@@ -1592,8 +1479,8 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
             dos_strcpy(szVersion, (S8 *)pstCtrlData->szVersion);
         }
 
-        lResult = pts_login_verify(pstMsgDes, pData, stClientAddr, szVersion);
-        if (DOS_SUCC == lResult)
+        lLoginRes = pts_login_verify(pstMsgDes, pData, stClientAddr, szVersion);
+        if (DOS_SUCC == lLoginRes)
         {
             inet_ntop(AF_INET, (void *)(pstMsgDes->aulServIp), szPtcIntranetIP, IPV6_SIZE);
             usPtcIntranetPort = dos_ntohs(pstMsgDes->usServPort);
@@ -1602,33 +1489,34 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
 
             switch (pstCtrlData->enPtcType)
             {
-            case PT_PTC_TYPE_EMBEDDED:
-                strcpy(szPtcType, "Embedded");
-                dos_strncpy(szPtcName, pstCtrlData->szPtcName, PT_DATA_BUFF_64);
-                break;
-            case PT_PTC_TYPE_WINDOWS:
-                strcpy(szPtcType, "Windows");
-                lResult = g2u(pstCtrlData->szPtcName, dos_strlen(pstCtrlData->szPtcName), szPtcName, PT_DATA_BUFF_64);
-                if (lResult != DOS_SUCC)
-                {
-                    pt_logr_info("ptc name iconv fail");
+                case PT_PTC_TYPE_EMBEDDED:
+                    strcpy(szPtcType, "Embedded");
                     dos_strncpy(szPtcName, pstCtrlData->szPtcName, PT_DATA_BUFF_64);
-                }
-                break;
-            case PT_PTC_TYPE_LINUX:
-                strcpy(szPtcType, "Linux");
-                dos_strncpy(szPtcName, pstCtrlData->szPtcName, PT_DATA_BUFF_64);
-                break;
-            default:
-                break;
+                    break;
+                case PT_PTC_TYPE_WINDOWS:
+                    strcpy(szPtcType, "Windows");
+                    lResult = g2u(pstCtrlData->szPtcName, dos_strlen(pstCtrlData->szPtcName), szPtcName, PT_DATA_BUFF_64);
+                    if (lResult != DOS_SUCC)
+                    {
+                        pt_logr_info("ptc name iconv fail");
+                        dos_strncpy(szPtcName, pstCtrlData->szPtcName, PT_DATA_BUFF_64);
+                    }
+                    break;
+                case PT_PTC_TYPE_LINUX:
+                    strcpy(szPtcType, "Linux");
+                    dos_strncpy(szPtcName, pstCtrlData->szPtcName, PT_DATA_BUFF_64);
+                    break;
+                default:
+                    break;
             }
 
 
             dos_snprintf(szSql, PTS_SQL_STR_SIZE, "select * from ipcc_alias where sn='%.*s'", PTC_ID_LEN, pstMsgDes->aucID);
-            lResult = dos_sqlite3_record_is_exist(g_pstMySqlite, szSql);
+            lResult = dos_sqlite3_record_count(g_pstMySqlite, szSql);
             if (lResult < 0)
             {
                 DOS_ASSERT(0);
+                lLoginRes = DOS_FAIL;
             }
             else if (DOS_TRUE == lResult)  /* 判断是否存在 */
             {
@@ -1649,6 +1537,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
                 {
                     DOS_ASSERT(0);
                     pt_logr_info("update db state fail : %.*s", PTC_ID_LEN, pstMsgDes->aucID);
+                    lLoginRes = DOS_FAIL;
                 }
             }
             else
@@ -1668,8 +1557,32 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
                 {
                     DOS_ASSERT(0);
                     pt_logr_info("insert db state fail : %.*s", PTC_ID_LEN, pstMsgDes->aucID);
+                    lLoginRes = DOS_FAIL;
                 }
             }
+        }
+        else
+        {
+            /* 验证失败 */
+        }
+
+        /* 如果登录成功，创建接收缓存 */
+        if (DOS_SUCC == lLoginRes)
+        {
+            lResult = pts_create_recv_cache(pstMsgDes, szVersion, stClientAddr);
+            if (lResult != DOS_SUCC)
+            {
+                lLoginRes = DOS_FAIL;
+            }
+        }
+
+        if (DOS_SUCC == lLoginRes)
+        {
+            pts_send_login_res2ptc(pstMsgDes, stClientAddr, DOS_TRUE);
+        }
+        else
+        {
+            pts_send_login_res2ptc(pstMsgDes, stClientAddr, DOS_FALSE);
         }
 
         break;
@@ -1698,16 +1611,24 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
             pt_logr_info("hb time, update db fail");
         }
 
-        pstPtcNode = pt_ptc_list_search(g_pstPtcListRecv, pstMsgDes->aucID);
-        if(NULL == pstPtcNode)
+        pstPtcRecvNode = pt_ptc_list_search(g_pstPtcListRecv, pstMsgDes->aucID);
+        if(NULL == pstPtcRecvNode)
         {
             pt_logr_info("pts_ctrl_msg_handle : can not found ptc id = %.16s", pstMsgDes->aucID);
             break;
         }
         else
         {
-            pstPtcNode->usHBOutTimeCount = 0;
-            pstPtcNode->stDestAddr = stClientAddr;
+            pstPtcRecvNode->usHBOutTimeCount = 0;
+            if (pstPtcRecvNode->stDestAddr.sin_addr.s_addr != stClientAddr.sin_addr.s_addr)
+            {
+                pstPtcRecvNode->stDestAddr = stClientAddr;
+                pstPtcSendNode = pt_ptc_list_search(g_pstPtcListSend, pstMsgDes->aucID);
+                if (NULL != pstPtcSendNode)
+                {
+                    pstPtcSendNode->stDestAddr = stClientAddr;
+                }
+            }
         }
 
         pts_send_hb_rsp(pstMsgDes, stClientAddr);
@@ -2031,7 +1952,7 @@ VOID pts_save_msg_into_cache(U8 *pcIpccId, PT_DATA_TYPE_EN enDataType, U32 ulStr
     pstPtcNode = pt_ptc_list_search(g_pstPtcListSend, pcIpccId);
     if(NULL == pstPtcNode)
     {
-        pt_logr_debug("pts_send_msg : not found IPCC");
+        pt_logr_debug("pts_send_msg : not found PTC");
 #if PT_MUTEX_DEBUG
         pts_send_pthread_mutex_unlock(__FILE__, __LINE__);
 #else
@@ -2112,6 +2033,8 @@ VOID *pts_send_msg2ptc(VOID *arg)
     PT_NEND_SEND_NODE_ST *pstNeedSendNode = NULL;
     PT_DATA_TCP_ST    stRecvDataTcp;
     S32 lResult = 0;
+    /* 初始化信号量 */
+    sem_init(&g_SemPts, 0, 0);
 
     while(1)
     {
@@ -2453,7 +2376,10 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
                         g_pstPtsNendRecvNode = pt_need_recv_node_list_insert(g_pstPtsNendRecvNode, pstMsgDes);
                         pthread_cond_signal(&g_pts_cond_recv);
                     }
-                    sem_post(&g_SemPtsRecv);
+					else
+					{
+						sem_post(&g_SemPtsRecv);
+					}
                 }
                 else
                 {
