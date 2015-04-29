@@ -28,7 +28,7 @@ extern "C"{
 \r\tlist [Internet IP]\r\n\
 \r\tshow <ID|version>\r\n\
 \r\tsearch <any information>\r\n\
-\r\tconnect <ID|SN|Internet IP> [LAN IP] [Port]\r\n\
+\r\ttelnet <ID|SN|Internet IP> [LAN IP] [Port]\r\n\
 \r\texit\r\n"
 
 PTS_CMD_CLIENT_CB_ST g_astCmdClient[PTS_MAX_CLIENT_NUMBER];
@@ -573,12 +573,12 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
 
         lRet = PT_TELNET_OTHER;
     }
-    else if (dos_strncmp(pszKeyWord[0], "connect", dos_strlen(pszKeyWord[0])) == 0)
+    else if (dos_strncmp(pszKeyWord[0], "telnet", dos_strlen(pszKeyWord[0])) == 0)
     {
         /* Á¬½Óptc */
         if (lKeyCnt < 2 || (lKeyCnt == 2 && dos_strcmp(pszKeyWord[1], "?") == 0))
         {
-            snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : connect <ID|SN|Internet IP> [LAN IP] [Port]\r\n");
+            snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : telnet <ID|SN|Internet IP> [LAN IP] [Port]\r\n");
             lRet = PT_TELNET_FAIL;
             goto finished;
         }
@@ -638,7 +638,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
                 }
                 else
                 {
-                    snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : connect <ID|SN|Internet IP> [LAN IP] [Port]\r\n");
+                    snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : telnet <ID|SN|Internet IP> [LAN IP] [Port]\r\n");
                     lRet = PT_TELNET_FAIL;
                     goto finished;
                 }
@@ -654,7 +654,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
             }
             else
             {
-                snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : connect <ID|SN|Internet IP> [LAN IP] [Port]\r\n");
+                snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : telnet <ID|SN|Internet IP> [LAN IP] [Port]\r\n");
                 lRet = PT_TELNET_FAIL;
                 goto finished;
             }
@@ -690,7 +690,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
                 }
                 else
                 {
-                    snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : connect <ID|SN|Internet IP> [LAN IP] [Port]\r\n");
+                    snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : telnet <ID|SN|Internet IP> [LAN IP] [Port]\r\n");
                     lRet = PT_TELNET_FAIL;
                     goto finished;
                 }
@@ -717,7 +717,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
             }
             else
             {
-                snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : connect <ID|SN|Internet IP> [LAN IP] [Port]\r\n");
+                snprintf(szErrorMsg, sizeof(szErrorMsg), "Usage : telnet <ID|SN|Internet IP> [LAN IP] [Port]\r\n");
                 lRet = PT_TELNET_FAIL;
                 goto finished;
             }
