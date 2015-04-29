@@ -35,7 +35,7 @@ typedef struct tagNetcardParam //Íø¿¨ÐÅÏ¢
 S32  mon_netcard_malloc();
 S32  mon_netcard_free();
 BOOL mon_is_netcard_connected(const S8 * pszNetCard);
-S32  mon_get_max_trans_speed(const S8 * pszDevName);
+S32 mon_get_data_trans_speed(const S8 * pszDevName);
 S32  mon_get_netcard_data();
 S32  mon_netcard_formatted_info();
 

@@ -203,8 +203,8 @@ S32 debug_cli_msg_proc(U8 *_pMsg, U32 ulLen)
 
     if (pstMsgHeader->usLength > ulLen)
     {
-    	cli_logr_info("%s", "Recv invalid msg droped.");
-    	return 0;
+        cli_logr_info("%s", "Recv invalid msg droped.");
+        return 0;
     }
 
     cli_logr_debug("Start process message, total length:%d, body length:%d.", ulLen, pstMsgHeader->usLength);
@@ -215,11 +215,11 @@ S32 debug_cli_msg_proc(U8 *_pMsg, U32 ulLen)
     while (ulLength <= pstMsgHeader->usLength
             && pstMsgCmd)
     {
-    	if (ulLength > ulLen)
-    	{
-    		DOS_ASSERT(0);
-    		return 0;
-    	}
+        if (ulLength > ulLen)
+        {
+            DOS_ASSERT(0);
+            return 0;
+        }
 
         if (pstMsgHeader->usLength - ulLength < sizeof(MSG_UNIT_ST) + pstMsgCmd->usLength)
         {

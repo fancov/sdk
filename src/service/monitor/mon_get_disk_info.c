@@ -29,7 +29,7 @@ static S8 * mon_get_disk_serial_num(S8 * pszPartitionName);
 S32 mon_disk_malloc()
 {
    S32 lRows = 0;
-   MON_SYS_PART_DATA_S * pstPartition;
+   MON_SYS_PART_DATA_S * pstPartition = NULL;
    
    pstPartition = (MON_SYS_PART_DATA_S *)dos_dmem_alloc(MAX_PARTITION_COUNT * sizeof(MON_SYS_PART_DATA_S));
    if(!pstPartition)
@@ -130,7 +130,7 @@ S32 mon_get_partition_data()
    FILE * fp = NULL;
    g_lPartCnt = 0;
 
-   dos_snprintf(szDfCmd, MAX_CMD_LENGTH, "df | grep /> %s", szDiskFileName);
+   dos_snprintf(szDfCmd, MAX_CMD_LENGTH, "df | grep /dev/> %s", szDiskFileName);
    system(szDfCmd);
 
    fp = fopen(szDiskFileName, "r");
@@ -275,7 +275,7 @@ S32 mon_get_partition_formatted_info()
    S32 lDiskTemperature = 0;
 
    lDiskKBytes = mon_get_total_disk_kbytes();
-   if(DOS_SUCC == lDiskKBytes)
+   if(0 > lDiskKBytes)
    {
       logr_error("%s:Line %d:mon_get_partition_formatted_info|get total disk bytes failure,lDiskKBytes is %d!", 
                     dos_get_filename(__FILE__), __LINE__, lDiskKBytes);
@@ -359,7 +359,7 @@ S32 mon_get_total_disk_kbytes()
       lTotal += lOneTotal;
    }
 
-   return lTotal / 100;
+   return lTotal;
 }
 
 #endif //end #if INCLUDE_DISK_MONITOR

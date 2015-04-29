@@ -132,18 +132,7 @@ S32  mon_read_mem_file()
             ++lCount;
             continue;
          }
-         else if(0 == dos_strnicmp(pszAnalyseRslt[0], "Buffers", dos_strlen("Buffers")))
-         {
-            g_pstMem->lBuffers = lData;
-            ++lCount;
-            continue;
-         }
-         else if(0 == dos_strnicmp(pszAnalyseRslt[0], "Cached", dos_strlen("Cached")))
-         {
-            g_pstMem->lCached = lData;
-            ++lCount;
-            continue;
-         }
+
          else if(0 == dos_strnicmp(pszAnalyseRslt[0], "SwapTotal", dos_strlen("SwapTotal")))
          {
             g_pstMem->lSwapTotalBytes = lData;
@@ -153,6 +142,18 @@ S32  mon_read_mem_file()
          else if(0 == dos_strnicmp(pszAnalyseRslt[0], "SwapFree", dos_strlen("SwapFree")))
          {
             g_pstMem->lSwapFreeBytes = lData;
+            ++lCount;
+            continue;
+         }
+         else if(0 == dos_strnicmp(pszAnalyseRslt[0], "Buffers", dos_strlen("Buffers")))
+         {
+            g_pstMem->lBuffers = lData;
+            ++lCount;
+            continue;
+         }
+         else if (0 == dos_strnicmp(pszAnalyseRslt[0], "Cached", dos_strlen("Cached")))
+         {
+            g_pstMem->lCached = lData;
             ++lCount;
             continue;
          }
@@ -189,35 +190,42 @@ failure:
  */
 S32  mon_get_mem_data()
 {
-   S32 lCached      = g_pstMem->lCached;
    S32 lPhyMemTotal = g_pstMem->lPhysicalMemTotalBytes;
    S32 lPhyMemFree  = g_pstMem->lPhysicalMemFreeBytes;
-   S32 lBuffers     = g_pstMem->lBuffers ;
+
+   S32 lBusyMem = lPhyMemTotal - lPhyMemFree;
+   
    S32 lSwapTotal   = g_pstMem->lSwapTotalBytes;
    S32 lSwapFree    = g_pstMem->lSwapFreeBytes;
 
-   S32 lBusyMem  = 0;
-   S32 lSwapBusy = 0;
+   S32 lBusySwap = lSwapTotal - lSwapFree;
+   S32 lMemTotal = lPhyMemTotal + g_pstMem->lBuffers + g_pstMem->lCached;
+
+   lBusyMem += g_pstMem->lBuffers + g_pstMem->lCached;
    /**
     * 内存占用率算法:
     *     如果高速缓存的大小大于RAM大小，那么被占用的就是: busy = total -free
     *     否则被占用的为: busy = total - free - buffers - cached
     */
-   if (lCached > lPhyMemTotal)
+   if (0 == lPhyMemTotal)
    {
-      lBusyMem = 100 * (lPhyMemTotal - lPhyMemFree);
+       g_pstMem->lPhysicalMemUsageRate = 0;
    }
    else
    {
-      lBusyMem = 100 * (lPhyMemTotal - lPhyMemFree - lBuffers - lCached);
+       lBusyMem *= 100;
+       g_pstMem->lPhysicalMemUsageRate = (lBusyMem + lBusyMem % lMemTotal) / lMemTotal;
    }
-   /**
-    *  为了取得最精确的整数结果，a/b统一采用 (a + a%b)/b去计算，结果为和算数运算a/b值最接近的一个
-    */
-   lSwapBusy = 100 * (lSwapTotal - lSwapFree);
 
-   g_pstMem->lPhysicalMemUsageRate = (lBusyMem + lBusyMem % lPhyMemTotal) / lPhyMemTotal;
-   g_pstMem->lSwapUsageRate = (lSwapBusy + lSwapBusy % lSwapTotal) / lSwapTotal;
+   if (0 == lSwapTotal)
+   {
+       g_pstMem->lSwapUsageRate = 0;
+   }
+   else
+   {
+       lBusySwap *= 100;
+       g_pstMem->lSwapUsageRate = (lBusySwap + lBusySwap % lSwapTotal) / lSwapTotal;
+   }
 
    return DOS_SUCC;
 }
@@ -240,15 +248,19 @@ S32  mon_get_mem_formatted_info()
    }
 
    memset(g_szMonMemInfo, 0, MAX_BUFF_LENGTH);
-   dos_snprintf(g_szMonMemInfo, MAX_BUFF_LENGTH, "Physical Mem KBytes:%d\nPhysical Usage Rate:%d%%\n" \
-                "Swap partition KBytes:%d\nSwap partition Usage Rate:%d%%\n"
+   dos_snprintf(g_szMonMemInfo, MAX_BUFF_LENGTH, "  Physical Mem KBytes:%d\n    Physical Usage Rate:%d%%\n" \
+                "   Total Swap KBytes:%d\n  Swap Usage Rate:%d%%\n"
                 , g_pstMem->lPhysicalMemTotalBytes
                 , g_pstMem->lPhysicalMemUsageRate
                 , g_pstMem->lSwapTotalBytes
-                , g_pstMem->lSwapUsageRate);
-   
+                , g_pstMem->lSwapUsageRate
+           );
+   logr_info("%s:Line %d:g_szMonMemInfo is\n%s", dos_get_filename(__FILE__)
+                , __LINE__, g_szMonMemInfo);
+                
    return DOS_SUCC;
 }
+
 #endif //end #if INCLUDE_MEM_MONITOR
 #endif //end #if INCLUDE_RES_MONITOR
 #endif //end #if (INCLUDE_HB_SERVER)

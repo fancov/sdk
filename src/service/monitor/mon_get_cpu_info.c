@@ -382,7 +382,9 @@ S32  mon_get_cpu_rslt_data()
 {
    S32 lFirstTemp = 0, lSecondTemp = 0, lTwelfthTemp = 0, lLastTemp = 0;
    S32 lRet = 0;
-   
+   S32 lLastBusy = 0, l5sBusy = 0, l5sAll = 0, l5sIdle = 0, l1minBusy = 0, l1minAll = 0, l1minIdle = 0, l10minBusy = 0, l10minAll = 0, l10minIdle = 0;
+
+   /*队头结点*/
    lFirstTemp = m_pstCPUQueue->pstHead->lUser
               + m_pstCPUQueue->pstHead->lNice
               + m_pstCPUQueue->pstHead->lSystem
@@ -392,7 +394,8 @@ S32  mon_get_cpu_rslt_data()
               + m_pstCPUQueue->pstHead->lHardirq
               + m_pstCPUQueue->pstHead->lStealstolen
               + m_pstCPUQueue->pstHead->lGuest;
-                 
+
+   /*队列倒数第二节点*/
    lSecondTemp = m_pstCPUQueue->pstPenultimate->lUser
                + m_pstCPUQueue->pstPenultimate->lNice
                + m_pstCPUQueue->pstPenultimate->lSystem 
@@ -402,7 +405,8 @@ S32  mon_get_cpu_rslt_data()
                + m_pstCPUQueue->pstPenultimate->lHardirq
                + m_pstCPUQueue->pstPenultimate->lStealstolen
                + m_pstCPUQueue->pstPenultimate->lGuest;
-                 
+
+   /*队列倒数第十二节点*/
    lTwelfthTemp = m_pstCPUQueue->pstCountdownXII->lUser
                 + m_pstCPUQueue->pstCountdownXII->lNice
                 + m_pstCPUQueue->pstCountdownXII->lSystem
@@ -412,7 +416,8 @@ S32  mon_get_cpu_rslt_data()
                 + m_pstCPUQueue->pstCountdownXII->lHardirq
                 + m_pstCPUQueue->pstCountdownXII->lStealstolen
                 + m_pstCPUQueue->pstCountdownXII->lGuest;
-                    
+
+   /*队尾节点*/
    lLastTemp = m_pstCPUQueue->pstRear->lUser 
              + m_pstCPUQueue->pstRear->lNice
              + m_pstCPUQueue->pstRear->lSystem
@@ -427,94 +432,67 @@ S32  mon_get_cpu_rslt_data()
     *     rate = 1 - (idle2 - idle1)/(total2 - total1)
     *  其中:total = user + nice + system + idle + iowait + softirq + hardirq + stolen + guest
     */
-             
-   if(0 == m_pstCPUQueue->pstRear->lUser)
+    
+   /* 计算平均占用率 */
+   lLastBusy = 100 * (lLastTemp - m_pstCPUQueue->pstRear->lIdle);
+   if (0 == lLastTemp)
    {
-      g_pstCpuRslt->lCPUUsageRate = 0;
+       g_pstCpuRslt->lCPUUsageRate = 0;
    }
    else
    {
-      S32 lIdle = m_pstCPUQueue->pstRear->lIdle;
-      lIdle *= 100;
-      g_pstCpuRslt->lCPUUsageRate = 100 - (lIdle + lIdle % lLastTemp) / lLastTemp;
+       g_pstCpuRslt->lCPUUsageRate = (lLastBusy + lLastBusy % lLastTemp) / lLastTemp;
    }
-
-   if(lFirstTemp == lLastTemp)
-   {
-      g_pstCpuRslt->lCPUUsageRate = 0;
-      g_pstCpuRslt->lCPU1minUsageRate = 0;
-      g_pstCpuRslt->lCPU10minUsageRate = 0;
-      
-      lRet = mon_refresh_cpu_queue();
-      if(DOS_SUCC != lRet)
-      {
-         logr_error("%s:Line %d:mon_get_cpu_rslt_data|refresh cpu queue failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
-         return DOS_FAIL;
-      }
    
-      return DOS_SUCC;
+
+   /* 计算5s平均占用率 */
+   l5sAll = lLastTemp - lSecondTemp;
+   l5sIdle =  m_pstCPUQueue->pstRear->lIdle - m_pstCPUQueue->pstPenultimate->lIdle;
+   l5sBusy = l5sAll - l5sIdle;
+   l5sBusy *= 100;
+   if (0 == l5sAll)
+   {
+       g_pstCpuRslt->lCPU5sUsageRate = 0;
    }
    else
    {
-      S32 lIdle = m_pstCPUQueue->pstRear->lIdle - m_pstCPUQueue->pstHead->lIdle;
-      S32 lTemp = lLastTemp - lFirstTemp;
-      lIdle *= 100; 
-      
-      g_pstCpuRslt->lCPU10minUsageRate = 100 - (lIdle + lIdle % lTemp) / lTemp;
-   }
-
-   if(lLastTemp == lTwelfthTemp)
+       g_pstCpuRslt->lCPU5sUsageRate = (l5sBusy + l5sBusy % l5sAll) / l5sAll;
+   } 
+   
+   /* 计算1min CPU平均占用率 */
+   l1minAll = lLastTemp - lTwelfthTemp;
+   l1minIdle = m_pstCPUQueue->pstRear->lIdle - m_pstCPUQueue->pstCountdownXII->lIdle;
+   l1minBusy = l1minAll - l1minIdle;
+   l1minBusy *= 100;
+   if (0 == l1minAll)
    {
-      g_pstCpuRslt->lCPU1minUsageRate = 0;
-      g_pstCpuRslt->lCPU5sUsageRate = 0;
-      
-      lRet = mon_refresh_cpu_queue();
-      if(DOS_SUCC != lRet)
-      {
-         logr_error("%s:Line %d:mon_get_cpu_rslt_data|refresh cpu queue failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
-         return DOS_FAIL;
-      }
-      
-      return DOS_SUCC;
+       g_pstCpuRslt->lCPU1minUsageRate = 0;
    }
    else
    {
-      S32 lIdle = m_pstCPUQueue->pstRear->lIdle - m_pstCPUQueue->pstCountdownXII->lIdle;
-      S32 lTemp = lLastTemp - lTwelfthTemp;
-      lIdle *= 100;
-      g_pstCpuRslt->lCPU1minUsageRate = 100 - (lIdle + lIdle % lTemp) / lTemp;
+       g_pstCpuRslt->lCPU1minUsageRate = (l1minBusy + l1minBusy % l1minAll) / l1minAll;
    }
 
-   if(lSecondTemp == lLastTemp)
+   /* 计算10min CPU平均占用率 */
+   l10minAll = lLastTemp - lFirstTemp;
+   l10minIdle = m_pstCPUQueue->pstRear->lIdle - m_pstCPUQueue->pstHead->lIdle;
+   l10minBusy = l10minAll - l10minIdle;
+   l10minBusy *= 100;
+   if (0 == l10minAll)
    {
-      g_pstCpuRslt->lCPU5sUsageRate = 0;
-      
-      lRet = mon_refresh_cpu_queue();
-      if(DOS_SUCC != lRet)
-      {
-         logr_error("%s:Line %d:mon_get_cpu_rslt_data|refresh cpu queue failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
-         return DOS_FAIL;
-      }
-      
-      return DOS_SUCC;
+       g_pstCpuRslt->lCPU10minUsageRate = 0;
    }
    else
    {
-      S32 lIdle = m_pstCPUQueue->pstRear->lIdle - m_pstCPUQueue->pstPenultimate->lIdle;
-      S32 lTemp = lLastTemp - lSecondTemp;
-      lIdle *= 100;
-      g_pstCpuRslt->lCPU5sUsageRate = (lIdle + lIdle % lTemp) / lTemp;
+       g_pstCpuRslt->lCPU10minUsageRate = (l10minBusy + l10minBusy % l10minAll) / l10minAll;
    }
-
+   
    lRet = mon_refresh_cpu_queue();
-   if(DOS_SUCC != lRet)
+   if (DOS_SUCC != lRet)
    {
-      logr_error("%s:Line %d:mon_get_cpu_rslt_data|refresh cpu queue failure,lRet is %d!"
+       logr_error("%s:Line %d: Refresh CPU Queue FAIL, lRet is %d"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      return DOS_FAIL;
+       return DOS_FAIL;
    }
    
    return DOS_SUCC;
@@ -589,11 +567,14 @@ S32  mon_get_cpu_rslt_formatted_info()
          "Total CPU Average Usage Rate:%d%%.\n" \
          "5 seconds CPU Average Usage Rate:%d%%.\n" \
          "1min CPU Average Usage Rate:%d%%.\n" \
-         "10min CPU Average Usage Rate:%d%%.\n",
-         g_pstCpuRslt->lCPUUsageRate,
-         g_pstCpuRslt->lCPU5sUsageRate,
-         g_pstCpuRslt->lCPU1minUsageRate,
-         g_pstCpuRslt->lCPU10minUsageRate);
+         "10min CPU Average Usage Rate:%d%%.\n"
+         , g_pstCpuRslt->lCPUUsageRate
+         , g_pstCpuRslt->lCPU5sUsageRate
+         , g_pstCpuRslt->lCPU1minUsageRate
+         , g_pstCpuRslt->lCPU10minUsageRate);
+         
+   logr_info("%s:Line %d:g_szMonCPUInfo is \n%s"
+                , dos_get_filename(__FILE__), __LINE__, g_szMonCPUInfo);
    
    return DOS_SUCC;
 }

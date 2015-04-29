@@ -693,7 +693,7 @@ static S32  mon_check_all_process()
     *  如果配置的进程个数小于或者等于监控到的进程个数，
     *  那么认为所有的监控进程都已经启动
     */
-   if(lCfgProcCnt <= g_lPidCnt)
+   if(lCfgProcCnt <= g_lPidCnt + 1)
    {
       logr_info("%s:Line %d:mon_check_all_process|no process lost!"
                  , dos_get_filename(__FILE__), __LINE__);
@@ -755,10 +755,12 @@ static S32  mon_check_all_process()
 
       if(DOS_FALSE == bHasStarted)
       {
+         logr_info("%s:Line %d: Process \"%s\" lost,it will be restarted."
+                    , dos_get_filename(__FILE__), __LINE__, g_pastProc[ulCols]->szProcName);
          lRet = system(szProcCmd);
          if(0 > lRet)
          {
-            logr_error("%s:Line %d:mon_check_all_process|start process \'%s\' failure!"
+            logr_error("%s:Line %d:mon_check_all_process|start process \'%s\' FAIL."
                          , dos_get_filename(__FILE__), __LINE__, szProcName);
             return DOS_FAIL;
          }
@@ -898,7 +900,6 @@ S8 * mon_get_proc_name_by_id(S32 lPid, S8 * pszPidName)
    return NULL;
 }
 
-
 /**
  * 功能:判断进程是否死亡
  * 参数集：
@@ -957,6 +958,7 @@ BOOL mon_is_proc_dead(S32 lPid)
                 , lPid);
    return DOS_TRUE;
 }
+
 
 /**
  * 功能:获取所有监控进程的总cpu占用率

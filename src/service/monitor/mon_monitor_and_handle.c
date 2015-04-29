@@ -54,7 +54,10 @@ static S32 mon_get_res_info();
 static S32 mon_handle_excp();
 static S32 mon_add_data_to_db();
 static S32 mon_print_data_log();
+
+#if 0
 static S32 mon_reset_res_data();
+#endif
 
 static S32 mon_add_warning_record(U32 ulResId);
 static S32 mon_init_db_conn();
@@ -98,7 +101,6 @@ VOID *mon_res_monitor(VOID *p)
                     , dos_get_filename(__FILE__), __LINE__, lRet);
       }
  
-      
       /*  打印数据日志  */
       lRet = mon_print_data_log();
       if (DOS_SUCC != lRet)
@@ -144,8 +146,7 @@ VOID* mon_warning_handle(VOID *p)
           }
           switch (g_pstMsgQueue->pstHead->ulWarningId & (U32)0xff000000)
           {
-            case 0xf1000000: //CPU过大处理
-               
+            case 0xf1000000: //CPU过大处理  
                break;
             case 0xf2000000: //内存过大处理
                break;
@@ -178,13 +179,15 @@ VOID* mon_warning_handle(VOID *p)
          }
        }
 
-             /*  数据重置  */
+       /*  数据重置  */
+#if 0
        lRet = mon_reset_res_data();
        if(DOS_SUCC != lRet)
        {
           logr_error("%s:Line %d:mon_res_monitor|reset resource data failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
        }
+#endif
        pthread_mutex_unlock(&g_stMonMutex);
    }   
 }
@@ -284,7 +287,7 @@ S32 mon_res_alloc()
 static S32 mon_get_res_info()
 {
     S32 lRet = 0;
-
+    
     lRet = mon_read_mem_file();
     if (DOS_SUCC != lRet)
     {
@@ -312,6 +315,7 @@ static S32 mon_get_res_info()
        logr_error("%s:Line %d:mon_get_res_info|get netcard data failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
     }
+
 
     lRet = mon_get_process_data();
     if (DOS_SUCC != lRet)
@@ -371,6 +375,7 @@ static S32 mon_handle_excp()
           logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
        }
+       logr_info("%s:Line %d: Lack of Memory", dos_get_filename(__FILE__), __LINE__);
     }
 
     for(lRows = 0; lRows < g_lPartCnt; lRows++)
@@ -410,6 +415,8 @@ static S32 mon_handle_excp()
              logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
           }
+          logr_info("%s:Line %d: Partition %s:Not enough partition volume."
+                    , dos_get_filename(__FILE__), __LINE__, g_pastPartition[lRows]->szPartitionName);
           
        }
     }
@@ -456,6 +463,8 @@ static S32 mon_handle_excp()
           logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
        }
+       logr_info("%s:Line %d:Not enough disk volumn."
+                    , dos_get_filename(__FILE__), __LINE__);
     }
    
     if(g_pstCpuRslt->lCPUUsageRate >= g_pstCond->lCPUThreshold||
@@ -495,6 +504,8 @@ static S32 mon_handle_excp()
           logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
        }
+
+       logr_info("%s:Line %d: Such high CPU rate.", dos_get_filename(__FILE__), __LINE__);
     }
 
     for(lRows = 0; lRows < g_lNetCnt; lRows++)
@@ -533,6 +544,7 @@ static S32 mon_handle_excp()
              logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
           }
+          logr_info("%s:Line %d: Netcard %s disconnected.", dos_get_filename(__FILE__), __LINE__, g_pastNet[lRows]->szNetDevName);
        }
     }
 
@@ -544,8 +556,7 @@ static S32 mon_handle_excp()
     }
               
     if(lRet > g_pstCond->lProcCPUThreshold)
-    {
-        
+    { 
         MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
         if (!pstMsg)
         {
@@ -577,7 +588,7 @@ static S32 mon_handle_excp()
            logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                         , dos_get_filename(__FILE__), __LINE__, lRet);
         }
-        
+        logr_info("%s:Line %d:Processes possess such high CPU rate.", dos_get_filename(__FILE__), __LINE__);     
     }
 
     lRet = mon_get_proc_total_mem_rate();
@@ -588,8 +599,7 @@ static S32 mon_handle_excp()
     }
 
     if(lRet >= g_pstCond->lProcMemThreshold)
-    {
-       
+    {   
        MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
        if (!pstMsg)
        {
@@ -622,6 +632,8 @@ static S32 mon_handle_excp()
          logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
        }
+       logr_info("%s:Line %d:Processes possess such high Memory rate."
+                    , dos_get_filename(__FILE__), __LINE__);
     }
 
     return DOS_SUCC;
@@ -680,9 +692,8 @@ static S32 mon_add_data_to_db()
    time(&lCur);
    pstCurTime = localtime(&lCur);
    dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO tbl_syssrc%04d%02d(ctime,phymem," \
-     "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate," \
-     "procmem_pct,proccpu_pct) VALUES(\'%04d-%02d-%02d %02d:%02d:%02d\',%d,%d," \
-     "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)"
+     "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate,procmem_pct,proccpu_pct)" \
+     " VALUES(\'%04d-%02d-%02d %02d:%02d:%02d\',%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d);"
      , pstCurTime->tm_year + 1900
      , pstCurTime->tm_mon + 1
      , pstCurTime->tm_year + 1900
@@ -698,7 +709,7 @@ static S32 mon_add_data_to_db()
      , lTotalDiskKBytes
      , lTotalDiskRate
      , g_pstCpuRslt->lCPUUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPUUsageRate > 100 ? 100: g_pstCpuRslt->lCPUUsageRate)
-     , g_pstCpuRslt->lCPU5sUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPU5sUsageRate > 100 ? 100: g_pstCpuRslt->lCPU5sUsageRate < 0)
+     , g_pstCpuRslt->lCPU5sUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPU5sUsageRate > 100 ? 100: g_pstCpuRslt->lCPU5sUsageRate)
      , g_pstCpuRslt->lCPU1minUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPU1minUsageRate > 100 ? 100 : g_pstCpuRslt->lCPU1minUsageRate)
      , g_pstCpuRslt->lCPU10minUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPU10minUsageRate > 100 ? 100 : g_pstCpuRslt->lCPU10minUsageRate)
      , g_pastNet[0]->lRWSpeed
@@ -795,6 +806,7 @@ static S32 mon_print_data_log()
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
+#if 0
 static S32 mon_reset_res_data()
 {
    MON_SYS_PART_DATA_S *  pastDisk = g_pastPartition[0];
@@ -831,6 +843,7 @@ static S32 mon_reset_res_data()
 
    return DOS_SUCC;
 }
+#endif
 
 /**
  * 功能:给告警数据库添加告警记录
@@ -1030,9 +1043,9 @@ static S32 mon_init_warning_cond()
    {
       logr_error("%s:Line %d:mon_init_warning_cond|get memory threshold failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      config_hb_deinit();
-      dos_dmem_free(g_pstCond);
-      return DOS_FAIL;
+
+      /* 如果数据读取失败，给设置默认值 */
+      g_pstCond->lMemThreshold = 90;
    }
 
    lRet = config_hb_threshold_cpu(&(g_pstCond->lCPUThreshold)
@@ -1043,9 +1056,12 @@ static S32 mon_init_warning_cond()
    {
       logr_error("%s:Line %d:mon_init_warning_cond|get cpu threshold failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      config_hb_deinit();
-      dos_dmem_free(g_pstCond);
-      return DOS_FAIL;
+
+      /* 如果读取失败，设置默认值 */
+      g_pstCond->lCPUThreshold = 95;
+      g_pstCond->l5sCPUThreshold = 95;
+      g_pstCond->l1minCPUThreshold= 95;
+      g_pstCond->l10minCPUThreshold = 95;
    }
 
    lRet = config_hb_threshold_disk(&(g_pstCond->lPartitionThreshold)
@@ -1054,9 +1070,10 @@ static S32 mon_init_warning_cond()
    {
       logr_error("%s:Line %d:mon_init_warning_cond|get disk threshold failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      config_hb_deinit();
-      dos_dmem_free(g_pstCond);
-      return DOS_FAIL;
+                    
+      /* 读取失败则设置默认值 */
+      g_pstCond->lPartitionThreshold = 95;
+      g_pstCond->lDiskThreshold = 90;
    }
 
    lRet = config_hb_threshold_proc(&(g_pstCond->lProcMemThreshold)
@@ -1065,9 +1082,10 @@ static S32 mon_init_warning_cond()
    {
       logr_error("%s:Line %d:mon_init_warning_cond|get proc threshold failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      config_hb_deinit();
-      dos_dmem_free(g_pstCond);
-      return DOS_FAIL;
+
+      /* 如果读取失败则设置默认值 */
+      g_pstCond->lProcMemThreshold = 20;
+      g_pstCond->lProcCPUThreshold = 80;
    }
 
    return DOS_SUCC;

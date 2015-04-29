@@ -19,9 +19,22 @@ extern "C"{
 #include "mon_get_net_info.h"
 #include "mon_lib.h"
 
+typedef struct tagMonTransData
+{
+    U64 uLInSize;
+    U64 uLOutSize;
+}MON_TRANS_DATA_S;
+
 extern S8 g_szMonNetworkInfo[MAX_NETCARD_CNT * MAX_BUFF_LENGTH];
 extern MON_NET_CARD_PARAM_S * g_pastNet[MAX_NETCARD_CNT];
 extern S32 g_lNetCnt;
+
+//用来记录两个时间戳
+time_t *m_pt1 = NULL, *m_pt2 = NULL;
+
+//用来记录之前特定时刻和当前时刻的数据传输
+MON_TRANS_DATA_S *m_pstTransFormer = NULL;
+MON_TRANS_DATA_S *m_pstTransCur = NULL;
 
 /**
  * 功能:为网卡数组分配内存
@@ -40,7 +53,7 @@ S32 mon_netcard_malloc()
    {
       logr_cirt("%s:Line %d:mon_netcard_malloc|pastNet is %p!"
                 , dos_get_filename(__FILE__), __LINE__, pastNet);
-      return DOS_FAIL;
+      goto fail;
    }
 
    memset(pastNet, 0, MAX_NETCARD_CNT * sizeof(MON_NET_CARD_PARAM_S));
@@ -48,8 +61,71 @@ S32 mon_netcard_malloc()
    {
       g_pastNet[lRows] = &(pastNet[lRows]);
    }
+
+   m_pstTransFormer = (MON_TRANS_DATA_S *)dos_dmem_alloc(sizeof(MON_TRANS_DATA_S));
+   if (!m_pstTransFormer)
+   {
+       logr_error("%s:Line %d: Alloc Memory FAIL.", dos_get_filename(__FILE__), __LINE__);
+       goto fail;
+   }
+   memset(m_pstTransFormer, 0, sizeof(MON_TRANS_DATA_S));
+
+   m_pstTransCur = (MON_TRANS_DATA_S *)dos_dmem_alloc(sizeof(MON_TRANS_DATA_S));
+   if (!m_pstTransCur)
+   {
+       logr_error("%s:Line %d: Alloc Memory FAIL.", dos_get_filename(__FILE__), __LINE__);
+       goto fail;
+   }
+   memset(m_pstTransCur, 0, sizeof(MON_TRANS_DATA_S));
+
+   m_pt1 = dos_dmem_alloc(sizeof(time_t));
+   if (!m_pt1)
+   {
+       logr_error("%s:Line %d: Alloc memory FAIL.");
+       goto fail;
+   }
+   
+   m_pt2 = dos_dmem_alloc(sizeof(time_t));
+   if (!m_pt2)
+   {
+       logr_error("%s:Line %d: Alloc memory FAIL.");
+       goto fail;
+   }
    
    return DOS_SUCC;
+fail:
+   if (NULL != pastNet)
+   {
+       dos_dmem_free(pastNet);
+       pastNet = NULL;
+   }
+   if (NULL != g_pastNet[0])
+   {
+       dos_dmem_free( g_pastNet[0]); 
+       g_pastNet[0] = NULL;
+   }
+   if (NULL != m_pstTransFormer)
+   {
+       dos_dmem_free(m_pstTransFormer);
+       m_pstTransFormer = NULL;
+   }
+   if (NULL != m_pstTransCur)
+   {
+       dos_dmem_free(m_pstTransCur);
+       m_pstTransCur = NULL;
+   }
+   if (NULL != m_pt1)
+   {
+       dos_dmem_free(m_pt1);
+       m_pt1 = NULL;
+   }
+   if (NULL != m_pt2)
+   {
+       dos_dmem_free(m_pt2);
+       m_pt2 = NULL;
+   }
+   
+   return DOS_FAIL;
 }
 
 /**
@@ -76,24 +152,40 @@ S32  mon_netcard_free()
       g_pastNet[lRows] = NULL;
    }
 
+   if (!m_pstTransCur)
+   {
+      dos_dmem_free(m_pstTransCur);
+      m_pstTransCur = NULL;
+   }
+
+   if (!m_pstTransFormer)
+   {
+      dos_dmem_free(m_pstTransFormer);
+      m_pstTransFormer = NULL;
+   }
+
+   if (NULL != m_pt1)
+   {
+       dos_dmem_free(m_pt1);
+       m_pt1 = NULL;
+   }
+   if (NULL != m_pt2)
+   {
+       dos_dmem_free(m_pt2);
+       m_pt2 = NULL;
+   }
+
    return DOS_SUCC;
 } 
 
-/** ethtool eth0
- * Settings for eth0:
- *       Supported ports: [ TP ]
- *       Supported link modes:   10baseT/Half 10baseT/Full 
- *                               100baseT/Half 100baseT/Full 
- *                               1000baseT/Full 
- *       Supported pause frame use: No
- *       Supports auto-negotiation: Yes
- *       Advertised link modes:  10baseT/Half 10baseT/Full 
- *                               100baseT/Half 100baseT/Full 
- *  ......
- *       Wake-on: d
- *       Current message level: 0x00000007 (7)
- *                              drv probe link
- *       Link detected: yes
+/** 
+ * 判断原理:
+ *   proc文件系统中有这样一个文件记录了网络连接状态信息
+ *   /sys/class/net/$netCardName/carrier
+ *   如果文件为空，则表明当前网卡已失去连接
+ *   如果连接OK，则它会读出数据"1"
+ *
+ *
  * 功能:判断网卡的网口是否开启
  * 参数集：
  *   参数1:const S8 * pszNetCard 网卡名称
@@ -102,126 +194,137 @@ S32  mon_netcard_free()
  */
  BOOL mon_is_netcard_connected(const S8 * pszNetCard)
  {
-   S8 szEthCmd[MAX_CMD_LENGTH] = {0};
-   S8 szNetFile[] = "network";
-   S8 szLine[MAX_BUFF_LENGTH] = {0};
-   FILE * fp;
+     FILE *pstNetFp = NULL;
+     S8  szBuff[512] = {0};
+     S8  szCarrierPath[512] = {0};
+     BOOL bRet = DOS_FALSE;
 
-   if(!pszNetCard)
-   {
-      logr_cirt("%s:Line %d:mon_is_netcard_connected|pszNetCard is %p!",
-                dos_get_filename(__FILE__), __LINE__, pszNetCard);
-      return DOS_FALSE;
-   }
+     dos_snprintf(szCarrierPath, sizeof(szCarrierPath), "/sys/class/net/%s/carrier", pszNetCard);
+     if (NULL != (pstNetFp = fopen(szCarrierPath, "r")))
+     {
+         if(NULL != fgets(szBuff, sizeof(szBuff), pstNetFp))
+         {
+            if ('0' == szBuff[0])
+            {
+                bRet = DOS_FALSE;
+            }
+            else
+            {
+                bRet =  DOS_TRUE;
+            }
+         }
+         else
+         {
+             logr_error("%s:Line %d: File \"%s\" has no content.", dos_get_filename(__FILE__), __LINE__, szCarrierPath);
+             bRet = DOS_FALSE;
+         }
+     }
+     else
+     {
+         logr_error("%s:Line %d:file \"%s\" open FAIL."
+                    , dos_get_filename(__FILE__), __LINE__, szCarrierPath);
+         bRet = DOS_FALSE;
+     }
 
-   dos_snprintf(szEthCmd, MAX_CMD_LENGTH, "ethtool %s | tail -n 1 > %s", pszNetCard, szNetFile);
-   szEthCmd[dos_strlen(szEthCmd)] = '\0';
-   system(szEthCmd);
-
-   fp = fopen(szNetFile, "r");
-   if (!fp)
-   {
-      logr_cirt("%s:line %d:mon_is_netcard_connected|file \'%s\' open failed,fp is %p!"
-                , dos_get_filename(__FILE__), __LINE__, szNetFile, fp);
-      return DOS_FALSE;
-   }
-
-   fseek(fp, 0, SEEK_SET);
-   if (NULL != (fgets(szLine, MAX_BUFF_LENGTH, fp)))
-   {
-      /**
-       * 判断依据:判断Link detected后边的字符串是否为yes，是则连接正常
-       */
-      if (mon_is_ended_with(szLine, "yes\n"))
-      {
-          goto success;
-      }
-   }
-   goto failure;
-
-success:
-   fclose(fp);
-   fp = NULL;
-   unlink(szNetFile);   
-   return DOS_TRUE;
-
-failure:
-   fclose(fp);
-   fp = NULL;
-   unlink(szNetFile);        
-   return DOS_FALSE;
-}
+     fclose(pstNetFp);
+     pstNetFp = NULL;
+     
+     return bRet;
+ }
 
 /**
+ *  文件/proc/net/dev列出了所有网卡的数据传输情况，对应的数据格式如下:
+ *  Inter-|   Receive                                                |  Transmit
+ *  face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+ *     lo:812170463 1868650    0    0    0     0          0         0 812170463 1868650    0    0    0     0       0          0
+ *   eth0:2917065308 11065515    0    0    0     0          0         0 4520109097 13962214    0    0    0     0       0          0
+ *
+ *  算法: 假设t1时刻，对应的接收数据总字节数recv1,对应的发送数据总字节数send1
+ *        t2时刻，对应的接收数据总字节数recv2,对应的发送数据总字节数send2
+ *        则t1~t2时刻的数据传输速率是:  (recv2 - recv1 + send2 - send1)/(t2 - t1)
+ *
+ *
  * 输出结果参照mon_is_netcard_connected函数
- * 功能:获取网口的最大传输速率
+ * 功能:获取网口的数据传输速率，单位是kbps
  * 参数集：
  *   参数1:const S8 * pszDevName 网卡名称
  * 返回值：
- *   成功返回网口的最大数据传输速率，失败返回-1
+ *   成功返回网口的数据传输速率，失败返回-1
  */
-S32 mon_get_max_trans_speed(const S8 * pszDevName)
+S32 mon_get_data_trans_speed(const S8 * pszDevName)
 {
-   S8  szEthCmd[MAX_CMD_LENGTH] = {0};
-   S8  szSpeedFile[] = "speedfile";
-   S32 lSpeed = 0;
-   FILE * fp;
+    U32 ulInterval = 0;
+    S8  szNetFile[] = "/proc/net/dev";
+    S8  szNetInfo[1024] = {0};
+    FILE *fp = NULL;
+    S8 *pszInfo = NULL;
+    S8 *ppszData[16] = {0};
+    U32 ulRet = U32_BUTT;
+    S64 LRet = -1;
+    U64 uLIn = U64_BUTT, uLOut = U64_BUTT;
 
-   if(!pszDevName)
-   {
-      logr_cirt("%s:Line %d:mon_get_max_trans_speed|pszDevName is %p!"
-                , dos_get_filename(__FILE__), __LINE__, pszDevName);
-      return -1;
-   }
-   
-   dos_snprintf(szEthCmd, MAX_CMD_LENGTH, "ethtool %s > %s"
-                , pszDevName, szSpeedFile);
-   system(szEthCmd);
-   
-   fp = fopen(szSpeedFile, "r");
-   if(!fp)
-   {
-      logr_cirt("%s:Line %d:mon_get_max_trans_speed|file \'%s\' open failure,fp is %p!"
-                , dos_get_filename(__FILE__), __LINE__, szSpeedFile, fp);
-      return -1;
-   }
-   
-   fseek(fp, 0, SEEK_SET);
-   while (!feof(fp))
-   {
-      S8 szLine[MAX_BUFF_LENGTH] = {0};
-      if (NULL != (fgets(szLine, MAX_BUFF_LENGTH, fp)))
-      {
-         if (mon_is_substr(szLine, "Speed"))
-         {
-            lSpeed = mon_first_int_from_str(szLine);
-            if(-1 == lSpeed)
-            {
-               logr_error("%s:Line %d:mon_get_max_trans_speed|lSpeed is %d!"
-                            , dos_get_filename(__FILE__), __LINE__, lSpeed);
-               goto failure;
-            }  
-            logr_debug("%s:Line %d:mon_get_max_trans_speed|lSpeed is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lSpeed);
-            goto success;
-         }     
-      }
-   }  
-   logr_notice("%s:Line %d:mon_get_max_trans_speed|the device %s is not exist",
-               dos_get_filename(__FILE__), __LINE__, pszDevName);
-   goto failure;
+    *m_pt1 = *m_pt2;
+    *m_pt2 = time(0);
+    ulInterval = *m_pt2 - *m_pt1;
+    if (0 == ulInterval)
+    {
+       ulInterval = 5;
+       logr_info("%s:Line %d: First Run.");
+    }
 
-               
-failure:
-   fclose(fp);
-   fp = NULL;
-   unlink(szSpeedFile);
-   return -1;
-success:
-   fclose(fp);
-   fp = NULL;
-   unlink(szSpeedFile);
-   return lSpeed;
+    m_pstTransFormer->uLInSize = m_pstTransCur->uLInSize;
+    m_pstTransFormer->uLOutSize = m_pstTransCur->uLOutSize;
+
+    fp = fopen(szNetFile, "r");
+    if (!fp)
+    {
+        logr_error("%s:Line %d:File \"%s\" open FAIL.", dos_get_filename(__FILE__), __LINE__, szNetFile);
+        return DOS_FAIL;
+    }
+
+    while(NULL != fgets(szNetInfo, sizeof(szNetInfo), fp))
+    {
+        pszInfo = dos_strstr(szNetInfo, (S8 *)pszDevName);
+        if (NULL != pszInfo)
+        {
+            break;
+        }
+    }
+
+    while(*(pszInfo - 1) != ':')
+    {
+        ++pszInfo;
+    }
+
+    ulRet = mon_analyse_by_reg_expr(pszInfo, " \t\n", ppszData, sizeof(ppszData) / sizeof(ppszData[0]));
+    if (DOS_SUCC != ulRet)
+    {
+        logr_error("%s:Line %d: Analysis string FAIL.");
+        fclose(fp);
+        return DOS_FAIL;
+    }
+
+    if (dos_atoull(ppszData[0], &uLIn) < 0 
+        || dos_atoull(ppszData[8], &uLOut) < 0)
+    {
+        logr_error("%s:Line %d: dos_atoull FAIL.");
+        fclose(fp);
+        return DOS_FAIL;
+    }
+
+    m_pstTransCur->uLInSize = uLIn;
+    m_pstTransCur->uLOutSize = uLOut;
+
+    LRet = (S64)m_pstTransCur->uLInSize - (S64)m_pstTransFormer->uLInSize 
+         + (S64)m_pstTransCur->uLOutSize - (S64)m_pstTransFormer->uLOutSize;
+
+    ulInterval *= 1024;
+    
+    fclose(fp);
+    fp = NULL;
+
+    /*单位是KB/s*/
+    return (LRet + LRet % ulInterval) / ulInterval; 
 }
 
 
@@ -234,7 +337,7 @@ success:
  */
 S32 mon_get_netcard_data()
 {
-   S32 lFd;
+   S32 lFd = 0, lRet = 0;
    S32 lInterfaceNum = 0;
    struct ifreq astReq[16];
    struct ifconf stIfc;
@@ -348,22 +451,21 @@ S32 mon_get_netcard_data()
              goto failure;
          }
 
-         /* 获取数据的传输速率 */
-         if (0 == (dos_strcmp(g_pastNet[lLength]->szNetDevName, "lo")))
-         {  // "lo"的传输速率默认为-1
-            g_pastNet[lLength]->lRWSpeed = -1;
-         }
-         else
+         if (0 == dos_strcmp("lo", g_pastNet[lLength]->szNetDevName))
          {
-            S32 lRet = mon_get_max_trans_speed(g_pastNet[lLength]->szNetDevName);
-            if(-1 == lRet)
-            {
-               logr_error("%s:Line %d:mon_get_netcard_data|get max transspeed failure,lRet is %d!"
-                            , dos_get_filename(__FILE__), __LINE__, lRet);
-               goto failure;
-            }
-            g_pastNet[lLength]->lRWSpeed = lRet;
+             g_pastNet[lLength]->lRWSpeed = -1;
+             continue;
          }
+         
+         lRet = mon_get_data_trans_speed(g_pastNet[lLength]->szNetDevName);
+         if (0 > lRet)
+         {
+             logr_error("%s:Line %d: Get data transport speed FAIL."
+                        , dos_get_filename(__FILE__), __LINE__);
+             goto failure;
+         }
+         
+         g_pastNet[lLength]->lRWSpeed = lRet;
          
          lLength++;
       }
