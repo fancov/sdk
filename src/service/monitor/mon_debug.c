@@ -24,14 +24,14 @@ S32 mon_command_proc(U32 ulIndex, S32 argc, S8 **argv)
    
     if (3 != argc)
     {
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\nYou should input 3 params,but you input %u params.", argc);
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nYou should input 3 params,but you input %u params.\r\n", argc);
         cli_out_string(ulIndex, szBuff);
         goto help;
     }
 
     if (0 != dos_stricmp(argv[1], "show"))
     {
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\nThe param 1 should be \"show\", but your param is \"%s\".", argv[1]);
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nThe param 1 should be \"show\", but your param is \"%s\".\r\n", argv[1]);
         cli_out_string(ulIndex, szBuff);
         goto help;
     }
@@ -66,7 +66,7 @@ S32 mon_command_proc(U32 ulIndex, S32 argc, S8 **argv)
     }
     else
     {
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\nYour param 2 is \"%s\",it is not supported.", argv[2]);
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nYour param 2 is \"%s\",it is not supported.\r\n", argv[2]);
         cli_out_string(ulIndex, szBuff);
         goto help;
     }
