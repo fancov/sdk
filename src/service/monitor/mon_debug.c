@@ -55,7 +55,7 @@ S32 mon_command_proc(U32 ulIndex, S32 argc, S8 **argv)
     else if (0 == dos_stricmp(argv[2], "process"))
     {
         mon_show_process(ulIndex);
-    }
+    }   
     else if (0 == dos_stricmp(argv[2], "all"))
     {
         mon_show_mem(ulIndex);
