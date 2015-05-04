@@ -693,7 +693,7 @@ static S32  mon_check_all_process()
     *  如果配置的进程个数小于或者等于监控到的进程个数，
     *  那么认为所有的监控进程都已经启动
     */
-   if(lCfgProcCnt <= g_lPidCnt + 1)
+   if(lCfgProcCnt <= g_lPidCnt - 1)
    {
       logr_info("%s:Line %d:mon_check_all_process|no process lost!"
                  , dos_get_filename(__FILE__), __LINE__);

@@ -199,9 +199,7 @@ S32  mon_get_mem_data()
    S32 lSwapFree    = g_pstMem->lSwapFreeBytes;
 
    S32 lBusySwap = lSwapTotal - lSwapFree;
-   S32 lMemTotal = lPhyMemTotal + g_pstMem->lBuffers + g_pstMem->lCached;
 
-   lBusyMem += g_pstMem->lBuffers + g_pstMem->lCached;
    /**
     * 内存占用率算法:
     *     如果高速缓存的大小大于RAM大小，那么被占用的就是: busy = total -free
@@ -214,7 +212,7 @@ S32  mon_get_mem_data()
    else
    {
        lBusyMem *= 100;
-       g_pstMem->lPhysicalMemUsageRate = (lBusyMem + lBusyMem % lMemTotal) / lMemTotal;
+       g_pstMem->lPhysicalMemUsageRate = (lBusyMem + lBusyMem % lPhyMemTotal) / lPhyMemTotal;
    }
 
    if (0 == lSwapTotal)
