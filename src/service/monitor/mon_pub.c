@@ -21,13 +21,13 @@ pthread_t g_pMonthr, g_pHndthr;
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_init()
+U32 mon_init()
 {
-   S32 lRet = 0;
-   lRet = mon_res_alloc();
-   if(DOS_FAIL == lRet)
+   U32 ulRet = 0;
+   ulRet = mon_res_alloc();
+   if(DOS_FAIL == ulRet)
    {
-      logr_error("%s:Line %d:mon_start|lRet is %d!", dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_start|ulRet is %u!", dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
    return DOS_SUCC;
@@ -40,7 +40,7 @@ S32 mon_init()
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_start()
+U32 mon_start()
 {
    S32 lRet = 0;
    
@@ -67,13 +67,13 @@ S32 mon_start()
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_stop()
+U32 mon_stop()
 {
-   S32 lRet = 0;
-   lRet = mon_res_destroy();
-   if(DOS_SUCC != lRet)
+   U32 ulRet = 0;
+   ulRet = mon_res_destroy();
+   if(DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_stop|destroy resource failure!", dos_get_filename(__FILE__), __LINE__);
+      logr_error("%s:Line %u:mon_stop|destroy resource failure!", dos_get_filename(__FILE__), __LINE__);
       return DOS_FAIL;
    }
    return DOS_SUCC;

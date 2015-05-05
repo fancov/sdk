@@ -22,22 +22,22 @@
 
 typedef struct tagMonSysMemData
 {
-    S32  lPhysicalMemTotalBytes; //物理内存总大小KBytes 
-    S32  lPhysicalMemFreeBytes;  //空闲物理内存大小KBytes
-    S32  lCached;
-    S32  lBuffers;
-    S32  lSwapTotalBytes;        //Swap交换分区大小
-    S32  lSwapFreeBytes;         //Swap空闲分区大小
-    S32  lSwapUsageRate;         //Swap交换分区占用率
-    S32  lPhysicalMemUsageRate;  //物理内存使用率  
+    U32  ulPhysicalMemTotalBytes; //物理内存总大小KBytes 
+    U32  ulPhysicalMemFreeBytes;  //空闲物理内存大小KBytes
+    U32  ulCached;
+    U32  ulBuffers;
+    U32  ulSwapTotalBytes;        //Swap交换分区大小
+    U32  ulSwapFreeBytes;         //Swap空闲分区大小
+    U32  ulSwapUsageRate;         //Swap交换分区占用率
+    U32  ulPhysicalMemUsageRate;  //物理内存使用率  
 }MON_SYS_MEM_DATA_S;
 
 
-S32  mon_mem_malloc();
-S32  mon_mem_free();
-S32  mon_read_mem_file();
-S32  mon_get_mem_data();
-S32  mon_get_mem_formatted_info();
+U32  mon_mem_malloc();
+U32  mon_mem_free();
+U32  mon_read_mem_file();
+U32  mon_get_mem_data();
+U32  mon_get_mem_formatted_info();
 
 #endif // #if INCLUDE_RES_MONITOR  
 #endif //end _MON_GET_MEM_INFO_H__

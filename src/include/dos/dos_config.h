@@ -236,7 +236,7 @@ S32 config_hb_get_start_cmd(U32 ulIndex, S8 *pszCmd, U32 ulLen);
  *
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
-S32 config_hb_threshold_mem(S32* plMem);
+S32 config_hb_threshold_mem(U32* pulMem);
 
 
 /**
@@ -247,7 +247,7 @@ S32 config_hb_threshold_mem(S32* plMem);
  *
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
-S32 config_hb_threshold_cpu(S32* plAvg, S32* pl5sAvg, S32 *pl1minAvg, S32 *pl10minAvg);
+S32 config_hb_threshold_cpu(U32* pulAvg, U32* pul5sAvg, U32 *pul1minAvg, U32 *pul10minAvg);
 
 
 /**
@@ -258,7 +258,7 @@ S32 config_hb_threshold_cpu(S32* plAvg, S32* pl5sAvg, S32 *pl1minAvg, S32 *pl10m
  *
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
-S32 config_hb_threshold_disk(S32 *plPartition, S32* plDisk);
+S32 config_hb_threshold_disk(U32 *pulPartition, U32* pulDisk);
 
 
 /**
@@ -269,7 +269,7 @@ S32 config_hb_threshold_disk(S32 *plPartition, S32* plDisk);
  *
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
-S32 config_hb_threshold_proc(S32* plMem, S32* plCPU);
+S32 config_hb_threshold_proc(U32* pulMem, U32* pulCPU);
 
 
 

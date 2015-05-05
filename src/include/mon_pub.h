@@ -16,9 +16,9 @@
 
 #include <dos/dos_types.h>
 
-S32 mon_init();
-S32 mon_start();
-S32 mon_stop();
+U32 mon_init();
+U32 mon_start();
+U32 mon_stop();
 
 #endif //#if INCLUDE_RES_MONITOR  
 #endif //_MON_PUB_H__

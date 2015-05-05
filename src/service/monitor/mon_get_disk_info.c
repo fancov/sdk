@@ -14,9 +14,9 @@ extern "C"{
 
 extern  S8 g_szMonDiskInfo[MAX_PARTITION_COUNT * MAX_BUFF_LENGTH];
 extern  MON_SYS_PART_DATA_S * g_pastPartition[MAX_PARTITION_COUNT];
-extern  S32 g_lPartCnt;
+extern  U32 g_ulPartCnt;
 
-static S32  mon_get_disk_temperature();
+static U32  mon_get_disk_temperature();
 static S8 * mon_get_disk_serial_num(S8 * pszPartitionName);
 
 /**
@@ -26,9 +26,9 @@ static S8 * mon_get_disk_serial_num(S8 * pszPartitionName);
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_disk_malloc()
+U32 mon_disk_malloc()
 {
-   S32 lRows = 0;
+   U32 ulRows = 0;
    MON_SYS_PART_DATA_S * pstPartition = NULL;
    
    pstPartition = (MON_SYS_PART_DATA_S *)dos_dmem_alloc(MAX_PARTITION_COUNT * sizeof(MON_SYS_PART_DATA_S));
@@ -41,9 +41,9 @@ S32 mon_disk_malloc()
 
    memset(pstPartition, 0, MAX_PARTITION_COUNT * sizeof(MON_SYS_PART_DATA_S));
 
-   for(lRows = 0; lRows < MAX_PARTITION_COUNT; lRows++)
+   for(ulRows = 0; ulRows < MAX_PARTITION_COUNT; ulRows++)
    {
-      g_pastPartition[lRows] = &(pstPartition[lRows]);
+      g_pastPartition[ulRows] = &(pstPartition[ulRows]);
    }
 
    return DOS_SUCC;
@@ -56,22 +56,24 @@ S32 mon_disk_malloc()
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_disk_free()
+U32 mon_disk_free()
 {
-   S32 lRows = 0;
+   U32 ulRows = 0;
    MON_SYS_PART_DATA_S * pstPartition = g_pastPartition[0];
    if(!pstPartition)
    {
-      logr_cirt("%s:Line %d:mon_disk_free|free memory failure,pstPartition is %p!"
+      logr_cirt("%s:Line %u:mon_disk_free|free memory failure,pstPartition is %p!"
                 , dos_get_filename(__FILE__) , __LINE__, pstPartition);
       return DOS_FAIL;  
    }
    dos_dmem_free(pstPartition);
    
-   for(lRows = 0 ; lRows < MAX_PARTITION_COUNT; lRows++)
+   for(ulRows = 0 ; ulRows < MAX_PARTITION_COUNT; ulRows++)
    {
-      g_pastPartition[lRows] = NULL;
+      g_pastPartition[ulRows] = NULL;
    }
+
+   pstPartition = NULL;
    
    return DOS_SUCC;
 }
@@ -83,7 +85,7 @@ S32 mon_disk_free()
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-static S32  mon_get_disk_temperature()
+static U32  mon_get_disk_temperature()
 {
    /* 由于软件包hdparm安装问题，故无法采用 */
    return DOS_SUCC;
@@ -98,9 +100,9 @@ static S32  mon_get_disk_temperature()
  */
 static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
 {   /* 目前没有有效的方法获得其硬件序列 */
-    if(!pszPartitionName)
+    if(DOS_ADDR_INVALID(pszPartitionName))
     {
-       logr_cirt("%s:Line %d:mon_get_disk_serial_num|pszPartitionName is %p!",
+       logr_cirt("%s:Line %u:mon_get_disk_serial_num|pszPartitionName is %p!",
                   dos_get_filename(__FILE__), __LINE__, pszPartitionName);
        return NULL;
     }
@@ -120,7 +122,7 @@ static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_get_partition_data()
+U32 mon_get_partition_data()
 {
    S8  szDfCmd[MAX_CMD_LENGTH] = {0};
    S8  szLine[MAX_BUFF_LENGTH] = {0};
@@ -128,15 +130,15 @@ S32 mon_get_partition_data()
    S8* pszAnalyseRslt[6] = {0};
    U32 ulRet = 0;
    FILE * fp = NULL;
-   g_lPartCnt = 0;
+   g_ulPartCnt = 0;
 
    dos_snprintf(szDfCmd, MAX_CMD_LENGTH, "df | grep /dev/> %s", szDiskFileName);
    system(szDfCmd);
 
    fp = fopen(szDiskFileName, "r");
-   if (!fp)
+   if (DOS_ADDR_INVALID(fp))
    {
-      logr_cirt("%s: Line %d:mon_get_partition_data|file \'%s\' fp is %p!"
+      logr_cirt("%s: Line %u:mon_get_partition_data|file \'%s\' fp is %p!"
                 , dos_get_filename(__FILE__) , __LINE__, szDiskFileName, fp);
       return DOS_FAIL;
    }
@@ -144,7 +146,7 @@ S32 mon_get_partition_data()
    fseek(fp, 0, SEEK_SET);
    while(!feof(fp))
    {
-      S32 lData = 0;
+      U32 ulData = 0;
       S32 lRet = 0;
       S8* pszTemp = NULL;
       if (NULL != (fgets(szLine, MAX_BUFF_LENGTH, fp)))
@@ -152,7 +154,7 @@ S32 mon_get_partition_data()
          ulRet = mon_analyse_by_reg_expr(szLine, " \t\n", pszAnalyseRslt, sizeof(pszAnalyseRslt)/sizeof(pszAnalyseRslt[0]));
          if(DOS_SUCC != ulRet)
          {
-            logr_error("%s:Line %d:mon_get_partition_data|analyse sentence failure!"
+            logr_error("%s:Line %u:mon_get_partition_data|analyse sentence failure!"
                          , dos_get_filename(__FILE__), __LINE__);
             goto failure;
          }
@@ -162,17 +164,17 @@ S32 mon_get_partition_data()
             continue;
          }
             
-         dos_strcpy(g_pastPartition[g_lPartCnt]->szPartitionName, pszAnalyseRslt[0]);
-         g_pastPartition[g_lPartCnt]->szPartitionName[dos_strlen(pszAnalyseRslt[0])] = '\0';
+         dos_strcpy(g_pastPartition[g_ulPartCnt]->szPartitionName, pszAnalyseRslt[0]);
+         g_pastPartition[g_ulPartCnt]->szPartitionName[dos_strlen(pszAnalyseRslt[0])] = '\0';
 
-         lRet = dos_atol(pszAnalyseRslt[3], &lData);
+         lRet = dos_atoul(pszAnalyseRslt[3], &ulData);
          if(0 != lRet)
          {
-            logr_error("%s:Line %d:mon_get_partition_data|dos_atol failure!"
+            logr_error("%s:Line %u:mon_get_partition_data|dos_atol failure!"
                          , dos_get_filename(__FILE__), __LINE__);
             goto failure;
          }
-         g_pastPartition[g_lPartCnt]->lPartitionAvailBytes = lData;
+         g_pastPartition[g_ulPartCnt]->ulPartitionAvailBytes = ulData;
 
          pszTemp = pszAnalyseRslt[4];
          while('%' != *pszTemp)
@@ -181,18 +183,18 @@ S32 mon_get_partition_data()
          }
          *pszTemp = '\0';
 
-         lRet = dos_atol(pszAnalyseRslt[4], &lData);
-         if(0 != lRet)
+         lRet = dos_atoul(pszAnalyseRslt[4], &ulData);
+         if(0 > lRet)
          {
-            logr_error("%s:Line %d:mon_get_partition_data|dos_atol failure!"
+            logr_error("%s:Line %u:mon_get_partition_data|dos_atol failure!"
                          , dos_get_filename(__FILE__), __LINE__);
             goto failure;
          }
-         g_pastPartition[g_lPartCnt]->lPartitionUsageRate = lData;
+         g_pastPartition[g_ulPartCnt]->ulPartitionUsageRate = ulData;
 
-         dos_strcpy(g_pastPartition[g_lPartCnt]->szDiskSerialNo, mon_get_disk_serial_num(pszAnalyseRslt[0]));
-         g_pastPartition[g_lPartCnt]->szDiskSerialNo[dos_strlen(mon_get_disk_serial_num(pszAnalyseRslt[0]))] = '\0';
-         ++g_lPartCnt;
+         dos_strcpy(g_pastPartition[g_ulPartCnt]->szDiskSerialNo, mon_get_disk_serial_num(pszAnalyseRslt[0]));
+         g_pastPartition[g_ulPartCnt]->szDiskSerialNo[dos_strlen(mon_get_disk_serial_num(pszAnalyseRslt[0]))] = '\0';
+         ++g_ulPartCnt;
       } 
    }
    goto success;
@@ -217,46 +219,46 @@ failure:
  * 返回值：
  *   成功返回占用率大小，失败返回DOS_FAIL
  */
-S32  mon_get_total_disk_usage_rate()
+U32  mon_get_total_disk_usage_rate()
 {
    U32  ulRows = 0;
-   S32  lTotal = 0;
-   S32  lUsed  = 0;
+   U32  ulTotal = 0;
+   U32  ulUsed  = 0;
 
    /**
     *  使用率的算法:
     *     rate = busy/total
     */
-   for (ulRows = 0; ulRows < g_lPartCnt; ulRows++)
+   for (ulRows = 0; ulRows < g_ulPartCnt; ulRows++)
    {
-      S32 lOneAvail = 0;
-      S32 lOneTotal = 0;
-      S32 lOneUsed  = 0;
-      S32 lOneRate  = 0;
+      U32 ulOneAvail = 0;
+      U32 ulOneTotal = 0;
+      U32 ulOneUsed  = 0;
+      U32 ulOneRate  = 0;
       
-      if(!g_pastPartition[ulRows])
+      if(DOS_ADDR_INVALID(g_pastPartition[ulRows]))
       {
-         logr_error("%s:Line %d:mon_get_total_disk_usage_rate|g_pastPartition[%u] is %p!"
+         logr_error("%s:Line %u:mon_get_total_disk_usage_rate|g_pastPartition[%u] is %p!"
                     , dos_get_filename(__FILE__), __LINE__, ulRows
-                    , g_pastPartition[g_lPartCnt]);
+                    , g_pastPartition[ulRows]);
          return DOS_FAIL;
       }
       
-      lOneAvail = g_pastPartition[ulRows]->lPartitionAvailBytes;
-      lOneRate  = g_pastPartition[ulRows]->lPartitionUsageRate;
+      ulOneAvail = g_pastPartition[ulRows]->ulPartitionAvailBytes;
+      ulOneRate  = g_pastPartition[ulRows]->ulPartitionUsageRate;
 
-      lOneAvail *= 100;
-      lOneTotal = (lOneAvail + lOneAvail % (100 - lOneRate))/(100 - lOneRate);
-      lOneUsed  = lOneTotal * lOneRate / 100;
+      ulOneAvail *= 100;
+      ulOneTotal = (ulOneAvail + ulOneAvail % (100 - ulOneRate))/(100 - ulOneRate);
+      ulOneUsed  = ulOneTotal * ulOneRate / 100;
 
-      lTotal += lOneTotal;
-      lUsed  += lOneUsed;
+      ulTotal += ulOneTotal;
+      ulUsed  += ulOneUsed;
       
    }
 
-   lTotal /= 100;
+   ulTotal /= 100;
    
-   return (lUsed + lUsed % lTotal) / lTotal;
+   return (ulUsed + ulUsed % ulTotal) / ulTotal;
 }
 
 /**
@@ -266,68 +268,62 @@ S32  mon_get_total_disk_usage_rate()
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_get_partition_formatted_info()
+U32 mon_get_partition_formatted_info()
 {
-   S32 lRows = 0;
+   U32 ulRows = 0;
    S8  szTempBuff[MAX_BUFF_LENGTH] = {0};
-   S32 lDiskKBytes = 0;
-   S32 lDiskUsageRate = 0;
-   S32 lDiskTemperature = 0;
+   U32 ulDiskKBytes = 0;
+   U32 ulDiskUsageRate = 0;
+   U32 ulDiskTemperature = 0;
 
-   lDiskKBytes = mon_get_total_disk_kbytes();
-   if(0 > lDiskKBytes)
+   ulDiskUsageRate = mon_get_total_disk_usage_rate();
+   if(DOS_FAIL == ulDiskUsageRate)
    {
-      logr_error("%s:Line %d:mon_get_partition_formatted_info|get total disk bytes failure,lDiskKBytes is %d!", 
-                    dos_get_filename(__FILE__), __LINE__, lDiskKBytes);
+      logr_error("%s:Line %u:mon_get_partition_formatted_info|get total disk usage rate failure,ulDiskUsageRate is %u!",
+                 dos_get_filename(__FILE__), __LINE__, ulDiskUsageRate);
       return DOS_FAIL;
    }
 
-   lDiskUsageRate = mon_get_total_disk_usage_rate();
-   if(-1 == lDiskUsageRate)
-   {
-      logr_error("%s:Line %d:mon_get_partition_formatted_info|get total disk usage rate failure,lDiskUsageRate is %d!",
-                 dos_get_filename(__FILE__), __LINE__, lDiskUsageRate);
-      return DOS_FAIL;
-   }
+   ulDiskKBytes = mon_get_total_disk_kbytes();
 
-   lDiskTemperature = mon_get_disk_temperature();
-   if(-1 == lDiskTemperature)
+   ulDiskTemperature = mon_get_disk_temperature();
+   if(DOS_FAIL == ulDiskTemperature)
    {
-      logr_error("%s:Line %d:mon_get_partition_formatted_info|get disk temperature failure,lDiskTemperature is %d", 
-                 dos_get_filename(__FILE__) ,__LINE__, lDiskTemperature);
+      logr_error("%s:Line %u:mon_get_partition_formatted_info|get disk temperature failure,ulDiskTemperature is %u", 
+                 dos_get_filename(__FILE__) ,__LINE__, ulDiskTemperature);
       return DOS_FAIL;
    }
 
    memset(g_szMonDiskInfo, 0, MAX_PARTITION_COUNT * MAX_BUFF_LENGTH);
    
-   for (lRows = 0; lRows < g_lPartCnt; lRows++)
+   for (ulRows = 0; ulRows < g_ulPartCnt; ulRows++)
    {
-      S32 lOneAvail = 0;
-      S32 lOneRate = 0;
+      U32 ulOneAvail = 0;
+      U32 ulOneRate = 0;
       S8  szTempInfo[MAX_BUFF_LENGTH] = {0};
 
-      lOneAvail = g_pastPartition[lRows]->lPartitionAvailBytes;
-      lOneRate  = g_pastPartition[lRows]->lPartitionUsageRate;
-      lOneAvail *= 100;
+      ulOneAvail = g_pastPartition[ulRows]->ulPartitionAvailBytes;
+      ulOneRate  = g_pastPartition[ulRows]->ulPartitionUsageRate;
+      ulOneAvail *= 100;
 
-      if(!g_pastPartition[lRows])
+      if(DOS_ADDR_INVALID(g_pastPartition[ulRows]))
       {
-         logr_cirt("%s:Line %d:mon_get_partition_formatted_info|get partition formatted information failure,m_pastPartition[%d] is %p!"
-                    , dos_get_filename(__FILE__), __LINE__, lRows, g_pastPartition[lRows]);
+         logr_cirt("%s:Line %u:mon_get_partition_formatted_info|get partition formatted information failure,m_pastPartition[%d] is %p!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRows, g_pastPartition[ulRows]);
          return DOS_FAIL;
       }
       
-      dos_snprintf(szTempInfo, MAX_BUFF_LENGTH, "partition %d:\nName:%s\nTotal KBytes:%d\nUsage Rate:%d%%\nSerialNo:%s\n",
-                    lRows, g_pastPartition[lRows]->szPartitionName,
-                    (lOneAvail + lOneAvail % (100 - lOneRate)) / (100 - lOneRate),
-                    g_pastPartition[lRows]->lPartitionUsageRate,
-                    g_pastPartition[lRows]->szDiskSerialNo);
+      dos_snprintf(szTempInfo, MAX_BUFF_LENGTH, "partition %u:\nName:%s\nTotal KBytes:%u\nUsage Rate:%u%%\nSerialNo:%s\n",
+                    ulRows, g_pastPartition[ulRows]->szPartitionName,
+                    (ulOneAvail + ulOneAvail % (100 - ulOneRate)) / (100 - ulOneRate),
+                    g_pastPartition[ulRows]->ulPartitionUsageRate,
+                    g_pastPartition[ulRows]->szDiskSerialNo);
       dos_strcat(g_szMonDiskInfo, szTempInfo);
       dos_strcat(g_szMonDiskInfo, "\n");
    }
    
-   dos_snprintf(szTempBuff, MAX_BUFF_LENGTH, "Total Disk KBytes:%d\nTotal Usage Rate:%d%%\nDisk Temperature:%d\n"
-                , lDiskKBytes, lDiskUsageRate, lDiskTemperature);
+   dos_snprintf(szTempBuff, MAX_BUFF_LENGTH, "Total Disk KBytes:%u\nTotal Usage Rate:%u%%\nDisk Temperature:%u\n"
+                , ulDiskKBytes, ulDiskUsageRate, ulDiskTemperature);
    dos_strcat(g_szMonDiskInfo, szTempBuff);
 
    return DOS_SUCC;
@@ -340,26 +336,26 @@ S32 mon_get_partition_formatted_info()
  * 返回值：
  *   成功返回磁盘总字节数(KBytes)，失败返回DOS_FAIL
  */
-S32 mon_get_total_disk_kbytes()
+U32 mon_get_total_disk_kbytes()
 {
-   S32 lTotal = 0;
+   U32 ulTotal = 0;
    U32 ulRows = 0;
 
-   for(ulRows = 0; ulRows < g_lPartCnt; ulRows++)
+   for(ulRows = 0; ulRows < g_ulPartCnt; ulRows++)
    {
-      S32 lOneTotal = 0;
-      S32 lOneAvail = 0;
-      S32 lOneRate  = 0;
+      U32 ulOneTotal = 0;
+      U32 ulOneAvail = 0;
+      U32 ulOneRate  = 0;
 
-      lOneAvail = g_pastPartition[ulRows]->lPartitionAvailBytes;
-      lOneRate  = g_pastPartition[ulRows]->lPartitionUsageRate;
+      ulOneAvail = g_pastPartition[ulRows]->ulPartitionAvailBytes;
+      ulOneRate  = g_pastPartition[ulRows]->ulPartitionUsageRate;
 
-      lOneAvail *= 100;
-      lOneTotal = (lOneAvail + lOneAvail % (100 - lOneRate)) / (100 - lOneRate);
-      lTotal += lOneTotal;
+      ulOneAvail *= 100;
+      ulOneTotal = (ulOneAvail + ulOneAvail % (100 - ulOneRate)) / (100 - ulOneRate);
+      ulTotal += ulOneTotal;
    }
 
-   return lTotal;
+   return ulTotal;
 }
 
 #endif //end #if INCLUDE_DISK_MONITOR

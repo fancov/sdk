@@ -34,9 +34,9 @@ MON_SYS_PART_DATA_S *  g_pastPartition[MAX_PARTITION_COUNT] = {0};
 MON_NET_CARD_PARAM_S * g_pastNet[MAX_NETCARD_CNT] = {0};
 MON_PROC_STATUS_S *    g_pastProc[MAX_PROC_CNT] = {0};
 
-S32  g_lPartCnt = 0;
-S32  g_lNetCnt  = 0;
-S32  g_lPidCnt  = 0;
+U32  g_ulPartCnt = 0;
+U32  g_ulNetCnt  = 0;
+U32  g_ulPidCnt  = 0;
 
 S8 g_szMonMemInfo[MAX_BUFF_LENGTH]     = {0};
 S8 g_szMonCPUInfo[MAX_BUFF_LENGTH]     = {0};
@@ -50,19 +50,19 @@ static MON_THRESHOLD_S *      g_pstCond = NULL;
 
 S8 * g_pszAnalyseList = NULL;
 
-static S32 mon_get_res_info();
-static S32 mon_handle_excp();
-static S32 mon_add_data_to_db();
-static S32 mon_print_data_log();
+static U32 mon_get_res_info();
+static U32 mon_handle_excp();
+static U32 mon_add_data_to_db();
+static U32 mon_print_data_log();
 
 #if 0
 static S32 mon_reset_res_data();
 #endif
 
-static S32 mon_add_warning_record(U32 ulResId);
-static S32 mon_init_db_conn();
-static S32 mon_init_warning_cond();
-static S32 mon_close_db_conn();
+static U32 mon_add_warning_record(U32 ulResId);
+static U32 mon_init_db_conn();
+static U32 mon_init_warning_cond();
+static U32 mon_close_db_conn();
 
 /**
  * 功能:资源监控
@@ -75,38 +75,38 @@ VOID *mon_res_monitor(VOID *p)
 {   
    while (1)
    { 
-      S32 lRet = 0;
+      U32 ulRet = 0;
       pthread_mutex_lock(&g_stMonMutex); 
       /*  获取资源信息  */
-      lRet = mon_get_res_info();
-      if (DOS_SUCC != lRet)
+      ulRet = mon_get_res_info();
+      if (DOS_SUCC != ulRet)
       {
-         logr_error("%s:Line %d:mon_res_monitor|get resource info failure,lRet is %d!"  
-                    , dos_get_filename(__FILE__), __LINE__, lRet); 
+         logr_error("%s:Line %u:mon_res_monitor|get resource info failure,ulRet is %u!"  
+                    , dos_get_filename(__FILE__), __LINE__, ulRet); 
       }
       
       /*  异常处理  */
-      lRet = mon_handle_excp();
-      if (DOS_SUCC != lRet)
+      ulRet = mon_handle_excp();
+      if (DOS_SUCC != ulRet)
       {
-         logr_error("%s:Line %d:mon_res_monitor|handle exception failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+         logr_error("%s:Line %u:mon_res_monitor|handle exception failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
       }
       
       /*  将数据记录至数据库  */
-      lRet = mon_add_data_to_db();
-      if (DOS_SUCC != lRet)
+      ulRet = mon_add_data_to_db();
+      if (DOS_SUCC != ulRet)
       {
-         logr_error("%s:Line %d:mon_res_monitor|add record to database failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+         logr_error("%s:Line %u:mon_res_monitor|add record to database failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
       }
  
       /*  打印数据日志  */
-      lRet = mon_print_data_log();
-      if (DOS_SUCC != lRet)
+      ulRet = mon_print_data_log();
+      if (DOS_SUCC != ulRet)
       {
-         logr_error("%s:Line %d:mon_res_monitor|print data log failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+         logr_error("%s:Line %u:mon_res_monitor|print data log failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
       }
    
       pthread_cond_signal(&g_stMonCond);
@@ -124,12 +124,12 @@ VOID *mon_res_monitor(VOID *p)
  */
 VOID* mon_warning_handle(VOID *p)
 {
-     S32 lRet = 0;
+     U32 ulRet = 0;
      
      g_pstMsgQueue =  mon_get_warning_msg_queue();
-     if(!g_pstMsgQueue)
+     if(DOS_ADDR_INVALID(g_pstMsgQueue))
      {
-        logr_cirt("%s:Line %d:mon_warning_handle|get warning msg failure,g_pstMsgQueue is %p!"
+        logr_cirt("%s:Line %u:mon_warning_handle|get warning msg failure,g_pstMsgQueue is %p!"
                     , dos_get_filename(__FILE__), __LINE__, g_pstMsgQueue);
         return NULL;
      }
@@ -156,25 +156,25 @@ VOID* mon_warning_handle(VOID *p)
                break;
             case 0xf5000000: //进程异常处理
                {
-                  if(DOS_SUCC != lRet)
+                  if(DOS_SUCC != ulRet)
                   {
-                     logr_error("%s:Line %d:mon_warning_handle|kill all monitor failure,lRet is %d!"
-                                , dos_get_filename(__FILE__), __LINE__, lRet);
+                     logr_error("%s:Line %u:mon_warning_handle|kill all monitor failure,lRet is %u!"
+                                , dos_get_filename(__FILE__), __LINE__, ulRet);
                   }
                }
                break;
             default:
-               logr_error("%s:Line %d:g_pstMsgQueue->pstHead->ulWarningId is %s%x"
+               logr_error("%s:Line %u:g_pstMsgQueue->pstHead->ulWarningId is %s%x"
                             , dos_get_filename(__FILE__), __LINE__, "0x"
                             , g_pstMsgQueue->pstHead->ulWarningId);
                break;
           }
           
-         lRet = mon_warning_msg_de_queue(g_pstMsgQueue);
-         if(DOS_SUCC != lRet)
+         ulRet = mon_warning_msg_de_queue(g_pstMsgQueue);
+         if(DOS_SUCC != ulRet)
          {
-            logr_error("%s:Line %d:mon_warning_handle|delete warning msg queue failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+            logr_error("%s:Line %u:mon_warning_handle|delete warning msg queue failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
             break;
          }
        }
@@ -199,79 +199,79 @@ VOID* mon_warning_handle(VOID *p)
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_res_alloc()
+U32 mon_res_alloc()
 {
-   S32 lRet = 0;
+   U32 ulRet = 0;
 
-   lRet = mon_init_cpu_queue();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_init_cpu_queue();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_generate|init cpu queue failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_generate|init cpu queue failure,lRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_init_warning_msg_queue();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_init_warning_msg_queue();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_generate|init msg queue failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_generate|init msg queue failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_init_warning_cond();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_init_warning_cond();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_generate|init msg queue failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_generate|init msg queue failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_init_db_conn();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_init_db_conn();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_generate|init mysql connection failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_generate|init mysql connection failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_init_str_array();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_init_str_array();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_generate|init string array failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_generate|init string array failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
     /*  分配资源 */
-   lRet = mon_mem_malloc();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_mem_malloc();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_generate|mem alloc memory failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_generate|mem alloc memory failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
    
-   lRet = mon_cpu_rslt_malloc();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_cpu_rslt_malloc();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_generate|cpu result alloc memory failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_generate|cpu result alloc memory failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_disk_malloc();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_disk_malloc();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_generate|disk alloc memory failure,lRet is %d!"
-                , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_generate|disk alloc memory failure,ulRet is %u!"
+                , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_netcard_malloc();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_netcard_malloc();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_generate|net alloc memory failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_generate|net alloc memory failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_proc_malloc();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_proc_malloc();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_generate|proc alloc memory failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_generate|proc alloc memory failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
    return DOS_SUCC;
@@ -284,44 +284,44 @@ S32 mon_res_alloc()
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
-static S32 mon_get_res_info()
+static U32 mon_get_res_info()
 {
-    S32 lRet = 0;
+    U32 ulRet = 0;
     
-    lRet = mon_read_mem_file();
-    if (DOS_SUCC != lRet)
+    ulRet = mon_read_mem_file();
+    if (DOS_SUCC != ulRet)
     {
-       logr_error("%s:Line %d:mon_get_res_info|get memory data failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+       logr_error("%s:Line %u:mon_get_res_info|get memory data failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
     }
 
-    lRet = mon_get_cpu_rslt_data();
-    if (DOS_SUCC != lRet)
+    ulRet = mon_get_cpu_rslt_data();
+    if (DOS_SUCC != ulRet)
     {
-       logr_error("%s:Line %d:mon_get_res_info|get cpu result data success,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+       logr_error("%s:Line %u:mon_get_res_info|get cpu result data success,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
     }
 
-    lRet = mon_get_partition_data();
-    if (DOS_SUCC != lRet)
+    ulRet = mon_get_partition_data();
+    if (DOS_SUCC != ulRet)
     {
-       logr_error("%s:Line %d:mon_get_res_info|get partition data failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+       logr_error("%s:Line %u:mon_get_res_info|get partition data failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
     }
 
-    lRet = mon_get_netcard_data();
-    if (DOS_SUCC != lRet)
+    ulRet = mon_get_netcard_data();
+    if (DOS_SUCC != ulRet)
     {
-       logr_error("%s:Line %d:mon_get_res_info|get netcard data failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+       logr_error("%s:Line %u:mon_get_res_info|get netcard data failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
     }
 
 
-    lRet = mon_get_process_data();
-    if (DOS_SUCC != lRet)
+    ulRet = mon_get_process_data();
+    if (DOS_SUCC != ulRet)
     {
-       logr_error("%s:Line %d:mon_get_res_info|get process data success,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+       logr_error("%s:Line %u:mon_get_res_info|get process data success,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
     }
     
     return DOS_SUCC;
@@ -334,107 +334,107 @@ static S32 mon_get_res_info()
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
-static S32 mon_handle_excp()
+static U32 mon_handle_excp()
 {
     S32 lRet = 0;
     U32 ulRet = 0;
-    S32 lRows = 0;
-    S32 lTotalDiskRate = 0;
+    U32 ulRows = 0;
+    U32 ulTotalDiskRate = 0;
     
     /*  异常处理  */
-    if (g_pstMem->lPhysicalMemUsageRate >= g_pstCond->lMemThreshold)
+    if (g_pstMem->ulPhysicalMemUsageRate >= g_pstCond->ulMemThreshold)
     {
        MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-       if (!pstMsg)
+       if (DOS_ADDR_INVALID(pstMsg))
        {
-          logr_error("%s:Line %d: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+          logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
                         , dos_get_filename(__FILE__), __LINE__, pstMsg);
        }
 
        ulRet = mon_generate_warning_id(MEM_RES, 0x00, RES_LACK);
        if((U32)0xff == ulRet)
        {
-          logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
+          logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
                         , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
        }
        pstMsg->ulWarningId = ulRet;
        
-       pstMsg->lMsgLen = sizeof(MON_SYS_MEM_DATA_S);
+       pstMsg->ulMsgLen = sizeof(MON_SYS_MEM_DATA_S);
        pstMsg->msg = g_pstMem;
        
-       lRet = mon_add_warning_record(pstMsg->ulWarningId);
+       ulRet = mon_add_warning_record(pstMsg->ulWarningId);
        if(DOS_SUCC != lRet)
        {
-          logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+          logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
        }
        
-       lRet = mon_warning_msg_en_queue(pstMsg);
-       if(DOS_SUCC != lRet)
+       ulRet = mon_warning_msg_en_queue(pstMsg);
+       if(DOS_SUCC != ulRet)
        {
-          logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+          logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
        }
-       logr_info("%s:Line %d: Lack of Memory", dos_get_filename(__FILE__), __LINE__);
+       logr_info("%s:Line %u: Lack of Memory", dos_get_filename(__FILE__), __LINE__);
     }
 
-    for(lRows = 0; lRows < g_lPartCnt; lRows++)
+    for(ulRows = 0; ulRows < g_ulPartCnt; ulRows++)
     {
-       if(g_pastPartition[lRows]->lPartitionUsageRate >= g_pstCond->lPartitionThreshold)
+       if(g_pastPartition[ulRows]->ulPartitionUsageRate >= g_pstCond->ulPartitionThreshold)
        {
           
           MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-          if (!pstMsg)
+          if (DOS_ADDR_INVALID(pstMsg))
           {
-             logr_error("%s:Line %d: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+             logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
                           , dos_get_filename(__FILE__), __LINE__, pstMsg);
           }
           
 
-          ulRet = mon_generate_warning_id(DISK_RES, lRows, RES_LACK);
+          ulRet = mon_generate_warning_id(DISK_RES, ulRows, RES_LACK);
           if((U32)0xff == ulRet)
           {
-             logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
+             logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
                         , dos_get_filename(__FILE__), __LINE__ , "0x", ulRet);
           }
           
           pstMsg->ulWarningId = ulRet;
-          pstMsg->lMsgLen = sizeof(MON_SYS_MEM_DATA_S);
-          pstMsg->msg = g_pastPartition[lRows];
+          pstMsg->ulMsgLen = sizeof(MON_SYS_MEM_DATA_S);
+          pstMsg->msg = g_pastPartition[ulRows];
           
-          lRet = mon_add_warning_record(pstMsg->ulWarningId);
-          if(DOS_SUCC != lRet)
+          ulRet = mon_add_warning_record(pstMsg->ulWarningId);
+          if(DOS_SUCC != ulRet)
           {
-             logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+             logr_error("%s:Line %d:mon_handle_excp|add warning record failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
           }
           
-          lRet = mon_warning_msg_en_queue(pstMsg);
-          if(DOS_SUCC != lRet)
+          ulRet = mon_warning_msg_en_queue(pstMsg);
+          if(DOS_SUCC != ulRet)
           {
-             logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+             logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
           }
-          logr_info("%s:Line %d: Partition %s:Not enough partition volume."
-                    , dos_get_filename(__FILE__), __LINE__, g_pastPartition[lRows]->szPartitionName);
+          logr_info("%s:Line %u: Partition %s:Not enough partition volume."
+                    , dos_get_filename(__FILE__), __LINE__, g_pastPartition[ulRows]->szPartitionName);
           
        }
     }
 
-    lTotalDiskRate = mon_get_total_disk_usage_rate();
-    if(-1 == lTotalDiskRate)
+    ulTotalDiskRate = mon_get_total_disk_usage_rate();
+    if(DOS_FAIL == ulTotalDiskRate)
     {
-       logr_error("%s:Line %d:mon_handle_excp|get total disk usage rate failure,lTotalDiskRate is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lTotalDiskRate);
+       logr_error("%s:Line %u:mon_handle_excp|get total disk usage rate failure,ulTotalDiskRate is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulTotalDiskRate);
     }
               
-    if(lTotalDiskRate >= g_pstCond->lDiskThreshold)
+    if(ulTotalDiskRate >= g_pstCond->ulDiskThreshold)
     {
        
        MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-       if (!pstMsg)
+       if (DOS_ADDR_INVALID(pstMsg))
        {
-            logr_error("%s:Line %d: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+            logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
                          , dos_get_filename(__FILE__), __LINE__, pstMsg);
        }
        
@@ -442,197 +442,197 @@ static S32 mon_handle_excp()
        ulRet = mon_generate_warning_id(DISK_RES, 0x00, RES_LACK);
        if((U32)0xff == ulRet)
        {
-          logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,lRet is %s%x!"
+          logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,lRet is %s%x!"
                         , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
        }
                  
        pstMsg->ulWarningId = ulRet;
-       pstMsg->lMsgLen = sizeof(MON_SYS_PART_DATA_S);
+       pstMsg->ulMsgLen = sizeof(MON_SYS_PART_DATA_S);
        pstMsg->msg = g_pastPartition;
        
-       lRet = mon_add_warning_record(pstMsg->ulWarningId);
-       if(DOS_SUCC != lRet)
+       ulRet = mon_add_warning_record(pstMsg->ulWarningId);
+       if(DOS_SUCC != ulRet)
        {
-          logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+          logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
        }
        
-       lRet = mon_warning_msg_en_queue(pstMsg);
-       if(DOS_SUCC != lRet)
+       ulRet = mon_warning_msg_en_queue(pstMsg);
+       if(DOS_SUCC != ulRet)
        {
-          logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+          logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
        }
-       logr_info("%s:Line %d:Not enough disk volumn."
+       logr_info("%s:Line %u:Not enough disk volumn."
                     , dos_get_filename(__FILE__), __LINE__);
     }
    
-    if(g_pstCpuRslt->lCPUUsageRate >= g_pstCond->lCPUThreshold||
-       g_pstCpuRslt->lCPU5sUsageRate >= g_pstCond->l5sCPUThreshold ||
-       g_pstCpuRslt->lCPU1minUsageRate >= g_pstCond->l1minCPUThreshold ||
-       g_pstCpuRslt->lCPU10minUsageRate >= g_pstCond->l10minCPUThreshold)
+    if(g_pstCpuRslt->ulCPUUsageRate >= g_pstCond->ulCPUThreshold||
+       g_pstCpuRslt->ulCPU5sUsageRate >= g_pstCond->ul5sCPUThreshold ||
+       g_pstCpuRslt->ulCPU1minUsageRate >= g_pstCond->ul1minCPUThreshold ||
+       g_pstCpuRslt->ulCPU10minUsageRate >= g_pstCond->ul10minCPUThreshold)
     {
        
        MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-       if (!pstMsg)
+       if (DOS_ADDR_INVALID(pstMsg))
        {
-           logr_error("%s:Line %d: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+           logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
                         , dos_get_filename(__FILE__), __LINE__, pstMsg);
        }
        
        ulRet = mon_generate_warning_id(CPU_RES, 0x00, RES_LACK);
        if((U32)0xff == ulRet)
        {
-          logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,ulRet is %s%x"
+          logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x"
                         , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
        }
        pstMsg->ulWarningId = ulRet;
        
-       pstMsg->lMsgLen = sizeof(MON_CPU_RSLT_S);
+       pstMsg->ulMsgLen = sizeof(MON_CPU_RSLT_S);
        pstMsg->msg = g_pstCpuRslt;
        
-       lRet = mon_add_warning_record(pstMsg->ulWarningId);
-       if(DOS_SUCC != lRet)
+       ulRet = mon_add_warning_record(pstMsg->ulWarningId);
+       if(DOS_SUCC != ulRet)
        {
-          logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+          logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
        }
        
-       lRet = mon_warning_msg_en_queue(pstMsg);
-       if(DOS_SUCC != lRet)
+       ulRet = mon_warning_msg_en_queue(pstMsg);
+       if(DOS_SUCC != ulRet)
        {
-          logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+          logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
        }
 
-       logr_info("%s:Line %d: Such high CPU rate.", dos_get_filename(__FILE__), __LINE__);
+       logr_info("%s:Line %u: Such high CPU rate.", dos_get_filename(__FILE__), __LINE__);
     }
 
-    for(lRows = 0; lRows < g_lNetCnt; lRows++)
+    for(ulRows = 0; ulRows < g_ulNetCnt; ulRows++)
     {
-       if(DOS_FALSE == (mon_is_netcard_connected(g_pastNet[lRows]->szNetDevName)))
+       if(DOS_FALSE == (mon_is_netcard_connected(g_pastNet[ulRows]->szNetDevName)))
        {
           
           MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-          if (!pstMsg)
+          if (DOS_ADDR_INVALID(pstMsg))
           {
-              logr_error("%s:Line %d: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+              logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
                            , dos_get_filename(__FILE__), __LINE__, pstMsg);
           }          
 
           ulRet = mon_generate_warning_id(NET_RES, 0x00, 0x00);
           if((U32)0xff == ulRet)
           {
-             logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
+             logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
                         , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
           }
           
           pstMsg->ulWarningId = ulRet;
-          pstMsg->lMsgLen = sizeof(MON_NET_CARD_PARAM_S);
-          pstMsg->msg = g_pastNet[lRows];
+          pstMsg->ulMsgLen = sizeof(MON_NET_CARD_PARAM_S);
+          pstMsg->msg = g_pastNet[ulRows];
           
-          lRet = mon_add_warning_record(pstMsg->ulWarningId);
-          if(DOS_SUCC != lRet)
+          ulRet = mon_add_warning_record(pstMsg->ulWarningId);
+          if(DOS_SUCC != ulRet)
           {
-             logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+             logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
           }
           
-          lRet = mon_warning_msg_en_queue(pstMsg);
+          ulRet = mon_warning_msg_en_queue(pstMsg);
           if(DOS_SUCC != lRet)
           {
-             logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+             logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
           }
-          logr_info("%s:Line %d: Netcard %s disconnected.", dos_get_filename(__FILE__), __LINE__, g_pastNet[lRows]->szNetDevName);
+          logr_info("%s:Line %u: Netcard %s disconnected.", dos_get_filename(__FILE__), __LINE__, g_pastNet[ulRows]->szNetDevName);
        }
     }
 
-    lRet = mon_get_proc_total_cpu_rate();
-    if(-1 == lRet)
+    ulRet = mon_get_proc_total_cpu_rate();
+    if(DOS_FAIL == ulRet)
     {
-       logr_error("%s:Line %d:mon_handle_excp|get all proc total cpu rate failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+       logr_error("%s:Line %u:mon_handle_excp|get all proc total cpu rate failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
     }
               
-    if(lRet > g_pstCond->lProcCPUThreshold)
+    if(ulRet > g_pstCond->ulProcCPUThreshold)
     { 
         MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-        if (!pstMsg)
+        if (DOS_ADDR_INVALID(pstMsg))
         {
-           logr_error("%s:Line %d: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+           logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
                           , dos_get_filename(__FILE__), __LINE__, pstMsg);
         }
         
         ulRet = mon_generate_warning_id(PROC_RES, 0x00, 0x01);
         if((U32)0xff == ulRet)
         {
-          logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
+          logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
                         , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
         }
         
         pstMsg->ulWarningId = ulRet;
-        pstMsg->lMsgLen = sizeof(MON_PROC_STATUS_S);
+        pstMsg->ulMsgLen = sizeof(MON_PROC_STATUS_S);
         pstMsg->msg = g_pastProc;
         
-        lRet = mon_add_warning_record(pstMsg->ulWarningId);
-        if(DOS_SUCC != lRet)
+        ulRet = mon_add_warning_record(pstMsg->ulWarningId);
+        if(DOS_SUCC != ulRet)
         {
-           logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+           logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
         }
         
-        lRet = mon_warning_msg_en_queue(pstMsg);
-        if(DOS_SUCC != lRet)
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
         {
-           logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
+           logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
         }
-        logr_info("%s:Line %d:Processes possess such high CPU rate.", dos_get_filename(__FILE__), __LINE__);     
+        logr_info("%s:Line %u:Processes possess such high CPU rate.", dos_get_filename(__FILE__), __LINE__);     
     }
 
-    lRet = mon_get_proc_total_mem_rate();
-    if(-1 == lRet)
+    ulRet = mon_get_proc_total_mem_rate();
+    if(DOS_FAIL == ulRet)
     {
-       logr_error("%s:Line %d:mon_handle_excp|get all proc total memory usage rate failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+       logr_error("%s:Line %u:mon_handle_excp|get all proc total memory usage rate failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
     }
 
-    if(lRet >= g_pstCond->lProcMemThreshold)
+    if(ulRet >= g_pstCond->ulProcMemThreshold)
     {   
        MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-       if (!pstMsg)
+       if (DOS_ADDR_INVALID(pstMsg))
        {
-           logr_error("%s:Line %d: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+           logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
                          , dos_get_filename(__FILE__), __LINE__, pstMsg);
        }
        
        ulRet = mon_generate_warning_id(PROC_RES, 0x00, 0x02);
        if((U32)0xff == ulRet)
        {
-         logr_error("%s:Line %d:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
+         logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
                     , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
        }
        
        pstMsg->ulWarningId = ulRet;
        
-       pstMsg->lMsgLen = sizeof(MON_PROC_STATUS_S);
+       pstMsg->ulMsgLen = sizeof(MON_PROC_STATUS_S);
        pstMsg->msg = g_pastProc;
        
-       lRet = mon_add_warning_record(pstMsg->ulWarningId);
-       if(DOS_SUCC != lRet)
+       ulRet = mon_add_warning_record(pstMsg->ulWarningId);
+       if(DOS_SUCC != ulRet)
        {
-         logr_error("%s:Line %d:mon_handle_excp|add warning record failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+         logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
        }
        
-       lRet = mon_warning_msg_en_queue(pstMsg);
-       if(DOS_SUCC != lRet)
+       ulRet = mon_warning_msg_en_queue(pstMsg);
+       if(DOS_SUCC != ulRet)
        {
-         logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+         logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
        }
-       logr_info("%s:Line %d:Processes possess such high Memory rate."
+       logr_info("%s:Line %u:Processes possess such high Memory rate."
                     , dos_get_filename(__FILE__), __LINE__);
     }
 
@@ -646,54 +646,54 @@ static S32 mon_handle_excp()
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
-static S32 mon_add_data_to_db()
+static U32 mon_add_data_to_db()
 {
-   time_t lCur;
+   time_t ulCur;
    struct tm *pstCurTime;
    S8  szSQLCmd[SQL_CMD_MAX_LENGTH] = {0};
    S32 lRet = 0;
-   S32 lTotalDiskKBytes = 0;
-   S32 lTotalDiskRate = 0;
-   S32 lProcTotalMemRate = 0;
-   S32 lProcTotalCPURate = 0;
+   U32 ulTotalDiskKBytes = 0;
+   U32 ulTotalDiskRate = 0;
+   U32 ulProcTotalMemRate = 0;
+   U32 ulProcTotalCPURate = 0;
 
-   lTotalDiskKBytes = mon_get_total_disk_kbytes();
-   if(-1 == lTotalDiskKBytes)
+   ulTotalDiskKBytes = mon_get_total_disk_kbytes();
+   if(DOS_FAIL == ulTotalDiskKBytes)
    {
-      logr_error("%s:Line %d:mon_add_data_to_db|get total disk kbytes failure,lTotalDiskKBytes is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lTotalDiskKBytes);
+      logr_error("%s:Line %u:mon_add_data_to_db|get total disk kbytes failure,ulTotalDiskKBytes is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulTotalDiskKBytes);
       return DOS_FAIL;
    }
    
-   lTotalDiskRate = mon_get_total_disk_usage_rate();
-   if(-1 == lTotalDiskRate)
+   ulTotalDiskRate = mon_get_total_disk_usage_rate();
+   if(DOS_FAIL == ulTotalDiskRate)
    {
-      logr_error("%s:Line %d:mon_add_data_to_db|get total disk uasge rate failure,lTotalDiskRate is %d!"
-                    ,dos_get_filename(__FILE__), __LINE__ , lTotalDiskRate);
+      logr_error("%s:Line %u:mon_add_data_to_db|get total disk uasge rate failure,ulTotalDiskRate is %u!"
+                    ,dos_get_filename(__FILE__), __LINE__ , ulTotalDiskRate);
       return DOS_FAIL;
    }
 
-   lProcTotalMemRate = mon_get_proc_total_mem_rate();
-   if(-1 == lProcTotalMemRate)
+   ulProcTotalMemRate = mon_get_proc_total_mem_rate();
+   if(DOS_FAIL == ulProcTotalMemRate)
    {
-      logr_error("%s:Line %d:mon_add_data_to_db|get all proc total mem rate failure,lProcTotalMemRate is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lProcTotalMemRate);
+      logr_error("%s:Line %u:mon_add_data_to_db|get all proc total mem rate failure,ulProcTotalMemRate is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulProcTotalMemRate);
        return DOS_FAIL;
    }
 
-   lProcTotalCPURate = mon_get_proc_total_cpu_rate();
-   if(-1 == lProcTotalCPURate)
+   ulProcTotalCPURate = mon_get_proc_total_cpu_rate();
+   if(DOS_FAIL == ulProcTotalCPURate)
    {
-      logr_error("%s:Line %d:mon_add_data_to_db|get all proc total cpu rate failure,lProcTotalCPURate is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lProcTotalCPURate);
+      logr_error("%s:Line %du:mon_add_data_to_db|get all proc total cpu rate failure,ulProcTotalCPURate is %d!"
+                    , dos_get_filename(__FILE__), __LINE__, ulProcTotalCPURate);
       return DOS_FAIL;
    }
 
-   time(&lCur);
-   pstCurTime = localtime(&lCur);
-   dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO tbl_syssrc%04d%02d(ctime,phymem," \
+   time(&ulCur);
+   pstCurTime = localtime(&ulCur);
+   dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO tbl_syssrc%04u%02u(ctime,phymem," \
      "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate,procmem_pct,proccpu_pct)" \
-     " VALUES(\'%04d-%02d-%02d %02d:%02d:%02d\',%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d);"
+     " VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
      , pstCurTime->tm_year + 1900
      , pstCurTime->tm_mon + 1
      , pstCurTime->tm_year + 1900
@@ -702,25 +702,25 @@ static S32 mon_add_data_to_db()
      , pstCurTime->tm_hour
      , pstCurTime->tm_min
      , pstCurTime->tm_sec
-     , g_pstMem->lPhysicalMemTotalBytes
-     , g_pstMem->lPhysicalMemUsageRate
-     , g_pstMem->lSwapTotalBytes
-     , g_pstMem->lSwapUsageRate
-     , lTotalDiskKBytes
-     , lTotalDiskRate
-     , g_pstCpuRslt->lCPUUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPUUsageRate > 100 ? 100: g_pstCpuRslt->lCPUUsageRate)
-     , g_pstCpuRslt->lCPU5sUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPU5sUsageRate > 100 ? 100: g_pstCpuRslt->lCPU5sUsageRate)
-     , g_pstCpuRslt->lCPU1minUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPU1minUsageRate > 100 ? 100 : g_pstCpuRslt->lCPU1minUsageRate)
-     , g_pstCpuRslt->lCPU10minUsageRate < 0 ? 0 : (g_pstCpuRslt->lCPU10minUsageRate > 100 ? 100 : g_pstCpuRslt->lCPU10minUsageRate)
-     , g_pastNet[0]->lRWSpeed
-     , lProcTotalMemRate
-     , lProcTotalCPURate < 0 ? 0 : (lProcTotalCPURate > 100 ? 100 : lProcTotalCPURate)
+     , g_pstMem->ulPhysicalMemTotalBytes
+     , g_pstMem->ulPhysicalMemUsageRate
+     , g_pstMem->ulSwapTotalBytes
+     , g_pstMem->ulSwapUsageRate
+     , ulTotalDiskKBytes
+     , ulTotalDiskRate
+     , g_pstCpuRslt->ulCPUUsageRate < 0 ? 0 : (g_pstCpuRslt->ulCPUUsageRate > 100 ? 100: g_pstCpuRslt->ulCPUUsageRate)
+     , g_pstCpuRslt->ulCPU5sUsageRate < 0 ? 0 : (g_pstCpuRslt->ulCPU5sUsageRate > 100 ? 100: g_pstCpuRslt->ulCPU5sUsageRate)
+     , g_pstCpuRslt->ulCPU1minUsageRate < 0 ? 0 : (g_pstCpuRslt->ulCPU1minUsageRate > 100 ? 100 : g_pstCpuRslt->ulCPU1minUsageRate)
+     , g_pstCpuRslt->ulCPU10minUsageRate < 0 ? 0 : (g_pstCpuRslt->ulCPU10minUsageRate > 100 ? 100 : g_pstCpuRslt->ulCPU10minUsageRate)
+     , g_pastNet[0]->ulRWSpeed
+     , ulProcTotalMemRate
+     , ulProcTotalCPURate < 0 ? 0 : (ulProcTotalCPURate > 100 ? 100 : ulProcTotalCPURate)
    );
    
    lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
    if(DB_ERR_SUCC != lRet)
    {
-      logr_error("%s:Line %d:mon_add_warning_record|db_query failure,lRet is %d!"
+      logr_error("%s:Line %u:mon_add_warning_record|db_query failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
       return DOS_FAIL;
    }
@@ -735,64 +735,64 @@ static S32 mon_add_data_to_db()
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
-static S32 mon_print_data_log()
+static U32 mon_print_data_log()
 {
-   S32 lRet = 0;
+   U32 ulRet = 0;
    /*    打印数据日志  */
    
-   lRet = mon_get_mem_formatted_info();
-   if(DOS_SUCC != lRet)
+   ulRet = mon_get_mem_formatted_info();
+   if(DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_print_data_log|get mem formatted information failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_print_data_log|get mem formatted information failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
-   logr_info("%s:Line %d:mon_print_data_log|g_szMonMemInfo is \n%s"
+   logr_info("%s:Line %u:mon_print_data_log|g_szMonMemInfo is \n%s"
                 , dos_get_filename(__FILE__), __LINE__
                 , g_szMonMemInfo);
 
-   lRet = mon_get_cpu_rslt_formatted_info();
-   if(DOS_SUCC != lRet)
+   ulRet = mon_get_cpu_rslt_formatted_info();
+   if(DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_print_data_log|get cpu rslt formatted information failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_print_data_log|get cpu rslt formatted information failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
-   logr_info("%s:Line %d:mon_print_data_log|g_szMonCPUInfo is \n%s"
+   logr_info("%s:Line %u:mon_print_data_log|g_szMonCPUInfo is \n%s"
                 , dos_get_filename(__FILE__), __LINE__
                 , g_szMonCPUInfo);
 
-   lRet = mon_get_partition_formatted_info();
-   if(DOS_SUCC != lRet)
+   ulRet = mon_get_partition_formatted_info();
+   if(DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_print_data_log|get partition formatted information failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_print_data_log|get partition formatted information failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
-   logr_info("%s:Line %d:mon_print_data_log|g_szMonDiskInfo is \n%s"
+   logr_info("%s:Line %u:mon_print_data_log|g_szMonDiskInfo is \n%s"
                 , dos_get_filename(__FILE__), __LINE__
                 , g_szMonDiskInfo);
 
 
-   lRet = mon_netcard_formatted_info();
-   if(DOS_SUCC != lRet)
+   ulRet = mon_netcard_formatted_info();
+   if(DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_print_data_log|get netcard formatted information failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_print_data_log|get netcard formatted information failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
-   logr_info("%s:Line %d:mon_print_data_log|g_szMonNetworkInfo is \n%s"
+   logr_info("%s:Line %u:mon_print_data_log|g_szMonNetworkInfo is \n%s"
                 , dos_get_filename(__FILE__), __LINE__
                 , g_szMonNetworkInfo);
 
-   lRet = mon_get_process_formatted_info();
-   if(DOS_SUCC != lRet)
+   ulRet = mon_get_process_formatted_info();
+   if(DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_print_data_log|get process formatted information failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_print_data_log|get process formatted information failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
-   logr_info("%s:Line %d:mon_print_data_log|g_szMonProcessInfo is\n%s"
+   logr_info("%s:Line %u:mon_print_data_log|g_szMonProcessInfo is\n%s"
                 , dos_get_filename(__FILE__), __LINE__
                 , g_szMonProcessInfo);
    
@@ -852,7 +852,7 @@ static S32 mon_reset_res_data()
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
-static S32 mon_add_warning_record(U32 ulResId)
+static U32 mon_add_warning_record(U32 ulResId)
 {
    S32 lRet = 0;
    time_t lCur;
@@ -887,8 +887,8 @@ static S32 mon_add_warning_record(U32 ulResId)
    
    dos_snprintf(szSQLCmd, SQL_CMD_MAX_LENGTH, "INSERT INTO tbl_alarmlog(" \
                "ctime,warning,cause,type,object,content,cycle,status)" \
-               "VALUES(\'%04d-%02d-%02d %02d:%02d:%02d\',concat(\'%s\', lower(hex(%u))),%d,%d," \
-               "%d,\'%s\',%d,%d)"
+               "VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',concat(\'%s\', lower(hex(%u))),%u,%u," \
+               "%u,\'%s\',%u,%u)"
                , pstCurTime->tm_year + 1900
                , pstCurTime->tm_mon + 1
                , pstCurTime->tm_mday
@@ -924,7 +924,7 @@ static S32 mon_add_warning_record(U32 ulResId)
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
-static S32 mon_init_db_conn()
+static U32 mon_init_db_conn()
 {
    S8  szDBHost[48] = {0};
    S8  szDBUsername[48] = {0};
@@ -970,7 +970,7 @@ static S32 mon_init_db_conn()
    }
 
    g_pstDBHandle = db_create(DB_TYPE_MYSQL);
-   if (!g_pstDBHandle)
+   if (DOS_ADDR_INVALID(g_pstDBHandle))
    {
        DOS_ASSERT(0);
        return DOS_FAIL;
@@ -1018,74 +1018,74 @@ static S32 mon_init_db_conn()
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
-static S32 mon_init_warning_cond()
+static U32 mon_init_warning_cond()
 {
-   S32 lRet = 0;
+   U32 ulRet = 0;
 
-   lRet = config_hb_init();
-   if(0 > lRet)
+   ulRet = config_hb_init();
+   if(0 > ulRet)
    {
-      logr_error("%s:Line %d:mon_init_warning_cond|threshold init failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_init_warning_cond|threshold init failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
    
    g_pstCond = (MON_THRESHOLD_S *)dos_dmem_alloc(sizeof(MON_THRESHOLD_S));
-   if(!g_pstCond)
+   if(DOS_ADDR_INVALID(g_pstCond))
    {
-      logr_error("%s:Line %d:mon_init_warning_cond|alloc memory failure,g_pstCond is %p!"
+      logr_error("%s:Line %u:mon_init_warning_cond|alloc memory failure,g_pstCond is %p!"
                     ,  dos_get_filename(__FILE__), __LINE__, g_pstCond);
       config_hb_deinit();
       return DOS_FAIL;
    }
 
-   lRet = config_hb_threshold_mem(&(g_pstCond->lMemThreshold));
-   if(0 > lRet)
+   ulRet = config_hb_threshold_mem(&(g_pstCond->ulMemThreshold));
+   if(0 > ulRet)
    {
-      logr_error("%s:Line %d:mon_init_warning_cond|get memory threshold failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_init_warning_cond|get memory threshold failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
 
       /* 如果数据读取失败，给设置默认值 */
-      g_pstCond->lMemThreshold = 90;
+      g_pstCond->ulMemThreshold = 90;
    }
 
-   lRet = config_hb_threshold_cpu(&(g_pstCond->lCPUThreshold)
-                                , &(g_pstCond->l5sCPUThreshold)
-                                , &(g_pstCond->l1minCPUThreshold)
-                                , &(g_pstCond->l10minCPUThreshold));
-   if(0 > lRet)
+   ulRet = config_hb_threshold_cpu(&(g_pstCond->ulCPUThreshold)
+                                , &(g_pstCond->ul5sCPUThreshold)
+                                , &(g_pstCond->ul1minCPUThreshold)
+                                , &(g_pstCond->ul10minCPUThreshold));
+   if(0 > ulRet)
    {
-      logr_error("%s:Line %d:mon_init_warning_cond|get cpu threshold failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_init_warning_cond|get cpu threshold failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
 
       /* 如果读取失败，设置默认值 */
-      g_pstCond->lCPUThreshold = 95;
-      g_pstCond->l5sCPUThreshold = 95;
-      g_pstCond->l1minCPUThreshold= 95;
-      g_pstCond->l10minCPUThreshold = 95;
+      g_pstCond->ulCPUThreshold = 95;
+      g_pstCond->ul5sCPUThreshold = 95;
+      g_pstCond->ul1minCPUThreshold= 95;
+      g_pstCond->ul10minCPUThreshold = 95;
    }
 
-   lRet = config_hb_threshold_disk(&(g_pstCond->lPartitionThreshold)
-                                 , &(g_pstCond->lDiskThreshold));
-   if(0 > lRet)
+   ulRet = config_hb_threshold_disk(&(g_pstCond->ulPartitionThreshold)
+                                 , &(g_pstCond->ulDiskThreshold));
+   if(0 > ulRet)
    {
-      logr_error("%s:Line %d:mon_init_warning_cond|get disk threshold failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_init_warning_cond|get disk threshold failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
                     
       /* 读取失败则设置默认值 */
-      g_pstCond->lPartitionThreshold = 95;
-      g_pstCond->lDiskThreshold = 90;
+      g_pstCond->ulPartitionThreshold = 95;
+      g_pstCond->ulDiskThreshold = 90;
    }
 
-   lRet = config_hb_threshold_proc(&(g_pstCond->lProcMemThreshold)
-                                 , &(g_pstCond->lProcCPUThreshold));
-   if(0 > lRet)
+   ulRet = config_hb_threshold_proc(&(g_pstCond->ulProcMemThreshold)
+                                 , &(g_pstCond->ulProcCPUThreshold));
+   if(0 > ulRet)
    {
-      logr_error("%s:Line %d:mon_init_warning_cond|get proc threshold failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_init_warning_cond|get proc threshold failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
 
       /* 如果读取失败则设置默认值 */
-      g_pstCond->lProcMemThreshold = 20;
-      g_pstCond->lProcCPUThreshold = 80;
+      g_pstCond->ulProcMemThreshold = 20;
+      g_pstCond->ulProcCPUThreshold = 80;
    }
 
    return DOS_SUCC;
@@ -1098,7 +1098,7 @@ static S32 mon_init_warning_cond()
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
-static S32 mon_close_db_conn()
+static U32 mon_close_db_conn()
 {  
    db_destroy(&g_pstDBHandle);
    dos_dmem_free(g_pstDBHandle);
@@ -1113,78 +1113,78 @@ static S32 mon_close_db_conn()
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_res_destroy()
+U32 mon_res_destroy()
 {
-   S32 lRet = 0;
+   U32 ulRet = 0;
 
-   lRet = mon_mem_free();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_mem_free();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_destroy|mem resource destroy failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_destroy|mem resource destroy failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
    
-   lRet = mon_cpu_rslt_free();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_cpu_rslt_free();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_destroy|cpu rslt resource destroy success,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_destroy|cpu rslt resource destroy success,lRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_disk_free();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_disk_free();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_destroy|disk resource destroy failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_destroy|disk resource destroy failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_netcard_free();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_netcard_free();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_destroy|netcard resource destroy failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_destroy|netcard resource destroy failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_proc_free();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_proc_free();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_destroy|process resource destroy failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_destroy|process resource destroy failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_destroy_warning_msg_queue();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_destroy_warning_msg_queue();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_destroy|destroy warning msg queue failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_destroy|destroy warning msg queue failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_cpu_queue_destroy();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_cpu_queue_destroy();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_destroy|destroy cpu queue failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_destroy|destroy cpu queue failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
    
-   lRet = mon_close_db_conn();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_close_db_conn();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_destroy|close mysql connection failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_destroy|close mysql connection failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = mon_deinit_str_array();
-   if (DOS_SUCC != lRet)
+   ulRet = mon_deinit_str_array();
+   if (DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_destroy|deinit str array failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_destroy|deinit str array failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
-   lRet = config_hb_deinit();
-   if (0 != lRet)
+   ulRet = config_hb_deinit();
+   if (0 != ulRet)
    {
-      logr_error("%s:Line %d:mon_res_destroy|deinit heartbeat config failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
+      logr_error("%s:Line %u:mon_res_destroy|deinit heartbeat config failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
    
    return DOS_SUCC;

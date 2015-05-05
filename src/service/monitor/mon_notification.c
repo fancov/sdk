@@ -17,7 +17,7 @@ extern "C"{
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_send_shortmsg(S8 * pszMsg, S8 * pszTelNo)
+U32 mon_send_shortmsg(S8 * pszMsg, S8 * pszTelNo)
 {
    /* 目前相关内容没有封装好，待后续实现 */
    return DOS_SUCC;
@@ -31,7 +31,7 @@ S32 mon_send_shortmsg(S8 * pszMsg, S8 * pszTelNo)
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_dial_telephone(S8 * pszMsg, S8 * pszTelNo)
+U32 mon_dial_telephone(S8 * pszMsg, S8 * pszTelNo)
 {
    /* 目前相关内容没有封装好，待后续实现 */
    return DOS_SUCC;
@@ -45,7 +45,7 @@ S32 mon_dial_telephone(S8 * pszMsg, S8 * pszTelNo)
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_send_audio(S8 * pszMsg, S8 * pszWechatNo)
+U32 mon_send_audio(S8 * pszMsg, S8 * pszWechatNo)
 {
    /* 目前相关内容没有封装好，待后续实现 */
    return DOS_SUCC;
@@ -59,7 +59,7 @@ S32 mon_send_audio(S8 * pszMsg, S8 * pszWechatNo)
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_send_web(S8 * pszMsg, S8 * pszURL)
+U32 mon_send_web(S8 * pszMsg, S8 * pszURL)
 {
    /* 目前相关内容没有封装好，待后续实现 */
    return DOS_SUCC;
@@ -73,7 +73,7 @@ S32 mon_send_web(S8 * pszMsg, S8 * pszURL)
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32 mon_send_email(S8 * pszMsg, S8 * pszEmailAddress)
+U32 mon_send_email(S8 * pszMsg, S8 * pszEmailAddress)
 {
    /* 目前相关内容没有封装好，待后续实现 */
    return DOS_SUCC;

@@ -28,27 +28,27 @@
 
 typedef struct tagMonProcStatus
 {
-   S32 lProcId;           //进程id
+   U32 ulProcId;           //进程id
    S8  szProcName[64];    //进程名
    F64 fMemoryRate;       //内存占用率
    F64 fCPURate;          //CPU平均占用率
    S8  szProcCPUTime[32]; //CPU持续时间
-   S32 lOpenFileCnt;      //打开的文件个数
-   S32 lDBConnCnt;        //数据库连接数
-   S32 lThreadsCnt;       //线程数
+   U32 ulOpenFileCnt;      //打开的文件个数
+   U32 ulDBConnCnt;        //数据库连接数
+   U32 ulThreadsCnt;       //线程数
 }MON_PROC_STATUS_S;
 
 
-S32  mon_proc_malloc();
-S32  mon_proc_free();
-S32  mon_get_process_data();
-S32  mon_kill_all_monitor_process();
-S32  mon_restart_computer();
-S8*  mon_get_proc_name_by_id(S32 lPid, S8 * pszPidName);
-BOOL mon_is_proc_dead(S32 lPid);
-S32  mon_get_proc_total_cpu_rate();
-S32  mon_get_proc_total_mem_rate();
-S32  mon_get_process_formatted_info();
+U32  mon_proc_malloc();
+U32  mon_proc_free();
+U32  mon_get_process_data();
+U32  mon_kill_all_monitor_process();
+U32  mon_restart_computer();
+S8*  mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName);
+BOOL mon_is_proc_dead(U32 ulPid);
+U32  mon_get_proc_total_cpu_rate();
+U32  mon_get_proc_total_mem_rate();
+U32  mon_get_process_formatted_info();
 
 #endif //#if INCLUDE_RES_MONITOR  
 #endif //end _MON_GET_PROC_INFO_H__

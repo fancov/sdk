@@ -44,12 +44,12 @@ do {\
 while(0)
 #endif
 
-S32  mon_init_str_array();
-S32  mon_deinit_str_array();
+U32  mon_init_str_array();
+U32  mon_deinit_str_array();
 BOOL mon_is_substr(S8 * pszSrc, S8 * pszDest);
 BOOL mon_is_ended_with(S8 * pszSentence, const S8 * pszStr);
 BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix);
-S32  mon_first_int_from_str(S8 * pszStr);
+U32  mon_first_int_from_str(S8 * pszStr);
 U32  mon_analyse_by_reg_expr(S8* pszStr, S8* pszRegExpr, S8* pszRsltList[], U32 ulLen);
 U32  mon_generate_warning_id(U32 ulResType, U32 ulNo, U32 ulErrType);
 S8 * mon_str_get_name(S8 * pszCmd); 

@@ -294,7 +294,7 @@ S32 config_hb_get_start_cmd(U32 ulIndex, S8 *pszCmd, U32 ulLen)
  *
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
-S32 config_hb_threshold_mem(S32* plMem)
+S32 config_hb_threshold_mem(U32* pulMem)
 {
    S8  szNodePath[] = "config/threshold/mem";
    S8  szMemThreshold[4] = {0};
@@ -316,7 +316,7 @@ S32 config_hb_threshold_mem(S32* plMem)
       return -1;
    }
 
-   lRet = dos_atol(pszMemThreshold, plMem);
+   lRet = dos_atoul(pszMemThreshold, pulMem);
    if(0 > lRet)
    {
       dos_printf("%s", "dos_atol failed.");
@@ -336,7 +336,7 @@ S32 config_hb_threshold_mem(S32* plMem)
  *
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
-S32 config_hb_threshold_cpu(S32* plAvg, S32* pl5sAvg, S32 *pl1minAvg, S32 *pl10minAvg)
+S32 config_hb_threshold_cpu(U32* pulAvg, U32* pul5sAvg, U32 *pul1minAvg, U32 *pul10minAvg)
 {
    S8  szAvgCPURateThreshold[4] = {0};
    S8  sz5sAvgCPURateThreshold[4] = {0};
@@ -394,7 +394,7 @@ S32 config_hb_threshold_cpu(S32* plAvg, S32* pl5sAvg, S32 *pl1minAvg, S32 *pl10m
       return -1;
    }
 
-   lRet = dos_atol(pszAvgCPURateThreshold, plAvg);
+   lRet = dos_atoul(pszAvgCPURateThreshold, pulAvg);
    if(0 > lRet)
    {
       dos_printf("%s", "dos_atol failed.");
@@ -402,7 +402,7 @@ S32 config_hb_threshold_cpu(S32* plAvg, S32* pl5sAvg, S32 *pl1minAvg, S32 *pl10m
       return -1;
    }
 
-   lRet = dos_atol(psz5sAvgCPURateThreshold, pl5sAvg);
+   lRet = dos_atoul(psz5sAvgCPURateThreshold, pul5sAvg);
    if(0 > lRet)
    {
       dos_printf("%s", "dos_atol failed.");
@@ -410,7 +410,7 @@ S32 config_hb_threshold_cpu(S32* plAvg, S32* pl5sAvg, S32 *pl1minAvg, S32 *pl10m
       return -1;
    }
 
-   lRet = dos_atol(psz1minAvgCPURateThreshold, pl1minAvg);
+   lRet = dos_atoul(psz1minAvgCPURateThreshold, pul1minAvg);
    if(0 > lRet)
    {
       dos_printf("%s", "dos_atol failed.");
@@ -418,7 +418,7 @@ S32 config_hb_threshold_cpu(S32* plAvg, S32* pl5sAvg, S32 *pl1minAvg, S32 *pl10m
       return -1;
    }
 
-   lRet = dos_atol(psz10minAvgCPURateThreshold, pl10minAvg);
+   lRet = dos_atoul(psz10minAvgCPURateThreshold, pul10minAvg);
    if(0 > lRet)
    {
       dos_printf("%s", "dos_atol failed.");
@@ -437,7 +437,7 @@ S32 config_hb_threshold_cpu(S32* plAvg, S32* pl5sAvg, S32 *pl1minAvg, S32 *pl10m
  *
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
-S32 config_hb_threshold_disk(S32 *plPartition, S32* plDisk)
+S32 config_hb_threshold_disk(U32 *pulPartition, U32* pulDisk)
 {
    S8  szNodePath[] = "config/threshold/disk";
    S8  szPartitionRate[4] = {0};
@@ -473,7 +473,7 @@ S32 config_hb_threshold_disk(S32 *plPartition, S32* plDisk)
       return -1;
    }
 
-   lRet = dos_atol(pszPartitionRate, plPartition);
+   lRet = dos_atoul(pszPartitionRate, pulPartition);
    if(0 > lRet)
    {
       dos_printf("%s", "dos_atol failed.");
@@ -481,7 +481,7 @@ S32 config_hb_threshold_disk(S32 *plPartition, S32* plDisk)
       return -1;
    }
 
-   lRet = dos_atol(pszDiskRate, plDisk);
+   lRet = dos_atoul(pszDiskRate, pulDisk);
    if(0 > lRet)
    {
       dos_printf("%s", "dos_atol failed.");
@@ -500,7 +500,7 @@ S32 config_hb_threshold_disk(S32 *plPartition, S32* plDisk)
  *
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
-S32 config_hb_threshold_proc(S32* plMem, S32* plCPU)
+S32 config_hb_threshold_proc(U32* pulMem, U32* pulCPU)
 {
    S8  szNodePath[] = "config/threshold/proc";
    S8  szProcMemThres[4] = {0};
@@ -536,18 +536,18 @@ S32 config_hb_threshold_proc(S32* plMem, S32* plCPU)
       return -1;
    }
 
-   lRet = dos_atol(pszProcMemThres, plMem); 
+   lRet = dos_atoul(pszProcMemThres, pulMem); 
    if(0 > lRet)
    {
-      dos_printf("%s", "dos_atol failed!");
+      dos_printf("%s", "dos_atoul failed!");
       DOS_ASSERT(0);
       return -1;
    }
 
-   lRet = dos_atol(pszProcCPUThres, plCPU);
+   lRet = dos_atoul(pszProcCPUThres, pulCPU);
    if(0 > lRet)
    {
-      dos_printf("%s", "dos_atol failed!");
+      dos_printf("%s", "dos_atoul failed!");
       DOS_ASSERT(0);
       return -1;
    }

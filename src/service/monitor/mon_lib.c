@@ -25,12 +25,12 @@ static pthread_mutex_t  g_mutexMonLib = PTHREAD_MUTEX_INITIALIZER;
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32  mon_init_str_array()
+U32  mon_init_str_array()
 {
    g_pszAnalyseList = (S8 *)dos_dmem_alloc(MAX_TOKEN_CNT * MAX_TOKEN_LEN * sizeof(S8));
-   if(!g_pszAnalyseList)
+   if(DOS_ADDR_INVALID(g_pszAnalyseList))
    {
-      logr_error("%s:Line %d:mon_init_str_array|initialize string array failure!"
+      logr_error("%s:Line %u:mon_init_str_array|initialize string array failure!"
                     , dos_get_filename(__FILE__), __LINE__);
       return DOS_FAIL;
    }
@@ -44,11 +44,11 @@ S32  mon_init_str_array()
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-S32  mon_deinit_str_array()
+U32  mon_deinit_str_array()
 {
-   if(!g_pszAnalyseList)
+   if(DOS_ADDR_INVALID(g_pszAnalyseList))
    {
-      logr_error("%s:Line %d:mon_deinit_str_array|initialize string array failure!"
+      logr_error("%s:Line %u:mon_deinit_str_array|initialize string array failure!"
                     , dos_get_filename(__FILE__), __LINE__);
       return DOS_FAIL;
    }
@@ -69,9 +69,10 @@ BOOL mon_is_substr(S8 * pszSrc, S8 * pszDest)
 {
    S8 * pszStr = pszSrc;
 
-   if(!pszSrc || !pszDest)
+   if(DOS_ADDR_INVALID(pszSrc)
+      || DOS_ADDR_INVALID(pszDest))
    {
-      logr_warning("%s:Line %d:mon_is_substr|pszSrc is %p,pszDest is %p!"
+      logr_warning("%s:Line %u:mon_is_substr|pszSrc is %p,pszDest is %p!"
                     , dos_get_filename(__FILE__), __LINE__, pszSrc, pszDest);
       return DOS_FALSE;
    }
@@ -79,7 +80,7 @@ BOOL mon_is_substr(S8 * pszSrc, S8 * pszDest)
    /* 如果pszSrc的长度小于pszDest，那么一定不是子串 */
    if (dos_strlen(pszSrc) < dos_strlen(pszDest))
    {
-      logr_warning("%s:Line %d:mon_is_substr|dos_strlen(pszSrc) = %d,dos_strlen(pszDest) = %d!"
+      logr_warning("%s:Line %u:mon_is_substr|dos_strlen(pszSrc) = %u,dos_strlen(pszDest) = %u!"
                     , dos_get_filename(__FILE__), __LINE__, dos_strlen(pszSrc)
                     , dos_strlen(pszDest));
       return DOS_FALSE;
@@ -111,16 +112,17 @@ BOOL mon_is_ended_with(S8 * pszSentence, const S8 * pszStr)
 {
    S8 *pszSrc = NULL, *pszTemp = NULL;
 
-   if(!pszSentence || !pszStr)
+   if(DOS_ADDR_INVALID(pszSentence)
+      || DOS_ADDR_INVALID(pszStr))
    {
-      logr_warning("%s:Line %d:mon_is_ended_with|pszSentence is %p,pszStr is %p!"
+      logr_warning("%s:Line %u:mon_is_ended_with|pszSentence is %p,pszStr is %p!"
                     , dos_get_filename(__FILE__), __LINE__, pszSentence, pszStr);
       return DOS_FALSE;
    }
 
    if (dos_strlen(pszSentence) < dos_strlen(pszStr))
    {
-      logr_warning("%s:Line %d:mon_is_ended_with|dos_strlen(pszSentence) = %d,dos_strlen(pszStr) = %d!"
+      logr_warning("%s:Line %u:mon_is_ended_with|dos_strlen(pszSentence) = %u,dos_strlen(pszStr) = %u!"
                     , dos_strlen(pszStr), dos_strlen(pszStr));
       return DOS_FALSE;
    }
@@ -131,7 +133,7 @@ BOOL mon_is_ended_with(S8 * pszSentence, const S8 * pszStr)
    {
       if (*pszSrc != *pszTemp)
       {
-         logr_notice("%s:Line %d:mon_is_ended_with|\'%s\' is not ended with \'%s\'!"
+         logr_notice("%s:Line %u:mon_is_ended_with|\'%s\' is not ended with \'%s\'!"
                         , dos_get_filename(__FILE__), __LINE__, pszSrc, pszTemp);
          return DOS_FALSE;
       }
@@ -155,9 +157,10 @@ BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix)
    S8 * pszFileSrc = NULL;
    S8 * pszSuffixSrc = NULL;
 
-   if(!pszFile || !pszFile)
+   if(DOS_ADDR_INVALID(pszFile)
+        || DOS_ADDR_INVALID(pszFile))
    {
-      logr_warning("%s:Line %d:mon_is_suffix_true|pszFile is %p, pszSuffix is %p!"
+      logr_warning("%s:Line %u:mon_is_suffix_true|pszFile is %p, pszSuffix is %p!"
                     , dos_get_filename(__FILE__), __LINE__, pszFile, pszSuffix);
       return DOS_FALSE;
    }
@@ -169,7 +172,7 @@ BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix)
    {
       if (*pszFileSrc != *pszSuffixSrc)
       {
-         logr_notice("%s:Line %d:mon_is_suffix_true|the suffix of \'%s\' is not \'%s\'!"
+         logr_notice("%s:Line %u:mon_is_suffix_true|the suffix of \'%s\' is not \'%s\'!"
                         ,dos_get_filename(__FILE__), __LINE__, pszFile, pszSuffix);
          return DOS_FALSE;
       }
@@ -185,19 +188,19 @@ BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix)
  * 返回值：
  *   成功则返回字符串中的的一个数字，失败则返回DOS_FAIL
  */
-S32 mon_first_int_from_str(S8 * pszStr)
+U32 mon_first_int_from_str(S8 * pszStr)
 {
-   S32  lData;
+   U32  ulData;
    S8   szTail[1024] = {0}; 
    S8 * pszSrc = pszStr;
    S8 * pszTemp = NULL;
    S32  lRet = 0;
 
-   if(!pszStr)
+   if(DOS_ADDR_INVALID(pszStr))
    {
-      logr_warning("%s:Line %d:mon_first_int_from_str|pszStr is %p!"
+      logr_warning("%s:Line %u:mon_first_int_from_str|pszStr is %p!"
                     , dos_get_filename(__FILE__), __LINE__, pszStr);
-      return -1;
+      return DOS_FAIL;
    }
    
    while (!(*pszSrc >= '0' && *pszSrc <= '9'))
@@ -212,15 +215,15 @@ S32 mon_first_int_from_str(S8 * pszStr)
    dos_strncpy(szTail, pszSrc, pszTemp - pszSrc);
    szTail[pszTemp - pszSrc] = '\0';
 
-   lRet = dos_atol(szTail, &lData);
+   lRet = dos_atoul(szTail, &ulData);
    if(0 != lRet)
    {
-      logr_error("%s:Line %d:mon_first_int_from_str|dos_atol failure,lRet is %d!"
+      logr_error("%s:Line %u:mon_first_int_from_str|dos_atol failure,lRet is %d!"
                     , dos_get_filename(__FILE__), __LINE__, lRet);
-      return -1;
+      return DOS_FAIL;
    }
    
-   return lData;
+   return ulData;
 }
 
 /**
@@ -238,16 +241,16 @@ U32  mon_analyse_by_reg_expr(S8* pszStr, S8* pszRegExpr, S8* pszRsltList[], U32 
    U32 ulRows = 0;
    S8* pszToken = NULL;
 
-   if(!pszStr)
+   if(DOS_ADDR_INVALID(pszStr))
    {
-      logr_error("%s:Line %d:mon_analyse_by_reg_expr|pszStr is %p!"
+      logr_error("%s:Line %u:mon_analyse_by_reg_expr|pszStr is %p!"
                     , dos_get_filename(__FILE__), __LINE__);
       return DOS_FAIL;
    }
 
-   if(!pszRegExpr)
+   if(DOS_ADDR_INVALID(pszRegExpr))
    {
-      logr_error("%s:Line %d:mon_analyse_by_reg_expr|pszRegExpr is %p!"
+      logr_error("%s:Line %u:mon_analyse_by_reg_expr|pszRegExpr is %p!"
                     , dos_get_filename(__FILE__), __LINE__);
       return DOS_FAIL;
    }
@@ -272,7 +275,7 @@ U32  mon_analyse_by_reg_expr(S8* pszStr, S8* pszRegExpr, S8* pszRsltList[], U32 
       }
 
       pszToken = strtok(pszBuff, pszRegExpr);
-      if(!pszToken)
+      if(DOS_ADDR_INVALID(pszToken))
       {
          break;
       }
@@ -297,7 +300,7 @@ U32 mon_generate_warning_id(U32 ulResType, U32 ulNo, U32 ulErrType)
    if(ulResType >= (U32)0xff || ulNo >= (U32)0xff
       || ulErrType >= (U32)0xff)
    {
-      logr_notice("%s:Line %d: mon_generate_warning_id|ulResType is %s%x,ulNo is %s%x, ulErrType is %s%x"
+      logr_notice("%s:Line %u: mon_generate_warning_id|ulResType is %s%x,ulNo is %s%x, ulErrType is %s%x"
                     , dos_get_filename(__FILE__), __LINE__, "0x", ulResType, "0x", ulNo, "0x", ulErrType);
       return (U32)0xff;
    }
@@ -316,9 +319,9 @@ U32 mon_generate_warning_id(U32 ulResType, U32 ulNo, U32 ulErrType)
 S8 * mon_str_get_name(S8 * pszCmd)
 {  
    S8 * pszPtr = pszCmd;
-   if(!pszPtr)
+   if(DOS_ADDR_INVALID(pszPtr))
    {
-      logr_error("%s:Line %d:mon_str_get_cmd|get cmd failure,pszCmd is %p!"
+      logr_error("%s:Line %u:mon_str_get_cmd|get cmd failure,pszCmd is %p!"
                     , dos_get_filename(__FILE__), __LINE__, pszCmd);
       return NULL;
    }

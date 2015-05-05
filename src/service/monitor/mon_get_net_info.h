@@ -28,16 +28,16 @@ typedef struct tagNetcardParam //网卡信息
    S8  szIPAddress[32];     //本地IPv4地址
    S8  szBroadIPAddress[32];//广播IP地址
    S8  szNetMask[32];       //子网掩码
-   S32 lRWSpeed;            //数据传输最大速率
+   U32 ulRWSpeed;            //数据传输最大速率
 }MON_NET_CARD_PARAM_S;
 
 
-S32  mon_netcard_malloc();
-S32  mon_netcard_free();
+U32  mon_netcard_malloc();
+U32  mon_netcard_free();
 BOOL mon_is_netcard_connected(const S8 * pszNetCard);
-S32 mon_get_data_trans_speed(const S8 * pszDevName);
-S32  mon_get_netcard_data();
-S32  mon_netcard_formatted_info();
+U32  mon_get_data_trans_speed(const S8 * pszDevName);
+U32  mon_get_netcard_data();
+U32  mon_netcard_formatted_info();
 
 
 #endif //#if INCLUDE_RES_MONITOR  

@@ -14,9 +14,9 @@ extern MON_SYS_PART_DATA_S * g_pastPartition[MAX_PARTITION_COUNT];
 extern MON_NET_CARD_PARAM_S * g_pastNet[MAX_NETCARD_CNT];
 extern MON_PROC_STATUS_S * g_pastProc[MAX_PROC_CNT];
 
-extern S32 g_lPartCnt;
-extern S32 g_lNetCnt;
-extern S32 g_lPidCnt;
+extern S32 g_ulPartCnt;
+extern S32 g_ulNetCnt;
+extern S32 g_ulPidCnt;
 
 S32 mon_command_proc(U32 ulIndex, S32 argc, S8 **argv)
 {
@@ -97,15 +97,15 @@ VOID mon_show_mem(U32 ulIndex)
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+--------------------+-------------------+--------------+---------------+------------------+-----------------+--------------+------------+");
     cli_out_string(ulIndex, szBuff);
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%20d|%19d|%14d|%15d|%18d|%17d|%14d|%12d|"
-                    , g_pstMem->lPhysicalMemTotalBytes
-                    , g_pstMem->lPhysicalMemFreeBytes
-                    , g_pstMem->lCached
-                    , g_pstMem->lBuffers
-                    , g_pstMem->lSwapTotalBytes
-                    , g_pstMem->lSwapFreeBytes
-                    , g_pstMem->lPhysicalMemUsageRate
-                    , g_pstMem->lSwapUsageRate);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%20u|%19u|%14u|%15u|%18u|%17u|%14u|%12u|"
+                    , g_pstMem->ulPhysicalMemTotalBytes
+                    , g_pstMem->ulPhysicalMemFreeBytes
+                    , g_pstMem->ulCached
+                    , g_pstMem->ulBuffers
+                    , g_pstMem->ulSwapTotalBytes
+                    , g_pstMem->ulSwapFreeBytes
+                    , g_pstMem->ulPhysicalMemUsageRate
+                    , g_pstMem->ulSwapUsageRate);
     cli_out_string(ulIndex, szBuff);
 
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+--------------------+-------------------+--------------+---------------+------------------+-----------------+--------------+------------+\r\n");
@@ -129,11 +129,11 @@ VOID mon_show_cpu(U32 ulIndex)
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+----------------+-------------+---------------+----------------+");
     cli_out_string(ulIndex, szBuff);
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%16d|%13d|%15d|%16d|"
-                    , g_pstCpuRslt->lCPUUsageRate
-                    , g_pstCpuRslt->lCPU5sUsageRate
-                    , g_pstCpuRslt->lCPU1minUsageRate
-                    , g_pstCpuRslt->lCPU10minUsageRate);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%16u|%13u|%15u|%16u|"
+                    , g_pstCpuRslt->ulCPUUsageRate
+                    , g_pstCpuRslt->ulCPU5sUsageRate
+                    , g_pstCpuRslt->ulCPU1minUsageRate
+                    , g_pstCpuRslt->ulCPU10minUsageRate);
     cli_out_string(ulIndex, szBuff);
     
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+----------------+-------------+---------------+----------------+\r\n");
@@ -157,12 +157,12 @@ VOID mon_show_disk(U32 ulIndex)
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+--------------------------------+------------------+-------------+-------------------+");
     cli_out_string(ulIndex, szBuff);
 
-    for (ulLoop = 0; ulLoop < g_lPartCnt; ++ulLoop)
+    for (ulLoop = 0; ulLoop < g_ulPartCnt; ++ulLoop)
     {
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%-32s|%18d|%13d|%-19s|"
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%-32s|%18u|%13u|%-19s|"
                         , g_pastPartition[ulLoop]->szPartitionName
-                        , g_pastPartition[ulLoop]->lPartitionAvailBytes
-                        , g_pastPartition[ulLoop]->lPartitionUsageRate
+                        , g_pastPartition[ulLoop]->ulPartitionAvailBytes
+                        , g_pastPartition[ulLoop]->ulPartitionUsageRate
                         , g_pastPartition[ulLoop]->szDiskSerialNo);
         cli_out_string(ulIndex, szBuff);
     }
@@ -170,7 +170,7 @@ VOID mon_show_disk(U32 ulIndex)
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+--------------------------------+------------------+-------------+-------------------+");
     cli_out_string(ulIndex, szBuff);
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n| Total Disk KBytes:%12d;  Total Disk Usage Rate:%3d%%                         |"
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n| Total Disk KBytes:%12u;  Total Disk Usage Rate:%3u%%                         |"
                     , mon_get_total_disk_kbytes()
                     , mon_get_total_disk_usage_rate());
     cli_out_string(ulIndex, szBuff);
@@ -196,15 +196,15 @@ VOID mon_show_netcard(U32 ulIndex)
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+---------+---------------------+--------------------+--------------------+--------------------+--------------------+");
     cli_out_string(ulIndex, szBuff);
 
-    for (ulLoop = 0; ulLoop < g_lNetCnt; ++ulLoop)
+    for (ulLoop = 0; ulLoop < g_ulNetCnt; ++ulLoop)
     {
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%-9s|%-21s|%-20s|%-20s|%-20s|%20d|"
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%-9s|%-21s|%-20s|%-20s|%-20s|%20u|"
                         , g_pastNet[ulLoop]->szNetDevName
                         , g_pastNet[ulLoop]->szMacAddress
                         , g_pastNet[ulLoop]->szIPAddress
                         , g_pastNet[ulLoop]->szBroadIPAddress
                         , g_pastNet[ulLoop]->szNetMask
-                        , g_pastNet[ulLoop]->lRWSpeed);
+                        , g_pastNet[ulLoop]->ulRWSpeed);
         cli_out_string(ulIndex, szBuff);
     }
 
@@ -230,17 +230,17 @@ VOID mon_show_process(U32 ulIndex)
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+-------+------------+----------------+-------------+----------+---------------+-------------------+---------------+");
     cli_out_string(ulIndex, szBuff);
 
-    for (ulLoop = 0; ulLoop < g_lPidCnt; ++ulLoop)
+    for (ulLoop = 0; ulLoop < g_ulPidCnt; ++ulLoop)
     {
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%7d|%-12s|%16.1f|%13.1f|%-10s|%15d|%19d|%15d|"
-                        , g_pastProc[ulLoop]->lProcId
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%7d|%-12s|%16.1f|%13.1f|%-10s|%15u|%19u|%15u|"
+                        , g_pastProc[ulLoop]->ulProcId
                         , mon_str_get_name(g_pastProc[ulLoop]->szProcName)
                         , g_pastProc[ulLoop]->fMemoryRate
                         , g_pastProc[ulLoop]->fCPURate
                         , g_pastProc[ulLoop]->szProcCPUTime
-                        , g_pastProc[ulLoop]->lOpenFileCnt
-                        , g_pastProc[ulLoop]->lDBConnCnt
-                        , g_pastProc[ulLoop]->lThreadsCnt);
+                        , g_pastProc[ulLoop]->ulOpenFileCnt
+                        , g_pastProc[ulLoop]->ulDBConnCnt
+                        , g_pastProc[ulLoop]->ulThreadsCnt);
         cli_out_string(ulIndex, szBuff);
     }
 
