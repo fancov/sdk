@@ -315,8 +315,7 @@ static U32 mon_get_res_info()
        logr_error("%s:Line %u:mon_get_res_info|get netcard data failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
     }
-
-
+    
     ulRet = mon_get_process_data();
     if (DOS_SUCC != ulRet)
     {

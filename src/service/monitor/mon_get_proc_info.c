@@ -131,7 +131,6 @@ static U32  mon_get_cpu_mem_time_info(U32 ulPid, MON_PROC_STATUS_S * pstProc)
         logr_error("%s:Line %d: Pid %u is invalid.", dos_get_filename(__FILE__), __LINE__, ulPid);
         return DOS_FAIL;
     }
-    
     dos_snprintf(szPsCmd, sizeof(szPsCmd), "ps aux | grep %u", ulPid);
     pstProc->ulProcId = ulPid;
 
@@ -355,17 +354,33 @@ static U32 mon_get_proc_pid_list()
    DIR * pstDir;
    struct dirent * pstEntry;
    /* 存放pid的目录 */
-   S8 szCommPidDir[] = "/tcom/var/run/pid/";
-   /* 数据库的pid文件所在目录 */
-   S8 szDBPidDir[] = "/var/dipcc/";
-   g_ulPidCnt = 0;
-   FILE * fp = NULL;
+   S8 szPidDir[1024] = {0};
+   S8 szServiceRoot[256] = {0};
+   S8 *pszRoot = NULL;
    
-   pstDir = opendir(szCommPidDir);
+   FILE * fp = NULL;
+
+   pszRoot = config_get_service_root(szServiceRoot, sizeof(szServiceRoot));
+   if (DOS_ADDR_INVALID(pszRoot))
+   {
+       logr_error("%s:Line %u:get service root failure.", dos_get_filename(__FILE__), __LINE__);
+       return DOS_FAIL;
+   }
+
+   if ('/' != szServiceRoot[dos_strlen(szServiceRoot) - 1])
+   {
+       dos_snprintf(szPidDir, sizeof(szPidDir), "%s%s", szServiceRoot, "/");
+       dos_snprintf(szServiceRoot, sizeof(szServiceRoot), "%s", szPidDir);
+   }
+
+   dos_snprintf(szPidDir, sizeof(szPidDir), "%s%s", szServiceRoot, "var/run/pid/");
+
+   g_ulPidCnt = 0;
+   pstDir = opendir(szPidDir);
    if (DOS_ADDR_INVALID(pstDir))
    {
       logr_cirt("%s:Line %u:mon_get_proc_pid_list|dir \'%s\' access failed,psrDir is %p!"
-                , dos_get_filename(__FILE__), __LINE__, szCommPidDir, pstDir);
+                , dos_get_filename(__FILE__), __LINE__, szPidDir, pstDir);
       return DOS_FAIL;
    }
 
@@ -379,8 +394,7 @@ static U32 mon_get_proc_pid_list()
          S8     szLine[8] = {0};
          S8     szAbsFilePath[64] = {0};
 
-         dos_strcat(szAbsFilePath, szCommPidDir);
-         dos_strcat(szAbsFilePath, pstEntry->d_name);
+         dos_snprintf(szAbsFilePath, sizeof(szAbsFilePath), "%s%s", szPidDir, pstEntry->d_name);
          
          fp = fopen(szAbsFilePath, "r");
       
@@ -428,9 +442,9 @@ static U32 mon_get_proc_pid_list()
                             , dos_get_filename(__FILE__), __LINE__, pTemp);
                goto failure;
             }
+
+            dos_snprintf(g_pastProc[g_ulPidCnt]->szProcName, sizeof(g_pastProc[g_ulPidCnt]->szProcName), "%s", pTemp);
             
-            dos_strcpy(g_pastProc[g_ulPidCnt]->szProcName, pTemp);
-            (g_pastProc[g_ulPidCnt]->szProcName)[dos_strlen(pTemp)] = '\0';
             ++g_ulPidCnt;
          }
          else
@@ -443,90 +457,6 @@ static U32 mon_get_proc_pid_list()
          fp = NULL;
       } 
    }
-   closedir(pstDir);
-
-   pstDir = opendir(szDBPidDir);
-   if (DOS_ADDR_INVALID(pstDir))
-   {
-      logr_cirt("%s:Line %u:mon_get_proc_pid_list|dir \'%s\' access failed,pstDir is %p!"
-                , dos_get_filename(__FILE__), __LINE__, szDBPidDir, pstDir);
-      return DOS_FAIL;
-   }
-
-   while (NULL != (pstEntry = readdir(pstDir)))
-   {
-      if (DT_REG == pstEntry->d_type && DOS_TRUE == mon_is_suffix_true(pstEntry->d_name, "pid"))
-      {
-         S8  szLine[8] = {0};
-         S8  szProcAllName[64] = {0};
-         S8 *pTemp;
-         S8  szAbsFilePath[64] = {0};
-         
-         dos_strcat(szAbsFilePath, szDBPidDir);
-         dos_strcat(szAbsFilePath, pstEntry->d_name);
-   
-         fp = fopen(szAbsFilePath, "r");      
-         if (DOS_ADDR_INVALID(fp))
-         {
-            logr_cirt("%s:Line %u:mon_get_proc_pid_list|file \'%s\' access failure,fp is %p!"
-                        , dos_get_filename(__FILE__), __LINE__, szAbsFilePath, fp);
-            closedir(pstDir);
-            return DOS_FAIL;
-         }
-
-         fseek(fp, 0, SEEK_SET);
-         if (NULL != (fgets(szLine, sizeof(szLine), fp)))
-         {
-            S32 lRet = 0;
-            if(DOS_ADDR_INVALID(g_pastProc[g_ulPidCnt]))
-            {
-                logr_cirt("%s:Line %u:mon_get_proc_pid_list|get proc pid list failure,g_pastProc[%u] is %p!"
-                            , dos_get_filename(__FILE__), __LINE__ ,g_ulPidCnt, g_pastProc[g_ulPidCnt]);
-                goto failure;
-            }
-            
-            lRet = dos_atoul(szLine, &(g_pastProc[g_ulPidCnt]->ulProcId));
-            if(0 != lRet)
-            {
-               logr_error("%s:Line %u:mon_get_proc_pid_list|dos_atol afilure, lRet is %d!"
-                            , dos_get_filename(__FILE__), __LINE__, lRet);
-               goto failure;
-            }
-
-            if(mon_is_proc_dead(g_pastProc[g_ulPidCnt]->ulProcId))
-            {//过滤掉不存在的进程
-               logr_error("%s:Line %u:mon_get_proc_pid_list|pid %u is invalid or not exist!"
-                            , dos_get_filename(__FILE__), __LINE__
-                            , g_pastProc[g_ulPidCnt]->ulProcId);
-               fclose(fp);
-               fp = NULL;
-               unlink(szAbsFilePath);
-               continue;
-            }
-            
-            pTemp = mon_get_proc_name_by_id(g_pastProc[g_ulPidCnt]->ulProcId, szProcAllName);
-            if(DOS_ADDR_INVALID(pTemp))
-            {
-               logr_error("%s:Line %u:mon_get_proc_pid_list|get proc name by id failure,pTemp is %p!"
-                            , dos_get_filename(__FILE__), __LINE__, pTemp);
-               goto failure;
-            }
-            
-            dos_strcpy(g_pastProc[g_ulPidCnt]->szProcName, pTemp);
-            (g_pastProc[g_ulPidCnt]->szProcName)[dos_strlen(pTemp)] = '\0';
-            ++g_ulPidCnt;
-         }
-         else
-         {
-            fclose(fp);
-            unlink(szAbsFilePath);
-            fp = NULL;
-         }
-         fclose(fp);
-         fp = NULL;
-      } 
-   }
-
    closedir(pstDir);
    return DOS_SUCC;
 
@@ -801,78 +731,62 @@ U32 mon_restart_computer()
  */
 S8 * mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName)
 {
-   S8   szPsCmd[64] = {0};
-   S8   szMonFile[] = "monstring";
-   S8   szLine[1024] = {0};
-   S8*  pTokenPtr = NULL;
-   FILE * fp = NULL;
+    S8 szPsCmd[32] = {0};
+    S8 szBuff[1024] = {0};
+    S8 *pszToker = NULL;
+    U32 ulCols = 0;
+    BOOL bFound = DOS_FALSE;
+    FILE *fp = NULL;
 
-   if(ulPid > MAX_PID_VALUE || ulPid <= MIN_PID_VALUE)
-   {
-      logr_emerg("%s:Line %u:mon_get_proc_name_by_id|pid %d is invalid!"
-                    , dos_get_filename(__FILE__), __LINE__, ulPid);
-      return NULL;
-   }
+    dos_snprintf(szPsCmd, sizeof(szPsCmd), "ps -ef | grep %u", ulPid);
 
-   if(DOS_ADDR_INVALID(pszPidName))
-   {
-      logr_warning("%s:Line %u:mon_get_proc_name_by_id|pszPidName is %p!"
-                    , dos_get_filename(__FILE__), __LINE__, pszPidName);
-      return NULL;
-   }
+    fp = popen(szPsCmd, "r");
+    if (DOS_ADDR_INVALID(fp))
+    {
+        logr_error("%s:Line %u:", dos_get_filename(__FILE__), __LINE__);
+        return NULL;
+    }
 
-   dos_snprintf(szPsCmd, sizeof(szPsCmd), "ps -ef | grep %u > %s"
-                ,ulPid, szMonFile);
-   system(szPsCmd);
-
-   fp = fopen(szMonFile, "r");
-   if (DOS_ADDR_INVALID(fp))
-   {
-      logr_cirt("%s:Line %u:mon_get_proc_name_by_id|file \'%s\' open failed,fp is %p!"
-                , dos_get_filename(__FILE__), __LINE__, szMonFile, fp);
-      return NULL;
-   }
-
-   fseek(fp, 0, SEEK_SET);
-
-   while(!feof(fp))
-   {
-      U32 ulCols = 0;
-      if(NULL != fgets(szLine, sizeof(szLine), fp))
-      {
-         if(ulPid != mon_first_int_from_str(szLine))
-         {
-            continue;
-         }
-
-         pTokenPtr = strtok(szLine, " \t\n");
-         while(DOS_ADDR_VALID(pTokenPtr))
-         {
-            pTokenPtr = strtok(NULL, " \t\n");
-            if(5 == ulCols)
+    while (!feof(fp))
+    {
+        if (NULL != fgets(szBuff, sizeof(szBuff), fp))
+        {
+            if (ulPid == mon_first_int_from_str(szBuff))
             {
-               break;
+                bFound = DOS_TRUE;
+                break;
             }
-            ++ulCols;
-         }
+        }
+    }
 
-         pTokenPtr = strtok(NULL, "\t");
-         *(pTokenPtr + dos_strlen(pTokenPtr) - 1) = '\0';
+    if (DOS_FALSE == bFound)
+    {
+        logr_error("%s:Line %u: Pid %u does not exist.", dos_get_filename(__FILE__), __LINE__, ulPid);
+        pclose(fp);
+        fp = NULL;
+        return NULL;
+    }
 
-         fclose(fp);
-         fp = NULL;
-         unlink(szMonFile);
+    pszToker = strtok(szBuff, " \t\n");
+    while (DOS_ADDR_VALID(pszToker))
+    {
+        pszToker = strtok(NULL, " \t\n");
+        if (5 == ulCols)
+        {
+            break;
+        }
+        ++ulCols;
+    }
 
-         return pTokenPtr;
-      }
-   }
+    pszToker = strtok(NULL, " \t");
+    *(pszToker + dos_strlen(pszToker) - 1) = '\0';
 
-   fclose(fp);
-   fp = NULL;
-   unlink(szMonFile);
+    pclose(fp);
+    fp = NULL;
 
-   return NULL;
+    return pszToker;
 }
+
 
 /**
  * 功能:判断进程是否死亡
@@ -883,55 +797,19 @@ S8 * mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName)
  */
 BOOL mon_is_proc_dead(U32 ulPid)
 {
-   S8 szPsCmd[MAX_CMD_LENGTH] = {0};
-   S8 szPsFile[] = "procfile";
-   S8 szLine[MAX_BUFF_LENGTH] = {0};
-   FILE * fp;
+    S8 szPath[16] = {0};
+    struct stat stBuf;
 
-   if(DOS_FALSE == mon_is_pid_valid(ulPid))
-   {
-       logr_error("%s:Line %u:mon_is_proc_dead|pid %d is invalid or not exist,ulPid = %u!"
-                    , dos_get_filename(__FILE__), __LINE__, ulPid);
-       return DOS_TRUE;
-   }
+    dos_snprintf(szPath, sizeof(szPath), "/proc/%u/", ulPid);
+    stat(szPath, &stBuf);
 
-   dos_snprintf(szPsCmd, MAX_CMD_LENGTH, "ps aux | grep %u > %s", ulPid, szPsFile);
-   system(szPsCmd);
+    if (ENOENT == errno)
+    {
+        return DOS_FALSE;
+    }
 
-   fp = fopen(szPsFile, "r");
-   if (DOS_ADDR_INVALID(fp))
-   {
-      logr_cirt("%s:Line %u:mon_is_proc_dead|file \'%s\' open failed,fp is %p!"
-                , dos_get_filename(__FILE__), __LINE__, szPsFile, fp);
-      return DOS_FAIL;
-   }
-
-   fseek(fp, 0, SEEK_SET);
-   while (!feof(fp))
-   {
-      if ((fgets(szLine, MAX_BUFF_LENGTH, fp)) != NULL)
-      {
-         if (ulPid == mon_first_int_from_str(szLine))
-         {
-            fclose(fp);
-            fp = NULL;
-            unlink(szPsFile);
-            logr_warning("%s:Line %u:mon_is_proc_dead|pid %u is running"
-                         , dos_get_filename(__FILE__), __LINE__, ulPid);
-            return DOS_FALSE;
-         }
-      }
-   }
-
-   fclose(fp);
-   fp = NULL;
-   unlink(szPsFile);
-   logr_info("%s:Line %u:mon_is_proc_dead|pid %d is dead!"
-                , dos_get_filename(__FILE__), __LINE__
-                , ulPid);
-   return DOS_TRUE;
+    return DOS_TRUE;
 }
-
 
 /**
  * 功能:获取所有监控进程的总cpu占用率
