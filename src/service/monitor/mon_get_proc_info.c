@@ -156,7 +156,7 @@ static U32  mon_get_cpu_mem_time_info(U32 ulPid, MON_PROC_STATUS_S * pstProc)
     pszToker = strtok(szBuff, " \t\n");
     while (pszToker)
     {
-        pszToker = strtok(NULL, "\t\n");
+        pszToker = strtok(NULL, " \t\n");
         switch(ulCount)
         {
             case 1:
