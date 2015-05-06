@@ -27,8 +27,10 @@
 typedef struct tagMonSysPartData
 {
     S8   szPartitionName[MAX_PARTITION_LENGTH];  //分区名
-    U32  ulPartitionAvailBytes; //分区已用字节数
-    U32  ulPartitionUsageRate;  //分区使用率
+    U32  ulPartitionTotalBytes;  //硬盘总1K 块数
+    U32  ulPartitionUsedBytes;   //已使用的块数
+    U32  ulPartitionAvailBytes;  //未使用块数
+    U32  ulPartitionUsageRate;   //分区使用率
     S8   szDiskSerialNo[MAX_PARTITION_LENGTH]; //所在磁盘序列号
 }MON_SYS_PART_DATA_S;
 

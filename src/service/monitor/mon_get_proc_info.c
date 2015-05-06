@@ -115,90 +115,72 @@ static BOOL mon_is_pid_valid(U32 ulPid)
  * ·µ»ØÖµ£º
  *   ÊÇ·µ»ØDOS_TRUE£¬Ê§°Ü·µ»ØDOS_FALSE
  */
+
 static U32  mon_get_cpu_mem_time_info(U32 ulPid, MON_PROC_STATUS_S * pstProc)
-{//Î´Íê³É
-   S8  szPsCmd[MAX_CMD_LENGTH] = {0};
-   S8  szProcFile[] = "procinfo"; 
-   FILE * fp;
-   S8* pszAnalyseRslt[12] = {0};
-   U32 ulRet = 0;
+{
+    S8  szPsCmd[32] = {0};
+    S8  szBuff[1024] = {0};
+    S8  *pszToker = 0;
+    S8  szCPURate[8] = {0}, szMemRate[8] = {0};
+    U32 ulCount = 0;
+    F64 fCPURate = 0, fMemRate = 0;
+    FILE *fp = NULL;
 
-   if(DOS_FALSE == mon_is_pid_valid(ulPid))
-   {
-      logr_error("%s:Line %u:mon_get_cpu_mem_time_info|get cpu & mem & time information failure,pid %u is invalid!"     
-                    , dos_get_filename(__FILE__), __LINE__, ulPid);
-      return DOS_FAIL;
-   }
-   
-   if (DOS_ADDR_INVALID(pstProc))
-   {
-      logr_cirt("%s:line %u:mon_get_cpu_mem_time_info|get cpu & mem & time information|failure,pstProc is %p!"
-                , dos_get_filename(__FILE__), __LINE__, pstProc);
-      return DOS_FAIL;
-   }
+    if (DOS_FALSE == mon_is_pid_valid(ulPid))
+    {
+        logr_error("%s:Line %d: Pid %u is invalid.", dos_get_filename(__FILE__), __LINE__, ulPid);
+        return DOS_FAIL;
+    }
+    
+    dos_snprintf(szPsCmd, sizeof(szPsCmd), "ps aux | grep %u", ulPid);
+    pstProc->ulProcId = ulPid;
 
-   dos_snprintf(szPsCmd, MAX_CMD_LENGTH, "ps aux | grep %u > %s", ulPid, szProcFile);
-   szPsCmd[dos_strlen(szPsCmd)] = '\0';
-   system(szPsCmd);
+    fp = popen(szPsCmd, "r");
+    if (DOS_ADDR_INVALID(fp))
+    {
+        logr_error("%s:Line %u: ps command execute FAIL.", dos_get_filename(__FILE__), __LINE__);
+        return DOS_FAIL;
+    }
 
-   fp = fopen(szProcFile, "r");
-   if (DOS_ADDR_INVALID(fp))
-   {
-      logr_cirt("%s:line %u:mon_get_cpu_mem_time_info|get cpu & mem & time information|failure,file \'%s\' fp is %p!"
-                , dos_get_filename(__FILE__), __LINE__, szProcFile, fp);
-      return DOS_FAIL;
-   }
+    while(!feof(fp))
+    {
+        if (NULL != fgets(szBuff, sizeof(szBuff), fp))
+        {
+            if (ulPid == mon_first_int_from_str(szBuff))
+            {
+                break;
+            }
+        }
+    }
 
-   fseek(fp, 0, SEEK_SET);
-   while (!feof(fp))
-   {  
-      S8 szLine[MAX_BUFF_LENGTH] = {0};
-      U32 ulData = 0;
-      S32 lRet  = 0;
-      
-      if (NULL != (fgets(szLine, MAX_BUFF_LENGTH, fp)))
-      {
-          ulRet = mon_analyse_by_reg_expr(szLine, " \t\n", pszAnalyseRslt, sizeof(pszAnalyseRslt)/sizeof(pszAnalyseRslt[0]));
-          if(DOS_SUCC != ulRet)
-          {
-             logr_error("%s:Line %u:mon_get_cpu_mem_time_info|analyse sentence failure!"
-                        , dos_get_filename(__FILE__), __LINE__);
-             goto failure;
-          }
-          /* ºÜÏÔÈ»£¬µÚ¶þÁÐÊÇ½ø³Ìid£¬µÚÈýÁÐÊÇÄÚ´æÆ½¾ùÕ¼ÓÃÂÊ£
-           * µÚËÄÁÐÊÇcpuµÄÆ½¾ùÕ¼ÓÃÂÊ£¬µÚÊ®ÁÐÊÇcpuµ±Ç°³ÖÐøÊ±¼ä
-           */
-          lRet = dos_atoul(pszAnalyseRslt[1], &ulData);
-          if(0 != lRet)
-          {
-             logr_error("%s:Line %u:mon_get_cpu_mem_time_info|dos_atol failure!"
-                        , dos_get_filename(__FILE__), __LINE__);
-             goto failure;
-          }
-          if(ulPid != ulData)
-          {
-             continue;
-          }
-          pstProc->fCPURate = atof(pszAnalyseRslt[2]);
-          pstProc->fMemoryRate = atof(pszAnalyseRslt[3]);
-          dos_strcpy(pstProc->szProcCPUTime, pszAnalyseRslt[8]);
-          pstProc->szProcCPUTime[dos_strlen(pszAnalyseRslt[8])] = '\0';
-          break;
-      }
-   }
-   goto success;
-
+    pszToker = strtok(szBuff, " \t\n");
+    while (pszToker)
+    {
+        pszToker = strtok(NULL, "\t\n");
+        switch(ulCount)
+        {
+            case 1:
+                dos_snprintf(szCPURate, sizeof(szCPURate), "%s", pszToker);
+                fCPURate = atof(szCPURate);
+                pstProc->fCPURate = fCPURate;
+                break;
+            case 2:
+                dos_snprintf(szMemRate, sizeof(szMemRate), "%s", pszToker);
+                fMemRate = atof(szMemRate);
+                pstProc->fMemoryRate = fMemRate;
+                break;
+            case 8:
+                dos_snprintf(pstProc->szProcCPUTime, sizeof(pstProc->szProcCPUTime), "%s", pszToker);
+                goto success;
+        }
+        ++ulCount;
+    }
 success:
-   fclose(fp);
-   fp = NULL;
-   unlink(szProcFile);  
-   return DOS_SUCC;
-failure:
-   fclose(fp);
-   fp = NULL;
-   unlink(szProcFile);  
-   return DOS_FAIL;
+    pclose(fp);
+    fp = NULL;
+    return DOS_SUCC;
 }
+
 
 /** lsof -p 1  Êä³ö½ø³Ì1´ò¿ªµÄËùÓÐÎÄ¼þ
  * COMMAND PID USER   FD   TYPE             DEVICE SIZE/OFF   NODE NAME
@@ -217,58 +199,43 @@ failure:
  */
 static U32  mon_get_openfile_count(U32 ulPid)
 {
-   S8  szLsofCmd[MAX_CMD_LENGTH] = {0};
-   S8  szLine[MAX_BUFF_LENGTH] = {0};
-   S8  szFileName[] = "filecount";
-   U32 ulCount = 0;
-   FILE * fp;
+    S8  szLsofCmd[MAX_CMD_LENGTH] = {0};
+    S8  szBuff[MAX_BUFF_LENGTH] = {0};
+    FILE  *fp = NULL;
+    U32 ulCount = 0;
 
-   if(DOS_FALSE == mon_is_pid_valid(ulPid))
-   {
-      logr_error("%s:Line %u:mon_get_openfile_count|get open file count failure,pid %u is invalid!"
-                    , dos_get_filename(__FILE__), __LINE__, ulPid);
-      return DOS_FAIL;
-   }
-   /**
-    *  Ê¹ÓÃÃüÁî: lsof -p pid | wc -l ¿ÉÒÔÍ³¼Æ³öµ±Ç°½ø³Ì´ò¿ªÁË¶àÉÙÎÄ¼þ
-    */
-   dos_snprintf(szLsofCmd, MAX_CMD_LENGTH, "lsof -p %u | wc -l > %s", ulPid, szFileName);
-   system(szLsofCmd);
+    if (DOS_FALSE == mon_is_pid_valid(ulPid))
+    {
+        logr_error("%s:Line %u:Pid %u is invalid.", dos_get_filename(__FILE__), __LINE__, ulPid);
+        return DOS_FAIL;
+    }
 
-   fp = fopen(szFileName, "r");
-   fseek(fp, 0, SEEK_SET);
-   if (DOS_ADDR_INVALID(fp))
-   {
-      logr_cirt("%s:line %u:mon_get_openfile_count|file \'%s\' open failure,fp is %p!"
-                , dos_get_filename(__FILE__), __LINE__, szFileName, fp);
-      return DOS_FAIL;
-   }
+    dos_snprintf(szLsofCmd, sizeof(szLsofCmd), "lsof -p %u | wc -l", ulPid);
 
-   if (NULL != (fgets(szLine, MAX_BUFF_LENGTH, fp)))
-   {
-      S32 lRet = 0;
-      
-      lRet = dos_atoul(szLine, &ulCount);
-      if(0 != lRet)
-      {
-         logr_error("%s:Line %u:mon_get_openfile_count|dos_atol failure,lRet is %d!"
-                    , dos_get_filename(__FILE__), __LINE__, lRet);
-         goto failure;
-      }
-   }
-   goto success;
+    fp = popen(szLsofCmd, "r");
+    if (DOS_ADDR_INVALID(fp))
+    {
+        logr_error("%s:Line %u: lsof command open FAIL.", dos_get_filename(__FILE__), __LINE__);
+        return DOS_FAIL;
+    }
 
-success:
-   fclose(fp);
-   fp = NULL;
-   unlink(szFileName);
-   return ulCount;
-failure:
-    fclose(fp);
+    if (NULL != fgets(szBuff, sizeof(szBuff), fp))
+    {
+        if (dos_atoul(szBuff, &ulCount) < 0)
+        {
+            logr_error("%s:Line %u:dos_atoul FAIL.", dos_get_filename(__FILE__), __LINE__);
+            pclose(fp);
+            fp = NULL;
+            return DOS_FAIL;
+        }
+    }
+    
+    pclose(fp);
     fp = NULL;
-    unlink(szFileName);
-    return DOS_FAIL;
+
+    return ulCount;
 }
+
 
 /**
  * ¹¦ÄÜ:»ñÈ¡½ø³ÌµÄÊý¾Ý¿âÁ¬½Ó¸öÊý
