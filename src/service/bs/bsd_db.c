@@ -678,7 +678,7 @@ S32 bsd_walk_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg)
 VOID bsd_save_original_cdr(BS_INTER_MSG_CDR *pstMsg)
 {
     U32             i;
-    BS_MSG_CDR      *pstCDR;
+    BS_MSG_CDR      *pstCDR = NULL;
     S8              szQuery[1024] = { 0, };
 
     pstCDR = (BS_MSG_CDR *)pstMsg->pCDR;
@@ -701,11 +701,11 @@ VOID bsd_save_original_cdr(BS_INTER_MSG_CDR *pstMsg)
 
         //TODO:存储话单到数据库中
         dos_snprintf(szQuery, sizeof(szQuery), "INSERT IGNORE INTO "
-                    	"tbl_cdr (id, customer_id, account_id, user_id, task_id, type1, type2, type3"
-                    	", record_file, caller, callee, CID, agent_num, start_time, ring_time"
-                    	", answer_time, ivr_end_time, dtmf_time, hold_cnt, hold_times, peer_trunk_id"
-                    	", terminate_cause, release_part, payload_type, package_loss_rate, cdr_mark"
-                    	", sessionID, bridge_time, bye_time, peer_ip1, peer_ip2, tbl_cdr.peer_ip3, peer_ip4)"
+                        "tbl_cdr (id, customer_id, account_id, user_id, task_id, type1, type2, type3"
+                        ", record_file, caller, callee, CID, agent_num, start_time, ring_time"
+                        ", answer_time, ivr_end_time, dtmf_time, hold_cnt, hold_times, peer_trunk_id"
+                        ", terminate_cause, release_part, payload_type, package_loss_rate, cdr_mark"
+                        ", sessionID, bridge_time, bye_time, peer_ip1, peer_ip2, tbl_cdr.peer_ip3, peer_ip4)"
                     "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, \"%s\", \"%s\", \"%s\", \"%s\""
                         ", \"%s\", FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), %u, %u, %u, %u, %u, %u, %u, %u, \"%s\""
                         ", FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), %u, %u, %u, %u);"
@@ -756,7 +756,7 @@ VOID bsd_save_original_cdr(BS_INTER_MSG_CDR *pstMsg)
 /* 存储语音话单 */
 VOID bsd_save_voice_cdr(BS_INTER_MSG_CDR *pstMsg)
 {
-    BS_CDR_VOICE_ST *pstCDR;
+    BS_CDR_VOICE_ST *pstCDR = NULL;
     S8              szQuery[1024] = { 0, };
 
     pstCDR = (BS_CDR_VOICE_ST *)pstMsg->pCDR;
@@ -767,27 +767,27 @@ VOID bsd_save_voice_cdr(BS_INTER_MSG_CDR *pstMsg)
     }
 
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT IGNORE INTO tbl_cdr_voice("
-                	"`id`,`customer_id`,`account_id`,`user_id`,`task_id`,`billing_rule_id`,`type`,`fee_l1`,"
-                	"`fee_l2`,`fee_l3`,`fee_l4`,`fee_l5`,`record_file`,`caller`,`callee`,`CID`,`agent_num`,"
-                	"`pdd_len`,`ring_times`,`answer_time`,`ivr_end_times`,`dtmf_times`,`wait_agent_times`,"
-                	"`time_len`,`hold_cnt`,`hold_times`,`peer_trunk_id`,`terminate_cause`,`release_part`,"
-                	"`payload_type`,`package_loss_rate`,`record_flag`,`agent_level`,`cdr_mark`,`cdr_type`,"
-                	"`peer_ip1`,`peer_ip2`,`peer_ip3`,`peer_ip4`)"
+                    "`id`,`customer_id`,`account_id`,`user_id`,`task_id`,`billing_rule_id`,`type`,`fee_l1`,"
+                    "`fee_l2`,`fee_l3`,`fee_l4`,`fee_l5`,`record_file`,`caller`,`callee`,`CID`,`agent_num`,"
+                    "`pdd_len`,`ring_times`,`answer_time`,`ivr_end_times`,`dtmf_times`,`wait_agent_times`,"
+                    "`time_len`,`hold_cnt`,`hold_times`,`peer_trunk_id`,`terminate_cause`,`release_part`,"
+                    "`payload_type`,`package_loss_rate`,`record_flag`,`agent_level`,`cdr_mark`,`cdr_type`,"
+                    "`peer_ip1`,`peer_ip2`,`peer_ip3`,`peer_ip4`)"
                 "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\", \"%s\", \"%s\""
-                	", \"%s\", \"%s\", %u, %u, FROM_UNIXTIME(%u), %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u"
-                	", %u, %u, %u, %u, %u, %u, %u, %u);"
-                	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID
-                	, pstCDR->ulTaskID, pstCDR->ulRuleID, pstCDR->ucServType
-                	, pstCDR->aulFee[0], pstCDR->aulFee[1], pstCDR->aulFee[2]
-                	, pstCDR->aulFee[3], pstCDR->aulFee[4], pstCDR->szRecordFile
-                	, pstCDR->szCaller, pstCDR->szCallee, pstCDR->szCID, pstCDR->szAgentNum
-                	, pstCDR->ulPDDLen, pstCDR->ulRingTime, pstCDR->ulAnswerTimeStamp
-                	, pstCDR->ulIVRFinishTime, pstCDR->ulDTMFTime, pstCDR->ulWaitAgentTime
-                	, pstCDR->ulTimeLen, pstCDR->ulHoldCnt, pstCDR->ulHoldTimeLen
-                	, pstCDR->usPeerTrunkID, pstCDR->usTerminateCause, pstCDR->ucReleasePart
-                	, pstCDR->ucPayloadType, pstCDR->ucPacketLossRate, pstCDR->ucRecordFlag
-                	, pstCDR->ucAgentLevel, pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType
-                	, pstCDR->aulPeerIP[0], pstCDR->aulPeerIP[1], pstCDR->aulPeerIP[2], pstCDR->aulPeerIP[3]);
+                    ", \"%s\", \"%s\", %u, %u, FROM_UNIXTIME(%u), %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u"
+                    ", %u, %u, %u, %u, %u, %u, %u, %u);"
+                    , pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID
+                    , pstCDR->ulTaskID, pstCDR->ulRuleID, pstCDR->ucServType
+                    , pstCDR->aulFee[0], pstCDR->aulFee[1], pstCDR->aulFee[2]
+                    , pstCDR->aulFee[3], pstCDR->aulFee[4], pstCDR->szRecordFile
+                    , pstCDR->szCaller, pstCDR->szCallee, pstCDR->szCID, pstCDR->szAgentNum
+                    , pstCDR->ulPDDLen, pstCDR->ulRingTime, pstCDR->ulAnswerTimeStamp
+                    , pstCDR->ulIVRFinishTime, pstCDR->ulDTMFTime, pstCDR->ulWaitAgentTime
+                    , pstCDR->ulTimeLen, pstCDR->ulHoldCnt, pstCDR->ulHoldTimeLen
+                    , pstCDR->usPeerTrunkID, pstCDR->usTerminateCause, pstCDR->ucReleasePart
+                    , pstCDR->ucPayloadType, pstCDR->ucPacketLossRate, pstCDR->ucRecordFlag
+                    , pstCDR->ucAgentLevel, pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType
+                    , pstCDR->aulPeerIP[0], pstCDR->aulPeerIP[1], pstCDR->aulPeerIP[2], pstCDR->aulPeerIP[3]);
 
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
@@ -802,7 +802,7 @@ VOID bsd_save_voice_cdr(BS_INTER_MSG_CDR *pstMsg)
 /* 存储语音话单 */
 VOID bsd_save_recording_cdr(BS_INTER_MSG_CDR *pstMsg)
 {
-    BS_CDR_RECORDING_ST *pstCDR;
+    BS_CDR_RECORDING_ST *pstCDR = NULL;
     S8                  szQuery[1024] = { 0, };
 
     pstCDR = (BS_CDR_RECORDING_ST *)pstMsg->pCDR;
@@ -819,13 +819,13 @@ VOID bsd_save_recording_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`start_time`,`time_len`,`agent_level`,`cdr_mark`,`cdr_type`)"
                     "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\", "
                       "\"%s\", \"%s\", \"%s\", \"%s\", FROM_UNIXTIME(%u), %u, %u, %u, %u);"
-                	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID
-                	, pstCDR->ulTaskID, pstCDR->ulRuleID, pstCDR->aulFee[0]
-                	, pstCDR->aulFee[1], pstCDR->aulFee[2], pstCDR->aulFee[3]
-                	, pstCDR->aulFee[4], pstCDR->szRecordFile, pstCDR->szCaller
-                	, pstCDR->szCallee, pstCDR->szCID, pstCDR->szAgentNum
-                	, pstCDR->ulRecordTimeStamp, pstCDR->ulTimeLen, pstCDR->ucAgentLevel
-                	, pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType);
+                    , pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID
+                    , pstCDR->ulTaskID, pstCDR->ulRuleID, pstCDR->aulFee[0]
+                    , pstCDR->aulFee[1], pstCDR->aulFee[2], pstCDR->aulFee[3]
+                    , pstCDR->aulFee[4], pstCDR->szRecordFile, pstCDR->szCaller
+                    , pstCDR->szCallee, pstCDR->szCID, pstCDR->szAgentNum
+                    , pstCDR->ulRecordTimeStamp, pstCDR->ulTimeLen, pstCDR->ucAgentLevel
+                    , pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType);
 
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
@@ -840,7 +840,7 @@ VOID bsd_save_recording_cdr(BS_INTER_MSG_CDR *pstMsg)
 /* 存储消息话单 */
 VOID bsd_save_message_cdr(BS_INTER_MSG_CDR *pstMsg)
 {
-    BS_CDR_MS_ST    *pstCDR;
+    BS_CDR_MS_ST    *pstCDR = NULL;
     S8              szQuery[1024] = { 0, };
 
     pstCDR = (BS_CDR_MS_ST *)pstMsg->pCDR;
@@ -857,16 +857,16 @@ VOID bsd_save_message_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`terminate_cause`,`agent_level`,`cdr_mark`,`cdr_type`,`peer_ip1`,"
                       "`peer_ip2`,`peer_ip3`,`peer_ip4`)"
                     "VALUES (%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u"
-                    	", \"%s\", \"%s\", \"%s\", %u, %u, %u, %u, %u, %u"
-                    	", %u, %u, %u, %u, %u, %u);"
-                	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID, 0
-                	, pstCDR->ulRuleID, pstCDR->ucServType, pstCDR->aulFee[0]
-                	, pstCDR->aulFee[1], pstCDR->aulFee[2], pstCDR->aulFee[3]
-                	, pstCDR->aulFee[4], pstCDR->szCaller, pstCDR->szCallee
-                	, pstCDR->szAgentNum, pstCDR->ulTimeStamp, pstCDR->ulArrivedTimeStamp
-                	, pstCDR->ulLen, pstCDR->usPeerTrunkID, pstCDR->usTerminateCause, pstCDR->ucAgentLevel
-                	, pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType, pstCDR->aulPeerIP[0]
-                	, pstCDR->aulPeerIP[1], pstCDR->aulPeerIP[2], pstCDR->aulPeerIP[3]);
+                        ", \"%s\", \"%s\", \"%s\", %u, %u, %u, %u, %u, %u"
+                        ", %u, %u, %u, %u, %u, %u);"
+                    , pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID, 0
+                    , pstCDR->ulRuleID, pstCDR->ucServType, pstCDR->aulFee[0]
+                    , pstCDR->aulFee[1], pstCDR->aulFee[2], pstCDR->aulFee[3]
+                    , pstCDR->aulFee[4], pstCDR->szCaller, pstCDR->szCallee
+                    , pstCDR->szAgentNum, pstCDR->ulTimeStamp, pstCDR->ulArrivedTimeStamp
+                    , pstCDR->ulLen, pstCDR->usPeerTrunkID, pstCDR->usTerminateCause, pstCDR->ucAgentLevel
+                    , pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType, pstCDR->aulPeerIP[0]
+                    , pstCDR->aulPeerIP[1], pstCDR->aulPeerIP[2], pstCDR->aulPeerIP[3]);
 
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
@@ -883,7 +883,7 @@ VOID bsd_save_message_cdr(BS_INTER_MSG_CDR *pstMsg)
 /* 存储结算话单 */
 VOID bsd_save_settle_cdr(BS_INTER_MSG_CDR *pstMsg)
 {
-    BS_CDR_SETTLE_ST    *pstCDR;
+    BS_CDR_SETTLE_ST    *pstCDR = NULL;
     S8                  szQuery[1024] = { 0, };
 
     pstCDR = (BS_CDR_SETTLE_ST *)pstMsg->pCDR;
@@ -898,12 +898,12 @@ VOID bsd_save_settle_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`terminate_cause`,`cdr_mark`,`cdr_type`,`peer_ip1`,"
                       "`peer_ip2`,`peer_ip3`,`peer_ip4`)"
                     "VALUES(NULL, %u, %u, %u, %u, %u, \"%s\", \"%s\", %u"
-                    	", %u, %u, %u, %u, %u, %u, %u, %u);"
-                	, pstCDR->ulSPID, pstCDR->ulRuleID, pstCDR->ulTimeStamp
-                	, pstCDR->ucServType, pstCDR->ulFee, pstCDR->szCaller
-                	, pstCDR->szCallee, pstCDR->ulTimeStamp, pstCDR->usPeerTrunkID
-                	, pstCDR->usTerminateCause, pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType
-                	, pstCDR->aulPeerIP[0], pstCDR->aulPeerIP[1], pstCDR->aulPeerIP[2], pstCDR->aulPeerIP[3]);
+                        ", %u, %u, %u, %u, %u, %u, %u, %u);"
+                    , pstCDR->ulSPID, pstCDR->ulRuleID, pstCDR->ulTimeStamp
+                    , pstCDR->ucServType, pstCDR->ulFee, pstCDR->szCaller
+                    , pstCDR->szCallee, pstCDR->ulTimeStamp, pstCDR->usPeerTrunkID
+                    , pstCDR->usTerminateCause, pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType
+                    , pstCDR->aulPeerIP[0], pstCDR->aulPeerIP[1], pstCDR->aulPeerIP[2], pstCDR->aulPeerIP[3]);
 
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
@@ -919,7 +919,7 @@ VOID bsd_save_settle_cdr(BS_INTER_MSG_CDR *pstMsg)
 /* 存储租金话单 */
 VOID bsd_save_rent_cdr(BS_INTER_MSG_CDR *pstMsg)
 {
-    BS_CDR_RENT_ST    *pstCDR;
+    BS_CDR_RENT_ST    *pstCDR = NULL;
     S8                szQuery[1024] = { 0, };
 
     pstCDR = (BS_CDR_RENT_ST *)pstMsg->pCDR;
@@ -934,10 +934,10 @@ VOID bsd_save_rent_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`type`,`fee_l1`,`fee_l2`,`fee_l3`,`fee_l4`,`fee_l5`,"
                       "`agent_level`,`cdr_mark`,`cdr_type`)"
                     "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u);"
-                	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulRuleID, pstCDR->ulTimeStamp
-                	, pstCDR->ucAttrType, pstCDR->aulFee[0], pstCDR->aulFee[1], pstCDR->aulFee[2]
-                	, pstCDR->aulFee[3], pstCDR->aulFee[4], pstCDR->ucAgentLevel, pstCDR->stCDRTag.ulCDRMark
-                	, pstCDR->stCDRTag.ucCDRType);
+                    , pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulRuleID, pstCDR->ulTimeStamp
+                    , pstCDR->ucAttrType, pstCDR->aulFee[0], pstCDR->aulFee[1], pstCDR->aulFee[2]
+                    , pstCDR->aulFee[3], pstCDR->aulFee[4], pstCDR->ucAgentLevel, pstCDR->stCDRTag.ulCDRMark
+                    , pstCDR->stCDRTag.ucCDRType);
 
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
@@ -952,7 +952,7 @@ VOID bsd_save_rent_cdr(BS_INTER_MSG_CDR *pstMsg)
 /* 存储账户类话单 */
 VOID bsd_save_account_cdr(BS_INTER_MSG_CDR *pstMsg)
 {
-    BS_CDR_ACCOUNT_ST   *pstCDR;
+    BS_CDR_ACCOUNT_ST   *pstCDR = NULL;
     S8                  szQuery[1024] = { 0, };
 
     pstCDR = (BS_CDR_ACCOUNT_ST *)pstMsg->pCDR;
@@ -967,9 +967,9 @@ VOID bsd_save_account_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`type`,`money`,`balance`,`peer_account_id`,"
                       "`operator_id`,`note`)"
                     "VALUES(NULL, %u, %u, FROM_UNIXTIME(%u), %u, %u, %ld, %u, %u, \"%s\");"
-                	, pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulTimeStamp
-                	, pstCDR->ucOperateType, pstCDR->lMoney, pstCDR->LBalance
-                	, pstCDR->ulPeeAccount, pstCDR->ulOperatorID, pstCDR->szRemark);
+                    , pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulTimeStamp
+                    , pstCDR->ucOperateType, pstCDR->lMoney, pstCDR->LBalance
+                    , pstCDR->ulPeeAccount, pstCDR->ulOperatorID, pstCDR->szRemark);
 
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
@@ -1006,7 +1006,10 @@ VOID bsd_save_account_cdr(BS_INTER_MSG_CDR *pstMsg)
 /* 存储出局呼叫统计 */
 VOID bsd_save_outband_stat(BS_INTER_MSG_STAT *pstMsg)
 {
-    BS_STAT_OUTBAND_ST  *pstStat;
+    BS_STAT_OUTBAND_ST  *pstStat = NULL;
+    S8  szQuery[1024] = {0};
+    time_t ulTimeStamp = 0;
+    struct tm *pstLocal;
 
     pstStat = (BS_STAT_OUTBAND_ST *)pstMsg->pStat;
     if (DOS_ADDR_INVALID(pstStat))
@@ -1015,16 +1018,49 @@ VOID bsd_save_outband_stat(BS_INTER_MSG_STAT *pstMsg)
         return;
     }
 
+    ulTimeStamp = pstStat->stOutBand.ulTimeStamp;
+
+    pstLocal = localtime(&ulTimeStamp);
+
+    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_outband(object_id, type,"
+                    "ctime, call_cnt, ring_cnt, busy_cnt, notexist_cnt, noanswer_cnt,"
+                    "reject_cnt, early_release_cnt, answer_cnt, pdd, answer_times) VALUES("
+                    "%u,%u,\'%4u-%02u-%02u %02u:%02u:%02u\',%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
+                    , pstStat->stStatTag.ulObjectID
+                    , pstStat->stStatTag.ucObjectType
+                    , pstLocal->tm_year + 1900
+                    , pstLocal->tm_mon + 1
+                    , pstLocal->tm_mday
+                    , pstLocal->tm_hour
+                    , pstLocal->tm_min
+                    , pstLocal->tm_sec
+                    , pstStat->stOutBand.ulCallCnt
+                    , pstStat->stOutBand.ulRingCnt
+                    , pstStat->stOutBand.ulBusyCnt
+                    , pstStat->stOutBand.ulNotExistCnt
+                    , pstStat->stOutBand.ulNoAnswerCnt
+                    , pstStat->stOutBand.ulRejectCnt
+                    , pstStat->stOutBand.ulEarlyReleaseCnt
+                    , pstStat->stOutBand.ulAnswerCnt
+                    , pstStat->stOutBand.ulPDD
+                    , pstStat->stOutBand.ulAnswerTime);
+
     //TODO:存储统计信息到数据库中
+    if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
+    {
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_ERROR, "Save outband stat in DB FAIL! (%s)", szQuery);
+    }
 
     bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save outband stat in DB !");
-
 }
 
 /* 存储出局呼叫统计 */
 VOID bsd_save_inband_stat(BS_INTER_MSG_STAT *pstMsg)
 {
-    BS_STAT_INBAND_ST   *pstStat;
+    BS_STAT_INBAND_ST   *pstStat = NULL;
+    S8 szQuery[1024] = {0};
+    time_t ulTimeStamp = 0;
+    struct tm *pstLocal = NULL;
 
     pstStat = (BS_STAT_INBAND_ST *)pstMsg->pStat;
     if (DOS_ADDR_INVALID(pstStat))
@@ -1033,7 +1069,42 @@ VOID bsd_save_inband_stat(BS_INTER_MSG_STAT *pstMsg)
         return;
     }
 
+    ulTimeStamp = pstStat->stInBand.ulTimeStamp;
+
+    pstLocal = localtime(&ulTimeStamp);
+
+    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_inband(object_id, type,"
+                    "ctime, call_cnt, ring_cnt, busy_cnt, noanswer_cnt, early_release_cnt,"
+                    "answer_cnt, conn_agent_cnt, agent_answer_cnt, hold_cnt, answer_times,"
+                    "wait_agent_times, agent_answer_times, hold_times) VALUES(%u,%u,\'%04u"
+                    "-%02u-%02u %02u:%02u:%02u\',%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
+                    , pstStat->stStatTag.ulObjectID
+                    , pstStat->stStatTag.ucObjectType
+                    , pstLocal->tm_year + 1900
+                    , pstLocal->tm_mon + 1
+                    , pstLocal->tm_mday
+                    , pstLocal->tm_hour
+                    , pstLocal->tm_min
+                    , pstLocal->tm_sec
+                    , pstStat->stInBand.ulCallCnt
+                    , pstStat->stInBand.ulRingCnt
+                    , pstStat->stInBand.ulBusyCnt
+                    , pstStat->stInBand.ulNoAnswerCnt
+                    , pstStat->stInBand.ulEarlyReleaseCnt
+                    , pstStat->stInBand.ulAnswerCnt
+                    , pstStat->stInBand.ulConnAgentCnt
+                    , pstStat->stInBand.ulAgentAnswerCnt
+                    , pstStat->stInBand.ulHoldCnt
+                    , pstStat->stInBand.ulAnswerTime
+                    , pstStat->stInBand.ulWaitAgentTime
+                    , pstStat->stInBand.ulAgentAnswerTime
+                    , pstStat->stInBand.ulHoldTime);
+
     //TODO:存储统计信息到数据库中
+    if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
+    {
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save inband stat in DB FAIL!(%s)", szQuery);
+    }
 
     bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save inband stat in DB !");
 
@@ -1042,7 +1113,10 @@ VOID bsd_save_inband_stat(BS_INTER_MSG_STAT *pstMsg)
 /* 存储出局呼叫统计 */
 VOID bsd_save_outdialing_stat(BS_INTER_MSG_STAT *pstMsg)
 {
-    BS_STAT_OUTDIALING_ST   *pstStat;
+    BS_STAT_OUTDIALING_ST   *pstStat = NULL;
+    S8 szQuery[1024] = {0};
+    time_t ulTimeStamp = 0;
+    struct tm *pstLocal = NULL;
 
     pstStat = (BS_STAT_OUTDIALING_ST *)pstMsg->pStat;
     if (DOS_ADDR_INVALID(pstStat))
@@ -1051,7 +1125,42 @@ VOID bsd_save_outdialing_stat(BS_INTER_MSG_STAT *pstMsg)
         return;
     }
 
+    ulTimeStamp = pstStat->stOutDialing.ulTimeStamp;
+    pstLocal = localtime(&ulTimeStamp);
+
+    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_outdialing(object_id, type,"
+                    "ctime, call_cnt, ring_cnt, busy_cnt, notexist_cnt, noanswer_cnt, reject_cnt,"
+                    "early_release_cnt, answer_cnt, conn_agent_cnt, agent_answer_cnt, pdd,"
+                    "answer_times, wait_agent_times, agent_answer_times) VALUES(%u,%u,\'%04u-"
+                    "%02u-%02u %02u:%02u:%02u\',%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
+                    , pstStat->stStatTag.ulObjectID
+                    , pstStat->stStatTag.ucObjectType
+                    , pstLocal->tm_year + 1900
+                    , pstLocal->tm_mon + 1
+                    , pstLocal->tm_mday
+                    , pstLocal->tm_hour
+                    , pstLocal->tm_min
+                    , pstLocal->tm_sec
+                    , pstStat->stOutDialing.ulCallCnt
+                    , pstStat->stOutDialing.ulRingCnt
+                    , pstStat->stOutDialing.ulBusyCnt
+                    , pstStat->stOutDialing.ulNotExistCnt
+                    , pstStat->stOutDialing.ulNoAnswerCnt
+                    , pstStat->stOutDialing.ulRejectCnt
+                    , pstStat->stOutDialing.ulEarlyReleaseCnt
+                    , pstStat->stOutDialing.ulAnswerCnt
+                    , pstStat->stOutDialing.ulConnAgentCnt
+                    , pstStat->stOutDialing.ulAgentAnswerCnt
+                    , pstStat->stOutDialing.ulPDD
+                    , pstStat->stOutDialing.ulAnswerTime
+                    , pstStat->stOutDialing.ulWaitAgentTime
+                    , pstStat->stOutDialing.ulAgentAnswerTime);
+
     //TODO:存储统计信息到数据库中
+    if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
+    {
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save out dialing stat in DB FAIL!(%s)", szQuery);
+    }
 
     bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save out dialing stat in DB !");
 
@@ -1061,6 +1170,9 @@ VOID bsd_save_outdialing_stat(BS_INTER_MSG_STAT *pstMsg)
 VOID bsd_save_message_stat(BS_INTER_MSG_STAT *pstMsg)
 {
     BS_STAT_MESSAGE_ST  *pstStat;
+    struct tm *pstLocal = NULL;
+    time_t ulTimeStamp = 0;
+    S8  szQuery[1024] = {0};
 
     pstStat = (BS_STAT_MESSAGE_ST *)pstMsg->pStat;
     if (DOS_ADDR_INVALID(pstStat))
@@ -1069,16 +1181,43 @@ VOID bsd_save_message_stat(BS_INTER_MSG_STAT *pstMsg)
         return;
     }
 
+    ulTimeStamp = pstStat->stMS.ulTimeStamp;
+    pstLocal = localtime(&ulTimeStamp);
+
+    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_msg(object_id, type, "
+                    "ctime, send_cnt, recv_cnt, send_succ_cnt, send_fail_cnt, send_len,"
+                    "recv_len) VALUES(%u,%u,\'%04u-%02u-%02u %02u:%02u:%02u\', %u, %u, %u,"
+                    "%u, %u, %u);"
+                    , pstStat->stStatTag.ulObjectID
+                    , pstStat->stStatTag.ucObjectType
+                    , pstLocal->tm_year + 1900
+                    , pstLocal->tm_mon + 1
+                    , pstLocal->tm_mday
+                    , pstLocal->tm_hour
+                    , pstLocal->tm_min
+                    , pstLocal->tm_sec
+                    , pstStat->stMS.ulSendCnt
+                    , pstStat->stMS.ulRecvCnt
+                    , pstStat->stMS.ulSendSucc
+                    , pstStat->stMS.ulSendFail
+                    , pstStat->stMS.ulSendLen
+                    , pstStat->stMS.ulRecvLen);
     //TODO:存储统计信息到数据库中
+    if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
+    {
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save message stat in DB FAIL!(%s)", szQuery);
+    }
 
     bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save message stat in DB !");
-
 }
 
 /* 存储出局呼叫统计 */
 VOID bsd_save_account_stat(BS_INTER_MSG_STAT *pstMsg)
 {
     BS_STAT_ACCOUNT_ST  *pstStat;
+    struct tm *pstLocal = NULL;
+    time_t ulTimeStamp = 0;
+    S8  szQuery[1024] = {0};
 
     pstStat = (BS_STAT_ACCOUNT_ST *)pstMsg->pStat;
     if (DOS_ADDR_INVALID(pstStat))
@@ -1087,7 +1226,39 @@ VOID bsd_save_account_stat(BS_INTER_MSG_STAT *pstMsg)
         return;
     }
 
+    ulTimeStamp = pstStat->ulTimeStamp;
+    pstLocal = localtime(&ulTimeStamp);
+
+    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_account(object_id, type,"
+                    "ctime, profit, outband_fee, Inband_fee, autodialing_fee, preview_fee,"
+                    "predictive_fee, record_fee, conference_fee, sms_fee, mms_fee, rent_fee)"
+                    " VALUES(%u,%u,\'%04u-%02u-%02u %02u:%02u:%02u\', %d, %d, %d, %d, %d, %d,"
+                    "%d, %d, %d, %d, %d);"
+                    , pstStat->stStatTag.ulObjectID
+                    , pstStat->stStatTag.ucObjectType
+                    , pstLocal->tm_year + 1900
+                    , pstLocal->tm_mon + 1
+                    , pstLocal->tm_mday
+                    , pstLocal->tm_hour
+                    , pstLocal->tm_min
+                    , pstLocal->tm_sec
+                    , pstStat->lProfit
+                    , pstStat->lOutBandCallFee
+                    , pstStat->lInBandCallFee
+                    , pstStat->lAutoDialingFee
+                    , pstStat->lPreviewDailingFee
+                    , pstStat->lPredictiveDailingFee
+                    , pstStat->lRecordFee
+                    , pstStat->lConferenceFee
+                    , pstStat->lSmsFee
+                    , pstStat->lMmsFee
+                    , pstStat->lRentFee);
     //TODO:存储统计信息到数据库中
+    
+    if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
+    {
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save account stat in DB FAIL!(%s)", szQuery);
+    }
 
     bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save account stat in DB !");
 
