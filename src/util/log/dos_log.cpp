@@ -651,7 +651,7 @@ static char * dos_log_get_time(time_t _stTime, S8 *szTime, S32 lLen)
 
 
 #else
-
+#if 0
 S32 dos_log_init()
 {
     dos_printf("Dos log task init. Log task disabled");
@@ -710,6 +710,7 @@ DLLEXPORT VOID dos_volog(S32 _lLevel, S8 *pszOpterator, S8 *pszOpterand, U32 ulR
 {
 
 }
+#endif
 
 DLLEXPORT S32 dos_log_set_cli_level(U32 ulLeval)
 {

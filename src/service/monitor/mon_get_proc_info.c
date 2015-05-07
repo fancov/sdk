@@ -35,7 +35,7 @@ static U32   mon_check_all_process();
 U32  mon_proc_malloc()
 {
    U32 ulRows = 0;
-   MON_PROC_STATUS_S * pstProc;
+   MON_PROC_STATUS_S * pstProc = NULL;
    
    pstProc = (MON_PROC_STATUS_S *)dos_dmem_alloc(MAX_PROC_CNT * sizeof(MON_PROC_STATUS_S));
    if(DOS_ADDR_INVALID(pstProc))
@@ -425,13 +425,12 @@ static U32 mon_get_proc_pid_list()
                goto failure;
             }
 
-            if(mon_is_proc_dead(g_pastProc[g_ulPidCnt]->ulProcId))
+            if(DOS_TRUE == mon_is_proc_dead(g_pastProc[g_ulPidCnt]->ulProcId))
             {//过滤掉不存在的进程
                logr_error("%s:Line %u:mon_get_proc_pid_list|the pid %u is invalid or not exist!"
                             , dos_get_filename(__FILE__), __LINE__, g_pastProc[g_ulPidCnt]->ulProcId);
                fclose(fp);
                fp = NULL;
-               unlink(szAbsFilePath);
                continue;
             }
             
@@ -450,7 +449,6 @@ static U32 mon_get_proc_pid_list()
          else
          {
             fclose(fp);
-            unlink(szAbsFilePath);
             fp = NULL;
          }
          fclose(fp);
@@ -487,14 +485,14 @@ U32 mon_get_process_data()
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
-   
+
    for (ulRows = 0; ulRows < g_ulPidCnt; ulRows++)
    {
       if(DOS_ADDR_INVALID(g_pastProc[ulRows]))
       {
           logr_cirt("%s:Line %u:mon_get_process_data|get proc data failure,g_pastProc[%u] is %p!"
                     , dos_get_filename(__FILE__), __LINE__, ulRows, g_pastProc[ulRows]);
-         return DOS_FAIL;
+          return DOS_FAIL;
       }
       
       ulRet = mon_get_cpu_mem_time_info(g_pastProc[ulRows]->ulProcId, g_pastProc[ulRows]);
@@ -798,17 +796,15 @@ S8 * mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName)
 BOOL mon_is_proc_dead(U32 ulPid)
 {
     S8 szPath[16] = {0};
-    struct stat stBuf;
 
     dos_snprintf(szPath, sizeof(szPath), "/proc/%u/", ulPid);
-    stat(szPath, &stBuf);
 
-    if (ENOENT == errno)
+    if (0 != access(szPath, 0))
     {
-        return DOS_FALSE;
+        return DOS_TRUE;
     }
 
-    return DOS_TRUE;
+    return DOS_FALSE;
 }
 
 /**

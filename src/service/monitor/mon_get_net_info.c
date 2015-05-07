@@ -514,7 +514,7 @@ U32  mon_netcard_formatted_info()
         }
        
         dos_snprintf(szTempInfo, MAX_BUFF_LENGTH
-                    , "Netcard:%s\nMacAddress:%s\nIPAddress:%s\nBroadIPAddress:%s\nSubNetMask:%s\nData Transmission speed:%u Mb/s\n"
+                    , "Netcard:%s\nMacAddress:%s\nIPAddress:%s\nBroadIPAddress:%s\nSubNetMask:%s\nData Transmission speed:%u KB/s\n"
                     , g_pastNet[ulRows]->szNetDevName
                     , g_pastNet[ulRows]->szMacAddress
                     , g_pastNet[ulRows]->szIPAddress

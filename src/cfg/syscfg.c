@@ -29,7 +29,7 @@ static S8 g_pszProcessName[MAX_PROCESS_NAME_LENGTH] = { 0 };
 static S8 *g_pszProcessVersion = "1.1";
 
 /* 定义默认系统根目录 */
-static S8 *g_pszDefaultSysRootPath = "/ttcom";
+static S8 *g_pszDefaultSysRootPath = "/ipcc";
 
 /* 存放配置文件中系统根目录 */
 static S8 g_szSysRootPath[MAX_PATH_LENGTH] = {0, };

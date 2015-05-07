@@ -70,14 +70,13 @@ DLLEXPORT S32 dos_log_set_cli_level(U32 ulLeval);
         printf("Stop the log."); \
     }while(0)
 
-#define dos_log(_iLevel, _iType, _pszMsg) printf(_pszMsg)
-#define dos_vlog(_iLevel, _iType, format, args...) printf(format, ##args)
-#define dos_olog(_lLevel, pszOpterator, pszOpterand, ulResult, _pszMsg) printf(_pszMsg)
-#define dos_volog(_lLevel, pszOpterator, pszOpterand, ulResult, format, args...) printf(format, ##args)
-#define dos_log_set_cli_level(ulLeval) \
-    do{ \
-        printf("Set cli log level."); \
-    }while(0)
+#define dos_log(_iLevel, _iType, _pszMsg)  do {printf(_pszMsg); printf("\r\n");}while(0)
+#define dos_vlog(_iLevel, _iType, format, args...) do {printf(format, ##args); printf("\r\n");}while(0)
+#define dos_olog(_lLevel, pszOpterator, pszOpterand, ulResult, _pszMsg) do {printf(_pszMsg); printf("\r\n");}while(0)
+#define dos_volog(_lLevel, pszOpterator, pszOpterand, ulResult, format, args...) do {printf(format, ##args); printf("\r\n");}while(0)
+
+DLLEXPORT S32 dos_log_set_cli_level(U32 ulLeval);
+
 #endif
 
 
