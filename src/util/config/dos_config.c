@@ -122,7 +122,7 @@ U32 config_get_db_port()
 
 /**
  * 函数：U32 config_get_mysql_user(S8 *pszBuff, U32 ulLen)
- * 功能：获取数据库用户名
+ * 功能：获取ccsys数据库用户名
  * 参数：
  *      S8 *pszBuff： 缓存
  *      U32 ulLen：缓存长度
@@ -149,9 +149,41 @@ U32 config_get_db_user(S8 *pszBuff, U32 ulLen)
     return 0;
 }
 
+
 /**
- * 函数：U32 config_get_mysql_password(S8 *pszBuff, U32 ulLen)
- * 功能：获取数据库密码
+ * 函数：U32 config_get_syssrc_db_user(S8 *pszBuff, U32 ulLen)
+ * 功能：获取资源监控数据库用户名
+ * 参数：
+ *      S8 *pszBuff： 缓存
+ *      U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+
+U32 config_get_syssrc_db_user(S8 *pszBuff, U32 ulLen)
+{
+    S8 *pszValue = NULL;
+
+    if (!pszBuff || ulLen < 0)
+    {
+        DOS_ASSERT(0);
+        pszBuff[0] = '\0';
+        return -1;
+    }
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/mysql", "src_username", pszBuff, ulLen);
+    if (!pszValue)
+    {
+        pszBuff[0] = '\0';
+        return -1;
+    }
+
+    return 0;
+}
+
+
+/**
+ * 函数：U32 config_get_db_password(S8 *pszBuff, U32 ulLen)
+ * 功能：获取ccsys数据库密码
  * 参数：
  *      S8 *pszBuff： 缓存
  *      U32 ulLen：缓存长度
@@ -178,9 +210,40 @@ U32 config_get_db_password(S8 *pszBuff, U32 ulLen)
     return 0;
 }
 
+
 /**
- * 函数：U32 config_get_mysql_dbname(S8 *pszBuff, U32 ulLen)
- * 功能：获取数据库名
+ * 函数：U32 config_get_syssrc_db_password(S8 *pszBuff, U32 ulLen)
+ * 功能：获取资源监控数据库密码
+ * 参数：
+ *      S8 *pszBuff： 缓存
+ *      U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_syssrc_db_password(S8 *pszBuff, U32 ulLen)
+{
+    S8 *pszValue = NULL;
+
+    if (!pszBuff || ulLen < 0)
+    {
+        DOS_ASSERT(0);
+        pszBuff[0] = '\0';
+        return -1;
+    }
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/mysql", "src_password", pszBuff, ulLen);
+
+    if (!pszValue)
+    {
+        pszBuff[0] = '\0';
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * 函数：U32 config_get_db_dbname(S8 *pszBuff, U32 ulLen)
+ * 功能：获取ccsys数据库名
  * 参数：
  *      S8 *pszBuff： 缓存
  *      U32 ulLen：缓存长度

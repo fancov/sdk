@@ -938,13 +938,13 @@ static U32 mon_init_db_conn()
         return DOS_FAIL;
    }
    
-   if(config_get_db_user(szDBUsername, sizeof(szDBUsername)) < 0 )
+   if(config_get_syssrc_db_user(szDBUsername, sizeof(szDBUsername)) < 0 )
    {
         DOS_ASSERT(0);
         return DOS_FAIL;
    }
       
-   if(config_get_db_password(szDBPassword, sizeof(szDBPassword)) < 0 )
+   if(config_get_syssrc_db_password(szDBPassword, sizeof(szDBPassword)) < 0 )
    {
         DOS_ASSERT(0);
         return DOS_FAIL;

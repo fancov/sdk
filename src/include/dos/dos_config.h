@@ -54,7 +54,7 @@ S32 config_hb_get_treatment();
 S8* config_get_service_root(S8 *pszBuff, U32 ulLen);
 
 /**
- * 函数：U32 config_get_mysql_host(S8 *pszBuff, U32 ulLen)
+ * 函数：U32 config_get_db_host(S8 *pszBuff, U32 ulLen);
  * 功能：获取数据库主机名
  * 参数：
  * 		S8 *pszBuff： 缓存
@@ -64,15 +64,15 @@ S8* config_get_service_root(S8 *pszBuff, U32 ulLen);
 U32 config_get_db_host(S8 *pszBuff, U32 ulLen);
 
 /**
- * 函数：U32 config_get_mysql_host()
- * 功能：获取数据库主机名
+ * 函数：U32 config_get_db_port();
+ * 功能：获取数据库端口号
  * 参数：
  * 返回值：成功返回0.失败返回－1
  */
 U32 config_get_db_port();
 
 /**
- * 函数：U32 config_get_mysql_user(S8 *pszBuff, U32 ulLen)
+ * 函数：U32 config_get_db_user(S8 *pszBuff, U32 ulLen);
  * 功能：获取数据库主机名
  * 参数：
  * 		S8 *pszBuff： 缓存
@@ -81,9 +81,21 @@ U32 config_get_db_port();
  */
 U32 config_get_db_user(S8 *pszBuff, U32 ulLen);
 
+
 /**
- * 函数：U32 config_get_mysql_password(S8 *pszBuff, U32 ulLen)
- * 功能：获取数据库主机名
+ * 函数：U32 config_get_syssrc_db_user(S8 *pszBuff, U32 ulLen);
+ * 功能：获取资源监控数据库主机名
+ * 参数：
+ * 		S8 *pszBuff： 缓存
+ * 		U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_syssrc_db_user(S8 *pszBuff, U32 ulLen);
+
+
+/**
+ * 函数：U32 config_get_db_password(S8 *pszBuff, U32 ulLen);
+ * 功能：获取ccsys数据库密码
  * 参数：
  * 		S8 *pszBuff： 缓存
  * 		U32 ulLen：缓存长度
@@ -92,8 +104,19 @@ U32 config_get_db_user(S8 *pszBuff, U32 ulLen);
 U32 config_get_db_password(S8 *pszBuff, U32 ulLen);
 
 /**
- * 函数：U32 config_get_mysql_dbname(S8 *pszBuff, U32 ulLen)
- * 功能：获取数据库主机名
+ * 函数：U32 config_get_syssrc_db_password(S8 *pszBuff, U32 ulLen);
+ * 功能：获取资源监控数据库密码
+ * 参数：
+ * 		S8 *pszBuff： 缓存
+ * 		U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_syssrc_db_password(S8 *pszBuff, U32 ulLen);
+
+
+/**
+ * 函数：U32 config_get_db_dbname(S8 *pszBuff, U32 ulLen);
+ * 功能：获取ccsys数据库名
  * 参数：
  * 		S8 *pszBuff： 缓存
  * 		U32 ulLen：缓存长度

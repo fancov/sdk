@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 
 <config version="1.0">
     <!-- 配置服务相关信息 -->
@@ -6,13 +6,13 @@
         <!-- 配置服务存储路径相关信息 -->
         <path>
             <!-- 服务根目录 -->
-            <param name="service_root"   value="/tcom" />
+            <param name="service_root"   value="/dipcc" />
 			<!--freeswitch相关配置-->
 			<freeswitch>
 			    <!--freeswitch脚本路径-->
-			    <param name="fs_scripts_path" value="" />
+			    <param name="fs_scripts_path" value="/dipcc/scripts/fs-conf" />
 				<!--freeswitch配置文件路径-->
-			    <param name="fs_config_path" value="../conf" />
+			    <param name="fs_config_path" value="/usr/local/freeswitch/conf" />
 			</freeswitch>
         </path>
     </service>
@@ -29,19 +29,23 @@
     <!--数据库配置-->
     <mysql>
         <!--数据库主机-->
-        <param name="host" value="172.16.99.100"/>
+        <param name="host" value="localhost"/>
         <!--数据库连接端口-->
         <param name="port" value="3306"/>
-        <!--数据库连接用户名-->
-        <param name="username" value="root"/>
-        <!--数据库连接用户密码-->
-        <param name="password" value="admin"/>
-        <!--业务数据库库名-->
+        <!--ccsys数据库连接用户名-->
+        <param name="username" value="ccsys"/>
+        <!--ccsys业务数据库库名-->
         <param name="dbname" value="ccsys"/>
-		<!--系统资源数据库名-->
-		<param name="src_dbname" value="syssrc"/>
-		<!--mysql数据库的socket文件路径-->
-		<param name="sockpath" value="/tmp/mysql.sock"/>
+        <!--ccsys数据库连接用户密码-->
+        <param name="password" value="KfcCQf88NKHsdPzp"/>
+        <!--资源监控数据库用户名-->
+        <param name="src_username" value="syssrc"/>
+	    <!--系统资源数据库名-->
+	    <param name="src_dbname" value="syssrc"/>
+        <!--资源监控数据库密码-->
+        <param name="src_password" value="LLyK60ehUVdW6toN" />
+	<!--mysql数据库的socket文件路径-->
+	<param name="sockpath" value="/tmp/mysql.sock" />
     </mysql>
     <!-- 日志模块配置 -->
     <!-- level 值的范围
@@ -68,7 +72,7 @@
         <!--pts 服务器端口-->
         <param name="pts_port" value="50000"/>
 	<!--goahead server端口-->
-        <param name="web_server_port" value="9000"/>
+        <param name="web_server_port" value="9001"/>
         <!--pts web server端口-->
         <param name="proxy_port" value="55000"/>
         <!--pts 服务器端口-->
