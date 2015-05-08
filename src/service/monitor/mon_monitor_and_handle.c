@@ -715,7 +715,7 @@ static U32 mon_add_data_to_db()
      , ulProcTotalMemRate
      , ulProcTotalCPURate
    );
-   
+
    lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
    if(DB_ERR_SUCC != lRet)
    {
@@ -878,7 +878,7 @@ static U32 mon_add_warning_record(U32 ulResId)
    
    dos_snprintf(szSQLCmd, SQL_CMD_MAX_LENGTH, "INSERT INTO tbl_alarmlog(" \
                "ctime,warning,cause,type,object,content,cycle,status)" \
-               "VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',concat(\'%s\', lower(hex(%u))),%u,%u," \
+               " VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',concat(\'%s\', lower(hex(%u))),%u,%u," \
                "%u,\'%s\',%u,%u)"
                , pstCurTime->tm_year + 1900
                , pstCurTime->tm_mon + 1

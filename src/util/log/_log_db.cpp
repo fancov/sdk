@@ -196,7 +196,8 @@ void CLogDB::log_write(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLev
 
 VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_pszOpterand, const S8* _pszResult, const S8 *_pszMsg)
 {
-    S8 szQuery[1024];
+    S8  *pszQuery = NULL;
+	U32 ulLen = 0;
 
     if (!blInited)
     {
@@ -209,7 +210,10 @@ VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
         return;
     }
 
-    dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
+	ulLen = dos_strlen(_pszMsg) + EXTRA_LEN;
+	pszQuery = new S8[ulLen];
+
+    dos_snprintf(pszQuery, sizeof(pszQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
                     , "tbl_olog"
                     , _pszTime
                     , _pszOpterator
@@ -217,10 +221,10 @@ VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
                     , _pszOpterand
                     , _pszResult
                     , _pszMsg);
-    db_query(pstDBHandle, szQuery, NULL, NULL, NULL);
+    db_query(pstDBHandle, pszQuery, NULL, NULL, NULL);
 
     //printf("%s", szQuery);
-
+    delete [] pszQuery;
 }
 
 #endif

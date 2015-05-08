@@ -657,12 +657,13 @@ static U32  mon_check_all_process()
 
       if(DOS_FALSE == bHasStarted)
       {
-         logr_info("%s:Line %u: Process \"%s\" lost,it will be restarted."
-                    , dos_get_filename(__FILE__), __LINE__, g_pastProc[ulCols]->szProcName);
+         logr_info("%s:Line %u: Process %s lost."
+                    , dos_get_filename(__FILE__), __LINE__, szProcName);
+         
          lRet = system(szProcCmd);
          if(0 > lRet)
          {
-            logr_error("%s:Line %u:mon_check_all_process|start process \'%s\' FAIL."
+            logr_error("%s:Line %u:mon_check_all_process|start process %s FAIL."
                          , dos_get_filename(__FILE__), __LINE__, szProcName);
             return DOS_FAIL;
          }
