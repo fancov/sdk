@@ -707,13 +707,13 @@ static U32 mon_add_data_to_db()
      , g_pstMem->ulSwapUsageRate
      , ulTotalDiskKBytes
      , ulTotalDiskRate
-     , g_pstCpuRslt->ulCPUUsageRate < 0 ? 0 : (g_pstCpuRslt->ulCPUUsageRate > 100 ? 100: g_pstCpuRslt->ulCPUUsageRate)
-     , g_pstCpuRslt->ulCPU5sUsageRate < 0 ? 0 : (g_pstCpuRslt->ulCPU5sUsageRate > 100 ? 100: g_pstCpuRslt->ulCPU5sUsageRate)
-     , g_pstCpuRslt->ulCPU1minUsageRate < 0 ? 0 : (g_pstCpuRslt->ulCPU1minUsageRate > 100 ? 100 : g_pstCpuRslt->ulCPU1minUsageRate)
-     , g_pstCpuRslt->ulCPU10minUsageRate < 0 ? 0 : (g_pstCpuRslt->ulCPU10minUsageRate > 100 ? 100 : g_pstCpuRslt->ulCPU10minUsageRate)
+     , g_pstCpuRslt->ulCPUUsageRate 
+     , g_pstCpuRslt->ulCPU5sUsageRate
+     , g_pstCpuRslt->ulCPU1minUsageRate
+     , g_pstCpuRslt->ulCPU10minUsageRate
      , g_pastNet[0]->ulRWSpeed
      , ulProcTotalMemRate
-     , ulProcTotalCPURate < 0 ? 0 : (ulProcTotalCPURate > 100 ? 100 : ulProcTotalCPURate)
+     , ulProcTotalCPURate
    );
    
    lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
@@ -746,9 +746,7 @@ static U32 mon_print_data_log()
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
-   logr_info("%s:Line %u:mon_print_data_log|g_szMonMemInfo is \n%s"
-                , dos_get_filename(__FILE__), __LINE__
-                , g_szMonMemInfo);
+   logr_info("%s:Line %u:mon_print_data_log|print mem log SUCC.", dos_get_filename(__FILE__), __LINE__);
 
    ulRet = mon_get_cpu_rslt_formatted_info();
    if(DOS_SUCC != ulRet)
@@ -757,9 +755,7 @@ static U32 mon_print_data_log()
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
-   logr_info("%s:Line %u:mon_print_data_log|g_szMonCPUInfo is \n%s"
-                , dos_get_filename(__FILE__), __LINE__
-                , g_szMonCPUInfo);
+   logr_info("%s:Line %u:mon_print_data_log|print cpu log SUCC.", dos_get_filename(__FILE__), __LINE__);
 
    ulRet = mon_get_partition_formatted_info();
    if(DOS_SUCC != ulRet)
@@ -768,9 +764,7 @@ static U32 mon_print_data_log()
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
-   logr_info("%s:Line %u:mon_print_data_log|g_szMonDiskInfo is \n%s"
-                , dos_get_filename(__FILE__), __LINE__
-                , g_szMonDiskInfo);
+   logr_info("%s:Line %u:mon_print_data_log|print partition log SUCC.", dos_get_filename(__FILE__), __LINE__);
 
 
    ulRet = mon_netcard_formatted_info();
@@ -780,10 +774,8 @@ static U32 mon_print_data_log()
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
-   logr_info("%s:Line %u:mon_print_data_log|g_szMonNetworkInfo is \n%s"
-                , dos_get_filename(__FILE__), __LINE__
-                , g_szMonNetworkInfo);
-
+   logr_info("%s:Line %u:mon_print_data_log|print netcard log SUCC.", dos_get_filename(__FILE__), __LINE__);
+   
    ulRet = mon_get_process_formatted_info();
    if(DOS_SUCC != ulRet)
    {
@@ -791,9 +783,9 @@ static U32 mon_print_data_log()
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
-   logr_info("%s:Line %u:mon_print_data_log|g_szMonProcessInfo is\n%s"
-                , dos_get_filename(__FILE__), __LINE__
-                , g_szMonProcessInfo);
+   logr_info("%s:Line %u:mon_print_data_log|print process log SUCC.", dos_get_filename(__FILE__), __LINE__);
+
+   logr_info("%s:Line %u:mon_print_data_log|print all data log SUCC.", dos_get_filename(__FILE__), __LINE__);
    
    return DOS_SUCC;
 }

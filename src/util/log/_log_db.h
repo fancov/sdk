@@ -30,6 +30,7 @@ extern "C"{
 
 #define MAX_DB_INFO_NUM  6
 #define MAX_DB_INFO_LEN  48
+#define EXTRA_LEN        128 /*定义额外的字符串长度*/
 
 class CLogDB : virtual public CLog
 {

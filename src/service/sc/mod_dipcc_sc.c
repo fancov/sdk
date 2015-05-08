@@ -173,7 +173,7 @@ U32 mod_dipcc_sc_load()
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load xml SUCC.");
 
     /* 全局加载freeswitch配置文件xml */
-    if (py_exec_func("sip_gen", "sip_gen_all", "()") != DOS_SUCC)
+    if (py_exec_func("customer", "generate_all_customer", "()") != DOS_SUCC)
     {
         DOS_ASSERT(0);
         logr_error("mod_dipcc_sc_load: load sip xml FAIL.");
