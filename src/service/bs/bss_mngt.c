@@ -5237,7 +5237,7 @@ VOID *bss_accounting(VOID *arg)
                     bs_trace(BS_TRACE_CDR, LOG_LEVEL_DEBUG,
                              "Generate accounting cdr, "
                              "mark:%u, type:%u, customer:%u, account:%u, "
-                             "operate type:%u, money:%d, balance:%d, peer account:%u, "
+                             "operate type:%u, money:%d, balance:%ld, peer account:%u, "
                              "time:%u, operator:%u, remark:%s",
                              pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType,
                              pstCDR->ulCustomerID, pstCDR->ulAccountID,
@@ -5249,7 +5249,7 @@ VOID *bss_accounting(VOID *arg)
                     /* 更新账户信息 */
                     bs_trace(BS_TRACE_ACCOUNT, LOG_LEVEL_DEBUG,
                              "Refresh account, old: customer:%u, account:%u, "
-                             "balance:%d, active balance:%d, rebate:%u, accounting time:%u",
+                             "balance:%ld, active balance:%ld, rebate:%u, accounting time:%u",
                              pstAccount->ulCustomerID, pstAccount->ulAccountID,
                              pstAccount->LBalance, pstAccount->LBalanceActive,
                              pstAccount->lRebate, pstAccount->ulAccountingTime);
@@ -5257,7 +5257,7 @@ VOID *bss_accounting(VOID *arg)
                     pstAccount->ulAccountingTime = ulTimeStamp;
                     bs_trace(BS_TRACE_ACCOUNT, LOG_LEVEL_DEBUG,
                              "Refresh account, new: customer:%u, account:%u, "
-                             "balance:%d, active balance:%d, rebate:%u, accounting time:%u",
+                             "balance:%ld, active balance:%ld, rebate:%u, accounting time:%u",
                              pstAccount->ulCustomerID, pstAccount->ulAccountID,
                              pstAccount->LBalance, pstAccount->LBalanceActive,
                              pstAccount->lRebate, pstAccount->ulAccountingTime);

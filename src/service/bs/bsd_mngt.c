@@ -60,6 +60,7 @@ S32 bsd_walk_tbl_req(DLL_NODE_S *pMsgNode)
             break;
         case BS_TBL_TYPE_TMP_CMD_DEL:
             bsd_delete_web_cmd_tbl(pstMsg);
+            break;
         default:
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_WARNING, "Warning: It's a unknown table");
             /* 未知消息,不做处理,释放内存 */

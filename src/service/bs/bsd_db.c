@@ -1008,8 +1008,6 @@ VOID bsd_save_outband_stat(BS_INTER_MSG_STAT *pstMsg)
 {
     BS_STAT_OUTBAND_ST  *pstStat = NULL;
     S8  szQuery[1024] = {0};
-    time_t ulTimeStamp = 0;
-    struct tm *pstLocal;
 
     pstStat = (BS_STAT_OUTBAND_ST *)pstMsg->pStat;
     if (DOS_ADDR_INVALID(pstStat))
@@ -1017,23 +1015,14 @@ VOID bsd_save_outband_stat(BS_INTER_MSG_STAT *pstMsg)
         DOS_ASSERT(0);
         return;
     }
-
-    ulTimeStamp = pstStat->stOutBand.ulTimeStamp;
-
-    pstLocal = localtime(&ulTimeStamp);
-
+    
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_outband(object_id, type,"
                     "ctime, call_cnt, ring_cnt, busy_cnt, notexist_cnt, noanswer_cnt,"
                     "reject_cnt, early_release_cnt, answer_cnt, pdd, answer_times) VALUES("
-                    "%u,%u,\'%4u-%02u-%02u %02u:%02u:%02u\',%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
+                    "%u,%u,FROM_UNIXTIME(%u),%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
                     , pstStat->stStatTag.ulObjectID
                     , pstStat->stStatTag.ucObjectType
-                    , pstLocal->tm_year + 1900
-                    , pstLocal->tm_mon + 1
-                    , pstLocal->tm_mday
-                    , pstLocal->tm_hour
-                    , pstLocal->tm_min
-                    , pstLocal->tm_sec
+                    , pstStat->stOutBand.ulTimeStamp
                     , pstStat->stOutBand.ulCallCnt
                     , pstStat->stOutBand.ulRingCnt
                     , pstStat->stOutBand.ulBusyCnt
@@ -1059,8 +1048,6 @@ VOID bsd_save_inband_stat(BS_INTER_MSG_STAT *pstMsg)
 {
     BS_STAT_INBAND_ST   *pstStat = NULL;
     S8 szQuery[1024] = {0};
-    time_t ulTimeStamp = 0;
-    struct tm *pstLocal = NULL;
 
     pstStat = (BS_STAT_INBAND_ST *)pstMsg->pStat;
     if (DOS_ADDR_INVALID(pstStat))
@@ -1069,23 +1056,14 @@ VOID bsd_save_inband_stat(BS_INTER_MSG_STAT *pstMsg)
         return;
     }
 
-    ulTimeStamp = pstStat->stInBand.ulTimeStamp;
-
-    pstLocal = localtime(&ulTimeStamp);
-
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_inband(object_id, type,"
                     "ctime, call_cnt, ring_cnt, busy_cnt, noanswer_cnt, early_release_cnt,"
                     "answer_cnt, conn_agent_cnt, agent_answer_cnt, hold_cnt, answer_times,"
-                    "wait_agent_times, agent_answer_times, hold_times) VALUES(%u,%u,\'%04u"
-                    "-%02u-%02u %02u:%02u:%02u\',%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
+                    "wait_agent_times, agent_answer_times, hold_times) VALUES(%u,%u,"
+                    "FROM_UNIXTIME(%u),%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
                     , pstStat->stStatTag.ulObjectID
                     , pstStat->stStatTag.ucObjectType
-                    , pstLocal->tm_year + 1900
-                    , pstLocal->tm_mon + 1
-                    , pstLocal->tm_mday
-                    , pstLocal->tm_hour
-                    , pstLocal->tm_min
-                    , pstLocal->tm_sec
+                    , pstStat->stInBand.ulTimeStamp
                     , pstStat->stInBand.ulCallCnt
                     , pstStat->stInBand.ulRingCnt
                     , pstStat->stInBand.ulBusyCnt
@@ -1115,8 +1093,6 @@ VOID bsd_save_outdialing_stat(BS_INTER_MSG_STAT *pstMsg)
 {
     BS_STAT_OUTDIALING_ST   *pstStat = NULL;
     S8 szQuery[1024] = {0};
-    time_t ulTimeStamp = 0;
-    struct tm *pstLocal = NULL;
 
     pstStat = (BS_STAT_OUTDIALING_ST *)pstMsg->pStat;
     if (DOS_ADDR_INVALID(pstStat))
@@ -1125,22 +1101,14 @@ VOID bsd_save_outdialing_stat(BS_INTER_MSG_STAT *pstMsg)
         return;
     }
 
-    ulTimeStamp = pstStat->stOutDialing.ulTimeStamp;
-    pstLocal = localtime(&ulTimeStamp);
-
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_outdialing(object_id, type,"
                     "ctime, call_cnt, ring_cnt, busy_cnt, notexist_cnt, noanswer_cnt, reject_cnt,"
                     "early_release_cnt, answer_cnt, conn_agent_cnt, agent_answer_cnt, pdd,"
-                    "answer_times, wait_agent_times, agent_answer_times) VALUES(%u,%u,\'%04u-"
-                    "%02u-%02u %02u:%02u:%02u\',%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
+                    "answer_times, wait_agent_times, agent_answer_times) VALUES(%u,%u,FROM_UNIXTIME(%u)"
+                    ",%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
                     , pstStat->stStatTag.ulObjectID
                     , pstStat->stStatTag.ucObjectType
-                    , pstLocal->tm_year + 1900
-                    , pstLocal->tm_mon + 1
-                    , pstLocal->tm_mday
-                    , pstLocal->tm_hour
-                    , pstLocal->tm_min
-                    , pstLocal->tm_sec
+                    , pstStat->stOutDialing.ulTimeStamp
                     , pstStat->stOutDialing.ulCallCnt
                     , pstStat->stOutDialing.ulRingCnt
                     , pstStat->stOutDialing.ulBusyCnt
@@ -1170,8 +1138,6 @@ VOID bsd_save_outdialing_stat(BS_INTER_MSG_STAT *pstMsg)
 VOID bsd_save_message_stat(BS_INTER_MSG_STAT *pstMsg)
 {
     BS_STAT_MESSAGE_ST  *pstStat;
-    struct tm *pstLocal = NULL;
-    time_t ulTimeStamp = 0;
     S8  szQuery[1024] = {0};
 
     pstStat = (BS_STAT_MESSAGE_ST *)pstMsg->pStat;
@@ -1181,21 +1147,12 @@ VOID bsd_save_message_stat(BS_INTER_MSG_STAT *pstMsg)
         return;
     }
 
-    ulTimeStamp = pstStat->stMS.ulTimeStamp;
-    pstLocal = localtime(&ulTimeStamp);
-
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_msg(object_id, type, "
                     "ctime, send_cnt, recv_cnt, send_succ_cnt, send_fail_cnt, send_len,"
-                    "recv_len) VALUES(%u,%u,\'%04u-%02u-%02u %02u:%02u:%02u\', %u, %u, %u,"
-                    "%u, %u, %u);"
+                    "recv_len) VALUES(%u,%u,FROM_UNIXTIME(%u), %u, %u, %u, %u, %u, %u);"
                     , pstStat->stStatTag.ulObjectID
                     , pstStat->stStatTag.ucObjectType
-                    , pstLocal->tm_year + 1900
-                    , pstLocal->tm_mon + 1
-                    , pstLocal->tm_mday
-                    , pstLocal->tm_hour
-                    , pstLocal->tm_min
-                    , pstLocal->tm_sec
+                    , pstStat->stMS.ulTimeStamp
                     , pstStat->stMS.ulSendCnt
                     , pstStat->stMS.ulRecvCnt
                     , pstStat->stMS.ulSendSucc
@@ -1215,8 +1172,6 @@ VOID bsd_save_message_stat(BS_INTER_MSG_STAT *pstMsg)
 VOID bsd_save_account_stat(BS_INTER_MSG_STAT *pstMsg)
 {
     BS_STAT_ACCOUNT_ST  *pstStat;
-    struct tm *pstLocal = NULL;
-    time_t ulTimeStamp = 0;
     S8  szQuery[1024] = {0};
 
     pstStat = (BS_STAT_ACCOUNT_ST *)pstMsg->pStat;
@@ -1226,22 +1181,13 @@ VOID bsd_save_account_stat(BS_INTER_MSG_STAT *pstMsg)
         return;
     }
 
-    ulTimeStamp = pstStat->ulTimeStamp;
-    pstLocal = localtime(&ulTimeStamp);
-
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_account(object_id, type,"
                     "ctime, profit, outband_fee, Inband_fee, autodialing_fee, preview_fee,"
                     "predictive_fee, record_fee, conference_fee, sms_fee, mms_fee, rent_fee)"
-                    " VALUES(%u,%u,\'%04u-%02u-%02u %02u:%02u:%02u\', %d, %d, %d, %d, %d, %d,"
-                    "%d, %d, %d, %d, %d);"
+                    " VALUES(%u,%u,FROM_UNIXTIME(%u), %d, %d, %d, %d, %d, %d,%d, %d, %d, %d, %d);"
                     , pstStat->stStatTag.ulObjectID
                     , pstStat->stStatTag.ucObjectType
-                    , pstLocal->tm_year + 1900
-                    , pstLocal->tm_mon + 1
-                    , pstLocal->tm_mday
-                    , pstLocal->tm_hour
-                    , pstLocal->tm_min
-                    , pstLocal->tm_sec
+                    , pstStat->ulTimeStamp
                     , pstStat->lProfit
                     , pstStat->lOutBandCallFee
                     , pstStat->lInBandCallFee

@@ -27,6 +27,7 @@ extern "C"{
 extern DLL_S g_stWebCMDTbl;
 extern pthread_mutex_t g_mutexWebCMDTbl;
 extern U32 g_ulLastCMDTimestamp ;
+extern DLL_S g_stBSS2DMsgList;
 
 extern VOID bss_update_agent(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
 extern VOID bss_update_billing_package(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
@@ -1270,6 +1271,60 @@ S32 bs_show_trunk(U32 ulIndex, U32 ulObjectID)
 }
 
 
+S32 bs_show_outband_stat(U32 ulIndex)
+{
+    DLL_NODE_S * pNode = NULL;
+    S8  szBuff[1024] = {0};
+    BS_INTER_MSG_STAT   *pstMsg = NULL;
+    BS_STAT_OUTBAND_ST  *pstStat = NULL;
+
+    DLL_Scan(&g_stBSS2DMsgList, pNode, DLL_NODE_S *)
+    {
+        if (DOS_ADDR_INVALID(pNode->pHandle))
+        {
+            continue;
+        }
+
+        pstMsg = (BS_INTER_MSG_STAT *)pNode->pHandle;
+        if (BS_INTER_MSG_OUTBAND_STAT != pstMsg->stMsgTag.ucMsgType)
+        {
+            continue;
+        }
+        
+        pstStat = (BS_STAT_OUTBAND_ST  *)pstMsg->pStat;
+        if (DOS_ADDR_INVALID(pstStat))
+        {
+            continue;
+        }
+
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nList outband stat...\r\n");
+        cli_out_string(ulIndex, szBuff);
+
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nObject ID:%u\r\nObject Type:%u\r\nAnswer Cnt:%u\r\n"
+                        "Answer Time:%u\r\nBusy Cnt:%u\r\nCall Cnt:%u\r\nEarly Release Cnt:%u\r\n"
+                        "No Answer Cnt:%u\r\nNo Exist Cnt:%u\r\nPDD:%u\r\nReject Cnt:%u\r\n"
+                        "Ring Cnt:%u\r\nTime Stamp:%u\r\n"
+                        , pstStat->stStatTag.ulObjectID
+                        , pstStat->stStatTag.ucObjectType
+                        , pstStat->stOutBand.ulAnswerCnt
+                        , pstStat->stOutBand.ulAnswerTime
+                        , pstStat->stOutBand.ulBusyCnt
+                        , pstStat->stOutBand.ulCallCnt
+                        , pstStat->stOutBand.ulEarlyReleaseCnt
+                        , pstStat->stOutBand.ulNoAnswerCnt
+                        , pstStat->stOutBand.ulNotExistCnt
+                        , pstStat->stOutBand.ulPDD
+                        , pstStat->stOutBand.ulRejectCnt
+                        , pstStat->stOutBand.ulRingCnt
+                        , pstStat->stOutBand.ulTimeStamp
+                    );
+         cli_out_string(ulIndex, szBuff);
+    }
+
+    return DOS_SUCC;
+}
+
+
 /* 命令行处理函数:以后SDK会将debug和show统一管理,介时须作响应调整 */
 S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv)
 {
@@ -1291,6 +1346,10 @@ S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv)
         if (0 == dos_strncmp(argv[2], "cb", dos_strlen(argv[2])))
         {
             return bs_show_cb(ulIndex);
+        }
+        else if (0 == dos_strncmp(argv[2], "outband", dos_strlen(argv[2])))
+        {
+            return bs_show_outband_stat(ulIndex);
         }
 
         if (argc != 4 || dos_atoul(argv[3], &ulObjectID) != 0)
@@ -1406,7 +1465,7 @@ S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv)
 help:
     cli_out_string(ulIndex, "\r\nInvalid parameters");
     cli_out_string(ulIndex, "\r\nUsage:");
-    cli_out_string(ulIndex, "\r\n1. bs show <object:agent|cb|customer|task|trunk|billing> <object id>");
+    cli_out_string(ulIndex, "\r\n1. bs show <object:agent|cb|customer|task|trunk|billing|outband> <object id>");
     cli_out_string(ulIndex, "\r\n2. bs debug <module:all|off|account|audit|bill|cdr|db|fs|maintain|run|stat|web> <level:0|1|2|3|4|5|6|7>");
 
     cli_out_string(ulIndex, "\r\n\r\n");
