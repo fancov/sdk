@@ -18,32 +18,33 @@
 <script type="text/javascript" language="javascript" class="init">
 
 $(document).ready(function() {
-	var oTable = $('#example').DataTable({
-			"info" : true, 
+	var oTable = $('#dataTable').DataTable({
 			"stateSave": true,
 			"serverSide": true,
-			"aaSorting": [[1, "asc"]],
-			"sDom": '<"top"f>rt<"bottom"lp>',
+			"aaSorting": [[1, "desc"]],
+			"sDom": '<"top"f<"refush">>rt<"bottom"lp>',
 			"sAjaxSource": "/pts_config_list.html",
-			<% dataTablesLang(); %>
-		      "aoColumnDefs": [{"className": "checkBox",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [10]}, {"className": "ptc_nice", "aTargets": [3]}],
 
-			 "fnDrawCallback":function(){ $('#example tbody td.ptc_nice').editable('editable_ajax.html', {
-					"callback": function(sValue, y) {
-						// var aPos = oTable.fnGetPosition(this);
-						var aPos = oTable.fnGetPosition(this);
-						oTable.fnUpdate( sValue, aPos[0], aPos[1]);
-					},
-					"submitdata": function ( value, settings ) {
-						return {
-							"row_id": $(this).parent().children("td.ptc_sn").html(),
-							"column": $(this).find("input").val()
-						};
-					}
-			})}
+			"aoColumnDefs": [{"className": "checkBox",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [10]}, {"className": "ptc_nice", "aTargets": [3]}],
+
+			"fnDrawCallback":function(){ $('#dataTable tbody td.ptc_nice').editable('editable_ajax.html', {
+				"callback": function(sValue, y) {
+					var aPos = oTable.fnGetPosition(this);
+					oTable.fnUpdate( sValue, aPos[0], aPos[1]);
+				},
+				"submitdata": function ( value, settings ) {
+					return {
+						"row_id": $(this).parent().children("td.ptc_sn").html(),
+						"column": $(this).find("input").val()
+					};
+				}
+			})},
+			<% dataTablesLang(); %>
 		});
+
+		$('.refush').html("<p id='RefushButton'> <input type='button' value ='<% htmlLang(78); %>'></p>");
 		
-		$('#example tbody').on( 'click', 'td', function () {
+		$('#dataTable tbody').on( 'click', 'td', function () {
 			if ($(this).find("input").val())
 			{
 				return true;
@@ -58,6 +59,11 @@ $(document).ready(function() {
 				$(this).parent().children("td.checkBox").children("input").prop('checked', true); 
 			}
     	});
+
+		$('.refush').click(function(){
+		    location.reload();
+			return true;		
+    	});
 });
 get_lang_type(<% lang_type(); %>);
 updateTime();
@@ -68,6 +74,13 @@ updateTime();
 
 <div class="nav_content">
 	<div class="ddsmoothmenu nav_left" id="smoothmenu1">
+	<UL>
+		<LI class="logo_li">
+			<a href="http://www.dipcc.com" target="_blank">
+				<img src="images/logo.png" title="深圳市天天讯通科技有限公司"  />
+			</a>
+		</LI>
+	</UL>
 	<UL>
 	  <LI><A href="index.html"><% htmlLang(0); %></A></LI>
 	  <LI><A href="#"><% htmlLang(1); %></A> 
@@ -130,7 +143,7 @@ updateTime();
 	</div>
 </div>
 <div class="content_body">
-	<table id="example" class="display" cellspacing="0" style="text-align:center">
+	<table id="dataTable" class="display" cellspacing="0" style="text-align:center" width="100%">
 		<thead>
 			<tr>
 				<th width="20px"><input type="checkbox" id="select_all" onclick="select_all()" /></th>        

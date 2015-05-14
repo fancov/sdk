@@ -11,10 +11,7 @@ extern "C"{
 
 #define MAX_KEY_WORDS               16
 #define MAX_CMD_LENGTH              512     /* 定义命令最大长度 */
-#define PTS_MAX_CLIENT_NUMBER       8
-#define PTS_GET_PASSW_SUCC          0       /* 获取密码成功 */
-#define PTS_GET_PASSW_FAIL          -1      /* 获取密码失败 */
-#define PTS_USER_NO_EXITED          -2      /* 用户不存 */
+#define PTS_MAX_CLIENT_NUMBER       32
 #define PTS_PASSWORD_SIZE           128
 #define PTS_MAX_PORT                65535
 #define PTS_TELNET_DISCONNECT_TIME  2000
@@ -24,7 +21,9 @@ typedef enum
 {
     PT_TELNET_FAIL = -1,
     PT_TELNET_CONNECT,            /* 连接命令 */
+    PT_TELNET_EXIT,               /* 退出命令 */
     PT_TELNET_OTHER,              /* 其他  */
+
     PT_TELNET_BUTT
 
 }PT_TELNET_CMD_ANALYSE;
@@ -37,6 +36,8 @@ typedef struct tagCmdClientCB
     BOOL   bIsValid;
     S8     Reserver[3];
 }PTS_CMD_CLIENT_CB_ST;
+
+extern PTS_CMD_CLIENT_CB_ST g_astCmdClient[PTS_MAX_CLIENT_NUMBER];
 
 S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLength);
 VOID pts_telnet_send_msg2ptc(U32 ulClientIndex, S8 *szBuff, U32 ulLen);
