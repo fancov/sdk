@@ -23,7 +23,7 @@
 #define INCLUDE_SYSLOG_ENABLE             1
 #if (INCLUDE_SYSLOG_ENABLE)
 #define INCLUDE_SYSLOG_FILE               0
-#define INCLUDE_SYSLOG_DB                 0
+#define INCLUDE_SYSLOG_DB                 1
 #define INCLUDE_SYSLOG_CLI                INCLUDE_DEBUG_CLI
 #define INCLUDE_SYSLOG_CONSOLE            1
 #else
@@ -54,6 +54,14 @@
 #define INCLUDE_SERVICE_TIMER             1
 
 #define INCLUDE_PTS                       1
+
+#define INCLUDE_OPENSSL_LIB               1
+
+#define PTC_SUBMOD_SYSTEM                 1
+#define PTC_SUBMOD_USER                   2
+#define PTC_SUBMOD_PTCS                   3
+
+#define INCLUDE_LICENSE_CLIENT            1
 
 #endif /* END __CFG_MOD_PTS_H__ */
 

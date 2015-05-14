@@ -19,6 +19,8 @@ extern "C"{
 /* include sdk header file */
 #include <dos.h>
 
+static U32 g_ulAppCRC32Val = U32_BUTT;
+
 /* extern the sdk functions */
 extern S32 root(S32 _argc, S8 ** _argv);
 
@@ -101,6 +103,19 @@ S32 dos_destroy_pid_file()
     return DOS_SUCC;
 }
 
+U32 dos_calc_app_crc(S8 *pszFileName, U32 *pulCRC)
+{
+    if (DOS_ADDR_INVALID(pszFileName) || DOS_ADDR_INVALID(pulCRC))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    *pulCRC = 0;
+
+    return *pulCRC;
+}
+
 /**
  * 函数: main(int argc, char ** argv)
  * 功能: 系统主函数入口
@@ -108,6 +123,7 @@ S32 dos_destroy_pid_file()
 int main(int argc, char ** argv)
 {
     S8  szBuff[256] = { 0 };
+
     dos_set_process_name(argv[0]);
 
     printf("\n======================================================\n");
@@ -117,8 +133,11 @@ int main(int argc, char ** argv)
     printf("%s", szBuff);
     printf("======================================================\n");
 
+    dos_random_init();
+
 #if INCLUDE_MEMORY_MNGT
     /* 内存管理模块 */
+    /* 在这之前请不要使用自建内存管理相关函数 */
     if (dos_mem_mngt_init() < 0)
     {
         dos_printf("%s", "Init memory management fail. exit");
@@ -126,11 +145,14 @@ int main(int argc, char ** argv)
     }
 #endif
 
+    /* 在这之前请不要使用DOS_ASSERT */
     if (dos_assert_init() < 0)
     {
         dos_printf("%s", "Init assert module fail.");
         exit(1);
     }
+
+    dos_calc_app_crc(argv[0], &g_ulAppCRC32Val);
 
 #if (INCLUDE_XML_CONFIG)
     if (config_init() < 0)
