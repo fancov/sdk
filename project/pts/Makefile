@@ -33,6 +33,7 @@ include $(SROUCE)/util/config/Makefile.mk
 include $(SROUCE)/util/timer/Makefile.mk
 include $(SROUCE)/util/hash/Makefile.mk
 include $(SROUCE)/util/list/Makefile.mk
+include $(SROUCE)/util/task/Makefile.mk
 include $(SROUCE)/util/heartbeat/Makefile.mk
 include $(SROUCE)/util/db/Makefile.mk
 include $(SROUCE)/cfg/Makefile.mk
@@ -48,7 +49,6 @@ ALL_OBJS	= $(C_OBJ_FILE) $(CXX_OBJ_FILE)
 ALL_SRCS	= $(C_FILE) $(CXX_FILE)
 ALL_HEADERS	= $(DOS_INCLUDES) $(MYSQL_HEADERS)
 ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS) 
-ALL_LIBS	= $(DOS_LIBS) $(LIBS) 
 
 ########################################################################
 #                         Define the Complie                           # 

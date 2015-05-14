@@ -23,7 +23,9 @@ extern S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv);
 
 #if INCLUDE_RES_MONITOR
 extern S32 mon_command_proc(U32 ulIndex, S32 argc, S8 ** argv);
-#endif#if INCLUDE_PTS
+#endif
+
+#if INCLUDE_PTS
 extern S32 pts_send_command_to_ptc(U32 ulIndex, S32 argc, S8 **argv);
 extern S32 pts_printf_telnet_msg(U32 ulIndex, S32 argc, S8 **argv);
 #endif
@@ -62,7 +64,9 @@ COMMAND_ST g_stCommandSet[] = {
 #if INCLUDE_PTC
     {NULL, "telnet",        "",                                 ptc_printf_telnet_msg},
     {NULL, "web",           "",                                 ptc_printf_web_msg},
-#endif#if INCLUDE_RES_MONITOR
+#endif
+
+#if INCLUDE_RES_MONITOR
     {NULL, "mon",           "Monitor debug",                    mon_command_proc},
 #endif
 
