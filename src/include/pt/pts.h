@@ -19,7 +19,7 @@ extern DOS_SQLITE_ST *g_pstMySqlite;
 
 S32 pts_main();
 U32 pts_create_stream_id();
-U32 pts_create_tcp_socket(U16 usTcpPort);
+S32 pts_create_tcp_socket(U16 usTcpPort);
 VOID pts_change_remark(S8 *szUrl, U32 ulConnfd);
 S32 pts_get_password_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name);
 //S32 pts_md5_encrypt(S8 *szEncrypt, S8 *szDecrypt);

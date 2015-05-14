@@ -38,3 +38,13 @@
 
 .refush{margin:0; padding:0; float:right; margin-right: 50px;}
 .refush p{margin:0; padding:0}
+.logo_li :hover{
+		display:inline-block !important;
+		BACKGROUND: #747474 !important;
+	}
+img {
+		padding: 0px;
+		margin: 0px;
+		width:auto;
+		border: 0;
+	}

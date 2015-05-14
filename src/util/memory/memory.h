@@ -52,6 +52,14 @@ typedef struct tagMemCCB{
     U32               ulSize;      /* 分配内存的大小 */
 }MEM_CCB_ST;
 
+typedef struct tagGetMemInfoParam
+{
+    S8      *szInfoBuff;
+    U32     ulBuffSize;
+    U32     ulBuffLen;
+
+}GET_MEM_INFO_PARAM_ST;
+
 #endif
 
 #endif

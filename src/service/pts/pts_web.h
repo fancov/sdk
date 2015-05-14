@@ -7,46 +7,6 @@ extern "C"{
 
 #include <dos/dos_types.h>
 
-#define PTS_PTC_LIST_HTML  "<tr>\
-<td><INPUT name=\"PtcCheckBox\"  type=\"checkbox\" value=\"%s\"   ></td>\
-<td><label id='id_%s'>%s</label></td>\
-<td>%s</td>\
-<td><input type='text' id='label_%s' value='%s' onblur=\"make_sure('button_%s')\" ></td>\
-<td><label>%s</label></td>\
-<td><label>%s</label></td>\
-<td><label>%s</label></td>\
-<td><label>%s</label></td>\
-<td><label>%s</label></td>\
-</tr>"
-
-
-#define PTS_PTC_LIST_CONFIG_HTML "<tr>\
-<td><INPUT name=\"PtcCheckBox\"  type=\"checkbox\" value=\"%s\"   ></td>\
-<td><label id='id_%s'>%s</label></td>\
-<td>%s</td>\
-<td><input type='text' id='label_%s' value='%s' onblur=\"make_sure('button_%s')\" ></td>\
-<td><label>%s</label></td>\
-<td><label>%s</label></td>\
-<td><label>%s</label></td>\
-<td><label>%s</label></td>\
-<td><label>%s:%s</label></td>\
-<td><label>%s:%s</label></td>\
-<td><label>%s</label></td>\
-</tr>"
-
-#define PTS_PTC_LIST_UPGRADES_HTML "<tr>\
-<td><INPUT name=\"PtcCheckBox\"  type=\"checkbox\" value=\"%s\"   ></td>\
-<td><label id='id_%s'>%s</label></td>\
-<td>%s</td>\
-<td><input type='text' id='label_%s' value='%s' onblur=\"make_sure('button_%s')\" ></td>\
-<td><label>%s</label></td>\
-<td><label>%s</label></td>\
-<td><label>%s</label></td>\
-<td><label>%s</label></td>\
-<td><label>%s</label></td>\
-<td><label>%s</label></td>\
-</tr>"
-
 extern list_t  *m_stClinetCBList;
 
 void *pts_recv_msg_from_web(void *arg);

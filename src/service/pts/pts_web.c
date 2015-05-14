@@ -22,6 +22,8 @@ extern "C" {
 #include "pts_msg.h"
 #include "pts_web.h"
 
+#define PTS_VISIT_WEB_ERROE_1 "<!DOCTYPE HTML><HTML><HEAD><TITLE>Error</TITLE><META http-equiv=Content-Type content=\"text/html; charset=gb2312\"><STYLE type=text/css>BODY {BACKGROUND: #fff; MARGIN: 80px auto; FONT: 14px/150% Verdana, Georgia, Sans-Serif; COLOR: #000; TEXT-ALIGN: center}H1 {PADDING-RIGHT: 4px; PADDING-LEFT: 4px; FONT-SIZE: 14px; BACKGROUND: #eee; PADDING-BOTTOM: 4px; MARGIN: 0px; PADDING-TOP: 4px; BORDER-BOTTOM: #84b0c7 1px solid} DIV{BORDER-RIGHT: #84b0c7 1px solid; BORDER-TOP: #84b0c7 1px solid; BACKGROUND: #e5eef5; MARGIN: 0px auto; BORDER-LEFT: #84b0c7 1px solid; WIDTH: 500px; BORDER-BOTTOM: #84b0c7 1px solid}</STYLE></HEAD><BODY><DIV><H1>提示：您访问的地址无法建立连接</H1></DIV></BODY></HTML>"
+#define PTS_VISIT_WEB_ERROE_2 "<!DOCTYPE HTML><HTML><HEAD><TITLE>Error</TITLE><META http-equiv=Content-Type content=\"text/html; charset=gb2312\"><STYLE type=text/css>BODY {BACKGROUND: #fff; MARGIN: 80px auto; FONT: 14px/150% Verdana, Georgia, Sans-Serif; COLOR: #000; TEXT-ALIGN: center}H1 {PADDING-RIGHT: 4px; PADDING-LEFT: 4px; FONT-SIZE: 14px; BACKGROUND: #eee; PADDING-BOTTOM: 4px; MARGIN: 0px; PADDING-TOP: 4px; BORDER-BOTTOM: #84b0c7 1px solid} DIV{BORDER-RIGHT: #84b0c7 1px solid; BORDER-TOP: #84b0c7 1px solid; BACKGROUND: #e5eef5; MARGIN: 0px auto; BORDER-LEFT: #84b0c7 1px solid; WIDTH: 500px; BORDER-BOTTOM: #84b0c7 1px solid}</STYLE></HEAD><BODY><DIV><H1>提示：用该PTC的连接过多，请稍后再试</H1></DIV></BODY></HTML>"
 
 list_t  *m_stClinetCBList = NULL; /* 客户端请求链表 */
 pthread_mutex_t g_web_client_mutex  = PTHREAD_MUTEX_INITIALIZER;   /* 保护 m_stClinetCBList 的信号量 */
@@ -29,7 +31,7 @@ S32 m_lPtcSeq = 0;
 fd_set g_ReadFds;                 /* 客户端套接字集合 */
 S32 g_lMaxSocket = 0;
 S32 g_lWebServSocket = 0;
-const S8 *szPtsFifoName = "/tmp/pts_fifo";
+const S8 *g_szPtsFifoName = "/tmp/pts_fifo";
 S32 g_lPtsPipeWRFd = -1;
 
 VOID pts_web_sem_wait(S8 *szFileName, U32 ulLine)
@@ -552,7 +554,8 @@ BOOL pts_deal_with_http_head(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pc
     S8 szUrl[PT_DATA_BUFF_128] = {0};
     BOOL bIsGetID = DOS_FALSE;
 
-    pt_logr_info("send req socket : %d, ulStreamID : %d", ulConnfd, ulStreamID);
+    logr_info("send req socket : %d, ulStreamID : %d", ulConnfd, ulStreamID);
+
     bIsGetID = pts_request_ptc_proxy(pcRequest, ulConnfd, ulStreamID, pcIpccId, lReqLen, szUrl);
 
     return bIsGetID;
@@ -764,20 +767,22 @@ VOID *pts_recv_msg_from_web(VOID *arg)
     g_lWebServSocket = g_stPtsMsg.usWebServPort;
 
     /* 创建管道 */
-    if(access(szPtsFifoName, F_OK) == -1)
+    if(access(g_szPtsFifoName, F_OK) == -1)
     {
         /* 管道文件不存在,创建命名管道 */
-        lResult = mkfifo(szPtsFifoName, 0777);
+        lResult = mkfifo(g_szPtsFifoName, 0777);
         if(lResult != 0)
         {
-            logr_error("Could not create fifo %s\n", szPtsFifoName);
+            logr_error("Could not create fifo %s\n", g_szPtsFifoName);
             perror("mkfifo");
-            exit(EXIT_FAILURE);
+            DOS_ASSERT(0);
+
+            return NULL;
         }
     }
 
-    lPipeFd = open(szPtsFifoName, O_RDONLY | O_NONBLOCK);
-    g_lPtsPipeWRFd = open(szPtsFifoName, O_WRONLY);
+    lPipeFd = open(g_szPtsFifoName, O_RDONLY | O_NONBLOCK);
+    g_lPtsPipeWRFd = open(g_szPtsFifoName, O_WRONLY);
     FD_ZERO(&g_ReadFds);
     FD_SET(lPipeFd, &g_ReadFds);
     g_lMaxSocket = lPipeFd;
@@ -791,7 +796,9 @@ VOID *pts_recv_msg_from_web(VOID *arg)
         if (lResult < 0)
         {
             perror("pts recv msg from proxy  : fail to select");
-            exit(DOS_FAIL);
+            DOS_ASSERT(0);
+            sleep(1);
+            continue;
         }
         else if (0 == lResult)
         {
@@ -813,8 +820,12 @@ VOID *pts_recv_msg_from_web(VOID *arg)
                     pt_logr_debug("%s", "new connect from client to  web service of pts");
                     if ((lConnFd = accept(i, (struct sockaddr*)&stClientAddr, &ulCliaddrLen)) < 0)
                     {
-                        perror("pts recv msg from proxy accept");
-                        exit(DOS_FAIL);
+                        perror("accept");
+                        DOS_ASSERT(0);
+                        //exit(DOS_FAIL);
+                        sleep(1);
+
+                        continue;
                     }
 
                     FD_SET(lConnFd, &g_ReadFds);
@@ -883,7 +894,7 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     PT_STREAM_CB_ST  *pstStreamNode             = NULL;
     PTS_CLIENT_CB_ST *pstClinetCB               = NULL;
     PT_DATA_TCP_ST   *pstDataTcp                = NULL;
-    //S8             cookie[PT_DATA_BUFF_128]   = {0};
+    S8  szExitReason[PT_DATA_BUFF_1024] = {0};
     socklen_t optlen = sizeof(S32);
     S32 tcpinfo;
 
@@ -907,7 +918,22 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
 
     if (pstNeedRecvNode->ExitNotifyFlag)
     {
+        /* 响应结束 */
+        switch (pstNeedRecvNode->lSeq)
+        {
+            case 1:
+                dos_snprintf(szExitReason, PT_DATA_BUFF_1024, PTS_VISIT_WEB_ERROE_1);
+                break;
+            case 2:
+                dos_snprintf(szExitReason, PT_DATA_BUFF_1024, PTS_VISIT_WEB_ERROE_2);
+                break;
+            default:
+                szExitReason[0] = '\0';
+                break;
+        }
+
         /* 关闭socket */
+        send(pstClinetCB->lSocket, szExitReason, dos_strlen(szExitReason), 0);
         pts_web_close_socket_without_sem(pstClinetCB->lSocket);
 #if PT_WEB_MUTEX_DEBUG
         pts_web_sem_post(__FILE__, __LINE__);
@@ -999,7 +1025,13 @@ VOID pts_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 if (getsockopt(pstClinetCB->lSocket, IPPROTO_TCP, TCP_INFO, &tcpinfo, &optlen) < 0)
                 {
                     pt_logr_info("get info fail");
-                    exit(1);
+                    DOS_ASSERT(0);
+#if PT_WEB_MUTEX_DEBUG
+                    pts_web_sem_post(__FILE__, __LINE__);
+#else
+                    pthread_mutex_unlock(&g_web_client_mutex);
+#endif
+                    return;
                 }
 
                 if (TCP_CLOSE == tcpinfo || TCP_CLOSE_WAIT == tcpinfo || TCP_CLOSING == tcpinfo)

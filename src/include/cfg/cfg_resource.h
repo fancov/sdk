@@ -23,7 +23,7 @@
 /**
  * 定义telnet server最大客户端连接数
  */
-#define DOS_CLIENT_MAX_NUM               8
+#define DOS_CLIENT_MAX_NUM               32
 
 /**
  * 定义最大进程名长度

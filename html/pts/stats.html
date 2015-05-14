@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
+<title>OK-RAS</title>
+<script type="text/javascript" language="javascript" src="jquery.js"></script>
+<SCRIPT src="ddsmoothmenu.js" type=text/javascript></SCRIPT>
+<SCRIPT src="pts_public.js" type=text/javascript></SCRIPT>
+<script type="text/javascript" language="javascript" src="jquery.jeditable.js"></script>
+<script type="text/javascript" language="javascript" src="jquery.dataTables.min.js"></script>
+<link rel="shortcut icon" href="favicon.ico">
+<link rel="stylesheet" type="text/css" href="jquery.dataTables.min.css">
+<LINK href="ddsmoothmenu.css" type=text/css rel=stylesheet>
+<LINK href="pts_public.css" type=text/css rel=stylesheet>
+<style>
+	*{font-family: "微软雅黑"}
+</style>
+<script type="text/javascript" language="javascript" class="init">
+
+$(document).ready(function() {
+	var oTable = $('#dataTable').DataTable({
+			"aaSorting": [[0, "desc"]],
+			"stateSave": true,
+			"serverSide": true,
+			"sDom": '<"top"<"version">f>rt<"bottom"lp>',
+			"sAjaxSource": "/stats_list.html",
+			<% dataTablesLang(); %>
+
+		});
+
+	$('.version').html("<p id='RefushButton'><lable><% version(); %></lable></p>");
+
+});
+
+get_lang_type(<% lang_type(); %>);
+updateTime();
+
+</script>
+</head>
+
+<body style="margin:0; padding:0; background:#fafafa;">
+
+<div class="nav_content">
+	<div class="ddsmoothmenu nav_left" id="smoothmenu1">
+	<UL>
+		<LI class="logo_li">
+			<a href="http://www.dipcc.com" target="_blank">
+				<img src="images/logo.png" title="深圳市天天讯通科技有限公司"  />
+			</a>
+		</LI>
+	</UL>
+	<UL>
+		<LI><A href="index.html"><% htmlLang(0); %></A></LI>
+		<LI><A href="#"><% htmlLang(1); %></A> 
+		<UL>
+			<LI><A href="pts_switch.html"><% htmlLang(2); %></A> </LI>
+			<LI><A href="pts_config.html"><% htmlLang(3); %></A> </LI>
+			<LI><A href="pts_upgrades.html"><% htmlLang(4); %></A> </LI>
+		</UL>
+		</LI>
+		<LI><A href="pts_user.html"><% htmlLang(5); %></A></LI>
+		<LI><A href="#"><% htmlLang(6); %></A>
+			<UL>
+				<LI><A href="pts_ping.html"><% htmlLang(7); %></A></LI>
+			</UL>
+		</LI>
+	</UL>
+	</div>
+	<div class="nav_right" > 
+		<table style="height:48px; border-spacing: 0px; border-collapse:collapse;">
+			<tr>
+				<td style="width:180px;"><p class="longin_user"> <% curr_user(); %></p></td>
+				<td rowspan="2"><div class="longout"><a href="javascript:;" onclick="exit()"><img  src="../images/logout.png" /></a></div></td>
+			</tr>
+			<tr>
+				<td style="width:180px; padding: 0px;" ><p id="system-time" style="font:11px tahoma;height:10px;width:160px;color: #F4F4F4;"></p></td>
+			</tr>
+		</table>
+	</div>
+</div>
+<br>
+<div class="content_body">
+	<table id="dataTable" class="display" cellspacing="0" style="text-align:center" width="100%">
+		<thead>
+			<tr>
+				<th>SN</th>        
+		        <th>接收的包的数量</th>
+		        <th>丢失的包的数量</th>
+			</tr>
+		</thead>
+		<tbody>
+		</tbody>
+	</table>
+</div>
+</body>
+</html>
+
+

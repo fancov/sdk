@@ -87,18 +87,21 @@ VOID dos_signal_handle(S32 lSig)
     switch (lSig)
     {
         case SIGSEGV:
-        case SIGPIPE:
+        //case SIGCHLD:
+        case SIGUSR1:
+        case SIGUSR2:
+        case SIGALRM:
         case SIGTERM:
         case SIGQUIT:
         case SIGKILL:
+        case SIGINT:
+        case SIGPIPE:
+        case SIGSTOP:
+        case SIGHUP:
 #ifndef ARM_VERSION
             dos_backtrace(lSig);
 #endif
             break;
-        case SIGINT:
-            break;
-      //  case SIGPIPE:
-      //      return;
     }
 
     dos_syslog(LOG_LEVEL_EMERG, "The programm will be exited soon.\r\n");
@@ -134,6 +137,10 @@ VOID dos_signal_handle_reg()
     sigaction(SIGINT, &act, NULL);
     sigaction(SIGSEGV, &act, NULL);
     sigaction(SIGPIPE, &act, NULL);
+    //sigaction(SIGCHLD, &act, NULL);
+    sigaction(SIGUSR1, &act, NULL);
+    sigaction(SIGUSR2, &act, NULL);
+    sigaction(SIGALRM, &act, NULL);
 }
 #endif
 

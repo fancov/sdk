@@ -290,6 +290,34 @@ VOID mem_printf(HASH_NODE_S *pNode, VOID *pulIndex)
     cli_out_string(ulIndex, szBuff);
 }
 
+VOID mem_printf_save(HASH_NODE_S *pNode, VOID *arg)
+{
+    MEM_INFO_NODE_ST *pstMemInfoNode = (MEM_INFO_NODE_ST *)pNode;
+    GET_MEM_INFO_PARAM_ST *pstParam = (GET_MEM_INFO_PARAM_ST *)arg;
+    S8 *szInfoBuff = pstParam->szInfoBuff;
+    U32 ulBuffSize = pstParam->ulBuffSize;
+    U32 ulBuffLen  = pstParam->ulBuffLen;
+    U32 ulLen = 0;
+
+    if (NULL == szInfoBuff || ulBuffSize <= ulBuffLen)
+    {
+        return;
+    }
+
+    ulLen = dos_snprintf(szInfoBuff+ulBuffLen, ulBuffSize-ulBuffLen
+            , "%-40s%6u%6u\r\n"
+            , pstMemInfoNode->szFileName
+            , pstMemInfoNode->ulLine
+            , pstMemInfoNode->ulRef);
+    if (ulLen >= ulBuffSize-ulBuffLen)
+    {
+        pstParam->ulBuffLen = ulBuffSize;
+        return;
+    }
+
+    pstParam->ulBuffLen = ulBuffLen + ulLen;
+}
+
 /**
  * 函数：S32 cli_cmd_mem(U32 ulIndex, S32 argc, S8 **argv)
  * 功能：命令行回调函数，打印内存申请情况
@@ -320,6 +348,36 @@ S32 cli_cmd_mem(U32 ulIndex, S32 argc, S8 **argv)
     pthread_mutex_unlock(&g_mutexMemMngtTable);
     return 0;
 }
+
+
+S32 cli_cmd_get_mem_info(S8 *szInfoBuff, U32 ulBuffSize)
+{
+    if (NULL == szInfoBuff)
+    {
+        return DOS_FAIL;
+    }
+
+    U32 ulLen = 0;
+    GET_MEM_INFO_PARAM_ST stParam;
+
+    ulLen = dos_snprintf(szInfoBuff, ulBuffSize, "Memory Info:\r\n\r\n%-40s%6s%6s\r\n", "File Name", "Line", "Refer");
+    if (ulLen >= ulBuffSize)
+    {
+        return DOS_SUCC;
+    }
+
+    stParam.szInfoBuff = szInfoBuff;
+    stParam.ulBuffSize = ulBuffSize;
+    stParam.ulBuffLen  = ulLen;
+
+    pthread_mutex_lock(&g_mutexMemMngtTable);
+    hash_walk_table(g_pstHashMemMngtTable,  (VOID *)&stParam, mem_printf_save);
+    pthread_mutex_unlock(&g_mutexMemMngtTable);
+
+    return DOS_SUCC;
+
+}
+
 
 #endif
 

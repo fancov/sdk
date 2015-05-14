@@ -42,6 +42,7 @@ S32 dos_sqlite3_creat_table(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql)
         {
             pt_logr_debug("sqlite3 table exited");
             pthread_mutex_unlock(&g_mutex_sqlite);
+
             return PT_SLITE3_EXISTED;
         }
         else
@@ -49,6 +50,7 @@ S32 dos_sqlite3_creat_table(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql)
             pt_logr_info("can't open database: %s", sqlite3_errmsg(pstMySqlite->pHandle));
             dos_sqlite3_close(pstMySqlite);
             pthread_mutex_unlock(&g_mutex_sqlite);
+
             return PT_SLITE3_FAIL;
         }
     }
@@ -151,7 +153,7 @@ S32 dos_get_count_callback(VOID *para, S32 n_column, S8 **column_value, S8 **col
     return 0;
 }
 
-S32 dos_sqlite3_record_is_exist(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql)
+S32 dos_sqlite3_record_count(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql)
 {
     U32 count = 0;
     S32 lRes = 0;
@@ -162,14 +164,8 @@ S32 dos_sqlite3_record_is_exist(DOS_SQLITE_ST *pstMySqlite, S8 *pchSql)
         return -1;
     }
 
-    printf("!!!!!!!count = %d\n", count);
+    return count;
 
-    if (count > 0)
-    {
-        return DOS_TRUE;
-    }
-
-    return DOS_FALSE;
 }
 
 #endif
