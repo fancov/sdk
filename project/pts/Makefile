@@ -13,7 +13,8 @@ DOS_INCLUDES				= -I$(SROUCE)/include
 
 SUFFIX					= o
 
-LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86 -lwebs_x86
+# LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86 -lwebs_x86
+LIBS					= -lpthread -lmxml_x86 -lsqlite3_x86 -lwebs_x86 -lmysqlclient
 
 MYSQL_HEADERS				= -I/usr/include/mysql
 #MYSQL_LIBS				= -L/usr/lib64/mysql
@@ -32,7 +33,9 @@ include $(SROUCE)/util/config/Makefile.mk
 include $(SROUCE)/util/timer/Makefile.mk
 include $(SROUCE)/util/hash/Makefile.mk
 include $(SROUCE)/util/list/Makefile.mk
+include $(SROUCE)/util/task/Makefile.mk
 include $(SROUCE)/util/heartbeat/Makefile.mk
+include $(SROUCE)/util/db/Makefile.mk
 include $(SROUCE)/cfg/Makefile.mk
 include $(SROUCE)/service/Makefile.mk
 include $(SROUCE)/service/pts/Makefile.mk
@@ -52,7 +55,7 @@ ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS)
 ########################################################################
 CC						= gcc
 CXX						= g++
-CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char -m32
+CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char -m32 -ldl
 DEFINES					= -DDIPCC_PTS -DDEBUG_VERSION -DDIGEST_ACCESS_SUPPORT
 
 C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 

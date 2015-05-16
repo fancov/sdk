@@ -8,10 +8,10 @@
 	PADDING-RIGHT: 0px; PADDING-LEFT: 0px;BACKGROUND: #747474;  Z-INDEX: 100; FLOAT: left; PADDING-BOTTOM: 0px; MARGIN: 0px; PADDING-TOP: 0px; LIST-STYLE-TYPE: none; HEIGHT:50PX;
 }
 .ddsmoothmenu UL LI {
-	DISPLAY: block; FLOAT: left; WIDTH: 120px; LINE-HEIGHT: 31px; POSITION: relative; TEXT-ALIGN: center
+	DISPLAY: block; FLOAT: left; WIDTH: 120px; LINE-HEIGHT: 50px; POSITION: relative; TEXT-ALIGN: center
 }
 
-.ddsmoothmenu UL LI :hover{ BACKGROUND: #9c9c9c; }
+.ddsmoothmenu UL LI :hover{ BACKGROUND: #9c9c9c; height: 50px;}
 
  HTML .ddsmoothmenu UL LI {
 	FLOAT: left; WIDTH: 120px; LINE-HEIGHT: 50px; POSITION: relative; TEXT-ALIGN: center

@@ -14,25 +14,38 @@
 #ifdef __cplusplus
 extern "C"{
 #endif /* __cplusplus */
-    
+
 #include <dos.h>
+#include <version.h>
 
 #define MAX_PROCESS_NAME_LENGTH   48
 
 #define MAX_PATH_LENGTH           256
 
+typedef struct tagModDesc{
+    U32 ulIndex;           /* Ä£¿éID */
+    S8  *pszName;          /* Ä£¿éÃû³Æ */
+    S8  *pzsMask;          /* Ä£¿éÑÚÂë */
+}MOD_DESC_ST;
+
 /* ¶¨Ê±Ä£¿éÏà¹ØÐÅÏ¢ */
 /* ½ø³ÌÃû */
 static S8 g_pszProcessName[MAX_PROCESS_NAME_LENGTH] = { 0 };
 
-/* ½ø³Ì°æ±¾ */
-static S8 *g_pszProcessVersion = "1.1";
-
 /* ¶¨ÒåÄ¬ÈÏÏµÍ³¸ùÄ¿Â¼ */
-static S8 *g_pszDefaultSysRootPath = "/ipcc";
+static S8 *g_pszDefaultSysRootPath = "/dipcc";
 
 /* ´æ·ÅÅäÖÃÎÄ¼þÖÐÏµÍ³¸ùÄ¿Â¼ */
 static S8 g_szSysRootPath[MAX_PATH_LENGTH] = {0, };
+
+/* ¶¨Òå¸÷¸öÄ£¿éµÄÑÚÂë */
+static MOD_DESC_ST g_stModList[] = {
+#ifdef DIPCC_PTS
+    {PTC_SUBMOD_SYSTEM, "System",     "system-dinstar"},
+    {PTC_SUBMOD_USER,   "User",       "user-disntar"},
+    {PTC_SUBMOD_PTCS,   "PTC",        "ptc-dinstar"},
+#endif
+};
 
 /**
  * Function: S8 *dos_get_process_name()
@@ -51,8 +64,63 @@ S8 *dos_get_process_name()
  */
 S8 *dos_get_process_version()
 {
-    return g_pszProcessVersion;
+    return DOS_PROCESS_VERSION;
 }
+
+/*
+ *  º¯Êý£ºU32 dos_get_build_datetime(U32 *pulBuildData, U32 *pulBuildTime)
+ *  ¹¦ÄÜ£º»ñÈ¡±àÒëÊ±¼ä
+ *  ²ÎÊý£º
+ *      U32 *pulBuildData: ´æ´¢±àÒëÈÕÆÚ
+ *      U32 pulBuildTime: ´æ´¢±àÒëÊ±¼ä
+ *  ·µ»ØÖµ:
+ *      Èç¹û»ñÈ¡±ãÊÇÊ±¼äOK£¬·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ */
+U32 dos_get_build_datetime(U32 *pulBuildData, U32 *pulBuildTime)
+{
+    S32 lYear, lMonth, lDay, lHour, lMinute, lSecond;
+    S32 lRet;
+
+    if (DOS_ADDR_INVALID(pulBuildData)
+        && DOS_ADDR_INVALID(pulBuildTime))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    lRet = dos_sscanf(BUILD_TIME, "%d-%d-%d %d:%d:%d"
+                , &lYear, &lMonth, &lDay
+                , &lHour, &lMinute, &lSecond);
+    if (lRet != 6)
+    {
+        DOS_ASSERT(0);
+
+        *pulBuildTime = U32_BUTT;
+        return DOS_FAIL;
+    }
+
+
+    *pulBuildData = 0;
+    *pulBuildData = (lYear << 16) | (lMonth << 8) | lDay;
+    *pulBuildTime = 0;
+    *pulBuildTime = (lYear << 16) | (lMonth << 8) | lDay;
+
+    return DOS_SUCC;
+}
+
+/*
+ *  º¯Êý£ºS8* dos_get_build_datetime_str()
+ *  ¹¦ÄÜ£º»ñÈ¡×Ö·û´®¸ñÊ½±àÒëÊ±¼ä,
+ *  ²ÎÊý£º
+ *  ·µ»ØÖµ:
+ *      ·µ»Ø±àÒëÊ±¼ä
+ */
+S8* dos_get_build_datetime_str()
+{
+    return BUILD_TIME;
+}
+
+
 
 /*
  *  º¯Êý£ºS8 *dos_get_pid_file_pah(S8 *pszBuff, S32 lMaxLen)
@@ -179,7 +247,7 @@ S32 dos_set_process_name(S8 *pszName)
  * ²ÎÊý£º
  *      S8 *pszName : Æô¶¯Ê±µÄ½ø³ÌÃû£¨¿ÉÄÜ»á´øÉÏÈ«Â·¾¶£©
  * ·µ»ØÖµ
- *      ³É¹¦·µÎÄ¼þÃûØ0£¬Ê§°Ü·µ»ØNULL
+ *      ³É¹¦·µÎÄ¼þÃû?£¬Ê§°Ü·µ»ØNULL
  */
 DLLEXPORT S8 *dos_get_filename(const S8* path)
 {
@@ -220,6 +288,45 @@ DLLEXPORT S8 *dos_get_filename(const S8* path)
         return (char *)pSprit;
     }
 }
+
+U32 licc_get_mod_mask(U32 ulIndex, S8 *pszModuleName, S32 *plLength)
+{
+    U32 i;
+
+    if (DOS_ADDR_INVALID(pszModuleName) || *plLength <= 0)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    for (i=0; i<sizeof(g_stModList)/sizeof(MOD_DESC_ST); i++)
+    {
+        if (g_stModList[i].ulIndex == ulIndex)
+        {
+            dos_strncpy(pszModuleName, g_stModList[i].pzsMask, *plLength);
+            pszModuleName[*plLength - 1] = '\0';
+            return DOS_SUCC;
+        }
+    }
+
+    return DOS_FAIL;
+}
+
+U32 licc_get_product(S8 *pszProduct, S32 *plLength)
+{
+    if (DOS_ADDR_INVALID(pszProduct) || *plLength <= 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_strncpy(pszProduct, DOS_PROCESS_NAME, *plLength);
+    pszProduct[*plLength - 1] = '\0';
+
+    return DOS_SUCC;
+}
+
 
 
 #ifdef __cplusplus

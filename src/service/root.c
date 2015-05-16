@@ -75,9 +75,17 @@ S32 root(S32 _argc, S8 ** _argv)
 #endif //INCLUDE_DEBUG_CLI_SERVER
 
 #if INCLUDE_PTC
-    ptc_main();
+    if (DOS_SUCC != ptc_main())
+    {
+        DOS_ASSERT(0);
+        return -1;
+    }
 #elif INCLUDE_PTS
-    pts_main();
+    if (DOS_SUCC != pts_main())
+    {
+        DOS_ASSERT(0);
+        return -1;
+    }
 #endif
 
 #if INCLUDE_SERVICE_BS

@@ -5,7 +5,7 @@
 extern "C"{
 #endif
 
-#include <pt/goahead/webs.h>
+#include <webs/webs.h>
 
 #define PTS_VISIT_FILELDS_COUNT     10
 #define PTS_SWITCH_FILELDS_COUNT    12
@@ -43,8 +43,12 @@ typedef struct tagUpgradePtc
 
 typedef struct tagPtcUpgradeParam
 {
-    PT_PTC_UPGRADE_ST *pstUpgrade;
-    S8 *szUrl;
+    U32         ulOSType;
+    FILE        *pPackageFileFd;
+    DOS_TMR_ST  hTmrHandle;                  /* ¶¨Ê±Æ÷ */
+    S8          szVision[PT_DATA_BUFF_16];   /* °æ±¾ºÅ */
+
+    S8          *szUrl;
 
 }PTS_PTC_UPGRADE_PARAM_ST;
 

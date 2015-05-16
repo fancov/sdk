@@ -7,7 +7,7 @@ extern "C"{
 
 #include <semaphore.h>
 #include <pt/pt.h>
-#include <pt/goahead/webs.h>
+#include <webs/webs.h>
 
 #define PTS_SQL_STR_SIZE            1024           /* 存放sql语句数组的大小 */
 #define PTS_LISTEN_COUNT            10             /* listen 个数 */
@@ -88,6 +88,7 @@ S8 *pts_get_current_time();
 VOID pts_send_exit_notify_to_ptc(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcSendNode);
 S32 pts_find_ptc_by_dest_addr(S8 *pDestInternetIp, S8 *pDestIntranetIp, S8 *szDestSN);
 S32 pts_get_curr_position_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name);
+S32 g2u(S8 *inbuf, size_t inlen, char *outbuf, size_t outlen);
 
 #ifdef  __cplusplus
 }

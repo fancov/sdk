@@ -31,6 +31,11 @@ case $1 in
 	;;
 esac
 
+rm -f ../src/include/version.h
+cp ../src/include/version.h.in ../src/include/version.h
+BTIME=`date "+%Y-%m-%d %T"`
+sed -i "s/<buildtime>/$BTIME/g" ../src/include/version.h
+
 if [ -d $MAKE_PATH ];then
 	cd $MAKE_PATH
 else
