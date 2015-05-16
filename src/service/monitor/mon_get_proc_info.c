@@ -357,6 +357,7 @@ static U32 mon_get_proc_pid_list()
    S8 szPidDir[1024] = {0};
    S8 szServiceRoot[256] = {0};
    S8 *pszRoot = NULL;
+   U32 ulPid = 0;
    
    FILE * fp = NULL;
 
@@ -390,7 +391,7 @@ static U32 mon_get_proc_pid_list()
       if (DT_REG == pstEntry->d_type && DOS_TRUE == mon_is_suffix_true(pstEntry->d_name, "pid"))//如果是普通文件
       {
          S8     szProcAllName[64] = {0};
-         S8 *   pTemp;
+         S8*    pTemp;
          S8     szLine[8] = {0};
          S8     szAbsFilePath[64] = {0};
 
@@ -400,7 +401,7 @@ static U32 mon_get_proc_pid_list()
       
          if (DOS_ADDR_INVALID(fp))
          {
-            logr_cirt("%s:Line %d:mon_get_proc_pid_list|file \'%s\' access failed,fp is %p!"
+            logr_cirt("%s:Line %u:mon_get_proc_pid_list|file \'%s\' access failed,fp is %p!"
                         , dos_get_filename(__FILE__), __LINE__, szAbsFilePath, fp);
             closedir(pstDir);
             return DOS_FAIL;
@@ -409,14 +410,42 @@ static U32 mon_get_proc_pid_list()
          fseek(fp, 0, SEEK_SET);
          if (NULL != fgets(szLine, sizeof(szLine), fp))
          {
-            S32 lRet = 0;
             if(DOS_ADDR_INVALID(g_pastProc[g_ulPidCnt]))
             {
-               logr_cirt("%s:Line %d:mon_get_proc_pid_list|get proc pid list failure,g_pastProc[%d] is %p!"
+               logr_cirt("%s:Line %u:mon_get_proc_pid_list|get proc pid list failure,g_pastProc[%d] is %p!"
                             , dos_get_filename(__FILE__),  __LINE__, g_ulPidCnt, g_pastProc[g_ulPidCnt]);
                goto failure;
             }
-         
+
+            if (dos_atoul(szLine, &ulPid) < 0)
+            {
+                logr_error("%s:Line %u:dos_atoul failure.", dos_get_filename(__FILE__), __LINE__);
+                goto failure;
+            }
+
+            if (DOS_TRUE == mon_is_proc_dead(ulPid))
+            {
+                /* 如果说进程已经死亡了，但进程PID文件还在，不计入进程总数 */
+                logr_info("%s:Line %u:process ID %u does not exist,but pid file exists."
+                            , dos_get_filename(__FILE__), __LINE__, ulPid);
+                printf("\nProcess ID %u does not exist,but pid file exists.\n", ulPid);
+                continue;
+            }
+
+            g_pastProc[g_ulPidCnt]->ulProcId = ulPid;
+
+            pTemp = mon_get_proc_name_by_id(ulPid, szProcAllName);
+            if (DOS_ADDR_INVALID(pTemp))
+            {
+                logr_error("%s:Line %d:Get process name by ID FAIL.", dos_get_filename(__FILE__), __LINE__);
+                goto failure;
+            }
+
+            dos_snprintf(g_pastProc[g_ulPidCnt]->szProcName
+                            , sizeof(g_pastProc[g_ulPidCnt]->szProcName)
+                            , "%s"
+                            , pTemp);
+#if 0         
             lRet = dos_atoul(szLine, &(g_pastProc[g_ulPidCnt]->ulProcId));
             if(0 != lRet)
             {
@@ -443,7 +472,7 @@ static U32 mon_get_proc_pid_list()
             }
 
             dos_snprintf(g_pastProc[g_ulPidCnt]->szProcName, sizeof(g_pastProc[g_ulPidCnt]->szProcName), "%s", pTemp);
-            
+#endif            
             ++g_ulPidCnt;
          }
          else
@@ -579,7 +608,7 @@ static U32  mon_check_all_process()
    ulCfgProcCnt = config_hb_get_process_cfg_cnt();
    if(0 > ulCfgProcCnt)
    {
-      logr_error("%s:Line %u:mon_check_all_process|get config process count failure,ulCfgProcCnt is %u!"
+      logr_error("%s:Line %u:get config process count failure,ulCfgProcCnt is %u!"
                    , dos_get_filename(__FILE__), __LINE__, ulCfgProcCnt);
       config_hb_deinit();
       return DOS_FAIL;
@@ -591,7 +620,7 @@ static U32  mon_check_all_process()
     */
    if(ulCfgProcCnt <= g_ulPidCnt - 1)
    {
-      logr_info("%s:Line %u:mon_check_all_process|no process lost!"
+      logr_info("%s:Line %u:no process lost!"
                  , dos_get_filename(__FILE__), __LINE__);
       return DOS_SUCC;
    }

@@ -190,8 +190,12 @@ void CLogDB::log_write(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLev
                 , _pszMsg);
 
     db_query(pstDBHandle, pszQuery, NULL, NULL, NULL);
-	
-	delete [] pszQuery;
+
+	if (pszQuery)
+	{
+		delete [] pszQuery;
+		pszQuery = NULL;
+	}
 }
 
 VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_pszOpterand, const S8* _pszResult, const S8 *_pszMsg)
@@ -224,7 +228,11 @@ VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
     db_query(pstDBHandle, pszQuery, NULL, NULL, NULL);
 
     //printf("%s", szQuery);
-    delete [] pszQuery;
+    if (pszQuery)
+	{
+		delete [] pszQuery;
+		pszQuery = NULL;
+	}
 }
 
 #endif
