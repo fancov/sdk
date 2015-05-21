@@ -14,7 +14,7 @@ DOS_INCLUDES				= -I$(SROUCE)/include
 SUFFIX					= o
 
 # LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86 -lwebs_x86
-LIBS					= -lpthread -lmxml_x86 -lsqlite3_x86 -lwebs_x86 -lmysqlclient
+LIBS					= -lpthread -lmxml_x86 -lsqlite3_x86 -lwebs_x86 -lmysqlclient -llicc_x86 -lcrypto_x86
 
 MYSQL_HEADERS				= -I/usr/include/mysql
 #MYSQL_LIBS				= -L/usr/lib64/mysql
@@ -36,6 +36,7 @@ include $(SROUCE)/util/list/Makefile.mk
 include $(SROUCE)/util/task/Makefile.mk
 include $(SROUCE)/util/heartbeat/Makefile.mk
 include $(SROUCE)/util/db/Makefile.mk
+include $(SROUCE)/util/security/Security.mk
 include $(SROUCE)/cfg/Makefile.mk
 include $(SROUCE)/service/Makefile.mk
 include $(SROUCE)/service/pts/Makefile.mk

@@ -265,6 +265,14 @@ int main(int argc, char ** argv)
     /* 创建pid文件 */
     dos_create_pid_file();
 
+    #if INCLUDE_LICENSE_CLIENT
+    if (licc_init() != DOS_SUCC)
+    {
+        dos_printf("%s", "Init the liense mod FAIL.");
+        exit(0);
+    }
+    #endif
+
     /* 启动dos主任务 */
     if (root(argc, argv) < 0)
     {
