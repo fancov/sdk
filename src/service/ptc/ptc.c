@@ -13,6 +13,7 @@ extern "C" {
 #include <limits.h>
 #include <netdb.h>
 #include <ctype.h>
+#include <sys/time.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 /* include the dos header files */
@@ -347,16 +348,17 @@ S32 ptc_init_send_cache_queue(U8 *pcID)
 
     g_pstPtcSend->astDataTypes[PT_DATA_CTRL].enDataType = PT_DATA_CTRL;
     g_pstPtcSend->astDataTypes[PT_DATA_CTRL].bValid = DOS_TRUE;
-    g_pstPtcSend->astDataTypes[PT_DATA_CTRL].pstStreamQueHead = NULL;
+    dos_list_init(&g_pstPtcSend->astDataTypes[PT_DATA_CTRL].stStreamQueHead);
     g_pstPtcSend->astDataTypes[PT_DATA_CTRL].ulStreamNumInQue = 0;
     g_pstPtcSend->astDataTypes[PT_DATA_WEB].enDataType = PT_DATA_WEB;
     g_pstPtcSend->astDataTypes[PT_DATA_WEB].bValid = DOS_TRUE;
-    g_pstPtcSend->astDataTypes[PT_DATA_WEB].pstStreamQueHead = NULL;
+    dos_list_init(&g_pstPtcSend->astDataTypes[PT_DATA_WEB].stStreamQueHead);
     g_pstPtcSend->astDataTypes[PT_DATA_WEB].ulStreamNumInQue = 0;
     g_pstPtcSend->astDataTypes[PT_DATA_CMD].enDataType = PT_DATA_CMD;
     g_pstPtcSend->astDataTypes[PT_DATA_CMD].bValid = DOS_TRUE;
-    g_pstPtcSend->astDataTypes[PT_DATA_CMD].pstStreamQueHead = NULL;
+    dos_list_init(&g_pstPtcSend->astDataTypes[PT_DATA_CMD].stStreamQueHead);
     g_pstPtcSend->astDataTypes[PT_DATA_CMD].ulStreamNumInQue = 0;
+    //pthread_mutex_init(&g_pstPtcSend->pthreadMutex, NULL);
 
     return DOS_SUCC;
 }
@@ -411,16 +413,17 @@ S32 ptc_init_recv_cache_queue(U8 *pcID)
 
     g_pstPtcRecv->astDataTypes[PT_DATA_CTRL].enDataType = PT_DATA_CTRL;
     g_pstPtcRecv->astDataTypes[PT_DATA_CTRL].bValid = DOS_TRUE;
-    g_pstPtcRecv->astDataTypes[PT_DATA_CTRL].pstStreamQueHead = NULL;
+    dos_list_init(&g_pstPtcRecv->astDataTypes[PT_DATA_CTRL].stStreamQueHead);
     g_pstPtcRecv->astDataTypes[PT_DATA_CTRL].ulStreamNumInQue = 0;
     g_pstPtcRecv->astDataTypes[PT_DATA_WEB].enDataType = PT_DATA_WEB;
     g_pstPtcRecv->astDataTypes[PT_DATA_WEB].bValid = DOS_TRUE;
-    g_pstPtcRecv->astDataTypes[PT_DATA_WEB].pstStreamQueHead = NULL;
+    dos_list_init(&g_pstPtcRecv->astDataTypes[PT_DATA_WEB].stStreamQueHead);
     g_pstPtcRecv->astDataTypes[PT_DATA_WEB].ulStreamNumInQue = 0;
     g_pstPtcRecv->astDataTypes[PT_DATA_CMD].enDataType = PT_DATA_CMD;
     g_pstPtcRecv->astDataTypes[PT_DATA_CMD].bValid = DOS_TRUE;
-    g_pstPtcRecv->astDataTypes[PT_DATA_CMD].pstStreamQueHead = NULL;
+    dos_list_init(&g_pstPtcRecv->astDataTypes[PT_DATA_CMD].stStreamQueHead);
     g_pstPtcRecv->astDataTypes[PT_DATA_CMD].ulStreamNumInQue = 0;
+    //pthread_mutex_init(&g_pstPtcRecv->pthreadMutex, NULL);
 
     return DOS_SUCC;
 }
@@ -488,7 +491,6 @@ S32 ptc_create_socket_proxy(U8 *alServIp, U16 usServPort)
             {
                 lRet = DOS_FALSE;
             }
-
         }
         else
         {
@@ -525,48 +527,49 @@ VOID *ptc_send_msg2proxy(VOID *arg)
 {
     list_t *pstNendRecvList = NULL;
     PT_NEND_RECV_NODE_ST *pstNeedRecvNode = NULL;
+    struct timeval now;
+    struct timespec timeout;
 
     while (1)
     {
-#if PT_MUTEX_DEBUG
-        ptc_recv_pthread_mutex_lock(__FILE__, __LINE__);
-#else
-        pthread_mutex_lock(&g_mutex_recv);
-#endif
+        gettimeofday(&now, NULL);
+        timeout.tv_sec = now.tv_sec + 1;
+        timeout.tv_nsec = now.tv_usec * 1000;
+
+        pthread_mutex_lock(&g_mutexPtcRecvPthread);
         sem_post(&g_SemPtcRecv);
-#if PT_PTC_MUTEX_DEBUG
-        ptc_recv_pthread_cond_wait(__FILE__, __LINE__);
-#else
-        pthread_cond_wait(&g_cond_recv, &g_mutex_recv);
-#endif
+        pthread_cond_timedwait(&g_condPtcRecv, &g_mutexPtcRecvPthread, &timeout);
+        pthread_mutex_unlock(&g_mutexPtcRecvPthread);
+
         /* 循环发送g_pstPtsNendRecvNode中的stream */
-        pstNendRecvList = g_pstPtcNendRecvNode;
+
         DOS_LOOP_DETECT_INIT(lLoopMaxCount, DOS_DEFAULT_MAX_LOOP);
 
         while(1)
         {
             /* 防止死循环 */
             DOS_LOOP_DETECT(lLoopMaxCount)
-
-            if (NULL == pstNendRecvList)
+            pthread_mutex_lock(&g_mutexPtcRecvPthread);
+            if (dos_list_is_empty(&g_stPtcNendRecvNode))
             {
+                pthread_mutex_unlock(&g_mutexPtcRecvPthread);
                 break;
             }
 
+            pstNendRecvList = dos_list_fetch(&g_stPtcNendRecvNode);
+            if (DOS_ADDR_INVALID(pstNendRecvList))
+            {
+                pthread_mutex_unlock(&g_mutexPtcRecvPthread);
+                DOS_ASSERT(0);
+                continue;
+            }
+            pthread_mutex_unlock(&g_mutexPtcRecvPthread);
+
             pstNeedRecvNode = dos_list_entry(pstNendRecvList, PT_NEND_RECV_NODE_ST, stListNode);
-            if (pstNendRecvList == pstNendRecvList->next)
-            {
-                pstNendRecvList = NULL;
-            }
-            else
-            {
-                pstNendRecvList = pstNendRecvList->next;
-                dos_list_del(&pstNeedRecvNode->stListNode);
-            }
 
             if (PT_DATA_WEB == pstNeedRecvNode->enDataType)
             {
-                ptc_send_msg2web(pstNeedRecvNode);
+                ptc_send_msg2browser(pstNeedRecvNode);
                 dos_dmem_free(pstNeedRecvNode);
                 pstNeedRecvNode = NULL;
                 continue;
@@ -584,13 +587,6 @@ VOID *ptc_send_msg2proxy(VOID *arg)
                 pstNeedRecvNode = NULL;
             }
         }
-        g_pstPtcNendRecvNode = pstNendRecvList;
-#if PT_MUTEX_DEBUG
-        ptc_recv_pthread_mutex_unlock(__FILE__, __LINE__);
-#else
-        pthread_mutex_unlock(&g_mutex_recv);
-#endif
-        //pthread_mutex_unlock(&g_mutex_recv);
     }
 
     return NULL;

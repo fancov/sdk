@@ -167,16 +167,17 @@ VOID pts_cmd_client_delete(U32 ulClientIndex)
         dos_memcpy(stMsgDes.aucID, g_astCmdClient[ulClientIndex].aucID, PTC_ID_LEN);
         stMsgDes.enDataType = PT_DATA_CMD;
         stMsgDes.ulStreamID = g_astCmdClient[ulClientIndex].ulStreamID;
-        pthread_mutex_lock(&g_pts_mutex_send);
-        pstPtcSendNode = pt_ptc_list_search(g_pstPtcListSend, g_astCmdClient[ulClientIndex].aucID);
-        if (pstPtcSendNode != NULL)
+        pts_delete_stream_addr_node(stMsgDes.ulStreamID);
+        pthread_mutex_lock(&g_mutexPtcSendList);
+        pstPtcSendNode = pt_ptc_list_search(&g_stPtcListSend, g_astCmdClient[ulClientIndex].aucID);
+        if (DOS_ADDR_VALID(pstPtcSendNode))
         {
             pts_send_exit_notify_to_ptc(&stMsgDes, pstPtcSendNode);
-            pts_delete_send_stream_node(&stMsgDes, pstPtcSendNode, DOS_FALSE);
         }
-        pthread_mutex_unlock(&g_pts_mutex_send);
+        pthread_mutex_unlock(&g_mutexPtcSendList);
 
-        pts_delete_recv_stream_node(&stMsgDes, NULL, DOS_FALSE);
+        pts_delete_send_stream_node(&stMsgDes);
+        pts_delete_recv_stream_node(&stMsgDes);
         g_astCmdClient[ulClientIndex].bIsValid = DOS_FALSE;
         g_astCmdClient[ulClientIndex].aucID[0] = '\0';
         g_astCmdClient[ulClientIndex].ulStreamID = U32_BUTT;
@@ -323,24 +324,6 @@ S32 pts_get_password(S8 *szUserName, S8 *pcPassWord, S32 lPasswLen)
     sprintf(achSql, "select password from pts_user where name='%s';", szUserName);
     dos_sqlite3_exec_callback(g_pstMySqlite, achSql, pts_get_password_callback, (void *)pcPassWord);
     if (dos_strlen(pcPassWord) > 0)
-    {
-        return DOS_SUCC;
-    }
-    else
-    {
-        return DOS_FAIL;
-    }
-
-}
-
-S32 pts_get_sn_by_id(S8 *szID, S8 *szSN, S32 lLen)
-{
-    S8 achSql[PTS_SQL_STR_SIZE] = {0};
-
-    dos_memzero(szSN, lLen);
-    sprintf(achSql, "select sn from ipcc_alias where id=%s and register = 1;", szID);
-    dos_sqlite3_exec_callback(g_pstMySqlite, achSql, pts_get_password_callback, (void *)szSN);
-    if (dos_strlen(szSN) > 0)
     {
         return DOS_SUCC;
     }
@@ -801,16 +784,17 @@ VOID pts_telnet_send_msg2ptc(U32 ulClientIndex, S8 *szBuff, U32 ulLen)
  */
 VOID pts_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
 {
-    S32              lClientSub              = 0;
-    U32              ulArraySub              = 0;
-    S8               *pcSendMsg              = NULL;
-    list_t           *pstStreamList          = NULL;
-    PT_CC_CB_ST      *pstCCNode              = NULL;
-    PT_STREAM_CB_ST  *pstStreamNode          = NULL;
-    PT_DATA_TCP_ST   *pstDataTcp             = NULL;
-    PT_PTC_COMMAND_ST *pstPtcCommand         = NULL;
-    PTS_CMD_CLIENT_CB_ST stClientCB;
-    S8  szExitReason[PT_DATA_BUFF_128] = {0};
+    S32                         lClientSub              = 0;
+    U32                         ulArraySub              = 0;
+    S8                          *pcSendMsg              = NULL;
+    PT_CC_CB_ST                 *pstCCNode              = NULL;
+    PT_STREAM_CB_ST             *pstStreamNode          = NULL;
+    PT_DATA_TCP_ST              *pstDataTcp             = NULL;
+    PT_PTC_COMMAND_ST           *pstPtcCommand          = NULL;
+    STREAM_CACHE_ADDR_CB_ST     *pstStreamCacheAddr     = NULL;
+    DLL_NODE_S                  *pstListNode            = NULL;
+    PTS_CMD_CLIENT_CB_ST        stClientCB;
+    S8                          szExitReason[PT_DATA_BUFF_128] = {0};
 
     lClientSub = pts_cmd_client_search_by_stream(pstNeedRecvNode->ulStreamID);
     if(lClientSub < 0)
@@ -849,30 +833,47 @@ VOID pts_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
         return;
     }
 
-    pstCCNode = pt_ptc_list_search(g_pstPtcListRecv, pstNeedRecvNode->aucID);
-    if(NULL == pstCCNode)
+    pthread_mutex_lock(&g_mutexStreamAddrList);
+    pstListNode = dll_find(&g_stStreamAddrList, &pstNeedRecvNode->ulStreamID, pts_find_stream_addr_by_streamID);
+    if (DOS_ADDR_INVALID(pstListNode))
     {
-        pt_logr_debug("pts send msg to proxy : not found ptc id is %s", pstNeedRecvNode->aucID);
+        pthread_mutex_unlock(&g_mutexStreamAddrList);
+
         return;
     }
 
-    pstStreamList = pstCCNode->astDataTypes[pstNeedRecvNode->enDataType].pstStreamQueHead;
-    if (NULL == pstStreamList)
+    pstStreamCacheAddr = pstListNode->pHandle;
+    if (DOS_ADDR_INVALID(pstStreamCacheAddr))
     {
-        pt_logr_debug("pts send msg to proxy : not found stream list of type is %d", pstNeedRecvNode->enDataType);
+        pthread_mutex_unlock(&g_mutexStreamAddrList);
+
         return;
     }
 
-    pstStreamNode = pt_stream_queue_search(pstStreamList, pstNeedRecvNode->ulStreamID);
-    if (NULL == pstStreamNode)
+    pstCCNode = pstStreamCacheAddr->pstPtcRecvNode;
+    if (DOS_ADDR_INVALID(pstCCNode))
     {
-        pt_logr_debug("pts send msg to proxy : not found stream : %d", pstNeedRecvNode->ulStreamID);
+        pthread_mutex_unlock(&g_mutexStreamAddrList);
+
         return;
     }
 
-    if (NULL == pstStreamNode->unDataQueHead.pstDataTcp)
+    pstStreamNode = pstStreamCacheAddr->pstStreamRecvNode;
+    if (DOS_ADDR_INVALID(pstStreamNode))
+    {
+        pthread_mutex_unlock(&g_mutexStreamAddrList);
+
+        return;
+    }
+
+    pthread_mutex_unlock(&g_mutexStreamAddrList);
+    pthread_mutex_lock(&pstCCNode->pthreadMutex);
+
+    if (DOS_ADDR_INVALID(pstStreamNode->unDataQueHead.pstDataTcp))
     {
         pt_logr_debug("pts send msg to proxy : not found data queue");
+        pthread_mutex_unlock(&pstCCNode->pthreadMutex);
+
         return;
     }
 
@@ -903,6 +904,7 @@ VOID pts_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
         }
 
     } /* end of while(1) */
+    pthread_mutex_unlock(&pstCCNode->pthreadMutex);
 
     return;
 }
@@ -917,7 +919,7 @@ S32 pts_send_command_to_ptc(U32 ulIndex, S32 argc, S8 **argv)
 
     if (argc != 3)
     {
-        cli_out_string(ulIndex, "Cannot find the command.\r\n");
+        cli_out_string(ulIndex, "Usage : ptsd ptc [ID] [COMMAND].\r\n");
 
         return 0;
     }

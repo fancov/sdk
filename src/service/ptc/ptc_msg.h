@@ -48,6 +48,7 @@ typedef struct tagPtcClientCB
     U32                     ulStreamID;                         /* stream ID */
     S32                     lSocket;                            /* client sockfd */
     BOOL                    bIsValid;
+    BOOL                    bIsCacheFull;
 
 }PTC_CLIENT_CB_ST;
 
@@ -55,23 +56,20 @@ typedef struct tagPtcClientCB
 extern PT_CC_CB_ST      *g_pstPtcSend;
 extern PT_CC_CB_ST      *g_pstPtcRecv;
 extern PTC_SERV_MSG_ST   g_stServMsg;
-extern pthread_cond_t    g_cond_recv;
-extern pthread_mutex_t   g_mutex_recv;
-extern list_t  *g_pstPtcNendRecvNode;
+extern pthread_cond_t    g_condPtcRecv;
+extern pthread_mutex_t   g_mutexPtcRecvPthread;
+extern pthread_mutex_t   g_mutexRecvCache;
+extern pthread_mutex_t   g_mutexSendCache;
+extern list_t  g_stPtcNendRecvNode;
 extern sem_t g_SemPtcRecv;
 extern PT_PTC_TYPE_EN g_enPtcType;
 
-VOID  ptc_save_msg_into_cache(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S8 *pcData, S32 lDataLen);
+S32  ptc_save_msg_into_cache(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S8 *pcData, S32 lDataLen);
 VOID *ptc_send_msg2pts(VOID *arg);
 VOID *ptc_recv_msg_from_pts(VOID *arg);
 VOID  ptc_send_heartbeat2pts();
 VOID  ptc_send_login2pts();
 VOID  ptc_send_logout2pts();
-VOID  ptc_send_pthread_mutex_lock(S8 *szFileName, U32 ulLine);
-VOID  ptc_send_pthread_mutex_unlock(S8 *szFileName, U32 ulLine);
-VOID  ptc_recv_pthread_mutex_lock(S8 *szFileName, U32 ulLine);
-VOID  ptc_recv_pthread_mutex_unlock(S8 *szFileName, U32 ulLine);
-VOID  ptc_recv_pthread_cond_wait(S8 *szFileName, U32 ulLine);
 VOID  ptc_send_exit_notify_to_pts(PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S32 lSeq);
 VOID  ptc_delete_send_stream_node(U32 ulStreamID, PT_DATA_TYPE_EN enDataType, BOOL bIsMutex);
 VOID  ptc_delete_recv_stream_node(U32 ulStreamID, PT_DATA_TYPE_EN enDataType, BOOL bIsMutex);

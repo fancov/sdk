@@ -653,7 +653,6 @@ int change_domain(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
     for (i=0; i<lPtcCount; i++)
     {
         pts_save_msg_into_cache((U8*)pszPtcID[i], PT_DATA_CTRL, (U32)stCtrlData.enCtrlType, (S8 *)&stCtrlData, sizeof(PT_CTRL_DATA_ST), NULL, 0);
-        usleep(20);
     }
 
     websError(wp, 200, T(""));
@@ -791,8 +790,15 @@ int pts_notify_ptc_switch_pts(webs_t wp, char_t *urlPrefix, char_t *webDir, int 
     stCtrlData.enCtrlType = PT_CTRL_SWITCH_PTS;
     for (i=0; i<lPtcCount; i++)
     {
-        pts_save_msg_into_cache((U8*)pszPtcID[i], PT_DATA_CTRL, PT_CTRL_SWITCH_PTS, (S8 *)&stCtrlData, sizeof(PT_CTRL_DATA_ST), szPtsIp, usPort);
-        usleep(20);
+        lResult = pts_save_msg_into_cache((U8*)pszPtcID[i], PT_DATA_CTRL, PT_CTRL_SWITCH_PTS, (S8 *)&stCtrlData, sizeof(PT_CTRL_DATA_ST), szPtsIp, usPort);
+        if (PT_NEED_CUT_PTHREAD == lResult)
+        {
+            sleep(3);
+        }
+        else
+        {
+            usleep(20);
+        }
     }
     sprintf(pcListBuf, "succ");
     websError(wp, 200, T(pcListBuf));
@@ -994,6 +1000,7 @@ void *websSendFileToPtc(void *arg)
     S8 szPtcVersion[PT_DATA_BUFF_16] = {0};        /* 版本号 */
     S8 szProductType[PT_DATA_BUFF_16] = {0};
     U32 ulOSType = 0;
+    S32 lResult = 0;
 
     /* 获取需要升级的ptc的sn */
     pPtcIDStart = dos_strstr(url, "id=") + dos_strlen("id=");
@@ -1036,8 +1043,15 @@ void *websSendFileToPtc(void *arg)
         do
         {
             ulReadCount = fread(aucBuff, 1, PT_RECV_DATA_SIZE, pFileFd);
-            pts_save_msg_into_cache((U8*)pszPtcIds[i], PT_DATA_WEB, PT_CTRL_PTC_PACKAGE, aucBuff, ulReadCount, NULL, 0);
-
+            lResult = pts_save_msg_into_cache((U8*)pszPtcIds[i], PT_DATA_WEB, PT_CTRL_PTC_PACKAGE, aucBuff, ulReadCount, NULL, 0);
+            if (PT_NEED_CUT_PTHREAD == lResult)
+            {
+                sleep(3);
+            }
+            else
+            {
+                usleep(20);
+            }
         }while (ulReadCount == PT_RECV_DATA_SIZE);
 
     }
@@ -1054,13 +1068,22 @@ void pts_send_ipgrade_package2ptc(S8 *szPtcId, PTS_PTC_UPGRADE_PARAM_ST *pstUpgr
 {
     S8 aucBuff[PT_RECV_DATA_SIZE] = {0};
     U32 ulReadCount = 0;
+    S32 lResult = 0;
 
     fseek(pstUpgrade->pPackageFileFd, 0L, SEEK_SET);
 
     do
     {
         ulReadCount = fread(aucBuff, 1, PT_RECV_DATA_SIZE, pstUpgrade->pPackageFileFd);
-        pts_save_msg_into_cache((U8 *)szPtcId, PT_DATA_WEB, PT_CTRL_PTC_PACKAGE, aucBuff, ulReadCount, NULL, 0);
+        lResult = pts_save_msg_into_cache((U8 *)szPtcId, PT_DATA_WEB, PT_CTRL_PTC_PACKAGE, aucBuff, ulReadCount, NULL, 0);
+        if (PT_NEED_CUT_PTHREAD == lResult)
+        {
+            sleep(3);
+        }
+        else
+        {
+            usleep(20);
+        }
 
     }while (ulReadCount == PT_RECV_DATA_SIZE);
 }
@@ -1976,7 +1999,7 @@ static int pts_get_lang_type(int eid, webs_t wp, int argc, char_t **argv)
 
 static int status_statistics(int eid, webs_t wp, int argc, char_t **argv)
 {
-    list_t *pstHead = g_pstPtcListRecv;
+    list_t *pstHead = &g_stPtcListRecv;
     list_t  *pstNode = NULL;
     PT_CC_CB_ST *pstData = NULL;
     S32 lCount = 0;
@@ -1984,15 +2007,18 @@ static int status_statistics(int eid, webs_t wp, int argc, char_t **argv)
 
     szEcho = websGetVar(wp, T("sEcho"), T(""));
 
-    if (NULL == pstHead)
-    {
-        websWrite(wp, T("{\"aaData\":[], \"sEcho\":\"%s\", \"iTotalDisplayRecords\":\"0\"}"), szEcho);
-        return 0;
-    }
+    pthread_mutex_lock(&g_mutexPtcRecvList);
     pstNode = pstHead;
     websWrite(wp, T("%s"), "{\"aaData\":[");
-    while (pstNode->next != pstHead)
+
+    while (1)
     {
+        pstNode = dos_list_work(pstHead, pstNode);
+        if (NULL == pstNode)
+        {
+            break;
+        }
+
         pstData = dos_list_entry(pstNode, PT_CC_CB_ST, stCCListNode);
         if (0 == lCount)
         {
@@ -2002,20 +2028,10 @@ static int status_statistics(int eid, webs_t wp, int argc, char_t **argv)
         {
             websWrite(wp, T(",[\"%.*s\", \"%d\", \"%d\"]"), PTC_ID_LEN, pstData->aucID, pstData->ulUdpRecvDataCount, pstData->ulUdpLostDataCount);
         }
-        pstNode = pstNode->next;
+
         lCount++;
     }
-    pstData = dos_list_entry(pstNode, PT_CC_CB_ST, stCCListNode);
-    if (0 == lCount)
-    {
-        websWrite(wp, T("[\"%.*s\", \"%d\", \"%d\"]"), PTC_ID_LEN, pstData->aucID, pstData->ulUdpRecvDataCount, pstData->ulUdpLostDataCount);
-    }
-    else
-    {
-        websWrite(wp, T(",[\"%.*s\", \"%d\", \"%d\"]"), PTC_ID_LEN, pstData->aucID, pstData->ulUdpRecvDataCount, pstData->ulUdpLostDataCount);
-    }
-    lCount++;
-
+    pthread_mutex_unlock(&g_mutexPtcRecvList);
     websWrite(wp, T("],\"sEcho\":\"%s\", \"iTotalDisplayRecords\":\"%d\"}"), szEcho, lCount);
 
     return 0;
@@ -2374,7 +2390,7 @@ void pts_websRedirect(webs_t wp, char_t *url)
 
 void pts_webs_auto_Redirect(webs_t wp, char_t *url)
 {
-     char_t  *msgbuf, *urlbuf, *redirectFmt;
+    char_t  *msgbuf, *urlbuf, *redirectFmt;
     S8 aucDestID[PTC_ID_LEN+1] = {0};
     S8 szSetCookie[PT_DATA_BUFF_256] = {0};
     PTS_SERV_SOCKET_ST stServSocket;
@@ -2561,7 +2577,7 @@ int pts_start_ping(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
 
     /* 超时 */
     lResult = dos_tmr_start(&stPingPacket.hTmrHandle, PTS_PING_TIMEOUT, pts_ping_timeout, (U64)&stTimeOutParam, TIMER_NORMAL_NO_LOOP);
-    if (PT_SAVE_DATA_FAIL == lResult)
+    if (lResult < 0)
     {
         pt_logr_debug("pts_save_into_recv_cache : start timer fail");
         return 0;
