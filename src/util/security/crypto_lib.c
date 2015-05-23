@@ -8,7 +8,7 @@ extern "C"{
 
 #if (INCLUDE_OPENSSL_LIB)
 
-U32 cryption_encode(CRYPTION_CONTEXT_ST *pstCtx, CRYPTION_TYPES_EN enType)
+U32 crypto_encode(CRYPTO_CONTEXT_ST *pstCtx, CRYPTO_TYPES_EN enType)
 {
     U8 *aucOutBuff = NULL;
     S32 lOutputLen = 0;
@@ -44,7 +44,7 @@ U32 cryption_encode(CRYPTION_CONTEXT_ST *pstCtx, CRYPTION_TYPES_EN enType)
         return DOS_FAIL;
     }
 
-    aucOutBuff= dos_dmem_alloc(CRYPTION_MAX_LEN);
+    aucOutBuff= dos_dmem_alloc(CRYPTO_MAX_LEN);
     if (DOS_ADDR_INVALID(aucOutBuff))
     {
         if (DOS_ADDR_VALID(pstCtx->pszErrMsg) && 0 != pstCtx->ulMsgLen)
@@ -61,47 +61,47 @@ U32 cryption_encode(CRYPTION_CONTEXT_ST *pstCtx, CRYPTION_TYPES_EN enType)
     EVP_CIPHER_CTX_init(&stCTX);
     switch (enType)
     {
-        case CRYPTION_BLOWFISH:
+        case CRYPTO_BLOWFISH:
             lRetVal = EVP_EncryptInit_ex(&stCTX, EVP_bf_cfb64(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_DES_EDE_ECB:
+        case CRYPTO_DES_EDE_ECB:
             lRetVal = EVP_EncryptInit_ex(&stCTX, EVP_des_ede_ecb(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_DES_ECB:
+        case CRYPTO_DES_ECB:
             lRetVal = EVP_EncryptInit_ex(&stCTX, EVP_des_ecb(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_RC4:
+        case CRYPTO_RC4:
             lRetVal = EVP_EncryptInit_ex(&stCTX, EVP_rc4(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_AES128_ECB:
+        case CRYPTO_AES128_ECB:
             lRetVal = EVP_EncryptInit_ex(&stCTX, EVP_aes_128_ecb(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_AES128_CFB8:
+        case CRYPTO_AES128_CFB8:
             lRetVal = EVP_EncryptInit_ex(&stCTX, EVP_aes_128_cfb8(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_AES192_CFB128:
+        case CRYPTO_AES192_CFB128:
             lRetVal = EVP_EncryptInit_ex(&stCTX, EVP_aes_192_cfb128(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_RC2_CBC:
+        case CRYPTO_RC2_CBC:
             lRetVal = EVP_EncryptInit_ex(&stCTX, EVP_rc2_cbc(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_RC2_CFB64:
+        case CRYPTO_RC2_CFB64:
             lRetVal = EVP_EncryptInit_ex(&stCTX, EVP_rc2_cfb64(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_CAST5_ECB:
+        case CRYPTO_CAST5_ECB:
             lRetVal = EVP_EncryptInit_ex(&stCTX, EVP_cast5_ecb(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_CAST5_OFB:
+        case CRYPTO_CAST5_OFB:
             lRetVal = EVP_EncryptInit_ex(&stCTX, EVP_camellia_128_ofb(), NULL, pstCtx->aucKey0, NULL);
             break;
 
@@ -152,7 +152,7 @@ U32 cryption_encode(CRYPTION_CONTEXT_ST *pstCtx, CRYPTION_TYPES_EN enType)
     {
         if (DOS_ADDR_VALID(pstCtx->pszErrMsg) && 0 != pstCtx->ulMsgLen)
         {
-            dos_snprintf(pstCtx->pszErrMsg, pstCtx->ulMsgLen, "ERR: Something happened will cleanup CRYPTION_CONTEXT_ST!");
+            dos_snprintf(pstCtx->pszErrMsg, pstCtx->ulMsgLen, "ERR: Something happened will cleanup CRYPTO_CONTEXT_ST!");
         }
 
         DOS_ASSERT(0);
@@ -179,7 +179,7 @@ fail:
 }
 
 
-U32 cryption_decode(CRYPTION_CONTEXT_ST *pstCtx, CRYPTION_TYPES_EN enType)
+U32 crypto_decode(CRYPTO_CONTEXT_ST *pstCtx, CRYPTO_TYPES_EN enType)
 {
     U8 *aucOutBuff = NULL;
     S32 lOutputLen = 0;
@@ -215,7 +215,7 @@ U32 cryption_decode(CRYPTION_CONTEXT_ST *pstCtx, CRYPTION_TYPES_EN enType)
         return DOS_FAIL;
     }
 
-    aucOutBuff= dos_dmem_alloc(CRYPTION_MAX_LEN);
+    aucOutBuff= dos_dmem_alloc(CRYPTO_MAX_LEN);
     if (DOS_ADDR_INVALID(aucOutBuff))
     {
         if (DOS_ADDR_VALID(pstCtx->pszErrMsg) && 0 != pstCtx->ulMsgLen)
@@ -232,47 +232,47 @@ U32 cryption_decode(CRYPTION_CONTEXT_ST *pstCtx, CRYPTION_TYPES_EN enType)
     EVP_CIPHER_CTX_init(&stCTX);
     switch (enType)
     {
-        case CRYPTION_BLOWFISH:
+        case CRYPTO_BLOWFISH:
             lRetVal = EVP_DecryptInit_ex(&stCTX, EVP_bf_cfb64(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_DES_EDE_ECB:
+        case CRYPTO_DES_EDE_ECB:
             lRetVal = EVP_DecryptInit_ex(&stCTX, EVP_des_ede_ecb(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_DES_ECB:
+        case CRYPTO_DES_ECB:
             lRetVal = EVP_DecryptInit_ex(&stCTX, EVP_des_ecb(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_RC4:
+        case CRYPTO_RC4:
             lRetVal = EVP_DecryptInit_ex(&stCTX, EVP_rc4(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_AES128_ECB:
+        case CRYPTO_AES128_ECB:
             lRetVal = EVP_DecryptInit_ex(&stCTX, EVP_aes_128_ecb(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_AES128_CFB8:
+        case CRYPTO_AES128_CFB8:
             lRetVal = EVP_DecryptInit_ex(&stCTX, EVP_aes_128_cfb8(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_AES192_CFB128:
+        case CRYPTO_AES192_CFB128:
             lRetVal = EVP_DecryptInit_ex(&stCTX, EVP_aes_192_cfb128(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_RC2_CBC:
+        case CRYPTO_RC2_CBC:
             lRetVal = EVP_DecryptInit_ex(&stCTX, EVP_rc2_cbc(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_RC2_CFB64:
+        case CRYPTO_RC2_CFB64:
             lRetVal = EVP_DecryptInit_ex(&stCTX, EVP_rc2_cfb64(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_CAST5_ECB:
+        case CRYPTO_CAST5_ECB:
             lRetVal = EVP_DecryptInit_ex(&stCTX, EVP_cast5_ecb(), NULL, pstCtx->aucKey0, NULL);
             break;
 
-        case CRYPTION_CAST5_OFB:
+        case CRYPTO_CAST5_OFB:
             lRetVal = EVP_DecryptInit_ex(&stCTX, EVP_camellia_128_ofb(), NULL, pstCtx->aucKey0, NULL);
             break;
 
@@ -323,7 +323,7 @@ U32 cryption_decode(CRYPTION_CONTEXT_ST *pstCtx, CRYPTION_TYPES_EN enType)
     {
         if (DOS_ADDR_VALID(pstCtx->pszErrMsg) && 0 != pstCtx->ulMsgLen)
         {
-            dos_snprintf(pstCtx->pszErrMsg, pstCtx->ulMsgLen, "ERR: Something happened will cleanup CRYPTION_CONTEXT_ST!");
+            dos_snprintf(pstCtx->pszErrMsg, pstCtx->ulMsgLen, "ERR: Something happened will cleanup CRYPTO_CONTEXT_ST!");
         }
 
         DOS_ASSERT(0);
@@ -349,7 +349,7 @@ fail:
     return DOS_FAIL;
 }
 
-#endif /* end of INCLUDE_CRYPTION_LIB */
+#endif /* end of INCLUDE_OPENSSL_LIB */
 
 #ifdef __cplusplus
 }
