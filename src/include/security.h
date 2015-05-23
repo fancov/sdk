@@ -15,26 +15,26 @@ extern "C"{
 #define DIGEST_MAX_LEN         64
 
 /* 定义加解密结果最大长度 */
-#define CRYPTION_MAX_LEN       1048 * 16
-#define CRYPTION_KEY_MAX_LEN   64
+#define CRYPTO_MAX_LEN       1048 * 16
+#define CRYPTO_KEY_MAX_LEN   64
+
+typedef enum tagCryptoTypes{
+    CRYPTO_BLOWFISH       = 0,
+    CRYPTO_DES_EDE_ECB    = 1,
+    CRYPTO_DES_ECB        = 2,
+    CRYPTO_RC4            = 3,
+    CRYPTO_AES128_ECB     = 4,
+    CRYPTO_AES128_CFB8    = 5,
+    CRYPTO_AES192_CFB128  = 6,
+    CRYPTO_RC2_CBC        = 7,
+    CRYPTO_RC2_CFB64      = 8,
+    CRYPTO_CAST5_ECB      = 9,
+    CRYPTO_CAST5_OFB      = 10,
+
+    CRYPTO_BUTT,
+}CRYPTO_TYPES_EN;
 
 typedef enum tagDigestTypes{
-    CRYPTION_BLOWFISH       = 0,
-    CRYPTION_DES_EDE_ECB    = 1,
-    CRYPTION_DES_ECB        = 2,
-    CRYPTION_RC4            = 3,
-    CRYPTION_AES128_ECB     = 4,
-    CRYPTION_AES128_CFB8    = 5,
-    CRYPTION_AES192_CFB128  = 6,
-    CRYPTION_RC2_CBC        = 7,
-    CRYPTION_RC2_CFB64      = 8,
-    CRYPTION_CAST5_ECB      = 9,
-    CRYPTION_CAST5_OFB      = 10,
-
-    CRYPTION_BUTT,
-}CRYPTION_TYPES_EN;
-
-typedef enum tagCryptionTypes{
     DIGEST_SHA          = 0,
     DIGEST_SHA1         = 1,
     DIGEST_DSS          = 2,
@@ -50,11 +50,11 @@ typedef enum tagCryptionTypes{
     DIGEST_BUTT
 }DIGEST_TYPES_EN;
 
-typedef enum tagCryptionAction{
-    CRYPTION_ACTION_DECODE      = 0,
-    CRYPTION_ACTION_ENCODE      = 1,
-    CRYPTION_ACTION_BUTT
-}CRYPTION_ACTION_EN;
+typedef enum tagCryptoAction{
+    CRYPTO_ACTION_DECODE      = 0,
+    CRYPTO_ACTION_ENCODE      = 1,
+    CRYPTO_ACTION_BUTT
+}CRYPTO_ACTION_EN;
 
 
 typedef struct tagDigestContext
@@ -77,20 +77,20 @@ typedef struct tagDigestContext
     U32    ulMsgLen;
 }DIGEST_CONTEXT_ST;
 
-typedef struct tagCryptionContext
+typedef struct tagCryptoContext
 {
-    U32    ulCryptionType;
+    U32    ulCryptoType;
 
     U8     *aucSrc;
     U32    ulSrcLen;
 
-    U8     aucKey0[CRYPTION_KEY_MAX_LEN];
+    U8     aucKey0[CRYPTO_KEY_MAX_LEN];
     U32    ulKeyLen0;
-    U8     aucKey1[CRYPTION_KEY_MAX_LEN];
+    U8     aucKey1[CRYPTO_KEY_MAX_LEN];
     U32    ulKeyLen1;
-    U8     aucKey2[CRYPTION_KEY_MAX_LEN];
+    U8     aucKey2[CRYPTO_KEY_MAX_LEN];
     U32    ulKeyLen2;
-    U8     aucKey3[CRYPTION_KEY_MAX_LEN];
+    U8     aucKey3[CRYPTO_KEY_MAX_LEN];
     U32    ulKeyLen3;
 
     U8     *paucDst;
@@ -98,12 +98,12 @@ typedef struct tagCryptionContext
 
     S8     *pszErrMsg;
     U32    ulMsgLen;
-}CRYPTION_CONTEXT_ST;
+}CRYPTO_CONTEXT_ST;
 
 
 U32 digest_calc(DIGEST_CONTEXT_ST *pstCtx, DIGEST_TYPES_EN enType);
-U32 cryption_encode(CRYPTION_CONTEXT_ST *pstCtx, CRYPTION_TYPES_EN enType);
-U32 cryption_decode(CRYPTION_CONTEXT_ST *pstCtx, CRYPTION_TYPES_EN enType);
+U32 crypto_encode(CRYPTO_CONTEXT_ST *pstCtx, CRYPTO_TYPES_EN enType);
+U32 crypto_decode(CRYPTO_CONTEXT_ST *pstCtx, CRYPTO_TYPES_EN enType);
 
 #endif /* end of INCLUDE_OPENSSL_LIB */
 
