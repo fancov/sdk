@@ -60,9 +60,8 @@
 
 #define INCLUDE_OPENSSL_LIB               1
 
-#define PTC_SUBMOD_SYSTEM                 1
-#define PTC_SUBMOD_USER                   2
-#define PTC_SUBMOD_PTCS                   3
+#define PTS_SUBMOD_SYSTEM                 1
+#define PTS_SUBMOD_PTCS                   2
 
 #define INCLUDE_LICENSE_CLIENT            1
 

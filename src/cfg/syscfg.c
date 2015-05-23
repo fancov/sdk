@@ -41,9 +41,7 @@ static S8 g_szSysRootPath[MAX_PATH_LENGTH] = {0, };
 /* 定义各个模块的掩码 */
 static MOD_DESC_ST g_stModList[] = {
 #ifdef DIPCC_PTS
-    {PTC_SUBMOD_SYSTEM, "System",     "system-dinstar"},
-    {PTC_SUBMOD_USER,   "User",       "user-disntar"},
-    {PTC_SUBMOD_PTCS,   "PTC",        "ptc-dinstar"},
+    {PTS_SUBMOD_PTCS,   "PTC",        "pts-ptc"},
 #endif
 };
 
