@@ -15,9 +15,19 @@ extern "C"{
 #endif /* __cplusplus */
 
 #include <dos.h>
-
+#include <http_api.h>
 #if INCLUDE_RES_MONITOR
 #include <mon_pub.h>
+#endif
+
+#if INCLUDE_OPENSSL_LIB
+#include <openssl/ssl.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
+#endif
+
+#if (INCLUDE_LICENSE_SERVER || INCLUDE_LICENSE_CLIENT)
+#include <license.h>
 #endif
 
 #if INCLUDE_PTC
@@ -111,6 +121,22 @@ S32 root(S32 _argc, S8 ** _argv)
         DOS_ASSERT(0);
         return -1;
     }
+#endif
+
+#if INCLUDE_OPENSSL_LIB
+    SSL_library_init();
+    OpenSSL_add_all_algorithms();
+    SSL_load_error_strings();
+    OpenSSL_add_all_digests();
+    OpenSSL_add_all_ciphers();
+    ERR_load_crypto_strings();
+    ERR_load_SSL_strings();
+#endif
+
+
+#if INCLUDE_HTTP_API
+    http_api_init();
+    http_api_start();
 #endif
 
     while(1)

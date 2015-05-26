@@ -26,6 +26,8 @@ typedef struct tagModDesc{
     U32 ulIndex;           /* 模块ID */
     S8  *pszName;          /* 模块名称 */
     S8  *pzsMask;          /* 模块掩码 */
+    U32 ulDefaultLimit;    /* 默认限制 */
+    U32 ulExtraData;       /* 其他数据 */
 }MOD_DESC_ST;
 
 /* 定时模块相关信息 */
@@ -41,7 +43,7 @@ static S8 g_szSysRootPath[MAX_PATH_LENGTH] = {0, };
 /* 定义各个模块的掩码 */
 static MOD_DESC_ST g_stModList[] = {
 #ifdef DIPCC_PTS
-    {PTS_SUBMOD_PTCS,   "PTC",        "pts-ptc"},
+    {PTS_SUBMOD_PTCS,   "PTC",        "pts-ptc",  2,   ""},
 #endif
 };
 
@@ -287,7 +289,37 @@ DLLEXPORT S8 *dos_get_filename(const S8* path)
     }
 }
 
-U32 licc_get_mod_mask(U32 ulIndex, S8 *pszModuleName, S32 *plLength)
+U32 dos_get_check_mod(U32 ulIndex)
+{
+    U32 i;
+
+    for (i=0; i<sizeof(g_stModList)/sizeof(MOD_DESC_ST); i++)
+    {
+        if (g_stModList[i].ulIndex == ulIndex)
+        {
+            return DOS_SUCC;
+        }
+    }
+
+    return DOS_FAIL;
+}
+
+U32 dos_get_max_mod_id()
+{
+    U32 ulMax = 0, i;
+
+    for (i=0; i<sizeof(g_stModList)/sizeof(MOD_DESC_ST); i++)
+    {
+        if (g_stModList[i].ulIndex > ulMax)
+        {
+            ulMax = g_stModList[i].ulIndex;
+        }
+    }
+
+    return ulMax;
+}
+
+U32 dos_get_mod_mask(U32 ulIndex, S8 *pszModuleName, S32 *plLength)
 {
     U32 i;
 
@@ -311,7 +343,7 @@ U32 licc_get_mod_mask(U32 ulIndex, S8 *pszModuleName, S32 *plLength)
     return DOS_FAIL;
 }
 
-U32 licc_get_product(S8 *pszProduct, S32 *plLength)
+U32 dos_get_product(S8 *pszProduct, S32 *plLength)
 {
     if (DOS_ADDR_INVALID(pszProduct) || *plLength <= 0)
     {
@@ -325,6 +357,28 @@ U32 licc_get_product(S8 *pszProduct, S32 *plLength)
     return DOS_SUCC;
 }
 
+U32 dos_get_default_limitation(U32 ulModIndex, U32 * pulLimitation)
+{
+    U32 i;
+
+    if (DOS_ADDR_INVALID(pulLimitation))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    for (i=0; i<sizeof(g_stModList)/sizeof(MOD_DESC_ST); i++)
+    {
+        if (g_stModList[i].ulIndex == ulModIndex)
+        {
+            *pulLimitation = g_stModList[i].ulDefaultLimit;
+            return DOS_SUCC;
+        }
+    }
+
+    return DOS_FAIL;
+}
 
 
 #ifdef __cplusplus

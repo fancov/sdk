@@ -271,6 +271,41 @@ S32 pts_find_ptc_by_dest_addr(S8 *pDestInternetIp, S8 *pDestIntranetIp, S8 *pcDe
 }
 
 /**
+ * 函数：U32 pts_get_ptc_cnt(U32 *pulCnt)
+ * 功能：
+ *      获取在线的PTC的个数
+ * 参数
+ *      U32 *pulCnt， 输出参数，输出PTC个数
+ * 返回值：
+ *      如果成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 pts_get_ptc_cnt(U32 *pulCnt)
+{
+    S32 lRet = 0;
+    S8 szSql[PT_DATA_BUFF_128] = {0};
+
+    if (DOS_ADDR_INVALID(pulCnt))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szSql, PTS_SQL_STR_SIZE, "select * from ipcc_alias where register=1");
+    lRet = dos_sqlite3_record_count(g_pstMySqlite, szSql);
+    if (lRet < 0)
+    {
+        DOS_ASSERT(0);
+
+        pulCnt = 0;
+        return DOS_FAIL;
+    }
+
+    *pulCnt = (U32)lRet;
+    return DOS_SUCC;
+}
+
+/**
  * 函数：VOID pts_data_lose(PT_MSG_TAG *pstMsgDes, S32 lShouldSeq)
  * 功能：
  *      1.发送丢包请求
@@ -1576,6 +1611,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
     double dHBTimeInterval = 0.0;
     S8 szVersion[PT_IP_ADDR_SIZE] = {0};
     S8 szPtcName[PT_DATA_BUFF_64] = {0};
+    U32 ulPTCCnt = 0, ulPTCLimit = 0;
     //S8 szNameDecode[PT_DATA_BUFF_64] = {0};
 
     pstMsgDes = (PT_MSG_TAG *)pData;
@@ -1593,6 +1629,28 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
     {
     case PT_CTRL_LOGIN_REQ:
         /* 登陆请求 */
+
+        /* 获取限制个数，如果获取失败就使用默认值 */
+        if (licc_get_limitation(PTS_SUBMOD_PTCS, &ulPTCLimit) != DOS_SUCC
+            && dos_get_default_limitation(PTS_SUBMOD_PTCS, &ulPTCLimit) != DOS_SUCC)
+        {
+            ulPTCLimit = 0;
+        }
+
+        /* 如果获取个数失败 就直接拒绝 */
+        if (pts_get_ptc_cnt(&ulPTCCnt) != DOS_SUCC
+            || ulPTCCnt >= ulPTCLimit)
+        {
+            /* ptc id错误 */
+            pt_logr_notic("PTC %s request login. But the license do not allow. Current PTC count %u, Limitation: %u"
+                            , szID, ulPTCCnt, ulPTCLimit);
+            pts_send_login_res2ptc(pstMsgDes, stClientAddr, DOS_FALSE);
+            break;
+        }
+
+        pt_logr_notic("PTC %s request login. Current PTC count %u, Limitation: %u"
+                            , szID, ulPTCCnt, ulPTCLimit);
+
         if (pts_is_ptc_sn(szID))
         {
             pt_logr_debug("request login ipcc id is %s", szID);
