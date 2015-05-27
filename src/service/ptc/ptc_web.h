@@ -8,7 +8,8 @@ extern "C"{
 #include <dos/dos_types.h>
 
 VOID *ptc_recv_msg_from_web(VOID *arg);
-VOID ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode);
+VOID ptc_send_msg2browser(PT_NEND_RECV_NODE_ST *pstNeedRecvNode);
+void ptc_set_cache_full_false(U32 ulStreamID);
 
 #ifdef  __cplusplus
 }

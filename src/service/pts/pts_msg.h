@@ -22,6 +22,15 @@ extern "C"{
 #define PTS_PING_TIMEOUT            2000
 #define PTS_SEND_CONFIRM_MSG_COUNT  3               /* 确认消息的发送次数 */
 
+typedef struct tagRecvMsgHandle
+{
+    list_t                  stList;
+    U8 *                    paRecvBuff;
+    U32                     ulRecvLen;
+    struct sockaddr_in      stClientAddr;
+
+}PTS_REV_MSG_HANDLE_ST;
+
 typedef struct tagClientCB
 {
     list_t                  stList;
@@ -32,6 +41,7 @@ typedef struct tagClientCB
     BOOL                    eSaveHeadFlag;                      /* 是否保存有http头 */
     S8 *                    pcRequestHead;                      /* 不完整的http头 */
     S32                     lReqLen;
+    BOOL                    bIsCacheFull;
     S8                      Reserver[8];
 }PTS_CLIENT_CB_ST;
 
@@ -62,33 +72,38 @@ typedef struct tagPingStatsNode
 
 }PTS_PING_STATS_NODE_ST;
 
-extern list_t *g_pstPtcListRecv;
-extern list_t *g_pstPtcListSend;
+extern list_t   g_stPtcListRecv;
+extern list_t   g_stPtcListSend;
+extern list_t   g_stPtsNendRecvNode;
+extern list_t   g_stSendMsgPthreadList;
 extern PTS_SERV_MSG_ST  g_stPtsMsg;
-extern pthread_cond_t   g_pts_cond_recv;
-extern pthread_mutex_t  g_pts_mutex_send;
-extern pthread_mutex_t  g_pts_mutex_recv;
-extern list_t  *g_pstPtsNendRecvNode;
+extern pthread_cond_t   g_condPtsRecv;
+extern pthread_mutex_t  g_mutexPtsSendPthread;
+extern pthread_mutex_t  g_mutexPtsRecvPthread;
+extern pthread_mutex_t  g_mutexPtcSendList;
+extern pthread_mutex_t  g_mutexPtcRecvList;
+extern pthread_mutex_t  g_mutexStreamAddrList;
+extern pthread_mutex_t  g_mutexSendMsgPthreadList;
 extern sem_t g_SemPtsRecv;
+extern DLL_S  g_stStreamAddrList;
 extern PTS_SERV_SOCKET_ST g_lPtsServSocket[PTS_WEB_SERVER_MAX_SIZE];
 
 VOID *pts_recv_msg_from_ptc(VOID *arg);
+VOID *pts_handle_recvfrom_ptc_msg(VOID *arg);
 VOID *pts_send_msg2ptc(VOID *arg);
-VOID pts_save_msg_into_cache(U8 *pcIpccId, PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S8 *pcData, S32 lDataLen, S8 *szDestIp, U16 usDestPort);
 VOID pts_send_exit_notify2ptc(PT_CC_CB_ST *pstPtcNode, PT_NEND_RECV_NODE_ST *pstNeedRecvNode);
-VOID pts_delete_recv_stream_node(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcRecvNode, BOOL bIsMutex);
-VOID pts_delete_send_stream_node(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcSendNode, BOOL bIsMutex);
-VOID pts_send_pthread_mutex_lock(S8 *szFileName, U32 ulLine);
-VOID pts_send_pthread_mutex_unlock(S8 *szFileName, U32 ulLine);
-VOID pts_send_pthread_cond_wait(S8 *szFileName, U32 ulLine);
-VOID pts_recv_pthread_mutex_lock(S8 *szFileName, U32 ulLine);
-VOID pts_recv_pthread_mutex_unlock(S8 *szFileName, U32 ulLine);
-VOID pts_recv_pthread_cond_timedwait(struct timespec *timeout, S8 *szFileName, U32 ulLine);
-S8 *pts_get_current_time();
+VOID pts_delete_recv_stream_node(PT_MSG_TAG *pstMsgDes);
+VOID pts_delete_send_stream_node(PT_MSG_TAG *pstMsgDes);
 VOID pts_send_exit_notify_to_ptc(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcSendNode);
-S32 pts_find_ptc_by_dest_addr(S8 *pDestInternetIp, S8 *pDestIntranetIp, S8 *szDestSN);
-S32 pts_get_curr_position_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name);
-S32 g2u(S8 *inbuf, size_t inlen, char *outbuf, size_t outlen);
+VOID pts_delete_stream_addr_node(U32 ulStreamID);
+S8   *pts_get_current_time();
+S32  pts_save_msg_into_cache(U8 *pcIpccId, PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S8 *pcData, S32 lDataLen, S8 *szDestIp, U16 usDestPort);
+S32  pts_find_ptc_by_dest_addr(S8 *pDestInternetIp, S8 *pDestIntranetIp, S8 *szDestSN);
+S32  pts_get_curr_position_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name);
+S32  g2u(S8 *inbuf, size_t inlen, char *outbuf, size_t outlen);
+S32  pts_get_sn_by_id(S8 *szID, S8 *szSN, S32 lLen);
+S32  pts_find_stream_addr_by_streamID(VOID *pKey, DLL_NODE_S *pstDLLNode);
+
 
 #ifdef  __cplusplus
 }

@@ -54,6 +54,10 @@
 #include <hash/hash.h>
 #include <json/dos_json.h>
 
+#if INCLUDE_LICENSE_CLIENT
+#include <license.h>
+#endif
+
 
 #define DOS_VERSION  "1.0"
 

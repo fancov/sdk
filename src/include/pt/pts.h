@@ -13,7 +13,7 @@ extern "C"{
 #define PTS_WEB_SERV_IP_DEFAULT    "127.0.0.1" /* 请求proxy的默认ip */
 #define PTS_TEL_SERV_IP_DEFAULT    "127.0.0.1" /* 请求proxy的默认ip */
 #define PTS_TEL_SERV_PORT_DEFAULT  23          /* 请求proxy的默认端口 */
-#define PTS_SOCKET_CACHE           1024 * 1024 /* socket 收发缓存大小 */
+#define PTS_SOCKET_CACHE           10 * 1024 * 1024 /* socket 收发缓存大小 */
 
 extern DOS_SQLITE_ST *g_pstMySqlite;
 

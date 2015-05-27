@@ -81,8 +81,10 @@ U32 dos_get_build_datetime(U32 *pulBuildData, U32 *pulBuildTime);
 S8* dos_get_build_datetime_str();
 DLLEXPORT S8 *dos_get_filename(const S8* path);
 
-U32 licc_get_product(S8 *pszProduct, S32 *plLength);
-U32 licc_get_mod_mask(U32 ulIndex, S8 *pszModuleName, S32 *plLength);
+U32 dos_get_product(S8 *pszProduct, S32 *plLength);
+U32 dos_get_mod_mask(U32 ulIndex, S8 *pszModuleName, S32 *plLength);
+U32 dos_get_check_mod(U32 ulIndex);
+U32 dos_get_max_mod_id();
 
 #ifdef __cplusplus
 }

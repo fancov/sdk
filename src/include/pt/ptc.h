@@ -9,7 +9,7 @@ extern "C"{
 #endif
 #include <dos/dos_types.h>
 
-#define PTC_SOCKET_CACHE     1024 * 1024            /* socket 收发缓存大小 */
+#define PTC_SOCKET_CACHE     10 * 1024 * 1024            /* socket 收发缓存大小 */
 #define PTC_PTS_DOMAIN_SIZE  64                     /* PTS域名长度 */
 #define PTC_SQLITE_DB_PATH   "var/ptc.db"           /* sqlite 数据库的路径 */
 #define TIME_OUT_TIME        5                      /* connect超时时间5秒 */

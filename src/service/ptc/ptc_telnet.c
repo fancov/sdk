@@ -314,16 +314,18 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     {
         ptc_cmd_delete_client_by_stream(pstNeedRecvNode->ulStreamID);
         ptc_send_exit_notify_to_pts(PT_DATA_CMD, pstNeedRecvNode->ulStreamID, 1);
-        ptc_delete_recv_stream_node(pstNeedRecvNode->ulStreamID, PT_DATA_CMD, DOS_FALSE);
+        ptc_delete_recv_stream_node(pstNeedRecvNode->ulStreamID, PT_DATA_CMD, DOS_TRUE);
         ptc_delete_send_stream_node(pstNeedRecvNode->ulStreamID, PT_DATA_CMD, DOS_TRUE);
 
         return;
     }
-
-    pstStreamList = g_pstPtcRecv->astDataTypes[pstNeedRecvNode->enDataType].pstStreamQueHead;
+    pthread_mutex_lock(&g_mutexRecvCache);
+    pstStreamList = &g_pstPtcRecv->astDataTypes[pstNeedRecvNode->enDataType].stStreamQueHead;
     if (NULL == pstStreamList)
     {
         pt_logr_info("send data to proxy : stream list head is NULL, cann't get data package\n");
+        pthread_mutex_unlock(&g_mutexRecvCache);
+
         return;
     }
 
@@ -331,12 +333,16 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     if (NULL == pstStreamNode)
     {
         pt_logr_info("send data to proxy : stream node cann't found : %d\n", pstNeedRecvNode->ulStreamID);
+        pthread_mutex_unlock(&g_mutexRecvCache);
+
         return;
     }
 
     if (NULL == pstStreamNode->unDataQueHead.pstDataTcp)
     {
         pt_logr_info("send data to proxy : data queue is NULL\n");
+        pthread_mutex_unlock(&g_mutexRecvCache);
+
         return;
     }
 
@@ -419,6 +425,8 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
             break;
         }
     }
+    pthread_mutex_unlock(&g_mutexRecvCache);
+
     return;
 }
 

@@ -155,25 +155,19 @@ S32 pts_create_udp_socket(U16 usUdpPort, U32 ulSocketCache)
         if (lError != 0)
         {
             logr_error("setsockopt error : %d", lError);
-            close(lSockfd);
             DOS_ASSERT(0);
-
-            continue;
         }
 
         lError = setsockopt(lSockfd, SOL_SOCKET, SO_RCVBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
         if (lError != 0)
         {
             logr_error("setsockopt error : %d", lError);
-            close(lSockfd);
             DOS_ASSERT(0);
-
-            continue;
         }
 
         break;
     }
-
+    printf("recvfrom fail ,create socket again\n");
     return lSockfd;
 }
 
@@ -252,122 +246,6 @@ S32 pts_get_password_callback(VOID *para, S32 n_column, S8 **column_value, S8 **
 }
 
 /**
- * 函数：VOID pts_handle_ctrl_msg(PT_NEND_RECV_NODE_ST *pstNeedRevNode)
- * 功能：
- *      1.处理控制消息
- * 参数
- * 返回值：
- */
-VOID pts_handle_ctrl_msg(PT_NEND_RECV_NODE_ST *pstNeedRevNode)
-{
-    U32              ulArraySub            = 0;
-    list_t           *pstStreamList        = NULL;
-    PT_CC_CB_ST      *pstCCNode            = NULL;
-    PT_STREAM_CB_ST  *pstStreamNode        = NULL;
-    PT_DATA_TCP_ST   *pstDataTcp           = NULL;
-    PT_CTRL_DATA_ST  *pstCtrlData          = NULL;
-    S8 szSql[PT_DATA_BUFF_128] = {0};
-    U8 szID[PTC_ID_LEN+1] = {0};
-    S32 lResult = 0;
-
-    if (PT_CTRL_LOGOUT == pstNeedRevNode->ulStreamID)
-    {
-        /* 退出登陆/掉线 */
-        dos_snprintf(szSql, PT_DATA_BUFF_128, "update ipcc_alias set register=0 where sn='%s';", pstNeedRevNode->aucID);
-        lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
-        {
-            DOS_ASSERT(0);
-        }
-        return;
-    }
-
-    pstCCNode = pt_ptc_list_search(g_pstPtcListRecv, pstNeedRevNode->aucID);
-    if(NULL == pstCCNode)
-    {
-        pt_logr_debug("pts send msg to proxy : not found ptc id is %s", pstNeedRevNode->aucID);
-        return;
-    }
-
-    pstStreamList = pstCCNode->astDataTypes[pstNeedRevNode->enDataType].pstStreamQueHead;
-    if (NULL == pstStreamList)
-    {
-        pt_logr_debug("pts send msg to proxy : not found stream list of type is %d", pstNeedRevNode->enDataType);
-        return;
-    }
-
-    pstStreamNode = pt_stream_queue_search(pstStreamList, pstNeedRevNode->ulStreamID);
-    if (NULL == pstStreamNode)
-    {
-        pt_logr_debug("pts send msg to proxy : not found stream : %d", pstNeedRevNode->ulStreamID);
-        return;
-    }
-
-    if (NULL == pstStreamNode->unDataQueHead.pstDataTcp)
-    {
-        pt_logr_debug("pts send msg to proxy : not found data queue");
-        return;
-    }
-
-    while(1)
-    {
-        pstStreamNode->lCurrSeq++;
-        ulArraySub = (pstStreamNode->lCurrSeq) & (PT_DATA_RECV_CACHE_SIZE - 1);
-        pstDataTcp = pstStreamNode->unDataQueHead.pstDataTcp;
-
-        if (pstDataTcp[ulArraySub].lSeq == pstStreamNode->lCurrSeq)
-        {
-            pstCtrlData = (PT_CTRL_DATA_ST *)(pstDataTcp[ulArraySub].szBuff);
-            switch (pstCtrlData->enCtrlType)
-            {
-            case PT_CTRL_LOGIN_ACK:
-                /* 登陆成功 */
-                dos_snprintf(szSql, PT_DATA_BUFF_128, "select * from ipcc_alias where sn='%s'", pstNeedRevNode->aucID);
-                lResult = dos_sqlite3_record_count(g_pstMySqlite, szSql);
-                if (lResult < 0)
-                {
-                    DOS_ASSERT(0);
-                }
-                else if (lResult)  /* 判断是否存在 */
-                {
-                    /* 存在，更新IPCC的注册状态 */
-                    pt_logr_debug("pts_send_msg2client : db existed");
-                    dos_snprintf(szSql, PT_DATA_BUFF_128, "update ipcc_alias set register=1, name='%s', version='%d' where sn='%s';", pstCtrlData->szPtcName, pstCtrlData->szVersion, pstNeedRevNode->aucID);
-
-                    lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
-                    if (lResult != DOS_SUCC)
-                    {
-                        DOS_ASSERT(0);
-                    }
-                }
-                else
-                {
-                    /* 不存在，添加IPCC到DB */
-                    pt_logr_debug("pts_send_msg2client : db insert");
-                    dos_memcpy(szID, pstNeedRevNode->aucID, PTC_ID_LEN);
-                    szID[PTC_ID_LEN] = '\0';
-                    dos_snprintf(szSql, PT_DATA_BUFF_128, "INSERT INTO ipcc_alias (\"id\", \"sn\", \"name\", \"remark\", \"version\", \"register\", \"lastLoginTime\", \"domain\", \"intranetIP\", \"internetIP\", \"intranetPort\", \"internetPort\") VALUES (NULL, '%s', '%s', NULL, '%d', %d, 3123, NULL, NULL, NULL, NULL, NULL);", szID, pstCtrlData->szPtcName, pstCtrlData->szVersion, DOS_TRUE);
-                    lResult = dos_sqlite3_exec(g_pstMySqlite, szSql);
-                    if (lResult != DOS_SUCC)
-                    {
-                        DOS_ASSERT(0);
-                    }
-                }
-                break;
-            default:
-                break;
-            }
-        }
-        else
-        {
-            pstStreamNode->lCurrSeq--;
-            break;
-        }
-    }
-
-    return;
-}
-
-/**
  * 函数：VOID *pts_send_msg2proxy(VOID *arg)
  * 功能：
  *      1.线程  发送消息到proxy
@@ -388,20 +266,13 @@ VOID *pts_send_msg2proxy(VOID *arg)
         gettimeofday(&now, NULL);
         timeout.tv_sec = now.tv_sec + 1;
         timeout.tv_nsec = now.tv_usec * 1000;
-#if PT_MUTEX_DEBUG
-        pts_recv_pthread_mutex_lock(__FILE__, __LINE__);
-#else
-        pthread_mutex_lock(&g_pts_mutex_recv);
-#endif
+
+        pthread_mutex_lock(&g_mutexPtsRecvPthread);
         sem_post(&g_SemPtsRecv);
-#if PT_MUTEX_DEBUG
-        pts_recv_pthread_cond_timedwait(&timeout, __FILE__, __LINE__);
-#else
-        pthread_cond_timedwait(&g_pts_cond_recv, &g_pts_mutex_recv, &timeout);
-#endif
+        pthread_cond_timedwait(&g_condPtsRecv, &g_mutexPtsRecvPthread, &timeout);
+        pthread_mutex_unlock(&g_mutexPtsRecvPthread);
 
         /* 循环发送g_pstPtsNendRecvNode中的stream */
-        pstNendRecvList = g_pstPtsNendRecvNode;
         lLoopMaxCount = 0;
         DOS_LOOP_DETECT_INIT(lLoopMaxCount, DOS_DEFAULT_MAX_LOOP);
 
@@ -409,34 +280,27 @@ VOID *pts_send_msg2proxy(VOID *arg)
         {
             /* 防止死循环 */
             DOS_LOOP_DETECT(lLoopMaxCount)
-            if (NULL == pstNendRecvList)
+            pthread_mutex_lock(&g_mutexPtsRecvPthread);
+            if (dos_list_is_empty(&g_stPtsNendRecvNode))
             {
+                pthread_mutex_unlock(&g_mutexPtsRecvPthread);
                 break;
             }
+
+            pstNendRecvList = dos_list_fetch(&g_stPtsNendRecvNode);
+            if (DOS_ADDR_INVALID(pstNendRecvList))
+            {
+                pthread_mutex_unlock(&g_mutexPtsRecvPthread);
+                DOS_ASSERT(0);
+                continue;
+            }
+            pthread_mutex_unlock(&g_mutexPtsRecvPthread);
             pstNeedRevNode = dos_list_entry(pstNendRecvList, PT_NEND_RECV_NODE_ST, stListNode);
-            if (pstNendRecvList == pstNendRecvList->next)
-            {
-                pstNendRecvList = NULL;
-            }
-            else
-            {
-                pstNendRecvList = pstNendRecvList->next;
-                dos_list_del(&pstNeedRevNode->stListNode);
-            }
 
-            /* if (pstNeedRevNode->enDataType == PT_DATA_CTRL)
-             {
-                 pts_handle_ctrl_msg(pstNeedRevNode);
-                 dos_dmem_free(pstNeedRevNode);
-                 pstNeedRevNode = NULL;
-                 continue;
-
-             }
-             else */
             if (pstNeedRevNode->enDataType == PT_DATA_WEB)
             {
                 /* web */
-                pts_send_msg2web(pstNeedRevNode);
+                pts_send_msg2browser(pstNeedRevNode);
                 dos_dmem_free(pstNeedRevNode);
                 pstNeedRevNode = NULL;
             }
@@ -453,15 +317,7 @@ VOID *pts_send_msg2proxy(VOID *arg)
                 pstNeedRevNode = NULL;
             }
         } /* end of while(1) */
-        g_pstPtsNendRecvNode = pstNendRecvList;
-#if PT_MUTEX_DEBUG
-        pts_recv_pthread_mutex_unlock(__FILE__, __LINE__);
-#else
-        pthread_mutex_unlock(&g_pts_mutex_recv);
-#endif
-
     } /* end of while(1) */
-
 }
 
 /**
@@ -512,8 +368,8 @@ S32 pts_init_serv_msg()
  */
 S32 pts_main()
 {
-    S32 lSocket, lRet;
-    pthread_t tid1, tid2, tid3, tid4, tid5;
+    S32 lRet;
+    pthread_t tid1, tid2, tid3, tid4, tid5, tid6;
     S8 szSql[PT_DATA_BUFF_128] = {0};
     U32 ulSocketCache = PTS_SOCKET_CACHE;    /* socket 收发缓存 */
     S8 *pPassWordMd5 = NULL;
@@ -524,15 +380,13 @@ S32 pts_main()
         return DOS_FAIL;
     }
 
-    lSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, ulSocketCache);
+    g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, ulSocketCache);
 
     lRet = pts_create_tcp_socket(g_stPtsMsg.usPtsPort);
     if (lRet <= 0)
     {
         return DOS_FAIL;
     }
-
-    g_ulUdpSocket = lSocket;
 
     lRet = dos_sqlite3_create_db(g_pstMySqlite);
     if (lRet < 0)
@@ -593,6 +447,17 @@ S32 pts_main()
         logr_debug("create pthread succ : pts_send_msg2ptc!");
     }
 
+    lRet = pthread_create(&tid6, NULL, pts_handle_recvfrom_ptc_msg, NULL);
+    if (lRet < 0)
+    {
+        logr_info("create pthread error : pts_goahead_service!");
+        return DOS_FAIL;
+    }
+    else
+    {
+        logr_debug("create pthread succ : pts_goahead_service!");
+    }
+
     lRet = pthread_create(&tid2, NULL, pts_recv_msg_from_ptc, NULL);
     if (lRet < 0)
     {
@@ -604,7 +469,7 @@ S32 pts_main()
         logr_debug("create pthread succ : pts_recv_msg_from_ptc!");
     }
 
-    lRet = pthread_create(&tid3, NULL, pts_recv_msg_from_web, NULL);
+    lRet = pthread_create(&tid3, NULL, pts_recv_msg_from_browser, NULL);
     if (lRet < 0)
     {
         logr_info("create pthread error : pts_recv_msg_from_web!");

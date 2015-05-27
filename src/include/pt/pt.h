@@ -30,9 +30,6 @@ extern "C"{
 #define PT_SEND_CONFIRM_COUNT       3       /* 发送确认消息的次数 */
 #define PT_CONFIRM_RECV_MSG_SIZE    64      /* 收到多少个包时，发送确认信息 */
 #define PT_LOGIN_VERIFY_SIZE        12      /* ptc登陆时，验证字符串的大小 */
-#define PT_SAVE_DATA_FAIL           -1      /* 保存数据到缓存失败 */
-#define PT_SAVE_DATA_SUCC           0       /* 保存数据到缓存成功 */
-#define PT_NEED_CUT_PTHREAD         1       /* 缓存存满，需要切换线程 */
 #define PT_VERSION_LEN              4       /* ptc版本号的长度 */
 #define PT_PTC_NAME_LEN             16      /* ptc名称 */
 #define PT_IP_ADDR_SIZE             16      /* 点分十进制，ip的长度 */
@@ -55,6 +52,14 @@ extern "C"{
 extern S32 g_ulUdpSocket;
 extern U8  gucIsTableInit;
 extern U16 g_crc_tab[256];
+
+typedef enum
+{
+    PT_SAVE_DATA_FAIL = -1,      /* 保存数据到缓存失败 */
+    PT_SAVE_DATA_SUCC,           /* 保存数据到缓存成功 */
+    PT_NEED_CUT_PTHREAD,         /* 缓存存满，需要切换线程 */
+
+}PT_SAVE_RESULT_EN;
 
 /* 传输的数据类型 */
 typedef enum
@@ -120,6 +125,7 @@ typedef struct tagStreamCB
     U32                     ulCountResend;
     U8                      aulServIp[IPV6_SIZE];
     U16                     usServPort;
+    BOOL                    bIsUsing;
     S8                      Reserver[2];
 
 }PT_STREAM_CB_ST;
@@ -128,7 +134,7 @@ typedef struct tagChannelCB
 {
     PT_DATA_TYPE_EN         enDataType;                        /*类型*/
 
-    list_t*                 pstStreamQueHead;                  /*stream list*/
+    list_t                  stStreamQueHead;                  /*stream list*/
     U32                     ulStreamNumInQue;
 
     BOOL                    bValid;                            /*有效性*/
@@ -149,6 +155,7 @@ typedef struct tagCCCB
     U16                     usPtcPort;
     U32                     ulUdpLostDataCount;
     U32                     ulUdpRecvDataCount;
+    pthread_mutex_t         pthreadMutex;
     //S8                    Reserver[8];
 }PT_CC_CB_ST;
 
@@ -232,7 +239,8 @@ typedef struct tagLoseBagMsg
 {
     PT_MSG_TAG          stMsg;
     PT_STREAM_CB_ST     *pstStreamNode;
-    S32                 lSocket;
+    U32                 ulCount;
+    pthread_mutex_t     *pPthreadMutex;                     /* 锁 */
 
 }PT_LOSE_BAG_MSG_ST;
 
@@ -302,25 +310,66 @@ typedef struct tagHeartbeatRTT
     S32 lHBTimeInterval;                        /* 心跳和心跳响应的间隔，查看网络情况 */
 }HEART_BEAT_RTT_TSG;
 
+typedef struct tagStreamCacheAddrCB
+{
+    list_t              stList;
+
+    U32                 ulStrreamID;
+
+    PT_CC_CB_ST         *pstPtcRecvNode;
+    PT_CC_CB_ST         *pstPtcSendNode;
+
+    PT_STREAM_CB_ST     *pstStreamRecvNode;
+    PT_STREAM_CB_ST     *pstStreamSendNode;
+
+}STREAM_CACHE_ADDR_CB_ST;
+
+typedef struct tagSendMsgPthreadParam
+{
+    U8                  aucID[PTC_ID_LEN];          /* PTC ID */
+    PT_DATA_TYPE_EN     enDataType;                 /* 类型 */
+    U32                 ulStreamID;                 /* stream ID */
+    S32                 lSocket;
+    BOOL                bIsNeedExit;
+    sem_t               stSemSendMsg;
+
+}PT_SEND_MSG_PTHREAD_PARAM;
+
+typedef struct tagSendMsgPthread
+{
+    list_t                      stList;
+    U32                         ulStreamID;
+    BOOL                        bIsValid;
+    PT_SEND_MSG_PTHREAD_PARAM   *pstPthreadParam;
+
+}PT_SEND_MSG_PTHREAD;
+
 PT_CC_CB_ST *pt_ptc_node_create(U8 *pcIpccId, S8 *szPtcVersion, struct sockaddr_in stDestAddr);
-list_t *pt_delete_ptc_node(list_t *stPtcListHead, PT_CC_CB_ST *pstPtcNode);
-list_t *pt_ptc_list_insert(list_t *pstPtcListHead, PT_CC_CB_ST *pstPtcNode);
+S32 pt_delete_ptc_node(PT_CC_CB_ST *pstPtcNode);
+S32 pt_ptc_list_insert(list_t *pstPtcListHead, PT_CC_CB_ST *pstPtcNode);
 PT_CC_CB_ST *pt_ptc_list_search(list_t* pstHead, U8 *pucID);
-void pt_delete_ptc_resource(PT_CC_CB_ST *pstPtcNode);
+S32 pt_delete_ptc_resource(PT_CC_CB_ST *pstPtcNode);
 
 PT_STREAM_CB_ST *pt_stream_node_create(U32 ulStreamID);
-list_t *pt_stream_queue_insert(list_t *pstHead, list_t *pstStreamNode);
+S32 pt_stream_queue_insert(list_t *pstHead, list_t *pstStreamNode);
 PT_STREAM_CB_ST *pt_stream_queue_search(list_t *pstStreamListHead, U32 ulStreamID);
-list_t *pt_delete_stream_node(list_t *pstStreamListHead, list_t *pstStreamNode, PT_DATA_TYPE_EN enDataType);
+S32 pt_delete_stream_node(list_t *pstStreamListNode, PT_DATA_TYPE_EN enDataType);
 
 PT_DATA_TCP_ST *pt_data_tcp_queue_create(U32 ulCacheSize);
 S32 pt_send_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, S8 *acSendBuf, S32 lDataLen, U32 lCacheSize);
 S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen, U32 lCacheSize);
 
-list_t *pt_need_recv_node_list_insert(list_t *pstHead, PT_MSG_TAG *pstMsgDes);
+S32 pt_need_recv_node_list_insert(list_t *pstHead, PT_MSG_TAG *pstMsgDes);
 list_t *pt_need_recv_node_list_search(list_t *pstHead, U32 ulStreamID);
-list_t *pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsgDes, PT_CMD_EN enCmdValue, BOOL bIsResend);
+S32 pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsgDes, PT_CMD_EN enCmdValue, BOOL bIsResend);
 list_t *pt_need_send_node_list_search(list_t *pstHead, U32 ulStreamID);
+
+STREAM_CACHE_ADDR_CB_ST *pt_stream_addr_create(U32 ulStreamID);
+VOID pt_stream_addr_delete(DLL_S *pList, DLL_NODE_S *pNode);
+
+PT_SEND_MSG_PTHREAD *pt_send_msg_pthread_search(list_t* pstHead, U32 ulStreamID);
+PT_SEND_MSG_PTHREAD *pt_send_msg_pthread_create(PT_NEND_RECV_NODE_ST *pstNeedRecvNode, S32 lSocket);
+S32 pt_send_msg_pthread_delete(list_t* pstHead, U32 ulStreamID);
 
 VOID pt_log_set_level(U32 ulLevel);
 U32 pt_log_current_level();
