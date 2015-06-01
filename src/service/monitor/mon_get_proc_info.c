@@ -17,6 +17,7 @@ extern S8 g_szMonProcessInfo[MAX_PROC_CNT * MAX_BUFF_LENGTH];
 extern MON_PROC_STATUS_S * g_pastProc[MAX_PROC_CNT];
 extern U32 g_ulPidCnt; //实际运行的进程个数
 
+static U32   mon_proc_reset_data();
 static BOOL  mon_is_pid_valid(U32 ulPid);
 static U32   mon_get_cpu_mem_time_info(U32 ulPid, MON_PROC_STATUS_S * pstProc);
 static U32   mon_get_openfile_count(U32 ulPid);
@@ -80,6 +81,22 @@ U32 mon_proc_free()
    }
    
    return DOS_SUCC;
+}
+
+static U32   mon_proc_reset_data()
+{
+    MON_PROC_STATUS_S * pstProc = g_pastProc[0];
+
+    if(DOS_ADDR_INVALID(pstProc))
+    {
+        logr_cirt("%s:Line %u:free memory failure,pstProc is %p!"
+                 , dos_get_filename(__FILE__), __LINE__ , pstProc);
+        return DOS_FAIL;
+    } 
+
+    dos_memzero(pstProc, MAX_PROC_CNT * sizeof(MON_PROC_STATUS_S));
+
+    return DOS_SUCC;
 }
 
 /**
@@ -429,6 +446,8 @@ static U32 mon_get_proc_pid_list()
                 logr_info("%s:Line %u:process ID %u does not exist,but pid file exists."
                             , dos_get_filename(__FILE__), __LINE__, ulPid);
                 printf("\nProcess ID %u does not exist,but pid file exists.\n", ulPid);
+                fclose(fp);
+                fp  = NULL;
                 continue;
             }
 
@@ -445,34 +464,8 @@ static U32 mon_get_proc_pid_list()
                             , sizeof(g_pastProc[g_ulPidCnt]->szProcName)
                             , "%s"
                             , pTemp);
-#if 0         
-            lRet = dos_atoul(szLine, &(g_pastProc[g_ulPidCnt]->ulProcId));
-            if(0 != lRet)
-            {
-               logr_error("%s:Line %u:mon_get_proc_pid_list|dos_atol failure,lRet is %d!"
-                            , dos_get_filename(__FILE__), __LINE__, lRet);
-               goto failure;
-            }
+            printf("\nszProcName:%s,Process ID:%u\n", g_pastProc[g_ulPidCnt]->szProcName, g_pastProc[g_ulPidCnt]->ulProcId);
 
-            if(DOS_TRUE == mon_is_proc_dead(g_pastProc[g_ulPidCnt]->ulProcId))
-            {//过滤掉不存在的进程
-               logr_error("%s:Line %u:mon_get_proc_pid_list|the pid %u is invalid or not exist!"
-                            , dos_get_filename(__FILE__), __LINE__, g_pastProc[g_ulPidCnt]->ulProcId);
-               fclose(fp);
-               fp = NULL;
-               continue;
-            }
-            
-            pTemp = mon_get_proc_name_by_id(g_pastProc[g_ulPidCnt]->ulProcId, szProcAllName);
-            if(DOS_ADDR_INVALID(pTemp))
-            {
-               logr_error("%s:Line %u:mon_get_proc_pid_list|get proc name by pid failure, pTemp is %p!"
-                            , dos_get_filename(__FILE__), __LINE__, pTemp);
-               goto failure;
-            }
-
-            dos_snprintf(g_pastProc[g_ulPidCnt]->szProcName, sizeof(g_pastProc[g_ulPidCnt]->szProcName), "%s", pTemp);
-#endif            
             ++g_ulPidCnt;
          }
          else
@@ -507,6 +500,13 @@ U32 mon_get_process_data()
    U32 ulRows = 0;
    U32 ulRet = 0;
 
+   ulRet = mon_proc_reset_data();
+   if (DOS_SUCC != ulRet)
+   {
+       logr_error("%s:Line %u:reset process data FAIL.", dos_get_filename(__FILE__), __LINE__);
+       return DOS_FAIL;
+   }
+
    ulRet = mon_get_proc_pid_list();
    if(DOS_SUCC != ulRet)
    {
@@ -514,7 +514,7 @@ U32 mon_get_process_data()
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
       return DOS_FAIL;
    }
-
+   
    for (ulRows = 0; ulRows < g_ulPidCnt; ulRows++)
    {
       if(DOS_ADDR_INVALID(g_pastProc[ulRows]))
@@ -618,12 +618,6 @@ static U32  mon_check_all_process()
     *  如果配置的进程个数小于或者等于监控到的进程个数，
     *  那么认为所有的监控进程都已经启动
     */
-   if(ulCfgProcCnt <= g_ulPidCnt - 1)
-   {
-      logr_info("%s:Line %u:no process lost!"
-                 , dos_get_filename(__FILE__), __LINE__);
-      return DOS_SUCC;
-   }
       
    for (ulRows = 0; ulRows < ulCfgProcCnt; ulRows++)
    {
@@ -829,8 +823,9 @@ BOOL mon_is_proc_dead(U32 ulPid)
 
     dos_snprintf(szPath, sizeof(szPath), "/proc/%u/", ulPid);
 
-    if (0 != access(szPath, 0))
+    if (0 != access(szPath, F_OK))
     {
+        /* 目录不存在则进程死亡，返回true */
         return DOS_TRUE;
     }
 
@@ -853,7 +848,7 @@ U32  mon_get_proc_total_cpu_rate()
    {
       if(DOS_ADDR_INVALID(g_pastProc[ulRows]))
       {
-         logr_cirt("%s:Line %u:mon_get_all_proc_total_cpu_rate|get all proc total CPU rate failure,g_pastProc[%u] is %p!"
+         logr_cirt("%s:Line %u:get all proc total CPU rate failure,g_pastProc[%u] is %p!"
                     , dos_get_filename(__FILE__), __LINE__, ulRows, g_pastProc[ulRows]);
          return DOS_FAIL;
       }

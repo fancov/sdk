@@ -32,9 +32,9 @@ extern S8 *strptime(const S8 *s, const S8 *format, struct tm *tm);
 /* 处理WEB通知更新坐席的请求 */
 VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 {
-    U32 ulCustomerID = U32_BUTT, ulGroupID1 = U32_BUTT, ulGroupID2 = U32_BUTT, ulAgentID = U32_BUTT, ulJobNumber = U32_BUTT;
-    U32 ulHashIndex;
-    const S8  *pszCustomID = NULL, *pszGroupID1 = NULL, *pszGroupID2 = NULL, *pszAgentID = NULL, *pszJobNumber = NULL;
+    U32 ulCustomerID = U32_BUTT, ulGroupID1 = U32_BUTT, ulGroupID2 = U32_BUTT, ulAgentID = U32_BUTT;
+    U32 ulHashIndex = U32_BUTT;
+    const S8  *pszCustomID = NULL, *pszGroupID1 = NULL, *pszGroupID2 = NULL, *pszAgentID = NULL;
     const S8  *pszWhere = NULL;
     HASH_NODE_S *pstHashNode = NULL;
     JSON_OBJ_ST *pstJsonWhere = NULL;
@@ -66,7 +66,7 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
             /*构造json对象*/
-            pstJsonWhere= json_init((S8 *)pszWhere);
+            pstJsonWhere = json_init((S8 *)pszWhere);
             if (DOS_ADDR_INVALID(pstJsonWhere))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Init json node fail.");
@@ -88,19 +88,11 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 json_deinit(&pstJsonWhere);
                 break;
             }
-            pszJobNumber = json_get_param(pstJsonWhere, "job_number");
-            if (DOS_ADDR_INVALID(pszJobNumber))
-            {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Job Number fail.");
-                json_deinit(&pstJsonWhere);
-                break;
-            }
 
             if (dos_atoul(pszCustomID, &ulCustomerID) < 0
-                || dos_atoul(pszAgentID, &ulAgentID) < 0
-                || dos_atoul(pszJobNumber, &ulJobNumber) <0)
+                || dos_atoul(pszAgentID, &ulAgentID) < 0)
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "bss atol fail.");
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "bss atoul fail.");
                 json_deinit(&pstJsonWhere);
                 break;
             }
@@ -116,7 +108,8 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
             pthread_mutex_lock(&g_mutexAgentTbl);
             pstHashNode = hash_find_node(g_astAgentTbl, ulHashIndex, (VOID *)&ulAgentID, bs_agent_hash_node_match);
-            if (DOS_ADDR_INVALID(pstHashNode))
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
             {
                 pthread_mutex_unlock(&g_mutexAgentTbl);
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Cannot find the agent while update. Opteration:%d", ulOpteration);
@@ -171,16 +164,9 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 json_deinit(&pstJsonWhere);
                 break;
             }
-            pszCustomID = json_get_param(pstJsonWhere, "customer_id");
-            if (DOS_ADDR_INVALID(pszCustomID))
-            {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Customer ID fail.");
-                json_deinit(&pstJsonWhere);
-                break;
-            }
+           
 
-            if (dos_atoul(pszAgentID, &ulAgentID)< 0
-                || dos_atoul(pszCustomID, &ulCustomerID) <0)
+            if (dos_atoul(pszAgentID, &ulAgentID) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "dos_atoul fail.");
                 json_deinit(&pstJsonWhere);
@@ -207,8 +193,8 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
 
-            pstAgentInfo = pstHashNode->pHandle;
-            pstAgentInfo->ulCustomerID = ulCustomerID;
+            pstAgentInfo = (BS_AGENT_ST *)pstHashNode->pHandle;
+            
             pstCustomer = bs_get_customer_st(pstAgentInfo->ulCustomerID);
             if (DOS_ADDR_INVALID(pstCustomer))
             {
@@ -260,7 +246,6 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Connat find the customer with the id %u. Opteration:%u"
                             , ulCustomerID
                             , ulOpteration);
-
                 break;
             }
 
@@ -279,7 +264,6 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             if (DOS_ADDR_INVALID(pstAgentInfo))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Cannot alloc memory while update agent. Opteration:%d", ulOpteration);
-
                 break;
             }
 
@@ -307,7 +291,6 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pstCustomer->ulAgentNum++;
             pthread_mutex_unlock(&g_mutexCustomerTbl);
             pthread_mutex_unlock(&g_mutexAgentTbl);
-
             break;
 
         default:
@@ -321,12 +304,12 @@ process_finished:
 /* 处理遍历WEB CMD临时表的响应 */
 VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 {
-    S64 LMonery = 0;
+    S64 LMoney = 0;
     U32 ulCustomerID = 0;
     time_t ulExpiryTime = 0;
     S8  *pszRet = NULL;
     struct tm stExpiryTm = {0};
-    const S8 *pszMonery = NULL, *pszWhere  = NULL, *pszCustomID = NULL, *pszExpireTime = NULL;
+    const S8 *pszMoney = NULL, *pszWhere  = NULL, *pszCustomID = NULL, *pszExpireTime = NULL;
     JSON_OBJ_ST  *pstJsonWhere = NULL;
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
@@ -334,10 +317,10 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
 
     /* 处理余额变动 */
-    pszMonery = json_get_param(pstJSONObj, "money");
-    if (DOS_ADDR_VALID(pszMonery))
+    pszMoney = json_get_param(pstJSONObj, "money");
+    if (DOS_ADDR_VALID(pszMoney))
     {
-        if (dos_atoll(pszMonery, &LMonery) < 0)
+        if (dos_atoll(pszMoney, &LMoney) < 0)
         {
             goto process_finished;
         }
@@ -373,8 +356,8 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             goto process_finished;
         }
 
-        pstCustomer->stAccount.LBalanceActive += (LMonery * 10000);
-        pstCustomer->stAccount.LBalance += (LMonery * 10000);
+        pstCustomer->stAccount.LBalanceActive += (LMoney * 10000);
+        pstCustomer->stAccount.LBalance += (LMoney * 10000);
 
         goto process_finished;
     }
@@ -389,29 +372,29 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             BS_CUSTOMER_ST  *pstCustomer = NULL;
             JSON_OBJ_ST     *pstSubJsonWhere = NULL;
             U32             ulHashIndex, ulCustomerType, ulCustomerState, ulCustomID;
-            U32             ulPackageID, ulBanlanceWarning, ulCreditLine;
-            const S8        *pszCustomType, *pszCustomState, *pszCustomID, *pszCustomName, *pszCreditLine;
-            const S8        *pszBillingPkg, *pszBalanceWarning, *pszExpiry;
+            U32             ulPackageID, ulBanlanceWarning;
+            S32             lMaximumBalance = U32_BUTT;
+            const S8        *pszCustomType = NULL, *pszCustomState = NULL, *pszCustomID = NULL, *pszCustomName = NULL, *pszMinBalance = NULL;
+            const S8        *pszBillingPkgID = NULL, *pszBalanceWarning = NULL;
             const S8        *pszSubWhere = NULL;
 
             /*将当前时间转换为时间戳 */
             pszExpireTime = json_get_param(pstJSONObj, "expiry");
-            if (DOS_ADDR_INVALID(pszExpireTime))
+            if (DOS_ADDR_VALID(pszExpireTime))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Expiry Time fail.");
+                pszRet = strptime(pszExpireTime, "%Y-%m-%d", &stExpiryTm);
+                if (DOS_ADDR_INVALID(pszRet))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "strptime FAIL.");
+                }
+                ulExpiryTime = mktime(&stExpiryTm);
             }
-            pszRet = strptime(pszExpireTime, "%Y-%m-%d", &stExpiryTm);
-            if (DOS_ADDR_INVALID(pszRet))
-            {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "strptime fail.");
-            }
-            ulExpiryTime = mktime(&stExpiryTm);
 
             /*获取where字段*/
             pszSubWhere = json_get_param(pstJSONObj, "where");
             if (DOS_ADDR_INVALID(pszSubWhere))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get where param fail.");
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get where param FAIL.");
                 break;
             }
 
@@ -419,7 +402,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pstSubJsonWhere = json_init((S8 *)pszSubWhere);
             if (DOS_ADDR_INVALID(pstSubJsonWhere))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Make Json Object fail.");
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Make Json Object FAIL.");
                 break;
             }
 
@@ -448,7 +431,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                                     , bs_customer_hash_node_match);
             if (DOS_ADDR_INVALID(pstHashNode))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find the customer with the id %d.", ulCustomID);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Find the customer with the id %d FAIL.", ulCustomID);
                 json_deinit(&pstSubJsonWhere);
                 break;
             }
@@ -456,27 +439,25 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pstCustomer = pstHashNode->pHandle;
             if (DOS_ADDR_INVALID(pstCustomer))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find the customer with the id %d.(Invalid Data)", ulCustomID);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Find the customer ID %u FAIL.(Invalid Data)", ulCustomID);
                 json_deinit(&pstSubJsonWhere);
                 break;
             }
 
             pszCustomName = json_get_param(pstSubJsonWhere, "name");
-            pszCreditLine = json_get_param(pstJSONObj, "credit_line");
+            pszMinBalance = json_get_param(pstJSONObj, "minimum_balance");
 
             pszCustomState = json_get_param(pstJSONObj, "status");
             pszCustomType = json_get_param(pstSubJsonWhere, "type");
-            pszBillingPkg = json_get_param(pstJSONObj, "billing_package_id");
+            pszBillingPkgID = json_get_param(pstJSONObj, "billing_package_id");
 
             pszBalanceWarning = json_get_param(pstJSONObj, "balance_warning");
-            pszExpiry = json_get_param(pstJSONObj, "expiry");
 
             if (DOS_ADDR_INVALID(pszCustomName) || DOS_ADDR_INVALID(pszCustomState)
-			   || DOS_ADDR_INVALID(pszCustomType) || DOS_ADDR_INVALID(pszBillingPkg)
-               || DOS_ADDR_INVALID(pszBalanceWarning) || DOS_ADDR_INVALID(pszExpiry)
-               || DOS_ADDR_INVALID(pszCreditLine))
+               || DOS_ADDR_INVALID(pszCustomType) || DOS_ADDR_INVALID(pszBillingPkgID)
+               || DOS_ADDR_INVALID(pszBalanceWarning) || DOS_ADDR_INVALID(pszMinBalance))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Parse json param fail while adding custom.");
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Parse json param FAIL while adding custom.");
 
                 dos_dmem_free(pstCustomer);
                 dos_dmem_free(pstHashNode);
@@ -488,11 +469,11 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             if (dos_atoul(pszCustomID, &pstCustomer->ulCustomerID) < 0
                 || dos_atoul(pszCustomType, &ulCustomerType) < 0
                 || dos_atoul(pszCustomState, &ulCustomerState) < 0
-                || dos_atoul(pszBillingPkg, &ulPackageID) < 0
+                || dos_atoul(pszBillingPkgID, &ulPackageID) < 0
                 || dos_atoul(pszBalanceWarning, &ulBanlanceWarning) < 0
-                || dos_atoul(pszCreditLine, &ulCreditLine) < 0
+                || dos_atol(pszMinBalance, &lMaximumBalance) < 0
                 || '\0' == pszCustomName[0])
-            {
+            {   
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Invalid param while adding custom.");
 
                 dos_dmem_free(pstCustomer);
@@ -503,15 +484,18 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
             pstCustomer->stAccount.ulBillingPackageID = ulPackageID;
             pstCustomer->stAccount.lBalanceWarning = ulBanlanceWarning;
-            pstCustomer->stAccount.ulExpiryTime = (U32)ulExpiryTime;
-            pstCustomer->stAccount.lCreditLine  = (S32)ulCreditLine;
+            if (DOS_ADDR_VALID(pszExpireTime))
+            {
+                pstCustomer->stAccount.ulExpiryTime = (U32)ulExpiryTime;
+            }  
+            pstCustomer->stAccount.lCreditLine  = lMaximumBalance;
             json_deinit(&pstSubJsonWhere);
             break;
         }
         case BS_CMD_DELETE:
         {
-            U32  ulCustomID, ulHashIndex;
-            const S8   *pszCustomID;
+            U32  ulCustomID = U32_BUTT, ulHashIndex = U32_BUTT;
+            const S8   *pszCustomID = NULL;
             const S8   *pszSubWhere = NULL;
             JSON_OBJ_ST *pstSubJsonWhere = NULL;
             HASH_NODE_S     *pstHashNode = NULL, *pstHashNodeParent = NULL;
@@ -521,13 +505,13 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pszSubWhere = json_get_param(pstJSONObj, "where");
             if (DOS_ADDR_INVALID(pszSubWhere))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get where param fail.");
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get where param FAIL.");
                 break;
             }
             pstSubJsonWhere = json_init((S8 *)pszSubWhere);
             if (DOS_ADDR_INVALID(pstSubJsonWhere))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: json init where fail.");
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: json init where FAIL.");
                 break;
             }
             pszCustomID = json_get_param(pstSubJsonWhere, "id");
@@ -545,21 +529,21 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
 
-            /* 如果hash表中已经存在，说明有错误 */
+            /* 如果hash表中已经不存在，说明有错误 */
             pstHashNode = hash_find_node(g_astCustomerTbl
                                     , ulHashIndex
                                     , (VOID *)&ulCustomID
                                     , bs_customer_hash_node_match);
             if (DOS_ADDR_INVALID(pstHashNode))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find the customer with the id %d.", ulCustomID);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Find the customer ID %u FAIL.", ulCustomID);
                 break;
             }
 
             pstCustomer = pstHashNode->pHandle;
             if (DOS_ADDR_INVALID(pstCustomer))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find the customer with the id %d.(Invalid Data)", ulCustomID);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Find the customer with the id %d FAIL.(Invalid Data)", ulCustomID);
                 break;
             }
 
@@ -569,21 +553,21 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                                     , bs_customer_hash_node_match);
             if (DOS_ADDR_INVALID(pstHashNodeParent))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find parent for the customer with the id %d, parent: %d.", ulCustomID, pstCustomer->ulParentID);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Find parent for the customer with the id %d, parent: %d FAIL.", ulCustomID, pstCustomer->ulParentID);
                 break;
             }
 
             pstCustomParent = pstHashNodeParent->pHandle;
             if (DOS_ADDR_INVALID(pstCustomParent))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot find patent for the customer with the id %d, parent: %d.(Invalid Data)", ulCustomID, pstCustomer->ulParentID);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Find parent for the customer with the id %d, parent: %d FAIL.(Invalid Data)", ulCustomID, pstCustomer->ulParentID);
                 break;
             }
 
             pthread_mutex_lock(&g_mutexCustomerTbl);
             if (0 != pstCustomer->stChildrenList.ulCount)
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Connot delete the customer with the id %d.(Customer have childen)", pstCustomer->ulParentID);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Delete the customer with the id %d FAIL.(Customer have childen)", pstCustomer->ulParentID);
                 pthread_mutex_unlock(&g_mutexCustomerTbl);
                 break;
             }
@@ -602,29 +586,28 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
         }
         case BS_CMD_INSERT:
         {
-            U32             ulHashIndex, ulCustomerType, ulCustomerState, ulBillingPackageID, ulCreditLine, ulBalanceWarning, ulBalance;
+            U32             ulHashIndex, ulCustomerType, ulCustomerState, ulBillingPackageID, ulMinBalance, ulBalanceWarning, ulBalance;
             const S8        *pszCustomType, *pszCustomState, *pszCustomID, *pszCustomName, *pszParent;
-            const S8        *pszBillingPackageID = NULL, *pszCreditLine = NULL, *pszBalanceWarning = NULL, *pszBalance = NULL;
+            const S8        *pszBillingPackageID = NULL, *pszMinBalance = NULL, *pszBalanceWarning = NULL, *pszBalance = NULL;
             HASH_NODE_S     *pstHashNode = NULL;
             BS_CUSTOMER_ST  *pstCustomer = NULL, *pstCustomParent = NULL;
 
             /*将当前时间转换为时间戳 */
             pszExpireTime = json_get_param(pstJSONObj, "expiry");
-            if (DOS_ADDR_INVALID(pszExpireTime))
+            if (DOS_ADDR_VALID(pszExpireTime))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Expiry Time fail.");
+                pszRet = strptime(pszExpireTime, "%Y-%m-%d", &stExpiryTm);
+                if (DOS_ADDR_INVALID(pszRet))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "strptime FAIL.");
+                }
+                ulExpiryTime = mktime(&stExpiryTm);
             }
-            pszRet = strptime(pszExpireTime, "%Y-%m-%d", &stExpiryTm);
-            if (DOS_ADDR_INVALID(pszRet))
-            {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "strptime fail.");
-            }
-            ulExpiryTime = mktime(&stExpiryTm);
-
+            
             pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
             if (DOS_ADDR_INVALID(pstHashNode))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: alloc memory fail!");
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: alloc memory FAIL!");
                 break;
             }
             HASH_Init_Node(pstHashNode);
@@ -633,7 +616,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             if (DOS_ADDR_INVALID(pstCustomer))
             {
                 dos_dmem_free(pstHashNode);
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: alloc memory fail!");
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: alloc memory FAIL!");
                 break;
             }
             bs_init_customer_st(pstCustomer);
@@ -645,17 +628,17 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pszCustomState = json_get_param(pstJSONObj, "status");
             pszCustomType = json_get_param(pstJSONObj, "type");
             pszBillingPackageID = json_get_param(pstJSONObj, "billing_package_id");
-            pszCreditLine = json_get_param(pstJSONObj, "credit_line");
+            pszMinBalance = json_get_param(pstJSONObj, "minimum_balance");
             pszBalanceWarning = json_get_param(pstJSONObj, "balance_warning");
             pszBalance = json_get_param(pstJSONObj, "balance");
 
             if (DOS_ADDR_INVALID(pszCustomName) || DOS_ADDR_INVALID(pszCustomID)
                 || DOS_ADDR_INVALID(pszParent) || DOS_ADDR_INVALID(pszCustomState)
                 || DOS_ADDR_INVALID(pszCustomType) || DOS_ADDR_INVALID(pszBillingPackageID)
-                || DOS_ADDR_INVALID(pszCreditLine) || DOS_ADDR_INVALID(pszBalanceWarning)
+                || DOS_ADDR_INVALID(pszMinBalance) || DOS_ADDR_INVALID(pszBalanceWarning)
                 || DOS_ADDR_INVALID(pszBalance))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Parse json param fail while adding custom.");
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Parse json param FAIL while adding custom.");
 
                 dos_dmem_free(pstCustomer);
                 dos_dmem_free(pstHashNode);
@@ -669,7 +652,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 || dos_atoul(pszCustomType, &ulCustomerType) < 0
                 || dos_atoul(pszCustomState, &ulCustomerState) < 0
                 || dos_atoul(pszBillingPackageID, &ulBillingPackageID) < 0
-                || dos_atoul(pszCreditLine, &ulCreditLine) < 0
+                || dos_atoul(pszMinBalance, &ulMinBalance) < 0
                 || dos_atoul(pszBalanceWarning, &ulBalanceWarning) < 0
                 || dos_atoul(pszBalance, &ulBalance) < 0
                 || '\0' == pszCustomName[0])
@@ -684,20 +667,28 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pstCustomer->ucCustomerState = (U8)ulCustomerState;
             pstCustomer->ucCustomerType = (U8)ulCustomerType;
             pstCustomer->stAccount.ulBillingPackageID = ulBillingPackageID;
-            pstCustomer->stAccount.lCreditLine = (S32)ulCreditLine;
+            pstCustomer->stAccount.lCreditLine = (S32)ulMinBalance;
             pstCustomer->stAccount.lBalanceWarning = (S32)ulBalanceWarning;
             pstCustomer->stAccount.LBalance = (S64)ulBalance;
-            pstCustomer->stAccount.ulExpiryTime = (U32)ulExpiryTime;
-            dos_strncpy(pstCustomer->szCustomerName, pszCustomName, sizeof(pstCustomer->szCustomerName));
-            pstCustomer->szCustomerName[sizeof(pstCustomer->szCustomerName) - 1] = '\0';
+            if (DOS_ADDR_VALID(pszExpireTime))
+            {
+                pstCustomer->stAccount.ulExpiryTime = (U32)ulExpiryTime;
+            }
+
+            dos_snprintf(pstCustomer->szCustomerName, sizeof(pstCustomer->szCustomerName), "%s", pszCustomName);
 
             pstHashNode->pHandle = (VOID *)pstCustomer;
             ulHashIndex = bs_hash_get_index(BS_HASH_TBL_CUSTOMER_SIZE, pstCustomer->ulCustomerID);
             if (U32_BUTT == ulHashIndex)
             {
                 DOS_ASSERT(0);
+                
                 dos_dmem_free(pstHashNode);
+                pstHashNode = NULL;
+                
                 dos_dmem_free(pstCustomer);
+                pstCustomer = NULL;
+                
                 break;
             }
 
@@ -709,8 +700,12 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: customer(%u:%s) is duplicated in DB !",
                 pstCustomer->ulCustomerID, pstCustomer->szCustomerName);
+                
                 dos_dmem_free(pstHashNode);
+                pstHashNode = NULL;
+                
                 dos_dmem_free(pstCustomer);
+                pstCustomer = NULL;
 
                 break;
             }
@@ -725,7 +720,10 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                         , pstCustomer->ulCustomerID);
 
                 dos_dmem_free(pstCustomer);
+                pstCustomer = NULL;
+                
                 dos_dmem_free(pstHashNode);
+                pstHashNode = NULL;
 
                 break;
             }
@@ -738,7 +736,10 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                          pstCustomParent->ulCustomerID, pstCustomParent->szCustomerName);
 
                 dos_dmem_free(pstCustomer);
+                pstCustomer = NULL;
+                
                 dos_dmem_free(pstHashNode);
+                pstHashNode = NULL;
 
                 break;
             }

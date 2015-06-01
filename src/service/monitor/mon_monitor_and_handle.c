@@ -170,13 +170,13 @@ VOID* mon_warning_handle(VOID *p)
                break;
           }
           
-         ulRet = mon_warning_msg_de_queue(g_pstMsgQueue);
-         if(DOS_SUCC != ulRet)
-         {
-            logr_error("%s:Line %u:mon_warning_handle|delete warning msg queue failure,ulRet is %u!"
+          ulRet = mon_warning_msg_de_queue(g_pstMsgQueue);
+          if(DOS_SUCC != ulRet)
+          {
+              logr_error("%s:Line %u:mon_warning_handle|delete warning msg queue failure,ulRet is %u!"
                         , dos_get_filename(__FILE__), __LINE__, ulRet);
-            break;
-         }
+              break;
+          }
        }
 
        /*   ˝æ›÷ÿ÷√  */
@@ -867,7 +867,7 @@ static U32 mon_add_warning_record(U32 ulResId)
          dos_strcpy(szSmpDesc, "Network disconnected");
          break;
       case 0xf5000000:
-         dos_strcpy(szSmpDesc, "Process cpu or memory failed");
+         dos_strcpy(szSmpDesc, "Such high CPU or Memory");
          break;
       default:
          break;
