@@ -33,7 +33,7 @@ extern "C"{
 SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
 {
     {"reload",                   sc_http_api_reload_xml},
-    {"task",                     sc_http_api_task_ctrl},
+    {"task-ctrl",                sc_http_api_task_ctrl},
     {"verify",                   sc_http_api_num_verify},
     {"callctrl",                 sc_http_api_call_ctrl},
     {"agent",                    sc_http_api_agent_action},
