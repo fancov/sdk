@@ -8,6 +8,7 @@
 '''
 
 from xml.dom.minidom import Document
+from xml.dom import minidom
 import os
 import file_info
 import dom_to_xml
@@ -263,7 +264,7 @@ def del_sip(ulSipID, seqUserID, ulCustomerID):
             usersNode = groupList[i].getElementsByTagName('users')
             userList = usersNode[0].getElementsByTagName('user')
             for j in range(len(userList)):
-                if userList[j].getAttribute('id') == SIPUserID:
+                if userList[j].getAttribute('id') == seqUserID:
                     usersNode[0].removeChild(userList[j])
                     
         # 写配置文件

@@ -304,7 +304,7 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
     U32                     ulBillPkgID, ulServType, ulHashIndex, ulIndex;
     U32                     ulSrcAttrType1, ulSrcAttrType2, ulDstAttrType1, ulDstAttrType2;
     U32                     ulFirstBillingCnt, ulNextBillingCnt, ulBillingType;
-    BOOL                    blFound;
+    BOOL                    bFound;
     HASH_NODE_S             *pstHashNode = NULL;
     BS_BILLING_RULE_ST      stBillingRule;
     BS_BILLING_PACKAGE_ST   *pstBillingPkg = NULL;
@@ -353,7 +353,7 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
     stBillingRule.ucBillingType = (U8)ulBillingType;
 
     pthread_mutex_lock(&g_mutexBillingPackageTbl);
-    blFound = DOS_FALSE;
+    bFound = DOS_FALSE;
     HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
     {
         HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -385,13 +385,13 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
                     }
                 }
 
-                blFound = DOS_TRUE;
+                bFound = DOS_TRUE;
                 break;
             }
         }
     }
 
-    if (!blFound)
+    if (!bFound)
     {
         ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulBillPkgID);
         if (U32_BUTT == ulHashIndex)

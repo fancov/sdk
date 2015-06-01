@@ -1647,10 +1647,13 @@ S32 bs_update_test(U32 ulIndex, S32 argc, S8 **argv)
     {
         bss_update_agent(ulOperation, pstJsonNode);
     }
-    else if (0 == dos_stricmp(pszTableName, "tbl_billing_rule")
-                || 0 == dos_stricmp(pszTableName, "tbl_billing_rate"))
+    else if (0 == dos_stricmp(pszTableName, "tbl_billing_rule"))
     {
         bss_update_billing_package(ulOperation, pstJsonNode);
+    }
+    else if (0 == dos_stricmp(pszTableName, "tbl_billing_rate"))
+    {
+        
     }
     else if (0 == dos_stricmp(pszTableName, "tbl_calltask"))
     {
