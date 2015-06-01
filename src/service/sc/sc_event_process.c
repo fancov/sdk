@@ -3385,6 +3385,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     {
         /* 需要放音的，统一先放音。在放音结束后请处理后续流程 */
         case SC_TASK_MODE_KEY4AGENT:
+        case SC_TASK_MODE_KEY4AGENT1:
         case SC_TASK_MODE_AUDIO_ONLY:
         case SC_TASK_MODE_AGENT_AFTER_AUDIO:
             sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
@@ -4367,8 +4368,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
     }
 
     /* 自动外呼，拨0接通坐席 */
-    if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
-        && '0' == pszDTMFDigit[0])
+    if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
     {
 
         ulTaskMode = sc_task_get_mode(pstSCB->usTCBNo);
@@ -4379,7 +4379,12 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
             goto process_fail;
         }
 
-        if (SC_TASK_MODE_KEY4AGENT == ulTaskMode)
+        if (SC_TASK_MODE_KEY4AGENT == ulTaskMode
+            && '0' == pszDTMFDigit[0])
+        {
+            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+        }
+        else if(SC_TASK_MODE_KEY4AGENT1 == ulTaskMode)
         {
             sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
         }
@@ -4473,6 +4478,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                     {
                         /* 以两种放音结束后需要挂断 */
                         case SC_TASK_MODE_KEY4AGENT:
+                        case SC_TASK_MODE_KEY4AGENT1:
                         case SC_TASK_MODE_AUDIO_ONLY:
                             sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
                             break;

@@ -113,14 +113,20 @@ S32 root(S32 _argc, S8 ** _argv)
     if (DOS_SUCC != mod_dipcc_sc_load())
     {
         DOS_ASSERT(0);
+
+		logr_info("%s", "SC INIT FAIL.");
         return -1;
     }
 
     if (DOS_SUCC != mod_dipcc_sc_runtime())
     {
         DOS_ASSERT(0);
+
+		logr_info("%s", "SC start FAIL.");
         return -1;
     }
+	
+    logr_info("%s", "SC start.");
 #endif
 
 #if INCLUDE_OPENSSL_LIB

@@ -380,7 +380,10 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
              * 1.Í£¶¨Ê±Æ÷
              * 2.Î¬»¤×´Ì¬
              **/
-            dos_tmr_stop(&g_pstSCBSClient[ulClientIndex]->hTmrHBTimeout);
+            if (g_pstSCBSClient[ulClientIndex]->hTmrHBTimeout)
+            {
+                dos_tmr_stop(&g_pstSCBSClient[ulClientIndex]->hTmrHBTimeout);
+            }
             g_pstSCBSClient[ulClientIndex]->ulHBFailCnt = 0;
             break;
         case BS_MSG_BALANCE_QUERY_RSP:
@@ -645,6 +648,8 @@ U32 sc_bs_fsm_init()
         g_pstSCBSClient[ulIndex]->ulIndex = ulIndex;
         g_pstSCBSClient[ulIndex]->lSocket = -1;
         g_pstSCBSClient[ulIndex]->ulStatus = SC_BS_STATUS_INVALID;
+        g_pstSCBSClient[ulIndex]->hTmrHBTimeout = NULL;
+        g_pstSCBSClient[ulIndex]->hTmrHBInterval = NULL;
     }
 
     g_pstSCBSClient[0]->blValid = DOS_TRUE;

@@ -146,7 +146,7 @@ S32 bsd_walk_customer_tbl(BS_INTER_MSG_WALK *pstMsg)
     HASH_NODE_S     *pstHashNode = NULL;
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT `id`,`name`,`parent_id`,`type`,`status`, `billing_package_id`, `balance`, `credit_line`, `balance_warning` from tbl_customer;");
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT `id`,`name`,`parent_id`,`type`,`status`, `billing_package_id`, `balance`, `minimum_balance`, `balance_warning` from tbl_customer;");
     if (db_query(g_pstDBHandle, szQuery, bsd_walk_customer_tbl_cb, NULL, NULL) != DB_ERR_SUCC)
     {
         bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read customers from DB FAIL!");

@@ -1497,10 +1497,13 @@ S32 sc_task_load_audio_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
     SC_TASK_CB_ST *pstTCB = NULL;
     S8 *pszFilePath = NULL;
+    S8 *pszPlatCNT = NULL;
+    U32 ulPlaycnt;
 
 
     pstTCB = pArg;
     pszFilePath = pszValues[0];
+    pszPlatCNT  = pszValues[1];
     if (DOS_ADDR_INVALID(pstTCB)
         || DOS_ADDR_INVALID(pszFilePath)
         || '\0' == pszFilePath[0])
@@ -1510,7 +1513,17 @@ S32 sc_task_load_audio_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
         return DOS_FAIL;
     }
 
-    dos_snprintf(pstTCB->szAudioFileLen, sizeof(pstTCB->szAudioFileLen), "%s/%d", SC_TASK_AUDIO_PATH, pszFilePath);
+    if (DOS_ADDR_INVALID(pszPlatCNT)
+        || '\0' == pszFilePath[0]
+        || dos_atoul(pszFilePath, &ulPlaycnt) < 0)
+    {
+        DOS_ASSERT(0);
+
+        ulPlaycnt = 3;
+    }
+
+    pstTCB->ucAudioPlayCnt = (U8)ulPlaycnt;
+    dos_snprintf(pstTCB->szAudioFileLen, sizeof(pstTCB->szAudioFileLen), "%s/%u/%s", SC_TASK_AUDIO_PATH, pstTCB->ulCustomID, pszFilePath);
 
     return DOS_SUCC;
 }
@@ -1544,7 +1557,7 @@ U32 sc_task_load_audio(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT audio_id FROM tbl_calltask WHERE id = %d;", pstTCB->usTCBNo);
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT audio_id,playcnt FROM tbl_calltask WHERE id = %u;", pstTCB->ulTaskID);
 
     db_query(g_pstSCDBHandle, szSQL, sc_task_load_audio_cb, pstTCB, NULL);
 

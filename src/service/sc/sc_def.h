@@ -112,7 +112,7 @@ extern "C"{
 /* 定义运营商的ID */
 #define SC_TOP_USER_ID                 1
 
-#define SC_TASK_AUDIO_PATH             "/var/voice"
+#define SC_TASK_AUDIO_PATH             "/var/www/html/data/audio"
 
 #define SC_RECORD_FILE_PATH            "/var/record"
 
@@ -300,7 +300,8 @@ typedef enum tagTaskStatus{
 }SC_TASK_STATUS_EN;
 
 typedef enum tagTaskMode{
-    SC_TASK_MODE_KEY4AGENT           = 1,         /* 呼叫任务模式，放音，按键之后转坐席 */
+    SC_TASK_MODE_KEY4AGENT           = 0,         /* 呼叫任务模式，放音，按键之后转坐席 */
+    SC_TASK_MODE_KEY4AGENT1          = 1,         /* 呼叫任务模式，放音，按键之后转坐席 */
     SC_TASK_MODE_DIRECT4AGETN,                    /* 呼叫任务模式，接通后直接转坐席 */
     SC_TASK_MODE_AUDIO_ONLY,                      /* 呼叫任务模式，放音后结束 */
     SC_TASK_MODE_AGENT_AFTER_AUDIO,               /* 呼叫任务模式，放音后转坐席 */
