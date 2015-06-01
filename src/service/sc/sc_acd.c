@@ -423,6 +423,10 @@ U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 
     pthread_mutex_unlock(&g_mutexGroupList);
 
+    sc_logr_error(SC_ACD, "Add agent to group SUCC. Agent ID: %u, Group ID:%u"
+            , pstAgentInfo->ulSiteID
+            , ulGroupID);
+
     return DOS_SUCC;
 }
 
@@ -433,10 +437,10 @@ U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
  * 参  数:
  *         SC_ACD_AGENT_INFO_ST *pstAgentInfo, 坐席信息描述
  *         U32 ulGrpID 所属组
- * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
- * !!!!!该函数会检测所要添加的坐席所在组是否存在，但不会将坐席添加到组!!!!!!
+ * 返回值: SC_ACD_AGENT_QUEUE_NODE_ST *返回坐席队列里面的节点。编译调用函数将坐席添加到组。如果失败则返回NULL
+ * !!! 该函数只是将坐席加入管理队列，不会将坐席加入坐席对列 !!!
  **/
-U32 sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGrpID)
+SC_ACD_AGENT_INFO_ST *sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode  = NULL;
     SC_ACD_AGENT_INFO_ST         *pstAgentData       = NULL;
@@ -450,23 +454,7 @@ U32 sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGrpID)
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    /* 检测所在队列是否存在 */
-    sc_acd_hash_func4grp(ulGrpID, &ulHashVal);
-    pthread_mutex_lock(&g_mutexGroupList);
-    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGrpID, sc_acd_grp_hash_find);
-    pthread_mutex_unlock(&g_mutexGroupList);
-    if (DOS_ADDR_INVALID(pstHashNode)
-        || DOS_ADDR_INVALID(pstHashNode->pHandle))
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_error(SC_ACD, "Cannot find the group \"%u\" for the site %s.", ulGrpID, pstAgentInfo->szExtension);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
+        return NULL;
     }
 
     pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)dos_dmem_alloc(sizeof(SC_ACD_AGENT_QUEUE_NODE_ST));
@@ -475,7 +463,7 @@ U32 sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGrpID)
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
-        return DOS_FAIL;
+        return NULL;
     }
 
     pstAgentData = (SC_ACD_AGENT_INFO_ST *)dos_dmem_alloc(sizeof(SC_ACD_AGENT_INFO_ST));
@@ -484,7 +472,7 @@ U32 sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGrpID)
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
-        return DOS_FAIL;
+        return NULL;
     }
 
     pstHashNode = (HASH_NODE_S *)dos_dmem_alloc(sizeof(HASH_NODE_S));
@@ -493,7 +481,7 @@ U32 sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGrpID)
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
-        return DOS_FAIL;
+        return NULL;
     }
 
     /* 加入坐席管理hash表 */
@@ -504,7 +492,9 @@ U32 sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGrpID)
     hash_add_node(g_pstAgentList, pstHashNode, ulHashVal, NULL);
     pthread_mutex_unlock(&g_mutexAgentList);
 
-    sc_logr_debug(SC_ACD, "Load Agent. ID: %u, Customer: %u, Group1: %u, Group2: %u", pstAgentInfo->ulSiteID, pstAgentInfo->ulCustomerID, pstAgentInfo->aulGroupID[0], pstAgentInfo->aulGroupID[1]);
+    sc_logr_debug(SC_ACD, "Load Agent. ID: %u, Customer: %u, Group1: %u, Group2: %u"
+                    , pstAgentInfo->ulSiteID, pstAgentInfo->ulCustomerID
+                    , pstAgentInfo->aulGroupID[0], pstAgentInfo->aulGroupID[1]);
 
     /* 添加到队列 */
     dos_memcpy(pstAgentData, pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
@@ -512,7 +502,7 @@ U32 sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGrpID)
     pstAgentQueueNode->pstAgentInfo = pstAgentData;
 
     SC_TRACE_OUT();
-    return DOS_SUCC;
+    return pstAgentData;
 }
 
 
@@ -1255,17 +1245,22 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     S8                          *pszRecordFlag = NULL, *pszIsHeader = NULL;
     S8                          *pszTelePhone  = NULL, *pszMobile   = NULL;
     S8                          *pszSelectType = NULL;
+    SC_ACD_AGENT_INFO_ST        *pstSiteInfo = NULL;
     SC_ACD_AGENT_INFO_ST        stSiteInfo;
     U32                         ulSiteID   = 0, ulCustomID   = 0, ulGroupID  = 0;
     U32                         ulGroupID1 = 0, ulRecordFlag = 0, ulIsHeader = 0;
     U32                         ulHashIndex = 0, ulIndex = 0, ulRest = 0, ulSelectType = 0;
+    U32                         ulAgentIndex = 0;
 
-    if (DOS_ADDR_INVALID(pszData)
+    if (DOS_ADDR_INVALID(PTR)
+        || DOS_ADDR_INVALID(pszData)
         || DOS_ADDR_INVALID(pszField))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    ulAgentIndex = *(U32 *)PTR;
 
     pszSiteID = pszData[0];
     pszCustomID = pszData[1];
@@ -1456,7 +1451,32 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     }
     pthread_mutex_unlock(&g_mutexAgentList);
 
-    return sc_acd_add_agent(&stSiteInfo, ulGroupID);
+    pstSiteInfo = sc_acd_add_agent(&stSiteInfo);
+    if (DOS_ADDR_INVALID(pstSiteInfo))
+    {
+        DOS_ASSERT(0);
+        return 0;
+    }
+
+    /* 将坐席加入到组 */
+    if (ulAgentIndex != SC_INVALID_INDEX)
+    {
+        for (ulIndex=0; ulIndex<MAX_GROUP_PER_SITE; ulIndex++)
+        {
+            if (0 == stSiteInfo.aulGroupID[ulIndex] || U32_BUTT == stSiteInfo.aulGroupID[ulIndex])
+            {
+                continue;
+            }
+
+            if (sc_acd_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstSiteInfo) != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+        }
+    }
+
+    DOS_ASSERT(0);
+    return 0;
 }
 
 static U32 sc_acd_init_agent_queue(U32 ulIndex)
@@ -1505,7 +1525,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
                    , ulIndex);
     }
 
-    if (db_query(g_pstSCDBHandle, szSQL, sc_acd_init_agent_queue_cb, NULL, NULL) < 0)
+    if (db_query(g_pstSCDBHandle, szSQL, sc_acd_init_agent_queue_cb, &ulIndex, NULL) < 0)
     {
         return DOS_FAIL;
     }
