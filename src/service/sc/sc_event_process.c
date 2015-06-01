@@ -951,12 +951,13 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             pthread_mutex_unlock(&g_mutexHashSIPUserID);
             return DOS_FALSE;
         }
-
+/*
         sc_logr_info(SC_ESL, "Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
                     , pstSIPUserIDNodeNew->ulSIPID
                     , pstSIPUserIDNodeNew->ulCustomID
                     , pstSIPUserIDNodeNew->szUserID
                     , pstSIPUserIDNodeNew->szExtension);
+*/
 
         HASH_Init_Node(pstHashNode);
         pstHashNode->pHandle = pstSIPUserIDNodeNew;

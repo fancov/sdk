@@ -677,15 +677,23 @@ U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *psz
     timep = time(NULL);
     pstTime = localtime(&timep);
 
+    if (DOS_ADDR_INVALID( pszBuff)
+        || ulMaxLen <= 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
-    dos_snprintf(pszBuff, ulMaxLen, "%04d%02d%02d-%02d%02d%02d-%u-%s-%s"
+
+    dos_snprintf(pszBuff, ulMaxLen
+            , "%u/%04d%02d%02d-%02d%02d%02d/VR-%s-%s"
+            , ulCustomerID
             , pstTime->tm_year + 1900
             , pstTime->tm_mon + 1
             , pstTime->tm_mday
             , pstTime->tm_hour
             , pstTime->tm_min
             , pstTime->tm_sec
-            , ulCustomerID
             , pszCallee
             , pszCaller);
 
