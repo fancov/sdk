@@ -17,6 +17,7 @@ def get_config_path():
     
     # 获取配置文件信息
     _dict = db_config.get_db_param()
+    
     if -1 == _dict:
         file_info.print_file_info('_dict is %d' % _dict)
         return -1

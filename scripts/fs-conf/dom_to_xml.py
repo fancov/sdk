@@ -1,4 +1,4 @@
-# coding=utf-8
+﻿# coding=utf-8
 
 '''
 @author: bubble
@@ -13,7 +13,7 @@ def dom_to_xml(seqFileName, doc):
     '''
     @todo:将DOM转化为XML
     '''
-    
+
     if seqFileName.strip() == '':
         file_info.print_file_info('seqFileName is %s' % seqFileName)
         return -1
@@ -30,7 +30,9 @@ def dom_to_xml(seqFileName, doc):
         file_info.print_file_info('Catch IOException:%s' % str(err))
         return -1
     else:
-        fp.write(doc.toprettyxml(indent = ' '))
+        seqStr = doc.toprettyxml(indent = ' ')
+        fp.write(seqStr)
+        fp.flush()
         fp.close()
         return 1
     
@@ -62,3 +64,17 @@ def del_xml_head(seqFileName):
             fp.close()
             
         return 1
+
+def del_blank_line(seqFileName):
+    fp = open(seqFileName, 'r')
+    textLine = fp.readlines()
+    newTextLine = []
+    for i in range(len(textLine)):
+        if str(textLine[i]).strip() != '':
+            newTextLine.append(textLine[i])
+
+    fp.close()
+    fp = open(seqFileName, 'w')
+    fp.writelines(newTextLine)
+    fp.close()
+

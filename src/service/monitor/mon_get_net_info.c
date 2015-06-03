@@ -36,6 +36,8 @@ time_t *m_pt1 = NULL, *m_pt2 = NULL;
 MON_TRANS_DATA_S *m_pstTransFormer = NULL;
 MON_TRANS_DATA_S *m_pstTransCur = NULL;
 
+static U32 mon_net_reset_data();
+
 /**
  * 功能:为网卡数组分配内存
  * 参数集：
@@ -142,9 +144,9 @@ U32  mon_netcard_free()
     
     if(DOS_ADDR_INVALID(pastNet))
     {
-      logr_cirt("%s:Line %u:mon_netcard_free|pastNet is %p!"
-                , dos_get_filename(__FILE__), __LINE__ , pastNet);
-      return DOS_FAIL;
+        logr_cirt("%s:Line %u:mon_netcard_free|pastNet is %p!"
+                  , dos_get_filename(__FILE__), __LINE__ , pastNet);
+        return DOS_FAIL;
     }
     dos_dmem_free(pastNet);
 
@@ -178,6 +180,21 @@ U32  mon_netcard_free()
 
     return DOS_SUCC;
 } 
+
+static U32 mon_net_reset_data()
+{
+    MON_NET_CARD_PARAM_S * pastNet = g_pastNet[0];
+    if (DOS_ADDR_INVALID(pastNet))
+    {
+        logr_cirt("%s:Line %u:mon_netcard_free|pastNet is %p!"
+                , dos_get_filename(__FILE__), __LINE__ , pastNet);
+        return DOS_FAIL;
+    }
+
+    dos_memzero(pastNet, MAX_NETCARD_CNT * sizeof(MON_NET_CARD_PARAM_S));
+
+    return DOS_SUCC;
+}
 
 /** 
  * 判断原理:
@@ -347,6 +364,13 @@ U32 mon_get_netcard_data()
     S8  szIPv4Addr[32] = {0};
     S8  szBroadAddr[32] = {0};
     S8  szSubnetMask[32] = {0};
+
+    ulRet = mon_net_reset_data();
+    if (DOS_SUCC != ulRet)
+    {
+        logr_error("%s:Line %u:reset net data FAIL.", dos_get_filename(__FILE__), __LINE__);
+        return DOS_FAIL;
+    }
 
     if ((ulFd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {

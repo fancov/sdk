@@ -16,6 +16,9 @@ static S8  m_szMemInfoFile[] = "/proc/meminfo";
 extern S8  g_szMonMemInfo[MAX_BUFF_LENGTH];
 extern MON_SYS_MEM_DATA_S * g_pstMem;
 
+static U32  mon_mem_reset_data();
+
+
 /**
  * 功能:为g_pstMem分配内存
  * 参数集：
@@ -62,6 +65,20 @@ U32 mon_mem_free()
 }
 
 
+static U32  mon_mem_reset_data()
+{
+    g_pstMem->ulBuffers = 0;
+    g_pstMem->ulCached = 0;
+    g_pstMem->ulPhysicalMemFreeBytes = 0;
+    g_pstMem->ulPhysicalMemTotalBytes = 0;
+    g_pstMem->ulPhysicalMemUsageRate = 0;
+    g_pstMem->ulSwapFreeBytes = 0;
+    g_pstMem->ulSwapTotalBytes = 0;
+    g_pstMem->ulSwapUsageRate = 0;
+
+    return DOS_SUCC;
+}
+
 /** "/proc/meminfo"内容
  * MemTotal:        1688544 kB
  * MemFree:          649060 kB
@@ -97,6 +114,7 @@ U32  mon_read_mem_file()
    }
 
    fseek(fp, 0, SEEK_SET);
+   mon_mem_reset_data();
 
    while (!feof(fp))
    {
