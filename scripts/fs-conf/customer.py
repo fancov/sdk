@@ -227,7 +227,7 @@ def clean_all_customer():
     # 构造客户目录
     seqCusDir = seqFsPath + 'directory/'
     if os.path.exists(seqCusDir) is False:
-        file_info.print_file_info('All customers were cleand.')
+        file_info.print_file_info('All customers were cleand SUCC.')
         return 1
     
     # 遍历目录并删掉所有文件

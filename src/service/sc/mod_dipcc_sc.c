@@ -162,34 +162,6 @@ U32 mod_dipcc_sc_load()
 {
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start init SC.");
 
-#if INCLUDE_SERVICE_PYTHON
-    /* 全局初始化python模块 */
-    if (py_init() != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        logr_error("mod_dipcc_sc_load: Init pythonlib FAIL.");
-        return DOS_FAIL;
-    }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load xml SUCC.");
-
-    /* 全局加载freeswitch配置文件xml */
-    if (py_exec_func("customer", "generate_all_customer", "()") != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        logr_error("mod_dipcc_sc_load: load sip xml FAIL.");
-        return DOS_FAIL;
-    }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load sip xml SUCC.");
-
-    if (py_exec_func("router", "phone_route", "()") != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        logr_error("mod_dipcc_sc_load: Load gateway xml FAIL.");
-        return DOS_FAIL;
-    }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "load gateway xml SUCC.");
-#endif
-
     if (sc_init_db() != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -198,6 +170,34 @@ U32 mod_dipcc_sc_load()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init DB Handle Successfully.");
+
+#if INCLUDE_SERVICE_PYTHON
+    /* 全局初始化python模块 */
+    if (py_init() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        logr_error("mod_dipcc_sc_load: Init python LIB FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init python LIB SUCC.");
+
+    /* 全局加载freeswitch配置文件xml */
+    if (DOS_SUCC != py_exec_func("customer", "generate_all_customer", "()"))
+    {
+        DOS_ASSERT(0);
+        logr_error("mod_dipcc_sc_load: Load sip xml FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Load sip XML SUCC.");
+
+    if (DOS_SUCC != py_exec_func("router", "phone_route", "()"))
+    {
+        DOS_ASSERT(0);
+        logr_error("mod_dipcc_sc_load: Load gateway XML FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Load gateway XML SUCC.");
+#endif
 
     if (sc_httpd_init() != DOS_SUCC)
     {

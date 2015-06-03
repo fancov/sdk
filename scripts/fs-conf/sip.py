@@ -216,6 +216,11 @@ def add_sip(ulSipID):
             if -1 == lRet:
                 file_info.print_file_info('lRet is %d' % lRet)
                 return -1
+
+        lRet = dom_to_xml.del_blank_line(seqMgntFile)
+        if -1 == lRet:
+            file_info.print_file_info('Delete Blank Line FAIL,lRet is %d' % lRet)
+            return -1
     return 0
         
 def del_sip(ulSipID, seqUserID, ulCustomerID):
@@ -278,6 +283,11 @@ def del_sip(ulSipID, seqUserID, ulCustomerID):
         lRet = dom_to_xml.del_xml_head(seqMgntFile)
         if -1 == lRet:
             file_info.print_file_info('lRet is %d' % lRet)
+            return -1
+
+        lRet = dom_to_xml.del_blank_line(seqMgntFile)
+        if -1 == lRet:
+            file_info.print_file_info('Delete Blank Line FAIL,lRet is %d' % lRet)
             return -1
 
     return 1

@@ -916,6 +916,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     }
 
     pthread_mutex_lock(&g_mutexHashSIPUserID);
+    
     HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
     {
         HASH_Scan_Bucket(g_pstHashSIPUserID, ulHashIndex, pstHashNode, HASH_NODE_S *)

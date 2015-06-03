@@ -1920,7 +1920,7 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
             break;
    }
 
-   ulRet = sc_ep_esl_execute_cmd("bgapi reloadxml\r\n");
+   ulRet = sc_ep_esl_execute_cmd("api reloadxml\r\n");
    if (DOS_SUCC != ulRet)
    {
         DOS_ASSERT(0);
@@ -1953,7 +1953,8 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
-            
+
+            logr_info("Add SIP XML SUCC.");         
 #endif
             ulRet = sc_load_sip_userid(ulSipID);
             if (ulRet != DOS_SUCC)
@@ -1961,6 +1962,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
+            break;
         }
         case SC_API_CMD_ACTION_SIP_DELETE:
         {
@@ -1991,12 +1993,13 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
             break;
     }
 
-    ulRet = sc_ep_esl_execute_cmd("bgapi reloadxml\r\n");
+    ulRet = sc_ep_esl_execute_cmd("api reloadxml\r\n\r\n");
     if (DOS_SUCC != ulRet)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+    logr_info("Add sip(Index:%u) SUCC, Reload XML SUCC.", ulSipID);
 
     return DOS_SUCC;
 }
