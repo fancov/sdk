@@ -2978,6 +2978,8 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         return DOS_FAIL;
     }
 
+    pstSCB->bIsInQueue = DOS_FALSE;
+
     /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
     if (U32_BUTT == ulTaskAgentQueueID)
     {
@@ -3021,6 +3023,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
     pstSCBNew->ucLegRole = SC_CALLEE;
     pstSCBNew->bRecord = stAgentInfo.bRecord;
+    pstSCBNew->bIsAgentCall = DOS_TRUE;
     dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
     pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
     dos_strncpy(pstSCBNew->szANINum, pstSCB->szCallerNum, sizeof(pstSCBNew->szANINum));
@@ -3118,6 +3121,27 @@ proc_error:
 }
 
 /**
+ * 函数: sc_ep_call_queue_add
+ * 功能: 接通坐席时，将呼叫加入队列
+ * 参数:
+ *      SC_SCB_ST *pstSCB       : 业务控制块
+ * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
+{
+    U32 ulResult;
+
+    ulResult = sc_cwq_add_call(pstSCB, ulTaskAgentQueueID);
+    if (ulResult == DOS_SUCC)
+    {
+        pstSCB->bIsInQueue = DOS_SUCC;
+    }
+
+    return ulResult;
+}
+
+
+/**
  * 函数: U32 sc_ep_incoming_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
  * 功能: 处理由PSTN呼入到SIP测的呼叫
  * 参数:
@@ -3158,6 +3182,11 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
             goto proc_fail;
         }
 
+        sc_logr_info(SC_ESL, "Process Incoming Call, DID Number %s. Bind Type: %u, Bind ID: %u"
+                        , pstSCB->szCalleeNum
+                        , ulBindType
+                        , ulBindID);
+
         switch (ulBindType)
         {
             case SC_DID_BIND_TYPE_SIP:
@@ -3177,7 +3206,14 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 break;
 
             case SC_DID_BIND_TYPE_QUEUE:
-                sc_ep_call_agent(pstSCB, ulBindID);
+                if (sc_ep_call_queue_add(pstSCB, ulBindID) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Add Call to call waiting queue FAIL.Callee: %s. Reject Call.", pstSCB->szCalleeNum);
+                    ulErrCode = BS_TERM_INTERNAL_ERR;
+                    goto proc_fail;
+                }
                 break;
 
             default:
@@ -3403,7 +3439,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
 
         /* 直接接通坐席 */
         case SC_TASK_MODE_DIRECT4AGETN:
-            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
 
             break;
 
@@ -4269,6 +4305,20 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 sc_rp_parse_extra_data(pstEvent, pstSCB);
             }
 
+            /* 如果呼叫已经进入队列了，需要删除 */
+            if (pstSCB->bIsInQueue)
+            {
+                sc_cwq_del_call(pstSCB);
+                pstSCB->bIsInQueue = DOS_FALSE;
+            }
+
+            /* 如果是呼叫坐席的，需要做特殊处理,看看坐席是否长连什么的 */
+            if (pstSCB->bIsAgentCall)
+            {
+                sc_acd_agent_update_status(pstSCB->szCalleeNum, SC_ACD_IDEL);
+                pstSCB->bIsAgentCall = DOS_FALSE;
+            }
+
             /*
              * 1.如果有另外一条腿，有必要等待另外一条腿释放
              * 2.需要另外一条腿没有处于等待释放状态，那就等待吧
@@ -4383,11 +4433,11 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         if (SC_TASK_MODE_KEY4AGENT == ulTaskMode
             && '0' == pszDTMFDigit[0])
         {
-            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
         }
         else if(SC_TASK_MODE_KEY4AGENT1 == ulTaskMode)
         {
-            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
         }
     }
     else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
@@ -4487,7 +4537,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                         /* 放音后接通坐席 */
                         case SC_TASK_MODE_AGENT_AFTER_AUDIO:
                             /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
-                            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+                            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
                             break;
 
                         /* 这个地方出故障了 */

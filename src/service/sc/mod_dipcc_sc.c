@@ -139,7 +139,7 @@ U32 sc_init_db()
     {
         g_pstSCDBHandle->szSockPath[0] = '\0';
     }
-    
+
 
     g_pstSCDBHandle->usPort = usDBPort;
 
@@ -252,6 +252,15 @@ U32 mod_dipcc_sc_load()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init bs client Successfully.");
 
+    if (DOS_SUCC != sc_cwq_init())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init call waiting queue FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init call waiting queue SUCC.");
+
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Finished to init SC.");
 
     return DOS_SUCC;
@@ -268,14 +277,6 @@ U32 mod_dipcc_sc_runtime()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start bs client Successfully.");
 
-    if (sc_ep_start() != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start start event process task FAIL");
-        return DOS_FAIL;
-    }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start start event process task Successfully.");
 
     if (sc_dialer_start() != DOS_SUCC)
     {
@@ -285,6 +286,24 @@ U32 mod_dipcc_sc_runtime()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start dialer Successfully.");
+
+    if (sc_cwq_start() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start call waiting queue task FAIL");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start call waiting queue task SUCC.");
+
+    if (sc_ep_start() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start start event process task FAIL");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start start event process task Successfully.");
 
     if (sc_task_mngt_start() != DOS_SUCC)
     {

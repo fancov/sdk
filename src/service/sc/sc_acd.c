@@ -649,26 +649,30 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                     case SC_ACD_SITE_ACTION_ONLINE:
                         pstAgentQueueNode->pstAgentInfo->bLogin = DOS_TRUE;
                         pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_IDEL;
                         break;
                     case SC_ACD_SITE_ACTION_OFFLINE:
+                        pstAgentQueueNode->pstAgentInfo->bLogin = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_OFFLINE;
+                        break;
+                    case SC_ACD_SITE_ACTION_SIGNIN:
+                        pstAgentQueueNode->pstAgentInfo->bLogin = DOS_TRUE;
+                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_TRUE;
+                        break;
+                    case SC_ACD_SITE_ACTION_SIGNOUT:
                         pstAgentQueueNode->pstAgentInfo->bLogin = DOS_TRUE;
                         pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
                         break;
-                    case SC_ACD_SITE_ACTION_SIGNIN:
-                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_TRUE;
-                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
-                        break;
-                    case SC_ACD_SITE_ACTION_SIGNOUT:
-                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
-                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
-                        break;
                     case SC_ACD_SITE_ACTION_EN_QUEUE:
-                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_TRUE;
-                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_TRUE;
+                        pstAgentQueueNode->pstAgentInfo->bLogin = DOS_TRUE;
+                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_IDEL;
                         break;
                     case SC_ACD_SITE_ACTION_DN_QUEUE:
-                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_TRUE;
+                        pstAgentQueueNode->pstAgentInfo->bLogin = DOS_TRUE;
                         pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_AWAY;
                         break;
                     default:
                         DOS_ASSERT(0);
@@ -1031,7 +1035,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST
         }
 
         pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-        sc_logr_notice(SC_ACD, "Found an uaeable agent.(Agent %u in Group %u)"
+        sc_logr_notice(SC_ACD, "Found an useable agent.(Agent %u in Group %u)"
                         , pstAgentInfo->ulSiteID
                         , pstGroupListNode->ulGroupID);
 
@@ -1073,6 +1077,12 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST
             }
 
             if (!SC_ACD_SITE_IS_USEABLE(pstAgentQueueNode->pstAgentInfo))
+/*
+            if (DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo)
+                || pstAgentQueueNode->pstAgentInfo->bWaitingDelete
+                || !pstAgentQueueNode->pstAgentInfo->bLogin
+                || SC_ACD_IDEL != pstAgentQueueNode->pstAgentInfo->ucStatus)
+*/
             {
                 sc_logr_debug(SC_ACD, "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
                             , pstAgentQueueNode->pstAgentInfo->ulSiteID
@@ -1081,9 +1091,10 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST
             }
 
             pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-            sc_logr_notice(SC_ACD, "Found an uaeable agent.(Agent %u in Group %u)"
+            sc_logr_notice(SC_ACD, "Found an useable agent.(Agent %u in Group %u, Status: %u)"
                             , pstAgentInfo->ulSiteID
-                            , pstGroupListNode->ulGroupID);
+                            , pstGroupListNode->ulGroupID
+                            , pstAgentInfo->ucStatus);
             break;
         }
     }
@@ -1234,6 +1245,80 @@ U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID)
     return ulResult;
 }
 
+U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
+{
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode      = NULL;
+    SC_ACD_GRP_HASH_NODE_ST    *pstGroupListNode  = NULL;
+    HASH_NODE_S                *pstHashNode       = NULL;
+    DLL_NODE_S                 *pstDLLNode        = NULL;
+    U32                        ulHashVal          = 0;
+
+    if (DOS_ADDR_INVALID(pblResult))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    *pblResult = DOS_FALSE;
+
+
+    sc_acd_hash_func4grp(ulAgentGrpID, &ulHashVal);
+    pthread_mutex_lock(&g_mutexGroupList);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulAgentGrpID, sc_acd_grp_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_ACD, "Cannot fine the group with the ID \"%s\" .", ulAgentGrpID);
+        pthread_mutex_unlock(&g_mutexGroupList);
+
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+    }
+
+    pstGroupListNode = pstHashNode->pHandle;
+
+    pthread_mutex_lock(&pstGroupListNode->mutexSiteQueue);
+
+    DLL_Scan(&pstGroupListNode->stAgentList, pstDLLNode, DLL_NODE_S*)
+    {
+        if (DOS_ADDR_INVALID(pstDLLNode)
+            || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+        {
+            sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %u."
+                            , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        pstAgentNode = pstDLLNode->pHandle;
+        if (DOS_ADDR_INVALID(pstAgentNode)
+            || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+        {
+            sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %u."
+                            , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        if (SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
+        {
+            sc_logr_debug(SC_ACD, "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
+                        , pstAgentNode->pstAgentInfo->ulSiteID
+                        , pstGroupListNode->ulGroupID);
+
+            *pblResult = DOS_TRUE;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&pstGroupListNode->mutexSiteQueue);
+
+    pthread_mutex_unlock(&g_mutexGroupList);
+
+    return DOS_SUCC;
+
+}
+
 static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
@@ -1328,6 +1413,10 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.bRecord = ulRecordFlag;
     stSiteInfo.bGroupHeader = ulIsHeader;
     stSiteInfo.ucBindType = ulSelectType;
+    stSiteInfo.bLogin = DOS_FALSE;
+    stSiteInfo.bWaitingDelete = DOS_FALSE;
+    stSiteInfo.bConnected = DOS_FALSE;
+    stSiteInfo.ucProcesingTime = 0;
     pthread_mutex_init(&stSiteInfo.mutexLock, NULL);
 
     if ('\0' != pszUserID[0])

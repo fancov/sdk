@@ -261,6 +261,8 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bNeedConnSite = DOS_FALSE;         /* 接通后是否需要接通坐席 */
     pstSCB->bRecord = DOS_FALSE;
     pstSCB->bWaitingOtherRelase = DOS_FALSE;   /* 是否在等待另外一跳退释放 */
+    pstSCB->bIsAgentCall = DOS_FALSE;
+    pstSCB->bIsInQueue = DOS_FALSE;
 
     pstSCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -1522,8 +1524,8 @@ S32 sc_task_load_audio_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
     }
 
     if (DOS_ADDR_INVALID(pszPlatCNT)
-        || '\0' == pszFilePath[0]
-        || dos_atoul(pszFilePath, &ulPlaycnt) < 0)
+        || '\0' == pszPlatCNT[0]
+        || dos_atoul(pszPlatCNT, &ulPlaycnt) < 0)
     {
         DOS_ASSERT(0);
 

@@ -451,7 +451,9 @@ typedef struct tagSCSCB{
     U32       bNeedConnSite:1;                    /* 接通后是否需要接通坐席 */
     U32       bWaitingOtherRelase:1;              /* 是否在等待另外一跳退释放 */
     U32       bRecord:1;                          /* 是否录音 */
-    U32       ulRes:27;
+    U32       bIsAgentCall:1;                     /* 是否在呼叫坐席 */
+    U32       bIsInQueue:1;                       /* 是否已经入队列了 */
+    U32       ulRes:26;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -556,6 +558,15 @@ typedef struct tagTaskMngtInfo{
 }SC_TASK_MNGT_ST;
 
 
+/*****************呼叫对待队列相关********************/
+typedef struct tagCallWaitQueueNode{
+    U32                 ulAgentGrpID;                     /* 坐席组ID */
+
+    pthread_mutex_t     mutexCWQMngt;
+    DLL_S               stCallWaitingQueue;               /* 呼叫等待队列 refer to SC_SCB_ST */
+}SC_CWQ_NODE_ST;
+/***************呼叫对待队列相关结束********************/
+
 /* declare functions */
 SC_SCB_ST *sc_scb_alloc();
 VOID sc_scb_free(SC_SCB_ST *pstSCB);
@@ -646,6 +657,14 @@ U32 sc_ep_gw_grp_hash_func(U32 ulGWGrpID);
 U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID);
 U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase);
 BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum);
+U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID);
+
+
+U32 sc_cwq_init();
+U32 sc_cwq_start();
+U32 sc_cwq_stop();
+U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID);
+U32 sc_cwq_del_call(SC_SCB_ST *pstSCB);
 
 
 #ifdef __cplusplus
