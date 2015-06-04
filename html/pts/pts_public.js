@@ -807,7 +807,8 @@ function checkTime(i)
     return i;
 }
 
-function show_cover(){ 
+function show_cover()
+{ 
     var cover = document.getElementById("cover"); 
     var covershow = document.getElementById("coverShow"); 
     cover.style.display = "block"; 
@@ -1008,4 +1009,62 @@ function cancel_upgrade()
     xmlhttp.open("GET",url,true);
     xmlhttp.setRequestHeader("If-Modified-Since", "0");
     xmlhttp.send();
+}
+
+function submit_username()
+{
+    var username = document.getElementById("name").value;
+
+    var url = "/cgi-bin/set_license_username?username=" + username;
+
+    var xmlhttp = null;
+    if (window.XMLHttpRequest)
+    {
+        xmlhttp=new XMLHttpRequest();
+    }
+    else
+    {
+        xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    xmlhttp.onreadystatechange=function()
+    {
+        if (xmlhttp.readyState==4 && xmlhttp.status==200)
+        {
+            var result = xmlhttp.responseText.indexOf("succ");
+            
+            if (result >= 0)
+            {
+                alert("succ");
+            }
+            else
+            {
+                alert("fail");
+            }
+
+            location.reload();           
+        }
+    }
+    xmlhttp.open("GET",url,true);
+    xmlhttp.setRequestHeader("If-Modified-Since", "0");
+    xmlhttp.send();
+}
+
+function form_check_license()
+{
+    var filename = document.getElementById("LicenseFile").value; 
+    if (filename == "")
+    {
+        if (g_lang_type)
+        {
+            alert("请选择一个Licnese文件!");    
+        }
+        else
+        {
+            alert("Please select a Licnese file!");
+        }
+        
+        return false;
+    }
+
+    return true;
 }

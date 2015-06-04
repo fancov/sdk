@@ -20,7 +20,7 @@ extern "C"{
 #if (INCLUDE_XML_CONFIG)
 
 /* provate macro */
-#ifdef PTC_OEM_DINSTAR_IAD
+#ifdef ARM_VERSION
     #define GLB_CONFIG_FILE_PATH1 "/flash/apps/ptc/etc"
 #else
     #define GLB_CONFIG_FILE_PATH1 "/etc"
@@ -555,14 +555,40 @@ S32 config_save()
  * 参数：
  * 返回值：成功返回0.失败返回－1
  */
-U32 config_get_pts_port()
+U32 config_get_pts_port1()
 {
     S8 *pszValue;
     S8 szBuff[32] = { 0 };
     U16 usDBPort = 0;
     S32 lPort = 0;
 
-    pszValue = _config_get_param(g_pstGlobalCfg, "config/pts", "pts_port", szBuff, sizeof(szBuff));
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/pts", "pts_port1", szBuff, sizeof(szBuff));
+    if (!pszValue)
+    {
+        szBuff[0] = '\0';
+    }
+
+    usDBPort = (U16)dos_atol(szBuff, &lPort);
+    if (0 != usDBPort || usDBPort >= U16_BUTT)
+    {
+        usDBPort = DOS_PTS_SERVER_PORT;
+    }
+    else
+    {
+        usDBPort = (U16)lPort;
+    }
+
+    return usDBPort;
+}
+
+U32 config_get_pts_port2()
+{
+    S8 *pszValue;
+    S8 szBuff[32] = { 0 };
+    U16 usDBPort = 0;
+    S32 lPort = 0;
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/pts", "pts_port2", szBuff, sizeof(szBuff));
     if (!pszValue)
     {
         szBuff[0] = '\0';

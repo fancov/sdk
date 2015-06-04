@@ -41,8 +41,10 @@ pthread_cond_t  g_condPtsRecvMsgHandle      = PTHREAD_COND_INITIALIZER;         
 pthread_mutex_t g_mutexSendMsgPthreadList   = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t g_mutexStreamAddrList       = PTHREAD_MUTEX_INITIALIZER;
 PTS_SERV_SOCKET_ST g_lPtsServSocket[PTS_WEB_SERVER_MAX_SIZE];
+S32 g_alUdpSocket[PTS_UDP_LISTEN_PORT_COUNT] = {0};
 
 extern S32 pts_create_udp_socket(U16 usUdpPort, U32 ulSocketCache);
+extern U32 dos_get_default_limitation(U32 ulModIndex, U32 * pulLimitation);
 
 S8 *pts_get_current_time()
 {
@@ -68,6 +70,195 @@ S32 pts_get_sn_by_id(S8 *szID, S8 *szSN, S32 lLen)
         return DOS_FAIL;
     }
 
+}
+
+S32 pts_printf_recv_cache_msg(U32 ulIndex, S32 argc, S8 **argv)
+{
+    S32             i           = 0;
+    U32             ulLen       = 0;
+    S8              szBuff[PT_DATA_BUFF_512]     = {0};
+    list_t          *pstPtcNode     = NULL;
+    list_t          *pstPtcHead     = NULL;
+    list_t          *pstStreamHead  = NULL;
+    list_t          *pstStreamNode  = NULL;
+    PT_CC_CB_ST     *pstPtcCB       = NULL;
+    PT_STREAM_CB_ST *pstStreamCB    = NULL;
+
+    ulLen = snprintf(szBuff, sizeof(szBuff), "\r\n%-20s%-15s%-10s%-10s%-10s\r\n", "SN", "StreamID", "CurrSeq", "MaxSeq", "ConfirmSeq");
+    cli_out_string(ulIndex, szBuff);
+
+    pthread_mutex_lock(&g_mutexPtcRecvList);
+
+    pstPtcHead = &g_stPtcListRecv;
+    pstPtcNode = pstPtcHead;
+
+    while (1)
+    {
+        pstPtcNode = dos_list_work(pstPtcHead, pstPtcNode);
+        if (DOS_ADDR_INVALID(pstPtcNode))
+        {
+            break;
+        }
+
+        pstPtcCB = dos_list_entry(pstPtcNode, PT_CC_CB_ST, stCCListNode);
+        snprintf(szBuff, sizeof(szBuff), "%.16s----------------------------\r\n", pstPtcCB->aucID);
+        cli_out_string(ulIndex, szBuff);
+        pthread_mutex_lock(&pstPtcCB->pthreadMutex);
+        for (i=0; i<PT_DATA_BUTT; i++)
+        {
+            pstStreamHead = &pstPtcCB->astDataTypes[i].stStreamQueHead;
+            pstStreamNode = pstStreamHead;
+            while (1)
+            {
+                pstStreamNode = dos_list_work(pstStreamHead, pstStreamNode);
+                if (DOS_ADDR_INVALID(pstStreamNode))
+                {
+                    break;
+                }
+
+                pstStreamCB = dos_list_entry(pstStreamNode, PT_STREAM_CB_ST, stStreamListNode);
+
+                snprintf(szBuff, sizeof(szBuff), "%.16s%11d%10d%10d%10d\r\n", pstPtcCB->aucID, pstStreamCB->ulStreamID, pstStreamCB->lCurrSeq, pstStreamCB->lMaxSeq, pstStreamCB->lConfirmSeq);
+                cli_out_string(ulIndex, szBuff);
+            }
+        }
+
+        pthread_mutex_unlock(&pstPtcCB->pthreadMutex);
+
+    }
+
+    pthread_mutex_unlock(&g_mutexPtcRecvList);
+
+
+    return 0;
+}
+
+S32 pts_printf_send_cache_msg(U32 ulIndex, S32 argc, S8 **argv)
+{
+    S32             i           = 0;
+    U32             ulLen       = 0;
+    S8              szBuff[PT_DATA_BUFF_512]     = {0};
+    list_t          *pstPtcNode     = NULL;
+    list_t          *pstPtcHead     = NULL;
+    list_t          *pstStreamHead  = NULL;
+    list_t          *pstStreamNode  = NULL;
+    PT_CC_CB_ST     *pstPtcCB       = NULL;
+    PT_STREAM_CB_ST *pstStreamCB    = NULL;
+
+    ulLen = snprintf(szBuff, sizeof(szBuff), "\r\n%-20s%-15s%-10s%-10s%-10s\r\n", "SN", "StreamID", "CurrSeq", "MaxSeq", "ConfirmSeq");
+    cli_out_string(ulIndex, szBuff);
+
+    pthread_mutex_lock(&g_mutexPtcSendList);
+
+    pstPtcHead = &g_stPtcListSend;
+    pstPtcNode = pstPtcHead;
+
+    while (1)
+    {
+        pstPtcNode = dos_list_work(pstPtcHead, pstPtcNode);
+        if (DOS_ADDR_INVALID(pstPtcNode))
+        {
+            break;
+        }
+
+        pstPtcCB = dos_list_entry(pstPtcNode, PT_CC_CB_ST, stCCListNode);
+        snprintf(szBuff, sizeof(szBuff), "%.16s----------------------------\r\n", pstPtcCB->aucID);
+        cli_out_string(ulIndex, szBuff);
+        pthread_mutex_lock(&pstPtcCB->pthreadMutex);
+        for (i=0; i<PT_DATA_BUTT; i++)
+        {
+            pstStreamHead = &pstPtcCB->astDataTypes[i].stStreamQueHead;
+            pstStreamNode = pstStreamHead;
+            while (1)
+            {
+                pstStreamNode = dos_list_work(pstStreamHead, pstStreamNode);
+                if (DOS_ADDR_INVALID(pstStreamNode))
+                {
+                    break;
+                }
+
+                pstStreamCB = dos_list_entry(pstStreamNode, PT_STREAM_CB_ST, stStreamListNode);
+
+                snprintf(szBuff, sizeof(szBuff), "%.16s%11d%10d%10d%10d\r\n", pstPtcCB->aucID, pstStreamCB->ulStreamID, pstStreamCB->lCurrSeq, pstStreamCB->lMaxSeq, pstStreamCB->lConfirmSeq);
+                cli_out_string(ulIndex, szBuff);
+            }
+        }
+
+        pthread_mutex_unlock(&pstPtcCB->pthreadMutex);
+
+    }
+
+    pthread_mutex_unlock(&g_mutexPtcSendList);
+
+    return 0;
+}
+
+S32 pts_trace_debug_ptc(U32 ulIndex, S32 argc, S8 **argv)
+{
+    if (argc != 3)
+    {
+        cli_out_string(ulIndex, "Usage : ptsd trace [ID] [on|off].\r\n");
+
+        return 0;
+    }
+
+    list_t          *pstPtcNode     = NULL;
+    list_t          *pstPtcHead     = NULL;
+    PT_CC_CB_ST     *pstPtcCB       = NULL;
+    BOOL            bIsOn           = DOS_FALSE;
+
+    if (dos_strcmp(argv[2], "on") == 0)
+    {
+        bIsOn = DOS_TRUE;
+    }
+
+    pthread_mutex_lock(&g_mutexPtcRecvList);
+
+    pstPtcHead = &g_stPtcListRecv;
+    pstPtcNode = pstPtcHead;
+
+    while (1)
+    {
+        pstPtcNode = dos_list_work(pstPtcHead, pstPtcNode);
+        if (DOS_ADDR_INVALID(pstPtcNode))
+        {
+            break;
+        }
+
+        pstPtcCB = dos_list_entry(pstPtcNode, PT_CC_CB_ST, stCCListNode);
+        if (dos_memcmp(pstPtcCB->aucID, argv[1], PTC_ID_LEN) == 0)
+        {
+            pstPtcCB->bIsTrace = bIsOn;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexPtcRecvList);
+
+    pthread_mutex_lock(&g_mutexPtcSendList);
+
+    pstPtcHead = &g_stPtcListRecv;
+    pstPtcNode = pstPtcHead;
+
+    while (1)
+    {
+        pstPtcNode = dos_list_work(pstPtcHead, pstPtcNode);
+        if (DOS_ADDR_INVALID(pstPtcNode))
+        {
+            break;
+        }
+
+        pstPtcCB = dos_list_entry(pstPtcNode, PT_CC_CB_ST, stCCListNode);
+        if (dos_memcmp(pstPtcCB->aucID, argv[1], PTC_ID_LEN) == 0)
+        {
+            pstPtcCB->bIsTrace = bIsOn;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexPtcSendList);
+
+    return 0;
 }
 
 /* 根据streamID查找地址 */
@@ -107,7 +298,7 @@ void pts_delete_stream_addr_node(U32 ulStreamID)
     pthread_mutex_unlock(&g_mutexStreamAddrList);
 }
 
-U32 pts_recvfrom_ptc_buff_list_insert(list_t *pstHead, U8 *szBUff, U32 ulBuffLen, struct sockaddr_in stClientAddr)
+U32 pts_recvfrom_ptc_buff_list_insert(list_t *pstHead, U8 *szBUff, U32 ulBuffLen, U32 ulIndex, struct sockaddr_in stClientAddr)
 {
     if (DOS_ADDR_INVALID(szBUff) || DOS_ADDR_INVALID(pstHead))
     {
@@ -123,92 +314,12 @@ U32 pts_recvfrom_ptc_buff_list_insert(list_t *pstHead, U8 *szBUff, U32 ulBuffLen
 
     pstNewNode->paRecvBuff = szBUff;
     pstNewNode->ulRecvLen = ulBuffLen;
+    pstNewNode->ulIndex = ulIndex;
     pstNewNode->stClientAddr = stClientAddr;
 
     dos_list_add_tail(pstHead, &(pstNewNode->stList));
 
     return DOS_SUCC;
-}
-
-/**
- * 函数：S32 pts_printf_recv_msg(U32 ulIndex, S32 argc, S8 **argv)
- * 功能：
- *      1.打印接收缓存控制块的信息
- * 参数
- * 返回值：
- */
-S32 pts_printf_recv_msg(U32 ulIndex, S32 argc, S8 **argv)
-{
-    #if 0
-    S32 i = 0;
-    U32 ulLen = 0;
-    S32 lResult = 0;
-    S8 szBuff[PT_DATA_BUFF_512] = {0};
-    S8 szSN[PT_DATA_BUFF_64] = {0};
-    PT_CC_CB_ST *pstPtcSendNode = NULL;
-    list_t *pstStreamQueHead = NULL;
-    list_t *pstStreamQueNode = NULL;
-    PT_STREAM_CB_ST *pstStreamNode = NULL;
-
-    if (argc != 2)
-    {
-        cli_out_string(ulIndex, "Usage : ptsd recv [ID|SN].\r\n");
-
-        return 0;
-    }
-
-    if (pts_is_ptc_sn(argv[1]))
-    {
-        dos_strncpy(szSN, argv[1], PT_DATA_BUFF_64);
-    }
-    else if (pts_is_int(argv[1]))
-    {
-        lResult = pts_get_sn_by_id(argv[1], szSN, PT_DATA_BUFF_64);
-        if (lResult != DOS_SUCC)
-        {
-            cli_out_string(ulIndex, "Get SN fail by ID\r\n");
-
-            return 0;
-        }
-    }
-    else
-    {
-        cli_out_string(ulIndex, "Usage : ptsd recv [ID|SN].\r\n");
-
-        return 0;
-    }
-
-    pstPtcSendNode = pt_ptc_list_search(g_pstPtcListRecv, szSN);
-    if (NULL == pstPtcSendNode)
-    {
-        cli_out_string(ulIndex, "Can not find ptc node\r\n");
-
-        return 0;
-    }
-
-    ulLen = snprintf(szBuff, sizeof(szBuff), "\r\n%20s%10s%10s%10s\r\n", "aucID", "type", "ulStreamID");
-    cli_out_string(ulIndex, szBuff);
-
-    for (i=0; i<PT_DATA_BUTT; i++)
-    {
-        pstStreamQueHead = pstPtcSendNode->astDataTypes[i].pstStreamQueHead;
-        if (pstStreamQueHead != NULL)
-        {
-            pstStreamQueNode = pstStreamQueHead;
-            while (pstStreamQueNode->next != pstStreamQueHead)
-            {
-                pstStreamNode = (PT_STREAM_CB_ST *)pstStreamQueNode;
-                snprintf(szBuff, sizeof(szBuff), "%.16s%10d%10d%10d\r\n", g_astCmdClient[i].aucID, g_astCmdClient[i].ulStreamID, g_astCmdClient[i].lSocket, g_astCmdClient[i].bIsValid);
-                cli_out_string(ulIndex, szBuff);
-
-                pstStreamQueNode = pstStreamQueNode->next;
-            }
-
-        }
-    }
-
-#endif
-    return 0;
 }
 
 /**
@@ -324,13 +435,12 @@ VOID pts_data_lose(PT_MSG_TAG *pstMsgDes, S32 lLoseSeq)
     PT_CMD_EN enCmdValue = PT_CMD_RESEND;
     pstMsgDes->lSeq = lLoseSeq;
 
-    pt_logr_info("send lose data : stream = %d, seq = %d", pstMsgDes->ulStreamID, lLoseSeq);
     printf("send lose data : stream = %d, seq = %d\n", pstMsgDes->ulStreamID, lLoseSeq);
+    pt_logr_info("send lose data : stream = %d, seq = %d", pstMsgDes->ulStreamID, lLoseSeq);
     pthread_mutex_lock(&g_mutexPtsSendPthread);
     pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend);
     pthread_cond_signal(&g_condPtsSend);
     pthread_mutex_unlock(&g_mutexPtsSendPthread);
-
 }
 
 /**
@@ -367,7 +477,6 @@ VOID pts_send_lost_data_req(U64 ulLoseMsg)
     {
         /* 3秒后，未收到包。关闭定时器、sockfd */
         pt_logr_error("stream resend fail, close。stream is %d", pstStreamNode->ulStreamID);
-        printf("stream resend fail, close。stream is %d\n", pstStreamNode->ulStreamID);
         dos_tmr_stop(&pstStreamNode->hTmrHandle);
         pstStreamNode->hTmrHandle= NULL;
         pthread_mutex_unlock(pPthreadMutex);
@@ -376,7 +485,7 @@ VOID pts_send_lost_data_req(U64 ulLoseMsg)
         pts_delete_recv_stream_node(&pstLoseMsg->stMsg);
         pthread_mutex_lock(&g_mutexPtcSendList);
         pstPtcSendNode = pt_ptc_list_search(&g_stPtcListSend, pstLoseMsg->stMsg.aucID);
-        if (NULL != pstPtcSendNode)
+        if (DOS_ADDR_VALID(pstPtcSendNode))
         {
             pts_send_exit_notify_to_ptc(&pstLoseMsg->stMsg, pstPtcSendNode);
         }
@@ -416,7 +525,6 @@ VOID pts_send_lost_data_req(U64 ulLoseMsg)
     {
         if (DOS_ADDR_VALID(pstStreamNode->hTmrHandle))
         {
-            printf("!!!%p\n", pstStreamNode->hTmrHandle);
             dos_tmr_stop(&pstStreamNode->hTmrHandle);
             pstStreamNode->hTmrHandle = NULL;
         }
@@ -467,20 +575,16 @@ VOID pts_send_confirm_msg(PT_MSG_TAG *pstMsgDes, U32 lConfirmSeq)
  */
 VOID pts_send_login_verify(PT_MSG_TAG *pstMsgDes)
 {
-    if (NULL == pstMsgDes)
-    {
-        pt_logr_debug("arg error");
-        return;
-    }
+    PT_MSG_TAG stMsgDes;
+
+    stMsgDes.enDataType = PT_DATA_CTRL;
+    stMsgDes.ulStreamID = PT_CTRL_LOGIN_RSP;
+    stMsgDes.lSeq = 0;
 
     BOOL bIsResend = DOS_FALSE;
     PT_CMD_EN enCmdValue = PT_CMD_NORMAL;
     pthread_mutex_lock(&g_mutexPtsSendPthread);
-    //if (NULL == pt_need_send_node_list_search(&g_stPtsNendSendNode, pstMsgDes->ulStreamID))
-    //{
-    pstMsgDes->ulStreamID = PT_CTRL_LOGIN_RSP;
-    pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend);
-    //}
+    pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, &stMsgDes, enCmdValue, bIsResend);
     pthread_cond_signal(&g_condPtsSend);
     pthread_mutex_unlock(&g_mutexPtsSendPthread);
 
@@ -647,11 +751,11 @@ S32 pts_save_ctrl_msg_into_send_cache(U8 *pcIpccId, U32 ulStreamID, PT_DATA_TYPE
 
     pstStreamListHead = &pstPtcNode->astDataTypes[enDataType].stStreamQueHead;
     pstStreamNode = pt_stream_queue_search(pstStreamListHead, ulStreamID);
-    if (NULL == pstStreamNode)
+    if (DOS_ADDR_INVALID(pstStreamNode))
     {
         /* 创建stream node */
         pstStreamNode = pt_stream_node_create(ulStreamID);
-        if (NULL == pstStreamNode)
+        if (DOS_ADDR_INVALID(pstStreamNode))
         {
             /* stream node创建失败 */
             pt_logr_info("pts_save_into_send_cache : create stream node fail");
@@ -659,7 +763,7 @@ S32 pts_save_ctrl_msg_into_send_cache(U8 *pcIpccId, U32 ulStreamID, PT_DATA_TYPE
 
             return PT_SAVE_DATA_FAIL;
         }
-        if (szDestIp != NULL)
+        if (DOS_ADDR_VALID(szDestIp))
         {
             pstStreamNode->usServPort = usDestPort;
             inet_pton(AF_INET, szDestIp, (VOID *)(pstStreamNode->aulServIp));
@@ -670,11 +774,11 @@ S32 pts_save_ctrl_msg_into_send_cache(U8 *pcIpccId, U32 ulStreamID, PT_DATA_TYPE
 
 
     pstDataQueue = pstStreamNode->unDataQueHead.pstDataTcp;
-    if (NULL == pstDataQueue)
+    if (DOS_ADDR_INVALID(pstDataQueue))
     {
         /* 创建tcp data queue */
         pstDataQueue = pt_data_tcp_queue_create(PT_DATA_RECV_CACHE_SIZE);
-        if (NULL == pstDataQueue)
+        if (DOS_ADDR_INVALID(pstDataQueue))
         {
             /* 创建data queue失败*/
             pt_logr_info("pts_save_into_send_cache : create data queue fail");
@@ -687,10 +791,11 @@ S32 pts_save_ctrl_msg_into_send_cache(U8 *pcIpccId, U32 ulStreamID, PT_DATA_TYPE
     }
 
     /*将数据插入到data queue中*/
-    lResult = pt_send_data_tcp_queue_insert(pstStreamNode, acSendBuf, lDataLen, PT_DATA_SEND_CACHE_SIZE);
+    lResult = pt_send_data_tcp_queue_insert(pstStreamNode, acSendBuf, lDataLen, PT_DATA_SEND_CACHE_SIZE, pstPtcNode->bIsTrace);
     if (lResult < 0)
     {
         pt_logr_info("pts_save_into_send_cache : add data into send cache fail");
+        pts_trace(pstPtcNode->bIsTrace, LOG_LEVEL_DEBUG, "pts_save_into_send_cache : add data into send cache fail");
         pthread_mutex_unlock(&pstPtcNode->pthreadMutex);
 
         return PT_SAVE_DATA_FAIL;
@@ -791,7 +896,7 @@ S32 pts_save_msg_into_send_cache(U8 *pcIpccId, U32 ulStreamID, PT_DATA_TYPE_EN e
                 return PT_SAVE_DATA_FAIL;
             }
 
-            if (szDestIp != NULL)
+            if (DOS_ADDR_VALID(szDestIp))
             {
                 pstStreamNode->usServPort = usDestPort;
                 inet_pton(AF_INET, szDestIp, (VOID *)(pstStreamNode->aulServIp));
@@ -823,7 +928,7 @@ S32 pts_save_msg_into_send_cache(U8 *pcIpccId, U32 ulStreamID, PT_DATA_TYPE_EN e
     }
 
     /*将数据插入到data queue中*/
-    lResult = pt_send_data_tcp_queue_insert(pstStreamNode, acSendBuf, lDataLen, PT_DATA_SEND_CACHE_SIZE);
+    lResult = pt_send_data_tcp_queue_insert(pstStreamNode, acSendBuf, lDataLen, PT_DATA_SEND_CACHE_SIZE, pstPtcNode->bIsTrace);
     if (lResult < 0)
     {
         pt_logr_info("pts_save_into_send_cache : add data into send cache fail");
@@ -891,7 +996,7 @@ S32 pts_save_into_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen)
     {
         pthread_mutex_lock(&g_mutexPtcRecvList);
         pstPtcNode = pt_ptc_list_search(&g_stPtcListRecv, pstMsgDes->aucID);
-        if(NULL == pstPtcNode)
+        if(DOS_ADDR_INVALID(pstPtcNode))
         {
             pt_logr_info("pts_recv_msg_from_ptc : not found ipcc");
             pthread_mutex_unlock(&g_mutexPtcRecvList);
@@ -960,10 +1065,14 @@ S32 pts_save_into_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen)
     lResult = pt_recv_data_tcp_queue_insert(pstStreamNode, pstMsgDes, acRecvBuf, lDataLen, PT_DATA_RECV_CACHE_SIZE);
     if (lResult < 0)
     {
-        pt_logr_info("pts_save_into_recv_cache : add data into recv cache fail");
+        pts_trace(pstPtcNode->bIsTrace, LOG_LEVEL_DEBUG, "pts_save_into_recv_cache : add data into recv cache fail");
         pthread_mutex_unlock(&pstPtcNode->pthreadMutex);
 
         return PT_SAVE_DATA_FAIL;
+    }
+    else
+    {
+        pts_trace(pstPtcNode->bIsTrace, LOG_LEVEL_DEBUG, "pts_save_into_recv_cache : add data into recv cache succ");
     }
 
     /* 每64个，检查是否接收完成 */
@@ -982,7 +1091,7 @@ S32 pts_save_into_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen)
         if (i == PT_CONFIRM_RECV_MSG_SIZE)
         {
             /* 发送确认接收消息 */
-            pt_logr_info("send make sure msg : %d", pstStreamNode->lConfirmSeq + PT_CONFIRM_RECV_MSG_SIZE);
+            pts_trace(pstPtcNode->bIsTrace, LOG_LEVEL_DEBUG, "send make sure msg : %d", pstStreamNode->lConfirmSeq + PT_CONFIRM_RECV_MSG_SIZE);
             pts_send_confirm_msg(pstMsgDes, pstStreamNode->lConfirmSeq + PT_CONFIRM_RECV_MSG_SIZE);
             pstStreamNode->lConfirmSeq = pstStreamNode->lConfirmSeq + PT_CONFIRM_RECV_MSG_SIZE;
         }
@@ -1050,7 +1159,7 @@ S32 pts_save_into_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen)
         pstStreamNode->ulCountResend = 0;
         pthread_mutex_unlock(&pstPtcNode->pthreadMutex);
 
-        pt_logr_info("create timer, %d streamID : %d", __LINE__, pstMsgDes->ulStreamID);
+        pt_logr_info("create lost data timer, %d streamID : %d", __LINE__, pstMsgDes->ulStreamID);
         pts_send_lost_data_req((U64)pstStreamNode->pstLostParam);
         lResult = dos_tmr_start(&pstStreamNode->hTmrHandle, PT_SEND_LOSE_DATA_TIMER, pts_send_lost_data_req, (U64)pstStreamNode->pstLostParam, TIMER_NORMAL_LOOP);
         if (PT_SAVE_DATA_FAIL == lResult)
@@ -1059,7 +1168,6 @@ S32 pts_save_into_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen)
 
             return PT_SAVE_DATA_FAIL;
         }
-
     }
     else
     {
@@ -1128,9 +1236,9 @@ VOID pts_handle_logout_req(PT_MSG_TAG *pstMsgDes)
  *
  * 返回值：
  */
-VOID pts_handle_login_req(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr, S8 *szPtcVersion)
+VOID pts_handle_login_req(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr, S8 *szPtcVersion, U32 ulIndex)
 {
-    if (NULL == pstMsgDes)
+    if (DOS_ADDR_INVALID(pstMsgDes) || ulIndex >= PTS_UDP_LISTEN_PORT_COUNT)
     {
         return;
     }
@@ -1151,19 +1259,19 @@ VOID pts_handle_login_req(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr_in
     pstPtcNode = pt_ptc_list_search(&g_stPtcListSend, pstMsgDes->aucID);
     if(DOS_ADDR_INVALID(pstPtcNode))
     {
-        pstPtcNode = pt_ptc_node_create(pstMsgDes->aucID, szPtcVersion, stClientAddr);
+        pstPtcNode = pt_ptc_node_create(pstMsgDes->aucID, szPtcVersion, stClientAddr, ulIndex);
         if (NULL == pstPtcNode)
         {
             pt_logr_debug("create ptc node fail");
             return;
         }
         pt_ptc_list_insert(&g_stPtcListSend, pstPtcNode);
-
     }
     else
     {
         /* 清空ptc资源 */
         pt_delete_ptc_resource(pstPtcNode);
+        pstPtcNode->ulIndex = ulIndex;
         pstPtcNode->stDestAddr = stClientAddr;
     }
     pthread_mutex_unlock(&g_mutexPtcSendList);
@@ -1187,19 +1295,17 @@ VOID pts_handle_login_req(S32 lSockfd, PT_MSG_TAG *pstMsgDes, struct sockaddr_in
  *
  * 返回值：
  */
-VOID pts_send_hb_rsp(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr)
+VOID pts_send_hb_rsp(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr, U32 ulIndex)
 {
-    if (NULL == pstMsgDes)
+    if (DOS_ADDR_INVALID(pstMsgDes))
     {
         return;
     }
 
-    PT_CTRL_DATA_ST stLoginRes;
     S8 szBuff[PT_SEND_DATA_SIZE] = {0};
     PT_MSG_TAG stMsgDes;
     S32 lResult = 0;
 
-    stLoginRes.enCtrlType = PT_CTRL_HB_RSP;
     stMsgDes.enDataType = PT_DATA_CTRL;
     dos_memcpy(stMsgDes.aucID, pstMsgDes->aucID, PTC_ID_LEN);
     stMsgDes.ulStreamID = dos_htonl(PT_CTRL_HB_RSP);
@@ -1210,16 +1316,15 @@ VOID pts_send_hb_rsp(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr)
     stMsgDes.bIsCompress = DOS_FALSE;
 
     dos_memcpy(szBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
-    dos_memcpy(szBuff+sizeof(PT_MSG_TAG), (VOID *)&stLoginRes, sizeof(PT_CTRL_DATA_ST));
 
-    if (g_ulUdpSocket > 0)
+    if (g_alUdpSocket[ulIndex] > 0)
     {
-        lResult = sendto(g_ulUdpSocket, szBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&stClientAddr, sizeof(stClientAddr));
+        lResult = sendto(g_alUdpSocket[ulIndex], szBuff, sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&stClientAddr, sizeof(stClientAddr));
         if (lResult < 0)
         {
-            close(g_ulUdpSocket);
-            g_ulUdpSocket = -1;
-            g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+            close(g_alUdpSocket[ulIndex]);
+            g_alUdpSocket[ulIndex] = -1;
+            g_alUdpSocket[ulIndex] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[ulIndex], PTS_SOCKET_CACHE);
         }
         pt_logr_debug("send hb response to ptc : %.16s", pstMsgDes->aucID);
     }
@@ -1228,7 +1333,7 @@ VOID pts_send_hb_rsp(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr)
 
 VOID pts_send_exit_notify_to_ptc(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcSendNode)
 {
-    if (NULL == pstPtcSendNode)
+    if (DOS_ADDR_INVALID(pstPtcSendNode))
     {
         return;
     }
@@ -1236,6 +1341,11 @@ VOID pts_send_exit_notify_to_ptc(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcSendN
     PT_MSG_TAG stMsgDes;
     S8 szBuff[PT_DATA_BUFF_512] = {0};
     S32 lResult = 0;
+    U32 ulIndex = pstPtcSendNode->ulIndex;
+    if (ulIndex >= PTS_UDP_LISTEN_PORT_COUNT)
+    {
+        return;
+    }
 
     stMsgDes.enDataType = pstMsgDes->enDataType;
     dos_memcpy(stMsgDes.aucID, pstPtcSendNode->aucID, PTC_ID_LEN);
@@ -1247,22 +1357,22 @@ VOID pts_send_exit_notify_to_ptc(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcSendN
     stMsgDes.bIsCompress = DOS_FALSE;
 
     dos_memcpy(szBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
-    if (g_ulUdpSocket > 0)
+    if (g_alUdpSocket[ulIndex] > 0)
     {
-        lResult = sendto(g_ulUdpSocket, szBuff, sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcSendNode->stDestAddr, sizeof(pstPtcSendNode->stDestAddr));
+        lResult = sendto(g_alUdpSocket[ulIndex], szBuff, sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcSendNode->stDestAddr, sizeof(pstPtcSendNode->stDestAddr));
         if (lResult < 0)
         {
-            close(g_ulUdpSocket);
-            g_ulUdpSocket = -1;
-            g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+            close(g_alUdpSocket[ulIndex]);
+            g_alUdpSocket[ulIndex] = -1;
+            g_alUdpSocket[ulIndex] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[ulIndex], PTS_SOCKET_CACHE);
         }
     }
     return;
 }
 
-VOID pts_send_login_res2ptc(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr, BOOL bLoginRes)
+VOID pts_send_login_res2ptc(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAddr, U32 ulIndex, PT_PTC_LOGIN_RESULT enLoginResult)
 {
-    if (NULL == pstMsgDes)
+    if (DOS_ADDR_INVALID(pstMsgDes) || ulIndex >= PTS_UDP_LISTEN_PORT_COUNT)
     {
         return;
     }
@@ -1273,7 +1383,7 @@ VOID pts_send_login_res2ptc(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAd
     S32 lResult = 0;
 
     stLoginRes.enCtrlType = PT_CTRL_LOGIN_ACK;
-    stLoginRes.ucLoginRes = bLoginRes;
+    stLoginRes.ucLoginRes = enLoginResult;
 
     stMsgDes.enDataType = PT_DATA_CTRL;
     dos_memcpy(stMsgDes.aucID, pstMsgDes->aucID, PTC_ID_LEN);
@@ -1287,14 +1397,14 @@ VOID pts_send_login_res2ptc(PT_MSG_TAG *pstMsgDes, struct sockaddr_in stClientAd
     dos_memcpy(szBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
     dos_memcpy(szBuff+sizeof(PT_MSG_TAG), (VOID *)&stLoginRes, sizeof(PT_CTRL_DATA_ST));
 
-    if (g_ulUdpSocket > 0)
+    if (g_alUdpSocket[ulIndex] > 0)
     {
-        lResult = sendto(g_ulUdpSocket, szBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&stClientAddr, sizeof(stClientAddr));
+        lResult = sendto(g_alUdpSocket[ulIndex], szBuff, sizeof(PT_CTRL_DATA_ST) + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&stClientAddr, sizeof(stClientAddr));
         if (lResult < 0)
         {
-            close(g_ulUdpSocket);
-            g_ulUdpSocket = -1;
-            g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+            close(g_alUdpSocket[ulIndex]);
+            g_alUdpSocket[ulIndex] = -1;
+            g_alUdpSocket[ulIndex] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[ulIndex], PTS_SOCKET_CACHE);
         }
     }
 
@@ -1360,9 +1470,9 @@ VOID pts_hd_timeout_callback(U64 param)
     }
 }
 
-S32 pts_create_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *szPtcVersion, struct sockaddr_in stClientAddr)
+S32 pts_create_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *szPtcVersion, struct sockaddr_in stClientAddr, U32 ulIndex)
 {
-    if (NULL == pstMsgDes)
+    if (DOS_ADDR_INVALID(pstMsgDes) || ulIndex >= PTS_UDP_LISTEN_PORT_COUNT)
     {
         return DOS_FAIL;
     }
@@ -1375,7 +1485,7 @@ S32 pts_create_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *szPtcVersion, struct sockad
     pstPtcNode = pt_ptc_list_search(&g_stPtcListRecv, pstMsgDes->aucID);
     if(NULL == pstPtcNode)
     {
-        pstPtcNode = pt_ptc_node_create(pstMsgDes->aucID, szPtcVersion, stClientAddr);
+        pstPtcNode = pt_ptc_node_create(pstMsgDes->aucID, szPtcVersion, stClientAddr, ulIndex);
         if (NULL == pstPtcNode)
         {
             pt_logr_info("pts_login_verify : create ptc node fail");
@@ -1510,6 +1620,12 @@ VOID pts_send_exit_notify2ptc(PT_CC_CB_ST *pstPtcNode, PT_NEND_RECV_NODE_ST *pst
 
     PT_MSG_TAG stMsgDes;
     S32 lResult = 0;
+    U32 ulIndex = pstPtcNode->ulIndex;
+
+    if (ulIndex >= PTS_UDP_LISTEN_PORT_COUNT)
+    {
+        return;
+    }
 
     stMsgDes.enDataType = pstNeedRecvNode->enDataType;
     dos_memcpy(stMsgDes.aucID, pstNeedRecvNode->aucID, PTC_ID_LEN);
@@ -1520,14 +1636,14 @@ VOID pts_send_exit_notify2ptc(PT_CC_CB_ST *pstPtcNode, PT_NEND_RECV_NODE_ST *pst
     stMsgDes.bIsEncrypt = DOS_FALSE;
     stMsgDes.bIsCompress = DOS_FALSE;
 
-    if (g_ulUdpSocket > 0)
+    if (g_alUdpSocket[ulIndex] > 0)
     {
-        lResult = sendto(g_ulUdpSocket, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG), 0,  (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+        lResult = sendto(g_alUdpSocket[ulIndex], (VOID *)&stMsgDes, sizeof(PT_MSG_TAG), 0,  (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
         if (lResult < 0)
         {
-            close(g_ulUdpSocket);
-            g_ulUdpSocket = -1;
-            g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+            close(g_alUdpSocket[ulIndex]);
+            g_alUdpSocket[ulIndex] = -1;
+            g_alUdpSocket[ulIndex] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[ulIndex], PTS_SOCKET_CACHE);
         }
     }
 }
@@ -1582,9 +1698,9 @@ S32 g2u(S8 *inbuf, size_t inlen, char *outbuf, size_t outlen)
  *
  * 返回值：
  */
-VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr, S32 lDataLen)
+VOID pts_ctrl_msg_handle(S8 *pData, struct sockaddr_in stClientAddr, S32 lDataLen, U32 ulIndex)
 {
-    if (NULL == pData)
+    if (DOS_ADDR_INVALID(pData))
     {
         return;
     }
@@ -1625,11 +1741,10 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
 
     dos_memcpy(szID, pstMsgDes->aucID, PTC_ID_LEN);
     szID[PTC_ID_LEN] = '\0';
-    switch (pstMsgDes->ulStreamID) //pstCtrlData->enCtrlType
+    switch (pstMsgDes->ulStreamID)
     {
     case PT_CTRL_LOGIN_REQ:
         /* 登陆请求 */
-
         /* 获取限制个数，如果获取失败就使用默认值 */
         if (licc_get_limitation(PTS_SUBMOD_PTCS, &ulPTCLimit) != DOS_SUCC
             && dos_get_default_limitation(PTS_SUBMOD_PTCS, &ulPTCLimit) != DOS_SUCC)
@@ -1644,7 +1759,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
             /* ptc id错误 */
             pt_logr_notic("PTC %s request login. But the license do not allow. Current PTC count %u, Limitation: %u"
                             , szID, ulPTCCnt, ulPTCLimit);
-            pts_send_login_res2ptc(pstMsgDes, stClientAddr, DOS_FALSE);
+            pts_send_login_res2ptc(pstMsgDes, stClientAddr, ulIndex, PT_PTC_LOGIN_FAIL_LICENSE);
             break;
         }
 
@@ -1653,21 +1768,22 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
 
         if (pts_is_ptc_sn(szID))
         {
-            pt_logr_debug("request login ipcc id is %s", szID);
+            pt_logr_info("request login ipcc id is %s", szID);
         }
         else
         {
             /* ptc id错误 */
-            pt_logr_error("request login ipcc id(%s) format error", szID);
-            pts_send_login_res2ptc(pstMsgDes, stClientAddr, DOS_FALSE);
+            pt_logr_notic("request login ipcc SN(%s) format error", szID);
+            pts_send_login_res2ptc(pstMsgDes, stClientAddr, ulIndex, PT_PTC_LOGIN_FAIL_SN);
+
             break;
         }
-        pts_handle_login_req(lSockfd, pstMsgDes, stClientAddr, pstCtrlData->szLoginVerify);
+        pts_handle_login_req(pstMsgDes, stClientAddr, pstCtrlData->szLoginVerify, ulIndex);
 
         break;
     case PT_CTRL_LOGIN_RSP:
         /* 登陆验证, 添加结果到接收缓存，若验证成功，开启心跳定时器 */
-        logr_debug("login rsp : %.16s", pstMsgDes->aucID);
+        pt_logr_info("login rsp : %.16s", pstMsgDes->aucID);
         /* 判断 version */
         if (pstCtrlData->szVersion[1] != '.')
         {
@@ -1768,7 +1884,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
         /* 如果登录成功，创建接收缓存 */
         if (DOS_SUCC == lLoginRes)
         {
-            lResult = pts_create_recv_cache(pstMsgDes, szVersion, stClientAddr);
+            lResult = pts_create_recv_cache(pstMsgDes, szVersion, stClientAddr, ulIndex);
             if (lResult != DOS_SUCC)
             {
                 lLoginRes = DOS_FAIL;
@@ -1777,11 +1893,11 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
 
         if (DOS_SUCC == lLoginRes)
         {
-            pts_send_login_res2ptc(pstMsgDes, stClientAddr, DOS_TRUE);
+            pts_send_login_res2ptc(pstMsgDes, stClientAddr, ulIndex, PT_PTC_LOGIN_SUCC);
         }
         else
         {
-            pts_send_login_res2ptc(pstMsgDes, stClientAddr, DOS_FALSE);
+            pts_send_login_res2ptc(pstMsgDes, stClientAddr, ulIndex, PT_PTC_LOGIN_FAIL_VERIFY);
         }
 
         break;
@@ -1814,7 +1930,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
         }
         pthread_mutex_lock(&g_mutexPtcRecvList);
         pstPtcRecvNode = pt_ptc_list_search(&g_stPtcListRecv, pstMsgDes->aucID);
-        if(NULL == pstPtcRecvNode)
+        if(DOS_ADDR_INVALID(pstPtcRecvNode))
         {
             pt_logr_info("pts_ctrl_msg_handle : can not found ptc id = %.16s", pstMsgDes->aucID);
             pthread_mutex_unlock(&g_mutexPtcRecvList);
@@ -1829,7 +1945,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
                 pthread_mutex_unlock(&g_mutexPtcRecvList);
                 pthread_mutex_lock(&g_mutexPtcSendList);
                 pstPtcSendNode = pt_ptc_list_search(&g_stPtcListSend, pstMsgDes->aucID);
-                if (NULL != pstPtcSendNode)
+                if (DOS_ADDR_VALID(pstPtcSendNode))
                 {
                     pstPtcSendNode->stDestAddr = stClientAddr;
                 }
@@ -1842,7 +1958,7 @@ VOID pts_ctrl_msg_handle(S32 lSockfd, S8 *pData, struct sockaddr_in stClientAddr
         }
 
 
-        pts_send_hb_rsp(pstMsgDes, stClientAddr);
+        pts_send_hb_rsp(pstMsgDes, stClientAddr, ulIndex);
         break;
     case PT_CTRL_PTS_MAJOR_DOMAIN:
         if (pstCtrlData->achPtsMajorDomain[0] != '\0')
@@ -1973,7 +2089,6 @@ VOID pts_delete_recv_stream_node(PT_MSG_TAG *pstMsgDes)
         pstStreamNode = pt_stream_queue_search(pstStreamListHead, pstMsgDes->ulStreamID);
         if (DOS_ADDR_VALID(pstStreamNode))
         {
-            printf("delete recv stream, %d\n", pstMsgDes->ulStreamID);
             if (DOS_ADDR_VALID(pstStreamNode->hTmrHandle))
             {
                 dos_tmr_stop(&pstStreamNode->hTmrHandle);
@@ -2033,7 +2148,6 @@ VOID pts_delete_send_stream_node(PT_MSG_TAG *pstMsgDes)
         pstStreamNode = pt_stream_queue_search(pstStreamListHead, pstMsgDes->ulStreamID);
         if (DOS_ADDR_VALID(pstStreamNode))
         {
-            printf("delete send stream, %d\n", pstMsgDes->ulStreamID);
             pt_delete_stream_node(&pstStreamNode->stStreamListNode, pstMsgDes->enDataType);
         }
     }
@@ -2065,7 +2179,7 @@ S32 pts_deal_with_confirm_msg(PT_MSG_TAG *pstMsgDes)
     pthread_mutex_lock(&g_mutexPtcSendList);
 
     pstPtcNode = pt_ptc_list_search(&g_stPtcListSend, pstMsgDes->aucID);
-    if(NULL == pstPtcNode)
+    if(DOS_ADDR_INVALID(pstPtcNode))
     {
         pthread_mutex_unlock(&g_mutexPtcSendList);
 
@@ -2073,7 +2187,7 @@ S32 pts_deal_with_confirm_msg(PT_MSG_TAG *pstMsgDes)
     }
 
     pstStreamListHead = &pstPtcNode->astDataTypes[pstMsgDes->enDataType].stStreamQueHead;
-    if (NULL == pstStreamListHead)
+    if (DOS_ADDR_INVALID(pstStreamListHead))
     {
         pthread_mutex_unlock(&g_mutexPtcSendList);
 
@@ -2081,7 +2195,7 @@ S32 pts_deal_with_confirm_msg(PT_MSG_TAG *pstMsgDes)
     }
 
     pstStreamNode = pt_stream_queue_search(pstStreamListHead, pstMsgDes->ulStreamID);
-    if (NULL == pstStreamNode)
+    if (DOS_ADDR_INVALID(pstStreamNode))
     {
         pthread_mutex_unlock(&g_mutexPtcSendList);
 
@@ -2183,7 +2297,7 @@ S32 pts_save_msg_into_cache(U8 *pcIpccId, PT_DATA_TYPE_EN enDataType, U32 ulStre
     return lResult;
 }
 
-VOID pts_init()
+VOID pts_global_variable_init()
 {
     sem_init(&g_SemPts, 0, 0);
     sem_init(&g_SemPtsRecv, 0, 1);
@@ -2235,16 +2349,18 @@ VOID *pts_send_msg2ptc(VOID *arg)
     list_t           *pstNendSendList = NULL;
     PT_STREAM_CB_ST  *pstStreamNode   = NULL;
     PT_DATA_TCP_ST   *pstSendDataHead = NULL;
+    DLL_NODE_S       *pstListNode     = NULL;
+    STREAM_CACHE_ADDR_CB_ST *pstStreamCacheAddr = NULL;
     PT_DATA_TCP_ST   stSendDataNode;
     S8 szBuff[PT_SEND_DATA_SIZE] = {0};
     PT_NEND_SEND_NODE_ST *pstNeedSendNode = NULL;
     PT_DATA_TCP_ST    stRecvDataTcp;
     S32 lResult = 0;
+    U32 ulIndex = 0;
     struct timeval now;
     struct timespec timeout;
-    //U32  ulSeqCount = 0;
-    //struct timeval stTime;
-    pts_init();
+
+    pts_global_variable_init();
 
     while(1)
     {
@@ -2277,17 +2393,67 @@ VOID *pts_send_msg2ptc(VOID *arg)
 
             dos_memzero(&stMsgDes, sizeof(PT_MSG_TAG));
 
-            pthread_mutex_lock(&g_mutexPtcSendList);
-            pstPtcNode = pt_ptc_list_search(&g_stPtcListSend, pstNeedSendNode->aucID);
-            if(NULL == pstPtcNode)
+            if (PT_DATA_CTRL == pstNeedSendNode->enDataType)
             {
+                pthread_mutex_lock(&g_mutexPtcSendList);
+                pstPtcNode = pt_ptc_list_search(&g_stPtcListSend, pstNeedSendNode->aucID);
+                if(DOS_ADDR_INVALID(pstPtcNode))
+                {
+                    pthread_mutex_unlock(&g_mutexPtcSendList);
+                    pt_logr_debug("pts_send_msg2ptc : not found ptc");
+                    dos_dmem_free(pstNeedSendNode);
+                    pstNeedSendNode = NULL;
+                    continue;
+                }
+                pthread_mutex_lock(&pstPtcNode->pthreadMutex);
                 pthread_mutex_unlock(&g_mutexPtcSendList);
+            }
+            else
+            {
+                pthread_mutex_lock(&g_mutexStreamAddrList);
+                pstListNode = dll_find(&g_stStreamAddrList, (VOID *)&pstNeedSendNode->ulStreamID, pts_find_stream_addr_by_streamID);
+                if (DOS_ADDR_INVALID(pstListNode))
+                {
+                    pthread_mutex_unlock(&g_mutexStreamAddrList);
+                    dos_dmem_free(pstNeedSendNode);
+                    pstNeedSendNode = NULL;
+                    continue;
+                }
+
+                pstStreamCacheAddr = pstListNode->pHandle;
+                if (DOS_ADDR_INVALID(pstStreamCacheAddr))
+                {
+                    pthread_mutex_unlock(&g_mutexStreamAddrList);
+                    dos_dmem_free(pstNeedSendNode);
+                    pstNeedSendNode = NULL;
+                    continue;
+                }
+
+                pstPtcNode = pstStreamCacheAddr->pstPtcSendNode;
+                if (DOS_ADDR_INVALID(pstPtcNode))
+                {
+                    pthread_mutex_unlock(&g_mutexStreamAddrList);
+                    dos_dmem_free(pstNeedSendNode);
+                    pstNeedSendNode = NULL;
+                    continue;
+                }
+
+                pstStreamNode = pstStreamCacheAddr->pstStreamSendNode;
+                pthread_mutex_lock(&pstPtcNode->pthreadMutex);
+                pthread_mutex_unlock(&g_mutexStreamAddrList);
+            }
+
+            ulIndex = pstPtcNode->ulIndex;
+            if (ulIndex >= PTS_UDP_LISTEN_PORT_COUNT)
+            {
+                pthread_mutex_unlock(&pstPtcNode->pthreadMutex);
                 pt_logr_debug("pts_send_msg2ptc : not found ptc");
                 dos_dmem_free(pstNeedSendNode);
                 pstNeedSendNode = NULL;
                 continue;
             }
-            else if (pstNeedSendNode->enCmdValue != PT_CMD_NORMAL || pstNeedSendNode->ExitNotifyFlag == DOS_TRUE)
+
+            if (pstNeedSendNode->enCmdValue != PT_CMD_NORMAL || pstNeedSendNode->ExitNotifyFlag == DOS_TRUE)
             {
                 /* 发送丢包、重发请求 / 消息确认接收 / 发送结束消息 */
                 stMsgDes.enDataType = pstNeedSendNode->enDataType;
@@ -2299,36 +2465,40 @@ VOID *pts_send_msg2ptc(VOID *arg)
                 stMsgDes.bIsEncrypt = DOS_FALSE;
                 stMsgDes.bIsCompress = DOS_FALSE;
 
-                if (g_ulUdpSocket > 0)
+                if (g_alUdpSocket[ulIndex] > 0)
                 {
-                    lResult = sendto(g_ulUdpSocket, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG), 0,  (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                    lResult = sendto(g_alUdpSocket[ulIndex], (VOID *)&stMsgDes, sizeof(PT_MSG_TAG), 0,  (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
                     if (lResult < 0)
                     {
-                        close(g_ulUdpSocket);
-                        g_ulUdpSocket = -1;
-                        g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+                        close(g_alUdpSocket[ulIndex]);
+                        g_alUdpSocket[ulIndex] = -1;
+                        g_alUdpSocket[ulIndex] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[ulIndex], PTS_SOCKET_CACHE);
                     }
                 }
-                pthread_mutex_unlock(&g_mutexPtcSendList);
+                pthread_mutex_unlock(&pstPtcNode->pthreadMutex);
                 dos_dmem_free(pstNeedSendNode);
                 pstNeedSendNode = NULL;
                 continue;
             }
 
-            pstStreamHead = &pstPtcNode->astDataTypes[pstNeedSendNode->enDataType].stStreamQueHead;
-            if (NULL == pstStreamHead)
+            if (PT_DATA_CTRL == pstNeedSendNode->enDataType)
             {
-                pthread_mutex_unlock(&g_mutexPtcSendList);
-                pt_logr_debug("pts_send_msg2ptc : stream list is NULL");
-                dos_dmem_free(pstNeedSendNode);
-                pstNeedSendNode = NULL;
-                continue;
+                pstStreamHead = &pstPtcNode->astDataTypes[pstNeedSendNode->enDataType].stStreamQueHead;
+                if (DOS_ADDR_INVALID(pstStreamHead))
+                {
+                    pthread_mutex_unlock(&pstPtcNode->pthreadMutex);
+                    pt_logr_debug("pts_send_msg2ptc : stream list is NULL");
+                    dos_dmem_free(pstNeedSendNode);
+                    pstNeedSendNode = NULL;
+                    continue;
+                }
+
+                pstStreamNode = pt_stream_queue_search(pstStreamHead, pstNeedSendNode->ulStreamID);
             }
 
-            pstStreamNode = pt_stream_queue_search(pstStreamHead, pstNeedSendNode->ulStreamID);
-            if(NULL == pstStreamNode)
+            if(DOS_ADDR_INVALID(pstStreamNode))
             {
-                pthread_mutex_unlock(&g_mutexPtcSendList);
+                pthread_mutex_unlock(&pstPtcNode->pthreadMutex);
                 pt_logr_debug("pts_send_msg2ptc : cann't found stream node");
                 dos_dmem_free(pstNeedSendNode);
                 pstNeedSendNode = NULL;
@@ -2336,9 +2506,9 @@ VOID *pts_send_msg2ptc(VOID *arg)
             }
 
             pstSendDataHead = pstStreamNode->unDataQueHead.pstDataTcp;
-            if (NULL == pstSendDataHead)
+            if (DOS_ADDR_INVALID(pstSendDataHead))
             {
-                pthread_mutex_unlock(&g_mutexPtcSendList);
+                pthread_mutex_unlock(&pstPtcNode->pthreadMutex);
                 pt_logr_debug("send data to ptc : data queue is NULL");
                 dos_dmem_free(pstNeedSendNode);
                 pstNeedSendNode = NULL;
@@ -2375,16 +2545,16 @@ VOID *pts_send_msg2ptc(VOID *arg)
                     ulSendCount = PT_RESEND_RSP_COUNT;    /*重传的，发送三遍*/
                     while (ulSendCount)
                     {
-                        pt_logr_info("resend data to ptc, stream : %d, seq : %d, size : %d", pstNeedSendNode->ulStreamID, pstNeedSendNode->lSeqResend, stSendDataNode.ulLen);
-                        if (g_ulUdpSocket > 0)
+                        pts_trace(pstPtcNode->bIsTrace, LOG_LEVEL_DEBUG, "resend data to ptc, stream : %d, seq : %d, size : %d", pstNeedSendNode->ulStreamID, pstNeedSendNode->lSeqResend, stSendDataNode.ulLen);
+                        if (g_alUdpSocket[ulIndex] > 0)
                         {
                             usleep(20);
-                            lResult = sendto(g_ulUdpSocket, szBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                            lResult = sendto(g_alUdpSocket[ulIndex], szBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
                             if (lResult < 0)
                             {
-                                close(g_ulUdpSocket);
-                                g_ulUdpSocket = -1;
-                                g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+                                close(g_alUdpSocket[ulIndex]);
+                                g_alUdpSocket[ulIndex] = -1;
+                                g_alUdpSocket[ulIndex] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[ulIndex], PTS_SOCKET_CACHE);
                             }
                         }
                         ulSendCount--;
@@ -2393,21 +2563,18 @@ VOID *pts_send_msg2ptc(VOID *arg)
                 }
                 dos_dmem_free(pstNeedSendNode);
                 pstNeedSendNode = NULL;
-                pthread_mutex_unlock(&g_mutexPtcSendList);
+                pthread_mutex_unlock(&pstPtcNode->pthreadMutex);
                 continue;
             }
 
             while(1)
             {
-                //gettimeofday(&stTime, NULL);
-                //printf("start while time : %d\n", stTime.tv_sec * 1000 * 1000 + stTime.tv_usec);
                 /* 发送data，直到不连续 */
                 pstStreamNode->lCurrSeq++;
                 ulArraySub = (pstStreamNode->lCurrSeq) & (PT_DATA_SEND_CACHE_SIZE - 1);
                 stRecvDataTcp = pstSendDataHead[ulArraySub];
                 if (stRecvDataTcp.lSeq == pstStreamNode->lCurrSeq)
                 {
-                    //stSendDataNode = pstSendDataHead[ulArraySub];
                     stMsgDes.enDataType = pstNeedSendNode->enDataType;
                     dos_memcpy(stMsgDes.aucID, pstNeedSendNode->aucID, PTC_ID_LEN);
                     stMsgDes.ulStreamID = dos_htonl(pstNeedSendNode->ulStreamID);
@@ -2421,35 +2588,29 @@ VOID *pts_send_msg2ptc(VOID *arg)
 
                     dos_memcpy(szBuff, (VOID *)&stMsgDes, sizeof(PT_MSG_TAG));
                     dos_memcpy(szBuff+sizeof(PT_MSG_TAG), stRecvDataTcp.szBuff, stRecvDataTcp.ulLen);
-                    pt_logr_debug("send data to ptc, streamID is %d, seq is %d ", pstNeedSendNode->ulStreamID, pstStreamNode->lCurrSeq);
-                    printf("send msg to ptc, stream : %d, seq : %d, len : %d, %s", pstNeedSendNode->ulStreamID, pstStreamNode->lCurrSeq, stRecvDataTcp.ulLen, pts_get_current_time());
-                    //gettimeofday(&stTime, NULL);
-                    //printf("before send time : %d\n", stTime.tv_sec * 1000 * 1000 + stTime.tv_usec);
-                    if (g_ulUdpSocket > 0)
+
+                    if (g_alUdpSocket[ulIndex] > 0)
                     {
-                        lResult = sendto(g_ulUdpSocket, szBuff, stRecvDataTcp.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
+                        pts_trace(pstPtcNode->bIsTrace, LOG_LEVEL_DEBUG, "send data to ptc, streamID is %d, seq is %d ", pstNeedSendNode->ulStreamID, pstStreamNode->lCurrSeq);
+                        lResult = sendto(g_alUdpSocket[ulIndex], szBuff, stRecvDataTcp.ulLen + sizeof(PT_MSG_TAG), 0, (struct sockaddr*)&pstPtcNode->stDestAddr, sizeof(pstPtcNode->stDestAddr));
                         if (lResult < 0)
                         {
-                            close(g_ulUdpSocket);
-                            g_ulUdpSocket = -1;
-                            g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+                            close(g_alUdpSocket[ulIndex]);
+                            g_alUdpSocket[ulIndex] = -1;
+                            g_alUdpSocket[ulIndex] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[ulIndex], PTS_SOCKET_CACHE);
                         }
                         usleep(20);
                     }
-                    //gettimeofday(&stTime, NULL);
-                    //printf("behind send time : %d\n", stTime.tv_sec * 1000 * 1000 + stTime.tv_usec);
                 }
                 else
                 {
                     /* 这个seq没有发送，减一 */
                     pstStreamNode->lCurrSeq--;
 
-                    //gettimeofday(&stTime, NULL);
-                    //printf("end while time : %d\n", stTime.tv_sec * 1000 * 1000 + stTime.tv_usec);
                     break;
                 }
             }
-            pthread_mutex_unlock(&g_mutexPtcSendList);
+            pthread_mutex_unlock(&pstPtcNode->pthreadMutex);
             dos_dmem_free(pstNeedSendNode);
             pstNeedSendNode = NULL;
         } /* end of while(1) */
@@ -2467,6 +2628,7 @@ VOID *pts_send_msg2ptc(VOID *arg)
  */
 VOID *pts_recv_msg_from_ptc(VOID *arg)
 {
+    S32                 i               = 0;
     S32                 lRecvLen        = 0;
     S32                 lResult         = 0;
     U8                  *pcRecvBuf      = NULL;
@@ -2476,11 +2638,10 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
     struct timeval      stTimeVal       = {1, 0};
     struct timeval      stTimeValCpy;
     fd_set              ReadFds;
-    //PT_MSG_TAG         *pstMsgDes       = NULL;
 
     while(1)
     {
-        if (g_ulUdpSocket <= 0)
+        if (g_alUdpSocket[0] <= 0 && g_alUdpSocket[1] <= 0)
         {
             sleep(1);
             continue;
@@ -2488,8 +2649,17 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
 
         stTimeValCpy = stTimeVal;
         FD_ZERO(&ReadFds);
-        FD_SET(g_ulUdpSocket, &ReadFds);
-        MaxFdp = g_ulUdpSocket;
+        if (g_alUdpSocket[0] > 0)
+        {
+            FD_SET(g_alUdpSocket[0], &ReadFds);
+        }
+
+        if (g_alUdpSocket[1] > 0)
+        {
+            FD_SET(g_alUdpSocket[1], &ReadFds);
+        }
+
+        MaxFdp = g_alUdpSocket[0] > g_alUdpSocket[1] ? g_alUdpSocket[0] : g_alUdpSocket[1];
 
         lResult = select(MaxFdp + 1, &ReadFds, NULL, NULL, &stTimeValCpy);
         if (lResult < 0)
@@ -2503,39 +2673,44 @@ VOID *pts_recv_msg_from_ptc(VOID *arg)
         {
             continue;
         }
-        if (FD_ISSET(g_ulUdpSocket, &ReadFds))
+
+        for (i=0; i<PTS_UDP_LISTEN_PORT_COUNT; i++)
         {
-            lCliaddrLen = sizeof(stClientAddr);
-            pcRecvBuf = (U8 *)dos_dmem_alloc(PT_SEND_DATA_SIZE);
-            if (DOS_ADDR_INVALID(pcRecvBuf))
+            if (g_alUdpSocket[i] <= 0)
             {
-                pt_logr_warning("recv msg from ptc malloc fail!");
-                sleep(1);
                 continue;
             }
 
-            lRecvLen = recvfrom(g_ulUdpSocket, pcRecvBuf, PT_SEND_DATA_SIZE, 0, (struct sockaddr*)&stClientAddr, &lCliaddrLen);
-            if (lRecvLen < 0)
+            if (FD_ISSET(g_alUdpSocket[i], &ReadFds))
             {
-                pt_logr_info("recvfrom fail ,create socket again");
-                dos_dmem_free(pcRecvBuf);
-                pcRecvBuf = NULL;
-                close(g_ulUdpSocket);
-                g_ulUdpSocket = -1;
-                g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, PTS_SOCKET_CACHE);
+                lCliaddrLen = sizeof(stClientAddr);
+                pcRecvBuf = (U8 *)dos_dmem_alloc(PT_SEND_DATA_SIZE);
+                if (DOS_ADDR_INVALID(pcRecvBuf))
+                {
+                    pt_logr_warning("recv msg from ptc malloc fail!");
+                    sleep(1);
 
-                continue;
+                    break;
+                }
+
+                lRecvLen = recvfrom(g_alUdpSocket[i], pcRecvBuf, PT_SEND_DATA_SIZE, 0, (struct sockaddr*)&stClientAddr, &lCliaddrLen);
+                if (lRecvLen < 0)
+                {
+                    pt_logr_info("recvfrom fail ,create socket again");
+                    dos_dmem_free(pcRecvBuf);
+                    pcRecvBuf = NULL;
+                    close(g_alUdpSocket[i]);
+                    g_alUdpSocket[i] = -1;
+                    g_alUdpSocket[i] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[i], PTS_SOCKET_CACHE);
+
+                    break;
+                }
+
+                pthread_mutex_lock(&g_mutexPtsRecvMsgHandle);
+                pts_recvfrom_ptc_buff_list_insert(&g_stMsgRecvFromPtc, pcRecvBuf, lRecvLen, i, stClientAddr);
+                pthread_cond_signal(&g_condPtsRecvMsgHandle);
+                pthread_mutex_unlock(&g_mutexPtsRecvMsgHandle);
             }
-
-            //pstMsgDes = pcRecvBuf;
-            //if (dos_ntohl(pstMsgDes->ulStreamID) > PT_CTRL_BUTT)
-            //{
-            //    printf("recv Stream: %u, Seq: %u\r\n", dos_ntohl(pstMsgDes->ulStreamID), dos_ntohl(pstMsgDes->lSeq));
-            //}
-            pthread_mutex_lock(&g_mutexPtsRecvMsgHandle);
-            pts_recvfrom_ptc_buff_list_insert(&g_stMsgRecvFromPtc, pcRecvBuf, lRecvLen, stClientAddr);
-            pthread_cond_signal(&g_condPtsRecvMsgHandle);
-            pthread_mutex_unlock(&g_mutexPtsRecvMsgHandle);
         }
 
     } /* end of while(1) */
@@ -2563,7 +2738,6 @@ VOID *pts_handle_recvfrom_ptc_msg(VOID *arg)
 
         while(1)
         {
-
             pthread_mutex_lock(&g_mutexPtsRecvMsgHandle);
 
             if (dos_list_is_empty(&g_stMsgRecvFromPtc))
@@ -2585,8 +2759,6 @@ VOID *pts_handle_recvfrom_ptc_msg(VOID *arg)
             pstRecvBuffNode = dos_list_entry(pstRecvBuffList, PTS_REV_MSG_HANDLE_ST, stList);
             if (DOS_ADDR_INVALID(pstRecvBuffList))
             {
-                pthread_mutex_unlock(&g_mutexPtsRecvMsgHandle);
-
                 DOS_ASSERT(0);
                 continue;
             }
@@ -2599,10 +2771,10 @@ VOID *pts_handle_recvfrom_ptc_msg(VOID *arg)
             pstMsgDes->ulStreamID = dos_ntohl(pstMsgDes->ulStreamID);
             pstMsgDes->lSeq = dos_ntohl(pstMsgDes->lSeq);
 
-            if (pstMsgDes->enDataType == PT_DATA_CTRL)
+            if (pstMsgDes->enDataType == PT_DATA_CTRL && pstMsgDes->ulStreamID != PT_CTRL_PTC_PACKAGE)
             {
                 /* 控制消息 */
-                pts_ctrl_msg_handle(g_ulUdpSocket, (S8 *)pstRecvBuffNode->paRecvBuff, pstRecvBuffNode->stClientAddr, pstRecvBuffNode->ulRecvLen);
+                pts_ctrl_msg_handle((S8 *)pstRecvBuffNode->paRecvBuff, pstRecvBuffNode->stClientAddr, pstRecvBuffNode->ulRecvLen, pstRecvBuffNode->ulIndex);
                 sem_post(&g_SemPtsRecv);
             }
             else
@@ -2612,7 +2784,7 @@ VOID *pts_handle_recvfrom_ptc_msg(VOID *arg)
                     /* pts发送的重传请求 */
                     BOOL bIsResend = DOS_TRUE;
                     PT_CMD_EN enCmdValue = PT_CMD_NORMAL;
-                    printf("!!!!!!!!!!recv resend msg, stream : %d, seq : %d\n", pstMsgDes->ulStreamID, pstMsgDes->lSeq);
+                    pt_logr_debug("recv resend msg, stream : %d, seq : %d", pstMsgDes->ulStreamID, pstMsgDes->lSeq);
                     pthread_mutex_lock(&g_mutexPtsSendPthread);
                     pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend);
                     pthread_cond_signal(&g_condPtsSend);
@@ -2623,7 +2795,6 @@ VOID *pts_handle_recvfrom_ptc_msg(VOID *arg)
                 else if (pstMsgDes->enCmdValue == PT_CMD_CONFIRM)
                 {
                     /* 确认接收消息 */
-                    printf("pts recv make sure, seq : %d\n", pstMsgDes->lSeq);
                     pt_logr_debug("pts recv make sure, seq : %d", pstMsgDes->lSeq);
                     lResult = pts_deal_with_confirm_msg(pstMsgDes);
                     if (lResult)
@@ -2640,27 +2811,17 @@ VOID *pts_handle_recvfrom_ptc_msg(VOID *arg)
                 {
                     /* stream 退出 */
                     pt_logr_debug("pts recv exit msg, streamID = %d", pstMsgDes->ulStreamID);
-                    printf("pts recv exit msg, streamID = %d\n", pstMsgDes->ulStreamID);
                     pts_delete_stream_addr_node(pstMsgDes->ulStreamID);
                     pts_delete_recv_stream_node(pstMsgDes);
                     pts_delete_send_stream_node(pstMsgDes);
-
-                    if (pstMsgDes->ulStreamID != PT_CTRL_PTC_PACKAGE)
-                    {
-                        pthread_mutex_lock(&g_mutexPtsRecvPthread);
-                        pt_need_recv_node_list_insert(&g_stPtsNendRecvNode, pstMsgDes);
-                        pthread_cond_signal(&g_condPtsRecv);
-                        pthread_mutex_unlock(&g_mutexPtsRecvPthread);
-                    }
-                    else
-                    {
-                        sem_post(&g_SemPtsRecv);
-                    }
+                    pthread_mutex_lock(&g_mutexPtsRecvPthread);
+                    pt_need_recv_node_list_insert(&g_stPtsNendRecvNode, pstMsgDes);
+                    pthread_cond_signal(&g_condPtsRecv);
+                    pthread_mutex_unlock(&g_mutexPtsRecvPthread);
                 }
                 else
                 {
                     pt_logr_debug("pts recv data from ptc, streamID = %d, seq : %d", pstMsgDes->ulStreamID, pstMsgDes->lSeq);
-                    printf("pts recv data from ptc, streamID = %d, seq : %d\n", pstMsgDes->ulStreamID, pstMsgDes->lSeq);
                     lSaveIntoCacheRes = pts_save_into_recv_cache(pstMsgDes, (S8 *)pstRecvBuffNode->paRecvBuff + sizeof(PT_MSG_TAG), pstRecvBuffNode->ulRecvLen-sizeof(PT_MSG_TAG));
                     if (lSaveIntoCacheRes < 0)
                     {
@@ -2689,11 +2850,9 @@ VOID *pts_handle_recvfrom_ptc_msg(VOID *arg)
                 /* 挂起线程，执行接收函数 */
                 usleep(10);
             }
-
        } /* end of while(1) */
     }
 }
-
 
 #ifdef  __cplusplus
 }

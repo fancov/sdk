@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
+<title>OK-RAS</title>
+<script type="text/javascript" language="javascript" src="jquery.js"></script>
+<SCRIPT src="ddsmoothmenu.js" type=text/javascript></SCRIPT>
+<SCRIPT src="pts_public.js" type=text/javascript></SCRIPT>
+<link rel="shortcut icon" href="favicon.ico">
+<LINK href="ddsmoothmenu.css" type=text/css rel=stylesheet>
+<link href="create_user.css" type="text/css" rel="stylesheet">
+<style>
+  *{font-family: "微软雅黑"}
+  .content_body{margin: auto 25px; font-size: 13px;}
+  .content_title{border-bottom:1px solid #000000; padding-bottom:2px; margin-bottom: 10px;}
+  .content_title p{padding-bottom:0; margin-bottom: 0px;}
+  .nav_content{margin:0; width:100%; height:50px; background-color:#747474; font-size: 14px; }
+  .nav_left{float:left;}
+  .nav_right{float:right; margin-right:15px; margin-top: 0px; width: 200px; height:50px; over-flow:auto;}
+  .nav_right p{line-height: 14px; margin: 0px; padding: 0px;}
+  .nav_right td{ margin: 0px; padding: 0px; border: 0px;}
+  .longin_user{margin-right:100px;color: #F4F4F4;}
+  .longout{float:right; margin-right:0px; border: 0px;}
+  .longout img{border: 0px;}
+</style>
+<script type="text/javascript">
+  get_lang_type(<% lang_type(); %>);
+  updateTime();
+
+window.onload=function(){ 
+    if (<% bIsGetLicense(); %>)
+    {
+        var input_name = document.getElementById("div_input_name"); 
+        var show_msg = document.getElementById("div_show_msg"); 
+        input_name.style.display = "none"; 
+        show_msg.style.display = "block";  
+    }
+  }
+</script>
+</head>
+
+<body style="margin:0; padding:0; background:#fafafa;">
+
+<div class="nav_content">
+  <div class="ddsmoothmenu nav_left" id="smoothmenu1">
+  <UL>
+    <LI class="logo_li">
+      <a href="http://www.dipcc.com" target="_blank">
+        <img src="images/logo.png" title="深圳市天天讯通科技有限公司" width="120px" height="44px" />
+      </a>
+    </LI>
+  </UL>
+  <UL>
+    <LI><A href="index.html"><% htmlLang(0); %></A></LI>
+    <LI><A href="#"><% htmlLang(1); %></A> 
+    <UL>
+      <LI><A href="pts_switch.html"><% htmlLang(2); %></A> </LI>
+      <LI><A href="pts_config.html"><% htmlLang(3); %></A> </LI>
+      <LI><A href="pts_upgrades.html"><% htmlLang(4); %></A> </LI>
+    </UL>
+    </LI>
+    <LI><A href="pts_user.html"><% htmlLang(5); %></A></LI>
+    <LI><A href="#"><% htmlLang(6); %></A>
+      <UL>
+        <LI><A href="pts_ping.html"><% htmlLang(7); %></A></LI>
+      </UL>
+    </LI>
+    <LI><A href="pts_license.html"><% htmlLang(79); %></A></LI>
+  </UL>
+  </div>
+  <div class="nav_right" > 
+    <table style="height:48px; border-spacing: 0px; border-collapse:collapse;">
+      <tr>
+        <td style="width:180px;"><p class="longin_user"> <% curr_user(); %></p></td>
+        <td rowspan="2"><div class="longout"><a href="javascript:;" onclick="exit()"><img  src="../images/logout.png" /></a></div></td>
+      </tr>
+      <tr>
+        <td style="width:180px; padding: 0px;" ><p id="system-time" style="font:11px tahoma;height:10px;width:160px;color: #F4F4F4;"></p></td>
+      </tr>
+    </table>
+  </div>
+</div>
+<br>
+<div class="content_body">
+  <div>
+    <div class="content_title">
+      <p><b><% htmlLang(79); %></b></p>
+    </div>
+    <div>
+      <p class="content_body">
+        <label><% htmlLang(80); %>：<% version(); %></label>
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="content_body">
+    <div>
+        <div class="content_title">
+            <p><b><% htmlLang(81); %></b></p>
+        </div>
+        <div id="div_input_name" style="display:block" >
+          <p class="content_body">
+              <label><% htmlLang(52); %></label>
+              <input type="text" id="name" placeholder="<% htmlLang(61); %>"  onblur="checkna()" onkeyup="this.value=this.value.replace(/[^\w\.@]/g,'')" maxlength="30"  required/><span class="tips" id="divname"><% htmlLang(89); %></span>
+              <input type="button" value="保存" onclick="submit_username()" />&nbsp;&nbsp;&nbsp;&nbsp;
+            </p>
+          </div>
+    </div>
+    <div id="div_show_msg" style="display:none" >
+        <p class="content_body" style="line-height:25px;">
+            <% show_license_msg(); %>
+        </p>
+        <div class="content_title">
+            <p><b><% htmlLang(87); %></b></p>
+        </div>
+        <form action="/goform/submitLicense?" enctype="multipart/form-data" method="post" name="HttpPackageUpload" id="HttpPackageUpload"  target="hidden_frame">
+            <p class="content_body">
+                <table  class="content_body">
+                    <tr>
+                        <td><label>License</label></td>
+                        <td><input type="file" value="" id="LicenseFile" name="LicenseFile"  size="32" /></td>
+                        <td><input id='license_file' type='submit' value='<% htmlLang(88); %>' onclick='return form_check_license()' /></td>
+                    </tr>
+                </table>
+            </p>
+            <iframe name='hidden_frame' id="hidden_frame" style='display:none' onload="get_ifream_content()"></iframe>
+        </form>
+    </div>
+</div>
+</body>
+</html>
