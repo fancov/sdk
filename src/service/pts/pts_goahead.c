@@ -25,6 +25,7 @@ extern "C" {
 #include <webs/um.h>
 #include <webs/wsIntrn.h>
 #include <webs/websda.h>
+#include <version.h>
 
 #include "pts_msg.h"
 #include "pts_web.h"
@@ -266,6 +267,7 @@ static int pts_html_lang(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_get_lang_type(int eid, webs_t wp, int argc, char_t **argv);
 static int status_statistics(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_get_version(int eid, webs_t wp, int argc, char_t **argv);
+static int pts_bulid_time(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_show_license_msg(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_is_or_not_get_license(int eid, webs_t wp, int argc, char_t **argv);
 S32 pts_get_password_from_sqlite_db(char_t *userid, S8 *szWebsPassword);
@@ -511,6 +513,7 @@ static int initWebs(int demo)
 
     websAspDefine(T("status_statistics"), status_statistics);               /* 状态 统计 */
 
+    websAspDefine(T("bulid_time"), pts_bulid_time);                           /* 获得版本号 */
     websAspDefine(T("version"), pts_get_version);                           /* 获得版本号 */
     websAspDefine(T("show_license_msg"), pts_show_license_msg);             /* 获得license信息 */
     websAspDefine(T("bIsGetLicense"), pts_is_or_not_get_license);           /* 是否获得license */
@@ -2064,6 +2067,11 @@ static int status_statistics(int eid, webs_t wp, int argc, char_t **argv)
 static int pts_get_version(int eid, webs_t wp, int argc, char_t **argv)
 {
     return websWrite(wp, T("%s"), DOS_PROCESS_VERSION);
+}
+
+static int pts_bulid_time(int eid, webs_t wp, int argc, char_t **argv)
+{
+    return websWrite(wp, T("%s"), BUILD_TIME);
 }
 
 
