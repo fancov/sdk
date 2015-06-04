@@ -147,7 +147,6 @@ void pts_set_cache_full_false(U32 ulStreamID)
 {
     PTS_CLIENT_CB_ST *pstClient = NULL;
 
-    printf("%s, %d\n", __FILE__, __LINE__);
     pthread_mutex_lock(&g_mutexWebClient);
     pstClient = pts_clinetCB_search_by_stream(&m_stClinetCBList, ulStreamID);
     if (pstClient == NULL)
@@ -185,7 +184,6 @@ S32 pts_clinetCB_insert(list_t *psthead, S32 lSockfd, struct sockaddr_in stClien
     stNewNode->eSaveHeadFlag = DOS_FALSE;
     stNewNode->bIsCacheFull = DOS_FALSE;
     pt_logr_debug("sockfd : %d, stream : %d", lSockfd, stNewNode->ulStreamID);
-    printf("create sockfd : %d, stream : %d, %s", lSockfd, stNewNode->ulStreamID, pts_get_current_time());
 
     dos_list_add_tail(psthead, &(stNewNode->stList));
 
@@ -657,7 +655,7 @@ VOID pts_create_web_serv_socket(U32 ulArraySeq)
     {
         g_lWebServSocket = usPort + 1;
     }
-    printf("create proxy socket : %d, port : %d, %s", lSocket, usPort, pts_get_current_time());
+
     lResult = write(g_lPtsPipeWRFd, "s", 1);
     g_lPtsServSocket[ulArraySeq].lSocket = lSocket;
     g_lPtsServSocket[ulArraySeq].usServPort = usPort;
@@ -811,7 +809,6 @@ VOID *pts_recv_msg_from_browser(VOID *arg)
                     lRecvLen = read(lPipeFd, szRecvBuf, PT_RECV_DATA_SIZE);
                     continue;
                 }
-                printf("recv socket : %d\n", i);
                 if (pts_is_serv_socket(i))
                 {
                     pt_logr_debug("%s", "new connect from client to  web service of pts");
@@ -871,19 +868,16 @@ VOID *pts_recv_msg_from_browser(VOID *arg)
                         {
                             continue;
                         }
-                        printf("recv socket : %d, len : %d\n", i, lRecvLen);
                         pts_web_free_resource(i);
                         close(i);
                     }
                     else if (lRecvLen == 0)
                     {
-                        printf("recv socket : %d, len : %d\n", i, lRecvLen);
                         pts_web_free_resource(i);
                         close(i);
                     }
                     else
                     {
-                        printf("recv from web, socket: %d, len : %d, %s", i, lRecvLen, pts_get_current_time());
                         bIsCacheFull = pts_deal_with_web_request(szRecvBuf, i, lRecvLen);
                         if (bIsCacheFull)
                         {
@@ -914,6 +908,7 @@ void *pts_send_msg2browser_pthread(void *arg)
     S8                          szBuff[PT_RECV_DATA_SIZE] = {0};        /* 包数据 */
     U32                         ulBuffLen           = 0;
     U32                         ulSeq               = 0;
+    U32                         ulSteamID           = 0;
     struct timeval              now;
     struct timespec             timeout;
 
@@ -987,8 +982,9 @@ void *pts_send_msg2browser_pthread(void *arg)
             if (pstDataTcp[ulArraySub].ulLen == 0)
             {
                 pstStreamNode->bIsUsing = DOS_FALSE;
-                write(g_lPtsPipeWRFd, "s", 1);
+                printf("recv 0 from ptc, close socket %d, stream : %d\n", pstParam->lSocket, pstStreamNode->ulStreamID);
                 pts_web_close_socket(pstParam->lSocket);
+                write(g_lPtsPipeWRFd, "s", 1);
                 pthread_mutex_unlock(&pstCCNode->pthreadMutex);
                 pts_web_free_stream(&stNeedRecvNode, pstStreamNode, pstCCNode);
 
@@ -1032,15 +1028,18 @@ void *pts_send_msg2browser_pthread(void *arg)
                 dos_memcpy(szBuff, pcSendMsg, ulBuffLen);
                 pcSendMsg = szBuff;
                 ulSeq = pstDataTcp[ulArraySub].lSeq;
+                ulSteamID = pstStreamNode->ulStreamID;
+                pts_trace(pstCCNode->bIsTrace, LOG_LEVEL_DEBUG, "will send data to browser, stream : %d, seq : %d, len : %d", ulSteamID, ulSeq, ulBuffLen);
                 pthread_mutex_unlock(&pstCCNode->pthreadMutex);
                 lResult = send(pstParam->lSocket, pcSendMsg, ulBuffLen, MSG_NOSIGNAL);
+                //printf("send data to browser, stream : %d, seq : %d, len : %d, result : %d\n", ulSteamID, ulSeq, ulBuffLen, lResult);
+                pts_trace(pstCCNode->bIsTrace, LOG_LEVEL_DEBUG, "send data to browser, stream : %d, seq : %d, len : %d, result : %d", ulSteamID, ulSeq, ulBuffLen, lResult);
                 if (lResult <= 0)
                 {
                     pthread_mutex_lock(&pstCCNode->pthreadMutex);
                     pstStreamNode->bIsUsing = DOS_FALSE;
                     pts_web_close_socket(pstParam->lSocket);
                     pthread_mutex_unlock(&pstCCNode->pthreadMutex);
-                    pt_logr_info("send result : %d, socket : %d", lResult, pstParam->lSocket);
                     pts_web_free_stream(&stNeedRecvNode, pstStreamNode, pstCCNode);
 
                     goto end;
@@ -1134,12 +1133,11 @@ VOID pts_send_msg2browser(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
 
             return;
         }
-        printf("create pthread, stream : %d\n", pstNeedRecvNode->ulStreamID);
+
         /* 创建线程 */
         lResult = pthread_create(&sendPthreadId, NULL, pts_send_msg2browser_pthread, (void *)pstSendPthread->pstPthreadParam);
         if (lResult < 0)
         {
-            printf("create pthread fail\n");
             dos_dmem_free(pstSendPthread->pstPthreadParam);
             pstSendPthread->pstPthreadParam = NULL;
             dos_dmem_free(pstSendPthread);
@@ -1164,6 +1162,54 @@ VOID pts_send_msg2browser(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     }
 
     return;
+}
+
+S32 pts_printf_web_msg(U32 ulIndex, S32 argc, S8 **argv)
+{
+    list_t              *pstNode = NULL;
+    list_t              *pstHead = NULL;
+    PTS_CLIENT_CB_ST    *pstData = NULL;
+    U32                 ulLen    = 0;
+    S32                 i        = 0;
+    S8                  szBuff[PT_DATA_BUFF_512] = {0};
+
+    ulLen = snprintf(szBuff, sizeof(szBuff), "\r\n%-20s%-15s%-10s%-10s\r\n", "SN", "StreamID", "Socket", "CacheFull");
+    cli_out_string(ulIndex, szBuff);
+
+    pthread_mutex_lock(&g_mutexWebClient);
+    pstHead = &m_stClinetCBList;
+    pstNode = pstHead;
+
+    while (1)
+    {
+        pstNode = dos_list_work(pstHead, pstNode);
+        if (DOS_ADDR_INVALID(pstNode))
+        {
+            break;
+        }
+
+        pstData = dos_list_entry(pstNode, PTS_CLIENT_CB_ST, stList);
+
+        snprintf(szBuff, sizeof(szBuff), "%.16s%11d%10d%10d\r\n", pstData->aucID, pstData->ulStreamID, pstData->lSocket, pstData->bIsCacheFull);
+        cli_out_string(ulIndex, szBuff);
+    }
+
+    pthread_mutex_unlock(&g_mutexWebClient);
+
+    cli_out_string(ulIndex, "------------------------------------------------\r\n");
+    ulLen = snprintf(szBuff, sizeof(szBuff), "\r\n%-15s%-10s\r\n", "Socket", "Port");
+    cli_out_string(ulIndex, szBuff);
+
+    for (i=0; i<PTS_WEB_SERVER_MAX_SIZE; i++)
+    {
+        if (g_lPtsServSocket[i].lSocket > 0)
+        {
+            snprintf(szBuff, sizeof(szBuff), "%-15d%-10d\r\n", g_lPtsServSocket[i].lSocket, g_lPtsServSocket[i].usServPort);
+            cli_out_string(ulIndex, szBuff);
+        }
+    }
+
+    return 0;
 }
 
 #ifdef  __cplusplus

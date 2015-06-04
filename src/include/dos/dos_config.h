@@ -300,7 +300,8 @@ S32 config_hb_threshold_proc(U32* pulMem, U32* pulCPU);
 
 #ifdef INCLUDE_PTS
 
-U32 config_get_pts_port();
+U32 config_get_pts_port1();
+U32 config_get_pts_port2();
 U32 config_get_web_server_port();
 U32 config_get_pts_proxy_port();
 U32 config_get_pts_telnet_server_port();

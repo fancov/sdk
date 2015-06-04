@@ -86,9 +86,13 @@ VOID dos_signal_handle(S32 lSig)
 
     switch (lSig)
     {
+        case SIGUSR1:
+#if INCLUDE_PTC
+            logr_debug("ptc updates has been received");
+#endif
+            break;
         case SIGSEGV:
         //case SIGCHLD:
-        case SIGUSR1:
         case SIGUSR2:
         case SIGALRM:
         case SIGTERM:

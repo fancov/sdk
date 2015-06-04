@@ -47,6 +47,7 @@ ALL_LIBS	= $(DOS_LIBS) $(LIBS)
 ########################################################################
 CC						= /opt/OpenWrt/staging_dir/toolchain-arm_gcc-4.3.4_uClibc-0.9.30.1/usr/bin/arm-openwrt-linux-gcc
 CXX						= /opt/OpenWrt/staging_dir/toolchain-arm_gcc-4.3.4_uClibc-0.9.30.1/usr/bin/arm-openwrt-linux-g++
+CSTRIP						= /opt/OpenWrt/staging_dir/toolchain-arm_gcc-4.3.4_uClibc-0.9.30.1/usr/bin/arm-openwrt-linux-strip
 CFLAGS					= -Wall -Os
 DEFINES					= -DDIPCC_PTC -DDEBUG_VERSION -DARM_VERSION 
 
@@ -63,6 +64,7 @@ dep :
 
 all : $(ALL_OBJS)
 	$(C_LINKS) -o $(TARGET)d $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS)
+	$(CSTRIP) $(TARGET)d  
 
 clean :
 	rm -f *.o

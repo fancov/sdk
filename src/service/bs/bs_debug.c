@@ -31,6 +31,7 @@ extern DLL_S g_stBSS2DMsgList;
 
 extern VOID bss_update_agent(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
 extern VOID bss_update_billing_package(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
+extern VOID bss_update_billing_rate(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
 extern VOID bss_update_customer(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
 extern VOID bss_update_call_task(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
 
@@ -1647,10 +1648,13 @@ S32 bs_update_test(U32 ulIndex, S32 argc, S8 **argv)
     {
         bss_update_agent(ulOperation, pstJsonNode);
     }
-    else if (0 == dos_stricmp(pszTableName, "tbl_billing_rule")
-                || 0 == dos_stricmp(pszTableName, "tbl_billing_rate"))
+    else if (0 == dos_stricmp(pszTableName, "tbl_billing_rule"))
     {
         bss_update_billing_package(ulOperation, pstJsonNode);
+    }
+    else if (0 == dos_stricmp(pszTableName, "tbl_billing_rate"))
+    {
+        
     }
     else if (0 == dos_stricmp(pszTableName, "tbl_calltask"))
     {

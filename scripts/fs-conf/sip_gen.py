@@ -1,4 +1,4 @@
-#coding=utf-8
+# coding=utf-8
 
 '''
 @author: bubble
@@ -168,6 +168,8 @@ def generate_sip(SIPAccountInfo):
 	seqSipXml = seqSipDir + str(ulID) + '.xml'
 
 	# 将DOM对象转化为XML
+	lRet = dom_to_xml.dom_to_xml()
+	
 	lRet = dom_to_xml.dom_to_xml(seqSipXml, doc)
 	if -1 == lRet:
 		file_info.print_file_info('lRet is %d' % lRet)

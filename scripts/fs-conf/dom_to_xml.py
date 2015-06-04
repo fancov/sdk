@@ -1,4 +1,4 @@
-# coding=utf-8
+﻿# coding=utf-8
 
 '''
 @author: bubble
@@ -8,30 +8,33 @@
 '''
 
 import file_info
+import os
 
 def dom_to_xml(seqFileName, doc):
     '''
     @todo:将DOM转化为XML
     '''
-    
+
     if seqFileName.strip() == '':
-        file_info.print_file_info('seqFileName is %s' % seqFileName)
+        file_info.print_file_info('DOM to XML FAIL, seqFileName is %s' % seqFileName)
         return -1
     
     if doc is None:
-        file_info.print_file_info('doc is %p' % doc)
+        file_info.print_file_info('DOM to XML FAIL')
         return -1
     
-    file_info.print_file_info('seqFileName is %s' % seqFileName)
-    
     try:
-        fp = open(seqFileName, 'w')
+        fp = os.open(seqFileName, os.O_RDWR | os.O_CREAT)
     except IOError, err:
         file_info.print_file_info('Catch IOException:%s' % str(err))
         return -1
     else:
-        fp.write(doc.toprettyxml(indent = ' '))
-        fp.close()
+        seqStr = doc.toprettyxml(indent = ' ')
+        os.write(fp, seqStr)
+        os.fsync(fp)
+        os.close(fp)
+
+        file_info.print_file_info('DOM to XML SUCC, seqFileName is:%s' % seqFileName)
         return 1
     
 def del_xml_head(seqFileName):
@@ -40,7 +43,7 @@ def del_xml_head(seqFileName):
     '''
     
     if seqFileName.strip() == '':
-        file_info.print_file_info('seqFileName is %s' % str(seqFileName))
+        file_info.print_file_info('Delete XML Declaration FAIL,seqFileName is %s' % str(seqFileName))
         return -1
     
     try:
@@ -60,5 +63,23 @@ def del_xml_head(seqFileName):
         else:
             fp.writelines(seqLines[1:])
             fp.close()
-            
+
+        file_info.print_file_info('Delete XML Declaration SUCC, seqFileName is %s' % str(seqFileName))
         return 1
+
+def del_blank_line(seqFileName):
+    fp = open(seqFileName, 'r')
+    textLine = fp.readlines()
+    newTextLine = []
+    for i in range(len(textLine)):
+        if str(textLine[i]).strip() != '':
+            newTextLine.append(textLine[i])
+
+    fp.close()
+    fp = open(seqFileName, 'w')
+    fp.writelines(newTextLine)
+    fp.close()
+
+    file_info.print_file_info('Delete XML Blank Line SUCC, seqFileName is %s' % str(seqFileName))
+    return 1
+

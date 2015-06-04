@@ -27,6 +27,7 @@ typedef struct tagRecvMsgHandle
     list_t                  stList;
     U8 *                    paRecvBuff;
     U32                     ulRecvLen;
+    U32                     ulIndex;
     struct sockaddr_in      stClientAddr;
 
 }PTS_REV_MSG_HANDLE_ST;
@@ -48,7 +49,7 @@ typedef struct tagClientCB
 typedef struct tagPtsServMsg
 {
    //S8                    szDoMain[PTS_DOMAIN_SIZE];
-   U16                     usPtsPort;
+   U16                     usPtsPort[PTS_UDP_LISTEN_PORT_COUNT];
    U16                     usWebServPort;
    U16                     usCmdServPort;
    S8                      Reserver[2];
@@ -87,6 +88,7 @@ extern pthread_mutex_t  g_mutexSendMsgPthreadList;
 extern sem_t g_SemPtsRecv;
 extern DLL_S  g_stStreamAddrList;
 extern PTS_SERV_SOCKET_ST g_lPtsServSocket[PTS_WEB_SERVER_MAX_SIZE];
+extern S32 g_alUdpSocket[PTS_UDP_LISTEN_PORT_COUNT];
 
 VOID *pts_recv_msg_from_ptc(VOID *arg);
 VOID *pts_handle_recvfrom_ptc_msg(VOID *arg);
@@ -103,7 +105,6 @@ S32  pts_get_curr_position_callback(VOID *para, S32 n_column, S8 **column_value,
 S32  g2u(S8 *inbuf, size_t inlen, char *outbuf, size_t outlen);
 S32  pts_get_sn_by_id(S8 *szID, S8 *szSN, S32 lLen);
 S32  pts_find_stream_addr_by_streamID(VOID *pKey, DLL_NODE_S *pstDLLNode);
-
 
 #ifdef  __cplusplus
 }

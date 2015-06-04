@@ -124,6 +124,11 @@ S32 pts_create_udp_socket(U16 usUdpPort, U32 ulSocketCache)
     S32 lError  = 0;
     struct sockaddr_in stMyAddr;
 
+    if (0 == usUdpPort)
+    {
+        return -1;
+    }
+
     while (1)
     {
         lSockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -167,7 +172,7 @@ S32 pts_create_udp_socket(U16 usUdpPort, U32 ulSocketCache)
 
         break;
     }
-    printf("recvfrom fail ,create socket again\n");
+
     return lSockfd;
 }
 
@@ -331,7 +336,8 @@ S32 pts_init_serv_msg()
 {
     S8 szServiceRoot[PT_DATA_BUFF_256] = {0};
 
-    g_stPtsMsg.usPtsPort = config_get_pts_port();
+    g_stPtsMsg.usPtsPort[0] = config_get_pts_port1();
+    g_stPtsMsg.usPtsPort[1] = config_get_pts_port2();
     g_stPtsMsg.usWebServPort = config_get_pts_proxy_port(); /* web server 端口 */
     g_stPtsMsg.usCmdServPort = config_get_pts_telnet_server_port(); /* cmd server 端口 */
     /* 数据库目录 */
@@ -380,12 +386,32 @@ S32 pts_main()
         return DOS_FAIL;
     }
 
-    g_ulUdpSocket = pts_create_udp_socket(g_stPtsMsg.usPtsPort, ulSocketCache);
-
-    lRet = pts_create_tcp_socket(g_stPtsMsg.usPtsPort);
-    if (lRet <= 0)
+    if (0 == g_stPtsMsg.usPtsPort[0] && 0 == g_stPtsMsg.usPtsPort[1])
     {
+        logr_info("UDP server port error");
+
         return DOS_FAIL;
+    }
+
+    g_alUdpSocket[0] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[0], ulSocketCache);
+    g_alUdpSocket[1] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[1], ulSocketCache);
+
+    if (g_stPtsMsg.usPtsPort[0] != 0)
+    {
+        lRet = pts_create_tcp_socket(g_stPtsMsg.usPtsPort[0]);
+        if (lRet <= 0)
+        {
+            return DOS_FAIL;
+        }
+    }
+
+    if (g_stPtsMsg.usPtsPort[1] != 0)
+    {
+        lRet = pts_create_tcp_socket(g_stPtsMsg.usPtsPort[1]);
+        if (lRet <= 0)
+        {
+            return DOS_FAIL;
+        }
     }
 
     lRet = dos_sqlite3_create_db(g_pstMySqlite);

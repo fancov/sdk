@@ -308,18 +308,41 @@ get_domain:
  */
 S32 ptc_init_send_cache_queue(U8 *pcID)
 {
-    if (NULL == pcID)
+    S32 i = 0;
+    struct sockaddr_in stDestAddr;
+    PT_DATA_TCP_ST *pstTcpData = NULL;
+    PT_STREAM_CB_ST *pstStreamIDHead = NULL;
+    PT_STREAM_CB_ST *pstStreamIDNode = NULL;
+
+    if (DOS_ADDR_INVALID(pcID))
     {
         return DOS_FAIL;
     }
 
-    struct sockaddr_in stDestAddr;
+    /* 预分配 PTC_STREAMID_MAX_COUNT 个 stream的空间 */
+    pstStreamIDHead = (PT_STREAM_CB_ST *)dos_dmem_alloc(sizeof(PT_STREAM_CB_ST) * PTC_STREAMID_MAX_COUNT);
+    if (DOS_ADDR_INVALID(pstStreamIDHead))
+    {
+        return DOS_FAIL;
+    }
+
+    for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
+    {
+        pstStreamIDNode = &pstStreamIDHead[i];
+        pt_stream_node_init(pstStreamIDNode);
+        pstTcpData = pt_data_tcp_queue_create(PT_DATA_SEND_CACHE_SIZE);
+        if (DOS_ADDR_INVALID(pstTcpData))
+        {
+            dos_dmem_free(pstStreamIDHead);
+            return DOS_FAIL;
+        }
+        pstStreamIDNode->unDataQueHead.pstDataTcp = pstTcpData;
+    }
 
     g_pstPtcSend = (PT_CC_CB_ST *)dos_dmem_alloc(sizeof(PT_CC_CB_ST));
-    if (NULL == g_pstPtcSend)
+    if (DOS_ADDR_INVALID(g_pstPtcSend))
     {
         perror("send cache malloc");
-
         return DOS_FAIL;
     }
 
@@ -345,20 +368,7 @@ S32 ptc_init_send_cache_queue(U8 *pcID)
     }
 
     g_pstPtcSend->stDestAddr = stDestAddr;
-
-    g_pstPtcSend->astDataTypes[PT_DATA_CTRL].enDataType = PT_DATA_CTRL;
-    g_pstPtcSend->astDataTypes[PT_DATA_CTRL].bValid = DOS_TRUE;
-    dos_list_init(&g_pstPtcSend->astDataTypes[PT_DATA_CTRL].stStreamQueHead);
-    g_pstPtcSend->astDataTypes[PT_DATA_CTRL].ulStreamNumInQue = 0;
-    g_pstPtcSend->astDataTypes[PT_DATA_WEB].enDataType = PT_DATA_WEB;
-    g_pstPtcSend->astDataTypes[PT_DATA_WEB].bValid = DOS_TRUE;
-    dos_list_init(&g_pstPtcSend->astDataTypes[PT_DATA_WEB].stStreamQueHead);
-    g_pstPtcSend->astDataTypes[PT_DATA_WEB].ulStreamNumInQue = 0;
-    g_pstPtcSend->astDataTypes[PT_DATA_CMD].enDataType = PT_DATA_CMD;
-    g_pstPtcSend->astDataTypes[PT_DATA_CMD].bValid = DOS_TRUE;
-    dos_list_init(&g_pstPtcSend->astDataTypes[PT_DATA_CMD].stStreamQueHead);
-    g_pstPtcSend->astDataTypes[PT_DATA_CMD].ulStreamNumInQue = 0;
-    //pthread_mutex_init(&g_pstPtcSend->pthreadMutex, NULL);
+    g_pstPtcSend->pstStreamHead = pstStreamIDHead;
 
     return DOS_SUCC;
 }
@@ -372,21 +382,44 @@ S32 ptc_init_send_cache_queue(U8 *pcID)
  */
 S32 ptc_init_recv_cache_queue(U8 *pcID)
 {
-    if (NULL == pcID)
+   S32 i = 0;
+    struct sockaddr_in stDestAddr;
+    PT_DATA_TCP_ST *pstTcpData = NULL;
+    PT_STREAM_CB_ST *pstStreamIDHead = NULL;
+    PT_STREAM_CB_ST *pstStreamIDNode = NULL;
+
+    if (DOS_ADDR_INVALID(pcID))
     {
         return DOS_FAIL;
     }
 
-   // struct sockaddr_in stDestAddr;
+    /* 预分配 PTC_STREAMID_MAX_COUNT 个 stream的空间 */
+    pstStreamIDHead = (PT_STREAM_CB_ST *)dos_dmem_alloc(sizeof(PT_STREAM_CB_ST) * PTC_STREAMID_MAX_COUNT);
+    if (DOS_ADDR_INVALID(pstStreamIDHead))
+    {
+        return DOS_FAIL;
+    }
+
+    for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
+    {
+        pstStreamIDNode = &pstStreamIDHead[i];
+        pt_stream_node_init(pstStreamIDNode);
+        pstTcpData = pt_data_tcp_queue_create(PT_DATA_RECV_CACHE_SIZE);
+        if (DOS_ADDR_INVALID(pstTcpData))
+        {
+            dos_dmem_free(pstStreamIDHead);
+            return DOS_FAIL;
+        }
+        pstStreamIDNode->unDataQueHead.pstDataTcp = pstTcpData;
+    }
 
     g_pstPtcRecv = (PT_CC_CB_ST *)dos_dmem_alloc(sizeof(PT_CC_CB_ST));
-    if (NULL == g_pstPtcRecv)
+    if (DOS_ADDR_INVALID(g_pstPtcRecv))
     {
-        perror("recv cache malloc");
-
+        perror("send cache malloc");
         return DOS_FAIL;
     }
-#if 0
+
     dos_memcpy(g_pstPtcRecv->aucID, pcID, PTC_ID_LEN);
 
     bzero(&stDestAddr, sizeof(stDestAddr));
@@ -409,21 +442,7 @@ S32 ptc_init_recv_cache_queue(U8 *pcID)
     }
 
     g_pstPtcRecv->stDestAddr = stDestAddr;
-#endif
-
-    g_pstPtcRecv->astDataTypes[PT_DATA_CTRL].enDataType = PT_DATA_CTRL;
-    g_pstPtcRecv->astDataTypes[PT_DATA_CTRL].bValid = DOS_TRUE;
-    dos_list_init(&g_pstPtcRecv->astDataTypes[PT_DATA_CTRL].stStreamQueHead);
-    g_pstPtcRecv->astDataTypes[PT_DATA_CTRL].ulStreamNumInQue = 0;
-    g_pstPtcRecv->astDataTypes[PT_DATA_WEB].enDataType = PT_DATA_WEB;
-    g_pstPtcRecv->astDataTypes[PT_DATA_WEB].bValid = DOS_TRUE;
-    dos_list_init(&g_pstPtcRecv->astDataTypes[PT_DATA_WEB].stStreamQueHead);
-    g_pstPtcRecv->astDataTypes[PT_DATA_WEB].ulStreamNumInQue = 0;
-    g_pstPtcRecv->astDataTypes[PT_DATA_CMD].enDataType = PT_DATA_CMD;
-    g_pstPtcRecv->astDataTypes[PT_DATA_CMD].bValid = DOS_TRUE;
-    dos_list_init(&g_pstPtcRecv->astDataTypes[PT_DATA_CMD].stStreamQueHead);
-    g_pstPtcRecv->astDataTypes[PT_DATA_CMD].ulStreamNumInQue = 0;
-    //pthread_mutex_init(&g_pstPtcRecv->pthreadMutex, NULL);
+    g_pstPtcRecv->pstStreamHead = pstStreamIDHead;
 
     return DOS_SUCC;
 }
@@ -514,82 +533,6 @@ S32 ptc_create_socket_proxy(U8 *alServIp, U16 usServPort)
     }
 
     return lSockfd;
-}
-
-/**
- * 函数：VOID *ptc_send_msg2proxy(VOID *arg)
- * 功能：
- *      1.线程 发送消息到proxy
- * 参数
- * 返回值：
- */
-VOID *ptc_send_msg2proxy(VOID *arg)
-{
-    list_t *pstNendRecvList = NULL;
-    PT_NEND_RECV_NODE_ST *pstNeedRecvNode = NULL;
-    struct timeval now;
-    struct timespec timeout;
-
-    while (1)
-    {
-        gettimeofday(&now, NULL);
-        timeout.tv_sec = now.tv_sec + 1;
-        timeout.tv_nsec = now.tv_usec * 1000;
-
-        pthread_mutex_lock(&g_mutexPtcRecvPthread);
-        sem_post(&g_SemPtcRecv);
-        pthread_cond_timedwait(&g_condPtcRecv, &g_mutexPtcRecvPthread, &timeout);
-        pthread_mutex_unlock(&g_mutexPtcRecvPthread);
-
-        /* 循环发送g_pstPtsNendRecvNode中的stream */
-
-        DOS_LOOP_DETECT_INIT(lLoopMaxCount, DOS_DEFAULT_MAX_LOOP);
-
-        while(1)
-        {
-            /* 防止死循环 */
-            DOS_LOOP_DETECT(lLoopMaxCount)
-            pthread_mutex_lock(&g_mutexPtcRecvPthread);
-            if (dos_list_is_empty(&g_stPtcNendRecvNode))
-            {
-                pthread_mutex_unlock(&g_mutexPtcRecvPthread);
-                break;
-            }
-
-            pstNendRecvList = dos_list_fetch(&g_stPtcNendRecvNode);
-            if (DOS_ADDR_INVALID(pstNendRecvList))
-            {
-                pthread_mutex_unlock(&g_mutexPtcRecvPthread);
-                DOS_ASSERT(0);
-                continue;
-            }
-            pthread_mutex_unlock(&g_mutexPtcRecvPthread);
-
-            pstNeedRecvNode = dos_list_entry(pstNendRecvList, PT_NEND_RECV_NODE_ST, stListNode);
-
-            if (PT_DATA_WEB == pstNeedRecvNode->enDataType)
-            {
-                ptc_send_msg2browser(pstNeedRecvNode);
-                dos_dmem_free(pstNeedRecvNode);
-                pstNeedRecvNode = NULL;
-                continue;
-            }
-            else if (PT_DATA_CMD == pstNeedRecvNode->enDataType)
-            {
-                ptc_send_msg2cmd(pstNeedRecvNode);
-                dos_dmem_free(pstNeedRecvNode);
-                pstNeedRecvNode = NULL;
-                continue;
-            }
-            else
-            {
-                dos_dmem_free(pstNeedRecvNode);
-                pstNeedRecvNode = NULL;
-            }
-        }
-    }
-
-    return NULL;
 }
 
 /**
@@ -700,7 +643,10 @@ S32 ptc_main()
 {
     S32 lRet = 0;
     U8 aucID[PTC_ID_LEN+1] = {0};
-    pthread_t tid1, tid2, tid3, tid4, tid5, tid6;
+    pthread_t tid1, tid2, tid3, tid4, tid5, tid6, tid7;
+
+    /* 初始化socket和streamID对应关系数组 */
+    ptc_init_ptc_client_cb();
 
     g_ulUdpSocket = ptc_create_udp_socket(PTC_SOCKET_CACHE);
 
@@ -754,6 +700,17 @@ S32 ptc_main()
     else
     {
         logr_debug("create pthread succ : ptc_recv_msg_from_pts!");
+    }
+
+    lRet = pthread_create(&tid7, NULL, ptc_handle_recvfrom_web_msg, NULL);
+    if (lRet < 0)
+    {
+        logr_info("create pthread error : ptc_handle_recvfrom_web_msg!");
+        return DOS_FAIL;
+    }
+    else
+    {
+        logr_debug("create pthread succ : ptc_handle_recvfrom_web_msg!");
     }
 
     lRet = pthread_create(&tid3, NULL, ptc_recv_msg_from_web, NULL);

@@ -1,4 +1,4 @@
-#coding=utf-8
+﻿# coding=utf-8
 
 '''
 @author: bubble
@@ -8,27 +8,26 @@
 '''
 
 from xml.dom.minidom import Document
+from xml.dom import minidom
 import os
 import file_info
 import dom_to_xml
 import conf_path
 import db_exec
-    
+
 def generate_sip(userid):
     '''
     @todo: 生成sip账户
     '''
     if str(userid).strip() == '':
-        file_info.print_file_info('userid does not exist...')
+        file_info.print_file_info('Generate SIP %d FAIL.' % int(userid))
         return -1
     # 获取sip相关信息
     listSipInfo = get_sipinfo_by_userid(userid)
     if -1 == listSipInfo:
-        file_info.print_file_info('listSipInfo is %d' % listSipInfo)
+        file_info.print_file_info('Generate SIP %d FAIL.' % int(userid))
         return -1
     ulSipID = int(listSipInfo[0][0])
-    #ulCustomerID = int(listSipInfo[0][1])
-    #seqExtension = listSipInfo[0][2]
     seqDispName = listSipInfo[0][3]
     seqAuthName = listSipInfo[0][4]
     seqAuthPassword = listSipInfo[0][5]
@@ -108,7 +107,8 @@ def generate_sip(userid):
     if -1 == lRet:
         file_info.print_file_info('lRet is %d' % lRet)
         return -1
-    
+
+    file_info.print_file_info('Generate SIP %d SUCC' % int(userid))
     return 1
 
 def get_sipinfo_by_userid(userid):
@@ -124,9 +124,10 @@ def get_sipinfo_by_userid(userid):
     seqSQLCmd = 'SELECT id, customer_id, extension, dispname, authname, auth_password FROM tbl_sip WHERE userid = \'%s\';' % str(userid)
     listSipInfo = db_exec.exec_SQL(seqSQLCmd)
     if -1 == listSipInfo:
-        file_info.print_file_info('listSipInfo is %d' % listSipInfo)
+        file_info.print_file_info('Get SIP info by user ID FAIL,listSipInfo is %d' % listSipInfo)
         return -1
 
+    file_info.print_file_info('Get SIP info by user ID(%d) SUCC.' % int(userid))
     return listSipInfo
 
 def get_userid_by_sipid(ulSipID):
@@ -135,17 +136,17 @@ def get_userid_by_sipid(ulSipID):
     '''
     
     if str(ulSipID).strip() == '':
-        file_info.print_file_info('userid does not exist.')
+        file_info.print_file_info('Get User ID by SIP ID FAIL.')
         return -1
     
-    seqSQLCmd = 'SELECT userid FROM tbl_sip WHERE id=%d;' % ulSipID
+    seqSQLCmd = 'SELECT userid FROM tbl_sip WHERE id=%d;' % int(ulSipID)
     lRet = db_exec.exec_SQL(seqSQLCmd)
     if -1 == lRet:
-        file_info.print_file_info('lRet is %d' % lRet)
+        file_info.print_file_info('Get User ID by SIP ID(%d) FAIL,lRet is %d' % (int(ulSipID), lRet))
         return -1
     
     seqUserID = str(lRet[0][0])
-    
+    file_info.print_file_info('Get User ID by SIP ID(%d) SUCC.' % int(ulSipID))
     return seqUserID
 
 def get_customerid_by_sipid(ulSipID):
@@ -153,16 +154,18 @@ def get_customerid_by_sipid(ulSipID):
     @todo: 根据sipid获取customerid
     '''
     if str(ulSipID).strip() == '':
-        file_info.print_file_info('ulSipID does not exist.')
+        file_info.print_file_info('Get Customer ID by SIP ID FAIL.')
         return -1
     
     seqSQLCmd = 'SELECT customer_id FROM tbl_sip WHERE id = %d;' % ulSipID
     lRet = db_exec.exec_SQL(seqSQLCmd)
     if -1 == lRet:
-        file_info.print_file_info('lRet is %d' % lRet)
+        file_info.print_file_info('Get Customer ID by SIP ID FAIL, lRet is %d' % lRet)
         return -1
     
     ulCustomerID = int(lRet[0][0])
+
+    file_info.print_file_info('Get Customer ID by SIP ID(%s) SUCC' % ulSipID)
     return ulCustomerID
     
 
@@ -171,12 +174,12 @@ def add_sip(ulSipID):
     @增加一个sip账户
     '''
     if str(ulSipID).strip() == '':
-        file_info.print_file_info('ulSipID')
+        file_info.print_file_info('Add new SIP FAIL.')
         return -1
     # 根据sipid获取userid
     seqUserID = get_userid_by_sipid(ulSipID)
     if -1 == seqUserID:
-        file_info.print_file_info('seqUserID is %d' % seqUserID)
+        file_info.print_file_info('Add new SIP FAIL, seqUserID is %d' % seqUserID)
         return -1
     # 获取配置文件路径
     seqFsPath = conf_path.get_config_path()
@@ -192,61 +195,54 @@ def add_sip(ulSipID):
     # 生成sip配置文件
     lRet = generate_sip(seqUserID)
     if lRet == -1:
-        file_info.print_file_info('lRet is %d' % lRet)
+        file_info.print_file_info('Add new SIP FAIL, lRet is %d' % lRet)
         return -1
     
-    # 读取管理xml
-    try:
-        fp = open(seqMgntFile, 'r')
-    except IOError, err:
-        file_info.print_file_info('Catch IOException: %s' % str(err))
-        return -1
-    else:
-        listText = fp.readlines()
-        fp.close()
-        # 构造需要添加的行
-        seqAddText = '     <user id=\"%s\" type=\"pointer\"/>\n' % seqUserID
-        # 构造需要查找的行
-        seqFindText = '   </group>\n'
-        # 查找第一个'</group>的位置'
-        try:
-            ulIndex = listText.index(seqFindText)
-        except Exception, err:
-            file_info.print_file_info('Catch Exception: %s' % str(err))
-            return -1
-        else:
-            # 添加到相应位置
-            if seqAddText in listText:
-                file_info.print_file_info('Content exists,needn\'t add')
-                return 1
-            else:
-                listText.insert(ulIndex + 3, seqAddText)
-            # 重新写进文件
-            try:
-                fp = open(seqMgntFile, 'w')
-            except IOError, err:
-                file_info.print_file_info('Catch IOException: %s' % str(err))
+    xmlDoc = minidom.parse(seqMgntFile)
+    groupList = xmlDoc.getElementsByTagName('group')
+    
+    for i in range(len(groupList)):
+        if groupList[i].getAttribute('name') == 'all':
+            userNode = xmlDoc.createElement('user')
+            userNode.setAttribute('id', seqUserID)
+            userNode.setAttribute('type', 'pointer')
+            
+            usersNode = groupList[i].getElementsByTagName('users')
+            usersNode[0].appendChild(userNode)
+            
+            lRet = dom_to_xml.dom_to_xml(seqMgntFile, xmlDoc)
+            if lRet == -1:
+                file_info.print_file_info('Add new SIP FAIL, lRet is %d' % lRet)
                 return -1
-            else:
-                fp.writelines(listText)   
-                fp.close()      
-                return 1
-    
+            
+            # 删除XML头部声明
+            lRet = dom_to_xml.del_xml_head(seqMgntFile)
+            if -1 == lRet:
+                file_info.print_file_info('Add new SIP FAIL, lRet is %d' % lRet)
+                return -1
+
+        lRet = dom_to_xml.del_blank_line(seqMgntFile)
+        if -1 == lRet:
+            file_info.print_file_info('Delete Blank Line FAIL,lRet is %d' % lRet)
+            return -1
+
+    file_info.print_file_info('Add new SIP(%s) SUCC.' % str(seqUserID))
+    return 0
         
 def del_sip(ulSipID, seqUserID, ulCustomerID):
     '''
     @todo: 删除sip账户
     '''
     if str(ulSipID).strip() == '':
-        file_info.print_file_info('ulSipID does not exist..')
+        file_info.print_file_info('Delete SIP FAIL.')
         return -1
     
     if seqUserID.strip() == '':
-        file_info.print_file_info('seqUserID does not exist..')
+        file_info.print_file_info('Delete SIP FAIL.')
         return -1
     
     if str(ulCustomerID).strip() == '':
-        file_info.print_file_info('ulCustomerID does not exist..')
+        file_info.print_file_info('Delete SIP FAIL.')
         return -1
     
     # 获取配置文件路径
@@ -267,36 +263,38 @@ def del_sip(ulSipID, seqUserID, ulCustomerID):
     # 构造管理文件
     seqMgntFile = seqMgntDir + 'default.xml'
     
-    # 读取管理文件
-    try:
-        fp = open(seqMgntFile, 'r')
-    except IOError, err:
-        file_info.print_file_info('Catch IOException: %s' % str(err))
-        return -1
-    else:
-        listText = fp.readlines()
-        fp.close()
-        # 构造删除行
-        seqDelText = '     <user id=\"%s\" type=\"pointer\"/>\n' % seqUserID
+    if os.path.exists(seqMgntFile):
+        xmlDoc = minidom.parse(seqMgntFile)
+        groupList = xmlDoc.getElementsByTagName('group')
         
-        while seqDelText in listText:
-            # 找到删除行
-            try:
-                ulIndex = listText.index(seqDelText)
-            except Exception, err:
-                file_info.print_file_info('Catch Exception: %s' % str(err))
-                return -1
-            else:
-                del listText[ulIndex]
-        
-        # 重新写进xml
-        try:
-            fp = open(seqMgntFile, 'w')
-        except IOError, err:
-            file_info.print_file_info('Catch IOException: %s' % str(err))
+        for i in range(len(groupList)):
+            if groupList[i].getAttribute('name') == 'all':
+                break
+            
+        if i < len(groupList):
+            usersNode = groupList[i].getElementsByTagName('users')
+            userList = usersNode[0].getElementsByTagName('user')
+            for j in range(len(userList)):
+                if userList[j].getAttribute('id') == seqUserID:
+                    usersNode[0].removeChild(userList[j])
+                    
+        # 写配置文件
+        # 将DOM转换为XML
+        lRet = dom_to_xml.dom_to_xml(seqMgntFile, xmlDoc)
+        if lRet == -1:
+            file_info.print_file_info('Delete SIP FAIL, lRet is %d' % xmlDoc)
             return -1
-        else:
-            fp.writelines(listText)
-            fp.close()
-        
-            return 1
+
+        # 删除XML头部声明
+        lRet = dom_to_xml.del_xml_head(seqMgntFile)
+        if -1 == lRet:
+            file_info.print_file_info('Delete SIP FAIL, lRet is %d' % lRet)
+            return -1
+
+        lRet = dom_to_xml.del_blank_line(seqMgntFile)
+        if -1 == lRet:
+            file_info.print_file_info('Delete SIP FAIL, lRet is %d' % lRet)
+            return -1
+
+    file_info.print_file_info('Delete SIP(%s) SUCC.' % seqUserID)
+    return 1

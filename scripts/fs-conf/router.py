@@ -22,7 +22,7 @@ def phone_route():
     global CONN
     lRet = db_conn.connect_db()
     if -1 == lRet:
-        file_info.print_file_info('lRet is %d' % lRet)
+        file_info.print_file_info('Database Connect FAIL,lRet is %d' % lRet)
         return -1
   
     # 查找所有的路由id
@@ -30,12 +30,13 @@ def phone_route():
     file_info.print_file_info('seqSQLCmd is %s' % seqSQLCmd)
     results = db_exec.exec_SQL(seqSQLCmd)
     if -1 == results:
-        file_info.print_file_info(results)
+        file_info.print_file_info('Phone route FAIL,results == %d' % results)
         return -1
     
     for loop in range(len(results)):
         make_route(int(results[loop][0]))
-    
+
+    file_info.print_file_info('Phone Route SUCC.')
     return 1
     
 def get_route_param(id):
@@ -46,28 +47,29 @@ def get_route_param(id):
     global CONN 
     lRet = db_conn.connect_db()
     if -1 == lRet:
-        file_info.print_file_info('lRet is %d' % lRet)
+        file_info.print_file_info('Get route parameter FAIL,lRet is %d' % lRet)
         return -1
     
     # 获取路由信息
     seqSQLCmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_gateway WHERE id=%d;' % (id)
-    file_info.print_file_info('seqSQLCmd is %s' % seqSQLCmd)
     
     results = db_exec.exec_SQL(seqSQLCmd)
     if -1 == results:
-        file_info.print_file_info(results)
+        file_info.print_file_info('Get route param FAIL,results == %d' % results)
         return -1
+
+    file_info.print_file_info('Get route Param SUCC.')
     return results
 
 def make_route(ulGatewayID):
     '''
-    @param id: ulGatewayID 网关ID
+    @param ulGatewayID: ulGatewayID 网关ID
     @todo: 生成网关路由
     '''
     doc = Document()
     results = get_route_param(ulGatewayID)  
     if -1 == results:
-        file_info.print_file_info('results is %d' % results)
+        file_info.print_file_info('Generate Route Configuration FAIL, results is %d' % results)
         return -1
     domGatewayNode = doc.createElement('gateway')
     domGatewayNode.setAttribute('name', str(ulGatewayID))
@@ -97,7 +99,7 @@ def make_route(ulGatewayID):
     
     seqCfgDir = db_config.get_db_param()['fs_config_path']
     if -1 == seqCfgDir:
-        file_info.print_file_info('seqCfgDir is %d' % seqCfgDir)
+        file_info.print_file_info('Generate route Configuration FAIL, seqCfgDir is %d' % seqCfgDir)
         return -1
     if seqCfgDir[-1] != '/':
         seqCfgDir = seqCfgDir + '/'
@@ -109,13 +111,14 @@ def make_route(ulGatewayID):
     seqCfgPath = seqCfgDir + str(ulGatewayID) + '.xml'
     lRet = dom_to_xml.dom_to_xml(seqCfgPath, doc)
     if -1 == lRet:
-        file_info.print_file_info('lRet is %d' % lRet)
+        file_info.print_file_info('Generate route Configuration FAIL, lRet is %d' % lRet)
         return -1
     lRet = dom_to_xml.del_xml_head(seqCfgPath)
     if -1 == lRet:
-        file_info.print_file_info('lRet is %d' % lRet)
+        file_info.print_file_info('Generate route Configuration FAIL, lRet is %d' % lRet)
         return -1
-    
+
+    file_info.print_file_info('Generate route %d Configuration SUCC.' % ulGatewayID)
     return 1
     
 def del_route(ulGatewayID):
@@ -123,7 +126,7 @@ def del_route(ulGatewayID):
     @todo： 网关ID
     '''
     if str(ulGatewayID).strip() == '':
-        file_info.print_file_info('ulGatewayID is %s' % str(ulGatewayID))
+        file_info.print_file_info('Delete route configuration FAIL,ulGatewayID is %s' % str(ulGatewayID))
         return -1
     seqCfgDir = db_config.get_db_param()['fs_config_path']
     if seqCfgDir[-1] != '/':
@@ -137,6 +140,7 @@ def del_route(ulGatewayID):
     
     if os.path.exists(seqCfgPath):
         os.system("rm %s" % (seqCfgPath))
-        
+
+    file_info.print_file_info('Delete route %d Configuration SUCC.' % ulGatewayID)
     return 1
 

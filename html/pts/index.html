@@ -13,62 +13,63 @@
 <LINK href="ddsmoothmenu.css" type=text/css rel=stylesheet>
 <LINK href="pts_public.css" type=text/css rel=stylesheet>
 <style>
-	*{font-family: "微软雅黑"}
+    *{font-family: "微软雅黑"}
 </style>
 <script type="text/javascript" language="javascript" class="init">
 
 $(document).ready(function() {
-	var oTable = $('#dataTable').DataTable({
-			"info" : true, 
-			"aaSorting": [[1, "desc"]],
-			"stateSave": true,
-			"serverSide": true,
-			"sDom": '<"top"f<"refush">>rt<"bottom"lp>',
-			"sAjaxSource": "/ptc_list.html",
-			"aoColumnDefs": [{"className": "ptc_ardio",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [8]}, {"className": "ptc_nice", "aTargets": [3]}],
-			"fnDrawCallback":function(){ $('#dataTable tbody td.ptc_nice').editable('editable_ajax.html', {
-				"callback": function(sValue, y) {
-					var aPos = oTable.fnGetPosition(this);
-					oTable.fnUpdate( sValue, aPos[0], aPos[1]);
-				},
+    var oTable = $('#dataTable').DataTable({
+            "info" : true,
+            "bProcessing" : false,
+            "aaSorting": [[1, "desc"]],
+            "stateSave": true,
+            "serverSide": true,
+            "sDom": '<"top"f<"refush">>rt<"bottom"lp>',
+            "sAjaxSource": "/ptc_list.html",
+            "aoColumnDefs": [{"className": "ptc_ardio",  "orderable": false, "aTargets": [0]}, {"className": "ptc_sn", "aTargets": [8]}, {"className": "ptc_nice", "aTargets": [3]}],
+            "fnDrawCallback":function(){ $('#dataTable tbody td.ptc_nice').editable('editable_ajax.html', {
+                "callback": function(sValue, y) {
+                    var aPos = oTable.fnGetPosition(this);
+                    oTable.fnUpdate( sValue, aPos[0], aPos[1]);
+                },
 
-				"submitdata": function ( value, settings ) {
-					return {
-						"row_id": $(this).parent().children("td.ptc_sn").html(),
-						"column": $(this).find("input").val()
-					};
-				}
-			})},
-			<% dataTablesLang(); %>
-		});
+                "submitdata": function ( value, settings ) {
+                    return {
+                        "row_id": $(this).parent().children("td.ptc_sn").html(),
+                        "column": $(this).find("input").val()
+                    };
+                }
+            })},
+            <% dataTablesLang(); %>
+        });
 
-		$('.refush').html("<p id='RefushButton'> <input type='button' value ='<% htmlLang(78); %>'></p>");
+        $('.refush').html("<p id='RefushButton'> <input type='button' value ='<% htmlLang(78); %>'></p>");
 
-		$('#dataTable tbody').on('click', 'td', function () {
-			if ($(this).find("input").val())
-			{
-				return true;
-			}
-			var _checked_ = $(this).parent().children("td.ptc_ardio").children("input").prop('checked'); 
-			if (_checked_) 
-			{ 
-				$(this).parent().children("td.ptc_ardio").children("input").prop('checked', false); 
-			} 
-			else 
-			{ 
-				$(this).parent().children("td.ptc_ardio").children("input").prop('checked', true); 
-			}
-    	});
+        $('#dataTable tbody').on('click', 'td', function () {
+            if ($(this).find("input").val())
+            {
+                return true;
+            }
+            var _checked_ = $(this).parent().children("td.ptc_ardio").children("input").prop('checked');
+            if (_checked_)
+            {
+                $(this).parent().children("td.ptc_ardio").children("input").prop('checked', false);
+            }
+            else
+            {
+                $(this).parent().children("td.ptc_ardio").children("input").prop('checked', true);
+            }
+        });
 
-    	$('#dataTable tbody').on('dblclick', 'td', function () {
-			$(this).parent().children("td.ptc_ardio").children("input").prop('checked', true); 
-			visit_dev();
-    	});
+        $('#dataTable tbody').on('dblclick', 'td', function () {
+            $(this).parent().children("td.ptc_ardio").children("input").prop('checked', true);
+            visit_dev();
+        });
 
-    	$('.refush').click(function(){
-		    location.reload();
-			return true;		
-    	});
+        $('.refush').click(function(){
+            location.reload();
+            return true;
+        });
 });
 
 get_lang_type(<% lang_type(); %>);
@@ -80,96 +81,97 @@ updateTime();
 <body style="margin:0; padding:0; background:#fafafa;">
 
 <div class="nav_content">
-	<div class="ddsmoothmenu nav_left" id="smoothmenu1">
-	<UL>
-		<LI class="logo_li">
-			<a href="http://www.dipcc.com" target="_blank">
-				<img src="images/logo.png" title="深圳市天天讯通科技有限公司"  width="120px" height="44px" />
-			</a>
-		</LI>
-	</UL>
-	<UL>
-		<LI><A href="index.html"><% htmlLang(0); %></A></LI>
-		<LI><A href="#"><% htmlLang(1); %></A> 
-		<UL>
-			<LI><A href="pts_switch.html"><% htmlLang(2); %></A> </LI>
-			<LI><A href="pts_config.html"><% htmlLang(3); %></A> </LI>
-			<LI><A href="pts_upgrades.html"><% htmlLang(4); %></A> </LI>
-		</UL>
-		</LI>
-		<LI><A href="pts_user.html"><% htmlLang(5); %></A></LI>
-		<LI><A href="#"><% htmlLang(6); %></A>
-			<UL>
-				<LI><A href="pts_ping.html"><% htmlLang(7); %></A></LI>
-			</UL>
-		</LI>
-	</UL>
-	</div>
-	<div class="nav_right" > 
-		<table style="height:48px; border-spacing: 0px; border-collapse:collapse;">
-			<tr>
-				<td style="width:180px;"><p class="longin_user"> <% curr_user(); %></p></td>
-				<td rowspan="2"><div class="longout"><a href="javascript:;" onclick="exit()"><img  src="../images/logout.png" /></a></div></td>
-			</tr>
-			<tr>
-				<td style="width:180px; padding: 0px;" ><p id="system-time" style="font:11px tahoma;height:10px;width:160px;color: #F4F4F4;"></p></td>
-			</tr>
-		</table>
-	</div>
+    <div class="ddsmoothmenu nav_left" id="smoothmenu1">
+    <UL>
+        <LI class="logo_li">
+            <a href="http://www.dipcc.com" target="_blank">
+                <img src="images/logo.png" title="深圳市天天讯通科技有限公司"  width="120px" height="50px" />
+            </a>
+        </LI>
+    </UL>
+    <UL>
+        <LI><A href="index.html"><% htmlLang(0); %></A></LI>
+        <LI><A href="#"><% htmlLang(1); %></A>
+        <UL>
+            <LI><A href="pts_switch.html"><% htmlLang(2); %></A> </LI>
+            <LI><A href="pts_config.html"><% htmlLang(3); %></A> </LI>
+            <LI><A href="pts_upgrades.html"><% htmlLang(4); %></A> </LI>
+        </UL>
+        </LI>
+        <LI><A href="pts_user.html"><% htmlLang(5); %></A></LI>
+        <LI><A href="#"><% htmlLang(6); %></A>
+            <UL>
+                <LI><A href="pts_ping.html"><% htmlLang(7); %></A></LI>
+            </UL>
+        </LI>
+        <LI><A href="pts_license.html"><% htmlLang(79); %></A></LI>
+    </UL>
+    </div>
+    <div class="nav_right" >
+        <table style="height:48px; border-spacing: 0px; border-collapse:collapse;">
+            <tr>
+                <td style="width:180px;"><p class="longin_user"> <% curr_user(); %></p></td>
+                <td rowspan="2"><div class="longout"><a href="javascript:;" onclick="exit()"><img  src="../images/logout.png" /></a></div></td>
+            </tr>
+            <tr>
+                <td style="width:180px; padding: 0px;" ><p id="system-time" style="font:11px tahoma;height:10px;width:160px;color: #F4F4F4;"></p></td>
+            </tr>
+        </table>
+    </div>
 </div>
 <br>
 <div class="content_body">
-	<div>
-		<div class="content_title">
-			<p><b><% htmlLang(9); %></b></p>
-		</div>
-		<div>
-			<p class="content_body">
-				<label><% htmlLang(10); %></label>
-				<input type="text" value="" id="auto_internet_ip"  />&nbsp;&nbsp;&nbsp;&nbsp;
-				<label><% htmlLang(11); %></label>
-				<input type="text" value="" id="auto_intranet_ip"  placeholder ="127.0.0.1"/>&nbsp;&nbsp;
-				<label><% htmlLang(12); %></label>
-				<input type="text" value="" id="auto_port" placeholder="80" />&nbsp;&nbsp;
-				<input type="button" value="<% htmlLang(14); %>" onclick="auto_access()" />
-			</p>
-		</div>
-	</div>
-	<br>
-	<div>
-		<div class="content_title">
-			<p><b><% htmlLang(13); %></b></p>
-		</div>
-		<div>
-			<p class="content_body">
-				<label><% htmlLang(11); %></label>
-				<input type="text" value="" id="manual_intranet_ip" placeholder ="127.0.0.1"/>&nbsp;&nbsp;
-				<label><% htmlLang(12); %></label>
-				<input type="text" value=""  id="manual_port" placeholder="80"/>&nbsp;&nbsp;
-				<input type="button" value="<% htmlLang(14); %>" onclick="visit_dev()" />
-			</p>			
-		</div>
-	</div>
+    <div>
+        <div class="content_title">
+            <p><b><% htmlLang(9); %></b></p>
+        </div>
+        <div>
+            <p class="content_body">
+                <label><% htmlLang(10); %></label>
+                <input type="text" value="" id="auto_internet_ip"  />&nbsp;&nbsp;&nbsp;&nbsp;
+                <label><% htmlLang(11); %></label>
+                <input type="text" value="" id="auto_intranet_ip"  placeholder ="127.0.0.1"/>&nbsp;&nbsp;
+                <label><% htmlLang(12); %></label>
+                <input type="text" value="" id="auto_port" placeholder="80" />&nbsp;&nbsp;
+                <input type="button" value="<% htmlLang(14); %>" onclick="auto_access()" />
+            </p>
+        </div>
+    </div>
+    <br>
+    <div>
+        <div class="content_title">
+            <p><b><% htmlLang(13); %></b></p>
+        </div>
+        <div>
+            <p class="content_body">
+                <label><% htmlLang(11); %></label>
+                <input type="text" value="" id="manual_intranet_ip" placeholder ="127.0.0.1"/>&nbsp;&nbsp;
+                <label><% htmlLang(12); %></label>
+                <input type="text" value=""  id="manual_port" placeholder="80"/>&nbsp;&nbsp;
+                <input type="button" value="<% htmlLang(14); %>" onclick="visit_dev()" />
+            </p>
+        </div>
+    </div>
 </div>
 <div class="content_body">
-	<table id="dataTable" class="display" cellspacing="0" style="text-align:center" width="100%">
-		<thead>
-			<tr>
-				<th width="20px"> </th>        
-		        <th><% htmlLang(15); %></th>
-		        <th><% htmlLang(16); %></th>
-		        <th><% htmlLang(17); %></th>
-		        <th><% htmlLang(18); %></th>
-		        <th><% htmlLang(19); %></th>
-		        <th><% htmlLang(20); %></th>
-		        <th><% htmlLang(21); %></th>
-		        <th><% htmlLang(22); %></th>
-		        <th><% htmlLang(23); %></th>
-			</tr>
-		</thead>
-		<tbody>
-		</tbody>
-	</table>
+    <table id="dataTable" class="display" cellspacing="0" style="text-align:center" width="100%">
+        <thead>
+            <tr>
+                <th width="20px"> </th>
+                <th><% htmlLang(15); %></th>
+                <th><% htmlLang(16); %></th>
+                <th><% htmlLang(17); %></th>
+                <th><% htmlLang(18); %></th>
+                <th><% htmlLang(19); %></th>
+                <th><% htmlLang(20); %></th>
+                <th><% htmlLang(21); %></th>
+                <th><% htmlLang(22); %></th>
+                <th><% htmlLang(23); %></th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
 </div>
 </body>
 </html>

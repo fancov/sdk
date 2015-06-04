@@ -67,7 +67,63 @@ U32 lic_get_licc_version(U32 *pulVersion);
  **/
 S8* lic_get_licc_version_str();
 
+/*
+ * 函数: licc_get_license_loaded
+ * 功能: 查询license是否被加载
+ * 参数:
+ * 返回值: 如果license已经被正常加载将返回DOS_TRIE,否则返回DOS_FALSE
+ **/
+BOOL licc_get_license_loaded();
 
+/*
+ * 函数: licc_save_customer_id
+ * 功能: 保存客户信息
+ * 参数:
+ *     U8 *aucData  : 数据缓存
+ *     U32 ulLength : 数据长度
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ **/
+U32 licc_save_customer_id(U8 *aucData, U32 ulLength);
+
+/*
+ * 函数: licc_load_customer_id
+ * 功能: 保存客户信息
+ * 参数:
+ *     U8 *aucData  : 数据缓存
+ *     U32 ulLength : 数据长度
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ **/
+U32 licc_load_customer_id(U8 *aucData, U32 ulLength);
+
+/*
+ * 函数: licc_save_license
+ * 功能: 保存license信息
+ * 参数:
+ *     U8 *aucData  : 数据缓存
+ *     U32 ulLength : 数据长度
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ **/
+U32 licc_save_license(U8 *auclicense, U32 ulLength);
+
+/*
+ * 函数: licc_get_license_version
+ * 功能: 获取license版本号
+ * 参数:
+ *     U32 *pulVersion: license版本缓存
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ **/
+U32 licc_get_license_version(U32 *pulVersion);
+
+/*
+ * 函数: licc_get_license_expire
+ * 功能: 获取license版本号
+ * 参数:
+ *     U32 *pulExpire: license版本缓存
+ * 返回值:
+ *     !!!!!!!!!!!!!
+ *     请检查获取到的时间，如果为U32_BUTT，则是错误了，如果为0，则说明没有限制时间，如果其他值，则表示还可以使用多少秒钟
+ **/
+U32 licc_get_license_expire(U32 *pulExpire);
 
 #endif /* __LICENSE_H__ */
 

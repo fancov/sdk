@@ -18,6 +18,7 @@ extern  U32 g_ulPartCnt;
 
 static U32  mon_get_disk_temperature();
 static S8 * mon_get_disk_serial_num(S8 * pszPartitionName);
+static U32  mon_partition_reset_data();
 
 /**
  * 功能:为分区信息数组分配内存
@@ -60,9 +61,9 @@ U32 mon_disk_free()
 {
    U32 ulRows = 0;
    MON_SYS_PART_DATA_S * pstPartition = g_pastPartition[0];
-   if(!pstPartition)
+   if(DOS_ADDR_INVALID(pstPartition))
    {
-      logr_cirt("%s:Line %u:mon_disk_free|free memory failure,pstPartition is %p!"
+      logr_cirt("%s:Line %u:free memory failure,pstPartition is %p!"
                 , dos_get_filename(__FILE__) , __LINE__, pstPartition);
       return DOS_FAIL;  
    }
@@ -77,6 +78,23 @@ U32 mon_disk_free()
    
    return DOS_SUCC;
 }
+
+static U32  mon_partition_reset_data()
+{
+    MON_SYS_PART_DATA_S * pstPartition = g_pastPartition[0];
+
+    if(DOS_ADDR_INVALID(pstPartition))
+    {
+        logr_cirt("%s:Line %u:free memory failure,pstPartition is %p!"
+                   , dos_get_filename(__FILE__) , __LINE__, pstPartition);
+        return DOS_FAIL;  
+    }
+    
+    dos_memzero(pstPartition, MAX_PARTITION_COUNT * sizeof(MON_SYS_PART_DATA_S));
+    
+    return DOS_SUCC;
+}
+
 
 /**
  * 功能:获取磁盘的温度
@@ -138,6 +156,13 @@ static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
      if (DOS_ADDR_INVALID(fp))
      {
          logr_error("%s:Line %u:execute df command FAIL.", dos_get_filename(__FILE__), __LINE__);
+         return DOS_FAIL;
+     }
+
+     ulRet = mon_partition_reset_data();
+     if (DOS_SUCC != ulRet)
+     {
+         logr_error("%s:Line %u:ulRet == %u", dos_get_filename(__FILE__), __LINE__, ulRet);
          return DOS_FAIL;
      }
 

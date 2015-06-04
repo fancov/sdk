@@ -160,7 +160,7 @@ do                                                            \
 {                                                             \
     if (DOS_ADDR_INVALID(pstSCB)                              \
       || (pstSCB)->ucCurrentSrvInd >= SC_MAX_SRV_TYPE_PRE_LEG \
-	  || ulService >= SC_SERV_BUTT)                           \
+      || ulService >= SC_SERV_BUTT)                           \
     {                                                         \
         break;                                                \
     }                                                         \
@@ -356,15 +356,15 @@ typedef struct tagCallerQueryNode{
 /* define structs */
 typedef struct tagTelNumQueryNode
 {
-	list_t     stLink;                            /* 队列链表节点 */
+    list_t     stLink;                            /* 队列链表节点 */
 
     U32        ulIndex;                           /* 数据库中的ID */
 
     U8         ucTraceON;                         /* 是否跟踪 */
-	U8         ucCalleeType;                      /* 被叫号码类型， refer to enum SC_CALL_NUM_TYPE_EN */
+    U8         ucCalleeType;                      /* 被叫号码类型， refer to enum SC_CALL_NUM_TYPE_EN */
     U8         aucRes[2];
 
-	S8         szNumber[SC_TEL_NUMBER_LENGTH];    /* 号码缓存 */
+    S8         szNumber[SC_TEL_NUMBER_LENGTH];    /* 号码缓存 */
 }SC_TEL_NUM_QUERY_NODE_ST;
 
 typedef struct tagSiteQueryNode
@@ -378,7 +378,7 @@ typedef struct tagSiteQueryNode
     U32        bAllowAccompanying:1;              /* 是否允许分机随行 refer to SC_SITE_ACCOM_STATUS_EN */
     U32        ulRes1:28;
 
-	U32        ulStatus;                          /* 坐席状态 refer to SC_SITE_STATUS_EN */
+    U32        ulStatus;                          /* 坐席状态 refer to SC_SITE_STATUS_EN */
     U32        ulSiteID;                          /* 坐席数据库编号 */
 
     S8         szUserID[SC_TEL_NUMBER_LENGTH];    /* SIP User ID */

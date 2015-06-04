@@ -68,10 +68,10 @@ typedef enum tagDBType
 
 /* 数据库状态 */
 typedef enum {
-	DB_STATE_INIT,
-	DB_STATE_DOWN,
-	DB_STATE_CONNECTED,
-	DB_STATE_ERROR
+    DB_STATE_INIT,
+    DB_STATE_DOWN,
+    DB_STATE_CONNECTED,
+    DB_STATE_ERROR
 }SC_ODBC_STATUS_EN;
 
 /* 数据库连接handle */
@@ -142,11 +142,11 @@ FUNCATTR S32 db_close(DB_HANDLE_ST *pstDBHandle);
  * 函数：db_query
  * 功能：执行sql语句
  * 参数：
- *		DB_HANDLE_ST *pstDBHandle，数据库句柄的指针
- *		S8 *pszSQL, SQL语句
- *		S32 (*callback)(VOID*, S32, S8**, S8**), 行处理函数，没查询到一行会调用该函数一次
- *		VOID *pParamObj, 回调函数的额参数
- *		S8 **pszErrMsg，错误信息
+ *      DB_HANDLE_ST *pstDBHandle，数据库句柄的指针
+ *      S8 *pszSQL, SQL语句
+ *      S32 (*callback)(VOID*, S32, S8**, S8**), 行处理函数，没查询到一行会调用该函数一次
+ *      VOID *pParamObj, 回调函数的额参数
+ *      S8 **pszErrMsg，错误信息
  * 返回值：
  *      返回响应的错误码refer DB_ERR_NO_EN
  */
@@ -156,7 +156,7 @@ FUNCATTR S32 db_query(DB_HANDLE_ST *pstDBHandle, S8 *pszSQL, S32 (*callback)(VOI
  * 函数：db_affect_raw
  * 功能：获取查询结果集中的函数
  * 参数：
- *		DB_HANDLE_ST *pstDBHandle，数据库句柄的指针
+ *      DB_HANDLE_ST *pstDBHandle，数据库句柄的指针
  * 返回值：
  *      成功返回函数，失败返回-1
  */
@@ -166,7 +166,7 @@ FUNCATTR S32 db_affect_raw(DB_HANDLE_ST *pstDBHandle);
  * 函数：db_transaction_begin
  * 功能：开始执行事务
  * 参数：
- *		DB_HANDLE_ST *pstDBHandle，数据库句柄的指针
+ *      DB_HANDLE_ST *pstDBHandle，数据库句柄的指针
  * 返回值：成功返回函数，失败返回-1
  */
 FUNCATTR S32 db_transaction_begin(DB_HANDLE_ST *pstDBHandle);
@@ -175,7 +175,7 @@ FUNCATTR S32 db_transaction_begin(DB_HANDLE_ST *pstDBHandle);
  * 函数：db_transaction_commit
  * 功能：提交事务
  * 参数：
- *		DB_HANDLE_ST *pstDBHandle，数据库句柄的指针
+ *      DB_HANDLE_ST *pstDBHandle，数据库句柄的指针
  * 返回值：
  *      成功返回函数，失败返回-1
  */
@@ -185,7 +185,7 @@ FUNCATTR S32 db_transaction_commit(DB_HANDLE_ST *pstDBHandle);
  * 函数：db_transaction_rollback
  * 功能：回滚事务
  * 参数：
- *		DB_HANDLE_ST *pstDBHandle，数据库句柄的指针
+ *      DB_HANDLE_ST *pstDBHandle，数据库句柄的指针
  * 返回值：
  *      成功返回函数，失败返回-1
  */

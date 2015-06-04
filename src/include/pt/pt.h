@@ -43,13 +43,15 @@ extern "C"{
 #define pt_logr_info(_pszFormat, args...)    pt_logr_write(LOG_LEVEL_INFO, (_pszFormat), ##args)
 #define pt_logr_debug(_pszFormat, args...)   pt_logr_write(LOG_LEVEL_DEBUG, (_pszFormat), ##args)
 #define CRC16_POLY                  0x1021
-#define PT_MUTEX_DEBUG              0
-#define PT_PTC_MUTEX_DEBUG          0
-#define PT_WEB_MUTEX_DEBUG          0
+
+#if INCLUDE_PTS
+#define PTS_UDP_LISTEN_PORT_COUNT   2        /* pts中监听的UDP 端口数量 */
+#else
+#define PTC_STREAMID_MAX_COUNT      24       /* 访问proxy的最大socket */
+#endif
 
 #define gettid() syscall(__NR_gettid)       /* 获得线程号 */
 
-extern S32 g_ulUdpSocket;
 extern U8  gucIsTableInit;
 extern U16 g_crc_tab[256];
 
@@ -57,9 +59,20 @@ typedef enum
 {
     PT_SAVE_DATA_FAIL = -1,      /* 保存数据到缓存失败 */
     PT_SAVE_DATA_SUCC,           /* 保存数据到缓存成功 */
-    PT_NEED_CUT_PTHREAD,         /* 缓存存满，需要切换线程 */
+    PT_NEED_CUT_PTHREAD         /* 缓存存满，需要切换线程 */
 
 }PT_SAVE_RESULT_EN;
+
+/* PTC登陆结果 */
+typedef enum
+{
+    PT_PTC_LOGIN_SUCC = 1,
+    PT_PTC_LOGIN_FAIL_LICENSE,
+    PT_PTC_LOGIN_FAIL_SN,
+    PT_PTC_LOGIN_FAIL_VERIFY,
+    PT_PTC_LOGIN_BUTT
+
+}PT_PTC_LOGIN_RESULT;
 
 /* 传输的数据类型 */
 typedef enum
@@ -124,8 +137,15 @@ typedef struct tagStreamCB
     S32                     lConfirmSeq;                      /* 确认接收的最大编号 */
     U32                     ulCountResend;
     U8                      aulServIp[IPV6_SIZE];
+#if INCLUDE_PTS
     U16                     usServPort;
     BOOL                    bIsUsing;
+#else
+    PT_DATA_TYPE_EN         enDataType;
+    BOOL                    bIsValid;
+    U16                     usServPort;
+#endif
+
     S8                      Reserver[2];
 
 }PT_STREAM_CB_ST;
@@ -146,9 +166,13 @@ typedef struct tagCCCB
 {
     list_t                  stCCListNode;
     U8                      aucID[PTC_ID_LEN];                /* IPCC ID */
-    S32                     lSocket;                          /* UDP socket */
+    U32                     ulIndex;                          /* UDP socket */
     struct sockaddr_in      stDestAddr;                       /* ipcc addr */
+#if INCLUDE_PTS
     PT_CHAN_CB_ST           astDataTypes[PT_DATA_BUTT];       /* 传输类型 */
+#else
+    PT_STREAM_CB_ST         *pstStreamHead;
+#endif
     U8                      aucPtcIp[IPV6_SIZE];
     DOS_TMR_ST              stHBTmrHandle;                    /* 心跳定时器 */
     U16                     usHBOutTimeCount;                 /* 心跳连续超时次数 */
@@ -156,6 +180,7 @@ typedef struct tagCCCB
     U32                     ulUdpLostDataCount;
     U32                     ulUdpRecvDataCount;
     pthread_mutex_t         pthreadMutex;
+    BOOL                    bIsTrace;
     //S8                    Reserver[8];
 }PT_CC_CB_ST;
 
@@ -228,7 +253,7 @@ typedef struct tagCtrlData
     S32     lHBTimeInterval;                        /* 心跳和心跳响应的间隔，查看网络情况 */
 
     U8      enCtrlType;                             /* 控制消息类型 PT_CTRL_TYPE_EN */
-    U8      ucLoginRes;                             /* 登陆结果 */
+    U8      ucLoginRes;                             /* 登陆结果 PT_PTC_LOGIN_RESULT */
     U8      enPtcType;                              /* ptc类型 PT_PTC_TYPE_EN */
     S8      Reserver[1];
 
@@ -344,19 +369,28 @@ typedef struct tagSendMsgPthread
 
 }PT_SEND_MSG_PTHREAD;
 
-PT_CC_CB_ST *pt_ptc_node_create(U8 *pcIpccId, S8 *szPtcVersion, struct sockaddr_in stDestAddr);
+#if INCLUDE_PTS
+PT_CC_CB_ST *pt_ptc_node_create(U8 *pcIpccId, S8 *szPtcVersion, struct sockaddr_in stDestAddr, U32 ulIndex);
 S32 pt_delete_ptc_node(PT_CC_CB_ST *pstPtcNode);
 S32 pt_ptc_list_insert(list_t *pstPtcListHead, PT_CC_CB_ST *pstPtcNode);
 PT_CC_CB_ST *pt_ptc_list_search(list_t* pstHead, U8 *pucID);
 S32 pt_delete_ptc_resource(PT_CC_CB_ST *pstPtcNode);
+#endif
 
 PT_STREAM_CB_ST *pt_stream_node_create(U32 ulStreamID);
 S32 pt_stream_queue_insert(list_t *pstHead, list_t *pstStreamNode);
+#if INCLUDE_PTS
 PT_STREAM_CB_ST *pt_stream_queue_search(list_t *pstStreamListHead, U32 ulStreamID);
 S32 pt_delete_stream_node(list_t *pstStreamListNode, PT_DATA_TYPE_EN enDataType);
+#else
+PT_STREAM_CB_ST *pt_stream_queue_search(PT_STREAM_CB_ST *pstStreamListHead, U32 ulStreamID);
+S32 pt_delete_stream_node(PT_STREAM_CB_ST *pstStreamNode, U32 ulType);
+S32 pt_stream_queue_get_node(PT_STREAM_CB_ST *pstStreamListHead);
+S32 pt_stream_node_init(PT_STREAM_CB_ST *pstStreamNode);
+#endif
 
 PT_DATA_TCP_ST *pt_data_tcp_queue_create(U32 ulCacheSize);
-S32 pt_send_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, S8 *acSendBuf, S32 lDataLen, U32 lCacheSize);
+S32 pt_send_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, S8 *acSendBuf, S32 lDataLen, U32 lCacheSize, BOOL bIsTrace);
 S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen, U32 lCacheSize);
 
 S32 pt_need_recv_node_list_insert(list_t *pstHead, PT_MSG_TAG *pstMsgDes);
@@ -364,17 +398,18 @@ list_t *pt_need_recv_node_list_search(list_t *pstHead, U32 ulStreamID);
 S32 pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsgDes, PT_CMD_EN enCmdValue, BOOL bIsResend);
 list_t *pt_need_send_node_list_search(list_t *pstHead, U32 ulStreamID);
 
+#if INCLUDE_PTS
 STREAM_CACHE_ADDR_CB_ST *pt_stream_addr_create(U32 ulStreamID);
 VOID pt_stream_addr_delete(DLL_S *pList, DLL_NODE_S *pNode);
-
 PT_SEND_MSG_PTHREAD *pt_send_msg_pthread_search(list_t* pstHead, U32 ulStreamID);
 PT_SEND_MSG_PTHREAD *pt_send_msg_pthread_create(PT_NEND_RECV_NODE_ST *pstNeedRecvNode, S32 lSocket);
 S32 pt_send_msg_pthread_delete(list_t* pstHead, U32 ulStreamID);
+VOID pts_trace(BOOL bIsTrace, U8 ulLevel, const S8 *pszFormat, ...);
+#endif
 
 VOID pt_log_set_level(U32 ulLevel);
 U32 pt_log_current_level();
 VOID pt_logr_write(U32 ulLevel, S8 *pszFormat, ...);
-S8 *pt_get_gmt_time(U32 ulExpiresTime);
 BOOL pt_is_or_not_ip(S8 *szIp);
 BOOL pts_is_ptc_sn(S8* pcUrl);
 BOOL pts_is_int(S8* pcUrl);

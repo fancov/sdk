@@ -25,6 +25,7 @@ extern "C" {
 #include <webs/um.h>
 #include <webs/wsIntrn.h>
 #include <webs/websda.h>
+#include <version.h>
 
 #include "pts_msg.h"
 #include "pts_web.h"
@@ -122,6 +123,8 @@ typedef struct tagHttpBackupDesc
 
 #define CRC16_POLY      0x1021
 
+extern U32 dos_get_default_limitation(U32 ulModIndex, U32 * pulLimitation);
+
 /*********************************** Locals ***********************************/
 /*
  *  Change configuration here
@@ -146,7 +149,7 @@ PTS_PTC_UPGRADE_PARAM_ST  *g_pstUpgrade    = NULL;
 S8 g_szDataTablesLang[PT_DATA_BUFF_1024] = "\"oLanguage\": {\
                 \"sLengthMenu\": \"Ã¿Ò³ÏÔÊ¾ _MENU_Ìõ\",\
                 \"sZeroRecords\": \"Ã»ÓÐÕÒµ½·ûºÏÌõ¼þµÄÊý¾Ý\",\
-                \"sProcessing\": \"&lt;p&gt;&lt;img src=¡¯./loading.gif¡¯ /&gt;¼ÓÔØÖÐ......&lt;/p&gt;\",\
+                \"sProcessing\": \"&lt;p&gt;&lt;img src='./images/loading.gif' /&gt;¼ÓÔØÖÐ......&lt;/p&gt;\",\
                 \"sInfo\": \"µ±Ç°µÚ _START_ - _END_ Ìõ¡¡¹²¼Æ _TOTAL_ Ìõ\",\
                 \"sInfoEmpty\": \"Ä¾ÓÐ¼ÇÂ¼\",\
                 \"sInfoFiltered\": \"(´Ó _MAX_ Ìõ¼ÇÂ¼ÖÐ¹ýÂË)\",\
@@ -168,6 +171,8 @@ S8 g_szDataTablesLang[PT_DATA_BUFF_1024] = "\"oLanguage\": {\
 * 9     : ÐÂÔöÓÃ»§     52 ~ 70
 * 13    : ÐÞ¸ÄÃÜÂë     71 ~ 72
 * 14    : ping         73 ~ 77
+* 15    : Ë¢ÐÂ         78
+* 16    : ÏµÍ³ÐÅÏ¢     79 ~ 89
 */
 S8 *g_apLangCN[PTS_LANG_ARRAY_SIZE] = {"Ô¶³Ì·ÃÎÊ", "PTC¹ÜÀí", "PTSÇÐ»»", "PTCÅäÖÃ", "PTCÉý¼¶", "ÓÃ»§¹ÜÀí", "¹¤¾ß", "Ping²âÊÔ", "ÄúºÃ"
                         , "×Ô¶¯Ñ¡Ôñ·ÃÎÊ£º", "Ä¿µÄ¹«ÍøIP£º", "Ä¿µÄË½ÍøIP£º", "Ä¿µÄË½Íø¶Ë¿Ú£º", "ÊÖ¶¯Ñ¡Ôñ·ÃÎÊ£º"
@@ -184,6 +189,7 @@ S8 *g_apLangCN[PTS_LANG_ARRAY_SIZE] = {"Ô¶³Ì·ÃÎÊ", "PTC¹ÜÀí", "PTSÇÐ»»", "PTCÅäÖ
                         , "Ô­ÃÜÂë£º", "ÐÂÃÜÂë£º"
                         , "PING²âÊÔ", "PING´ÎÊý(1-100)£º", "¿ªÊ¼", "½áÊø", "ÐÅÏ¢£º"
                         , "Ë¢ÐÂ"
+                        , "ÏµÍ³ÐÅÏ¢", "OK-RAS°æ±¾ºÅ", "LicenseÐÅÏ¢", "ÓÃ»§Ãû", "»úÆ÷Âë", "PTCÏÞÖÆ¸öÊý", "License°æ±¾ºÅ", "ÓÐÐ§ÆÚ", "ÉÏ´«License", "ÉÏ´«", "±£´æºó£¬²»¿ÉÔÙ´ÎÐÞ¸Ä"
                    };
 S8 *g_apLangEN[PTS_LANG_ARRAY_SIZE] = {"Remote&nbsp;Access", "PTC&nbsp;Manage", "PTS&nbsp;Switch", "PTC&nbsp;Configure", "PTC&nbsp;Upgrade", "User&nbsp;Control", "Tools", "Ping", "Hello"
                         , "Auto&nbsp;Visit: ", "public&nbsp;IP: ", "Private&nbsp;IP: ", "Private&nbsp;Port: ", "manual&nbsp;Visit: "
@@ -200,6 +206,7 @@ S8 *g_apLangEN[PTS_LANG_ARRAY_SIZE] = {"Remote&nbsp;Access", "PTC&nbsp;Manage", 
                         , "Old&nbsp;Password : ", "New&nbsp;Password : "
                         , "PING", "PING&nbsp;Count(1-100)£º", "Start", "End", "Message: "
                         , "Refush"
+                        , "System&nbsp;Info", "OK-RAS&nbspVersion", "License&nbsp;Info", "User&nbsp;Name", "Machine&nbsp;Code", "PTC&nbsp;Limit", "License&nbsp;Version", "Valid&nbsp;Date", "Upload&nbsp;License", "Upload", "Save, do not change again"
                     };
 
 /****************************** Forward Declarations **************************/
@@ -238,6 +245,10 @@ int cancel_upgrade(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                    char_t *url, char_t *path, char_t* query);
 int get_ping_result(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                     char_t *url, char_t *path, char_t* query);
+int set_license_username(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
+                    char_t *url, char_t *path, char_t* query);
+int submit_license(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
+                    char_t *url, char_t *path, char_t* query);
 static int pts_webs_redirect_pts_server(webs_t wp, char_t *urlPrefix, char_t *webDir,
                                         int arg, char_t *url, char_t *path, char_t *query);
 static int pts_webs_auto_redirect(webs_t wp, char_t *urlPrefix, char_t *webDir,
@@ -256,6 +267,9 @@ static int pts_html_lang(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_get_lang_type(int eid, webs_t wp, int argc, char_t **argv);
 static int status_statistics(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_get_version(int eid, webs_t wp, int argc, char_t **argv);
+static int pts_bulid_time(int eid, webs_t wp, int argc, char_t **argv);
+static int pts_show_license_msg(int eid, webs_t wp, int argc, char_t **argv);
+static int pts_is_or_not_get_license(int eid, webs_t wp, int argc, char_t **argv);
 S32 pts_get_password_from_sqlite_db(char_t *userid, S8 *szWebsPassword);
 S32 pts_get_local_ip(S8 *szLocalIp);
 S32 pts_send_ptc_list2web_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name);
@@ -469,11 +483,13 @@ static int initWebs(int demo)
     websUrlHandlerDefine(T("/editable_ajax.html"), NULL, 0, pts_set_remark, 0);              /* ÉèÖÃ±¸×¢Ãû */
     websUrlHandlerDefine(T("/goform/HttpSoftUploadSelected"), NULL, 0, pts_upgrade_selected_ptc, 0); /* Éý¼¶Ñ¡ÖÐµÄptc */
     websUrlHandlerDefine(T("/goform/HttpSoftUploadAll"), NULL, 0, pts_upgrade_all_ptc, 0);   /* È«ÍøÉý¼¶ */
+    websUrlHandlerDefine(T("/goform/submitLicense"), NULL, 0, submit_license, 0);          /* ÉÏ´«License */
     websUrlHandlerDefine(T("/cgi-bin/del_users"), NULL, 0, pts_del_users, 0);                /* É¾³ýÓÃ»§ */
     websUrlHandlerDefine(T("/change_info.html"), NULL, 0, pts_change_user_info, 0);          /* ÐÞ¸Ä¿Í»§µÄÐÅÏ¢ */
     websUrlHandlerDefine(T("/ipcc_internetIP"), NULL, 0, pts_recv_from_ipcc_req, 0);         /* IPCC·ÃÎÊ½Ó¿Ú */
     websUrlHandlerDefine(T("/cgi-bin/startPing"), NULL, 0, pts_start_ping, 0);               /* ping²âÊÔ */
     websUrlHandlerDefine(T("/cgi-bin/get_ping_result"), NULL, 0, get_ping_result, 0);        /* »ñµÃpingµÄ½á¹û */
+    websUrlHandlerDefine(T("/cgi-bin/set_license_username"), NULL, 0, set_license_username, 0);        /* »ñµÃlicenseµÄÐÅÏ¢ */
     websUrlHandlerDefine(T(""), NULL, 0, websDefaultHandler, WEBS_HANDLER_LAST);
 
     /*
@@ -497,7 +513,10 @@ static int initWebs(int demo)
 
     websAspDefine(T("status_statistics"), status_statistics);               /* ×´Ì¬ Í³¼Æ */
 
+    websAspDefine(T("bulid_time"), pts_bulid_time);                           /* »ñµÃ°æ±¾ºÅ */
     websAspDefine(T("version"), pts_get_version);                           /* »ñµÃ°æ±¾ºÅ */
+    websAspDefine(T("show_license_msg"), pts_show_license_msg);             /* »ñµÃlicenseÐÅÏ¢ */
+    websAspDefine(T("bIsGetLicense"), pts_is_or_not_get_license);           /* ÊÇ·ñ»ñµÃlicense */
 
     websFormDefine(T("create_user"), pts_create_user);                      /* ´´½¨ÓÃ»§ */
     websFormDefine(T("change_pwd"), pts_change_password);                   /* ÐÞ¸ÄÃÜÂë */
@@ -670,9 +689,11 @@ int cancel_upgrade(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
             g_pstUpgrade->hTmrHandle = NULL;
         }
         m_bIsUpdatingAll = DOS_FALSE;
+        sleep(3);
         dos_dmem_free(g_pstUpgrade);
         g_pstUpgrade = NULL;
     }
+
     websError(wp, 200, T(""));
     return 1;
 }
@@ -1019,7 +1040,7 @@ void *websSendFileToPtc(void *arg)
             lPtcCount++;
         }
         pSelectPtcID = strtok(NULL, "!");
-        if (NULL == pSelectPtcID)
+        if (DOS_ADDR_INVALID(pSelectPtcID))
         {
             break;
         }
@@ -1031,7 +1052,7 @@ void *websSendFileToPtc(void *arg)
     }
 
     pFileFd  = fopen("./package", "r");
-    if(NULL == pFileFd)
+    if(DOS_ADDR_INVALID(pFileFd))
     {
         goto end;
     }
@@ -1039,19 +1060,20 @@ void *websSendFileToPtc(void *arg)
     for (i=0; i<lPtcCount; i++)
     {
         fseek(pFileFd, 0L, SEEK_SET);
-        printf("!!!!!!send file to ptc : %s\n", pszPtcIds[i]);
+
         do
         {
             ulReadCount = fread(aucBuff, 1, PT_RECV_DATA_SIZE, pFileFd);
-            lResult = pts_save_msg_into_cache((U8*)pszPtcIds[i], PT_DATA_WEB, PT_CTRL_PTC_PACKAGE, aucBuff, ulReadCount, NULL, 0);
+            lResult = pts_save_msg_into_cache((U8*)pszPtcIds[i], PT_DATA_CTRL, PT_CTRL_PTC_PACKAGE, aucBuff, ulReadCount, NULL, 0);
             if (PT_NEED_CUT_PTHREAD == lResult)
             {
-                sleep(3);
+                sleep(2);
             }
             else
             {
                 usleep(20);
             }
+
         }while (ulReadCount == PT_RECV_DATA_SIZE);
 
     }
@@ -1064,18 +1086,18 @@ end:
     return NULL;
 }
 
-void pts_send_ipgrade_package2ptc(S8 *szPtcId, PTS_PTC_UPGRADE_PARAM_ST *pstUpgrade)
+void pts_send_ipgrade_package2ptc(S8 *szPtcId)
 {
     S8 aucBuff[PT_RECV_DATA_SIZE] = {0};
     U32 ulReadCount = 0;
     S32 lResult = 0;
 
-    fseek(pstUpgrade->pPackageFileFd, 0L, SEEK_SET);
+    fseek(g_pstUpgrade->pPackageFileFd, 0L, SEEK_SET);
 
     do
     {
-        ulReadCount = fread(aucBuff, 1, PT_RECV_DATA_SIZE, pstUpgrade->pPackageFileFd);
-        lResult = pts_save_msg_into_cache((U8 *)szPtcId, PT_DATA_WEB, PT_CTRL_PTC_PACKAGE, aucBuff, ulReadCount, NULL, 0);
+        ulReadCount = fread(aucBuff, 1, PT_RECV_DATA_SIZE, g_pstUpgrade->pPackageFileFd);
+        lResult = pts_save_msg_into_cache((U8 *)szPtcId, PT_DATA_CTRL, PT_CTRL_PTC_PACKAGE, aucBuff, ulReadCount, NULL, 0);
         if (PT_NEED_CUT_PTHREAD == lResult)
         {
             sleep(3);
@@ -1085,14 +1107,20 @@ void pts_send_ipgrade_package2ptc(S8 *szPtcId, PTS_PTC_UPGRADE_PARAM_ST *pstUpgr
             usleep(20);
         }
 
-    }while (ulReadCount == PT_RECV_DATA_SIZE);
+    }while (ulReadCount == PT_RECV_DATA_SIZE && m_bIsUpdatingAll);
 }
 
 S32 pts_upgrade_ptcs(VOID *para, S32 n_column, S8 **column_value, S8 **column_name)
 {
-    list_t *pstListHead = *(list_t **)para;
+    list_t *pstListHead = (list_t *)para;
+
+    if (DOS_ADDR_INVALID(pstListHead))
+    {
+        return 0;
+    }
+
     PTS_UPGRADE_PTC_ST *pstNewPtcNode = (PTS_UPGRADE_PTC_ST *)dos_dmem_alloc(sizeof(PTS_UPGRADE_PTC_ST));
-    if (NULL == pstNewPtcNode)
+    if (DOS_ADDR_INVALID(pstNewPtcNode))
     {
         perror("malloc");
         return 1;
@@ -1100,15 +1128,7 @@ S32 pts_upgrade_ptcs(VOID *para, S32 n_column, S8 **column_value, S8 **column_na
     dos_strncpy(pstNewPtcNode->szPtcId, column_value[1], PTC_ID_LEN);
     pstNewPtcNode->szPtcId[PTC_ID_LEN] = '\0';
 
-    if (NULL == pstListHead)
-    {
-        dos_list_init(&pstNewPtcNode->stNextNode);
-        *(list_t **)para = &pstNewPtcNode->stNextNode;
-    }
-    else
-    {
-        dos_list_add_tail(pstListHead, &pstNewPtcNode->stNextNode);
-    }
+    dos_list_add_tail(pstListHead, &pstNewPtcNode->stNextNode);
 
     return 0;
 }
@@ -1119,13 +1139,14 @@ void websSendFileToAllPtc(U64 param)
     S32 lResult = 0;
     FILE *pFileFd = NULL;
     S8 achSql[PTS_SQL_STR_SIZE] = {0};
-    PTS_PTC_UPGRADE_PARAM_ST *pstUpgrade = (PTS_PTC_UPGRADE_PARAM_ST *)param;
     S8 pszPtcIds[PTS_UPGRADE_PTC_COUNT][PTC_ID_LEN + 1];
-    list_t *pstListHead = NULL;
+    list_t stListHead;
+    list_t *pstListNode = NULL;
     PTS_UPGRADE_PTC_ST *pstPtcNode = NULL;
     S8 szPtcType[PT_DATA_BUFF_16] = {0};
 
-    switch (pstUpgrade->ulOSType)
+    dos_list_init(&stListHead);
+    switch (g_pstUpgrade->ulOSType)
     {
         case PT_TYPE_PTC_LINUX:
             dos_strcpy(szPtcType, "Linux");
@@ -1146,34 +1167,27 @@ void websSendFileToAllPtc(U64 param)
     {
         return;
     }
-    pstUpgrade->pPackageFileFd = pFileFd;
+    g_pstUpgrade->pPackageFileFd = pFileFd;
 
     /* ²éÑ¯Êý¾Ý¿â, ½«ptc¶¼±£´æµ½ÄÚ´æÖÐ */
     dos_memzero(pszPtcIds, PTS_UPGRADE_PTC_COUNT*(PTC_ID_LEN+1));
     dos_snprintf(achSql, PTS_SQL_STR_SIZE, "select * from ipcc_alias where version!='%s' and ptcType!='%s' and register=1 order by lastLoginTime desc;", szPtcType);
-    lResult = dos_sqlite3_exec_callback(g_pstMySqlite, achSql, pts_upgrade_ptcs, (VOID *)&pstListHead);
+    lResult = dos_sqlite3_exec_callback(g_pstMySqlite, achSql, pts_upgrade_ptcs, (VOID *)&stListHead);
     if (lResult != DOS_SUCC)
     {
         DOS_ASSERT(0);
     }
 
-    if (pstListHead != NULL)
+    while (1)
     {
-        while (pstListHead->next != pstListHead)
+        pstListNode = dos_list_fetch(&stListHead);
+        if (DOS_ADDR_INVALID(pstListNode))
         {
-            pstPtcNode = dos_list_entry(pstListHead, PTS_UPGRADE_PTC_ST, stNextNode);
-            printf("ptcid : %s\n", pstPtcNode->szPtcId);
-            pts_send_ipgrade_package2ptc(pstPtcNode->szPtcId, pstUpgrade);
-            pstListHead = pstListHead->next;
-            dos_list_del(pstListHead->prev);
-            dos_dmem_free(pstPtcNode);
-            pstPtcNode = NULL;
+            break;
         }
 
-        pstPtcNode = dos_list_entry(pstListHead, PTS_UPGRADE_PTC_ST, stNextNode);
-        printf("ptcid : %s\n", pstPtcNode->szPtcId);
-        pts_send_ipgrade_package2ptc(pstPtcNode->szPtcId, pstUpgrade);
-        dos_list_del(pstListHead->prev);
+        pstPtcNode = dos_list_entry(pstListNode, PTS_UPGRADE_PTC_ST, stNextNode);
+        pts_send_ipgrade_package2ptc(pstPtcNode->szPtcId);
         dos_dmem_free(pstPtcNode);
         pstPtcNode = NULL;
     }
@@ -1305,9 +1319,8 @@ int pts_upgrade_selected_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int a
 void *websSendFileToPtcALL(void *arg)
 {
     S32 lResult = 0;
-    PTS_PTC_UPGRADE_PARAM_ST *pstUpgrade = (PTS_PTC_UPGRADE_PARAM_ST *)arg;
      /* ¿ªÆô¶¨Ê±Æ÷ */
-    lResult = dos_tmr_start(&pstUpgrade->hTmrHandle, PTS_PTC_UPGRADE_TIMER, websSendFileToAllPtc, (U64)pstUpgrade, TIMER_NORMAL_LOOP);
+    lResult = dos_tmr_start(&g_pstUpgrade->hTmrHandle, PTS_PTC_UPGRADE_TIMER, websSendFileToAllPtc, 0, TIMER_NORMAL_LOOP);
     if (lResult < 0)
     {
         m_bIsUpdatingAll = DOS_FALSE;
@@ -1318,7 +1331,7 @@ void *websSendFileToPtcALL(void *arg)
         m_bIsUpdatingAll = DOS_TRUE;
     }
 
-    websSendFileToAllPtc((U64)pstUpgrade);
+    websSendFileToAllPtc(0);
 
     return NULL;
 }
@@ -1326,7 +1339,6 @@ void *websSendFileToPtcALL(void *arg)
 int pts_upgrade_all_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
                         char_t *url, char_t *path, char_t *query)
 {
-    PTS_PTC_UPGRADE_PARAM_ST *pstUpgrade = NULL;
     S32 lResult = 0;
     pthread_t tid;
 
@@ -1335,8 +1347,8 @@ int pts_upgrade_all_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
     a_assert(path);
     a_assert(query);
 
-    pstUpgrade = (PTS_PTC_UPGRADE_PARAM_ST *)dos_dmem_alloc(sizeof(PTS_PTC_UPGRADE_PARAM_ST));
-    if (NULL == pstUpgrade)
+    g_pstUpgrade = (PTS_PTC_UPGRADE_PARAM_ST *)dos_dmem_alloc(sizeof(PTS_PTC_UPGRADE_PARAM_ST));
+    if (DOS_ADDR_INVALID(g_pstUpgrade))
     {
         logr_debug("malloc fail");
         m_bIsUpdatingAll = DOS_FALSE;
@@ -1344,19 +1356,17 @@ int pts_upgrade_all_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
 
         return 1;
     }
-    pstUpgrade->hTmrHandle = NULL;
+    g_pstUpgrade->hTmrHandle = NULL;
 
     /* ÏÂÔØÎÄ¼þ */
-    lResult = websHttpUploadHandler(wp, query, pstUpgrade);
+    lResult = websHttpUploadHandler(wp, query, g_pstUpgrade);
     if (lResult != DOS_SUCC)
     {
         goto err_proc;
     }
     logr_debug("download finish!!");
 
-    g_pstUpgrade = pstUpgrade;
-
-    lResult = pthread_create(&tid, NULL, websSendFileToPtcALL, (VOID *)pstUpgrade);
+    lResult = pthread_create(&tid, NULL, websSendFileToPtcALL, NULL);
     if (lResult < 0)
     {
         goto err_proc;
@@ -1372,8 +1382,8 @@ int pts_upgrade_all_ptc(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
 
 err_proc:
     m_bIsUpdatingAll = DOS_FALSE;
-    dos_dmem_free(pstUpgrade);
-    pstUpgrade = NULL;
+    dos_dmem_free(g_pstUpgrade);
+    g_pstUpgrade = NULL;
     websError(wp, 200, T("fail"));
 
     return 1;
@@ -1585,13 +1595,29 @@ S32 pts_ptc_list_upgrades_callback(VOID *para, S32 n_column, S8 **column_value, 
 
     if (pstSqliteParam->ulResCount != 1)
     {
-        websWrite(pstSqliteParam->wp, T(",[\"<INPUT name='PtcCheckBox'  type='checkbox' value='%s|%s' >\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"]")
+        if (dos_strcmp(column_value[12], "Windows") == 0)
+        {
+            websWrite(pstSqliteParam->wp, T(",[\"<INPUT name='PtcCheckBox'  type='checkbox' value='%s|%s' disabled >\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"]")
                   , column_value[1], column_value[4], column_value[6], column_value[2], column_value[3], column_value[12], column_value[9], column_value[8], column_value[23], column_value[4], column_value[1]);
+        }
+        else
+        {
+            websWrite(pstSqliteParam->wp, T(",[\"<INPUT name='PtcCheckBox'  type='checkbox' value='%s|%s' >\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"]")
+                  , column_value[1], column_value[4], column_value[6], column_value[2], column_value[3], column_value[12], column_value[9], column_value[8], column_value[23], column_value[4], column_value[1]);
+        }
     }
     else
     {
-        websWrite(pstSqliteParam->wp, T("[\"<INPUT name='PtcCheckBox'  type='checkbox' value='%s|%s' >\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"]")
+        if (dos_strcmp(column_value[12], "Windows") == 0)
+        {
+            websWrite(pstSqliteParam->wp, T("[\"<INPUT name='PtcCheckBox'  type='checkbox' value='%s|%s' disabled>\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"]")
                   , column_value[1], column_value[4], column_value[6], column_value[2], column_value[3], column_value[12], column_value[9], column_value[8], column_value[23], column_value[4], column_value[1]);
+        }
+        else
+        {
+            websWrite(pstSqliteParam->wp, T("[\"<INPUT name='PtcCheckBox'  type='checkbox' value='%s|%s' >\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"]")
+                  , column_value[1], column_value[4], column_value[6], column_value[2], column_value[3], column_value[12], column_value[9], column_value[8], column_value[23], column_value[4], column_value[1]);
+        }
     }
 
     return 0;
@@ -1792,7 +1818,7 @@ static int pts_get_ptc_list_from_db_upgrades(int eid, webs_t wp, int argc, char_
 
     S8 szPtcListFields[PTS_UPGRADES_FILELDS_COUNT][PT_DATA_BUFF_32] = {"", "lastLoginTime", "name", "remark", "ptcType", "internetIP", "intranetIP", "szMac", "version", "sn"};
 
-    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_UPGRADES_FILELDS_COUNT, pts_ptc_list_upgrades_callback, "ipcc_alias", "register = 1 AND ptcType != 'Windows'", dos_strlen("register = 1 AND ptcType != 'Windows'"));
+    return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_UPGRADES_FILELDS_COUNT, pts_ptc_list_upgrades_callback, "ipcc_alias", "register = 1", dos_strlen("register = 1"));
 }
 
 static int pts_user_list(int eid, webs_t wp, int argc, char_t **argv)
@@ -2040,7 +2066,143 @@ static int status_statistics(int eid, webs_t wp, int argc, char_t **argv)
 
 static int pts_get_version(int eid, webs_t wp, int argc, char_t **argv)
 {
-    return websWrite(wp, T("%s"), PTS_VERSION);
+    return websWrite(wp, T("%s"), DOS_PROCESS_VERSION);
+}
+
+static int pts_bulid_time(int eid, webs_t wp, int argc, char_t **argv)
+{
+    return websWrite(wp, T("%s"), BUILD_TIME);
+}
+
+
+static int pts_show_license_msg(int eid, webs_t wp, int argc, char_t **argv)
+{
+    U32 lResult = 0;
+    S8 pszMachine[PT_DATA_BUFF_128] = {0};
+    S32 lLen  = PT_DATA_BUFF_128;
+    S8  szVersion[PT_IP_ADDR_SIZE] = {0};
+    U32 ulVersion = 0;
+    U32 ulExpire = 0;
+    S8 szExpireDate[PT_DATA_BUFF_64] = {0};
+    time_t timeExpire;
+    U8 szCustomerId[PT_DATA_BUFF_128] = {0};
+    BOOL bIsGetLicense = DOS_FALSE;
+    U32 ulPTCLimit = 0;
+
+    bIsGetLicense = licc_get_license_loaded();
+    /* »ñµÃÓÃ»§Ãû */
+    lResult = licc_load_customer_id(szCustomerId, PT_DATA_BUFF_128);
+    if (lResult != DOS_SUCC)
+    {
+        pt_logr_error("get license customer fail!");
+    }
+
+    /* »ñµÃ»úÆ÷Âë */
+    lResult = licc_get_machine(pszMachine, &lLen);
+    if (lResult != DOS_SUCC)
+    {
+        /* TODO */
+        pt_logr_error("get machine fail");
+    }
+
+    if (licc_get_limitation(PTS_SUBMOD_PTCS, &ulPTCLimit) != DOS_SUCC
+            && dos_get_default_limitation(PTS_SUBMOD_PTCS, &ulPTCLimit) != DOS_SUCC)
+    {
+        ulPTCLimit = 0;
+    }
+
+    if (bIsGetLicense)
+    {
+        /* »ñµÃlicenseµÄ°æ±¾ºÅ */
+        lResult = licc_get_license_version(&ulVersion);
+        if (lResult != DOS_SUCC)
+        {
+            pt_logr_error("get licc version fail");
+        }
+        else
+        {
+            inet_ntop(AF_INET, (void *)(&ulVersion), szVersion, PT_IP_ADDR_SIZE);
+        }
+
+        /* »ñµÃÓÐÐ§ÆÚ */
+        lResult = licc_get_license_expire(&ulExpire);
+        if (lResult != DOS_SUCC)
+        {
+            dos_snprintf(szExpireDate, PT_DATA_BUFF_64, "»ñÈ¡Ê§°Ü");
+            pt_logr_error("get license expire fail!");
+        }
+        else
+        {
+            if (U32_BUTT == ulExpire)
+            {
+                dos_snprintf(szExpireDate, PT_DATA_BUFF_64, "»ñÈ¡Ê§°Ü");
+                pt_logr_error("get license expire fail!");
+            }
+            else if (0 == ulExpire)
+            {
+                dos_snprintf(szExpireDate, PT_DATA_BUFF_64, "ÎÞÏÞÖÆ");
+            }
+            else
+            {
+                timeExpire = (time_t)ulExpire;
+                strftime(szExpireDate, PT_DATA_BUFF_64, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&timeExpire));
+            }
+        }
+
+        if (g_LangType)
+        {
+            return websWrite(wp, T("<label>%s&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: %s</label><br>\
+<label>%s&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: %s</label><br>\
+<label>%s&nbsp;&nbsp;&nbsp;: %d</label><br>\
+<label>%s&nbsp;: %s</label><br>\
+<label>%s&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: %s</label>")
+            , g_apLangCN[82], szCustomerId, g_apLangCN[83], pszMachine, g_apLangCN[84], ulPTCLimit, g_apLangCN[85], szVersion, g_apLangCN[86], szExpireDate);
+        }
+        else
+        {
+            return websWrite(wp, T("<label>%s&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: %s</label><br>\
+<label>%s&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: %s</label><br>\
+<label>%s&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: %d</label><br>\
+<label>%s&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: %s</label><br>\
+<label>%s&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: %s</label>")
+            , g_apLangEN[82], szCustomerId, g_apLangEN[83], pszMachine, g_apLangEN[84], ulPTCLimit, g_apLangEN[85], szVersion, g_apLangEN[86], szExpireDate);
+        }
+    }
+    else
+    {
+        if (g_LangType)
+        {
+            return websWrite(wp, T("<label>%s&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: %s</label><br><label>%s&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: %s</label>"), g_apLangCN[82], szCustomerId, g_apLangCN[83], pszMachine);
+        }
+        else
+        {
+            return websWrite(wp, T("<label>%s&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: %s</label><br><label>%s&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: %s</label>"), g_apLangEN[82], szCustomerId, g_apLangEN[83], pszMachine);
+        }
+    }
+
+}
+
+static int pts_is_or_not_get_license(int eid, webs_t wp, int argc, char_t **argv)
+{
+    U32 ulRes = 0;
+    U8 szCustomerId[PT_DATA_BUFF_128] = {0};
+
+    if (licc_get_license_loaded())
+    {
+        return websWrite(wp, T("%d"), DOS_TRUE);
+    }
+    else
+    {
+        ulRes = licc_load_customer_id(szCustomerId, PT_DATA_BUFF_128);
+        if (ulRes != DOS_SUCC)
+        {
+            return websWrite(wp, T("%d"), DOS_FALSE);
+        }
+        else
+        {
+            return websWrite(wp, T("%d"), DOS_TRUE);
+        }
+    }
 }
 
 /******************************************************************************/
@@ -2641,8 +2803,70 @@ int get_ping_result(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
     }
     websDone(wp, 200);
 
-
     return 0;
+}
+
+int set_license_username(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
+                    char_t *url, char_t *path, char_t* query)
+{
+    S8 *szUserName = NULL;
+    U32 ulRes = 0;
+    S8 szResult[PT_DATA_BUFF_16] = {0};
+
+    szUserName = websGetVar(wp, T("username"), "");
+    ulRes = licc_save_customer_id((U8 *)szUserName, dos_strlen(szUserName));
+    if (ulRes != DOS_SUCC)
+    {
+        dos_strncpy(szResult, "fail", PT_DATA_BUFF_16);
+    }
+    else
+    {
+        dos_strncpy(szResult, "succ", PT_DATA_BUFF_16);
+    }
+
+    websError(wp, 200, T("%s"), szResult);
+
+    return 1;
+}
+
+int submit_license(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
+                    char_t *url, char_t *path, char_t* query)
+{
+    S8 *pStart = NULL;
+    S8 *pEnd = NULL;
+    U32 ulRes = 0;
+    S8 szResult[PT_DATA_BUFF_16] = {0};
+
+    pStart = dos_strstr(query, "\r\n\r\n");
+    if (DOS_ADDR_INVALID(pStart))
+    {
+        return 1;
+    }
+
+    pStart += 4;
+    pEnd = dos_strstr(pStart, "\r\n");
+    if (DOS_ADDR_INVALID(pStart))
+    {
+        return 1;
+    }
+    pEnd[0] = '\0';
+
+    printf("!!!!!!!!!!!!!%s, %d\n", pStart, dos_strlen(pStart));
+    ulRes = licc_save_license((U8 *)pStart, dos_strlen(pStart));
+    if (ulRes != DOS_SUCC)
+    {
+        printf("!!!!!!!fail\n");
+        dos_strncpy(szResult, "fail", PT_DATA_BUFF_16);
+    }
+    else
+    {
+        printf("!!!!!!!succ\n");
+        dos_strncpy(szResult, "succ", PT_DATA_BUFF_16);
+    }
+
+    websError(wp, 200, T("%s"), szResult);
+
+    return 1;
 }
 
 static int pts_webs_redirect_pts_server(webs_t wp, char_t *urlPrefix, char_t *webDir,

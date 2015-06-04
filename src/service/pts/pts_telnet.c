@@ -507,7 +507,7 @@ S32 pts_server_cmd_analyse(U32 ulClientIndex, U32 ulMode, S8 *szBuffer, U32 ulLe
             }
             else if (dos_strcmp(pszKeyWord[1], "version") == 0)
             {
-                snprintf(szErrorMsg, sizeof(szErrorMsg), "version : %s\r\n", PTS_VERSION);
+                snprintf(szErrorMsg, sizeof(szErrorMsg), "version : %s\r\n", DOS_PROCESS_VERSION);
                 lRet = PT_TELNET_FAIL;
                 goto finished;
             }
@@ -896,6 +896,7 @@ VOID pts_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
 
             telnet_send_data(stClientCB.lSocket, MSG_TYPE_CMD_RESPONCE, pcSendMsg, pstDataTcp[ulArraySub].ulLen);
             pt_logr_debug("pts send msg to cmd serv len is: %d, stream : %d", pstDataTcp[ulArraySub].ulLen, stClientCB.ulStreamID);
+            pts_trace(pstCCNode->bIsTrace, LOG_LEVEL_DEBUG, "pts send msg to cmd : stream : %d, seq : %d, len : %d", stClientCB.ulStreamID, pstDataTcp[ulArraySub].lSeq, pstDataTcp[ulArraySub].ulLen);
         }
         else
         {
@@ -974,13 +975,16 @@ S32 pts_printf_telnet_msg(U32 ulIndex, S32 argc, S8 **argv)
     U32 ulLen = 0;
     S8 szBuff[PT_DATA_BUFF_512] = {0};
 
-    ulLen = snprintf(szBuff, sizeof(szBuff), "\r\n%20s%10s%10s%10s\r\n", "aucID", "ulStreamID", "lSocket", "bIsValid");
+    ulLen = snprintf(szBuff, sizeof(szBuff), "\r\n%-20s%-15s%-10s\r\n", "SN", "StreamID", "Index");
     cli_out_string(ulIndex, szBuff);
 
     for (i=0; i<PTS_MAX_CLIENT_NUMBER; i++)
     {
-        snprintf(szBuff, sizeof(szBuff), "%.16s%10d%10d%10d\r\n", g_astCmdClient[i].aucID, g_astCmdClient[i].ulStreamID, g_astCmdClient[i].lSocket, g_astCmdClient[i].bIsValid);
-        cli_out_string(ulIndex, szBuff);
+        if (g_astCmdClient[i].bIsValid)
+        {
+            snprintf(szBuff, sizeof(szBuff), "%.*s%11d%10d\r\n", PTC_ID_LEN, g_astCmdClient[i].aucID, g_astCmdClient[i].ulStreamID, g_astCmdClient[i].lSocket);
+            cli_out_string(ulIndex, szBuff);
+        }
     }
 
     return 0;

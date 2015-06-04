@@ -30,6 +30,7 @@ extern S8 g_szMonCPUInfo[MAX_BUFF_LENGTH];
 extern MON_CPU_RSLT_S * g_pstCpuRslt;
 
 static U32  mon_cpu_malloc(MON_SYS_CPU_TIME_S ** ppstCpu);
+static U32  mon_cpu_reset_data();
 static U32  mon_get_cpu_data(MON_SYS_CPU_TIME_S * pstCpu);
 static U32  mon_cpu_en_queue(MON_SYS_CPU_TIME_S * pstCpu);
 static U32  mon_cpu_de_queue();
@@ -55,6 +56,9 @@ static U32  mon_cpu_malloc(MON_SYS_CPU_TIME_S ** ppstCpu)
    memset(*ppstCpu, 0, sizeof(MON_SYS_CPU_TIME_S));
    return DOS_SUCC;
 }
+
+
+
 
 
 /**
@@ -117,9 +121,20 @@ U32 mon_cpu_rslt_free()
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
+
+static U32  mon_cpu_reset_data()
+{
+    g_pstCpuRslt->ulCPU10minUsageRate = 0;
+    g_pstCpuRslt->ulCPU1minUsageRate = 0;
+    g_pstCpuRslt->ulCPU5sUsageRate = 0;
+    g_pstCpuRslt->ulCPUUsageRate = 0;
+
+    return DOS_SUCC;
+}
+ 
 static U32  mon_get_cpu_data(MON_SYS_CPU_TIME_S * pstCpu)
 {
-   FILE * fp;
+   FILE * fp = NULL;
    S8     szBuff[MAX_BUFF_LENGTH] = {0};
    S32    lRet = 0;
    S8*    pszAnalyseRslt[10] = {0};
@@ -435,6 +450,8 @@ U32  mon_get_cpu_rslt_data()
     *     rate = 1 - (idle2 - idle1)/(total2 - total1)
     *  其中:total = user + nice + system + idle + iowait + softirq + hardirq + stolen + guest
     */
+
+   mon_cpu_reset_data();
     
    /* 计算平均占用率 */
    ulLastBusy = 100 * (ulLastTemp - m_pstCPUQueue->pstRear->ulIdle);

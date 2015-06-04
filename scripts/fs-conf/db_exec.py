@@ -1,4 +1,4 @@
-#coding=utf-8
+# coding=utf-8
 
 '''
 @author: bubble
@@ -17,10 +17,8 @@ def exec_SQL(seqSQLCmd):
     '''
     
     if seqSQLCmd.strip() == '':
-        file_info.print_file_info('seqSQLCmd is:%s' % seqSQLCmd)
+        file_info.print_file_info('Exec SQL FAIL, seqSQLCmd is:%s' % seqSQLCmd)
         return -1
-    
-    file_info.print_file_info('seqSQLCmd is:%s' % seqSQLCmd)
     
     try:
         conn = db_conn.connect_db()
@@ -30,13 +28,13 @@ def exec_SQL(seqSQLCmd):
         return 1
     else:
         if -1 == conn:
-            file_info.print_file_info('conn is %d' % conn)
+            file_info.print_file_info('Database connected FAIL,is %d' % conn)
             return -1
         
         # 获取数据库游标
         cursor = conn.cursor()
         if cursor is None:
-            file_info.print_file_info('The cursor of database does not exist.')
+            file_info.print_file_info('Get cursor FAIL.')
             return -1
         
         # 执行SQL语句
@@ -46,10 +44,10 @@ def exec_SQL(seqSQLCmd):
         listResult = cursor.fetchall()
         
         if len(listResult) == 0:
-            file_info.print_file_info('len(listResult) is: %d' % len(listResult))
+            file_info.print_file_info('ERR: len(listResult) is: %d' % len(listResult))
             return -1
         
         conn.close()
         
-        file_info.print_file_info(listResult);
+        file_info.print_file_info('Exec SQL SUCC. SQL(%s)' % seqSQLCmd);
         return listResult

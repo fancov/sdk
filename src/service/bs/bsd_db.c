@@ -304,7 +304,7 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
     U32                     ulBillPkgID, ulServType, ulHashIndex, ulIndex;
     U32                     ulSrcAttrType1, ulSrcAttrType2, ulDstAttrType1, ulDstAttrType2;
     U32                     ulFirstBillingCnt, ulNextBillingCnt, ulBillingType;
-    BOOL                    blFound;
+    BOOL                    bFound;
     HASH_NODE_S             *pstHashNode = NULL;
     BS_BILLING_RULE_ST      stBillingRule;
     BS_BILLING_PACKAGE_ST   *pstBillingPkg = NULL;
@@ -353,7 +353,7 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
     stBillingRule.ucBillingType = (U8)ulBillingType;
 
     pthread_mutex_lock(&g_mutexBillingPackageTbl);
-    blFound = DOS_FALSE;
+    bFound = DOS_FALSE;
     HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
     {
         HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -385,13 +385,13 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
                     }
                 }
 
-                blFound = DOS_TRUE;
+                bFound = DOS_TRUE;
                 break;
             }
         }
     }
 
-    if (!blFound)
+    if (!bFound)
     {
         ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulBillPkgID);
         if (U32_BUTT == ulHashIndex)
@@ -471,6 +471,36 @@ S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
 
     return DOS_SUCC;
 }
+
+S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID)
+{
+    S8  szQuery[1024] = {0,};
+    
+    dos_snprintf(szQuery, sizeof(szQuery)
+                       , "SELECT "
+                         "   t1.billing_package_id, t1.billing_rate, t2.id, t2.src_attr_type1, t2.src_attr_type2, "
+                         "   t2.dst_attr_type1, t2.dst_attr_type2, src_attr_value1, src_attr_value2, dst_attr_value1, dst_attr_value2, "
+                         "   serv_type, billing_type, first_billing_unit, next_billing_unit, first_billing_cnt, next_billing_cnt, "
+                         "   UNIX_TIMESTAMP(effect_time), UNIX_TIMESTAMP(expire_time) "
+                         "FROM "
+                         "   tbl_billing_rate t1 "
+                         "LEFT JOIN "
+                         "   tbl_billing_rule t2 "
+                         "ON "
+                         "   t2.id = t1.billing_rule_id"
+                         "   AND t1.billing_package_id = %u;", ulPkgID);
+
+    if (DB_ERR_SUCC != db_query(g_pstDBHandle, szQuery, bsd_walk_billing_package_tbl_cb, NULL, NULL))
+    {
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read billing package from DB FAIL!");
+        return BS_INTER_ERR_FAIL;
+    }
+
+    bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read billing package from DB OK!(%u)", g_astBillingPackageTbl->NodeNum);
+    return DOS_SUCC;
+}
+
+
 #if 0
 static S32 bsd_walk_settle_tbl_cb(BS_INTER_MSG_WALK *pstMsg)
 {
