@@ -786,10 +786,10 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     const S8 *pszSrcAttrType1 = NULL, *pszSrcAttrType2 = NULL, *pszSrcAttrValue1 = NULL, *pszSrcAttrValue2 = NULL;
     const S8 *pszFirstBillingUnit = NULL, *pszNextBillingUnit = NULL, *pszFirstBillingCnt = NULL, *pszNextBillingCnt = NULL;
     const S8 *pszDstAttrType1 = NULL, *pszDstAttrType2 = NULL, *pszDstAttrValue1 = NULL, *pszDstAttrValue2 = NULL;
-    const S8 *pszEffectTime = NULL, *pszExpiryTime = NULL;
+    const S8 *pszEffectTime = NULL, *pszExpiryTime = NULL, *pszPriority = NULL;
     const S8 *pszWhere = NULL;
     S8       *pszRet = NULL;
-    U32 ulPkgID = U32_BUTT, ulRuleID = U32_BUTT, ulServType = U32_BUTT;
+    U32 ulPkgID = U32_BUTT, ulRuleID = U32_BUTT, ulServType = U32_BUTT, ulPriority = U32_BUTT;
     U32 ulSrcAttrType1 = U32_BUTT, ulSrcAttrType2 = U32_BUTT, ulSrcAttrValue1 = U32_BUTT, ulSrcAttrValue2 = U32_BUTT;
     U32 ulDstAttrType1 = U32_BUTT, ulDstAttrType2 = U32_BUTT, ulDstAttrValue1 = U32_BUTT, ulDstAttrValue2 = U32_BUTT;
     U32 ulFirstBillingUnit = U32_BUTT, ulNextBillingUnit = U32_BUTT, ulFirstBillingCnt = U32_BUTT, ulNextBillingCnt= U32_BUTT;
@@ -835,16 +835,19 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
             pszPkgID = json_get_param(pstJSONObj, "billing_package_id");
             pszServType = json_get_param(pstJSONObj, "serv_type");
+            pszPriority = json_get_param(pstJSONObj, "seq");
 
             if (DOS_ADDR_INVALID(pszPkgID) 
-                || DOS_ADDR_INVALID(pszServType))
+                || DOS_ADDR_INVALID(pszServType)
+                || DOS_ADDR_INVALID(pszPriority))
             {
                 bs_trace(BS_TRACE_RUN,LOG_LEVEL_ERROR , "Get Billing Package ID or Service Type FAIL");
                 break;
             }
 
             if (dos_atoul(pszPkgID, &ulPkgID) < 0
-                || dos_atoul(pszServType, &ulServType) < 0)
+                || dos_atoul(pszServType, &ulServType) < 0
+                || dos_atoul(pszPriority, &ulPriority) < 0)
             {
                 bs_trace(BS_TRACE_RUN,LOG_LEVEL_ERROR , "dos_atoul FAIL.");
                 break;
@@ -934,6 +937,7 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                     pstPkg->astRule[ulLoop].ulEffectTimestamp = ulEffectTime;
                     pstPkg->astRule[ulLoop].ulExpireTimestamp = ulExpiryTime;
                     pstPkg->astRule[ulLoop].ucServType = (U8)ulServType;
+                    pstPkg->astRule[ulLoop].ucPriority = (U8)ulPriority;
                     pstPkg->ucServType = (U8)ulServType;
 
                     bFound = DOS_TRUE;
@@ -1060,6 +1064,7 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pszNextBillingCnt = json_get_param(pstJSONObj, "next_billing_cnt");
             pszBillingRate = json_get_param(pstJSONObj, "billing_rate");
             pszRuleID = json_get_param(pstJSONObj, "id");
+            pszPriority = json_get_param(pstJSONObj, "seq");
 
             if (DOS_ADDR_INVALID(pszPkgID)|| DOS_ADDR_INVALID(pszSrcAttrType1)
                 || DOS_ADDR_INVALID(pszSrcAttrType2) || DOS_ADDR_INVALID(pszDstAttrType1)
@@ -1069,7 +1074,7 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 || DOS_ADDR_INVALID(pszBillingType) || DOS_ADDR_INVALID(pszFirstBillingUnit)
                 || DOS_ADDR_INVALID(pszNextBillingUnit) || DOS_ADDR_INVALID(pszFirstBillingCnt)
                 || DOS_ADDR_INVALID(pszNextBillingCnt) || DOS_ADDR_INVALID(pszBillingRate)
-                || DOS_ADDR_INVALID(pszRuleID))
+                || DOS_ADDR_INVALID(pszRuleID) || DOS_ADDR_INVALID(pszPriority))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get param Value FAIL.");
                 break;
@@ -1090,7 +1095,8 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 || dos_atoul(pszFirstBillingCnt, &ulFirstBillingCnt) < 0
                 || dos_atoul(pszNextBillingCnt, &ulNextBillingCnt) < 0
                 || dos_atoul(pszBillingRate, &ulBillingRate) < 0
-                || dos_atoul(pszRuleID, &ulRuleID) < 0)
+                || dos_atoul(pszRuleID, &ulRuleID) < 0
+                || dos_atoul(pszPriority, &ulPriority) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul FAIL.");
                 break;
@@ -1150,6 +1156,7 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                         pstPkg->astRule[ulLoop].ulPackageID = ulPkgID;
                         pstPkg->astRule[ulLoop].ulSrcAttrValue1 = ulSrcAttrValue1;
                         pstPkg->astRule[ulLoop].ulSrcAttrValue2 = ulSrcAttrValue2;
+                        pstPkg->astRule[ulLoop].ucPriority = (U8)ulPriority;
                         bFoundRule = DOS_TRUE;
                         break;
                     }
@@ -1181,6 +1188,7 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                             pstPkg->astRule[ulLoop].ulPackageID = ulPkgID;
                             pstPkg->astRule[ulLoop].ulSrcAttrValue1 = ulSrcAttrValue1;
                             pstPkg->astRule[ulLoop].ulSrcAttrValue2 = ulSrcAttrValue2;
+                            pstPkg->astRule[ulLoop].ucPriority = (U8)ulPriority;
                             break;
                         }
                      }
@@ -1231,6 +1239,7 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 pstPkg->astRule[0].ulPackageID = ulPkgID;
                 pstPkg->astRule[0].ulSrcAttrValue1 = ulSrcAttrValue1;
                 pstPkg->astRule[0].ulSrcAttrValue2 = ulSrcAttrValue2;
+                pstPkg->astRule[0].ucPriority = (U8)ulPriority;
 
                 pstHashNode->pHandle = (VOID *)pstPkg;
                 ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulPkgID);
