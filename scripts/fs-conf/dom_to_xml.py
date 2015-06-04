@@ -16,14 +16,12 @@ def dom_to_xml(seqFileName, doc):
     '''
 
     if seqFileName.strip() == '':
-        file_info.print_file_info('seqFileName is %s' % seqFileName)
+        file_info.print_file_info('DOM to XML FAIL, seqFileName is %s' % seqFileName)
         return -1
     
     if doc is None:
-        file_info.print_file_info('doc is %p' % doc)
+        file_info.print_file_info('DOM to XML FAIL')
         return -1
-    
-    file_info.print_file_info('seqFileName is %s' % seqFileName)
     
     try:
         fp = os.open(seqFileName, os.O_RDWR | os.O_CREAT)
@@ -35,6 +33,8 @@ def dom_to_xml(seqFileName, doc):
         os.write(fp, seqStr)
         os.fsync(fp)
         os.close(fp)
+
+        file_info.print_file_info('DOM to XML SUCC, seqFileName is:%s' % seqFileName)
         return 1
     
 def del_xml_head(seqFileName):
@@ -43,7 +43,7 @@ def del_xml_head(seqFileName):
     '''
     
     if seqFileName.strip() == '':
-        file_info.print_file_info('seqFileName is %s' % str(seqFileName))
+        file_info.print_file_info('Delete XML Declaration FAIL,seqFileName is %s' % str(seqFileName))
         return -1
     
     try:
@@ -63,7 +63,8 @@ def del_xml_head(seqFileName):
         else:
             fp.writelines(seqLines[1:])
             fp.close()
-            
+
+        file_info.print_file_info('Delete XML Declaration SUCC, seqFileName is %s' % str(seqFileName))
         return 1
 
 def del_blank_line(seqFileName):
@@ -78,4 +79,7 @@ def del_blank_line(seqFileName):
     fp = open(seqFileName, 'w')
     fp.writelines(newTextLine)
     fp.close()
+
+    file_info.print_file_info('Delete XML Blank Line SUCC, seqFileName is %s' % str(seqFileName))
+    return 1
 

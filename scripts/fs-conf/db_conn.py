@@ -1,4 +1,4 @@
-#coding=utf-8
+# coding=utf-8
 
 '''
 @author: bubble
@@ -6,6 +6,7 @@
 @time: February 6th,2015
 @togo: connect database
 '''
+
 import MySQLdb
 import db_config
 import file_info
@@ -23,11 +24,11 @@ def connect_db():
         return -1
     else:
         if [] == _dict:
-            file_info.print_file_info('_dict is empty...........')
+            file_info.print_file_info('Connect database FAIL.')
             return -1
         
         if -1 == _dict:
-            file_info.print_file_info('Get param failure.........')
+            file_info.print_file_info('Connect database FAIL.')
             return -1
         
         try:

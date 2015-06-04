@@ -1,4 +1,4 @@
-#coding=utf-8
+# coding=utf-8
 
 '''
 @author: bubble
@@ -25,7 +25,7 @@ def generate_all_customer():
     # 创建'/var/log/dipcc/'
     lRet = log.create_fs_log_dir()
     if -1 == lRet:
-        file_info.print_file_info('mkdir directory \'/var/log/dipcc\' failed!')
+        file_info.print_file_info('mkdir directory \'/var/log/dipcc\' FAIL.')
         return -1
     # 清空所有账户
     clean_all_customer()
@@ -33,7 +33,7 @@ def generate_all_customer():
     listCus = get_all_customer()
 
     if -1 == listCus:
-        file_info.print_file_info('listCus is %d' % listCus)
+        file_info.print_file_info('Get All Customer FAIL,listCus is %d' % listCus)
         return -1
     
     for loop in range(len(listCus)):
@@ -42,6 +42,7 @@ def generate_all_customer():
             file_info.print_file_info('Customer %d generated failed!' % int(listCus[loop][0]))
             return -1
 
+    file_info.print_file_info('Generate All Customers SUCC.')
     return 1
 
 
@@ -53,9 +54,10 @@ def get_all_customer():
     seqSQLCmd = 'SELECT DISTINCT customer_id FROM tbl_sip;'
     listCus = db_exec.exec_SQL(seqSQLCmd)
     if -1 == listCus:
-        file_info.print_file_info(seqSQLCmd)
+        file_info.print_file_info('Get All Customers FAIL.')
         return -1
 
+    file_info.print_file_info('Get All Customers SUCC.')
     return listCus
 
 def get_sip_by_customer(ulCustomerID):
@@ -64,15 +66,16 @@ def get_sip_by_customer(ulCustomerID):
     '''
 
     if str(ulCustomerID).strip() == '':
-        file_info.print_file_info('ulCustomerID does not exist...')
+        file_info.print_file_info('Get SIP by Customer FAIL')
         return -1
 
     seqSQLCmd = 'SELECT DISTINCT id FROM tbl_sip WHERE customer_id = %d;' % ulCustomerID
     listSip = db_exec.exec_SQL(seqSQLCmd)
     if -1 == listSip:
-        file_info.print_file_info('listSip is %d' % listSip)
+        file_info.print_file_info('Get SIP by Customer FAIL')
         return -1
 
+    file_info.print_file_info('Get SIP by Customer SUCC')
     return listSip
 
 def generate_customer(ulCustomerID):
@@ -81,14 +84,14 @@ def generate_customer(ulCustomerID):
     '''
 
     if str(ulCustomerID).strip() == '':
-        file_info.print_file_info('ulCustomerID does not exist...')
+        file_info.print_file_info('Generate Customer %d FAIL' % ulCustomerID)
         return -1
 
     # 根据客户id获取sip列表
     listSip = get_sip_by_customer(ulCustomerID)
 
     if -1 == listSip:
-        file_info.print_file_info('listSip is %d' % listSip)
+        file_info.print_file_info('Generate Customer %d FAIL.' % ulCustomerID)
         return -1
 
     # 获取配置文件路径
@@ -129,12 +132,12 @@ def generate_customer(ulCustomerID):
             domUserNode = xmlDoc.createElement('user')
             seqUserID = sip.get_userid_by_sipid(str(listSip[i][0]))
             if -1 == seqUserID:
-                file_info.print_file_info('seqUserID is %d' % seqUserID)
+                file_info.print_file_info('seqUserID is %d, Invalid' % seqUserID)
                 return -1
 
             lRet = sip.generate_sip(seqUserID)
             if -1 == lRet:
-                file_info.print_file_info('lRet is %d' % lRet)
+                file_info.print_file_info('Generate SIP FAIL,lRet is %d' % lRet)
                 return -1
 
             domUserNode.setAttribute('id', seqUserID)
@@ -152,12 +155,12 @@ def generate_customer(ulCustomerID):
             seqUserID = sip.get_userid_by_sipid(str(listSip[i][0]))
 
             if -1 == seqUserID:
-                file_info.print_file_info('seqUserIDt is %d' % seqUserID)
+                file_info.print_file_info('seqUserIDt is %d, Invalid' % seqUserID)
                 return -1
 
             lRet = sip.generate_sip(seqUserID)
             if -1 == lRet:
-                file_info.print_file_info('lRet is %d' % lRet)
+                file_info.print_file_info('Generate SIP FAIL,,lRet is %d' % lRet)
                 return -1
 
             userNode.setAttribute('id', seqUserID)
@@ -175,6 +178,8 @@ def generate_customer(ulCustomerID):
         return -1
 
     dom_to_xml.del_blank_line(seqMgntFile)
+
+    file_info.print_file_info('Generate Customer %d SUCC.' % ulCustomerID)
     return 1
 
 
@@ -210,6 +215,7 @@ def create_customer_head(doc):
     domGroupsNode = doc.createElement('groups')
     domDomainNode.appendChild(domGroupsNode)
 
+    file_info.print_file_info('Create Customer Management File Head SUCC.')
     return (domIncludeNode, domGroupsNode)
 
 def clean_all_customer():
@@ -227,7 +233,7 @@ def clean_all_customer():
     # 构造客户目录
     seqCusDir = seqFsPath + 'directory/'
     if os.path.exists(seqCusDir) is False:
-        file_info.print_file_info('All customers were cleand SUCC.')
+        file_info.print_file_info('All customers cleand SUCC.')
         return 1
     
     # 遍历目录并删掉所有文件
@@ -243,5 +249,5 @@ def clean_all_customer():
     if os.path.exists(seqMgntFile):
         os.system('rm %s' % seqMgntFile)
 
-    file_info.print_file_info('Customers clean finished.')
+    file_info.print_file_info('All customers cleand SUCC.')
     return 1

@@ -1,4 +1,4 @@
-﻿#coding=utf-8
+﻿# coding=utf-8
 
 '''
 @author: bubble
@@ -62,7 +62,7 @@ def print_file_info(info):
     
     seqLogPath = '/var/log/dipcc/fsconf' + time.strftime('%Y%m%d') + '.log'
     if os.path.exists(seqLogPath) is False:
-        log.create_fs_log_dir()
+        os.system('touch %s' % seqLogPath)
     
     fp = open(seqLogPath, 'a')
 
