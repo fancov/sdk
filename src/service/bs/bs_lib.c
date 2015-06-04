@@ -192,7 +192,7 @@ U32 bs_hash_get_index(U32 ulHashTblSize, U32 ulID)
         return U32_BUTT;
     }
 
-    return ulID&(ulHashTblSize - 1);
+    return ulID & (ulHashTblSize - 1);
 }
 
 /* 获取客户信息在哈希表中的节点 */

@@ -27,6 +27,7 @@ extern "C"{
 
 extern double ceil(double x);
 extern S8 *strptime(const S8 *s, const S8 *format, struct tm *tm);
+extern S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID);
 
 
 /* 处理WEB通知更新坐席的请求 */
@@ -1256,6 +1257,148 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     }
 }
 
+VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
+{
+    BS_BILLING_PACKAGE_ST *pstPkg = NULL;
+    const S8 *pszBillingRate = NULL, *pszWhere = NULL, *pszCustomerID = NULL, *pszBillingPkgID = NULL, *pszBillingRuleID = NULL;
+    U32 ulBillingRate = U32_BUTT, ulCustomerID = U32_BUTT, ulBillingPkgID = U32_BUTT, ulBillingRuleID = U32_BUTT;
+    JSON_OBJ_ST *pstJsonWhere = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    U32 ulHashIndex = U32_BUTT, ulLoop = U32_BUTT;
+    BOOL bNodeFound = DOS_FALSE;
+    
+    switch(ulOpteration)
+    {
+        case BS_CMD_UPDATE:
+            {   
+                pszBillingRate = json_get_param(pstJSONObj, "billing_rate");
+                if (DOS_ADDR_INVALID(pszBillingRate))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Rate FAIL.");
+                    DOS_ASSERT(0);
+                    break;
+                }
+
+                pszWhere = json_get_param(pstJSONObj, "where");
+                if (DOS_ADDR_INVALID(pszBillingRate))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Where Param FAIL.");
+                    DOS_ASSERT(0);
+                    break;
+                }
+                
+                pstJsonWhere = json_init((char *)pszWhere);
+                if (DOS_ADDR_INVALID(pstJsonWhere))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Init JSON obj FAIL.");
+                    DOS_ASSERT(0);
+                    break;
+                }
+
+                pszCustomerID = json_get_param(pstJsonWhere, "customer_id");
+                if (DOS_ADDR_INVALID(pszCustomerID))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Customer ID FAIL.");
+                    DOS_ASSERT(0);
+                    break;
+                }
+
+                pszBillingPkgID = json_get_param(pstJsonWhere, "billing_package_id");
+                if (DOS_ADDR_INVALID(pszBillingPkgID))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Package ID FAIL.");
+                    DOS_ASSERT(0);
+                    break;
+                }
+
+                pszBillingRuleID = json_get_param(pstJsonWhere, "billing_rule_id");
+                if (DOS_ADDR_INVALID(pszBillingRuleID))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Rule ID FAIL.");
+                    DOS_ASSERT(0);
+                    break;
+                }
+
+                if (dos_atoul(pszBillingRate, &ulBillingRate) < 0
+                    || dos_atoul(pszCustomerID, &ulCustomerID) < 0
+                    || dos_atoul(pszBillingPkgID, &ulBillingPkgID) < 0
+                    || dos_atoul(pszBillingRuleID, &ulBillingRuleID) < 0)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: dos_atoul FAIL.");
+                    DOS_ASSERT(0);
+                    break;
+                }
+
+                ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulBillingPkgID);
+                if (U32_BUTT == ulHashIndex)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Package ID %u FAIL.", ulBillingPkgID);
+                    DOS_ASSERT(0);
+                    break;
+                }
+                
+                pstHashNode = hash_find_node(g_astBillingPackageTbl, ulHashIndex, (VOID *)&ulBillingPkgID, bs_billing_package_hash_node_match);
+                if (DOS_ADDR_INVALID(pstHashNode)
+                    || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Hash Node has no data.");
+                    DOS_ASSERT(0);
+                    break;
+                }
+
+                pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
+
+                for (ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
+                {
+                    if (pstPkg->astRule[ulLoop].ulRuleID == ulBillingRuleID)
+                    {
+                        pstPkg->astRule[ulLoop].ulBillingRate = ulBillingRate;
+                        bNodeFound = DOS_TRUE;
+                    }
+                }
+
+                if (DOS_TRUE == bNodeFound)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Billing Rate Updated SUCC.");
+                }
+                else
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: No Billing Rule ID %u.", ulBillingRuleID);
+                }
+                break;
+            }
+        case BS_CMD_DELETE:
+            break;
+        case BS_CMD_INSERT:
+            {
+                pszBillingPkgID = json_get_param(pstJSONObj, "billing_package_id");
+                if (DOS_ADDR_INVALID(pszBillingPkgID))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Package ID FAIL.");
+                    break;
+                }
+
+                if (dos_atoul(pszBillingPkgID, &ulBillingPkgID) < 0)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: dos_atoul FAIL.");
+                    break;
+                }
+
+                if (DOS_SUCC != bsd_walk_billing_package_tbl_bak(ulBillingPkgID))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Insert New Billing Package FAIL.");
+                    break;
+                }
+            }
+            break;
+        default:
+            break;
+    }
+
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Billing Rate updated SUCC.");
+}
+
+
 VOID bss_update_call_task(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 {
     BS_TASK_ST *pstTask = NULL;
@@ -1533,6 +1676,10 @@ VOID bss_data_update()
         else if (dos_strcmp(pszTblName, "tbl_billing_package") == 0)
         {
             bss_update_billing_package(ulOpteration, pstJsonNode);
+        }
+        else if (dos_strcmp(pszTblName, "tbl_billing_rate") == 0)
+        {
+            bss_update_billing_rate(ulOpteration, pstJsonNode);
         }
         else if (dos_strcmp(pszTblName, "tbl_calltask") == 0)
         {

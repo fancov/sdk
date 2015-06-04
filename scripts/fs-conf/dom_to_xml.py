@@ -32,8 +32,7 @@ def dom_to_xml(seqFileName, doc):
         return -1
     else:
         seqStr = doc.toprettyxml(indent = ' ')
-        lRet = os.write(fp, seqStr)
-        file_info.print_file_info('lRet == %d' % lRet)
+        os.write(fp, seqStr)
         os.fsync(fp)
         os.close(fp)
         return 1

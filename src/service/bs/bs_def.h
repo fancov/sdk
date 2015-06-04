@@ -677,6 +677,7 @@ S32 bs_init_db();
 S32 bsd_walk_customer_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_walk_agent_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg);
+S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID);
 S32 bsd_walk_settle_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_walk_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_delete_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg);

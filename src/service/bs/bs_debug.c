@@ -31,6 +31,7 @@ extern DLL_S g_stBSS2DMsgList;
 
 extern VOID bss_update_agent(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
 extern VOID bss_update_billing_package(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
+extern VOID bss_update_billing_rate(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
 extern VOID bss_update_customer(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
 extern VOID bss_update_call_task(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
 

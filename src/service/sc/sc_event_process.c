@@ -865,7 +865,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     }
     sc_ep_sip_userid_init(pstSIPUserIDNodeNew);
 
-    for (lIndex=0, blProcessOK=DOS_TRUE; lIndex<lCount; lIndex++)
+    for (lIndex=0, blProcessOK = DOS_TRUE; lIndex < lCount; lIndex++)
     {
         if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
         {
@@ -912,62 +912,40 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
         dos_dmem_free(pstSIPUserIDNodeNew);
         pstSIPUserIDNodeNew = NULL;
-        return DOS_FALSE;
+        return DOS_FAIL;
     }
 
     pthread_mutex_lock(&g_mutexHashSIPUserID);
-    
-    HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
+    //
+
+    ulHashIndex = sc_sip_userid_hash_func(pstSIPUserIDNodeNew->szUserID);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)&pstSIPUserIDNodeNew->szUserID, sc_ep_sip_userid_hash_find);
+
+    if (DOS_ADDR_INVALID(pstHashNode))
     {
-        HASH_Scan_Bucket(g_pstHashSIPUserID, ulHashIndex, pstHashNode, HASH_NODE_S *)
-        {
-            if (DOS_ADDR_INVALID(pstHashNode))
-            {
-                break;
-            }
-
-            pstSIPUserIDNode = pstHashNode->pHandle;
-            if (DOS_ADDR_INVALID(pstHashNode))
-            {
-                continue;
-            }
-
-            if (pstSIPUserIDNode->ulSIPID == pstSIPUserIDNodeNew->ulSIPID)
-            {
-                break;
-            }
-        }
-    }
-
-    if (DOS_ADDR_INVALID(pstSIPUserIDNode)
-        || pstSIPUserIDNode->ulSIPID != pstSIPUserIDNodeNew->ulSIPID)
-    {
-        pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+        pstHashNode = (HASH_NODE_S *)dos_dmem_alloc(sizeof(HASH_NODE_S));
         if (DOS_ADDR_INVALID(pstHashNode))
         {
             DOS_ASSERT(0);
-
             dos_dmem_free(pstSIPUserIDNodeNew);
             pstSIPUserIDNodeNew = NULL;
             pthread_mutex_unlock(&g_mutexHashSIPUserID);
-            return DOS_FALSE;
+            return DOS_FAIL;
         }
-
         sc_logr_info(SC_ESL, "Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
                     , pstSIPUserIDNodeNew->ulSIPID
                     , pstSIPUserIDNodeNew->ulCustomID
                     , pstSIPUserIDNodeNew->szUserID
                     , pstSIPUserIDNodeNew->szExtension);
-
+                    
         HASH_Init_Node(pstHashNode);
         pstHashNode->pHandle = pstSIPUserIDNodeNew;
-        ulHashIndex = sc_sip_userid_hash_func(pstSIPUserIDNodeNew->szUserID);
 
         hash_add_node(g_pstHashSIPUserID, (HASH_NODE_S *)pstHashNode, ulHashIndex, NULL);
-
     }
     else
     {
+        pstSIPUserIDNode = (SC_USER_ID_NODE_ST *)pstHashNode->pHandle;
         pstSIPUserIDNode->ulCustomID = pstSIPUserIDNodeNew->ulCustomID;
 
         dos_strncpy(pstSIPUserIDNode->szUserID, pstSIPUserIDNodeNew->szUserID, sizeof(pstSIPUserIDNode->szUserID));
@@ -979,7 +957,8 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         dos_dmem_free(pstSIPUserIDNodeNew);
         pstSIPUserIDNodeNew = NULL;
     }
-
+    //
+    
     pthread_mutex_unlock(&g_mutexHashSIPUserID);
 
     return DOS_SUCC;
@@ -993,7 +972,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
  */
 U32 sc_load_sip_userid(U32 ulIndex)
 {
-    S8 szSQL[1024] = { 0, };
+    S8 szSQL[1024] = {0, };
 
     if (SC_INVALID_INDEX == ulIndex)
     {

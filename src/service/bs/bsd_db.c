@@ -146,7 +146,7 @@ S32 bsd_walk_customer_tbl(BS_INTER_MSG_WALK *pstMsg)
     HASH_NODE_S     *pstHashNode = NULL;
     BS_CUSTOMER_ST  *pstCustomer = NULL;
 
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT `id`,`name`,`parent_id`,`type`,`status`, `billing_package_id`, `balance`, `credit_line`, `balance_warning` from tbl_customer;");
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT `id`,`name`,`parent_id`,`type`,`status`, `billing_package_id`, `balance`, `minimum_balance`, `balance_warning` from tbl_customer;");
     if (db_query(g_pstDBHandle, szQuery, bsd_walk_customer_tbl_cb, NULL, NULL) != DB_ERR_SUCC)
     {
         bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read customers from DB FAIL!");
@@ -471,6 +471,36 @@ S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
 
     return DOS_SUCC;
 }
+
+S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID)
+{
+    S8  szQuery[1024] = {0,};
+    
+    dos_snprintf(szQuery, sizeof(szQuery)
+                       , "SELECT "
+                         "   t1.billing_package_id, t1.billing_rate, t2.id, t2.src_attr_type1, t2.src_attr_type2, "
+                         "   t2.dst_attr_type1, t2.dst_attr_type2, src_attr_value1, src_attr_value2, dst_attr_value1, dst_attr_value2, "
+                         "   serv_type, billing_type, first_billing_unit, next_billing_unit, first_billing_cnt, next_billing_cnt, "
+                         "   UNIX_TIMESTAMP(effect_time), UNIX_TIMESTAMP(expire_time) "
+                         "FROM "
+                         "   tbl_billing_rate t1 "
+                         "LEFT JOIN "
+                         "   tbl_billing_rule t2 "
+                         "ON "
+                         "   t2.id = t1.billing_rule_id"
+                         "   AND t1.billing_package_id = %u;", ulPkgID);
+
+    if (DB_ERR_SUCC != db_query(g_pstDBHandle, szQuery, bsd_walk_billing_package_tbl_cb, NULL, NULL))
+    {
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read billing package from DB FAIL!");
+        return BS_INTER_ERR_FAIL;
+    }
+
+    bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read billing package from DB OK!(%u)", g_astBillingPackageTbl->NodeNum);
+    return DOS_SUCC;
+}
+
+
 #if 0
 static S32 bsd_walk_settle_tbl_cb(BS_INTER_MSG_WALK *pstMsg)
 {
