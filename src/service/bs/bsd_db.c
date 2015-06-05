@@ -338,7 +338,6 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
         || dos_atoul(aszData[18], &stBillingRule.ulExpireTimestamp) < 0)
     {
         DOS_ASSERT(0);
-
         return -1;
     }
 
@@ -475,20 +474,26 @@ S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
 S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID)
 {
     S8  szQuery[1024] = {0,};
-    
+
     dos_snprintf(szQuery, sizeof(szQuery)
-                       , "SELECT "
-                         "   t1.billing_package_id, t1.billing_rate, t2.id, t2.src_attr_type1, t2.src_attr_type2, "
-                         "   t2.dst_attr_type1, t2.dst_attr_type2, src_attr_value1, src_attr_value2, dst_attr_value1, dst_attr_value2, "
-                         "   serv_type, billing_type, first_billing_unit, next_billing_unit, first_billing_cnt, next_billing_cnt, "
-                         "   UNIX_TIMESTAMP(effect_time), UNIX_TIMESTAMP(expire_time) "
-                         "FROM "
-                         "   tbl_billing_rate t1 "
-                         "LEFT JOIN "
-                         "   tbl_billing_rule t2 "
-                         "ON "
-                         "   t2.id = t1.billing_rule_id"
-                         "   AND t1.billing_package_id = %u;", ulPkgID);
+                    , "SELECT"
+                      "     t1.billing_package_id, t1.billing_rate, t2.id, t2.src_attr_type1, t2.src_attr_type2,"
+                      "     t2.dst_attr_type1, t2.dst_attr_type2, src_attr_value1, src_attr_value2, dst_attr_value1, dst_attr_value2,"
+                      "     serv_type, billing_type, first_billing_unit, next_billing_unit, first_billing_cnt, next_billing_cnt,"
+                      "     UNIX_TIMESTAMP(effect_time), UNIX_TIMESTAMP(expire_time) "
+                      "FROM"
+                      "     (SELECT"
+                      "        billing_package_id, billing_rate, billing_rule_id"
+                      "      FROM"
+                      "        tbl_billing_rate t1"
+                      "      WHERE"
+                      "        billing_package_id = %u"
+                      "     ) AS t1 "
+                      "LEFT JOIN"  
+                      "     tbl_billing_rule t2 "
+                      "ON"
+                      "     t2.id = t1.billing_rule_id;"
+                    , ulPkgID);
 
     if (DB_ERR_SUCC != db_query(g_pstDBHandle, szQuery, bsd_walk_billing_package_tbl_cb, NULL, NULL))
     {
