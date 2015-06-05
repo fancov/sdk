@@ -427,7 +427,7 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
         pstBillingPkg->ucServType = (S8)ulServType;
 
         dos_memcpy(&pstBillingPkg->astRule[0], &stBillingRule, sizeof(stBillingRule));
-        pstBillingPkg->astRule[0].ucValid = DOS_TRUE;
+        pstBillingPkg->astRule[0].ucValid = 1;
 
         HASH_INIT_NODE(pstHashNode);
         pstHashNode->pHandle = pstBillingPkg;
@@ -616,6 +616,7 @@ static S32 bsd_walk_web_cmd_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFie
     }
 
     pstJSONObj = json_init(aszData[2]);
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "%s", aszData[2]);
     if (DOS_ADDR_INVALID(pstJSONObj))
     {
         DOS_ASSERT(0);
