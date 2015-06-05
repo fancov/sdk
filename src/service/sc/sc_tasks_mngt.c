@@ -220,6 +220,48 @@ U32 sc_task_mngt_pause_task(U32 ulTaskID, U32 ulCustomID)
 
 }
 
+U32 sc_task_mngt_delete_task(U32 ulTaskID, U32 ulCustomID)
+{
+    SC_TASK_CB_ST *pstTCB = NULL;
+
+    SC_TRACE_IN((U32)ulTaskID, 0, 0, 0);
+
+    if (0 == ulTaskID || U32_BUTT == ulTaskID)
+    {
+        DOS_ASSERT(0);
+        SC_TRACE_OUT();
+        return SC_HTTP_ERRNO_INVALID_DATA;
+    }
+
+    if (0 == ulCustomID || U32_BUTT == ulCustomID)
+    {
+        DOS_ASSERT(0);
+        SC_TRACE_OUT();
+        return SC_HTTP_ERRNO_INVALID_USR;
+    }
+
+    pstTCB = sc_tcb_find_by_taskid(ulTaskID);
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        SC_TRACE_OUT();
+        return SC_HTTP_ERRNO_INVALID_DATA;
+    }
+
+    if (pstTCB->ucTaskStatus != SC_TASK_WORKING)
+    {
+        DOS_ASSERT(0);
+        SC_TRACE_OUT();
+        return SC_HTTP_ERRNO_INVALID_TASK_STATUS;
+    }
+
+    sc_task_stop(pstTCB);
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_SUCC;
+
+}
+
 
 /*
  * º¯Êý: U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
@@ -455,6 +497,7 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
         {
             switch (pstCMD->ulAction)
             {
+                case SC_API_CMD_ACTION_ADD:
                 case SC_API_CMD_ACTION_START:
                 {
                     pstCMD->ulCMDErrCode = sc_task_mngt_start_task(pstCMD->ulTaskID, pstCMD->ulCustomID);
@@ -473,6 +516,11 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
                 case SC_API_CMD_ACTION_PAUSE:
                 {
                     pstCMD->ulCMDErrCode = sc_task_mngt_pause_task(pstCMD->ulTaskID, pstCMD->ulCustomID);
+                    break;
+                }
+                case SC_API_CMD_ACTION_DELETE:
+                {
+                    pstCMD->ulCMDErrCode = sc_task_mngt_delete_task(pstCMD->ulTaskID, pstCMD->ulCustomID);
                     break;
                 }
                 default:

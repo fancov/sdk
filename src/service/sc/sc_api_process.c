@@ -241,7 +241,15 @@ U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient)
         DOS_ASSERT(0);
         goto invalid_params;
     }
-    if (dos_strcmp(pszAction, "start") == 0)
+    if (dos_strcmp(pszAction, "add") == 0)
+    {
+        ulAction = SC_API_CMD_ACTION_ADD;
+    }
+    else if (dos_strcmp(pszAction, "delete") == 0)
+    {
+        ulAction = SC_API_CMD_ACTION_DELETE;
+    }
+    else if (dos_strcmp(pszAction, "start") == 0)
     {
         ulAction = SC_API_CMD_ACTION_START;
     }

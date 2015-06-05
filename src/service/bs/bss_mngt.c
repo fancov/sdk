@@ -165,7 +165,7 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 json_deinit(&pstJsonWhere);
                 break;
             }
-           
+
 
             if (dos_atoul(pszAgentID, &ulAgentID) < 0)
             {
@@ -195,7 +195,7 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             }
 
             pstAgentInfo = (BS_AGENT_ST *)pstHashNode->pHandle;
-            
+
             pstCustomer = bs_get_customer_st(pstAgentInfo->ulCustomerID);
             if (DOS_ADDR_INVALID(pstCustomer))
             {
@@ -474,7 +474,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 || dos_atoul(pszBalanceWarning, &ulBanlanceWarning) < 0
                 || dos_atol(pszMinBalance, &lMaximumBalance) < 0
                 || '\0' == pszCustomName[0])
-            {   
+            {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Invalid param while adding custom.");
 
                 dos_dmem_free(pstCustomer);
@@ -488,7 +488,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             if (DOS_ADDR_VALID(pszExpireTime))
             {
                 pstCustomer->stAccount.ulExpiryTime = (U32)ulExpiryTime;
-            }  
+            }
             pstCustomer->stAccount.lCreditLine  = lMaximumBalance;
             json_deinit(&pstSubJsonWhere);
             break;
@@ -604,7 +604,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 }
                 ulExpiryTime = mktime(&stExpiryTm);
             }
-            
+
             pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
             if (DOS_ADDR_INVALID(pstHashNode))
             {
@@ -683,13 +683,13 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             if (U32_BUTT == ulHashIndex)
             {
                 DOS_ASSERT(0);
-                
+
                 dos_dmem_free(pstHashNode);
                 pstHashNode = NULL;
-                
+
                 dos_dmem_free(pstCustomer);
                 pstCustomer = NULL;
-                
+
                 break;
             }
 
@@ -701,10 +701,10 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: customer(%u:%s) is duplicated in DB !",
                 pstCustomer->ulCustomerID, pstCustomer->szCustomerName);
-                
+
                 dos_dmem_free(pstHashNode);
                 pstHashNode = NULL;
-                
+
                 dos_dmem_free(pstCustomer);
                 pstCustomer = NULL;
 
@@ -722,7 +722,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
                 dos_dmem_free(pstCustomer);
                 pstCustomer = NULL;
-                
+
                 dos_dmem_free(pstHashNode);
                 pstHashNode = NULL;
 
@@ -738,7 +738,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
                 dos_dmem_free(pstCustomer);
                 pstCustomer = NULL;
-                
+
                 dos_dmem_free(pstHashNode);
                 pstHashNode = NULL;
 
@@ -837,7 +837,7 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pszServType = json_get_param(pstJSONObj, "serv_type");
             pszPriority = json_get_param(pstJSONObj, "seq");
 
-            if (DOS_ADDR_INVALID(pszPkgID) 
+            if (DOS_ADDR_INVALID(pszPkgID)
                 || DOS_ADDR_INVALID(pszServType)
                 || DOS_ADDR_INVALID(pszPriority))
             {
@@ -906,7 +906,7 @@ VOID bss_update_billing_package(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                     pszNextBillingCnt = json_get_param(pstJSONObj, "next_billing_cnt");
                     pszBillingType = json_get_param(pstJSONObj, "billing_type");
                     pszBillingRate = json_get_param(pstJSONObj, "billing_rate");
-                    
+
                     if (DOS_ADDR_INVALID(pszFirstBillingUnit) || DOS_ADDR_INVALID(pszNextBillingUnit)
                         || DOS_ADDR_INVALID(pszFirstBillingCnt) || DOS_ADDR_INVALID(pszNextBillingCnt)
                         || DOS_ADDR_INVALID(pszBillingType) || DOS_ADDR_INVALID(pszBillingRate))
@@ -1275,11 +1275,11 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     HASH_NODE_S *pstHashNode = NULL;
     U32 ulHashIndex = U32_BUTT, ulLoop = U32_BUTT;
     BOOL bNodeFound = DOS_FALSE;
-    
+
     switch(ulOpteration)
     {
         case BS_CMD_UPDATE:
-            {   
+            {
                 pszBillingRate = json_get_param(pstJSONObj, "billing_rate");
                 if (DOS_ADDR_INVALID(pszBillingRate))
                 {
@@ -1295,7 +1295,7 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                     DOS_ASSERT(0);
                     break;
                 }
-                
+
                 pstJsonWhere = json_init((char *)pszWhere);
                 if (DOS_ADDR_INVALID(pstJsonWhere))
                 {
@@ -1345,7 +1345,7 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                     DOS_ASSERT(0);
                     break;
                 }
-                
+
                 pstHashNode = hash_find_node(g_astBillingPackageTbl, ulHashIndex, (VOID *)&ulBillingPkgID, bs_billing_package_hash_node_match);
                 if (DOS_ADDR_INVALID(pstHashNode)
                     || DOS_ADDR_INVALID(pstHashNode->pHandle))
@@ -1433,7 +1433,7 @@ VOID bss_update_call_task(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Init json fail.");
                 break;
             }
-            pszTaskID = json_get_param(pstJSONObj, "id");
+            pszTaskID = json_get_param(pstJsonWhere, "id");
             if (DOS_ADDR_INVALID(pszTaskID))
             {
                 json_deinit(&pstJsonWhere);
@@ -1482,7 +1482,7 @@ VOID bss_update_call_task(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Init json fail.");
                 break;
             }
-            pszTaskID = json_get_param(pstJSONObj, "id");
+            pszTaskID = json_get_param(pstJsonWhere, "id");
             if (DOS_ADDR_INVALID(pszTaskID))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Task ID fail.");
