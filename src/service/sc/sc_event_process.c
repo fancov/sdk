@@ -960,7 +960,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         pstSIPUserIDNodeNew = NULL;
     }
     //
-    
+
     pthread_mutex_unlock(&g_mutexHashSIPUserID);
 
     return DOS_SUCC;

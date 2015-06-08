@@ -688,7 +688,7 @@ U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *psz
 
 
     dos_snprintf(pszBuff, ulMaxLen
-            , "%u/%04d%02d%02d-%02d%02d%02d/VR-%s-%s"
+            , "%u/%04d%02d%02d/VR-%02d%02d%02d-%s-%s"
             , ulCustomerID
             , pstTime->tm_year + 1900
             , pstTime->tm_mon + 1
@@ -1211,23 +1211,8 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulCalleeCount = 0;
 
     dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT "
-                      "  a.id, a.regex_number "
-                      "FROM "
-                      "  tbl_callee a "
-                      "LEFT JOIN "
-                      "    (SELECT "
-                      "      c.id as id "
-                      "    FROM "
-                      "      tbl_calleefile c "
-                      "    LEFT JOIN "
-                      "      tbl_calltask d "
-                      "    ON "
-                      "      c.id = d.callee_id AND d.id = %d) b "
-                      "ON "
-                      "  a.calleefile_id = b.id AND a.`status` <> 3 "
-                      "LIMIT %d, 1000;"
-                    , pstTCB->usTCBNo
+                    , "SELECT id, regex_number FROM tbl_callee WHERE calleefile_id = (SELECT tbl_calltask.callee_id FROM tbl_calltask WHERE id=%u) LIMIT %u, 1000;"
+                    , pstTCB->ulTaskID
                     , pstTCB->ulLastCalleeIndex);
 
     if (DB_ERR_SUCC != db_query(g_pstSCDBHandle, szSQL, sc_task_load_callee_callback, (VOID *)pstTCB, NULL))
@@ -1977,7 +1962,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
                 return DOS_FAIL;
             }
 
-            logr_info("Add SIP XML SUCC.");         
+            logr_info("Add SIP XML SUCC.");
 #endif
             ulRet = sc_load_sip_userid(ulSipID);
             if (ulRet != DOS_SUCC)
