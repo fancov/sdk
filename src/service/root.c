@@ -114,7 +114,7 @@ S32 root(S32 _argc, S8 ** _argv)
     {
         DOS_ASSERT(0);
 
-		logr_info("%s", "SC INIT FAIL.");
+        logr_info("%s", "SC INIT FAIL.");
         return -1;
     }
 
@@ -122,10 +122,10 @@ S32 root(S32 _argc, S8 ** _argv)
     {
         DOS_ASSERT(0);
 
-		logr_info("%s", "SC start FAIL.");
+        logr_info("%s", "SC start FAIL.");
         return -1;
     }
-	
+    
     logr_info("%s", "SC start.");
 #endif
 

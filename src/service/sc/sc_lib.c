@@ -1955,7 +1955,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
         case SC_API_CMD_ACTION_SIP_UPDATE:
         {
 #if INCLUDE_SERVICE_PYTHON
-            ulRet = py_exec_func("sip", "add_sip","(i)", ulSipID);
+            ulRet = py_exec_func("sip", "add_sip", "(i)", ulSipID);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -1981,7 +1981,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
                 return DOS_FAIL;
             }
 #if INCLUDE_SERVICE_PYTHON
-            ulRet = py_exec_func("sip", "del_sip","(i,s,i)", ulSipID, szUserID, ulCustomerID);
+            ulRet = py_exec_func("sip", "del_sip", "(i,s,i)", ulSipID, szUserID, ulCustomerID);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);

@@ -75,5 +75,11 @@ def print_file_info(info):
     else:
         print >> fp, output, '=>', _info, info
         fp.close()
-    
         return 1
+
+def get_interpreter_version():
+    '''
+    @todo: 获取python解释器版本信息
+    '''
+
+    return sys.version

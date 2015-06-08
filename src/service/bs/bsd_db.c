@@ -350,6 +350,7 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
     stBillingRule.ucNextBillingCnt = (U8)ulNextBillingCnt;
     stBillingRule.ucServType = (U8)ulServType;
     stBillingRule.ucBillingType = (U8)ulBillingType;
+    stBillingRule.ucPriority = 0;
 
     pthread_mutex_lock(&g_mutexBillingPackageTbl);
     bFound = DOS_FALSE;
