@@ -160,6 +160,10 @@ U32 sc_init_db()
 
 U32 mod_dipcc_sc_load()
 {
+#if INCLUDE_SERVICE_PYTHON
+    S8 szPyVersion[256] = {0};
+#endif
+
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start init SC.");
 
     if (sc_init_db() != DOS_SUCC)
@@ -180,6 +184,14 @@ U32 mod_dipcc_sc_load()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init python LIB SUCC.");
+    
+    /* 获取python版本号 */
+    if (DOS_SUCC != py_get_version(szPyVersion, sizeof(szPyVersion)))
+    {
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Get Python Interpreter Version FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "Python Version Info: %s", szPyVersion);
 
     /* 全局加载freeswitch配置文件xml */
     if (DOS_SUCC != py_exec_func("customer", "generate_all_customer", "()"))
