@@ -258,28 +258,30 @@ void *dos_log_main_loop(void *_ptr)
     S8 szTime[32] = { 0 };
 
     /* 置等待退出标志 */
-    pthread_mutex_lock(&g_mutexLogTask);
     g_lLogWaitingExit = 0;
-    pthread_mutex_unlock(&g_mutexLogTask);
 
     while(1)
     {
         pthread_mutex_lock(&g_mutexLogTask);
         i = pthread_cond_wait(&g_condLogTask, &g_mutexLogTask);
+        pthread_mutex_unlock(&g_mutexLogTask);
         //printf("wait:%p, %p, ret:%d\n", g_LogCacheList->pstNext, g_LogCacheList, i);
 
         /* 顺序处理所有日志 */
         while(g_LogCacheList->pstNext != g_LogCacheList)
         {
+            pthread_mutex_lock(&g_mutexLogTask);
             pstLogData = g_LogCacheList->pstNext;
 
             g_LogCacheList->pstNext = pstLogData->pstNext;
             pstLogData->pstNext->pstPrev = g_LogCacheList;
 
+            g_ulLogCnt--;
+            pthread_mutex_unlock(&g_mutexLogTask);
+
             pstLogData->pstNext = NULL;
             pstLogData->pstPrev = NULL;
 
-            pthread_mutex_unlock(&g_mutexLogTask);
             for (i=0; i<MAX_LOG_TYPE; i++)
             {
                 if (g_pstLogModList[i])
@@ -302,12 +304,9 @@ void *dos_log_main_loop(void *_ptr)
                     }
                 }
             }
-            pthread_mutex_lock(&g_mutexLogTask);
 
             //printf("%p, %p\n", log->msg, log);
             //printf("%s\n", log->msg);
-
-            g_ulLogCnt--;
             //printf("acnt %d\n", g_uiLogCnt);
             //printf("flag:%s\n", g_LogCacheList->next != g_LogCacheList ? "true" : "false");
 
@@ -321,18 +320,13 @@ void *dos_log_main_loop(void *_ptr)
         if (g_lLogWaitingExit)
         {
             dos_printf("%s", "Log task finished flag has been set.");
-            pthread_mutex_unlock(&g_mutexLogTask);
             break;
         }
-
-        pthread_mutex_unlock(&g_mutexLogTask);
     }
 
 
     /* 重置退出标志 */
-    pthread_mutex_lock(&g_mutexLogTask);
     g_lLogWaitingExit = 0;
-    pthread_mutex_unlock(&g_mutexLogTask);
 
     dos_printf("%s", (S8 *)"Log task goodbye!");
     return NULL;
