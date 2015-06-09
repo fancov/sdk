@@ -180,7 +180,7 @@ U32  py_get_version(S8 *pszVersion, U32 ulLen)
 
     dos_snprintf(pszVersion, ulLen, "%s", pszNewVersion);
 
-    /* 该句只是为了版本信息打印格式更好看 */
+    /* 该句只是为了版本信息打印格式更好看，将第一个换行符打印成空格 */
     pszPos = dos_strchr(pszVersion, '\n');
     *pszPos = ' ';
 
