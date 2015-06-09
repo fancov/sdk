@@ -643,6 +643,7 @@ U32 sc_load_gateway(U32 ulIndex);
 U32 sc_load_route(U32 ulIndex);
 U32 sc_route_delete(U32 ulRouteID);
 U32 sc_load_gateway_grp(U32 ulIndex);
+U32 sc_refresh_gateway_grp(U32 ulIndex);
 U32 sc_gateway_grp_delete(U32 ulGwGroupID);
 U32 sc_load_did_number(U32 ulIndex);
 U32 sc_load_black_list(U32 ulIndex);

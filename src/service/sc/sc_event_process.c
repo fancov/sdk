@@ -681,6 +681,7 @@ U32 sc_route_delete(U32 ulRouteID)
 
 U32 sc_gateway_grp_delete(U32 ulGwGroupID)
 {
+    DLL_NODE_S         *pstDLLNode     = NULL;
     HASH_NODE_S        *pstHashNode    = NULL;
     SC_GW_GRP_NODE_ST  *pstGwGroupNode = NULL;
     U32 ulIndex = U32_BUTT;
@@ -708,6 +709,31 @@ U32 sc_gateway_grp_delete(U32 ulGwGroupID)
 
     if (pstGwGroupNode)
     {
+        pthread_mutex_lock(&pstGwGroupNode->mutexGWList);
+        while (1)
+        {
+            if (DLL_Count(&pstGwGroupNode->stGWList) == 0)
+            {
+                break;
+            }
+
+            pstDLLNode = dll_fetch(&pstGwGroupNode->stGWList);
+            if (DOS_ADDR_INVALID(pstDLLNode))
+            {
+                DOS_ASSERT(0);
+                break;
+            }
+
+            /* dll节点的数据域勿要删除 */
+
+            DLL_Init_Node(pstDLLNode);
+            dos_dmem_free(pstDLLNode);
+            pstDLLNode = NULL;
+        }
+        pthread_mutex_unlock(&pstGwGroupNode->mutexGWList);
+
+
+        pthread_mutex_destroy(&pstGwGroupNode->mutexGWList);
         dos_dmem_free(pstGwGroupNode);
         pstGwGroupNode = NULL;
     }
@@ -1443,6 +1469,7 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 U32 sc_load_gateway(U32 ulIndex)
 {
     S8 szSQL[1024] = {0,};
+    U32 ulRet;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
@@ -1455,9 +1482,9 @@ U32 sc_load_gateway(U32 ulIndex)
                         , "SELECT id, realm FROM tbl_gateway WHERE tbl_gateway.status = 1 AND id=%d;", ulIndex);
     }
 
-    db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_cb, NULL, NULL);
+    ulRet = db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_cb, NULL, NULL);
 
-    return DOS_SUCC;
+    return ulRet;
 }
 
 /**
@@ -1536,6 +1563,7 @@ S32 sc_load_gateway_grp_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames
 U32 sc_load_gateway_grp(U32 ulIndex)
 {
     S8 szSQL[1024];
+    U32 ulRet;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
@@ -1549,9 +1577,14 @@ U32 sc_load_gateway_grp(U32 ulIndex)
                         , ulIndex);
     }
 
-    db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_grp_cb, NULL, NULL);
+    ulRet = db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_grp_cb, NULL, NULL);
+    if (ulRet != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
-    return DOS_SUCC;
+    return ulRet;
 }
 
 /**
@@ -1675,6 +1708,64 @@ U32 sc_load_relationship()
 
     return DOS_SUCC;
 }
+
+U32 sc_refresh_gateway_grp(U32 ulIndex)
+{
+    S8 szSQL[1024];
+    U32 ulHashIndex;
+    SC_GW_GRP_NODE_ST    *pstGWGrpNode  = NULL;
+    HASH_NODE_S          *pstHashNode   = NULL;
+    DLL_NODE_S           *pstDLLNode    = NULL;
+
+    if (SC_INVALID_INDEX == ulIndex || U32_BUTT == ulIndex)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_ep_gw_grp_hash_func(ulIndex);
+    pstHashNode = hash_find_node(g_pstHashGWGrp, ulHashIndex, &ulIndex, sc_ep_gw_grp_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstGWGrpNode = pstHashNode->pHandle;
+    pthread_mutex_lock(&pstGWGrpNode->mutexGWList);
+    while (1)
+    {
+        if (DLL_Count(&pstGWGrpNode->stGWList) == 0)
+        {
+            break;
+        }
+
+        pstDLLNode = dll_fetch(&pstGWGrpNode->stGWList);
+        if (DOS_ADDR_INVALID(pstDLLNode))
+        {
+            DOS_ASSERT(0);
+            break;
+        }
+
+        if (DOS_ADDR_VALID(pstDLLNode->pHandle))
+        {
+            dos_dmem_free(pstDLLNode->pHandle);
+            pstDLLNode->pHandle = NULL;
+        }
+
+        DLL_Init_Node(pstDLLNode);
+        dos_dmem_free(pstDLLNode);
+        pstDLLNode = NULL;
+    }
+    pthread_mutex_unlock(&pstGWGrpNode->mutexGWList);
+
+    dos_snprintf(szSQL, sizeof(szSQL)
+                        , "SELECT tbl_gateway_assign.gateway_id FROM tbl_gateway_assign WHERE tbl_gateway_assign.gateway_grp_id = %u;"
+                        , ulIndex);
+
+    return db_query(g_pstSCDBHandle, szSQL, sc_load_relationship_cb, pstGWGrpNode, NULL);
+}
+
 
 /**
  * 函数: S32 sc_load_route_group_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)

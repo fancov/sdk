@@ -793,6 +793,10 @@ U32 sc_http_api_gw_group_action(SC_HTTP_CLIENT_CB_S *pstClient)
     {
         ulAction = SC_API_CMD_ACTION_GW_GROUP_ADD;
     }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_GW_GROUP_UPDATE;
+    }
     else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
     {
         ulAction = SC_API_CMD_ACTION_GW_GROUP_DELETE;

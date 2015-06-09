@@ -1891,12 +1891,17 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
             ulRet = py_exec_func("router", "make_route", "(k)", (U64)ulGatewayID);
             if (DOS_SUCC != ulRet)
             {
-               DOS_ASSERT(0);
-              return DOS_FAIL;
+                DOS_ASSERT(0);
+                return DOS_FAIL;
             }
 #endif
 
-            sc_load_gateway(ulGatewayID);
+            ulRet = sc_load_gateway(ulGatewayID);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
 
             ulRet = sc_ep_esl_execute_cmd("bgapi sofia  profile external restart");
             if (ulRet != DOS_SUCC)
@@ -1904,8 +1909,10 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
+
+            break;
         }
-        break;
+
         case SC_API_CMD_ACTION_GATEWAY_DELETE:
         {
 #if INCLUDE_SERVICE_PYTHON
@@ -1922,8 +1929,10 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
+
+            break;
         }
-        break;
+
         default:
             break;
    }
@@ -2058,22 +2067,28 @@ U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID)
     switch(ulAction)
     {
         case SC_API_CMD_ACTION_GW_GROUP_ADD:
-            sc_load_gateway_grp(ulGwGroupID);
-            break;
-        case SC_API_CMD_ACTION_GW_GROUP_DELETE:
+            ulRet = sc_load_gateway_grp(ulGwGroupID);
+            if (DOS_SUCC != ulRet)
             {
-                ulRet = sc_gateway_grp_delete(ulGwGroupID);
-                if (ulRet != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
-                    return DOS_FAIL;
-                }
+                DOS_ASSERT(0);
+                break;
             }
+            /* 这里没有break */
+
+        case SC_API_CMD_ACTION_GW_GROUP_UPDATE:
+            ulRet = sc_refresh_gateway_grp(ulGwGroupID);
+            break;
+
+        case SC_API_CMD_ACTION_GW_GROUP_DELETE:
+            ulRet = sc_gateway_grp_delete(ulGwGroupID);
             break;
         default:
             break;
     }
-    return DOS_SUCC;
+
+    sc_logr_info(SC_ESL, "Edit gw group Finished. ID: %u Action:%u, Result: %u", ulGwGroupID, ulAction, ulRet);
+
+    return ulRet;
 }
 
 U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID)
