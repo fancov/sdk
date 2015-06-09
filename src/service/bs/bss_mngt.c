@@ -27,7 +27,6 @@ extern "C"{
 
 extern double ceil(double x);
 extern S8 *strptime(const S8 *s, const S8 *format, struct tm *tm);
-extern S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID);
 
 
 /* 处理WEB通知更新坐席的请求 */
@@ -1257,6 +1256,7 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     BS_BILLING_PACKAGE_ST *pstPkg = NULL;
     const S8 *pszBillingRate = NULL, *pszWhere = NULL, *pszCustomerID = NULL, *pszBillingPkgID = NULL, *pszBillingRuleID = NULL;
     U32 ulBillingRate = U32_BUTT, ulCustomerID = U32_BUTT, ulBillingPkgID = U32_BUTT, ulBillingRuleID = U32_BUTT;
+    U32 ulTblType = BS_TBL_TYPE_BILLING_RULE;
     JSON_OBJ_ST *pstJsonWhere = NULL;
     HASH_NODE_S *pstHashNode = NULL;
     U32 ulHashIndex = U32_BUTT, ulLoop = U32_BUTT;
@@ -1371,7 +1371,68 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
         case BS_CMD_DELETE:
-            break;
+            {
+                pszWhere = json_get_param(pstJSONObj, "where");
+                if (DOS_ADDR_INVALID(pszWhere))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get where param FAIL.");
+                    break;
+                }
+
+                pstJsonWhere = json_init((S8 *)pszWhere);
+                if (DOS_ADDR_INVALID(pstJsonWhere))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Init Json Where FAIL.");
+                    break;
+                }
+                pszBillingPkgID = json_get_param(pstJsonWhere, "billing_package_id");
+                if (DOS_ADDR_INVALID(pszBillingPkgID))
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Billing Package ID FAIL.");
+                    json_deinit(&pstJsonWhere);
+                    break;
+                }
+
+                if (dos_atoul(pszBillingPkgID, &ulBillingPkgID) < 0)
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul FAIL.");
+                    json_deinit(&pstJsonWhere);
+                    break;
+                }
+
+                HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
+                {
+                    HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
+                    {
+                        if (DOS_ADDR_INVALID(pstHashNode)
+                            || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                        {
+                            continue;
+                        }
+
+                        pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
+                        if (pstPkg->ulPackageID == ulBillingPkgID)
+                        {
+                            hash_delete_node(g_astBillingPackageTbl, pstHashNode, ulHashIndex);
+                            dos_dmem_free(pstPkg);
+                            dos_dmem_free(pstHashNode);
+                            pstPkg = NULL;
+                            pstHashNode = NULL;
+                            bNodeFound = DOS_TRUE;
+                        }
+                    }
+                }
+                if (DOS_TRUE == bNodeFound)
+                {   
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Delete Billing Package ID %u SUCC." , ulBillingPkgID);
+                }
+                else
+                {
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Delete Billing Package ID %u FAIL.", ulBillingPkgID);
+                }           
+     
+                break;
+            }
         case BS_CMD_INSERT:
             {
                 pszBillingPkgID = json_get_param(pstJSONObj, "billing_package_id");
@@ -1387,18 +1448,23 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                     break;
                 }
 
-                if (DOS_SUCC != bsd_walk_billing_package_tbl_bak(ulBillingPkgID))
+                pstPkg = (BS_BILLING_PACKAGE_ST *)dos_dmem_alloc(sizeof(BS_BILLING_PACKAGE_ST));
+                if (DOS_ADDR_INVALID(pstPkg))
                 {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Insert New Billing Package FAIL.");
+                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "BS: Alloc memory FAIL.");
                     break;
                 }
+
+                pstPkg->ulPackageID = ulBillingPkgID;
+
+                bss_send_walk_req2dl(ulTblType, bsd_walk_billing_package_tbl_bak, pstPkg);
+                break;
             }
-            break;
         default:
             break;
     }
 
-    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Billing Rate updated SUCC. Billing Package ID:%u, Billing Rule ID:%u", ulBillingPkgID, ulBillingRuleID);
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Billing Rate updated SUCC. Billing Package ID:%u", ulBillingPkgID);
 }
 
 
@@ -1710,7 +1776,7 @@ S32 bss_walk_tbl_rsp(DLL_NODE_S *pMsgNode)
 {
     BS_INTER_MSG_WALK *pstMsg = pMsgNode->pHandle;
 
-    S32     lRet = BS_INTER_ERR_FAIL;
+    S32   lRet = BS_INTER_ERR_FAIL;
 
     switch (pstMsg->ulTblType)
     {
@@ -2183,7 +2249,7 @@ VOID *bss_web_msg_proc(VOID *arg)
         if (ulTableUpdate)
         {
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "Send table walk request to dl.");
-            bss_send_walk_req2dl(BS_TBL_TYPE_TMP_CMD);
+            bss_send_walk_req2dl(BS_TBL_TYPE_TMP_CMD, NULL, NULL);
         }
 
         dos_task_delay(20 * 1000);

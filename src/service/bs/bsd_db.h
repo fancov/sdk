@@ -32,6 +32,7 @@ enum BS_TABLE_TYPE_E
     BS_TBL_TYPE_TMP_CMD             = 4,        /* 由WEB发起的命令存的的临时表 */
     BS_TBL_TYPE_TMP_CMD_DEL         = 5,
     BS_TBL_TYPE_TASK                = 6,        /* 群呼任务 */
+    BS_TBL_TYPE_BILLING_RULE       = 7,        /* 资费规则 */
 
     BS_TBL_TYPE__BUTT               = 255
 };

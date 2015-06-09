@@ -5,6 +5,7 @@
 @copyright: Shenzhen dipcc technologies co.,ltd
 @time: February 6th,2015
 @togo: get information about file such as file line number,file name,function name
+       and python interpreter version.
 '''
 
 import sys
@@ -83,3 +84,4 @@ def get_interpreter_version():
     '''
 
     return sys.version
+

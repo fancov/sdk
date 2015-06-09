@@ -217,7 +217,7 @@ VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
 	ulLen = dos_strlen(_pszMsg) + EXTRA_LEN;
 	pszQuery = new S8[ulLen];
 
-    dos_snprintf(pszQuery, sizeof(pszQuery), "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
+    dos_snprintf(pszQuery, ulLen, "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
                     , "tbl_olog"
                     , _pszTime
                     , _pszOpterator
@@ -227,7 +227,6 @@ VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
                     , _pszMsg);
     db_query(pstDBHandle, pszQuery, NULL, NULL, NULL);
 
-    //printf("%s", szQuery);
     if (pszQuery)
 	{
 		delete [] pszQuery;

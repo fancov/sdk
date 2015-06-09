@@ -472,7 +472,7 @@ S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
     return DOS_SUCC;
 }
 
-S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID)
+S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID, VOID *param)
 {
     S8  szQuery[1024] = {0,};
 
@@ -502,7 +502,7 @@ S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID)
         return BS_INTER_ERR_FAIL;
     }
 
-    bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read billing package from DB OK!(%u)", g_astBillingPackageTbl->NodeNum);
+    bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read billing package bak from DB OK!(ID:%u)", ulPkgID);
     return DOS_SUCC;
 }
 

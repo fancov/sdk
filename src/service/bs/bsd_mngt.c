@@ -27,6 +27,7 @@ extern "C"{
 S32 bsd_walk_tbl_req(DLL_NODE_S *pMsgNode)
 {
     S32                 lRet = BS_INTER_ERR_FAIL;
+    BS_BILLING_PACKAGE_ST *pstPkg = NULL;
     BS_INTER_MSG_WALK   *pstMsg;
 
     /* 前面已经判断过地址合法性,此处直接使用即可 */
@@ -49,7 +50,17 @@ S32 bsd_walk_tbl_req(DLL_NODE_S *pMsgNode)
             lRet = bsd_walk_billing_package_tbl(pstMsg);
             bsd_send_walk_rsp2sl(pMsgNode, lRet);
             break;
-
+        case BS_TBL_TYPE_BILLING_RULE:
+            {    
+                if (pstMsg->FnCallback && pstMsg->param)
+                {
+                    pstPkg = (BS_BILLING_PACKAGE_ST *)pstMsg->param;
+                    pstMsg->FnCallback(pstPkg->ulPackageID, NULL);
+                    dos_dmem_free(pstPkg);
+                    pstPkg = NULL;
+                }
+                break;
+            }
         case BS_TBL_TYPE_SETTLE:
             lRet = bsd_walk_settle_tbl(pstMsg);
             bsd_send_walk_rsp2sl(pMsgNode, lRet);
@@ -69,7 +80,6 @@ S32 bsd_walk_tbl_req(DLL_NODE_S *pMsgNode)
             dos_dmem_free(pMsgNode);
             break;
     }
-
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Walk result:%d!", lRet);
 
     return lRet;

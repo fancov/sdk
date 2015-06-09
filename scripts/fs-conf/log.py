@@ -22,3 +22,4 @@ def create_fs_log_dir():
 
     file_info.print_file_info('Create Dipcc log Directory SUCC.')
     return 1
+
