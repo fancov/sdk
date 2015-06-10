@@ -640,6 +640,7 @@ BS_BILLING_RULE_ST *bs_match_billing_rule(BS_BILLING_PACKAGE_ST *pstPackage,
 
 /* bs_msg.c */
 VOID bsd_send_walk_rsp2sl(DLL_NODE_S *pMsgNode, S32 lReqRet);
+VOID bsd_inherit_rule_req2sl(DLL_NODE_S *pMsgNode);
 VOID bss_send_walk_req2dl(U32 ulTblType, BS_FN callback, VOID *param);
 VOID bss_send_cdr2dl(DLL_NODE_S *pMsgNode, U8 ucMsgType);
 VOID bss_send_stat2dl(DLL_NODE_S *pMsgNode, U8 ucMsgType);
@@ -677,7 +678,7 @@ S32 bs_init_db();
 S32 bsd_walk_customer_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_walk_agent_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg);
-S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID, VOID *param);
+S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID);
 S32 bsd_walk_settle_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_walk_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg);
 S32 bsd_delete_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg);

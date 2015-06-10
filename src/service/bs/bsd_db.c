@@ -472,7 +472,7 @@ S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
     return DOS_SUCC;
 }
 
-S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID, VOID *param)
+S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID)
 {
     S8  szQuery[1024] = {0,};
 

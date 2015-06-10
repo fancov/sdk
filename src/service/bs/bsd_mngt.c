@@ -21,13 +21,10 @@ extern "C"{
 #include "bs_def.h"
 #include "bsd_db.h"
 
-
-
 /* 表遍历请求处理 */
 S32 bsd_walk_tbl_req(DLL_NODE_S *pMsgNode)
 {
     S32                 lRet = BS_INTER_ERR_FAIL;
-    BS_BILLING_PACKAGE_ST *pstPkg = NULL;
     BS_INTER_MSG_WALK   *pstMsg;
 
     /* 前面已经判断过地址合法性,此处直接使用即可 */
@@ -51,16 +48,8 @@ S32 bsd_walk_tbl_req(DLL_NODE_S *pMsgNode)
             bsd_send_walk_rsp2sl(pMsgNode, lRet);
             break;
         case BS_TBL_TYPE_BILLING_RULE:
-            {    
-                if (pstMsg->FnCallback && pstMsg->param)
-                {
-                    pstPkg = (BS_BILLING_PACKAGE_ST *)pstMsg->param;
-                    pstMsg->FnCallback(pstPkg->ulPackageID, NULL);
-                    dos_dmem_free(pstPkg);
-                    pstPkg = NULL;
-                }
-                break;
-            }
+            bsd_inherit_rule_req2sl(pMsgNode);
+            break;
         case BS_TBL_TYPE_SETTLE:
             lRet = bsd_walk_settle_tbl(pstMsg);
             bsd_send_walk_rsp2sl(pMsgNode, lRet);
