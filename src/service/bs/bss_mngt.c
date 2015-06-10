@@ -79,6 +79,7 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Agent ID FAIL.");
                 json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
                 break;
             }
             pszCustomID = json_get_param(pstJsonWhere,"customer_id");
@@ -86,6 +87,7 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Customer ID FAIL.");
                 json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
                 break;
             }
 
@@ -94,15 +96,20 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "bss atoul FAIL.");
                 json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
                 break;
             }
+
+            json_deinit(&pstJsonWhere);
+            pstJsonWhere = NULL;
+            pszAgentID = NULL;
+            pszCustomID = NULL;
 
             ulHashIndex = bs_hash_get_index(BS_HASH_TBL_AGENT_SIZE, ulAgentID);
             if (U32_BUTT == ulHashIndex)
             {
                 DOS_ASSERT(0);
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get hash index FAIL while process agent update msg. Opteration:%d", ulOpteration);
-                json_deinit(&pstJsonWhere);
                 goto process_finished;
             }
 
@@ -113,7 +120,6 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             {
                 pthread_mutex_unlock(&g_mutexAgentTbl);
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Cannot find the agent while update. Opteration:%d", ulOpteration);
-                json_deinit(&pstJsonWhere);
                 break;
             }
 
@@ -122,7 +128,6 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             {
                 pthread_mutex_unlock(&g_mutexAgentTbl);
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Invalid hash node while update. Opteration:%d", ulOpteration);
-                json_deinit(&pstJsonWhere);
                 break;
             }
 
@@ -130,7 +135,6 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             {
                 pthread_mutex_unlock(&g_mutexAgentTbl);
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Customer ID is %u, but you find Customer %u.", pstAgentInfo->ulCustomerID, ulCustomerID);
-                json_deinit(&pstJsonWhere);
                 break;
             }
 
@@ -138,7 +142,6 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pstAgentInfo->ulGroup2 = ulGroupID2;
 
             pthread_mutex_unlock(&g_mutexAgentTbl);
-            json_deinit(&pstJsonWhere);
             break;
 
         case BS_CMD_DELETE:
@@ -162,23 +165,27 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get Agent ID FAIL.");
                 json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
                 break;
             }
-
 
             if (dos_atoul(pszAgentID, &ulAgentID) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "dos_atoul FAIL.");
                 json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
                 break;
             }
+
+            json_deinit(&pstJsonWhere);
+            pstJsonWhere = NULL;
+            pszAgentID = NULL;  
 
             ulHashIndex = bs_hash_get_index(BS_HASH_TBL_AGENT_SIZE, ulAgentID);
             if (U32_BUTT == ulHashIndex)
             {
                 DOS_ASSERT(0);
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Get hash index FAIL while process agent update msg. Operation:%d", ulOpteration);
-                json_deinit(&pstJsonWhere);
                 goto process_finished;
             }
 
@@ -189,7 +196,6 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             {
                 pthread_mutex_unlock(&g_mutexAgentTbl);
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Cannot find the agent while update. Operation:%d", ulOpteration);
-                json_deinit(&pstJsonWhere);
                 break;
             }
 
@@ -203,7 +209,6 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                             , pstAgentInfo->ulAgentID
                             , pszCustomID
                             , ulOpteration);
-                json_deinit(&pstJsonWhere);
                 break;
             }
 
@@ -211,7 +216,6 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pthread_mutex_lock(&g_mutexCustomerTbl);
             pstCustomer->ulAgentNum--;
             pthread_mutex_unlock(&g_mutexCustomerTbl);
-            json_deinit(&pstJsonWhere);
             pthread_mutex_unlock(&g_mutexAgentTbl);
             break;
 
@@ -769,6 +773,7 @@ process_finished:
     if (DOS_ADDR_VALID(pstJsonWhere))
     {
         json_deinit(&pstJsonWhere);
+        pstJsonWhere = NULL;
     }
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Finish to update customer. Operation:%d", ulOpteration);
 }
@@ -808,6 +813,7 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                 || DOS_ADDR_INVALID(pszExpiryTime))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Effect Time & Expire Time FAIL.");
+                break;
             }
 
             pszRet = strptime(pszEffectTime, "%Y-%m-%d", &stEffectTime);
@@ -862,14 +868,20 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Rule ID FAIL.");
                 json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
                 break;
             }
             if (dos_atoul(pszRuleID, &ulRuleID) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul FAIL.");
                 json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
                 break;
             }
+
+            json_deinit(&pstJsonWhere);
+            pstJsonWhere = NULL;
+            pszRuleID = NULL;
 
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "EffectTime:%u; ExpiryTime:%u; Priority:%u; RuleID:%u."
                         , ulEffectTime, ulExpiryTime, ulPriority, ulRuleID);
@@ -886,7 +898,6 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                 || DOS_ADDR_INVALID(pszBillingType) || DOS_ADDR_INVALID(pszBillingRate))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Invalid Param.");
-                json_deinit(&pstJsonWhere);
                 break;
             }
 
@@ -898,7 +909,6 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                 || dos_atoul(pszBillingRate, &ulBillingRate) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul FAIL.");
-                json_deinit(&pstJsonWhere);
                 break;
             }
 
@@ -951,11 +961,9 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
             if (DOS_FALSE == bFoundRule)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Find Billing Rule ID %u FAIL.", ulRuleID);
-                json_deinit(&pstJsonWhere);
                 break;
             }
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Update Billing Rule ID %u SUCC.", ulRuleID);
-            json_deinit(&pstJsonWhere);
             break;
         }
         case BS_CMD_DELETE:
@@ -966,26 +974,35 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get where param FAIL.");
                 break;
             }
+            
             pstJsonWhere = json_init((S8 *)pszWhere);
             if (DOS_ADDR_INVALID(pstJsonWhere))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Init json FAIL.");
                 break;
             }
+            
             pszRuleID = json_get_param(pstJsonWhere, "id");
             if (DOS_ADDR_INVALID(pszRuleID))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Rule ID FAIL.");
                 json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
                 break;
             }
+
             if (dos_atoul(pszRuleID, &ulRuleID) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul FAIL.");
                 json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
                 break;
             }
 
+            json_deinit(&pstJsonWhere);
+            pszRuleID = NULL;
+            pstJsonWhere = NULL;
+            
             HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
             {
                 HASH_Scan_Bucket(g_astBillingPackageTbl,ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -1010,11 +1027,9 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
             if (DOS_FALSE == bFoundRule)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Find Billing Rule ID %u FAIL.", ulRuleID);
-                json_deinit(&pstJsonWhere);
                 break;
             }
 
-            json_deinit(&pstJsonWhere);
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Delete Billing Rule ID %u SUCC.", ulRuleID);
             break;
         }
@@ -1256,9 +1271,9 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
 VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 {
     BS_BILLING_PACKAGE_ST *pstPkg = NULL;
+    U32 *pulPackageID = NULL;
     const S8 *pszBillingRate = NULL, *pszWhere = NULL, *pszCustomerID = NULL, *pszBillingPkgID = NULL, *pszBillingRuleID = NULL;
     U32 ulBillingRate = U32_BUTT, ulCustomerID = U32_BUTT, ulBillingPkgID = U32_BUTT, ulBillingRuleID = U32_BUTT;
-    U32 ulTblType = BS_TBL_TYPE_BILLING_RULE;
     JSON_OBJ_ST *pstJsonWhere = NULL;
     HASH_NODE_S *pstHashNode = NULL;
     U32 ulHashIndex = U32_BUTT, ulLoop = U32_BUTT;
@@ -1296,6 +1311,7 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 if (DOS_ADDR_INVALID(pszCustomerID))
                 {
                     json_deinit(&pstJsonWhere);
+                    pstJsonWhere = NULL;
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Customer ID FAIL.");
                     DOS_ASSERT(0);
                     break;
@@ -1305,6 +1321,7 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 if (DOS_ADDR_INVALID(pszBillingPkgID))
                 {
                     json_deinit(&pstJsonWhere);
+                    pstJsonWhere = NULL;
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Package ID FAIL.");
                     DOS_ASSERT(0);
                     break;
@@ -1314,6 +1331,7 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 if (DOS_ADDR_INVALID(pszBillingRuleID))
                 {
                     json_deinit(&pstJsonWhere);
+                    pstJsonWhere = NULL;
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Rule ID FAIL.");
                     DOS_ASSERT(0);
                     break;
@@ -1330,10 +1348,15 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                     break;
                 }
 
+                json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
+                pszCustomerID = NULL;
+                pszBillingPkgID= NULL;
+                pszBillingRuleID = NULL;
+
                 ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulBillingPkgID);
                 if (U32_BUTT == ulHashIndex)
                 {
-                    json_deinit(&pstJsonWhere);
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Package ID %u FAIL.", ulBillingPkgID);
                     DOS_ASSERT(0);
                     break;
@@ -1356,7 +1379,7 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                             {
                                 if (pstPkg->astRule[ulLoop].ulRuleID == ulBillingRuleID)
                                 {
-                                    pstPkg->astRule[ulLoop].ulBillingRate = ulBillingRuleID;
+                                    pstPkg->astRule[ulLoop].ulBillingRate = ulBillingRate;
                                     bNodeFound = DOS_TRUE;
                                 }
                             }
@@ -1366,10 +1389,8 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 if (DOS_FALSE == bNodeFound)
                 {
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "No Package ID %u, Rule ID:%u", ulBillingPkgID, ulBillingRuleID);
-                    json_deinit(&pstJsonWhere);
                     return;
                 }
-                json_deinit(&pstJsonWhere);
                 break;
             }
         case BS_CMD_DELETE:
@@ -1392,6 +1413,7 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 {
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Billing Package ID FAIL.");
                     json_deinit(&pstJsonWhere);
+                    pstJsonWhere = NULL;
                     break;
                 }
 
@@ -1399,9 +1421,14 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 {
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul FAIL.");
                     json_deinit(&pstJsonWhere);
+                    pstJsonWhere = NULL;
                     break;
                 }
 
+                json_deinit(&pstJsonWhere);
+                pstJsonWhere  = NULL;
+                pszBillingPkgID = NULL;
+                
                 HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
                 {
                     HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -1450,16 +1477,10 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                     break;
                 }
 
-                pstPkg = (BS_BILLING_PACKAGE_ST *)dos_dmem_alloc(sizeof(BS_BILLING_PACKAGE_ST));
-                if (DOS_ADDR_INVALID(pstPkg))
-                {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "BS: Alloc memory FAIL.");
-                    break;
-                }
+                pulPackageID = (U32 *)dos_dmem_alloc(sizeof(U32));
+                *pulPackageID = ulBillingPkgID;
 
-                pstPkg->ulPackageID = ulBillingPkgID;
-
-                bss_send_walk_req2dl(ulTblType, bsd_walk_billing_package_tbl_bak, pstPkg);
+                bss_send_walk_req2dl(BS_TBL_TYPE_BILLING_RULE, NULL, pulPackageID);
                 break;
             }
         default:
