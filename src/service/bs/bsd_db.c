@@ -490,7 +490,7 @@ S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID, VOID *param)
                       "      WHERE"
                       "        billing_package_id = %u"
                       "     ) AS t1 "
-                      "LEFT JOIN"  
+                      "LEFT JOIN"
                       "     tbl_billing_rule t2 "
                       "ON"
                       "     t2.id = t1.billing_rule_id;"
@@ -617,7 +617,7 @@ static S32 bsd_walk_web_cmd_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFie
     }
 
     pstJSONObj = json_init(aszData[2]);
-    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "%s", aszData[2]);
+    //bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, aszData[2]);
     if (DOS_ADDR_INVALID(pstJSONObj))
     {
         DOS_ASSERT(0);
@@ -1052,7 +1052,7 @@ VOID bsd_save_outband_stat(BS_INTER_MSG_STAT *pstMsg)
         DOS_ASSERT(0);
         return;
     }
-    
+
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_outband(object_id, type,"
                     "ctime, call_cnt, ring_cnt, busy_cnt, notexist_cnt, noanswer_cnt,"
                     "reject_cnt, early_release_cnt, answer_cnt, pdd, answer_times) VALUES("
@@ -1237,7 +1237,7 @@ VOID bsd_save_account_stat(BS_INTER_MSG_STAT *pstMsg)
                     , pstStat->lMmsFee
                     , pstStat->lRentFee);
     //TODO:存储统计信息到数据库中
-    
+
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
         bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save account stat in DB FAIL!(%s)", szQuery);

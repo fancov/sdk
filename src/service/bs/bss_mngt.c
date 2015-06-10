@@ -922,18 +922,18 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                     {
                         continue;
                     }
-                    
+
                     for(ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
                     {
                          /*如果找到该资费规则并且可用*/
                         if (ulRuleID == pstPkg->astRule[ulLoop].ulRuleID && 1 == pstPkg->astRule[ulLoop].ucValid)
                         {
-                            
+
                             if (ulPkgID == pstPkg->ulPackageID)
-                            { 
+                            {
                                 /* 如果找到对应的业务类型，更新其费率 */
                                 pstPkg->astRule[ulLoop].ulBillingRate = ulBillingRate;
-                            } 
+                            }
                             pstPkg->astRule[ulLoop].ulFirstBillingUnit = ulFirstBillingUnit;
                             pstPkg->astRule[ulLoop].ulNextBillingUnit = ulNextBillingUnit;
                             pstPkg->astRule[ulLoop].ucFirstBillingCnt = (U8)ulFirstBillingCnt;
@@ -947,7 +947,7 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                         }
                     }
                 }
-            }  
+            }
             if (DOS_FALSE == bFoundRule)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Find Billing Rule ID %u FAIL.", ulRuleID);
@@ -1013,7 +1013,7 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                 json_deinit(&pstJsonWhere);
                 break;
             }
-            
+
             json_deinit(&pstJsonWhere);
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Delete Billing Rule ID %u SUCC.", ulRuleID);
             break;
@@ -1103,7 +1103,7 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
             bs_trace(BS_TRACE_RUN
                         , LOG_LEVEL_INFO
                         , "DstAttrType1:%u DstAttrType2:%u; SrcAttrValue1:%u; SrcAttrValue2:%u. "
-                        , ulDstAttrType1, ulDstAttrType2, ulSrcAttrValue1, ulSrcAttrValue2); 
+                        , ulDstAttrType1, ulDstAttrType2, ulSrcAttrValue1, ulSrcAttrValue2);
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO
                         , "DstAttrValue1:%u;ulDstAttrValue2:%u;ServType:%u;BillingType:%u."
                         , ulDstAttrValue1, ulDstAttrValue2, ulServType, ulBillingType);
@@ -1153,6 +1153,7 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                         /*未找到资费规则找到第一个不可用的节点去存放*/
                         if (0 == pstPkg->astRule[ulLoop].ucValid)
                         {
+                            pstPkg->astRule[ulLoop].ulRuleID = ulRuleID;
                             pstPkg->astRule[ulLoop].ucBillingType = (U8)ulBillingType;
                             pstPkg->astRule[ulLoop].ucDstAttrType1 = (U8)ulDstAttrType1;
                             pstPkg->astRule[ulLoop].ucDstAttrType2 = (U8)ulDstAttrType2;
@@ -1203,6 +1204,7 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                 pstPkg->ulPackageID = ulPkgID;
                 pstPkg->ucServType = ulServType;
 
+                pstPkg->astRule[0].ulRuleID = ulRuleID;
                 pstPkg->astRule[0].ucBillingType = (U8)ulBillingType;
                 pstPkg->astRule[0].ucDstAttrType1 = (U8)ulDstAttrType1;
                 pstPkg->astRule[0].ucDstAttrType2 = (U8)ulDstAttrType2;
@@ -1360,13 +1362,13 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                             }
                         }
                     }
-                } 
+                }
                 if (DOS_FALSE == bNodeFound)
                 {
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "No Package ID %u, Rule ID:%u", ulBillingPkgID, ulBillingRuleID);
                     json_deinit(&pstJsonWhere);
                     return;
-                }  
+                }
                 json_deinit(&pstJsonWhere);
                 break;
             }
@@ -1423,14 +1425,14 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                     }
                 }
                 if (DOS_TRUE == bNodeFound)
-                {   
+                {
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Delete Billing Package ID %u SUCC." , ulBillingPkgID);
                 }
                 else
                 {
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Delete Billing Package ID %u FAIL.", ulBillingPkgID);
-                }           
-     
+                }
+
                 break;
             }
         case BS_CMD_INSERT:
