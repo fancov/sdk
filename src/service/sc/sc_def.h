@@ -64,6 +64,9 @@ extern BOOL                 g_blSCInitOK;
 /* 比例呼叫的比例 */
 #define SC_MAX_CALL_MULTIPLE           3
 
+#define SC_MAX_CALL_PRE_SEC            30
+
+
 #define SC_MAX_SRV_TYPE_PRE_LEG        4
 
 /* 最大呼叫数量 */
