@@ -235,6 +235,15 @@ U32 mod_dipcc_sc_load()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init acd module Successfully.");
 
+    if (DOS_SUCC != sc_ep_init_agent_status())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init Agent status FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init Agent status Successfully.");
+
     if (DOS_SUCC != sc_bs_fsm_init())
     {
         DOS_ASSERT(0);

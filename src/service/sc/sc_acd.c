@@ -1564,7 +1564,6 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         }
     }
 
-    DOS_ASSERT(0);
     return 0;
 }
 
