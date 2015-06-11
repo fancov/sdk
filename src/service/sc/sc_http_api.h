@@ -36,6 +36,7 @@ enum SC_HTTP_ERRNO
     SC_HTTP_ERRNO_INVALID_PARAM,                 /* 请求校验失败，不合法的参数 */
     SC_HTTP_ERRNO_CMD_EXEC_FAIL,                 /* 请求执行失败 */
     SC_HTTP_ERRNO_SERVER_ERROR,                  /* 请求执行失败 */
+    SC_HTTP_ERRNO_SERVER_NOT_READY,
 
     SC_HTTP_ERRNO_BUTT
 };

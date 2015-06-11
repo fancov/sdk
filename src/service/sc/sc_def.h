@@ -18,6 +18,8 @@ extern "C"{
 #endif /* __cplusplus */
 
 /* include public header files */
+extern BOOL                 g_blSCInitOK;
+
 
 /* include private header files */
 

@@ -982,7 +982,7 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                          Route List                                           |");
     cli_out_string(ulIndex, szCmdBuff);
-    
+
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+---------------------------------+---------------+--------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
@@ -999,7 +999,7 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
     cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexRouteList);
-    
+
     DLL_Scan(&g_stRouteList, pstDLLNode, DLL_NODE_S *)
     {
         if (DOS_ADDR_INVALID(pstDLLNode)
@@ -1850,6 +1850,12 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
     if (DOS_ADDR_INVALID(argv))
     {
         goto cc_usage;
+    }
+
+    if (!g_blSCInitOK)
+    {
+        cli_out_string(ulIndex, "SC not init finished Plese try later.\r\n");
+        return 0;
     }
 
     if (argc < 3)
