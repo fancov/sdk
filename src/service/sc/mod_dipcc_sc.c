@@ -189,6 +189,7 @@ U32 mod_dipcc_sc_load()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Load gateway XML SUCC.");
+
 #endif
 
     if (sc_httpd_init() != DOS_SUCC)

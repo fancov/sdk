@@ -4886,9 +4886,12 @@ VOID*sc_ep_process_runtime(VOID *ptr)
 VOID* sc_ep_runtime(VOID *ptr)
 {
     U32                  ulRet = ESL_FAIL;
+    U32                  ulCnt = 0;
     S8                   *pszIsLoopbackLeg = NULL;
     S8                   *pszIsAutoCall = NULL;
     SC_EP_EVENT_NODE_ST  *pstListNode = NULL;
+    // 判断第一次连接是否成功
+    static BOOL bFirstConnSucc = DOS_FALSE;
 
     for (;;)
     {
@@ -4923,6 +4926,12 @@ VOID* sc_ep_runtime(VOID *ptr)
             esl_events(&g_pstHandle->stRecvHandle, ESL_EVENT_TYPE_PLAIN, SC_EP_EVENT_LIST);
 
             sc_logr_notice(SC_ESL, "%s", "ELS for event connect Back to Normal.");
+        }
+
+        if (0 == ulCnt)
+        {
+            bFirstConnSucc = DOS_TRUE;
+            sc_ep_esl_execute_cmd("api reloadxml\r\n\r\n");
         }
 
         ulRet = esl_recv_event(&g_pstHandle->stRecvHandle, 1, NULL);
@@ -4976,6 +4985,8 @@ VOID* sc_ep_runtime(VOID *ptr)
 
         pthread_cond_signal(&g_condEventList);
         pthread_mutex_unlock(&g_mutexEventList);
+
+        ++ulCnt;
     }
 
     /* @TODO 释放资源 */

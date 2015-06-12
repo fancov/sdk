@@ -985,7 +985,7 @@ do{ \
     stKeyList.ulLength = 0;
     stKeyList.szKeyBuff[0] = '\0';
 
-    for (lLength=0; lLength<lSize-1; lLength++)
+    for (lLength = 0; lLength < lSize - 1; lLength++)
     {
         c = getc(pstClientInfo->pFDInput);
         check_fd(pstClientInfo->pFDInput);
