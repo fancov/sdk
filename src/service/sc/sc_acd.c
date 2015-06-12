@@ -1319,6 +1319,74 @@ U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
 
 }
 
+U32 sc_acd_get_idel_agent(U32 ulGroupID)
+{
+    U32 ulCnt = 0;
+
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode      = NULL;
+    SC_ACD_GRP_HASH_NODE_ST    *pstGroupListNode  = NULL;
+    HASH_NODE_S                *pstHashNode       = NULL;
+    DLL_NODE_S                 *pstDLLNode        = NULL;
+    U32                        ulHashVal          = 0;
+
+
+    sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
+    pthread_mutex_lock(&g_mutexGroupList);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_ACD, "Cannot fine the group with the ID \"%s\" .", ulGroupID);
+        pthread_mutex_unlock(&g_mutexGroupList);
+
+        SC_TRACE_OUT();
+        return 0;
+    }
+
+    pstGroupListNode = pstHashNode->pHandle;
+
+    pthread_mutex_lock(&pstGroupListNode->mutexSiteQueue);
+
+    DLL_Scan(&pstGroupListNode->stAgentList, pstDLLNode, DLL_NODE_S*)
+    {
+        if (DOS_ADDR_INVALID(pstDLLNode)
+            || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+        {
+            sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %u."
+                            , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        pstAgentNode = pstDLLNode->pHandle;
+        if (DOS_ADDR_INVALID(pstAgentNode)
+            || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+        {
+            sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %u."
+                            , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        if (SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
+        {
+            sc_logr_debug(SC_ACD, "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
+                        , pstAgentNode->pstAgentInfo->ulSiteID
+                        , pstGroupListNode->ulGroupID);
+
+            ulCnt++;
+            continue;
+        }
+    }
+
+    pthread_mutex_unlock(&pstGroupListNode->mutexSiteQueue);
+
+    pthread_mutex_unlock(&g_mutexGroupList);
+
+    return ulCnt;
+
+}
+
 static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
@@ -1564,7 +1632,6 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         }
     }
 
-    DOS_ASSERT(0);
     return 0;
 }
 

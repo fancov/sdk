@@ -108,6 +108,8 @@ U32 sc_acd_agent_update_status(S8 *pszUserID, U32 ulStatus);
 S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
 U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);
 U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult);
+U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID);
+U32 sc_acd_get_idel_agent(U32 ulGroupID);
 
 #endif
 

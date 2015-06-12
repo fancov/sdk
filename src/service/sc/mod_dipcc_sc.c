@@ -29,6 +29,7 @@ extern "C"{
 /* Êý¾Ý¿â¾ä±ú */
 DB_HANDLE_ST         *g_pstSCDBHandle = NULL;
 
+BOOL                 g_blSCInitOK     = DOS_FALSE;
 
 U32 sc_httpd_init();
 U32 sc_task_mngt_init();
@@ -44,6 +45,7 @@ U32 sc_ep_start();
 U32 sc_httpd_shutdown();
 U32 sc_task_mngt_shutdown();
 U32 sc_dialer_shutdown();
+U32 sc_ep_init_agent_status();
 
 /* define marcos */
 
@@ -236,6 +238,15 @@ U32 mod_dipcc_sc_load()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init acd module Successfully.");
 
+    if (DOS_SUCC != sc_ep_init_agent_status())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init Agent status FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init Agent status Successfully.");
+
     if (DOS_SUCC != sc_bs_fsm_init())
     {
         DOS_ASSERT(0);
@@ -255,6 +266,8 @@ U32 mod_dipcc_sc_load()
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init call waiting queue SUCC.");
 
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Finished to init SC.");
+
+    g_blSCInitOK = DOS_TRUE;
 
     return DOS_SUCC;
 }

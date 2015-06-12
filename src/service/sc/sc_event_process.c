@@ -25,6 +25,7 @@ extern "C"{
 #include "sc_debug.h"
 #include "sc_acd_def.h"
 #include "sc_ep.h"
+#include "sc_acd_def.h"
 
 /* 应用外部变量 */
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
@@ -71,7 +72,14 @@ pthread_mutex_t          g_mutexHashBlackList = PTHREAD_MUTEX_INITIALIZER;
 
 CURL *g_pstCurlHandle;
 
-
+/**
+ * 函数: sc_ep_call_notify
+ * 功能: 通知坐席弹屏
+ * 参数:
+ *    SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller
+ * 返回值:
+ *    成功返回DOS_SUCC， 否则返回DOS_FAIL
+ */
 U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
 {
     S8 szURL[256] = { 0, };
@@ -119,7 +127,263 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
 
         return DOS_SUCC;
     }
+}
 
+/**
+ * 函数: sc_ep_call_notify
+ * 功能: CURL回调函数，保存数据，以便后续处理
+ * 参数:
+ *    void *pszBffer, S32 lSize, S32 lBlock, void *pArg
+ * 返回值:
+ *    成功返回参数lBlock， 否则返回0
+ */
+static S32 sc_ep_agent_update_recv(void *pszBffer, S32 lSize, S32 lBlock, void *pArg)
+{
+    IO_BUF_CB *pstIOBuffer = NULL;
+
+    if (DOS_ADDR_INVALID(pArg))
+    {
+        DOS_ASSERT(0);
+        return 0;
+    }
+
+    pstIOBuffer = (IO_BUF_CB *)pArg;
+
+    if (dos_iobuf_append(pstIOBuffer, pszBffer, (U32)(lSize * lBlock)) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return 0;
+    }
+
+    return lBlock;
+}
+
+
+/* 解析一下格式的字符串
+   : {"channel": "5_10000001_1001", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}
+   同时更新坐席状态 */
+U32 sc_ep_update_agent_status(S8 *pszJSONString)
+{
+    JSON_OBJ_ST *pstJsonArrayItem     = NULL;
+    const S8    *pszAgentID           = NULL;
+    S8          szJobNum[16]          = { 0 };
+    S8          szExtension[16]       = { 0 };
+    U32         ulID;
+
+    if (DOS_ADDR_INVALID(pszJSONString))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstJsonArrayItem = json_init(pszJSONString);
+    if (DOS_ADDR_INVALID(pstJsonArrayItem))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 更新坐席状态 */
+    pszAgentID = json_get_param(pstJsonArrayItem, "channel");
+    if (DOS_ADDR_INVALID(pszAgentID))
+    {
+        DOS_ASSERT(0);
+
+        json_deinit(&pstJsonArrayItem);
+        return DOS_FAIL;
+    }
+
+    if (dos_sscanf(pszAgentID, "%u_%[^_]_%s", &ulID, szJobNum, szExtension) != 3)
+    {
+        DOS_ASSERT(0);
+
+        json_deinit(&pstJsonArrayItem);
+        return DOS_FAIL;
+    }
+
+    json_deinit(&pstJsonArrayItem);
+
+    return sc_acd_update_agent_status(SC_ACD_SITE_ACTION_ONLINE, ulID);
+}
+
+/* 解析这样一个json字符串
+{"hostname": "localhost.localdomain"
+    , "time": "2015-06-10T12:23:18"
+    , "channels": "1"
+    , "wildcard_channels": "0"
+    , "uptime": "120366"
+    , "infos": [{"channel": "5_10000001_1001", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}
+                , {"channel": "6_10000002_1002", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}]}*/
+U32 sc_ep_update_agent_req_proc(S8 *pszJSONString)
+{
+    S32 lIndex;
+    S8 *pszAgentInfos = NULL;
+    const S8 *pszAgentItem = NULL;
+    JSON_OBJ_ST *pstJSONObj = NULL;
+    JSON_OBJ_ST *pstJSONAgentInfos = NULL;
+
+    pstJSONObj = json_init(pszJSONString);
+    if (DOS_ADDR_INVALID(pstJSONObj))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_notice(SC_ESL, "%s", "Update the agent FAIL while init the json string.");
+
+        goto process_fail;
+    }
+
+    pszAgentInfos = (S8 *)json_get_param(pstJSONObj, "infos");
+    if (DOS_ADDR_INVALID(pstJSONObj))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_notice(SC_ESL, "%s", "Update the agent FAIL while get agent infos from the json string.");
+
+        goto process_fail;
+    }
+
+    pstJSONAgentInfos = json_init(pszAgentInfos);
+    if (DOS_ADDR_INVALID(pstJSONObj))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_notice(SC_ESL, "%s", "Update the agent FAIL while get agent infos json array from the json string.");
+
+        goto process_fail;
+    }
+
+    JSON_ARRAY_SCAN(lIndex, pstJSONAgentInfos, pszAgentItem)
+    {
+        sc_ep_update_agent_status((S8 *)pszAgentItem);
+    }
+
+    if (DOS_ADDR_INVALID(pstJSONObj))
+    {
+        json_deinit(&pstJSONObj);
+    }
+
+    if (DOS_ADDR_INVALID(pstJSONAgentInfos))
+    {
+        json_deinit(&pstJSONAgentInfos);
+    }
+
+    return DOS_SUCC;
+
+process_fail:
+
+    if (DOS_ADDR_INVALID(pstJSONObj))
+    {
+        json_deinit(&pstJSONObj);
+    }
+
+    if (DOS_ADDR_INVALID(pstJSONAgentInfos))
+    {
+        json_deinit(&pstJSONAgentInfos);
+    }
+
+    return DOS_FAIL;
+
+}
+
+U32 sc_ep_query_agent_status(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+{
+    S8 szURL[256] = { 0, };
+    U32 ulRet = 0;
+    IO_BUF_CB stIOBuffer = IO_BUF_INIT;
+
+    if (DOS_ADDR_INVALID(g_pstCurlHandle))
+    {
+        g_pstCurlHandle = curl_easy_init();
+        if (DOS_ADDR_INVALID(g_pstCurlHandle))
+        {
+            DOS_ASSERT(0);
+
+            return DOS_FAIL;
+        }
+    }
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szURL, sizeof(szURL)
+                , "http://localhost/channels-stats?id=%u_%s_%s"
+                , pstAgentInfo->ulSiteID
+                , pstAgentInfo->szEmpNo
+                , pstAgentInfo->szExtension);
+
+    curl_easy_reset(g_pstCurlHandle);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_URL, szURL);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_WRITEFUNCTION, sc_ep_agent_update_recv);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_WRITEDATA, (VOID *)&stIOBuffer);
+    ulRet = curl_easy_perform(g_pstCurlHandle);
+    if(CURLE_OK != ulRet)
+    {
+        sc_logr_notice(SC_ESL, "%s, (%s)", "CURL get agent status FAIL.", curl_easy_strerror(ulRet));
+
+        dos_iobuf_free(&stIOBuffer);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(stIOBuffer.pszBuffer)
+        || '\0' == stIOBuffer.pszBuffer)
+    {
+        DOS_ASSERT(0);
+        ulRet = DOS_FAIL;
+    }
+    else
+    {
+        ulRet = DOS_FAIL;
+    }
+
+    dos_iobuf_free(&stIOBuffer);
+    return ulRet;
+
+}
+
+U32 sc_ep_init_agent_status()
+{
+    S8 szURL[256] = { 0, };
+    U32 ulRet = 0;
+    IO_BUF_CB stIOBuffer = IO_BUF_INIT;
+
+    if (DOS_ADDR_INVALID(g_pstCurlHandle))
+    {
+        g_pstCurlHandle = curl_easy_init();
+        if (DOS_ADDR_INVALID(g_pstCurlHandle))
+        {
+            DOS_ASSERT(0);
+
+            return DOS_FAIL;
+        }
+    }
+
+    dos_snprintf(szURL, sizeof(szURL), "http://localhost/channels-stats?id=*");
+
+    curl_easy_reset(g_pstCurlHandle);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_URL, szURL);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_WRITEFUNCTION, sc_ep_agent_update_recv);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_WRITEDATA, (VOID *)&stIOBuffer);
+    ulRet = curl_easy_perform(g_pstCurlHandle);
+    if(CURLE_OK != ulRet)
+    {
+        sc_logr_notice(SC_ESL, "%s, (%s)", "CURL get agent status FAIL.", curl_easy_strerror(ulRet));
+
+        dos_iobuf_free(&stIOBuffer);
+        return DOS_FAIL;
+    }
+
+    sc_logr_notice(SC_ESL, "%s", "CURL get agent status SUCC.Result");
+
+    sc_logr_notice(SC_ESL, "%s", "CURL get agent status SUCC.Result");
+
+    ulRet = sc_ep_update_agent_req_proc((S8 *)stIOBuffer.pszBuffer);
+
+    dos_iobuf_free(&stIOBuffer);
+    return ulRet;
 }
 
 /**

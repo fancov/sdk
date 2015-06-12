@@ -816,7 +816,7 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulTaskID = U32_BUTT;
     pstTCB->ulCustomID = U32_BUTT;
     pstTCB->ulCurrentConcurrency = 0;
-    pstTCB->ulMaxConcurrency = 10;
+    pstTCB->ulMaxConcurrency = SC_MAX_CALL;
     pstTCB->usSiteCount = 0;
     pstTCB->ulAgentQueueID = U32_BUTT;
     pstTCB->ucAudioPlayCnt = 0;
@@ -1628,7 +1628,7 @@ U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB)
         return DOS_FALSE;
     }
 
-    if (pstTCB->ulCurrentConcurrency >= (pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE))
+    if (pstTCB->ulCurrentConcurrency >= SC_MAX_CALL)
     {
         SC_TRACE_OUT();
         return DOS_FALSE;
@@ -1657,6 +1657,11 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
     {
         SC_TRACE_OUT();
         return 3000;
+    }
+
+    if (SC_TASK_MODE_AUDIO_ONLY == pstTCB->ucMode)
+    {
+        return 1000 / SC_MAX_CALL_PRE_SEC;
     }
 
     if (pstTCB->ulCurrentConcurrency)

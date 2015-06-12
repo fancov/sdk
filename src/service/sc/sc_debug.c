@@ -1929,6 +1929,12 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
         goto cc_usage;
     }
 
+    if (!g_blSCInitOK)
+    {
+        cli_out_string(ulIndex, "SC not init finished Plese try later.\r\n");
+        return 0;
+    }
+
     if (argc < 3)
     {
         goto cc_usage;

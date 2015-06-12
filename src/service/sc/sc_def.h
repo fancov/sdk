@@ -18,6 +18,8 @@ extern "C"{
 #endif /* __cplusplus */
 
 /* include public header files */
+extern BOOL                 g_blSCInitOK;
+
 
 /* include private header files */
 
@@ -61,6 +63,9 @@ extern "C"{
 
 /* ±ÈÀýºô½ÐµÄ±ÈÀý */
 #define SC_MAX_CALL_MULTIPLE           3
+
+#define SC_MAX_CALL_PRE_SEC            30
+
 
 #define SC_MAX_SRV_TYPE_PRE_LEG        4
 
