@@ -179,7 +179,7 @@ VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
             json_deinit(&pstJsonWhere);
             pstJsonWhere = NULL;
-            pszAgentID = NULL;  
+            pszAgentID = NULL;
 
             ulHashIndex = bs_hash_get_index(BS_HASH_TBL_AGENT_SIZE, ulAgentID);
             if (U32_BUTT == ulHashIndex)
@@ -974,14 +974,14 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get where param FAIL.");
                 break;
             }
-            
+
             pstJsonWhere = json_init((S8 *)pszWhere);
             if (DOS_ADDR_INVALID(pstJsonWhere))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Init json FAIL.");
                 break;
             }
-            
+
             pszRuleID = json_get_param(pstJsonWhere, "id");
             if (DOS_ADDR_INVALID(pszRuleID))
             {
@@ -1002,7 +1002,7 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
             json_deinit(&pstJsonWhere);
             pszRuleID = NULL;
             pstJsonWhere = NULL;
-            
+
             HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
             {
                 HASH_Scan_Bucket(g_astBillingPackageTbl,ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -1428,7 +1428,7 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 json_deinit(&pstJsonWhere);
                 pstJsonWhere  = NULL;
                 pszBillingPkgID = NULL;
-                
+
                 HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
                 {
                     HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -2821,7 +2821,14 @@ VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType)
     pstCDR->ulDTMFTime = pstSessionLeg->ulDTMFTimeStamp;
     pstCDR->ulIVRFinishTime = pstSessionLeg->ulIVRFinishTimeStamp;
     pstCDR->ulWaitAgentTime = pstSessionLeg->ulBridgeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
-    pstCDR->ulTimeLen = pstSessionLeg->ulByeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
+    if (pstSessionLeg->ulAnswerTimeStamp)
+    {
+        pstCDR->ulTimeLen = pstSessionLeg->ulByeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
+    }
+    else
+    {
+        pstCDR->ulTimeLen = 0;
+    }
     pstCDR->ulHoldCnt = pstSessionLeg->ulHoldCnt;
     pstCDR->ulHoldTimeLen = pstSessionLeg->ulHoldTimeLen;
     pstCDR->aulPeerIP[0] = pstSessionLeg->aulPeerIP[0];
