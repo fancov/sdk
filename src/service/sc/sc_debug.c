@@ -1186,6 +1186,57 @@ S32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
     return 0;
 }
 
+VOID sc_rfind_sip(U32 ulIndex, S8 *pszSIPUserID)
+{
+    U32 ulHashIndex = U32_BUTT;
+    HASH_NODE_S *pstHashNode = NULL;
+    SC_SCB_ST   *pstSCB = NULL;
+    S8   szBuff[1024] = {0};
+
+    if (DOS_ADDR_INVALID(pszSIPUserID))
+    {
+        cli_out_string(ulIndex, "\r\nsc_rfind_sip: Param 1 is invalid.\r\n");
+        return ;
+    }
+
+    HASH_Scan_Table(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstSCB = (SC_SCB_ST *)pstHashNode->pHandle;
+
+            if (dos_strnicmp(pstSCB->szCallerNum, pszSIPUserID, dos_strlen(pszSIPUserID)) != 0)
+            {
+                continue;
+            }
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\nList Info of SIP:%s\r\n", pszSIPUserID);
+            cli_out_string(ulIndex,szBuff);
+
+            cli_out_string(ulIndex, "+------------+------------+-------------+------------+------------+-----------+\r\n");
+            cli_out_string(ulIndex, "|   Caller   |   Callee   | Customer ID |  Agent ID  |  Trunk ID  |  Task ID  |\r\n");
+            cli_out_string(ulIndex, "+------------+------------+-------------+------------+------------+-----------+\r\n");
+
+            dos_snprintf(szBuff, sizeof(szBuff), "|%-12s|%-12s|%13u|%12u|%12u|%11d|\r\n"
+                            , pstSCB->szCallerNum
+                            , pstSCB->szCalleeNum
+                            , pstSCB->ulCustomID
+                            , pstSCB->ulAgentID
+                            , pstSCB->ulTrunkID
+                            , pstSCB->ulTaskID);
+            cli_out_string(ulIndex, szBuff);
+
+            cli_out_string(ulIndex, "+------------+------------+-------------+------------+------------+-----------+\r\n\r\n");
+        }
+    }
+}
+
 S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
 {
     U32 ulSubMod = SC_SUB_MOD_BUTT;
@@ -1845,6 +1896,32 @@ S32 cli_cc_debug(U32 ulIndex, S32 argc, S8 **argv)
     return 0;
 }
 
+S32 cli_cc_rfind(U32 ulIndex, S32 argc, S8 **argv)
+{
+    if (4 != argc)
+    {
+        cli_out_string(ulIndex, "\r\nYou should exactly input 4 params.\r\n");
+        return -1;
+    }
+
+    if (dos_strnicmp(argv[2], "sip", dos_strlen("sip")) != 0)
+    {
+        cli_out_string(ulIndex, "\r\nThe param should be \'sip\', not case sensitive.\r\n");
+        return -1;
+    }
+
+    if (dos_is_digit_str(argv[3]) < 0)
+    {
+        cli_out_string(ulIndex, "\r\nParam 3 is not a pure digital sequence.\r\n");
+        return -1;
+    }
+
+    sc_rfind_sip(ulIndex, argv[3]);
+
+    return 1;
+}
+
+
 S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
 {
     if (DOS_ADDR_INVALID(argv))
@@ -1888,6 +1965,13 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
             goto cc_usage;
         }
     }
+    else if (dos_strnicmp(argv[1], "rfind", dos_strlen("rfind")) == 0)
+    {
+        if (cli_cc_rfind(ulIndex, argc, argv) < 0)
+        {
+            goto cc_usage;
+        }
+    }
     else
     {
         goto cc_usage;
@@ -1899,7 +1983,6 @@ cc_usage:
 
 
     cli_out_string(ulIndex, "\r\n");
-    cli_out_string(ulIndex, "cc show gwgrp id\r\n");
     cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb|route|blacklist [id]\r\n");
     cli_out_string(ulIndex, "cc show did [did_number]\r\n");
     cli_out_string(ulIndex, "cc show task [custom] id\r\n");
@@ -1909,7 +1992,8 @@ cc_usage:
     cli_out_string(ulIndex, "cc trace func|http|api|acd|task|dialer|esl|bss|all on|off\r\n");
     cli_out_string(ulIndex, "cc trace scb scbid|all on|off\r\n");
     cli_out_string(ulIndex, "cc trace task taskid|all on|off\r\n");
-    cli_out_string(ulIndex, "cc trace call <callee num> <caller num> on|off\r\n\r\n");
+    cli_out_string(ulIndex, "cc trace call <callee num> <caller num> on|off\r\n");
+    cli_out_string(ulIndex, "cc rfind sip <sipuserid>\r\n");
 
     return 0;
 }

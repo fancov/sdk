@@ -199,7 +199,7 @@ do                                                            \
             "SESSION_HEARTBEAT "
 
 
-enum {
+enum tagCallServiceType{
     SC_SERV_OUTBOUND_CALL           = 0,   /* 由FS向外部(包括SIP、PSTN)发起的呼叫 */
     SC_SERV_INBOUND_CALL            = 1,   /* 由外部(包括SIP、PSTN)向FS发起的呼叫 */
     SC_SERV_INTERNAL_CALL           = 2,   /* FS和SIP终端之间的呼叫 */
@@ -235,7 +235,7 @@ enum {
     SC_SERV_NUM_VERIFY              = 25,  /* 号码验证 */
 
     SC_SERV_BUTT                    = 255
-};
+}SC_CALL_SERVICE_TYPE_EN;
 
 enum {
     SC_NUM_TYPE_USERID              = 0,   /* 号码为SIP User ID */
