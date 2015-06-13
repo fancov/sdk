@@ -252,6 +252,14 @@ enum tagCallDirection{
     SC_DIRECTION_INVALID                    /* 非法值 */
 };
 
+enum tagCalleeStatus
+{
+    SC_CALLEE_UNCALLED  =  0,           /* 被叫号码没有被呼叫过 */
+    SC_CALLEE_NORMAL,                   /* 被叫号码正常呼叫了，客户也接通了 */
+    SC_CALLEE_NOT_CONN,                 /* 被叫号码呼叫了，客户没有接听 */
+    SC_CALLEE_NOT_EXIST,                /* 被叫号码为空号 */
+    SC_CALLEE_REJECT,                   /* 被叫号码被客户拒绝了 */
+};
 
 typedef enum tagSiteAccompanyingStatus{
     SC_SITE_ACCOM_DISABLE              = 0,       /* 分机随行，禁止 */
@@ -664,7 +672,8 @@ U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID);
 U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase);
 BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum);
 U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID);
-
+U32 sc_update_callee_status(U32 ulTaskID, S8 *pszCallee, U32 ulStatsu);
+U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu);
 
 U32 sc_cwq_init();
 U32 sc_cwq_start();

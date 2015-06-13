@@ -4674,9 +4674,11 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             }
 
             /* 自动外呼，需要维护任务的并发量 */
-            if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+            if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
+                && pstSCB->usTCBNo < SC_MAX_TASK_NUM)
             {
                 sc_task_concurrency_minus(pstSCB->usTCBNo);
+                sc_update_callee_status(pstSCB->usTCBNo, pstSCB->szCalleeNum, SC_CALLEE_NORMAL);
             }
 
             sc_logr_debug(SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);

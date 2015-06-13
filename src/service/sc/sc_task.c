@@ -287,7 +287,9 @@ fail:
  */
 VOID *sc_task_runtime(VOID *ptr)
 {
+    SC_TEL_NUM_QUERY_NODE_ST *pstCallee;
     SC_TASK_CB_ST   *pstTCB;
+    list_t          *pstList;
     U32             ulTaskInterval;
 
     if (!ptr)
@@ -382,8 +384,43 @@ VOID *sc_task_runtime(VOID *ptr)
         }
     }
 
-    /* TODO: 释放相关资源 */
+    sc_update_task_status(pstTCB->ulTaskID, pstTCB->ucTaskStatus);
+
     sc_logr_info(SC_TASK, "Task %d finished.", pstTCB->ulTaskID);
+
+    /* 释放相关资源 */
+    while (1)
+    {
+        if (dos_list_is_empty(&pstTCB->stCalleeNumQuery))
+        {
+            break;
+        }
+
+        pstList = dos_list_fetch(&pstTCB->stCalleeNumQuery);
+        if (DOS_ADDR_INVALID(pstList))
+        {
+            break;
+        }
+
+        pstCallee = dos_list_entry(pstList, SC_TEL_NUM_QUERY_NODE_ST, stLink);
+        if (DOS_ADDR_INVALID(pstCallee))
+        {
+            continue;
+        }
+
+        dos_dmem_free(pstCallee);
+        pstCallee = NULL;
+    }
+
+    if (pstTCB->pstCallerNumQuery)
+    {
+        dos_dmem_free(pstTCB->pstCallerNumQuery);
+        pstTCB->pstCallerNumQuery = NULL;
+    }
+    pthread_mutex_destroy(&pstTCB->mutexTaskList);
+
+    sc_tcb_free(pstTCB);
+    pstTCB = NULL;
 
     return NULL;
 }

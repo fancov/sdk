@@ -755,6 +755,8 @@ SC_TASK_CB_ST *sc_tcb_alloc()
 
     if (pstTCB)
     {
+        pthread_mutex_init(&pstTCB->mutexTaskList, NULL);
+
         pthread_mutex_lock(&pstTCB->mutexTaskList);
         sc_tcb_init(pstTCB);
         pstTCB->ucValid = 1;
@@ -937,6 +939,27 @@ VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID)
     pstTCB->ulCustomID = ulCustomID;
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
 }
+
+U32 sc_update_callee_status(U32 ulTaskID, S8 *pszCallee, U32 ulStatsu)
+{
+    S8 szSQL[512] = { 0 };
+
+    dos_snprintf(szSQL, sizeof(szSQL)
+                    , "UPDATE tbl_callee SET `status`=%d WHERE tbl_callee.regex_number=\"%s\" AND calleefile_id IN (SELECT callee_id FROM tbl_calltask WHERE id = %u)", ulStatsu, pszCallee, ulTaskID);
+
+    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+}
+
+
+U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu)
+{
+    S8 szSQL[512] = { 0 };
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_calltask SET status=%d WHERE id=%u", ulStatsu, ulTaskID);
+
+    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+}
+
 
 static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
@@ -1211,7 +1234,7 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulCalleeCount = 0;
 
     dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, regex_number FROM tbl_callee WHERE calleefile_id = (SELECT tbl_calltask.callee_id FROM tbl_calltask WHERE id=%u) LIMIT %u, 1000;"
+                    , "SELECT id, regex_number FROM tbl_callee WHERE `status`=0 AND calleefile_id = (SELECT tbl_calltask.callee_id FROM tbl_calltask WHERE id=%u) LIMIT %u, 1000;"
                     , pstTCB->ulTaskID
                     , pstTCB->ulLastCalleeIndex);
 
@@ -1708,6 +1731,8 @@ S8 *sc_task_get_audio_file(U32 ulTCBNo)
         SC_TRACE_OUT();
         return NULL;
     }
+
+    SC_TRACE_OUT();
 
     return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].szAudioFileLen;
 }
