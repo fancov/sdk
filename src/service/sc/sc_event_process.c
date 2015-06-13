@@ -5152,7 +5152,6 @@ VOID*sc_ep_process_runtime(VOID *ptr)
 VOID* sc_ep_runtime(VOID *ptr)
 {
     U32                  ulRet = ESL_FAIL;
-    U32                  ulCnt = 0;
     S8                   *pszIsLoopbackLeg = NULL;
     S8                   *pszIsAutoCall = NULL;
     SC_EP_EVENT_NODE_ST  *pstListNode = NULL;
@@ -5194,10 +5193,10 @@ VOID* sc_ep_runtime(VOID *ptr)
             sc_logr_notice(SC_ESL, "%s", "ELS for event connect Back to Normal.");
         }
 
-        if (0 == ulCnt)
+        if (!bFirstConnSucc)
         {
             bFirstConnSucc = DOS_TRUE;
-            sc_ep_esl_execute_cmd("api reloadxml\r\n\r\n");
+            sc_ep_esl_execute_cmd("api reloadxml\r\n");
         }
 
         ulRet = esl_recv_event(&g_pstHandle->stRecvHandle, 1, NULL);
@@ -5251,8 +5250,6 @@ VOID* sc_ep_runtime(VOID *ptr)
 
         pthread_cond_signal(&g_condEventList);
         pthread_mutex_unlock(&g_mutexEventList);
-
-        ++ulCnt;
     }
 
     /* @TODO สอทลืสิด */
