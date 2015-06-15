@@ -331,7 +331,8 @@ VOID *sc_task_runtime(VOID *ptr)
             }
         }
 #endif
-        if (SC_TASK_MODE_AUDIO_ONLY == pstTCB->ucMode
+        /* 如果需要接通坐席的任务，则需要判断是否有坐席，如果没有坐席就不呼叫了 */
+        if (SC_TASK_MODE_AUDIO_ONLY != pstTCB->ucMode
             && 0 == sc_acd_get_idel_agent(pstTCB->ulAgentQueueID))
         {
             sc_logr_info(SC_TASK, "There is no useable agent for task %u, Group ID: %u.", pstTCB->ulTaskID, pstTCB->ulAgentQueueID);

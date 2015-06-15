@@ -36,7 +36,7 @@ pthread_mutex_t          g_mutexEventList = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t           g_condEventList = PTHREAD_COND_INITIALIZER;
 
 /* 事件队列 REFER TO SC_EP_EVENT_NODE_ST */
-list_t                   g_stEventList;
+DLL_S                    g_stEventList;
 
 /* 路由数据链表 REFER TO SC_ROUTE_NODE_ST */
 DLL_S                    g_stRouteList;
@@ -5071,9 +5071,8 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
  */
 VOID*sc_ep_process_runtime(VOID *ptr)
 {
-    SC_EP_EVENT_NODE_ST *pstListNode = NULL;
+    DLL_NODE_S          *pstListNode = NULL;
     esl_event_t         *pstEvent = NULL;
-    list_t              *pstListLink = NULL;
     U32                 ulRet;
     struct timespec     stTimeout;
 
@@ -5083,38 +5082,39 @@ VOID*sc_ep_process_runtime(VOID *ptr)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condEventList, &g_mutexEventList, &stTimeout);
+        pthread_mutex_unlock(&g_mutexEventList);
 
         while (1)
         {
-            if (dos_list_is_empty(&g_stEventList))
+            if (DLL_Count(&g_stEventList) <= 0)
             {
                 break;
             }
 
-            pstListLink = dos_list_fetch(&g_stEventList);
-            if (DOS_ADDR_INVALID(pstListLink))
-            {
-                continue;
-            }
+            pthread_mutex_lock(&g_mutexEventList);
 
-            pstListNode = dos_list_entry(pstListLink, SC_EP_EVENT_NODE_ST, stLink);
+            pstListNode = dll_fetch(&g_stEventList);
             if (DOS_ADDR_INVALID(pstListNode))
             {
+                DOS_ASSERT(0);
+
+                pthread_mutex_unlock(&g_mutexEventList);
                 continue;
             }
 
-            if (DOS_ADDR_INVALID(pstListNode->pstEvent))
+            pthread_mutex_unlock(&g_mutexEventList);
+
+            if (DOS_ADDR_INVALID(pstListNode->pHandle))
             {
-                dos_dmem_free(pstListNode);
-                pstListNode = NULL;
+                DOS_ASSERT(0);
                 continue;
             }
 
-            pstEvent = pstListNode->pstEvent;
+            pstEvent = (esl_event_t*)pstListNode->pHandle;
 
-            pstListNode->pstEvent = NULL;
+            pstListNode->pHandle = NULL;
+            DLL_Init_Node(pstListNode)
             dos_dmem_free(pstListNode);
-            pstListNode = NULL;
 
             sc_logr_info(SC_ESL, "ESL event process START. %s(%d), SCB No:%s, Channel Name: %s"
                             , esl_event_get_header(pstEvent, "Event-Name")
@@ -5136,8 +5136,6 @@ VOID*sc_ep_process_runtime(VOID *ptr)
 
             esl_event_destroy(&pstEvent);
         }
-
-        pthread_mutex_unlock(&g_mutexEventList);
     }
 
     return NULL;
@@ -5154,7 +5152,7 @@ VOID* sc_ep_runtime(VOID *ptr)
     U32                  ulRet = ESL_FAIL;
     S8                   *pszIsLoopbackLeg = NULL;
     S8                   *pszIsAutoCall = NULL;
-    SC_EP_EVENT_NODE_ST  *pstListNode = NULL;
+    DLL_NODE_S           *pstDLLNode = NULL;
     // 判断第一次连接是否成功
     static BOOL bFirstConnSucc = DOS_FALSE;
 
@@ -5230,8 +5228,8 @@ VOID* sc_ep_runtime(VOID *ptr)
                         , esl_event_get_header(pstEvent, "Event-Name")
                         , pstEvent->event_id);
 
-        pstListNode = (SC_EP_EVENT_NODE_ST *)dos_dmem_alloc(sizeof(SC_EP_EVENT_NODE_ST));
-        if (DOS_ADDR_INVALID(pstListNode))
+        pstDLLNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
+        if (DOS_ADDR_INVALID(pstDLLNode))
         {
             DOS_ASSERT(0);
 
@@ -5244,9 +5242,10 @@ VOID* sc_ep_runtime(VOID *ptr)
 
         pthread_mutex_lock(&g_mutexEventList);
 
-        dos_list_node_init(&pstListNode->stLink);
-        esl_event_dup(&pstListNode->pstEvent, pstEvent);
-        dos_list_add_tail(&g_stEventList, (list_t *)pstListNode);
+        DLL_Init_Node(pstDLLNode);
+        pstDLLNode->pHandle = NULL;
+        esl_event_dup((esl_event_t **)(&pstDLLNode->pHandle), pstEvent);
+        DLL_Add(&g_stEventList, pstDLLNode);
 
         pthread_cond_signal(&g_condEventList);
         pthread_mutex_unlock(&g_mutexEventList);
@@ -5283,7 +5282,7 @@ U32 sc_ep_init()
     g_pstHandle->blIsESLRunning = DOS_FALSE;
     g_pstHandle->blIsWaitingExit = DOS_FALSE;
 
-    dos_list_init(&g_stEventList);
+    DLL_Init(&g_stEventList)
     DLL_Init(&g_stRouteList);
 
     /* 以下三项加载顺序不能更改 */
