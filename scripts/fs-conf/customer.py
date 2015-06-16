@@ -10,7 +10,7 @@
 from xml.dom.minidom import Document
 from xml.dom import minidom
 import os
-import db_exec
+import db_conn
 import conf_path
 import file_info
 import dom_to_xml
@@ -27,56 +27,32 @@ def generate_all_customer():
     if -1 == lRet:
         file_info.print_file_info('mkdir directory \'/var/log/dipcc\' FAIL.')
         return -1
+
+    # 全局打开一次数据库
+    try:
+        db_conn.connect_db()
+    except Exception, err:
+        file_info.print_file_info('Catch Exception:%s.' % str(err))
+        return -1
+
     # 清空所有账户
     clean_all_customer()
+
     # 获取所有客户
-    listCus = get_all_customer()
+    listCus = db_conn.get_all_customer()
 
     if -1 == listCus:
-        file_info.print_file_info('Get All Customer FAIL,listCus is %d' % listCus)
+        file_info.print_file_info('Get All Customer FAIL,listCus is %d.' % listCus)
         return -1
     
     for loop in range(len(listCus)):
         lRet = generate_customer(int(listCus[loop][0]))
         if -1 == lRet:
-            file_info.print_file_info('Customer %d generated failed!' % int(listCus[loop][0]))
+            file_info.print_file_info('Customer %d generated FAIL.' % int(listCus[loop][0]))
             return -1
 
     file_info.print_file_info('Generate All Customers SUCC.')
     return 1
-
-
-def get_all_customer():
-    '''
-    @todo: 获取所有的客户
-    '''
-
-    seqSQLCmd = 'SELECT DISTINCT customer_id FROM tbl_sip;'
-    listCus = db_exec.exec_SQL(seqSQLCmd)
-    if -1 == listCus:
-        file_info.print_file_info('Get All Customers FAIL.')
-        return -1
-
-    file_info.print_file_info('Get All Customers SUCC.')
-    return listCus
-
-def get_sip_by_customer(ulCustomerID):
-    '''
-    @todo: 根据customer获取所有sip账户
-    '''
-
-    if str(ulCustomerID).strip() == '':
-        file_info.print_file_info('Get SIP by Customer FAIL')
-        return -1
-
-    seqSQLCmd = 'SELECT DISTINCT id FROM tbl_sip WHERE customer_id = %d;' % ulCustomerID
-    listSip = db_exec.exec_SQL(seqSQLCmd)
-    if -1 == listSip:
-        file_info.print_file_info('Get SIP by Customer FAIL')
-        return -1
-
-    file_info.print_file_info('Get SIP by Customer SUCC')
-    return listSip
 
 def generate_customer(ulCustomerID):
     '''
@@ -84,11 +60,11 @@ def generate_customer(ulCustomerID):
     '''
 
     if str(ulCustomerID).strip() == '':
-        file_info.print_file_info('Generate Customer %d FAIL' % ulCustomerID)
+        file_info.print_file_info('Generate Customer %d FAIL.' % ulCustomerID)
         return -1
 
     # 根据客户id获取sip列表
-    listSip = get_sip_by_customer(ulCustomerID)
+    listSip = db_conn.get_sip_by_customer(ulCustomerID)
 
     if -1 == listSip:
         file_info.print_file_info('Generate Customer %d FAIL.' % ulCustomerID)
@@ -130,14 +106,14 @@ def generate_customer(ulCustomerID):
 
         for i in range(len(listSip)):
             domUserNode = xmlDoc.createElement('user')
-            seqUserID = sip.get_userid_by_sipid(str(listSip[i][0]))
+            seqUserID = db_conn.get_userid_by_sipid(str(listSip[i][0]))
             if -1 == seqUserID:
-                file_info.print_file_info('seqUserID is %d, Invalid' % seqUserID)
+                file_info.print_file_info('seqUserID is %d, Invalid.' % seqUserID)
                 return -1
 
             lRet = sip.generate_sip(seqUserID)
             if -1 == lRet:
-                file_info.print_file_info('Generate SIP FAIL,lRet is %d' % lRet)
+                file_info.print_file_info('Generate SIP FAIL,lRet is %d.' % lRet)
                 return -1
 
             domUserNode.setAttribute('id', seqUserID)
@@ -152,15 +128,15 @@ def generate_customer(ulCustomerID):
 
         for i in range(len(listSip)):
             userNode = xmlDoc.createElement('user')
-            seqUserID = sip.get_userid_by_sipid(str(listSip[i][0]))
+            seqUserID = db_conn.get_userid_by_sipid(str(listSip[i][0]))
 
             if -1 == seqUserID:
-                file_info.print_file_info('seqUserIDt is %d, Invalid' % seqUserID)
+                file_info.print_file_info('seqUserIDt is %d, Invalid.' % seqUserID)
                 return -1
 
             lRet = sip.generate_sip(seqUserID)
             if -1 == lRet:
-                file_info.print_file_info('Generate SIP FAIL,,lRet is %d' % lRet)
+                file_info.print_file_info('Generate SIP FAIL,,lRet is %d.' % lRet)
                 return -1
 
             userNode.setAttribute('id', seqUserID)
@@ -197,7 +173,8 @@ def create_customer_head(doc):
     domParamsNode = doc.createElement('params')
     domParamNode  = doc.createElement('param')
     domParamNode.setAttribute('name', 'dial-string')
-    domParamNode.setAttribute('value', '{^^:sip_invite_domain=${dialed_domain}:presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(*/${dialed_user}@${dialed_domain})}')
+    domParamNode.setAttribute('value', '{^^:sip_invite_domain=${dialed_domain}:presence_id=${dialed_user}@'
+                                       '${dialed_domain}}${sofia_contact(*/${dialed_user}@${dialed_domain})}')
     domParamsNode.appendChild(domParamNode)
     
     listParam = ['record_stereo', 'default_gateway', 'default_areacode', 'transfer_fallback_extension']
@@ -251,3 +228,4 @@ def clean_all_customer():
 
     file_info.print_file_info('All customers cleand SUCC.')
     return 1
+

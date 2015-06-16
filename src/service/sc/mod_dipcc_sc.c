@@ -162,7 +162,6 @@ U32 sc_init_db()
 
 U32 mod_dipcc_sc_load()
 {
-
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start init SC.");
 
     if (sc_init_db() != DOS_SUCC)

@@ -84,13 +84,13 @@ extern "C"{
 typedef struct dll_node
 {
     struct dll_node *pNext; /* Points at the next node in the list */
-    struct dll_node*pPrev; /* Points at the previous node in the list */
+    struct dll_node *pPrev; /* Points at the previous node in the list */
     VOID  *pHandle;          /* reserved for user */
 }DLL_NODE_S;
 
 typedef struct DLL{
     DLL_NODE_S Head;  /**** Header List Node        ****/
-    U32      ulCount; /**** Number Of Nodes In List ****/
+    U32     ulCount; /**** Number Of Nodes In List ****/
 }DLL_S;
 
 /*extern variables, export*/

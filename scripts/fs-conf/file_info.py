@@ -10,7 +10,6 @@
 
 import sys
 import os
-import log
 import time
 
 def is_windows():
@@ -58,8 +57,7 @@ def print_file_info(info):
     seqFuncName = f.f_code.co_name
 
     _info = '%s:Line %d:In function %s:' % (seqFileName, ulLineNumber, seqFuncName)
-    output = time.strftime('%Y-%m-%d %H:%M:%S %A')
-    print output, '=>', _info, info
+    output = time.strftime('%Y-%m-%d %H:%M:%S')
     
     seqLogPath = '/var/log/dipcc/fsconf' + time.strftime('%Y%m%d') + '.log'
     if os.path.exists(seqLogPath) is False:
@@ -74,7 +72,7 @@ def print_file_info(info):
         # 不能返回-1，防止将程序退出了
         return -1
     else:
-        print >> fp, output, '=>', _info, info
+        print >> fp, '[', output, '] ', _info, info
         fp.close()
         return 1
 
