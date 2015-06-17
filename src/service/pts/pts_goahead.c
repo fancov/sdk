@@ -472,24 +472,24 @@ static int initWebs(int demo)
      *  with the longest path handler examined first. Here we define the security
      *  handler, forms handler and the default web page handler.
      */
-    websUrlHandlerDefine(T(""), NULL, 0, pts_websSecurityHandler, WEBS_HANDLER_FIRST);       /* 认证 */
+    websUrlHandlerDefine(T(""), NULL, 0, pts_websSecurityHandler, WEBS_HANDLER_FIRST);          /* 认证 */
     websUrlHandlerDefine(T("/goform"), NULL, 0, websFormHandler, 0);
     //websUrlHandlerDefine(T("/cgi-bin"), NULL, 0, websCgiHandler, 0);
-    websUrlHandlerDefine(T("/visit_device"), NULL, 0, pts_webs_redirect_pts_server, 0);      /* 手动访问设备 */
-    websUrlHandlerDefine(T("/internetIP="), NULL, 0, pts_webs_auto_redirect, 0);             /* 自动访问设备 */
-    websUrlHandlerDefine(T("/cgi-bin/ptcSwitchpts"), NULL, 0, pts_notify_ptc_switch_pts, 0); /* 切换pts */
-    websUrlHandlerDefine(T("/cgi-bin/change_domain"), NULL, 0, change_domain, 0);            /* 修改主备域名 */
-    websUrlHandlerDefine(T("/cgi-bin/cancel_upgrade"), NULL, 0, cancel_upgrade, 0);          /* 停止全网升级 */
-    websUrlHandlerDefine(T("/editable_ajax.html"), NULL, 0, pts_set_remark, 0);              /* 设置备注名 */
+    websUrlHandlerDefine(T("/visit_device"), NULL, 0, pts_webs_redirect_pts_server, 0);         /* 手动访问设备 */
+    websUrlHandlerDefine(T("/internetIP="), NULL, 0, pts_webs_auto_redirect, 0);                /* 自动访问设备 */
+    websUrlHandlerDefine(T("/cgi-bin/ptcSwitchpts"), NULL, 0, pts_notify_ptc_switch_pts, 0);    /* 切换pts */
+    websUrlHandlerDefine(T("/cgi-bin/change_domain"), NULL, 0, change_domain, 0);               /* 修改主备域名 */
+    websUrlHandlerDefine(T("/cgi-bin/cancel_upgrade"), NULL, 0, cancel_upgrade, 0);             /* 停止全网升级 */
+    websUrlHandlerDefine(T("/editable_ajax.html"), NULL, 0, pts_set_remark, 0);                 /* 设置备注名 */
     websUrlHandlerDefine(T("/goform/HttpSoftUploadSelected"), NULL, 0, pts_upgrade_selected_ptc, 0); /* 升级选中的ptc */
-    websUrlHandlerDefine(T("/goform/HttpSoftUploadAll"), NULL, 0, pts_upgrade_all_ptc, 0);   /* 全网升级 */
-    websUrlHandlerDefine(T("/goform/submitLicense"), NULL, 0, submit_license, 0);          /* 上传License */
-    websUrlHandlerDefine(T("/cgi-bin/del_users"), NULL, 0, pts_del_users, 0);                /* 删除用户 */
-    websUrlHandlerDefine(T("/change_info.html"), NULL, 0, pts_change_user_info, 0);          /* 修改客户的信息 */
-    websUrlHandlerDefine(T("/ipcc_internetIP"), NULL, 0, pts_recv_from_ipcc_req, 0);         /* IPCC访问接口 */
-    websUrlHandlerDefine(T("/cgi-bin/startPing"), NULL, 0, pts_start_ping, 0);               /* ping测试 */
-    websUrlHandlerDefine(T("/cgi-bin/get_ping_result"), NULL, 0, get_ping_result, 0);        /* 获得ping的结果 */
-    websUrlHandlerDefine(T("/cgi-bin/set_license_username"), NULL, 0, set_license_username, 0);        /* 获得license的信息 */
+    websUrlHandlerDefine(T("/goform/HttpSoftUploadAll"), NULL, 0, pts_upgrade_all_ptc, 0);      /* 全网升级 */
+    websUrlHandlerDefine(T("/goform/submitLicense"), NULL, 0, submit_license, 0);               /* 上传License */
+    websUrlHandlerDefine(T("/cgi-bin/del_users"), NULL, 0, pts_del_users, 0);                   /* 删除用户 */
+    websUrlHandlerDefine(T("/change_info.html"), NULL, 0, pts_change_user_info, 0);             /* 修改客户的信息 */
+    websUrlHandlerDefine(T("/ipcc_internetIP"), NULL, 0, pts_recv_from_ipcc_req, 0);            /* IPCC访问接口 */
+    websUrlHandlerDefine(T("/cgi-bin/startPing"), NULL, 0, pts_start_ping, 0);                  /* ping测试 */
+    websUrlHandlerDefine(T("/cgi-bin/get_ping_result"), NULL, 0, get_ping_result, 0);           /* 获得ping的结果 */
+    websUrlHandlerDefine(T("/cgi-bin/set_license_username"), NULL, 0, set_license_username, 0); /* 获得license的信息 */
     websUrlHandlerDefine(T(""), NULL, 0, websDefaultHandler, WEBS_HANDLER_LAST);
 
     /*
@@ -752,7 +752,6 @@ int pts_notify_ptc_switch_pts(webs_t wp, char_t *urlPrefix, char_t *webDir, int 
     S8 szPtsIp[PT_IP_ADDR_SIZE] = {0};
     U8 paucIPAddr[IPV6_SIZE] = {0};
     S8 pcListBuf[PT_DATA_BUFF_512] = {0};
-    PT_CTRL_DATA_ST stCtrlData;
     U16 usPort = 0;
     S8 *pPtcIDStart = NULL;
     S8 *pPtcIDEnd = NULL;
@@ -808,18 +807,10 @@ int pts_notify_ptc_switch_pts(webs_t wp, char_t *urlPrefix, char_t *webDir, int 
     }
 
     logr_debug("domain name is : %s, ip : %s", szDomain, szPtsIp);
-    stCtrlData.enCtrlType = PT_CTRL_SWITCH_PTS;
     for (i=0; i<lPtcCount; i++)
     {
-        lResult = pts_save_msg_into_cache((U8*)pszPtcID[i], PT_DATA_CTRL, PT_CTRL_SWITCH_PTS, (S8 *)&stCtrlData, sizeof(PT_CTRL_DATA_ST), szPtsIp, usPort);
-        if (PT_NEED_CUT_PTHREAD == lResult)
-        {
-            sleep(3);
-        }
-        else
-        {
-            usleep(20);
-        }
+        lResult = pts_save_msg_into_cache((U8*)pszPtcID[i], PT_DATA_CTRL, PT_CTRL_SWITCH_PTS, "", 0, szPtsIp, usPort);
+        usleep(20);
     }
     sprintf(pcListBuf, "succ");
     websError(wp, 200, T(pcListBuf));

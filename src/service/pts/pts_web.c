@@ -22,8 +22,9 @@ extern "C" {
 #include "pts_msg.h"
 #include "pts_web.h"
 
-#define PTS_VISIT_WEB_ERROE_1 "<!DOCTYPE HTML><HTML><HEAD><TITLE>Error</TITLE><META http-equiv=Content-Type content=\"text/html; charset=gb2312\"><STYLE type=text/css>BODY {BACKGROUND: #fff; MARGIN: 80px auto; FONT: 14px/150% Verdana, Georgia, Sans-Serif; COLOR: #000; TEXT-ALIGN: center}H1 {PADDING-RIGHT: 4px; PADDING-LEFT: 4px; FONT-SIZE: 14px; BACKGROUND: #eee; PADDING-BOTTOM: 4px; MARGIN: 0px; PADDING-TOP: 4px; BORDER-BOTTOM: #84b0c7 1px solid} DIV{BORDER-RIGHT: #84b0c7 1px solid; BORDER-TOP: #84b0c7 1px solid; BACKGROUND: #e5eef5; MARGIN: 0px auto; BORDER-LEFT: #84b0c7 1px solid; WIDTH: 500px; BORDER-BOTTOM: #84b0c7 1px solid}</STYLE></HEAD><BODY><DIV><H1>提示：您访问的地址无法建立连接</H1></DIV></BODY></HTML>"
-#define PTS_VISIT_WEB_ERROE_2 "<!DOCTYPE HTML><HTML><HEAD><TITLE>Error</TITLE><META http-equiv=Content-Type content=\"text/html; charset=gb2312\"><STYLE type=text/css>BODY {BACKGROUND: #fff; MARGIN: 80px auto; FONT: 14px/150% Verdana, Georgia, Sans-Serif; COLOR: #000; TEXT-ALIGN: center}H1 {PADDING-RIGHT: 4px; PADDING-LEFT: 4px; FONT-SIZE: 14px; BACKGROUND: #eee; PADDING-BOTTOM: 4px; MARGIN: 0px; PADDING-TOP: 4px; BORDER-BOTTOM: #84b0c7 1px solid} DIV{BORDER-RIGHT: #84b0c7 1px solid; BORDER-TOP: #84b0c7 1px solid; BACKGROUND: #e5eef5; MARGIN: 0px auto; BORDER-LEFT: #84b0c7 1px solid; WIDTH: 500px; BORDER-BOTTOM: #84b0c7 1px solid}</STYLE></HEAD><BODY><DIV><H1>提示：用该PTC的连接过多，请稍后再试</H1></DIV></BODY></HTML>"
+#define PTS_VISIT_WEB_ERROE_1 "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE html><HTML><HEAD><TITLE>Error</TITLE><META http-equiv=Content-Type content=\"text/html; charset=gb2312\"><STYLE type=text/css>BODY {BACKGROUND: #fff; MARGIN: 80px auto; FONT: 14px/150% Verdana, Georgia, Sans-Serif; COLOR: #000; TEXT-ALIGN: center}H1 {PADDING-RIGHT: 4px; PADDING-LEFT: 4px; FONT-SIZE: 14px; BACKGROUND: #eee; PADDING-BOTTOM: 4px; MARGIN: 0px; PADDING-TOP: 4px; BORDER-BOTTOM: #84b0c7 1px solid} DIV{BORDER-RIGHT: #84b0c7 1px solid; BORDER-TOP: #84b0c7 1px solid; BACKGROUND: #e5eef5; MARGIN: 0px auto; BORDER-LEFT: #84b0c7 1px solid; WIDTH: 500px; BORDER-BOTTOM: #84b0c7 1px solid}</STYLE></HEAD><BODY><DIV><H1>提示：您访问的地址无法建立连接</H1></DIV></BODY></HTML>"
+#define PTS_VISIT_WEB_ERROE_2 "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE html><HTML><HEAD><TITLE>Error</TITLE><META http-equiv=Content-Type content=\"text/html; charset=gb2312\"><STYLE type=text/css>BODY {BACKGROUND: #fff; MARGIN: 80px auto; FONT: 14px/150% Verdana, Georgia, Sans-Serif; COLOR: #000; TEXT-ALIGN: center}H1 {PADDING-RIGHT: 4px; PADDING-LEFT: 4px; FONT-SIZE: 14px; BACKGROUND: #eee; PADDING-BOTTOM: 4px; MARGIN: 0px; PADDING-TOP: 4px; BORDER-BOTTOM: #84b0c7 1px solid} DIV{BORDER-RIGHT: #84b0c7 1px solid; BORDER-TOP: #84b0c7 1px solid; BACKGROUND: #e5eef5; MARGIN: 0px auto; BORDER-LEFT: #84b0c7 1px solid; WIDTH: 500px; BORDER-BOTTOM: #84b0c7 1px solid}</STYLE></HEAD><BODY><DIV><H1>提示：用该PTC的连接过多，请稍后再试</H1></DIV></BODY></HTML>"
+#define PTS_VISIT_WEB_ERROE_3 "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE html><HTML><HEAD><TITLE>Error</TITLE><META http-equiv=Content-Type content=\"text/html; charset=gb2312\"><STYLE type=text/css>BODY {BACKGROUND: #fff; MARGIN: 80px auto; FONT: 14px/150% Verdana, Georgia, Sans-Serif; COLOR: #000; TEXT-ALIGN: center}H1 {PADDING-RIGHT: 4px; PADDING-LEFT: 4px; FONT-SIZE: 14px; BACKGROUND: #eee; PADDING-BOTTOM: 4px; MARGIN: 0px; PADDING-TOP: 4px; BORDER-BOTTOM: #84b0c7 1px solid} DIV{BORDER-RIGHT: #84b0c7 1px solid; BORDER-TOP: #84b0c7 1px solid; BACKGROUND: #e5eef5; MARGIN: 0px auto; BORDER-LEFT: #84b0c7 1px solid; WIDTH: 500px; BORDER-BOTTOM: #84b0c7 1px solid}</STYLE></HEAD><BODY><DIV><H1>提示：超时</H1></DIV></BODY></HTML>"
 
 list_t  m_stClinetCBList; /* 客户端请求链表 */
 pthread_mutex_t g_mutexWebClient  = PTHREAD_MUTEX_INITIALIZER;   /* 保护 m_stClinetCBList 的信号量 */
@@ -48,6 +49,7 @@ VOID pts_web_free_stream(PT_NEND_RECV_NODE_ST *pstNeedRecvNode, PT_STREAM_CB_ST 
     pts_send_exit_notify2ptc(pstCCNode, pstNeedRecvNode);
     /* 释放stream节点 */
     pts_delete_stream_addr_node(stMsgDes.ulStreamID);
+    pts_set_delete_recv_buff_list_flag(stMsgDes.ulStreamID);
     pts_delete_recv_stream_node(&stMsgDes);
     pts_delete_send_stream_node(&stMsgDes);
 }
@@ -121,6 +123,7 @@ VOID pts_web_free_resource(S32 lSocket)
 
     /* 释放收发缓存 */
     pts_delete_stream_addr_node(stMsgDes.ulStreamID);
+    pts_set_delete_recv_buff_list_flag(stMsgDes.ulStreamID);
     pts_delete_recv_stream_node(&stMsgDes);
     pts_delete_send_stream_node(&stMsgDes);
 }
@@ -129,7 +132,6 @@ void pts_set_cache_full_true(S32 lSocket)
 {
     PTS_CLIENT_CB_ST *pstClient = NULL;
 
-    printf("%s, %d\n", __FILE__, __LINE__);
     pthread_mutex_lock(&g_mutexWebClient);
     pstClient = pts_clinetCB_search_by_sockfd(&m_stClinetCBList, lSocket);
     if (pstClient == NULL)
@@ -503,7 +505,7 @@ BOOL pts_deal_with_http_head(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pc
     S8 szUrl[PT_DATA_BUFF_128] = {0};
     BOOL bIsGetID = DOS_FALSE;
 
-    pt_logr_info("send req socket : %d, ulStreamID : %d", ulConnfd, ulStreamID);
+    pt_logr_debug("send req socket : %d, ulStreamID : %d", ulConnfd, ulStreamID);
 
     bIsGetID = pts_request_ptc_proxy(pcRequest, ulConnfd, ulStreamID, pcIpccId, lReqLen, szUrl);
 
@@ -723,7 +725,6 @@ VOID *pts_recv_msg_from_browser(VOID *arg)
     list_t *pstNode = NULL;
     list_t *pstHead = NULL;
     PTS_CLIENT_CB_ST *pstData = NULL;
-    struct timeval stSocketTimeout = {10, 0};
 
     dos_list_init(&m_stClinetCBList);
 
@@ -831,20 +832,6 @@ VOID *pts_recv_msg_from_browser(VOID *arg)
                         }
 
                         lError = setsockopt(lConnFd, SOL_SOCKET, SO_RCVBUF, (char*)&ulSocketCache, sizeof(ulSocketCache));
-                        if (lError != 0)
-                        {
-                            logr_error("setsockopt error : %d", lError);
-                            DOS_ASSERT(0);
-                        }
-
-                        lError = setsockopt(lConnFd, SOL_SOCKET, SO_SNDTIMEO, (S8 *)&stSocketTimeout, sizeof(struct timeval));
-                        if (lError != 0)
-                        {
-                            logr_error("setsockopt error : %d", lError);
-                            DOS_ASSERT(0);
-                        }
-
-                        lError = setsockopt(lConnFd, SOL_SOCKET, SO_RCVTIMEO, (S8 *)&stSocketTimeout, sizeof(struct timeval));
                         if (lError != 0)
                         {
                             logr_error("setsockopt error : %d", lError);
@@ -982,7 +969,7 @@ void *pts_send_msg2browser_pthread(void *arg)
             if (pstDataTcp[ulArraySub].ulLen == 0)
             {
                 pstStreamNode->bIsUsing = DOS_FALSE;
-                printf("recv 0 from ptc, close socket %d, stream : %d\n", pstParam->lSocket, pstStreamNode->ulStreamID);
+                pt_logr_debug("recv 0 from ptc, close socket %d, stream : %d", pstParam->lSocket, pstStreamNode->ulStreamID);
                 pts_web_close_socket(pstParam->lSocket);
                 write(g_lPtsPipeWRFd, "s", 1);
                 pthread_mutex_unlock(&pstCCNode->pthreadMutex);
@@ -1031,18 +1018,37 @@ void *pts_send_msg2browser_pthread(void *arg)
                 ulSteamID = pstStreamNode->ulStreamID;
                 pts_trace(pstCCNode->bIsTrace, LOG_LEVEL_DEBUG, "will send data to browser, stream : %d, seq : %d, len : %d", ulSteamID, ulSeq, ulBuffLen);
                 pthread_mutex_unlock(&pstCCNode->pthreadMutex);
-                lResult = send(pstParam->lSocket, pcSendMsg, ulBuffLen, MSG_NOSIGNAL);
-                //printf("send data to browser, stream : %d, seq : %d, len : %d, result : %d\n", ulSteamID, ulSeq, ulBuffLen, lResult);
-                pts_trace(pstCCNode->bIsTrace, LOG_LEVEL_DEBUG, "send data to browser, stream : %d, seq : %d, len : %d, result : %d", ulSteamID, ulSeq, ulBuffLen, lResult);
-                if (lResult <= 0)
+                for (;;)
                 {
-                    pthread_mutex_lock(&pstCCNode->pthreadMutex);
-                    pstStreamNode->bIsUsing = DOS_FALSE;
-                    pts_web_close_socket(pstParam->lSocket);
-                    pthread_mutex_unlock(&pstCCNode->pthreadMutex);
-                    pts_web_free_stream(&stNeedRecvNode, pstStreamNode, pstCCNode);
+                    lResult = send(pstParam->lSocket, pcSendMsg, ulBuffLen, MSG_NOSIGNAL);//MSG_NOSIGNAL
+                    pts_trace(pstCCNode->bIsTrace, LOG_LEVEL_DEBUG, "send data to browser, stream : %d, seq : %d, len : %d, result : %d", ulSteamID, ulSeq, ulBuffLen, lResult);
+                    if (lResult <= 0)
+                    {
+                        perror("send to browser");
+                        printf("EINTR : %d, error : %d\n", EINTR, errno);
+                        if (errno == EINTR)
+                        {
+                            continue;
+                        }
+                        pthread_mutex_lock(&pstCCNode->pthreadMutex);
+                        pstStreamNode->bIsUsing = DOS_FALSE;
+                        pts_web_close_socket(pstParam->lSocket);
+                        pthread_mutex_unlock(&pstCCNode->pthreadMutex);
+                        pts_web_free_stream(&stNeedRecvNode, pstStreamNode, pstCCNode);
 
-                    goto end;
+                        goto end;
+                    }
+                    else if (lResult < ulBuffLen)
+                    {
+                        pcSendMsg = pcSendMsg + lResult;
+                        ulBuffLen -= lResult;
+
+                        continue;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
 
                 pthread_mutex_lock(&pstCCNode->pthreadMutex);
@@ -1052,11 +1058,10 @@ void *pts_send_msg2browser_pthread(void *arg)
         {
             pstStreamNode->lCurrSeq--;
             gettimeofday(&now, NULL);
-            timeout.tv_sec = now.tv_sec + 1;
-            timeout.tv_nsec = now.tv_usec * 1000;
+            timeout.tv_sec = now.tv_sec;
+            timeout.tv_nsec = now.tv_usec * 1000 + 50;
 
             pthread_mutex_unlock(&pstCCNode->pthreadMutex);
-            //sem_timedwait(&pstParam->stSemSendMsg, &timeout);
             sem_wait(&pstParam->stSemSendMsg);
             pthread_mutex_lock(&pstCCNode->pthreadMutex);
         }
@@ -1107,6 +1112,9 @@ VOID pts_send_msg2browser(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 break;
             case 2:
                 dos_snprintf(szExitReason, PT_DATA_BUFF_1024, PTS_VISIT_WEB_ERROE_2);
+                break;
+            case 3:
+                dos_snprintf(szExitReason, PT_DATA_BUFF_1024, PTS_VISIT_WEB_ERROE_3);
                 break;
             default:
                 szExitReason[0] = '\0';

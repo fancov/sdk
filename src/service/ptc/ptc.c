@@ -291,6 +291,20 @@ get_domain:
 
     g_stServMsg.usLocalPort = 0;
 
+    lResult = pt_DNS_analyze(PTC_GET_LOCAL_IP_SERVER_DOMAIN, paucIPAddr);
+    if (lResult <= 0)
+    {
+        dos_strcpy(szPtsIp, PTC_GET_LOCAL_IP_SERVER_IP);
+    }
+    else
+    {
+        inet_ntop(AF_INET, (void *)(paucIPAddr), szPtsIp, PT_IP_ADDR_SIZE);
+        logr_debug("server is : %s, ip : %s", PTC_GET_LOCAL_IP_SERVER_DOMAIN, szPtsIp);
+    }
+
+    inet_pton(AF_INET, szPtsIp, (VOID *)(g_stServMsg.achBaiduIP));
+    g_stServMsg.usBaiduPort = dos_htons(PTC_GET_LOCAL_IP_SERVER_PORT);
+
     /* 记录pts历史记录的文件的路径 */
     dos_snprintf(g_stServMsg.szHistoryPath, PT_DATA_BUFF_128, "%s/%s", szServiceRoot, PTC_HISTORY_PATH);
     /* 获得存放ptc注册pts的记录表 */
@@ -488,8 +502,6 @@ S32 ptc_create_socket_proxy(U8 *alServIp, U16 usServPort)
 
     ulIPAddr = *(U32 *)alServIp;
 
-    pt_logr_info("create socket, ip : %u.%u.%u.%u, port :%d", ulIPAddr&0xff, (ulIPAddr&0xff00) >> 8, (ulIPAddr&0xff0000) >> 16, (ulIPAddr&0xff000000) >> 24, dos_ntohs(usServPort));
-
     ioctl(lSockfd, FIONBIO, &ul);  //设置为非阻塞模式
 
     lResult = connect(lSockfd, (struct sockaddr*)(&stServerAddr), sizeof(stServerAddr));
@@ -643,7 +655,7 @@ S32 ptc_main()
 {
     S32 lRet = 0;
     U8 aucID[PTC_ID_LEN+1] = {0};
-    pthread_t tid1, tid2, tid3, tid4, tid5, tid6, tid7;
+    pthread_t tid1, tid2, tid3, tid4, tid5, tid6, tid7, tid8;
 
     /* 初始化socket和streamID对应关系数组 */
     ptc_init_ptc_client_cb();
@@ -755,6 +767,17 @@ S32 ptc_main()
     else
     {
         logr_debug("create pthread succ : ptc_deal_with_pts_command!");
+    }
+
+    lRet = pthread_create(&tid8, NULL, ptc_terminal_dispose, NULL);
+    if (lRet < 0)
+    {
+        logr_info("create pthread error : ptc_terminal_dispose!");
+        return DOS_FAIL;
+    }
+    else
+    {
+        logr_debug("create pthread succ : ptc_terminal_dispose!");
     }
 
     sleep(2);

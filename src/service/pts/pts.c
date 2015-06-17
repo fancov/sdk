@@ -102,13 +102,13 @@ DOS_SQLITE_ST  *g_pstMySqlite = NULL;              /* 数据库sqlite3结构体 */
  */
 U32 pts_create_stream_id()
 {
-    static U32 ulStreamId = PT_CTRL_BUTT;
-    ulStreamId++;
-    if (0 == ulStreamId)
+    static U32 ulStreamID = PT_CTRL_BUTT;
+    ulStreamID++;
+    if (0 == ulStreamID)
     {
-        ulStreamId = PT_CTRL_BUTT;
+        ulStreamID = PT_CTRL_BUTT + 1;
     }
-    return ulStreamId;
+    return ulStreamID;
 }
 
 /**
@@ -261,19 +261,19 @@ VOID *pts_send_msg2proxy(VOID *arg)
 {
     list_t  *pstNendRecvList = NULL;
     PT_NEND_RECV_NODE_ST *pstNeedRevNode = NULL;
-    struct timeval now;
+    //struct timeval now;
     struct timespec timeout;
     S32 lLoopMaxCount = 0;
     //signal(SIGPIPE, SIG_IGN);
 
     while (1)
     {
-        gettimeofday(&now, NULL);
-        timeout.tv_sec = now.tv_sec + 1;
-        timeout.tv_nsec = now.tv_usec * 1000;
-
         pthread_mutex_lock(&g_mutexPtsRecvPthread);
-        sem_post(&g_SemPtsRecv);
+
+        //gettimeofday(&now, NULL);
+        timeout.tv_sec = time(NULL) + 1;
+        timeout.tv_nsec = 0;
+
         pthread_cond_timedwait(&g_condPtsRecv, &g_mutexPtsRecvPthread, &timeout);
         pthread_mutex_unlock(&g_mutexPtsRecvPthread);
 
@@ -396,6 +396,7 @@ S32 pts_main()
     g_alUdpSocket[0] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[0], ulSocketCache);
     g_alUdpSocket[1] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[1], ulSocketCache);
 
+#if 0
     if (g_stPtsMsg.usPtsPort[0] != 0)
     {
         lRet = pts_create_tcp_socket(g_stPtsMsg.usPtsPort[0]);
@@ -413,6 +414,7 @@ S32 pts_main()
             return DOS_FAIL;
         }
     }
+#endif
 
     lRet = dos_sqlite3_create_db(g_pstMySqlite);
     if (lRet < 0)
