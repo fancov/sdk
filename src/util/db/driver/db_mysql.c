@@ -78,7 +78,6 @@ FUNCATTR S32 db_mysql_query(MYSQL *pstMysql, S8 *pszSQL, S32 (*callback)(VOID*, 
     if (!pstMysql || !pszSQL)
     {
         db_assert(0);
-
         return DB_ERR_INVALID_PARAMS;
     }
 

@@ -29,6 +29,7 @@ extern "C"{
 /* 数据库句柄 */
 DB_HANDLE_ST         *g_pstSCDBHandle = NULL;
 
+BOOL                 g_blSCInitOK     = DOS_FALSE;
 
 U32 sc_httpd_init();
 U32 sc_task_mngt_init();
@@ -44,6 +45,7 @@ U32 sc_ep_start();
 U32 sc_httpd_shutdown();
 U32 sc_task_mngt_shutdown();
 U32 sc_dialer_shutdown();
+U32 sc_ep_init_agent_status();
 
 /* define marcos */
 
@@ -139,7 +141,7 @@ U32 sc_init_db()
     {
         g_pstSCDBHandle->szSockPath[0] = '\0';
     }
-    
+
 
     g_pstSCDBHandle->usPort = usDBPort;
 
@@ -172,15 +174,6 @@ U32 mod_dipcc_sc_load()
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init DB Handle Successfully.");
 
 #if INCLUDE_SERVICE_PYTHON
-    /* 全局初始化python模块 */
-    if (py_init() != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        logr_error("mod_dipcc_sc_load: Init python LIB FAIL.");
-        return DOS_FAIL;
-    }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init python LIB SUCC.");
-
     /* 全局加载freeswitch配置文件xml */
     if (DOS_SUCC != py_exec_func("customer", "generate_all_customer", "()"))
     {
@@ -197,6 +190,7 @@ U32 mod_dipcc_sc_load()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Load gateway XML SUCC.");
+
 #endif
 
     if (sc_httpd_init() != DOS_SUCC)
@@ -243,6 +237,15 @@ U32 mod_dipcc_sc_load()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init acd module Successfully.");
 
+    if (DOS_SUCC != sc_ep_init_agent_status())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init Agent status FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init Agent status Successfully.");
+
     if (DOS_SUCC != sc_bs_fsm_init())
     {
         DOS_ASSERT(0);
@@ -252,7 +255,18 @@ U32 mod_dipcc_sc_load()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init bs client Successfully.");
 
+    if (DOS_SUCC != sc_cwq_init())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init call waiting queue FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init call waiting queue SUCC.");
+
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Finished to init SC.");
+
+    g_blSCInitOK = DOS_TRUE;
 
     return DOS_SUCC;
 }
@@ -268,14 +282,6 @@ U32 mod_dipcc_sc_runtime()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start bs client Successfully.");
 
-    if (sc_ep_start() != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start start event process task FAIL");
-        return DOS_FAIL;
-    }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start start event process task Successfully.");
 
     if (sc_dialer_start() != DOS_SUCC)
     {
@@ -285,6 +291,24 @@ U32 mod_dipcc_sc_runtime()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start dialer Successfully.");
+
+    if (sc_cwq_start() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start call waiting queue task FAIL");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start call waiting queue task SUCC.");
+
+    if (sc_ep_start() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start start event process task FAIL");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start start event process task Successfully.");
 
     if (sc_task_mngt_start() != DOS_SUCC)
     {

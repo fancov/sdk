@@ -940,10 +940,10 @@ S32 bs_show_task(U32 ulIndex, U32 ulObjectID)
     return DOS_SUCC;
 
 }
-
+    
 S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
 {
-    S8                      szBuff[BS_TRACE_BUFF_LEN] = {0, };
+    S8  szBuff[BS_TRACE_BUFF_LEN] = {0, };
     U32 ulHashIndex = 0, ulCol = 0, ulRow = 0;
     U32 aulRule[BS_MAX_RULE_ITEM][BS_MAX_BILLING_RULE_IN_PACKAGE] = {{0}};
     
@@ -969,12 +969,25 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
             }
 
             pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
-            if (pstPkg->ulPackageID == ulObjectID)
-            {
-                dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Package ID %u.", ulObjectID);
-                cli_out_string(ulIndex, szBuff);
-            }
 
+            //如果是0，则全部打印
+            if (0 == ulObjectID)
+            {
+                ;
+            }
+            else
+            {
+                if (pstPkg->ulPackageID == ulObjectID)
+                {
+                    dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Package ID %u.", ulObjectID);
+                    cli_out_string(ulIndex, szBuff);
+                }
+                else
+                {
+                    continue;
+                }
+            }
+            
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------");
             cli_out_string(ulIndex, szBuff);
 
@@ -989,7 +1002,7 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
 
             for (ulCol = 0; ulCol < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulCol)
             {
-                aulRule[0][ulCol]  = pstPkg->astRule[ulCol].ulPackageID;
+                aulRule[0][ulCol]  = pstPkg->astRule[ulCol].ulRuleID;
                 aulRule[1][ulCol]  = pstPkg->astRule[ulCol].ucSrcAttrType1;
                 aulRule[2][ulCol]  = pstPkg->astRule[ulCol].ucSrcAttrType2;
                 aulRule[3][ulCol]  = pstPkg->astRule[ulCol].ucDstAttrType1;
@@ -1468,6 +1481,7 @@ help:
     cli_out_string(ulIndex, "\r\nUsage:");
     cli_out_string(ulIndex, "\r\n1. bs show <object:agent|cb|customer|task|trunk|billing|outband> <object id>");
     cli_out_string(ulIndex, "\r\n2. bs debug <module:all|off|account|audit|bill|cdr|db|fs|maintain|run|stat|web> <level:0|1|2|3|4|5|6|7>");
+    cli_out_string(ulIndex, "\r\n  Notes: command \'bs show billing 0\' stands for all billing packages.");
 
     cli_out_string(ulIndex, "\r\n\r\n");
 

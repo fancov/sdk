@@ -20,6 +20,10 @@ extern "C"{
 #include <mon_pub.h>
 #endif
 
+#if INCLUDE_SERVICE_PYTHON
+#include <dos/dos_py.h>
+#endif
+
 #if INCLUDE_OPENSSL_LIB
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
@@ -46,6 +50,27 @@ U32 mod_dipcc_sc_runtime();
 #endif
 S32 root(S32 _argc, S8 ** _argv)
 {
+#if INCLUDE_SERVICE_PYTHON
+    S8 szPyVersion[256] = {0};
+
+    /* 全局加载python库 */
+    if (py_init() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_printf("Python LIB Init SUCC.");
+
+    /* 获取python解释器版本号信息 */
+    if (DOS_SUCC != py_get_version(szPyVersion, sizeof(szPyVersion)))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    dos_printf("Python Interpreter Version: %s", szPyVersion);
+#endif
+
 #if INCLUDE_DEBUG_CLI_SERVER
     telnetd_start();
 #elif INCLUDE_BH_SERVER
@@ -59,24 +84,22 @@ S32 root(S32 _argc, S8 ** _argv)
     dos_printf("%s", "Heartbeat init successfully.");
 
     heartbeat_start();
+
 #if INCLUDE_RES_MONITOR
     lRet = mon_init();
     if(DOS_SUCC != lRet)
     {
-       logr_error("%s:Line %d:root|init resource failure!"
-                    , dos_get_filename(__FILE__), __LINE__);
+       DOS_ASSERT(0);
        return -1;
     }
     lRet = mon_start();
     if(DOS_SUCC != lRet)
     {
-       logr_error("%s:Line %d:root|start monitor failure!"
-                    , dos_get_filename(__FILE__), __LINE__);
+       DOS_ASSERT(0);
        lRet = mon_stop();
        if(DOS_SUCC != lRet)
        {
-          logr_error("%s:Line %d:root|stop monitor failure!"
-                    , dos_get_filename(__FILE__), __LINE__);
+          DOS_ASSERT(0);
        }
        return -1;
     }
@@ -113,14 +136,20 @@ S32 root(S32 _argc, S8 ** _argv)
     if (DOS_SUCC != mod_dipcc_sc_load())
     {
         DOS_ASSERT(0);
+
+        logr_info("%s", "SC INIT FAIL.");
         return -1;
     }
 
     if (DOS_SUCC != mod_dipcc_sc_runtime())
     {
         DOS_ASSERT(0);
+
+        logr_info("%s", "SC start FAIL.");
         return -1;
     }
+    
+    logr_info("%s", "SC start.");
 #endif
 
 #if INCLUDE_OPENSSL_LIB

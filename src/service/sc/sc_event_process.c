@@ -25,6 +25,7 @@ extern "C"{
 #include "sc_debug.h"
 #include "sc_acd_def.h"
 #include "sc_ep.h"
+#include "sc_acd_def.h"
 
 /* 应用外部变量 */
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
@@ -35,7 +36,7 @@ pthread_mutex_t          g_mutexEventList = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t           g_condEventList = PTHREAD_COND_INITIALIZER;
 
 /* 事件队列 REFER TO SC_EP_EVENT_NODE_ST */
-list_t                   g_stEventList;
+DLL_S                    g_stEventList;
 
 /* 路由数据链表 REFER TO SC_ROUTE_NODE_ST */
 DLL_S                    g_stRouteList;
@@ -71,7 +72,14 @@ pthread_mutex_t          g_mutexHashBlackList = PTHREAD_MUTEX_INITIALIZER;
 
 CURL *g_pstCurlHandle;
 
-
+/**
+ * 函数: sc_ep_call_notify
+ * 功能: 通知坐席弹屏
+ * 参数:
+ *    SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller
+ * 返回值:
+ *    成功返回DOS_SUCC， 否则返回DOS_FAIL
+ */
 U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
 {
     S8 szURL[256] = { 0, };
@@ -119,7 +127,263 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
 
         return DOS_SUCC;
     }
+}
 
+/**
+ * 函数: sc_ep_call_notify
+ * 功能: CURL回调函数，保存数据，以便后续处理
+ * 参数:
+ *    void *pszBffer, S32 lSize, S32 lBlock, void *pArg
+ * 返回值:
+ *    成功返回参数lBlock， 否则返回0
+ */
+static S32 sc_ep_agent_update_recv(void *pszBffer, S32 lSize, S32 lBlock, void *pArg)
+{
+    IO_BUF_CB *pstIOBuffer = NULL;
+
+    if (DOS_ADDR_INVALID(pArg))
+    {
+        DOS_ASSERT(0);
+        return 0;
+    }
+
+    pstIOBuffer = (IO_BUF_CB *)pArg;
+
+    if (dos_iobuf_append(pstIOBuffer, pszBffer, (U32)(lSize * lBlock)) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return 0;
+    }
+
+    return lBlock;
+}
+
+
+/* 解析一下格式的字符串
+   : {"channel": "5_10000001_1001", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}
+   同时更新坐席状态 */
+U32 sc_ep_update_agent_status(S8 *pszJSONString)
+{
+    JSON_OBJ_ST *pstJsonArrayItem     = NULL;
+    const S8    *pszAgentID           = NULL;
+    S8          szJobNum[16]          = { 0 };
+    S8          szExtension[16]       = { 0 };
+    U32         ulID;
+
+    if (DOS_ADDR_INVALID(pszJSONString))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstJsonArrayItem = json_init(pszJSONString);
+    if (DOS_ADDR_INVALID(pstJsonArrayItem))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 更新坐席状态 */
+    pszAgentID = json_get_param(pstJsonArrayItem, "channel");
+    if (DOS_ADDR_INVALID(pszAgentID))
+    {
+        DOS_ASSERT(0);
+
+        json_deinit(&pstJsonArrayItem);
+        return DOS_FAIL;
+    }
+
+    if (dos_sscanf(pszAgentID, "%u_%[^_]_%s", &ulID, szJobNum, szExtension) != 3)
+    {
+        DOS_ASSERT(0);
+
+        json_deinit(&pstJsonArrayItem);
+        return DOS_FAIL;
+    }
+
+    json_deinit(&pstJsonArrayItem);
+
+    return sc_acd_update_agent_status(SC_ACD_SITE_ACTION_ONLINE, ulID);
+}
+
+/* 解析这样一个json字符串
+{"hostname": "localhost.localdomain"
+    , "time": "2015-06-10T12:23:18"
+    , "channels": "1"
+    , "wildcard_channels": "0"
+    , "uptime": "120366"
+    , "infos": [{"channel": "5_10000001_1001", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}
+                , {"channel": "6_10000002_1002", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}]}*/
+U32 sc_ep_update_agent_req_proc(S8 *pszJSONString)
+{
+    S32 lIndex;
+    S8 *pszAgentInfos = NULL;
+    const S8 *pszAgentItem = NULL;
+    JSON_OBJ_ST *pstJSONObj = NULL;
+    JSON_OBJ_ST *pstJSONAgentInfos = NULL;
+
+    pstJSONObj = json_init(pszJSONString);
+    if (DOS_ADDR_INVALID(pstJSONObj))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_notice(SC_ESL, "%s", "Update the agent FAIL while init the json string.");
+
+        goto process_fail;
+    }
+
+    pszAgentInfos = (S8 *)json_get_param(pstJSONObj, "infos");
+    if (DOS_ADDR_INVALID(pstJSONObj))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_notice(SC_ESL, "%s", "Update the agent FAIL while get agent infos from the json string.");
+
+        goto process_fail;
+    }
+
+    pstJSONAgentInfos = json_init(pszAgentInfos);
+    if (DOS_ADDR_INVALID(pstJSONObj))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_notice(SC_ESL, "%s", "Update the agent FAIL while get agent infos json array from the json string.");
+
+        goto process_fail;
+    }
+
+    JSON_ARRAY_SCAN(lIndex, pstJSONAgentInfos, pszAgentItem)
+    {
+        sc_ep_update_agent_status((S8 *)pszAgentItem);
+    }
+
+    if (DOS_ADDR_INVALID(pstJSONObj))
+    {
+        json_deinit(&pstJSONObj);
+    }
+
+    if (DOS_ADDR_INVALID(pstJSONAgentInfos))
+    {
+        json_deinit(&pstJSONAgentInfos);
+    }
+
+    return DOS_SUCC;
+
+process_fail:
+
+    if (DOS_ADDR_INVALID(pstJSONObj))
+    {
+        json_deinit(&pstJSONObj);
+    }
+
+    if (DOS_ADDR_INVALID(pstJSONAgentInfos))
+    {
+        json_deinit(&pstJSONAgentInfos);
+    }
+
+    return DOS_FAIL;
+
+}
+
+U32 sc_ep_query_agent_status(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+{
+    S8 szURL[256] = { 0, };
+    U32 ulRet = 0;
+    IO_BUF_CB stIOBuffer = IO_BUF_INIT;
+
+    if (DOS_ADDR_INVALID(g_pstCurlHandle))
+    {
+        g_pstCurlHandle = curl_easy_init();
+        if (DOS_ADDR_INVALID(g_pstCurlHandle))
+        {
+            DOS_ASSERT(0);
+
+            return DOS_FAIL;
+        }
+    }
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szURL, sizeof(szURL)
+                , "http://localhost/channels-stats?id=%u_%s_%s"
+                , pstAgentInfo->ulSiteID
+                , pstAgentInfo->szEmpNo
+                , pstAgentInfo->szExtension);
+
+    curl_easy_reset(g_pstCurlHandle);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_URL, szURL);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_WRITEFUNCTION, sc_ep_agent_update_recv);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_WRITEDATA, (VOID *)&stIOBuffer);
+    ulRet = curl_easy_perform(g_pstCurlHandle);
+    if(CURLE_OK != ulRet)
+    {
+        sc_logr_notice(SC_ESL, "%s, (%s)", "CURL get agent status FAIL.", curl_easy_strerror(ulRet));
+
+        dos_iobuf_free(&stIOBuffer);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(stIOBuffer.pszBuffer)
+        || '\0' == stIOBuffer.pszBuffer)
+    {
+        DOS_ASSERT(0);
+        ulRet = DOS_FAIL;
+    }
+    else
+    {
+        ulRet = DOS_FAIL;
+    }
+
+    dos_iobuf_free(&stIOBuffer);
+    return ulRet;
+
+}
+
+U32 sc_ep_init_agent_status()
+{
+    S8 szURL[256] = { 0, };
+    U32 ulRet = 0;
+    IO_BUF_CB stIOBuffer = IO_BUF_INIT;
+
+    if (DOS_ADDR_INVALID(g_pstCurlHandle))
+    {
+        g_pstCurlHandle = curl_easy_init();
+        if (DOS_ADDR_INVALID(g_pstCurlHandle))
+        {
+            DOS_ASSERT(0);
+
+            return DOS_FAIL;
+        }
+    }
+
+    dos_snprintf(szURL, sizeof(szURL), "http://localhost/channels-stats?id=*");
+
+    curl_easy_reset(g_pstCurlHandle);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_URL, szURL);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_WRITEFUNCTION, sc_ep_agent_update_recv);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_WRITEDATA, (VOID *)&stIOBuffer);
+    ulRet = curl_easy_perform(g_pstCurlHandle);
+    if(CURLE_OK != ulRet)
+    {
+        sc_logr_notice(SC_ESL, "%s, (%s)", "CURL get agent status FAIL.", curl_easy_strerror(ulRet));
+
+        dos_iobuf_free(&stIOBuffer);
+        return DOS_FAIL;
+    }
+
+    sc_logr_notice(SC_ESL, "%s", "CURL get agent status SUCC.Result");
+
+    sc_logr_notice(SC_ESL, "%s", "CURL get agent status SUCC.Result");
+
+    ulRet = sc_ep_update_agent_req_proc((S8 *)stIOBuffer.pszBuffer);
+
+    dos_iobuf_free(&stIOBuffer);
+    return ulRet;
 }
 
 /**
@@ -681,6 +945,7 @@ U32 sc_route_delete(U32 ulRouteID)
 
 U32 sc_gateway_grp_delete(U32 ulGwGroupID)
 {
+    DLL_NODE_S         *pstDLLNode     = NULL;
     HASH_NODE_S        *pstHashNode    = NULL;
     SC_GW_GRP_NODE_ST  *pstGwGroupNode = NULL;
     U32 ulIndex = U32_BUTT;
@@ -708,6 +973,31 @@ U32 sc_gateway_grp_delete(U32 ulGwGroupID)
 
     if (pstGwGroupNode)
     {
+        pthread_mutex_lock(&pstGwGroupNode->mutexGWList);
+        while (1)
+        {
+            if (DLL_Count(&pstGwGroupNode->stGWList) == 0)
+            {
+                break;
+            }
+
+            pstDLLNode = dll_fetch(&pstGwGroupNode->stGWList);
+            if (DOS_ADDR_INVALID(pstDLLNode))
+            {
+                DOS_ASSERT(0);
+                break;
+            }
+
+            /* dll节点的数据域勿要删除 */
+
+            DLL_Init_Node(pstDLLNode);
+            dos_dmem_free(pstDLLNode);
+            pstDLLNode = NULL;
+        }
+        pthread_mutex_unlock(&pstGwGroupNode->mutexGWList);
+
+
+        pthread_mutex_destroy(&pstGwGroupNode->mutexGWList);
         dos_dmem_free(pstGwGroupNode);
         pstGwGroupNode = NULL;
     }
@@ -932,12 +1222,14 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             pthread_mutex_unlock(&g_mutexHashSIPUserID);
             return DOS_FAIL;
         }
+/*
         sc_logr_info(SC_ESL, "Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
                     , pstSIPUserIDNodeNew->ulSIPID
                     , pstSIPUserIDNodeNew->ulCustomID
                     , pstSIPUserIDNodeNew->szUserID
                     , pstSIPUserIDNodeNew->szExtension);
-                    
+*/
+
         HASH_Init_Node(pstHashNode);
         pstHashNode->pHandle = pstSIPUserIDNodeNew;
 
@@ -958,7 +1250,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         pstSIPUserIDNodeNew = NULL;
     }
     //
-    
+
     pthread_mutex_unlock(&g_mutexHashSIPUserID);
 
     return DOS_SUCC;
@@ -1441,6 +1733,7 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 U32 sc_load_gateway(U32 ulIndex)
 {
     S8 szSQL[1024] = {0,};
+    U32 ulRet;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
@@ -1453,9 +1746,9 @@ U32 sc_load_gateway(U32 ulIndex)
                         , "SELECT id, realm FROM tbl_gateway WHERE tbl_gateway.status = 1 AND id=%d;", ulIndex);
     }
 
-    db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_cb, NULL, NULL);
+    ulRet = db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_cb, NULL, NULL);
 
-    return DOS_SUCC;
+    return ulRet;
 }
 
 /**
@@ -1534,6 +1827,7 @@ S32 sc_load_gateway_grp_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames
 U32 sc_load_gateway_grp(U32 ulIndex)
 {
     S8 szSQL[1024];
+    U32 ulRet;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
@@ -1547,9 +1841,14 @@ U32 sc_load_gateway_grp(U32 ulIndex)
                         , ulIndex);
     }
 
-    db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_grp_cb, NULL, NULL);
+    ulRet = db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_grp_cb, NULL, NULL);
+    if (ulRet != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
-    return DOS_SUCC;
+    return ulRet;
 }
 
 /**
@@ -1673,6 +1972,64 @@ U32 sc_load_relationship()
 
     return DOS_SUCC;
 }
+
+U32 sc_refresh_gateway_grp(U32 ulIndex)
+{
+    S8 szSQL[1024];
+    U32 ulHashIndex;
+    SC_GW_GRP_NODE_ST    *pstGWGrpNode  = NULL;
+    HASH_NODE_S          *pstHashNode   = NULL;
+    DLL_NODE_S           *pstDLLNode    = NULL;
+
+    if (SC_INVALID_INDEX == ulIndex || U32_BUTT == ulIndex)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_ep_gw_grp_hash_func(ulIndex);
+    pstHashNode = hash_find_node(g_pstHashGWGrp, ulHashIndex, &ulIndex, sc_ep_gw_grp_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstGWGrpNode = pstHashNode->pHandle;
+    pthread_mutex_lock(&pstGWGrpNode->mutexGWList);
+    while (1)
+    {
+        if (DLL_Count(&pstGWGrpNode->stGWList) == 0)
+        {
+            break;
+        }
+
+        pstDLLNode = dll_fetch(&pstGWGrpNode->stGWList);
+        if (DOS_ADDR_INVALID(pstDLLNode))
+        {
+            DOS_ASSERT(0);
+            break;
+        }
+
+        if (DOS_ADDR_VALID(pstDLLNode->pHandle))
+        {
+            dos_dmem_free(pstDLLNode->pHandle);
+            pstDLLNode->pHandle = NULL;
+        }
+
+        DLL_Init_Node(pstDLLNode);
+        dos_dmem_free(pstDLLNode);
+        pstDLLNode = NULL;
+    }
+    pthread_mutex_unlock(&pstGWGrpNode->mutexGWList);
+
+    dos_snprintf(szSQL, sizeof(szSQL)
+                        , "SELECT tbl_gateway_assign.gateway_id FROM tbl_gateway_assign WHERE tbl_gateway_assign.gateway_grp_id = %u;"
+                        , ulIndex);
+
+    return db_query(g_pstSCDBHandle, szSQL, sc_load_relationship_cb, pstGWGrpNode, NULL);
+}
+
 
 /**
  * 函数: S32 sc_load_route_group_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
@@ -2957,6 +3314,8 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         return DOS_FAIL;
     }
 
+    pstSCB->bIsInQueue = DOS_FALSE;
+
     /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
     if (U32_BUTT == ulTaskAgentQueueID)
     {
@@ -3000,6 +3359,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
     pstSCBNew->ucLegRole = SC_CALLEE;
     pstSCBNew->bRecord = stAgentInfo.bRecord;
+    pstSCBNew->bIsAgentCall = DOS_TRUE;
     dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
     pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
     dos_strncpy(pstSCBNew->szANINum, pstSCB->szCallerNum, sizeof(pstSCBNew->szANINum));
@@ -3097,6 +3457,27 @@ proc_error:
 }
 
 /**
+ * 函数: sc_ep_call_queue_add
+ * 功能: 接通坐席时，将呼叫加入队列
+ * 参数:
+ *      SC_SCB_ST *pstSCB       : 业务控制块
+ * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
+{
+    U32 ulResult;
+
+    ulResult = sc_cwq_add_call(pstSCB, ulTaskAgentQueueID);
+    if (ulResult == DOS_SUCC)
+    {
+        pstSCB->bIsInQueue = DOS_SUCC;
+    }
+
+    return ulResult;
+}
+
+
+/**
  * 函数: U32 sc_ep_incoming_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
  * 功能: 处理由PSTN呼入到SIP测的呼叫
  * 参数:
@@ -3137,6 +3518,11 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
             goto proc_fail;
         }
 
+        sc_logr_info(SC_ESL, "Process Incoming Call, DID Number %s. Bind Type: %u, Bind ID: %u"
+                        , pstSCB->szCalleeNum
+                        , ulBindType
+                        , ulBindID);
+
         switch (ulBindType)
         {
             case SC_DID_BIND_TYPE_SIP:
@@ -3156,7 +3542,14 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 break;
 
             case SC_DID_BIND_TYPE_QUEUE:
-                sc_ep_call_agent(pstSCB, ulBindID);
+                if (sc_ep_call_queue_add(pstSCB, ulBindID) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Add Call to call waiting queue FAIL.Callee: %s. Reject Call.", pstSCB->szCalleeNum);
+                    ulErrCode = BS_TERM_INTERNAL_ERR;
+                    goto proc_fail;
+                }
                 break;
 
             default:
@@ -3365,6 +3758,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     {
         /* 需要放音的，统一先放音。在放音结束后请处理后续流程 */
         case SC_TASK_MODE_KEY4AGENT:
+        case SC_TASK_MODE_KEY4AGENT1:
         case SC_TASK_MODE_AUDIO_ONLY:
         case SC_TASK_MODE_AGENT_AFTER_AUDIO:
             sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
@@ -3381,7 +3775,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
 
         /* 直接接通坐席 */
         case SC_TASK_MODE_DIRECT4AGETN:
-            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
 
             break;
 
@@ -4247,6 +4641,20 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 sc_rp_parse_extra_data(pstEvent, pstSCB);
             }
 
+            /* 如果呼叫已经进入队列了，需要删除 */
+            if (pstSCB->bIsInQueue)
+            {
+                sc_cwq_del_call(pstSCB);
+                pstSCB->bIsInQueue = DOS_FALSE;
+            }
+
+            /* 如果是呼叫坐席的，需要做特殊处理,看看坐席是否长连什么的 */
+            if (pstSCB->bIsAgentCall)
+            {
+                sc_acd_agent_update_status(pstSCB->szCalleeNum, SC_ACD_IDEL);
+                pstSCB->bIsAgentCall = DOS_FALSE;
+            }
+
             /*
              * 1.如果有另外一条腿，有必要等待另外一条腿释放
              * 2.需要另外一条腿没有处于等待释放状态，那就等待吧
@@ -4266,9 +4674,11 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             }
 
             /* 自动外呼，需要维护任务的并发量 */
-            if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+            if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
+                && pstSCB->usTCBNo < SC_MAX_TASK_NUM)
             {
                 sc_task_concurrency_minus(pstSCB->usTCBNo);
+                sc_update_callee_status(pstSCB->usTCBNo, pstSCB->szCalleeNum, SC_CALLEE_NORMAL);
             }
 
             sc_logr_debug(SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
@@ -4347,8 +4757,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
     }
 
     /* 自动外呼，拨0接通坐席 */
-    if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
-        && '0' == pszDTMFDigit[0])
+    if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
     {
 
         ulTaskMode = sc_task_get_mode(pstSCB->usTCBNo);
@@ -4359,9 +4768,14 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
             goto process_fail;
         }
 
-        if (SC_TASK_MODE_KEY4AGENT == ulTaskMode)
+        if (SC_TASK_MODE_KEY4AGENT == ulTaskMode
+            && '0' == pszDTMFDigit[0])
         {
-            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+        }
+        else if(SC_TASK_MODE_KEY4AGENT1 == ulTaskMode)
+        {
+            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
         }
     }
     else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
@@ -4453,6 +4867,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                     {
                         /* 以两种放音结束后需要挂断 */
                         case SC_TASK_MODE_KEY4AGENT:
+                        case SC_TASK_MODE_KEY4AGENT1:
                         case SC_TASK_MODE_AUDIO_ONLY:
                             sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
                             break;
@@ -4460,7 +4875,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                         /* 放音后接通坐席 */
                         case SC_TASK_MODE_AGENT_AFTER_AUDIO:
                             /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
-                            sc_ep_call_agent(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+                            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
                             break;
 
                         /* 这个地方出故障了 */
@@ -4656,9 +5071,8 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
  */
 VOID*sc_ep_process_runtime(VOID *ptr)
 {
-    SC_EP_EVENT_NODE_ST *pstListNode = NULL;
+    DLL_NODE_S          *pstListNode = NULL;
     esl_event_t         *pstEvent = NULL;
-    list_t              *pstListLink = NULL;
     U32                 ulRet;
     struct timespec     stTimeout;
 
@@ -4668,38 +5082,39 @@ VOID*sc_ep_process_runtime(VOID *ptr)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condEventList, &g_mutexEventList, &stTimeout);
+        pthread_mutex_unlock(&g_mutexEventList);
 
         while (1)
         {
-            if (dos_list_is_empty(&g_stEventList))
+            if (DLL_Count(&g_stEventList) <= 0)
             {
                 break;
             }
 
-            pstListLink = dos_list_fetch(&g_stEventList);
-            if (DOS_ADDR_INVALID(pstListLink))
-            {
-                continue;
-            }
+            pthread_mutex_lock(&g_mutexEventList);
 
-            pstListNode = dos_list_entry(pstListLink, SC_EP_EVENT_NODE_ST, stLink);
+            pstListNode = dll_fetch(&g_stEventList);
             if (DOS_ADDR_INVALID(pstListNode))
             {
+                DOS_ASSERT(0);
+
+                pthread_mutex_unlock(&g_mutexEventList);
                 continue;
             }
 
-            if (DOS_ADDR_INVALID(pstListNode->pstEvent))
+            pthread_mutex_unlock(&g_mutexEventList);
+
+            if (DOS_ADDR_INVALID(pstListNode->pHandle))
             {
-                dos_dmem_free(pstListNode);
-                pstListNode = NULL;
+                DOS_ASSERT(0);
                 continue;
             }
 
-            pstEvent = pstListNode->pstEvent;
+            pstEvent = (esl_event_t*)pstListNode->pHandle;
 
-            pstListNode->pstEvent = NULL;
+            pstListNode->pHandle = NULL;
+            DLL_Init_Node(pstListNode)
             dos_dmem_free(pstListNode);
-            pstListNode = NULL;
 
             sc_logr_info(SC_ESL, "ESL event process START. %s(%d), SCB No:%s, Channel Name: %s"
                             , esl_event_get_header(pstEvent, "Event-Name")
@@ -4721,8 +5136,6 @@ VOID*sc_ep_process_runtime(VOID *ptr)
 
             esl_event_destroy(&pstEvent);
         }
-
-        pthread_mutex_unlock(&g_mutexEventList);
     }
 
     return NULL;
@@ -4739,7 +5152,9 @@ VOID* sc_ep_runtime(VOID *ptr)
     U32                  ulRet = ESL_FAIL;
     S8                   *pszIsLoopbackLeg = NULL;
     S8                   *pszIsAutoCall = NULL;
-    SC_EP_EVENT_NODE_ST  *pstListNode = NULL;
+    DLL_NODE_S           *pstDLLNode = NULL;
+    // 判断第一次连接是否成功
+    static BOOL bFirstConnSucc = DOS_FALSE;
 
     for (;;)
     {
@@ -4776,6 +5191,12 @@ VOID* sc_ep_runtime(VOID *ptr)
             sc_logr_notice(SC_ESL, "%s", "ELS for event connect Back to Normal.");
         }
 
+        if (!bFirstConnSucc)
+        {
+            bFirstConnSucc = DOS_TRUE;
+            sc_ep_esl_execute_cmd("api reloadxml\r\n");
+        }
+
         ulRet = esl_recv_event(&g_pstHandle->stRecvHandle, 1, NULL);
         if (ESL_FAIL == ulRet)
         {
@@ -4807,8 +5228,8 @@ VOID* sc_ep_runtime(VOID *ptr)
                         , esl_event_get_header(pstEvent, "Event-Name")
                         , pstEvent->event_id);
 
-        pstListNode = (SC_EP_EVENT_NODE_ST *)dos_dmem_alloc(sizeof(SC_EP_EVENT_NODE_ST));
-        if (DOS_ADDR_INVALID(pstListNode))
+        pstDLLNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
+        if (DOS_ADDR_INVALID(pstDLLNode))
         {
             DOS_ASSERT(0);
 
@@ -4821,9 +5242,10 @@ VOID* sc_ep_runtime(VOID *ptr)
 
         pthread_mutex_lock(&g_mutexEventList);
 
-        dos_list_node_init(&pstListNode->stLink);
-        esl_event_dup(&pstListNode->pstEvent, pstEvent);
-        dos_list_add_tail(&g_stEventList, (list_t *)pstListNode);
+        DLL_Init_Node(pstDLLNode);
+        pstDLLNode->pHandle = NULL;
+        esl_event_dup((esl_event_t **)(&pstDLLNode->pHandle), pstEvent);
+        DLL_Add(&g_stEventList, pstDLLNode);
 
         pthread_cond_signal(&g_condEventList);
         pthread_mutex_unlock(&g_mutexEventList);
@@ -4860,7 +5282,7 @@ U32 sc_ep_init()
     g_pstHandle->blIsESLRunning = DOS_FALSE;
     g_pstHandle->blIsWaitingExit = DOS_FALSE;
 
-    dos_list_init(&g_stEventList);
+    DLL_Init(&g_stEventList)
     DLL_Init(&g_stRouteList);
 
     /* 以下三项加载顺序不能更改 */

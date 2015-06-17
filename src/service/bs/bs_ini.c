@@ -208,7 +208,7 @@ S32 bs_init_customer_tbl(VOID)
     pthread_mutex_unlock(&g_mutexCustomerTbl);
 
     /* 向数据层发送遍历用户表数据消息,读取客户数据到内存 */
-    bss_send_walk_req2dl(BS_TBL_TYPE_CUSTOMER);
+    bss_send_walk_req2dl(BS_TBL_TYPE_CUSTOMER, NULL, NULL);
 
     return DOS_SUCC;
 }
@@ -241,7 +241,7 @@ S32 bs_init_agent_tbl(VOID)
     pthread_mutex_unlock(&g_mutexAgentTbl);
 
     /* 向数据层发送遍历用户表数据消息,读取客户数据到内存 */
-    bss_send_walk_req2dl(BS_TBL_TYPE_AGENT);
+    bss_send_walk_req2dl(BS_TBL_TYPE_AGENT, NULL, NULL);
 
     return DOS_SUCC;
 }
@@ -250,7 +250,7 @@ S32 bs_init_web_cmd_list(VOID)
 {
     DLL_Init(&g_stWebCMDTbl);
 
-    bss_send_walk_req2dl(BS_TBL_TYPE_TMP_CMD_DEL);
+    bss_send_walk_req2dl(BS_TBL_TYPE_TMP_CMD_DEL, NULL, NULL);
 
     return 0;
 }
@@ -281,7 +281,7 @@ S32 bs_init_billing_package_tbl(VOID)
     pthread_mutex_unlock(&g_mutexBillingPackageTbl);
 
     /* 向数据层发送遍历资费表数据消息,读取资费数据到内存 */
-    bss_send_walk_req2dl(BS_TBL_TYPE_BILLING_PACKAGE);
+    bss_send_walk_req2dl(BS_TBL_TYPE_BILLING_PACKAGE, NULL, NULL);
 
     return DOS_SUCC;
 }
@@ -313,7 +313,7 @@ S32 bs_init_settle_tbl(VOID)
     pthread_mutex_unlock(&g_mutexSettleTbl);
 
     /* 向数据层发送遍历结算表数据消息,读取结算数据到内存 */
-    bss_send_walk_req2dl(BS_TBL_TYPE_SETTLE);
+    bss_send_walk_req2dl(BS_TBL_TYPE_SETTLE, NULL, NULL);
 
     return DOS_SUCC;
 }

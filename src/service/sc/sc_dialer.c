@@ -41,6 +41,7 @@ typedef struct tagSCDialerHandle
 {
     esl_handle_t        stHandle;                /*  esl 句柄 */
     pthread_t           pthID;
+    U32                 ulCallCnt;
     pthread_mutex_t     mutexCallQueue;          /* 互斥锁 */
     pthread_cond_t      condCallQueue;           /* 条件变量 */
     list_t              stCallList;              /* 呼叫队列 */
@@ -439,6 +440,8 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 continue;
             }
 
+            g_pstDialerHandle->ulCallCnt--;
+
             pstListNode = dos_list_entry(pstList, SC_CALL_QUEUE_NODE_ST, stList);
             if (!pstList)
             {
@@ -520,6 +523,7 @@ U32 sc_dialer_add_call(SC_SCB_ST *pstSCB)
 
     sc_call_trace(pstSCB, "Call request has been accepted by the dialer.");
 
+    g_pstDialerHandle->ulCallCnt++;
     pthread_cond_signal(&g_pstDialerHandle->condCallQueue);
     pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
 

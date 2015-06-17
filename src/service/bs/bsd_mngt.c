@@ -21,8 +21,6 @@ extern "C"{
 #include "bs_def.h"
 #include "bsd_db.h"
 
-
-
 /* 表遍历请求处理 */
 S32 bsd_walk_tbl_req(DLL_NODE_S *pMsgNode)
 {
@@ -49,7 +47,9 @@ S32 bsd_walk_tbl_req(DLL_NODE_S *pMsgNode)
             lRet = bsd_walk_billing_package_tbl(pstMsg);
             bsd_send_walk_rsp2sl(pMsgNode, lRet);
             break;
-
+        case BS_TBL_TYPE_BILLING_RULE:
+            bsd_inherit_rule_req2sl(pMsgNode);
+            break;
         case BS_TBL_TYPE_SETTLE:
             lRet = bsd_walk_settle_tbl(pstMsg);
             bsd_send_walk_rsp2sl(pMsgNode, lRet);
@@ -69,7 +69,6 @@ S32 bsd_walk_tbl_req(DLL_NODE_S *pMsgNode)
             dos_dmem_free(pMsgNode);
             break;
     }
-
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Walk result:%d!", lRet);
 
     return lRet;

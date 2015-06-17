@@ -13,7 +13,7 @@ DOS_INCLUDES			= -I$(SROUCE)/include -I$(SROUCE)/include/esl
 
 SUFFIX				= o
 
-LIBS				= -lpthread -lmysqlclient -lmxml_x64 -lpython2.6 -lcurl_x64 -lrt
+LIBS				= -lpthread -lmysqlclient -lmxml_x64 -lpython2.6 -lcurl_x64 -lrt -ljson-c_x64
 
 MYSQL_HEADERS			= -I/usr/include/mysql
 MYSQL_LIBS			= -L/usr/lib64/mysql
@@ -30,6 +30,7 @@ include $(SROUCE)/util/config/Makefile.mk
 include $(SROUCE)/util/timer/Makefile.mk
 include $(SROUCE)/util/hash/Makefile.mk
 include $(SROUCE)/util/list/Makefile.mk
+include $(SROUCE)/util/json/Makefile.mk
 include $(SROUCE)/util/task/Makefile.mk
 include $(SROUCE)/util/heartbeat/Makefile.mk
 include $(SROUCE)/util/db/Makefile.mk

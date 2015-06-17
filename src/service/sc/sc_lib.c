@@ -261,6 +261,8 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bNeedConnSite = DOS_FALSE;         /* 接通后是否需要接通坐席 */
     pstSCB->bRecord = DOS_FALSE;
     pstSCB->bWaitingOtherRelase = DOS_FALSE;   /* 是否在等待另外一跳退释放 */
+    pstSCB->bIsAgentCall = DOS_FALSE;
+    pstSCB->bIsInQueue = DOS_FALSE;
 
     pstSCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -677,15 +679,23 @@ U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *psz
     timep = time(NULL);
     pstTime = localtime(&timep);
 
+    if (DOS_ADDR_INVALID( pszBuff)
+        || ulMaxLen <= 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
-    dos_snprintf(pszBuff, ulMaxLen, "%04d%02d%02d-%02d%02d%02d-%u-%s-%s"
+
+    dos_snprintf(pszBuff, ulMaxLen
+            , "%u/%04d%02d%02d/VR-%02d%02d%02d-%s-%s"
+            , ulCustomerID
             , pstTime->tm_year + 1900
             , pstTime->tm_mon + 1
             , pstTime->tm_mday
             , pstTime->tm_hour
             , pstTime->tm_min
             , pstTime->tm_sec
-            , ulCustomerID
             , pszCallee
             , pszCaller);
 
@@ -745,6 +755,8 @@ SC_TASK_CB_ST *sc_tcb_alloc()
 
     if (pstTCB)
     {
+        pthread_mutex_init(&pstTCB->mutexTaskList, NULL);
+
         pthread_mutex_lock(&pstTCB->mutexTaskList);
         sc_tcb_init(pstTCB);
         pstTCB->ucValid = 1;
@@ -806,7 +818,7 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulTaskID = U32_BUTT;
     pstTCB->ulCustomID = U32_BUTT;
     pstTCB->ulCurrentConcurrency = 0;
-    pstTCB->ulMaxConcurrency = 10;
+    pstTCB->ulMaxConcurrency = SC_MAX_CALL;
     pstTCB->usSiteCount = 0;
     pstTCB->ulAgentQueueID = U32_BUTT;
     pstTCB->ucAudioPlayCnt = 0;
@@ -927,6 +939,27 @@ VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID)
     pstTCB->ulCustomID = ulCustomID;
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
 }
+
+U32 sc_update_callee_status(U32 ulTaskID, S8 *pszCallee, U32 ulStatsu)
+{
+    S8 szSQL[512] = { 0 };
+
+    dos_snprintf(szSQL, sizeof(szSQL)
+                    , "UPDATE tbl_callee SET `status`=%d WHERE tbl_callee.regex_number=\"%s\" AND calleefile_id IN (SELECT callee_id FROM tbl_calltask WHERE id = %u)", ulStatsu, pszCallee, ulTaskID);
+
+    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+}
+
+
+U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu)
+{
+    S8 szSQL[512] = { 0 };
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_calltask SET status=%d WHERE id=%u", ulStatsu, ulTaskID);
+
+    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+}
+
 
 static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
@@ -1201,23 +1234,8 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulCalleeCount = 0;
 
     dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT "
-                      "  a.id, a.regex_number "
-                      "FROM "
-                      "  tbl_callee a "
-                      "LEFT JOIN "
-                      "    (SELECT "
-                      "      c.id as id "
-                      "    FROM "
-                      "      tbl_calleefile c "
-                      "    LEFT JOIN "
-                      "      tbl_calltask d "
-                      "    ON "
-                      "      c.id = d.callee_id AND d.id = %d) b "
-                      "ON "
-                      "  a.calleefile_id = b.id AND a.`status` <> 3 "
-                      "LIMIT %d, 1000;"
-                    , pstTCB->usTCBNo
+                    , "SELECT id, regex_number FROM tbl_callee WHERE `status`=0 AND calleefile_id = (SELECT tbl_calltask.callee_id FROM tbl_calltask WHERE id=%u) LIMIT %u, 1000;"
+                    , pstTCB->ulTaskID
                     , pstTCB->ulLastCalleeIndex);
 
     if (DB_ERR_SUCC != db_query(g_pstSCDBHandle, szSQL, sc_task_load_callee_callback, (VOID *)pstTCB, NULL))
@@ -1497,10 +1515,13 @@ S32 sc_task_load_audio_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
     SC_TASK_CB_ST *pstTCB = NULL;
     S8 *pszFilePath = NULL;
+    S8 *pszPlatCNT = NULL;
+    U32 ulPlaycnt;
 
 
     pstTCB = pArg;
     pszFilePath = pszValues[0];
+    pszPlatCNT  = pszValues[1];
     if (DOS_ADDR_INVALID(pstTCB)
         || DOS_ADDR_INVALID(pszFilePath)
         || '\0' == pszFilePath[0])
@@ -1510,7 +1531,17 @@ S32 sc_task_load_audio_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
         return DOS_FAIL;
     }
 
-    dos_snprintf(pstTCB->szAudioFileLen, sizeof(pstTCB->szAudioFileLen), "%s/%d", SC_TASK_AUDIO_PATH, pszFilePath);
+    if (DOS_ADDR_INVALID(pszPlatCNT)
+        || '\0' == pszPlatCNT[0]
+        || dos_atoul(pszPlatCNT, &ulPlaycnt) < 0)
+    {
+        DOS_ASSERT(0);
+
+        ulPlaycnt = 3;
+    }
+
+    pstTCB->ucAudioPlayCnt = (U8)ulPlaycnt;
+    dos_snprintf(pstTCB->szAudioFileLen, sizeof(pstTCB->szAudioFileLen), "%s/%u/%s", SC_TASK_AUDIO_PATH, pstTCB->ulCustomID, pszFilePath);
 
     return DOS_SUCC;
 }
@@ -1544,7 +1575,7 @@ U32 sc_task_load_audio(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT audio_id FROM tbl_calltask WHERE id = %d;", pstTCB->usTCBNo);
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT audio_id,playcnt FROM tbl_calltask WHERE id = %u;", pstTCB->ulTaskID);
 
     db_query(g_pstSCDBHandle, szSQL, sc_task_load_audio_cb, pstTCB, NULL);
 
@@ -1620,7 +1651,7 @@ U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB)
         return DOS_FALSE;
     }
 
-    if (pstTCB->ulCurrentConcurrency >= (pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE))
+    if (pstTCB->ulCurrentConcurrency >= SC_MAX_CALL)
     {
         SC_TRACE_OUT();
         return DOS_FALSE;
@@ -1649,6 +1680,11 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
     {
         SC_TRACE_OUT();
         return 3000;
+    }
+
+    if (SC_TASK_MODE_AUDIO_ONLY == pstTCB->ucMode)
+    {
+        return 1000 / SC_MAX_CALL_PRE_SEC;
     }
 
     if (pstTCB->ulCurrentConcurrency)
@@ -1695,6 +1731,8 @@ S8 *sc_task_get_audio_file(U32 ulTCBNo)
         SC_TRACE_OUT();
         return NULL;
     }
+
+    SC_TRACE_OUT();
 
     return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].szAudioFileLen;
 }
@@ -1883,12 +1921,17 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
             ulRet = py_exec_func("router", "make_route", "(k)", (U64)ulGatewayID);
             if (DOS_SUCC != ulRet)
             {
-               DOS_ASSERT(0);
-              return DOS_FAIL;
+                DOS_ASSERT(0);
+                return DOS_FAIL;
             }
 #endif
 
-            sc_load_gateway(ulGatewayID);
+            ulRet = sc_load_gateway(ulGatewayID);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
 
             ulRet = sc_ep_esl_execute_cmd("bgapi sofia  profile external restart");
             if (ulRet != DOS_SUCC)
@@ -1896,8 +1939,10 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
+
+            break;
         }
-        break;
+
         case SC_API_CMD_ACTION_GATEWAY_DELETE:
         {
 #if INCLUDE_SERVICE_PYTHON
@@ -1914,8 +1959,10 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
+
+            break;
         }
-        break;
+
         default:
             break;
    }
@@ -1947,14 +1994,14 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
         case SC_API_CMD_ACTION_SIP_UPDATE:
         {
 #if INCLUDE_SERVICE_PYTHON
-            ulRet = py_exec_func("sip", "add_sip","(i)", ulSipID);
+            ulRet = py_exec_func("sip", "add_sip", "(i)", ulSipID);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
 
-            logr_info("Add SIP XML SUCC.");         
+            logr_info("Add SIP XML SUCC.");
 #endif
             ulRet = sc_load_sip_userid(ulSipID);
             if (ulRet != DOS_SUCC)
@@ -1973,7 +2020,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
                 return DOS_FAIL;
             }
 #if INCLUDE_SERVICE_PYTHON
-            ulRet = py_exec_func("sip", "del_sip","(i,s,i)", ulSipID, szUserID, ulCustomerID);
+            ulRet = py_exec_func("sip", "del_sip", "(i,s,i)", ulSipID, szUserID, ulCustomerID);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -2050,22 +2097,28 @@ U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID)
     switch(ulAction)
     {
         case SC_API_CMD_ACTION_GW_GROUP_ADD:
-            sc_load_gateway_grp(ulGwGroupID);
-            break;
-        case SC_API_CMD_ACTION_GW_GROUP_DELETE:
+            ulRet = sc_load_gateway_grp(ulGwGroupID);
+            if (DOS_SUCC != ulRet)
             {
-                ulRet = sc_gateway_grp_delete(ulGwGroupID);
-                if (ulRet != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
-                    return DOS_FAIL;
-                }
+                DOS_ASSERT(0);
+                break;
             }
+            /* 这里没有break */
+
+        case SC_API_CMD_ACTION_GW_GROUP_UPDATE:
+            ulRet = sc_refresh_gateway_grp(ulGwGroupID);
+            break;
+
+        case SC_API_CMD_ACTION_GW_GROUP_DELETE:
+            ulRet = sc_gateway_grp_delete(ulGwGroupID);
             break;
         default:
             break;
     }
-    return DOS_SUCC;
+
+    sc_logr_info(SC_ESL, "Edit gw group Finished. ID: %u Action:%u, Result: %u", ulGwGroupID, ulAction, ulRet);
+
+    return ulRet;
 }
 
 U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID)

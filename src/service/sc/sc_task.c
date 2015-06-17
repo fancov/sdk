@@ -20,6 +20,7 @@ extern "C"{
 /* include private header files */
 #include "sc_def.h"
 #include "sc_debug.h"
+#include "sc_acd_def.h"
 
 /* define marcos */
 
@@ -286,7 +287,9 @@ fail:
  */
 VOID *sc_task_runtime(VOID *ptr)
 {
+    SC_TEL_NUM_QUERY_NODE_ST *pstCallee;
     SC_TASK_CB_ST   *pstTCB;
+    list_t          *pstList;
     U32             ulTaskInterval;
 
     if (!ptr)
@@ -308,7 +311,6 @@ VOID *sc_task_runtime(VOID *ptr)
     while (1)
     {
         /* 根据当前呼叫量，确定发起呼叫的间隔，如果当前任务已经处于受限状态，就要强制调整间隔 */
-        ulTaskInterval = sc_task_get_call_interval(pstTCB);
         if (pstTCB->ulCurrentConcurrency >= pstTCB->ulMaxConcurrency)
         {
             sc_logr_info(SC_TASK, "Cannot make call for reach the max concurrency. Task : %u.", pstTCB->ulTaskID);
@@ -329,6 +331,16 @@ VOID *sc_task_runtime(VOID *ptr)
             }
         }
 #endif
+        /* 如果需要接通坐席的任务，则需要判断是否有坐席，如果没有坐席就不呼叫了 */
+        if (SC_TASK_MODE_AUDIO_ONLY != pstTCB->ucMode
+            && 0 == sc_acd_get_idel_agent(pstTCB->ulAgentQueueID))
+        {
+            sc_logr_info(SC_TASK, "There is no useable agent for task %u, Group ID: %u.", pstTCB->ulTaskID, pstTCB->ulAgentQueueID);
+            usleep(1000 * 1000);
+            continue;
+        }
+
+        ulTaskInterval = sc_task_get_call_interval(pstTCB);
         usleep(ulTaskInterval * 1000);
 
         /* 如果暂停了就继续等待 */
@@ -373,8 +385,43 @@ VOID *sc_task_runtime(VOID *ptr)
         }
     }
 
-    /* TODO: 释放相关资源 */
+    sc_update_task_status(pstTCB->ulTaskID, pstTCB->ucTaskStatus);
+
     sc_logr_info(SC_TASK, "Task %d finished.", pstTCB->ulTaskID);
+
+    /* 释放相关资源 */
+    while (1)
+    {
+        if (dos_list_is_empty(&pstTCB->stCalleeNumQuery))
+        {
+            break;
+        }
+
+        pstList = dos_list_fetch(&pstTCB->stCalleeNumQuery);
+        if (DOS_ADDR_INVALID(pstList))
+        {
+            break;
+        }
+
+        pstCallee = dos_list_entry(pstList, SC_TEL_NUM_QUERY_NODE_ST, stLink);
+        if (DOS_ADDR_INVALID(pstCallee))
+        {
+            continue;
+        }
+
+        dos_dmem_free(pstCallee);
+        pstCallee = NULL;
+    }
+
+    if (pstTCB->pstCallerNumQuery)
+    {
+        dos_dmem_free(pstTCB->pstCallerNumQuery);
+        pstTCB->pstCallerNumQuery = NULL;
+    }
+    pthread_mutex_destroy(&pstTCB->mutexTaskList);
+
+    sc_tcb_free(pstTCB);
+    pstTCB = NULL;
 
     return NULL;
 }
@@ -473,7 +520,7 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
         goto init_fail;
     }
 
-    pstTCB->ulMaxConcurrency = pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE;
+    pstTCB->ulMaxConcurrency = 3000; //pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE;
 
     sc_logr_notice(SC_TASK, "Load data for task %d finished.", pstTCB->ulTaskID);
     SC_TRACE_OUT();
