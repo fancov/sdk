@@ -14,7 +14,7 @@ DOS_INCLUDES				= -I$(SROUCE)/include
 SUFFIX					= o
 
 # LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86 -lwebs_x86
-LIBS					= -lpthread -lmxml_x86 -lsqlite3_x86 -lwebs_x86 -lmysqlclient -llicc_x86 -lcrypto_x86
+LIBS					= -lpthread -lmxml_x86 -lsqlite3_x86 -lwebs_x86 -lmysqlclient -llicc_x86 -lssl_x86 -lcrypto_x86
 
 MYSQL_HEADERS				= -I/usr/include/mysql
 #MYSQL_LIBS				= -L/usr/lib64/mysql

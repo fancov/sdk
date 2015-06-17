@@ -49,8 +49,34 @@ VOID bsd_send_walk_rsp2sl(DLL_NODE_S *pMsgNode, S32 lReqRet)
 
 }
 
-/* 业务层发送遍历请求到数据层 */
-VOID bss_send_walk_req2dl(U32 ulTblType)
+
+VOID bsd_inherit_rule_req2sl(DLL_NODE_S *pMsgNode)
+{
+    U32 ulPackageID = U32_BUTT;
+    BS_INTER_MSG_WALK   *pstMsg = NULL;
+
+    pstMsg = (BS_INTER_MSG_WALK *)pMsgNode->pHandle;
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Msg is Empty.");
+        return;
+    }
+
+    if (DOS_ADDR_INVALID(pstMsg->param))
+    {
+        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Billing Package ID FAIL.");
+        return ;
+    }
+
+    ulPackageID = *(U32 *)(pstMsg->param);
+    dos_dmem_free(pstMsg->param);
+    pstMsg->param = NULL;
+    
+    bsd_walk_billing_package_tbl_bak(ulPackageID);
+}
+
+/*  业务层发送遍历请求到数据层  */
+VOID bss_send_walk_req2dl(U32 ulTblType , BS_FN callback ,VOID *param)
 {
     DLL_NODE_S          *pstMsgNode = NULL;
     BS_INTER_MSG_WALK   *pstTblWalkMsg = NULL;
@@ -77,9 +103,9 @@ VOID bss_send_walk_req2dl(U32 ulTblType)
     pstTblWalkMsg->stMsgTag.lInterErr = BS_INTER_ERR_SUCC;
     pstTblWalkMsg->stMsgTag.usMsgLen = sizeof(BS_INTER_MSG_WALK);
     pstTblWalkMsg->stMsgTag.ucReserv = 0;
-    pstTblWalkMsg->ulTblType = ulTblType;
-    pstTblWalkMsg->FnCallback = NULL;
-    pstTblWalkMsg->param = NULL;
+    pstTblWalkMsg->ulTblType = ulTblType; 
+    pstTblWalkMsg->FnCallback = callback;
+    pstTblWalkMsg->param = param;
     pstMsgNode->pHandle = (VOID *)pstTblWalkMsg;
 
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG,

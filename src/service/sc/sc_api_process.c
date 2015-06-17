@@ -33,7 +33,7 @@ extern "C"{
 SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
 {
     {"reload",                   sc_http_api_reload_xml},
-    {"task",                     sc_http_api_task_ctrl},
+    {"task-ctrl",                sc_http_api_task_ctrl},
     {"verify",                   sc_http_api_num_verify},
     {"callctrl",                 sc_http_api_call_ctrl},
     {"agent",                    sc_http_api_agent_action},
@@ -241,7 +241,15 @@ U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient)
         DOS_ASSERT(0);
         goto invalid_params;
     }
-    if (dos_strcmp(pszAction, "start") == 0)
+    if (dos_strcmp(pszAction, "add") == 0)
+    {
+        ulAction = SC_API_CMD_ACTION_ADD;
+    }
+    else if (dos_strcmp(pszAction, "delete") == 0)
+    {
+        ulAction = SC_API_CMD_ACTION_DELETE;
+    }
+    else if (dos_strcmp(pszAction, "start") == 0)
     {
         ulAction = SC_API_CMD_ACTION_START;
     }
@@ -784,6 +792,10 @@ U32 sc_http_api_gw_group_action(SC_HTTP_CLIENT_CB_S *pstClient)
     if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
     {
         ulAction = SC_API_CMD_ACTION_GW_GROUP_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_GW_GROUP_UPDATE;
     }
     else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
     {

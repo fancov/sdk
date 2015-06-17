@@ -640,7 +640,8 @@ BS_BILLING_RULE_ST *bs_match_billing_rule(BS_BILLING_PACKAGE_ST *pstPackage,
 
 /* bs_msg.c */
 VOID bsd_send_walk_rsp2sl(DLL_NODE_S *pMsgNode, S32 lReqRet);
-VOID bss_send_walk_req2dl(U32 ulTblType);
+VOID bsd_inherit_rule_req2sl(DLL_NODE_S *pMsgNode);
+VOID bss_send_walk_req2dl(U32 ulTblType, BS_FN callback, VOID *param);
 VOID bss_send_cdr2dl(DLL_NODE_S *pMsgNode, U8 ucMsgType);
 VOID bss_send_stat2dl(DLL_NODE_S *pMsgNode, U8 ucMsgType);
 VOID bss_send_rsp_msg2app(BS_MSG_TAG *pstMsgTag, U8 ucMsgType);

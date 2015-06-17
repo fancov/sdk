@@ -1,4 +1,4 @@
-#coding=utf-8
+# coding=utf-8
 
 '''
 @author: bubble
@@ -8,6 +8,7 @@
 '''
 
 import os
+import file_info
 
 def create_fs_log_dir():
     '''
@@ -18,5 +19,7 @@ def create_fs_log_dir():
     
     if os.path.exists(seqFsLogDir) is False:
         os.makedirs(seqFsLogDir)
-        
+
+    file_info.print_file_info('Create Dipcc log Directory SUCC.')
     return 1
+

@@ -77,6 +77,7 @@ const SC_HTTP_ERRNO_DESC_ST g_astHttpErrNOList[] = {
     {SC_HTTP_ERRNO_INVALID_PARAM,        "Invalid Parameter."},
     {SC_HTTP_ERRNO_CMD_EXEC_FAIL,        "Command exec failed."},
     {SC_HTTP_ERRNO_SERVER_ERROR,         "Internal Error."},
+    {SC_HTTP_ERRNO_SERVER_NOT_READY,     "Server Not ready, please try again."},
 
     {SC_HTTP_ERRNO_BUTT,                 ""},
 };
@@ -661,6 +662,13 @@ VOID* sc_httpd_runtime(VOID *ptr)
                     g_pstHTTPDList[ulIndex]->lListenSocket = -1;
                     logr_error("%s:Line %d: errno is %d, err msg:%s"
                                 , dos_get_filename(__FILE__), __LINE__, errno, strerror(errno));
+                    continue;
+                }
+
+                if (!g_blSCInitOK)
+                {
+                    sc_http_client_repaid_rsp(lClientSock, SC_HTTP_500, SC_HTTP_ERRNO_SERVER_NOT_READY);
+                    close(lClientSock);
                     continue;
                 }
 

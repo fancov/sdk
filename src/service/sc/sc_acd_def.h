@@ -19,11 +19,8 @@
 /* IP坐席:
  * 1. 初始化为OFFLINE状态
  * 2. 登陆之后就处于IDEL状态
- * 3. 签入之后就进入CONNECTED状态
- * 4. 签出之后就处于IEDL状态
- * 5. WEB上点击离开就处于离线状态
- * 6. 接通呼叫就处于BUSY状态
- * 7. 呼叫结束后如果坐席没有挂机就进入CONNECTED状态，坐席挂机了，就处于IDEL状态
+ * 3. WEB上点击离开就处于离线状态
+ * 4. 接通呼叫就处于BUSY状态
  * PSTN坐席:
  * 1.初始化为SC_ACD_IDEL状态
  * 2.呼叫中为BUSY状态
@@ -32,9 +29,9 @@
 enum {
     SC_ACD_OFFLINE = 0,                 /* 离线状态，不可用 */
     SC_ACD_IDEL,                        /* 坐席已可用 */
-    SC_ACD_CONNECTED,                   /* 坐席已经签入 */
     SC_ACD_AWAY,                        /* 坐席暂时离开，不可用 */
     SC_ACD_BUSY,                        /* 坐席忙，不可用 */
+    SC_ACD_PROC,                        /* 坐席正在处理通话结果 */
 
     SC_ACD_BUTT
 };
@@ -92,8 +89,9 @@ typedef struct tagACDSiteDesc{
     U32        bGroupHeader:1;                    /* 是否是组长 */
     U32        bLogin:1;                          /* 是否已经登录 */
     U32        bConnected:1;                      /* 是否已经长连 */
-    U32        bWaitingDelete:1;                  /* 是否是组长 */
-    U32        ucRes1:24;
+    U32        bWaitingDelete:1;                  /* 是否已经被删除 */
+    U32        ucProcesingTime:8;                 /* 坐席处理呼叫结果时间 */
+    U32        ucRes1:16;
 
     S8         szUserID[SC_TEL_NUMBER_LENGTH];    /* SIP User ID */
     S8         szExtension[SC_TEL_NUMBER_LENGTH]; /* 分机号 */
@@ -109,6 +107,9 @@ U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGroupID)
 U32 sc_acd_agent_update_status(S8 *pszUserID, U32 ulStatus);
 S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
 U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);
+U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult);
+U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID);
+U32 sc_acd_get_idel_agent(U32 ulGroupID);
 
 #endif
 

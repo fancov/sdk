@@ -6,11 +6,11 @@ extern "C" {
 
 #if INCLUDE_SERVICE_PYTHON
 
-#include <python2.6/Python.h>
 #include <dos/dos_types.h>
 #include <dos/dos_config.h>
 #include <dos/dos_py.h>
 
+PyObject *m_pstRetVal = NULL;
 
 /*
  * 函数名: U32 py_init()
@@ -64,9 +64,8 @@ U32   py_exec_func(const char *pszModule, const char *pszFunc, const char *pszPy
 {
     S8   szPyScriptPath[MAX_PY_SCRIPT_LEN] = {0,};
     U32  ulRet = DOS_SUCC;
-    S32  lRet = 0;
     S8   szImportPath[MAX_PY_SCRIPT_LEN] = {0,};
-    PyObject *pstPyMod = NULL, *pstPyFunc = NULL, *pstParam = NULL, *pstRetVal = NULL;
+    PyObject *pstPyMod = NULL, *pstPyFunc = NULL, *pstParam = NULL;
     va_list vargs;
 
     if (!pszModule || !pszFunc || !pszPyFormat)
@@ -84,9 +83,6 @@ U32   py_exec_func(const char *pszModule, const char *pszFunc, const char *pszPy
         ulRet = DOS_FAIL;
         return DOS_FAIL;
     }
-
-    logr_info("%s:Line %d: The current python work directory is: %s"
-                , dos_get_filename(__FILE__), __LINE__, szPyScriptPath);
 
     dos_snprintf(szImportPath, sizeof(szImportPath), "sys.path.append(\'%s\')", szPyScriptPath);
 
@@ -123,29 +119,17 @@ U32   py_exec_func(const char *pszModule, const char *pszFunc, const char *pszPy
     va_end(vargs);
 
     /* 函数调用 */
-    pstRetVal = PyEval_CallObject(pstPyFunc, pstParam);
-    if (!pstRetVal)
+    m_pstRetVal = PyEval_CallObject(pstPyFunc, pstParam);
+    if (!m_pstRetVal)
     {
         DOS_ASSERT(0);
         ulRet = DOS_FAIL;
         goto py_finished;
     }
 
-    /* 获取python函数返回值 */
-    PyArg_Parse(pstRetVal, "i", &lRet);
-    if (ulRet < 0)
-    {
-        DOS_ASSERT(0);
-        ulRet = DOS_FAIL;
-        goto py_finished;
-    }
+    goto py_finished;
 
 py_finished:
-    if (pstRetVal)
-    {
-        Py_DECREF(pstRetVal);
-        pstRetVal = NULL;
-    }
     if (pstParam)
     {
         Py_DECREF(pstParam);
@@ -164,6 +148,50 @@ py_finished:
     return ulRet;
 }
 
+/*
+ * 函数名: const S8*   py_get_version()
+ * 参数:   无参数
+ * 功能:   获取python解释器版本号
+ **/
+U32  py_get_version(S8 *pszVersion, U32 ulLen)
+{
+    U32 ulRet = 0;
+    S8  *pszNewVersion = NULL, *pszPos = NULL;
+    
+    ulRet = py_exec_func("file_info", "get_interpreter_version", "()");
+    if (DOS_SUCC != ulRet)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(m_pstRetVal))
+    {
+        logr_error("Python Function \'get_interpreter_version\' returned None.");
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pszNewVersion = PyString_AsString(m_pstRetVal);
+    if (!pszNewVersion)
+    {
+        DOS_ASSERT(0);
+    }
+
+    dos_snprintf(pszVersion, ulLen, "%s", pszNewVersion);
+
+    /* 该句只是为了版本信息打印格式更好看，将第一个换行符打印成空格 */
+    pszPos = dos_strchr(pszVersion, '\n');
+    *pszPos = ' ';
+
+    if (DOS_ADDR_VALID(m_pstRetVal))
+    {
+        Py_DECREF(m_pstRetVal);
+        m_pstRetVal = NULL;
+    }
+
+    return DOS_SUCC;
+}
 
 /*
  * 函数名: U32  py_deinit()
@@ -175,7 +203,6 @@ U32  py_deinit()
 {
     /* 卸载Python模块 */
     Py_Finalize();
-
     return DOS_SUCC;
 }
 

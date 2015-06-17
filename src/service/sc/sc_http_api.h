@@ -36,6 +36,7 @@ enum SC_HTTP_ERRNO
     SC_HTTP_ERRNO_INVALID_PARAM,                 /* 请求校验失败，不合法的参数 */
     SC_HTTP_ERRNO_CMD_EXEC_FAIL,                 /* 请求执行失败 */
     SC_HTTP_ERRNO_SERVER_ERROR,                  /* 请求执行失败 */
+    SC_HTTP_ERRNO_SERVER_NOT_READY,
 
     SC_HTTP_ERRNO_BUTT
 };
@@ -61,6 +62,8 @@ enum tagAPICMDActionList
     SC_API_CMD_ACTION_FORCE_ALL,                  /* API命令reload附加值，强制刷新所有配置 */
     SC_API_CMD_ACTION_CONDITIONAL,                /* API命令reload附加值，有条件的刷新，不影响业务 */
 
+    SC_API_CMD_ACTION_ADD,                        /* API命令task ctrl附加值，启动任务 */
+    SC_API_CMD_ACTION_DELETE,                     /* API命令task ctrl附加值，停止任务 */
     SC_API_CMD_ACTION_START,                      /* API命令task ctrl附加值，启动任务 */
     SC_API_CMD_ACTION_STOP,                       /* API命令task ctrl附加值，停止任务 */
     SC_API_CMD_ACTION_CONTINUE,                   /* API命令task ctrl附加值，重新启动任务 */
@@ -89,6 +92,7 @@ enum tagAPICMDActionList
 
     SC_API_CMD_ACTION_GW_GROUP_ADD,                      /* 增加一个网关组 */
     SC_API_CMD_ACTION_GW_GROUP_DELETE,                   /* 删除一个网关组 */
+    SC_API_CMD_ACTION_GW_GROUP_UPDATE,
 
     SC_API_CMD_ACTION_DID_ADD,                           /* 添加一个did */
     SC_API_CMD_ACTION_DID_DELETE,                        /* 删除一个did */

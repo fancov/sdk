@@ -41,7 +41,7 @@ const S8 *json_get_param(JSON_OBJ_ST *pstJsonObj, S8 *szKey)
 
     json_object *jsonVal = (json_object *)pstEntry->v;
     if (DOS_ADDR_INVALID(jsonVal ))
-    {   
+    {
         DOS_ASSERT(0);
 
         pthread_mutex_unlock(&pstJsonObj->mutexObj);
@@ -110,6 +110,40 @@ VOID json_deinit(JSON_OBJ_ST **ppstJsonObj)
     pstJsonObj = NULL;
     *ppstJsonObj = NULL;
 }
+
+S32 json_array_length(JSON_OBJ_ST *pstJsonObj)
+{
+    if (DOS_ADDR_INVALID(pstJsonObj) || DOS_ADDR_INVALID(pstJsonObj->jsonObj))
+    {
+        DOS_ASSERT(0);
+        return 0;
+    }
+
+    return json_object_array_length(pstJsonObj->jsonObj);
+}
+
+const S8 *json_array_at(JSON_OBJ_ST *pstJsonArray, S32 ulIndex)
+{
+    json_object *jsonVal;
+
+    if (DOS_ADDR_INVALID(pstJsonArray) || DOS_ADDR_INVALID(pstJsonArray->jsonObj))
+    {
+        DOS_ASSERT(0);
+
+        return NULL;
+    }
+
+    jsonVal= json_object_array_get_idx(pstJsonArray->jsonObj, ulIndex);
+    if (DOS_ADDR_INVALID(jsonVal))
+    {
+        DOS_ASSERT(0);
+
+        return NULL;
+    }
+
+    return json_object_get_string(jsonVal);
+}
+
 
 
 #ifdef __cplusplus
