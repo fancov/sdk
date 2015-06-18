@@ -7,6 +7,8 @@ extern "C"{
 
 #include <dos/dos_types.h>
 
+#define PTC_LOCK_MIN_COUT   3
+
 typedef struct tagRecvFromWebMsgHandle
 {
     list_t                  stList;

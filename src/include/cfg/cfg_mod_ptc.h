@@ -13,8 +13,6 @@
 #ifndef __CFG_MOD_PTC_H__
 #define __CFG_MOD_PTC_H__
 
-#define PTC_VERSION                       "1.3.0.4"
-
 /* 异常处理模块 */
 #define INCLUDE_EXCEPTION_CATCH           1
 
@@ -22,7 +20,11 @@
 #define INCLUDE_DEBUG_CLI                 (!INCLUDE_DEBUG_CLI_SERVER)
 
 /* 日志模块开关 */
+#ifdef ARM_VERSION
+#define INCLUDE_SYSLOG_ENABLE             0
+#else
 #define INCLUDE_SYSLOG_ENABLE             1
+#endif
 #if (INCLUDE_SYSLOG_ENABLE)
 #define INCLUDE_SYSLOG_FILE               0
 #define INCLUDE_SYSLOG_DB                 0

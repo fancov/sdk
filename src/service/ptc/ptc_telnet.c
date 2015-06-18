@@ -160,7 +160,7 @@ void *ptc_recv_msg_from_cmd(void *arg)
             g_ulCmdSocketMax = 0;
             for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
             {
-                if (g_astPtcConnects[i].bIsValid && g_astPtcConnects[i].enDataType == PT_DATA_CMD)
+                if (g_astPtcConnects[i].enState == PTC_CLIENT_USING && g_astPtcConnects[i].enDataType == PT_DATA_CMD)
                 {
                     FD_SET(g_astPtcConnects[i].lSocket, &g_stCmdFdSet);
                     g_ulCmdSocketMax = g_ulCmdSocketMax > g_astPtcConnects[i].lSocket ? g_ulCmdSocketMax : g_astPtcConnects[i].lSocket;
@@ -193,7 +193,6 @@ void *ptc_recv_msg_from_cmd(void *arg)
                 {
                     ptc_delete_send_stream_node_by_streamID(lStreamID);
                     FD_CLR(i, &g_stCmdFdSet);
-                    close(i);
                     ptc_delete_client_by_socket(i, PT_DATA_CMD);
                     ptc_send_exit_notify_to_pts(PT_DATA_CMD, lStreamID, 0);
                 }
@@ -298,7 +297,6 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
             if (getsockopt(lSockfd, IPPROTO_TCP, TCP_INFO, &tcpinfo, &optlen) < 0)
             {
                 DOS_ASSERT(0);
-                close(lSockfd);
                 ptc_delete_client_by_socket(lSockfd, PT_DATA_CMD);
                 ptc_send_exit_notify_to_pts(PT_DATA_CMD, pstStreamNode->ulStreamID, 3);
                 ptc_delete_stream_node_by_recv(pstStreamNode);
@@ -308,7 +306,6 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
             if (TCP_CLOSE == tcpinfo || TCP_CLOSE_WAIT == tcpinfo || TCP_CLOSING == tcpinfo)
             {
                 DOS_ASSERT(0);
-                close(lSockfd);
                 ptc_delete_client_by_socket(lSockfd, PT_DATA_CMD);
                 ptc_send_exit_notify_to_pts(PT_DATA_CMD, pstStreamNode->ulStreamID, 3);
                 ptc_delete_stream_node_by_recv(pstStreamNode);
@@ -316,6 +313,16 @@ void ptc_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
             }
 
             lSendCount = send(lSockfd, pstRecvDataTcp->szBuff, pstRecvDataTcp->ulLen, 0);
+            if (lSendCount <= 0)
+            {
+                /* 创建socket失败，通知pts结束 */
+                DOS_ASSERT(0);
+                ptc_delete_client_by_socket(lSockfd, PT_DATA_CMD);
+                ptc_send_exit_notify_to_pts(PT_DATA_CMD, pstStreamNode->ulStreamID, 3);
+                ptc_delete_stream_node_by_recv(pstStreamNode);
+
+                break;
+            }
             pt_logr_debug("ptc send to telnet server, stream : %d, len : %d, result = %d", pstStreamNode->ulStreamID, pstRecvDataTcp->ulLen, lSendCount);
 
         }
@@ -335,16 +342,13 @@ S32 ptc_printf_telnet_msg(U32 ulIndex, S32 argc, S8 **argv)
     U32 ulLen = 0;
     S8 szBuff[PT_DATA_BUFF_512] = {0};
 
-    ulLen = snprintf(szBuff, sizeof(szBuff), "\r\n%10s%10s%10s\r\n", "StreamID", "Socket", "Valid");
+    ulLen = snprintf(szBuff, sizeof(szBuff), "\r\n%10s%10s%10s\r\n", "StreamID", "Socket", "state");
     cli_out_string(ulIndex, szBuff);
 
     for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
     {
-        if (g_astPtcConnects[i].enDataType == PT_DATA_CMD)
-        {
-            snprintf(szBuff, sizeof(szBuff), "%10d%10d%10d\r\n", g_astPtcConnects[i].ulStreamID, g_astPtcConnects[i].lSocket, g_astPtcConnects[i].bIsValid);
-            cli_out_string(ulIndex, szBuff);
-        }
+        snprintf(szBuff, sizeof(szBuff), "%10d%10d%10d\r\n", g_astPtcConnects[i].ulStreamID, g_astPtcConnects[i].lSocket, g_astPtcConnects[i].enState);
+        cli_out_string(ulIndex, szBuff);
     }
 
     return 0;

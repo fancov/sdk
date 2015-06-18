@@ -168,6 +168,7 @@ VOID pts_cmd_client_delete(U32 ulClientIndex)
         stMsgDes.enDataType = PT_DATA_CMD;
         stMsgDes.ulStreamID = g_astCmdClient[ulClientIndex].ulStreamID;
         pts_delete_stream_addr_node(stMsgDes.ulStreamID);
+        pts_set_delete_recv_buff_list_flag(stMsgDes.ulStreamID);
         pthread_mutex_lock(&g_mutexPtcSendList);
         pstPtcSendNode = pt_ptc_list_search(&g_stPtcListSend, g_astCmdClient[ulClientIndex].aucID);
         if (DOS_ADDR_VALID(pstPtcSendNode))
@@ -818,6 +819,9 @@ VOID pts_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 break;
             case 2:
                 dos_snprintf(szExitReason, PT_DATA_BUFF_128, "PTC have too many connection.\r\nPlease enter any key to continue.\r\n");
+                break;
+            case 3:
+                dos_snprintf(szExitReason, PT_DATA_BUFF_128, "Timeout.\r\n");
                 break;
             default:
                 szExitReason[0] = '\0';

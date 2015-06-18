@@ -6,13 +6,12 @@
 @time: Feburary 9rd,2015
 @todo: generate the directories and management xml files
 '''
-from xml.dom.minidom  import Document
+from xml.dom.minidom import Document
 import db_conn
 import file_info
 import db_config
 import os
 import dom_to_xml
-import db_exec
 from __builtin__ import str
 
 def phone_route():
@@ -28,7 +27,7 @@ def phone_route():
     # 查找所有的路由id
     seqSQLCmd = 'SELECT DISTINCT CONVERT(id, CHAR(10)) AS id FROM tbl_gateway;'
     file_info.print_file_info('seqSQLCmd is %s' % seqSQLCmd)
-    results = db_exec.exec_SQL(seqSQLCmd)
+    results = db_conn.exec_SQL(seqSQLCmd)
     if -1 == results:
         file_info.print_file_info('Phone route FAIL,results == %d' % results)
         return -1
@@ -38,28 +37,7 @@ def phone_route():
 
     file_info.print_file_info('Phone Route SUCC.')
     return 1
-    
-def get_route_param(id):
-    '''
-    @param id: 网关id
-    @todo: 获取路由参数
-    '''
-    global CONN 
-    lRet = db_conn.connect_db()
-    if -1 == lRet:
-        file_info.print_file_info('Get route parameter FAIL,lRet is %d' % lRet)
-        return -1
-    
-    # 获取路由信息
-    seqSQLCmd = 'SELECT name,username,password,realm,form_user,form_domain,extension,proxy,reg_proxy,expire_secs,CONVERT(register, CHAR(10)) AS register,reg_transport,CONVERT(retry_secs, CHAR(20)) AS retry_secs, CONVERT(cid_in_from,CHAR(20)) AS cid_in_from,contact_params, CONVERT(exten_in_contact, CHAR(20)) AS exten_in_contact,CONVERT(ping, CHAR(20)) AS ping FROM tbl_gateway WHERE id=%d;' % (id)
-    
-    results = db_exec.exec_SQL(seqSQLCmd)
-    if -1 == results:
-        file_info.print_file_info('Get route param FAIL,results == %d' % results)
-        return -1
 
-    file_info.print_file_info('Get route Param SUCC.')
-    return results
 
 def make_route(ulGatewayID):
     '''
@@ -67,7 +45,7 @@ def make_route(ulGatewayID):
     @todo: 生成网关路由
     '''
     doc = Document()
-    results = get_route_param(ulGatewayID)  
+    results = db_conn.get_route_param(ulGatewayID)
     if -1 == results:
         file_info.print_file_info('Generate Route Configuration FAIL, results is %d' % results)
         return -1
@@ -143,4 +121,3 @@ def del_route(ulGatewayID):
 
     file_info.print_file_info('Delete route %d Configuration SUCC.' % ulGatewayID)
     return 1
-

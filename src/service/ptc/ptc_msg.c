@@ -34,11 +34,11 @@ pthread_mutex_t g_mutexPtcSendPthread   = PTHREAD_MUTEX_INITIALIZER;       /* 发
 pthread_cond_t  g_condPtcSend           = PTHREAD_COND_INITIALIZER;        /* 发送条件变量 */
 pthread_mutex_t g_mutexPtcRecvPthread   = PTHREAD_MUTEX_INITIALIZER;       /* 接收线程锁 */
 pthread_cond_t  g_condPtcRecv           = PTHREAD_COND_INITIALIZER;        /* 接收条件变量 */
-
-S32 g_ulUdpSocket       = 0;
-U32 g_ulSendTimeSleep   = 20;
-U32 g_ulConnectPtsCount = 0;
-S32 g_lHBTimeInterval   = 0;         /* ns */
+S32 g_ulUdpSocket               = 0;
+U32 g_ulPtcNendSendNodeCount    = 0;
+U32 g_ulSendTimeSleep           = 20;
+U32 g_ulConnectPtsCount         = 0;
+S32 g_lHBTimeInterval           = 0;         /* ns */
 PT_PTC_TYPE_EN g_enPtcType = PT_PTC_TYPE_LINUX;
 struct timeval g_stHBStartTime;
 S8 *g_pPackageBuff = NULL;
@@ -46,6 +46,8 @@ U32 g_ulPackageLen = 0;
 U32 g_ulReceivedLen = 0;
 U32 g_usCrc = 0;
 PTC_CLIENT_CB_ST g_astPtcConnects[PTC_STREAMID_MAX_COUNT];
+
+VOID ptc_delete_client_by_index(U32 ulIndex);
 
 S8 *ptc_get_current_time()
 {
@@ -61,12 +63,13 @@ void ptc_init_ptc_client_cb()
 
     for(i=0; i<PTC_STREAMID_MAX_COUNT; i++)
     {
-        g_astPtcConnects[i].ulStreamID = 0;
+        g_astPtcConnects[i].ulStreamID = U32_BUTT;
         g_astPtcConnects[i].lSocket = -1;
-        g_astPtcConnects[i].bIsValid = DOS_FALSE;
+        g_astPtcConnects[i].enState = PTC_CLIENT_LEISURE;
         g_astPtcConnects[i].enDataType = PT_DATA_BUTT;
         dos_list_init(&g_astPtcConnects[i].stRecvBuffList);
         g_astPtcConnects[i].ulBuffNodeCount = 0;
+        pthread_mutex_init(&g_astPtcConnects[i].pMutexPthread, NULL);
     }
 }
 
@@ -84,7 +87,8 @@ S32 ptc_get_socket_by_streamID(U32 ulStreamID)
 
     for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
     {
-        if (g_astPtcConnects[i].bIsValid && g_astPtcConnects[i].ulStreamID == ulStreamID)
+        if (g_astPtcConnects[i].enState == PTC_CLIENT_USING
+            && g_astPtcConnects[i].ulStreamID == ulStreamID)
         {
             return g_astPtcConnects[i].lSocket;
         }
@@ -106,7 +110,9 @@ S32 ptc_get_streamID_by_socket(S32 lSocket, PT_DATA_TYPE_EN enDataType)
 
     for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
     {
-        if (g_astPtcConnects[i].enDataType == enDataType && g_astPtcConnects[i].bIsValid && g_astPtcConnects[i].lSocket == lSocket)
+        if (g_astPtcConnects[i].enDataType == enDataType
+            && g_astPtcConnects[i].enState == PTC_CLIENT_USING
+            && g_astPtcConnects[i].lSocket == lSocket)
         {
             return g_astPtcConnects[i].ulStreamID;
         }
@@ -121,7 +127,9 @@ S32 ptc_get_client_node_array_by_socket(S32 lSocket, PT_DATA_TYPE_EN enDataType)
 
     for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
     {
-        if (g_astPtcConnects[i].enDataType == enDataType && g_astPtcConnects[i].bIsValid && g_astPtcConnects[i].lSocket == lSocket)
+        if (g_astPtcConnects[i].enDataType == enDataType
+            && g_astPtcConnects[i].enState == PTC_CLIENT_USING
+            && g_astPtcConnects[i].lSocket == lSocket)
         {
             return i;
         }
@@ -143,12 +151,15 @@ S32 ptc_add_client(U32 ulStreamID, S32 lSocket, PT_DATA_TYPE_EN enDataType)
 
     for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
     {
-        if (!g_astPtcConnects[i].bIsValid)
+        if (g_astPtcConnects[i].enState == PTC_CLIENT_LEISURE)
         {
-            g_astPtcConnects[i].bIsValid = DOS_TRUE;
+            ptc_delete_client_by_index(i);
+
+            g_astPtcConnects[i].enState = PTC_CLIENT_USING;
             g_astPtcConnects[i].ulStreamID = ulStreamID;
             g_astPtcConnects[i].lSocket = lSocket;
             g_astPtcConnects[i].enDataType = enDataType;
+            g_astPtcConnects[i].lLastUseTime = time(NULL);
 
             switch (enDataType)
             {
@@ -171,6 +182,75 @@ S32 ptc_add_client(U32 ulStreamID, S32 lSocket, PT_DATA_TYPE_EN enDataType)
     return DOS_FAIL;
 }
 
+VOID ptc_delete_client_by_index(U32 ulIndex)
+{
+    list_t *pstRecvBuffList = NULL;
+    PTC_WEB_REV_MSG_HANDLE_ST *pstRecvBuffNode = NULL;
+
+    if (ulIndex >= PTC_STREAMID_MAX_COUNT)
+    {
+        return;
+    }
+    g_astPtcConnects[ulIndex].enState = PTC_CLIENT_FREEING;
+
+    if (g_astPtcConnects[ulIndex].lSocket > 0)
+    {
+        switch (g_astPtcConnects[ulIndex].enDataType)
+        {
+        case PT_DATA_WEB:
+            FD_CLR(g_astPtcConnects[ulIndex].lSocket, &g_stWebFdSet);
+            break;
+        case PT_DATA_CMD:
+            FD_CLR(g_astPtcConnects[ulIndex].lSocket, &g_stCmdFdSet);
+            break;
+        default:
+            break;
+        }
+        close(g_astPtcConnects[ulIndex].lSocket);
+    }
+
+    pthread_mutex_lock(&g_astPtcConnects[ulIndex].pMutexPthread);
+    g_astPtcConnects[ulIndex].ulBuffNodeCount = 0;
+
+    while (1)
+    {
+        if (dos_list_is_empty(&g_astPtcConnects[ulIndex].stRecvBuffList))
+        {
+            break;
+        }
+
+        pstRecvBuffList = dos_list_fetch(&g_astPtcConnects[ulIndex].stRecvBuffList);
+        if (DOS_ADDR_INVALID(pstRecvBuffList))
+        {
+            break;
+        }
+
+        pstRecvBuffNode = dos_list_entry(pstRecvBuffList, PTC_WEB_REV_MSG_HANDLE_ST, stList);
+        if (DOS_ADDR_INVALID(pstRecvBuffList))
+        {
+            continue;
+        }
+
+        if (DOS_ADDR_VALID(pstRecvBuffNode->paRecvBuff))
+        {
+            dos_dmem_free(pstRecvBuffNode->paRecvBuff);
+            pstRecvBuffNode->paRecvBuff = NULL;
+        }
+        if (DOS_ADDR_VALID(pstRecvBuffNode))
+        {
+            dos_dmem_free(pstRecvBuffNode);
+            pstRecvBuffNode = NULL;
+        }
+    }
+    g_astPtcConnects[ulIndex].ulBuffNodeCount = 0;
+    g_astPtcConnects[ulIndex].lSocket = -1;
+    g_astPtcConnects[ulIndex].ulStreamID = U32_BUTT;
+    g_astPtcConnects[ulIndex].enDataType = PT_DATA_BUTT;
+    g_astPtcConnects[ulIndex].enState = PTC_CLIENT_LEISURE;
+
+    pthread_mutex_unlock(&g_astPtcConnects[ulIndex].pMutexPthread);
+}
+
 /**
  * 函数：S32 ptc_add_client(U32 ulStreamID, S32 lSocket, PT_DATA_TYPE_EN enDataType)
  * 功能：
@@ -181,47 +261,14 @@ S32 ptc_add_client(U32 ulStreamID, S32 lSocket, PT_DATA_TYPE_EN enDataType)
 VOID ptc_delete_client_by_socket(S32 lSocket, PT_DATA_TYPE_EN enDataType)
 {
     S32 i = 0;
-    list_t *pstRecvBuffList = NULL;
-    PTC_WEB_REV_MSG_HANDLE_ST *pstRecvBuffNode = NULL;
 
     for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
     {
-        if (g_astPtcConnects[i].enDataType == enDataType && g_astPtcConnects[i].bIsValid && g_astPtcConnects[i].lSocket == lSocket)
+        if (g_astPtcConnects[i].enDataType == enDataType
+            && g_astPtcConnects[i].enState == PTC_CLIENT_USING
+            && g_astPtcConnects[i].lSocket == lSocket)
         {
-            g_astPtcConnects[i].bIsValid = DOS_FALSE;
-            g_astPtcConnects[i].lSocket = -1;
-            g_astPtcConnects[i].ulStreamID = U32_BUTT;
-
-            if (g_astPtcConnects[i].ulBuffNodeCount > 0)
-            {
-                g_astPtcConnects[i].ulBuffNodeCount = 0;
-
-                while (1)
-                {
-                    pstRecvBuffList = dos_list_fetch(&g_astPtcConnects[i].stRecvBuffList);
-                    if (DOS_ADDR_INVALID(pstRecvBuffList))
-                    {
-                        break;
-                    }
-
-                    pstRecvBuffNode = dos_list_entry(pstRecvBuffList, PTC_WEB_REV_MSG_HANDLE_ST, stList);
-                    if (DOS_ADDR_INVALID(pstRecvBuffList))
-                    {
-                        continue;
-                    }
-
-                    if (DOS_ADDR_VALID(pstRecvBuffNode->paRecvBuff))
-                    {
-                        dos_dmem_free(pstRecvBuffNode->paRecvBuff);
-                        pstRecvBuffNode->paRecvBuff = NULL;
-                    }
-                    if (DOS_ADDR_VALID(pstRecvBuffNode))
-                    {
-                        dos_dmem_free(pstRecvBuffNode);
-                        pstRecvBuffNode = NULL;
-                    }
-                }
-            }
+            ptc_delete_client_by_index(i);
 
             return;
         }
@@ -238,62 +285,13 @@ VOID ptc_delete_client_by_socket(S32 lSocket, PT_DATA_TYPE_EN enDataType)
 VOID ptc_delete_client_by_streamID(U32 ulStreamID)
 {
     S32 i = 0;
-    list_t *pstRecvBuffList = NULL;
-    PTC_WEB_REV_MSG_HANDLE_ST *pstRecvBuffNode = NULL;
 
     for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
     {
-        if (g_astPtcConnects[i].bIsValid && g_astPtcConnects[i].ulStreamID == ulStreamID)
+        if (g_astPtcConnects[i].enState == PTC_CLIENT_USING
+            && g_astPtcConnects[i].ulStreamID == ulStreamID)
         {
-            g_astPtcConnects[i].bIsValid = DOS_FALSE;
-            if (g_astPtcConnects[i].lSocket > 0)
-            {
-                switch (g_astPtcConnects[i].enDataType)
-                {
-                    case PT_DATA_WEB:
-                        FD_CLR(g_astPtcConnects[i].lSocket, &g_stWebFdSet);
-                        break;
-                    case PT_DATA_CMD:
-                        FD_CLR(g_astPtcConnects[i].lSocket, &g_stCmdFdSet);
-                        break;
-                    default:
-                        break;
-                }
-                close(g_astPtcConnects[i].lSocket);
-            }
-            g_astPtcConnects[i].lSocket = -1;
-            g_astPtcConnects[i].ulStreamID = U32_BUTT;
-            g_astPtcConnects[i].enDataType = PT_DATA_BUTT;
-
-            if (g_astPtcConnects[i].ulBuffNodeCount > 0)
-            {
-                g_astPtcConnects[i].ulBuffNodeCount = 0;
-                while (1)
-                {
-                    pstRecvBuffList = dos_list_fetch(&g_astPtcConnects[i].stRecvBuffList);
-                    if (DOS_ADDR_INVALID(pstRecvBuffList))
-                    {
-                        break;
-                    }
-
-                    pstRecvBuffNode = dos_list_entry(pstRecvBuffList, PTC_WEB_REV_MSG_HANDLE_ST, stList);
-                    if (DOS_ADDR_INVALID(pstRecvBuffList))
-                    {
-                        continue;
-                    }
-
-                    if (DOS_ADDR_VALID(pstRecvBuffNode->paRecvBuff))
-                    {
-                        dos_dmem_free(pstRecvBuffNode->paRecvBuff);
-                        pstRecvBuffNode->paRecvBuff = NULL;
-                    }
-                    if (DOS_ADDR_VALID(pstRecvBuffNode))
-                    {
-                        dos_dmem_free(pstRecvBuffNode);
-                        pstRecvBuffNode = NULL;
-                    }
-                }
-            }
+            ptc_delete_client_by_index(i);
 
             return;
         }
@@ -313,7 +311,9 @@ void ptc_set_cache_full_true(S32 lSocket, PT_DATA_TYPE_EN enDataType)
 
     for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
     {
-        if (g_astPtcConnects[i].enDataType == enDataType && g_astPtcConnects[i].bIsValid && g_astPtcConnects[i].lSocket == lSocket)
+        if (g_astPtcConnects[i].enDataType == enDataType
+            && g_astPtcConnects[i].enState == PTC_CLIENT_USING
+            && g_astPtcConnects[i].lSocket == lSocket)
         {
             if (PT_DATA_WEB == enDataType)
             {
@@ -336,7 +336,9 @@ void ptc_set_cache_full_false(U32 ulStreamID, PT_DATA_TYPE_EN enDataType)
 
     for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
     {
-        if (g_astPtcConnects[i].enDataType == enDataType && g_astPtcConnects[i].bIsValid && g_astPtcConnects[i].ulStreamID == ulStreamID)
+        if (g_astPtcConnects[i].enDataType == enDataType
+            && g_astPtcConnects[i].enState == PTC_CLIENT_USING
+            && g_astPtcConnects[i].ulStreamID == ulStreamID)
         {
             if (PT_DATA_WEB == enDataType)
             {
@@ -504,7 +506,11 @@ S32 ptc_get_udp_user_ip()
     S8 szIfrName[PT_DATA_BUFF_64] = {0};
     S8 szMac[PT_DATA_BUFF_64] = {0};
 
-    stServAddr = g_pstPtcSend->stDestAddr;
+    bzero(&stServAddr, sizeof(stServAddr));
+    stServAddr.sin_family = AF_INET;
+
+    stServAddr.sin_port = g_stServMsg.usBaiduPort;
+    stServAddr.sin_addr.s_addr = *(U32 *)(g_stServMsg.achBaiduIP);
 
     lSockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (lSockfd < 0)
@@ -820,10 +826,11 @@ VOID ptc_send_login_req(U64 arg)
         return;
     }
     g_ulConnectPtsCount++;
+
     if (g_ulConnectPtsCount > 4)
     {
         g_ulConnectPtsCount = 0;
-        if (g_pstPtcSend->stDestAddr.sin_addr.s_addr == *(U32 *)(g_stServMsg.achPtsMajorIP))
+        if (g_pstPtcSend->stDestAddr.sin_addr.s_addr == *(U32 *)(g_stServMsg.achPtsMajorIP) && g_stServMsg.usPtsMajorPort == g_pstPtcSend->stDestAddr.sin_port)
         {
             /* 主域名注册不上，切换pts到副域名 */
             if (g_stServMsg.usPtsMinorPort != 0)
@@ -832,7 +839,7 @@ VOID ptc_send_login_req(U64 arg)
                 g_pstPtcSend->stDestAddr.sin_port = g_stServMsg.usPtsMinorPort;
             }
         }
-        else if (g_pstPtcSend->stDestAddr.sin_addr.s_addr == *(U32 *)(g_stServMsg.achPtsMinorIP))
+        else if (g_pstPtcSend->stDestAddr.sin_addr.s_addr == *(U32 *)(g_stServMsg.achPtsMinorIP) && g_stServMsg.usPtsMinorPort == g_pstPtcSend->stDestAddr.sin_port)
         {
             /* 副域名注册不上，切换到主域名 */
             if (g_stServMsg.usPtsMajorPort != 0)
@@ -1024,7 +1031,6 @@ S32 ptc_save_into_send_cache(PT_MSG_TAG *pstMsgDes, S8 *acSendBuf, S32 lDataLen)
             pstRecvStreamListHead->usServPort = pstMsgDes->usServPort;
             pstRecvStreamListHead->ulStreamID = pstMsgDes->ulStreamID;
             pstRecvStreamListHead->enDataType = (PT_DATA_TYPE_EN)pstMsgDes->enDataType;
-
         }
         else
         {
@@ -1896,41 +1902,58 @@ VOID *ptc_send_msg2pts(VOID *arg)
     struct timeval now;
     struct timespec timeout;
     S32 lResult = 0;
+    U32 ulCount = 0;
 
     dos_list_init(&g_stPtcNendRecvNode);
     dos_list_init(&g_stPtcNendSendNode);
 
     while (1)
     {
+        pthread_mutex_lock(&g_mutexPtcSendPthread);
         gettimeofday(&now, NULL);
         timeout.tv_sec = now.tv_sec + 1;
         timeout.tv_nsec = (now.tv_usec) * 1000;
-
-        pthread_mutex_lock(&g_mutexPtcSendPthread);
         pthread_cond_timedwait(&g_condPtcSend, &g_mutexPtcSendPthread, &timeout);
         pthread_mutex_unlock(&g_mutexPtcSendPthread);
 
-        DOS_LOOP_DETECT_INIT(lLoopMaxCount, DOS_DEFAULT_MAX_LOOP);
-
         while(1)
         {
-            /* 防止死循环 */
-            DOS_LOOP_DETECT(lLoopMaxCount)
-            pthread_mutex_lock(&g_mutexPtcSendPthread);
-            if (dos_list_is_empty(&g_stPtcNendSendNode))
+            ulCount = g_ulPtcNendSendNodeCount;
+            if (0 == g_ulPtcNendSendNodeCount)
             {
-                pthread_mutex_unlock(&g_mutexPtcSendPthread);
                 break;
             }
 
+            if (dos_list_is_empty(&g_stPtcNendSendNode))
+            {
+                g_ulPtcNendSendNodeCount = 0;
+                break;
+            }
+            if (ulCount < 3)
+            {
+                pthread_mutex_lock(&g_mutexPtcSendPthread);
+            }
             pstNendSendList = dos_list_fetch(&g_stPtcNendSendNode);
             if (DOS_ADDR_INVALID(pstNendSendList))
             {
-                pthread_mutex_unlock(&g_mutexPtcSendPthread);
+                if (ulCount < 3)
+                {
+                    pthread_mutex_unlock(&g_mutexPtcSendPthread);
+                }
                 DOS_ASSERT(0);
                 continue;
             }
-            pthread_mutex_unlock(&g_mutexPtcSendPthread);
+
+            if (g_ulPtcNendSendNodeCount > 0)
+            {
+                g_ulPtcNendSendNodeCount--;
+            }
+
+            if (ulCount < 3)
+            {
+                pthread_mutex_unlock(&g_mutexPtcSendPthread);
+            }
+
             pstNeedSendNode = dos_list_entry(pstNendSendList, PT_NEND_SEND_NODE_ST, stListNode);
 
             dos_memzero(&stMsgDes, sizeof(PT_MSG_TAG));
@@ -2225,7 +2248,7 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
             {
                 /* 确认接收 */
                 gettimeofday(&now, NULL);
-                pt_logr_info("make sure recv seq : %d", pstMsgDes->lSeq);
+                pt_logr_debug("make sure recv seq : %d", pstMsgDes->lSeq);
                 lResult = ptc_deal_with_confirm_msg(pstMsgDes);
                 if (lResult)
                 {
@@ -2242,6 +2265,7 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
             else if (pstMsgDes->ExitNotifyFlag == DOS_TRUE)
             {
                 /* 响应结束，清除streamID节点 */
+                pt_logr_debug("recv exit notify, stream : %d", pstMsgDes->ulStreamID);
                 ptc_delete_send_stream_node_by_streamID(pstMsgDes->ulStreamID);
                 ptc_delete_client_by_streamID(pstMsgDes->ulStreamID);
 
@@ -2358,6 +2382,46 @@ VOID *ptc_send_msg2proxy(VOID *arg)
                 pstNeedRecvNode = NULL;
             }
         }
+    }
+
+    return NULL;
+}
+
+
+void ptc_client_cb_examine()
+{
+    S32 i = 0;
+    time_t lCurTime = time(NULL);
+    U32 ulStreamID = 0;
+    PT_DATA_TYPE_EN enDataType;
+    S32 lSocket = 0;
+
+    for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
+    {
+        if (g_astPtcConnects[i].enState == PTC_CLIENT_USING)
+        {
+            if (lCurTime - g_astPtcConnects[i].lLastUseTime > PTC_CONNECT_TIME_OUT)
+            {
+                /* 删除 */
+                ulStreamID = g_astPtcConnects[i].ulStreamID;
+                enDataType = g_astPtcConnects[i].enDataType;
+                lSocket = g_astPtcConnects[i].lSocket;
+
+                ptc_send_exit_notify_to_pts(enDataType, ulStreamID, 3);
+                ptc_delete_send_stream_node_by_streamID(ulStreamID);
+                ptc_delete_client_by_socket(lSocket, enDataType);
+            }
+        }
+    }
+}
+
+void *ptc_terminal_dispose(void *arg)
+{
+    while (1)
+    {
+        sleep(PTC_DISPOSE_INTERVAL_TIME);
+
+        ptc_client_cb_examine();
     }
 
     return NULL;

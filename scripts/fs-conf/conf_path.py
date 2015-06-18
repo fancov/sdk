@@ -19,7 +19,7 @@ def get_config_path():
     _dict = db_config.get_db_param()
     
     if -1 == _dict:
-        file_info.print_file_info('_dict is %d' % _dict)
+        file_info.print_file_info('_dict is %d.' % _dict)
         return -1
     
     if _dict == {}:

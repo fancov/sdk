@@ -19,6 +19,10 @@ extern "C"{
 #include <pt/pt.h>
 #include <pt/md5.h>
 
+#if INCLUDE_PTC
+#include "../ptc/ptc_msg.h"
+#endif
+
 PT_PROT_TYPE_EN g_aenDataProtType[PT_DATA_BUTT] = {PT_TCP, PT_TCP, PT_TCP};
 static U32 g_ulPTCurrentLogLevel = LOG_LEVEL_INFO;  /* 日志打印级别 */
 U8  gucIsTableInit  = 0;
@@ -459,7 +463,9 @@ S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *ps
     }
 
     S32 lRet = 0;
+#if !INCLUDE_PTS
     U32 ulNextSendArraySub = 0;
+#endif
     U32 ulArraySub = pstMsgDes->lSeq & (lCacheSize - 1);  /* 求余数,包存放在数组中的位置 */
 
     if (pstStreamNode->lCurrSeq >= pstMsgDes->lSeq)
@@ -467,6 +473,13 @@ S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *ps
         /* 包已发送，不需要存储 */
         return PT_SAVE_DATA_SUCC;
     }
+
+#if INCLUDE_PTS
+    if (pstMsgDes->lSeq - pstStreamNode->lCurrSeq >= lCacheSize)
+    {
+        return PT_NEED_CUT_PTHREAD;
+    }
+#endif
 
     if ((pstDataQueHead[ulArraySub].lSeq == pstMsgDes->lSeq) &&  pstMsgDes->lSeq != 0)
     {
@@ -483,6 +496,7 @@ S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *ps
 
     lRet = PT_SAVE_DATA_SUCC;
 
+#if !INCLUDE_PTS
     if (pstMsgDes->lSeq - pstStreamNode->lCurrSeq >= lCacheSize)
     {
         /* 缓存已经存满 */
@@ -495,9 +509,11 @@ S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *ps
         else
         {
             /* 丢包，失败，关闭 */
+
             return PT_SAVE_DATA_FAIL;
         }
     }
+#endif
 
     return lRet;
 }
@@ -580,7 +596,7 @@ S32 pt_delete_ptc_node(PT_CC_CB_ST *pstPtcNode)
     {
         return DOS_FAIL;
     }
-
+    pthread_mutex_lock(&pstPtcNode->pthreadMutex);
     /* 释放掉cc下所有的stream */
     for (i=0; i<PT_DATA_BUTT; i++)
     {
@@ -603,6 +619,7 @@ S32 pt_delete_ptc_node(PT_CC_CB_ST *pstPtcNode)
 
     /* 释放掉ptc */
     dos_list_del(&pstPtcNode->stCCListNode);
+    pthread_mutex_unlock(&pstPtcNode->pthreadMutex);
     pthread_mutex_destroy(&pstPtcNode->pthreadMutex);
     dos_dmem_free(pstPtcNode);
     pstPtcNode = NULL;
@@ -1127,6 +1144,9 @@ S32 pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsg
     pstNewNode->ExitNotifyFlag = pstMsgDes->ExitNotifyFlag;
 
     dos_list_add_tail(pstHead, &pstNewNode->stListNode);
+#if INCLUDE_PTC
+    g_ulPtcNendSendNodeCount++;
+#endif
 
     return DOS_SUCC;
 }

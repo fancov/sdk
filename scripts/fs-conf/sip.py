@@ -13,7 +13,7 @@ import os
 import file_info
 import dom_to_xml
 import conf_path
-import db_exec
+import db_conn
 
 def generate_sip(userid):
     '''
@@ -23,7 +23,7 @@ def generate_sip(userid):
         file_info.print_file_info('Generate SIP %d FAIL.' % int(userid))
         return -1
     # 获取sip相关信息
-    listSipInfo = get_sipinfo_by_userid(userid)
+    listSipInfo = db_conn.get_sipinfo_by_userid(userid)
     if -1 == listSipInfo:
         file_info.print_file_info('Generate SIP %d FAIL.' % int(userid))
         return -1
@@ -108,66 +108,8 @@ def generate_sip(userid):
         file_info.print_file_info('lRet is %d' % lRet)
         return -1
 
-    file_info.print_file_info('Generate SIP %d SUCC' % int(userid))
+    file_info.print_file_info('Generate SIP %d SUCC.' % int(userid))
     return 1
-
-def get_sipinfo_by_userid(userid):
-    '''
-    @todo: 根据userid获取sip相关信息
-    '''
-
-    if str(userid).strip() == '':
-        file_info.print_file_info('userid does not exist...')
-        return -1
-
-    # 根据userid获取sip相关信息
-    seqSQLCmd = 'SELECT id, customer_id, extension, dispname, authname, auth_password FROM tbl_sip WHERE userid = \'%s\';' % str(userid)
-    listSipInfo = db_exec.exec_SQL(seqSQLCmd)
-    if -1 == listSipInfo:
-        file_info.print_file_info('Get SIP info by user ID FAIL,listSipInfo is %d' % listSipInfo)
-        return -1
-
-    file_info.print_file_info('Get SIP info by user ID(%d) SUCC.' % int(userid))
-    return listSipInfo
-
-def get_userid_by_sipid(ulSipID):
-    '''
-    @todo: 根据userid获取
-    '''
-    
-    if str(ulSipID).strip() == '':
-        file_info.print_file_info('Get User ID by SIP ID FAIL.')
-        return -1
-    
-    seqSQLCmd = 'SELECT userid FROM tbl_sip WHERE id=%d;' % int(ulSipID)
-    lRet = db_exec.exec_SQL(seqSQLCmd)
-    if -1 == lRet:
-        file_info.print_file_info('Get User ID by SIP ID(%d) FAIL,lRet is %d' % (int(ulSipID), lRet))
-        return -1
-    
-    seqUserID = str(lRet[0][0])
-    file_info.print_file_info('Get User ID by SIP ID(%d) SUCC.' % int(ulSipID))
-    return seqUserID
-
-def get_customerid_by_sipid(ulSipID):
-    '''
-    @todo: 根据sipid获取customerid
-    '''
-    if str(ulSipID).strip() == '':
-        file_info.print_file_info('Get Customer ID by SIP ID FAIL.')
-        return -1
-    
-    seqSQLCmd = 'SELECT customer_id FROM tbl_sip WHERE id = %d;' % ulSipID
-    lRet = db_exec.exec_SQL(seqSQLCmd)
-    if -1 == lRet:
-        file_info.print_file_info('Get Customer ID by SIP ID FAIL, lRet is %d' % lRet)
-        return -1
-    
-    ulCustomerID = int(lRet[0][0])
-
-    file_info.print_file_info('Get Customer ID by SIP ID(%s) SUCC' % ulSipID)
-    return ulCustomerID
-    
 
 def add_sip(ulSipID):
     '''
@@ -179,7 +121,7 @@ def add_sip(ulSipID):
     # 根据sipid获取userid
     seqUserID = get_userid_by_sipid(ulSipID)
     if -1 == seqUserID:
-        file_info.print_file_info('Add new SIP FAIL, seqUserID is %d' % seqUserID)
+        file_info.print_file_info('Add new SIP FAIL, seqUserID is %d.' % seqUserID)
         return -1
     # 获取配置文件路径
     seqFsPath = conf_path.get_config_path()
@@ -195,7 +137,7 @@ def add_sip(ulSipID):
     # 生成sip配置文件
     lRet = generate_sip(seqUserID)
     if lRet == -1:
-        file_info.print_file_info('Add new SIP FAIL, lRet is %d' % lRet)
+        file_info.print_file_info('Add new SIP FAIL, lRet is %d.' % lRet)
         return -1
     
     xmlDoc = minidom.parse(seqMgntFile)
@@ -212,23 +154,24 @@ def add_sip(ulSipID):
             
             lRet = dom_to_xml.dom_to_xml(seqMgntFile, xmlDoc)
             if lRet == -1:
-                file_info.print_file_info('Add new SIP FAIL, lRet is %d' % lRet)
+                file_info.print_file_info('Add new SIP FAIL, lRet is %d.' % lRet)
                 return -1
             
             # 删除XML头部声明
             lRet = dom_to_xml.del_xml_head(seqMgntFile)
             if -1 == lRet:
-                file_info.print_file_info('Add new SIP FAIL, lRet is %d' % lRet)
+                file_info.print_file_info('Add new SIP FAIL, lRet is %d.' % lRet)
                 return -1
 
         lRet = dom_to_xml.del_blank_line(seqMgntFile)
         if -1 == lRet:
-            file_info.print_file_info('Delete Blank Line FAIL,lRet is %d' % lRet)
+            file_info.print_file_info('Delete Blank Line FAIL,lRet is %d.' % lRet)
             return -1
 
     file_info.print_file_info('Add new SIP(%s) SUCC.' % str(seqUserID))
     return 0
-        
+
+
 def del_sip(ulSipID, seqUserID, ulCustomerID):
     '''
     @todo: 删除sip账户
@@ -282,19 +225,20 @@ def del_sip(ulSipID, seqUserID, ulCustomerID):
         # 将DOM转换为XML
         lRet = dom_to_xml.dom_to_xml(seqMgntFile, xmlDoc)
         if lRet == -1:
-            file_info.print_file_info('Delete SIP FAIL, lRet is %d' % xmlDoc)
+            file_info.print_file_info('Delete SIP FAIL, lRet is %d.' % xmlDoc)
             return -1
 
         # 删除XML头部声明
         lRet = dom_to_xml.del_xml_head(seqMgntFile)
         if -1 == lRet:
-            file_info.print_file_info('Delete SIP FAIL, lRet is %d' % lRet)
+            file_info.print_file_info('Delete SIP FAIL, lRet is %d.' % lRet)
             return -1
 
         lRet = dom_to_xml.del_blank_line(seqMgntFile)
         if -1 == lRet:
-            file_info.print_file_info('Delete SIP FAIL, lRet is %d' % lRet)
+            file_info.print_file_info('Delete SIP FAIL, lRet is %d.' % lRet)
             return -1
 
     file_info.print_file_info('Delete SIP(%s) SUCC.' % seqUserID)
     return 1
+

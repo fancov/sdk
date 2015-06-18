@@ -276,7 +276,7 @@ int main(int argc, char ** argv)
     /* 启动dos主任务 */
     if (root(argc, argv) < 0)
     {
-		sleep(2);
+        sleep(2);
         exit(254);
     }
 
