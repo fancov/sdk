@@ -183,7 +183,7 @@ S32 bs_show_cb(U32 ulIndex)
 
     cli_out_string(ulIndex, "\r\n\r\n---------- APP CONN ----------\r\n");
     dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s%10s%10s%20s%10s",
-                 "Connected", "TCP", "Seq", "IP", "Port");
+                 "Connected", "Type", "Seq", "IP", "Port");
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
     cli_out_string(ulIndex, "\r\n------------------------------------------------------------");
@@ -194,13 +194,26 @@ S32 bs_show_cb(U32 ulIndex)
             continue;
         }
 
-        dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%20s%10u",
-                     g_stBssCB.astAPPConn[i].bIsConn,
-                     g_stBssCB.astAPPConn[i].bIsTCP,
-                     g_stBssCB.astAPPConn[i].ulMsgSeq,
-                     dos_ipaddrtostr(g_stBssCB.astAPPConn[i].aulIPAddr[0], szIP, sizeof(szIP)),
-                     g_stBssCB.astAPPConn[i].stAddr.sin_port);
-        szBuf[sizeof(szBuf) - 1] = '\0';
+        if (g_stBssCB.astAPPConn[i].ucCommType != BSCOMM_PROTO_UNIX)
+        {
+            dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%20s%10u",
+                         g_stBssCB.astAPPConn[i].bIsConn,
+                         g_stBssCB.astAPPConn[i].ucCommType,
+                         g_stBssCB.astAPPConn[i].ulMsgSeq,
+                         dos_ipaddrtostr(g_stBssCB.astAPPConn[i].aulIPAddr[0], szIP, sizeof(szIP)),
+                         g_stBssCB.astAPPConn[i].stAddr.stInAddr.sin_port);
+            szBuf[sizeof(szBuf) - 1] = '\0';
+        }
+        else
+        {
+            dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%20s",
+                         g_stBssCB.astAPPConn[i].bIsConn,
+                         g_stBssCB.astAPPConn[i].ucCommType,
+                         g_stBssCB.astAPPConn[i].ulMsgSeq,
+                         g_stBssCB.astAPPConn[i].stAddr.stUnAddr.sun_path);
+            szBuf[sizeof(szBuf) - 1] = '\0';
+
+        }
         cli_out_string(ulIndex, szBuf);
     }
 
@@ -940,13 +953,13 @@ S32 bs_show_task(U32 ulIndex, U32 ulObjectID)
     return DOS_SUCC;
 
 }
-    
+
 S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
 {
     S8  szBuff[BS_TRACE_BUFF_LEN] = {0, };
     U32 ulHashIndex = 0, ulCol = 0, ulRow = 0;
     U32 aulRule[BS_MAX_RULE_ITEM][BS_MAX_BILLING_RULE_IN_PACKAGE] = {{0}};
-    
+
     BS_BILLING_PACKAGE_ST  *pstPkg = NULL;
     HASH_NODE_S            *pstHashNode = NULL;
 
@@ -987,7 +1000,7 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
                     continue;
                 }
             }
-            
+
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------");
             cli_out_string(ulIndex, szBuff);
 
@@ -1029,7 +1042,7 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
 
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------------");
             cli_out_string(ulIndex, szBuff);
-            
+
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n  %-20s|%12u %12u %12u %12u %12u %12u %12u %12u %12u %12u", "Billing Rule Record", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
             cli_out_string(ulIndex, szBuff);
 
@@ -1061,7 +1074,7 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
             cli_out_string(ulIndex, szBuff);
         }
     }
-        
+
     return DOS_SUCC;
 }
 
@@ -1304,7 +1317,7 @@ S32 bs_show_outband_stat(U32 ulIndex)
         {
             continue;
         }
-        
+
         pstStat = (BS_STAT_OUTBAND_ST  *)pstMsg->pStat;
         if (DOS_ADDR_INVALID(pstStat))
         {
@@ -1605,11 +1618,11 @@ S32 bs_update_test(U32 ulIndex, S32 argc, S8 **argv)
       /* 获取json格式数据 */
     pstJsonNode = pszTblRow->pstData;
     if (DOS_ADDR_INVALID(pstJsonNode))
-    {   
+    {
         DOS_ASSERT(0);/*json格式数据*/
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\npstJsonNode is %p.\r\n", pstJsonNode);
         cli_out_string(ulIndex, szCmdBuff);
-        
+
         goto help;
     }
 
@@ -1668,7 +1681,7 @@ S32 bs_update_test(U32 ulIndex, S32 argc, S8 **argv)
     }
     else if (0 == dos_stricmp(pszTableName, "tbl_billing_rate"))
     {
-        
+
     }
     else if (0 == dos_stricmp(pszTableName, "tbl_calltask"))
     {
@@ -1681,7 +1694,7 @@ S32 bs_update_test(U32 ulIndex, S32 argc, S8 **argv)
         goto help;
     }
 
-    return DOS_SUCC; 
+    return DOS_SUCC;
 
 help:
     if (DOS_ADDR_VALID(pstNode))
@@ -1706,10 +1719,10 @@ help:
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nHelp:\r\n    bsd bst update agent|customer|billing|task\r\n");
     cli_out_string(ulIndex, szCmdBuff);
-    
+
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n\r\nUpdate test fail. It\'s a pity! =_=\" .\r\n");
     cli_out_string(ulIndex, szCmdBuff);
-    
+
     return DOS_FAIL;
 }
 

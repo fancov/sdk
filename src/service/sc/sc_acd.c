@@ -38,6 +38,7 @@
  */
 
 #include <dos.h>
+#include <esl.h>
 #include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_acd_def.h"

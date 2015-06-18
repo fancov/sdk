@@ -28,6 +28,8 @@
 #include <pthread.h>
 #include <netinet/in.h>
 #include <semaphore.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 
 #include <json-c/json.h>

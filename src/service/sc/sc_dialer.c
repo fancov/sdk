@@ -36,21 +36,6 @@ typedef struct tagSCCallQueueNode
     SC_SCB_ST   *pstSCB;                        /* 呼叫控制块 */
 }SC_CALL_QUEUE_NODE_ST;
 
-/* dialer模块控制块 */
-typedef struct tagSCDialerHandle
-{
-    esl_handle_t        stHandle;                /*  esl 句柄 */
-    pthread_t           pthID;
-    U32                 ulCallCnt;
-    pthread_mutex_t     mutexCallQueue;          /* 互斥锁 */
-    pthread_cond_t      condCallQueue;           /* 条件变量 */
-    list_t              stCallList;              /* 呼叫队列 */
-
-    BOOL                blIsESLRunning;          /* ESL是否连接正常 */
-    BOOL                blIsWaitingExit;         /* 任务是否正在等待退出 */
-    S8                  *pszCMDBuff;
-}SC_DIALER_HANDLE_ST;
-
 /* dialer模块控制块示例 */
 SC_DIALER_HANDLE_ST  *g_pstDialerHandle = NULL;
 
@@ -420,27 +405,46 @@ VOID *sc_dialer_runtime(VOID * ptr)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_pstDialerHandle->condCallQueue, &g_pstDialerHandle->mutexCallQueue, &stTimeout);
+        pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
 
         if (dos_list_is_empty(&g_pstDialerHandle->stCallList))
         {
-            pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
             continue;
         }
 
         while (1)
         {
+            if (g_pstDialerHandle->ulCallCnt < 3)
+            {
+                pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
+            }
             if (dos_list_is_empty(&g_pstDialerHandle->stCallList))
             {
+                if (g_pstDialerHandle->ulCallCnt < 3)
+                {
+                    pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
+                }
+
                 break;
             }
 
             pstList = dos_list_fetch(&g_pstDialerHandle->stCallList);
             if (!pstList)
             {
+                if (g_pstDialerHandle->ulCallCnt < 3)
+                {
+                    pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
+                }
+
                 continue;
             }
 
             g_pstDialerHandle->ulCallCnt--;
+
+            if (g_pstDialerHandle->ulCallCnt < 2)
+            {
+                pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
+            }
 
             pstListNode = dos_list_entry(pstList, SC_CALL_QUEUE_NODE_ST, stList);
             if (!pstList)
@@ -479,8 +483,6 @@ VOID *sc_dialer_runtime(VOID * ptr)
             dos_dmem_free(pstListNode);
             pstListNode = NULL;
         }
-
-        pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
     }
 
     return NULL;
@@ -518,14 +520,20 @@ U32 sc_dialer_add_call(SC_SCB_ST *pstSCB)
     }
 
     pstNode->pstSCB = pstSCB;
-    pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
+    if (g_pstDialerHandle->ulCallCnt < 3)
+    {
+        pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
+    }
     dos_list_add_tail(&g_pstDialerHandle->stCallList, &(pstNode->stList));
 
     sc_call_trace(pstSCB, "Call request has been accepted by the dialer.");
 
     g_pstDialerHandle->ulCallCnt++;
     pthread_cond_signal(&g_pstDialerHandle->condCallQueue);
-    pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
+    if (g_pstDialerHandle->ulCallCnt < 4)
+    {
+        pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
+    }
 
     SC_TRACE_OUT();
     return DOS_SUCC;

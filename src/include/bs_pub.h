@@ -33,6 +33,15 @@ extern "C"{
 
 #define BS_MAX_RULE_ITEM                20      /* 资费规则的字段数 */
 
+enum tagBSCOMMProto
+{
+    BSCOMM_PROTO_UDP        = 0,
+    BSCOMM_PROTO_TCP,
+    BSCOMM_PROTO_UNIX,
+
+    BSCOMM_BUTT
+};
+
 
 
 /* 定义错误码 */

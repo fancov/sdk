@@ -72,6 +72,11 @@ pthread_mutex_t          g_mutexHashBlackList = PTHREAD_MUTEX_INITIALIZER;
 
 CURL *g_pstCurlHandle;
 
+SC_EP_TASK_CB            g_astEPTaskList[SC_EP_TASK_NUM];
+
+
+U32                       g_ulCPS  = SC_MAX_CALL_PRE_SEC;
+
 /**
  * 函数: sc_ep_call_notify
  * 功能: 通知坐席弹屏
@@ -2228,12 +2233,12 @@ U32 sc_load_route(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 1;");
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 1 ORDER BY tbl_route.seq ASC;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 1 AND id=%d;"
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
                     , ulIndex);
     }
 
@@ -2474,9 +2479,9 @@ U32 sc_ep_parse_event(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
         return DOS_FAIL;
     }
 
-    if (DOS_ADDR_VALID(pszOtherLegUUID))
+    if (pstSCB->usOtherSCBNo < SC_MAX_SCB_NUM)
     {
-        pstSCB2 = sc_scb_hash_tables_find(pszOtherLegUUID);
+        pstSCB2 = sc_scb_get(pstSCB->usOtherSCBNo);
     }
 
     /* 将相关数据写入SCB中 */
@@ -2513,6 +2518,7 @@ U32 sc_rp_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 
     pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Created-Time");
     if (DOS_ADDR_VALID(pszTmp)
+        && '\0' != pszTmp[0]
         && dos_atoull(pszTmp, &uLTmp) == 0)
     {
         pstSCB->pstExtraData->ulStartTimeStamp = uLTmp / 1000000;
@@ -2521,6 +2527,7 @@ U32 sc_rp_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 
     pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Answered-Time");
     if (DOS_ADDR_VALID(pszTmp)
+        && '\0' != pszTmp[0]
         && dos_atoull(pszTmp, &uLTmp) == 0)
     {
         pstSCB->pstExtraData->ulAnswerTimeStamp = uLTmp / 1000000;
@@ -2529,6 +2536,7 @@ U32 sc_rp_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 
     pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Progress-Time");
     if (DOS_ADDR_VALID(pszTmp)
+        && '\0' != pszTmp[0]
         && dos_atoull(pszTmp, &uLTmp) == 0)
     {
         pstSCB->pstExtraData->ulRingTimeStamp = uLTmp / 1000000;
@@ -2537,14 +2545,16 @@ U32 sc_rp_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 
     pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Progress-Media-Time");
     if (DOS_ADDR_VALID(pszTmp)
+        && '\0' != pszTmp[0]
         && dos_atoull(pszTmp, &uLTmp) == 0)
     {
-        pstSCB->pstExtraData->ulBridgeTimeStamp= uLTmp / 1000000;
+        pstSCB->pstExtraData->ulBridgeTimeStamp = uLTmp / 1000000;
         sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Progress-Media-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulBridgeTimeStamp);
     }
 
     pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Hangup-Time");
     if (DOS_ADDR_VALID(pszTmp)
+        && '\0' != pszTmp[0]
         && dos_atoull(pszTmp, &uLTmp) == 0)
     {
         pstSCB->pstExtraData->ulByeTimeStamp = uLTmp / 1000000;
@@ -3045,9 +3055,11 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
         }
     }
 
-    sc_logr_debug(SC_ESL, "Search Route Finished. Result: %s, Route ID: %d"
+    sc_logr_debug(SC_ESL, "Search Route Finished. Result: %s, Route ID: %d, Dest Type:%u, Dest ID: %u"
             , U32_BUTT == ulRouteGrpID ? "FAIL" : "SUCC"
-            , ulRouteGrpID);
+            , ulRouteGrpID
+            , pstRouetEntry->ulDestType
+            , pstRouetEntry->ulDestID);
 
     pthread_mutex_unlock(&g_mutexRouteList);
 
@@ -4255,8 +4267,9 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     S8    *pszEnd         = NULL;
     S8    szSCBNo[16]      = { 0 };
     U32   ulProcessResult = DOS_SUCC;
-    U32   ulOtherSCBNo    = 0;
+    U32   ulSCBNo    = 0;
     SC_SCB_ST   *pstSCB = NULL;
+    SC_SCB_ST   *pstOtherSCB = NULL;
 
     if (DOS_ADDR_INVALID(pstHandle)
         || DOS_ADDR_INVALID(pstEvent))
@@ -4292,14 +4305,14 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             goto process_finished;
         }
 
-        pszStart = dos_strstr(pszAppArg, "other_leg_scb=");
+        pszStart = dos_strstr(pszAppArg, "scb_number=");
         if (DOS_ADDR_INVALID(pszStart))
         {
             DOS_ASSERT(0);
             goto process_fail;
         }
 
-        pszStart += dos_strlen("other_leg_scb=");
+        pszStart += dos_strlen("scb_number=");
         if (DOS_ADDR_INVALID(pszStart))
         {
             DOS_ASSERT(0);
@@ -4318,22 +4331,31 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             szSCBNo[sizeof(szSCBNo)-1] = '\0';
         }
 
-        if (dos_atoul(szSCBNo, &ulOtherSCBNo) < 0)
+        if (dos_atoul(szSCBNo, &ulSCBNo) < 0)
         {
             DOS_ASSERT(0);
             goto process_fail;
         }
 
-        pstSCB = sc_scb_get(ulOtherSCBNo);
-        if (DOS_ADDR_INVALID(pstSCB))
+        pstSCB = sc_scb_get(ulSCBNo);
+        if (DOS_ADDR_VALID(pstSCB))
         {
-            DOS_ASSERT(0);
-            goto process_fail;
+            pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
         }
 
-        if (dos_stricmp(pszAppName, "originate") == 0)
+        if (dos_stricmp(pszAppName, "originate") == 0
+            || dos_stricmp(pszAppName, "bridge") == 0)
         {
-            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+            if (DOS_ADDR_VALID(pstOtherSCB))
+            {
+                /* 这个地方需要视呼叫业务进行处理 */
+                sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+            }
+            else
+            {
+                sc_scb_free(pstSCB);
+                pstSCB = NULL;
+            }
         }
     }
 
@@ -4420,7 +4442,6 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         dos_strncpy(pstSCB->szUUID, pszUUID, sizeof(pstSCB->szUUID));
         pstSCB->szUUID[sizeof(pstSCB->szUUID) - 1] = '\0';
 
-        sc_scb_hash_tables_add(pszUUID, pstSCB);
         sc_task_concurrency_add(pstSCB->usTCBNo);
 
         goto process_finished;
@@ -4442,7 +4463,6 @@ process_fail:
             return DOS_FAIL;
         }
 
-        sc_scb_hash_tables_add(pszUUID, pstSCB);
         sc_ep_parse_event(pstEvent, pstSCB);
 
         dos_strncpy(pstSCB->szUUID, pszUUID, sizeof(pstSCB->szUUID));
@@ -4535,6 +4555,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     {
         SC_SCB_SET_SERVICE(pstSCB, BS_SERV_RECORDING);
         sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCB->ulCustomID, pstSCB->szCallerNum, pstSCB->szCalleeNum);
+        pthread_mutex_lock(&pstSCB->mutexSCBLock);
         pstSCB->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
         if (DOS_ADDR_VALID(pstSCB->pszRecordFile))
         {
@@ -4553,6 +4574,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         {
             DOS_ASSERT(0);
         }
+        pthread_mutex_unlock(&pstSCB->mutexSCBLock);
     }
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
@@ -4625,6 +4647,10 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
     switch (ulStatus)
     {
         case SC_SCB_IDEL:
+            /* 这个地方初始化一下就好 */
+            sc_scb_free(pstSCB);
+            break;
+
         case SC_SCB_INIT:
         case SC_SCB_AUTH:
         case SC_SCB_EXEC:
@@ -4635,11 +4661,13 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
 
             /* 将当前leg的信息dump下来 */
             pstSCB->pstExtraData = dos_dmem_alloc(sizeof(SC_SCB_EXTRA_DATA_ST));
+            pthread_mutex_lock(&pstSCB->mutexSCBLock);
             if (DOS_ADDR_VALID(pstSCB->pstExtraData))
             {
                 dos_memzero(pstSCB->pstExtraData, sizeof(SC_SCB_EXTRA_DATA_ST));
                 sc_rp_parse_extra_data(pstEvent, pstSCB);
             }
+            pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
             /* 如果呼叫已经进入队列了，需要删除 */
             if (pstSCB->bIsInQueue)
@@ -4694,11 +4722,6 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
 
             sc_logr_debug(SC_ESL, "Start release the SCB. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
             /* 维护资源 */
-            sc_scb_hash_tables_delete(pstSCB->szUUID);
-            if (DOS_ADDR_VALID(pstSCBOther))
-            {
-                sc_scb_hash_tables_delete(pstSCBOther->szUUID);
-            }
 
             sc_scb_free(pstSCB);
             if (pstSCBOther)
@@ -4961,7 +4984,9 @@ U32 sc_ep_session_heartbeat(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
 {
     S8                     *pszUUID = NULL;
+    S8                     *pszSCBNo = NULL;
     SC_SCB_ST              *pstSCB = NULL;
+    U32                    ulSCBNo;
     U32                    ulRet = DOS_FAIL;
 
     SC_TRACE_IN(pstEvent, pstHandle, 0, 0);
@@ -4989,8 +5014,24 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
 
     if (ESL_EVENT_CHANNEL_CREATE != pstEvent->event_id)
     {
-        pstSCB = sc_scb_hash_tables_find(pszUUID);
-        if (DOS_ADDR_INVALID(pstSCB))
+        pszSCBNo = esl_event_get_header(pstEvent, "variable_scb_number");
+        if (DOS_ADDR_INVALID(pszSCBNo))
+        {
+            DOS_ASSERT(0);
+
+            return DOS_FAIL;
+        }
+
+        if (dos_atoul(pszSCBNo, &ulSCBNo) < 0)
+        {
+            DOS_ASSERT(0);
+
+            return DOS_FAIL;
+        }
+
+        pstSCB = sc_scb_get(ulSCBNo);
+        if (DOS_ADDR_INVALID(pstSCB)
+            || !pstSCB->bValid)
         {
             DOS_ASSERT(0);
 
@@ -4998,10 +5039,10 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         }
     }
 
-    sc_logr_info(SC_ESL, "Start process event: %s(%d), SCB No:%d"
+    sc_logr_info(SC_ESL, "Start process event: %s(%d), SCB No:%s"
                     , esl_event_get_header(pstEvent, "Event-Name")
                     , pstEvent->event_id
-                    , esl_event_get_header(pstEvent, "variable_scb_no"));
+                    , esl_event_get_header(pstEvent, "variable_scb_number"));
 
     switch (pstEvent->event_id)
     {
@@ -5075,34 +5116,41 @@ VOID*sc_ep_process_runtime(VOID *ptr)
     esl_event_t         *pstEvent = NULL;
     U32                 ulRet;
     struct timespec     stTimeout;
+    SC_EP_TASK_CB       *pstEPTaskList = (SC_EP_TASK_CB*)ptr;
+
+    if (DOS_ADDR_INVALID(pstEPTaskList))
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
 
     for (;;)
     {
-        pthread_mutex_lock(&g_mutexEventList);
+        pthread_mutex_lock(&pstEPTaskList->mutexMsgList);
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
-        pthread_cond_timedwait(&g_condEventList, &g_mutexEventList, &stTimeout);
-        pthread_mutex_unlock(&g_mutexEventList);
+        pthread_cond_timedwait(&pstEPTaskList->contMsgList, &pstEPTaskList->mutexMsgList, &stTimeout);
+        pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
 
         while (1)
         {
-            if (DLL_Count(&g_stEventList) <= 0)
+            if (DLL_Count(&pstEPTaskList->stMsgList) <= 0)
             {
                 break;
             }
 
-            pthread_mutex_lock(&g_mutexEventList);
+            pthread_mutex_lock(&pstEPTaskList->mutexMsgList);
 
-            pstListNode = dll_fetch(&g_stEventList);
+            pstListNode = dll_fetch(&pstEPTaskList->stMsgList);
             if (DOS_ADDR_INVALID(pstListNode))
             {
                 DOS_ASSERT(0);
 
-                pthread_mutex_unlock(&g_mutexEventList);
+                pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
                 continue;
             }
 
-            pthread_mutex_unlock(&g_mutexEventList);
+            pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
 
             if (DOS_ADDR_INVALID(pstListNode->pHandle))
             {
@@ -5119,7 +5167,7 @@ VOID*sc_ep_process_runtime(VOID *ptr)
             sc_logr_info(SC_ESL, "ESL event process START. %s(%d), SCB No:%s, Channel Name: %s"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id
-                            , esl_event_get_header(pstEvent, "variable_scb_no")
+                            , esl_event_get_header(pstEvent, "variable_scb_number")
                             , esl_event_get_header(pstEvent, "Channel-Name"));
 
             ulRet = sc_ep_process(&g_pstHandle->stSendHandle, pstEvent);
@@ -5131,7 +5179,7 @@ VOID*sc_ep_process_runtime(VOID *ptr)
             sc_logr_info(SC_ESL, "ESL event process FINISHED. %s(%d), SCB No:%s Processed, Result: %d"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id
-                            , esl_event_get_header(pstEvent, "variable_scb_no")
+                            , esl_event_get_header(pstEvent, "variable_scb_number")
                             , ulRet);
 
             esl_event_destroy(&pstEvent);
@@ -5140,6 +5188,142 @@ VOID*sc_ep_process_runtime(VOID *ptr)
 
     return NULL;
 }
+
+VOID*sc_ep_process_master(VOID *ptr)
+{
+    DLL_NODE_S          *pstListNode = NULL;
+    esl_event_t         *pstEvent = NULL;
+    struct timespec     stTimeout;
+    S8                  *pszUUID;
+    U32                 ulSrvInd;
+    S32                 i;
+    static U32          ulSrvIndex = 0;
+    SC_EP_TASK_CB       *pstEPTaskList = (SC_EP_TASK_CB*)ptr;
+    if (DOS_ADDR_INVALID(pstEPTaskList))
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    for (;;)
+    {
+        pthread_mutex_lock(&pstEPTaskList->mutexMsgList);
+        stTimeout.tv_sec = time(0) + 1;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&pstEPTaskList->contMsgList, &pstEPTaskList->mutexMsgList, &stTimeout);
+        pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
+
+        while (1)
+        {
+            if (DLL_Count(&pstEPTaskList->stMsgList) <= 0)
+            {
+                break;
+            }
+
+            pthread_mutex_lock(&pstEPTaskList->mutexMsgList);
+
+            pstListNode = dll_fetch(&pstEPTaskList->stMsgList);
+            if (DOS_ADDR_INVALID(pstListNode))
+            {
+                DOS_ASSERT(0);
+
+                pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
+                continue;
+            }
+
+            pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
+
+            if (DOS_ADDR_INVALID(pstListNode->pHandle))
+            {
+                DOS_ASSERT(0);
+                dos_dmem_free(pstListNode);
+                pstListNode = NULL;
+                continue;
+            }
+
+            pstEvent = (esl_event_t*)pstListNode->pHandle;
+
+            /* 一些消息特殊处理 */
+            if (ESL_EVENT_BACKGROUND_JOB == pstEvent->event_id)
+            {
+                sc_ep_process(&g_pstHandle->stSendHandle, pstEvent);
+
+                pstListNode->pHandle = NULL;
+                DLL_Init_Node(pstListNode)
+                dos_dmem_free(pstListNode);
+
+                esl_event_destroy(&pstEvent);
+
+                continue;
+            }
+
+#if 1
+            pszUUID = esl_event_get_header(pstEvent, "Caller-Unique-ID");
+            if (DOS_ADDR_INVALID(pszUUID))
+            {
+                DOS_ASSERT(0);
+                goto process_fail;
+            }
+
+            for (i=0; i< dos_strlen(pszUUID); i++)
+            {
+                ulSrvIndex += pszUUID[i];
+            }
+
+            /* 第0个位master任务，不能分配数据 */
+            ulSrvInd = (ulSrvIndex % (SC_EP_TASK_NUM - 1) + 1);
+#else
+            if (ESL_EVENT_CHANNEL_CREATE == pstEvent->event_id)
+            {
+                pszUUID = esl_event_get_header(pstEvent, "Caller-Unique-ID");
+                if (DOS_ADDR_INVALID(pszUUID))
+                {
+                    DOS_ASSERT(0);
+                    goto process_fail;
+                }
+
+                ulSrvInd = (ulSrvIndex % 2 + 1);
+                ulSrvIndex++;
+                dos_snprintf(szBuffCmd, sizeof(szBuffCmd), "srv_index=%d", ulSrvInd);
+                sc_ep_esl_execute("set", szBuffCmd, pszUUID);
+            }
+            else
+            {
+                pszSrvIndex = esl_event_get_header(pstEvent, "variable_srv_index");
+                if (DOS_ADDR_INVALID(pszUUID)
+                    || dos_atoul(pszSrvIndex, &ulSrvInd) < 0)
+                {
+                    DOS_ASSERT(0);
+                    goto process_fail;
+                }
+            }
+#endif
+
+            if (ulSrvInd >= SC_EP_TASK_NUM
+                || SC_MASTER_TASK_INDEX == ulSrvInd)
+            {
+                DOS_ASSERT(0);
+                goto process_fail;
+            }
+
+            pthread_mutex_lock(&g_astEPTaskList[ulSrvInd].mutexMsgList);
+            DLL_Add(&g_astEPTaskList[ulSrvInd].stMsgList, pstListNode);
+            pthread_cond_signal(&g_astEPTaskList[ulSrvInd].contMsgList);
+            pthread_mutex_unlock(&g_astEPTaskList[ulSrvInd].mutexMsgList);
+
+            continue;
+process_fail:
+            pstListNode->pHandle = NULL;
+            DLL_Init_Node(pstListNode)
+            dos_dmem_free(pstListNode);
+
+            esl_event_destroy(&pstEvent);
+        }
+    }
+
+    return NULL;
+}
+
 
 /**
  * 函数: VOID* sc_ep_runtime(VOID *ptr)
@@ -5240,15 +5424,15 @@ VOID* sc_ep_runtime(VOID *ptr)
             continue;
         }
 
-        pthread_mutex_lock(&g_mutexEventList);
+        pthread_mutex_lock(&g_astEPTaskList[SC_MASTER_TASK_INDEX].mutexMsgList);
 
         DLL_Init_Node(pstDLLNode);
         pstDLLNode->pHandle = NULL;
         esl_event_dup((esl_event_t **)(&pstDLLNode->pHandle), pstEvent);
-        DLL_Add(&g_stEventList, pstDLLNode);
+        DLL_Add(&g_astEPTaskList[SC_MASTER_TASK_INDEX].stMsgList, pstDLLNode);
 
-        pthread_cond_signal(&g_condEventList);
-        pthread_mutex_unlock(&g_mutexEventList);
+        pthread_cond_signal(&g_astEPTaskList[SC_MASTER_TASK_INDEX].contMsgList);
+        pthread_mutex_unlock(&g_astEPTaskList[SC_MASTER_TASK_INDEX].mutexMsgList);
     }
 
     /* @TODO 释放资源 */
@@ -5258,6 +5442,7 @@ VOID* sc_ep_runtime(VOID *ptr)
 /* 初始化事件处理模块 */
 U32 sc_ep_init()
 {
+    S32 i;
     SC_TRACE_IN(0, 0, 0, 0);
 
     g_pstHandle = dos_dmem_alloc(sizeof(SC_EP_HANDLE_ST));
@@ -5276,6 +5461,14 @@ U32 sc_ep_init()
         DOS_ASSERT(0);
 
         goto init_fail;
+    }
+
+
+    for (i=0; i<SC_EP_TASK_NUM; i++)
+    {
+        pthread_mutex_init(&g_astEPTaskList[i].mutexMsgList, NULL);
+        pthread_cond_init(&g_astEPTaskList[i].contMsgList, NULL);
+        DLL_Init(&g_astEPTaskList[i].stMsgList);
     }
 
     dos_memzero(g_pstHandle, sizeof(SC_EP_HANDLE_ST));
@@ -5305,22 +5498,35 @@ init_fail:
 /* 启动事件处理模块 */
 U32 sc_ep_start()
 {
+    S32 i;
+
     SC_TRACE_IN(0, 0, 0, 0);
+
+    for (i=0; i<SC_EP_TASK_NUM; i++)
+    {
+        if (SC_MASTER_TASK_INDEX == i)
+        {
+            if (pthread_create(&g_astEPTaskList[i].pthTaskID, NULL, sc_ep_process_master, &g_astEPTaskList[i]) < 0)
+            {
+                SC_TRACE_OUT();
+                return DOS_FAIL;
+            }
+        }
+        else
+        {
+            if (pthread_create(&g_astEPTaskList[i].pthTaskID, NULL, sc_ep_process_runtime, &g_astEPTaskList[i]) < 0)
+            {
+                SC_TRACE_OUT();
+                return DOS_FAIL;
+            }
+        }
+    }
 
     if (pthread_create(&g_pstHandle->pthID, NULL, sc_ep_runtime, NULL) < 0)
     {
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
-
-    if (pthread_create(&g_pstHandle->pthID, NULL, sc_ep_process_runtime, NULL) < 0)
-    {
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-
-
 
     SC_TRACE_OUT();
     return DOS_SUCC;

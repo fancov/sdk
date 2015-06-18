@@ -18,6 +18,7 @@ extern "C"{
 #include <dos.h>
 #include <bs_pub.h>
 #include <dos/dos_py.h>
+#include <esl.h>
 
 /* include private header files */
 #include "sc_def.h"
@@ -174,7 +175,7 @@ U32 mod_dipcc_sc_load()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init DB Handle Successfully.");
 
-#if INCLUDE_SERVICE_PYTHON
+#if 0//INCLUDE_SERVICE_PYTHON
     /* 全局加载freeswitch配置文件xml */
     if (DOS_SUCC != py_exec_func("customer", "generate_all_customer", "()"))
     {
@@ -265,6 +266,15 @@ U32 mod_dipcc_sc_load()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init call waiting queue SUCC.");
 
+    if (DOS_SUCC != sc_ep_ext_init())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init extension mngt task FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init extension mngt task SUCC.");
+
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Finished to init SC.");
 
     g_blSCInitOK = DOS_TRUE;
@@ -328,6 +338,16 @@ U32 mod_dipcc_sc_runtime()
         return DOS_FAIL;;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start the httpd task Successfully.");
+
+    if (DOS_SUCC != sc_ep_ext_start())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start extension mngt task FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start extension mngt task SUCC.");
+
 
     return DOS_SUCC;
 }

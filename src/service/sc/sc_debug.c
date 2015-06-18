@@ -62,10 +62,11 @@ extern pthread_mutex_t        g_mutexHashDIDNum;
 extern pthread_mutex_t        g_mutexHashBlackList;
 extern pthread_mutex_t        g_mutexRouteList;
 extern DLL_S                  g_stRouteList;
-
-
-
-
+extern DLL_S                  g_stEventList;
+extern SC_DIALER_HANDLE_ST   *g_pstDialerHandle;
+extern DLL_S                  g_stBSMsgList;
+extern SC_EP_TASK_CB          g_astEPTaskList[SC_EP_TASK_NUM];
+extern U32                    g_ulCPS;
 
 /* declare functions */
 extern SC_TASK_CB_ST *sc_tcb_get_by_id(U32 ulTCBNo);
@@ -161,17 +162,10 @@ VOID sc_show_http(U32 ulIndex, U32 ulID)
     cli_out_string(ulIndex, szCmdBuff);
 }
 
-/**
- * 函数: VOID sc_debug_show_http(U32 ulIndex)
- * 功能: 打印scb的概要信息
- * 参数:
- *  U32 ulIndex  telnet客户端索引
- */
-VOID sc_show_scb(U32 ulIndex, U32 ulID)
+VOID sc_show_scb_all(U32 ulIndex)
 {
     SC_SCB_ST   *pstSCB = NULL;
-    HASH_NODE_S *pstHashNode = NULL;
-    U32 ulHashIndex;
+    U32 i, ulCnt = 0;
     S8  szCmdBuff[1024] = {0, };
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow the SCB List:");
@@ -183,36 +177,32 @@ VOID sc_show_scb(U32 ulIndex, U32 ulID)
                     , "Index", "Ref Index", "Cusomer", "Agent", "Status", "Trunk ID", "Caller", "Callee");
     cli_out_string(ulIndex, szCmdBuff);
 
-    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallHash);
-    HASH_Scan_Table(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex)
+    for (i=0, ulCnt=0; i<SC_MAX_SCB_NUM; i++)
     {
-        HASH_Scan_Bucket(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        pstSCB = &g_pstTaskMngtInfo->pstCallSCBList[i];
+        if (!pstSCB->bValid)
         {
-            if (DOS_ADDR_INVALID(pstHashNode)
-                || DOS_ADDR_INVALID(pstHashNode->pHandle))
-            {
-                continue;
-            }
-
-            pstSCB = pstHashNode->pHandle;
-
-            if (U32_BUTT != ulID && ulID != pstSCB->usSCBNo);
-
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n%7u%10u%12u%12u%7s%12u%24s%24s"
-                            , pstSCB->usSCBNo
-                            , pstSCB->usOtherSCBNo
-                            , pstSCB->ulCustomID == U32_BUTT ? 0 : pstSCB->ulCustomID
-                            , pstSCB->ulAgentID == U32_BUTT ? 0 : pstSCB->ulAgentID
-                            , sc_scb_get_status(pstSCB->ucStatus)
-                            , pstSCB->ulTrunkID == U32_BUTT ? 0 : pstSCB->ulTrunkID
-                            , pstSCB->szCallerNum
-                            , pstSCB->szCalleeNum);
-            cli_out_string(ulIndex, szCmdBuff);
+            continue;
         }
+
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                        , "\r\n%7u%10u%12u%12u%7s%12u%24s%24s"
+                        , pstSCB->usSCBNo
+                        , pstSCB->usOtherSCBNo
+                        , pstSCB->ulCustomID == U32_BUTT ? 0 : pstSCB->ulCustomID
+                        , pstSCB->ulAgentID == U32_BUTT ? 0 : pstSCB->ulAgentID
+                        , sc_scb_get_status(pstSCB->ucStatus)
+                        , pstSCB->ulTrunkID == U32_BUTT ? 0 : pstSCB->ulTrunkID
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCalleeNum);
+        cli_out_string(ulIndex, szCmdBuff);
+        ulCnt++;
     }
-    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------\r\n\r\n");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %u\r\n\r\n", ulCnt);
+    cli_out_string(ulIndex, szCmdBuff);
 }
 
 static S8* sc_debug_make_weeks(U32 ulWeekMask, S8 *pszWeeks, U32 ulLength)
@@ -1188,53 +1178,6 @@ S32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
 
 VOID sc_rfind_sip(U32 ulIndex, S8 *pszSIPUserID)
 {
-    U32 ulHashIndex = U32_BUTT;
-    HASH_NODE_S *pstHashNode = NULL;
-    SC_SCB_ST   *pstSCB = NULL;
-    S8   szBuff[1024] = {0};
-
-    if (DOS_ADDR_INVALID(pszSIPUserID))
-    {
-        cli_out_string(ulIndex, "\r\nsc_rfind_sip: Param 1 is invalid.\r\n");
-        return ;
-    }
-
-    HASH_Scan_Table(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex)
-    {
-        HASH_Scan_Bucket(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pstHashNode, HASH_NODE_S *)
-        {
-            if (DOS_ADDR_INVALID(pstHashNode)
-                || DOS_ADDR_INVALID(pstHashNode->pHandle))
-            {
-                continue;
-            }
-
-            pstSCB = (SC_SCB_ST *)pstHashNode->pHandle;
-
-            if (dos_strnicmp(pstSCB->szCallerNum, pszSIPUserID, dos_strlen(pszSIPUserID)) != 0)
-            {
-                continue;
-            }
-
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\nList Info of SIP:%s\r\n", pszSIPUserID);
-            cli_out_string(ulIndex,szBuff);
-
-            cli_out_string(ulIndex, "+------------+------------+-------------+------------+------------+-----------+\r\n");
-            cli_out_string(ulIndex, "|   Caller   |   Callee   | Customer ID |  Agent ID  |  Trunk ID  |  Task ID  |\r\n");
-            cli_out_string(ulIndex, "+------------+------------+-------------+------------+------------+-----------+\r\n");
-
-            dos_snprintf(szBuff, sizeof(szBuff), "|%-12s|%-12s|%13u|%12u|%12u|%11d|\r\n"
-                            , pstSCB->szCallerNum
-                            , pstSCB->szCalleeNum
-                            , pstSCB->ulCustomID
-                            , pstSCB->ulAgentID
-                            , pstSCB->ulTrunkID
-                            , pstSCB->ulTaskID);
-            cli_out_string(ulIndex, szBuff);
-
-            cli_out_string(ulIndex, "+------------+------------+-------------+------------+------------+-----------+\r\n\r\n");
-        }
-    }
 }
 
 S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
@@ -1508,6 +1451,29 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
     return 0;
 }
 
+VOID sc_show_cb(U32 ulIndex)
+{
+    S8    szCmdBuff[1024] = {0, };
+    S32   i;
+
+    cli_out_string(ulIndex, "\r\n\r\nList the CB Usage:");
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------");
+    for (i=0; i<SC_EP_TASK_NUM; i++)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n      ESL Process Task : %u (%s)"
+                    , g_astEPTaskList[i].stMsgList.ulCount
+                    , (SC_MASTER_TASK_INDEX==i) ? "Master" : "Slave ");
+        cli_out_string(ulIndex, szCmdBuff);
+    }
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n\r\n          Dialer Queue : %u", g_pstDialerHandle->ulCallCnt);
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n      BS Message Queue : %u", g_stBSMsgList.ulCount);
+    cli_out_string(ulIndex, szCmdBuff);
+
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------\r\n\r\n");
+}
+
+
 S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
 {
     U32 ulID;
@@ -1519,6 +1485,10 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     if (dos_strnicmp(argv[2], "sip", dos_strlen("sip")) == 0)
     {
         sc_show_sip_acc(ulIndex, argc, argv);
+    }
+    if (dos_strnicmp(argv[2], "cb", dos_strlen("cb")) == 0)
+    {
+        sc_show_cb(ulIndex);
     }
     else if (dos_strnicmp(argv[2], "httpd", dos_strlen("httpd")) == 0)
     {
@@ -1612,19 +1582,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     {
         if (3 == argc)
         {
-            sc_show_scb(ulIndex, U32_BUTT);
-        }
-        else if (4 == argc)
-        {
-            if (dos_atoul(argv[3], &ulID) == 0)
-            {
-                sc_show_scb(ulIndex, ulID);
-            }
-            else
-            {
-                cli_out_string(ulIndex, "\r\n\tERROR: Invalid SCB ID while show the SCB.\r\n");
-                return -1;
-            }
+            sc_show_scb_all(ulIndex);
         }
         else
         {
@@ -1844,6 +1802,45 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     return 0;
 }
 
+S32 cli_cc_call(U32 ulIndex, S32 argc, S8 **argv)
+{
+    U32 ulCPS;
+    S8 szBuff[512] = { 0 };
+
+    if (argc < 3)
+    {
+        return -1;
+    }
+
+    if (dos_strnicmp(argv[2], "cps", dos_strlen("cps")) == 0)
+    {
+        if (3 == argc)
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n\r\nCurrent CSP is : %u\r\n\r\n", g_ulCPS);
+            cli_out_string(ulIndex, szBuff);
+            return 0;
+        }
+        else
+        {
+            if (DOS_ADDR_INVALID(argv[3])
+                || dos_atoul(argv[3], &ulCPS) < 0)
+            {
+                return -1;
+            }
+
+            g_ulCPS = ulCPS;
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n\r\nSet CSP to %u\r\n\r\n", g_ulCPS);
+            cli_out_string(ulIndex, szBuff);
+            return 0;
+        }
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+
 S32 cli_cc_debug(U32 ulIndex, S32 argc, S8 **argv)
 {
     U32 ulLogLevel;
@@ -1940,6 +1937,15 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
         goto cc_usage;
     }
 
+    if (dos_strnicmp(argv[1], "call", dos_strlen("call")) == 0)
+    {
+        if (cli_cc_call(ulIndex, argc, argv) < 0)
+        {
+            goto cc_usage;
+        }
+
+        return 0;
+    }
     if (dos_strnicmp(argv[1], "debug", dos_strlen("debug")) == 0)
     {
         if (cli_cc_debug(ulIndex, argc, argv) < 0)
