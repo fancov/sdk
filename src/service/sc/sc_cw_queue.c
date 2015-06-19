@@ -223,6 +223,7 @@ U32 sc_cwq_del_call(SC_SCB_ST *pstSCB)
             continue;
         }
 
+        pthread_mutex_lock(&pstCWQNode->mutexCWQMngt);
         DLL_Scan(&pstCWQNode->stCallWaitingQueue, pstDLLNode1, DLL_NODE_S*)
         {
             if (DOS_ADDR_INVALID(pstDLLNode1))
@@ -238,9 +239,7 @@ U32 sc_cwq_del_call(SC_SCB_ST *pstSCB)
 
             if (pstSCB1 == pstSCB)
             {
-                pthread_mutex_lock(&pstCWQNode->mutexCWQMngt);
                 dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode1);
-                pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);
                 DLL_Init_Node(pstDLLNode1);
 
                 dos_dmem_free(pstDLLNode1);
@@ -248,6 +247,7 @@ U32 sc_cwq_del_call(SC_SCB_ST *pstSCB)
                 break;
             }
         }
+        pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);
     }
 
     return DOS_SUCC;
@@ -296,6 +296,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 continue;
             }
 
+            pthread_mutex_lock(&pstCWQNode->mutexCWQMngt);
             DLL_Scan(&pstCWQNode->stCallWaitingQueue, pstDLLNode1, DLL_NODE_S*)
             {
                 if (DOS_ADDR_INVALID(pstDLLNode1))
@@ -315,9 +316,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
                     break;
                 }
 
-                pthread_mutex_lock(&pstCWQNode->mutexCWQMngt);
                 dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode1);
-                pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);
 
                 DLL_Init_Node(pstDLLNode1);
                 dos_dmem_free(pstDLLNode1);
@@ -327,6 +326,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
                     DOS_ASSERT(0);
                 }
             }
+            pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);
         }
     }
 

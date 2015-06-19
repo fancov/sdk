@@ -383,8 +383,6 @@ U32 sc_ep_init_agent_status()
 
     sc_logr_notice(SC_ESL, "%s", "CURL get agent status SUCC.Result");
 
-    sc_logr_notice(SC_ESL, "%s", "CURL get agent status SUCC.Result");
-
     ulRet = sc_ep_update_agent_req_proc((S8 *)stIOBuffer.pszBuffer);
 
     dos_iobuf_free(&stIOBuffer);

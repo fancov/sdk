@@ -127,7 +127,7 @@ VOID* sc_ep_ext_runtime(VOID *ptr)
             }
 
             g_pstExtMngtHangle->blIsESLRunning = DOS_TRUE;
-            g_pstExtMngtHangle->ulESLDebugLevel = ESL_LOG_LEVEL_DEBUG;
+            g_pstExtMngtHangle->ulESLDebugLevel = ESL_LOG_LEVEL_INFO;
             esl_global_set_default_logger(g_pstExtMngtHangle->ulESLDebugLevel);
             esl_events(&g_pstExtMngtHangle->stRecvHandle, ESL_EVENT_TYPE_PLAIN, SC_EXT_EVENT_LIST);
 
