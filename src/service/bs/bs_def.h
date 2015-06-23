@@ -520,15 +520,18 @@ typedef struct stBSS_APP_CONN
 {
     U32                 bIsValid:1;
     U32                 bIsConn:1;
-    U32                 bIsTCP:1;
-    U32                 ulReserv:29;
+    U32                 ucCommType:8;
+    U32                 ulReserv:22;
 
     U32                 ulMsgSeq;
 
     U32                 aulIPAddr[4];       /* APP所在IP地址,网络序 */
     S32                 lSockfd;            /* APP对应在本机的socket */
     S32                 lAddrLen;
-    struct sockaddr_in  stAddr;             /* APP对应在本机的连接地址 */
+    union tagSocketAddr{
+        struct sockaddr_in  stInAddr;             /* APP对应在本机的连接地址 */
+        struct sockaddr_un  stUnAddr;             /* APP对应在本机的连接地址 */
+    }stAddr;
 }BSS_APP_CONN;
 
 /* 业务层控制块 */
@@ -549,6 +552,7 @@ typedef struct stBSS_CB
     U32         ulStatDayBase;              /* 按天统计基础时间戳 */
     U32         ulStatHourBase;             /* 按时统计基础时间戳 */
 
+    U32         ulCommProto;                /* 使用哪种协议通讯 */
     U16         usUDPListenPort;            /* 监听端口,网络序 */
     U16         usTCPListenPort;            /* 监听端口,网络序 */
 
@@ -621,7 +625,7 @@ BS_SETTLE_ST *bs_get_settle_st(U16 usTrunkID);
 BS_TASK_ST *bs_get_task_st(U32 ulTaskID);
 VOID bs_customer_add_child(BS_CUSTOMER_ST *pstCustomer, BS_CUSTOMER_ST *pstChildCustomer);
 BSS_APP_CONN *bs_get_app_conn(BS_MSG_TAG *pstMsgTag);
-BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, struct sockaddr_in *pstAddrIn, S32 lAddrLen, BOOL bIsTcp);
+BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, U8 *pstAddrIn, U32 ulAddrinHeader, S32 lAddrLen);
 VOID bs_stat_agent_num(VOID);
 U32 bs_get_settle_packageid(U16 usTrunkID);
 BS_BILLING_PACKAGE_ST *bs_get_billing_package(U32 ulPackageID, U8 ucServType);

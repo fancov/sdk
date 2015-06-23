@@ -81,12 +81,19 @@ do{                                                                    \
 #define sc_logr_emerg(_ulSubmod, _pszFormat, ...) \
         sc_debug(_ulSubmod, LOG_LEVEL_EMERG, (_pszFormat), __VA_ARGS__)
 
+#if 0
 #define SC_TRACE_IN(param0, param1, param2, param3) \
         sc_logr_debug(SC_FUNC, "SC Trace in %s (0x%X, 0x%X, 0x%X, 0x%X)" \
                         , __FUNCTION__, (U64)(param0), (U64)(param1), (U64)(param2), (U64)(param3));
 
 #define SC_TRACE_OUT() \
         sc_logr_debug(SC_FUNC, "SC Trace out %s", __FUNCTION__);
+#else
+#define SC_TRACE_IN(param0, param1, param2, param3) do{}while(0)
+
+#define SC_TRACE_OUT() do{}while(0)
+
+#endif
 
 #define SC_HTTPD_TRACE(param0, param1, param2, param3) \
         sc_logr_debug(SC_HTTPD, "SC Trace Func:%s (%s:%d) Srv: %lu, Client: %lu, RspCode:%lu, Errno:0x%X" \

@@ -17,6 +17,7 @@ extern "C"{
 
 /* include public header files */
 #include <dos.h>
+#include <esl.h>
 #include <pthread.h>
 #include <semaphore.h>
 

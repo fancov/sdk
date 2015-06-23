@@ -16,6 +16,7 @@ extern "C"{
 
 /* include public header files */
 #include <dos.h>
+#include <esl.h>
 
 /* include private header files */
 #include "sc_def.h"
@@ -185,6 +186,14 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
 
+    if (DOS_ADDR_INVALID(pstTCB))
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+    }
+
     pstCallee = sc_task_get_callee(pstTCB);
     if (!pstCallee)
     {
@@ -206,7 +215,7 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     pstSCB = sc_scb_alloc();
     if (!pstSCB)
     {
-        sc_logr_notice(SC_TASK, "%s", "Make call for task %d fail. Alloc SCB fail.");
+        sc_logr_notice(SC_TASK, "Make call for task %d fail. Alloc SCB fail.", pstTCB->ulTaskID);
         goto fail;
     }
 
@@ -246,6 +255,15 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         goto fail;
     }
 
+#if 1
+    if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+    {
+        sc_call_trace(pstSCB, "Make call failed.");
+
+        //sc_task_callee_set_recall(pstTCB, pstCallee->ulIndex);
+        goto fail;
+    }
+#else
     if (sc_dialer_add_call(pstSCB) != DOS_SUCC)
     {
         sc_call_trace(pstSCB, "Make call failed.");
@@ -253,8 +271,9 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         sc_task_callee_set_recall(pstTCB, pstCallee->ulIndex);
         goto fail;
     }
+#endif
 
-    sc_call_trace(pstSCB, "Make call for task %d successfully.", pstTCB->ulTaskID);
+    sc_call_trace(pstSCB, "Make call for task %u successfully.", pstTCB->ulTaskID);
 
     if (pstCallee)
     {
@@ -317,7 +336,8 @@ VOID *sc_task_runtime(VOID *ptr)
             usleep(1000 * 1000);
             continue;
         }
-#if 0
+#if  0
+
         if (!blIsNormal && ulTaskInterval <= 100)
         {
             ulTaskInterval = 1;
@@ -330,7 +350,7 @@ VOID *sc_task_runtime(VOID *ptr)
                 break;
             }
         }
-#endif
+
         /* 如果需要接通坐席的任务，则需要判断是否有坐席，如果没有坐席就不呼叫了 */
         if (SC_TASK_MODE_AUDIO_ONLY != pstTCB->ucMode
             && 0 == sc_acd_get_idel_agent(pstTCB->ulAgentQueueID))
@@ -339,21 +359,23 @@ VOID *sc_task_runtime(VOID *ptr)
             usleep(1000 * 1000);
             continue;
         }
+#endif
 
         ulTaskInterval = sc_task_get_call_interval(pstTCB);
         usleep(ulTaskInterval * 1000);
-
+#if 0
         /* 如果暂停了就继续等待 */
         if (SC_TASK_PAUSED == pstTCB->ucTaskStatus)
         {
             sc_logr_info(SC_TASK, "Cannot make call for puased status. Task : %u.", pstTCB->ulTaskID);
             continue;
         }
+#endif
 
         /* 如果被停止了，就检测还有没有呼叫，如果有呼叫，就等待，等待没有呼叫时退出任务 */
         if (SC_TASK_STOP == pstTCB->ucTaskStatus)
         {
-            if (pstTCB->ulCurrentConcurrency >= 0)
+            if (pstTCB->ulCurrentConcurrency != 0)
             {
                 ulTaskInterval = 1000;
                 sc_logr_info(SC_TASK, "Cannot make call for stop status. Task : %u.", pstTCB->ulTaskID);
@@ -363,7 +385,7 @@ VOID *sc_task_runtime(VOID *ptr)
             /* 任务结束了，退出主循环 */
             break;
         }
-
+#if 0
         /* 检查当前是否在允许的时间段 */
         if (sc_task_check_can_call_by_time(pstTCB) != DOS_TRUE)
         {
@@ -377,7 +399,7 @@ VOID *sc_task_runtime(VOID *ptr)
             sc_logr_info(SC_TASK, "Cannot make call for system busy. Task : %u.", pstTCB->ulTaskID);
             continue;
         }
-
+#endif
         /* 发起呼叫 */
         if (sc_task_make_call(pstTCB))
         {

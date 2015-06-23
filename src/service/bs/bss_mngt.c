@@ -1900,10 +1900,16 @@ VOID bss_add_aaa_list(VOID *pMsg)
     /* 消息入队 */
     *pstMsg = *(BS_MSG_AUTH *)pMsg;
     pstMsgNode->pHandle = (VOID *)pstMsg;
-    pthread_mutex_lock(&g_mutexBSAAAMsg);
+    if (g_stBSAAAMsgList.ulCount < 3)
+    {
+        pthread_mutex_lock(&g_mutexBSAAAMsg);
+    }
     DLL_Add(&g_stBSAAAMsgList, pstMsgNode);
     pthread_cond_signal(&g_condBSAAAList);
-    pthread_mutex_unlock(&g_mutexBSAAAMsg);
+    if (g_stBSAAAMsgList.ulCount < 4)
+    {
+        pthread_mutex_unlock(&g_mutexBSAAAMsg);
+    }
 
 }
 
@@ -1935,10 +1941,16 @@ VOID bss_add_cdr_list(VOID *pMsg)
     printf ("%s:%d, %d, %d\r\n", __FUNCTION__, __LINE__, pstMsg->ucLegNum, ((BS_MSG_CDR *)pMsg)->ucLegNum);
 
     pstMsgNode->pHandle = (VOID *)pstMsg;
-    pthread_mutex_lock(&g_mutexBSCDR);
+    //if (g_stBSCDRList.ulCount < 3)
+    {
+        pthread_mutex_lock(&g_mutexBSCDR);
+    }
     DLL_Add(&g_stBSCDRList, pstMsgNode);
     pthread_cond_signal(&g_condBSCDRList);
-    pthread_mutex_unlock(&g_mutexBSCDR);
+    //if (g_stBSCDRList.ulCount < 4)
+    {
+        pthread_mutex_unlock(&g_mutexBSCDR);
+    }
 
 }
 
@@ -2103,29 +2115,53 @@ VOID *bss_send_msg2app(VOID *arg)
                     pstMsgTag->ucErrcode = BS_ERR_MAINTAIN;
                 }
 
-                if (pstAppConn->bIsTCP)
+                switch (pstAppConn->ucCommType)
                 {
-                    lRet = send(pstAppConn->lSockfd, pstMsgTag, pstMsgTag->usMsgLen, 0);
-                }
-                else
-                {
-                    lRet = sendto(pstAppConn->lSockfd, pstMsgTag, pstMsgTag->usMsgLen,
-                                  0, (struct sockaddr *)&pstAppConn->stAddr, pstAppConn->lAddrLen);
+                    case BSCOMM_PROTO_UDP:
+                        lRet = sendto(pstAppConn->lSockfd, pstMsgTag, pstMsgTag->usMsgLen,
+                                  0, (struct sockaddr *)&pstAppConn->stAddr.stInAddr, pstAppConn->lAddrLen);
+                        break;
+
+                    case BSCOMM_PROTO_TCP:
+                        lRet = send(pstAppConn->lSockfd, pstMsgTag, pstMsgTag->usMsgLen, 0);
+                        break;
+
+                    case BSCOMM_PROTO_UNIX:
+                        lRet = sendto(pstAppConn->lSockfd, pstMsgTag, pstMsgTag->usMsgLen,
+                                  0, (struct sockaddr *)&pstAppConn->stAddr.stUnAddr, pstAppConn->lAddrLen);
+                        break;
+
+                    default:
+                        DOS_ASSERT(0);
+                        bs_trace(BS_TRACE_FS, LOG_LEVEL_NOTIC, "Unsupport tranport protocl. Type: %u", pstAppConn->ucCommType);
+                        break;
                 }
 
                 if (lRet != (S32)pstMsgTag->usMsgLen)
                 {
                     bs_trace(BS_TRACE_FS, LOG_LEVEL_NOTIC,
-                             "Notice: send msg to app fail! result:%d, type:%u, len:%u, errno:%d",
-                             lRet, pstMsgTag->ucMsgType, pstMsgTag->usMsgLen, errno);
+                             "Notice: send msg to app fail! result:%d, type:%u, len:%u, addr:%s, Length:%d errno:%d"
+                             , lRet, pstMsgTag->ucMsgType, pstMsgTag->usMsgLen
+                             , pstAppConn->stAddr.stUnAddr.sun_path, pstAppConn->lAddrLen, errno);
                 }
                 else
                 {
-                    bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
-                             "Send msg to app succ! type:%u, seq:%u, len:%u, errcode:%u, addr:%X, port: %d",
-                             pstMsgTag->ucMsgType, pstMsgTag->ulMsgSeq,
-                             pstMsgTag->usMsgLen, pstMsgTag->ucErrcode,
-                             pstAppConn->stAddr.sin_addr.s_addr, dos_htons(pstAppConn->stAddr.sin_port));
+                    if (pstAppConn->ucCommType != BSCOMM_PROTO_UNIX)
+                    {
+                        bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
+                                 "Send msg to app succ! type:%u, seq:%u, len:%u, errcode:%u, addr:%X, port: %d",
+                                 pstMsgTag->ucMsgType, pstMsgTag->ulMsgSeq,
+                                 pstMsgTag->usMsgLen, pstMsgTag->ucErrcode,
+                                 pstAppConn->stAddr.stInAddr.sin_addr.s_addr, dos_htons(pstAppConn->stAddr.stInAddr.sin_port));
+                    }
+                    else
+                    {
+                        bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
+                                 "Send msg to app succ! type:%u, seq:%u, len:%u, errcode:%u, addr:%s",
+                                 pstMsgTag->ucMsgType, pstMsgTag->ulMsgSeq,
+                                 pstMsgTag->usMsgLen, pstMsgTag->ucErrcode,
+                                 pstAppConn->stAddr.stUnAddr.sun_path);
+                    }
                 }
             }
             else
@@ -2289,24 +2325,70 @@ VOID *bss_recv_msg_from_app(VOID *arg)
     fd_set              stFDSet;
     BS_MSG_TAG          *pstMsgTag;
     struct sockaddr_in  stAddr, stAddrIn;
+    struct sockaddr_un  stUnAddr, stUnAddrIn;
+    S8 szBuffCMD[256];
+    S8 szBuffSockPath[256] = { 0 };
 
 
     /* 初始化socket(暂时只考虑UDP方式) */
-    lSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    switch (g_stBssCB.ulCommProto)
+    {
+        case BSCOMM_PROTO_UDP:
+            lSocket = socket(AF_INET, SOCK_DGRAM, 0);
+            break;
+
+        case BSCOMM_PROTO_TCP:
+            lSocket = socket(AF_INET, SOCK_STREAM, 0);
+            break;
+
+        /* 默认使用unix socket (UDP 模式) */
+        default:
+            lSocket = socket(AF_UNIX, SOCK_DGRAM, 0);
+            break;
+    }
     if (lSocket < 0)
     {
         bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: create socket fail!");
         return NULL;
     }
 
-    /* 初始化并绑定服务器地址 */
     dos_memzero(&stAddrIn, sizeof(stAddrIn));
     dos_memzero(&stAddr, sizeof(stAddr));
-    lAddrLen = sizeof(struct sockaddr_in);
-    stAddr.sin_family = AF_INET;
-    stAddr.sin_port = g_stBssCB.usUDPListenPort;
-    stAddr.sin_addr.s_addr = dos_htonl(INADDR_ANY);
-    lRet = bind(lSocket, (struct sockaddr *)&stAddr, lAddrLen);
+    dos_memzero(&stUnAddr, sizeof(stUnAddr));
+    dos_memzero(&stUnAddrIn, sizeof(stUnAddrIn));
+
+    /* 初始化并绑定服务器地址 */
+    switch (g_stBssCB.ulCommProto)
+    {
+        case BSCOMM_PROTO_UDP:
+            lAddrLen = sizeof(struct sockaddr_in);
+            stAddr.sin_family = AF_INET;
+            stAddr.sin_port = g_stBssCB.usUDPListenPort;
+            stAddr.sin_addr.s_addr = dos_htonl(INADDR_ANY);
+            lRet = bind(lSocket, (struct sockaddr *)&stAddr, lAddrLen);
+            break;
+
+        case BSCOMM_PROTO_TCP:
+            lAddrLen = sizeof(struct sockaddr_in);
+            stAddr.sin_family = AF_INET;
+            stAddr.sin_port = g_stBssCB.usTCPListenPort;
+            stAddr.sin_addr.s_addr = dos_htonl(INADDR_ANY);
+            lRet = bind(lSocket, (struct sockaddr *)&stAddr, lAddrLen);
+            break;
+
+        /* 默认使用unix socket (UDP 模式) */
+        default:
+            dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "mkdir -p %s/var/run/socket", dos_get_sys_root_path());
+            system(szBuffCMD);
+            dos_snprintf(szBuffSockPath, sizeof(szBuffSockPath), "%s/var/run/socket/bs.sock"
+                        , dos_get_sys_root_path());
+            unlink(szBuffSockPath);
+            stUnAddr.sun_family = AF_UNIX;
+            dos_strcpy(stUnAddr.sun_path, szBuffSockPath);
+            lAddrLen = offsetof(struct sockaddr_un, sun_path) + strlen(szBuffSockPath);
+            lRet = bind(lSocket, (struct sockaddr*)&stUnAddr, lAddrLen);
+            break;
+    }
     if (lRet < 0)
     {
         bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: bind socket fail!");
@@ -2340,7 +2422,23 @@ VOID *bss_recv_msg_from_app(VOID *arg)
             continue;
         }
 
-        lRet = recvfrom(lSocket, strBuff, sizeof(strBuff), 0,  (struct sockaddr *)&stAddrIn , (socklen_t *)&lAddrLen);
+        switch (g_stBssCB.ulCommProto)
+        {
+            case BSCOMM_PROTO_UDP:
+                lRet = recvfrom(lSocket, strBuff, sizeof(strBuff), 0,  (struct sockaddr *)&stAddrIn , (socklen_t *)&lAddrLen);
+                break;
+
+            case BSCOMM_PROTO_TCP:
+                lRet = recv(lSocket, strBuff, sizeof(strBuff), 0);
+                break;
+
+            /* 默认使用unix socket (UDP 模式) */
+            default:
+                lAddrLen = sizeof(stUnAddrIn);
+                lRet = recvfrom(lSocket, strBuff, sizeof(strBuff), 0,  (struct sockaddr *)&stUnAddrIn , (socklen_t *)&lAddrLen);
+                break;
+        }
+
         if (0 == lRet || EINTR == errno || EAGAIN == errno)
         {
             /* 连接关闭/系统中断或再试一遍(通常是非阻塞情况下调用了阻塞操作) */
@@ -2360,7 +2458,8 @@ VOID *bss_recv_msg_from_app(VOID *arg)
         }
 
 #if (DOS_TRUE == BS_ONLY_LISTEN_LOCAL)
-        if (stAddrIn.sin_addr.s_addr != BS_LOCAL_IP_ADDR)
+        if (g_stBssCB.ulCommProto != BSCOMM_PROTO_UNIX
+            && stAddrIn.sin_addr.s_addr != BS_LOCAL_IP_ADDR)
         {
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Only accept local(127.0.0.1) connect!");
             continue;
@@ -2372,19 +2471,33 @@ VOID *bss_recv_msg_from_app(VOID *arg)
         if (pstMsgTag->usPort != stAddrIn.sin_port
             || pstMsgTag->aulIPAddr[0] != stAddrIn.sin_addr.s_addr)
         {
-            bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
-                     "Refresh app addr. old:0x%X:%u, new:0x%X:%u",
-                     dos_ntohl(pstMsgTag->aulIPAddr[0]), dos_ntohs(pstMsgTag->usPort),
-                     dos_ntohl(stAddrIn.sin_addr.s_addr), dos_ntohs(stAddrIn.sin_port));
-            pstMsgTag->usPort = stAddrIn.sin_port;
-            pstMsgTag->aulIPAddr[0] = stAddrIn.sin_addr.s_addr;
-            pstMsgTag->aulIPAddr[1] = 0;
-            pstMsgTag->aulIPAddr[2] = 0;
-            pstMsgTag->aulIPAddr[3] = 0;
-
+            if (g_stBssCB.ulCommProto != BSCOMM_PROTO_UNIX)
+            {
+                bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
+                         "Refresh app addr. old:0x%X:%u, new:0x%X:%u",
+                         dos_ntohl(pstMsgTag->aulIPAddr[0]), dos_ntohs(pstMsgTag->usPort),
+                         dos_ntohl(stAddrIn.sin_addr.s_addr), dos_ntohs(stAddrIn.sin_port));
+                pstMsgTag->usPort = stAddrIn.sin_port;
+                pstMsgTag->aulIPAddr[0] = stAddrIn.sin_addr.s_addr;
+                pstMsgTag->aulIPAddr[1] = 0;
+                pstMsgTag->aulIPAddr[2] = 0;
+                pstMsgTag->aulIPAddr[3] = 0;
+            }
+            else
+            {
+                bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
+                         "Refresh app addr. New socket: %s, Len:%d, Index: %X", stUnAddrIn.sun_path, lAddrLen, pstMsgTag->aulIPAddr[0]);
+            }
         }
 
-        bs_save_app_conn(lSocket, &stAddrIn, lAddrLen, DOS_FALSE);
+        if (g_stBssCB.ulCommProto != BSCOMM_PROTO_UNIX)
+        {
+            bs_save_app_conn(lSocket, (U8 *)&stAddrIn, pstMsgTag->aulIPAddr[0], lAddrLen);
+        }
+        else
+        {
+            bs_save_app_conn(lSocket, (U8 *)&stUnAddrIn, pstMsgTag->aulIPAddr[0], lAddrLen);
+        }
 
         bss_app_msg_proc((VOID *)strBuff);
 
@@ -5140,6 +5253,7 @@ VOID *bss_cdr(VOID *arg)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condBSCDRList, &g_mutexBSCDR, &stTimeout);
+        pthread_mutex_unlock(&g_mutexBSCDR);
 
         while (1)
         {
@@ -5148,11 +5262,26 @@ VOID *bss_cdr(VOID *arg)
                 break;
             }
 
+            //if (DLL_Count(&g_stBSCDRList) < 3)
+            {
+                pthread_mutex_lock(&g_mutexBSCDR);
+            }
+
             pMsgNode = dll_fetch(&g_stBSCDRList);
             if (NULL == pMsgNode)
             {
+                //if (DLL_Count(&g_stBSCDRList) < 3)
+                {
+                    pthread_mutex_unlock(&g_mutexBSCDR);
+                }
+
                 /* 队列中没有消息 */
                 continue;
+            }
+
+            //if (DLL_Count(&g_stBSCDRList) < 2)
+            {
+                pthread_mutex_unlock(&g_mutexBSCDR);
             }
 
             pstMsg = (BS_MSG_CDR *)pMsgNode->pHandle;
@@ -5189,7 +5318,7 @@ VOID *bss_cdr(VOID *arg)
             }
         }
 
-        pthread_mutex_unlock(&g_mutexBSCDR);
+
     }
 
     return NULL;

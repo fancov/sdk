@@ -38,6 +38,7 @@
  */
 
 #include <dos.h>
+#include <esl.h>
 #include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_acd_def.h"
@@ -423,9 +424,10 @@ U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 
     pthread_mutex_unlock(&g_mutexGroupList);
 
-    sc_logr_error(SC_ACD, "Add agent to group SUCC. Agent ID: %u, Group ID:%u"
+    sc_logr_error(SC_ACD, "Add agent to group SUCC. Agent ID: %u, Group ID:%u, Bind Type: %u"
             , pstAgentInfo->ulSiteID
-            , ulGroupID);
+            , ulGroupID
+            , pstAgentInfo->ucBindType);
 
     return DOS_SUCC;
 }
@@ -1480,7 +1482,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.ucStatus = SC_ACD_OFFLINE;
     stSiteInfo.bRecord = ulRecordFlag;
     stSiteInfo.bGroupHeader = ulIsHeader;
-    stSiteInfo.ucBindType = ulSelectType;
+    stSiteInfo.ucBindType = (U8)ulSelectType;
     stSiteInfo.bLogin = DOS_FALSE;
     stSiteInfo.bWaitingDelete = DOS_FALSE;
     stSiteInfo.bConnected = DOS_FALSE;

@@ -19,7 +19,7 @@ CLogDB::CLogDB()
     blInited = 0;
     pstDBHandle = NULL;
 
-    this->ulLogLevel = LOG_LEVEL_DEBUG;
+    this->ulLogLevel = LOG_LEVEL_INFO;
 }
 
 

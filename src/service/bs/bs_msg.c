@@ -71,7 +71,7 @@ VOID bsd_inherit_rule_req2sl(DLL_NODE_S *pMsgNode)
     ulPackageID = *(U32 *)(pstMsg->param);
     dos_dmem_free(pstMsg->param);
     pstMsg->param = NULL;
-    
+
     bsd_walk_billing_package_tbl_bak(ulPackageID);
 }
 
@@ -103,7 +103,7 @@ VOID bss_send_walk_req2dl(U32 ulTblType , BS_FN callback ,VOID *param)
     pstTblWalkMsg->stMsgTag.lInterErr = BS_INTER_ERR_SUCC;
     pstTblWalkMsg->stMsgTag.usMsgLen = sizeof(BS_INTER_MSG_WALK);
     pstTblWalkMsg->stMsgTag.ucReserv = 0;
-    pstTblWalkMsg->ulTblType = ulTblType; 
+    pstTblWalkMsg->ulTblType = ulTblType;
     pstTblWalkMsg->FnCallback = callback;
     pstTblWalkMsg->param = param;
     pstMsgNode->pHandle = (VOID *)pstTblWalkMsg;
@@ -237,10 +237,16 @@ VOID bss_send_rsp_msg2app(BS_MSG_TAG *pstMsgTag, U8 ucMsgType)
              pstRspMsg->usMsgLen,
              pstRspMsg->ucErrcode);
 
-    pthread_mutex_lock(&g_mutexBSAppMsgSend);
+    if (g_stBSAppMsgSendList.ulCount < 3)
+    {
+        pthread_mutex_lock(&g_mutexBSAppMsgSend);
+    }
     DLL_Add(&g_stBSAppMsgSendList, pstMsgNode);
     pthread_cond_signal(&g_condBSAppSendList);
-    pthread_mutex_unlock(&g_mutexBSAppMsgSend);
+    if (g_stBSAppMsgSendList.ulCount < 4)
+    {
+        pthread_mutex_unlock(&g_mutexBSAppMsgSend);
+    }
 
 }
 

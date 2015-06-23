@@ -369,7 +369,7 @@ S32 bs_show_cb(U32 ulIndex)
 
     cli_out_string(ulIndex, "\r\n\r\n---------- APP CONN ----------\r\n");
     dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s%10s%10s%20s%10s",
-                 "Connected", "TCP", "Seq", "IP", "Port");
+                 "Connected", "Type", "Seq", "IP", "Port");
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
     cli_out_string(ulIndex, "\r\n------------------------------------------------------------");
@@ -380,13 +380,26 @@ S32 bs_show_cb(U32 ulIndex)
             continue;
         }
 
-        dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%20s%10u",
-                     g_stBssCB.astAPPConn[i].bIsConn,
-                     g_stBssCB.astAPPConn[i].bIsTCP,
-                     g_stBssCB.astAPPConn[i].ulMsgSeq,
-                     dos_ipaddrtostr(g_stBssCB.astAPPConn[i].aulIPAddr[0], szIP, sizeof(szIP)),
-                     g_stBssCB.astAPPConn[i].stAddr.sin_port);
-        szBuf[sizeof(szBuf) - 1] = '\0';
+        if (g_stBssCB.astAPPConn[i].ucCommType != BSCOMM_PROTO_UNIX)
+        {
+            dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%20s%10u",
+                         g_stBssCB.astAPPConn[i].bIsConn,
+                         g_stBssCB.astAPPConn[i].ucCommType,
+                         g_stBssCB.astAPPConn[i].ulMsgSeq,
+                         dos_ipaddrtostr(g_stBssCB.astAPPConn[i].aulIPAddr[0], szIP, sizeof(szIP)),
+                         g_stBssCB.astAPPConn[i].stAddr.stInAddr.sin_port);
+            szBuf[sizeof(szBuf) - 1] = '\0';
+        }
+        else
+        {
+            dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%20s",
+                         g_stBssCB.astAPPConn[i].bIsConn,
+                         g_stBssCB.astAPPConn[i].ucCommType,
+                         g_stBssCB.astAPPConn[i].ulMsgSeq,
+                         g_stBssCB.astAPPConn[i].stAddr.stUnAddr.sun_path);
+            szBuf[sizeof(szBuf) - 1] = '\0';
+
+        }
         cli_out_string(ulIndex, szBuf);
     }
 
@@ -1129,9 +1142,16 @@ S32 bs_show_task(U32 ulIndex, U32 ulObjectID)
 
 S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
 {
+<<<<<<< HEAD
     S8 szBuff[1024] = {0};
     U32 ulHashIndex = U32_BUTT;
     HASH_NODE_S *pstHashNode = NULL;
+=======
+    S8  szBuff[BS_TRACE_BUFF_LEN] = {0, };
+    U32 ulHashIndex = 0, ulCol = 0, ulRow = 0;
+    U32 aulRule[BS_MAX_RULE_ITEM][BS_MAX_BILLING_RULE_IN_PACKAGE] = {{0}};
+
+>>>>>>> 65ec82b62bb627bee5f78a9fcbd648eed77b2f14
     BS_BILLING_PACKAGE_ST  *pstPkg = NULL;
     U32 ulLoop = 0;
 
@@ -1150,6 +1170,15 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
             {
                 continue;
             }
+<<<<<<< HEAD
+=======
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------");
+            cli_out_string(ulIndex, szBuff);
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n    Package ID     Service Type    ");
+            cli_out_string(ulIndex, szBuff);
+>>>>>>> 65ec82b62bb627bee5f78a9fcbd648eed77b2f14
 
             /* ¥Ú”°±ÌÕ∑ */
             dos_snprintf(szBuff, sizeof(szBuff), "\r\nList Package ID %d.", ulObjectID);
@@ -1164,6 +1193,7 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
 
             for (ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
             {
+<<<<<<< HEAD
                 if (0 == pstPkg->astRule[ulLoop].ulRuleID)
                 {
                     continue;
@@ -1183,6 +1213,41 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
                                 , bs_translate_billing_attr(pstPkg->astRule[ulLoop].ucDstAttrType2)
                                 , pstPkg->astRule[ulLoop].ulDstAttrValue2);
                 cli_out_string(ulIndex, szBuff);
+=======
+                aulRule[0][ulCol]  = pstPkg->astRule[ulCol].ulRuleID;
+                aulRule[1][ulCol]  = pstPkg->astRule[ulCol].ucSrcAttrType1;
+                aulRule[2][ulCol]  = pstPkg->astRule[ulCol].ucSrcAttrType2;
+                aulRule[3][ulCol]  = pstPkg->astRule[ulCol].ucDstAttrType1;
+                aulRule[4][ulCol]  = pstPkg->astRule[ulCol].ucDstAttrType2;
+                aulRule[5][ulCol]  = pstPkg->astRule[ulCol].ulSrcAttrValue1;
+                aulRule[6][ulCol]  = pstPkg->astRule[ulCol].ulSrcAttrValue2;
+                aulRule[7][ulCol]  = pstPkg->astRule[ulCol].ulDstAttrValue1;
+                aulRule[8][ulCol]  = pstPkg->astRule[ulCol].ulDstAttrValue2;
+                aulRule[9][ulCol]  = pstPkg->astRule[ulCol].ulFirstBillingUnit;
+                aulRule[10][ulCol] = pstPkg->astRule[ulCol].ulNextBillingUnit;
+                aulRule[11][ulCol] = pstPkg->astRule[ulCol].ucFirstBillingCnt;
+                aulRule[12][ulCol] = pstPkg->astRule[ulCol].ucNextBillingCnt;
+                aulRule[13][ulCol] = pstPkg->astRule[ulCol].ucServType;
+                aulRule[14][ulCol] = pstPkg->astRule[ulCol].ucBillingType;
+                aulRule[15][ulCol] = pstPkg->astRule[ulCol].ulBillingRate;
+                aulRule[16][ulCol] = pstPkg->astRule[ulCol].ulEffectTimestamp;
+                aulRule[17][ulCol] = pstPkg->astRule[ulCol].ulExpireTimestamp;
+                aulRule[18][ulCol] = pstPkg->astRule[ulCol].ucPriority;
+                aulRule[19][ulCol] = pstPkg->astRule[ulCol].ucValid;
+            }
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Rule");
+            cli_out_string(ulIndex, szBuff);
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------------");
+            cli_out_string(ulIndex, szBuff);
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n  %-20s|%12u %12u %12u %12u %12u %12u %12u %12u %12u %12u", "Billing Rule Record", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+            cli_out_string(ulIndex, szBuff);
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------------");
+            cli_out_string(ulIndex, szBuff);
+>>>>>>> 65ec82b62bb627bee5f78a9fcbd648eed77b2f14
 
                 cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------");
                 cli_out_string(ulIndex, "\r\nFirstBillingUnit FirstBillingCnt NextBillingUnit NextBillingCnt            ServType    BillingType BillingRate       Effect       Expire Priority Valid");

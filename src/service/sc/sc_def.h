@@ -114,6 +114,9 @@ extern BOOL                 g_blSCInitOK;
 #define SC_NUM_VERIFY_TIME_MAX         10         /* 语音验证码播放次数 */
 #define SC_NUM_VERIFY_TIME_MIN         2          /* 语音验证码播放次数 */
 
+#define SC_MASTER_TASK_INDEX           0
+#define SC_EP_TASK_NUM                 2
+
 /* 定义运营商的ID */
 #define SC_TOP_USER_ID                 1
 
@@ -555,13 +558,11 @@ typedef struct tagTaskMngtInfo{
     pthread_mutex_t      mutexCMDList;            /* 保护命令队列使用的互斥量 */
     pthread_mutex_t      mutexTCBList;            /* 保护任务控制块使用的互斥量 */
     pthread_mutex_t      mutexCallList;           /* 保护呼叫控制块使用的互斥量 */
-    pthread_mutex_t      mutexCallHash;           /* 保护呼叫控制块使用的互斥量 */
     pthread_cond_t       condCMDList;             /* 命令队列数据到达通知条件量 */
     U32                  blWaitingExitFlag;       /* 等待退出标示 */
 
     list_t               stCMDList;               /* 命令队列(节点由HTTP Server创建，有HTTP Server释放) */
     SC_SCB_ST            *pstCallSCBList;         /* 呼叫控制块列表 (需要hash表存储) */
-    HASH_TABLE_S         *pstCallSCBHash;         /* 呼叫控制块的hash索引 */
     SC_TASK_CB_ST        *pstTaskList;            /* 任务列表 refer to struct tagTaskCB*/
     U32                  ulTaskCount;             /* 当前正在执行的任务数 */
 
@@ -579,6 +580,29 @@ typedef struct tagCallWaitQueueNode{
     DLL_S               stCallWaitingQueue;               /* 呼叫等待队列 refer to SC_SCB_ST */
 }SC_CWQ_NODE_ST;
 /***************呼叫对待队列相关结束********************/
+
+/* dialer模块控制块 */
+typedef struct tagSCDialerHandle
+{
+    esl_handle_t        stHandle;                /*  esl 句柄 */
+    pthread_t           pthID;
+    U32                 ulCallCnt;
+    pthread_mutex_t     mutexCallQueue;          /* 互斥锁 */
+    pthread_cond_t      condCallQueue;           /* 条件变量 */
+    list_t              stCallList;              /* 呼叫队列 */
+
+    BOOL                blIsESLRunning;          /* ESL是否连接正常 */
+    BOOL                blIsWaitingExit;         /* 任务是否正在等待退出 */
+    S8                  *pszCMDBuff;
+}SC_DIALER_HANDLE_ST;
+
+typedef struct tagEPTaskCB
+{
+    DLL_S            stMsgList;
+    pthread_t        pthTaskID;
+    pthread_mutex_t  mutexMsgList;
+    pthread_cond_t   contMsgList;
+}SC_EP_TASK_CB;
 
 /* declare functions */
 SC_SCB_ST *sc_scb_alloc();
@@ -629,15 +653,7 @@ U32 sc_task_pause(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_start(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_stop(SC_TASK_CB_ST *pstTCB);
 S8 *sc_scb_get_status(U32 ulStatus);
-U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
-U32 sc_scb_hash_tables_delete(S8 *pszUUID);
-SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
-U32 sc_scb_syn_post(S8 *pszUUID);
-U32 sc_scb_syn_wait(S8 *pszUUID);
 SC_SYS_STATUS_EN sc_check_sys_stat();
-SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
-U32 sc_scb_hash_tables_delete(S8 *pszUUID);
-U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
 U32 sc_ep_search_route(SC_SCB_ST *pstSCB);
 U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 ulLength);
 U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszCaller, S8 *pszCallee);
