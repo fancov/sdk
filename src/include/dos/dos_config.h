@@ -146,7 +146,7 @@ U32 config_get_py_path(S8 *pszBuff, U32 ulLen);
 
 /**
  * 函数：
- * U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen); 
+ * U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen);
  * 功能：获取MySQL数据库sock文件路径
  * 参数：
  * 		S8 *pszBuff： 缓存
@@ -293,6 +293,16 @@ S32 config_hb_threshold_disk(U32 *pulPartition, U32* pulDisk);
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
 S32 config_hb_threshold_proc(U32* pulMem, U32* pulCPU);
+
+/**
+ * 函数：U32 config_get_shortcut_cmd(U32 ulNo, S8 *pszCtrlCmd, U32 ulLen);
+ * 功能：获取ctrl_panel模块快捷键支持的命令
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+U32 config_get_shortcut_cmd(U32 ulNo, S8 *pszCtrlCmd, U32 ulLen);
 
 
 

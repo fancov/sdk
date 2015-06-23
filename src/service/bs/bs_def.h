@@ -50,7 +50,6 @@ enum BS_INTER_ERRCODE_E
     BS_INTER_ERR_SUCC               = 0,        /* 成功 */
     BS_INTER_ERR_NOT_EXIST          = 1,        /* 不存在 */
     BS_INTER_ERR_MEM_ALLOC_FAIL     = 2,        /* 过期/失效 */
-
 };
 
 enum BS_WEB_CMD_OPTERATOR
