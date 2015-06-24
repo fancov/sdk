@@ -690,7 +690,7 @@ BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum);
 U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID);
 U32 sc_update_callee_status(U32 ulTaskID, S8 *pszCallee, U32 ulStatsu);
 U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu);
-
+U32 sc_ep_ext_init();
 U32 sc_cwq_init();
 U32 sc_cwq_start();
 U32 sc_cwq_stop();

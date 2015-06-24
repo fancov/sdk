@@ -38,6 +38,7 @@ U32 sc_dialer_init();
 U32 sc_ep_init();
 U32 sc_acd_init();
 U32 sc_bs_fsm_init();
+U32 sc_ep_ext_start();
 U32 sc_httpd_start();
 U32 sc_task_mngt_start();
 U32 sc_dialer_start();

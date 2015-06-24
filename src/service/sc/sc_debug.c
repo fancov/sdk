@@ -68,7 +68,6 @@ extern DLL_S                  g_stBSMsgList;
 extern SC_EP_TASK_CB          g_astEPTaskList[SC_EP_TASK_NUM];
 extern U32                    g_ulCPS;
 
-<<<<<<< .mine
 
 /* declare functions */
 extern SC_TASK_CB_ST *sc_tcb_get_by_id(U32 ulTCBNo);
@@ -110,49 +109,6 @@ const S8* g_pszCallServiceType[] =
     "NUM VERIFY"
 };
 
-=======
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
->>>>>>> .theirs
 const S8* g_pszRouteDestType[] =
 {
     "",
@@ -189,7 +145,7 @@ const S8* g_pszTaskMode[] =
 
 const S8* sc_translate_agent_bind_type(U32 ulBindType)
 {
-    if (ulBindType >= 0 && ulBindType < sizeof(g_pszAgentBindType) / sizeof(S8*))
+    if (ulBindType < sizeof(g_pszAgentBindType) / sizeof(S8*))
     {
         return g_pszAgentBindType[ulBindType];
     }
@@ -198,7 +154,7 @@ const S8* sc_translate_agent_bind_type(U32 ulBindType)
 
 const S8* sc_translate_call_service_type(U32 ulServiceType)
 {
-    if (ulServiceType >= 0 && ulServiceType < sizeof(g_pszCallServiceType) / sizeof(S8*))
+    if (ulServiceType < sizeof(g_pszCallServiceType) / sizeof(S8*))
     {
         return g_pszCallServiceType[ulServiceType];
     }
@@ -207,7 +163,7 @@ const S8* sc_translate_call_service_type(U32 ulServiceType)
 
 const S8* sc_translate_route_dest_type(U32 ulDestType)
 {
-    if (ulDestType >= 0 && ulDestType < sizeof(g_pszRouteDestType) / sizeof(S8*))
+    if (ulDestType < sizeof(g_pszRouteDestType) / sizeof(S8*))
     {
         return g_pszRouteDestType[ulDestType];
     }
@@ -216,7 +172,7 @@ const S8* sc_translate_route_dest_type(U32 ulDestType)
 
 const S8* sc_translate_did_bind_type(U32 ulBindType)
 {
-    if (ulBindType >= 0 && ulBindType < sizeof(g_pszDidBindType) / sizeof(S8*))
+    if (ulBindType < sizeof(g_pszDidBindType) / sizeof(S8*))
     {
         return g_pszDidBindType[ulBindType];
     }
@@ -225,7 +181,7 @@ const S8* sc_translate_did_bind_type(U32 ulBindType)
 
 const S8* sc_translate_task_status(U32 ulStatus)
 {
-    if (ulStatus >=0 && ulStatus < sizeof(g_pszTaskStatus) / sizeof(S8 *))
+    if (ulStatus < sizeof(g_pszTaskStatus) / sizeof(S8 *))
     {
         return g_pszTaskStatus[ulStatus];
     }
@@ -234,7 +190,7 @@ const S8* sc_translate_task_status(U32 ulStatus)
 
 const S8* sc_translate_task_mode(U32 ulMode)
 {
-    if (ulMode >=0 && ulMode < sizeof(g_pszTaskMode) / sizeof(S8*))
+    if (ulMode < sizeof(g_pszTaskMode) / sizeof(S8*))
     {
         return g_pszTaskMode[ulMode];
     }
@@ -488,6 +444,7 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
     S8 szCmdBuff[1024] = {0, };
     S8 szWeeks[64] = {0, };
     SC_TASK_CB_ST *pstTCB;
+    U32 i = 0;
 
     /* 如果没有指定task id，或者指定了customer id，就需要使用列表的形式显示任务概要 */
     if (U32_BUTT == ulTaskID || U32_BUTT != ulCustomID)
@@ -521,7 +478,11 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                   "\r\n             ID in DB : %u"
                   "\r\n          Customer ID : %u"
                   "\r\n  Current Concurrency : %u"
+                  "\r\n      Max Concurrency : %u"
                   "\r\n          Agent Count : %u"
+                  "\r\n         Caller Count : %u"
+                  "\r\n         Callee Count : %u"
+                  "\r\n    Last Callee Index : %u"
                   "\r\n       Agent Queue ID : %u"
                   "\r\nTime Period 1 Weekday : %s"
                   "\r\n        Time Period 1 : %u:%u - %u:%u"
@@ -541,7 +502,11 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                 , pstTCB->ulTaskID
                 , pstTCB->ulCustomID
                 , pstTCB->ulCurrentConcurrency
+                , pstTCB->ulMaxConcurrency
                 , pstTCB->usSiteCount
+                , pstTCB->usCallerCount
+                , pstTCB->ulCalleeCount
+                , pstTCB->ulLastCalleeIndex
                 , pstTCB->ulAgentQueueID
                 , sc_debug_make_weeks(pstTCB->astPeriod[0].ucWeekMask, szWeeks, sizeof(szWeeks))
                 , pstTCB->astPeriod[0].ucHourBegin
@@ -564,6 +529,24 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                 , pstTCB->astPeriod[3].ucHourEnd
                 , pstTCB->astPeriod[3].ucMinuteEnd);
     cli_out_string(ulIndex, szCmdBuff);
+
+    cli_out_string(ulIndex, "\r\nList Caller.");
+    for (i = 0; i < SC_MAX_CALLER_NUM; i++)
+    {
+        if (DOS_ADDR_INVALID(pstTCB->pstCallerNumQuery)
+            || !pstTCB->pstCallerNumQuery[i].bValid)
+        {
+            continue;
+        }
+
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                        , "\r\n%6u%6s%10u%16s"
+                        , pstTCB->pstCallerNumQuery[i].usNo
+                        , pstTCB->pstCallerNumQuery[i].bTraceON ? "Y" : "N"
+                        , pstTCB->pstCallerNumQuery[i].ulIndexInDB
+                        , pstTCB->pstCallerNumQuery[i].szNumber);
+        cli_out_string(ulIndex, szCmdBuff);
+    }
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff),
                   "\r\n----------------Stat Information----------------");

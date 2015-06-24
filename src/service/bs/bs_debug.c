@@ -123,7 +123,7 @@ const S8* g_pszCustomerType[] =
 
 const S8* sc_translate_customer_type(U32 ulCustomerType)
 {
-    if (ulCustomerType >= 0 && ulCustomerType < sizeof(g_pszCustomerType) / sizeof(S8*))
+    if (ulCustomerType < sizeof(g_pszCustomerType) / sizeof(S8*))
     {
         return g_pszCustomerType[ulCustomerType];
     }
@@ -139,7 +139,7 @@ const S8* g_pszCustomerState[] =
 
 const S8* bs_translate_customer_state(U32 ulCustomerState)
 {
-    if (ulCustomerState >= 0 && ulCustomerState < sizeof(g_pszCustomerState) / sizeof(S8*))
+    if (ulCustomerState < sizeof(g_pszCustomerState) / sizeof(S8*))
     {
         return g_pszCustomerState[ulCustomerState];
     }
@@ -172,7 +172,7 @@ const S8* g_pszServType[] =
 
 const S8* bs_translate_serv_type(U32 ulServType)
 {
-    if (ulServType >=0 && ulServType < sizeof(g_pszServType) / sizeof(S8*))
+    if (ulServType < sizeof(g_pszServType) / sizeof(S8*))
     {
         return g_pszServType[ulServType];
     }
@@ -199,7 +199,7 @@ const S8* g_pszBillingAttr[] =
 
 const S8* bs_translate_billing_attr(U32 ulBillingAttr)
 {
-    if (ulBillingAttr >= 0 && ulBillingAttr < sizeof(g_pszBillingAttr) / sizeof(S8*))
+    if (ulBillingAttr < sizeof(g_pszBillingAttr) / sizeof(S8*))
     {
         return g_pszBillingAttr[ulBillingAttr];
     }
@@ -216,7 +216,7 @@ const S8* g_pszBillingType [] =
 
 const S8* bs_translate_billing_type(U32 ulBillingType)
 {
-    if (ulBillingType >= 0 && ulBillingType < sizeof(g_pszBillingType) / sizeof(S8*))
+    if (ulBillingType < sizeof(g_pszBillingType) / sizeof(S8*))
     {
         return g_pszBillingType[ulBillingType];
     }
@@ -244,7 +244,7 @@ const S8* g_pszBsErrNo[] =
 
 const S8* bs_translate_bs_errno(U32 ulErrNo)
 {
-    if (ulErrNo >=0 && ulErrNo < sizeof(g_pszBsErrNo) / sizeof(S8*))
+    if (ulErrNo < sizeof(g_pszBsErrNo) / sizeof(S8*))
     {
         return g_pszBsErrNo[ulErrNo];
     }
@@ -272,7 +272,7 @@ const S8* g_pszInterMsgType[] =
 
 const S8* bs_translate_inter_msg_type(U32 ulMsgType)
 {
-    if (ulMsgType >= 0 && ulMsgType < sizeof(g_pszInterMsgType) / sizeof(S8*))
+    if (ulMsgType < sizeof(g_pszInterMsgType) / sizeof(S8*))
     {
         return g_pszInterMsgType[ulMsgType];
     }
@@ -293,7 +293,7 @@ const S8* g_pszObject[] =
 
 const S8* bs_translate_object(U32 ulObject)
 {
-    if (ulObject >=0 && ulObject < sizeof(g_pszObject) / sizeof(S8*))
+    if (ulObject < sizeof(g_pszObject) / sizeof(S8*))
     {
         return g_pszObject[ulObject];
     }
@@ -1142,16 +1142,11 @@ S32 bs_show_task(U32 ulIndex, U32 ulObjectID)
 
 S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
 {
-<<<<<<< HEAD
     S8 szBuff[1024] = {0};
-    U32 ulHashIndex = U32_BUTT;
     HASH_NODE_S *pstHashNode = NULL;
-=======
-    S8  szBuff[BS_TRACE_BUFF_LEN] = {0, };
-    U32 ulHashIndex = 0, ulCol = 0, ulRow = 0;
+    U32 ulHashIndex = 0, ulCol = 0;
     U32 aulRule[BS_MAX_RULE_ITEM][BS_MAX_BILLING_RULE_IN_PACKAGE] = {{0}};
 
->>>>>>> 65ec82b62bb627bee5f78a9fcbd648eed77b2f14
     BS_BILLING_PACKAGE_ST  *pstPkg = NULL;
     U32 ulLoop = 0;
 
@@ -1170,15 +1165,12 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
             {
                 continue;
             }
-<<<<<<< HEAD
-=======
 
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------");
             cli_out_string(ulIndex, szBuff);
 
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n    Package ID     Service Type    ");
             cli_out_string(ulIndex, szBuff);
->>>>>>> 65ec82b62bb627bee5f78a9fcbd648eed77b2f14
 
             /* ¥Ú”°±ÌÕ∑ */
             dos_snprintf(szBuff, sizeof(szBuff), "\r\nList Package ID %d.", ulObjectID);
@@ -1193,7 +1185,6 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
 
             for (ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
             {
-<<<<<<< HEAD
                 if (0 == pstPkg->astRule[ulLoop].ulRuleID)
                 {
                     continue;
@@ -1213,7 +1204,6 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
                                 , bs_translate_billing_attr(pstPkg->astRule[ulLoop].ucDstAttrType2)
                                 , pstPkg->astRule[ulLoop].ulDstAttrValue2);
                 cli_out_string(ulIndex, szBuff);
-=======
                 aulRule[0][ulCol]  = pstPkg->astRule[ulCol].ulRuleID;
                 aulRule[1][ulCol]  = pstPkg->astRule[ulCol].ucSrcAttrType1;
                 aulRule[2][ulCol]  = pstPkg->astRule[ulCol].ucSrcAttrType2;
@@ -1247,28 +1237,25 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
 
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------------");
             cli_out_string(ulIndex, szBuff);
->>>>>>> 65ec82b62bb627bee5f78a9fcbd648eed77b2f14
 
-                cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------");
-                cli_out_string(ulIndex, "\r\nFirstBillingUnit FirstBillingCnt NextBillingUnit NextBillingCnt            ServType    BillingType BillingRate       Effect       Expire Priority Valid");
+            cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------");
+            cli_out_string(ulIndex, "\r\nFirstBillingUnit FirstBillingCnt NextBillingUnit NextBillingCnt            ServType    BillingType BillingRate       Effect       Expire Priority Valid");
 
-                dos_snprintf(szBuff, sizeof(szBuff), "\r\n%16u%16u%16u%15u%20s%15s%12u%13u%13u%9u%6s\r\n\r\n\r\n"
-                                , pstPkg->astRule[ulLoop].ulFirstBillingUnit
-                                , pstPkg->astRule[ulLoop].ucFirstBillingCnt
-                                , pstPkg->astRule[ulLoop].ulNextBillingUnit
-                                , pstPkg->astRule[ulLoop].ucNextBillingCnt
-                                , bs_translate_serv_type(pstPkg->astRule[ulLoop].ucServType)
-                                , bs_translate_billing_type(pstPkg->astRule[ulLoop].ucBillingType)
-                                , pstPkg->astRule[ulLoop].ulBillingRate
-                                , pstPkg->astRule[ulLoop].ulEffectTimestamp
-                                , pstPkg->astRule[ulLoop].ulExpireTimestamp
-                                , pstPkg->astRule[ulLoop].ucPriority
-                                , pstPkg->astRule[ulLoop].ucValid == 1 ? "Y" : "N");
-                cli_out_string(ulIndex, szBuff);
-            }
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%16u%16u%16u%15u%20s%15s%12u%13u%13u%9u%6s\r\n\r\n\r\n"
+                            , pstPkg->astRule[ulLoop].ulFirstBillingUnit
+                            , pstPkg->astRule[ulLoop].ucFirstBillingCnt
+                            , pstPkg->astRule[ulLoop].ulNextBillingUnit
+                            , pstPkg->astRule[ulLoop].ucNextBillingCnt
+                            , bs_translate_serv_type(pstPkg->astRule[ulLoop].ucServType)
+                            , bs_translate_billing_type(pstPkg->astRule[ulLoop].ucBillingType)
+                            , pstPkg->astRule[ulLoop].ulBillingRate
+                            , pstPkg->astRule[ulLoop].ulEffectTimestamp
+                            , pstPkg->astRule[ulLoop].ulExpireTimestamp
+                            , pstPkg->astRule[ulLoop].ucPriority
+                            , pstPkg->astRule[ulLoop].ucValid == 1 ? "Y" : "N");
+            cli_out_string(ulIndex, szBuff);
         }
     }
-
     return DOS_SUCC;
 }
 
