@@ -31,7 +31,7 @@ pthread_cond_t   g_condMsgList  = PTHREAD_COND_INITIALIZER;
 U32              g_ulMsgSeq     = 0;
 
 extern SC_BS_CLIENT_ST *g_pstSCBSClient[SC_MAX_BS_CLIENT];
-
+extern SC_BS_MSG_STAT_ST stBSMsgStat;
 
 /* 发送数据到BS */
 static U32 sc_send_msg2bs(BS_MSG_TAG *pstMsgTag, U32 ulLength)
@@ -474,6 +474,8 @@ U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB)
     U32            ulHashIndex = 0;
 #endif
 
+    stBSMsgStat.ulAuthReq++;
+
     if (!SC_SCB_IS_VALID(pstSCB))
     {
         DOS_ASSERT(0);
@@ -610,6 +612,8 @@ U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB)
         return DOS_FAIL;
     }
 
+    stBSMsgStat.ulAuthReqSend++;
+
 #if (!SC_BS_NEED_RESEND)
     dos_dmem_free(pstAuthMsg);
     pstAuthMsg = NULL;
@@ -643,6 +647,8 @@ U32 sc_send_hello2bs(U32 ulClientIndex)
     stMsgHello.usMsgLen  = sizeof(BS_MSG_TAG);
 
     sc_send_msg2bs(&stMsgHello, sizeof(stMsgHello));
+
+    stBSMsgStat.ulHBReq++;;
 
     return DOS_SUCC;
 }
@@ -793,6 +799,8 @@ U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB)
     SC_BS_MSG_NODE        *pstListNode = NULL;
     U32                   ulHashIndex = 0;
 #endif
+
+    stBSMsgStat.ulBillingReq++;
 
     /* 当前呼叫没有关联SCB时，就直接吧当前业务控制块作为主LEG */
     if (U16_BUTT == pstSCB->usOtherSCBNo)
@@ -1132,6 +1140,8 @@ prepare_msg:
         sc_logr_notice(SC_BS, "%s", "Send Auth msg fail.");
         return DOS_FAIL;
     }
+
+    stBSMsgStat.ulBillingReqSend++;
 
 #if (!SC_BS_NEED_RESEND)
     dos_dmem_free(pstCDRMsg);

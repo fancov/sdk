@@ -47,6 +47,11 @@ U32 sc_httpd_shutdown();
 U32 sc_task_mngt_shutdown();
 U32 sc_dialer_shutdown();
 U32 sc_ep_init_agent_status();
+U32 sc_data_syn_init();
+U32 sc_data_syn_start();
+U32 sc_ep_ext_init();
+U32 sc_ep_ext_start();
+
 
 /* define marcos */
 
@@ -274,6 +279,15 @@ U32 mod_dipcc_sc_load()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init extension mngt task SUCC.");
 
+    if (DOS_SUCC != sc_data_syn_init())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init Data Syn task FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init Data Syn task SUCC.");
+
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Finished to init SC.");
 
     g_blSCInitOK = DOS_TRUE;
@@ -347,6 +361,15 @@ U32 mod_dipcc_sc_runtime()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start extension mngt task SUCC.");
 
+
+    if (DOS_SUCC != sc_data_syn_start())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start data syn task FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start data syn task SUCC.");
 
     return DOS_SUCC;
 }

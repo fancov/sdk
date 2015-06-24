@@ -208,7 +208,6 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
     S8    szCallString[SC_ESL_CMD_BUFF_LEN] = { 0 };
     U32   ulRouteID = U32_BUTT;
-    S8    *pszEventHeader = NULL, *pszEventBody = NULL;
     SC_SCB_ST *pstSCBOther = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB))
@@ -278,8 +277,22 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , pstSCB->szCallerNum
                         , szCallString);
 
-        sc_ep_esl_execute("bridge", szCMDBuff, pstSCBOther->szUUID);
-        sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
+        if (sc_ep_esl_execute("bridge", szCMDBuff, pstSCBOther->szUUID) != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+
+            sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
+            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+            return DOS_FAIL;
+        }
+
+        if (sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID) != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+
+            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+            return DOS_FAIL;
+        }
 
         return DOS_SUCC;
     }
@@ -294,7 +307,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 
     sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
 
-    if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
+    if (esl_send(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
     {
         DOS_ASSERT(0);
         sc_logr_notice(SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
@@ -303,7 +316,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 
         goto esl_exec_fail;
     }
-
+#if 0
     if (!g_pstDialerHandle->stHandle.last_sr_event)
     {
         DOS_ASSERT(0);
@@ -342,6 +355,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 
     /* 这个地方客户那边已经接通了，所以直接到ACTIVE */
     SC_SCB_SET_STATUS(pstSCB, SC_SCB_ACTIVE);
+#endif
 
     sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
     sc_call_trace(pstSCB, "Make call successfully.");
@@ -352,6 +366,8 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 esl_exec_fail:
 
     sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
+
+    sc_scb_free(pstSCB);
 
     SC_TRACE_OUT();
     return DOS_FAIL;
@@ -369,6 +385,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
     SC_SCB_ST               *pstSCB;
     struct timespec         stTimeout;
     U32                     ulRet = ESL_FAIL;
+    U32                     ulNodeCnt;
 
     while(1)
     {
@@ -414,13 +431,14 @@ VOID *sc_dialer_runtime(VOID * ptr)
 
         while (1)
         {
-            if (g_pstDialerHandle->ulCallCnt < 3)
+            ulNodeCnt = g_pstDialerHandle->ulCallCnt;
+            if (ulNodeCnt < SC_LIST_MIN_CNT)
             {
                 pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
             }
             if (dos_list_is_empty(&g_pstDialerHandle->stCallList))
             {
-                if (g_pstDialerHandle->ulCallCnt < 3)
+                if (ulNodeCnt < SC_LIST_MIN_CNT)
                 {
                     pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
                 }
@@ -431,7 +449,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
             pstList = dos_list_fetch(&g_pstDialerHandle->stCallList);
             if (!pstList)
             {
-                if (g_pstDialerHandle->ulCallCnt < 3)
+                if (ulNodeCnt < SC_LIST_MIN_CNT)
                 {
                     pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
                 }
@@ -441,7 +459,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
 
             g_pstDialerHandle->ulCallCnt--;
 
-            if (g_pstDialerHandle->ulCallCnt < 2)
+            if (ulNodeCnt < SC_LIST_MIN_CNT)
             {
                 pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
             }
@@ -498,6 +516,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
 U32 sc_dialer_add_call(SC_SCB_ST *pstSCB)
 {
     SC_CALL_QUEUE_NODE_ST *pstNode;
+    U32   ulNodeCnt;
     SC_TRACE_IN((U64)pstSCB, 0, 0, 0);
 
     if (DOS_ADDR_INVALID(pstSCB))
@@ -520,7 +539,8 @@ U32 sc_dialer_add_call(SC_SCB_ST *pstSCB)
     }
 
     pstNode->pstSCB = pstSCB;
-    if (g_pstDialerHandle->ulCallCnt < 3)
+    ulNodeCnt = g_pstDialerHandle->ulCallCnt;
+    if (ulNodeCnt < SC_LIST_MIN_CNT)
     {
         pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
     }
@@ -530,7 +550,7 @@ U32 sc_dialer_add_call(SC_SCB_ST *pstSCB)
 
     g_pstDialerHandle->ulCallCnt++;
     pthread_cond_signal(&g_pstDialerHandle->condCallQueue);
-    if (g_pstDialerHandle->ulCallCnt < 4)
+    if (ulNodeCnt < SC_LIST_MIN_CNT)
     {
         pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
     }
@@ -575,6 +595,7 @@ U32 sc_dialer_init()
     dos_list_init(&g_pstDialerHandle->stCallList);
     g_pstDialerHandle->blIsESLRunning = DOS_FALSE;
     g_pstDialerHandle->blIsWaitingExit = DOS_FALSE;
+    g_pstDialerHandle->ulCallCnt = 0;
 
     SC_TRACE_OUT();
     return DOS_SUCC;

@@ -67,7 +67,8 @@ extern SC_DIALER_HANDLE_ST   *g_pstDialerHandle;
 extern DLL_S                  g_stBSMsgList;
 extern SC_EP_TASK_CB          g_astEPTaskList[SC_EP_TASK_NUM];
 extern U32                    g_ulCPS;
-
+extern SC_EP_MSG_STAT_ST      g_astEPMsgStat[2];
+extern SC_BS_MSG_STAT_ST      stBSMsgStat;
 /* declare functions */
 extern SC_TASK_CB_ST *sc_tcb_get_by_id(U32 ulTCBNo);
 
@@ -277,7 +278,7 @@ VOID sc_show_task_list(U32 ulIndex, U32 ulCustomID)
     for (ulTaskIndex=0,ulTotal=0; ulTaskIndex<SC_MAX_TASK_NUM; ulTaskIndex++)
     {
         pstTCB = &g_pstTaskMngtInfo->pstTaskList[ulTaskIndex];
-        if (DOS_ADDR_INVALID(pstTCB) || !pstTCB->ucValid)
+        if (DOS_ADDR_INVALID(pstTCB))
         {
             continue;
         }
@@ -293,12 +294,11 @@ VOID sc_show_task_list(U32 ulIndex, U32 ulCustomID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%6u%7u%9u%6s%10s%10u%10u%10u"
+                        , "\r\n%6u%7u%9u%6s%10u%10u%10u"
                         , pstTCB->usTCBNo
                         , pstTCB->ucTaskStatus
                         , pstTCB->ucPriority
                         , pstTCB->bTraceON ? "Y" : "N"
-                        , pstTCB->bTraceCallON ? "Y" : "N"
                         , pstTCB->ulTaskID
                         , pstTCB->ulCustomID
                         , pstTCB->usSiteCount
@@ -915,6 +915,47 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
     cli_out_string(ulIndex, szCmdBuff);
 }
 
+VOID sc_show_stat(U32 ulIndex, S32 argc, S8 **argv)
+{
+    S8 szBuff[1024] = {0, };
+
+    cli_out_string(ulIndex, "\r\n\r\nESL Msg Stat:(recv/proc)");
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------------");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n          Channel Create : %u/%u", g_astEPMsgStat[SC_EP_STAT_RECV].ulCreate, g_astEPMsgStat[SC_EP_STAT_PROC].ulCreate);
+    cli_out_string(ulIndex, szBuff);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n            Channel Park : %u/%u", g_astEPMsgStat[SC_EP_STAT_RECV].ulPark, g_astEPMsgStat[SC_EP_STAT_PROC].ulPark);
+    cli_out_string(ulIndex, szBuff);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n          Channel Answer : %u/%u", g_astEPMsgStat[SC_EP_STAT_RECV].ulAnswer, g_astEPMsgStat[SC_EP_STAT_PROC].ulAnswer);
+    cli_out_string(ulIndex, szBuff);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n          Channel Hungup : %u/%u", g_astEPMsgStat[SC_EP_STAT_RECV].ulHungup, g_astEPMsgStat[SC_EP_STAT_PROC].ulHungup);
+    cli_out_string(ulIndex, szBuff);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n Channel Hungup Complete : %u/%u", g_astEPMsgStat[SC_EP_STAT_RECV].ulHungupCom, g_astEPMsgStat[SC_EP_STAT_PROC].ulHungupCom);
+    cli_out_string(ulIndex, szBuff);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n                    DTMF : %u/%u", g_astEPMsgStat[SC_EP_STAT_RECV].ulDTMF, g_astEPMsgStat[SC_EP_STAT_PROC].ulDTMF);
+    cli_out_string(ulIndex, szBuff);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n  Channel Background Job : %u/%u", g_astEPMsgStat[SC_EP_STAT_RECV].ulBGJob, g_astEPMsgStat[SC_EP_STAT_PROC].ulBGJob);
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------------");
+
+    cli_out_string(ulIndex, "\r\n\r\nBS Msg Stat:");
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------------");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n      Auth Request(Send) : %u(%u)", stBSMsgStat.ulAuthReq, stBSMsgStat.ulAuthReqSend);
+    cli_out_string(ulIndex, szBuff);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n   Billing Request(Send) : %u(%u)", stBSMsgStat.ulBillingReq, stBSMsgStat.ulBillingReqSend);
+    cli_out_string(ulIndex, szBuff);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n           Auth Response : %u", stBSMsgStat.ulAuthRsp);
+    cli_out_string(ulIndex, szBuff);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n        Billing Response : %u", stBSMsgStat.ulBillingRsp);
+    cli_out_string(ulIndex, szBuff);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n    Heartbeat(Send/Recv) : %u/%u", stBSMsgStat.ulHBReq, stBSMsgStat.ulHBRsp);
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------------");
+
+
+    cli_out_string(ulIndex, "\r\n\r\n");
+}
+
+
 VOID sc_show_sip_acc(U32 ulIndex, S32 argc, S8 **argv)
 {
     HASH_NODE_S *pstHashNode = NULL;
@@ -1486,9 +1527,13 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     {
         sc_show_sip_acc(ulIndex, argc, argv);
     }
-    if (dos_strnicmp(argv[2], "cb", dos_strlen("cb")) == 0)
+    else if (dos_strnicmp(argv[2], "cb", dos_strlen("cb")) == 0)
     {
         sc_show_cb(ulIndex);
+    }
+    else if (dos_strnicmp(argv[2], "stat", dos_strlen("stat")) == 0)
+    {
+        sc_show_stat(ulIndex, argc, argv);
     }
     else if (dos_strnicmp(argv[2], "httpd", dos_strlen("httpd")) == 0)
     {

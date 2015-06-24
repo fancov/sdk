@@ -221,7 +221,6 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
 
     SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
 
-    pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstTCB->bTraceCallON || pstSCB->bTraceNo
         || pstCallee->ucTraceON || pstCaller->bTraceON)
     {
@@ -241,8 +240,6 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     pstSCB->szCalleeNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
     pstSCB->szSiteNum[0] = '\0';
     pstSCB->szUUID[0] = '\0';
-
-    pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AUTO_DIALING);
     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
@@ -543,8 +540,10 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
     }
 
     pstTCB->ulMaxConcurrency = 3000; //pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE;
+    pstTCB->ulLastCalleeIndex = 0;
 
     sc_logr_notice(SC_TASK, "Load data for task %d finished.", pstTCB->ulTaskID);
+
     SC_TRACE_OUT();
     return DOS_SUCC;
 

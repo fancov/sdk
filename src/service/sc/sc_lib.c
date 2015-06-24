@@ -560,24 +560,6 @@ SC_TASK_CB_ST *sc_tcb_find_by_taskid(U32 ulTaskID)
     return NULL;
 }
 
-
-VOID sc_task_set_current_call_cnt(SC_TASK_CB_ST *pstTCB, U32 ulCurrentCall)
-{
-    SC_TRACE_IN((U64)pstTCB, ulCurrentCall, 0, 0);
-
-    if (!pstTCB)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return;
-    }
-
-    pthread_mutex_lock(&pstTCB->mutexTaskList);
-    pstTCB->ulCurrentConcurrency = ulCurrentCall;
-    pthread_mutex_unlock(&pstTCB->mutexTaskList);
-}
-
 U32 sc_task_get_current_call_cnt(SC_TASK_CB_ST *pstTCB)
 {
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
@@ -1375,7 +1357,7 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
     {
         if (g_ulCPS)
         {
-            return 1000 / 300;
+            return 1000 / 100;
         }
         else
         {

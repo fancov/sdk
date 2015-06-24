@@ -44,6 +44,9 @@ pthread_t       g_pthSCBSMsgRecv, g_pthSCBSMsgProc;
 
 SC_BS_CLIENT_ST *g_pstSCBSClient[SC_MAX_BS_CLIENT] = { NULL };
 
+SC_BS_MSG_STAT_ST stBSMsgStat;
+
+
 U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 {
     SC_SCB_ST   *pstSCB = NULL;
@@ -129,8 +132,6 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         {
             if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_AUTO_DIALING) != DOS_SUCC)
             {
-                sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
-
                 ulRet = DOS_FAIL;
             }
         }
@@ -138,8 +139,6 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         {
             if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_NUM_VERIFY) != DOS_SUCC)
             {
-                sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
-
                 ulRet = DOS_FAIL;
             }
         }
@@ -148,7 +147,6 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         {
             if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_OUTBOUND_CALL) != DOS_SUCC)
             {
-                sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
                 ulRet = DOS_FAIL;
             }
         }
@@ -392,6 +390,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
                 dos_tmr_stop(&g_pstSCBSClient[ulClientIndex]->hTmrHBTimeout);
             }
             g_pstSCBSClient[ulClientIndex]->ulHBFailCnt = 0;
+            stBSMsgStat.ulHBRsp++;
             break;
         case BS_MSG_BALANCE_QUERY_RSP:
         case BS_MSG_USER_AUTH_RSP:
@@ -400,6 +399,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
 #if SC_BS_NEED_RESEND
             sc_bs_msg_free(pstMsgHeader->ulMsgSeq);
 #endif
+            stBSMsgStat.ulAuthRsp++;
             break;
 
         case BS_MSG_BILLING_START_RSP:
@@ -407,6 +407,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
 #if SC_BS_NEED_RESEND
             sc_bs_msg_free(pstMsgHeader->ulMsgSeq);
 #endif
+            stBSMsgStat.ulBillingRsp++;
             break;
 
         case BS_MSG_BILLING_UPDATE_RSP:
@@ -414,6 +415,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
 #if SC_BS_NEED_RESEND
             sc_bs_msg_free(pstMsgHeader->ulMsgSeq);
 #endif
+            stBSMsgStat.ulBillingRsp++;
             break;
 
         case BS_MSG_BILLING_STOP_RSP:
@@ -421,6 +423,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
 #if SC_BS_NEED_RESEND
             sc_bs_msg_free(pstMsgHeader->ulMsgSeq);
 #endif
+            stBSMsgStat.ulBillingRsp++;
             break;
 
         case BS_MSG_BILLING_RELEASE_IND:
@@ -823,6 +826,8 @@ U32 sc_bs_fsm_init()
     dos_memzero(pszMem, sizeof(SC_BS_CLIENT_ST) * SC_MAX_BS_CLIENT);
 
     DLL_Init(&g_stBSMsgList);
+
+    dos_memzero(&stBSMsgStat, sizeof(stBSMsgStat));
 
     for (ulIndex=0; ulIndex<SC_MAX_BS_CLIENT; ulIndex++)
     {

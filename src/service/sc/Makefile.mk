@@ -12,7 +12,8 @@ C_FILE += $(SROUCE)/service/sc/mod_dipcc_sc.c \
 	$(SROUCE)/service/sc/sc_lib.c \
 	$(SROUCE)/service/sc/sc_tasks_mngt.c \
 	$(SROUCE)/service/sc/sc_cw_queue.c \
-	$(SROUCE)/service/sc/sc_ep_extensions.c
+	$(SROUCE)/service/sc/sc_ep_extensions.c \
+	$(SROUCE)/service/sc/sc_data_syn.c
 	
 
 C_OBJ_FILE += mod_dipcc_sc.$(SUFFIX) \
@@ -29,7 +30,8 @@ C_OBJ_FILE += mod_dipcc_sc.$(SUFFIX) \
 	sc_lib.$(SUFFIX) \
 	sc_tasks_mngt.$(SUFFIX) \
 	sc_cw_queue.$(SUFFIX) \
-	sc_ep_extensions.$(SUFFIX)
+	sc_ep_extensions.$(SUFFIX) \
+	sc_data_syn.$(SUFFIX)
 
 sc_cw_queue.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_cw_queue.c
@@ -75,4 +77,7 @@ sc_tasks_mngt.$(SUFFIX) :
 
 sc_ep_extensions.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_ep_extensions.c
+	
+sc_data_syn.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/sc/sc_data_syn.c
 

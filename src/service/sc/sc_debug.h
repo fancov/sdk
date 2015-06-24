@@ -33,6 +33,7 @@ typedef enum tagSCSubmodDef
     SC_DIALER,
     SC_ESL,
     SC_BS,
+    SC_SYN,
 
     SC_SUB_MOD_BUTT,
 }SC_SUB_MOD_DEF_EN;

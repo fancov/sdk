@@ -1880,6 +1880,7 @@ VOID bss_add_aaa_list(VOID *pMsg)
 {
     DLL_NODE_S          *pstMsgNode = NULL;
     BS_MSG_AUTH         *pstMsg = NULL;
+    U32                 ulMsgCnt;
 
     pstMsgNode = dos_dmem_alloc(sizeof(DLL_NODE_S));
     if (NULL == pstMsgNode)
@@ -1900,13 +1901,14 @@ VOID bss_add_aaa_list(VOID *pMsg)
     /* 消息入队 */
     *pstMsg = *(BS_MSG_AUTH *)pMsg;
     pstMsgNode->pHandle = (VOID *)pstMsg;
-    if (g_stBSAAAMsgList.ulCount < 3)
+    ulMsgCnt = g_stBSAAAMsgList.ulCount;
+    if (ulMsgCnt < 3)
     {
         pthread_mutex_lock(&g_mutexBSAAAMsg);
     }
     DLL_Add(&g_stBSAAAMsgList, pstMsgNode);
     pthread_cond_signal(&g_condBSAAAList);
-    if (g_stBSAAAMsgList.ulCount < 4)
+    if (ulMsgCnt < 3)
     {
         pthread_mutex_unlock(&g_mutexBSAAAMsg);
     }
@@ -1918,6 +1920,7 @@ VOID bss_add_cdr_list(VOID *pMsg)
 {
     DLL_NODE_S          *pstMsgNode = NULL;
     BS_MSG_CDR          *pstMsg = NULL;
+    U32                 ulMsgCnt;
 
     pstMsgNode = dos_dmem_alloc(sizeof(DLL_NODE_S));
     if (NULL == pstMsgNode)
@@ -1941,13 +1944,14 @@ VOID bss_add_cdr_list(VOID *pMsg)
     printf ("%s:%d, %d, %d\r\n", __FUNCTION__, __LINE__, pstMsg->ucLegNum, ((BS_MSG_CDR *)pMsg)->ucLegNum);
 
     pstMsgNode->pHandle = (VOID *)pstMsg;
-    //if (g_stBSCDRList.ulCount < 3)
+    ulMsgCnt = g_stBSCDRList.ulCount;
+    if (ulMsgCnt < 3)
     {
         pthread_mutex_lock(&g_mutexBSCDR);
     }
     DLL_Add(&g_stBSCDRList, pstMsgNode);
     pthread_cond_signal(&g_condBSCDRList);
-    //if (g_stBSCDRList.ulCount < 4)
+    if (ulMsgCnt < 3)
     {
         pthread_mutex_unlock(&g_mutexBSCDR);
     }
@@ -5173,6 +5177,7 @@ VOID *bss_aaa(VOID *arg)
     DLL_NODE_S      *pMsgNode;
     BS_MSG_AUTH     *pstMsg;
     struct timespec stTimeout;
+    U32              ulMsgCnt;
 
     while (1)
     {
@@ -5183,10 +5188,22 @@ VOID *bss_aaa(VOID *arg)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condBSAAAList, &g_mutexBSAAAMsg, &stTimeout);
+        pthread_mutex_unlock(&g_mutexBSAAAMsg);
+
         while (1)
         {
+            ulMsgCnt = g_stBSAAAMsgList.ulCount;
+
+            if (ulMsgCnt < 3)
+            {
+                pthread_mutex_lock(&g_mutexBSAAAMsg);
+            }
             if (DLL_Count(&g_stBSAAAMsgList) <= 0)
             {
+                if (ulMsgCnt < 3)
+                {
+                    pthread_mutex_unlock(&g_mutexBSAAAMsg);
+                }
                 break;
             }
 
@@ -5194,8 +5211,18 @@ VOID *bss_aaa(VOID *arg)
             if (NULL == pMsgNode)
             {
                 /* 队列中没有消息 */
+                if (ulMsgCnt < 3)
+                {
+                    pthread_mutex_unlock(&g_mutexBSAAAMsg);
+                }
+
                 continue;
             }
+            if (ulMsgCnt < 3)
+            {
+                pthread_mutex_unlock(&g_mutexBSAAAMsg);
+            }
+
 
             pstMsg = (BS_MSG_AUTH *)pMsgNode->pHandle;
             if (DOS_ADDR_INVALID(pstMsg))
@@ -5230,7 +5257,6 @@ VOID *bss_aaa(VOID *arg)
                     break;
             }
         }
-        pthread_mutex_unlock(&g_mutexBSAAAMsg);
     }
 
     return NULL;
@@ -5243,6 +5269,7 @@ VOID *bss_cdr(VOID *arg)
     DLL_NODE_S      *pMsgNode;
     BS_MSG_CDR      *pstMsg;
     struct timespec stTimeout;
+    U32             ulMsgCnt;
 
     while (1)
     {
@@ -5257,20 +5284,31 @@ VOID *bss_cdr(VOID *arg)
 
         while (1)
         {
+            ulMsgCnt = g_stBSCDRList.ulCount;
+
+            if (ulMsgCnt < 3)
+            {
+                pthread_mutex_lock(&g_mutexBSCDR);
+            }
             if (DLL_Count(&g_stBSCDRList) <= 0)
             {
+                if (ulMsgCnt < 3)
+                {
+                    pthread_mutex_unlock(&g_mutexBSCDR);
+                }
+
                 break;
             }
 
-            //if (DLL_Count(&g_stBSCDRList) < 3)
+            if (ulMsgCnt < 3)
             {
-                pthread_mutex_lock(&g_mutexBSCDR);
+                pthread_mutex_unlock(&g_mutexBSCDR);
             }
 
             pMsgNode = dll_fetch(&g_stBSCDRList);
             if (NULL == pMsgNode)
             {
-                //if (DLL_Count(&g_stBSCDRList) < 3)
+                if (ulMsgCnt < 3)
                 {
                     pthread_mutex_unlock(&g_mutexBSCDR);
                 }
@@ -5279,7 +5317,7 @@ VOID *bss_cdr(VOID *arg)
                 continue;
             }
 
-            //if (DLL_Count(&g_stBSCDRList) < 2)
+            if (ulMsgCnt < 3)
             {
                 pthread_mutex_unlock(&g_mutexBSCDR);
             }

@@ -159,7 +159,7 @@ typedef struct tagHttpClientCB
 }SC_HTTP_CLIENT_CB_S;
 
 
-typedef U32 (*http_req_handle)(SC_HTTP_CLIENT_CB_S *pstClient);
+typedef U32 (*http_req_handle)(list_t *pstArgv);
 
 typedef struct tagHttpRequestProcess
 {
@@ -168,20 +168,21 @@ typedef struct tagHttpRequestProcess
 }SC_HTTP_REQ_REG_TABLE_SC;
 
 /* declare functions */
+http_req_handle sc_http_api_find(S8 *pszName);
 U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_reload_xml(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_gateway_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_call_ctrl(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_agent_grp(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_route_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_gw_group_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_did_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_black_action(SC_HTTP_CLIENT_CB_S *pstClient);
-U32 sc_http_api_caller_action(SC_HTTP_CLIENT_CB_S *pstClient);
+U32 sc_http_api_reload_xml(list_t *pstArgv);
+U32 sc_http_api_task_ctrl(list_t *pstArgv);
+U32 sc_http_api_gateway_action(list_t *pstArgv);
+U32 sc_http_api_sip_action(list_t *pstArgv);
+U32 sc_http_api_num_verify(list_t *pstArgv);
+U32 sc_http_api_call_ctrl(list_t *pstArgv);
+U32 sc_http_api_agent_action(list_t *pstArgv);
+U32 sc_http_api_agent_grp(list_t *pstArgv);
+U32 sc_http_api_route_action(list_t *pstArgv);
+U32 sc_http_api_gw_group_action(list_t *pstArgv);
+U32 sc_http_api_did_action(list_t *pstArgv);
+U32 sc_http_api_black_action(list_t *pstArgv);
+U32 sc_http_api_caller_action(list_t *pstArgv);
 U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
 U32 sc_acd_http_agentgrp_update_proc(U32 ulAction, U32 ulGrpID);
 

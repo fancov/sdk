@@ -120,6 +120,8 @@ extern BOOL                 g_blSCInitOK;
 /* 定义运营商的ID */
 #define SC_TOP_USER_ID                 1
 
+#define SC_LIST_MIN_CNT                3
+
 #define SC_TASK_AUDIO_PATH             "/var/www/html/data/audio"
 
 #define SC_RECORD_FILE_PATH            "/var/record"
@@ -604,6 +606,32 @@ typedef struct tagEPTaskCB
     pthread_cond_t   contMsgList;
 }SC_EP_TASK_CB;
 
+#define SC_EP_STAT_RECV 0
+#define SC_EP_STAT_PROC 1
+
+typedef struct tagEPMsgStat
+{
+    U32   ulCreate;
+    U32   ulPark;
+    U32   ulAnswer;
+    U32   ulHungup;
+    U32   ulHungupCom;
+    U32   ulDTMF;
+    U32   ulBGJob;
+}SC_EP_MSG_STAT_ST;
+
+typedef struct tagBSMsgStat
+{
+    U32  ulAuthReq;
+    U32  ulAuthReqSend;
+    U32  ulAuthRsp;
+    U32  ulBillingReq;
+    U32  ulBillingReqSend;
+    U32  ulBillingRsp;
+    U32  ulHBReq;
+    U32  ulHBRsp;
+}SC_BS_MSG_STAT_ST;
+
 /* declare functions */
 SC_SCB_ST *sc_scb_alloc();
 VOID sc_scb_free(SC_SCB_ST *pstSCB);
@@ -620,7 +648,6 @@ SC_TASK_CB_ST *sc_tcb_alloc();
 VOID sc_tcb_free(SC_TASK_CB_ST *pstTCB);
 U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB);
 VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID);
-VOID sc_task_set_current_call_cnt(SC_TASK_CB_ST *pstTCB, U32 ulCurrentCall);
 U32 sc_task_get_current_call_cnt(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB);
