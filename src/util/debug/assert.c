@@ -150,7 +150,7 @@ static VOID _assert_print(HASH_NODE_S *pNode, VOID *pulIndex)
     strftime(szTime2, sizeof(szTime2), "%Y-%m-%d %H:%M:%S", pstTimeLast);
 
     ulLen = dos_snprintf(szBuff, sizeof(szBuff)
-            , "Assert hannended %4d times, first time: %s, last time: %s. File:%s, line:%d.\r\n"
+            , "Assert happened %4d times, first time: %s, last time: %s. File:%s, line:%d.\r\n"
             , pstAssertInfoNode->ulTimes
             , szTime1
             , szTime2
@@ -197,7 +197,7 @@ static VOID _assert_record(HASH_NODE_S *pNode, VOID *pParam)
     strftime(szTime2, sizeof(szTime2), "%Y-%m-%d %H:%M:%S", pstTimeLast);
 
     ulLen = dos_snprintf(szBuff, sizeof(szBuff)
-            , "Assert hannended %4d times, first time: %s, last time: %s. File:%s, line:%d.\r\n"
+            , "Assert happened %4d times, first time: %s, last time: %s. File:%s, line:%d.\r\n"
             , pstAssertInfoNode->ulTimes
             , szTime1
             , szTime2

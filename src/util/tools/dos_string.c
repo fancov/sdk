@@ -657,9 +657,11 @@ DLLEXPORT S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str, U32 ulStrLen)
 {
     if (DOS_ADDR_VALID(str))
     {
-        dos_snprintf(str, ulStrLen, "%d.%d.%d.%d",
-            ulAddr >> 24, (ulAddr >> 16) & 0xff,
-            (ulAddr >> 8) & 0xff, ulAddr & 0xff);
+        dos_snprintf(str, ulStrLen, "%u.%u.%u.%u"
+                        , ulAddr & 0xff
+                        , (ulAddr >> 8) & 0xff
+                        , (ulAddr >> 16) & 0xff
+                        , ulAddr >> 24);
 
         return str;
     }

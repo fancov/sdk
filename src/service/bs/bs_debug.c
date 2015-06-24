@@ -110,8 +110,194 @@ const S8 *bs_trace_level_str(U32 ulTraceLevel)
     {
         return "";
     }
-
     return g_aszBsTraceLevel[ulTraceLevel];
+}
+
+const S8* g_pszCustomerType[] =
+{
+    "CONSUMER",
+    "AGENT",
+    "TOP",
+    "SP"
+};
+
+const S8* sc_translate_customer_type(U32 ulCustomerType)
+{
+    if (ulCustomerType < sizeof(g_pszCustomerType) / sizeof(S8*))
+    {
+        return g_pszCustomerType[ulCustomerType];
+    }
+    return "UNKNOWN";
+}
+
+const S8* g_pszCustomerState[] =
+{
+    "ACTIVE",
+    "FROZEN",
+    "INACTIVE"
+};
+
+const S8* bs_translate_customer_state(U32 ulCustomerState)
+{
+    if (ulCustomerState < sizeof(g_pszCustomerState) / sizeof(S8*))
+    {
+        return g_pszCustomerState[ulCustomerState];
+    }
+    return "UNKNOWN";
+}
+
+const S8* g_pszServType[] =
+{
+    "",
+    "OUTBAND CALL",
+    "INBAND CALL",
+    "INTER CALL",
+    "AUTO DIALING",
+    "PREVIEW DIALING",
+    "PREDICTIVE DIALING",
+    "RECORDING",
+    "CALL FORWARD",
+    "CALL TRANSFER",
+    "PICK UP",
+    "CONFERENCE",
+    "VOICE MAIL",
+    "SMS SEND",
+    "SMS RECV",
+    "MMS SEND",
+    "MMS RECV",
+    "RENT",
+    "SETTLE",
+    "VERIFY"
+};
+
+const S8* bs_translate_serv_type(U32 ulServType)
+{
+    if (ulServType < sizeof(g_pszServType) / sizeof(S8*))
+    {
+        return g_pszServType[ulServType];
+    }
+    return "UNKNOWN";
+}
+
+const S8* g_pszBillingAttr[] =
+{
+    "",
+    "REGION",
+    "TEL OPERATOR",
+    "NUMBER TYPE",
+    "TIME",
+    "ACCUMULATED TIMELEN",
+    "ACCUMULATED COUNT",
+    "ACCUMULATED TRAFFIC",
+    "CONCURRENT",
+    "SET",
+    "AGENT RESOURCE",
+    "NUMBER RESOURCE",
+    "LINE RESOURCE",
+    "LAST"
+};
+
+const S8* bs_translate_billing_attr(U32 ulBillingAttr)
+{
+    if (ulBillingAttr < sizeof(g_pszBillingAttr) / sizeof(S8*))
+    {
+        return g_pszBillingAttr[ulBillingAttr];
+    }
+    return "UNKNOWN";
+}
+
+const S8* g_pszBillingType [] =
+{
+    "BY TIMELEN",
+    "BY COUNT",
+    "BY TRAFFIC",
+    "BY CYCLE"
+};
+
+const S8* bs_translate_billing_type(U32 ulBillingType)
+{
+    if (ulBillingType < sizeof(g_pszBillingType) / sizeof(S8*))
+    {
+        return g_pszBillingType[ulBillingType];
+    }
+    return "UNKNOWN";
+}
+
+const S8* g_pszBsErrNo[] =
+{
+    "SUCCESS",
+    "NOT EXIST",
+    "EXPIRE",
+    "FROZEN",
+    "FEE LACK",
+    "PASSWORD ERR",
+    "RESTRICT",
+    "OVER LIMIT",
+    "TIME OUT",
+    "LINK DOWN",
+    "SYSTEM ERR",
+    "MAINTAIN",
+    "DATA ABNORMAL",
+    "PARAM ERR",
+    "NOT MATCH"
+};
+
+const S8* bs_translate_bs_errno(U32 ulErrNo)
+{
+    if (ulErrNo < sizeof(g_pszBsErrNo) / sizeof(S8*))
+    {
+        return g_pszBsErrNo[ulErrNo];
+    }
+    return "UNKNOWN";
+}
+
+const S8* g_pszInterMsgType[] =
+{
+    "",
+    "WALK REQ",
+    "WALK RSP",
+    "ORIGINAL CDR",
+    "VOICE CDR",
+    "RECORDING CDR",
+    "MESSAGE CDR",
+    "SETTLE CDR",
+    "RENT CDR",
+    "ACCOUNT CDR",
+    "OUTBAND STAT",
+    "INBAND STAT",
+    "OUTDIALING STAT",
+    "MESSAGE STAT",
+    "ACCOUNT STAT"
+};
+
+const S8* bs_translate_inter_msg_type(U32 ulMsgType)
+{
+    if (ulMsgType < sizeof(g_pszInterMsgType) / sizeof(S8*))
+    {
+        return g_pszInterMsgType[ulMsgType];
+    }
+    return "UNKNOWN";
+}
+
+const S8* g_pszObject[] =
+{
+    "SYSTEM",
+    "CUSTOMER",
+    "ACCOUNT",
+    "AGENT",
+    "NUMBER",
+    "LINE",
+    "TASK"
+    "TRUNK"
+};
+
+const S8* bs_translate_object(U32 ulObject)
+{
+    if (ulObject < sizeof(g_pszObject) / sizeof(S8*))
+    {
+        return g_pszObject[ulObject];
+    }
+    return "UNKNOWN";
 }
 
 S32 bs_show_trace_info(U32 ulIndex)
@@ -127,16 +313,16 @@ S32 bs_show_trace_info(U32 ulIndex)
     cli_out_string(ulIndex, "\r\n-----------------------------------------------"
                    "---------------------------------------------------------------");
     dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10d%10d%10d%10d%10d%10d%10d%10d%10d%10d%10s",
-                 (g_stBssCB.ulTraceFlag&BS_TRACE_FS)?1:0,
-                 (g_stBssCB.ulTraceFlag&BS_TRACE_WEB)?1:0,
-                 (g_stBssCB.ulTraceFlag&BS_TRACE_DB)?1:0,
-                 (g_stBssCB.ulTraceFlag&BS_TRACE_CDR)?1:0,
-                 (g_stBssCB.ulTraceFlag&BS_TRACE_BILLING)?1:0,
-                 (g_stBssCB.ulTraceFlag&BS_TRACE_ACCOUNT)?1:0,
-                 (g_stBssCB.ulTraceFlag&BS_TRACE_STAT)?1:0,
-                 (g_stBssCB.ulTraceFlag&BS_TRACE_AUDIT)?1:0,
-                 (g_stBssCB.ulTraceFlag&BS_TRACE_MAINTAIN)?1:0,
-                 (g_stBssCB.ulTraceFlag&BS_TRACE_RUN)?1:0,
+                 (g_stBssCB.ulTraceFlag & BS_TRACE_FS) ? 1:0,
+                 (g_stBssCB.ulTraceFlag & BS_TRACE_WEB) ? 1:0,
+                 (g_stBssCB.ulTraceFlag & BS_TRACE_DB) ? 1:0,
+                 (g_stBssCB.ulTraceFlag & BS_TRACE_CDR)? 1:0,
+                 (g_stBssCB.ulTraceFlag & BS_TRACE_BILLING) ? 1:0,
+                 (g_stBssCB.ulTraceFlag & BS_TRACE_ACCOUNT) ? 1:0,
+                 (g_stBssCB.ulTraceFlag & BS_TRACE_STAT) ? 1:0,
+                 (g_stBssCB.ulTraceFlag & BS_TRACE_AUDIT) ? 1:0,
+                 (g_stBssCB.ulTraceFlag & BS_TRACE_MAINTAIN) ? 1:0,
+                 (g_stBssCB.ulTraceFlag & BS_TRACE_RUN) ? 1:0,
                  bs_trace_level_str(g_stBssCB.ulTraceLevel));
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
@@ -160,15 +346,15 @@ S32 bs_show_cb(U32 ulIndex)
     stTime = (time_t)g_stBssCB.ulStatHourBase;
     strftime(szHourBase, sizeof(szHourBase), "%Y-%m-%d %H:%M:%S", localtime(&stTime));
 
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s%10s%10s%10s%10s%10s%20s%20s%10s%10s",
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s%10s%12s%10s%10s%10s%20s%20s%10s%10s",
                  "Maintain", "BillDay", "Hour", "CDRMark",
                  "MaxVoice", "MaxMsg", "StatDay", "StatHour",
                  "TCPPort", "UDPPort");
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
-    cli_out_string(ulIndex, "\r\n-----------------------------------------------"
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------"
                    "-------------------------------------------------------------------------");
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%10u%10u%10u%20s%20s%10u%10u",
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%12u%10u%10u%10u%20s%20s%10u%10u",
                  g_stBssCB.bIsMaintain, g_stBssCB.bIsBillDay,
                  g_stBssCB.ulHour, g_stBssCB.ulCDRMark,
                  g_stBssCB.ulMaxVocTime, g_stBssCB.ulMaxMsNum,
@@ -500,7 +686,7 @@ S32 bs_show_customer(U32 ulIndex, U32 ulObjectID)
                    "--------------------------------------------------");
     dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%20s%10u%10u%10u%10u%10u%10u%10u",
                  pstCustomer->ulCustomerID, pstCustomer->szCustomerName,
-                 pstCustomer->ucCustomerType, pstCustomer->ucCustomerState,
+                 sc_translate_customer_type(pstCustomer->ucCustomerType), bs_translate_customer_state(pstCustomer->ucCustomerState),
                  pstCustomer->ulParentID, pstCustomer->stChildrenList.ulCount,
                  pstCustomer->ulAgentNum, pstCustomer->ulNumberNum,
                  pstCustomer->ulUserLineNum);
@@ -956,24 +1142,17 @@ S32 bs_show_task(U32 ulIndex, U32 ulObjectID)
 
 S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
 {
-    S8  szBuff[BS_TRACE_BUFF_LEN] = {0, };
-    U32 ulHashIndex = 0, ulCol = 0, ulRow = 0;
+    S8 szBuff[1024] = {0};
+    HASH_NODE_S *pstHashNode = NULL;
+    U32 ulHashIndex = 0, ulCol = 0;
     U32 aulRule[BS_MAX_RULE_ITEM][BS_MAX_BILLING_RULE_IN_PACKAGE] = {{0}};
 
     BS_BILLING_PACKAGE_ST  *pstPkg = NULL;
-    HASH_NODE_S            *pstHashNode = NULL;
-
-    S8  aszRule[BS_MAX_RULE_ITEM][20] = {
-             "Rule ID", "Src Attr Type1", "Src Attr Type2", "Dest Attr Type1", "Dest Attr Type2"
-           , "Src Attr Value1", "Src Attr Value2", "Dest Attr Value1", "Dest Attr Value2"
-           , "First Billing Unit", "Next Billing Unit", "First Billing Cnt", "Next Billing Cnt"
-           , "Service Type", "Billing Type", "Billing Rate", "Effect Time", "Expire Time", "Priority"
-           , "Valid"
-    };
+    U32 ulLoop = 0;
 
     HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
     {
-        HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        HASH_Scan_Bucket(g_astBillingPackageTbl,ulHashIndex, pstHashNode, HASH_NODE_S *)
         {
             if (DOS_ADDR_INVALID(pstHashNode)
                 || DOS_ADDR_INVALID(pstHashNode->pHandle))
@@ -982,23 +1161,9 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
             }
 
             pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
-
-            //如果是0，则全部打印
-            if (0 == ulObjectID)
+            if (pstPkg->ulPackageID != ulObjectID)
             {
-                ;
-            }
-            else
-            {
-                if (pstPkg->ulPackageID == ulObjectID)
-                {
-                    dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Package ID %u.", ulObjectID);
-                    cli_out_string(ulIndex, szBuff);
-                }
-                else
-                {
-                    continue;
-                }
+                continue;
             }
 
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------");
@@ -1007,14 +1172,38 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n    Package ID     Service Type    ");
             cli_out_string(ulIndex, szBuff);
 
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%14u%17u", pstPkg->ulPackageID, pstPkg->ucServType);
+            /* 打印表头 */
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\nList Package ID %d.", ulObjectID);
+            cli_out_string(ulIndex, szBuff);
+            cli_out_string(ulIndex, "\r\n---------------------------------------");
+            cli_out_string(ulIndex, "\r\n  Package ID        Service Type");
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12u%20s\r\n"
+                            , ulObjectID
+                            , bs_translate_serv_type(pstPkg->ucServType));
             cli_out_string(ulIndex, szBuff);
 
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------\r\n");
-            cli_out_string(ulIndex, szBuff);
-
-            for (ulCol = 0; ulCol < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulCol)
+            for (ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
             {
+                if (0 == pstPkg->astRule[ulLoop].ulRuleID)
+                {
+                    continue;
+                }
+                /* 打印资费包属性和值 */
+                cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------");
+                cli_out_string(ulIndex, "\r\nRule ID        SrcAttrType1 SrcAttrValue1        SrcAttrType2 SrcAttrValue2       DestAttrType1 DestAttrValue1       DestAttrType2 DestAttrValue2");
+
+                dos_snprintf(szBuff, sizeof(szBuff), "\r\n%7u%20s%14u%20s%14u%20s%15u%20s%15u\r\n"
+                                , pstPkg->astRule[ulLoop].ulRuleID
+                                , bs_translate_billing_attr(pstPkg->astRule[ulLoop].ucSrcAttrType1)
+                                , pstPkg->astRule[ulLoop].ulSrcAttrValue1
+                                , bs_translate_billing_attr(pstPkg->astRule[ulLoop].ucSrcAttrType2)
+                                , pstPkg->astRule[ulLoop].ulSrcAttrValue2
+                                , bs_translate_billing_attr(pstPkg->astRule[ulLoop].ucDstAttrType1)
+                                , pstPkg->astRule[ulLoop].ulDstAttrValue1
+                                , bs_translate_billing_attr(pstPkg->astRule[ulLoop].ucDstAttrType2)
+                                , pstPkg->astRule[ulLoop].ulDstAttrValue2);
+                cli_out_string(ulIndex, szBuff);
                 aulRule[0][ulCol]  = pstPkg->astRule[ulCol].ulRuleID;
                 aulRule[1][ulCol]  = pstPkg->astRule[ulCol].ucSrcAttrType1;
                 aulRule[2][ulCol]  = pstPkg->astRule[ulCol].ucSrcAttrType2;
@@ -1049,32 +1238,24 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------------");
             cli_out_string(ulIndex, szBuff);
 
-            for (ulRow = 0; ulRow < BS_MAX_RULE_ITEM; ++ulRow)
-            {
-                dos_snprintf(szBuff, sizeof(szBuff)
-                            , "\r\n  %-20s|%12u %12u %12u %12u %12u %12u %12u %12u %12u %12u"
-                            , aszRule[ulRow]
-                            , aulRule[ulRow][0]
-                            , aulRule[ulRow][1]
-                            , aulRule[ulRow][2]
-                            , aulRule[ulRow][3]
-                            , aulRule[ulRow][4]
-                            , aulRule[ulRow][5]
-                            , aulRule[ulRow][6]
-                            , aulRule[ulRow][7]
-                            , aulRule[ulRow][8]
-                            , aulRule[ulRow][9]);
-                cli_out_string(ulIndex, szBuff);
-            }
+            cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------");
+            cli_out_string(ulIndex, "\r\nFirstBillingUnit FirstBillingCnt NextBillingUnit NextBillingCnt            ServType    BillingType BillingRate       Effect       Expire Priority Valid");
 
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------------");
-            cli_out_string(ulIndex, szBuff);
-
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n\r\nList the Billing Rule finished.\r\n");
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%16u%16u%16u%15u%20s%15s%12u%13u%13u%9u%6s\r\n\r\n\r\n"
+                            , pstPkg->astRule[ulLoop].ulFirstBillingUnit
+                            , pstPkg->astRule[ulLoop].ucFirstBillingCnt
+                            , pstPkg->astRule[ulLoop].ulNextBillingUnit
+                            , pstPkg->astRule[ulLoop].ucNextBillingCnt
+                            , bs_translate_serv_type(pstPkg->astRule[ulLoop].ucServType)
+                            , bs_translate_billing_type(pstPkg->astRule[ulLoop].ucBillingType)
+                            , pstPkg->astRule[ulLoop].ulBillingRate
+                            , pstPkg->astRule[ulLoop].ulEffectTimestamp
+                            , pstPkg->astRule[ulLoop].ulExpireTimestamp
+                            , pstPkg->astRule[ulLoop].ucPriority
+                            , pstPkg->astRule[ulLoop].ucValid == 1 ? "Y" : "N");
             cli_out_string(ulIndex, szBuff);
         }
     }
-
     return DOS_SUCC;
 }
 
@@ -1327,12 +1508,12 @@ S32 bs_show_outband_stat(U32 ulIndex)
         dos_snprintf(szBuff, sizeof(szBuff), "\r\nList outband stat...\r\n");
         cli_out_string(ulIndex, szBuff);
 
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\nObject ID:%u\r\nObject Type:%u\r\nAnswer Cnt:%u\r\n"
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nObject ID:%u\r\nObject Type:%s\r\nAnswer Cnt:%u\r\n"
                         "Answer Time:%u\r\nBusy Cnt:%u\r\nCall Cnt:%u\r\nEarly Release Cnt:%u\r\n"
                         "No Answer Cnt:%u\r\nNo Exist Cnt:%u\r\nPDD:%u\r\nReject Cnt:%u\r\n"
                         "Ring Cnt:%u\r\nTime Stamp:%u\r\n"
                         , pstStat->stStatTag.ulObjectID
-                        , pstStat->stStatTag.ucObjectType
+                        , bs_translate_object(pstStat->stStatTag.ucObjectType)
                         , pstStat->stOutBand.ulAnswerCnt
                         , pstStat->stOutBand.ulAnswerTime
                         , pstStat->stOutBand.ulBusyCnt

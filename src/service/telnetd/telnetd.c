@@ -55,10 +55,16 @@ VOID telnetd_send_cmd2client(FILE *output, S32 lCmd, S32 lOpt);
 /* 特殊按键ascii序列 */
 #define TELNETD_SPECIAL_KEY_LEN          8
 
+/* 定义目前支持的最大命令个数 */
+#define MAX_HISTORY_CMD_CNT     50
+
 /* 定义两个常用按键 */
 #define ESC_ASCII_CODE                   27  /* ESC Key */
 #define DEL_ASCII_CODE                   127 /* DEL Key */
 #define TAB_ASCII_CODE                   9   /* TAB Key */
+
+/* 定义存放命令的缓存首地址 */
+S8 *g_pszCtrlHistoryCmd = NULL;
 
 /**
  * 特殊按键枚举
@@ -896,7 +902,7 @@ VOID telnetd_client_send_new_line(FILE* output, S32 ulLines)
 #if 0
 S32 telnet_client_tab_proc(S8 *pszCurrCmd, FILE *pfOutput)
 {
-
+    return DOS_SUCC;
 }
 
 /**
@@ -911,9 +917,65 @@ S32 telnet_client_tab_proc(S8 *pszCurrCmd, FILE *pfOutput)
  * 返回值：
  *      成功返回接收缓存的长度，失败返回－1
  */
-S32 telnet_client_special_key_proc(U32 ulKey, FILE *pfOutput, S8 *pszCurrCmd, S32 lMaxLen, S32 *plCurrent)
+S32 telnet_client_special_key_proc(U32 ulKey, FILE *pfOutput, S32 lMaxLen, S32* plShowPos, S32* plLastest)
 {
+    U32 ulLoop = 0;
 
+    switch(ulKey)
+    {
+        /* 处理Fn功能键 */
+        case KEY_F1:
+        case KEY_F2:
+        case KEY_F3:
+        case KEY_F4:
+        case KEY_F5:
+        case KEY_F6:
+        case KEY_F7:
+        case KEY_F8:
+        case KEY_F9:
+        case KEY_F10:
+            break;
+        /* 处理方向键 */
+        case KEY_UP:
+            {
+                if (0 == *plShowPos)
+                {
+                    *plShowPos = MAX_HISTORY_CMD_CNT;
+                }
+                else
+                {
+                    *plShowPos = *plShowPos - 1;
+                }
+                break;
+            }
+        case KEY_DOWN:
+            {
+                if (MAX_HISTORY_CMD_CNT == *plShowPos)
+                {
+                    *plShowPos = 0;
+                }
+                else
+                {
+                    if (*plShowPos != *plLastest)
+                    {
+                        *plShowPos = *plShowPos + 1;
+                    }
+                }
+                break;
+            }
+        case KEY_LEFT:
+        case KEY_RIGHT:
+            break;
+        default:
+            break;
+    }
+
+    for (ulLoop = 0; ulLoop < dos_strlen(g_pszCtrlHistoryCmd + (*plShowPos) * MAX_RECV_BUFF_LENGTH); ++ulLoop)
+    {
+        putc(*(g_pszCtrlHistoryCmd + (*plShowPos) * MAX_RECV_BUFF_LENGTH + ulLoop), pfOutput);
+    }
+
+    return DOS_SUCC;
 }
 #endif
 
@@ -938,6 +1000,7 @@ S32 telnetd_client_read_line(TELNET_CLIENT_INFO_ST *pstClientInfo, S8 *szBuffer,
     S32 lRes = 0;
 #if 0
     S32 lLoop, lSpecialKeyMatchRet;
+    S32 lLatestIndex = -1, lCurIndex = 0;
 #endif
 
     if (!pstClientInfo->pFDInput || !pstClientInfo->pFDOutput)
@@ -1004,11 +1067,28 @@ do{ \
 
             /* 检查特殊按键 */
             lSpecialKeyMatchRet = 1;
-            for (lLoop=0; lLoop<KEY_BUTT; lLoop++)
+            for (lLoop=0; lLoop < KEY_BUTT; lLoop++)
             {
                 /* 制定长度比较，如果没有匹配成功，说明已经不是特殊按键了 */
                 if (dos_strncmp(g_szSpecialKey[lLoop], stKeyList.szKeyBuff, stKeyList.ulLength) != 0)
                 {
+                    /* 如果说之前记录最新索引是MAX_HISTORY_CMD_CNT，并且又一次非特殊按键，则最新索引更换为0 */
+                    if (MAX_HISTORY_CMD_CNT == lLatestIndex)
+                    {
+                        lLatestIndex = 0;
+                    }
+                    else
+                    {
+                        ++lLatestIndex;
+                    }
+                    /* 没有匹配成功，则应该将其记录下来 */
+                    dos_memzero(g_pszCtrlHistoryCmd + lLatestIndex * MAX_RECV_BUFF_LENGTH, MAX_RECV_BUFF_LENGTH);
+                    dos_snprintf(g_pszCtrlHistoryCmd + lLatestIndex * MAX_RECV_BUFF_LENGTH, MAX_RECV_BUFF_LENGTH, "%s", stKeyList.szKeyBuff);
+
+                    /* 并把当前记录置为最新记录 */
+                    lCurIndex = lLatestIndex;
+
+                    /* 并将是否匹配特殊按键置为0 */
                     lSpecialKeyMatchRet = 0;
                     break;
                 }
@@ -1023,14 +1103,14 @@ do{ \
                 while (lLength > 0)
                 {
                     /* 光标后退一个，输出一个空格， 光标再次后退，实现删除字符的功能*/
-                    fprintf(output, "\b \b");
-                    check_fd(output);
-                    fflush(output);
+                    fprintf(pstClientInfo->pFDOutput, "\b \b");
+                    check_fd(pstClientInfo->pFDOutput);
+                    fflush(pstClientInfo->pFDOutput);
                     lLength--;
                 }
 
-                telnet_client_special_key_proc(lLoop, output, szBuffer, lSize, lLength);
-                return TELNET_RECV_RESULT_AGAIN;
+                telnet_client_special_key_proc(lLoop, pstClientInfo->pFDOutput, lSize, &lCurIndex, &lLatestIndex);
+                return TELNET_RECV_RESULT_ERROR;
             }
 
             /* 成功就要处理特殊按键，失败要将所有缓存字符回显 */
@@ -1042,7 +1122,7 @@ do{ \
             {
                 for (lLoop=0; lLoop<stKeyList.ulLength; lLoop++)
                 {
-                    puts(stKeyList.szKeyBuff[lLoop], output);
+                    putc(stKeyList.szKeyBuff[lLoop], pstClientInfo->pFDOutput);
                 }
 
                 stKeyList.ulLength = 0;
@@ -1051,7 +1131,6 @@ do{ \
 
             continue;
         }
-        else
 #endif
 
 #if INCLUDE_PTS
@@ -1704,6 +1783,15 @@ S32 telnetd_init()
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    /* 在此为命令缓存分配内存 */
+    g_pszCtrlHistoryCmd = dos_dmem_alloc(MAX_HISTORY_CMD_CNT * MAX_RECV_BUFF_LENGTH * sizeof(S8));
+    if (!g_pszCtrlHistoryCmd)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    /**/
 
     dos_memzero((VOID*)pstClientCB, sizeof(TELNET_CLIENT_INFO_ST) * MAX_CLIENT_NUMBER);
     for (i=0; i<MAX_CLIENT_NUMBER; i++)

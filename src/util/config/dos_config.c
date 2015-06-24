@@ -315,6 +315,7 @@ U32 config_get_syssrc_db_dbname(S8 *pszBuff, U32 ulLen)
  *      U32 ulLen：缓存长度
  * 返回值：成功返回0.失败返回－1
  */
+#if INCLUDE_SERVICE_PYTHON
 U32 config_get_py_path(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue = NULL;
@@ -335,7 +336,7 @@ U32 config_get_py_path(S8 *pszBuff, U32 ulLen)
 
     return 0;
 }
-
+#endif
 
 /**
  * 函数：U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen)
@@ -367,6 +368,28 @@ U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen)
     return 0;
 }
 
+U32 config_get_shortcut_cmd(U32 ulNo, S8 *pszCtrlCmd, U32 ulLen)
+{
+    S8 *pszCmd = NULL;
+    S8 szNum[4] = {0};
+
+    /* 将数字转换为字符串 */
+    if (dos_ltoa(ulNo, szNum, sizeof(szNum)) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    szNum[sizeof(szNum) - 1] = '\0';
+    pszCmd = _config_get_param(g_pstGlobalCfg, "config/shortcut", szNum, pszCtrlCmd, ulLen);
+    if (!pszCmd)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
 
 /**
  * 函数：U32 config_hh_get_send_interval()
