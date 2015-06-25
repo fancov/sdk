@@ -901,7 +901,7 @@ VOID sc_show_caller_for_task(U32 ulIndex, U32 ulTaskID)
                     , pstTCB->ulCustomID
                     , pstTCB->ulCurrentConcurrency
                     , pstTCB->ulMaxConcurrency
-                    , pstTCB->ulAgentQueueID);
+                    , pstTCB->ulAgentQueueID);
     cli_out_string(ulIndex, szCmdBuff);
 
     cli_out_string(ulIndex, "\r\n\r\n---------------------------------------------------------------------------------------------");
@@ -2309,6 +2309,9 @@ VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
             break;
         case SC_BS:
             dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_BSS:");
+            break;
+        case SC_SYN:
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_SYN:");
             break;
         default:
             dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC:");

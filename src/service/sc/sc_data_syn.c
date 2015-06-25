@@ -81,6 +81,23 @@ static S32 sc_walk_tmp_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFiel
     return DOS_SUCC;
 }
 
+VOID sc_tmp_tbl_clean()
+{
+    S8 szQuery[256] = {0, };
+
+    dos_snprintf(szQuery, sizeof(szQuery), "delete from tmp_fs_modify;");
+
+    db_transaction_begin(g_pstSCDBHandle);
+    if (db_query(g_pstSCDBHandle, szQuery, NULL, NULL, NULL) != DB_ERR_SUCC)
+    {
+        sc_logr_emerg(SC_SYN, "%s", "DB query failed. (%s)", szQuery);
+        db_transaction_rollback(g_pstSCDBHandle);
+        return;
+    }
+
+    db_transaction_commit(g_pstSCDBHandle);
+}
+
 U32 sc_walk_tmp_tbl()
 {
     S8 szQuery[256] = {0, };
@@ -100,18 +117,11 @@ U32 sc_walk_tmp_tbl()
         return DOS_FAIL;
     }
 
-    dos_snprintf(szQuery, sizeof(szQuery), "delete from tmp_tbl_modify;");
-    db_transaction_begin(g_pstSCDBHandle);
-    if (db_query(g_pstSCDBHandle, szQuery, NULL, NULL, NULL) != DB_ERR_SUCC)
-    {
-        sc_logr_emerg(SC_SYN, "%s", "DB query failed. (%s)", szQuery);
-        db_transaction_rollback(g_pstSCDBHandle);
-        return DOS_FAIL;
-    }
-    db_transaction_commit(g_pstSCDBHandle);
+    sc_tmp_tbl_clean();
 
     return DOS_SUCC;
 }
+
 
 U32 sc_data_syn_proc(DLL_NODE_S *pstNode)
 {
@@ -256,7 +266,7 @@ U32 sc_data_syn_proc(DLL_NODE_S *pstNode)
         dos_list_add_tail(&(stParamList), &pstParamsList->stList);
     }
 
-    sc_logr_debug(SC_HTTP_API, "%s", "Prase the http request finished.");
+    sc_logr_debug(SC_HTTP_API, "Prase the http request finished. Request: %s", szReqBuffer);
 
     ulRet = SC_HTTP_ERRNO_INVALID_REQUEST;
     cb = sc_http_api_find(szReqBuffer);
@@ -264,9 +274,12 @@ U32 sc_data_syn_proc(DLL_NODE_S *pstNode)
     {
         ulRet = cb(&(stParamList));
     }
+    else
+    {
+        sc_logr_notice(SC_HTTP_API, "Cannot find the callback function for the request %s", szReqBuffer);
+    }
 
-
-    sc_logr_notice(SC_HTTP_API, "HTTP Request process finished. Return code: %d", ulRet);
+    sc_logr_notice(SC_HTTP_API, "HTTP Request process finished. Return code: 0x%X", ulRet);
 
     while (1)
     {
@@ -377,19 +390,22 @@ VOID* sc_data_syn_proc_runtime(VOID *ptr)
  */
 VOID* sc_data_syn_runtime(VOID *ptr)
 {
-    S32                 lSocket = -1, lRet, lAddrLen;
+    S32                 lSocket = -1, lClientSocket, lRet, lAddrLen;
     U8                  aucBuff[SC_DATA_SYN_BUFF_LEN];
     BS_MSG_TAG          *pstMsgTag;
     struct sockaddr_un  stAddr, stAddrIn;
     struct timeval      stTimeout={2, 0};
     fd_set              stFDSet;
 
+    /* 清空临时数据 */
+    sc_tmp_tbl_clean();
+
     for (;;)
     {
         while (!g_blConnected)
         {
             /* 初始化socket(UNIX STREAM方式) */
-            lSocket = socket(AF_UNIX, SOCK_DGRAM, 0);
+            lSocket = socket(AF_UNIX, SOCK_STREAM, 0);
             if (lSocket < 0)
             {
                 sc_logr_error(SC_SYN, "%s", "ERR: create socket fail!");
@@ -408,6 +424,17 @@ VOID* sc_data_syn_runtime(VOID *ptr)
                 sc_logr_error(SC_SYN, "%s", "ERR: bind socket fail!");
                 close(lSocket);
                 lSocket= -1;
+                goto connect_fail;
+            }
+
+            chmod(SC_DATA_SYN_SOCK_PATH, S_IREAD|S_IWRITE|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+
+            /* 目前监听数量不确定,暂时以SOMAXCONN为准 */
+            lRet = listen(lSocket, SOMAXCONN);
+            if (lRet < 0)
+            {
+                sc_logr_error(SC_SYN, "%s", "ERR: listen socket fail!");
+                close(lSocket);
                 goto connect_fail;
             }
 
@@ -441,31 +468,33 @@ connect_fail:
             continue;
         }
 
+        lClientSocket = accept(lSocket, (struct sockaddr *)&stAddrIn, (socklen_t *)&lAddrLen);
+        if (lClientSocket < 0)
+        {
+            sc_logr_error(SC_SYN, "%s", "Accept FAIL.");
+            continue;
+        }
+
         lAddrLen = sizeof(stAddrIn);
-        lRet = recvfrom(lSocket
-                        , aucBuff
-                        , SC_DATA_SYN_BUFF_LEN
-                        , 0
-                        ,  (struct sockaddr *)&stAddrIn
-                        , (socklen_t *)&lAddrLen);
+        lRet = recv(lClientSocket, aucBuff, SC_DATA_SYN_BUFF_LEN, 0);
         if (lRet < 0)
         {
-            sc_logr_error(SC_SYN, "%s", "Select FAIL.");
-            close(lSocket);
+            sc_logr_error(SC_SYN, "%s", "Recv FAIL.");
+            close(lClientSocket);
+            lClientSocket = -1;
             g_blConnected = DOS_FALSE;
             continue;
         }
 
-        if (0 == lRet || EINTR == errno || EAGAIN == errno)
-        {
-            continue;
-        }
+        close(lClientSocket);
+        lClientSocket = 0;
 
         /* TODO: 判断长度之后再转换 */
         pstMsgTag = (BS_MSG_TAG *)aucBuff;
 
         /* TODO: 转换之后需要处理消息 */
 
+        sc_logr_info(SC_SYN, "%s", "Recv data syn command!");
 
         g_blSCDataSybFlag = DOS_TRUE;
 

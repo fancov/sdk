@@ -55,7 +55,7 @@ http_req_handle sc_http_api_find(S8 *pszName)
 {
     U32 ulIndex;
 
-    if (DOS_ADDR_VALID(pszName) || '\0' == pszName[0])
+    if (DOS_ADDR_INVALID(pszName) || '\0' == pszName[0])
     {
         return NULL;
     }
@@ -63,14 +63,10 @@ http_req_handle sc_http_api_find(S8 *pszName)
     for (ulIndex=0; ulIndex<(sizeof(g_pstHttpReqRegTable)/sizeof(SC_HTTP_REQ_REG_TABLE_SC)); ulIndex++)
     {
         if (g_pstHttpReqRegTable[ulIndex].pszRequest
-            && dos_strcmp(g_pstHttpReqRegTable[ulIndex].pszRequest, pszName) == 0)
+            && dos_strcmp(g_pstHttpReqRegTable[ulIndex].pszRequest, pszName) == 0
+            && g_pstHttpReqRegTable[ulIndex].callback)
         {
-            if (g_pstHttpReqRegTable[ulIndex].callback)
-            {
-                return g_pstHttpReqRegTable[ulIndex].callback;
-            }
-
-            break;
+            return g_pstHttpReqRegTable[ulIndex].callback;
         }
     }
 
