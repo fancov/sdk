@@ -25,6 +25,29 @@ extern "C"{
 #include "mon_monitor_and_handle.h"
 #include "mon_warning_msg_queue.h"
 
+#define MAX_WARNING_TYPE_CNT   10 //最大告警类型个数
+
+#define GENERATE_WARNING_MSG(pstMsg, ulIndex, ulNo) \
+    pstMsg->ulWarningId = ulNo; \
+    pstMsg->ulMsgLen = dos_strlen(g_pstWarningMsg[ulIndex].szWarningDesc); \
+    pstMsg->msg = (VOID *)g_pstWarningMsg[ulIndex].szWarningDesc ; \
+    g_pstWarningMsg[ulIndex].bExcep = DOS_TRUE
+
+#define GENERATE_NORMAL_MSG(pstMsg, ulIndex, ulNo) \
+    pstMsg->ulWarningId = ulNo; \
+    pstMsg->ulMsgLen = dos_strlen(g_pstWarningMsg[ulIndex].szNormalDesc); \
+    pstMsg->msg = (VOID *)g_pstWarningMsg[ulIndex].szNormalDesc; \
+    g_pstWarningMsg[ulIndex].bExcep = DOS_FALSE
+
+typedef struct tagWarningMsg
+{
+    U32   ulNo;              //告警编号
+    BOOL  bExcep;            //是否正常状态
+    U32   ulWarningLevel;    //告警级别
+    S8    szWarningDesc[32]; //告警描述
+    S8    szNormalDesc[32];  //正常描述
+}MON_WARNING_MSG_S;
+
 pthread_mutex_t g_stMonMutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  g_stMonCond   = PTHREAD_COND_INITIALIZER;
 
@@ -47,6 +70,7 @@ S8 g_szMonProcessInfo[MAX_PROC_CNT * MAX_BUFF_LENGTH] = {0};
 static DB_HANDLE_ST *         g_pstDBHandle = NULL;
 static MON_MSG_QUEUE_S *      g_pstMsgQueue = NULL;//消息队列
 static MON_THRESHOLD_S *      g_pstCond = NULL;
+static MON_WARNING_MSG_S*     g_pstWarningMsg = NULL;
 
 S8 * g_pszAnalyseList = NULL;
 
@@ -59,10 +83,13 @@ static U32 mon_print_data_log();
 static S32 mon_reset_res_data();
 #endif
 
-static U32 mon_add_warning_record(U32 ulResId);
+static U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc);
 static U32 mon_init_db_conn();
 static U32 mon_init_warning_cond();
 static U32 mon_close_db_conn();
+static U32 mon_init_warning_msg();
+static U32 mon_deinit_warning_msg();
+static U32 mon_get_msg_index(U32 ulNo);
 
 /**
  * 功能:资源监控
@@ -72,19 +99,19 @@ static U32 mon_close_db_conn();
  *   无返回值
  */
 VOID *mon_res_monitor(VOID *p)
-{   
+{
    while (1)
-   { 
+   {
       U32 ulRet = 0;
-      pthread_mutex_lock(&g_stMonMutex); 
+      pthread_mutex_lock(&g_stMonMutex);
       /*  获取资源信息  */
       ulRet = mon_get_res_info();
       if (DOS_SUCC != ulRet)
       {
-         logr_error("%s:Line %u:mon_res_monitor|get resource info failure,ulRet is %u!"  
-                    , dos_get_filename(__FILE__), __LINE__, ulRet); 
+         logr_error("%s:Line %u:mon_res_monitor|get resource info failure,ulRet is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulRet);
       }
-      
+
       /*  异常处理  */
       ulRet = mon_handle_excp();
       if (DOS_SUCC != ulRet)
@@ -92,7 +119,7 @@ VOID *mon_res_monitor(VOID *p)
          logr_error("%s:Line %u:mon_res_monitor|handle exception failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
       }
-      
+
       /*  将数据记录至数据库  */
       ulRet = mon_add_data_to_db();
       if (DOS_SUCC != ulRet)
@@ -100,7 +127,7 @@ VOID *mon_res_monitor(VOID *p)
          logr_error("%s:Line %u:mon_res_monitor|add record to database failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
       }
- 
+
       /*  打印数据日志  */
       ulRet = mon_print_data_log();
       if (DOS_SUCC != ulRet)
@@ -108,7 +135,7 @@ VOID *mon_res_monitor(VOID *p)
          logr_error("%s:Line %u:mon_res_monitor|print data log failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
       }
-   
+
       pthread_cond_signal(&g_stMonCond);
       pthread_mutex_unlock(&g_stMonMutex);
       sleep(5);
@@ -125,7 +152,7 @@ VOID *mon_res_monitor(VOID *p)
 VOID* mon_warning_handle(VOID *p)
 {
      U32 ulRet = 0;
-     
+
      g_pstMsgQueue =  mon_get_warning_msg_queue();
      if(DOS_ADDR_INVALID(g_pstMsgQueue))
      {
@@ -133,7 +160,7 @@ VOID* mon_warning_handle(VOID *p)
                     , dos_get_filename(__FILE__), __LINE__, g_pstMsgQueue);
         return NULL;
      }
-     
+
      while (1)
      {
         pthread_mutex_lock(&g_stMonMutex);
@@ -144,32 +171,7 @@ VOID* mon_warning_handle(VOID *p)
           {
              break;
           }
-          switch (g_pstMsgQueue->pstHead->ulWarningId & (U32)0xff000000)
-          {
-            case 0xf1000000: //CPU过大处理  
-               break;
-            case 0xf2000000: //内存过大处理
-               break;
-            case 0xf3000000: //磁盘过大处理
-               break;
-            case 0xf4000000: //网络异常处理
-               break;
-            case 0xf5000000: //进程异常处理
-               {
-                  if(DOS_SUCC != ulRet)
-                  {
-                     logr_error("%s:Line %u:mon_warning_handle|kill all monitor failure,lRet is %u!"
-                                , dos_get_filename(__FILE__), __LINE__, ulRet);
-                  }
-               }
-               break;
-            default:
-               logr_error("%s:Line %u:g_pstMsgQueue->pstHead->ulWarningId is %s%x"
-                            , dos_get_filename(__FILE__), __LINE__, "0x"
-                            , g_pstMsgQueue->pstHead->ulWarningId);
-               break;
-          }
-          
+
           ulRet = mon_warning_msg_de_queue(g_pstMsgQueue);
           if(DOS_SUCC != ulRet)
           {
@@ -179,17 +181,8 @@ VOID* mon_warning_handle(VOID *p)
           }
        }
 
-       /*  数据重置  */
-#if 0
-       lRet = mon_reset_res_data();
-       if(DOS_SUCC != lRet)
-       {
-          logr_error("%s:Line %d:mon_res_monitor|reset resource data failure,lRet is %d!"
-                        , dos_get_filename(__FILE__), __LINE__, lRet);
-       }
-#endif
        pthread_mutex_unlock(&g_stMonMutex);
-   }   
+   }
 }
 
 /**
@@ -245,7 +238,7 @@ U32 mon_res_alloc()
       logr_error("%s:Line %u:mon_res_generate|mem alloc memory failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
-   
+
    ulRet = mon_cpu_rslt_malloc();
    if (DOS_SUCC != ulRet)
    {
@@ -274,6 +267,12 @@ U32 mon_res_alloc()
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
 
+   ulRet = mon_init_warning_msg();
+   if (DOS_SUCC != ulRet)
+   {
+       logr_error("%s:Line %u:init warning msg FAIL.", dos_get_filename(__FILE__), __LINE__);
+   }
+
    return DOS_SUCC;
 }
 
@@ -287,7 +286,7 @@ U32 mon_res_alloc()
 static U32 mon_get_res_info()
 {
     U32 ulRet = 0;
-    
+
     ulRet = mon_read_mem_file();
     if (DOS_SUCC != ulRet)
     {
@@ -315,14 +314,14 @@ static U32 mon_get_res_info()
        logr_error("%s:Line %u:mon_get_res_info|get netcard data failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
     }
-    
+
     ulRet = mon_get_process_data();
     if (DOS_SUCC != ulRet)
     {
        logr_error("%s:Line %u:mon_get_res_info|get process data success,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
     }
-    
+
     return DOS_SUCC;
 }
 
@@ -336,304 +335,487 @@ static U32 mon_get_res_info()
 static U32 mon_handle_excp()
 {
     S32 lRet = 0;
-    U32 ulRet = 0;
-    U32 ulRows = 0;
-    U32 ulTotalDiskRate = 0;
-    
-    /*  异常处理  */
+    U32  ulRet = 0, ulProcCPU = 0, ulProcMem = 0;
+    U32  ulRows = 0;
+    U32  ulIndex = 0;
+    U32  ulTotalDiskRate = 0;
+    BOOL bDiskExcept = DOS_FALSE, bAddToDB = DOS_FALSE, bNetExcept = DOS_FALSE;
+    MON_MSG_S * pstMsg = NULL;
+
+    /*******************************处理内存告警开始**********************************/
+    /* 先生成内存异常告警编号 */
+    ulRet = mon_generate_warning_id(MEM_RES, 0x00, RES_LACK);
+    if((U32)0xff == ulRet)
+    {
+        logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
+                    , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
+        return DOS_FAIL;
+    }
+
+    /* 利用告警编号找到消息的索引 */
+    ulIndex = mon_get_msg_index(ulRet);
+    if (U32_BUTT == ulIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    /*  处理内存异常  */
     if (g_pstMem->ulPhysicalMemUsageRate >= g_pstCond->ulMemThreshold)
     {
-       MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-       if (DOS_ADDR_INVALID(pstMsg))
-       {
-          logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
-                        , dos_get_filename(__FILE__), __LINE__, pstMsg);
-       }
-
-       ulRet = mon_generate_warning_id(MEM_RES, 0x00, RES_LACK);
-       if((U32)0xff == ulRet)
-       {
-          logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
-                        , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
-       }
-       pstMsg->ulWarningId = ulRet;
-       
-       pstMsg->ulMsgLen = sizeof(MON_SYS_MEM_DATA_S);
-       pstMsg->msg = g_pstMem;
-       
-       ulRet = mon_add_warning_record(pstMsg->ulWarningId);
-       if(DOS_SUCC != lRet)
-       {
-          logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
-                        , dos_get_filename(__FILE__), __LINE__, ulRet);
-       }
-       
-       ulRet = mon_warning_msg_en_queue(pstMsg);
-       if(DOS_SUCC != ulRet)
-       {
-          logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
-                        , dos_get_filename(__FILE__), __LINE__, ulRet);
-       }
-       logr_info("%s:Line %u: Lack of Memory", dos_get_filename(__FILE__), __LINE__);
-    }
-
-    for(ulRows = 0; ulRows < g_ulPartCnt; ulRows++)
-    {
-       if(g_pastPartition[ulRows]->ulPartitionUsageRate >= g_pstCond->ulPartitionThreshold)
-       {
-          
-          MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-          if (DOS_ADDR_INVALID(pstMsg))
-          {
-             logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
-                          , dos_get_filename(__FILE__), __LINE__, pstMsg);
-          }
-          
-
-          ulRet = mon_generate_warning_id(DISK_RES, ulRows, RES_LACK);
-          if((U32)0xff == ulRet)
-          {
-             logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
-                        , dos_get_filename(__FILE__), __LINE__ , "0x", ulRet);
-          }
-          
-          pstMsg->ulWarningId = ulRet;
-          pstMsg->ulMsgLen = sizeof(MON_SYS_MEM_DATA_S);
-          pstMsg->msg = g_pastPartition[ulRows];
-          
-          ulRet = mon_add_warning_record(pstMsg->ulWarningId);
-          if(DOS_SUCC != ulRet)
-          {
-             logr_error("%s:Line %d:mon_handle_excp|add warning record failure,ulRet is %u!"
-                        , dos_get_filename(__FILE__), __LINE__, ulRet);
-          }
-          
-          ulRet = mon_warning_msg_en_queue(pstMsg);
-          if(DOS_SUCC != ulRet)
-          {
-             logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
-                        , dos_get_filename(__FILE__), __LINE__, ulRet);
-          }
-          logr_info("%s:Line %u: Partition %s:Not enough partition volume."
-                    , dos_get_filename(__FILE__), __LINE__, g_pastPartition[ulRows]->szPartitionName);
-          
-       }
-    }
-
-    ulTotalDiskRate = mon_get_total_disk_usage_rate();
-    if(DOS_FAIL == ulTotalDiskRate)
-    {
-       logr_error("%s:Line %u:mon_handle_excp|get total disk usage rate failure,ulTotalDiskRate is %u!"
-                    , dos_get_filename(__FILE__), __LINE__, ulTotalDiskRate);
-    }
-              
-    if(ulTotalDiskRate >= g_pstCond->ulDiskThreshold)
-    {
-       
-       MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-       if (DOS_ADDR_INVALID(pstMsg))
-       {
-            logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
-                         , dos_get_filename(__FILE__), __LINE__, pstMsg);
-       }
-       
-
-       ulRet = mon_generate_warning_id(DISK_RES, 0x00, RES_LACK);
-       if((U32)0xff == ulRet)
-       {
-          logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,lRet is %s%x!"
-                        , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
-       }
-                 
-       pstMsg->ulWarningId = ulRet;
-       pstMsg->ulMsgLen = sizeof(MON_SYS_PART_DATA_S);
-       pstMsg->msg = g_pastPartition;
-       
-       ulRet = mon_add_warning_record(pstMsg->ulWarningId);
-       if(DOS_SUCC != ulRet)
-       {
-          logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
-                        , dos_get_filename(__FILE__), __LINE__, ulRet);
-       }
-       
-       ulRet = mon_warning_msg_en_queue(pstMsg);
-       if(DOS_SUCC != ulRet)
-       {
-          logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
-                        , dos_get_filename(__FILE__), __LINE__, ulRet);
-       }
-       logr_info("%s:Line %u:Not enough disk volumn."
-                    , dos_get_filename(__FILE__), __LINE__);
-    }
-   
-    if(g_pstCpuRslt->ulCPUUsageRate >= g_pstCond->ulCPUThreshold||
-       g_pstCpuRslt->ulCPU5sUsageRate >= g_pstCond->ul5sCPUThreshold ||
-       g_pstCpuRslt->ulCPU1minUsageRate >= g_pstCond->ul1minCPUThreshold ||
-       g_pstCpuRslt->ulCPU10minUsageRate >= g_pstCond->ul10minCPUThreshold)
-    {
-       
-       MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-       if (DOS_ADDR_INVALID(pstMsg))
-       {
-           logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
-                        , dos_get_filename(__FILE__), __LINE__, pstMsg);
-       }
-       
-       ulRet = mon_generate_warning_id(CPU_RES, 0x00, RES_LACK);
-       if((U32)0xff == ulRet)
-       {
-          logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x"
-                        , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
-       }
-       pstMsg->ulWarningId = ulRet;
-       
-       pstMsg->ulMsgLen = sizeof(MON_CPU_RSLT_S);
-       pstMsg->msg = g_pstCpuRslt;
-       
-       ulRet = mon_add_warning_record(pstMsg->ulWarningId);
-       if(DOS_SUCC != ulRet)
-       {
-          logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
-                        , dos_get_filename(__FILE__), __LINE__, ulRet);
-       }
-       
-       ulRet = mon_warning_msg_en_queue(pstMsg);
-       if(DOS_SUCC != ulRet)
-       {
-          logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
-                        , dos_get_filename(__FILE__), __LINE__, ulRet);
-       }
-
-       logr_info("%s:Line %u: Such high CPU rate.", dos_get_filename(__FILE__), __LINE__);
-    }
-
-    for(ulRows = 0; ulRows < g_ulNetCnt; ulRows++)
-    {
-       if(DOS_FALSE == (mon_is_netcard_connected(g_pastNet[ulRows]->szNetDevName)))
-       {
-          
-          MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-          if (DOS_ADDR_INVALID(pstMsg))
-          {
-              logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
-                           , dos_get_filename(__FILE__), __LINE__, pstMsg);
-          }          
-
-          ulRet = mon_generate_warning_id(NET_RES, 0x00, 0x00);
-          if((U32)0xff == ulRet)
-          {
-             logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
-                        , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
-          }
-          
-          pstMsg->ulWarningId = ulRet;
-          pstMsg->ulMsgLen = sizeof(MON_NET_CARD_PARAM_S);
-          pstMsg->msg = g_pastNet[ulRows];
-          
-          ulRet = mon_add_warning_record(pstMsg->ulWarningId);
-          if(DOS_SUCC != ulRet)
-          {
-             logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
-                        , dos_get_filename(__FILE__), __LINE__, ulRet);
-          }
-          
-          ulRet = mon_warning_msg_en_queue(pstMsg);
-          if(DOS_SUCC != lRet)
-          {
-             logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
-                        , dos_get_filename(__FILE__), __LINE__, ulRet);
-          }
-          logr_info("%s:Line %u: Netcard %s disconnected.", dos_get_filename(__FILE__), __LINE__, g_pastNet[ulRows]->szNetDevName);
-       }
-    }
-
-    ulRet = mon_get_proc_total_cpu_rate();
-    if(DOS_FAIL == ulRet)
-    {
-       logr_error("%s:Line %u:mon_handle_excp|get all proc total cpu rate failure,ulRet is %u!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRet);
-    }
-              
-    if(ulRet > g_pstCond->ulProcCPUThreshold)
-    { 
-        MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-        if (DOS_ADDR_INVALID(pstMsg))
+        /* 如果第一次产生告警，须将其记录下来 */
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
         {
-           logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
-                          , dos_get_filename(__FILE__), __LINE__, pstMsg);
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+                            , dos_get_filename(__FILE__), __LINE__, pstMsg);
+            }
+
+            /* 构造告警消息并表明已产生告警 */
+            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
+
+            /* 表明该记录需要添加至数据库 */
+            bAddToDB = DOS_TRUE;
         }
-        
-        ulRet = mon_generate_warning_id(PROC_RES, 0x00, 0x01);
-        if((U32)0xff == ulRet)
+    }
+    else
+    {
+        /* 若处于正常水平，但是还没有回复告警，则恢复告警 */
+        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
         {
-          logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
-                        , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+                            , dos_get_filename(__FILE__), __LINE__, pstMsg);
+            }
+
+            /* 构造恢复告警并标明告警已恢复 */
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+
+            bAddToDB = DOS_TRUE;
         }
-        
-        pstMsg->ulWarningId = ulRet;
-        pstMsg->ulMsgLen = sizeof(MON_PROC_STATUS_S);
-        pstMsg->msg = g_pastProc;
-        
-        ulRet = mon_add_warning_record(pstMsg->ulWarningId);
-        if(DOS_SUCC != ulRet)
+    }
+
+    if (DOS_TRUE == bAddToDB)
+    {
+        /* 将记录插入数据库 */
+        ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8 *)pstMsg->msg);
+        if(DOS_SUCC != lRet)
         {
-           logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
+            logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
                         , dos_get_filename(__FILE__), __LINE__, ulRet);
+            return DOS_FAIL;
         }
-        
+
+        /* 将消息加入消息队列 */
         ulRet = mon_warning_msg_en_queue(pstMsg);
         if(DOS_SUCC != ulRet)
         {
-           logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+            logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
                         , dos_get_filename(__FILE__), __LINE__, ulRet);
+            return DOS_FAIL;
         }
-        logr_info("%s:Line %u:Processes possess such high CPU rate.", dos_get_filename(__FILE__), __LINE__);     
     }
 
-    ulRet = mon_get_proc_total_mem_rate();
-    if(DOS_FAIL == ulRet)
+    /************************内存告警处理完毕*************************/
+
+    /************************磁盘告警处理开始*************************/
+    bAddToDB = DOS_FALSE;
+    ulRet = mon_generate_warning_id(DISK_RES, 0x00, RES_LACK);
+    if ((U32)0xff == ulRet)
     {
-       logr_error("%s:Line %u:mon_handle_excp|get all proc total memory usage rate failure,ulRet is %u!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRet);
+        logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
+                        , dos_get_filename(__FILE__), __LINE__ , "0x", ulRet);
+        return DOS_FAIL;
     }
 
-    if(ulRet >= g_pstCond->ulProcMemThreshold)
-    {   
-       MON_MSG_S * pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-       if (DOS_ADDR_INVALID(pstMsg))
-       {
-           logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
-                         , dos_get_filename(__FILE__), __LINE__, pstMsg);
-       }
-       
-       ulRet = mon_generate_warning_id(PROC_RES, 0x00, 0x02);
-       if((U32)0xff == ulRet)
-       {
-         logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
-                    , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
-       }
-       
-       pstMsg->ulWarningId = ulRet;
-       
-       pstMsg->ulMsgLen = sizeof(MON_PROC_STATUS_S);
-       pstMsg->msg = g_pastProc;
-       
-       ulRet = mon_add_warning_record(pstMsg->ulWarningId);
-       if(DOS_SUCC != ulRet)
-       {
-         logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRet);
-       }
-       
-       ulRet = mon_warning_msg_en_queue(pstMsg);
-       if(DOS_SUCC != ulRet)
-       {
-         logr_error("%s:Line %d:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRet);
-       }
-       logr_info("%s:Line %u:Processes possess such high Memory rate."
-                    , dos_get_filename(__FILE__), __LINE__);
+    ulIndex = mon_get_msg_index(ulRet);
+    if (U32_BUTT == ulIndex)
+    {
+        return DOS_FAIL;
     }
+
+    for (ulRows = 0; ulRows < g_ulPartCnt; ++ulRows)
+    {
+        if(g_pastPartition[ulRows]->ulPartitionUsageRate >= g_pstCond->ulPartitionThreshold)
+        {
+            bDiskExcept = DOS_TRUE;
+        }
+    }
+    ulTotalDiskRate = mon_get_total_disk_usage_rate();
+    if(ulTotalDiskRate >= g_pstCond->ulDiskThreshold)
+    {
+        bDiskExcept = DOS_TRUE;
+    }
+
+    /* 如果产生告警 */
+    if (DOS_TRUE == bDiskExcept)
+    {
+        /* 如果第一次产生告警，则将告警加入告警队列 */
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            /* 构造告警消息 */
+            pstMsg = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                return DOS_FAIL;
+            }
+
+            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    else
+    {
+        /* 如果告警不产生但未恢复，则恢复之 */
+        if (g_pstWarningMsg[ulIndex].bExcep == DOS_TRUE)
+        {
+             /* 构造告警消息 */
+            pstMsg = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                return DOS_FAIL;
+            }
+
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            bAddToDB = DOS_TRUE;
+        }
+    }
+
+    if (DOS_TRUE == bAddToDB)
+    {
+        ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
+        if(DOS_SUCC != lRet)
+        {
+            logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
+            return DOS_FAIL;
+        }
+
+        /* 将消息加入消息队列 */
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
+        {
+            logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
+            return DOS_FAIL;
+        }
+    }
+    /*************************硬盘信息处理完毕**************************/
+
+    /*************************CPU信息开始处理***************************/
+    bAddToDB = DOS_FALSE;
+
+    ulRet = mon_generate_warning_id(CPU_RES, 0x00, RES_LACK);
+    if((U32)0xff == ulRet)
+    {
+        logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x"
+                    , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
+        return DOS_FAIL;
+    }
+
+    ulIndex = mon_get_msg_index(ulRet);
+    if (U32_BUTT == ulIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    if(g_pstCpuRslt->ulCPUUsageRate >= g_pstCond->ulCPUThreshold
+        || g_pstCpuRslt->ulCPU5sUsageRate >= g_pstCond->ul5sCPUThreshold
+        || g_pstCpuRslt->ulCPU1minUsageRate >= g_pstCond->ul1minCPUThreshold
+        || g_pstCpuRslt->ulCPU10minUsageRate >= g_pstCond->ul10minCPUThreshold)
+    {
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+                            , dos_get_filename(__FILE__), __LINE__, pstMsg);
+            }
+
+            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    else
+    {
+        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+                            , dos_get_filename(__FILE__), __LINE__, pstMsg);
+            }
+
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+
+    if (DOS_TRUE == bAddToDB)
+    {
+        ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
+        if(DOS_SUCC != lRet)
+        {
+            logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
+            return DOS_FAIL;
+        }
+
+        /* 将消息加入消息队列 */
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
+        {
+            logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
+            return DOS_FAIL;
+        }
+    }
+    /***********************CPU异常信息处理完毕***************************/
+
+    /***********************网卡异常信息处理开始**************************/
+    bAddToDB = DOS_FALSE;
+
+    ulRet = mon_generate_warning_id(NET_RES, 0x00, 0x00);
+    if((U32)0xff == ulRet)
+    {
+        logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
+                    , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
+        return DOS_FAIL;
+    }
+    ulIndex = mon_get_msg_index(ulRet);
+    if (U32_BUTT == ulIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    for (ulRows = 0; ulRows < g_ulNetCnt; ++ulRows)
+    {
+        if(DOS_FALSE == mon_is_netcard_connected(g_pastNet[ulRows]->szNetDevName))
+        {
+            bNetExcept = DOS_TRUE;
+        }
+    }
+
+    if (DOS_TRUE == bNetExcept)
+    {
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+                            , dos_get_filename(__FILE__), __LINE__, pstMsg);
+            }
+
+            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    else
+    {
+        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+                            , dos_get_filename(__FILE__), __LINE__, pstMsg);
+            }
+
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+
+    if (DOS_TRUE == bAddToDB)
+    {
+        ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
+        if(DOS_SUCC != lRet)
+        {
+            logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
+            return DOS_FAIL;
+        }
+
+        /* 将消息加入消息队列 */
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
+        {
+            logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
+            return DOS_FAIL;
+        }
+    }
+    /************************网卡异常信息处理结束*******************************/
+
+    /**********************进程占用CPU过大处理开始******************************/
+    bAddToDB = DOS_FALSE;
+
+    ulRet = mon_generate_warning_id(PROC_RES, 0x00, 0x01);
+    if((U32)0xff == ulRet)
+    {
+        logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
+                    , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
+        return DOS_FAIL;
+    }
+
+    ulIndex = mon_get_msg_index(ulRet);
+    if (U32_BUTT == ulIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    ulProcCPU = mon_get_proc_total_cpu_rate();
+    if(DOS_FAIL == ulProcCPU)
+    {
+       logr_error("%s:Line %u:mon_handle_excp|get all proc total cpu rate failure,ulProcCPU is %u!"
+                    , dos_get_filename(__FILE__), __LINE__, ulProcCPU);
+    }
+
+    if(ulProcCPU >= g_pstCond->ulProcCPUThreshold)
+    {
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+               logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+                              , dos_get_filename(__FILE__), __LINE__, pstMsg);
+               return DOS_FAIL;
+            }
+
+            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    else
+    {
+        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+               logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+                              , dos_get_filename(__FILE__), __LINE__, pstMsg);
+               return DOS_FAIL;
+            }
+
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            bAddToDB = DOS_FALSE;
+        }
+    }
+
+    if (DOS_TRUE == bAddToDB)
+    {
+        ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
+        if(DOS_SUCC != lRet)
+        {
+            logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
+            return DOS_FAIL;
+        }
+
+        /* 将消息加入消息队列 */
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
+        {
+            logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
+            return DOS_FAIL;
+        }
+    }
+    /*************************进程占用CPU过大处理结束******************************/
+
+    /*************************进程占用内存过大处理开始*****************************/
+    bAddToDB = DOS_FALSE;
+
+    ulRet = mon_generate_warning_id(PROC_RES, 0x00, 0x02);
+    if((U32)0xff == ulRet)
+    {
+        logr_error("%s:Line %u:mon_handle_excp|generate warning id failure,ulRet is %s%x!"
+                    , dos_get_filename(__FILE__), __LINE__, "0x", ulRet);
+        return DOS_FAIL;
+    }
+
+    ulIndex = mon_get_msg_index(ulRet);
+    if (U32_BUTT == ulIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    ulProcMem = mon_get_proc_total_mem_rate();
+    if (DOS_FAIL == ulProcMem)
+    {
+        return DOS_FAIL;
+    }
+
+    if (ulProcMem >= g_pstCond->ulProcMemThreshold)
+    {
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+               logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+                              , dos_get_filename(__FILE__), __LINE__, pstMsg);
+               return DOS_FAIL;
+            }
+
+            GENERATE_WARNING_MSG(pstMsg,ulIndex, ulRet);
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    else
+    {
+        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+               logr_error("%s:Line %u: mon_handle_excp|warning msg alloc memory failure,pstMsg is %p!"
+                              , dos_get_filename(__FILE__), __LINE__, pstMsg);
+               return DOS_FAIL;
+            }
+
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            bAddToDB = DOS_TRUE;
+        }
+    }
+
+    if (DOS_TRUE == bAddToDB)
+    {
+        ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
+        if(DOS_SUCC != lRet)
+        {
+            logr_error("%s:Line %u:mon_handle_excp|add warning record failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
+            return DOS_FAIL;
+        }
+
+        /* 将消息加入消息队列 */
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
+        {
+            logr_error("%s:Line %u:mon_handle_excp|warning msg enter queue failure,ulRet is %u!"
+                        , dos_get_filename(__FILE__), __LINE__, ulRet);
+            return DOS_FAIL;
+        }
+    }
+
+    /*************************进程占用内存过大处理结束*****************************/
 
     return DOS_SUCC;
 }
@@ -663,7 +845,7 @@ static U32 mon_add_data_to_db()
                     , dos_get_filename(__FILE__), __LINE__, ulTotalDiskKBytes);
       return DOS_FAIL;
    }
-   
+
    ulTotalDiskRate = mon_get_total_disk_usage_rate();
    if(DOS_FAIL == ulTotalDiskRate)
    {
@@ -707,7 +889,7 @@ static U32 mon_add_data_to_db()
      , g_pstMem->ulSwapUsageRate
      , ulTotalDiskKBytes
      , ulTotalDiskRate
-     , g_pstCpuRslt->ulCPUUsageRate 
+     , g_pstCpuRslt->ulCPUUsageRate
      , g_pstCpuRslt->ulCPU5sUsageRate
      , g_pstCpuRslt->ulCPU1minUsageRate
      , g_pstCpuRslt->ulCPU10minUsageRate
@@ -723,7 +905,7 @@ static U32 mon_add_data_to_db()
                     , dos_get_filename(__FILE__), __LINE__, lRet);
       return DOS_FAIL;
    }
-             
+
    return DOS_SUCC;
 }
 
@@ -738,7 +920,7 @@ static U32 mon_print_data_log()
 {
    U32 ulRet = 0;
    /*    打印数据日志  */
-   
+
    ulRet = mon_get_mem_formatted_info();
    if(DOS_SUCC != ulRet)
    {
@@ -775,7 +957,7 @@ static U32 mon_print_data_log()
       return DOS_FAIL;
    }
    logr_info("%s:Line %u:mon_print_data_log|print netcard log SUCC.", dos_get_filename(__FILE__), __LINE__);
-   
+
    ulRet = mon_get_process_formatted_info();
    if(DOS_SUCC != ulRet)
    {
@@ -786,55 +968,10 @@ static U32 mon_print_data_log()
    logr_info("%s:Line %u:mon_print_data_log|print process log SUCC.", dos_get_filename(__FILE__), __LINE__);
 
    logr_info("%s:Line %u:mon_print_data_log|print all data log SUCC.", dos_get_filename(__FILE__), __LINE__);
-   
-   return DOS_SUCC;
-}
-
-/**
- * 功能:将数据初始化为0
- * 参数集：
- *   无参数
- * 返回值：
- *   成功则返回DOS_SUCC，失败返回DOS_FAIL
- */
-#if 0
-static S32 mon_reset_res_data()
-{
-   MON_SYS_PART_DATA_S *  pastDisk = g_pastPartition[0];
-   MON_NET_CARD_PARAM_S*  pastNet  = g_pastNet[0];
-   MON_PROC_STATUS_S *    pastProc = g_pastProc[0];
-
-   if(!pastDisk)
-   {
-      logr_error("%s:Line %d:mon_reset_res_data|pastDisk is %p!"
-                    , dos_get_filename(__FILE__), __LINE__
-                    , pastDisk);
-      return DOS_FAIL;
-   }
-   if(!pastNet)
-   {
-      logr_error("%s:Line %d:mon_reset_res_data|pastNet is %p!"
-                    , dos_get_filename(__FILE__), __LINE__
-                    , pastNet);
-      return DOS_FAIL;
-   }
-   if(!pastProc)
-   {
-      logr_error("%s:Line %d:mon_reset_res_data|pastProc is %p!"
-                    , dos_get_filename(__FILE__), __LINE__
-                    , pastProc);
-      return DOS_FAIL;
-   }
-   
-   memset(g_pstMem, 0, sizeof(MON_SYS_MEM_DATA_S));
-   memset(g_pstCpuRslt, 0, sizeof(MON_CPU_RSLT_S));
-   memset(pastDisk, 0, MAX_PARTITION_COUNT * sizeof(MON_SYS_PART_DATA_S));
-   memset(pastNet, 0, MAX_NETCARD_CNT * sizeof(MON_NET_CARD_PARAM_S));
-   memset(pastProc, 0, MAX_PROC_CNT * sizeof(MON_PROC_STATUS_S));
 
    return DOS_SUCC;
 }
-#endif
+
 
 /**
  * 功能:给告警数据库添加告警记录
@@ -843,43 +980,28 @@ static S32 mon_reset_res_data()
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
-static U32 mon_add_warning_record(U32 ulResId)
+static U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc)
 {
    S32 lRet = 0;
+   U32 ulIndex = 0;
    time_t lCur;
    struct tm *pstCurTime;
-   
+
    S8 szSQLCmd[SQL_CMD_MAX_LENGTH] = {0};
-   S8 szSmpDesc[MAX_DESC_LENGTH] = {0};
-  
-   switch (ulResId & (U32)0xff000000)
-   {   
-      case 0xf1000000:
-         dos_strcpy(szSmpDesc, "CPU res lack");
-         break;
-      case 0xf2000000:
-         dos_strcpy(szSmpDesc, "Memory res lack");
-         break;
-      case 0xf3000000:
-         dos_strcpy(szSmpDesc, "Disk res lack");
-         break;
-      case 0xf4000000:
-         dos_strcpy(szSmpDesc, "Network disconnected");
-         break;
-      case 0xf5000000:
-         dos_strcpy(szSmpDesc, "Such high CPU or Memory");
-         break;
-      default:
-         break;
-   }
 
    time(&lCur);
    pstCurTime = localtime(&lCur);
-   
+
+   ulIndex = mon_get_msg_index(ulResId);
+   if (U32_BUTT == ulIndex)
+   {
+       return DOS_FAIL;
+   }
+
    dos_snprintf(szSQLCmd, SQL_CMD_MAX_LENGTH, "INSERT INTO tbl_alarmlog(" \
                "ctime,warning,cause,type,object,content,cycle,status)" \
                " VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',concat(\'%s\', lower(hex(%u))),%u,%u," \
-               "%u,\'%s\',%u,%u)"
+               "%u,\'%s\',%u,%u);"
                , pstCurTime->tm_year + 1900
                , pstCurTime->tm_mon + 1
                , pstCurTime->tm_mday
@@ -889,12 +1011,12 @@ static U32 mon_add_warning_record(U32 ulResId)
                , "0x"
                , ulResId
                , ((ulResId & 0x0fffffff) >> 24) - 1
+               , g_pstWarningMsg[ulIndex].ulWarningLevel
                , 0
-               , 0
-               , szSmpDesc
+               , szInfoDesc
                , 5
-               , 1
-              );
+               , g_pstWarningMsg[ulIndex].bExcep == DOS_FALSE ? 0:1
+             );
 
    lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
    if(DB_ERR_SUCC != lRet)
@@ -929,13 +1051,13 @@ static U32 mon_init_db_conn()
         DOS_ASSERT(0);
         return DOS_FAIL;
    }
-   
+
    if(config_get_syssrc_db_user(szDBUsername, sizeof(szDBUsername)) < 0 )
    {
         DOS_ASSERT(0);
         return DOS_FAIL;
    }
-      
+
    if(config_get_syssrc_db_password(szDBPassword, sizeof(szDBPassword)) < 0 )
    {
         DOS_ASSERT(0);
@@ -945,7 +1067,7 @@ static U32 mon_init_db_conn()
    if(config_get_syssrc_db_dbname(szDBName, sizeof(szDBName)) < 0 )
    {
         DOS_ASSERT(0);
-      
+
         return DOS_FAIL;
    }
 
@@ -1019,7 +1141,7 @@ static U32 mon_init_warning_cond()
       logr_error("%s:Line %u:mon_init_warning_cond|threshold init failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
-   
+
    g_pstCond = (MON_THRESHOLD_S *)dos_dmem_alloc(sizeof(MON_THRESHOLD_S));
    if(DOS_ADDR_INVALID(g_pstCond))
    {
@@ -1061,7 +1183,7 @@ static U32 mon_init_warning_cond()
    {
       logr_error("%s:Line %u:mon_init_warning_cond|get disk threshold failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
-                    
+
       /* 读取失败则设置默认值 */
       g_pstCond->ulPartitionThreshold = 95;
       g_pstCond->ulDiskThreshold = 90;
@@ -1082,6 +1204,139 @@ static U32 mon_init_warning_cond()
    return DOS_SUCC;
 }
 
+
+/**
+ * 功能:初始化告警消息
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功则返回DOS_SUCC，失败返回DOS_FAIL
+ */
+static U32 mon_init_warning_msg()
+{
+    U32 ulLoop = 0;
+
+    g_pstWarningMsg = (MON_WARNING_MSG_S *)dos_dmem_alloc(MAX_WARNING_TYPE_CNT * sizeof(MON_WARNING_MSG_S));
+    if (DOS_ADDR_INVALID(g_pstWarningMsg))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_memzero(g_pstWarningMsg, MAX_WARNING_TYPE_CNT * sizeof(MON_WARNING_MSG_S));
+
+    for (ulLoop = 0; ulLoop < MAX_WARNING_TYPE_CNT; ++ulLoop)
+    {
+        /* 将所有的初始状态置为正常状态(即未超过相应资源所配置的阀值) */
+        g_pstWarningMsg[ulLoop].bExcep = DOS_FALSE;
+    }
+
+    /* 第0个节点存储内存资源缺乏的相关信息 */
+    g_pstWarningMsg[0].ulNo = mon_generate_warning_id(MEM_RES, 0x00, RES_LACK);
+    g_pstWarningMsg[0].ulWarningLevel = MON_WARNING_IMPORTANT;
+    dos_snprintf(g_pstWarningMsg[0].szWarningDesc, sizeof(g_pstWarningMsg[0].szWarningDesc)
+                    , "%s", "No enough memory");
+    dos_snprintf(g_pstWarningMsg[0].szNormalDesc, sizeof(g_pstWarningMsg[0].szNormalDesc)
+                    , "%s", "Memory is OK");
+
+    /* 第1个节点存储CPU资源占用过高的信息 */
+    g_pstWarningMsg[1].ulNo = mon_generate_warning_id(CPU_RES, 0x00, RES_LACK);
+    g_pstWarningMsg[1].ulWarningLevel = MON_WARNING_IMPORTANT;
+    dos_snprintf(g_pstWarningMsg[1].szWarningDesc, sizeof(g_pstWarningMsg[1].szWarningDesc)
+                    , "%s", "CPU is too busy");
+    dos_snprintf(g_pstWarningMsg[1].szNormalDesc, sizeof(g_pstWarningMsg[1].szNormalDesc)
+                    , "%s", "CPU is OK");
+
+    /* 第2个节点存储硬盘资源占用过高的相关信息 */
+    g_pstWarningMsg[2].ulNo = mon_generate_warning_id(DISK_RES, 0x00, RES_LACK);
+    g_pstWarningMsg[2].ulWarningLevel = MON_WARNING_IMPORTANT;
+    dos_snprintf(g_pstWarningMsg[2].szWarningDesc, sizeof(g_pstWarningMsg[2].szWarningDesc)
+                    , "%s", "Lack of HardDisk Volume");
+    dos_snprintf(g_pstWarningMsg[2].szNormalDesc, sizeof(g_pstWarningMsg[2].szNormalDesc)
+                    , "%s", "HardDisk is OK");
+
+    /* 第3个节点存储网络连接中断的相关信息 */
+    g_pstWarningMsg[3].ulNo = mon_generate_warning_id(NET_RES, 0x00, 0x00);
+    g_pstWarningMsg[3].ulWarningLevel = MON_WARNING_EMERG;
+    dos_snprintf(g_pstWarningMsg[3].szWarningDesc, sizeof(g_pstWarningMsg[3].szWarningDesc)
+                    , "%s", "Network disconnected");
+    dos_snprintf(g_pstWarningMsg[3].szNormalDesc, sizeof(g_pstWarningMsg[3].szNormalDesc)
+                    , "%s", "Network is OK");
+
+    /* 第4个节点存储被监控进程占用的内存过高相关信息 */
+    g_pstWarningMsg[4].ulNo = mon_generate_warning_id(PROC_RES, 0x00, 0x02);
+    g_pstWarningMsg[4].ulWarningLevel = MON_WARNING_SECONDARY;
+    dos_snprintf(g_pstWarningMsg[4].szWarningDesc, sizeof(g_pstWarningMsg[4].szWarningDesc)
+                    , "%s", "Memory of Process is too much");
+    dos_snprintf(g_pstWarningMsg[4].szNormalDesc, sizeof(g_pstWarningMsg[4].szNormalDesc)
+                    , "%s", "Memory of Process is OK");
+
+    /* 第5个节点存储被监控进程占用的CPU过高相关信息 */
+    g_pstWarningMsg[5].ulNo = mon_generate_warning_id(PROC_RES, 0x00, 0x01);
+    g_pstWarningMsg[5].ulWarningLevel = MON_WARNING_PROMPT;
+    dos_snprintf(g_pstWarningMsg[5].szWarningDesc, sizeof(g_pstWarningMsg[5].szWarningDesc)
+                    , "%s", "CPU of Process is too much");
+    dos_snprintf(g_pstWarningMsg[5].szNormalDesc, sizeof(g_pstWarningMsg[5].szNormalDesc)
+                    , "%s", "CPU of Process is OK");
+
+    return DOS_SUCC;
+}
+
+static U32 mon_deinit_warning_msg()
+{
+    if (DOS_ADDR_VALID(g_pstWarningMsg))
+    {
+        dos_dmem_free(g_pstWarningMsg);
+        g_pstWarningMsg = NULL;
+        return DOS_SUCC;
+    }
+
+    return DOS_FAIL;
+}
+
+
+static U32 mon_get_msg_index(U32 ulNo)
+{
+    U32 ulIndex = 0;
+
+    switch (ulNo >> 24)
+    {
+        case MEM_RES:
+            ulIndex = 0;
+            break;
+        case CPU_RES:
+            ulIndex = 1;
+            break;
+        case DISK_RES:
+            ulIndex = 2;
+            break;
+        case NET_RES:
+            ulIndex = 3;
+            break;
+        case PROC_RES:
+            {
+                switch (ulNo & 0xff)
+                {
+                    case 1:
+                        ulIndex = 5;
+                        break;
+                    case 2:
+                        ulIndex = 4;
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            }
+        default:
+            ulIndex = U32_BUTT;
+            break;
+    }
+
+    return ulIndex;
+}
+
+
 /**
  * 功能:关闭数据库连接
  * 参数集：
@@ -1090,7 +1345,7 @@ static U32 mon_init_warning_cond()
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
 static U32 mon_close_db_conn()
-{  
+{
    db_destroy(&g_pstDBHandle);
    dos_dmem_free(g_pstDBHandle);
    g_pstDBHandle = NULL;
@@ -1114,7 +1369,7 @@ U32 mon_res_destroy()
       logr_error("%s:Line %u:mon_res_destroy|mem resource destroy failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
-   
+
    ulRet = mon_cpu_rslt_free();
    if (DOS_SUCC != ulRet)
    {
@@ -1156,7 +1411,7 @@ U32 mon_res_destroy()
       logr_error("%s:Line %u:mon_res_destroy|destroy cpu queue failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
-   
+
    ulRet = mon_close_db_conn();
    if (DOS_SUCC != ulRet)
    {
@@ -1177,7 +1432,13 @@ U32 mon_res_destroy()
       logr_error("%s:Line %u:mon_res_destroy|deinit heartbeat config failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
    }
-   
+
+   ulRet = mon_deinit_warning_msg();
+   if (DOS_SUCC != ulRet)
+   {
+       logr_error("%s:Line %u:deinit warning message FAIL.", dos_get_filename(__FILE__), __LINE__);
+   }
+
    return DOS_SUCC;
 }
 
