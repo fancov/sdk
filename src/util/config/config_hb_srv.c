@@ -221,7 +221,7 @@ S32 config_hb_get_process_cfg_cnt()
    S8* pszCfgProcCnt = NULL;
    S8  szBuff[32] = {0};
    S32 lRet = 0;
-   
+
    if(!g_pstHBSrvCfg)
    {
       dos_printf("%s", "Init hb-srv.xml config fail.");
@@ -263,9 +263,9 @@ S32 config_hb_get_process_cfg_cnt()
 S32 config_hb_get_start_cmd(U32 ulIndex, S8 *pszCmd, U32 ulLen)
 {
    S8  szProcCmd[1024] = {0};
-   S8  szNodePath[32] = {0}; 
+   S8  szNodePath[32] = {0};
    S8* pszValue = NULL;
-   
+
    if(!g_pstHBSrvCfg)
    {
       dos_printf("%s", "get start process command failed!");
@@ -301,7 +301,7 @@ S32 config_hb_threshold_mem(U32* pulMem)
    S8* pszMemThreshold = NULL;
    S32 lRet = 0;
 
-   if(!g_pstHBSrvCfg) 
+   if(!g_pstHBSrvCfg)
    {
       dos_printf("%s", "Init hb-srv.xml config fail.");
       DOS_ASSERT(0);
@@ -351,7 +351,7 @@ S32 config_hb_threshold_cpu(U32* pulAvg, U32* pul5sAvg, U32 *pul1minAvg, U32 *pu
 
    S32 lRet = 0;
 
-   if(!g_pstHBSrvCfg) 
+   if(!g_pstHBSrvCfg)
    {
       dos_printf("%s", "Init hb-srv.xml config fail.");
       DOS_ASSERT(0);
@@ -500,14 +500,12 @@ S32 config_hb_threshold_disk(U32 *pulPartition, U32* pulDisk)
  *
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
-S32 config_hb_threshold_proc(U32* pulMem, U32* pulCPU)
+S32 config_hb_threshold_proc(U32* pulMem)
 {
    S8  szNodePath[] = "config/threshold/proc";
    S8  szProcMemThres[4] = {0};
-   S8  szProcCPUThres[4] = {0};
 
    S8* pszProcMemThres = NULL;
-   S8* pszProcCPUThres = NULL;
 
    S32 lRet = 0;
 
@@ -527,24 +525,7 @@ S32 config_hb_threshold_proc(U32* pulMem, U32* pulCPU)
       return -1;
    }
 
-   pszProcCPUThres = _config_get_param(g_pstHBSrvCfg, szNodePath, "CPURate"
-                        , szProcCPUThres, sizeof(szProcCPUThres));
-   if(!pszProcCPUThres)
-   {
-      dos_printf("%s", ".Init hb-srv.xml config fail!");
-      DOS_ASSERT(0);
-      return -1;
-   }
-
-   lRet = dos_atoul(pszProcMemThres, pulMem); 
-   if(0 > lRet)
-   {
-      dos_printf("%s", "dos_atoul failed!");
-      DOS_ASSERT(0);
-      return -1;
-   }
-
-   lRet = dos_atoul(pszProcCPUThres, pulCPU);
+   lRet = dos_atoul(pszProcMemThres, pulMem);
    if(0 > lRet)
    {
       dos_printf("%s", "dos_atoul failed!");
@@ -554,6 +535,50 @@ S32 config_hb_threshold_proc(U32* pulMem, U32* pulCPU)
 
    return 0;
 }
+
+/**
+ * 函数：config_hb_threshold_bandwidth
+ * 功能：获取网络占用最大带宽
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_threshold_bandwidth(U32* pulBandWidth)
+{
+    S8 szNodePath[] = "config/threshold/net";
+    S8 szMaxBandWidth[8] = {0};
+
+    S8* pszMaxBandWidth = NULL;
+    S32 lRet = 0;
+
+    if(!g_pstHBSrvCfg)
+    {
+        dos_printf("%s", ".Init hb-srv.xml config fail!");
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    pszMaxBandWidth = _config_get_param(g_pstHBSrvCfg, szNodePath, "maxBandWidth"
+                        , szMaxBandWidth, sizeof(szMaxBandWidth));
+    if (DOS_ADDR_INVALID(pszMaxBandWidth))
+    {
+        dos_printf("%s", ".Init hb-srv.xml config fail!");
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    lRet = dos_atoul(pszMaxBandWidth, pulBandWidth);
+    if(0 > lRet)
+    {
+        dos_printf("%s", "dos_atoul failed!");
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    return 0;
+}
+
 
 #endif //end  #if (INCLUDE_XML_CONFIG)
 

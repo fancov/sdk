@@ -13,7 +13,7 @@
 #ifndef _MON_GET_DISK_INFO_H__
 #define _MON_GET_DISK_INFO_H__
 
-#if INCLUDE_RES_MONITOR  
+#if INCLUDE_RES_MONITOR
 
 #include <dos/dos_types.h>
 
@@ -38,9 +38,8 @@ U32  mon_disk_malloc();
 U32  mon_disk_free();
 U32  mon_get_total_disk_usage_rate();
 U32  mon_get_partition_data();
-U32  mon_get_partition_formatted_info();
 U32  mon_get_total_disk_kbytes();
 
-#endif //#if INCLUDE_RES_MONITOR  
+#endif //#if INCLUDE_RES_MONITOR
 #endif //end of _MON_GET_DISK_INFO_H__
 

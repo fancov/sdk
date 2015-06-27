@@ -54,6 +54,16 @@ enum MON_WARNING_LEVEL_E
     MON_WARNING_BUTT = 32
 };
 
+typedef struct tagWarningMsg
+{
+    U32   ulNo;              //告警编号
+    BOOL  bExcep;            //是否正常状态
+    U32   ulWarningLevel;    //告警级别
+    S8    szWarningDesc[32]; //告警描述
+    S8    szNormalDesc[32];  //正常描述
+}MON_WARNING_MSG_S;
+
+
 U32  mon_init_str_array();
 U32  mon_deinit_str_array();
 BOOL mon_is_substr(S8 * pszSrc, S8 * pszDest);

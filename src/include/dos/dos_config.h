@@ -283,16 +283,25 @@ S32 config_hb_threshold_cpu(U32* pulAvg, U32* pul5sAvg, U32 *pul1minAvg, U32 *pu
  */
 S32 config_hb_threshold_disk(U32 *pulPartition, U32* pulDisk);
 
+/**
+ * 函数：S32 config_hb_threshold_bandwidth(U32* pulBandWidth);
+ * 功能：获取网络最大占用带宽
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_threshold_bandwidth(U32* pulBandWidth);
 
 /**
- * 函数：S32 config_hb_threshold_proc(S32* plMem, S32* plCPU);
+ * 函数：S32 config_hb_threshold_proc(S32* plMem);
  * 功能：获取进程资源占用率的阀值
  * 参数：
  * 返回值：成功返回0，失败返回-1
  *
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
-S32 config_hb_threshold_proc(U32* pulMem, U32* pulCPU);
+S32 config_hb_threshold_proc(U32* pulMem);
 
 /**
  * 函数：U32 config_get_shortcut_cmd(U32 ulNo, S8 *pszCtrlCmd, U32 ulLen);
@@ -304,9 +313,7 @@ S32 config_hb_threshold_proc(U32* pulMem, U32* pulCPU);
  */
 U32 config_get_shortcut_cmd(U32 ulNo, S8 *pszCtrlCmd, U32 ulLen);
 
-
-
-#endif
+#endif //end INCLUDE_BH_SERVER
 
 #ifdef INCLUDE_PTS
 
@@ -317,7 +324,7 @@ U32 config_get_pts_proxy_port();
 U32 config_get_pts_telnet_server_port();
 //U32 config_get_pts_domain(S8 *pszBuff, U32 ulLen);
 
-#endif
+#endif // end INCLUDE_PTS
 
 #ifdef INCLUDE_PTC
 
@@ -331,10 +338,9 @@ U32 config_set_pts_minor_domain(S8 *pszBuff);
 U32 config_set_pts_major_port(S8 *pszBuff);
 U32 config_set_pts_minor_port(S8 *pszBuff);
 
-#endif
+#endif //end INCLUDE_PTC
 
-
-#endif
+#endif  //end INCLUDE_XML_CONFIG
 
 #ifdef __cplusplus
 }

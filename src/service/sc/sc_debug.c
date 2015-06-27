@@ -420,7 +420,7 @@ VOID sc_show_task_list(U32 ulIndex, U32 ulCustomID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%6u%7u%9u%6s%10s%10u%10u%12u"
+                        , "\r\n%6u%7u%9u%6s%10u%10u%10u%12u"
                         , pstTCB->usTCBNo
                         , pstTCB->ucTaskStatus
                         , pstTCB->ucPriority
@@ -435,15 +435,15 @@ VOID sc_show_task_list(U32 ulIndex, U32 ulCustomID)
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal : %u\r\n",ulTotal);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal : %u\r\n", ulTotal);
     cli_out_string(ulIndex, szCmdBuff);
 }
 
 VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
 {
     S8 szCmdBuff[1024] = {0, };
-    S8 szWeeks[64] = {0, };
-    SC_TASK_CB_ST *pstTCB;
+    S8 szWeeks[64] = {0,};
+    SC_TASK_CB_ST *pstTCB = NULL;
     U32 i = 0;
 
     /* 如果没有指定task id，或者指定了customer id，就需要使用列表的形式显示任务概要 */
