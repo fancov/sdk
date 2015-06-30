@@ -820,12 +820,27 @@ static U32 mon_add_data_to_db()
 {
    time_t ulCur;
    struct tm *pstCurTime;
-   S8  szSQLCmd[SQL_CMD_MAX_LENGTH] = {0};
+   S8  szSQLCmd[SQL_CMD_MAX_LENGTH] = {0}, szBuff[4] = {0};
    S32 lRet = 0;
-   U32 ulTotalDiskKBytes = 0;
+   U32 ulTotalDiskKBytes = 0, ulWriteDB = 1;
    U32 ulTotalDiskRate = 0;
    U32 ulProcTotalMemRate = 0;
    U32 ulProcTotalCPURate = 0;
+
+   if (config_get_syssrc_writeDB(szBuff, sizeof(szBuff)) < 0)
+   {
+        DOS_ASSERT(0);
+   }
+
+   if (dos_atoul(szBuff, &ulWriteDB) < 0)
+   {
+        DOS_ASSERT(0);
+   }
+
+   if (0 == ulWriteDB)
+   {
+        return DOS_SUCC;
+   }
 
    ulTotalDiskKBytes = mon_get_total_disk_kbytes();
    if(DOS_FAIL == ulTotalDiskKBytes)

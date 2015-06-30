@@ -465,12 +465,15 @@ static U32 mon_get_proc_pid_list()
                 logr_error("%s:Line %d:Get process name by ID FAIL.", dos_get_filename(__FILE__), __LINE__);
                 goto failure;
             }
+            if (dos_strstr(pTemp, "monitor"))
+            {
+                continue;
+            }
 
             dos_snprintf(g_pastProc[g_ulPidCnt]->szProcName
                             , sizeof(g_pastProc[g_ulPidCnt]->szProcName)
                             , "%s"
                             , pTemp);
-            printf("\nszProcName:%s,Process ID:%u\n", g_pastProc[g_ulPidCnt]->szProcName, g_pastProc[g_ulPidCnt]->ulProcId);
 
             ++g_ulPidCnt;
          }
@@ -678,7 +681,9 @@ U32  mon_check_all_process()
 
             pstMsg->ulWarningId = ulNo;
             dos_snprintf(g_pstWarningMsg[ulIndex].szWarningDesc, sizeof(g_pstWarningMsg[ulIndex].szWarningDesc)
-                        , "%u Processes are down.", ulCfgProcCnt - g_ulPidCnt);
+                        , "%u %s %s down", ulCfgProcCnt - g_ulPidCnt
+                        , ulCfgProcCnt - g_ulPidCnt == 1 ? "Process":"Processes"
+                        , ulCfgProcCnt - g_ulPidCnt == 1 ? "is":"are");
             pstMsg->ulMsgLen = dos_strlen(g_pstWarningMsg[ulIndex].szWarningDesc);
             pstMsg->msg = g_pstWarningMsg[ulIndex].szWarningDesc;
             g_pstWarningMsg[ulIndex].bExcep = DOS_TRUE;
@@ -704,8 +709,8 @@ U32  mon_check_all_process()
       /* 默认未启动 */
       S32 bHasStarted = DOS_FALSE;
 
-      memset(szProcName, 0, sizeof(szProcName));
-      memset(szProcVersion, 0, sizeof(szProcVersion));
+      dos_memzero(szProcName, sizeof(szProcName));
+      dos_memzero(szProcVersion, sizeof(szProcVersion));
       /* 获取进程名和进程版本号 */
       lRet = config_hb_get_process_list(ulRows, szProcName, sizeof(szProcName)
                  , szProcVersion, sizeof(szProcVersion));
@@ -717,7 +722,7 @@ U32  mon_check_all_process()
          return DOS_FAIL;
       }
 
-      memset(szProcCmd, 0, sizeof(szProcCmd));
+      dos_memzero(szProcCmd, sizeof(szProcCmd));
       /* 获取进程的启动命令 */
       lRet = config_hb_get_start_cmd(ulRows, szProcCmd, sizeof(szProcCmd));
       if(0 > lRet)
