@@ -392,6 +392,16 @@ VOID *sc_dialer_runtime(VOID * ptr)
     struct timespec         stTimeout;
     U32                     ulRet = ESL_FAIL;
     U32                     ulIdelCPU = 0;
+    U32                     ulIdelCPUConfig = 0;
+
+    if (config_get_min_iedl_cpu(&ulIdelCPUConfig) != DOS_SUCC)
+    {
+        ulIdelCPUConfig = DOS_MIN_IDEL_CPU * 100;
+    }
+    else
+    {
+        ulIdelCPUConfig = ulIdelCPUConfig * 100;
+    }
 
     while(1)
     {
@@ -442,7 +452,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
 
             /* ºÏ≤ÈCPU’º”√ */
             ulIdelCPU = dos_get_cpu_idel_percentage();
-            if (((ulIdelCPU + 100) / 100) < DOS_MIN_IDEL_CPU)
+            if (ulIdelCPU < ulIdelCPUConfig)
             {
                 continue;
             }

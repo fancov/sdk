@@ -1171,7 +1171,12 @@ VOID sc_show_stat(U32 ulIndex, S32 argc, S8 **argv)
 U32 sc_show_status(U32 ulIndex, S32 argc, S8 **argv)
 {
     S8 szBuff[1024] = {0, };
-    U32 ulIdelCPU;
+    U32 ulIdelCPU, ulIdelCPUConfig;
+
+    if (config_get_min_iedl_cpu(&ulIdelCPUConfig) != DOS_SUCC)
+    {
+        ulIdelCPUConfig = DOS_MIN_IDEL_CPU;
+    }
 
     cli_out_string(ulIndex, "\r\n\r\nThe CC Model for IPCC System Status:");
 
@@ -1180,7 +1185,7 @@ U32 sc_show_status(U32 ulIndex, S32 argc, S8 **argv)
 
     ulIdelCPU = dos_get_cpu_idel_percentage();
     dos_snprintf(szBuff, sizeof(szBuff), "\r\nMin Idel CPU(default/current) : %d%% / %d.%d%%"
-                , DOS_MIN_IDEL_CPU
+                , ulIdelCPUConfig
                 , (ulIdelCPU / 100)
                 , (ulIdelCPU % 100));
     cli_out_string(ulIndex, szBuff);

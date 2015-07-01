@@ -156,6 +156,15 @@ U32 config_get_py_path(S8 *pszBuff, U32 ulLen);
 U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen);
 
 
+/**
+ * 函数：
+ *      config_get_min_iedl_cpu
+ * 功能：获取最小CPU占用配置项
+ * 参数：
+ *       pulIdelCpu: 输出参数
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_min_iedl_cpu(U32 *pulIdelCpu);
 
 /**
  * 函数：U32 config_init()
