@@ -26,6 +26,7 @@ extern "C"{
 #include "sc_debug.h"
 #include "sc_httpd.h"
 #include "sc_http_api.h"
+#include "sc_acd_def.h"
 
 
 /* 定义开发是内置测试数据 */
@@ -59,7 +60,8 @@ extern SC_TASK_MNGT_ST   *g_pstTaskMngtInfo;
 /* 业务控制模块数据库句柄 */
 extern DB_HANDLE_ST      *g_pstSCDBHandle;
 
-extern U32                       g_ulCPS;
+extern U32                g_ulCPS;
+extern U32                g_ulMaxConcurrency4Task;
 
 
 /* 业务控制块状态 */
@@ -1317,22 +1319,36 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
 
 U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB)
 {
-    SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
+    U32 ulIdelCPUConfig, ulIdelCPU;
 
     if (!pstTCB)
     {
         DOS_ASSERT(0);
-        SC_TRACE_OUT();
         return DOS_FALSE;
     }
 
+    ulIdelCPU = dos_get_cpu_idel_percentage();
+    if (config_get_min_iedl_cpu(&ulIdelCPUConfig) != DOS_SUCC)
+    {
+        ulIdelCPUConfig = DOS_MIN_IDEL_CPU * 100;
+    }
+    else
+    {
+        ulIdelCPUConfig = ulIdelCPUConfig * 100;
+    }
+
+    /* 系统整体并发量控制 */
     if (pstTCB->ulCurrentConcurrency >= SC_MAX_CALL)
     {
-        SC_TRACE_OUT();
         return DOS_FALSE;
     }
 
-    SC_TRACE_OUT();
+    /* CPU占用控制 */
+    if (ulIdelCPU < ulIdelCPUConfig)
+    {
+        return DOS_FALSE;
+    }
+
     return DOS_TRUE;
 }
 
@@ -1340,6 +1356,7 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
 {
     U32 ulPercentage;
     U32 ulInterval;
+    U32 ulConcurrency;
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
 
@@ -1359,19 +1376,18 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
 
     if (SC_TASK_MODE_AUDIO_ONLY == pstTCB->ucMode)
     {
-        if (g_ulCPS)
-        {
-            return 1000 / g_ulCPS;
-        }
-        else
-        {
-            return 1000 / SC_MAX_CALL_PRE_SEC;
-        }
+        pstTCB->ulMaxConcurrency = g_ulMaxConcurrency4Task;
+        ulConcurrency = pstTCB->ulCurrentConcurrency;
+    }
+    else
+    {
+        pstTCB->ulMaxConcurrency = sc_acd_get_total_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
+        ulConcurrency = pstTCB->ulMaxConcurrency - sc_acd_get_idel_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
     }
 
-    if (pstTCB->ulCurrentConcurrency)
+    if (pstTCB->ulMaxConcurrency)
     {
-        ulPercentage = ((pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE) * 100) / pstTCB->ulCurrentConcurrency;
+        ulPercentage = ulConcurrency / pstTCB->ulMaxConcurrency;
     }
     else
     {
@@ -1380,15 +1396,15 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
 
     if (ulPercentage < 40)
     {
-        ulInterval = 300;
+        ulInterval = 20;
     }
     else if (ulPercentage < 80)
     {
-        ulInterval = 500;
+        ulInterval = 100;
     }
     else
     {
-        ulInterval = 1000;
+        ulInterval = 200;
     }
 
     SC_TRACE_OUT();

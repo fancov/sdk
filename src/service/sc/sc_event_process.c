@@ -75,7 +75,9 @@ CURL *g_pstCurlHandle;
 SC_EP_TASK_CB            g_astEPTaskList[SC_EP_TASK_NUM];
 
 
-U32                      g_ulCPS  = SC_MAX_CALL_PRE_SEC;
+U32                      g_ulCPS                  = SC_MAX_CALL_PRE_SEC;
+U32                      g_ulMaxConcurrency4Task  = SC_MAX_CALL / 3;
+
 
 SC_EP_MSG_STAT_ST        g_astEPMsgStat[2];
 

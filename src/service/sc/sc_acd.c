@@ -1321,6 +1321,45 @@ U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
 
 }
 
+U32 sc_acd_get_total_agent(U32 ulGroupID)
+{
+    U32 ulCnt = 0;
+
+    SC_ACD_GRP_HASH_NODE_ST    *pstGroupListNode  = NULL;
+    HASH_NODE_S                *pstHashNode       = NULL;
+    U32                        ulHashVal          = 0;
+
+
+    sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
+    pthread_mutex_lock(&g_mutexGroupList);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_ACD, "Cannot fine the group with the ID \"%s\" .", ulGroupID);
+        pthread_mutex_unlock(&g_mutexGroupList);
+
+        SC_TRACE_OUT();
+        return 0;
+    }
+
+    pstGroupListNode = pstHashNode->pHandle;
+
+    pthread_mutex_lock(&pstGroupListNode->mutexSiteQueue);
+
+    ulCnt = pstGroupListNode->stAgentList.ulCount;
+
+    pthread_mutex_unlock(&pstGroupListNode->mutexSiteQueue);
+
+    pthread_mutex_unlock(&g_mutexGroupList);
+
+    return ulCnt;
+
+}
+
+
 U32 sc_acd_get_idel_agent(U32 ulGroupID)
 {
     U32 ulCnt = 0;

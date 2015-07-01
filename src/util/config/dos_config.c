@@ -312,20 +312,17 @@ U32 config_get_min_iedl_cpu(U32 *pulIdelCpu)
 
     if (!pulIdelCpu)
     {
-        DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
     pszValue = _config_get_param(g_pstGlobalCfg, "config/system", "min_idel_cpu", szBuff, sizeof(szBuff));
     if (!pszValue)
     {
-        DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
     if (dos_atoul(pszValue, pulIdelCpu) < 0)
     {
-        DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
