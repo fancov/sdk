@@ -116,6 +116,7 @@ proc_fail:
 
     SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
 
+    DOS_ASSERT(0);
     sc_scb_free(pstSCB);
     pstSCB = NULL;
 
@@ -205,6 +206,9 @@ esl_exec_fail:
 
 U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 {
+    S8    *pszEventHeader = NULL;
+    S8    *pszEventBody = NULL;
+    S8    *pszUUID = NULL;
     S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
     S8    szCallString[SC_ESL_CMD_BUFF_LEN] = { 0 };
     U32   ulRouteID = U32_BUTT;
@@ -222,7 +226,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     {
         DOS_ASSERT(0);
 
-        return DOS_FAIL;
+        goto esl_exec_fail;
     }
 
 
@@ -231,23 +235,22 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     {
         DOS_ASSERT(0);
         sc_logr_info(SC_ESL, "%s", "Search route fail while make call to patn.");
-        return DOS_FAIL;
+        goto esl_exec_fail;;
     }
 
     if (sc_ep_get_callee_string(ulRouteID, pstSCB->szCalleeNum, szCallString, sizeof(szCallString)) != DOS_SUCC)
     {
         DOS_ASSERT(0);
 
-        return DOS_FAIL;
+        goto esl_exec_fail;
     }
 
     /* 如果当前控制块有另外一通呼叫，直接bridge就好，否则需要发起新呼叫 */
     pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
     if (DOS_ADDR_VALID(pstSCBOther))
     {
-#if 0
         dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "bgapi originate {instant_ringback=true,scb_number=%d,other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s &park \r\n"
+                        , "{instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s}%s"
                         , pstSCB->usSCBNo
                         , pstSCB->usOtherSCBNo
                         , ulMainService
@@ -255,50 +258,30 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , pstSCB->szCallerNum
                         , szCallString);
 
-        pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
-        if (DOS_ADDR_INVALID(pstSCBOther))
+        if (esl_execute(&g_pstDialerHandle->stHandle, "bridge", szCMDBuff, pstSCBOther->szUUID) != ESL_SUCCESS)
         {
             DOS_ASSERT(0);
 
-            sc_logr_info(SC_ESL, "Invalid originate SCB while make call to pstn. Current SCB:%d, Other SCB:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
-
-            sc_scb_free(pstSCB);
-
+            esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCBOther->szUUID);
+            esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCB->szUUID);
             return DOS_FAIL;
         }
-#endif
 
-        dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "{instant_ringback=true,scb_number=%d,other_leg_scb=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s}%s"
-                        , pstSCB->usSCBNo
-                        , pstSCB->usOtherSCBNo
-                        , ulMainService
-                        , pstSCB->szCallerNum
-                        , pstSCB->szCallerNum
-                        , szCallString);
-
-        if (sc_ep_esl_execute("bridge", szCMDBuff, pstSCBOther->szUUID) != DOS_SUCC)
+        if (esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCB->szUUID) != ESL_SUCCESS)
         {
             DOS_ASSERT(0);
 
-            sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
-            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+            esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCB->szUUID);
             return DOS_FAIL;
         }
 
-        if (sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID) != DOS_SUCC)
-        {
-            DOS_ASSERT(0);
-
-            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
-            return DOS_FAIL;
-        }
+        SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
 
         return DOS_SUCC;
     }
 
     dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "bgapi originate {scb_number=%d,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s &park \r\n"
+                        , "bgapi originate {scb_number=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,waiting_park=true}%s &park \r\n"
                         , pstSCB->usSCBNo
                         , ulMainService
                         , pstSCB->szCallerNum
@@ -307,7 +290,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 
     sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
 
-    if (esl_send(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
+    if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
     {
         DOS_ASSERT(0);
         sc_logr_notice(SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
@@ -316,7 +299,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 
         goto esl_exec_fail;
     }
-#if 0
+
     if (!g_pstDialerHandle->stHandle.last_sr_event)
     {
         DOS_ASSERT(0);
@@ -353,9 +336,25 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         goto esl_exec_fail;
     }
 
-    /* 这个地方客户那边已经接通了，所以直接到ACTIVE */
-    SC_SCB_SET_STATUS(pstSCB, SC_SCB_ACTIVE);
-#endif
+    pszUUID = dos_strstr(pszEventBody, "+OK ");
+    if (DOS_ADDR_INVALID(pszUUID) || pszUUID[0] == '\0')
+    {
+        DOS_ASSERT(0);
+    }
+    else
+    {
+        pszUUID += dos_strlen("+OK ");
+        if (DOS_ADDR_INVALID(pszUUID) || pszUUID[0] == '\0')
+        {
+            DOS_ASSERT(0);
+        }
+        else
+        {
+            sc_bg_job_hash_add(pszUUID, dos_strlen(pszUUID), pstSCB->usSCBNo);
+        }
+    }
+
+    SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
 
     sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
     sc_call_trace(pstSCB, "Make call successfully.");
@@ -367,6 +366,13 @@ esl_exec_fail:
 
     sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
 
+    pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+    if (DOS_ADDR_VALID(pstSCBOther))
+    {
+        esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCBOther->szUUID);
+    }
+
+    DOS_ASSERT(0);
     sc_scb_free(pstSCB);
 
     SC_TRACE_OUT();
@@ -385,7 +391,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
     SC_SCB_ST               *pstSCB;
     struct timespec         stTimeout;
     U32                     ulRet = ESL_FAIL;
-    U32                     ulNodeCnt;
+    U32                     ulIdelCPU = 0;
 
     while(1)
     {
@@ -431,69 +437,61 @@ VOID *sc_dialer_runtime(VOID * ptr)
 
         while (1)
         {
-            ulNodeCnt = g_pstDialerHandle->ulCallCnt;
-            if (ulNodeCnt < SC_LIST_MIN_CNT)
+            /* 控制CPS */
+            dos_task_delay(1000 / SC_MAX_CALL_PRE_SEC);
+
+            /* 检查CPU占用 */
+            ulIdelCPU = dos_get_cpu_idel_percentage();
+            if (((ulIdelCPU + 100) / 100) < DOS_MIN_IDEL_CPU)
             {
-                pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
+                continue;
             }
+
+            pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
             if (dos_list_is_empty(&g_pstDialerHandle->stCallList))
             {
-                if (ulNodeCnt < SC_LIST_MIN_CNT)
-                {
-                    pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
-                }
-
+                pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
                 break;
             }
 
             pstList = dos_list_fetch(&g_pstDialerHandle->stCallList);
             if (!pstList)
             {
-                if (ulNodeCnt < SC_LIST_MIN_CNT)
-                {
-                    pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
-                }
-
+                pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
                 continue;
             }
 
-            g_pstDialerHandle->ulCallCnt--;
-
-            if (ulNodeCnt < SC_LIST_MIN_CNT)
+            if (0 == g_pstDialerHandle->ulCallCnt)
             {
-                pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
+                g_pstDialerHandle->ulCallCnt = 0;
+                DOS_ASSERT(0);
             }
+            else
+            {
+                g_pstDialerHandle->ulCallCnt--;
+            }
+            pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
 
             pstListNode = dos_list_entry(pstList, SC_CALL_QUEUE_NODE_ST, stList);
             if (!pstList)
             {
+                DOS_ASSERT(0);
                 continue;
             }
 
             pstSCB = pstListNode->pstSCB;
             if (!pstSCB)
             {
+                goto free_res;
                 continue;
             }
 
-            /* 认证 */
-            if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+            if (sc_dialer_make_call2pstn(pstSCB, pstSCB->ucMainService) != DOS_SUCC)
             {
-                pstSCB->ucTerminationFlag = DOS_TRUE;
-                pstSCB->ucTerminationCause = BS_ERR_SYSTEM;
-
-                SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
-
-                sc_scb_free(pstSCB);
-                pstSCB = NULL;
-            }
-            else
-            {
-                SC_SCB_SET_STATUS(pstSCB, SC_SCB_AUTH);
+                DOS_ASSERT(0);
             }
 
-            //sc_dialer_make_call2pstn(pstSCB, SC_SERV_AUTO_DIALING);
-
+free_res:
             /* SCB是预分配的，所以这里只需要把队列节点释放一下就好 */
             pstListNode->pstSCB = NULL;
             pstListNode->stList.next = NULL;
@@ -516,7 +514,6 @@ VOID *sc_dialer_runtime(VOID * ptr)
 U32 sc_dialer_add_call(SC_SCB_ST *pstSCB)
 {
     SC_CALL_QUEUE_NODE_ST *pstNode;
-    U32   ulNodeCnt;
     SC_TRACE_IN((U64)pstSCB, 0, 0, 0);
 
     if (DOS_ADDR_INVALID(pstSCB))
@@ -539,21 +536,13 @@ U32 sc_dialer_add_call(SC_SCB_ST *pstSCB)
     }
 
     pstNode->pstSCB = pstSCB;
-    ulNodeCnt = g_pstDialerHandle->ulCallCnt;
-    if (ulNodeCnt < SC_LIST_MIN_CNT)
-    {
-        pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
-    }
+    pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
     dos_list_add_tail(&g_pstDialerHandle->stCallList, &(pstNode->stList));
 
     sc_call_trace(pstSCB, "Call request has been accepted by the dialer.");
 
     g_pstDialerHandle->ulCallCnt++;
-    pthread_cond_signal(&g_pstDialerHandle->condCallQueue);
-    if (ulNodeCnt < SC_LIST_MIN_CNT)
-    {
-        pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
-    }
+    pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
 
     SC_TRACE_OUT();
     return DOS_SUCC;

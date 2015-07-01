@@ -115,7 +115,7 @@ SC_SCB_ST *sc_scb_alloc()
 
     for (; ulIndex<SC_MAX_SCB_NUM; ulIndex++)
     {
-        if (!sc_scb_is_valid(&g_pstTaskMngtInfo->pstCallSCBList[ulIndex]))
+        if (!g_pstTaskMngtInfo->pstCallSCBList[ulIndex].bValid)
         {
             pstSCB = &g_pstTaskMngtInfo->pstCallSCBList[ulIndex];
             break;
@@ -126,7 +126,7 @@ SC_SCB_ST *sc_scb_alloc()
     {
         for (ulIndex = 0; ulIndex < ulLastIndex; ulIndex++)
         {
-            if (!sc_scb_is_valid(&g_pstTaskMngtInfo->pstCallSCBList[ulIndex]))
+            if (!g_pstTaskMngtInfo->pstCallSCBList[ulIndex].bValid)
             {
                 pstSCB = &g_pstTaskMngtInfo->pstCallSCBList[ulIndex];
                 break;
@@ -141,6 +141,7 @@ SC_SCB_ST *sc_scb_alloc()
         sc_scb_init(pstSCB);
         pstSCB->bValid = 1;
         sc_call_trace(pstSCB, "Alloc SCB.");
+        sc_logr_error(SC_ESL, "Alloc SCB. ID : %u, Valid: %d", pstSCB->usSCBNo, pstSCB->bValid);
         pthread_mutex_unlock(&pstSCB->mutexSCBLock);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallList);
         //SC_TRACE_OUT();
@@ -176,6 +177,7 @@ VOID sc_scb_free(SC_SCB_ST *pstSCB)
     pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallList);
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     sc_call_trace(pstSCB, "Free SCB.");
+    sc_logr_error(SC_ESL, "Free SCB. ID : %u, Valid: %d", pstSCB->usSCBNo, pstSCB->bValid);
     if (pstSCB->pstExtraData)
     {
         dos_dmem_free(pstSCB->pstExtraData);
@@ -267,6 +269,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bWaitingOtherRelase = DOS_FALSE;   /* 是否在等待另外一跳退释放 */
     pstSCB->bIsAgentCall = DOS_FALSE;
     pstSCB->bIsInQueue = DOS_FALSE;
+    pstSCB->bChannelCreated = DOS_FALSE;
 
     pstSCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -278,6 +281,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->szUUID[0] = '\0';                  /* Leg-A UUID */
     pstSCB->pstExtraData = NULL;
     pstSCB->pszRecordFile = NULL;
+    pstSCB->ucMainService = U8_BUTT;
 
     /* 业务类型 列表*/
     pstSCB->ucCurrentSrvInd = 0;               /* 当前空闲的业务类型索引 */
@@ -1357,7 +1361,7 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
     {
         if (g_ulCPS)
         {
-            return 1000 / 100;
+            return 1000 / g_ulCPS;
         }
         else
         {
@@ -1867,7 +1871,175 @@ U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID)
 }
 
 
-//--------------------------------------------------
+U32 sc_hash_by_scb(U32 ulHashSize, U32 ulSCNo)
+{
+    if (0 == ulHashSize)
+    {
+        DOS_ASSERT(0);
+        return U32_BUTT;
+    }
+
+    return ulSCNo % ulHashSize;
+}
+
+S32 sc_bg_job_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
+{
+    U32 ulRCNo;
+    SC_BG_JOB_HASH_NODE_ST *pstBGJobNode;
+
+    if (DOS_ADDR_INVALID(pSymName) || DOS_ADDR_INVALID(pNode) || DOS_ADDR_INVALID(pNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstBGJobNode = (SC_BG_JOB_HASH_NODE_ST *)pNode->pHandle;
+    ulRCNo = *(U32 *)pSymName;
+
+    if (ulRCNo != pstBGJobNode->ulRCNo)
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+U32 sc_bg_job_hash_add(S8 *pszUUID, U32 ulUUIDLen, U32 ulRCNo)
+{
+    U32 ulHashVal;
+    HASH_NODE_S *pNode;
+    SC_BG_JOB_HASH_NODE_ST *pstBGJobNode;
+
+    if (DOS_ADDR_INVALID(pszUUID) || 0 == ulUUIDLen || ulRCNo >= SC_MAX_SCB_NUM)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashVal = sc_hash_by_scb(SC_BGJOB_HASH_SIZE, ulRCNo);
+    if (U32_BUTT == ulHashVal)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+    pNode = hash_find_node(g_pstTaskMngtInfo->pstHashBGJobHash, ulHashVal, &ulRCNo, sc_bg_job_hash_find);
+    if (DOS_ADDR_INVALID(pNode))
+    {
+        pNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+        pstBGJobNode = dos_dmem_alloc(sizeof(SC_BG_JOB_HASH_NODE_ST));
+        if (DOS_ADDR_INVALID(pNode) || DOS_ADDR_INVALID(pstBGJobNode))
+        {
+            if (DOS_ADDR_VALID(pNode))
+            {
+                DOS_ASSERT(0);
+                dos_dmem_free(pNode);
+            }
+
+            if (DOS_ADDR_VALID(pstBGJobNode))
+            {
+                DOS_ASSERT(0);
+                dos_dmem_free(pstBGJobNode);
+            }
+
+            DOS_ASSERT(0);
+            pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+            return DOS_SUCC;
+        }
+
+        HASH_Init_Node(pNode);
+        pNode->pHandle = pstBGJobNode;
+        pstBGJobNode->ulRCNo = ulRCNo;
+        dos_strncpy(pstBGJobNode->szJobUUID, pszUUID, sizeof(pstBGJobNode->szJobUUID));
+        pstBGJobNode->szJobUUID[sizeof(pstBGJobNode->szJobUUID) - 1] = '\0';
+
+        hash_add_node(g_pstTaskMngtInfo->pstHashBGJobHash, pNode, ulHashVal, NULL);
+
+        sc_logr_info(SC_ESL, "Add background-job to the hash table. UUID: %s, RCNo: %u", pszUUID, ulRCNo);
+    }
+    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+
+    return DOS_SUCC;
+}
+
+U32 sc_bg_job_hash_delete(U32 ulRCNo)
+{
+    U32 ulHashVal;
+    HASH_NODE_S *pNode;
+    SC_BG_JOB_HASH_NODE_ST *pstBGJobNode;
+
+    if (ulRCNo >= SC_MAX_SCB_NUM)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashVal = sc_hash_by_scb(SC_BGJOB_HASH_SIZE, ulRCNo);
+    if (U32_BUTT == ulHashVal)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+    pNode = hash_find_node(g_pstTaskMngtInfo->pstHashBGJobHash, ulHashVal, &ulRCNo, sc_bg_job_hash_find);
+    if (DOS_ADDR_VALID(pNode))
+    {
+
+        hash_delete_node(g_pstTaskMngtInfo->pstHashBGJobHash, pNode, ulHashVal);
+
+        if (DOS_ADDR_VALID(pNode->pHandle))
+        {
+            pstBGJobNode = pNode->pHandle;
+            sc_logr_info(SC_ESL, "Add background-job to the hash table. UUID: %s, RCNo: %u", pstBGJobNode->szJobUUID, ulRCNo);
+            dos_dmem_free(pNode->pHandle);
+            pNode->pHandle = NULL;
+            pstBGJobNode= NULL;
+        }
+
+        if (pNode->pHandle)
+        {
+            dos_dmem_free(pNode->pHandle);
+        }
+
+        dos_dmem_free(pNode);
+    }
+    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+
+    return DOS_SUCC;
+}
+
+BOOL sc_bg_job_find(U32 ulRCNo)
+{
+    U32 ulHashVal;
+    HASH_NODE_S *pNode;
+
+    if (ulRCNo >= SC_MAX_SCB_NUM)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashVal = sc_hash_by_scb(SC_BGJOB_HASH_SIZE, ulRCNo);
+    if (U32_BUTT == ulHashVal)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+    pNode = hash_find_node(g_pstTaskMngtInfo->pstHashBGJobHash, ulHashVal, &ulRCNo, sc_bg_job_hash_find);
+    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+    if (DOS_ADDR_INVALID(pNode))
+    {
+        return DOS_FALSE;
+    }
+
+    return DOS_TRUE;
+}
+
+
 
 #ifdef __cplusplus
 }

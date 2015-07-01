@@ -130,35 +130,42 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 
         if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
         {
-            if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_AUTO_DIALING) != DOS_SUCC)
+            pstSCB->ucMainService = SC_SERV_AUTO_DIALING;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
             {
-                ulRet = DOS_FAIL;
+                sc_ep_terminate_call(pstSCB);
             }
         }
         else if (sc_call_check_service(pstSCB, SC_SERV_NUM_VERIFY))
         {
-            if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_NUM_VERIFY) != DOS_SUCC)
+            pstSCB->ucMainService = SC_SERV_NUM_VERIFY;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
             {
-                ulRet = DOS_FAIL;
+                sc_ep_terminate_call(pstSCB);
             }
         }
         else if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL)
             && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
         {
-            if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_OUTBOUND_CALL) != DOS_SUCC)
+            pstSCB->ucMainService = SC_SERV_OUTBOUND_CALL;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
             {
-                ulRet = DOS_FAIL;
+                sc_ep_terminate_call(pstSCB);
             }
         }
         else if (sc_call_check_service(pstSCB, SC_SERV_INBOUND_CALL)
             && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
         {
-            sc_ep_incoming_call_proc(pstSCB);
+            ulRet = sc_ep_incoming_call_proc(pstSCB);
         }
         else
         {
             sc_logr_notice(SC_BS, "Terminate call for the invalid service type; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
             sc_ep_terminate_call(pstSCB);
+            ulRet = DOS_FAIL;
         }
     }
 

@@ -215,7 +215,7 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     pstSCB = sc_scb_alloc();
     if (!pstSCB)
     {
-        sc_logr_notice(SC_TASK, "Make call for task %d fail. Alloc SCB fail.", pstTCB->ulTaskID);
+        sc_logr_notice(SC_TASK, "Make call for task %u fail. Alloc SCB fail.", pstTCB->ulTaskID);
         goto fail;
     }
 
@@ -252,7 +252,6 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         goto fail;
     }
 
-#if 1
     if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
     {
         sc_call_trace(pstSCB, "Make call failed.");
@@ -260,15 +259,8 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         //sc_task_callee_set_recall(pstTCB, pstCallee->ulIndex);
         goto fail;
     }
-#else
-    if (sc_dialer_add_call(pstSCB) != DOS_SUCC)
-    {
-        sc_call_trace(pstSCB, "Make call failed.");
 
-        sc_task_callee_set_recall(pstTCB, pstCallee->ulIndex);
-        goto fail;
-    }
-#endif
+    SC_SCB_SET_STATUS(pstSCB, SC_SCB_AUTH);
 
     sc_call_trace(pstSCB, "Make call for task %u successfully.", pstTCB->ulTaskID);
 
@@ -289,6 +281,7 @@ fail:
 
     if (pstSCB)
     {
+        DOS_ASSERT(0);
         sc_scb_free(pstSCB);
         pstSCB = NULL;
     }

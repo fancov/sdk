@@ -90,6 +90,7 @@ static U32 sc_send_msg2bs(BS_MSG_TAG *pstMsgTag, U32 ulLength)
                     lRet = sendto(g_pstSCBSClient[ulIndex]->lSocket, (U8 *)pstMsgTag, ulLength, 0, (struct sockaddr*)&stUnAddr, lAddrLen);
                     if (lRet < 0)
                     {
+                        DOS_ASSERT(0);
                         continue;
                     }
                     else

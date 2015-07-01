@@ -2332,6 +2332,7 @@ VOID *bss_recv_msg_from_app(VOID *arg)
     struct sockaddr_un  stUnAddr, stUnAddrIn;
     S8 szBuffCMD[256];
     S8 szBuffSockPath[256] = { 0 };
+    struct timeval stTimeout={1, 0};
 
 
     /* 初始化socket(暂时只考虑UDP方式) */
@@ -2407,8 +2408,10 @@ VOID *bss_recv_msg_from_app(VOID *arg)
         FD_ZERO(&stFDSet);
         FD_SET(lSocket, &stFDSet);
         lMaxFd = lSocket + 1;
+        stTimeout.tv_sec = 1;
+        stTimeout.tv_usec = 0;
 
-        lRet = select(lMaxFd, &stFDSet, NULL, NULL, NULL);
+        lRet = select(lMaxFd, &stFDSet, NULL, NULL, &stTimeout);
         if (0 == lRet || EINTR == errno)
         {
             /* socket无变化或系统中断 */
@@ -2421,7 +2424,7 @@ VOID *bss_recv_msg_from_app(VOID *arg)
             break;
         }
 
-        if (FD_ISSET(lSocket, &stFDSet) <= 0)
+        if (!FD_ISSET(lSocket, &stFDSet))
         {
             continue;
         }

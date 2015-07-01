@@ -2574,7 +2574,7 @@ U32 sc_ep_terminate_call(SC_SCB_ST *pstSCB)
         return DOS_FAIL;
     }
 
-    pstSCBOther = sc_scb_get(pstSCB->usSCBNo);
+    pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
     if (DOS_ADDR_VALID(pstSCBOther))
     {
         if ('\0' != pstSCBOther->szUUID[0])
@@ -2587,6 +2587,7 @@ U32 sc_ep_terminate_call(SC_SCB_ST *pstSCB)
             SC_SCB_SET_STATUS(pstSCBOther, SC_SCB_RELEASE);
             sc_call_trace(pstSCBOther, "Terminate call.");
             sc_logr_notice(SC_ESL, "Call terminate call. SCB No : %d.", pstSCBOther->usSCBNo);
+            DOS_ASSERT(0);
             sc_scb_free(pstSCBOther);
         }
     }
@@ -2602,6 +2603,7 @@ U32 sc_ep_terminate_call(SC_SCB_ST *pstSCB)
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
         sc_call_trace(pstSCB, "Terminate call.");
         sc_logr_notice(SC_ESL, "Call terminate call. SCB No : %d. *", pstSCB->usSCBNo);
+        DOS_ASSERT(0);
         sc_scb_free(pstSCB);
     }
 
@@ -3460,6 +3462,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
 proc_error:
     if (pstSCBNew)
     {
+        DOS_ASSERT(0);
         sc_scb_free(pstSCBNew);
         pstSCBNew = NULL;
     }
@@ -3705,6 +3708,7 @@ proc_fail:
 
     if (DOS_ADDR_VALID(pstSCBNew))
     {
+        DOS_ASSERT(0);
         sc_scb_free(pstSCBNew);
     }
 
@@ -3774,6 +3778,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         case SC_TASK_MODE_AUDIO_ONLY:
         case SC_TASK_MODE_AGENT_AFTER_AUDIO:
             sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
+            sc_ep_esl_execute("set", "timer_name=soft", pstSCB->szUUID);
             sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
 
             dos_snprintf(szAPPParam, sizeof(szAPPParam)
@@ -4302,6 +4307,8 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             goto process_finished;
         }
 
+        DOS_ASSERT(0);
+
         pszStart = dos_strstr(pszAppArg, "scb_number=");
         if (DOS_ADDR_INVALID(pszStart))
         {
@@ -4349,10 +4356,20 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             }
             else
             {
-                DOS_ASSERT(0);
-                //sc_scb_free(pstSCB);
-                //pstSCB = NULL;
+                /* 如果还没有创建通道就释放控制块 */
+                if (!pstSCB->bChannelCreated
+                    && sc_bg_job_find(pstSCB->usSCBNo))
+                {
+                    /* 呼叫失败了 */
+                    DOS_ASSERT(0);
+
+                    sc_bg_job_hash_delete(pstSCB->usSCBNo);
+                    sc_scb_free(pstSCB);
+                    pstSCB = NULL;
+                }
             }
+
+            sc_logr_error(SC_ESL, "ERROR: BGJOB Fail.Argv: %s, SCB-NO: %s(%u)", pszAppArg, szSCBNo, ulSCBNo);
         }
     }
 
@@ -4439,7 +4456,13 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         dos_strncpy(pstSCB->szUUID, pszUUID, sizeof(pstSCB->szUUID));
         pstSCB->szUUID[sizeof(pstSCB->szUUID) - 1] = '\0';
 
-        sc_task_concurrency_add(pstSCB->usTCBNo);
+        if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
+            && pstSCB->usTCBNo < SC_MAX_TASK_NUM)
+        {
+            sc_task_concurrency_add(pstSCB->usTCBNo);
+        }
+
+        pstSCB->bChannelCreated = DOS_TRUE;
 
         goto process_finished;
 
@@ -4466,10 +4489,12 @@ process_fail:
         pstSCB->szUUID[sizeof(pstSCB->szUUID) - 1] = '\0';
 
         /* 给通道设置变量 */
-        dos_snprintf(szBuffCmd, sizeof(szBuffCmd), "scb_number=%d", pstSCB->usSCBNo);
+        dos_snprintf(szBuffCmd, sizeof(szBuffCmd), "scb_number=%u", pstSCB->usSCBNo);
         sc_ep_esl_execute("set", szBuffCmd, pszUUID);
 
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
+
+        pstSCB->bChannelCreated = DOS_TRUE;
     }
 
     /* 根据参数  交换SCB No */
@@ -4645,6 +4670,8 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
     {
         case SC_SCB_IDEL:
             /* 这个地方初始化一下就好 */
+            DOS_ASSERT(0);
+            sc_bg_job_hash_delete(pstSCB->usSCBNo);
             sc_scb_free(pstSCB);
             break;
 
@@ -4720,9 +4747,11 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             sc_logr_debug(SC_ESL, "Start release the SCB. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
             /* 维护资源 */
 
+            sc_bg_job_hash_delete(pstSCB->usSCBNo);
             sc_scb_free(pstSCB);
             if (pstSCBOther)
             {
+                sc_bg_job_hash_delete(pstSCBOther->usSCBNo);
                 sc_scb_free(pstSCBOther);
             }
             break;
@@ -5033,6 +5062,8 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         {
             DOS_ASSERT(0);
 
+            sc_logr_error(SC_ESL, "Error: SCB No: %u, Vallid: %d, SCB: %s", ulSCBNo, pstSCB ? pstSCB->bValid : -1, pszSCBNo);
+
             return DOS_FAIL;
         }
     }
@@ -5119,7 +5150,6 @@ VOID*sc_ep_process_runtime(VOID *ptr)
     DLL_NODE_S          *pstListNode = NULL;
     esl_event_t         *pstEvent = NULL;
     U32                 ulRet;
-    U32                 ulListCnt = 0;
     struct timespec     stTimeout;
     SC_EP_TASK_CB       *pstEPTaskList = (SC_EP_TASK_CB*)ptr;
 
@@ -5144,28 +5174,17 @@ VOID*sc_ep_process_runtime(VOID *ptr)
                 break;
             }
 
-            ulListCnt = pstEPTaskList->stMsgList.ulCount;
-            if (ulListCnt < SC_LIST_MIN_CNT)
-            {
-                pthread_mutex_lock(&pstEPTaskList->mutexMsgList);
-            }
-
+            pthread_mutex_lock(&pstEPTaskList->mutexMsgList);
             pstListNode = dll_fetch(&pstEPTaskList->stMsgList);
             if (DOS_ADDR_INVALID(pstListNode))
             {
                 DOS_ASSERT(0);
 
-                if (ulListCnt < SC_LIST_MIN_CNT)
-                {
-                    pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
-                }
+                pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
                 continue;
             }
 
-            if (ulListCnt < SC_LIST_MIN_CNT)
-            {
-                pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
-            }
+            pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
 
             if (DOS_ADDR_INVALID(pstListNode->pHandle))
             {
@@ -5212,7 +5231,6 @@ VOID*sc_ep_process_master(VOID *ptr)
     S8                  *pszUUID;
     U32                 ulSrvInd;
     S32                 i;
-    U32                 ulListCnt;
     static U32          ulSrvIndex = 0;
     SC_EP_TASK_CB       *pstEPTaskList = (SC_EP_TASK_CB*)ptr;
     if (DOS_ADDR_INVALID(pstEPTaskList))
@@ -5236,28 +5254,18 @@ VOID*sc_ep_process_master(VOID *ptr)
                 break;
             }
 
-            ulListCnt = pstEPTaskList->stMsgList.ulCount;
-            if (ulListCnt < SC_LIST_MIN_CNT)
-            {
-                pthread_mutex_lock(&pstEPTaskList->mutexMsgList);
-            }
+            pthread_mutex_lock(&pstEPTaskList->mutexMsgList);
 
             pstListNode = dll_fetch(&pstEPTaskList->stMsgList);
             if (DOS_ADDR_INVALID(pstListNode))
             {
                 DOS_ASSERT(0);
 
-                if (ulListCnt < SC_LIST_MIN_CNT)
-                {
-                    pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
-                }
+                pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
                 continue;
             }
 
-            if (ulListCnt < SC_LIST_MIN_CNT)
-            {
-                pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
-            }
+            pthread_mutex_unlock(&pstEPTaskList->mutexMsgList);
 
             if (DOS_ADDR_INVALID(pstListNode->pHandle))
             {
@@ -5395,9 +5403,6 @@ process_fail:
 VOID* sc_ep_runtime(VOID *ptr)
 {
     U32                  ulRet = ESL_FAIL;
-    U32                  ulCurrentCnt = 0;
-    S8                   *pszIsLoopbackLeg = NULL;
-    S8                   *pszIsAutoCall = NULL;
     DLL_NODE_S           *pstDLLNode = NULL;
     // 判断第一次连接是否成功
     static BOOL bFirstConnSucc = DOS_FALSE;
@@ -5446,6 +5451,8 @@ VOID* sc_ep_runtime(VOID *ptr)
         ulRet = esl_recv_event(&g_pstHandle->stRecvHandle, 1, NULL);
         if (ESL_FAIL == ulRet)
         {
+            DOS_ASSERT(0);
+
             sc_logr_info(SC_ESL, "%s", "ESL Recv event fail, continue.");
             g_pstHandle->blIsESLRunning = DOS_FALSE;
             continue;
@@ -5454,10 +5461,15 @@ VOID* sc_ep_runtime(VOID *ptr)
         esl_event_t *pstEvent = g_pstHandle->stRecvHandle.last_ievent;
         if (DOS_ADDR_INVALID(pstEvent))
         {
+            DOS_ASSERT(0);
+
             sc_logr_info(SC_ESL, "%s", "ESL get event fail, continue.");
             g_pstHandle->blIsESLRunning = DOS_FALSE;
             continue;
         }
+#if 0
+        S8                   *pszIsLoopbackLeg = NULL;
+        S8                   *pszIsAutoCall = NULL;
 
         /* 如果是AUTO Call, 需要吧loopback call的leg a丢掉 */
         pszIsLoopbackLeg = esl_event_get_header(pstEvent, "variable_loopback_leg");
@@ -5469,6 +5481,7 @@ VOID* sc_ep_runtime(VOID *ptr)
             sc_logr_info(SC_ESL, "%s", "ESL drop loopback call leg A.");
             continue;
         }
+#endif
 
         sc_logr_info(SC_ESL, "ESL recv thread recv event %s(%d)."
                         , esl_event_get_header(pstEvent, "Event-Name")
@@ -5486,22 +5499,14 @@ VOID* sc_ep_runtime(VOID *ptr)
             continue;
         }
 
-        ulCurrentCnt = g_astEPTaskList[SC_MASTER_TASK_INDEX].stMsgList.ulCount;
-        if (ulCurrentCnt < SC_LIST_MIN_CNT)
-        {
-            pthread_mutex_lock(&g_astEPTaskList[SC_MASTER_TASK_INDEX].mutexMsgList);
-        }
-
+        pthread_mutex_lock(&g_astEPTaskList[SC_MASTER_TASK_INDEX].mutexMsgList);
         DLL_Init_Node(pstDLLNode);
         pstDLLNode->pHandle = NULL;
         esl_event_dup((esl_event_t **)(&pstDLLNode->pHandle), pstEvent);
         DLL_Add(&g_astEPTaskList[SC_MASTER_TASK_INDEX].stMsgList, pstDLLNode);
 
         pthread_cond_signal(&g_astEPTaskList[SC_MASTER_TASK_INDEX].contMsgList);
-        if (ulCurrentCnt < SC_LIST_MIN_CNT)
-        {
-            pthread_mutex_unlock(&g_astEPTaskList[SC_MASTER_TASK_INDEX].mutexMsgList);
-        }
+        pthread_mutex_unlock(&g_astEPTaskList[SC_MASTER_TASK_INDEX].mutexMsgList);
     }
 
     /* @TODO 释放资源 */

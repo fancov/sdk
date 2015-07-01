@@ -724,13 +724,15 @@ U32 sc_task_mngt_init()
     pthread_mutex_init(&g_pstTaskMngtInfo->mutexCMDList, NULL);
     pthread_mutex_init(&g_pstTaskMngtInfo->mutexTCBList, NULL);
     pthread_mutex_init(&g_pstTaskMngtInfo->mutexCallList, NULL);
+    pthread_mutex_init(&g_pstTaskMngtInfo->mutexHashBGJobHash, NULL);
     pthread_cond_init(&g_pstTaskMngtInfo->condCMDList, NULL);
     dos_list_init(&g_pstTaskMngtInfo->stCMDList);
 
     /* 初始化呼叫控制块和任务控制块 */
     g_pstTaskMngtInfo->pstTaskList = (SC_TASK_CB_ST *)dos_smem_alloc(sizeof(SC_TASK_CB_ST) * SC_MAX_TASK_NUM);
     g_pstTaskMngtInfo->pstCallSCBList = (SC_SCB_ST *)dos_smem_alloc(sizeof(SC_SCB_ST) * SC_MAX_SCB_NUM);
-    if (!g_pstTaskMngtInfo->pstTaskList || !g_pstTaskMngtInfo->pstCallSCBList)
+    g_pstTaskMngtInfo->pstHashBGJobHash = hash_create_table(SC_BGJOB_HASH_SIZE, NULL);
+    if (!g_pstTaskMngtInfo->pstTaskList || !g_pstTaskMngtInfo->pstCallSCBList || !g_pstTaskMngtInfo->pstHashBGJobHash)
     {
         DOS_ASSERT(0);
 
@@ -744,6 +746,12 @@ U32 sc_task_mngt_init()
         {
             dos_smem_free(g_pstTaskMngtInfo->pstCallSCBList);
             g_pstTaskMngtInfo->pstCallSCBList = NULL;
+        }
+
+        if (g_pstTaskMngtInfo->pstHashBGJobHash)
+        {
+            hash_delete_table(g_pstTaskMngtInfo->pstHashBGJobHash, NULL);
+            g_pstTaskMngtInfo->pstHashBGJobHash = NULL;
         }
 
         dos_smem_free(g_pstTaskMngtInfo);

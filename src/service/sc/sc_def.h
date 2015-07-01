@@ -64,7 +64,7 @@ extern BOOL                 g_blSCInitOK;
 /* 比例呼叫的比例 */
 #define SC_MAX_CALL_MULTIPLE           3
 
-#define SC_MAX_CALL_PRE_SEC            30
+#define SC_MAX_CALL_PRE_SEC            200
 
 
 #define SC_MAX_SRV_TYPE_PRE_LEG        4
@@ -116,6 +116,10 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_MASTER_TASK_INDEX           0
 #define SC_EP_TASK_NUM                 2
+
+
+#define SC_BGJOB_HASH_SIZE             128
+
 
 /* 定义运营商的ID */
 #define SC_TOP_USER_ID                 1
@@ -454,10 +458,10 @@ typedef struct tagSCSCB{
 
     U8        aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 列表*/
 
+    U8        ucMainService;
     U8        ucCurrentSrvInd;                    /* 当前空闲的业务类型索引 */
     U8        ucLegRole;                          /* 主被叫标示 */
     U8        ucCurrentPlyCnt;                    /* 当前放音次数 */
-    U8        aucRes[1];
 
     U16       usHoldCnt;                          /* 被hold的次数 */
     U16       usHoldTotalTime;                    /* 被hold的总时长 */
@@ -471,7 +475,8 @@ typedef struct tagSCSCB{
     U32       bRecord:1;                          /* 是否录音 */
     U32       bIsAgentCall:1;                     /* 是否在呼叫坐席 */
     U32       bIsInQueue:1;                       /* 是否已经入队列了 */
-    U32       ulRes:26;
+    U32       bChannelCreated:1;                  /* FREESWITCH 是否为该同呼叫创建了通道 */
+    U32       ulRes:25;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -542,6 +547,11 @@ typedef struct tagTaskCB
     pthread_mutex_t  mutexTaskList;               /* 保护任务队列使用的互斥量 */
 }SC_TASK_CB_ST;
 
+typedef struct tagBGJobHash{
+    S8       szJobUUID[SC_MAX_UUID_LENGTH];
+
+    U32      ulRCNo;                 /* 对应资源编号 */
+}SC_BG_JOB_HASH_NODE_ST;
 
 typedef struct tagTaskCtrlCMD{
     list_t      stLink;
@@ -567,6 +577,8 @@ typedef struct tagTaskMngtInfo{
     SC_SCB_ST            *pstCallSCBList;         /* 呼叫控制块列表 (需要hash表存储) */
     SC_TASK_CB_ST        *pstTaskList;            /* 任务列表 refer to struct tagTaskCB*/
     U32                  ulTaskCount;             /* 当前正在执行的任务数 */
+    pthread_mutex_t      mutexHashBGJobHash;
+    HASH_TABLE_S         *pstHashBGJobHash;       /* background-job hash表 */
 
     U32                  ulMaxCall;               /* 历史最大呼叫并发数 */
 
@@ -723,7 +735,9 @@ U32 sc_cwq_start();
 U32 sc_cwq_stop();
 U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID);
 U32 sc_cwq_del_call(SC_SCB_ST *pstSCB);
-
+U32 sc_bg_job_hash_add(S8 *pszUUID, U32 ulUUIDLen, U32 ulRCNo);
+U32 sc_bg_job_hash_delete(U32 ulRCNo);
+BOOL sc_bg_job_find(U32 ulRCNo);
 
 #ifdef __cplusplus
 }
