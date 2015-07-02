@@ -142,6 +142,7 @@ SC_SCB_ST *sc_scb_alloc()
         pthread_mutex_lock(&pstSCB->mutexSCBLock);
         sc_scb_init(pstSCB);
         pstSCB->bValid = 1;
+        pstSCB->ulAllocTime = time(0);
         sc_call_trace(pstSCB, "Alloc SCB.");
         sc_logr_error(SC_ESL, "Alloc SCB. ID : %u, Valid: %d", pstSCB->usSCBNo, pstSCB->bValid);
         pthread_mutex_unlock(&pstSCB->mutexSCBLock);
@@ -249,6 +250,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->usTCBNo = U16_BUTT;                /* 任务控制块编号ID */
     pstSCB->usSiteNo = U16_BUTT;               /* 坐席编号 */
 
+    pstSCB->ulAllocTime = 0;
     pstSCB->ulCustomID = U32_BUTT;             /* 当前呼叫属于哪个客户 */
     pstSCB->ulAgentID = U32_BUTT;              /* 当前呼叫属于哪个客户 */
     pstSCB->ulTaskID = U32_BUTT;               /* 当前任务ID */
@@ -453,6 +455,7 @@ SC_TASK_CB_ST *sc_tcb_alloc()
         pthread_mutex_lock(&pstTCB->mutexTaskList);
         sc_tcb_init(pstTCB);
         pstTCB->ucValid = 1;
+        pstTCB->ulAllocTime = time(0);
         pthread_mutex_unlock(&pstTCB->mutexTaskList);
 
         sc_task_trace(pstTCB, "Alloc TCB %d.", pstTCB->usTCBNo);
@@ -502,6 +505,7 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
+    pstTCB->ulAllocTime = 0;
     pstTCB->ucTaskStatus = SC_TASK_BUTT;
     pstTCB->ucMode = SC_TASK_MODE_BUTT;
     pstTCB->ucPriority = SC_TASK_PRI_NORMAL;
@@ -1338,7 +1342,12 @@ U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB)
     }
 
     /* 系统整体并发量控制 */
-    if (pstTCB->ulCurrentConcurrency >= SC_MAX_CALL)
+    if (pstTCB->ulCurrentConcurrency >= g_ulMaxConcurrency4Task)
+    {
+        return DOS_FALSE;
+    }
+
+    if (g_pstTaskMngtInfo->stStat.ulCurrentSessions >= SC_MAX_CALL)
     {
         return DOS_FALSE;
     }

@@ -372,6 +372,9 @@ U32 mod_dipcc_sc_runtime()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start data syn task SUCC.");
 
+    g_pstTaskMngtInfo->stStat.ulSystemUpTime = time(0);
+    g_pstTaskMngtInfo->stStat.ulSystemIsWorking = DOS_TRUE;
+
     return DOS_SUCC;
 }
 

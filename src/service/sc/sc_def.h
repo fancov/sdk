@@ -365,6 +365,93 @@ typedef enum tagSCCallRole
     SC_CALL_ROLE_BUTT
 }SC_CALL_ROLE_EN;
 
+
+#define SC_EP_STAT_RECV 0
+#define SC_EP_STAT_PROC 1
+
+typedef struct tagEPMsgStat
+{
+    U32   ulCreate;
+    U32   ulPark;
+    U32   ulAnswer;
+    U32   ulHungup;
+    U32   ulHungupCom;
+    U32   ulDTMF;
+    U32   ulBGJob;
+}SC_EP_MSG_STAT_ST;
+
+typedef struct tagBSMsgStat
+{
+    U32  ulAuthReq;
+    U32  ulAuthReqSend;
+    U32  ulAuthRsp;
+    U32  ulBillingReq;
+    U32  ulBillingReqSend;
+    U32  ulBillingRsp;
+    U32  ulHBReq;
+    U32  ulHBRsp;
+}SC_BS_MSG_STAT_ST;
+
+typedef struct tagSystemStat
+{
+    U32  ulMaxCalls;
+    U32  ulMaxSession;
+    U32  ulCurrentSessions;
+    U32  ulCurrentCalls;
+    U32  ulTotalSessions;
+    U32  ulTotalCalls;
+    U32  ulOutgoingSessions;
+    U32  ulIncomingSessions;
+    U32  ulFailSessions;
+    U32  ulSystemUpTime;
+    U32  ulSystemIsWorking;
+}SC_SYSTEM_STAT_ST;
+
+typedef struct tagTrunkStat
+{
+    U32  ulMaxCalls;
+    U32  ulMaxSession;
+    U32  ulCurrentSessions;
+    U32  ulCurrentCalls;
+    U32  ulTotalSessions;
+    U32  ulTotalCalls;
+    U32  ulOutgoingSessions;
+    U32  ulIncomingSessions;
+    U32  ulFailSessions;
+
+    U32  ulRegisterCnt;
+    U32  ulUnregisterCnt;
+    U32  ulRegisterFailCnt;
+    U32  ulKeepAliveCnt;
+    U32  ulKeepAliveFailCnt;
+}SC_TRUNK_STAT_ST;
+
+typedef struct tagSiteStat
+{
+    U32  ulSelectCnt;
+    U32  ulCallCnt;      /* 暂时和 ulSelectCnt 保持一致 */
+    U32  ulIncomingCall; /* 暂时没有实现 */
+    U32  ulOutgoingCall; /* 暂时没有实现 */
+    U32  ulTimeOnSignin;             /* 长签总时间 */
+    U32  ulTimeOnthePhone;           /* 在线总时间 */
+}SC_SITE_STAT_ST;
+
+typedef struct tagSiteGrpStat
+{
+    U32  ulCallCnt;
+    U32  ulCallinQueue;
+    U32  ulTotalWaitingTime;      /* 暂时没有实现 */
+    U32  ulTotalWaitingCall;
+}SC_SITE_GRP_STAT_ST;
+
+typedef struct tagSIPAcctStat
+{
+    U32   ulRegisterCnt;
+    U32   ulRegisterFailCnt;
+    U32   ulUnregisterCnt;
+}SC_SIP_ACCT_ST;
+
+
 typedef struct tagCallerQueryNode{
     U16        usNo;                              /* 编号 */
     U8         bValid;
@@ -446,6 +533,7 @@ typedef struct tagSCSCB{
     U16       usTCBNo;                            /* 任务控制块编号ID */
     U16       usSiteNo;                           /* 坐席编号 */
 
+    U32       ulAllocTime;
     U32       ulCustomID;                         /* 当前呼叫属于哪个客户 */
     U32       ulAgentID;                          /* 当前呼叫属于哪个客户 */
     U32       ulTaskID;                           /* 当前任务ID */
@@ -514,6 +602,7 @@ typedef struct tagTaskCB
     U8         ucValid;                           /* 是否被使用 */
     U8         ucTaskStatus;                      /* 任务状态 refer to SC_TASK_STATUS_EN */
 
+    U32        ulAllocTime;
     U8         ucPriority;                        /* 任务优先级 */
     U8         ucAudioPlayCnt;                    /* 语言播放次数 */
     U8         bTraceON;                          /* 是否跟踪 */
@@ -580,15 +669,14 @@ typedef struct tagTaskMngtInfo{
     pthread_mutex_t      mutexHashBGJobHash;
     HASH_TABLE_S         *pstHashBGJobHash;       /* background-job hash表 */
 
-    U32                  ulMaxCall;               /* 历史最大呼叫并发数 */
-
-    SC_SYS_STATUS_EN     enSystemStatus;          /* 系统状态 */
+    SC_SYSTEM_STAT_ST    stStat;
 }SC_TASK_MNGT_ST;
 
 
 /*****************呼叫对待队列相关********************/
 typedef struct tagCallWaitQueueNode{
     U32                 ulAgentGrpID;                     /* 坐席组ID */
+    U32                 ulStartWaitingTime;               /* 开始等待的时间 */
 
     pthread_mutex_t     mutexCWQMngt;
     DLL_S               stCallWaitingQueue;               /* 呼叫等待队列 refer to SC_SCB_ST */
@@ -618,31 +706,6 @@ typedef struct tagEPTaskCB
     pthread_cond_t   contMsgList;
 }SC_EP_TASK_CB;
 
-#define SC_EP_STAT_RECV 0
-#define SC_EP_STAT_PROC 1
-
-typedef struct tagEPMsgStat
-{
-    U32   ulCreate;
-    U32   ulPark;
-    U32   ulAnswer;
-    U32   ulHungup;
-    U32   ulHungupCom;
-    U32   ulDTMF;
-    U32   ulBGJob;
-}SC_EP_MSG_STAT_ST;
-
-typedef struct tagBSMsgStat
-{
-    U32  ulAuthReq;
-    U32  ulAuthReqSend;
-    U32  ulAuthRsp;
-    U32  ulBillingReq;
-    U32  ulBillingReqSend;
-    U32  ulBillingRsp;
-    U32  ulHBReq;
-    U32  ulHBRsp;
-}SC_BS_MSG_STAT_ST;
 
 /* declare functions */
 SC_SCB_ST *sc_scb_alloc();

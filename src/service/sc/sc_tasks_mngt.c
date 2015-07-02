@@ -619,9 +619,6 @@ VOID *sc_task_mngt_runtime(VOID *ptr)
             }
         }
 
-        /* 处理系统状态 */
-        g_pstTaskMngtInfo->enSystemStatus = sc_check_sys_stat();
-
         /* 处理退出标志 */
         if (g_pstTaskMngtInfo->blWaitingExitFlag)
         {
@@ -786,7 +783,6 @@ U32 sc_task_mngt_init()
     }
 
     g_pstTaskMngtInfo->ulTaskCount = 0;
-    g_pstTaskMngtInfo->ulMaxCall = 0;
     g_pstTaskMngtInfo->blWaitingExitFlag = 0;
 
     sc_task_mngt_load_task();

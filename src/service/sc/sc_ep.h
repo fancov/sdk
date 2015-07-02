@@ -55,6 +55,10 @@ typedef struct tagSCUserIDNode{
     U32  ulSIPID;                                /* 账户 ID */
     S8   szUserID[SC_TEL_NUMBER_LENGTH];         /* SIP账户 */
     S8   szExtension[SC_TEL_NUMBER_LENGTH];      /* 分机号 */
+
+    U32  ulStatus;
+
+    SC_SIP_ACCT_ST stStat;
 }SC_USER_ID_NODE_ST;
 
 /* 黑名单HASH表节点 */
@@ -81,6 +85,8 @@ typedef struct tagSCGWNode
 {
     U32 ulGWID;                                    /* 网关ID */
     S8  szGWDomain[SC_GW_DOMAIN_LEG];              /* 网关的域，暂时没有用的 */
+
+    SC_TRUNK_STAT_ST stStat;
 }SC_GW_NODE_ST;
 
 /* 中继组 */

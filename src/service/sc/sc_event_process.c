@@ -3447,7 +3447,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     else
     {
         /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
-        sc_acd_agent_update_status(stAgentInfo.szUserID, SC_ACD_BUSY);
+        sc_acd_agent_update_status(stAgentInfo.ulSiteID, SC_ACD_BUSY);
 
         sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
         sc_ep_esl_execute("speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
@@ -4027,6 +4027,152 @@ U32 sc_ep_internal_service_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
     return DOS_SUCC;
 }
 
+
+/**
+ * 函数: U32 sc_ep_system_stat(esl_event_t *pstEvent)
+ * 功能: 统计信息
+ * 参数:
+ *      esl_event_t *pstEvent   : 事件
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_system_stat(esl_event_t *pstEvent)
+{
+    S8 *pszProfileName         = NULL;
+    S8 *pszGatewayName         = NULL;
+    S8 *pszOtherLeg            = NULL;
+    S8 *pszSIPHangupCause      = NULL;
+    U32 ulGatewayID            = NULL;
+    HASH_NODE_S   *pstHashNode = NULL;
+    SC_GW_NODE_ST *pstGateway  = NULL;
+    U32  ulIndex = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+
+    pszGatewayName = esl_event_get_header(pstEvent, "variable_sip_profile_name");
+    if (DOS_ADDR_VALID(pszGatewayName)
+        && dos_strncmp(pszGatewayName, "gateway", dos_strlen("gateway")) == 0)
+    {
+        pszGatewayName = esl_event_get_header(pstEvent, "variable_sip_gateway_name");
+        if (DOS_ADDR_VALID(pszGatewayName)
+            && dos_atoul(pszGatewayName, &ulGatewayID) >= 0)
+        {
+            ulIndex = sc_ep_gw_hash_func(ulGatewayID);
+            pthread_mutex_lock(&g_mutexHashGW);
+            pstHashNode = hash_find_node(g_pstHashGW, ulIndex, (VOID *)&ulGatewayID, sc_ep_gw_hash_find);
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                pstGateway = pstHashNode->pHandle;
+                pthread_mutex_unlock(&g_mutexHashGW);
+                DOS_ASSERT(0);
+            }
+        }
+    }
+
+
+    if (ESL_EVENT_CHANNEL_CREATE == pstEvent->event_id)
+    {
+        g_pstTaskMngtInfo->stStat.ulTotalSessions++;
+        g_pstTaskMngtInfo->stStat.ulCurrentSessions++;
+        if (g_pstTaskMngtInfo->stStat.ulCurrentSessions > g_pstTaskMngtInfo->stStat.ulMaxSession)
+        {
+            g_pstTaskMngtInfo->stStat.ulMaxSession = g_pstTaskMngtInfo->stStat.ulCurrentSessions;
+        }
+
+        if (pstGateway)
+        {
+            pstGateway->stStat.ulTotalSessions++;
+            pstGateway->stStat.ulCurrentSessions++;
+            if (pstGateway->stStat.ulCurrentSessions > pstGateway->stStat.ulMaxSession)
+            {
+                pstGateway->stStat.ulMaxSession = pstGateway->stStat.ulCurrentSessions;
+            }
+        }
+
+        pszOtherLeg = esl_event_get_header(pstEvent, "variable_other_leg_scb");
+        if (DOS_ADDR_INVALID(pszOtherLeg))
+        {
+            g_pstTaskMngtInfo->stStat.ulTotalCalls++;
+            g_pstTaskMngtInfo->stStat.ulCurrentCalls++;
+            if (g_pstTaskMngtInfo->stStat.ulCurrentCalls > g_pstTaskMngtInfo->stStat.ulMaxCalls)
+            {
+                g_pstTaskMngtInfo->stStat.ulMaxCalls = g_pstTaskMngtInfo->stStat.ulCurrentCalls;
+            }
+
+            if (pstGateway)
+            {
+                pstGateway->stStat.ulTotalCalls++;
+                pstGateway->stStat.ulCurrentCalls++;
+                if (pstGateway->stStat.ulCurrentCalls > pstGateway->stStat.ulMaxCalls)
+                {
+                    pstGateway->stStat.ulMaxCalls = pstGateway->stStat.ulCurrentCalls;
+                }
+            }
+        }
+
+        pszProfileName = esl_event_get_header(pstEvent, "variable_is_outbound")
+        if (DOS_ADDR_VALID(pszProfileName)
+            && dos_strncmp(pszProfileName, "true", dos_strlen("true")) == 0)
+        {
+            g_pstTaskMngtInfo->stStat.ulOutgoingSessions++;
+
+            if (pstGateway)
+            {
+                pstGateway->stStat.ulOutgoingSessions++;
+            }
+        }
+        else
+        {
+            g_pstTaskMngtInfo->stStat.ulIncomingSessions++;
+
+            if (pstGateway)
+            {
+                pstGateway->stStat.ulIncomingSessions++;
+            }
+        }
+    }
+    else if (ESL_EVENT_CHANNEL_HANGUP_COMPLETE == pstEvent->event_id)
+    {
+        g_pstTaskMngtInfo->stStat.ulCurrentSessions--;
+
+        if (pstGateway)
+        {
+            pstGateway->stStat.ulCurrentSessions--;
+        }
+
+
+        pszOtherLeg = esl_event_get_header(pstEvent, "variable_other_leg_scb");
+        if (DOS_ADDR_INVALID(pszOtherLeg))
+        {
+            g_pstTaskMngtInfo->stStat.ulCurrentCalls--;
+
+            if (pstGateway)
+            {
+                pstGateway->stStat.ulCurrentCalls--;
+            }
+        }
+
+        /* 如果挂断时SIP的响应码不是2xx就认为失败的session,通道变量
+           variable_proto_specific_hangup_cause格式为 sip:200 后面数字为sip错误码 */
+        pszSIPHangupCause = esl_event_get_header(pstEvent, "variable_proto_specific_hangup_cause");
+        if (DOS_ADDR_VALID(pszSIPHangupCause))
+        {
+            if (dos_strncmp(pszSIPHangupCause, "sip:2", dos_strlen("sip:2")) != 0)
+            {
+                g_pstTaskMngtInfo->stStat.ulFailSessions++;
+                if (pstGateway)
+                {
+                    pstGateway->stStat.ulFailSessions++;
+                }
+            }
+        }
+    }
+}
 
 /**
  * 函数: U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
@@ -4705,7 +4851,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             /* 如果是呼叫坐席的，需要做特殊处理,看看坐席是否长连什么的 */
             if (pstSCB->bIsAgentCall)
             {
-                sc_acd_agent_update_status(pstSCB->szCalleeNum, SC_ACD_IDEL);
+                sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_IDEL);
                 pstSCB->bIsAgentCall = DOS_FALSE;
             }
 
@@ -5041,6 +5187,10 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         return DOS_FAIL;
     }
 
+    /* 系统统计 */
+    sc_ep_system_stat(pstEvent);
+
+    /* 如果不是CREATE消息，就需要获取SCB */
     if (ESL_EVENT_CHANNEL_CREATE != pstEvent->event_id)
     {
         pszSCBNo = esl_event_get_header(pstEvent, "variable_scb_number");
