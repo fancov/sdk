@@ -18,16 +18,34 @@ extern "C"{
 #include <dos.h>
 #include <bs_pub.h>
 #include <sys/select.h>
+#include <esl.h>
 
 #include "sc_def.h"
 #include "sc_bs_def.h"
 #include "sc_debug.h"
 
+typedef struct tagSCBSMsgNode
+{
+    DLL_NODE_S stDLLNode;
+
+    U32 ulClientIndex;
+    U32 ulMsgLen;
+    VOID *pMsg;
+}SC_BS_MSG_NODE_ST;
+
+DLL_S                   g_stBSMsgList;
+pthread_mutex_t         g_mutexBSMsgList = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t          g_condBSMsgList  = PTHREAD_COND_INITIALIZER;
+
+
 extern HASH_TABLE_S     *g_pstMsgList; /* refer to SC_BS_MSG_NODE */
 
-pthread_t       pthSCBSMsgProc;
+pthread_t       g_pthSCBSMsgRecv, g_pthSCBSMsgProc;
 
 SC_BS_CLIENT_ST *g_pstSCBSClient[SC_MAX_BS_CLIENT] = { NULL };
+
+SC_BS_MSG_STAT_ST stBSMsgStat;
+
 
 U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 {
@@ -112,48 +130,47 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 
         if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
         {
-            if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_AUTO_DIALING) != DOS_SUCC)
+            pstSCB->ucMainService = SC_SERV_AUTO_DIALING;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
             {
-                sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
-
-                ulRet = DOS_FAIL;
+                sc_ep_terminate_call(pstSCB);
             }
         }
         else if (sc_call_check_service(pstSCB, SC_SERV_NUM_VERIFY))
         {
-            if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_NUM_VERIFY) != DOS_SUCC)
+            pstSCB->ucMainService = SC_SERV_NUM_VERIFY;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
             {
-                sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
-
-                ulRet = DOS_FAIL;
+                sc_ep_terminate_call(pstSCB);
             }
         }
         else if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL)
             && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
         {
-            if (sc_dialer_make_call2pstn(pstSCB, SC_SERV_OUTBOUND_CALL) != DOS_SUCC)
+            pstSCB->ucMainService = SC_SERV_OUTBOUND_CALL;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
             {
-                sc_ep_hangup_call(pstSCB, BS_TERM_INTERNAL_ERR);
-                ulRet = DOS_FAIL;
+                sc_ep_terminate_call(pstSCB);
             }
         }
         else if (sc_call_check_service(pstSCB, SC_SERV_INBOUND_CALL)
             && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
         {
-            sc_ep_incoming_call_proc(pstSCB);
+            ulRet = sc_ep_incoming_call_proc(pstSCB);
         }
         else
         {
             sc_logr_notice(SC_BS, "Terminate call for the invalid service type; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
             sc_ep_terminate_call(pstSCB);
+            ulRet = DOS_FAIL;
         }
     }
 
     sc_logr_debug(SC_BS, "%s", "Process auth response finished.");
 
-#if SC_BS_NEED_RESEND
-    sc_bs_msg_free(pstMsg->ulMsgSeq);
-#endif
     return ulRet;
 }
 
@@ -202,11 +219,6 @@ U32 sc_bs_billing_start_rsp_proc(BS_MSG_TAG *pstMsg)
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
     sc_logr_debug(SC_BS, "%s", "Process billing start response msg finished.");
-
-#if SC_BS_NEED_RESEND
-    /* 通知删除消息 */
-    sc_bs_msg_free(pstMsg->ulMsgSeq);
-#endif
 
     return DOS_SUCC;
 }
@@ -385,24 +397,46 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
                 dos_tmr_stop(&g_pstSCBSClient[ulClientIndex]->hTmrHBTimeout);
             }
             g_pstSCBSClient[ulClientIndex]->ulHBFailCnt = 0;
+            stBSMsgStat.ulHBRsp++;
             break;
         case BS_MSG_BALANCE_QUERY_RSP:
         case BS_MSG_USER_AUTH_RSP:
         case BS_MSG_ACCOUNT_AUTH_RSP:
             sc_bs_auth_rsp_proc(pstMsgHeader);
+#if SC_BS_NEED_RESEND
+            sc_bs_msg_free(pstMsgHeader->ulMsgSeq);
+#endif
+            stBSMsgStat.ulAuthRsp++;
             break;
+
         case BS_MSG_BILLING_START_RSP:
             sc_bs_billing_start_rsp_proc(pstMsgHeader);
+#if SC_BS_NEED_RESEND
+            sc_bs_msg_free(pstMsgHeader->ulMsgSeq);
+#endif
+            stBSMsgStat.ulBillingRsp++;
             break;
+
         case BS_MSG_BILLING_UPDATE_RSP:
             sc_bs_billing_update_rsp_proc(pstMsgHeader);
+#if SC_BS_NEED_RESEND
+            sc_bs_msg_free(pstMsgHeader->ulMsgSeq);
+#endif
+            stBSMsgStat.ulBillingRsp++;
             break;
+
         case BS_MSG_BILLING_STOP_RSP:
             sc_bs_billing_stop_rsp_proc(pstMsgHeader);
+#if SC_BS_NEED_RESEND
+            sc_bs_msg_free(pstMsgHeader->ulMsgSeq);
+#endif
+            stBSMsgStat.ulBillingRsp++;
             break;
+
         case BS_MSG_BILLING_RELEASE_IND:
             sc_bs_release_ind_rsp_proc(pstMsgHeader);
             break;
+
         case BS_MSG_HELLO_REQ:
         case BS_MSG_START_UP_NOTIFY:
         case BS_MSG_BALANCE_QUERY_REQ:
@@ -422,9 +456,10 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
 
 U32 sc_bs_connect(U32 ulIndex)
 {
-    struct sockaddr_in  stAddr;
-    U32    ulAddr;
+    S32    lAddrLen;
     S32    lRet;
+    S8     szBuffCMD[256] = { 0 };
+    S8     szBuffSockPath[256] = { 0 };
 
     if (ulIndex >= SC_MAX_BS_CLIENT)
     {
@@ -438,19 +473,55 @@ U32 sc_bs_connect(U32 ulIndex)
 
     if (g_pstSCBSClient[ulIndex]->lSocket <= 0)
     {
-        g_pstSCBSClient[ulIndex]->lSocket = socket(AF_INET, SOCK_DGRAM, 0);
+        switch (g_pstSCBSClient[ulIndex]->usCommProto)
+        {
+            case BSCOMM_PROTO_UDP:
+                g_pstSCBSClient[ulIndex]->lSocket = socket(AF_INET, SOCK_DGRAM, 0);
+                break;
+
+            case BSCOMM_PROTO_TCP:
+                g_pstSCBSClient[ulIndex]->lSocket = socket(AF_INET, SOCK_STREAM, 0);
+                break;
+
+            /* 默认使用unix socket (UDP 模式) */
+            default:
+                g_pstSCBSClient[ulIndex]->lSocket = socket(AF_UNIX, SOCK_DGRAM, 0);
+                break;
+        }
+
         if (g_pstSCBSClient[ulIndex]->lSocket < 0)
         {
+            DOS_ASSERT(0);
             return DOS_FAIL;
         }
     }
 
-    dos_strtoipaddr("127.0.0.1", &ulAddr);
-    dos_memzero(&stAddr, sizeof(stAddr));
-    stAddr.sin_family = AF_INET;
-    stAddr.sin_port = dos_htons(52160);
-    stAddr.sin_addr.s_addr = dos_htonl(ulAddr);
-    lRet = bind(g_pstSCBSClient[ulIndex]->lSocket, (struct sockaddr *)&stAddr, sizeof(struct sockaddr_in));
+    switch (g_pstSCBSClient[ulIndex]->usCommProto)
+    {
+        case BSCOMM_PROTO_UDP:
+        case BSCOMM_PROTO_TCP:
+            lAddrLen = sizeof(struct sockaddr_in);
+            g_pstSCBSClient[ulIndex]->stAddr.stInAddr.sin_family = AF_INET;
+            g_pstSCBSClient[ulIndex]->stAddr.stInAddr.sin_port = g_pstSCBSClient[ulIndex]->usPort;
+            g_pstSCBSClient[ulIndex]->stAddr.stInAddr.sin_addr.s_addr = dos_htonl(INADDR_ANY);
+            lRet = bind(g_pstSCBSClient[ulIndex]->lSocket
+                            , (struct sockaddr *)&g_pstSCBSClient[ulIndex]->stAddr.stInAddr
+                            , lAddrLen);
+            break;
+
+        /* 默认使用unix socket (UDP 模式) */
+        default:
+            dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "mkdir -p %s/var/run/socket", dos_get_sys_root_path());
+            system(szBuffCMD);
+            dos_snprintf(szBuffSockPath, sizeof(szBuffSockPath), "%s/var/run/socket/sc-bs.sock"
+                        , dos_get_sys_root_path());
+            unlink(szBuffSockPath);
+            g_pstSCBSClient[ulIndex]->stAddr.stUnAddr.sun_family = AF_UNIX;
+            dos_strcpy(g_pstSCBSClient[ulIndex]->stAddr.stUnAddr.sun_path, szBuffSockPath);
+            lAddrLen = offsetof(struct sockaddr_un, sun_path) + dos_strlen(szBuffSockPath) + 1;
+            lRet = bind(g_pstSCBSClient[ulIndex]->lSocket, (struct sockaddr*)&g_pstSCBSClient[ulIndex]->stAddr.stUnAddr, lAddrLen);
+            break;
+    }
     if (lRet < 0)
     {
         sc_logr_debug(SC_BS, "%s", "Bind socket fail.");
@@ -458,32 +529,28 @@ U32 sc_bs_connect(U32 ulIndex)
         return DOS_FAIL;;
     }
 
+    sc_logr_debug(SC_BS, "Bind socket to addr: %s, Len: %d.", g_pstSCBSClient[0]->stAddr.stUnAddr.sun_path, lAddrLen);
 
-    return DOS_SUCC;
-#if 0
-    stAddr.sin_family = AF_INET;
-    stAddr.sin_port = g_pstSCBSClient[ulIndex]->usPort;
-    stAddr.sin_addr.s_addr = dos_htonl(g_pstSCBSClient[ulIndex]->aulIPAddr[0]);
-
-    if (connect(g_pstSCBSClient[ulIndex]->lSocket, (struct sockaddr *)&stAddr, sizeof(struct sockaddr_in)) < 0)
+    if (BSCOMM_PROTO_TCP == g_pstSCBSClient[ulIndex]->usCommProto)
     {
-        return DOS_FAIL;
+        /* 连接服务器 */
     }
 
     return DOS_SUCC;
-#endif
 }
 
-VOID *sc_bs_fsm_mainloop(VOID *ptr)
+VOID *sc_bs_recv_mainloop(VOID *ptr)
 {
     fd_set              stFDSet;
     S32                 lRet;
     U32                 ulIndex;
-    U32                 ulAddrLen;
+    S32                 lAddrLen;
     U32                 ulActiveClientCnt;
     U32                 ulMaxSockFD;
-    U8                  aucBuffer[SC_BS_MEG_BUFF_LEN];
+    U8                  *pBuffer = NULL;
+    SC_BS_MSG_NODE_ST   *pstDLLNode = NULL;
     struct sockaddr_in  stAddr;
+    struct sockaddr_un  stUnAddr;
     struct timeval stTimeout={1, 0};
 
     while (1)
@@ -514,6 +581,7 @@ VOID *sc_bs_fsm_mainloop(VOID *ptr)
 
         if (ulActiveClientCnt <= 0)
         {
+            sc_logr_error(SC_BS, "%s", "All the BS server Lost, re-connect after 1 second");
             dos_task_delay(1*1000);
             continue;
         }
@@ -561,52 +629,174 @@ VOID *sc_bs_fsm_mainloop(VOID *ptr)
                 continue;
             }
 
-            if (FD_ISSET(g_pstSCBSClient[ulIndex]->lSocket, &stFDSet))
+            if (!FD_ISSET(g_pstSCBSClient[ulIndex]->lSocket, &stFDSet))
             {
-                dos_memzero(&stAddr, sizeof(stAddr));
-                stAddr.sin_family = AF_INET;
-                stAddr.sin_port = htons(g_pstSCBSClient[ulIndex]->usPort);
-                stAddr.sin_addr.s_addr = htonl(g_pstSCBSClient[ulIndex]->aulIPAddr[0]);
-
-                lRet = recvfrom(g_pstSCBSClient[ulIndex]->lSocket, aucBuffer, SC_BS_MEG_BUFF_LEN, 0, (struct sockaddr *)&stAddr, &ulAddrLen);
-                if (0 == lRet || EINTR == errno || EAGAIN == errno)
-                {
-                    continue;
-                }
-                if (lRet < 0)
-                {
-                    DOS_ASSERT(0);
-                    g_pstSCBSClient[ulIndex]->ulStatus = SC_BS_STATUS_LOST;
-
-                    sc_logr_notice(SC_BS, "%s", "Recv data from socket fail.");
-                    continue;
-                }
-
-                if (lRet < sizeof(BS_MSG_TAG))
-                {
-                    DOS_ASSERT(0);
-
-                    sc_logr_notice(SC_BS, "%s", "Recv invalid data from socket fail. Length not complete");
-                    continue;
-                }
-
-                sc_bs_msg_proc(aucBuffer, (U32)lRet, ulIndex);
+                continue;
             }
-        }
 
+            pBuffer = dos_dmem_alloc(SC_BS_MEG_BUFF_LEN);
+            if (DOS_ADDR_INVALID(pBuffer))
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_error(SC_BS, "Disconnect BS for alloc memory FAIL. Index: %u", ulIndex);
+
+                close(g_pstSCBSClient[ulIndex]->lSocket);
+                g_pstSCBSClient[ulIndex]->blValid = DOS_FALSE;
+                g_pstSCBSClient[ulIndex]->ulStatus = SC_BS_STATUS_LOST;
+                continue;
+            }
+
+            switch (g_pstSCBSClient[ulIndex]->usCommProto)
+            {
+                case BSCOMM_PROTO_UDP:
+                    lAddrLen = sizeof(stAddr);
+                    lRet = recvfrom(g_pstSCBSClient[ulIndex]->lSocket
+                                        , pBuffer
+                                        , SC_BS_MEG_BUFF_LEN
+                                        , 0
+                                        ,  (struct sockaddr *)&stAddr
+                                        , (socklen_t *)&lAddrLen);
+                    break;
+
+                case BSCOMM_PROTO_TCP:
+                    lRet = recv(g_pstSCBSClient[ulIndex]->lSocket, pBuffer, sizeof(SC_BS_MEG_BUFF_LEN), 0);
+                    break;
+
+                /* 默认使用unix socket (UDP 模式) */
+                default:
+                    lAddrLen = sizeof(stUnAddr);
+                    lRet = recvfrom(g_pstSCBSClient[ulIndex]->lSocket
+                                    , pBuffer
+                                    , SC_BS_MEG_BUFF_LEN
+                                    , 0
+                                    ,  (struct sockaddr *)&stUnAddr
+                                    , (socklen_t *)&lAddrLen);
+                    break;
+            }
+            if (0 == lRet || EINTR == errno || EAGAIN == errno)
+            {
+                dos_dmem_free(pBuffer);
+                pBuffer = NULL;
+                continue;
+            }
+
+            if (lRet < 0)
+            {
+                DOS_ASSERT(0);
+                g_pstSCBSClient[ulIndex]->ulStatus = SC_BS_STATUS_LOST;
+
+                sc_logr_notice(SC_BS, "%s", "Recv data from socket fail.");
+                dos_dmem_free(pBuffer);
+                pBuffer = NULL;
+                continue;
+            }
+
+            if (lRet < sizeof(BS_MSG_TAG))
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_notice(SC_BS, "Recv invalid data from socket fail. Length not complete. Length: %d", lRet);
+                dos_dmem_free(pBuffer);
+                pBuffer = NULL;
+                continue;
+            }
+
+            pstDLLNode = dos_dmem_alloc(sizeof(SC_BS_MSG_NODE_ST));
+            if (DOS_ADDR_INVALID(pstDLLNode))
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_notice(SC_BS, "%s", "Discard msg FROM bs for alloc mem FAIL.");
+                dos_dmem_free(pBuffer);
+                pBuffer = NULL;
+                continue;
+            }
+
+            DLL_Init_Node(&pstDLLNode->stDLLNode);
+            pstDLLNode->ulClientIndex = ulIndex;
+            pstDLLNode->ulMsgLen = (U32)lRet;
+            pstDLLNode->pMsg = pBuffer;
+
+            pthread_mutex_lock(&g_mutexBSMsgList);
+            DLL_Add(&g_stBSMsgList, (DLL_NODE_S *)pstDLLNode);
+            pthread_cond_signal(&g_condBSMsgList);
+            pthread_mutex_unlock(&g_mutexBSMsgList);
+        }
     }
 
     return NULL;
 }
 
+VOID *sc_bs_fsm_mainloop(VOID *ptr)
+{
+    SC_BS_MSG_NODE_ST    *pMsgNode;
+    struct timespec stTimeout;
+
+    while (1)
+    {
+        pMsgNode = NULL;
+
+        /* 读取消息队列第一个数据 */
+        pthread_mutex_lock(&g_mutexBSMsgList);
+        stTimeout.tv_sec = time(0) + 1;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&g_condBSMsgList, &g_mutexBSMsgList, &stTimeout);
+        pthread_mutex_unlock(&g_mutexBSMsgList);
+
+        while (1)
+        {
+            pthread_mutex_lock(&g_mutexBSMsgList);
+            if (0 == DLL_Count(&g_stBSMsgList))
+            {
+                pthread_mutex_unlock(&g_mutexBSMsgList);
+                break;
+            }
+
+            pMsgNode = (SC_BS_MSG_NODE_ST *)dll_fetch(&g_stBSMsgList);
+            if (DOS_ADDR_INVALID(pMsgNode))
+            {
+                pthread_mutex_unlock(&g_mutexBSMsgList);
+                continue;
+            }
+            pthread_mutex_unlock(&g_mutexBSMsgList);
+
+            sc_bs_msg_proc((U8 *)pMsgNode->pMsg, pMsgNode->ulMsgLen, pMsgNode->ulClientIndex);
+
+            if (pMsgNode->pMsg)
+            {
+                dos_dmem_free(pMsgNode->pMsg);
+                pMsgNode->pMsg = NULL;
+            }
+
+            dos_dmem_free(pMsgNode);
+            pMsgNode = NULL;
+        }
+    }
+
+}
+
+
 U32 sc_bs_fsm_start()
 {
-    if (pthread_create(&pthSCBSMsgProc, NULL, sc_bs_fsm_mainloop, NULL) < 0)
+    if (pthread_create(&g_pthSCBSMsgProc, NULL, sc_bs_fsm_mainloop, NULL) < 0)
     {
         DOS_ASSERT(0);
 
         sc_logr_notice(SC_BS, "%s", "Create BS MSG process pthread fail");
         DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (pthread_create(&g_pthSCBSMsgRecv, NULL, sc_bs_recv_mainloop, NULL) < 0)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_notice(SC_BS, "%s", "Create BS MSG recv pthread fail");
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
     }
 
     return DOS_SUCC;
@@ -642,6 +832,10 @@ U32 sc_bs_fsm_init()
     }
     dos_memzero(pszMem, sizeof(SC_BS_CLIENT_ST) * SC_MAX_BS_CLIENT);
 
+    DLL_Init(&g_stBSMsgList);
+
+    dos_memzero(&stBSMsgStat, sizeof(stBSMsgStat));
+
     for (ulIndex=0; ulIndex<SC_MAX_BS_CLIENT; ulIndex++)
     {
         g_pstSCBSClient[ulIndex] = (SC_BS_CLIENT_ST *)(pszMem + sizeof(SC_BS_CLIENT_ST) * ulIndex);
@@ -652,10 +846,30 @@ U32 sc_bs_fsm_init()
         g_pstSCBSClient[ulIndex]->hTmrHBInterval = NULL;
     }
 
-    g_pstSCBSClient[0]->blValid = DOS_TRUE;
-    g_pstSCBSClient[0]->usPort = BS_UDP_LINSTEN_PORT;
-    g_pstSCBSClient[0]->lSocket = -1;
-    dos_strtoipaddr("127.0.0.1", &g_pstSCBSClient[0]->aulIPAddr[0]);
+    for (ulIndex=0; ulIndex<SC_MAX_BS_CLIENT; ulIndex++)
+    {
+        switch (ulIndex)
+        {
+            case 0:
+                g_pstSCBSClient[ulIndex]->blValid = DOS_TRUE;
+                g_pstSCBSClient[ulIndex]->usCommProto = BSCOMM_PROTO_UNIX;
+                g_pstSCBSClient[ulIndex]->lSocket = -1;
+                g_pstSCBSClient[ulIndex]->aulIPAddr[0] = dos_random(U32_BUTT);
+                break;
+#if 0
+            case 1:
+                g_pstSCBSClient[0]->blValid = DOS_TRUE;
+                g_pstSCBSClient[0]->usCommProto = BSCOMM_PROTO_UDP;
+                g_pstSCBSClient[0]->usPort = BS_UDP_LINSTEN_PORT;
+                g_pstSCBSClient[0]->lSocket = -1;
+                dos_strtoipaddr("127.0.0.1", &g_pstSCBSClient[0]->aulIPAddr[0]);
+                break;
+#endif
+            default:
+                g_pstSCBSClient[ulIndex]->blValid = DOS_FALSE;
+                break;
+        }
+    }
     /*
     g_pstSCBSClient[0]->ulStatus = SC_BS_STATUS_CONNECT;
     g_pstSCBSClient[0]->lSocket = socket(AF_INET, SOCK_DGRAM, 0);

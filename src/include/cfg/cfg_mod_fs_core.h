@@ -23,7 +23,7 @@
 #define INCLUDE_SYSLOG_ENABLE             1
 #if (INCLUDE_SYSLOG_ENABLE)
 #define INCLUDE_SYSLOG_FILE               0
-#define INCLUDE_SYSLOG_DB                 1
+#define INCLUDE_SYSLOG_DB                 0
 #define INCLUDE_SYSLOG_CLI                INCLUDE_DEBUG_CLI
 #define INCLUDE_SYSLOG_CONSOLE            1
 #else
@@ -57,6 +57,7 @@
 
 #define INCLUDE_SERVICE_PYTHON            1
 
+#define DOS_INCLUDE_SYS_STAT              1
 
 #endif /* END __CFG_MOD_FS_CORE_H__ */
 

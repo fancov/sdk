@@ -47,7 +47,7 @@ S8* config_get_service_root(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue = NULL;
 
-    if (!pszBuff || ulLen < 0)
+    if (!pszBuff)
     {
         DOS_ASSERT(0);
         pszBuff[0] = '\0';
@@ -76,7 +76,7 @@ U32 config_get_db_host(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue = NULL;
 
-    if (!pszBuff || ulLen < 0)
+    if (!pszBuff)
     {
         DOS_ASSERT(0);
         pszBuff[0] = '\0';
@@ -137,7 +137,7 @@ U32 config_get_db_user(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue = NULL;
 
-    if (!pszBuff || ulLen < 0)
+    if (!pszBuff)
     {
         DOS_ASSERT(0);
         pszBuff[0] = '\0';
@@ -168,7 +168,7 @@ U32 config_get_syssrc_db_user(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue = NULL;
 
-    if (!pszBuff || ulLen < 0)
+    if (!pszBuff)
     {
         DOS_ASSERT(0);
         pszBuff[0] = '\0';
@@ -198,7 +198,7 @@ U32 config_get_db_password(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue = NULL;
 
-    if (!pszBuff || ulLen < 0)
+    if (!pszBuff)
     {
         DOS_ASSERT(0);
         pszBuff[0] = '\0';
@@ -228,7 +228,7 @@ U32 config_get_syssrc_db_password(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue = NULL;
 
-    if (!pszBuff || ulLen < 0)
+    if (!pszBuff)
     {
         DOS_ASSERT(0);
         pszBuff[0] = '\0';
@@ -258,7 +258,7 @@ U32 config_get_db_dbname(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue = NULL;
 
-    if (!pszBuff || ulLen < 0)
+    if (!pszBuff)
     {
         DOS_ASSERT(0);
         pszBuff[0] = '\0';
@@ -288,7 +288,7 @@ U32 config_get_syssrc_db_dbname(S8 *pszBuff, U32 ulLen)
     S8  *pszValue = NULL;
 
 
-    if (!pszBuff || ulLen < 0)
+    if (!pszBuff)
     {
         DOS_ASSERT(0);
         pszBuff[0] = '\0';
@@ -296,8 +296,6 @@ U32 config_get_syssrc_db_dbname(S8 *pszBuff, U32 ulLen)
     }
 
     pszValue = _config_get_param(g_pstGlobalCfg, "config/mysql", "src_dbname", pszBuff, ulLen);
-
-
     if (!pszValue)
     {
         pszBuff[0] = '\0';
@@ -307,6 +305,31 @@ U32 config_get_syssrc_db_dbname(S8 *pszBuff, U32 ulLen)
     return 0;
 }
 
+U32 config_get_min_iedl_cpu(U32 *pulIdelCpu)
+{
+    S8 *pszValue = NULL;
+    S8 szBuff[32] = { 0 };
+
+    if (!pulIdelCpu)
+    {
+        return DOS_FAIL;
+    }
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/system", "min_idel_cpu", szBuff, sizeof(szBuff));
+    if (!pszValue)
+    {
+        return DOS_FAIL;
+    }
+
+    if (dos_atoul(pszValue, pulIdelCpu) < 0)
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+
 /**
  * 函数：U32 config_get_py_path(S8 *pszBuff, U32 ulLen)
  * 功能：获取Python脚本路径
@@ -315,11 +338,12 @@ U32 config_get_syssrc_db_dbname(S8 *pszBuff, U32 ulLen)
  *      U32 ulLen：缓存长度
  * 返回值：成功返回0.失败返回－1
  */
+#if INCLUDE_SERVICE_PYTHON
 U32 config_get_py_path(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue = NULL;
 
-    if (!pszBuff || ulLen < 0)
+    if (!pszBuff)
     {
         DOS_ASSERT(0);
         pszBuff[0] = '\0';
@@ -335,7 +359,7 @@ U32 config_get_py_path(S8 *pszBuff, U32 ulLen)
 
     return 0;
 }
-
+#endif
 
 /**
  * 函数：U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen)
@@ -349,8 +373,7 @@ U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen)
 {
     S8 *pszValue = NULL;
 
-    if (DOS_ADDR_INVALID(pszBuff)
-        || ulLen < 0)
+    if (DOS_ADDR_INVALID(pszBuff))
     {
         DOS_ASSERT(0);
         pszBuff[0] = '\0';
@@ -367,6 +390,57 @@ U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen)
     return 0;
 }
 
+/**
+ * 函数：U32 config_get_syssrc_writeDB(S8 *pszBuff, U32 ulLen)
+ * 功能：获取资源监控模块是否写数据库
+ * 参数：
+ *      S8 *pszBuff： 缓存
+ *      U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_syssrc_writeDB(S8 *pszBuff, U32 ulLen)
+{
+    S8* pszValue = NULL;
+
+    if (DOS_ADDR_INVALID(pszBuff))
+    {
+        DOS_ASSERT(0);
+        pszBuff[0] = '\0';
+        return -1;
+    }
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/mysql", "b_write_db", pszBuff, ulLen);
+    if (!pszValue)
+    {
+        pszBuff[0] = '\0';
+        return -1;
+    }
+
+    return 0;
+}
+
+U32 config_get_shortcut_cmd(U32 ulNo, S8 *pszCtrlCmd, U32 ulLen)
+{
+    S8 *pszCmd = NULL;
+    S8 szNum[4] = {0};
+
+    /* 将数字转换为字符串 */
+    if (dos_ltoa(ulNo, szNum, sizeof(szNum)) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    szNum[sizeof(szNum) - 1] = '\0';
+    pszCmd = _config_get_param(g_pstGlobalCfg, "config/shortcut", szNum, pszCtrlCmd, ulLen);
+    if (!pszCmd)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
 
 /**
  * 函数：U32 config_hh_get_send_interval()

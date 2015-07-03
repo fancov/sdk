@@ -146,7 +146,7 @@ U32 config_get_py_path(S8 *pszBuff, U32 ulLen);
 
 /**
  * 函数：
- * U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen); 
+ * U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen);
  * 功能：获取MySQL数据库sock文件路径
  * 参数：
  * 		S8 *pszBuff： 缓存
@@ -155,7 +155,25 @@ U32 config_get_py_path(S8 *pszBuff, U32 ulLen);
  */
 U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen);
 
+/**
+ * 函数：U32 config_get_syssrc_writeDB(S8 *pszBuff, U32 ulLen)
+ * 功能：获取资源监控模块是否写数据库
+ * 参数：
+ *      S8 *pszBuff： 缓存
+ *      U32 ulLen：缓存长度
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_syssrc_writeDB(S8 *pszBuff, U32 ulLen);
 
+/**
+ * 函数：
+ *      config_get_min_iedl_cpu
+ * 功能：获取最小CPU占用配置项
+ * 参数：
+ *       pulIdelCpu: 输出参数
+ * 返回值：成功返回0.失败返回－1
+ */
+U32 config_get_min_iedl_cpu(U32 *pulIdelCpu);
 
 /**
  * 函数：U32 config_init()
@@ -283,20 +301,37 @@ S32 config_hb_threshold_cpu(U32* pulAvg, U32* pul5sAvg, U32 *pul1minAvg, U32 *pu
  */
 S32 config_hb_threshold_disk(U32 *pulPartition, U32* pulDisk);
 
+/**
+ * 函数：S32 config_hb_threshold_bandwidth(U32* pulBandWidth);
+ * 功能：获取网络最大占用带宽
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_threshold_bandwidth(U32* pulBandWidth);
 
 /**
- * 函数：S32 config_hb_threshold_proc(S32* plMem, S32* plCPU);
+ * 函数：S32 config_hb_threshold_proc(S32* plMem);
  * 功能：获取进程资源占用率的阀值
  * 参数：
  * 返回值：成功返回0，失败返回-1
  *
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
-S32 config_hb_threshold_proc(U32* pulMem, U32* pulCPU);
+S32 config_hb_threshold_proc(U32* pulMem);
 
+/**
+ * 函数：U32 config_get_shortcut_cmd(U32 ulNo, S8 *pszCtrlCmd, U32 ulLen);
+ * 功能：获取ctrl_panel模块快捷键支持的命令
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+U32 config_get_shortcut_cmd(U32 ulNo, S8 *pszCtrlCmd, U32 ulLen);
 
-
-#endif
+#endif //end INCLUDE_BH_SERVER
 
 #ifdef INCLUDE_PTS
 
@@ -307,7 +342,7 @@ U32 config_get_pts_proxy_port();
 U32 config_get_pts_telnet_server_port();
 //U32 config_get_pts_domain(S8 *pszBuff, U32 ulLen);
 
-#endif
+#endif // end INCLUDE_PTS
 
 #ifdef INCLUDE_PTC
 
@@ -321,10 +356,9 @@ U32 config_set_pts_minor_domain(S8 *pszBuff);
 U32 config_set_pts_major_port(S8 *pszBuff);
 U32 config_set_pts_minor_port(S8 *pszBuff);
 
-#endif
+#endif //end INCLUDE_PTC
 
-
-#endif
+#endif  //end INCLUDE_XML_CONFIG
 
 #ifdef __cplusplus
 }

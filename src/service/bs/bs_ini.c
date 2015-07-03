@@ -355,6 +355,7 @@ S32 bs_start()
     g_stBssCB.ulMaxVocTime = BS_MAX_VOICE_SESSION_TIME;
     g_stBssCB.usUDPListenPort = dos_htons(BS_UDP_LINSTEN_PORT);
     g_stBssCB.usTCPListenPort = dos_htons(BS_TCP_LINSTEN_PORT);
+    g_stBssCB.ulCommProto = BSCOMM_PROTO_UNIX;
     srandom((U32)time(NULL));
     g_stBssCB.ulCDRMark = (U32)random();
     g_stBssCB.pstTopCustomer = NULL;

@@ -28,6 +28,8 @@
 #include <pthread.h>
 #include <netinet/in.h>
 #include <semaphore.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 
 #include <json-c/json.h>
@@ -50,6 +52,7 @@
 #include <dos/dos_debug.h>
 #include <dos/dos_string.h>
 #include <dos/dos_db.h>
+#include <dos/dos_sysstat.h>
 #include <dos/dos_iobuf.h>
 #include <list/list_pub.h>
 #include <hash/hash.h>

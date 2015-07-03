@@ -64,7 +64,7 @@ extern BOOL                 g_blSCInitOK;
 /* 比例呼叫的比例 */
 #define SC_MAX_CALL_MULTIPLE           3
 
-#define SC_MAX_CALL_PRE_SEC            30
+#define SC_MAX_CALL_PRE_SEC            200
 
 
 #define SC_MAX_SRV_TYPE_PRE_LEG        4
@@ -114,8 +114,17 @@ extern BOOL                 g_blSCInitOK;
 #define SC_NUM_VERIFY_TIME_MAX         10         /* 语音验证码播放次数 */
 #define SC_NUM_VERIFY_TIME_MIN         2          /* 语音验证码播放次数 */
 
+#define SC_MASTER_TASK_INDEX           0
+#define SC_EP_TASK_NUM                 2
+
+
+#define SC_BGJOB_HASH_SIZE             128
+
+
 /* 定义运营商的ID */
 #define SC_TOP_USER_ID                 1
+
+#define SC_LIST_MIN_CNT                3
 
 #define SC_TASK_AUDIO_PATH             "/var/www/html/data/audio"
 
@@ -356,6 +365,93 @@ typedef enum tagSCCallRole
     SC_CALL_ROLE_BUTT
 }SC_CALL_ROLE_EN;
 
+
+#define SC_EP_STAT_RECV 0
+#define SC_EP_STAT_PROC 1
+
+typedef struct tagEPMsgStat
+{
+    U32   ulCreate;
+    U32   ulPark;
+    U32   ulAnswer;
+    U32   ulHungup;
+    U32   ulHungupCom;
+    U32   ulDTMF;
+    U32   ulBGJob;
+}SC_EP_MSG_STAT_ST;
+
+typedef struct tagBSMsgStat
+{
+    U32  ulAuthReq;
+    U32  ulAuthReqSend;
+    U32  ulAuthRsp;
+    U32  ulBillingReq;
+    U32  ulBillingReqSend;
+    U32  ulBillingRsp;
+    U32  ulHBReq;
+    U32  ulHBRsp;
+}SC_BS_MSG_STAT_ST;
+
+typedef struct tagSystemStat
+{
+    U32  ulMaxCalls;
+    U32  ulMaxSession;
+    U32  ulCurrentSessions;
+    U32  ulCurrentCalls;
+    U32  ulTotalSessions;
+    U32  ulTotalCalls;
+    U32  ulOutgoingSessions;
+    U32  ulIncomingSessions;
+    U32  ulFailSessions;
+    U32  ulSystemUpTime;
+    U32  ulSystemIsWorking;
+}SC_SYSTEM_STAT_ST;
+
+typedef struct tagTrunkStat
+{
+    U32  ulMaxCalls;
+    U32  ulMaxSession;
+    U32  ulCurrentSessions;
+    U32  ulCurrentCalls;
+    U32  ulTotalSessions;
+    U32  ulTotalCalls;
+    U32  ulOutgoingSessions;
+    U32  ulIncomingSessions;
+    U32  ulFailSessions;
+
+    U32  ulRegisterCnt;
+    U32  ulUnregisterCnt;
+    U32  ulRegisterFailCnt;
+    U32  ulKeepAliveCnt;
+    U32  ulKeepAliveFailCnt;
+}SC_TRUNK_STAT_ST;
+
+typedef struct tagSiteStat
+{
+    U32  ulSelectCnt;
+    U32  ulCallCnt;      /* 暂时和 ulSelectCnt 保持一致 */
+    U32  ulIncomingCall; /* 暂时没有实现 */
+    U32  ulOutgoingCall; /* 暂时没有实现 */
+    U32  ulTimeOnSignin;             /* 长签总时间 */
+    U32  ulTimeOnthePhone;           /* 在线总时间 */
+}SC_SITE_STAT_ST;
+
+typedef struct tagSiteGrpStat
+{
+    U32  ulCallCnt;
+    U32  ulCallinQueue;
+    U32  ulTotalWaitingTime;      /* 暂时没有实现 */
+    U32  ulTotalWaitingCall;
+}SC_SITE_GRP_STAT_ST;
+
+typedef struct tagSIPAcctStat
+{
+    U32   ulRegisterCnt;
+    U32   ulRegisterFailCnt;
+    U32   ulUnregisterCnt;
+}SC_SIP_ACCT_ST;
+
+
 typedef struct tagCallerQueryNode{
     U16        usNo;                              /* 编号 */
     U8         bValid;
@@ -437,6 +533,7 @@ typedef struct tagSCSCB{
     U16       usTCBNo;                            /* 任务控制块编号ID */
     U16       usSiteNo;                           /* 坐席编号 */
 
+    U32       ulAllocTime;
     U32       ulCustomID;                         /* 当前呼叫属于哪个客户 */
     U32       ulAgentID;                          /* 当前呼叫属于哪个客户 */
     U32       ulTaskID;                           /* 当前任务ID */
@@ -449,10 +546,10 @@ typedef struct tagSCSCB{
 
     U8        aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 列表*/
 
+    U8        ucMainService;
     U8        ucCurrentSrvInd;                    /* 当前空闲的业务类型索引 */
     U8        ucLegRole;                          /* 主被叫标示 */
     U8        ucCurrentPlyCnt;                    /* 当前放音次数 */
-    U8        aucRes[1];
 
     U16       usHoldCnt;                          /* 被hold的次数 */
     U16       usHoldTotalTime;                    /* 被hold的总时长 */
@@ -466,7 +563,8 @@ typedef struct tagSCSCB{
     U32       bRecord:1;                          /* 是否录音 */
     U32       bIsAgentCall:1;                     /* 是否在呼叫坐席 */
     U32       bIsInQueue:1;                       /* 是否已经入队列了 */
-    U32       ulRes:26;
+    U32       bChannelCreated:1;                  /* FREESWITCH 是否为该同呼叫创建了通道 */
+    U32       ulRes:25;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -504,6 +602,7 @@ typedef struct tagTaskCB
     U8         ucValid;                           /* 是否被使用 */
     U8         ucTaskStatus;                      /* 任务状态 refer to SC_TASK_STATUS_EN */
 
+    U32        ulAllocTime;
     U8         ucPriority;                        /* 任务优先级 */
     U8         ucAudioPlayCnt;                    /* 语言播放次数 */
     U8         bTraceON;                          /* 是否跟踪 */
@@ -537,6 +636,11 @@ typedef struct tagTaskCB
     pthread_mutex_t  mutexTaskList;               /* 保护任务队列使用的互斥量 */
 }SC_TASK_CB_ST;
 
+typedef struct tagBGJobHash{
+    S8       szJobUUID[SC_MAX_UUID_LENGTH];
+
+    U32      ulRCNo;                 /* 对应资源编号 */
+}SC_BG_JOB_HASH_NODE_ST;
 
 typedef struct tagTaskCtrlCMD{
     list_t      stLink;
@@ -555,30 +659,53 @@ typedef struct tagTaskMngtInfo{
     pthread_mutex_t      mutexCMDList;            /* 保护命令队列使用的互斥量 */
     pthread_mutex_t      mutexTCBList;            /* 保护任务控制块使用的互斥量 */
     pthread_mutex_t      mutexCallList;           /* 保护呼叫控制块使用的互斥量 */
-    pthread_mutex_t      mutexCallHash;           /* 保护呼叫控制块使用的互斥量 */
     pthread_cond_t       condCMDList;             /* 命令队列数据到达通知条件量 */
     U32                  blWaitingExitFlag;       /* 等待退出标示 */
 
     list_t               stCMDList;               /* 命令队列(节点由HTTP Server创建，有HTTP Server释放) */
     SC_SCB_ST            *pstCallSCBList;         /* 呼叫控制块列表 (需要hash表存储) */
-    HASH_TABLE_S         *pstCallSCBHash;         /* 呼叫控制块的hash索引 */
     SC_TASK_CB_ST        *pstTaskList;            /* 任务列表 refer to struct tagTaskCB*/
     U32                  ulTaskCount;             /* 当前正在执行的任务数 */
+    pthread_mutex_t      mutexHashBGJobHash;
+    HASH_TABLE_S         *pstHashBGJobHash;       /* background-job hash表 */
 
-    U32                  ulMaxCall;               /* 历史最大呼叫并发数 */
-
-    SC_SYS_STATUS_EN     enSystemStatus;          /* 系统状态 */
+    SC_SYSTEM_STAT_ST    stStat;
 }SC_TASK_MNGT_ST;
 
 
 /*****************呼叫对待队列相关********************/
 typedef struct tagCallWaitQueueNode{
     U32                 ulAgentGrpID;                     /* 坐席组ID */
+    U32                 ulStartWaitingTime;               /* 开始等待的时间 */
 
     pthread_mutex_t     mutexCWQMngt;
     DLL_S               stCallWaitingQueue;               /* 呼叫等待队列 refer to SC_SCB_ST */
 }SC_CWQ_NODE_ST;
 /***************呼叫对待队列相关结束********************/
+
+/* dialer模块控制块 */
+typedef struct tagSCDialerHandle
+{
+    esl_handle_t        stHandle;                /*  esl 句柄 */
+    pthread_t           pthID;
+    U32                 ulCallCnt;
+    pthread_mutex_t     mutexCallQueue;          /* 互斥锁 */
+    pthread_cond_t      condCallQueue;           /* 条件变量 */
+    list_t              stCallList;              /* 呼叫队列 */
+
+    BOOL                blIsESLRunning;          /* ESL是否连接正常 */
+    BOOL                blIsWaitingExit;         /* 任务是否正在等待退出 */
+    S8                  *pszCMDBuff;
+}SC_DIALER_HANDLE_ST;
+
+typedef struct tagEPTaskCB
+{
+    DLL_S            stMsgList;
+    pthread_t        pthTaskID;
+    pthread_mutex_t  mutexMsgList;
+    pthread_cond_t   contMsgList;
+}SC_EP_TASK_CB;
+
 
 /* declare functions */
 SC_SCB_ST *sc_scb_alloc();
@@ -596,7 +723,6 @@ SC_TASK_CB_ST *sc_tcb_alloc();
 VOID sc_tcb_free(SC_TASK_CB_ST *pstTCB);
 U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB);
 VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID);
-VOID sc_task_set_current_call_cnt(SC_TASK_CB_ST *pstTCB, U32 ulCurrentCall);
 U32 sc_task_get_current_call_cnt(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB);
@@ -629,15 +755,7 @@ U32 sc_task_pause(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_start(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_stop(SC_TASK_CB_ST *pstTCB);
 S8 *sc_scb_get_status(U32 ulStatus);
-U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
-U32 sc_scb_hash_tables_delete(S8 *pszUUID);
-SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
-U32 sc_scb_syn_post(S8 *pszUUID);
-U32 sc_scb_syn_wait(S8 *pszUUID);
 SC_SYS_STATUS_EN sc_check_sys_stat();
-SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
-U32 sc_scb_hash_tables_delete(S8 *pszUUID);
-U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
 U32 sc_ep_search_route(SC_SCB_ST *pstSCB);
 U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 ulLength);
 U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszCaller, S8 *pszCallee);
@@ -674,13 +792,15 @@ BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum);
 U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID);
 U32 sc_update_callee_status(U32 ulTaskID, S8 *pszCallee, U32 ulStatsu);
 U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu);
-
+U32 sc_ep_ext_init();
 U32 sc_cwq_init();
 U32 sc_cwq_start();
 U32 sc_cwq_stop();
 U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID);
 U32 sc_cwq_del_call(SC_SCB_ST *pstSCB);
-
+U32 sc_bg_job_hash_add(S8 *pszUUID, U32 ulUUIDLen, U32 ulRCNo);
+U32 sc_bg_job_hash_delete(U32 ulRCNo);
+BOOL sc_bg_job_find(U32 ulRCNo);
 
 #ifdef __cplusplus
 }

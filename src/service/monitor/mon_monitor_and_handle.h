@@ -12,38 +12,30 @@
 #ifndef _MON_MONITOR_AND_HANDLE_H__
 #define _MON_MONITOR_AND_HANDLE_H__
 
-#if INCLUDE_RES_MONITOR  
+#if INCLUDE_RES_MONITOR
 
 #include <dos/dos_types.h>
 
 #define SQL_CMD_MAX_LENGTH 1024
-#define MAX_DESC_LENGTH    256
 #define MAX_BUFF_LENGTH    1024
-#define PORT_NO            11111
 
 typedef struct tagThreshold
 {
-   U32 ulMemThreshold;
-   U32 ulCPUThreshold;
-   U32 ul5sCPUThreshold;
-   U32 ul1minCPUThreshold;
-   U32 ul10minCPUThreshold;
-   U32 ulPartitionThreshold;
-   U32 ulDiskThreshold;
-   U32 ulProcMemThreshold;
-   U32 ulProcCPUThreshold;
+   U32 ulMemThreshold;       //系统内存最大占用率
+   U32 ulCPUThreshold;       //系统CPU平均最大占用率
+   U32 ul5sCPUThreshold;     //5s CPU平均最大占用率
+   U32 ul1minCPUThreshold;   //1min CPU平均最大占用率
+   U32 ul10minCPUThreshold;  //10min CPU平均最大占用率
+   U32 ulPartitionThreshold; //分区最大平均占用率
+   U32 ulDiskThreshold;      //磁盘最大平均占用率
+   U32 ulMaxBandWidth;       //最大带宽限制 90Mbps
+   U32 ulProcMemThreshold;   //进程占用内存最大百分比
 }MON_THRESHOLD_S;
-
-#if 0
-VOID read_xml(const S8 * xml_file, MON_WARNING_COND_S * pCond);
-#endif // end #if 0
-
-
 
 VOID * mon_res_monitor(VOID *p);
 VOID * mon_warning_handle(VOID *p);
 U32    mon_res_alloc();
 U32    mon_res_destroy();
 
-#endif //#if INCLUDE_RES_MONITOR  
+#endif //#if INCLUDE_RES_MONITOR
 #endif //end _MON_MONITOR_AND_HANDLE_H__

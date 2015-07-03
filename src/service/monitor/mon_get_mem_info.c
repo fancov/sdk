@@ -35,9 +35,9 @@ U32  mon_mem_malloc()
                 dos_get_filename(__FILE__), __LINE__, g_pstMem);
       return DOS_FAIL;
    }
-   
+
    memset(g_pstMem, 0, sizeof(MON_SYS_MEM_DATA_S));
-   
+
    return DOS_SUCC;
 }
 
@@ -57,10 +57,10 @@ U32 mon_mem_free()
                     , dos_get_filename(__FILE__), __LINE__, g_pstMem);
       return DOS_FAIL;
    }
-   
+
    dos_dmem_free(g_pstMem);
    g_pstMem = NULL;
-   
+
    return DOS_SUCC;
 }
 
@@ -100,11 +100,11 @@ static U32  mon_mem_reset_data()
  */
 U32  mon_read_mem_file()
 {
-   U32 ulCount = 0; 
+   U32 ulCount = 0;
    S8  szLine[MAX_BUFF_LENGTH] = {0};
    S8* pszAnalyseRslt[3] = {0};
    U32 ulRet = 0;
-   
+
    FILE * fp = fopen(m_szMemInfoFile, "r");
    if (DOS_ADDR_INVALID(fp))
    {
@@ -129,7 +129,7 @@ U32  mon_read_mem_file()
                         , dos_get_filename(__FILE__), __LINE__);
             goto failure;
          }
-      
+
          lRet = dos_atoul(pszAnalyseRslt[1], &ulData);
          if(0 > lRet)
          {
@@ -212,7 +212,7 @@ U32  mon_get_mem_data()
    U32 ulPhyMemFree  = g_pstMem->ulPhysicalMemFreeBytes;
 
    U32 ulBusyMem = ulPhyMemTotal - ulPhyMemFree;
-   
+
    U32 ulSwapTotal   = g_pstMem->ulSwapTotalBytes;
    U32 ulSwapFree    = g_pstMem->ulSwapFreeBytes;
 
@@ -243,37 +243,6 @@ U32  mon_get_mem_data()
        g_pstMem->ulSwapUsageRate = (ulBusySwap + ulBusySwap % ulSwapTotal) / ulSwapTotal;
    }
 
-   return DOS_SUCC;
-}
-
-
-/**
- * 功能:获取内存信息的格式化输出信息字符串
- * 参数集：
- *     无参数
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
- */
-U32  mon_get_mem_formatted_info()
-{
-   if(DOS_ADDR_INVALID(g_pstMem))
-   {
-      logr_cirt("%s:Line %u:mon_get_mem_formatted_info|get memory formatted information failure, g_pstMem is %p!"
-                , dos_get_filename(__FILE__), __LINE__, g_pstMem);
-      return DOS_FAIL;
-   }
-
-   memset(g_szMonMemInfo, 0, MAX_BUFF_LENGTH);
-   dos_snprintf(g_szMonMemInfo, MAX_BUFF_LENGTH, "  Physical Mem KBytes:%u\n    Physical Usage Rate:%u%%\n" \
-                "   Total Swap KBytes:%u\n  Swap Usage Rate:%u%%\n"
-                , g_pstMem->ulPhysicalMemTotalBytes
-                , g_pstMem->ulPhysicalMemUsageRate
-                , g_pstMem->ulSwapTotalBytes
-                , g_pstMem->ulSwapUsageRate
-           );
-   logr_info("%s:Line %u:g_szMonMemInfo is\n%s", dos_get_filename(__FILE__)
-                , __LINE__, g_szMonMemInfo);
-                
    return DOS_SUCC;
 }
 

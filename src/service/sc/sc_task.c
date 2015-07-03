@@ -16,6 +16,7 @@ extern "C"{
 
 /* include public header files */
 #include <dos.h>
+#include <esl.h>
 
 /* include private header files */
 #include "sc_def.h"
@@ -27,6 +28,9 @@ extern "C"{
 /* define enums */
 
 /* define structs */
+
+extern U32                g_ulMaxConcurrency4Task;
+
 
 
 /* declare functions */
@@ -185,6 +189,14 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
 
+    if (DOS_ADDR_INVALID(pstTCB))
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+    }
+
     pstCallee = sc_task_get_callee(pstTCB);
     if (!pstCallee)
     {
@@ -206,13 +218,12 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     pstSCB = sc_scb_alloc();
     if (!pstSCB)
     {
-        sc_logr_notice(SC_TASK, "%s", "Make call for task %d fail. Alloc SCB fail.");
+        sc_logr_notice(SC_TASK, "Make call for task %u fail. Alloc SCB fail.", pstTCB->ulTaskID);
         goto fail;
     }
 
     SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
 
-    pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstTCB->bTraceCallON || pstSCB->bTraceNo
         || pstCallee->ucTraceON || pstCaller->bTraceON)
     {
@@ -233,8 +244,6 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     pstSCB->szSiteNum[0] = '\0';
     pstSCB->szUUID[0] = '\0';
 
-    pthread_mutex_unlock(&pstSCB->mutexSCBLock);
-
     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AUTO_DIALING);
     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
@@ -246,15 +255,17 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         goto fail;
     }
 
-    if (sc_dialer_add_call(pstSCB) != DOS_SUCC)
+    if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
     {
         sc_call_trace(pstSCB, "Make call failed.");
 
-        sc_task_callee_set_recall(pstTCB, pstCallee->ulIndex);
+        //sc_task_callee_set_recall(pstTCB, pstCallee->ulIndex);
         goto fail;
     }
 
-    sc_call_trace(pstSCB, "Make call for task %d successfully.", pstTCB->ulTaskID);
+    SC_SCB_SET_STATUS(pstSCB, SC_SCB_AUTH);
+
+    sc_call_trace(pstSCB, "Make call for task %u successfully.", pstTCB->ulTaskID);
 
     if (pstCallee)
     {
@@ -273,6 +284,7 @@ fail:
 
     if (pstSCB)
     {
+        DOS_ASSERT(0);
         sc_scb_free(pstSCB);
         pstSCB = NULL;
     }
@@ -290,7 +302,7 @@ VOID *sc_task_runtime(VOID *ptr)
     SC_TEL_NUM_QUERY_NODE_ST *pstCallee;
     SC_TASK_CB_ST   *pstTCB;
     list_t          *pstList;
-    U32             ulTaskInterval;
+    U32             ulTaskInterval = 0;
 
     if (!ptr)
     {
@@ -310,53 +322,35 @@ VOID *sc_task_runtime(VOID *ptr)
     pstTCB->ucTaskStatus = SC_TASK_WORKING;
     while (1)
     {
+        if (0 == ulTaskInterval)
+        {
+            ulTaskInterval = sc_task_get_call_interval(pstTCB);
+        }
+        usleep(ulTaskInterval * 1000);
+        ulTaskInterval = 0;
+
         /* 根据当前呼叫量，确定发起呼叫的间隔，如果当前任务已经处于受限状态，就要强制调整间隔 */
         if (pstTCB->ulCurrentConcurrency >= pstTCB->ulMaxConcurrency)
         {
             sc_logr_info(SC_TASK, "Cannot make call for reach the max concurrency. Task : %u.", pstTCB->ulTaskID);
-            usleep(1000 * 1000);
             continue;
         }
-#if 0
-        if (!blIsNormal && ulTaskInterval <= 100)
-        {
-            ulTaskInterval = 1;
-
-            /* 如果呼叫量已经为0就退出任务 */
-            if (!pstTCB->ulCurrentConcurrency)
-            {
-                sc_task_trace(pstTCB, "%s", "Task will be finished.");
-                sc_logr_notice(SC_TASK, "Task will be finished.(%lu)", pstTCB->ulTaskID);
-                break;
-            }
-        }
-#endif
-        /* 如果需要接通坐席的任务，则需要判断是否有坐席，如果没有坐席就不呼叫了 */
-        if (SC_TASK_MODE_AUDIO_ONLY != pstTCB->ucMode
-            && 0 == sc_acd_get_idel_agent(pstTCB->ulAgentQueueID))
-        {
-            sc_logr_info(SC_TASK, "There is no useable agent for task %u, Group ID: %u.", pstTCB->ulTaskID, pstTCB->ulAgentQueueID);
-            usleep(1000 * 1000);
-            continue;
-        }
-
-        ulTaskInterval = sc_task_get_call_interval(pstTCB);
-        usleep(ulTaskInterval * 1000);
 
         /* 如果暂停了就继续等待 */
         if (SC_TASK_PAUSED == pstTCB->ucTaskStatus)
         {
             sc_logr_info(SC_TASK, "Cannot make call for puased status. Task : %u.", pstTCB->ulTaskID);
+            ulTaskInterval = 1000;
             continue;
         }
 
         /* 如果被停止了，就检测还有没有呼叫，如果有呼叫，就等待，等待没有呼叫时退出任务 */
         if (SC_TASK_STOP == pstTCB->ucTaskStatus)
         {
-            if (pstTCB->ulCurrentConcurrency >= 0)
+            if (pstTCB->ulCurrentConcurrency != 0)
             {
-                ulTaskInterval = 1000;
                 sc_logr_info(SC_TASK, "Cannot make call for stop status. Task : %u.", pstTCB->ulTaskID);
+                ulTaskInterval = 1000;
                 continue;
             }
 
@@ -368,6 +362,7 @@ VOID *sc_task_runtime(VOID *ptr)
         if (sc_task_check_can_call_by_time(pstTCB) != DOS_TRUE)
         {
             sc_logr_info(SC_TASK, "Cannot make call for invalid time period. Task : %u.", pstTCB->ulTaskID);
+            ulTaskInterval = 1000;
             continue;
         }
 
@@ -520,9 +515,19 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
         goto init_fail;
     }
 
-    pstTCB->ulMaxConcurrency = 3000; //pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE;
+    if (SC_TASK_MODE_AUDIO_ONLY == pstTCB->ucMode)
+    {
+        pstTCB->ulMaxConcurrency = g_ulMaxConcurrency4Task;
+    }
+    else
+    {
+        pstTCB->ulMaxConcurrency = pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE;
+    }
+
+    pstTCB->ulLastCalleeIndex = 0;
 
     sc_logr_notice(SC_TASK, "Load data for task %d finished.", pstTCB->ulTaskID);
+
     SC_TRACE_OUT();
     return DOS_SUCC;
 

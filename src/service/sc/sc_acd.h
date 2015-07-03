@@ -44,6 +44,9 @@ typedef struct tagACDQueryMngtNode
 
     DLL_S     stAgentList;                         /* ×øÏ¯hash±í */
     pthread_mutex_t  mutexSiteQueue;
+
+
+    SC_SITE_GRP_STAT_ST stStat;
 }SC_ACD_GRP_HASH_NODE_ST;
 
 typedef struct tagACDFindSiteParam

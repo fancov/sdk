@@ -16,6 +16,7 @@ extern "C"{
 #endif
 /* include public header files */
 #include <dos.h>
+#include <esl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>

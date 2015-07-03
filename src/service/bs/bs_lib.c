@@ -369,10 +369,12 @@ BSS_APP_CONN *bs_get_app_conn(BS_MSG_TAG *pstMsgTag)
 }
 
 /* 保存应用层socket相关信息,目前只实现IPv4 */
-BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, struct sockaddr_in *pstAddrIn, S32 lAddrLen, BOOL bIsTcp)
+BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, U8 *pstAddrIn, U32 ulAddrinHeader, S32 lAddrLen)
 {
     S32                 i, lIdlePos = -1;
     BSS_APP_CONN        *pstAppConn = NULL;
+    struct sockaddr_in  *pstAddr;
+    struct sockaddr_un  *pstUnAddr;
 
     if (DOS_ADDR_INVALID(pstAddrIn))
     {
@@ -388,6 +390,14 @@ BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, struct sockaddr_in *pstAddrIn, S32 l
             if (0 == dos_memcmp(pstAddrIn, &g_stBssCB.astAPPConn[i].stAddr, sizeof(struct sockaddr_in)))
             {
                 pstAppConn = &g_stBssCB.astAPPConn[i];
+
+                /* 如果是unix socket，需要更新一下标示符 */
+                if (BSCOMM_PROTO_UNIX == g_stBssCB.ulCommProto
+                    && ulAddrinHeader != g_stBssCB.astAPPConn[i].aulIPAddr[0])
+                {
+                    pstAppConn->aulIPAddr[0] = ulAddrinHeader;
+                }
+
                 break;
             }
         }
@@ -403,18 +413,38 @@ BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, struct sockaddr_in *pstAddrIn, S32 l
         pstAppConn = &g_stBssCB.astAPPConn[lIdlePos];
         pstAppConn->bIsValid = DOS_TRUE;
         pstAppConn->bIsConn = DOS_TRUE;
-        pstAppConn->bIsTCP = bIsTcp;
+        pstAppConn->ucCommType = (U8)g_stBssCB.ulCommProto;
         pstAppConn->ulReserv = 0;
         pstAppConn->ulMsgSeq = 0;
         pstAppConn->lSockfd = lSockfd;
-        pstAppConn->aulIPAddr[0] = pstAddrIn->sin_addr.s_addr;
-        pstAppConn->aulIPAddr[1] = 0;
-        pstAppConn->aulIPAddr[2] = 0;
-        pstAppConn->aulIPAddr[3] = 0;
         pstAppConn->lAddrLen = lAddrLen;
-        pstAppConn->stAddr.sin_family = AF_INET;
-        pstAppConn->stAddr.sin_port = pstAddrIn->sin_port;
-        pstAppConn->stAddr.sin_addr.s_addr = pstAddrIn->sin_addr.s_addr;
+
+        if (g_stBssCB.ulCommProto != BSCOMM_PROTO_UNIX)
+        {
+            pstAddr = (struct sockaddr_in *)pstAddrIn;
+
+            pstAppConn->aulIPAddr[0] = pstAddr->sin_addr.s_addr;
+            pstAppConn->aulIPAddr[1] = 0;
+            pstAppConn->aulIPAddr[2] = 0;
+            pstAppConn->aulIPAddr[3] = 0;
+            pstAppConn->stAddr.stInAddr.sin_family = AF_INET;
+            pstAppConn->stAddr.stInAddr.sin_port = pstAddr->sin_port;
+            pstAppConn->stAddr.stInAddr.sin_addr.s_addr = pstAddr->sin_addr.s_addr;
+        }
+        else
+        {
+            pstAppConn->aulIPAddr[0] = ulAddrinHeader;
+            pstAppConn->aulIPAddr[1] = 0;
+            pstAppConn->aulIPAddr[2] = 0;
+            pstAppConn->aulIPAddr[3] = 0;
+
+            pstUnAddr = (struct sockaddr_un *)pstAddrIn;
+            pstAppConn->stAddr.stUnAddr.sun_family = AF_UNIX;
+            dos_strncpy(pstAppConn->stAddr.stUnAddr.sun_path, pstUnAddr->sun_path, lAddrLen);
+            pstAppConn->stAddr.stUnAddr.sun_path[lAddrLen] = '\0';
+
+            bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG, "New unix socket %s, len: %d", pstAppConn->stAddr.stUnAddr.sun_path, lAddrLen);
+        }
     }
 
     return pstAppConn;

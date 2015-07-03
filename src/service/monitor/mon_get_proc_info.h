@@ -13,7 +13,7 @@
 #ifndef _MON_GET_PROC_INFO_H__
 #define _MON_GET_PROC_INFO_H__
 
-#if INCLUDE_RES_MONITOR  
+#if INCLUDE_RES_MONITOR
 
 
 #include <dos/dos_types.h>
@@ -43,13 +43,13 @@ U32  mon_proc_malloc();
 U32  mon_proc_free();
 U32  mon_get_process_data();
 U32  mon_kill_all_monitor_process();
+U32  mon_check_all_process();
 U32  mon_restart_computer();
 S8*  mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName);
 BOOL mon_is_proc_dead(U32 ulPid);
 U32  mon_get_proc_total_cpu_rate();
 U32  mon_get_proc_total_mem_rate();
-U32  mon_get_process_formatted_info();
 
-#endif //#if INCLUDE_RES_MONITOR  
+#endif //#if INCLUDE_RES_MONITOR
 #endif //end _MON_GET_PROC_INFO_H__
 

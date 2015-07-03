@@ -16,6 +16,7 @@ extern "C"{
 
 /* include public header files */
 #include <dos.h>
+#include <esl.h>
 #include <time.h>
 
 /* include private header files */
@@ -25,6 +26,7 @@ extern "C"{
 #include "sc_debug.h"
 #include "sc_httpd.h"
 #include "sc_http_api.h"
+#include "sc_acd_def.h"
 
 
 /* 定义开发是内置测试数据 */
@@ -57,6 +59,10 @@ extern SC_TASK_MNGT_ST   *g_pstTaskMngtInfo;
 
 /* 业务控制模块数据库句柄 */
 extern DB_HANDLE_ST      *g_pstSCDBHandle;
+
+extern U32                g_ulCPS;
+extern U32                g_ulMaxConcurrency4Task;
+
 
 /* 业务控制块状态 */
 static S8 *g_pszSCBStatus[] =
@@ -111,7 +117,7 @@ SC_SCB_ST *sc_scb_alloc()
 
     for (; ulIndex<SC_MAX_SCB_NUM; ulIndex++)
     {
-        if (!sc_scb_is_valid(&g_pstTaskMngtInfo->pstCallSCBList[ulIndex]))
+        if (!g_pstTaskMngtInfo->pstCallSCBList[ulIndex].bValid)
         {
             pstSCB = &g_pstTaskMngtInfo->pstCallSCBList[ulIndex];
             break;
@@ -122,7 +128,7 @@ SC_SCB_ST *sc_scb_alloc()
     {
         for (ulIndex = 0; ulIndex < ulLastIndex; ulIndex++)
         {
-            if (!sc_scb_is_valid(&g_pstTaskMngtInfo->pstCallSCBList[ulIndex]))
+            if (!g_pstTaskMngtInfo->pstCallSCBList[ulIndex].bValid)
             {
                 pstSCB = &g_pstTaskMngtInfo->pstCallSCBList[ulIndex];
                 break;
@@ -136,7 +142,9 @@ SC_SCB_ST *sc_scb_alloc()
         pthread_mutex_lock(&pstSCB->mutexSCBLock);
         sc_scb_init(pstSCB);
         pstSCB->bValid = 1;
+        pstSCB->ulAllocTime = time(0);
         sc_call_trace(pstSCB, "Alloc SCB.");
+        sc_logr_error(SC_ESL, "Alloc SCB. ID : %u, Valid: %d", pstSCB->usSCBNo, pstSCB->bValid);
         pthread_mutex_unlock(&pstSCB->mutexSCBLock);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallList);
         //SC_TRACE_OUT();
@@ -172,6 +180,7 @@ VOID sc_scb_free(SC_SCB_ST *pstSCB)
     pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallList);
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     sc_call_trace(pstSCB, "Free SCB.");
+    sc_logr_error(SC_ESL, "Free SCB. ID : %u, Valid: %d", pstSCB->usSCBNo, pstSCB->bValid);
     if (pstSCB->pstExtraData)
     {
         dos_dmem_free(pstSCB->pstExtraData);
@@ -241,6 +250,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->usTCBNo = U16_BUTT;                /* 任务控制块编号ID */
     pstSCB->usSiteNo = U16_BUTT;               /* 坐席编号 */
 
+    pstSCB->ulAllocTime = 0;
     pstSCB->ulCustomID = U32_BUTT;             /* 当前呼叫属于哪个客户 */
     pstSCB->ulAgentID = U32_BUTT;              /* 当前呼叫属于哪个客户 */
     pstSCB->ulTaskID = U32_BUTT;               /* 当前任务ID */
@@ -263,6 +273,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bWaitingOtherRelase = DOS_FALSE;   /* 是否在等待另外一跳退释放 */
     pstSCB->bIsAgentCall = DOS_FALSE;
     pstSCB->bIsInQueue = DOS_FALSE;
+    pstSCB->bChannelCreated = DOS_FALSE;
 
     pstSCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -274,6 +285,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->szUUID[0] = '\0';                  /* Leg-A UUID */
     pstSCB->pstExtraData = NULL;
     pstSCB->pszRecordFile = NULL;
+    pstSCB->ucMainService = U8_BUTT;
 
     /* 业务类型 列表*/
     pstSCB->ucCurrentSrvInd = 0;               /* 当前空闲的业务类型索引 */
@@ -301,323 +313,6 @@ SC_SCB_ST *sc_scb_get(U32 ulIndex)
     }
 
     return &g_pstTaskMngtInfo->pstCallSCBList[ulIndex];
-}
-
-/*
- * 函数: static S32 sc_scb_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
- * 功能: 业务控制块hash表中查找一个业务控制块
- * 参数:
- *      VOID *pSymName, HASH_NODE_S *pNode
- * 返回值:
- *      成功返回业务控制块指向，失败返回NULL
- */
-static S32 sc_scb_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
-{
-    SC_SCB_HASH_NODE_ST *pstSCBHashNode = (SC_SCB_HASH_NODE_ST *)pNode;
-
-    if (!pstSCBHashNode)
-    {
-        return DOS_FAIL;
-    }
-
-    if (dos_strncmp(pstSCBHashNode->szUUID, (S8 *)pSymName, sizeof(pstSCBHashNode->szUUID)))
-    {
-        return DOS_FAIL;
-    }
-
-    return DOS_SUCC;
-}
-
-/*
- * 函数: static U32 sc_scb_hash_index_get(S8 *pszUUID)
- * 功能: 计算业务控制块hash节点的函数
- * 参数:
- *      S8 *pszUUID 由FS参数的UUID
- * 返回值:
- *      成功返回hash值，失败返回U32_BUTT
- */
-static U32 sc_scb_hash_index_get(S8 *pszUUID)
-{
-    S8   szUUIDHead[16] = { 0 };
-    U32  ulIndex;
-
-    SC_TRACE_IN(pszUUID, 0, 0, 0);
-
-    if (!pszUUID)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return U32_BUTT;
-    }
-
-    dos_strncpy(szUUIDHead, pszUUID, 8);
-    szUUIDHead[8] = '\0';
-
-    if (dos_atoulx(szUUIDHead, &ulIndex) < 0)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return U32_BUTT;
-    }
-
-    SC_TRACE_OUT();
-    return (ulIndex % SC_MAX_SCB_HASH_NUM);
-}
-
-U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB)
-{
-    U32  ulHashIndex;
-    SC_SCB_HASH_NODE_ST *pstSCBHashNode;
-
-    SC_TRACE_IN(pszUUID, pstSCB, 0, 0);
-
-    if (!pszUUID)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    ulHashIndex = sc_scb_hash_index_get(pszUUID);
-    if (U32_BUTT == ulHashIndex)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-
-    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallHash);
-    pstSCBHashNode = (SC_SCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pszUUID, sc_scb_hash_find);
-    if (pstSCBHashNode)
-    {
-        sc_logr_info(SC_TASK, "UUID %s has been added to hash list sometimes before.", pszUUID);
-        if (DOS_ADDR_INVALID(pstSCBHashNode->pstSCB)
-            && DOS_ADDR_VALID(pstSCB))
-        {
-            pstSCBHashNode->pstSCB = pstSCB;
-        }
-        pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
-
-        SC_TRACE_OUT();
-        return DOS_SUCC;
-    }
-
-    pstSCBHashNode = (SC_SCB_HASH_NODE_ST *)dos_dmem_alloc(sizeof(SC_SCB_HASH_NODE_ST));
-    if (!pstSCBHashNode)
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_warning(SC_TASK, "%s", "Alloc memory fail");
-        pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    HASH_Init_Node((HASH_NODE_S *)&pstSCBHashNode->stNode);
-    pstSCBHashNode->pstSCB = NULL;
-    pstSCBHashNode->szUUID[0] = '\0';
-    sem_init(&pstSCBHashNode->semSCBSyn, 0, 0);
-
-    if (DOS_ADDR_INVALID(pstSCBHashNode->pstSCB)
-        && DOS_ADDR_VALID(pstSCB))
-    {
-        pstSCBHashNode->pstSCB = pstSCB;
-    }
-
-    dos_strncpy(pstSCBHashNode->szUUID, pszUUID, sizeof(pstSCBHashNode->szUUID));
-    pstSCBHashNode->szUUID[sizeof(pstSCBHashNode->szUUID) - 1] = '\0';
-
-    hash_add_node(g_pstTaskMngtInfo->pstCallSCBHash, (HASH_NODE_S *)pstSCBHashNode, ulHashIndex, NULL);
-
-    sc_logr_warning(SC_TASK, "Add SCB %d with the UUID %s to the hash table.", pstSCB->usSCBNo, pszUUID);
-
-    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
-
-    SC_TRACE_OUT();
-    return DOS_SUCC;
-}
-
-U32 sc_scb_hash_tables_delete(S8 *pszUUID)
-{
-    U32  ulHashIndex;
-    SC_SCB_HASH_NODE_ST *pstSCBHashNode;
-
-    SC_TRACE_IN(pszUUID, 0, 0, 0);
-
-    if (!pszUUID)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    ulHashIndex = sc_scb_hash_index_get(pszUUID);
-    if (U32_BUTT == ulHashIndex)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallHash);
-    pstSCBHashNode = (SC_SCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pszUUID, sc_scb_hash_find);
-    if (!pstSCBHashNode)
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_info(SC_TASK, "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
-        pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
-        SC_TRACE_OUT();
-        return DOS_SUCC;
-    }
-
-    hash_delete_node(g_pstTaskMngtInfo->pstCallSCBHash, (HASH_NODE_S *)pstSCBHashNode, ulHashIndex);
-    pstSCBHashNode->pstSCB = NULL;
-    pstSCBHashNode->szUUID[sizeof(pstSCBHashNode->szUUID) - 1] = '\0';
-
-    dos_dmem_free(pstSCBHashNode);
-    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
-
-    return DOS_SUCC;
-}
-
-SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID)
-{
-    U32  ulHashIndex;
-    SC_SCB_HASH_NODE_ST *pstSCBHashNode = NULL;
-    SC_SCB_ST           *pstSCB = NULL;
-
-    SC_TRACE_IN(pszUUID, 0, 0, 0);
-
-    if (!pszUUID)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return NULL;
-    }
-
-    ulHashIndex = sc_scb_hash_index_get(pszUUID);
-    if (U32_BUTT == ulHashIndex)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return NULL;
-    }
-
-    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallHash);
-    pstSCBHashNode = (SC_SCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pszUUID, sc_scb_hash_find);
-    if (!pstSCBHashNode)
-    {
-        sc_logr_info(SC_TASK, "Connot find the SCB with the UUID %s.", pszUUID);
-        pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
-
-        SC_TRACE_OUT();
-        return NULL;
-    }
-    pstSCB = pstSCBHashNode->pstSCB;
-    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
-
-    SC_TRACE_OUT();
-    return pstSCBHashNode->pstSCB;
-}
-
-U32 sc_scb_syn_wait(S8 *pszUUID)
-{
-    U32  ulHashIndex;
-    SC_SCB_HASH_NODE_ST *pstSCBHashNode = NULL;
-    SC_SCB_ST           *pstSCB = NULL;
-
-    SC_TRACE_IN(pszUUID, 0, 0, 0);
-
-    if (!pszUUID)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    ulHashIndex = sc_scb_hash_index_get(pszUUID);
-    if (U32_BUTT == ulHashIndex)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallHash);
-    pstSCBHashNode = (SC_SCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pszUUID, sc_scb_hash_find);
-    if (!pstSCBHashNode)
-    {
-        sc_logr_info(SC_TASK, "Connot find the SCB with the UUID %s.", pszUUID);
-        pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-    pstSCB = pstSCBHashNode->pstSCB;
-    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
-
-    sem_wait(&pstSCBHashNode->semSCBSyn);
-
-    return DOS_SUCC;
-
-}
-
-U32 sc_scb_syn_post(S8 *pszUUID)
-{
-    U32  ulHashIndex;
-    SC_SCB_HASH_NODE_ST *pstSCBHashNode = NULL;
-    SC_SCB_ST           *pstSCB = NULL;
-
-    SC_TRACE_IN(pszUUID, 0, 0, 0);
-
-    if (!pszUUID)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    ulHashIndex = sc_scb_hash_index_get(pszUUID);
-    if (U32_BUTT == ulHashIndex)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallHash);
-    pstSCBHashNode = (SC_SCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pszUUID, sc_scb_hash_find);
-    if (!pstSCBHashNode)
-    {
-        sc_logr_info(SC_TASK, "Connot find the SCB with the UUID %s.", pszUUID);
-        pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-    pstSCB = pstSCBHashNode->pstSCB;
-    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
-
-    sem_post(&pstSCBHashNode->semSCBSyn);
-
-    SC_TRACE_OUT();
-    return DOS_SUCC;
-
 }
 
 
@@ -760,6 +455,7 @@ SC_TASK_CB_ST *sc_tcb_alloc()
         pthread_mutex_lock(&pstTCB->mutexTaskList);
         sc_tcb_init(pstTCB);
         pstTCB->ucValid = 1;
+        pstTCB->ulAllocTime = time(0);
         pthread_mutex_unlock(&pstTCB->mutexTaskList);
 
         sc_task_trace(pstTCB, "Alloc TCB %d.", pstTCB->usTCBNo);
@@ -809,6 +505,7 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
+    pstTCB->ulAllocTime = 0;
     pstTCB->ucTaskStatus = SC_TASK_BUTT;
     pstTCB->ucMode = SC_TASK_MODE_BUTT;
     pstTCB->ucPriority = SC_TASK_PRI_NORMAL;
@@ -873,24 +570,6 @@ SC_TASK_CB_ST *sc_tcb_find_by_taskid(U32 ulTaskID)
     return NULL;
 }
 
-
-VOID sc_task_set_current_call_cnt(SC_TASK_CB_ST *pstTCB, U32 ulCurrentCall)
-{
-    SC_TRACE_IN((U64)pstTCB, ulCurrentCall, 0, 0);
-
-    if (!pstTCB)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return;
-    }
-
-    pthread_mutex_lock(&pstTCB->mutexTaskList);
-    pstTCB->ulCurrentConcurrency = ulCurrentCall;
-    pthread_mutex_unlock(&pstTCB->mutexTaskList);
-}
-
 U32 sc_task_get_current_call_cnt(SC_TASK_CB_ST *pstTCB)
 {
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
@@ -942,6 +621,7 @@ VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID)
 
 U32 sc_update_callee_status(U32 ulTaskID, S8 *pszCallee, U32 ulStatsu)
 {
+    return DOS_SUCC;
     S8 szSQL[512] = { 0 };
 
     dos_snprintf(szSQL, sizeof(szSQL)
@@ -953,6 +633,7 @@ U32 sc_update_callee_status(U32 ulTaskID, S8 *pszCallee, U32 ulStatsu)
 
 U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu)
 {
+    return DOS_SUCC;
     S8 szSQL[512] = { 0 };
 
     dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_calltask SET status=%d WHERE id=%u", ulStatsu, ulTaskID);
@@ -1606,7 +1287,7 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
     ulHour = timenow->tm_hour;
     ulMinute = timenow->tm_min;
 
-    printf("Current Time %02d:%02d\r\n", ulHour, ulMinute);
+    //printf("Current Time %02d:%02d\r\n", ulHour, ulMinute);
 
     for (ulIndex=0; ulIndex<SC_MAX_PERIOD_NUM; ulIndex++)
     {
@@ -1614,11 +1295,11 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
         {
             continue;
         }
-
+#if 0
         printf("Time peroid: %02d:%02d-%02d:%02d\r\n"
                 , pstTCB->astPeriod[ulIndex].ucHourBegin, pstTCB->astPeriod[ulIndex].ucMinuteBegin
                 , pstTCB->astPeriod[ulIndex].ucHourEnd, pstTCB->astPeriod[ulIndex].ucMinuteEnd);
-
+#endif
         if (!((pstTCB->astPeriod[ulIndex].ucWeekMask >> ulWeek) & 0x01))
         {
             continue;
@@ -1642,22 +1323,41 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
 
 U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB)
 {
-    SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
+    U32 ulIdelCPUConfig, ulIdelCPU;
 
     if (!pstTCB)
     {
         DOS_ASSERT(0);
-        SC_TRACE_OUT();
         return DOS_FALSE;
     }
 
-    if (pstTCB->ulCurrentConcurrency >= SC_MAX_CALL)
+    ulIdelCPU = dos_get_cpu_idel_percentage();
+    if (config_get_min_iedl_cpu(&ulIdelCPUConfig) != DOS_SUCC)
     {
-        SC_TRACE_OUT();
+        ulIdelCPUConfig = DOS_MIN_IDEL_CPU * 100;
+    }
+    else
+    {
+        ulIdelCPUConfig = ulIdelCPUConfig * 100;
+    }
+
+    /* 系统整体并发量控制 */
+    if (pstTCB->ulCurrentConcurrency >= g_ulMaxConcurrency4Task)
+    {
         return DOS_FALSE;
     }
 
-    SC_TRACE_OUT();
+    if (g_pstTaskMngtInfo->stStat.ulCurrentSessions >= SC_MAX_CALL)
+    {
+        return DOS_FALSE;
+    }
+
+    /* CPU占用控制 */
+    if (ulIdelCPU < ulIdelCPUConfig)
+    {
+        return DOS_FALSE;
+    }
+
     return DOS_TRUE;
 }
 
@@ -1665,6 +1365,7 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
 {
     U32 ulPercentage;
     U32 ulInterval;
+    U32 ulConcurrency;
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
 
@@ -1684,12 +1385,18 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
 
     if (SC_TASK_MODE_AUDIO_ONLY == pstTCB->ucMode)
     {
-        return 1000 / SC_MAX_CALL_PRE_SEC;
+        pstTCB->ulMaxConcurrency = g_ulMaxConcurrency4Task;
+        ulConcurrency = pstTCB->ulCurrentConcurrency;
+    }
+    else
+    {
+        pstTCB->ulMaxConcurrency = sc_acd_get_total_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
+        ulConcurrency = pstTCB->ulMaxConcurrency - sc_acd_get_idel_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
     }
 
-    if (pstTCB->ulCurrentConcurrency)
+    if (pstTCB->ulMaxConcurrency)
     {
-        ulPercentage = ((pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE) * 100) / pstTCB->ulCurrentConcurrency;
+        ulPercentage = ulConcurrency / pstTCB->ulMaxConcurrency;
     }
     else
     {
@@ -1698,15 +1405,15 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
 
     if (ulPercentage < 40)
     {
-        ulInterval = 300;
+        ulInterval = 20;
     }
     else if (ulPercentage < 80)
     {
-        ulInterval = 500;
+        ulInterval = 100;
     }
     else
     {
-        ulInterval = 1000;
+        ulInterval = 200;
     }
 
     SC_TRACE_OUT();
@@ -2189,7 +1896,175 @@ U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID)
 }
 
 
-//--------------------------------------------------
+U32 sc_hash_by_scb(U32 ulHashSize, U32 ulSCNo)
+{
+    if (0 == ulHashSize)
+    {
+        DOS_ASSERT(0);
+        return U32_BUTT;
+    }
+
+    return ulSCNo % ulHashSize;
+}
+
+S32 sc_bg_job_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
+{
+    U32 ulRCNo;
+    SC_BG_JOB_HASH_NODE_ST *pstBGJobNode;
+
+    if (DOS_ADDR_INVALID(pSymName) || DOS_ADDR_INVALID(pNode) || DOS_ADDR_INVALID(pNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstBGJobNode = (SC_BG_JOB_HASH_NODE_ST *)pNode->pHandle;
+    ulRCNo = *(U32 *)pSymName;
+
+    if (ulRCNo != pstBGJobNode->ulRCNo)
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+U32 sc_bg_job_hash_add(S8 *pszUUID, U32 ulUUIDLen, U32 ulRCNo)
+{
+    U32 ulHashVal;
+    HASH_NODE_S *pNode;
+    SC_BG_JOB_HASH_NODE_ST *pstBGJobNode;
+
+    if (DOS_ADDR_INVALID(pszUUID) || 0 == ulUUIDLen || ulRCNo >= SC_MAX_SCB_NUM)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashVal = sc_hash_by_scb(SC_BGJOB_HASH_SIZE, ulRCNo);
+    if (U32_BUTT == ulHashVal)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+    pNode = hash_find_node(g_pstTaskMngtInfo->pstHashBGJobHash, ulHashVal, &ulRCNo, sc_bg_job_hash_find);
+    if (DOS_ADDR_INVALID(pNode))
+    {
+        pNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+        pstBGJobNode = dos_dmem_alloc(sizeof(SC_BG_JOB_HASH_NODE_ST));
+        if (DOS_ADDR_INVALID(pNode) || DOS_ADDR_INVALID(pstBGJobNode))
+        {
+            if (DOS_ADDR_VALID(pNode))
+            {
+                DOS_ASSERT(0);
+                dos_dmem_free(pNode);
+            }
+
+            if (DOS_ADDR_VALID(pstBGJobNode))
+            {
+                DOS_ASSERT(0);
+                dos_dmem_free(pstBGJobNode);
+            }
+
+            DOS_ASSERT(0);
+            pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+            return DOS_SUCC;
+        }
+
+        HASH_Init_Node(pNode);
+        pNode->pHandle = pstBGJobNode;
+        pstBGJobNode->ulRCNo = ulRCNo;
+        dos_strncpy(pstBGJobNode->szJobUUID, pszUUID, sizeof(pstBGJobNode->szJobUUID));
+        pstBGJobNode->szJobUUID[sizeof(pstBGJobNode->szJobUUID) - 1] = '\0';
+
+        hash_add_node(g_pstTaskMngtInfo->pstHashBGJobHash, pNode, ulHashVal, NULL);
+
+        sc_logr_info(SC_ESL, "Add background-job to the hash table. UUID: %s, RCNo: %u", pszUUID, ulRCNo);
+    }
+    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+
+    return DOS_SUCC;
+}
+
+U32 sc_bg_job_hash_delete(U32 ulRCNo)
+{
+    U32 ulHashVal;
+    HASH_NODE_S *pNode;
+    SC_BG_JOB_HASH_NODE_ST *pstBGJobNode;
+
+    if (ulRCNo >= SC_MAX_SCB_NUM)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashVal = sc_hash_by_scb(SC_BGJOB_HASH_SIZE, ulRCNo);
+    if (U32_BUTT == ulHashVal)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+    pNode = hash_find_node(g_pstTaskMngtInfo->pstHashBGJobHash, ulHashVal, &ulRCNo, sc_bg_job_hash_find);
+    if (DOS_ADDR_VALID(pNode))
+    {
+
+        hash_delete_node(g_pstTaskMngtInfo->pstHashBGJobHash, pNode, ulHashVal);
+
+        if (DOS_ADDR_VALID(pNode->pHandle))
+        {
+            pstBGJobNode = pNode->pHandle;
+            sc_logr_info(SC_ESL, "Add background-job to the hash table. UUID: %s, RCNo: %u", pstBGJobNode->szJobUUID, ulRCNo);
+            dos_dmem_free(pNode->pHandle);
+            pNode->pHandle = NULL;
+            pstBGJobNode= NULL;
+        }
+
+        if (pNode->pHandle)
+        {
+            dos_dmem_free(pNode->pHandle);
+        }
+
+        dos_dmem_free(pNode);
+    }
+    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+
+    return DOS_SUCC;
+}
+
+BOOL sc_bg_job_find(U32 ulRCNo)
+{
+    U32 ulHashVal;
+    HASH_NODE_S *pNode;
+
+    if (ulRCNo >= SC_MAX_SCB_NUM)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashVal = sc_hash_by_scb(SC_BGJOB_HASH_SIZE, ulRCNo);
+    if (U32_BUTT == ulHashVal)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+    pNode = hash_find_node(g_pstTaskMngtInfo->pstHashBGJobHash, ulHashVal, &ulRCNo, sc_bg_job_hash_find);
+    pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
+    if (DOS_ADDR_INVALID(pNode))
+    {
+        return DOS_FALSE;
+    }
+
+    return DOS_TRUE;
+}
+
+
 
 #ifdef __cplusplus
 }

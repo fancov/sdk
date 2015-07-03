@@ -8,11 +8,11 @@
   *              Todo:Monitoring process resources
   *           History:
   */
- 
+
 #ifndef _MON_GET_NET_INFO_H__
 #define _MON_GET_NET_INFO_H__
 
-#if INCLUDE_RES_MONITOR  
+#if INCLUDE_RES_MONITOR
 
 #include <dos/dos_types.h>
 
@@ -28,7 +28,7 @@ typedef struct tagNetcardParam //网卡信息
    S8  szIPAddress[32];     //本地IPv4地址
    S8  szBroadIPAddress[32];//广播IP地址
    S8  szNetMask[32];       //子网掩码
-   U32 ulRWSpeed;            //数据传输最大速率
+   U32 ulRWSpeed;            //数据传输最大速率，单位KB/s
 }MON_NET_CARD_PARAM_S;
 
 
@@ -37,8 +37,7 @@ U32  mon_netcard_free();
 BOOL mon_is_netcard_connected(const S8 * pszNetCard);
 U32  mon_get_data_trans_speed(const S8 * pszDevName);
 U32  mon_get_netcard_data();
-U32  mon_netcard_formatted_info();
 
 
-#endif //#if INCLUDE_RES_MONITOR  
+#endif //#if INCLUDE_RES_MONITOR
 #endif // end of _MON_GET_NET_INFO_H__

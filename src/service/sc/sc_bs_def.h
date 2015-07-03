@@ -36,7 +36,15 @@ typedef struct tagBSClient
     U32 blValid;
     U32 ulStatus;
     S32 lSocket;
+
     U16 usPort;
+    U16 usCommProto;
+
+    union tagAddr{
+        struct sockaddr_in  stInAddr;
+        struct sockaddr_un  stUnAddr;
+    }stAddr;
+
     U32 aulIPAddr[4];
     U32 ulHBFailCnt;
     DOS_TMR_ST hTmrHBInterval;
@@ -57,7 +65,6 @@ typedef struct tagBSMsgNode
     VOID          *pData;          /* Êý¾Ý */
     U32           ulLength;
 
-    sem_t         semSyn;
     U32           blNeedSyn;
     DOS_TMR_ST    hTmrSendInterval;
 }SC_BS_MSG_NODE;

@@ -23,6 +23,7 @@
 
 
 #include <dos.h>
+#include <esl.h>
 #include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_acd_def.h"
@@ -152,6 +153,7 @@ U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID)
             return DOS_FAIL;
         }
         pstCWQNode->ulAgentGrpID = ulAgentGrpID;
+        pstCWQNode->ulStartWaitingTime = 0;
         DLL_Init(&pstCWQNode->stCallWaitingQueue);
         pthread_mutex_init(&pstCWQNode->mutexCWQMngt, NULL);
 
@@ -160,6 +162,8 @@ U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID)
         pthread_mutex_lock(&g_mutexCWQMngt);
         DLL_Add(&g_stCWQMngt, pstDLLNode);
         pthread_mutex_unlock(&g_mutexCWQMngt);
+
+        sc_acd_agent_grp_add_call(ulAgentGrpID);
     }
     else
     {
@@ -222,6 +226,7 @@ U32 sc_cwq_del_call(SC_SCB_ST *pstSCB)
             continue;
         }
 
+        pthread_mutex_lock(&pstCWQNode->mutexCWQMngt);
         DLL_Scan(&pstCWQNode->stCallWaitingQueue, pstDLLNode1, DLL_NODE_S*)
         {
             if (DOS_ADDR_INVALID(pstDLLNode1))
@@ -237,9 +242,10 @@ U32 sc_cwq_del_call(SC_SCB_ST *pstSCB)
 
             if (pstSCB1 == pstSCB)
             {
-                pthread_mutex_lock(&pstCWQNode->mutexCWQMngt);
+                sc_acd_agent_grp_del_call(pstCWQNode->ulAgentGrpID);
+                sc_acd_agent_grp_stat(pstCWQNode->ulAgentGrpID, 0);
+
                 dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode1);
-                pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);
                 DLL_Init_Node(pstDLLNode1);
 
                 dos_dmem_free(pstDLLNode1);
@@ -247,6 +253,7 @@ U32 sc_cwq_del_call(SC_SCB_ST *pstSCB)
                 break;
             }
         }
+        pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);
     }
 
     return DOS_SUCC;
@@ -295,6 +302,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 continue;
             }
 
+            pthread_mutex_lock(&pstCWQNode->mutexCWQMngt);
             DLL_Scan(&pstCWQNode->stCallWaitingQueue, pstDLLNode1, DLL_NODE_S*)
             {
                 if (DOS_ADDR_INVALID(pstDLLNode1))
@@ -311,12 +319,13 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 if (sc_acd_query_idel_agent(pstCWQNode->ulAgentGrpID, &blHasIdelAgent) != DOS_SUCC
                     || !blHasIdelAgent)
                 {
+                    pstCWQNode->ulStartWaitingTime = time(0);
                     break;
                 }
 
-                pthread_mutex_lock(&pstCWQNode->mutexCWQMngt);
                 dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode1);
-                pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);
+
+                sc_acd_agent_grp_del_call(pstCWQNode->ulAgentGrpID);
 
                 DLL_Init_Node(pstDLLNode1);
                 dos_dmem_free(pstDLLNode1);
@@ -326,6 +335,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
                     DOS_ASSERT(0);
                 }
             }
+            pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);
         }
     }
 

@@ -17,6 +17,7 @@ extern "C"{
 
 /* include public header files */
 #include <dos.h>
+#include <esl.h>
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -48,6 +49,29 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
 
     {"",                         NULL}
 };
+
+
+http_req_handle sc_http_api_find(S8 *pszName)
+{
+    U32 ulIndex;
+
+    if (DOS_ADDR_INVALID(pszName) || '\0' == pszName[0])
+    {
+        return NULL;
+    }
+
+    for (ulIndex=0; ulIndex<(sizeof(g_pstHttpReqRegTable)/sizeof(SC_HTTP_REQ_REG_TABLE_SC)); ulIndex++)
+    {
+        if (g_pstHttpReqRegTable[ulIndex].pszRequest
+            && dos_strcmp(g_pstHttpReqRegTable[ulIndex].pszRequest, pszName) == 0
+            && g_pstHttpReqRegTable[ulIndex].callback)
+        {
+            return g_pstHttpReqRegTable[ulIndex].callback;
+        }
+    }
+
+    return NULL;
+}
 
 
 /* declare functions */
@@ -101,12 +125,19 @@ static S8 *sc_http_api_get_value(list_t *pstParamList, S8 *pszKey)
     return NULL;
 }
 
-U32 sc_http_api_reload_xml(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_reload_xml(list_t *pstArgv)
 {
     U32 ulCustomID, ulAction, ulGatewayID, ulDialplan;
     S8  *pszCustomID = NULL, *pszAction = NULL, *pszGatewayID = NULL, *pszDialplan = NULL;
 
-    pszCustomID = sc_http_api_get_value(&pstClient->stParamList, "userid");
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FALSE;
+    }
+
+    pszCustomID = sc_http_api_get_value(pstArgv, "userid");
     if (!pszCustomID)
     {
         ulCustomID = U32_BUTT;
@@ -121,7 +152,7 @@ U32 sc_http_api_reload_xml(SC_HTTP_CLIENT_CB_S *pstClient)
         }
     }
 
-    pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
+    pszAction = sc_http_api_get_value(pstArgv, "action");
     if (!pszAction)
     {
         ulAction = SC_API_CMD_ACTION_BUTT;
@@ -144,7 +175,7 @@ U32 sc_http_api_reload_xml(SC_HTTP_CLIENT_CB_S *pstClient)
         }
     }
 
-    pszGatewayID = sc_http_api_get_value(&pstClient->stParamList, "gateway");
+    pszGatewayID = sc_http_api_get_value(pstArgv, "gateway");
     if (!pszGatewayID)
     {
         ulGatewayID = U32_BUTT;
@@ -157,7 +188,7 @@ U32 sc_http_api_reload_xml(SC_HTTP_CLIENT_CB_S *pstClient)
         }
     }
 
-    pszDialplan = sc_http_api_get_value(&pstClient->stParamList, "dialplan");
+    pszDialplan = sc_http_api_get_value(pstArgv, "dialplan");
     if (!pszDialplan)
     {
         ulDialplan = U32_BUTT;
@@ -170,18 +201,16 @@ U32 sc_http_api_reload_xml(SC_HTTP_CLIENT_CB_S *pstClient)
         }
     }
 
-    return DOS_SUCC;
+    return SC_HTTP_ERRNO_SUCC;
 
 invalid_params:
-    pstClient->ulResponseCode = 200;
-    pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
 
     SC_TRACE_OUT();
-    return DOS_FAIL;
+    return SC_HTTP_ERRNO_INVALID_PARAM;
 
 }
 
-U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_task_ctrl(list_t *pstArgv)
 {
     S8 *pszCustomID = NULL;
     S8 *pszTaskID = NULL;
@@ -189,14 +218,14 @@ U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient)
     U32 ulCustomID, ulTaskID, ulAction;
     SC_TASK_CTRL_CMD_ST *pstCMD = NULL;
 
-    if (DOS_ADDR_INVALID(pstClient))
+    if (DOS_ADDR_INVALID(pstArgv))
     {
         DOS_ASSERT(0);
 
-        return SC_HTTP_ERRNO_INVALID_REQUEST;
+        return DOS_FALSE;
     }
 
-    SC_TRACE_IN(pstClient, 0, 0, 0);
+    SC_TRACE_IN(pstArgv, 0, 0, 0);
 /*
     pszCMD = sc_http_api_get_value(&pstClient->stParamList, "cmd");
     if (!pszCMD || '\0' == pszCMD[0])
@@ -211,7 +240,7 @@ U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient)
     }
 */
 
-    pszCustomID = sc_http_api_get_value(&pstClient->stParamList, "userid");
+    pszCustomID = sc_http_api_get_value(pstArgv, "userid");
     if (!pszCustomID || '\0' == pszCustomID[0])
     {
         DOS_ASSERT(0);
@@ -223,7 +252,7 @@ U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient)
         goto invalid_params;
     }
 
-    pszTaskID = sc_http_api_get_value(&pstClient->stParamList, "task");
+    pszTaskID = sc_http_api_get_value(pstArgv, "task");
     if (!pszTaskID || '\0' == pszTaskID[0])
     {
         DOS_ASSERT(0);
@@ -235,7 +264,7 @@ U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient)
         goto invalid_params;
     }
 
-    pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
+    pszAction = sc_http_api_get_value(pstArgv, "action");
     if (!pszAction || '\0' == pszAction[0])
     {
         DOS_ASSERT(0);
@@ -305,8 +334,6 @@ U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient)
         goto exec_fail;
     }
 #endif
-    pstClient->ulResponseCode = 200;
-    pstClient->ulErrCode = pstCMD->ulCMDErrCode;
 
     if (sc_task_cmd_queue_del(pstCMD) == DOS_SUCC)
     {
@@ -321,24 +348,20 @@ U32 sc_http_api_task_ctrl(SC_HTTP_CLIENT_CB_S *pstClient)
     }
     else
     {
-        pstClient->ulResponseCode = 200;
-        pstClient->ulErrCode = SC_HTTP_ERRNO_CMD_EXEC_FAIL;
         DOS_ASSERT(0);
+
+        goto exec_fail;
     }
 
     SC_TRACE_OUT();
-    return DOS_TRUE;
+    return SC_HTTP_ERRNO_SUCC;
 
 invalid_params:
-    pstClient->ulResponseCode = 200;
-    pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
 
     SC_TRACE_OUT();
-    return DOS_FAIL;
+    return SC_HTTP_ERRNO_INVALID_PARAM;
 
 exec_fail:
-    pstClient->ulResponseCode = 200;
-    pstClient->ulErrCode = SC_HTTP_ERRNO_CMD_EXEC_FAIL;
 
     if (pstCMD->pszErrMSG)
     {
@@ -350,7 +373,7 @@ exec_fail:
     pstCMD = NULL;
 
     SC_TRACE_OUT();
-    return DOS_FAIL;
+    return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
 }
 
 //////////////////////////////////////////////////////
@@ -363,23 +386,23 @@ exec_fail:
  *      SC_HTTP_CLIENT_CB_S *pstClient: 客户端指针
  * 返回值: 成功则返回DOS_TRUE,否则返回DOS_FALSE
  */
-U32 sc_http_api_gateway_action(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_gateway_action(list_t *pstArgv)
 {
    S8   *pszGateWayID = NULL, *pszAction = NULL;
    U32  ulGatewayID, ulAction;
 
-   if (DOS_ADDR_INVALID(pstClient))
+   if (DOS_ADDR_INVALID(pstArgv))
    {
        DOS_ASSERT(0);
        return SC_HTTP_ERRNO_INVALID_REQUEST;
    }
 
-   SC_TRACE_IN(pstClient, 0, 0, 0);
+   SC_TRACE_IN(pstArgv, 0, 0, 0);
 
    /* 获取网关id */
-   pszGateWayID = sc_http_api_get_value(&pstClient->stParamList, "gateway_id");
+   pszGateWayID = sc_http_api_get_value(pstArgv, "gateway_id");
    /* 获取动作 */
-   pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
+   pszAction = sc_http_api_get_value(pstArgv, "action");
 
    if (DOS_ADDR_INVALID(pszGateWayID)
        || DOS_ADDR_INVALID(pszAction))
@@ -419,36 +442,34 @@ U32 sc_http_api_gateway_action(SC_HTTP_CLIENT_CB_S *pstClient)
    }
 
    SC_TRACE_OUT();
-   return DOS_SUCC;
+   return SC_HTTP_ERRNO_SUCC;
 
 invalid_params:
-   pstClient->ulResponseCode = 200;
-   pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
 
    SC_TRACE_OUT();
-   return DOS_FAIL;
+   return SC_HTTP_ERRNO_INVALID_PARAM;
 }
 
-U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_sip_action(list_t *pstArgv)
 {
     S8  *pszSipID = NULL, *pszAction = NULL, *pszCustomerID = NULL;
     U32 ulSipID, ulAction, ulCustomerID;
 
-    if (DOS_ADDR_INVALID(pstClient))
+    if (DOS_ADDR_INVALID(pstArgv))
     {
         DOS_ASSERT(0);
 
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    SC_TRACE_IN(pstClient, 0, 0, 0);
+    SC_TRACE_IN(pstArgv, 0, 0, 0);
 
     /* 获取sip账户id */
-    pszSipID = sc_http_api_get_value(&pstClient->stParamList, "sip_id");
+    pszSipID = sc_http_api_get_value(pstArgv, "sip_id");
     /* 获取SIP账户所属客户ID */
-    pszCustomerID = sc_http_api_get_value(&pstClient->stParamList, "customer_id");
+    pszCustomerID = sc_http_api_get_value(pstArgv, "customer_id");
     /* 获取动作 */
-    pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
+    pszAction = sc_http_api_get_value(pstArgv, "action");
 
     if (DOS_ADDR_INVALID(pszSipID)
         || DOS_ADDR_INVALID(pszCustomerID)
@@ -498,17 +519,15 @@ U32 sc_http_api_sip_action(SC_HTTP_CLIENT_CB_S *pstClient)
     return DOS_SUCC;
 
 invalid_params:
-       pstClient->ulResponseCode = 200;
-       pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
 
-       SC_TRACE_OUT();
-       return DOS_FAIL;
+   SC_TRACE_OUT();
+   return SC_HTTP_ERRNO_INVALID_PARAM;
 }
 
  ////////////////////////////////////////////////////
 
 
-U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_num_verify(list_t *pstArgv)
 {
     S8 *pszCustomer = NULL;
     S8 *pszCaller   = NULL;
@@ -518,11 +537,18 @@ U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient)
     U32 ulCustomer = U32_BUTT;
     U32 ulPlayCnt  = 0;
 
-    pszCustomer = sc_http_api_get_value(&pstClient->stParamList, "customer");
-    pszCaller = sc_http_api_get_value(&pstClient->stParamList, "caller");
-    pszCallee = sc_http_api_get_value(&pstClient->stParamList, "callee");
-    pszPassword = sc_http_api_get_value(&pstClient->stParamList, "verify_num");
-    pszPlaycnt = sc_http_api_get_value(&pstClient->stParamList, "play_cnt");
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    pszCustomer = sc_http_api_get_value(pstArgv, "customer");
+    pszCaller = sc_http_api_get_value(pstArgv, "caller");
+    pszCallee = sc_http_api_get_value(pstArgv, "callee");
+    pszPassword = sc_http_api_get_value(pstArgv, "verify_num");
+    pszPlaycnt = sc_http_api_get_value(pstArgv, "play_cnt");
     if (DOS_ADDR_INVALID(pszCustomer)
         || DOS_ADDR_INVALID(pszCaller)
         || DOS_ADDR_INVALID(pszCallee)
@@ -548,28 +574,33 @@ U32 sc_http_api_num_verify(SC_HTTP_CLIENT_CB_S *pstClient)
 
     sc_dial_make_call_for_verify(ulCustomer, pszCaller, pszCallee, pszPassword, ulPlayCnt);
 
-    return DOS_SUCC;
+    return SC_HTTP_ERRNO_SUCC;
 
 invalid_params:
-    pstClient->ulResponseCode = 200;
-    pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
     SC_TRACE_OUT();
-    return DOS_FAIL;
+    return SC_HTTP_ERRNO_INVALID_PARAM;
 }
 
-U32 sc_http_api_call_ctrl(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_call_ctrl(list_t *pstArgv)
 {
     return DOS_FAIL;
 }
 
-U32 sc_http_api_agent_grp(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_agent_grp(list_t *pstArgv)
 {
     S8 *pszAgentGrpID = NULL;
     S8 *pszAction     = NULL;
     U32 ulAgentGrpID = U32_BUTT, ulAction = U32_BUTT;
 
-    pszAgentGrpID = sc_http_api_get_value(&pstClient->stParamList, "agentgrp_id");
-    pszAction  = sc_http_api_get_value(&pstClient->stParamList, "action");
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    pszAgentGrpID = sc_http_api_get_value(pstArgv, "agentgrp_id");
+    pszAction  = sc_http_api_get_value(pstArgv, "action");
 
     if (DOS_ADDR_INVALID(pszAgentGrpID)
         || DOS_ADDR_INVALID(pszAction))
@@ -610,36 +641,35 @@ U32 sc_http_api_agent_grp(SC_HTTP_CLIENT_CB_S *pstClient)
     }
 
     SC_TRACE_OUT();
-    return DOS_SUCC;
+    return SC_HTTP_ERRNO_SUCC;
 
 invalid_params:
-    pstClient->ulResponseCode = 200;
-    pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
+
     SC_TRACE_OUT();
-    return DOS_FAIL;
+    return SC_HTTP_ERRNO_INVALID_PARAM;
 
 }
 
-U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_agent_action(list_t *pstArgv)
 {
     S8 *pszAgentID    = NULL;
     S8 *pszUserID     = NULL;
     S8 *pszAction     = NULL;
     U32 ulAgentID = U32_BUTT, ulAction = U32_BUTT;
 
-    if (DOS_ADDR_INVALID(pstClient))
+    if (DOS_ADDR_INVALID(pstArgv))
     {
         DOS_ASSERT(0);
 
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    SC_TRACE_IN(pstClient, 0, 0, 0);
+    SC_TRACE_IN(pstArgv, 0, 0, 0);
 
 
-    pszAgentID = sc_http_api_get_value(&pstClient->stParamList, "agent_id");
-    pszUserID = sc_http_api_get_value(&pstClient->stParamList, "sip_userid");
-    pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
+    pszAgentID = sc_http_api_get_value(pstArgv, "agent_id");
+    pszUserID = sc_http_api_get_value(pstArgv, "sip_userid");
+    pszAction = sc_http_api_get_value(pstArgv, "action");
     if (DOS_ADDR_INVALID(pszAgentID)
         || DOS_ADDR_INVALID(pszUserID)
         || DOS_ADDR_INVALID(pszAction))
@@ -698,22 +728,22 @@ U32 sc_http_api_agent_action(SC_HTTP_CLIENT_CB_S *pstClient)
     return SC_HTTP_ERRNO_SUCC;
 }
 
-U32 sc_http_api_route_action(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_route_action(list_t *pstArgv)
 {
     S8   *pszRouteID = NULL, *pszAction = NULL;
     U32  ulAction, ulRouteID;
 
-    if (DOS_ADDR_INVALID(pstClient))
+    if (DOS_ADDR_INVALID(pstArgv))
     {
         DOS_ASSERT(0);
 
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    SC_TRACE_IN(pstClient, 0, 0, 0);
+    SC_TRACE_IN(pstArgv, 0, 0, 0);
 
-    pszRouteID = sc_http_api_get_value(&pstClient->stParamList, "route_id");
-    pszAction  = sc_http_api_get_value(&pstClient->stParamList, "action");
+    pszRouteID = sc_http_api_get_value(pstArgv, "route_id");
+    pszAction  = sc_http_api_get_value(pstArgv, "action");
 
     if (DOS_ADDR_INVALID(pszRouteID)
         || DOS_ADDR_INVALID(pszAction))
@@ -749,32 +779,31 @@ U32 sc_http_api_route_action(SC_HTTP_CLIENT_CB_S *pstClient)
     if (sc_http_route_update_proc(ulAction, ulRouteID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        return DOS_FAIL;
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }
 
     SC_TRACE_OUT();
-    return DOS_SUCC;
+    return SC_HTTP_ERRNO_SUCC;
 
 invalid_params:
-    pstClient->ulResponseCode = 200;
-    pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
+
     SC_TRACE_OUT();
-    return DOS_FAIL;
+    return SC_HTTP_ERRNO_INVALID_PARAM;
 }
 
-U32 sc_http_api_gw_group_action(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_gw_group_action(list_t *pstArgv)
 {
     S8   *pszGwGroupID = NULL, *pszAction = NULL;
     U32   ulGwGroupID, ulAction;
 
-    if (DOS_ADDR_INVALID(pstClient))
+    if (DOS_ADDR_INVALID(pstArgv))
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    pszGwGroupID = sc_http_api_get_value(&pstClient->stParamList, "gw_group_id");
-    pszAction    = sc_http_api_get_value(&pstClient->stParamList, "action");
+    pszGwGroupID = sc_http_api_get_value(pstArgv, "gw_group_id");
+    pszAction    = sc_http_api_get_value(pstArgv, "action");
 
     if (DOS_ADDR_INVALID(pszGwGroupID)
         || DOS_ADDR_INVALID(pszAction))
@@ -810,33 +839,32 @@ U32 sc_http_api_gw_group_action(SC_HTTP_CLIENT_CB_S *pstClient)
     if (sc_http_gw_group_update_proc(ulAction, ulGwGroupID) != DOS_SUCC)
     {
        DOS_ASSERT(0);
-       return DOS_FAIL;
+       return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }
 
     SC_TRACE_OUT();
-    return DOS_SUCC;
+    return SC_HTTP_ERRNO_SUCC;
 
 invalid_params:
-    pstClient->ulResponseCode = 200;
-    pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
+
     SC_TRACE_OUT();
-    return DOS_FAIL;
+    return SC_HTTP_ERRNO_INVALID_PARAM;
 
 }
 
-U32 sc_http_api_did_action(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_did_action(list_t *pstArgv)
 {
     S8  *pszDidID = NULL, *pszAction = NULL;
     U32  ulDidID, ulAction;
 
-    if (DOS_ADDR_INVALID(pstClient))
+    if (DOS_ADDR_INVALID(pstArgv))
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    pszDidID  = sc_http_api_get_value(&pstClient->stParamList, "did_id");
-    pszAction = sc_http_api_get_value(&pstClient->stParamList, "action");
+    pszDidID  = sc_http_api_get_value(pstArgv, "did_id");
+    pszAction = sc_http_api_get_value(pstArgv, "action");
 
     if (DOS_ADDR_INVALID(pszDidID)
         || DOS_ADDR_INVALID(pszAction))
@@ -872,32 +900,30 @@ U32 sc_http_api_did_action(SC_HTTP_CLIENT_CB_S *pstClient)
     if (sc_http_did_update_proc(ulAction, ulDidID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        return DOS_FAIL;
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }
 
     SC_TRACE_OUT();
-    return DOS_SUCC;
+    return SC_HTTP_ERRNO_SUCC;
 
 invalid_params:
-    pstClient->ulResponseCode = 200;
-    pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
     SC_TRACE_OUT();
-    return DOS_FAIL;
+    return SC_HTTP_ERRNO_INVALID_PARAM;
 }
 
-U32 sc_http_api_black_action(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_black_action(list_t *pstArgv)
 {
     S8  *pszBlackID = NULL, *pszAction = NULL;
     U32  ulAction, ulBlackID;
 
-    if (DOS_ADDR_INVALID(pstClient))
+    if (DOS_ADDR_INVALID(pstArgv))
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    pszBlackID = sc_http_api_get_value(&pstClient->stParamList, "black_id");
-    pszAction  = sc_http_api_get_value(&pstClient->stParamList, "action");
+    pszBlackID = sc_http_api_get_value(pstArgv, "black_id");
+    pszAction  = sc_http_api_get_value(pstArgv, "action");
 
     if (DOS_ADDR_INVALID(pszBlackID)
         || DOS_ADDR_INVALID(pszAction))
@@ -933,33 +959,32 @@ U32 sc_http_api_black_action(SC_HTTP_CLIENT_CB_S *pstClient)
     if (sc_http_black_update_proc(ulAction, ulBlackID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        return DOS_FAIL;
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }
 
     SC_TRACE_OUT();
-    return DOS_SUCC;
+    return SC_HTTP_ERRNO_SUCC;
 
 invalid_params:
-    pstClient->ulResponseCode = 200;
-    pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
+
     SC_TRACE_OUT();
-    return DOS_FAIL;
+    return SC_HTTP_ERRNO_INVALID_PARAM;
 }
 
-U32 sc_http_api_caller_action(SC_HTTP_CLIENT_CB_S *pstClient)
+U32 sc_http_api_caller_action(list_t *pstArgv)
 {//待完成
     S8  *pszCallerID = NULL, *pszAction = NULL;
     U32  ulCallerID, ulAction;
 
-    if (DOS_ADDR_INVALID(pstClient))
+    if (DOS_ADDR_INVALID(pstArgv))
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
     /* 获取主叫号码 */
-    pszCallerID = sc_http_api_get_value(&pstClient->stParamList, "caller_id");
-    pszAction   = sc_http_api_get_value(&pstClient->stParamList, "action");
+    pszCallerID = sc_http_api_get_value(pstArgv, "caller_id");
+    pszAction   = sc_http_api_get_value(pstArgv, "action");
 
     if (DOS_ADDR_INVALID(pszCallerID)
         || DOS_ADDR_INVALID(pszAction))
@@ -989,17 +1014,16 @@ U32 sc_http_api_caller_action(SC_HTTP_CLIENT_CB_S *pstClient)
     else
     {
         DOS_ASSERT(0);
-        goto invalid_params;
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }
 
     SC_TRACE_OUT();
-    return DOS_SUCC;
+    return SC_HTTP_ERRNO_SUCC;
 
 invalid_params:
-    pstClient->ulResponseCode = 200;
-    pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_PARAM;
+
     SC_TRACE_OUT();
-    return DOS_FAIL;
+    return SC_HTTP_ERRNO_INVALID_PARAM;
 
 }
 
@@ -1011,9 +1035,10 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
     S8        szReqBuffer[SC_HTTP_REQ_MAX_LEN] = { 0 };
     S8        szReqLine[1024] = { 0 };
     S32       lKeyCnt = 0, lParamIndex = 0;
-    U32       ulIndex, ulRet;
+    U32       ulRet;
     list_t    *pstParamListNode;
     SC_API_PARAMS_ST *pstParamsList;
+    http_req_handle cb;
 
     SC_TRACE_IN((U64)pstClient,0,0,0);
 
@@ -1153,20 +1178,13 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
 
     sc_logr_debug(SC_HTTP_API, "%s", "Prase the http request finished.");
 
-    ulRet = DOS_FAIL;
-    for (ulIndex=0; ulIndex<(sizeof(g_pstHttpReqRegTable)/sizeof(SC_HTTP_REQ_REG_TABLE_SC)); ulIndex++)
+    ulRet = SC_HTTP_ERRNO_INVALID_REQUEST;
+    cb = sc_http_api_find(szReqBuffer);
+    if (cb)
     {
-        if (g_pstHttpReqRegTable[ulIndex].pszRequest
-            && dos_strcmp(g_pstHttpReqRegTable[ulIndex].pszRequest, szReqBuffer) == 0)
-        {
-            if (g_pstHttpReqRegTable[ulIndex].callback)
-            {
-                ulRet = g_pstHttpReqRegTable[ulIndex].callback(pstClient);
-            }
-
-            break;
-        }
+        ulRet = cb(&(pstClient->stParamList));
     }
+
 
     sc_logr_notice(SC_HTTP_API, "HTTP Request process finished. Return code: %d", ulRet);
 
@@ -1201,13 +1219,10 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
         pszKeyWord[lParamIndex] = NULL;
     }
 
-    if (DOS_SUCC == ulRet)
-    {
-        pstClient->ulErrCode = SC_HTTP_ERRNO_SUCC;
-        pstClient->ulResponseCode = SC_HTTP_OK;
-        SC_TRACE_OUT();
-        return DOS_SUCC;
-    }
+    pstClient->ulErrCode = ulRet;
+    pstClient->ulResponseCode = SC_HTTP_OK;
+    SC_TRACE_OUT();
+    return DOS_SUCC;
 
 cmd_prase_fail1:
     pstClient->ulErrCode = SC_HTTP_ERRNO_INVALID_REQUEST;
