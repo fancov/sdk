@@ -12,7 +12,7 @@
 #ifndef _MONITOR_H__
 #define _MONITOR_H__
 
-#if INCLUDE_RES_MONITOR  
+#if INCLUDE_RES_MONITOR
 
 #define CPU_RES                   0x000000f1 //CPU资源
 #define MEM_RES                   0x000000f2 //内存资源
@@ -44,6 +44,26 @@ do {\
 while(0)
 #endif
 
+enum MON_WARNING_LEVEL_E
+{
+    MON_WARNING_EMERG = 0,     //紧急告警
+    MON_WARNING_IMPORTANT,     //重要告警
+    MON_WARNING_SECONDARY,     //次要告警
+    MON_WARNING_PROMPT,        //提示
+
+    MON_WARNING_BUTT = 32
+};
+
+typedef struct tagWarningMsg
+{
+    U32   ulNo;              //告警编号
+    BOOL  bExcep;            //是否正常状态
+    U32   ulWarningLevel;    //告警级别
+    S8    szWarningDesc[32]; //告警描述
+    S8    szNormalDesc[32];  //正常描述
+}MON_WARNING_MSG_S;
+
+
 U32  mon_init_str_array();
 U32  mon_deinit_str_array();
 BOOL mon_is_substr(S8 * pszSrc, S8 * pszDest);
@@ -52,9 +72,9 @@ BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix);
 U32  mon_first_int_from_str(S8 * pszStr);
 U32  mon_analyse_by_reg_expr(S8* pszStr, S8* pszRegExpr, S8* pszRsltList[], U32 ulLen);
 U32  mon_generate_warning_id(U32 ulResType, U32 ulNo, U32 ulErrType);
-S8 * mon_str_get_name(S8 * pszCmd); 
+S8 * mon_str_get_name(S8 * pszCmd);
 
 
-#endif //#if INCLUDE_RES_MONITOR  
+#endif //#if INCLUDE_RES_MONITOR
 #endif // end of _MONITOR_H__
 

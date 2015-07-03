@@ -13,7 +13,7 @@
 #ifndef _MON_GET_CPU_INFO_H__
 #define _MON_GET_CPU_INFO_H__
 
-#if INCLUDE_RES_MONITOR  
+#if INCLUDE_RES_MONITOR
 
 #include <dos/dos_types.h>
 
@@ -26,7 +26,7 @@
 typedef struct tagSysMonCPUTime
 {
    U32  ulUser;         //用户态CPU时间
-   U32  ulNice;         //nice为负的进程占用CPU时间 
+   U32  ulNice;         //nice为负的进程占用CPU时间
    U32  ulSystem;       //核心时间
    U32  ulIdle;         //CPU空闲等待时间
    U32  ulIowait;       //硬盘IO等待时间
@@ -52,9 +52,8 @@ U32  mon_cpu_rslt_malloc();
 U32  mon_cpu_rslt_free();
 U32  mon_init_cpu_queue();
 U32  mon_get_cpu_rslt_data();
-U32  mon_get_cpu_rslt_formatted_info();
 U32  mon_cpu_queue_destroy();
 
-#endif // end #if INCLUDE_RES_MONITOR  
+#endif // end #if INCLUDE_RES_MONITOR
 #endif // end of _MON_GET_CPU_INFO_H__
 

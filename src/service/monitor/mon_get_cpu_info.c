@@ -77,7 +77,7 @@ U32 mon_cpu_rslt_malloc()
                 , dos_get_filename(__FILE__), __LINE__, g_pstCpuRslt);
       return DOS_FAIL;
    }
-   
+
    memset(g_pstCpuRslt, 0, sizeof(MON_CPU_RSLT_S));
 
    return DOS_SUCC;
@@ -98,7 +98,7 @@ U32 mon_cpu_rslt_free()
                     , dos_get_filename(__FILE__), __LINE__, g_pstCpuRslt);
       return DOS_FAIL;
    }
-   
+
    dos_dmem_free(g_pstCpuRslt);
    g_pstCpuRslt = NULL;
 
@@ -131,7 +131,7 @@ static U32  mon_cpu_reset_data()
 
     return DOS_SUCC;
 }
- 
+
 static U32  mon_get_cpu_data(MON_SYS_CPU_TIME_S * pstCpu)
 {
    FILE * fp = NULL;
@@ -160,7 +160,7 @@ static U32  mon_get_cpu_data(MON_SYS_CPU_TIME_S * pstCpu)
       U32 ulRet = 0;
       U32 ulRows = 0;
       U32 ulData = 0;
-      
+
       ulRet = mon_analyse_by_reg_expr(szBuff, " \t\n", pszAnalyseRslt, sizeof(pszAnalyseRslt)/sizeof(pszAnalyseRslt[0]));
       if(DOS_SUCC != ulRet)
       {
@@ -178,7 +178,7 @@ static U32  mon_get_cpu_data(MON_SYS_CPU_TIME_S * pstCpu)
                         , dos_get_filename(__FILE__), __LINE__);
             goto failure;
          }
-         
+
          switch(ulRows)
          {
            /**
@@ -238,7 +238,7 @@ failure:
 U32 mon_init_cpu_queue()
 {
    U32 ulRet = 0;
-   
+
    m_pstCPUQueue = (MON_CPU_QUEUE_S *)dos_dmem_alloc(sizeof(MON_CPU_QUEUE_S));
    if (DOS_ADDR_INVALID(m_pstCPUQueue))
    {
@@ -246,20 +246,20 @@ U32 mon_init_cpu_queue()
                     , dos_get_filename(__FILE__),  __LINE__, m_pstCPUQueue);
        return DOS_FAIL;
    }
-   
+
    memset(m_pstCPUQueue, 0, sizeof(MON_CPU_QUEUE_S));
-   
+
    if(DOS_ADDR_INVALID(m_pstCPUQueue->pstHead))
    {
       MON_SYS_CPU_TIME_S * pstCpu = NULL;
-      
+
       ulRet = mon_cpu_malloc(&pstCpu);
       if(DOS_SUCC != ulRet)
       {
          logr_cirt("%s:Line %u:mon_init_cpu_queue|alloc memory failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
          return DOS_FAIL;
-      }   
+      }
       m_pstCPUQueue->pstHead = pstCpu;
    }
    m_pstCPUQueue->ulQueueLength = 1;
@@ -271,7 +271,7 @@ U32 mon_init_cpu_queue()
    m_pstCPUQueue->pstRear = m_pstCPUQueue->pstHead;
 
    while ((m_pstCPUQueue->ulQueueLength) < TEN_MINUTE_SAMPLE_ARRAY)
-   {    
+   {
 
       MON_SYS_CPU_TIME_S * pstCpu = NULL;
       ulRet = mon_cpu_malloc(&pstCpu);
@@ -281,7 +281,7 @@ U32 mon_init_cpu_queue()
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
           return DOS_FAIL;
       }
-      
+
       ulRet = mon_cpu_en_queue(pstCpu);
       if(DOS_SUCC != ulRet)
       {
@@ -338,16 +338,16 @@ static U32  mon_cpu_en_queue(MON_SYS_CPU_TIME_S * pstCpu)
     m_pstCPUQueue->pstRear->next = pstCpu;
     pstCpu->prior = m_pstCPUQueue->pstRear;
     m_pstCPUQueue->pstRear = pstCpu;
-    
+
     if (m_pstCPUQueue->pstPenultimate && m_pstCPUQueue->ulQueueLength>= TEN_MINUTE_SAMPLE_ARRAY)
     {
        m_pstCPUQueue->pstPenultimate = m_pstCPUQueue->pstPenultimate->next;//第5指针往后移1
     }
-    if (m_pstCPUQueue->pstCountdownXII && m_pstCPUQueue->ulQueueLength >= TEN_MINUTE_SAMPLE_ARRAY)  
+    if (m_pstCPUQueue->pstCountdownXII && m_pstCPUQueue->ulQueueLength >= TEN_MINUTE_SAMPLE_ARRAY)
     {
        m_pstCPUQueue->pstCountdownXII = m_pstCPUQueue->pstCountdownXII->next;//第60指针往后移1
     }
- 
+
     ++(m_pstCPUQueue->ulQueueLength);
 
     return DOS_SUCC;
@@ -370,20 +370,20 @@ static U32  mon_cpu_de_queue()
                 , dos_get_filename(__FILE__), __LINE__, m_pstCPUQueue);
       return DOS_FAIL;
    }
-   
+
    if (DOS_ADDR_INVALID(m_pstCPUQueue->pstHead))
    {
       logr_cirt("%s:line %u:mon_cpu_de_queue|delete queue failure,pstCPUQueue->pstHead is %p!"
                 ,dos_get_filename(__FILE__), __LINE__, m_pstCPUQueue->pstHead);
       return DOS_FAIL;
    }
-   
+
    pTemp = m_pstCPUQueue->pstHead;
    m_pstCPUQueue->pstHead = m_pstCPUQueue->pstHead->next;
    m_pstCPUQueue->pstHead->prior = NULL;
    pTemp->next = NULL;
    dos_dmem_free(pTemp);
-   
+
    --(m_pstCPUQueue->ulQueueLength);
 
    return DOS_SUCC;
@@ -416,7 +416,7 @@ U32  mon_get_cpu_rslt_data()
    /*队列倒数第二节点*/
    ulSecondTemp = m_pstCPUQueue->pstPenultimate->ulUser
                + m_pstCPUQueue->pstPenultimate->ulNice
-               + m_pstCPUQueue->pstPenultimate->ulSystem 
+               + m_pstCPUQueue->pstPenultimate->ulSystem
                + m_pstCPUQueue->pstPenultimate->ulIdle
                + m_pstCPUQueue->pstPenultimate->ulIowait
                + m_pstCPUQueue->pstPenultimate->ulSoftirq
@@ -436,11 +436,11 @@ U32  mon_get_cpu_rslt_data()
                 + m_pstCPUQueue->pstCountdownXII->ulGuest;
 
    /*队尾节点*/
-   ulLastTemp = m_pstCPUQueue->pstRear->ulUser 
+   ulLastTemp = m_pstCPUQueue->pstRear->ulUser
              + m_pstCPUQueue->pstRear->ulNice
              + m_pstCPUQueue->pstRear->ulSystem
              + m_pstCPUQueue->pstRear->ulIdle
-             + m_pstCPUQueue->pstRear->ulIowait 
+             + m_pstCPUQueue->pstRear->ulIowait
              + m_pstCPUQueue->pstRear->ulSoftirq
              + m_pstCPUQueue->pstRear->ulHardirq
              + m_pstCPUQueue->pstRear->ulStealstolen
@@ -452,7 +452,7 @@ U32  mon_get_cpu_rslt_data()
     */
 
    mon_cpu_reset_data();
-    
+
    /* 计算平均占用率 */
    ulLastBusy = 100 * (ulLastTemp - m_pstCPUQueue->pstRear->ulIdle);
    if (0 == ulLastTemp)
@@ -463,7 +463,7 @@ U32  mon_get_cpu_rslt_data()
    {
        g_pstCpuRslt->ulCPUUsageRate = (ulLastBusy + ulLastBusy % ulLastTemp) / ulLastTemp;
    }
-   
+
 
    /* 计算5s平均占用率 */
    ul5sAll = ulLastTemp - ulSecondTemp;
@@ -477,8 +477,8 @@ U32  mon_get_cpu_rslt_data()
    else
    {
        g_pstCpuRslt->ulCPU5sUsageRate = (ul5sBusy + ul5sBusy % ul5sAll) / ul5sAll;
-   } 
-   
+   }
+
    /* 计算1min CPU平均占用率 */
    ul1minAll = ulLastTemp - ulTwelfthTemp;
    ul1minIdle = m_pstCPUQueue->pstRear->ulIdle - m_pstCPUQueue->pstCountdownXII->ulIdle;
@@ -506,7 +506,7 @@ U32  mon_get_cpu_rslt_data()
    {
        g_pstCpuRslt->ulCPU10minUsageRate = (ul10minBusy + ul10minBusy % ul10minAll) / ul10minAll;
    }
-   
+
    ulRet = mon_refresh_cpu_queue();
    if (DOS_SUCC != ulRet)
    {
@@ -514,7 +514,7 @@ U32  mon_get_cpu_rslt_data()
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
        return DOS_FAIL;
    }
-   
+
    return DOS_SUCC;
 }
 
@@ -528,7 +528,7 @@ U32  mon_get_cpu_rslt_data()
 static U32  mon_refresh_cpu_queue()
 {
    U32 ulRet = 0;
-   
+
    MON_SYS_CPU_TIME_S * pstCpu = NULL;
    ulRet = mon_cpu_malloc(&pstCpu);
    if(DOS_SUCC != ulRet)
@@ -552,14 +552,14 @@ static U32  mon_refresh_cpu_queue()
                     , dos_get_filename(__FILE__), __LINE__,ulRet);
       return DOS_FAIL;
    }
-   
+
    ulRet = mon_cpu_en_queue(pstCpu);
    if(DOS_SUCC != ulRet)
    {
       logr_error("%s:Line %d:mon_refresh_cpu_queue|lRet == %u!", __FILE__, __LINE__, ulRet);
       return DOS_FAIL;
    }
-   
+
    ulRet = mon_cpu_de_queue();
    if(DOS_SUCC != ulRet)
    {
@@ -568,34 +568,6 @@ static U32  mon_refresh_cpu_queue()
       return DOS_FAIL;
    }
 
-   return DOS_SUCC;
-}
-
-/**
- * 功能:获取cpu的4个占用率的格式化信息字符串
- * 参数集：
- *   无参数
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
- */
-U32  mon_get_cpu_rslt_formatted_info()
-{
-   
-   memset(g_szMonCPUInfo, 0, MAX_BUFF_LENGTH);
-   
-   dos_snprintf(g_szMonCPUInfo, MAX_BUFF_LENGTH, 
-         "Total CPU Average Usage Rate:%u%%.\n" \
-         "5 seconds CPU Average Usage Rate:%u%%.\n" \
-         "1min CPU Average Usage Rate:%u%%.\n" \
-         "10min CPU Average Usage Rate:%u%%.\n"
-         , g_pstCpuRslt->ulCPUUsageRate
-         , g_pstCpuRslt->ulCPU5sUsageRate
-         , g_pstCpuRslt->ulCPU1minUsageRate
-         , g_pstCpuRslt->ulCPU10minUsageRate);
-         
-   logr_info("%s:Line %u:g_szMonCPUInfo is \n%s"
-                , dos_get_filename(__FILE__), __LINE__, g_szMonCPUInfo);
-   
    return DOS_SUCC;
 }
 
@@ -620,10 +592,10 @@ U32  mon_cpu_queue_destroy()
    {
       logr_cirt("%s:Line %u: mon_cpu_queue_destroy|destroy queue failure,m_pstCPUQueue->pstHead is %p!"
                 , dos_get_filename(__FILE__), __LINE__, m_pstCPUQueue->pstHead);
-                  
+
       dos_dmem_free(m_pstCPUQueue);
       m_pstCPUQueue = NULL;
-      
+
       return DOS_FAIL;
    }
 

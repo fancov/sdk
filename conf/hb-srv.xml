@@ -2,56 +2,66 @@
 
 <config version="1.0">
     <process>
-    	    <param name="count" value="5"/>
+	        <!--配置被监控进程的个数-->
+    	    <param name="count" value="4"/>
     		  <0>
-    		  	 <param name="name" value="freeswitch"/>
-    		     <param name="startcmd" value="/usr/local/freeswitch/bin/freeswitch -nc &amp;" /><!--此value表示被监控的进程-->
-    		     <param name="version" value="1.0"/>
-    		     <param name="heartbeat" value="true" /><!--此参数表示是否配置心跳，默认为true表配置-->
+			     <!--进程的最简名称-->
+    		  	 <param name="name"      value="freeswitch"/>
+				 <!--此value表示被监控的进程-->
+    		     <param name="startcmd"  value="/usr/local/freeswitch/bin/freeswitch -nc &amp;" />
+				 <!--配置文件版本，暂未使用该参数-->
+    		     <param name="version"   value="1.0"/>
+				 <!--此参数表示是否配置心跳，默认为true表配置，该参数暂未使用-->
+    		     <param name="heartbeat" value="true" />
     		  </0>
     		  <1>
-    		  	 <param name="name" value="monitord" />
-    		  	 <param name="startcmd" value="/home/bubble/mnt/res_monitor/sdk/project/monitor/monitord" />
-    		  	 <param name="version" value="1.0"/>
+    		  	 <param name="name"      value="ctrl_paneld" />
+    		  	 <param name="startcmd"  value="/home/bubble/mnt/res_monitor/sdk/project/ctrl_panel/ctrl_paneld &amp;" />
+    		  	 <param name="version"   value="1.0"/>
     		  	 <param name="heartbeat" value="true" />
     		  </1>
-    		  <2>
-    		  	 <param name="name" value="ctrl_paneld" />
-    		  	 <param name="startcmd" value="/home/bubble/mnt/res_monitor/sdk/project/ctrl_panel/ctrl_paneld &amp;" />
-    		  	 <param name="version"  value="1.0"/>
+			  <2>
+			     <param name="name"      value="bsd" />
+    		  	 <param name="startcmd"  value="/mnt/hgfs/workspace/sdk/project/bs/bsd &amp;" />
+    		  	 <param name="version"   value="1.0"/>
     		  	 <param name="heartbeat" value="true" />
-    		  </2>
+			  </2>
 			  <3>
-			     <param name="name" value="bsd" />
-    		  	 <param name="startcmd" value="/mnt/hgfs/workspace/sdk/project/bs/bsd &amp;" />
-    		  	 <param name="version"  value="1.0"/>
+			     <param name="name"      value="ptcd" />
+    		  	 <param name="startcmd"  value="/mnt/hgfs/workspace/pts-ptc/ptc/ptcd &amp;" />
+    		  	 <param name="version"   value="1.0"/>
     		  	 <param name="heartbeat" value="true" />
 			  </3>
-			  <4>
-			     <param name="name" value="ptcd" />
-    		  	 <param name="startcmd" value="/mnt/hgfs/workspace/pts-ptc/ptc/ptcd &amp;" />
-    		  	 <param name="version"  value="1.0"/>
-    		  	 <param name="heartbeat" value="true" />
-			  </4>
     </process>
 	<!--该配置项配置资源占用阀值-->
 	<threshold>
 	        <mem>
+			  <!--系统内存最大占用率-->
 			  <param name="rate" value="90"/>
 			</mem>
 			<cpu>
-			  <param name="avgRate" value="100"/>
-			  <param name="5sAvgRate" value="100"/>
-			  <param name="1minAvgRate" value="100"/>
-			  <param name="10minAvgRate" value="100"/>
+			  <!--系统自启动以来的平均CPU占用率-->
+			  <param name="avgRate"      value="90"/>
+			  <!--5s系统的平均CPU占用率-->
+			  <param name="5sAvgRate"    value="90"/>
+			  <!--1min系统的平均CPU占用率-->
+			  <param name="1minAvgRate"  value="90"/>
+			  <!--10min系统的平均CPU占用率-->
+			  <param name="10minAvgRate" value="90"/>
 			</cpu>
 			<disk>
+			  <!--分区的平均占用率-->
 			  <param name="partitionRate" value="90"/>
-			  <param name="diskRate" value="90"/>
+			  <!--系统硬盘总占用率-->
+			  <param name="diskRate"      value="90"/>
 			</disk>
+			<net>
+			  <!--最大带宽，单位是MB/s-->
+			  <param name="maxBandWidth" value="90"/>
+			</net>
 			<proc>
-			  <param name="memRate" value="10"/>
-			  <param name="CPURate" value="10"/>
+			  <!--被监控进程占用内存百分比-->
+			  <param name="memRate" value="40"/>
 			</proc>
 	</threshold>
 </config>

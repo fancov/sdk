@@ -86,7 +86,7 @@ U32 mon_netcard_malloc()
        logr_error("%s:Line %u: Alloc memory FAIL.");
        goto fail;
     }
-   
+
     m_pt2 = dos_dmem_alloc(sizeof(time_t));
     if (DOS_ADDR_INVALID(m_pt2))
     {
@@ -103,7 +103,7 @@ fail:
     }
     if (DOS_ADDR_VALID(g_pastNet[0]))
     {
-       dos_dmem_free( g_pastNet[0]); 
+       dos_dmem_free( g_pastNet[0]);
        g_pastNet[0] = NULL;
     }
     if (DOS_ADDR_VALID(m_pstTransFormer))
@@ -141,7 +141,7 @@ U32  mon_netcard_free()
 {
     U32 ulRows = 0;
     MON_NET_CARD_PARAM_S * pastNet = g_pastNet[0];
-    
+
     if(DOS_ADDR_INVALID(pastNet))
     {
         logr_cirt("%s:Line %u:mon_netcard_free|pastNet is %p!"
@@ -179,7 +179,7 @@ U32  mon_netcard_free()
     }
 
     return DOS_SUCC;
-} 
+}
 
 static U32 mon_net_reset_data()
 {
@@ -196,7 +196,7 @@ static U32 mon_net_reset_data()
     return DOS_SUCC;
 }
 
-/** 
+/**
  * 判断原理:
  *   proc文件系统中有这样一个文件记录了网络连接状态信息
  *   /sys/class/net/$netCardName/carrier
@@ -246,7 +246,7 @@ BOOL mon_is_netcard_connected(const S8 * pszNetCard)
 
     fclose(pstNetFp);
     pstNetFp = NULL;
-     
+
     return bRet;
 }
 
@@ -322,7 +322,7 @@ U32 mon_get_data_trans_speed(const S8 * pszDevName)
         return DOS_FAIL;
     }
 
-    if (dos_atoull(ppszData[0], &uLIn) < 0 
+    if (dos_atoull(ppszData[0], &uLIn) < 0
         || dos_atoull(ppszData[8], &uLOut) < 0)
     {
         logr_error("%s:Line %u: dos_atoull FAIL.");
@@ -333,16 +333,16 @@ U32 mon_get_data_trans_speed(const S8 * pszDevName)
     m_pstTransCur->uLInSize = uLIn;
     m_pstTransCur->uLOutSize = uLOut;
 
-    LRet = (S64)m_pstTransCur->uLInSize - (S64)m_pstTransFormer->uLInSize 
+    LRet = (S64)m_pstTransCur->uLInSize - (S64)m_pstTransFormer->uLInSize
          + (S64)m_pstTransCur->uLOutSize - (S64)m_pstTransFormer->uLOutSize;
 
     ulInterval *= 1024;
-    
+
     fclose(fp);
     fp = NULL;
 
     /*单位是KB/s*/
-    return (LRet + LRet % ulInterval) / ulInterval; 
+    return (LRet + LRet % ulInterval) / ulInterval;
 }
 
 
@@ -396,8 +396,8 @@ U32 mon_get_netcard_data()
                               , dos_get_filename(__FILE__), __LINE__ ,ulLength ,g_pastNet[ulLength]);
                   goto failure;
             }
-         
-           
+
+
             dos_strcpy(g_pastNet[ulLength]->szNetDevName, astReq[ulInterfaceNum].ifr_name);
             (g_pastNet[ulLength]->szNetDevName)[dos_strlen(astReq[ulInterfaceNum].ifr_name)] = '\0';
             stIfrcopy = astReq[ulInterfaceNum];
@@ -429,9 +429,9 @@ U32 mon_get_netcard_data()
                             , dos_get_filename(__FILE__), __LINE__, strerror(errno));
                 goto failure;
             }
-             
+
             if (!ioctl(ulFd, SIOCGIFADDR, (S8 *)&astReq[ulInterfaceNum]))
-            {     
+            {
                 dos_snprintf(szIPv4Addr, sizeof(szIPv4Addr), "%s",
                      (S8 *)inet_ntoa(((struct sockaddr_in *)&(astReq[ulInterfaceNum].ifr_addr))->sin_addr));
 
@@ -481,7 +481,7 @@ U32 mon_get_netcard_data()
                 g_pastNet[ulLength]->ulRWSpeed = 0;
                 continue;
             }
-         
+
             ulRet = mon_get_data_trans_speed(g_pastNet[ulLength]->szNetDevName);
             if (DOS_FAIL == ulRet)
             {
@@ -489,9 +489,9 @@ U32 mon_get_netcard_data()
                             , dos_get_filename(__FILE__), __LINE__);
                 goto failure;
             }
-         
+
             g_pastNet[ulLength]->ulRWSpeed = ulRet;
-         
+
             ulLength++;
         }
     }
@@ -513,44 +513,6 @@ success:
     return DOS_SUCC;
 }
 
-/**
- * 功能:获取网卡数组信息的格式化信息字符串
- * 参数集：
- *   无参数
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
- */
-U32  mon_netcard_formatted_info()
-{
-    U32 ulRows = 0;
-
-    memset(g_szMonNetworkInfo, 0, MAX_NETCARD_CNT * MAX_BUFF_LENGTH);
-
-    for (ulRows = 0; ulRows < g_ulNetCnt; ulRows++)
-    {
-        S8 szTempInfo[MAX_BUFF_LENGTH] = {0};
-
-        if(DOS_ADDR_INVALID(g_pastNet[ulRows]))
-        {
-            logr_cirt("%s:Line %u:mon_netcard_formatted_info|get netcard formatted information failure,m_pastNet[%u] is %p!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRows, g_pastNet[ulRows]);
-            return DOS_FAIL;
-        }
-       
-        dos_snprintf(szTempInfo, MAX_BUFF_LENGTH
-                    , "Netcard:%s\nMacAddress:%s\nIPAddress:%s\nBroadIPAddress:%s\nSubNetMask:%s\nData Transmission speed:%u KB/s\n"
-                    , g_pastNet[ulRows]->szNetDevName
-                    , g_pastNet[ulRows]->szMacAddress
-                    , g_pastNet[ulRows]->szIPAddress
-                    , g_pastNet[ulRows]->szBroadIPAddress
-                    , g_pastNet[ulRows]->szNetMask
-                    , g_pastNet[ulRows]->ulRWSpeed);
-        dos_strcat(g_szMonNetworkInfo, szTempInfo);
-        dos_strcat(g_szMonNetworkInfo, "\n");
-    }
-
-    return DOS_SUCC;
-}
 
 #endif //end #if INCLUDE_NET_MONITOR
 #endif //end #if INCLUDE_RES_MONITOR
