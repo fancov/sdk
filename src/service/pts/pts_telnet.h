@@ -28,6 +28,23 @@ typedef enum
 
 }PT_TELNET_CMD_ANALYSE;
 
+/* 命令的来源 */
+typedef enum
+{
+    PTS_TELNET_PTS,                 /* 来至pts */
+    PTS_TELNET_CONTROL,             /* 来至control */
+
+    PTS_TELNET_SOURCE_BUTT
+
+}PTS_TELNET_SOURCE;
+
+typedef struct tagPtsTelSqliteParam
+{
+    U32 ulIndex;
+    PTS_TELNET_SOURCE enPtsSource;
+
+}PTS_TEL_SQLITE_PARAM_ST;
+
 typedef struct tagCmdClientCB
 {
     U8     aucID[PTC_ID_LEN];   /*IPCC ID*/

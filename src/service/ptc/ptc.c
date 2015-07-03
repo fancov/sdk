@@ -658,7 +658,7 @@ S32 ptc_main()
     pthread_t tid1, tid2, tid3, tid4, tid5, tid6, tid7, tid8;
 
     /* 初始化socket和streamID对应关系数组 */
-    ptc_init_ptc_client_cb();
+    ptc_init_all_ptc_client_cb();
 
     g_ulUdpSocket = ptc_create_udp_socket(PTC_SOCKET_CACHE);
 

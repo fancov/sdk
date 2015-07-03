@@ -397,22 +397,24 @@ PT_DATA_TCP_ST *pt_data_tcp_queue_create(U32 ulCacheSize)
  */
 S32 pt_send_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, S8 *acSendBuf, S32 lDataLen, U32 lCacheSize, BOOL bIsTrace)
 {
+    S32     lSeq        = 0;
+    U32     ulArraySub  = 0;
+    PT_DATA_TCP_ST *pstDataQueHead = NULL;
+
     if (DOS_ADDR_INVALID(pstStreamNode) || DOS_ADDR_INVALID(acSendBuf))
     {
         return PT_SAVE_DATA_FAIL;
     }
 
-    S32 lSeq = 0;
-    U32 ulArraySub = 0;
-    PT_DATA_TCP_ST *pstDataQueHead = pstStreamNode->unDataQueHead.pstDataTcp;
-    if (NULL == pstDataQueHead)
+    pstDataQueHead = pstStreamNode->unDataQueHead.pstDataTcp;
+    if (DOS_ADDR_INVALID(pstDataQueHead))
     {
         return PT_SAVE_DATA_FAIL;
     }
 
 #if !INCLUDE_PTS
     lSeq = pstStreamNode->lMaxSeq + 1;
-    if (lSeq - pstStreamNode->lConfirmSeq >= lCacheSize - 1)
+    if (pstStreamNode->lMaxSeq - pstStreamNode->lConfirmSeq >= lCacheSize - 1)
     {
         return PT_NEED_CUT_PTHREAD;
     }
@@ -457,7 +459,7 @@ S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *ps
     }
 
     PT_DATA_TCP_ST *pstDataQueHead = pstStreamNode->unDataQueHead.pstDataTcp;
-    if (NULL == pstDataQueHead)
+    if (DOS_ADDR_INVALID(pstDataQueHead))
     {
         return PT_SAVE_DATA_FAIL;
     }
@@ -471,7 +473,7 @@ S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *ps
     if (pstStreamNode->lCurrSeq >= pstMsgDes->lSeq)
     {
         /* 包已发送，不需要存储 */
-        return PT_SAVE_DATA_SUCC;
+        return PT_SAVE_DATA_FAIL;
     }
 
 #if INCLUDE_PTS
@@ -483,13 +485,15 @@ S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *ps
 
     if ((pstDataQueHead[ulArraySub].lSeq == pstMsgDes->lSeq) &&  pstMsgDes->lSeq != 0)
     {
-        /* 包已存在。0号包时，即使没有存，也成立 */
+        /* 包已存在。0号包除外，即使没有存在，也成立 */
         return PT_SAVE_DATA_SUCC;
     }
     dos_memcpy(pstDataQueHead[ulArraySub].szBuff, acRecvBuf, lDataLen);
     pstDataQueHead[ulArraySub].lSeq = pstMsgDes->lSeq;
     pstDataQueHead[ulArraySub].ulLen = lDataLen;
     pstDataQueHead[ulArraySub].ExitNotifyFlag = pstMsgDes->ExitNotifyFlag;
+
+    pt_logr_debug("save into cache, stream : %d, seq : %d", pstMsgDes->ulStreamID, pstMsgDes->lSeq);
 
     /* 更新stream node信息 */
     pstStreamNode->lMaxSeq = pstStreamNode->lMaxSeq > pstMsgDes->lSeq ? pstStreamNode->lMaxSeq : pstMsgDes->lSeq;
@@ -509,7 +513,6 @@ S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *ps
         else
         {
             /* 丢包，失败，关闭 */
-
             return PT_SAVE_DATA_FAIL;
         }
     }
@@ -642,6 +645,8 @@ S32 pt_ptc_list_insert(list_t *pstPtcListHead, PT_CC_CB_ST *pstPtcNode)
     {
         return DOS_FAIL;
     }
+
+    dos_list_node_init(&(pstPtcNode->stCCListNode));
 
     dos_list_add_tail(pstPtcListHead, &(pstPtcNode->stCCListNode));
 
@@ -778,6 +783,7 @@ S32 pt_stream_queue_insert(list_t *pstHead, list_t *pstStreamNode)
         return DOS_FAIL;
     }
 
+    dos_list_node_init(pstStreamNode);
     dos_list_add_tail(pstHead, pstStreamNode);
 
     return DOS_SUCC;
@@ -887,18 +893,18 @@ S32 pt_delete_stream_node(list_t *pstStreamListNode, PT_DATA_TYPE_EN enDataType)
     else
     {
         /* TCP */
-        if (pstStreamNode->hTmrHandle != NULL)
+        if (DOS_ADDR_VALID(pstStreamNode->hTmrHandle))
         {
             dos_tmr_stop(&pstStreamNode->hTmrHandle);
             pstStreamNode->hTmrHandle = NULL;
         }
-        if (pstStreamNode->pstLostParam != NULL)
+        if (DOS_ADDR_VALID(pstStreamNode->pstLostParam))
         {
             pstStreamNode->pstLostParam->pstStreamNode = NULL;
             dos_dmem_free(pstStreamNode->pstLostParam);
             pstStreamNode->pstLostParam = NULL;
         }
-        if (pstStreamNode->unDataQueHead.pstDataTcp != NULL)
+        if (DOS_ADDR_VALID(pstStreamNode->unDataQueHead.pstDataTcp))
         {
             dos_dmem_free(pstStreamNode->unDataQueHead.pstDataTcp);
             pstStreamNode->unDataQueHead.pstDataTcp = NULL;
@@ -949,6 +955,8 @@ S32 pt_delete_stream_node(PT_STREAM_CB_ST *pstStreamNode, U32 ulType)
 S32 pt_stream_queue_get_node(PT_STREAM_CB_ST *pstStreamListHead)
 {
     S32 i = 0;
+    U32 ulIndex = 0;
+    static U32 ulStartIndex = 0;
     PT_STREAM_CB_ST *pstStreamNode = NULL;
 
     if (DOS_ADDR_INVALID(pstStreamListHead))
@@ -956,15 +964,27 @@ S32 pt_stream_queue_get_node(PT_STREAM_CB_ST *pstStreamListHead)
         return -1;
     }
 
+    ulStartIndex++;
+    if (ulStartIndex > PTC_STREAMID_MAX_COUNT - 1)
+    {
+        ulStartIndex = 0;
+    }
+
     for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
     {
-        pstStreamNode = &pstStreamListHead[i];
+        ulIndex = ulStartIndex + i;
+        if (ulIndex >= PTC_STREAMID_MAX_COUNT)
+        {
+            ulIndex -= PTC_STREAMID_MAX_COUNT;
+        }
+
+        pstStreamNode = &pstStreamListHead[ulIndex];
         if (DOS_FALSE == pstStreamNode->bIsValid)
         {
             pt_stream_node_init(pstStreamNode);
             pstStreamNode->bIsValid = DOS_TRUE;
 
-            return i;
+            return ulIndex;
         }
     }
 
@@ -1065,6 +1085,7 @@ S32 pt_need_recv_node_list_insert(list_t *pstHead, PT_MSG_TAG *pstMsgDes)
     pstNewNode->ExitNotifyFlag = pstMsgDes->ExitNotifyFlag;
     pstNewNode->lSeq = pstMsgDes->lSeq;
 
+    dos_list_node_init(&(pstNewNode->stListNode));
     dos_list_add_tail(pstHead, &(pstNewNode->stListNode));
 
     return DOS_SUCC;
@@ -1128,7 +1149,7 @@ S32 pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsg
     }
 
     PT_NEND_SEND_NODE_ST *pstNewNode = (PT_NEND_SEND_NODE_ST *)dos_dmem_alloc(sizeof(PT_NEND_SEND_NODE_ST));
-    if (NULL == pstNewNode)
+    if (DOS_ADDR_INVALID(pstNewNode))
     {
         DOS_ASSERT(0);
 
@@ -1143,6 +1164,7 @@ S32 pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsg
     pstNewNode->bIsResend = bIsResend;
     pstNewNode->ExitNotifyFlag = pstMsgDes->ExitNotifyFlag;
 
+    dos_list_node_init(&pstNewNode->stListNode);
     dos_list_add_tail(pstHead, &pstNewNode->stListNode);
 #if INCLUDE_PTC
     g_ulPtcNendSendNodeCount++;
@@ -1158,14 +1180,14 @@ STREAM_CACHE_ADDR_CB_ST *pt_stream_addr_create(U32 ulStreamID)
     STREAM_CACHE_ADDR_CB_ST *pstNewNode = NULL;
 
     pstNewNode = (STREAM_CACHE_ADDR_CB_ST *)dos_dmem_alloc(sizeof(STREAM_CACHE_ADDR_CB_ST));
-    if (NULL == pstNewNode)
+    if (DOS_ADDR_INVALID(pstNewNode))
     {
         DOS_ASSERT(0);
 
         return NULL;
     }
 
-    pstNewNode->ulStrreamID = ulStreamID;
+    pstNewNode->ulStreamID = ulStreamID;
     pstNewNode->pstPtcRecvNode = NULL;
     pstNewNode->pstPtcSendNode = NULL;
     pstNewNode->pstStreamRecvNode = NULL;
@@ -1176,12 +1198,12 @@ STREAM_CACHE_ADDR_CB_ST *pt_stream_addr_create(U32 ulStreamID)
 
 VOID pt_stream_addr_delete(DLL_S *pList, DLL_NODE_S *pNode)
 {
+    STREAM_CACHE_ADDR_CB_ST *pstStreamAddr = NULL;
+
     if (DOS_ADDR_INVALID(pList) || DOS_ADDR_INVALID(pNode))
     {
         return;
     }
-
-    STREAM_CACHE_ADDR_CB_ST *pstStreamAddr = NULL;
 
     dll_delete(pList, pNode);
     if (DOS_ADDR_VALID(pNode->pHandle))
@@ -1191,7 +1213,7 @@ VOID pt_stream_addr_delete(DLL_S *pList, DLL_NODE_S *pNode)
         pstStreamAddr->pstPtcSendNode = NULL;
         pstStreamAddr->pstStreamRecvNode = NULL;
         pstStreamAddr->pstStreamSendNode = NULL;
-        pstStreamAddr->ulStrreamID = 0;
+        pstStreamAddr->ulStreamID = 0;
 
         dos_dmem_free(pNode->pHandle);
         pNode->pHandle = NULL;
@@ -1202,6 +1224,9 @@ VOID pt_stream_addr_delete(DLL_S *pList, DLL_NODE_S *pNode)
 
 PT_SEND_MSG_PTHREAD *pt_send_msg_pthread_search(list_t* pstHead, U32 ulStreamID)
 {
+    PT_SEND_MSG_PTHREAD *pstData = NULL;
+    list_t              *pstNode = NULL;
+
     if (DOS_ADDR_INVALID(pstHead))
     {
         return NULL;
@@ -1211,9 +1236,6 @@ PT_SEND_MSG_PTHREAD *pt_send_msg_pthread_search(list_t* pstHead, U32 ulStreamID)
     {
         return NULL;
     }
-
-    list_t  *pstNode = NULL;
-    PT_SEND_MSG_PTHREAD *pstData = NULL;
 
     pstNode = pstHead;
 

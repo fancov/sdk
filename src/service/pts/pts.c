@@ -242,10 +242,18 @@ S32 pts_create_tcp_socket(U16 usTcpPort)
  * 参数
  * 返回值：
  */
-S32 pts_get_password_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name)
+S32 pts_get_value_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name)
 {
-    S8 *szPassWord = (S8 *)para;
-    dos_strncpy(szPassWord, column_value[0], PT_DATA_BUFF_128);
+    PTS_SQLITE_GET_VALUE_PARAM_ST *pstParam = NULL;
+    pstParam = (PTS_SQLITE_GET_VALUE_PARAM_ST *)para;
+
+    if (DOS_ADDR_INVALID(pstParam->szValue))
+    {
+        return DOS_FAIL;
+    }
+
+    dos_strncpy(pstParam->szValue, column_value[0], pstParam->ulLen);
+    pstParam->szValue[pstParam->ulLen - 1] = '\0';
 
     return DOS_SUCC;
 }

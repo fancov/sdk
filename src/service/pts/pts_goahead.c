@@ -270,7 +270,7 @@ static int pts_get_version(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_bulid_time(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_show_license_msg(int eid, webs_t wp, int argc, char_t **argv);
 static int pts_is_or_not_get_license(int eid, webs_t wp, int argc, char_t **argv);
-S32 pts_get_password_from_sqlite_db(char_t *userid, S8 *szWebsPassword);
+S32 pts_get_password_from_sqlite_db(char_t *userid, S8 *szWebsPassword, U32 ulLen);
 S32 pts_get_local_ip(S8 *szLocalIp);
 S32 pts_send_ptc_list2web_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name);
 S32 pts_ptc_list_switch_callback(VOID *para, S32 n_column, S8 **column_value, S8 **column_name);
@@ -513,7 +513,7 @@ static int initWebs(int demo)
 
     websAspDefine(T("status_statistics"), status_statistics);               /* 状态 统计 */
 
-    websAspDefine(T("bulid_time"), pts_bulid_time);                           /* 获得版本号 */
+    websAspDefine(T("bulid_time"), pts_bulid_time);                         /* 获得版本号 */
     websAspDefine(T("version"), pts_get_version);                           /* 获得版本号 */
     websAspDefine(T("show_license_msg"), pts_show_license_msg);             /* 获得license信息 */
     websAspDefine(T("bIsGetLicense"), pts_is_or_not_get_license);           /* 是否获得license */
@@ -1025,6 +1025,7 @@ void *websSendFileToPtc(void *arg)
         ulOSType = atoi(szProductType);
 
         /* 比较版本号和文件类型, 版本号不同，文件类型相同时，可以升级*/
+        logr_debug("!!!!!!!%s, %s, ulOSType : %d", pstParam->szVision, szPtcVersion, pstParam->ulOSType);
         if (dos_strcmp(pstParam->szVision, szPtcVersion) != 0 && ulOSType == pstParam->ulOSType)
         {
             dos_strcpy(pszPtcIds[lPtcCount], szPtcId);
@@ -1042,6 +1043,8 @@ void *websSendFileToPtc(void *arg)
         }
     }
 
+    logr_debug("!!!!!!!lPtcCount : %d", lPtcCount);
+
     pFileFd  = fopen("./package", "r");
     if(DOS_ADDR_INVALID(pFileFd))
     {
@@ -1050,6 +1053,7 @@ void *websSendFileToPtc(void *arg)
 
     for (i=0; i<lPtcCount; i++)
     {
+        logr_debug("start send pack to ptc, %.16s", pszPtcIds[i]);
         fseek(pFileFd, 0L, SEEK_SET);
 
         do
@@ -1067,6 +1071,7 @@ void *websSendFileToPtc(void *arg)
 
         }while (ulReadCount == PT_RECV_DATA_SIZE);
 
+        logr_debug("end send pack to ptc, %.16s", pszPtcIds[i]);
     }
 
     fclose(pFileFd);
@@ -1119,6 +1124,7 @@ S32 pts_upgrade_ptcs(VOID *para, S32 n_column, S8 **column_value, S8 **column_na
     dos_strncpy(pstNewPtcNode->szPtcId, column_value[1], PTC_ID_LEN);
     pstNewPtcNode->szPtcId[PTC_ID_LEN] = '\0';
 
+    dos_list_node_init(&pstNewPtcNode->stNextNode);
     dos_list_add_tail(pstListHead, &pstNewPtcNode->stNextNode);
 
     return 0;
@@ -1500,12 +1506,12 @@ S32 pts_send_ptc_list2web_callback(VOID *para, S32 n_column, S8 **column_value, 
     if (pstSqliteParam->ulResCount != 1)
     {
         websWrite(pstSqliteParam->wp, T(",[\"<INPUT name='PtcCheckBox'  type='radio' value='%s' >\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"]")
-                  , column_value[1], column_value[6], column_value[2], column_value[3], column_value[12], column_value[9], column_value[8], column_value[23], column_value[1], column_value[24]);
+                  , column_value[1], column_value[6], column_value[2], column_value[3], column_value[12], column_value[9], column_value[8], column_value[23], column_value[4], column_value[24]);
     }
     else
     {
         websWrite(pstSqliteParam->wp, T("[\"<INPUT name='PtcCheckBox'  type='radio' value='%s' >\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"]")
-                  , column_value[1], column_value[6], column_value[2], column_value[3], column_value[12], column_value[9], column_value[8], column_value[23], column_value[1], column_value[24]);
+                  , column_value[1], column_value[6], column_value[2], column_value[3], column_value[12], column_value[9], column_value[8], column_value[23], column_value[4], column_value[24]);
     }
 
     return 0;
@@ -1784,7 +1790,7 @@ error:
 
 static int pts_get_ptc_list_from_db(int eid, webs_t wp, int argc, char_t **argv)
 {
-    S8 szPtcListFields[PTS_VISIT_FILELDS_COUNT][PT_DATA_BUFF_32] = {"", "lastLoginTime", "name", "remark", "ptcType", "internetIP", "intranetIP", "szMac", "sn", "heartbeatTime"};
+    S8 szPtcListFields[PTS_VISIT_FILELDS_COUNT][PT_DATA_BUFF_32] = {"", "lastLoginTime", "name", "remark", "ptcType", "internetIP", "intranetIP", "szMac", "version", "heartbeatTime"};
 
     return pts_search_db(eid, wp, argc, argv, szPtcListFields, PTS_VISIT_FILELDS_COUNT, pts_send_ptc_list2web_callback, "ipcc_alias", "register = 1", dos_strlen("register = 1"));
 }
@@ -2295,7 +2301,7 @@ static void pts_change_password(webs_t wp, char_t *path, char_t *query)
         }
         else
         {
-            lResult = pts_get_password_from_sqlite_db(szName, szWebsPassword);
+            lResult = pts_get_password_from_sqlite_db(szName, szWebsPassword, PT_DATA_BUFF_128);
             if (lResult != DOS_SUCC)
             {
                 dos_dmem_free(szWebsPassword);
@@ -3003,7 +3009,7 @@ int pts_websSecurityHandler(webs_t wp, char_t *urlPrefix, char_t *webDir, int ar
                 return nRet;
             }
 
-            lResult = pts_get_password_from_sqlite_db(userid, szWebsPassword);
+            lResult = pts_get_password_from_sqlite_db(userid, szWebsPassword, PT_DATA_BUFF_128);
             if (lResult != DOS_SUCC)
             {
                 dos_dmem_free(szWebsPassword);
@@ -3085,18 +3091,21 @@ int pts_websSecurityHandler(webs_t wp, char_t *urlPrefix, char_t *webDir, int ar
  * 参数
  * 返回值：
  */
-S32 pts_get_password_from_sqlite_db(char_t *userid, S8 *szWebsPassword)
+S32 pts_get_password_from_sqlite_db(char_t *userid, S8 *szWebsPassword, U32 ulLen)
 {
     S8 szSql[PT_DATA_BUFF_128] = {0};
+    PTS_SQLITE_GET_VALUE_PARAM_ST stParam;
 
-    if (NULL == userid || NULL == szWebsPassword)
+    if (DOS_ADDR_INVALID(userid) || DOS_ADDR_INVALID(szWebsPassword))
     {
         return DOS_FAIL;
     }
 
     dos_memzero(szWebsPassword, WEBS_MAX_PASS);
     dos_snprintf(szSql, PT_DATA_BUFF_128, "select password from pts_user where name='%s';", userid);
-    dos_sqlite3_exec_callback(g_pstMySqlite, szSql, pts_get_password_callback, (VOID *)szWebsPassword);
+    stParam.szValue = szWebsPassword;
+    stParam.ulLen = ulLen;
+    dos_sqlite3_exec_callback(g_pstMySqlite, szSql, pts_get_value_callback, (VOID *)&stParam);
     if (dos_strlen(szWebsPassword) > 0)
     {
         return DOS_SUCC;
