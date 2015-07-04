@@ -5175,9 +5175,7 @@ U32 sc_ep_session_heartbeat(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
 {
     S8                     *pszUUID = NULL;
-    S8                     *pszSCBNo = NULL;
     SC_SCB_ST              *pstSCB = NULL;
-    U32                    ulSCBNo;
     U32                    ulRet = DOS_FAIL;
 
     SC_TRACE_IN(pstEvent, pstHandle, 0, 0);
@@ -5210,28 +5208,11 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     /* 如果不是CREATE消息，就需要获取SCB */
     if (ESL_EVENT_CHANNEL_CREATE != pstEvent->event_id)
     {
-        pszSCBNo = esl_event_get_header(pstEvent, "variable_scb_number");
-        if (DOS_ADDR_INVALID(pszSCBNo))
-        {
-            DOS_ASSERT(0);
-
-            return DOS_FAIL;
-        }
-
-        if (dos_atoul(pszSCBNo, &ulSCBNo) < 0)
-        {
-            DOS_ASSERT(0);
-
-            return DOS_FAIL;
-        }
-
         pstSCB = sc_scb_hash_tables_find(pszUUID);
         if (DOS_ADDR_INVALID(pstSCB)
             || !pstSCB->bValid)
         {
             DOS_ASSERT(0);
-
-            sc_logr_error(SC_ESL, "Error: SCB No: %u, Vallid: %d, SCB: %s", ulSCBNo, pstSCB ? pstSCB->bValid : -1, pszSCBNo);
 
             return DOS_FAIL;
         }
