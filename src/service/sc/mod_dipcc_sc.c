@@ -29,8 +29,8 @@ extern "C"{
 
 /* Êý¾Ý¿â¾ä±ú */
 DB_HANDLE_ST         *g_pstSCDBHandle = NULL;
-
 BOOL                 g_blSCInitOK     = DOS_FALSE;
+extern SC_TASK_MNGT_ST   *g_pstTaskMngtInfo;
 
 U32 sc_httpd_init();
 U32 sc_task_mngt_init();

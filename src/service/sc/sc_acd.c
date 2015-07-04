@@ -268,7 +268,7 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus)
  **/
 U32 sc_acd_agent_grp_add_call(U32 ulGrpID)
 {
-
+    return DOS_SUCC;
 }
 
 /*
@@ -280,7 +280,7 @@ U32 sc_acd_agent_grp_add_call(U32 ulGrpID)
  **/
 U32 sc_acd_agent_grp_del_call(U32 ulGrpID)
 {
-
+    return DOS_SUCC;
 }
 
 /*
@@ -293,7 +293,7 @@ U32 sc_acd_agent_grp_del_call(U32 ulGrpID)
  **/
 U32 sc_acd_agent_grp_stat(U32 ulGrpID, U32 ulWaitingTime)
 {
-
+    return DOS_SUCC;
 }
 
 /*
@@ -307,7 +307,7 @@ U32 sc_acd_agent_grp_stat(U32 ulGrpID, U32 ulWaitingTime)
  **/
 U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
 {
-
+    return DOS_SUCC;
 }
 
 /*
@@ -1257,8 +1257,8 @@ U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID)
         && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
     {
         pstGroupListNode->usLastUsedAgent = pstAgentNode->ulID;
-        pstAgentNode->pstAgentInfo.stStat.ulCallCnt++;
-        pstAgentNode->pstAgentInfo.stStat.ulSelectCnt++;
+        pstAgentNode->pstAgentInfo->stStat.ulCallCnt++;
+        pstAgentNode->pstAgentInfo->stStat.ulSelectCnt++;
 
         dos_memcpy(pstAgentBuff, pstAgentNode->pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
         ulResult = DOS_SUCC;

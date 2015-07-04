@@ -659,14 +659,16 @@ typedef struct tagTaskMngtInfo{
     pthread_mutex_t      mutexCMDList;            /* 保护命令队列使用的互斥量 */
     pthread_mutex_t      mutexTCBList;            /* 保护任务控制块使用的互斥量 */
     pthread_mutex_t      mutexCallList;           /* 保护呼叫控制块使用的互斥量 */
+    pthread_mutex_t      mutexCallHash;           /* 保护呼叫控制块使用的互斥量 */
+	pthread_mutex_t      mutexHashBGJobHash;
     pthread_cond_t       condCMDList;             /* 命令队列数据到达通知条件量 */
     U32                  blWaitingExitFlag;       /* 等待退出标示 */
 
     list_t               stCMDList;               /* 命令队列(节点由HTTP Server创建，有HTTP Server释放) */
     SC_SCB_ST            *pstCallSCBList;         /* 呼叫控制块列表 (需要hash表存储) */
+    HASH_TABLE_S         *pstCallSCBHash;         /* 呼叫控制块的hash索引 */
     SC_TASK_CB_ST        *pstTaskList;            /* 任务列表 refer to struct tagTaskCB*/
     U32                  ulTaskCount;             /* 当前正在执行的任务数 */
-    pthread_mutex_t      mutexHashBGJobHash;
     HASH_TABLE_S         *pstHashBGJobHash;       /* background-job hash表 */
 
     SC_SYSTEM_STAT_ST    stStat;
@@ -801,6 +803,9 @@ U32 sc_cwq_del_call(SC_SCB_ST *pstSCB);
 U32 sc_bg_job_hash_add(S8 *pszUUID, U32 ulUUIDLen, U32 ulRCNo);
 U32 sc_bg_job_hash_delete(U32 ulRCNo);
 BOOL sc_bg_job_find(U32 ulRCNo);
+U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
+U32 sc_scb_hash_tables_delete(S8 *pszUUID);
+SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
 
 #ifdef __cplusplus
 }

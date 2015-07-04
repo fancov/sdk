@@ -30,6 +30,8 @@ extern "C"{
 /* 应用外部变量 */
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
+extern SC_TASK_MNGT_ST      *g_pstTaskMngtInfo;
+
 /* ESL 句柄维护 */
 SC_EP_HANDLE_ST          *g_pstHandle = NULL;
 pthread_mutex_t          g_mutexEventList = PTHREAD_MUTEX_INITIALIZER;
@@ -2481,9 +2483,9 @@ U32 sc_ep_parse_event(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
         return DOS_FAIL;
     }
 
-    if (pstSCB->usOtherSCBNo < SC_MAX_SCB_NUM)
+    if (DOS_ADDR_VALID(pszOtherLegUUID))
     {
-        pstSCB2 = sc_scb_get(pstSCB->usOtherSCBNo);
+        pstSCB2 = sc_scb_hash_tables_find(pszOtherLegUUID);
     }
 
     /* 将相关数据写入SCB中 */
@@ -4041,7 +4043,7 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
     S8 *pszGatewayName         = NULL;
     S8 *pszOtherLeg            = NULL;
     S8 *pszSIPHangupCause      = NULL;
-    U32 ulGatewayID            = NULL;
+    U32 ulGatewayID            = 0;
     HASH_NODE_S   *pstHashNode = NULL;
     SC_GW_NODE_ST *pstGateway  = NULL;
     U32  ulIndex = U32_BUTT;
@@ -4115,7 +4117,7 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
             }
         }
 
-        pszProfileName = esl_event_get_header(pstEvent, "variable_is_outbound")
+        pszProfileName = esl_event_get_header(pstEvent, "variable_is_outbound");
         if (DOS_ADDR_VALID(pszProfileName)
             && dos_strncmp(pszProfileName, "true", dos_strlen("true")) == 0)
         {
@@ -4172,6 +4174,9 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
             }
         }
     }
+
+
+    return DOS_SUCC;
 }
 
 /**
@@ -4604,6 +4609,8 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         dos_strncpy(pstSCB->szUUID, pszUUID, sizeof(pstSCB->szUUID));
         pstSCB->szUUID[sizeof(pstSCB->szUUID) - 1] = '\0';
 
+		sc_scb_hash_tables_add(pszUUID, pstSCB);
+
         if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
             && pstSCB->usTCBNo < SC_MAX_TASK_NUM)
         {
@@ -4631,6 +4638,7 @@ process_fail:
             return DOS_FAIL;
         }
 
+        sc_scb_hash_tables_add(pszUUID, pstSCB);
         sc_ep_parse_event(pstEvent, pstSCB);
 
         dos_strncpy(pstSCB->szUUID, pszUUID, sizeof(pstSCB->szUUID));
@@ -4819,7 +4827,10 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
         case SC_SCB_IDEL:
             /* 这个地方初始化一下就好 */
             DOS_ASSERT(0);
+
+			sc_scb_hash_tables_delete(pstSCB->szUUID);
             sc_bg_job_hash_delete(pstSCB->usSCBNo);
+
             sc_scb_free(pstSCB);
             break;
 
@@ -4894,6 +4905,12 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
 
             sc_logr_debug(SC_ESL, "Start release the SCB. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
             /* 维护资源 */
+
+            sc_scb_hash_tables_delete(pstSCB->szUUID);
+            if (DOS_ADDR_VALID(pstSCBOther))
+            {
+                sc_scb_hash_tables_delete(pstSCBOther->szUUID);
+            }
 
             sc_bg_job_hash_delete(pstSCB->usSCBNo);
             sc_scb_free(pstSCB);
@@ -5208,7 +5225,7 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             return DOS_FAIL;
         }
 
-        pstSCB = sc_scb_get(ulSCBNo);
+        pstSCB = sc_scb_hash_tables_find(pszUUID);
         if (DOS_ADDR_INVALID(pstSCB)
             || !pstSCB->bValid)
         {
