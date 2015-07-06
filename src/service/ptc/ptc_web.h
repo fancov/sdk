@@ -7,7 +7,7 @@ extern "C"{
 
 #include <dos/dos_types.h>
 
-#define PTC_LOCK_MIN_COUT   3
+#define PTC_RECV_FROM_WEB_MAX_COUNT 10
 
 typedef struct tagRecvFromWebMsgHandle
 {

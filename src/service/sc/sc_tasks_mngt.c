@@ -619,9 +619,6 @@ VOID *sc_task_mngt_runtime(VOID *ptr)
             }
         }
 
-        /* 处理系统状态 */
-        g_pstTaskMngtInfo->enSystemStatus = sc_check_sys_stat();
-
         /* 处理退出标志 */
         if (g_pstTaskMngtInfo->blWaitingExitFlag)
         {
@@ -724,8 +721,36 @@ U32 sc_task_mngt_init()
     pthread_mutex_init(&g_pstTaskMngtInfo->mutexCMDList, NULL);
     pthread_mutex_init(&g_pstTaskMngtInfo->mutexTCBList, NULL);
     pthread_mutex_init(&g_pstTaskMngtInfo->mutexCallList, NULL);
+	pthread_mutex_init(&g_pstTaskMngtInfo->mutexCallHash, NULL);
+    pthread_mutex_init(&g_pstTaskMngtInfo->mutexHashBGJobHash, NULL);
     pthread_cond_init(&g_pstTaskMngtInfo->condCMDList, NULL);
     dos_list_init(&g_pstTaskMngtInfo->stCMDList);
+
+	g_pstTaskMngtInfo->pstHashBGJobHash = hash_create_table(SC_BGJOB_HASH_SIZE, NULL);
+    g_pstTaskMngtInfo->pstCallSCBHash = hash_create_table(SC_MAX_SCB_HASH_NUM, NULL);
+    if (!g_pstTaskMngtInfo->pstCallSCBHash || !g_pstTaskMngtInfo->pstHashBGJobHash)
+    {
+        DOS_ASSERT(0);
+		
+		if (g_pstTaskMngtInfo->pstCallSCBHash)
+		{
+            hash_delete_table(g_pstTaskMngtInfo->pstCallSCBHash, NULL);
+            g_pstTaskMngtInfo->pstCallSCBHash = NULL;
+		}
+		
+        if (g_pstTaskMngtInfo->pstHashBGJobHash)
+        {
+            hash_delete_table(g_pstTaskMngtInfo->pstHashBGJobHash, NULL);
+            g_pstTaskMngtInfo->pstHashBGJobHash = NULL;
+        }
+
+        dos_smem_free(g_pstTaskMngtInfo);
+        g_pstTaskMngtInfo = NULL;
+
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+
+    }
 
     /* 初始化呼叫控制块和任务控制块 */
     g_pstTaskMngtInfo->pstTaskList = (SC_TASK_CB_ST *)dos_smem_alloc(sizeof(SC_TASK_CB_ST) * SC_MAX_TASK_NUM);
@@ -744,6 +769,18 @@ U32 sc_task_mngt_init()
         {
             dos_smem_free(g_pstTaskMngtInfo->pstCallSCBList);
             g_pstTaskMngtInfo->pstCallSCBList = NULL;
+        }
+
+		if (g_pstTaskMngtInfo->pstCallSCBHash)
+		{
+            hash_delete_table(g_pstTaskMngtInfo->pstCallSCBHash, NULL);
+            g_pstTaskMngtInfo->pstCallSCBHash = NULL;
+		}
+
+        if (g_pstTaskMngtInfo->pstHashBGJobHash)
+        {
+            hash_delete_table(g_pstTaskMngtInfo->pstHashBGJobHash, NULL);
+            g_pstTaskMngtInfo->pstHashBGJobHash = NULL;
         }
 
         dos_smem_free(g_pstTaskMngtInfo);
@@ -778,7 +815,6 @@ U32 sc_task_mngt_init()
     }
 
     g_pstTaskMngtInfo->ulTaskCount = 0;
-    g_pstTaskMngtInfo->ulMaxCall = 0;
     g_pstTaskMngtInfo->blWaitingExitFlag = 0;
 
     sc_task_mngt_load_task();

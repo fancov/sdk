@@ -21,6 +21,7 @@ extern "C"{
 #define PTS_WEB_TIMEOUT             640000          /* 浏览器不操作超时时间 5分钟 */
 #define PTS_PING_TIMEOUT            2000
 #define PTS_SEND_CONFIRM_MSG_COUNT  3               /* 确认消息的发送次数 */
+#define PTS_RECVFROM_PTC_MSG_TIMEOUT 10 * 60        /* s */
 
 typedef struct tagRecvMsgStreamList
 {
@@ -29,6 +30,8 @@ typedef struct tagRecvMsgStreamList
     U32                     ulStreamID;
     BOOL                    bIsValid;
     pthread_mutex_t         pMutexPthread;
+    time_t                  ulLastUseTime;
+    S32                     lHandleMaxSeq;            /* 处理过的最大的包编号 */
 
 }PTS_REV_MSG_STREAM_LIST_ST;
 
@@ -38,6 +41,7 @@ typedef struct tagRecvMsgHandle
     U8 *                    paRecvBuff;
     U32                     ulRecvLen;
     U32                     ulIndex;
+    S32                     lSeq;
     struct sockaddr_in      stClientAddr;
 
 }PTS_REV_MSG_HANDLE_ST;
@@ -104,11 +108,9 @@ VOID *pts_recv_msg_from_ptc(VOID *arg);
 VOID *pts_handle_recvfrom_ptc_msg(VOID *arg);
 VOID *pts_send_msg2ptc(VOID *arg);
 VOID pts_send_exit_notify2ptc(PT_CC_CB_ST *pstPtcNode, PT_NEND_RECV_NODE_ST *pstNeedRecvNode);
-VOID pts_delete_recv_stream_node(PT_MSG_TAG *pstMsgDes);
-VOID pts_delete_send_stream_node(PT_MSG_TAG *pstMsgDes);
 VOID pts_send_exit_notify_to_ptc(PT_MSG_TAG *pstMsgDes, PT_CC_CB_ST *pstPtcSendNode);
-VOID pts_delete_stream_addr_node(U32 ulStreamID);
 void pts_set_delete_recv_buff_list_flag(U32 ulStreamID);
+void pts_free_stream_resource(PT_MSG_TAG *pstMsgDes);
 S8   *pts_get_current_time();
 S32  pts_save_msg_into_cache(U8 *pcIpccId, PT_DATA_TYPE_EN enDataType, U32 ulStreamID, S8 *pcData, S32 lDataLen, S8 *szDestIp, U16 usDestPort);
 S32  pts_find_ptc_by_dest_addr(S8 *pDestInternetIp, S8 *pDestIntranetIp, S8 *szDestSN);

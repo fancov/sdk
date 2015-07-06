@@ -16,6 +16,11 @@
 			</freeswitch>
         </path>
     </service>
+	
+	<system>
+		<!-- 最小空闲CPU比率 -->
+		<param name="min_idel_cpu" value="15" />
+	</system>
 
     <!-- 心跳相关配置 -->
     <heartbeat>

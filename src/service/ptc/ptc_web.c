@@ -27,16 +27,15 @@ S32 g_lPipeWRFd = 0;
 
 pthread_mutex_t g_mutexPtcRecvMsgHandle     = PTHREAD_MUTEX_INITIALIZER;        /* 处理接收消息锁 */
 pthread_cond_t  g_condPtcRecvMsgHandle      = PTHREAD_COND_INITIALIZER;         /* 处理接收消息变量 */
-list_t    g_stMsgRecvFromWeb;
 U32 g_ulWebSocketMax = 0;
 fd_set g_stWebFdSet;
 
-S32 ptc_recvfrom_web_buff_list_insert(S32 lNodeArray, S8 *szBUff, S32 lBuffLen)
+S32 ptc_recvfrom_web_buff_list_insert(PTC_CLIENT_CB_ST *pstPtcClientCB, S8 *szBUff, S32 lBuffLen)
 {
     PTC_WEB_REV_MSG_HANDLE_ST *pstNewNode = NULL;
     U32 ulCount = 0;
 
-    if (DOS_ADDR_INVALID(szBUff) || lNodeArray < 0 || lNodeArray >= PTC_STREAMID_MAX_COUNT)
+    if (DOS_ADDR_INVALID(szBUff) || DOS_ADDR_INVALID(pstPtcClientCB))
     {
         return DOS_FAIL;
     }
@@ -44,27 +43,46 @@ S32 ptc_recvfrom_web_buff_list_insert(S32 lNodeArray, S8 *szBUff, S32 lBuffLen)
     pstNewNode = (PTC_WEB_REV_MSG_HANDLE_ST *)dos_dmem_alloc(sizeof(PTC_WEB_REV_MSG_HANDLE_ST));
     if (DOS_ADDR_INVALID(pstNewNode))
     {
-        perror("malloc");
+        pt_logr_debug("malloc PTC_WEB_REV_MSG_HANDLE_ST fail");
+
         return DOS_FAIL;
     }
 
     pstNewNode->paRecvBuff = szBUff;
     pstNewNode->lRecvLen = lBuffLen;
-    pstNewNode->ulStreamID = g_astPtcConnects[lNodeArray].ulStreamID;
-    pstNewNode->lSocket = g_astPtcConnects[lNodeArray].lSocket;
+    pstNewNode->ulStreamID = pstPtcClientCB->ulStreamID;
+    pstNewNode->lSocket = pstPtcClientCB->lSocket;
+    dos_list_node_init(&pstNewNode->stList);
 
-    ulCount = g_astPtcConnects[lNodeArray].ulBuffNodeCount;
-    if (ulCount < 3)
+    ulCount = pstPtcClientCB->ulBuffNodeCount;
+    if (ulCount < PTC_LOCK_MIN_COUNT)
     {
-        pthread_mutex_unlock(&g_astPtcConnects[lNodeArray].pMutexPthread);
+        pthread_mutex_lock(&pstPtcClientCB->pMutexPthread);
     }
 
-    dos_list_add_tail(&g_astPtcConnects[lNodeArray].stRecvBuffList, &(pstNewNode->stList));
-    g_astPtcConnects[lNodeArray].ulBuffNodeCount++;
-
-    if (ulCount < 3)
+    if (pstPtcClientCB->enState != PTC_CLIENT_USING)
     {
-        pthread_mutex_unlock(&g_astPtcConnects[lNodeArray].pMutexPthread);
+        dos_dmem_free(pstNewNode);
+        pstNewNode = NULL;
+
+        if (ulCount < PTC_LOCK_MIN_COUNT)
+        {
+            pthread_mutex_unlock(&pstPtcClientCB->pMutexPthread);
+        }
+
+        pt_logr_debug("CB state error , enState : %d", pstPtcClientCB->enState);
+
+        return DOS_FAIL;
+    }
+    else
+    {
+        dos_list_add_tail(&pstPtcClientCB->stRecvBuffList, &(pstNewNode->stList));
+        pstPtcClientCB->ulBuffNodeCount++;
+        pt_logr_debug("add node into list succ, count : %d", pstPtcClientCB->ulBuffNodeCount);
+    }
+    if (ulCount < PTC_LOCK_MIN_COUNT)
+    {
+        pthread_mutex_unlock(&pstPtcClientCB->pMutexPthread);
     }
 
     return DOS_SUCC;
@@ -83,13 +101,14 @@ void *ptc_recv_msg_from_web(void *arg)
     S32    lRecvLen   = 0;
     U32    i          = 0;
     S32    lResult    = 0;
-    struct timeval stTimeVal = {5, 0};
+    struct timeval stTimeVal = {1, 0};
     struct timeval stTimeValCpy;
     fd_set ReadFds;
-    U32 ulMaxFd = 0;
-    S32 lPipeFd = -1;
-    S32 lNodeArray = 0;
-    S8 *pcRecvBuf = NULL;
+    U32 ulMaxFd     = 0;
+    S32 lPipeFd     = -1;
+    S8  *pcRecvBuf  = NULL;
+    S32 lSocket     = 0;
+    U32 ulMaxLoopCount = 10;
 
     /* 创建管道 */
     if(access(g_szFifoName, F_OK) == -1)
@@ -141,55 +160,71 @@ void *ptc_recv_msg_from_web(void *arg)
             continue;
         }
 
-        for (i=0; i<=ulMaxFd; i++)
+        for (i=0; i<=PTC_STREAMID_MAX_COUNT; i++)
         {
-            if (FD_ISSET(i, &ReadFds))
+            if (PTC_STREAMID_MAX_COUNT == i)
             {
-                if (i == lPipeFd)
+                lSocket = lPipeFd;
+            }
+            else
+            {
+                if (g_astPtcConnects[i].enState != PTC_CLIENT_USING
+                        || g_astPtcConnects[i].enDataType != PT_DATA_WEB
+                        || g_astPtcConnects[i].lSocket <= 0)
                 {
-                    lRecvLen = read(lPipeFd, cRecvBuf, PT_RECV_DATA_SIZE);
                     continue;
                 }
+
+                lSocket = g_astPtcConnects[i].lSocket;
+            }
+
+            if (!FD_ISSET(lSocket, &ReadFds))
+            {
+                continue;
+            }
+            if (lSocket == lPipeFd)
+            {
+                lRecvLen = read(lPipeFd, cRecvBuf, sizeof(cRecvBuf));
+                continue;
+            }
+
+            ulMaxLoopCount = PTC_RECV_FROM_WEB_MAX_COUNT;
+            while (ulMaxLoopCount--)
+            {
                 pcRecvBuf = (S8 *)dos_dmem_alloc(PT_RECV_DATA_SIZE);
                 if (DOS_ADDR_INVALID(pcRecvBuf))
                 {
                     /* 关闭该strream */
-                    FD_CLR(i, &g_stWebFdSet);
-                    close(i);
+                    ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
 
-                    continue;
+                    break;
                 }
 
-                lRecvLen = recv(i, pcRecvBuf, PT_RECV_DATA_SIZE, 0);
-                pt_logr_debug("ptc recv from web server len : %d, socket : %d", lRecvLen, i);
-
-                lNodeArray = ptc_get_client_node_array_by_socket(i, PT_DATA_WEB);
-                if (DOS_FAIL == lNodeArray)
-                {
-                    pt_logr_debug("not found socket, streamID is %d", i);
-                    FD_CLR(i, &g_stWebFdSet);
-                    close(i);
-
-                    continue;
-                }
-
-                if (lRecvLen <= 0)
+                lRecvLen = recv(lSocket, pcRecvBuf, PT_RECV_DATA_SIZE, 0);
+                if (lRecvLen < 0)
                 {
                     /* sockfd结束，通知pts */
-                    FD_CLR(i, &g_stWebFdSet);
-                }
+                    pt_logr_info("recv socket fail, socket : %d, index : %d, result : %d", lSocket, i, lRecvLen);
+                    FD_CLR(lSocket, &g_stWebFdSet);
+                    ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
 
+                    break;
+                }
+                else if (lRecvLen == 0)
+                {
+                    /* sockfd结束，通知pts */
+                    FD_CLR(lSocket, &g_stWebFdSet);
+                }
+                pt_logr_debug("ptc recv from web server len : %d, socket : %d", lRecvLen, lSocket);
                 pthread_mutex_lock(&g_mutexPtcRecvMsgHandle);
-                lResult = ptc_recvfrom_web_buff_list_insert(lNodeArray, pcRecvBuf, lRecvLen);
+                lResult = ptc_recvfrom_web_buff_list_insert(&g_astPtcConnects[i], pcRecvBuf, lRecvLen);
                 if (lResult != DOS_SUCC)
                 {
                     dos_dmem_free(pcRecvBuf);
                     pcRecvBuf = NULL;
                     pthread_mutex_unlock(&g_mutexPtcRecvMsgHandle);
 
-                    ptc_send_exit_notify_to_pts(PT_DATA_WEB, g_astPtcConnects[i].ulStreamID, 1);
-                    ptc_delete_send_stream_node_by_streamID(g_astPtcConnects[i].ulStreamID);
-                    ptc_delete_client_by_socket(g_astPtcConnects[i].lSocket, PT_DATA_WEB);
+                    ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
                 }
                 else
                 {
@@ -197,8 +232,14 @@ void *ptc_recv_msg_from_web(void *arg)
                     pthread_mutex_unlock(&g_mutexPtcRecvMsgHandle);
                 }
 
-            } /* end of if */
+                if (lRecvLen < PT_RECV_DATA_SIZE)
+                {
+                    break;
+                }
+            }
+
         } /* end of for */
+
     } /* end of while(1) */
 }
 
@@ -209,10 +250,9 @@ void *ptc_handle_recvfrom_web_msg(void *arg)
     S32 lResult = 0;
     struct timeval now;
     struct timespec timeout;
-    S32 i = 0;
-    U32 ulCount = 0;
-
-    dos_list_init(&g_stMsgRecvFromWeb);
+    S32     i       = 0;
+    U32     ulCount = 0;
+    BOOL    bIsFail = DOS_FALSE;
 
     while (1)
     {
@@ -224,104 +264,132 @@ void *ptc_handle_recvfrom_web_msg(void *arg)
         pthread_cond_timedwait(&g_condPtcRecvMsgHandle, &g_mutexPtcRecvMsgHandle, &timeout);
         pthread_mutex_unlock(&g_mutexPtcRecvMsgHandle);
 
-        while (1)
+        for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
         {
-            for (i=0; i<PTC_STREAMID_MAX_COUNT; i++)
+            if (g_astPtcConnects[i].enState != PTC_CLIENT_USING
+                || g_astPtcConnects[i].enDataType != PT_DATA_WEB
+                || 0 == g_astPtcConnects[i].ulBuffNodeCount)
             {
-                if (g_astPtcConnects[i].enState != PTC_CLIENT_USING
-                    || g_astPtcConnects[i].enDataType != PT_DATA_WEB
-                    || 0 == g_astPtcConnects[i].ulBuffNodeCount)
+                /* 不符合条件，跳过 */
+                continue;
+            }
+
+            while (1)
+            {
+                if (dos_list_is_empty(&g_astPtcConnects[i].stRecvBuffList))
                 {
-                    /* 不符合条件，跳过 */
-                    continue;
+                    break;
                 }
 
-                while (1)
+                ulCount = g_astPtcConnects[i].ulBuffNodeCount;
+                if (ulCount < PTC_LOCK_MIN_COUNT)
                 {
-                    if (dos_list_is_empty(&g_astPtcConnects[i].stRecvBuffList))
-                    {
-                        break;
-                    }
+                    pthread_mutex_lock(&g_astPtcConnects[i].pMutexPthread);
+                }
 
-                    ulCount = g_astPtcConnects[i].ulBuffNodeCount;
-                    if (ulCount < PTC_LOCK_MIN_COUT)
-                    {
-                        pthread_mutex_lock(&g_astPtcConnects[i].pMutexPthread);
-                    }
-
-                    pstRecvBuffList = dos_list_fetch(&g_astPtcConnects[i].stRecvBuffList);
-                    if (DOS_ADDR_INVALID(pstRecvBuffList))
-                    {
-                        if (ulCount < PTC_LOCK_MIN_COUT)
-                        {
-                            pthread_mutex_unlock(&g_astPtcConnects[i].pMutexPthread);
-                        }
-                        break;
-                    }
-
-                    if (ulCount < PTC_LOCK_MIN_COUT)
+                //pstRecvBuffList = dos_list_fetch(&g_astPtcConnects[i].stRecvBuffList);
+                pstRecvBuffList = g_astPtcConnects[i].stRecvBuffList.next;
+                if (pstRecvBuffList == &g_astPtcConnects[i].stRecvBuffList || DOS_ADDR_INVALID(pstRecvBuffList))
+                {
+                    if (ulCount < PTC_LOCK_MIN_COUNT)
                     {
                         pthread_mutex_unlock(&g_astPtcConnects[i].pMutexPthread);
                     }
+                    break;
+                }
 
+                if (DOS_ADDR_INVALID(g_astPtcConnects[i].pstSendStreamNode))
+                {
+                    /* 找不到发送缓存 */
+                    if (ulCount < PTC_LOCK_MIN_COUNT)
+                    {
+                        pthread_mutex_unlock(&g_astPtcConnects[i].pMutexPthread);
+                    }
+                    pt_logr_debug("can not found send stream cache, index: %d", i);
+                    ptc_delete_client_by_index(&g_astPtcConnects[i]);
+
+                    break;
+                }
+
+                if (!ptc_cache_is_or_not_have_space(g_astPtcConnects[i].pstSendStreamNode))
+                {
+                    if (ulCount < PTC_LOCK_MIN_COUNT)
+                    {
+                        pthread_mutex_unlock(&g_astPtcConnects[i].pMutexPthread);
+                    }
+                    pt_logr_debug("ptc cache not have space! streamID : %d", g_astPtcConnects[i].ulStreamID);
+
+                    break;
+                }
+                else
+                {
                     if (g_astPtcConnects[i].ulBuffNodeCount > 0)
                     {
                         g_astPtcConnects[i].ulBuffNodeCount--;
                     }
+                    dos_list_del(pstRecvBuffList);
 
-                    pstRecvBuffNode = dos_list_entry(pstRecvBuffList, PTC_WEB_REV_MSG_HANDLE_ST, stList);
-                    if (DOS_ADDR_INVALID(pstRecvBuffNode))
-                    {
-                        break;
-                    }
+                    pt_logr_debug("index : %d, count : %d", i, g_astPtcConnects[i].ulBuffNodeCount);
+                }
 
-                    if (pstRecvBuffNode->lRecvLen <= 0)
-                    {
-                        close(pstRecvBuffNode->lSocket);
-                        lResult = ptc_save_msg_into_cache(PT_DATA_WEB, pstRecvBuffNode->ulStreamID, "", 0);
-                        if (PT_NEED_CUT_PTHREAD == lResult)
-                        {
-                            /* 添加回头部 */
-                            pthread_mutex_lock(&g_astPtcConnects[i].pMutexPthread);
-                            dos_list_add_head(&g_astPtcConnects[i].stRecvBuffList, pstRecvBuffList);
-                            g_astPtcConnects[i].ulBuffNodeCount++;
-                            pthread_mutex_unlock(&g_astPtcConnects[i].pMutexPthread);
-                            break;
-                        }
-                        else
-                        {
-                            ptc_delete_client_by_socket(pstRecvBuffNode->lSocket, PT_DATA_WEB);
-                        }
-                    }
-                    else
-                    {
-                        lResult = ptc_save_msg_into_cache(PT_DATA_WEB, pstRecvBuffNode->ulStreamID, pstRecvBuffNode->paRecvBuff, pstRecvBuffNode->lRecvLen);
-                        if (PT_NEED_CUT_PTHREAD == lResult)
-                        {
-                            ptc_set_cache_full_true(pstRecvBuffNode->lSocket, PT_DATA_WEB);
-                            /* 添加回头部 */
-                            pthread_mutex_lock(&g_astPtcConnects[i].pMutexPthread);
-                            dos_list_add_head(&g_astPtcConnects[i].stRecvBuffList, pstRecvBuffList);
-                            g_astPtcConnects[i].ulBuffNodeCount++;
-                            pthread_mutex_unlock(&g_astPtcConnects[i].pMutexPthread);
+                if (ulCount < PTC_LOCK_MIN_COUNT)
+                {
+                    pthread_mutex_unlock(&g_astPtcConnects[i].pMutexPthread);
+                }
 
-                            break;
-                        }
-                    }
+                pstRecvBuffNode = dos_list_entry(pstRecvBuffList, PTC_WEB_REV_MSG_HANDLE_ST, stList);
+                if (DOS_ADDR_INVALID(pstRecvBuffNode))
+                {
+                    break;
+                }
+                bIsFail = DOS_FALSE;
 
-                    if (DOS_ADDR_VALID(pstRecvBuffNode->paRecvBuff))
-                    {
-                        dos_dmem_free(pstRecvBuffNode->paRecvBuff);
-                        pstRecvBuffNode->paRecvBuff = NULL;
-                    }
-                    if (DOS_ADDR_VALID(pstRecvBuffNode))
-                    {
-                        dos_dmem_free(pstRecvBuffNode);
-                        pstRecvBuffNode = NULL;
-                    }
+                lResult = ptc_save_msg_into_cache(g_astPtcConnects[i].pstSendStreamNode, PT_DATA_WEB, pstRecvBuffNode->ulStreamID, pstRecvBuffNode->paRecvBuff, pstRecvBuffNode->lRecvLen);
+                if (PT_NEED_CUT_PTHREAD == lResult)
+                {
+                    ptc_set_cache_full_true(pstRecvBuffNode->lSocket, PT_DATA_WEB);
+                    /* 添加回头部 */
+                    pthread_mutex_lock(&g_astPtcConnects[i].pMutexPthread);
+                    dos_list_add_head(&g_astPtcConnects[i].stRecvBuffList, pstRecvBuffList);
+                    g_astPtcConnects[i].ulBuffNodeCount++;
+                    pthread_mutex_unlock(&g_astPtcConnects[i].pMutexPthread);
+
+                    break;
+                }
+                else if (PT_SAVE_DATA_FAIL == lResult)
+                {
+                    /* 添加失败 */
+                    pt_logr_debug("save into send cache fail, stream : %d, index : %d", pstRecvBuffNode->ulStreamID, i);
+                    bIsFail = DOS_TRUE;
+                }
+
+                if (0 == pstRecvBuffNode->lRecvLen)
+                {
+                    pt_logr_debug("save len is 0 into cache succ, stream : %d, index: %d", pstRecvBuffNode->ulStreamID, i);
+                    ptc_delete_client_by_index(&g_astPtcConnects[i]);
+                }
+
+                if (DOS_ADDR_VALID(pstRecvBuffNode->paRecvBuff))
+                {
+                    dos_dmem_free(pstRecvBuffNode->paRecvBuff);
+                    pstRecvBuffNode->paRecvBuff = NULL;
+                }
+                if (DOS_ADDR_VALID(pstRecvBuffNode))
+                {
+                    dos_dmem_free(pstRecvBuffNode);
+                    pstRecvBuffNode = NULL;
+                }
+
+                if (bIsFail)
+                {
+                    /* 操作失败 */
+                    ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
+
+                    break;
                 }
             }
         }
+
     }
 
     return NULL;
@@ -340,11 +408,13 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
     S32               lResult          = 0;
     S32               lSockfd          = 0;
     U32               ulArraySub       = 0;
-    socklen_t         optlen           = sizeof(S32);
-    S32               tcpinfo          = 0;
+    //socklen_t         optlen           = sizeof(S32);
+    //S32               tcpinfo          = 0;
     PT_STREAM_CB_ST   *pstStreamList   = NULL;
     PT_STREAM_CB_ST   *pstStreamNode   = NULL;
     PT_DATA_TCP_ST    stRecvDataTcp;
+    S32               lCurrSeq         = 0;
+    S32               lIndex           = 0;
 
     pstStreamList = g_pstPtcRecv->pstStreamHead;
     if (DOS_ADDR_INVALID(pstStreamList))
@@ -365,10 +435,10 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
 
     while(1)
     {
-        pstStreamNode->lCurrSeq++;
-        ulArraySub = (pstStreamNode->lCurrSeq) & (PT_DATA_RECV_CACHE_SIZE - 1);
+        lCurrSeq = pstStreamNode->lCurrSeq + 1;
+        ulArraySub = (lCurrSeq) & (PT_DATA_RECV_CACHE_SIZE - 1);
         stRecvDataTcp = pstStreamNode->unDataQueHead.pstDataTcp[ulArraySub];
-        if (stRecvDataTcp.lSeq == pstStreamNode->lCurrSeq)
+        if (stRecvDataTcp.lSeq == lCurrSeq)
         {
             lSockfd = ptc_get_socket_by_streamID(pstStreamNode->ulStreamID);
             if (DOS_FAIL == lSockfd)
@@ -377,25 +447,24 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 if (lSockfd <= 0)
                 {
                     /* 创建socket失败，通知pts结束 */
-                    ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID, 1);
-                    ptc_delete_stream_node_by_recv(pstStreamNode);
+                    ptc_free_stream_resoure(PT_DATA_WEB, NULL, pstStreamNode->ulStreamID, 1);
 
                     break;
                 }
 
-                lResult = ptc_add_client(pstStreamNode->ulStreamID, lSockfd, PT_DATA_WEB);
+                lResult = ptc_add_client(pstStreamNode->ulStreamID, lSockfd, PT_DATA_WEB, pstStreamNode);
                 if (lResult != DOS_SUCC)
                 {
                     /* socket 数量已满 */
                     close(lSockfd);
-                    ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID, 2);
-                    ptc_delete_stream_node_by_recv(pstStreamNode);
+                    ptc_free_stream_resoure(PT_DATA_WEB, NULL, pstStreamNode->ulStreamID, 2);
 
                     break;
                 }
                 write(g_lPipeWRFd, "s", 1);
             }
 
+#if 0
             if (getsockopt(lSockfd, IPPROTO_TCP, TCP_INFO, &tcpinfo, &optlen) < 0)
             {
                 DOS_ASSERT(0);
@@ -416,24 +485,30 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
 
                 break;
             }
-
+#endif
             pt_logr_debug("send msg to web server, stream : %d, seq : %d, len : %d", pstStreamNode->ulStreamID, pstStreamNode->lCurrSeq, stRecvDataTcp.ulLen);
-            lResult = send(lSockfd, stRecvDataTcp.szBuff, stRecvDataTcp.ulLen, 0);
-            if (lResult <= 0)
+            lResult = send(lSockfd, stRecvDataTcp.szBuff, stRecvDataTcp.ulLen, MSG_NOSIGNAL);
+            if (lResult < stRecvDataTcp.ulLen)
             {
                 /* 创建socket失败，通知pts结束 */
                 DOS_ASSERT(0);
-                ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID, 1);
-                ptc_delete_stream_node_by_recv(pstStreamNode);
-                ptc_delete_client_by_socket(lSockfd, PT_DATA_WEB);
+                lIndex = ptc_get_client_node_array_by_socket(lSockfd, PT_DATA_WEB);
+                if (lIndex >= 0 && lIndex < PTC_STREAMID_MAX_COUNT)
+                {
+                    ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[lIndex], pstStreamNode->ulStreamID, 1);
+                }
+                else
+                {
+                    ptc_free_stream_resoure(PT_DATA_WEB, NULL, pstStreamNode->ulStreamID, 1);
+                }
 
                 break;
             }
+
+            pstStreamNode->lCurrSeq = lCurrSeq;
         }
         else
         {
-            /* 这个seq没有发送，减一 */
-            pstStreamNode->lCurrSeq--;
             break;
         }
     }

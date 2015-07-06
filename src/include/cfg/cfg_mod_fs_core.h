@@ -57,6 +57,7 @@
 
 #define INCLUDE_SERVICE_PYTHON            1
 
+#define DOS_INCLUDE_SYS_STAT              1
 
 #endif /* END __CFG_MOD_FS_CORE_H__ */
 

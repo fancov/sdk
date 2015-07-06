@@ -90,7 +90,7 @@ VOID sc_tmp_tbl_clean()
     db_transaction_begin(g_pstSCDBHandle);
     if (db_query(g_pstSCDBHandle, szQuery, NULL, NULL, NULL) != DB_ERR_SUCC)
     {
-        sc_logr_emerg(SC_SYN, "%s", "DB query failed. (%s)", szQuery);
+        sc_logr_emerg(SC_SYN, "DB query failed. (%s)", szQuery);
         db_transaction_rollback(g_pstSCDBHandle);
         return;
     }
@@ -113,7 +113,7 @@ U32 sc_walk_tmp_tbl()
 
     if (db_query(g_pstSCDBHandle, szQuery, sc_walk_tmp_tbl_cb, NULL, NULL) != DB_ERR_SUCC)
     {
-        sc_logr_emerg(SC_SYN, "%s", "DB query failed.(%s)", szQuery);
+        sc_logr_emerg(SC_SYN, "DB query failed.(%s)", szQuery);
         return DOS_FAIL;
     }
 

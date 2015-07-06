@@ -153,6 +153,7 @@ U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID)
             return DOS_FAIL;
         }
         pstCWQNode->ulAgentGrpID = ulAgentGrpID;
+        pstCWQNode->ulStartWaitingTime = 0;
         DLL_Init(&pstCWQNode->stCallWaitingQueue);
         pthread_mutex_init(&pstCWQNode->mutexCWQMngt, NULL);
 
@@ -161,6 +162,8 @@ U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID)
         pthread_mutex_lock(&g_mutexCWQMngt);
         DLL_Add(&g_stCWQMngt, pstDLLNode);
         pthread_mutex_unlock(&g_mutexCWQMngt);
+
+        sc_acd_agent_grp_add_call(ulAgentGrpID);
     }
     else
     {
@@ -239,6 +242,9 @@ U32 sc_cwq_del_call(SC_SCB_ST *pstSCB)
 
             if (pstSCB1 == pstSCB)
             {
+                sc_acd_agent_grp_del_call(pstCWQNode->ulAgentGrpID);
+                sc_acd_agent_grp_stat(pstCWQNode->ulAgentGrpID, 0);
+
                 dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode1);
                 DLL_Init_Node(pstDLLNode1);
 
@@ -313,10 +319,13 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 if (sc_acd_query_idel_agent(pstCWQNode->ulAgentGrpID, &blHasIdelAgent) != DOS_SUCC
                     || !blHasIdelAgent)
                 {
+                    pstCWQNode->ulStartWaitingTime = time(0);
                     break;
                 }
 
                 dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode1);
+
+                sc_acd_agent_grp_del_call(pstCWQNode->ulAgentGrpID);
 
                 DLL_Init_Node(pstDLLNode1);
                 dos_dmem_free(pstDLLNode1);

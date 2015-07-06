@@ -27,7 +27,7 @@ extern S32 mon_command_proc(U32 ulIndex, S32 argc, S8 ** argv);
 
 #if INCLUDE_PTS
 extern S32 pts_send_command_to_ptc(U32 ulIndex, S32 argc, S8 **argv);
-extern S32 pts_printf_telnet_msg(U32 ulIndex, S32 argc, S8 **argv);
+extern S32 pts_telnet_cmd(U32 ulIndex, S32 argc, S8 **argv);
 extern S32 pts_printf_web_msg(U32 ulIndex, S32 argc, S8 **argv);
 extern S32 pts_printf_recv_cache_msg(U32 ulIndex, S32 argc, S8 **argv);
 extern S32 pts_printf_send_cache_msg(U32 ulIndex, S32 argc, S8 **argv);
@@ -64,11 +64,11 @@ COMMAND_ST g_stCommandSet[] = {
 
 #if INCLUDE_PTS
     {NULL, "ptc",           "send cmd to PTC",                  pts_send_command_to_ptc},
-    {NULL, "telnet",        "printf telnet CB",                 pts_printf_telnet_msg},
     {NULL, "web",           "printf web CB",                    pts_printf_web_msg},
     {NULL, "recv",          "printf recv CB",                   pts_printf_recv_cache_msg},
     {NULL, "send",          "printf send CB",                   pts_printf_send_cache_msg},
     {NULL, "trace",         "trace debug a PTC",                pts_trace_debug_ptc},
+    {NULL, "telnet",        "",                                 pts_telnet_cmd},
 #endif
 
 #if INCLUDE_PTC

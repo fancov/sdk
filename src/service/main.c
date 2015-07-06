@@ -167,6 +167,11 @@ int main(int argc, char ** argv)
     dos_signal_handle_reg();
 #endif
 
+#if (DOS_INCLUDE_SYS_STAT)
+    /* CPU占用情况 */
+    dos_sysstat_cpu_start();
+#endif
+
 
 #if INCLUDE_SERVICE_TIMER
     /* 启动定时器模块 */

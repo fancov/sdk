@@ -59,9 +59,18 @@ typedef enum
 {
     PT_SAVE_DATA_FAIL = -1,      /* 保存数据到缓存失败 */
     PT_SAVE_DATA_SUCC,           /* 保存数据到缓存成功 */
-    PT_NEED_CUT_PTHREAD         /* 缓存存满，需要切换线程 */
+    PT_NEED_CUT_PTHREAD          /* 缓存存满，需要切换线程 */
 
 }PT_SAVE_RESULT_EN;
+
+typedef enum
+{
+    PT_CACHE_NOT_FOUND = -1,      /* 没有找到缓存 */
+    PT_CACHE_HAVE_SPACE,          /* 缓存有空间 */
+    PT_CACHE_NOT_HAVE_SPACE       /* 缓存已经存满 */
+
+}PT_CACHE_STATE_EN;
+
 
 /* PTC登陆结果 */
 typedef enum
@@ -339,7 +348,7 @@ typedef struct tagStreamCacheAddrCB
 {
     list_t              stList;
 
-    U32                 ulStrreamID;
+    U32                 ulStreamID;
 
     PT_CC_CB_ST         *pstPtcRecvNode;
     PT_CC_CB_ST         *pstPtcSendNode;

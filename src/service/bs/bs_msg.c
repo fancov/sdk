@@ -237,17 +237,10 @@ VOID bss_send_rsp_msg2app(BS_MSG_TAG *pstMsgTag, U8 ucMsgType)
              pstRspMsg->usMsgLen,
              pstRspMsg->ucErrcode);
 
-    if (g_stBSAppMsgSendList.ulCount < 3)
-    {
-        pthread_mutex_lock(&g_mutexBSAppMsgSend);
-    }
+    pthread_mutex_lock(&g_mutexBSAppMsgSend);
     DLL_Add(&g_stBSAppMsgSendList, pstMsgNode);
     pthread_cond_signal(&g_condBSAppSendList);
-    if (g_stBSAppMsgSendList.ulCount < 4)
-    {
-        pthread_mutex_unlock(&g_mutexBSAppMsgSend);
-    }
-
+    pthread_mutex_unlock(&g_mutexBSAppMsgSend);
 }
 
 /* 业务层发送AAA请求响应到应用层 */

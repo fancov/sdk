@@ -48,10 +48,7 @@ VOID pts_web_free_stream(PT_NEND_RECV_NODE_ST *pstNeedRecvNode, PT_STREAM_CB_ST 
     /* 向ptc发送结束通知 */
     pts_send_exit_notify2ptc(pstCCNode, pstNeedRecvNode);
     /* 释放stream节点 */
-    pts_delete_stream_addr_node(stMsgDes.ulStreamID);
-    pts_set_delete_recv_buff_list_flag(stMsgDes.ulStreamID);
-    pts_delete_recv_stream_node(&stMsgDes);
-    pts_delete_send_stream_node(&stMsgDes);
+    pts_free_stream_resource(&stMsgDes);
 }
 
 
@@ -122,10 +119,7 @@ VOID pts_web_free_resource(S32 lSocket)
     pthread_mutex_unlock(&g_mutexStreamAddrList);
 
     /* 释放收发缓存 */
-    pts_delete_stream_addr_node(stMsgDes.ulStreamID);
-    pts_set_delete_recv_buff_list_flag(stMsgDes.ulStreamID);
-    pts_delete_recv_stream_node(&stMsgDes);
-    pts_delete_send_stream_node(&stMsgDes);
+    pts_free_stream_resource(&stMsgDes);
 }
 
 void pts_set_cache_full_true(S32 lSocket)
@@ -187,6 +181,7 @@ S32 pts_clinetCB_insert(list_t *psthead, S32 lSockfd, struct sockaddr_in stClien
     stNewNode->bIsCacheFull = DOS_FALSE;
     pt_logr_debug("sockfd : %d, stream : %d", lSockfd, stNewNode->ulStreamID);
 
+    dos_list_node_init(&(stNewNode->stList));
     dos_list_add_tail(psthead, &(stNewNode->stList));
 
     return DOS_SUCC;
@@ -706,7 +701,6 @@ S32 pts_is_serv_socket(S32 lSocket)
  */
 VOID *pts_recv_msg_from_browser(VOID *arg)
 {
-    //S32 lSocket = 0;
     S32 lConnFd = 0;
     S32 lMaxFdp = 0;
     S32 i       = 0;
@@ -925,8 +919,9 @@ void *pts_send_msg2browser_pthread(void *arg)
     }
 
     pstStreamNode = pstStreamCacheAddr->pstStreamRecvNode;
-    if (DOS_ADDR_INVALID(pstStreamNode))
+    if (DOS_ADDR_INVALID(pstStreamNode) || pstStreamNode->ulStreamID != pstParam->ulStreamID)
     {
+        pstStreamCacheAddr->pstStreamRecvNode = NULL;
         pthread_mutex_unlock(&g_mutexStreamAddrList);
 
         goto end;
@@ -969,7 +964,7 @@ void *pts_send_msg2browser_pthread(void *arg)
             if (pstDataTcp[ulArraySub].ulLen == 0)
             {
                 pstStreamNode->bIsUsing = DOS_FALSE;
-                pt_logr_debug("recv 0 from ptc, close socket %d, stream : %d", pstParam->lSocket, pstStreamNode->ulStreamID);
+                pt_logr_info("recv 0 from ptc, close socket %d, stream : %d", pstParam->lSocket, pstStreamNode->ulStreamID);
                 pts_web_close_socket(pstParam->lSocket);
                 write(g_lPtsPipeWRFd, "s", 1);
                 pthread_mutex_unlock(&pstCCNode->pthreadMutex);
@@ -1022,6 +1017,11 @@ void *pts_send_msg2browser_pthread(void *arg)
                 {
                     lResult = send(pstParam->lSocket, pcSendMsg, ulBuffLen, MSG_NOSIGNAL);//MSG_NOSIGNAL
                     pts_trace(pstCCNode->bIsTrace, LOG_LEVEL_DEBUG, "send data to browser, stream : %d, seq : %d, len : %d, result : %d", ulSteamID, ulSeq, ulBuffLen, lResult);
+                    if (lResult != ulBuffLen)
+                    {
+                        pt_logr_info("send data to browser, stream : %d, seq : %d, len : %d, result : %d", ulSteamID, ulSeq, ulBuffLen, lResult);
+                    }
+
                     if (lResult <= 0)
                     {
                         perror("send to browser");
@@ -1031,7 +1031,7 @@ void *pts_send_msg2browser_pthread(void *arg)
                             continue;
                         }
                         pthread_mutex_lock(&pstCCNode->pthreadMutex);
-                        pstStreamNode->bIsUsing = DOS_FALSE;
+                        //pstStreamNode->bIsUsing = DOS_FALSE;
                         pts_web_close_socket(pstParam->lSocket);
                         pthread_mutex_unlock(&pstCCNode->pthreadMutex);
                         pts_web_free_stream(&stNeedRecvNode, pstStreamNode, pstCCNode);
@@ -1066,7 +1066,7 @@ void *pts_send_msg2browser_pthread(void *arg)
             pthread_mutex_lock(&pstCCNode->pthreadMutex);
         }
     } /* end of while(1) */
-    pstStreamNode->bIsUsing = DOS_FALSE;
+
     pthread_mutex_unlock(&pstCCNode->pthreadMutex);
 end:
     pthread_mutex_lock(&g_mutexSendMsgPthreadList);
@@ -1085,7 +1085,6 @@ end:
 VOID pts_send_msg2browser(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
 {
     S32                         lResult             = 0;
-    //S8                        *pcStrchr           = NULL;
     PTS_CLIENT_CB_ST            *pstClinetCB        = NULL;
     PT_SEND_MSG_PTHREAD         *pstSendPthread     = NULL;
     S8  szExitReason[PT_DATA_BUFF_1024]     = {0};

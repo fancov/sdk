@@ -70,3 +70,5 @@
  * 定义pts server的监听端口
  */
 #define  DOS_PTS_SERVER_PORT            28100
+
+#define  DOS_MIN_IDEL_CPU               15

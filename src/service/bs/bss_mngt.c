@@ -2332,6 +2332,7 @@ VOID *bss_recv_msg_from_app(VOID *arg)
     struct sockaddr_un  stUnAddr, stUnAddrIn;
     S8 szBuffCMD[256];
     S8 szBuffSockPath[256] = { 0 };
+    struct timeval stTimeout={1, 0};
 
 
     /* 初始化socket(暂时只考虑UDP方式) */
@@ -2407,8 +2408,10 @@ VOID *bss_recv_msg_from_app(VOID *arg)
         FD_ZERO(&stFDSet);
         FD_SET(lSocket, &stFDSet);
         lMaxFd = lSocket + 1;
+        stTimeout.tv_sec = 1;
+        stTimeout.tv_usec = 0;
 
-        lRet = select(lMaxFd, &stFDSet, NULL, NULL, NULL);
+        lRet = select(lMaxFd, &stFDSet, NULL, NULL, &stTimeout);
         if (0 == lRet || EINTR == errno)
         {
             /* socket无变化或系统中断 */
@@ -2421,7 +2424,7 @@ VOID *bss_recv_msg_from_app(VOID *arg)
             break;
         }
 
-        if (FD_ISSET(lSocket, &stFDSet) <= 0)
+        if (!FD_ISSET(lSocket, &stFDSet))
         {
             continue;
         }
@@ -5286,40 +5289,18 @@ VOID *bss_cdr(VOID *arg)
         {
             ulMsgCnt = g_stBSCDRList.ulCount;
 
-            if (ulMsgCnt < 3)
-            {
-                pthread_mutex_lock(&g_mutexBSCDR);
-            }
             if (DLL_Count(&g_stBSCDRList) <= 0)
             {
-                if (ulMsgCnt < 3)
-                {
-                    pthread_mutex_unlock(&g_mutexBSCDR);
-                }
-
                 break;
             }
 
-            if (ulMsgCnt < 3)
-            {
-                pthread_mutex_unlock(&g_mutexBSCDR);
-            }
-
+            pthread_mutex_unlock(&g_mutexBSCDR);
             pMsgNode = dll_fetch(&g_stBSCDRList);
+            pthread_mutex_unlock(&g_mutexBSCDR);
             if (NULL == pMsgNode)
             {
-                if (ulMsgCnt < 3)
-                {
-                    pthread_mutex_unlock(&g_mutexBSCDR);
-                }
-
                 /* 队列中没有消息 */
                 continue;
-            }
-
-            if (ulMsgCnt < 3)
-            {
-                pthread_mutex_unlock(&g_mutexBSCDR);
             }
 
             pstMsg = (BS_MSG_CDR *)pMsgNode->pHandle;
@@ -5379,6 +5360,7 @@ VOID *bss_billing(VOID *arg)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condBSBillingList, &g_mutexBSBilling, &stTimeout);
+        pthread_mutex_unlock(&g_mutexBSBilling);
 
         while (1)
         {
@@ -5387,7 +5369,9 @@ VOID *bss_billing(VOID *arg)
                 break;
             }
 
+            pthread_mutex_lock(&g_mutexBSBilling);
             pMsgNode = dll_fetch(&g_stBSBillingList);
+            pthread_mutex_unlock(&g_mutexBSBilling);
             if (NULL == pMsgNode)
             {
                 /* 队列中没有消息 */
@@ -5432,8 +5416,6 @@ VOID *bss_billing(VOID *arg)
                     break;
             }
         }
-
-        pthread_mutex_unlock(&g_mutexBSBilling);
     }
 
     return NULL;

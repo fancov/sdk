@@ -296,8 +296,6 @@ U32 config_get_syssrc_db_dbname(S8 *pszBuff, U32 ulLen)
     }
 
     pszValue = _config_get_param(g_pstGlobalCfg, "config/mysql", "src_dbname", pszBuff, ulLen);
-
-
     if (!pszValue)
     {
         pszBuff[0] = '\0';
@@ -306,6 +304,31 @@ U32 config_get_syssrc_db_dbname(S8 *pszBuff, U32 ulLen)
 
     return 0;
 }
+
+U32 config_get_min_iedl_cpu(U32 *pulIdelCpu)
+{
+    S8 *pszValue = NULL;
+    S8 szBuff[32] = { 0 };
+
+    if (!pulIdelCpu)
+    {
+        return DOS_FAIL;
+    }
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/system", "min_idel_cpu", szBuff, sizeof(szBuff));
+    if (!pszValue)
+    {
+        return DOS_FAIL;
+    }
+
+    if (dos_atoul(pszValue, pulIdelCpu) < 0)
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
 
 /**
  * º¯Êý£ºU32 config_get_py_path(S8 *pszBuff, U32 ulLen)

@@ -246,6 +246,7 @@ VOID *bsd_recv_bss_msg(VOID *arg)
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_condBSS2DList, &g_mutexBSS2DMsg, &stTimeout);
+        pthread_mutex_unlock(&g_mutexBSS2DMsg);
 
         while (1)
         {
@@ -254,7 +255,9 @@ VOID *bsd_recv_bss_msg(VOID *arg)
                 break;
             }
 
+            pthread_mutex_lock(&g_mutexBSS2DMsg);
             pNode = dll_fetch(&g_stBSS2DMsgList);
+            pthread_mutex_unlock(&g_mutexBSS2DMsg);
             if (NULL == pNode)
             {
                 continue;
@@ -263,8 +266,6 @@ VOID *bsd_recv_bss_msg(VOID *arg)
             /* 队列消息处理 */
             bsd_sl_msg_proc(pNode);
         }
-
-        pthread_mutex_unlock(&g_mutexBSS2DMsg);
     }
 }
 

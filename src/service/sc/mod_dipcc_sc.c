@@ -29,8 +29,8 @@ extern "C"{
 
 /* Êý¾Ý¿â¾ä±ú */
 DB_HANDLE_ST         *g_pstSCDBHandle = NULL;
-
 BOOL                 g_blSCInitOK     = DOS_FALSE;
+extern SC_TASK_MNGT_ST   *g_pstTaskMngtInfo;
 
 U32 sc_httpd_init();
 U32 sc_task_mngt_init();
@@ -371,6 +371,9 @@ U32 mod_dipcc_sc_runtime()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start data syn task SUCC.");
+
+    g_pstTaskMngtInfo->stStat.ulSystemUpTime = time(0);
+    g_pstTaskMngtInfo->stStat.ulSystemIsWorking = DOS_TRUE;
 
     return DOS_SUCC;
 }

@@ -1172,6 +1172,34 @@ VOID sc_show_stat(U32 ulIndex, S32 argc, S8 **argv)
 }
 
 
+U32 sc_show_status(U32 ulIndex, S32 argc, S8 **argv)
+{
+    S8 szBuff[1024] = {0, };
+    U32 ulIdelCPU, ulIdelCPUConfig;
+
+    if (config_get_min_iedl_cpu(&ulIdelCPUConfig) != DOS_SUCC)
+    {
+        ulIdelCPUConfig = DOS_MIN_IDEL_CPU;
+    }
+
+    cli_out_string(ulIndex, "\r\n\r\nThe CC Model for IPCC System Status:");
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\nVersion : %s Build on %s", dos_get_process_version(), dos_get_build_datetime_str());
+    cli_out_string(ulIndex, szBuff);
+
+    ulIdelCPU = dos_get_cpu_idel_percentage();
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\nMin Idel CPU(default/current) : %d%% / %d.%d%%"
+                , ulIdelCPUConfig
+                , (ulIdelCPU / 100)
+                , (ulIdelCPU % 100));
+    cli_out_string(ulIndex, szBuff);
+
+    cli_out_string(ulIndex, "\r\n\r\n");
+
+    return DOS_SUCC;
+}
+
+
 VOID sc_show_sip_acc(U32 ulIndex, S32 argc, S8 **argv)
 {
     HASH_NODE_S *pstHashNode = NULL;
@@ -1739,7 +1767,11 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     {
         return -1;
     }
-    if (dos_strnicmp(argv[2], "sip", dos_strlen("sip")) == 0)
+    if (dos_strnicmp(argv[2], "status", dos_strlen("status")) == 0)
+    {
+        sc_show_status(ulIndex, argc, argv);
+    }
+    else if (dos_strnicmp(argv[2], "sip", dos_strlen("sip")) == 0)
     {
         sc_show_sip_acc(ulIndex, argc, argv);
     }
