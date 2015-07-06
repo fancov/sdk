@@ -39,6 +39,7 @@ extern "C"{
     pstMsg->msg = (VOID *)g_pstWarningMsg[ulIndex].szNormalDesc; \
     g_pstWarningMsg[ulIndex].bExcep = DOS_FALSE
 
+
 pthread_mutex_t g_stMonMutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  g_stMonCond   = PTHREAD_COND_INITIALIZER;
 
@@ -91,9 +92,10 @@ U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc);
  */
 VOID *mon_res_monitor(VOID *p)
 {
+   U32 ulRet = 0;
    while (1)
    {
-      U32 ulRet = 0;
+
       pthread_mutex_lock(&g_stMonMutex);
       /*  获取资源信息  */
       ulRet = mon_get_res_info();
@@ -140,7 +142,7 @@ VOID* mon_warning_handle(VOID *p)
      if(DOS_ADDR_INVALID(g_pstMsgQueue))
      {
         logr_cirt("%s:Line %u:mon_warning_handle|get warning msg failure,g_pstMsgQueue is %p!"
-                    , dos_get_filename(__FILE__), __LINE__, g_pstMsgQueue);
+                , dos_get_filename(__FILE__), __LINE__, g_pstMsgQueue);
         return NULL;
      }
 
@@ -150,18 +152,18 @@ VOID* mon_warning_handle(VOID *p)
         pthread_cond_wait(&g_stMonCond, &g_stMonMutex);
         while (1)
         {
-          if (DOS_TRUE == mon_is_warning_msg_queue_empty())
-          {
-             break;
-          }
+            if (DOS_TRUE == mon_is_warning_msg_queue_empty())
+            {
+                 break;
+            }
 
-          ulRet = mon_warning_msg_de_queue(g_pstMsgQueue);
-          if(DOS_SUCC != ulRet)
-          {
-              logr_error("%s:Line %u:mon_warning_handle|delete warning msg queue failure,ulRet is %u!"
-                        , dos_get_filename(__FILE__), __LINE__, ulRet);
-              break;
-          }
+            ulRet = mon_warning_msg_de_queue(g_pstMsgQueue);
+            if(DOS_SUCC != ulRet)
+            {
+                  logr_error("%s:Line %u:mon_warning_handle|delete warning msg queue failure,ulRet is %u!"
+                            , dos_get_filename(__FILE__), __LINE__, ulRet);
+                  break;
+            }
        }
 
        pthread_mutex_unlock(&g_stMonMutex);
@@ -184,6 +186,7 @@ U32 mon_res_alloc()
    {
       logr_error("%s:Line %u:mon_res_generate|init cpu queue failure,lRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
+      return DOS_FAIL;
    }
 
    ulRet = mon_init_warning_msg_queue();
@@ -191,6 +194,7 @@ U32 mon_res_alloc()
    {
       logr_error("%s:Line %u:mon_res_generate|init msg queue failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
+      return DOS_FAIL;
    }
 
    ulRet = mon_init_warning_cond();
@@ -205,6 +209,7 @@ U32 mon_res_alloc()
    {
       logr_error("%s:Line %u:mon_res_generate|init mysql connection failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
+      return DOS_FAIL;
    }
 
    ulRet = mon_init_str_array();
@@ -212,6 +217,7 @@ U32 mon_res_alloc()
    {
       logr_error("%s:Line %u:mon_res_generate|init string array failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
+      return DOS_FAIL;
    }
 
     /*  分配资源 */
@@ -220,6 +226,7 @@ U32 mon_res_alloc()
    {
       logr_error("%s:Line %u:mon_res_generate|mem alloc memory failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
+      return DOS_FAIL;
    }
 
    ulRet = mon_cpu_rslt_malloc();
@@ -227,6 +234,7 @@ U32 mon_res_alloc()
    {
       logr_error("%s:Line %u:mon_res_generate|cpu result alloc memory failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
+      return DOS_FAIL;
    }
 
    ulRet = mon_disk_malloc();
@@ -234,6 +242,7 @@ U32 mon_res_alloc()
    {
       logr_error("%s:Line %u:mon_res_generate|disk alloc memory failure,ulRet is %u!"
                 , dos_get_filename(__FILE__), __LINE__, ulRet);
+      return DOS_FAIL;
    }
 
    ulRet = mon_netcard_malloc();
@@ -241,6 +250,7 @@ U32 mon_res_alloc()
    {
       logr_error("%s:Line %u:mon_res_generate|net alloc memory failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
+      return DOS_FAIL;
    }
 
    ulRet = mon_proc_malloc();
@@ -248,12 +258,14 @@ U32 mon_res_alloc()
    {
       logr_error("%s:Line %u:mon_res_generate|proc alloc memory failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
+      return DOS_FAIL;
    }
 
    ulRet = mon_init_warning_msg();
    if (DOS_SUCC != ulRet)
    {
        logr_error("%s:Line %u:init warning msg FAIL.", dos_get_filename(__FILE__), __LINE__);
+       return DOS_FAIL;
    }
 
    return DOS_SUCC;
@@ -275,6 +287,7 @@ static U32 mon_get_res_info()
     {
        logr_error("%s:Line %u:mon_get_res_info|get memory data failure,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
+       return DOS_FAIL;
     }
 
     ulRet = mon_get_cpu_rslt_data();
@@ -282,6 +295,7 @@ static U32 mon_get_res_info()
     {
        logr_error("%s:Line %u:mon_get_res_info|get cpu result data success,ulRet is %u!"
                     , dos_get_filename(__FILE__), __LINE__, ulRet);
+       return DOS_FAIL;
     }
 
     ulRet = mon_get_partition_data();
@@ -827,7 +841,7 @@ static U32 mon_add_data_to_db()
    U32 ulProcTotalMemRate = 0;
    U32 ulProcTotalCPURate = 0;
 
-   if (config_get_syssrc_writeDB(szBuff, sizeof(szBuff)) < 0)
+   if (config_get_syssrc_write_db(szBuff, sizeof(szBuff)) < 0)
    {
         DOS_ASSERT(0);
    }

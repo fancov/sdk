@@ -41,11 +41,15 @@ U32       g_ulTaskTraceAll      = 0;       /* 是否跟踪所有任务 */
 
 U32       g_ulCallTraceAll      = 1;     /* 跟踪所有的呼叫 */
 
+
+
 #ifdef DEBUG_VERSION
 U32       g_ulTraceFlags        = 0xFFFFFFFF;
 #else
 U32       g_ulTraceFlags        = 0;
 #endif
+
+
 
 extern SC_HTTPD_CB_ST        *g_pstHTTPDList[SC_MAX_HTTPD_NUM];
 extern SC_HTTP_CLIENT_CB_S   *g_pstHTTPClientList[SC_MAX_HTTP_CLIENT_NUM];
@@ -2238,7 +2242,6 @@ cc_usage:
 
     return 0;
 }
-
 
 VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
 {

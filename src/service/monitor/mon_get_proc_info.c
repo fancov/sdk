@@ -709,8 +709,6 @@ U32  mon_check_all_process()
       /* 默认未启动 */
       S32 bHasStarted = DOS_FALSE;
 
-      dos_memzero(szProcName, sizeof(szProcName));
-      dos_memzero(szProcVersion, sizeof(szProcVersion));
       /* 获取进程名和进程版本号 */
       lRet = config_hb_get_process_list(ulRows, szProcName, sizeof(szProcName)
                  , szProcVersion, sizeof(szProcVersion));
@@ -721,8 +719,9 @@ U32  mon_check_all_process()
          config_hb_deinit();
          return DOS_FAIL;
       }
+      szProcName[sizeof(szProcName) - 1] = '\0';
+      szProcVersion[sizeof(szProcVersion) - 1] = '\0';
 
-      dos_memzero(szProcCmd, sizeof(szProcCmd));
       /* 获取进程的启动命令 */
       lRet = config_hb_get_start_cmd(ulRows, szProcCmd, sizeof(szProcCmd));
       if(0 > lRet)
@@ -732,8 +731,7 @@ U32  mon_check_all_process()
          config_hb_deinit();
          return DOS_FAIL;
       }
-
-
+      szProcCmd[sizeof(szProcCmd) - 1] = '\0';
 
       for(ulCols = 0; ulCols < g_ulPidCnt; ulCols++)
       {

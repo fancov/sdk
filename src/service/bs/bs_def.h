@@ -243,7 +243,6 @@ enum BS_BILLING_ATTRIBUTE_E
     BS_BILLING_ATTR_RESOURCE_AGENT      = 10,       /* 坐席资源 */
     BS_BILLING_ATTR_RESOURCE_NUMBER     = 11,       /* 号码资源 */
     BS_BILLING_ATTR_RESOURCE_LINE       = 12,       /* 用户线(设备端口)资源 */
-
     BS_BILLING_ATTR_LAST                = 13,       /* 特殊标记,最后一个有效属性 */
 
     BS_BILLING_ATTR_BUTT                = 31

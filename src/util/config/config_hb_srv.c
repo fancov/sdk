@@ -309,7 +309,7 @@ S32 config_hb_threshold_mem(U32* pulMem)
    }
 
    pszMemThreshold = _config_get_param(g_pstHBSrvCfg, szNodePath, "rate", szMemThreshold, sizeof(szMemThreshold));
-   if(!pszMemThreshold)
+   if(!pszMemThreshold || '\0' == pszMemThreshold[0])
    {
       dos_printf("%s", "get memory threshold value failed.");
       DOS_ASSERT(0);

@@ -9,14 +9,12 @@ extern "C"{
 
 #include "mon_lib.h"
 
-#ifndef MAX_PID_VALUE 
+#ifndef MAX_PID_VALUE
 #define MAX_PID_VALUE 65535
 #define MIN_PID_VALUE 0
 #endif
 
 extern S8 * g_pszAnalyseList;
-static pthread_mutex_t  g_mutexMonLib = PTHREAD_MUTEX_INITIALIZER;
-
 
 /**
  * 功能:为字符串分配内存
@@ -96,7 +94,7 @@ BOOL mon_is_substr(S8 * pszSrc, S8 * pszDest)
          }
       }
    }
-   
+
    return DOS_FALSE;
 }
 
@@ -167,7 +165,7 @@ BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix)
 
    pszFileSrc = pszFile + dos_strlen(pszFile) -1;
    pszSuffixSrc = (S8 *)pszSuffix + dos_strlen(pszSuffix) - 1;
-   
+
    for (; pszSuffixSrc >= pszSuffix; pszSuffixSrc--, pszFileSrc--)
    {
       if (*pszFileSrc != *pszSuffixSrc)
@@ -177,7 +175,7 @@ BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix)
          return DOS_FALSE;
       }
    }
-   
+
    return DOS_TRUE;
 }
 
@@ -191,7 +189,7 @@ BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix)
 U32 mon_first_int_from_str(S8 * pszStr)
 {
    U32  ulData;
-   S8   szTail[1024] = {0}; 
+   S8   szTail[1024] = {0};
    S8 * pszSrc = pszStr;
    S8 * pszTemp = NULL;
    S32  lRet = 0;
@@ -202,7 +200,7 @@ U32 mon_first_int_from_str(S8 * pszStr)
                     , dos_get_filename(__FILE__), __LINE__, pszStr);
       return DOS_FAIL;
    }
-   
+
    while (!(*pszSrc >= '0' && *pszSrc <= '9'))
    {
       ++pszSrc;
@@ -222,7 +220,7 @@ U32 mon_first_int_from_str(S8 * pszStr)
                     , dos_get_filename(__FILE__), __LINE__, lRet);
       return DOS_FAIL;
    }
-   
+
    return ulData;
 }
 
@@ -258,8 +256,8 @@ U32  mon_analyse_by_reg_expr(S8* pszStr, S8* pszRegExpr, S8* pszRsltList[], U32 
    /* 每次使用前初始化为0 */
    memset(g_pszAnalyseList, 0, MAX_TOKEN_CNT * MAX_TOKEN_LEN * sizeof(char));
 
-   pthread_mutex_lock(&g_mutexMonLib);
-   
+
+
    for(ulRows = 0; ulRows < ulLen; ulRows++)
    {
       /*把字符串首地址分别置于分配内存的相应位置*/
@@ -282,7 +280,7 @@ U32  mon_analyse_by_reg_expr(S8* pszStr, S8* pszRegExpr, S8* pszRsltList[], U32 
       dos_strncpy(pszRsltList[ulRows], pszToken, dos_strlen(pszToken));
       pszRsltList[ulRows][dos_strlen(pszToken)] = '\0';
    }
-   pthread_mutex_unlock(&g_mutexMonLib);
+
    return DOS_SUCC;
 }
 
@@ -317,7 +315,7 @@ U32 mon_generate_warning_id(U32 ulResType, U32 ulNo, U32 ulErrType)
  *   成功则返回去头去尾之后的简单名称，失败则返回NULL
  */
 S8 * mon_str_get_name(S8 * pszCmd)
-{  
+{
    S8 * pszPtr = pszCmd;
    if(DOS_ADDR_INVALID(pszPtr))
    {

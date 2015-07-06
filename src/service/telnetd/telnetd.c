@@ -56,7 +56,7 @@ VOID telnetd_send_cmd2client(FILE *output, S32 lCmd, S32 lOpt);
 #define TELNETD_SPECIAL_KEY_LEN          8
 
 /* 定义目前支持的最大命令个数 */
-#define MAX_HISTORY_CMD_CNT     50
+#define MAX_HISTORY_CMD_CNT  10
 
 /* 定义两个常用按键 */
 #define ESC_ASCII_CODE                   27  /* ESC Key */
@@ -65,6 +65,15 @@ VOID telnetd_send_cmd2client(FILE *output, S32 lCmd, S32 lOpt);
 
 /* 定义存放命令的缓存首地址 */
 S8 *g_pszCtrlHistoryCmd = NULL;
+
+/* 定义当前命令位置和最新命令位置 */
+S32 m_lLastestIndex = 0, m_lCurIndex = 0, m_lCmdCnt = 0;
+
+enum KEY_MATCH_RET{
+    KEY_FULLY_MATCH = 0,
+    KEY_PART_MATCH,
+    KEY_FAIL,
+};
 
 /**
  * 特殊按键枚举
@@ -188,8 +197,8 @@ static const S8 g_szSpecialKey[][TELNETD_SPECIAL_KEY_LEN] = {
         {ESC_ASCII_CODE, '[', '2', '1' , DEL_ASCII_CODE, '\0', },   /* F10 */
 
         {ESC_ASCII_CODE, '[', 'A', '\0', },   /* UP */
-        {ESC_ASCII_CODE, '[', 'B', '\0', },   /* RIGHT */
         {ESC_ASCII_CODE, '[', 'C', '\0', },   /* DOWN */
+        {ESC_ASCII_CODE, '[', 'B', '\0', },   /* RIGHT */
         {ESC_ASCII_CODE, '[', 'D', '\0', },   /* LEFT */
 
         {'\0'}
@@ -480,7 +489,7 @@ VOID pts_recv_cr_timeout(U64 ulParam)
 /*
  * Negotiate the telnet options.
  */
-VOID telentd_negotiate(FILE *output, FILE *input)
+VOID telnetd_negotiate(FILE *output, FILE *input)
 {
     /* The default terminal is ANSI */
     //S8 szTerm[TELNET_NEGO_BUFF_LENGTH] = {'a','n','s','i', 0};
@@ -526,7 +535,7 @@ VOID telentd_negotiate(FILE *output, FILE *input)
                         //is_telnet_client = 1;
                         /* This was a response to the TTYPE command, meaning
                          * that this should be a terminal type */
-                        strncpy(g_szTermTye, &szNegoResult[2], sizeof(g_szTermTye) - 1);
+                        dos_strncpy(g_szTermTye, &szNegoResult[2], sizeof(g_szTermTye) - 1);
                         g_szTermTye[sizeof(g_szTermTye) - 1] = 0;
                         ++lDone;
                     }
@@ -899,7 +908,7 @@ VOID telnetd_client_send_new_line(FILE* output, S32 ulLines)
         //fflush(output);
     }
 }
-#if 0
+#if 1
 S32 telnet_client_tab_proc(S8 *pszCurrCmd, FILE *pfOutput)
 {
     return DOS_SUCC;
@@ -917,13 +926,67 @@ S32 telnet_client_tab_proc(S8 *pszCurrCmd, FILE *pfOutput)
  * 返回值：
  *      成功返回接收缓存的长度，失败返回－1
  */
-S32 telnet_client_special_key_proc(U32 ulKey, FILE *pfOutput, S32 lMaxLen, S32* plShowPos, S32* plLastest)
+S32 telnet_client_special_key_proc(U32 ulKey, FILE *pfOutput, S8 *szBuffer, S32 *plSize)
 {
-    U32 ulLoop = 0;
-
     switch(ulKey)
     {
-        /* 处理Fn功能键 */
+        /* 处理方向键 */
+        case KEY_UP:
+            {
+                dos_strncpy(szBuffer, g_pszCtrlHistoryCmd + m_lCurIndex * MAX_RECV_BUFF_LENGTH, *plSize);
+                szBuffer[*plSize - 1] = '\0';
+                *plSize = dos_strlen(szBuffer);
+
+                if (0 == m_lCmdCnt)
+                {
+                    goto fail;
+                }
+
+                if (m_lCurIndex == m_lLastestIndex + 1)
+                {
+                    goto fail;
+                }
+
+                if (0 == m_lCurIndex)
+                {
+                    if (m_lCmdCnt >= MAX_HISTORY_CMD_CNT - 1)
+                    {
+                        m_lCurIndex = MAX_HISTORY_CMD_CNT - 1;
+                    }
+                }
+                else
+                {
+                    m_lCurIndex = m_lCurIndex - 1;
+                }
+                break;
+            }
+        case KEY_DOWN:
+            {
+                if (0 == m_lCmdCnt)
+                {
+                    goto fail;
+                }
+
+                if (m_lCurIndex == MAX_HISTORY_CMD_CNT - 1)
+                {
+                    m_lCurIndex = 0;
+                }
+
+                if (m_lCurIndex < m_lLastestIndex - 1)
+                {
+                    ++m_lCurIndex;
+
+                    dos_strncpy(szBuffer, g_pszCtrlHistoryCmd + m_lCurIndex * MAX_RECV_BUFF_LENGTH, *plSize);
+                    szBuffer[*plSize - 1] = '\0';
+                    *plSize = dos_strlen(szBuffer);
+
+                    if (m_lCurIndex == m_lLastestIndex - 1)
+                    {
+                        m_lCurIndex = m_lCurIndex - 1;
+                    }
+                }
+                break;
+            }
         case KEY_F1:
         case KEY_F2:
         case KEY_F3:
@@ -934,48 +997,19 @@ S32 telnet_client_special_key_proc(U32 ulKey, FILE *pfOutput, S32 lMaxLen, S32* 
         case KEY_F8:
         case KEY_F9:
         case KEY_F10:
-            break;
-        /* 处理方向键 */
-        case KEY_UP:
-            {
-                if (0 == *plShowPos)
-                {
-                    *plShowPos = MAX_HISTORY_CMD_CNT;
-                }
-                else
-                {
-                    *plShowPos = *plShowPos - 1;
-                }
-                break;
-            }
-        case KEY_DOWN:
-            {
-                if (MAX_HISTORY_CMD_CNT == *plShowPos)
-                {
-                    *plShowPos = 0;
-                }
-                else
-                {
-                    if (*plShowPos != *plLastest)
-                    {
-                        *plShowPos = *plShowPos + 1;
-                    }
-                }
-                break;
-            }
         case KEY_LEFT:
         case KEY_RIGHT:
-            break;
         default:
+            goto fail;
             break;
-    }
-
-    for (ulLoop = 0; ulLoop < dos_strlen(g_pszCtrlHistoryCmd + (*plShowPos) * MAX_RECV_BUFF_LENGTH); ++ulLoop)
-    {
-        putc(*(g_pszCtrlHistoryCmd + (*plShowPos) * MAX_RECV_BUFF_LENGTH + ulLoop), pfOutput);
     }
 
     return DOS_SUCC;
+
+fail:
+    szBuffer[0] = '\0';
+    *plSize = 0;
+    return DOS_FAIL;
 }
 #endif
 
@@ -997,10 +1031,11 @@ S32 telnetd_client_read_line(TELNET_CLIENT_INFO_ST *pstClientInfo, S8 *szBuffer,
     U8  c;
     struct stat buf;
     KEY_LIST_BUFF_ST stKeyList;
+    S8  szLastCmd[512];
+    S32 lCmdLen = 0, lSpecialKeyMatchRet;
     S32 lRes = 0;
-#if 0
-    S32 lLoop, lSpecialKeyMatchRet;
-    S32 lLatestIndex = -1, lCurIndex = 0;
+#if 1
+    S32 lLoop;
 #endif
 
     if (!pstClientInfo->pFDInput || !pstClientInfo->pFDOutput)
@@ -1051,8 +1086,9 @@ do{ \
     for (lLength = 0; lLength < lSize - 1; lLength++)
     {
         c = getc(pstClientInfo->pFDInput);
+
         check_fd(pstClientInfo->pFDInput);
-#if 0
+#if 1
         if (TAB_ASCII_CODE == c)
         {
             szBuffer[lLength] = '\0';
@@ -1066,60 +1102,69 @@ do{ \
             stKeyList.szKeyBuff[stKeyList.ulLength] = '\0';
 
             /* 检查特殊按键 */
-            lSpecialKeyMatchRet = 1;
-            for (lLoop=0; lLoop < KEY_BUTT; lLoop++)
+            lSpecialKeyMatchRet = KEY_FAIL;
+            for (lLoop = 0; lLoop < KEY_BUTT; lLoop++)
             {
                 /* 制定长度比较，如果没有匹配成功，说明已经不是特殊按键了 */
-                if (dos_strncmp(g_szSpecialKey[lLoop], stKeyList.szKeyBuff, stKeyList.ulLength) != 0)
+                if (dos_strncmp(g_szSpecialKey[lLoop], stKeyList.szKeyBuff, stKeyList.ulLength) == 0)
                 {
-                    /* 如果说之前记录最新索引是MAX_HISTORY_CMD_CNT，并且又一次非特殊按键，则最新索引更换为0 */
-                    if (MAX_HISTORY_CMD_CNT == lLatestIndex)
-                    {
-                        lLatestIndex = 0;
-                    }
-                    else
-                    {
-                        ++lLatestIndex;
-                    }
-                    /* 没有匹配成功，则应该将其记录下来 */
-                    dos_memzero(g_pszCtrlHistoryCmd + lLatestIndex * MAX_RECV_BUFF_LENGTH, MAX_RECV_BUFF_LENGTH);
-                    dos_snprintf(g_pszCtrlHistoryCmd + lLatestIndex * MAX_RECV_BUFF_LENGTH, MAX_RECV_BUFF_LENGTH, "%s", stKeyList.szKeyBuff);
-
-                    /* 并把当前记录置为最新记录 */
-                    lCurIndex = lLatestIndex;
-
                     /* 并将是否匹配特殊按键置为0 */
-                    lSpecialKeyMatchRet = 0;
-                    break;
+                    lSpecialKeyMatchRet = KEY_PART_MATCH;
                 }
 
                 /* 全比较，如果没有匹配成功，有可能时还没有收完，或者是别的特殊按键，就要继续查找 */
-                if (dos_strcmp(g_szSpecialKey[lLoop], stKeyList.szKeyBuff) != 0)
+                if (dos_strcmp(g_szSpecialKey[lLoop], stKeyList.szKeyBuff) == 0)
                 {
-                    continue;
+                    //printf("\nloop:%d\n", lLoop);
+                    lSpecialKeyMatchRet = KEY_FULLY_MATCH;
+                    break;
                 }
-
-                /* 全比较成功，匹配特殊按键成功 */
-                while (lLength > 0)
-                {
-                    /* 光标后退一个，输出一个空格， 光标再次后退，实现删除字符的功能*/
-                    fprintf(pstClientInfo->pFDOutput, "\b \b");
-                    check_fd(pstClientInfo->pFDOutput);
-                    fflush(pstClientInfo->pFDOutput);
-                    lLength--;
-                }
-
-                telnet_client_special_key_proc(lLoop, pstClientInfo->pFDOutput, lSize, &lCurIndex, &lLatestIndex);
-                return TELNET_RECV_RESULT_ERROR;
             }
 
-            /* 成功就要处理特殊按键，失败要将所有缓存字符回显 */
-            if (lSpecialKeyMatchRet)
+            if (KEY_FULLY_MATCH == lSpecialKeyMatchRet)
             {
+
+                /* 全比较成功，匹配特殊按键成功 */
+                lCmdLen = sizeof(szLastCmd);
+                telnet_client_special_key_proc(lLoop, pstClientInfo->pFDOutput, szLastCmd, &lCmdLen);
+                if (lCmdLen > 0)
+                {
+                    /* 删除 */
+                    while (lLength > 0)
+                    {
+                        lLength--;
+                        /* 光标后退一个，输出一个空格， 光标再次后退，实现删除字符的功能*/
+                        fprintf(pstClientInfo->pFDOutput, "\b \b");
+                        check_fd(pstClientInfo->pFDOutput);
+                        fflush(pstClientInfo->pFDOutput);
+                    }
+
+                    /* 打印命令 */
+                    dos_strncpy(szBuffer, szLastCmd, lSize);
+                    szBuffer[lCmdLen] = '\0';
+                    fprintf(pstClientInfo->pFDOutput, szBuffer);
+                    fflush(pstClientInfo->pFDOutput);
+                    stKeyList.ulLength = 0;
+                    stKeyList.szKeyBuff[0] = '\0';
+
+                    lLength = lCmdLen - 1;
+                }
+                else
+                {
+                    stKeyList.ulLength = 0;
+                    stKeyList.szKeyBuff[0] = '\0';
+                }
+
+                continue;
+            }
+            else if (KEY_PART_MATCH == lSpecialKeyMatchRet)
+            {
+                lLength--;
                 continue;
             }
             else
             {
+                /* 成功就要处理特殊按键，失败要将所有缓存字符回显 */
                 for (lLoop=0; lLoop<stKeyList.ulLength; lLoop++)
                 {
                     putc(stKeyList.szKeyBuff[lLoop], pstClientInfo->pFDOutput);
@@ -1232,6 +1277,7 @@ do{ \
         check_fd(pstClientInfo->pFDOutput);
         fflush(pstClientInfo->pFDOutput);
     }
+
     szBuffer[lLength] = 0;
 
     /* And we hide it again at the end. */
@@ -1247,8 +1293,8 @@ do{ \
     return TELNET_RECV_RESULT_NORMAL;
 }
 
-#if INCLUDE_PTS
 
+#if INCLUDE_PTS
 S32 telnetd_client_read_char(TELNET_CLIENT_INFO_ST *pstClientInfo, S8 *szBuffer)
 {
     U8  c;
@@ -1414,7 +1460,7 @@ VOID *telnetd_client_task(VOID *ptr)
     // struct rlimit limit;
     S8 szRecvBuff[MAX_RECV_BUFF_LENGTH];
     S32 lLen;
-    S8 szCmd[16] = { 0 };
+    S8 szCmd[16] = { 0 }, *pszPtr = NULL;
 #if INCLUDE_PTS
     S8 szUseName[MAX_RECV_BUFF_LENGTH];
     S8 cRecvChar;
@@ -1450,7 +1496,7 @@ VOID *telnetd_client_task(VOID *ptr)
         pthread_exit(NULL);
     }
 
-    telentd_negotiate(pstClientInfo->pFDOutput, pstClientInfo->pFDInput);
+    telnetd_negotiate(pstClientInfo->pFDOutput, pstClientInfo->pFDInput);
 
     dos_printf("%s", "Telnet negotiate finished.");
 
@@ -1482,6 +1528,42 @@ VOID *telnetd_client_task(VOID *ptr)
         {
             continue;
         }
+
+        pszPtr = dos_strstr(szRecvBuff, "\n");
+        if (pszPtr)
+        {
+            *pszPtr = '\0';
+        }
+        pszPtr = dos_strstr(szRecvBuff, "\r");
+        if (pszPtr)
+        {
+            *pszPtr = '\0';
+        }
+
+        if (0 == dos_is_printable_str(szRecvBuff))
+        {
+            if (MAX_HISTORY_CMD_CNT - 1 == m_lLastestIndex)
+            {
+                m_lLastestIndex = 0;
+            }
+
+            if (m_lCmdCnt >= MAX_HISTORY_CMD_CNT)
+            {
+                m_lCmdCnt = MAX_HISTORY_CMD_CNT;
+            }
+            else
+            {
+                ++m_lCmdCnt;
+            }
+
+            m_lCurIndex = m_lLastestIndex;
+
+            dos_memzero(g_pszCtrlHistoryCmd + m_lLastestIndex * MAX_RECV_BUFF_LENGTH, MAX_RECV_BUFF_LENGTH);
+            dos_snprintf(g_pszCtrlHistoryCmd + m_lLastestIndex * MAX_RECV_BUFF_LENGTH, MAX_RECV_BUFF_LENGTH
+                            , "%s", szRecvBuff);
+            ++m_lLastestIndex;
+        }
+
         /* 分析并执行命令 */
         cli_server_cmd_analyse(pstClientInfo->ulIndex, pstClientInfo->ulMode, szRecvBuff, lLen);
 
@@ -1728,7 +1810,7 @@ VOID *telnetd_main_loop(VOID *ptr)
     }
 
     /* 释放所有客户端 */
-    for (i=0; i<MAX_CLIENT_NUMBER; i++)
+    for (i = 0; i < MAX_CLIENT_NUMBER; i++)
     {
         if (g_pstTelnetClientList[i]->ulValid)
         {
@@ -1826,7 +1908,7 @@ S32 telnetd_init()
     if (bind(g_lTelnetdSrvSocket, (struct sockaddr *)&stListenAddr, sizeof(stListenAddr)) < 0)
     {
         perror("bind");
-        logr_error("%s", "Telnet server bind IP/Address fail.");
+        logr_error("Telnet server bind IP/Address FAIL,errno:%u, cause:%s", errno, strerror(errno));
         close(g_lTelnetdSrvSocket);
         g_lTelnetdSrvSocket = -1;
         return DOS_FAIL;

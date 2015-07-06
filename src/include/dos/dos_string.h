@@ -37,6 +37,7 @@ DLLEXPORT S32 dos_ltoa(S32 nVal, S8 *szStr, U32 ulStrLen);
 DLLEXPORT S32 dos_ltoax(S32 nVal, S8 *szStr, U32 ulStrLen);
 DLLEXPORT S32 dos_ultoax (U32 ulVal, S8 *szStr, U32 ulStrLen);
 DLLEXPORT S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str, U32 ulStrLen);
+DLLEXPORT S32 dos_is_printable_str(S8* str);
 DLLEXPORT S32 dos_strtoipaddr(S8 *szStr, U32 *pulIpAddr);
 DLLEXPORT S8 *dos_strndup(const S8 *s, S32 count);
 
