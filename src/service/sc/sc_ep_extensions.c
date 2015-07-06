@@ -17,6 +17,8 @@ extern "C"{
 #include <dos.h>
 #include <esl.h>
 #include <sys/time.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <pthread.h>
 #include <bs_pub.h>
 #include <libcurl/curl.h>
@@ -26,8 +28,8 @@ extern "C"{
 #include "sc_ep.h"
 #include "sc_acd_def.h"
 
-
 #define SC_EXT_EVENT_LIST "custom sofia::register sofia::unregister"
+
 
 SC_EP_HANDLE_ST  *g_pstExtMngtHangle  = NULL;
 DLL_S            g_stExtMngtMsg;
@@ -35,12 +37,30 @@ pthread_mutex_t  g_mutexExtMngtMsg = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t   g_condExtMngtMsg  = PTHREAD_COND_INITIALIZER;
 pthread_t        g_pthExtMngtProcTask;
 
+extern DB_HANDLE_ST         *g_pstSCDBHandle;
+
+U32 sc_ep_update_sip_IP(U32 ulPublicIP, U32 ulPrivateIP, U32 ulSipID)
+{
+    S8 szSQL[512] = { 0 };
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_sip SET public_net=%d, private_net=%d WHERE id=%u", ulPublicIP, ulPrivateIP, ulSipID);
+
+    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+}
 
 VOID* sc_ep_ext_mgnt(VOID *ptr)
 {
     struct timespec     stTimeout;
     DLL_NODE_S          *pstListNode = NULL;
     esl_event_t         *pstEvent    = NULL;
+    S8                  *pUserID     = NULL;
+    S8                  *pVal        = NULL;
+    S8                  szPrivateIP[17] = {0};
+    U32                 ulPublicIP   = 0;
+    U32                 ulPrivateIP  = 0;
+    U32                 ulSipID      = 0;
+    U32                 ulResult     = 0;
+    SC_STATUS_TYPE_EN   enStatus;
 
     for (;;)
     {
@@ -70,13 +90,84 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
 
             pthread_mutex_unlock(&g_mutexExtMngtMsg);
 
-
             pstEvent = (esl_event_t *)pstListNode->pHandle;
             pstListNode->pHandle = NULL;
             if (pstEvent)
             {
-                sc_logr_debug(SC_ACD, "User register: %s", esl_event_get_header(pstEvent, "username"));
+                /* TODO 维护ACD模块中坐席所对应的SIP分机的状态 */
+                pUserID = esl_event_get_header(pstEvent, "username");
+                if (esl_strlen_zero(pUserID))
+                {
+                     sc_logr_debug(SC_ACD, "%s", "Not get userid");
 
+                     goto end;
+                }
+
+                /* 维护SIP分机的状态 */
+                pVal = esl_event_get_header(pstEvent, "Event-Subclass");
+                if (esl_strlen_zero(pVal))
+                {
+                     sc_logr_debug(SC_ACD, "%s", "Not get userid");
+
+                     goto end;
+                }
+
+                if (!dos_strstr(pVal, "unregister"))
+                {
+                    /* register */
+                    enStatus = SC_STATUS_TYPE_REGISTER;
+                }
+                else
+                {
+                    /* unregister */
+                    enStatus = SC_STATUS_TYPE_UNREGISTER;
+                }
+
+                ulResult = sc_ep_update_sip_status(pUserID, enStatus, &ulSipID);
+                if (ulResult != DOS_SUCC)
+                {
+                    sc_logr_debug(SC_ACD, "%s", "update sip status fail");
+
+                    goto end;
+                }
+
+                /* 将SIP的IP地址存到表tbl_sip中 */
+                pVal = esl_event_get_header(pstEvent, "network-ip");
+                if (esl_strlen_zero(pVal))
+                {
+                    sc_logr_debug(SC_ACD, "%s", "Not get network-ip");
+                    ulPublicIP = 0;
+                }
+                else
+                {
+                    inet_pton(AF_INET, pVal, (VOID *)(&ulPublicIP));
+                }
+
+                pVal = esl_event_get_header(pstEvent, "contact");
+                if (esl_strlen_zero(pVal))
+                {
+                    sc_logr_debug(SC_ACD, "%s", "Not get contact");
+                    ulPrivateIP = 0;
+                }
+                else
+                {
+                    if (1 == dos_sscanf(pVal, "%*[^@]@%[^:]", szPrivateIP))
+                    {
+                        inet_pton(AF_INET, szPrivateIP, (VOID *)(&ulPrivateIP));
+                    }
+                    else
+                    {
+                        sc_logr_debug(SC_ACD, "%s", "Not get private IP from contact");
+                        ulPrivateIP = 0;
+                    }
+                }
+
+                ulResult = sc_ep_update_sip_IP(ulPublicIP, ulPrivateIP, ulSipID);
+                if(DB_ERR_SUCC != ulResult)
+                {
+                    sc_logr_debug(SC_ACD, "%s", "update sip db fail, userid is %s", pUserID);
+                }
+end:
                 esl_event_destroy(&pstEvent);
                 pstEvent = NULL;
             }

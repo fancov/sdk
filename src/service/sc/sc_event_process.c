@@ -30,6 +30,8 @@ extern "C"{
 /* 应用外部变量 */
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
+extern SC_TASK_MNGT_ST      *g_pstTaskMngtInfo;
+
 /* ESL 句柄维护 */
 SC_EP_HANDLE_ST          *g_pstHandle = NULL;
 pthread_mutex_t          g_mutexEventList = PTHREAD_MUTEX_INITIALIZER;
@@ -844,6 +846,49 @@ S32 sc_ep_black_list_find(VOID *pObj, HASH_NODE_S *pstHashNode)
 
 
     return DOS_FAIL;
+}
+
+/* 根据userid 更新状态 */
+U32 sc_ep_update_sip_status(S8 *szUserID, SC_STATUS_TYPE_EN enStatus, U32 *pulSipID)
+{
+    SC_USER_ID_NODE_ST *pstUserID   = NULL;
+    HASH_NODE_S        *pstHashNode = NULL;
+    U32                ulHashIndex  = U32_BUTT;
+
+    ulHashIndex= sc_sip_userid_hash_func(szUserID);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)szUserID, sc_ep_sip_userid_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstUserID = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstUserID))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstUserID->enStatus = enStatus;
+    switch (enStatus)
+    {
+        case SC_STATUS_TYPE_REGISTER:
+            pstUserID->stStat.ulRegisterCnt++;
+            break;
+        case SC_STATUS_TYPE_UNREGISTER:
+            pstUserID->stStat.ulUnregisterCnt++;
+            break;
+        default:
+            break;
+    }
+
+    *pulSipID = pstUserID->ulSIPID;
+
+    return DOS_SUCC;
 }
 
 /* 删除SIP账户 */

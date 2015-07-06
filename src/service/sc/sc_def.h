@@ -357,6 +357,13 @@ typedef enum tagSCBStatus
     SC_SCB_BUTT
 }SC_SCB_STATUS_EN;
 
+typedef enum tagSCStatusType
+{
+    SC_STATUS_TYPE_REGISTER     = 1,
+    SC_STATUS_TYPE_UNREGISTER   = 2,
+    SC_STATUS_TYPE_BUTT
+}SC_STATUS_TYPE_EN;
+
 typedef enum tagSCCallRole
 {
     SC_CALLEE,
@@ -767,6 +774,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID);
 U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID);
 U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID);
 U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID);
+U32 sc_ep_update_sip_status(S8 *szUserID, SC_STATUS_TYPE_EN enStatus, U32 *pulSipID);
 U32 sc_ep_sip_userid_delete(S8 * pszSipID);
 U32 sc_gateway_delete(U32 ulGatewayID);
 U32 sc_load_sip_userid(U32 ulIndex);
