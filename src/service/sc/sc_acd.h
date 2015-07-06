@@ -58,5 +58,10 @@ typedef struct tagACDFindSiteParam
     SC_ACD_AGENT_INFO_ST *pstResult;
 }SC_ACD_FIND_SITE_PARAM_ST;
 
+
+U32 sc_acd_agent_grp_add_call(U32 ulGrpID);
+U32 sc_acd_agent_grp_del_call(U32 ulGrpID);
+U32 sc_acd_agent_grp_stat(U32 ulGrpID, U32 ulWaitingTime);
+
 #endif
 
