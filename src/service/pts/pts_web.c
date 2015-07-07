@@ -423,29 +423,63 @@ BOOL pts_request_ptc_proxy(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pcIp
     U16 usDestPort = 0;
     U32 ulSendBufSize = 0;
     S8 *pStr1 = NULL;
+    S8 *pStr2 = NULL;
     S8 *pcCookie = NULL;
     S8 szDestIP[PT_IP_ADDR_SIZE] = {0};
     U8 aucDestID[PTC_ID_LEN+1] = {0};
     S8 szDestPortStr[PT_DATA_BUFF_16] = {0};
     S8 szCookieId[PT_DATA_BUFF_16] = {0};
     S8 szServPort[PT_DATA_BUFF_16] = {0};
+    S8 szHTTPField[PT_DATA_BUFF_128] = {0};
+    U32 ulFieldLen = 0;
     /* 获取请求的端口 */
+
     pStr1 = dos_strstr(pcRequest, "Host:");
-    if (NULL == pStr1)
+    if (DOS_ADDR_INVALID(pStr1))
     {
         pts_web_close_socket(ulConnfd);
         return bIsGetID;
     }
     sscanf(pStr1, "%*[^:]:%*[^:]:%[0-9]", szServPort);
-
     snprintf(szCookieId, PT_DATA_BUFF_16, "ptsId_%s", szServPort);
 
     pcCookie = dos_strstr(pcRequest, szCookieId);
-    if (pcCookie != NULL)
+    if (DOS_ADDR_VALID(pcCookie))
     {
         sscanf(pcCookie, "%*[^=]=%[^!]!%[^!]!%[0-9]", aucDestID, szDestIP, szDestPortStr);
         usDestPort = atoi(szDestPortStr);
         pt_logr_debug("aucDestID = %s, szDestIP = %s, szDestPortStr = %s", aucDestID, szDestIP, szDestPortStr);
+#if 0
+        /* 修改HOST */
+        dos_snprintf(szHTTPField, PT_DATA_BUFF_128, "Host: %s", szDestIP);
+        ulFieldLen = dos_strlen(szHTTPField);
+        pStr2 = dos_strstr(pStr1, "\r\n");
+        lReqLen += (ulFieldLen - (pStr2 - pStr1));
+        dos_memcpy(pStr1, szHTTPField, ulFieldLen);
+        pStr1 += ulFieldLen;
+        while (*pStr2 != '\0')
+        {
+            *pStr1++ = *pStr2++;
+        }
+        *pStr1 = '\0';
+#endif
+        /* 修改 Referer*/
+        pStr1 = dos_strstr(pcRequest, "Referer:");
+        if (DOS_ADDR_VALID(pStr1))
+        {
+            dos_snprintf(szHTTPField, PT_DATA_BUFF_128, "Referer: http://%s/", szDestIP);
+            ulFieldLen = dos_strlen(szHTTPField);
+            pStr2 = dos_strstr(pStr1, "\r\n");
+            lReqLen += (ulFieldLen - (pStr2 - pStr1));
+            dos_memcpy(pStr1, szHTTPField, ulFieldLen);
+            pStr1 += ulFieldLen;
+            while (*pStr2 != '\0')
+            {
+                *pStr1++ = *pStr2++;
+            }
+            *pStr1 = '\0';
+        }
+
         pStr1 = pcRequest;
         ulSendBufSize = lReqLen;
         pt_logr_debug("pts send web server filename : %s, sockfd : %d, stream : %d", szUrl, ulConnfd, ulStreamID);
