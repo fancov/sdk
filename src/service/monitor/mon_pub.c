@@ -9,6 +9,7 @@ extern "C"{
 
 #include <pthread.h>
 #include "mon_pub.h"
+#include "mon_def.h"
 #include "mon_monitor_and_handle.h"
 
 
@@ -23,14 +24,16 @@ pthread_t g_pMonthr, g_pHndthr;
  */
 U32 mon_init()
 {
-   U32 ulRet = 0;
-   ulRet = mon_res_alloc();
-   if(DOS_FAIL == ulRet)
-   {
-      logr_error("%s:Line %u:mon_start|ulRet is %u!", dos_get_filename(__FILE__), __LINE__, ulRet);
-      return DOS_FAIL;
-   }
-   return DOS_SUCC;
+    U32 ulRet = 0;
+    ulRet = mon_res_alloc();
+    if(DOS_FAIL == ulRet)
+    {
+        mon_trace(MON_TRACE_PUB, LOG_LEVEL_ERROR, "Alloc resource FAIL.");
+        return DOS_FAIL;
+    }
+
+    mon_trace(MON_TRACE_PUB, LOG_LEVEL_INFO, "Alloc resource SUCC.");
+    return DOS_SUCC;
 }
 
 /**
@@ -42,22 +45,23 @@ U32 mon_init()
  */
 U32 mon_start()
 {
-   S32 lRet = 0;
-   
-   lRet = pthread_create(&g_pMonthr, NULL, mon_res_monitor, NULL);
-   if (lRet != 0)
-   {
-      logr_error("%s:Line %d:mon_start|Create thread mon_thr error!", dos_get_filename(__FILE__), __LINE__);
-      return DOS_FAIL;
-   }
+    S32 lRet = 0;
 
-   lRet = pthread_create(&g_pHndthr, NULL, mon_warning_handle, NULL);
-   if (lRet != 0)
-   {
-      logr_error("%s:Line %d:mon_start|Create thread mon_thr error!", dos_get_filename(__FILE__), __LINE__);
-      return DOS_FAIL;
-   }
-   return DOS_SUCC;
+    lRet = pthread_create(&g_pHndthr, NULL, mon_warning_handle, NULL);
+    if (lRet != 0)
+    {
+        mon_trace(MON_TRACE_PUB, LOG_LEVEL_ERROR, "Create warning handle thread FAIL.");
+        return DOS_FAIL;
+    }
+
+    lRet = pthread_create(&g_pMonthr, NULL, mon_res_monitor, NULL);
+    if (lRet != 0)
+    {
+        mon_trace(MON_TRACE_PUB, LOG_LEVEL_ERROR, "Create resource monitor thread FAIL.");
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
 }
 
 /**
@@ -69,14 +73,14 @@ U32 mon_start()
  */
 U32 mon_stop()
 {
-   U32 ulRet = 0;
-   ulRet = mon_res_destroy();
-   if(DOS_SUCC != ulRet)
-   {
-      logr_error("%s:Line %u:mon_stop|destroy resource failure!", dos_get_filename(__FILE__), __LINE__);
-      return DOS_FAIL;
-   }
-   return DOS_SUCC;
+    U32 ulRet = 0;
+    ulRet = mon_res_destroy();
+    if(DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_PUB, LOG_LEVEL_ERROR, "Destroy Resource FAIL.");
+        return DOS_FAIL;
+    }
+    return DOS_SUCC;
 }
 
 #endif //#if INCLUDE_RES_MONITOR

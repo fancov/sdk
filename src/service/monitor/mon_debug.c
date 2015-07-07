@@ -18,10 +18,12 @@ extern S32 g_ulPartCnt;
 extern S32 g_ulNetCnt;
 extern S32 g_ulPidCnt;
 
+#define MON_TRACE_BUFF_LEN  1024
+
 S32 mon_command_proc(U32 ulIndex, S32 argc, S8 **argv)
 {
     S8  szBuff[1024] = {0};
-   
+
     if (3 != argc)
     {
         dos_snprintf(szBuff, sizeof(szBuff), "\r\nYou should input 3 params,but you input %u params.\r\n", argc);
@@ -55,7 +57,7 @@ S32 mon_command_proc(U32 ulIndex, S32 argc, S8 **argv)
     else if (0 == dos_stricmp(argv[2], "process"))
     {
         mon_show_process(ulIndex);
-    }   
+    }
     else if (0 == dos_stricmp(argv[2], "all"))
     {
         mon_show_mem(ulIndex);
@@ -75,7 +77,7 @@ S32 mon_command_proc(U32 ulIndex, S32 argc, S8 **argv)
     cli_out_string(ulIndex, szBuff);
 
     return DOS_SUCC;
-    
+
 help:
     cli_out_string(ulIndex, "\r\nHelp:\r\n  monitord mon show memory|cpu|disk|net|process|all\r\n");
     return DOS_FAIL;
@@ -109,14 +111,14 @@ VOID mon_show_mem(U32 ulIndex)
     cli_out_string(ulIndex, szBuff);
 
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+--------------------+-------------------+--------------+---------------+------------------+-----------------+--------------+------------+\r\n");
-    cli_out_string(ulIndex, szBuff);  
+    cli_out_string(ulIndex, szBuff);
 }
 
 VOID mon_show_cpu(U32 ulIndex)
 {
     S8 szBuff[1024] = {0};
 
-    
+
     dos_snprintf(szBuff, sizeof(szBuff), "\r\nList System CPU Information.");
     cli_out_string(ulIndex, szBuff);
 
@@ -135,9 +137,9 @@ VOID mon_show_cpu(U32 ulIndex)
                     , g_pstCpuRslt->ulCPU1minUsageRate
                     , g_pstCpuRslt->ulCPU10minUsageRate);
     cli_out_string(ulIndex, szBuff);
-    
+
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+----------------+-------------+---------------+----------------+\r\n");
-    cli_out_string(ulIndex, szBuff); 
+    cli_out_string(ulIndex, szBuff);
 }
 
 VOID mon_show_disk(U32 ulIndex)
@@ -192,7 +194,7 @@ VOID mon_show_netcard(U32 ulIndex)
 
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n| Netcard |     Mac Address     |     IP Address     |  Broad IP Address  |      Net Mask      |Transmit Speed(KB/s)|");
     cli_out_string(ulIndex, szBuff);
-    
+
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+---------+---------------------+--------------------+--------------------+--------------------+--------------------+");
     cli_out_string(ulIndex, szBuff);
 
@@ -223,7 +225,7 @@ VOID mon_show_process(U32 ulIndex)
 
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+-------+------------+----------------+-------------+----------+---------------+-------------------+---------------+");
     cli_out_string(ulIndex, szBuff);
-    
+
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n|  PID  |    Name    | Memory Rate(%%) | CPU Rate(%%) | CPU Time |Open File Count|DB Connection Count| Threads Count |");
     cli_out_string(ulIndex, szBuff);
 
@@ -247,4 +249,81 @@ VOID mon_show_process(U32 ulIndex)
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+-------+------------+----------------+-------------+----------+---------------+-------------------+---------------+\r\n");
     cli_out_string(ulIndex, szBuff);
 }
+
+
+VOID mon_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...)
+{
+    va_list         Arg;
+    U32             ulTraceTagLen;
+    S8              szTraceStr[MON_TRACE_BUFF_LEN];
+    BOOL            bIsOutput = DOS_FALSE;
+
+    if (ucTraceLevel >= LOG_LEVEL_INVAILD)
+    {
+        return;
+    }
+
+    /* warning级别以上强制输出 */
+    if (ucTraceLevel <= LOG_LEVEL_WARNING)
+    {
+        bIsOutput = DOS_TRUE;
+    }
+
+    if (!bIsOutput)
+    {
+        bIsOutput = DOS_TRUE;
+    }
+
+    if(!bIsOutput)
+    {
+        return;
+    }
+
+    switch(ulTraceTarget)
+    {
+        case MON_TRACE_MEM:
+            dos_strcpy(szTraceStr, "MON-MEM:");
+            break;
+        case MON_TRACE_CPU:
+            dos_strcpy(szTraceStr, "MON-CPU:");
+            break;
+        case MON_TRACE_DISK:
+            dos_strcpy(szTraceStr, "MON-DISK:");
+            break;
+        case MON_TRACE_NET:
+            dos_strcpy(szTraceStr, "MON-NET:");
+            break;
+        case MON_TRACE_PROCESS:
+            dos_strcpy(szTraceStr, "MON-PROCESS:");
+            break;
+        case MON_TRACE_MH:
+            dos_strcpy(szTraceStr, "MON-MH:");
+            break;
+        case MON_TRACE_LIB:
+            dos_strcpy(szTraceStr, "MON-LIB:");
+            break;
+        case MON_TRACE_NOTIFY:
+            dos_strcpy(szTraceStr, "MON-NOTIFY:");
+            break;
+        case MON_TRACE_PUB:
+            dos_strcpy(szTraceStr, "MON-PUB:");
+            break;
+        case MON_TRACE_WARNING_MSG:
+            dos_strcpy(szTraceStr, "MON-WARNING-MSG:");
+            break;
+        default:
+            dos_strcpy(szTraceStr, "MON-BUTT:");
+            break;
+    }
+
+    ulTraceTagLen = dos_strlen(szTraceStr);
+
+    va_start(Arg, szFormat);
+    vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, szFormat, Arg);
+    va_end(Arg);
+    szTraceStr[sizeof(szTraceStr) -1] = '\0';
+
+    dos_log(ucTraceLevel, LOG_TYPE_RUNINFO, szTraceStr);
+}
+
 

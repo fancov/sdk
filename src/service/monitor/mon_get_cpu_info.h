@@ -25,25 +25,25 @@
 
 typedef struct tagSysMonCPUTime
 {
-   U32  ulUser;         //用户态CPU时间
-   U32  ulNice;         //nice为负的进程占用CPU时间
-   U32  ulSystem;       //核心时间
-   U32  ulIdle;         //CPU空闲等待时间
-   U32  ulIowait;       //硬盘IO等待时间
-   U32  ulHardirq;      //硬中断时间
-   U32  ulSoftirq;      //软中断时间
-   U32  ulStealstolen;  //其他操作系统虚机环境时间
-   U32  ulGuest;        //内核态下系统虚拟cpu占用时间
-   struct tagSysMonCPUTime * next;  //指向下一节点的指针
-   struct tagSysMonCPUTime * prior; //指向前一个节点指针
+    U32  ulUser;         //用户态CPU时间
+    U32  ulNice;         //nice为负的进程占用CPU时间
+    U32  ulSystem;       //核心时间
+    U32  ulIdle;         //CPU空闲等待时间
+    U32  ulIowait;       //硬盘IO等待时间
+    U32  ulHardirq;      //硬中断时间
+    U32  ulSoftirq;      //软中断时间
+    U32  ulStealstolen;  //其他操作系统虚机环境时间
+    U32  ulGuest;        //内核态下系统虚拟cpu占用时间
+    struct tagSysMonCPUTime * next;  //指向下一节点的指针
+    struct tagSysMonCPUTime * prior; //指向前一个节点指针
 }MON_SYS_CPU_TIME_S;
 
 typedef struct tagMonCPURslt
 {
-  U32 ulCPUUsageRate;     //CPU总体平均占用率
-  U32 ulCPU5sUsageRate;   //5s钟CPU平均占用率
-  U32 ulCPU1minUsageRate; //1min钟CPU平均占用率
-  U32 ulCPU10minUsageRate;//10min钟CPU平均占用率
+    U32 ulCPUUsageRate;     //CPU总体平均占用率
+    U32 ulCPU5sUsageRate;   //5s钟CPU平均占用率
+    U32 ulCPU1minUsageRate; //1min钟CPU平均占用率
+    U32 ulCPU10minUsageRate;//10min钟CPU平均占用率
 }MON_CPU_RSLT_S;
 
 

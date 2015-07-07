@@ -3,6 +3,7 @@ extern "C" {
 #endif
 
 #include <dos.h>
+#include <dos/dos_mem.h>
 
 #if (INCLUDE_BH_SERVER)
 #if INCLUDE_RES_MONITOR
@@ -12,6 +13,7 @@ extern "C" {
 #include "mon_get_proc_info.h"
 #include "mon_warning_msg_queue.h"
 #include "mon_lib.h"
+#include "mon_def.h"
 
 
 extern S8 g_szMonProcessInfo[MAX_PROC_CNT * MAX_BUFF_LENGTH];
@@ -41,22 +43,21 @@ extern U32 mon_add_warning_record(U32 ulResId,S8 * szInfoDesc);
  */
 U32  mon_proc_malloc()
 {
-   U32 ulRows = 0;
-   MON_PROC_STATUS_S * pstProc = NULL;
+    U32 ulRows = 0;
+    MON_PROC_STATUS_S * pstProc = NULL;
 
-   pstProc = (MON_PROC_STATUS_S *)dos_dmem_alloc(MAX_PROC_CNT * sizeof(MON_PROC_STATUS_S));
-   if(DOS_ADDR_INVALID(pstProc))
-   {
-      logr_cirt("%s:Line %u:mon_proc_malloc|alloc memory failure, pstProc is %p!"
-                , dos_get_filename(__FILE__), __LINE__, pstProc);
-      return DOS_FAIL;
-   }
-   memset(pstProc, 0, MAX_PROC_CNT * sizeof(MON_PROC_STATUS_S));
+    pstProc = (MON_PROC_STATUS_S *)dos_dmem_alloc(MAX_PROC_CNT * sizeof(MON_PROC_STATUS_S));
+    if(DOS_ADDR_INVALID(pstProc))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    dos_memzero(pstProc, MAX_PROC_CNT * sizeof(MON_PROC_STATUS_S));
 
-   for(ulRows = 0; ulRows < MAX_PROC_CNT; ulRows++)
-   {
-      g_pastProc[ulRows] = &(pstProc[ulRows]);
-   }
+    for(ulRows = 0; ulRows < MAX_PROC_CNT; ulRows++)
+    {
+        g_pastProc[ulRows] = &(pstProc[ulRows]);
+    }
 
    return DOS_SUCC;
 }
@@ -75,8 +76,7 @@ U32 mon_proc_free()
    MON_PROC_STATUS_S * pstProc = g_pastProc[0];
    if(DOS_ADDR_INVALID(pstProc))
    {
-      logr_cirt("%s:Line %u:mon_proc_free|free memory failure,pstProc is %p!"
-                , dos_get_filename(__FILE__), __LINE__ , pstProc);
+      DOS_ASSERT(0);
       return DOS_FAIL;
    }
 
@@ -95,8 +95,7 @@ static U32   mon_proc_reset_data()
 
     if(DOS_ADDR_INVALID(pstProc))
     {
-        logr_cirt("%s:Line %u:free memory failure,pstProc is %p!"
-                 , dos_get_filename(__FILE__), __LINE__ , pstProc);
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
@@ -116,8 +115,7 @@ static BOOL mon_is_pid_valid(U32 ulPid)
 {
    if(ulPid > MAX_PID_VALUE || ulPid <= MIN_PID_VALUE)
    {
-      logr_emerg("%s:Line %u:mon_is_pid_valid|pid %u is invalid!",
-                 dos_get_filename(__FILE__), __LINE__, ulPid);
+      DOS_ASSERT(0);
       return DOS_FALSE;
    }
    return DOS_TRUE;
@@ -151,7 +149,7 @@ static U32  mon_get_cpu_mem_time_info(U32 ulPid, MON_PROC_STATUS_S * pstProc)
 
     if (DOS_FALSE == mon_is_pid_valid(ulPid))
     {
-        logr_error("%s:Line %d: Pid %u is invalid.", dos_get_filename(__FILE__), __LINE__, ulPid);
+        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid %u does not exist.", ulPid);
         return DOS_FAIL;
     }
     dos_snprintf(szPsCmd, sizeof(szPsCmd), "ps aux | grep %u", ulPid);
@@ -160,7 +158,7 @@ static U32  mon_get_cpu_mem_time_info(U32 ulPid, MON_PROC_STATUS_S * pstProc)
     fp = popen(szPsCmd, "r");
     if (DOS_ADDR_INVALID(fp))
     {
-        logr_error("%s:Line %u: ps command execute FAIL.", dos_get_filename(__FILE__), __LINE__);
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
@@ -228,7 +226,7 @@ static U32  mon_get_openfile_count(U32 ulPid)
 
     if (DOS_FALSE == mon_is_pid_valid(ulPid))
     {
-        logr_error("%s:Line %u:Pid %u is invalid.", dos_get_filename(__FILE__), __LINE__, ulPid);
+        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid %u does not exist.", ulPid);
         return DOS_FAIL;
     }
 
@@ -237,7 +235,7 @@ static U32  mon_get_openfile_count(U32 ulPid)
     fp = popen(szLsofCmd, "r");
     if (DOS_ADDR_INVALID(fp))
     {
-        logr_error("%s:Line %u: lsof command open FAIL.", dos_get_filename(__FILE__), __LINE__);
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
@@ -245,7 +243,7 @@ static U32  mon_get_openfile_count(U32 ulPid)
     {
         if (dos_atoul(szBuff, &ulCount) < 0)
         {
-            logr_error("%s:Line %u:dos_atoul FAIL.", dos_get_filename(__FILE__), __LINE__);
+            DOS_ASSERT(0);
             pclose(fp);
             fp = NULL;
             return DOS_FAIL;
@@ -270,8 +268,7 @@ static U32   mon_get_db_conn_count(U32 ulPid)
 {  /* 目前没有找到有效的解决方案 */
    if(DOS_FALSE == mon_is_pid_valid(ulPid))
    {
-      logr_error("%s:Line %u:mon_get_db_conn_count|get database connections count failure,process pid %d is invalid!",
-                    dos_get_filename(__FILE__), __LINE__, ulPid);
+      DOS_ASSERT(0);
       return DOS_FAIL;
    }
 
@@ -309,8 +306,7 @@ static U32   mon_get_threads_count(U32 ulPid)
 
    if(DOS_FALSE == mon_is_pid_valid(ulPid))
    {
-      logr_error("%s:Line %u:mon_get_threads_count|get threads count failure,pid %u is invalid!"
-                    , dos_get_filename(__FILE__), __LINE__, ulPid);
+      mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid %u does not exist.", ulPid);
       return DOS_FAIL;
    }
 
@@ -319,15 +315,14 @@ static U32   mon_get_threads_count(U32 ulPid)
    fp = fopen(szPidFile, "r");
    if (DOS_ADDR_INVALID(fp))
    {
-      logr_cirt("%s:line %u:mon_get_threads_count|file \'%s\' open failure,fp is %p!"
-                , dos_get_filename(__FILE__), __LINE__, szPidFile, fp);
+      DOS_ASSERT(0);
       return DOS_FAIL;
    }
 
    fseek(fp, 0, SEEK_SET);
    while (!feof(fp))
    {
-      memset(szLine, 0, MAX_BUFF_LENGTH * sizeof(S8));
+      dos_memzero(szLine, MAX_BUFF_LENGTH * sizeof(S8));
       if (NULL != (fgets(szLine, MAX_BUFF_LENGTH, fp)))
       {
          /* Threads参数后边的那个数字就是当前进程的线程数量 */
@@ -336,19 +331,18 @@ static U32   mon_get_threads_count(U32 ulPid)
             U32 ulData = 0;
             U32 ulRet = 0;
             S32 lRet = 0;
-            ulRet = mon_analyse_by_reg_expr(szLine, " \t\n", pszAnalyseRslt, sizeof(pszAnalyseRslt)/sizeof(pszAnalyseRslt[0]));
+            ulRet = mon_analyse_by_reg_expr(szLine, " \t\n", pszAnalyseRslt, sizeof(pszAnalyseRslt) / sizeof(pszAnalyseRslt[0]));
             if(DOS_SUCC != ulRet)
             {
-                logr_error("%s:Line %u:mon_get_threads_count|analyse sentence failure"
-                            , dos_get_filename(__FILE__), __LINE__);
+                mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Analyse buffer by regular expression FAIL.");
                 goto failure;
             }
 
             lRet = dos_atoul(pszAnalyseRslt[1], &ulData);
             if(0 != lRet)
             {
-               logr_error("%s:Line %u:mon_get_threads_count|dos_atol failure"
-                            , dos_get_filename(__FILE__), __LINE__);
+               DOS_ASSERT(0);
+               goto failure;
             }
             ulThreadsCount = ulData;
             goto success;
@@ -387,7 +381,7 @@ static U32 mon_get_proc_pid_list()
    pszRoot = config_get_service_root(szServiceRoot, sizeof(szServiceRoot));
    if (DOS_ADDR_INVALID(pszRoot))
    {
-       logr_error("%s:Line %u:get service root failure.", dos_get_filename(__FILE__), __LINE__);
+       DOS_ASSERT(0);
        return DOS_FAIL;
    }
 
@@ -403,8 +397,7 @@ static U32 mon_get_proc_pid_list()
    pstDir = opendir(szPidDir);
    if (DOS_ADDR_INVALID(pstDir))
    {
-      logr_cirt("%s:Line %u:mon_get_proc_pid_list|dir \'%s\' access failed,psrDir is %p!"
-                , dos_get_filename(__FILE__), __LINE__, szPidDir, pstDir);
+      DOS_ASSERT(0);
       return DOS_FAIL;
    }
 
@@ -424,8 +417,7 @@ static U32 mon_get_proc_pid_list()
 
          if (DOS_ADDR_INVALID(fp))
          {
-            logr_cirt("%s:Line %u:mon_get_proc_pid_list|file \'%s\' access failed,fp is %p!"
-                        , dos_get_filename(__FILE__), __LINE__, szAbsFilePath, fp);
+            DOS_ASSERT(0);
             closedir(pstDir);
             return DOS_FAIL;
          }
@@ -435,23 +427,20 @@ static U32 mon_get_proc_pid_list()
          {
             if(DOS_ADDR_INVALID(g_pastProc[g_ulPidCnt]))
             {
-               logr_cirt("%s:Line %u:mon_get_proc_pid_list|get proc pid list failure,g_pastProc[%d] is %p!"
-                            , dos_get_filename(__FILE__),  __LINE__, g_ulPidCnt, g_pastProc[g_ulPidCnt]);
+               DOS_ASSERT(0);
                goto failure;
             }
 
             if (dos_atoul(szLine, &ulPid) < 0)
             {
-                logr_error("%s:Line %u:dos_atoul failure.", dos_get_filename(__FILE__), __LINE__);
+                DOS_ASSERT(0);
                 goto failure;
             }
 
             if (DOS_TRUE == mon_is_proc_dead(ulPid))
             {
                 /* 如果说进程已经死亡了，但进程PID文件还在，不计入进程总数 */
-                logr_info("%s:Line %u:process ID %u does not exist,but pid file exists."
-                            , dos_get_filename(__FILE__), __LINE__, ulPid);
-                printf("\nProcess ID %u does not exist,but pid file exists.\n", ulPid);
+                mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_WARNING, "Process has been dead, but pid(%u) file still exists.", ulPid);
                 fclose(fp);
                 fp  = NULL;
                 continue;
@@ -462,7 +451,7 @@ static U32 mon_get_proc_pid_list()
             pTemp = mon_get_proc_name_by_id(ulPid, szProcAllName);
             if (DOS_ADDR_INVALID(pTemp))
             {
-                logr_error("%s:Line %d:Get process name by ID FAIL.", dos_get_filename(__FILE__), __LINE__);
+                DOS_ASSERT(0);
                 goto failure;
             }
             if (dos_strstr(pTemp, "monitor"))
@@ -512,15 +501,14 @@ U32 mon_get_process_data()
    ulRet = mon_proc_reset_data();
    if (DOS_SUCC != ulRet)
    {
-       logr_error("%s:Line %u:reset process data FAIL.", dos_get_filename(__FILE__), __LINE__);
+       mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Process Module Reset Data FAIL.");
        return DOS_FAIL;
    }
 
    ulRet = mon_get_proc_pid_list();
    if(DOS_SUCC != ulRet)
    {
-      logr_error("%s:Line %u:mon_get_process_data|get proc pid list failure,ulRet == %u!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRet);
+      mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Process pid list FAIL.");
       return DOS_FAIL;
    }
 
@@ -528,24 +516,21 @@ U32 mon_get_process_data()
    {
       if(DOS_ADDR_INVALID(g_pastProc[ulRows]))
       {
-          logr_cirt("%s:Line %u:mon_get_process_data|get proc data failure,g_pastProc[%u] is %p!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRows, g_pastProc[ulRows]);
+          DOS_ASSERT(0);
           return DOS_FAIL;
       }
 
       ulRet = mon_get_cpu_mem_time_info(g_pastProc[ulRows]->ulProcId, g_pastProc[ulRows]);
       if(DOS_SUCC != ulRet)
       {
-         logr_error("%s:Line %u:mon_get_process_data|get mem & cpu & time failure,ulRet == %u!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRet);
+         mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get the CPU and Memory Information of Process FAIL.");
          return DOS_FAIL;
       }
 
       ulRet = mon_get_openfile_count(g_pastProc[ulRows]->ulProcId);
       if(DOS_FAIL == ulRet)
       {
-         logr_error("%s:Line %u:mon_get_process_data|get open file count failure,ulRet == %u!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRet);
+         mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get opened file count FAIL.");
          return DOS_FAIL;
       }
       g_pastProc[ulRows]->ulOpenFileCnt = ulRet;
@@ -553,8 +538,7 @@ U32 mon_get_process_data()
       ulRet = mon_get_db_conn_count(g_pastProc[ulRows]->ulProcId);
       if(DOS_FAIL == ulRet)
       {
-         logr_error("%s:Line %u:mon_get_process_data|get database connection failure,ulRet == %u!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRet);
+         mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Database connections count FAIL.");
          return DOS_FAIL;
       }
       g_pastProc[ulRows]->ulDBConnCnt = ulRet;
@@ -562,8 +546,7 @@ U32 mon_get_process_data()
       ulRet = mon_get_threads_count(g_pastProc[ulRows]->ulProcId);
       if(DOS_FAIL == ulRet)
       {
-         logr_error("%s:Line %u:mon_get_process_data|get threads count failure,ulRet == %u!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRet);
+         mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Threads count FAIL.");
          return DOS_FAIL;
       }
       g_pastProc[ulRows]->ulThreadsCnt = ulRet;
@@ -581,20 +564,19 @@ U32 mon_get_process_data()
  */
 static U32  mon_kill_process(U32 ulPid)
 {
-   S8 szKillCmd[MAX_CMD_LENGTH] = {0};
+    S8 szKillCmd[MAX_CMD_LENGTH] = {0};
 
-   /* 使用"kill -9 进程id"方式杀灭进程  */
-   dos_snprintf(szKillCmd, MAX_CMD_LENGTH, "kill -9 %u", ulPid);
-   system(szKillCmd);
+    /* 使用"kill -9 进程id"方式杀灭进程  */
+    dos_snprintf(szKillCmd, MAX_CMD_LENGTH, "kill -9 %u", ulPid);
+    system(szKillCmd);
 
-   if (DOS_TRUE == mon_is_proc_dead(ulPid))
-   {
-      logr_info("%s:Line %u:mon_kill_process|kill process success,pid %u is killed!"
-                , dos_get_filename(__FILE__), __LINE__, ulPid);
-      return DOS_SUCC;
-   }
+    if (DOS_TRUE == mon_is_proc_dead(ulPid))
+    {
+        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid % does not exist.", ulPid);
+        return DOS_SUCC;
+    }
 
-   return DOS_FAIL;
+    return DOS_FAIL;
 }
 
 /**
@@ -606,36 +588,35 @@ static U32  mon_kill_process(U32 ulPid)
  */
 U32  mon_check_all_process()
 {
-   S32 lRet = 0;
-   U32 ulRows = 0, ulIndex = 0, ulNo = 0, ulRet = 0;
-   S8  szProcName[32] = {0};
-   S8  szProcVersion[16] = {0};
-   S8  szProcCmd[1024] = {0};
-   U32 ulCfgProcCnt = 0;
+    S32 lRet = 0;
+    U32 ulRows = 0, ulIndex = 0, ulNo = 0, ulRet = 0;
+    S8  szProcName[32] = {0};
+    S8  szProcVersion[16] = {0};
+    S8  szProcCmd[1024] = {0};
+    U32 ulCfgProcCnt = 0;
 
-   /* 获取当前配置进程数量 */
-   ulCfgProcCnt = config_hb_get_process_cfg_cnt();
-   if(0 > ulCfgProcCnt)
-   {
-      logr_error("%s:Line %u:get config process count failure,ulCfgProcCnt is %u!"
-                   , dos_get_filename(__FILE__), __LINE__, ulCfgProcCnt);
-      config_hb_deinit();
-      return DOS_FAIL;
-   }
-
-   ulNo = mon_generate_warning_id(PROC_RES, 0x00, 0x02);
-   if ((U32)0xff == ulNo)
-   {
+    /* 获取当前配置进程数量 */
+    ulCfgProcCnt = config_hb_get_process_cfg_cnt();
+    if(0 > ulCfgProcCnt)
+    {
+        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get config process count FAIL.");
+        config_hb_deinit();
         return DOS_FAIL;
-   }
+    }
 
-   ulIndex = mon_get_msg_index(ulNo);
-   if (U32_BUTT == ulIndex)
-   {
+    ulNo = mon_generate_warning_id(PROC_RES, 0x00, 0x02);
+    if ((U32)0xff == ulNo)
+    {
         return DOS_FAIL;
-   }
+    }
 
-   /*
+    ulIndex = mon_get_msg_index(ulNo);
+    if (U32_BUTT == ulIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    /*
     *  如果配置的进程个数小于或者等于监控到的进程个数，
     *  那么认为所有的监控进程都已经启动
     */
@@ -714,8 +695,7 @@ U32  mon_check_all_process()
                  , szProcVersion, sizeof(szProcVersion));
       if(lRet < 0)
       {
-         logr_error("%s:Line %u:mon_check_all_process|get process list failure!"
-                     , dos_get_filename(__FILE__), __LINE__);
+         mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Process Name,Version FAIL.");
          config_hb_deinit();
          return DOS_FAIL;
       }
@@ -726,8 +706,7 @@ U32  mon_check_all_process()
       lRet = config_hb_get_start_cmd(ulRows, szProcCmd, sizeof(szProcCmd));
       if(0 > lRet)
       {
-         logr_error("%s:Line %u:mon_check_all_process|get start command failure!"
-                     , dos_get_filename(__FILE__), __LINE__);
+         mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Start Command FAIL.");
          config_hb_deinit();
          return DOS_FAIL;
       }
@@ -739,7 +718,7 @@ U32  mon_check_all_process()
 
          if (DOS_ADDR_INVALID(pszPtr))
          {
-             logr_error("%s:Line %u: pszStr == %p", dos_get_filename(__FILE__), __LINE__, pszPtr);
+             DOS_ASSERT(0);
              break;
          }
 
@@ -764,14 +743,12 @@ U32  mon_check_all_process()
 
       if(DOS_FALSE == bHasStarted)
       {
-         logr_info("%s:Line %u: Process %s lost."
-                    , dos_get_filename(__FILE__), __LINE__, szProcName);
+         mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_DEBUG, "Process %s lost.", szProcName);
 
          lRet = system(szProcCmd);
-         if(0 > lRet)
+         if(lRet < 0)
          {
-            logr_error("%s:Line %u:mon_check_all_process|start process %s FAIL."
-                         , dos_get_filename(__FILE__), __LINE__, szProcName);
+            mon_trace(MON_TRACE_PROCESS,LOG_LEVEL_EMERG, "Restart Process %s FAIL.", szProcName);
             return DOS_FAIL;
          }
       }
@@ -796,17 +773,16 @@ U32 mon_kill_all_monitor_process()
     ulPid = getpid();
     for(ulRows = 0; ulRows < g_ulPidCnt; ulRows++)
     {
-       if(ulPid == g_pastProc[ulRows]->ulProcId)
-       {
-          continue;
-       }
-       ulRet = mon_kill_process(g_pastProc[ulRows]->ulProcId);
-       if(DOS_SUCC != ulRet)
-       {
-          logr_error("%s:Line %u:mon_kill_all_monitor_process|kill all monitor process failure,ulRet is %u!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRet);
-          return DOS_FAIL;
-       }
+        if(ulPid == g_pastProc[ulRows]->ulProcId)
+        {
+            continue;
+        }
+        ulRet = mon_kill_process(g_pastProc[ulRows]->ulProcId);
+        if(DOS_SUCC != ulRet)
+        {
+            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Kill pid %u FAIL.", g_pastProc[ulRows]->ulProcId);
+            return DOS_FAIL;
+        }
     }
 
     return DOS_SUCC;
@@ -849,7 +825,7 @@ S8 * mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName)
     fp = popen(szPsCmd, "r");
     if (DOS_ADDR_INVALID(fp))
     {
-        logr_error("%s:Line %u:", dos_get_filename(__FILE__), __LINE__);
+        DOS_ASSERT(0);
         return NULL;
     }
 
@@ -867,7 +843,7 @@ S8 * mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName)
 
     if (DOS_FALSE == bFound)
     {
-        logr_error("%s:Line %u: Pid %u does not exist.", dos_get_filename(__FILE__), __LINE__, ulPid);
+        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid %u does not exist", ulPid);
         pclose(fp);
         fp = NULL;
         return NULL;
@@ -925,29 +901,27 @@ BOOL mon_is_proc_dead(U32 ulPid)
  */
 U32  mon_get_proc_total_cpu_rate()
 {
-   F64 fTotalCPURate = 0.0;
-   U32 ulRows = 0;
+    F64 fTotalCPURate = 0.0;
+    U32 ulRows = 0;
 
-   for (ulRows = 0; ulRows < g_ulPidCnt; ulRows++)
-   {
-      if(DOS_ADDR_INVALID(g_pastProc[ulRows]))
-      {
-         logr_cirt("%s:Line %u:get all proc total CPU rate failure,g_pastProc[%u] is %p!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRows, g_pastProc[ulRows]);
-         return DOS_FAIL;
-      }
+    for (ulRows = 0; ulRows < g_ulPidCnt; ulRows++)
+    {
+        if(DOS_ADDR_INVALID(g_pastProc[ulRows]))
+        {
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
 
-      if(DOS_FALSE == mon_is_pid_valid(g_pastProc[ulRows]->ulProcId))
-      {
-         logr_error("%s:Line %u:mon_get_all_proc_total_cpu_rate|proc pid %u is not exist or invalid!"
-                    , dos_get_filename(__FILE__), __LINE__, g_pastProc[ulRows]->ulProcId);
-         continue;
-      }
-      fTotalCPURate += g_pastProc[ulRows]->fCPURate;
-   }
+        if(DOS_FALSE == mon_is_pid_valid(g_pastProc[ulRows]->ulProcId))
+        {
+            DOS_ASSERT(0);
+            continue;
+        }
+        fTotalCPURate += g_pastProc[ulRows]->fCPURate;
+    }
 
-   /* 占用率的结果取四舍五入整数值，下面函数同理 */
-   return (S32)(fTotalCPURate + 0.5);
+    /* 占用率的结果取四舍五入整数值，下面函数同理 */
+    return (S32)(fTotalCPURate + 0.5);
 }
 
 /**
@@ -959,28 +933,26 @@ U32  mon_get_proc_total_cpu_rate()
  */
 U32  mon_get_proc_total_mem_rate()
 {
-   F64 fTotalMemRate = 0.0;
-   U32 ulRows = 0;
+    F64 fTotalMemRate = 0.0;
+    U32 ulRows = 0;
 
-   for (ulRows = 0; ulRows < g_ulPidCnt; ulRows++)
-   {
-      if(DOS_ADDR_INVALID(g_pastProc[ulRows]))
-      {
-         logr_error("%s:Line %u:mon_get_all_proc_total_mem_rate|get total proc memory failure,g_pastProc[%u] is %p!"
-                    , dos_get_filename(__FILE__), __LINE__, ulRows, g_pastProc[ulRows]);
-         return DOS_FAIL;
-      }
+    for (ulRows = 0; ulRows < g_ulPidCnt; ulRows++)
+    {
+        if(DOS_ADDR_INVALID(g_pastProc[ulRows]))
+        {
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
 
-      if(DOS_FALSE == mon_is_pid_valid(g_pastProc[ulRows]->ulProcId))
-      {
-         logr_error("%s:Line %u:mon_get_all_proc_total_mem_rate|proc pid %u is invalid!"
-                    , dos_get_filename(__FILE__), __LINE__, g_pastProc[ulRows]->ulProcId);
-         continue;
-      }
-      fTotalMemRate += g_pastProc[ulRows]->fMemoryRate;
-   }
+        if(DOS_FALSE == mon_is_pid_valid(g_pastProc[ulRows]->ulProcId))
+        {
+            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid %u does not exist.", g_pastProc[ulRows]->ulProcId);
+            continue;
+        }
+        fTotalMemRate += g_pastProc[ulRows]->fMemoryRate;
+    }
 
-   return (U32)(fTotalMemRate + 0.5);
+    return (U32)(fTotalMemRate + 0.5);
 }
 
 

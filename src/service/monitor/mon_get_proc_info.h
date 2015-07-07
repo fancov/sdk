@@ -28,14 +28,14 @@
 
 typedef struct tagMonProcStatus
 {
-   U32 ulProcId;           //进程id
-   S8  szProcName[64];    //进程名
-   F64 fMemoryRate;       //内存占用率
-   F64 fCPURate;          //CPU平均占用率
-   S8  szProcCPUTime[32]; //CPU持续时间
-   U32 ulOpenFileCnt;      //打开的文件个数
-   U32 ulDBConnCnt;        //数据库连接数
-   U32 ulThreadsCnt;       //线程数
+    U32 ulProcId;           //进程id
+    S8  szProcName[64];    //进程名
+    F64 fMemoryRate;       //内存占用率
+    F64 fCPURate;          //CPU平均占用率
+    S8  szProcCPUTime[32]; //CPU持续时间
+    U32 ulOpenFileCnt;      //打开的文件个数
+    U32 ulDBConnCnt;        //数据库连接数
+    U32 ulThreadsCnt;       //线程数
 }MON_PROC_STATUS_S;
 
 
