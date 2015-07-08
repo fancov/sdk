@@ -243,6 +243,8 @@ enum tagCallServiceType{
 
     SC_SERV_NUM_VERIFY              = 25,  /* 号码验证 */
 
+    SC_SERV_AGENT_SIGNIN            = 23,  /* 坐席签入 */
+
     SC_SERV_BUTT                    = 255
 }SC_CALL_SERVICE_TYPE_EN;
 

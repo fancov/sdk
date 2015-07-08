@@ -111,6 +111,20 @@ enum tagAPICMDActionList
     SC_API_CMD_ACTION_BUTT
 };
 
+enum tagAPICallCtrlCmd
+{
+    SC_API_MAKE_CALL                 = 0, /* 楷れ網請 */
+    SC_API_HANGUP_CALL,                   /* 境剿網請 */
+    SC_API_RECORD,                        /* 網請翹秞 */
+    SC_API_WHISPERS,                      /* 嫉逄 */
+    SC_API_INTERCEPT,                     /* 潼泭 */
+    SC_API_TRANSFOR_ATTAND,               /* attend transfor */
+    SC_API_TRANSFOR_BLIND,                /* blind transfer */
+    SC_API_CONFERENCE,                    /* 頗祜 */
+
+    SC_API_CALLCTRL_BUTT
+}SC_API_CALLCTRL_CMD_EN;
+
 enum tagAPIParams
 {
     SC_API_VERSION                      = 0,      /* API統杅ㄛAPI唳掛瘍 */

@@ -583,7 +583,132 @@ invalid_params:
 
 U32 sc_http_api_call_ctrl(list_t *pstArgv)
 {
-    return DOS_FAIL;
+    S8 *pszAction = NULL;
+    S8 *pszCustomerID = NULL;
+    S8 *pszAgentID = NULL;
+    S8 *pszCallee = NULL;
+    S8 *pszFlag = NULL;
+    S8 *pszTaskID = NULL;
+    U32 ulAction = SC_API_CALLCTRL_BUTT;
+    U32 ulAgent = 0;
+    U32 ulCustomer = 0;
+    U32 ulTaskID = 0;
+
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+
+        goto invalid_request;
+    }
+
+    pszAction = sc_http_api_get_value(pstArgv, "action");
+    pszAgentID = sc_http_api_get_value(pstArgv, "agent");
+    pszCustomerID = sc_http_api_get_value(pstArgv, "customerid");
+    if (DOS_ADDR_INVALID(pszAction)
+        || DOS_ADDR_INVALID(pszAgentID)
+        || DOS_ADDR_INVALID(pszCustomerID))
+    {
+        DOS_ASSERT(0);
+        goto invalid_request;
+    }
+
+    if (dos_atoul(pszAction, &ulAgent) < 0
+        || dos_atoul(pszCustomerID, &ulCustomer) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_request;
+    }
+
+    if (dos_strnicmp(pszAction, "make", dos_strlen("make")) == 0)
+    {
+        pszCallee = sc_http_api_get_value(pstArgv, "caller");
+        if (DOS_ADDR_INVALID(pszCallee) || '\0' == pszCallee[0])
+        {
+            DOS_ASSERT(0);
+
+            goto invalid_request;
+        }
+
+        pszTaskID = sc_http_api_get_value(pstArgv, "task");
+        if (DOS_ADDR_INVALID(pszTaskID)
+            || dos_atoul(pszTaskID, ulTaskID) < 0)
+        {
+            ulTaskID = 0;
+        }
+
+        ulAction = SC_API_MAKE_CALL;
+    }
+    else if (dos_strnicmp(pszAction, "hangup", dos_strlen("hangup")) == 0)
+    {
+        ulAction = SC_API_HANGUP_CALL;
+    }
+    else if (dos_strnicmp(pszAction, "record", dos_strlen("record")) == 0)
+    {
+        ulAction = SC_API_RECORD;
+    }
+    else if (dos_strnicmp(pszAction, "whispers", dos_strlen("whispers")) == 0)
+    {
+        ulAction = SC_API_WHISPERS;
+    }
+    else if (dos_strnicmp(pszAction, "intercept", dos_strlen("intercept")) == 0)
+    {
+        ulAction = SC_API_INTERCEPT;
+    }
+    else if (dos_strnicmp(pszAction, "transfer", dos_strlen("transfer")) == 0)
+    {
+        pszCallee = sc_http_api_get_value(pstArgv, "caller");
+        if (DOS_ADDR_INVALID(pszCallee) || '\0' == pszCallee[0])
+        {
+            DOS_ASSERT(0);
+
+            goto invalid_request;
+        }
+
+        pszFlag = sc_http_api_get_value(pstArgv, "caller");
+        if (DOS_ADDR_VALID(pszFlag)
+            && '1' == pszFlag[0])
+        {
+            ulAction = SC_API_TRANSFOR_ATTAND;
+        }
+        else
+        {
+            ulAction = SC_API_TRANSFOR_BLIND;
+        }
+    }
+    else if (dos_strnicmp(pszAction, "conference", dos_strlen("conference")) == 0)
+    {
+        pszCallee = sc_http_api_get_value(pstArgv, "caller");
+        if (DOS_ADDR_INVALID(pszCallee) || '\0' == pszCallee[0])
+        {
+            DOS_ASSERT(0);
+
+            goto invalid_request;
+        }
+
+        ulAction = SC_API_CONFERENCE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+
+        goto invalid_request;
+    }
+
+    if (ulAction >= SC_API_CALLCTRL_BUTT)
+    {
+        DOS_ASSERT(0);
+
+        goto invalid_request;
+    }
+
+    sc_logr_info(SC_HTTPD, "Recv HTTP API CMD. CMD: %u, Action: %u, Customer: %u, Task: %u, Caller: %s"
+                    , ulAction, ulAgent, ulCustomer, ulTaskID
+                    , pszCallee ? pszCallee : "");
+
+    return sc_ep_call_ctrl_proc(ulAction, ulTaskID, ulAgent, ulCustomer, pszCallee);
+
+invalid_request:
+    return SC_HTTP_ERRNO_INVALID_REQUEST;
 }
 
 U32 sc_http_api_agent_grp(list_t *pstArgv)
@@ -709,6 +834,14 @@ U32 sc_http_api_agent_action(list_t *pstArgv)
         ulAction = SC_ACD_SITE_ACTION_ADD;
     }
     else if (dos_strncmp(pszAction, "delete",sizeof("delete")) == 0)
+    {
+        ulAction = SC_ACD_SITE_ACTION_DELETE;
+    }
+    else if (dos_strncmp(pszAction, "idel",sizeof("idel")) == 0)
+    {
+        ulAction = SC_ACD_SITE_ACTION_EN_QUEUE;
+    }
+    else if (dos_strncmp(pszAction, "busy",sizeof("busy")) == 0)
     {
         ulAction = SC_ACD_SITE_ACTION_DELETE;
     }

@@ -366,6 +366,11 @@ esl_exec_fail:
 
     sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
 
+    if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
+    {
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECT_FAIL, pstSCB->ulAgentID);
+    }
+
     pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
     if (DOS_ADDR_VALID(pstSCBOther))
     {

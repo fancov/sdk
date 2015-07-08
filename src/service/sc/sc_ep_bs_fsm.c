@@ -128,7 +128,17 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         sc_logr_notice(SC_BS, "Auth successfully. RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
 
-        if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+        if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
+        {
+            pstSCB->ucMainService = SC_SERV_AGENT_SIGNIN;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
+            {
+                sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECT_FAIL, pstSCB->ulAgentID);
+                sc_ep_terminate_call(pstSCB);
+            }
+        }
+        else if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
         {
             pstSCB->ucMainService = SC_SERV_AUTO_DIALING;
             ulRet = sc_dialer_add_call(pstSCB);
