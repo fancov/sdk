@@ -63,9 +63,6 @@ VOID telnetd_send_cmd2client(FILE *output, S32 lCmd, S32 lOpt);
 #define DEL_ASCII_CODE                   127 /* DEL Key */
 #define TAB_ASCII_CODE                   9   /* TAB Key */
 
-/* 定义存放命令的缓存首地址 */
-S8 *g_pszCtrlHistoryCmd = NULL;
-
 /* 定义当前命令位置和最新命令位置 */
 S32 m_lLastestIndex = 0, m_lCurIndex = 0, m_lCmdCnt = 0;
 
@@ -123,6 +120,11 @@ typedef struct tagTelnetClinetInfo{
 
     U32    ulMode;      /* 但前客户端处于什么模式 */
     pthread_t pthClientTask; /* 线程id */
+
+#if INCLUDE_TELNET_PAGE
+    DLL_S stCmdList;    /* ctrl_panel客户端命令列表 */
+    DLL_NODE_S *pstCurNode; /* 当前的命令指针 */
+#endif
 
 #if INCLUDE_PTS
     S32    bIsExit;
@@ -908,12 +910,12 @@ VOID telnetd_client_send_new_line(FILE* output, S32 ulLines)
         //fflush(output);
     }
 }
-#if 1
 S32 telnet_client_tab_proc(S8 *pszCurrCmd, FILE *pfOutput)
 {
     return DOS_SUCC;
 }
 
+#if INCLUDE_TELNET_PAGE
 /**
  * 函数：telnet_client_special_key_proc
  * 功能：处理客户端输入的特殊按键，包括方向件，以及f1-f10
@@ -926,68 +928,48 @@ S32 telnet_client_tab_proc(S8 *pszCurrCmd, FILE *pfOutput)
  * 返回值：
  *      成功返回接收缓存的长度，失败返回－1
  */
-S32 telnet_client_special_key_proc(U32 ulKey, FILE *pfOutput, S8 *szBuffer, S32 *plSize)
+S32 telnet_client_special_key_proc(U32 ulKey, TELNET_CLIENT_INFO_ST *pstClientInfo, S8 *szBuffer, S32 *plSize)
 {
     switch(ulKey)
     {
         /* 处理方向键 */
         case KEY_UP:
             {
-                dos_strncpy(szBuffer, g_pszCtrlHistoryCmd + m_lCurIndex * MAX_RECV_BUFF_LENGTH, *plSize);
-                szBuffer[*plSize - 1] = '\0';
-                *plSize = dos_strlen(szBuffer);
-
-                if (0 == m_lCmdCnt)
+                /* 如果说当前节点的前驱节点不是头结点，前移指针 */
+                if (DLL_First(&pstClientInfo->stCmdList) != pstClientInfo->pstCurNode)
                 {
-                    goto fail;
-                }
-
-                if (m_lCurIndex == m_lLastestIndex + 1)
-                {
-                    goto fail;
-                }
-
-                if (0 == m_lCurIndex)
-                {
-                    if (m_lCmdCnt >= MAX_HISTORY_CMD_CNT - 1)
-                    {
-                        m_lCurIndex = MAX_HISTORY_CMD_CNT - 1;
-                    }
+                    pstClientInfo->pstCurNode = DLL_Previous(&pstClientInfo->stCmdList, pstClientInfo->pstCurNode);
+                    *plSize = dos_snprintf(szBuffer, MAX_RECV_BUFF_LENGTH, "%s", (S8*)pstClientInfo->pstCurNode->pHandle);
                 }
                 else
                 {
-                    m_lCurIndex = m_lCurIndex - 1;
+                    pstClientInfo->pstCurNode = DLL_First(&pstClientInfo->stCmdList);
+                    if (pstClientInfo->pstCurNode && pstClientInfo->pstCurNode->pHandle)
+                    {
+                        *plSize = dos_snprintf(szBuffer, MAX_RECV_BUFF_LENGTH, "%s", (S8*)pstClientInfo->pstCurNode->pHandle);
+                    }
                 }
                 break;
             }
         case KEY_DOWN:
             {
-                if (0 == m_lCmdCnt)
+                if (DLL_Last(&pstClientInfo->stCmdList) != pstClientInfo->pstCurNode)
                 {
-                    goto fail;
+                    pstClientInfo->pstCurNode = DLL_Next(&pstClientInfo->stCmdList, pstClientInfo->pstCurNode);
+                    *plSize = dos_snprintf(szBuffer, MAX_RECV_BUFF_LENGTH, "%s", (S8*)pstClientInfo->pstCurNode->pHandle);
                 }
-
-                if (m_lCurIndex == MAX_HISTORY_CMD_CNT - 1)
+                else
                 {
-                    m_lCurIndex = 0;
-                }
-
-                if (m_lCurIndex < m_lLastestIndex - 1)
-                {
-                    ++m_lCurIndex;
-
-                    dos_strncpy(szBuffer, g_pszCtrlHistoryCmd + m_lCurIndex * MAX_RECV_BUFF_LENGTH, *plSize);
-                    szBuffer[*plSize - 1] = '\0';
-                    *plSize = dos_strlen(szBuffer);
-
-                    if (m_lCurIndex == m_lLastestIndex - 1)
+                    pstClientInfo->pstCurNode = DLL_Last(&pstClientInfo->stCmdList);
+                    if (pstClientInfo->pstCurNode && pstClientInfo->pstCurNode->pHandle)
                     {
-                        m_lCurIndex = m_lCurIndex - 1;
+                        *plSize = dos_snprintf(szBuffer, MAX_RECV_BUFF_LENGTH, "%s", (S8*)pstClientInfo->pstCurNode->pHandle);
                     }
                 }
                 break;
             }
         case KEY_F1:
+            break;
         case KEY_F2:
         case KEY_F3:
         case KEY_F4:
@@ -1000,16 +982,10 @@ S32 telnet_client_special_key_proc(U32 ulKey, FILE *pfOutput, S8 *szBuffer, S32 
         case KEY_LEFT:
         case KEY_RIGHT:
         default:
-            goto fail;
             break;
     }
 
     return DOS_SUCC;
-
-fail:
-    szBuffer[0] = '\0';
-    *plSize = 0;
-    return DOS_FAIL;
 }
 #endif
 
@@ -1126,7 +1102,10 @@ do{ \
 
                 /* 全比较成功，匹配特殊按键成功 */
                 lCmdLen = sizeof(szLastCmd);
-                telnet_client_special_key_proc(lLoop, pstClientInfo->pFDOutput, szLastCmd, &lCmdLen);
+
+#if INCLUDE_TELNET_PAGE
+                telnet_client_special_key_proc(lLoop, pstClientInfo, szLastCmd, &lCmdLen);
+#endif
                 if (lCmdLen > 0)
                 {
                     /* 删除 */
@@ -1165,7 +1144,7 @@ do{ \
             else
             {
                 /* 成功就要处理特殊按键，失败要将所有缓存字符回显 */
-                for (lLoop=0; lLoop<stKeyList.ulLength; lLoop++)
+                for (lLoop=0; lLoop < stKeyList.ulLength; lLoop++)
                 {
                     putc(stKeyList.szKeyBuff[lLoop], pstClientInfo->pFDOutput);
                 }
@@ -1459,6 +1438,10 @@ VOID *telnetd_client_task(VOID *ptr)
     TELNET_CLIENT_INFO_ST *pstClientInfo;
     // struct rlimit limit;
     S8 szRecvBuff[MAX_RECV_BUFF_LENGTH];
+#if INCLUDE_TELNET_PAGE
+    S8 *pszHistoryCmd = NULL;   /* 存储命令的缓存 */
+    DLL_NODE_S *pstTempNode = NULL; /* 用来临时存储被删除的节点 */
+#endif
     S32 lLen;
     S8 szCmd[16] = { 0 }, *pszPtr = NULL;
 #if INCLUDE_PTS
@@ -1539,30 +1522,56 @@ VOID *telnetd_client_task(VOID *ptr)
         {
             *pszPtr = '\0';
         }
-
+#if INCLUDE_TELNET_PAGE
         if (0 == dos_is_printable_str(szRecvBuff))
         {
-            if (MAX_HISTORY_CMD_CNT - 1 == m_lLastestIndex)
+            /* 如果说链表长度是MAX_HISTROY_CMD_CNT，则不用添加新节点 */
+            if (pstClientInfo->stCmdList.ulCount >= MAX_HISTORY_CMD_CNT)
             {
-                m_lLastestIndex = 0;
-            }
+                /* 去掉一个节点，并复制数据 */
+                pstTempNode = dll_fetch(&pstClientInfo->stCmdList);
+                pszHistoryCmd = (S8*)pstTempNode->pHandle;
 
-            if (m_lCmdCnt >= MAX_HISTORY_CMD_CNT)
-            {
-                m_lCmdCnt = MAX_HISTORY_CMD_CNT;
+                dos_snprintf(pszHistoryCmd, MAX_RECV_BUFF_LENGTH, "%s", szRecvBuff);
+
+                /* 重新加入该队列 */
+                DLL_Add(&pstClientInfo->stCmdList, pstTempNode);
+
+                /* 维护好最新的位置 */
+                pstClientInfo->pstCurNode = &(pstClientInfo->stCmdList.Head);
             }
             else
             {
-                ++m_lCmdCnt;
+                /* 先分配好资源 */
+                pszHistoryCmd = (S8 *)dos_dmem_alloc(MAX_RECV_BUFF_LENGTH);
+                if (DOS_ADDR_INVALID(pszHistoryCmd))
+                {
+                    DOS_ASSERT(0);
+                    return NULL;
+                }
+
+                pstTempNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
+                if (DOS_ADDR_INVALID(pstTempNode))
+                {
+                    DOS_ASSERT(0);
+                    return NULL;
+                }
+
+                /* 初始化节点 */
+                DLL_Init_Node(pstTempNode);
+
+                /* 复制数据并加入链表 */
+                pstTempNode->pHandle = (VOID *)pszHistoryCmd;
+                dos_snprintf(pszHistoryCmd, MAX_RECV_BUFF_LENGTH, "%s", szRecvBuff);
+
+                DLL_Add(&pstClientInfo->stCmdList, pstTempNode);
+
+                /* 维护好最新的位置 */
+                pstClientInfo->pstCurNode = &(pstClientInfo->stCmdList.Head);
             }
 
-            m_lCurIndex = m_lLastestIndex;
-
-            dos_memzero(g_pszCtrlHistoryCmd + m_lLastestIndex * MAX_RECV_BUFF_LENGTH, MAX_RECV_BUFF_LENGTH);
-            dos_snprintf(g_pszCtrlHistoryCmd + m_lLastestIndex * MAX_RECV_BUFF_LENGTH, MAX_RECV_BUFF_LENGTH
-                            , "%s", szRecvBuff);
-            ++m_lLastestIndex;
         }
+#endif  //end INCLUDE_TELNET_PAGE
 
         /* 分析并执行命令 */
         cli_server_cmd_analyse(pstClientInfo->ulIndex, pstClientInfo->ulMode, szRecvBuff, lLen);
@@ -1866,17 +1875,8 @@ S32 telnetd_init()
         return DOS_FAIL;
     }
 
-    /* 在此为命令缓存分配内存 */
-    g_pszCtrlHistoryCmd = dos_dmem_alloc(MAX_HISTORY_CMD_CNT * MAX_RECV_BUFF_LENGTH * sizeof(S8));
-    if (!g_pszCtrlHistoryCmd)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-    /**/
-
     dos_memzero((VOID*)pstClientCB, sizeof(TELNET_CLIENT_INFO_ST) * MAX_CLIENT_NUMBER);
-    for (i=0; i<MAX_CLIENT_NUMBER; i++)
+    for (i = 0; i < MAX_CLIENT_NUMBER; i++)
     {
         g_pstTelnetClientList[i] = pstClientCB + i;
         g_pstTelnetClientList[i]->ulValid = DOS_FALSE;
@@ -1885,6 +1885,10 @@ S32 telnetd_init()
         g_pstTelnetClientList[i]->pFDInput = NULL;
         g_pstTelnetClientList[i]->pFDOutput = NULL;
         g_pstTelnetClientList[i]->ulMode = CLIENT_LEVEL_CONFIG;
+
+#if INCLUDE_TELNET_PAGE
+        DLL_Init(&g_pstTelnetClientList[i]->stCmdList);
+#endif
     }
 
     /* We bind to port 23 before chrooting, as well. */

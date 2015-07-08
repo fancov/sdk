@@ -53,6 +53,8 @@
 /* 定时器模块 */
 #define INCLUDE_SERVICE_TIMER             1
 
+/* 定义telnet的翻页功能开关 */
+#define INCLUDE_TELNET_PAGE               1
 
 #endif /* END __CFG_MOD_MONITER_H__ */
 
