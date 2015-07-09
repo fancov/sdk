@@ -60,6 +60,7 @@ typedef enum tagSCACDPolicy{
     SC_ACD_POLICY_RANDOM,                 /* 随机 */
     SC_ACD_POLICY_RECENT,                 /* 最近呼叫 */
     SC_ACD_POLICY_GROUP,                  /* 全部 */
+    SC_ACD_POLICY_MEMORY,                 /* 记忆呼叫 */
 
     SC_ACD_POLICY_BUTT
 }SC_ACD_POLICY_EN;
@@ -108,7 +109,7 @@ typedef struct tagACDSiteDesc{
 }SC_ACD_AGENT_INFO_ST;
 
 U32 sc_acd_init();
-U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGroupID);
+U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGroupID, S8 *szCallerNum);
 U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus);
 S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
 U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);

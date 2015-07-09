@@ -3391,7 +3391,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         goto proc_error;
     }
 
-    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID) != DOS_SUCC)
+    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCalleeNum) != DOS_SUCC)
     {
         DOS_ASSERT(0);
 

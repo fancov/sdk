@@ -18,6 +18,8 @@
 
 #define SC_ACD_HASH_SIZE              128
 
+#define SC_ACD_CALLER_NUM_RELATION_HASH_SIZE    512         /* 主叫号码和坐席对应关系hash的大小 */
+
 #define SC_ACD_SITE_IS_USEABLE(pstSiteDesc)        \
     (DOS_ADDR_VALID(pstSiteDesc)                   \
     && !(pstSiteDesc)->bWaitingDelete              \
@@ -29,6 +31,12 @@ typedef struct tagACDQueueNode{
 
     SC_ACD_AGENT_INFO_ST   *pstAgentInfo;     /* 坐席信息 */
 }SC_ACD_AGENT_QUEUE_NODE_ST;
+
+typedef struct tagACDMemoryNode{
+    U32        ulSiteID;                            /* 坐席数据库编号 */
+
+    S8        szCallerNum[SC_TEL_NUMBER_LENGTH];    /* 主叫号码 */
+}SC_ACD_MEMORY_RELATION_QUEUE_NODE_ST;
 
 typedef struct tagACDQueryMngtNode
 {
@@ -43,8 +51,9 @@ typedef struct tagACDQueryMngtNode
     S8        szGroupName[SC_ACD_GROUP_NAME_LEN];  /* 坐席组名 */
 
     DLL_S     stAgentList;                         /* 坐席hash表 */
-    pthread_mutex_t  mutexSiteQueue;
 
+    HASH_TABLE_S     *pstRelationList;             /* 主叫号码和坐席的对应关系列表 */
+    pthread_mutex_t  mutexSiteQueue;
 
     SC_SITE_GRP_STAT_ST stStat;
 }SC_ACD_GRP_HASH_NODE_ST;
