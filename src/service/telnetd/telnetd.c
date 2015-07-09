@@ -1007,10 +1007,10 @@ S32 telnetd_client_read_line(TELNET_CLIENT_INFO_ST *pstClientInfo, S8 *szBuffer,
     U8  c;
     struct stat buf;
     KEY_LIST_BUFF_ST stKeyList;
+    S32 lRes = 0;
+#if !INCLUDE_PTS
     S8  szLastCmd[512];
     S32 lCmdLen = 0, lSpecialKeyMatchRet;
-    S32 lRes = 0;
-#if 1
     S32 lLoop;
 #endif
 
@@ -1064,7 +1064,7 @@ do{ \
         c = getc(pstClientInfo->pFDInput);
 
         check_fd(pstClientInfo->pFDInput);
-#if 1
+#if !INCLUDE_PTS
         if (TAB_ASCII_CODE == c)
         {
             szBuffer[lLength] = '\0';
@@ -1443,13 +1443,15 @@ VOID *telnetd_client_task(VOID *ptr)
     DLL_NODE_S *pstTempNode = NULL; /* 用来临时存储被删除的节点 */
 #endif
     S32 lLen;
-    S8 szCmd[16] = { 0 }, *pszPtr = NULL;
+    S8 szCmd[16] = { 0 };
 #if INCLUDE_PTS
     S8 szUseName[MAX_RECV_BUFF_LENGTH];
     S8 cRecvChar;
     S8 *pcPassWord = NULL;
     S32 lResult = 0;
     S8 *pPassWordMd5 = NULL;
+#else
+    S8 *pszPtr = NULL;
 #endif
     if (!ptr)
     {
