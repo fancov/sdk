@@ -4117,9 +4117,9 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
                 || DOS_ADDR_INVALID(pstHashNode->pHandle))
             {
                 pstGateway = pstHashNode->pHandle;
-                pthread_mutex_unlock(&g_mutexHashGW);
                 DOS_ASSERT(0);
             }
+            pthread_mutex_unlock(&g_mutexHashGW);
         }
     }
 

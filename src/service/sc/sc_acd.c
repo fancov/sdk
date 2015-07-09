@@ -225,9 +225,8 @@ S32 sc_acd_caller_relation_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 
     pstHashNode = (SC_ACD_MEMORY_RELATION_QUEUE_NODE_ST *)pNode->pHandle;
     szCallerNum = (S8 *)pSymName;
-
     if (DOS_ADDR_VALID(pstHashNode)
-        && dos_strcmp(szCallerNum, pstHashNode->szCallerNum))
+        && !dos_strcmp(szCallerNum, pstHashNode->szCallerNum))
     {
         return DOS_SUCC;
     }
@@ -1263,6 +1262,11 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_call_count(SC_ACD_GRP_HASH_NODE
         }
     }
 
+    if (DOS_ADDR_VALID(pstAgentNode) && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+    {
+        pstAgentNode->pstAgentInfo->ulCallCnt++;
+    }
+
     return pstAgentNode;
 }
 
@@ -1283,8 +1287,8 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_caller(SC_ACD_GRP_HASH_NODE_ST 
         return NULL;
     }
 
-    sc_logr_debug(SC_ACD, "Select agent by the calllerNum(%s). Start find agent in group %u."
-                    , szCallerNum, pstGroupListNode->ulGroupID);
+    sc_logr_debug(SC_ACD, "Select agent by the calllerNum(%s). Start find agent in group %u. %p"
+                    , szCallerNum, pstGroupListNode->ulGroupID, pstGroupListNode->pstRelationList);
     /* 根据主叫号码查找对应的坐席 */
     sc_acd_hash_func4calller_relation(szCallerNum, &ulHashVal);
     pstHashNode = hash_find_node(pstGroupListNode->pstRelationList, ulHashVal, szCallerNum, sc_acd_caller_relation_hash_find);
@@ -1360,6 +1364,8 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_caller(SC_ACD_GRP_HASH_NODE_ST 
             HASH_Init_Node(pstHashNode);
             pstHashNode->pHandle = NULL;
             hash_add_node(pstGroupListNode->pstRelationList, pstHashNode, ulHashVal, NULL);
+            sc_logr_debug(SC_ACD, "add into hash, ulHashVal : %d, count : %d", ulHashVal, pstGroupListNode->pstRelationList[ulHashVal].NodeNum);
+
         }
 
         pstRelationQueueNode = (SC_ACD_MEMORY_RELATION_QUEUE_NODE_ST *)dos_dmem_alloc(sizeof(SC_ACD_MEMORY_RELATION_QUEUE_NODE_ST));
@@ -1373,6 +1379,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_caller(SC_ACD_GRP_HASH_NODE_ST 
 
         pstRelationQueueNode->ulSiteID = pstAgentNode->pstAgentInfo->ulSiteID;
         dos_strncpy(pstRelationQueueNode->szCallerNum, szCallerNum, SC_TEL_NUMBER_LENGTH);
+        sc_logr_debug(SC_ACD, "add, callerNum : %s, ulSiteID : %d", pstRelationQueueNode->szCallerNum, pstRelationQueueNode->ulSiteID);
         pstHashNode->pHandle = pstRelationQueueNode;
     }
 
