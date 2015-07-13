@@ -123,6 +123,13 @@ static VOID * dos_sysstat_cpu_monitor(VOID *ptr)
         {
             g_pstIdelHandle->ulRecordCnt = 0;
         }
+
+        if (!uLTotal)
+        {
+            DOS_ASSERT(0);
+            continue;
+        }
+
         /* 这个算法来自于Freeswitch，暂时不知道是个什么意思 */
         g_pstIdelHandle->aulHistory[g_pstIdelHandle->ulRecordCnt++] = (100 * (100 * uLIdel + uLTotal / 2)) / uLTotal;
 

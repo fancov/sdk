@@ -204,6 +204,8 @@ do                                                            \
             "PLAYBACK_STOP " \
             "CHANNEL_HANGUP " \
             "CHANNEL_HANGUP_COMPLETE " \
+            "CHANNEL_HOLD " \
+            "CHANNEL_UNHOLD " \
             "DTMF " \
             "SESSION_HEARTBEAT "
 
@@ -240,10 +242,9 @@ enum tagCallServiceType{
 
     SC_SERV_AGENT_CALLBACK          = 23,  /* 回呼坐席 */
     SC_SERV_AGENT_SIGNIN            = 24,  /* 坐席签入 */
+    SC_SERV_AGENT_CLICK_CALL        = 25,  /* 坐席签入 */
 
-    SC_SERV_NUM_VERIFY              = 25,  /* 号码验证 */
-
-    SC_SERV_AGENT_SIGNIN            = 23,  /* 坐席签入 */
+    SC_SERV_NUM_VERIFY              = 26,  /* 号码验证 */
 
     SC_SERV_BUTT                    = 255
 }SC_CALL_SERVICE_TYPE_EN;
@@ -374,6 +375,15 @@ typedef enum tagSCCallRole
     SC_CALL_ROLE_BUTT
 }SC_CALL_ROLE_EN;
 
+typedef enum tagTransferRole
+{
+    SC_TRANS_ROLE_NOTIFY,
+    SC_TRANS_ROLE_PUBLISH,
+    SC_TRANS_ROLE_SUBSCRIPTION,
+
+    SC_TRANS_ROLE_BUTT,
+}SC_TRANSFER_ROLE_EN;
+
 
 #define SC_EP_STAT_RECV 0
 #define SC_EP_STAT_PROC 1
@@ -387,6 +397,8 @@ typedef struct tagEPMsgStat
     U32   ulHungupCom;
     U32   ulDTMF;
     U32   ulBGJob;
+    U32   ulHold;
+    U32   ulUnhold;
 }SC_EP_MSG_STAT_ST;
 
 typedef struct tagBSMsgStat
@@ -559,6 +571,10 @@ typedef struct tagSCSCB{
     U8        ucCurrentSrvInd;                    /* 当前空闲的业务类型索引 */
     U8        ucLegRole;                          /* 主被叫标示 */
     U8        ucCurrentPlyCnt;                    /* 当前放音次数 */
+
+    U8        ucTranforRole;                      /* transfer角色 */
+    U8        ucRes;
+    U16       usPublishSCB;                       /* 发起放SCBNo */
 
     U16       usHoldCnt;                          /* 被hold的次数 */
     U16       usHoldTotalTime;                    /* 被hold的总时长 */
@@ -801,7 +817,7 @@ U32 sc_ep_gw_grp_hash_func(U32 ulGWGrpID);
 U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID);
 U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase);
 BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum);
-U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID);
+U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID);
 U32 sc_update_callee_status(U32 ulTaskID, S8 *pszCallee, U32 ulStatsu);
 U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu);
 U32 sc_ep_ext_init();
@@ -816,6 +832,10 @@ BOOL sc_bg_job_find(U32 ulRCNo);
 U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
 U32 sc_scb_hash_tables_delete(S8 *pszUUID);
 SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
+U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, S8 *pszCallee);
+U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum);
+BOOL sc_ep_check_extension(S8 *pszNum, U32 ulCustomerID);
+U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService);
 
 #ifdef __cplusplus
 }

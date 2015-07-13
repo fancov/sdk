@@ -119,6 +119,7 @@ U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult);
 U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID);
 U32 sc_acd_get_idel_agent(U32 ulGroupID);
 U32 sc_acd_get_total_agent(U32 ulGroupID);
+U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID);
 
 #endif
 

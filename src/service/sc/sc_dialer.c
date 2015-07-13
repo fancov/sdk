@@ -23,6 +23,7 @@ extern "C"{
 #include <bs_pub.h>
 #include "sc_def.h"
 #include "sc_debug.h"
+#include "sc_acd_def.h"
 
 /* define marcos */
 
@@ -124,13 +125,12 @@ proc_fail:
 }
 
 /* 这个地方有个问题。 g_pstDialerHandle->stHandle 被多个线程使用，会不会出现，一个线程刚刚发送了呼叫命令。名外一个线程收到了响应?*/
-U32 sc_dial_make_call2ip(S8 *pszCaller, S8 *pszCallee, U32 ulMainService)
+U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService)
 {
     S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
     S8    *pszEventHeader = NULL, *pszEventBody = NULL;
 
-    if (DOS_ADDR_INVALID(pszCaller)
-        || DOS_ADDR_INVALID(pszCallee))
+    if (DOS_ADDR_INVALID(pstSCB))
     {
         DOS_ASSERT(0);
 
@@ -138,11 +138,12 @@ U32 sc_dial_make_call2ip(S8 *pszCaller, S8 *pszCallee, U32 ulMainService)
     }
 
     dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                    , "bgapi originate {main_service=%s,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s &park \r\n"
+                    , "bgapi originate {main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s &park \r\n"
                     , ulMainService
-                    , pszCaller
-                    , pszCaller
-                    , pszCallee);
+                    , pstSCB->usSCBNo
+                    , pstSCB->szCallerNum
+                    , pstSCB->szCallerNum
+                    , pstSCB->szCalleeNum);
 
     sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
 
@@ -190,7 +191,7 @@ U32 sc_dial_make_call2ip(S8 *pszCaller, S8 *pszCallee, U32 ulMainService)
         goto esl_exec_fail;
     }
 
-    sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pszCaller, pszCallee);
+    sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
 
     SC_TRACE_OUT();
     return DOS_SUCC;

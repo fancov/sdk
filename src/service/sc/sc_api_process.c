@@ -631,7 +631,7 @@ U32 sc_http_api_call_ctrl(list_t *pstArgv)
 
         pszTaskID = sc_http_api_get_value(pstArgv, "task");
         if (DOS_ADDR_INVALID(pszTaskID)
-            || dos_atoul(pszTaskID, ulTaskID) < 0)
+            || dos_atoul(pszTaskID, &ulTaskID) < 0)
         {
             ulTaskID = 0;
         }

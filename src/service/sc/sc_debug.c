@@ -1147,6 +1147,10 @@ VOID sc_show_stat(U32 ulIndex, S32 argc, S8 **argv)
     cli_out_string(ulIndex, szBuff);
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n  Channel Background Job : %u/%u", g_astEPMsgStat[SC_EP_STAT_RECV].ulBGJob, g_astEPMsgStat[SC_EP_STAT_PROC].ulBGJob);
     cli_out_string(ulIndex, szBuff);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n            Channel Hold : %u/%u", g_astEPMsgStat[SC_EP_STAT_RECV].ulHold, g_astEPMsgStat[SC_EP_STAT_PROC].ulHold);
+    cli_out_string(ulIndex, szBuff);
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n          Channel Unhold : %u/%u", g_astEPMsgStat[SC_EP_STAT_RECV].ulUnhold, g_astEPMsgStat[SC_EP_STAT_PROC].ulUnhold);
+    cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n--------------------------------------------------------");
 
     cli_out_string(ulIndex, "\r\n\r\nBS Msg Stat:");

@@ -711,7 +711,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                         pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_FALSE;
                         pstAgentQueueNode->pstAgentInfo->bWaitingDelete = DOS_FALSE;
 
-                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = SC_ACD_AWAY;
+                        pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_AWAY;
 
                         pstAgentQueueNode->pstAgentInfo->stStat.ulTimeOnSignin += (time(0) - pstAgentQueueNode->pstAgentInfo->ulLastSignInTime);
                         pstAgentQueueNode->pstAgentInfo->ulLastSignInTime = 0;
@@ -1232,6 +1232,42 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_call_count(SC_ACD_GRP_HASH_NODE
 
     return pstAgentNode;
 }
+
+U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID)
+{
+    HASH_NODE_S                *pstHashNode = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode = NULL;
+    U32                        ulHashIndex = 0;
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        sc_logr_warning(SC_ACD, "Cannot find the agent with this id %u.", ulAgentID);
+        return DOS_FAIL;
+    }
+
+    pstAgentNode = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+        sc_logr_warning(SC_ACD, "Cannot find the agent with this id %u..", ulAgentID);
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstAgentInfo, pstAgentNode->pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
+
+    return DOS_SUCC;
+ }
 
 U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID)
 {

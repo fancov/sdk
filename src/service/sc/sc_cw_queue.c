@@ -330,7 +330,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 DLL_Init_Node(pstDLLNode1);
                 dos_dmem_free(pstDLLNode1);
 
-                if (sc_ep_call_agent(pstSCB, pstCWQNode->ulAgentGrpID) != DOS_SUCC)
+                if (sc_ep_call_agent_by_grpid(pstSCB, pstCWQNode->ulAgentGrpID) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
                 }
