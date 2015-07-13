@@ -5976,6 +5976,24 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 sc_acd_update_agent_status(SC_ACD_SITE_ACTION_DISCONNECT, pstSCB->ulAgentID);
             }
 
+            if (pstSCB->bRecord && pstSCB->pszRecordFile)
+            {
+                dos_snprintf(szCMD, sizeof(szCMD)
+                                , "%s/%s-in.%s"
+                                , SC_RECORD_FILE_PATH
+                                , pstSCB->pszRecordFile
+                                , esl_event_get_header(pstEvent, "Channel-Read-Codec-Name"));
+                chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
+
+                dos_snprintf(szCMD, sizeof(szCMD)
+                                , "%s/%s-out.%s"
+                                , SC_RECORD_FILE_PATH
+                                , pstSCB->pszRecordFile
+                                , esl_event_get_header(pstEvent, "Channel-Write-Codec-Name"));
+                chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
+
+            }
+
             /*
              * 1.如果有另外一条腿，有必要等待另外一条腿释放
              * 2.需要另外一条腿没有处于等待释放状态，那就等待吧

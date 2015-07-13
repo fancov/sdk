@@ -130,6 +130,10 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_RECORD_FILE_PATH            "/var/record"
 
+#define SC_NOBODY_UID                  99
+#define SC_NOBODY_GID                  99
+
+
 /* 检测一个TCB是有正常的Task和CustomID */
 #define SC_TCB_HAS_VALID_OWNER(pstTCB)                        \
     ((pstTCB)                                                 \
