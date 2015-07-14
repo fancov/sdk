@@ -138,7 +138,25 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         sc_logr_notice(SC_BS, "Auth successfully. RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
 
-        if (sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
+        if (sc_call_check_service(pstSCB, SC_SERV_CALL_WHISPERS))
+        {
+            pstSCB->ucMainService = SC_SERV_CALL_WHISPERS;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
+            {
+                sc_ep_terminate_call(pstSCB);
+            }
+        }
+        else if (sc_call_check_service(pstSCB, SC_SERV_CALL_INTERCEPT))
+        {
+            pstSCB->ucMainService = SC_SERV_CALL_INTERCEPT;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
+            {
+                sc_ep_terminate_call(pstSCB);
+            }
+        }
+        else if (sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
             || sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
         {
             if (pstSCB->ulCustomID == sc_ep_get_custom_by_sip_userid(pstSCB->szCalleeNum)

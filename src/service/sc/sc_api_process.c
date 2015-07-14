@@ -612,7 +612,7 @@ U32 sc_http_api_call_ctrl(list_t *pstArgv)
         goto invalid_request;
     }
 
-    if (dos_atoul(pszAction, &ulAgent) < 0
+    if (dos_atoul(pszAgentID, &ulAgent) < 0
         || dos_atoul(pszCustomerID, &ulCustomer) < 0)
     {
         DOS_ASSERT(0);
@@ -621,7 +621,7 @@ U32 sc_http_api_call_ctrl(list_t *pstArgv)
 
     if (dos_strnicmp(pszAction, "make", dos_strlen("make")) == 0)
     {
-        pszCallee = sc_http_api_get_value(pstArgv, "caller");
+        pszCallee = sc_http_api_get_value(pstArgv, "callee");
         if (DOS_ADDR_INVALID(pszCallee) || '\0' == pszCallee[0])
         {
             DOS_ASSERT(0);
@@ -649,14 +649,30 @@ U32 sc_http_api_call_ctrl(list_t *pstArgv)
     else if (dos_strnicmp(pszAction, "whispers", dos_strlen("whispers")) == 0)
     {
         ulAction = SC_API_WHISPERS;
+
+        pszCallee = sc_http_api_get_value(pstArgv, "callee");
+        if (DOS_ADDR_INVALID(pszCallee) || '\0' == pszCallee[0])
+        {
+            DOS_ASSERT(0);
+
+            goto invalid_request;
+        }
     }
     else if (dos_strnicmp(pszAction, "intercept", dos_strlen("intercept")) == 0)
     {
         ulAction = SC_API_INTERCEPT;
+
+        pszCallee = sc_http_api_get_value(pstArgv, "callee");
+        if (DOS_ADDR_INVALID(pszCallee) || '\0' == pszCallee[0])
+        {
+            DOS_ASSERT(0);
+
+            goto invalid_request;
+        }
     }
     else if (dos_strnicmp(pszAction, "transfer", dos_strlen("transfer")) == 0)
     {
-        pszCallee = sc_http_api_get_value(pstArgv, "caller");
+        pszCallee = sc_http_api_get_value(pstArgv, "callee");
         if (DOS_ADDR_INVALID(pszCallee) || '\0' == pszCallee[0])
         {
             DOS_ASSERT(0);
@@ -664,7 +680,7 @@ U32 sc_http_api_call_ctrl(list_t *pstArgv)
             goto invalid_request;
         }
 
-        pszFlag = sc_http_api_get_value(pstArgv, "caller");
+        pszFlag = sc_http_api_get_value(pstArgv, "flag");
         if (DOS_ADDR_VALID(pszFlag)
             && '1' == pszFlag[0])
         {
@@ -677,7 +693,7 @@ U32 sc_http_api_call_ctrl(list_t *pstArgv)
     }
     else if (dos_strnicmp(pszAction, "conference", dos_strlen("conference")) == 0)
     {
-        pszCallee = sc_http_api_get_value(pstArgv, "caller");
+        pszCallee = sc_http_api_get_value(pstArgv, "callee");
         if (DOS_ADDR_INVALID(pszCallee) || '\0' == pszCallee[0])
         {
             DOS_ASSERT(0);

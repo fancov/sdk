@@ -250,6 +250,9 @@ enum tagCallServiceType{
 
     SC_SERV_NUM_VERIFY              = 26,  /* 号码验证 */
 
+    SC_SERV_CALL_INTERCEPT          = 27,  /* 号码验证 */
+    SC_SERV_CALL_WHISPERS           = 28,  /* 号码验证 */
+
     SC_SERV_BUTT                    = 255
 }SC_CALL_SERVICE_TYPE_EN;
 
@@ -381,9 +384,9 @@ typedef enum tagSCCallRole
 
 typedef enum tagTransferRole
 {
-    SC_TRANS_ROLE_NOTIFY,
-    SC_TRANS_ROLE_PUBLISH,
-    SC_TRANS_ROLE_SUBSCRIPTION,
+    SC_TRANS_ROLE_NOTIFY        = 0,
+    SC_TRANS_ROLE_PUBLISH       = 1,
+    SC_TRANS_ROLE_SUBSCRIPTION  = 2,
 
     SC_TRANS_ROLE_BUTT,
 }SC_TRANSFER_ROLE_EN;
