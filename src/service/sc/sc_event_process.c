@@ -3396,8 +3396,6 @@ U32 sc_ep_agent_signin(const SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         goto proc_error;
     }
 
-    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCalleeNum) != DOS_SUCC)
-
     pstSCB->ulCustomID = pstAgentInfo->ulCustomerID;
     pstSCB->ulAgentID = pstAgentInfo->ulSiteID;
     pstSCB->ucLegRole = SC_CALLEE;
@@ -4277,7 +4275,7 @@ U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         goto proc_fail;
     }
 
-    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID) != DOS_SUCC)
+    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCallerNum) != DOS_SUCC)
     {
         DOS_ASSERT(0);
 
