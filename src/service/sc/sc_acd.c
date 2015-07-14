@@ -108,6 +108,33 @@ U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex)
 }
 
 /*
+ * 函  数: sc_acd_hash_func4calller_relation
+ * 功  能: 主叫号码和坐席对应关系的hash函数，通过主叫号码计算一个hash值
+ * 参  数:
+ *         U32 ulGrpID  : 坐席组ID
+ *         U32 *pulHashIndex: 输出参数，计算之后的hash值
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ **/
+U32 sc_acd_hash_func4calller_relation(S8 *szCallerNum, U32 *pulHashIndex)
+{
+    U64 ulCallerNum = 0;
+
+    if (DOS_ADDR_INVALID(pulHashIndex) || DOS_ADDR_INVALID(szCallerNum))
+    {
+        return DOS_FAIL;
+    }
+
+    SC_TRACE_IN(szCallerNum, pulHashIndex, 0, 0);
+
+    dos_sscanf(szCallerNum, "%9lu", &ulCallerNum);
+
+    *pulHashIndex =  ulCallerNum % SC_ACD_CALLER_NUM_RELATION_HASH_SIZE;
+
+    SC_TRACE_OUT();
+    return DOS_SUCC;
+}
+
+/*
  * 函  数: sc_acd_grp_hash_find
  * 功  能: 坐席组的hash查找函数
  * 参  数:
@@ -174,6 +201,37 @@ static S32 sc_acd_agent_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
     }
 
     return DOS_SUCC;
+}
+
+/*
+ * 函  数: sc_acd_grp_hash_find
+ * 功  能: 坐席组的hash查找函数
+ * 参  数:
+ *         VOID *pSymName  : 坐席组ID
+ *         HASH_NODE_S *pNode: HASH节点
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ **/
+S32 sc_acd_caller_relation_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
+{
+    SC_ACD_MEMORY_RELATION_QUEUE_NODE_ST *pstHashNode = NULL;
+    S8  *szCallerNum = NULL;
+
+    if (DOS_ADDR_INVALID(pSymName)
+        || DOS_ADDR_INVALID(pNode))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstHashNode = (SC_ACD_MEMORY_RELATION_QUEUE_NODE_ST *)pNode->pHandle;
+    szCallerNum = (S8 *)pSymName;
+    if (DOS_ADDR_VALID(pstHashNode)
+        && !dos_strcmp(szCallerNum, pstHashNode->szCallerNum))
+    {
+        return DOS_SUCC;
+    }
+
+    return DOS_FAIL;
 }
 
 /*
@@ -831,8 +889,8 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
     {
         DOS_ASSERT(0);
 
-        dos_dmem_free(pstHashNode);
-        pstHashNode = NULL;
+        dos_dmem_free(pstGroupListNode);
+        pstGroupListNode = NULL;
         sc_logr_error(SC_ACD, "%s", "Add group fail. Alloc memory for hash node fail");
 
         SC_TRACE_OUT();
@@ -841,6 +899,21 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
 
     HASH_Init_Node(pstHashNode);
     DLL_Init(&pstGroupListNode->stAgentList);
+    pstGroupListNode->pstRelationList = hash_create_table(SC_ACD_CALLER_NUM_RELATION_HASH_SIZE, NULL);
+    if (DOS_ADDR_INVALID(pstGroupListNode->pstRelationList))
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstGroupListNode);
+        pstGroupListNode = NULL;
+        dos_dmem_free(pstHashNode);
+        pstHashNode = NULL;
+
+        sc_logr_error(SC_ACD, "%s", "Init Group caller num relation Hash Table Fail.");
+
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+    }
+    pstGroupListNode->pstRelationList->NodeNum = 0;
 
     pthread_mutex_init(&pstGroupListNode->mutexSiteQueue, NULL);
     pstGroupListNode->ulCustomID = ulCustomID;
@@ -1230,6 +1303,131 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_call_count(SC_ACD_GRP_HASH_NODE
         }
     }
 
+    if (DOS_ADDR_VALID(pstAgentNode) && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+    {
+        pstAgentNode->pstAgentInfo->ulCallCnt++;
+    }
+
+    return pstAgentNode;
+}
+
+
+SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_caller(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode, S8 *szCallerNum)
+{
+    SC_ACD_MEMORY_RELATION_QUEUE_NODE_ST *pstRelationQueueNode = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode      = NULL;
+    HASH_NODE_S                *pstHashNode       = NULL;
+    HASH_NODE_S                *pstAgentHashNode  = NULL;
+    U32                         ulHashVal         = 0;
+    U32                         ulAgentHashVal    = 0;
+    U32                         ulSiteID          = 0;
+
+    if (DOS_ADDR_INVALID(pstGroupListNode) || DOS_ADDR_INVALID(szCallerNum))
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    sc_logr_debug(SC_ACD, "Select agent by the calllerNum(%s). Start find agent in group %u. %p"
+                    , szCallerNum, pstGroupListNode->ulGroupID, pstGroupListNode->pstRelationList);
+    /* 根据主叫号码查找对应的坐席 */
+    sc_acd_hash_func4calller_relation(szCallerNum, &ulHashVal);
+    pstHashNode = hash_find_node(pstGroupListNode->pstRelationList, ulHashVal, szCallerNum, sc_acd_caller_relation_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        sc_logr_debug(SC_ACD, "Not found the agent ulSiteID by CallerNum(%s), Group(%u)"
+                        , szCallerNum
+                        , pstGroupListNode->ulGroupID);
+
+        goto process_call;
+    }
+
+    pstRelationQueueNode = pstHashNode->pHandle;
+    ulSiteID = pstRelationQueueNode->ulSiteID;
+    /* 根据坐席编号, 在坐席hash中查找到对应的坐席 */
+    sc_acd_hash_func4agent(ulSiteID, &ulAgentHashVal);
+    pstAgentHashNode = hash_find_node(g_pstAgentList, ulAgentHashVal, (VOID *)&ulSiteID, sc_acd_agent_hash_find);
+    if (DOS_ADDR_INVALID(pstAgentHashNode)
+        || DOS_ADDR_INVALID(pstAgentHashNode->pHandle))
+    {
+        sc_logr_debug(SC_ACD, "Not found the agent.(Agent %u in Group %u)"
+                    , ulSiteID
+                    , pstGroupListNode->ulGroupID);
+
+        goto process_call;
+    }
+
+    pstAgentNode = pstAgentHashNode->pHandle;
+    if (!SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
+    {
+        sc_logr_debug(SC_ACD, "There found an agent. But the agent is not useable.(Agent %u in Group %u)"
+                , ulSiteID
+                , pstGroupListNode->ulGroupID);
+
+        goto process_call;
+    }
+
+    sc_logr_debug(SC_ACD, "There found an agent.(Agent %u in Group %u)"
+                , ulSiteID
+                , pstGroupListNode->ulGroupID);
+
+    return pstAgentNode;
+
+process_call:
+    pstAgentNode = sc_acd_get_agent_by_call_count(pstGroupListNode);
+    if (DOS_ADDR_VALID(pstAgentNode))
+    {
+        /* 添加或者更新 主叫号码和坐席对应关系的hash */
+        sc_logr_notice(SC_ACD, "Found an uaeable agent. Call Count: %d. (Agent %d in Group %d)"
+                        , pstAgentNode->pstAgentInfo->ulCallCnt
+                        , pstAgentNode->pstAgentInfo->ulSiteID
+                        , pstGroupListNode->ulGroupID);
+
+        if (DOS_ADDR_VALID(pstHashNode) && DOS_ADDR_VALID(pstHashNode->pHandle))
+        {
+            /* 更新 */
+            pstRelationQueueNode->ulSiteID = pstAgentNode->pstAgentInfo->ulSiteID;
+
+            goto end;
+        }
+
+        pstRelationQueueNode = (SC_ACD_MEMORY_RELATION_QUEUE_NODE_ST *)dos_dmem_alloc(sizeof(SC_ACD_MEMORY_RELATION_QUEUE_NODE_ST));
+        if (DOS_ADDR_INVALID(pstRelationQueueNode))
+        {
+            DOS_ASSERT(0);
+            sc_logr_error(SC_ACD, "%s", "Add CallerNum relationship fail. Alloc memory fail");
+
+            goto end;
+        }
+
+        if (DOS_ADDR_INVALID(pstHashNode))
+        {
+            pstHashNode = (HASH_NODE_S *)dos_dmem_alloc(sizeof(HASH_NODE_S));
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_error(SC_ACD, "%s", "Add CallerNum relationship fail. Alloc memory fail");
+                dos_dmem_free(pstRelationQueueNode);
+                pstRelationQueueNode = NULL;
+
+                goto end;
+            }
+
+            HASH_Init_Node(pstHashNode);
+            pstHashNode->pHandle = NULL;
+            hash_add_node(pstGroupListNode->pstRelationList, pstHashNode, ulHashVal, NULL);
+            sc_logr_debug(SC_ACD, "add into hash, ulHashVal : %d, count : %d", ulHashVal, pstGroupListNode->pstRelationList[ulHashVal].NodeNum);
+        }
+
+        pstRelationQueueNode->ulSiteID = pstAgentNode->pstAgentInfo->ulSiteID;
+        dos_strncpy(pstRelationQueueNode->szCallerNum, szCallerNum, SC_TEL_NUMBER_LENGTH);
+        pstRelationQueueNode->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+        pstHashNode->pHandle = pstRelationQueueNode;
+    }
+
+end:
     return pstAgentNode;
 }
 
@@ -1269,7 +1467,8 @@ U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID)
     return DOS_SUCC;
  }
 
-U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID)
+
+U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID, S8 *szCallerNum)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode      = NULL;
     SC_ACD_GRP_HASH_NODE_ST    *pstGroupListNode  = NULL;
@@ -1321,6 +1520,9 @@ U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID)
         case SC_ACD_POLICY_RECENT:
         case SC_ACD_POLICY_GROUP:
             sc_logr_notice(SC_ACD, "Template not support policy %d", pstGroupListNode->ucACDPolicy);
+            break;
+        case SC_ACD_POLICY_MEMORY:
+            pstAgentNode = sc_acd_get_agent_by_caller(pstGroupListNode, szCallerNum);
             break;
         default:
             break;

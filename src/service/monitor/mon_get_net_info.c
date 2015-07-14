@@ -3,6 +3,7 @@ extern "C"{
 #endif
 
 #include <dos.h>
+#include <dos/dos_mem.h>
 
 #if (INCLUDE_BH_SERVER)
 #if INCLUDE_RES_MONITOR
@@ -18,6 +19,7 @@ extern "C"{
 
 #include "mon_get_net_info.h"
 #include "mon_lib.h"
+#include "mon_def.h"
 
 typedef struct tagMonTransData
 {
@@ -53,78 +55,77 @@ U32 mon_netcard_malloc()
     pastNet = (MON_NET_CARD_PARAM_S *)dos_dmem_alloc(MAX_NETCARD_CNT * sizeof(MON_NET_CARD_PARAM_S));
     if(DOS_ADDR_INVALID(pastNet))
     {
-      logr_cirt("%s:Line %u:mon_netcard_malloc|pastNet is %p!"
-                , dos_get_filename(__FILE__), __LINE__, pastNet);
-      goto fail;
+        DOS_ASSERT(0);
+        goto fail;
     }
 
-    memset(pastNet, 0, MAX_NETCARD_CNT * sizeof(MON_NET_CARD_PARAM_S));
+    dos_memzero(pastNet, MAX_NETCARD_CNT * sizeof(MON_NET_CARD_PARAM_S));
     for(ulRows = 0; ulRows < MAX_NETCARD_CNT; ulRows++)
     {
-      g_pastNet[ulRows] = &(pastNet[ulRows]);
+        g_pastNet[ulRows] = &(pastNet[ulRows]);
     }
 
     m_pstTransFormer = (MON_TRANS_DATA_S *)dos_dmem_alloc(sizeof(MON_TRANS_DATA_S));
     if (DOS_ADDR_INVALID(m_pstTransFormer))
     {
-       logr_error("%s:Line %u: Alloc Memory FAIL.", dos_get_filename(__FILE__), __LINE__);
-       goto fail;
+        DOS_ASSERT(0);
+        goto fail;
     }
-    memset(m_pstTransFormer, 0, sizeof(MON_TRANS_DATA_S));
+    dos_memzero(m_pstTransFormer, sizeof(MON_TRANS_DATA_S));
 
     m_pstTransCur = (MON_TRANS_DATA_S *)dos_dmem_alloc(sizeof(MON_TRANS_DATA_S));
     if (DOS_ADDR_INVALID(m_pstTransCur))
     {
-       logr_error("%s:Line %u: Alloc Memory FAIL.", dos_get_filename(__FILE__), __LINE__);
-       goto fail;
+        DOS_ASSERT(0);
+        goto fail;
     }
-    memset(m_pstTransCur, 0, sizeof(MON_TRANS_DATA_S));
+    dos_memzero(m_pstTransCur, sizeof(MON_TRANS_DATA_S));
 
     m_pt1 = dos_dmem_alloc(sizeof(time_t));
     if (DOS_ADDR_INVALID(m_pt1))
     {
-       logr_error("%s:Line %u: Alloc memory FAIL.");
-       goto fail;
+        DOS_ASSERT(0);
+        goto fail;
     }
 
     m_pt2 = dos_dmem_alloc(sizeof(time_t));
     if (DOS_ADDR_INVALID(m_pt2))
     {
-       logr_error("%s:Line %u: Alloc memory FAIL.");
-       goto fail;
+        DOS_ASSERT(0);
+        goto fail;
     }
 
     return DOS_SUCC;
 fail:
     if (DOS_ADDR_VALID(pastNet))
     {
-       dos_dmem_free(pastNet);
-       pastNet = NULL;
+        dos_dmem_free(pastNet);
+        pastNet = NULL;
     }
     if (DOS_ADDR_VALID(g_pastNet[0]))
     {
-       dos_dmem_free( g_pastNet[0]);
-       g_pastNet[0] = NULL;
+        dos_dmem_free( g_pastNet[0]);
+        g_pastNet[0] = NULL;
     }
     if (DOS_ADDR_VALID(m_pstTransFormer))
     {
-       dos_dmem_free(m_pstTransFormer);
-       m_pstTransFormer = NULL;
+        dos_dmem_free(m_pstTransFormer);
+        m_pstTransFormer = NULL;
     }
     if (DOS_ADDR_VALID(m_pstTransCur))
     {
-       dos_dmem_free(m_pstTransCur);
-       m_pstTransCur = NULL;
+        dos_dmem_free(m_pstTransCur);
+        m_pstTransCur = NULL;
     }
     if (DOS_ADDR_VALID(m_pt1))
     {
-       dos_dmem_free(m_pt1);
-       m_pt1 = NULL;
+        dos_dmem_free(m_pt1);
+        m_pt1 = NULL;
     }
     if (DOS_ADDR_VALID(m_pt2))
     {
-       dos_dmem_free(m_pt2);
-       m_pt2 = NULL;
+        dos_dmem_free(m_pt2);
+        m_pt2 = NULL;
     }
 
     return DOS_FAIL;
@@ -144,38 +145,37 @@ U32  mon_netcard_free()
 
     if(DOS_ADDR_INVALID(pastNet))
     {
-        logr_cirt("%s:Line %u:mon_netcard_free|pastNet is %p!"
-                  , dos_get_filename(__FILE__), __LINE__ , pastNet);
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
     dos_dmem_free(pastNet);
 
     for(ulRows = 0; ulRows < MAX_NETCARD_CNT; ulRows++)
     {
-      g_pastNet[ulRows] = NULL;
+        g_pastNet[ulRows] = NULL;
     }
 
     if (DOS_ADDR_VALID(m_pstTransCur))
     {
-      dos_dmem_free(m_pstTransCur);
-      m_pstTransCur = NULL;
+        dos_dmem_free(m_pstTransCur);
+        m_pstTransCur = NULL;
     }
 
     if (DOS_ADDR_VALID(m_pstTransFormer))
     {
-      dos_dmem_free(m_pstTransFormer);
-      m_pstTransFormer = NULL;
+        dos_dmem_free(m_pstTransFormer);
+        m_pstTransFormer = NULL;
     }
 
     if (DOS_ADDR_VALID(m_pt1))
     {
-       dos_dmem_free(m_pt1);
-       m_pt1 = NULL;
+        dos_dmem_free(m_pt1);
+        m_pt1 = NULL;
     }
     if (DOS_ADDR_VALID(m_pt2))
     {
-       dos_dmem_free(m_pt2);
-       m_pt2 = NULL;
+        dos_dmem_free(m_pt2);
+        m_pt2 = NULL;
     }
 
     return DOS_SUCC;
@@ -186,8 +186,7 @@ static U32 mon_net_reset_data()
     MON_NET_CARD_PARAM_S * pastNet = g_pastNet[0];
     if (DOS_ADDR_INVALID(pastNet))
     {
-        logr_cirt("%s:Line %u:mon_netcard_free|pastNet is %p!"
-                , dos_get_filename(__FILE__), __LINE__ , pastNet);
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
@@ -287,7 +286,7 @@ U32 mon_get_data_trans_speed(const S8 * pszDevName)
     if (0 == ulInterval)
     {
         ulInterval = 5;
-        logr_info("%s:Line %u: First Run.");
+        mon_trace(MON_TRACE_NET, LOG_LEVEL_WARNING, "First time Running.");
     }
 
     m_pstTransFormer->uLInSize = m_pstTransCur->uLInSize;
@@ -296,7 +295,7 @@ U32 mon_get_data_trans_speed(const S8 * pszDevName)
     fp = fopen(szNetFile, "r");
     if (DOS_ADDR_INVALID(fp))
     {
-        logr_error("%s:Line %u:File \"%s\" open FAIL.", dos_get_filename(__FILE__), __LINE__, szNetFile);
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
@@ -317,7 +316,7 @@ U32 mon_get_data_trans_speed(const S8 * pszDevName)
     ulRet = mon_analyse_by_reg_expr(pszInfo, " \t\n", ppszData, sizeof(ppszData) / sizeof(ppszData[0]));
     if (DOS_SUCC != ulRet)
     {
-        logr_error("%s:Line %u: Analysis string FAIL.");
+        mon_trace(MON_TRACE_NET, LOG_LEVEL_ERROR, "Analyse buffer by Regular expression FAIL.");
         fclose(fp);
         return DOS_FAIL;
     }
@@ -325,7 +324,7 @@ U32 mon_get_data_trans_speed(const S8 * pszDevName)
     if (dos_atoull(ppszData[0], &uLIn) < 0
         || dos_atoull(ppszData[8], &uLOut) < 0)
     {
-        logr_error("%s:Line %u: dos_atoull FAIL.");
+        DOS_ASSERT(0);
         fclose(fp);
         return DOS_FAIL;
     }
@@ -355,7 +354,8 @@ U32 mon_get_data_trans_speed(const S8 * pszDevName)
  */
 U32 mon_get_netcard_data()
 {
-    U32 ulFd = 0, ulLength = 0, ulRet = 0;
+    S32 lFd = 0;
+    U32 ulLength = 0, ulRet = 0;
     U32 ulInterfaceNum = 0;
     struct ifreq astReq[16];
     struct ifconf stIfc;
@@ -368,23 +368,22 @@ U32 mon_get_netcard_data()
     ulRet = mon_net_reset_data();
     if (DOS_SUCC != ulRet)
     {
-        logr_error("%s:Line %u:reset net data FAIL.", dos_get_filename(__FILE__), __LINE__);
+        mon_trace(MON_TRACE_NET, LOG_LEVEL_ERROR, "Reset netcard Data FAIL.");
         return DOS_FAIL;
     }
 
-    if ((ulFd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    if ((lFd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
-        logr_error("%s:Line %u: socket failed!", dos_get_filename(__FILE__)
-                 , __LINE__);
+        mon_trace(MON_TRACE_NET, LOG_LEVEL_ERROR, "Socket FAIL, fd:%d, errno:%d,cause:%s.", lFd, errno, strerror(errno));
         goto failure;
     }
 
     stIfc.ifc_len = sizeof(astReq);
     stIfc.ifc_buf = (caddr_t)astReq;
-    if (!ioctl(ulFd, SIOCGIFCONF, (S8 *)&stIfc))
+    if (!ioctl(lFd, SIOCGIFCONF, (S8 *)&stIfc))
     {
         /* 获取网卡设备的个数 */
-        ulInterfaceNum = g_ulNetCnt= stIfc.ifc_len / sizeof(struct ifreq);
+        ulInterfaceNum = g_ulNetCnt = stIfc.ifc_len / sizeof(struct ifreq);
         while (ulInterfaceNum > 0)
         {
             ulInterfaceNum--;
@@ -392,8 +391,7 @@ U32 mon_get_netcard_data()
 
             if(DOS_ADDR_INVALID(g_pastNet[ulLength]))
             {
-                  logr_cirt("%s:Line %u:mon_get_netcard_data|get netcard data failure,m_pastNet[%d] is %p!"
-                              , dos_get_filename(__FILE__), __LINE__ ,ulLength ,g_pastNet[ulLength]);
+                  DOS_ASSERT(0);
                   goto failure;
             }
 
@@ -402,16 +400,15 @@ U32 mon_get_netcard_data()
             (g_pastNet[ulLength]->szNetDevName)[dos_strlen(astReq[ulInterfaceNum].ifr_name)] = '\0';
             stIfrcopy = astReq[ulInterfaceNum];
 
-            if (ioctl(ulFd, SIOCGIFFLAGS, &stIfrcopy))
+            if (ioctl(lFd, SIOCGIFFLAGS, &stIfrcopy))
             {
-                logr_error("%s:Line %u:mon_get_netcard_data|get netcard data failure,error no is %s"
-                            , dos_get_filename(__FILE__), __LINE__, strerror(errno));
+                mon_trace(MON_TRACE_NET, LOG_LEVEL_ERROR, "Get netcard data FAIL,errno:%d,cause:%s.", errno, strerror(errno));
                 goto failure;
             }
 
-            if (!ioctl(ulFd, SIOCGIFHWADDR, (S8 *)(&astReq[ulInterfaceNum])))
+            if (!ioctl(lFd, SIOCGIFHWADDR, (S8 *)(&astReq[ulInterfaceNum])))
             {
-                memset(szMac, 0, sizeof(szMac));
+                dos_memzero(szMac, sizeof(szMac));
                 dos_snprintf(szMac, sizeof(szMac), "%02x:%02x:%02x:%02x:%02x:%02x",
                        (U8)astReq[ulInterfaceNum].ifr_hwaddr.sa_data[0],
                        (U8)astReq[ulInterfaceNum].ifr_hwaddr.sa_data[1],
@@ -425,12 +422,11 @@ U32 mon_get_netcard_data()
             }
             else
             {
-                logr_error("%s:Line %u:mon_get_netcard_data|get netcard data failure,error no is %s"
-                            , dos_get_filename(__FILE__), __LINE__, strerror(errno));
+                mon_trace(MON_TRACE_NET, LOG_LEVEL_ERROR, "Get Mac Address FAIL, errno:%d, cause:%s.", errno, strerror(errno));
                 goto failure;
             }
 
-            if (!ioctl(ulFd, SIOCGIFADDR, (S8 *)&astReq[ulInterfaceNum]))
+            if (!ioctl(lFd, SIOCGIFADDR, (S8 *)&astReq[ulInterfaceNum]))
             {
                 dos_snprintf(szIPv4Addr, sizeof(szIPv4Addr), "%s",
                      (S8 *)inet_ntoa(((struct sockaddr_in *)&(astReq[ulInterfaceNum].ifr_addr))->sin_addr));
@@ -441,12 +437,11 @@ U32 mon_get_netcard_data()
             }
             else
             {
-                logr_error("%s:Line %u:mon_get_netcard_data|get netcard data failure,error no is %s"
-                              , dos_get_filename(__FILE__), __LINE__, strerror(errno));
+                mon_trace(MON_TRACE_NET, LOG_LEVEL_ERROR, "Get IPv4 Address FAIL, errno:%d, cause:%s.", errno, strerror(errno));
                 goto failure;
             }
 
-            if (!ioctl(ulFd, SIOCGIFBRDADDR, &astReq[ulInterfaceNum]))
+            if (!ioctl(lFd, SIOCGIFBRDADDR, &astReq[ulInterfaceNum]))
             {
                 dos_snprintf(szBroadAddr, sizeof(szBroadAddr), "%s",
                      (S8 *)inet_ntoa(((struct sockaddr_in *)&(astReq[ulInterfaceNum].ifr_broadaddr))->sin_addr));
@@ -456,12 +451,11 @@ U32 mon_get_netcard_data()
             }
             else
             {
-                logr_error("%s:Line %u:mon_get_netcard_data|get netcard data failure,error no is %s"
-                            , dos_get_filename(__FILE__), __LINE__, strerror(errno));
+                mon_trace(MON_TRACE_NET, LOG_LEVEL_ERROR, "Get Broadcast IP Address FAIL,errno:%d,cause:%s.", errno, strerror(errno));
                 goto failure;
             }
 
-            if (!ioctl(ulFd, SIOCGIFNETMASK, &astReq[ulInterfaceNum]))
+            if (!ioctl(lFd, SIOCGIFNETMASK, &astReq[ulInterfaceNum]))
             {
                 dos_snprintf(szSubnetMask, sizeof(szSubnetMask), "%s",
                    (S8 *)inet_ntoa(((struct sockaddr_in *)&(astReq[ulInterfaceNum].ifr_netmask))->sin_addr));
@@ -471,8 +465,7 @@ U32 mon_get_netcard_data()
             }
             else
             {
-                logr_error("%s:Line %u:mon_get_netcard_data|get netcard data failure,error no is %s"
-                            , dos_get_filename(__FILE__), __LINE__, strerror(errno));
+                mon_trace(MON_TRACE_NET, LOG_LEVEL_ERROR, "Get Subnet Mask FAIL,errno:%d,cause:%s.", errno, strerror(errno));
                 goto failure;
             }
 
@@ -485,8 +478,7 @@ U32 mon_get_netcard_data()
             ulRet = mon_get_data_trans_speed(g_pastNet[ulLength]->szNetDevName);
             if (DOS_FAIL == ulRet)
             {
-                logr_error("%s:Line %u: Get data transport speed FAIL."
-                            , dos_get_filename(__FILE__), __LINE__);
+                mon_trace(MON_TRACE_NET, LOG_LEVEL_ERROR, "Get Current bandwidth FAIL.");
                 goto failure;
             }
 
@@ -497,19 +489,18 @@ U32 mon_get_netcard_data()
     }
     else
     {
-        logr_error("%s:Line %u:mon_get_netcard_data|get netcard data failure,error no is %s"
-                , dos_get_filename(__FILE__), __LINE__, strerror(errno));
+        mon_trace(MON_TRACE_NET, LOG_LEVEL_ERROR, "Get netcard data FAIL,errno:%d,cause:%s.", errno, strerror(errno));
         goto failure;
     }
     goto success;
 
 failure:
-    close(ulFd);
-    ulFd = U32_BUTT;
+    close(lFd);
+    lFd = U32_BUTT;
     return DOS_FAIL;
 success:
-    close(ulFd);
-    ulFd = U32_BUTT;
+    close(lFd);
+    lFd = U32_BUTT;
     return DOS_SUCC;
 }
 

@@ -369,8 +369,9 @@ typedef enum tagSCBStatus
 
 typedef enum tagSCStatusType
 {
-    SC_STATUS_TYPE_REGISTER     = 1,
-    SC_STATUS_TYPE_UNREGISTER   = 2,
+    SC_STATUS_TYPE_UNREGISTER,
+    SC_STATUS_TYPE_REGISTER,
+
     SC_STATUS_TYPE_BUTT
 }SC_STATUS_TYPE_EN;
 

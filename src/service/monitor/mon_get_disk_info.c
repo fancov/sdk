@@ -3,6 +3,7 @@ extern "C"{
 #endif
 
 #include <dos.h>
+#include <dos/dos_mem.h>
 
 #if (INCLUDE_BH_SERVER)
 #if INCLUDE_RES_MONITOR
@@ -11,6 +12,7 @@ extern "C"{
 #include <fcntl.h>
 #include "mon_get_disk_info.h"
 #include "mon_lib.h"
+#include "mon_def.h"
 
 extern  S8 g_szMonDiskInfo[MAX_PARTITION_COUNT * MAX_BUFF_LENGTH];
 extern  MON_SYS_PART_DATA_S * g_pastPartition[MAX_PARTITION_COUNT];
@@ -32,25 +34,24 @@ static U32  mon_partition_reset_data();
  */
 U32 mon_disk_malloc()
 {
-   U32 ulRows = 0;
-   MON_SYS_PART_DATA_S * pstPartition = NULL;
+    U32 ulRows = 0;
+    MON_SYS_PART_DATA_S * pstPartition = NULL;
 
-   pstPartition = (MON_SYS_PART_DATA_S *)dos_dmem_alloc(MAX_PARTITION_COUNT * sizeof(MON_SYS_PART_DATA_S));
-   if(!pstPartition)
-   {
-      logr_cirt("%s:Line %d: mon_disk_free|alloc memory failure,pstPartition is %p!"
-                , dos_get_filename(__FILE__), __LINE__, pstPartition);
-      return DOS_FAIL;
-   }
+    pstPartition = (MON_SYS_PART_DATA_S *)dos_dmem_alloc(MAX_PARTITION_COUNT * sizeof(MON_SYS_PART_DATA_S));
+    if(!pstPartition)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
-   memset(pstPartition, 0, MAX_PARTITION_COUNT * sizeof(MON_SYS_PART_DATA_S));
+    dos_memzero(pstPartition, MAX_PARTITION_COUNT * sizeof(MON_SYS_PART_DATA_S));
 
-   for(ulRows = 0; ulRows < MAX_PARTITION_COUNT; ulRows++)
-   {
-      g_pastPartition[ulRows] = &(pstPartition[ulRows]);
-   }
+    for(ulRows = 0; ulRows < MAX_PARTITION_COUNT; ulRows++)
+    {
+        g_pastPartition[ulRows] = &(pstPartition[ulRows]);
+    }
 
-   return DOS_SUCC;
+    return DOS_SUCC;
 }
 
 /**
@@ -62,24 +63,23 @@ U32 mon_disk_malloc()
  */
 U32 mon_disk_free()
 {
-   U32 ulRows = 0;
-   MON_SYS_PART_DATA_S * pstPartition = g_pastPartition[0];
-   if(DOS_ADDR_INVALID(pstPartition))
-   {
-      logr_cirt("%s:Line %u:free memory failure,pstPartition is %p!"
-                , dos_get_filename(__FILE__) , __LINE__, pstPartition);
-      return DOS_FAIL;
-   }
-   dos_dmem_free(pstPartition);
+    U32 ulRows = 0;
+    MON_SYS_PART_DATA_S * pstPartition = g_pastPartition[0];
+    if(DOS_ADDR_INVALID(pstPartition))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    dos_dmem_free(pstPartition);
 
-   for(ulRows = 0 ; ulRows < MAX_PARTITION_COUNT; ulRows++)
-   {
-      g_pastPartition[ulRows] = NULL;
-   }
+    for(ulRows = 0 ; ulRows < MAX_PARTITION_COUNT; ulRows++)
+    {
+        g_pastPartition[ulRows] = NULL;
+    }
 
-   pstPartition = NULL;
+    pstPartition = NULL;
 
-   return DOS_SUCC;
+    return DOS_SUCC;
 }
 
 static U32  mon_partition_reset_data()
@@ -88,8 +88,7 @@ static U32  mon_partition_reset_data()
 
     if(DOS_ADDR_INVALID(pstPartition))
     {
-        logr_cirt("%s:Line %u:free memory failure,pstPartition is %p!"
-                   , dos_get_filename(__FILE__) , __LINE__, pstPartition);
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
@@ -125,9 +124,8 @@ static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
 {   /* 目前没有有效的方法获得其硬件序列 */
     if(DOS_ADDR_INVALID(pszPartitionName))
     {
-       logr_cirt("%s:Line %u:mon_get_disk_serial_num|pszPartitionName is %p!",
-                  dos_get_filename(__FILE__), __LINE__, pszPartitionName);
-       return NULL;
+        DOS_ASSERT(0);
+        return NULL;
     }
 
     return "IC35L180AVV207-1";
@@ -160,14 +158,14 @@ static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
      fp = popen(szDfCmd, "r");
      if (DOS_ADDR_INVALID(fp))
      {
-         logr_error("%s:Line %u:execute df command FAIL.", dos_get_filename(__FILE__), __LINE__);
+         DOS_ASSERT(0);
          return DOS_FAIL;
      }
 
      ulRet = mon_partition_reset_data();
      if (DOS_SUCC != ulRet)
      {
-         logr_error("%s:Line %u:ulRet == %u", dos_get_filename(__FILE__), __LINE__, ulRet);
+         mon_trace(MON_TRACE_DISK, LOG_LEVEL_ERROR, "Reset Partition Data FAIL.");
          return DOS_FAIL;
      }
 
@@ -178,7 +176,7 @@ static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
              ulRet = mon_analyse_by_reg_expr(szBuff, " \t\n", paszInfo, sizeof(paszInfo) / sizeof(paszInfo[0]));
              if (DOS_SUCC != ulRet)
              {
-                 logr_error("%s:Line %u: analyse line FAIL.", dos_get_filename(__FILE__), __LINE__);
+                 mon_trace(MON_TRACE_DISK, LOG_LEVEL_ERROR, "Analyse Buff by Regular expression FAIL.");
                  goto fail;
              }
 
@@ -186,19 +184,19 @@ static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
 
              if (dos_atoul(paszInfo[1], &ulTotalVolume) < 0)
              {
-                 logr_error("%s:Line %u: dos_atoul FAIL, paszInfo[1] is %s", dos_get_filename(__FILE__), __LINE__, paszInfo[1]);
+                 DOS_ASSERT(0);
                  goto fail;
              }
 
              if (dos_atoul(paszInfo[2], &ulUsedVolume) < 0)
              {
-                 logr_error("%s:Line %u: dos_atoul FAIL, paszInfo[2] is %s", dos_get_filename(__FILE__), __LINE__, paszInfo[2]);
+                 DOS_ASSERT(0);
                  goto fail;
              }
 
              if (dos_atoul(paszInfo[3], &ulAvailVolume) < 0)
              {
-                 logr_error("%s:Line %u: dos_atoul FAIL, paszInfo[3] is %s", dos_get_filename(__FILE__), __LINE__, paszInfo[3]);
+                 DOS_ASSERT(0);
                  goto fail;
              }
 
@@ -212,7 +210,7 @@ static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
 
              if (dos_atoul(paszInfo[4], &ulTotalRate) < 0)
              {
-                 logr_error("%s:Line %u: dos_atoul FAIL, paszInfo[4] is %s", dos_get_filename(__FILE__), __LINE__, paszInfo[4]);
+                 DOS_ASSERT(0);
                  goto fail;
              }
 

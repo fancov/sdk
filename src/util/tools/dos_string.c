@@ -678,7 +678,7 @@ DLLEXPORT S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str, U32 ulStrLen)
  */
 DLLEXPORT S32 dos_is_digit_str(S8 *str)
 {
-	S32 i = 0;
+    S32 i = 0;
 
     if (DOS_ADDR_VALID(str))
     {
@@ -698,6 +698,30 @@ DLLEXPORT S32 dos_is_digit_str(S8 *str)
     return -1;
 }
 
+/**
+ * 函数：S32 dos_is_printable_str(S8* str)
+ * 功能：判断字符串是否为可打印字符串
+ *       如果字符串里面有一个可打印字符(空格除外)，则认为是可打印字符串
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ */
+DLLEXPORT S32 dos_is_printable_str(S8* str)
+{
+    S8 *pszPtr = str;
+    S32 lFlag = -1;
+
+    while ('\0' != *pszPtr)
+    {
+        if (*pszPtr >= '!')
+        {
+            lFlag = 0;
+            break;
+        }
+        ++pszPtr;
+    }
+
+    return lFlag;
+}
 
 /**
  * 函数：S32 dos_strtoipaddr(S8 *szStr, U32 *pulIpAddr)

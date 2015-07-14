@@ -22,6 +22,7 @@ extern "C"{
 #include "bsd_db.h"
 
 
+
 #if (INCLUDE_SYSLOG_ENABLE)
 
 extern DLL_S g_stWebCMDTbl;
@@ -1681,6 +1682,7 @@ help:
 
     return DOS_FAIL;
 }
+
 
 /* ¸ú×Ùº¯Êý */
 VOID bs_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...)

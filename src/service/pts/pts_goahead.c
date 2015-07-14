@@ -2837,7 +2837,8 @@ int submit_license(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
     pStart = dos_strstr(query, "\r\n\r\n");
     if (DOS_ADDR_INVALID(pStart))
     {
-        return 1;
+        dos_strncpy(szResult, "fail", PT_DATA_BUFF_16);
+        goto end;
     }
 
     pStart += 4;
@@ -2848,19 +2849,20 @@ int submit_license(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
     }
     pEnd[0] = '\0';
 
-    printf("!!!!!!!!!!!!!%s, %d\n", pStart, dos_strlen(pStart));
+    pt_logr_info("submit license : %d", dos_strlen(pStart));
     ulRes = licc_save_license((U8 *)pStart, dos_strlen(pStart));
     if (ulRes != DOS_SUCC)
     {
-        printf("!!!!!!!fail\n");
+        pt_logr_info("result fail");
         dos_strncpy(szResult, "fail", PT_DATA_BUFF_16);
     }
     else
     {
-        printf("!!!!!!!succ\n");
+        pt_logr_info("result succ");
         dos_strncpy(szResult, "succ", PT_DATA_BUFF_16);
     }
 
+end:
     websError(wp, 200, T("%s"), szResult);
 
     return 1;

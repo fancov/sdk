@@ -858,10 +858,12 @@ U32 sc_ep_update_sip_status(S8 *szUserID, SC_STATUS_TYPE_EN enStatus, U32 *pulSi
     U32                ulHashIndex  = U32_BUTT;
 
     ulHashIndex= sc_sip_userid_hash_func(szUserID);
+    pthread_mutex_lock(&g_mutexHashSIPUserID);
     pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)szUserID, sc_ep_sip_userid_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
+        pthread_mutex_unlock(&g_mutexHashSIPUserID);
         DOS_ASSERT(0);
 
         return DOS_FAIL;
@@ -870,6 +872,7 @@ U32 sc_ep_update_sip_status(S8 *szUserID, SC_STATUS_TYPE_EN enStatus, U32 *pulSi
     pstUserID = pstHashNode->pHandle;
     if (DOS_ADDR_INVALID(pstUserID))
     {
+        pthread_mutex_unlock(&g_mutexHashSIPUserID);
         DOS_ASSERT(0);
 
         return DOS_FAIL;
@@ -889,6 +892,7 @@ U32 sc_ep_update_sip_status(S8 *szUserID, SC_STATUS_TYPE_EN enStatus, U32 *pulSi
     }
 
     *pulSipID = pstUserID->ulSIPID;
+    pthread_mutex_unlock(&g_mutexHashSIPUserID);
 
     return DOS_SUCC;
 }
@@ -3392,12 +3396,14 @@ U32 sc_ep_agent_signin(const SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         goto proc_error;
     }
 
+    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCalleeNum) != DOS_SUCC)
 
     pstSCB->ulCustomID = pstAgentInfo->ulCustomerID;
     pstSCB->ulAgentID = pstAgentInfo->ulSiteID;
     pstSCB->ucLegRole = SC_CALLEE;
     pstSCB->bRecord = pstAgentInfo->bRecord;
     pstSCB->bIsAgentCall = DOS_TRUE;
+
     switch (pstAgentInfo->ucBindType)
     {
         case AGENT_BIND_SIP:

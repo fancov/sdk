@@ -417,10 +417,14 @@ function get_ifream_content()
       doc = document.getElementById("hidden_frame").contentDocument;
     }
 
-    if (doc.body.innerHTML != "")
+    if (doc.body.innerHTML.indexOf("succ") > 0)
     {
-        //hide_cover();
+        alert("上传成功");
         location.reload();
+    }
+    else if (doc.body.innerHTML.indexOf("fail") > 0)
+    {
+        alert("上传失败");
     }
 
     return true;
