@@ -26,6 +26,7 @@ extern "C"{
 #include "sc_acd_def.h"
 #include "sc_ep.h"
 #include "sc_acd_def.h"
+#include "sc_http_api.h"
 
 /* 应用外部变量 */
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
@@ -128,8 +129,9 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
     ulRet = curl_easy_perform(g_pstCurlHandle);
     if(CURLE_OK != ulRet)
     {
-        sc_logr_notice(SC_ESL, "CURL post FAIL.Caller:%s.", szCaller);
+        DOS_ASSERT(0);
 
+        sc_logr_notice(SC_ESL, "CURL post FAIL.Caller:%s.", szCaller);
         return DOS_FAIL;
     }
     else
@@ -2702,7 +2704,7 @@ U32 sc_ep_parse_event(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
     return DOS_SUCC;
 }
 
-U32 sc_rp_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
+U32 sc_ep_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     S8 *pszTmp = NULL;
     U64 uLTmp  = 0;
@@ -3507,52 +3509,738 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
 }
 
 /**
- * 函数: U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulAgentQueue)
- * 功能: 群呼任务之后接通坐席
+ * 函数: sc_ep_agent_signin
+ * 功能: 坐席长签时，向坐席发起呼叫
  * 参数:
- *      SC_SCB_ST *pstSCB       : 业务控制块
+ *      SC_ACD_AGENT_INFO_ST *pstAgentInfo : 坐席信息
  * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
  */
-U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
+U32 sc_ep_agent_signin(const SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
     S8            szAPPParam[512] = { 0 };
     U32           ulErrCode = BS_TERM_NONE;
-    SC_ACD_AGENT_INFO_ST stAgentInfo;
-    SC_SCB_ST            *pstSCBNew = NULL;
+    SC_SCB_ST            *pstSCB = NULL;
 
-    if (DOS_ADDR_INVALID(pstSCB))
+    if (DOS_ADDR_INVALID(pstAgentInfo))
     {
         DOS_ASSERT(0);
 
         return DOS_FAIL;
     }
 
-    pstSCB->bIsInQueue = DOS_FALSE;
+    sc_logr_info(SC_ESL, "Make call for agent signin, ID: %u, User ID: %s, Extension: %s, Emp NO: %s"
+                    , pstAgentInfo->ulSiteID
+                    , pstAgentInfo->szUserID
+                    , pstAgentInfo->szExtension
+                    , pstAgentInfo->szEmpNo);
 
-    /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
-    if (U32_BUTT == ulTaskAgentQueueID)
+    pstSCB = sc_scb_alloc();
+    if (DOS_ADDR_INVALID(pstSCB))
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot get the agent queue for the task %d", pstSCB->ulTaskID);
-        ulErrCode = BS_TERM_QUEUE_INVALID;
+        sc_logr_error(SC_ESL, "%s", "Allc SCB FAIL.");
+        ulErrCode = BS_TERM_SCB_LEEK;
         goto proc_error;
     }
 
-    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCalleeNum) != DOS_SUCC)
+    pstSCB->ulCustomID = pstAgentInfo->ulCustomerID;
+    pstSCB->ulAgentID = pstAgentInfo->ulSiteID;
+    pstSCB->ucLegRole = SC_CALLEE;
+    pstSCB->bRecord = pstAgentInfo->bRecord;
+    pstSCB->bIsAgentCall = DOS_TRUE;
+
+    switch (pstAgentInfo->ucBindType)
+    {
+        case AGENT_BIND_SIP:
+            dos_strncpy(pstSCB->szCalleeNum, pstAgentInfo->szUserID, sizeof(pstSCB->szCalleeNum));
+            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+            break;
+        case AGENT_BIND_TELE:
+            dos_strncpy(pstSCB->szCalleeNum, pstAgentInfo->szTelePhone, sizeof(pstSCB->szCalleeNum));
+            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+            break;
+        case AGENT_BIND_MOBILE:
+            dos_strncpy(pstSCB->szCalleeNum, pstAgentInfo->szMobile, sizeof(pstSCB->szCalleeNum));
+            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+            break;
+    }
+
+    dos_strncpy(pstSCB->szCallerNum, pstAgentInfo->szUserID, sizeof(pstSCB->szCallerNum));
+    pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+
+    dos_strncpy(pstSCB->szSiteNum, pstAgentInfo->szEmpNo, sizeof(pstSCB->szSiteNum));
+    pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
+
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_SIGNIN);
+
+    if (AGENT_BIND_SIP != pstAgentInfo->ucBindType)
+    {
+        SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+        SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+
+        if (!sc_ep_black_list_check(pstSCB->ulCustomID, pstSCB->szCalleeNum))
+        {
+            DOS_ASSERT(0);
+            sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
+            goto proc_error;
+        }
+
+        if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+        {
+            sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
+            ulErrCode = BS_TERM_COMM_FAIL;
+            goto proc_error;
+        }
+
+        return DOS_SUCC;
+    }
+
+    SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
+
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
+
+    dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                    , "{scb_number=%u,other_leg_scb=%u,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s"
+                    , pstSCB->usSCBNo
+                    , pstSCB->usOtherSCBNo
+                    , SC_SERV_AGENT_SIGNIN
+                    , pstSCB->szCalleeNum
+                    , pstSCB->szCalleeNum
+                    , pstAgentInfo->szUserID);
+
+    if (sc_ep_esl_execute("bridge", szAPPParam, pstSCB->szUUID) != DOS_SUCC)
+    {
+        /* @TODO 用户体验优化 */
+        ulErrCode = BS_TERM_COMM_FAIL;
+        goto proc_error;
+    }
+    else
+    {
+        /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
+        sc_acd_agent_update_status(pstAgentInfo->ulSiteID, SC_ACD_BUSY, pstSCB->usSCBNo);
+
+        sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
+        sc_ep_esl_execute("speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
+    }
+
+    return DOS_SUCC;
+
+proc_error:
+    if (pstSCB)
+    {
+        DOS_ASSERT(0);
+        sc_scb_free(pstSCB);
+        pstSCB = NULL;
+    }
+
+    /* 连接失败，直接结束吧 要不然可能会逻辑上的死循环 */
+    sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECT_FAIL, pstSCB->ulAgentID);
+
+    return DOS_FAIL;
+}
+
+U32 sc_ep_agent_record(SC_SCB_ST * pstSCB)
+{
+    S8 szAPPParam[256] = { 0 };
+    S8 szFilePath[256] = { 0 };
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCB->ulCustomID, pstSCB->szCallerNum, pstSCB->szCalleeNum);
+    pthread_mutex_lock(&pstSCB->mutexSCBLock);
+    pstSCB->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
+    if (DOS_ADDR_VALID(pstSCB->pszRecordFile))
+    {
+        dos_strncpy(pstSCB->pszRecordFile, szFilePath, dos_strlen(szFilePath) + 1);
+        pstSCB->pszRecordFile[dos_strlen(szFilePath)] = '\0';
+
+        dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                        , "bgapi uuid_record %s start %s/%s\r\n"
+                        , pstSCB->szUUID
+                        , SC_RECORD_FILE_PATH
+                        , szFilePath);
+        sc_ep_esl_execute_cmd(szAPPParam);
+        sc_ep_esl_execute("sleep", "300", pstSCB->szUUID);
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        goto proc_fail;
+    }
+    pthread_mutex_unlock(&pstSCB->mutexSCBLock);
+
+    return DOS_SUCC;
+proc_fail:
+
+    return DOS_FAIL;
+}
+
+U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
+{
+    SC_SCB_ST* pstSCBSubscription = NULL;
+    SC_SCB_ST* pstSCBPublish = NULL;
+    S8         szBuffCMD[512] = { 0 };
+
+    if (!SC_SCB_IS_VALID(pstSCBNotify))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstSCBPublish = sc_scb_get(pstSCBNotify->usPublishSCB);
+    if (!SC_SCB_IS_VALID(pstSCBPublish))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstSCBSubscription = sc_scb_get(pstSCBNotify->usOtherSCBNo);
+    if (!SC_SCB_IS_VALID(pstSCBSubscription))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (pstSCBPublish->ucStatus < SC_SCB_ACTIVE)
+    {
+        if (SC_SCB_ACTIVE == pstSCBSubscription->ucStatus)
+        {
+            if (sc_call_check_service(pstSCBPublish, SC_SERV_BLIND_TRANSFER))
+            {
+                /* 维护当前业务控制块的状态为release */
+                SC_SCB_SET_SERVICE(pstSCBNotify, SC_SCB_RELEASE);
+            }
+            else if (sc_call_check_service(pstSCBPublish, SC_SERV_ATTEND_TRANSFER))
+            {
+                /* 要求发布方挂断，要求订阅方挂断 */
+                sc_ep_esl_execute("hangup", "", pstSCBSubscription->szUUID);
+
+                /* 维护当前业务控制块的状态为release */
+                SC_SCB_SET_SERVICE(pstSCBNotify, SC_SCB_RELEASE);
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+        }
+        else /* Release */
+        {
+            /* 要求发布方挂断(这个地方没办法发送，发布方还没有接通，那就等发布方接通的时候在处理) */
+
+            /* 维护当前业务控制块的状态为release */
+            SC_SCB_SET_SERVICE(pstSCBNotify, SC_SCB_RELEASE);
+        }
+    }
+    else if (SC_SCB_ACTIVE == pstSCBPublish->ucStatus)
+    {
+        if (SC_SCB_ACTIVE == pstSCBSubscription->ucStatus)
+        {
+            /* 接通订阅方和发布方 */
+            dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "uuid_bridge %s %s \r\n", pstSCBSubscription->szUUID, pstSCBPublish->szUUID);
+            sc_ep_esl_execute_cmd(szBuffCMD);
+
+            /* 维护各种状态，使后续呼叫与transfer流程无关 */
+            pstSCBPublish->usOtherSCBNo = pstSCBSubscription->usSCBNo;
+            pstSCBSubscription->usOtherSCBNo = pstSCBPublish->usSCBNo;
+            pstSCBPublish->ucTranforRole = SC_TRANS_ROLE_BUTT;
+            pstSCBSubscription->ucTranforRole = SC_TRANS_ROLE_BUTT;
+            pstSCBNotify->ucTranforRole = SC_TRANS_ROLE_BUTT;
+
+            /* 发送话单 */
+            pstSCBNotify->usOtherSCBNo = U16_BUTT;
+            sc_acd_agent_update_status(pstSCBNotify->ulAgentID, SC_ACD_IDEL, U32_BUTT);
+            sc_send_billing_stop2bs(pstSCBNotify);
+
+            /* 清理资源 */
+            sc_scb_free(pstSCBNotify);
+        }
+        else /* Release */
+        {
+            /* 要求发布方挂断 */
+            sc_ep_esl_execute("hangup", "", pstSCBPublish->szUUID);
+        }
+    }
+    else /* Release */
+    {
+        /* 这个流程为异常流程 */
+        /* 应该在发布方挂断时，让后续呼叫不在于transfer有关 */
+        DOS_ASSERT(0);
+    }
+
+    return DOS_SUCC;
+}
+
+U32 sc_ep_transfer_publish_release(SC_SCB_ST * pstSCBPublish)
+{
+    SC_SCB_ST* pstSCBSubscription = NULL;
+    SC_SCB_ST* pstSCBNotify = NULL;
+    S8         szBuffCMD[512] = { 0 };
+
+    if (!SC_SCB_IS_VALID(pstSCBPublish))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstSCBNotify = sc_scb_get(pstSCBPublish->usOtherSCBNo);
+    if (!SC_SCB_IS_VALID(pstSCBNotify))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstSCBSubscription = sc_scb_get(pstSCBNotify->usOtherSCBNo);
+    if (!SC_SCB_IS_VALID(pstSCBSubscription))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (SC_SCB_ACTIVE == pstSCBNotify->ucStatus)
+    {
+        if (SC_SCB_ACTIVE == pstSCBSubscription->ucStatus)
+        {
+            /* 接通订阅放和发起方 */
+            if (pstSCBSubscription->ulLastHoldTimetamp)
+            {
+                dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "uuid_hold off %s \r\n", pstSCBSubscription->szUUID);
+                sc_ep_esl_execute_cmd(szBuffCMD);
+
+                dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "uuid_bridge %s %s \r\n", pstSCBNotify->szUUID, pstSCBSubscription->szUUID);
+                sc_ep_esl_execute_cmd(szBuffCMD);
+            }
+            else
+            {
+                /* 没有断开过，发布方没有接听 */
+            }
+        }
+        else
+        {
+            /* 要求挂断发起方 */
+            sc_ep_esl_execute("hangup", "", pstSCBNotify->szUUID);
+        }
+    }
+    else /* Release */
+    {
+        if (SC_SCB_ACTIVE == pstSCBSubscription->ucStatus)
+        {
+            /* 要求挂断订阅方 */
+            sc_ep_esl_execute("hangup", "", pstSCBSubscription->szUUID);
+        }
+        else
+        {
+            /* 发送订阅方和发起方的话单 */
+            /* 发送发布方的话单 */
+            sc_send_billing_stop2bs(pstSCBSubscription);
+
+            /* 清理资源 */
+            sc_scb_free(pstSCBSubscription);
+            /* 释放资源 */
+        }
+    }
+
+    /* 发送transfer话单，使后续呼叫与transfer无关 */
+    pstSCBPublish->usOtherSCBNo = U16_BUTT;
+    pstSCBPublish->ucTranforRole = SC_TRANS_ROLE_BUTT;
+
+    pstSCBNotify->usPublishSCB = U16_BUTT;
+    pstSCBNotify->ucTranforRole = SC_TRANS_ROLE_BUTT;
+
+    pstSCBSubscription->ucTranforRole = SC_TRANS_ROLE_BUTT;
+
+    /* 发送发布方的话单 */
+    sc_send_billing_stop2bs(pstSCBPublish);
+
+    /* 清理资源 */
+    sc_scb_free(pstSCBPublish);
+
+    return DOS_SUCC;
+}
+
+U32 sc_ep_transfer_publish_active(SC_SCB_ST * pstSCBPublish)
+{
+    SC_SCB_ST* pstSCBSubscription = NULL;
+    SC_SCB_ST* pstSCBNotify = NULL;
+    S8         szBuffCMD[512] = { 0 };
+
+    if (!SC_SCB_IS_VALID(pstSCBPublish))
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_ESL, "There is no useable agent for the task %d. Queue: %d. ", pstSCB->ulTaskID, ulTaskAgentQueueID);
-        ulErrCode = BS_TERM_QUEUE_INVALID;
-        goto proc_error;
+        return DOS_FAIL;
     }
 
-    sc_logr_info(SC_ESL, "Select agent for call OK. Agent ID: %d, User ID: %s, Externsion: %s, Job-Num: %s"
-                    , stAgentInfo.ulSiteID
-                    , stAgentInfo.szUserID
-                    , stAgentInfo.szExtension
-                    , stAgentInfo.szEmpNo);
+    pstSCBNotify = sc_scb_get(pstSCBPublish->usOtherSCBNo);
+    if (!SC_SCB_IS_VALID(pstSCBNotify))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstSCBSubscription = sc_scb_get(pstSCBNotify->usOtherSCBNo);
+    if (!SC_SCB_IS_VALID(pstSCBSubscription))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (SC_SCB_ACTIVE == pstSCBNotify->ucStatus)
+    {
+        if (SC_SCB_ACTIVE == pstSCBSubscription->ucStatus)
+        {
+            /* hold 订阅放 */
+            dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "uuid_hold %s \r\n", pstSCBSubscription->szUUID);
+            sc_ep_esl_execute_cmd(szBuffCMD);
+
+            /* 接通订阅放和发起方 */
+            dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "uuid_bridge %s %s \r\n", pstSCBNotify->szUUID, pstSCBPublish->szUUID);
+            sc_ep_esl_execute_cmd(szBuffCMD);
+        }
+        else
+        {
+            /* 接通发起方和发布方 */
+            dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "uuid_bridge %s %s \r\n", pstSCBNotify->szUUID, pstSCBPublish->szUUID);
+            sc_ep_esl_execute_cmd(szBuffCMD);
+
+            /* 维护各种状态，使后续呼叫与transfer流程无关 */
+            pstSCBPublish->usOtherSCBNo = pstSCBNotify->usSCBNo;
+            pstSCBNotify->usOtherSCBNo = pstSCBPublish->usSCBNo;
+            pstSCBPublish->ucTranforRole = SC_TRANS_ROLE_BUTT;
+            pstSCBSubscription->ucTranforRole = SC_TRANS_ROLE_BUTT;
+            pstSCBNotify->ucTranforRole = SC_TRANS_ROLE_BUTT;
+
+            /* 发送话单 */
+            pstSCBSubscription->usOtherSCBNo = U16_BUTT;
+            sc_send_billing_stop2bs(pstSCBSubscription);
+
+            /* 清理资源 */
+            sc_scb_free(pstSCBSubscription);
+        }
+    }
+    else /* Release */
+    {
+        if (SC_SCB_ACTIVE == pstSCBSubscription->ucStatus)
+        {
+            if (sc_call_check_service(pstSCBPublish, SC_SERV_BLIND_TRANSFER))
+            {
+                /* 接通订阅方和发布方 */
+                dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "uuid_bridge %s %s \r\n", pstSCBSubscription->szUUID, pstSCBPublish->szUUID);
+                sc_ep_esl_execute_cmd(szBuffCMD);
+
+                /* 维护各种状态，使后续呼叫与transfer流程无关 */
+                pstSCBPublish->usOtherSCBNo = pstSCBSubscription->usSCBNo;
+                pstSCBSubscription->usOtherSCBNo = pstSCBPublish->usSCBNo;
+                pstSCBPublish->ucTranforRole = SC_TRANS_ROLE_BUTT;
+                pstSCBSubscription->ucTranforRole = SC_TRANS_ROLE_BUTT;
+                pstSCBNotify->ucTranforRole = SC_TRANS_ROLE_BUTT;
+
+                /* 发送话单 */
+                pstSCBNotify->usOtherSCBNo = U16_BUTT;
+                sc_send_billing_stop2bs(pstSCBNotify);
+
+                /* 清理资源 */
+                sc_scb_free(pstSCBNotify);
+
+            }
+            else if (sc_call_check_service(pstSCBPublish, SC_SERV_ATTEND_TRANSFER))
+            {
+                /* 要求发布方挂断，要求订阅方挂断 */
+                sc_ep_esl_execute("hangup", "", pstSCBPublish->szUUID);
+                sc_ep_esl_execute("hangup", "", pstSCBSubscription->szUUID);
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+        }
+        else
+        {
+            /* 要求释发布方 */
+            sc_ep_esl_execute("hangup", "", pstSCBPublish->szUUID);
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+
+U32 sc_ep_transfer_subscription_release(SC_SCB_ST * pstSCBSubscription)
+{
+    SC_SCB_ST* pstSCBNotify = NULL;
+    SC_SCB_ST* pstSCBPublish = NULL;
+
+    if (!SC_SCB_IS_VALID(pstSCBSubscription))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstSCBNotify = sc_scb_get(pstSCBSubscription->usOtherSCBNo);
+    if (!SC_SCB_IS_VALID(pstSCBNotify))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstSCBPublish = sc_scb_get(pstSCBNotify->usPublishSCB);
+    if (!SC_SCB_IS_VALID(pstSCBPublish))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (pstSCBPublish->ucStatus < SC_SCB_ACTIVE)
+    {
+        if (SC_SCB_ACTIVE == pstSCBNotify->ucStatus)
+        {
+            /* 置当前为release就好，等待发布方接通做处理 */
+            SC_SCB_SET_SERVICE(pstSCBSubscription, SC_SCB_RELEASE);
+        }
+        else /* Release */
+        {
+            /* 要求发布方挂断(无法做到哦，这个时候发布方还没有接通，那就只有等到发布方接通的时候处理) */
+        }
+    }
+    else if (SC_SCB_ACTIVE == pstSCBPublish->ucStatus)
+    {
+        if (SC_SCB_ACTIVE == pstSCBNotify->ucStatus)
+        {
+            /* 维护各种状态，使后续呼叫与transfer流程无关 */
+            pstSCBPublish->usOtherSCBNo = pstSCBNotify->usSCBNo;
+            pstSCBNotify->usOtherSCBNo = pstSCBPublish->usSCBNo;
+            pstSCBPublish->ucTranforRole = SC_TRANS_ROLE_BUTT;
+            pstSCBSubscription->ucTranforRole = SC_TRANS_ROLE_BUTT;
+            pstSCBNotify->ucTranforRole = SC_TRANS_ROLE_BUTT;
+
+            /* 发送话单 */
+            pstSCBSubscription->usOtherSCBNo = U16_BUTT;
+            sc_send_billing_stop2bs(pstSCBSubscription);
+
+            /* 清理资源 */
+            sc_scb_free(pstSCBSubscription);
+        }
+        else /* Release */
+        {
+            /* 要求发布方挂断 */
+            sc_ep_esl_execute("hangup", "", pstSCBPublish->szUUID);
+        }
+    }
+    else /* Release */
+    {
+        /* 这个流程有问题，应该在发布方挂断的时候进行处理 */
+    }
+
+    return DOS_SUCC;
+}
+
+U32 sc_ep_call_intercept(SC_SCB_ST * pstSCB)
+{
+    SC_SCB_ST *pstSCBAgent = NULL;
+    SC_ACD_AGENT_INFO_ST stAgentInfo;
+    S8        szBuffCMD[512];
+
+    /* 查找坐席 */
+    if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCB->ulAgentID) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(SC_ESL, "Cannot intercept call for agent with id %u. Agent not found..", pstSCB->ulAgentID);
+        goto proc_fail;
+    }
+
+    if (stAgentInfo.usSCBNo >= SC_MAX_SCB_NUM)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(SC_ESL, "Cannot intercept call for agent with id %u. Agent handle a invalid SCB No(%u).", pstSCB->ulAgentID, stAgentInfo.usSCBNo);
+        goto proc_fail;
+    }
+
+    pstSCBAgent = sc_scb_get(stAgentInfo.usSCBNo);
+    if (DOS_ADDR_INVALID(pstSCBAgent) || !pstSCBAgent->bValid)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(SC_ESL, "Cannot intercept call for agent with id %u. Agent handle a SCB(%u) is invalid.", pstSCB->ulAgentID, stAgentInfo.usSCBNo);
+        goto proc_fail;
+    }
+
+    if ('\0' == pstSCBAgent->szUUID[0])
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", pstSCB->ulAgentID, stAgentInfo.usSCBNo);
+        goto proc_fail;
+    }
+
+    if (sc_call_check_service(pstSCB, SC_SERV_CALL_INTERCEPT))
+    {
+        sc_ep_esl_execute("eavesdrop", "", pstSCBAgent->szUUID);
+    }
+    else if (sc_call_check_service(pstSCB, SC_SERV_CALL_WHISPERS))
+    {
+        sc_ep_esl_execute("queue_dtmf", "w2@500", pstSCB->szUUID);
+        sc_ep_esl_execute("eavesdrop", "", pstSCBAgent->szUUID);
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        goto proc_fail;
+    }
+
+    return DOS_SUCC;
+
+proc_fail:
+
+    sc_ep_terminate_call(pstSCB);
+
+    return DOS_FAIL;
+}
+
+U32 sc_ep_call_transfer(SC_SCB_ST * pstSCB, S8 *pszCallee, BOOL bIsAttend)
+{
+    SC_SCB_ST * pstSCBNew = NULL;
+    SC_SCB_ST * pstSCB1 = NULL;
+    U32         ulServType;
+
+    if (!SC_SCB_IS_VALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstSCB1 = sc_scb_get(pstSCB->usOtherSCBNo);
+    if (!SC_SCB_IS_VALID(pstSCB1))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pszCallee) || '\0' == pszCallee)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulServType = bIsAttend ? SC_SERV_ATTEND_TRANSFER : SC_SERV_BLIND_TRANSFER;
+
+    /* 先呼叫callee, 如果有任务ID就使用任务所指定的主叫号码，如果没有就用客户的主叫号码 */
+    pstSCBNew = sc_scb_alloc();
+    if (DOS_ADDR_INVALID(pstSCBNew))
+    {
+        sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+    }
+
+    pstSCB->usPublishSCB = pstSCBNew->usSCBNo;
+    pstSCB->ucTranforRole = SC_TRANS_ROLE_NOTIFY;
+    sc_call_trace(pstSCB, "Call trace prepare. Nofify Leg. %u", pstSCB->ucTranforRole);
+
+    pstSCB1->ucTranforRole = SC_TRANS_ROLE_SUBSCRIPTION;
+    sc_call_trace(pstSCB1, "Call trace prepare. Subscription Leg. %u", pstSCB1->ucTranforRole);
+
+    pstSCBNew->ulCustomID = pstSCB->ulCustomID;
+    pstSCBNew->ulAgentID = pstSCB->ulAgentID;
+    pstSCBNew->ulTaskID = pstSCB->ulTaskID;
+    pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
+    pstSCBNew->ucTranforRole = SC_TRANS_ROLE_PUBLISH;
+    pstSCBNew->ucMainService = ulServType;
+    sc_call_trace(pstSCBNew, "Call trace prepare. Publish Leg. %u", pstSCBNew->ucTranforRole);
+
+    /* 需要指定主叫号码 */
+    dos_strncpy(pstSCBNew->szCalleeNum, pszCallee, sizeof(pstSCBNew->szCalleeNum));
+    pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
+    dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCallerNum));
+    pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
+
+    SC_SCB_SET_SERVICE(pstSCBNew, ulServType);
+
+    if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pszCallee))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
+
+        goto proc_fail;
+    }
+
+    if (pstSCBNew->ulCustomID == sc_ep_get_custom_by_sip_userid(pszCallee)
+        || sc_ep_check_extension(pszCallee, pstSCBNew->ulCustomID))
+    {
+        SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
+        SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
+    }
+    else
+    {
+        SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
+        SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
+    }
+
+    if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
+
+        goto proc_fail;
+    }
+
+    return DOS_SUCC;
+
+proc_fail:
+    if (DOS_ADDR_INVALID(pstSCBNew))
+    {
+        sc_scb_free(pstSCBNew);
+    }
+
+    return DOS_FAIL;
+}
+
+U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+{
+    S8            szAPPParam[512] = { 0 };
+    U32           ulErrCode = BS_TERM_NONE;
+    SC_SCB_ST     *pstSCBNew = NULL;
+
+    if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    /* 如果坐席长连了，就需要特殊处理 */
+    if (pstAgentInfo->bConnected)
+    {
+        pstSCBNew = sc_scb_get(pstAgentInfo->usSCBNo);
+        if (DOS_ADDR_INVALID(pstSCBNew))
+        {
+            DOS_ASSERT(0);
+            goto proc_error;
+        }
+
+        if ('\0' == pstSCBNew->szUUID[0])
+        {
+            DOS_ASSERT(0);
+            goto proc_error;
+        }
+
+        dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_bridge %s %s \r\n", pstSCB->szUUID, pstSCBNew->szUUID);
+        if (sc_ep_esl_execute_cmd(szAPPParam) != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+            goto proc_error;
+        }
+
+        return DOS_SUCC;
+    }
 
     pstSCBNew = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCBNew))
@@ -3568,39 +4256,39 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
 
     pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
     pstSCBNew->ulCustomID = pstSCB->ulCustomID;
-    pstSCBNew->ulAgentID = stAgentInfo.ulSiteID;
+    pstSCBNew->ulAgentID = pstAgentInfo->ulSiteID;
     pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
     pstSCBNew->ucLegRole = SC_CALLEE;
-    pstSCBNew->bRecord = stAgentInfo.bRecord;
+    pstSCBNew->bRecord = pstAgentInfo->bRecord;
     pstSCBNew->bIsAgentCall = DOS_TRUE;
     dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
     pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
     dos_strncpy(pstSCBNew->szANINum, pstSCB->szCallerNum, sizeof(pstSCBNew->szANINum));
     pstSCBNew->szANINum[sizeof(pstSCBNew->szANINum) - 1] = '\0';
-    switch (stAgentInfo.ucBindType)
+    switch (pstAgentInfo->ucBindType)
     {
         case AGENT_BIND_SIP:
-            dos_strncpy(pstSCBNew->szCalleeNum, stAgentInfo.szUserID, sizeof(pstSCBNew->szCalleeNum));
+            dos_strncpy(pstSCBNew->szCalleeNum, pstAgentInfo->szUserID, sizeof(pstSCBNew->szCalleeNum));
             pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
             break;
         case AGENT_BIND_TELE:
-            dos_strncpy(pstSCBNew->szCalleeNum, stAgentInfo.szTelePhone, sizeof(pstSCBNew->szCalleeNum));
+            dos_strncpy(pstSCBNew->szCalleeNum, pstAgentInfo->szTelePhone, sizeof(pstSCBNew->szCalleeNum));
             pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
             break;
         case AGENT_BIND_MOBILE:
-            dos_strncpy(pstSCBNew->szCalleeNum, stAgentInfo.szMobile, sizeof(pstSCBNew->szCalleeNum));
+            dos_strncpy(pstSCBNew->szCalleeNum, pstAgentInfo->szMobile, sizeof(pstSCBNew->szCalleeNum));
             pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
             break;
     }
 
-    dos_strncpy(pstSCBNew->szSiteNum, stAgentInfo.szEmpNo, sizeof(pstSCBNew->szSiteNum));
+    dos_strncpy(pstSCBNew->szSiteNum, pstAgentInfo->szEmpNo, sizeof(pstSCBNew->szSiteNum));
     pstSCBNew->szSiteNum[sizeof(pstSCBNew->szSiteNum) - 1] = '\0';
     //pthread_mutex_unlock(&pstSCB->mutexSCBLock);
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_AGENT_CALLBACK);
 
     SC_SCB_SET_STATUS(pstSCBNew, SC_SCB_EXEC);
 
-    if (AGENT_BIND_SIP != stAgentInfo.ucBindType)
+    if (AGENT_BIND_SIP != pstAgentInfo->ucBindType)
     {
         SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
         SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
@@ -3632,7 +4320,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
                     , SC_SERV_AGENT_CALLBACK
                     , pstSCB->szCalleeNum
                     , pstSCB->szCalleeNum
-                    , stAgentInfo.szUserID);
+                    , pstAgentInfo->szUserID);
 
 
     if (sc_ep_esl_execute("bridge", szAPPParam, pstSCB->szUUID) != DOS_SUCC)
@@ -3644,17 +4332,16 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     else
     {
         /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
-        sc_acd_agent_update_status(stAgentInfo.ulSiteID, SC_ACD_BUSY);
+        sc_acd_agent_update_status(pstAgentInfo->ulSiteID, SC_ACD_BUSY, pstSCBNew->usSCBNo);
 
         sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
         sc_ep_esl_execute("speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
     }
 
-    if (sc_ep_call_notify(&stAgentInfo, pstSCBNew->szANINum))
+    if (sc_ep_call_notify(pstAgentInfo, pstSCBNew->szANINum))
     {
         DOS_ASSERT(0);
     }
-
 
     return DOS_SUCC;
 
@@ -3665,8 +4352,104 @@ proc_error:
         sc_scb_free(pstSCBNew);
         pstSCBNew = NULL;
     }
+    return DOS_FAIL;
+}
 
-    sc_ep_hangup_call(pstSCB, ulErrCode);
+/**
+ * 函数: sc_ep_call_agent_by_id
+ * 功能: 呼叫某一个特定的坐席
+ * 参数:
+ *      SC_SCB_ST *pstSCB       : 业务控制块
+ *      U32 ulAgentID           : 坐席ID
+ * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 sc_ep_call_agent_by_id(SC_SCB_ST * pstSCB, U32 ulAgentID)
+{
+    SC_ACD_AGENT_INFO_ST stAgentInfo;
+
+    /* 查找坐席 */
+    if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgentID) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(SC_ESL, "Cannot call agent with id %u. Agent not found.", ulAgentID);
+        goto proc_fail;
+    }
+
+    /* 呼叫坐席 */
+    if (sc_ep_call_agent(pstSCB, &stAgentInfo) != DOS_SUCC)
+    {
+        goto proc_fail;
+    }
+
+    return DOS_SUCC;
+
+proc_fail:
+    if (DOS_ADDR_VALID(pstSCB))
+    {
+        sc_ep_hangup_call(pstSCB, BS_TERM_NONE);
+    }
+    return DOS_FAIL;
+}
+
+/**
+ * 函数: U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulAgentQueue)
+ * 功能: 群呼任务之后接通坐席
+ * 参数:
+ *      SC_SCB_ST *pstSCB       : 业务控制块
+ * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
+{
+    U32           ulErrCode = BS_TERM_NONE;
+    SC_ACD_AGENT_INFO_ST stAgentInfo;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstSCB->bIsInQueue = DOS_FALSE;
+
+    /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
+    if (U32_BUTT == ulTaskAgentQueueID)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(SC_ESL, "Cannot get the agent queue for the task %d", pstSCB->ulTaskID);
+        ulErrCode = BS_TERM_QUEUE_INVALID;
+        goto proc_fail;
+    }
+
+    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCallerNum) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_notice(SC_ESL, "There is no useable agent for the task %d. Queue: %d. ", pstSCB->ulTaskID, ulTaskAgentQueueID);
+        ulErrCode = BS_TERM_QUEUE_INVALID;
+        goto proc_fail;
+    }
+
+    sc_logr_info(SC_ESL, "Select agent for call OK. Agent ID: %d, User ID: %s, Externsion: %s, Job-Num: %s"
+                    , stAgentInfo.ulSiteID
+                    , stAgentInfo.szUserID
+                    , stAgentInfo.szExtension
+                    , stAgentInfo.szEmpNo);
+    /* 呼叫坐席 */
+    if (sc_ep_call_agent(pstSCB, &stAgentInfo) != DOS_SUCC)
+    {
+        goto proc_fail;
+    }
+
+    return DOS_SUCC;
+
+proc_fail:
+    if (DOS_ADDR_VALID(pstSCB))
+    {
+        sc_ep_hangup_call(pstSCB, ulErrCode);
+    }
     return DOS_FAIL;
 }
 
@@ -3688,6 +4471,303 @@ U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     }
 
     return ulResult;
+}
+
+U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, S8 *pszCallee)
+{
+    SC_SCB_ST *pstSCB = NULL;
+    SC_ACD_AGENT_INFO_ST stAgentInfo;
+    U32       ulMainServie;
+
+    if (ulAction >= SC_API_CALLCTRL_BUTT)
+    {
+        DOS_ASSERT(0);
+
+        goto proc_fail;
+    }
+
+    sc_logr_info(SC_ESL, "Start process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
+                    , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee);
+
+    switch (ulAction)
+    {
+        case SC_API_MAKE_CALL:
+            /* 先呼叫callee, 如果有任务ID就使用任务所指定的主叫号码，如果没有就用客户的主叫号码 */
+            pstSCB = sc_scb_alloc();
+            if (DOS_ADDR_INVALID(pstSCB))
+            {
+                sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+            }
+
+            pstSCB->ulCustomID = ulCustomerID;
+            pstSCB->ulAgentID = ulAgent;
+            pstSCB->ulTaskID = ulTaskID;
+
+            /* 需要指定主叫号码 */
+            dos_strncpy(pstSCB->szCalleeNum, pszCallee, sizeof(pstSCB->szCalleeNum));
+            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+            dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
+            pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+
+            SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_CLICK_CALL);
+
+            if (!sc_ep_black_list_check(ulCustomerID, pszCallee))
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
+
+                goto make_all_fail;
+            }
+
+            if (ulCustomerID == sc_ep_get_custom_by_sip_userid(pszCallee)
+                || sc_ep_check_extension(pszCallee, ulCustomerID))
+            {
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
+
+                if (sc_dial_make_call2ip(pstSCB, SC_SERV_AGENT_CLICK_CALL) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot make call. Make call to other endpoint fail. (%s)", pszCallee);
+                    goto make_all_fail;
+                }
+            }
+            else
+            {
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+                if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
+
+                    goto make_all_fail;
+                }
+            }
+
+            break;
+make_all_fail:
+            if (DOS_ADDR_INVALID(pstSCB))
+            {
+                sc_scb_free(pstSCB);
+                pstSCB = NULL;
+            }
+
+            goto proc_fail;
+            break;
+
+        case SC_API_HANGUP_CALL:
+            /* 查找坐席 */
+            if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
+                goto proc_fail;
+            }
+
+            if (stAgentInfo.usSCBNo >= SC_MAX_SCB_NUM)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            pstSCB = sc_scb_get(stAgentInfo.usSCBNo);
+            if (DOS_ADDR_INVALID(pstSCB) || !pstSCB->bValid)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            if ('\0' == pstSCB->szUUID[0])
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            sc_ep_hangup_call(pstSCB, BS_TERM_HANGUP);
+
+            break;
+
+        case SC_API_RECORD:
+            /* 查找坐席 */
+            if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
+                goto proc_fail;
+            }
+
+            if (stAgentInfo.usSCBNo >= SC_MAX_SCB_NUM)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            pstSCB = sc_scb_get(stAgentInfo.usSCBNo);
+            if (DOS_ADDR_INVALID(pstSCB) || !pstSCB->bValid)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            if ('\0' == pstSCB->szUUID[0])
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            if (sc_ep_agent_record(pstSCB) != DOS_SUCC)
+            {
+                goto proc_fail;
+            }
+            break;
+
+        case SC_API_WHISPERS:
+        case SC_API_INTERCEPT:
+            pstSCB = sc_scb_alloc();
+            if (DOS_ADDR_INVALID(pstSCB))
+            {
+                sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL..");
+            }
+
+            pstSCB->ulCustomID = ulCustomerID;
+            pstSCB->ulAgentID = ulAgent;
+            pstSCB->ulTaskID = ulTaskID;
+
+            /* 需要指定主叫号码 */
+            dos_strncpy(pstSCB->szCalleeNum, pszCallee, sizeof(pstSCB->szCalleeNum));
+            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+            dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
+            pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+
+            if (SC_API_WHISPERS == ulAction)
+            {
+                ulMainServie = SC_SERV_CALL_WHISPERS;
+            }
+            else
+            {
+                ulMainServie = SC_SERV_CALL_INTERCEPT;
+            }
+
+            SC_SCB_SET_SERVICE(pstSCB, SC_SERV_CALL_WHISPERS);
+
+            if (!sc_ep_black_list_check(ulCustomerID, pszCallee))
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
+
+                goto make_all_fail1;
+            }
+
+            if (ulCustomerID == sc_ep_get_custom_by_sip_userid(pszCallee)
+                || sc_ep_check_extension(pszCallee, ulCustomerID))
+            {
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
+
+                if (sc_dial_make_call2ip(pstSCB, ulMainServie) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot make call. Make call to other endpoint fail. (%s)", pszCallee);
+                    goto make_all_fail1;
+                }
+            }
+            else
+            {
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+                if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
+
+                    goto make_all_fail1;
+                }
+            }
+
+            break;
+make_all_fail1:
+            if (DOS_ADDR_INVALID(pstSCB))
+            {
+                sc_scb_free(pstSCB);
+                pstSCB = NULL;
+            }
+
+            goto proc_fail;
+            break;
+
+        case SC_API_TRANSFOR_ATTAND:
+        case SC_API_TRANSFOR_BLIND:
+            /* 查找坐席 */
+            if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
+                goto proc_fail;
+            }
+
+            if (stAgentInfo.usSCBNo >= SC_MAX_SCB_NUM)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            pstSCB = sc_scb_get(stAgentInfo.usSCBNo);
+            if (DOS_ADDR_INVALID(pstSCB) || !pstSCB->bValid)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            if (sc_ep_call_transfer(pstSCB, pszCallee, (ulAction == SC_API_TRANSFOR_ATTAND)) != DOS_SUCC)
+            {
+                goto proc_fail;
+            }
+
+            break;
+
+        case SC_API_CONFERENCE:
+            break;
+
+        default:
+            goto proc_fail;
+    }
+
+    sc_logr_info(SC_ESL, "Finished to process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
+                    , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee);
+
+    return DOS_SUCC;
+
+proc_fail:
+    sc_logr_info(SC_ESL, "Process call ctrl msg FAIL. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
+                    , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee);
+
+    return DOS_FAIL;
 }
 
 
@@ -4153,7 +5233,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
         {
             dos_snprintf(szCallString, sizeof(szCallString), "user/%s", pszDstNum);
             sc_ep_esl_execute("bridge", szCallString, pszUUID);
-            sc_ep_esl_execute("hangup", NULL, pszUUID);
+            //sc_ep_esl_execute("hangup", NULL, pszUUID);
         }
         else
         {
@@ -4178,7 +5258,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
 
         dos_snprintf(szCallString, sizeof(szCallString), "user/%s", szSIPUserID);
         sc_ep_esl_execute("bridge", szCallString, pszUUID);
-        sc_ep_esl_execute("hangup", NULL, pszUUID);
+        //sc_ep_esl_execute("hangup", NULL, pszUUID);
     }
 
     return DOS_SUCC;
@@ -4391,6 +5471,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     S8        *pszOtherSCBNo = NULL;
     S8        *pszUUID       = NULL;
     S8        *pszMainService = NULL;
+    S8        *pszTransfor    = NULL;
     U32       ulCallSrc, ulCallDst;
     U32       ulRet = DOS_SUCC;
     U32       ulMainService = U32_BUTT;
@@ -4444,8 +5525,41 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         ulMainService = U32_BUTT;
     }
 
+    pszTransfor = esl_event_get_header(pstEvent, "Caller-Transfer-Source");
+    if (DOS_ADDR_VALID(pszTransfor) && '\0' != pszTransfor[0])
+    {
+        if (dos_strstr(pszTransfor, "bl_xfer"))
+        {
+            ulMainService = SC_SERV_BLIND_TRANSFER;
+        }
+        else if (dos_strstr(pszTransfor, "att_xfer"))
+        {
+            ulMainService = SC_SERV_ATTEND_TRANSFER;
+        }
+
+        sc_logr_info(SC_ESL, "Call transfor prepare finished. Start transfor call. Callee: %s", pstSCB->szCalleeNum);
+
+        ulRet = sc_ep_call_transfer(pstSCB, pszCallee, (SC_SERV_ATTEND_TRANSFER == ulMainService));
+
+        goto proc_finished;
+    }
+
+    if (SC_SERV_CALL_INTERCEPT == ulMainService
+        || SC_SERV_CALL_WHISPERS == ulMainService)
+    {
+        ulRet = sc_ep_call_intercept(pstSCB);
+    }
+    else if (SC_SERV_ATTEND_TRANSFER == ulMainService
+        || SC_SERV_BLIND_TRANSFER == ulMainService)
+    {
+        ulRet = sc_ep_transfer_publish_active(pstSCB);
+    }
+    else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
+    {
+        ulRet = sc_ep_call_agent_by_id(pstSCB, pstSCB->ulAgentID);
+    }
     /* 如果是AUTO Call就不需要创建SCB，将SCB同步到HASH表中就好 */
-    if (SC_SERV_AUTO_DIALING == ulMainService)
+    else if (SC_SERV_AUTO_DIALING == ulMainService)
     {
         /* 自动外呼处理 */
         ulRet = sc_ep_auto_dial_proc(pstHandle, pstEvent, pstSCB);
@@ -4740,6 +5854,7 @@ process_fail:
 U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
 {
     S8          *pszUUID = NULL;
+    S8          *pszOtherUUID = NULL;
     S8          *pszMainService = NULL;
     S8          *pszSCBNum = NULL;
     S8          *pszOtherSCBNo = NULL;
@@ -4750,7 +5865,7 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     U32         ulOtherSCBNo = 0;
     U32         ulRet = DOS_SUCC;
     U32         ulMainService = U32_BUTT;
-
+    S8          *pszRefer = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -4760,7 +5875,7 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
-        return DOS_SUCC;
+        return DOS_FAIL;
     }
 
     sc_logr_debug(SC_ESL, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
@@ -4846,6 +5961,52 @@ process_fail:
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
 
         pstSCB->bChannelCreated = DOS_TRUE;
+#if 0
+        /* 需要处理transfer业务 */
+        pszRefer = esl_event_get_header(pstEvent, "variable_sip_h_Referred-By");
+        if (DOS_ADDR_INVALID(pszRefer) || '\0' == pszRefer[0])
+        {
+            ulRet = DOS_SUCC;
+            goto process_fail1;
+        }
+
+        pszOtherUUID = esl_event_get_header(pstEvent, "Other-Leg-Unique-ID");
+        if (DOS_ADDR_INVALID(pszOtherUUID) || '\0' == pszOtherUUID[0])
+        {
+            DOS_ASSERT(0);
+            ulRet = DOS_FAIL;
+            goto process_fail1;
+        }
+
+        pstSCB1 = sc_scb_hash_tables_find(pszOtherUUID);
+        if (DOS_ADDR_INVALID(pstSCB1))
+        {
+            DOS_ASSERT(0);
+            ulRet = DOS_FAIL;
+            goto process_fail1;
+        }
+
+        SC_SCB_SET_SERVICE(pstSCB, SC_SERV_BLIND_TRANSFER);
+        pstSCB->usPublishSCB = pstSCB1->usSCBNo;
+        pstSCB->ucTranforRole = SC_TRANS_ROLE_PUBLISH;
+
+        pstSCB1->usOtherSCBNo = pstSCB->usSCBNo;
+        pstSCB1->ucTranforRole = SC_TRANS_ROLE_NOTIFY;
+
+        pstSCB1 = sc_scb_get(pstSCB1->usSCBNo);
+        if (DOS_ADDR_INVALID(pstSCB1))
+        {
+            DOS_ASSERT(0);
+            ulRet = DOS_FAIL;
+            goto process_fail1;
+        }
+
+        pstSCB1->ucTranforRole = SC_TRANS_ROLE_SUBSCRIPTION;
+
+        ulRet = DOS_SUCC;
+process_fail1:
+        /*  Do Nothing */;
+#endif
     }
 
     /* 根据参数  交换SCB No */
@@ -4898,7 +6059,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
-        return DOS_SUCC;
+        return DOS_FAIL;
     }
 
     sc_call_trace(pstSCB, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
@@ -4924,30 +6085,39 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         }
     }
 
-    if (pstSCB->bRecord)
+    if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
     {
-        SC_SCB_SET_SERVICE(pstSCB, BS_SERV_RECORDING);
-        sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCB->ulCustomID, pstSCB->szCallerNum, pstSCB->szCalleeNum);
-        pthread_mutex_lock(&pstSCB->mutexSCBLock);
-        pstSCB->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
-        if (DOS_ADDR_VALID(pstSCB->pszRecordFile))
+        /* 这个地方要放音哦 */
+        /* 更新坐席状态为connect */
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECTED, pstSCB->ulAgentID);
+    }
+    else
+    {
+        if (pstSCB->bRecord)
         {
-            dos_strncpy(pstSCB->pszRecordFile, szFilePath, dos_strlen(szFilePath) + 1);
-            pstSCB->pszRecordFile[dos_strlen(szFilePath)] = '\0';
+            SC_SCB_SET_SERVICE(pstSCB, BS_SERV_RECORDING);
+            sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCB->ulCustomID, pstSCB->szCallerNum, pstSCB->szCalleeNum);
+            pthread_mutex_lock(&pstSCB->mutexSCBLock);
+            pstSCB->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
+            if (DOS_ADDR_VALID(pstSCB->pszRecordFile))
+            {
+                dos_strncpy(pstSCB->pszRecordFile, szFilePath, dos_strlen(szFilePath) + 1);
+                pstSCB->pszRecordFile[dos_strlen(szFilePath)] = '\0';
 
-            dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                            , "api uuid_record %s start %s/%s\r\n"
-                            , pstSCB->szUUID
-                            , SC_RECORD_FILE_PATH
-                            , szFilePath);
-            sc_ep_esl_execute_cmd(szAPPParam);
-            sc_ep_esl_execute("sleep", "300", pstSCB->szUUID);
+                dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                                , "bgapi uuid_record %s start %s/%s\r\n"
+                                , pstSCB->szUUID
+                                , SC_RECORD_FILE_PATH
+                                , szFilePath);
+                sc_ep_esl_execute_cmd(szAPPParam);
+                sc_ep_esl_execute("sleep", "300", pstSCB->szUUID);
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+            pthread_mutex_unlock(&pstSCB->mutexSCBLock);
         }
-        else
-        {
-            DOS_ASSERT(0);
-        }
-        pthread_mutex_unlock(&pstSCB->mutexSCBLock);
     }
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
@@ -4976,7 +6146,7 @@ U32 sc_ep_channel_hungup_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
-        return DOS_SUCC;
+        return DOS_FAIL;
     }
 
     sc_call_trace(pstSCB, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
@@ -5002,6 +6172,8 @@ U32 sc_ep_channel_hungup_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC
 U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     U32         ulStatus, ulRet = DOS_SUCC;
+    S8          szCMD[512] = { 0, };
+    S8          *pszTransforType = NULL;
     SC_SCB_ST   *pstSCBOther = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
@@ -5013,7 +6185,21 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
-        return DOS_SUCC;
+        return DOS_FAIL;
+    }
+
+
+    pszTransforType = esl_event_get_header(pstEvent, "variable_transfer_to");
+    if (DOS_ADDR_VALID(pszTransforType) && '\0' != pszTransforType[0])
+    {
+        if (dos_strnicmp(pszTransforType, "blind", dos_strlen("blind")) == 0
+            || dos_strnicmp(pszTransforType, "attend", dos_strlen("attend")) == 0)
+        {
+            sc_logr_info(SC_ESL, "Got into transfor. transfor type: %s", pszTransforType);
+
+            pstSCB->bWaitingOtherRelase = DOS_TRUE;
+            goto process_finished;
+        }
     }
 
     ulStatus = pstSCB->ucStatus;
@@ -5043,9 +6229,31 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             if (DOS_ADDR_VALID(pstSCB->pstExtraData))
             {
                 dos_memzero(pstSCB->pstExtraData, sizeof(SC_SCB_EXTRA_DATA_ST));
-                sc_rp_parse_extra_data(pstEvent, pstSCB);
+                sc_ep_parse_extra_data(pstEvent, pstSCB);
             }
             pthread_mutex_unlock(&pstSCB->mutexSCBLock);
+
+            if (SC_TRANS_ROLE_NOTIFY == pstSCB->ucTranforRole)
+            {
+                if (sc_ep_transfer_notify_release(pstSCB) == DOS_SUCC)
+                {
+                    goto process_finished;
+                }
+            }
+            else if (SC_TRANS_ROLE_PUBLISH == pstSCB->ucTranforRole)
+            {
+                if (sc_ep_transfer_publish_release(pstSCB) == DOS_SUCC)
+                {
+                    goto process_finished;
+                }
+            }
+            else if (SC_TRANS_ROLE_SUBSCRIPTION == pstSCB->ucTranforRole)
+            {
+                if (sc_ep_transfer_subscription_release(pstSCB) == DOS_SUCC)
+                {
+                    goto process_finished;
+                }
+            }
 
             /* 如果呼叫已经进入队列了，需要删除 */
             if (pstSCB->bIsInQueue)
@@ -5057,8 +6265,31 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             /* 如果是呼叫坐席的，需要做特殊处理,看看坐席是否长连什么的 */
             if (pstSCB->bIsAgentCall)
             {
-                sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_IDEL);
+                sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_IDEL, U32_BUTT);
                 pstSCB->bIsAgentCall = DOS_FALSE;
+            }
+
+            if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
+            {
+                sc_acd_update_agent_status(SC_ACD_SITE_ACTION_DISCONNECT, pstSCB->ulAgentID);
+            }
+
+            if (pstSCB->bRecord && pstSCB->pszRecordFile)
+            {
+                dos_snprintf(szCMD, sizeof(szCMD)
+                                , "%s/%s-in.%s"
+                                , SC_RECORD_FILE_PATH
+                                , pstSCB->pszRecordFile
+                                , esl_event_get_header(pstEvent, "Channel-Read-Codec-Name"));
+                chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
+
+                dos_snprintf(szCMD, sizeof(szCMD)
+                                , "%s/%s-out.%s"
+                                , SC_RECORD_FILE_PATH
+                                , pstSCB->pszRecordFile
+                                , esl_event_get_header(pstEvent, "Channel-Write-Codec-Name"));
+                chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
+
             }
 
             /*
@@ -5069,14 +6300,24 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             if (DOS_ADDR_VALID(pstSCBOther)
                 && !pstSCBOther->bWaitingOtherRelase)
             {
-                sc_ep_hangup_call(pstSCBOther, BS_TERM_HANGUP);
+                /* 长签就不挂断了 */
+                if (!sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN))
+                {
+                    sc_ep_hangup_call(pstSCBOther, BS_TERM_HANGUP);
 
-                pstSCB->bWaitingOtherRelase = DOS_TRUE;
+                    pstSCB->bWaitingOtherRelase = DOS_TRUE;
 
-                sc_logr_info(SC_ESL, "Waiting other leg hangup.Curretn Leg UUID: %s, Other Leg UUID: %s"
-                                , pstSCB->szUUID ? pstSCB->szUUID : "NULL"
-                                , pstSCBOther->szUUID ? pstSCBOther->szUUID : "NULL");
-                break;
+                    sc_logr_info(SC_ESL, "Waiting other leg hangup.Curretn Leg UUID: %s, Other Leg UUID: %s"
+                                    , pstSCB->szUUID ? pstSCB->szUUID : "NULL"
+                                    , pstSCBOther->szUUID ? pstSCBOther->szUUID : "NULL");
+
+                    break;
+                }
+                else
+                {
+                    /* unbridge, 给坐席放音 */
+                    dos_snprintf(szCMD, sizeof(szCMD), "uuid_break %s", pstSCBOther->szUUID);
+                }
             }
 
             /* 自动外呼，需要维护任务的并发量 */
@@ -5084,6 +6325,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 && pstSCB->usTCBNo < SC_MAX_TASK_NUM)
             {
                 sc_task_concurrency_minus(pstSCB->usTCBNo);
+
                 sc_update_callee_status(pstSCB->usTCBNo, pstSCB->szCalleeNum, SC_CALLEE_NORMAL);
             }
 
@@ -5121,6 +6363,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             break;
     }
 
+process_finished:
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
 
@@ -5128,6 +6371,63 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
     return DOS_SUCC;
 
 }
+
+/**
+ * 函数: U32 sc_ep_channel_hold(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
+ * 功能: 处理ESL的CHANNEL HEARTBEAT事件
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送句柄
+ *      esl_event_t *pstEvent   : 事件
+ *      SC_SCB_ST *pstSCB       : SCB
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_channel_hold(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
+{
+    S8 *pszChannelStat = NULL;
+
+    SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
+
+    if (DOS_ADDR_INVALID(pstEvent)
+        || DOS_ADDR_INVALID(pstHandle)
+        || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        /* Hold 事件不能拆呼叫的 */
+        return DOS_SUCC;
+    }
+
+    sc_call_trace(pstSCB, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
+
+    pszChannelStat = esl_event_get_header(pstEvent, "Channel-Call-State");
+    if (DOS_ADDR_VALID(pszChannelStat))
+    {
+        if (dos_strnicmp(pszChannelStat, "HELD", dos_strlen("HELD")) == 0)
+        {
+            if (0 == pstSCB->ulLastHoldTimetamp)
+            {
+                pstSCB->ulLastHoldTimetamp = time(0);
+                pstSCB->usHoldCnt++;
+            }
+        }
+        else if (dos_strnicmp(pszChannelStat, "ACTIVE", dos_strlen("ACTIVE")) == 0)
+        {
+            if (pstSCB->ulLastHoldTimetamp)
+            {
+                pstSCB->usHoldTotalTime += (time(0) - pstSCB->ulLastHoldTimetamp);
+                pstSCB->ulLastHoldTimetamp = 0;
+                pstSCB->usHoldCnt++;
+            }
+        }
+    }
+
+    sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
+
+    SC_TRACE_OUT();
+    return DOS_SUCC;
+}
+
 
 /**
  * 函数: U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
@@ -5153,6 +6453,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
+        /* dtmf 事件不能拆呼叫 */
         return DOS_SUCC;
     }
 
@@ -5467,6 +6768,17 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         case ESL_EVENT_SESSION_HEARTBEAT:
             ulRet = sc_ep_session_heartbeat(pstHandle, pstEvent, pstSCB);
             break;
+
+        case ESL_EVENT_CHANNEL_HOLD:
+            g_astEPMsgStat[SC_EP_STAT_PROC].ulHold++;
+            ulRet = sc_ep_channel_hold(pstHandle, pstEvent, pstSCB);
+            break;
+
+        case ESL_EVENT_CHANNEL_UNHOLD:
+            g_astEPMsgStat[SC_EP_STAT_PROC].ulUnhold++;
+            ulRet = sc_ep_channel_hold(pstHandle, pstEvent, pstSCB);
+            break;
+
         default:
             DOS_ASSERT(0);
             ulRet = DOS_FAIL;
@@ -5650,6 +6962,14 @@ VOID*sc_ep_process_master(VOID *ptr)
 
                 case ESL_EVENT_DTMF:
                     g_astEPMsgStat[SC_EP_STAT_RECV].ulDTMF++;
+                    break;
+
+                case ESL_EVENT_CHANNEL_HOLD:
+                    g_astEPMsgStat[SC_EP_STAT_RECV].ulHold++;
+                    break;
+
+                case ESL_EVENT_CHANNEL_UNHOLD:
+                    g_astEPMsgStat[SC_EP_STAT_RECV].ulUnhold++;
                     break;
 
                 default:
@@ -5967,5 +7287,6 @@ U32 sc_ep_shutdown()
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+
 
 

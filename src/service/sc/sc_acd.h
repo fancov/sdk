@@ -18,13 +18,16 @@
 
 #define SC_ACD_HASH_SIZE              128
 
-#define SC_ACD_CALLER_NUM_RELATION_HASH_SIZE    512         /* 主叫号码和坐席对应关系hash的大小 */
-
-#define SC_ACD_SITE_IS_USEABLE(pstSiteDesc)        \
-    (DOS_ADDR_VALID(pstSiteDesc)                   \
-    && !(pstSiteDesc)->bWaitingDelete              \
-    && (pstSiteDesc)->bLogin                       \
-    && SC_ACD_IDEL == (pstSiteDesc)->ucStatus)
+/* 1. 没有被删除
+   2. 已经登陆了
+   3. 需要连接，并且处于连接状态
+   4. 状态为EDL*/
+#define SC_ACD_SITE_IS_USEABLE(pstSiteDesc)                             \
+    (DOS_ADDR_VALID(pstSiteDesc)                                       \
+    && !(pstSiteDesc)->bWaitingDelete                                  \
+    && (pstSiteDesc)->bLogin                                           \
+    && SC_ACD_IDEL == (pstSiteDesc)->ucStatus                          \
+    && !((pstSiteDesc)->bNeedConnected && !(pstSiteDesc)->bConnected))
 
 typedef struct tagACDQueueNode{
     U32                     ulID;             /* 当前节点在当前队列里面的编号 */

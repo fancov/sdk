@@ -23,6 +23,8 @@ extern "C"{
 #include "sc_def.h"
 #include "sc_bs_def.h"
 #include "sc_debug.h"
+#include "sc_acd_def.h"
+
 
 typedef struct tagSCBSMsgNode
 {
@@ -122,13 +124,89 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     if (pstSCB->ucTerminationFlag)
     {
         sc_logr_notice(SC_BS, "Terminate call for the auth fail; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
-        sc_ep_terminate_call(pstSCB);
+        if (sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
+            || sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
+        {
+            sc_ep_transfer_publish_release(pstSCB);
+        }
+        else
+        {
+            sc_ep_terminate_call(pstSCB);
+        }
     }
     else
     {
         sc_logr_notice(SC_BS, "Auth successfully. RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
 
-        if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+        if (sc_call_check_service(pstSCB, SC_SERV_CALL_WHISPERS))
+        {
+            pstSCB->ucMainService = SC_SERV_CALL_WHISPERS;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
+            {
+                sc_ep_terminate_call(pstSCB);
+            }
+        }
+        else if (sc_call_check_service(pstSCB, SC_SERV_CALL_INTERCEPT))
+        {
+            pstSCB->ucMainService = SC_SERV_CALL_INTERCEPT;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
+            {
+                sc_ep_terminate_call(pstSCB);
+            }
+        }
+        else if (sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
+            || sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
+        {
+            if (pstSCB->ulCustomID == sc_ep_get_custom_by_sip_userid(pstSCB->szCalleeNum)
+                || sc_ep_check_extension(pstSCB->szCalleeNum, pstSCB->ulCustomID))
+            {
+                ulRet = sc_dial_make_call2ip(pstSCB, pstSCB->ucMainService);
+                if (ulRet != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot make call for transfer. Make call to other endpoint fail. (%s)", pstSCB->szCalleeNum);
+                }
+            }
+            else
+            {
+                ulRet = sc_dialer_add_call(pstSCB);
+                if (ulRet != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot make call for transfer. Add call to dialer failed. (%s)", pstSCB->szCalleeNum);
+                }
+            }
+
+            if (ulRet != DOS_SUCC)
+            {
+                sc_scb_free(pstSCB);
+                pstSCB = NULL;
+            }
+        }
+        else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CLICK_CALL))
+        {
+            pstSCB->ucMainService = SC_SERV_AGENT_CLICK_CALL;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
+            {
+                sc_ep_terminate_call(pstSCB);
+            }
+        }
+        else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
+        {
+            pstSCB->ucMainService = SC_SERV_AGENT_SIGNIN;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
+            {
+                sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECT_FAIL, pstSCB->ulAgentID);
+                sc_ep_terminate_call(pstSCB);
+            }
+        }
+        else if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
         {
             pstSCB->ucMainService = SC_SERV_AUTO_DIALING;
             ulRet = sc_dialer_add_call(pstSCB);

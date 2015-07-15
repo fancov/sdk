@@ -278,7 +278,7 @@ static S32 sc_acd_agent_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
  *      U32 ulStatus  : 新状态
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus)
+U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueInfo = NULL;
     HASH_NODE_S                 *pstHashNode       = NULL;
@@ -311,6 +311,7 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus)
 
     pthread_mutex_lock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
     pstAgentQueueInfo->pstAgentInfo->ucStatus = (U8)ulStatus;
+    pstAgentQueueInfo->pstAgentInfo->usSCBNo = (U16)ulSCBNo;
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
     return DOS_SUCC;
@@ -728,9 +729,13 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                     case SC_ACD_SITE_ACTION_DELETE:
                         pstAgentQueueNode->pstAgentInfo->bWaitingDelete = DOS_TRUE;
                         break;
+
                     case SC_ACD_SITE_ACTION_ONLINE:
                         pstAgentQueueNode->pstAgentInfo->bLogin = DOS_TRUE;
                         pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = DOS_FALSE;
+
                         pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_IDEL;
                         pstAgentQueueNode->pstAgentInfo->ulLastOnlineTime = time(0);
                         break;
@@ -738,6 +743,9 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                     case SC_ACD_SITE_ACTION_OFFLINE:
                         pstAgentQueueNode->pstAgentInfo->bLogin = DOS_FALSE;
                         pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = DOS_FALSE;
+
                         pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_OFFLINE;
 
                         pstAgentQueueNode->pstAgentInfo->stStat.ulTimeOnthePhone += (time(0) - pstAgentQueueNode->pstAgentInfo->ulLastOnlineTime);
@@ -746,7 +754,11 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
 
                     case SC_ACD_SITE_ACTION_SIGNIN:
                         pstAgentQueueNode->pstAgentInfo->bLogin = DOS_TRUE;
-                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_TRUE;
+                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = DOS_FALSE;
+
+                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = SC_ACD_IDEL;
 
                         pstAgentQueueNode->pstAgentInfo->ulLastSignInTime = time(0);
                         break;
@@ -754,6 +766,10 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                     case SC_ACD_SITE_ACTION_SIGNOUT:
                         pstAgentQueueNode->pstAgentInfo->bLogin = DOS_TRUE;
                         pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = DOS_FALSE;
+
+                        pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_AWAY;
 
                         pstAgentQueueNode->pstAgentInfo->stStat.ulTimeOnSignin += (time(0) - pstAgentQueueNode->pstAgentInfo->ulLastSignInTime);
                         pstAgentQueueNode->pstAgentInfo->ulLastSignInTime = 0;
@@ -762,13 +778,36 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                     case SC_ACD_SITE_ACTION_EN_QUEUE:
                         pstAgentQueueNode->pstAgentInfo->bLogin = DOS_TRUE;
                         pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
-                        pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_IDEL;
+                        pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_TRUE;
+                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = DOS_FALSE;
+
+                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = SC_ACD_IDEL;
+
                         break;
+
                     case SC_ACD_SITE_ACTION_DN_QUEUE:
                         pstAgentQueueNode->pstAgentInfo->bLogin = DOS_TRUE;
                         pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
-                        pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_AWAY;
+                        pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = DOS_FALSE;
+
+                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = SC_ACD_IDEL;
+
                         break;
+
+                    case SC_ACD_SITE_ACTION_CONNECTED:
+                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_TRUE;
+                        break;
+
+                    case SC_ACD_SITE_ACTION_DISCONNECT:
+                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
+                        break;
+
+                    case SC_ACD_SITE_ACTION_CONNECT_FAIL:
+                        pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
+                        break;
+
                     default:
                         DOS_ASSERT(0);
                         break;
@@ -1391,6 +1430,43 @@ process_call:
 end:
     return pstAgentNode;
 }
+
+U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID)
+{
+    HASH_NODE_S                *pstHashNode = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode = NULL;
+    U32                        ulHashIndex = 0;
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        sc_logr_warning(SC_ACD, "Cannot find the agent with this id %u.", ulAgentID);
+        return DOS_FAIL;
+    }
+
+    pstAgentNode = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+        sc_logr_warning(SC_ACD, "Cannot find the agent with this id %u..", ulAgentID);
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstAgentInfo, pstAgentNode->pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
+
+    return DOS_SUCC;
+ }
+
 
 U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID, S8 *szCallerNum)
 {
