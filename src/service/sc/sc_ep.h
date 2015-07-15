@@ -85,6 +85,7 @@ typedef struct tagSCGWNode
 {
     U32 ulGWID;                                    /* 网关ID */
     S8  szGWDomain[SC_GW_DOMAIN_LEG];              /* 网关的域，暂时没有用的 */
+    BOOL bExist;                                   /* 该标识用来判断数据库是否有该数据 */
 
     SC_TRUNK_STAT_ST stStat;
 }SC_GW_NODE_ST;
@@ -92,8 +93,8 @@ typedef struct tagSCGWNode
 /* 中继组 */
 typedef struct tagGatewayGrpNode
 {
-    U32 ulGWGrpID;                                /* 网关组ID */
-
+    U32        ulGWGrpID;                         /* 网关组ID */
+    BOOL       bExist;                            /* 该标记用来检验该数据是否来自与数据库 */
     DLL_S      stGWList;                          /* 网关列表 refer to SC_GW_NODE_ST */
     pthread_mutex_t  mutexGWList;                 /* 路由组的锁 */
 }SC_GW_GRP_NODE_ST;
@@ -102,6 +103,7 @@ typedef struct tagGatewayGrpNode
 typedef struct tagSCRouteNode
 {
     U32        ulID;
+    BOOL       bExist;                            /* 该标记用来检查是否来自于数据库 */
 
     U8         ucHourBegin;                       /* 开始时间，小时 */
     U8         ucMinuteBegin;                     /* 开始时间，分钟 */

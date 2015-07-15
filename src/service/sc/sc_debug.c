@@ -76,6 +76,12 @@ extern SC_BS_MSG_STAT_ST      stBSMsgStat;
 
 /* declare functions */
 extern SC_TASK_CB_ST *sc_tcb_get_by_id(U32 ulTCBNo);
+S32 cli_cc_update(U32 ulIndex, S32 argc, S8 **argv);
+S32 sc_update_route(U32 ulID);
+S32 sc_update_gateway_grp(U32 ulID);
+S32 sc_update_gateway(U32 ulID);
+
+
 
 const S8* g_pszAgentBindType[] =
 {
@@ -1461,9 +1467,6 @@ S32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
     return 0;
 }
 
-VOID sc_rfind_sip(U32 ulIndex, S8 *pszSIPUserID)
-{
-}
 
 S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
 {
@@ -2250,6 +2253,13 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
             goto cc_usage;
         }
     }
+    else if (dos_strnicmp(argv[1], "update", dos_strlen("update")) == 0)
+    {
+        if (cli_cc_update(ulIndex, argc, argv) < 0)
+        {
+            goto cc_usage;
+        }
+    }
     else
     {
         goto cc_usage;
@@ -2258,7 +2268,6 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
     return 0;
 
 cc_usage:
-
 
     cli_out_string(ulIndex, "\r\n");
     cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb|route|blacklist [id]\r\n");
@@ -2271,8 +2280,180 @@ cc_usage:
     cli_out_string(ulIndex, "cc trace scb scbid|all on|off\r\n");
     cli_out_string(ulIndex, "cc trace task taskid|all on|off\r\n");
     cli_out_string(ulIndex, "cc trace call <callee num> <caller num> on|off\r\n");
+    cli_out_string(ulIndex, "cc update route|gateway|gwgrp [id]\r\n");
 
     return 0;
+}
+
+/**
+  * 函数名: S32 cli_cc_update(U32 ulIndex, S32 argc, S8 **argv)
+  * 参数:
+  * 功能: 数据强制同步的统一处理接口
+  * 返回: 成功返回DOS_SUCC,否则返回DOS_FAIL
+  **/
+S32 cli_cc_update(U32 ulIndex, S32 argc, S8 **argv)
+{
+    S8  szBuff[1024] = {0};
+    U32 ulID = U32_BUTT;
+
+    if (0 == dos_strnicmp(argv[2], "route", dos_strlen("route")))
+    {
+        /* 处理与路由相关的 */
+        if (3 == argc)
+        {
+            /* 全部处理 */
+            sc_update_route(U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            /* 根据id更新 */
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            sc_update_route(ulID);
+        }
+        else
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "You inputed %d %s.", argc, argc == 1?"param":"params");
+            cli_out_string(ulIndex, szBuff);
+            return DOS_FAIL;
+        }
+    }
+    else if (0 == dos_strnicmp(argv[2], "gateway", dos_strlen("gateway")))
+    {
+        /* 处理与网关相关的 */
+        if (3 == argc)
+        {
+            /* 全部处理 */
+            sc_update_gateway(U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            /* 根据id更新 */
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            sc_update_gateway(ulID);
+        }
+        else
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "You inputed %d %s.", argc, argc == 1?"param":"params");
+            cli_out_string(ulIndex, szBuff);
+            return DOS_FAIL;
+        }
+    }
+    else if (0 == dos_strnicmp(argv[2], "gwgrp", dos_strlen("gwgrp")))
+    {
+        /* 处理与网关组相关的 */
+        if (3 == argc)
+        {
+            /* 全部处理 */
+            sc_update_gateway_grp(U32_BUTT);
+        }
+        else if(4 == argc)
+        {
+            /* 根据id去处理 */
+            sc_update_gateway_grp(ulID);
+        }
+        else
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "You inputed %d %s.", argc, argc == 1 ? "param" : "params");
+            cli_out_string(ulIndex, szBuff);
+            return DOS_FAIL;
+        }
+    }
+    else
+    {
+        /* 直接goto help */
+        goto help;
+    }
+    return DOS_SUCC;
+
+help:
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\nParam \'%s\' is not supported.", argv[2]);
+    cli_out_string(ulIndex, szBuff);
+    return DOS_FAIL;
+}
+
+/**
+ * 函数名:S32 sc_update_gateway(U32 ulID)
+ * 参数:  U32 ulID  网关ID
+ * 功能:  强制更新网关，根据id或者表名
+ * 返回:  更新成功则返回DOS_SUCC，否则返回DOS_FAIL;
+ **/
+S32 sc_update_gateway(U32 ulID)
+{
+    U32 ulRet = U32_BUTT;
+
+    if (U32_BUTT == ulID)
+    {
+        /* 所有数据全部强制更新 */
+        sc_load_gateway(SC_INVALID_INDEX);
+        /* 删除多余数据 */
+        sc_del_invalid_gateway();
+    }
+    else
+    {
+        /* 强制更新该id数据 */
+        sc_load_gateway(ulID);
+    }
+
+    /* 使网关生效 */
+    ulRet = sc_ep_esl_execute_cmd("bgapi sofia profile external rescan");
+    if (DOS_SUCC != ulRet)
+    {
+        DOS_ASSERT(0);
+    }
+
+    return DOS_SUCC;
+}
+
+/**
+  * 函数名:S32 sc_update_gateway_grp(U32 ulID)
+  * 参数: U32 ulID  网关ID
+  * 功能: 强制更新网关组，根据id或者表名
+  * 返回: 更新成功则返回DOS_SUCC，否则返回DOS_FAIL;
+  **/
+S32 sc_update_gateway_grp(U32 ulID)
+{
+    if (U32_BUTT == ulID)
+    {
+        /* 加载数据 */
+        sc_load_gateway_grp(SC_INVALID_INDEX);
+        /* 删除没有来自数据库的数据 */
+        sc_del_invalid_gateway_grp();
+    }
+    else
+    {
+        sc_load_gateway_grp(ulID);
+    }
+    return DOS_SUCC;
+}
+
+/**
+  * 函数名:S32 sc_update_route(U32 ulID)
+  * 参数: U32 ulID  路由
+  * 功能: 强制更新路由,根据id或者表名
+  * 返回: 更新成功则返回DOS_SUCC，否则返回DOS_FAIL;
+  **/
+S32 sc_update_route(U32 ulID)
+{
+    if (U32_BUTT == ulID)
+    {
+        /* 全部更新 */
+        sc_load_route(SC_INVALID_INDEX);
+        /* 删除不在数据库中的成员 */
+        sc_del_invalid_route();
+    }
+    else
+    {
+        sc_load_route(ulID);
+    }
+    return DOS_SUCC;
 }
 
 VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
