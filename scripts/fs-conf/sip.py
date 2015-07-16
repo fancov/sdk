@@ -119,7 +119,7 @@ def add_sip(ulSipID):
         file_info.print_file_info('Add new SIP FAIL.')
         return -1
     # 根据sipid获取userid
-    seqUserID = get_userid_by_sipid(ulSipID)
+    seqUserID = db_conn.get_userid_by_sipid(ulSipID)
     if -1 == seqUserID:
         file_info.print_file_info('Add new SIP FAIL, seqUserID is %d.' % seqUserID)
         return -1
