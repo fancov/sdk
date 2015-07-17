@@ -1991,7 +1991,16 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
 
             break;
         }
-
+        case SC_API_CMD_ACTION_GATEWAY_SYNC:
+        {
+            ulRet = sc_update_gateway(U32_BUTT);
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            break;
+        }
         default:
             break;
     }
@@ -2100,6 +2109,16 @@ U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID)
         case SC_API_CMD_ACTION_ROUTE_DELETE:
             {
                 ulRet = sc_route_delete(ulRouteID);
+                if (ulRet != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                    return DOS_FAIL;
+                }
+            }
+            break;
+        case SC_API_CMD_ACTION_ROUTE_SYNC:
+            {
+                ulRet = sc_update_route(U32_BUTT);
                 if (ulRet != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
