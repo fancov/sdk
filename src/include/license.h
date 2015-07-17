@@ -125,5 +125,30 @@ U32 licc_get_license_version(U32 *pulVersion);
  **/
 U32 licc_get_license_expire(U32 *pulExpire);
 
+/*
+ * 函数: licc_get_license_validity
+ * 功能: 获取license可以使用的时间
+ * 参数:
+ *     U32 *pulValidity : 存储license总的有效期时长
+ *     U32 *pulTimeRemaining : license剩余时长，如果过期将被设置为0
+ * 返回值: 如果License没有过期，返回DOS_SUCC，否则返回DOS_FAIL
+ * 注意:
+ *      U32 *pulValidity, U32 *pulTimeRemaining 两项参数都可以为空
+ **/
+extern U32 licc_get_license_validity(U32 *pulValidity, U32 *pulTimeRemaining);
+
+/*
+ * 函数: licc_get_license_mod_validity
+ * 功能: 获取license中特定模块可以使用的时间
+ * 参数:
+ *     U32 ulModIndex   : 模块编号
+ *     U32 *pulValidity : 存储时间
+ *     U32 *pulTimeRemaining : 剩余时间，如果过期将被设置为0
+ * 返回值: 如果License没有过期，返回DOS_SUCC，否则返回DOS_FAIL
+ * 注意:
+ *      U32 *pulValidity, U32 *pulTimeRemaining 两项参数都可以为空
+ **/
+extern U32 licc_get_license_mod_validity(U32 ulModIndex, U32 *pulValidity, U32 *pulTimeRemaining);
+
 #endif /* __LICENSE_H__ */
 
