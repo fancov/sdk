@@ -2081,7 +2081,7 @@ static int pts_show_license_msg(int eid, webs_t wp, int argc, char_t **argv)
     U32 ulVersion = 0;
     U32 ulExpire = 0;
     S8 szExpireDate[PT_DATA_BUFF_64] = {0};
-    time_t timeExpire;
+    U32 ulTimeExpireDay = 0;
     U8 szCustomerId[PT_DATA_BUFF_128] = {0};
     BOOL bIsGetLicense = DOS_FALSE;
     U32 ulPTCLimit = 0;
@@ -2122,7 +2122,7 @@ static int pts_show_license_msg(int eid, webs_t wp, int argc, char_t **argv)
         }
 
         /* 获得有效期 */
-        lResult = licc_get_license_expire(&ulExpire);
+        lResult = licc_get_license_validity(NULL, &ulExpire);
         if (lResult != DOS_SUCC)
         {
             dos_snprintf(szExpireDate, PT_DATA_BUFF_64, "获取失败");
@@ -2137,12 +2137,19 @@ static int pts_show_license_msg(int eid, webs_t wp, int argc, char_t **argv)
             }
             else if (0 == ulExpire)
             {
-                dos_snprintf(szExpireDate, PT_DATA_BUFF_64, "无限制");
+                dos_snprintf(szExpireDate, PT_DATA_BUFF_64, "已过期");
             }
             else
             {
-                timeExpire = (time_t)ulExpire;
-                strftime(szExpireDate, PT_DATA_BUFF_64, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&timeExpire));
+                ulTimeExpireDay = ulExpire / (3600 * 24);
+                if (g_LangType)
+                {
+                    dos_snprintf(szExpireDate, PT_DATA_BUFF_64, "%d 天", ulTimeExpireDay);
+                }
+                else
+                {
+                    dos_snprintf(szExpireDate, PT_DATA_BUFF_64, "%d days", ulTimeExpireDay);
+                }
             }
         }
 

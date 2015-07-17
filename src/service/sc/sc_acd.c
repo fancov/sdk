@@ -755,10 +755,10 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                     case SC_ACD_SITE_ACTION_SIGNIN:
                         pstAgentQueueNode->pstAgentInfo->bLogin = DOS_TRUE;
                         pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
-                        pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_FALSE;
+                        pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_TRUE;
                         pstAgentQueueNode->pstAgentInfo->bWaitingDelete = DOS_FALSE;
 
-                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = SC_ACD_IDEL;
+                        //pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_IDEL;
 
                         pstAgentQueueNode->pstAgentInfo->ulLastSignInTime = time(0);
                         break;
@@ -769,7 +769,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                         pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_FALSE;
                         pstAgentQueueNode->pstAgentInfo->bWaitingDelete = DOS_FALSE;
 
-                        pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_AWAY;
+                        //pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_IDEL;
 
                         pstAgentQueueNode->pstAgentInfo->stStat.ulTimeOnSignin += (time(0) - pstAgentQueueNode->pstAgentInfo->ulLastSignInTime);
                         pstAgentQueueNode->pstAgentInfo->ulLastSignInTime = 0;
@@ -778,10 +778,10 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                     case SC_ACD_SITE_ACTION_EN_QUEUE:
                         pstAgentQueueNode->pstAgentInfo->bLogin = DOS_TRUE;
                         pstAgentQueueNode->pstAgentInfo->bConnected = DOS_FALSE;
-                        pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_TRUE;
+                        pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_FALSE;
                         pstAgentQueueNode->pstAgentInfo->bWaitingDelete = DOS_FALSE;
 
-                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = SC_ACD_IDEL;
+                        pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_IDEL;
 
                         break;
 
@@ -791,7 +791,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                         pstAgentQueueNode->pstAgentInfo->bNeedConnected = DOS_FALSE;
                         pstAgentQueueNode->pstAgentInfo->bWaitingDelete = DOS_FALSE;
 
-                        pstAgentQueueNode->pstAgentInfo->bWaitingDelete = SC_ACD_IDEL;
+                        pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_BUSY;
 
                         break;
 

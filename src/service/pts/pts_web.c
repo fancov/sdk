@@ -608,7 +608,7 @@ BOOL pts_deal_with_web_request(S8 *pcRequest, U32 ulConnfd, S32 lReqLen)
     }
     else
     {
-        pcHeadBuf = (S8 *)dos_dmem_alloc(pstHttpHead->lReqLen + lReqLen);
+        pcHeadBuf = (S8 *)dos_dmem_alloc(pstHttpHead->lReqLen + lReqLen + 64);
         if (NULL == pcHeadBuf)
         {
             perror("malloc");
@@ -620,17 +620,23 @@ BOOL pts_deal_with_web_request(S8 *pcRequest, U32 ulConnfd, S32 lReqLen)
 
         if (pts_is_http_end(pcHeadBuf))
         {
-
             bIsGetID = pts_deal_with_http_head(pcHeadBuf, ulConnfd, pstHttpHead->ulStreamID, pcIpccId, pstHttpHead->lReqLen+lReqLen);
             if (bIsGetID)
             {
                 dos_memcpy(pstHttpHead->aucID, pcIpccId, PTC_ID_LEN);
             }
-            dos_dmem_free(pstHttpHead->pcRequestHead);
-            pstHttpHead->pcRequestHead = NULL;
+
+            if (DOS_ADDR_VALID(pstHttpHead->pcRequestHead))
+            {
+                dos_dmem_free(pstHttpHead->pcRequestHead);
+                pstHttpHead->pcRequestHead = NULL;
+            }
             pstHttpHead->eSaveHeadFlag = DOS_FALSE;
-            dos_dmem_free(pcHeadBuf);
-            pcHeadBuf = NULL;
+            if (DOS_ADDR_INVALID(pcHeadBuf))
+            {
+                dos_dmem_free(pcHeadBuf);
+                pcHeadBuf = NULL;
+            }
         }
         else
         {

@@ -18,8 +18,7 @@
 
 #define SC_ACD_HASH_SIZE              128
 
-#define SC_ACD_CALLER_NUM_RELATION_HASH_SIZE 512
-
+#define SC_ACD_CALLER_NUM_RELATION_HASH_SIZE    512         /* 主叫号码和坐席对应关系hash的大小 */
 
 /* 1. 没有被删除
    2. 已经登陆了

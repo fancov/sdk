@@ -859,13 +859,13 @@ U32 sc_http_api_agent_action(list_t *pstArgv)
     {
         ulAction = SC_ACD_SITE_ACTION_DELETE;
     }
-    else if (dos_strncmp(pszAction, "idel",sizeof("idel")) == 0)
+    else if (dos_strncmp(pszAction, "idle",sizeof("idle")) == 0)
     {
         ulAction = SC_ACD_SITE_ACTION_EN_QUEUE;
     }
     else if (dos_strncmp(pszAction, "busy",sizeof("busy")) == 0)
     {
-        ulAction = SC_ACD_SITE_ACTION_DELETE;
+        ulAction = SC_ACD_SITE_ACTION_DN_QUEUE;
     }
     else
     {

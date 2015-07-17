@@ -462,6 +462,8 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
         pstTCB->pstCallerNumQuery[ulIndex].ulIndexInDB = U32_BUTT;
     }
 
+    pstTCB->ulLastCalleeIndex = 0;
+
     lRet = sc_task_load_callee(pstTCB);
     if (lRet != DOS_SUCC)
     {
@@ -524,7 +526,7 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
         pstTCB->ulMaxConcurrency = pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE;
     }
 
-    pstTCB->ulLastCalleeIndex = 0;
+
 
     sc_logr_notice(SC_TASK, "Load data for task %d finished.", pstTCB->ulTaskID);
 
