@@ -1931,6 +1931,7 @@ SC_SYS_STATUS_EN sc_check_sys_stat()
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
 {
     U32   ulRet = 0;
+    S8    szBuff[64] = {0};
 
     if (ulAction >= SC_API_CMD_ACTION_BUTT)
     {
@@ -1959,13 +1960,6 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
                 return DOS_FAIL;
             }
 
-            ulRet = sc_ep_esl_execute_cmd("bgapi sofia  profile external rescan");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-
             break;
         }
 
@@ -1986,21 +1980,30 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
                 return DOS_FAIL;
             }
 
+            /* É¾³ý¸ÃÍø¹Ø */
+            dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", ulGatewayID);
+            ulRet = sc_ep_esl_execute_cmd(szBuff);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+
             break;
         }
 
         default:
             break;
-   }
+    }
 
-   ulRet = sc_ep_esl_execute_cmd("api reloadxml\r\n");
-   if (DOS_SUCC != ulRet)
-   {
+    ulRet = sc_ep_esl_execute_cmd("bgapi sofia profile external rescan");
+    if (ulRet != DOS_SUCC)
+    {
         DOS_ASSERT(0);
         return DOS_FAIL;
-   }
+    }
 
-   return DOS_SUCC;
+    return DOS_SUCC;
 }
 
 U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)

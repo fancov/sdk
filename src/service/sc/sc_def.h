@@ -693,7 +693,7 @@ typedef struct tagTaskMngtInfo{
     pthread_mutex_t      mutexTCBList;            /* 保护任务控制块使用的互斥量 */
     pthread_mutex_t      mutexCallList;           /* 保护呼叫控制块使用的互斥量 */
     pthread_mutex_t      mutexCallHash;           /* 保护呼叫控制块使用的互斥量 */
-	pthread_mutex_t      mutexHashBGJobHash;
+    pthread_mutex_t      mutexHashBGJobHash;
     pthread_cond_t       condCMDList;             /* 命令队列数据到达通知条件量 */
     U32                  blWaitingExitFlag;       /* 等待退出标示 */
 
@@ -817,6 +817,9 @@ U32 sc_load_black_list(U32 ulIndex);
 U32 sc_black_list_delete(U32 ulBlackListID);
 U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID);
 U32 sc_did_delete(U32 ulDidID);
+U32 sc_del_invalid_gateway();
+U32 sc_del_invalid_gateway_grp();
+U32 sc_del_invalid_route();
 U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID);
 U32 sc_ep_esl_execute_cmd(const S8* pszCmd);
 U32 sc_ep_get_userid_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);

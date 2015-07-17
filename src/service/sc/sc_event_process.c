@@ -81,7 +81,7 @@ SC_EP_TASK_CB            g_astEPTaskList[SC_EP_TASK_NUM];
 U32                      g_ulCPS                  = SC_MAX_CALL_PRE_SEC;
 U32                      g_ulMaxConcurrency4Task  = SC_MAX_CALL / 3;
 
-
+extern U32 py_exec_func(const char * pszModule,const char * pszFunc,const char * pszPyFormat,...);
 SC_EP_MSG_STAT_ST        g_astEPMsgStat[2];
 
 /**
@@ -567,6 +567,7 @@ VOID sc_ep_route_init(SC_ROUTE_NODE_ST *pstRoute)
         pstRoute->ucMinuteBegin = 0;
         pstRoute->ucHourEnd = 0;
         pstRoute->ucMinuteEnd = 0;
+        pstRoute->bExist = DOS_FALSE;
     }
 }
 
@@ -583,6 +584,7 @@ VOID sc_ep_gw_init(SC_GW_NODE_ST *pstGW)
     {
         dos_memzero(pstGW, sizeof(SC_GW_NODE_ST));
         pstGW->ulGWID = U32_BUTT;
+        pstGW->bExist = DOS_FALSE;
     }
 }
 
@@ -1722,8 +1724,10 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     pthread_mutex_lock(&g_mutexHashGW);
     ulHashIndex = sc_ep_gw_hash_func(ulID);
     pstHashNode = hash_find_node(g_pstHashGW, ulHashIndex, (VOID *)&ulID, sc_ep_gw_hash_find);
+    /* 此过程为了将数据库里的数据全部同步到内存，bExist为true标明这些数据来自于数据库 */
     if (DOS_ADDR_INVALID(pstHashNode))
     {
+        /* 如果不存在则重新申请节点并加入内存 */
         pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
         if (DOS_ADDR_INVALID(pstHashNode))
         {
@@ -1759,6 +1763,7 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
         HASH_Init_Node(pstHashNode);
         pstHashNode->pHandle = pstGWNode;
+        pstGWNode->bExist = DOS_TRUE;
 
         ulHashIndex = sc_ep_gw_hash_func(pstGWNode->ulGWID);
         hash_add_node(g_pstHashGW, pstHashNode, ulHashIndex, NULL);
@@ -1776,6 +1781,7 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
         dos_strncpy(pstGWNode->szGWDomain, pszDomain, sizeof(pstGWNode->szGWDomain));
         pstGWNode->szGWDomain[sizeof(pstGWNode->szGWDomain) - 1] = '\0';
+        pstGWNode->bExist = DOS_TRUE;
     }
     pthread_mutex_unlock(&g_mutexHashGW);
 
@@ -1861,6 +1867,7 @@ S32 sc_load_gateway_grp_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames
     }
 
     pstGWGrpNode->ulGWGrpID = ulID;
+    pstGWGrpNode->bExist = DOS_TRUE;
 
     HASH_Init_Node(pstHashNode);
     pstHashNode->pHandle = pstGWGrpNode;
@@ -1940,7 +1947,7 @@ S32 sc_load_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszName
         return DOS_FAIL;
     }
 
-    for (lIndex=0; lIndex<lCount; lIndex++)
+    for (lIndex=0; lIndex < lCount; lIndex++)
     {
         if (DOS_ADDR_INVALID(aszNames[lIndex])
             || DOS_ADDR_INVALID(aszValues[lIndex]))
@@ -1997,7 +2004,6 @@ S32 sc_load_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszName
     return DOS_FAIL;
 }
 
-
 /**
  * 函数: U32 sc_load_did_number()
  * 功能: 加载路由网关组关系数据
@@ -2009,7 +2015,7 @@ U32 sc_load_relationship()
     SC_GW_GRP_NODE_ST    *pstGWGrp      = NULL;
     HASH_NODE_S          *pstHashNode   = NULL;
     U32                  ulHashIndex = 0;
-    S8 szSQL[1024] = { 0, };
+    S8 szSQL[1024] = {0, };
 
     HASH_Scan_Table(g_pstHashGWGrp, ulHashIndex)
     {
@@ -2246,6 +2252,7 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
         DLL_Init_Node(pstListNode);
         pstListNode->pHandle = pstRoute;
+        pstRoute->bExist = DOS_TRUE;
         DLL_Add(&g_stRouteList, pstListNode);
     }
     else
@@ -2263,6 +2270,7 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
 
         dos_memcpy(pstRouteTmp, pstRoute, sizeof(SC_ROUTE_NODE_ST));
+        pstRouteTmp->bExist = DOS_TRUE;
 
         dos_dmem_free(pstRoute);
         pstRoute = NULL;
@@ -2299,6 +2307,146 @@ U32 sc_load_route(U32 ulIndex)
 
     return DOS_SUCC;
 }
+
+/**
+  * 函数名: U32 sc_del_invalid_gateway()
+  * 参数:
+  * 功能: 删除掉内存中残留但数据库没有的数据
+  * 返回: 成功返回DOS_SUCC，失败返回DOS_FAIL
+  **/
+U32 sc_del_invalid_gateway()
+{
+    HASH_NODE_S   *pstHashNode = NULL;
+    SC_GW_NODE_ST *pstGWNode   = NULL;
+    U32   ulHashIndex = U32_BUTT;
+    U32   ulGWID = U32_BUTT, ulRet = U32_BUTT;
+    S8    szBuff[64] = {0};
+
+    HASH_Scan_Table(g_pstHashGW,ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashGW, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstGWNode = (SC_GW_NODE_ST *)pstHashNode->pHandle;
+            /* 如果说内存里有该条记录，但数据库没有该数据，删之 */
+            if (DOS_FALSE == pstGWNode->bExist)
+            {
+                /* 记录网关id */
+                ulGWID = pstGWNode->ulGWID;
+                /* FreeSWITCH删除该配置数据 */
+                ulRet = py_exec_func("router", "del_route", "(k)", (U64)ulGWID);
+                if (DOS_SUCC != ulRet)
+                {
+                    DOS_ASSERT(0);
+                    return DOS_FAIL;
+                }
+                /* FreeSWITCH删除内存中该数据 */
+                dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", ulGWID);
+                ulRet = sc_ep_esl_execute_cmd(szBuff);
+                if (DOS_SUCC != ulRet)
+                {
+                    DOS_ASSERT(0);
+                }
+
+                /* 从节点中删除数据 */
+                hash_delete_node(g_pstHashGW, pstHashNode, ulHashIndex);
+                if (DOS_ADDR_VALID(pstGWNode))
+                {
+                    dos_dmem_free(pstGWNode);
+                    pstGWNode = NULL;
+                }
+                if (DOS_ADDR_VALID(pstHashNode))
+                {
+                    dos_dmem_free(pstHashNode);
+                    pstHashNode = NULL;
+                }
+            }
+        }
+    }
+    return DOS_SUCC;
+}
+
+/**
+  * 函数名: U32 sc_del_invalid_route()
+  * 参数:
+  * 功能: 删除掉内存中残留但数据库没有的数据
+  * 返回: 成功返回DOS_SUCC，失败返回DOS_FAIL
+  **/
+U32 sc_del_invalid_route()
+{
+    SC_ROUTE_NODE_ST  *pstRoute = NULL;
+    DLL_NODE_S        *pstNode  = NULL;
+
+    DLL_Scan(&g_stRouteList, pstNode, DLL_NODE_S *)
+    {
+        if (DOS_ADDR_INVALID(pstNode)
+            || DOS_ADDR_INVALID(pstNode->pHandle))
+        {
+            continue;
+        }
+
+        pstRoute = (SC_ROUTE_NODE_ST *)pstNode->pHandle;
+        /* 如果说该数据并非来自数据库，删之 */
+        if (DOS_FALSE == pstRoute->bExist)
+        {
+            dll_delete(&g_stRouteList, pstNode);
+            if (DOS_ADDR_VALID(pstRoute))
+            {
+                dos_dmem_free(pstRoute);
+                pstRoute = NULL;
+            }
+            if (DOS_ADDR_VALID(pstNode))
+            {
+                dos_dmem_free(pstNode);
+                pstNode = NULL;
+            }
+        }
+        else
+        {
+            /* 并将所有的节点该标志置为false */
+            pstRoute->bExist = DOS_FALSE;
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+U32 sc_del_invalid_gateway_grp()
+{
+    SC_GW_GRP_NODE_ST * pstGWGrp = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    U32  ulHashIndex = 0;
+
+    HASH_Scan_Table(g_pstHashGWGrp, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashGWGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstGWGrp = (SC_GW_GRP_NODE_ST *)pstHashNode->pHandle;
+            if (DOS_FALSE == pstGWGrp->bExist)
+            {
+                /* 删除之 */
+                sc_gateway_grp_delete(pstGWGrp->bExist);
+            }
+            else
+            {
+                pstGWGrp->bExist = DOS_FALSE;
+            }
+        }
+    }
+    return DOS_SUCC;
+}
+
+
 
 /**
  * 函数: U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)

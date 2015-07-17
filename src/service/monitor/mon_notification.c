@@ -10,72 +10,80 @@ extern "C"{
 #include "mon_notification.h"
 
 /**
- * 功能:发送短信通知客户
- * 参数集：
- *     参数1:S8 * pszMsg   需要发送的短信内容
- *     参数2:S8 * pszTelNo 电话号码
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ * 函数: U32 mon_send_shortmsg(S8 * pszMsg, S8 * pszTelNo)
+ * 参数:
+ *     S8*  pszMsg    短信内容
+ *     S8*  pszTelNo  接收短信的号码
+ * 功能: 发送短信
  */
 U32 mon_send_shortmsg(S8 * pszMsg, S8 * pszTelNo)
 {
-    /* 目前相关内容没有封装好，待后续实现 */
     return DOS_SUCC;
 }
 
 /**
- * 功能:拨打电话方式通知用户
- * 参数集：
- *     参数1:S8 * pszMsg    需要拨打电话的文本内容
- *     参数2:S8 * pszTelNo  电话号码
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ * 函数: U32 mon_dial_telephone(S8 * pszMsg, S8 * pszTelNo)
+ * 参数:
+ *     S8* pszMsg    电话内容
+ *     S8* pszTelNo  电话号码
+ * 返回:
+ *     成功返回DOS_SUCC,反之返回DOS_FAIL
  */
 U32 mon_dial_telephone(S8 * pszMsg, S8 * pszTelNo)
 {
-    /* 目前相关内容没有封装好，待后续实现 */
     return DOS_SUCC;
 }
 
 /**
- * 功能:发送语音方式通知用户
- * 参数集：
- *     参数1:S8 * pszMsg       需要发送语音的文本的内容
- *     参数2:S8 * pszWechatNo  微信账号
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ * 函数: U32 mon_send_audio(S8 * pszMsg, S8 * pszWechatNo)
+ * 参数:
+ *     S8 * pszMsg       语音内容
+ *     S8 * pszWechatNo  微信号码
+ * 返回:
+ *   成功返回DOS_SUCC,反之返回DOS_FAIL
  */
 U32 mon_send_audio(S8 * pszMsg, S8 * pszWechatNo)
 {
-    /* 目前相关内容没有封装好，待后续实现 */
     return DOS_SUCC;
 }
 
 /**
- * 功能:弹出Web告警方式通知用户
- * 参数集：
- *     参数1:S8 * pszMsg  需要发送的Web告警内容
- *     参数2:S8 * pszURL  Web的URL
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ * 函数:U32 mon_send_web(S8 * pszMsg, S8 * pszURL)
+ * 参数:
+ *     S8 * pszMsg  信息内容
+ *     S8 * pszURL  Web的URL
+ * 返回:
+ *   成功返回DOS_SUCC,反之返回DOS_FAIL
  */
 U32 mon_send_web(S8 * pszMsg, S8 * pszURL)
 {
-    /* 目前相关内容没有封装好，待后续实现 */
     return DOS_SUCC;
 }
 
 /**
- * 功能:电子邮件方式通知用户
- * 参数集：
- *     参数1:S8 * pszMsg          需要发送的电子邮件内容
- *     参数2:S8 * pszEmailAddress 电子邮件地址
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ * 函数:U32 mon_send_email(S8* pszMsg, S8* pszTitle,S8* pszEmailAddress)
+ * 参数:
+ *     S8 * pszMsg          邮件内容
+ *     S8 * pszTitle        邮件主题
+ *     S8 * pszEmailAddress 邮件目的地址
+ * 返回:
+ *   成功返回DOS_SUCC,反之返回DOS_FAIL
  */
-U32 mon_send_email(S8 * pszMsg, S8 * pszEmailAddress)
+U32 mon_send_email(S8* pszMsg, S8* pszTitle,S8* pszEmailAddress)
 {
-    /* 目前相关内容没有封装好，待后续实现 */
+    S8 szBuffCmd[1024] = {0};
+    FILE * fp = NULL;
+
+    dos_snprintf(szBuffCmd, sizeof(szBuffCmd), "echo %s | mail -s %s %s", pszMsg, pszTitle, pszEmailAddress);
+    fp = popen(szBuffCmd, "r");
+    if (DOS_ADDR_INVALID(fp))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pclose(fp);
+    fp = NULL;
     return DOS_SUCC;
 }
 

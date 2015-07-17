@@ -360,6 +360,12 @@ static U32 mon_handle_excp()
 
             /* 构造告警消息并表明已产生告警 */
             GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
+            /* 发邮件 */
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "System Memory Warning", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
 
             /* 表明该记录需要添加至数据库 */
             bAddToDB = DOS_TRUE;
@@ -379,6 +385,12 @@ static U32 mon_handle_excp()
 
             /* 构造恢复告警并标明告警已恢复 */
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            /* 发邮件 */
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "System memory Warning Recovery", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
 
             bAddToDB = DOS_TRUE;
         }
@@ -447,7 +459,13 @@ static U32 mon_handle_excp()
                 return DOS_FAIL;
             }
 
-            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
+            GENERATE_WARNING_MSG(pstMsg, ulIndex, ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "System disk Warning", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+
             bAddToDB = DOS_TRUE;
         }
     }
@@ -465,6 +483,11 @@ static U32 mon_handle_excp()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "System Disk Warning Recovery", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
             bAddToDB = DOS_TRUE;
         }
     }
@@ -519,6 +542,11 @@ static U32 mon_handle_excp()
             }
 
             GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "System CPU Warning", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
 
             bAddToDB = DOS_TRUE;
         }
@@ -535,6 +563,11 @@ static U32 mon_handle_excp()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "System CPU Warning Recovery", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
 
             bAddToDB = DOS_TRUE;
         }
@@ -593,6 +626,11 @@ static U32 mon_handle_excp()
             }
 
             GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network connection Warning", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
 
             bAddToDB = DOS_TRUE;
         }
@@ -608,6 +646,11 @@ static U32 mon_handle_excp()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network connection Warning Recovery", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
 
             bAddToDB = DOS_TRUE;
         }
@@ -661,16 +704,21 @@ static U32 mon_handle_excp()
     {
         if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
         {
-             pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-             if (DOS_ADDR_INVALID(pstMsg))
-             {
-                 DOS_ASSERT(0);
-                 return DOS_FAIL;
-             }
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
 
-             GENERATE_WARNING_MSG(pstMsg,ulIndex, ulRet);
+            GENERATE_WARNING_MSG(pstMsg, ulIndex, ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network Bandwidth Warning", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
 
-             bAddToDB = DOS_TRUE;
+            bAddToDB = DOS_TRUE;
         }
     }
     else
@@ -685,6 +733,12 @@ static U32 mon_handle_excp()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network Bandwidth Warning Recovery", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
 
             bAddToDB = DOS_TRUE;
         }
@@ -743,6 +797,11 @@ static U32 mon_handle_excp()
             }
 
             GENERATE_WARNING_MSG(pstMsg,ulIndex, ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "Process Memory Warning", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
 
             bAddToDB = DOS_TRUE;
         }
@@ -760,6 +819,11 @@ static U32 mon_handle_excp()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "Process Memory Warning Recovery", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
             bAddToDB = DOS_TRUE;
         }
     }
