@@ -1138,15 +1138,13 @@ S32 bs_show_task(U32 ulIndex, U32 ulObjectID)
     cli_out_string(ulIndex, "\r\n\r\n");
 
     return DOS_SUCC;
-
 }
 
 S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
 {
     S8 szBuff[1024] = {0};
     HASH_NODE_S *pstHashNode = NULL;
-    U32 ulHashIndex = 0, ulCol = 0;
-    U32 aulRule[BS_MAX_RULE_ITEM][BS_MAX_BILLING_RULE_IN_PACKAGE] = {{0}};
+    U32 ulHashIndex = 0;
 
     BS_BILLING_PACKAGE_ST  *pstPkg = NULL;
     U32 ulLoop = 0;
@@ -1166,12 +1164,6 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
             {
                 continue;
             }
-
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------");
-            cli_out_string(ulIndex, szBuff);
-
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n    Package ID     Service Type    ");
-            cli_out_string(ulIndex, szBuff);
 
             /* ´òÓ¡±íÍ· */
             dos_snprintf(szBuff, sizeof(szBuff), "\r\nList Package ID %d.", ulObjectID);
@@ -1205,26 +1197,6 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
                                 , bs_translate_billing_attr(pstPkg->astRule[ulLoop].ucDstAttrType2)
                                 , pstPkg->astRule[ulLoop].ulDstAttrValue2);
                 cli_out_string(ulIndex, szBuff);
-                aulRule[0][ulCol]  = pstPkg->astRule[ulCol].ulRuleID;
-                aulRule[1][ulCol]  = pstPkg->astRule[ulCol].ucSrcAttrType1;
-                aulRule[2][ulCol]  = pstPkg->astRule[ulCol].ucSrcAttrType2;
-                aulRule[3][ulCol]  = pstPkg->astRule[ulCol].ucDstAttrType1;
-                aulRule[4][ulCol]  = pstPkg->astRule[ulCol].ucDstAttrType2;
-                aulRule[5][ulCol]  = pstPkg->astRule[ulCol].ulSrcAttrValue1;
-                aulRule[6][ulCol]  = pstPkg->astRule[ulCol].ulSrcAttrValue2;
-                aulRule[7][ulCol]  = pstPkg->astRule[ulCol].ulDstAttrValue1;
-                aulRule[8][ulCol]  = pstPkg->astRule[ulCol].ulDstAttrValue2;
-                aulRule[9][ulCol]  = pstPkg->astRule[ulCol].ulFirstBillingUnit;
-                aulRule[10][ulCol] = pstPkg->astRule[ulCol].ulNextBillingUnit;
-                aulRule[11][ulCol] = pstPkg->astRule[ulCol].ucFirstBillingCnt;
-                aulRule[12][ulCol] = pstPkg->astRule[ulCol].ucNextBillingCnt;
-                aulRule[13][ulCol] = pstPkg->astRule[ulCol].ucServType;
-                aulRule[14][ulCol] = pstPkg->astRule[ulCol].ucBillingType;
-                aulRule[15][ulCol] = pstPkg->astRule[ulCol].ulBillingRate;
-                aulRule[16][ulCol] = pstPkg->astRule[ulCol].ulEffectTimestamp;
-                aulRule[17][ulCol] = pstPkg->astRule[ulCol].ulExpireTimestamp;
-                aulRule[18][ulCol] = pstPkg->astRule[ulCol].ucPriority;
-                aulRule[19][ulCol] = pstPkg->astRule[ulCol].ucValid;
             }
 
             dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Rule");
@@ -1239,7 +1211,6 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------------");
             cli_out_string(ulIndex, szBuff);
 
-            cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------");
             cli_out_string(ulIndex, "\r\nFirstBillingUnit FirstBillingCnt NextBillingUnit NextBillingCnt            ServType    BillingType BillingRate       Effect       Expire Priority Valid");
 
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n%16u%16u%16u%15u%20s%15s%12u%13u%13u%9u%6s\r\n\r\n\r\n"
@@ -1676,7 +1647,6 @@ help:
     cli_out_string(ulIndex, "\r\nUsage:");
     cli_out_string(ulIndex, "\r\n1. bs show <object:agent|cb|customer|task|trunk|billing|outband> <object id>");
     cli_out_string(ulIndex, "\r\n2. bs debug <module:all|off|account|audit|bill|cdr|db|fs|maintain|run|stat|web> <level:0|1|2|3|4|5|6|7>");
-    cli_out_string(ulIndex, "\r\n  Notes: command \'bs show billing 0\' stands for all billing packages.");
 
     cli_out_string(ulIndex, "\r\n\r\n");
 

@@ -60,10 +60,10 @@ S8 g_szMonDiskInfo[MAX_PARTITION_COUNT * MAX_BUFF_LENGTH]    = {0};
 S8 g_szMonNetworkInfo[MAX_NETCARD_CNT * MAX_BUFF_LENGTH] = {0};
 S8 g_szMonProcessInfo[MAX_PROC_CNT * MAX_BUFF_LENGTH] = {0};
 
-static DB_HANDLE_ST *         g_pstDBHandle = NULL;
+DB_HANDLE_ST *         g_pstDBHandle = NULL;
 static MON_MSG_QUEUE_S *      g_pstMsgQueue = NULL;//消息队列
 static MON_THRESHOLD_S *      g_pstCond = NULL;
-MON_WARNING_MSG_S*     g_pstWarningMsg = NULL;
+MON_WARNING_MSG_S*            g_pstWarningMsg = NULL;
 
 S8 * g_pszAnalyseList = NULL;
 
