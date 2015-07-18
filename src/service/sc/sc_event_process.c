@@ -661,7 +661,8 @@ static U32 sc_sip_did_hash_func(S8 *pszDIDNum)
     U32 ulHashIndex = 0;
 
     ulIndex = 0;
-    for(;;)
+    for
+(;;)
     {
         if ('\0' == pszDIDNum[ulIndex])
         {
@@ -4312,7 +4313,11 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
-
+    if (sc_dial_make_call2ip(pstSCBNew, SC_SERV_AGENT_CALLBACK) != DOS_SUCC)
+    {
+        goto proc_error;
+    }
+#if 0
     dos_snprintf(szAPPParam, sizeof(szAPPParam)
                     , "{scb_number=%u,other_leg_scb=%u,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s"
                     , pstSCBNew->usSCBNo
@@ -4342,7 +4347,7 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     {
         DOS_ASSERT(0);
     }
-
+#endif
     return DOS_SUCC;
 
 proc_error:
@@ -4423,7 +4428,7 @@ U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         goto proc_fail;
     }
 
-    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCallerNum) != DOS_SUCC)
+    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCalleeNum) != DOS_SUCC)
     {
         DOS_ASSERT(0);
 
@@ -5573,7 +5578,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         || SC_SERV_OUTBOUND_CALL == ulMainService)
     {
         S8 szCMDBuff[512] = { 0, };
-
+        /*
         pszOtherSCBNo = esl_event_get_header(pstEvent, "variable_other_leg_scb");
         if (DOS_ADDR_INVALID(pszOtherSCBNo)
             || dos_atoul(pszOtherSCBNo, &ulOtherSCBNo) < 0)
@@ -5585,8 +5590,8 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
             goto proc_finished;
         }
-
-        pstSCBOther = sc_scb_get(ulOtherSCBNo);
+        */
+        pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
         if (DOS_ADDR_INVALID(pstSCBOther))
         {
             DOS_ASSERT(0);
@@ -5736,7 +5741,8 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     SC_SCB_ST   *pstOtherSCB = NULL;
 
     if (DOS_ADDR_INVALID(pstHandle)
-        || DOS_ADDR_INVALID(pstEvent))
+
+|| DOS_ADDR_INVALID(pstEvent))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
@@ -6428,6 +6434,14 @@ U32 sc_ep_channel_hold(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST
     return DOS_SUCC;
 }
 
+U32 sc_ep_update_corpclients(U32 ulCustomID, S32 lKey)
+{
+    S8 szSQL[512] = { 0 };
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_corpclients SET type=%d WHERE customer_id=%d", lKey, ulCustomID);
+
+    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+}
 
 /**
  * 函数: U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
@@ -6442,8 +6456,8 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
 {
     S8 *pszDTMFDigit = NULL;
     U32 ulTaskMode   = U32_BUTT;
-
-
+    S32 lKey         = 0;
+    SC_SCB_ST *pstSCBOther = NULL;
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
     if (DOS_ADDR_INVALID(pstEvent)
@@ -6491,8 +6505,23 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
     else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
     {
         /* AGENT按键对客户评级 */
-
         /* todo写数据 */
+        if (1 == dos_sscanf(pszDTMFDigit, "%d", &lKey))
+        {
+            if (lKey >= 0 && lKey <= 9)
+            {
+                sc_ep_update_corpclients(pstSCB->ulCustomID, lKey);
+                sc_logr_debug(SC_ESL, "!!!!!!!!!!!!!!!!!!!!%d, %d\n\n", pstSCB->ulCustomID, lKey);
+            }
+        }
+
+        pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+        if (DOS_ADDR_VALID(pstSCBOther)
+            && !pstSCBOther->bWaitingOtherRelase)
+        {
+            sc_ep_esl_execute("bridge", NULL, pstSCBOther->szUUID);
+            sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
+        }
     }
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));

@@ -776,8 +776,8 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s%10s%14s%12s"
-                    , "ID", "Status", "Custom", "Group1", "Group2"
+                    , "\r\n%10s%10s%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s%10s%14s%12s"
+                    , "ID", "Status", "NeedCon", "Connected", "Custom", "Group1", "Group2"
                     , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "Bind", "Telephone", "Mobile");
     cli_out_string(ulIndex, szCmdBuff);
 
@@ -837,9 +837,11 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%10u%10u%10u%10u%10u%8s%7s%8s%12s%12s%12s%10s%14s%12s"
+                        , "\r\n%10u%10u%10s%10s%10u%10u%10u%8s%7s%8s%12s%12s%12s%10s%14s%12s"
                         , pstAgentQueueNode->pstAgentInfo->ulSiteID
                         , pstAgentQueueNode->pstAgentInfo->ucStatus
+                        , pstAgentQueueNode->pstAgentInfo->bNeedConnected ? "Y" : "N"
+                        , pstAgentQueueNode->pstAgentInfo->bConnected ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->ulCustomerID
                         , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
                         , pstAgentQueueNode->pstAgentInfo->aulGroupID[1]
