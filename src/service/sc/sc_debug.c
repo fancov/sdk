@@ -2413,6 +2413,7 @@ S32 sc_update_gateway(U32 ulID)
     if (DOS_SUCC != ulRet)
     {
         DOS_ASSERT(0);
+        return DOS_FAIL;
     }
 
     return DOS_SUCC;

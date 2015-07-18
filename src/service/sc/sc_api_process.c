@@ -388,66 +388,72 @@ exec_fail:
  */
 U32 sc_http_api_gateway_action(list_t *pstArgv)
 {
-   S8   *pszGateWayID = NULL, *pszAction = NULL;
-   U32  ulGatewayID, ulAction;
+    S8   *pszGateWayID = NULL, *pszAction = NULL;
+    U32  ulGatewayID = U32_BUTT, ulAction = U32_BUTT;
 
-   if (DOS_ADDR_INVALID(pstArgv))
-   {
-       DOS_ASSERT(0);
-       return SC_HTTP_ERRNO_INVALID_REQUEST;
-   }
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
 
-   SC_TRACE_IN(pstArgv, 0, 0, 0);
+    SC_TRACE_IN(pstArgv, 0, 0, 0);
 
-   /* 获取网关id */
-   pszGateWayID = sc_http_api_get_value(pstArgv, "gateway_id");
-   /* 获取动作 */
-   pszAction = sc_http_api_get_value(pstArgv, "action");
+    /* 获取网关id */
+    pszGateWayID = sc_http_api_get_value(pstArgv, "gateway_id");
+    /* 获取动作 */
+    pszAction = sc_http_api_get_value(pstArgv, "action");
 
-   if (DOS_ADDR_INVALID(pszGateWayID)
-       || DOS_ADDR_INVALID(pszAction))
-   {
-       DOS_ASSERT(0);
-       return SC_HTTP_ERRNO_INVALID_REQUEST;
-   }
+    if (DOS_ADDR_INVALID(pszGateWayID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        sc_debug(SC_HTTP_API, LOG_LEVEL_DEBUG, "Gateway data is synchronizing...");
+    }
+    else
+    {
+        if (dos_atoul(pszGateWayID, &ulGatewayID) < 0)
+        {
+            DOS_ASSERT(0);
+            goto invalid_params;
+        }
+    }
 
-   if (dos_atoul(pszGateWayID, &ulGatewayID) < 0)
-   {
-       DOS_ASSERT(0);
-       goto invalid_params;
-   }
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_GATEWAY_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_GATEWAY_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_GATEWAY_UPDATE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "sync", dos_strlen("sync")))
+    {
+        /* http://127.0.0.1/gateway?action=sync */
+        ulAction = SC_API_CMD_ACTION_GATEWAY_SYNC;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
 
-   if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
-   {
-      ulAction = SC_API_CMD_ACTION_GATEWAY_ADD;
-   }
-   else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
-   {
-      ulAction = SC_API_CMD_ACTION_GATEWAY_DELETE;
-   }
-   else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
-   {
-      ulAction = SC_API_CMD_ACTION_GATEWAY_UPDATE;
-   }
-   else
-   {
-       DOS_ASSERT(0);
-       goto invalid_params;
-   }
+    if (sc_http_gateway_update_proc(ulAction, ulGatewayID) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
 
-   if (sc_http_gateway_update_proc(ulAction, ulGatewayID) != DOS_SUCC)
-   {
-       DOS_ASSERT(0);
-       return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
-   }
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_SUCC;
 
-   SC_TRACE_OUT();
-   return SC_HTTP_ERRNO_SUCC;
+    invalid_params:
 
-invalid_params:
-
-   SC_TRACE_OUT();
-   return SC_HTTP_ERRNO_INVALID_PARAM;
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_INVALID_PARAM;
 }
 
 U32 sc_http_api_sip_action(list_t *pstArgv)
@@ -880,12 +886,11 @@ U32 sc_http_api_agent_action(list_t *pstArgv)
 U32 sc_http_api_route_action(list_t *pstArgv)
 {
     S8   *pszRouteID = NULL, *pszAction = NULL;
-    U32  ulAction, ulRouteID;
+    U32  ulAction = U32_BUTT, ulRouteID = U32_BUTT;
 
     if (DOS_ADDR_INVALID(pstArgv))
     {
         DOS_ASSERT(0);
-
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
@@ -897,14 +902,15 @@ U32 sc_http_api_route_action(list_t *pstArgv)
     if (DOS_ADDR_INVALID(pszRouteID)
         || DOS_ADDR_INVALID(pszAction))
     {
-        DOS_ASSERT(0);
-        goto invalid_params;
+        sc_debug(SC_HTTP_API, LOG_LEVEL_DEBUG, "Route data is synchronizing...");
     }
-
-    if (dos_atoul(pszRouteID, &ulRouteID) < 0)
+    else
     {
-       DOS_ASSERT(0);
-       goto invalid_params;
+        if (dos_atoul(pszRouteID, &ulRouteID) < 0)
+        {
+           DOS_ASSERT(0);
+           goto invalid_params;
+        }
     }
 
     if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
@@ -918,6 +924,10 @@ U32 sc_http_api_route_action(list_t *pstArgv)
     else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
     {
         ulAction = SC_API_CMD_ACTION_ROUTE_UPDATE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "sync", dos_strlen("sync")))
+    {
+        ulAction = SC_API_CMD_ACTION_ROUTE_SYNC;
     }
     else
     {

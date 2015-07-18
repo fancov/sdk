@@ -81,6 +81,7 @@ enum tagAPICMDActionList
     SC_API_CMD_ACTION_GATEWAY_ADD,                       /* 增加一个网关 */
     SC_API_CMD_ACTION_GATEWAY_DELETE,                    /* 删除一个网关 */
     SC_API_CMD_ACTION_GATEWAY_UPDATE,                    /* 网关更新     */
+    SC_API_CMD_ACTION_GATEWAY_SYNC,                      /* 网关数据强制同步 */
 
     SC_API_CMD_ACTION_SIP_ADD,                           /* 增加一个sip账户 */
     SC_API_CMD_ACTION_SIP_DELETE,                        /* 删除一个sip账户 */
@@ -89,6 +90,7 @@ enum tagAPICMDActionList
     SC_API_CMD_ACTION_ROUTE_ADD,                         /* 增加一个路由 */
     SC_API_CMD_ACTION_ROUTE_DELETE,                      /* 删除一个路由 */
     SC_API_CMD_ACTION_ROUTE_UPDATE,                      /* 路由更新 */
+    SC_API_CMD_ACTION_ROUTE_SYNC,                        /* 路由强制数据同步 */
 
     SC_API_CMD_ACTION_GW_GROUP_ADD,                      /* 增加一个网关组 */
     SC_API_CMD_ACTION_GW_GROUP_DELETE,                   /* 删除一个网关组 */
