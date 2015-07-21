@@ -1289,7 +1289,7 @@ static S32 sc_task_load_period_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, 
         return DOS_FAIL;
     }
 
-    for (ulIndex=0; ulIndex<SC_MAX_PERIOD_NUM; ulIndex++)
+    for (ulIndex=0; ulIndex < SC_MAX_PERIOD_NUM; ulIndex++)
     {
         if (!pstTCB->astPeriod[0].ucValid)
         {
@@ -1945,13 +1945,22 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
         case SC_API_CMD_ACTION_GATEWAY_UPDATE:
         {
 #if INCLUDE_SERVICE_PYTHON
-            ulRet = py_exec_func("router", "make_route", "(k)", (U64)ulGatewayID);
+            ulRet = py_exec_func("router", "make_route", "(i)", ulGatewayID);
             if (DOS_SUCC != ulRet)
             {
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
 #endif
+
+            /* É¾³ý¸ÃÍø¹Ø */
+            dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", ulGatewayID);
+            ulRet = sc_ep_esl_execute_cmd(szBuff);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
 
             ulRet = sc_load_gateway(ulGatewayID);
             if (ulRet != DOS_SUCC)
@@ -1966,7 +1975,7 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
         case SC_API_CMD_ACTION_GATEWAY_DELETE:
         {
 #if INCLUDE_SERVICE_PYTHON
-            ulRet = py_exec_func("router", "del_route", "(k)", (U64)ulGatewayID);
+            ulRet = py_exec_func("router", "del_route", "(i)", ulGatewayID);
             if (DOS_SUCC != ulRet)
             {
                 DOS_ASSERT(0);
