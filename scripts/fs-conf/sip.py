@@ -139,7 +139,11 @@ def add_sip(ulSipID):
     if lRet == -1:
         file_info.print_file_info('Add new SIP FAIL, lRet is %d.' % lRet)
         return -1
-    
+
+    if os.path.exists(seqMgntFile) is False:
+        file_info.print_file_info('%s does not exist.' % seqMgntFile)
+        generate_mngt_file()
+
     xmlDoc = minidom.parse(seqMgntFile)
     groupList = xmlDoc.getElementsByTagName('group')
     
@@ -242,3 +246,84 @@ def del_sip(ulSipID, seqUserID, ulCustomerID):
     file_info.print_file_info('Delete SIP(%s) SUCC.' % seqUserID)
     return 1
 
+def generate_mngt_file():
+    '''
+    @todo: 生成管理配置文件
+    '''
+
+    # 获取配置文件路径
+    seqFsPath = conf_path.get_config_path()
+
+    # 构造以'/'结尾的路径字符串
+    if seqFsPath[-1] != '/':
+        seqFsPath = seqFsPath + '/'
+
+    # 构造customer目录
+    seqMgntDir = seqFsPath + 'directory/'
+
+    # 构造配置管理文件
+    seqMgntFile = seqMgntDir + 'default.xml'
+
+    if os.path.exists(seqMgntFile):
+        file_info.print_file_info('file %s has already existed.' % seqMgntFile)
+        return 1
+
+    xmlDoc = Document()
+    domIncludeNode = xmlDoc.createElement('include')
+    domDomainNode = xmlDoc.createElement('domain')
+    domParamsNode = xmlDoc.createElement('params')
+    domParamNode = xmlDoc.createElement('param')
+    domDomainNode.setAttribute('name', '$${domain}')
+    domParamNode.setAttribute('name', 'dial-string')
+    domParamNode.setAttribute('value', '{^^:sip_invite_domain=${dialed_domain}:presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(*/${dialed_user}@${dialed_domain})}')
+    domIncludeNode.appendChild(domDomainNode)
+    domDomainNode.appendChild(domParamsNode)
+    domParamsNode.appendChild(domParamNode)
+    xmlDoc.appendChild(domIncludeNode)
+
+    domVariablesNode = xmlDoc.createElement('variables')
+    domDomainNode.appendChild(domVariablesNode)
+
+    domVariable1Node = xmlDoc.createElement('variable')
+    domVariable1Node.setAttribute('name', 'record_stereo')
+    domVariable1Node.setAttribute('value', 'true')
+    domVariablesNode.appendChild(domVariable1Node)
+
+    domVariable2Node = xmlDoc.createElement('variable')
+    domVariable2Node.setAttribute('name', 'default_gateway')
+    domVariable2Node.setAttribute('value', '$${default_provider}')
+    domVariablesNode.appendChild(domVariable2Node)
+
+    domVariable3Node = xmlDoc.createElement('variable')
+    domVariable3Node.setAttribute('name', 'default_areacode')
+    domVariable3Node.setAttribute('value', '$${default_areacode}')
+    domVariablesNode.appendChild(domVariable3Node)
+
+    domVariable4Node = xmlDoc.createElement('variable')
+    domVariable4Node.setAttribute('name', 'transfer_fallback_extension')
+    domVariable4Node.setAttribute('value', 'operator')
+    domVariablesNode.appendChild(domVariable4Node)
+
+    domGroupsNode = xmlDoc.createElement('groups')
+    domDomainNode.appendChild(domGroupsNode)
+
+    domGroup1Node = xmlDoc.createElement('group')
+    domGroup1Node.setAttribute('name', 'default')
+    domGroupsNode.appendChild(domGroup1Node)
+
+    domUsers1Node = xmlDoc.createElement('users')
+    domGroup1Node.appendChild(domUsers1Node)
+
+    domPreNode = xmlDoc.createElement('X-PRE-PROCESS')
+    domPreNode.setAttribute('cmd', 'include')
+    domPreNode.setAttribute('data', 'default/*.xml')
+    domUsers1Node.appendChild(domPreNode)
+
+    domGroup2Node = xmlDoc.createElement('group')
+    domGroup2Node.setAttribute('name', 'all')
+    domGroupsNode.appendChild(domGroup2Node)
+
+    domUsers2Node = xmlDoc.createElement('users')
+    domGroup2Node.appendChild(domUsers2Node)
+
+    dom_to_xml.dom_to_xml(seqMgntFile, xmlDoc)
