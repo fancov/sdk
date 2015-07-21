@@ -40,7 +40,11 @@ U32 http_api_stop();
 U32 http_lics_generate(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList);
 #endif
 
+#if INCLUDE_RES_MONITOR
+U32 http_api_alarm_clear(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList);
 #endif
+
+#endif /* end of  INCLUDE_HTTP_API*/
 
 #endif /* end of __HTTP_API_H__ */
 

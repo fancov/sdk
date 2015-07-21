@@ -113,6 +113,13 @@ VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...);
 VOID sc_call_trace(SC_SCB_ST *pstSCB, const S8 *szFormat, ...);
 VOID sc_task_trace(SC_TASK_CB_ST *pstTCB, const S8* szFormat, ...);
 
+/* 强制同步 */
+S32 cli_cc_update(U32 ulIndex, S32 argc, S8 **argv);
+S32 sc_update_route(U32 ulID);
+S32 sc_update_gateway_grp(U32 ulID);
+S32 sc_update_gateway(U32 ulID);
+
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

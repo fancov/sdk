@@ -8,6 +8,10 @@ extern "C"{
 
 #include <http_api.h>
 
+#if INCLUDE_RES_MONITOR
+extern  DB_HANDLE_ST * g_pstDBHandle;
+#endif
+
 #if DEBUG
 U32 http_api_test_handle(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList)
 {
@@ -23,7 +27,7 @@ U32 http_api_test_handle(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList)
     }
 
     pszVal = http_api_get_var(pstArgvList, "id");
-    http_api_write(pstHandle, "Fount an parameter. Name: id, value: %s!", pszVal);
+    http_api_write(pstHandle, "Found an parameter. Name: id, value: %s!", pszVal);
 
     pstListNode = pstArgvList->next;
     while (pstListNode != pstArgvList)
@@ -43,8 +47,51 @@ U32 http_api_test_handle(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList)
             break;
         }
     }
-
     http_api_write(pstHandle, "Just a test. Parameters : %d!", lCnt);
+
+    return DOS_SUCC;
+}
+#endif
+
+#if INCLUDE_RES_MONITOR
+/**
+ *  函数: U32 http_api_alarm_clear(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList);
+ *  参数:
+ *        HTTP_HANDLE_ST *pstHandle  HTTP请求句柄
+ *        list_t *pstArgvList        请求参数列表
+ *  功能: 处理告警消除的HTTP请求
+ *  返回: 成功返回DOS_SUCC，失败返回DOS_FAIL
+ **/
+U32 http_api_alarm_clear(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList)
+{
+    S8  *pszAlarmLogID = NULL;
+    S8   szQuery[256] = {0};
+    U32  ulAlarmLogID = U32_BUTT;
+
+    pszAlarmLogID = http_api_get_var(pstArgvList, "alarmlog_id");
+    if (DOS_ADDR_INVALID(pszAlarmLogID))
+    {
+        http_api_write(pstHandle, "Get alarmlog_id FAIL.alarmlog_id:%p. <br>", pszAlarmLogID);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (dos_atoul(pszAlarmLogID, &ulAlarmLogID) < 0)
+    {
+        http_api_write(pstHandle, "Convert Alarm ID string to Integer FAIL. AlarmLogID:%s <br>", pszAlarmLogID);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szQuery, sizeof(szQuery), "UPDATE tbl_alarmlog SET status=2 WHERE id=%u;", ulAlarmLogID);
+    if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) != DB_ERR_SUCC)
+    {
+        http_api_write(pstHandle, "Execute SQL FAIL. SQL:%s <br>", szQuery);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    http_api_write(pstHandle, "Clear Alarm SUCC.<br>");
 
     return DOS_SUCC;
 }
@@ -58,7 +105,9 @@ U32 http_api_handle_init()
 #if INCLUDE_LICENSE_SERVER
     http_api_handle_reg("/generate", http_lics_generate);
 #endif
-
+#if INCLUDE_RES_MONITOR
+    http_api_handle_reg("/alarmlog", http_api_alarm_clear);
+#endif
     return DOS_SUCC;
 }
 
