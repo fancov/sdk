@@ -424,6 +424,7 @@ BOOL pts_request_ptc_proxy(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pcIp
     U32 ulSendBufSize = 0;
     S8 *pStr1 = NULL;
     S8 *pStr2 = NULL;
+    S8 *pStr3 = NULL;
     S8 *pcCookie = NULL;
     S8 szDestIP[PT_IP_ADDR_SIZE] = {0};
     U8 aucDestID[PTC_ID_LEN+1] = {0};
@@ -455,13 +456,13 @@ BOOL pts_request_ptc_proxy(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pcIp
         ulFieldLen = dos_strlen(szHTTPField);
         pStr2 = dos_strstr(pStr1, "\r\n");
         lReqLen += (ulFieldLen - (pStr2 - pStr1));
-        dos_memcpy(pStr1, szHTTPField, ulFieldLen);
-        pStr1 += ulFieldLen;
+        pStr3 = pStr1 + ulFieldLen;
         while (*pStr2 != '\0')
         {
-            *pStr1++ = *pStr2++;
+            *pStr3++ = *pStr2++;
         }
-        *pStr1 = '\0';
+        *pStr3 = '\0';
+        dos_memcpy(pStr1, szHTTPField, ulFieldLen);
 #endif
         /* ÐÞ¸Ä Referer*/
         pStr1 = dos_strstr(pcRequest, "Referer:");
@@ -471,13 +472,13 @@ BOOL pts_request_ptc_proxy(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pcIp
             ulFieldLen = dos_strlen(szHTTPField);
             pStr2 = dos_strstr(pStr1, "\r\n");
             lReqLen += (ulFieldLen - (pStr2 - pStr1));
-            dos_memcpy(pStr1, szHTTPField, ulFieldLen);
-            pStr1 += ulFieldLen;
+            pStr3 = pStr1 + ulFieldLen;
             while (*pStr2 != '\0')
             {
-                *pStr1++ = *pStr2++;
+                *pStr3++ = *pStr2++;
             }
-            *pStr1 = '\0';
+            *pStr3 = '\0';
+            dos_memcpy(pStr1, szHTTPField, ulFieldLen);
         }
 
         pStr1 = pcRequest;
@@ -921,8 +922,6 @@ void *pts_send_msg2browser_pthread(void *arg)
     S8                          *pcSendMsg          = NULL;
     STREAM_CACHE_ADDR_CB_ST     *pstStreamCacheAddr = NULL;
     DLL_NODE_S                  *pstListNode        = NULL;
-    socklen_t                   optlen              = sizeof(S32);
-    S32                         tcpinfo             = 0;
     U32                         ulArraySub          = 0;
     S32                         lResult             = 0;
     PT_NEND_RECV_NODE_ST        stNeedRecvNode;
@@ -1024,27 +1023,6 @@ void *pts_send_msg2browser_pthread(void *arg)
 
                     goto end;
                 }
-                if (getsockopt(pstParam->lSocket, IPPROTO_TCP, TCP_INFO, &tcpinfo, &optlen) < 0)
-                {
-                    pstStreamNode->bIsUsing = DOS_FALSE;
-                    pt_logr_info("get info fail");
-                    DOS_ASSERT(0);
-                    pts_web_close_socket(pstParam->lSocket);
-                    pthread_mutex_unlock(&pstCCNode->pthreadMutex);
-                    pts_web_free_stream(&stNeedRecvNode, pstStreamNode, pstCCNode);
-
-                    goto end;
-                }
-
-                if (TCP_CLOSE == tcpinfo || TCP_CLOSE_WAIT == tcpinfo || TCP_CLOSING == tcpinfo)
-                {
-                    pstStreamNode->bIsUsing = DOS_FALSE;
-                    pts_web_close_socket(pstParam->lSocket);
-                    pthread_mutex_unlock(&pstCCNode->pthreadMutex);
-                    pts_web_free_stream(&stNeedRecvNode, pstStreamNode, pstCCNode);
-
-                    goto end;
-                }
 
                 ulBuffLen = pstDataTcp[ulArraySub].ulLen;
                 dos_memcpy(szBuff, pcSendMsg, ulBuffLen);
@@ -1059,7 +1037,7 @@ void *pts_send_msg2browser_pthread(void *arg)
                     pts_trace(pstCCNode->bIsTrace, LOG_LEVEL_DEBUG, "send data to browser, stream : %d, seq : %d, len : %d, result : %d", ulSteamID, ulSeq, ulBuffLen, lResult);
                     if (lResult != ulBuffLen)
                     {
-                        pt_logr_info("send data to browser, stream : %d, seq : %d, len : %d, result : %d", ulSteamID, ulSeq, ulBuffLen, lResult);
+                        pt_logr_info("send data to browser, fail, stream : %d, seq : %d, len : %d, result : %d", ulSteamID, ulSeq, ulBuffLen, lResult);
                     }
 
                     if (lResult <= 0)
@@ -1085,10 +1063,8 @@ void *pts_send_msg2browser_pthread(void *arg)
 
                         continue;
                     }
-                    else
-                    {
-                        break;
-                    }
+
+                    break;
                 }
 
                 pthread_mutex_lock(&pstCCNode->pthreadMutex);

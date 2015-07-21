@@ -34,6 +34,10 @@
 /* 定义网关的hash表大小 */
 #define SC_GW_HASH_SIZE         128
 
+/* 路由 中继组的最大数量 */
+#define SC_ROUT_GW_GRP_MAX_SIZE   5
+
+
 /*  DID号码绑定类型 */
 typedef enum tagSCDIDBindType{
     SC_DID_BIND_TYPE_SIP     = 1,               /* DID号码被绑定到SIP账户 */
@@ -114,7 +118,7 @@ typedef struct tagSCRouteNode
     S8         szCalleePrefix[SC_NUM_PREFIX_LEN]; /* 前缀长度 */
 
     U32        ulDestType;                        /* 目的类型 */
-    U32        ulDestID;                          /* 目的ID */
+    U32        aulDestID[SC_ROUT_GW_GRP_MAX_SIZE];/* 目的ID */
 }SC_ROUTE_NODE_ST;
 
 /* 事件队列 */

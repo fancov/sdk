@@ -2114,6 +2114,8 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     S32                  lIndex;
     S32                  lSecond;
     S32                  lRet;
+    S32                  lDestIDIndex;
+    S32                  lDestIDCount;
     BOOL                 blProcessOK = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(aszValues)
@@ -2215,9 +2217,39 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "dest_id", dos_strlen("dest_id")))
         {
-            if (DOS_ADDR_INVALID(aszValues[lIndex])
-                || '\0' == aszValues[lIndex][0]
-                || dos_atoul(aszValues[lIndex], &pstRoute->ulDestID) < 0)
+            if (SC_DEST_TYPE_GATEWAY == pstRoute->ulDestType)
+            {
+                if (DOS_ADDR_INVALID(aszValues[lIndex])
+                    || '\0' == aszValues[lIndex][0]
+                    || dos_atoul(aszValues[lIndex], &pstRoute->aulDestID[0]) < 0)
+                {
+                    DOS_ASSERT(0);
+
+                    blProcessOK = DOS_FALSE;
+                    break;
+                }
+                lDestIDCount++;
+                break;
+            }
+            else if (SC_DEST_TYPE_GW_GRP == pstRoute->ulDestType)
+            {
+                if (dos_sscanf(aszNames[lIndex], "%*[1~5]%d", lDestIDIndex) != 1)
+                {
+                    DOS_ASSERT(0);
+
+                    blProcessOK = DOS_FALSE;
+                    break;
+                }
+
+                if (DOS_ADDR_INVALID(aszValues[lIndex])
+                    || '\0' == aszValues[lIndex][lDestIDIndex-1]
+                    || dos_atoul(aszValues[lIndex], &pstRoute->aulDestID[lDestIDIndex-1]) < 0)
+                {
+                    continue;
+                }
+                lDestIDCount++;
+            }
+            else
             {
                 DOS_ASSERT(0);
 
@@ -2225,6 +2257,13 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
+    }
+
+    if (0 == lDestIDCount)
+    {
+        DOS_ASSERT(0);
+
+        blProcessOK = DOS_FALSE;
     }
 
     if (!blProcessOK)
@@ -2295,12 +2334,12 @@ U32 sc_load_route(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 1 ORDER BY tbl_route.seq ASC;");
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id1, dest_id2, dest_id3, dest_id4, dest_id5 FROM tbl_route WHERE tbl_route.status = 1 ORDER BY tbl_route.seq ASC;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_id1, dest_id2, dest_id3, dest_id4, dest_id5 FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
                     , ulIndex);
     }
 
@@ -3263,7 +3302,7 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
             , U32_BUTT == ulRouteGrpID ? "FAIL" : "SUCC"
             , ulRouteGrpID
             , pstRouetEntry->ulDestType
-            , pstRouetEntry->ulDestID);
+            , pstRouetEntry->aulDestID[0]);
 
     pthread_mutex_unlock(&g_mutexRouteList);
 
@@ -3291,6 +3330,7 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 u
     U32                  ulCurrentLen;
     U32                  ulGWCount;
     U32                  ulHashIndex;
+    S32                  lIndex;
     BOOL                 blIsFound = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pszNum)
@@ -3319,43 +3359,46 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 u
                     ulCurrentLen = dos_snprintf(szCalleeString + ulCurrentLen
                                     , ulLength - ulCurrentLen
                                     , "sofia/gateway/%d/%s|"
-                                    , pstRouetEntry->ulDestID
+                                    , pstRouetEntry->aulDestID[0]
                                     , pszNum);
 
                     blIsFound = DOS_TRUE;
                     break;
                 case SC_DEST_TYPE_GW_GRP:
                     /* 查找网关组 */
-                    ulHashIndex = sc_ep_gw_grp_hash_func(pstRouetEntry->ulDestID);
-                    pstHashNode = hash_find_node(g_pstHashGWGrp, ulHashIndex, (VOID *)&pstRouetEntry->ulDestID, sc_ep_gw_grp_hash_find);
-                    if (DOS_ADDR_INVALID(pstHashNode)
-                        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                    for (lIndex=0; lIndex<SC_ROUT_GW_GRP_MAX_SIZE; lIndex++)
                     {
-                        blIsFound = DOS_FALSE;
-                        break;
-                    }
-
-                    /* 查找网关 */
-                    /* 生成呼叫字符串 */
-                    pstGWGrp= pstHashNode->pHandle;
-                    ulGWCount = 0;
-                    pthread_mutex_lock(&pstGWGrp->mutexGWList);
-                    DLL_Scan(&pstGWGrp->stGWList,pstListNode1, DLL_NODE_S *)
-                    {
-                        if (DOS_ADDR_VALID(pstListNode1)
-                            && DOS_ADDR_VALID(pstListNode1->pHandle))
+                        ulHashIndex = sc_ep_gw_grp_hash_func(pstRouetEntry->aulDestID[lIndex]);
+                        pstHashNode = hash_find_node(g_pstHashGWGrp, ulHashIndex, (VOID *)&pstRouetEntry->aulDestID[lIndex], sc_ep_gw_grp_hash_find);
+                        if (DOS_ADDR_INVALID(pstHashNode)
+                            || DOS_ADDR_INVALID(pstHashNode->pHandle))
                         {
-                            pstGW = pstListNode1->pHandle;
-                            ulCurrentLen = dos_snprintf(szCalleeString + ulCurrentLen
-                                            , ulLength - ulCurrentLen
-                                            , "sofia/gateway/%d/%s|"
-                                            , pstGW->ulGWID
-                                            , pszNum);
-
-                            ulGWCount++;
+                            blIsFound = DOS_FALSE;
+                            goto finished;
                         }
+
+                        /* 查找网关 */
+                        /* 生成呼叫字符串 */
+                        pstGWGrp= pstHashNode->pHandle;
+                        ulGWCount = 0;
+                        pthread_mutex_lock(&pstGWGrp->mutexGWList);
+                        DLL_Scan(&pstGWGrp->stGWList,pstListNode1, DLL_NODE_S *)
+                        {
+                            if (DOS_ADDR_VALID(pstListNode1)
+                                && DOS_ADDR_VALID(pstListNode1->pHandle))
+                            {
+                                pstGW = pstListNode1->pHandle;
+                                ulCurrentLen = dos_snprintf(szCalleeString + ulCurrentLen
+                                                , ulLength - ulCurrentLen
+                                                , "sofia/gateway/%d/%s|"
+                                                , pstGW->ulGWID
+                                                , pszNum);
+
+                                ulGWCount++;
+                            }
+                        }
+                        pthread_mutex_unlock(&pstGWGrp->mutexGWList);
                     }
-                    pthread_mutex_unlock(&pstGWGrp->mutexGWList);
 
                     if (ulGWCount > 0)
                     {
@@ -3375,6 +3418,7 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 u
     }
     pthread_mutex_unlock(&g_mutexRouteList);
 
+finished:
     if (blIsFound)
     {
         /* 最后多了一个  | */
