@@ -1317,7 +1317,7 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
                     , pstRoute->szCalleePrefix[0] == '\0' ? "NULL" : pstRoute->szCalleePrefix
                     , pstRoute->szCallerPrefix[0] == '\0' ? "NULL" : pstRoute->szCallerPrefix
                     , sc_translate_route_dest_type(pstRoute->ulDestType)
-                    , pstRoute->ulDestID);
+                    , pstRoute->aulDestID[0]);
         cli_out_string(ulIndex, szCmdBuff);
         ++ulRouteCnt;
     }
