@@ -8,6 +8,7 @@ extern "C"{
 #include <dos/dos_types.h>
 
 #define PTC_RECV_FROM_WEB_MAX_COUNT 10
+#define PTC_HTTP_RESPONSE_SIZE      4 * 1024
 
 typedef struct tagRecvFromWebMsgHandle
 {

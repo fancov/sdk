@@ -273,6 +273,8 @@ typedef struct tagLoseBagMsg
 {
     PT_MSG_TAG          stMsg;
     PT_STREAM_CB_ST     *pstStreamNode;
+    S32                 lMinSeq;
+    S32                 lCheckSeq;
     U32                 ulCount;
     pthread_mutex_t     *pPthreadMutex;                     /* Ëø */
 
@@ -404,8 +406,10 @@ S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *ps
 
 S32 pt_need_recv_node_list_insert(list_t *pstHead, PT_MSG_TAG *pstMsgDes);
 list_t *pt_need_recv_node_list_search(list_t *pstHead, U32 ulStreamID);
-S32 pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsgDes, PT_CMD_EN enCmdValue, BOOL bIsResend);
+S32 pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsgDes, PT_CMD_EN enCmdValue, BOOL bIsResend, BOOL bIsAddHead);
 list_t *pt_need_send_node_list_search(list_t *pstHead, U32 ulStreamID);
+
+S32 pt_resend_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsgDes, PT_CMD_EN enCmdValue, BOOL bIsResend, BOOL bIsAddHead);
 
 #if INCLUDE_PTS
 STREAM_CACHE_ADDR_CB_ST *pt_stream_addr_create(U32 ulStreamID);

@@ -22,6 +22,7 @@ extern "C"{
 #define PTS_PING_TIMEOUT            2000
 #define PTS_SEND_CONFIRM_MSG_COUNT  3               /* 确认消息的发送次数 */
 #define PTS_RECVFROM_PTC_MSG_TIMEOUT 10 * 60        /* s */
+#define PTS_SEND_LOSE_DATA_TIMER     100     /* 发送丢包请求的间隔 */
 
 typedef struct tagRecvMsgStreamList
 {

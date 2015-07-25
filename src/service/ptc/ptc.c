@@ -655,7 +655,7 @@ S32 ptc_main()
 {
     S32 lRet = 0;
     U8 aucID[PTC_ID_LEN+1] = {0};
-    pthread_t tid1, tid2, tid3, tid4, tid5, tid6, tid7, tid8;
+    pthread_t tid1, tid2, tid3, tid4, tid5, tid6, tid7, tid8, tid9;
 
     /* 初始化socket和streamID对应关系数组 */
     ptc_init_all_ptc_client_cb();
@@ -778,6 +778,17 @@ S32 ptc_main()
     else
     {
         logr_debug("create pthread succ : ptc_terminal_dispose!");
+    }
+
+    lRet = pthread_create(&tid9, NULL, ptc_resend_msg2pts, NULL);
+    if (lRet < 0)
+    {
+        logr_info("create pthread error : ptc_resend_msg2pts!");
+        return DOS_FAIL;
+    }
+    else
+    {
+        logr_debug("create pthread succ : ptc_resend_msg2pts!");
     }
 
     sleep(2);

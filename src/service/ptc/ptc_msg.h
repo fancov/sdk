@@ -22,8 +22,9 @@ extern "C" {
 #define PTC_GET_LOCAL_IP_SERVER_IP      "180.97.33.107"
 #define PTC_GET_LOCAL_IP_SERVER_PORT    80
 #define PTC_CONNECT_TIME_OUT            10 * 60
-#define PTC_DISPOSE_INTERVAL_TIME       5 * 60
+#define PTC_DISPOSE_INTERVAL_TIME       5 * 60 * 1000
 #define PTC_LOCK_MIN_COUNT              3
+#define PTC_SEND2PTS_SLEEP_DEFAULT      10 * 1000                /* Us */
 
 typedef struct tagServMsg
 {
@@ -70,6 +71,9 @@ typedef struct tagPtcClientCB
     pthread_mutex_t         pMutexPthread;
     time_t                  lLastUseTime;
     PT_STREAM_CB_ST         *pstSendStreamNode;
+    BOOL                    bIsDisposeHttpHead;
+    S8                      *pszBuff;
+    U32                     ulBuffLen;
 
 }PTC_CLIENT_CB_ST;
 
@@ -88,6 +92,7 @@ extern U32 g_ulPtcNendSendNodeCount;
 
 VOID *ptc_send_msg2pts(VOID *arg);
 VOID *ptc_recv_msg_from_pts(VOID *arg);
+void *ptc_resend_msg2pts(void *arg);
 VOID *ptc_send_msg2proxy(VOID *arg);
 VOID  ptc_send_heartbeat2pts();
 VOID  ptc_send_login2pts();

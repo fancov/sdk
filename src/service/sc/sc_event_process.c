@@ -2114,7 +2114,6 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     S32                  lIndex;
     S32                  lSecond;
     S32                  lRet;
-    S32                  lDestIDIndex;
     S32                  lDestIDCount;
     BOOL                 blProcessOK = DOS_FALSE;
 
@@ -2228,12 +2227,12 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                     blProcessOK = DOS_FALSE;
                     break;
                 }
-                lDestIDCount++;
                 break;
             }
             else if (SC_DEST_TYPE_GW_GRP == pstRoute->ulDestType)
             {
-                if (dos_sscanf(aszNames[lIndex], "%*[1~5]%d", lDestIDIndex) != 1)
+                if (DOS_ADDR_INVALID(aszValues[lIndex])
+                    || '\0' == aszValues[lIndex])
                 {
                     DOS_ASSERT(0);
 
@@ -2241,13 +2240,20 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                     break;
                 }
 
-                if (DOS_ADDR_INVALID(aszValues[lIndex])
-                    || '\0' == aszValues[lIndex][lDestIDIndex-1]
-                    || dos_atoul(aszValues[lIndex], &pstRoute->aulDestID[lDestIDIndex-1]) < 0)
+                pstRoute->aulDestID[0] = U32_BUTT;
+                pstRoute->aulDestID[1] = U32_BUTT;
+                pstRoute->aulDestID[2] = U32_BUTT;
+                pstRoute->aulDestID[3] = U32_BUTT;
+                pstRoute->aulDestID[4] = U32_BUTT;
+
+                lDestIDCount = dos_sscanf(aszValues[lIndex], "%d,%d,%d,%d,%d", &pstRoute->aulDestID[0], &pstRoute->aulDestID[1], &pstRoute->aulDestID[2], &pstRoute->aulDestID[3], &pstRoute->aulDestID[4]);
+                if (lDestIDCount < 1)
                 {
-                    continue;
+                    DOS_ASSERT(0);
+
+                    blProcessOK = DOS_FALSE;
+                    break;
                 }
-                lDestIDCount++;
             }
             else
             {
@@ -2257,13 +2263,6 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-    }
-
-    if (0 == lDestIDCount)
-    {
-        DOS_ASSERT(0);
-
-        blProcessOK = DOS_FALSE;
     }
 
     if (!blProcessOK)
@@ -2334,12 +2333,12 @@ U32 sc_load_route(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id1, dest_id2, dest_id3, dest_id4, dest_id5 FROM tbl_route WHERE tbl_route.status = 1 ORDER BY tbl_route.seq ASC;");
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 1 ORDER BY tbl_route.seq ASC;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_id1, dest_id2, dest_id3, dest_id4, dest_id5 FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_id FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
                     , ulIndex);
     }
 
@@ -3368,6 +3367,11 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 u
                     /* ²éÕÒÍø¹Ø×é */
                     for (lIndex=0; lIndex<SC_ROUT_GW_GRP_MAX_SIZE; lIndex++)
                     {
+                        if (U32_BUTT == pstRouetEntry->aulDestID[lIndex])
+                        {
+                            break;
+                        }
+
                         ulHashIndex = sc_ep_gw_grp_hash_func(pstRouetEntry->aulDestID[lIndex]);
                         pstHashNode = hash_find_node(g_pstHashGWGrp, ulHashIndex, (VOID *)&pstRouetEntry->aulDestID[lIndex], sc_ep_gw_grp_hash_find);
                         if (DOS_ADDR_INVALID(pstHashNode)

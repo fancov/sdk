@@ -700,9 +700,9 @@ VOID pts_data_lose(PT_MSG_TAG *pstMsgDes, S32 lLoseSeq)
     PT_CMD_EN enCmdValue = PT_CMD_RESEND;
     pstMsgDes->lSeq = lLoseSeq;
 
-    pt_logr_info("send lose data : stream = %d, seq = %d", pstMsgDes->ulStreamID, lLoseSeq);
+    pt_logr_info("send lose data : stream = %d, seq = %d, %u", pstMsgDes->ulStreamID, lLoseSeq, time(NULL));
     pthread_mutex_lock(&g_mutexPtsSendPthread);
-    pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend);
+    pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend, DOS_FALSE);
     pthread_cond_signal(&g_condPtsSend);
     pthread_mutex_unlock(&g_mutexPtsSendPthread);
 }
@@ -717,11 +717,6 @@ VOID pts_data_lose(PT_MSG_TAG *pstMsgDes, S32 lLoseSeq)
  */
 VOID pts_send_lost_data_req(U64 ulLoseMsg)
 {
-    if (0 == ulLoseMsg)
-    {
-        return;
-    }
-
     PT_LOSE_BAG_MSG_ST  *pstLoseMsg     = (PT_LOSE_BAG_MSG_ST *)ulLoseMsg;
     PT_STREAM_CB_ST     *pstStreamNode  = pstLoseMsg->pstStreamNode;
     PT_CC_CB_ST         *pstPtcSendNode = NULL;
@@ -731,7 +726,13 @@ VOID pts_send_lost_data_req(U64 ulLoseMsg)
     U32                 ulArraySub      = 0;
     S32                 lCurrSeq        = 0;
     S32                 lMaxSeq         = 0;
+    S32                 lCheckSeq       = 0;
     PT_MSG_TAG          stUdpMsg;
+
+    if (0 == ulLoseMsg)
+    {
+        return;
+    }
 
     if (DOS_ADDR_INVALID(pstStreamNode) || DOS_ADDR_INVALID(pPthreadMutex))
     {
@@ -740,7 +741,7 @@ VOID pts_send_lost_data_req(U64 ulLoseMsg)
 
     pthread_mutex_lock(pPthreadMutex);
 
-    pt_logr_info("resend stream : %d, count : %d", pstLoseMsg->stMsg.ulStreamID, pstStreamNode->ulCountResend);
+    printf("resend stream : %d, count : %d\n", pstLoseMsg->stMsg.ulStreamID, pstStreamNode->ulCountResend);
     if (pstStreamNode->ulCountResend >= 3)
     {
         /* 3秒后，未收到包。关闭定时器、sockfd */
@@ -764,12 +765,17 @@ VOID pts_send_lost_data_req(U64 ulLoseMsg)
     }
     else
     {
-        pstStreamNode->ulCountResend++;
         /* 遍历，找出丢失的包，发送重传信息 */
-        lCurrSeq = pstStreamNode->lCurrSeq;
         lMaxSeq = pstStreamNode->lMaxSeq;
+        lCurrSeq = pstStreamNode->lCurrSeq;
 
-        for (i=lCurrSeq+1; i<lMaxSeq; i++)
+        if (pstLoseMsg->lCheckSeq >= lMaxSeq)
+        {
+            pstLoseMsg->lCheckSeq = lCurrSeq + 1;
+        }
+        lCheckSeq = pstLoseMsg->lCheckSeq;
+
+        for (i=lCheckSeq; i<lMaxSeq; i++)
         {
             ulArraySub = i & (PT_DATA_RECV_CACHE_SIZE - 1);
             if (0 == i)
@@ -783,15 +789,30 @@ VOID pts_send_lost_data_req(U64 ulLoseMsg)
             }
             else if (pstStreamNode->unDataQueHead.pstDataTcp[ulArraySub].lSeq != i)
             {
+                if (lCurrSeq == pstLoseMsg->lCheckSeq)
+                {
+                    if (i == pstLoseMsg->lMinSeq)
+                    {
+                        pstStreamNode->ulCountResend++;
+                    }
+                    pstLoseMsg->lMinSeq = i;
+                }
                 ulCount++;
                 /* 发送丢包重发请求 */
                 pts_data_lose(&pstLoseMsg->stMsg, i);
             }
+
+            if (ulCount >= 6)
+            {
+                break;
+            }
         }
+
+        pstLoseMsg->lCheckSeq = i;
     }
     pt_logr_debug("send lose data count : %d", ulCount);
 
-    if (0 == ulCount)
+    if (0 == ulCount && pstLoseMsg->lCheckSeq != lMaxSeq && lCheckSeq == lCurrSeq + 1)
     {
         if (DOS_ADDR_VALID(pstStreamNode->hTmrHandle))
         {
@@ -828,7 +849,7 @@ VOID pts_send_confirm_msg(PT_MSG_TAG *pstMsgDes, U32 lConfirmSeq)
     pthread_mutex_lock(&g_mutexPtsSendPthread);
     for (i=0; i<PTS_SEND_CONFIRM_MSG_COUNT; i++)
     {
-        pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend);
+        pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend, DOS_FALSE);
         usleep(10);
     }
     pthread_cond_signal(&g_condPtsSend);
@@ -854,7 +875,7 @@ VOID pts_send_login_verify(PT_MSG_TAG *pstMsgDes)
     BOOL bIsResend = DOS_FALSE;
     PT_CMD_EN enCmdValue = PT_CMD_NORMAL;
     pthread_mutex_lock(&g_mutexPtsSendPthread);
-    pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, &stMsgDes, enCmdValue, bIsResend);
+    pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, &stMsgDes, enCmdValue, bIsResend, DOS_FALSE);
     pthread_cond_signal(&g_condPtsSend);
     pthread_mutex_unlock(&g_mutexPtsSendPthread);
 
@@ -1427,6 +1448,7 @@ S32 pts_save_into_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen)
             pstLoseMsg->stMsg = *pstMsgDes;
             pstLoseMsg->pstStreamNode = pstStreamNode;
             pstLoseMsg->pPthreadMutex = &pstPtcNode->pthreadMutex;
+            pstLoseMsg->lCheckSeq = pstStreamNode->lCurrSeq + 1;
             pstStreamNode->pstLostParam = pstLoseMsg;
         }
         pstStreamNode->ulCountResend = 0;
@@ -1434,10 +1456,10 @@ S32 pts_save_into_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen)
 
         pt_logr_info("create lost data timer, %d streamID : %d", __LINE__, pstMsgDes->ulStreamID);
         pts_send_lost_data_req((U64)pstStreamNode->pstLostParam);
-        lResult = dos_tmr_start(&pstStreamNode->hTmrHandle, PT_SEND_LOSE_DATA_TIMER, pts_send_lost_data_req, (U64)pstStreamNode->pstLostParam, TIMER_NORMAL_LOOP);
+        lResult = dos_tmr_start(&pstStreamNode->hTmrHandle, PTS_SEND_LOSE_DATA_TIMER, pts_send_lost_data_req, (U64)pstStreamNode->pstLostParam, TIMER_NORMAL_LOOP);
         if (PT_SAVE_DATA_FAIL == lResult)
         {
-            pt_logr_debug("pts_save_into_recv_cache : start timer fail");
+            pt_logr_info("pts_save_into_recv_cache : start timer fail");
 
             return PT_SAVE_DATA_FAIL;
         }
@@ -2532,7 +2554,7 @@ S32 pts_save_msg_into_cache(U8 *pcIpccId, PT_DATA_TYPE_EN enDataType, U32 ulStre
             stMsgDes.ulStreamID = ulStreamID;
             stMsgDes.enDataType = enDataType;
             pthread_mutex_lock(&g_mutexPtsSendPthread);
-            pt_need_send_node_list_insert(&g_stPtsNendSendNode, pcIpccId, &stMsgDes, enCmdValue, bIsResend);
+            pt_need_send_node_list_insert(&g_stPtsNendSendNode, pcIpccId, &stMsgDes, enCmdValue, bIsResend, DOS_FALSE);
             pthread_cond_signal(&g_condPtsSend);
             pthread_mutex_unlock(&g_mutexPtsSendPthread);
         }
@@ -2555,7 +2577,7 @@ S32 pts_save_msg_into_cache(U8 *pcIpccId, PT_DATA_TYPE_EN enDataType, U32 ulStre
             pthread_mutex_lock(&g_mutexPtsSendPthread);
             if (NULL == pt_need_send_node_list_search(&g_stPtsNendSendNode, ulStreamID))
             {
-                pt_need_send_node_list_insert(&g_stPtsNendSendNode, pcIpccId, &stMsgDes, enCmdValue, bIsResend);
+                pt_need_send_node_list_insert(&g_stPtsNendSendNode, pcIpccId, &stMsgDes, enCmdValue, bIsResend, DOS_FALSE);
             }
             pthread_cond_signal(&g_condPtsSend);
             pthread_mutex_unlock(&g_mutexPtsSendPthread);
@@ -3116,7 +3138,7 @@ VOID *pts_handle_recvfrom_ptc_msg(VOID *arg)
                         PT_CMD_EN enCmdValue = PT_CMD_NORMAL;
                         pt_logr_debug("recv resend msg, stream : %d, seq : %d", pstMsgDes->ulStreamID, pstMsgDes->lSeq);
                         pthread_mutex_lock(&g_mutexPtsSendPthread);
-                        pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend);
+                        pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend, DOS_TRUE);
                         pthread_cond_signal(&g_condPtsSend);
                         pthread_mutex_unlock(&g_mutexPtsSendPthread);
 
@@ -3170,7 +3192,7 @@ VOID *pts_handle_recvfrom_ptc_msg(VOID *arg)
                         else
                         {
                             /* 失败或者是已经存在的包 */
-                            pt_logr_info("save into recv cache fail");
+                            pt_logr_debug("save into recv cache fail");
                         }
                     }
                 }

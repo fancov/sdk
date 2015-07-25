@@ -88,6 +88,20 @@ S32 ptc_recvfrom_web_buff_list_insert(PTC_CLIENT_CB_ST *pstPtcClientCB, S8 *szBU
     return DOS_SUCC;
 }
 
+BOOL ptc_is_http_end(S8 *pcRequest)
+{
+    if (NULL == pcRequest)
+    {
+        return DOS_FALSE;
+    }
+
+    if (NULL != dos_strstr(pcRequest,"\r\n\r\n"))
+    {
+        return DOS_TRUE;
+    }
+    return DOS_FALSE;
+}
+
 /**
  * 函数：void *ptc_recv_msg_from_web(void *arg)
  * 功能：
@@ -109,6 +123,11 @@ void *ptc_recv_msg_from_web(void *arg)
     S8  *pcRecvBuf  = NULL;
     S32 lSocket     = 0;
     U32 ulMaxLoopCount = 10;
+    S8 *pStr1       = NULL;
+    S8 *pStr2       = NULL;
+    S32 ulOffsetLen = 0;
+    U32 ulSurplusTotalLen   = 0;
+    U32 ulSaveTotalLen      = 0;
 
     /* 创建管道 */
     if(access(g_szFifoName, F_OK) == -1)
@@ -191,13 +210,34 @@ void *ptc_recv_msg_from_web(void *arg)
             ulMaxLoopCount = PTC_RECV_FROM_WEB_MAX_COUNT;
             while (ulMaxLoopCount--)
             {
-                pcRecvBuf = (S8 *)dos_dmem_alloc(PT_RECV_DATA_SIZE);
-                if (DOS_ADDR_INVALID(pcRecvBuf))
+                if (DOS_ADDR_INVALID(g_astPtcConnects[i].pszBuff))
                 {
-                    /* 关闭该strream */
-                    ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
+                    g_astPtcConnects[i].pszBuff = (S8 *)dos_dmem_alloc(PTC_HTTP_RESPONSE_SIZE);
+                    if (DOS_ADDR_INVALID(g_astPtcConnects[i].pszBuff))
+                    {
+                         /* 关闭该strream */
+                        ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
 
-                    break;
+                        break;
+                    }
+                    g_astPtcConnects[i].ulBuffLen = 0;
+                    g_astPtcConnects[i].bIsDisposeHttpHead = DOS_TRUE;
+                }
+
+                if (g_astPtcConnects[i].bIsDisposeHttpHead)
+                {
+                    pcRecvBuf = g_astPtcConnects[i].pszBuff + g_astPtcConnects[i].ulBuffLen;
+                }
+                else
+                {
+                    pcRecvBuf = (S8 *)dos_dmem_alloc(PT_RECV_DATA_SIZE);
+                    if (DOS_ADDR_INVALID(pcRecvBuf))
+                    {
+                        /* 关闭该strream */
+                        ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
+
+                        break;
+                    }
                 }
 
                 lRecvLen = recv(lSocket, pcRecvBuf, PT_RECV_DATA_SIZE, 0);
@@ -215,21 +255,108 @@ void *ptc_recv_msg_from_web(void *arg)
                     /* sockfd结束，通知pts */
                     FD_CLR(lSocket, &g_stWebFdSet);
                 }
-                pt_logr_debug("ptc recv from web server len : %d, socket : %d", lRecvLen, lSocket);
-                pthread_mutex_lock(&g_mutexPtcRecvMsgHandle);
-                lResult = ptc_recvfrom_web_buff_list_insert(&g_astPtcConnects[i], pcRecvBuf, lRecvLen);
-                if (lResult != DOS_SUCC)
-                {
-                    dos_dmem_free(pcRecvBuf);
-                    pcRecvBuf = NULL;
-                    pthread_mutex_unlock(&g_mutexPtcRecvMsgHandle);
 
-                    ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
+                if (g_astPtcConnects[i].bIsDisposeHttpHead)
+                {
+                    g_astPtcConnects[i].ulBuffLen += lRecvLen;
+
+                    if (g_astPtcConnects[i].ulBuffLen < PTC_HTTP_RESPONSE_SIZE)
+                    {
+                        g_astPtcConnects[i].pszBuff[g_astPtcConnects[i].ulBuffLen] = '\0';
+                    }
+
+                    /* 判断有没有到尾部 */
+                    if (!ptc_is_http_end(g_astPtcConnects[i].pszBuff))
+                    {
+                        if (g_astPtcConnects[i].ulBuffLen + PT_RECV_DATA_SIZE < PTC_HTTP_RESPONSE_SIZE)
+                        {
+                            continue;
+                        }
+                    }
+                    /* 4k的数据接收完了或者http响应头已接受完，判断有没有 Refresh 字段 */
+                    pStr1 = dos_strstr(g_astPtcConnects[i].pszBuff, "Refresh:");
+                    if (DOS_ADDR_VALID(pStr1))
+                    {
+                        /* 判断是否是绝对地址 */
+                        pStr2 = dos_strstr(pStr1, "http://");
+                        if (DOS_ADDR_VALID(pStr2))
+                        {
+                            /* 修改 Refresh 字段*/
+                            pStr1 = dos_strchr(pStr2+dos_strlen("http://"), '/');
+                            if (DOS_ADDR_VALID(pStr1))
+                            {
+                                //pStr1 += 1;
+                                ulOffsetLen = g_astPtcConnects[i].ulBuffLen - (pStr1 - g_astPtcConnects[i].pszBuff);
+                                g_astPtcConnects[i].ulBuffLen -= (pStr1 - pStr2);
+                                while (ulOffsetLen--)
+                                {
+                                    *pStr2 = *pStr1;
+                                    pStr2++;
+                                    pStr1++;
+                                }
+                            }
+                        }
+                    }
+
+                    /* 保存到list中 */
+                    ulSurplusTotalLen = g_astPtcConnects[i].ulBuffLen;
+                    ulSaveTotalLen = 0;
+
+                    pthread_mutex_lock(&g_mutexPtcRecvMsgHandle);
+                    while (1)
+                    {
+                        pcRecvBuf = (S8 *)dos_dmem_alloc(PT_RECV_DATA_SIZE);
+                        if (DOS_ADDR_INVALID(pcRecvBuf))
+                        {
+                            /* 关闭该strream */
+                            ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
+                            lRecvLen = 0;
+                            break;
+                        }
+
+                        lRecvLen = ulSurplusTotalLen > PT_RECV_DATA_SIZE ? PT_RECV_DATA_SIZE : ulSurplusTotalLen;
+                        dos_memcpy(pcRecvBuf, g_astPtcConnects[i].pszBuff + ulSaveTotalLen, lRecvLen);
+                        ulSaveTotalLen += lRecvLen;
+                        ulSurplusTotalLen -= lRecvLen;
+
+                        lResult = ptc_recvfrom_web_buff_list_insert(&g_astPtcConnects[i], pcRecvBuf, lRecvLen);
+                        if (lResult != DOS_SUCC)
+                        {
+                            dos_dmem_free(pcRecvBuf);
+                            pcRecvBuf = NULL;
+                            pthread_mutex_unlock(&g_mutexPtcRecvMsgHandle);
+
+                            ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
+                        }
+
+                        if (0 == ulSurplusTotalLen)
+                        {
+                            break;
+                        }
+
+                    }
+                    pthread_cond_signal(&g_condPtcRecvMsgHandle);
+                    pthread_mutex_unlock(&g_mutexPtcRecvMsgHandle);
+                    g_astPtcConnects[i].bIsDisposeHttpHead = DOS_FALSE;
                 }
                 else
                 {
-                    pthread_cond_signal(&g_condPtcRecvMsgHandle);
-                    pthread_mutex_unlock(&g_mutexPtcRecvMsgHandle);
+                    pt_logr_debug("ptc recv from web server len : %d, socket : %d", lRecvLen, lSocket);
+                    pthread_mutex_lock(&g_mutexPtcRecvMsgHandle);
+                    lResult = ptc_recvfrom_web_buff_list_insert(&g_astPtcConnects[i], pcRecvBuf, lRecvLen);
+                    if (lResult != DOS_SUCC)
+                    {
+                        dos_dmem_free(pcRecvBuf);
+                        pcRecvBuf = NULL;
+                        pthread_mutex_unlock(&g_mutexPtcRecvMsgHandle);
+
+                        ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
+                    }
+                    else
+                    {
+                        pthread_cond_signal(&g_condPtcRecvMsgHandle);
+                        pthread_mutex_unlock(&g_mutexPtcRecvMsgHandle);
+                    }
                 }
 
                 if (lRecvLen < PT_RECV_DATA_SIZE)
@@ -464,28 +591,6 @@ void ptc_send_msg2web(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
                 write(g_lPipeWRFd, "s", 1);
             }
 
-#if 0
-            if (getsockopt(lSockfd, IPPROTO_TCP, TCP_INFO, &tcpinfo, &optlen) < 0)
-            {
-                DOS_ASSERT(0);
-                ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID, 1);
-                ptc_delete_stream_node_by_recv(pstStreamNode);
-                ptc_delete_client_by_socket(lSockfd, PT_DATA_WEB);
-
-                break;
-
-            }
-
-            if (TCP_CLOSE == tcpinfo || TCP_CLOSE_WAIT == tcpinfo || TCP_CLOSING == tcpinfo)
-            {
-                DOS_ASSERT(0);
-                ptc_send_exit_notify_to_pts(PT_DATA_WEB, pstStreamNode->ulStreamID, 1);
-                ptc_delete_stream_node_by_recv(pstStreamNode);
-                ptc_delete_client_by_socket(lSockfd, PT_DATA_WEB);
-
-                break;
-            }
-#endif
             pt_logr_debug("send msg to web server, stream : %d, seq : %d, len : %d", pstStreamNode->ulStreamID, pstStreamNode->lCurrSeq, stRecvDataTcp.ulLen);
             lResult = send(lSockfd, stRecvDataTcp.szBuff, stRecvDataTcp.ulLen, MSG_NOSIGNAL);
             if (lResult < stRecvDataTcp.ulLen)

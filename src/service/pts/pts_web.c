@@ -450,7 +450,7 @@ BOOL pts_request_ptc_proxy(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pcIp
         sscanf(pcCookie, "%*[^=]=%[^!]!%[^!]!%[0-9]", aucDestID, szDestIP, szDestPortStr);
         usDestPort = atoi(szDestPortStr);
         pt_logr_debug("aucDestID = %s, szDestIP = %s, szDestPortStr = %s", aucDestID, szDestIP, szDestPortStr);
-#if 0
+#if 1
         /* ÐÞ¸ÄHOST */
         dos_snprintf(szHTTPField, PT_DATA_BUFF_128, "Host: %s", szDestIP);
         ulFieldLen = dos_strlen(szHTTPField);

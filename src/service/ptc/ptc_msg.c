@@ -29,11 +29,14 @@ PT_CC_CB_ST *g_pstPtcSend     = NULL;       /* 发送缓存中ptc节点 */
 PT_CC_CB_ST *g_pstPtcRecv     = NULL;       /* 接收缓存中ptc节点 */
 list_t   g_stPtcNendRecvNode;       /* 需要接收的包的消息队列 */
 list_t   g_stPtcNendSendNode;       /* 需要发送的包的消息队列 */
+list_t   g_stPtcReSendNode;                 /* 需要发送的包的消息队列 */
 PTC_SERV_MSG_ST g_stServMsg;                /* 存放ptc信息的全局变量 */
 pthread_mutex_t g_mutexPtcSendPthread   = PTHREAD_MUTEX_INITIALIZER;       /* 发送线程锁 */
 pthread_cond_t  g_condPtcSend           = PTHREAD_COND_INITIALIZER;        /* 发送条件变量 */
 pthread_mutex_t g_mutexPtcRecvPthread   = PTHREAD_MUTEX_INITIALIZER;       /* 接收线程锁 */
 pthread_cond_t  g_condPtcRecv           = PTHREAD_COND_INITIALIZER;        /* 接收条件变量 */
+pthread_mutex_t g_mutexPtcReSendPthread = PTHREAD_MUTEX_INITIALIZER;       /* 接收线程锁 */
+pthread_cond_t  g_condPtcReSend         = PTHREAD_COND_INITIALIZER;        /* 接收条件变量 */
 S32 g_ulUdpSocket               = 0;
 U32 g_ulPtcNendSendNodeCount    = 0;
 U32 g_ulSendTimeSleep           = 20;
@@ -46,6 +49,9 @@ U32 g_ulPackageLen = 0;
 U32 g_ulReceivedLen = 0;
 U32 g_usCrc = 0;
 PTC_CLIENT_CB_ST g_astPtcConnects[PTC_STREAMID_MAX_COUNT];
+U32 g_ulSend2PtsDelay = PTC_SEND2PTS_SLEEP_DEFAULT;
+U32 g_ulSendDataCount = 0;
+U32 g_ulResendCount   = 0;
 
 
 void ptc_send2pts(S8 *pstData, U32 ulLen)
@@ -88,13 +94,19 @@ void ptc_init_ptc_client_cb(PTC_CLIENT_CB_ST *pstPtcClientCB)
 
     pstPtcClientCB->ulStreamID = 0;
     pstPtcClientCB->lSocket = -1;
-    pstPtcClientCB->enState = PTC_CLIENT_LEISURE;
     pstPtcClientCB->enDataType = PT_DATA_BUTT;
     dos_list_init(&pstPtcClientCB->stRecvBuffList);
     pstPtcClientCB->ulBuffNodeCount = 0;
     pstPtcClientCB->lLastUseTime = time(NULL);
     pstPtcClientCB->pstSendStreamNode = NULL;
     pthread_mutex_init(&pstPtcClientCB->pMutexPthread, NULL);
+    if (DOS_ADDR_VALID(pstPtcClientCB->pszBuff))
+    {
+        dos_dmem_free(pstPtcClientCB->pszBuff);
+        pstPtcClientCB->pszBuff = NULL;
+    }
+    pstPtcClientCB->ulBuffLen = 0;
+    pstPtcClientCB->enState = PTC_CLIENT_LEISURE;
 }
 
 void ptc_init_all_ptc_client_cb()
@@ -669,7 +681,7 @@ VOID ptc_data_lose(PT_MSG_TAG *pstMsgDes)
 
     BOOL bIsResend = DOS_FALSE;
     PT_CMD_EN enCmdValue = PT_CMD_RESEND;
-    pt_need_send_node_list_insert(&g_stPtcNendSendNode, g_pstPtcSend->aucID, pstMsgDes, enCmdValue, bIsResend);
+    pt_need_send_node_list_insert(&g_stPtcNendSendNode, g_pstPtcSend->aucID, pstMsgDes, enCmdValue, bIsResend, DOS_FALSE);
 
     pthread_cond_signal(&g_condPtcSend);
     pthread_mutex_unlock(&g_mutexPtcSendPthread);
@@ -1026,7 +1038,7 @@ VOID ptc_send_confirm_msg(PT_MSG_TAG *pstMsgDes, U32 lConfirmSeq)
     pt_logr_debug("send confirm data to pts: type = %d, stream = %d", pstMsgDes->enDataType,pstMsgDes->ulStreamID);
     for (i=0; i<PT_SEND_CONFIRM_COUNT; i++)
     {
-        pt_need_send_node_list_insert(&g_stPtcNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend);
+        pt_need_send_node_list_insert(&g_stPtcNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend, DOS_FALSE);
     }
     pthread_cond_signal(&g_condPtcSend);
     pthread_mutex_unlock(&g_mutexPtcSendPthread);
@@ -1940,7 +1952,7 @@ S32 ptc_save_msg_into_cache(PT_STREAM_CB_ST *pstStreamNode, PT_DATA_TYPE_EN enDa
         pthread_mutex_lock(&g_mutexPtcSendPthread);
         if (NULL == pt_need_send_node_list_search(&g_stPtcNendSendNode, ulStreamID))
         {
-            pt_need_send_node_list_insert(&g_stPtcNendSendNode, g_pstPtcSend->aucID, &stMsgDes, enCmdValue, bIsResend);
+            pt_need_send_node_list_insert(&g_stPtcNendSendNode, g_pstPtcSend->aucID, &stMsgDes, enCmdValue, bIsResend, DOS_FALSE);
             pt_logr_debug("save into send pts list succ, count : %d", g_ulPtcNendSendNodeCount);
         }
         pthread_cond_signal(&g_condPtcSend);
@@ -2006,7 +2018,7 @@ S32 ptc_save_ctrl_msg_into_cache(U32 ulStreamID, S8 *acSendBuf, S32 lDataLen)
         pthread_mutex_lock(&g_mutexPtcSendPthread);
         if (NULL == pt_need_send_node_list_search(&g_stPtcNendSendNode, ulStreamID))
         {
-            pt_need_send_node_list_insert(&g_stPtcNendSendNode, g_pstPtcSend->aucID, &stMsgDes, enCmdValue, bIsResend);
+            pt_need_send_node_list_insert(&g_stPtcNendSendNode, g_pstPtcSend->aucID, &stMsgDes, enCmdValue, bIsResend, DOS_FALSE);
             pt_logr_debug("save into send pts list succ, count : %d", g_ulPtcNendSendNodeCount);
         }
         pthread_cond_signal(&g_condPtcSend);
@@ -2027,7 +2039,6 @@ S32 ptc_save_ctrl_msg_into_cache(U32 ulStreamID, S8 *acSendBuf, S32 lDataLen)
 VOID *ptc_send_msg2pts(VOID *arg)
 {
     U32              ulArraySub       = 0;
-    U32              ulSendCount      = 0;
     PT_STREAM_CB_ST  *pstStreamHead   = NULL;
     list_t           *pstNendSendList = NULL;
     PT_STREAM_CB_ST  *pstStreamNode   = NULL;
@@ -2039,11 +2050,11 @@ VOID *ptc_send_msg2pts(VOID *arg)
     PT_DATA_TCP_ST    stRecvDataTcp;
     struct timeval now;
     struct timespec timeout;
-    S32 lResult = 0;
     U32 ulCount = 0;
 
     dos_list_init(&g_stPtcNendRecvNode);
     dos_list_init(&g_stPtcNendSendNode);
+    dos_list_init(&g_stPtcReSendNode);
 
     while (1)
     {
@@ -2145,47 +2156,6 @@ VOID *ptc_send_msg2pts(VOID *arg)
                 continue;
             }
 
-            if (pstNeedSendNode->bIsResend)
-            {
-                /* 要求重传的包 */
-                ulArraySub = pstNeedSendNode->lSeqResend & (PT_DATA_SEND_CACHE_SIZE - 1);  /* 要发送的包在data数组中的下标 */
-                if (pstSendDataHead[ulArraySub].lSeq != pstNeedSendNode->lSeqResend)
-                {
-                    /* 要发送的包不存在 */
-                    pt_logr_info("ptc_send_msg2pts : need resend data is not exit : seq = %d ", pstNeedSendNode->lSeqResend);
-                }
-                else
-                {
-                    stSendDataNode = pstSendDataHead[ulArraySub];
-                    pstMsgDes->enDataType = pstNeedSendNode->enDataType;
-                    dos_memcpy(pstMsgDes->aucID, g_pstPtcSend->aucID, PTC_ID_LEN);
-                    pstMsgDes->ulStreamID = dos_htonl(pstNeedSendNode->ulStreamID);
-                    pstMsgDes->ExitNotifyFlag = stSendDataNode.ExitNotifyFlag;
-                    pstMsgDes->lSeq = dos_htonl(pstNeedSendNode->lSeqResend);
-                    pstMsgDes->enCmdValue = pstNeedSendNode->enCmdValue;
-                    pstMsgDes->bIsEncrypt = DOS_FALSE;
-                    pstMsgDes->bIsCompress = DOS_FALSE;
-                    dos_memcpy(pstMsgDes->aulServIp, g_stServMsg.achLocalIP, IPV6_SIZE);
-                    pstMsgDes->usServPort = g_stServMsg.usLocalPort;
-
-                    dos_memcpy(acBuff+sizeof(PT_MSG_TAG), stSendDataNode.szBuff, stSendDataNode.ulLen);
-
-                    /* 重传的，发送三遍 */
-                    ulSendCount = PT_RESEND_RSP_COUNT;
-                    while (ulSendCount)
-                    {
-                        //usleep(g_ulSendTimeSleep);
-                        ptc_send2pts(acBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG));
-                        ulSendCount--;
-                        pt_logr_debug("send resend data seq : %d, stream, result = %d", pstNeedSendNode->lSeqResend, pstNeedSendNode->ulStreamID, lResult);
-                    }
-                }
-                dos_dmem_free(pstNeedSendNode);
-                pstNeedSendNode = NULL;
-
-                continue;
-            }
-
             while(1)
             {
                 /* 发送data，直到不连续 */
@@ -2212,8 +2182,9 @@ VOID *ptc_send_msg2pts(VOID *arg)
 
                     dos_memcpy(acBuff+sizeof(PT_MSG_TAG), stSendDataNode.szBuff, stSendDataNode.ulLen);
 
-                    usleep(20);
                     ptc_send2pts(acBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG));
+                    g_ulSendDataCount++;
+                    usleep(g_ulSend2PtsDelay);
 
                     pt_logr_debug("send data to pts : length:%d, stream:%d, seq:%d", stRecvDataTcp.ulLen, pstNeedSendNode->ulStreamID, pstStreamNode->lCurrSeq);
                 }
@@ -2230,6 +2201,117 @@ VOID *ptc_send_msg2pts(VOID *arg)
 
         }
     }
+    return NULL;
+}
+
+void *ptc_resend_msg2pts(void *arg)
+{
+    list_t           *pstNendSendList = NULL;
+    S8 acBuff[PT_SEND_DATA_SIZE]      = {0};
+    PT_MSG_TAG       *pstMsgDes       = (PT_MSG_TAG *)acBuff;
+    PT_NEND_SEND_NODE_ST *pstNeedSendNode = NULL;
+    struct timespec  timeout;
+    U32              ulArraySub       = 0;
+    U32              ulSendCount      = 0;
+    PT_STREAM_CB_ST  *pstStreamHead   = NULL;
+    PT_STREAM_CB_ST  *pstStreamNode   = NULL;
+    PT_DATA_TCP_ST   *pstSendDataHead = NULL;
+    PT_DATA_TCP_ST   stSendDataNode;
+
+    while (1)
+    {
+        pthread_mutex_lock(&g_mutexPtcReSendPthread);
+        timeout.tv_sec = time(0) + 1;
+        timeout.tv_nsec = 0;
+        pthread_cond_timedwait(&g_condPtcReSend, &g_mutexPtcReSendPthread, &timeout);
+        pthread_mutex_unlock(&g_mutexPtcReSendPthread);
+
+        while (1)
+        {
+            pthread_mutex_lock(&g_mutexPtcReSendPthread);
+            if (dos_list_is_empty(&g_stPtcReSendNode))
+            {
+                pthread_mutex_unlock(&g_mutexPtcReSendPthread);
+                break;
+            }
+
+            pstNendSendList = dos_list_fetch(&g_stPtcReSendNode);
+            if (DOS_ADDR_INVALID(pstNendSendList))
+            {
+                DOS_ASSERT(0);
+                pthread_mutex_unlock(&g_mutexPtcReSendPthread);
+
+                break;
+            }
+
+            pstNeedSendNode = dos_list_entry(pstNendSendList, PT_NEND_SEND_NODE_ST, stListNode);
+            pthread_mutex_unlock(&g_mutexPtcReSendPthread);
+
+            /* 发送数据包 */
+            pstStreamHead = g_pstPtcSend->pstStreamHead;
+            if (DOS_ADDR_INVALID(pstStreamHead))
+            {
+                dos_dmem_free(pstNeedSendNode);
+                pstNeedSendNode = NULL;
+
+                continue;
+            }
+
+            pstStreamNode = pt_stream_queue_search(pstStreamHead, pstNeedSendNode->ulStreamID);
+            if(DOS_ADDR_INVALID(pstStreamNode))
+            {
+                dos_dmem_free(pstNeedSendNode);
+                pstNeedSendNode = NULL;
+
+                continue;
+            }
+
+            pstSendDataHead = pstStreamNode->unDataQueHead.pstDataTcp;
+            if (DOS_ADDR_INVALID(pstSendDataHead))
+            {
+                dos_dmem_free(pstNeedSendNode);
+                pstNeedSendNode = NULL;
+
+                continue;
+            }
+
+            /* 要求重传的包 */
+            ulArraySub = pstNeedSendNode->lSeqResend & (PT_DATA_SEND_CACHE_SIZE - 1);  /* 要发送的包在data数组中的下标 */
+            if (pstSendDataHead[ulArraySub].lSeq != pstNeedSendNode->lSeqResend)
+            {
+                /* 要发送的包不存在 */
+            }
+            else
+            {
+                stSendDataNode = pstSendDataHead[ulArraySub];
+                pstMsgDes->enDataType = pstNeedSendNode->enDataType;
+                dos_memcpy(pstMsgDes->aucID, g_pstPtcSend->aucID, PTC_ID_LEN);
+                pstMsgDes->ulStreamID = dos_htonl(pstNeedSendNode->ulStreamID);
+                pstMsgDes->ExitNotifyFlag = stSendDataNode.ExitNotifyFlag;
+                pstMsgDes->lSeq = dos_htonl(pstNeedSendNode->lSeqResend);
+                pstMsgDes->enCmdValue = pstNeedSendNode->enCmdValue;
+                pstMsgDes->bIsEncrypt = DOS_FALSE;
+                pstMsgDes->bIsCompress = DOS_FALSE;
+                dos_memcpy(pstMsgDes->aulServIp, g_stServMsg.achLocalIP, IPV6_SIZE);
+                pstMsgDes->usServPort = g_stServMsg.usLocalPort;
+
+                dos_memcpy(acBuff+sizeof(PT_MSG_TAG), stSendDataNode.szBuff, stSendDataNode.ulLen);
+
+                /* 重传的，发送三遍 */
+                ulSendCount = PT_RESEND_RSP_COUNT;
+                while (ulSendCount)
+                {
+                    g_ulSendDataCount++;
+                    ptc_send2pts(acBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG));
+                    ulSendCount--;
+                    usleep(g_ulSend2PtsDelay);
+                }
+            }
+            dos_dmem_free(pstNeedSendNode);
+            pstNeedSendNode = NULL;
+        }
+    }
+
     return NULL;
 }
 
@@ -2317,14 +2399,13 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
             {
                 /* 重传请求 */
                 pt_logr_info("ptc recv resend req, seq : %d, stream : %d", pstMsgDes->lSeq, pstMsgDes->ulStreamID);
-                printf("recv resend req, seq : %d, stream : %d\n", pstMsgDes->lSeq, pstMsgDes->ulStreamID);
                 BOOL bIsResend = DOS_TRUE;
                 PT_CMD_EN enCmdValue = PT_CMD_NORMAL;
-
-                pthread_mutex_lock(&g_mutexPtcSendPthread);
-                pt_need_send_node_list_insert(&g_stPtcNendSendNode, g_pstPtcSend->aucID, pstMsgDes, enCmdValue, bIsResend);
-                pthread_cond_signal(&g_condPtcSend);
-                pthread_mutex_unlock(&g_mutexPtcSendPthread);
+                g_ulResendCount++;
+                pthread_mutex_lock(&g_mutexPtcReSendPthread);
+                pt_resend_node_list_insert(&g_stPtcReSendNode, g_pstPtcSend->aucID, pstMsgDes, enCmdValue, bIsResend, DOS_FALSE);
+                pthread_cond_signal(&g_condPtcReSend);
+                pthread_mutex_unlock(&g_mutexPtcReSendPthread);
 
                 sem_post(&g_SemPtcRecv);
                 continue;
@@ -2509,11 +2590,56 @@ void ptc_client_cb_examine()
 
 void *ptc_terminal_dispose(void *arg)
 {
+    U32 ulCount = 0;
+    U32 ulReSendOld = 0;
+
     while (1)
     {
-        sleep(PTC_DISPOSE_INTERVAL_TIME);
+        usleep(100);
 
-        ptc_client_cb_examine();
+        ulCount += 100;
+        if (ulCount >= PTC_DISPOSE_INTERVAL_TIME)
+        {
+            ulCount = 0;
+            ptc_client_cb_examine();
+        }
+        if (ulCount % 1000 == 0)
+        {
+            if (g_ulSendDataCount >= 20)
+            {
+                if (g_ulResendCount > 3)
+                {
+                    if (g_ulSend2PtsDelay < 50 * 1000)
+                    {
+                        g_ulSend2PtsDelay += 1000;
+                    }
+                }
+                else if (0 == g_ulResendCount)
+                {
+                    if (g_ulSend2PtsDelay > 1000)
+                    {
+                        g_ulSend2PtsDelay -= 1000;
+                    }
+                }
+            }
+
+            printf("!!!!!!!%d, resend : %d, total : %d\n", g_ulSend2PtsDelay, g_ulResendCount, g_ulSendDataCount);
+
+            g_ulSendDataCount = 0;
+            g_ulResendCount = 0;
+        }
+        else
+        {
+            if (g_ulResendCount - ulReSendOld >= 6)
+            {
+                if (g_ulSend2PtsDelay < 50 * 1000)
+                {
+                    g_ulSend2PtsDelay += 1000;
+                }
+            }
+        }
+
+        ulReSendOld = g_ulResendCount;
     }
 
     return NULL;

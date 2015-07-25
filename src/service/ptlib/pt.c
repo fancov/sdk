@@ -473,6 +473,7 @@ S32 pt_recv_data_tcp_queue_insert(PT_STREAM_CB_ST *pstStreamNode, PT_MSG_TAG *ps
     if (pstStreamNode->lCurrSeq >= pstMsgDes->lSeq)
     {
         /* 包已发送，不需要存储 */
+        pt_logr_debug("Has been received");
         return PT_SAVE_DATA_FAIL;
     }
 
@@ -1141,7 +1142,7 @@ list_t *pt_need_send_node_list_search(list_t *pstHead, U32 ulStreamID)
  * 参数
  * 返回值：队列头地址
  */
-S32 pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsgDes, PT_CMD_EN enCmdValue, BOOL bIsResend)
+S32 pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsgDes, PT_CMD_EN enCmdValue, BOOL bIsResend, BOOL bIsAddHead)
 {
     if (DOS_ADDR_INVALID(pstHead) || DOS_ADDR_INVALID(aucID) || DOS_ADDR_INVALID(pstMsgDes))
     {
@@ -1165,7 +1166,14 @@ S32 pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsg
     pstNewNode->ExitNotifyFlag = pstMsgDes->ExitNotifyFlag;
 
     dos_list_node_init(&pstNewNode->stListNode);
-    dos_list_add_tail(pstHead, &pstNewNode->stListNode);
+    if (bIsAddHead)
+    {
+        dos_list_add_head(pstHead, &pstNewNode->stListNode);
+    }
+    else
+    {
+        dos_list_add_tail(pstHead, &pstNewNode->stListNode);
+    }
 #if INCLUDE_PTC
     g_ulPtcNendSendNodeCount++;
 #endif
@@ -1173,6 +1181,33 @@ S32 pt_need_send_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsg
     return DOS_SUCC;
 }
 
+S32 pt_resend_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsgDes, PT_CMD_EN enCmdValue, BOOL bIsResend, BOOL bIsAddHead)
+{
+    if (DOS_ADDR_INVALID(pstHead) || DOS_ADDR_INVALID(aucID) || DOS_ADDR_INVALID(pstMsgDes))
+    {
+        return DOS_FAIL;
+    }
+
+    PT_NEND_SEND_NODE_ST *pstNewNode = (PT_NEND_SEND_NODE_ST *)dos_dmem_alloc(sizeof(PT_NEND_SEND_NODE_ST));
+    if (DOS_ADDR_INVALID(pstNewNode))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstNewNode->aucID, aucID, PTC_ID_LEN);
+    pstNewNode->enDataType = (PT_DATA_TYPE_EN)pstMsgDes->enDataType;
+    pstNewNode->ulStreamID = pstMsgDes->ulStreamID;
+    pstNewNode->lSeqResend = pstMsgDes->lSeq;
+    pstNewNode->enCmdValue = enCmdValue;
+    pstNewNode->bIsResend = bIsResend;
+    pstNewNode->ExitNotifyFlag = pstMsgDes->ExitNotifyFlag;
+
+   	dos_list_add_tail(pstHead, &pstNewNode->stListNode);
+
+    return DOS_SUCC;
+}
 
 #if INCLUDE_PTS
 STREAM_CACHE_ADDR_CB_ST *pt_stream_addr_create(U32 ulStreamID)
