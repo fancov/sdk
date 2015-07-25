@@ -223,7 +223,7 @@ U32 sc_data_syn_proc(DLL_NODE_S *pstNode)
         goto cmd_prase_fail1;
     }
 
-    sc_logr_debug(SC_HTTP_API, "%s", "Start prase the http request.");
+    sc_logr_debug(SC_HTTP_API, "%s", "Start parse the http request.");
 
     /* 解析key=value，并将结果存入链表 */
     dos_list_init(&stParamList);
@@ -266,7 +266,7 @@ U32 sc_data_syn_proc(DLL_NODE_S *pstNode)
         dos_list_add_tail(&(stParamList), &pstParamsList->stList);
     }
 
-    sc_logr_debug(SC_HTTP_API, "Prase the http request finished. Request: %s", szReqBuffer);
+    sc_logr_debug(SC_HTTP_API, "Parse the http request finished. Request: %s", szReqBuffer);
 
     ulRet = SC_HTTP_ERRNO_INVALID_REQUEST;
     cb = sc_http_api_find(szReqBuffer);

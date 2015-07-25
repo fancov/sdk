@@ -1468,6 +1468,105 @@ S32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
     return 0;
 }
 
+S32 sc_track_call_by_caller(U32 ulIndex ,S8 *pszCaller)
+{
+    S8 szCmdBuff[1024] = {0, };
+    U32 ulTaskIndex = U32_BUTT;
+    SC_TASK_CB_ST *pstTCB = NULL;
+
+    for (ulTaskIndex = 0; ulTaskIndex < SC_MAX_TASK_NUM; ulTaskIndex++)
+    {
+        pstTCB = &g_pstTaskMngtInfo->pstTaskList[ulTaskIndex];
+        if (DOS_ADDR_INVALID(pstTCB))
+        {
+            continue;
+        }
+
+        if (!pstTCB->ucValid)
+        {
+            continue;
+        }
+
+        if (0 != dos_strcmp(pstTCB->pstCallerNumQuery->szNumber, pszCaller))
+        {
+            continue;
+        }
+
+        cli_out_string(ulIndex, "\r\nList Trace Info By Caller");
+        cli_out_string(ulIndex, "\r\n---------------------------");
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%8s%12s%8s","Task ID", "Customer ID", "TCB NO");
+        cli_out_string(ulIndex, szCmdBuff);
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%8u%12u%8u\r\n"
+                        , pstTCB->ulTaskID
+                        , pstTCB->ulCustomID
+                        , pstTCB->usTCBNo);
+        cli_out_string(ulIndex, szCmdBuff);
+    }
+}
+
+S32 sc_track_call_by_callee(U32 ulIndex ,S8 *pszCallee)
+{
+    /*
+    S8 szCmdBuff[1024] = {0, };
+    U32 ulTaskIndex = U32_BUTT;
+    SC_TASK_CB_ST *pstTCB = NULL;
+
+    for (ulTaskIndex = 0; ulTaskIndex < SC_MAX_TASK_NUM; ulTaskIndex++)
+    {
+        pstTCB = &g_pstTaskMngtInfo->pstTaskList[ulTaskIndex];
+        if (DOS_ADDR_INVALID(pstTCB))
+        {
+            continue;
+        }
+
+        if (!pstTCB->ucValid)
+        {
+            continue;
+        }
+
+        pstTCB->stCalleeNumQuery
+    }*/
+    return DOS_SUCC;
+}
+
+S32 sc_track_call_by_task(U32 ulIndex ,U32 ulTaskID)
+{
+    S8 szCmdBuff[1024] = {0, };
+    U32 ulTaskIndex = U32_BUTT;
+    SC_TASK_CB_ST *pstTCB = NULL;
+
+    for (ulTaskIndex = 0; ulTaskIndex < SC_MAX_TASK_NUM; ulTaskIndex++)
+    {
+        pstTCB = &g_pstTaskMngtInfo->pstTaskList[ulTaskIndex];
+        if (DOS_ADDR_INVALID(pstTCB))
+        {
+            continue;
+        }
+
+        if (!pstTCB->ucValid)
+        {
+            continue;
+        }
+
+        if (ulTaskID != pstTCB->ulTaskID)
+        {
+            continue;
+        }
+
+        cli_out_string(ulIndex, "\r\nList Trace Info By Caller");
+        cli_out_string(ulIndex, "\r\n---------------------------");
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%8s%12s%8s","Task ID", "Customer ID", "TCB NO");
+        cli_out_string(ulIndex, szCmdBuff);
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%8u%12u%8u\r\n"
+                        , pstTCB->ulTaskID
+                        , pstTCB->ulCustomID
+                        , pstTCB->usTCBNo);
+        cli_out_string(ulIndex, szCmdBuff);
+    }
+
+    return DOS_SUCC;
+}
+
 
 S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
 {

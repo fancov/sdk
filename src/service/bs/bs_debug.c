@@ -942,7 +942,7 @@ S32 bs_show_task(U32 ulIndex, U32 ulObjectID)
     pstTask = bs_get_task_st(ulObjectID);
     if (NULL == pstTask)
     {
-        cli_out_string(ulIndex, "\r\n Err: Task is not exist!\r\n");
+        cli_out_string(ulIndex, "\r\nErr: Task is not exist!\r\n");
         return DOS_FAIL;
     }
 

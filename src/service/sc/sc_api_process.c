@@ -1292,7 +1292,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
         goto cmd_prase_fail1;
     }
 
-    sc_logr_debug(SC_HTTP_API, "%s", "Start prase the http request.");
+    sc_logr_debug(SC_HTTP_API, "%s", "Start parse the http request.");
 
     /* 解析key=value，并将结果存入链表 */
     dos_list_init(&pstClient->stParamList);
@@ -1335,7 +1335,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
         dos_list_add_tail(&(pstClient->stParamList), &pstParamsList->stList);
     }
 
-    sc_logr_debug(SC_HTTP_API, "%s", "Prase the http request finished.");
+    sc_logr_debug(SC_HTTP_API, "%s", "Parse the http request finished.");
 
     ulRet = SC_HTTP_ERRNO_INVALID_REQUEST;
     cb = sc_http_api_find(szReqBuffer);

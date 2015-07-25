@@ -180,7 +180,7 @@ U32 mod_dipcc_sc_load()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init DB Handle Successfully.");
 
-#if 0//INCLUDE_SERVICE_PYTHON
+#if 0 //INCLUDE_SERVICE_PYTHON
     /* 全局加载freeswitch配置文件xml */
     if (DOS_SUCC != py_exec_func("customer", "generate_all_customer", "()"))
     {
