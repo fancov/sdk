@@ -298,6 +298,30 @@ void *ptc_recv_msg_from_web(void *arg)
                         }
                     }
 
+                    pStr1 = dos_strstr(g_astPtcConnects[i].pszBuff, "Location:");
+                    if (DOS_ADDR_VALID(pStr1))
+                    {
+                        /* 判断是否是绝对地址 */
+                        pStr2 = dos_strstr(pStr1, "http://");
+                        if (DOS_ADDR_VALID(pStr2))
+                        {
+                            /* 修改 Refresh 字段*/
+                            pStr1 = dos_strchr(pStr2+dos_strlen("http://"), '/');
+                            if (DOS_ADDR_VALID(pStr1))
+                            {
+                                //pStr1 += 1;
+                                ulOffsetLen = g_astPtcConnects[i].ulBuffLen - (pStr1 - g_astPtcConnects[i].pszBuff);
+                                g_astPtcConnects[i].ulBuffLen -= (pStr1 - pStr2);
+                                while (ulOffsetLen--)
+                                {
+                                    *pStr2 = *pStr1;
+                                    pStr2++;
+                                    pStr1++;
+                                }
+                            }
+                        }
+                    }
+
                     /* 保存到list中 */
                     ulSurplusTotalLen = g_astPtcConnects[i].ulBuffLen;
                     ulSaveTotalLen = 0;
