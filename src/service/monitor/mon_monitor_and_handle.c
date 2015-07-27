@@ -917,7 +917,6 @@ static U32 mon_add_data_to_db()
       return DOS_FAIL;
    }
 
-   time(&ulCur);
    pstCurTime = localtime(&ulCur);
    dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO tbl_syssrc%04u%02u(ctime,phymem," \
      "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate,procmem_pct,proccpu_pct)" \

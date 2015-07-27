@@ -16,6 +16,234 @@ extern "C"{
 #endif
 
 extern S8 * g_pszAnalyseList;
+extern DLL_S *g_pstNotifyList;
+extern DB_HANDLE_ST *g_pstDBHandle;
+extern MON_MSG_MAP_ST *m_pstMsgMapCN;
+extern MON_MSG_MAP_ST *m_pstMsgMapEN;
+
+
+
+S8 m_szEmail[32] = {0}, m_szTelNo[32] = {0}, m_szContact[32] = {0};
+S32 m_lBalance = -1;
+
+U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg);
+
+/**
+ * 功能:初始化通知消息队列
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
+U32 mon_init_notify_list()
+{
+    if (DOS_ADDR_INVALID(g_pstNotifyList))
+    {
+        g_pstNotifyList = (DLL_S *)dos_dmem_alloc(sizeof(DLL_S));
+        if (DOS_ADDR_INVALID(g_pstNotifyList))
+        {
+            mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Alloc Memory FAIL.");
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
+        DLL_Init(g_pstNotifyList);
+
+        return DOS_SUCC;
+    }
+    mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_DEBUG, "You don\'t need to initialize notification msg list.");
+    return DOS_SUCC;
+}
+
+/**
+ * 函数: U32 mon_get_level(U32 ulNotifyType)
+ * 功能: 获取告警对应的最低级别
+ * 参数集：
+ *   无参数
+ * 返回值：
+ *   成功返回最低级别，失败返回DOS_FAIL
+ */
+U32 mon_get_level(U32 ulNotifyType)
+{
+    S8 *pszDesc = NULL;
+    S8 szLevel[16] = {0};
+    U32 ulLevel;
+
+    pszDesc = m_pstMsgMapCN[ulNotifyType].pszName;
+    if (config_hb_get_level(pszDesc, szLevel, sizeof(szLevel)) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (0 == dos_strcmp(szLevel, "urgent"))
+    {
+        ulLevel = MON_NOTIFY_LEVEL_EMERG;
+    }
+    else if (0 == dos_strcmp(szLevel, "important"))
+    {
+        ulLevel = MON_NOTIFY_LEVEL_CRITI;
+    }
+    else if (0 == dos_strcmp(szLevel, "minor"))
+    {
+        ulLevel = MON_NOTIFY_LEVEL_MINOR;
+    }
+    else if (0 == dos_strcmp(szLevel, "hint"))
+    {
+        ulLevel = MON_NOTIFY_LEVEL_HINT;
+    }
+    else
+    {
+        ulLevel = MON_NOTIFY_LEVEL_BUTT;
+    }
+
+    return ulLevel;
+}
+
+
+U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg)
+{
+    U32 ulLevel = U32_BUTT, ulRet = U32_BUTT, ulType = U32_BUTT;
+    S8  szBuff[256] = {0}, szQuery[1024]={0};
+    time_t ulTime = 0;
+    struct tm* pstCurTime;
+
+    ulLevel = mon_get_level(pstMsg->ulWarningID & 0xFF);
+    if (MON_NOTIFY_LEVEL_BUTT == ulLevel)
+    {
+        ulLevel = MON_NOTIFY_LEVEL_EMERG;
+    }
+
+    ulType = pstMsg->ulWarningID & 0xFF;
+
+    ulTime = pstMsg->ulCurTime;
+    pstCurTime = localtime(&ulTime);
+
+    switch (ulType)
+    {
+        case MON_NOTIFY_TYPE_LACK_FEE:
+            ulRet = mon_get_contact(pstMsg->ulDestCustomerID, pstMsg->ulDestRoleID);
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Get contact FAIL.");
+                return DOS_FAIL;
+            }
+
+            dos_snprintf(szBuff, sizeof(szBuff), m_pstMsgMapEN[ulType].pszDesc
+                            , m_szContact, pstCurTime->tm_year + 1900, pstCurTime->tm_mon + 1
+                            , pstCurTime->tm_mday, pstCurTime->tm_hour, pstCurTime->tm_min
+                            , pstCurTime->tm_sec, (F64)m_lBalance/10000.0, pstMsg->ulWarningID);
+            break;
+        case MON_MOTIFY_TYPE_LACK_GW:
+            break;
+        case MON_NOTIFY_TYPE_LACK_ROUTE:
+            break;
+        default:
+            break;
+    }
+
+    dos_snprintf(szQuery, sizeof(szQuery)
+                    , "INSERT INTO"\
+                      "     tbl_hb_warning(warning_id, seq, ctime, level, title, content, dest_customer_id, dest_role_id)"\
+                      "     VALUES(%u,%u,\'%04u-%02u-%02u %02u:%02u:%02u\',%u,%s,%s,%u,%u);"
+                    , pstMsg->ulWarningID
+                    , pstMsg->ulSeq
+                    , pstCurTime->tm_year + 1900
+                    , pstCurTime->tm_mon + 1
+                    , pstCurTime->tm_mday
+                    , pstCurTime->tm_hour
+                    , pstCurTime->tm_min
+                    , pstCurTime->tm_sec
+                    , pstMsg->ulLevel
+                    , m_pstMsgMapEN[ulType].pszTitle
+                    , m_pstMsgMapEN[ulType].pszDesc
+                    , pstMsg->ulDestCustomerID
+                    , pstMsg->ulDestRoleID);
+    if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) != DB_ERR_SUCC)
+    {
+        DOS_ASSERT(0);
+        mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR , "Add Msg to DB FAIL. SQL:%s", szQuery);
+        return DOS_FAIL;
+    }
+
+    if (pstMsg->ulLevel <= ulLevel)
+    {
+        ulRet = mon_send_email(szBuff, m_pstMsgMapEN[ulType].pszTitle, m_szEmail);
+        ulRet = mon_send_sms(szBuff, m_pstMsgMapEN[ulType].pszTitle, m_szTelNo);
+    }
+
+    return DOS_SUCC;
+}
+
+U32 mon_get_contact(U32 ulCustomerID, U32 ulRoleID)
+{
+    S8  szQuery[1024] = {0};
+    S32 lRet = 0;
+
+    dos_snprintf(szQuery, sizeof(szQuery)
+                    , "SELECT contact,tbl_number,email FROM tbl_contact WHERE id=%d AND customer_id=%d;"
+                    , ulRoleID
+                    , ulCustomerID);
+
+    lRet = db_query(g_pstDBHandle, szQuery, mon_get_contact_cb, NULL, NULL);
+    if (lRet != DB_ERR_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    return DOS_SUCC;
+}
+
+S32 mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    if (DOS_ADDR_INVALID(aszNames)
+        || DOS_ADDR_INVALID(aszValues))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(m_szContact, sizeof(m_szContact), "%s", aszValues[0]);
+    dos_snprintf(m_szTelNo, sizeof(m_szTelNo), "%s", aszValues[1]);
+    dos_snprintf(m_szEmail, sizeof(m_szEmail), "%s", aszValues[2]);
+
+    return DOS_SUCC;
+}
+
+U32 mon_get_balance(U32 ulCustomerID)
+{
+    S8  szQuery[1024] = {0};
+    S32 lRet = 0;
+
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT balance FROM tbl_customer WHERE id=%u;", ulCustomerID);
+
+    lRet = db_query(g_pstDBHandle, szQuery, mon_get_balance_cb, NULL, NULL);
+    if (lRet != DB_ERR_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+S32 mon_get_balance_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    if (DOS_ADDR_INVALID(aszNames)
+        || DOS_ADDR_INVALID(aszValues))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (dos_atol(aszValues[0], &m_lBalance) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
 
 /**
  * 功能:为字符串分配内存
@@ -276,7 +504,7 @@ U32  mon_analyse_by_reg_expr(S8* pszStr, S8* pszRegExpr, S8* pszRsltList[], U32 
  *   参数2:U32 ulNo          资源编号
  *   参数3:U32 ulErrType     错误类型
  * 返回值：
- *   成功则返回告警id，失败则返回(U32)0xff
+ *   成功则返回告警id，失败则返回(U32)0xff，其中系统告警最高位是1，其它告警最高位是0
  */
 U32 mon_generate_warning_id(U32 ulResType, U32 ulNo, U32 ulErrType)
 {
@@ -287,7 +515,7 @@ U32 mon_generate_warning_id(U32 ulResType, U32 ulNo, U32 ulErrType)
         return (U32)0xff;
     }
     /* 第1个8位存储资源类型，第2个8位存储资源编号，第3个8位存储错误编号 */
-    return (ulResType << 24) | (ulNo << 16 ) | (ulErrType & 0xffffffff);
+    return ((ulResType << 24) & 0xff000000) | ((ulNo << 16) & 0xff0000) | ulErrType;
 }
 
 

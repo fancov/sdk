@@ -331,6 +331,8 @@ S32 config_hb_threshold_proc(U32* pulMem);
  */
 U32 config_get_shortcut_cmd(U32 ulNo, S8 *pszCtrlCmd, U32 ulLen);
 
+S32 config_hb_get_level(S8* pszErr, S8* pszLevel, U32 ulLen);
+
 #endif //end INCLUDE_BH_SERVER
 
 #ifdef INCLUDE_PTS

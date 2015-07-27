@@ -8,7 +8,7 @@ CFILE += $(SROUCE)/service/monitor/mon_lib.c \
 	$(SROUCE)/service/monitor/mon_notification.c \
 	$(SROUCE)/service/monitor/mon_warning_msg_queue.c \
 	$(SROUCE)/service/monitor/mon_debug.c \
-	$(SROUCE)/service/monitor/mon_pub.c
+	$(SROUCE)/service/monitor/mod_dipcc_mon.c
 	
 C_OBJ_FILE += mon_lib.$(SUFFIX) \
 	mon_get_cpu_info.$(SUFFIX) \
@@ -20,7 +20,7 @@ C_OBJ_FILE += mon_lib.$(SUFFIX) \
 	mon_notification.$(SUFFIX) \
 	mon_warning_msg_queue.$(SUFFIX) \
 	mon_debug.$(SUFFIX) \
-	mon_pub.$(SUFFIX)
+	mod_dipcc_mon.$(SUFFIX)
 	
 mon_lib.$(SUFFIX):
 	$(C_COMPILE) $(SROUCE)/service/monitor/mon_lib.c
@@ -42,6 +42,6 @@ mon_warning_msg_queue.$(SUFFIX):
 	$(C_COMPILE) $(SROUCE)/service/monitor/mon_warning_msg_queue.c
 mon_debug.$(SUFFIX):
 	$(C_COMPILE) $(SROUCE)/service/monitor/mon_debug.c
-mon_pub.$(SUFFIX):
-	$(C_COMPILE) $(SROUCE)/service/monitor/mon_pub.c
+mod_dipcc_mon.$(SUFFIX):
+	$(C_COMPILE) $(SROUCE)/service/monitor/mod_dipcc_mon.c
 	

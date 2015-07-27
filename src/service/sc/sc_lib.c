@@ -1953,15 +1953,6 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
             }
 #endif
 
-            /* 删除该网关 */
-            dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", ulGatewayID);
-            ulRet = sc_ep_esl_execute_cmd(szBuff);
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-
             ulRet = sc_load_gateway(ulGatewayID);
             if (ulRet != DOS_SUCC)
             {
@@ -1988,16 +1979,6 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
-
-            /* 删除该网关 */
-            dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", ulGatewayID);
-            ulRet = sc_ep_esl_execute_cmd(szBuff);
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-
             break;
         }
         case SC_API_CMD_ACTION_GATEWAY_SYNC:
@@ -2012,6 +1993,16 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
         }
         default:
             break;
+    }
+
+
+    /* 删除该网关 */
+    dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", ulGatewayID);
+    ulRet = sc_ep_esl_execute_cmd(szBuff);
+    if (ulRet != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
 
     ulRet = sc_ep_esl_execute_cmd("bgapi sofia profile external rescan");

@@ -32,10 +32,13 @@
 /* 消息类型 */
 enum HEARTBEAT_DATA_TYPE{
     HEARTBEAT_DATA_REG  = 0,
-    HEARTBEAT_DATA_REG_RESPONCE,
+    HEARTBEAT_DATA_REG_RESPONSE,
 
     HEARTBEAT_DATA_UNREG,
-    HEARTBEAT_DATA_UNREG_RESPONCE,
+    HEARTBEAT_DATA_UNREG_RESPONSE,
+
+    HEARTBEAT_DATA_SEND,
+    HEARTBEAT_DATA_SEND_RESPONSE,
 
     HEARTBEAT_DATA_HB,
 };
@@ -55,6 +58,7 @@ enum PROCESS_HB_STATUS{
 /* 心跳 */
 typedef struct tagHeartbeatData{
     U32 ulCommand;                                  /* 控制命令字 */
+    U32 ulLength;                                   /* 消息长度 */
     S8  szProcessName[HB_MAX_PROCESS_NAME_LEN];     /* 进程名称 */
     S8  szProcessVersion[HB_MAX_PROCESS_VER_LEN];   /* 版本号 */
     S8  szResv[8];                                  /* 保留 */
@@ -90,13 +94,14 @@ S32 hb_heartbeat_proc(PROCESS_INFO_ST *pstProcessInfo);
 S32 hb_send_heartbeat(PROCESS_INFO_ST *pstProcessInfo);
 
 #if INCLUDE_BH_SERVER
+S32 hb_send_msg_recv(VOID *pMsg);
 S32 hb_unreg_proc(PROCESS_INFO_ST *pstProcessInfo);
 S32 hb_reg_proc(PROCESS_INFO_ST *pstProcessInfo);
 #endif
 #if INCLUDE_BH_CLIENT
 S32 hb_send_reg(PROCESS_INFO_ST *pstProcessInfo);
-S32 hb_unreg_responce_proc(PROCESS_INFO_ST *pstProcessInfo);
-S32 hb_reg_responce_proc(PROCESS_INFO_ST *pstProcessInfo);
+S32 hb_unreg_response_proc(PROCESS_INFO_ST *pstProcessInfo);
+S32 hb_reg_response_proc(PROCESS_INFO_ST *pstProcessInfo);
 #endif
 #endif
 

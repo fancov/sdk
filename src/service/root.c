@@ -44,6 +44,13 @@ extern "C"{
 S32 bs_start();
 #endif
 
+#if INCLUDE_RES_MONITOR
+U32 mon_init();
+U32 mon_start();
+U32 mon_stop();
+extern U32 mon_init_notify_list();
+#endif
+
 #if INCLUDE_CC_SC
 U32 mod_dipcc_sc_load();
 U32 mod_dipcc_sc_runtime();
@@ -75,6 +82,13 @@ S32 root(S32 _argc, S8 ** _argv)
     telnetd_start();
 #elif INCLUDE_BH_SERVER
     S32 lRet = 0;
+
+    if (DOS_SUCC != mon_init_notify_list())
+    {
+        DOS_ASSERT(0);
+        exit(0);
+    }
+    dos_printf("%s", "Notify List Init SUCC.");
 
     if (heartbeat_init())
     {
@@ -148,7 +162,7 @@ S32 root(S32 _argc, S8 ** _argv)
         logr_info("%s", "SC start FAIL.");
         return -1;
     }
-    
+
     logr_info("%s", "SC start.");
 #endif
 

@@ -30,19 +30,8 @@
 #define MAX_TOKEN_CNT             16
 
 #include <dos/dos_types.h>
+#include "mon_notification.h"
 
-#if 0
-#define mon_logr_debug(format, args... ) \
-do {\
-    if (g_ulMonLogLevel >=¡¡LOG_LEVEL_DEBUG) \
-    { \
-        dos_vlog(_iLevel,_iType,format,args...)(LOG_LEVEL_DEBUG, LOG_TYPE_WARNING, \
-       (format), \
-        ##args)\
-    }\
-}\
-while(0)
-#endif
 
 enum MON_WARNING_LEVEL_E
 {
@@ -63,7 +52,11 @@ typedef struct tagWarningMsg
     S8    szNormalDesc[32];  //Õý³£ÃèÊö
 }MON_WARNING_MSG_S;
 
-
+U32  mon_get_contact(U32 ulCustomerID, U32 ulRoleID);
+S32  mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames);
+U32  mon_get_balance(U32 ulCustomerID);
+S32  mon_get_balance_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames);
+U32  mon_get_level(U32 ulNotifyType);
 U32  mon_init_str_array();
 U32  mon_deinit_str_array();
 BOOL mon_is_substr(S8 * pszSrc, S8 * pszDest);

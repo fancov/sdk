@@ -306,19 +306,25 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
         case HEARTBEAT_DATA_REG:
             lResult = hb_reg_proc(pstProcessInfo);
             break;
-        case HEARTBEAT_DATA_REG_RESPONCE:
+        case HEARTBEAT_DATA_REG_RESPONSE:
             DOS_ASSERT(0);
             lResult = -1;
             break;
         case HEARTBEAT_DATA_UNREG:
             lResult = hb_unreg_proc(pstProcessInfo);
             break;
-        case HEARTBEAT_DATA_UNREG_RESPONCE:
+        case HEARTBEAT_DATA_UNREG_RESPONSE:
             DOS_ASSERT(0);
             lResult = -1;
             break;
         case HEARTBEAT_DATA_HB:
             lResult = hb_heartbeat_proc(pstProcessInfo);
+            break;
+        case HEARTBEAT_DATA_SEND:
+            lResult = hb_send_msg_recv(pMsg);
+            break;
+        case HEARTBEAT_DATA_SEND_RESPONSE:
+            DOS_ASSERT(0);
             break;
         default:
             DOS_ASSERT(0);
@@ -396,11 +402,11 @@ VOID *heartbeat_task(VOID *ptr)
     return 0;
 }
 
+
 S32 hb_read_mod_config()
 {
     return 0;
 }
-
 
 /**
  *  º¯Êý£ºS32 heartbeat_init()
@@ -531,3 +537,4 @@ S32 heartbeat_stop()
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+

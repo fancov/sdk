@@ -579,6 +579,37 @@ S32 config_hb_threshold_bandwidth(U32* pulBandWidth)
     return 0;
 }
 
+/**
+ *  函数: S32 config_hb_get_level(S8* pszErr, S8* pszLevel, U32 ulLen)
+ *  参数: S8* pszErr    异常字符串描述
+ *        S8* pszLevel  级别字符串描述
+ *        U32 ulLen     长度
+ */
+S32 config_hb_get_level(S8* pszErr, S8* pszLevel, U32 ulLen)
+{
+    S8 szNodePath[] = "config/warning";
+    S8 szMsgLevel[16] = {0};
+    S8 *pszMsgLevel = NULL;
+
+    if(!g_pstHBSrvCfg)
+    {
+        dos_printf("%s", ".Init hb-srv.xml config fail!");
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    pszMsgLevel = _config_get_param(g_pstHBSrvCfg, szNodePath, pszErr, szMsgLevel, sizeof(szMsgLevel));
+    if (DOS_ADDR_INVALID(pszMsgLevel))
+    {
+        dos_printf("Param \'%s\' is not supported.", pszErr);
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    dos_memcpy(pszLevel, pszMsgLevel, ulLen);
+
+    return 0;
+}
 
 #endif //end  #if (INCLUDE_XML_CONFIG)
 

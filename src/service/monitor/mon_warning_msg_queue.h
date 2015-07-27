@@ -35,6 +35,7 @@ typedef struct tagMsgQueue
 }MON_MSG_QUEUE_S;
 
 
+
 U32  mon_init_warning_msg_queue();
 U32  mon_warning_msg_en_queue(MON_MSG_S * pstMsg);
 U32  mon_warning_msg_de_queue();

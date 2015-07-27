@@ -29,4 +29,6 @@ VOID mon_show_process(U32 ulIndex);
 
 VOID mon_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...);
 
+U32 mon_init_notify_list();
+
 #endif

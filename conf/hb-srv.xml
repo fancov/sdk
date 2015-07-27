@@ -64,4 +64,16 @@
 			  <param name="memRate" value="40"/>
 			</proc>
 	</threshold>
+	<!--该模块专门定义其他模块发送到监控模块的告警消息最低级别
+	    级别的表示,例如费用不足严重程度高于important的全部告警：
+		           urgent    -- 紧急告警
+                   important -- 重要告警	
+    			   minor     -- 次要告警
+                   hint      -- 提示告警
+      -->
+	<warning>
+	    <param name="lack_fee" value="important"/>
+		<param name="lack_gw"  value="important"/>
+		<param name="lack_route" value="minor"/>
+	</warning>
 </config>

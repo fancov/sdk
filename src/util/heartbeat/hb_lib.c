@@ -20,10 +20,18 @@ extern "C"{
 #include <sys/un.h>
 
 #include "heartbeat.h"
+#include "../../service/monitor/mon_notification.h"
 
 #if INCLUDE_BH_ENABLE
 
 static U32 g_ulHBCurrentLogLevel = LOG_LEVEL_NOTIC;
+DLL_S  *g_pstNotifyList = NULL;
+static pthread_mutex_t  g_mutexMsgSend = PTHREAD_MUTEX_INITIALIZER;
+
+
+/* 唯一标识告警消息的序列号 */
+static U32 g_ulSerialNo = 0;
+extern U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg);
 
 VOID hb_log_set_level(U32 ulLevel)
 {
@@ -230,6 +238,42 @@ S32 hb_send_unreg(PROCESS_INFO_ST *pstProcessInfo)
                     , pstProcessInfo->lSocket);
 }
 
+S32 hb_send_notify_msg(PROCESS_INFO_ST *pstProcessInfo, MON_NOTIFY_MSG_ST *pstMsg)
+{
+    HEARTBEAT_DATA_ST stData;
+    U8   szData[1024] = {0};
+
+    if (!pstProcessInfo)
+    {
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    dos_tmr_start(&pstProcessInfo->hTmrRegInterval
+                , HB_TIMEOUT * 1000
+                , NULL
+                , 0
+                , TIMER_NORMAL_NO_LOOP);
+    hb_logr_debug("%s", "Heartbeat client start send notify msg timer.");
+
+    dos_memzero(&stData, sizeof(HEARTBEAT_DATA_ST));
+    stData.ulCommand = HEARTBEAT_DATA_SEND;
+    stData.ulLength  = sizeof(MON_NOTIFY_MSG_ST);
+    dos_snprintf(stData.szProcessName, sizeof(stData.szProcessName)
+                    , "%s", pstProcessInfo->szProcessName);
+    dos_snprintf(stData.szProcessVersion, sizeof(stData.szProcessVersion)
+                    , "%s", pstProcessInfo->szProcessVersion);
+
+    dos_memcpy(szData, stData, sizeof(stData));
+    dos_memcpy(szData + sizeof(szData), pstMsg ,sizeof(MON_NOTIFY_MSG_ST));
+    szData[sizeof(szData) - 1] = '\0';
+
+    return hb_send_msg(szData, sizeof(HEARTBEAT_DATA_ST) + sizeof(MON_NOTIFY_MSG_ST)
+                        , &pstProcessInfo->stPeerAddr
+                        , pstProcessInfo->ulPeerAddrLen
+                        , pstProcessInfo->lSocket);
+}
+
 
 /**
  *  函数：S32 hb_reg_responce_proc(PROCESS_INFO_ST *pstModInfo)
@@ -238,7 +282,7 @@ S32 hb_send_unreg(PROCESS_INFO_ST *pstProcessInfo)
  *      PROCESS_INFO_ST *pstModInfo：当前进程的控制块
  *  返回值：成功返回0.失败返回－1
  */
-S32 hb_reg_responce_proc(PROCESS_INFO_ST *pstProcessInfo)
+S32 hb_reg_response_proc(PROCESS_INFO_ST *pstProcessInfo)
 {
     if (!pstProcessInfo)
     {
@@ -285,6 +329,7 @@ S32 hb_reg_responce_proc(PROCESS_INFO_ST *pstProcessInfo)
     return 0;
 }
 
+
 /**
  *  函数：S32 hb_unreg_responce_proc(PROCESS_INFO_ST *pstModInfo)
  *  功能：处理监控进程发送过来的取消注册响应消息
@@ -292,7 +337,7 @@ S32 hb_reg_responce_proc(PROCESS_INFO_ST *pstProcessInfo)
  *      PROCESS_INFO_ST *pstModInfo：当前进程的控制块
  *  返回值：成功返回0.失败返回－1
  */
-S32 hb_unreg_responce_proc(PROCESS_INFO_ST *pstProcessInfo)
+S32 hb_unreg_response_proc(PROCESS_INFO_ST *pstProcessInfo)
 {
     if (!pstProcessInfo)
     {
@@ -331,7 +376,7 @@ S32 hb_unreg_responce_proc(PROCESS_INFO_ST *pstProcessInfo)
  *      PROCESS_INFO_ST *pstModInfo：当前进程的控制块
  *  返回值：成功返回0.失败返回－1
  */
-S32 hb_send_reg_responce(PROCESS_INFO_ST *pstProcessInfo)
+S32 hb_send_reg_response(PROCESS_INFO_ST *pstProcessInfo)
 {
     HEARTBEAT_DATA_ST stData;
 
@@ -344,7 +389,7 @@ S32 hb_send_reg_responce(PROCESS_INFO_ST *pstProcessInfo)
     hb_logr_debug("Send reg responce to the process \"%s\"", pstProcessInfo->szProcessName);
 
     memset((VOID*)&stData, 0, sizeof(stData));
-    stData.ulCommand = HEARTBEAT_DATA_REG_RESPONCE;
+    stData.ulCommand = HEARTBEAT_DATA_REG_RESPONSE;
     strncpy(stData.szProcessName, pstProcessInfo->szProcessName, sizeof(stData.szProcessName));
     stData.szProcessName[sizeof(stData.szProcessName) - 1] = '\0';
     strncpy(stData.szProcessVersion, pstProcessInfo->szProcessVersion, sizeof(stData.szProcessVersion));
@@ -361,7 +406,7 @@ S32 hb_send_reg_responce(PROCESS_INFO_ST *pstProcessInfo)
  *      PROCESS_INFO_ST *pstModInfo：当前进程的控制块
  *  返回值：成功返回0.失败返回－1
  */
-S32 hb_send_unreg_responce(PROCESS_INFO_ST *pstProcessInfo)
+S32 hb_send_unreg_response(PROCESS_INFO_ST *pstProcessInfo)
 {
     HEARTBEAT_DATA_ST stData;
 
@@ -412,11 +457,11 @@ S32 hb_reg_proc(PROCESS_INFO_ST *pstProcessInfo)
             /* 不需要break */
         case PROCESS_HB_WORKING:
             pstProcessInfo->ulStatus = PROCESS_HB_WORKING;
-            hb_send_reg_responce(pstProcessInfo);
+            hb_send_reg_response(pstProcessInfo);
             break;
         case PROCESS_HB_DEINIT:
             pstProcessInfo->ulStatus = PROCESS_HB_INIT;
-            hb_send_reg_responce(pstProcessInfo);
+            hb_send_reg_response(pstProcessInfo);
             break;
         default:
             DOS_ASSERT(0);
@@ -431,6 +476,89 @@ S32 hb_reg_proc(PROCESS_INFO_ST *pstProcessInfo)
                         , (U64)pstProcessInfo->ulProcessCBNo
                         , TIMER_NORMAL_NO_LOOP);
     hb_logr_debug("Start the heartbeat timeout timer for process \"%s\"", pstProcessInfo->szProcessName);
+
+    return 0;
+}
+
+
+/**
+ *  函数：S32 hb_send_msg_recv(VOID *pMsg)
+ *  功能：接收消息
+ *  参数：
+ *      VOID *pMsg  消息
+ *  返回值：成功返回0.失败返回－1
+ */
+S32 hb_send_msg_recv(VOID *pMsg)
+{
+    HEARTBEAT_DATA_ST stData;
+    MON_NOTIFY_MSG_ST *pstMsg = NULL;
+    DLL_NODE_S *pstNode = NULL;
+
+    dos_memcpy(&stData, pMsg, sizeof(HEARTBEAT_DATA_ST));
+
+    pstMsg = (MON_NOTIFY_MSG_ST *)dos_dmem_alloc(sizeof(MON_NOTIFY_MSG_ST));
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    dos_memzero(pstMsg, sizeof(MON_NOTIFY_MSG_ST));
+
+    pstNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
+    if (DOS_ADDR_INVALID(pstNode))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    DLL_Init_Node(pstNode);
+    dos_memcpy(pstMsg, pMsg + sizeof(HEARTBEAT_DATA_ST), sizeof(HEARTBEAT_DATA_ST));
+    pstMsg->ulSeq = g_ulSerialNo;
+    pstNode->pHandle = pstMsg;
+
+    DLL_Add(g_pstNotifyList, pstNode);
+    ++g_ulSerialNo;
+
+    return DOS_SUCC;
+}
+
+
+/**
+ *  函数：S32 hb_unreg_proc(PROCESS_INFO_ST *pstProcessInfo)
+ *  功能：处理监控进程发送过来的取消注册响应消息
+ *  参数：
+ *      PROCESS_INFO_ST *pstModInfo：当前进程的控制块
+ *  返回值：成功返回0.失败返回－1
+ */
+VOID* hb_send_msg_proc(VOID* ptr)
+{
+    MON_NOTIFY_MSG_ST *pstMsg = NULL;
+    DLL_NODE_S *pstNode = NULL;
+    U32  ulRet;
+
+    while(1)
+    {
+        pthread_mutex_lock(&g_mutexMsgSend);
+        while (DLL_Count(g_pstNotifyList) > 0)
+        {
+            pstNode = dll_fetch(g_pstNotifyList);
+            if (DOS_ADDR_INVALID(pstNode->pHandle))
+            {
+                continue;
+            }
+
+            pstMsg = (MON_NOTIFY_MSG_ST *)pstNode->pHandle;
+
+            ulRet = mon_notify_customer(pstMsg);
+            if (ulRet != DOS_SUCC)
+            {
+                hb_logr_error("Notify customer FAIL.");
+                DOS_ASSERT(0);
+                pthread_mutex_unlock(&g_mutexMsgSend);
+            }
+        }
+        pthread_mutex_unlock(&g_mutexMsgSend);
+    }
 
     return 0;
 }
@@ -458,7 +586,7 @@ S32 hb_unreg_proc(PROCESS_INFO_ST *pstProcessInfo)
         case PROCESS_HB_WORKING:
             /* 不需要break */
         case PROCESS_HB_DEINIT:
-            hb_send_unreg_responce(pstProcessInfo);
+            hb_send_unreg_response(pstProcessInfo);
             dos_tmr_stop(&pstProcessInfo->hTmrHBTimeout);
             pstProcessInfo->ulStatus = PROCESS_HB_DEINIT;
             pstProcessInfo->hTmrHBTimeout = NULL;
@@ -515,7 +643,7 @@ S32 hb_heartbeat_proc(PROCESS_INFO_ST *pstProcessInfo)
             break;
         case PROCESS_HB_DEINIT:
 #if INCLUDE_BH_SERVER
-            hb_send_unreg_responce(pstProcessInfo);
+            hb_send_unreg_response(pstProcessInfo);
 #elif INCLUDE_BH_CLIENT
             hb_send_unreg(pstProcessInfo);
 #endif

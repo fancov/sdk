@@ -42,6 +42,9 @@ static PROCESS_INFO_ST g_stProcessInfo;
 /* 线程id */
 static pthread_t       g_pthIDHBTask;
 
+/**/
+static pthread_t       g_pthSendMsgTask;
+
 /* 线程等待退出标示 */
 static S32             g_lHBTaskWaitingExit = 0;
 
@@ -184,18 +187,22 @@ S32 hb_client_msg_proc(VOID *pMsg, U32 ulLen)
             DOS_ASSERT(0);
             lResult = -1;
             break;
-        case HEARTBEAT_DATA_REG_RESPONCE:
-            lResult = hb_reg_responce_proc(&g_stProcessInfo);
+        case HEARTBEAT_DATA_REG_RESPONSE:
+            lResult = hb_reg_response_proc(&g_stProcessInfo);
             break;
         case HEARTBEAT_DATA_UNREG:
             DOS_ASSERT(0);
             lResult = -1;
             break;
-        case HEARTBEAT_DATA_UNREG_RESPONCE:
-            lResult = hb_unreg_responce_proc(&g_stProcessInfo);
+        case HEARTBEAT_DATA_UNREG_RESPONSE:
+            lResult = hb_unreg_response_proc(&g_stProcessInfo);
             break;
         case HEARTBEAT_DATA_HB:
             lResult = hb_heartbeat_proc(&g_stProcessInfo);
+            break;
+        case HEARTBEAT_DATA_SEND:
+            break;
+        case HEARTBEAT_DATA_SEND_RESPONSE:
             break;
         default:
             DOS_ASSERT(0);
@@ -203,7 +210,7 @@ S32 hb_client_msg_proc(VOID *pMsg, U32 ulLen)
             break;
     }
 
-    hb_logr_debug("BH server msg processed. Name:%s, Version:%s, CMD:%d"
+    hb_logr_debug("HB server msg processed. Name:%s, Version:%s, CMD:%d"
             , stHBData.szProcessName, stHBData.szProcessVersion, stHBData.ulCommand);
 
     return lResult;
@@ -307,7 +314,6 @@ VOID *hb_client_task(VOID *ptr)
         }
 
         hb_client_msg_proc(g_szRecvBuf, lRet);
-
     }
 
     return 0;
@@ -404,6 +410,13 @@ S32 hb_client_start()
     {
         return -1;
     }
+
+    iResult = pthread_create(&g_pthSendMsgTask, NULL, hb_send_msg_proc, NULL);
+    if (iResult < 0)
+    {
+        return -1;
+    }
+
     return 0;
 }
 
