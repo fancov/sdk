@@ -26,12 +26,14 @@ extern "C"{
 
 static U32 g_ulHBCurrentLogLevel = LOG_LEVEL_NOTIC;
 DLL_S  *g_pstNotifyList = NULL;
-static pthread_mutex_t  g_mutexMsgSend = PTHREAD_MUTEX_INITIALIZER;
 
 
 /* 唯一标识告警消息的序列号 */
+#if INCLUDE_RES_MONITOR
 static U32 g_ulSerialNo = 0;
 extern sem_t g_stSem;
+static pthread_mutex_t  g_mutexMsgSend = PTHREAD_MUTEX_INITIALIZER;
+#endif
 extern U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg);
 
 VOID hb_log_set_level(U32 ulLevel)
@@ -259,7 +261,7 @@ S32 hb_send_external_warning(PROCESS_INFO_ST *pstProcessInfo, MON_NOTIFY_MSG_ST 
     dos_snprintf(stData.szProcessVersion, sizeof(stData.szProcessVersion)
                     , "%s", pstProcessInfo->szProcessVersion);
 
-    dos_memcpy(szData, stData, sizeof(stData));
+    dos_memcpy(szData, &stData, sizeof(stData));
     dos_memcpy(szData + sizeof(szData), pstMsg ,sizeof(MON_NOTIFY_MSG_ST));
     szData[sizeof(szData) - 1] = '\0';
 
