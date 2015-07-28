@@ -52,6 +52,7 @@ PTC_CLIENT_CB_ST g_astPtcConnects[PTC_STREAMID_MAX_COUNT];
 U32 g_ulSend2PtsDelay = PTC_SEND2PTS_SLEEP_DEFAULT;
 U32 g_ulSendDataCount = 0;
 U32 g_ulResendCount   = 0;
+U32 g_ulSendNormal2PtsDelay = 0;
 
 
 void ptc_send2pts(S8 *pstData, U32 ulLen)
@@ -2184,7 +2185,7 @@ VOID *ptc_send_msg2pts(VOID *arg)
 
                     ptc_send2pts(acBuff, stSendDataNode.ulLen + sizeof(PT_MSG_TAG));
                     g_ulSendDataCount++;
-                    usleep(g_ulSend2PtsDelay);
+                    usleep(g_ulSend2PtsDelay + g_ulSendNormal2PtsDelay);
 
                     pt_logr_debug("send data to pts : length:%d, stream:%d, seq:%d", stRecvDataTcp.ulLen, pstNeedSendNode->ulStreamID, pstStreamNode->lCurrSeq);
                 }
@@ -2398,7 +2399,7 @@ VOID *ptc_recv_msg_from_pts(VOID *arg)
             if (pstMsgDes->enCmdValue == PT_CMD_RESEND)
             {
                 /* 重传请求 */
-                pt_logr_info("ptc recv resend req, seq : %d, stream : %d", pstMsgDes->lSeq, pstMsgDes->ulStreamID);
+                pt_logr_debug("ptc recv resend req, seq : %d, stream : %d", pstMsgDes->lSeq, pstMsgDes->ulStreamID);
                 BOOL bIsResend = DOS_TRUE;
                 PT_CMD_EN enCmdValue = PT_CMD_NORMAL;
                 g_ulResendCount++;
@@ -2592,10 +2593,14 @@ void *ptc_terminal_dispose(void *arg)
 {
     U32 ulCount = 0;
     U32 ulReSendOld = 0;
+    U32 ulThresholds = 1000;
+    U32 ulIncreaseCount = 0;            /* 一秒内增加的次数 */
+    U32 ulUpdateCount = 0;  /*  */
+    U32 ulReduceCount = 1;
 
     while (1)
     {
-        usleep(100);
+        usleep(100 * 1000);
 
         ulCount += 100;
         if (ulCount >= PTC_DISPOSE_INTERVAL_TIME)
@@ -2605,6 +2610,17 @@ void *ptc_terminal_dispose(void *arg)
         }
         if (ulCount % 1000 == 0)
         {
+            if (ulIncreaseCount > 5 && ulUpdateCount >= 5)
+            {
+                ulThresholds = g_ulSend2PtsDelay - ulIncreaseCount * 1000 + 5000;
+                if (ulThresholds >= 50 * 1000)
+                {
+                    ulThresholds = 49 * 1000;
+                }
+                ulUpdateCount = 0;
+            }
+            ulUpdateCount++;
+
             if (g_ulSendDataCount >= 20)
             {
                 if (g_ulResendCount > 3)
@@ -2616,17 +2632,59 @@ void *ptc_terminal_dispose(void *arg)
                 }
                 else if (0 == g_ulResendCount)
                 {
-                    if (g_ulSend2PtsDelay > 1000)
+                    if (ulThresholds > 1000)
                     {
-                        g_ulSend2PtsDelay -= 1000;
+                        g_ulSend2PtsDelay = ulThresholds;
+                    }
+                    else
+                    {
+                        if (g_ulSend2PtsDelay > 1000)
+                        {
+                            if (g_ulSend2PtsDelay > 1000)
+                            {
+                                g_ulSend2PtsDelay -= 1000;
+                            }
+                        }
                     }
                 }
             }
 
-            printf("!!!!!!!%d, resend : %d, total : %d\n", g_ulSend2PtsDelay, g_ulResendCount, g_ulSendDataCount);
+            if (g_ulResendCount * g_ulSend2PtsDelay > 1000 * 1000)
+            {
+                g_ulSendNormal2PtsDelay = 1000 * 1000;
+            }
+            else
+            {
+                g_ulSendNormal2PtsDelay = 0;
+            }
 
+            if (ulReduceCount == 0 && (ulIncreaseCount > 5 || g_ulResendCount > 20))
+            {
+                ulReduceCount++;
+                if (ulThresholds < 49 * 1000)
+                {
+                    ulThresholds += 1000;
+                }
+            }
+
+            if (g_ulSend2PtsDelay == ulThresholds && g_ulResendCount == 0)
+            {
+                ulReduceCount++;
+            }
+
+            if (ulReduceCount >= 5)
+            {
+                /* 减少阀值 */
+                ulReduceCount = 0;
+                if (ulThresholds > 1000)
+                {
+                    ulThresholds -= 1000;
+                }
+            }
+            //printf("%d, resend : %d, total : %d, ulThresholds : %d, %u\n", g_ulSend2PtsDelay, g_ulResendCount, g_ulSendDataCount, ulThresholds, time(NULL));
             g_ulSendDataCount = 0;
             g_ulResendCount = 0;
+            ulIncreaseCount = 0;
         }
         else
         {
@@ -2634,6 +2692,7 @@ void *ptc_terminal_dispose(void *arg)
             {
                 if (g_ulSend2PtsDelay < 50 * 1000)
                 {
+                    ulIncreaseCount++;
                     g_ulSend2PtsDelay += 1000;
                 }
             }

@@ -41,13 +41,13 @@ extern "C"{
 
 #   include "cfg/cfg_mod_pts.h"
 #   define DOS_PROCESS_NAME    "PTS"
-#   define DOS_PROCESS_VERSION "1.1.0.8"
+#   define DOS_PROCESS_VERSION "1.1.0.9"
 
 #elif defined(DIPCC_PTC)
 
 #   include "cfg/cfg_mod_ptc.h"
 #   define DOS_PROCESS_NAME    "PTC"
-#   define DOS_PROCESS_VERSION "1.3.0.8"
+#   define DOS_PROCESS_VERSION "1.3.0.9"
 #elif defined(DIPCC_BS)
 
 #   include "cfg/cfg_mod_bs.h"
