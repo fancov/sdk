@@ -37,8 +37,8 @@ enum HEARTBEAT_DATA_TYPE{
     HEARTBEAT_DATA_UNREG,
     HEARTBEAT_DATA_UNREG_RESPONSE,
 
-    HEARTBEAT_DATA_SEND,
-    HEARTBEAT_DATA_SEND_RESPONSE,
+    HEARTBEAT_WARNING_SEND,
+    HEARTBEAT_WARNING_SEND_RESPONSE,
 
     HEARTBEAT_DATA_HB,
 };
@@ -94,9 +94,10 @@ S32 hb_heartbeat_proc(PROCESS_INFO_ST *pstProcessInfo);
 S32 hb_send_heartbeat(PROCESS_INFO_ST *pstProcessInfo);
 
 #if INCLUDE_BH_SERVER
-S32 hb_send_msg_recv(VOID *pMsg);
+S32 hb_recv_external_warning(VOID *pMsg);
 S32 hb_unreg_proc(PROCESS_INFO_ST *pstProcessInfo);
 S32 hb_reg_proc(PROCESS_INFO_ST *pstProcessInfo);
+VOID* hb_external_warning_proc(VOID* ptr);
 #endif
 #if INCLUDE_BH_CLIENT
 S32 hb_send_reg(PROCESS_INFO_ST *pstProcessInfo);

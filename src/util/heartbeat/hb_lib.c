@@ -31,6 +31,7 @@ static pthread_mutex_t  g_mutexMsgSend = PTHREAD_MUTEX_INITIALIZER;
 
 /* 唯一标识告警消息的序列号 */
 static U32 g_ulSerialNo = 0;
+extern sem_t g_stSem;
 extern U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg);
 
 VOID hb_log_set_level(U32 ulLevel)
@@ -238,26 +239,20 @@ S32 hb_send_unreg(PROCESS_INFO_ST *pstProcessInfo)
                     , pstProcessInfo->lSocket);
 }
 
-S32 hb_send_notify_msg(PROCESS_INFO_ST *pstProcessInfo, MON_NOTIFY_MSG_ST *pstMsg)
+S32 hb_send_external_warning(PROCESS_INFO_ST *pstProcessInfo, MON_NOTIFY_MSG_ST *pstMsg)
 {
     HEARTBEAT_DATA_ST stData;
     U8   szData[1024] = {0};
 
-    if (!pstProcessInfo)
+    if (!pstProcessInfo || !pstMsg)
     {
         DOS_ASSERT(0);
+        hb_logr_error("Invalid param. pstProcessInfo:%p; pstMsg:%p.", pstProcessInfo, pstMsg);
         return -1;
     }
 
-    dos_tmr_start(&pstProcessInfo->hTmrRegInterval
-                , HB_TIMEOUT * 1000
-                , NULL
-                , 0
-                , TIMER_NORMAL_NO_LOOP);
-    hb_logr_debug("%s", "Heartbeat client start send notify msg timer.");
-
     dos_memzero(&stData, sizeof(HEARTBEAT_DATA_ST));
-    stData.ulCommand = HEARTBEAT_DATA_SEND;
+    stData.ulCommand = HEARTBEAT_WARNING_SEND;
     stData.ulLength  = sizeof(MON_NOTIFY_MSG_ST);
     dos_snprintf(stData.szProcessName, sizeof(stData.szProcessName)
                     , "%s", pstProcessInfo->szProcessName);
@@ -482,17 +477,24 @@ S32 hb_reg_proc(PROCESS_INFO_ST *pstProcessInfo)
 
 
 /**
- *  函数：S32 hb_send_msg_recv(VOID *pMsg)
+ *  函数：S32 hb_recv_external_warning(VOID *pMsg)
  *  功能：接收消息
  *  参数：
  *      VOID *pMsg  消息
  *  返回值：成功返回0.失败返回－1
  */
-S32 hb_send_msg_recv(VOID *pMsg)
+S32 hb_recv_external_warning(VOID *pMsg)
 {
     HEARTBEAT_DATA_ST stData;
     MON_NOTIFY_MSG_ST *pstMsg = NULL;
     DLL_NODE_S *pstNode = NULL;
+
+    if (DOS_ADDR_INVALID(pMsg))
+    {
+        DOS_ASSERT(0);
+        hb_logr_error("Invalid Msg. pMsg:%p", pMsg);
+        return DOS_FAIL;
+    }
 
     dos_memcpy(&stData, pMsg, sizeof(HEARTBEAT_DATA_ST));
 
@@ -519,43 +521,46 @@ S32 hb_send_msg_recv(VOID *pMsg)
     DLL_Add(g_pstNotifyList, pstNode);
     ++g_ulSerialNo;
 
+    /* 每产生一个消息，则发送一个信号量 */
+    sem_post(&g_stSem);
+
     return DOS_SUCC;
 }
 
 
 /**
- *  函数：S32 hb_unreg_proc(PROCESS_INFO_ST *pstProcessInfo)
- *  功能：处理监控进程发送过来的取消注册响应消息
+ *  函数：VOID* hb_external_warning_proc(VOID* ptr)
+ *  功能：处理其他模块发送过来的外部告警
  *  参数：
- *      PROCESS_INFO_ST *pstModInfo：当前进程的控制块
- *  返回值：成功返回0.失败返回－1
+ *      VOID* ptr  线程参数
+ *  返回值：
  */
-VOID* hb_send_msg_proc(VOID* ptr)
+VOID* hb_external_warning_proc(VOID* ptr)
 {
     MON_NOTIFY_MSG_ST *pstMsg = NULL;
     DLL_NODE_S *pstNode = NULL;
     U32  ulRet;
 
-    while(1)
+    while (DLL_Count(g_pstNotifyList) > 0)
     {
+        /* 等待信号量 */
+        sem_wait(&g_stSem);
+
         pthread_mutex_lock(&g_mutexMsgSend);
-        while (DLL_Count(g_pstNotifyList) > 0)
+        pstNode = dll_fetch(g_pstNotifyList);
+        if (DOS_ADDR_INVALID(pstNode->pHandle))
         {
-            pstNode = dll_fetch(g_pstNotifyList);
-            if (DOS_ADDR_INVALID(pstNode->pHandle))
-            {
-                continue;
-            }
+            continue;
+        }
 
-            pstMsg = (MON_NOTIFY_MSG_ST *)pstNode->pHandle;
+        pstMsg = (MON_NOTIFY_MSG_ST *)pstNode->pHandle;
 
-            ulRet = mon_notify_customer(pstMsg);
-            if (ulRet != DOS_SUCC)
-            {
-                hb_logr_error("Notify customer FAIL.");
-                DOS_ASSERT(0);
-                pthread_mutex_unlock(&g_mutexMsgSend);
-            }
+        ulRet = mon_notify_customer(pstMsg);
+        if (ulRet != DOS_SUCC)
+        {
+            hb_logr_error("Notify customer FAIL.");
+            DOS_ASSERT(0);
+            pthread_mutex_unlock(&g_mutexMsgSend);
         }
         pthread_mutex_unlock(&g_mutexMsgSend);
     }

@@ -8,6 +8,7 @@ extern "C"{
 #if INCLUDE_RES_MONITOR
 
 #include "mon_notification.h"
+#include "mon_def.h"
 
 /* 定义中文版标题与格式化内容的映射 */
 MON_MSG_MAP_ST m_pstMsgMapCN[] = {
@@ -72,6 +73,15 @@ U32 mon_send_email(S8* pszMsg, S8* pszTitle,S8* pszEmailAddress)
 {
     S8 szBuffCmd[1024] = {0};
     FILE * fp = NULL;
+
+    if (DOS_ADDR_INVALID(pszMsg)
+        || DOS_ADDR_INVALID(pszTitle)
+        || DOS_ADDR_INVALID(pszEmailAddress))
+    {
+        DOS_ASSERT(0);
+        mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Msg:%p; Title:%p; Email Address:%p.", pszMsg, pszTitle, pszEmailAddress);
+        return DOS_FAIL;
+    }
 
     dos_snprintf(szBuffCmd, sizeof(szBuffCmd), "echo %s | mail -s %s %s", pszMsg, pszTitle, pszEmailAddress);
     fp = popen(szBuffCmd, "r");

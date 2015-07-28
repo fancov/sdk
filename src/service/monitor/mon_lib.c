@@ -21,13 +21,6 @@ extern DB_HANDLE_ST *g_pstDBHandle;
 extern MON_MSG_MAP_ST *m_pstMsgMapCN;
 extern MON_MSG_MAP_ST *m_pstMsgMapEN;
 
-
-
-S8 m_szEmail[32] = {0}, m_szTelNo[32] = {0}, m_szContact[32] = {0};
-S32 m_lBalance = -1;
-
-U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg);
-
 /**
  * 功能:初始化通知消息队列
  * 参数集：
@@ -99,40 +92,66 @@ U32 mon_get_level(U32 ulNotifyType)
     return ulLevel;
 }
 
-
+/**
+ *  函数：U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg)
+ *  功能：将外部告警消息推送给客户
+ *  参数：
+ *      MON_NOTIFY_MSG_ST *pstMsg  通知消息
+ *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
 U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg)
 {
     U32 ulLevel = U32_BUTT, ulRet = U32_BUTT, ulType = U32_BUTT;
     S8  szBuff[256] = {0}, szQuery[1024]={0};
+    U64 uLBalance = U64_BUTT;
     time_t ulTime = 0;
     struct tm* pstCurTime;
+    MON_CONTACT_ST stContact = {{0}};
 
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+        mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "pstMsg:%p", pstMsg);
+        return DOS_FAIL;
+    }
+
+    /* 获取该信息的告警级别 */
     ulLevel = mon_get_level(pstMsg->ulWarningID & 0xFF);
     if (MON_NOTIFY_LEVEL_BUTT == ulLevel)
     {
         ulLevel = MON_NOTIFY_LEVEL_EMERG;
     }
 
+    /* 获取告警类型 */
     ulType = pstMsg->ulWarningID & 0xFF;
 
+    /* 获取消息发送时间 */
     ulTime = pstMsg->ulCurTime;
     pstCurTime = localtime(&ulTime);
 
     switch (ulType)
     {
         case MON_NOTIFY_TYPE_LACK_FEE:
-            ulRet = mon_get_contact(pstMsg->ulDestCustomerID, pstMsg->ulDestRoleID);
+            /* 获取联系方式 */
+            ulRet = mon_get_contact(pstMsg->ulDestCustomerID, pstMsg->ulDestRoleID, &stContact);
             if (DOS_SUCC != ulRet)
             {
                 DOS_ASSERT(0);
-                mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Get contact FAIL.");
+                mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Get contact FAIL.ulRet:%u", ulRet);
                 return DOS_FAIL;
+            }
+            /* 获取余额信息 */
+            ulRet = mon_get_balance(pstMsg->ulDestCustomerID, &uLBalance);
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Get balance FAIL.ulRet:%u", ulRet);
             }
 
             dos_snprintf(szBuff, sizeof(szBuff), m_pstMsgMapEN[ulType].pszDesc
-                            , m_szContact, pstCurTime->tm_year + 1900, pstCurTime->tm_mon + 1
+                            , stContact.szContact, pstCurTime->tm_year + 1900, pstCurTime->tm_mon + 1
                             , pstCurTime->tm_mday, pstCurTime->tm_hour, pstCurTime->tm_min
-                            , pstCurTime->tm_sec, (F64)m_lBalance/10000.0, pstMsg->ulWarningID);
+                            , pstCurTime->tm_sec, uLBalance / 10000.0, pstMsg->ulWarningID);
             break;
         case MON_MOTIFY_TYPE_LACK_GW:
             break;
@@ -168,24 +187,55 @@ U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg)
 
     if (pstMsg->ulLevel <= ulLevel)
     {
-        ulRet = mon_send_email(szBuff, m_pstMsgMapEN[ulType].pszTitle, m_szEmail);
-        ulRet = mon_send_sms(szBuff, m_pstMsgMapEN[ulType].pszTitle, m_szTelNo);
+        ulRet = mon_send_email(szBuff, m_pstMsgMapEN[ulType].pszTitle, stContact.szEmail);
+        if (ulRet != DOS_SUCC)
+        {
+            mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Send Email FAIL. ulRet:%u", ulRet);
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
+
+        ulRet = mon_send_sms(szBuff, m_pstMsgMapEN[ulType].pszTitle, stContact.szTelNo);
+        if (ulRet != DOS_SUCC)
+        {
+            mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Send SMS FAIL. ulRet:%u", ulRet);
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
     }
 
     return DOS_SUCC;
 }
 
-U32 mon_get_contact(U32 ulCustomerID, U32 ulRoleID)
+
+/**
+ *  函数：U32 mon_get_contact(U32 ulCustomerID, U32 ulRoleID, MON_CONTACT_ST *pstContact)
+ *  功能：根据客户id与客户角色id获取联系人信息
+ *  参数：
+ *      U32 ulCustomerID           客户id
+ *      U32 ulRoleID               客户角色id
+ *      MON_CONTACT_ST *pstContact 输出参数，表示联系人相关信息
+ *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 mon_get_contact(U32 ulCustomerID, U32 ulRoleID, MON_CONTACT_ST *pstContact)
 {
     S8  szQuery[1024] = {0};
     S32 lRet = 0;
+
+    if (DOS_ADDR_INVALID(pstContact))
+    {
+        DOS_ASSERT(0);
+        mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Get Contact FAIL. CustomerID:%u; RoleID:%u; pstContact:%p."
+                    , ulCustomerID, ulRoleID, pstContact);
+        return DOS_FAIL;
+    }
 
     dos_snprintf(szQuery, sizeof(szQuery)
                     , "SELECT contact,tbl_number,email FROM tbl_contact WHERE id=%d AND customer_id=%d;"
                     , ulRoleID
                     , ulCustomerID);
 
-    lRet = db_query(g_pstDBHandle, szQuery, mon_get_contact_cb, NULL, NULL);
+    lRet = db_query(g_pstDBHandle, szQuery, mon_get_contact_cb, (VOID *)pstContact, NULL);
     if (lRet != DB_ERR_SUCC)
     {
         DOS_ASSERT(0);
@@ -194,30 +244,49 @@ U32 mon_get_contact(U32 ulCustomerID, U32 ulRoleID)
     return DOS_SUCC;
 }
 
+/**
+ *  函数：S32 mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+ *  功能：获取联系人相关信息回调函数
+ *  参数：
+ *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
 S32 mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
+    MON_CONTACT_ST *pstContact = NULL;
+
     if (DOS_ADDR_INVALID(aszNames)
-        || DOS_ADDR_INVALID(aszValues))
+        || DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(pArg))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
-    dos_snprintf(m_szContact, sizeof(m_szContact), "%s", aszValues[0]);
-    dos_snprintf(m_szTelNo, sizeof(m_szTelNo), "%s", aszValues[1]);
-    dos_snprintf(m_szEmail, sizeof(m_szEmail), "%s", aszValues[2]);
+    pstContact = (MON_CONTACT_ST *)pArg;
+
+    dos_snprintf(pstContact->szContact, sizeof(pstContact->szContact), "%s", aszValues[0]);
+    dos_snprintf(pstContact->szTelNo, sizeof(pstContact->szTelNo), "%s", aszValues[1]);
+    dos_snprintf(pstContact->szEmail, sizeof(pstContact->szEmail), "%s", aszValues[2]);
 
     return DOS_SUCC;
 }
 
-U32 mon_get_balance(U32 ulCustomerID)
+/**
+ *  函数：U32 mon_get_balance(U32 ulCustomerID, U64* puLBalance)
+ *  功能：根据客户的余额信息
+ *  参数：
+ *      U32 ulCustomerID           客户id
+ *      U64* puLBalance            输出参数，指向余额的指针
+ *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32 mon_get_balance(U32 ulCustomerID, U64* puLBalance)
 {
     S8  szQuery[1024] = {0};
     S32 lRet = 0;
 
     dos_snprintf(szQuery, sizeof(szQuery), "SELECT balance FROM tbl_customer WHERE id=%u;", ulCustomerID);
 
-    lRet = db_query(g_pstDBHandle, szQuery, mon_get_balance_cb, NULL, NULL);
+    lRet = db_query(g_pstDBHandle, szQuery, mon_get_balance_cb, puLBalance, NULL);
     if (lRet != DB_ERR_SUCC)
     {
         DOS_ASSERT(0);
@@ -227,16 +296,27 @@ U32 mon_get_balance(U32 ulCustomerID)
     return DOS_SUCC;
 }
 
+/**
+ *  函数：S32 mon_get_balance_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+ *  功能：根据客户的余额信息的回调函数
+ *  参数：
+ *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
 S32 mon_get_balance_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
+    U64    *puLBalance = NULL;
+
     if (DOS_ADDR_INVALID(aszNames)
-        || DOS_ADDR_INVALID(aszValues))
+        || DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(pArg))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
-    if (dos_atol(aszValues[0], &m_lBalance) < 0)
+    puLBalance = (U64 *)pArg;
+
+    if (dos_atoull(aszValues[0], puLBalance) < 0)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;

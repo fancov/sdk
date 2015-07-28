@@ -24,6 +24,7 @@ extern "C"{
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/sem.h>
 
 /* include private header file */
 #include "heartbeat.h"
@@ -50,6 +51,12 @@ static S32                  g_lHBTaskWaitingExit = 0;
 /* 接收数据缓存 */
 static S8                   g_szRecvBuf[MAX_BUFF_LENGTH];
 
+/* 接收外部客户端消息线程 */
+static pthread_t            g_pthSendMsgTask;
+
+
+/* 等待外部消息的信号量 */
+sem_t g_stSem;
 
 /**
  * 函数: hb_get_max_timeout()
@@ -320,10 +327,10 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
         case HEARTBEAT_DATA_HB:
             lResult = hb_heartbeat_proc(pstProcessInfo);
             break;
-        case HEARTBEAT_DATA_SEND:
-            lResult = hb_send_msg_recv(pMsg);
+        case HEARTBEAT_WARNING_SEND:
+            lResult = hb_recv_external_warning(pMsg);
             break;
-        case HEARTBEAT_DATA_SEND_RESPONSE:
+        case HEARTBEAT_WARNING_SEND_RESPONSE:
             DOS_ASSERT(0);
             break;
         default:
@@ -505,7 +512,16 @@ S32 heartbeat_start()
 {
     S32 iResult = 0;
 
+    /* 初始化通知消息的信号量 */
+    sem_init(&g_stSem, 0, 0);
+
     iResult = pthread_create(&g_pthIDHBTask, NULL, heartbeat_task, NULL);
+    if (iResult < 0)
+    {
+        return -1;
+    }
+
+    iResult = pthread_create(&g_pthSendMsgTask, NULL, hb_external_warning_proc, NULL);
     if (iResult < 0)
     {
         return -1;
