@@ -54,6 +54,7 @@ typedef struct tagACDQueryMngtNode
     U32       ulCustomID;                          /* 当前坐席组所属 */
     U32       ulGroupID;                           /* 坐席组在数据库中的编号 */
     S8        szGroupName[SC_ACD_GROUP_NAME_LEN];  /* 坐席组名 */
+    S8        szLastEmpNo[SC_EMP_NUMBER_LENGTH];   /* 最后一个接电话的坐席的工号 */
 
     DLL_S     stAgentList;                         /* 坐席hash表 */
 

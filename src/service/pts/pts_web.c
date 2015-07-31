@@ -931,6 +931,7 @@ void *pts_send_msg2browser_pthread(void *arg)
     U32                         ulSteamID           = 0;
     struct timeval              now;
     struct timespec             timeout;
+    S32                         lCurrSeq            = 0;
 
     pthread_mutex_lock(&g_mutexStreamAddrList);
     pstListNode = dll_find(&g_stStreamAddrList, &pstParam->ulStreamID, pts_find_stream_addr_by_streamID);
@@ -985,8 +986,8 @@ void *pts_send_msg2browser_pthread(void *arg)
     while (!pstParam->bIsNeedExit)
     {
         /* 发送包，直到不连续 */
-        pstStreamNode->lCurrSeq++;
-        ulArraySub = (pstStreamNode->lCurrSeq) & (PT_DATA_RECV_CACHE_SIZE - 1);
+        lCurrSeq = pstStreamNode->lCurrSeq + 1;
+        ulArraySub = lCurrSeq & (PT_DATA_RECV_CACHE_SIZE - 1);
         pstDataTcp = pstStreamNode->unDataQueHead.pstDataTcp;
         if (DOS_ADDR_INVALID(pstDataTcp))
         {
@@ -998,7 +999,7 @@ void *pts_send_msg2browser_pthread(void *arg)
             goto end;
         }
 
-        if (pstDataTcp[ulArraySub].lSeq == pstStreamNode->lCurrSeq)
+        if (pstDataTcp[ulArraySub].lSeq == lCurrSeq && (lCurrSeq != 0 || pstDataTcp[ulArraySub].ulLen != 0))
         {
             if (pstDataTcp[ulArraySub].ulLen == 0)
             {
@@ -1066,13 +1067,13 @@ void *pts_send_msg2browser_pthread(void *arg)
 
                     break;
                 }
+                pstStreamNode->lCurrSeq = lCurrSeq;
 
                 pthread_mutex_lock(&pstCCNode->pthreadMutex);
             }
         }
         else
         {
-            pstStreamNode->lCurrSeq--;
             gettimeofday(&now, NULL);
             timeout.tv_sec = now.tv_sec;
             timeout.tv_nsec = now.tv_usec * 1000 + 50;

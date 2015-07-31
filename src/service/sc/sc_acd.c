@@ -863,6 +863,7 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
         pstGroupListNode->ucACDPolicy = (U8)ulPolicy;
         pstGroupListNode->usCount = 0;
         pstGroupListNode->usLastUsedAgent = 0;
+        pstGroupListNode->szLastEmpNo[0] = '\0';
 
         sc_logr_error(SC_ACD, "Group \"%u\" Already in the list. Update", ulGroupID);
         pthread_mutex_unlock(&g_mutexGroupList);
@@ -921,6 +922,7 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
     pstGroupListNode->ucACDPolicy = (U8)ulPolicy;
     pstGroupListNode->usCount = 0;
     pstGroupListNode->usLastUsedAgent = 0;
+    pstGroupListNode->szLastEmpNo[0] = '\0';
     pstGroupListNode->usID = (U16)g_ulGroupCount;
     pstGroupListNode->ucWaitingDelete = DOS_FALSE;
     if (pszGroupName[0] != '\0')
@@ -1112,7 +1114,8 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST 
 
 SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
 {
-    U32     usLastUsedAgent      = 0;
+    S8      szLastEmpNo[SC_EMP_NUMBER_LENGTH]     = {0};
+    S8      szEligibleEmpNo[SC_EMP_NUMBER_LENGTH] = {0};
     SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentQueueNode = NULL;
     SC_ACD_AGENT_INFO_ST       *pstAgentInfo      = NULL;
     DLL_NODE_S                 *pstDLLNode        = NULL;
@@ -1127,10 +1130,13 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST
      * 从上次使用的编号开始查找一个可用的坐席。如果到队尾了还没有找到就再从头来
      */
 
-    usLastUsedAgent = pstGroupListNode->usLastUsedAgent;
+    dos_strncpy(szLastEmpNo, pstGroupListNode->szLastEmpNo, SC_EMP_NUMBER_LENGTH);
+    szLastEmpNo[SC_EMP_NUMBER_LENGTH-1] = '\0';
+    szEligibleEmpNo[0] = '\0';
 
-    sc_logr_debug(SC_ACD, "Select agent in order. Start find agent %u in group %u, Count : %u"
-                    , usLastUsedAgent
+start_find:
+    sc_logr_debug(SC_ACD, "Select agent in order. Start find agent %s in group %u, Count : %u"
+                    , szLastEmpNo
                     , pstGroupListNode->ulGroupID
                     , pstGroupListNode->stAgentList.ulCount);
 
@@ -1153,11 +1159,12 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST
             continue;
         }
 
-        if (pstAgentQueueNode->ulID <= usLastUsedAgent)
+        /* 找到一个比最后一个大且最小工号的坐席 */
+        if (dos_strncmp(szLastEmpNo, pstAgentQueueNode->pstAgentInfo->szEmpNo, SC_EMP_NUMBER_LENGTH) <= 0)
         {
-            sc_logr_debug(SC_ACD, "Found an agent. But the agent's order(%u) is less then last agent order(%u). coutinue.(Agent %u in Group %u)"
+            sc_logr_debug(SC_ACD, "Found an agent. But the agent's order(%s) is less then last agent order(%u). coutinue.(Agent %u in Group %u)"
                             , pstAgentQueueNode->ulID
-                            , usLastUsedAgent
+                            , szLastEmpNo
                             , pstAgentQueueNode->pstAgentInfo->ulSiteID
                             , pstGroupListNode->ulGroupID);
 
@@ -1173,69 +1180,28 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST
             continue;
         }
 
+        if ('\0' != szEligibleEmpNo[0])
+        {
+            if (dos_strncmp(szEligibleEmpNo, pstAgentQueueNode->pstAgentInfo->szEmpNo, SC_EMP_NUMBER_LENGTH) <= 0)
+            {
+                continue;
+            }
+        }
+        dos_strncpy(szEligibleEmpNo, pstAgentQueueNode->pstAgentInfo->szEmpNo, SC_EMP_NUMBER_LENGTH);
+        szEligibleEmpNo[SC_EMP_NUMBER_LENGTH - 1] = '\0';
+
         pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
         sc_logr_notice(SC_ACD, "Found an useable agent.(Agent %u in Group %u)"
                         , pstAgentInfo->ulSiteID
                         , pstGroupListNode->ulGroupID);
-
-        break;
     }
 
-    if (DOS_ADDR_INVALID(pstAgentInfo))
+    if (DOS_ADDR_INVALID(pstAgentInfo) && szLastEmpNo[0] != '\0')
     {
-        sc_logr_debug(SC_ACD, "Select agent in order from head. Start find agent %u in group %u, Count : %u"
-                        , usLastUsedAgent
-                        , pstGroupListNode->ulGroupID
-                        , pstGroupListNode->stAgentList.ulCount);
+        /* 没有找到到，找最小的工号编号的坐席来接电话 */
+        szLastEmpNo[0] = '\0';
 
-        DLL_Scan(&pstGroupListNode->stAgentList, pstDLLNode, DLL_NODE_S*)
-        {
-            if (DOS_ADDR_INVALID(pstDLLNode)
-                || DOS_ADDR_INVALID(pstDLLNode->pHandle))
-            {
-                sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %u."
-                                , pstGroupListNode->ulGroupID);
-                continue;
-            }
-
-            pstAgentQueueNode = pstDLLNode->pHandle;
-            if (DOS_ADDR_INVALID(pstAgentQueueNode)
-                || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
-            {
-                sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %u."
-                                , pstGroupListNode->ulGroupID);
-                continue;
-            }
-
-            /* 邋到这里已经查找过所有的的坐席了 */
-            if (pstAgentQueueNode->ulID > usLastUsedAgent)
-            {
-                sc_logr_debug(SC_ACD, "The end of the select loop.(Group %u)"
-                                , pstGroupListNode->ulGroupID);
-                break;
-            }
-
-            if (!SC_ACD_SITE_IS_USEABLE(pstAgentQueueNode->pstAgentInfo))
-/*
-            if (DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo)
-                || pstAgentQueueNode->pstAgentInfo->bWaitingDelete
-                || !pstAgentQueueNode->pstAgentInfo->bLogin
-                || SC_ACD_IDEL != pstAgentQueueNode->pstAgentInfo->ucStatus)
-*/
-            {
-                sc_logr_debug(SC_ACD, "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
-                            , pstAgentQueueNode->pstAgentInfo->ulSiteID
-                            , pstGroupListNode->ulGroupID);
-                continue;
-            }
-
-            pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-            sc_logr_notice(SC_ACD, "Found an useable agent.(Agent %u in Group %u, Status: %u)"
-                            , pstAgentInfo->ulSiteID
-                            , pstGroupListNode->ulGroupID
-                            , pstAgentInfo->ucStatus);
-            break;
-        }
+        goto start_find;
     }
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
@@ -1534,6 +1500,8 @@ U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID,
         && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
     {
         pstGroupListNode->usLastUsedAgent = pstAgentNode->ulID;
+        dos_strncmp(pstGroupListNode->szLastEmpNo, pstAgentNode->pstAgentInfo->szEmpNo, SC_EMP_NUMBER_LENGTH);
+        pstGroupListNode->szLastEmpNo[SC_EMP_NUMBER_LENGTH-1] = '\0';
         pstAgentNode->pstAgentInfo->stStat.ulCallCnt++;
         pstAgentNode->pstAgentInfo->stStat.ulSelectCnt++;
 

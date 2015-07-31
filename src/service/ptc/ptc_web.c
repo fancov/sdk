@@ -464,10 +464,13 @@ void *ptc_handle_recvfrom_web_msg(void *arg)
 
                 if (!ptc_cache_is_or_not_have_space(g_astPtcConnects[i].pstSendStreamNode))
                 {
+                    pstRecvBuffNode = dos_list_entry(pstRecvBuffList, PTC_WEB_REV_MSG_HANDLE_ST, stList);
+                    ptc_set_cache_full_true(pstRecvBuffNode->lSocket, PT_DATA_WEB);
                     if (ulCount < PTC_LOCK_MIN_COUNT)
                     {
                         pthread_mutex_unlock(&g_astPtcConnects[i].pMutexPthread);
                     }
+
                     pt_logr_debug("ptc cache not have space! streamID : %d", g_astPtcConnects[i].ulStreamID);
 
                     break;

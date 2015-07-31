@@ -1391,7 +1391,7 @@ S32 pts_save_into_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen)
         {
             /* 发送确认接收消息 */
             pts_trace(pstPtcNode->bIsTrace, LOG_LEVEL_DEBUG, "send make sure msg : %d", pstStreamNode->lConfirmSeq + PT_CONFIRM_RECV_MSG_SIZE);
-            pt_logr_info("send make sure msg : %d", pstStreamNode->lConfirmSeq + PT_CONFIRM_RECV_MSG_SIZE);
+            pt_logr_info("send confirm msg, stream : %d, seq : %d", pstStreamNode->ulStreamID, pstStreamNode->lConfirmSeq + PT_CONFIRM_RECV_MSG_SIZE);
             pts_send_confirm_msg(pstMsgDes, pstStreamNode->lConfirmSeq + PT_CONFIRM_RECV_MSG_SIZE);
             pstStreamNode->lConfirmSeq = pstStreamNode->lConfirmSeq + PT_CONFIRM_RECV_MSG_SIZE;
         }
@@ -1410,7 +1410,7 @@ S32 pts_save_into_recv_cache(PT_MSG_TAG *pstMsgDes, S8 *acRecvBuf, S32 lDataLen)
     {
         /* 判断前一个包是否存在, 若存在，说明没有丢包 */
         ulNextSendArraySub = (pstMsgDes->lSeq - 1) & (PT_DATA_RECV_CACHE_SIZE - 1);
-        if (pstDataQueue[ulNextSendArraySub].lSeq == pstMsgDes->lSeq - 1)
+        if (pstDataQueue[ulNextSendArraySub].lSeq == pstMsgDes->lSeq - 1 && pstDataQueue[ulNextSendArraySub].ulLen != 0)
         {
             pthread_mutex_unlock(&pstPtcNode->pthreadMutex);
 
@@ -3136,7 +3136,7 @@ VOID *pts_handle_recvfrom_ptc_msg(VOID *arg)
                         /* pts发送的重传请求 */
                         BOOL bIsResend = DOS_TRUE;
                         PT_CMD_EN enCmdValue = PT_CMD_NORMAL;
-                        pt_logr_debug("recv resend msg, stream : %d, seq : %d", pstMsgDes->ulStreamID, pstMsgDes->lSeq);
+                        pt_logr_info("recv resend msg, stream : %d, seq : %d", pstMsgDes->ulStreamID, pstMsgDes->lSeq);
                         pthread_mutex_lock(&g_mutexPtsSendPthread);
                         pt_need_send_node_list_insert(&g_stPtsNendSendNode, pstMsgDes->aucID, pstMsgDes, enCmdValue, bIsResend, DOS_TRUE);
                         pthread_cond_signal(&g_condPtsSend);
@@ -3146,7 +3146,7 @@ VOID *pts_handle_recvfrom_ptc_msg(VOID *arg)
                     else if (pstMsgDes->enCmdValue == PT_CMD_CONFIRM)
                     {
                         /* 确认接收消息 */
-                        pt_logr_debug("pts recv make sure, seq : %d", pstMsgDes->lSeq);
+                        pt_logr_debug("pts recv confirm msg, stream : %d, seq : %d", pstMsgDes->ulStreamID, pstMsgDes->lSeq);
                         lResult = pts_deal_with_confirm_msg(pstMsgDes);
                         if (lResult)
                         {
