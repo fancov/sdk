@@ -1974,6 +1974,8 @@ S32 code_convert(S8 *from_charset, S8 *to_charset, S8 *inbuf, size_t inlen, S8 *
     dos_memzero(outbuf, outlen);
     if (-1 == iconv(cd, pin, &inlen, pout, &outlen))
     {
+        iconv_close(cd);
+
         return DOS_FAIL;
     }
 

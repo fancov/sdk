@@ -766,7 +766,7 @@ VOID *pts_recv_msg_from_browser(VOID *arg)
     g_lWebServSocket = g_stPtsMsg.usWebServPort;
 
     /* 创建管道 */
-    if(access(g_szPtsFifoName, F_OK) == -1)
+    if (access(g_szPtsFifoName, F_OK) == -1)
     {
         /* 管道文件不存在,创建命名管道 */
         lResult = mkfifo(g_szPtsFifoName, 0777);

@@ -102,6 +102,20 @@ BOOL ptc_is_http_end(S8 *pcRequest)
     return DOS_FALSE;
 }
 
+BOOL ptc_is_http_head(S8 *pcRequest)
+{
+    if (NULL == pcRequest)
+    {
+        return DOS_FALSE;
+    }
+
+    if (NULL != dos_strstr(pcRequest,"HTTP/1.1") || NULL != dos_strstr(pcRequest,"HTTP/1.0"))
+    {
+        return DOS_TRUE;
+    }
+    return DOS_FALSE;
+}
+
 /**
  * 函数：void *ptc_recv_msg_from_web(void *arg)
  * 功能：
@@ -215,11 +229,12 @@ void *ptc_recv_msg_from_web(void *arg)
                     g_astPtcConnects[i].pszBuff = (S8 *)dos_dmem_alloc(PTC_HTTP_RESPONSE_SIZE);
                     if (DOS_ADDR_INVALID(g_astPtcConnects[i].pszBuff))
                     {
-                         /* 关闭该strream */
+                         /* 关闭该stream */
                         ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
 
                         break;
                     }
+                    dos_memzero(g_astPtcConnects[i].pszBuff, PTC_HTTP_RESPONSE_SIZE);
                     g_astPtcConnects[i].ulBuffLen = 0;
                     g_astPtcConnects[i].bIsDisposeHttpHead = DOS_TRUE;
                 }
@@ -233,7 +248,7 @@ void *ptc_recv_msg_from_web(void *arg)
                     pcRecvBuf = (S8 *)dos_dmem_alloc(PT_RECV_DATA_SIZE);
                     if (DOS_ADDR_INVALID(pcRecvBuf))
                     {
-                        /* 关闭该strream */
+                        /* 关闭该stream */
                         ptc_free_stream_resoure(PT_DATA_WEB, &g_astPtcConnects[i], g_astPtcConnects[i].ulStreamID, 1);
 
                         break;
@@ -263,6 +278,15 @@ void *ptc_recv_msg_from_web(void *arg)
                     if (g_astPtcConnects[i].ulBuffLen < PTC_HTTP_RESPONSE_SIZE)
                     {
                         g_astPtcConnects[i].pszBuff[g_astPtcConnects[i].ulBuffLen] = '\0';
+                    }
+
+                    /* 判断一下是不是头 */
+                    if (g_astPtcConnects[i].ulBuffLen <= PT_RECV_DATA_SIZE)
+                    {
+                        if (!ptc_is_http_head(g_astPtcConnects[i].pszBuff))
+                        {
+                            goto deal_with;
+                        }
                     }
 
                     /* 判断有没有到尾部 */
@@ -322,6 +346,7 @@ void *ptc_recv_msg_from_web(void *arg)
                         }
                     }
 
+deal_with:
                     /* 保存到list中 */
                     ulSurplusTotalLen = g_astPtcConnects[i].ulBuffLen;
                     ulSaveTotalLen = 0;
@@ -359,6 +384,9 @@ void *ptc_recv_msg_from_web(void *arg)
                         }
 
                     }
+                    dos_memzero(g_astPtcConnects[i].pszBuff, PTC_HTTP_RESPONSE_SIZE);
+                    g_astPtcConnects[i].ulBuffLen = 0;
+
                     pthread_cond_signal(&g_condPtcRecvMsgHandle);
                     pthread_mutex_unlock(&g_mutexPtcRecvMsgHandle);
                     g_astPtcConnects[i].bIsDisposeHttpHead = DOS_FALSE;
@@ -385,6 +413,8 @@ void *ptc_recv_msg_from_web(void *arg)
 
                 if (lRecvLen < PT_RECV_DATA_SIZE)
                 {
+                    g_astPtcConnects[i].bIsDisposeHttpHead = DOS_TRUE;
+
                     break;
                 }
             }
