@@ -2,36 +2,43 @@
 
 <config version="1.0">
     <process>
-	        <!--配置被监控进程的个数-->
-    	    <param name="count" value="4"/>
+	    <!--配置被监控进程的个数-->
+    	    <param name="count" value="5"/>
     		  <0>
-			     <!--进程的最简名称-->
-    		  	 <param name="name"      value="freeswitch"/>
-				 <!--此value表示被监控的进程-->
-    		     <param name="startcmd"  value="/usr/local/freeswitch/bin/freeswitch -nc &amp;" />
-				 <!--配置文件版本，暂未使用该参数-->
-    		     <param name="version"   value="1.0"/>
-				 <!--此参数表示是否配置心跳，默认为true表配置，该参数暂未使用-->
-    		     <param name="heartbeat" value="true" />
+			 <!--进程的最简名称-->
+    		  	 <param name="name"      value="bsd"/>
+		         <!--此value表示被监控的进程-->
+    		         <param name="startcmd"  value="/dipcc/bin/bsd" />
+		         <!--配置文件版本，暂未使用该参数-->
+    		         <param name="version"   value="1.0"/>
+		         <!--此参数表示是否配置心跳，默认为true表配置，该参数暂未使用-->
+    		         <param name="heartbeat" value="true" />
     		  </0>
     		  <1>
     		  	 <param name="name"      value="ctrl_paneld" />
-    		  	 <param name="startcmd"  value="/home/bubble/mnt/res_monitor/sdk/project/ctrl_panel/ctrl_paneld &amp;" />
+    		  	 <param name="startcmd"  value="/dipcc/bin/ctrl_paneld" />
     		  	 <param name="version"   value="1.0"/>
     		  	 <param name="heartbeat" value="true" />
     		  </1>
-			  <2>
-			     <param name="name"      value="bsd" />
-    		  	 <param name="startcmd"  value="/mnt/hgfs/workspace/sdk/project/bs/bsd &amp;" />
+	          <2>
+			 <param name="name"      value="bsd" />
+    		  	 <param name="startcmd"  value="/dipcc/bin/bsd" />
     		  	 <param name="version"   value="1.0"/>
     		  	 <param name="heartbeat" value="true" />
-			  </2>
-			  <3>
-			     <param name="name"      value="ptcd" />
-    		  	 <param name="startcmd"  value="/mnt/hgfs/workspace/pts-ptc/ptc/ptcd &amp;" />
+		  </2>
+	          <3>
+			 <param name="name"      value="ptsd" />
+    		  	 <param name="startcmd"  value="/dipcc/bin/ptsd" />
     		  	 <param name="version"   value="1.0"/>
     		  	 <param name="heartbeat" value="true" />
-			  </3>
+		  </3>
+	          <4>
+			 <param name="name"      value="ptcd" />
+    		  	 <param name="startcmd"  value="/dipcc/bin/ptcd" />
+    		  	 <param name="version"   value="1.0"/>
+    		  	 <param name="heartbeat" value="true" />
+		  </4>
+                
     </process>
 	<!--该配置项配置资源占用阀值-->
 	<threshold>
@@ -65,15 +72,21 @@
 			</proc>
 	</threshold>
 	<!--该模块专门定义其他模块发送到监控模块的告警消息最低级别
-	    级别的表示,例如费用不足严重程度高于important的全部告警：
-		           urgent    -- 紧急告警
+	    级别的表示,例如费用不足严重程度高于important或者是important的全部告警：
+		   urgent    -- 紧急告警
                    important -- 重要告警	
-    			   minor     -- 次要告警
+    	           minor     -- 次要告警
                    hint      -- 提示告警
-      -->
+         -->
 	<warning>
-	    <param name="lack_fee" value="important"/>
-		<param name="lack_gw"  value="important"/>
+	    <param name="lack_fee"   value="important"/>
+		<param name="lack_gw"    value="important"/>
 		<param name="lack_route" value="minor"/>
+		<language>
+		    <!-- 该处配置当前IPCC系统的语言环境，其值如下
+   			     cn:  简体中文
+                 en:  美式英语 -->
+			<param name="lang" value="cn"/>
+		</language>
 	</warning>
 </config>

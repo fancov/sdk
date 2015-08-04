@@ -26,12 +26,11 @@ extern "C"{
 
 static U32 g_ulHBCurrentLogLevel = LOG_LEVEL_NOTIC;
 DLL_S  *g_pstNotifyList = NULL;
-
+pthread_cond_t  g_condNotifyList  = PTHREAD_COND_INITIALIZER;
 
 /* 唯一标识告警消息的序列号 */
 #if INCLUDE_RES_MONITOR
 static U32 g_ulSerialNo = 0;
-extern sem_t g_stSem;
 static pthread_mutex_t  g_mutexMsgSend = PTHREAD_MUTEX_INITIALIZER;
 #endif
 extern U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg);
@@ -244,7 +243,7 @@ S32 hb_send_unreg(PROCESS_INFO_ST *pstProcessInfo)
 S32 hb_send_external_warning(PROCESS_INFO_ST *pstProcessInfo, MON_NOTIFY_MSG_ST *pstMsg)
 {
     HEARTBEAT_DATA_ST stData;
-    U8   szData[1024] = {0};
+    U8   szBuff[1024] = {0};
 
     if (!pstProcessInfo || !pstMsg)
     {
@@ -261,11 +260,11 @@ S32 hb_send_external_warning(PROCESS_INFO_ST *pstProcessInfo, MON_NOTIFY_MSG_ST 
     dos_snprintf(stData.szProcessVersion, sizeof(stData.szProcessVersion)
                     , "%s", pstProcessInfo->szProcessVersion);
 
-    dos_memcpy(szData, &stData, sizeof(stData));
-    dos_memcpy(szData + sizeof(szData), pstMsg ,sizeof(MON_NOTIFY_MSG_ST));
-    szData[sizeof(szData) - 1] = '\0';
+    dos_memcpy(szBuff, &stData, sizeof(stData));
+    dos_memcpy(szBuff + sizeof(HEARTBEAT_DATA_ST), pstMsg ,sizeof(MON_NOTIFY_MSG_ST));
+    szBuff[sizeof(szBuff) - 1] = '\0';
 
-    return hb_send_msg(szData, sizeof(HEARTBEAT_DATA_ST) + sizeof(MON_NOTIFY_MSG_ST)
+    return hb_send_msg(szBuff, sizeof(HEARTBEAT_DATA_ST) + sizeof(MON_NOTIFY_MSG_ST)
                         , &pstProcessInfo->stPeerAddr
                         , pstProcessInfo->ulPeerAddrLen
                         , pstProcessInfo->lSocket);
@@ -517,14 +516,15 @@ S32 hb_recv_external_warning(VOID *pMsg)
 
     DLL_Init_Node(pstNode);
     dos_memcpy(pstMsg, pMsg + sizeof(HEARTBEAT_DATA_ST), sizeof(HEARTBEAT_DATA_ST));
+
     pstMsg->ulSeq = g_ulSerialNo;
     pstNode->pHandle = pstMsg;
 
+    pthread_mutex_lock(&g_mutexMsgSend);
     DLL_Add(g_pstNotifyList, pstNode);
+    pthread_cond_signal(&g_condNotifyList);
+    pthread_mutex_unlock(&g_mutexMsgSend);
     ++g_ulSerialNo;
-
-    /* 每产生一个消息，则发送一个信号量 */
-    sem_post(&g_stSem);
 
     return DOS_SUCC;
 }
@@ -543,17 +543,24 @@ VOID* hb_external_warning_proc(VOID* ptr)
     DLL_NODE_S *pstNode = NULL;
     U32  ulRet;
 
-    while (DLL_Count(g_pstNotifyList) > 0)
+    while (1)
     {
-        /* 等待信号量 */
-        sem_wait(&g_stSem);
-
         pthread_mutex_lock(&g_mutexMsgSend);
-        pstNode = dll_fetch(g_pstNotifyList);
-        if (DOS_ADDR_INVALID(pstNode->pHandle))
+        pthread_cond_wait(&g_condNotifyList, &g_mutexMsgSend);
+
+        if (DLL_Count(g_pstNotifyList) <= 0)
         {
+            pthread_mutex_unlock(&g_mutexMsgSend);
             continue;
         }
+
+        pstNode = dll_fetch(g_pstNotifyList);
+        if (DOS_ADDR_INVALID(pstNode) || DOS_ADDR_INVALID(pstNode->pHandle))
+        {
+            pthread_mutex_unlock(&g_mutexMsgSend);
+            continue;
+        }
+        pthread_mutex_unlock(&g_mutexMsgSend);
 
         pstMsg = (MON_NOTIFY_MSG_ST *)pstNode->pHandle;
 
@@ -562,9 +569,13 @@ VOID* hb_external_warning_proc(VOID* ptr)
         {
             hb_logr_error("Notify customer FAIL.");
             DOS_ASSERT(0);
-            pthread_mutex_unlock(&g_mutexMsgSend);
         }
-        pthread_mutex_unlock(&g_mutexMsgSend);
+
+        dos_dmem_free(pstMsg);
+        pstMsg = NULL;
+        dos_dmem_free(pstNode);
+        pstNode = NULL;
+
     }
 
     return 0;

@@ -9,35 +9,24 @@ extern "C"{
 
 #include "mon_notification.h"
 #include "mon_def.h"
+#include "../../util/heartbeat/heartbeat.h"
 
-/* 定义中文版标题与格式化内容的映射 */
-MON_MSG_MAP_ST m_pstMsgMapCN[] = {
-            {"lack_fee",   "余额不足", "尊敬的用户%s，截止%04u-%02u-%02u %02u:%02u:02u,你的余额为%s,请充值. 错误码:%x"},
-            {"lack_gw",    "中继不足", "尊敬的用户%s,,您的中继数量为%u,请增加中继,以免影响业务,错误码:%x"},
-            {"lack_route", "路由不足", "尊敬的用户%s,您的路由数量为%u，请增加路由以免影响业务,错误码:%x"}
-        };
+/* 目前认为所有邮件的发件人是运营商 */
+#define MSGBODY "From:%s\r\n" \
+                "To:%s\r\n" \
+                "Content-type: text/html;charset=gb2312\r\n" \
+                "Subject: %s\r\n" \
+                "<p>%s</p>"
 
-/* 定义英文版标题与格式化内容的映射表 */
-MON_MSG_MAP_ST m_pstMsgMapEN[] = {
-        {"lack_fee",   "No enough balance",  "Dear %s, by the time %04u-%02u-%02u %02u:%02u:02u,your balance is %.2f,please recharge, thank you! errno:%x."},
-        {"lack_gw",    "No enough gateway",  "Dear %s,you have %u gateway(s) in total,please buy new ones to avoid your services being affacted,thank you! errno:%x."},
-        {"lack_route", "No enough route",    "Dear %s,you have %u route(s) in total,please buy new ones to avoid your services being affacted,thank you! errno:%x."}
-     };
-
-/* 告警手段与行为映射表 */
-MON_NOTIFY_MEANS_CB_ST m_pstNotifyMeansCB[] = {
-        {MON_NOTIFY_MEANS_EMAIL, mon_send_email},
-        {MON_NOTIFY_MEANS_SMS,   mon_send_sms},
-        {MON_NOTIFY_MEANS_AUDIO, mon_send_audio}
-     };
-
+extern MON_MSG_MAP_ST m_pstMsgMap;
+extern U32 mon_get_sp_email(S8 *pszEmail);
 
 /**
  * 函数: U32 mon_send_sms(S8 * pszMsg, S8 * pszTelNo)
  * 参数:
  *     S8*  pszMsg    短信内容
  *     S8*  pszTitle
- *     S8*  pszTelNo  接收短信的号码
+     *     S8*  pszTelNo  接收短信的号码
  * 功能: 发送短信
  */
 U32 mon_send_sms(S8 * pszMsg, S8* pszTitle,S8 * pszTelNo)
@@ -71,28 +60,28 @@ U32 mon_send_audio(S8 * pszMsg, S8* pszTitle, S8 * pszTelNo)
  */
 U32 mon_send_email(S8* pszMsg, S8* pszTitle,S8* pszEmailAddress)
 {
-    S8 szBuffCmd[1024] = {0};
-    FILE * fp = NULL;
+    S8 szSPEmail[32] = {0}, szEmailMsg[1024] = {0}, szCmdBuff[1024] = {0}, szFile[] = "mail.txt";
+    U32 ulRet = 0;
 
-    if (DOS_ADDR_INVALID(pszMsg)
-        || DOS_ADDR_INVALID(pszTitle)
-        || DOS_ADDR_INVALID(pszEmailAddress))
-    {
-        DOS_ASSERT(0);
-        mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Msg:%p; Title:%p; Email Address:%p.", pszMsg, pszTitle, pszEmailAddress);
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szBuffCmd, sizeof(szBuffCmd), "echo %s | mail -s %s %s", pszMsg, pszTitle, pszEmailAddress);
-    fp = popen(szBuffCmd, "r");
-    if (DOS_ADDR_INVALID(fp))
+    ulRet = mon_get_sp_email(szSPEmail);
+    if (DOS_SUCC != ulRet)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
-    pclose(fp);
-    fp = NULL;
+    /* 格式化邮件 */
+    dos_snprintf(szEmailMsg, sizeof(szEmailMsg), MSGBODY, szSPEmail, pszEmailAddress, pszTitle, pszMsg);
+    /* 格式化命令 */
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), " echo \"%s\" > %s", szEmailMsg, szFile);
+    system(szCmdBuff);
+
+    dos_memzero(szCmdBuff, sizeof(szCmdBuff));
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "sendmail -t %s < %s", pszEmailAddress, szFile);
+    system(szCmdBuff);
+
+    unlink(szFile);
+
     return DOS_SUCC;
 }
 

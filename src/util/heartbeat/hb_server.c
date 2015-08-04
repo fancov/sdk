@@ -24,10 +24,10 @@ extern "C"{
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/sem.h>
 
 /* include private header file */
 #include "heartbeat.h"
+
 
 /* define global varables */
 /* 对等待退出标志做保护 */
@@ -55,8 +55,6 @@ static S8                   g_szRecvBuf[MAX_BUFF_LENGTH];
 static pthread_t            g_pthSendMsgTask;
 
 
-/* 等待外部消息的信号量 */
-sem_t g_stSem;
 
 /**
  * 函数: hb_get_max_timeout()
@@ -511,9 +509,6 @@ S32 heartbeat_init()
 S32 heartbeat_start()
 {
     S32 iResult = 0;
-
-    /* 初始化通知消息的信号量 */
-    sem_init(&g_stSem, 0, 0);
 
     iResult = pthread_create(&g_pthIDHBTask, NULL, heartbeat_task, NULL);
     if (iResult < 0)

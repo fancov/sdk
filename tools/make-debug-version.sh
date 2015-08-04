@@ -35,3 +35,7 @@ if [ $? -ne 0 ]; then
 	echo "Make sc debug version."
 	exit -1;
 fi
+
+
+
+

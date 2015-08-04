@@ -16,9 +16,6 @@ extern "C"{
 
 #include <dos.h>
 #include <http_api.h>
-#if INCLUDE_RES_MONITOR
-#include <mon_pub.h>
-#endif
 
 #if INCLUDE_SERVICE_PYTHON
 #include <dos/dos_py.h>

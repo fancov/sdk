@@ -20,8 +20,7 @@ extern "C"{
 #include "bs_stat.h"
 #include "bs_def.h"
 #include "bsd_db.h"
-
-
+#include "../../util/heartbeat/heartbeat.h"
 
 #if (INCLUDE_SYSLOG_ENABLE)
 
@@ -29,6 +28,10 @@ extern DLL_S g_stWebCMDTbl;
 extern pthread_mutex_t g_mutexWebCMDTbl;
 extern U32 g_ulLastCMDTimestamp ;
 extern DLL_S g_stBSS2DMsgList;
+
+#if INCLUDE_BH_CLIENT
+extern PROCESS_INFO_ST *g_pstDebugProcInfo;
+#endif
 
 extern VOID bss_update_agent(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
 extern VOID bss_update_billing_package(U32 ulOpteration,JSON_OBJ_ST * pstJSONObj);
@@ -1510,11 +1513,11 @@ S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv)
 {
     S32 i;
     U32 ulModule, ulLevel, ulObjectID;
-
-    if (argc < 3)
-    {
-        goto help;
-    }
+    /* 测试代码 */
+#if INCLUDE_BH_CLIENT
+    MON_NOTIFY_MSG_ST stMsg;
+#endif
+    /* 测试代码 */
 
     for (i = 1; i < argc && i < 3; i++)
     {
@@ -1562,6 +1565,24 @@ S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv)
             goto help;
         }
     }
+
+#if INCLUDE_BH_CLIENT
+    /* 本段代码用来测试发送告警消息，可删除 */
+    else if (dos_strncmp(argv[1], "email", dos_strlen(argv[1])) == 0)
+    {
+        stMsg.ulCurTime = time(0);
+        stMsg.ulCustomerID = 1;
+        stMsg.ulRoleID= 3;
+        stMsg.ulLevel = MON_NOTIFY_LEVEL_CRITI;
+        stMsg.ulWarningID = MON_NOTIFY_TYPE_LACK_FEE | 0x07000000;
+        dos_snprintf(stMsg.stContact.szEmail, sizeof(stMsg.stContact.szEmail), "%s", "2381823710@qq.com");
+        dos_snprintf(stMsg.stContact.szTelNo, sizeof(stMsg.stContact.szTelNo), "%s", "18700944432");
+        dos_snprintf(stMsg.szContent, sizeof(stMsg.szContent), "%s", "700000");
+        dos_snprintf(stMsg.szNotes, sizeof(stMsg.szNotes), "%s", "余额已不足");
+        hb_send_external_warning(g_pstDebugProcInfo, &stMsg);
+    }
+#endif
+
     else if (dos_strncmp(argv[1], "debug", dos_strlen(argv[1])) != 0)
     {
         goto help;

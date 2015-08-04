@@ -37,7 +37,7 @@
 
 
 /* 心跳模块开关 */
-#define INCLUDE_BH_ENABLE                 0
+#define INCLUDE_BH_ENABLE                 1
 #if (INCLUDE_BH_ENABLE)
 #define INCLUDE_BH_SERVER                 0
 #define INCLUDE_BH_CLIENT                 (!INCLUDE_BH_SERVER)

@@ -31,6 +31,7 @@
 
 #include <dos/dos_types.h>
 #include "mon_notification.h"
+#include "../../util/heartbeat/heartbeat.h"
 
 
 enum MON_WARNING_LEVEL_E
@@ -52,18 +53,10 @@ typedef struct tagWarningMsg
     S8    szNormalDesc[32];  //Õý³£ÃèÊö
 }MON_WARNING_MSG_S;
 
-
-typedef struct tagMonContact
-{
-    S8  szEmail[32];
-    S8  szTelNo[16];
-    S8  szContact[16];
-}MON_CONTACT_ST;
-
+U32  mon_get_sp_email(S8 *pszEmail);
+S32 mon_get_sp_email_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames);
 U32  mon_get_contact(U32 ulCustomerID, U32 ulRoleID, MON_CONTACT_ST *pstContact);
 S32  mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames);
-U32  mon_get_balance(U32 ulCustomerID, U64* puLBalance);
-S32  mon_get_balance_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames);
 U32  mon_get_level(U32 ulNotifyType);
 U32  mon_init_str_array();
 U32  mon_deinit_str_array();

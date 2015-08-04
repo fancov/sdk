@@ -3,23 +3,57 @@ extern "C"{
 #endif
 
 #include <dos.h>
+#include <iconv.h>
 
 #if (INCLUDE_BH_SERVER)
 #if INCLUDE_RES_MONITOR
 
+#include <iconv.h>
 #include "mon_lib.h"
 #include "mon_def.h"
 
 #ifndef MAX_PID_VALUE
 #define MAX_PID_VALUE 65535
 #define MIN_PID_VALUE 0
+
 #endif
+
+/* 说明: 后续的定义也必须符合如下格式，3个%s，一个%u, 一个%08x，第一个%s格式化时间，第2个%s格式化MON_NOTIFY_MSG_ST中的szContent成员，第3个%s格式化Notes，%u格式化被报告问题的客户id，
+         %08x格式化错误码，而且顺序必须符合该顺序 */
+#define NO_ENOUGH_BALANCE_CN "<h1>尊敬的用户，您好：</h1><br/><p style=\"align:2em\">截止%s，你的余额为%s%s，为了不影响你的业务，请尽快充值，谢谢。(CNo:%u, No:%08x)</p>"
+#define NO_ENOUGH_BALANCE_EN "<h1>Dear IPCC User:</h1><br/><p style=\"align:2em\">By the time %s,your balance is %s%s,in order to avoid your services being interrupted,please recharge as soon as possible,thank you!(CNo:%u, No:%08x)</p>"
+
+/* 该宏用来定义消息种类的最大个数，可以酌情修改 */
+#define MAX_EXCEPT_CNT  4
 
 extern S8 * g_pszAnalyseList;
 extern DLL_S *g_pstNotifyList;
-extern DB_HANDLE_ST *g_pstDBHandle;
-extern MON_MSG_MAP_ST *m_pstMsgMapCN;
-extern MON_MSG_MAP_ST *m_pstMsgMapEN;
+extern DB_HANDLE_ST *g_pstCCDBHandle;
+
+
+/* 消息映射 */
+MON_MSG_MAP_ST m_pstMsgMap[][MAX_EXCEPT_CNT] = {
+    {
+        {"lack_fee",   "余额不足", NO_ENOUGH_BALANCE_CN},
+        /* szDesc成员具体需要时具体再定义内容，为了兼容，暂用改格式替代 */
+        {"lack_gw" ,   "中继不足", "%s%s%s%u%08x"},
+        {"lack_route", "路由不足", "%s%s%s%u%08x"}
+    },  /* 编号是0的为简体中文 */
+    {
+        {"lack_fee",   "No enough balance", NO_ENOUGH_BALANCE_EN},
+        {"lack_gw",    "No enough gateway", "%s%s%s%u%08x"},
+        {"lack_route", "jiezhiyang", "%s%s%s%u%08x"}
+    }   /* 编号是1的是美式英文 */
+};
+
+
+/* 告警手段与行为映射表 */
+MON_NOTIFY_MEANS_CB_ST m_pstNotifyMeansCB[] = {
+        {MON_NOTIFY_MEANS_EMAIL, mon_send_email},
+        {MON_NOTIFY_MEANS_SMS,   mon_send_sms},
+        {MON_NOTIFY_MEANS_AUDIO, mon_send_audio}
+};
+
 
 /**
  * 功能:初始化通知消息队列
@@ -61,7 +95,7 @@ U32 mon_get_level(U32 ulNotifyType)
     S8 szLevel[16] = {0};
     U32 ulLevel;
 
-    pszDesc = m_pstMsgMapCN[ulNotifyType].pszName;
+    pszDesc = m_pstMsgMap[0][ulNotifyType].szName;
     if (config_hb_get_level(pszDesc, szLevel, sizeof(szLevel)) < 0)
     {
         DOS_ASSERT(0);
@@ -102,11 +136,11 @@ U32 mon_get_level(U32 ulNotifyType)
 U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg)
 {
     U32 ulLevel = U32_BUTT, ulRet = U32_BUTT, ulType = U32_BUTT;
-    S8  szBuff[256] = {0}, szQuery[1024]={0};
-    U64 uLBalance = U64_BUTT;
+    S8  szBuff[512] = {0}, szTime[32] = {0};
+    S32 lLang = U32_BUTT;
+
     time_t ulTime = 0;
     struct tm* pstCurTime;
-    MON_CONTACT_ST stContact = {{0}};
 
     if (DOS_ADDR_INVALID(pstMsg))
     {
@@ -129,80 +163,92 @@ U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg)
     ulTime = pstMsg->ulCurTime;
     pstCurTime = localtime(&ulTime);
 
-    switch (ulType)
+    /* 获取当前的语言环境 */
+    lLang = config_hb_get_lang();
+    if (lLang < 0)
     {
-        case MON_NOTIFY_TYPE_LACK_FEE:
-            /* 获取联系方式 */
-            ulRet = mon_get_contact(pstMsg->ulDestCustomerID, pstMsg->ulDestRoleID, &stContact);
-            if (DOS_SUCC != ulRet)
-            {
-                DOS_ASSERT(0);
-                mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Get contact FAIL.ulRet:%u", ulRet);
-                return DOS_FAIL;
-            }
-            /* 获取余额信息 */
-            ulRet = mon_get_balance(pstMsg->ulDestCustomerID, &uLBalance);
-            if (DOS_SUCC != ulRet)
-            {
-                DOS_ASSERT(0);
-                mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Get balance FAIL.ulRet:%u", ulRet);
-            }
-
-            dos_snprintf(szBuff, sizeof(szBuff), m_pstMsgMapEN[ulType].pszDesc
-                            , stContact.szContact, pstCurTime->tm_year + 1900, pstCurTime->tm_mon + 1
-                            , pstCurTime->tm_mday, pstCurTime->tm_hour, pstCurTime->tm_min
-                            , pstCurTime->tm_sec, uLBalance / 10000.0, pstMsg->ulWarningID);
-            break;
-        case MON_MOTIFY_TYPE_LACK_GW:
-            break;
-        case MON_NOTIFY_TYPE_LACK_ROUTE:
-            break;
-        default:
-            break;
+        /* 如果配置读取失败，则默认为中文 */
+        lLang = MON_NOTIFY_LANG_CN;
     }
 
-    dos_snprintf(szQuery, sizeof(szQuery)
-                    , "INSERT INTO"\
-                      "     tbl_hb_warning(warning_id, seq, ctime, level, title, content, dest_customer_id, dest_role_id)"\
-                      "     VALUES(%u,%u,\'%04u-%02u-%02u %02u:%02u:%02u\',%u,%s,%s,%u,%u);"
-                    , pstMsg->ulWarningID
-                    , pstMsg->ulSeq
+    /* 获取收件人相关信息 */
+    if ('\0' == pstMsg->stContact.szEmail[0] || '\0' == pstMsg->stContact.szTelNo[0])
+    {
+        ulRet = mon_get_contact(pstMsg->ulCustomerID, pstMsg->ulRoleID, &pstMsg->stContact);
+        if (DOS_SUCC != ulRet)
+        {
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
+    }
+
+    /* 格式化时间字符串 */
+    dos_snprintf(szTime, sizeof(szTime), "%04u-%02u-%02u %02u:%02u:%02u"
                     , pstCurTime->tm_year + 1900
                     , pstCurTime->tm_mon + 1
                     , pstCurTime->tm_mday
                     , pstCurTime->tm_hour
                     , pstCurTime->tm_min
-                    , pstCurTime->tm_sec
-                    , pstMsg->ulLevel
-                    , m_pstMsgMapEN[ulType].pszTitle
-                    , m_pstMsgMapEN[ulType].pszDesc
-                    , pstMsg->ulDestCustomerID
-                    , pstMsg->ulDestRoleID);
-    if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) != DB_ERR_SUCC)
+                    , pstCurTime->tm_sec);
+
+    /* 格式化信息 */
+    dos_snprintf(szBuff, sizeof(szBuff), m_pstMsgMap[lLang][ulType].szDesc, szTime, pstMsg->szContent, pstMsg->szNotes, pstMsg->ulCustomerID, pstMsg->ulWarningID);
+
+    if (DOS_SUCC != mon_send_email(szBuff, m_pstMsgMap[lLang][ulType].szTitle, pstMsg->stContact.szEmail))
     {
+        mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Send mail FAIL.");
         DOS_ASSERT(0);
-        mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR , "Add Msg to DB FAIL. SQL:%s", szQuery);
         return DOS_FAIL;
     }
 
-    if (pstMsg->ulLevel <= ulLevel)
-    {
-        ulRet = mon_send_email(szBuff, m_pstMsgMapEN[ulType].pszTitle, stContact.szEmail);
-        if (ulRet != DOS_SUCC)
-        {
-            mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Send Email FAIL. ulRet:%u", ulRet);
-            DOS_ASSERT(0);
-            return DOS_FAIL;
-        }
+    return DOS_SUCC;
+}
 
-        ulRet = mon_send_sms(szBuff, m_pstMsgMapEN[ulType].pszTitle, stContact.szTelNo);
-        if (ulRet != DOS_SUCC)
-        {
-            mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Send SMS FAIL. ulRet:%u", ulRet);
-            DOS_ASSERT(0);
-            return DOS_FAIL;
-        }
+/**
+ *  函数：U32  mon_get_sp_email(S8 *pszEmail)
+ *  功能：获取当前运营商邮件地址
+ *  参数：
+ *      S8 *pszEmail   输出参数，为获取的邮件地址
+ *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32  mon_get_sp_email(S8 *pszEmail)
+{
+    S8 szQuery[] = "SELECT email FROM tbl_contact WHERE customer_id=1 AND name=\'admin\';";
+
+    if (DOS_ADDR_INVALID(pszEmail))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
+
+    if (DB_ERR_SUCC != db_query(g_pstCCDBHandle, szQuery, mon_get_sp_email_cb, pszEmail, NULL))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    return DOS_SUCC;
+}
+
+/**
+ *  函数：S32 mon_get_sp_email_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+ *  功能：获取运营商邮件地址的回调函数
+ *  参数：
+ *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+S32 mon_get_sp_email_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    S8 *pszEmail = (S8 *)pArg;
+
+    if (DOS_ADDR_INVALID(aszNames)
+        || DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(pArg))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_strncpy(pszEmail, aszValues[0], dos_strlen(aszValues[0]));
+    *(pszEmail + dos_strlen(aszValues[0])) = '\0';
 
     return DOS_SUCC;
 }
@@ -231,11 +277,11 @@ U32 mon_get_contact(U32 ulCustomerID, U32 ulRoleID, MON_CONTACT_ST *pstContact)
     }
 
     dos_snprintf(szQuery, sizeof(szQuery)
-                    , "SELECT contact,tbl_number,email FROM tbl_contact WHERE id=%d AND customer_id=%d;"
+                    , "SELECT tel_number,email FROM tbl_contact WHERE id=%d AND customer_id=%d;"
                     , ulRoleID
                     , ulCustomerID);
 
-    lRet = db_query(g_pstDBHandle, szQuery, mon_get_contact_cb, (VOID *)pstContact, NULL);
+    lRet = db_query(g_pstCCDBHandle, szQuery, mon_get_contact_cb, (VOID *)pstContact, NULL);
     if (lRet != DB_ERR_SUCC)
     {
         DOS_ASSERT(0);
@@ -264,66 +310,12 @@ S32 mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     pstContact = (MON_CONTACT_ST *)pArg;
 
-    dos_snprintf(pstContact->szContact, sizeof(pstContact->szContact), "%s", aszValues[0]);
-    dos_snprintf(pstContact->szTelNo, sizeof(pstContact->szTelNo), "%s", aszValues[1]);
-    dos_snprintf(pstContact->szEmail, sizeof(pstContact->szEmail), "%s", aszValues[2]);
+    dos_snprintf(pstContact->szTelNo, sizeof(pstContact->szTelNo), "%s", aszValues[0]);
+    dos_snprintf(pstContact->szEmail, sizeof(pstContact->szEmail), "%s", aszValues[1]);
 
     return DOS_SUCC;
 }
 
-/**
- *  函数：U32 mon_get_balance(U32 ulCustomerID, U64* puLBalance)
- *  功能：根据客户的余额信息
- *  参数：
- *      U32 ulCustomerID           客户id
- *      U64* puLBalance            输出参数，指向余额的指针
- *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
- */
-U32 mon_get_balance(U32 ulCustomerID, U64* puLBalance)
-{
-    S8  szQuery[1024] = {0};
-    S32 lRet = 0;
-
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT balance FROM tbl_customer WHERE id=%u;", ulCustomerID);
-
-    lRet = db_query(g_pstDBHandle, szQuery, mon_get_balance_cb, puLBalance, NULL);
-    if (lRet != DB_ERR_SUCC)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    return DOS_SUCC;
-}
-
-/**
- *  函数：S32 mon_get_balance_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
- *  功能：根据客户的余额信息的回调函数
- *  参数：
- *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
- */
-S32 mon_get_balance_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
-{
-    U64    *puLBalance = NULL;
-
-    if (DOS_ADDR_INVALID(aszNames)
-        || DOS_ADDR_INVALID(aszValues)
-        || DOS_ADDR_INVALID(pArg))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    puLBalance = (U64 *)pArg;
-
-    if (dos_atoull(aszValues[0], puLBalance) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    return DOS_SUCC;
-}
 
 /**
  * 功能:为字符串分配内存

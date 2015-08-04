@@ -331,7 +331,26 @@ S32 config_hb_threshold_proc(U32* pulMem);
  */
 U32 config_get_shortcut_cmd(U32 ulNo, S8 *pszCtrlCmd, U32 ulLen);
 
+/**
+ * 函数：S32 config_hb_get_level(S8* pszErr, S8* pszLevel, U32 ulLen);
+ * 功能：获取当前错误描述的最低级别
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
 S32 config_hb_get_level(S8* pszErr, S8* pszLevel, U32 ulLen);
+
+/**
+ * 函数：S32 config_hb_get_lang();
+ * 功能：获取IPCC系统的语言环境
+ * 参数：
+ * 返回值：成功返回响应的语言代码，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_get_lang();
+
 
 #endif //end INCLUDE_BH_SERVER
 

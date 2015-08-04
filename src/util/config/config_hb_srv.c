@@ -607,9 +607,49 @@ S32 config_hb_get_level(S8* pszErr, S8* pszLevel, U32 ulLen)
     }
 
     dos_memcpy(pszLevel, pszMsgLevel, ulLen);
+    *(pszLevel + ulLen - 1) = '\0';
 
     return 0;
 }
+
+S32 config_hb_get_lang()
+{
+    S8  szNodePath[] = "warning/language";
+    S8  szLang[16] = {0};
+    S8  *pszLang = NULL;
+
+    if(!g_pstHBSrvCfg)
+    {
+        dos_printf("%s", ".Init hb-srv.xml config fail!");
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    pszLang = _config_get_param(g_pstHBSrvCfg, szNodePath, "lang", szLang, sizeof(szLang));
+    if (DOS_ADDR_INVALID(pszLang))
+    {
+        dos_printf("%s", "Get IPCC Sys Language FAIL.");
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    /* 以下返回对应的语言代码，其中返回值应该和枚举MON_NOTIFY_LANG_ENUM的值一定要保持一致 */
+    if (0 == dos_strcmp(pszLang, "cn"))
+    {
+        return 0;
+    }
+    else if (0 == dos_strcmp(pszLang, "en"))
+    {
+        return 1;
+    }
+    else
+    {
+        dos_printf("Not support \"%s\" language.", pszLang);
+        DOS_ASSERT(0);
+        return -1;
+    }
+}
+
 
 #endif //end  #if (INCLUDE_XML_CONFIG)
 

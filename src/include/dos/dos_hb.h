@@ -31,6 +31,10 @@ S32 hb_client_stop();
 
 #if (INCLUDE_BH_SERVER || INCLUDE_BH_CLIENT)
 
+
+
+
+
 #define hb_logr_debug(_pszFormat, args...) \
         hb_logr_write(LOG_LEVEL_DEBUG, (_pszFormat), ##args)
 

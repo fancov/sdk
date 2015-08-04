@@ -57,6 +57,7 @@ static U32                  g_ulHBSendInterval = DEFAULT_HB_INTERVAL_MIN;
 /* 心跳失败次数 */
 static U32                  g_ulHBMaxFailCnt = DEFAULT_HB_FAIL_CNT_MIN;
 
+PROCESS_INFO_ST *g_pstDebugProcInfo = &g_stProcessInfo;
 
 /**
  * 函数：U32 hb_get_max_fail_cnt()

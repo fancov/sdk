@@ -61,6 +61,8 @@
 #define INCLUDE_NET_MONITOR               1
 #define INCLUDE_PROC_MONITOR              1
 
+#define LANG_CN                           0
+#define LANG_EN                           (!LANG_CN)
 
 #endif /* END __CFG_MOD_MONITER_H__ */
 

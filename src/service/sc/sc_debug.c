@@ -74,6 +74,7 @@ extern U32                    g_ulCPS;
 extern SC_EP_MSG_STAT_ST      g_astEPMsgStat[2];
 extern SC_BS_MSG_STAT_ST      stBSMsgStat;
 
+
 /* declare functions */
 extern SC_TASK_CB_ST *sc_tcb_get_by_id(U32 ulTCBNo);
 

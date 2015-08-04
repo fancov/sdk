@@ -60,7 +60,9 @@ S8 g_szMonDiskInfo[MAX_PARTITION_COUNT * MAX_BUFF_LENGTH]    = {0};
 S8 g_szMonNetworkInfo[MAX_NETCARD_CNT * MAX_BUFF_LENGTH] = {0};
 S8 g_szMonProcessInfo[MAX_PROC_CNT * MAX_BUFF_LENGTH] = {0};
 
-DB_HANDLE_ST *         g_pstDBHandle = NULL;
+DB_HANDLE_ST *                g_pstDBHandle = NULL;
+DB_HANDLE_ST *                g_pstCCDBHandle = NULL;
+
 static MON_MSG_QUEUE_S *      g_pstMsgQueue = NULL;//消息队列
 static MON_THRESHOLD_S *      g_pstCond = NULL;
 MON_WARNING_MSG_S*            g_pstWarningMsg = NULL;
@@ -75,6 +77,7 @@ static U32 mon_add_data_to_db();
 static S32 mon_reset_res_data();
 #endif
 
+static U32 mon_init_cc_db();
 static U32 mon_init_db_conn();
 static U32 mon_init_warning_cond();
 static U32 mon_close_db_conn();
@@ -181,87 +184,94 @@ VOID* mon_warning_handle(VOID *p)
  */
 U32 mon_res_alloc()
 {
-   U32 ulRet = 0;
+    U32 ulRet = 0;
 
-   ulRet = mon_init_cpu_queue();
-   if (DOS_SUCC != ulRet)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init CPU Queue.");
-      return DOS_FAIL;
-   }
+    ulRet = mon_init_cpu_queue();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init CPU Queue.");
+        return DOS_FAIL;
+    }
 
-   ulRet = mon_init_warning_msg_queue();
-   if (DOS_SUCC != ulRet)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init Warning Msg Queue FAIL.");
-      return DOS_FAIL;
-   }
+    ulRet = mon_init_warning_msg_queue();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init Warning Msg Queue FAIL.");
+        return DOS_FAIL;
+    }
 
-   ulRet = mon_init_warning_cond();
-   if (DOS_SUCC != ulRet)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init warning conditions FAIL.");
-      return DOS_FAIL;
-   }
+    ulRet = mon_init_warning_cond();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init warning conditions FAIL.");
+        return DOS_FAIL;
+    }
 
-   ulRet = mon_init_db_conn();
-   if (DOS_SUCC != ulRet)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init database Connection FAIL.");
-      return DOS_FAIL;
-   }
+    ulRet = mon_init_db_conn();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init database Connection FAIL.");
+        return DOS_FAIL;
+    }
 
-   ulRet = mon_init_str_array();
-   if (DOS_SUCC != ulRet)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init str array FAIL");
-      return DOS_FAIL;
-   }
+    ulRet = mon_init_cc_db();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init CC DB FAIL.");
+        return DOS_FAIL;
+    }
+
+    ulRet = mon_init_str_array();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init str array FAIL");
+        return DOS_FAIL;
+    }
 
     /*  分配资源 */
-   ulRet = mon_mem_malloc();
-   if (DOS_SUCC != ulRet)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Memory Module Alloc memory FAIL.");
-      return DOS_FAIL;
-   }
+    ulRet = mon_mem_malloc();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Memory Module Alloc memory FAIL.");
+        return DOS_FAIL;
+    }
 
-   ulRet = mon_cpu_rslt_malloc();
-   if (DOS_SUCC != ulRet)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "CPU Module Alloc memory FAIL.");
-      return DOS_FAIL;
-   }
+    ulRet = mon_cpu_rslt_malloc();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "CPU Module Alloc memory FAIL.");
+        return DOS_FAIL;
+    }
 
-   ulRet = mon_disk_malloc();
-   if (DOS_SUCC != ulRet)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Disk Module Alloc memory FAIL.");
-      return DOS_FAIL;
-   }
+    ulRet = mon_disk_malloc();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Disk Module Alloc memory FAIL.");
+        return DOS_FAIL;
+    }
 
-   ulRet = mon_netcard_malloc();
-   if (DOS_SUCC != ulRet)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Network Module Alloc Memory FAIL.");
-      return DOS_FAIL;
-   }
+    ulRet = mon_netcard_malloc();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Network Module Alloc Memory FAIL.");
+        return DOS_FAIL;
+    }
 
-   ulRet = mon_proc_malloc();
-   if (DOS_SUCC != ulRet)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Process Module Alloc memory FAIL.");
-      return DOS_FAIL;
-   }
+    ulRet = mon_proc_malloc();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Process Module Alloc memory FAIL.");
+        return DOS_FAIL;
+    }
 
-   ulRet = mon_init_warning_msg();
-   if (DOS_SUCC != ulRet)
-   {
-       mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init warning Msg FAIL.");
-       return DOS_FAIL;
-   }
+    ulRet = mon_init_warning_msg();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init warning Msg FAIL.");
+        return DOS_FAIL;
+    }
 
-   return DOS_SUCC;
+    return DOS_SUCC;
 }
 
 /**
@@ -1102,6 +1112,72 @@ static U32 mon_init_db_conn()
 
    return DOS_SUCC;
 }
+
+
+static U32 mon_init_cc_db()
+{
+    g_pstCCDBHandle = db_create(DB_TYPE_MYSQL);
+    if (!g_pstCCDBHandle)
+    {
+        mon_trace(MON_TRACE_WARNING_MSG, LOG_LEVEL_ERROR, "ERR: create db handle FAIL!");
+        return DOS_FAIL;
+    }
+
+    if (config_get_db_host(g_pstCCDBHandle->szHost, DB_MAX_STR_LEN) < 0)
+    {
+        DOS_ASSERT(0);
+        mon_trace(MON_TRACE_WARNING_MSG, LOG_LEVEL_ERROR, "ERR: Get DB host FAIL !");
+        goto errno_proc;
+    }
+
+    if (config_get_db_user(g_pstCCDBHandle->szUsername, DB_MAX_STR_LEN) < 0)
+    {
+        DOS_ASSERT(0);
+        mon_trace(MON_TRACE_WARNING_MSG, LOG_LEVEL_ERROR, "ERR: Get DB username FAIL !");
+        goto errno_proc;
+    }
+
+    if (config_get_db_password(g_pstCCDBHandle->szPassword, DB_MAX_STR_LEN) < 0)
+    {
+        DOS_ASSERT(0);
+        mon_trace(MON_TRACE_WARNING_MSG, LOG_LEVEL_ERROR, "ERR: Get DB username password FAIL !");
+        goto errno_proc;
+    }
+
+    g_pstCCDBHandle->usPort = config_get_db_port();
+    if (0 == g_pstCCDBHandle->usPort || g_pstCCDBHandle->usPort)
+    {
+        g_pstCCDBHandle->usPort = 3306;
+    }
+
+    if (config_get_mysqlsock_path(g_pstCCDBHandle->szSockPath, DB_MAX_STR_LEN) < 0)
+    {
+        mon_trace(MON_TRACE_WARNING_MSG, LOG_LEVEL_ERROR, "ERR: Get DB sock path FAIL !");
+        g_pstCCDBHandle->szSockPath[0] = '\0';
+    }
+
+    if (config_get_db_dbname(g_pstCCDBHandle->szDBName, DB_MAX_STR_LEN) < 0)
+    {
+        DOS_ASSERT(0);
+        mon_trace(MON_TRACE_WARNING_MSG, LOG_LEVEL_ERROR, "ERR: Get DB Name FAIL !");
+        goto errno_proc;
+    }
+
+    if (db_open(g_pstCCDBHandle) < 0)
+    {
+        DOS_ASSERT(0);
+        mon_trace(MON_TRACE_WARNING_MSG, LOG_LEVEL_ERROR, "ERR: Open DB FAIL !");
+        goto errno_proc;
+    }
+
+    return DOS_SUCC;
+
+errno_proc:
+    db_destroy(&g_pstCCDBHandle);
+    return DOS_FAIL;
+}
+
+
 
 /**
  * 功能:初始化告警发生的条件，即阀值
