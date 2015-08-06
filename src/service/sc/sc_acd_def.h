@@ -122,5 +122,7 @@ U32 sc_acd_get_idel_agent(U32 ulGroupID);
 U32 sc_acd_get_total_agent(U32 ulGroupID);
 U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID);
 
+U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr);
+
 #endif
 

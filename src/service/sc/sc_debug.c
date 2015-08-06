@@ -1503,6 +1503,8 @@ S32 sc_track_call_by_caller(U32 ulIndex ,S8 *pszCaller)
                         , pstTCB->usTCBNo);
         cli_out_string(ulIndex, szCmdBuff);
     }
+
+    return DOS_SUCC;
 }
 
 S32 sc_track_call_by_callee(U32 ulIndex ,S8 *pszCallee)

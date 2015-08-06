@@ -34,6 +34,7 @@ typedef enum tagSCSubmodDef
     SC_ESL,
     SC_BS,
     SC_SYN,
+    SC_AUDIT,
 
     SC_SUB_MOD_BUTT,
 }SC_SUB_MOD_DEF_EN;

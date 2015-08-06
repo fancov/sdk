@@ -847,6 +847,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
 U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum);
 BOOL sc_ep_check_extension(S8 *pszNum, U32 ulCustomerID);
 U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService);
+U32 sc_ep_transfer_publish_release(SC_SCB_ST * pstSCBPublish);
 
 #ifdef __cplusplus
 }

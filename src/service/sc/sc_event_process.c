@@ -4094,7 +4094,6 @@ U32 sc_ep_call_intercept(SC_SCB_ST * pstSCB)
 {
     SC_SCB_ST *pstSCBAgent = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
-    S8        szBuffCMD[512];
 
     /* ²éÕÒ×øÏ¯ */
     if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCB->ulAgentID) != DOS_SUCC)
@@ -5521,14 +5520,12 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     S8        *pszIsAutoCall = NULL;
     S8        *pszCaller     = NULL;
     S8        *pszCallee     = NULL;
-    S8        *pszOtherSCBNo = NULL;
     S8        *pszUUID       = NULL;
     S8        *pszMainService = NULL;
     S8        *pszTransfor    = NULL;
     U32       ulCallSrc, ulCallDst;
     U32       ulRet = DOS_SUCC;
     U32       ulMainService = U32_BUTT;
-    U32       ulOtherSCBNo  = U32_BUTT;
     SC_SCB_ST *pstSCBOther  = NULL;
 
     if (DOS_ADDR_INVALID(pstEvent)
@@ -5908,7 +5905,6 @@ process_fail:
 U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
 {
     S8          *pszUUID = NULL;
-    S8          *pszOtherUUID = NULL;
     S8          *pszMainService = NULL;
     S8          *pszSCBNum = NULL;
     S8          *pszOtherSCBNo = NULL;
@@ -5919,7 +5915,6 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     U32         ulOtherSCBNo = 0;
     U32         ulRet = DOS_SUCC;
     U32         ulMainService = U32_BUTT;
-    S8          *pszRefer = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 

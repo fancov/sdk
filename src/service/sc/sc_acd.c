@@ -2252,5 +2252,75 @@ U32 sc_acd_http_agentgrp_update_proc(U32 ulAction, U32 ulGrpID)
     return DOS_SUCC;
 }
 
+/* 记录坐席统计信息 */
+U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+{
+    S8 szSQL[512] = { 0, };
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szSQL, sizeof(szSQL),
+                    "INSERT INTO tbl_agent_stat(ctime, bid, \"job_number\", calls, "
+                    "calls_connected, total_duration, avg_call_duration) VALUES("
+                    "%u, %u, %u, %s, %u, %u, %u, %u)"
+                , time(NULL), pstAgentInfo->ulSiteID
+                , pstAgentInfo->szEmpNo, pstAgentInfo->stStat.ulCallCnt
+                , pstAgentInfo->stStat.ulCallCnt, 0, 0);
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL) < 0)
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+/* 审计坐席，其实就 写入统计信息 */
+U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr)
+{
+    HASH_NODE_S                 *pstHashNode       = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode = NULL;
+    SC_ACD_AGENT_INFO_ST        *pstAgentInfo      = NULL;
+    U32             ulHashIndex  = 0;
+
+    SC_TRACE_IN(0, 0, 0, 0);
+
+    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                DOS_ASSERT(0);
+                continue;
+            }
+
+            pstAgentQueueNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstAgentQueueNode)
+                || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+            {
+                /* 有可能被删除了，不需要断言 */
+                continue;
+            }
+
+            pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+            if (pstAgentInfo->bWaitingDelete)
+            {
+                /* 被删除了*/
+                continue;
+            }
+
+            sc_acd_save_agent_stat(pstAgentInfo);
+        }
+    }
+
+    SC_TRACE_OUT();
+    return DOS_SUCC;
+}
+
 
 
