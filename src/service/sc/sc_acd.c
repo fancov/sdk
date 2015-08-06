@@ -2264,11 +2264,11 @@ U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     }
 
     dos_snprintf(szSQL, sizeof(szSQL),
-                    "INSERT INTO tbl_agent_stat(ctime, bid, \"job_number\", calls, "
+                    "INSERT INTO tbl_agent_stat(ctime, bid, \"job_number\", calls, group_id"
                     "calls_connected, total_duration, avg_call_duration) VALUES("
-                    "%u, %u, %u, %s, %u, %u, %u, %u)"
-                , time(NULL), pstAgentInfo->ulSiteID
-                , pstAgentInfo->szEmpNo, pstAgentInfo->stStat.ulCallCnt
+                    "%u, %u, %s, %u, %u, %u, %u, %u)"
+                , time(NULL), pstAgentInfo->ulSiteID, pstAgentInfo->szEmpNo
+                , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->aulGroupID[0]
                 , pstAgentInfo->stStat.ulCallCnt, 0, 0);
 
     if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL) < 0)
