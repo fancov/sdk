@@ -239,7 +239,8 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         goto esl_exec_fail;;
     }
 
-    if (sc_ep_get_callee_string(ulRouteID, pstSCB->szCalleeNum, szCallString, sizeof(szCallString)) != DOS_SUCC)
+    /* 如果是一个中继，则进项相应的号码变换 */
+    if (sc_ep_get_callee_string(ulRouteID, pstSCB, szCallString, sizeof(szCallString)) != DOS_SUCC)
     {
         DOS_ASSERT(0);
 
@@ -500,6 +501,14 @@ VOID *sc_dialer_runtime(VOID * ptr)
             {
                 goto free_res;
                 continue;
+            }
+
+            /* 路由前变换 */
+            if (sc_ep_num_transform(pstSCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE) != DOS_SUCC)
+            {
+                 DOS_ASSERT(0);
+
+                 goto free_res;
             }
 
             if (sc_dialer_make_call2pstn(pstSCB, pstSCB->ucMainService) != DOS_SUCC)

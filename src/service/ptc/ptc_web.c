@@ -571,6 +571,7 @@ void *ptc_handle_recvfrom_web_msg(void *arg)
 
                     break;
                 }
+                usleep(1000);
             }
         }
 

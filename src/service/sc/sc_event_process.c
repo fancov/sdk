@@ -41,6 +41,10 @@ pthread_cond_t           g_condEventList = PTHREAD_COND_INITIALIZER;
 /* 事件队列 REFER TO SC_EP_EVENT_NODE_ST */
 DLL_S                    g_stEventList;
 
+/* 号码变换数据链表 REFER TO SC_NUM_TRANSFORM_NODE_ST */
+DLL_S                    g_stNumTransformList;
+pthread_mutex_t          g_mutexNumTransformList = PTHREAD_MUTEX_INITIALIZER;
+
 /* 路由数据链表 REFER TO SC_ROUTE_NODE_ST */
 DLL_S                    g_stRouteList;
 pthread_mutex_t          g_mutexRouteList = PTHREAD_MUTEX_INITIALIZER;
@@ -568,6 +572,16 @@ VOID sc_ep_route_init(SC_ROUTE_NODE_ST *pstRoute)
         pstRoute->ucHourEnd = 0;
         pstRoute->ucMinuteEnd = 0;
         pstRoute->bExist = DOS_FALSE;
+    }
+}
+
+VOID sc_ep_num_transform_init(SC_NUM_TRANSFORM_NODE_ST *pstNumTransform)
+{
+    if (pstNumTransform)
+    {
+        dos_memzero(pstNumTransform, sizeof(SC_NUM_TRANSFORM_NODE_ST));
+        pstNumTransform->ulID = U32_BUTT;
+        pstNumTransform->bExist = DOS_FALSE;
     }
 }
 
@@ -2320,6 +2334,301 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 }
 
 
+S32 sc_load_num_transform_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    SC_NUM_TRANSFORM_NODE_ST    *pstNumTransform    = NULL;
+    SC_NUM_TRANSFORM_NODE_ST    *pstNumTransformTmp = NULL;
+    DLL_NODE_S                  *pstListNode        = NULL;
+    S32                         lIndex              = 0;
+    S32                         lRet                = 0;
+    BOOL                        blProcessOK         = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstNumTransform = (SC_NUM_TRANSFORM_NODE_ST *)dos_dmem_alloc(sizeof(SC_NUM_TRANSFORM_NODE_ST));
+    if (DOS_ADDR_INVALID(pstNumTransform))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+    sc_ep_num_transform_init(pstNumTransform);
+
+    for (blProcessOK = DOS_TRUE, lIndex = 0; lIndex < lCount; lIndex++)
+    {
+        if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstNumTransform->ulID) < 0)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "object", dos_strlen("object")))
+        {
+            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->enObject);
+            if (lRet < 0 || pstNumTransform->enObject >= SC_NUM_TRANSFORM_OBJECT_BUTT)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "objet_id", dos_strlen("objet_id")))
+        {
+            if ('\0' == aszValues[lIndex][0])
+            {
+                continue;
+            }
+
+            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->ulObjectID);
+            if (lRet < 0)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "direction", dos_strlen("direction")))
+        {
+            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->enDirection);
+
+            if (lRet < 0 || pstNumTransform->enDirection >= SC_NUM_TRANSFORM_DIRECTION_BUTT)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "transform_timing", dos_strlen("transform_timing")))
+        {
+            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->enTiming);
+
+            if (lRet < 0 || pstNumTransform->enTiming >= SC_NUM_TRANSFORM_TIMING_BUTT)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "num_selection", dos_strlen("num_selection")))
+        {
+            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->enNumSelect);
+
+            if (lRet < 0 || pstNumTransform->enNumSelect >= SC_NUM_TRANSFORM_SELECT_BUTT)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "callee_prefixion", dos_strlen("callee_prefixion")))
+        {
+            if (aszValues[lIndex] && '\0' != aszValues[lIndex][0])
+            {
+                dos_strncpy(pstNumTransform->szCalleePrefix, aszValues[lIndex], sizeof(pstNumTransform->szCalleePrefix));
+                pstNumTransform->szCalleePrefix[sizeof(pstNumTransform->szCalleePrefix) - 1] = '\0';
+            }
+            else
+            {
+                pstNumTransform->szCalleePrefix[0] = '\0';
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "caller_prefixion", dos_strlen("caller_prefixion")))
+        {
+            if (aszValues[lIndex] && '\0' != aszValues[lIndex][0])
+            {
+                dos_strncpy(pstNumTransform->szCallerPrefix, aszValues[lIndex], sizeof(pstNumTransform->szCallerPrefix));
+                pstNumTransform->szCallerPrefix[sizeof(pstNumTransform->szCallerPrefix) - 1] = '\0';
+            }
+            else
+            {
+                pstNumTransform->szCallerPrefix[0] = '\0';
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "replace_all", dos_strlen("replace_all")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex]))
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            if (aszValues[lIndex][0] == '0')
+            {
+                pstNumTransform->bReplaceAll = DOS_FALSE;
+            }
+            else
+            {
+                pstNumTransform->bReplaceAll = DOS_TRUE;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "replace_num", dos_strlen("replace_num")))
+        {
+            if (aszValues[lIndex] && '\0' != aszValues[lIndex][0])
+            {
+                dos_strncpy(pstNumTransform->szReplaceNum, aszValues[lIndex], sizeof(pstNumTransform->szReplaceNum));
+                pstNumTransform->szReplaceNum[sizeof(pstNumTransform->szReplaceNum) - 1] = '\0';
+            }
+            else
+            {
+                pstNumTransform->szReplaceNum[0] = '\0';
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "del_left", dos_strlen("del_left")))
+        {
+            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->ulDelLeft);
+            if (lRet < 0)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "del_right", dos_strlen("del_right")))
+        {
+            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->ulDelRight);
+            if (lRet < 0)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "add_prefixion", dos_strlen("add_prefixion")))
+        {
+            if (aszValues[lIndex] && '\0' != aszValues[lIndex][0])
+            {
+                dos_strncpy(pstNumTransform->szAddPrefix, aszValues[lIndex], sizeof(pstNumTransform->szAddPrefix));
+                pstNumTransform->szAddPrefix[sizeof(pstNumTransform->szAddPrefix) - 1] = '\0';
+            }
+            else
+            {
+                pstNumTransform->szAddPrefix[0] = '\0';
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "add_suffix", dos_strlen("add_suffix")))
+        {
+            if (aszValues[lIndex] && '\0' != aszValues[lIndex][0])
+            {
+                dos_strncpy(pstNumTransform->szAddSuffix, aszValues[lIndex], sizeof(pstNumTransform->szAddSuffix));
+                pstNumTransform->szAddSuffix[sizeof(pstNumTransform->szAddSuffix) - 1] = '\0';
+            }
+            else
+            {
+                pstNumTransform->szAddSuffix[0] = '\0';
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "priority", dos_strlen("priority")))
+        {
+            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->enPriority);
+            if (lRet < 0 || pstNumTransform->enPriority >= SC_NUM_TRANSFORM_PRIORITY_BUTT)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "expiry", dos_strlen("expiry")))
+        {
+            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->ulExpiry);
+            if (lRet < 0)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            if (0 == pstNumTransform->ulExpiry)
+            {
+                /* 无限制 */
+                pstNumTransform->ulExpiry = U32_BUTT;
+            }
+        }
+        else
+        {
+            DOS_ASSERT(0);
+
+            blProcessOK = DOS_FALSE;
+            break;
+        }
+    }
+
+    if (!blProcessOK)
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstNumTransform);
+        pstNumTransform = NULL;
+
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexNumTransformList);
+    pstListNode = dll_find(&g_stNumTransformList, &pstNumTransform->ulID, sc_ep_route_find);
+    if (DOS_ADDR_INVALID(pstListNode))
+    {
+        pstListNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
+        if (DOS_ADDR_INVALID(pstListNode))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstNumTransform);
+            pstNumTransform = NULL;
+
+            pthread_mutex_unlock(&g_mutexNumTransformList);
+
+            return DOS_FAIL;
+        }
+
+        DLL_Init_Node(pstListNode);
+        pstListNode->pHandle = pstNumTransform;
+        pstNumTransform->bExist = DOS_TRUE;
+        DLL_Add(&g_stRouteList, pstListNode);
+    }
+    else
+    {
+        pstNumTransformTmp = pstListNode->pHandle;
+        if (DOS_ADDR_INVALID(pstNumTransformTmp))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstNumTransform);
+            pstNumTransform = NULL;
+
+            pthread_mutex_unlock(&g_mutexNumTransformList);
+            return DOS_FAIL;
+        }
+
+        dos_memcpy(pstNumTransformTmp, pstNumTransform, sizeof(SC_NUM_TRANSFORM_NODE_ST));
+        pstNumTransform->bExist = DOS_TRUE;
+
+        dos_dmem_free(pstNumTransform);
+        pstNumTransform = NULL;
+    }
+    pthread_mutex_unlock(&g_mutexNumTransformList);
+
+    return DOS_TRUE;
+}
+
 /**
  * 函数: U32 sc_load_route()
  * 功能: 加载路由数据
@@ -2343,6 +2652,27 @@ U32 sc_load_route(U32 ulIndex)
     }
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_route_cb, NULL, NULL);
+
+    return DOS_SUCC;
+}
+
+U32 sc_load_num_transform(U32 ulIndex)
+{
+    S8 szSQL[1024];
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, object, object_id, direction, transform_timing, num_selection, caller_prefixion, callee_prefixion, replace_all, replace_num, del_left, del_right, add_prefixion, add_suffix, priority, expiry FROM tbl_num_transformation BY tbl_num_transformation.priority ASC;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, object, object_id, direction, transform_timing, num_selection, caller_prefixion, callee_prefixion, replace_all, replace_num, del_left, del_right, add_prefixion, add_suffix, priority, expiry FROM tbl_num_transformation where tbl_num_transformation.id=%u;"
+                    , ulIndex);
+    }
+
+    db_query(g_pstSCDBHandle, szSQL, sc_load_num_transform_cb, NULL, NULL);
 
     return DOS_SUCC;
 }
@@ -2483,6 +2813,283 @@ U32 sc_del_invalid_gateway_grp()
         }
     }
     return DOS_SUCC;
+}
+
+U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMING_EN enTiming)
+{
+    SC_NUM_TRANSFORM_NODE_ST    *pstNumTransform        = NULL;
+    SC_NUM_TRANSFORM_NODE_ST    *pstNumTransformEntry   = NULL;
+    DLL_NODE_S                  *pstListNode            = NULL;
+    S8  szNeedTransformNum[SC_TEL_NUMBER_LENGTH]        = {0};
+    U32 ulIndex      = 0;
+    U32 ulNumLen     = 0;
+    U32 ulOffsetLen  = 0;
+    U32 ulNumGroupID = 0;
+
+    if (DOS_ADDR_INVALID(pstSCB)
+        || '\0' == pstSCB->szCalleeNum[0]
+        || '\0' == pstSCB->szCallerNum[0])
+    {
+        return DOS_FAIL;
+    }
+
+    /* 遍历号码变换规则的链表，查找没有过期的，优先级别高的，针对这个客户或者系统的变换规则。
+        先按优先级，同优先级，客户优先于中继，中继优先于系统 */
+    pthread_mutex_lock(&g_mutexNumTransformList);
+    DLL_Scan(&g_stNumTransformList, pstListNode, DLL_NODE_S *)
+    {
+        pstNumTransformEntry = (SC_NUM_TRANSFORM_NODE_ST *)pstListNode->pHandle;
+        if (DOS_ADDR_INVALID(pstNumTransformEntry))
+        {
+            continue;
+        }
+
+        /* TODO 判断有效期 */
+
+        /* 判断是否是路由前/后 */
+        if (pstNumTransformEntry->enTiming != enTiming)
+        {
+            continue;
+        }
+
+        /* 判断主叫号码前缀 */
+        if ('\0' != pstNumTransformEntry->szCallerPrefix[0])
+        {
+            if (0 != dos_strnicmp(pstNumTransformEntry->szCallerPrefix, pstSCB->szCallerNum, dos_strlen(pstNumTransformEntry->szCallerPrefix)))
+            {
+                continue;
+            }
+        }
+
+        /* 判断被叫号码前缀 */
+        if ('\0' != pstNumTransformEntry->szCalleePrefix[0])
+        {
+            if (0 != dos_strnicmp(pstNumTransformEntry->szCalleePrefix, pstSCB->szCalleeNum, dos_strlen(pstNumTransformEntry->szCalleePrefix)))
+            {
+                continue;
+            }
+        }
+
+        if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER == pstNumTransformEntry->enObject)
+        {
+            /* 针对客户 */
+            if (pstNumTransformEntry->ulObjectID == pstSCB->ulCustomID)
+            {
+                if (DOS_ADDR_INVALID(pstNumTransform))
+                {
+                    pstNumTransform = pstNumTransformEntry;
+                    continue;
+                }
+
+                if (pstNumTransformEntry->enPriority < pstNumTransform->enPriority)
+                {
+                    /* 选择优先级高的 */
+                    pstNumTransform = pstNumTransformEntry;
+
+                    continue;
+                }
+
+                if (pstNumTransformEntry->enPriority == pstNumTransform->enPriority && pstNumTransform->enObject != SC_NUM_TRANSFORM_OBJECT_CUSTOMER)
+                {
+                    /* 优先级相同，选择客户的 */
+                    pstNumTransform = pstNumTransformEntry;
+
+                    continue;
+                }
+            }
+        }
+        else if (SC_NUM_TRANSFORM_OBJECT_SYSTEM == pstNumTransformEntry->enObject)
+        {
+            /* 针对系统 */
+            if (DOS_ADDR_INVALID(pstNumTransform))
+            {
+                pstNumTransform = pstNumTransformEntry;
+
+                continue;
+            }
+
+            if (pstNumTransformEntry->enPriority < pstNumTransform->enPriority)
+            {
+                /* 选择优先级高的 */
+                pstNumTransform = pstNumTransformEntry;
+
+                continue;
+            }
+        }
+        else if (SC_NUM_TRANSFORM_OBJECT_TRUNK == pstNumTransformEntry->enObject)
+        {
+            /* 针对中继，只有路由后，才需要判断这种情况 */
+            if (enTiming == SC_NUM_TRANSFORM_TIMING_AFTER)
+            {
+                if (DOS_ADDR_INVALID(pstNumTransform))
+                {
+                    pstNumTransform = pstNumTransformEntry;
+                    continue;
+                }
+
+                if (pstNumTransformEntry->enPriority < pstNumTransform->enPriority)
+                {
+                    /* 选择优先级高的 */
+                    pstNumTransform = pstNumTransformEntry;
+
+                    continue;
+                }
+
+                if (pstNumTransformEntry->enPriority == pstNumTransform->enPriority && pstNumTransform->enObject == SC_NUM_TRANSFORM_OBJECT_SYSTEM)
+                {
+                    /* 优先级相同，如果是系统的，则换成中继的 */
+                    pstNumTransform = pstNumTransformEntry;
+
+                    continue;
+                }
+            }
+        }
+        else
+        {
+            /* 不应该出现的情况，不需要处理 */
+        }
+
+    }
+
+    if (DOS_ADDR_INVALID(pstNumTransform))
+    {
+        /* 没有找到合适的变换规则 */
+        goto succ;
+    }
+
+    if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
+    {
+        dos_strncpy(szNeedTransformNum, pstSCB->szCallerNum, SC_TEL_NUMBER_LENGTH);
+    }
+    else
+    {
+        dos_strncpy(szNeedTransformNum, pstSCB->szCalleeNum, SC_TEL_NUMBER_LENGTH);
+    }
+
+    szNeedTransformNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+
+    /* 根据找到的规则变换号码 */
+    if (pstNumTransform->bReplaceAll)
+    {
+        /* 完全替代 */
+        if (pstNumTransform->szReplaceNum[0] == '*')
+        {
+            /* TODO 使用号码组中的号码 */
+            dos_sscanf(pstNumTransform->szReplaceNum, "*%d", ulNumGroupID);
+        }
+        else
+        {
+            dos_strcpy(szNeedTransformNum, pstNumTransform->szReplaceNum);
+        }
+
+        goto succ;
+    }
+
+    /* 删除左边几位 */
+    ulOffsetLen = pstNumTransform->ulDelLeft;
+    if (ulOffsetLen != 0)
+    {
+        ulNumLen = dos_strlen(szNeedTransformNum);
+
+        if (ulOffsetLen >= ulNumLen)
+        {
+            /* 删除的位数大于号码的长度，整个号码置空 */
+            szNeedTransformNum[0] = '\0';
+        }
+        else
+        {
+            for (ulIndex=ulOffsetLen; ulIndex<=ulNumLen; ulIndex++)
+            {
+                szNeedTransformNum[ulIndex-ulOffsetLen] = szNeedTransformNum[ulIndex];
+            }
+        }
+    }
+
+    /* 删除右边几位 */
+    ulOffsetLen = pstNumTransform->ulDelLeft;
+    if (ulOffsetLen != 0)
+    {
+        ulNumLen = dos_strlen(szNeedTransformNum);
+
+        if (ulOffsetLen >= ulNumLen)
+        {
+            /* 删除的位数大于号码的长度，整个号码置空 */
+            szNeedTransformNum[0] = '\0';
+        }
+        else
+        {
+            szNeedTransformNum[ulNumLen-ulOffsetLen] = '\0';
+        }
+    }
+
+    /* 增加前缀 */
+    if (pstNumTransform->szAddPrefix[0] != '\0')
+    {
+        ulNumLen = dos_strlen(szNeedTransformNum);
+        ulOffsetLen = dos_strlen(pstNumTransform->szAddPrefix);
+        if (ulNumLen + ulOffsetLen >= SC_TEL_NUMBER_LENGTH)
+        {
+            /* 超过号码的长度，失败 */
+
+            goto fail;
+        }
+
+        for (ulIndex=ulNumLen; ulIndex>=0; ulIndex--)
+        {
+            szNeedTransformNum[ulIndex+ulOffsetLen] = szNeedTransformNum[ulIndex];
+        }
+
+        dos_strncpy(szNeedTransformNum, pstNumTransform->szAddPrefix, ulOffsetLen);
+    }
+    /* 增加后缀 */
+    if (pstNumTransform->szAddSuffix[0] != '\0')
+    {
+        ulNumLen = dos_strlen(szNeedTransformNum);
+        ulOffsetLen = dos_strlen(pstNumTransform->szAddPrefix);
+        if (ulNumLen + ulOffsetLen >= SC_TEL_NUMBER_LENGTH)
+        {
+            /* 超过号码的长度，失败 */
+
+            goto fail;
+        }
+
+        dos_strcat(szNeedTransformNum, pstNumTransform->szAddSuffix);
+    }
+
+succ:
+
+    if (szNeedTransformNum[0] != '\0')
+    {
+        szNeedTransformNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+
+        if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
+        {
+            dos_strcpy(pstSCB->szCallerNum, szNeedTransformNum);
+        }
+        else
+        {
+            dos_strcpy(pstSCB->szCalleeNum, szNeedTransformNum);
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexNumTransformList);
+
+    return DOS_SUCC;
+
+fail:
+
+    if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
+    {
+        pstSCB->szCallerNum[0] = '\0';
+    }
+    else
+    {
+        pstSCB->szCalleeNum[0] = '\0';
+    }
+
+    pthread_mutex_unlock(&g_mutexNumTransformList);
+
+    return DOS_FAIL;
 }
 
 
@@ -3318,7 +3925,7 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
  *      U32 ulLength       : 缓存长度
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  */
-U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 ulLength)
+U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString, U32 ulLength)
 {
     SC_ROUTE_NODE_ST     *pstRouetEntry = NULL;
     DLL_NODE_S           *pstListNode   = NULL;
@@ -3331,14 +3938,18 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 u
     U32                  ulHashIndex;
     S32                  lIndex;
     BOOL                 blIsFound = DOS_FALSE;
+    S8                  *pszNum         = NULL;
 
-    if (DOS_ADDR_INVALID(pszNum)
+    if (DOS_ADDR_INVALID(pstSCB)
+        || DOS_ADDR_INVALID(pstSCB->szCalleeNum)
         || DOS_ADDR_INVALID(szCalleeString)
         || ulLength <= 0)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    pszNum = pstSCB->szCalleeNum;
 
     ulCurrentLen = 0;
     pthread_mutex_lock(&g_mutexRouteList);
@@ -3355,6 +3966,14 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 u
             switch (pstRouetEntry->ulDestType)
             {
                 case SC_DEST_TYPE_GATEWAY:
+                    /* 进行号码变换 */
+                    if (sc_ep_num_transform(pstSCB, pstRouetEntry->aulDestID[0], SC_NUM_TRANSFORM_TIMING_AFTER) != DOS_SUCC)
+                    {
+                        blIsFound = DOS_FALSE;
+
+                        break;
+                    }
+
                     ulCurrentLen = dos_snprintf(szCalleeString + ulCurrentLen
                                     , ulLength - ulCurrentLen
                                     , "sofia/gateway/%d/%s|"
@@ -7295,6 +7914,7 @@ U32 sc_ep_init()
 
     DLL_Init(&g_stEventList)
     DLL_Init(&g_stRouteList);
+    DLL_Init(&g_stNumTransformList);
 
     /* 以下三项加载顺序不能更改 */
     sc_load_gateway(SC_INVALID_INDEX);
@@ -7302,6 +7922,7 @@ U32 sc_ep_init()
     sc_load_relationship();
 
     sc_load_route(SC_INVALID_INDEX);
+    sc_load_num_transform(SC_INVALID_INDEX);
     sc_load_did_number(SC_INVALID_INDEX);
     sc_load_sip_userid(SC_INVALID_INDEX);
     sc_load_black_list(SC_INVALID_INDEX);
