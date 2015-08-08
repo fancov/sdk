@@ -1794,7 +1794,7 @@ U32 sc_task_concurrency_add(U32 ulTCBNo)
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
-        return 0;
+        return DOS_FAIL;
     }
 
     if (!g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucValid)
@@ -1802,7 +1802,7 @@ U32 sc_task_concurrency_add(U32 ulTCBNo)
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
-        return 0;
+        return DOS_FAIL;
     }
 
     pthread_mutex_lock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
@@ -1814,7 +1814,7 @@ U32 sc_task_concurrency_add(U32 ulTCBNo)
     }
     pthread_mutex_unlock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
 
-    return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
+    return DOS_SUCC;
 }
 
 U32 sc_task_concurrency_minus (U32 ulTCBNo)
@@ -1825,7 +1825,7 @@ U32 sc_task_concurrency_minus (U32 ulTCBNo)
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
-        return 0;
+        return DOS_FAIL;
     }
 
     if (!g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucValid)
@@ -1833,7 +1833,7 @@ U32 sc_task_concurrency_minus (U32 ulTCBNo)
         DOS_ASSERT(0);
 
         SC_TRACE_OUT();
-        return 0;
+        return DOS_FAIL;
     }
 
     pthread_mutex_lock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
@@ -1847,7 +1847,7 @@ U32 sc_task_concurrency_minus (U32 ulTCBNo)
     }
     pthread_mutex_unlock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
 
-    return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucAudioPlayCnt;
+    return DOS_SUCC;
 }
 
 
