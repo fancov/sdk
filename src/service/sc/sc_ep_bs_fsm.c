@@ -111,6 +111,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 
     if (pstAuthMsg->ucBalanceWarning)
     {
+        pstSCB->lBalance = pstAuthMsg->lBalance;
         pstSCB->bBanlanceWarning = DOS_TRUE;
     }
     else

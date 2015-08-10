@@ -4011,7 +4011,7 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
                                 && DOS_ADDR_VALID(pstListNode1->pHandle))
                             {
                                 pstGW = pstListNode1->pHandle;
-                                ulCurrentLen = dos_snprintf(szCalleeString + ulCurrentLen
+                                ulCurrentLen += dos_snprintf(szCalleeString + ulCurrentLen
                                                 , ulLength - ulCurrentLen
                                                 , "sofia/gateway/%d/%s|"
                                                 , pstGW->ulGWID
