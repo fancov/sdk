@@ -41,6 +41,10 @@ extern S32 ptc_printf_recv_cache_msg(U32 ulIndex, S32 argc, S8 **argv);
 extern S32 ptc_printf_send_cache_msg(U32 ulIndex, S32 argc, S8 **argv);
 #endif
 
+#if INCLUDE_SERVICE_MC
+extern S32 mc_cmd_set(U32 ulIndex, S32 argc, S8 **argv);
+#endif
+
 COMMAND_ST g_stCommandSet[] = {
     {NULL, "assert",        "Show assert informationa",        dos_assert_print},
 #if INCLUDE_SERVICE_BS
@@ -80,6 +84,10 @@ COMMAND_ST g_stCommandSet[] = {
 
 #if INCLUDE_RES_MONITOR
     {NULL, "mon",           "Monitor debug",                   mon_command_proc},
+#endif
+
+#if INCLUDE_SERVICE_MC
+    {NULL, "mc",            "Media convert",                   mc_cmd_set},
 #endif
 
     {NULL, NULL,            "",                               NULL}

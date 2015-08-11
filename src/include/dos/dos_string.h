@@ -40,6 +40,7 @@ DLLEXPORT S8  *dos_ipaddrtostr(U32 ulAddr, S8 *str, U32 ulStrLen);
 DLLEXPORT S32 dos_is_printable_str(S8* str);
 DLLEXPORT S32 dos_strtoipaddr(S8 *szStr, U32 *pulIpAddr);
 DLLEXPORT S8 *dos_strndup(const S8 *s, S32 count);
+DLLEXPORT S32 dos_strlastindexof(const S8 *s, const S8 ch, U32 n);
 
 DLLEXPORT U32 dos_htonl(U32 ulSrc);
 DLLEXPORT U32 dos_ntohl(U32 ulSrc);

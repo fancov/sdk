@@ -22,7 +22,7 @@ extern "C"{
 #define DB_SQLITE 0
 #else
 #define DB_MYSQL  1
-#define DB_SQLITE 1
+#define DB_SQLITE 0
 #endif
 
 #include <env.h>
@@ -66,6 +66,12 @@ extern "C"{
 #   include <cfg/cfg_mod_lics.h>
 #   define DOS_PROCESS_NAME    "LICS"
 #   define DOS_PROCESS_VERSION "1.102.0.0"
+
+#elif defined(DIPCC_MC)
+#   include <cfg/cfg_mod_mc.h>
+#   define DOS_PROCESS_NAME    "MC"
+#   define DOS_PROCESS_VERSION "1.103.0.0"
+
 #else
 #   error "Please special the mod's macro!"
 #endif

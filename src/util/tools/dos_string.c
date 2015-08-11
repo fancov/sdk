@@ -254,6 +254,33 @@ DLLEXPORT S32 dos_strncmp(const S8 *s1, const S8 *s2, U32 n)
     return -1;/*not equal*/
 }
 
+DLLEXPORT S32 dos_strlastindexof(const S8 *s, const S8 ch, U32 n)
+{
+    U32 i, len;
+
+    if (DOS_ADDR_INVALID(s))
+    {
+        return -1;
+    }
+
+    i = n;
+    len = dos_strlen(s);
+    if (len < n)
+    {
+        i = len;
+    }
+
+    for (; i>=0; i--)
+    {
+        if (ch == s[i])
+        {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 
 /**
  * º¯Êý£ºS32 dos_strnicmp(const S8 *s1, const S8 *s2, U32 n)
