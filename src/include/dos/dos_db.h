@@ -21,6 +21,10 @@ extern "C"{
 #include <mysql/mysql.h>
 #endif
 
+#if DB_SQLITE
+#include <sqlite3.h>
+#endif
+
 #define DB_DIGIST_TYPE_LENGTH 32
 
 #define DB_MAX_STR_LEN        48
@@ -62,6 +66,7 @@ typedef enum tagDBERRNo
 typedef enum tagDBType
 {
     DB_TYPE_MYSQL,
+    DB_TYPE_SQLITE,
 
     DB_TYPE_BUTT
 }DB_TYPE_EN;
@@ -86,7 +91,7 @@ typedef struct tagDBHandle
     S8      szSockPath[DB_MAX_STR_LEN];
     U16     usPort;
 #endif
-#if DB_SQLTE
+#if DB_SQLITE
     sqlite3 *pstSQLite;    /* SQLiteÊý¾Ý¿â¾ä±ú */
     S8      *pszFilepath;
 #endif

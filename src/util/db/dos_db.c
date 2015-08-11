@@ -11,11 +11,17 @@
  */
 
 #include <dos.h>
-#include "driver/db_mysql.h"
 
 #if DB_MYSQL
 #include <mysql/mysql.h>
 #endif
+
+#if DB_SQLITE
+#include <sqlite3.h>
+#endif
+
+#include "driver/db_mysql.h"
+#include "driver/db_sqlite.h"
 
 #ifdef __cplusplus
 extern "C"{
@@ -66,6 +72,12 @@ FUNCATTR DB_HANDLE_ST *db_create(DB_TYPE_EN enType)
 
             break;
 #endif
+#if DB_SQLITE
+        case DB_TYPE_SQLITE:
+            pstHandle->pstSQLite = NULL;
+            pstHandle->pszFilepath = NULL;
+            break;
+#endif
         default:
             ulResult = DOS_FAIL;
             break;
@@ -112,26 +124,22 @@ FUNCATTR S32 db_destroy(DB_HANDLE_ST **ppstDBHandle)
                 pstDBHandle->pstMYSql = NULL;
             }
             pstDBHandle->pstMYSql = NULL;
-#if 0
-            if (pstDBHandle->pszHost)
-            {
-                db_mem_free(pstDBHandle->pszHost);
-            }
-            pstDBHandle->pszHost = NULL;
 
-            if (pstDBHandle->pszUsername)
-            {
-                db_mem_free(pstDBHandle->pszUsername);
-            }
-            pstDBHandle->pszUsername = NULL;
-
-            if (pstDBHandle->pszPassword)
-            {
-                db_mem_free(pstDBHandle->pszPassword);
-            }
-            pstDBHandle->pszPassword = NULL;
+            break;
 #endif
 
+#if DB_SQLITE
+        case DB_TYPE_SQLITE:
+            if (pstDBHandle->pstSQLite)
+            {
+                db_sqlite3_close(pstDBHandle->pstSQLite, NULL);
+                pstDBHandle->pstSQLite = NULL;
+            }
+            if (pstDBHandle->pszFilepath)
+            {
+                db_mem_free(pstDBHandle->pszFilepath);
+                pstDBHandle->pszFilepath = NULL;
+            }
             break;
 #endif
         default:
@@ -153,6 +161,8 @@ FUNCATTR S32 db_destroy(DB_HANDLE_ST **ppstDBHandle)
  */
 FUNCATTR S32 db_open(DB_HANDLE_ST *pstDBHandle)
 {
+    S32 lRet = 0;
+
     if (!pstDBHandle)
     {
         db_assert(0);
@@ -172,14 +182,15 @@ FUNCATTR S32 db_open(DB_HANDLE_ST *pstDBHandle)
 #if DB_MYSQL
         case DB_TYPE_MYSQL:
 
-            if (db_mysql_open(pstDBHandle->pstMYSql
+            lRet = db_mysql_open(pstDBHandle->pstMYSql
                             , pstDBHandle->szHost
                             , pstDBHandle->usPort
                             , pstDBHandle->szUsername
                             , pstDBHandle->szPassword
                             , pstDBHandle->szDBName
                             , pstDBHandle->szSockPath
-                            , NULL) < 0)
+                            , NULL);
+            if (lRet < 0)
             {
                 db_assert(0);
 
@@ -187,6 +198,24 @@ FUNCATTR S32 db_open(DB_HANDLE_ST *pstDBHandle)
             }
 
             pstDBHandle->ulDBStatus = DB_STATE_CONNECTED;
+            break;
+#endif
+#if DB_SQLITE
+        case DB_TYPE_SQLITE:
+            if (!pstDBHandle->pszFilepath)
+            {
+                db_assert(0);
+
+                return -1;
+            }
+
+            lRet = db_sqlite3_open(&pstDBHandle->pstSQLite, pstDBHandle->pszFilepath, NULL);
+            if (lRet < 0)
+            {
+                db_assert(0);
+
+                return -1;
+            }
             break;
 #endif
         default:
@@ -233,6 +262,15 @@ FUNCATTR S32 db_close(DB_HANDLE_ST *pstDBHandle)
             }
 
             pstDBHandle->ulDBStatus = DB_STATE_DOWN;
+            break;
+#endif
+#if DB_SQLITE
+        case DB_TYPE_SQLITE:
+            if (pstDBHandle->pstSQLite)
+            {
+                db_sqlite3_close(pstDBHandle->pstSQLite, NULL);
+                pstDBHandle->pstSQLite = NULL;
+            }
             break;
 #endif
         default:
@@ -297,6 +335,16 @@ FUNCATTR S32 db_query(DB_HANDLE_ST *pstDBHandle, S8 *pszSQL, S32 (*callback)(VOI
             }
             break;
 #endif
+#if DB_SQLITE
+        case DB_TYPE_SQLITE:
+            ulRet = db_sqlite3_query(pstDBHandle->pstSQLite, pszSQL, callback, pParamObj, pszErrMsg);
+            if (ulRet != DB_ERR_SUCC)
+            {
+                db_assert(0);
+                return ulRet;
+            }
+            break;
+#endif
         default:
             db_assert(0);
             return DB_ERR_INVALID_DB_TYPE;
@@ -334,6 +382,15 @@ FUNCATTR S32 db_affect_raw(DB_HANDLE_ST *pstDBHandle)
         case DB_TYPE_MYSQL:
             /* @TODO: Read configure */
             if (db_mysql_affect_row(pstDBHandle->pstMYSql, NULL) < 0)
+            {
+                db_assert(0);
+                return -1;
+            }
+            break;
+#endif
+#if DB_SQLITE
+        case DB_TYPE_SQLITE:
+            if (db_sqlite3_affect_row(pstDBHandle->pstSQLite, NULL) < 0)
             {
                 db_assert(0);
                 return -1;
@@ -391,6 +448,15 @@ FUNCATTR S32 db_transaction_begin(DB_HANDLE_ST *pstDBHandle)
             }
             break;
 #endif
+#if DB_SQLITE
+        case DB_TYPE_SQLITE:
+            if (db_sqlite3_transaction_begin(pstDBHandle->pstSQLite, NULL) < 0)
+            {
+                db_assert(0);
+                return -1;
+            }
+            break;
+#endif
         default:
             db_assert(0);
             return -1;
@@ -442,6 +508,16 @@ FUNCATTR S32 db_transaction_commit(DB_HANDLE_ST *pstDBHandle)
             }
             break;
 #endif
+#if DB_SQLITE
+        case DB_TYPE_SQLITE:
+            if (db_sqlite3_transaction_commit(pstDBHandle->pstSQLite, NULL) < 0)
+            {
+                db_assert(0);
+                return -1;
+            }
+            break;
+#endif
+
         default:
             db_assert(0);
             return -1;
@@ -493,6 +569,16 @@ FUNCATTR S32 db_transaction_rollback(DB_HANDLE_ST *pstDBHandle)
             }
             break;
 #endif
+#if DB_SQLITE
+        case DB_TYPE_SQLITE:
+            if (db_sqlite3_transaction_rollback(pstDBHandle->pstSQLite, NULL) < 0)
+            {
+                db_assert(0);
+                return -1;
+            }
+            break;
+#endif
+
         default:
             db_assert(0);
             return -1;
