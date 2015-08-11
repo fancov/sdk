@@ -133,6 +133,7 @@ extern BOOL                 g_blSCInitOK;
 #define SC_NOBODY_UID                  99
 #define SC_NOBODY_GID                  99
 
+#define SC_NUM_TRANSFORM_PREFIX_LEN    16
 
 /* 检测一个TCB是有正常的Task和CustomID */
 #define SC_TCB_HAS_VALID_OWNER(pstTCB)                        \
@@ -603,6 +604,8 @@ typedef struct tagSCSCB{
 
     U32       ulRes1;
 
+    S32       lBalance;                           /* 余额,单位:分 */
+
     S8        szCallerNum[SC_TEL_NUMBER_LENGTH];  /* 主叫号码 */
     S8        szCalleeNum[SC_TEL_NUMBER_LENGTH];  /* 被叫号码 */
     S8        szANINum[SC_TEL_NUMBER_LENGTH];     /* 被叫号码 */
@@ -741,7 +744,86 @@ typedef struct tagEPTaskCB
     pthread_cond_t   contMsgList;
 }SC_EP_TASK_CB;
 
+/***************号码变换开始********************/
 
+/* 号码变换的作用对象 */
+typedef enum tagSCNumTransformObject{
+    SC_NUM_TRANSFORM_OBJECT_SYSTEM = 0,        /* 系统 */
+    SC_NUM_TRANSFORM_OBJECT_TRUNK,             /* 中继 */
+    SC_NUM_TRANSFORM_OBJECT_CUSTOMER,          /* 客户 */
+
+    SC_NUM_TRANSFORM_OBJECT_BUTT
+
+}SC_NUM_TRANSFORM_OBJECT_EN;
+
+typedef enum tagSCNumTransformDirection{
+    SC_NUM_TRANSFORM_DIRECTION_IN = 0,        /* 呼入 */
+    SC_NUM_TRANSFORM_DIRECTION_OUT,           /* 呼出 */
+
+    SC_NUM_TRANSFORM_DIRECTION_BUTT
+
+}SC_NUM_TRANSFORM_DIRECTION_EN;
+
+typedef enum tagSCNumTransformTiming{
+    SC_NUM_TRANSFORM_TIMING_BEFORE = 0,       /* 路由前 */
+    SC_NUM_TRANSFORM_TIMING_AFTER,            /* 路由后 */
+
+    SC_NUM_TRANSFORM_TIMING_BUTT
+
+}SC_NUM_TRANSFORM_TIMING_EN;
+
+typedef enum tagSCNumTransformSelect{
+    SC_NUM_TRANSFORM_SELECT_CALLER = 0,        /* 主叫 */
+    SC_NUM_TRANSFORM_SELECT_CALLEE,            /* 被叫 */
+
+    SC_NUM_TRANSFORM_SELECT_BUTT
+
+}SC_NUM_TRANSFORM_SELECT_EN;
+
+typedef enum tagSCNumTransformPriority{        /* 号码变换的优先级 */
+    SC_NUM_TRANSFORM_PRIORITY_0 = 0,
+    SC_NUM_TRANSFORM_PRIORITY_1,
+    SC_NUM_TRANSFORM_PRIORITY_2,
+    SC_NUM_TRANSFORM_PRIORITY_3,
+    SC_NUM_TRANSFORM_PRIORITY_4,
+    SC_NUM_TRANSFORM_PRIORITY_5,
+    SC_NUM_TRANSFORM_PRIORITY_6,
+    SC_NUM_TRANSFORM_PRIORITY_7,
+    SC_NUM_TRANSFORM_PRIORITY_8,
+    SC_NUM_TRANSFORM_PRIORITY_9,
+
+    SC_NUM_TRANSFORM_PRIORITY_BUTT
+
+}SC_NUM_TRANSFORM_PRIORITY_EN;
+
+
+typedef struct tagSCNumTransformNode
+{
+    U32                             ulID;
+    BOOL                            bExist;
+
+    SC_NUM_TRANSFORM_OBJECT_EN      enObject;
+    U32                             ulObjectID;
+    SC_NUM_TRANSFORM_DIRECTION_EN   enDirection;                        /* 呼入/呼出 */
+    SC_NUM_TRANSFORM_TIMING_EN      enTiming;                           /* 路由前/路由后 */
+    SC_NUM_TRANSFORM_SELECT_EN      enNumSelect;                        /* 主叫号码/被叫号码 */
+
+    U32                             ulDelLeft;                          /* 左边删除位数 */
+    U32                             ulDelRight;                         /* 右边删除位数 */
+    SC_NUM_TRANSFORM_PRIORITY_EN    enPriority;                         /* 优先级 */
+    BOOL                            bReplaceAll;                        /* 是否完全替代 */
+
+    S8                              szReplaceNum[SC_TEL_NUMBER_LENGTH]; /* 如果以*号开头，则后面跟号码组的id */
+    S8                              szCallerPrefix[SC_NUM_TRANSFORM_PREFIX_LEN];  /* 主叫前缀 */
+    S8                              szCalleePrefix[SC_NUM_TRANSFORM_PREFIX_LEN];  /* 被叫前缀 */
+    S8                              szAddPrefix[SC_NUM_TRANSFORM_PREFIX_LEN];     /* 增加前缀 */
+    S8                              szAddSuffix[SC_NUM_TRANSFORM_PREFIX_LEN];     /* 增加后缀 */
+
+    U32                             ulExpiry;                           /* 有效期 */
+
+}SC_NUM_TRANSFORM_NODE_ST;
+
+/***************号码变换结束********************/
 /* declare functions */
 SC_SCB_ST *sc_scb_alloc();
 VOID sc_scb_free(SC_SCB_ST *pstSCB);
@@ -792,7 +874,7 @@ U32 sc_task_stop(SC_TASK_CB_ST *pstTCB);
 S8 *sc_scb_get_status(U32 ulStatus);
 SC_SYS_STATUS_EN sc_check_sys_stat();
 U32 sc_ep_search_route(SC_SCB_ST *pstSCB);
-U32 sc_ep_get_callee_string(U32 ulRouteID, S8 *pszNum, S8 *szCalleeString, U32 ulLength);
+U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString, U32 ulLength);
 U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszCaller, S8 *pszCallee);
 U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt);
 U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB);
@@ -847,7 +929,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
 U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum);
 BOOL sc_ep_check_extension(S8 *pszNum, U32 ulCustomerID);
 U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService);
-U32 sc_ep_transfer_publish_release(SC_SCB_ST * pstSCBPublish);
+U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMING_EN enTiming);
 
 #ifdef __cplusplus
 }

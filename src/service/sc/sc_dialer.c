@@ -205,6 +205,145 @@ esl_exec_fail:
 
 }
 
+U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB)
+{
+    S8    szAPPParam[1024]  = { 0 };
+    U64   i             = 0;
+    S32   j             = 0;
+    S32   lBalance      = 0;
+    S32   lInteger      = 0;
+    S32   lRemainder    = 0;
+    U32   ulCurrentLen  = 0;
+    U32   ulTotalLen    = sizeof(szAPPParam);
+    BOOL  bIsGetMSB     = DOS_FALSE;
+    BOOL  bIsZero       = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return DOS_FAIL;
+    }
+
+    /* 根据余额拼接出语音 */
+    dos_memzero(szAPPParam, sizeof(szAPPParam));
+    ulCurrentLen = 0;
+    lBalance = pstSCB->lBalance;
+
+    ulCurrentLen = dos_snprintf(szAPPParam, ulTotalLen
+                        , "+1 %s/nindyew.wav|", SC_TASK_AUDIO_PATH);
+
+    if (lBalance < 0)
+    {
+        /* TODO 负 */
+        lBalance = 0 - lBalance;
+        ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
+                         , "%s/fu.wav|", SC_TASK_AUDIO_PATH);
+    }
+
+    lRemainder = lBalance;
+    bIsGetMSB = DOS_FALSE;
+
+    for (i=1000000000,j=0; i>0; i/=10,j++)
+    {
+        lInteger = lRemainder / i;
+        lRemainder = lRemainder % i;
+
+        if (0 == lInteger && DOS_FALSE == bIsGetMSB)
+        {
+            continue;
+        }
+
+        bIsGetMSB = DOS_TRUE;
+
+        if (0 == lInteger)
+        {
+            bIsZero = DOS_TRUE;
+        }
+        else
+        {
+            if (bIsZero == DOS_TRUE)
+            {
+                bIsZero = DOS_FALSE;
+                ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
+                                    , "%s/0.wav|%s/%d.wav|", SC_TASK_AUDIO_PATH, SC_TASK_AUDIO_PATH, lInteger);
+            }
+            else
+            {
+                ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
+                                    , "%s/%d.wav|", SC_TASK_AUDIO_PATH, lInteger);
+            }
+        }
+
+        switch (j)
+        {
+            case 0:
+            case 4:
+                if (lInteger != 0)
+                {
+                    ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
+                            , "%s/qian.wav|", SC_TASK_AUDIO_PATH);
+                }
+                break;
+            case 1:
+            case 5:
+                if (lInteger != 0)
+                {
+                    ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
+                            , "%s/bai.wav|", SC_TASK_AUDIO_PATH);
+                }
+                break;
+            case 2:
+            case 6:
+                if (lInteger != 0)
+                {
+                    ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
+                            , "%s/shi.wav|", SC_TASK_AUDIO_PATH);
+                }
+                break;
+            case 3:
+                ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
+                        , "%s/wan.wav|", SC_TASK_AUDIO_PATH);
+                bIsZero = DOS_FALSE;
+                break;
+            case 7:
+                ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
+                        , "%s/yuan.wav|", SC_TASK_AUDIO_PATH);
+                bIsZero = DOS_FALSE;
+                break;
+            case 8:
+                if (lInteger != 0)
+                {
+                    ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
+                            , "%s/jiao.wav|", SC_TASK_AUDIO_PATH);
+                }
+                bIsZero = DOS_FALSE;
+                break;
+            case 9:
+                if (lInteger != 0)
+                {
+                    ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
+                            , "%s/fen.wav|", SC_TASK_AUDIO_PATH);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    if (DOS_FALSE == bIsGetMSB)
+    {
+        /* 余额是0 */
+        ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
+                        , "%s/0.wav|%s/yuan.wav|", SC_TASK_AUDIO_PATH, SC_TASK_AUDIO_PATH);
+    }
+
+    /* 最后多了个一个 | */
+    szAPPParam[dos_strlen(szAPPParam) - 1] = '\0';
+
+    sc_ep_esl_execute("loop_playback", szAPPParam, pstSCB->szUUID);
+
+    return DOS_SUCC;
+}
+
 U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 {
     S8    *pszEventHeader = NULL;
@@ -239,7 +378,8 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         goto esl_exec_fail;;
     }
 
-    if (sc_ep_get_callee_string(ulRouteID, pstSCB->szCalleeNum, szCallString, sizeof(szCallString)) != DOS_SUCC)
+    /* 如果是一个中继，则进项相应的号码变换 */
+    if (sc_ep_get_callee_string(ulRouteID, pstSCB, szCallString, sizeof(szCallString)) != DOS_SUCC)
     {
         DOS_ASSERT(0);
 
@@ -279,6 +419,12 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
 
         return DOS_SUCC;
+    }
+
+    /* 判断是否需要余额告警 */
+    if (pstSCB->bBanlanceWarning)
+    {
+        sc_dialer_alarm_balance(pstSCB);
     }
 
     dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
@@ -500,6 +646,14 @@ VOID *sc_dialer_runtime(VOID * ptr)
             {
                 goto free_res;
                 continue;
+            }
+
+            /* 路由前变换 */
+            if (sc_ep_num_transform(pstSCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE) != DOS_SUCC)
+            {
+                 DOS_ASSERT(0);
+
+                 goto free_res;
             }
 
             if (sc_dialer_make_call2pstn(pstSCB, pstSCB->ucMainService) != DOS_SUCC)
