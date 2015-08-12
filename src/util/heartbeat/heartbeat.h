@@ -119,13 +119,6 @@ typedef struct tagMonMsgMap
 }MON_MSG_MAP_ST;
 
 
-typedef struct tagMonNotifyMeansCB
-{
-    MON_NOTIFY_MEANS_EN  ulMeans;         /* 告警方式 */
-    U32 (*callback)(S8*, S8*, S8*);       /* 回调函数 */
-}MON_NOTIFY_MEANS_CB_ST;
-
-
 /* 模块状态 */
 enum PROCESS_HB_STATUS{
     PROCESS_HB_INIT,

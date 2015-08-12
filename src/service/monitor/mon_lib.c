@@ -42,16 +42,8 @@ MON_MSG_MAP_ST m_pstMsgMap[][MAX_EXCEPT_CNT] = {
     {
         {"lack_fee",   "No enough balance", NO_ENOUGH_BALANCE_EN},
         {"lack_gw",    "No enough gateway", "%s%s%s%u%08x"},
-        {"lack_route", "jiezhiyang", "%s%s%s%u%08x"}
+        {"lack_route", "No enough route", "%s%s%s%u%08x"}
     }   /* 编号是1的是美式英文 */
-};
-
-
-/* 告警手段与行为映射表 */
-MON_NOTIFY_MEANS_CB_ST m_pstNotifyMeansCB[] = {
-        {MON_NOTIFY_MEANS_EMAIL, mon_send_email},
-        {MON_NOTIFY_MEANS_SMS,   mon_send_sms},
-        {MON_NOTIFY_MEANS_AUDIO, mon_send_audio}
 };
 
 
@@ -95,7 +87,7 @@ U32 mon_get_level(U32 ulNotifyType)
     S8 szLevel[16] = {0};
     U32 ulLevel;
 
-    pszDesc = m_pstMsgMap[0][ulNotifyType].szName;
+    pszDesc = m_pstMsgMap[MON_NOTIFY_LANG_CN][ulNotifyType].szName;
     if (config_hb_get_level(pszDesc, szLevel, sizeof(szLevel)) < 0)
     {
         DOS_ASSERT(0);

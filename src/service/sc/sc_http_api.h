@@ -107,8 +107,15 @@ enum tagAPICMDActionList
     SC_API_CMD_ACTION_CALLER_ADD,                        /* 添加主叫 */
     SC_API_CMD_ACTION_CALLER_DELETE,                     /* 删除主叫 */
     SC_API_CMD_ACTION_CALLER_UPDATE,                     /* 主叫更新 */
-    //---------------------------------------------------
 
+    SC_API_CMD_ACTION_CALLER_GRP_ADD,                    /* 添加主叫号码组 */
+    SC_API_CMD_ACTION_CALLER_GRP_DELETE,                 /* 删除主叫号码组 */
+    SC_API_CMD_ACTION_CALLER_GRP_UPDATE,                 /* 更新主叫号码组 */
+
+    SC_API_CMD_ACTION_CALLER_SET_ADD,                    /* 增加主叫号码设定 */
+    SC_API_CMD_ACTION_CALLER_SET_DELETE,                 /* 删除主叫号码设定 */
+    SC_API_CMD_ACTION_CALLER_SET_UPDATE,                 /* 更新主叫号码设定 */
+    //---------------------------------------------------
 
     SC_API_CMD_ACTION_BUTT
 };

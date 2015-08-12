@@ -62,6 +62,9 @@ extern HASH_TABLE_S          *g_pstHashSIPUserID;
 extern HASH_TABLE_S          *g_pstHashGWGrp;
 extern HASH_TABLE_S          *g_pstHashDIDNum;
 extern HASH_TABLE_S          *g_pstHashBlackList;
+extern HASH_TABLE_S          *g_pstHashCaller;
+extern HASH_TABLE_S          *g_pstHashCallerGrp;
+extern HASH_TABLE_S          *g_pstHashCallerSetting;
 extern pthread_mutex_t        g_mutexHashDIDNum;
 extern pthread_mutex_t        g_mutexHashBlackList;
 extern pthread_mutex_t        g_mutexRouteList;
@@ -73,6 +76,7 @@ extern SC_EP_TASK_CB          g_astEPTaskList[SC_EP_TASK_NUM];
 extern U32                    g_ulCPS;
 extern SC_EP_MSG_STAT_ST      g_astEPMsgStat[2];
 extern SC_BS_MSG_STAT_ST      stBSMsgStat;
+
 
 
 /* declare functions */
@@ -1464,6 +1468,127 @@ VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
     cli_out_string(ulIndex, szCmdBuff);
 }
 
+U32 sc_show_caller(U32 ulIndex, U32 ulCallerID)
+{
+    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    S8  szBuff[128] = {0};
+    U32 ulHashIndex = U32_BUTT;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%8s%8s%8s%12s%25s"
+                    , "No.", "Valid", "TraceOn", "Index", "Customer ID", "Number");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n------------------------------------------------------------------");
+
+    HASH_Scan_Table(g_pstHashCaller, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCaller, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstCaller = (SC_CALLER_QUERY_NODE_ST *)pstHashNode->pHandle;
+
+            if (U32_BUTT != ulCallerID && ulCallerID != pstCaller->ulIndexInDB)
+            {
+                continue;
+            }
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%8s%8s%8u%12u%25s"
+                            , pstCaller->usNo
+                            , pstCaller->bValid == DOS_FALSE ? "No":"Yes"
+                            , pstCaller->bTraceON == DOS_FALSE ? "No":"Yes"
+                            , pstCaller->ulIndexInDB
+                            , pstCaller->ulCustomerID
+                            , pstCaller->szNumber);
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+U32 sc_show_caller_grp(U32 ulIndex, U32 ulGrpID)
+{
+    SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    U32 ulHashIndex = U32_BUTT;
+    S8  szBuff[128] = {0};
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6s%12s%8s%8s%8s%-64s"
+                    , "Index", "CustomerID", "LastNo", "Policy", "Default", "GroupName");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n------------------------------------------------------------------------------------------------");
+
+    HASH_Scan_Table(g_pstHashCallerGrp, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCallerGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
+            if (U32_BUTT != ulGrpID && ulGrpID != pstCallerGrp->ulID)
+            {
+                continue;
+            }
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6u%12u%8u%8u%8s%-64s"
+                            , pstCallerGrp->ulID
+                            , pstCallerGrp->ulCustomerID
+                            , pstCallerGrp->ulLastNo
+                            , pstCallerGrp->ulPolicy
+                            , pstCallerGrp->bDefault == DOS_FALSE?"No":"Yes"
+                            , pstCallerGrp->szGrpName);
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+U32  sc_show_caller_setting(U32 ulIndex, U32 ulSettingID)
+{
+    SC_CALLER_SETTING_ST *pstSetting = NULL;
+    S8  szBuff[128] = {0};
+    U32 ulHashIndex = U32_BUTT;
+    HASH_NODE_S *pstHashNode  = NULL;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6s%12s%7s%9s%7s%9s%-64s"
+                    , "Index", "CustomerID", "SrcID", "SrcType", "DstID", "DstType", "SettingName");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------");
+
+    HASH_Scan_Table(g_pstHashCallerSetting, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCallerSetting, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            if (U32_BUTT != ulSettingID && ulSettingID != pstSetting->ulID)
+            {
+                continue;
+            }
+            pstSetting = (SC_CALLER_SETTING_ST *)pstHashNode->pHandle;
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6u%12u%7u%9u%7u%9u%-64s"
+                            , pstSetting->ulID
+                            , pstSetting->ulCustomerID
+                            , pstSetting->ulSrcID
+                            , pstSetting->ulSrcType
+                            , pstSetting->ulDstID
+                            , pstSetting->ulDstType
+                            , pstSetting->szSettingName);
+        }
+    }
+    return DOS_SUCC;
+}
+
 S32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
 {
     return 0;
@@ -1503,6 +1628,7 @@ S32 sc_track_call_by_caller(U32 ulIndex ,S8 *pszCaller)
                         , pstTCB->usTCBNo);
         cli_out_string(ulIndex, szCmdBuff);
     }
+    return DOS_SUCC;
 }
 
 S32 sc_track_call_by_callee(U32 ulIndex ,S8 *pszCallee)
@@ -2206,6 +2332,54 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             ulID = U32_BUTT;
         }
         sc_show_black_list(ulIndex, ulID);
+    }
+    else if (0 == dos_strnicmp(argv[2], "caller", dos_strlen("caller")))
+    {
+        if (3 == argc)
+        {
+            sc_show_caller(ulIndex, U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return -1;
+            }
+            sc_show_caller(ulIndex, ulID);
+        }
+    }
+    else if (0 == dos_strnicmp(argv[2], "callergrp", dos_strlen("callergrp")))
+    {
+        if (3 == argc)
+        {
+            sc_show_caller_grp(ulIndex, U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return -1;
+            }
+            sc_show_caller_grp(ulIndex, ulID);
+        }
+    }
+    else if (0 == dos_strnicmp(argv[2], "callerset", dos_strlen("callerset")))
+    {
+        if (3 == argc)
+        {
+            sc_show_caller_setting(ulIndex, U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return -1;
+            }
+            sc_show_caller_setting(ulIndex, ulID);
+        }
     }
 
     return 0;
