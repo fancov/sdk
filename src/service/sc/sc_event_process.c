@@ -57,6 +57,10 @@ pthread_mutex_t          g_mutexHashGW = PTHREAD_MUTEX_INITIALIZER;
 HASH_TABLE_S             *g_pstHashGWGrp = NULL;
 pthread_mutex_t          g_mutexHashGWGrp = PTHREAD_MUTEX_INITIALIZER;
 
+/* 企业链表 */
+DLL_S                    g_stCustomerList;
+pthread_mutex_t          g_mutexCustomerList = PTHREAD_MUTEX_INITIALIZER;
+
 /*
  * 网关组和网关内存中的结构:
  * 使用两个hash表存放网关和中网关组
@@ -585,6 +589,17 @@ VOID sc_ep_num_transform_init(SC_NUM_TRANSFORM_NODE_ST *pstNumTransform)
     }
 }
 
+VOID sc_ep_customer_init(SC_CUSTOMER_NODE_ST *pstCustomer)
+{
+    if (pstCustomer)
+    {
+        dos_memzero(pstCustomer, sizeof(SC_CUSTOMER_NODE_ST));
+        pstCustomer->ulID = U32_BUTT;
+        pstCustomer->bExist = DOS_FALSE;
+    }
+}
+
+
 /**
  * 函数: VOID sc_ep_gw_init(SC_GW_NODE_ST *pstGW)
  * 功能: 初始化pstGW所指向的网关描述结构
@@ -835,6 +850,54 @@ S32 sc_ep_route_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
     pstRouteCurrent = pstDLLNode->pHandle;
 
     if (ulIndex == pstRouteCurrent->ulID)
+    {
+        return DOS_SUCC;
+    }
+
+    return DOS_FAIL;
+}
+
+/* 查找路由 */
+S32 sc_ep_num_transform_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
+{
+    SC_NUM_TRANSFORM_NODE_ST *pstTransformCurrent;
+    U32 ulIndex;
+
+    if (DOS_ADDR_INVALID(pKey)
+        || DOS_ADDR_INVALID(pstDLLNode)
+        || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+    {
+        return DOS_FAIL;
+    }
+
+    ulIndex = *(U32 *)pKey;
+    pstTransformCurrent = pstDLLNode->pHandle;
+
+    if (ulIndex == pstTransformCurrent->ulID)
+    {
+        return DOS_SUCC;
+    }
+
+    return DOS_FAIL;
+}
+
+/* 查找路由 */
+S32 sc_ep_customer_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
+{
+    SC_CUSTOMER_NODE_ST *pstCustomerCurrent;
+    U32 ulIndex;
+
+    if (DOS_ADDR_INVALID(pKey)
+        || DOS_ADDR_INVALID(pstDLLNode)
+        || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+    {
+        return DOS_FAIL;
+    }
+
+    ulIndex = *(U32 *)pKey;
+    pstCustomerCurrent = pstDLLNode->pHandle;
+
+    if (ulIndex == pstCustomerCurrent->ulID)
     {
         return DOS_SUCC;
     }
@@ -2130,6 +2193,7 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     S32                  lRet;
     S32                  lDestIDCount;
     BOOL                 blProcessOK = DOS_FALSE;
+    U32                  ulCallOutGroup;
 
     if (DOS_ADDR_INVALID(aszValues)
         || DOS_ADDR_INVALID(aszNames))
@@ -2276,6 +2340,21 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 blProcessOK = DOS_FALSE;
                 break;
             }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "call_out_group", dos_strlen("call_out_group")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0]
+                || dos_atoul(aszValues[lIndex], &ulCallOutGroup) < 0
+                || ulCallOutGroup > U16_BUTT)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            pstRoute->usCallOutGroup = (U16)ulCallOutGroup;
         }
     }
 
@@ -2583,7 +2662,7 @@ S32 sc_load_num_transform_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
     }
 
     pthread_mutex_lock(&g_mutexNumTransformList);
-    pstListNode = dll_find(&g_stNumTransformList, &pstNumTransform->ulID, sc_ep_route_find);
+    pstListNode = dll_find(&g_stNumTransformList, &pstNumTransform->ulID, sc_ep_num_transform_find);
     if (DOS_ADDR_INVALID(pstListNode))
     {
         pstListNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
@@ -2602,7 +2681,7 @@ S32 sc_load_num_transform_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
         DLL_Init_Node(pstListNode);
         pstListNode->pHandle = pstNumTransform;
         pstNumTransform->bExist = DOS_TRUE;
-        DLL_Add(&g_stRouteList, pstListNode);
+        DLL_Add(&g_stNumTransformList, pstListNode);
     }
     else
     {
@@ -2629,6 +2708,116 @@ S32 sc_load_num_transform_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
     return DOS_TRUE;
 }
 
+S32 sc_load_customer_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    SC_CUSTOMER_NODE_ST  *pstCustomer       = NULL;
+    SC_CUSTOMER_NODE_ST  *pstCustomerTmp    = NULL;
+    DLL_NODE_S           *pstListNode       = NULL;
+    S32                  lIndex;
+    BOOL                 blProcessOK = DOS_FALSE;
+    U32                  ulCallOutGroup;
+
+    if (DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstCustomer = dos_dmem_alloc(sizeof(SC_CUSTOMER_NODE_ST));
+    if (DOS_ADDR_INVALID(pstCustomer))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_ep_customer_init(pstCustomer);
+
+    for (blProcessOK = DOS_TRUE, lIndex = 0; lIndex < lCount; lIndex++)
+    {
+        if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstCustomer->ulID) < 0)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "call_out_group", dos_strlen("call_out_group")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0]
+                || dos_atoul(aszValues[lIndex], &ulCallOutGroup) < 0
+                || ulCallOutGroup > U16_BUTT)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            pstCustomer->usCallOutGroup = (U16)ulCallOutGroup;
+        }
+    }
+
+    if (!blProcessOK)
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstCustomer);
+        pstCustomer = NULL;
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexCustomerList);
+    pstListNode = dll_find(&g_stCustomerList, &pstCustomer->ulID, sc_ep_customer_find);
+    if (DOS_ADDR_INVALID(pstListNode))
+    {
+        pstListNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
+        if (DOS_ADDR_INVALID(pstListNode))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstCustomer);
+            pstCustomer = NULL;
+
+            pthread_mutex_unlock(&g_mutexCustomerList);
+            return DOS_FAIL;
+        }
+
+        DLL_Init_Node(pstListNode);
+        pstListNode->pHandle = pstCustomer;
+        pstCustomer->bExist = DOS_TRUE;
+        DLL_Add(&g_stCustomerList, pstListNode);
+    }
+    else
+    {
+        pstCustomerTmp = pstListNode->pHandle;
+        if (DOS_ADDR_INVALID(pstCustomerTmp))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstCustomer);
+            pstCustomer = NULL;
+
+            pthread_mutex_unlock(&g_mutexCustomerList);
+            return DOS_FAIL;
+        }
+
+        dos_memcpy(pstCustomerTmp, pstCustomer, sizeof(SC_CUSTOMER_NODE_ST));
+        pstCustomerTmp->bExist = DOS_TRUE;
+
+        dos_dmem_free(pstCustomer);
+        pstCustomer = NULL;
+    }
+    pthread_mutex_unlock(&g_mutexCustomerList);
+
+    return DOS_TRUE;
+}
+
 /**
  * 函数: U32 sc_load_route()
  * 功能: 加载路由数据
@@ -2642,12 +2831,12 @@ U32 sc_load_route(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id FROM tbl_route WHERE tbl_route.status = 1 ORDER BY tbl_route.seq ASC;");
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group FROM tbl_route WHERE tbl_route.status = 1 ORDER BY tbl_route.seq ASC;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_id FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_id, call_out_group FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
                     , ulIndex);
     }
 
@@ -2673,6 +2862,27 @@ U32 sc_load_num_transform(U32 ulIndex)
     }
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_num_transform_cb, NULL, NULL);
+
+    return DOS_SUCC;
+}
+
+U32 sc_load_customer(U32 ulIndex)
+{
+    S8 szSQL[1024];
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, call_out_group FROM tbl_customer where tbl_customer.type=0;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, call_out_group FROM tbl_customer where tbl_customer.type=0 and tbl_customer.id=%u;"
+                    , ulIndex);
+    }
+
+    db_query(g_pstSCDBHandle, szSQL, sc_load_customer_cb, NULL, NULL);
 
     return DOS_SUCC;
 }
@@ -2815,6 +3025,39 @@ U32 sc_del_invalid_gateway_grp()
     return DOS_SUCC;
 }
 
+U32 sc_ep_get_callout_group_by_customerID(U32 ulCustomerID, U16 *pusCallOutGroup)
+{
+    SC_CUSTOMER_NODE_ST  *pstCustomer       = NULL;
+    DLL_NODE_S           *pstListNode       = NULL;
+
+    if (DOS_ADDR_INVALID(pusCallOutGroup))
+    {
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexCustomerList);
+    DLL_Scan(&g_stCustomerList, pstListNode, DLL_NODE_S *)
+    {
+        pstCustomer = (SC_CUSTOMER_NODE_ST *)pstListNode->pHandle;
+        if (DOS_ADDR_INVALID(pstCustomer))
+        {
+            continue;
+        }
+
+        if (pstCustomer->ulID == ulCustomerID)
+        {
+            *pusCallOutGroup = pstCustomer->usCallOutGroup;
+            pthread_mutex_unlock(&g_mutexCustomerList);
+            return DOS_SUCC;
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexCustomerList);
+
+    return DOS_FAIL;
+}
+
+
 U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMING_EN enTiming)
 {
     SC_NUM_TRANSFORM_NODE_ST    *pstNumTransform        = NULL;
@@ -2825,6 +3068,7 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
     U32 ulNumLen     = 0;
     U32 ulOffsetLen  = 0;
     U32 ulNumGroupID = 0;
+    time_t ulCurrTime   = time(NULL);
 
     if (DOS_ADDR_INVALID(pstSCB)
         || '\0' == pstSCB->szCalleeNum[0]
@@ -2844,7 +3088,11 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
             continue;
         }
 
-        /* TODO 判断有效期 */
+        /* 判断有效期 */
+        if (pstNumTransformEntry->ulExpiry != 0 || pstNumTransformEntry->ulExpiry < ulCurrTime)
+        {
+            continue;
+        }
 
         /* 判断是否是路由前/后 */
         if (pstNumTransformEntry->enTiming != enTiming)
@@ -3826,6 +4074,7 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
     time_t               timep;
     U32                  ulRouteGrpID;
     U32                  ulStartTime, ulEndTime, ulCurrentTime;
+    U16                  usCallOutGroup;
 
     timep = time(NULL);
     pstTime = localtime(&timep);
@@ -3837,11 +4086,26 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
     }
 
     ulRouteGrpID = U32_BUTT;
+
+    /* 根据 ulCustomID 查到到 呼出组, 如果查找失败，则将呼出组置为0 */
+    if (sc_ep_get_callout_group_by_customerID(pstSCB->ulCustomID, &usCallOutGroup) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        usCallOutGroup = 0;
+    }
+
     pthread_mutex_lock(&g_mutexRouteList);
+
+loop_search:
     DLL_Scan(&g_stRouteList, pstListNode, DLL_NODE_S *)
     {
         pstRouetEntry = (SC_ROUTE_NODE_ST *)pstListNode->pHandle;
         if (DOS_ADDR_INVALID(pstRouetEntry))
+        {
+            continue;
+        }
+
+        if (usCallOutGroup != pstRouetEntry->usCallOutGroup)
         {
             continue;
         }
@@ -3902,6 +4166,13 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
                 }
             }
         }
+    }
+
+    if (U32_BUTT == ulRouteGrpID && usCallOutGroup != 0)
+    {
+        /* 没有查找到 呼出组一样的 路由， 再循环一遍，查找通配的路由 */
+        usCallOutGroup = 0;
+        goto loop_search;
     }
 
     sc_logr_debug(SC_ESL, "Search Route Finished. Result: %s, Route ID: %d, Dest Type:%u, Dest ID: %u"
@@ -5144,11 +5415,27 @@ U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     return ulResult;
 }
 
+/* 通过客户ID获得主叫号码的桩函数 */
+U32 sc_ep_get_num_group_stub(U32 ulCustomerID, S8 *pszCaller, U32 ulLen)
+{
+    if (DOS_ADDR_INVALID(pszCaller))
+    {
+        return DOS_FAIL;
+    }
+
+    dos_strncpy(pszCaller, "123456789", ulLen);
+    pszCaller[ulLen - 1] = '\0';
+
+    return DOS_SUCC;
+}
+
+
 U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, S8 *pszCallee)
 {
     SC_SCB_ST *pstSCB = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
     U32       ulMainServie;
+    S8        szCallerNum[SC_TEL_NUMBER_LENGTH] = { 0, };
 
     if (ulAction >= SC_API_CALLCTRL_BUTT)
     {
@@ -5177,7 +5464,16 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             /* 需要指定主叫号码 */
             dos_strncpy(pstSCB->szCalleeNum, pszCallee, sizeof(pstSCB->szCalleeNum));
             pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
-            dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
+
+            if (sc_ep_get_num_group_stub(ulCustomerID, szCallerNum, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
+            {
+                /* 获取主叫号码失败 */
+                DOS_ASSERT(0);
+
+                goto make_all_fail;
+            }
+
+            dos_strncpy(pstSCB->szCallerNum, szCallerNum, sizeof(pstSCB->szCallerNum));
             pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
 
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_CLICK_CALL);
@@ -7910,6 +8206,7 @@ U32 sc_ep_init()
     DLL_Init(&g_stEventList)
     DLL_Init(&g_stRouteList);
     DLL_Init(&g_stNumTransformList);
+    DLL_Init(&g_stCustomerList);
 
     /* 以下三项加载顺序不能更改 */
     sc_load_gateway(SC_INVALID_INDEX);
@@ -7918,6 +8215,7 @@ U32 sc_ep_init()
 
     sc_load_route(SC_INVALID_INDEX);
     sc_load_num_transform(SC_INVALID_INDEX);
+    sc_load_customer(SC_INVALID_INDEX);
     sc_load_did_number(SC_INVALID_INDEX);
     sc_load_sip_userid(SC_INVALID_INDEX);
     sc_load_black_list(SC_INVALID_INDEX);

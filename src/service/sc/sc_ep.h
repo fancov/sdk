@@ -119,7 +119,23 @@ typedef struct tagSCRouteNode
 
     U32        ulDestType;                        /* 目的类型 */
     U32        aulDestID[SC_ROUT_GW_GRP_MAX_SIZE];/* 目的ID */
+
+    U16        usCallOutGroup;
+    U8         aucReserv[2];
+
 }SC_ROUTE_NODE_ST;
+
+/* 客户描述节点 */
+typedef struct tagSCCustomerNode
+{
+    U32        ulID;
+    BOOL       bExist;                            /* 该标记用来检查是否来自于数据库 */
+
+    U16        usCallOutGroup;
+    U8         aucReserv[2];
+
+}SC_CUSTOMER_NODE_ST;
+
 
 /* 事件队列 */
 typedef struct tagSCEventNode
