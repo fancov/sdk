@@ -894,7 +894,7 @@ U32  sc_get_number_by_callerid(U32 ulCustomerID, U32 ulCallerID, S8 *pszNumber);
 U32  sc_get_number_by_didid(U32 ulDidID, S8* pszNumber);
 U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber);
 U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber);
-
+U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber);
 
 #ifdef __cplusplus
 }
