@@ -27,6 +27,11 @@ extern "C"{
 #include <openssl/err.h>
 #endif
 
+#if INCLUDE_SERVICE_MC
+#include <mc_pub.h>
+#endif
+
+
 #if (INCLUDE_LICENSE_SERVER || INCLUDE_LICENSE_CLIENT)
 #include <license.h>
 #endif
@@ -73,6 +78,27 @@ S32 root(S32 _argc, S8 ** _argv)
         return DOS_FAIL;
     }
     dos_printf("Python Interpreter Version: %s", szPyVersion);
+#endif
+
+#if INCLUDE_SERVICE_MC
+    if (mc_init() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        dos_printf("Media convert task init fail");
+        return DOS_FAIL;
+    }
+    dos_printf("Media convert task init success");
+
+    if (mc_start() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        dos_printf("Media convert task start fail");
+        return DOS_FAIL;
+    }
+
+    dos_printf("Media convert task start success");
 #endif
 
 #if INCLUDE_DEBUG_CLI_SERVER

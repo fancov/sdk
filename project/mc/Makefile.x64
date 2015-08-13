@@ -1,7 +1,7 @@
 ########################################################################
 #                         Define the Complie                           # 
 ########################################################################
-TARGET                  = sc
+TARGET					= mc
 
 ########################################################################
 #                      Define some                           # 
@@ -9,11 +9,11 @@ TARGET                  = sc
 PROJECT_ROOT			= ../..
 DOS_LIBS			= -L$(PROJECT_ROOT)/libs
 SROUCE				= $(PROJECT_ROOT)/src
-DOS_INCLUDES			= -I$(SROUCE)/include -I$(SROUCE)/include/esl
+DOS_INCLUDES			= -I$(SROUCE)/include
 
 SUFFIX				= o
 
-LIBS				= -lpthread -lmysqlclient -lmxml_x64 -lpython2.6 -lcurl_x64 -lrt -ljson-c_x64 -lsqlite3_x64
+LIBS				= -lpthread  -lmxml_x64 -lmysqlclient
 
 MYSQL_HEADERS			= -I/usr/include/mysql
 MYSQL_LIBS			= -L/usr/lib64/mysql
@@ -30,14 +30,12 @@ include $(SROUCE)/util/config/Makefile.mk
 include $(SROUCE)/util/timer/Makefile.mk
 include $(SROUCE)/util/hash/Makefile.mk
 include $(SROUCE)/util/list/Makefile.mk
-include $(SROUCE)/util/json/Makefile.mk
-include $(SROUCE)/util/task/Makefile.mk
 include $(SROUCE)/util/heartbeat/Makefile.mk
+include $(SROUCE)/util/task/Makefile.mk
 include $(SROUCE)/util/db/Makefile.mk
 include $(SROUCE)/cfg/Makefile.mk
 include $(SROUCE)/service/Makefile.mk
-include $(SROUCE)/service/esl/Makefile.mk
-include $(SROUCE)/service/sc/Makefile.mk
+include $(SROUCE)/service/mc/Makefile.mk
 
 
 ########################################################################
@@ -54,7 +52,7 @@ ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS)
 CC					= gcc
 CXX					= g++
 CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char
-DEFINES					= -DDIPCC_FREESWITCH -DDEBUG_VERSION
+DEFINES					= -DDIPCC_MC -DDEBUG_VERSION
 
 C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
 CXX_COMPILE				= $(CXX) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS)

@@ -417,7 +417,7 @@ BOOL pts_is_http_end(S8 *pcRequest)
  * 参数
  * 返回值:
  */
-BOOL pts_request_ptc_proxy(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pcIpccId, S32 lReqLen, S8 *szUrl)
+BOOL pts_request_ptc_proxy(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8 *pcIpccId, S32 lReqLen, S8 *szUrl)
 {
     BOOL bIsGetID = DOS_FALSE;
     U16 usDestPort = 0;
@@ -433,28 +433,62 @@ BOOL pts_request_ptc_proxy(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pcIp
     S8 szServPort[PT_DATA_BUFF_16] = {0};
     S8 szHTTPField[PT_DATA_BUFF_128] = {0};
     U32 ulFieldLen = 0;
-    /* 获取请求的端口 */
 
+    if (DOS_ADDR_INVALID(pcRequest) || DOS_ADDR_INVALID(pcIpccId))
+    {
+        pts_web_close_socket(ulConnfd);
+
+        return bIsGetID;
+    }
+
+    /* 获取请求的端口 */
     pStr1 = dos_strstr(pcRequest, "Host:");
     if (DOS_ADDR_INVALID(pStr1))
     {
         pts_web_close_socket(ulConnfd);
+
         return bIsGetID;
     }
-    sscanf(pStr1, "%*[^:]:%*[^:]:%[0-9]", szServPort);
-    snprintf(szCookieId, PT_DATA_BUFF_16, "ptsId_%s", szServPort);
+
+    if (dos_sscanf(pStr1, "%*[^:]:%*[^:]:%[0-9]", szServPort) != 1)
+    {
+        pts_web_close_socket(ulConnfd);
+
+        return bIsGetID;
+    }
+
+    if (dos_snprintf(szCookieId, PT_DATA_BUFF_16, "ptsId_%s", szServPort) <= 0)
+    {
+        pts_web_close_socket(ulConnfd);
+
+        return bIsGetID;
+    }
 
     pcCookie = dos_strstr(pcRequest, szCookieId);
-    if (DOS_ADDR_VALID(pcCookie))
+    if (DOS_ADDR_INVALID(pcCookie))
     {
-        sscanf(pcCookie, "%*[^=]=%[^!]!%[^!]!%[0-9]", aucDestID, szDestIP, szDestPortStr);
-        usDestPort = atoi(szDestPortStr);
-        pt_logr_debug("aucDestID = %s, szDestIP = %s, szDestPortStr = %s", aucDestID, szDestIP, szDestPortStr);
-#if 1
-        /* 修改HOST */
-        dos_snprintf(szHTTPField, PT_DATA_BUFF_128, "Host: %s", szDestIP);
-        ulFieldLen = dos_strlen(szHTTPField);
-        pStr2 = dos_strstr(pStr1, "\r\n");
+        pt_logr_info("not get cookie, %s", szCookieId);
+        pts_web_close_socket(ulConnfd);
+
+        return bIsGetID;
+    }
+
+    if (dos_sscanf(pcCookie, "%*[^=]=%[^!]!%[^!]!%[0-9]", aucDestID, szDestIP, szDestPortStr) != 3)
+    {
+        pts_web_close_socket(ulConnfd);
+
+        return bIsGetID;
+    }
+
+    usDestPort = atoi(szDestPortStr);
+    pt_logr_debug("aucDestID = %s, szDestIP = %s, szDestPortStr = %s", aucDestID, szDestIP, szDestPortStr);
+
+    /* 修改HOST */
+    dos_snprintf(szHTTPField, PT_DATA_BUFF_128, "Host: %s", szDestIP);
+    ulFieldLen = dos_strlen(szHTTPField);
+    pStr2 = dos_strstr(pStr1, "\r\n");
+    if (DOS_ADDR_VALID(pStr2))
+    {
         lReqLen += (ulFieldLen - (pStr2 - pStr1));
         pStr3 = pStr1 + ulFieldLen;
         while (*pStr2 != '\0')
@@ -463,14 +497,17 @@ BOOL pts_request_ptc_proxy(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pcIp
         }
         *pStr3 = '\0';
         dos_memcpy(pStr1, szHTTPField, ulFieldLen);
-#endif
-        /* 修改 Referer*/
-        pStr1 = dos_strstr(pcRequest, "Referer:");
-        if (DOS_ADDR_VALID(pStr1))
+    }
+
+    /* 修改 Referer*/
+    pStr1 = dos_strstr(pcRequest, "Referer:");
+    if (DOS_ADDR_VALID(pStr1))
+    {
+        dos_snprintf(szHTTPField, PT_DATA_BUFF_128, "Referer: http://%s/", szDestIP);
+        ulFieldLen = dos_strlen(szHTTPField);
+        pStr2 = dos_strstr(pStr1, "\r\n");
+        if (DOS_ADDR_VALID(pStr2))
         {
-            dos_snprintf(szHTTPField, PT_DATA_BUFF_128, "Referer: http://%s/", szDestIP);
-            ulFieldLen = dos_strlen(szHTTPField);
-            pStr2 = dos_strstr(pStr1, "\r\n");
             lReqLen += (ulFieldLen - (pStr2 - pStr1));
             pStr3 = pStr1 + ulFieldLen;
             while (*pStr2 != '\0')
@@ -480,34 +517,29 @@ BOOL pts_request_ptc_proxy(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pcIp
             *pStr3 = '\0';
             dos_memcpy(pStr1, szHTTPField, ulFieldLen);
         }
-
-        pStr1 = pcRequest;
-        ulSendBufSize = lReqLen;
-        pt_logr_debug("pts send web server filename : %s, sockfd : %d, stream : %d", szUrl, ulConnfd, ulStreamID);
-
-        while (1)
-        {
-            if (ulSendBufSize <= PT_RECV_DATA_SIZE)
-            {
-                pts_save_msg_into_cache(aucDestID, PT_DATA_WEB, ulStreamID, pStr1, ulSendBufSize, szDestIP, usDestPort);
-
-                break;
-            }
-            else
-            {
-                pts_save_msg_into_cache(aucDestID, PT_DATA_WEB, ulStreamID, pStr1, PT_RECV_DATA_SIZE, szDestIP, usDestPort);
-                ulSendBufSize -= PT_RECV_DATA_SIZE;
-                pStr1 += PT_RECV_DATA_SIZE;
-            }
-        }
-        dos_memcpy(pcIpccId, aucDestID, PTC_ID_LEN);
-        bIsGetID = DOS_TRUE;
     }
-    else
+
+    pStr1 = pcRequest;
+    ulSendBufSize = lReqLen;
+    pt_logr_debug("pts send web server filename : %s, sockfd : %d, stream : %d", szUrl, ulConnfd, ulStreamID);
+
+    while (1)
     {
-        pt_logr_info("not get cookie");
-        pts_web_close_socket(ulConnfd);
+        if (ulSendBufSize <= PT_RECV_DATA_SIZE)
+        {
+            pts_save_msg_into_cache(aucDestID, PT_DATA_WEB, ulStreamID, pStr1, ulSendBufSize, szDestIP, usDestPort);
+
+            break;
+        }
+        else
+        {
+            pts_save_msg_into_cache(aucDestID, PT_DATA_WEB, ulStreamID, pStr1, PT_RECV_DATA_SIZE, szDestIP, usDestPort);
+            ulSendBufSize -= PT_RECV_DATA_SIZE;
+            pStr1 += PT_RECV_DATA_SIZE;
+        }
     }
+    dos_memcpy(pcIpccId, aucDestID, PTC_ID_LEN);
+    bIsGetID = DOS_TRUE;
 
     return bIsGetID;
 }
@@ -526,7 +558,7 @@ BOOL pts_request_ptc_proxy(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pcIp
  */
 BOOL pts_deal_with_http_head(S8 *pcRequest, U32 ulConnfd, U32 ulStreamID, U8* pcIpccId, S32 lReqLen)
 {
-    if (NULL == pcRequest || NULL == pcIpccId)
+    if (DOS_ADDR_INVALID(pcRequest) || DOS_ADDR_INVALID(pcIpccId))
     {
         pt_logr_debug("pts_deal_with_http_head : param null");
         return DOS_FALSE;
@@ -584,7 +616,7 @@ BOOL pts_deal_with_web_request(S8 *pcRequest, U32 ulConnfd, S32 lReqLen)
             }
             else
             {
-                pstHttpHead->pcRequestHead = (S8 *)dos_dmem_alloc(lReqLen);
+                pstHttpHead->pcRequestHead = (S8 *)dos_dmem_alloc(lReqLen + PT_DATA_BUFF_128);
                 if (NULL == pstHttpHead->pcRequestHead)
                 {
                     perror("dos_dmem_malloc");
@@ -609,8 +641,8 @@ BOOL pts_deal_with_web_request(S8 *pcRequest, U32 ulConnfd, S32 lReqLen)
     }
     else
     {
-        pcHeadBuf = (S8 *)dos_dmem_alloc(pstHttpHead->lReqLen + lReqLen + 64);
-        if (NULL == pcHeadBuf)
+        pcHeadBuf = (S8 *)dos_dmem_alloc(pstHttpHead->lReqLen + lReqLen + PT_DATA_BUFF_128);
+        if (DOS_ADDR_INVALID(pcHeadBuf))
         {
             perror("malloc");
             return DOS_FALSE;
@@ -766,7 +798,7 @@ VOID *pts_recv_msg_from_browser(VOID *arg)
     g_lWebServSocket = g_stPtsMsg.usWebServPort;
 
     /* 创建管道 */
-    if(access(g_szPtsFifoName, F_OK) == -1)
+    if (access(g_szPtsFifoName, F_OK) == -1)
     {
         /* 管道文件不存在,创建命名管道 */
         lResult = mkfifo(g_szPtsFifoName, 0777);

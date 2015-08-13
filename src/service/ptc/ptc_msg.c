@@ -2632,13 +2632,13 @@ void *ptc_terminal_dispose(void *arg)
                 }
                 else if (0 == g_ulResendCount)
                 {
-                    if (ulThresholds > 1000)
+                    if (g_ulSend2PtsDelay > ulThresholds)
                     {
-                        g_ulSend2PtsDelay = ulThresholds;
-                    }
-                    else
-                    {
-                        if (g_ulSend2PtsDelay > 1000)
+                        if (ulThresholds > 1000)
+                        {
+                            g_ulSend2PtsDelay = ulThresholds;
+                        }
+                        else
                         {
                             if (g_ulSend2PtsDelay > 1000)
                             {
@@ -2660,7 +2660,7 @@ void *ptc_terminal_dispose(void *arg)
 
             if (ulReduceCount == 0 && (ulIncreaseCount > 5 || g_ulResendCount > 20))
             {
-                ulReduceCount++;
+                ulReduceCount = 1;
                 if (ulThresholds < 49 * 1000)
                 {
                     ulThresholds += 1000;

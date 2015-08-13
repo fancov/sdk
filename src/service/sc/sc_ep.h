@@ -136,6 +136,10 @@ typedef struct tagSCRouteNode
 
     U32        ulDestType;                        /* 目的类型 */
     U32        aulDestID[SC_ROUT_GW_GRP_MAX_SIZE];/* 目的ID */
+
+    U16        usCallOutGroup;
+    U8         aucReserv[2];
+
 }SC_ROUTE_NODE_ST;
 
 /* 主叫号码组描述节点 */
