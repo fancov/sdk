@@ -13,7 +13,7 @@ C_FILE += $(SROUCE)/service/sc/mod_dipcc_sc.c \
 	$(SROUCE)/service/sc/sc_cw_queue.c \
 	$(SROUCE)/service/sc/sc_ep_extensions.c \
 	$(SROUCE)/service/sc/sc_data_syn.c \
-	$(SROUCE)/service/sc/sc_audit.c 
+	$(SROUCE)/service/sc/sc_caller_setting.c
 	
 
 C_OBJ_FILE += mod_dipcc_sc.$(SUFFIX) \
@@ -31,10 +31,7 @@ C_OBJ_FILE += mod_dipcc_sc.$(SUFFIX) \
 	sc_cw_queue.$(SUFFIX) \
 	sc_ep_extensions.$(SUFFIX) \
 	sc_data_syn.$(SUFFIX) \
-	sc_audit.$(SUFFIX)
-	
-sc_audit.$(SUFFIX) :
-	$(C_COMPILE) $(SROUCE)/service/sc/sc_audit.c
+	sc_caller_setting.$(SUFFIX)
 
 sc_cw_queue.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_cw_queue.c
@@ -81,3 +78,5 @@ sc_ep_extensions.$(SUFFIX) :
 sc_data_syn.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_data_syn.c
 
+sc_caller_setting.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/sc/sc_caller_setting.c

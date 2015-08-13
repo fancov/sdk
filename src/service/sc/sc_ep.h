@@ -37,6 +37,15 @@
 /* 定义网关的hash表大小 */
 #define SC_GW_HASH_SIZE         128
 
+/* 定义主叫号码的hash表大小 */
+#define SC_CALLER_HASH_SIZE     128
+
+/* 定义主叫号码组的hash表大小 */
+#define SC_CALLER_GRP_HASH_SIZE 128
+
+/* 定义主叫号码设定的hash表大小 */
+#define SC_CALLER_SETTING_HASH_SIZE   128
+
 /* 路由 中继组的最大数量 */
 #define SC_ROUT_GW_GRP_MAX_SIZE   5
 
@@ -45,6 +54,7 @@
 typedef enum tagSCDIDBindType{
     SC_DID_BIND_TYPE_SIP     = 1,               /* DID号码被绑定到SIP账户 */
     SC_DID_BIND_TYPE_QUEUE   = 2,               /* DID号码被绑定到坐席队列 */
+    SC_DID_BIND_TYPE_AGENT   = 3,               /* DID号码绑定到坐席 */
     SC_DID_BIND_TYPE_BUTT
 }SC_DID_BIND_TYPE_EN;
 
@@ -54,6 +64,13 @@ typedef enum tagSCDestType{
     SC_DEST_TYPE_GW_GRP      = 2,               /* 呼叫目的为网关组 */
     SC_DEST_TYPE_BUTT
 }SC_DEST_TYPE_EN;
+
+/* 主叫号码选择策略 */
+typedef enum tagCallerSelectPolicy
+{
+    SC_CALLER_SELECT_POLICY_IN_ORDER = 0,   /* 顺序选择号码 */
+    SC_CALLER_SELECT_POLICY_RANDOM          /* 随机选择 */
+}SC_CALLER_SELECT_POLICY_EN;
 
 
 /* User ID 描述节点 */
@@ -128,13 +145,41 @@ typedef struct tagSCRouteNode
 
     U32        ulDestType;                        /* 目的类型 */
     U32        aulDestID[SC_ROUT_GW_GRP_MAX_SIZE];/* 目的ID */
+
+    U16        usCallOutGroup;
+    U8         aucReserv[2];
+
 }SC_ROUTE_NODE_ST;
+
+/* 主叫号码组描述节点 */
+typedef struct tagCallerGrpNode
+{
+    U32   ulID;          /* 主叫号码组id */
+    U32   ulCustomerID;  /* 客户id */
+    U32   ulLastNo;      /* 上一次参与呼叫的主叫号码序列号 */
+    U32   ulPolicy;      /* 呼叫策略 */
+    BOOL  bDefault;      /* 是否为默认组，DOS_FALSE表示非默认组，DOS_TRUE表示默认组 */
+    S8    szGrpName[64]; /* 主叫号码组名称 */
+    DLL_S stCallerList;  /* 主叫号码列表 */
+    pthread_mutex_t  mutexCallerList;   /* 锁 */
+}SC_CALLER_GRP_NODE_ST;
+
+/* 主叫号码设定描述节点 */
+typedef struct tagCallerSetting
+{
+    U32   ulID;               /* 号码绑定关系id */
+    U32   ulCustomerID;       /* 客户id */
+    S8    szSettingName[64];  /* 关系名称 */
+    U32   ulSrcID;            /* 呼叫源id */
+    U32   ulSrcType;          /* 呼叫源类型 */
+    U32   ulDstID;            /* 目的ID */
+    U32   ulDstType;          /* 目标类型 */
+}SC_CALLER_SETTING_ST;
 
 /* 事件队列 */
 typedef struct tagSCEventNode
 {
     list_t stLink;
-
     esl_event_t *pstEvent;
 }SC_EP_EVENT_NODE_ST;
 

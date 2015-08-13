@@ -1927,6 +1927,74 @@ SC_SYS_STATUS_EN sc_check_sys_stat()
 }
 
 //------------------------------------------------------
+U32 sc_http_caller_setting_update_proc(U32 ulAction, U32 ulSettingID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_SET_ADD:
+        case SC_API_CMD_ACTION_CALLER_SET_DELETE:
+            sc_load_caller_setting(ulSettingID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_SET_UPDATE:
+            break;
+        default:
+            break;
+    }
+    return DOS_SUCC;
+}
+
+U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_GRP_ADD:
+        case SC_API_CMD_ACTION_CALLER_GRP_UPDATE:
+            sc_load_caller_grp(ulCallerID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_GRP_DELETE:
+            sc_caller_grp_delete(ulCallerID);
+            break;
+        default:
+            break;
+    }
+    return DOS_SUCC;
+}
+
+U32 sc_http_caller_update_proc(U32 ulAction, U32 ulCallerID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_ADD:
+        case SC_API_CMD_ACTION_CALLER_UPDATE:
+            sc_load_caller(ulCallerID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_DELETE:
+            sc_caller_delete(ulCallerID);
+            break;
+        default:
+            break;
+    }
+
+    return DOS_SUCC;
+}
+
 
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
 {
