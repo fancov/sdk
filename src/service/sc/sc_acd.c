@@ -1710,6 +1710,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     S8                          *pszRecordFlag = NULL, *pszIsHeader = NULL;
     S8                          *pszTelePhone  = NULL, *pszMobile   = NULL;
     S8                          *pszSelectType = NULL;
+    S8                          *pszTTNumber = NULL;
     SC_ACD_AGENT_INFO_ST        *pstSiteInfo = NULL;
     SC_ACD_AGENT_INFO_ST        stSiteInfo;
     U32                         ulSiteID   = 0, ulCustomID   = 0, ulGroupID  = 0;
@@ -1740,6 +1741,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     pszSelectType = pszData[10];
     pszTelePhone = pszData[11];
     pszMobile = pszData[12];
+    pszTTNumber = pszData[13];
 
     if (DOS_ADDR_INVALID(pszSiteID)
         || DOS_ADDR_INVALID(pszCustomID)
@@ -1761,27 +1763,47 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         return 0;
     }
 
-    if (AGENT_BIND_SIP == ulSelectType
-        && DOS_ADDR_INVALID(pszUserID))
+    if (AGENT_BIND_SIP == ulSelectType)
     {
-        DOS_ASSERT(0);
+        if (DOS_ADDR_INVALID(pszUserID)
+            || '\0' == pszUserID[0])
+        {
+            DOS_ASSERT(0);
 
-        return 0;
+            return 0;
+        }
     }
-    else if (AGENT_BIND_TELE == ulSelectType
-        && DOS_ADDR_INVALID(pszTelePhone))
+    else if (AGENT_BIND_TELE == ulSelectType)
     {
-        DOS_ASSERT(0);
+        if (DOS_ADDR_INVALID(pszTelePhone)
+            || '\0' == pszTelePhone)
+        {
+            DOS_ASSERT(0);
 
-        return 0;
+            return 0;
+        }
     }
-    else if (AGENT_BIND_MOBILE == ulSelectType
-        && DOS_ADDR_INVALID(pszTelePhone))
+    else if (AGENT_BIND_MOBILE == ulSelectType)
     {
-        DOS_ASSERT(0);
+        if (DOS_ADDR_INVALID(pszMobile)
+            || '\0' == pszMobile[0])
+        {
+            DOS_ASSERT(0);
 
-        return 0;
+            return 0;
+        }
     }
+    else if (AGENT_BIND_TT_NUMBER== ulSelectType)
+    {
+        if (DOS_ADDR_INVALID(pszTTNumber)
+            || '\0' == pszTTNumber[0])
+        {
+            DOS_ASSERT(0);
+
+            return 0;
+        }
+    }
+
 
     dos_memzero(&stSiteInfo, sizeof(stSiteInfo));
     stSiteInfo.ulSiteID = ulSiteID;
@@ -1827,6 +1849,12 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     {
         dos_strncpy(stSiteInfo.szMobile, pszMobile, sizeof(stSiteInfo.szMobile));
         stSiteInfo.szMobile[sizeof(stSiteInfo.szMobile) - 1] = '\0';
+    }
+
+    if (pszTTNumber && '\0' != pszTTNumber[0])
+    {
+        dos_strncpy(stSiteInfo.szTTNumber, pszTTNumber, sizeof(stSiteInfo.szTTNumber));
+        stSiteInfo.szTTNumber[sizeof(stSiteInfo.szTTNumber) - 1] = '\0';
     }
 
     /* 查看当前要添加的坐席是否已经存在，如果存在，就准备更新就好 */
@@ -1956,7 +1984,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
         dos_snprintf(szSQL, sizeof(szSQL)
                     ,"SELECT " \
                      "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, " \
-                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number " \
+                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number, a.tt_number" \
                      "FROM " \
                      "    (SELECT " \
                      "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
@@ -1976,7 +2004,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
         dos_snprintf(szSQL, sizeof(szSQL)
                    , "SELECT " \
                      "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, " \
-                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number " \
+                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number a.tt_number" \
                      "FROM " \
                      "    (SELECT " \
                      "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \

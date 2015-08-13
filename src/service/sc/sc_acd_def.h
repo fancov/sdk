@@ -70,6 +70,8 @@ typedef enum tagAgentBindType{
     AGENT_BIND_TELE,
     AGENT_BIND_MOBILE,
 
+    AGENT_BIND_TT_NUMBER,
+
     AGENT_BIND_BUTT
 }SC_AGENT_BIND_TYPE_EN;
 
@@ -105,6 +107,7 @@ typedef struct tagACDSiteDesc{
     S8         szEmpNo[SC_EMP_NUMBER_LENGTH];     /* 工号 */
     S8         szTelePhone[SC_TEL_NUMBER_LENGTH]; /* 固化号码 */
     S8         szMobile[SC_TEL_NUMBER_LENGTH];    /* 移动电话 */
+    S8         szTTNumber[SC_TEL_NUMBER_LENGTH];    /* TT号码 */
 
     pthread_mutex_t  mutexLock;
 

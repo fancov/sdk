@@ -28,6 +28,9 @@
 /* 定义黑名单号码的hash表大小 */
 #define SC_BLACK_LIST_HASH_SIZE 1024
 
+/* TT号对应关系 */
+#define SC_TT_NUMBER_HASH_SIZE  128
+
 /* 定义网关组的hash表大小 */
 #define SC_GW_GRP_HASH_SIZE     128
 
@@ -100,6 +103,12 @@ typedef struct tagSCDIDNode{
     U32   ulBindID;                               /* 绑定结果 */
 }SC_DID_NODE_ST;
 
+/* TT号信息 */
+typedef struct tagSCTTNumNode{
+    U32 ulID;
+    S8  szPrefix[SC_TEL_NUMBER_LENGTH];
+    S8  szAddr[SC_IP_ADDR_LEN];
+}SC_TT_NODE_ST;
 
 /* 网关描述节点 */
 typedef struct tagSCGWNode
