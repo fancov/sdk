@@ -64,7 +64,8 @@ def generate_sip(userid):
                 'effective_caller_id_number':userid,
                 'outbound_caller_id_name':'$${outbound_caller_name}',
                 'outbound_caller_id_number':'$${outbound_caller_id}',
-                'callgroup':'all'
+                'callgroup':'all',
+                'sip-force-contact':'NDLB-connectile-dysfunction'
         }
     
     listParamsNode = []
