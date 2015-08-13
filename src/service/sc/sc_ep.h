@@ -120,6 +120,17 @@ typedef struct tagGatewayGrpNode
     pthread_mutex_t  mutexGWList;                 /* 路由组的锁 */
 }SC_GW_GRP_NODE_ST;
 
+/* 客户描述节点 */
+typedef struct tagSCCustomerNode
+{
+    U32        ulID;
+    BOOL       bExist;                            /* 该标记用来检查是否来自于数据库 */
+
+    U16        usCallOutGroup;
+    U8         aucReserv[2];
+
+}SC_CUSTOMER_NODE_ST;
+
 /* 路由描述节点 */
 typedef struct tagSCRouteNode
 {

@@ -33,7 +33,6 @@ extern "C"{
 #include "sc_debug.h"
 #include "sc_acd_def.h"
 
-
 typedef enum tagAuditCycel
 {
     SC_AUDIT_CYCLE_10MIN  = 10 * 60,

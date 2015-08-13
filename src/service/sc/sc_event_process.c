@@ -89,6 +89,11 @@ pthread_mutex_t          g_mutexHashDIDNum = PTHREAD_MUTEX_INITIALIZER;
 HASH_TABLE_S             *g_pstHashBlackList  = NULL;
 pthread_mutex_t          g_mutexHashBlackList = PTHREAD_MUTEX_INITIALIZER;
 
+/* ∆Û“µ¡¥±Ì */
+DLL_S                    g_stCustomerList;
+pthread_mutex_t          g_mutexCustomerList = PTHREAD_MUTEX_INITIALIZER;
+
+
 
 CURL *g_pstCurlHandle;
 

@@ -4,6 +4,7 @@ C_FILE += $(SROUCE)/service/sc/mod_dipcc_sc.c \
 	$(SROUCE)/service/sc/sc_debug.c \
 	$(SROUCE)/service/sc/sc_dialer.c \
 	$(SROUCE)/service/sc/sc_ep_bs_adapter.c \
+	$(SROUCE)/service/sc/sc_audit.c \
 	$(SROUCE)/service/sc/sc_ep_bs_fsm.c \
 	$(SROUCE)/service/sc/sc_event_process.c \
 	$(SROUCE)/service/sc/sc_httpd.c \
@@ -22,6 +23,7 @@ C_OBJ_FILE += mod_dipcc_sc.$(SUFFIX) \
 	sc_debug.$(SUFFIX) \
 	sc_dialer.$(SUFFIX) \
 	sc_ep_bs_adapter.$(SUFFIX) \
+	sc_audit.$(SUFFIX) \
 	sc_ep_bs_fsm.$(SUFFIX) \
 	sc_event_process.$(SUFFIX) \
 	sc_httpd.$(SUFFIX) \
@@ -33,12 +35,12 @@ C_OBJ_FILE += mod_dipcc_sc.$(SUFFIX) \
 	sc_data_syn.$(SUFFIX) \
 	sc_caller_setting.$(SUFFIX)
 
+mod_dipcc_sc.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/sc/mod_dipcc_sc.c
+	
 sc_cw_queue.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_cw_queue.c
 	
-mod_dipcc_sc.$(SUFFIX) :
-	$(C_COMPILE) $(SROUCE)/service/sc/mod_dipcc_sc.c
-
 sc_api_process.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_api_process.c
 	
@@ -53,6 +55,9 @@ sc_dialer.$(SUFFIX) :
 	
 sc_ep_bs_adapter.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_ep_bs_adapter.c
+	
+sc_audit.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/sc/sc_audit.c
 	
 sc_ep_bs_fsm.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_ep_bs_fsm.c

@@ -1,3 +1,8 @@
+
+#ifdef __cplusplus
+extern "C"{
+#endif /* __cplusplus */
+
 #include <dos.h>
 #include <esl.h>
 #include "sc_def.h"
@@ -471,5 +476,10 @@ U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber)
 {
     return DOS_SUCC;
 }
+
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 
