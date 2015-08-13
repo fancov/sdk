@@ -49,6 +49,9 @@ extern BOOL                 g_blSCInitOK;
 /* 电话号码长度 */
 #define SC_TEL_NUMBER_LENGTH           24
 
+/* IP地址长度 */
+#define SC_IP_ADDR_LEN                 32
+
 /* 工号长度最大值 */
 #define SC_EMP_NUMBER_LENGTH           12
 
@@ -930,6 +933,9 @@ U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum);
 BOOL sc_ep_check_extension(S8 *pszNum, U32 ulCustomerID);
 U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService);
 U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMING_EN enTiming);
+U32 sc_ep_get_eix_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength);
+U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService);
+U32 sc_ep_transfer_publish_release(SC_SCB_ST * pstSCBPublish);
 
 #ifdef __cplusplus
 }

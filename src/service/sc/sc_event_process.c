@@ -57,6 +57,9 @@ pthread_mutex_t          g_mutexHashGW = PTHREAD_MUTEX_INITIALIZER;
 HASH_TABLE_S             *g_pstHashGWGrp = NULL;
 pthread_mutex_t          g_mutexHashGWGrp = PTHREAD_MUTEX_INITIALIZER;
 
+HASH_TABLE_S             *g_pstHashTTNumber = NULL;
+pthread_mutex_t          g_mutexHashTTNumber = PTHREAD_MUTEX_INITIALIZER;
+
 /*
  * 网关组和网关内存中的结构:
  * 使用两个hash表存放网关和中网关组
@@ -553,6 +556,16 @@ VOID sc_ep_did_init(SC_DID_NODE_ST *pstDIDNum)
     }
 }
 
+VOID sc_ep_tt_init(SC_TT_NODE_ST *pstTTNumber)
+{
+    if (pstTTNumber)
+    {
+        pstTTNumber->ulID = U32_BUTT;
+        pstTTNumber->szAddr[0] = '\0';
+        pstTTNumber->szPrefix[0] = '\10';
+    }
+}
+
 /**
  * 函数: VOID sc_ep_route_init(SC_ROUTE_NODE_ST *pstRoute)
  * 功能: 初始化pstRoute所指向的路由描述结构
@@ -632,6 +645,11 @@ U32 sc_ep_gw_grp_hash_func(U32 ulGWGrpID)
 U32 sc_ep_gw_hash_func(U32 ulGWID)
 {
     return ulGWID % SC_GW_GRP_HASH_SIZE;
+}
+
+U32 sc_ep_tt_hash_func(U32 ulID)
+{
+    return ulID % SC_TT_NUMBER_HASH_SIZE;
 }
 
 /**
@@ -863,6 +881,29 @@ S32 sc_ep_black_list_find(VOID *pObj, HASH_NODE_S *pstHashNode)
         return DOS_SUCC;
     }
 
+
+    return DOS_FAIL;
+}
+
+S32 sc_ep_tt_list_find(VOID *pObj, HASH_NODE_S *pstHashNode)
+{
+    SC_TT_NODE_ST *pstTTNumber = NULL;
+    U32  ulID;
+
+    if (DOS_ADDR_INVALID(pObj)
+        || DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        return DOS_FAIL;
+    }
+
+    ulID = *(U32 *)pObj;
+    pstTTNumber = pstHashNode->pHandle;
+
+    if (ulID == pstTTNumber->ulID)
+    {
+        return DOS_SUCC;
+    }
 
     return DOS_FAIL;
 }
@@ -1526,6 +1567,145 @@ U32 sc_load_black_list(U32 ulIndex)
     return DOS_SUCC;
 }
 
+static S32 sc_load_tt_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    HASH_NODE_S        *pstHashNode      = NULL;
+    SC_TT_NODE_ST      *pstSCTTNumber    = NULL;
+    SC_TT_NODE_ST      *pstSCTTNumberOld = NULL;
+    BOOL               blProcessOK       = DOS_FALSE;
+    U32                ulHashIndex       = 0;
+    S32                lIndex            = 0;
+
+    if (DOS_ADDR_INVALID(aszNames)
+        || DOS_ADDR_INVALID(aszValues))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstSCTTNumber = (SC_TT_NODE_ST *)dos_dmem_alloc(sizeof(SC_TT_NODE_ST));
+    if (DOS_ADDR_INVALID(pstSCTTNumber))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_ep_tt_init(pstSCTTNumber);
+
+    for (lIndex=0, blProcessOK=DOS_TRUE; lIndex<lCount; lIndex++)
+    {
+        if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstSCTTNumber->ulID) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "ip_port", dos_strlen("ip_port")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0])
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            dos_strncpy(pstSCTTNumber->szAddr, aszValues[lIndex], sizeof(pstSCTTNumber->szAddr));
+            pstSCTTNumber->szAddr[sizeof(pstSCTTNumber->szAddr) - 1] = '\0';
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "prefix_number", dos_strlen("prefix_number")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0])
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            dos_strncpy(pstSCTTNumber->szPrefix, aszValues[lIndex], sizeof(pstSCTTNumber->szPrefix));
+            pstSCTTNumber->szPrefix[sizeof(pstSCTTNumber->szPrefix) - 1] = '\0';
+        }
+    }
+
+    if (!blProcessOK)
+    {
+        DOS_ASSERT(0);
+
+        dos_dmem_free(pstSCTTNumber);
+        pstSCTTNumber = NULL;
+        return DOS_FALSE;
+    }
+
+
+    pthread_mutex_lock(&g_mutexHashTTNumber);
+    ulHashIndex = sc_ep_tt_hash_func(pstSCTTNumber->ulID);
+    pstHashNode = hash_find_node(g_pstHashTTNumber, ulHashIndex, &pstSCTTNumber->ulID, sc_ep_tt_list_find);
+    if (DOS_ADDR_VALID(pstHashNode))
+    {
+        if (DOS_ADDR_VALID(pstHashNode->pHandle))
+        {
+            pstSCTTNumberOld = pstHashNode->pHandle;
+            dos_snprintf(pstSCTTNumberOld->szAddr, sizeof(pstSCTTNumberOld->szAddr), pstSCTTNumber->szAddr);
+            dos_snprintf(pstSCTTNumberOld->szPrefix, sizeof(pstSCTTNumberOld->szPrefix), pstSCTTNumber->szPrefix);
+
+            dos_dmem_free(pstSCTTNumber);
+            pstSCTTNumber = NULL;
+        }
+        else
+        {
+            pstHashNode->pHandle = pstSCTTNumber;
+        }
+    }
+    else
+    {
+        pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+        if (DOS_ADDR_INVALID(pstHashNode))
+        {
+            DOS_ASSERT(0);
+
+            pthread_mutex_unlock(&g_mutexHashTTNumber);
+            dos_dmem_free(pstSCTTNumber);
+            pstSCTTNumber = NULL;
+            return DOS_FALSE;
+        }
+
+        pstHashNode->pHandle = pstSCTTNumber;
+
+        hash_add_node(g_pstHashTTNumber, pstHashNode, ulHashIndex, NULL);
+    }
+    pthread_mutex_unlock(&g_mutexHashTTNumber);
+
+    return DOS_SUCC;
+}
+
+
+U32 sc_load_tt_number(U32 ulIndex)
+{
+    S8 szSQL[1024] = { 0, };
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, ip_port, prefix_number FROM tbl_eix");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, ip_port, prefix_number FROM tbl_eix WHERE id=%u", ulIndex);
+    }
+
+    if (db_query(g_pstSCDBHandle, szSQL, sc_load_tt_number_cb, NULL, NULL) != DB_ERR_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_ESL, "%s", "Load TT number fail.");
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+
+}
 
 /**
  * 函数: S32 sc_load_did_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
@@ -3092,7 +3272,70 @@ fail:
     return DOS_FAIL;
 }
 
+U32 sc_ep_get_eix_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength)
+{
+    U32            ulHashIndex   = 0;
+    HASH_NODE_S    *pstHashNode  = NULL;
+    SC_TT_NODE_ST  *pstTTNumber  = NULL;
+    SC_TT_NODE_ST  *pstTTNumberLast  = NULL;
 
+    if (DOS_ADDR_INVALID(pszTTNumber)
+        || DOS_ADDR_INVALID(pszEIX)
+        || ulLength <= 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexHashTTNumber);
+    HASH_Scan_Table(g_pstHashTTNumber, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashTTNumber, ulHashIndex, pstHashNode, HASH_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode ) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstTTNumber = pstHashNode->pHandle;
+            /* 匹配前缀 */
+            if (0 == dos_strncmp(pszTTNumber
+                , pstTTNumber->szPrefix
+                , dos_strlen(pstTTNumber->szPrefix)))
+            {
+                /* 要做一个最优匹配(匹配长度越大越优) */
+                if (pstTTNumberLast)
+                {
+                    if (dos_strlen(pstTTNumberLast->szPrefix) < dos_strlen(pstTTNumber->szPrefix))
+                    {
+                        pstTTNumberLast = pstTTNumber;
+                    }
+                }
+                else
+                {
+                    pstTTNumberLast = pstTTNumber;
+                }
+            }
+        }
+    }
+
+    if (pstTTNumberLast)
+    {
+        dos_snprintf(pszEIX, ulLength, "%s", pstTTNumberLast->szAddr);
+    }
+    else
+    {
+        pthread_mutex_unlock(&g_mutexHashTTNumber);
+
+        sc_logr_info(SC_ESL, "Cannot find the EIA for the TT number %s", pszTTNumber);
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_unlock(&g_mutexHashTTNumber);
+
+    sc_logr_info(SC_ESL, "Found the EIA(%s) for the TT number(%s).", pszEIX, pszTTNumber);
+    return DOS_SUCC;
+}
 
 /**
  * 函数: U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
@@ -4946,6 +5189,10 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
             dos_strncpy(pstSCBNew->szCalleeNum, pstAgentInfo->szMobile, sizeof(pstSCBNew->szCalleeNum));
             pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
             break;
+        case AGENT_BIND_TT_NUMBER:
+            dos_strncpy(pstSCBNew->szCalleeNum, pstAgentInfo->szTTNumber, sizeof(pstSCBNew->szCalleeNum));
+            pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
+            break;
     }
 
     dos_strncpy(pstSCBNew->szSiteNum, pstAgentInfo->szEmpNo, sizeof(pstSCBNew->szSiteNum));
@@ -4955,7 +5202,8 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 
     SC_SCB_SET_STATUS(pstSCBNew, SC_SCB_EXEC);
 
-    if (AGENT_BIND_SIP != pstAgentInfo->ucBindType)
+    if (AGENT_BIND_SIP != pstAgentInfo->ucBindType
+        && AGENT_BIND_TT_NUMBER != pstAgentInfo->ucBindType)
     {
         SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
         SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
@@ -4979,9 +5227,20 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
-    if (sc_dial_make_call2ip(pstSCBNew, SC_SERV_AGENT_CALLBACK) != DOS_SUCC)
+
+    if (AGENT_BIND_SIP == pstAgentInfo->ucBindType)
     {
-        goto proc_error;
+        if (sc_dial_make_call2ip(pstSCBNew, SC_SERV_AGENT_CALLBACK) != DOS_SUCC)
+        {
+            goto proc_error;
+        }
+    }
+    else if (AGENT_BIND_SIP == pstAgentInfo->ucBindType)
+    {
+        if (sc_dial_make_call2eix(pstSCBNew, SC_SERV_AGENT_CALLBACK) != DOS_SUCC)
+        {
+            goto proc_error;
+        }
     }
 #if 0
     dos_snprintf(szAPPParam, sizeof(szAPPParam)
@@ -7881,12 +8140,14 @@ U32 sc_ep_init()
     g_pstHashDIDNum = hash_create_table(SC_IP_DID_HASH_SIZE, NULL);
     g_pstHashSIPUserID = hash_create_table(SC_IP_USERID_HASH_SIZE, NULL);
     g_pstHashBlackList = hash_create_table(SC_BLACK_LIST_HASH_SIZE, NULL);
+    g_pstHashTTNumber = hash_create_table(SC_TT_NUMBER_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(g_pstHandle)
         || DOS_ADDR_INVALID(g_pstHashGW)
         || DOS_ADDR_INVALID(g_pstHashGWGrp)
         || DOS_ADDR_INVALID(g_pstHashDIDNum)
         || DOS_ADDR_INVALID(g_pstHashSIPUserID)
-        || DOS_ADDR_INVALID(g_pstHashBlackList))
+        || DOS_ADDR_INVALID(g_pstHashBlackList)
+        || DOS_ADDR_INVALID(g_pstHashTTNumber))
     {
         DOS_ASSERT(0);
 
@@ -7921,6 +8182,7 @@ U32 sc_ep_init()
     sc_load_did_number(SC_INVALID_INDEX);
     sc_load_sip_userid(SC_INVALID_INDEX);
     sc_load_black_list(SC_INVALID_INDEX);
+    sc_load_tt_number(SC_INVALID_INDEX);
 
     SC_TRACE_OUT();
     return DOS_SUCC;

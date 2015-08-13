@@ -124,6 +124,99 @@ proc_fail:
     return DOS_FAIL;
 }
 
+U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
+{
+    S8 szEIXAddr[SC_IP_ADDR_LEN] = { 0, };
+    S8 szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0, };
+    S8   *pszEventHeader = NULL, *pszEventBody = NULL;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (sc_ep_get_eix_by_tt(pstSCB->szCalleeNum, szEIXAddr, sizeof(szEIXAddr)) != DOS_SUCC
+        || '\0' == szEIXAddr[0])
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
+                    , "bgapi originate{main_service=%u,scb_number=%u,origination_caller_id_number=%s," \
+                      "origination_caller_id_name=%s,sip_multipart=^^!application/x-allywll:m:=2!" \
+                      "calli:=818!l:=01057063943!usert:=0!callt:=4!eig:=370!he:=5!w:=0!,sip_h_EixTTcall" \
+                      "=TRUE,sip_h_Mime-version=1.0}sofia/external/%s@%s &park \r\n"
+                    , ulMainService
+                    , pstSCB->usSCBNo
+                    , pstSCB->szCallerNum
+                    , pstSCB->szCallerNum
+                    , pstSCB->szCalleeNum
+                    , szEIXAddr);
+
+    sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
+
+    if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
+    {
+        DOS_ASSERT(0);
+        sc_logr_notice(SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
+        g_pstDialerHandle->blIsESLRunning = DOS_FALSE;
+        goto esl_exec_fail;
+    }
+
+    if (!g_pstDialerHandle->stHandle.last_sr_event)
+    {
+        DOS_ASSERT(0);
+        sc_logr_notice(SC_DIALER, "%s", "ESL request call successfully. But the reply event is NULL.");
+
+        goto esl_exec_fail;
+    }
+
+    pszEventHeader = esl_event_get_header(g_pstDialerHandle->stHandle.last_sr_event, "Content-Type");
+    if (!pszEventHeader || '\0' == pszEventHeader[0]
+        || dos_strcmp(pszEventHeader, "command/reply") != 0)
+    {
+        DOS_ASSERT(0);
+        sc_logr_notice(SC_DIALER, "ESL request call successfully. But the reply event an invalid content-type.(Type:%s)", pszEventHeader);
+
+        goto esl_exec_fail;
+
+    }
+
+    pszEventBody = esl_event_get_header(g_pstDialerHandle->stHandle.last_sr_event, "reply-text");
+    if (!pszEventBody || '\0' == pszEventBody[0])
+    {
+        DOS_ASSERT(0);
+        sc_logr_notice(SC_DIALER, "ESL request call successfully. But the reply event an invalid reply-text.(Type:%s)", pszEventBody);
+
+        goto esl_exec_fail;
+    }
+
+    if (dos_strnicmp(pszEventBody, "+OK", dos_strlen("+OK")) != 0)
+    {
+        DOS_ASSERT(0);
+        sc_logr_notice(SC_DIALER, "ESL exec fail. (Reply-Text:%s)", pszEventBody);
+
+        goto esl_exec_fail;
+    }
+
+    sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
+
+    SC_TRACE_OUT();
+    return DOS_SUCC;
+
+esl_exec_fail:
+
+    sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
+
+    SC_TRACE_OUT();
+    return DOS_FAIL;
+
+}
+
 /* 这个地方有个问题。 g_pstDialerHandle->stHandle 被多个线程使用，会不会出现，一个线程刚刚发送了呼叫命令。名外一个线程收到了响应?*/
 U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService)
 {
@@ -202,7 +295,6 @@ esl_exec_fail:
 
     SC_TRACE_OUT();
     return DOS_FAIL;
-
 }
 
 U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB)
