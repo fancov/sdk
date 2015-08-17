@@ -95,7 +95,9 @@ pthread_mutex_t          g_mutexHashBlackList = PTHREAD_MUTEX_INITIALIZER;
 DLL_S                    g_stCustomerList;
 pthread_mutex_t          g_mutexCustomerList = PTHREAD_MUTEX_INITIALIZER;
 
-
+/* 主叫号码限制hash表 refer to SC_NUMBER_LMT_NODE_ST */
+HASH_TABLE_S             *g_pstHashNumberlmt = NULL;
+pthread_mutex_t          g_mutexHashNumberlmt = PTHREAD_MUTEX_INITIALIZER;
 
 CURL *g_pstCurlHandle;
 
@@ -768,10 +770,47 @@ U32 sc_ep_caller_grp_hash_func(U32 ulCustomerID)
     return ulCustomerID % SC_CALLER_GRP_HASH_SIZE;
 }
 
+/**
+ * 函数: U32 sc_ep_caller_setting_hash_func(U32 ulCustomerID)
+ * 功能: 通过ulCustomerID计算号码设定规则的hash值
+ * 参数:
+ *      U32 ulCustomerID 主叫号码组所属客户id
+ * 返回值: U32 返回hash值
+ */
 U32 sc_ep_caller_setting_hash_func(U32 ulCustomerID)
 {
     return ulCustomerID % SC_CALLER_SETTING_HASH_SIZE;
 }
+
+/**
+ * 函数: U32 sc_ep_number_lmt_hash_func(U32 ulCustomerID)
+ * 功能: 根据号码pszNumber计算号码限制hash节点的hash值
+ * 参数:
+ *      U32 pszNumber 号码
+ * 返回值: U32 返回hash值
+ */
+U32 sc_ep_number_lmt_hash_func(S8 *pszNumber)
+{
+    U32 ulIndex = 0;
+    U32 ulHashIndex = 0;
+
+    ulIndex = 0;
+    for (;;)
+    {
+        if ('\0' == pszNumber[ulIndex])
+        {
+            break;
+        }
+
+        ulHashIndex += (pszNumber[ulIndex] << 3);
+
+        ulIndex++;
+    }
+
+    return ulHashIndex % SC_NUMBER_LMT_HASH_SIZE;
+
+}
+
 
 /**
  * 函数: static U32 sc_sip_userid_hash_func(S8 *pszUserID)
@@ -1159,6 +1198,29 @@ S32 sc_ep_tt_list_find(VOID *pObj, HASH_NODE_S *pstHashNode)
     }
 
     return DOS_FAIL;
+}
+
+S32 sc_ep_number_lmt_find(VOID *pObj, HASH_NODE_S *pstHashNode)
+{
+    SC_NUMBER_LMT_NODE_ST *pstNumber = NULL;
+    S8 *pszNumber = (S8 *)pObj;
+
+    if (DOS_ADDR_INVALID(pObj)
+        || DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        return DOS_FAIL;
+    }
+
+    pstNumber = pstHashNode->pHandle;
+
+    if (0 == dos_strcmp(pstNumber->szPrefix, pszNumber))
+    {
+        return DOS_SUCC;
+    }
+
+    return DOS_FAIL;
+
 }
 
 /* 根据userid 更新状态 */
@@ -4121,6 +4183,252 @@ U32 sc_load_customer(U32 ulIndex)
     return DOS_SUCC;
 }
 
+static S32 sc_load_number_lmt_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    HASH_NODE_S           *pstHashNode      = NULL;
+    SC_NUMBER_LMT_NODE_ST *pstNumLmtNode    = NULL;
+    S8                    *pszID            = NULL;
+    S8                    *pszLimitationID  = NULL;
+    S8                    *pszType          = NULL;
+    S8                    *pszBID           = NULL;
+    S8                    *pszHandle        = NULL;
+    S8                    *pszCycle         = NULL;
+    S8                    *pszTimes         = NULL;
+    S8                    *pszCID           = NULL;
+    S8                    *pszDID           = NULL;
+    S8                    *pszNumber        = NULL;
+    U32                   ulID              = U32_BUTT;
+    U32                   ulLimitationID    = U32_BUTT;
+    U32                   ulType            = U32_BUTT;
+    U32                   ulBID             = U32_BUTT;
+    U32                   ulHandle          = U32_BUTT;
+    U32                   ulCycle           = U32_BUTT;
+    U32                   ulTimes           = U32_BUTT;
+    U32                   ulHashIndex       = U32_BUTT;
+
+    if (lCount < 9)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    pszID            = aszValues[0];
+    pszLimitationID  = aszValues[1];
+    pszType          = aszValues[2];
+    pszBID           = aszValues[3];
+    pszHandle        = aszValues[4];
+    pszCycle         = aszValues[5];
+    pszTimes         = aszValues[6];
+    pszCID           = aszValues[7];
+    pszDID           = aszValues[8];
+
+    if (DOS_ADDR_INVALID(pszID)
+        || DOS_ADDR_INVALID(pszLimitationID)
+        || DOS_ADDR_INVALID(pszType)
+        || DOS_ADDR_INVALID(pszBID)
+        || DOS_ADDR_INVALID(pszHandle)
+        || DOS_ADDR_INVALID(pszCycle)
+        || DOS_ADDR_INVALID(pszTimes)
+        || dos_atoul(pszID, &ulID) < 0
+        || dos_atoul(pszLimitationID, &ulLimitationID) < 0
+        || dos_atoul(pszType, &ulType) < 0
+        || dos_atoul(pszBID, &ulBID) < 0
+        || dos_atoul(pszHandle, &ulHandle) < 0
+        || dos_atoul(pszCycle, &ulCycle) < 0
+        || dos_atoul(pszTimes, &ulTimes) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulType)
+    {
+        case SC_NUM_LMT_TYPE_DID:
+            pszNumber = pszDID;
+            break;
+        case SC_NUM_LMT_TYPE_CALLER:
+            pszNumber = pszCID;
+            break;
+        default:
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pszNumber)
+        || '\0' == pszNumber[0])
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (ulHandle >= SC_NUM_LMT_HANDLE_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_ep_number_lmt_hash_func(pszNumber);
+    pthread_mutex_lock(&g_mutexHashNumberlmt);
+    pstHashNode = hash_find_node(g_pstHashNumberlmt, ulHashIndex, pszNumber, sc_ep_number_lmt_find);
+    if (DOS_ADDR_VALID(pstHashNode))
+    {
+        pstNumLmtNode= pstHashNode->pHandle;
+        if (DOS_ADDR_VALID(pstNumLmtNode))
+        {
+            pstNumLmtNode->ulID      = ulID;
+            pstNumLmtNode->ulGrpID   = ulLimitationID;
+            pstNumLmtNode->ulHandle  = ulHandle;
+            pstNumLmtNode->ulLimit   = ulTimes;
+            pstNumLmtNode->ulCycle   = ulCycle;
+            pstNumLmtNode->ulType    = ulType;
+            pstNumLmtNode->ulNumberID= ulBID;
+            dos_strncpy(pstNumLmtNode->szPrefix, pszNumber, sizeof(pstNumLmtNode->szPrefix));
+            pstNumLmtNode->szPrefix[sizeof(pstNumLmtNode->szPrefix) - 1] = '\0';
+        }
+        else
+        {
+            pstNumLmtNode = dos_dmem_alloc(sizeof(SC_NUMBER_LMT_NODE_ST));
+            if (DOS_ADDR_INVALID(pstNumLmtNode))
+            {
+                DOS_ASSERT(0);
+                pthread_mutex_unlock(&g_mutexHashNumberlmt);
+
+                return DOS_FAIL;
+            }
+
+            pstNumLmtNode->ulID      = ulID;
+            pstNumLmtNode->ulGrpID   = ulLimitationID;
+            pstNumLmtNode->ulHandle  = ulHandle;
+            pstNumLmtNode->ulLimit   = ulTimes;
+            pstNumLmtNode->ulCycle   = ulCycle;
+            pstNumLmtNode->ulType    = ulType;
+            pstNumLmtNode->ulNumberID= ulBID;
+            dos_strncpy(pstNumLmtNode->szPrefix, pszNumber, sizeof(pstNumLmtNode->szPrefix));
+            pstNumLmtNode->szPrefix[sizeof(pstNumLmtNode->szPrefix) - 1] = '\0';
+
+            pstHashNode->pHandle = pstNumLmtNode;
+        }
+    }
+    else
+    {
+        pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+        pstNumLmtNode = dos_dmem_alloc(sizeof(SC_NUMBER_LMT_NODE_ST));
+        if (DOS_ADDR_INVALID(pstHashNode)
+            || DOS_ADDR_INVALID(pstNumLmtNode))
+        {
+            DOS_ASSERT(0);
+            pthread_mutex_unlock(&g_mutexHashNumberlmt);
+
+            if (DOS_ADDR_VALID(pstHashNode))
+            {
+                dos_dmem_free(pstHashNode);
+                pstHashNode = NULL;
+            }
+
+            if (DOS_ADDR_VALID(pstNumLmtNode))
+            {
+                dos_dmem_free(pstNumLmtNode);
+                pstNumLmtNode = NULL;
+            }
+
+            return DOS_FAIL;
+        }
+
+        pstNumLmtNode->ulID      = ulID;
+        pstNumLmtNode->ulGrpID   = ulLimitationID;
+        pstNumLmtNode->ulHandle  = ulHandle;
+        pstNumLmtNode->ulLimit   = ulTimes;
+        pstNumLmtNode->ulCycle   = ulCycle;
+        pstNumLmtNode->ulType    = ulType;
+        pstNumLmtNode->ulNumberID= ulBID;
+        dos_strncpy(pstNumLmtNode->szPrefix, pszNumber, sizeof(pstNumLmtNode->szPrefix));
+        pstNumLmtNode->szPrefix[sizeof(pstNumLmtNode->szPrefix) - 1] = '\0';
+
+        HASH_Init_Node(pstHashNode);
+        pstHashNode->pHandle = pstNumLmtNode;
+
+        hash_add_node(g_pstHashNumberlmt, pstHashNode, ulHashIndex, NULL);
+    }
+    pthread_mutex_unlock(&g_mutexHashNumberlmt);
+
+    return DOS_SUCC;
+}
+
+U32 sc_load_number_lmt(U32 ulIndex)
+{
+    S8 szSQL[1024];
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT a.id, a.limitation_id, a.btype, a.bid, b.handle, " \
+                      "b.cycle, b.times, c.cid, d.did_number " \
+                      "FROM tbl_caller_limitation_assign a " \
+                      "LEFT JOIN tbl_caller_limitation b ON a.limitation_id = b.id " \
+                      "LEFT JOIN tbl_caller c ON a.btype = %u AND a.bid = c.id " \
+                      "LEFT JOIN tbl_sipassign d ON a.btype = %u AND a.bid = d.id "
+                    , SC_NUM_LMT_TYPE_CALLER, SC_NUM_LMT_TYPE_DID);
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT a.id, a.limitation_id, a.btype, a.bid, b.handle, " \
+                      "b.cycle, b.times, c.cid, d.did_number " \
+                      "FROM tbl_caller_limitation_assign a " \
+                      "LEFT JOIN tbl_caller_limitation b ON a.limitation_id = b.id " \
+                      "LEFT JOIN tbl_caller c ON a.btype = %u AND a.bid = c.id " \
+                      "LEFT JOIN tbl_sipassign d ON a.btype = %u AND a.bid = d.id " \
+                      "WHERE a.id = %u"
+                    , SC_NUM_LMT_TYPE_CALLER, SC_NUM_LMT_TYPE_DID, ulIndex);
+
+    }
+
+    if (db_query(g_pstSCDBHandle, szSQL, sc_load_number_lmt_cb, NULL, NULL) != DB_ERR_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_ESL, "%s", "Load number limitation fail.");
+        return DOS_FAIL;
+    }
+
+
+    sc_num_lmt_update(0, NULL);
+
+    return DOS_SUCC;
+}
+
+U32 sc_del_number_lmt(U32 ulIndex)
+{
+    U32                   ulHashIndex       = U32_BUTT;
+    HASH_NODE_S           *pstHashNode      = NULL;
+    SC_NUMBER_LMT_NODE_ST *pstNumLmtNode    = NULL;
+
+    pthread_mutex_lock(&g_mutexHashNumberlmt);
+    HASH_Scan_Table(g_pstHashNumberlmt, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashNumberlmt, ulHashIndex, pstHashNode, HASH_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstNumLmtNode = pstHashNode->pHandle;
+            if (pstNumLmtNode->ulID == ulIndex)
+            {
+                hash_delete_node(g_pstHashNumberlmt, pstHashNode, ulHashIndex);
+                pthread_mutex_unlock(&g_mutexHashNumberlmt);
+
+                return DOS_SUCC;
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_mutexHashNumberlmt);
+
+    return DOS_FAIL;
+}
+
+
 /**
   * 函数名: U32 sc_del_invalid_gateway()
   * 参数:
@@ -4258,6 +4566,338 @@ U32 sc_del_invalid_gateway_grp()
     }
     return DOS_SUCC;
 }
+
+U32 sc_del_tt_number(U32 ulIndex)
+{
+    HASH_NODE_S    *pstHashNode;
+    U32            ulHashIndex;
+
+    pthread_mutex_lock(&g_mutexHashTTNumber);
+    ulHashIndex = sc_ep_tt_hash_func(ulIndex);
+    pstHashNode = hash_find_node(g_pstHashTTNumber, ulHashIndex, &ulIndex, sc_ep_tt_list_find);
+    if (DOS_ADDR_VALID(pstHashNode))
+    {
+        hash_delete_node(g_pstHashTTNumber, pstHashNode, ulHashIndex);
+
+        pthread_mutex_unlock(&g_mutexHashTTNumber);
+        return DOS_SUCC;
+    }
+    else
+    {
+        pthread_mutex_unlock(&g_mutexHashTTNumber);
+
+        return DOS_FAIL;
+    }
+}
+
+U32 sc_save_number_stat(U32 ulType, S8 *pszNumber, U32 ulTimes)
+{
+    S8        szSQL[512];
+
+    if (ulType >= SC_NUM_LMT_TYPE_BUTT
+        || DOS_ADDR_INVALID(pszNumber))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szSQL, sizeof(szSQL)
+                    , "INSERT INTO tbl_stat_caller(type, ctime, caller, times) VALUE(%u, %u, \"%s\", %u)"
+                    , ulType, time(NULL), pszNumber, ulTimes);
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+S32 sc_update_number_stat_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    U32 ulTimes;
+
+    if (lCount != 0
+        || DOS_ADDR_INVALID(pArg)
+        || DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(aszValues[0])
+        || DOS_ADDR_INVALID(aszNames[0]))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if ('\0' == aszValues[0][0]
+        || '\0' == aszNames[0][0]
+        || dos_strcmp(aszNames[0], "times")
+        || dos_atoul(aszValues[0], &ulTimes) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    *(U32 *)pArg = ulTimes;
+
+    return DOS_SUCC;
+}
+
+U32 sc_update_number_stat(U32 ulType, U32 ulCycle, S8 *pszNumber)
+{
+    U32 ulStartTimestamp;
+    U32 ulTimes;
+    time_t    ulTime;
+    struct tm *pstTime;
+    struct tm stStartTime;
+    S8        szSQL[512];
+
+    if (ulType >= SC_NUM_LMT_TYPE_BUTT
+        || ulCycle >= SC_NUMBER_LMT_CYCLE_BUTT
+        || DOS_ADDR_INVALID(pszNumber))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulTime = time(NULL);
+    pstTime = localtime(&ulTime);
+    stStartTime.tm_sec   = 59;
+    stStartTime.tm_min   = 59;
+    stStartTime.tm_hour  = 23;
+    stStartTime.tm_wday  = 0;
+    stStartTime.tm_yday  = 0;
+    stStartTime.tm_isdst = 0;
+
+    switch (ulCycle)
+    {
+        case SC_NUMBER_LMT_CYCLE_DAY:
+            stStartTime.tm_mday  = pstTime->tm_mday - 1;
+            stStartTime.tm_mon   = pstTime->tm_mon;
+            stStartTime.tm_year  = pstTime->tm_year;
+            break;
+
+        case SC_NUMBER_LMT_CYCLE_WEEK:
+            stStartTime.tm_mday  = pstTime->tm_mday - pstTime->tm_wday;
+            stStartTime.tm_mon   = pstTime->tm_mon;
+            stStartTime.tm_year  = pstTime->tm_year;
+            break;
+
+        case SC_NUMBER_LMT_CYCLE_MONTH:
+            stStartTime.tm_mday  = 0;
+            stStartTime.tm_mon   = pstTime->tm_mon;
+            stStartTime.tm_year  = pstTime->tm_year;
+            break;
+
+        case SC_NUMBER_LMT_CYCLE_YEAR:
+            stStartTime.tm_mday  = 0;
+            stStartTime.tm_mon   = 0;
+            stStartTime.tm_year  = pstTime->tm_year;
+            break;
+
+        default:
+            DOS_ASSERT(0);
+            return 0;
+    }
+
+    ulStartTimestamp = mktime(&stStartTime);
+
+    dos_snprintf(szSQL, sizeof(szSQL)
+        , "SELECT SUM(times) AS times FROM tbl_stat_caller WHERE ctime > %u AND type=%u AND caller=%s"
+        , ulStartTimestamp, ulType, pszNumber);
+
+    if (db_query(g_pstSCDBHandle, szSQL, sc_update_number_stat_cb, &ulTimes, NULL) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return 0;
+    }
+
+    return ulTimes;
+}
+
+U32 sc_num_lmt_stat(U32 ulType, VOID *ptr)
+{
+    U32 ulHashIndex;
+    U32 ulHashIndexMunLmt;
+    U32 ulTimes = 0;
+    HASH_NODE_S             *pstHashNodeNumber = NULL;
+    HASH_NODE_S             *pstHashNodeNumLmt = NULL;
+    SC_CALLER_QUERY_NODE_ST *ptCaller          = NULL;
+    SC_DID_NODE_ST          *ptDIDNumber       = NULL;
+    SC_NUMBER_LMT_NODE_ST   *pstNumLmt         = NULL;
+
+    pthread_mutex_lock(&g_mutexHashCaller);
+    HASH_Scan_Table(g_pstHashCaller, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCaller, ulHashIndex, pstHashNodeNumber, HASH_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstHashNodeNumber)
+                || DOS_ADDR_INVALID(pstHashNodeNumber->pHandle))
+            {
+                continue;
+            }
+
+            ptCaller = pstHashNodeNumber->pHandle;
+            ulTimes = ptCaller->ulTimes;
+            ptCaller->ulTimes = 0;
+
+            sc_save_number_stat(SC_NUM_LMT_TYPE_CALLER, ptCaller->szNumber, ulTimes);
+
+            ulHashIndexMunLmt = sc_ep_number_lmt_hash_func(ptCaller->szNumber);
+            pthread_mutex_lock(&g_mutexHashNumberlmt);
+            pstHashNodeNumLmt= hash_find_node(g_pstHashNumberlmt, ulHashIndexMunLmt, ptCaller->szNumber, sc_ep_number_lmt_find);
+            if (DOS_ADDR_INVALID(pstHashNodeNumLmt)
+                || DOS_ADDR_INVALID(pstHashNodeNumLmt->pHandle))
+            {
+                pthread_mutex_unlock(&g_mutexHashNumberlmt);
+                continue;
+            }
+
+            pstNumLmt = pstHashNodeNumLmt->pHandle;
+            pstNumLmt->ulStatUsed += ulTimes;
+
+            pthread_mutex_unlock(&g_mutexHashNumberlmt);
+        }
+    }
+    pthread_mutex_unlock(&g_mutexHashCaller);
+
+    pthread_mutex_lock(&g_mutexHashDIDNum);
+    HASH_Scan_Table(g_pstHashDIDNum, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashDIDNum, ulHashIndex, pstHashNodeNumber, HASH_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstHashNodeNumber)
+                || DOS_ADDR_INVALID(pstHashNodeNumber->pHandle))
+            {
+                continue;
+            }
+
+            ptDIDNumber = pstHashNodeNumber->pHandle;
+            ulTimes = ptDIDNumber->ulTimes;
+            ptDIDNumber->ulTimes = 0;
+
+            sc_save_number_stat(SC_NUM_LMT_TYPE_DID, ptDIDNumber->szDIDNum, ulTimes);
+
+            ulHashIndexMunLmt = sc_ep_number_lmt_hash_func(ptDIDNumber->szDIDNum);
+            pthread_mutex_lock(&g_mutexHashNumberlmt);
+            pstHashNodeNumLmt= hash_find_node(g_pstHashNumberlmt, ulHashIndexMunLmt, ptDIDNumber->szDIDNum, sc_ep_number_lmt_find);
+            if (DOS_ADDR_INVALID(pstHashNodeNumLmt)
+                || DOS_ADDR_INVALID(pstHashNodeNumLmt->pHandle))
+            {
+                pthread_mutex_unlock(&g_mutexHashNumberlmt);
+                continue;
+            }
+
+            pstNumLmt = pstHashNodeNumLmt->pHandle;
+            pstNumLmt->ulStatUsed += ulTimes;
+            pthread_mutex_unlock(&g_mutexHashNumberlmt);
+        }
+    }
+    pthread_mutex_unlock(&g_mutexHashDIDNum);
+
+    return DOS_SUCC;
+}
+
+U32 sc_num_lmt_update(U32 ulType, VOID *ptr)
+{
+    U32 ulHashIndex;
+    U32 ulTimes = 0;
+    HASH_NODE_S             *pstHashNode       = NULL;
+    SC_NUMBER_LMT_NODE_ST   *pstNumLmt         = NULL;
+
+    pthread_mutex_lock(&g_mutexHashNumberlmt);
+
+    HASH_Scan_Table(g_pstHashNumberlmt, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashNumberlmt, ulHashIndex, pstHashNode, HASH_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstNumLmt = pstHashNode->pHandle;
+
+            ulTimes = sc_update_number_stat(SC_NUM_LMT_TYPE_CALLER, pstNumLmt->ulCycle, pstNumLmt->szPrefix);
+            pstNumLmt->ulStatUsed = ulTimes;
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexHashNumberlmt);
+
+    return DOS_SUCC;
+}
+
+BOOL sc_num_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber)
+{
+    U32  ulHashIndexMunLmt  = 0;
+    U32  ulHandleType       = 0;
+    BOOL blReachLmt         = DOS_FALSE;
+    HASH_NODE_S             *pstHashNodeNumLmt = NULL;
+    SC_NUMBER_LMT_NODE_ST   *pstNumLmt         = NULL;
+
+    if (DOS_ADDR_INVALID(pszNumber)
+        || '\0' == pszNumber[0]
+        || ulType >= SC_NUM_LMT_TYPE_BUTT)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_TRUE;
+    }
+
+    ulHashIndexMunLmt = sc_ep_number_lmt_hash_func(pszNumber);
+    pthread_mutex_lock(&g_mutexHashNumberlmt);
+    pstHashNodeNumLmt= hash_find_node(g_pstHashNumberlmt, ulHashIndexMunLmt, pszNumber, sc_ep_number_lmt_find);
+    if (DOS_ADDR_INVALID(pstHashNodeNumLmt)
+        || DOS_ADDR_INVALID(pstHashNodeNumLmt->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexHashNumberlmt);
+        DOS_ASSERT(0);
+
+        sc_debug(SC_ESL, LOG_LEVEL_DEBUG
+                , "Number limit check for \"%s\", There is no limitation for this number."
+                , pszNumber);
+        return DOS_TRUE;
+    }
+
+    if (pstNumLmt->ulStatUsed + ulCurrentTime >= pstNumLmt->ulLimit)
+    {
+        DOS_ASSERT(0);
+        blReachLmt = DOS_TRUE;
+        sc_debug(SC_ESL, LOG_LEVEL_WARNING
+                , "Number limit check for \"%s\", This number has reached the limitation. Cycle: %u, Limitation: %u, Used: %u"
+                , pszNumber, pstNumLmt->ulCycle, pstNumLmt->ulLimit, pstNumLmt->ulStatUsed + ulCurrentTime);
+    }
+
+    ulHandleType = pstNumLmt->ulHandle;
+
+    pthread_mutex_unlock(&g_mutexHashNumberlmt);
+
+    sc_debug(SC_ESL, LOG_LEVEL_WARNING
+            , "Number limit check for \"%s\", This number has reached the limitation. Process as handle: %u"
+            , pszNumber, pstNumLmt->ulHandle);
+
+    switch (ulHandleType)
+    {
+        case SC_NUM_LMT_HANDLE_REJECT:
+            return DOS_FALSE;
+            break;
+
+        default:
+            DOS_ASSERT(0);
+            return DOS_TRUE;
+    }
+
+
+    return DOS_TRUE;
+}
+
 
 U32 sc_ep_get_callout_group_by_customerID(U32 ulCustomerID, U16 *pusCallOutGroup)
 {
@@ -9493,6 +10133,7 @@ U32 sc_ep_init()
     g_pstHashTTNumber = hash_create_table(SC_TT_NUMBER_HASH_SIZE, NULL);
     g_pstHashCaller = hash_create_table(SC_CALLER_HASH_SIZE, NULL);
     g_pstHashCallerGrp = hash_create_table(SC_CALLER_GRP_HASH_SIZE, NULL);
+    g_pstHashNumberlmt = hash_create_table(SC_NUMBER_LMT_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(g_pstHandle)
         || DOS_ADDR_INVALID(g_pstHashGW)
         || DOS_ADDR_INVALID(g_pstHashGWGrp)
@@ -9501,7 +10142,8 @@ U32 sc_ep_init()
         || DOS_ADDR_INVALID(g_pstHashBlackList)
         || DOS_ADDR_INVALID(g_pstHashCaller)
         || DOS_ADDR_INVALID(g_pstHashCallerGrp)
-        || DOS_ADDR_INVALID(g_pstHashTTNumber))
+        || DOS_ADDR_INVALID(g_pstHashTTNumber)
+        || DOS_ADDR_INVALID(g_pstHashNumberlmt))
     {
         DOS_ASSERT(0);
 
@@ -9543,6 +10185,7 @@ U32 sc_ep_init()
     /* 以下三项的加载顺序同样不可乱 */
     sc_load_caller(SC_INVALID_INDEX);
     sc_load_caller_grp(SC_INVALID_INDEX);
+    sc_load_number_lmt(SC_INVALID_INDEX);
     sc_load_caller_relationship();
 
     sc_load_caller_setting(SC_INVALID_INDEX);

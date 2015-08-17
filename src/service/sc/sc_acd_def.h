@@ -83,6 +83,7 @@ typedef struct tagACDSiteDesc{
     U32        ulSiteID;                          /* 坐席数据库编号 */
     U32        ulCallCnt;                         /* 呼叫总数 */
     U32        ulCustomerID;                      /* 呼叫总数 */
+    U32        ulSIPUserID;                       /* SIP账户ID */
     U32        aulGroupID[MAX_GROUP_PER_SITE];    /* 组ID */
 
     U32        ulLastOnlineTime;

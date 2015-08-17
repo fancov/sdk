@@ -32,18 +32,22 @@ extern "C"{
 
 #include <dos.h>
 #include <esl.h>
+#include <time.h>
 #include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_acd_def.h"
 
+#define SC_AUDIT_TEST 0
+
 typedef enum tagAuditType{
-    SC_AUDIT_TYPE_CYCLE = 0,  /* 循环执行，以系统启动顺序为准 */
-    SC_AUDIT_TYPE_N_HOUR,     /* 自然小时 */
-    SC_AUDIT_TYPE_N_2HOUR,    /* 自然两小时 */
-    SC_AUDIT_TYPE_N_DAY,      /* 自然天 */
-    SC_AUDIT_TYPE_N_WEEK,     /* 自然周 */
-    SC_AUDIT_TYPE_N_MONTH,    /* 自然月 */
-    SC_AUDIT_TYPE_N_YEAR,     /* 自然年 */
+    SC_AUDIT_TYPE_ONCE  = 0,  /* 循环执行，以系统启动顺序为准，偏移量为s */
+    SC_AUDIT_TYPE_CYCLE,      /* 循环执行，以系统启动顺序为准，偏移量即为周期长度 */
+    SC_AUDIT_TYPE_N_HOUR,     /* 自然小时，偏移量为分钟 0-59 */
+    SC_AUDIT_TYPE_N_2HOUR,    /* 自然两小时，偏移量为分钟 0-199 */
+    SC_AUDIT_TYPE_N_DAY,      /* 自然天，偏移量为小时 0-23 */
+    SC_AUDIT_TYPE_N_WEEK,     /* 自然周，偏移量为天 0-6 */
+    SC_AUDIT_TYPE_N_MONTH,    /* 自然月，偏移量为天 0-31 */
+    SC_AUDIT_TYPE_N_YEAR,     /* 自然年，偏移量为天 0-365 */
 }SC_AUDIT_TYPE_EN;
 
 typedef enum tagAuditCycle
@@ -77,17 +81,65 @@ static U32 g_ulWaitingStop = DOS_TRUE;
 static U32 g_ulStartTimestamp = 0;
 static pthread_t g_pthAuditTask;
 
+#if SC_AUDIT_TEST
+U32 sc_test_startup(U32 ulType, VOID *ptr)
+{
+    sc_logr_notice(SC_AUDIT, "Test for startup. Startup timestamp: %u", g_ulStartTimestamp);
+
+    return DOS_SUCC;
+}
+U32 sc_test_startup_delay(U32 ulType, VOID *ptr)
+{
+    sc_logr_notice(SC_AUDIT, "Test for startup delay. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
+
+    return DOS_SUCC;
+}
+
+U32 sc_test_cycle(U32 ulType, VOID *ptr)
+{
+    sc_logr_notice(SC_AUDIT, "Test for startup cycle. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
+
+    return DOS_SUCC;
+}
+
+U32 sc_test_hour(U32 ulType, VOID *ptr)
+{
+    sc_logr_notice(SC_AUDIT, "Test hour. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
+
+    return DOS_SUCC;
+}
+
+U32 sc_test_hour_delay(U32 ulType, VOID *ptr)
+{
+    sc_logr_notice(SC_AUDIT, "Test hour delay. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
+
+    return DOS_SUCC;
+}
+#endif
+
+
 /* 注册审计任务 */
 static SC_AUDIT_TASK_ST g_stAuditTaskList[] =
 {
-    {SC_AUDIT_TYPE_CYCLE,    SC_AUDIT_CYCLE_60MIN,  sc_acd_agent_audit,         "Agent audit"}
+#if SC_AUDIT_TEST
+    {SC_AUDIT_TYPE_ONCE,     0,                     sc_test_startup,            "Audit test for once"},
+    {SC_AUDIT_TYPE_ONCE,     20,                    sc_test_startup_delay,      "Audit test for delay"},
+    {SC_AUDIT_TYPE_CYCLE,    SC_AUDIT_CYCLE_10MIN,  sc_test_cycle,              "Audit test for cycle"},
+    {SC_AUDIT_TYPE_N_HOUR,   0,                     sc_test_hour,               "Audit test for hour"},
+    {SC_AUDIT_TYPE_N_HOUR,   1,                     sc_test_hour_delay,         "Audit test for hour delay"},
+#endif
+    {SC_AUDIT_TYPE_CYCLE,    SC_AUDIT_CYCLE_60MIN,  sc_acd_agent_audit,         "Agent audit"},
+    {SC_AUDIT_TYPE_N_HOUR,   0,                     sc_num_lmt_stat,            "Number usage stat"},
+    {SC_AUDIT_TYPE_N_DAY,    0,                     sc_num_lmt_update,          "Number limitation"}
 };
+
 
 static VOID *sc_audit_task(VOID *ptr)
 {
-    U32 ulCurrentTime = 0;
-    U32 i;
-    struct tm *t = NULL;
+    time_t ulCurrentTime = 0;
+    time_t ulLastTime    = 0;
+    U32 i, j;
+    struct tm stTime;
     SC_AUDIT_TASK_ST *pstAuditTask = NULL;
 
     g_ulWaitingStop = DOS_FALSE;
@@ -100,157 +152,205 @@ static VOID *sc_audit_task(VOID *ptr)
             break;
         }
 
+        dos_memzero(&stTime, sizeof(stTime));
+
         ulCurrentTime = time(NULL);
-        t = localtime((time_t *)&ulCurrentTime);
-        pstAuditTask = NULL;
+        localtime_r((time_t *)&ulCurrentTime, &stTime);
 
-        for (i=0; i<sizeof(g_stAuditTaskList)/sizeof(SC_AUDIT_TASK_ST); i++)
+        if (0 == g_ulStartTimestamp)
         {
-            switch (g_stAuditTaskList[i].ulType)
+            g_ulStartTimestamp = ulCurrentTime;
+            ulLastTime = ulCurrentTime - 1;
+        }
+
+        /* 可能出现时钟不同步，两次获取的时间戳之差大于1了，就需要检查着之间的每一秒 */
+        for (j=ulLastTime+1; j<=ulCurrentTime; j++)
+        {
+            /* 检查所有定时任务 */
+            for (i=0; i<sizeof(g_stAuditTaskList)/sizeof(SC_AUDIT_TASK_ST); i++)
             {
-                case SC_AUDIT_TYPE_CYCLE:
-                    if (((g_ulStartTimestamp - ulCurrentTime) / g_stAuditTaskList[i].ulOffset))
-                    {
+                pstAuditTask = NULL;
+
+                switch (g_stAuditTaskList[i].ulType)
+                {
+                    case SC_AUDIT_TYPE_ONCE:
+                        if (g_stAuditTaskList[i].ulOffset + g_ulStartTimestamp == ulCurrentTime)
+                        {
+                            pstAuditTask = &g_stAuditTaskList[i];
+                        }
                         break;
-                    }
 
-                    pstAuditTask = &g_stAuditTaskList[i];
-                    break;
+                    case SC_AUDIT_TYPE_CYCLE:
+                        if (((ulCurrentTime - g_ulStartTimestamp) % g_stAuditTaskList[i].ulOffset)
+                            || (g_ulStartTimestamp == ulCurrentTime))
+                        {
+                            break;
+                        }
 
-                case SC_AUDIT_TYPE_N_HOUR:
-                    if (g_stAuditTaskList[i].ulOffset >= 59)
-                    {
-                        if (0 == t->tm_min)
-                        {
-                            pstAuditTask = &g_stAuditTaskList[i];
-                        }
-                    }
-                    else
-                    {
-                        if (t->tm_min == g_stAuditTaskList[i].ulOffset)
-                        {
-                            pstAuditTask = &g_stAuditTaskList[i];
-                        }
-                    }
-                    break;
+                        pstAuditTask = &g_stAuditTaskList[i];
+                        break;
 
-                case SC_AUDIT_TYPE_N_2HOUR:
-                    if (g_stAuditTaskList[i].ulOffset >= 119)
-                    {
-                        if (0 == t->tm_min && 0 == t->tm_hour/2)
+                    case SC_AUDIT_TYPE_N_HOUR:
+                        if (g_stAuditTaskList[i].ulOffset >= 59)
                         {
-                            pstAuditTask = &g_stAuditTaskList[i];
-                        }
-                    }
-                    else
-                    {
-                        if (g_stAuditTaskList[i].ulOffset >= 60)
-                        {
-                            if (t->tm_hour/2
-                                && t->tm_min == g_stAuditTaskList[i].ulOffset - 60)
+                            if (0 == stTime.tm_sec && 0 == stTime.tm_min)
                             {
                                 pstAuditTask = &g_stAuditTaskList[i];
                             }
                         }
                         else
                         {
-                            if (0 == t->tm_hour/2
-                                && t->tm_min == g_stAuditTaskList[i].ulOffset)
+                            if (0 == stTime.tm_sec && stTime.tm_min == g_stAuditTaskList[i].ulOffset)
                             {
                                 pstAuditTask = &g_stAuditTaskList[i];
                             }
                         }
-                    }
-                    break;
+                        break;
 
-                case SC_AUDIT_TYPE_N_DAY:
-                    if (g_stAuditTaskList[i].ulOffset >= 23)
-                    {
-                        if (0 == t->tm_hour)
+                    case SC_AUDIT_TYPE_N_2HOUR:
+                        if (g_stAuditTaskList[i].ulOffset >= 119)
                         {
-                            pstAuditTask = &g_stAuditTaskList[i];
+                            if (0 == stTime.tm_sec && 0 == stTime.tm_min && 0 == stTime.tm_hour%2)
+                            {
+                                pstAuditTask = &g_stAuditTaskList[i];
+                            }
                         }
-                    }
-                    else
-                    {
-                        if (t->tm_hour == g_stAuditTaskList[i].ulOffset)
+                        else
                         {
-                            pstAuditTask = &g_stAuditTaskList[i];
+                            if (g_stAuditTaskList[i].ulOffset >= 60)
+                            {
+                                if (0 == stTime.tm_sec
+                                    && stTime.tm_hour%2
+                                    && stTime.tm_min == g_stAuditTaskList[i].ulOffset - 60)
+                                {
+                                    pstAuditTask = &g_stAuditTaskList[i];
+                                }
+                            }
+                            else
+                            {
+                                if (0 == stTime.tm_sec
+                                    && 0 == stTime.tm_hour%2
+                                    && stTime.tm_min == g_stAuditTaskList[i].ulOffset)
+                                {
+                                    pstAuditTask = &g_stAuditTaskList[i];
+                                }
+                            }
                         }
-                    }
-                    break;
+                        break;
 
-                case SC_AUDIT_TYPE_N_WEEK:
-                    if (g_stAuditTaskList[i].ulOffset >= 6)
-                    {
-                        if (0 == t->tm_wday)
+                    case SC_AUDIT_TYPE_N_DAY:
+                        if (g_stAuditTaskList[i].ulOffset >= 23)
                         {
-                            pstAuditTask = &g_stAuditTaskList[i];
+                            if (0 == stTime.tm_sec
+                                && 0 == stTime.tm_min
+                                && 0 == stTime.tm_hour)
+                            {
+                                pstAuditTask = &g_stAuditTaskList[i];
+                            }
                         }
-                    }
-                    else
-                    {
-                        if (t->tm_wday == g_stAuditTaskList[i].ulOffset)
+                        else
                         {
-                            pstAuditTask = &g_stAuditTaskList[i];
+                            if (0 == stTime.tm_sec
+                                && 0 == stTime.tm_min
+                                && stTime.tm_hour == g_stAuditTaskList[i].ulOffset)
+                            {
+                                pstAuditTask = &g_stAuditTaskList[i];
+                            }
                         }
-                    }
-                    break;
+                        break;
 
-                case SC_AUDIT_TYPE_N_MONTH:
-                    if (g_stAuditTaskList[i].ulOffset >= 28)
-                    {
-                        if (0 == t->tm_mday)
+                    case SC_AUDIT_TYPE_N_WEEK:
+                        if (g_stAuditTaskList[i].ulOffset >= 6)
                         {
-                            pstAuditTask = &g_stAuditTaskList[i];
+                            if (0 == stTime.tm_sec
+                                && 0 == stTime.tm_min
+                                && 0 == stTime.tm_hour
+                                && 0 == stTime.tm_wday)
+                            {
+                                pstAuditTask = &g_stAuditTaskList[i];
+                            }
                         }
-                    }
-                    else
-                    {
-                        if (t->tm_mday == g_stAuditTaskList[i].ulOffset)
+                        else
                         {
-                            pstAuditTask = &g_stAuditTaskList[i];
+                            if (0 == stTime.tm_sec
+                                && 0 == stTime.tm_min
+                                && 0 == stTime.tm_hour
+                                && stTime.tm_wday == g_stAuditTaskList[i].ulOffset)
+                            {
+                                pstAuditTask = &g_stAuditTaskList[i];
+                            }
                         }
-                    }
-                    break;
+                        break;
 
-                case SC_AUDIT_TYPE_N_YEAR:
-                    if (g_stAuditTaskList[i].ulOffset >= 365)
-                    {
-                        if (0 == t->tm_yday)
+                    case SC_AUDIT_TYPE_N_MONTH:
+                        if (g_stAuditTaskList[i].ulOffset >= 28)
                         {
-                            pstAuditTask = &g_stAuditTaskList[i];
+                            if (0 == stTime.tm_sec
+                                && 0 == stTime.tm_min
+                                && 0 == stTime.tm_hour
+                                && 0 == stTime.tm_mday)
+                            {
+                                pstAuditTask = &g_stAuditTaskList[i];
+                            }
                         }
-                    }
-                    else
-                    {
-                        if (t->tm_yday == g_stAuditTaskList[i].ulOffset)
+                        else
                         {
-                            pstAuditTask = &g_stAuditTaskList[i];
+                            if (0 == stTime.tm_sec
+                                && 0 == stTime.tm_min
+                                && 0 == stTime.tm_hour
+                                && stTime.tm_mday == g_stAuditTaskList[i].ulOffset)
+                            {
+                                pstAuditTask = &g_stAuditTaskList[i];
+                            }
                         }
-                    }
-                    break;
+                        break;
 
-                default:
-                    DOS_ASSERT(0);
-                    break;
-            }
+                    case SC_AUDIT_TYPE_N_YEAR:
+                        if (g_stAuditTaskList[i].ulOffset >= 365)
+                        {
+                            if (0 == stTime.tm_sec
+                                && 0 == stTime.tm_min
+                                && 0 == stTime.tm_hour
+                                && 0 == stTime.tm_yday)
+                            {
+                                pstAuditTask = &g_stAuditTaskList[i];
+                            }
+                        }
+                        else
+                        {
+                            if (0 == stTime.tm_sec
+                                && 0 == stTime.tm_min
+                                && 0 == stTime.tm_hour
+                                && stTime.tm_yday == g_stAuditTaskList[i].ulOffset)
+                            {
+                                pstAuditTask = &g_stAuditTaskList[i];
+                            }
+                        }
+                        break;
 
-            if (pstAuditTask)
-            {
-                sc_logr_notice(SC_AUDIT, "Start audit. Current Timestamp:%u, Type: %u Offset: %u, Task: %s(Handle:%P)"
-                                    , ulCurrentTime
-                                    , pstAuditTask->ulType
-                                    , pstAuditTask->ulOffset
-                                    , pstAuditTask->pszName
-                                    , pstAuditTask->task);
+                    default:
+                        DOS_ASSERT(0);
+                        break;
+                }
 
-                if (pstAuditTask->task)
+                if (pstAuditTask)
                 {
-                    pstAuditTask->task(pstAuditTask->ulType, NULL);
+                    sc_logr_notice(SC_AUDIT, "Start audit. Current Timestamp:%u, Type: %u Offset: %u, Task: %s(Handle:%p)"
+                                        , ulCurrentTime
+                                        , pstAuditTask->ulType
+                                        , pstAuditTask->ulOffset
+                                        , pstAuditTask->pszName
+                                        , pstAuditTask->task);
+
+                    if (pstAuditTask->task)
+                    {
+                        pstAuditTask->task(pstAuditTask->ulType, NULL);
+                    }
                 }
             }
         }
+
+        ulLastTime = ulCurrentTime;
     }
 
     return 0;
@@ -259,7 +359,6 @@ static VOID *sc_audit_task(VOID *ptr)
 U32 sc_audit_init()
 {
     g_ulWaitingStop = DOS_TRUE;
-    g_ulStartTimestamp = time(NULL);
 
     return DOS_SUCC;
 }

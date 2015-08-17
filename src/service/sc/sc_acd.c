@@ -1711,12 +1711,13 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     S8                          *pszTelePhone  = NULL, *pszMobile   = NULL;
     S8                          *pszSelectType = NULL;
     S8                          *pszTTNumber = NULL;
+    S8                          *pszSIPID = NULL;
     SC_ACD_AGENT_INFO_ST        *pstSiteInfo = NULL;
     SC_ACD_AGENT_INFO_ST        stSiteInfo;
     U32                         ulSiteID   = 0, ulCustomID   = 0, ulGroupID  = 0;
     U32                         ulGroupID1 = 0, ulRecordFlag = 0, ulIsHeader = 0;
     U32                         ulHashIndex = 0, ulIndex = 0, ulRest = 0, ulSelectType = 0;
-    U32                         ulAgentIndex = 0;
+    U32                         ulAgentIndex = 0, ulSIPID = 0;
 
     if (DOS_ADDR_INVALID(PTR)
         || DOS_ADDR_INVALID(pszData)
@@ -1742,11 +1743,11 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     pszTelePhone = pszData[11];
     pszMobile = pszData[12];
     pszTTNumber = pszData[13];
+    pszSIPID = pszData[14];
 
     if (DOS_ADDR_INVALID(pszSiteID)
         || DOS_ADDR_INVALID(pszCustomID)
         || DOS_ADDR_INVALID(pszJobNum)
-        || DOS_ADDR_INVALID(pszUserID)
         || DOS_ADDR_INVALID(pszExten)
         || DOS_ADDR_INVALID(pszGroupID)
         || DOS_ADDR_INVALID(pszRecordFlag)
@@ -1765,6 +1766,15 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
 
     if (AGENT_BIND_SIP == ulSelectType)
     {
+        if (DOS_ADDR_INVALID(pszSIPID)
+            || '\0' == pszSIPID
+            || dos_atoul(pszSIPID, &ulSIPID) < 0)
+        {
+            DOS_ASSERT(0);
+
+            return 0;
+        }
+
         if (DOS_ADDR_INVALID(pszUserID)
             || '\0' == pszUserID[0])
         {
@@ -1819,6 +1829,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.bWaitingDelete = DOS_FALSE;
     stSiteInfo.bConnected = DOS_FALSE;
     stSiteInfo.ucProcesingTime = 0;
+    stSiteInfo.ulSIPUserID = ulSIPID;
     pthread_mutex_init(&stSiteInfo.mutexLock, NULL);
 
     if ('\0' != pszUserID[0])
@@ -1984,7 +1995,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
         dos_snprintf(szSQL, sizeof(szSQL)
                     ,"SELECT " \
                      "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, " \
-                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number, a.tt_number" \
+                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number, a.tt_number, a.sip_id " \
                      "FROM " \
                      "    (SELECT " \
                      "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
@@ -2004,7 +2015,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
         dos_snprintf(szSQL, sizeof(szSQL)
                    , "SELECT " \
                      "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, " \
-                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number a.tt_number" \
+                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number a.tt_number, a.sip_id " \
                      "FROM " \
                      "    (SELECT " \
                      "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
@@ -2298,7 +2309,7 @@ U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     }
 
     dos_snprintf(szSQL, sizeof(szSQL),
-                    "INSERT INTO tbl_agent_stat(ctime, bid, \"job_number\", calls, group_id"
+                    "INSERT INTO tbl_stat_agents(ctime, bid, \"job_number\", calls, group_id"
                     "calls_connected, total_duration, avg_call_duration, online_time) VALUES("
                     "%u, %u, %s, %u, %u, %u, %u, %u, %u)"
                 , time(NULL), pstAgentInfo->ulSiteID, pstAgentInfo->szEmpNo

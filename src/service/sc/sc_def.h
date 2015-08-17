@@ -985,6 +985,11 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber);
 U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber);
 U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber);
 
+
+/* 周期任务 */
+U32 sc_num_lmt_stat(U32 ulType, VOID *ptr);
+U32 sc_num_lmt_update(U32 ulType, VOID *ptr);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

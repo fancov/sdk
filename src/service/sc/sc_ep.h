@@ -43,6 +43,10 @@
 /* 定义主叫号码组的hash表大小 */
 #define SC_CALLER_GRP_HASH_SIZE 128
 
+/* 号码超频限制hash表大小 */
+#define SC_NUMBER_LMT_HASH_SIZE 128
+
+
 /* 定义主叫号码设定的hash表大小 */
 #define SC_CALLER_SETTING_HASH_SIZE   128
 
@@ -71,6 +75,33 @@ typedef enum tagCallerSelectPolicy
     SC_CALLER_SELECT_POLICY_IN_ORDER = 0,   /* 顺序选择号码 */
     SC_CALLER_SELECT_POLICY_RANDOM          /* 随机选择 */
 }SC_CALLER_SELECT_POLICY_EN;
+
+
+typedef enum tagNumberLmtType
+{
+    SC_NUM_LMT_TYPE_DID     = 0,
+    SC_NUM_LMT_TYPE_CALLER  = 1,
+
+    SC_NUM_LMT_TYPE_BUTT
+}SC_NUMBER_LMT_TYPE_EN;
+
+typedef enum tagNumberLmtHandle
+{
+    SC_NUM_LMT_HANDLE_REJECT     = 0,
+
+    SC_NUM_LMT_HANDLE_BUTT
+}SC_NUMBER_LMT_HANDLE_EN;
+
+typedef enum tagNumberLmtCycle
+{
+    SC_NUMBER_LMT_CYCLE_DAY   = 0,
+    SC_NUMBER_LMT_CYCLE_WEEK  = 1,
+    SC_NUMBER_LMT_CYCLE_MONTH = 2,
+    SC_NUMBER_LMT_CYCLE_YEAR  = 3,
+
+    SC_NUMBER_LMT_CYCLE_BUTT
+}SC_NUMBER_LMT_CYCLE_EN;
+
 
 
 /* User ID 描述节点 */
@@ -206,6 +237,22 @@ typedef struct tagSCEventProcessHandle
     U32                 ulESLDebugLevel;             /* ESL调试级别 */
 }SC_EP_HANDLE_ST;
 
+/* 号码限制hash节点 */
+typedef struct tagSCNumberLmtNode
+{
+    U32 ulID;           /* ID */
+    U32 ulGrpID;        /* 组ID */
+    U32 ulHandle;       /* 处理手段 */
+    U32 ulLimit;        /* 限制数量 */
+    U32 ulCycle;        /* 周期 */
+    U32 ulType;         /* 主叫号码还是DID号码 */
+    U32 ulNumberID;     /* 号码ID */
+
+    /* 号码 */
+    S8  szPrefix[SC_TEL_NUMBER_LENGTH];
+
+    U32 ulStatUsed;
+}SC_NUMBER_LMT_NODE_ST;
 
 #endif
 
