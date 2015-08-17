@@ -1341,19 +1341,19 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the did list.");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+----------------------------------------------------------------------------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+----------------------------------------------------------------------------------------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                     Did List                                     |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                           Did List                                           |");
     cli_out_string(ulIndex,szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+-----------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|    Did ID    |  Customer ID  |        Did Num         | Bind Type |    Bind ID   |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|    Did ID    |  Customer ID  |        Did Num         | Bind Type |    Bind ID   |   Times   |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+-----------+");
     cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexHashDIDNum);
@@ -1380,12 +1380,13 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n|%14u|%15u|%-24s|%-11s|%14u|"
+                            , "\r\n|%14u|%15u|%-24s|%-11s|%14u|%11u"
                             , pstDid->ulDIDID
                             , pstDid->ulCustomID
                             , pstDid->szDIDNum[0] == '\0' ? "NULL": pstDid->szDIDNum
                             , sc_translate_did_bind_type(pstDid->ulBindType)
                             , pstDid->ulBindID
+                            , pstDid->ulTimes
                             );
             cli_out_string(ulIndex, szCmdBuff);
             ++ulDidCnt;
@@ -1394,7 +1395,7 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
 
     pthread_mutex_unlock(&g_mutexHashDIDNum);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+-----------+");
     cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d did numbers.\r\n\r\n", ulDidCnt);
@@ -1475,10 +1476,10 @@ U32 sc_show_caller(U32 ulIndex, U32 ulCallerID)
     S8  szBuff[128] = {0};
     U32 ulHashIndex = U32_BUTT;
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%8s%8s%8s%12s%25s"
-                    , "No.", "Valid", "TraceOn", "Index", "Customer ID", "Number");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%8s%8s%8s%12s%8s%25s"
+                    , "No.", "Valid", "TraceOn", "Index", "Customer ID", "Times", "Number");
     cli_out_string(ulIndex, szBuff);
-    cli_out_string(ulIndex, "\r\n------------------------------------------------------------------");
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------");
 
     HASH_Scan_Table(g_pstHashCaller, ulHashIndex)
     {
@@ -1495,12 +1496,13 @@ U32 sc_show_caller(U32 ulIndex, U32 ulCallerID)
             {
                 continue;
             }
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%8s%8s%8u%12u%25s"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%8s%8s%8u%12u%8u%25s"
                             , pstCaller->usNo
                             , pstCaller->bValid == DOS_FALSE ? "No":"Yes"
                             , pstCaller->bTraceON == DOS_FALSE ? "No":"Yes"
                             , pstCaller->ulIndexInDB
                             , pstCaller->ulCustomerID
+                            , pstCaller->ulTimes
                             , pstCaller->szNumber);
         }
     }

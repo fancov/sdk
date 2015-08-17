@@ -414,6 +414,7 @@ typedef enum tagSrcCallerType
     SC_SRC_CALLER_TYPE_ALL = 10        /* 所有呼叫 */
 }SC_SRC_CALLER_TYPE_EN;
 
+/* 定义呼叫目标类型 */
 typedef enum tagDstCallerType
 {
     SC_DST_CALLER_TYPE_CFG = 0,     /* 系统配置号码 */
@@ -421,7 +422,12 @@ typedef enum tagDstCallerType
     SC_DST_CALLER_TYPE_CALLERGRP    /* 号码组 */
 }SC_DST_CALLER_TYPE_EN;
 
-
+/* 定义加入号码组的号码类型 */
+typedef enum tagSCNumberType
+{
+    SC_NUMBER_TYPE_CFG = 0,         /* 系统手动配置的主叫号码 */
+    SC_NUMBER_TYPE_DID,             /* 系统的did号码 */
+}SC_NUMBER_TYPE_EN;
 
 #define SC_EP_STAT_RECV 0
 #define SC_EP_STAT_PROC 1
@@ -518,6 +524,7 @@ typedef struct tagCallerQueryNode{
 
     U32        ulIndexInDB;                       /* 数据库中的ID */
     U32        ulCustomerID;                      /* 所属客户id */
+    U32        ulTimes;                           /* 号码被呼叫选中的次数，用做统计 */
 
     S8         szNumber[SC_TEL_NUMBER_LENGTH];    /* 号码缓存 */
 }SC_CALLER_QUERY_NODE_ST;
@@ -931,6 +938,8 @@ U32 sc_gateway_grp_delete(U32 ulGwGroupID);
 U32 sc_black_list_delete(U32 ulBlackListID);
 U32 sc_caller_grp_delete(U32 ulCallerGrpID);
 U32 sc_did_delete(U32 ulDidID);
+U32 sc_caller_delete(U32 ulCallerID);
+U32 sc_caller_setting_delete(U32 ulSettingID);
 U32 sc_ep_sip_userid_delete(S8 * pszSipID);
 U32 sc_caller_delete(U32 ulCallerID);
 U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID);
@@ -976,14 +985,7 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService);
 U32 sc_ep_transfer_publish_release(SC_SCB_ST * pstSCBPublish);
 
 /* 以下是和号码组设定相关的API */
-U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, U32 ulPolicy, S8 *pszNumber);
-S32  sc_generate_random(S32 lUp, S32 lDown);
-U32  sc_get_dst_by_src(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, U32* pulDstID, U32* pulDstType);
-U32  sc_get_number_by_callerid(U32 ulCustomerID, U32 ulCallerID, S8 *pszNumber);
-U32  sc_get_number_by_didid(U32 ulDidID, S8* pszNumber);
-U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber);
-U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber);
-U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber);
+U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, U32 ulPolicy, S8 *pszNumber, U32 ulLen);
 
 #ifdef __cplusplus
 }

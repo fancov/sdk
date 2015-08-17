@@ -1937,14 +1937,17 @@ U32 sc_http_caller_setting_update_proc(U32 ulAction, U32 ulSettingID)
     switch (ulAction)
     {
         case SC_API_CMD_ACTION_CALLER_SET_ADD:
-        case SC_API_CMD_ACTION_CALLER_SET_DELETE:
+        case SC_API_CMD_ACTION_CALLER_SET_UPDATE:
             sc_load_caller_setting(ulSettingID);
             break;
-        case SC_API_CMD_ACTION_CALLER_SET_UPDATE:
+        case SC_API_CMD_ACTION_CALLER_SET_DELETE:
+            sc_caller_setting_delete(ulSettingID);
             break;
         default:
             break;
     }
+    sc_logr_info(SC_FUNC, "Update Caller Setting SUCC.(ulAction:%u, ulID:%u)", ulAction, ulSettingID);
+
     return DOS_SUCC;
 }
 
@@ -1968,6 +1971,8 @@ U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerID)
         default:
             break;
     }
+    sc_logr_info(SC_FUNC, "Update Caller Group SUCC.(ulAction:%u, ulID:%u)", ulAction, ulCallerID);
+
     return DOS_SUCC;
 }
 
@@ -1991,6 +1996,7 @@ U32 sc_http_caller_update_proc(U32 ulAction, U32 ulCallerID)
         default:
             break;
     }
+    sc_logr_info(SC_FUNC, "Update Caller SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCallerID);
 
     return DOS_SUCC;
 }
