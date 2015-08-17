@@ -8575,6 +8575,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
     U32         ulStatus, ulRet = DOS_SUCC;
     S8          szCMD[512] = { 0, };
     S8          *pszTransforType = NULL;
+    S8          *pszGatewayID = NULL;
     SC_SCB_ST   *pstSCBOther = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
@@ -8589,6 +8590,11 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
         return DOS_FAIL;
     }
 
+    pszGatewayID = esl_event_get_header(pstEvent, "variable_sip_gateway_name");
+    if (DOS_ADDR_VALID(pszGatewayID))
+    {
+        dos_atoul(pszGatewayID, pstSCB->ulTrunkID);
+    }
 
     pszTransforType = esl_event_get_header(pstEvent, "variable_transfer_to");
     if (DOS_ADDR_VALID(pszTransforType) && '\0' != pszTransforType[0])
@@ -8610,7 +8616,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             /* 这个地方初始化一下就好 */
             DOS_ASSERT(0);
 
-			sc_scb_hash_tables_delete(pstSCB->szUUID);
+            sc_scb_hash_tables_delete(pstSCB->szUUID);
             sc_bg_job_hash_delete(pstSCB->usSCBNo);
 
             sc_scb_free(pstSCB);

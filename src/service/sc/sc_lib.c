@@ -1685,6 +1685,7 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
     U32 ulPercentage;
     U32 ulInterval;
     U32 ulConcurrency;
+    U32 ulMaxConcurrency;
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
 
@@ -1704,18 +1705,18 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
 
     if (SC_TASK_MODE_AUDIO_ONLY == pstTCB->ucMode)
     {
-        pstTCB->ulMaxConcurrency = g_ulMaxConcurrency4Task;
+        ulMaxConcurrency = g_ulMaxConcurrency4Task;
         ulConcurrency = pstTCB->ulCurrentConcurrency;
     }
     else
     {
-        pstTCB->ulMaxConcurrency = sc_acd_get_total_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
-        ulConcurrency = pstTCB->ulMaxConcurrency - sc_acd_get_idel_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
+        ulMaxConcurrency = sc_acd_get_total_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
+        ulConcurrency = ulMaxConcurrency - sc_acd_get_idel_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
     }
 
-    if (pstTCB->ulMaxConcurrency)
+    if (ulMaxConcurrency)
     {
-        ulPercentage = ulConcurrency / pstTCB->ulMaxConcurrency;
+        ulPercentage = ulConcurrency / ulMaxConcurrency;
     }
     else
     {
