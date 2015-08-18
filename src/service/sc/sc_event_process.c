@@ -9224,9 +9224,10 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
     }
 
     pszGatewayID = esl_event_get_header(pstEvent, "variable_sip_gateway_name");
-    if (DOS_ADDR_VALID(pszGatewayID))
+    if (DOS_ADDR_VALID(pszGatewayID)
+        || dos_atoul(pszGatewayID, &pstSCB->ulTrunkID) < 0)
     {
-        dos_atoul(pszGatewayID, pstSCB->ulTrunkID);
+        pstSCB->ulTrunkID = U32_BUTT;
     }
 
     pszTransforType = esl_event_get_header(pstEvent, "variable_transfer_to");
