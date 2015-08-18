@@ -129,9 +129,11 @@ typedef struct tagSCBlackListNode{
 typedef struct tagSCDIDNode{
     U32   ulCustomID;                             /* 用户ID */
     U32   ulDIDID;                                /* DID 号码ID */
+    BOOL  bValid;                                 /* 是否可用标识 */
     S8    szDIDNum[SC_TEL_NUMBER_LENGTH];         /* DID 号码 */
     U32   ulBindType;                             /* 绑定类型 refer to SC_DID_BIND_TYPE_EN */
     U32   ulBindID;                               /* 绑定结果 */
+    U32   ulTimes;                                /* 号码被命中次数,用做统计数据 */
 }SC_DID_NODE_ST;
 
 /* TT号信息 */
@@ -217,6 +219,16 @@ typedef struct tagCallerSetting
     U32   ulDstID;            /* 目的ID */
     U32   ulDstType;          /* 目标类型 */
 }SC_CALLER_SETTING_ST;
+
+typedef struct tagCallerCacheNode
+{
+    U32   ulType;   /* 号码类型 */
+    union stCallerData
+    {
+        SC_CALLER_QUERY_NODE_ST  *pstCaller;  /* 主叫号码指针 */
+        SC_DID_NODE_ST           *pstDid;     /* did号码指针 */
+    }stData;
+}SC_CALLER_CACHE_NODE_ST;
 
 /* 事件队列 */
 typedef struct tagSCEventNode

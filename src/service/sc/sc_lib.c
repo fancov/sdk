@@ -1685,6 +1685,7 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
     U32 ulPercentage;
     U32 ulInterval;
     U32 ulConcurrency;
+    U32 ulMaxConcurrency;
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
 
@@ -1704,18 +1705,18 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
 
     if (SC_TASK_MODE_AUDIO_ONLY == pstTCB->ucMode)
     {
-        pstTCB->ulMaxConcurrency = g_ulMaxConcurrency4Task;
+        ulMaxConcurrency = g_ulMaxConcurrency4Task;
         ulConcurrency = pstTCB->ulCurrentConcurrency;
     }
     else
     {
-        pstTCB->ulMaxConcurrency = sc_acd_get_total_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
-        ulConcurrency = pstTCB->ulMaxConcurrency - sc_acd_get_idel_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
+        ulMaxConcurrency = sc_acd_get_total_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
+        ulConcurrency = ulMaxConcurrency - sc_acd_get_idel_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
     }
 
-    if (pstTCB->ulMaxConcurrency)
+    if (ulMaxConcurrency)
     {
-        ulPercentage = ulConcurrency / pstTCB->ulMaxConcurrency;
+        ulPercentage = ulConcurrency / ulMaxConcurrency;
     }
     else
     {
@@ -1937,14 +1938,17 @@ U32 sc_http_caller_setting_update_proc(U32 ulAction, U32 ulSettingID)
     switch (ulAction)
     {
         case SC_API_CMD_ACTION_CALLER_SET_ADD:
-        case SC_API_CMD_ACTION_CALLER_SET_DELETE:
+        case SC_API_CMD_ACTION_CALLER_SET_UPDATE:
             sc_load_caller_setting(ulSettingID);
             break;
-        case SC_API_CMD_ACTION_CALLER_SET_UPDATE:
+        case SC_API_CMD_ACTION_CALLER_SET_DELETE:
+            sc_caller_setting_delete(ulSettingID);
             break;
         default:
             break;
     }
+    sc_logr_info(SC_FUNC, "Update Caller Setting SUCC.(ulAction:%u, ulID:%u)", ulAction, ulSettingID);
+
     return DOS_SUCC;
 }
 
@@ -1968,6 +1972,8 @@ U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerID)
         default:
             break;
     }
+    sc_logr_info(SC_FUNC, "Update Caller Group SUCC.(ulAction:%u, ulID:%u)", ulAction, ulCallerID);
+
     return DOS_SUCC;
 }
 
@@ -1991,6 +1997,7 @@ U32 sc_http_caller_update_proc(U32 ulAction, U32 ulCallerID)
         default:
             break;
     }
+    sc_logr_info(SC_FUNC, "Update Caller SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCallerID);
 
     return DOS_SUCC;
 }
