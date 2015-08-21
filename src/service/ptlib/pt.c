@@ -1231,7 +1231,7 @@ STREAM_CACHE_ADDR_CB_ST *pt_stream_addr_create(U32 ulStreamID)
     return pstNewNode;
 }
 
-VOID pt_stream_addr_delete(DLL_S *pList, DLL_NODE_S *pNode)
+VOID pt_stream_addr_delete(HASH_TABLE_S *pList, HASH_NODE_S *pNode, U32 ulHashIndex)
 {
     STREAM_CACHE_ADDR_CB_ST *pstStreamAddr = NULL;
 
@@ -1240,7 +1240,8 @@ VOID pt_stream_addr_delete(DLL_S *pList, DLL_NODE_S *pNode)
         return;
     }
 
-    dll_delete(pList, pNode);
+    hash_delete_node(pList, pNode, ulHashIndex);
+
     if (DOS_ADDR_VALID(pNode->pHandle))
     {
         pstStreamAddr = (STREAM_CACHE_ADDR_CB_ST *)pNode->pHandle;

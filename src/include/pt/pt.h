@@ -413,7 +413,7 @@ S32 pt_resend_node_list_insert(list_t *pstHead, U8 *aucID, PT_MSG_TAG *pstMsgDes
 
 #if INCLUDE_PTS
 STREAM_CACHE_ADDR_CB_ST *pt_stream_addr_create(U32 ulStreamID);
-VOID pt_stream_addr_delete(DLL_S *pList, DLL_NODE_S *pNode);
+VOID pt_stream_addr_delete(HASH_TABLE_S *pList, HASH_NODE_S *pNode, U32 ulHashIndex);
 PT_SEND_MSG_PTHREAD *pt_send_msg_pthread_search(list_t* pstHead, U32 ulStreamID);
 PT_SEND_MSG_PTHREAD *pt_send_msg_pthread_create(PT_NEND_RECV_NODE_ST *pstNeedRecvNode, S32 lSocket);
 S32 pt_send_msg_pthread_delete(list_t* pstHead, U32 ulStreamID);
