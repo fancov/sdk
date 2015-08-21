@@ -85,7 +85,7 @@ VOID sc_tmp_tbl_clean()
 {
     S8 szQuery[256] = {0, };
 
-    dos_snprintf(szQuery, sizeof(szQuery), "delete from tmp_fs_modify;");
+    dos_snprintf(szQuery, sizeof(szQuery), "delete from tmp_tbl_fsmodify;");
 
     db_transaction_begin(g_pstSCDBHandle);
     if (db_query(g_pstSCDBHandle, szQuery, NULL, NULL, NULL) != DB_ERR_SUCC)
