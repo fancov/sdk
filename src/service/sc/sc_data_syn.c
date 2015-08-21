@@ -109,7 +109,7 @@ U32 sc_walk_tmp_tbl()
         return DOS_FAIL;
     }
 
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,ctime,json_fields FROM tmp_fs_modify;");
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,ctime,json_fields FROM tmp_tbl_fsmodify;");
 
     if (db_query(g_pstSCDBHandle, szQuery, sc_walk_tmp_tbl_cb, NULL, NULL) != DB_ERR_SUCC)
     {
