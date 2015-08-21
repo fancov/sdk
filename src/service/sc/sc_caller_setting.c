@@ -17,6 +17,7 @@ extern HASH_TABLE_S *g_pstHashCaller;
 extern HASH_TABLE_S *g_pstHashCallerGrp;
 extern HASH_TABLE_S *g_pstHashDIDNum;
 extern DB_HANDLE_ST *g_pstSCDBHandle;
+extern BOOL sc_num_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber);
 
 static S32 sc_generate_random(S32 lUp, S32 lDown);
 static U32 sc_get_dst_by_src(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, U32* pulDstID, U32* pulDstType);
@@ -283,7 +284,7 @@ static U32 sc_get_number_by_callerid(U32 ulCustomerID, U32 ulCallerID, S8 *pszNu
  * 参数: U32 ulDidID     号码索引，输入参数
  *       S8* pszNumber   号码缓存，输出参数
  *       U32 ulLen       号码缓存长度，输入参数
- * 返回值: 成功返回DOS_SUCC,否则返回DOS_SUCC
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
  **/
 static U32 sc_get_number_by_didid(U32 ulDidID, S8* pszNumber, U32 ulLen)
 {
@@ -335,7 +336,7 @@ static U32 sc_get_number_by_didid(U32 ulDidID, S8* pszNumber, U32 ulLen)
  *       U32 ulGrpID       号码组id
  *       S8 *pszNumber     号码缓存， 输出参数
  *       U32 ulLen         号码缓存长度，输入参数
- * 返回值: 成功返回DOS_SUCC,否则返回DOS_SUCC
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
  **/
 static U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen)
 {
@@ -402,6 +403,10 @@ static U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumbe
                 pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode->pHandle;
                 if (SC_NUMBER_TYPE_CFG == pstCache->ulType)
                 {
+                    if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
+                    {
+                        continue;
+                    }
                     dos_snprintf(pszNumber, ulLen, "%s", pstCache->stData.pstCaller->szNumber);
                     pstCache->stData.pstCaller->ulTimes++;
                     pstCallerGrp->ulLastNo = ulNewNo;
@@ -409,6 +414,10 @@ static U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumbe
                 }
                 else if (SC_NUMBER_TYPE_DID == pstCache->ulType)
                 {
+                    if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->ulTimes, pstCache->stData.pstDid->szDIDNum))
+                    {
+                        continue;
+                    }
                     dos_snprintf(pszNumber, ulLen, "%s", pstCache->stData.pstDid->szDIDNum);
                     pstCache->stData.pstDid->ulTimes++;
                     pstCallerGrp->ulLastNo = ulNewNo;
@@ -442,12 +451,20 @@ static U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumbe
                 pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode;
                 if (SC_NUMBER_TYPE_CFG == pstCache->ulType)
                 {
+                    if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
+                    {
+                        continue;
+                    }
                     dos_snprintf(pszNumber, ulLen, "%s", pstCache->stData.pstCaller->szNumber);
                     pstCache->stData.pstCaller->ulTimes++;
                     pstCallerGrp->ulLastNo = ulCount;
                 }
                 else if (SC_NUMBER_TYPE_DID == pstCache->ulType)
                 {
+                    if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->ulTimes, pstCache->stData.pstDid->szDIDNum))
+                    {
+                        continue;
+                    }
                     dos_snprintf(pszNumber, ulLen, "%s", pstCache->stData.pstDid->szDIDNum);
                     pstCache->stData.pstDid->ulTimes++;
                     pstCallerGrp->ulLastNo = ulCount;
@@ -479,7 +496,7 @@ static U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumbe
  *       U32 ulGrpID       号码组id
  *       S8 *pszNumber     号码缓存， 输出参数
  *       U32 ulLen         号码缓存长度
- * 返回值: 成功返回DOS_SUCC,否则返回DOS_SUCC
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
  **/
 static U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen)
 {
@@ -531,11 +548,19 @@ static U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber,
                     pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode->pHandle;
                     if (SC_NUMBER_TYPE_CFG == pstCache->ulType)
                     {
+                        if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
+                        {
+                            continue;
+                        }
                         dos_snprintf(pszNumber, ulLen, "%s", pstCache->stData.pstCaller->szNumber);
                         pstCache->stData.pstCaller->ulTimes++;
                     }
                     else if (SC_NUMBER_TYPE_DID == pstCache->ulType)
                     {
+                        if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstDid->szDIDNum))
+                        {
+                            continue;
+                        }
                         dos_snprintf(pszNumber, ulLen, "%s", pstCache->stData.pstDid->szDIDNum);
                         pstCache->stData.pstDid->ulTimes++;
                     }
@@ -576,7 +601,7 @@ static U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber,
  * 参数: U32 ulCustomerID  客户id
  *       S8 *pszNumber     号码缓存， 输出参数
  *       U32 ulLen         DID号码缓存
- * 返回值: 成功返回DOS_SUCC,否则返回DOS_SUCC
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
  **/
 static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
 {
@@ -632,30 +657,6 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
     return DOS_SUCC;
 }
 
-/**
- * 函数: U32 sc_get_numbers_of_did(U32 ulCustomerID)
- * 功能: 返回某一个客户的did号码个数
- * 参数: U32 ulCustomerID  客户id
- * 返回值: 成功返回个数,否则返回DOS_SUCC
- **/
-static U32 sc_get_numbers_of_did(U32 ulCustomerID)
-{
-    S8   szQuery[256] = {0};
-    S32  lRet = U32_BUTT;
-    U32  ulCount;
-
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT COUNT(id) FROM tbl_sipassign WHERE id=%u;", ulCustomerID);
-    lRet = db_query(g_pstSCDBHandle, szQuery, NULL, &ulCount, NULL);
-    if (DB_ERR_SUCC != lRet)
-    {
-        sc_logr_error(SC_FUNC, "Get numbers of did FAIL.(ulCustomerID:%u)", ulCustomerID);
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-    sc_logr_info(SC_FUNC, "Get numbers of did FAIL.(ulCustomerID:%u, ulCount:%u)", ulCustomerID, ulCount);
-    return ulCount;
-}
-
 S32 sc_get_numbers_of_did_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     U32 *pulCount = NULL;
@@ -675,6 +676,30 @@ S32 sc_get_numbers_of_did_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
         return DOS_FAIL;
     }
     return DOS_SUCC;
+}
+
+/**
+ * 函数: U32 sc_get_numbers_of_did(U32 ulCustomerID)
+ * 功能: 返回某一个客户的did号码个数
+ * 参数: U32 ulCustomerID  客户id
+ * 返回值: 成功返回个数,否则返回DOS_SUCC
+ **/
+static U32 sc_get_numbers_of_did(U32 ulCustomerID)
+{
+    S8   szQuery[256] = {0};
+    S32  lRet = U32_BUTT;
+    U32  ulCount;
+
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT COUNT(id) FROM tbl_sipassign WHERE id=%u;", ulCustomerID);
+    lRet = db_query(g_pstSCDBHandle, szQuery, sc_get_numbers_of_did_cb, &ulCount, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_logr_error(SC_FUNC, "Get numbers of did FAIL.(ulCustomerID:%u)", ulCustomerID);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_FUNC, "Get numbers of did FAIL.(ulCustomerID:%u, ulCount:%u)", ulCustomerID, ulCount);
+    return ulCount;
 }
 
 static U32  sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
@@ -698,6 +723,7 @@ static U32  sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
             if (pstDid->ulBindID == ulAgentID && SC_DID_BIND_TYPE_AGENT == pstDid->ulBindType)
             {
                 bFound = DOS_TRUE;
+                pstDid->ulTimes++;
                 dos_snprintf(pszNumber, ulLen, "%s", pstDid->szDIDNum);
                 break;
             }
@@ -740,6 +766,7 @@ static U32 sc_get_did_by_agentgrp(U32 ulAgentGrpID, S8 *pszNumber, U32 ulLen)
             if (pstDid->ulBindID == ulAgentGrpID && SC_DID_BIND_TYPE_QUEUE == pstDid->ulBindType)
             {
                 bFound = DOS_TRUE;
+                pstDid->ulTimes++;
                 dos_snprintf(pszNumber, ulLen, "%s", pstDid->szDIDNum);
                 break;
             }
