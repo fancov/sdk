@@ -1609,7 +1609,7 @@ U32 sc_acd_get_total_agent(U32 ulGroupID)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ACD, "Cannot fine the group with the ID \"%s\" .", ulGroupID);
+        sc_logr_error(SC_ACD, "Cannot fine the group with the ID \"%u\" .", ulGroupID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         SC_TRACE_OUT();
