@@ -4257,7 +4257,7 @@ U32 sc_load_route(U32 ulIndex)
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_id, call_out_group FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
                     , ulIndex);
     }
 
