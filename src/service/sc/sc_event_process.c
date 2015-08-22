@@ -2644,8 +2644,15 @@ U32 sc_load_gateway(U32 ulIndex)
     }
 
     ulRet = db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_cb, NULL, NULL);
+    if (DB_ERR_SUCC != ulRet)
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_FUNC, "Load gateway FAIL.(ID:%u)", ulIndex);
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_FUNC, "Load gateway SUCC.(D:%u)", ulIndex);
 
-    return ulRet;
+    return DOS_SUCC;
 }
 
 /**
@@ -2743,8 +2750,10 @@ U32 sc_load_gateway_grp(U32 ulIndex)
     if (ulRet != DOS_SUCC)
     {
         DOS_ASSERT(0);
+        sc_logr_error(SC_FUNC, "Load gateway Group FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
+    sc_logr_info(SC_FUNC, "Load gateway Group SUCC.(ID:%u)", ulIndex);
 
     return ulRet;
 }
@@ -2791,7 +2800,7 @@ S32 sc_load_gw_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszN
         {
             if (dos_atoul(aszValues[lIndex], &ulGatewayID) < 0)
             {
-                blProcessOK    = DOS_FALSE;
+                blProcessOK  = DOS_FALSE;
                 break;
             }
         }
@@ -2811,7 +2820,6 @@ S32 sc_load_gw_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszN
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
         DOS_ASSERT(0);
-
         return DOS_FAIL;
     }
 
