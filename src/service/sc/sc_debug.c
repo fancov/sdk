@@ -1123,6 +1123,8 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
                     continue;
                 }
 
+                pstGWNode = pstHashNode->pHandle;
+
                 dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12u%36s", pstGWNode->ulGWID, pstGWNode->szGWDomain);
                 cli_out_string(ulIndex, szCmdBuff);
             }
