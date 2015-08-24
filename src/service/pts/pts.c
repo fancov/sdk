@@ -71,7 +71,7 @@ usPtsHistoryPort1 integer,\
 usPtsHistoryPort2 integer,\
 usPtsHistoryPort3 integer,\
 szMac varchar(64),\
-heartbeatTime INTEGER,\
+heartbeatTime REAL,\
 PRIMARY KEY (\"id\" ASC) ON CONFLICT REPLACE,\
 UNIQUE (\"id\" COLLATE RTRIM ASC, \"sn\" ASC))"
 
@@ -404,26 +404,6 @@ S32 pts_main()
     g_alUdpSocket[0] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[0], ulSocketCache);
     g_alUdpSocket[1] = pts_create_udp_socket(g_stPtsMsg.usPtsPort[1], ulSocketCache);
 
-#if 0
-    if (g_stPtsMsg.usPtsPort[0] != 0)
-    {
-        lRet = pts_create_tcp_socket(g_stPtsMsg.usPtsPort[0]);
-        if (lRet <= 0)
-        {
-            return DOS_FAIL;
-        }
-    }
-
-    if (g_stPtsMsg.usPtsPort[1] != 0)
-    {
-        lRet = pts_create_tcp_socket(g_stPtsMsg.usPtsPort[1]);
-        if (lRet <= 0)
-        {
-            return DOS_FAIL;
-        }
-    }
-#endif
-
     lRet = dos_sqlite3_create_db(g_pstMySqlite);
     if (lRet < 0)
     {
@@ -458,7 +438,11 @@ S32 pts_main()
         lRet = dos_sqlite3_exec(g_pstMySqlite, szSql);
         if (lRet != DOS_SUCC)
         {
+            pts_goAhead_free(pPassWordMd5);
+            pPassWordMd5 = NULL;
             DOS_ASSERT(0);
+
+            return DOS_FAIL;
         }
 
         pts_goAhead_free(pPassWordMd5);
@@ -470,6 +454,14 @@ S32 pts_main()
     if (lRet != DOS_SUCC)
     {
         DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    lRet = pts_global_variable_init();
+    if (lRet != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
 
     lRet = pthread_create(&tid1, NULL, pts_send_msg2ptc, NULL);

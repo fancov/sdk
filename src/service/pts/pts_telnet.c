@@ -821,13 +821,14 @@ VOID pts_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
 {
     S32                         lClientSub              = 0;
     U32                         ulArraySub              = 0;
+    U32                         ulHashIndex             = 0;
     S8                          *pcSendMsg              = NULL;
     PT_CC_CB_ST                 *pstCCNode              = NULL;
     PT_STREAM_CB_ST             *pstStreamNode          = NULL;
     PT_DATA_TCP_ST              *pstDataTcp             = NULL;
     PT_PTC_COMMAND_ST           *pstPtcCommand          = NULL;
     STREAM_CACHE_ADDR_CB_ST     *pstStreamCacheAddr     = NULL;
-    DLL_NODE_S                  *pstListNode            = NULL;
+    HASH_NODE_S                 *pstListNode            = NULL;
     PTS_CMD_CLIENT_CB_ST        stClientCB;
     S8                          szExitReason[PT_DATA_BUFF_128] = {0};
 
@@ -871,8 +872,9 @@ VOID pts_send_msg2cmd(PT_NEND_RECV_NODE_ST *pstNeedRecvNode)
         return;
     }
 
+    pts_stream_addr_hash_func(pstNeedRecvNode->ulStreamID, &ulHashIndex);
     pthread_mutex_lock(&g_mutexStreamAddrList);
-    pstListNode = dll_find(&g_stStreamAddrList, &pstNeedRecvNode->ulStreamID, pts_find_stream_addr_by_streamID);
+    pstListNode = hash_find_node(g_pstStreamAddrList, ulHashIndex, &pstNeedRecvNode->ulStreamID, pts_find_stream_addr_by_streamID);
     if (DOS_ADDR_INVALID(pstListNode))
     {
         pthread_mutex_unlock(&g_mutexStreamAddrList);

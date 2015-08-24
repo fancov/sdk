@@ -163,7 +163,7 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                 ulResult = sc_ep_update_sip_ip(ulPublicIP, ulPrivateIP, enStatus, ulSipID);
                 if(DB_ERR_SUCC != ulResult)
                 {
-                    sc_logr_debug(SC_ACD, "%s", "update sip db fail, userid is %s", pszUserID);
+                    sc_logr_debug(SC_ACD, "update sip db fail, userid is %s", pszUserID);
                 }
 end:
                 esl_event_destroy(&pstEvent);
