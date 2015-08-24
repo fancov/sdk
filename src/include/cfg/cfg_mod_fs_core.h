@@ -23,7 +23,7 @@
 #define INCLUDE_SYSLOG_ENABLE             1
 #if (INCLUDE_SYSLOG_ENABLE)
 #define INCLUDE_SYSLOG_FILE               0
-#define INCLUDE_SYSLOG_DB                 0
+#define INCLUDE_SYSLOG_DB                 1
 #define INCLUDE_SYSLOG_CLI                INCLUDE_DEBUG_CLI
 #define INCLUDE_SYSLOG_CONSOLE            1
 #else
@@ -35,7 +35,7 @@
 
 
 /* 心跳模块开关 */
-#define INCLUDE_BH_ENABLE                 0
+#define INCLUDE_BH_ENABLE                 1
 #if (INCLUDE_BH_ENABLE)
 #define INCLUDE_BH_SERVER                 0
 #define INCLUDE_BH_CLIENT                 (!INCLUDE_BH_SERVER)

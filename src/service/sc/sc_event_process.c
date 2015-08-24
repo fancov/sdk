@@ -4258,7 +4258,7 @@ U32 sc_load_route(U32 ulIndex)
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_id, call_out_group FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
                     , ulIndex);
     }
 
@@ -5064,6 +5064,32 @@ U32 sc_ep_get_callout_group_by_customerID(U32 ulCustomerID, U16 *pusCallOutGroup
     return DOS_FAIL;
 }
 
+U32 sc_ep_customer_list_find(U32 ulCustomerID)
+{
+    SC_CUSTOMER_NODE_ST  *pstCustomer       = NULL;
+    DLL_NODE_S           *pstListNode       = NULL;
+
+    pthread_mutex_lock(&g_mutexCustomerList);
+    DLL_Scan(&g_stCustomerList, pstListNode, DLL_NODE_S *)
+    {
+        pstCustomer = (SC_CUSTOMER_NODE_ST *)pstListNode->pHandle;
+        if (DOS_ADDR_INVALID(pstCustomer))
+        {
+            continue;
+        }
+
+        if (pstCustomer->ulID == ulCustomerID)
+        {
+            pthread_mutex_unlock(&g_mutexCustomerList);
+            return DOS_SUCC;
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexCustomerList);
+
+    return DOS_FAIL;
+}
+
 
 U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMING_EN enTiming)
 {
@@ -5182,6 +5208,11 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
                     continue;
                 }
 
+                if (pstNumTransformEntry->ulObjectID != ulTrunkID)
+                {
+                    continue;
+                }
+
                 if (pstNumTransformEntry->enPriority < pstNumTransform->enPriority)
                 {
                     /* 选择优先级高的 */
@@ -5229,7 +5260,7 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
         /* 完全替代 */
         if (pstNumTransform->szReplaceNum[0] == '*')
         {
-            /* TODO 使用号码组中的号码 */
+            /* 使用号码组中的号码 */
             dos_sscanf(pstNumTransform->szReplaceNum, "*%d", ulNumGroupID);
         }
         else
@@ -7501,20 +7532,6 @@ U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     return ulResult;
 }
 
-/* 通过客户ID获得主叫号码的桩函数 */
-U32 sc_ep_get_num_group_stub(U32 ulCustomerID, S8 *pszCaller, U32 ulLen)
-{
-    if (DOS_ADDR_INVALID(pszCaller))
-    {
-        return DOS_FAIL;
-    }
-
-    dos_strncpy(pszCaller, "123456789", ulLen);
-    pszCaller[ulLen - 1] = '\0';
-
-    return DOS_SUCC;
-}
-
 
 U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, S8 *pszCallee)
 {
@@ -7551,7 +7568,8 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             dos_strncpy(pstSCB->szCalleeNum, pszCallee, sizeof(pstSCB->szCalleeNum));
             pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
 
-            if (sc_ep_get_num_group_stub(ulCustomerID, szCallerNum, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
+            if (sc_caller_setting_select_number(ulCustomerID, 0, SC_SRC_CALLER_TYPE_ALL
+                , SC_CALLER_POLICY_RANDOM, szCallerNum, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
             {
                 /* 获取主叫号码失败 */
                 DOS_ASSERT(0);
@@ -8687,6 +8705,18 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         pstSCB->ucLegRole = SC_CALLEE;
         ulCallSrc = sc_ep_get_source(pstEvent);
         ulCallDst = sc_ep_get_destination(pstEvent);
+
+        /* 如果呼叫来至SIP,判断SIP是否属于企业 */
+        if (SC_DIRECTION_SIP == ulCallSrc || SC_DIRECTION_SIP == ulCallDst)
+        {
+            if (sc_ep_customer_list_find(pstSCB->ulCustomID) != DOS_SUCC)
+            {
+                SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
+                ulRet = DOS_FAIL;
+
+                goto proc_finished;
+            }
+        }
 
         sc_logr_info(SC_ESL, "Get call source and dest. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
 

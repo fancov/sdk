@@ -2001,7 +2001,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
                      "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
                      "         tbl_agent.group1_id group1_id, tbl_agent.group2_id group2_id, tbl_sip.extension extension, " \
                      "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class, " \
-                     "         tbl_agent.select_type, tbl_agent.fixed_telephone, tbl_agent.mobile_number" \
+                     "         tbl_agent.select_type, tbl_agent.fixed_telephone, tbl_agent.mobile_number, tbl_agent.tt_number, tbl_agent.sip_id" \
                      "     FROM " \
                      "         tbl_agent, tbl_sip " \
                      "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 0) a " \
@@ -2021,7 +2021,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
                      "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
                      "         tbl_agent.group1_id group1_id, tbl_agent.group2_id group2_id, tbl_sip.extension extension, " \
                      "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class, " \
-                     "         tbl_agent.select_type, tbl_agent.fixed_telephone, tbl_agent.mobile_number " \
+                     "         tbl_agent.select_type, tbl_agent.fixed_telephone, tbl_agent.mobile_number, tbl_agent.tt_number, tbl_agent.sip_id " \
                      "     FROM " \
                      "         tbl_agent, tbl_sip " \
                      "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 0 AND tbl_agent.id = %u) a " \

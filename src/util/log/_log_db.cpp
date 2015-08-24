@@ -19,7 +19,14 @@ CLogDB::CLogDB()
     blInited = 0;
     pstDBHandle = NULL;
 
+    this->blWaitingExit = DOS_FALSE;
+    this->blIsRunning   = DOS_FALSE;
+
     this->ulLogLevel = LOG_LEVEL_INFO;
+
+    DLL_Init(&this->stQueue);
+    pthread_mutex_init(&mutexQueue, NULL);
+    pthread_cond_init(&condQueue, NULL);
 }
 
 
@@ -39,7 +46,13 @@ S32 CLogDB::log_init()
     S8  szDBUsername[MAX_DB_INFO_LEN] = {0, };
     S8  szDBPassword[MAX_DB_INFO_LEN] = {0, };
     S8  szDBName[MAX_DB_INFO_LEN] = {0, };
-	S8  szDBSockPath[MAX_DB_INFO_LEN] = {0, };
+    S8  szDBSockPath[MAX_DB_INFO_LEN] = {0, };
+
+    if (pthread_create(&this->pthTaskHandle, NULL, log_db_task, this) < 0)
+    {
+        DOS_ASSERT(0);
+        return -1;
+    }
 
     if (config_get_db_host(szDBHost, MAX_DB_INFO_LEN) < 0)
     {
@@ -71,7 +84,7 @@ S32 CLogDB::log_init()
         goto errno_proc;
     }
 
-	if (config_get_mysqlsock_path(szDBSockPath, MAX_DB_INFO_LEN) < 0)
+    if (config_get_mysqlsock_path(szDBSockPath, MAX_DB_INFO_LEN) < 0)
     {
         DOS_ASSERT(0);
         goto errno_proc;
@@ -97,7 +110,7 @@ S32 CLogDB::log_init()
     dos_strncpy(pstDBHandle->szDBName, szDBName, sizeof(pstDBHandle->szDBName));
     pstDBHandle->szDBName[sizeof(pstDBHandle->szDBName) - 1] = '\0';
 
-	dos_strncpy(pstDBHandle->szSockPath, szDBSockPath, sizeof(pstDBHandle->szSockPath));
+    dos_strncpy(pstDBHandle->szSockPath, szDBSockPath, sizeof(pstDBHandle->szSockPath));
     pstDBHandle->szSockPath[sizeof(pstDBHandle->szSockPath) - 1] = '\0';
 
     pstDBHandle->usPort = usDBPort;
@@ -154,9 +167,15 @@ S32 CLogDB::log_set_level(U32 ulLevel)
 void CLogDB::log_write(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLevel, const S8 *_pszMsg, U32 _ulLevel)
 {
     U32 ulLen = 0;
-	S8  *pszQuery = NULL;
+    S8  *pszQuery = NULL;
+    DLL_NODE_S  *pstNode;
 
     if (!blInited)
+    {
+        return;
+    }
+
+    if (!blIsRunning)
     {
         return;
     }
@@ -174,11 +193,20 @@ void CLogDB::log_write(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLev
 
     ulLen = dos_strlen(_pszMsg) + EXTRA_LEN;
     pszQuery = new S8[ulLen];
+    if (!pszQuery)
+    {
+        DOS_ASSERT(0);
+        return;
+    }
 
-	if (!pszQuery)
-	{
-		return;
-	}
+    pstNode = new DLL_NODE_S;
+    if (NULL == pstNode)
+    {
+        DOS_ASSERT(0);
+
+        delete [] pszQuery;
+        return;
+    }
 
     dos_snprintf(pszQuery, ulLen, "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
                 , "tbl_log"
@@ -189,21 +217,25 @@ void CLogDB::log_write(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLev
                 , dos_get_process_name()
                 , _pszMsg);
 
-    db_query(pstDBHandle, pszQuery, NULL, NULL, NULL);
-
-	if (pszQuery)
-	{
-		delete [] pszQuery;
-		pszQuery = NULL;
-	}
+    pstNode->pHandle = pszQuery;
+    pthread_mutex_lock(&this->mutexQueue);
+    DLL_Add(&this->stQueue, pstNode);
+    pthread_cond_signal(&this->condQueue);
+    pthread_mutex_unlock(&this->mutexQueue);
 }
 
 VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_pszOpterand, const S8* _pszResult, const S8 *_pszMsg)
 {
     S8  *pszQuery = NULL;
-	U32 ulLen = 0;
+    U32 ulLen = 0;
+    DLL_NODE_S  *pstNode;
 
     if (!blInited)
+    {
+        return;
+    }
+
+    if (!blIsRunning)
     {
         return;
     }
@@ -214,8 +246,23 @@ VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
         return;
     }
 
-	ulLen = dos_strlen(_pszMsg) + EXTRA_LEN;
-	pszQuery = new S8[ulLen];
+    ulLen = dos_strlen(_pszMsg) + EXTRA_LEN;
+    pszQuery = new S8[ulLen];
+    if (NULL == pszQuery)
+    {
+        DOS_ASSERT(0);
+
+        return;
+    }
+
+    pstNode = new DLL_NODE_S;
+    if (NULL == pstNode)
+    {
+        DOS_ASSERT(0);
+
+        delete [] pszQuery;
+        return;
+    }
 
     dos_snprintf(pszQuery, ulLen, "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
                     , "tbl_olog"
@@ -225,14 +272,89 @@ VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
                     , _pszOpterand
                     , _pszResult
                     , _pszMsg);
-    db_query(pstDBHandle, pszQuery, NULL, NULL, NULL);
 
-    //printf("!!%s!!%u!!", pszQuery, ulLen);
-    if (pszQuery)
-	{
-		delete [] pszQuery;
-		pszQuery = NULL;
-	}
+    pstNode->pHandle = pszQuery;
+    pthread_mutex_lock(&this->mutexQueue);
+    DLL_Add(&this->stQueue, pstNode);
+    pthread_cond_signal(&this->condQueue);
+    pthread_mutex_unlock(&this->mutexQueue);
+}
+
+
+VOID *CLogDB::log_db_task(VOID *ptr)
+{
+    DLL_NODE_S  *pstNode;
+    S8          *pszQuery;
+    CLogDB      *intense = (CLogDB *)ptr;
+    struct timespec         stTimeout;
+
+    if (!intense)
+    {
+        return NULL;
+    }
+
+    intense->blIsRunning = DOS_TRUE;
+
+    while (1)
+    {
+        pthread_mutex_lock(&intense->mutexQueue);
+        stTimeout.tv_sec = time(0) + 1;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&intense->condQueue, &intense->mutexQueue, &stTimeout);
+        pthread_mutex_unlock(&intense->mutexQueue);
+
+        while (1)
+        {
+            if (DLL_Count(&intense->stQueue) == 0)
+            {
+                break;
+            }
+
+            pthread_mutex_lock(&intense->mutexQueue);
+            pstNode = dll_fetch(&intense->stQueue);
+            pthread_mutex_unlock(&intense->mutexQueue);
+
+            if (DOS_ADDR_INVALID(pstNode))
+            {
+                break;
+            }
+
+            if (DOS_ADDR_INVALID(pstNode->pHandle))
+            {
+                DOS_ASSERT(0);
+                delete pstNode;
+                pstNode = NULL;
+                continue;
+            }
+
+            pszQuery = (S8 *)pstNode->pHandle;
+            if ('\0' == pszQuery[0])
+            {
+                DOS_ASSERT(0);
+
+                delete pstNode;
+                pstNode = NULL;
+                continue;
+            }
+
+            db_query(intense->pstDBHandle, pszQuery, NULL, NULL, NULL);
+
+            delete [] pszQuery;
+            pszQuery = NULL;
+            delete pstNode;
+            pstNode = NULL;
+        }
+    }
+
+    intense->blIsRunning = DOS_FALSE;
+    intense->blWaitingExit = DOS_FALSE;
+
+    return NULL;
+}
+
+VOID CLogDB::log_exit()
+{
+    this->blWaitingExit = DOS_TRUE;
 }
 
 #endif

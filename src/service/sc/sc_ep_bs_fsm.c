@@ -409,7 +409,7 @@ VOID sc_bs_hb_interval_timeout(U64 uLIndex)
         return;
     }
 
-    sc_logr_info(SC_BS, "Heartbeat between BS and SC interval timeout. Client Index : %u", uLIndex);
+    sc_logr_debug(SC_BS, "Heartbeat between BS and SC interval timeout. Client Index : %u", uLIndex);
 
     sc_send_hello2bs((U32)uLIndex);
     dos_tmr_start(&g_pstSCBSClient[uLIndex]->hTmrHBTimeout, SC_BS_HB_TIMEOUT, sc_bs_hb_timeout, uLIndex, TIMER_NORMAL_NO_LOOP);
@@ -445,7 +445,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
         return;
     }
 
-    sc_logr_info(SC_BS, "Recv BS Msg. Version: %X, Port:%d, IP:%X, Seq:%d, CR No:%d, Msg Type:%d, ErrCode: %d, Msg Length:%d"
+    sc_logr_debug(SC_BS, "Recv BS Msg. Version: %X, Port:%d, IP:%X, Seq:%d, CR No:%d, Msg Type:%d, ErrCode: %d, Msg Length:%d"
                     , pstMsgHeader->usVersion
                     , pstMsgHeader->usPort
                     , pstMsgHeader->aulIPAddr[0]

@@ -70,12 +70,13 @@ VOID pts_web_close_socket_without_sem(S32 lSocket)
 VOID pts_web_free_resource(S32 lSocket)
 {
     PT_CC_CB_ST             *pstCCNode          = NULL;
-    DLL_NODE_S              *pstListNode        = NULL;
+    HASH_NODE_S             *pstListNode        = NULL;
     STREAM_CACHE_ADDR_CB_ST *pstStreamCacheAddr = NULL;
-    PT_NEND_RECV_NODE_ST stNeedRecvNode;
-    PT_MSG_TAG stMsgDes;
-    PTS_CLIENT_CB_ST stClientMsg;
-    PTS_CLIENT_CB_ST *pstClient = NULL;
+    PT_NEND_RECV_NODE_ST    stNeedRecvNode;
+    PT_MSG_TAG              stMsgDes;
+    PTS_CLIENT_CB_ST        stClientMsg;
+    PTS_CLIENT_CB_ST        *pstClient          = NULL;
+    U32                     ulHashIndex         = 0;
 
     pthread_mutex_lock(&g_mutexWebClient);
     pstClient = pts_clinetCB_search_by_sockfd(&m_stClinetCBList, lSocket);
@@ -96,8 +97,9 @@ VOID pts_web_free_resource(S32 lSocket)
     stMsgDes.enDataType = PT_DATA_WEB;
     stMsgDes.ulStreamID = stClientMsg.ulStreamID;
     /* 向ptc发送结束通知 */
+    pts_stream_addr_hash_func(stClientMsg.ulStreamID, &ulHashIndex);
     pthread_mutex_lock(&g_mutexStreamAddrList);
-    pstListNode = dll_find(&g_stStreamAddrList, (VOID *)&stClientMsg.ulStreamID, pts_find_stream_addr_by_streamID);
+    pstListNode = hash_find_node(g_pstStreamAddrList, ulHashIndex, (VOID *)&stClientMsg.ulStreamID, pts_find_stream_addr_by_streamID);
     if (DOS_ADDR_VALID(pstListNode))
     {
         pstStreamCacheAddr = pstListNode->pHandle;
@@ -112,7 +114,7 @@ VOID pts_web_free_resource(S32 lSocket)
             pstStreamCacheAddr = NULL;
         }
 
-        dll_delete(&g_stStreamAddrList, pstListNode);
+        hash_delete_node(g_pstStreamAddrList, pstListNode, ulHashIndex);
         dos_dmem_free(pstListNode);
         pstListNode= NULL;
     }
@@ -953,7 +955,7 @@ void *pts_send_msg2browser_pthread(void *arg)
     PT_DATA_TCP_ST              *pstDataTcp         = NULL;
     S8                          *pcSendMsg          = NULL;
     STREAM_CACHE_ADDR_CB_ST     *pstStreamCacheAddr = NULL;
-    DLL_NODE_S                  *pstListNode        = NULL;
+    HASH_NODE_S                 *pstListNode        = NULL;
     U32                         ulArraySub          = 0;
     S32                         lResult             = 0;
     PT_NEND_RECV_NODE_ST        stNeedRecvNode;
@@ -964,9 +966,11 @@ void *pts_send_msg2browser_pthread(void *arg)
     struct timeval              now;
     struct timespec             timeout;
     S32                         lCurrSeq            = 0;
+    U32                         ulHashIndex         = 0;
 
+    pts_stream_addr_hash_func(pstParam->ulStreamID, &ulHashIndex);
     pthread_mutex_lock(&g_mutexStreamAddrList);
-    pstListNode = dll_find(&g_stStreamAddrList, &pstParam->ulStreamID, pts_find_stream_addr_by_streamID);
+    pstListNode = hash_find_node(g_pstStreamAddrList, ulHashIndex, &pstParam->ulStreamID, pts_find_stream_addr_by_streamID);
     if (DOS_ADDR_INVALID(pstListNode))
     {
         pthread_mutex_unlock(&g_mutexStreamAddrList);
