@@ -663,7 +663,7 @@ S32 bsd_delete_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg)
 {
     S8 szQuery[256] = {0, };
 
-    dos_snprintf(szQuery, sizeof(szQuery), "delete from tmp_tbl_modify;");
+    dos_snprintf(szQuery, sizeof(szQuery), "delete from tmp_tbl_bsmodify;");
     db_transaction_begin(g_pstDBHandle);
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) != DB_ERR_SUCC)
     {
@@ -689,7 +689,7 @@ S32 bsd_walk_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg)
         return -1;
     }
 
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,ctime,json_fields FROM tmp_tbl_modify;");
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,ctime,json_fields FROM tmp_tbl_bsmodify;");
 
     if (db_query(g_pstDBHandle, szQuery, bsd_walk_web_cmd_cb, NULL, NULL) != DB_ERR_SUCC)
     {
@@ -697,7 +697,7 @@ S32 bsd_walk_web_cmd_tbl(BS_INTER_MSG_WALK *pstMsg)
         return -1;
     }
 
-    dos_snprintf(szQuery, sizeof(szQuery), "delete from tmp_tbl_modify;");
+    dos_snprintf(szQuery, sizeof(szQuery), "delete from tmp_tbl_bsmodify;");
     db_transaction_begin(g_pstDBHandle);
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) != DB_ERR_SUCC)
     {

@@ -815,7 +815,7 @@ S32 bs_show_customer(U32 ulIndex, U32 ulObjectID)
     dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s%10s",
                  "TS", "Call", "Ring", "Busy",
                  "NotExist", "NoAnswer", "Reject", "EarlyRel",
-                 "Answer", "ConnAgent", "AgentAswr", "Pdd"
+                 "Answer", "ConnAgent", "AgentAswr", "Pdd",
                  "Long", "WaitAgTm", "AgAswrTm");
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
