@@ -195,15 +195,12 @@ void CLogDB::log_write(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLev
     pszQuery = new S8[ulLen];
     if (!pszQuery)
     {
-        DOS_ASSERT(0);
         return;
     }
 
     pstNode = new DLL_NODE_S;
     if (NULL == pstNode)
     {
-        DOS_ASSERT(0);
-
         delete [] pszQuery;
         return;
     }
@@ -250,16 +247,12 @@ VOID CLogDB::log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
     pszQuery = new S8[ulLen];
     if (NULL == pszQuery)
     {
-        DOS_ASSERT(0);
-
         return;
     }
 
     pstNode = new DLL_NODE_S;
     if (NULL == pstNode)
     {
-        DOS_ASSERT(0);
-
         delete [] pszQuery;
         return;
     }
@@ -321,7 +314,6 @@ VOID *CLogDB::log_db_task(VOID *ptr)
 
             if (DOS_ADDR_INVALID(pstNode->pHandle))
             {
-                DOS_ASSERT(0);
                 delete pstNode;
                 pstNode = NULL;
                 continue;
@@ -330,8 +322,6 @@ VOID *CLogDB::log_db_task(VOID *ptr)
             pszQuery = (S8 *)pstNode->pHandle;
             if ('\0' == pszQuery[0])
             {
-                DOS_ASSERT(0);
-
                 delete pstNode;
                 pstNode = NULL;
                 continue;

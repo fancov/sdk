@@ -33,7 +33,7 @@ extern "C"{
 #define db_mem_alloc   dos_dmem_alloc
 #define db_mem_free    dos_dmem_free
 #define db_memset      memset
-#define db_assert      DOS_ASSERT
+#define db_assert      do{;}while(0)
 #define db_strlen      dos_strlen
 #define db_strncpy     dos_strncpy
 #define db_snprintf    dos_snprintf
