@@ -4248,6 +4248,7 @@ S32 sc_load_customer_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 U32 sc_load_route(U32 ulIndex)
 {
     S8 szSQL[1024];
+    S32 lRet;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
@@ -4261,7 +4262,14 @@ U32 sc_load_route(U32 ulIndex)
                     , ulIndex);
     }
 
-    db_query(g_pstSCDBHandle, szSQL, sc_load_route_cb, NULL, NULL);
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_load_route_cb, NULL, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_FUNC, "Load route FAIL(ID:%u).", ulIndex);
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_FUNC, "Load route SUCC,(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }

@@ -1477,7 +1477,7 @@ U32 sc_show_caller(U32 ulIndex, U32 ulCallerID)
     U32 ulHashIndex = U32_BUTT;
 
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%8s%8s%8s%12s%8s%25s"
-                    , "No.", "Valid", "TraceOn", "Index", "Customer ID", "Times", "Number");
+                    , "No.", "Valid", "TraceOn", "Index", "CustomerID", "Times", "Number");
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------");
 
@@ -1504,6 +1504,7 @@ U32 sc_show_caller(U32 ulIndex, U32 ulCallerID)
                             , pstCaller->ulCustomerID
                             , pstCaller->ulTimes
                             , pstCaller->szNumber);
+             cli_out_string(ulIndex, szBuff);
         }
     }
 
@@ -1545,6 +1546,7 @@ U32 sc_show_caller_grp(U32 ulIndex, U32 ulGrpID)
                             , pstCallerGrp->ulPolicy
                             , pstCallerGrp->bDefault == DOS_FALSE?"No":"Yes"
                             , pstCallerGrp->szGrpName);
+            cli_out_string(ulIndex, szBuff);
         }
     }
 
@@ -1586,6 +1588,7 @@ U32  sc_show_caller_setting(U32 ulIndex, U32 ulSettingID)
                             , pstSetting->ulDstID
                             , pstSetting->ulDstType
                             , pstSetting->szSettingName);
+            cli_out_string(ulIndex, szBuff);
         }
     }
     return DOS_SUCC;
@@ -2000,23 +2003,23 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     {
         return -1;
     }
-    if (dos_strnicmp(argv[2], "status", dos_strlen("status")) == 0)
+    if (dos_stricmp(argv[2], "status") == 0)
     {
         sc_show_status(ulIndex, argc, argv);
     }
-    else if (dos_strnicmp(argv[2], "sip", dos_strlen("sip")) == 0)
+    else if (dos_stricmp(argv[2], "sip") == 0)
     {
         sc_show_sip_acc(ulIndex, argc, argv);
     }
-    else if (dos_strnicmp(argv[2], "cb", dos_strlen("cb")) == 0)
+    else if (dos_stricmp(argv[2], "cb") == 0)
     {
         sc_show_cb(ulIndex);
     }
-    else if (dos_strnicmp(argv[2], "stat", dos_strlen("stat")) == 0)
+    else if (dos_stricmp(argv[2], "stat") == 0)
     {
         sc_show_stat(ulIndex, argc, argv);
     }
-    else if (dos_strnicmp(argv[2], "httpd", dos_strlen("httpd")) == 0)
+    else if (dos_stricmp(argv[2], "httpd") == 0)
     {
         if (3 == argc)
         {
@@ -2039,7 +2042,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (dos_strnicmp(argv[2], "http", dos_strlen("http")) == 0)
+    else if (dos_stricmp(argv[2], "http") == 0)
     {
         if (3 == argc)
         {
@@ -2062,7 +2065,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (dos_strnicmp(argv[2], "gateway", dos_strlen("gateway")) == 0)
+    else if (dos_stricmp(argv[2], "gateway") == 0)
     {
         if (3 == argc)
         {
@@ -2085,7 +2088,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (dos_strnicmp(argv[2], "gwgrp", dos_strlen("gwgrp")) == 0)
+    else if (dos_stricmp(argv[2], "gwgrp") == 0)
     {
         if (3 == argc)
         {
@@ -2108,7 +2111,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (dos_strnicmp(argv[2], "scb", dos_strlen("scb")) == 0)
+    else if (dos_stricmp(argv[2], "scb") == 0)
     {
         if (3 == argc)
         {
@@ -2119,7 +2122,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (dos_strnicmp(argv[2], "task", dos_strlen("task")) == 0)
+    else if (dos_stricmp(argv[2], "task") == 0)
     {
         if (3 == argc)
         {
@@ -2159,7 +2162,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (dos_strnicmp(argv[2], "caller", dos_strlen("caller")) == 0)
+    else if (dos_stricmp(argv[2], "caller") == 0)
     {
         if (3 == argc)
         {
@@ -2182,7 +2185,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (dos_strnicmp(argv[2], "callee", dos_strlen("callee")) == 0)
+    else if (dos_stricmp(argv[2], "callee") == 0)
     {
         if (3 == argc)
         {
@@ -2205,7 +2208,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (dos_strnicmp(argv[2], "agentgrp", dos_strlen("agentgrp")) == 0)
+    else if (dos_stricmp(argv[2], "agentgrp") == 0)
     {
         if (3 == argc)
         {
@@ -2249,7 +2252,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (dos_strnicmp(argv[2], "agent", dos_strlen("agent")) == 0)
+    else if (dos_stricmp(argv[2], "agent") == 0)
     {
         if (3 == argc)
         {
@@ -2293,7 +2296,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (0 == dos_strnicmp(argv[2], "route", dos_strlen("route")))
+    else if (0 == dos_stricmp(argv[2], "route"))
     {
         if (4 == argc)
         {
@@ -2309,7 +2312,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
         }
         sc_show_route(ulIndex, ulID);
     }
-    else if (0 == dos_strnicmp(argv[2], "did", dos_strlen("did")))
+    else if (0 == dos_stricmp(argv[2], "did"))
     {
         if (3 == argc)
         {
@@ -2320,7 +2323,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             sc_show_did(ulIndex, argv[3]);
         }
     }
-    else if (0 == dos_strnicmp(argv[2], "blacklist", dos_strlen("blacklist")))
+    else if (0 == dos_stricmp(argv[2], "blacklist"))
     {
         if (4 == argc)
         {
@@ -2336,7 +2339,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
         }
         sc_show_black_list(ulIndex, ulID);
     }
-    else if (0 == dos_strnicmp(argv[2], "caller", dos_strlen("caller")))
+    else if (0 == dos_stricmp(argv[2], "_caller"))
     {
         if (3 == argc)
         {
@@ -2352,7 +2355,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             sc_show_caller(ulIndex, ulID);
         }
     }
-    else if (0 == dos_strnicmp(argv[2], "callergrp", dos_strlen("callergrp")))
+    else if (0 == dos_stricmp(argv[2], "callergrp"))
     {
         if (3 == argc)
         {
@@ -2368,7 +2371,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             sc_show_caller_grp(ulIndex, ulID);
         }
     }
-    else if (0 == dos_strnicmp(argv[2], "callerset", dos_strlen("callerset")))
+    else if (0 == dos_stricmp(argv[2], "callerset"))
     {
         if (3 == argc)
         {
