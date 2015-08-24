@@ -6,7 +6,8 @@ Group:          Applications/Internet
 License:        GPL
 URL:            www.dipcc.com
 Source0:        <sourcepath>
- 
+Requires:       glibc >= 2.0 mysql-libs >= 5.1.73
+
 %description
 Design by DIPCC
  

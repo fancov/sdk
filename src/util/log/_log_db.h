@@ -37,15 +37,24 @@ class CLogDB : virtual public CLog
 private:
     DB_HANDLE_ST  *pstDBHandle;
     BOOL          blInited;       /* mysql是否被初始化了 */
+    BOOL          blWaitingExit;
+    BOOL          blIsRunning;
     U32           ulLogLevel;
+    pthread_t     pthTaskHandle;
+    pthread_mutex_t mutexQueue;
+    pthread_cond_t  condQueue;
+    DLL_S         stQueue;
+
 public:
     CLogDB();
     ~CLogDB();
     S32 log_init();
     S32 log_init(S32 _lArgc, S8 **_pszArgv);
     S32 log_set_level(U32 ulLevel);
+    VOID log_exit();
     VOID log_write(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLevel, const S8 *_pszMsg, U32 _ulLevel);
     VOID log_write(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_pszOpterand, const S8* _pszResult, const S8 *_pszMsg);
+    static VOID *log_db_task(VOID *ptr);
 };
 
 #endif
