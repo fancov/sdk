@@ -1,0 +1,457 @@
+#!/bin/sh
+
+SERVICE_ROOT=/dipcc
+PID_DIP=${SERVICE_ROOT}/var/run/pid
+
+function wait_for_pid () {
+    try=0
+
+    while test $try -lt 10 ; do
+        case "$1" in
+            'created')
+            if [ -f "$2" ] ; then
+                try=''
+                break
+            fi
+            ;;
+
+            'removed')
+            if [ ! -f "$2" ] ; then
+                try=''
+                break
+            fi
+            ;;
+        esac
+
+        printf "\b"$try
+        try=`expr $try + 1`
+        sleep 1
+
+    done
+
+    printf "\b"
+}
+
+function start_ctrl_panel()
+{
+    printf "%-30s" "Starting ctrl panel"
+    if [ -f ${PID_DIP}/ctrl_paneld.pid ]; then
+        PID=`cat ${PID_DIP}/ctrl_paneld.pid`
+        if ps -p $PID | grep -q $PID; then
+            echo "[FAIL] Already running"
+            return 1
+        fi
+    fi
+
+    (${SERVICE_ROOT}/bin/ctrl_paneld > /dev/null 2>&1 &)
+    if [ $? -ne 0 ]; then
+        echo "[FAIL] Start Failed"
+        return 1
+    fi
+    
+    wait_for_pid created ${PID_DIP}/ctrl_paneld.pid 
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Start without PID File"
+        return 1
+    else
+        echo [DONE]
+    fi
+}
+
+function stop_ctrl_panel()
+{
+    printf "%-30s" "Stopping ctrl panel"
+    if [ ! -f ${PID_DIP}/ctrl_paneld.pid ]; then
+        echo "[Not Running]"
+        return 1
+    fi
+
+    kill `cat ${PID_DIP}/ctrl_paneld.pid`
+    
+    wait_for_pid removed ${PID_DIP}/ctrl_paneld.pid
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Stop without delete PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function status_ctrl_panel()
+{
+    printf "%-30s" "ctrl panel"
+    if [ ! -r ${PID_DIP}/ctrl_paneld.pid ] ; then
+        echo "stopped"
+        return 1
+    fi
+
+    PID=`cat ${PID_DIP}/ctrl_paneld.pid`
+    if ps -p $PID | grep -q $PID; then
+        echo "running"
+    else
+        echo "dead"
+    fi
+}
+
+function start_bs()
+{
+    printf "%-30s" "Starting bs"
+    if [ -f ${PID_DIP}/bsd.pid ]; then
+        PID=`cat ${PID_DIP}/bsd.pid`
+        if ps -p $PID | grep -q $PID; then
+            echo "[FAIL] Already running"
+            return 1
+        fi
+    fi
+
+    (${SERVICE_ROOT}/bin/bsd  > /dev/null 2>&1 &)
+    if [ $? -ne 0 ]; then
+        echo "[FAIL] Start failed"
+        return 1
+    fi
+    
+    wait_for_pid created ${PID_DIP}/bsd.pid 
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Start without PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function stop_bs()
+{
+    printf "%-30s" "Stopping bs"
+    if [ ! -f ${PID_DIP}/bsd.pid ]; then
+        echo "[Not Running]"
+        return 1
+    fi
+    
+    kill `cat ${PID_DIP}/bsd.pid`
+    
+    wait_for_pid removed ${PID_DIP}/bsd.pid
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Stop without delete PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function status_bs()
+{
+    printf "%-30s" "bs"
+    if [ ! -r ${PID_DIP}/bsd.pid ] ; then
+        echo "stopped"
+        return 1
+    fi
+
+    PID=`cat ${PID_DIP}/bsd.pid`
+    if ps -p $PID | grep -q $PID; then
+        echo "running"
+    else
+        echo "exists"
+    fi
+}
+
+function start_sc()
+{
+    printf "%-30s" "Starting sc"
+    if [ -f ${PID_DIP}/scd.pid ]; then
+        PID=`cat ${PID_DIP}/scd.pid`
+        if ps -p $PID | grep -q $PID; then
+            echo "[FAIL] Already running"
+            return 1
+        fi
+    fi
+
+    (${SERVICE_ROOT}/bin/scd > /dev/null 2>&1 &)
+    if [ $? -ne 0 ]; then
+        echo "[FAIL] Start Failed"
+        return 1
+    fi
+    
+    wait_for_pid created ${PID_DIP}/scd.pid 
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Start without PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function stop_sc()
+{
+    printf "%-30s" "Stopping sc"
+    if [ ! -f ${PID_DIP}/scd.pid ]; then
+        echo "[Not Running]"
+        return 1
+    fi
+
+    kill `cat ${PID_DIP}/scd.pid`
+
+    wait_for_pid removed ${PID_DIP}/scd.pid
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Stop without delete PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function status_sc()
+{
+    printf "%-30s" "sc"
+    if [ ! -r ${PID_DIP}/scd.pid ] ; then
+        echo "stopped"
+        return 1
+    fi
+
+    PID=`cat ${PID_DIP}/scd.pid`
+    if ps -p $PID | grep -q $PID; then
+        echo "running"
+    else
+        echo "dead"
+    fi
+}
+
+function start_ptc()
+{
+    printf "%-30s" "Starting ptc"
+    if [ -f ${PID_DIP}/ptcd.pid ]; then
+        PID=`cat ${PID_DIP}/ptcd.pid`
+        if ps -p $PID | grep -q $PID; then
+            echo "[FAIL] Already running"
+            return 1
+        fi
+    fi
+
+    (${SERVICE_ROOT}/bin/ptcd > /dev/null 2>&1 &)
+    if [ $? -ne 0 ]; then
+        echo "[FAIL] Start Failed"
+    fi
+
+    wait_for_pid created ${PID_DIP}/ptcd.pid    
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Start without PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function stop_ptc()
+{
+    printf "%-30s" "Stopping ptc"
+    if [ ! -f ${PID_DIP}/ptcd.pid ]; then
+        echo "[Not Running]"
+        return 1
+    fi
+
+    kill `cat ${PID_DIP}/ptcd.pid`
+
+    wait_for_pid removed ${PID_DIP}/ptcd.pid
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Stop without delete PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function status_ptc()
+{
+    printf "%-30s" "ptc"
+    if [ ! -r ${PID_DIP}/ptcd.pid ] ; then
+        echo "stopped"
+        return 1
+    fi
+
+    PID=`cat ${PID_DIP}/ptcd.pid`
+    if ps -p $PID | grep -q $PID; then
+        echo "running"
+    else
+        echo "dead"
+    fi
+}
+
+function start_monitor()
+{
+    printf "%-30s" "Starting monitor"
+    if [ -f ${PID_DIP}/monitord.pid ]; then
+        PID=`cat ${PID_DIP}/monitord.pid`
+        if ps -p $PID | grep -q $PID; then
+            echo "[FAIL] Already running"
+            return 1
+        fi
+    fi
+
+    (${SERVICE_ROOT}/bin/monitord > /dev/null 2>&1 &)
+    if [ $? -ne 0 ]; then
+        echo "[FAIL] Start Failed"
+    fi
+
+    wait_for_pid created ${PID_DIP}/monitord.pid    
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Start without PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function stop_monitor()
+{
+    printf "%-30s" "Stopping monitor"
+    if [ ! -f ${PID_DIP}/monitord.pid ]; then
+        echo "[Not Running]"
+        return 1
+    fi
+
+    kill  `cat ${PID_DIP}/monitord.pid`
+
+    wait_for_pid removed ${PID_DIP}/monitord.pid
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Stop without delete PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function status_monitor()
+{
+    printf "%-30s" "monitor"
+    if [ ! -r ${PID_DIP}/monitord.pid ] ; then
+        echo "stopped"
+        return 1
+    fi
+
+    PID=`cat ${PID_DIP}/monitord.pid`
+    if ps -p $PID | grep -q $PID; then
+        echo "running"
+    else
+        echo "dead"
+    fi
+}
+
+function start_all()
+{
+    start_bs
+    start_sc
+    start_ctrl_panel
+    start_ptc
+    start_monitor
+}
+
+function stop_all()
+{
+    stop_monitor
+    stop_sc
+    stop_bs
+    stop_ptc
+    stop_ctrl_panel
+}
+
+function status_all()
+{
+    status_sc
+    status_bs
+    status_ptc
+    status_ctrl_panel
+    status_monitor
+}
+
+case $1 in
+    start)
+        if [ -z $2 ]; then
+            start_all
+            
+            exit 0
+        fi
+
+        case $2 in
+            bs)
+                start_bs
+            ;;
+            sc)
+                start_sc
+            ;;
+            ctrl_panel)
+                start_ctrl_panel
+            ;;
+            ptc)
+                start_ptc
+            ;;
+            monitor)
+                start_monitor
+            ;;
+            *)
+                echo "$2 is not a component of the ipcc system."
+            ;;
+        esac
+    ;;
+    stop)
+        if [ -z $2 ]; then
+            stop_all
+            
+            exit 0
+        fi
+
+        case $2 in
+            bs)
+                stop_bs
+            ;;
+            sc)
+                stop_sc
+            ;;
+            ctrl_panel)
+                stop_ctrl_panel
+            ;;
+            ptc)
+                stop_ptc
+            ;;
+            monitor)
+                stop_monitor
+            ;;
+            *)
+                echo "$2 is not a component of the ipcc system."
+            ;;
+        esac     
+    ;;
+    status)
+        if [ -z $2 ]; then
+            status_all
+            
+            exit 0
+        fi
+
+        case $2 in
+            bs)
+                status_bs
+            ;;
+            sc)
+                status_sc
+            ;;
+            ctrl_panel)
+                status_ctrl_panel
+            ;;
+            ptc)
+                status_ptc
+            ;;
+            monitor)
+                status_monitor
+            ;;
+            *)
+                echo "$2 is not a component of the ipcc system."
+            ;;
+        esac     
+    ;;
+    restart)
+        $0 stop $2
+        $0 start $2
+    ;;
+    *)
+            echo "Use this script with parameter start|stop|restart bs|sc|ctrl_panel|monitor|ptc"
+    ;;
+esac

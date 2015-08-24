@@ -1,0 +1,116 @@
+#!/bin/sh
+#chkconfig:35 90 90
+#description:ptsd
+
+SERVICE_ROOT=/dipcc
+PID_DIP=${SERVICE_ROOT}/var/run/pid
+
+wait_for_pid () {
+    try=0
+
+    while test $try -lt 10 ; do
+        case "$1" in
+            'created')
+            if [ -f "$2" ] ; then
+                try=''
+                break
+            fi
+            ;;
+
+            'removed')
+            if [ ! -f "$2" ] ; then
+                try=''
+                break
+            fi
+            ;;
+        esac
+
+        printf "\b"$try
+        try=`expr $try + 1`
+        sleep 1
+
+    done
+
+    printf "\b"
+}
+
+start_pts()
+{
+    printf "%-30s" "Starting pts"
+    if [ -f ${PID_DIP}/ptsd.pid ]; then
+        PID=`cat ${PID_DIP}/ptsd.pid`
+        if ps -p $PID | grep -q $PID; then
+            echo "[FAIL] Already running"
+            return 1
+        fi
+    fi
+
+    (${SERVICE_ROOT}/bin/ptsd > /dev/null 2>&1 &)
+	sleep 3
+    if [ $? -ne 0 ]; then
+        echo "[FAIL] Start Failed"
+    fi
+
+    wait_for_pid created ${PID_DIP}/ptsd.pid    
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Start without PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+stop_pts()
+{
+    printf "%-30s" "Stopping pts"
+    if [ ! -f ${PID_DIP}/ptsd.pid ]; then
+        echo "[Not Running]"
+        return 1
+    fi
+
+    kill `cat ${PID_DIP}/ptsd.pid`
+
+    wait_for_pid removed ${PID_DIP}/ptsd.pid
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Stop without delete PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+status_pts()
+{
+    printf "%-30s" "pts"
+    if [ ! -r ${PID_DIP}/ptsd.pid ] ; then
+        echo "stopped"
+        return 1
+    fi
+
+    PID=`cat ${PID_DIP}/ptsd.pid`
+    if ps -p $PID | grep -q $PID; then
+        echo "running"
+    else
+        echo "dead"
+    fi
+}
+
+
+case $1 in
+    start)
+		start_pts
+    ;;
+    stop)
+       stop_pts
+    ;;
+    status)
+		status_pts
+    ;;
+    restart)
+        $0 stop
+        $0 start
+    ;;
+    *)
+		echo "Use this script with parameter start|stop|restart"
+    ;;
+esac
