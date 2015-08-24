@@ -174,7 +174,7 @@ def add_sip(ulSipID):
             return -1
 
     file_info.print_file_info('Add new SIP(%s) SUCC.' % str(seqUserID))
-    return 0
+    return 1
 
 
 def del_sip(ulSipID, seqUserID, ulCustomerID):

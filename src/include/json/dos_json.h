@@ -14,9 +14,9 @@ typedef struct tagJSONObj
 
 
 #define JSON_ARRAY_SCAN(index, array, array_item) \
-	for ((index)=0, (array_item) = json_array_at((array), (index)) \
-			; (index)<json_array_length((array)) && ((array_item)) \
-			; (index)++, (array_item) = json_array_at((array), (index)))
+    for ((index)=0, (array_item) = json_array_at((array), (index)) \
+            ; (index)<json_array_length((array)) && ((array_item)) \
+            ; (index)++, (array_item) = json_array_at((array), (index)))
 
 
 

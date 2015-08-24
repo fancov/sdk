@@ -2153,7 +2153,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
             break;
     }
 
-    ulRet = sc_ep_esl_execute_cmd("api reloadxml\r\n\r\n");
+    ulRet = sc_ep_esl_execute_cmd("api reloadxml\r\n");
     if (DOS_SUCC != ulRet)
     {
         DOS_ASSERT(0);

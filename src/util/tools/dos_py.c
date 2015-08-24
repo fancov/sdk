@@ -41,26 +41,27 @@ U32 py_init()
  * 返回值: 执行失败则返回DOS_FAIL;执行成功时若存在返回值则返回Python的返回值，否则返回DOS_SUCC
  *  !!!!!!!!!!!!!!!特别说明!!!!!!!!!!!!!!!!!!
  *  参数pszPyFormat格式为Python参数格式，而非C语言参数格式，具体如下:
- *      "s": (string) [char *] 
+ *      "s": (string) [char *]
  *      "z": (string or None) [char *] 将以NULL结尾的C字符串String转换为Python对象，如果字符串为空则返回None
  *      "u": (Unicode string) [Py_UNICODE *] Unicode(UCS-2或UCS-4)字符串转为Python Unicode对象，如果为空则返回None
- *      "i": (integer) [int] 
- *      "b": (integer) [char] 
- *      "h": (integer) [short int] 
- *      "l": (integer) [long int] 
- *      "B": (integer) [unsigned char] 
- *      "H": (integer) [unsigned short int] 
- *      "I": (integer/long) [unsigned int] 
- *      "k": (integer/long) [unsigned long] 
- *      "d": (float) [double] 
+ *      "i": (integer) [int]
+ *      "b": (integer) [char]
+ *      "h": (integer) [short int]
+ *      "l": (integer) [long int]
+ *      "B": (integer) [unsigned char]
+ *      "H": (integer) [unsigned short int]
+ *      "I": (integer/long) [unsigned int]
+ *      "k": (integer/long) [unsigned long]
+ *      "d": (float) [double]
  *      "f": (float) [float]
  *      "O": 表示一个Python对象
  *  其中参数格式列表需要使用括号括起来
- * 
+ *
  *  使用示例
  *  ulRet = py_exec_func("router", "del_route", "(i)", ulGatewayID);
+ *  说明: 在这里被调用的PyAPI最好有返回值，以保证返回值m_pstRetVal不为空
  **/
-U32   py_exec_func(const char *pszModule, const char *pszFunc, const char *pszPyFormat, ...)
+U32  py_exec_func(const char *pszModule, const char *pszFunc, const char *pszPyFormat, ...)
 {
     S8   szPyScriptPath[MAX_PY_SCRIPT_LEN] = {0,};
     U32  ulRet = DOS_SUCC;
@@ -157,7 +158,7 @@ U32  py_get_version(S8 *pszVersion, U32 ulLen)
 {
     U32 ulRet = 0;
     S8  *pszNewVersion = NULL, *pszPos = NULL;
-    
+
     ulRet = py_exec_func("file_info", "get_interpreter_version", "()");
     if (DOS_SUCC != ulRet)
     {

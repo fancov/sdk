@@ -137,7 +137,6 @@ const S8 *json_array_at(JSON_OBJ_ST *pstJsonArray, S32 ulIndex)
     if (DOS_ADDR_INVALID(jsonVal))
     {
         DOS_ASSERT(0);
-
         return NULL;
     }
 
