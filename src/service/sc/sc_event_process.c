@@ -8286,8 +8286,8 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
     }
 
     /* 判断被叫号码是否是分机号，如果是分机号，就要找到对应的SIP账户，再呼叫，同时呼叫之前还需要获取主叫的分机号，修改ANI为主叫的分机号 */
-    ulCustomerID = sc_ep_get_custom_by_sip_userid(pszSrcNum);
-    pstSCB->ulCustomID = ulCustomerID;
+    //ulCustomerID = sc_ep_get_custom_by_sip_userid(pszSrcNum);
+    ulCustomerID = pstSCB->ulCustomID;
     if (U32_BUTT == ulCustomerID)
     {
         DOS_ASSERT(0);
@@ -8706,16 +8706,37 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         ulCallSrc = sc_ep_get_source(pstEvent);
         ulCallDst = sc_ep_get_destination(pstEvent);
 
-        /* 如果呼叫来至SIP,判断SIP是否属于企业 */
-        if (SC_DIRECTION_SIP == ulCallSrc || SC_DIRECTION_SIP == ulCallDst)
+        /* 获得ulCustomID */
+        if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_PSTN == ulCallDst)
         {
-            if (sc_ep_customer_list_find(pstSCB->ulCustomID) != DOS_SUCC)
-            {
-                SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
-                ulRet = DOS_FAIL;
+            pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
+        }
+        else if (SC_DIRECTION_PSTN == ulCallSrc && SC_DIRECTION_SIP == ulCallDst)
+        {
+            pstSCB->ulCustomID = sc_ep_get_custom_by_did(pstSCB->szCalleeNum);
+        }
+        else if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_SIP == ulCallDst)
+        {
+            pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pszCaller);
+        }
+        else
+        {
+            DOS_ASSERT(0);
+            sc_logr_info(SC_ESL, "Invalid call source or destension. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
 
-                goto proc_finished;
-            }
+            ulRet = DOS_FAIL;
+
+            goto proc_finished;
+        }
+
+        /* 判断SIP是否属于企业 */
+        if (sc_ep_customer_list_find(pstSCB->ulCustomID) != DOS_SUCC)
+        {
+            SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
+            ulRet = DOS_FAIL;
+            sc_logr_info(SC_ESL, "Invalid call source or destension. Source: %d, Dest: %d, CustomID(%u) is not vest in enterprise", ulCallSrc, ulCallDst, pstSCB->ulCustomID);
+
+            goto proc_finished;
         }
 
         sc_logr_info(SC_ESL, "Get call source and dest. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
@@ -8726,7 +8747,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
 
             /* 更改不同的主叫，获取当前呼叫时哪一个客户 */
-            pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
             if (U32_BUTT != pstSCB->ulCustomID)
             {
                 if (sc_ep_outgoing_call_proc(pstSCB) != DOS_SUCC)
@@ -8755,7 +8775,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INBOUND_CALL);
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
 
-            pstSCB->ulCustomID = sc_ep_get_custom_by_did(pstSCB->szCalleeNum);
             if (pstSCB->ulCustomID != U32_BUTT)
             {
                 if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
