@@ -688,7 +688,7 @@ S32 bs_show_customer(U32 ulIndex, U32 ulObjectID)
     cli_out_string(ulIndex, szBuf);
     cli_out_string(ulIndex, "\r\n--------------------------------------------------"
                    "--------------------------------------------------");
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%20s%10u%10u%10u%10u%10u%10u%10u",
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%20s%10s%10s%10u%10u%10u%10u%10u",
                  pstCustomer->ulCustomerID, pstCustomer->szCustomerName,
                  sc_translate_customer_type(pstCustomer->ucCustomerType), bs_translate_customer_state(pstCustomer->ucCustomerState),
                  pstCustomer->ulParentID, pstCustomer->stChildrenList.ulCount,
