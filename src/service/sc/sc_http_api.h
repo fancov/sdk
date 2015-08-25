@@ -115,6 +115,10 @@ enum tagAPICMDActionList
     SC_API_CMD_ACTION_CALLER_SET_ADD,                    /* 增加主叫号码设定 */
     SC_API_CMD_ACTION_CALLER_SET_DELETE,                 /* 删除主叫号码设定 */
     SC_API_CMD_ACTION_CALLER_SET_UPDATE,                 /* 更新主叫号码设定 */
+
+    SC_API_CMD_ACTION_TRANSFORM_ADD,                     /* 增加号码变换 */
+    SC_API_CMD_ACTION_TRANSFORM_DELETE,                  /* 删除号码变换 */
+    SC_API_CMD_ACTION_TRANSFORM_UPDATE,                  /* 更新号码变换 */
     //---------------------------------------------------
 
     SC_API_CMD_ACTION_BUTT

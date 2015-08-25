@@ -1131,7 +1131,7 @@ invalid_params:
 }
 
 U32 sc_http_api_caller_action(list_t *pstArgv)
-{//´ýÍê³É
+{
     S8  *pszCallerID = NULL, *pszAction = NULL;
     U32  ulCallerID, ulAction;
 
@@ -1171,6 +1171,12 @@ U32 sc_http_api_caller_action(list_t *pstArgv)
         ulAction = SC_API_CMD_ACTION_CALLER_UPDATE;
     }
     else
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    if (DOS_SUCC != sc_http_caller_update_proc(ulAction, ulCallerID))
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;

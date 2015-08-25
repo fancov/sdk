@@ -1928,6 +1928,52 @@ SC_SYS_STATUS_EN sc_check_sys_stat()
 }
 
 //------------------------------------------------------
+/**
+ * 函数: U32 sc_http_transform_update_proc(U32 ulAction, U32 ulTransFormID)
+ * 参数: U32 ulAction  行为
+ *       U32 ulTransFormID  变换ID
+ * 功能: 号码变换数据同步
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ **/
+U32 sc_http_transform_update_proc(U32 ulAction, U32 ulTransFormID)
+{
+    U32 ulRet = U32_BUTT;
+
+    if (ulAction > SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_TRANSFORM_ADD:
+        case SC_API_CMD_ACTION_TRANSFORM_UPDATE:
+            sc_load_num_transform(ulTransFormID);
+            break;
+        case SC_API_CMD_ACTION_TRANSFORM_DELETE:
+            ulRet = sc_transform_delete(ulTransFormID);
+            if (DOS_SUCC != ulRet)
+            {
+                ulRet = DOS_FAIL;
+            }
+            break;
+        default:
+            break;
+    }
+
+    if (DOS_SUCC == ulRet)
+    {
+        sc_logr_debug(SC_FUNC, "Update Num Transformation SUCC.(ulAction:%u,ulID:%u)", ulAction, ulTransFormID);
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_FUNC, "Update Num Transformation FAIL.(ulID:%u)", ulTransFormID);
+    }
+    return ulRet;
+}
+
 U32 sc_http_caller_setting_update_proc(U32 ulAction, U32 ulSettingID)
 {
     if (ulAction >= SC_API_CMD_ACTION_BUTT)

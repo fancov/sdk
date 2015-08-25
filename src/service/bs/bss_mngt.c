@@ -373,7 +373,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
         case BS_CMD_UPDATE:
         {
             HASH_NODE_S     *pstHashNode = NULL;
-            BS_CUSTOMER_ST  *pstCustomer = NULL;
+            //BS_CUSTOMER_ST  *pstCustomer = NULL;
             JSON_OBJ_ST     *pstSubJsonWhere = NULL;
             U32             ulHashIndex, ulCustomerType, ulCustomerState, ulCustomID;
             U32             ulPackageID, ulBanlanceWarning;
@@ -493,6 +493,17 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 pstCustomer->stAccount.ulExpiryTime = (U32)ulExpiryTime;
             }
             pstCustomer->stAccount.lCreditLine  = lMaximumBalance;
+#if 1
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Expiry:%u,CustomerID:%u,Name:%s,MinBalance:%d,State:%u,Type:%u,PackageID:%u,BalanceWarning:%u"
+                        , pstCustomer->stAccount.ulExpiryTime
+                        , pstCustomer->ulCustomerID
+                        , pszCustomName
+                        , lMaximumBalance
+                        , ulCustomerState
+                        , ulCustomerType
+                        , ulPackageID
+                        , ulBanlanceWarning);
+#endif
             json_deinit(&pstSubJsonWhere);
             break;
         }
@@ -585,7 +596,9 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pstHashNode = NULL;
 
             pthread_mutex_unlock(&g_mutexCustomerTbl);
-
+#if 1
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "CustomerID:%u", ulCustomID);
+#endif
             break;
         }
         case BS_CMD_INSERT:
@@ -761,7 +774,19 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             /* 更新客户树 */
             pstCustomer->pstParent = pstCustomParent;
             bs_customer_add_child(pstCustomParent, pstCustomer);
-
+#if 1
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "ExpiryTime:%u,Name:%s,CustomerID:%u,ParentID:%u,State:%u,Type:%u,BillingPkgID:%u,MinBalance:%d,BalanceWarning:%d,Balance:%ld"
+                        , pstCustomer->stAccount.ulExpiryTime
+                        , pstCustomer->szCustomerName
+                        , pstCustomer->ulCustomerID
+                        , pstCustomer->ulParentID
+                        , pstCustomer->ucCustomerState
+                        , pstCustomer->ucCustomerType
+                        , pstCustomer->stAccount.ulBillingPackageID
+                        , pstCustomer->stAccount.lCreditLine
+                        , pstCustomer->stAccount.lBalanceWarning
+                        , pstCustomer->stAccount.LBalance);
+#endif
             break;
         }
         default:

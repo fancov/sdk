@@ -1464,6 +1464,28 @@ U32 sc_caller_setting_delete(U32 ulSettingID)
     return DOS_SUCC;
 }
 
+U32 sc_transform_delete(U32 ulTransformID)
+{
+    DLL_NODE_S *pstListNode = NULL;
+
+    pstListNode = dll_find(&g_stNumTransformList, &ulTransformID, sc_ep_num_transform_find);
+    if (DOS_ADDR_INVALID(pstListNode)
+        || DOS_ADDR_INVALID(pstListNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_FUNC, "Num Transform Delete FAIL.ID %u does not exist.", ulTransformID);
+        return DOS_FAIL;
+    }
+
+    dll_delete(&g_stNumTransformList, pstListNode);
+    dos_dmem_free(pstListNode->pHandle);
+    pstListNode->pHandle= NULL;
+    dos_dmem_free(pstListNode);
+    pstListNode = NULL;
+    sc_logr_debug(SC_FUNC, "Delete Num Transform SUCC.(ID:%u)", ulTransformID);
+
+    return DOS_SUCC;
+}
 
 /* 增加一个号码与号码组的关系 */
 U32 sc_caller_assign_add(U32 ulGrpID, U32 ulCallerID, U32 ulCallerType)
@@ -2622,7 +2644,7 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 }
 
 /**
- * 函数: U32 sc_load_did_number()
+ * 函数: U32 sc_load_gateway(U32 ulIndex)
  * 功能: 加载网关数据
  * 参数:
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
@@ -2650,7 +2672,7 @@ U32 sc_load_gateway(U32 ulIndex)
         sc_logr_error(SC_FUNC, "Load gateway FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
-    sc_logr_info(SC_FUNC, "Load gateway SUCC.(D:%u)", ulIndex);
+    sc_logr_info(SC_FUNC, "Load gateway SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -2837,6 +2859,8 @@ S32 sc_load_gw_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszN
     pthread_mutex_lock(&pstGWGrp->mutexGWList);
     DLL_Add(&pstGWGrp->stGWList, pstListNode);
     pthread_mutex_unlock(&pstGWGrp->mutexGWList);
+
+    sc_logr_debug(SC_FUNC, "Gateway %u will be added into group %u.", ulGatewayID, pstGWGrp->ulGWGrpID);
 
     return DOS_FAIL;
 }
@@ -3541,6 +3565,9 @@ U32 sc_refresh_gateway_grp(U32 ulIndex)
     S8 szSQL[1024];
     U32 ulHashIndex;
     SC_GW_GRP_NODE_ST    *pstGWGrpNode  = NULL;
+#if 1
+    SC_GW_NODE_ST        *pstGWNode = NULL;
+#endif
     HASH_NODE_S          *pstHashNode   = NULL;
     DLL_NODE_S           *pstDLLNode    = NULL;
 
@@ -3573,14 +3600,18 @@ U32 sc_refresh_gateway_grp(U32 ulIndex)
             DOS_ASSERT(0);
             break;
         }
+#if 1
+        pstGWNode = (SC_GW_NODE_ST *)pstDLLNode->pHandle;
+        sc_logr_debug(SC_FUNC, "Gateway %u will be removed from Group %u", pstGWNode->ulGWID, ulIndex);
+#endif
 
+        /* 此处不能释放网关数据，只需释放链表结点即可，因为一个网关可以属于多个网关组，此处删除，容易产生double free信号 */
         if (DOS_ADDR_VALID(pstDLLNode->pHandle))
         {
-            dos_dmem_free(pstDLLNode->pHandle);
+            /*dos_dmem_free(pstDLLNode->pHandle);*/
             pstDLLNode->pHandle = NULL;
         }
 
-        DLL_Init_Node(pstDLLNode);
         dos_dmem_free(pstDLLNode);
         pstDLLNode = NULL;
     }
@@ -3872,18 +3903,7 @@ S32 sc_load_num_transform_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "object", dos_strlen("object")))
-        {
-            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->enObject);
-            if (lRet < 0 || pstNumTransform->enObject >= SC_NUM_TRANSFORM_OBJECT_BUTT)
-            {
-                DOS_ASSERT(0);
-
-                blProcessOK = DOS_FALSE;
-                break;
-            }
-        }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "objet_id", dos_strlen("objet_id")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "object_id", dos_strlen("object_id")))
         {
             if ('\0' == aszValues[lIndex][0])
             {
@@ -3892,6 +3912,17 @@ S32 sc_load_num_transform_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
 
             lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->ulObjectID);
             if (lRet < 0)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "object", dos_strlen("object")))
+        {
+            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->enObject);
+            if (lRet < 0 || pstNumTransform->enObject >= SC_NUM_TRANSFORM_OBJECT_BUTT)
             {
                 DOS_ASSERT(0);
 
@@ -4277,11 +4308,12 @@ U32 sc_load_route(U32 ulIndex)
 U32 sc_load_num_transform(U32 ulIndex)
 {
     S8 szSQL[1024];
+    S32 lRet;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, object, object_id, direction, transform_timing, num_selection, caller_prefixion, callee_prefixion, replace_all, replace_num, del_left, del_right, add_prefixion, add_suffix, priority, expiry FROM tbl_num_transformation BY tbl_num_transformation.priority ASC;");
+                    , "SELECT id, object, object_id, direction, transform_timing, num_selection, caller_prefixion, callee_prefixion, replace_all, replace_num, del_left, del_right, add_prefixion, add_suffix, priority, expiry FROM tbl_num_transformation  ORDER BY tbl_num_transformation.priority ASC;");
     }
     else
     {
@@ -4290,7 +4322,14 @@ U32 sc_load_num_transform(U32 ulIndex)
                     , ulIndex);
     }
 
-    db_query(g_pstSCDBHandle, szSQL, sc_load_num_transform_cb, NULL, NULL);
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_load_num_transform_cb, NULL, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_FUNC, "Load Num Transform FAIL.(ID:%u)", ulIndex);
+        return DOS_FAIL;
+    }
+    sc_logr_debug(SC_FUNC, "Load Num Transform SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -8818,7 +8857,7 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
 
     if (DOS_ADDR_INVALID(pstHandle)
 
-|| DOS_ADDR_INVALID(pstEvent))
+        || DOS_ADDR_INVALID(pstEvent))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;

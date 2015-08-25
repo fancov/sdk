@@ -697,14 +697,14 @@ S32 bs_show_customer(U32 ulIndex, U32 ulObjectID)
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
 
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s %10s%10s%10s%10s%10s%10s%10s%10s",
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s%10s%10s%14s%14s%16s%16s%14s%14s",
                  "AccID", "CustmID", "PackageID", "CreditLn",
                  "WarnLn", "Balance", "ActBalnc", "Rebate", "AccTime");
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
-    cli_out_string(ulIndex, "\r\n--------------------------------------------------"
-                   "--------------------------------------------------");
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%10d%10d%10ld%10ld%10d%10u",
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------------"
+                   "--------------------------------------------------------------");
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%14ld%14ld%16ld%16ld%14d%14u",
                  pstAccount->ulAccountID, pstAccount->ulCustomerID,
                  pstAccount->ulBillingPackageID, pstAccount->lCreditLine,
                  pstAccount->lBalanceWarning, pstAccount->LBalance,

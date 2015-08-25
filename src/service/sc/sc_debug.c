@@ -66,12 +66,14 @@ extern HASH_TABLE_S          *g_pstHashCaller;
 extern HASH_TABLE_S          *g_pstHashCallerGrp;
 extern HASH_TABLE_S          *g_pstHashCallerSetting;
 extern HASH_TABLE_S          *g_pstHashTTNumber;
+extern HASH_TABLE_S          *g_pstHashNumberlmt;
 extern pthread_mutex_t        g_mutexHashDIDNum;
 extern pthread_mutex_t        g_mutexHashBlackList;
 extern pthread_mutex_t        g_mutexRouteList;
 extern DLL_S                  g_stRouteList;
 extern DLL_S                  g_stEventList;
 extern DLL_S                  g_stCustomerList;
+extern DLL_S                  g_stNumTransformList;
 extern SC_DIALER_HANDLE_ST   *g_pstDialerHandle;
 extern DLL_S                  g_stBSMsgList;
 extern SC_EP_TASK_CB          g_astEPTaskList[SC_EP_TASK_NUM];
@@ -1109,12 +1111,11 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
                 continue;
             }
 
-
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the gateway in the gateway group %d:", ulID);
             cli_out_string(ulIndex, szCmdBuff);
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------");
-            cli_out_string(ulIndex, szCmdBuff);
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12s%36s", "Index", "Domain");
+            cli_out_string(ulIndex, szCmdBuff);
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------");
             cli_out_string(ulIndex, szCmdBuff);
 
             DLL_Scan(&pstGWGrpNode->stGWList, pstDLLNode, DLL_NODE_S *)
@@ -1384,7 +1385,7 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n|%14u|%15u|%-24s|%-11s|%14u|%11u"
+                            , "\r\n|%14u|%15u|%-24s|%-11s|%14u|%11u|"
                             , pstDid->ulDIDID
                             , pstDid->ulCustomID
                             , pstDid->szDIDNum[0] == '\0' ? "NULL": pstDid->szDIDNum
@@ -1670,6 +1671,94 @@ U32 sc_show_customer(U32 ulIndex, U32 ulCustomerID)
     return DOS_SUCC;
 }
 
+U32 sc_show_transform(U32 ulIndex, U32 ulID)
+{
+    SC_NUM_TRANSFORM_NODE_ST *pstTransform = NULL;
+    DLL_NODE_S *pstNode = NULL;
+    S8  szBuff[1024] = {0};
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%3s%4s%6s%10s%14s%10s%13s%13s%11s%11s%8s%9s%10s%10s%9s%11s"
+                    , "ID", "Obj", "ObjID", "Direction", "TransformTime", "NumSelect", "CalleePrefix", "CallerPrefix", "ReplaceAll", "ReplaceNum", "DelLeft", "DelRight", "AddPrefix", "AddSuffix", "Priority", "Expiry");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------");
+
+    DLL_Scan(&g_stNumTransformList, pstNode, DLL_NODE_S *)
+    {
+        if (DOS_ADDR_INVALID(pstNode)
+            || DOS_ADDR_INVALID(pstNode->pHandle))
+        {
+            continue;
+        }
+        pstTransform = (SC_NUM_TRANSFORM_NODE_ST *)pstNode->pHandle;
+        if (U32_BUTT != ulID && ulID != pstTransform->ulID)
+        {
+            continue;
+        }
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%3u%4u%6u%10u%14u%10u%13s%13s%11s%11s%8u%9u%10s%10s%9u%11u"
+                        , pstTransform->ulID
+                        , pstTransform->enObject
+                        , pstTransform->ulObjectID
+                        , pstTransform->enDirection
+                        , pstTransform->enTiming
+                        , pstTransform->enNumSelect
+                        , pstTransform->szCalleePrefix
+                        , pstTransform->szCallerPrefix
+                        , pstTransform->bReplaceAll == DOS_FALSE?"No":"Yes"
+                        , pstTransform->szReplaceNum
+                        , pstTransform->ulDelLeft
+                        , pstTransform->ulDelRight
+                        , pstTransform->szAddPrefix
+                        , pstTransform->szAddSuffix
+                        , pstTransform->enPriority
+                        , pstTransform->ulExpiry);
+        cli_out_string(ulIndex, szBuff);
+    }
+    return DOS_SUCC;
+}
+
+U32 sc_show_numlmt(U32 ulIndex, U32 ulID)
+{
+    SC_NUMBER_LMT_NODE_ST *pstNumlmt = NULL;
+    U32 ulHashIndex = U32_BUTT;
+    HASH_NODE_S *pstHashNode = NULL;
+    S8  szBuff[256] = {0};
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%6s%7s%6s%6s%5s%10s%10s%24s"
+                    , "ID", "GrpID", "Handle", "Limit", "Cycle", "Type", "NumberID", "StatUsed", "Prefix");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------------------");
+
+    HASH_Scan_Table(g_pstHashNumberlmt, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashNumberlmt, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstNumlmt = (SC_NUMBER_LMT_NODE_ST *)pstHashNode->pHandle;
+            if (ulID != U32_BUTT && ulID != pstNumlmt->ulID)
+            {
+                continue;
+            }
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%6u%7u%6u%6u%5u%10u%10u%24s"
+                            , pstNumlmt->ulID
+                            , pstNumlmt->ulGrpID
+                            , pstNumlmt->ulHandle
+                            , pstNumlmt->ulLimit
+                            , pstNumlmt->ulCycle
+                            , pstNumlmt->ulType
+                            , pstNumlmt->ulNumberID
+                            , pstNumlmt->ulStatUsed
+                            , pstNumlmt->szPrefix);
+             cli_out_string(ulIndex, szBuff);
+        }
+    }
+    return DOS_SUCC;
+}
 
 S32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
 {
@@ -2496,6 +2585,38 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             sc_show_customer(ulIndex, ulID);
         }
     }
+    else if (0 == dos_stricmp(argv[2], "transform"))
+    {
+        if (3 == argc)
+        {
+            sc_show_transform(ulIndex, U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return -1;
+            }
+            sc_show_transform(ulIndex, ulID);
+        }
+    }
+    else if (0 == dos_stricmp(argv[2], "numlmt"))
+    {
+        if (3 == argc)
+        {
+            sc_show_numlmt(ulIndex, U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return -1;
+            }
+            sc_show_numlmt(ulIndex, ulID);
+        }
+    }
 
     return 0;
 }
@@ -2660,7 +2781,7 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
 cc_usage:
 
     cli_out_string(ulIndex, "\r\n");
-    cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb|route|blacklist|tt|_caller|callergrp|callerset|customer [id]\r\n");
+    cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb|route|blacklist|tt|_caller|callergrp|callerset|customer|transform|numlmt [id]\r\n");
     cli_out_string(ulIndex, "cc show did [did_number]\r\n");
     cli_out_string(ulIndex, "cc show task [custom] id\r\n");
     cli_out_string(ulIndex, "cc show caller|callee taskid\r\n");
