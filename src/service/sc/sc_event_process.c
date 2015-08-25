@@ -6276,11 +6276,20 @@ loop_search:
         goto loop_search;
     }
 
-    sc_logr_debug(SC_ESL, "Search Route Finished. Result: %s, Route ID: %d, Dest Type:%u, Dest ID: %u"
-            , U32_BUTT == ulRouteGrpID ? "FAIL" : "SUCC"
-            , ulRouteGrpID
-            , pstRouetEntry->ulDestType
-            , pstRouetEntry->aulDestID[0]);
+    if (DOS_ADDR_VALID(pstRouetEntry))
+    {
+        sc_logr_debug(SC_ESL, "Search Route Finished. Result: %s, Route ID: %d, Dest Type:%u, Dest ID: %u"
+                , U32_BUTT == ulRouteGrpID ? "FAIL" : "SUCC"
+                , ulRouteGrpID
+                , pstRouetEntry->ulDestType
+                , pstRouetEntry->aulDestID[0]);
+    }
+    else
+    {
+        sc_logr_debug(SC_ESL, "Search Route Finished. Result: %s, Route ID: %d"
+                , U32_BUTT == ulRouteGrpID ? "FAIL" : "SUCC"
+                , ulRouteGrpID);
+    }
 
     pthread_mutex_unlock(&g_mutexRouteList);
 
