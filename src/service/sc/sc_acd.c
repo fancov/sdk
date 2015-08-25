@@ -270,6 +270,27 @@ static S32 sc_acd_agent_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
     return DOS_SUCC;
 }
 
+U32 sc_acd_agent_update_status_db(U32 ulSiteID, U32 ulStatus)
+{
+    S8  szQuery[512] = { 0, };
+    U32 ulStatusDB = 0;
+
+    ulStatusDB = ulStatus > 1 ? 2 : ulStatus;
+
+    dos_snprintf(szQuery, sizeof(szQuery), "UPDATE tbl_agent SET status=%d WHERE id = %u;", ulStatusDB, ulSiteID);
+
+    if (db_query(g_pstSCDBHandle, szQuery, NULL, NULL, NULL) < 0 )
+    {
+
+        sc_logr_info(SC_ACD, "Update agent(%d) status(%d) FAIL!", ulSiteID, ulStatus);
+        return DOS_FAIL;
+    }
+
+    sc_logr_debug(SC_ACD, "Update agent(%d) status(%d) SUCC", ulSiteID, ulStatus);
+
+    return DOS_SUCC;
+}
+
 /*
  * 函  数: U32 sc_acd_agent_update_status(S8 *pszUserID, U32 ulStatus)
  * 功  能: 更新坐席状态
@@ -313,6 +334,9 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
     pstAgentQueueInfo->pstAgentInfo->ucStatus = (U8)ulStatus;
     pstAgentQueueInfo->pstAgentInfo->usSCBNo = (U16)ulSCBNo;
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
+
+    /* 更新数据库中，坐席的状态 */
+    sc_acd_agent_update_status_db(ulSiteID, ulStatus);
 
     return DOS_SUCC;
 }
@@ -688,6 +712,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
     SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode = NULL;
     HASH_NODE_S                  *pstHashNode       = NULL;
     U32                          ulHashVal          = 0;
+    U32                          ulAgentStatusOld   = 0;
 
     SC_TRACE_IN(ulAgentID, ulAction, 0, 0);
 
@@ -724,6 +749,8 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
 
             if (pstAgentQueueNode->pstAgentInfo->ulSiteID == ulAgentID)
             {
+                ulAgentStatusOld = pstAgentQueueNode->pstAgentInfo->ucStatus;
+
                 switch (ulAction)
                 {
                     case SC_ACD_SITE_ACTION_DELETE:
@@ -811,6 +838,13 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                     default:
                         DOS_ASSERT(0);
                         break;
+                }
+
+                /* 状态发生改变，更新数据库 */
+                if (ulAgentStatusOld != pstAgentQueueNode->pstAgentInfo->ucStatus
+                     && (ulAgentStatusOld < 2 || pstAgentQueueNode->pstAgentInfo->ucStatus < 2))
+                {
+                    sc_acd_agent_update_status_db(ulAgentID, pstAgentQueueNode->pstAgentInfo->ucStatus);
                 }
 
                 pthread_mutex_unlock(&g_mutexAgentList);
