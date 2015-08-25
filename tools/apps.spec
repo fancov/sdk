@@ -6,7 +6,7 @@ Group:          Applications/Internet
 License:        GPL
 URL:            www.dipcc.com
 Source0:        <sourcepath>
-Requires:       glibc >= 2.0 mysql-libs >= 5.1.73
+Requires:       glibc >= 2.0
 
 %description
 Program collection of the OK-CC IPCC system.
@@ -73,6 +73,7 @@ if [ ! -f /etc/hb-srv.xml ]; then
 fi
 
 cp    -rf  <sourcepath>/scripts/fs-conf    BUILDROOT/ok-cc-apps-<version>-1.el6.x86_64/dipcc/scripts/
+cp    -rf  <sourcepath>/tools/tool/service/ipccd BUILDROOT/%{name}-%{version}-1.el6.%{_target_cpu}/dipcc/var/
  
 %files
 /dipcc
