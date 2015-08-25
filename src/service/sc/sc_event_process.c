@@ -3872,18 +3872,7 @@ S32 sc_load_num_transform_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "object", dos_strlen("object")))
-        {
-            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->enObject);
-            if (lRet < 0 || pstNumTransform->enObject >= SC_NUM_TRANSFORM_OBJECT_BUTT)
-            {
-                DOS_ASSERT(0);
-
-                blProcessOK = DOS_FALSE;
-                break;
-            }
-        }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "objet_id", dos_strlen("objet_id")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "object_id", dos_strlen("object_id")))
         {
             if ('\0' == aszValues[lIndex][0])
             {
@@ -3892,6 +3881,17 @@ S32 sc_load_num_transform_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
 
             lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->ulObjectID);
             if (lRet < 0)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "object", dos_strlen("object")))
+        {
+            lRet = dos_atoul(aszValues[lIndex], &pstNumTransform->enObject);
+            if (lRet < 0 || pstNumTransform->enObject >= SC_NUM_TRANSFORM_OBJECT_BUTT)
             {
                 DOS_ASSERT(0);
 
