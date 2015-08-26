@@ -1921,6 +1921,47 @@ U32 sc_task_get_agent_queue(U32 ulTCBNo)
     return g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulAgentQueueID;
 }
 
+/*
+ * 函数 : sc_task_save_status
+ * 功能 : 保存任务状态
+ * 参数 :
+ *        U32 ulTaskID   : 任务ID
+ *        U32 ulStatus   : 新状态
+ *        S8 *pszStatus  : 如果呼叫名单是正则号码，(暂停时)需要把正则号码的分析状态记录下来
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ */
+U32 sc_task_save_status(U32 ulTaskID, U32 ulStatus, S8 *pszStatus)
+{
+    /* 初始化坐席队列编号 */
+    S8 szSQL[128] = { 0, };
+
+    if (0 == ulTaskID || U32_BUTT == ulTaskID)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (ulStatus >= SC_TASK_STATUS_DB_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_calltask set status=%u WHERE id=%u", ulStatus, ulTaskID);
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL) < 0)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_TASK, "Failed update the task(%u) status to %u.", ulTaskID, ulStatus);
+        return DOS_FAIL;
+    }
+
+    sc_logr_info(SC_TASK, "Update the task(%u) status to %u.", ulTaskID, ulStatus);
+    return DOS_SUCC;
+}
+
+
 
 SC_SYS_STATUS_EN sc_check_sys_stat()
 {

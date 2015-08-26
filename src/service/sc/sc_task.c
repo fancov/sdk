@@ -415,6 +415,8 @@ VOID *sc_task_runtime(VOID *ptr)
     }
     pthread_mutex_destroy(&pstTCB->mutexTaskList);
 
+    sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_STOP, NULL);
+
     sc_tcb_free(pstTCB);
     pstTCB = NULL;
 
@@ -574,6 +576,8 @@ U32 sc_task_start(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
+    sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_START, NULL);
+
     sc_logr_notice(SC_TASK, "Start task %d finished.", pstTCB->ulTaskID);
 
     return DOS_SUCC;
@@ -607,6 +611,8 @@ U32 sc_task_stop(SC_TASK_CB_ST *pstTCB)
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
+
+    sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_STOP, NULL);
 
     pthread_mutex_lock(&pstTCB->mutexTaskList);
     pstTCB->ucTaskStatus = SC_TASK_STOP;
@@ -644,6 +650,7 @@ U32 sc_task_continue(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
+    sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_CONTINUE, NULL);
 
     pthread_mutex_lock(&pstTCB->mutexTaskList);
     pstTCB->ucTaskStatus = SC_TASK_WORKING;
@@ -680,6 +687,8 @@ U32 sc_task_pause(SC_TASK_CB_ST *pstTCB)
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
+
+    sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_PAUSED, NULL);
 
     pthread_mutex_lock(&pstTCB->mutexTaskList);
     pstTCB->ucTaskStatus = SC_TASK_PAUSED;
