@@ -211,7 +211,6 @@ VOID bsd_sl_msg_proc(DLL_NODE_S *pMsgNode)
             bsd_cdr(pMsgNode);
             break;
 
-
         case BS_INTER_MSG_OUTBAND_STAT:
         case BS_INTER_MSG_INBAND_STAT:
         case BS_INTER_MSG_OUTDIALING_STAT:
