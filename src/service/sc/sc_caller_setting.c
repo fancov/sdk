@@ -312,7 +312,7 @@ static U32 sc_get_number_by_didid(U32 ulDidID, S8* pszNumber, U32 ulLen)
             }
 
             pstDid = (SC_DID_NODE_ST *)pstHashNode->pHandle;
-            if (pstDid->ulDIDID != ulDidID)
+            if (DOS_FALSE == pstDid->bValid || pstDid->ulDIDID != ulDidID)
             {
                 continue;
             }
@@ -630,7 +630,7 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
                 continue;
             }
             pstDid = (SC_DID_NODE_ST *)pstHashNode;
-            if (pstDid->ulCustomID == ulCustomerID)
+            if (DOS_FALSE != pstDid->bValid && pstDid->ulCustomID == ulCustomerID)
             {
                 ulTick++;
                 if (ulTick == (U32)lRandomNum)
@@ -720,7 +720,7 @@ static U32  sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
             }
 
             pstDid = (SC_DID_NODE_ST *)pstHashNode->pHandle;
-            if (pstDid->ulBindID == ulAgentID && SC_DID_BIND_TYPE_AGENT == pstDid->ulBindType)
+            if (DOS_FALSE != pstDid->bValid && pstDid->ulBindID == ulAgentID && SC_DID_BIND_TYPE_AGENT == pstDid->ulBindType)
             {
                 bFound = DOS_TRUE;
                 pstDid->ulTimes++;
@@ -763,7 +763,7 @@ static U32 sc_get_did_by_agentgrp(U32 ulAgentGrpID, S8 *pszNumber, U32 ulLen)
                 continue;
             }
             pstDid = (SC_DID_NODE_ST *)pstHashNode->pHandle;
-            if (pstDid->ulBindID == ulAgentGrpID && SC_DID_BIND_TYPE_QUEUE == pstDid->ulBindType)
+            if (DOS_FALSE != pstDid->bValid && pstDid->ulBindID == ulAgentGrpID && SC_DID_BIND_TYPE_QUEUE == pstDid->ulBindType)
             {
                 bFound = DOS_TRUE;
                 pstDid->ulTimes++;
