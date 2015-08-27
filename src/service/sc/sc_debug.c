@@ -1343,19 +1343,19 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the did list.");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+----------------------------------------------------------------------------------------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+----------------------------------------------------------------------------------------------+----------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                           Did List                                           |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                                Did List                                                 |");
     cli_out_string(ulIndex,szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+-----------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+-----------+----------|");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|    Did ID    |  Customer ID  |        Did Num         | Bind Type |    Bind ID   |   Times   |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|    Did ID    |  Customer ID  |        Did Num         | Bind Type |    Bind ID   |   Times   |  Status  |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+-----------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+-----------+----------|");
     cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexHashDIDNum);
@@ -1382,13 +1382,14 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n|%14u|%15u|%-24s|%-11s|%14u|%11u|"
+                            , "\r\n|%14u|%15u|%-24s|%-11s|%14u|%11u|%10s|"
                             , pstDid->ulDIDID
                             , pstDid->ulCustomID
                             , pstDid->szDIDNum[0] == '\0' ? "NULL": pstDid->szDIDNum
                             , sc_translate_did_bind_type(pstDid->ulBindType)
                             , pstDid->ulBindID
                             , pstDid->ulTimes
+                            , DOS_FALSE == pstDid->bValid ? "No":"Yes"
                             );
             cli_out_string(ulIndex, szCmdBuff);
             ++ulDidCnt;
@@ -1397,7 +1398,7 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
 
     pthread_mutex_unlock(&g_mutexHashDIDNum);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+-----------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+-----------+----------+");
     cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d did numbers.\r\n\r\n", ulDidCnt);

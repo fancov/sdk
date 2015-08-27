@@ -2478,7 +2478,14 @@ S32 sc_load_did_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-
+        else if (0 == dos_strnicmp(aszNames[lIndex], "status", dos_strlen("status")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstDIDNumNode->bValid) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
     }
 
     if (!blProcessOK)
@@ -2554,11 +2561,11 @@ U32 sc_load_did_number(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, did_number, bind_type, bind_id FROM tbl_sipassign where tbl_sipassign.status = 1;");
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, did_number, bind_type, bind_id, status FROM tbl_sipassign;");
     }
     else
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, did_number, bind_type, bind_id FROM tbl_sipassign where tbl_sipassign.status = 1 AND id=%u;", ulIndex);
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, did_number, bind_type, bind_id, status FROM tbl_sipassign where id=%u;", ulIndex);
     }
 
     db_query(g_pstSCDBHandle, szSQL, sc_load_did_number_cb, NULL, NULL);
@@ -5007,6 +5014,10 @@ U32 sc_num_lmt_stat(U32 ulType, VOID *ptr)
             }
 
             ptDIDNumber = pstHashNodeNumber->pHandle;
+            if (DOS_FALSE == ptDIDNumber->bValid)
+            {
+                continue;
+            }
             ulTimes = ptDIDNumber->ulTimes;
             ptDIDNumber->ulTimes = 0;
 
@@ -6149,7 +6160,10 @@ U32 sc_ep_get_custom_by_did(S8 *pszNum)
     }
 
     pstDIDNumNode = pstHashNode->pHandle;
-
+    if (DOS_FALSE == pstDIDNumNode->bValid)
+    {
+        return U32_BUTT;
+    }
     ulCustomerID = pstDIDNumNode->ulCustomID;
 
     pthread_mutex_unlock(&g_mutexHashDIDNum);
