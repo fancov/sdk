@@ -46,6 +46,10 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
     {"did",                      sc_http_api_did_action},
     {"black",                    sc_http_api_black_action},
     {"caller",                   sc_http_api_caller_action},
+    {"eix",                      sc_http_api_eix_action},
+    {"numlmt",                   sc_http_api_numlmt_action},
+    {"numtransform",             sc_http_api_numtransform_action},
+    {"customer",                 sc_http_api_customer_action},
 
     {"",                         NULL}
 };
@@ -1190,6 +1194,251 @@ invalid_params:
     SC_TRACE_OUT();
     return SC_HTTP_ERRNO_INVALID_PARAM;
 
+}
+
+U32 sc_http_api_eix_action(list_t *pstArgv)
+{
+    S8  *pszEixID = NULL, *pszAction = NULL;
+    U32  ulEixID, ulAction;
+
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    /* 获取主叫号码 */
+    pszEixID = sc_http_api_get_value(pstArgv, "eix_id");
+    pszAction   = sc_http_api_get_value(pstArgv, "action");
+
+    if (DOS_ADDR_INVALID(pszEixID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (dos_atoul(pszEixID, &ulEixID) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    if (DOS_SUCC != sc_http_eix_update_proc(ulAction, ulEixID))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_SUCC;
+
+invalid_params:
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_INVALID_PARAM;
+
+}
+
+U32 sc_http_api_numlmt_action(list_t *pstArgv)
+{
+    S8  *pszNumlmtID = NULL, *pszAction = NULL;
+    U32  ulNumlmtID, ulAction;
+
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    /* 获取主叫号码 */
+    pszNumlmtID = sc_http_api_get_value(pstArgv, "lmt_id");
+    pszAction   = sc_http_api_get_value(pstArgv, "action");
+
+    if (DOS_ADDR_INVALID(pszNumlmtID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (dos_atoul(pszNumlmtID, &ulNumlmtID) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    if (DOS_SUCC != sc_http_num_lmt_update_proc(ulAction, ulNumlmtID))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_SUCC;
+
+invalid_params:
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_INVALID_PARAM;
+}
+
+U32 sc_http_api_numtransform_action(list_t *pstArgv)
+{
+    S8  *pszNumTransID = NULL, *pszAction = NULL;
+    U32  ulNumTransID, ulAction;
+
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    /* 获取主叫号码 */
+    pszNumTransID = sc_http_api_get_value(pstArgv, "transform_id");
+    pszAction   = sc_http_api_get_value(pstArgv, "action");
+
+    if (DOS_ADDR_INVALID(pszNumTransID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (dos_atoul(pszNumTransID, &ulNumTransID) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    if (DOS_SUCC != sc_http_num_transform_update_proc(ulAction, ulNumTransID))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_SUCC;
+
+invalid_params:
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_INVALID_PARAM;
+}
+
+U32 sc_http_api_customer_action(list_t *pstArgv)
+{
+    S8  *pszCustomerID = NULL, *pszAction = NULL;
+    U32  ulCustomerID, ulAction;
+
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    /* 获取主叫号码 */
+    pszCustomerID = sc_http_api_get_value(pstArgv, "customer_id");
+    pszAction   = sc_http_api_get_value(pstArgv, "action");
+
+    if (DOS_ADDR_INVALID(pszCustomerID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (dos_atoul(pszCustomerID, &ulCustomerID) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    if (DOS_SUCC != sc_http_customer_update_proc(ulAction, ulCustomerID))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_SUCC;
+
+invalid_params:
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_INVALID_PARAM;
 }
 
 U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)

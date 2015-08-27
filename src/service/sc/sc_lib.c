@@ -1928,51 +1928,6 @@ SC_SYS_STATUS_EN sc_check_sys_stat()
 }
 
 //------------------------------------------------------
-/**
- * 函数: U32 sc_http_transform_update_proc(U32 ulAction, U32 ulTransFormID)
- * 参数: U32 ulAction  行为
- *       U32 ulTransFormID  变换ID
- * 功能: 号码变换数据同步
- * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
- **/
-U32 sc_http_transform_update_proc(U32 ulAction, U32 ulTransFormID)
-{
-    U32 ulRet = U32_BUTT;
-
-    if (ulAction > SC_API_CMD_ACTION_BUTT)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    switch (ulAction)
-    {
-        case SC_API_CMD_ACTION_TRANSFORM_ADD:
-        case SC_API_CMD_ACTION_TRANSFORM_UPDATE:
-            sc_load_num_transform(ulTransFormID);
-            break;
-        case SC_API_CMD_ACTION_TRANSFORM_DELETE:
-            ulRet = sc_transform_delete(ulTransFormID);
-            if (DOS_SUCC != ulRet)
-            {
-                ulRet = DOS_FAIL;
-            }
-            break;
-        default:
-            break;
-    }
-
-    if (DOS_SUCC == ulRet)
-    {
-        sc_logr_debug(SC_FUNC, "Update Num Transformation SUCC.(ulAction:%u,ulID:%u)", ulAction, ulTransFormID);
-    }
-    else
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Update Num Transformation FAIL.(ulID:%u)", ulTransFormID);
-    }
-    return ulRet;
-}
 
 U32 sc_http_caller_setting_update_proc(U32 ulAction, U32 ulSettingID)
 {
@@ -2048,6 +2003,106 @@ U32 sc_http_caller_update_proc(U32 ulAction, U32 ulCallerID)
     return DOS_SUCC;
 }
 
+
+U32 sc_http_eix_update_proc(U32 ulAction, U32 ulEixID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_ADD:
+        case SC_API_CMD_ACTION_CALLER_UPDATE:
+            sc_load_tt_number(ulEixID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_DELETE:
+            sc_del_tt_number(ulEixID);
+            break;
+        default:
+            break;
+    }
+    sc_logr_info(SC_FUNC, "Update eix SUCC.(ulAction:%u, ulID:%d)", ulAction, ulEixID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_http_num_lmt_update_proc(U32 ulAction, U32 ulNumlmtID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_ADD:
+        case SC_API_CMD_ACTION_CALLER_UPDATE:
+            sc_load_number_lmt(ulNumlmtID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_DELETE:
+            sc_del_number_lmt(ulNumlmtID);
+            break;
+        default:
+            break;
+    }
+    sc_logr_info(SC_FUNC, "Update num limit SUCC.(ulAction:%u, ulID:%d)", ulAction, ulNumlmtID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_http_num_transform_update_proc(U32 ulAction, U32 ulNumTransID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_ADD:
+        case SC_API_CMD_ACTION_CALLER_UPDATE:
+            sc_load_num_transform(ulNumTransID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_DELETE:
+            sc_transform_delete(ulNumTransID);
+            break;
+        default:
+            break;
+    }
+    sc_logr_info(SC_FUNC, "Update num transform SUCC.(ulAction:%u, ulID:%d)", ulAction, ulNumTransID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_http_customer_update_proc(U32 ulAction, U32 ulCustomerID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_ADD:
+        case SC_API_CMD_ACTION_CALLER_UPDATE:
+            sc_load_customer(ulCustomerID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_DELETE:
+            sc_customer_delete(ulCustomerID);
+            break;
+        default:
+            break;
+    }
+    sc_logr_info(SC_FUNC, "Update customer SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCustomerID);
+
+    return DOS_SUCC;
+}
 
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
 {

@@ -1100,7 +1100,6 @@ S32 sc_ep_route_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
     return DOS_FAIL;
 }
 
-/* 查找路由 */
 S32 sc_ep_num_transform_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
 {
     SC_NUM_TRANSFORM_NODE_ST *pstTransformCurrent;
@@ -1124,7 +1123,6 @@ S32 sc_ep_num_transform_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
     return DOS_FAIL;
 }
 
-/* 查找路由 */
 S32 sc_ep_customer_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
 {
     SC_CUSTOMER_NODE_ST *pstCustomerCurrent;
@@ -1468,21 +1466,50 @@ U32 sc_transform_delete(U32 ulTransformID)
 {
     DLL_NODE_S *pstListNode = NULL;
 
+    pthread_mutex_lock(&g_mutexNumTransformList);
     pstListNode = dll_find(&g_stNumTransformList, &ulTransformID, sc_ep_num_transform_find);
     if (DOS_ADDR_INVALID(pstListNode)
         || DOS_ADDR_INVALID(pstListNode->pHandle))
     {
+        pthread_mutex_unlock(&g_mutexNumTransformList);
         DOS_ASSERT(0);
         sc_logr_error(SC_FUNC, "Num Transform Delete FAIL.ID %u does not exist.", ulTransformID);
         return DOS_FAIL;
     }
 
     dll_delete(&g_stNumTransformList, pstListNode);
+    pthread_mutex_unlock(&g_mutexNumTransformList);
     dos_dmem_free(pstListNode->pHandle);
     pstListNode->pHandle= NULL;
     dos_dmem_free(pstListNode);
     pstListNode = NULL;
     sc_logr_debug(SC_FUNC, "Delete Num Transform SUCC.(ID:%u)", ulTransformID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_customer_delete(U32 ulCustomerID)
+{
+    DLL_NODE_S *pstListNode = NULL;
+
+    pthread_mutex_lock(&g_mutexCustomerList);
+    pstListNode = dll_find(&g_stCustomerList, &ulCustomerID, sc_ep_customer_find);
+    if (DOS_ADDR_INVALID(pstListNode)
+        || DOS_ADDR_INVALID(pstListNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexCustomerList);
+        DOS_ASSERT(0);
+        sc_logr_error(SC_FUNC, "Num Transform Delete FAIL.ID %u does not exist.", ulCustomerID);
+        return DOS_FAIL;
+    }
+
+    dll_delete(&g_stCustomerList, pstListNode);
+    pthread_mutex_unlock(&g_mutexCustomerList);
+    dos_dmem_free(pstListNode->pHandle);
+    pstListNode->pHandle= NULL;
+    dos_dmem_free(pstListNode);
+    pstListNode = NULL;
+    sc_logr_debug(SC_FUNC, "Delete Num Transform SUCC.(ID:%u)", ulCustomerID);
 
     return DOS_SUCC;
 }
@@ -3864,6 +3891,40 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     return DOS_TRUE;
 }
 
+/**
+ * 函数: U32 sc_load_route()
+ * 功能: 加载路由数据
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_load_route(U32 ulIndex)
+{
+    S8 szSQL[1024];
+    S32 lRet;
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group FROM tbl_route WHERE tbl_route.status = 1 ORDER BY tbl_route.seq ASC;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
+                    , ulIndex);
+    }
+
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_load_route_cb, NULL, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_FUNC, "Load route FAIL(ID:%u).", ulIndex);
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_FUNC, "Load route SUCC,(ID:%u)", ulIndex);
+
+    return DOS_SUCC;
+}
 
 S32 sc_load_num_transform_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
@@ -4160,6 +4221,36 @@ S32 sc_load_num_transform_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
     return DOS_TRUE;
 }
 
+
+U32 sc_load_num_transform(U32 ulIndex)
+{
+    S8 szSQL[1024];
+    S32 lRet;
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, object, object_id, direction, transform_timing, num_selection, caller_prefixion, callee_prefixion, replace_all, replace_num, del_left, del_right, add_prefixion, add_suffix, priority, expiry FROM tbl_num_transformation  ORDER BY tbl_num_transformation.priority ASC;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, object, object_id, direction, transform_timing, num_selection, caller_prefixion, callee_prefixion, replace_all, replace_num, del_left, del_right, add_prefixion, add_suffix, priority, expiry FROM tbl_num_transformation where tbl_num_transformation.id=%u;"
+                    , ulIndex);
+    }
+
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_load_num_transform_cb, NULL, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_FUNC, "Load Num Transform FAIL.(ID:%u)", ulIndex);
+        return DOS_FAIL;
+    }
+    sc_logr_debug(SC_FUNC, "Load Num Transform SUCC.(ID:%u)", ulIndex);
+
+    return DOS_SUCC;
+}
+
 S32 sc_load_customer_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     SC_CUSTOMER_NODE_ST  *pstCustomer       = NULL;
@@ -4268,70 +4359,6 @@ S32 sc_load_customer_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     pthread_mutex_unlock(&g_mutexCustomerList);
 
     return DOS_TRUE;
-}
-
-/**
- * 函数: U32 sc_load_route()
- * 功能: 加载路由数据
- * 参数:
- * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
- */
-U32 sc_load_route(U32 ulIndex)
-{
-    S8 szSQL[1024];
-    S32 lRet;
-
-    if (SC_INVALID_INDEX == ulIndex)
-    {
-        dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group FROM tbl_route WHERE tbl_route.status = 1 ORDER BY tbl_route.seq ASC;");
-    }
-    else
-    {
-        dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
-                    , ulIndex);
-    }
-
-    lRet = db_query(g_pstSCDBHandle, szSQL, sc_load_route_cb, NULL, NULL);
-    if (DB_ERR_SUCC != lRet)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Load route FAIL(ID:%u).", ulIndex);
-        return DOS_FAIL;
-    }
-    sc_logr_info(SC_FUNC, "Load route SUCC,(ID:%u)", ulIndex);
-
-    return DOS_SUCC;
-}
-
-U32 sc_load_num_transform(U32 ulIndex)
-{
-    S8 szSQL[1024];
-    S32 lRet;
-
-    if (SC_INVALID_INDEX == ulIndex)
-    {
-        dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, object, object_id, direction, transform_timing, num_selection, caller_prefixion, callee_prefixion, replace_all, replace_num, del_left, del_right, add_prefixion, add_suffix, priority, expiry FROM tbl_num_transformation  ORDER BY tbl_num_transformation.priority ASC;");
-    }
-    else
-    {
-        dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, object, object_id, direction, transform_timing, num_selection, caller_prefixion, callee_prefixion, replace_all, replace_num, del_left, del_right, add_prefixion, add_suffix, priority, expiry FROM tbl_num_transformation where tbl_num_transformation.id=%u;"
-                    , ulIndex);
-    }
-
-    lRet = db_query(g_pstSCDBHandle, szSQL, sc_load_num_transform_cb, NULL, NULL);
-    if (DB_ERR_SUCC != lRet)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Load Num Transform FAIL.(ID:%u)", ulIndex);
-        return DOS_FAIL;
-    }
-    sc_logr_debug(SC_FUNC, "Load Num Transform SUCC.(ID:%u)", ulIndex);
-
-    return DOS_SUCC;
 }
 
 U32 sc_load_customer(U32 ulIndex)
@@ -5082,20 +5109,15 @@ U32 sc_ep_get_callout_group_by_customerID(U32 ulCustomerID, U16 *pusCallOutGroup
     }
 
     pthread_mutex_lock(&g_mutexCustomerList);
-    DLL_Scan(&g_stCustomerList, pstListNode, DLL_NODE_S *)
+    pstListNode = dll_find(&g_stCustomerList, &ulCustomerID, sc_ep_customer_find);
+    if (DOS_ADDR_INVALID(pstListNode)
+        || DOS_ADDR_INVALID(pstListNode->pHandle))
     {
         pstCustomer = (SC_CUSTOMER_NODE_ST *)pstListNode->pHandle;
-        if (DOS_ADDR_INVALID(pstCustomer))
-        {
-            continue;
-        }
+        *pusCallOutGroup = pstCustomer->usCallOutGroup;
+        pthread_mutex_unlock(&g_mutexCustomerList);
 
-        if (pstCustomer->ulID == ulCustomerID)
-        {
-            *pusCallOutGroup = pstCustomer->usCallOutGroup;
-            pthread_mutex_unlock(&g_mutexCustomerList);
-            return DOS_SUCC;
-        }
+        return DOS_SUCC;
     }
 
     pthread_mutex_unlock(&g_mutexCustomerList);
@@ -5129,25 +5151,54 @@ U32 sc_ep_customer_list_find(U32 ulCustomerID)
     return DOS_FAIL;
 }
 
-
-U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMING_EN enTiming)
+/*
+ * 函  数: U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMING_EN enTiming, SC_NUM_TRANSFORM_DIRECTION_EN enDirection, SC_NUM_TRANSFORM_SELECT_EN enNumSelect)
+ * 功  能: 号码变换
+ * 参  数:
+ *      SC_SCB_ST *pstSCB                           : 呼叫控制块
+ *      U32 ulTrunkID                               : 中继ID,(只有路由后才会匹配中继)
+ *      SC_NUM_TRANSFORM_TIMING_EN      enTiming    : 路由前/路由后
+ *      SC_NUM_TRANSFORM_DIRECTION_EN   enDirection : 呼入/呼出
+ *      SC_NUM_TRANSFORM_SELECT_EN      enNumSelect : 主被叫选择
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ **/
+U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMING_EN enTiming, SC_NUM_TRANSFORM_SELECT_EN enNumSelect)
 {
-    SC_NUM_TRANSFORM_NODE_ST    *pstNumTransform        = NULL;
-    SC_NUM_TRANSFORM_NODE_ST    *pstNumTransformEntry   = NULL;
-    DLL_NODE_S                  *pstListNode            = NULL;
+    SC_NUM_TRANSFORM_NODE_ST        *pstNumTransform        = NULL;
+    SC_NUM_TRANSFORM_NODE_ST        *pstNumTransformEntry   = NULL;
+    DLL_NODE_S                      *pstListNode            = NULL;
+    SC_NUM_TRANSFORM_DIRECTION_EN   enDirection;
     S8  szNeedTransformNum[SC_TEL_NUMBER_LENGTH]        = {0};
     U32 ulIndex      = 0;
+    S32 lIndex       = 0;
     U32 ulNumLen     = 0;
     U32 ulOffsetLen  = 0;
-    U32 ulNumGroupID = 0;
     time_t ulCurrTime   = time(NULL);
 
     if (DOS_ADDR_INVALID(pstSCB)
         || '\0' == pstSCB->szCalleeNum[0]
-        || '\0' == pstSCB->szCallerNum[0])
+        || '\0' == pstSCB->szCallerNum[0]
+        || enTiming >= SC_NUM_TRANSFORM_TIMING_BUTT
+        || enNumSelect >= SC_NUM_TRANSFORM_SELECT_BUTT)
     {
         return DOS_FAIL;
     }
+
+    sc_logr_debug(SC_DIALER, "Search number transfer rule for the task %d, timing is : %d, number select : %d"
+                                , pstSCB->ulTaskID, enTiming, enNumSelect);
+
+    /* 判断一下呼叫方向 呼入/呼出 */
+    if (pstSCB->ucLegRole == SC_CALLEE && pstSCB->bIsAgentCall)
+    {
+        /* 被叫是坐席则为呼入, 否则为呼出 */
+        enDirection = SC_NUM_TRANSFORM_DIRECTION_IN;
+    }
+    else
+    {
+        enDirection = SC_NUM_TRANSFORM_DIRECTION_OUT;
+    }
+
+    sc_logr_debug(SC_DIALER, "call firection : %d, pstSCB->ucLegRole : %d, pstSCB->bIsAgentCall : %d", enDirection, pstSCB->ucLegRole, pstSCB->bIsAgentCall);
 
     /* 遍历号码变换规则的链表，查找没有过期的，优先级别高的，针对这个客户或者系统的变换规则。
         先按优先级，同优先级，客户优先于中继，中继优先于系统 */
@@ -5161,13 +5212,23 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
         }
 
         /* 判断有效期 */
-        if (pstNumTransformEntry->ulExpiry != 0 || pstNumTransformEntry->ulExpiry < ulCurrTime)
+        if (pstNumTransformEntry->ulExpiry < ulCurrTime)
         {
             continue;
         }
 
-        /* 判断是否是路由前/后 */
+        /* 判断 路由前/后 */
         if (pstNumTransformEntry->enTiming != enTiming)
+        {
+            continue;
+        }
+        /* 判断 呼叫方向 */
+        if (pstNumTransformEntry->enDirection != enDirection)
+        {
+            continue;
+        }
+        /* 判断主被叫 */
+        if (pstNumTransformEntry->enNumSelect != enNumSelect)
         {
             continue;
         }
@@ -5189,6 +5250,8 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
                 continue;
             }
         }
+
+        sc_logr_debug(SC_DIALER, "Call Object : %d", pstNumTransformEntry->enObject);
 
         if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER == pstNumTransformEntry->enObject)
         {
@@ -5269,18 +5332,19 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
                 }
             }
         }
-        else
-        {
-            /* 不应该出现的情况，不需要处理 */
-        }
-
     }
 
     if (DOS_ADDR_INVALID(pstNumTransform))
     {
         /* 没有找到合适的变换规则 */
+        sc_logr_debug(SC_DIALER, "Not find number transfer rule for the task %d, timing is : %d, number select : %d"
+                                , pstSCB->ulTaskID, enTiming, enNumSelect);
+
         goto succ;
     }
+
+    sc_logr_debug(SC_DIALER, "Find a number transfer rule(%d) for the task %d, timing is : %d, number select : %d"
+                                , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
 
     if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
     {
@@ -5299,8 +5363,23 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
         /* 完全替代 */
         if (pstNumTransform->szReplaceNum[0] == '*')
         {
-            /* 使用号码组中的号码 */
-            dos_sscanf(pstNumTransform->szReplaceNum, "*%d", ulNumGroupID);
+            /* TODO 使用号码组中的号码 */
+            if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER != pstNumTransform->enObject)
+            {
+                /* 只有企业客户，才可以选择号码组中的号码进行替换 */
+                sc_logr_info(SC_DIALER, "Number transfer rule(%d) for the task %d fail : only a enterprise customers can, choose number in the group number"
+                                , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
+
+                goto fail;
+            }
+        }
+        else if (pstNumTransform->szReplaceNum[0] == '\0')
+        {
+            /* 完全替换的号码不能为空 */
+            sc_logr_info(SC_DIALER, "The number transfer rule(%d) replace num is NULL!"
+                                , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
+
+            goto fail;
         }
         else
         {
@@ -5359,9 +5438,9 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
             goto fail;
         }
 
-        for (ulIndex=ulNumLen; ulIndex>=0; ulIndex--)
+        for (lIndex=ulNumLen; lIndex>=0; lIndex--)
         {
-            szNeedTransformNum[ulIndex+ulOffsetLen] = szNeedTransformNum[ulIndex];
+            szNeedTransformNum[lIndex+ulOffsetLen] = szNeedTransformNum[lIndex];
         }
 
         dos_strncpy(szNeedTransformNum, pstNumTransform->szAddPrefix, ulOffsetLen);
@@ -5381,20 +5460,30 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
         dos_strcat(szNeedTransformNum, pstNumTransform->szAddSuffix);
     }
 
+    if (szNeedTransformNum[0] == '\0')
+    {
+        goto fail;
+    }
+    szNeedTransformNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+
 succ:
 
-    if (szNeedTransformNum[0] != '\0')
+    if (DOS_ADDR_INVALID(pstNumTransform))
     {
-        szNeedTransformNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+        pthread_mutex_unlock(&g_mutexNumTransformList);
 
-        if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
-        {
-            dos_strcpy(pstSCB->szCallerNum, szNeedTransformNum);
-        }
-        else
-        {
-            dos_strcpy(pstSCB->szCalleeNum, szNeedTransformNum);
-        }
+        return DOS_SUCC;
+    }
+
+    if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
+    {
+        sc_logr_debug(SC_DIALER, "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstSCB->ulTaskID, pstSCB->szCallerNum, szNeedTransformNum);
+        dos_strcpy(pstSCB->szCallerNum, szNeedTransformNum);
+    }
+    else
+    {
+        sc_logr_debug(SC_DIALER, "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstSCB->ulTaskID, pstSCB->szCalleeNum, szNeedTransformNum);
+        dos_strcpy(pstSCB->szCalleeNum, szNeedTransformNum);
     }
 
     pthread_mutex_unlock(&g_mutexNumTransformList);
@@ -5403,6 +5492,7 @@ succ:
 
 fail:
 
+    sc_logr_info(SC_DIALER, "the number transfer(%d) FAIL, task : %d", pstNumTransform->ulID, pstSCB->ulTaskID);
     if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
     {
         pstSCB->szCallerNum[0] = '\0';
@@ -6386,8 +6476,15 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
             switch (pstRouetEntry->ulDestType)
             {
                 case SC_DEST_TYPE_GATEWAY:
-                    /* 进行号码变换 */
-                    if (sc_ep_num_transform(pstSCB, pstRouetEntry->aulDestID[0], SC_NUM_TRANSFORM_TIMING_AFTER) != DOS_SUCC)
+                    /* TODO 路由后号码变换。现在只支持中继的，不支持中继组 */
+                    if (sc_ep_num_transform(pstSCB, pstRouetEntry->aulDestID[0], SC_NUM_TRANSFORM_TIMING_AFTER, SC_NUM_TRANSFORM_SELECT_CALLER) != DOS_SUCC)
+                    {
+                        blIsFound = DOS_FALSE;
+
+                        break;
+                    }
+
+                    if (sc_ep_num_transform(pstSCB, pstRouetEntry->aulDestID[0], SC_NUM_TRANSFORM_TIMING_AFTER, SC_NUM_TRANSFORM_SELECT_CALLEE) != DOS_SUCC)
                     {
                         blIsFound = DOS_FALSE;
 
@@ -7996,7 +8093,7 @@ proc_fail:
 
 /**
  * 函数: U32 sc_ep_outgoing_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
- * 功能: 处理由SIP呼入到PSTN测的呼叫
+ * 功能: 处理由SIP呼入到PSTN侧的呼叫
  * 参数:
  *      esl_handle_t *pstHandle : 发送数据的handle
  *      esl_event_t *pstEvent   : ESL 事件
