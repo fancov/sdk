@@ -99,7 +99,7 @@ S8 *sc_http_client_get_err_desc(U32 ulErrCode)
 
     SC_TRACE_IN(ulErrCode, 0, 0, 0);
 
-    for (ulIndex=0; ulIndex < SC_HTTP_ERRNO_BUTT; ulIndex++)
+    for (ulIndex=0; ulIndex < sizeof(g_astHttpErrNOList)/sizeof(SC_HTTP_ERRNO_DESC_ST); ulIndex++)
     {
         if (ulErrCode == g_astHttpErrNOList[ulIndex].ulHttpErrNO)
         {
@@ -109,7 +109,7 @@ S8 *sc_http_client_get_err_desc(U32 ulErrCode)
     }
 
     SC_TRACE_OUT();
-    return "";
+    return NULL;
 }
 
 
@@ -130,6 +130,7 @@ U32 sc_http_client_repaid_rsp(S32 lSocket, U32 ulRspCode, U32 ulErrCode)
     S8 szSendBuff[SC_HTTP_MAX_SEND_BUFF_LEN] = { 0, };
     S8 szDataBuff[SC_HTTP_MAX_SEND_BUFF_LEN] = { 0, };
     U32 ulDataLength, ulRspLen;
+    S8 *pszErrDesc = NULL;
 
     SC_TRACE_IN(ulRspCode, ulErrCode, 0, 0);
 
@@ -147,12 +148,13 @@ U32 sc_http_client_repaid_rsp(S32 lSocket, U32 ulRspCode, U32 ulErrCode)
         return DOS_FAIL;
     }
 
+    pszErrDesc = sc_http_client_get_err_desc(ulErrCode);
     ulDataLength = dos_snprintf(szDataBuff, sizeof(szDataBuff)
-                    , "{\"%s\":\"%0x08X\", \"%s\":\"%s\"}"
+                    , "{\"%s\":\"0x%08X\", \"%s\":\"%s\"}"
                     , g_astHttpResultNameList[SC_HTTP_DATA_ERRNO].pszName
                     , ulErrCode
                     , g_astHttpResultNameList[SC_HTTP_DATA_MSG].pszName
-                    , sc_http_client_get_err_desc(ulErrCode));
+                    , (NULL == pszErrDesc) ? " " : pszErrDesc);
 
     ulRspLen = dos_snprintf(szSendBuff, sizeof(szSendBuff)
                     , SC_HTTP_RSP_HEADER_FMT

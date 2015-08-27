@@ -138,6 +138,8 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_NUM_TRANSFORM_PREFIX_LEN    16
 
+#define SC_SINGLE_NUMBER_SRT_LEN       11           /* 0123456789 字符串的长度 */
+
 /* 检测一个TCB是有正常的Task和CustomID */
 #define SC_TCB_HAS_VALID_OWNER(pstTCB)                        \
     ((pstTCB)                                                 \
