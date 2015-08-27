@@ -1056,9 +1056,9 @@ VOID sc_show_gateway(U32 ulIndex, U32 ulID)
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList all the gateway:");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12s%36s", "Index", "Domain");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12s%8s%36s", "Index", "Status", "Domain");
     cli_out_string(ulIndex, szCmdBuff);
 
     HASH_Scan_Table(g_pstHashGW, ulHashIndex)
@@ -1078,11 +1078,11 @@ VOID sc_show_gateway(U32 ulIndex, U32 ulID)
                 continue;
             }
 
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12u%36s", pstGWNode->ulGWID, pstGWNode->szGWDomain);
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12u%8u%36s", pstGWNode->ulGWID, pstGWNode->bStatus, pstGWNode->szGWDomain);
             cli_out_string(ulIndex, szCmdBuff);
         }
     }
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------");
 }
 
 VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
