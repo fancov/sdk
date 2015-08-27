@@ -373,7 +373,6 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
         case BS_CMD_UPDATE:
         {
             HASH_NODE_S     *pstHashNode = NULL;
-            //BS_CUSTOMER_ST  *pstCustomer = NULL;
             JSON_OBJ_ST     *pstSubJsonWhere = NULL;
             U32             ulHashIndex, ulCustomerType, ulCustomerState, ulCustomID;
             U32             ulPackageID, ulBanlanceWarning;
@@ -486,6 +485,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
 
+            pstCustomer->ucCustomerState = ulCustomerState;
             pstCustomer->stAccount.ulBillingPackageID = ulPackageID;
             pstCustomer->stAccount.lBalanceWarning = ulBanlanceWarning;
             if (DOS_ADDR_VALID(pszExpireTime))

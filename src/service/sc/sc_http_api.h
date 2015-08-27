@@ -210,6 +210,8 @@ U32 sc_http_api_gw_group_action(list_t *pstArgv);
 U32 sc_http_api_did_action(list_t *pstArgv);
 U32 sc_http_api_black_action(list_t *pstArgv);
 U32 sc_http_api_caller_action(list_t *pstArgv);
+U32 sc_http_api_callergrp_action(list_t *pstArgv);
+U32 sc_http_api_callerset_action(list_t *pstArgv);
 U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
 U32 sc_acd_http_agentgrp_update_proc(U32 ulAction, U32 ulGrpID);
 

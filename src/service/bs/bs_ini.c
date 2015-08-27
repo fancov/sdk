@@ -189,7 +189,6 @@ VOID bs_init_customer_st(BS_CUSTOMER_ST *pstCustomer)
 
     DLL_Init(&pstCustomer->stChildrenList);
     DLL_Init_Node(&pstCustomer->stNode);
-
 }
 
 /* 初始化客户信息哈希表 */

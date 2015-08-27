@@ -2039,7 +2039,7 @@ U32 sc_http_caller_setting_update_proc(U32 ulAction, U32 ulSettingID)
     return DOS_SUCC;
 }
 
-U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerID)
+U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerGrpID)
 {
     if (ulAction >= SC_API_CMD_ACTION_BUTT)
     {
@@ -2051,15 +2051,15 @@ U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerID)
     {
         case SC_API_CMD_ACTION_CALLER_GRP_ADD:
         case SC_API_CMD_ACTION_CALLER_GRP_UPDATE:
-            sc_load_caller_grp(ulCallerID);
+            sc_load_caller_grp(ulCallerGrpID);
             break;
         case SC_API_CMD_ACTION_CALLER_GRP_DELETE:
-            sc_caller_grp_delete(ulCallerID);
+            sc_caller_grp_delete(ulCallerGrpID);
             break;
         default:
             break;
     }
-    sc_logr_info(SC_FUNC, "Update Caller Group SUCC.(ulAction:%u, ulID:%u)", ulAction, ulCallerID);
+    sc_logr_info(SC_FUNC, "Update Caller Group SUCC.(ulAction:%u, ulID:%u)", ulAction, ulCallerGrpID);
 
     return DOS_SUCC;
 }
@@ -2114,7 +2114,6 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
                 return DOS_FAIL;
             }
 #endif
-
             ulRet = sc_load_gateway(ulGatewayID);
             if (ulRet != DOS_SUCC)
             {
@@ -2157,7 +2156,6 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
             break;
     }
 
-
     /* É¾³ý¸ÃÍø¹Ø */
     dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", ulGatewayID);
     ulRet = sc_ep_esl_execute_cmd(szBuff);
@@ -2180,7 +2178,7 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
 U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
 {
     U32  ulRet = 0;
-    S8   szUserID[32] = {0,};
+    S8   szUserID[32] = {0, };
 
     if (ulAction >= SC_API_CMD_ACTION_BUTT)
     {

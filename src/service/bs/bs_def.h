@@ -92,8 +92,8 @@ enum BS_CUSTOMER_TYPE_E
 /* 客户状态 */
 enum BS_CUSTOMER_STATE_E
 {
-    BS_CUSTOMER_STATE_ACTIVE            = 0,        /* 活动 */
-    BS_CUSTOMER_STATE_FROZEN            = 1,        /* 冻结 */
+    BS_CUSTOMER_STATE_FROZEN              = 0,        /* 冻结 */
+    BS_CUSTOMER_STATE_ACTIVE            = 1,        /* 激活 */
     BS_CUSTOMER_STATE_INACTIVE          = 2,        /* 不可用 */
 
     BS_CUSTOMER_STATE_BUTT              = 255

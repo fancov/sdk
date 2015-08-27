@@ -709,6 +709,7 @@ VOID sc_ep_gw_init(SC_GW_NODE_ST *pstGW)
         dos_memzero(pstGW, sizeof(SC_GW_NODE_ST));
         pstGW->ulGWID = U32_BUTT;
         pstGW->bExist = DOS_FALSE;
+        pstGW->bStatus = DOS_FALSE;
     }
 }
 
@@ -2552,10 +2553,9 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     SC_GW_NODE_ST        *pstGWNode     = NULL;
     HASH_NODE_S          *pstHashNode   = NULL;
-    S8 *pszGWID    = NULL;
-    S8 *pszDomain  = NULL;
-    U32 ulID;
-    U32 ulHashIndex = 0;
+    S8 *pszGWID = NULL, *pszDomain = NULL, *pszStatus = NULL;
+    U32 ulID, ulStatus;
+    U32 ulHashIndex = U32_BUTT, ulRet = U32_BUTT;
 
     if (DOS_ADDR_INVALID(aszNames)
         || DOS_ADDR_INVALID(aszValues))
@@ -2567,9 +2567,11 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     pszGWID = aszValues[0];
     pszDomain = aszValues[1];
+    pszStatus = aszValues[2];
     if (DOS_ADDR_INVALID(pszGWID)
         || DOS_ADDR_INVALID(pszDomain)
-        || dos_atoul(pszGWID, &ulID) < 0)
+        || dos_atoul(pszGWID, &ulID) < 0
+        || dos_atoul(pszStatus, &ulStatus) < 0)
     {
         DOS_ASSERT(0);
 
@@ -2615,6 +2617,7 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         {
             pstGWNode->szGWDomain[0] = '\0';
         }
+        pstGWNode->bStatus = ulStatus;
 
         HASH_Init_Node(pstHashNode);
         pstHashNode->pHandle = pstGWNode;
@@ -2637,9 +2640,35 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         dos_strncpy(pstGWNode->szGWDomain, pszDomain, sizeof(pstGWNode->szGWDomain));
         pstGWNode->szGWDomain[sizeof(pstGWNode->szGWDomain) - 1] = '\0';
         pstGWNode->bExist = DOS_TRUE;
+        pstGWNode->bStatus = ulStatus;
     }
     pthread_mutex_unlock(&g_mutexHashGW);
 
+    /* 在这里强制生成网关和删除网关 */
+    if (DOS_FALSE == pstGWNode->bStatus)
+    {
+        ulRet = py_exec_func("router", "del_route", "(k)", (U64)pstGWNode->ulGWID);
+        if (DOS_SUCC != ulRet)
+        {
+            sc_logr_debug(SC_FUNC, "Delete FreeSWITCH XML file of gateway %u FAIL by status.", pstGWNode->ulGWID);
+        }
+        else
+        {
+            sc_logr_debug(SC_FUNC, "Delete FreeSWITCH XML file of gateway %u SUCC by status.", pstGWNode->ulGWID);
+        }
+    }
+    else
+    {
+        ulRet = py_exec_func("router", "make_route", "(i)", pstGWNode->ulGWID);
+        if (DOS_SUCC != ulRet)
+        {
+            sc_logr_error(SC_FUNC, "Generate FreeSWITCH XML file of gateway %u FAIL by status.", pstGWNode->ulGWID);
+        }
+        else
+        {
+            sc_logr_debug(SC_FUNC, "Generate FreeSWITCH XML file of gateway %u SUCC by status.", pstGWNode->ulGWID);
+        }
+    }
     return DOS_SUCC;
 }
 
@@ -2657,12 +2686,12 @@ U32 sc_load_gateway(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id, realm FROM tbl_gateway WHERE tbl_gateway.status = 1;");
+                        , "SELECT id, realm, status FROM tbl_gateway;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id, realm FROM tbl_gateway WHERE tbl_gateway.status = 1 AND id=%d;", ulIndex);
+                        , "SELECT id, realm, status FROM tbl_gateway WHERE id=%d;", ulIndex);
     }
 
     ulRet = db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_cb, NULL, NULL);

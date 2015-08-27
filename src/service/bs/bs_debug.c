@@ -136,8 +136,8 @@ const S8* sc_translate_customer_type(U32 ulCustomerType)
 
 const S8* g_pszCustomerState[] =
 {
-    "ACTIVE",
     "FROZEN",
+    "ACTIVE",
     "INACTIVE"
 };
 
