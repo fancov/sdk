@@ -128,11 +128,14 @@ static S32 bsd_walk_customer_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
     }
     else
     {
-        bs_trace(BS_TRACE_DB, LOG_LEVEL_ERROR, "ERR: customer(%u:%s) is duplicated in DB !",
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_ERROR, "ERR: Customer(%u:%s) is duplicated in DB !",
                  pstCustomer->ulCustomerID, pstCustomer->szCustomerName);
         dos_dmem_free(pstHashNode);
+        pstHashNode = NULL;
         dos_dmem_free(pstCustomer);
+        pstCustomer = NULL;
     }
+
     pthread_mutex_unlock(&g_mutexCustomerTbl);
 
     return 0;
@@ -617,7 +620,9 @@ static S32 bsd_walk_web_cmd_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFie
     }
 
     pstJSONObj = json_init(aszData[2]);
-    //bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, aszData[2]);
+#if 0
+    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, aszData[2]);
+#endif
     if (DOS_ADDR_INVALID(pstJSONObj))
     {
         DOS_ASSERT(0);

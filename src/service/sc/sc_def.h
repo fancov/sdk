@@ -317,8 +317,10 @@ typedef enum tagSysStatus{
 }SC_SYS_STATUS_EN;
 
 typedef enum tagTaskStatusInDB{
-    SC_TASK_STATUS_DB_START            = 0,       /* 数据库中任务状态 */
-    SC_TASK_STATUS_DB_STOP,                       /* 数据库中任务状态 */
+    SC_TASK_STATUS_DB_STOP             = 0,/* 数据库中任务状态 */
+    SC_TASK_STATUS_DB_START,               /* 数据库中任务状态 */
+    SC_TASK_STATUS_DB_PAUSED,              /* 数据库中任务状态 */
+    SC_TASK_STATUS_DB_CONTINUE,            /* 数据库中任务状态 */
 
     SC_TASK_STATUS_DB_BUTT
 }SC_TASK_STATUS_DB_EN;
@@ -884,6 +886,7 @@ U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_agent_info(SC_TASK_CB_ST *pstTCB);
 S32 sc_task_load_other_info(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_update_stat(SC_TASK_CB_ST *pstTCB);
+U32 sc_task_save_status(U32 ulTaskID, U32 ulStatus, S8 *pszStatus);
 U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB);

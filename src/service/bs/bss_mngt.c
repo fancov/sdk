@@ -493,7 +493,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 pstCustomer->stAccount.ulExpiryTime = (U32)ulExpiryTime;
             }
             pstCustomer->stAccount.lCreditLine  = lMaximumBalance;
-#if 1
+#if 0
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Expiry:%u,CustomerID:%u,Name:%s,MinBalance:%d,State:%u,Type:%u,PackageID:%u,BalanceWarning:%u"
                         , pstCustomer->stAccount.ulExpiryTime
                         , pstCustomer->ulCustomerID
@@ -509,7 +509,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
         }
         case BS_CMD_DELETE:
         {
-            U32  ulCustomID = U32_BUTT, ulHashIndex = U32_BUTT;
+            U32  ulCustomID = U32_BUTT, ulHashIndex = U32_BUTT, ulParentHashIndex = U32_BUTT;
             const S8   *pszCustomID = NULL;
             const S8   *pszSubWhere = NULL;
             JSON_OBJ_ST *pstSubJsonWhere = NULL;
@@ -562,13 +562,14 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
 
+            ulParentHashIndex = bs_hash_get_index(BS_HASH_TBL_CUSTOMER_SIZE, pstCustomer->ulParentID);
             pstHashNodeParent = hash_find_node(g_astCustomerTbl
-                                    , ulHashIndex
+                                    , ulParentHashIndex
                                     , (VOID *)&pstCustomer->ulParentID
                                     , bs_customer_hash_node_match);
             if (DOS_ADDR_INVALID(pstHashNodeParent))
             {
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Find parent for the customer with the id %d, parent: %d FAIL.", ulCustomID, pstCustomer->ulParentID);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Find parent for the customer with the id %d, parent %d FAIL.", ulCustomID, pstCustomer->ulParentID);
                 break;
             }
 
@@ -594,11 +595,10 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pstHashNode->pHandle = NULL;
             dos_dmem_free(pstHashNode);
             pstHashNode = NULL;
-
-            pthread_mutex_unlock(&g_mutexCustomerTbl);
-#if 1
-            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "CustomerID:%u", ulCustomID);
+#if 0
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "CustomerID:%u", ulCustomID);
 #endif
+            pthread_mutex_unlock(&g_mutexCustomerTbl);
             break;
         }
         case BS_CMD_INSERT:
@@ -774,7 +774,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             /* 更新客户树 */
             pstCustomer->pstParent = pstCustomParent;
             bs_customer_add_child(pstCustomParent, pstCustomer);
-#if 1
+#if 0
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "ExpiryTime:%u,Name:%s,CustomerID:%u,ParentID:%u,State:%u,Type:%u,BillingPkgID:%u,MinBalance:%d,BalanceWarning:%d,Balance:%ld"
                         , pstCustomer->stAccount.ulExpiryTime
                         , pstCustomer->szCustomerName
@@ -1734,7 +1734,6 @@ VOID bss_data_update()
             pstListNode = NULL;
             continue;
         }
-
 
         pszTblName = json_get_param(pstJsonNode,"table");
         pszOpter = json_get_param(pstJsonNode,"dboperate");

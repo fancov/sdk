@@ -676,7 +676,8 @@ S32 bs_show_customer(U32 ulIndex, U32 ulObjectID)
     pstCustomer = bs_get_customer_st(ulObjectID);
     if (NULL == pstCustomer)
     {
-        cli_out_string(ulIndex, "\r\n Err: Customer is not exist!\r\n");
+        dos_snprintf(szBuf, BS_TRACE_BUFF_LEN, "\r\n Err: Customer %u does not exist!\r\n", ulObjectID);
+        cli_out_string(ulIndex,  szBuf);
         return DOS_FAIL;
     }
     pstAccount = &pstCustomer->stAccount;
@@ -697,14 +698,14 @@ S32 bs_show_customer(U32 ulIndex, U32 ulObjectID)
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
 
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s%10s%10s%14s%14s%16s%16s%14s%14s",
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%14s%14s%10s%14s%14s%16s%16s%14s%14s",
                  "AccID", "CustmID", "PackageID", "CreditLn",
                  "WarnLn", "Balance", "ActBalnc", "Rebate", "AccTime");
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
-    cli_out_string(ulIndex, "\r\n--------------------------------------------------------"
-                   "--------------------------------------------------------------");
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%10u%10u%14ld%14ld%16ld%16ld%14d%14u",
+    cli_out_string(ulIndex, "\r\n------------------------------------------------------------"
+                   "------------------------------------------------------------------");
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%14u%14u%10u%14ld%14ld%16ld%16ld%14d%14u",
                  pstAccount->ulAccountID, pstAccount->ulCustomerID,
                  pstAccount->ulBillingPackageID, pstAccount->lCreditLine,
                  pstAccount->lBalanceWarning, pstAccount->LBalance,
@@ -1507,6 +1508,55 @@ S32 bs_show_outband_stat(U32 ulIndex)
     return DOS_SUCC;
 }
 
+/* 专门用来显示客户下的直接子客户 */
+S32 bs_show_customer_child(U32 ulIndex, U32 ulCustomerID)
+{
+    BS_CUSTOMER_ST  *pstCustomer = NULL, *pstChildCustomer = NULL;
+    U32 ulCount = 0;
+    DLL_NODE_S *pstListNode = NULL;
+    S8 szBuff[256] = {0}, szData[16] = {0};
+
+    if (0 == ulCustomerID)
+    {
+        cli_out_string(ulIndex, "\r\n 1");
+        return DOS_SUCC;
+    }
+
+    pstCustomer = bs_get_customer_st(ulCustomerID);
+    if (!pstCustomer)
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nCan\'t find customer %u in hashtable.", ulCustomerID);
+        cli_out_string(ulIndex, szBuff);
+        return DOS_FAIL;
+    }
+
+    if (0 == pstCustomer->stChildrenList.ulCount)
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nCustomer %u has no child customer.", ulCustomerID);
+        cli_out_string(ulIndex, szBuff);
+        return DOS_SUCC;
+    }
+    DLL_Scan(&pstCustomer->stChildrenList, pstListNode, DLL_NODE_S *)
+    {
+        if (DOS_ADDR_INVALID(pstListNode)
+            || DOS_ADDR_INVALID(pstListNode->pHandle))
+        {
+            continue;
+        }
+        pstChildCustomer = (BS_CUSTOMER_ST *)pstListNode;
+        dos_snprintf(szData, sizeof(szData), "%u ", pstChildCustomer->ulCustomerID);
+        dos_strcat(szBuff, szData);
+        if (50 == ulCount + 1 || ulCount + 1 >= pstCustomer->stChildrenList.ulCount)
+        {
+            cli_out_string(ulIndex, szBuff);
+            ulCount = 0;
+            dos_memzero(szBuff, sizeof(szBuff));
+        }
+        ++ulCount;
+    }
+    return DOS_SUCC;
+}
+
 
 /* 命令行处理函数:以后SDK会将debug和show统一管理,介时须作响应调整 */
 S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv)
@@ -1559,6 +1609,10 @@ S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv)
         else if (0 == dos_strncmp(argv[2], "billing", dos_strlen(argv[2])))
         {
             return bs_show_billing_package(ulIndex, ulObjectID);
+        }
+        else if (0 == dos_strncmp(argv[2], "child", dos_strlen(argv[2])))
+        {
+            return bs_show_customer_child(ulIndex, ulObjectID);
         }
         else
         {
@@ -1666,7 +1720,7 @@ S32 bs_command_proc(U32 ulIndex, S32 argc, S8 **argv)
 help:
     cli_out_string(ulIndex, "\r\nInvalid parameters");
     cli_out_string(ulIndex, "\r\nUsage:");
-    cli_out_string(ulIndex, "\r\n1. bs show <object:agent|cb|customer|task|trunk|billing|outband> <object id>");
+    cli_out_string(ulIndex, "\r\n1. bs show <object:agent|cb|customer|task|trunk|billing|outband|child> <object id>");
     cli_out_string(ulIndex, "\r\n2. bs debug <module:all|off|account|audit|bill|cdr|db|fs|maintain|run|stat|web> <level:0|1|2|3|4|5|6|7>");
 
     cli_out_string(ulIndex, "\r\n\r\n");
