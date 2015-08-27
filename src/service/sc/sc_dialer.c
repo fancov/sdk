@@ -740,8 +740,16 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 continue;
             }
 
-            /* 路由前变换 */
-            if (sc_ep_num_transform(pstSCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE) != DOS_SUCC)
+            /* 路由前号码变换 主叫 */
+            if (sc_ep_num_transform(pstSCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE, SC_NUM_TRANSFORM_SELECT_CALLER) != DOS_SUCC)
+            {
+                 DOS_ASSERT(0);
+
+                 goto free_res;
+            }
+
+            /* 被叫号码 */
+            if (sc_ep_num_transform(pstSCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE, SC_NUM_TRANSFORM_SELECT_CALLEE) != DOS_SUCC)
             {
                  DOS_ASSERT(0);
 
