@@ -179,6 +179,7 @@ typedef struct tagSCRouteNode
 {
     U32        ulID;
     BOOL       bExist;                            /* 该标记用来检查是否来自于数据库 */
+    BOOL       bStatus;                           /* 标记路由是否可用 */
 
     U8         ucHourBegin;                       /* 开始时间，小时 */
     U8         ucMinuteBegin;                     /* 开始时间，分钟 */
@@ -192,6 +193,7 @@ typedef struct tagSCRouteNode
     U32        aulDestID[SC_ROUT_GW_GRP_MAX_SIZE];/* 目的ID */
 
     U16        usCallOutGroup;
+    U8         ucPriority;                        /* 优先级 */
     U8         aucReserv[2];
 
 }SC_ROUTE_NODE_ST;
