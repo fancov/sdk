@@ -375,8 +375,8 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             HASH_NODE_S     *pstHashNode = NULL;
             JSON_OBJ_ST     *pstSubJsonWhere = NULL;
             U32             ulHashIndex, ulCustomerType, ulCustomerState, ulCustomID;
-            U32             ulPackageID, ulBanlanceWarning;
-            S32             lMaximumBalance = U32_BUTT;
+            U32             ulPackageID;
+            S32             lMinimumBalance = U32_BUTT ,lBanlanceWarning = U32_BUTT;
             const S8        *pszCustomType = NULL, *pszCustomState = NULL, *pszCustomID = NULL, *pszCustomName = NULL, *pszMinBalance = NULL;
             const S8        *pszBillingPkgID = NULL, *pszBalanceWarning = NULL;
             const S8        *pszSubWhere = NULL;
@@ -473,8 +473,8 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 || dos_atoul(pszCustomType, &ulCustomerType) < 0
                 || dos_atoul(pszCustomState, &ulCustomerState) < 0
                 || dos_atoul(pszBillingPkgID, &ulPackageID) < 0
-                || dos_atoul(pszBalanceWarning, &ulBanlanceWarning) < 0
-                || dos_atol(pszMinBalance, &lMaximumBalance) < 0
+                || dos_atol(pszBalanceWarning, &lBanlanceWarning) < 0
+                || dos_atol(pszMinBalance, &lMinimumBalance) < 0
                 || '\0' == pszCustomName[0])
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Invalid param while adding custom.");
@@ -487,23 +487,22 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
             pstCustomer->ucCustomerState = ulCustomerState;
             pstCustomer->stAccount.ulBillingPackageID = ulPackageID;
-            pstCustomer->stAccount.lBalanceWarning = ulBanlanceWarning;
+            pstCustomer->stAccount.lBalanceWarning = lBanlanceWarning;
             if (DOS_ADDR_VALID(pszExpireTime))
             {
                 pstCustomer->stAccount.ulExpiryTime = (U32)ulExpiryTime;
             }
-            pstCustomer->stAccount.lCreditLine  = lMaximumBalance;
-#if 0
+            pstCustomer->stAccount.lCreditLine  = lMinimumBalance;
+
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Expiry:%u,CustomerID:%u,Name:%s,MinBalance:%d,State:%u,Type:%u,PackageID:%u,BalanceWarning:%u"
                         , pstCustomer->stAccount.ulExpiryTime
                         , pstCustomer->ulCustomerID
                         , pszCustomName
-                        , lMaximumBalance
+                        , lMinimumBalance
                         , ulCustomerState
                         , ulCustomerType
                         , ulPackageID
-                        , ulBanlanceWarning);
-#endif
+                        , lBanlanceWarning);
             json_deinit(&pstSubJsonWhere);
             break;
         }
@@ -603,7 +602,9 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
         }
         case BS_CMD_INSERT:
         {
-            U32             ulHashIndex, ulCustomerType, ulCustomerState, ulBillingPackageID, ulMinBalance, ulBalanceWarning, ulBalance;
+            U32             ulHashIndex, ulCustomerType, ulCustomerState, ulBillingPackageID;
+            S32             lMinBalance, lBalanceWarning;
+            S64             LBalance;
             const S8        *pszCustomType, *pszCustomState, *pszCustomID, *pszCustomName, *pszParent;
             const S8        *pszBillingPackageID = NULL, *pszMinBalance = NULL, *pszBalanceWarning = NULL, *pszBalance = NULL;
             HASH_NODE_S     *pstHashNode = NULL;
@@ -669,9 +670,9 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 || dos_atoul(pszCustomType, &ulCustomerType) < 0
                 || dos_atoul(pszCustomState, &ulCustomerState) < 0
                 || dos_atoul(pszBillingPackageID, &ulBillingPackageID) < 0
-                || dos_atoul(pszMinBalance, &ulMinBalance) < 0
-                || dos_atoul(pszBalanceWarning, &ulBalanceWarning) < 0
-                || dos_atoul(pszBalance, &ulBalance) < 0
+                || dos_atol(pszMinBalance, &lMinBalance) < 0
+                || dos_atol(pszBalanceWarning, &lBalanceWarning) < 0
+                || dos_atoll(pszBalance, &LBalance) < 0
                 || '\0' == pszCustomName[0])
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Invalid param while adding custom.");
@@ -684,9 +685,9 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pstCustomer->ucCustomerState = (U8)ulCustomerState;
             pstCustomer->ucCustomerType = (U8)ulCustomerType;
             pstCustomer->stAccount.ulBillingPackageID = ulBillingPackageID;
-            pstCustomer->stAccount.lCreditLine = (S32)ulMinBalance;
-            pstCustomer->stAccount.lBalanceWarning = (S32)ulBalanceWarning;
-            pstCustomer->stAccount.LBalance = (S64)ulBalance;
+            pstCustomer->stAccount.lCreditLine = lMinBalance;
+            pstCustomer->stAccount.lBalanceWarning = lBalanceWarning;
+            pstCustomer->stAccount.LBalance = LBalance;
             if (DOS_ADDR_VALID(pszExpireTime))
             {
                 pstCustomer->stAccount.ulExpiryTime = (U32)ulExpiryTime;
@@ -774,7 +775,6 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             /* 更新客户树 */
             pstCustomer->pstParent = pstCustomParent;
             bs_customer_add_child(pstCustomParent, pstCustomer);
-#if 0
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "ExpiryTime:%u,Name:%s,CustomerID:%u,ParentID:%u,State:%u,Type:%u,BillingPkgID:%u,MinBalance:%d,BalanceWarning:%d,Balance:%ld"
                         , pstCustomer->stAccount.ulExpiryTime
                         , pstCustomer->szCustomerName
@@ -786,7 +786,6 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                         , pstCustomer->stAccount.lCreditLine
                         , pstCustomer->stAccount.lBalanceWarning
                         , pstCustomer->stAccount.LBalance);
-#endif
             break;
         }
         default:
