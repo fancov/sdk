@@ -3416,10 +3416,8 @@ S32 sc_load_caller_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **
 U32 sc_load_caller_relationship()
 {
     SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
-    U32  ulHashIndex = U32_BUTT;
-    S32  lRet;
+    U32  ulHashIndex = U32_BUTT, ulRet = U32_BUTT;
     HASH_NODE_S *pstHashNode = NULL;
-    S8   szQuery[128] = {0};
 
     HASH_Scan_Table(g_pstHashCallerGrp, ulHashIndex)
     {
@@ -3431,6 +3429,12 @@ U32 sc_load_caller_relationship()
                 continue;
             }
             pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
+            ulRet = sc_refresh_gateway_grp(pstCallerGrp->ulID);
+            if (DOS_SUCC != ulRet)
+            {
+                sc_logr_debug(SC_FUNC, "Refresh gwgrp %u FAIL.", pstCallerGrp->ulID);
+            }
+#if 0
             dos_snprintf(szQuery, sizeof(szQuery), "SELECT caller_id,customer_id, caller_type FROM tbl_caller_assign WHERE caller_grp_id=%u;", pstCallerGrp->ulID);
 
             lRet = db_query(g_pstSCDBHandle, szQuery, sc_load_caller_relationship_cb, (VOID *)pstCallerGrp, NULL);
@@ -3440,6 +3444,7 @@ U32 sc_load_caller_relationship()
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
+#endif
         }
     }
     sc_logr_info(SC_FUNC, "%s", "Load caller relationship SUCC.");
@@ -3621,9 +3626,7 @@ U32 sc_refresh_gateway_grp(U32 ulIndex)
     S8 szSQL[1024];
     U32 ulHashIndex;
     SC_GW_GRP_NODE_ST    *pstGWGrpNode  = NULL;
-#if 1
     SC_GW_NODE_ST        *pstGWNode = NULL;
-#endif
     HASH_NODE_S          *pstHashNode   = NULL;
     DLL_NODE_S           *pstDLLNode    = NULL;
 
@@ -3656,10 +3659,8 @@ U32 sc_refresh_gateway_grp(U32 ulIndex)
             DOS_ASSERT(0);
             break;
         }
-#if 1
         pstGWNode = (SC_GW_NODE_ST *)pstDLLNode->pHandle;
         sc_logr_debug(SC_FUNC, "Gateway %u will be removed from Group %u", pstGWNode->ulGWID, ulIndex);
-#endif
 
         /* 此处不能释放网关数据，只需释放链表结点即可，因为一个网关可以属于多个网关组，此处删除，容易产生double free信号 */
         if (DOS_ADDR_VALID(pstDLLNode->pHandle))
@@ -3950,7 +3951,7 @@ U32 sc_load_route(U32 ulIndex)
         sc_logr_error(SC_FUNC, "Load route FAIL(ID:%u).", ulIndex);
         return DOS_FAIL;
     }
-    sc_logr_info(SC_FUNC, "Load route SUCC,(ID:%u)", ulIndex);
+    sc_logr_info(SC_FUNC, "Load route SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -6557,6 +6558,10 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
                                 && DOS_ADDR_VALID(pstListNode1->pHandle))
                             {
                                 pstGW = pstListNode1->pHandle;
+                                if (DOS_FALSE == pstGW->bStatus)
+                                {
+                                    continue;
+                                }
                                 ulCurrentLen += dos_snprintf(szCalleeString + ulCurrentLen
                                                 , ulLength - ulCurrentLen
                                                 , "sofia/gateway/%d/%s|"
@@ -8606,7 +8611,7 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
             g_pstTaskMngtInfo->stStat.ulMaxSession = g_pstTaskMngtInfo->stStat.ulCurrentSessions;
         }
 
-        if (pstGateway)
+        if (pstGateway && DOS_FALSE != pstGateway->bStatus)
         {
             pstGateway->stStat.ulTotalSessions++;
             pstGateway->stStat.ulCurrentSessions++;
@@ -8626,7 +8631,7 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
                 g_pstTaskMngtInfo->stStat.ulMaxCalls = g_pstTaskMngtInfo->stStat.ulCurrentCalls;
             }
 
-            if (pstGateway)
+            if (pstGateway && DOS_FALSE != pstGateway->bStatus)
             {
                 pstGateway->stStat.ulTotalCalls++;
                 pstGateway->stStat.ulCurrentCalls++;
@@ -8643,7 +8648,7 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
         {
             g_pstTaskMngtInfo->stStat.ulOutgoingSessions++;
 
-            if (pstGateway)
+            if (pstGateway && DOS_FALSE != pstGateway->bStatus)
             {
                 pstGateway->stStat.ulOutgoingSessions++;
             }
@@ -8652,7 +8657,7 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
         {
             g_pstTaskMngtInfo->stStat.ulIncomingSessions++;
 
-            if (pstGateway)
+            if (pstGateway && DOS_FALSE != pstGateway->bStatus)
             {
                 pstGateway->stStat.ulIncomingSessions++;
             }
@@ -8662,7 +8667,7 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
     {
         g_pstTaskMngtInfo->stStat.ulCurrentSessions--;
 
-        if (pstGateway)
+        if (pstGateway && DOS_FALSE != pstGateway->bStatus)
         {
             pstGateway->stStat.ulCurrentSessions--;
         }
@@ -8673,7 +8678,7 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
         {
             g_pstTaskMngtInfo->stStat.ulCurrentCalls--;
 
-            if (pstGateway)
+            if (pstGateway && DOS_FALSE != pstGateway->bStatus)
             {
                 pstGateway->stStat.ulCurrentCalls--;
             }
@@ -8687,7 +8692,7 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
             if (dos_strncmp(pszSIPHangupCause, "sip:2", dos_strlen("sip:2")) != 0)
             {
                 g_pstTaskMngtInfo->stStat.ulFailSessions++;
-                if (pstGateway)
+                if (pstGateway && DOS_FALSE != pstGateway->bStatus)
                 {
                     pstGateway->stStat.ulFailSessions++;
                 }

@@ -1111,11 +1111,11 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
                 continue;
             }
 
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the gateway in the gateway group %d:", ulID);
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the gateway in the gateway group %u:", ulID);
             cli_out_string(ulIndex, szCmdBuff);
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12s%36s", "Index", "Domain");
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12s%12s%36s", "GWID","GrpID", "Domain");
             cli_out_string(ulIndex, szCmdBuff);
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------");
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------");
             cli_out_string(ulIndex, szCmdBuff);
 
             DLL_Scan(&pstGWGrpNode->stGWList, pstDLLNode, DLL_NODE_S *)
@@ -1126,9 +1126,9 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
                     continue;
                 }
 
-                pstGWNode = pstHashNode->pHandle;
+                pstGWNode = pstDLLNode->pHandle;
 
-                dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12u%36s", pstGWNode->ulGWID, pstGWNode->szGWDomain);
+                dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12u%12u%36s", pstGWNode->ulGWID, pstGWGrpNode->ulGWGrpID, pstGWNode->szGWDomain);
                 cli_out_string(ulIndex, szCmdBuff);
             }
             bFound = DOS_TRUE;
@@ -1137,11 +1137,8 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
 
     if (DOS_FALSE == bFound)
     {
-        return ;
+        cli_out_string(ulIndex, "\r\nNot found.");
     }
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------\r\n");
-    cli_out_string(ulIndex, szCmdBuff);
 }
 
 VOID sc_show_stat(U32 ulIndex, S32 argc, S8 **argv)
