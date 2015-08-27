@@ -423,6 +423,86 @@ U32 sc_ep_init_agent_status()
     return ulRet;
 }
 
+BOOL sc_ep_black_regular_check(S8 *szRegularNum, S8 *szNum)
+{
+    S8 aszRegular[SC_TEL_NUMBER_LENGTH][SC_SINGLE_NUMBER_SRT_LEN] = {{0}};
+    S8 szAllNum[SC_SINGLE_NUMBER_SRT_LEN] = "0123456789";
+    S32 lIndex = 0;
+    U32 ulLen  = 0;
+    S8 *pszPos = szRegularNum;
+    S8 ucChar;
+    S32 i = 0;
+
+    if (DOS_ADDR_INVALID(szRegularNum) || DOS_ADDR_INVALID(szNum))
+    {
+        /* 按照匹配不成功处理 */
+        return DOS_TRUE;
+    }
+
+    while (*pszPos != '\0' && lIndex < SC_TEL_NUMBER_LENGTH)
+    {
+        ucChar = *pszPos;
+
+        if (ucChar == '*')
+        {
+            dos_strcpy(aszRegular[lIndex], szAllNum);
+        }
+        else if (dos_strchr(szAllNum, ucChar) != NULL)
+        {
+            /* 0-9 */
+            aszRegular[lIndex][0] = ucChar;
+            aszRegular[lIndex][1] = '\0';
+        }
+        else if (ucChar == '[')
+        {
+            aszRegular[lIndex][0] = '\0';
+            pszPos++;
+            while (*pszPos != ']' && *pszPos != '\0')
+            {
+                if (dos_strchr(szAllNum, *pszPos) != NULL)
+                {
+                    /* 0-9 */
+                    ulLen = dos_strlen(aszRegular[lIndex]);
+                    aszRegular[lIndex][ulLen] = *pszPos;
+                    aszRegular[lIndex][ulLen+1] = '\0';
+                }
+                pszPos++;
+            }
+
+            if (*pszPos == '\0')
+            {
+                /* 正则表达式错误, 按照不匹配来处理 */
+                return DOS_TRUE;
+            }
+        }
+        else
+        {
+            /* 正则表达式错误, 按照不匹配来处理 */
+            return DOS_TRUE;
+        }
+
+        pszPos++;
+        lIndex++;
+    }
+
+    /* 正则表达式解析完成，比较号码是否满足正则表达式。首先比较长度，lIndex即为正则表达式的长度 */
+    if (dos_strlen(szNum) != lIndex)
+    {
+        return DOS_TRUE;
+    }
+
+    for (i=0; i<lIndex; i++)
+    {
+        if (dos_strchr(aszRegular[i], *(szNum+i)) == NULL)
+        {
+            /* 不匹配 */
+            return DOS_TRUE;
+        }
+    }
+
+    return DOS_FALSE;
+}
+
 /**
  * 函数: BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum)
  * 功能: 检查pszNum是否被黑名单过滤
@@ -433,9 +513,7 @@ U32 sc_ep_init_agent_status()
  */
 BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum)
 {
-    BOOL               blIsMatch = DOS_TRUE;
     U32                ulHashIndex;
-    U32                ulCurrentIndex;
     HASH_NODE_S        *pstHashNode = NULL;
     SC_BLACK_LIST_NODE *pstBlackListNode = NULL;
 
@@ -472,40 +550,12 @@ BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum)
                 continue;
             }
 
-            if (dos_strlen(pszNum) != dos_strlen(pstBlackListNode->szNum))
+            if (SC_NUM_BLACK_REGULAR == pstBlackListNode->enType)
             {
-                continue;
-            }
-
-            if (dos_strchr(pstBlackListNode->szNum, '*'))
-            {
-                blIsMatch = DOS_TRUE;
-                ulCurrentIndex = 0;
-                /* 这个地方被比较的号码和正则表达式应该是一样的长度，所以while循环中数组下标可以随意用 */
-                while (ulCurrentIndex < sizeof(pstBlackListNode->szNum)
-                    && '\0' != pstBlackListNode->szNum[ulCurrentIndex]
-                    && '\0' != pszNum[ulCurrentIndex])
+                /* 正则号码 */
+                if (sc_ep_black_regular_check(pstBlackListNode->szNum, pszNum) == DOS_FALSE)
                 {
-                    if ('\0' == pstBlackListNode->szNum[ulCurrentIndex]
-                        || '\0' == pszNum[ulCurrentIndex])
-                    {
-                        break;
-                    }
-
-                    if ('*' != pstBlackListNode->szNum[ulCurrentIndex])
-                    {
-                        if (pstBlackListNode->szNum[ulCurrentIndex] != pszNum[ulCurrentIndex])
-                        {
-                            blIsMatch = DOS_FALSE;
-                            break;
-                        }
-                    }
-
-                    ulCurrentIndex++;
-                }
-
-                if (blIsMatch)
-                {
+                    /* 匹配成功 */
                     sc_logr_debug(SC_ESL, "Num %s is matched black list item %s, id %u. (Customer:%u)"
                                 , pszNum
                                 , pstBlackListNode->szNum
@@ -513,12 +563,13 @@ BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum)
                                 , ulCustomerID);
 
                     pthread_mutex_unlock(&g_mutexHashBlackList);
+
                     return DOS_FALSE;
                 }
             }
             else
             {
-                if (0 == dos_strnicmp(pstBlackListNode->szNum, pszNum, sizeof(pstBlackListNode->szNum)))
+                if (0 == dos_strcmp(pstBlackListNode->szNum, pszNum))
                 {
                     sc_logr_debug(SC_ESL, "Num %s is matched black list item %s, id %u. (Customer:%u)"
                                 , pszNum
@@ -727,7 +778,7 @@ VOID sc_ep_black_init(SC_BLACK_LIST_NODE *pstBlackListNode)
         dos_memzero(pstBlackListNode, sizeof(SC_BLACK_LIST_NODE));
         pstBlackListNode->ulID = U32_BUTT;
         pstBlackListNode->ulCustomerID = U32_BUTT;
-        pstBlackListNode->ulType = U32_BUTT;
+        pstBlackListNode->enType = SC_NUM_BLACK_BUTT;
         pstBlackListNode->szNum[0] = '\0';
     }
 }
@@ -2168,6 +2219,15 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             dos_strncpy(pstBlackListNode->szNum, aszValues[lIndex], sizeof(pstBlackListNode->szNum));
             pstBlackListNode->szNum[sizeof(pstBlackListNode->szNum) - 1] = '\0';
         }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "type", dos_strlen("type")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || dos_atoul(aszValues[lIndex], &pstBlackListNode->enType) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
 
         blProcessOK = DOS_TRUE;
     }
@@ -2213,7 +2273,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             return DOS_FAIL;
         }
 
-        pstBlackListTmp->ulType = pstBlackListNode->ulType;
+        pstBlackListTmp->enType = pstBlackListNode->enType;
 
         dos_strncpy(pstBlackListTmp->szNum, pstBlackListNode->szNum, sizeof(pstBlackListTmp->szNum));
         pstBlackListTmp->szNum[sizeof(pstBlackListTmp->szNum) - 1] = '\0';
