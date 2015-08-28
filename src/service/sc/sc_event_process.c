@@ -461,10 +461,13 @@ BOOL sc_ep_black_regular_check(S8 *szRegularNum, S8 *szNum)
             {
                 if (dos_strchr(szAllNum, *pszPos) != NULL)
                 {
-                    /* 0-9 */
-                    ulLen = dos_strlen(aszRegular[lIndex]);
-                    aszRegular[lIndex][ulLen] = *pszPos;
-                    aszRegular[lIndex][ulLen+1] = '\0';
+                    /* 0-9, 先判断一下是否已经存在 */
+                    if (dos_strchr(aszRegular[lIndex], *pszPos) == NULL)
+                    {
+                        ulLen = dos_strlen(aszRegular[lIndex]);
+                        aszRegular[lIndex][ulLen] = *pszPos;
+                        aszRegular[lIndex][ulLen+1] = '\0';
+                    }
                 }
                 pszPos++;
             }
