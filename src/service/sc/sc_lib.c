@@ -1008,7 +1008,7 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         ulFirstInvalidNode = U32_BUTT;
 
         /* 检测号码是否重复了，并且找到一个空闲的控制块 */
-        for (ulIndex=0; ulIndex<SC_MAX_CALLER_NUM; ulIndex++)
+        for (ulIndex = 0; ulIndex < SC_MAX_CALLER_NUM; ulIndex++)
         {
             if (!pstTCB->pstCallerNumQuery[ulIndex].bValid
                 && U32_BUTT == ulFirstInvalidNode)
@@ -1087,7 +1087,7 @@ U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB)
     lCnt = 0;
 
     /* 检测号码是否重复了，并且找到一个空闲的控制块 */
-    for (ulIndex=0; ulIndex<sizeof(g_pszCallerList)/sizeof(S8 *); ulIndex++)
+    for (ulIndex = 0; ulIndex < sizeof(g_pszCallerList) / sizeof(S8 *); ulIndex++)
     {
         pstTCB->pstCallerNumQuery[ulIndex].bValid   = 1;
         pstTCB->pstCallerNumQuery[ulIndex].bTraceON = 1;
@@ -1200,7 +1200,7 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
 
     lCnt = 0;
 
-    for (ulIndex=0; ulIndex<sizeof(g_pszCalledList)/sizeof(S8 *); ulIndex++)
+    for (ulIndex = 0; ulIndex < sizeof(g_pszCalledList) /sizeof(S8 *); ulIndex++)
     {
         pstCalledNode = (SC_TEL_NUM_QUERY_NODE_ST *)dos_dmem_alloc(sizeof(SC_TEL_NUM_QUERY_NODE_ST));
         if (!pstCalledNode)

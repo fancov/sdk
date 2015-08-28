@@ -377,9 +377,10 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             U32             ulHashIndex, ulCustomerType, ulCustomerState, ulCustomID;
             U32             ulPackageID;
             S32             lMinimumBalance = U32_BUTT ,lBanlanceWarning = U32_BUTT;
+            BOOL            bSMSRemind = DOS_FALSE;
             const S8        *pszCustomType = NULL, *pszCustomState = NULL, *pszCustomID = NULL, *pszCustomName = NULL, *pszMinBalance = NULL;
             const S8        *pszBillingPkgID = NULL, *pszBalanceWarning = NULL;
-            const S8        *pszSubWhere = NULL;
+            const S8        *pszSubWhere = NULL, *pszRemind = NULL;
 
             /*将当前时间转换为时间戳 */
             pszExpireTime = json_get_param(pstJSONObj, "expiry");
@@ -449,6 +450,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
             pszCustomName = json_get_param(pstSubJsonWhere, "name");
             pszMinBalance = json_get_param(pstJSONObj, "minimum_balance");
+            pszRemind = json_get_param(pstJSONObj, "remind");
 
             pszCustomState = json_get_param(pstJSONObj, "status");
             pszCustomType = json_get_param(pstSubJsonWhere, "type");
@@ -458,7 +460,8 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
             if (DOS_ADDR_INVALID(pszCustomName) || DOS_ADDR_INVALID(pszCustomState)
                || DOS_ADDR_INVALID(pszCustomType) || DOS_ADDR_INVALID(pszBillingPkgID)
-               || DOS_ADDR_INVALID(pszBalanceWarning) || DOS_ADDR_INVALID(pszMinBalance))
+               || DOS_ADDR_INVALID(pszBalanceWarning) || DOS_ADDR_INVALID(pszMinBalance)
+               || DOS_ADDR_INVALID(pszRemind))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Parse json param FAIL while adding custom.");
 
@@ -475,6 +478,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 || dos_atoul(pszBillingPkgID, &ulPackageID) < 0
                 || dos_atol(pszBalanceWarning, &lBanlanceWarning) < 0
                 || dos_atol(pszMinBalance, &lMinimumBalance) < 0
+                || dos_atoul(pszRemind, &bSMSRemind) < 0
                 || '\0' == pszCustomName[0])
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Invalid param while adding custom.");
@@ -485,6 +489,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
 
+            pstCustomer->bSMSRemind = bSMSRemind;
             pstCustomer->ucCustomerState = ulCustomerState;
             pstCustomer->stAccount.ulBillingPackageID = ulPackageID;
             pstCustomer->stAccount.lBalanceWarning = lBanlanceWarning;
@@ -594,9 +599,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pstHashNode->pHandle = NULL;
             dos_dmem_free(pstHashNode);
             pstHashNode = NULL;
-#if 0
             bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "CustomerID:%u", ulCustomID);
-#endif
             pthread_mutex_unlock(&g_mutexCustomerTbl);
             break;
         }
@@ -605,7 +608,8 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             U32             ulHashIndex, ulCustomerType, ulCustomerState, ulBillingPackageID;
             S32             lMinBalance, lBalanceWarning;
             S64             LBalance;
-            const S8        *pszCustomType, *pszCustomState, *pszCustomID, *pszCustomName, *pszParent;
+            BOOL            bSMSRemind = DOS_FALSE;
+            const S8        *pszCustomType, *pszCustomState, *pszCustomID, *pszCustomName, *pszParent, *pszRemind;
             const S8        *pszBillingPackageID = NULL, *pszMinBalance = NULL, *pszBalanceWarning = NULL, *pszBalance = NULL;
             HASH_NODE_S     *pstHashNode = NULL;
             BS_CUSTOMER_ST  *pstCustomer = NULL, *pstCustomParent = NULL;
@@ -649,12 +653,13 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pszMinBalance = json_get_param(pstJSONObj, "minimum_balance");
             pszBalanceWarning = json_get_param(pstJSONObj, "balance_warning");
             pszBalance = json_get_param(pstJSONObj, "balance");
+            pszRemind = json_get_param(pstJSONObj, "remind");
 
             if (DOS_ADDR_INVALID(pszCustomName) || DOS_ADDR_INVALID(pszCustomID)
                 || DOS_ADDR_INVALID(pszParent) || DOS_ADDR_INVALID(pszCustomState)
                 || DOS_ADDR_INVALID(pszCustomType) || DOS_ADDR_INVALID(pszBillingPackageID)
                 || DOS_ADDR_INVALID(pszMinBalance) || DOS_ADDR_INVALID(pszBalanceWarning)
-                || DOS_ADDR_INVALID(pszBalance))
+                || DOS_ADDR_INVALID(pszBalance) || DOS_ADDR_INVALID(pszRemind))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Parse json param FAIL while adding custom.");
 
@@ -673,6 +678,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 || dos_atol(pszMinBalance, &lMinBalance) < 0
                 || dos_atol(pszBalanceWarning, &lBalanceWarning) < 0
                 || dos_atoll(pszBalance, &LBalance) < 0
+                || dos_atoul(pszRemind, &bSMSRemind) < 0
                 || '\0' == pszCustomName[0])
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Invalid param while adding custom.");
@@ -682,6 +688,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
                 break;
             }
+            pstCustomer->bSMSRemind = bSMSRemind;
             pstCustomer->ucCustomerState = (U8)ulCustomerState;
             pstCustomer->ucCustomerType = (U8)ulCustomerType;
             pstCustomer->stAccount.ulBillingPackageID = ulBillingPackageID;

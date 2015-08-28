@@ -403,6 +403,7 @@ typedef struct stBS_CUSTOMER_ST
     U32     ulAgentNum;                     /* 坐席数量 */
     U32     ulNumberNum;                    /* 号码(长号)数量 */
     U32     ulUserLineNum;                  /* 用户线数量 */
+    BOOL    bSMSRemind;                     /* 是否短信提醒 */
 
     U8      ucCustomerType;                 /* 客户类型 */
     U8      ucCustomerState;                /* 客户状态 */

@@ -620,9 +620,7 @@ static S32 bsd_walk_web_cmd_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFie
     }
 
     pstJSONObj = json_init(aszData[2]);
-#if 0
     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, aszData[2]);
-#endif
     if (DOS_ADDR_INVALID(pstJSONObj))
     {
         DOS_ASSERT(0);
