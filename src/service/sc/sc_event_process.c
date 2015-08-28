@@ -659,6 +659,7 @@ VOID sc_ep_route_init(SC_ROUTE_NODE_ST *pstRoute)
         pstRoute->ucHourEnd = 0;
         pstRoute->ucMinuteEnd = 0;
         pstRoute->bExist = DOS_FALSE;
+        pstRoute->bStatus = DOS_FALSE;
     }
 }
 
@@ -2601,6 +2602,7 @@ S32 sc_load_did_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         pstDIDNumTmp->ulDIDID = pstDIDNumNode->ulDIDID;
         pstDIDNumTmp->ulBindType = pstDIDNumNode->ulBindType;
         pstDIDNumTmp->ulBindID  = pstDIDNumNode->ulBindID;
+        pstDIDNumTmp->bValid = pstDIDNumNode->bValid;
         dos_strncpy(pstDIDNumTmp->szDIDNum, pstDIDNumNode->szDIDNum, sizeof(pstDIDNumTmp->szDIDNum));
         pstDIDNumTmp->szDIDNum[sizeof(pstDIDNumTmp->szDIDNum) - 1] = '\0';
 
@@ -3884,7 +3886,6 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                     blProcessOK = DOS_FALSE;
                     break;
                 }
-                break;
             }
             else if (SC_DEST_TYPE_GW_GRP == pstRoute->ulDestType)
             {
@@ -3932,8 +3933,29 @@ S32 sc_load_route_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 blProcessOK = DOS_FALSE;
                 break;
             }
-
             pstRoute->usCallOutGroup = (U16)ulCallOutGroup;
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "status", dos_strlen("status")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0]
+                || dos_atoul(aszValues[lIndex], &pstRoute->bStatus) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "seq", dos_strlen("seq")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0]
+                || dos_atoul(aszValues[lIndex], (U32 *)&pstRoute->ucPriority) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
         }
     }
 
@@ -4005,12 +4027,12 @@ U32 sc_load_route(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group FROM tbl_route WHERE tbl_route.status = 1 ORDER BY tbl_route.seq ASC;");
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, seq FROM tbl_route ORDER BY tbl_route.seq ASC;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group FROM tbl_route WHERE tbl_route.status = 1 AND id=%d ORDER BY tbl_route.seq ASC;"
+                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, seq FROM tbl_route WHERE id=%d ORDER BY tbl_route.seq ASC;"
                     , ulIndex);
     }
 

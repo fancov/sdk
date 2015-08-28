@@ -134,8 +134,8 @@ const S8* g_pszRouteDestType[] =
 const S8* g_pszDidBindType[] =
 {
     "",
-    "SIP",
-    "QUEUE"
+    "AGENT",
+    "AGENT-QUEUE"
 };
 
 const S8* g_pszTaskStatus[] =
@@ -1259,32 +1259,34 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
 {
     SC_ROUTE_NODE_ST *pstRoute = NULL;
     S8  szCmdBuff[1024] = {0,};
+    S8  szDataList[32] = {0};
+    S8  szData[8] = {0};
     DLL_NODE_S * pstDLLNode = NULL;
-    U32  ulRouteCnt = 0;
+    U32  ulRouteCnt = 0, i = 0;
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the route list.");
     cli_out_string(ulIndex, szCmdBuff);
 
     /*制作表头*/
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+-----------------------------------------------------------------------------------------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+-------------------------------------------------------------------------------------------------------------------------------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                          Route List                                           |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                                            Route List                                                               |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+---------------------------------+---------------+--------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+---------------------------------+---------------+------------------------------+----------+----------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              |     Time      |             Prefix              |               |              |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              |     Time      |             Prefix              |               |                              |          |          |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|      ID      +-------+-------+----------------+----------------+   Dest Type   |    Dest ID   |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|      ID      +-------+-------+----------------+----------------+   Dest Type   |            Dest ID           |  Status  | Priority |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              | Start |  End  |     Callee     |     Caller     |               |              |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              | Start |  End  |     Callee     |     Caller     |               |                              |          |          |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+--------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+------------------------------+----------+----------+");
     cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexRouteList);
@@ -1309,8 +1311,19 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
             continue;
         }
 
+        for (i = 0; i < SC_ROUT_GW_GRP_MAX_SIZE; ++i)
+        {
+            if (0 == pstRoute->aulDestID[i] || U32_BUTT == pstRoute->aulDestID[i])
+            {
+                continue;
+            }
+            dos_ltoa(pstRoute->aulDestID[i], szData, sizeof(szData));
+            dos_strcat(szDataList, szData);
+            dos_strcat(szDataList, " ");
+        }
+
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n|%14u| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%14u|"
+                    , "\r\n|%14u| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%-30s|%10s|%10u|"
                     , pstRoute->ulID
                     , pstRoute->ucHourBegin
                     , pstRoute->ucMinuteBegin
@@ -1319,13 +1332,16 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
                     , pstRoute->szCalleePrefix[0] == '\0' ? "NULL" : pstRoute->szCalleePrefix
                     , pstRoute->szCallerPrefix[0] == '\0' ? "NULL" : pstRoute->szCallerPrefix
                     , sc_translate_route_dest_type(pstRoute->ulDestType)
-                    , pstRoute->aulDestID[0]);
+                    , szDataList
+                    , DOS_FALSE == pstRoute->bStatus?"No":"Yes"
+                    , pstRoute->ucPriority);
         cli_out_string(ulIndex, szCmdBuff);
         ++ulRouteCnt;
+        dos_memzero(szDataList, sizeof(szDataList));
     }
 
     pthread_mutex_unlock(&g_mutexRouteList);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+--------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+------------------------------+----------+----------+");
     cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal:%d routes.\r\n\r\n", ulRouteCnt);
@@ -1343,19 +1359,19 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the did list.");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+----------------------------------------------------------------------------------------------+----------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------------------------------------------------------------------------------------------+----------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                                Did List                                                 |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                                  Did List                                                   |");
     cli_out_string(ulIndex,szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+-----------+----------|");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+---------------+--------------+-----------+----------|");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|    Did ID    |  Customer ID  |        Did Num         | Bind Type |    Bind ID   |   Times   |  Status  |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|    Did ID    |  Customer ID  |        Did Num         |   Bind Type   |    Bind ID   |   Times   |  Status  |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+-----------+----------|");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+---------------+--------------+-----------+----------|");
     cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexHashDIDNum);
@@ -1382,7 +1398,7 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n|%14u|%15u|%-24s|%-11s|%14u|%11u|%10s|"
+                            , "\r\n|%14u|%15u|%-24s|%-15s|%14u|%11u|%10s|"
                             , pstDid->ulDIDID
                             , pstDid->ulCustomID
                             , pstDid->szDIDNum[0] == '\0' ? "NULL": pstDid->szDIDNum
@@ -1398,7 +1414,7 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
 
     pthread_mutex_unlock(&g_mutexHashDIDNum);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+-----------+--------------+-----------+----------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+---------------+--------------+-----------+----------+");
     cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d did numbers.\r\n\r\n", ulDidCnt);
