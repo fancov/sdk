@@ -9945,6 +9945,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     U32           ulMainService = U32_BUTT;
     U32           ulErrCode = BS_TERM_NONE;
     S8            *pszMainService = NULL;
+    S8            *pszPlayBalance = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -10031,8 +10032,17 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     }
     else
     {
-        sc_logr_notice(SC_ESL, "SCB %d donot needs handle any playback application.", pstSCB->usSCBNo);
-        sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+        pszPlayBalance = esl_event_get_header(pstEvent, "play_balance");
+        if (DOS_ADDR_VALID(pszPlayBalance))
+        {
+            /* 播放余额，不需要挂断 */
+            sc_logr_debug(SC_ESL, "SCB %d play balance, %s", pstSCB->usSCBNo, pszPlayBalance);
+        }
+        else
+        {
+            sc_logr_notice(SC_ESL, "SCB %d donot needs handle any playback application.", pstSCB->usSCBNo);
+            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+        }
     }
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));

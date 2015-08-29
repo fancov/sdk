@@ -52,15 +52,17 @@ SC_BS_MSG_STAT_ST stBSMsgStat;
 U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB, SC_SCB_ST *pstSCBOther)
 {
     S8    szAPPParam[1024]  = { 0 };
+    U32   ulCurrentLen  = 0;
+    U32   ulTotalLen    = sizeof(szAPPParam);
+#if 0
     U64   i             = 0;
     S32   j             = 0;
     S32   lBalance      = 0;
     S32   lInteger      = 0;
     S32   lRemainder    = 0;
-    U32   ulCurrentLen  = 0;
-    U32   ulTotalLen    = sizeof(szAPPParam);
     BOOL  bIsGetMSB     = DOS_FALSE;
     BOOL  bIsZero       = DOS_FALSE;
+#endif
 
     if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSCBOther))
     {
@@ -70,10 +72,11 @@ U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB, SC_SCB_ST *pstSCBOther)
     /* 根据余额拼接出语音 */
     dos_memzero(szAPPParam, sizeof(szAPPParam));
     ulCurrentLen = 0;
+#if 0
     lBalance = pstSCB->lBalance;
 
     ulCurrentLen = dos_snprintf(szAPPParam, ulTotalLen
-                        , "file_string://%s/nindyew.wav!", SC_TASK_AUDIO_PATH);
+                        , "{play_balance=true}file_string://%s/nindyew.wav!", SC_TASK_AUDIO_PATH);
 
     if (lBalance < 0)
     {
@@ -182,6 +185,10 @@ U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB, SC_SCB_ST *pstSCBOther)
 
     /* 最后多了个一个 ! */
     szAPPParam[dos_strlen(szAPPParam) - 1] = '\0';
+
+#endif
+    ulCurrentLen = dos_snprintf(szAPPParam, ulTotalLen
+                        , "{play_balance=true}file_string://%s/ndyuebz.wav", SC_TASK_AUDIO_PATH);
 
     sc_ep_esl_execute("playback", szAPPParam, pstSCBOther->szUUID);
 
@@ -293,6 +300,8 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
                 {
                     sc_dialer_alarm_balance(pstSCB, pstSCBOther);
                 }
+
+                sc_ep_esl_execute("park", NULL, pstSCBOther->szUUID);
             }
         }
 
