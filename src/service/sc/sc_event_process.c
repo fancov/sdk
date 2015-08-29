@@ -5307,6 +5307,7 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
         || enTiming >= SC_NUM_TRANSFORM_TIMING_BUTT
         || enNumSelect >= SC_NUM_TRANSFORM_SELECT_BUTT)
     {
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
@@ -6608,6 +6609,7 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
                     /* TODO 路由后号码变换。现在只支持中继的，不支持中继组 */
                     if (sc_ep_num_transform(pstSCB, pstRouetEntry->aulDestID[0], SC_NUM_TRANSFORM_TIMING_AFTER, SC_NUM_TRANSFORM_SELECT_CALLER) != DOS_SUCC)
                     {
+                        DOS_ASSERT(0);
                         blIsFound = DOS_FALSE;
 
                         break;
@@ -6615,6 +6617,7 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
 
                     if (sc_ep_num_transform(pstSCB, pstRouetEntry->aulDestID[0], SC_NUM_TRANSFORM_TIMING_AFTER, SC_NUM_TRANSFORM_SELECT_CALLEE) != DOS_SUCC)
                     {
+                        DOS_ASSERT(0);
                         blIsFound = DOS_FALSE;
 
                         break;
@@ -6637,13 +6640,16 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
                             break;
                         }
 
+                        sc_logr_debug(SC_ESL, "Search gateway froup, ID is %d", pstRouetEntry->aulDestID[lIndex]);
                         ulHashIndex = sc_ep_gw_grp_hash_func(pstRouetEntry->aulDestID[lIndex]);
                         pstHashNode = hash_find_node(g_pstHashGWGrp, ulHashIndex, (VOID *)&pstRouetEntry->aulDestID[lIndex], sc_ep_gw_grp_hash_find);
                         if (DOS_ADDR_INVALID(pstHashNode)
                             || DOS_ADDR_INVALID(pstHashNode->pHandle))
                         {
-                            blIsFound = DOS_FALSE;
-                            goto finished;
+                            /* 没有找到对应的中继组，继续查找下一个，这种情况，理论上是不应该出现的 */
+                            sc_logr_info(SC_ESL, "Not found gateway froup %d", pstRouetEntry->aulDestID[lIndex]);
+
+                            continue;
                         }
 
                         /* 查找网关 */
@@ -6651,7 +6657,7 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
                         pstGWGrp= pstHashNode->pHandle;
                         ulGWCount = 0;
                         pthread_mutex_lock(&pstGWGrp->mutexGWList);
-                        DLL_Scan(&pstGWGrp->stGWList,pstListNode1, DLL_NODE_S *)
+                        DLL_Scan(&pstGWGrp->stGWList, pstListNode1, DLL_NODE_S *)
                         {
                             if (DOS_ADDR_VALID(pstListNode1)
                                 && DOS_ADDR_VALID(pstListNode1->pHandle))
@@ -6679,6 +6685,7 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
                     }
                     else
                     {
+                        DOS_ASSERT(0);
                         blIsFound = DOS_FALSE;
                     }
                     break;
@@ -6691,11 +6698,12 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
     }
     pthread_mutex_unlock(&g_mutexRouteList);
 
-finished:
     if (blIsFound)
     {
         /* 最后多了一个  | */
         szCalleeString[dos_strlen(szCalleeString) - 1] = '\0';
+        sc_logr_debug(SC_ESL, "callee string is %s", szCalleeString);
+
         return DOS_SUCC;
     }
     else
@@ -9615,6 +9623,13 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 dos_memzero(pstSCB->pstExtraData, sizeof(SC_SCB_EXTRA_DATA_ST));
                 sc_ep_parse_extra_data(pstEvent, pstSCB);
             }
+            if (pstSCB->pstExtraData->ulRingTimeStamp == 0)
+            {
+                pthread_mutex_unlock(&pstSCB->mutexSCBLock);
+
+                goto process_finished;
+            }
+
             pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
             if (SC_TRANS_ROLE_NOTIFY == pstSCB->ucTranforRole)
