@@ -5832,7 +5832,7 @@ U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase)
         return DOS_FAIL;
     }
 
-    sc_logr_info(SC_ESL, "Hangup call with error code %d", ulTernmiteCase);
+    sc_logr_info(SC_ESL, "Hangup call with error code %d, pstscb : %d, other : %d", ulTernmiteCase, pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
 
     sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
     pstSCB->ucTerminationCause = ulTernmiteCase;
@@ -7768,7 +7768,7 @@ U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         goto proc_fail;
     }
 
-    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCalleeNum) != DOS_SUCC)
+    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCalleeNum, pstSCB->usOtherSCBNo) != DOS_SUCC)
     {
         DOS_ASSERT(0);
 
@@ -7782,6 +7782,8 @@ U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
                     , stAgentInfo.szUserID
                     , stAgentInfo.szExtension
                     , stAgentInfo.szEmpNo);
+
+
     /* 呼叫坐席 */
     if (sc_ep_call_agent(pstSCB, &stAgentInfo) != DOS_SUCC)
     {
@@ -7821,7 +7823,8 @@ U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
 
 U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, S8 *pszCallee)
 {
-    SC_SCB_ST *pstSCB = NULL;
+    SC_SCB_ST *pstSCB       = NULL;
+    SC_SCB_ST *pstOtherSCB  = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
     U32       ulMainServie;
     S8        szCallerNum[SC_TEL_NUMBER_LENGTH] = { 0, };
@@ -7952,6 +7955,25 @@ make_all_fail:
             }
 
             sc_ep_hangup_call(pstSCB, BS_TERM_HANGUP);
+
+            pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
+            if (DOS_ADDR_INVALID(pstOtherSCB) || !pstOtherSCB->bValid)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            if ('\0' == pstOtherSCB->szUUID[0])
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            sc_ep_hangup_call(pstOtherSCB, BS_TERM_HANGUP);
 
             break;
 
@@ -8184,6 +8206,16 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                     sc_logr_info(SC_ESL, "DID number %s seems donot bind a SIP User ID, Reject Call.", pstSCB->szCalleeNum);
                     ulErrCode = BS_TERM_INTERNAL_ERR;
                     goto proc_fail;
+                }
+
+                /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
+                if (sc_acd_update_agent_scbno(szCallee, pstSCB->usSCBNo) != DOS_SUCC)
+                {
+                    sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d", szCallee, pstSCB->usSCBNo);
+                }
+                else
+                {
+                    sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", szCallee, pstSCB->usSCBNo);
                 }
 
                 dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d}user/%s", pstSCB->usSCBNo,szCallee);
@@ -9035,6 +9067,16 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             /* 更改不同的主叫，获取当前呼叫时哪一个客户 */
             if (U32_BUTT != pstSCB->ulCustomID)
             {
+                /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
+                if (sc_acd_update_agent_scbno(pstSCB->szCallerNum, pstSCB->usSCBNo) != DOS_SUCC)
+                {
+                    sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
+                }
+                else
+                {
+                    sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
+                }
+
                 if (sc_ep_outgoing_call_proc(pstSCB) != DOS_SUCC)
                 {
                     SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
@@ -9088,6 +9130,15 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         else if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_SIP == ulCallDst)
         {
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
+            /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
+            if (sc_acd_update_agent_scbno(pszCaller, pstSCB->usSCBNo) != DOS_SUCC)
+            {
+                sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d", pszCaller, pstSCB->usSCBNo);
+            }
+            else
+            {
+                sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", pszCaller, pstSCB->usSCBNo);
+            }
 
             ulRet = sc_ep_internal_call_process(pstHandle, pstEvent, pstSCB);
         }
