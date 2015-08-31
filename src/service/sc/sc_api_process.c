@@ -230,19 +230,6 @@ U32 sc_http_api_task_ctrl(list_t *pstArgv)
     }
 
     SC_TRACE_IN(pstArgv, 0, 0, 0);
-/*
-    pszCMD = sc_http_api_get_value(&pstClient->stParamList, "cmd");
-    if (!pszCMD || '\0' == pszCMD[0])
-    {
-        DOS_ASSERT(0);
-        goto invalid_params;
-    }
-    if (dos_strcmp(pszCMD, "task") != 0)
-    {
-        DOS_ASSERT(0);
-        goto invalid_params;
-    }
-*/
 
     pszCustomID = sc_http_api_get_value(pstArgv, "userid");
     if (!pszCustomID || '\0' == pszCustomID[0])
