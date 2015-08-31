@@ -1205,29 +1205,30 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
                                 , bs_translate_billing_attr(pstPkg->astRule[ulLoop].ucDstAttrType2)
                                 , pstPkg->astRule[ulLoop].ulDstAttrValue2);
                 cli_out_string(ulIndex, szBuff);
+
+
+                dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Rule");
+                cli_out_string(ulIndex, szBuff);
+
+                dos_snprintf(szBuff, sizeof(szBuff), "\r\n%16s%16s%16s%15s%20s%15s%12s%13s%13s%9s%6s", "FirstBillingUnit", "FirstBillingCnt", "NextBillingUnit", "NextBillingCnt"
+                                , "ServType", "BillingType", "BillingRate", "Effect", "Expire", "Priority", "Valid");
+                cli_out_string(ulIndex, szBuff);
+
+                cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------");
+                dos_snprintf(szBuff, sizeof(szBuff), "\r\n%16u%16u%16u%15u%20s%15s%12u%13u%13u%9u%6s\r\n\r\n\r\n"
+                                , pstPkg->astRule[ulLoop].ulFirstBillingUnit
+                                , pstPkg->astRule[ulLoop].ucFirstBillingCnt
+                                , pstPkg->astRule[ulLoop].ulNextBillingUnit
+                                , pstPkg->astRule[ulLoop].ucNextBillingCnt
+                                , bs_translate_serv_type(pstPkg->astRule[ulLoop].ucServType)
+                                , bs_translate_billing_type(pstPkg->astRule[ulLoop].ucBillingType)
+                                , pstPkg->astRule[ulLoop].ulBillingRate
+                                , pstPkg->astRule[ulLoop].ulEffectTimestamp
+                                , pstPkg->astRule[ulLoop].ulExpireTimestamp
+                                , pstPkg->astRule[ulLoop].ucPriority
+                                , pstPkg->astRule[ulLoop].ucValid == 1 ? "Yes" : "No");
+                cli_out_string(ulIndex, szBuff);
             }
-
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Rule");
-            cli_out_string(ulIndex, szBuff);
-
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%16s%16s%16s%15s%20s%15s%12s%13s%13s%9s%6s", "FirstBillingUnit", "FirstBillingCnt", "NextBillingUnit", "NextBillingCnt"
-                            , "ServType", "BillingType", "BillingRate", "Effect", "Expire", "Priority", "Valid");
-            cli_out_string(ulIndex, szBuff);
-
-            cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------");
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%16u%16u%16u%15u%20s%15s%12u%13u%13u%9u%6s\r\n\r\n\r\n"
-                            , pstPkg->astRule[ulLoop].ulFirstBillingUnit
-                            , pstPkg->astRule[ulLoop].ucFirstBillingCnt
-                            , pstPkg->astRule[ulLoop].ulNextBillingUnit
-                            , pstPkg->astRule[ulLoop].ucNextBillingCnt
-                            , bs_translate_serv_type(pstPkg->astRule[ulLoop].ucServType)
-                            , bs_translate_billing_type(pstPkg->astRule[ulLoop].ucBillingType)
-                            , pstPkg->astRule[ulLoop].ulBillingRate
-                            , pstPkg->astRule[ulLoop].ulEffectTimestamp
-                            , pstPkg->astRule[ulLoop].ulExpireTimestamp
-                            , pstPkg->astRule[ulLoop].ucPriority
-                            , pstPkg->astRule[ulLoop].ucValid == 1 ? "Yes" : "No");
-            cli_out_string(ulIndex, szBuff);
         }
     }
     return DOS_SUCC;
