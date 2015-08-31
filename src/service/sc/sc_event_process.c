@@ -2202,7 +2202,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "blacklistfile_id", dos_strlen("blacklistfile_id")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "file_id", dos_strlen("file_id")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || dos_atoul(aszValues[lIndex], &pstBlackListNode->ulFileID) < 0)
@@ -2211,7 +2211,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "regex_number", dos_strlen("regex_number")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "number", dos_strlen("number")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || '\0' == aszValues[lIndex][0])
@@ -2301,11 +2301,11 @@ U32 sc_load_black_list(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, blacklistfile_id, regex_number, type FROM tbl_blacklist;");
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, file_id, number, type FROM tbl_blacklist_pool;");
     }
     else
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, blacklistfile_id, regex_number, type FROM tbl_blacklist WHERE blacklistfile_id=%u;", ulIndex);
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, file_id, number, type FROM tbl_blacklist_pool WHERE file_id=%u;", ulIndex);
     }
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_load_black_list_cb, NULL, NULL) != DB_ERR_SUCC)

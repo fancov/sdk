@@ -1122,6 +1122,9 @@ U32 sc_http_api_black_action(list_t *pstArgv)
         goto invalid_params;
     }
 
+    sc_logr_info(SC_HTTPD, "Recv HTTP API CMD. CMD: %u, Action: %u, ulBlackID: %u"
+                    , ulAction, ulBlackID);
+
     if (sc_http_black_update_proc(ulAction, ulBlackID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
