@@ -360,8 +360,8 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             goto process_finished;
         }
 
-        pstCustomer->stAccount.LBalanceActive += (LMoney * 10000);
-        pstCustomer->stAccount.LBalance += (LMoney * 10000);
+        pstCustomer->stAccount.LBalanceActive += LMoney;
+        pstCustomer->stAccount.LBalance += LMoney;
 
         goto process_finished;
     }

@@ -64,6 +64,7 @@ enum tagAPICMDActionList
 
     SC_API_CMD_ACTION_ADD,                        /* API命令task ctrl附加值，启动任务 */
     SC_API_CMD_ACTION_DELETE,                     /* API命令task ctrl附加值，停止任务 */
+    SC_API_CMD_ACTION_UPDATE,
     SC_API_CMD_ACTION_START,                      /* API命令task ctrl附加值，启动任务 */
     SC_API_CMD_ACTION_STOP,                       /* API命令task ctrl附加值，停止任务 */
     SC_API_CMD_ACTION_CONTINUE,                   /* API命令task ctrl附加值，重新启动任务 */

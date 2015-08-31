@@ -326,7 +326,7 @@ VOID *sc_task_runtime(VOID *ptr)
         {
             ulTaskInterval = sc_task_get_call_interval(pstTCB);
         }
-        usleep(ulTaskInterval * 1000);
+        usleep(1000);
         ulTaskInterval = 0;
 
         /* 根据当前呼叫量，确定发起呼叫的间隔，如果当前任务已经处于受限状态，就要强制调整间隔 */
@@ -423,6 +423,7 @@ VOID *sc_task_runtime(VOID *ptr)
     return NULL;
 }
 
+#if 0
 /*
  * 函数: U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
  * 功能: 初始化呼叫任务
@@ -545,6 +546,7 @@ U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
     SC_TRACE_OUT();
     return DOS_FAIL;
 }
+#endif
 
 /*
  * 函数: U32 sc_task_start(SC_TASK_CB_ST *pstTCB)
