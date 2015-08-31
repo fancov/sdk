@@ -311,6 +311,7 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
     HASH_NODE_S             *pstHashNode = NULL;
     BS_BILLING_RULE_ST      stBillingRule;
     BS_BILLING_PACKAGE_ST   *pstBillingPkg = NULL;
+    U32                     ulPriority = 0;
 
     if (DOS_ADDR_INVALID(aszData)
         || DOS_ADDR_INVALID(aszFields))
@@ -338,7 +339,8 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
         || dos_atoul(aszData[15], &ulFirstBillingCnt) < 0
         || dos_atoul(aszData[16], &ulNextBillingCnt) < 0
         || dos_atoul(aszData[17], &stBillingRule.ulEffectTimestamp) < 0
-        || dos_atoul(aszData[18], &stBillingRule.ulExpireTimestamp) < 0)
+        || dos_atoul(aszData[18], &stBillingRule.ulExpireTimestamp) < 0
+        || dos_atoul(aszData[19], &ulPriority) < 0)
     {
         DOS_ASSERT(0);
         return -1;
@@ -353,7 +355,7 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
     stBillingRule.ucNextBillingCnt = (U8)ulNextBillingCnt;
     stBillingRule.ucServType = (U8)ulServType;
     stBillingRule.ucBillingType = (U8)ulBillingType;
-    stBillingRule.ucPriority = 0;
+    stBillingRule.ucPriority = (U8)ulPriority;
 
     pthread_mutex_lock(&g_mutexBillingPackageTbl);
     bFound = DOS_FALSE;
@@ -456,7 +458,7 @@ S32 bsd_walk_billing_package_tbl(BS_INTER_MSG_WALK *pstMsg)
                      "   t1.billing_package_id, t1.billing_rate, t2.id, t2.src_attr_type1, t2.src_attr_type2, "
                      "   t2.dst_attr_type1, t2.dst_attr_type2, src_attr_value1, src_attr_value2, dst_attr_value1, dst_attr_value2, "
                      "   serv_type, billing_type, first_billing_unit, next_billing_unit, first_billing_cnt, next_billing_cnt, "
-                     "   UNIX_TIMESTAMP(effect_time), UNIX_TIMESTAMP(expire_time) "
+                     "   UNIX_TIMESTAMP(effect_time), UNIX_TIMESTAMP(expire_time), t2.seq "
                      "FROM "
                      "   tbl_billing_rate t1 "
                      "LEFT JOIN "
@@ -484,7 +486,7 @@ S32 bsd_walk_billing_package_tbl_bak(U32 ulPkgID)
                       "     t1.billing_package_id, t1.billing_rate, t2.id, t2.src_attr_type1, t2.src_attr_type2,"
                       "     t2.dst_attr_type1, t2.dst_attr_type2, src_attr_value1, src_attr_value2, dst_attr_value1, dst_attr_value2,"
                       "     serv_type, billing_type, first_billing_unit, next_billing_unit, first_billing_cnt, next_billing_cnt,"
-                      "     UNIX_TIMESTAMP(effect_time), UNIX_TIMESTAMP(expire_time) "
+                      "     UNIX_TIMESTAMP(effect_time), UNIX_TIMESTAMP(expire_time), t2.seq "
                       "FROM"
                       "     (SELECT"
                       "        billing_package_id, billing_rate, billing_rule_id"
