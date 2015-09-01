@@ -1317,26 +1317,24 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
             break;
         }
 
-        if (!blNeedAdd)
+        if (blNeedAdd)
         {
-            continue;
-        }
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulCustomerID = pstTCB->ulCustomID;
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].usNo = ulFirstInvalidNode;
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
+            dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCourse, SC_MAX_CALLER_NUM);
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
+            pstTCB->usCallerCount++;
 
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulCustomerID = pstTCB->ulCustomID;
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].usNo = ulFirstInvalidNode;
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
-        dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCourse, SC_MAX_CALLER_NUM);
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
-        pstTCB->usCallerCount++;
-
-        /* 加载主叫号码的数据库索引属性 */
-        ulRet = sc_task_load_caller_index(&pstTCB->pstCallerNumQuery[ulFirstInvalidNode]);
-        if (DOS_SUCC != ulRet)
-        {
-            DOS_ASSERT(0);
-            sc_logr_error(SC_TASK, "SC Task Load Caller Index In DB FAIL.(Caller Number:%s)", pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber);
-            return DOS_FAIL;
+            /* 加载主叫号码的数据库索引属性 */
+            ulRet = sc_task_load_caller_index(&pstTCB->pstCallerNumQuery[ulFirstInvalidNode]);
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                sc_logr_error(SC_TASK, "SC Task Load Caller Index In DB FAIL.(Caller Number:%s)", pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber);
+                return DOS_FAIL;
+            }
         }
 
         pszCourse = strtok(NULL, ",");
