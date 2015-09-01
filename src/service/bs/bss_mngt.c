@@ -386,6 +386,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pszExpireTime = json_get_param(pstJSONObj, "expiry");
             if (DOS_ADDR_VALID(pszExpireTime))
             {
+                dos_memzero(&stExpiryTm, sizeof(struct tm));
                 pszRet = strptime(pszExpireTime, "%Y-%m-%d", &stExpiryTm);
                 if (DOS_ADDR_INVALID(pszRet))
                 {
@@ -618,6 +619,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pszExpireTime = json_get_param(pstJSONObj, "expiry");
             if (DOS_ADDR_VALID(pszExpireTime))
             {
+                dos_memzero(&stExpiryTm, sizeof(struct tm));
                 pszRet = strptime(pszExpireTime, "%Y-%m-%d", &stExpiryTm);
                 if (DOS_ADDR_INVALID(pszRet))
                 {
@@ -847,11 +849,14 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
 
+            dos_memzero(&stEffectTime, sizeof(struct tm));
             pszRet = strptime(pszEffectTime, "%Y-%m-%d", &stEffectTime);
             if (DOS_ADDR_INVALID(pszRet))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Transfer time str to time_t FAIL.");
             }
+
+            dos_memzero(&stExpiryTime, sizeof(struct tm));
             pszRet = strptime(pszExpiryTime, "%Y-%m-%d", &stExpiryTime);
             if (DOS_ADDR_INVALID(pszRet))
             {
@@ -1075,11 +1080,14 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Effect Time & Expiry Time FAIL.");
             }
 
+            dos_memzero(&stEffectTime, sizeof(struct tm));
             pszRet = strptime(pszEffectTime, "%Y-%m-%d", &stEffectTime);
             if (DOS_ADDR_INVALID(pszRet))
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Transfer time str to time_t FAIL.");
             }
+
+            dos_memzero(&stExpiryTime, sizeof(struct tm));
             pszRet = strptime(pszExpiryTime, "%Y-%m-%d", &stExpiryTime);
             if (DOS_ADDR_INVALID(pszRet))
             {
