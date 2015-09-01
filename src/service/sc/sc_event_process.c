@@ -1356,6 +1356,10 @@ U32 sc_caller_delete(U32 ulCallerID)
     SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
     U32  ulHashIndex = U32_BUTT;
     BOOL bFound = DOS_FALSE;
+#if 1
+    S32 lIndex;
+    SC_TASK_CB_ST *pstTaskCB = NULL;
+#endif
 
     HASH_Scan_Table(g_pstHashCaller, ulHashIndex)
     {
@@ -1379,7 +1383,28 @@ U32 sc_caller_delete(U32 ulCallerID)
             break;
         }
     }
-
+#if 1
+    /* 现在号码组的主叫号码与群呼任务的主叫号码是两份数据，同步起来比较恼火，将来解决了两份数据问题肯定要删掉
+       目前先暂时将其状态置为invalid即可 */
+    for (lIndex = 0; lIndex < SC_MAX_TASK_NUM; lIndex++)
+    {
+        pstTaskCB = &g_pstTaskMngtInfo->pstTaskList[lIndex];
+        if (g_pstTaskMngtInfo->pstTaskList[lIndex].ulCustomID == pstCaller->ulCustomerID)
+        {
+            break;
+        }
+    }
+    for (lIndex = 0; lIndex < SC_MAX_CALLER_NUM; lIndex++)
+    {
+        if (pstTaskCB->pstCallerNumQuery[lIndex].bValid
+            && pstTaskCB->pstCallerNumQuery[lIndex].ulIndexInDB == pstCaller->ulIndexInDB
+            && 0 == dos_strcmp(pstTaskCB->pstCallerNumQuery[lIndex].szNumber, pstCaller->szNumber))
+        {
+            pstTaskCB->pstCallerNumQuery[lIndex].bValid = DOS_FALSE;
+            break;
+        }
+    }
+#endif
     if (DOS_FALSE == bFound)
     {
         DOS_ASSERT(0);
@@ -7858,7 +7883,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
 
             if (sc_caller_setting_select_number(ulCustomerID, 0, SC_SRC_CALLER_TYPE_ALL
-                , SC_CALLER_POLICY_RANDOM, szCallerNum, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
+                , /*SC_CALLER_POLICY_RANDOM,*/ szCallerNum, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
             {
                 /* 获取主叫号码失败 */
                 DOS_ASSERT(0);

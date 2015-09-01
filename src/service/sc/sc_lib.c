@@ -1182,11 +1182,61 @@ S32 sc_task_load(U32 ulIndex)
     return DOS_SUCC;
 }
 
+static S32 sc_task_load_caller_index_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
+{
+    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    U32  ulIndex = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pArg)
+        || DOS_ADDR_INVALID(pszValues)
+        || DOS_ADDR_INVALID(pszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCaller = (SC_CALLER_QUERY_NODE_ST *)pArg;
+    if (DOS_ADDR_INVALID(pszValues[0])
+        || '\0' == pszValues[0][0]
+        || dos_atoul(pszValues[0], &ulIndex) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCaller->ulIndexInDB = ulIndex;
+    return DOS_SUCC;
+}
+
+static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
+{
+    S8  szQuery[256] = {0};
+    S32 lRet = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pstCaller))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT id FROM tbl_caller WHERE cid=\'%s\' AND customer_id = %u;"
+                    , pstCaller->szNumber, pstCaller->ulCustomerID);
+    lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_caller_index_cb, (VOID *)pstCaller, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_TASK, "SC Task Load caller Index FAIL.(Caller Number:%s)", pstCaller->szNumber);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
 static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
     SC_TASK_CB_ST            *pstTCB = NULL;
     S8                       *pszCallers = NULL, *pszCourse = NULL;;
-    U32                      ulFirstInvalidNode = U32_BUTT, ulIndex = 0;
+    U32                      ulFirstInvalidNode = U32_BUTT, ulIndex = 0, ulRet = 0;
     U32                      ulMaxLen = 0;
     BOOL                     blNeedAdd = DOS_TRUE;
 
@@ -1271,11 +1321,19 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
         pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulCustomerID = pstTCB->ulCustomID;
         pstTCB->pstCallerNumQuery[ulFirstInvalidNode].usNo = ulFirstInvalidNode;
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulIndexInDB = 0; //随后再说，暂时认为是0
         pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
         dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCourse, SC_MAX_CALLER_NUM);
         pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
         pstTCB->usCallerCount++;
+
+        /* 加载主叫号码的数据库索引属性 */
+        ulRet = sc_task_load_caller_index(&pstTCB->pstCallerNumQuery[ulFirstInvalidNode]);
+        if (DOS_SUCC != ulRet)
+        {
+            DOS_ASSERT(0);
+            sc_logr_error(SC_TASK, "SC Task Load Caller Index In DB FAIL.(Caller Number:%s)", pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber);
+            return DOS_FAIL;
+        }
 
         pszCourse = strtok(NULL, ",");
         if (NULL == pszCourse)
@@ -1327,7 +1385,6 @@ U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB)
         pstTCB->pstCallerNumQuery[ulIndex].ulIndexInDB = ulIndex;
         dos_strncpy(pstTCB->pstCallerNumQuery[ulIndex].szNumber, g_pszCallerList[ulIndex], SC_TEL_NUMBER_LENGTH);
         pstTCB->pstCallerNumQuery[ulIndex].szNumber[SC_TEL_NUMBER_LENGTH - 1] = '\0';
-
         lCnt++;
     }
 
@@ -1406,7 +1463,6 @@ static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
     pstTCB->ulCalleeCount++;
     pstTCB->ulLastCalleeIndex++;
     dos_list_add_tail(&pstTCB->stCalleeNumQuery, &pstCallee->stLink);
-    sc_logr_debug(SC_FUNC, "%s", pstCallee->szNumber);
 
     return DOS_SUCC;
 }
