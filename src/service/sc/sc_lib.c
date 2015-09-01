@@ -1008,6 +1008,8 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 blProcessOK = DOS_FALSE;
                 break;
             }
+
+            dos_memzero(&stModifyTime, sizeof(struct tm));
             strptime(aszValues[lIndex], "%Y-%m-%d %H:%M:%S", &stModifyTime);
             ulMoifyTime = (U32)mktime(&stModifyTime);
         }
@@ -1083,6 +1085,8 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 blProcessOK = DOS_FALSE;
                 break;
             }
+
+            dos_memzero(&stCreateTime, sizeof(struct tm));
             strptime(aszValues[lIndex], "%Y-%m-%d %H:%M:%S", &stCreateTime);
             ulCreateTime = (U32)mktime(&stCreateTime);
         }
