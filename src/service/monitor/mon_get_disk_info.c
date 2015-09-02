@@ -214,10 +214,10 @@ static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
                 goto fail;
             }
 
-            g_pastPartition[g_ulPartCnt]->ulPartitionTotalBytes = ulTotalVolume;
-            g_pastPartition[g_ulPartCnt]->ulPartitionUsedBytes = ulUsedVolume;
-            g_pastPartition[g_ulPartCnt]->ulPartitionAvailBytes = ulAvailVolume;
-            g_pastPartition[g_ulPartCnt]->ulPartitionUsageRate = ulTotalRate;
+            g_pastPartition[g_ulPartCnt]->ulPartitionTotalBytes = (ulTotalVolume + ulTotalVolume % 1024) / 1024;
+            g_pastPartition[g_ulPartCnt]->ulPartitionUsedBytes = (ulUsedVolume + ulUsedVolume % 1024) / 1024;
+            g_pastPartition[g_ulPartCnt]->ulPartitionAvailBytes = (ulAvailVolume + ulAvailVolume % 1024) / 1024;
+            g_pastPartition[g_ulPartCnt]->ulPartitionUsageRate = (ulTotalRate + ulTotalRate % 1024) / 1024;
 
             pszTemp = mon_get_disk_serial_num(g_pastPartition[g_ulPartCnt]->szPartitionName);
             dos_snprintf(g_pastPartition[g_ulPartCnt]->szDiskSerialNo, MAX_PARTITION_LENGTH, "%s", pszTemp);
