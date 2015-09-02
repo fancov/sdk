@@ -1526,7 +1526,7 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulCalleeCount = 0;
 
     dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, regex_number FROM tbl_callee WHERE `status`=0 AND calleefile_id = (SELECT tbl_calltask.callee_id FROM tbl_calltask WHERE id=%u) LIMIT %u, 1000;"
+                    , "SELECT id, number FROM tbl_callee_pool WHERE `status`=0 AND file_id = (SELECT tbl_calltask.callee_id FROM tbl_calltask WHERE id=%u) LIMIT %u, 1000;"
                     , pstTCB->ulTaskID
                     , pstTCB->ulLastCalleeIndex);
 
