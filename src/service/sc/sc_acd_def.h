@@ -99,7 +99,7 @@ typedef struct tagACDSiteDesc{
     U32        bConnected:1;                      /* 是否已经长连 */
     U32        bNeedConnected:1;                  /* 是否已经长连 */
     U32        bWaitingDelete:1;                  /* 是否已经被删除 */
-    U32        bIsTCBNoOther:1;
+    U32        bIsTCBNoOther:1;                   /* 这个参数应该去掉，长签时会有问题 */
 
     U32        ucProcesingTime:8;                 /* 坐席处理呼叫结果时间 */
     U32        ucRes1:14;

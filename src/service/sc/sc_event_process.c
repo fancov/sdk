@@ -8296,23 +8296,14 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                     goto proc_fail;
                 }
 
-                /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
-                if (sc_acd_update_agent_scbno(szCallee, pstSCB->usSCBNo, DOS_TRUE) != DOS_SUCC)
-                {
-                    sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d", szCallee, pstSCB->usSCBNo);
-                }
-                else
-                {
-                    sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", szCallee, pstSCB->usSCBNo);
-                }
-
-                dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d}user/%s", pstSCB->usSCBNo,szCallee);
+                dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d,update_agent=%s}user/%s", pstSCB->usSCBNo, szCallee, szCallee);
 
                 sc_ep_esl_execute("bridge", szCallString, pstSCB->szUUID);
                 sc_ep_esl_execute("hangup", szCallString, pstSCB->szUUID);
                 break;
 
             case SC_DID_BIND_TYPE_QUEUE:
+                /* TODO 这种情况下的，将坐席的usSCBNo字段赋值的问题，需要修改 */
                 if (sc_ep_call_queue_add(pstSCB, ulBindID) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
@@ -9448,6 +9439,7 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     S8          *pszMainService = NULL;
     S8          *pszSCBNum = NULL;
     S8          *pszOtherSCBNo = NULL;
+    S8          *pszCaller = NULL;
     SC_SCB_ST   *pstSCB = NULL;
     SC_SCB_ST   *pstSCB1 = NULL;
     S8          szBuffCmd[128] = { 0 };
@@ -9598,6 +9590,7 @@ process_fail1:
 #endif
     }
 
+
     /* 根据参数  交换SCB No */
     pszOtherSCBNo = esl_event_get_header(pstEvent, "variable_other_leg_scb");
     if (DOS_ADDR_INVALID(pszOtherSCBNo)
@@ -9612,6 +9605,20 @@ process_fail1:
     {
         pstSCB->usOtherSCBNo = pstSCB1->usSCBNo;
         pstSCB1->usOtherSCBNo = pstSCB->usSCBNo;
+    }
+
+     /* 根据参数update_agent，判断是否需要更新坐席中的 usSCBNo  */
+    pszCaller = esl_event_get_header(pstEvent, "variable_update_agent");
+    if (DOS_ADDR_VALID(pszCaller) && pszCaller[0] != '\0')
+    {
+        if (sc_acd_update_agent_scbno(pszCaller, pstSCB->usSCBNo, DOS_FALSE) != DOS_SUCC)
+        {
+            sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d!", pszCaller, pstSCB->usSCBNo);
+        }
+        else
+        {
+            sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d!", pszCaller, pstSCB->usSCBNo);
+        }
     }
 
 process_finished:
