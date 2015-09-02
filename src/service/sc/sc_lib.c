@@ -960,11 +960,61 @@ U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu)
     return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
 }
 
+static S32 sc_task_load_caller_index_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
+{
+    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    U32  ulIndex = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pArg)
+        || DOS_ADDR_INVALID(pszValues)
+        || DOS_ADDR_INVALID(pszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCaller = (SC_CALLER_QUERY_NODE_ST *)pArg;
+    if (DOS_ADDR_INVALID(pszValues[0])
+        || '\0' == pszValues[0][0]
+        || dos_atoul(pszValues[0], &ulIndex) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCaller->ulIndexInDB = ulIndex;
+    return DOS_SUCC;
+}
+
+static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
+{
+    S8  szQuery[256] = {0};
+    S32 lRet = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pstCaller))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT id FROM tbl_caller WHERE cid=\'%s\' AND customer_id = %u;"
+                    , pstCaller->szNumber, pstCaller->ulCustomerID);
+    lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_caller_index_cb, (VOID *)pstCaller, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_TASK, "SC Task Load caller Index FAIL.(Caller Number:%s)", pstCaller->szNumber);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
 S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond;
     BOOL blProcessOK = DOS_FALSE, bFound = DOS_FALSE;
-    S32 lIndex = U32_BUTT, lRet = U32_BUTT;
+    S32 lIndex = U32_BUTT;
     S8  szTaskName[64] = {0};
     struct tm stModifyTime, stCreateTime;
 
@@ -1144,22 +1194,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucMinuteEnd = (U8)ulEndMinute;
     g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucSecondEnd = (U8)ulEndSecond;
 
-    /* 同时维护一下主叫和被叫数据 */
-    lRet = sc_task_load_caller(&g_pstTaskMngtInfo->pstTaskList[lIndex]);
-    if (DOS_SUCC != lRet)
-    {
-        sc_logr_error(SC_TASK, "SC Task Load Caller FAIL.(TaskID:%u, usNo:%u)", *(U32 *)pArg, lIndex);
-        return DOS_FAIL;
-    }
-    sc_logr_debug(SC_TASK, "SC Task Load Caller SUCC.(TaskID:%u, usNo:%u)", *(U32 *)pArg, lIndex);
 
-    lRet = sc_task_load_callee(&g_pstTaskMngtInfo->pstTaskList[lIndex]);
-    if (DOS_SUCC != lRet)
-    {
-        sc_logr_error(SC_TASK, "SC Task Load Callee FAIL.(TaskID:%u, usNo:%u)", *(U32 *)pArg, lIndex);
-        return DOS_FAIL;
-    }
-    sc_logr_debug(SC_TASK, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", *(U32 *)pArg, lIndex);
 
     return DOS_SUCC;
 }
@@ -1167,7 +1202,10 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 S32 sc_task_load(U32 ulIndex)
 {
     S8  szQuery[256] = {0};
-    S32 lRet = U32_BUTT;
+    S32 lRet = U32_BUTT, lIndex = 0;
+    U32  ulRet = U32_BUTT;
+    SC_TASK_CB_ST *pstTCB = NULL;
+    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
@@ -1178,64 +1216,55 @@ S32 sc_task_load(U32 ulIndex)
         dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime FROM tbl_calltask WHERE id=%u;", ulIndex);
     }
 
+    /* 加载群呼任务的相关数据 */
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
     if (DB_ERR_SUCC != lRet)
     {
-        sc_logr_error(SC_TASK, "Load task %u FAIL.", ulIndex);
+        sc_logr_error(SC_TASK, " SC Load task %u Data FAIL.", ulIndex);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    pstTCB = sc_tcb_find_by_taskid(ulIndex);
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_TASK, "SC Find task By TaskID FAIL.(TaskID:%u) ", ulIndex);
+        return DOS_FAIL;
+    }
+
+    /* 同时维护一下主叫和被叫数据 */
+    lRet = sc_task_load_caller(pstTCB);
+    if (DOS_SUCC != lRet)
+    {
+        sc_logr_error(SC_TASK, "SC Task Load Caller FAIL.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
+        return DOS_FAIL;
+    }
+    sc_logr_debug(SC_TASK, "SC Task Load Caller SUCC.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
+
+    /* 加载主叫号码的数据库索引属性 */
+    for (lIndex = 0; lIndex < SC_MAX_CALLER_NUM; ++lIndex)
+    {
+        pstCaller = &pstTCB->pstCallerNumQuery[lIndex];
+        ulRet = sc_task_load_caller_index(pstCaller);
+        if (DOS_SUCC != ulRet)
+        {
+            DOS_ASSERT(0);
+            sc_logr_error(SC_TASK, "SC Task Load Caller Index In DB FAIL.(Caller Number:%s)", pstCaller->szNumber);
+            return DOS_FAIL;
+        }
+    }
+
+    /* 维护被叫号码数据 */
+    lRet = sc_task_load_callee(pstTCB);
+    if (DOS_SUCC != lRet)
+    {
+        sc_logr_error(SC_TASK, "SC Task Load Callee FAIL.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
+        return DOS_FAIL;
+    }
+    sc_logr_debug(SC_TASK, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
+
     sc_logr_debug(SC_TASK, "Load task %u SUCC.", ulIndex);
-    return DOS_SUCC;
-}
-
-static S32 sc_task_load_caller_index_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
-{
-    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
-    U32  ulIndex = U32_BUTT;
-
-    if (DOS_ADDR_INVALID(pArg)
-        || DOS_ADDR_INVALID(pszValues)
-        || DOS_ADDR_INVALID(pszNames))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstCaller = (SC_CALLER_QUERY_NODE_ST *)pArg;
-    if (DOS_ADDR_INVALID(pszValues[0])
-        || '\0' == pszValues[0][0]
-        || dos_atoul(pszValues[0], &ulIndex) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstCaller->ulIndexInDB = ulIndex;
-    return DOS_SUCC;
-}
-
-static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
-{
-    S8  szQuery[256] = {0};
-    S32 lRet = U32_BUTT;
-
-    if (DOS_ADDR_INVALID(pstCaller))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT id FROM tbl_caller WHERE cid=\'%s\' AND customer_id = %u;"
-                    , pstCaller->szNumber, pstCaller->ulCustomerID);
-    lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_caller_index_cb, (VOID *)pstCaller, NULL);
-    if (DB_ERR_SUCC != lRet)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_TASK, "SC Task Load caller Index FAIL.(Caller Number:%s)", pstCaller->szNumber);
-        return DOS_FAIL;
-    }
-
     return DOS_SUCC;
 }
 
@@ -1243,7 +1272,7 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
 {
     SC_TASK_CB_ST            *pstTCB = NULL;
     S8                       *pszCallers = NULL, *pszCourse = NULL;;
-    U32                      ulFirstInvalidNode = U32_BUTT, ulIndex = 0, ulRet = 0;
+    U32                      ulFirstInvalidNode = U32_BUTT, ulIndex = 0;
     U32                      ulMaxLen = 0;
     BOOL                     blNeedAdd = DOS_TRUE;
 
@@ -1329,15 +1358,6 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
             dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCourse, SC_MAX_CALLER_NUM);
             pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
             pstTCB->usCallerCount++;
-
-            /* 加载主叫号码的数据库索引属性 */
-            ulRet = sc_task_load_caller_index(&pstTCB->pstCallerNumQuery[ulFirstInvalidNode]);
-            if (DOS_SUCC != ulRet)
-            {
-                DOS_ASSERT(0);
-                sc_logr_error(SC_TASK, "SC Task Load Caller Index In DB FAIL.(Caller Number:%s)", pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber);
-                return DOS_FAIL;
-            }
         }
 
         pszCourse = strtok(NULL, ",");
