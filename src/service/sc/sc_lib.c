@@ -1017,6 +1017,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     S32 lIndex = U32_BUTT;
     S8  szTaskName[64] = {0};
     struct tm stModifyTime, stCreateTime;
+    SC_TASK_CB_ST *pstTCB = NULL;
 
     for (blProcessOK = DOS_TRUE, lIndex = 0; lIndex < lCount; lIndex++)
     {
@@ -1155,21 +1156,8 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     }
     if (DOS_FALSE == bFound)
     {
-
-        sc_tcb_alloc();
-        for (lIndex = 0; lIndex < SC_MAX_TASK_NUM; lIndex++)
-        {
-            if (DOS_FALSE == g_pstTaskMngtInfo->pstTaskList[lIndex].ucValid)
-            {
-                bFound = DOS_TRUE;
-                break;
-            }
-        }
-        if (DOS_FALSE == bFound)
-        {
-            sc_logr_error(SC_TASK_MNGT, "Load Task CB FAIL,No more TASK CB. (ID:%u)", *(U32 *)pArg);
-            return DOS_FAIL;
-        }
+        pstTCB = sc_tcb_alloc();
+        lIndex = pstTCB->usTCBNo;
     }
 
     g_pstTaskMngtInfo->pstTaskList[lIndex].usTCBNo = (U16)lIndex;
@@ -1488,7 +1476,6 @@ static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
     pstTCB->ulCalleeCount++;
     pstTCB->ulLastCalleeIndex++;
     dos_list_add_tail(&pstTCB->stCalleeNumQuery, &pstCallee->stLink);
-    sc_logr_debug(SC_TASK, "Callee Number:%s, Index:%u", pstCallee->szNumber, pstCallee->ulIndex);
 
     return DOS_SUCC;
 }
