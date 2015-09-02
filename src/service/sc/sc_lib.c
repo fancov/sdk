@@ -1014,7 +1014,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond;
     BOOL blProcessOK = DOS_FALSE, bFound = DOS_FALSE;
-    S32 lIndex = U32_BUTT;
+    S32 lIndex = U32_BUTT, lLoop = U32_BUTT;
     S8  szTaskName[64] = {0};
     struct tm stModifyTime, stCreateTime;
     SC_TASK_CB_ST *pstTCB = NULL;
@@ -1173,14 +1173,28 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     g_pstTaskMngtInfo->pstTaskList[lIndex].ucTaskStatus = ulStatus;
     g_pstTaskMngtInfo->pstTaskList[lIndex].ulAllocTime = ulCreateTime;
 
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucValid = DOS_TRUE;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucWeekMask = 0xFF;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucHourBegin = (U8)ulStartHour;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucMinuteBegin = (U8)ulStartMinute;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucSecondBegin = (U8)ulStartSecond;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucHourEnd = (U8)ulEndHour;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucMinuteEnd = (U8)ulEndMinute;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucSecondEnd = (U8)ulEndSecond;
+    for (lLoop = 0; lLoop < SC_MAX_PERIOD_NUM; lLoop++)
+    {
+        if (!g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucValid)
+        {
+            break;
+        }
+    }
+
+    if (lLoop >= SC_MAX_PERIOD_NUM)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucValid = DOS_TRUE;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucWeekMask = 0xFF;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucHourBegin = (U8)ulStartHour;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucMinuteBegin = (U8)ulStartMinute;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucSecondBegin = (U8)ulStartSecond;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucHourEnd = (U8)ulEndHour;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucMinuteEnd = (U8)ulEndMinute;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucSecondEnd = (U8)ulEndSecond;
 
     return DOS_SUCC;
 }
