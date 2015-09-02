@@ -491,6 +491,7 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                   "\r\n           Trace Call : %s"
                   "\r\n             ID in DB : %u"
                   "\r\n          Customer ID : %u"
+                  "\r\n                 Mode : %u"
                   "\r\n  Current Concurrency : %u"
                   "\r\n      Max Concurrency : %u"
                   "\r\n          Agent Count : %u"
@@ -515,6 +516,7 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                 , pstTCB->bTraceCallON ? "Y" : "N"
                 , pstTCB->ulTaskID
                 , pstTCB->ulCustomID
+                , pstTCB->ucMode
                 , pstTCB->ulCurrentConcurrency
                 , pstTCB->ulMaxConcurrency
                 , pstTCB->usSiteCount
