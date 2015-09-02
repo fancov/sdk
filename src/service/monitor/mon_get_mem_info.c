@@ -137,38 +137,38 @@ U32  mon_read_mem_file()
             /* 第一列是内容，第二列为其值，以此类推 */
             if (0 == dos_strnicmp(pszAnalyseRslt[0], "MemTotal", dos_strlen("MemTotal")))
             {
-                g_pstMem->ulPhysicalMemTotalBytes = ulData;
+                g_pstMem->ulPhysicalMemTotalBytes = (ulData + ulData % 1024) / 1024;
                 ++ulCount;
                 continue;
             }
             else if(0 == dos_strnicmp(pszAnalyseRslt[0], "MemFree", dos_strlen("MemFree")))
             {
-                g_pstMem->ulPhysicalMemFreeBytes = ulData;
+                g_pstMem->ulPhysicalMemFreeBytes = (ulData + ulData % 1024) / 1024;
                 ++ulCount;
                 continue;
             }
 
             else if(0 == dos_strnicmp(pszAnalyseRslt[0], "SwapTotal", dos_strlen("SwapTotal")))
             {
-                g_pstMem->ulSwapTotalBytes = ulData;
+                g_pstMem->ulSwapTotalBytes = (ulData + ulData % 1024) / 1024;
                 ++ulCount;
                 continue;
             }
             else if(0 == dos_strnicmp(pszAnalyseRslt[0], "SwapFree", dos_strlen("SwapFree")))
             {
-                g_pstMem->ulSwapFreeBytes = ulData;
+                g_pstMem->ulSwapFreeBytes = (ulData + ulData % 1024) / 1024;
                 ++ulCount;
                 continue;
             }
             else if(0 == dos_strnicmp(pszAnalyseRslt[0], "Buffers", dos_strlen("Buffers")))
             {
-                g_pstMem->ulBuffers = ulData;
+                g_pstMem->ulBuffers = (ulData + ulData % 1024) / 1024;
                 ++ulCount;
                 continue;
             }
             else if (0 == dos_strnicmp(pszAnalyseRslt[0], "Cached", dos_strlen("Cached")))
             {
-                g_pstMem->ulCached = ulData;
+                g_pstMem->ulCached = (ulData + ulData % 1024) / 1024;
                 ++ulCount;
                 continue;
             }
