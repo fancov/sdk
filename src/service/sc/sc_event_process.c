@@ -8687,17 +8687,27 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
             ulIndex = sc_ep_gw_hash_func(ulGatewayID);
             pthread_mutex_lock(&g_mutexHashGW);
             pstHashNode = hash_find_node(g_pstHashGW, ulIndex, (VOID *)&ulGatewayID, sc_ep_gw_hash_find);
-            if (DOS_ADDR_INVALID(pstHashNode)
-                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            if (DOS_ADDR_VALID(pstHashNode)
+                && DOS_ADDR_VALID(pstHashNode->pHandle))
             {
                 pstGateway = pstHashNode->pHandle;
+            }
+            else
+            {
+                pstGateway = NULL;
                 DOS_ASSERT(0);
             }
             pthread_mutex_unlock(&g_mutexHashGW);
         }
     }
 
+    if (DOS_ADDR_INVALID(pstGateway))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
+    pthread_mutex_lock(&g_mutexHashGW);
     if (ESL_EVENT_CHANNEL_CREATE == pstEvent->event_id)
     {
         g_pstTaskMngtInfo->stStat.ulTotalSessions++;
@@ -8795,6 +8805,8 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
             }
         }
     }
+
+    pthread_mutex_unlock(&g_mutexHashGW);
 
 
     return DOS_SUCC;
