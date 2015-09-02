@@ -1938,7 +1938,8 @@ BS_BILLING_RULE_ST *bs_match_billing_rule(BS_BILLING_PACKAGE_ST *pstPackage,
     U32                 aulSrcValue[BS_BILLING_ATTR_LAST] = {U32_BUTT};
     U32                 aulDstValue[BS_BILLING_ATTR_LAST] = {U32_BUTT};
     VOID                *pInput;
-    BS_BILLING_RULE_ST  *pstRule;
+    BS_BILLING_RULE_ST  *pstRule    = NULL;
+    BS_BILLING_RULE_ST  *pstRuleRet = NULL;
 
     /* 按优先级从高到低依次匹配,匹配成功则退出匹配 */
     for (i = 0; i < BS_MAX_BILLING_RULE_IN_PACKAGE; i++)
@@ -2008,34 +2009,47 @@ BS_BILLING_RULE_ST *bs_match_billing_rule(BS_BILLING_PACKAGE_ST *pstPackage,
         }
 
         /* 到此匹配成功 */
+        if (DOS_ADDR_INVALID(pstRuleRet))
+        {
+            pstRuleRet = pstRule;
+        }
+        else if (pstRuleRet->ucPriority > pstRule->ucPriority)
+        {
+            /* 选择优先级高的 */
+            pstRuleRet = pstRule;
+        }
+    }
+
+    if (DOS_ADDR_INVALID(pstRuleRet))
+    {
+        bs_trace(BS_TRACE_BILLING, LOG_LEVEL_DEBUG,
+                 "Match billing rule fail! package:%u, service:%u, customer:%u, agent:%u"
+                 "userid:%u, timestamp:%u, caller:%s, callee:%s",
+                 pstPackage->ulPackageID, pstPackage->ucServType,
+                 pstBillingMatch->ulCustomerID, pstBillingMatch->ulAgentID,
+                 pstBillingMatch->ulUserID, pstBillingMatch->ulTimeStamp,
+                 pstBillingMatch->szCaller, pstBillingMatch->szCallee);
+
+    }
+    else
+    {
         bs_trace(BS_TRACE_BILLING, LOG_LEVEL_DEBUG,
                  "Match billing rule succ! "
                  "package:%u, rule:%u, service:%u, priority:%u, type:%u"
                  "src attr1:%u-%u, attr2:%u-%u, dst attr1:%u-%u, attr1:%u-%u, "
                  "first unit:%u, cnt:%u, next unit:%u, cnt:%u, rate:%u",
-                 pstRule->ulPackageID, pstRule->ulRuleID,
-                 pstRule->ucServType, pstRule->ucPriority,
-                 pstRule->ucBillingType, pstRule->ucSrcAttrType1,
-                 pstRule->ulSrcAttrValue1, pstRule->ucSrcAttrType2,
-                 pstRule->ulSrcAttrValue2, pstRule->ucDstAttrType1,
-                 pstRule->ulDstAttrValue1, pstRule->ucDstAttrType2,
-                 pstRule->ulDstAttrValue2, pstRule->ulFirstBillingUnit,
-                 pstRule->ucFirstBillingCnt, pstRule->ulNextBillingUnit,
-                 pstRule->ucNextBillingCnt, pstRule->ulBillingRate);
-
-        return pstRule;
-
+                 pstRuleRet->ulPackageID, pstRuleRet->ulRuleID,
+                 pstRuleRet->ucServType, pstRuleRet->ucPriority,
+                 pstRuleRet->ucBillingType, pstRuleRet->ucSrcAttrType1,
+                 pstRuleRet->ulSrcAttrValue1, pstRuleRet->ucSrcAttrType2,
+                 pstRuleRet->ulSrcAttrValue2, pstRuleRet->ucDstAttrType1,
+                 pstRuleRet->ulDstAttrValue1, pstRuleRet->ucDstAttrType2,
+                 pstRuleRet->ulDstAttrValue2, pstRuleRet->ulFirstBillingUnit,
+                 pstRuleRet->ucFirstBillingCnt, pstRuleRet->ulNextBillingUnit,
+                 pstRuleRet->ucNextBillingCnt, pstRuleRet->ulBillingRate);
     }
 
-    bs_trace(BS_TRACE_BILLING, LOG_LEVEL_DEBUG,
-             "Match billing rule fail! package:%u, service:%u, customer:%u, agent:%u"
-             "userid:%u, timestamp:%u, caller:%s, callee:%s",
-             pstPackage->ulPackageID, pstPackage->ucServType,
-             pstBillingMatch->ulCustomerID, pstBillingMatch->ulAgentID,
-             pstBillingMatch->ulUserID, pstBillingMatch->ulTimeStamp,
-             pstBillingMatch->szCaller, pstBillingMatch->szCallee);
-
-    return NULL;
+    return pstRuleRet;
 }
 
 /* 预批价处理,一般用于认证请求 */

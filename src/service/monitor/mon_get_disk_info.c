@@ -180,60 +180,60 @@ static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
                  goto fail;
              }
 
-             dos_snprintf(g_pastPartition[g_ulPartCnt]->szPartitionName, MAX_PARTITION_LENGTH, "%s", paszInfo[0]);
+            dos_snprintf(g_pastPartition[g_ulPartCnt]->szPartitionName, MAX_PARTITION_LENGTH, "%s", paszInfo[0]);
 
-             if (dos_atoul(paszInfo[1], &ulTotalVolume) < 0)
-             {
-                 DOS_ASSERT(0);
-                 goto fail;
-             }
+            if (dos_atoul(paszInfo[1], &ulTotalVolume) < 0)
+            {
+                DOS_ASSERT(0);
+                goto fail;
+            }
 
-             if (dos_atoul(paszInfo[2], &ulUsedVolume) < 0)
-             {
-                 DOS_ASSERT(0);
-                 goto fail;
-             }
+            if (dos_atoul(paszInfo[2], &ulUsedVolume) < 0)
+            {
+                DOS_ASSERT(0);
+                goto fail;
+            }
 
-             if (dos_atoul(paszInfo[3], &ulAvailVolume) < 0)
-             {
-                 DOS_ASSERT(0);
-                 goto fail;
-             }
+            if (dos_atoul(paszInfo[3], &ulAvailVolume) < 0)
+            {
+                DOS_ASSERT(0);
+                goto fail;
+            }
 
-             pszTemp = paszInfo[4];
-             while('%' != *pszTemp)
-             {
-                 ++pszTemp;
-             }
+            pszTemp = paszInfo[4];
+            while('%' != *pszTemp)
+            {
+                ++pszTemp;
+            }
 
-             *pszTemp = '\0';
+            *pszTemp = '\0';
 
-             if (dos_atoul(paszInfo[4], &ulTotalRate) < 0)
-             {
-                 DOS_ASSERT(0);
-                 goto fail;
-             }
+            if (dos_atoul(paszInfo[4], &ulTotalRate) < 0)
+            {
+                DOS_ASSERT(0);
+                goto fail;
+            }
 
-             g_pastPartition[g_ulPartCnt]->ulPartitionTotalBytes = ulTotalVolume;
-             g_pastPartition[g_ulPartCnt]->ulPartitionUsedBytes = ulUsedVolume;
-             g_pastPartition[g_ulPartCnt]->ulPartitionAvailBytes = ulAvailVolume;
-             g_pastPartition[g_ulPartCnt]->ulPartitionUsageRate = ulTotalRate;
+            g_pastPartition[g_ulPartCnt]->ulPartitionTotalBytes = ulTotalVolume;
+            g_pastPartition[g_ulPartCnt]->ulPartitionUsedBytes = ulUsedVolume;
+            g_pastPartition[g_ulPartCnt]->ulPartitionAvailBytes = ulAvailVolume;
+            g_pastPartition[g_ulPartCnt]->ulPartitionUsageRate = ulTotalRate;
 
-             pszTemp = mon_get_disk_serial_num(g_pastPartition[g_ulPartCnt]->szPartitionName);
-             dos_snprintf(g_pastPartition[g_ulPartCnt]->szDiskSerialNo, MAX_PARTITION_LENGTH, "%s", pszTemp);
+            pszTemp = mon_get_disk_serial_num(g_pastPartition[g_ulPartCnt]->szPartitionName);
+            dos_snprintf(g_pastPartition[g_ulPartCnt]->szDiskSerialNo, MAX_PARTITION_LENGTH, "%s", pszTemp);
 
-             ++g_ulPartCnt;
-         }
-     }
+            ++g_ulPartCnt;
+        }
+    }
 
-     pclose(fp);
-     fp = NULL;
-     return DOS_SUCC;
+    pclose(fp);
+    fp = NULL;
+    return DOS_SUCC;
 
 fail:
-     pclose(fp);
-     fp = NULL;
-     return DOS_FAIL;
+    pclose(fp);
+    fp = NULL;
+    return DOS_FAIL;
  }
 
 /**

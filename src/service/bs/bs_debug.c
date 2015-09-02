@@ -682,19 +682,19 @@ S32 bs_show_customer(U32 ulIndex, U32 ulObjectID)
     }
     pstAccount = &pstCustomer->stAccount;
 
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s%20s%10s%10s%10s%10s%10s%10s%10s",
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10s%20s%10s%10s%10s%10s%10s%10s%10s%10s",
                  "CustmID", "Name", "Type", "State",
-                 "ParentID", "Child", "Agent", "Number", "UserLine");
+                 "ParentID", "Child", "Agent", "Number", "UserLine", "SMSRemind");
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
     cli_out_string(ulIndex, "\r\n--------------------------------------------------"
-                   "--------------------------------------------------");
-    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%20s%10s%10s%10u%10u%10u%10u%10u",
+                   "------------------------------------------------------------");
+    dos_snprintf(szBuf, sizeof(szBuf), "\r\n%10u%20s%10s%10s%10u%10u%10u%10u%10u%10s",
                  pstCustomer->ulCustomerID, pstCustomer->szCustomerName,
                  sc_translate_customer_type(pstCustomer->ucCustomerType), bs_translate_customer_state(pstCustomer->ucCustomerState),
                  pstCustomer->ulParentID, pstCustomer->stChildrenList.ulCount,
                  pstCustomer->ulAgentNum, pstCustomer->ulNumberNum,
-                 pstCustomer->ulUserLineNum);
+                 pstCustomer->ulUserLineNum, DOS_FALSE == pstCustomer->bSMSRemind?"No":"Yes");
     szBuf[sizeof(szBuf) - 1] = '\0';
     cli_out_string(ulIndex, szBuf);
 
@@ -1172,10 +1172,12 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
             /* 打印表头 */
             dos_snprintf(szBuff, sizeof(szBuff), "\r\nList Package ID %d.", ulObjectID);
             cli_out_string(ulIndex, szBuff);
-            cli_out_string(ulIndex, "\r\n---------------------------------------");
-            cli_out_string(ulIndex, "\r\n  Package ID        Service Type");
 
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12u%20s\r\n"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12s%20s", "PackageID", "ServiceType");
+            cli_out_string(ulIndex, szBuff);
+            cli_out_string(ulIndex, "\r\n---------------------------------------");
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12u%20s"
                             , ulObjectID
                             , bs_translate_serv_type(pstPkg->ucServType));
             cli_out_string(ulIndex, szBuff);
@@ -1187,8 +1189,10 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
                     continue;
                 }
                 /* 打印资费包属性和值 */
+                dos_snprintf(szBuff, sizeof(szBuff), "\r\n%7s%20s%14s%20s%14s%20s%15s%20s%15s", "RuleID", "SrcAttrType1", "SrcAttrValue1", "SrcAttrType2", "SrcAttrValue2"
+                                , "DestAttrType1", "DestAttrValue1", "DestAttrType2", "DestAttrValue2");
+                cli_out_string(ulIndex, szBuff);
                 cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------");
-                cli_out_string(ulIndex, "\r\nRule ID        SrcAttrType1 SrcAttrValue1        SrcAttrType2 SrcAttrValue2       DestAttrType1 DestAttrValue1       DestAttrType2 DestAttrValue2");
 
                 dos_snprintf(szBuff, sizeof(szBuff), "\r\n%7u%20s%14u%20s%14u%20s%15u%20s%15u\r\n"
                                 , pstPkg->astRule[ulLoop].ulRuleID
@@ -1201,35 +1205,30 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
                                 , bs_translate_billing_attr(pstPkg->astRule[ulLoop].ucDstAttrType2)
                                 , pstPkg->astRule[ulLoop].ulDstAttrValue2);
                 cli_out_string(ulIndex, szBuff);
+
+
+                dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Rule");
+                cli_out_string(ulIndex, szBuff);
+
+                dos_snprintf(szBuff, sizeof(szBuff), "\r\n%16s%16s%16s%15s%20s%15s%12s%13s%13s%9s%6s", "FirstBillingUnit", "FirstBillingCnt", "NextBillingUnit", "NextBillingCnt"
+                                , "ServType", "BillingType", "BillingRate", "Effect", "Expire", "Priority", "Valid");
+                cli_out_string(ulIndex, szBuff);
+
+                cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------");
+                dos_snprintf(szBuff, sizeof(szBuff), "\r\n%16u%16u%16u%15u%20s%15s%12u%13u%13u%9u%6s\r\n\r\n\r\n"
+                                , pstPkg->astRule[ulLoop].ulFirstBillingUnit
+                                , pstPkg->astRule[ulLoop].ucFirstBillingCnt
+                                , pstPkg->astRule[ulLoop].ulNextBillingUnit
+                                , pstPkg->astRule[ulLoop].ucNextBillingCnt
+                                , bs_translate_serv_type(pstPkg->astRule[ulLoop].ucServType)
+                                , bs_translate_billing_type(pstPkg->astRule[ulLoop].ucBillingType)
+                                , pstPkg->astRule[ulLoop].ulBillingRate
+                                , pstPkg->astRule[ulLoop].ulEffectTimestamp
+                                , pstPkg->astRule[ulLoop].ulExpireTimestamp
+                                , pstPkg->astRule[ulLoop].ucPriority
+                                , pstPkg->astRule[ulLoop].ucValid == 1 ? "Yes" : "No");
+                cli_out_string(ulIndex, szBuff);
             }
-
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the Billing Rule");
-            cli_out_string(ulIndex, szBuff);
-
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------------");
-            cli_out_string(ulIndex, szBuff);
-
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n  %-20s|%12u %12u %12u %12u %12u %12u %12u %12u %12u %12u", "Billing Rule Record", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-            cli_out_string(ulIndex, szBuff);
-
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------------");
-            cli_out_string(ulIndex, szBuff);
-
-            cli_out_string(ulIndex, "\r\nFirstBillingUnit FirstBillingCnt NextBillingUnit NextBillingCnt            ServType    BillingType BillingRate       Effect       Expire Priority Valid");
-
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%16u%16u%16u%15u%20s%15s%12u%13u%13u%9u%6s\r\n\r\n\r\n"
-                            , pstPkg->astRule[ulLoop].ulFirstBillingUnit
-                            , pstPkg->astRule[ulLoop].ucFirstBillingCnt
-                            , pstPkg->astRule[ulLoop].ulNextBillingUnit
-                            , pstPkg->astRule[ulLoop].ucNextBillingCnt
-                            , bs_translate_serv_type(pstPkg->astRule[ulLoop].ucServType)
-                            , bs_translate_billing_type(pstPkg->astRule[ulLoop].ucBillingType)
-                            , pstPkg->astRule[ulLoop].ulBillingRate
-                            , pstPkg->astRule[ulLoop].ulEffectTimestamp
-                            , pstPkg->astRule[ulLoop].ulExpireTimestamp
-                            , pstPkg->astRule[ulLoop].ucPriority
-                            , pstPkg->astRule[ulLoop].ucValid == 1 ? "Y" : "N");
-            cli_out_string(ulIndex, szBuff);
         }
     }
     return DOS_SUCC;

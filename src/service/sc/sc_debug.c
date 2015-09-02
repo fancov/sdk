@@ -415,7 +415,7 @@ VOID sc_show_task_list(U32 ulIndex, U32 ulCustomID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%6s%7s%9s%6s%10s%10s%10s%12s", "No.", "Status", "Priority", "Trace", "ID", "Custom-ID", "Agent-Cnt", "Caller-Cnt");
     cli_out_string(ulIndex, szCmdBuff);
 
-    for (ulTaskIndex=0,ulTotal=0; ulTaskIndex<SC_MAX_TASK_NUM; ulTaskIndex++)
+    for (ulTaskIndex=0,ulTotal=0; ulTaskIndex < SC_MAX_TASK_NUM; ulTaskIndex++)
     {
         pstTCB = &g_pstTaskMngtInfo->pstTaskList[ulTaskIndex];
         if (DOS_ADDR_INVALID(pstTCB))
@@ -777,7 +777,7 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
     }
 
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n---------------------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                     , "\r\n%10s%10s%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s%10s%14s%12s"
@@ -862,7 +862,7 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
             ulTotal++;
         }
     }
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n---------------------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n** Bind : 0 -- SIP User ID, 1 -- Telephone, 2 -- Mobile");
     cli_out_string(ulIndex, szCmdBuff);
@@ -872,124 +872,86 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
     return;
 }
 
-VOID sc_show_caller_for_task(U32 ulIndex, U32 ulTaskID)
+VOID sc_show_callee_for_task(U32 ulIndex, U32 ulTaskID)
 {
     S8 szCmdBuff[1024] = {0, };
-    U32 i = 0, ulTotal;
+    U32 ulTotal = 0;
     SC_TASK_CB_ST *pstTCB = NULL;
+    list_t *pNode = NULL;
+    SC_TEL_NUM_QUERY_NODE_ST *pstCallee = NULL;
 
-    if (U32_BUTT == ulTaskID)
+    pstTCB = sc_tcb_find_by_taskid(ulTaskID);
+    if (DOS_ADDR_INVALID(pstTCB))
     {
-        cli_out_string(ulIndex, "\r\nUse \'cc show caller taskid\'");
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "Cannot find the TCB.(TaskID:%u)", ulTaskID);
+        cli_out_string(ulIndex, szCmdBuff);
         return ;
     }
 
-    pstTCB = sc_tcb_find_by_taskid(ulTaskID);
-    if (DOS_ADDR_INVALID(pstTCB))
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12s%7s%9s%12s"
+                    , "Number", "Index", "TraceOn", "CalleeType");
+    cli_out_string(ulIndex, szCmdBuff);
+    cli_out_string(ulIndex, "\r\n----------------------------------------");
+
+    dos_list_scan(&pstTCB->stCalleeNumQuery, pNode)
     {
-        cli_out_string(ulIndex, "\r\nError:"
-                                "\r\n    Invalid task ID"
-                                "\r\n    Task with the ID is not valid. "
-                                "\r\n    Please use \"cc show task custom id \" to check a valid task\r\n");
-        return;
-    }
-
-    cli_out_string(ulIndex, "\r\n----------------------------------------------------------------------------------");
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%7s%8s%9s%15s%10s%15s%18s", "TCB-NO", "Status", "Priority", "Audio-Play-Cnt", "Trace-ON", "Trace-Call-ON", "Mode");
-    cli_out_string(ulIndex, szCmdBuff);
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%7u%8s%9u%15u%10s%15s%18s"
-                    , pstTCB->usTCBNo
-                    , sc_translate_task_status(pstTCB->ucTaskStatus)
-                    , pstTCB->ucPriority
-                    , pstTCB->ucAudioPlayCnt
-                    , pstTCB->bTraceON ? "Yes":"No"
-                    , pstTCB->bTraceCallON ? "Yes":"No"
-                    , sc_translate_task_mode(pstTCB->ucMode));
-    cli_out_string(ulIndex, szCmdBuff);
-
-    cli_out_string(ulIndex, "\r\n\r\n---------------------------------------------------------------------");
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%8s%10s%20s%16s%15s", "Task-ID", "Custom-ID", "Current-Concurrency", "Max-Concurrency", "Agent-Queue-ID");
-    cli_out_string(ulIndex, szCmdBuff);
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%8u%10u%20u%16u%15u"
-                    , pstTCB->ulTaskID
-                    , pstTCB->ulCustomID
-                    , pstTCB->ulCurrentConcurrency
-                    , pstTCB->ulMaxConcurrency
-                    , pstTCB->ulAgentQueueID);
-    cli_out_string(ulIndex, szCmdBuff);
-
-    cli_out_string(ulIndex, "\r\n\r\n---------------------------------------------------------------------------------------------");
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%10s%11s%11s%18s%15s%14s%14s", "Agent-Cnt", "Caller-Cnt", "Callee-Cnt", "Last-Callee-Index", "Total-Call-Cnt", "Call-Fail-Cnt", "Call-Succ-Cnt");
-    cli_out_string(ulIndex, szCmdBuff);
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%10u%11u%11u%18u%15u%14u%14u"
-                    , pstTCB->usSiteCount
-                    , pstTCB->usCallerCount
-                    , pstTCB->ulCalleeCount
-                    , pstTCB->ulLastCalleeIndex
-                    , pstTCB->ulTotalCall
-                    , pstTCB->ulCallFailed
-                    , pstTCB->ulCallConnected);
-    cli_out_string(ulIndex, szCmdBuff);
-
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n\r\nList the Caller(s) in the Task %d", ulTaskID);
-    cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n----------------------------------------");
-    cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%6s%6s%10s%16s", "No.", "Trace", "ID", "Number");
-    cli_out_string(ulIndex, szCmdBuff);
-
-    for (i = 0, ulTotal = 0; i < SC_MAX_CALLER_NUM; i++)
-    {
-        if (DOS_ADDR_INVALID(pstTCB->pstCallerNumQuery)
-            || !pstTCB->pstCallerNumQuery[i].bValid)
+        pstCallee = dos_list_entry(pNode, SC_TEL_NUM_QUERY_NODE_ST, stLink);
+        if (NULL == pstCallee)
         {
-            continue;
+            break;
         }
 
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%6u%6s%10u%16s"
-                        , pstTCB->pstCallerNumQuery[i].usNo
-                        , pstTCB->pstCallerNumQuery[i].bTraceON ? "Y" : "N"
-                        , pstTCB->pstCallerNumQuery[i].ulIndexInDB
-                        , pstTCB->pstCallerNumQuery[i].szNumber);
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12s%7u%9s%12u"
+                        , pstCallee->szNumber
+                        , pstCallee->ulIndex
+                        , DOS_FALSE == pstCallee->ucTraceON?"No":"Yes"
+                        , pstCallee->ucCalleeType);
         cli_out_string(ulIndex, szCmdBuff);
         ulTotal++;
     }
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n----------------------------------------");
-    cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal : %u\r\n", ulTotal);
+    cli_out_string(ulIndex, "\r\n----------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal %u Callee(s).", ulTotal);
     cli_out_string(ulIndex, szCmdBuff);
 }
 
-VOID sc_show_callee_for_task(U32 ulIndex, U32 ulTaskID)
+VOID sc_show_caller_for_task(U32 ulIndex, U32 ulTaskID)
 {
-/*
-    S8 szCmdBuff[1024] = { 0 };
-    S8 szWeeks[64] = { 0 };
-    SC_TASK_CB_ST *pstTCB;
+    SC_TASK_CB_ST  *pstTCB = NULL;
+    S8  szCmdBuff[1024] = {0};
+    S32 lIndex = U32_BUTT, lCount = 0;
 
     pstTCB = sc_tcb_find_by_taskid(ulTaskID);
     if (DOS_ADDR_INVALID(pstTCB))
     {
-        cli_out_string(ulIndex, "\r\nError:"
-                                "\r\n    Invalid task ID"
-                                "\r\n    Task with the ID is not valid. "
-                                "\r\n    Please use \"sc show task custom id \" to ckeck a valid task\r\n");
-        return;
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "Cannot find the TCB.(TaskID:%u)", ulTaskID);
+        cli_out_string(ulIndex, szCmdBuff);
+        return ;
     }
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the Callee(s) in the Task %d", ulTaskID);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%16s%7s%6s%8s%8s%12s%6s"
+                    , "Number", "TCBNo", "Valid", "TraceOn", "Index", "CustomerID", "Times");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n----------------------------------------");
+    cli_out_string(ulIndex, "\r\n---------------------------------------------------------------");
+
+    for (lIndex = 0; lIndex < SC_MAX_CALLER_NUM; lIndex++)
+    {
+        if (DOS_FALSE != pstTCB->pstCallerNumQuery[lIndex].bValid && '\0' != pstTCB->pstCallerNumQuery[lIndex].szNumber[0])
+        {
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%16s%7u%6s%8s%8u%12u%6u"
+                            , pstTCB->pstCallerNumQuery[lIndex].szNumber
+                            , pstTCB->usTCBNo
+                            , DOS_FALSE == pstTCB->pstCallerNumQuery[lIndex].bValid?"No":"Yes"
+                            , DOS_FALSE == pstTCB->pstCallerNumQuery[lIndex].bTraceON?"No":"Yes"
+                            , pstTCB->pstCallerNumQuery[lIndex].ulIndexInDB
+                            , pstTCB->pstCallerNumQuery[lIndex].ulCustomerID
+                            , pstTCB->pstCallerNumQuery[lIndex].ulTimes);
+            cli_out_string(ulIndex, szCmdBuff);
+            lCount++;
+        }
+    }
+    cli_out_string(ulIndex, "\r\n---------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal %d Caller(s).", lCount);
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%6s%6s%10s%16s", "No.", "Trace", "ID", "Number");
-    cli_out_string(ulIndex, szCmdBuff);
-*/
 }
 
 VOID sc_show_scb_detail(U32 ulIndex, U32 ulSCBID)
@@ -2322,13 +2284,13 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
         }
         else if (5 == argc)
         {
-            if (dos_atoul(argv[4], &ulID) == 0)
+            if (dos_atoul(argv[4], &ulID) < 0)
             {
                 cli_out_string(ulIndex, "\r\n\tERROR: Invalid Customer ID while show the Task(s).\r\n");
                 return -1;
             }
 
-            if (dos_strnicmp(argv[2], "custom", dos_strlen("custom")) == 0)
+            if (dos_strnicmp(argv[3], "custom", dos_strlen("custom")) == 0)
             {
                 sc_show_task(ulIndex, U32_BUTT, ulID);
             }
@@ -2379,7 +2341,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             }
             else
             {
-                cli_out_string(ulIndex, "\r\n\tERROR: Invalid Task ID while show the Callee(s).\r\n");
+                cli_out_string(ulIndex, "\r\n\tERROR: Invalid Task ID while show the Caller(s).\r\n");
                 return -1;
             }
         }

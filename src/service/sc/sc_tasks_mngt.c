@@ -49,7 +49,7 @@ static S32 sc_task_load_callback(VOID *pArg, S32 argc, S8 **argv, S8 **columnNam
 
     SC_TRACE_IN((U64)pArg, (U32)argc, (U64)argv, (U64)columnNames);
 
-    for (ulIndex=0; ulIndex<argc; ulIndex++)
+    for (ulIndex = 0; ulIndex < argc; ulIndex++)
     {
         if (dos_strcmp(columnNames[ulIndex], "id") == 0)
         {
@@ -98,7 +98,10 @@ U32 sc_task_mngt_load_task()
 
     ulLength = dos_snprintf(szSqlQuery
                 , sizeof(szSqlQuery)
+#if 0
                 , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask WHERE tbl_calltask.status = 1;");
+#endif
+                , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask;");
 
     ulResult = db_query(g_pstSCDBHandle
                             , szSqlQuery
@@ -302,7 +305,7 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
     }
 
     sc_task_set_owner(pstTCB, ulTaskID, ulCustomID);
-
+#if 0
     if (sc_task_init(pstTCB) != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -312,13 +315,19 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
         SC_TRACE_OUT();
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }
+#endif
+    if (DOS_SUCC != sc_task_load(pstTCB->ulTaskID))
+    {
+        DOS_ASSERT(0);
+        sc_tcb_free(pstTCB);
+        SC_TRACE_OUT();
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
 
     if (sc_task_start(pstTCB) != DOS_SUCC)
     {
         DOS_ASSERT(0);
-
         sc_tcb_free(pstTCB);
-
         SC_TRACE_OUT();
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }
@@ -499,6 +508,11 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
             switch (pstCMD->ulAction)
             {
                 case SC_API_CMD_ACTION_ADD:
+                case SC_API_CMD_ACTION_UPDATE:
+                {
+                    sc_task_load(pstCMD->ulTaskID);
+                    break;
+                }
                 case SC_API_CMD_ACTION_START:
                 {
                     pstCMD->ulCMDErrCode = sc_task_mngt_start_task(pstCMD->ulTaskID, pstCMD->ulCustomID);
@@ -657,18 +671,27 @@ U32 sc_task_mngt_start()
 
     pthread_create(&g_pstTaskMngtInfo->pthID, NULL, sc_task_mngt_runtime, NULL);
 
-    for (ulIndex=0; ulIndex<SC_MAX_TASK_NUM; ulIndex++)
+    for (ulIndex = 0; ulIndex < SC_MAX_TASK_NUM; ulIndex++)
     {
         pstTCB = &g_pstTaskMngtInfo->pstTaskList[ulIndex];
 
         if (pstTCB->ucValid
             && SC_TCB_HAS_VALID_OWNER(pstTCB))
         {
+#if 0
             if (sc_task_init(pstTCB) != DOS_SUCC)
             {
                 SC_TASK_TRACE(pstTCB, "%s", "Task init fail");
                 sc_logr_notice(SC_TASK_MNGT, "Task init fail. Custom ID: %d, Task ID: %d", pstTCB->ulCustomID, pstTCB->ulTaskID);
 
+                sc_tcb_free(pstTCB);
+                continue;
+            }
+#endif
+            if (DOS_SUCC != sc_task_load(pstTCB->ulTaskID))
+            {
+                SC_TASK_TRACE(pstTCB, "Task Init FAIL.");
+                sc_logr_notice(SC_TASK_MNGT, "Task init fail. Custom ID: %d, Task ID: %d", pstTCB->ulCustomID, pstTCB->ulTaskID);
                 sc_tcb_free(pstTCB);
                 continue;
             }
@@ -721,23 +744,23 @@ U32 sc_task_mngt_init()
     pthread_mutex_init(&g_pstTaskMngtInfo->mutexCMDList, NULL);
     pthread_mutex_init(&g_pstTaskMngtInfo->mutexTCBList, NULL);
     pthread_mutex_init(&g_pstTaskMngtInfo->mutexCallList, NULL);
-	pthread_mutex_init(&g_pstTaskMngtInfo->mutexCallHash, NULL);
+    pthread_mutex_init(&g_pstTaskMngtInfo->mutexCallHash, NULL);
     pthread_mutex_init(&g_pstTaskMngtInfo->mutexHashBGJobHash, NULL);
     pthread_cond_init(&g_pstTaskMngtInfo->condCMDList, NULL);
     dos_list_init(&g_pstTaskMngtInfo->stCMDList);
 
-	g_pstTaskMngtInfo->pstHashBGJobHash = hash_create_table(SC_BGJOB_HASH_SIZE, NULL);
+    g_pstTaskMngtInfo->pstHashBGJobHash = hash_create_table(SC_BGJOB_HASH_SIZE, NULL);
     g_pstTaskMngtInfo->pstCallSCBHash = hash_create_table(SC_MAX_SCB_HASH_NUM, NULL);
     if (!g_pstTaskMngtInfo->pstCallSCBHash || !g_pstTaskMngtInfo->pstHashBGJobHash)
     {
         DOS_ASSERT(0);
-		
-		if (g_pstTaskMngtInfo->pstCallSCBHash)
-		{
+
+        if (g_pstTaskMngtInfo->pstCallSCBHash)
+        {
             hash_delete_table(g_pstTaskMngtInfo->pstCallSCBHash, NULL);
             g_pstTaskMngtInfo->pstCallSCBHash = NULL;
-		}
-		
+        }
+
         if (g_pstTaskMngtInfo->pstHashBGJobHash)
         {
             hash_delete_table(g_pstTaskMngtInfo->pstHashBGJobHash, NULL);
@@ -771,11 +794,11 @@ U32 sc_task_mngt_init()
             g_pstTaskMngtInfo->pstCallSCBList = NULL;
         }
 
-		if (g_pstTaskMngtInfo->pstCallSCBHash)
-		{
+        if (g_pstTaskMngtInfo->pstCallSCBHash)
+        {
             hash_delete_table(g_pstTaskMngtInfo->pstCallSCBHash, NULL);
             g_pstTaskMngtInfo->pstCallSCBHash = NULL;
-		}
+        }
 
         if (g_pstTaskMngtInfo->pstHashBGJobHash)
         {

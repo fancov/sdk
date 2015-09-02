@@ -62,7 +62,7 @@ extern DB_HANDLE_ST      *g_pstSCDBHandle;
 
 extern U32                g_ulCPS;
 extern U32                g_ulMaxConcurrency4Task;
-
+extern S8 *strptime(const S8 *pszTime, const S8 *pszFormat, struct tm *tm);
 
 /* 业务控制块状态 */
 static S8 *g_pszSCBStatus[] =
@@ -746,7 +746,7 @@ SC_TASK_CB_ST *sc_tcb_alloc()
 
     ulLastIndex = ulIndex;
 
-    for (; ulIndex<SC_MAX_TASK_NUM; ulIndex++)
+    for (; ulIndex < SC_MAX_TASK_NUM; ulIndex++)
     {
         if (!g_pstTaskMngtInfo->pstTaskList[ulIndex].ucValid)
         {
@@ -875,7 +875,7 @@ SC_TASK_CB_ST *sc_tcb_find_by_taskid(U32 ulTaskID)
     U32 ulIndex;
     SC_TRACE_IN((U32)ulTaskID, 0, 0, 0);
 
-    for (ulIndex=0; ulIndex<SC_MAX_TASK_NUM; ulIndex++)
+    for (ulIndex = 0; ulIndex < SC_MAX_TASK_NUM; ulIndex++)
     {
         if (g_pstTaskMngtInfo->pstTaskList[ulIndex].ucValid
             && g_pstTaskMngtInfo->pstTaskList[ulIndex].ulTaskID == ulTaskID)
@@ -960,21 +960,297 @@ U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu)
     return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
 }
 
+S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond;
+    BOOL blProcessOK = DOS_FALSE, bFound = DOS_FALSE;
+    S32 lIndex = U32_BUTT, lRet = U32_BUTT;
+    S8  szTaskName[64] = {0};
+    struct tm stModifyTime, stCreateTime;
+
+    for (blProcessOK = DOS_TRUE, lIndex = 0; lIndex < lCount; lIndex++)
+    {
+        if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulTaskID) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "customer_id", dos_strlen("customer_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCustomerID) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "task_name", dos_strlen("task_name")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0])
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+            dos_snprintf(szTaskName, sizeof(szTaskName), "%s", aszValues[lIndex]);
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "mtime", dos_strlen("mtime")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0])
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            dos_memzero(&stModifyTime, sizeof(struct tm));
+            strptime(aszValues[lIndex], "%Y-%m-%d %H:%M:%S", &stModifyTime);
+            ulMoifyTime = (U32)mktime(&stModifyTime);
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "mode", dos_strlen("mode")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulMode) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "playcnt", dos_strlen("playcnt")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulPlayCnt) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "start_time", dos_strlen("start_time")))
+        {
+            if (3 != dos_sscanf(aszValues[lIndex], "%u:%u:%u", &ulStartHour, &ulStartMinute, &ulStartSecond))
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "end_time", dos_strlen("end_time")))
+        {
+            if (3 != dos_sscanf(aszValues[lIndex], "%u:%u:%u", &ulEndHour, &ulEndMinute, &ulEndSecond))
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "audio_id", dos_strlen("audio_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulAudioID) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "group_id", dos_strlen("group_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulGroupID) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "status", dos_strlen("status")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulStatus) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "ctime", dos_strlen("ctime")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0])
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            dos_memzero(&stCreateTime, sizeof(struct tm));
+            strptime(aszValues[lIndex], "%Y-%m-%d %H:%M:%S", &stCreateTime);
+            ulCreateTime = (U32)mktime(&stCreateTime);
+        }
+    }
+
+    /* 如果只是加载一条数据，首先寻找有没有该控制块节点，如果有更新之
+       如果没有，则重新寻找一个不可用节点，如果还是没有空闲节点，则返回失败 */
+    for (lIndex = 0; lIndex < SC_MAX_TASK_NUM; lIndex++)
+    {
+        if (g_pstTaskMngtInfo->pstTaskList[lIndex].ulTaskID == *(U32 *)pArg
+            && DOS_TRUE == g_pstTaskMngtInfo->pstTaskList[lIndex].ucValid)
+        {
+            bFound = DOS_TRUE;
+            break;
+        }
+    }
+    if (DOS_FALSE == bFound)
+    {
+
+        sc_tcb_alloc();
+        for (lIndex = 0; lIndex < SC_MAX_TASK_NUM; lIndex++)
+        {
+            if (DOS_FALSE == g_pstTaskMngtInfo->pstTaskList[lIndex].ucValid)
+            {
+                bFound = DOS_TRUE;
+                break;
+            }
+        }
+        if (DOS_FALSE == bFound)
+        {
+            sc_logr_error(SC_TASK_MNGT, "Load Task CB FAIL,No more TASK CB. (ID:%u)", *(U32 *)pArg);
+            return DOS_FAIL;
+        }
+    }
+
+    g_pstTaskMngtInfo->pstTaskList[lIndex].usTCBNo = (U16)lIndex;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ucValid = DOS_TRUE;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ulTaskID = ulTaskID;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ulCustomID = ulCustomerID;
+    dos_snprintf(g_pstTaskMngtInfo->pstTaskList[lIndex].szTaskName, sizeof(g_pstTaskMngtInfo->pstTaskList[lIndex].szTaskName), "%s", szTaskName);
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ulModifyTime = ulMoifyTime;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ucMode = (U8)ulMode;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ucAudioPlayCnt = (U8)ulPlayCnt;
+    dos_snprintf(g_pstTaskMngtInfo->pstTaskList[lIndex].szAudioFileLen, sizeof(g_pstTaskMngtInfo->pstTaskList[lIndex].szAudioFileLen), "%s/%u/%u", SC_TASK_AUDIO_PATH, ulCustomerID, ulAudioID);
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ulAgentQueueID = ulGroupID;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ucTaskStatus = ulStatus;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ulAllocTime = ulCreateTime;
+
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucValid = DOS_TRUE;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucWeekMask = 0xFF;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucHourBegin = (U8)ulStartHour;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucMinuteBegin = (U8)ulStartMinute;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucSecondBegin = (U8)ulStartSecond;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucHourEnd = (U8)ulEndHour;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucMinuteEnd = (U8)ulEndMinute;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucSecondEnd = (U8)ulEndSecond;
+
+    /* 同时维护一下主叫和被叫数据 */
+    lRet = sc_task_load_caller(&g_pstTaskMngtInfo->pstTaskList[lIndex]);
+    if (DOS_SUCC != lRet)
+    {
+        sc_logr_error(SC_TASK, "SC Task Load Caller FAIL.(TaskID:%u, usNo:%u)", *(U32 *)pArg, lIndex);
+        return DOS_FAIL;
+    }
+    sc_logr_debug(SC_TASK, "SC Task Load Caller SUCC.(TaskID:%u, usNo:%u)", *(U32 *)pArg, lIndex);
+
+    lRet = sc_task_load_callee(&g_pstTaskMngtInfo->pstTaskList[lIndex]);
+    if (DOS_SUCC != lRet)
+    {
+        sc_logr_error(SC_TASK, "SC Task Load Callee FAIL.(TaskID:%u, usNo:%u)", *(U32 *)pArg, lIndex);
+        return DOS_FAIL;
+    }
+    sc_logr_debug(SC_TASK, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", *(U32 *)pArg, lIndex);
+
+    return DOS_SUCC;
+}
+
+S32 sc_task_load(U32 ulIndex)
+{
+    S8  szQuery[256] = {0};
+    S32 lRet = U32_BUTT;
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime FROM tbl_calltask;");
+    }
+    else
+    {
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime FROM tbl_calltask WHERE id=%u;", ulIndex);
+    }
+
+    lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_logr_error(SC_TASK, "Load task %u FAIL.", ulIndex);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    sc_logr_debug(SC_TASK, "Load task %u SUCC.", ulIndex);
+    return DOS_SUCC;
+}
+
+static S32 sc_task_load_caller_index_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
+{
+    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    U32  ulIndex = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pArg)
+        || DOS_ADDR_INVALID(pszValues)
+        || DOS_ADDR_INVALID(pszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCaller = (SC_CALLER_QUERY_NODE_ST *)pArg;
+    if (DOS_ADDR_INVALID(pszValues[0])
+        || '\0' == pszValues[0][0]
+        || dos_atoul(pszValues[0], &ulIndex) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCaller->ulIndexInDB = ulIndex;
+    return DOS_SUCC;
+}
+
+static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
+{
+    S8  szQuery[256] = {0};
+    S32 lRet = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pstCaller))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT id FROM tbl_caller WHERE cid=\'%s\' AND customer_id = %u;"
+                    , pstCaller->szNumber, pstCaller->ulCustomerID);
+    lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_caller_index_cb, (VOID *)pstCaller, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_TASK, "SC Task Load caller Index FAIL.(Caller Number:%s)", pstCaller->szNumber);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
 
 static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
     SC_TASK_CB_ST            *pstTCB = NULL;
     S8                       *pszCallers = NULL, *pszCourse = NULL;;
-    U32                      ulFirstInvalidNode = U32_BUTT, ulIndex = 0;
+    U32                      ulFirstInvalidNode = U32_BUTT, ulIndex = 0, ulRet = 0;
     U32                      ulMaxLen = 0;
     BOOL                     blNeedAdd = DOS_TRUE;
 
     pstTCB = (SC_TASK_CB_ST *)pArg;
-    if (DOS_ADDR_INVALID(pstTCB)
-        || DOS_ADDR_INVALID(pstTCB->pstCallerNumQuery))
+    if (DOS_ADDR_INVALID(pstTCB))
     {
         DOS_ASSERT(0);
-
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
@@ -986,6 +1262,18 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
 
         SC_TRACE_OUT();
         return DOS_FAIL;
+    }
+
+     /* 如果说未申请内存，则申请内存 */
+    if (!pstTCB->pstCallerNumQuery)
+    {
+        pstTCB->pstCallerNumQuery = (SC_CALLER_QUERY_NODE_ST *)dos_dmem_alloc(SC_MAX_CALLER_NUM * sizeof(SC_CALLER_QUERY_NODE_ST));
+        if (!pstTCB->pstCallerNumQuery)
+        {
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
+        dos_memzero(pstTCB->pstCallerNumQuery, SC_MAX_CALLER_NUM * sizeof(SC_CALLER_QUERY_NODE_ST));
     }
 
     ulMaxLen = dos_strlen(pszValues[0]) + 1;
@@ -1008,7 +1296,7 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         ulFirstInvalidNode = U32_BUTT;
 
         /* 检测号码是否重复了，并且找到一个空闲的控制块 */
-        for (ulIndex=0; ulIndex<SC_MAX_CALLER_NUM; ulIndex++)
+        for (ulIndex = 0; ulIndex < SC_MAX_CALLER_NUM; ulIndex++)
         {
             if (!pstTCB->pstCallerNumQuery[ulIndex].bValid
                 && U32_BUTT == ulFirstInvalidNode)
@@ -1023,7 +1311,7 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
             }
         }
 
-        sc_logr_debug(SC_TASK, "Load Caller for task %d. Caller: %s, Index: %d", pstTCB->usTCBNo, pszCourse, ulFirstInvalidNode);
+        sc_logr_debug(SC_TASK, "Load Caller for task %d. Caller: %s, Index: %d", pstTCB->ulTaskID, pszCourse, ulFirstInvalidNode);
 
         if (ulFirstInvalidNode >= SC_MAX_CALLER_NUM)
         {
@@ -1032,17 +1320,25 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
             break;
         }
 
-        if (!blNeedAdd)
+        if (blNeedAdd)
         {
-            continue;
-        }
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulCustomerID = pstTCB->ulCustomID;
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].usNo = ulFirstInvalidNode;
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
+            dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCourse, SC_MAX_CALLER_NUM);
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
+            pstTCB->usCallerCount++;
 
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulIndexInDB = 0;
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
-        dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCourse, SC_MAX_CALLER_NUM);
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
-        pstTCB->usCallerCount++;
+            /* 加载主叫号码的数据库索引属性 */
+            ulRet = sc_task_load_caller_index(&pstTCB->pstCallerNumQuery[ulFirstInvalidNode]);
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                sc_logr_error(SC_TASK, "SC Task Load Caller Index In DB FAIL.(Caller Number:%s)", pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber);
+                return DOS_FAIL;
+            }
+        }
 
         pszCourse = strtok(NULL, ",");
         if (NULL == pszCourse)
@@ -1087,14 +1383,13 @@ U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB)
     lCnt = 0;
 
     /* 检测号码是否重复了，并且找到一个空闲的控制块 */
-    for (ulIndex=0; ulIndex<sizeof(g_pszCallerList)/sizeof(S8 *); ulIndex++)
+    for (ulIndex = 0; ulIndex < sizeof(g_pszCallerList) / sizeof(S8 *); ulIndex++)
     {
         pstTCB->pstCallerNumQuery[ulIndex].bValid   = 1;
         pstTCB->pstCallerNumQuery[ulIndex].bTraceON = 1;
         pstTCB->pstCallerNumQuery[ulIndex].ulIndexInDB = ulIndex;
         dos_strncpy(pstTCB->pstCallerNumQuery[ulIndex].szNumber, g_pszCallerList[ulIndex], SC_TEL_NUMBER_LENGTH);
         pstTCB->pstCallerNumQuery[ulIndex].szNumber[SC_TEL_NUMBER_LENGTH - 1] = '\0';
-
         lCnt++;
     }
 
@@ -1119,7 +1414,6 @@ U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB)
     if (ulResult != DOS_SUCC)
     {
         DOS_ASSERT(0);
-
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
@@ -1142,7 +1436,6 @@ static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         || DOS_ADDR_INVALID(pszNames))
     {
         DOS_ASSERT(0);
-
         return DOS_FAIL;
     }
 
@@ -1155,7 +1448,6 @@ static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
         || dos_atoul(pszIndex, &ulIndex) < 0)
     {
         DOS_ASSERT(0);
-
         return DOS_FAIL;
     }
 
@@ -1163,7 +1455,6 @@ static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
     if (DOS_ADDR_INVALID(pstCallee))
     {
         DOS_ASSERT(0);
-
         return DOS_FAIL;
     }
 
@@ -1176,9 +1467,10 @@ static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
 
     pstTCB->ulCalleeCount++;
     pstTCB->ulLastCalleeIndex++;
-    dos_list_add_tail(&pstTCB->stCalleeNumQuery, (struct list_s *)pstCallee);
+    dos_list_add_tail(&pstTCB->stCalleeNumQuery, &pstCallee->stLink);
+    sc_logr_debug(SC_TASK, "Callee Number:%s, Index:%u", pstCallee->szNumber, pstCallee->ulIndex);
 
-    return 0;
+    return DOS_SUCC;
 }
 
 U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
@@ -1200,7 +1492,7 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
 
     lCnt = 0;
 
-    for (ulIndex=0; ulIndex<sizeof(g_pszCalledList)/sizeof(S8 *); ulIndex++)
+    for (ulIndex = 0; ulIndex < sizeof(g_pszCalledList) /sizeof(S8 *); ulIndex++)
     {
         pstCalledNode = (SC_TEL_NUM_QUERY_NODE_ST *)dos_dmem_alloc(sizeof(SC_TEL_NUM_QUERY_NODE_ST));
         if (!pstCalledNode)
@@ -1240,13 +1532,14 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
 
     if (DB_ERR_SUCC != db_query(g_pstSCDBHandle, szSQL, sc_task_load_callee_callback, (VOID *)pstTCB, NULL))
     {
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
-
     return DOS_SUCC;
 #endif
 }
 
+#if 0
 static S32 sc_task_load_period_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
 {
     S8 *pszStarTime = NULL, *pszEndTime = NULL;
@@ -1582,6 +1875,7 @@ U32 sc_task_load_audio(SC_TASK_CB_ST *pstTCB)
     return DOS_SUCC;
 #endif
 }
+#endif
 
 U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
 {

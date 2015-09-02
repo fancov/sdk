@@ -230,19 +230,6 @@ U32 sc_http_api_task_ctrl(list_t *pstArgv)
     }
 
     SC_TRACE_IN(pstArgv, 0, 0, 0);
-/*
-    pszCMD = sc_http_api_get_value(&pstClient->stParamList, "cmd");
-    if (!pszCMD || '\0' == pszCMD[0])
-    {
-        DOS_ASSERT(0);
-        goto invalid_params;
-    }
-    if (dos_strcmp(pszCMD, "task") != 0)
-    {
-        DOS_ASSERT(0);
-        goto invalid_params;
-    }
-*/
 
     pszCustomID = sc_http_api_get_value(pstArgv, "userid");
     if (!pszCustomID || '\0' == pszCustomID[0])
@@ -877,6 +864,9 @@ U32 sc_http_api_agent_action(list_t *pstArgv)
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
+    sc_logr_info(SC_HTTPD, "Recv HTTP API CMD. Action: %u, AgentID: %u, sip_userid: %s"
+                    , ulAction, ulAgentID, pszUserID);
+
     if (sc_acd_http_agent_update_proc(ulAction, ulAgentID, pszUserID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -1118,6 +1108,9 @@ U32 sc_http_api_black_action(list_t *pstArgv)
         DOS_ASSERT(0);
         goto invalid_params;
     }
+
+    sc_logr_info(SC_HTTPD, "Recv HTTP API CMD. CMD: %u, Action: %u, ulBlackID: %u"
+                    , ulAction, ulBlackID);
 
     if (sc_http_black_update_proc(ulAction, ulBlackID) != DOS_SUCC)
     {

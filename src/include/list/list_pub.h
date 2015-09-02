@@ -21,6 +21,9 @@ do { \
         ((type *)((S8*)(ptr)-(U32)(&((type *)0)->member)))
 #endif
 
+#define dos_list_scan(pList, pNode) \
+        for ((pNode) = (pList)->next; (pNode) != (pList); (pNode) = (pNode)->next)
+
 
 typedef struct list_s
 {

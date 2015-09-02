@@ -393,6 +393,62 @@ U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
     return DOS_SUCC;
 }
 
+/* 根据SIP，查找到绑定的坐席，更新usSCBNo字段 */
+U32 sc_acd_update_agent_scbno(S8 *szUserID, U16 usSCBNo, BOOL bIsOther)
+{
+    U32                         ulHashIndex         = 0;
+    HASH_NODE_S                 *pstHashNode        = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_ACD_AGENT_INFO_ST        *pstAgentData       = NULL;
+
+    if (DOS_ADDR_INVALID(szUserID) || usSCBNo >= SC_MAX_SCB_NUM)
+    {
+        return DOS_FAIL;
+    }
+
+    /* 查找SIP绑定的坐席 */
+    pthread_mutex_lock(&g_mutexAgentList);
+
+    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)pstHashNode->pHandle;
+            pstAgentData = pstAgentQueueNode->pstAgentInfo;
+
+            if (DOS_ADDR_INVALID(pstAgentData))
+            {
+                continue;
+            }
+
+            if (pstAgentData->ucBindType != AGENT_BIND_SIP)
+            {
+                continue;
+            }
+
+            if (dos_strcmp(pstAgentData->szUserID, szUserID) == 0)
+            {
+                pthread_mutex_lock(&pstAgentData->mutexLock);
+                pstAgentData->usSCBNo = usSCBNo;
+                pstAgentData->bIsTCBNoOther = bIsOther;
+                pthread_mutex_unlock(&pstAgentData->mutexLock);
+
+                pthread_mutex_unlock(&g_mutexAgentList);
+
+                return DOS_SUCC;
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexAgentList);
+
+    return DOS_FAIL;
+}
+
 /*
  * 函  数: U32 sc_acd_group_remove_agent(U32 ulGroupID, S8 *pszUserID)
  * 功  能: 从坐席队列中移除坐席
@@ -1468,7 +1524,7 @@ U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID)
  }
 
 
-U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID, S8 *szCallerNum)
+U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID, S8 *szCallerNum, U16 usSCBNo)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode      = NULL;
     SC_ACD_GRP_HASH_NODE_ST    *pstGroupListNode  = NULL;
@@ -1538,6 +1594,8 @@ U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID,
         pstGroupListNode->szLastEmpNo[SC_EMP_NUMBER_LENGTH-1] = '\0';
         pstAgentNode->pstAgentInfo->stStat.ulCallCnt++;
         pstAgentNode->pstAgentInfo->stStat.ulSelectCnt++;
+        pstAgentNode->pstAgentInfo->usSCBNo = usSCBNo;
+        pstAgentNode->pstAgentInfo->bIsTCBNoOther = DOS_TRUE;
 
         dos_memcpy(pstAgentBuff, pstAgentNode->pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
         ulResult = DOS_SUCC;
@@ -1864,6 +1922,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.bConnected = DOS_FALSE;
     stSiteInfo.ucProcesingTime = 0;
     stSiteInfo.ulSIPUserID = ulSIPID;
+    stSiteInfo.bIsTCBNoOther = DOS_FALSE;
     pthread_mutex_init(&stSiteInfo.mutexLock, NULL);
 
     if ('\0' != pszUserID[0])
@@ -2049,7 +2108,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
         dos_snprintf(szSQL, sizeof(szSQL)
                    , "SELECT " \
                      "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, " \
-                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number a.tt_number, a.sip_id " \
+                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number, a.tt_number, a.sip_id " \
                      "FROM " \
                      "    (SELECT " \
                      "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
