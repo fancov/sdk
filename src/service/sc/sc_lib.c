@@ -1096,7 +1096,8 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
        如果没有，则重新寻找一个不可用节点，如果还是没有空闲节点，则返回失败 */
     for (lIndex = 0; lIndex < SC_MAX_TASK_NUM; lIndex++)
     {
-        if (g_pstTaskMngtInfo->pstTaskList[lIndex].ulTaskID == *(U32 *)pArg && DOS_TRUE == g_pstTaskMngtInfo->pstTaskList[lIndex].ucValid)
+        if (g_pstTaskMngtInfo->pstTaskList[lIndex].ulTaskID == *(U32 *)pArg
+            && DOS_TRUE == g_pstTaskMngtInfo->pstTaskList[lIndex].ucValid)
         {
             bFound = DOS_TRUE;
             break;
@@ -1104,6 +1105,8 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     }
     if (DOS_FALSE == bFound)
     {
+
+        sc_tcb_alloc();
         for (lIndex = 0; lIndex < SC_MAX_TASK_NUM; lIndex++)
         {
             if (DOS_FALSE == g_pstTaskMngtInfo->pstTaskList[lIndex].ucValid)
@@ -1145,18 +1148,18 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     lRet = sc_task_load_caller(&g_pstTaskMngtInfo->pstTaskList[lIndex]);
     if (DOS_SUCC != lRet)
     {
-        sc_logr_error(SC_TASK, "SC Task Load Caller FAIL.(TaskID:%u)", *(U32 *)pArg);
+        sc_logr_error(SC_TASK, "SC Task Load Caller FAIL.(TaskID:%u, usNo:%u)", *(U32 *)pArg, lIndex);
         return DOS_FAIL;
     }
-    sc_logr_debug(SC_TASK, "SC Task Load Caller SUCC.(TaskID:%u)", *(U32 *)pArg);
+    sc_logr_debug(SC_TASK, "SC Task Load Caller SUCC.(TaskID:%u, usNo:%u)", *(U32 *)pArg, lIndex);
 
     lRet = sc_task_load_callee(&g_pstTaskMngtInfo->pstTaskList[lIndex]);
     if (DOS_SUCC != lRet)
     {
-        sc_logr_error(SC_TASK, "SC Task Load Callee FAIL.(TaskID:%u)", *(U32 *)pArg);
+        sc_logr_error(SC_TASK, "SC Task Load Callee FAIL.(TaskID:%u, usNo:%u)", *(U32 *)pArg, lIndex);
         return DOS_FAIL;
     }
-    sc_logr_debug(SC_TASK, "SC Task Load callee SUCC.(TaskID:%u)", *(U32 *)pArg);
+    sc_logr_debug(SC_TASK, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", *(U32 *)pArg, lIndex);
 
     return DOS_SUCC;
 }
@@ -1308,7 +1311,7 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
             }
         }
 
-        sc_logr_debug(SC_TASK, "Load Caller for task %d. Caller: %s, Index: %d", pstTCB->usTCBNo, pszCourse, ulFirstInvalidNode);
+        sc_logr_debug(SC_TASK, "Load Caller for task %d. Caller: %s, Index: %d", pstTCB->ulTaskID, pszCourse, ulFirstInvalidNode);
 
         if (ulFirstInvalidNode >= SC_MAX_CALLER_NUM)
         {
@@ -1317,26 +1320,24 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
             break;
         }
 
-        if (!blNeedAdd)
+        if (blNeedAdd)
         {
-            continue;
-        }
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulCustomerID = pstTCB->ulCustomID;
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].usNo = ulFirstInvalidNode;
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
+            dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCourse, SC_MAX_CALLER_NUM);
+            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
+            pstTCB->usCallerCount++;
 
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulCustomerID = pstTCB->ulCustomID;
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].usNo = ulFirstInvalidNode;
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
-        dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCourse, SC_MAX_CALLER_NUM);
-        pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
-        pstTCB->usCallerCount++;
-
-        /* 加载主叫号码的数据库索引属性 */
-        ulRet = sc_task_load_caller_index(&pstTCB->pstCallerNumQuery[ulFirstInvalidNode]);
-        if (DOS_SUCC != ulRet)
-        {
-            DOS_ASSERT(0);
-            sc_logr_error(SC_TASK, "SC Task Load Caller Index In DB FAIL.(Caller Number:%s)", pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber);
-            return DOS_FAIL;
+            /* 加载主叫号码的数据库索引属性 */
+            ulRet = sc_task_load_caller_index(&pstTCB->pstCallerNumQuery[ulFirstInvalidNode]);
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                sc_logr_error(SC_TASK, "SC Task Load Caller Index In DB FAIL.(Caller Number:%s)", pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber);
+                return DOS_FAIL;
+            }
         }
 
         pszCourse = strtok(NULL, ",");
@@ -1467,6 +1468,7 @@ static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
     pstTCB->ulCalleeCount++;
     pstTCB->ulLastCalleeIndex++;
     dos_list_add_tail(&pstTCB->stCalleeNumQuery, &pstCallee->stLink);
+    sc_logr_debug(SC_TASK, "Callee Number:%s, Index:%u", pstCallee->szNumber, pstCallee->ulIndex);
 
     return DOS_SUCC;
 }

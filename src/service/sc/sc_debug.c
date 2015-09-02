@@ -2268,13 +2268,13 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     {
         if (3 == argc)
         {
-            sc_show_task_list(ulIndex, U32_BUTT);
+            sc_show_task(ulIndex, U32_BUTT, U32_BUTT);
         }
         else if (4 == argc)
         {
             if (dos_atoul(argv[3], &ulID) == 0)
             {
-                sc_show_task_list(ulIndex, ulID);
+                sc_show_task(ulIndex, ulID, U32_BUTT);
             }
             else
             {
@@ -2341,7 +2341,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             }
             else
             {
-                cli_out_string(ulIndex, "\r\n\tERROR: Invalid Task ID while show the Callee(s).\r\n");
+                cli_out_string(ulIndex, "\r\n\tERROR: Invalid Task ID while show the Caller(s).\r\n");
                 return -1;
             }
         }

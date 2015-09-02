@@ -372,12 +372,13 @@ VOID *sc_task_runtime(VOID *ptr)
             sc_logr_info(SC_TASK, "Cannot make call for system busy. Task : %u.", pstTCB->ulTaskID);
             continue;
         }
-
+#if 1
         /* ·¢Æðºô½Ð */
         if (sc_task_make_call(pstTCB))
         {
             sc_logr_info(SC_TASK, "%s", "Make call fail.");
         }
+#endif
     }
 
     sc_update_task_status(pstTCB->ulTaskID, pstTCB->ucTaskStatus);
