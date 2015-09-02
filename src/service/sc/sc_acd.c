@@ -394,7 +394,7 @@ U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
 }
 
 /* 根据SIP，查找到绑定的坐席，更新usSCBNo字段 */
-U32 sc_acd_update_agent_scbno(S8 *szUserID, U16 usSCBNo)
+U32 sc_acd_update_agent_scbno(S8 *szUserID, U16 usSCBNo, BOOL bIsOther)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
@@ -434,6 +434,7 @@ U32 sc_acd_update_agent_scbno(S8 *szUserID, U16 usSCBNo)
             {
                 pthread_mutex_lock(&pstAgentData->mutexLock);
                 pstAgentData->usSCBNo = usSCBNo;
+                pstAgentData->bIsTCBNoOther = bIsOther;
                 pthread_mutex_unlock(&pstAgentData->mutexLock);
 
                 pthread_mutex_unlock(&g_mutexAgentList);
@@ -1594,6 +1595,7 @@ U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID,
         pstAgentNode->pstAgentInfo->stStat.ulCallCnt++;
         pstAgentNode->pstAgentInfo->stStat.ulSelectCnt++;
         pstAgentNode->pstAgentInfo->usSCBNo = usSCBNo;
+        pstAgentNode->pstAgentInfo->bIsTCBNoOther = DOS_TRUE;
 
         dos_memcpy(pstAgentBuff, pstAgentNode->pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
         ulResult = DOS_SUCC;
@@ -1920,6 +1922,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.bConnected = DOS_FALSE;
     stSiteInfo.ucProcesingTime = 0;
     stSiteInfo.ulSIPUserID = ulSIPID;
+    stSiteInfo.bIsTCBNoOther = DOS_FALSE;
     pthread_mutex_init(&stSiteInfo.mutexLock, NULL);
 
     if ('\0' != pszUserID[0])

@@ -7433,12 +7433,12 @@ U32 sc_ep_call_intercept(SC_SCB_ST * pstSCB)
 
     if (sc_call_check_service(pstSCB, SC_SERV_CALL_INTERCEPT))
     {
-        sc_ep_esl_execute("eavesdrop", "", pstSCBAgent->szUUID);
+        sc_ep_esl_execute("eavesdrop", pstSCBAgent->szUUID, pstSCB->szUUID);
     }
     else if (sc_call_check_service(pstSCB, SC_SERV_CALL_WHISPERS))
     {
-        sc_ep_esl_execute("queue_dtmf", "w2@500", pstSCB->szUUID);
-        sc_ep_esl_execute("eavesdrop", "", pstSCBAgent->szUUID);
+        sc_ep_esl_execute("queue_dtmf", "w2@500", pstSCBAgent->szUUID);
+        sc_ep_esl_execute("eavesdrop", pstSCBAgent->szUUID, pstSCB->szUUID);
     }
     else
     {
@@ -7793,7 +7793,7 @@ U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
         goto proc_fail;
     }
 
-    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCalleeNum, pstSCB->usOtherSCBNo) != DOS_SUCC)
+    if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCalleeNum, pstSCB->usTCBNo) != DOS_SUCC)
     {
         DOS_ASSERT(0);
 
@@ -7850,6 +7850,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
 {
     SC_SCB_ST *pstSCB       = NULL;
     SC_SCB_ST *pstOtherSCB  = NULL;
+    SC_SCB_ST *pstSCBNew    = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
     U32       ulMainServie;
     S8        szCallerNum[SC_TEL_NUMBER_LENGTH] = { 0, };
@@ -7971,34 +7972,47 @@ make_all_fail:
                 goto proc_fail;
             }
 
-            if ('\0' == pstSCB->szUUID[0])
+            if (stAgentInfo.bIsTCBNoOther)
             {
-                DOS_ASSERT(0);
+                if (pstSCB->usOtherSCBNo >= SC_MAX_SCB_NUM)
+                {
+                    DOS_ASSERT(0);
 
-                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
-                goto proc_fail;
+                    sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, pstSCB->usOtherSCBNo);
+                    goto proc_fail;
+                }
+
+                pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
+                if (DOS_ADDR_INVALID(pstOtherSCB) || !pstOtherSCB->bValid)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, pstSCB->usOtherSCBNo);
+                    goto proc_fail;
+                }
+
+                if ('\0' == pstOtherSCB->szUUID[0])
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, pstSCB->usOtherSCBNo);
+                    goto proc_fail;
+                }
+
+                sc_ep_hangup_call(pstOtherSCB, BS_TERM_HANGUP);
             }
-
-            sc_ep_hangup_call(pstSCB, BS_TERM_HANGUP);
-
-            pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
-            if (DOS_ADDR_INVALID(pstOtherSCB) || !pstOtherSCB->bValid)
+            else
             {
-                DOS_ASSERT(0);
+                if ('\0' == pstSCB->szUUID[0])
+                {
+                    DOS_ASSERT(0);
 
-                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
-                goto proc_fail;
+                    sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
+                    goto proc_fail;
+                }
+
+                sc_ep_hangup_call(pstSCB, BS_TERM_HANGUP);
             }
-
-            if ('\0' == pstOtherSCB->szUUID[0])
-            {
-                DOS_ASSERT(0);
-
-                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
-                goto proc_fail;
-            }
-
-            sc_ep_hangup_call(pstOtherSCB, BS_TERM_HANGUP);
 
             break;
 
@@ -8045,21 +8059,55 @@ make_all_fail:
 
         case SC_API_WHISPERS:
         case SC_API_INTERCEPT:
-            pstSCB = sc_scb_alloc();
-            if (DOS_ADDR_INVALID(pstSCB))
+            /* 查找坐席 */
+            if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
+                goto proc_fail;
+            }
+
+            if (stAgentInfo.usSCBNo >= SC_MAX_SCB_NUM)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            pstSCB = sc_scb_get(stAgentInfo.usSCBNo);
+            if (DOS_ADDR_INVALID(pstSCB) || !pstSCB->bValid)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            if ('\0' == pstSCB->szUUID[0])
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            pstSCBNew = sc_scb_alloc();
+            if (DOS_ADDR_INVALID(pstSCBNew))
             {
                 sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL..");
             }
 
-            pstSCB->ulCustomID = ulCustomerID;
-            pstSCB->ulAgentID = ulAgent;
-            pstSCB->ulTaskID = ulTaskID;
+            pstSCBNew->ulCustomID = ulCustomerID;
+            pstSCBNew->ulAgentID = ulAgent;
+            pstSCBNew->ulTaskID = ulTaskID;
 
             /* 需要指定主叫号码 */
-            dos_strncpy(pstSCB->szCalleeNum, pszCallee, sizeof(pstSCB->szCalleeNum));
-            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
-            dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
-            pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+            dos_strncpy(pstSCBNew->szCalleeNum, pszCallee, sizeof(pstSCBNew->szCalleeNum));
+            pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
+            dos_strncpy(pstSCBNew->szCallerNum, pszCallee, sizeof(pstSCBNew->szCallerNum));
+            pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
 
             if (SC_API_WHISPERS == ulAction)
             {
@@ -8070,7 +8118,7 @@ make_all_fail:
                 ulMainServie = SC_SERV_CALL_INTERCEPT;
             }
 
-            SC_SCB_SET_SERVICE(pstSCB, SC_SERV_CALL_WHISPERS);
+            SC_SCB_SET_SERVICE(pstSCBNew, ulMainServie);
 
             if (!sc_ep_black_list_check(ulCustomerID, pszCallee))
             {
@@ -8084,10 +8132,10 @@ make_all_fail:
             if (ulCustomerID == sc_ep_get_custom_by_sip_userid(pszCallee)
                 || sc_ep_check_extension(pszCallee, ulCustomerID))
             {
-                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
-                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
+                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
+                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
 
-                if (sc_dial_make_call2ip(pstSCB, ulMainServie) != DOS_SUCC)
+                if (sc_dial_make_call2ip(pstSCBNew, ulMainServie) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
 
@@ -8097,9 +8145,9 @@ make_all_fail:
             }
             else
             {
-                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
-                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
-                if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
+                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
+                if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
 
@@ -8111,10 +8159,10 @@ make_all_fail:
 
             break;
 make_all_fail1:
-            if (DOS_ADDR_INVALID(pstSCB))
+            if (DOS_ADDR_INVALID(pstSCBNew))
             {
-                sc_scb_free(pstSCB);
-                pstSCB = NULL;
+                sc_scb_free(pstSCBNew);
+                pstSCBNew = NULL;
             }
 
             goto proc_fail;
@@ -8234,7 +8282,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 }
 
                 /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
-                if (sc_acd_update_agent_scbno(szCallee, pstSCB->usSCBNo) != DOS_SUCC)
+                if (sc_acd_update_agent_scbno(szCallee, pstSCB->usSCBNo, DOS_TRUE) != DOS_SUCC)
                 {
                     sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d", szCallee, pstSCB->usSCBNo);
                 }
@@ -9093,7 +9141,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             if (U32_BUTT != pstSCB->ulCustomID)
             {
                 /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
-                if (sc_acd_update_agent_scbno(pstSCB->szCallerNum, pstSCB->usSCBNo) != DOS_SUCC)
+                if (sc_acd_update_agent_scbno(pstSCB->szCallerNum, pstSCB->usSCBNo, DOS_FALSE) != DOS_SUCC)
                 {
                     sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
                 }
@@ -9156,7 +9204,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         {
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
             /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
-            if (sc_acd_update_agent_scbno(pszCaller, pstSCB->usSCBNo) != DOS_SUCC)
+            if (sc_acd_update_agent_scbno(pszCaller, pstSCB->usSCBNo, DOS_FALSE) != DOS_SUCC)
             {
                 sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d", pszCaller, pstSCB->usSCBNo);
             }
