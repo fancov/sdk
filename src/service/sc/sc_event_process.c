@@ -7423,6 +7423,27 @@ U32 sc_ep_call_intercept(SC_SCB_ST * pstSCB)
         goto proc_fail;
     }
 
+
+    if (stAgentInfo.bIsTCBNoOther)
+    {
+        if (pstSCBAgent->usOtherSCBNo >= SC_MAX_SCB_NUM)
+        {
+            DOS_ASSERT(0);
+
+            sc_logr_info(SC_ESL, "Cannot intercept call for agent with id %u. Agent handle a SCB(%u) is invalid.", pstSCBAgent->ulAgentID, pstSCBAgent->usOtherSCBNo);
+            goto proc_fail;
+        }
+
+        pstSCBAgent = sc_scb_get(pstSCBAgent->usOtherSCBNo);
+        if (DOS_ADDR_INVALID(pstSCBAgent) || !pstSCBAgent->bValid)
+        {
+            DOS_ASSERT(0);
+
+            sc_logr_info(SC_ESL, "Cannot intercept call for agent with id %u. Agent handle a SCB(%u) is invalid.", pstSCBAgent->ulAgentID, pstSCBAgent->usOtherSCBNo);
+            goto proc_fail;
+        }
+    }
+
     if ('\0' == pstSCBAgent->szUUID[0])
     {
         DOS_ASSERT(0);
@@ -7431,13 +7452,14 @@ U32 sc_ep_call_intercept(SC_SCB_ST * pstSCB)
         goto proc_fail;
     }
 
+
     if (sc_call_check_service(pstSCB, SC_SERV_CALL_INTERCEPT))
     {
         sc_ep_esl_execute("eavesdrop", pstSCBAgent->szUUID, pstSCB->szUUID);
     }
     else if (sc_call_check_service(pstSCB, SC_SERV_CALL_WHISPERS))
     {
-        sc_ep_esl_execute("queue_dtmf", "w2@500", pstSCBAgent->szUUID);
+        sc_ep_esl_execute("queue_dtmf", "w2@500", pstSCB->szUUID);
         sc_ep_esl_execute("eavesdrop", pstSCBAgent->szUUID, pstSCB->szUUID);
     }
     else
