@@ -363,6 +363,15 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
                 sc_ep_terminate_call(pstSCB);
             }
         }
+        else if (sc_call_check_service(pstSCB, SC_SERV_PREVIEW_DIALING))
+        {
+            pstSCB->ucMainService = SC_SERV_PREVIEW_DIALING;
+            ulRet = sc_dialer_add_call(pstSCB);
+            if (ulRet != DOS_SUCC)
+            {
+                sc_ep_terminate_call(pstSCB);
+            }
+        }
         else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
         {
             pstSCB->ucMainService = SC_SERV_AGENT_SIGNIN;

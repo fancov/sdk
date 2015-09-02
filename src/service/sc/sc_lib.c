@@ -1196,6 +1196,8 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucMinuteEnd = (U8)ulEndMinute;
     g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucSecondEnd = (U8)ulEndSecond;
 
+    sc_logr_error(SC_TASK, "Load task info SUCC.lIndex(%d), (TaskID:%u) ", lIndex, ulTaskID);
+
     return DOS_SUCC;
 }
 
