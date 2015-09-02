@@ -682,7 +682,7 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
             {
                 continue;
             }
-            pstDid = (SC_DID_NODE_ST *)pstHashNode;
+            pstDid = (SC_DID_NODE_ST *)pstHashNode->pHandle;
             if (DOS_FALSE != pstDid->bValid && pstDid->ulCustomID == ulCustomerID)
             {
                 ulTick++;
@@ -820,7 +820,7 @@ static U32 sc_get_numbers_of_did(U32 ulCustomerID)
     S32  lRet = U32_BUTT;
     U32  ulCount;
 
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT COUNT(id) FROM tbl_sipassign WHERE id=%u;", ulCustomerID);
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT COUNT(id) FROM tbl_sipassign WHERE customer_id=%u;", ulCustomerID);
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_get_numbers_of_did_cb, &ulCount, NULL);
     if (DB_ERR_SUCC != lRet)
     {
