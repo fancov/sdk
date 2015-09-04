@@ -1,33 +1,27 @@
-CXX_FILE += $(SROUCE)/util/log/_log_console.cpp \
-			$(SROUCE)/util/log/_log_file.cpp \
-			$(SROUCE)/util/log/_log_cli.cpp \
-			$(SROUCE)/util/log/_log_db.cpp \
-			$(SROUCE)/util/log/dos_log.cpp \
-			$(SROUCE)/util/log/log_cmd.cpp
+C_FILE += $(SROUCE)/util/log/log_console.c \
+			$(SROUCE)/util/log/log_cli.c \
+			$(SROUCE)/util/log/log_db.c \
+			$(SROUCE)/util/log/log_cmd.c \
+            $(SROUCE)/util/log/dos_log.c
 			
 
-CXX_OBJ_FILE += _log_console.$(SUFFIX) \
-			_log_file.$(SUFFIX) \
-			_log_cli.$(SUFFIX) \
-			_log_db.$(SUFFIX) \
-			dos_log.$(SUFFIX) \
-			log_cmd.$(SUFFIX)
+C_OBJ_FILE += log_console.$(SUFFIX) \
+			log_cli.$(SUFFIX) \
+			log_db.$(SUFFIX) \
+			log_cmd.$(SUFFIX) \
+            dos_log.$(SUFFIX)
 
-_log_console.$(SUFFIX) :
-	$(CXX_COMPILE) $(SROUCE)/util/log/_log_console.cpp
-	
-_log_file.$(SUFFIX) :
-	$(CXX_COMPILE) $(SROUCE)/util/log/_log_file.cpp
+log_console.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/util/log/log_console.c
 
-_log_cli.$(SUFFIX) :
-	$(CXX_COMPILE) $(SROUCE)/util/log/_log_cli.cpp
+log_cli.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/util/log/log_cli.c
 
-_log_db.$(SUFFIX) :
-	$(CXX_COMPILE) $(SROUCE)/util/log/_log_db.cpp
-
-dos_log.$(SUFFIX) :
-	$(CXX_COMPILE) $(SROUCE)/util/log/dos_log.cpp
+log_db.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/util/log/log_db.c
 	
 log_cmd.$(SUFFIX) :
-	$(CXX_COMPILE) $(SROUCE)/util/log/log_cmd.cpp
+	$(C_COMPILE) $(SROUCE)/util/log/log_cmd.c
 
+dos_log.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/util/log/dos_log.c
