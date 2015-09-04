@@ -18,7 +18,8 @@ extern "C"{
 
 S32 cli_set_log_level(U32 ulIndex, S32 argc, S8 **argv)
 {
-    U32 ulLeval;
+    U32   ulLeval;
+    S8   szBuffer[128];
 
     if (2 == argc)
     {
@@ -34,7 +35,8 @@ S32 cli_set_log_level(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
 
-    cli_out_string(ulIndex, (S8 *)"Setting successfully.\r\n");
+        dos_snprintf(szBuffer, sizeof(szBuffer), "Setting successfully. Change to: %u\r\n", ulLeval);
+        cli_out_string(ulIndex, szBuffer);
     }
     else if (3 == argc)
     {

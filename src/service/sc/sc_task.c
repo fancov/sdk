@@ -361,7 +361,7 @@ VOID *sc_task_runtime(VOID *ptr)
         /* 检查当前是否在允许的时间段 */
         if (sc_task_check_can_call_by_time(pstTCB) != DOS_TRUE)
         {
-            sc_logr_info(SC_TASK, "Cannot make call for invalid time period. Task : %u.", pstTCB->ulTaskID);
+            sc_logr_info(SC_TASK, "Cannot make call for invalid time period. Task : %u. %d", pstTCB->ulTaskID, pstTCB->usTCBNo);
             ulTaskInterval = 1000;
             continue;
         }

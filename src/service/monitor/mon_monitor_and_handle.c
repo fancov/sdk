@@ -875,7 +875,7 @@ static U32 mon_handle_excp()
  */
 static U32 mon_add_data_to_db()
 {
-   time_t ulCur;
+   time_t ulCur = time(0);
    struct tm *pstCurTime;
    S8  szSQLCmd[SQL_CMD_MAX_LENGTH] = {0}, szBuff[4] = {0};
    S32 lRet = 0;

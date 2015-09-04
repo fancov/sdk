@@ -393,7 +393,7 @@ U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
     return DOS_SUCC;
 }
 
-/* 根据SIP，查找到绑定的坐席，更新usSCBNo字段 */
+/* 根据SIP，查找到绑定的坐席，更新usSCBNo字段 TODO 这个函数需要修改，坐席长签时有问题!!!!!!!*/
 U32 sc_acd_update_agent_scbno(S8 *szUserID, U16 usSCBNo, BOOL bIsOther)
 {
     U32                         ulHashIndex         = 0;

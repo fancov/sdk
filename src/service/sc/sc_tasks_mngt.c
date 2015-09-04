@@ -296,6 +296,19 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
         return SC_HTTP_ERRNO_INVALID_USR;
     }
 
+    pstTCB = sc_tcb_find_by_taskid(ulTaskID);
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    if (pstTCB->ulCustomID != ulCustomID)
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_TASK, "ERR:TaskCB Found, But the Customer does not match Task.(TaskID:%u,CustomerID:%u)", ulTaskID, ulCustomID);
+        return DOS_FAIL;
+    }
+#if 0
     pstTCB = sc_tcb_alloc();
     if (!pstTCB)
     {
@@ -305,7 +318,7 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
     }
 
     sc_task_set_owner(pstTCB, ulTaskID, ulCustomID);
-#if 0
+
     if (sc_task_init(pstTCB) != DOS_SUCC)
     {
         DOS_ASSERT(0);
