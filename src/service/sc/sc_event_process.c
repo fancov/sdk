@@ -9781,13 +9781,14 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 dos_memzero(pstSCB->pstExtraData, sizeof(SC_SCB_EXTRA_DATA_ST));
                 sc_ep_parse_extra_data(pstEvent, pstSCB);
             }
+/*
             if (pstSCB->pstExtraData->ulRingTimeStamp == 0)
             {
                 pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
                 goto process_finished;
             }
-
+*/
             pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
             if (SC_TRANS_ROLE_NOTIFY == pstSCB->ucTranforRole)

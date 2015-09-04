@@ -40,7 +40,10 @@ static U32 mc_load_data()
 {
     FILE *pFile              = NULL;
     S8   szFileName[200]     = { 0, };
+    S8   *pszFileName        = NULL;
+    S32  lLength             = 0;
     DLL_NODE_S *pstDLLNode   = NULL;
+    struct stat stFileStat;
 
     dos_snprintf(szFileName
                 , sizeof(szFileName)
@@ -64,9 +67,62 @@ static U32 mc_load_data()
             break;
         }
 
-        if (NULL == fgets((S8 *)pstDLLNode->pHandle, MC_MAX_FILENAME_LEN, pFile))
+        pstDLLNode->pHandle = pstDLLNode + sizeof(DLL_NODE_S);
+        pszFileName = (S8 *)pstDLLNode->pHandle;
+
+        if (NULL == fgets(pszFileName, MC_MAX_FILENAME_LEN, pFile))
         {
+            dos_dmem_free(pstDLLNode);
+            pstDLLNode = NULL;
+            pszFileName = NULL;
             break;
+        }
+
+        if (pszFileName[0] == '\0')
+        {
+            dos_dmem_free(pstDLLNode);
+            pstDLLNode = NULL;
+            pszFileName = NULL;
+
+            break;
+        }
+
+        for (lLength=dos_strlen(pszFileName); lLength>=0; lLength--)
+        {
+            if (pszFileName[lLength] == '\r'
+                || pszFileName[lLength] == '\n'
+                || pszFileName[lLength] == '\t'
+                || pszFileName[lLength] == ' '
+                || pszFileName[lLength] == '\0')
+            {
+                pszFileName[lLength] = '\0';
+            }
+            else
+            {
+                break;
+            }
+         }
+
+        dos_printf("Start process file %s", pszFileName);
+
+        if (stat(pszFileName, &stFileStat) < 0)
+        {
+            DOS_ASSERT(0);
+            dos_printf("Get file stat fail(%d).", errno);
+
+            dos_dmem_free(pstDLLNode);
+            pstDLLNode = NULL;
+            pszFileName = NULL;
+            break;
+        }
+
+        if (MC_ROOT_UID == stFileStat.st_uid || stFileStat.st_uid != MC_NOBODY_UID)
+        {
+            dos_printf("The file %s is owned by %u. give-up process.", pszFileName, stFileStat.st_uid);
+            dos_dmem_free(pstDLLNode);
+            pstDLLNode = NULL;
+            pszFileName = NULL;
+            continue;
         }
 
         DLL_Add(&g_pstMasterTask->stQueue, pstDLLNode);
@@ -106,7 +162,7 @@ static U32 mc_add_data(MC_SERVER_CB *pstTaskCB, U32 ulMaxSize)
         g_pstMasterTask->ulSuccessProc++;
         pthread_mutex_unlock(&g_pstMasterTask->mutexQueue);
 
-        if (DOS_ADDR_INVALID(pstDLLNode))
+        if (DOS_ADDR_VALID(pstDLLNode))
         {
             pthread_mutex_lock(&pstTaskCB->mutexQueue);
             DLL_Add(&pstTaskCB->stQueue, pstDLLNode);
@@ -128,7 +184,7 @@ static VOID *mc_working_task(VOID *ptr)
 {
     MC_SERVER_CB *pstTaskCB  = NULL;
     DLL_NODE_S   *pstDLLNode = NULL;
-    FILE         *pFileFD    = NULL;
+    //FILE         *pFileFD    = NULL;
     S8           *pszFileName= NULL;
     S8           *pszEnd     = NULL;
     S8           szFile[MC_MAX_FILENAME_LEN]   = { 0, };
@@ -241,18 +297,13 @@ static VOID *mc_working_task(VOID *ptr)
 
             /* 调用脚本处理,并删除 */
             dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "%s decodec %s %s %s %s && rm -rf %s/%s"
+                        , "%s decodec %s %s %s %s && rm -rf %s/%s-*"
                         , MC_SCRIPT_PATH
-                        , szPath, szFile
-                        , szPath, szFile
+                        , szPath, szPath
+                        , szFile, szFile
                         , szPath, szFile);
 
-            pFileFD = popen(szCMDBuff, "r");
-            if (DOS_ADDR_INVALID(pFileFD))
-            {
-                goto prcess_finished;
-            }
-            ulExecResult = pclose(pFileFD);
+            ulExecResult = system(szCMDBuff);
 
 prcess_finished:
             if (0 == ulExecResult)

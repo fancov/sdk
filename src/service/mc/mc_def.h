@@ -24,8 +24,11 @@ extern "C"{
 /* 文件名最大长度 */
 #define MC_MAX_FILENAME_LEN       128
 
+#define MC_ROOT_UID               0
+#define MC_NOBODY_UID             99
+
 /* 链表中每个节点的内存大小 */
-#define MC_MAX_FILENAME_BUFF_LEN  MC_MAX_FILENAME_LEN+(sizeof(DLL_NODE_S)-sizeof(VOID*))
+#define MC_MAX_FILENAME_BUFF_LEN  (MC_MAX_FILENAME_LEN+(sizeof(DLL_NODE_S)))
 
 typedef enum tagMCTaskWorkingStatus
 {
