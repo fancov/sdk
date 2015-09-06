@@ -810,7 +810,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
     while (1)
     {
 
-        for (ulActiveClientCnt=0, ulIndex=0; ulIndex<SC_MAX_BS_CLIENT; ulIndex++)
+        for (ulActiveClientCnt = 0, ulIndex = 0; ulIndex < SC_MAX_BS_CLIENT; ulIndex++)
         {
             if (g_pstSCBSClient[ulIndex]->blValid)
             {
@@ -841,7 +841,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
         }
 
         FD_ZERO(&stFDSet);
-        for (ulMaxSockFD=0, ulIndex=0; ulIndex<SC_MAX_BS_CLIENT; ulIndex++)
+        for (ulMaxSockFD = 0, ulIndex = 0; ulIndex < SC_MAX_BS_CLIENT; ulIndex++)
         {
             if (g_pstSCBSClient[ulIndex]->blValid
                 && SC_BS_STATUS_CONNECT == g_pstSCBSClient[ulIndex]->ulStatus
@@ -874,7 +874,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
             break;
         }
 
-        for (ulActiveClientCnt=0, ulIndex=0; ulIndex<SC_MAX_BS_CLIENT; ulIndex++)
+        for (ulActiveClientCnt = 0, ulIndex = 0; ulIndex < SC_MAX_BS_CLIENT; ulIndex++)
         {
             if (!g_pstSCBSClient[ulIndex]->blValid
                 || SC_BS_STATUS_CONNECT != g_pstSCBSClient[ulIndex]->ulStatus
@@ -1090,7 +1090,7 @@ U32 sc_bs_fsm_init()
 
     dos_memzero(&stBSMsgStat, sizeof(stBSMsgStat));
 
-    for (ulIndex=0; ulIndex<SC_MAX_BS_CLIENT; ulIndex++)
+    for (ulIndex = 0; ulIndex < SC_MAX_BS_CLIENT; ulIndex++)
     {
         g_pstSCBSClient[ulIndex] = (SC_BS_CLIENT_ST *)(pszMem + sizeof(SC_BS_CLIENT_ST) * ulIndex);
         g_pstSCBSClient[ulIndex]->ulIndex = ulIndex;
@@ -1100,7 +1100,7 @@ U32 sc_bs_fsm_init()
         g_pstSCBSClient[ulIndex]->hTmrHBInterval = NULL;
     }
 
-    for (ulIndex=0; ulIndex<SC_MAX_BS_CLIENT; ulIndex++)
+    for (ulIndex = 0; ulIndex < SC_MAX_BS_CLIENT; ulIndex++)
     {
         switch (ulIndex)
         {

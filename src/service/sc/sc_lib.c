@@ -830,6 +830,7 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ucPriority = SC_TASK_PRI_NORMAL;
     pstTCB->bTraceON = 0;
     pstTCB->bTraceCallON = 0;
+    pstTCB->ulLastCalleeIndex = 0;
 
     pstTCB->ulTaskID = U32_BUTT;
     pstTCB->ulCustomID = U32_BUTT;
@@ -1248,6 +1249,10 @@ S32 sc_task_load(U32 ulIndex)
     for (lIndex = 0; lIndex < SC_MAX_CALLER_NUM; ++lIndex)
     {
         pstCaller = &pstTCB->pstCallerNumQuery[lIndex];
+        if (!pstCaller->bValid || 0 == pstCaller->ulCustomerID)
+        {
+            continue;
+        }
         ulRet = sc_task_load_caller_index(pstCaller);
         if (DOS_SUCC != ulRet)
         {

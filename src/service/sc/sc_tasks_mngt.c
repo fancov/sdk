@@ -656,7 +656,7 @@ VOID *sc_task_mngt_runtime(VOID *ptr)
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCMDList);
     }
 
-    for (ulTaskIndex=0; ulTaskIndex<SC_MAX_TASK_NUM; ulTaskIndex++)
+    for (ulTaskIndex = 0; ulTaskIndex < SC_MAX_TASK_NUM; ulTaskIndex++)
     {
         if (g_pstTaskMngtInfo->pstTaskList[ulTaskIndex].ucValid)
         {

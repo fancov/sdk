@@ -108,7 +108,7 @@ VOID *mon_res_monitor(VOID *p)
             mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Get resource Information FAIL.");
             return NULL;
         }
-        mon_trace(MON_TRACE_MH, LOG_LEVEL_INFO, "Get resource Information SUCC.");
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Get resource Information SUCC.");
 
         /*  异常处理  */
         ulRet = mon_handle_excp();
@@ -117,7 +117,7 @@ VOID *mon_res_monitor(VOID *p)
             mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Handle Exception FAIL.");
             return NULL;
         }
-        mon_trace(MON_TRACE_MH, LOG_LEVEL_INFO, "Handle Exception SUCC.");
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Handle Exception SUCC.");
 
         /*  将数据记录至数据库  */
         ulRet = mon_add_data_to_db();
@@ -126,7 +126,7 @@ VOID *mon_res_monitor(VOID *p)
             mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Add record to DB FAIL.");
             return NULL;
         }
-        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Add record to DB SUCC.");
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Add record to DB SUCC.");
 
         pthread_cond_signal(&g_stMonCond);
         pthread_mutex_unlock(&g_stMonMutex);

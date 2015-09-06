@@ -45,7 +45,7 @@ U32 mon_init()
         return DOS_FAIL;
     }
 
-    mon_trace(MON_TRACE_PUB, LOG_LEVEL_INFO, "Alloc resource SUCC.");
+    mon_trace(MON_TRACE_PUB, LOG_LEVEL_DEBUG, "Alloc resource SUCC.");
     return DOS_SUCC;
 }
 
