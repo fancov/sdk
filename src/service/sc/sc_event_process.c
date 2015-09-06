@@ -8527,33 +8527,26 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
             sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
 
             dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                            , "+%d %s"
+                            , "1 1 %u 0 # %s pdtmf \\d+"
                             , sc_task_audio_playcnt(pstSCB->usTCBNo)
                             , sc_task_get_audio_file(pstSCB->usTCBNo));
 
-            sc_ep_esl_execute("loop_playback", szAPPParam, pstSCB->szUUID);
+            sc_ep_esl_execute("play_and_get_digits", szAPPParam, pstSCB->szUUID);
             pstSCB->ucCurrentPlyCnt = sc_task_audio_playcnt(pstSCB->usTCBNo);
-
             break;
-			
+
         case SC_TASK_MODE_AUDIO_ONLY:
         case SC_TASK_MODE_AGENT_AFTER_AUDIO:
             sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
             sc_ep_esl_execute("set", "timer_name=soft", pstSCB->szUUID);
             sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
 
-            /*
             dos_snprintf(szAPPParam, sizeof(szAPPParam)
                             , "+%d %s"
                             , sc_task_audio_playcnt(pstSCB->usTCBNo)
                             , sc_task_get_audio_file(pstSCB->usTCBNo));
-            */
-            dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                            , "1 1 %u 0 # %s pdtmf \\d+"
-                            , sc_task_audio_playcnt(pstSCB->usTCBNo)
-                            , sc_task_get_audio_file(pstSCB->usTCBNo));
 
-            sc_ep_esl_execute("play_and_get_digits", szAPPParam, pstSCB->szUUID);
+            sc_ep_esl_execute("loop_playback", szAPPParam, pstSCB->szUUID);
             pstSCB->ucCurrentPlyCnt = sc_task_audio_playcnt(pstSCB->usTCBNo);
 
             break;

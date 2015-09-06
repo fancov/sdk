@@ -1135,12 +1135,11 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST 
             continue;
         }
 
+        pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
         sc_logr_notice(SC_ACD, "Found an uaeable agent.(Agent %u in Group %u)"
                         , pstAgentInfo->ulSiteID
                         , pstGroupListNode->ulGroupID);
-
-        pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-        break;
+         break;
     }
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
