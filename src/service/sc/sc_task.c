@@ -326,7 +326,7 @@ VOID *sc_task_runtime(VOID *ptr)
         {
             ulTaskInterval = sc_task_get_call_interval(pstTCB);
         }
-        usleep(1000);
+        dos_task_delay(1000);
         ulTaskInterval = 0;
 
         /* 根据当前呼叫量，确定发起呼叫的间隔，如果当前任务已经处于受限状态，就要强制调整间隔 */

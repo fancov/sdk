@@ -7861,7 +7861,7 @@ U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     ulResult = sc_cwq_add_call(pstSCB, ulTaskAgentQueueID);
     if (ulResult == DOS_SUCC)
     {
-        pstSCB->bIsInQueue = DOS_SUCC;
+        pstSCB->bIsInQueue = DOS_TRUE;
     }
 
     return ulResult;
@@ -8522,9 +8522,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         /* 需要放音的，统一先放音。在放音结束后请处理后续流程 */
         case SC_TASK_MODE_KEY4AGENT:
         case SC_TASK_MODE_KEY4AGENT1:
-        case SC_TASK_MODE_AUDIO_ONLY:
-        case SC_TASK_MODE_AGENT_AFTER_AUDIO:
-            sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
+			sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
             sc_ep_esl_execute("set", "timer_name=soft", pstSCB->szUUID);
             sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
 
@@ -8532,7 +8530,30 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                             , "+%d %s"
                             , sc_task_audio_playcnt(pstSCB->usTCBNo)
                             , sc_task_get_audio_file(pstSCB->usTCBNo));
+
             sc_ep_esl_execute("loop_playback", szAPPParam, pstSCB->szUUID);
+            pstSCB->ucCurrentPlyCnt = sc_task_audio_playcnt(pstSCB->usTCBNo);
+
+            break;
+			
+        case SC_TASK_MODE_AUDIO_ONLY:
+        case SC_TASK_MODE_AGENT_AFTER_AUDIO:
+            sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
+            sc_ep_esl_execute("set", "timer_name=soft", pstSCB->szUUID);
+            sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
+
+            /*
+            dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                            , "+%d %s"
+                            , sc_task_audio_playcnt(pstSCB->usTCBNo)
+                            , sc_task_get_audio_file(pstSCB->usTCBNo));
+            */
+            dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                            , "1 1 %u 0 # %s pdtmf \\d+"
+                            , sc_task_audio_playcnt(pstSCB->usTCBNo)
+                            , sc_task_get_audio_file(pstSCB->usTCBNo));
+
+            sc_ep_esl_execute("play_and_get_digits", szAPPParam, pstSCB->szUUID);
             pstSCB->ucCurrentPlyCnt = sc_task_audio_playcnt(pstSCB->usTCBNo);
 
             break;
@@ -10158,6 +10179,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     U32           ulErrCode = BS_TERM_NONE;
     S8            *pszMainService = NULL;
     S8            *pszPlayBalance = NULL;
+    SC_SCB_ST     *pstOtherSCB    = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -10192,6 +10214,8 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
             goto proc_error;
         }
 
+        pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
+
         switch (ulMainService)
         {
             case SC_SERV_AUTO_DIALING:
@@ -10214,7 +10238,12 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                         case SC_TASK_MODE_KEY4AGENT:
                         case SC_TASK_MODE_KEY4AGENT1:
                         case SC_TASK_MODE_AUDIO_ONLY:
-                            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+                            /* 如果不在呼叫队列里面，就有可能要挂断 */
+                            if (!pstSCB->bIsInQueue && !SC_SCB_IS_VALID(pstOtherSCB))
+                            {
+                                sc_logr_notice(SC_ESL, "Hangup call for there is no input.(%s)", pstSCB->szUUID);
+                                sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+                            }
                             break;
 
                         /* 放音后接通坐席 */

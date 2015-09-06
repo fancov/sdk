@@ -1253,7 +1253,7 @@ start_find:
         if (dos_strncmp(szLastEmpNo, pstAgentQueueNode->pstAgentInfo->szEmpNo, SC_EMP_NUMBER_LENGTH) <= 0)
         {
             sc_logr_debug(SC_ACD, "Found an agent. But the agent's order(%s) is less then last agent order(%u). coutinue.(Agent %u in Group %u)"
-                            , pstAgentQueueNode->ulID
+                            , pstAgentQueueNode->pstAgentInfo->szEmpNo
                             , szLastEmpNo
                             , pstAgentQueueNode->pstAgentInfo->ulSiteID
                             , pstGroupListNode->ulGroupID);
@@ -1667,7 +1667,7 @@ U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
 
         if (SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
         {
-            sc_logr_debug(SC_ACD, "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
+            sc_logr_debug(SC_ACD, "Found an useable agent. (Agent %u in Group %u)"
                         , pstAgentNode->pstAgentInfo->ulSiteID
                         , pstGroupListNode->ulGroupID);
 
