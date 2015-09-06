@@ -121,6 +121,7 @@ SC_EP_MSG_STAT_ST        g_astEPMsgStat[2];
 U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
 {
     S8 szURL[256] = { 0, };
+    S8 szData[512] = { 0, };
     U32 ulTimeout = 2;
     U32 ulRet = 0;
 
@@ -148,21 +149,24 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
                 , pstAgentInfo->szEmpNo
                 , pstAgentInfo->szExtension);
 
+    /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
+    dos_snprintf(szData, sizeof(szData), "{\\\"status\\\":\\\"0\\\",\\\"number\\\":\\\"%s\\\"}", szCaller);
+
     curl_easy_reset(g_pstCurlHandle);
     curl_easy_setopt(g_pstCurlHandle, CURLOPT_URL, szURL);
-    curl_easy_setopt(g_pstCurlHandle, CURLOPT_POSTFIELDS, szCaller);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_POSTFIELDS, szData);
     curl_easy_setopt(g_pstCurlHandle, CURLOPT_TIMEOUT, ulTimeout);
     ulRet = curl_easy_perform(g_pstCurlHandle);
     if(CURLE_OK != ulRet)
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_ESL, "CURL post FAIL.Caller:%s.", szCaller);
+        sc_logr_notice(SC_ESL, "CURL post FAIL.Caller:%s.", szData);
         return DOS_FAIL;
     }
     else
     {
-        sc_logr_notice(SC_ESL, "CURL post SUCC.Caller:%s.", szCaller);
+        sc_logr_notice(SC_ESL, "CURL post SUCC.Caller:%s.", szData);
 
         return DOS_SUCC;
     }
@@ -7730,11 +7734,13 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         sc_ep_esl_execute("speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
     }
 
+#endif
+
     if (sc_ep_call_notify(pstAgentInfo, pstSCBNew->szANINum))
     {
         DOS_ASSERT(0);
     }
-#endif
+
     return DOS_SUCC;
 
 proc_error:
