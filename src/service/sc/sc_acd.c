@@ -175,7 +175,7 @@ S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
  *         HASH_NODE_S *pNode: HASH节点
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-static S32 sc_acd_agent_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
+S32 sc_acd_agent_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode = NULL;
     U32                          ulSiteID;
