@@ -7861,7 +7861,7 @@ U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     ulResult = sc_cwq_add_call(pstSCB, ulTaskAgentQueueID);
     if (ulResult == DOS_SUCC)
     {
-        pstSCB->bIsInQueue = DOS_SUCC;
+        pstSCB->bIsInQueue = DOS_TRUE;
     }
 
     return ulResult;
@@ -8296,23 +8296,14 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                     goto proc_fail;
                 }
 
-                /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
-                if (sc_acd_update_agent_scbno(szCallee, pstSCB->usSCBNo, DOS_TRUE) != DOS_SUCC)
-                {
-                    sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d", szCallee, pstSCB->usSCBNo);
-                }
-                else
-                {
-                    sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", szCallee, pstSCB->usSCBNo);
-                }
-
-                dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d}user/%s", pstSCB->usSCBNo,szCallee);
+                dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d,update_agent=%s}user/%s", pstSCB->usSCBNo, szCallee, szCallee);
 
                 sc_ep_esl_execute("bridge", szCallString, pstSCB->szUUID);
                 sc_ep_esl_execute("hangup", szCallString, pstSCB->szUUID);
                 break;
 
             case SC_DID_BIND_TYPE_QUEUE:
+                /* TODO 这种情况下的，将坐席的usSCBNo字段赋值的问题，需要修改 */
                 if (sc_ep_call_queue_add(pstSCB, ulBindID) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
@@ -8531,9 +8522,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         /* 需要放音的，统一先放音。在放音结束后请处理后续流程 */
         case SC_TASK_MODE_KEY4AGENT:
         case SC_TASK_MODE_KEY4AGENT1:
-        case SC_TASK_MODE_AUDIO_ONLY:
-        case SC_TASK_MODE_AGENT_AFTER_AUDIO:
-            sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
+			sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
             sc_ep_esl_execute("set", "timer_name=soft", pstSCB->szUUID);
             sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
 
@@ -8541,7 +8530,30 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                             , "+%d %s"
                             , sc_task_audio_playcnt(pstSCB->usTCBNo)
                             , sc_task_get_audio_file(pstSCB->usTCBNo));
+
             sc_ep_esl_execute("loop_playback", szAPPParam, pstSCB->szUUID);
+            pstSCB->ucCurrentPlyCnt = sc_task_audio_playcnt(pstSCB->usTCBNo);
+
+            break;
+			
+        case SC_TASK_MODE_AUDIO_ONLY:
+        case SC_TASK_MODE_AGENT_AFTER_AUDIO:
+            sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
+            sc_ep_esl_execute("set", "timer_name=soft", pstSCB->szUUID);
+            sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
+
+            /*
+            dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                            , "+%d %s"
+                            , sc_task_audio_playcnt(pstSCB->usTCBNo)
+                            , sc_task_get_audio_file(pstSCB->usTCBNo));
+            */
+            dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                            , "1 1 %u 0 # %s pdtmf \\d+"
+                            , sc_task_audio_playcnt(pstSCB->usTCBNo)
+                            , sc_task_get_audio_file(pstSCB->usTCBNo));
+
+            sc_ep_esl_execute("play_and_get_digits", szAPPParam, pstSCB->szUUID);
             pstSCB->ucCurrentPlyCnt = sc_task_audio_playcnt(pstSCB->usTCBNo);
 
             break;
@@ -9448,6 +9460,7 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     S8          *pszMainService = NULL;
     S8          *pszSCBNum = NULL;
     S8          *pszOtherSCBNo = NULL;
+    S8          *pszCaller = NULL;
     SC_SCB_ST   *pstSCB = NULL;
     SC_SCB_ST   *pstSCB1 = NULL;
     S8          szBuffCmd[128] = { 0 };
@@ -9598,6 +9611,7 @@ process_fail1:
 #endif
     }
 
+
     /* 根据参数  交换SCB No */
     pszOtherSCBNo = esl_event_get_header(pstEvent, "variable_other_leg_scb");
     if (DOS_ADDR_INVALID(pszOtherSCBNo)
@@ -9612,6 +9626,20 @@ process_fail1:
     {
         pstSCB->usOtherSCBNo = pstSCB1->usSCBNo;
         pstSCB1->usOtherSCBNo = pstSCB->usSCBNo;
+    }
+
+     /* 根据参数update_agent，判断是否需要更新坐席中的 usSCBNo  */
+    pszCaller = esl_event_get_header(pstEvent, "variable_update_agent");
+    if (DOS_ADDR_VALID(pszCaller) && pszCaller[0] != '\0')
+    {
+        if (sc_acd_update_agent_scbno(pszCaller, pstSCB->usSCBNo, DOS_FALSE) != DOS_SUCC)
+        {
+            sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d!", pszCaller, pstSCB->usSCBNo);
+        }
+        else
+        {
+            sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d!", pszCaller, pstSCB->usSCBNo);
+        }
     }
 
 process_finished:
@@ -9827,13 +9855,14 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 dos_memzero(pstSCB->pstExtraData, sizeof(SC_SCB_EXTRA_DATA_ST));
                 sc_ep_parse_extra_data(pstEvent, pstSCB);
             }
+/*
             if (pstSCB->pstExtraData->ulRingTimeStamp == 0)
             {
                 pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
                 goto process_finished;
             }
-
+*/
             pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
             if (SC_TRANS_ROLE_NOTIFY == pstSCB->ucTranforRole)
@@ -10150,6 +10179,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     U32           ulErrCode = BS_TERM_NONE;
     S8            *pszMainService = NULL;
     S8            *pszPlayBalance = NULL;
+    SC_SCB_ST     *pstOtherSCB    = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -10184,6 +10214,8 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
             goto proc_error;
         }
 
+        pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
+
         switch (ulMainService)
         {
             case SC_SERV_AUTO_DIALING:
@@ -10206,7 +10238,12 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                         case SC_TASK_MODE_KEY4AGENT:
                         case SC_TASK_MODE_KEY4AGENT1:
                         case SC_TASK_MODE_AUDIO_ONLY:
-                            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+                            /* 如果不在呼叫队列里面，就有可能要挂断 */
+                            if (!pstSCB->bIsInQueue && !SC_SCB_IS_VALID(pstOtherSCB))
+                            {
+                                sc_logr_notice(SC_ESL, "Hangup call for there is no input.(%s)", pstSCB->szUUID);
+                                sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+                            }
                             break;
 
                         /* 放音后接通坐席 */

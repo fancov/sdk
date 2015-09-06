@@ -131,7 +131,7 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_TASK_AUDIO_PATH             "/var/www/html/data/audio"
 
-#define SC_RECORD_FILE_PATH            "/var/record"
+#define SC_RECORD_FILE_PATH            "/var/www/html/data/voicerecord"
 
 #define SC_NOBODY_UID                  99
 #define SC_NOBODY_GID                  99

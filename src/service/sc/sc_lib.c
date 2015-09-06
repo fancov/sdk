@@ -1978,17 +1978,20 @@ U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB)
     /* 系统整体并发量控制 */
     if (pstTCB->ulCurrentConcurrency >= g_ulMaxConcurrency4Task)
     {
+        DOS_ASSERT(0);
         return DOS_FALSE;
     }
 
     if (g_pstTaskMngtInfo->stStat.ulCurrentSessions >= SC_MAX_CALL)
     {
+        DOS_ASSERT(0);
         return DOS_FALSE;
     }
 
     /* CPU占用控制 */
     if (ulIdelCPU < ulIdelCPUConfig)
     {
+        dos_printf("Current Idel CPU: %u, Config Idel CPU: %u", ulIdelCPU , ulIdelCPUConfig);
         return DOS_FALSE;
     }
 

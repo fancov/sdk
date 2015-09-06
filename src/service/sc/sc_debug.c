@@ -362,32 +362,32 @@ static S8* sc_debug_make_weeks(U32 ulWeekMask, S8 *pszWeeks, U32 ulLength)
 
     if (ulWeekMask & 0x00000002)
     {
-        ulCurrLen = dos_snprintf(pszWeeks + ulCurrLen, ulLength - ulCurrLen, "Mon. ");
+        ulCurrLen += dos_snprintf(pszWeeks + ulCurrLen, ulLength - ulCurrLen, "Mon. ");
     }
 
     if (ulWeekMask & 0x00000004)
     {
-        ulCurrLen = dos_snprintf(pszWeeks + ulCurrLen, ulLength - ulCurrLen, "Tus. ");
+        ulCurrLen += dos_snprintf(pszWeeks + ulCurrLen, ulLength - ulCurrLen, "Tus. ");
     }
 
     if (ulWeekMask & 0x00000008)
     {
-        ulCurrLen = dos_snprintf(pszWeeks + ulCurrLen, ulLength - ulCurrLen, "Wen. ");
+        ulCurrLen += dos_snprintf(pszWeeks + ulCurrLen, ulLength - ulCurrLen, "Wen. ");
     }
 
     if (ulWeekMask & 0x00000010)
     {
-        ulCurrLen = dos_snprintf(pszWeeks + ulCurrLen, ulLength - ulCurrLen, "Thur. ");
+        ulCurrLen += dos_snprintf(pszWeeks + ulCurrLen, ulLength - ulCurrLen, "Thur. ");
     }
 
     if (ulWeekMask & 0x00000020)
     {
-        ulCurrLen = dos_snprintf(pszWeeks + ulCurrLen, ulLength - ulCurrLen, "Fri. ");
+        ulCurrLen += dos_snprintf(pszWeeks + ulCurrLen, ulLength - ulCurrLen, "Fri. ");
     }
 
     if (ulWeekMask & 0x00000040)
     {
-        ulCurrLen = dos_snprintf(pszWeeks + ulCurrLen, ulLength - ulCurrLen, "Sat. ");
+        ulCurrLen += dos_snprintf(pszWeeks + ulCurrLen, ulLength - ulCurrLen, "Sat. ");
     }
 
     return pszWeeks;
