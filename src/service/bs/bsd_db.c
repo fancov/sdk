@@ -816,7 +816,7 @@ VOID bsd_save_voice_cdr(BS_INTER_MSG_CDR *pstMsg)
                     "`payload_type`,`package_loss_rate`,`record_flag`,`agent_level`,`cdr_mark`,`cdr_type`,"
                     "`peer_ip1`,`peer_ip2`,`peer_ip3`,`peer_ip4`)"
                 "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\", \"%s\", \"%s\""
-                    ", \"%s\", \"%s\", %u, %u, FROM_UNIXTIME(%u), %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u"
+                    ", \"%s\", \"%s\", %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u"
                     ", %u, %u, %u, %u, %u, %u, %u, %u);"
                     , pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID
                     , pstCDR->ulTaskID, pstCDR->ulRuleID, pstCDR->ucServType
