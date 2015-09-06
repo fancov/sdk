@@ -10111,12 +10111,12 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
             goto process_fail;
         }
 
-        if (SC_TASK_MODE_KEY4AGENT == ulTaskMode
-            && '0' == pszDTMFDigit[0])
+        if (SC_TASK_MODE_KEY4AGENT == ulTaskMode)
         {
             sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
         }
-        else if(SC_TASK_MODE_KEY4AGENT1 == ulTaskMode)
+        else if(SC_TASK_MODE_KEY4AGENT1 == ulTaskMode
+                && '0' == pszDTMFDigit[0])
         {
             sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
         }

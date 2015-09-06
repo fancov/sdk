@@ -1202,7 +1202,7 @@ U32 sc_http_api_eix_action(list_t *pstArgv)
 
     /* »ñÈ¡Ö÷½ÐºÅÂë */
     pszEixID = sc_http_api_get_value(pstArgv, "eix_id");
-    pszAction   = sc_http_api_get_value(pstArgv, "action");
+    pszAction = sc_http_api_get_value(pstArgv, "action");
 
     if (DOS_ADDR_INVALID(pszEixID)
         || DOS_ADDR_INVALID(pszAction))
