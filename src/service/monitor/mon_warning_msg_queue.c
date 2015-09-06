@@ -81,7 +81,7 @@ U32 mon_warning_msg_de_queue()
 {
     if (0 == g_pstMsgQueue->ulQueueLength)
     {//╤сапн╙©у
-        mon_trace(MON_TRACE_WARNING_MSG, LOG_LEVEL_INFO, "The Msg Queue is Empty.");
+        mon_trace(MON_TRACE_WARNING_MSG, LOG_LEVEL_DEBUG, "The Msg Queue is Empty.");
         return DOS_FAIL;
     }
     else
