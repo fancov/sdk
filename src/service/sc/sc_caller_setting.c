@@ -6,6 +6,7 @@ extern "C"{
 #include <dos.h>
 #include <esl.h>
 #include "sc_def.h"
+#include "sc_acd_def.h"
 #include "sc_ep.h"
 #include "sc_debug.h"
 
@@ -17,8 +18,10 @@ extern HASH_TABLE_S *g_pstHashCaller;
 extern HASH_TABLE_S *g_pstHashCallerGrp;
 extern HASH_TABLE_S *g_pstHashDIDNum;
 extern DB_HANDLE_ST *g_pstSCDBHandle;
+extern HASH_TABLE_S *g_pstAgentList;
 extern BOOL sc_num_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber);
-
+extern U32 sc_acd_hash_func4agent(U32 ulSiteID, U32 *pulHashIndex);
+extern S32 sc_acd_agent_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
 static S32 sc_generate_random(S32 lUp, S32 lDown);
 static U32 sc_get_dst_by_src(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, U32* pulDstID, U32* pulDstType);
 static U32 sc_get_number_by_callerid(U32 ulCustomerID, U32 ulCallerID, S8 *pszNumber, U32 ulLen);
@@ -28,9 +31,12 @@ static U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumbe
 static U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 static U32 sc_get_numbers_of_did(U32 ulCustomerID);
 static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen);
+#if 0
 static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen);
+#endif
 static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen);
 static U32 sc_get_did_by_agentgrp(U32 ulAgentGrpID, S8 *pszNumber, U32 ulLen);
+static U32 sc_get_agentgrp_by_agentid(U32 ulAgentID, U32 *paulGroupID, U32 ulLen);
 
 
 /**
@@ -46,6 +52,9 @@ static U32 sc_get_did_by_agentgrp(U32 ulAgentGrpID, S8 *pszNumber, U32 ulLen);
 U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, S8 *pszNumber, U32 ulLen)
 {
     U32 ulDstID = 0, ulDstType = 0, ulRet = 0, ulPolicy = 0;
+    U32 aulAgentGrpID[MAX_GROUP_PER_SITE] = {0};
+    /* 用来检验是否在坐席组中找到合适的主叫号码 */
+    //BOOL bFound = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pszNumber))
     {
@@ -70,17 +79,87 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                 ulRet = sc_get_did_by_agent(ulSrcID, pszNumber, ulLen);
                 if (DOS_SUCC != ulRet)
                 {
-                    sc_logr_debug(SC_FUNC, "Get Did By Agent FAIL(AgentID:%u). Then find a caller in random.", ulSrcID);
-                    /* 随便查找一个主叫号码呼叫 */
-                    ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
+                    sc_logr_debug(SC_FUNC, "Get Did By Agent FAIL(AgentID:%u). Then Find a Did From AgentGroup.", ulSrcID);
+                    /* 根据坐席id去获取坐席组id */
+                    ulRet = sc_get_agentgrp_by_agentid(ulSrcID, aulAgentGrpID, MAX_GROUP_PER_SITE);
                     if (DOS_SUCC != ulRet)
                     {
-                        DOS_ASSERT(0);
-                        return DOS_FAIL;
+                        sc_logr_debug(SC_FUNC, "%s", "Get AgentGroupID By Agent ID FAIL, And Then find a Random Did.");
+                        ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
+                        if (DOS_SUCC != ulRet)
+                        {
+                            DOS_ASSERT(0);
+                            sc_logr_error(SC_FUNC, "%s", "Select a Random Did FAIL,Select number FAIL.");
+                            return DOS_FAIL;
+                        }
+                        else
+                        {
+                            sc_logr_debug(SC_FUNC, "%s", "Select a Random Did SUCC.");
+                            return DOS_SUCC;
+                        }
                     }
+                    if (0 != aulAgentGrpID[0] && U32_BUTT != aulAgentGrpID[0])
+                    {
+                        /* 首先查找第1个 */
+                        ulRet = sc_get_did_by_agentgrp(aulAgentGrpID[0], pszNumber, ulLen);
+                        if (DOS_SUCC != ulRet)
+                        {
+                            if (0 != aulAgentGrpID[1] && U32_BUTT != aulAgentGrpID[1] && aulAgentGrpID[1] != aulAgentGrpID[0])
+                            {
+                                sc_logr_debug(SC_FUNC, "Get Did By Agent Group %u FAIL,And Then Did Agent Group %u.", aulAgentGrpID[0], aulAgentGrpID[1]);
+                            }
+                            else
+                            {
+                                sc_logr_debug(SC_FUNC, "Get Did By Agent Group %u FAIL,And then Select a Random Did.", aulAgentGrpID[0]);
+                                /* 随机选择一个DID号码 */
+                                ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
+                                if (DOS_SUCC != ulRet)
+                                {
+                                    DOS_ASSERT(0);
+                                    sc_logr_error(SC_FUNC, "%s", "Select Did Random FAIL,Select number FAIL.");
+                                    return DOS_FAIL;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            sc_logr_debug(SC_FUNC, "Get Did By Agent Group %u SUCC.", aulAgentGrpID[0]);
+                            return DOS_SUCC;
+                        }
+                    }
+                    if (0 != aulAgentGrpID[1] && U32_BUTT != aulAgentGrpID[1] && aulAgentGrpID[1] != aulAgentGrpID[0])
+                    {
+                        /* 查找第2个主叫坐席组 */
+                        ulRet = sc_get_did_by_agentgrp(aulAgentGrpID[1], pszNumber, ulLen);
+                        if (DOS_SUCC != ulRet)
+                        {
+                            sc_logr_debug(SC_FUNC, "Get Did By Agent Group %u FAIL,And then Select a Did Random", aulAgentGrpID[1]);
+                            /* 预留 */
+                            ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
+                            if (DOS_SUCC != ulRet)
+                            {
+                                DOS_ASSERT(0);
+                                sc_logr_error(SC_FUNC, "%s", "Select Random FAIL, Select number FAIL.");
+                                return DOS_FAIL;
+                            }
+                            else
+                            {
+                                sc_logr_debug(SC_FUNC, "%s", "Select Random SUCC.");
+                                return DOS_SUCC;
+                            }
+                        }
+                        else
+                        {
+                            sc_logr_debug(SC_FUNC, "Get Did By Agent Group %u SUCC.", aulAgentGrpID[1]);
+                            return DOS_SUCC;
+                        }
+                    }
+                }
+                else
+                {
+                    sc_logr_debug(SC_FUNC, "Get Did By Agent %u SUCC.", ulSrcID);
                     return DOS_SUCC;
                 }
-                return DOS_SUCC;
             }
             /* 如果呼叫源是坐席组，则在坐席组中任选一个坐席绑定的DID号码 */
             case SC_SRC_CALLER_TYPE_AGENTGRP:
@@ -88,16 +167,26 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                 ulRet = sc_get_did_by_agentgrp(ulSrcID, pszNumber, ulLen);
                 if (DOS_SUCC != ulRet)
                 {
+                    sc_logr_debug(SC_FUNC, "Get Did By AgentgGrp %u FAIL,And Then Select Random Did.", ulSrcID);
                     /* 随机选择一个主叫号码呼叫 */
-                    ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
+                    ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
                     if (DOS_SUCC != ulRet)
                     {
                         DOS_ASSERT(0);
+                        sc_logr_error(SC_FUNC, "%s", "Select Random Did FAIL. Select number FAIL.");
                         return DOS_FAIL;
                     }
+                    else
+                    {
+                        sc_logr_debug(SC_FUNC, "%s", "Select Random Did SUCC.");
+                        return DOS_SUCC;
+                    }
+                }
+                else
+                {
+                    sc_logr_debug(SC_FUNC, "Get Did By AgentGrp %u SUCC.", ulSrcID);
                     return DOS_SUCC;
                 }
-                return DOS_SUCC;
             }
             /* 如果是所有的，在当前客户下的DID号码中任选一个号码 */
             case SC_SRC_CALLER_TYPE_ALL:
@@ -105,15 +194,15 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                 ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
                 if (DOS_SUCC != ulRet)
                 {
-                    ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
-                    if (DOS_SUCC != ulRet)
-                    {
-                        DOS_ASSERT(0);
-                        return DOS_FAIL;
-                    }
+                    DOS_ASSERT(0);
+                    sc_logr_debug(SC_FUNC, "%s", "Select Random Did FAIL.");
+                    return DOS_FAIL;
+                }
+                else
+                {
+                    sc_logr_debug(SC_FUNC, "%s", "Select Random Did SUCC.");
                     return DOS_SUCC;
                 }
-                return DOS_SUCC;
             }
             default:
                 break;
@@ -133,10 +222,12 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
             if (DOS_SUCC != ulRet)
             {
                 DOS_ASSERT(0);
+                sc_logr_error(SC_FUNC, "Get number By Caller FAIL.(CallerID:%u)", ulDstID);
                 return DOS_FAIL;
             }
             else
             {
+                sc_logr_debug(SC_FUNC, "Get number By Caller SUCC.(CallerID:%u)", ulDstID);
                 return DOS_SUCC;
             }
         }
@@ -147,10 +238,12 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
             if (DOS_SUCC != ulRet)
             {
                 DOS_ASSERT(0);
+                sc_logr_error(SC_FUNC, "Get Number By Did FAIL.(DidID:%u)", ulDstID);
                 return DOS_FAIL;
             }
             else
             {
+                sc_logr_error(SC_FUNC, "Get Number By Did SUCC.(DidID:%u)", ulDstID);
                 return DOS_SUCC;
             }
         }
@@ -162,6 +255,7 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
             {
                 DOS_ASSERT(0);
                 sc_logr_error(SC_FUNC, "SC Get Policy By Caller GrpID FAIL.(Caller Group ID:%u)", ulDstID);
+                return DOS_FAIL;
             }
             switch (ulPolicy)
             {
@@ -171,10 +265,12 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                     if (DOS_SUCC != ulRet)
                     {
                         DOS_ASSERT(0);
+                        sc_logr_error(SC_FUNC, "Select number In Order FAIL.(CallerGrpID:%u)", ulDstID);
                         return DOS_FAIL;
                     }
                     else
                     {
+                        sc_logr_error(SC_FUNC, "Select number In Order SUCC.(CallerGrpID:%u)", ulDstID);
                         return DOS_SUCC;
                     }
                 }
@@ -184,10 +280,12 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                     if (DOS_SUCC != ulRet)
                     {
                         DOS_ASSERT(0);
+                        sc_logr_error(SC_FUNC, "Select number Random FAIL.(CallerGrpID:%u)", ulDstID);
                         return DOS_FAIL;
                     }
                     else
                     {
+                        sc_logr_error(SC_FUNC, "Select number Random SUCC.(CallerGrpID:%u)", ulDstID);
                         return DOS_SUCC;
                     }
                 }
@@ -710,6 +808,13 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
     return DOS_SUCC;
 }
 
+#if 0
+/**
+ * 函数: static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
+ * 功能: 根据客户ID随机选择一个主叫号码
+ * 参数: U32 ulCustomerID  客户id
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL.
+ **/
 static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
 {
     U32  ulHashIndex = U32_BUTT, ulLoop = U32_BUTT, ulCount = 0;
@@ -786,7 +891,14 @@ static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
     }
     return DOS_TRUE;
 }
+#endif
 
+/**
+ * 函数: S32 sc_get_numbers_of_did_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+ * 功能: 数据库回调函数
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL.
+ **/
 S32 sc_get_numbers_of_did_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     U32 *pulCount = NULL;
@@ -812,7 +924,7 @@ S32 sc_get_numbers_of_did_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
  * 函数: U32 sc_get_numbers_of_did(U32 ulCustomerID)
  * 功能: 返回某一个客户的did号码个数
  * 参数: U32 ulCustomerID  客户id
- * 返回值: 成功返回个数,否则返回DOS_SUCC
+ * 返回值: 成功返回个数,否则返回DOS_FAIL
  **/
 static U32 sc_get_numbers_of_did(U32 ulCustomerID)
 {
@@ -832,6 +944,12 @@ static U32 sc_get_numbers_of_did(U32 ulCustomerID)
     return ulCount;
 }
 
+/**
+ * 函数: U32  sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
+ * 功能: 根据坐席获取绑定的DID号码
+ * 参数: U32 ulAgentID  坐席id
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ **/
 static U32  sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
 {
     U32 ulHashIndex = U32_BUTT;
@@ -876,6 +994,12 @@ static U32  sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
     }
 }
 
+/**
+ * 函数: U32 sc_get_did_by_agentgrp(U32 ulAgentGrpID, S8 *pszNumber, U32 ulLen)
+ * 功能: 根据坐席组获取绑定的DID号码
+ * 参数: U32 ulAgentGrpID  坐席组id
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ **/
 static U32 sc_get_did_by_agentgrp(U32 ulAgentGrpID, S8 *pszNumber, U32 ulLen)
 {
     U32 ulHashIndex = U32_BUTT;
@@ -918,6 +1042,53 @@ static U32 sc_get_did_by_agentgrp(U32 ulAgentGrpID, S8 *pszNumber, U32 ulLen)
         return DOS_SUCC;
     }
 }
+
+/**
+ * 函数: U32 sc_get_agentgrp_by_agentid(U32 ulAgentID, U32 *paulGroupID, U32 ulLen)
+ * 功能: 根据坐席组获取绑定的DID号码
+ * 参数: U32 ulAgentGrpID  坐席组id
+ *       U32 *paulGroupID  坐席组的ID数组首地址，输出参数
+ *       U32 ulLen         数组长度
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ **/
+static U32 sc_get_agentgrp_by_agentid(U32 ulAgentID, U32 *paulGroupID, U32 ulLen)
+{
+    HASH_NODE_S *pstHashNode = NULL;
+    U32 ulHashIndex = U32_BUTT, ulRet = U32_BUTT;
+    SC_ACD_AGENT_INFO_ST *pstAgent = NULL;
+    S32  lIndex = U32_BUTT;
+
+    ulRet = sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
+    if (DOS_SUCC != ulRet)
+    {
+        sc_logr_error(SC_FUNC, "Cannot find agent %u!", ulAgentID);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex , &ulAgentID, sc_acd_agent_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_FUNC, "No agent %u in AgentList!", ulAgentID);
+        return DOS_FAIL;
+    }
+    pstAgent = (SC_ACD_AGENT_INFO_ST *)pstHashNode->pHandle;
+
+    if (ulLen != MAX_GROUP_PER_SITE)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    for (lIndex = 0; lIndex < MAX_GROUP_PER_SITE; lIndex++)
+    {
+        *(paulGroupID + lIndex) = pstAgent->aulGroupID[lIndex];
+    }
+
+    return DOS_SUCC;
+}
+
 
 #ifdef __cplusplus
 }

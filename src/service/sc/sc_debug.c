@@ -1232,25 +1232,25 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
     cli_out_string(ulIndex, szCmdBuff);
 
     /*制作表头*/
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+-------------------------------------------------------------------------------------------------------------------------------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+----------------------------------------------------------------------------------------------------------------------------------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                                            Route List                                                               |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                                             Route List                                                                 |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+---------------------------------+---------------+------------------------------+----------+----------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+---------------------------------+---------------+------------------+----------+----------+--------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              |     Time      |             Prefix              |               |                              |          |          |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              |     Time      |             Prefix              |               |                  |          |          |              |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|      ID      +-------+-------+----------------+----------------+   Dest Type   |            Dest ID           |  Status  | Priority |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|      ID      +-------+-------+----------------+----------------+   Dest Type   |      Dest ID     |  Status  | Priority | CallOutGroup |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              | Start |  End  |     Callee     |     Caller     |               |                              |          |          |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              | Start |  End  |     Callee     |     Caller     |               |                  |          |          |              |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+------------------------------+----------+----------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+------------------+----------+----------+--------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexRouteList);
@@ -1287,7 +1287,7 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n|%14u| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%-30s|%10s|%10u|"
+                    , "\r\n|%14u| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%-18s|%10s|%10u|%14u|"
                     , pstRoute->ulID
                     , pstRoute->ucHourBegin
                     , pstRoute->ucMinuteBegin
@@ -1298,14 +1298,15 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
                     , sc_translate_route_dest_type(pstRoute->ulDestType)
                     , szDataList
                     , DOS_FALSE == pstRoute->bStatus?"No":"Yes"
-                    , pstRoute->ucPriority);
+                    , pstRoute->ucPriority
+                    , pstRoute->usCallOutGroup);
         cli_out_string(ulIndex, szCmdBuff);
         ++ulRouteCnt;
         dos_memzero(szDataList, sizeof(szDataList));
     }
 
     pthread_mutex_unlock(&g_mutexRouteList);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+------------------------------+----------+----------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+-------+-------+----------------+----------------+---------------+------------------+----------+----------+--------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal:%d routes.\r\n\r\n", ulRouteCnt);
