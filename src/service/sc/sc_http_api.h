@@ -211,6 +211,8 @@ U32 sc_http_api_gw_group_action(list_t *pstArgv);
 U32 sc_http_api_did_action(list_t *pstArgv);
 U32 sc_http_api_black_action(list_t *pstArgv);
 U32 sc_http_api_caller_action(list_t *pstArgv);
+U32 sc_http_api_callergrp_action(list_t *pstArgv);
+U32 sc_http_api_callerset_action(list_t *pstArgv);
 U32 sc_http_api_eix_action(list_t *pstArgv);
 U32 sc_http_api_numlmt_action(list_t *pstArgv);
 U32 sc_http_api_numtransform_action(list_t *pstArgv);

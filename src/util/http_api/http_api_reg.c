@@ -9,6 +9,7 @@ extern "C"{
 #include <http_api.h>
 
 #if INCLUDE_RES_MONITOR
+#include "../../src/service/mon_def.h"
 extern  DB_HANDLE_ST * g_pstDBHandle;
 #endif
 
@@ -95,6 +96,77 @@ U32 http_api_alarm_clear(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList)
 
     return DOS_SUCC;
 }
+
+/**
+ *  函数: U32 http_api_system_restart(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList);
+ *  参数:
+ *        HTTP_HANDLE_ST *pstHandle  HTTP请求句柄
+ *        list_t *pstArgvList        请求参数列表
+ *  功能: 重启系统
+ *  返回: 成功返回DOS_SUCC，失败返回DOS_FAIL
+ **/
+U32 http_api_system_restart(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList)
+{
+    S8  *pszStyle = NULL, *pszTimeStamp = NULL;
+    U32 ulStyle = U32_BUTT, ulTimeStamp = U32_BUTT, ulRet = U32_BUTT;
+
+    pszStyle = http_api_get_var(pstArgvList, "style");
+    pszTimeStamp = http_api_get_var(pstArgvList, "time");
+
+    if (dos_atoul(pszTimeStamp, &ulTimeStamp) < 0)
+    {
+        http_api_write(pstHandle, "Get Param \'time\' FAIL.(TimeStamp:%s)<br>", pszTimeStamp);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (0 == dos_strnicmp(pszStyle, "immediate", dos_strlen("immediate")))
+    {
+        if (0 != ulTimeStamp)
+        {
+            http_api_write(pstHandle, "%s", "Param \'time\' must be \'0\' if you restart system immediately.<br>");
+            return DOS_FAIL;
+        }
+        http_api_write(pstHandle, "%s", "The System will be restarted immediately.<br>");
+        ulStyle = MON_SYS_RESTART_IMMEDIATELY;
+    }
+    else if (0 == dos_strnicmp(pszStyle, "fixed", dos_strlen("fixed")))
+    {
+        if (0 == ulTimeStamp || U32_BUTT == ulTimeStamp)
+        {
+            http_api_write(pstHandle, "Param \'time\' shouldn\'t be \'0\' or \'%u\' if you restart system at fixed time.<br>", U32_BUTT);
+            return DOS_FAIL;
+        }
+        http_api_write(pstHandle, "The System will be restarted in timestamp %u.<br>", ulTimeStamp);
+        ulStyle = MON_SYS_RESTART_FIXED;
+    }
+    else if (0 == dos_strnicmp(pszStyle, "later", dos_strlen("later")))
+    {
+        if (0 != ulTimeStamp)
+        {
+            http_api_write(pstHandle, "%s", "Param \'time\' must be \'0\' if you restart system when no service runs.<br>");
+            return DOS_FAIL;
+        }
+        http_api_write(pstHandle, "%s", "The System will be restarted later.<br>");
+        ulStyle = MON_SYS_RESTART_LATER;
+    }
+    else
+    {
+        http_api_write(pstHandle, "Sorry, the server doesn\'t support param \'%s\',please check it.<br>", pszStyle);
+        return DOS_FAIL;
+    }
+
+    ulRet = mon_restart_system(ulStyle, ulTimeStamp);
+    if (DOS_SUCC != ulRet)
+    {
+        http_api_write(pstHandle, "Restart System FAIL.(Style:%u, TimeStamp:%u).", ulStyle, ulTimeStamp);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
 #endif
 
 U32 http_api_handle_init()
@@ -107,6 +179,7 @@ U32 http_api_handle_init()
 #endif
 #if INCLUDE_RES_MONITOR
     http_api_handle_reg("/alarmlog", http_api_alarm_clear);
+    http_api_handle_reg("/system" , http_api_system_restart);
 #endif
     return DOS_SUCC;
 }

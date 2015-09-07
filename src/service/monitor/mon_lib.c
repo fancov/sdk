@@ -46,6 +46,8 @@ MON_MSG_MAP_ST m_pstMsgMap[][MAX_EXCEPT_CNT] = {
     }   /* 编号是1的是美式英文 */
 };
 
+static U32 mon_restart_immediately();
+
 
 /**
  * 功能:初始化通知消息队列
@@ -306,6 +308,30 @@ S32 mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     dos_snprintf(pstContact->szEmail, sizeof(pstContact->szEmail), "%s", aszValues[1]);
 
     return DOS_SUCC;
+}
+
+U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp)
+{
+    switch (ulStyle)
+    {
+        /* 立即重启 */
+        case MON_SYS_RESTART_IMMEDIATELY:
+            break;
+        /* 指定时间重启 */
+        case MON_SYS_RESTART_FIXED:
+            break;
+        /* 稍后重启(没有业务跑的时候重启) */
+        case MON_SYS_RESTART_LATER:
+            break;
+        default:
+            break;
+    }
+    return DOS_SUCC;
+}
+
+static U32 mon_restart_immediately()
+{
+    system("/sbin/reboot");
 }
 
 
