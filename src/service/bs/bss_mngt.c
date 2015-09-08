@@ -2585,7 +2585,7 @@ VOID bss_query_balance(DLL_NODE_S *pMsgNode)
     /* 借用原消息存储信息 */
     pstMsg->ulAccountID = pstCustomer->stAccount.ulAccountID;
     pstMsg->lBalance = (U32)pstCustomer->stAccount.LBalanceActive;
-    pstMsg->ucBalanceWarning = (pstMsg->lBalance < pstCustomer->stAccount.lBalanceWarning)?DOS_TRUE:DOS_FALSE;
+    pstMsg->ucBalanceWarning = (pstCustomer->stAccount.LBalanceActive < pstCustomer->stAccount.lBalanceWarning)?DOS_TRUE:DOS_FALSE;
     ucErrCode = BS_ERR_SUCC;
 
     bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
@@ -2696,7 +2696,7 @@ VOID bss_user_auth(DLL_NODE_S *pMsgNode)
     /* 借用原消息存储信息 */
     pstMsg->ulAccountID = pstCustomer->stAccount.ulAccountID;
     pstMsg->lBalance = (U32)pstCustomer->stAccount.LBalanceActive;
-    pstMsg->ucBalanceWarning = (pstMsg->lBalance < pstCustomer->stAccount.lBalanceWarning)?DOS_TRUE:DOS_FALSE;
+    pstMsg->ucBalanceWarning = (pstCustomer->stAccount.LBalanceActive < pstCustomer->stAccount.lBalanceWarning)?DOS_TRUE:DOS_FALSE;
 
     if (pstCustomer->stAccount.LBalanceActive < (S64)pstCustomer->stAccount.lCreditLine)
     {
