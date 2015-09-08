@@ -27,10 +27,10 @@ enum tagSysRestartType
     MON_SYS_RESTART_LATER,            /* 稍后重启(没有业务时) */
 
     MON_SYS_RESTART_BUTT = 16
-};
+}MON_SYS_RESTART_TYPE;
 
 U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp);
-
+U32 mon_system(S8 *pszCmd);
 VOID mon_show_cpu(U32 ulIndex);
 VOID mon_show_mem(U32 ulIndex);
 VOID mon_show_disk(U32 ulIndex);

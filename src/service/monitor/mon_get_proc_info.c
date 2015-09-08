@@ -374,7 +374,7 @@ static U32 mon_get_proc_pid_list()
    S8 szPidDir[1024] = {0};
    S8 szServiceRoot[256] = {0};
    S8 *pszRoot = NULL;
-   U32 ulPid = 0;
+   U32 ulPid = 0, ulRet = U32_BUTT;
 
    FILE * fp = NULL;
 
@@ -407,7 +407,6 @@ static U32 mon_get_proc_pid_list()
       if (DT_REG == pstEntry->d_type && DOS_TRUE == mon_is_suffix_true(pstEntry->d_name, "pid"))//如果是普通文件
       {
          S8     szProcAllName[64] = {0};
-         S8*    pTemp;
          S8     szLine[8] = {0};
          S8     szAbsFilePath[64] = {0};
 
@@ -448,13 +447,13 @@ static U32 mon_get_proc_pid_list()
 
             g_pastProc[g_ulPidCnt]->ulProcId = ulPid;
 
-            pTemp = mon_get_proc_name_by_id(ulPid, szProcAllName);
-            if (DOS_ADDR_INVALID(pTemp))
+            ulRet = mon_get_proc_name_by_id(ulPid, szProcAllName, sizeof(szProcAllName));
+            if (DOS_SUCC != ulRet)
             {
                 DOS_ASSERT(0);
                 goto failure;
             }
-            if (dos_strstr(pTemp, "monitor"))
+            if (dos_strstr(szProcAllName, "monitor"))
             {
                 continue;
             }
@@ -462,7 +461,7 @@ static U32 mon_get_proc_pid_list()
             dos_snprintf(g_pastProc[g_ulPidCnt]->szProcName
                             , sizeof(g_pastProc[g_ulPidCnt]->szProcName)
                             , "%s"
-                            , pTemp);
+                            , szProcAllName);
 
             ++g_ulPidCnt;
          }
@@ -686,74 +685,74 @@ U32  mon_check_all_process()
 
    for (ulRows = 0; ulRows < ulCfgProcCnt; ulRows++)
    {
-      U32 ulCols = 0;
-      /* 默认未启动 */
-      S32 bHasStarted = DOS_FALSE;
+        U32 ulCols = 0;
+        /* 默认未启动 */
+        S32 bHasStarted = DOS_FALSE;
 
-      /* 获取进程名和进程版本号 */
-      lRet = config_hb_get_process_list(ulRows, szProcName, sizeof(szProcName)
+        /* 获取进程名和进程版本号 */
+        lRet = config_hb_get_process_list(ulRows, szProcName, sizeof(szProcName)
                  , szProcVersion, sizeof(szProcVersion));
-      if(lRet < 0)
-      {
-         mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Process Name,Version FAIL.");
-         config_hb_deinit();
-         return DOS_FAIL;
-      }
-      szProcName[sizeof(szProcName) - 1] = '\0';
-      szProcVersion[sizeof(szProcVersion) - 1] = '\0';
+        if(lRet < 0)
+        {
+            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Process Name,Version FAIL.");
+            config_hb_deinit();
+            return DOS_FAIL;
+        }
+        szProcName[sizeof(szProcName) - 1] = '\0';
+        szProcVersion[sizeof(szProcVersion) - 1] = '\0';
 
-      /* 获取进程的启动命令 */
-      lRet = config_hb_get_start_cmd(ulRows, szProcCmd, sizeof(szProcCmd));
-      if(0 > lRet)
-      {
-         mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Start Command FAIL.");
-         config_hb_deinit();
-         return DOS_FAIL;
-      }
-      szProcCmd[sizeof(szProcCmd) - 1] = '\0';
+        /* 获取进程的启动命令 */
+        lRet = config_hb_get_start_cmd(ulRows, szProcCmd, sizeof(szProcCmd));
+        if(0 > lRet)
+        {
+            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Start Command FAIL.");
+            config_hb_deinit();
+            return DOS_FAIL;
+        }
+        szProcCmd[sizeof(szProcCmd) - 1] = '\0';
 
-      for(ulCols = 0; ulCols < g_ulPidCnt; ulCols++)
-      {
-         S8 * pszPtr = mon_str_get_name(g_pastProc[ulCols]->szProcName);
+        for(ulCols = 0; ulCols < g_ulPidCnt; ulCols++)
+        {
+            S8 * pszPtr = mon_str_get_name(g_pastProc[ulCols]->szProcName);
 
-         if (DOS_ADDR_INVALID(pszPtr))
-         {
-             DOS_ASSERT(0);
-             break;
-         }
+            if (DOS_ADDR_INVALID(pszPtr))
+            {
+                DOS_ASSERT(0);
+                break;
+            }
 
-         if(0 == dos_strcmp(szProcName, "monitord"))
-         {
-            /* 如果监控到的是minitord进程，那么认为已启动 */
-            bHasStarted = DOS_TRUE;
-            break;
-         }
-         if(0 == dos_strcmp("monitord", pszPtr))
-         {
-            /* 如果当前进程不是minitord进程，碰到monitord进程的对比直接跳过 */
-            continue;
-         }
-         if(0 == dos_strcmp(pszPtr, szProcName))
-         {
+            if(0 == dos_strcmp(szProcName, "monitord"))
+            {
+                /* 如果监控到的是minitord进程，那么认为已启动 */
+                bHasStarted = DOS_TRUE;
+                break;
+            }
+            if(0 == dos_strcmp("monitord", pszPtr))
+            {
+                /* 如果当前进程不是minitord进程，碰到monitord进程的对比直接跳过 */
+                continue;
+            }
+            if(0 == dos_strcmp(pszPtr, szProcName))
+            {
             /* 进程找到，说明szProcName已启动 */
             bHasStarted = DOS_TRUE;
             break;
-         }
-      }
+            }
+        }
 
-      if(DOS_FALSE == bHasStarted)
-      {
-         mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_DEBUG, "Process %s lost.", szProcName);
+        if(DOS_FALSE == bHasStarted)
+        {
+            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_DEBUG, "Process %s lost.", szProcName);
 
-         lRet = system(szProcCmd);
-         if(lRet < 0)
-         {
-            mon_trace(MON_TRACE_PROCESS,LOG_LEVEL_EMERG, "Restart Process %s FAIL.", szProcName);
-            return DOS_FAIL;
-         }
-      }
-   }
-   return DOS_SUCC;
+            lRet = system(szProcCmd);
+            if(lRet < 0)
+            {
+                mon_trace(MON_TRACE_PROCESS,LOG_LEVEL_EMERG, "Restart Process %s FAIL.", szProcName);
+                return DOS_FAIL;
+            }
+        }
+    }
+    return DOS_SUCC;
 }
 
 
@@ -808,65 +807,59 @@ U32 mon_restart_computer()
  * 参数集：
  *   参数1:S32 lPid  进程id
  *   参数2:S8 * pszPidName   进程名
+ *   参数3:U32 ulLen
  * 返回值：
  *   成功则返回进程名，失败则返回NULL
  */
-S8 * mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName)
+U32 mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName, U32 ulLen)
 {
-    S8 szPsCmd[32] = {0};
-    S8 szBuff[1024] = {0};
-    S8 *pszToker = NULL;
-    U32 ulCols = 0;
-    BOOL bFound = DOS_FALSE;
+    S8  szPath[64] = {0};
+    S8  szLine[256] = {0};
     FILE *fp = NULL;
+    S8 *pszPos = NULL;
 
-    dos_snprintf(szPsCmd, sizeof(szPsCmd), "ps -ef | grep %u", ulPid);
+    dos_snprintf(szPath, sizeof(szPath), "/proc/%u/task/%u/status", ulPid, ulPid);
 
-    fp = popen(szPsCmd, "r");
+    fp = fopen(szPath, "r");
     if (DOS_ADDR_INVALID(fp))
     {
         DOS_ASSERT(0);
-        return NULL;
+        return DOS_FAIL;
     }
-
-    while (!feof(fp))
+    if (!fgets(szLine, sizeof(szLine), fp))
     {
-        if (NULL != fgets(szBuff, sizeof(szBuff), fp))
-        {
-            if (ulPid == mon_first_int_from_str(szBuff))
-            {
-                bFound = DOS_TRUE;
-                break;
-            }
-        }
+        DOS_ASSERT(0);
+		fclose(fp);
+		fp = NULL;
+        return DOS_FAIL;
     }
 
-    if (DOS_FALSE == bFound)
+    pszPos = dos_strstr(szLine, ":");
+    if (DOS_ADDR_INVALID(pszPos))
     {
-        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid %u does not exist", ulPid);
-        pclose(fp);
-        fp = NULL;
-        return NULL;
+        DOS_ASSERT(0);
+		fclose(fp);
+		fp = NULL;
+        return DOS_FAIL;
     }
+    pszPos++;
 
-    pszToker = strtok(szBuff, " \t\n");
-    while (DOS_ADDR_VALID(pszToker))
+    while (' ' == *pszPos || '\t' == *pszPos || '\r' == *pszPos || '\n' == *pszPos)
     {
-        pszToker = strtok(NULL, " \t\n");
-        if (5 == ulCols)
-        {
-            break;
-        }
-        ++ulCols;
+        pszPos++;
     }
 
-    pszToker = strtok(NULL, " \t");
-    *(pszToker + dos_strlen(pszToker) - 1) = '\0';
+    if ('\0' ==  *pszPos)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
-    pclose(fp);
-    fp = NULL;
+    dos_snprintf(pszPidName, ulLen, "%s", pszPos);
 
-    return pszToker;
+	fclose(fp);
+	fp = NULL;
+    return DOS_SUCC;
 }
 
 

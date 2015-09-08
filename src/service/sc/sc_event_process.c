@@ -1506,7 +1506,7 @@ U32 sc_caller_setting_delete(U32 ulSettingID)
         HASH_Scan_Bucket(g_pstHashCallerSetting, ulHashIndex, pstHashNode, HASH_NODE_S *)
         {
             if (DOS_ADDR_INVALID(pstHashNode)
-                            || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
             {
                 continue;
             }
@@ -1517,11 +1517,9 @@ U32 sc_caller_setting_delete(U32 ulSettingID)
                 break;
             }
         }
-        if (DOS_FALSE == bFound)
+        if (DOS_TRUE == bFound)
         {
-            DOS_ASSERT(0);
-            sc_logr_error(SC_FUNC, "Delete Caller Setting FAIL.(ulID:%u)", ulSettingID);
-            return DOS_FAIL;
+            break;
         }
     }
     if (DOS_FALSE == bFound)
@@ -1540,10 +1538,7 @@ U32 sc_caller_setting_delete(U32 ulSettingID)
         pstHashNode = NULL;
 
         sc_logr_info(SC_FUNC, "Delete Caller Setting SUCC.(ulID:%u)", ulSettingID);
-
-        return DOS_SUCC;
     }
-
     return DOS_SUCC;
 }
 
