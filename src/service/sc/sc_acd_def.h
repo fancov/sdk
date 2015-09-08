@@ -99,7 +99,6 @@ typedef struct tagACDSiteDesc{
     U32        bConnected:1;                      /* 是否已经长连 */
     U32        bNeedConnected:1;                  /* 是否已经长连 */
     U32        bWaitingDelete:1;                  /* 是否已经被删除 */
-    U32        bIsTCBNoOther:1;                   /* 这个参数应该去掉，长签时会有问题 */
 
     U32        ucProcesingTime:8;                 /* 坐席处理呼叫结果时间 */
     U32        ucRes1:14;
@@ -117,7 +116,7 @@ typedef struct tagACDSiteDesc{
 }SC_ACD_AGENT_INFO_ST;
 
 U32 sc_acd_init();
-U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGroupID, S8 *szCallerNum, U16 usSCBNo);
+U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGroupID, S8 *szCallerNum);
 U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo);
 S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
 U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);
@@ -126,7 +125,8 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID);
 U32 sc_acd_get_idel_agent(U32 ulGroupID);
 U32 sc_acd_get_total_agent(U32 ulGroupID);
 U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID);
-U32 sc_acd_update_agent_scbno(S8 *szUserID, U16 usSCBNo, BOOL bIsOther);
+U32 sc_acd_update_agent_scbno_by_userID(S8 *szUserID, U16 usSCBNo);
+U32 sc_acd_update_agent_scbno_by_SiteID(U32 ulAgentID, U16 usSCBNo);
 U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr);
 
 #endif
