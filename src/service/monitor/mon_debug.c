@@ -163,8 +163,8 @@ VOID mon_show_disk(U32 ulIndex)
     {
         dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%-32s|%18u|%13u|%-19s|"
                         , g_pastPartition[ulLoop]->szPartitionName
-                        , g_pastPartition[ulLoop]->ulPartitionAvailBytes
-                        , g_pastPartition[ulLoop]->ulPartitionUsageRate
+                        , g_pastPartition[ulLoop]->uLPartitionAvailBytes
+                        , g_pastPartition[ulLoop]->uLPartitionUsageRate
                         , g_pastPartition[ulLoop]->szDiskSerialNo);
         cli_out_string(ulIndex, szBuff);
     }
@@ -173,7 +173,7 @@ VOID mon_show_disk(U32 ulIndex)
     cli_out_string(ulIndex, szBuff);
 
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n| Total Disk KBytes:%12u;  Total Disk Usage Rate:%3u%%                         |"
-                    , mon_get_total_disk_kbytes()
+                    , mon_get_total_disk_bytes()
                     , mon_get_total_disk_usage_rate());
     cli_out_string(ulIndex, szBuff);
 

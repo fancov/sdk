@@ -15,7 +15,6 @@ extern "C"{
 #include "mon_def.h"
 
 static S8  m_szMemInfoFile[] = "/proc/meminfo";
-extern S8  g_szMonMemInfo[MAX_BUFF_LENGTH];
 extern MON_SYS_MEM_DATA_S * g_pstMem;
 
 static U32  mon_mem_reset_data();

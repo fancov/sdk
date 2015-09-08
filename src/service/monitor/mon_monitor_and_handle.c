@@ -54,12 +54,6 @@ U32  g_ulPartCnt = 0;
 U32  g_ulNetCnt  = 0;
 U32  g_ulPidCnt  = 0;
 
-S8 g_szMonMemInfo[MAX_BUFF_LENGTH]     = {0};
-S8 g_szMonCPUInfo[MAX_BUFF_LENGTH]     = {0};
-S8 g_szMonDiskInfo[MAX_PARTITION_COUNT * MAX_BUFF_LENGTH]    = {0};
-S8 g_szMonNetworkInfo[MAX_NETCARD_CNT * MAX_BUFF_LENGTH] = {0};
-S8 g_szMonProcessInfo[MAX_PROC_CNT * MAX_BUFF_LENGTH] = {0};
-
 DB_HANDLE_ST *                g_pstDBHandle = NULL;
 DB_HANDLE_ST *                g_pstCCDBHandle = NULL;
 
@@ -444,7 +438,7 @@ static U32 mon_handle_excp()
 
     for (ulRows = 0; ulRows < g_ulPartCnt; ++ulRows)
     {
-        if(g_pastPartition[ulRows]->ulPartitionUsageRate >= g_pstCond->ulPartitionThreshold)
+        if(g_pastPartition[ulRows]->uLPartitionUsageRate >= g_pstCond->ulPartitionThreshold)
         {
             bDiskExcept = DOS_TRUE;
         }
@@ -875,93 +869,91 @@ static U32 mon_handle_excp()
  */
 static U32 mon_add_data_to_db()
 {
-   time_t ulCur = time(0);
-   struct tm *pstCurTime;
-   S8  szSQLCmd[SQL_CMD_MAX_LENGTH] = {0}, szBuff[4] = {0};
-   S32 lRet = 0;
-   U32 ulTotalDiskKBytes = 0, ulWriteDB = 1;
-   U32 ulTotalDiskRate = 0;
-   U32 ulProcTotalMemRate = 0;
-   U32 ulProcTotalCPURate = 0;
+    time_t ulCur = time(0);
+    struct tm *pstCurTime;
+    S8  szSQLCmd[SQL_CMD_MAX_LENGTH] = {0}, szBuff[4] = {0};
+    S32 lRet = 0, lTotalDiskByte;
+    U64 uLTotalDiskBytes = 0;
+    U32 ulTotalDiskRate = 0, ulWriteDB = 1;
+    U32 ulProcTotalMemRate = 0;
+    U32 ulProcTotalCPURate = 0;
 
-   if (config_get_syssrc_write_db(szBuff, sizeof(szBuff)) < 0)
-   {
+    if (config_get_syssrc_write_db(szBuff, sizeof(szBuff)) < 0)
+    {
         DOS_ASSERT(0);
-   }
+    }
 
-   if (dos_atoul(szBuff, &ulWriteDB) < 0)
-   {
+    if (dos_atoul(szBuff, &ulWriteDB) < 0)
+    {
         DOS_ASSERT(0);
-   }
+    }
 
-   if (0 == ulWriteDB)
-   {
+    if (0 == ulWriteDB)
+    {
         return DOS_SUCC;
-   }
+    }
 
-   ulTotalDiskKBytes = mon_get_total_disk_kbytes();
-   if(DOS_FAIL == ulTotalDiskKBytes)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Get total disk KBytes FAIL.");
-      return DOS_FAIL;
-   }
+    uLTotalDiskBytes = mon_get_total_disk_bytes();
+    /* 将结果化为MB的单位 */
+    lTotalDiskByte = (uLTotalDiskBytes + uLTotalDiskBytes % 1024)/1024;
+    lTotalDiskByte = (lTotalDiskByte + lTotalDiskByte % 1024)/1024;
 
-   ulTotalDiskRate = mon_get_total_disk_usage_rate();
-   if(DOS_FAIL == ulTotalDiskRate)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Get total disk Usage Rate FAIL.");
-      return DOS_FAIL;
-   }
+    ulTotalDiskRate = mon_get_total_disk_usage_rate();
+    if(DOS_FAIL == ulTotalDiskRate)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Get total disk Usage Rate FAIL.");
+        return DOS_FAIL;
+    }
 
-   ulProcTotalMemRate = mon_get_proc_total_mem_rate();
-   if(DOS_FAIL == ulProcTotalMemRate)
-   {
-       mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Get Process total memory Rate FAIL.");
-       return DOS_FAIL;
-   }
+    ulProcTotalMemRate = mon_get_proc_total_mem_rate();
+    if(DOS_FAIL == ulProcTotalMemRate)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Get Process total memory Rate FAIL.");
+        return DOS_FAIL;
+    }
 
-   ulProcTotalCPURate = mon_get_proc_total_cpu_rate();
-   if(DOS_FAIL == ulProcTotalCPURate)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Get Process total CPU Rate FAIL.");
-      return DOS_FAIL;
-   }
+    ulProcTotalCPURate = mon_get_proc_total_cpu_rate();
+    if(DOS_FAIL == ulProcTotalCPURate)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Get Process total CPU Rate FAIL.");
+        return DOS_FAIL;
+    }
 
-   pstCurTime = localtime(&ulCur);
-   dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO tbl_syssrc%04u%02u(ctime,phymem," \
-     "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate,procmem_pct,proccpu_pct)" \
-     " VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
-     , pstCurTime->tm_year + 1900
-     , pstCurTime->tm_mon + 1
-     , pstCurTime->tm_year + 1900
-     , pstCurTime->tm_mon + 1
-     , pstCurTime->tm_mday
-     , pstCurTime->tm_hour
-     , pstCurTime->tm_min
-     , pstCurTime->tm_sec
-     , g_pstMem->ulPhysicalMemTotalBytes
-     , g_pstMem->ulPhysicalMemUsageRate
-     , g_pstMem->ulSwapTotalBytes
-     , g_pstMem->ulSwapUsageRate
-     , ulTotalDiskKBytes
-     , ulTotalDiskRate
-     , g_pstCpuRslt->ulCPUUsageRate
-     , g_pstCpuRslt->ulCPU5sUsageRate
-     , g_pstCpuRslt->ulCPU1minUsageRate
-     , g_pstCpuRslt->ulCPU10minUsageRate
-     , g_pastNet[0]->ulRWSpeed
-     , ulProcTotalMemRate
-     , ulProcTotalCPURate
-   );
+    pstCurTime = localtime(&ulCur);
+    dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO tbl_syssrc%04u%02u(ctime,phymem," \
+        "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate,procmem_pct,proccpu_pct)" \
+        " VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',%u,%u,%u,%u,%d,%u,%u,%u,%u,%u,%u,%u,%u);"
+        , pstCurTime->tm_year + 1900
+        , pstCurTime->tm_mon + 1
+        , pstCurTime->tm_year + 1900
+        , pstCurTime->tm_mon + 1
+        , pstCurTime->tm_mday
+        , pstCurTime->tm_hour
+        , pstCurTime->tm_min
+        , pstCurTime->tm_sec
+        , g_pstMem->ulPhysicalMemTotalBytes
+        , g_pstMem->ulPhysicalMemUsageRate
+        , g_pstMem->ulSwapTotalBytes
+        , g_pstMem->ulSwapUsageRate
+        , lTotalDiskByte
+        , ulTotalDiskRate
+        , g_pstCpuRslt->ulCPUUsageRate
+        , g_pstCpuRslt->ulCPU5sUsageRate
+        , g_pstCpuRslt->ulCPU1minUsageRate
+        , g_pstCpuRslt->ulCPU10minUsageRate
+        , g_pastNet[0]->ulRWSpeed
+        , ulProcTotalMemRate
+        , ulProcTotalCPURate
+    );
 
-   lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
-   if(DB_ERR_SUCC != lRet)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Execute SQL FAIL. SQL:%s", szSQLCmd);
-      return DOS_FAIL;
-   }
+    lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
+    if(DB_ERR_SUCC != lRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Execute SQL FAIL. SQL:%s", szSQLCmd);
+        return DOS_FAIL;
+    }
 
-   return DOS_SUCC;
+    return DOS_SUCC;
 }
 
 

@@ -16,7 +16,6 @@ extern "C" {
 #include "mon_def.h"
 
 
-extern S8 g_szMonProcessInfo[MAX_PROC_CNT * MAX_BUFF_LENGTH];
 extern MON_PROC_STATUS_S * g_pastProc[MAX_PROC_CNT];
 extern U32 g_ulPidCnt; //实际运行的进程个数
 
@@ -373,7 +372,7 @@ static U32 mon_get_proc_pid_list()
    /* 存放pid的目录 */
    S8 szPidDir[1024] = {0};
    S8 szServiceRoot[256] = {0};
-   S8 *pszRoot = NULL;
+   S8 *pszRoot = NULL, *pszPos = NULL;
    U32 ulPid = 0, ulRet = U32_BUTT;
 
    FILE * fp = NULL;
@@ -456,6 +455,11 @@ static U32 mon_get_proc_pid_list()
             if (dos_strstr(szProcAllName, "monitor"))
             {
                 continue;
+            }
+            pszPos = dos_strstr(szProcAllName, "\n");
+            if (DOS_ADDR_VALID(pszPos))
+            {
+                *pszPos = '\0';
             }
 
             dos_snprintf(g_pastProc[g_ulPidCnt]->szProcName
@@ -735,8 +739,8 @@ U32  mon_check_all_process()
             if(0 == dos_strcmp(pszPtr, szProcName))
             {
             /* 进程找到，说明szProcName已启动 */
-            bHasStarted = DOS_TRUE;
-            break;
+                bHasStarted = DOS_TRUE;
+                break;
             }
         }
 
