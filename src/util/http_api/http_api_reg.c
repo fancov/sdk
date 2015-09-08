@@ -9,7 +9,7 @@ extern "C"{
 #include <http_api.h>
 
 #if INCLUDE_RES_MONITOR
-#include "../../src/service/mon_def.h"
+#include "../../service/monitor/mon_def.h"
 extern  DB_HANDLE_ST * g_pstDBHandle;
 #endif
 

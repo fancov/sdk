@@ -1544,10 +1544,10 @@ U32  sc_show_caller_setting(U32 ulIndex, U32 ulSettingID)
     U32 ulHashIndex = U32_BUTT;
     HASH_NODE_S *pstHashNode  = NULL;
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6s%12s%7s%9s%7s%9s%-64s"
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6s%12s%14s%9s%7s%9s%-64s"
                     , "Index", "CustomerID", "SrcID", "SrcType", "DstID", "DstType", " SettingName");
     cli_out_string(ulIndex, szBuff);
-    cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, "\r\n---------------------------------------------------------------------------------------------------------------");
 
     HASH_Scan_Table(g_pstHashCallerSetting, ulHashIndex)
     {
@@ -1564,7 +1564,7 @@ U32  sc_show_caller_setting(U32 ulIndex, U32 ulSettingID)
                 continue;
             }
             pstSetting = (SC_CALLER_SETTING_ST *)pstHashNode->pHandle;
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6u%12u%7u%9u%7u%9u %-64s"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6u%12u%14u%9u%7u%9u %-64s"
                             , pstSetting->ulID
                             , pstSetting->ulCustomerID
                             , pstSetting->ulSrcID

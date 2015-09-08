@@ -53,10 +53,12 @@ U32 mon_stop();
 extern U32 mon_init_notify_list();
 #endif
 
+
 #if INCLUDE_CC_SC
 U32 mod_dipcc_sc_load();
 U32 mod_dipcc_sc_runtime();
 #endif
+
 S32 root(S32 _argc, S8 ** _argv)
 {
 #if INCLUDE_SERVICE_PYTHON
@@ -126,19 +128,19 @@ S32 root(S32 _argc, S8 ** _argv)
     lRet = mon_init();
     if(DOS_SUCC != lRet)
     {
-       DOS_ASSERT(0);
-       return -1;
+        DOS_ASSERT(0);
+        return -1;
     }
     lRet = mon_start();
     if(DOS_SUCC != lRet)
     {
-       DOS_ASSERT(0);
-       lRet = mon_stop();
-       if(DOS_SUCC != lRet)
-       {
-          DOS_ASSERT(0);
-       }
-       return -1;
+        DOS_ASSERT(0);
+        lRet = mon_stop();
+        if(DOS_SUCC != lRet)
+        {
+            DOS_ASSERT(0);
+        }
+        return -1;
     }
 #endif //INCLUDE_RES_MONITOR
 
