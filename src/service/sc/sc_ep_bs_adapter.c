@@ -249,6 +249,7 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
     U32        ulBSSrvIndex     = 0;
     BOOL       blIsOutboundCall = DOS_FALSE;
     BOOL       blIsExternalCall = DOS_FALSE;
+    BOOL       blNeedOutbond    = DOS_TRUE;
 
     if (DOS_ADDR_INVALID(aucSCSrvList)
         || ulSCSrvCnt <= 0
@@ -278,10 +279,14 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
                     aucBSSrvList[ulBSSrvIndex] = BS_SERV_AUTO_DIALING;
                     ulBSSrvIndex++;
                 }
+
+                blNeedOutbond = DOS_FALSE;
                 break;
 
             case SC_SERV_PREVIEW_DIALING:
             case SC_SERV_PREDICTIVE_DIALING:
+
+                blNeedOutbond = DOS_FALSE;
                 DOS_ASSERT(0);
                 break;
 
@@ -373,7 +378,8 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
 
     if (blIsOutboundCall && blIsExternalCall)
     {
-        if (ulBSSrvIndex < ulBSSrvCnt)
+        if (blNeedOutbond
+            && ulBSSrvIndex < ulBSSrvCnt)
         {
             aucBSSrvList[ulBSSrvIndex] = BS_SERV_OUTBAND_CALL;
             ulBSSrvIndex++;
