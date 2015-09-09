@@ -967,23 +967,23 @@ static U32 mon_add_data_to_db()
  */
 U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc)
 {
-   S32 lRet = 0;
-   U32 ulIndex = 0;
-   time_t lCur;
-   struct tm *pstCurTime;
+    S32 lRet = 0;
+    U32 ulIndex = 0;
+    time_t lCur;
+    struct tm *pstCurTime;
 
-   S8 szSQLCmd[SQL_CMD_MAX_LENGTH] = {0};
+    S8 szSQLCmd[SQL_CMD_MAX_LENGTH] = {0};
 
-   time(&lCur);
-   pstCurTime = localtime(&lCur);
+    time(&lCur);
+    pstCurTime = localtime(&lCur);
 
-   ulIndex = mon_get_msg_index(ulResId);
-   if (U32_BUTT == ulIndex)
-   {
+    ulIndex = mon_get_msg_index(ulResId);
+    if (U32_BUTT == ulIndex)
+    {
        return DOS_FAIL;
-   }
+    }
 
-   dos_snprintf(szSQLCmd, SQL_CMD_MAX_LENGTH, "INSERT INTO tbl_alarmlog(" \
+    dos_snprintf(szSQLCmd, SQL_CMD_MAX_LENGTH, "INSERT INTO tbl_alarmlog(" \
                "ctime,warning,cause,type,object,content,cycle,status)" \
                " VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',concat(\'%s\', lower(hex(%u))),%u,%u," \
                "%u,\'%s\',%u,%u);"
@@ -1003,14 +1003,14 @@ U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc)
                , g_pstWarningMsg[ulIndex].bExcep == DOS_FALSE ? 0:1
              );
 
-   lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
-   if(DB_ERR_SUCC != lRet)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Database connected FAIL.");
-      return DOS_FAIL;
-   }
+    lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
+    if(DB_ERR_SUCC != lRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Database connected FAIL.");
+        return DOS_FAIL;
+    }
 
-   return DOS_SUCC;
+    return DOS_SUCC;
 }
 
 
@@ -1023,86 +1023,86 @@ U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc)
  */
 static U32 mon_init_db_conn()
 {
-   S8  szDBHost[48] = {0};
-   S8  szDBUsername[48] = {0};
-   S8  szDBPassword[48] = {0};
-   S8  szDBName[48] = {0};
-   S8  szDBSockPath[48] = {0,};
-   U16 usDBPort = 0;
+    S8  szDBHost[48] = {0};
+    S8  szDBUsername[48] = {0};
+    S8  szDBPassword[48] = {0};
+    S8  szDBName[48] = {0};
+    S8  szDBSockPath[48] = {0,};
+    U16 usDBPort = 0;
 
-   if(config_get_db_host(szDBHost, sizeof(szDBHost)) < 0 )
-   {
+    if(config_get_db_host(szDBHost, sizeof(szDBHost)) < 0 )
+    {
         DOS_ASSERT(0);
         return DOS_FAIL;
-   }
+    }
 
-   if(config_get_syssrc_db_user(szDBUsername, sizeof(szDBUsername)) < 0 )
-   {
+    if(config_get_syssrc_db_user(szDBUsername, sizeof(szDBUsername)) < 0 )
+    {
         DOS_ASSERT(0);
         return DOS_FAIL;
-   }
+    }
 
-   if(config_get_syssrc_db_password(szDBPassword, sizeof(szDBPassword)) < 0 )
-   {
+    if(config_get_syssrc_db_password(szDBPassword, sizeof(szDBPassword)) < 0 )
+    {
         DOS_ASSERT(0);
         return DOS_FAIL;
-   }
+    }
 
-   if(config_get_syssrc_db_dbname(szDBName, sizeof(szDBName)) < 0 )
-   {
+    if(config_get_syssrc_db_dbname(szDBName, sizeof(szDBName)) < 0 )
+    {
         DOS_ASSERT(0);
 
         return DOS_FAIL;
-   }
+    }
 
-   if (config_get_mysqlsock_path(szDBSockPath, sizeof(szDBSockPath)) < 0)
-   {
+    if (config_get_mysqlsock_path(szDBSockPath, sizeof(szDBSockPath)) < 0)
+    {
         szDBSockPath[0] = '\0';
-   }
+    }
 
-   usDBPort = config_get_db_port();
-   if (0 == usDBPort || U16_BUTT == usDBPort)
-   {
-       usDBPort = 3306;
-   }
+    usDBPort = config_get_db_port();
+    if (0 == usDBPort || U16_BUTT == usDBPort)
+    {
+        usDBPort = 3306;
+    }
 
-   g_pstDBHandle = db_create(DB_TYPE_MYSQL);
-   if (DOS_ADDR_INVALID(g_pstDBHandle))
-   {
-       DOS_ASSERT(0);
-       return DOS_FAIL;
-   }
+    g_pstDBHandle = db_create(DB_TYPE_MYSQL);
+    if (DOS_ADDR_INVALID(g_pstDBHandle))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
-   dos_snprintf(g_pstDBHandle->szHost, sizeof(g_pstDBHandle->szHost)
+    dos_snprintf(g_pstDBHandle->szHost, sizeof(g_pstDBHandle->szHost)
                 , "%s", szDBHost);
-   dos_snprintf(g_pstDBHandle->szUsername, sizeof(g_pstDBHandle->szUsername)
+    dos_snprintf(g_pstDBHandle->szUsername, sizeof(g_pstDBHandle->szUsername)
                 , "%s", szDBUsername);
-   dos_snprintf(g_pstDBHandle->szPassword, sizeof(g_pstDBHandle->szPassword)
+    dos_snprintf(g_pstDBHandle->szPassword, sizeof(g_pstDBHandle->szPassword)
                 , "%s", szDBPassword);
-   dos_snprintf(g_pstDBHandle->szDBName, sizeof(g_pstDBHandle->szDBName)
+    dos_snprintf(g_pstDBHandle->szDBName, sizeof(g_pstDBHandle->szDBName)
                 , "%s", szDBName);
 
-   if ('\0' != szDBSockPath[0])
-   {
+    if ('\0' != szDBSockPath[0])
+    {
         dos_snprintf(g_pstDBHandle->szSockPath, sizeof(g_pstDBHandle->szSockPath)
                         , "%s", szDBSockPath);
-   }
-   else
-   {
+    }
+    else
+    {
         g_pstDBHandle->szSockPath[0] = '\0';
-   }
+    }
 
-   g_pstDBHandle->usPort = usDBPort;
+    g_pstDBHandle->usPort = usDBPort;
 
-   if (db_open(g_pstDBHandle) < 0 )
-   {
-      DOS_ASSERT(0);
-      db_destroy(&g_pstDBHandle);
-      g_pstDBHandle = NULL;
-      return DOS_FAIL;
-   }
+    if (db_open(g_pstDBHandle) < 0 )
+    {
+        DOS_ASSERT(0);
+        db_destroy(&g_pstDBHandle);
+        g_pstDBHandle = NULL;
+        return DOS_FAIL;
+    }
 
-   return DOS_SUCC;
+    return DOS_SUCC;
 }
 
 
@@ -1180,75 +1180,75 @@ errno_proc:
  */
 static U32 mon_init_warning_cond()
 {
-   S32 lRet = 0;
+    S32 lRet = 0;
 
-   lRet = config_hb_init();
-   if(lRet < 0)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Config HB FAIL.");
-      return DOS_FAIL;
-   }
+    lRet = config_hb_init();
+    if(lRet < 0)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Config HB FAIL.");
+        return DOS_FAIL;
+    }
 
-   g_pstCond = (MON_THRESHOLD_S *)dos_dmem_alloc(sizeof(MON_THRESHOLD_S));
-   if(DOS_ADDR_INVALID(g_pstCond))
-   {
-      DOS_ASSERT(0);
-      config_hb_deinit();
-      return DOS_FAIL;
-   }
+    g_pstCond = (MON_THRESHOLD_S *)dos_dmem_alloc(sizeof(MON_THRESHOLD_S));
+    if(DOS_ADDR_INVALID(g_pstCond))
+    {
+        DOS_ASSERT(0);
+        config_hb_deinit();
+        return DOS_FAIL;
+    }
 
-   lRet = config_hb_threshold_mem(&(g_pstCond->ulMemThreshold));
-   if(lRet < 0)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_WARNING, "Get Max memory Threshold FAIL. It will be assigned default Value.");
+    lRet = config_hb_threshold_mem(&g_pstCond->ulMemThreshold);
+    if (lRet < 0)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_WARNING, "Get Max memory Threshold FAIL. It will be assigned default Value.");
 
-      /* 如果数据读取失败，给设置默认值 */
-      g_pstCond->ulMemThreshold = 90;
-   }
+        /* 如果数据读取失败，给设置默认值 */
+        g_pstCond->ulMemThreshold = 90;
+    }
 
-   lRet = config_hb_threshold_cpu(&(g_pstCond->ulCPUThreshold)
-                                , &(g_pstCond->ul5sCPUThreshold)
-                                , &(g_pstCond->ul1minCPUThreshold)
-                                , &(g_pstCond->ul10minCPUThreshold));
-   if(lRet < 0)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_WARNING, "Get Max CPU Threshold FAIL. It will be assigned default Value.");
+    lRet = config_hb_threshold_cpu(&g_pstCond->ulCPUThreshold
+                                , &g_pstCond->ul5sCPUThreshold
+                                , &g_pstCond->ul1minCPUThreshold
+                                , &g_pstCond->ul10minCPUThreshold);
+    if (lRet < 0)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_WARNING, "Get Max CPU Threshold FAIL. It will be assigned default Value.");
 
-      /* 如果读取失败，设置默认值 */
-      g_pstCond->ulCPUThreshold      = 95;
-      g_pstCond->ul5sCPUThreshold    = 95;
-      g_pstCond->ul1minCPUThreshold  = 95;
-      g_pstCond->ul10minCPUThreshold = 95;
-   }
+        /* 如果读取失败，设置默认值 */
+        g_pstCond->ulCPUThreshold      = 95;
+        g_pstCond->ul5sCPUThreshold    = 95;
+        g_pstCond->ul1minCPUThreshold  = 95;
+        g_pstCond->ul10minCPUThreshold = 95;
+    }
 
-   lRet = config_hb_threshold_disk(&(g_pstCond->ulPartitionThreshold)
-                                 , &(g_pstCond->ulDiskThreshold));
-   if(lRet < 0)
-   {
-      mon_trace(MON_TRACE_MH, LOG_LEVEL_WARNING, "Get Max Partition Threshold FAIL. It will be assigned default Value.");
+    lRet = config_hb_threshold_disk(&g_pstCond->ulPartitionThreshold
+                                    , &g_pstCond->ulDiskThreshold);
+    if (lRet < 0)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_WARNING, "Get Max Partition Threshold FAIL. It will be assigned default Value.");
 
-      /* 读取失败则设置默认值 */
-      g_pstCond->ulPartitionThreshold = 95;
-      g_pstCond->ulDiskThreshold = 90;
-   }
+        /* 读取失败则设置默认值 */
+        g_pstCond->ulPartitionThreshold = 95;
+        g_pstCond->ulDiskThreshold = 90;
+    }
 
-   lRet = config_hb_threshold_bandwidth(&(g_pstCond->ulMaxBandWidth));
-   if (lRet < 0)
-   {
+    lRet = config_hb_threshold_bandwidth(&g_pstCond->ulMaxBandWidth);
+    if (lRet < 0)
+    {
         mon_trace(MON_TRACE_MH, LOG_LEVEL_WARNING, "Get Max Bandwidth Threshold FAIL. It will be assigned default Value.");
         g_pstCond->ulMaxBandWidth = 90;
-   }
+    }
 
-   lRet = config_hb_threshold_proc(&(g_pstCond->ulProcMemThreshold));
-   if(lRet < 0)
-   {
+    lRet = config_hb_threshold_proc(&g_pstCond->ulProcMemThreshold);
+    if (lRet < 0)
+    {
         mon_trace(MON_TRACE_MH, LOG_LEVEL_WARNING, "Get Threshold value of Process FAIL. It will be assigned default Value.");
 
         /* 如果读取失败则设置默认值 */
         g_pstCond->ulProcMemThreshold = 40;
-   }
+    }
 
-   return DOS_SUCC;
+    return DOS_SUCC;
 }
 
 
@@ -1413,10 +1413,10 @@ U32 mon_get_msg_index(U32 ulNo)
  */
 static U32 mon_close_db_conn()
 {
-   db_destroy(&g_pstDBHandle);
-   dos_dmem_free(g_pstDBHandle);
-   g_pstDBHandle = NULL;
-   return DOS_SUCC;
+    db_destroy(&g_pstDBHandle);
+    dos_dmem_free(g_pstDBHandle);
+    g_pstDBHandle = NULL;
+    return DOS_SUCC;
 }
 
 /**
