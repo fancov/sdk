@@ -27,7 +27,6 @@ typedef struct tagMonCPUQueue MON_CPU_QUEUE_S;
 static S8 m_szMonCPUInfoFile[]            = "/proc/stat";
 static MON_CPU_QUEUE_S * m_pstCPUQueue; //CPU∂”¡–
 
-extern S8 g_szMonCPUInfo[MAX_BUFF_LENGTH];
 extern MON_CPU_RSLT_S * g_pstCpuRslt;
 
 static U32  mon_cpu_malloc(MON_SYS_CPU_TIME_S ** ppstCpu);

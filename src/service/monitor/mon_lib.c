@@ -46,6 +46,10 @@ MON_MSG_MAP_ST m_pstMsgMap[][MAX_EXCEPT_CNT] = {
     }   /* 编号是1的是美式英文 */
 };
 
+U32 mon_system();
+static U32 mon_restart_immediately();
+static U32 mon_restart_fixed(U32 ulTimeStamp);
+static U32 mon_restart_later();
 
 /**
  * 功能:初始化通知消息队列
@@ -308,6 +312,138 @@ S32 mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     return DOS_SUCC;
 }
 
+U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp)
+{
+    U32 ulRet = U32_BUTT;
+
+    switch (ulStyle)
+    {
+        /* 立即重启 */
+        case MON_SYS_RESTART_IMMEDIATELY:
+        {
+            ulRet = mon_restart_immediately();
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            break;
+        }
+        /* 指定时间重启 */
+        case MON_SYS_RESTART_FIXED:
+        {
+            ulRet = mon_restart_fixed(ulTimeStamp);
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            break;
+        }
+        /* 稍后重启(没有业务跑的时候重启) */
+        case MON_SYS_RESTART_LATER:
+        {
+            ulRet = mon_restart_later();
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            break;
+        }
+        default:
+            break;
+    }
+    mon_trace(MON_TRACE_LIB, LOG_LEVEL_DEBUG, "Restart System SUCC.(Style:%u, TimeStamp:%u).", ulStyle, ulTimeStamp);
+
+    return DOS_SUCC;
+}
+
+static U32 mon_restart_immediately()
+{
+    U32 ulRet = mon_system("/sbin/reboot");
+
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "Restart System Immediately FAIL.");
+        return DOS_FAIL;
+    }
+    mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "Restart System Immediately SUCC.");
+
+    return DOS_SUCC;
+}
+
+static U32 mon_restart_fixed(U32 ulTimeStamp)
+{
+    time_t  ulCurTime = time(0);
+    S8  szCmd[32] = {0};
+    S32 lTimeDiff = ulTimeStamp - ulCurTime, lDiff;
+    U32 ulRet = U32_BUTT;
+
+    if (U32_BUTT == ulTimeStamp || 0 == ulTimeStamp || lTimeDiff < 0)
+    {
+        mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "Restart System at Fixed Time FAIL. TimeStamp:%u, CurTimeStamp:%u", ulTimeStamp, ulCurTime);
+        return DOS_FAIL;
+    }
+
+    lDiff = (lTimeDiff + lTimeDiff % 60)/60;
+    dos_snprintf(szCmd, sizeof(szCmd), "shutdown -r %d", lDiff);
+    mon_trace(MON_TRACE_LIB, LOG_LEVEL_DEBUG, "The System will be restarted After %d minute(s).", lDiff);
+
+    ulRet = mon_system(szCmd);
+    if (DOS_SUCC != ulRet)
+    {
+        DOS_ASSERT(0);
+        mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "Restart System at Fixed Time FAIL.");
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+static U32 mon_restart_later()
+{
+    return DOS_SUCC;
+}
+
+
+U32 mon_system(S8 *pszCmd)
+{
+    S32  lStatus = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pszCmd)
+        || '\0' == *pszCmd)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    lStatus = system(pszCmd);
+    if (lStatus < 0)
+    {
+        mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "Command \'%s\' execute FAIL. errno:%d, cause:%s", pszCmd, errno, strerror(errno));
+        return DOS_FAIL;
+    }
+
+    if (WIFEXITED(lStatus))
+    {
+        mon_trace(MON_TRACE_LIB, LOG_LEVEL_DEBUG, "Command:%s ==> Normal termination,exit status = %d.", pszCmd, WEXITSTATUS(lStatus));
+    }
+    else if (WIFSIGNALED(lStatus))
+    {
+        mon_trace(MON_TRACE_LIB, LOG_LEVEL_DEBUG, "Command:%s ==> Abnormal termination,signal number = %d.", pszCmd, WTERMSIG(lStatus));
+    }
+    else if (WIFSTOPPED(lStatus))
+    {
+        mon_trace(MON_TRACE_LIB, LOG_LEVEL_DEBUG, "Command:%s ==> Process stoped,signal number = %d.", pszCmd, WIFSTOPPED(lStatus));
+    }
+    else
+    {
+        mon_trace(MON_TRACE_LIB, LOG_LEVEL_DEBUG, "Command:%s ==> Another Cause, system returned Code:%d.", pszCmd, lStatus);
+    }
+
+    return DOS_SUCC;
+}
 
 /**
  * 功能:为字符串分配内存

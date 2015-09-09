@@ -27,7 +27,6 @@ typedef struct tagMonTransData
     U64 uLOutSize;
 }MON_TRANS_DATA_S;
 
-extern S8 g_szMonNetworkInfo[MAX_NETCARD_CNT * MAX_BUFF_LENGTH];
 extern MON_NET_CARD_PARAM_S * g_pastNet[MAX_NETCARD_CNT];
 extern U32 g_ulNetCnt;
 

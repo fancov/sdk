@@ -10,11 +10,12 @@ extern "C"{
 #if INCLUDE_DISK_MONITOR
 
 #include <fcntl.h>
+#include <mntent.h>
+#include <sys/vfs.h>
 #include "mon_get_disk_info.h"
 #include "mon_lib.h"
 #include "mon_def.h"
 
-extern  S8 g_szMonDiskInfo[MAX_PARTITION_COUNT * MAX_BUFF_LENGTH];
 extern  MON_SYS_PART_DATA_S * g_pastPartition[MAX_PARTITION_COUNT];
 extern  U32 g_ulPartCnt;
 
@@ -22,7 +23,7 @@ extern  U32 g_ulPartCnt;
 static U32  mon_get_disk_temperature();
 #endif
 
-static S8 * mon_get_disk_serial_num(S8 * pszPartitionName);
+U32  mon_get_disk_serial_num(S8 *pszPartitionName, S8 *pszSerialNum, U32 ulLen);
 static U32  mon_partition_reset_data();
 
 /**
@@ -91,9 +92,7 @@ static U32  mon_partition_reset_data()
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-
     dos_memzero(pstPartition, MAX_PARTITION_COUNT * sizeof(MON_SYS_PART_DATA_S));
-
     return DOS_SUCC;
 }
 
@@ -120,120 +119,87 @@ static U32  mon_get_disk_temperature()
  * 返回值：
  *   成功返回DOS_SUCC，失败返回DOS_FAIL
  */
-static S8 *  mon_get_disk_serial_num(S8 * pszPartitionName)
-{   /* 目前没有有效的方法获得其硬件序列 */
-    if(DOS_ADDR_INVALID(pszPartitionName))
+U32  mon_get_disk_serial_num(S8 *pszPartitionName, S8 *pszSerialNum, U32 ulLen)
+{
+    if (DOS_ADDR_INVALID(pszPartitionName)
+        || DOS_ADDR_INVALID(pszSerialNum)
+        || 0 == ulLen)
     {
         DOS_ASSERT(0);
-        return NULL;
+        return DOS_FAIL;
     }
+    dos_snprintf(pszSerialNum, ulLen, "%s", "IC35L180AVV207-1");
 
-    return "IC35L180AVV207-1";
+    return DOS_SUCC;
 }
 
-/** df命令输出
- * Filesystem                   1K-blocks     Used Available Use% Mounted on
- * /dev/mapper/VolGroup-lv_root   8780808  6175596   2159160  75% /
- * tmpfs                           699708       72    699636   1% /dev/shm
- * /dev/sda1                       495844    34870    435374   8% /boot
- * .host:/                      209715196 19219176 190496020  10% /mnt/hgfs
- * 功能:获取磁盘的序列号信息字符串
- * 参数集：
- *   无参数
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
- */
- U32 mon_get_partition_data()
- {
-     S8 szDfCmd[] = "df -l | grep -v \'tmpfs\'| grep /dev/";
-     S8 szBuff[MAX_BUFF_LENGTH] = {0};
-     FILE *fp = NULL;
-     S8 *paszInfo[6] = {0};
-     S8 *pszTemp = NULL;
-     U32 ulRet = U32_BUTT;
-     U32 ulTotalVolume = 0, ulUsedVolume = 0, ulAvailVolume = 0, ulTotalRate = 0;
+/* 具体请查看statfs函数的用法 */
+U32 mon_get_partition_data()
+{
+    FILE  *fpMountTable = NULL;
+    struct mntent *pstMountEntry = NULL;
+    struct statfs stFileSys;
+    const S8  *pszName = NULL, *pszMountPoint = NULL;
+    U32  ulRet = U32_BUTT;
+    U64  LUsed = 0, LTotal = 0;
 
-     g_ulPartCnt = 0;
-
-     fp = popen(szDfCmd, "r");
-     if (DOS_ADDR_INVALID(fp))
-     {
-         DOS_ASSERT(0);
-         return DOS_FAIL;
-     }
-
-     ulRet = mon_partition_reset_data();
-     if (DOS_SUCC != ulRet)
-     {
-         mon_trace(MON_TRACE_DISK, LOG_LEVEL_ERROR, "Reset Partition Data FAIL.");
-         return DOS_FAIL;
-     }
-
-     while( !feof(fp))
-     {
-         if (NULL != fgets(szBuff, MAX_BUFF_LENGTH, fp))
-         {
-             ulRet = mon_analyse_by_reg_expr(szBuff, " \t\n", paszInfo, sizeof(paszInfo) / sizeof(paszInfo[0]));
-             if (DOS_SUCC != ulRet)
-             {
-                 mon_trace(MON_TRACE_DISK, LOG_LEVEL_ERROR, "Analyse Buff by Regular expression FAIL.");
-                 goto fail;
-             }
-
-            dos_snprintf(g_pastPartition[g_ulPartCnt]->szPartitionName, MAX_PARTITION_LENGTH, "%s", paszInfo[0]);
-
-            if (dos_atoul(paszInfo[1], &ulTotalVolume) < 0)
-            {
-                DOS_ASSERT(0);
-                goto fail;
-            }
-
-            if (dos_atoul(paszInfo[2], &ulUsedVolume) < 0)
-            {
-                DOS_ASSERT(0);
-                goto fail;
-            }
-
-            if (dos_atoul(paszInfo[3], &ulAvailVolume) < 0)
-            {
-                DOS_ASSERT(0);
-                goto fail;
-            }
-
-            pszTemp = paszInfo[4];
-            while('%' != *pszTemp)
-            {
-                ++pszTemp;
-            }
-
-            *pszTemp = '\0';
-
-            if (dos_atoul(paszInfo[4], &ulTotalRate) < 0)
-            {
-                DOS_ASSERT(0);
-                goto fail;
-            }
-
-            g_pastPartition[g_ulPartCnt]->ulPartitionTotalBytes = (ulTotalVolume + ulTotalVolume % 1024) / 1024;
-            g_pastPartition[g_ulPartCnt]->ulPartitionUsedBytes = (ulUsedVolume + ulUsedVolume % 1024) / 1024;
-            g_pastPartition[g_ulPartCnt]->ulPartitionAvailBytes = (ulAvailVolume + ulAvailVolume % 1024) / 1024;
-            g_pastPartition[g_ulPartCnt]->ulPartitionUsageRate = (ulTotalRate + ulTotalRate % 1024) / 1024;
-
-            pszTemp = mon_get_disk_serial_num(g_pastPartition[g_ulPartCnt]->szPartitionName);
-            dos_snprintf(g_pastPartition[g_ulPartCnt]->szDiskSerialNo, MAX_PARTITION_LENGTH, "%s", pszTemp);
-
-            ++g_ulPartCnt;
-        }
+    fpMountTable = setmntent("/etc/mtab", "r");
+    if (DOS_ADDR_INVALID(fpMountTable))
+    {
+        DOS_ASSERT(0);
     }
 
-    pclose(fp);
-    fp = NULL;
-    return DOS_SUCC;
+    mon_partition_reset_data();
 
-fail:
-    pclose(fp);
-    fp = NULL;
-    return DOS_FAIL;
+    g_ulPartCnt = 0;
+    while (1)
+    {
+        pstMountEntry = getmntent(fpMountTable);
+        if (!pstMountEntry)
+        {
+            endmntent(fpMountTable);
+            fpMountTable = NULL;
+            break;
+        }
+        pszName = pstMountEntry->mnt_fsname;
+        /* 过滤掉不以'/'开头的与两个连续以'/'开头的 */
+        if ('/' != *pszName || ('/' == *pszName && '/' == *(pszName + 1)))
+        {
+            continue;
+        }
+        pszMountPoint = pstMountEntry->mnt_dir;
+        if (statfs(pszMountPoint, &stFileSys) < 0)
+        {
+            DOS_ASSERT(0);
+            mon_trace(MON_TRACE_DISK, LOG_LEVEL_ERROR, "statfs FAIL. MountPoint:%s, errno:%d, cause:%s.", pszMountPoint, errno, strerror(errno));
+            continue;
+        }
+
+        /* 填充分区名 */
+        dos_snprintf(g_pastPartition[g_ulPartCnt]->szPartitionName, MAX_PARTITION_LENGTH, "%s", pstMountEntry->mnt_fsname);
+
+        g_pastPartition[g_ulPartCnt]->uLPartitionTotalBytes = stFileSys.f_blocks * stFileSys.f_bsize;
+        g_pastPartition[g_ulPartCnt]->uLPartitionAvailBytes = stFileSys.f_bavail * stFileSys.f_bsize;
+        g_pastPartition[g_ulPartCnt]->uLPartitionUsedBytes = (stFileSys.f_blocks - stFileSys.f_bavail) * stFileSys.f_bsize;
+
+        LUsed = g_pastPartition[g_ulPartCnt]->uLPartitionUsedBytes * 100;
+        LTotal = g_pastPartition[g_ulPartCnt]->uLPartitionTotalBytes;
+        g_pastPartition[g_ulPartCnt]->uLPartitionUsageRate = (LUsed + LUsed % LTotal) / LTotal;
+
+        ulRet = mon_get_disk_serial_num(g_pastPartition[g_ulPartCnt]->szPartitionName, g_pastPartition[g_ulPartCnt]->szDiskSerialNo, MAX_PARTITION_LENGTH);
+        if (DOS_SUCC != ulRet)
+        {
+            DOS_ASSERT(0);
+            endmntent(fpMountTable);
+            fpMountTable = NULL;
+            return DOS_FAIL;
+        }
+        ++g_ulPartCnt;
+    }
+
+    endmntent(fpMountTable);
+    fpMountTable = NULL;
+    return DOS_SUCC;
  }
 
 /**
@@ -246,36 +212,37 @@ fail:
 U32  mon_get_total_disk_usage_rate()
 {
     U32 ulRows = 0;
-    U32 ulTotal = 0, ulUsed = 0;
+    U64 LTotal = 0, LUsed = 0;
 
     for (ulRows = 0; ulRows < g_ulPartCnt; ++ulRows)
     {
-        ulTotal += g_pastPartition[ulRows]->ulPartitionAvailBytes + g_pastPartition[ulRows]->ulPartitionUsedBytes ;
-        ulUsed += g_pastPartition[ulRows]->ulPartitionUsedBytes;
+        LTotal += g_pastPartition[ulRows]->uLPartitionTotalBytes;
+        LUsed += g_pastPartition[ulRows]->uLPartitionUsedBytes;
     }
 
-    ulUsed *= 100;
+    LUsed *= 100;
 
-    return ulUsed / ulTotal + 1;
+    return (LUsed + LUsed % LTotal) / LTotal;
 }
 
 /**
- * 功能:获取磁盘的总占用率
+ * 功能:获取磁盘的总字节数
  * 参数集：
  *   无参数
  * 返回值：
  *   成功返回磁盘总字节数(KBytes)，失败返回DOS_FAIL
  */
-U32 mon_get_total_disk_kbytes()
+U64 mon_get_total_disk_bytes()
 {
-    U32  ulTotal = 0, ulRows = 0;
+    U64  uLTotal = 0;
+    U32  ulRows = 0;
 
     for (ulRows = 0; ulRows < g_ulPartCnt; ++ulRows)
     {
-        ulTotal += g_pastPartition[ulRows]->ulPartitionTotalBytes;
+        uLTotal += g_pastPartition[ulRows]->uLPartitionTotalBytes;
     }
 
-    return ulTotal;
+    return uLTotal;
 }
 
 #endif //end #if INCLUDE_DISK_MONITOR

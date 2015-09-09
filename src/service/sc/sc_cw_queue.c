@@ -133,8 +133,7 @@ U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID)
     }
 
     pstDLLNode = dll_find(&g_stCWQMngt, (VOID *)&ulAgentGrpID, sc_cwq_find_agentgrp);
-    if (DOS_ADDR_INVALID(pstDLLNode)
-        || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+    if (DOS_ADDR_INVALID(pstDLLNode))
     {
         pstDLLNode = dos_dmem_alloc(sizeof(DLL_NODE_S));
         if (DOS_ADDR_INVALID(pstDLLNode))
@@ -145,8 +144,18 @@ U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID)
         }
         DLL_Init_Node(pstDLLNode);
 
+        pthread_mutex_lock(&g_mutexCWQMngt);
+        DLL_Add(&g_stCWQMngt, pstDLLNode);
+        pthread_mutex_unlock(&g_mutexCWQMngt);
+
+        sc_acd_agent_grp_add_call(ulAgentGrpID);
+    }
+
+    pstCWQNode = pstDLLNode->pHandle;
+    if (DOS_ADDR_INVALID(pstCWQNode))
+    {
         pstCWQNode = dos_dmem_alloc(sizeof(SC_CWQ_NODE_ST));
-        if (DOS_ADDR_INVALID(pstDLLNode))
+        if (DOS_ADDR_INVALID(pstCWQNode))
         {
             DOS_ASSERT(0);
 
@@ -158,16 +167,6 @@ U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID)
         pthread_mutex_init(&pstCWQNode->mutexCWQMngt, NULL);
 
         pstDLLNode->pHandle = pstCWQNode;
-
-        pthread_mutex_lock(&g_mutexCWQMngt);
-        DLL_Add(&g_stCWQMngt, pstDLLNode);
-        pthread_mutex_unlock(&g_mutexCWQMngt);
-
-        sc_acd_agent_grp_add_call(ulAgentGrpID);
-    }
-    else
-    {
-        pstCWQNode = pstDLLNode->pHandle;
     }
 
     pstDLLNode = dos_dmem_alloc(sizeof(DLL_NODE_S));

@@ -46,6 +46,8 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
     {"did",                      sc_http_api_did_action},
     {"black",                    sc_http_api_black_action},
     {"caller",                   sc_http_api_caller_action},
+    {"callergrp",                sc_http_api_callergrp_action},
+    {"callerset",                sc_http_api_callerset_action},
     {"eix",                      sc_http_api_eix_action},
     {"numlmt",                   sc_http_api_numlmt_action},
     {"numtransform",             sc_http_api_numtransform_action},
@@ -368,6 +370,128 @@ exec_fail:
 }
 
 //////////////////////////////////////////////////////
+U32 sc_http_api_callerset_action(list_t *pstArgv)
+{
+    S8  *pszCallerSetID = NULL, *pszAction = NULL;
+    U32 ulSettingID = U32_BUTT, ulAction = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+    SC_TRACE_IN(pstArgv, 0, 0, 0);
+
+    /* 获取主叫设定ID */
+    pszCallerSetID = sc_http_api_get_value(pstArgv, "callerset_id");
+    pszAction = sc_http_api_get_value(pstArgv, "action");
+
+    if (DOS_ADDR_INVALID(pszCallerSetID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        sc_debug(SC_HTTP_API, LOG_LEVEL_DEBUG, "CallerGrp Data is Synchronizing");
+    }
+    else
+    {
+        if (dos_atoul(pszCallerSetID, &ulSettingID) < 0)
+        {
+            DOS_ASSERT(0);
+            goto invalid_params;
+        }
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_SET_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_SET_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_SET_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (sc_http_gateway_update_proc(ulAction, ulSettingID) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_SUCC;
+invalid_params:
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_INVALID_PARAM;
+}
+
+U32 sc_http_api_callergrp_action(list_t *pstArgv)
+{
+    S8  *pszCallerGrpID = NULL, *pszAction = NULL;
+    U32 ulCallerGrpID = U32_BUTT, ulAction = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+    SC_TRACE_IN(pstArgv, 0, 0, 0);
+
+    /* 获取主叫号码组的id */
+    pszCallerGrpID = sc_http_api_get_value(pstArgv, "callergrp_id");
+    pszAction = sc_http_api_get_value(pstArgv, "action");
+
+    if (DOS_ADDR_INVALID(pszCallerGrpID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        sc_debug(SC_HTTP_API, LOG_LEVEL_DEBUG, "CallerGrp Data is Synchronizing");
+    }
+    else
+    {
+        if (dos_atoul(pszCallerGrpID, &ulCallerGrpID) < 0)
+        {
+            DOS_ASSERT(0);
+            goto invalid_params;
+        }
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_GRP_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_GRP_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_CALLER_GRP_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (sc_http_gateway_update_proc(ulAction, ulCallerGrpID) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_SUCC;
+invalid_params:
+        SC_TRACE_OUT();
+        return SC_HTTP_ERRNO_INVALID_PARAM;
+}
+
 
 /**
  * 函数: U32 sc_http_api_gateway(SC_HTTP_CLIENT_CB_S *pstClient)
@@ -441,7 +565,7 @@ U32 sc_http_api_gateway_action(list_t *pstArgv)
     SC_TRACE_OUT();
     return SC_HTTP_ERRNO_SUCC;
 
-    invalid_params:
+invalid_params:
 
     SC_TRACE_OUT();
     return SC_HTTP_ERRNO_INVALID_PARAM;

@@ -27,10 +27,10 @@
 typedef struct tagMonSysPartData
 {
     S8   szPartitionName[MAX_PARTITION_LENGTH];  //分区名
-    U32  ulPartitionTotalBytes;  //硬盘总1K 块数
-    U32  ulPartitionUsedBytes;   //已使用的块数
-    U32  ulPartitionAvailBytes;  //未使用块数
-    U32  ulPartitionUsageRate;   //分区使用率
+    U64  uLPartitionTotalBytes;  //硬盘总1K 块数
+    U64  uLPartitionUsedBytes;   //已使用的块数
+    U64  uLPartitionAvailBytes;  //未使用块数
+    U32  uLPartitionUsageRate;   //分区使用率
     S8   szDiskSerialNo[MAX_PARTITION_LENGTH]; //所在磁盘序列号
 }MON_SYS_PART_DATA_S;
 
@@ -38,7 +38,7 @@ U32  mon_disk_malloc();
 U32  mon_disk_free();
 U32  mon_get_total_disk_usage_rate();
 U32  mon_get_partition_data();
-U32  mon_get_total_disk_kbytes();
+U64  mon_get_total_disk_bytes();
 
 #endif //#if INCLUDE_RES_MONITOR
 #endif //end of _MON_GET_DISK_INFO_H__

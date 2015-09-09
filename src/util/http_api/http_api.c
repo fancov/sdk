@@ -10,6 +10,10 @@ extern "C"{
 #include "mongoose.h"
 #include <http_api.h>
 
+#if INCLUDE_RES_MONITOR
+#define DOS_HTTP_API_PORT  2804
+#endif
+
 struct mg_server    *g_pstMonServer           = NULL;
 pthread_t           g_pthHttpApi;
 BOOL                g_blRunning               = DOS_FALSE;
@@ -179,7 +183,7 @@ U32 http_api_handle_proc(HTTP_HANDLE_ST *pstHandle, U32 *pulErrNo)
 
     /* »ñÈ¡ key=value ×Ö·û´® */
     lKeyCnt = 0;
-    pWord = strtok(pstHandle->query_string, "&");
+    pWord = strtok((S8 *)pstHandle->query_string, "&");
     while (pWord)
     {
         pszKeyWord[lKeyCnt] = dos_dmem_alloc(dos_strlen(pWord) + 1);

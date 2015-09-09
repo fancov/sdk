@@ -47,6 +47,9 @@
 /* 是否包含dos内存管理模块 */
 #define INCLUDE_MEMORY_MNGT               1
 
+/* 是否包含HTTP模块 */
+#define INCLUDE_HTTP_API                  1
+
 /* xml配置文件模块 */
 #define INCLUDE_XML_CONFIG                1
 
