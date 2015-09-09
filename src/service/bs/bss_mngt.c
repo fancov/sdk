@@ -4402,7 +4402,7 @@ VOID bss_cycle_billing(VOID)
     S32                     lRebate;
     U32                     ulCnt, ulNum, ulTimeStamp;
     U32                     i, j, ulHashIndex;
-    U32                     aulFee[BS_MAX_AGENT_LEVEL];
+    U32                     aulFee[BS_MAX_AGENT_LEVEL] = { 0 };
     BOOL                    bBillingOk = DOS_FALSE;
     HASH_NODE_S             *pstHashNode = NULL;
     BS_CUSTOMER_ST          *pstCustomer = NULL;
@@ -4464,16 +4464,16 @@ VOID bss_cycle_billing(VOID)
             {
                 pstRule = &pstPackage->astRule[i];
 
-                if (BS_BILLING_BY_CYCLE == pstRule->ucBillingType)
+                if (BS_BILLING_BY_CYCLE != pstRule->ucBillingType)
                 {
                     /* 非周期计费方式 */
-                    DOS_ASSERT(0);
                     continue;
                 }
 
                 if(!bs_billing_rule_is_properly(pstRule))
                 {
                     /* 计费规则不妥当 */
+                    DOS_ASSERT(0);
                     continue;
                 }
 
@@ -4482,6 +4482,7 @@ VOID bss_cycle_billing(VOID)
                     || ulTimeStamp < pstRule->ulEffectTimestamp)
                 {
                     /* 计费规则尚未生效;0表示永远有效 */
+                    DOS_ASSERT(0);
                     continue;
                 }
 
@@ -4516,6 +4517,8 @@ VOID bss_cycle_billing(VOID)
                         break;
 
                     default:
+                        DOS_ASSERT(0);
+
                         bs_trace(BS_TRACE_BILLING, LOG_LEVEL_ERROR,
                                  "Err: cycle type is wrong in cycle billing rule! "
                                  "Customer:%u, package:%u, type:%u",

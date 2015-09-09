@@ -975,7 +975,7 @@ VOID bsd_save_rent_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`id`,`customer_id`,`account_id`,`billing_rule_id`,`ctime`,"
                       "`type`,`fee_l1`,`fee_l2`,`fee_l3`,`fee_l4`,`fee_l5`,"
                       "`agent_level`,`cdr_mark`,`cdr_type`)"
-                    "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u);"
+                    "VALUES(NULL, %u, %u, %u, FROM_UNIXTIME(%u), %u, %u, %u, %u, %u, %u, %u, %u, %u);"
                     , pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulRuleID, pstCDR->ulTimeStamp
                     , pstCDR->ucAttrType, pstCDR->aulFee[0], pstCDR->aulFee[1], pstCDR->aulFee[2]
                     , pstCDR->aulFee[3], pstCDR->aulFee[4], pstCDR->ucAgentLevel, pstCDR->stCDRTag.ulCDRMark

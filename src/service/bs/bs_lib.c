@@ -647,9 +647,11 @@ BOOL bs_billing_rule_is_properly(BS_BILLING_RULE_ST  *pstRule)
                       |(1<<BS_BILLING_ATTR_RESOURCE_AGENT)
                       |(1<<BS_BILLING_ATTR_RESOURCE_NUMBER)
                       |(1<<BS_BILLING_ATTR_RESOURCE_LINE);
+
+            /* pstRule->ucSrcAttrType1 为计费对象(坐席，线路，等)， pstRule->ucSrcAttrType2为周期(日，周，月)*/
+            /* 因此pstRule->ucSrcAttrType2不能参与下面的比较 */
             if (BS_SERV_RENT == pstRule->ucServType
                 && ((0 == pstRule->ucSrcAttrType1) || ((1<<pstRule->ucSrcAttrType1)&ulMatch))
-                && ((0 == pstRule->ucSrcAttrType2) || ((1<<pstRule->ucSrcAttrType2)&ulMatch))
                 && ((0 == pstRule->ucDstAttrType1) || ((1<<pstRule->ucDstAttrType1)&ulMatch))
                 && ((0 == pstRule->ucDstAttrType2) || ((1<<pstRule->ucDstAttrType2)&ulMatch))
                 && pstRule->ulBillingRate != 0)
