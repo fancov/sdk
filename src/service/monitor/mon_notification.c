@@ -74,11 +74,11 @@ U32 mon_send_email(S8* pszMsg, S8* pszTitle,S8* pszEmailAddress)
     dos_snprintf(szEmailMsg, sizeof(szEmailMsg), MSGBODY, szSPEmail, pszEmailAddress, pszTitle, pszMsg);
     /* ¸ñÊ½»¯ÃüÁî */
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), " echo \"%s\" > %s", szEmailMsg, szFile);
-    system(szCmdBuff);
+    mon_system(szCmdBuff);
 
     dos_memzero(szCmdBuff, sizeof(szCmdBuff));
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "sendmail -t %s < %s", pszEmailAddress, szFile);
-    system(szCmdBuff);
+    mon_system(szCmdBuff);
 
     unlink(szFile);
 

@@ -27,7 +27,6 @@ static U32   mon_get_cpu_mem_time_info(U32 ulPid, MON_PROC_STATUS_S * pstProc);
 static U32   mon_get_openfile_count(U32 ulPid);
 static U32   mon_get_threads_count(U32 ulPid);
 static U32   mon_get_proc_pid_list();
-static U32   mon_kill_process(U32 ulPid);
 
 extern U32 mon_get_msg_index(U32 ulNo);
 extern U32 mon_add_warning_record(U32 ulResId,S8 * szInfoDesc);
@@ -70,22 +69,22 @@ U32  mon_proc_malloc()
  */
 U32 mon_proc_free()
 {
-   U32 ulRows = 0;
+    U32 ulRows = 0;
 
-   MON_PROC_STATUS_S * pstProc = g_pastProc[0];
-   if(DOS_ADDR_INVALID(pstProc))
-   {
-      DOS_ASSERT(0);
-      return DOS_FAIL;
-   }
+    MON_PROC_STATUS_S * pstProc = g_pastProc[0];
+    if(DOS_ADDR_INVALID(pstProc))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
-   dos_dmem_free(pstProc);
-   for(ulRows = 0; ulRows < MAX_PROC_CNT; ulRows++)
-   {
-      g_pastProc[ulRows] = NULL;
-   }
+    dos_dmem_free(pstProc);
+    for(ulRows = 0; ulRows < MAX_PROC_CNT; ulRows++)
+    {
+        g_pastProc[ulRows] = NULL;
+    }
 
-   return DOS_SUCC;
+    return DOS_SUCC;
 }
 
 static U32   mon_proc_reset_data()
@@ -112,12 +111,12 @@ static U32   mon_proc_reset_data()
  */
 static BOOL mon_is_pid_valid(U32 ulPid)
 {
-   if(ulPid > MAX_PID_VALUE || ulPid <= MIN_PID_VALUE)
-   {
-      DOS_ASSERT(0);
-      return DOS_FALSE;
-   }
-   return DOS_TRUE;
+    if(ulPid > MAX_PID_VALUE || ulPid <= MIN_PID_VALUE)
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+    return DOS_TRUE;
 }
 
 /** ps aux
@@ -265,13 +264,13 @@ static U32  mon_get_openfile_count(U32 ulPid)
  */
 static U32   mon_get_db_conn_count(U32 ulPid)
 {  /* 目前没有找到有效的解决方案 */
-   if(DOS_FALSE == mon_is_pid_valid(ulPid))
-   {
-      DOS_ASSERT(0);
-      return DOS_FAIL;
-   }
+    if(DOS_FALSE == mon_is_pid_valid(ulPid))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
-   return DOS_SUCC;
+    return DOS_SUCC;
 }
 
 /**
@@ -297,65 +296,65 @@ static U32   mon_get_db_conn_count(U32 ulPid)
  */
 static U32   mon_get_threads_count(U32 ulPid)
 {
-   S8  szPidFile[MAX_CMD_LENGTH] = {0};
-   S8  szLine[MAX_BUFF_LENGTH] = {0};
-   U32 ulThreadsCount = 0;
-   FILE * fp;
-   S8* pszAnalyseRslt[2] = {0};
+    S8  szPidFile[MAX_CMD_LENGTH] = {0};
+    S8  szLine[MAX_BUFF_LENGTH] = {0};
+    U32 ulThreadsCount = 0;
+    FILE * fp;
+    S8* pszAnalyseRslt[2] = {0};
 
-   if(DOS_FALSE == mon_is_pid_valid(ulPid))
-   {
-      mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid %u does not exist.", ulPid);
-      return DOS_FAIL;
-   }
+    if(DOS_FALSE == mon_is_pid_valid(ulPid))
+    {
+        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid %u does not exist.", ulPid);
+        return DOS_FAIL;
+    }
 
-   dos_snprintf(szPidFile, MAX_CMD_LENGTH, "/proc/%u/status", ulPid);
+    dos_snprintf(szPidFile, MAX_CMD_LENGTH, "/proc/%u/status", ulPid);
 
-   fp = fopen(szPidFile, "r");
-   if (DOS_ADDR_INVALID(fp))
-   {
-      DOS_ASSERT(0);
-      return DOS_FAIL;
-   }
+    fp = fopen(szPidFile, "r");
+    if (DOS_ADDR_INVALID(fp))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
-   fseek(fp, 0, SEEK_SET);
-   while (!feof(fp))
-   {
-      dos_memzero(szLine, MAX_BUFF_LENGTH * sizeof(S8));
-      if (NULL != (fgets(szLine, MAX_BUFF_LENGTH, fp)))
-      {
-         /* Threads参数后边的那个数字就是当前进程的线程数量 */
-         if (0 == (dos_strncmp(szLine, "Threads", dos_strlen("Threads"))))
-         {
-            U32 ulData = 0;
-            U32 ulRet = 0;
-            S32 lRet = 0;
-            ulRet = mon_analyse_by_reg_expr(szLine, " \t\n", pszAnalyseRslt, sizeof(pszAnalyseRslt) / sizeof(pszAnalyseRslt[0]));
-            if(DOS_SUCC != ulRet)
+    fseek(fp, 0, SEEK_SET);
+    while (!feof(fp))
+    {
+        dos_memzero(szLine, MAX_BUFF_LENGTH * sizeof(S8));
+        if (NULL != (fgets(szLine, MAX_BUFF_LENGTH, fp)))
+        {
+            /* Threads参数后边的那个数字就是当前进程的线程数量 */
+            if (0 == (dos_strncmp(szLine, "Threads", dos_strlen("Threads"))))
             {
-                mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Analyse buffer by regular expression FAIL.");
-                goto failure;
-            }
+                U32 ulData = 0;
+                U32 ulRet = 0;
+                S32 lRet = 0;
+                ulRet = mon_analyse_by_reg_expr(szLine, " \t\n", pszAnalyseRslt, sizeof(pszAnalyseRslt) / sizeof(pszAnalyseRslt[0]));
+                if(DOS_SUCC != ulRet)
+                {
+                    mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Analyse buffer by regular expression FAIL.");
+                    goto failure;
+                }
 
-            lRet = dos_atoul(pszAnalyseRslt[1], &ulData);
-            if(0 != lRet)
-            {
-               DOS_ASSERT(0);
-               goto failure;
+                lRet = dos_atoul(pszAnalyseRslt[1], &ulData);
+                if(0 != lRet)
+                {
+                    DOS_ASSERT(0);
+                    goto failure;
+                }
+                ulThreadsCount = ulData;
+                goto success;
             }
-            ulThreadsCount = ulData;
-            goto success;
-         }
-      }
-   }
+        }
+    }
 failure:
-   fclose(fp);
-   fp = NULL;
-   return DOS_FAIL;
+    fclose(fp);
+    fp = NULL;
+    return DOS_FAIL;
 success:
-   fclose(fp);
-   fp = NULL;
-   return ulThreadsCount;
+    fclose(fp);
+    fp = NULL;
+    return ulThreadsCount;
 }
 
 /**
@@ -559,30 +558,6 @@ U32 mon_get_process_data()
 }
 
 /**
- * 功能:杀死进程
- * 参数集：
- *   参数1: S32 lPid  进程id
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
- */
-static U32  mon_kill_process(U32 ulPid)
-{
-    S8 szKillCmd[MAX_CMD_LENGTH] = {0};
-
-    /* 使用"kill -9 进程id"方式杀灭进程  */
-    dos_snprintf(szKillCmd, MAX_CMD_LENGTH, "kill -9 %u", ulPid);
-    system(szKillCmd);
-
-    if (DOS_TRUE == mon_is_proc_dead(ulPid))
-    {
-        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid % does not exist.", ulPid);
-        return DOS_SUCC;
-    }
-
-    return DOS_FAIL;
-}
-
-/**
  * 功能:检测有没有掉线的进程，如果有则重新启动之
  * 参数集：
  *   无参数
@@ -748,7 +723,7 @@ U32  mon_check_all_process()
         {
             mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_DEBUG, "Process %s lost.", szProcName);
 
-            lRet = system(szProcCmd);
+            lRet = mon_system(szProcCmd);
             if(lRet < 0)
             {
                 mon_trace(MON_TRACE_PROCESS,LOG_LEVEL_EMERG, "Restart Process %s FAIL.", szProcName);
@@ -756,52 +731,6 @@ U32  mon_check_all_process()
             }
         }
     }
-    return DOS_SUCC;
-}
-
-
-/**
- * 功能:杀死所有被监控进程
- * 参数集：
- *   无参数
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
- */
-U32 mon_kill_all_monitor_process()
-{
-    U32 ulRows = 0;
-    U32 ulRet = 0;
-    U32 ulPid = 0;
-
-    ulPid = getpid();
-    for(ulRows = 0; ulRows < g_ulPidCnt; ulRows++)
-    {
-        if(ulPid == g_pastProc[ulRows]->ulProcId)
-        {
-            continue;
-        }
-        ulRet = mon_kill_process(g_pastProc[ulRows]->ulProcId);
-        if(DOS_SUCC != ulRet)
-        {
-            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Kill pid %u FAIL.", g_pastProc[ulRows]->ulProcId);
-            return DOS_FAIL;
-        }
-    }
-
-    return DOS_SUCC;
-}
-
-
-/**
- * 功能:重启计算机
- * 参数集：
- *   无参数
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
- */
-U32 mon_restart_computer()
-{
-    system("/sbin/reboot");
     return DOS_SUCC;
 }
 
@@ -833,8 +762,8 @@ U32 mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName, U32 ulLen)
     if (!fgets(szLine, sizeof(szLine), fp))
     {
         DOS_ASSERT(0);
-		fclose(fp);
-		fp = NULL;
+        fclose(fp);
+        fp = NULL;
         return DOS_FAIL;
     }
 
@@ -842,8 +771,8 @@ U32 mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName, U32 ulLen)
     if (DOS_ADDR_INVALID(pszPos))
     {
         DOS_ASSERT(0);
-		fclose(fp);
-		fp = NULL;
+        fclose(fp);
+        fp = NULL;
         return DOS_FAIL;
     }
     pszPos++;
@@ -861,8 +790,8 @@ U32 mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName, U32 ulLen)
 
     dos_snprintf(pszPidName, ulLen, "%s", pszPos);
 
-	fclose(fp);
-	fp = NULL;
+    fclose(fp);
+    fp = NULL;
     return DOS_SUCC;
 }
 
@@ -926,7 +855,7 @@ U32  mon_get_proc_total_cpu_rate()
  * 参数集：
  *   无参数
  * 返回值：
- *   成功则返回总内存占用率，失败返回-1
+ *   成功则返回总内存占用率，失败返回DOS_FAIL
  */
 U32  mon_get_proc_total_mem_rate()
 {
