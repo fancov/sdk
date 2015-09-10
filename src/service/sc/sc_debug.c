@@ -91,7 +91,8 @@ const S8* g_pszAgentBindType[] =
 {
     "SIP",
     "TELEPHONE",
-    "MOBILE"
+    "MOBILE",
+    "TT_NUMBER"
 };
 
 const S8* g_pszCallServiceType[] =

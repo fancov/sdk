@@ -1828,7 +1828,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     HASH_NODE_S                 *pstHashNode = NULL;
     S8                          *pszSiteID     = NULL, *pszCustomID = NULL;
     S8                          *pszGroupID1   = NULL, *pszGroupID2 = NULL;
-    S8                          *pszExten      = NULL, *pszGroupID  = NULL;
+    S8                          *pszExten      = NULL, *pszStatus   = NULL;
     S8                          *pszJobNum     = NULL, *pszUserID   = NULL;
     S8                          *pszRecordFlag = NULL, *pszIsHeader = NULL;
     S8                          *pszTelePhone  = NULL, *pszMobile   = NULL;
@@ -1840,7 +1840,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     U32                         ulSiteID   = 0, ulCustomID   = 0, ulGroupID  = 0;
     U32                         ulGroupID1 = 0, ulRecordFlag = 0, ulIsHeader = 0;
     U32                         ulHashIndex = 0, ulIndex = 0, ulRest = 0, ulSelectType = 0;
-    U32                         ulAgentIndex = 0, ulSIPID = 0;
+    U32                         ulAgentIndex = 0, ulSIPID = 0, ulStatus = 0;
 
     if (DOS_ADDR_INVALID(PTR)
         || DOS_ADDR_INVALID(pszData)
@@ -1853,13 +1853,13 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     ulAgentIndex = *(U32 *)PTR;
 
     pszSiteID = pszData[0];
-    pszCustomID = pszData[1];
-    pszJobNum = pszData[2];
-    pszUserID = pszData[3];
-    pszExten = pszData[4];
-    pszGroupID1 = pszData[5];
-    pszGroupID2 = pszData[6];
-    pszGroupID = pszData[7];
+    pszStatus= pszData[1];
+    pszCustomID = pszData[2];
+    pszJobNum = pszData[3];
+    pszUserID = pszData[4];
+    pszExten = pszData[5];
+    pszGroupID1 = pszData[6];
+    pszGroupID2 = pszData[7];
     pszRecordFlag = pszData[8];
     pszIsHeader = pszData[9];
     pszSelectType = pszData[10];
@@ -1869,14 +1869,14 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     pszSIPID = pszData[14];
 
     if (DOS_ADDR_INVALID(pszSiteID)
+        || DOS_ADDR_INVALID(pszStatus)
         || DOS_ADDR_INVALID(pszCustomID)
         || DOS_ADDR_INVALID(pszJobNum)
-        || DOS_ADDR_INVALID(pszExten)
-        || DOS_ADDR_INVALID(pszGroupID)
         || DOS_ADDR_INVALID(pszRecordFlag)
         || DOS_ADDR_INVALID(pszIsHeader)
         || DOS_ADDR_INVALID(pszSelectType)
         || dos_atoul(pszSiteID, &ulSiteID) < 0
+        || dos_atoul(pszStatus, &ulStatus) < 0
         || dos_atoul(pszCustomID, &ulCustomID) < 0
         || dos_atoul(pszGroupID1, &ulGroupID) < 0
         || dos_atoul(pszGroupID2, &ulGroupID1) < 0
@@ -1926,7 +1926,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
             return 0;
         }
     }
-    else if (AGENT_BIND_TT_NUMBER== ulSelectType)
+    else if (AGENT_BIND_TT_NUMBER == ulSelectType)
     {
         if (DOS_ADDR_INVALID(pszTTNumber)
             || '\0' == pszTTNumber[0])
@@ -1937,14 +1937,13 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         }
     }
 
-
     dos_memzero(&stSiteInfo, sizeof(stSiteInfo));
     stSiteInfo.ulSiteID = ulSiteID;
+    stSiteInfo.ucStatus = (U8)ulStatus;
     stSiteInfo.ulCustomerID = ulCustomID;
     stSiteInfo.aulGroupID[0] = ulGroupID;
     stSiteInfo.aulGroupID[1] = ulGroupID1;
     stSiteInfo.bValid = DOS_TRUE;
-    stSiteInfo.ucStatus = SC_ACD_OFFLINE;
     stSiteInfo.bRecord = ulRecordFlag;
     stSiteInfo.bGroupHeader = ulIsHeader;
     stSiteInfo.ucBindType = (U8)ulSelectType;
@@ -1955,13 +1954,13 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.ulSIPUserID = ulSIPID;
     pthread_mutex_init(&stSiteInfo.mutexLock, NULL);
 
-    if ('\0' != pszUserID[0])
+    if (pszUserID && '\0' != pszUserID[0])
     {
         dos_strncpy(stSiteInfo.szUserID, pszUserID, sizeof(stSiteInfo.szUserID));
         stSiteInfo.szUserID[sizeof(stSiteInfo.szUserID) - 1] = '\0';
     }
 
-    if ('\0' != pszExten[0])
+    if (pszExten && '\0' != pszExten[0])
     {
         dos_strncpy(stSiteInfo.szExtension, pszExten, sizeof(stSiteInfo.szExtension));
         stSiteInfo.szExtension[sizeof(stSiteInfo.szExtension) - 1] = '\0';
@@ -2007,11 +2006,11 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
             for (ulIndex=0; ulIndex<MAX_GROUP_PER_SITE; ulIndex++)
             {
                 if (pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] != U32_BUTT
-                    && pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] != 0)
+                   && pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] != 0)
                 {
                     /* 修改之前组ID合法，修改之后组ID合法，就需要看看前后两个ID是否相同，相同就不做什么了 */
                     if (stSiteInfo.aulGroupID[ulIndex] != U32_BUTT
-                        && stSiteInfo.aulGroupID[ulIndex] != 0)
+                       && stSiteInfo.aulGroupID[ulIndex] != 0 )
                     {
                         if (pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] != stSiteInfo.aulGroupID[ulIndex])
                         {
@@ -2032,6 +2031,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                     {
                         sc_acd_group_remove_agent(pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]
                                                     , pstAgentQueueNode->pstAgentInfo->ulSiteID);
+
                     }
                 }
                 else
@@ -2054,13 +2054,25 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
             pstAgentQueueNode->pstAgentInfo->bAllowAccompanying = stSiteInfo.bAllowAccompanying;
             pstAgentQueueNode->pstAgentInfo->bGroupHeader = stSiteInfo.bGroupHeader;
             pstAgentQueueNode->pstAgentInfo->ucBindType = stSiteInfo.ucBindType;
+            pstAgentQueueNode->pstAgentInfo->ucStatus = stSiteInfo.ucStatus;
+            pstAgentQueueNode->pstAgentInfo->ulCustomerID = stSiteInfo.ulCustomerID;
+            pstAgentQueueNode->pstAgentInfo->bValid = stSiteInfo.bValid;
+            pstAgentQueueNode->pstAgentInfo->ulSIPUserID = stSiteInfo.ulSIPUserID;
 
             dos_strncpy(pstAgentQueueNode->pstAgentInfo->szEmpNo, stSiteInfo.szEmpNo,SC_EMP_NUMBER_LENGTH);
             pstAgentQueueNode->pstAgentInfo->szEmpNo[SC_EMP_NUMBER_LENGTH - 1] = '\0';
-            dos_strncpy(pstAgentQueueNode->pstAgentInfo->szExtension, stSiteInfo.szExtension,SC_TEL_NUMBER_LENGTH);
-            pstAgentQueueNode->pstAgentInfo->szExtension[SC_TEL_NUMBER_LENGTH - 1] = '\0';
-            dos_strncpy(pstAgentQueueNode->pstAgentInfo->szUserID, stSiteInfo.szUserID,SC_TEL_NUMBER_LENGTH);
-            pstAgentQueueNode->pstAgentInfo->szUserID[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+
+            if (pszExten &&  '\0' != pszExten[0])
+            {
+                dos_strncpy(pstAgentQueueNode->pstAgentInfo->szExtension, stSiteInfo.szExtension,SC_TEL_NUMBER_LENGTH);
+                pstAgentQueueNode->pstAgentInfo->szExtension[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+            }
+
+            if (pszUserID && '\0' != pszUserID[0])
+            {
+                dos_strncpy(pstAgentQueueNode->pstAgentInfo->szUserID, stSiteInfo.szUserID,SC_TEL_NUMBER_LENGTH);
+                pstAgentQueueNode->pstAgentInfo->szUserID[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+            }
 
             if (pszTelePhone && '\0' != pszTelePhone[0])
             {
@@ -2073,8 +2085,13 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                 dos_strncpy(pstAgentQueueNode->pstAgentInfo->szMobile, stSiteInfo.szMobile,SC_TEL_NUMBER_LENGTH);
                 pstAgentQueueNode->pstAgentInfo->szMobile[SC_TEL_NUMBER_LENGTH - 1] = '\0';
             }
-        }
 
+            if (pszTTNumber && '\0' != pszTTNumber[0])
+            {
+                dos_strncpy(pstAgentQueueNode->pstAgentInfo->szTTNumber, stSiteInfo.szTTNumber, SC_TEL_NUMBER_LENGTH);
+                pstAgentQueueNode->pstAgentInfo->szTTNumber[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+            }
+        }
 
         SC_TRACE_OUT();
         pthread_mutex_unlock(&g_mutexAgentList);
@@ -2116,43 +2133,33 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    ,"SELECT " \
-                     "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, " \
-                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number, a.tt_number, a.sip_id " \
-                     "FROM " \
-                     "    (SELECT " \
-                     "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
-                     "         tbl_agent.group1_id group1_id, tbl_agent.group2_id group2_id, tbl_sip.extension extension, " \
-                     "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class, " \
-                     "         tbl_agent.select_type, tbl_agent.fixed_telephone, tbl_agent.mobile_number, tbl_agent.tt_number, tbl_agent.sip_id" \
-                     "     FROM " \
-                     "         tbl_agent, tbl_sip " \
-                     "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 0) a " \
-                     "LEFT JOIN " \
-                     "    tbl_group b " \
-                     "ON " \
-                     "    a.group1_id = b.id OR a.group2_id = b.id;");
+                    , "SELECT " \
+                      "    a.id, a.status, a.customer_id, a.job_number,b.userid, b.extension, a.group1_id, a.group2_id, " \
+                      "    a.voice_record, a.class, a.select_type, a.fixed_telephone, a.mobile_number, " \
+                      "    a.tt_number, a.sip_id " \
+                      "FROM " \
+                      "    tbl_agent a " \
+                      "LEFT JOIN" \
+                      "    tbl_sip b "\
+                      "ON "\
+                      "    b.id = a.sip_id;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                   , "SELECT " \
-                     "    a.id, a.customer_id, a.job_number, a.userid, a.extension, a.group1_id, a.group2_id, b.id, " \
-                     "    a.voice_record, a.class class, a.select_type, a.fixed_telephone, a.mobile_number, a.tt_number, a.sip_id " \
-                     "FROM " \
-                     "    (SELECT " \
-                     "         tbl_agent.id id, tbl_agent.customer_id customer_id, tbl_agent.job_number job_number, " \
-                     "         tbl_agent.group1_id group1_id, tbl_agent.group2_id group2_id, tbl_sip.extension extension, " \
-                     "         tbl_sip.userid userid, tbl_agent.voice_record voice_record, tbl_agent.class class, " \
-                     "         tbl_agent.select_type, tbl_agent.fixed_telephone, tbl_agent.mobile_number, tbl_agent.tt_number, tbl_agent.sip_id " \
-                     "     FROM " \
-                     "         tbl_agent, tbl_sip " \
-                     "     WHERE tbl_agent.sip_id = tbl_sip.id and tbl_sip.status = 0 AND tbl_agent.id = %u) a " \
-                     "LEFT JOIN " \
-                     "    tbl_group b " \
-                     "ON " \
-                     "    a.group1_id = b.id OR a.group2_id = b.id;"
-                   , ulIndex);
+                    , "SELECT " \
+                      "    a.id, a.status, a.customer_id, a.job_number,b.userid, b.extension, a.group1_id, a.group2_id, " \
+                      "    a.voice_record, a.class, a.select_type, a.fixed_telephone, a.mobile_number, " \
+                      "    a.tt_number, a.sip_id " \
+                      "FROM " \
+                      "    tbl_agent a " \
+                      "LEFT JOIN" \
+                      "    tbl_sip b " \
+                      "ON "\
+                      "    b.id = a.sip_id " \
+                      "WHERE " \
+                      "    a.id = %u;",
+                      ulIndex);
     }
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_acd_init_agent_queue_cb, &ulIndex, NULL) < 0)
