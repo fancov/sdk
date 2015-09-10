@@ -2088,7 +2088,7 @@ U32 bs_pre_billing(BS_CUSTOMER_ST *pstCustomer, BS_MSG_AUTH *pstMsg, BS_BILLING_
     }
 
     /* 开始试算,按第二段计费费率进行预估计算 */
-    if (pstRule->ulBillingRate != 0)
+    if (pstRule->ulBillingRate != 0 && pstRule->ucNextBillingCnt != 0)
     {
         ulMaxSession = (U32)((S64)pstRule->ulNextBillingUnit
                      * (pstCustomer->stAccount.LBalanceActive + pstCustomer->stAccount.lCreditLine)
