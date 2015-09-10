@@ -378,14 +378,13 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
                 && pstBillingPkg->ucServType == ulServType)
             {
                 /* 遍历找到一个没有使用的插进去 */
-                for (ulIndex=0; ulIndex<BS_MAX_BILLING_RULE_IN_PACKAGE; ulIndex++)
+                for (ulIndex = 0; ulIndex < BS_MAX_BILLING_RULE_IN_PACKAGE; ulIndex++)
                 {
                     if (!pstBillingPkg->astRule[ulIndex].ucValid)
                     {
                         dos_memcpy(&pstBillingPkg->astRule[ulIndex], &stBillingRule, sizeof(stBillingRule));
 
                         pstBillingPkg->astRule[ulIndex].ucValid = DOS_TRUE;
-
                         break;
                     }
                 }
@@ -433,7 +432,7 @@ S32 bsd_walk_billing_package_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
         pstBillingPkg->ucServType = (S8)ulServType;
 
         dos_memcpy(&pstBillingPkg->astRule[0], &stBillingRule, sizeof(stBillingRule));
-        pstBillingPkg->astRule[0].ucValid = 1;
+        pstBillingPkg->astRule[0].ucValid = DOS_TRUE;
 
         HASH_INIT_NODE(pstHashNode);
         pstHashNode->pHandle = pstBillingPkg;

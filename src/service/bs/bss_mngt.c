@@ -1321,186 +1321,186 @@ VOID bss_update_billing_rate(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
     switch(ulOpteration)
     {
         case BS_CMD_UPDATE:
+        {
+            pszBillingRate = json_get_param(pstJSONObj, "billing_rate");
+            if (DOS_ADDR_INVALID(pszBillingRate))
             {
-                pszBillingRate = json_get_param(pstJSONObj, "billing_rate");
-                if (DOS_ADDR_INVALID(pszBillingRate))
-                {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Rate FAIL.");
-                    DOS_ASSERT(0);
-                    break;
-                }
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Rate FAIL.");
+                DOS_ASSERT(0);
+                break;
+            }
 
-                pszWhere = json_get_param(pstJSONObj, "where");
-                if (DOS_ADDR_INVALID(pszBillingRate))
-                {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Where Param FAIL.");
-                    DOS_ASSERT(0);
-                    break;
-                }
+            pszWhere = json_get_param(pstJSONObj, "where");
+            if (DOS_ADDR_INVALID(pszBillingRate))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Where Param FAIL.");
+                DOS_ASSERT(0);
+                break;
+            }
 
-                pstJsonWhere = json_init((char *)pszWhere);
-                if (DOS_ADDR_INVALID(pstJsonWhere))
-                {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Init JSON obj FAIL.");
-                    DOS_ASSERT(0);
-                    break;
-                }
+            pstJsonWhere = json_init((char *)pszWhere);
+            if (DOS_ADDR_INVALID(pstJsonWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Init JSON obj FAIL.");
+                DOS_ASSERT(0);
+                break;
+            }
 
-                pszCustomerID = json_get_param(pstJsonWhere, "customer_id");
-                if (DOS_ADDR_INVALID(pszCustomerID))
-                {
-                    json_deinit(&pstJsonWhere);
-                    pstJsonWhere = NULL;
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Customer ID FAIL.");
-                    DOS_ASSERT(0);
-                    break;
-                }
-
-                pszBillingPkgID = json_get_param(pstJsonWhere, "billing_package_id");
-                if (DOS_ADDR_INVALID(pszBillingPkgID))
-                {
-                    json_deinit(&pstJsonWhere);
-                    pstJsonWhere = NULL;
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Package ID FAIL.");
-                    DOS_ASSERT(0);
-                    break;
-                }
-
-                pszBillingRuleID = json_get_param(pstJsonWhere, "billing_rule_id");
-                if (DOS_ADDR_INVALID(pszBillingRuleID))
-                {
-                    json_deinit(&pstJsonWhere);
-                    pstJsonWhere = NULL;
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Rule ID FAIL.");
-                    DOS_ASSERT(0);
-                    break;
-                }
-
-                if (dos_atoul(pszBillingRate, &ulBillingRate) < 0
-                    || dos_atoul(pszCustomerID, &ulCustomerID) < 0
-                    || dos_atoul(pszBillingPkgID, &ulBillingPkgID) < 0
-                    || dos_atoul(pszBillingRuleID, &ulBillingRuleID) < 0)
-                {
-                    json_deinit(&pstJsonWhere);
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: dos_atoul FAIL.");
-                    DOS_ASSERT(0);
-                    break;
-                }
-
+            pszCustomerID = json_get_param(pstJsonWhere, "customer_id");
+            if (DOS_ADDR_INVALID(pszCustomerID))
+            {
                 json_deinit(&pstJsonWhere);
                 pstJsonWhere = NULL;
-                pszCustomerID = NULL;
-                pszBillingPkgID= NULL;
-                pszBillingRuleID = NULL;
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Customer ID FAIL.");
+                DOS_ASSERT(0);
+                break;
+            }
 
-                ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulBillingPkgID);
-                if (U32_BUTT == ulHashIndex)
-                {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Package ID %u FAIL.", ulBillingPkgID);
-                    DOS_ASSERT(0);
-                    break;
-                }
+            pszBillingPkgID = json_get_param(pstJsonWhere, "billing_package_id");
+            if (DOS_ADDR_INVALID(pszBillingPkgID))
+            {
+                json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Package ID FAIL.");
+                DOS_ASSERT(0);
+                break;
+            }
 
-                HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
+            pszBillingRuleID = json_get_param(pstJsonWhere, "billing_rule_id");
+            if (DOS_ADDR_INVALID(pszBillingRuleID))
+            {
+                json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Rule ID FAIL.");
+                DOS_ASSERT(0);
+                break;
+            }
+
+            if (dos_atoul(pszBillingRate, &ulBillingRate) < 0
+                || dos_atoul(pszCustomerID, &ulCustomerID) < 0
+                || dos_atoul(pszBillingPkgID, &ulBillingPkgID) < 0
+                || dos_atoul(pszBillingRuleID, &ulBillingRuleID) < 0)
+            {
+                json_deinit(&pstJsonWhere);
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: dos_atoul FAIL.");
+                DOS_ASSERT(0);
+                break;
+            }
+
+            json_deinit(&pstJsonWhere);
+            pstJsonWhere = NULL;
+            pszCustomerID = NULL;
+            pszBillingPkgID= NULL;
+            pszBillingRuleID = NULL;
+
+            ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulBillingPkgID);
+            if (U32_BUTT == ulHashIndex)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: Get Billing Package ID %u FAIL.", ulBillingPkgID);
+                DOS_ASSERT(0);
+                break;
+            }
+
+            HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
+            {
+                HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
                 {
-                    HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
+                    if (DOS_ADDR_INVALID(pstHashNode)
+                        || DOS_ADDR_INVALID(pstHashNode->pHandle))
                     {
-                        if (DOS_ADDR_INVALID(pstHashNode)
-                            || DOS_ADDR_INVALID(pstHashNode->pHandle))
-                        {
-                            continue;
-                        }
+                        continue;
+                    }
 
-                        pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
-                        if (pstPkg->ulPackageID == ulBillingPkgID)
+                    pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
+                    if (pstPkg->ulPackageID == ulBillingPkgID)
+                    {
+                        for (ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
                         {
-                            for (ulLoop = 0; ulLoop < BS_MAX_BILLING_RULE_IN_PACKAGE; ++ulLoop)
+                            if (pstPkg->astRule[ulLoop].ulRuleID == ulBillingRuleID)
                             {
-                                if (pstPkg->astRule[ulLoop].ulRuleID == ulBillingRuleID)
-                                {
-                                    pstPkg->astRule[ulLoop].ulBillingRate = ulBillingRate;
-                                    bNodeFound = DOS_TRUE;
-                                }
+                                pstPkg->astRule[ulLoop].ulBillingRate = ulBillingRate;
+                                bNodeFound = DOS_TRUE;
                             }
                         }
                     }
                 }
-                if (DOS_FALSE == bNodeFound)
-                {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "No Package ID %u, Rule ID:%u", ulBillingPkgID, ulBillingRuleID);
-                    return;
-                }
+            }
+            if (DOS_FALSE == bNodeFound)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "No Package ID %u, Rule ID:%u", ulBillingPkgID, ulBillingRuleID);
+                return;
+            }
+            break;
+        }
+        case BS_CMD_DELETE:
+        {
+            pszWhere = json_get_param(pstJSONObj, "where");
+            if (DOS_ADDR_INVALID(pszWhere))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get where param FAIL.");
                 break;
             }
-        case BS_CMD_DELETE:
+
+            pstJsonWhere = json_init((S8 *)pszWhere);
+            if (DOS_ADDR_INVALID(pstJsonWhere))
             {
-                pszWhere = json_get_param(pstJSONObj, "where");
-                if (DOS_ADDR_INVALID(pszWhere))
-                {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get where param FAIL.");
-                    break;
-                }
-
-                pstJsonWhere = json_init((S8 *)pszWhere);
-                if (DOS_ADDR_INVALID(pstJsonWhere))
-                {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Init Json Where FAIL.");
-                    break;
-                }
-                pszBillingPkgID = json_get_param(pstJsonWhere, "billing_package_id");
-                if (DOS_ADDR_INVALID(pszBillingPkgID))
-                {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Billing Package ID FAIL.");
-                    json_deinit(&pstJsonWhere);
-                    pstJsonWhere = NULL;
-                    break;
-                }
-
-                if (dos_atoul(pszBillingPkgID, &ulBillingPkgID) < 0)
-                {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul FAIL.");
-                    json_deinit(&pstJsonWhere);
-                    pstJsonWhere = NULL;
-                    break;
-                }
-
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Init Json Where FAIL.");
+                break;
+            }
+            pszBillingPkgID = json_get_param(pstJsonWhere, "billing_package_id");
+            if (DOS_ADDR_INVALID(pszBillingPkgID))
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Billing Package ID FAIL.");
                 json_deinit(&pstJsonWhere);
-                pstJsonWhere  = NULL;
-                pszBillingPkgID = NULL;
+                pstJsonWhere = NULL;
+                break;
+            }
 
-                HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
+            if (dos_atoul(pszBillingPkgID, &ulBillingPkgID) < 0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul FAIL.");
+                json_deinit(&pstJsonWhere);
+                pstJsonWhere = NULL;
+                break;
+            }
+
+            json_deinit(&pstJsonWhere);
+            pstJsonWhere  = NULL;
+            pszBillingPkgID = NULL;
+
+            HASH_Scan_Table(g_astBillingPackageTbl, ulHashIndex)
+            {
+                HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
                 {
-                    HASH_Scan_Bucket(g_astBillingPackageTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
+                    if (DOS_ADDR_INVALID(pstHashNode)
+                        || DOS_ADDR_INVALID(pstHashNode->pHandle))
                     {
-                        if (DOS_ADDR_INVALID(pstHashNode)
-                            || DOS_ADDR_INVALID(pstHashNode->pHandle))
-                        {
-                            continue;
-                        }
+                        continue;
+                    }
 
-                        pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
-                        if (pstPkg->ulPackageID == ulBillingPkgID)
-                        {
-                            hash_delete_node(g_astBillingPackageTbl, pstHashNode, ulHashIndex);
-                            dos_dmem_free(pstPkg);
-                            dos_dmem_free(pstHashNode);
-                            pstPkg = NULL;
-                            pstHashNode = NULL;
-                            bNodeFound = DOS_TRUE;
-                        }
+                    pstPkg = (BS_BILLING_PACKAGE_ST *)pstHashNode->pHandle;
+                    if (pstPkg->ulPackageID == ulBillingPkgID)
+                    {
+                        hash_delete_node(g_astBillingPackageTbl, pstHashNode, ulHashIndex);
+                        dos_dmem_free(pstPkg);
+                        dos_dmem_free(pstHashNode);
+                        pstPkg = NULL;
+                        pstHashNode = NULL;
+                        bNodeFound = DOS_TRUE;
                     }
                 }
-                if (DOS_TRUE == bNodeFound)
-                {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Delete Billing Package ID %u SUCC." , ulBillingPkgID);
-                }
-                else
-                {
-                    bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Delete Billing Package ID %u FAIL.", ulBillingPkgID);
-                }
-
-                break;
             }
+            if (DOS_TRUE == bNodeFound)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Delete Billing Package ID %u SUCC." , ulBillingPkgID);
+            }
+            else
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Delete Billing Package ID %u FAIL.", ulBillingPkgID);
+            }
+
+            break;
+        }
         case BS_CMD_INSERT:
         {
             pszBillingPkgID = json_get_param(pstJSONObj, "billing_package_id");

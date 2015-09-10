@@ -418,7 +418,7 @@ U32 sc_http_api_callerset_action(list_t *pstArgv)
         goto invalid_params;
     }
 
-    if (sc_http_gateway_update_proc(ulAction, ulSettingID) != DOS_SUCC)
+    if (sc_http_caller_setting_update_proc(ulAction, ulSettingID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
@@ -479,7 +479,7 @@ U32 sc_http_api_callergrp_action(list_t *pstArgv)
         goto invalid_params;
     }
 
-    if (sc_http_gateway_update_proc(ulAction, ulCallerGrpID) != DOS_SUCC)
+    if (sc_http_caller_grp_update_proc(ulAction, ulCallerGrpID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;

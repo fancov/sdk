@@ -42,7 +42,6 @@ typedef struct tagMonProcStatus
 U32  mon_proc_malloc();
 U32  mon_proc_free();
 U32  mon_get_process_data();
-U32  mon_kill_all_monitor_process();
 U32  mon_check_all_process();
 U32  mon_restart_computer();
 U32  mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName, U32 ulLen);
