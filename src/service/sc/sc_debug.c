@@ -159,6 +159,56 @@ const S8* g_pszTaskMode[] =
     "AGENT-AFTER-AUDIO"
 };
 
+const S8* g_pszAgentStatus[] =
+{
+    "ENABLE",
+    "DISABLE"
+};
+
+const S8* g_pszCallerType[] =
+{
+    "CALLER",
+    "DID"
+};
+
+const S8* g_pszTransformObject[] =
+{
+    "SYSTEM",
+    "TRUNK",
+    "CUSTOMER"
+};
+
+const S8* g_pszTransformDirection[] =
+{
+    "IN",
+    "OUT"
+};
+
+const S8* g_szTransformTime[] =
+{
+    "BEFORE",
+    "AFTER"
+};
+
+const S8* g_pszTransformNumSelect[] =
+{
+    "CALLER",
+    "CALLEE"
+};
+
+const S8* g_pszDstCallerType[] =
+{
+    "CALLER",
+    "DID",
+    "CALLERGRP"
+};
+
+const S8* g_pszCallerPolicy[] =
+{
+    "IN-ORDER",
+    "RANDOM"
+};
+
 const S8* sc_translate_agent_bind_type(U32 ulBindType)
 {
     if (ulBindType < sizeof(g_pszAgentBindType) / sizeof(S8*))
@@ -209,6 +259,94 @@ const S8* sc_translate_task_mode(U32 ulMode)
     if (ulMode < sizeof(g_pszTaskMode) / sizeof(S8*))
     {
         return g_pszTaskMode[ulMode];
+    }
+    return "UNKNOWN";
+}
+
+const S8* sc_translate_agent_status(U32 ulStatus)
+{
+    if (ulStatus < sizeof(g_pszAgentStatus)/sizeof(S8*))
+    {
+        return g_pszAgentStatus[ulStatus];
+    }
+    return "UNKNOWN";
+}
+
+const S8* sc_translate_caller_type(U32 ulType)
+{
+    if (ulType < sizeof(g_pszCallerType)/sizeof(S8*))
+    {
+        return g_pszCallerType[ulType];
+    }
+    return "UNKNOWN";
+}
+
+const S8* sc_translate_transform_object(U32 ulObject)
+{
+    if (ulObject < sizeof(g_pszTransformObject)/sizeof(S8*))
+    {
+        return g_pszTransformObject[ulObject];
+    }
+    return "UNKNOWN";
+}
+
+const S8* sc_translate_transform_direction(U32 ulDirection)
+{
+    if (ulDirection < sizeof(g_pszTransformDirection)/sizeof(S8*))
+    {
+        return g_pszTransformDirection[ulDirection];
+    }
+    return "UNKNOWN";
+}
+
+const S8* sc_translate_transform_time(U32 ulTime)
+{
+    if (ulTime < sizeof(g_szTransformTime)/sizeof(S8*))
+    {
+        return g_szTransformTime[ulTime];
+    }
+    return "UNKNOWN";
+}
+
+const S8* sc_translate_transfrom_numselect(U32 ulNumSelect)
+{
+    if (ulNumSelect < sizeof(g_pszTransformNumSelect)/sizeof(S8*))
+    {
+        return g_pszTransformNumSelect[ulNumSelect];
+    }
+    return "UNKNOWN";
+}
+
+const S8* sc_translate_caller_srctype(U32 ulSrcType)
+{
+    switch (ulSrcType)
+    {
+        case SC_SRC_CALLER_TYPE_AGENT:
+            return "AGENT";
+        case SC_SRC_CALLER_TYPE_AGENTGRP:
+            return "AGENTGRP";
+        case SC_SRC_CALLER_TYPE_ALL:
+            return "ALL";
+        default:
+            break;
+    }
+    return "UNKNOWN";
+}
+
+const S8* sc_translate_caller_dsttype(U32 ulDstType)
+{
+    if (ulDstType < sizeof(g_pszDstCallerType)/sizeof(S8*))
+    {
+        return g_pszDstCallerType[ulDstType];
+    }
+    return "UNKNOWN";
+}
+
+const S8* sc_translate_caller_policy(U32 ulPolicy)
+{
+    if (ulPolicy < sizeof(g_pszCallerPolicy)/sizeof(S8*))
+    {
+        return g_pszCallerPolicy[ulPolicy];
     }
     return "UNKNOWN";
 }
@@ -656,9 +794,9 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%10u%10u%10u%10u%10u%8s%7s%8s%12s%12s%12s%10s%12s%12s"
+                    , "\r\n%10u%10s%10u%10u%10u%8s%7s%8s%12s%12s%12s%10s%12s%12s"
                     , pstAgentQueueNode->pstAgentInfo->ulSiteID
-                    , pstAgentQueueNode->pstAgentInfo->ucStatus
+                    , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucStatus)
                     , pstAgentQueueNode->pstAgentInfo->ulCustomerID
                     , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
                     , pstAgentQueueNode->pstAgentInfo->aulGroupID[1]
@@ -780,14 +918,13 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
     }
 
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n---------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%10s%10s%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s%10s%14s%12s"
+                    , "\r\n%5s%8s%8s%10s%8s%8s%8s%8s%7s%8s%12s%12s%12s%10s%14s%12s%12s"
                     , "ID", "Status", "NeedCon", "Connected", "Custom", "Group1", "Group2"
-                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "Bind", "Telephone", "Mobile");
+                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "Bind", "Telephone", "Mobile", "TT_number");
     cli_out_string(ulIndex, szCmdBuff);
-
 
     HASH_Scan_Table(g_pstAgentList, ulHashIndex)
     {
@@ -844,9 +981,9 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%10u%10u%10s%10s%10u%10u%10u%8s%7s%8s%12s%12s%12s%10s%14s%12s"
+                        , "\r\n%5u%8s%8s%10s%8u%8u%8u%8s%7s%8s%12s%12s%12s%10s%14s%12s%12s"
                         , pstAgentQueueNode->pstAgentInfo->ulSiteID
-                        , pstAgentQueueNode->pstAgentInfo->ucStatus
+                        , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucStatus)
                         , pstAgentQueueNode->pstAgentInfo->bNeedConnected ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->bConnected ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->ulCustomerID
@@ -860,12 +997,13 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
                         , pstAgentQueueNode->pstAgentInfo->szEmpNo
                         , sc_translate_agent_bind_type(pstAgentQueueNode->pstAgentInfo->ucBindType)
                         , pstAgentQueueNode->pstAgentInfo->szTelePhone
-                        , pstAgentQueueNode->pstAgentInfo->szMobile);
+                        , pstAgentQueueNode->pstAgentInfo->szMobile
+                        , pstAgentQueueNode->pstAgentInfo->szTTNumber);
             cli_out_string(ulIndex, szCmdBuff);
             ulTotal++;
         }
     }
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n---------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n** Bind : 0 -- SIP User ID, 1 -- Telephone, 2 -- Mobile");
     cli_out_string(ulIndex, szCmdBuff);
@@ -1503,10 +1641,10 @@ U32 sc_show_caller_grp(U32 ulIndex, U32 ulGrpID)
     U32 ulHashIndex = U32_BUTT;
     S8  szBuff[128] = {0};
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6s%12s%8s%8s%10s%-64s"
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6s%12s%8s%10s%10s%-64s"
                     , "Index", "CustomerID", "LastNo", "Policy", "Default", " GroupName");
     cli_out_string(ulIndex, szBuff);
-    cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, "\r\n----------------------------------------------------------------------------------------------------");
 
     HASH_Scan_Table(g_pstHashCallerGrp, ulHashIndex)
     {
@@ -1524,17 +1662,68 @@ U32 sc_show_caller_grp(U32 ulIndex, U32 ulGrpID)
                 continue;
             }
 
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6u%12u%8u%8u%10s %-63s"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6u%12u%8u%10s%10s %-63s"
                             , pstCallerGrp->ulID
                             , pstCallerGrp->ulCustomerID
                             , pstCallerGrp->ulLastNo
-                            , pstCallerGrp->ulPolicy
+                            , sc_translate_caller_policy(pstCallerGrp->ulPolicy)
                             , pstCallerGrp->bDefault == DOS_FALSE?"No":"Yes"
                             , pstCallerGrp->szGrpName);
             cli_out_string(ulIndex, szBuff);
         }
     }
 
+    return DOS_SUCC;
+}
+
+U32 sc_show_caller_by_callergrp(U32 ulIndex, U32 ulGrpID)
+{
+    U32 ulHashIndex = U32_BUTT;
+    HASH_NODE_S *pstHashNode = NULL;
+    S8 szBuff[256] = {0};
+    DLL_NODE_S *pstListNode = NULL;
+    SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
+    SC_CALLER_CACHE_NODE_ST *pstCallerCache = NULL;
+
+    ulHashIndex = sc_ep_caller_grp_hash_func(ulGrpID);
+    pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&ulGrpID, sc_ep_caller_grp_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nCannot find Caller Group %u.", ulGrpID);
+        cli_out_string(ulIndex, szBuff);
+        return DOS_FAIL;
+    }
+    pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%7s%12s%24s", "Index", "CallerType", "Number");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-------------------------------------------");
+
+    DLL_Scan(&pstCallerGrp->stCallerList, pstListNode, DLL_NODE_S *)
+    {
+        if (DOS_ADDR_INVALID(pstListNode)
+            || DOS_ADDR_INVALID(pstListNode->pHandle))
+        {
+            continue;
+        }
+        pstCallerCache = (SC_CALLER_CACHE_NODE_ST *)pstListNode->pHandle;
+        if (SC_NUMBER_TYPE_CFG == pstCallerCache->ulType)
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%7u%12s%24s"
+                            , pstCallerCache->stData.pstCaller->ulIndexInDB
+                            , "CALLER"
+                            , pstCallerCache->stData.pstCaller->szNumber);
+        }
+        else
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%7u%12s%24s"
+                            , pstCallerCache->stData.pstDid->ulDIDID
+                            , "DID"
+                            , pstCallerCache->stData.pstDid->szDIDNum);
+        }
+        cli_out_string(ulIndex, szBuff);
+    }
     return DOS_SUCC;
 }
 
@@ -1545,10 +1734,10 @@ U32  sc_show_caller_setting(U32 ulIndex, U32 ulSettingID)
     U32 ulHashIndex = U32_BUTT;
     HASH_NODE_S *pstHashNode  = NULL;
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6s%12s%14s%9s%7s%9s%-64s"
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6s%12s%14s%9s%7s%11s%-64s"
                     , "Index", "CustomerID", "SrcID", "SrcType", "DstID", "DstType", " SettingName");
     cli_out_string(ulIndex, szBuff);
-    cli_out_string(ulIndex, "\r\n---------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, "\r\n-----------------------------------------------------------------------------------------------------------------");
 
     HASH_Scan_Table(g_pstHashCallerSetting, ulHashIndex)
     {
@@ -1565,13 +1754,13 @@ U32  sc_show_caller_setting(U32 ulIndex, U32 ulSettingID)
                 continue;
             }
             pstSetting = (SC_CALLER_SETTING_ST *)pstHashNode->pHandle;
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6u%12u%14u%9u%7u%9u %-64s"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6u%12u%14u%9s%7u%11s %-64s"
                             , pstSetting->ulID
                             , pstSetting->ulCustomerID
                             , pstSetting->ulSrcID
-                            , pstSetting->ulSrcType
+                            , sc_translate_caller_srctype(pstSetting->ulSrcType)
                             , pstSetting->ulDstID
-                            , pstSetting->ulDstType
+                            , sc_translate_caller_dsttype(pstSetting->ulDstType)
                             , pstSetting->szSettingName);
             cli_out_string(ulIndex, szBuff);
         }
@@ -1657,10 +1846,10 @@ U32 sc_show_transform(U32 ulIndex, U32 ulID)
     DLL_NODE_S *pstNode = NULL;
     S8  szBuff[1024] = {0};
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%3s%4s%6s%10s%14s%10s%13s%13s%11s%11s%8s%9s%10s%10s%9s%11s"
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%3s%10s%6s%10s%14s%10s%13s%13s%11s%11s%8s%9s%10s%10s%9s%11s"
                     , "ID", "Obj", "ObjID", "Direction", "TransformTime", "NumSelect", "CalleePrefix", "CallerPrefix", "ReplaceAll", "ReplaceNum", "DelLeft", "DelRight", "AddPrefix", "AddSuffix", "Priority", "Expiry");
     cli_out_string(ulIndex, szBuff);
-    cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------------");
 
     DLL_Scan(&g_stNumTransformList, pstNode, DLL_NODE_S *)
     {
@@ -1674,13 +1863,13 @@ U32 sc_show_transform(U32 ulIndex, U32 ulID)
         {
             continue;
         }
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%3u%4u%6u%10u%14u%10u%13s%13s%11s%11s%8u%9u%10s%10s%9u%11u"
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%3u%10s%6u%10s%14s%10s%13s%13s%11s%11s%8u%9u%10s%10s%9u%11u"
                         , pstTransform->ulID
-                        , pstTransform->enObject
+                        , sc_translate_transform_object(pstTransform->enObject)
                         , pstTransform->ulObjectID
-                        , pstTransform->enDirection
-                        , pstTransform->enTiming
-                        , pstTransform->enNumSelect
+                        , sc_translate_transform_direction(pstTransform->enDirection)
+                        , sc_translate_transform_time(pstTransform->enTiming)
+                        , sc_translate_transfrom_numselect(pstTransform->enNumSelect)
                         , pstTransform->szCalleePrefix
                         , pstTransform->szCallerPrefix
                         , pstTransform->bReplaceAll == DOS_FALSE?"No":"Yes"
@@ -1703,10 +1892,10 @@ U32 sc_show_numlmt(U32 ulIndex, U32 ulID)
     HASH_NODE_S *pstHashNode = NULL;
     S8  szBuff[256] = {0};
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%6s%7s%6s%6s%5s%10s%10s%24s"
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%6s%7s%6s%6s%10s%10s%10s%24s"
                     , "ID", "GrpID", "Handle", "Limit", "Cycle", "Type", "NumberID", "StatUsed", "Prefix");
     cli_out_string(ulIndex, szBuff);
-    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, "\r\n------------------------------------------------------------------------------------");
 
     HASH_Scan_Table(g_pstHashNumberlmt, ulHashIndex)
     {
@@ -1724,13 +1913,13 @@ U32 sc_show_numlmt(U32 ulIndex, U32 ulID)
                 continue;
             }
 
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%6u%7u%6u%6u%5u%10u%10u%24s"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%6u%7u%6u%6u%10s%10u%10u%24s"
                             , pstNumlmt->ulID
                             , pstNumlmt->ulGrpID
                             , pstNumlmt->ulHandle
                             , pstNumlmt->ulLimit
                             , pstNumlmt->ulCycle
-                            , pstNumlmt->ulType
+                            , sc_translate_caller_type(pstNumlmt->ulType)
                             , pstNumlmt->ulNumberID
                             , pstNumlmt->ulStatUsed
                             , pstNumlmt->szPrefix);
@@ -2515,6 +2704,21 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
                 return -1;
             }
             sc_show_caller_grp(ulIndex, ulID);
+        }
+        else if (5 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return -1;
+            }
+            if (0 != dos_stricmp(argv[4], "caller"))
+            {
+                DOS_ASSERT(0);
+                return -1;
+            }
+            /* 显示号码组下的所有号码 */
+            sc_show_caller_by_callergrp(ulIndex, ulID);
         }
     }
     else if (0 == dos_stricmp(argv[2], "callerset"))

@@ -1832,7 +1832,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
     HASH_NODE_S                 *pstHashNode = NULL;
     S8                          *pszSiteID     = NULL, *pszCustomID = NULL;
-    S8                          *pszGroupID1   = NULL, *pszGroupID2 = NULL;
+    S8                          *pszGroupID0   = NULL, *pszGroupID1 = NULL;
     S8                          *pszExten      = NULL, *pszStatus   = NULL;
     S8                          *pszJobNum     = NULL, *pszUserID   = NULL;
     S8                          *pszRecordFlag = NULL, *pszIsHeader = NULL;
@@ -1842,7 +1842,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     S8                          *pszSIPID = NULL;
     SC_ACD_AGENT_INFO_ST        *pstSiteInfo = NULL;
     SC_ACD_AGENT_INFO_ST        stSiteInfo;
-    U32                         ulSiteID   = 0, ulCustomID   = 0, ulGroupID  = 0;
+    U32                         ulSiteID   = 0, ulCustomID   = 0, ulGroupID0  = 0;
     U32                         ulGroupID1 = 0, ulRecordFlag = 0, ulIsHeader = 0;
     U32                         ulHashIndex = 0, ulIndex = 0, ulRest = 0, ulSelectType = 0;
     U32                         ulAgentIndex = 0, ulSIPID = 0, ulStatus = 0;
@@ -1863,8 +1863,8 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     pszJobNum = pszData[3];
     pszUserID = pszData[4];
     pszExten = pszData[5];
-    pszGroupID1 = pszData[6];
-    pszGroupID2 = pszData[7];
+    pszGroupID0 = pszData[6];
+    pszGroupID1 = pszData[7];
     pszRecordFlag = pszData[8];
     pszIsHeader = pszData[9];
     pszSelectType = pszData[10];
@@ -1883,8 +1883,8 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         || dos_atoul(pszSiteID, &ulSiteID) < 0
         || dos_atoul(pszStatus, &ulStatus) < 0
         || dos_atoul(pszCustomID, &ulCustomID) < 0
-        || dos_atoul(pszGroupID1, &ulGroupID) < 0
-        || dos_atoul(pszGroupID2, &ulGroupID1) < 0
+        || dos_atoul(pszGroupID0, &ulGroupID0) < 0
+        || dos_atoul(pszGroupID1, &ulGroupID1) < 0
         || dos_atoul(pszRecordFlag, &ulRecordFlag) < 0
         || dos_atoul(pszIsHeader, &ulIsHeader) < 0
         || dos_atoul(pszSelectType, &ulSelectType) < 0)
@@ -1946,7 +1946,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.ulSiteID = ulSiteID;
     stSiteInfo.ucStatus = (U8)ulStatus;
     stSiteInfo.ulCustomerID = ulCustomID;
-    stSiteInfo.aulGroupID[0] = ulGroupID;
+    stSiteInfo.aulGroupID[0] = ulGroupID0;
     stSiteInfo.aulGroupID[1] = ulGroupID1;
     stSiteInfo.bValid = DOS_TRUE;
     stSiteInfo.bRecord = ulRecordFlag;
@@ -2008,7 +2008,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         if (pstAgentQueueNode->pstAgentInfo)
         {
             /* 看看坐席有没有去了别的组，如果是，就需要将坐席换到别的组 */
-            for (ulIndex=0; ulIndex<MAX_GROUP_PER_SITE; ulIndex++)
+            for (ulIndex = 0; ulIndex < MAX_GROUP_PER_SITE; ulIndex++)
             {
                 if (pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] != U32_BUTT
                    && pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] != 0)
@@ -2020,13 +2020,18 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                         if (pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] != stSiteInfo.aulGroupID[ulIndex])
                         {
                             /* 从别的组删除 */
+                            sc_logr_debug(SC_ACD, "Agent %u will be removed from Group %u."
+                                             , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                                             , pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]);
                             ulRest = sc_acd_group_remove_agent(pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]
                                                                 , pstAgentQueueNode->pstAgentInfo->ulSiteID);
                             if (DOS_SUCC == ulRest)
                             {
                                 /* 添加到新的组 */
+                                sc_logr_debug(SC_ACD, "Agent %u will be added into Group %u."
+                                                , stSiteInfo.aulGroupID[ulIndex]
+                                                , pstAgentQueueNode->pstAgentInfo->ulSiteID);
                                 sc_acd_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstAgentQueueNode->pstAgentInfo);
-
                                 pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] = stSiteInfo.aulGroupID[ulIndex];
                             }
                         }
@@ -2034,9 +2039,11 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                     /* 修改之前组ID合法，修改之后组ID不合法，就需要吧agent从之前的组里面删除掉 */
                     else
                     {
+                        sc_logr_debug(SC_ACD, "Agent %u will be removed from group %u."
+                                        , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                                        , pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]);
                         sc_acd_group_remove_agent(pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]
                                                     , pstAgentQueueNode->pstAgentInfo->ulSiteID);
-
                     }
                 }
                 else
@@ -2046,6 +2053,9 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                         && stSiteInfo.aulGroupID[ulIndex] != 0)
                     {
                         /* 添加到新的组 */
+                        sc_logr_debug(SC_ACD, "Agent %u will be add into group %u."
+                                        , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                                        , stSiteInfo.aulGroupID[ulIndex]);
                         sc_acd_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstAgentQueueNode->pstAgentInfo);
                     }
                     else

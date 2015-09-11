@@ -79,7 +79,6 @@ typedef struct tagACDSiteDesc{
     U16        usSCBNo;
     U8         ucStatus;                          /* 坐席状态 refer to SC_SITE_STATUS_EN */
     U8         ucBindType;                        /* 坐席绑定类型 refer to SC_AGENT_BIND_TYPE_EN */
-
     U32        ulSiteID;                          /* 坐席数据库编号 */
     U32        ulCallCnt;                         /* 呼叫总数 */
     U32        ulCustomerID;                      /* 呼叫总数 */
