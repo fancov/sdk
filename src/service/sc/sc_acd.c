@@ -57,6 +57,9 @@ pthread_mutex_t   g_mutexGroupList     = PTHREAD_MUTEX_INITIALIZER;
 /* 坐席组个数 */
 U32               g_ulGroupCount       = 0;
 
+extern U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo);
+extern U32 sc_ep_agent_signout(SC_ACD_AGENT_INFO_ST *pstAgentInfo);
+
 /*
  * 函  数: sc_acd_hash_func4agent
  * 功  能: 坐席的hash函数，通过分机号计算一个hash值
@@ -878,6 +881,9 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                         //pstAgentQueueNode->pstAgentInfo->ucStatus = SC_ACD_IDEL;
 
                         pstAgentQueueNode->pstAgentInfo->ulLastSignInTime = time(0);
+                        /* 呼叫坐席 */
+                        sc_ep_agent_signin(pstAgentQueueNode->pstAgentInfo);
+
                         break;
 
                     case SC_ACD_SITE_ACTION_SIGNOUT:
@@ -890,6 +896,10 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
 
                         pstAgentQueueNode->pstAgentInfo->stStat.ulTimeOnSignin += (time(0) - pstAgentQueueNode->pstAgentInfo->ulLastSignInTime);
                         pstAgentQueueNode->pstAgentInfo->ulLastSignInTime = 0;
+
+                        /* 挂断坐席的电话 */
+                        sc_ep_agent_signout(pstAgentQueueNode->pstAgentInfo);
+
                         break;
 
                     case SC_ACD_SITE_ACTION_EN_QUEUE:
@@ -1111,6 +1121,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST 
 {
     U32     ulRandomAgent      = 0;
     SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentQueueNode = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNodeRet   = NULL;
     SC_ACD_AGENT_INFO_ST       *pstAgentInfo      = NULL;
     DLL_NODE_S                 *pstDLLNode        = NULL;
 
@@ -1169,6 +1180,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST 
             continue;
         }
 
+        pstAgentNodeRet = pstAgentQueueNode;
         pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
         sc_logr_notice(SC_ACD, "Found an uaeable agent.(Agent %u in Group %u)"
                         , pstAgentInfo->ulSiteID
@@ -1218,6 +1230,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST 
                 continue;
             }
 
+            pstAgentNodeRet = pstAgentQueueNode;
             pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
             sc_logr_notice(SC_ACD, "Found an uaeable agent.(Agent %u in Group %u)"
                             , pstAgentInfo->ulSiteID
@@ -1227,12 +1240,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST 
         }
     }
 
-    if (DOS_ADDR_INVALID(pstAgentInfo))
-    {
-        return NULL;
-    }
-
-    return pstAgentQueueNode;
+    return pstAgentNodeRet;
 }
 
 SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
@@ -1240,6 +1248,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST
     S8      szLastEmpNo[SC_EMP_NUMBER_LENGTH]     = {0};
     S8      szEligibleEmpNo[SC_EMP_NUMBER_LENGTH] = {0};
     SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentQueueNode = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNodeRet   = NULL;
     SC_ACD_AGENT_INFO_ST       *pstAgentInfo      = NULL;
     DLL_NODE_S                 *pstDLLNode        = NULL;
 
@@ -1313,6 +1322,7 @@ start_find:
         dos_strncpy(szEligibleEmpNo, pstAgentQueueNode->pstAgentInfo->szEmpNo, SC_EMP_NUMBER_LENGTH);
         szEligibleEmpNo[SC_EMP_NUMBER_LENGTH - 1] = '\0';
 
+        pstAgentNodeRet = pstAgentQueueNode;
         pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
         sc_logr_notice(SC_ACD, "Found an useable agent.(Agent %u in Group %u)"
                         , pstAgentInfo->ulSiteID
@@ -1327,12 +1337,7 @@ start_find:
         goto start_find;
     }
 
-    if (DOS_ADDR_INVALID(pstAgentInfo))
-    {
-        return NULL;
-    }
-
-    return pstAgentQueueNode;
+    return pstAgentNodeRet;
 }
 
 SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_call_count(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
