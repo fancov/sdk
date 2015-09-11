@@ -2317,7 +2317,7 @@ U32 sc_http_caller_setting_update_proc(U32 ulAction, U32 ulSettingID)
     return DOS_SUCC;
 }
 
-U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerID)
+U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerGrpID)
 {
     if (ulAction >= SC_API_CMD_ACTION_BUTT)
     {
@@ -2328,16 +2328,17 @@ U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerID)
     switch (ulAction)
     {
         case SC_API_CMD_ACTION_CALLER_GRP_ADD:
+            sc_load_caller_grp(ulCallerGrpID);
         case SC_API_CMD_ACTION_CALLER_GRP_UPDATE:
-            sc_load_caller_grp(ulCallerID);
+            sc_refresh_caller_grp(ulCallerGrpID);
             break;
         case SC_API_CMD_ACTION_CALLER_GRP_DELETE:
-            sc_caller_grp_delete(ulCallerID);
+            sc_caller_grp_delete(ulCallerGrpID);
             break;
         default:
             break;
     }
-    sc_logr_info(SC_FUNC, "Update Caller Group SUCC.(ulAction:%u, ulID:%u)", ulAction, ulCallerID);
+    sc_logr_info(SC_FUNC, "Update Caller Group SUCC.(ulAction:%u, ulCallerGrpID:%u)", ulAction, ulCallerGrpID);
 
     return DOS_SUCC;
 }
