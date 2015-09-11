@@ -284,10 +284,23 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
                 break;
 
             case SC_SERV_PREVIEW_DIALING:
-            case SC_SERV_PREDICTIVE_DIALING:
+                if (ulBSSrvIndex < ulBSSrvCnt)
+                {
+                    aucBSSrvList[ulBSSrvIndex] = BS_SERV_PREVIEW_DIALING;
+                    ulBSSrvIndex++;
+                }
 
                 blNeedOutbond = DOS_FALSE;
-                DOS_ASSERT(0);
+                break;
+
+            case SC_SERV_PREDICTIVE_DIALING:
+                if (ulBSSrvIndex < ulBSSrvCnt)
+                {
+                    aucBSSrvList[ulBSSrvIndex] = BS_SERV_PREDICTIVE_DIALING;
+                    ulBSSrvIndex++;
+                }
+
+                blNeedOutbond = DOS_FALSE;
                 break;
 
             case SC_SERV_RECORDING:
@@ -415,7 +428,7 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
 
             case SC_SERV_PREVIEW_DIALING:
             case SC_SERV_PREDICTIVE_DIALING:
-                DOS_ASSERT(0);
+                //DOS_ASSERT(0);
                 break;
 
             case SC_SERV_RECORDING:
