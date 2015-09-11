@@ -143,6 +143,7 @@ U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID)
             return DOS_FAIL;
         }
         DLL_Init_Node(pstDLLNode);
+        pstDLLNode->pHandle = NULL;
 
         pthread_mutex_lock(&g_mutexCWQMngt);
         DLL_Add(&g_stCWQMngt, pstDLLNode);

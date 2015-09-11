@@ -6865,6 +6865,7 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
  *      SC_ACD_AGENT_INFO_ST *pstAgentInfo : 坐席信息
  * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
  */
+#if 0
 U32 sc_ep_agent_signin(const SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
     S8            szAPPParam[512] = { 0 };
@@ -6990,6 +6991,128 @@ proc_error:
 
     return DOS_FAIL;
 }
+
+#endif
+
+U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+{
+    SC_SCB_ST     *pstSCB           = NULL;
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        return DOS_FALSE;
+    }
+
+    pstSCB = sc_scb_alloc();
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_ESL, "%s", "Allc SCB FAIL.");
+
+        goto error;
+    }
+
+    pstAgentInfo->usSCBNo = pstSCB->usSCBNo;
+    pstSCB->ulCustomID = pstAgentInfo->ulCustomerID;
+    pstSCB->ulAgentID = pstAgentInfo->ulSiteID;
+    pstSCB->ucLegRole = SC_CALLEE;
+    pstSCB->bRecord = pstAgentInfo->bRecord;
+    pstSCB->bIsAgentCall = DOS_TRUE;
+
+    switch (pstAgentInfo->ucBindType)
+    {
+        case AGENT_BIND_SIP:
+            dos_strncpy(pstSCB->szCalleeNum, pstAgentInfo->szUserID, sizeof(pstSCB->szCalleeNum));
+            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+            break;
+        case AGENT_BIND_TELE:
+            dos_strncpy(pstSCB->szCalleeNum, pstAgentInfo->szTelePhone, sizeof(pstSCB->szCalleeNum));
+            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+            break;
+        case AGENT_BIND_MOBILE:
+            dos_strncpy(pstSCB->szCalleeNum, pstAgentInfo->szMobile, sizeof(pstSCB->szCalleeNum));
+            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+            break;
+    }
+
+    dos_strncpy(pstSCB->szCallerNum, pstAgentInfo->szUserID, sizeof(pstSCB->szCallerNum));
+    pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+
+    dos_strncpy(pstSCB->szSiteNum, pstAgentInfo->szEmpNo, sizeof(pstSCB->szSiteNum));
+    pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
+
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_SIGNIN);
+    SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
+
+    if (AGENT_BIND_SIP != pstAgentInfo->ucBindType
+        && AGENT_BIND_TT_NUMBER != pstAgentInfo->ucBindType)
+    {
+        SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+        SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+
+        if (!sc_ep_black_list_check(pstSCB->ulCustomID, pstSCB->szCalleeNum))
+        {
+            DOS_ASSERT(0);
+            sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
+            goto error;
+        }
+
+        if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+        {
+            sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
+            goto error;
+        }
+
+        return DOS_SUCC;
+    }
+
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
+
+    if (AGENT_BIND_SIP == pstAgentInfo->ucBindType)
+    {
+        if (sc_dial_make_call2ip(pstSCB, SC_SERV_AGENT_SIGNIN) != DOS_SUCC)
+        {
+            goto error;
+        }
+    }
+    else if (AGENT_BIND_SIP == pstAgentInfo->ucBindType)
+    {
+        if (sc_dial_make_call2eix(pstSCB, SC_SERV_AGENT_SIGNIN) != DOS_SUCC)
+        {
+            goto error;
+        }
+    }
+
+    return DOS_SUCC;
+
+error:
+
+    sc_scb_free(pstSCB);
+
+    return DOS_FAIL;
+}
+
+U32 sc_ep_agent_signout(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+{
+    SC_SCB_ST     *pstSCB           = NULL;
+
+    if (DOS_ADDR_INVALID(pstAgentInfo) || pstAgentInfo->usSCBNo >= SC_MAX_SCB_NUM)
+    {
+        return DOS_FAIL;
+    }
+
+    pstSCB = sc_scb_get(pstAgentInfo->usSCBNo);
+
+    /* 挂断 */
+    pstAgentInfo->usSCBNo = U16_BUTT;
+    sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+    sc_scb_free(pstSCB);
+
+    return DOS_SUCC;
+}
+
 
 U32 sc_ep_agent_record(SC_SCB_ST * pstSCB)
 {
@@ -7582,6 +7705,12 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
             goto proc_error;
         }
 
+        sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
+
+        /* 给通道设置变量 */
+        dos_snprintf(szAPPParam, sizeof(szAPPParam), "hangup_after_bridge=false");
+        sc_ep_esl_execute("set", szAPPParam, pstSCBNew->szUUID);
+
         dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_bridge %s %s \r\n", pstSCB->szUUID, pstSCBNew->szUUID);
         if (sc_ep_esl_execute_cmd(szAPPParam) != DOS_SUCC)
         {
@@ -7858,6 +7987,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
 {
     SC_SCB_ST *pstSCB       = NULL;
     SC_SCB_ST *pstSCBNew    = NULL;
+    SC_SCB_ST *pstSCBOther  = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
     U32       ulMainServie;
 
@@ -7883,16 +8013,62 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
                 goto make_all_fail;
             }
 
-            if (stAgentInfo.bConnected)
-            {
-                /* TODO 坐席长连 */
-
-            }
-
             pstSCB = sc_scb_alloc();
             if (DOS_ADDR_INVALID(pstSCB))
             {
                 sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+
+                goto make_all_fail;
+            }
+
+            if (stAgentInfo.bConnected)
+            {
+                /* 坐席长连 */
+                if (stAgentInfo.usSCBNo >= SC_MAX_SCB_NUM)
+                {
+                    sc_logr_info(SC_ESL, "agent(%u) ScbNo(%u) error!", ulAgent, stAgentInfo.usSCBNo);
+                    goto make_all_fail;
+                }
+
+                pstSCBOther = sc_scb_get(stAgentInfo.usSCBNo);
+
+                pstSCB->ulCustomID = ulCustomerID;
+                pstSCB->ulAgentID = pstSCBOther->ulAgentID;
+                pstSCB->ulTaskID = pstSCBOther->ulTaskID;
+                pstSCB->usOtherSCBNo = pstSCBOther->usSCBNo;
+                pstSCBOther->usOtherSCBNo = pstSCB->usSCBNo;
+
+                /* 指定被叫号码 */
+                dos_strncpy(pstSCB->szCalleeNum, pszCallee, sizeof(pstSCB->szCalleeNum));
+                pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+
+                /* 指定主叫号码 TODO 号码组!! */
+                dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
+                pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_PREVIEW_DIALING);
+
+                if (!sc_ep_black_list_check(pstSCB->ulCustomID, pszCallee))
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
+
+                    goto make_all_fail;
+                }
+
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+                if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
+
+                    goto make_all_fail;
+                }
+
+                break;
             }
 
             pstSCB->ulCustomID = ulCustomerID;
@@ -9001,13 +9177,17 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     {
         ulRet = sc_ep_transfer_publish_active(pstSCB);
     }
+    else if (SC_SERV_AGENT_SIGNIN == ulMainService)
+    {
+        //ulRet = sc_ep_call_agent_by_id(pstSCB, pstSCB->ulAgentID);
+    }
     else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
     {
         ulRet = sc_ep_call_agent_by_id(pstSCB, pstSCB->ulAgentID);
     }
     else if (SC_SERV_PREVIEW_DIALING == ulMainService)
     {
-        if (pstSCB->usOtherSCBNo >= SC_MAX_SCB_NUM)
+        if (pstSCB->bIsAgentCall)
         {
             /* 呼叫客户 */
             pstSCBNew = sc_scb_alloc();
@@ -9896,8 +10076,13 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 }
                 else
                 {
+                    sc_ep_esl_execute("park", NULL, pstSCBOther->szUUID);
                     /* unbridge, 给坐席放音 */
-                    dos_snprintf(szCMD, sizeof(szCMD), "uuid_break %s", pstSCBOther->szUUID);
+                    //dos_snprintf(szCMD, sizeof(szCMD), "uuid_break %s", pstSCBOther->szUUID);
+                    //if (sc_ep_esl_execute_cmd(szCMD) != DOS_SUCC)
+                    //{
+                    //    DOS_ASSERT(0);
+                    //}
                 }
             }
 
@@ -9925,14 +10110,14 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             /* 维护资源 */
 
             sc_scb_hash_tables_delete(pstSCB->szUUID);
-            if (DOS_ADDR_VALID(pstSCBOther))
+            if (DOS_ADDR_VALID(pstSCBOther) && pstSCBOther->bWaitingOtherRelase)
             {
                 sc_scb_hash_tables_delete(pstSCBOther->szUUID);
             }
 
             sc_bg_job_hash_delete(pstSCB->usSCBNo);
             sc_scb_free(pstSCB);
-            if (pstSCBOther)
+            if (pstSCBOther && pstSCBOther->bWaitingOtherRelase)
             {
                 sc_bg_job_hash_delete(pstSCBOther->usSCBNo);
                 sc_scb_free(pstSCBOther);
@@ -10722,7 +10907,7 @@ VOID* sc_ep_runtime(VOID *ptr)
             }
 
             g_pstHandle->blIsESLRunning = DOS_TRUE;
-            g_pstHandle->ulESLDebugLevel = ESL_LOG_LEVEL_INFO;
+            g_pstHandle->ulESLDebugLevel = ESL_LOG_LEVEL_DEBUG;
             esl_global_set_default_logger(g_pstHandle->ulESLDebugLevel);
             esl_events(&g_pstHandle->stRecvHandle, ESL_EVENT_TYPE_PLAIN, SC_EP_EVENT_LIST);
 
