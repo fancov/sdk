@@ -8390,6 +8390,8 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
     S8    szCallString[512] = { 0, };
     S8    szCallee[32] = { 0, };
     U32   ulErrCode = BS_TERM_NONE;
+    SC_ACD_AGENT_INFO_ST stAgentInfo;
+    SC_SCB_ST *pstSCBNew = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -8431,10 +8433,50 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                     goto proc_fail;
                 }
 
+                sc_logr_info(SC_ESL, "Start find agent by userid(%s)", szCallee);
+                /* 查找是否有绑定了 userID 为 szCallee 的坐席 */
+                if (sc_acd_get_agent_by_userID(&stAgentInfo, szCallee) == DOS_SUCC)
+                {
+                    sc_logr_info(SC_ESL, "Find agent(%d) succ. bConnected : %d", stAgentInfo.ulSiteID, stAgentInfo.bConnected);
+
+                    if (stAgentInfo.bConnected)
+                    {
+                        /* 坐席长签 */
+                        pstSCBNew = sc_scb_get(stAgentInfo.usSCBNo);
+                        if (DOS_ADDR_INVALID(pstSCBNew))
+                        {
+                            DOS_ASSERT(0);
+                            goto proc_fail;
+                        }
+
+                        if ('\0' == pstSCBNew->szUUID[0])
+                        {
+                            DOS_ASSERT(0);
+                            goto proc_fail;
+                        }
+
+                        sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
+
+                        /* 给通道设置变量 */
+                        dos_snprintf(szCallString, sizeof(szCallString), "hangup_after_bridge=false");
+                        sc_ep_esl_execute("set", szCallString, pstSCBNew->szUUID);
+
+                        dos_snprintf(szCallString, sizeof(szCallString), "bgapi uuid_bridge %s %s \r\n", pstSCB->szUUID, pstSCBNew->szUUID);
+                        if (sc_ep_esl_execute_cmd(szCallString) != DOS_SUCC)
+                        {
+                            DOS_ASSERT(0);
+                            goto proc_fail;
+                        }
+
+                        break;
+                    }
+                }
+
                 dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d,update_agent=%s}user/%s", pstSCB->usSCBNo, szCallee, szCallee);
 
                 sc_ep_esl_execute("bridge", szCallString, pstSCB->szUUID);
                 sc_ep_esl_execute("hangup", szCallString, pstSCB->szUUID);
+
                 break;
 
             case SC_DID_BIND_TYPE_QUEUE:
