@@ -1432,66 +1432,46 @@ U32 sc_caller_delete(U32 ulCallerID)
 
 U32 sc_caller_grp_delete(U32 ulCallerGrpID)
 {
-    HASH_NODE_S *pstHashNode = NULL;
-    DLL_NODE_S *pstNode = NULL;
-    SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
     U32  ulHashIndex = U32_BUTT;
-    BOOL bFound = DOS_FALSE;
+    HASH_NODE_S  *pstHashNode = NULL;
+    DLL_NODE_S *pstListNode = NULL;
+    SC_CALLER_GRP_NODE_ST  *pstCallerGrp = NULL;
 
-    HASH_Scan_Table(g_pstHashCallerGrp,ulHashIndex)
+    ulHashIndex = sc_ep_caller_grp_hash_func(ulCallerGrpID);
+    pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&ulCallerGrpID, sc_ep_caller_grp_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || pstHashNode->pHandle)
     {
-        HASH_Scan_Bucket(g_pstHashCallerGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
-        {
-            if (DOS_ADDR_INVALID(pstHashNode)
-                || DOS_ADDR_INVALID(pstHashNode->pHandle))
-            {
-                continue;
-            }
-
-            pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
-            if (ulCallerGrpID == pstCallerGrp->ulID)
-            {
-                bFound = DOS_TRUE;
-                break;
-            }
-        }
-        if (DOS_TRUE == bFound)
+        sc_logr_error(SC_FUNC, "Cannot Find Caller Grp %u.", ulCallerGrpID);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
+    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
+    while (1)
+    {
+        if (DLL_Count(&pstCallerGrp->stCallerList) == 0)
         {
             break;
         }
-    }
-    if (DOS_FALSE == bFound)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Delete Caller Group FAIL.(ulID:%u)", ulCallerGrpID);
-        return DOS_FAIL;
-    }
-    else
-    {
-        DLL_Scan(&pstCallerGrp->stCallerList, pstNode, DLL_NODE_S *)
+        pstListNode = dll_fetch(&pstCallerGrp->stCallerList);
+        if (DOS_ADDR_VALID(pstListNode->pHandle))
         {
-            if (DOS_ADDR_INVALID(pstNode)
-                || DOS_ADDR_INVALID(pstNode->pHandle))
-            {
-                continue;
-            }
-            dll_delete(&pstCallerGrp->stCallerList, pstNode);
-            dos_dmem_free(pstNode->pHandle);
-            pstNode->pHandle = NULL;
-            dos_dmem_free(pstNode);
-            pstNode = NULL;
+            dos_dmem_free(pstListNode->pHandle);
+            pstListNode->pHandle = NULL;
         }
 
-        hash_delete_node(g_pstHashCallerGrp, pstHashNode, ulHashIndex);
-        dos_dmem_free(pstCallerGrp);
-        pstCallerGrp = NULL;
-
-        dos_dmem_free(pstHashNode);
-        pstHashNode = NULL;
-        sc_logr_info(SC_FUNC, "Delete Caller Group SUCC.(ulID:%u)", ulCallerGrpID);
-
-        return DOS_SUCC;
+        dll_delete(&pstCallerGrp->stCallerList, pstListNode);
+        dos_dmem_free(pstListNode);
+        pstListNode = NULL;
     }
+    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+    hash_delete_node(g_pstHashCallerGrp, pstHashNode, ulHashIndex);
+    dos_dmem_free(pstHashNode->pHandle);
+    pstHashNode->pHandle = NULL;
+    dos_dmem_free(pstHashNode);
+    pstHashNode = NULL;
+    return DOS_SUCC;
 }
 
 U32 sc_caller_setting_delete(U32 ulSettingID)
@@ -1499,46 +1479,21 @@ U32 sc_caller_setting_delete(U32 ulSettingID)
     HASH_NODE_S  *pstHashNode = NULL;
     SC_CALLER_SETTING_ST *pstSetting = NULL;
     U32 ulHashIndex = U32_BUTT;
-    BOOL bFound = DOS_FALSE;
 
-    HASH_Scan_Table(g_pstHashCallerSetting, ulHashIndex)
-    {
-        HASH_Scan_Bucket(g_pstHashCallerSetting, ulHashIndex, pstHashNode, HASH_NODE_S *)
-        {
-            if (DOS_ADDR_INVALID(pstHashNode)
-                || DOS_ADDR_INVALID(pstHashNode->pHandle))
-            {
-                continue;
-            }
-            pstSetting = pstHashNode->pHandle;
-            if (ulSettingID == pstSetting->ulID)
-            {
-                bFound = DOS_TRUE;
-                break;
-            }
-        }
-        if (DOS_TRUE == bFound)
-        {
-            break;
-        }
-    }
-    if (DOS_FALSE == bFound)
+    ulHashIndex = sc_ep_caller_setting_hash_func(pstSetting->ulID);
+    pstHashNode = hash_find_node(g_pstHashCallerSetting, ulHashIndex, (VOID *)&pstSetting->ulID, sc_ep_caller_setting_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
         DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Delete Caller Setting FAIL.(ulID:%u)", ulSettingID);
         return DOS_FAIL;
     }
-    else
-    {
-        hash_delete_node(g_pstHashCallerSetting, pstHashNode, ulHashIndex);
-        dos_dmem_free(pstSetting);
-        pstSetting = NULL;
 
-        dos_dmem_free(pstHashNode);
-        pstHashNode = NULL;
+    dos_dmem_free(pstHashNode->pHandle);
+    pstHashNode->pHandle = NULL;
+    dos_dmem_free(pstHashNode);
+    pstHashNode = NULL;
 
-        sc_logr_info(SC_FUNC, "Delete Caller Setting SUCC.(ulID:%u)", ulSettingID);
-    }
     return DOS_SUCC;
 }
 
@@ -2824,6 +2779,13 @@ U32 sc_load_gateway(U32 ulIndex)
         sc_logr_error(SC_FUNC, "Load gateway FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
+    ulRet = sc_ep_esl_execute_cmd("bgapi sofia profile external rescan");
+    if (ulRet != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
     sc_logr_info(SC_FUNC, "Load gateway SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
@@ -3512,7 +3474,9 @@ S32 sc_load_caller_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **
 U32 sc_load_caller_relationship()
 {
     SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
-    U32  ulHashIndex = U32_BUTT, ulRet = U32_BUTT;
+    U32  ulHashIndex = U32_BUTT;
+    S32 lRet = U32_BUTT;
+    S8   szQuery[256] = {0};
     HASH_NODE_S *pstHashNode = NULL;
 
     HASH_Scan_Table(g_pstHashCallerGrp, ulHashIndex)
@@ -3525,25 +3489,18 @@ U32 sc_load_caller_relationship()
                 continue;
             }
             pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
-            ulRet = sc_refresh_gateway_grp(pstCallerGrp->ulID);
-            if (DOS_SUCC != ulRet)
-            {
-                sc_logr_debug(SC_FUNC, "Refresh gwgrp %u FAIL.", pstCallerGrp->ulID);
-            }
-#if 0
-            dos_snprintf(szQuery, sizeof(szQuery), "SELECT caller_id,customer_id, caller_type FROM tbl_caller_assign WHERE caller_grp_id=%u;", pstCallerGrp->ulID);
-
+            /* 先加载主叫号码，再加载DID号码 */
+            dos_snprintf(szQuery, sizeof(szQuery), "SELECT caller_id,caller_type,customer_id FROM tbl_caller_assign WHERE caller_grp_id=%u", pstCallerGrp->ulID);
             lRet = db_query(g_pstSCDBHandle, szQuery, sc_load_caller_relationship_cb, (VOID *)pstCallerGrp, NULL);
             if (DB_ERR_SUCC != lRet)
             {
-                sc_logr_error(SC_FUNC, "%s", "Load caller relationship FAIL.");
+                sc_logr_error(SC_FUNC, "Load Caller RelationShip FAIL.(CallerGrpID:%u)", pstCallerGrp->ulID);
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
-#endif
         }
     }
-    sc_logr_info(SC_FUNC, "%s", "Load caller relationship SUCC.");
+    sc_logr_info(SC_FUNC, "%s", "Load Caller relationship SUCC.");
 
     return DOS_SUCC;
 }
@@ -3777,6 +3734,54 @@ U32 sc_refresh_gateway_grp(U32 ulIndex)
     return db_query(g_pstSCDBHandle, szSQL, sc_load_gw_relationship_cb, pstGWGrpNode, NULL);
 }
 
+U32 sc_refresh_caller_grp(U32 ulIndex)
+{
+    U32  ulHashIndex = U32_BUTT;
+    SC_CALLER_GRP_NODE_ST  *pstCallerGrp = NULL;
+    DLL_NODE_S *pstListNode = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    SC_CALLER_CACHE_NODE_ST *pstCache = NULL;
+    S8  szQuery[256] = {};
+
+    ulHashIndex = sc_ep_caller_grp_hash_func(ulIndex);
+    pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&pstCallerGrp->ulID, sc_ep_caller_grp_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode))
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_FUNC, "SC Refresh Caller Grp FAIL.(CallerGrpID:%u)", ulIndex);
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
+    while (1)
+    {
+        if (DLL_Count(&pstCallerGrp->stCallerList) == 0)
+        {
+            break;
+        }
+
+        pstListNode = dll_fetch(&pstCallerGrp->stCallerList);
+        if (DOS_ADDR_INVALID(pstListNode))
+        {
+            continue;
+        }
+
+        pstCache = (SC_CALLER_CACHE_NODE_ST *)pstListNode->pHandle;
+        if (DOS_ADDR_VALID(pstCache))
+        {
+            dos_dmem_free(pstCache);
+            pstCache = NULL;
+        }
+        dll_delete(&pstCallerGrp->stCallerList, pstListNode);
+        dos_dmem_free(pstListNode);
+        pstListNode = NULL;
+    }
+    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT caller_id,caller_type,customer_id FROM tbl_caller_assign WHERE caller_grp_id=%u", ulIndex);
+
+    return db_query(g_pstSCDBHandle, szQuery, sc_load_caller_grp_cb, (VOID *)pstCallerGrp, NULL);
+}
 
 /**
  * 函数: S32 sc_load_route_group_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
@@ -6865,6 +6870,7 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
  *      SC_ACD_AGENT_INFO_ST *pstAgentInfo : 坐席信息
  * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
  */
+#if 0
 U32 sc_ep_agent_signin(const SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
     S8            szAPPParam[512] = { 0 };
@@ -6990,6 +6996,128 @@ proc_error:
 
     return DOS_FAIL;
 }
+
+#endif
+
+U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+{
+    SC_SCB_ST     *pstSCB           = NULL;
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        return DOS_FALSE;
+    }
+
+    pstSCB = sc_scb_alloc();
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_ESL, "%s", "Allc SCB FAIL.");
+
+        goto error;
+    }
+
+    pstAgentInfo->usSCBNo = pstSCB->usSCBNo;
+    pstSCB->ulCustomID = pstAgentInfo->ulCustomerID;
+    pstSCB->ulAgentID = pstAgentInfo->ulSiteID;
+    pstSCB->ucLegRole = SC_CALLEE;
+    pstSCB->bRecord = pstAgentInfo->bRecord;
+    pstSCB->bIsAgentCall = DOS_TRUE;
+
+    switch (pstAgentInfo->ucBindType)
+    {
+        case AGENT_BIND_SIP:
+            dos_strncpy(pstSCB->szCalleeNum, pstAgentInfo->szUserID, sizeof(pstSCB->szCalleeNum));
+            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+            break;
+        case AGENT_BIND_TELE:
+            dos_strncpy(pstSCB->szCalleeNum, pstAgentInfo->szTelePhone, sizeof(pstSCB->szCalleeNum));
+            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+            break;
+        case AGENT_BIND_MOBILE:
+            dos_strncpy(pstSCB->szCalleeNum, pstAgentInfo->szMobile, sizeof(pstSCB->szCalleeNum));
+            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+            break;
+    }
+
+    dos_strncpy(pstSCB->szCallerNum, pstAgentInfo->szUserID, sizeof(pstSCB->szCallerNum));
+    pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+
+    dos_strncpy(pstSCB->szSiteNum, pstAgentInfo->szEmpNo, sizeof(pstSCB->szSiteNum));
+    pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
+
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_SIGNIN);
+    SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
+
+    if (AGENT_BIND_SIP != pstAgentInfo->ucBindType
+        && AGENT_BIND_TT_NUMBER != pstAgentInfo->ucBindType)
+    {
+        SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+        SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+
+        if (!sc_ep_black_list_check(pstSCB->ulCustomID, pstSCB->szCalleeNum))
+        {
+            DOS_ASSERT(0);
+            sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
+            goto error;
+        }
+
+        if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+        {
+            sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
+            goto error;
+        }
+
+        return DOS_SUCC;
+    }
+
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
+
+    if (AGENT_BIND_SIP == pstAgentInfo->ucBindType)
+    {
+        if (sc_dial_make_call2ip(pstSCB, SC_SERV_AGENT_SIGNIN) != DOS_SUCC)
+        {
+            goto error;
+        }
+    }
+    else if (AGENT_BIND_SIP == pstAgentInfo->ucBindType)
+    {
+        if (sc_dial_make_call2eix(pstSCB, SC_SERV_AGENT_SIGNIN) != DOS_SUCC)
+        {
+            goto error;
+        }
+    }
+
+    return DOS_SUCC;
+
+error:
+
+    sc_scb_free(pstSCB);
+
+    return DOS_FAIL;
+}
+
+U32 sc_ep_agent_signout(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+{
+    SC_SCB_ST     *pstSCB           = NULL;
+
+    if (DOS_ADDR_INVALID(pstAgentInfo) || pstAgentInfo->usSCBNo >= SC_MAX_SCB_NUM)
+    {
+        return DOS_FAIL;
+    }
+
+    pstSCB = sc_scb_get(pstAgentInfo->usSCBNo);
+
+    /* 挂断 */
+    pstAgentInfo->usSCBNo = U16_BUTT;
+    sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+    sc_scb_free(pstSCB);
+
+    return DOS_SUCC;
+}
+
 
 U32 sc_ep_agent_record(SC_SCB_ST * pstSCB)
 {
@@ -7582,6 +7710,12 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
             goto proc_error;
         }
 
+        sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
+
+        /* 给通道设置变量 */
+        dos_snprintf(szAPPParam, sizeof(szAPPParam), "hangup_after_bridge=false");
+        sc_ep_esl_execute("set", szAPPParam, pstSCBNew->szUUID);
+
         dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_bridge %s %s \r\n", pstSCB->szUUID, pstSCBNew->szUUID);
         if (sc_ep_esl_execute_cmd(szAPPParam) != DOS_SUCC)
         {
@@ -7858,6 +7992,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
 {
     SC_SCB_ST *pstSCB       = NULL;
     SC_SCB_ST *pstSCBNew    = NULL;
+    SC_SCB_ST *pstSCBOther  = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
     U32       ulMainServie;
 
@@ -7883,16 +8018,62 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
                 goto make_all_fail;
             }
 
-            if (stAgentInfo.bConnected)
-            {
-                /* TODO 坐席长连 */
-
-            }
-
             pstSCB = sc_scb_alloc();
             if (DOS_ADDR_INVALID(pstSCB))
             {
                 sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+
+                goto make_all_fail;
+            }
+
+            if (stAgentInfo.bConnected)
+            {
+                /* 坐席长连 */
+                if (stAgentInfo.usSCBNo >= SC_MAX_SCB_NUM)
+                {
+                    sc_logr_info(SC_ESL, "agent(%u) ScbNo(%u) error!", ulAgent, stAgentInfo.usSCBNo);
+                    goto make_all_fail;
+                }
+
+                pstSCBOther = sc_scb_get(stAgentInfo.usSCBNo);
+
+                pstSCB->ulCustomID = ulCustomerID;
+                pstSCB->ulAgentID = pstSCBOther->ulAgentID;
+                pstSCB->ulTaskID = pstSCBOther->ulTaskID;
+                pstSCB->usOtherSCBNo = pstSCBOther->usSCBNo;
+                pstSCBOther->usOtherSCBNo = pstSCB->usSCBNo;
+
+                /* 指定被叫号码 */
+                dos_strncpy(pstSCB->szCalleeNum, pszCallee, sizeof(pstSCB->szCalleeNum));
+                pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+
+                /* 指定主叫号码 TODO 号码组!! */
+                dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
+                pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_PREVIEW_DIALING);
+
+                if (!sc_ep_black_list_check(pstSCB->ulCustomID, pszCallee))
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
+
+                    goto make_all_fail;
+                }
+
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+                if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
+
+                    goto make_all_fail;
+                }
+
+                break;
             }
 
             pstSCB->ulCustomID = ulCustomerID;
@@ -9001,13 +9182,17 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     {
         ulRet = sc_ep_transfer_publish_active(pstSCB);
     }
+    else if (SC_SERV_AGENT_SIGNIN == ulMainService)
+    {
+        //ulRet = sc_ep_call_agent_by_id(pstSCB, pstSCB->ulAgentID);
+    }
     else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
     {
         ulRet = sc_ep_call_agent_by_id(pstSCB, pstSCB->ulAgentID);
     }
     else if (SC_SERV_PREVIEW_DIALING == ulMainService)
     {
-        if (pstSCB->usOtherSCBNo >= SC_MAX_SCB_NUM)
+        if (pstSCB->bIsAgentCall)
         {
             /* 呼叫客户 */
             pstSCBNew = sc_scb_alloc();
@@ -9896,8 +10081,13 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 }
                 else
                 {
+                    sc_ep_esl_execute("park", NULL, pstSCBOther->szUUID);
                     /* unbridge, 给坐席放音 */
-                    dos_snprintf(szCMD, sizeof(szCMD), "uuid_break %s", pstSCBOther->szUUID);
+                    //dos_snprintf(szCMD, sizeof(szCMD), "uuid_break %s", pstSCBOther->szUUID);
+                    //if (sc_ep_esl_execute_cmd(szCMD) != DOS_SUCC)
+                    //{
+                    //    DOS_ASSERT(0);
+                    //}
                 }
             }
 
@@ -9925,14 +10115,14 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             /* 维护资源 */
 
             sc_scb_hash_tables_delete(pstSCB->szUUID);
-            if (DOS_ADDR_VALID(pstSCBOther))
+            if (DOS_ADDR_VALID(pstSCBOther) && pstSCBOther->bWaitingOtherRelase)
             {
                 sc_scb_hash_tables_delete(pstSCBOther->szUUID);
             }
 
             sc_bg_job_hash_delete(pstSCB->usSCBNo);
             sc_scb_free(pstSCB);
-            if (pstSCBOther)
+            if (pstSCBOther && pstSCBOther->bWaitingOtherRelase)
             {
                 sc_bg_job_hash_delete(pstSCBOther->usSCBNo);
                 sc_scb_free(pstSCBOther);
@@ -10722,7 +10912,7 @@ VOID* sc_ep_runtime(VOID *ptr)
             }
 
             g_pstHandle->blIsESLRunning = DOS_TRUE;
-            g_pstHandle->ulESLDebugLevel = ESL_LOG_LEVEL_INFO;
+            g_pstHandle->ulESLDebugLevel = ESL_LOG_LEVEL_DEBUG;
             esl_global_set_default_logger(g_pstHandle->ulESLDebugLevel);
             esl_events(&g_pstHandle->stRecvHandle, ESL_EVENT_TYPE_PLAIN, SC_EP_EVENT_LIST);
 
@@ -10875,7 +11065,6 @@ U32 sc_ep_init()
     SC_TRACE_OUT();
     return DOS_SUCC;
 init_fail:
-
     return DOS_FAIL;
 }
 
@@ -10886,7 +11075,7 @@ U32 sc_ep_start()
 
     SC_TRACE_IN(0, 0, 0, 0);
 
-    for (i=0; i<SC_EP_TASK_NUM; i++)
+    for (i=0; i < SC_EP_TASK_NUM; i++)
     {
         if (SC_MASTER_TASK_INDEX == i)
         {

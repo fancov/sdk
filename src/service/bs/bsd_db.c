@@ -748,8 +748,8 @@ VOID bsd_save_original_cdr(BS_INTER_MSG_CDR *pstMsg)
                         ", terminate_cause, release_part, payload_type, package_loss_rate, cdr_mark"
                         ", sessionID, bridge_time, bye_time, peer_ip1, peer_ip2, tbl_cdr.peer_ip3, peer_ip4)"
                     "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, \"%s\", \"%s\", \"%s\", \"%s\""
-                        ", \"%s\", FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), %u, %u, %u, %u, %u, %u, %u, %u, \"%s\""
-                        ", FROM_UNIXTIME(%u), FROM_UNIXTIME(%u), %u, %u, %u, %u);"
+                        ", \"%s\", %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\""
+                        ", %u, %u, %u, %u, %u, %u);"
                     , pstCDR->astSessionLeg[i].ulCustomerID
                     , pstCDR->astSessionLeg[i].ulAccountID
                     , pstCDR->astSessionLeg[i].ulUserID
@@ -859,7 +859,7 @@ VOID bsd_save_recording_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`record_file`,`caller`,`callee`,`CID`,`agent_num`,"
                       "`start_time`,`time_len`,`agent_level`,`cdr_mark`,`cdr_type`)"
                     "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\", "
-                      "\"%s\", \"%s\", \"%s\", \"%s\", FROM_UNIXTIME(%u), %u, %u, %u, %u);"
+                      "\"%s\", \"%s\", \"%s\", \"%s\", %u, %u, %u, %u, %u);"
                     , pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID
                     , pstCDR->ulTaskID, pstCDR->ulRuleID, pstCDR->aulFee[0]
                     , pstCDR->aulFee[1], pstCDR->aulFee[2], pstCDR->aulFee[3]
@@ -974,7 +974,7 @@ VOID bsd_save_rent_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`id`,`customer_id`,`account_id`,`billing_rule_id`,`ctime`,"
                       "`type`,`fee_l1`,`fee_l2`,`fee_l3`,`fee_l4`,`fee_l5`,"
                       "`agent_level`,`cdr_mark`,`cdr_type`)"
-                    "VALUES(NULL, %u, %u, %u, FROM_UNIXTIME(%u), %u, %u, %u, %u, %u, %u, %u, %u, %u);"
+                    "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u);"
                     , pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulRuleID, pstCDR->ulTimeStamp
                     , pstCDR->ucAttrType, pstCDR->aulFee[0], pstCDR->aulFee[1], pstCDR->aulFee[2]
                     , pstCDR->aulFee[3], pstCDR->aulFee[4], pstCDR->ucAgentLevel, pstCDR->stCDRTag.ulCDRMark
@@ -1007,7 +1007,7 @@ VOID bsd_save_account_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`id`,`customer_id`,`account_id`,`ctime`,"
                       "`type`,`money`,`balance`,`peer_account_id`,"
                       "`operator_id`,`note`)"
-                    "VALUES(NULL, %u, %u, FROM_UNIXTIME(%u), %u, %u, %ld, %u, %u, \"%s\");"
+                    "VALUES(NULL, %u, %u, %u, %u, %u, %ld, %u, %u, \"%s\");"
                     , pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulTimeStamp
                     , pstCDR->ucOperateType, pstCDR->lMoney, pstCDR->LBalance
                     , pstCDR->ulPeeAccount, pstCDR->ulOperatorID, pstCDR->szRemark);

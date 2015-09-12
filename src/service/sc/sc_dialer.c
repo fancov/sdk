@@ -330,7 +330,6 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         goto esl_exec_fail;;
     }
 
-    /* 如果是一个中继，则进项相应的号码变换 */
     if (sc_ep_get_callee_string(ulRouteID, pstSCB, szCallString, sizeof(szCallString)) != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -351,7 +350,9 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , pstSCB->szCallerNum
                         , szCallString);
 
-        if (esl_execute(&g_pstDialerHandle->stHandle, "bridge", szCMDBuff, pstSCBOther->szUUID) != ESL_SUCCESS)
+        sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
+
+        if (sc_ep_esl_execute("bridge", szCMDBuff, pstSCBOther->szUUID) != ESL_SUCCESS)
         {
             DOS_ASSERT(0);
 
