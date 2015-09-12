@@ -56,6 +56,8 @@ FUNCATTR DB_HANDLE_ST *db_create(DB_TYPE_EN enType)
     pstHandle->ulDBType = enType;
     pstHandle->ulDBStatus = DB_STATE_INIT;
 
+    pthread_mutex_init(&pstHandle->mutexHandle, NULL);
+
     switch (enType)
     {
 #if DB_MYSQL
@@ -124,6 +126,8 @@ FUNCATTR S32 db_destroy(DB_HANDLE_ST **ppstDBHandle)
                 pstDBHandle->pstMYSql = NULL;
             }
             pstDBHandle->pstMYSql = NULL;
+
+            pthread_mutex_destroy(&pstDBHandle->mutexHandle);
 
             break;
 #endif
@@ -327,7 +331,9 @@ FUNCATTR S32 db_query(DB_HANDLE_ST *pstDBHandle, S8 *pszSQL, S32 (*callback)(VOI
 #if DB_MYSQL
         case DB_TYPE_MYSQL:
             /* @TODO: Read configure */
+            pthread_mutex_lock(&pstDBHandle->mutexHandle);
             ulRet = db_mysql_query(pstDBHandle->pstMYSql, pszSQL, callback, pParamObj, pszErrMsg);
+            pthread_mutex_unlock(&pstDBHandle->mutexHandle);
             if (ulRet != DB_ERR_SUCC)
             {
                 db_assert(0);
@@ -415,6 +421,8 @@ FUNCATTR S32 db_affect_raw(DB_HANDLE_ST *pstDBHandle)
  */
 FUNCATTR S32 db_transaction_begin(DB_HANDLE_ST *pstDBHandle)
 {
+    S32 lRet;
+
     if (!pstDBHandle)
     {
         db_assert(0);
@@ -441,7 +449,10 @@ FUNCATTR S32 db_transaction_begin(DB_HANDLE_ST *pstDBHandle)
 #if DB_MYSQL
         case DB_TYPE_MYSQL:
             /* @TODO: Read configure */
-            if (db_mysql_transaction_begin(pstDBHandle->pstMYSql, NULL) < 0)
+            pthread_mutex_lock(&pstDBHandle->mutexHandle);
+            lRet = db_mysql_transaction_begin(pstDBHandle->pstMYSql, NULL);
+            pthread_mutex_unlock(&pstDBHandle->mutexHandle);
+            if (lRet < 0)
             {
                 db_assert(0);
                 return -1;
@@ -474,6 +485,8 @@ FUNCATTR S32 db_transaction_begin(DB_HANDLE_ST *pstDBHandle)
  */
 FUNCATTR S32 db_transaction_commit(DB_HANDLE_ST *pstDBHandle)
 {
+    S32 lRet;
+
     if (!pstDBHandle)
     {
         db_assert(0);
@@ -501,7 +514,10 @@ FUNCATTR S32 db_transaction_commit(DB_HANDLE_ST *pstDBHandle)
 #if DB_MYSQL
         case DB_TYPE_MYSQL:
             /* @TODO: Read configure */
-            if (db_mysql_transaction_commit(pstDBHandle->pstMYSql, NULL) < 0)
+            pthread_mutex_lock(&pstDBHandle->mutexHandle);
+            lRet = db_mysql_transaction_commit(pstDBHandle->pstMYSql, NULL);
+            pthread_mutex_unlock(&pstDBHandle->mutexHandle);
+            if (lRet < 0)
             {
                 db_assert(0);
                 return -1;
@@ -536,6 +552,8 @@ FUNCATTR S32 db_transaction_commit(DB_HANDLE_ST *pstDBHandle)
  */
 FUNCATTR S32 db_transaction_rollback(DB_HANDLE_ST *pstDBHandle)
 {
+    S32 lRet;
+
     if (!pstDBHandle)
     {
         db_assert(0);
@@ -562,7 +580,10 @@ FUNCATTR S32 db_transaction_rollback(DB_HANDLE_ST *pstDBHandle)
 #if DB_MYSQL
         case DB_TYPE_MYSQL:
             /* @TODO: Read configure */
-            if (db_mysql_transaction_rollback(pstDBHandle->pstMYSql, NULL) < 0)
+            pthread_mutex_lock(&pstDBHandle->mutexHandle);
+            lRet = db_mysql_transaction_rollback(pstDBHandle->pstMYSql, NULL);
+            pthread_mutex_unlock(&pstDBHandle->mutexHandle);
+            if (lRet < 0)
             {
                 db_assert(0);
                 return -1;
