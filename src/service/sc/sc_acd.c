@@ -501,7 +501,7 @@ U32 sc_acd_group_remove_agent(U32 ulGroupID, U32 ulSiteID)
     HASH_NODE_S                  *pstHashNode        = NULL;
     DLL_NODE_S                   *pstDLLNode         = NULL;
     U32                          ulHashVal           = 0;
-
+    S32                          lIndex              = 0;
 
     /* 检测所在队列是否存在 */
     sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
@@ -537,14 +537,19 @@ U32 sc_acd_group_remove_agent(U32 ulGroupID, U32 ulSiteID)
     dll_delete(&pstGroupNode->stAgentList, pstDLLNode);
 
     pstAgentQueueNode = pstDLLNode->pHandle;
+
+    for (lIndex = 0; lIndex < MAX_GROUP_PER_SITE; ++lIndex)
+    {
+        if (ulGroupID == pstAgentQueueNode->pstAgentInfo->aulGroupID[lIndex])
+        {
+            pstAgentQueueNode->pstAgentInfo->aulGroupID[lIndex] = 0;
+            break;
+        }
+    }
+
     pstDLLNode->pHandle = NULL;
     dos_dmem_free(pstDLLNode);
     pstDLLNode = NULL;
-
-    /*
-     * pstAgentQueueNode->pstAgentInfo 这个成员不能释放，这个成员是agent hash表里面申请的
-     */
-
     pstAgentQueueNode->pstAgentInfo = NULL;
     dos_dmem_free(pstAgentQueueNode);
     pstAgentQueueNode = NULL;
@@ -552,6 +557,7 @@ U32 sc_acd_group_remove_agent(U32 ulGroupID, U32 ulSiteID)
     pstGroupNode->usCount--;
 
     pthread_mutex_unlock(&g_mutexGroupList);
+    sc_logr_debug(SC_ACD, "Remove agent %u from group %u SUCC.", ulSiteID, ulGroupID);
 
     return DOS_SUCC;
 }
@@ -571,6 +577,7 @@ U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     HASH_NODE_S                  *pstHashNode        = NULL;
     DLL_NODE_S                   *pstDLLNode         = NULL;
     U32                          ulHashVal           = 0;
+    S32                          lIndex = 0;
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -579,6 +586,16 @@ U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         return DOS_FAIL;
     }
 
+    for (lIndex = 0; lIndex < MAX_GROUP_PER_SITE; lIndex++)
+    {
+        if (0 == pstAgentInfo->aulGroupID[lIndex]
+            || U32_BUTT == pstAgentInfo->aulGroupID[lIndex]
+            || ulGroupID == pstAgentInfo->aulGroupID[lIndex])
+        {
+            break;
+        }
+    }
+    pstAgentInfo->aulGroupID[lIndex] = ulGroupID;
     /* 检测所在队列是否存在 */
     sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
@@ -626,12 +643,13 @@ U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     pthread_mutex_lock(&pstGroupNode->mutexSiteQueue);
     pstAgentQueueNode->ulID = pstGroupNode->usCount;
     pstGroupNode->usCount++;
+
     DLL_Add(&pstGroupNode->stAgentList, pstDLLNode);
     pthread_mutex_unlock(&pstGroupNode->mutexSiteQueue);
 
     pthread_mutex_unlock(&g_mutexGroupList);
 
-    sc_logr_error(SC_ACD, "Add agent to group SUCC. Agent ID: %u, Group ID:%u, Bind Type: %u"
+    sc_logr_debug(SC_ACD, "Add agent to group SUCC. Agent ID: %u, Group ID:%u, Bind Type: %u"
             , pstAgentInfo->ulSiteID
             , ulGroupID
             , pstAgentInfo->ucBindType);
@@ -2124,7 +2142,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     /* 将坐席加入到组 */
     if (ulAgentIndex != SC_INVALID_INDEX)
     {
-        for (ulIndex=0; ulIndex<MAX_GROUP_PER_SITE; ulIndex++)
+        for (ulIndex = 0; ulIndex < MAX_GROUP_PER_SITE; ulIndex++)
         {
             if (0 == stSiteInfo.aulGroupID[ulIndex] || U32_BUTT == stSiteInfo.aulGroupID[ulIndex])
             {
@@ -2137,7 +2155,6 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
             }
         }
     }
-
     return 0;
 }
 
