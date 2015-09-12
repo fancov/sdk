@@ -2779,6 +2779,13 @@ U32 sc_load_gateway(U32 ulIndex)
         sc_logr_error(SC_FUNC, "Load gateway FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
+    ulRet = sc_ep_esl_execute_cmd("bgapi sofia profile external rescan");
+    if (ulRet != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
     sc_logr_info(SC_FUNC, "Load gateway SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
