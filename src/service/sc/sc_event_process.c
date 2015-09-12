@@ -2786,7 +2786,7 @@ U32 sc_load_gateway(U32 ulIndex)
         return DOS_FAIL;
     }
 
-    sc_logr_info(SC_FUNC, "Load gateway SUCC.(ID:%u)", ulIndex);
+    sc_logr_debug(SC_FUNC, "Load gateway SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -3162,7 +3162,7 @@ U32 sc_load_caller(U32 ulIndex)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-    sc_logr_info(SC_FUNC, "Load Caller SUCC.(ID:%u)", ulIndex);
+    sc_logr_debug(SC_FUNC, "Load Caller SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -3328,7 +3328,7 @@ U32 sc_load_caller_grp(U32 ulIndex)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-    sc_logr_info(SC_FUNC, "Load caller group SUCC.(ID:%u)", ulIndex);
+    sc_logr_debug(SC_FUNC, "Load caller group SUCC.(ID:%u)", ulIndex);
 
     return ulRet;
 }
@@ -3500,7 +3500,7 @@ U32 sc_load_caller_relationship()
             }
         }
     }
-    sc_logr_info(SC_FUNC, "%s", "Load Caller relationship SUCC.");
+    sc_logr_debug(SC_FUNC, "%s", "Load Caller relationship SUCC.");
 
     return DOS_SUCC;
 }
@@ -3669,7 +3669,7 @@ U32  sc_load_caller_setting(U32 ulIndex)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-    sc_logr_info(SC_FUNC, "Load caller setting SUCC.(ID:%u)", ulIndex);
+    sc_logr_debug(SC_FUNC, "Load caller setting SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -4072,7 +4072,7 @@ U32 sc_load_route(U32 ulIndex)
         sc_logr_error(SC_FUNC, "Load route FAIL(ID:%u).", ulIndex);
         return DOS_FAIL;
     }
-    sc_logr_info(SC_FUNC, "Load route SUCC.(ID:%u)", ulIndex);
+    sc_logr_debug(SC_FUNC, "Load route SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
