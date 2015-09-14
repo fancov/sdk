@@ -397,7 +397,7 @@ U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
 }
 
 /* 根据SIP，查找到绑定的坐席，更新usSCBNo字段 */
-U32 sc_acd_update_agent_scbno_by_userID(S8 *szUserID, U16 usSCBNo)
+U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, U16 usSCBNo)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
@@ -451,16 +451,11 @@ U32 sc_acd_update_agent_scbno_by_userID(S8 *szUserID, U16 usSCBNo)
     return DOS_FAIL;
 }
 
-U32 sc_acd_update_agent_scbno_by_SiteID(U32 ulAgentID, U16 usSCBNo)
+U32 sc_acd_update_agent_scbno_by_Siteid(U32 ulAgentID, U16 usSCBNo)
 {
     HASH_NODE_S                *pstHashNode = NULL;
     SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode = NULL;
     U32                        ulHashIndex = 0;
-
-    if (usSCBNo >= SC_MAX_SCB_NUM)
-    {
-        return DOS_FAIL;
-    }
 
     sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
     pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
@@ -1642,7 +1637,7 @@ U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID,
     return ulResult;
 }
 
-U32 sc_acd_get_agent_by_userID(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
+U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
