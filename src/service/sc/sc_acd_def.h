@@ -69,7 +69,6 @@ typedef enum tagAgentBindType{
     AGENT_BIND_SIP        = 0,
     AGENT_BIND_TELE,
     AGENT_BIND_MOBILE,
-
     AGENT_BIND_TT_NUMBER,
 
     AGENT_BIND_BUTT
@@ -81,7 +80,7 @@ typedef struct tagACDSiteDesc{
     U8         ucBindType;                        /* 坐席绑定类型 refer to SC_AGENT_BIND_TYPE_EN */
     U32        ulSiteID;                          /* 坐席数据库编号 */
     U32        ulCallCnt;                         /* 呼叫总数 */
-    U32        ulCustomerID;                      /* 呼叫总数 */
+    U32        ulCustomerID;                      /* 客户id */
     U32        ulSIPUserID;                       /* SIP账户ID */
     U32        aulGroupID[MAX_GROUP_PER_SITE];    /* 组ID */
 
