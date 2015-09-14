@@ -267,7 +267,6 @@ static S32 bsd_walk_agent_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszF
     {
         ulCnt++;
         hash_add_node(g_astAgentTbl, pstHashNode, ulHashIndex, NULL);
-        g_astAgentTbl->NodeNum++;
     }
     else
     {

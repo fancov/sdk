@@ -69,7 +69,6 @@ typedef enum tagAgentBindType{
     AGENT_BIND_SIP        = 0,
     AGENT_BIND_TELE,
     AGENT_BIND_MOBILE,
-
     AGENT_BIND_TT_NUMBER,
 
     AGENT_BIND_BUTT
@@ -81,7 +80,7 @@ typedef struct tagACDSiteDesc{
     U8         ucBindType;                        /* 坐席绑定类型 refer to SC_AGENT_BIND_TYPE_EN */
     U32        ulSiteID;                          /* 坐席数据库编号 */
     U32        ulCallCnt;                         /* 呼叫总数 */
-    U32        ulCustomerID;                      /* 呼叫总数 */
+    U32        ulCustomerID;                      /* 客户id */
     U32        ulSIPUserID;                       /* SIP账户ID */
     U32        aulGroupID[MAX_GROUP_PER_SITE];    /* 组ID */
 
@@ -124,9 +123,9 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID);
 U32 sc_acd_get_idel_agent(U32 ulGroupID);
 U32 sc_acd_get_total_agent(U32 ulGroupID);
 U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID);
-U32 sc_acd_get_agent_by_userID(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID);
-U32 sc_acd_update_agent_scbno_by_userID(S8 *szUserID, U16 usSCBNo);
-U32 sc_acd_update_agent_scbno_by_SiteID(U32 ulAgentID, U16 usSCBNo);
+U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID);
+U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, U16 usSCBNo);
+U32 sc_acd_update_agent_scbno_by_Siteid(U32 ulAgentID, U16 usSCBNo);
 U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr);
 
 #endif
