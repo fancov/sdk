@@ -8080,6 +8080,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             pstSCB->ulAgentID = ulAgent;
             pstSCB->ulTaskID = ulTaskID;
             pstSCB->bRecord = stAgentInfo.bRecord;
+            pstSCB->bIsAgentCall = DOS_TRUE;
 
             /* Ö¸¶¨Ö÷½ÐºÅÂë */
             dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
