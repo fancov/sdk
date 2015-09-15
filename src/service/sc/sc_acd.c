@@ -397,7 +397,7 @@ U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
 }
 
 /* 根据SIP，查找到绑定的坐席，更新usSCBNo字段 */
-U32 sc_acd_update_agent_scbno_by_userID(S8 *szUserID, U16 usSCBNo)
+U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, U16 usSCBNo)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
@@ -451,16 +451,11 @@ U32 sc_acd_update_agent_scbno_by_userID(S8 *szUserID, U16 usSCBNo)
     return DOS_FAIL;
 }
 
-U32 sc_acd_update_agent_scbno_by_SiteID(U32 ulAgentID, U16 usSCBNo)
+U32 sc_acd_update_agent_scbno_by_Siteid(U32 ulAgentID, U16 usSCBNo)
 {
     HASH_NODE_S                *pstHashNode = NULL;
     SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode = NULL;
     U32                        ulHashIndex = 0;
-
-    if (usSCBNo >= SC_MAX_SCB_NUM)
-    {
-        return DOS_FAIL;
-    }
 
     sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
     pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
@@ -1642,7 +1637,7 @@ U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID,
     return ulResult;
 }
 
-U32 sc_acd_get_agent_by_userID(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
+U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
@@ -1892,8 +1887,6 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     S8                          *pszSIPID = NULL;
     SC_ACD_AGENT_INFO_ST        *pstSiteInfo = NULL;
     SC_ACD_AGENT_INFO_ST        stSiteInfo;
-    S32                         lLoop = 0;
-    BOOL                        bFound = DOS_FALSE;
     U32                         ulSiteID   = 0, ulCustomID   = 0, ulGroupID0  = 0;
     U32                         ulGroupID1 = 0, ulRecordFlag = 0, ulIsHeader = 0;
     U32                         ulHashIndex = 0, ulIndex = 0, ulRest = 0, ulSelectType = 0;
@@ -1942,25 +1935,14 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         return 0;
     }
 
-    if (DOS_ADDR_VALID(pszGroupID0))
+    if (DOS_ADDR_INVALID(pszGroupID0)
+        || dos_atoul(pszGroupID0, &ulGroupID0) < 0)
     {
-        if (dos_atoul(pszGroupID0, &ulGroupID0) < 0)
-        {
-            ulGroupID0 = 0;
-        }
+        pszGroupID0 = 0;
     }
-    else
-    {
-        ulGroupID0 = 0;
-    }
-    if (DOS_ADDR_VALID(pszGroupID1))
-    {
-        if (dos_atoul(pszGroupID1, &ulGroupID1) < 0)
-        {
-            ulGroupID1 = 0;
-        }
-    }
-    else
+
+    if (DOS_ADDR_INVALID(pszGroupID1)
+        || dos_atoul(pszGroupID1, &ulGroupID1) < 0)
     {
         ulGroupID1 = 0;
     }
@@ -1968,7 +1950,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     if (AGENT_BIND_SIP == ulSelectType)
     {
         if (DOS_ADDR_INVALID(pszSIPID)
-            || '\0' == pszSIPID
+            || '\0' == pszSIPID[0]
             || dos_atoul(pszSIPID, &ulSIPID) < 0)
         {
             DOS_ASSERT(0);
@@ -1987,7 +1969,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     else if (AGENT_BIND_TELE == ulSelectType)
     {
         if (DOS_ADDR_INVALID(pszTelePhone)
-            || '\0' == pszTelePhone)
+            || '\0' == pszTelePhone[0])
         {
             DOS_ASSERT(0);
 
@@ -2100,38 +2082,16 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
 
                             ulRest = sc_acd_group_remove_agent(pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]
                                                                 , pstAgentQueueNode->pstAgentInfo->ulSiteID);
-                            pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] = 0;
                             if (DOS_SUCC == ulRest)
                             {
                                 /* 添加到新的组 */
                                 sc_logr_debug(SC_ACD, "Agent %u will be added into Group %u."
                                                 , stSiteInfo.aulGroupID[ulIndex]
                                                 , pstAgentQueueNode->pstAgentInfo->ulSiteID);
-                                bFound = DOS_FALSE;
-                                for (lLoop = 0; lLoop < MAX_GROUP_PER_SITE; lLoop++)
-                                {
-                                    if (pstAgentQueueNode->pstAgentInfo->aulGroupID[lLoop] == stSiteInfo.aulGroupID[ulIndex])
-                                    {
-                                        /* 查找到了坐席中有该坐席组id，标记 */
-                                        bFound = DOS_TRUE;
-                                        break;
-                                    }
-                                }
-                                /* 没有找到，则找一空闲的节点存放 */
-                                if (!bFound)
-                                {
-                                    for (lLoop = 0; lLoop < MAX_GROUP_PER_SITE; lLoop++)
-                                    {
-                                        if (0 == pstAgentQueueNode->pstAgentInfo->aulGroupID[lLoop]
-                                            || U32_BUTT == pstAgentQueueNode->pstAgentInfo->aulGroupID[lLoop])
-                                        {
-                                            pstAgentQueueNode->pstAgentInfo->aulGroupID[lLoop] = stSiteInfo.aulGroupID[ulIndex];
-                                            break;
-                                        }
-                                    }
-                                }
-                                sc_acd_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstAgentQueueNode->pstAgentInfo);
+
                                 pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] = stSiteInfo.aulGroupID[ulIndex];
+
+                                sc_acd_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstAgentQueueNode->pstAgentInfo);
                             }
                         }
                     }
@@ -2156,28 +2116,8 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                         sc_logr_debug(SC_ACD, "Agent %u will be add into group %u."
                                         , pstAgentQueueNode->pstAgentInfo->ulSiteID
                                         , stSiteInfo.aulGroupID[ulIndex]);
-                        bFound = DOS_FALSE;
-                        for (lLoop = 0; lLoop < MAX_GROUP_PER_SITE; ++lLoop)
-                        {
-                            if (pstAgentQueueNode->pstAgentInfo->aulGroupID[lLoop] == stSiteInfo.aulGroupID[ulIndex])
-                            {
-                                /* 查找到了坐席中有该坐席组id，标记 */
-                                bFound = DOS_TRUE;
-                                break;
-                            }
-                        }
-                        if (!bFound)
-                        {
-                            for (lLoop = 0; lLoop < MAX_GROUP_PER_SITE; lLoop++)
-                            {
-                                if (0 == pstAgentQueueNode->pstAgentInfo->aulGroupID[lLoop]
-                                    || U32_BUTT == pstAgentQueueNode->pstAgentInfo->aulGroupID[lLoop])
-                                {
-                                    pstAgentQueueNode->pstAgentInfo->aulGroupID[lLoop] = stSiteInfo.aulGroupID[ulIndex];
-                                    break;
-                                }
-                            }
-                        }
+
+                        pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] = stSiteInfo.aulGroupID[ulIndex];
                         sc_acd_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstAgentQueueNode->pstAgentInfo);
                     }
                     else
@@ -2204,11 +2144,19 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                 dos_strncpy(pstAgentQueueNode->pstAgentInfo->szExtension, stSiteInfo.szExtension,SC_TEL_NUMBER_LENGTH);
                 pstAgentQueueNode->pstAgentInfo->szExtension[SC_TEL_NUMBER_LENGTH - 1] = '\0';
             }
+            else
+            {
+                pstAgentQueueNode->pstAgentInfo->szExtension[0] = '\0';
+            }
 
             if (pszUserID && '\0' != pszUserID[0])
             {
                 dos_strncpy(pstAgentQueueNode->pstAgentInfo->szUserID, stSiteInfo.szUserID,SC_TEL_NUMBER_LENGTH);
                 pstAgentQueueNode->pstAgentInfo->szUserID[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+            }
+            else
+            {
+                pstAgentQueueNode->pstAgentInfo->szUserID[0] = '\0';
             }
 
             if (pszTelePhone && '\0' != pszTelePhone[0])
@@ -2216,17 +2164,29 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                 dos_strncpy(pstAgentQueueNode->pstAgentInfo->szTelePhone, stSiteInfo.szTelePhone,SC_TEL_NUMBER_LENGTH);
                 pstAgentQueueNode->pstAgentInfo->szTelePhone[SC_TEL_NUMBER_LENGTH - 1] = '\0';
             }
+            else
+            {
+                pstAgentQueueNode->pstAgentInfo->szTelePhone[0] = '\0';
+            }
 
             if (pszMobile && '\0' != pszMobile[0])
             {
                 dos_strncpy(pstAgentQueueNode->pstAgentInfo->szMobile, stSiteInfo.szMobile,SC_TEL_NUMBER_LENGTH);
                 pstAgentQueueNode->pstAgentInfo->szMobile[SC_TEL_NUMBER_LENGTH - 1] = '\0';
             }
+            else
+            {
+                pstAgentQueueNode->pstAgentInfo->szMobile[0] = '\0';
+            }
 
             if (pszTTNumber && '\0' != pszTTNumber[0])
             {
                 dos_strncpy(pstAgentQueueNode->pstAgentInfo->szTTNumber, stSiteInfo.szTTNumber, SC_TEL_NUMBER_LENGTH);
                 pstAgentQueueNode->pstAgentInfo->szTTNumber[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+            }
+            else
+            {
+                pstAgentQueueNode->pstAgentInfo->szTTNumber[0] = '\0';
             }
         }
 
@@ -2251,27 +2211,6 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
             if (0 == stSiteInfo.aulGroupID[ulIndex] || U32_BUTT == stSiteInfo.aulGroupID[ulIndex])
             {
                 continue;
-            }
-            bFound = DOS_FALSE;
-            for (lLoop = 0; lLoop < MAX_GROUP_PER_SITE; ++lLoop)
-            {
-                if (pstSiteInfo->aulGroupID[lLoop] == stSiteInfo.aulGroupID[ulIndex])
-                {
-                    bFound = DOS_TRUE;
-                    break;
-                }
-            }
-            if (!bFound)
-            {
-                for (lLoop = 0; lLoop < MAX_GROUP_PER_SITE; lLoop++)
-                {
-                    if (0 == pstSiteInfo->aulGroupID[lLoop]
-                        || U32_BUTT == pstSiteInfo->aulGroupID[lLoop])
-                    {
-                        pstSiteInfo->aulGroupID[lLoop] = stSiteInfo.aulGroupID[ulIndex];
-                        break;
-                    }
-                }
             }
 
             if (sc_acd_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstSiteInfo) != DOS_SUCC)

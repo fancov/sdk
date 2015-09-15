@@ -132,7 +132,7 @@ enum tagAPICallCtrlCmd
     SC_API_RECORD,                        /* ºô½ÐÂ¼Òô */
     SC_API_WHISPERS,                      /* ¶úÓï */
     SC_API_INTERCEPT,                     /* ¼àÌý */
-    SC_API_TRANSFOR_ATTAND,               /* attend transfor */
+    SC_API_TRANSFOR_ATTAND,               /* attend transfer */
     SC_API_TRANSFOR_BLIND,                /* blind transfer */
     SC_API_CONFERENCE,                    /* »áÒé */
 

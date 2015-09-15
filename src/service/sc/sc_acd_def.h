@@ -123,9 +123,9 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID);
 U32 sc_acd_get_idel_agent(U32 ulGroupID);
 U32 sc_acd_get_total_agent(U32 ulGroupID);
 U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID);
-U32 sc_acd_get_agent_by_userID(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID);
-U32 sc_acd_update_agent_scbno_by_userID(S8 *szUserID, U16 usSCBNo);
-U32 sc_acd_update_agent_scbno_by_SiteID(U32 ulAgentID, U16 usSCBNo);
+U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID);
+U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, U16 usSCBNo);
+U32 sc_acd_update_agent_scbno_by_Siteid(U32 ulAgentID, U16 usSCBNo);
 U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr);
 
 #endif

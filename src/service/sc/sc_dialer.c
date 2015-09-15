@@ -553,6 +553,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
             ulIdelCPU = dos_get_cpu_idel_percentage();
             if (ulIdelCPU < ulIdelCPUConfig)
             {
+                sc_logr_debug(SC_DIALER, "cpu too high. ulIdelCPU : %u, ulIdelCPUConfig : %u", ulIdelCPU, ulIdelCPUConfig);
                 continue;
             }
 

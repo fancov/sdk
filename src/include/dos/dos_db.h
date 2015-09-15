@@ -98,6 +98,7 @@ typedef struct tagDBHandle
     U32     ulDBType;      /* Refer to tagDBType */
     U32     ulDBStatus;    /* Refer to SC_ODBC_STATUS_EN */
     S8      *pzsErrMsg;    /* 错误信息BUFFER */
+    pthread_mutex_t  mutexHandle;
 }DB_HANDLE_ST;
 
 /* 数据库API */
