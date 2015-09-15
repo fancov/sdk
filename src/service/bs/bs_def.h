@@ -626,7 +626,6 @@ BS_TASK_ST *bs_get_task_st(U32 ulTaskID);
 VOID bs_customer_add_child(BS_CUSTOMER_ST *pstCustomer, BS_CUSTOMER_ST *pstChildCustomer);
 BSS_APP_CONN *bs_get_app_conn(BS_MSG_TAG *pstMsgTag);
 BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, U8 *pstAddrIn, U32 ulAddrinHeader, S32 lAddrLen);
-VOID bs_stat_agent_num(VOID);
 U32 bs_get_settle_packageid(U16 usTrunkID);
 BS_BILLING_PACKAGE_ST *bs_get_billing_package(U32 ulPackageID, U8 ucServType);
 BOOL bs_billing_rule_is_properly(BS_BILLING_RULE_ST  *pstRule);

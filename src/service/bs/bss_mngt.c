@@ -1846,9 +1846,7 @@ S32 bss_walk_tbl_rsp(DLL_NODE_S *pMsgNode)
             break;
 
         case BS_TBL_TYPE_AGENT:
-            bs_stat_agent_num();
-            /* 至此,可以认为启动基本完成 */
-            g_stBssCB.bIsMaintain = DOS_FALSE;
+            /* 无需处理 */
             break;
 
         case BS_TBL_TYPE_BILLING_PACKAGE:

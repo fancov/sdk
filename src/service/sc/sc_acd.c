@@ -2038,6 +2038,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         stSiteInfo.szUserID[sizeof(stSiteInfo.szUserID) - 1] = '\0';
     }
 
+
     if (pszExten && '\0' != pszExten[0])
     {
         dos_strncpy(stSiteInfo.szExtension, pszExten, sizeof(stSiteInfo.szExtension));

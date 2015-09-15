@@ -366,128 +366,123 @@ success:
  */
 static U32 mon_get_proc_pid_list()
 {
-    DIR * pstDir;
-    struct dirent * pstEntry;
-    /* 存放pid的目录 */
-    S8 szPidDir[1024] = {0};
-    S8 szServiceRoot[256] = {0};
-    S8 *pszRoot = NULL, *pszPos = NULL;
-    U32 ulPid = 0, ulRet = U32_BUTT;
+    U32  ulCfgProcCnt = 0;
+    U32  ulIndex = 0, ulRet = U32_BUTT;
+    S32  lRet;
+    FILE *fpPid = NULL;
+    S8   szServRoot[16] = {0}, *pszRet = NULL, szPid[8] = {0};
+    S8   szPidFile[64] = {0}, szPidFileTemp[64] = {0}, *pszPos = NULL;
 
-    FILE * fp = NULL;
-
-    pszRoot = config_get_service_root(szServiceRoot, sizeof(szServiceRoot));
-    if (DOS_ADDR_INVALID(pszRoot))
+    /* 首先获取被监控进程个数 */
+    ulCfgProcCnt = config_hb_get_process_cfg_cnt();
+    /* 获取dipcc服务根目录 */
+    pszRet = config_get_service_root(szServRoot, sizeof(szServRoot));
+    if (DOS_ADDR_INVALID(pszRet))
     {
         DOS_ASSERT(0);
+        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Dipcc Service Root Directory FAIL.");
         return DOS_FAIL;
     }
 
-    if ('/' != szServiceRoot[dos_strlen(szServiceRoot) - 1])
+    for (ulIndex = 0; ulIndex < ulCfgProcCnt; ++ulIndex)
     {
-        dos_snprintf(szPidDir, sizeof(szPidDir), "%s%s", szServiceRoot, "/");
-        dos_snprintf(szServiceRoot, sizeof(szServiceRoot), "%s", szPidDir);
-    }
-
-    dos_snprintf(szPidDir, sizeof(szPidDir), "%s%s", szServiceRoot, "var/run/pid/");
-
-    g_ulPidCnt = 0;
-    pstDir = opendir(szPidDir);
-    if (DOS_ADDR_INVALID(pstDir))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    dos_memzero(g_pastProc[0], MAX_PROC_CNT * sizeof(MON_PROC_STATUS_S));
-    while (NULL != (pstEntry = readdir(pstDir)))
-    {
-        /*如果当前文件是普通文件(为了过滤掉"."和".."目录)，并且是pid后缀，则认为是进程id文件*/
-        if (DT_REG == pstEntry->d_type && DOS_TRUE == mon_is_suffix_true(pstEntry->d_name, "pid"))//如果是普通文件
+        /* 获取进程名与进程启动命令 */
+        lRet = config_hb_get_process_list(ulIndex
+                , g_pastProc[ulIndex]->szProcName
+                , sizeof(g_pastProc[ulIndex]->szProcName)
+                , g_pastProc[ulIndex]->szVersion
+                , sizeof(g_pastProc[ulIndex]->szVersion));
+        if (lRet < 0)
         {
-            S8     szProcAllName[64] = {0};
-            S8     szLine[8] = {0};
-            S8     szAbsFilePath[64] = {0};
-
-            dos_snprintf(szAbsFilePath, sizeof(szAbsFilePath), "%s%s", szPidDir, pstEntry->d_name);
-
-            fp = fopen(szAbsFilePath, "r");
-
-            if (DOS_ADDR_INVALID(fp))
-            {
-                DOS_ASSERT(0);
-                closedir(pstDir);
-                return DOS_FAIL;
-            }
-
-            fseek(fp, 0, SEEK_SET);
-            if (NULL != fgets(szLine, sizeof(szLine), fp))
-            {
-                if(DOS_ADDR_INVALID(g_pastProc[g_ulPidCnt]))
-                {
-                    DOS_ASSERT(0);
-                    goto failure;
-                }
-
-                if (dos_atoul(szLine, &ulPid) < 0)
-                {
-                    DOS_ASSERT(0);
-                    goto failure;
-                }
-
-                if (DOS_TRUE == mon_is_proc_dead(ulPid))
-                {
-                /* 如果说进程已经死亡了，但进程PID文件还在，不计入进程总数 */
-                    mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_WARNING, "Process has been dead, but pid(%u) file still exists.", ulPid);
-                    fclose(fp);
-                    fp  = NULL;
-                    continue;
-                }
-
-                g_pastProc[g_ulPidCnt]->ulProcId = ulPid;
-
-                ulRet = mon_get_proc_name_by_id(ulPid, szProcAllName, sizeof(szProcAllName));
-                if (DOS_SUCC != ulRet)
-                {
-                    DOS_ASSERT(0);
-                    goto failure;
-                }
-                if (dos_strstr(szProcAllName, "monitor"))
-                {
-                    continue;
-                }
-                pszPos = dos_strstr(szProcAllName, "\n");
-                if (DOS_ADDR_VALID(pszPos))
-                {
-                    *pszPos = '\0';
-                }
-
-                dos_snprintf(g_pastProc[g_ulPidCnt]->szProcName
-                    , sizeof(g_pastProc[g_ulPidCnt]->szProcName)
-                    , "%s"
-                    , szProcAllName);
-
-                ++g_ulPidCnt;
-            }
-            else
-            {
-                fclose(fp);
-                fp = NULL;
-            }
-            fclose(fp);
-            fp = NULL;
+            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get the name and version of process FAIL.");
+            DOS_ASSERT(0);
+            return DOS_FAIL;
         }
+        /* 获取进程的启动命令 */
+        lRet = config_hb_get_start_cmd(ulIndex, g_pastProc[ulIndex]->szAbsPath, sizeof(g_pastProc[ulIndex]->szAbsPath));
+        if (lRet < 0)
+        {
+            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get start command of Process FAIL.");
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
+
+        /* 构造进程文件路径 */
+        dos_snprintf(szPidFileTemp, sizeof(szPidFileTemp), "%s", szServRoot);
+        if ('/' != szPidFileTemp[dos_strlen(szPidFileTemp) - 1])
+        {
+            dos_strcat(szPidFileTemp, "/");
+        }
+        dos_strcat(szPidFileTemp, "var/run/pid/");
+        dos_snprintf(szPidFile, sizeof(szPidFile), "%s%s.pid", szPidFileTemp, g_pastProc[ulIndex]->szProcName);
+
+        /* 获取进程id */
+        fpPid = fopen(szPidFile, "r");
+        if (DOS_ADDR_INVALID(fpPid))
+        {
+            DOS_ASSERT(0);
+            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid file of Process \'%s\' does not exist.", g_pastProc[ulIndex]->szProcName);
+            g_pastProc[ulIndex]->bStatus = DOS_FALSE;
+            continue;
+        }
+
+        /* 读取进程id信息 */
+        if (!fgets(szPid, sizeof(szPid), fpPid))
+        {
+            /* 如果文件不存在，说明进程肯定没有启动 */
+            g_pastProc[ulIndex]->bStatus = DOS_FALSE;
+            fclose(fpPid);
+            fpPid = NULL;
+            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get pid of Process \'%s\' FAIL.", g_pastProc[ulIndex]->szProcName);
+            continue;
+        }
+
+        /* 处理文件尾部的回车换行 */
+        if (NULL != (pszPos = dos_strstr(szPid, "\r")))
+        {
+            *pszPos = '\0';
+        }
+        if (NULL != (pszPos = dos_strstr(szPid, "\n")))
+        {
+            *pszPos = '\0';
+        }
+
+        if (dos_atoul(szPid, &g_pastProc[ulIndex]->ulProcId) < 0)
+        {
+            g_pastProc[ulIndex]->bStatus = DOS_FALSE;
+            DOS_ASSERT(0);
+            fclose(fpPid);
+            fpPid = NULL;
+            continue;
+        }
+        fclose(fpPid);
+        fpPid = NULL;
+
+        if (mon_is_proc_dead(g_pastProc[ulIndex]->ulProcId))
+        {
+            g_pastProc[ulIndex]->bStatus = DOS_FALSE;
+            continue;
+        }
+
+        /* 获取进程CPU与内存信息 */
+        ulRet = mon_get_cpu_mem_time_info(g_pastProc[ulIndex]->ulProcId, g_pastProc[ulIndex]);
+        if (DOS_SUCC != ulRet)
+        {
+            g_pastProc[ulIndex]->bStatus = DOS_FALSE;
+            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get CPU MEM TIME Info of Process FAIL.");
+            continue;
+        }
+
+        /* 获取打开的文件个数 */
+        g_pastProc[ulIndex]->ulOpenFileCnt = mon_get_openfile_count(g_pastProc[ulIndex]->ulProcId);
+        /* 获取数据库连接个数 */
+        g_pastProc[ulIndex]->ulDBConnCnt = mon_get_db_conn_count(g_pastProc[ulIndex]->ulProcId);
+        /* 获取进程内部的线程个数 */
+        g_pastProc[ulIndex]->ulThreadsCnt = mon_get_threads_count(g_pastProc[ulIndex]->ulProcId);
+        g_pastProc[ulIndex]->bStatus = DOS_TRUE;
     }
-    closedir(pstDir);
     return DOS_SUCC;
-
-failure:
-    closedir(pstDir);
-    fclose(fp);
-    fp = NULL;
-    return DOS_FAIL;
 }
-
 
 /**
  * 功能:获取进程数组的相关信息
@@ -498,7 +493,6 @@ failure:
  */
 U32 mon_get_process_data()
 {
-    U32 ulRows = 0;
     U32 ulRet = 0;
 
     ulRet = mon_proc_reset_data();
@@ -515,45 +509,6 @@ U32 mon_get_process_data()
         return DOS_FAIL;
     }
 
-    for (ulRows = 0; ulRows < g_ulPidCnt; ulRows++)
-    {
-        if(DOS_ADDR_INVALID(g_pastProc[ulRows]))
-        {
-            DOS_ASSERT(0);
-            return DOS_FAIL;
-        }
-
-        ulRet = mon_get_cpu_mem_time_info(g_pastProc[ulRows]->ulProcId, g_pastProc[ulRows]);
-        if(DOS_SUCC != ulRet)
-        {
-            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get the CPU and Memory Information of Process FAIL.");
-            return DOS_FAIL;
-        }
-
-        ulRet = mon_get_openfile_count(g_pastProc[ulRows]->ulProcId);
-        if(DOS_FAIL == ulRet)
-        {
-            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get opened file count FAIL.");
-            return DOS_FAIL;
-        }
-        g_pastProc[ulRows]->ulOpenFileCnt = ulRet;
-
-        ulRet = mon_get_db_conn_count(g_pastProc[ulRows]->ulProcId);
-        if(DOS_FAIL == ulRet)
-        {
-            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Database connections count FAIL.");
-            return DOS_FAIL;
-        }
-        g_pastProc[ulRows]->ulDBConnCnt = ulRet;
-
-        ulRet = mon_get_threads_count(g_pastProc[ulRows]->ulProcId);
-        if(DOS_FAIL == ulRet)
-        {
-            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Threads count FAIL.");
-            return DOS_FAIL;
-        }
-        g_pastProc[ulRows]->ulThreadsCnt = ulRet;
-    }
     return DOS_SUCC;
 }
 
@@ -566,174 +521,47 @@ U32 mon_get_process_data()
  */
 U32  mon_check_all_process()
 {
-    S32 lRet = 0;
-    U32 ulRows = 0, ulIndex = 0, ulNo = 0, ulRet = 0;
-    S8  szProcName[32] = {0};
-    S8  szProcVersion[16] = {0};
-    S8  szProcCmd[1024] = {0};
-    U32 ulCfgProcCnt = 0;
+    U32  ulCount = 0, ulRet = 0;
+    S32  lCfgProcCnt = 0, lLoop = 0;
+    S8   szStartCmd[64] = {0};
 
-    /* 获取当前配置进程数量 */
-    ulCfgProcCnt = config_hb_get_process_cfg_cnt();
-    if(0 > ulCfgProcCnt)
+    /* 获取配置监控进程个数 */
+    lCfgProcCnt = config_hb_get_process_cfg_cnt();
+    if (lCfgProcCnt < 0)
     {
-        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get config process count FAIL.");
-        config_hb_deinit();
+        DOS_ASSERT(0);
+        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get config Process count FAIL.");
         return DOS_FAIL;
     }
 
-    ulNo = mon_generate_warning_id(PROC_RES, 0x00, 0x02);
-    if ((U32)0xff == ulNo)
+    for (lLoop = 0; lLoop < MAX_PROC_CNT; ++lLoop)
     {
-        return DOS_FAIL;
+        if (DOS_FALSE == g_pastProc[lLoop]->bStatus)
+        {
+            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_DEBUG, "Process \'%s\' has been dead.", g_pastProc[lLoop]->szProcName);
+            if (g_pastProc[lLoop]->szAbsPath
+                && '\0' != g_pastProc[lLoop]->szAbsPath[0])
+            {
+                dos_snprintf(szStartCmd, sizeof(szStartCmd), "(%s > /dev/null 2>&1 &)", g_pastProc[lLoop]->szAbsPath);
+                ulRet = mon_system(szStartCmd);
+                if (DOS_SUCC != ulRet)
+                {
+                    mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Start Process \'%s\' FAIL.", g_pastProc[lLoop]->szProcName);
+                }
+            }
+        }
+        else
+        {
+            ++ulCount;
+        }
     }
 
-    ulIndex = mon_get_msg_index(ulNo);
-    if (U32_BUTT == ulIndex)
+    if (ulCount < lCfgProcCnt)
     {
-        return DOS_FAIL;
-    }
-
-    /*
-    *  如果配置的进程个数小于或者等于监控到的进程个数，
-    *  那么认为所有的监控进程都已经启动
-    */
-   if (ulCfgProcCnt <= g_ulPidCnt)
-   {
-        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
-        {
-            MON_MSG_S *pstMsg = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-                return DOS_FAIL;
-            }
-            pstMsg->ulWarningId = ulNo;
-            pstMsg->ulMsgLen = dos_strlen(g_pstWarningMsg[ulIndex].szNormalDesc);
-            pstMsg->msg = g_pstWarningMsg[ulIndex].szNormalDesc;
-            g_pstWarningMsg[ulIndex].bExcep = DOS_FALSE;
-
-            /* 将消息加入数据库和消息队列 */
-            ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
-            if (DOS_SUCC != ulRet)
-            {
-                return DOS_FAIL;
-            }
-
-            ulRet = mon_warning_msg_en_queue(pstMsg);
-            if (DOS_SUCC != ulRet)
-            {
-                return DOS_FAIL;
-            }
-        }
-
-        return DOS_SUCC;
-   }
-   else
-   {
-       if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
-       {
-            MON_MSG_S *pstMsg = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-                return DOS_FAIL;
-            }
-
-            pstMsg->ulWarningId = ulNo;
-            dos_snprintf(g_pstWarningMsg[ulIndex].szWarningDesc, sizeof(g_pstWarningMsg[ulIndex].szWarningDesc)
-                        , "%u %s %s down", ulCfgProcCnt - g_ulPidCnt
-                        , ulCfgProcCnt - g_ulPidCnt == 1 ? "Process":"Processes"
-                        , ulCfgProcCnt - g_ulPidCnt == 1 ? "is":"are");
-            pstMsg->ulMsgLen = dos_strlen(g_pstWarningMsg[ulIndex].szWarningDesc);
-            pstMsg->msg = g_pstWarningMsg[ulIndex].szWarningDesc;
-            g_pstWarningMsg[ulIndex].bExcep = DOS_TRUE;
-
-            /* 将消息加入数据库和消息队列 */
-            ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
-            if (DOS_SUCC != ulRet)
-            {
-                return DOS_FAIL;
-            }
-
-            ulRet = mon_warning_msg_en_queue(pstMsg);
-            if (DOS_SUCC != ulRet)
-            {
-                return DOS_FAIL;
-            }
-       }
-   }
-
-   for (ulRows = 0; ulRows < ulCfgProcCnt; ulRows++)
-   {
-        U32 ulCols = 0;
-        /* 默认未启动 */
-        S32 bHasStarted = DOS_FALSE;
-
-        /* 获取进程名和进程版本号 */
-        lRet = config_hb_get_process_list(ulRows, szProcName, sizeof(szProcName)
-                 , szProcVersion, sizeof(szProcVersion));
-        if(lRet < 0)
-        {
-            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Process Name,Version FAIL.");
-            config_hb_deinit();
-            return DOS_FAIL;
-        }
-        szProcName[sizeof(szProcName) - 1] = '\0';
-        szProcVersion[sizeof(szProcVersion) - 1] = '\0';
-
-        /* 获取进程的启动命令 */
-        lRet = config_hb_get_start_cmd(ulRows, szProcCmd, sizeof(szProcCmd));
-        if(0 > lRet)
-        {
-            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Get Start Command FAIL.");
-            config_hb_deinit();
-            return DOS_FAIL;
-        }
-        szProcCmd[sizeof(szProcCmd) - 1] = '\0';
-
-        for(ulCols = 0; ulCols < g_ulPidCnt; ulCols++)
-        {
-            S8 * pszPtr = mon_str_get_name(g_pastProc[ulCols]->szProcName);
-
-            if (DOS_ADDR_INVALID(pszPtr))
-            {
-                DOS_ASSERT(0);
-                break;
-            }
-
-            if(0 == dos_strcmp(szProcName, "monitord"))
-            {
-                /* 如果监控到的是minitord进程，那么认为已启动 */
-                bHasStarted = DOS_TRUE;
-                break;
-            }
-            if(0 == dos_strcmp("monitord", pszPtr))
-            {
-                /* 如果当前进程不是minitord进程，碰到monitord进程的对比直接跳过 */
-                continue;
-            }
-            if(0 == dos_strcmp(pszPtr, szProcName))
-            {
-            /* 进程找到，说明szProcName已启动 */
-                bHasStarted = DOS_TRUE;
-                break;
-            }
-        }
-
-        if(DOS_FALSE == bHasStarted)
-        {
-            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_DEBUG, "Process %s lost.", szProcName);
-
-            lRet = mon_system(szProcCmd);
-            if(lRet < 0)
-            {
-                mon_trace(MON_TRACE_PROCESS,LOG_LEVEL_EMERG, "Restart Process %s FAIL.", szProcName);
-                return DOS_FAIL;
-            }
-        }
+        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_DEBUG, "%u Process(s) has been dead.", lCfgProcCnt - ulCount);
     }
     return DOS_SUCC;
 }
-
 
 /**
  * 功能:根据进程id获得进程名
@@ -814,8 +642,73 @@ BOOL mon_is_proc_dead(U32 ulPid)
         /* 目录不存在则进程死亡，返回true */
         return DOS_TRUE;
     }
-
     return DOS_FALSE;
+}
+
+/**
+ * 功能:获取进程的绝对路径
+ * 参数集：
+ *   参数1: S32 lPid 进程id
+ *   参数2: S8* szPath，进程的绝对路径，输出参数
+ *   参数3: U32 ulLen   路径长度
+ * 返回值：
+ *   死亡则返回DOS_TRUE，失败返回DOS_FALSE
+ */
+U32 mon_get_process_abspath(U32  ulPid, S8 *szPath, U32 ulLen)
+{
+    S8  szInfoPath[64] = {0};
+    S8  szLine[256] = {0};
+    S8* pszPos = NULL, *pszTemp = NULL;
+    FILE  *fpPath = NULL;
+
+    if (DOS_ADDR_INVALID(szPath)
+        || ulLen == 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szInfoPath, sizeof(szInfoPath), "/proc/%u/task/%u/numa_maps", ulPid, ulPid);
+    fpPath = fopen(szInfoPath, "r");
+    if (DOS_ADDR_INVALID(fpPath))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (!fgets(szLine, sizeof(szLine), fpPath))
+    {
+        DOS_ASSERT(0);
+        fclose(fpPath);
+        fpPath = NULL;
+        return DOS_FAIL;
+    }
+
+    pszPos = dos_strstr(szLine, "file=");
+    if (DOS_ADDR_INVALID(pszPos))
+    {
+        DOS_ASSERT(0);
+        fclose(fpPath);
+        fpPath = NULL;
+        return DOS_FAIL;
+    }
+    while ('/' != *pszPos)
+    {
+        ++pszPos;
+    }
+    pszTemp = pszPos;
+    while (' ' != *pszPos
+            && '\t' != *pszPos)
+    {
+        ++pszPos;
+    }
+    *pszPos = '\0';
+
+    dos_snprintf(szPath, ulLen, "%s", pszTemp);
+    fclose(fpPath);
+    fpPath = NULL;
+
+    return DOS_SUCC;
 }
 
 /**

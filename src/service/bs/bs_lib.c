@@ -450,62 +450,6 @@ BSS_APP_CONN *bs_save_app_conn(S32 lSockfd, U8 *pstAddrIn, U32 ulAddrinHeader, S
     return pstAppConn;
 }
 
-/* 统计坐席数量 */
-VOID bs_stat_agent_num(VOID)
-{
-    U32             ulCnt = 0, ulHashIndex;
-    HASH_NODE_S     *pstHashNode = NULL;
-    BS_AGENT_ST     *pstAgent = NULL;
-    BS_CUSTOMER_ST  *pstCustomer = NULL;
-
-    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Stat agent number!");
-
-    pthread_mutex_lock(&g_mutexAgentTbl);
-    HASH_Scan_Table(g_astAgentTbl, ulHashIndex)
-    {
-        HASH_Scan_Bucket(g_astAgentTbl, ulHashIndex, pstHashNode, HASH_NODE_S *)
-        {
-            ulCnt++;
-            if (ulCnt > g_astAgentTbl->NodeNum)
-            {
-                DOS_ASSERT(0);
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR,
-                         "Err: agent number is exceed in hash table(%u)!",
-                         g_astAgentTbl->NodeNum);
-                pthread_mutex_unlock(&g_mutexAgentTbl);
-                return;
-            }
-
-            pstAgent = (BS_AGENT_ST *)pstHashNode->pHandle;
-            if (DOS_ADDR_INVALID(pstAgent))
-            {
-                /* 节点未保存客户信息,异常,按道理应该释放该节点,但考虑到总体节点数量相对固定,内存不存在泄露风险,保留之 */
-                DOS_ASSERT(0);
-                ulCnt--;
-                continue;
-            }
-
-            /* 获取客户信息结构体 */
-            pstCustomer = bs_get_customer_st(pstAgent->ulCustomerID);
-            if (NULL == pstCustomer)
-            {
-                /* 找不到 */
-                bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR,
-                         "Err: unknown agent! agent:%u, customer:%u",
-                         pstAgent->ulAgentID, pstAgent->ulCustomerID);
-                continue;
-            }
-
-            /* 更新客户控制块信息 */
-            pstCustomer->ulAgentNum++;
-        }
-    }
-    pthread_mutex_unlock(&g_mutexAgentTbl);
-
-    bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Total %d agent!", ulCnt);
-
-}
-
 /* 根据中继编号查找资费包ID */
 U32 bs_get_settle_packageid(U16 usTrunkID)
 {

@@ -14,9 +14,8 @@ extern MON_SYS_PART_DATA_S * g_pastPartition[MAX_PARTITION_COUNT];
 extern MON_NET_CARD_PARAM_S * g_pastNet[MAX_NETCARD_CNT];
 extern MON_PROC_STATUS_S * g_pastProc[MAX_PROC_CNT];
 
-extern S32 g_ulPartCnt;
 extern S32 g_ulNetCnt;
-extern S32 g_ulPidCnt;
+extern U32 g_ulPartCnt;
 
 #define MON_TRACE_BUFF_LEN  1024
 
@@ -232,7 +231,7 @@ VOID mon_show_process(U32 ulIndex)
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+-------+------------+----------------+-------------+----------+---------------+-------------------+---------------+");
     cli_out_string(ulIndex, szBuff);
 
-    for (ulLoop = 0; ulLoop < g_ulPidCnt; ++ulLoop)
+    for (ulLoop = 0; ulLoop < MAX_PROC_CNT; ++ulLoop)
     {
         dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%7d|%-12s|%16.1f|%13.1f|%-10s|%15u|%19u|%15u|"
                         , g_pastProc[ulLoop]->ulProcId
