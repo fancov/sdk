@@ -10088,16 +10088,19 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                 , "%s/%s-in.%s"
                                 , SC_RECORD_FILE_PATH
                                 , pstSCB->pszRecordFile
-                                , esl_event_get_header(pstEvent, "Channel-Read-Codec-Name"));
+                                , esl_event_get_header(pstEvent, "variable_read_codec"));
                 chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
+                chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
 
                 dos_snprintf(szCMD, sizeof(szCMD)
                                 , "%s/%s-out.%s"
                                 , SC_RECORD_FILE_PATH
                                 , pstSCB->pszRecordFile
-                                , esl_event_get_header(pstEvent, "Channel-Write-Codec-Name"));
+                                , esl_event_get_header(pstEvent, "variable_read_codec"));
                 chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
+                chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
 
+                dos_printf("Process recording file %s", szCMD);
             }
 
             /* 如果为长签坐席，则将坐席中的 scbNo 置为非法值 */
