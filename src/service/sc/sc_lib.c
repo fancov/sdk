@@ -255,6 +255,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->ulAgentID = U32_BUTT;              /* 当前呼叫属于哪个客户 */
     pstSCB->ulTaskID = U32_BUTT;               /* 当前任务ID */
     pstSCB->ulTrunkID = U32_BUTT;              /* 中继ID */
+    pstSCB->ulTrunkCount = 0;
 
     pstSCB->ucStatus = SC_SCB_IDEL;            /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
     pstSCB->ucServStatus = 0;

@@ -299,13 +299,14 @@ esl_exec_fail:
 
 U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 {
-    S8    *pszEventHeader = NULL;
-    S8    *pszEventBody = NULL;
-    S8    *pszUUID = NULL;
+    S8    *pszEventHeader   = NULL;
+    S8    *pszEventBody     = NULL;
+    S8    *pszUUID          = NULL;
     S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
     S8    szCallString[SC_ESL_CMD_BUFF_LEN] = { 0 };
-    U32   ulRouteID = U32_BUTT;
-    SC_SCB_ST *pstSCBOther = NULL;
+    U32   ulRouteID         = U32_BUTT;
+    SC_SCB_ST *pstSCBOther  = NULL;
+    U32   ulTrunkCount    = 0;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -330,12 +331,15 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         goto esl_exec_fail;;
     }
 
-    if (sc_ep_get_callee_string(ulRouteID, pstSCB, szCallString, sizeof(szCallString)) != DOS_SUCC)
+    ulTrunkCount = sc_ep_get_callee_string(ulRouteID, pstSCB, szCallString, sizeof(szCallString));
+    if (ulTrunkCount == 0)
     {
         DOS_ASSERT(0);
 
         goto esl_exec_fail;
     }
+
+    pstSCB->ulTrunkCount = ulTrunkCount;
 
     /* 如果当前控制块有另外一通呼叫，直接bridge就好，否则需要发起新呼叫 */
     pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
