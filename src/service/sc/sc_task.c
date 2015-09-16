@@ -339,7 +339,7 @@ VOID *sc_task_runtime(VOID *ptr)
         /* 如果暂停了就继续等待 */
         if (SC_TASK_PAUSED == pstTCB->ucTaskStatus)
         {
-            sc_logr_info(SC_TASK, "Cannot make call for puased status. Task : %u.", pstTCB->ulTaskID);
+            sc_logr_info(SC_TASK, "Cannot make call for paused status. Task : %u.", pstTCB->ulTaskID);
             ulTaskInterval = 1000;
             continue;
         }
@@ -349,7 +349,7 @@ VOID *sc_task_runtime(VOID *ptr)
         {
             if (pstTCB->ulCurrentConcurrency != 0)
             {
-                sc_logr_info(SC_TASK, "Cannot make call for stop status. Task : %u.", pstTCB->ulTaskID);
+                sc_logr_info(SC_TASK, "Cannot make call for stoped status. Task : %u.", pstTCB->ulTaskID);
                 ulTaskInterval = 1000;
                 continue;
             }

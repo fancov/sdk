@@ -17,8 +17,6 @@ extern "C" {
 
 
 extern MON_PROC_STATUS_S * g_pastProc[MAX_PROC_CNT];
-extern U32 g_ulPidCnt; //实际运行的进程个数
-
 extern MON_WARNING_MSG_S*  g_pstWarningMsg;
 
 static U32   mon_proc_reset_data();
@@ -538,10 +536,10 @@ U32  mon_check_all_process()
     {
         if (DOS_FALSE == g_pastProc[lLoop]->bStatus)
         {
-            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_DEBUG, "Process \'%s\' has been dead.", g_pastProc[lLoop]->szProcName);
             if (g_pastProc[lLoop]->szAbsPath
                 && '\0' != g_pastProc[lLoop]->szAbsPath[0])
             {
+                mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_DEBUG, "Process \'%s\' has been dead.", g_pastProc[lLoop]->szProcName);
                 dos_snprintf(szStartCmd, sizeof(szStartCmd), "(%s > /dev/null 2>&1 &)", g_pastProc[lLoop]->szAbsPath);
                 ulRet = mon_system(szStartCmd);
                 if (DOS_SUCC != ulRet)
@@ -723,17 +721,10 @@ U32  mon_get_proc_total_cpu_rate()
     F64 fTotalCPURate = 0.0;
     U32 ulRows = 0;
 
-    for (ulRows = 0; ulRows < g_ulPidCnt; ulRows++)
+    for (ulRows = 0; ulRows < MAX_PROC_CNT; ulRows++)
     {
-        if(DOS_ADDR_INVALID(g_pastProc[ulRows]))
+        if (!g_pastProc[ulRows]->bStatus)
         {
-            DOS_ASSERT(0);
-            return DOS_FAIL;
-        }
-
-        if(DOS_FALSE == mon_is_pid_valid(g_pastProc[ulRows]->ulProcId))
-        {
-            DOS_ASSERT(0);
             continue;
         }
         fTotalCPURate += g_pastProc[ulRows]->fCPURate;
@@ -755,17 +746,10 @@ U32  mon_get_proc_total_mem_rate()
     F64 fTotalMemRate = 0.0;
     U32 ulRows = 0;
 
-    for (ulRows = 0; ulRows < g_ulPidCnt; ulRows++)
+    for (ulRows = 0; ulRows < MAX_PROC_CNT; ulRows++)
     {
-        if(DOS_ADDR_INVALID(g_pastProc[ulRows]))
+        if (!g_pastProc[ulRows])
         {
-            DOS_ASSERT(0);
-            return DOS_FAIL;
-        }
-
-        if(DOS_FALSE == mon_is_pid_valid(g_pastProc[ulRows]->ulProcId))
-        {
-            mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid %u does not exist.", g_pastProc[ulRows]->ulProcId);
             continue;
         }
         fTotalMemRate += g_pastProc[ulRows]->fMemoryRate;
