@@ -704,16 +704,19 @@ invalid_params:
 
 U32 sc_http_api_call_ctrl(list_t *pstArgv)
 {
-    S8 *pszAction = NULL;
-    S8 *pszCustomerID = NULL;
-    S8 *pszAgentID = NULL;
-    S8 *pszCallee = NULL;
-    S8 *pszFlag = NULL;
-    S8 *pszTaskID = NULL;
-    U32 ulAction = SC_API_CALLCTRL_BUTT;
-    U32 ulAgent = 0;
-    U32 ulCustomer = 0;
-    U32 ulTaskID = 0;
+    S8 *pszAction       = NULL;
+    S8 *pszCustomerID   = NULL;
+    S8 *pszAgentID      = NULL;
+    S8 *pszCallee       = NULL;
+    S8 *pszFlag         = NULL;
+    S8 *pszTaskID       = NULL;
+    S8 *pszAgentCallee  = NULL;
+    U32 ulAction        = SC_API_CALLCTRL_BUTT;
+    U32 ulAgent         = 0;
+    U32 ulCustomer      = 0;
+    U32 ulFlag          = 0;
+    U32 ulTaskID        = 0;
+    U32 ulCalleeAgentID = 0;
 
     if (DOS_ADDR_INVALID(pstArgv))
     {
@@ -755,6 +758,34 @@ U32 sc_http_api_call_ctrl(list_t *pstArgv)
             || dos_atoul(pszTaskID, &ulTaskID) < 0)
         {
             ulTaskID = 0;
+        }
+
+        /*
+            flag :  0 -- 萸僻網請諦誧
+                    1 -- 怀�赮鷓赮蘀�
+                    2 -- 網請釴炟
+        */
+        pszFlag = sc_http_api_get_value(pstArgv, "flag");
+        if (DOS_ADDR_INVALID(pszFlag) || dos_atoul(pszFlag, &ulFlag) < 0)
+        {
+            DOS_ASSERT(0);
+
+            goto invalid_request;
+        }
+
+        pszAgentCallee = sc_http_api_get_value(pstArgv, "agent_called");
+        if (DOS_ADDR_INVALID(pszAgentCallee) || dos_atoul(pszAgentCallee, &ulCalleeAgentID) < 0)
+        {
+            if (ulFlag == 2)
+            {
+                DOS_ASSERT(0);
+
+                goto invalid_request;
+            }
+            else
+            {
+                ulCalleeAgentID = U32_BUTT;
+            }
         }
 
         ulAction = SC_API_MAKE_CALL;
@@ -842,7 +873,7 @@ U32 sc_http_api_call_ctrl(list_t *pstArgv)
                     , ulAction, ulAgent, ulCustomer, ulTaskID
                     , pszCallee ? pszCallee : "");
 
-    return sc_ep_call_ctrl_proc(ulAction, ulTaskID, ulAgent, ulCustomer, pszCallee);
+    return sc_ep_call_ctrl_proc(ulAction, ulTaskID, ulAgent, ulCustomer, pszCallee, ulFlag, ulCalleeAgentID);
 
 invalid_request:
     return SC_HTTP_ERRNO_INVALID_REQUEST;

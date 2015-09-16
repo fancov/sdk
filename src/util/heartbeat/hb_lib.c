@@ -109,7 +109,7 @@ S32 hb_send_msg(U8 *pszBuff, U32 ulBuffLen, struct sockaddr_un *pstAddr, U32 ulA
             , ulAddrLen);
     if (ulBuffLen != lRet)
     {
-        hb_logr_warning("Exception occurred while send hreatbeat msg.(%d)", errno);
+        hb_logr_warning("Exception occurred while send hreatbeat msg.(errno:%d,cause:%s)", errno, strerror(errno));
         DOS_ASSERT(0);
 
 #if INCLUDE_BH_CLIENT

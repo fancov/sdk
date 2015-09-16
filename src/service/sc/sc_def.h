@@ -609,6 +609,7 @@ typedef struct tagSCSCB{
     U32       ulAgentID;                          /* 当前呼叫属于哪个客户 */
     U32       ulTaskID;                           /* 当前任务ID */
     U32       ulTrunkID;                          /* 中继ID */
+    U32       ulTrunkCount;                       /* 中继的个数 */
 
     U8        ucStatus;                           /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
     U8        ucServStatus;                       /* 业务状态 */
@@ -639,7 +640,8 @@ typedef struct tagSCSCB{
     U32       bIsAgentCall:1;                     /* 是否在呼叫坐席 */
     U32       bIsInQueue:1;                       /* 是否已经入队列了 */
     U32       bChannelCreated:1;                  /* FREESWITCH 是否为该同呼叫创建了通道 */
-    U32       ulRes:23;
+    U32       bIsAgentCallOtherLeg:1;             /* 另一条腿是否要呼叫坐席 */
+    U32       ulRes:22;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -1000,7 +1002,7 @@ BOOL sc_bg_job_find(U32 ulRCNo);
 U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
 U32 sc_scb_hash_tables_delete(S8 *pszUUID);
 SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
-U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, S8 *pszCallee);
+U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, S8 *pszCallee, U32 ulFlag, U32 ulCalleeAgentID);
 U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum);
 BOOL sc_ep_check_extension(S8 *pszNum, U32 ulCustomerID);
 U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService);
