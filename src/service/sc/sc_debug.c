@@ -74,6 +74,7 @@ extern DLL_S                  g_stRouteList;
 extern DLL_S                  g_stEventList;
 extern DLL_S                  g_stCustomerList;
 extern DLL_S                  g_stNumTransformList;
+extern DLL_S                  g_stCWQMngt;
 extern SC_DIALER_HANDLE_ST   *g_pstDialerHandle;
 extern DLL_S                  g_stBSMsgList;
 extern SC_EP_TASK_CB          g_astEPTaskList[SC_EP_TASK_NUM];
@@ -161,8 +162,11 @@ const S8* g_pszTaskMode[] =
 
 const S8* g_pszAgentStatus[] =
 {
-    "ENABLE",
-    "DISABLE"
+    "OFFLINE",
+    "IDLE",
+    "AWAY",
+    "BUSY",
+    "PROC"
 };
 
 const S8* g_pszCallerType[] =
@@ -1929,6 +1933,11 @@ U32 sc_show_numlmt(U32 ulIndex, U32 ulID)
     return DOS_SUCC;
 }
 
+U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
+{
+    return DOS_SUCC;
+}
+
 S32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
 {
     return 0;
@@ -2801,7 +2810,22 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             sc_show_numlmt(ulIndex, ulID);
         }
     }
-
+    else if (0 == dos_stricmp(argv[2], "cwq"))
+    {
+        if (3 == argc)
+        {
+            sc_show_cwq(ulIndex, U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return -1;
+            }
+            sc_show_cwq(ulIndex, ulID);
+        }
+    }
     return 0;
 }
 
@@ -2965,7 +2989,7 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
 cc_usage:
 
     cli_out_string(ulIndex, "\r\n");
-    cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb|route|blacklist|tt|_caller|callergrp|callerset|customer|transform|numlmt [id]\r\n");
+    cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb|route|blacklist|tt|_caller|callergrp|callerset|customer|transform|numlmt|cwq [id]\r\n");
     cli_out_string(ulIndex, "cc show did [did_number]\r\n");
     cli_out_string(ulIndex, "cc show task [custom] id\r\n");
     cli_out_string(ulIndex, "cc show caller|callee taskid\r\n");

@@ -704,8 +704,8 @@ VOID sc_ep_caller_init(SC_CALLER_QUERY_NODE_ST  *pstCaller)
         pstCaller->bTraceON = DOS_FALSE;
         /* 默认可用 */
         pstCaller->bValid = DOS_TRUE;
-        pstCaller->ulCustomerID = U32_BUTT;
-        pstCaller->ulIndexInDB = U32_BUTT;
+        pstCaller->ulCustomerID = 0;
+        pstCaller->ulIndexInDB = 0;
         /* 号码被命中次数初始化为0 */
         pstCaller->ulTimes = 0;
 
@@ -729,8 +729,8 @@ VOID sc_ep_caller_grp_init(SC_CALLER_GRP_NODE_ST* pstCallerGrp)
         /* 初始化为非默认组 */
         pstCallerGrp->bDefault = DOS_FALSE;
 
-        pstCallerGrp->ulID = U32_BUTT;
-        pstCallerGrp->ulCustomerID = U32_BUTT;
+        pstCallerGrp->ulID = 0;
+        pstCallerGrp->ulCustomerID = 0;
         /* 暂时保留现状 */
         pstCallerGrp->ulLastNo = 0;
         /* 默认使用顺序呼叫策略 */
@@ -745,11 +745,11 @@ VOID sc_ep_caller_setting_init(SC_CALLER_SETTING_ST *pstCallerSetting)
     if (pstCallerSetting)
     {
         dos_memzero(pstCallerSetting, sizeof(SC_CALLER_SETTING_ST));
-        pstCallerSetting->ulID = U32_BUTT;
-        pstCallerSetting->ulSrcID = U32_BUTT;
-        pstCallerSetting->ulSrcType = U32_BUTT;
-        pstCallerSetting->ulDstID = U32_BUTT;
-        pstCallerSetting->ulDstType = U32_BUTT;
+        pstCallerSetting->ulID = 0;
+        pstCallerSetting->ulSrcID = 0;
+        pstCallerSetting->ulSrcType = 0;
+        pstCallerSetting->ulDstID = 0;
+        pstCallerSetting->ulDstType = 0;
         pstCallerSetting->ulCustomerID = U32_BUTT;
     }
 }

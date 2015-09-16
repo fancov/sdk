@@ -431,7 +431,7 @@ S32 heartbeat_init()
     /* 初始化进程控制块 */
     pstProcessMem = (PROCESS_INFO_ST *)dos_smem_alloc(sizeof(PROCESS_INFO_ST) * DOS_PROCESS_MAX_NUM);
     dos_memzero((VOID*)pstProcessMem, sizeof(PROCESS_INFO_ST) * DOS_PROCESS_MAX_NUM);
-    for (i=0; i<DOS_PROCESS_MAX_NUM; i++)
+    for (i = 0; i < DOS_PROCESS_MAX_NUM; i++)
     {
         g_pstProcessInfo[i] = pstProcessMem + i;
         g_pstProcessInfo[i]->ulVilad = DOS_FALSE;
