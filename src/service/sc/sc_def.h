@@ -640,7 +640,8 @@ typedef struct tagSCSCB{
     U32       bIsAgentCall:1;                     /* 是否在呼叫坐席 */
     U32       bIsInQueue:1;                       /* 是否已经入队列了 */
     U32       bChannelCreated:1;                  /* FREESWITCH 是否为该同呼叫创建了通道 */
-    U32       ulRes:23;
+    U32       bIsAgentCallOtherLeg:1;             /* 另一条腿是否要呼叫坐席 */
+    U32       ulRes:22;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
