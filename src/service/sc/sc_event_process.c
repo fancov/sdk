@@ -9781,7 +9781,7 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         dos_strncpy(pstSCB->szUUID, pszUUID, sizeof(pstSCB->szUUID));
         pstSCB->szUUID[sizeof(pstSCB->szUUID) - 1] = '\0';
 
-		sc_scb_hash_tables_add(pszUUID, pstSCB);
+        sc_scb_hash_tables_add(pszUUID, pstSCB);
 
         if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
             && pstSCB->usTCBNo < SC_MAX_TASK_NUM)
@@ -10126,6 +10126,15 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
 */
             pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
+            /* 自动外呼，需要维护任务的并发量 */
+            if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
+                && pstSCB->usTCBNo < SC_MAX_TASK_NUM)
+            {
+                sc_task_concurrency_minus(pstSCB->usTCBNo);
+
+                sc_update_callee_status(pstSCB->usTCBNo, pstSCB->szCalleeNum, SC_CALLEE_NORMAL);
+            }
+
             if (pstSCB->ulTrunkCount > 0)
             {
                 pstSCB->ulTrunkCount--;
@@ -10242,15 +10251,6 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                     //    DOS_ASSERT(0);
                     //}
                 }
-            }
-
-            /* 自动外呼，需要维护任务的并发量 */
-            if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
-                && pstSCB->usTCBNo < SC_MAX_TASK_NUM)
-            {
-                sc_task_concurrency_minus(pstSCB->usTCBNo);
-
-                sc_update_callee_status(pstSCB->usTCBNo, pstSCB->szCalleeNum, SC_CALLEE_NORMAL);
             }
 
             sc_logr_debug(SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
