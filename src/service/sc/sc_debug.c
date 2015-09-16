@@ -1935,6 +1935,56 @@ U32 sc_show_numlmt(U32 ulIndex, U32 ulID)
 
 U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
 {
+    DLL_NODE_S *pstListNode = NULL, *pstListNode1 = NULL;
+    SC_CWQ_NODE_ST *pstCWQNode = NULL;
+    SC_SCB_ST      *pstSCB = NULL;
+    struct tm *pstSWTime = NULL;
+    S8  szBuff[256] = {0}, szTime[32] = {0};
+
+    DLL_Scan(&g_stCWQMngt, pstListNode, DLL_NODE_S *)
+    {
+        if (DOS_ADDR_INVALID(pstListNode)
+            || DOS_ADDR_INVALID(pstListNode->pHandle))
+        {
+            continue;
+        }
+        pstCWQNode = (SC_CWQ_NODE_ST *)pstListNode->pHandle;
+        if (ulAgentGrpID != U32_BUTT && ulAgentGrpID != pstCWQNode->ulAgentGrpID)
+        {
+            continue;
+        }
+        pstSWTime = localtime((time_t *)&pstCWQNode->ulStartWaitingTime);
+        dos_snprintf(szTime, sizeof(szTime), "%04u/%02u/%02u %02u:%02u:%02u"
+                        , pstSWTime->tm_year + 1900
+                        , pstSWTime->tm_mon + 1
+                        , pstSWTime->tm_mday
+                        , pstSWTime->tm_hour
+                        , pstSWTime->tm_min
+                        , pstSWTime->tm_sec);
+
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the cwq of agentgrp %u.", ulAgentGrpID);
+        cli_out_string(ulIndex, szBuff);
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12s%20s%6s"
+                        , "AgentGrpID", "StartWaitingTime", "SCBNo");
+        cli_out_string(ulIndex, szBuff);
+        cli_out_string(ulIndex, "\r\n--------------------------------------");
+        DLL_Scan(&pstCWQNode->stCallWaitingQueue, pstListNode1, DLL_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstListNode1)
+                || DOS_ADDR_INVALID(pstListNode1->pHandle))
+            {
+                continue;
+            }
+            pstSCB = (SC_SCB_ST *)pstListNode1->pHandle;
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12u%20s%6u"
+                            , ulAgentGrpID
+                            , szTime
+                            , pstSCB->usSCBNo);
+            cli_out_string(ulIndex, szBuff);
+        }
+        cli_out_string(ulIndex, "\r\n--------------------------------------");
+    }
+
     return DOS_SUCC;
 }
 
