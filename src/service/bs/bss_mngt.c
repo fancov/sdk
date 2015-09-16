@@ -1847,6 +1847,7 @@ S32 bss_walk_tbl_rsp(DLL_NODE_S *pMsgNode)
 
         case BS_TBL_TYPE_AGENT:
             /* 无需处理 */
+            g_stBssCB.bIsMaintain = DOS_FALSE;
             break;
 
         case BS_TBL_TYPE_BILLING_PACKAGE:
