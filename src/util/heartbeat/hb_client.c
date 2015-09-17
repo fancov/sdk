@@ -202,6 +202,8 @@ S32 hb_client_msg_proc(VOID *pMsg, U32 ulLen)
             break;
         case HEARTBEAT_WARNING_SEND_RESPONSE:
             break;
+        case HEARTBEAT_SYS_REBOOT:
+            break;
         default:
             DOS_ASSERT(0);
             lResult = -1;

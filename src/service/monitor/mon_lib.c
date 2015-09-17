@@ -25,10 +25,16 @@ extern "C"{
 
 /* 该宏用来定义消息种类的最大个数，可以酌情修改 */
 #define MAX_EXCEPT_CNT  4
+/* 定义系统最长的等待时间，如果超过该时间业务还未跑完，强制重启 */
+#define MAX_WAIT_TIME   30
+/* 定义系统最短等待时间 */
+#define MIN_WAIT_TIME   2
 
 extern S8 * g_pszAnalyseList;
 extern DLL_S *g_pstNotifyList;
 extern DB_HANDLE_ST *g_pstCCDBHandle;
+extern PROCESS_INFO_ST *g_pstProcessInfo;
+extern S32 hb_send_msg(U8 * pszBuff,U32 ulBuffLen,struct sockaddr_un * pstAddr,U32 ulAddrLen,S32 lSocket);
 
 
 /* 消息映射 */
@@ -315,6 +321,26 @@ S32 mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp)
 {
     U32 ulRet = U32_BUTT;
+    HEARTBEAT_DATA_ST stData;
+    U32 ulIndex = 0;
+
+    /* 为每一个进程进行一次通知 */
+    for (ulIndex = 0; ulIndex < DOS_PROCESS_MAX_NUM; ulIndex++)
+    {
+        if (!g_pstProcessInfo[ulIndex].ulVilad)
+        {
+            continue;
+        }
+
+        dos_memzero((VOID*)&stData, sizeof(stData));
+        stData.ulCommand = HEARTBEAT_SYS_REBOOT;
+        dos_snprintf(stData.szProcessName, sizeof(stData.szProcessName), "%s", g_pstProcessInfo[ulIndex].szProcessName);
+        dos_snprintf(stData.szProcessVersion, sizeof(stData.szProcessVersion), "%s", g_pstProcessInfo[ulIndex].szProcessVersion);
+        hb_send_msg((U8 *)&stData, sizeof(HEARTBEAT_DATA_ST)
+                        , &g_pstProcessInfo[ulIndex].stPeerAddr
+                        , g_pstProcessInfo[ulIndex].ulPeerAddrLen
+                        , g_pstProcessInfo[ulIndex].lSocket);
+    }
 
     switch (ulStyle)
     {
@@ -361,51 +387,80 @@ U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp)
 
 static U32 mon_restart_immediately()
 {
-    U32 ulRet = mon_system("/sbin/reboot");
+    S8  szReboot[32] = {0};
 
-    if (DOS_SUCC != ulRet)
-    {
-        mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "Restart System Immediately FAIL.");
-        return DOS_FAIL;
-    }
-    mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "Restart System Immediately SUCC.");
+    dos_snprintf(szReboot, sizeof(szReboot), "%s", "shutdown -r %u", MIN_WAIT_TIME);
+    mon_system(szReboot);
 
     return DOS_SUCC;
 }
 
 static U32 mon_restart_fixed(U32 ulTimeStamp)
 {
-    time_t  ulCurTime = time(0);
-    S8  szCmd[32] = {0};
-    S32 lTimeDiff = ulTimeStamp - ulCurTime, lDiff;
-    U32 ulRet = U32_BUTT;
+    time_t ulCurTimeStamp = time(0);
+    U32 ulTimeDiff = U32_BUTT;
+    S8  szReboot[32] = {0};
 
-    if (U32_BUTT == ulTimeStamp || 0 == ulTimeStamp || lTimeDiff < 0)
-    {
-        mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "Restart System at Fixed Time FAIL. TimeStamp:%u, CurTimeStamp:%u", ulTimeStamp, ulCurTime);
-        return DOS_FAIL;
-    }
-
-    lDiff = (lTimeDiff + lTimeDiff % 60)/60;
-    dos_snprintf(szCmd, sizeof(szCmd), "shutdown -r %d", lDiff);
-    mon_trace(MON_TRACE_LIB, LOG_LEVEL_DEBUG, "The System will be restarted After %d minute(s).", lDiff);
-
-    ulRet = mon_system(szCmd);
-    if (DOS_SUCC != ulRet)
+    if (ulTimeStamp <= ulCurTimeStamp)
     {
         DOS_ASSERT(0);
-        mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "Restart System at Fixed Time FAIL.");
+        mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "Your TimeStamp is %u, but current timestamp is %u. Please check the time.");
         return DOS_FAIL;
     }
+
+    ulTimeDiff = ulTimeStamp - ulCurTimeStamp;
+    /* 将秒转换为分钟 */
+    ulTimeDiff = (ulTimeDiff + ulTimeDiff % 60)/60;
+    /* 默认至少给2分钟时间 */
+    if (ulTimeDiff < MIN_WAIT_TIME)
+    {
+        ulTimeDiff = MIN_WAIT_TIME;
+    }
+    dos_snprintf(szReboot, sizeof(szReboot), "shutdown -r %u", ulTimeDiff);
+    mon_system(szReboot);
 
     return DOS_SUCC;
 }
 
 static U32 mon_restart_later()
 {
+    U32  ulStartTime = time(0);
+    U32  ulCurTime, ulIndex = 0;
+    BOOL bCanReboot = DOS_TRUE;
+
+    while (1)
+    {
+        ulCurTime = time(0);
+        if (ulCurTime - ulStartTime >= MAX_WAIT_TIME * 60)
+        {
+            mon_system("/sbin/reboot");
+            break;
+        }
+
+        for (ulIndex = 0; ulIndex < DOS_PROCESS_MAX_NUM; ++ulIndex)
+        {
+            if (g_pstProcessInfo[ulIndex].ulVilad == DOS_TRUE
+                && g_pstProcessInfo[ulIndex].bRecvRebootRsp == DOS_FALSE)
+            {
+                bCanReboot = DOS_FALSE;
+                break;
+            }
+        }
+
+        if (bCanReboot)
+        {
+            mon_system("/sbin/reboot");
+            break;
+        }
+        else
+        {
+            /* 每隔5秒钟去检查一次 */
+            sleep(5);
+        }
+    }
+
     return DOS_SUCC;
 }
-
 
 U32 mon_system(S8 *pszCmd)
 {
@@ -482,121 +537,6 @@ U32  mon_deinit_str_array()
    return DOS_SUCC;
 }
 
-/**
- * 功能:判断pszDest是否为pszSrc的子串
- * 参数集：
- *   参数1:S8 * pszSrc  源字符串
- *   参数2:S8 * pszDest 子字符串
- * 返回值：
- *   是则返回DOS_TRUE，否则返回DOS_FALSE
- */
-BOOL mon_is_substr(S8 * pszSrc, S8 * pszDest)
-{
-    S8 * pszStr = pszSrc;
-
-    if(DOS_ADDR_INVALID(pszSrc)
-        || DOS_ADDR_INVALID(pszDest))
-    {
-        DOS_ASSERT(0);
-        return DOS_FALSE;
-    }
-
-   /* 如果pszSrc的长度小于pszDest，那么一定不是子串 */
-    if (dos_strlen(pszSrc) < dos_strlen(pszDest))
-    {
-        DOS_ASSERT(0);
-        return DOS_FALSE;
-    }
-
-    for (;pszStr <= pszSrc + dos_strlen(pszSrc) - dos_strlen(pszDest); ++pszStr)
-    {
-        if (*pszStr == *pszDest)
-        {
-            if (dos_strncmp(pszStr, pszDest, dos_strlen(pszDest)) == 0)
-            {
-                return DOS_TRUE;
-            }
-        }
-    }
-
-    return DOS_FALSE;
-}
-
-/**
- * 功能:判断pszSentence是否以pszStr结尾
- * 参数集：
- *   参数1:S8 * pszSentence  源字符串
- *   参数2:S8 * pszStr       结尾字符串
- * 返回值：
- *   是则返回DOS_TRUE，否则返回DOS_FALSE
- */
-BOOL mon_is_ended_with(S8 * pszSentence, const S8 * pszStr)
-{
-    S8 *pszSrc = NULL, *pszTemp = NULL;
-
-    if(DOS_ADDR_INVALID(pszSentence)
-        || DOS_ADDR_INVALID(pszStr))
-    {
-        DOS_ASSERT(0);
-        return DOS_FALSE;
-    }
-
-    if (dos_strlen(pszSentence) < dos_strlen(pszStr))
-    {
-        DOS_ASSERT(0);
-        return DOS_FALSE;
-    }
-    pszSrc = pszSentence + dos_strlen(pszSentence) - dos_strlen(pszStr);
-    pszTemp = (S8 *)pszStr;
-
-    while (*pszTemp != '\0')
-    {
-        if (*pszSrc != *pszTemp)
-        {
-            mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "\'%s\' is not ended with \'%s\'", pszSrc, pszTemp);
-            return DOS_FALSE;
-        }
-        ++pszSrc;
-        ++pszTemp;
-    }
-
-   return DOS_TRUE;
-}
-
-/**
- * 功能:判断pszFile是否以pszSuffix为文件后缀名
- * 参数集：
- *   参数1:S8 * pszFile   源文件名
- *   参数2:S8 * pszSuffix 文件后缀名
- * 返回值：
- *   是则返回DOS_TRUE，否则返回DOS_FALSE
- */
-BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix)
-{
-    S8 * pszFileSrc = NULL;
-    S8 * pszSuffixSrc = NULL;
-
-    if(DOS_ADDR_INVALID(pszFile)
-        || DOS_ADDR_INVALID(pszFile))
-    {
-        DOS_ASSERT(0);
-        return DOS_FALSE;
-    }
-
-    pszFileSrc = pszFile + dos_strlen(pszFile) -1;
-    pszSuffixSrc = (S8 *)pszSuffix + dos_strlen(pszSuffix) - 1;
-
-    for (; pszSuffixSrc >= pszSuffix; pszSuffixSrc--, pszFileSrc--)
-    {
-        if (*pszFileSrc != *pszSuffixSrc)
-        {
-            mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "The suffix of \'%s\' is not \'%s\'.", pszFile, pszSuffix);
-            return DOS_FALSE;
-        }
-    }
-
-    return DOS_TRUE;
-}
 
 /**
  * 功能:获取字符串中的一个整数
@@ -716,43 +656,6 @@ U32 mon_generate_warning_id(U32 ulResType, U32 ulNo, U32 ulErrType)
     }
     /* 第1个8位存储资源类型，第2个8位存储资源编号，第3个8位存储错误编号 */
     return ((ulResType << 24) & 0xff000000) | ((ulNo << 16) & 0xff0000) | ulErrType;
-}
-
-
-/**
- * 功能:为字符串去头去尾，只留下最简单的名字
- * 参数集：
- *   参数1:S8 * pszCmd   进程启动命令
- * 返回值：
- *   成功则返回去头去尾之后的简单名称，失败则返回NULL
- */
-S8 * mon_str_get_name(S8 * pszCmd)
-{
-    S8 * pszPtr = pszCmd;
-    if(DOS_ADDR_INVALID(pszPtr))
-    {
-        DOS_ASSERT(0);
-        return NULL;
-    }
-
-    /**
-      *  找到第一个空格，前面为命令的绝对路径，后面为命令附带的相关参数
-      */
-    while(*pszPtr != ' ' && *pszPtr != '\0' && *pszPtr != '\t')
-    {
-        ++pszPtr;
-    }
-    *pszPtr = '\0';
-
-    /*找到最后一个'/'字符，'/'和' '之间的部分是命令的最简化名称*/
-    while(*(pszPtr - 1) != '/' && pszPtr != pszCmd)
-    {
-        --pszPtr;
-    }
-
-    pszCmd = pszPtr;
-
-    return pszCmd;
 }
 
 #endif //#if INCLUDE_RES_MONITOR
