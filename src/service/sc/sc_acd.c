@@ -397,7 +397,7 @@ U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
 }
 
 /* 根据SIP，查找到绑定的坐席，更新usSCBNo字段 */
-U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, U16 usSCBNo)
+U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, U16 usSCBNo, BOOL bIsBusy)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
@@ -437,6 +437,11 @@ U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, U16 usSCBNo)
             {
                 pthread_mutex_lock(&pstAgentData->mutexLock);
                 pstAgentData->usSCBNo = usSCBNo;
+                if (bIsBusy)
+                {
+                    pstAgentData->ucStatus = SC_ACD_BUSY;
+                }
+
                 pthread_mutex_unlock(&pstAgentData->mutexLock);
 
                 pthread_mutex_unlock(&g_mutexAgentList);

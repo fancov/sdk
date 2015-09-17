@@ -256,8 +256,8 @@ enum tagCallServiceType{
 
     SC_SERV_NUM_VERIFY              = 26,  /* 号码验证 */
 
-    SC_SERV_CALL_INTERCEPT          = 27,  /* 号码验证 */
-    SC_SERV_CALL_WHISPERS           = 28,  /* 号码验证 */
+    SC_SERV_CALL_INTERCEPT          = 27,  /* 监听 */
+    SC_SERV_CALL_WHISPERS           = 28,  /* 耳语 */
 
     SC_SERV_BUTT                    = 255
 }SC_CALL_SERVICE_TYPE_EN;

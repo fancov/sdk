@@ -7702,6 +7702,14 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         return DOS_FAIL;
     }
 
+    /* 判断坐席的状态 */
+    if (pstAgentInfo->ucStatus != SC_ACD_IDEL)
+    {
+        /* 不允许呼叫 */
+        sc_logr_info(SC_ESL, "Call agnet FAIL. Agent (%u) status is (%d)", pstAgentInfo->ulSiteID, pstAgentInfo->ucStatus);
+        goto proc_error;
+    }
+
     /* 如果坐席长连了，就需要特殊处理 */
     if (pstAgentInfo->bConnected && pstAgentInfo->usSCBNo < SC_MAX_SCB_NUM)
     {
@@ -7717,6 +7725,9 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
             DOS_ASSERT(0);
             goto proc_error;
         }
+
+        /* 更新坐席的状态 */
+        sc_acd_agent_update_status(pstSCBNew->ulAgentID, SC_ACD_BUSY, pstSCBNew->usSCBNo);
 
         sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
 
@@ -7752,6 +7763,7 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         sc_logr_info(SC_ESL, "Update agent(%u) scbno(%d) fail", pstAgentInfo->ulSiteID, pstSCBNew->usSCBNo);
     }
 
+    pstSCBNew->bIsAgentCall = DOS_TRUE;
     pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
     pstSCBNew->ulCustomID = pstSCB->ulCustomID;
     pstSCBNew->ulAgentID = pstAgentInfo->ulSiteID;
@@ -8026,6 +8038,14 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
                 goto make_all_fail;
             }
 
+            /* 判断坐席的状态 */
+            if (stAgentInfo.ucStatus != SC_ACD_IDEL)
+            {
+                /* 不允许呼叫 */
+                sc_logr_info(SC_ESL, "Call agnet FAIL. Agent (%u) status is (%d)", ulAgent, stAgentInfo.ucStatus);
+                goto make_all_fail;
+            }
+
             pstSCB = sc_scb_alloc();
             if (DOS_ADDR_INVALID(pstSCB))
             {
@@ -8038,6 +8058,9 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             {
                 /* 坐席长连 */
                 pstSCBOther = sc_scb_get(stAgentInfo.usSCBNo);
+
+                /* 更新坐席的状态 */
+                sc_acd_agent_update_status(pstSCBOther->ulAgentID, SC_ACD_BUSY, pstSCBOther->usSCBNo);
 
                 if (ulFlag == 2)
                 {
@@ -9359,8 +9382,8 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     goto proc_finished;
                 }
 
-                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
-                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
+                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
                 if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
@@ -9497,7 +9520,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             if (U32_BUTT != pstSCB->ulCustomID)
             {
                 /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
-                if (sc_acd_update_agent_scbno_by_userid(pstSCB->szCallerNum, pstSCB->usSCBNo) != DOS_SUCC)
+                if (sc_acd_update_agent_scbno_by_userid(pstSCB->szCallerNum, pstSCB->usSCBNo, DOS_FALSE) != DOS_SUCC)
                 {
                     sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
                 }
@@ -9560,7 +9583,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         {
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
             /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
-            if (sc_acd_update_agent_scbno_by_userid(pszCaller, pstSCB->usSCBNo) != DOS_SUCC)
+            if (sc_acd_update_agent_scbno_by_userid(pszCaller, pstSCB->usSCBNo, DOS_FALSE) != DOS_SUCC)
             {
                 sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d", pszCaller, pstSCB->usSCBNo);
             }
@@ -9781,6 +9804,12 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             goto process_fail;
         }
 
+        /* 判断是否是呼叫坐席，更新坐席的状态 */
+        if (pstSCB->bIsAgentCall)
+        {
+            sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_BUSY, ulSCBNo);
+        }
+
         /* 更新UUID */
         dos_strncpy(pstSCB->szUUID, pszUUID, sizeof(pstSCB->szUUID));
         pstSCB->szUUID[sizeof(pstSCB->szUUID) - 1] = '\0';
@@ -9807,8 +9836,6 @@ process_fail:
         {
             DOS_ASSERT(0);
             sc_logr_error(SC_ESL, "%s", "Alloc SCB FAIL.");
-
-            SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
 
             SC_TRACE_OUT();
             return DOS_FAIL;
@@ -9875,7 +9902,6 @@ process_fail1:
 #endif
     }
 
-
     /* 根据参数  交换SCB No */
     pszOtherSCBNo = esl_event_get_header(pstEvent, "variable_other_leg_scb");
     if (DOS_ADDR_INVALID(pszOtherSCBNo)
@@ -9896,7 +9922,9 @@ process_fail1:
     pszCaller = esl_event_get_header(pstEvent, "variable_update_agent");
     if (DOS_ADDR_VALID(pszCaller) && pszCaller[0] != '\0')
     {
-        if (sc_acd_update_agent_scbno_by_userid(pszCaller, pstSCB->usSCBNo) != DOS_SUCC)
+        /* 更改坐席的状态 */
+        pstSCB->bIsAgentCall = DOS_TRUE;
+        if (sc_acd_update_agent_scbno_by_userid(pszCaller, pstSCB->usSCBNo, TRUE) != DOS_SUCC)
         {
             sc_logr_info(SC_ESL, "update agent SCBNO FAIL. sip : %s, SCBNO : %d!", pszCaller, pstSCB->usSCBNo);
         }
@@ -10221,11 +10249,12 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 dos_printf("Process recording file %s", szCMD);
             }
 
-            /* 如果为长签坐席，则将坐席中的 scbNo 置为非法值 */
+            /* 如果为长签坐席，则将坐席中的 scbNo 置为非法值
             if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
             {
                 sc_acd_update_agent_scbno_by_Siteid(pstSCB->ulAgentID, U16_BUTT);
             }
+            */
 
             /*
              * 1.如果有另外一条腿，有必要等待另外一条腿释放
