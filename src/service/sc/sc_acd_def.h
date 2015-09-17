@@ -36,12 +36,13 @@ enum {
     SC_ACD_SITE_ACTION_DELETE = 0,       /* 坐席操作动作，删除 */
     SC_ACD_SITE_ACTION_ADD,              /* 坐席操作动作，删除 */
     SC_ACD_SITE_ACTION_UPDATE,           /* 坐席操作动作，删除 */
-    SC_ACD_SITE_ACTION_SIGNIN,           /* 坐席登陆，  */
-    SC_ACD_SITE_ACTION_SIGNOUT,          /* 坐席登出 */
-    SC_ACD_SITE_ACTION_ONLINE,           /* 坐席置闲 */
-    SC_ACD_SITE_ACTION_OFFLINE,          /* 坐席置忙 */
-    SC_ACD_SITE_ACTION_EN_QUEUE,         /* 坐席长连 */
-    SC_ACD_SITE_ACTION_DN_QUEUE,         /* 坐席退出长连 */
+
+    SC_ACD_SITE_ACTION_SIGNIN,           /* 长签 */
+    SC_ACD_SITE_ACTION_SIGNOUT,          /* 退出长签 */
+    SC_ACD_SITE_ACTION_ONLINE,           /* 坐席登陆到WEB页面 */
+    SC_ACD_SITE_ACTION_OFFLINE,          /* 坐席从WEB页面退出 */
+    SC_ACD_SITE_ACTION_EN_QUEUE,         /* 置闲 */
+    SC_ACD_SITE_ACTION_DN_QUEUE,         /* 置忙 */
 
     SC_ACD_SITE_ACTION_CONNECTED,         /* 坐席长连成功 */
     SC_ACD_SITE_ACTION_DISCONNECT,        /* 坐席长连失败 */

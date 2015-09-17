@@ -246,7 +246,7 @@ U32 sc_ep_update_agent_status(S8 *pszJSONString)
 
     json_deinit(&pstJsonArrayItem);
 
-    return sc_acd_update_agent_status(SC_ACD_SITE_ACTION_ONLINE, ulID);
+    return sc_acd_update_agent_status(SC_ACD_SITE_ACTION_DN_QUEUE, ulID);
 }
 
 /* 解析这样一个json字符串
