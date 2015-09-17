@@ -25,17 +25,10 @@ extern "C"{
 
 /* 该宏用来定义消息种类的最大个数，可以酌情修改 */
 #define MAX_EXCEPT_CNT  4
-/* 定义系统最长的等待时间，如果超过该时间业务还未跑完，强制重启 */
-#define MAX_WAIT_TIME   30
-/* 定义系统最短等待时间 */
-#define MIN_WAIT_TIME   2
 
 extern S8 * g_pszAnalyseList;
 extern DLL_S *g_pstNotifyList;
 extern DB_HANDLE_ST *g_pstCCDBHandle;
-extern PROCESS_INFO_ST *g_pstProcessInfo;
-extern S32 hb_send_msg(U8 * pszBuff,U32 ulBuffLen,struct sockaddr_un * pstAddr,U32 ulAddrLen,S32 lSocket);
-
 
 /* 消息映射 */
 MON_MSG_MAP_ST m_pstMsgMap[][MAX_EXCEPT_CNT] = {
@@ -53,9 +46,6 @@ MON_MSG_MAP_ST m_pstMsgMap[][MAX_EXCEPT_CNT] = {
 };
 
 U32 mon_system();
-static U32 mon_restart_immediately();
-static U32 mon_restart_fixed(U32 ulTimeStamp);
-static U32 mon_restart_later();
 
 /**
  * 功能:初始化通知消息队列
@@ -318,149 +308,6 @@ S32 mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     return DOS_SUCC;
 }
 
-U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp)
-{
-    U32 ulRet = U32_BUTT;
-    HEARTBEAT_DATA_ST stData;
-    U32 ulIndex = 0;
-
-    /* 为每一个进程进行一次通知 */
-    for (ulIndex = 0; ulIndex < DOS_PROCESS_MAX_NUM; ulIndex++)
-    {
-        if (!g_pstProcessInfo[ulIndex].ulVilad)
-        {
-            continue;
-        }
-
-        dos_memzero((VOID*)&stData, sizeof(stData));
-        stData.ulCommand = HEARTBEAT_SYS_REBOOT;
-        dos_snprintf(stData.szProcessName, sizeof(stData.szProcessName), "%s", g_pstProcessInfo[ulIndex].szProcessName);
-        dos_snprintf(stData.szProcessVersion, sizeof(stData.szProcessVersion), "%s", g_pstProcessInfo[ulIndex].szProcessVersion);
-        hb_send_msg((U8 *)&stData, sizeof(HEARTBEAT_DATA_ST)
-                        , &g_pstProcessInfo[ulIndex].stPeerAddr
-                        , g_pstProcessInfo[ulIndex].ulPeerAddrLen
-                        , g_pstProcessInfo[ulIndex].lSocket);
-    }
-
-    switch (ulStyle)
-    {
-        /* 立即重启 */
-        case MON_SYS_RESTART_IMMEDIATELY:
-        {
-            ulRet = mon_restart_immediately();
-            if (DOS_SUCC != ulRet)
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-            break;
-        }
-        /* 指定时间重启 */
-        case MON_SYS_RESTART_FIXED:
-        {
-            ulRet = mon_restart_fixed(ulTimeStamp);
-            if (DOS_SUCC != ulRet)
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-            break;
-        }
-        /* 稍后重启(没有业务跑的时候重启) */
-        case MON_SYS_RESTART_LATER:
-        {
-            ulRet = mon_restart_later();
-            if (DOS_SUCC != ulRet)
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-            break;
-        }
-        default:
-            break;
-    }
-    mon_trace(MON_TRACE_LIB, LOG_LEVEL_DEBUG, "Restart System SUCC.(Style:%u, TimeStamp:%u).", ulStyle, ulTimeStamp);
-
-    return DOS_SUCC;
-}
-
-static U32 mon_restart_immediately()
-{
-    S8  szReboot[32] = {0};
-
-    dos_snprintf(szReboot, sizeof(szReboot), "%s", "shutdown -r %u", MIN_WAIT_TIME);
-    mon_system(szReboot);
-
-    return DOS_SUCC;
-}
-
-static U32 mon_restart_fixed(U32 ulTimeStamp)
-{
-    time_t ulCurTimeStamp = time(0);
-    U32 ulTimeDiff = U32_BUTT;
-    S8  szReboot[32] = {0};
-
-    if (ulTimeStamp <= ulCurTimeStamp)
-    {
-        DOS_ASSERT(0);
-        mon_trace(MON_TRACE_LIB, LOG_LEVEL_ERROR, "Your TimeStamp is %u, but current timestamp is %u. Please check the time.");
-        return DOS_FAIL;
-    }
-
-    ulTimeDiff = ulTimeStamp - ulCurTimeStamp;
-    /* 将秒转换为分钟 */
-    ulTimeDiff = (ulTimeDiff + ulTimeDiff % 60)/60;
-    /* 默认至少给2分钟时间 */
-    if (ulTimeDiff < MIN_WAIT_TIME)
-    {
-        ulTimeDiff = MIN_WAIT_TIME;
-    }
-    dos_snprintf(szReboot, sizeof(szReboot), "shutdown -r %u", ulTimeDiff);
-    mon_system(szReboot);
-
-    return DOS_SUCC;
-}
-
-static U32 mon_restart_later()
-{
-    U32  ulStartTime = time(0);
-    U32  ulCurTime, ulIndex = 0;
-    BOOL bCanReboot = DOS_TRUE;
-
-    while (1)
-    {
-        ulCurTime = time(0);
-        if (ulCurTime - ulStartTime >= MAX_WAIT_TIME * 60)
-        {
-            mon_system("/sbin/reboot");
-            break;
-        }
-
-        for (ulIndex = 0; ulIndex < DOS_PROCESS_MAX_NUM; ++ulIndex)
-        {
-            if (g_pstProcessInfo[ulIndex].ulVilad == DOS_TRUE
-                && g_pstProcessInfo[ulIndex].bRecvRebootRsp == DOS_FALSE)
-            {
-                bCanReboot = DOS_FALSE;
-                break;
-            }
-        }
-
-        if (bCanReboot)
-        {
-            mon_system("/sbin/reboot");
-            break;
-        }
-        else
-        {
-            /* 每隔5秒钟去检查一次 */
-            sleep(5);
-        }
-    }
-
-    return DOS_SUCC;
-}
 
 U32 mon_system(S8 *pszCmd)
 {

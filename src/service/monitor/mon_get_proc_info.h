@@ -46,7 +46,6 @@ U32  mon_proc_malloc();
 U32  mon_proc_free();
 U32  mon_get_process_data();
 U32  mon_check_all_process();
-U32  mon_restart_computer();
 U32  mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName, U32 ulLen);
 BOOL mon_is_proc_dead(U32 ulPid);
 U32  mon_get_proc_total_cpu_rate();
