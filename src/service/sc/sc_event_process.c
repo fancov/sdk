@@ -419,7 +419,10 @@ U32 sc_ep_init_agent_status()
         return DOS_FAIL;
     }
 
+    stIOBuffer.pszBuffer[stIOBuffer.ulLength] = '\0';
+
     sc_logr_notice(SC_ESL, "%s", "CURL get agent status SUCC.Result");
+    dos_printf("%s", stIOBuffer.pszBuffer);
 
     ulRet = sc_ep_update_agent_req_proc((S8 *)stIOBuffer.pszBuffer);
 
