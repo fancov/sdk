@@ -210,7 +210,7 @@ const S8* bs_translate_billing_attr(U32 ulBillingAttr)
     return "UNKNOWN";
 }
 
-const S8* g_pszBillingType [] =
+const S8* g_pszBillingType[] =
 {
     "BY TIMELEN",
     "BY COUNT",
@@ -303,6 +303,25 @@ const S8* bs_translate_object(U32 ulObject)
     }
     return "UNKNOWN";
 }
+
+const S8* g_pszBillingCycle[] =
+{
+    "",
+    "DAY",
+    "WEEK",
+    "MONTH",
+    "YEAR"
+};
+
+const S8* bs_translate_billing_cycle(U32  ulCycle)
+{
+    if (ulCycle < sizeof(g_pszBillingCycle)/sizeof(S8*))
+    {
+        return g_pszBillingCycle[ulCycle];
+    }
+    return "UNKNOWN";
+}
+
 
 S32 bs_show_trace_info(U32 ulIndex)
 {
@@ -1198,7 +1217,7 @@ S32 bs_show_billing_package(U32 ulIndex, U32 ulObjectID)
                                 , pstPkg->astRule[ulLoop].ulRuleID
                                 , bs_translate_billing_attr(pstPkg->astRule[ulLoop].ucSrcAttrType1)
                                 , pstPkg->astRule[ulLoop].ulSrcAttrValue1
-                                , bs_translate_billing_attr(pstPkg->astRule[ulLoop].ucSrcAttrType2)
+                                , bs_translate_billing_cycle(pstPkg->astRule[ulLoop].ucSrcAttrType2)
                                 , pstPkg->astRule[ulLoop].ulSrcAttrValue2
                                 , bs_translate_billing_attr(pstPkg->astRule[ulLoop].ucDstAttrType1)
                                 , pstPkg->astRule[ulLoop].ulDstAttrValue1

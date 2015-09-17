@@ -40,6 +40,10 @@ enum HEARTBEAT_DATA_TYPE{
     HEARTBEAT_WARNING_SEND_RESPONSE,
 
     HEARTBEAT_DATA_HB,
+
+    /* 系统重启消息 */
+    HEARTBEAT_SYS_REBOOT,
+    HEARTBEAT_SYS_REBOOT_RESPONSE
 };
 
 /* 告警级别 */
@@ -160,6 +164,7 @@ typedef struct tagProcessInfo{
 #endif
 #if INCLUDE_BH_SERVER
     U32                ulProcessCBNo;                             /* 控制块编号 */
+    BOOL               bRecvRebootRsp;                            /* 是否收到可以进行系统重启的响应 */
     U32                ulVilad;                                   /* 该控制块是否有效 */
     U32                ulActive;                                  /* 该进程是否处于激活状态 */
     DOS_TMR_ST         hTmrHBTimeout;                             /* 心跳超市定时器，每次收到心跳重启 */
