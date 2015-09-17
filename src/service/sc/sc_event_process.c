@@ -7382,8 +7382,9 @@ U32 sc_ep_transfer_publish_active(SC_SCB_ST * pstSCBPublish)
             dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "uuid_hold %s \r\n", pstSCBSubscription->szUUID);
             sc_ep_esl_execute_cmd(szBuffCMD);
 
+            //sc_ep_esl_execute("answer", NULL, pstSCBPublish->szUUID);
             /* 接通订阅方和发起方 */
-            dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "uuid_bridge %s %s \r\n", pstSCBNotify->szUUID, pstSCBPublish->szUUID);
+            dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "uuid_bridge %s %s \r\n", pstSCBSubscription->szUUID, pstSCBPublish->szUUID);
             sc_ep_esl_execute_cmd(szBuffCMD);
         }
         else
@@ -9875,7 +9876,7 @@ process_fail1:
     /* 根据参数  交换SCB No */
     pszOtherSCBNo = esl_event_get_header(pstEvent, "variable_other_leg_scb");
     if (DOS_ADDR_INVALID(pszOtherSCBNo)
-        && dos_atoul(pszOtherSCBNo, &ulOtherSCBNo) < 0)
+        || dos_atoul(pszOtherSCBNo, &ulOtherSCBNo) < 0)
     {
         goto process_finished;
     }
