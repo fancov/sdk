@@ -342,14 +342,15 @@ VOID* sc_data_syn_proc_runtime(VOID *ptr)
             continue;
         }
 
-        g_blSCDataSybFlag = DOS_FALSE;
-
-        do{
+        if (g_blSCDataSybFlag)
+        {
             if (sc_walk_tmp_tbl() != DOS_SUCC)
             {
                 DOS_ASSERT(0);
-                break;
+                continue;
             }
+
+            g_blSCDataSybFlag = DOS_FALSE;
 
             while (1)
             {
@@ -378,7 +379,7 @@ VOID* sc_data_syn_proc_runtime(VOID *ptr)
                 dos_dmem_free(pstNode);
                 pstNode = NULL;
             }
-        }while (g_blSCDataSybFlag);
+        };
     }
 }
 

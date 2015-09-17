@@ -701,6 +701,19 @@ U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *psz
         return DOS_FAIL;
     }
 
+    dos_snprintf(pszBuff, ulMaxLen
+            , "%s/%u/%04d%02d%02d"
+            , SC_RECORD_FILE_PATH
+            , ulCustomerID
+            , pstTime->tm_year + 1900
+            , pstTime->tm_mon + 1
+            , pstTime->tm_mday);
+    if (access(pszBuff, F_OK) < 0)
+    {
+        mkdir(pszBuff, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
+        chown(pszBuff, SC_NOBODY_UID, SC_NOBODY_GID);
+        chmod(pszBuff, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
+    }
 
     dos_snprintf(pszBuff, ulMaxLen
             , "%u/%04d%02d%02d/VR-%02d%02d%02d-%s-%s"

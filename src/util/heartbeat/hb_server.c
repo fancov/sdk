@@ -331,6 +331,9 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
         case HEARTBEAT_WARNING_SEND_RESPONSE:
             DOS_ASSERT(0);
             break;
+        case HEARTBEAT_SYS_REBOOT_RESPONSE:
+            pstProcessInfo->bRecvRebootRsp = DOS_TRUE;
+            break;
         default:
             DOS_ASSERT(0);
             lResult = -1;
@@ -442,6 +445,7 @@ S32 heartbeat_init()
         g_pstProcessInfo[i]->ulPeerAddrLen = 0;
         g_pstProcessInfo[i]->ulStatus = PROCESS_HB_BUTT;
         g_pstProcessInfo[i]->hTmrHBTimeout = NULL;
+        g_pstProcessInfo[i]->bRecvRebootRsp = DOS_FALSE;
     }
 
     if (DOS_SUCC == config_hb_init())

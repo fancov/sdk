@@ -235,7 +235,7 @@ VOID mon_show_process(U32 ulIndex)
     {
         dos_snprintf(szBuff, sizeof(szBuff), "\r\n|%7d|%-12s|%16.1f|%13.1f|%-10s|%15u|%19u|%15u|"
                         , g_pastProc[ulLoop]->ulProcId
-                        , mon_str_get_name(g_pastProc[ulLoop]->szProcName)
+                        , g_pastProc[ulLoop]->szProcName
                         , g_pastProc[ulLoop]->fMemoryRate
                         , g_pastProc[ulLoop]->fCPURate
                         , g_pastProc[ulLoop]->szProcCPUTime

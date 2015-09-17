@@ -246,7 +246,7 @@ U32 sc_ep_update_agent_status(S8 *pszJSONString)
 
     json_deinit(&pstJsonArrayItem);
 
-    return sc_acd_update_agent_status(SC_ACD_SITE_ACTION_ONLINE, ulID);
+    return sc_acd_update_agent_status(SC_ACD_SITE_ACTION_DN_QUEUE, ulID);
 }
 
 /* 解析这样一个json字符串
@@ -419,7 +419,10 @@ U32 sc_ep_init_agent_status()
         return DOS_FAIL;
     }
 
+    stIOBuffer.pszBuffer[stIOBuffer.ulLength] = '\0';
+
     sc_logr_notice(SC_ESL, "%s", "CURL get agent status SUCC.Result");
+    dos_printf("%s", stIOBuffer.pszBuffer);
 
     ulRet = sc_ep_update_agent_req_proc((S8 *)stIOBuffer.pszBuffer);
 
@@ -10203,16 +10206,19 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                 , "%s/%s-in.%s"
                                 , SC_RECORD_FILE_PATH
                                 , pstSCB->pszRecordFile
-                                , esl_event_get_header(pstEvent, "Channel-Read-Codec-Name"));
+                                , esl_event_get_header(pstEvent, "variable_read_codec"));
                 chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
+                chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
 
                 dos_snprintf(szCMD, sizeof(szCMD)
                                 , "%s/%s-out.%s"
                                 , SC_RECORD_FILE_PATH
                                 , pstSCB->pszRecordFile
-                                , esl_event_get_header(pstEvent, "Channel-Write-Codec-Name"));
+                                , esl_event_get_header(pstEvent, "variable_read_codec"));
                 chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
+                chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
 
+                dos_printf("Process recording file %s", szCMD);
             }
 
             /* 如果为长签坐席，则将坐席中的 scbNo 置为非法值 */
