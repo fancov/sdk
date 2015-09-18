@@ -374,12 +374,12 @@ U32 sc_ep_query_agent_status(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     if (DOS_ADDR_INVALID(stIOBuffer.pszBuffer)
         || '\0' == stIOBuffer.pszBuffer)
     {
-        DOS_ASSERT(0);
         ulRet = DOS_FAIL;
     }
     else
     {
-        ulRet = DOS_FAIL;
+        stIOBuffer.pszBuffer[stIOBuffer.ulLength] = '\0';
+        ulRet = DOS_SUCC;
     }
 
     dos_iobuf_free(&stIOBuffer);

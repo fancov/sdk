@@ -46,6 +46,7 @@
 
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
+pthread_t          g_pthStatusTask;
 
 /* 坐席组的hash表 */
 HASH_TABLE_S      *g_pstAgentList      = NULL;
@@ -272,6 +273,81 @@ static S32 sc_acd_agent_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
 
     return DOS_SUCC;
 }
+
+VOID *sc_acd_query_agent_status_task(VOID *ptr)
+{
+    U32           ulHashIndex;
+    HASH_NODE_S   *pstHashNode = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode = NULL;
+    SC_ACD_AGENT_INFO_ST        *pstAgentInfo      = NULL;
+
+    /* 检查周期 15分钟 */
+    U32           ulCheckInterval = 15 * 60 * 1000;
+
+    while (1)
+    {
+        dos_task_delay(ulCheckInterval);
+
+        pthread_mutex_lock(&g_mutexAgentList);
+        HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+        {
+            HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+            {
+                if (DOS_ADDR_INVALID(pstHashNode))
+                {
+                    break;
+                }
+
+                if (DOS_ADDR_INVALID(pstHashNode->pHandle))
+                {
+                    continue;
+                }
+
+                pstAgentQueueNode = pstHashNode->pHandle;
+                if (DOS_ADDR_INVALID(pstAgentQueueNode)
+                    || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+                {
+                    /* 有可能被删除了，不需要断言 */
+                    continue;
+                }
+
+                pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+                if (pstAgentInfo->bWaitingDelete)
+                {
+                    /* 被删除了*/
+                    continue;
+                }
+
+                /* 没有查到坐席的信息 */
+                if (sc_ep_query_agent_status(pstAgentInfo) != DOS_SUCC)
+                {
+                    /* 吧坐席状态置为离线 */
+                    if (SC_ACD_OFFLINE != pstAgentInfo->ucStatus)
+                    {
+                        pstAgentInfo->bLogin = DOS_FALSE;
+                        pstAgentInfo->bConnected = DOS_FALSE;
+                        pstAgentInfo->bNeedConnected = DOS_FALSE;
+                        pstAgentInfo->bWaitingDelete = DOS_FALSE;
+
+                        pstAgentInfo->ucStatus = SC_ACD_OFFLINE;
+
+                        pstAgentInfo->stStat.ulTimeOnthePhone += (time(0) - pstAgentInfo->ulLastOnlineTime);
+                        pstAgentInfo->ulLastOnlineTime = 0;
+
+                        sc_logr_info(SC_ACD, "Query agent status fail(%u). Set to offline status.", pstAgentInfo->ulSiteID);
+                    }
+                }
+            }
+
+            /* 一个HASH桶做一次线程切换(HASH表是预分配的，所以不涉及到线程切换出去之后，线程点被破坏的问题) */
+            pthread_mutex_unlock(&g_mutexAgentList);
+            dos_task_delay(10);
+            pthread_mutex_lock(&g_mutexAgentList);
+        }
+        pthread_mutex_unlock(&g_mutexAgentList);
+    }
+}
+
 
 U32 sc_acd_agent_update_status_db(U32 ulSiteID, U32 ulStatus)
 {
@@ -2457,6 +2533,18 @@ U32 sc_acd_init()
     return DOS_SUCC;
 }
 
+U32 sc_acd_start()
+{
+    if (pthread_create(&g_pthStatusTask, NULL, sc_acd_query_agent_status_task, NULL) < 0)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
 /**
  * 函数: U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
  * 功能: 处理HTTP发过来的命令
@@ -2592,6 +2680,5 @@ U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr)
     SC_TRACE_OUT();
     return DOS_SUCC;
 }
-
 
 

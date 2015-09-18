@@ -37,6 +37,7 @@ U32 sc_task_mngt_init();
 U32 sc_dialer_init();
 U32 sc_ep_init();
 U32 sc_acd_init();
+U32 sc_acd_start();
 U32 sc_bs_fsm_init();
 U32 sc_ep_ext_start();
 U32 sc_httpd_start();
@@ -391,6 +392,15 @@ U32 mod_dipcc_sc_runtime()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start audit task SUCC.");
+
+    if (DOS_SUCC != sc_acd_start())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start the agent status query task FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start the agent status query task SUCC.");
 
     g_pstTaskMngtInfo->stStat.ulSystemUpTime = time(0);
     g_pstTaskMngtInfo->stStat.ulSystemIsWorking = DOS_TRUE;
