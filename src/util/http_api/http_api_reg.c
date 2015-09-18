@@ -159,8 +159,7 @@ U32 http_api_system_restart(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList)
     ulRet = mon_restart_system(ulStyle, ulTimeStamp);
     if (DOS_SUCC != ulRet)
     {
-        http_api_write(pstHandle, "Restart System FAIL.(Style:%u, TimeStamp:%u).", ulStyle, ulTimeStamp);
-        DOS_ASSERT(0);
+        http_api_write(pstHandle, "Restart system FAIL.<br>");
         return DOS_FAIL;
     }
 
