@@ -152,10 +152,7 @@ static VOID *sc_audit_task(VOID *ptr)
             break;
         }
 
-        dos_memzero(&stTime, sizeof(stTime));
-
         ulCurrentTime = time(NULL);
-        localtime_r((time_t *)&ulCurrentTime, &stTime);
 
         if (0 == g_ulStartTimestamp)
         {
@@ -166,6 +163,10 @@ static VOID *sc_audit_task(VOID *ptr)
         /* 可能出现时钟不同步，两次获取的时间戳之差大于1了，就需要检查着之间的每一秒 */
         for (j=ulLastTime+1; j<=ulCurrentTime; j++)
         {
+            /* 根据当前时间戳来获取时间 */
+            dos_memzero(&stTime, sizeof(stTime));
+            localtime_r((time_t *)&j, &stTime);
+
             /* 检查所有定时任务 */
             for (i=0; i<sizeof(g_stAuditTaskList)/sizeof(SC_AUDIT_TASK_ST); i++)
             {

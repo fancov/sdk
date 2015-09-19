@@ -114,7 +114,6 @@ typedef struct tagACDSiteDesc{
     SC_SITE_STAT_ST stStat;
 }SC_ACD_AGENT_INFO_ST;
 
-U32 sc_acd_init();
 U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGroupID, S8 *szCallerNum);
 U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo);
 S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
@@ -128,6 +127,7 @@ U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
 U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, U16 usSCBNo, BOOL bIsBusy);
 U32 sc_acd_update_agent_scbno_by_Siteid(U32 ulAgentID, U16 usSCBNo);
 U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr);
+U32 sc_ep_query_agent_status(SC_ACD_AGENT_INFO_ST *pstAgentInfo);
 
 #endif
 
