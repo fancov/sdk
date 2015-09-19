@@ -6655,6 +6655,8 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
                         break;
                     }
 
+                    pszNum = pstSCB->szCalleeNum;
+
                     ulCurrentLen = dos_snprintf(szCalleeString + ulCurrentLen
                                     , ulLength - ulCurrentLen
                                     , "sofia/gateway/%d/%s|"
@@ -7773,7 +7775,7 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     pstSCBNew->bIsAgentCall = DOS_TRUE;
     dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
     pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
-    dos_strncpy(pstSCBNew->szANINum, pstSCB->szCallerNum, sizeof(pstSCBNew->szANINum));
+    dos_strncpy(pstSCBNew->szANINum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szANINum));
     pstSCBNew->szANINum[sizeof(pstSCBNew->szANINum) - 1] = '\0';
     switch (pstAgentInfo->ucBindType)
     {
@@ -10410,12 +10412,17 @@ U32 sc_ep_channel_hold(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST
     return DOS_SUCC;
 }
 
-U32 sc_ep_update_corpclients(U32 ulCustomID, S32 lKey)
+U32 sc_ep_update_corpclients(U32 ulCustomID, S32 lKey, S8 *szCallerNum)
 {
     S8 szSQL[512] = { 0 };
 
-    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_corpclients SET type=%d WHERE customer_id=%d", lKey, ulCustomID);
+    if (DOS_ADDR_INVALID(szCallerNum))
+    {
+        return DOS_FAIL;
+    }
 
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_corpclients SET type=%d WHERE customer_id=%d AND contact_number='%s'", lKey, ulCustomID, szCallerNum);
+    sc_logr_debug(SC_ESL, "dtmf proc, sql : %s", szSQL);
     return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
 }
 
@@ -10486,8 +10493,8 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         {
             if (lKey >= 0 && lKey <= 9)
             {
-                sc_ep_update_corpclients(pstSCB->ulCustomID, lKey);
-                sc_logr_debug(SC_ESL, "!!!!!!!!!!!!!!!!!!!!%d, %d\n\n", pstSCB->ulCustomID, lKey);
+                sc_ep_update_corpclients(pstSCB->ulCustomID, lKey, pstSCB->szCallerNum);
+                sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
             }
         }
 
