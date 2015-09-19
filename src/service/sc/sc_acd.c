@@ -524,14 +524,16 @@ U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
 }
 
 /* 根据SIP，查找到绑定的坐席，更新usSCBNo字段 */
-U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, U16 usSCBNo, BOOL bIsBusy)
+U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
     SC_ACD_AGENT_INFO_ST        *pstAgentData       = NULL;
 
-    if (DOS_ADDR_INVALID(szUserID) || usSCBNo >= SC_MAX_SCB_NUM)
+    if (DOS_ADDR_INVALID(szUserID)
+        || DOS_ADDR_INVALID(pstSCB)
+        || pstSCB->usSCBNo >= SC_MAX_SCB_NUM)
     {
         return DOS_FAIL;
     }
@@ -562,13 +564,9 @@ U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, U16 usSCBNo, BOOL bIsBusy)
 
             if (dos_strcmp(pstAgentData->szUserID, szUserID) == 0)
             {
+                pstSCB->ulAgentID = pstAgentData->ulSiteID;
                 pthread_mutex_lock(&pstAgentData->mutexLock);
-                pstAgentData->usSCBNo = usSCBNo;
-                if (bIsBusy)
-                {
-                    pstAgentData->ucStatus = SC_ACD_BUSY;
-                }
-
+                pstAgentData->usSCBNo = pstSCB->usSCBNo;
                 pthread_mutex_unlock(&pstAgentData->mutexLock);
 
                 pthread_mutex_unlock(&g_mutexAgentList);
@@ -583,11 +581,17 @@ U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, U16 usSCBNo, BOOL bIsBusy)
     return DOS_FAIL;
 }
 
-U32 sc_acd_update_agent_scbno_by_Siteid(U32 ulAgentID, U16 usSCBNo)
+U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB)
 {
     HASH_NODE_S                *pstHashNode = NULL;
     SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode = NULL;
     U32                        ulHashIndex = 0;
+
+    if (DOS_ADDR_INVALID(pstSCB)
+        || pstSCB->usSCBNo >= SC_MAX_SCB_NUM)
+    {
+        return DOS_FAIL;
+    }
 
     sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
     pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
@@ -607,7 +611,9 @@ U32 sc_acd_update_agent_scbno_by_Siteid(U32 ulAgentID, U16 usSCBNo)
         return DOS_FAIL;
     }
 
-    pstAgentNode->pstAgentInfo->usSCBNo = usSCBNo;
+    pstAgentNode->pstAgentInfo->usSCBNo = pstSCB->usSCBNo;
+    pstSCB->ulAgentID = ulAgentID;
+    pstAgentNode->pstAgentInfo->ucStatus = SC_ACD_BUSY;
 
     return DOS_SUCC;
 }
