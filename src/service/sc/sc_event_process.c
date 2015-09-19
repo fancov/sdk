@@ -9323,7 +9323,8 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     }
     else if (SC_SERV_AGENT_SIGNIN == ulMainService)
     {
-        //ulRet = sc_ep_call_agent_by_id(pstSCB, pstSCB->ulAgentID);
+        /* 坐席置闲 */
+        ulRet = sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_IDEL, pstSCB->usSCBNo);
     }
     else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
     {
@@ -10219,13 +10220,13 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             /* 如果是呼叫坐席的，需要做特殊处理,看看坐席是否长连什么的 */
             if (pstSCB->bIsAgentCall)
             {
-                sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_IDEL, U32_BUTT);
+                sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_PROC, U32_BUTT);
                 pstSCB->bIsAgentCall = DOS_FALSE;
             }
 
             if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
             {
-                sc_acd_update_agent_status(SC_ACD_SITE_ACTION_DISCONNECT, pstSCB->ulAgentID);
+                //sc_acd_update_agent_status(SC_ACD_SITE_ACTION_DISCONNECT, pstSCB->ulAgentID);
             }
 
             if (pstSCB->bRecord && pstSCB->pszRecordFile)
