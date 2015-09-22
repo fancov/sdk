@@ -259,8 +259,8 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
 
     pstSCB->ucStatus = SC_SCB_IDEL;            /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
     pstSCB->ucServStatus = 0;
-    pstSCB->ucTerminationFlag = 0;             /* 业务终止标志 */
-    pstSCB->ucTerminationCause = 0;            /* 业务终止原因 */
+    pstSCB->bTerminationFlag = 0;             /* 业务终止标志 */
+    pstSCB->usTerminationCause = 0;            /* 业务终止原因 */
     pstSCB->ucLegRole = SC_CALL_ROLE_BUTT;
     pstSCB->usHoldCnt = 0;                     /* 被hold的次数 */
     pstSCB->usHoldTotalTime = 0;               /* 被hold的总时长 */

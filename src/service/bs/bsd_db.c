@@ -75,7 +75,6 @@ static S32 bsd_walk_customer_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **a
     }
     bs_init_customer_st(pstCustomer);
 
-    //TODO:拷贝数据库信息到结构体中(包含账户数据)
     if (dos_atoul(aszData[0], &pstCustomer->ulCustomerID) < 0
         || dos_atoul(aszData[2], &pstCustomer->ulParentID) < 0
         || dos_atoul(aszData[3], &ulCustomerType)
@@ -742,7 +741,6 @@ VOID bsd_save_original_cdr(BS_INTER_MSG_CDR *pstMsg)
     for(i = 0; i < pstCDR->ucLegNum; i++)
     {
 
-        //TODO:存储话单到数据库中
         dos_snprintf(szQuery, sizeof(szQuery), "INSERT IGNORE INTO "
                         "tbl_cdr (id, customer_id, account_id, user_id, task_id, type1, type2, type3"
                         ", record_file, caller, callee, CID, agent_num, start_time, ring_time"
@@ -1077,7 +1075,6 @@ VOID bsd_save_outband_stat(BS_INTER_MSG_STAT *pstMsg)
                     , pstStat->stOutBand.ulPDD
                     , pstStat->stOutBand.ulAnswerTime);
 
-    //TODO:存储统计信息到数据库中
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
         bs_trace(BS_TRACE_DB, LOG_LEVEL_ERROR, "Save outband stat in DB FAIL! (%s)", szQuery);
@@ -1121,7 +1118,6 @@ VOID bsd_save_inband_stat(BS_INTER_MSG_STAT *pstMsg)
                     , pstStat->stInBand.ulAgentAnswerTime
                     , pstStat->stInBand.ulHoldTime);
 
-    //TODO:存储统计信息到数据库中
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
         bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save inband stat in DB FAIL!(%s)", szQuery);
@@ -1167,7 +1163,6 @@ VOID bsd_save_outdialing_stat(BS_INTER_MSG_STAT *pstMsg)
                     , pstStat->stOutDialing.ulWaitAgentTime
                     , pstStat->stOutDialing.ulAgentAnswerTime);
 
-    //TODO:存储统计信息到数据库中
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
         bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save out dialing stat in DB FAIL!(%s)", szQuery);
@@ -1202,7 +1197,6 @@ VOID bsd_save_message_stat(BS_INTER_MSG_STAT *pstMsg)
                     , pstStat->stMS.ulSendFail
                     , pstStat->stMS.ulSendLen
                     , pstStat->stMS.ulRecvLen);
-    //TODO:存储统计信息到数据库中
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
         bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save message stat in DB FAIL!(%s)", szQuery);
@@ -1242,7 +1236,6 @@ VOID bsd_save_account_stat(BS_INTER_MSG_STAT *pstMsg)
                     , pstStat->lSmsFee
                     , pstStat->lMmsFee
                     , pstStat->lRentFee);
-    //TODO:存储统计信息到数据库中
 
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
@@ -1253,6 +1246,46 @@ VOID bsd_save_account_stat(BS_INTER_MSG_STAT *pstMsg)
 
 }
 
+VOID bsd_save_calltask_result(BS_INTER_MSG_CDR *pstMsg)
+{
+    S8  szQuery[1024] = {0};
+    BS_CDR_CALLTASK_RESULT_ST *pstCallResult;
+
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstCallResult = pstMsg->pCDR;
+    if (DOS_ADDR_INVALID(pstCallResult))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    dos_snprintf(szQuery, sizeof(szQuery),
+                    "INSERT INTO tbl_calltask_result(id, customer_id, user_id, task_id, type, record_file"
+                    ", caller, callee, CID, agent_num, pdd_len, ring_times, answer_time, ivr_end_time, cdr_mark"
+                    ", dtmf_time, wait_agent_times, time_len, hold_cnt, hold_times, terminate_cause, release_part"
+                    ", result) VALUES(NULL, %u, %u, %u, %u, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %u, %u, %u, "
+                    "%u, %u, %u, %u, %u, %u, %u, %u, %u, %u)"
+                  , pstCallResult->ulCustomerID, pstCallResult->ulUserID, pstCallResult->ulTaskID
+                  , pstCallResult->ucServType, pstCallResult->szRecordFile, pstCallResult->szCaller
+                  , pstCallResult->szCallee, pstCallResult->szCID, pstCallResult->szAgentNum
+                  , pstCallResult->ulPDDLen, pstCallResult->ulRingTime, pstCallResult->ulAnswerTimeStamp
+                  , pstCallResult->ulIVRFinishTime, pstCallResult->stCDRTag.ulCDRMark, pstCallResult->ulDTMFTime
+                  , pstCallResult->ulWaitAgentTime, pstCallResult->ulTimeLen, pstCallResult->ulHoldCnt
+                  , pstCallResult->ulHoldTimeLen, pstCallResult->usTerminateCause, pstCallResult->ucReleasePart
+                  , pstCallResult->ulResult);
+
+    if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
+    {
+        bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save account stat in DB FAIL!(%s)", szQuery);
+    }
+
+    bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save account stat in DB !");
+}
 
 S32 bs_init_db()
 {

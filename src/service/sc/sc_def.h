@@ -619,8 +619,7 @@ typedef struct tagSCSCB{
 
     U8        ucStatus;                           /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
     U8        ucServStatus;                       /* 业务状态 */
-    U8        ucTerminationFlag;                  /* 业务终止标志 */
-    U8        ucTerminationCause;                 /* 业务终止原因 */
+    U16       usTerminationCause;                 /* 业务终止原因 */
 
     U8        aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 列表*/
 
@@ -647,7 +646,8 @@ typedef struct tagSCSCB{
     U32       bIsInQueue:1;                       /* 是否已经入队列了 */
     U32       bChannelCreated:1;                  /* FREESWITCH 是否为该同呼叫创建了通道 */
     U32       bIsAgentCallOtherLeg:1;             /* 另一条腿是否要呼叫坐席 */
-    U32       ulRes:22;
+    U32       bTerminationFlag:1;                 /* 业务终止标志 */
+    U32       ulRes:21;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 

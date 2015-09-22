@@ -112,8 +112,8 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S
     return DOS_SUCC;
 
 proc_fail:
-    pstSCB->ucTerminationFlag = DOS_TRUE;
-    pstSCB->ucTerminationCause = BS_ERR_SYSTEM;
+    pstSCB->bTerminationFlag = DOS_TRUE;
+    pstSCB->usTerminationCause = BS_ERR_SYSTEM;
 
     SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
 

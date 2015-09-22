@@ -373,11 +373,11 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstMsg->ucErrcode != BS_ERR_SUCC)
     {
-        pstSCB->ucTerminationFlag = DOS_TRUE;
+        pstSCB->bTerminationFlag = DOS_TRUE;
     }
     else
     {
-        pstSCB->ucTerminationFlag = DOS_FALSE;
+        pstSCB->bTerminationFlag = DOS_FALSE;
     }
 
     if (pstAuthMsg->ucBalanceWarning)
@@ -390,10 +390,10 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         pstSCB->bBanlanceWarning = DOS_FALSE;
     }
 
-    pstSCB->ucTerminationCause = pstMsg->ucErrcode;
+    pstSCB->usTerminationCause = pstMsg->ucErrcode;
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
-    if (pstSCB->ucTerminationFlag)
+    if (pstSCB->bTerminationFlag)
     {
         sc_logr_notice(SC_BS, "Terminate call for the auth fail; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
         if (sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
@@ -580,14 +580,14 @@ U32 sc_bs_billing_start_rsp_proc(BS_MSG_TAG *pstMsg)
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstMsg->ucErrcode != BS_ERR_SUCC)
     {
-        pstSCB->ucTerminationFlag = DOS_TRUE;
+        pstSCB->bTerminationFlag = DOS_TRUE;
     }
     else
     {
-        pstSCB->ucTerminationFlag = DOS_FALSE;
+        pstSCB->bTerminationFlag = DOS_FALSE;
     }
 
-    pstSCB->ucTerminationCause = pstMsg->ucErrcode;
+    pstSCB->usTerminationCause = pstMsg->ucErrcode;
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
     sc_logr_debug(SC_BS, "%s", "Process billing start response msg finished.");
@@ -629,14 +629,14 @@ U32 sc_bs_billing_update_rsp_proc(BS_MSG_TAG *pstMsg)
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstMsg->ucErrcode != BS_ERR_SUCC)
     {
-        pstSCB->ucTerminationFlag = DOS_TRUE;
+        pstSCB->bTerminationFlag = DOS_TRUE;
     }
     else
     {
-        pstSCB->ucTerminationFlag = DOS_FALSE;
+        pstSCB->bTerminationFlag = DOS_FALSE;
     }
 
-    pstSCB->ucTerminationCause = pstMsg->ucErrcode;
+    pstSCB->usTerminationCause = pstMsg->ucErrcode;
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
     sc_logr_debug(SC_BS, "%s", "Process billing update response msg finished.");
