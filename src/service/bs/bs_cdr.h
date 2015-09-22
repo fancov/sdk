@@ -26,7 +26,8 @@ enum BS_CDR_TYPE_E
     BS_CDR_MESSAGE                  = 3,        /* 信息话单 */
     BS_CDR_SETTLE                   = 4,        /* 结算话单 */
     BS_CDR_RENT                     = 5,        /* 租金话单 */
-    BS_CDR_ACCOUNT                  = 5,        /* 账务话单 */
+    BS_CDR_ACCOUNT                  = 6,        /* 账务话单 */
+
 
     BS_CDR_TYPE_BUTT                = 255
 };
@@ -88,6 +89,38 @@ typedef struct
     U8              ucPacketLossRate;           /* 收包丢包率,0-100 */
 
 }BS_CDR_VOICE_ST;
+
+typedef struct
+{
+    BS_CDR_TAG      stCDRTag;
+
+    U32             ulUserID;                   /* 用户ID,要求全数字,不超过10位,最高位小于4 */
+    U32             ulAgentID;                  /* 坐席ID,要求全数字,不超过10位,最高位小于4 */
+    U32             ulCustomerID;               /* 客户ID,要求全数字,不超过10位,最高位小于4 */
+    U32             ulAccountID;                /* 账户ID,要求全数字,不超过10位,最高位小于4 */
+    U32             ulTaskID;                   /* 任务ID,要求全数字,不超过10位,最高位小于4 */
+
+    S8              szCaller[BS_MAX_CALL_NUM_LEN];                  /* 主叫号码 */
+    S8              szCallee[BS_MAX_CALL_NUM_LEN];                  /* 被叫号码 */
+    S8              szCID[BS_MAX_CALL_NUM_LEN];                     /* 来显号码 */
+    S8              szAgentNum[BS_MAX_AGENT_NUM_LEN];               /* 坐席号码(工号) */
+    S8              szRecordFile[BS_MAX_RECORD_FILE_NAME_LEN];      /* 为空代表未录音 */
+    U32             ulPDDLen;                   /* 接续时长:从发起呼叫到收到振铃 */
+    U32             ulRingTime;                 /* 振铃时长,单位:秒 */
+    U32             ulAnswerTimeStamp;          /* 应答时间戳 */
+    U32             ulDTMFTime;                 /* 第一个二次拨号时间,单位:秒 */
+    U32             ulIVRFinishTime;            /* IVR放音完成时间,单位:秒 */
+    U32             ulWaitAgentTime;            /* 等待坐席接听时间,单位:秒 */
+    U32             ulTimeLen;                  /* 呼叫时长,单位:秒 */
+    U32             ulHoldCnt;                  /* 保持次数 */
+    U32             ulHoldTimeLen;              /* 保持总时长,单位:秒 */
+    U16             usTerminateCause;           /* 终止原因 */
+    U8              ucServType;                 /* 业务类型 */
+    U8              ucReleasePart;              /* 会话释放方 */
+
+    U32             ulResult;                   /* 呼叫结果 */
+}BS_CDR_CALLTASK_RESULT_ST;
+
 
 /* 录音话单 */
 typedef struct
