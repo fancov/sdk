@@ -5867,8 +5867,8 @@ U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase)
     sc_logr_info(SC_ESL, "Hangup call with error code %d, pstscb : %d, other : %d", ulTernmiteCase, pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
 
     sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
-    pstSCB->ucTerminationCause = ulTernmiteCase;
-    pstSCB->ucTerminationFlag = DOS_TRUE;
+    pstSCB->usTerminationCause = ulTernmiteCase;
+    pstSCB->bTerminationFlag = DOS_TRUE;
 
     return DOS_SUCC;
 }
@@ -9541,8 +9541,8 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             }
             else
             {
-                pstSCB->ucTerminationFlag = DOS_TRUE;
-                pstSCB->ucTerminationCause = BS_ERR_SYSTEM;
+                pstSCB->bTerminationFlag = DOS_TRUE;
+                pstSCB->usTerminationCause = BS_ERR_SYSTEM;
 
                 sc_ep_hangup_call(pstSCB, BS_TERM_CUSTOM_INVALID);
 

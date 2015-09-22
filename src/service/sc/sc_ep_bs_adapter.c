@@ -999,7 +999,7 @@ prepare_msg:
         pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[2] = 0;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[3] = 0;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstFirstSCB->ulTrunkID) ? 0 : pstFirstSCB->ulTrunkID;
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstFirstSCB->ucTerminationCause;
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstFirstSCB->usTerminationCause;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
         sc_bs_srv_type_adapter(pstFirstSCB->aucServiceType
                                 , sizeof(pstFirstSCB->aucServiceType)
@@ -1063,7 +1063,7 @@ prepare_msg:
         pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[2] = 0;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[3] = 0;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstSecondSCB->ulTrunkID) ? 0 : pstSecondSCB->ulTrunkID;
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstSecondSCB->ucTerminationCause;
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstSecondSCB->usTerminationCause;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
         sc_bs_srv_type_adapter(pstSecondSCB->aucServiceType
                                 , sizeof(pstSecondSCB->aucServiceType)
