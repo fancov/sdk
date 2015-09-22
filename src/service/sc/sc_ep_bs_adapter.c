@@ -682,13 +682,18 @@ U32 sc_send_startup2bs()
 }
 
 /* 发送余额查询消息 */
-U32 sc_send_balance_query2bs(U32 ulUserID, U32 ulCustomID, U32 ulAccountID)
+U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
 {
     BS_MSG_BALANCE_QUERY *pstQueryMsg = NULL;
 #if SC_BS_NEED_RESEND
     SC_BS_MSG_NODE       *pstListNode = NULL;
     U32                  ulHashIndex = 0;
 #endif
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return DOS_FAIL;
+    }
 
     pstQueryMsg = dos_dmem_alloc(sizeof(BS_MSG_BALANCE_QUERY));
     if (DOS_ADDR_INVALID(pstQueryMsg))
@@ -702,14 +707,14 @@ U32 sc_send_balance_query2bs(U32 ulUserID, U32 ulCustomID, U32 ulAccountID)
     dos_memzero(pstQueryMsg, sizeof(BS_MSG_BALANCE_QUERY));
     pstQueryMsg->stMsgTag.usVersion = BS_MSG_INTERFACE_VERSION;
     pstQueryMsg->stMsgTag.ulMsgSeq  = g_ulMsgSeq++;
-    pstQueryMsg->stMsgTag.ulCRNo    = U32_BUTT;
+    pstQueryMsg->stMsgTag.ulCRNo    = pstSCB->usSCBNo;
     pstQueryMsg->stMsgTag.ucMsgType = BS_MSG_BALANCE_QUERY_REQ;
     pstQueryMsg->stMsgTag.ucErrcode = BS_ERR_SUCC;
     pstQueryMsg->stMsgTag.usMsgLen  = sizeof(BS_MSG_BALANCE_QUERY);
-    pstQueryMsg->ulUserID           = ulUserID;
-    pstQueryMsg->ulCustomerID       = ulCustomID;
-    pstQueryMsg->ulAccountID        = ulAccountID;
-    pstQueryMsg->lBalance           = 0;
+    pstQueryMsg->ulUserID           = pstSCB->ulCustomID;
+    pstQueryMsg->ulCustomerID       = pstSCB->ulCustomID;
+    pstQueryMsg->ulAccountID        = pstSCB->ulCustomID;
+    pstQueryMsg->lBalance           = 100;
     pstQueryMsg->ucBalanceWarning   = 0;
 
 #if SC_BS_NEED_RESEND

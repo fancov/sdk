@@ -9236,6 +9236,34 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
 }
 
 /**
+ * 函数: U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB)
+ * 功能: 新业务处理
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB)
+{
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return DOS_FAIL;
+    }
+
+    pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
+    if (sc_ep_check_extension(pstSCB->szCallerNum, pstSCB->ulCustomID))
+    {
+        if (dos_strcmp(pstSCB->szCalleeNum, SC_POTS_BALANCE) == 0)
+        {
+            /* 发送 查询余额 */
+            sc_send_balance_query2bs(pstSCB);
+
+            return DOS_SUCC;
+        }
+    }
+
+    return DOS_FAIL;
+}
+
+/**
  * 函数: U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
  * 功能: 处理ESL的CHANNEL PARK事件
  * 参数:
@@ -9304,6 +9332,14 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         || dos_atoul(pszMainService, &ulMainService) < 0)
     {
         ulMainService = U32_BUTT;
+    }
+
+    /* 判断是否是 新业务 */
+    if (pstSCB->szCalleeNum[0] == '*')
+    {
+        ulRet = sc_ep_pots_pro(pstSCB);
+
+        goto proc_finished;
     }
 
     pszTransfor = esl_event_get_header(pstEvent, "Caller-Transfer-Source");

@@ -123,6 +123,8 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_BGJOB_HASH_SIZE             128
 
+/* 新业务 */
+#define SC_POTS_BALANCE                "*983#"
 
 /* 定义运营商的ID */
 #define SC_TOP_USER_ID                 1
@@ -930,6 +932,7 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
 U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszCaller, S8 *pszCallee);
 U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt);
 U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB);
+U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB);
 U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB);
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
 U32 sc_load_caller_grp(U32 ulIndex);

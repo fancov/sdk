@@ -2553,18 +2553,18 @@ VOID *bss_recv_msg_from_app(VOID *arg)
 /* 查询余额 */
 VOID bss_query_balance(DLL_NODE_S *pMsgNode)
 {
-    U8              ucErrCode = BS_ERR_SUCC;
-    BS_CUSTOMER_ST  *pstCustomer = NULL;
-    BS_MSG_AUTH     *pstMsg = NULL;
+    U8                      ucErrCode       = BS_ERR_SUCC;
+    BS_CUSTOMER_ST          *pstCustomer    = NULL;
+    BS_MSG_BALANCE_QUERY    *pstMsg         = NULL;
 
     /* 前面已经判断过地址合法性,此处直接使用即可 */
     pstMsg = pMsgNode->pHandle;
     bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
-             "Query balance, customer:%u, account:%u, userid:%u, agentid:%u",
+             "Query balance, customer:%u, account:%u, userid:%u",
              pstMsg->ulCustomerID, pstMsg->ulAccountID,
-             pstMsg->ulUserID, pstMsg->ulAgentID);
+             pstMsg->ulUserID);
 
-    if (pstMsg->ulCustomerID != 0)
+    if (pstMsg->ulCustomerID == 0)
     {
         /* 目前系统设计,FS与BS共用数据库,一定会有客户信息送过来;目前一个客户一个账户 */
         DOS_ASSERT(0);
