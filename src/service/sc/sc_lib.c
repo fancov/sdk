@@ -1141,6 +1141,26 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 blProcessOK = DOS_FALSE;
                 break;
             }
+
+            /* 将数据库中的状态，转换成sc中的状态 SC_TASK_STATUS_DB_EN -> SC_TASK_STATUS_EN */
+            switch (ulStatus)
+            {
+                case SC_TASK_STATUS_DB_NEW:
+                case SC_TASK_STATUS_DB_START:
+                case SC_TASK_STATUS_DB_PAUSED:
+                case SC_TASK_STATUS_DB_CONTINUE:
+                    break;
+                case SC_TASK_STATUS_DB_STOP:
+                default:
+                    blProcessOK = DOS_FALSE;
+                    break;
+            }
+
+            if (blProcessOK == DOS_FALSE)
+            {
+                DOS_ASSERT(0);
+                break;
+            }
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "ctime", dos_strlen("ctime")))
         {
@@ -1156,6 +1176,14 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             strptime(aszValues[lIndex], "%Y-%m-%d %H:%M:%S", &stCreateTime);
             ulCreateTime = (U32)mktime(&stCreateTime);
         }
+    }
+
+    if (blProcessOK == DOS_FALSE)
+    {
+        /* 数据不正确，不用保存 */
+        sc_logr_error(SC_TASK, "Load task info FAIL.(TaskID:%u) ", ulTaskID);
+
+        return DOS_SUCC;
     }
 
     /* 如果只是加载一条数据，首先寻找有没有该控制块节点，如果有更新之

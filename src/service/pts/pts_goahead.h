@@ -7,7 +7,7 @@ extern "C"{
 
 #include <webs/webs.h>
 
-#define PTS_VISIT_FILELDS_COUNT     10
+#define PTS_VISIT_FILELDS_COUNT     11
 #define PTS_SWITCH_FILELDS_COUNT    12
 #define PTS_CONFIG_FILELDS_COUNT    11
 #define PTS_UPGRADES_FILELDS_COUNT  10

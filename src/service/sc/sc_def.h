@@ -318,11 +318,13 @@ typedef enum tagSysStatus{
     SC_SYS_BUTT                        = 255      /* 任务状态，非法值 */
 }SC_SYS_STATUS_EN;
 
+/* 数据库中任务状态 */
 typedef enum tagTaskStatusInDB{
-    SC_TASK_STATUS_DB_STOP             = 0,/* 数据库中任务状态 */
-    SC_TASK_STATUS_DB_START,               /* 数据库中任务状态 */
-    SC_TASK_STATUS_DB_PAUSED,              /* 数据库中任务状态 */
-    SC_TASK_STATUS_DB_CONTINUE,            /* 数据库中任务状态 */
+    SC_TASK_STATUS_DB_NEW              = 0,/* 新增(未开始) */
+    SC_TASK_STATUS_DB_START,               /* 开始 */
+    SC_TASK_STATUS_DB_PAUSED,              /* 暂停 */
+    SC_TASK_STATUS_DB_CONTINUE,            /* 继续 */
+    SC_TASK_STATUS_DB_STOP,                /* 结束 */
 
     SC_TASK_STATUS_DB_BUTT
 }SC_TASK_STATUS_DB_EN;
@@ -330,8 +332,10 @@ typedef enum tagTaskStatusInDB{
 typedef enum tagTaskStatus{
     SC_TASK_INIT                       = 0,       /* 任务状态，初始化 */
     SC_TASK_WORKING,                              /* 任务状态，工作 */
-    SC_TASK_STOP,                                 /* 任务状态，停止，不再发起呼叫，如果所有呼叫结束即将释放资源 */
     SC_TASK_PAUSED,                               /* 任务状态，暂停 */
+    SC_TASK_CONTINUE,                             /* 任务状态，继续 */
+    SC_TASK_STOP,                                 /* 任务状态，停止，不再发起呼叫，如果所有呼叫结束即将释放资源 */
+
     SC_TASK_SYS_BUSY,                             /* 任务状态，系统忙，暂停呼叫量在80%以上的任务发起呼叫 */
     SC_TASK_SYS_ALERT,                            /* 任务状态，系统忙，只允许高优先级客户，并且呼叫量在80%以下的客户发起呼叫 */
     SC_TASK_SYS_EMERG,                            /* 任务状态，系统忙，暂停所有任务 */
