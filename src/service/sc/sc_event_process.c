@@ -8809,7 +8809,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         /* 需要放音的，统一先放音。在放音结束后请处理后续流程 */
         case SC_TASK_MODE_KEY4AGENT:
         case SC_TASK_MODE_KEY4AGENT1:
-			sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
+            sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
             sc_ep_esl_execute("set", "timer_name=soft", pstSCB->szUUID);
             sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
 
@@ -10510,6 +10510,11 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
             /* 要不要挂断 ? */
             goto process_fail;
         }
+
+        /* 设置通道参数 */
+        //sc_ep_esl_execute("set", "ignore_early_media=false", pstSCB->szUUID);
+        //sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
+        //sc_ep_esl_execute("set", "transfer_ringback=local_stream://moh", pstSCB->szUUID);
 
         if (SC_TASK_MODE_KEY4AGENT == ulTaskMode)
         {

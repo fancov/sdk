@@ -855,6 +855,7 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ucAudioPlayCnt = 0;
     pstTCB->ulCalleeCount = 0;
     pstTCB->usCallerCount = 0;
+    pstTCB->ulCalledCount = 0;
 
     dos_list_init(&pstTCB->stCalleeNumQuery);    /* TODO: 释放所有节点 */
     pstTCB->pstCallerNumQuery = NULL;   /* TODO: 初始化所有节点 */
@@ -865,6 +866,8 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulTotalCall = 0;
     pstTCB->ulCallFailed = 0;
     pstTCB->ulCallConnected = 0;
+
+    pstTCB->pstTmrHandle = NULL;
 
     return DOS_SUCC;
 }
@@ -975,6 +978,33 @@ U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu)
     return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
 }
 
+VOID sc_task_update_calledcnt(U64 ulArg)
+{
+    SC_TASK_CB_ST *pstTCB   = NULL;
+    S8      szSQL[512]      = { 0 };
+    S32     lRes            = 0;
+
+    pstTCB = (SC_TASK_CB_ST *)ulArg;
+    if (DOS_ADDR_INVALID(pstTCB))
+    {
+        return;
+    }
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_calltask SET calledcnt=%u WHERE id=%u", pstTCB->ulCalledCount, pstTCB->ulTaskID);
+
+    lRes = db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+    if(DB_ERR_SUCC != lRes)
+    {
+        sc_logr_info(SC_TASK, "update task(%u) calledcnt(%u) FAIL", pstTCB->ulTaskID, pstTCB->ulCalledCount);
+
+        return;
+    }
+
+    sc_logr_debug(SC_TASK, "update task(%u) calledcnt(%u) SUCC", pstTCB->ulTaskID, pstTCB->ulCalledCount);
+
+    return;
+}
+
 static S32 sc_task_load_caller_index_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
     SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
@@ -1027,7 +1057,7 @@ static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
 
 S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
-    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond;
+    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond, ulCalledCnt;
     BOOL blProcessOK = DOS_FALSE, bFound = DOS_FALSE;
     S32 lIndex = U32_BUTT, lLoop = U32_BUTT;
     S8  szTaskName[64] = {0};
@@ -1176,6 +1206,15 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             strptime(aszValues[lIndex], "%Y-%m-%d %H:%M:%S", &stCreateTime);
             ulCreateTime = (U32)mktime(&stCreateTime);
         }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "calledcnt", dos_strlen("calledcnt")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCalledCnt) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
     }
 
     if (blProcessOK == DOS_FALSE)
@@ -1215,6 +1254,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     g_pstTaskMngtInfo->pstTaskList[lIndex].ulAgentQueueID = ulGroupID;
     g_pstTaskMngtInfo->pstTaskList[lIndex].ucTaskStatus = ulStatus;
     g_pstTaskMngtInfo->pstTaskList[lIndex].ulAllocTime = ulCreateTime;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ulCalledCount = ulCalledCnt;
 
     for (lLoop = 0; lLoop < SC_MAX_PERIOD_NUM; lLoop++)
     {
@@ -1254,11 +1294,11 @@ S32 sc_task_load(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime FROM tbl_calltask;");
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt FROM tbl_calltask;");
     }
     else
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime FROM tbl_calltask WHERE id=%u;", ulIndex);
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt FROM tbl_calltask WHERE id=%u;", ulIndex);
     }
 
     /* 加载群呼任务的相关数据 */
@@ -1591,7 +1631,7 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
         return -1;
     }
 
-    pstTCB->ulCalleeCount = 0;
+    //pstTCB->ulCalleeCount = 0;
 
     dos_snprintf(szSQL, sizeof(szSQL)
                     , "SELECT id, number FROM tbl_callee_pool WHERE `status`=0 AND file_id = (SELECT tbl_calltask.callee_id FROM tbl_calltask WHERE id=%u) LIMIT %u, 1000;"

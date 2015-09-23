@@ -123,6 +123,8 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_BGJOB_HASH_SIZE             128
 
+#define SC_TASK_UPDATE_DB_TIMER        1000
+
 /* 新业务 */
 #define SC_POTS_BALANCE                "*983#"
 
@@ -706,8 +708,9 @@ typedef struct tagTaskCB
 
     U16        usSiteCount;                       /* 坐席数量 */
     U16        usCallerCount;                     /* 当前主叫号码数量 */
-    U32        ulCalleeCount;
+    U32        ulCalleeCount;                     /* 当前被叫号码数量 */
     U32        ulLastCalleeIndex;                 /* 用于数据分页 */
+    U32        ulCalledCount;                     /* 已经呼叫过的号码数量 */
     list_t     stCalleeNumQuery;                  /* 被叫号码缓存 refer to struct tagTelNumQueryNode */
     S8         szAudioFileLen[SC_MAX_AUDIO_FILENAME_LEN];  /* 语言文件文件名 */
     SC_CALLER_QUERY_NODE_ST *pstCallerNumQuery;            /* 主叫号码缓存 refer to struct tagTelNumQueryNode */
@@ -717,6 +720,8 @@ typedef struct tagTaskCB
     U32        ulTotalCall;                       /* 总呼叫数 */
     U32        ulCallFailed;                      /* 呼叫失败数 */
     U32        ulCallConnected;                   /* 呼叫接通数 */
+
+    DOS_TMR_ST pstTmrHandle;                      /* 定时器，更新数据库中，已经呼叫过的号码数量 */
 
     pthread_t  pthID;                             /* 线程ID */
     pthread_mutex_t  mutexTaskList;               /* 保护任务队列使用的互斥量 */
@@ -996,6 +1001,7 @@ U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase);
 BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum);
 U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID);
 U32 sc_update_callee_status(U32 ulTaskID, S8 *pszCallee, U32 ulStatsu);
+VOID sc_task_update_calledcnt(U64 ulArg);
 U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu);
 U32 sc_ep_ext_init();
 U32 sc_cwq_init();
