@@ -123,6 +123,10 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_BGJOB_HASH_SIZE             128
 
+#define SC_TASK_UPDATE_DB_TIMER        1000
+
+/* 新业务 */
+#define SC_POTS_BALANCE                "*983"       /* 查询余额 */
 
 /* 定义运营商的ID */
 #define SC_TOP_USER_ID                 1
@@ -318,11 +322,13 @@ typedef enum tagSysStatus{
     SC_SYS_BUTT                        = 255      /* 任务状态，非法值 */
 }SC_SYS_STATUS_EN;
 
+/* 数据库中任务状态 */
 typedef enum tagTaskStatusInDB{
-    SC_TASK_STATUS_DB_STOP             = 0,/* 数据库中任务状态 */
-    SC_TASK_STATUS_DB_START,               /* 数据库中任务状态 */
-    SC_TASK_STATUS_DB_PAUSED,              /* 数据库中任务状态 */
-    SC_TASK_STATUS_DB_CONTINUE,            /* 数据库中任务状态 */
+    SC_TASK_STATUS_DB_NEW              = 0,/* 新增(未开始) */
+    SC_TASK_STATUS_DB_START,               /* 开始 */
+    SC_TASK_STATUS_DB_PAUSED,              /* 暂停 */
+    SC_TASK_STATUS_DB_CONTINUE,            /* 继续 */
+    SC_TASK_STATUS_DB_STOP,                /* 结束 */
 
     SC_TASK_STATUS_DB_BUTT
 }SC_TASK_STATUS_DB_EN;
@@ -330,8 +336,10 @@ typedef enum tagTaskStatusInDB{
 typedef enum tagTaskStatus{
     SC_TASK_INIT                       = 0,       /* 任务状态，初始化 */
     SC_TASK_WORKING,                              /* 任务状态，工作 */
-    SC_TASK_STOP,                                 /* 任务状态，停止，不再发起呼叫，如果所有呼叫结束即将释放资源 */
     SC_TASK_PAUSED,                               /* 任务状态，暂停 */
+    SC_TASK_CONTINUE,                             /* 任务状态，继续 */
+    SC_TASK_STOP,                                 /* 任务状态，停止，不再发起呼叫，如果所有呼叫结束即将释放资源 */
+
     SC_TASK_SYS_BUSY,                             /* 任务状态，系统忙，暂停呼叫量在80%以上的任务发起呼叫 */
     SC_TASK_SYS_ALERT,                            /* 任务状态，系统忙，只允许高优先级客户，并且呼叫量在80%以下的客户发起呼叫 */
     SC_TASK_SYS_EMERG,                            /* 任务状态，系统忙，暂停所有任务 */
@@ -613,8 +621,7 @@ typedef struct tagSCSCB{
 
     U8        ucStatus;                           /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
     U8        ucServStatus;                       /* 业务状态 */
-    U8        ucTerminationFlag;                  /* 业务终止标志 */
-    U8        ucTerminationCause;                 /* 业务终止原因 */
+    U16       usTerminationCause;                 /* 业务终止原因 */
 
     U8        aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 列表*/
 
@@ -641,7 +648,8 @@ typedef struct tagSCSCB{
     U32       bIsInQueue:1;                       /* 是否已经入队列了 */
     U32       bChannelCreated:1;                  /* FREESWITCH 是否为该同呼叫创建了通道 */
     U32       bIsAgentCallOtherLeg:1;             /* 另一条腿是否要呼叫坐席 */
-    U32       ulRes:22;
+    U32       bTerminationFlag:1;                 /* 业务终止标志 */
+    U32       ulRes:21;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -700,8 +708,9 @@ typedef struct tagTaskCB
 
     U16        usSiteCount;                       /* 坐席数量 */
     U16        usCallerCount;                     /* 当前主叫号码数量 */
-    U32        ulCalleeCount;
+    U32        ulCalleeCount;                     /* 当前被叫号码数量 */
     U32        ulLastCalleeIndex;                 /* 用于数据分页 */
+    U32        ulCalledCount;                     /* 已经呼叫过的号码数量 */
     list_t     stCalleeNumQuery;                  /* 被叫号码缓存 refer to struct tagTelNumQueryNode */
     S8         szAudioFileLen[SC_MAX_AUDIO_FILENAME_LEN];  /* 语言文件文件名 */
     SC_CALLER_QUERY_NODE_ST *pstCallerNumQuery;            /* 主叫号码缓存 refer to struct tagTelNumQueryNode */
@@ -711,6 +720,8 @@ typedef struct tagTaskCB
     U32        ulTotalCall;                       /* 总呼叫数 */
     U32        ulCallFailed;                      /* 呼叫失败数 */
     U32        ulCallConnected;                   /* 呼叫接通数 */
+
+    DOS_TMR_ST pstTmrHandle;                      /* 定时器，更新数据库中，已经呼叫过的号码数量 */
 
     pthread_t  pthID;                             /* 线程ID */
     pthread_mutex_t  mutexTaskList;               /* 保护任务队列使用的互斥量 */
@@ -926,6 +937,7 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
 U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszCaller, S8 *pszCallee);
 U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt);
 U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB);
+U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB);
 U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB);
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
 U32 sc_load_caller_grp(U32 ulIndex);
@@ -989,6 +1001,7 @@ U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase);
 BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum);
 U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID);
 U32 sc_update_callee_status(U32 ulTaskID, S8 *pszCallee, U32 ulStatsu);
+VOID sc_task_update_calledcnt(U64 ulArg);
 U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu);
 U32 sc_ep_ext_init();
 U32 sc_cwq_init();

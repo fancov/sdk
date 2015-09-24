@@ -259,8 +259,8 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
 
     pstSCB->ucStatus = SC_SCB_IDEL;            /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
     pstSCB->ucServStatus = 0;
-    pstSCB->ucTerminationFlag = 0;             /* 业务终止标志 */
-    pstSCB->ucTerminationCause = 0;            /* 业务终止原因 */
+    pstSCB->bTerminationFlag = 0;             /* 业务终止标志 */
+    pstSCB->usTerminationCause = 0;            /* 业务终止原因 */
     pstSCB->ucLegRole = SC_CALL_ROLE_BUTT;
     pstSCB->usHoldCnt = 0;                     /* 被hold的次数 */
     pstSCB->usHoldTotalTime = 0;               /* 被hold的总时长 */
@@ -855,6 +855,7 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ucAudioPlayCnt = 0;
     pstTCB->ulCalleeCount = 0;
     pstTCB->usCallerCount = 0;
+    pstTCB->ulCalledCount = 0;
 
     dos_list_init(&pstTCB->stCalleeNumQuery);    /* TODO: 释放所有节点 */
     pstTCB->pstCallerNumQuery = NULL;   /* TODO: 初始化所有节点 */
@@ -865,6 +866,8 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulTotalCall = 0;
     pstTCB->ulCallFailed = 0;
     pstTCB->ulCallConnected = 0;
+
+    pstTCB->pstTmrHandle = NULL;
 
     return DOS_SUCC;
 }
@@ -975,6 +978,33 @@ U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu)
     return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
 }
 
+VOID sc_task_update_calledcnt(U64 ulArg)
+{
+    SC_TASK_CB_ST *pstTCB   = NULL;
+    S8      szSQL[512]      = { 0 };
+    S32     lRes            = 0;
+
+    pstTCB = (SC_TASK_CB_ST *)ulArg;
+    if (DOS_ADDR_INVALID(pstTCB))
+    {
+        return;
+    }
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_calltask SET calledcnt=%u WHERE id=%u", pstTCB->ulCalledCount, pstTCB->ulTaskID);
+
+    lRes = db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+    if(DB_ERR_SUCC != lRes)
+    {
+        sc_logr_info(SC_TASK, "update task(%u) calledcnt(%u) FAIL", pstTCB->ulTaskID, pstTCB->ulCalledCount);
+
+        return;
+    }
+
+    sc_logr_debug(SC_TASK, "update task(%u) calledcnt(%u) SUCC", pstTCB->ulTaskID, pstTCB->ulCalledCount);
+
+    return;
+}
+
 static S32 sc_task_load_caller_index_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
     SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
@@ -1027,7 +1057,7 @@ static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
 
 S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
-    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond;
+    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond, ulCalledCnt;
     BOOL blProcessOK = DOS_FALSE, bFound = DOS_FALSE;
     S32 lIndex = U32_BUTT, lLoop = U32_BUTT;
     S8  szTaskName[64] = {0};
@@ -1141,6 +1171,26 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 blProcessOK = DOS_FALSE;
                 break;
             }
+
+            /* 将数据库中的状态，转换成sc中的状态 SC_TASK_STATUS_DB_EN -> SC_TASK_STATUS_EN */
+            switch (ulStatus)
+            {
+                case SC_TASK_STATUS_DB_NEW:
+                case SC_TASK_STATUS_DB_START:
+                case SC_TASK_STATUS_DB_PAUSED:
+                case SC_TASK_STATUS_DB_CONTINUE:
+                    break;
+                case SC_TASK_STATUS_DB_STOP:
+                default:
+                    blProcessOK = DOS_FALSE;
+                    break;
+            }
+
+            if (blProcessOK == DOS_FALSE)
+            {
+                DOS_ASSERT(0);
+                break;
+            }
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "ctime", dos_strlen("ctime")))
         {
@@ -1156,6 +1206,23 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             strptime(aszValues[lIndex], "%Y-%m-%d %H:%M:%S", &stCreateTime);
             ulCreateTime = (U32)mktime(&stCreateTime);
         }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "calledcnt", dos_strlen("calledcnt")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCalledCnt) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+    }
+
+    if (blProcessOK == DOS_FALSE)
+    {
+        /* 数据不正确，不用保存 */
+        sc_logr_error(SC_TASK, "Load task info FAIL.(TaskID:%u) ", ulTaskID);
+
+        return DOS_SUCC;
     }
 
     /* 如果只是加载一条数据，首先寻找有没有该控制块节点，如果有更新之
@@ -1187,6 +1254,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     g_pstTaskMngtInfo->pstTaskList[lIndex].ulAgentQueueID = ulGroupID;
     g_pstTaskMngtInfo->pstTaskList[lIndex].ucTaskStatus = ulStatus;
     g_pstTaskMngtInfo->pstTaskList[lIndex].ulAllocTime = ulCreateTime;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ulCalledCount = ulCalledCnt;
 
     for (lLoop = 0; lLoop < SC_MAX_PERIOD_NUM; lLoop++)
     {
@@ -1226,11 +1294,11 @@ S32 sc_task_load(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime FROM tbl_calltask;");
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt FROM tbl_calltask;");
     }
     else
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime FROM tbl_calltask WHERE id=%u;", ulIndex);
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt FROM tbl_calltask WHERE id=%u;", ulIndex);
     }
 
     /* 加载群呼任务的相关数据 */
@@ -1563,7 +1631,7 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
         return -1;
     }
 
-    pstTCB->ulCalleeCount = 0;
+    //pstTCB->ulCalleeCount = 0;
 
     dos_snprintf(szSQL, sizeof(szSQL)
                     , "SELECT id, number FROM tbl_callee_pool WHERE `status`=0 AND file_id = (SELECT tbl_calltask.callee_id FROM tbl_calltask WHERE id=%u) LIMIT %u, 1000;"

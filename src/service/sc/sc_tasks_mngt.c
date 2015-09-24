@@ -101,7 +101,7 @@ U32 sc_task_mngt_load_task()
 #if 0
                 , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask WHERE tbl_calltask.status = 1;");
 #endif
-                , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask;");
+                , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask where tbl_calltask.status <> %d ;", SC_TASK_STOP);
 
     ulResult = db_query(g_pstSCDBHandle
                             , szSqlQuery
@@ -706,6 +706,11 @@ U32 sc_task_mngt_start()
                 SC_TASK_TRACE(pstTCB, "Task Init FAIL.");
                 sc_logr_notice(SC_TASK_MNGT, "Task init fail. Custom ID: %d, Task ID: %d", pstTCB->ulCustomID, pstTCB->ulTaskID);
                 sc_tcb_free(pstTCB);
+                continue;
+            }
+
+            if (pstTCB->ucTaskStatus != SC_TASK_CONTINUE || pstTCB->ucTaskStatus != SC_TASK_WORKING)
+            {
                 continue;
             }
 

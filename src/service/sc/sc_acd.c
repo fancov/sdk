@@ -422,7 +422,7 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
     U32                         ulHashIndex        = 0;
     U32                         ulProcesingTime    = 0;
     S32                         lResult            = 0;
-    DOS_TMR_ST                  pstACKTmrHandle    = NULL;
+    DOS_TMR_ST                  pstTmrHandle    = NULL;
 
     if (ulStatus >= SC_ACD_BUTT)
     {
@@ -461,7 +461,7 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
     if (SC_ACD_PROC == ulStatus)
     {
         /* 如果为处理状态，开启定时器 */
-        lResult = dos_tmr_start(&pstACKTmrHandle, ulProcesingTime * 1000, sc_acd_agent_update_status_IDEL, ulSiteID, TIMER_NORMAL_NO_LOOP);
+        lResult = dos_tmr_start(&pstTmrHandle, ulProcesingTime * 1000, sc_acd_agent_update_status_IDEL, ulSiteID, TIMER_NORMAL_NO_LOOP);
         if (lResult < 0)
         {
             sc_logr_error(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL FAIL", ulSiteID);

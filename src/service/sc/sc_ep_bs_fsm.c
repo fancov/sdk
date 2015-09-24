@@ -49,22 +49,13 @@ SC_BS_CLIENT_ST *g_pstSCBSClient[SC_MAX_BS_CLIENT] = { NULL };
 SC_BS_MSG_STAT_ST stBSMsgStat;
 
 
-U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB, SC_SCB_ST *pstSCBOther)
+U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB)
 {
-    S8    szAPPParam[1024]  = { 0 };
+    S8    szAPPParam[128]  = { 0 };
     U32   ulCurrentLen  = 0;
     U32   ulTotalLen    = sizeof(szAPPParam);
-#if 0
-    U64   i             = 0;
-    S32   j             = 0;
-    S32   lBalance      = 0;
-    S32   lInteger      = 0;
-    S32   lRemainder    = 0;
-    BOOL  bIsGetMSB     = DOS_FALSE;
-    BOOL  bIsZero       = DOS_FALSE;
-#endif
 
-    if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSCBOther))
+    if (DOS_ADDR_INVALID(pstSCB))
     {
         return DOS_FAIL;
     }
@@ -72,11 +63,41 @@ U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB, SC_SCB_ST *pstSCBOther)
     /* 根据余额拼接出语音 */
     dos_memzero(szAPPParam, sizeof(szAPPParam));
     ulCurrentLen = 0;
-#if 0
+
+    ulCurrentLen = dos_snprintf(szAPPParam, ulTotalLen
+                        , "{play_balance=true}file_string://%s/ndyuebz.wav", SC_TASK_AUDIO_PATH);
+
+    sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_play_balance(SC_SCB_ST *pstSCB)
+{
+    S8    szAPPParam[1024]  = { 0 };
+    U32   ulCurrentLen  = 0;
+    U32   ulTotalLen    = sizeof(szAPPParam);
+    U64   i             = 0;
+    S32   j             = 0;
+    S32   lBalance      = 0;
+    S32   lInteger      = 0;
+    S32   lRemainder    = 0;
+    BOOL  bIsGetMSB     = DOS_FALSE;
+    BOOL  bIsZero       = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return DOS_FAIL;
+    }
+
+    /* 根据余额拼接出语音 */
+    dos_memzero(szAPPParam, sizeof(szAPPParam));
+    ulCurrentLen = 0;
+
     lBalance = pstSCB->lBalance;
 
     ulCurrentLen = dos_snprintf(szAPPParam, ulTotalLen
-                        , "{play_balance=true}file_string://%s/nindyew.wav!", SC_TASK_AUDIO_PATH);
+                        , "file_string://%s/nindyew.wav!", SC_TASK_AUDIO_PATH);
 
     if (lBalance < 0)
     {
@@ -89,7 +110,7 @@ U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB, SC_SCB_ST *pstSCBOther)
     lRemainder = lBalance;
     bIsGetMSB = DOS_FALSE;
 
-    for (i=100000000000,j=0; i>0; i/=10,j++)
+    for (i=100000000000,j=0; j<10; i/=10,j++)
     {
         lInteger = lRemainder / i;
         lRemainder = lRemainder % i;
@@ -113,7 +134,7 @@ U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB, SC_SCB_ST *pstSCBOther)
                 ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
                                     , "%s/0.wav!%s/%d.wav!", SC_TASK_AUDIO_PATH, SC_TASK_AUDIO_PATH, lInteger);
             }
-            else if (j < 10)
+            else
             {
                 ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
                                     , "%s/%d.wav!", SC_TASK_AUDIO_PATH, lInteger);
@@ -186,11 +207,113 @@ U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB, SC_SCB_ST *pstSCBOther)
     /* 最后多了个一个 ! */
     szAPPParam[dos_strlen(szAPPParam) - 1] = '\0';
 
-#endif
-    ulCurrentLen = dos_snprintf(szAPPParam, ulTotalLen
-                        , "{play_balance=true}file_string://%s/ndyuebz.wav", SC_TASK_AUDIO_PATH);
+    sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
 
-    sc_ep_esl_execute("playback", szAPPParam, pstSCBOther->szUUID);
+    return DOS_SUCC;
+}
+
+U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
+{
+    SC_SCB_ST               *pstSCB         = NULL;
+    BS_MSG_BALANCE_QUERY    *pstAuthMsg     = NULL;
+    S8                      szAPPParam[512] = {0};
+
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_debug(SC_BS, "%s", "Invalid Msg.");
+        return DOS_FAIL;
+    }
+
+    if (pstMsg->usMsgLen != sizeof(BS_MSG_BALANCE_QUERY))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_debug(SC_BS, "Invalid Msg length. Length: %d", pstMsg->usMsgLen);
+        return DOS_FAIL;
+    }
+
+    pstAuthMsg = (BS_MSG_BALANCE_QUERY *)pstMsg;
+    if (DOS_ADDR_INVALID(pstAuthMsg))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_debug(SC_BS, "%s", "Invalid Msg body. ");
+        return DOS_FAIL;
+    }
+
+    if (pstMsg->ulCRNo >= SC_MAX_SCB_NUM)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_debug(SC_BS, "Invalid RC NO. Max: %d, Current: %d", SC_MAX_SCB_NUM, pstMsg->ulCRNo);
+        return DOS_FAIL;
+    }
+
+    pstSCB = sc_scb_get(pstMsg->ulCRNo);
+    if (!SC_SCB_IS_VALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_debug(SC_BS, "%s", "Invalid SCB.");
+        return DOS_FAIL;
+    }
+
+    sc_logr_debug(SC_BS, "%s", "Start process auth response.");
+
+    pthread_mutex_lock(&pstSCB->mutexSCBLock);
+    if (pstMsg->ucErrcode != BS_ERR_SUCC)
+    {
+        pstSCB->bTerminationFlag = DOS_TRUE;
+    }
+    else
+    {
+        pstSCB->bTerminationFlag = DOS_FALSE;
+    }
+
+    pstSCB->lBalance = pstAuthMsg->lBalance;
+    if (pstAuthMsg->ucBalanceWarning)
+    {
+        pstSCB->bBanlanceWarning = DOS_TRUE;
+    }
+    else
+    {
+        pstSCB->bBanlanceWarning = DOS_FALSE;
+    }
+
+    pstSCB->usTerminationCause = pstMsg->ucErrcode;
+    pthread_mutex_unlock(&pstSCB->mutexSCBLock);
+
+    if (pstSCB->bTerminationFlag)
+    {
+        sc_logr_notice(SC_BS, "Terminate call for the auth fail; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
+        if (sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
+            || sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
+        {
+            sc_ep_transfer_publish_release(pstSCB);
+        }
+        else
+        {
+            sc_ep_terminate_call(pstSCB);
+        }
+    }
+    else
+    {
+        sc_logr_notice(SC_BS, "Auth successfully. RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
+        if (pstMsg->ucErrcode == 0)
+        {
+            sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
+            sc_play_balance(pstSCB);
+            sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
+        }
+        else
+        {
+            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+        }
+
+        SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
+    }
 
     return DOS_SUCC;
 }
@@ -250,11 +373,11 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstMsg->ucErrcode != BS_ERR_SUCC)
     {
-        pstSCB->ucTerminationFlag = DOS_TRUE;
+        pstSCB->bTerminationFlag = DOS_TRUE;
     }
     else
     {
-        pstSCB->ucTerminationFlag = DOS_FALSE;
+        pstSCB->bTerminationFlag = DOS_FALSE;
     }
 
     if (pstAuthMsg->ucBalanceWarning)
@@ -267,10 +390,10 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         pstSCB->bBanlanceWarning = DOS_FALSE;
     }
 
-    pstSCB->ucTerminationCause = pstMsg->ucErrcode;
+    pstSCB->usTerminationCause = pstMsg->ucErrcode;
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
-    if (pstSCB->ucTerminationFlag)
+    if (pstSCB->bTerminationFlag)
     {
         sc_logr_notice(SC_BS, "Terminate call for the auth fail; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
         if (sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
@@ -289,19 +412,18 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 
         if (pstMsg->ucErrcode == 0)
         {
+            /* 判断是否需要余额告警 */
             pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
-            if (DOS_ADDR_VALID(pstSCBOther))
+            if (DOS_ADDR_VALID(pstSCBOther) && pstSCB->bBanlanceWarning)
             {
+                /* 给通道设置变量 */
+                sc_ep_esl_execute("set", "instant_ringback=true", pstSCBOther->szUUID);
+                sc_ep_esl_execute("set", "transfer_ringback=local_stream://moh", pstSCBOther->szUUID);
+
+                sc_logr_debug(SC_BS, "The balance of the alarm : %d, Balance : %u", pstSCB->bBanlanceWarning, pstSCB->lBalance);
                 sc_ep_esl_execute("answer", NULL, pstSCBOther->szUUID);
-
-                /* 判断是否需要余额告警 */
-                sc_logr_debug(SC_DIALER, "The balance of the alarm : %d, Balance : %u", pstSCB->bBanlanceWarning, pstSCB->lBalance);
-                if (pstSCB->bBanlanceWarning)
-                {
-                    sc_dialer_alarm_balance(pstSCB, pstSCBOther);
-                }
-
-                sc_ep_esl_execute("park", NULL, pstSCBOther->szUUID);
+                sc_dialer_alarm_balance(pstSCBOther);
+                //sc_ep_esl_execute("park", NULL, pstSCBOther->szUUID);
             }
         }
 
@@ -462,14 +584,14 @@ U32 sc_bs_billing_start_rsp_proc(BS_MSG_TAG *pstMsg)
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstMsg->ucErrcode != BS_ERR_SUCC)
     {
-        pstSCB->ucTerminationFlag = DOS_TRUE;
+        pstSCB->bTerminationFlag = DOS_TRUE;
     }
     else
     {
-        pstSCB->ucTerminationFlag = DOS_FALSE;
+        pstSCB->bTerminationFlag = DOS_FALSE;
     }
 
-    pstSCB->ucTerminationCause = pstMsg->ucErrcode;
+    pstSCB->usTerminationCause = pstMsg->ucErrcode;
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
     sc_logr_debug(SC_BS, "%s", "Process billing start response msg finished.");
@@ -511,14 +633,14 @@ U32 sc_bs_billing_update_rsp_proc(BS_MSG_TAG *pstMsg)
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstMsg->ucErrcode != BS_ERR_SUCC)
     {
-        pstSCB->ucTerminationFlag = DOS_TRUE;
+        pstSCB->bTerminationFlag = DOS_TRUE;
     }
     else
     {
-        pstSCB->ucTerminationFlag = DOS_FALSE;
+        pstSCB->bTerminationFlag = DOS_FALSE;
     }
 
-    pstSCB->ucTerminationCause = pstMsg->ucErrcode;
+    pstSCB->usTerminationCause = pstMsg->ucErrcode;
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
     sc_logr_debug(SC_BS, "%s", "Process billing update response msg finished.");
@@ -654,6 +776,8 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
             stBSMsgStat.ulHBRsp++;
             break;
         case BS_MSG_BALANCE_QUERY_RSP:
+            sc_bs_balance_enquiry_rsp_proc(pstMsgHeader);
+            break;
         case BS_MSG_USER_AUTH_RSP:
         case BS_MSG_ACCOUNT_AUTH_RSP:
             sc_bs_auth_rsp_proc(pstMsgHeader);

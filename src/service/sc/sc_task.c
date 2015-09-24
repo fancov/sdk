@@ -215,6 +215,8 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
+    pstTCB->ulCalledCount++;
+
     pstSCB = sc_scb_alloc();
     if (!pstSCB)
     {
@@ -299,10 +301,11 @@ fail:
  */
 VOID *sc_task_runtime(VOID *ptr)
 {
-    SC_TEL_NUM_QUERY_NODE_ST *pstCallee;
-    SC_TASK_CB_ST   *pstTCB;
-    list_t          *pstList;
+    SC_TEL_NUM_QUERY_NODE_ST *pstCallee = NULL;
+    SC_TASK_CB_ST   *pstTCB        = NULL;
+    list_t          *pstList       = NULL;
     U32             ulTaskInterval = 0;
+    S32             lResult        = 0;
 
     if (!ptr)
     {
@@ -320,6 +323,14 @@ VOID *sc_task_runtime(VOID *ptr)
     }
 
     pstTCB->ucTaskStatus = SC_TASK_WORKING;
+
+    /* 开启一个定时器，将已经呼叫过的号码数量，定时写进数据库中 */
+    lResult = dos_tmr_start(&pstTCB->pstTmrHandle, SC_TASK_UPDATE_DB_TIMER, sc_task_update_calledcnt, (U64)pstTCB, TIMER_NORMAL_LOOP);
+    if (lResult < 0)
+    {
+        sc_logr_error(SC_TASK, "Start timer update task(%u) calledcnt FAIL", pstTCB->ulTaskID);
+    }
+
     while (1)
     {
         if (0 == ulTaskInterval)
@@ -386,6 +397,12 @@ VOID *sc_task_runtime(VOID *ptr)
     sc_logr_info(SC_TASK, "Task %d finished.", pstTCB->ulTaskID);
 
     /* 释放相关资源 */
+    if (DOS_ADDR_VALID(pstTCB->pstTmrHandle))
+    {
+        dos_tmr_stop(&pstTCB->pstTmrHandle);
+        pstTCB->pstTmrHandle = NULL;
+    }
+
     while (1)
     {
         if (dos_list_is_empty(&pstTCB->stCalleeNumQuery))
