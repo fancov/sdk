@@ -126,7 +126,7 @@ extern BOOL                 g_blSCInitOK;
 #define SC_TASK_UPDATE_DB_TIMER        1000
 
 /* 新业务 */
-#define SC_POTS_BALANCE                "*983#"
+#define SC_POTS_BALANCE                "*983"       /* 查询余额 */
 
 /* 定义运营商的ID */
 #define SC_TOP_USER_ID                 1

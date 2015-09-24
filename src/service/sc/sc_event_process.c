@@ -6280,6 +6280,8 @@ U32 sc_ep_get_custom_by_did(S8 *pszNum)
     pstDIDNumNode = pstHashNode->pHandle;
     if (DOS_FALSE == pstDIDNumNode->bValid)
     {
+        pthread_mutex_unlock(&g_mutexHashDIDNum);
+
         return U32_BUTT;
     }
     ulCustomerID = pstDIDNumNode->ulCustomID;
@@ -8944,6 +8946,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
     U32   ulCustomerID = U32_BUTT;
     U32   ulCustomerID1 = U32_BUTT;
     U32   ulErrCode = BS_TERM_NONE;
+    SC_ACD_AGENT_INFO_ST stAgentInfo;
 
     if (DOS_ADDR_INVALID(pstEvent) || DOS_ADDR_INVALID(pstHandle) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -9000,9 +9003,23 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
     {
         if (ulCustomerID == ulCustomerID1)
         {
-            dos_snprintf(szCallString, sizeof(szCallString), "user/%s", pszDstNum);
-            sc_ep_esl_execute("bridge", szCallString, pszUUID);
-            //sc_ep_esl_execute("hangup", NULL, pszUUID);
+            if (sc_acd_get_agent_by_userid(&stAgentInfo, pszDstNum) == DOS_SUCC)
+            {
+                /* 根据分机找到分机绑定的坐席，判断坐席的状态 */
+                if (stAgentInfo.ucStatus != SC_ACD_IDEL)
+                {
+                    goto process_fail;
+                }
+
+                dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d,update_agent_id=%d}user/%s", pstSCB->usSCBNo, stAgentInfo.ulSiteID, pszDstNum);
+                sc_ep_esl_execute("bridge", szCallString, pszUUID);
+            }
+            else
+            {
+                dos_snprintf(szCallString, sizeof(szCallString), "user/%s", pszDstNum);
+                sc_ep_esl_execute("bridge", szCallString, pszUUID);
+                //sc_ep_esl_execute("hangup", NULL, pszUUID);
+            }
         }
         else
         {
@@ -9251,7 +9268,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB)
     pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
     if (sc_ep_check_extension(pstSCB->szCallerNum, pstSCB->ulCustomID))
     {
-        if (dos_strcmp(pstSCB->szCalleeNum, SC_POTS_BALANCE) == 0)
+        if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_BALANCE, dos_strlen(SC_POTS_BALANCE)) == 0)
         {
             /* 发送 查询余额 */
             sc_send_balance_query2bs(pstSCB);
@@ -10511,10 +10528,11 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
             goto process_fail;
         }
 
-        /* 设置通道参数 */
-        //sc_ep_esl_execute("set", "ignore_early_media=false", pstSCB->szUUID);
-        //sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
+        /* 给客户放音 */
+
         //sc_ep_esl_execute("set", "transfer_ringback=local_stream://moh", pstSCB->szUUID);
+        sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
+        sc_ep_esl_execute("playback", "tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
 
         if (SC_TASK_MODE_KEY4AGENT == ulTaskMode)
         {
