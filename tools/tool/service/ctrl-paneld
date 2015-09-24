@@ -1,0 +1,116 @@
+#!/bin/sh
+#chkconfig: 345 87 87
+#description: Start/Stop OK-CC service
+
+SERVICE_ROOT=/dipcc
+PID_DIP=${SERVICE_ROOT}/var/run/pid
+
+function wait_for_pid () {
+    try=0
+
+    while test $try -lt 10 ; do
+        case "$1" in
+            'created')
+            if [ -f "$2" ] ; then
+                try=''
+                break
+            fi
+            ;;
+
+            'removed')
+            if [ ! -f "$2" ] ; then
+                try=''
+                break
+            fi
+            ;;
+        esac
+
+        printf "\b"$try
+        try=`expr $try + 1`
+        sleep 1
+
+    done
+
+    printf "\b"
+}
+
+function start_ctrl_panel()
+{
+    printf "%-30s" "Starting ctrl panel"
+    if [ -f ${PID_DIP}/ctrl_paneld.pid ]; then
+        PID=`cat ${PID_DIP}/ctrl_paneld.pid`
+        if ps -p $PID | grep -q $PID; then
+            echo "[FAIL] Already running"
+            return 1
+        fi
+    fi
+
+    (${SERVICE_ROOT}/bin/ctrl_paneld > /dev/null 2>&1 &)
+    if [ $? -ne 0 ]; then
+        echo "[FAIL] Start Failed"
+        return 1
+    fi
+    
+    wait_for_pid created ${PID_DIP}/ctrl_paneld.pid 
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Start without PID File"
+        return 1
+    else
+        echo [DONE]
+    fi
+}
+
+function stop_ctrl_panel()
+{
+    printf "%-30s" "Stopping ctrl panel"
+    if [ ! -f ${PID_DIP}/ctrl_paneld.pid ]; then
+        echo "[Not Running]"
+        return 1
+    fi
+
+    kill `cat ${PID_DIP}/ctrl_paneld.pid`
+    
+    wait_for_pid removed ${PID_DIP}/ctrl_paneld.pid
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Stop without delete PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function status_ctrl_panel()
+{
+    printf "%-30s" "ctrl panel"
+    if [ ! -r ${PID_DIP}/ctrl_paneld.pid ] ; then
+        echo "stopped"
+        return 1
+    fi
+
+    PID=`cat ${PID_DIP}/ctrl_paneld.pid`
+    if ps -p $PID | grep -q $PID; then
+        echo "running"
+    else
+        echo "dead"
+    fi
+}
+
+case $1 in
+    start)
+        start_ctrl_panel
+    ;;
+    stop)
+        stop_ctrl_panel
+    ;;
+    status)
+
+        status_ctrl_panel 
+    ;;
+    restart)
+        $0 stop $2
+        $0 start $2
+    ;;
+    *)
+            echo "Use this script with parameter start|stop|restart"
+    ;;
+esac

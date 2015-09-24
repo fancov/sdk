@@ -1,0 +1,115 @@
+#!/bin/sh
+#chkconfig: 345 87 87
+#description: Start/Stop OK-CC service
+
+SERVICE_ROOT=/dipcc
+PID_DIP=${SERVICE_ROOT}/var/run/pid
+
+function wait_for_pid () {
+    try=0
+
+    while test $try -lt 10 ; do
+        case "$1" in
+            'created')
+            if [ -f "$2" ] ; then
+                try=''
+                break
+            fi
+            ;;
+
+            'removed')
+            if [ ! -f "$2" ] ; then
+                try=''
+                break
+            fi
+            ;;
+        esac
+
+        printf "\b"$try
+        try=`expr $try + 1`
+        sleep 1
+
+    done
+
+    printf "\b"
+}
+
+function start_monitor()
+{
+    printf "%-30s" "Starting monitor"
+    if [ -f ${PID_DIP}/monitord.pid ]; then
+        PID=`cat ${PID_DIP}/monitord.pid`
+        if ps -p $PID | grep -q $PID; then
+            echo "[FAIL] Already running"
+            return 1
+        fi
+    fi
+
+    (${SERVICE_ROOT}/bin/monitord > /dev/null 2>&1 &)
+    if [ $? -ne 0 ]; then
+        echo "[FAIL] Start Failed"
+    fi
+
+    wait_for_pid created ${PID_DIP}/monitord.pid    
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Start without PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function stop_monitor()
+{
+    printf "%-30s" "Stopping monitor"
+    if [ ! -f ${PID_DIP}/monitord.pid ]; then
+        echo "[Not Running]"
+        return 1
+    fi
+
+    kill  `cat ${PID_DIP}/monitord.pid`
+
+    wait_for_pid removed ${PID_DIP}/monitord.pid
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Stop without delete PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function status_monitor()
+{
+    printf "%-30s" "monitor"
+    if [ ! -r ${PID_DIP}/monitord.pid ] ; then
+        echo "stopped"
+        return 1
+    fi
+
+    PID=`cat ${PID_DIP}/monitord.pid`
+    if ps -p $PID | grep -q $PID; then
+        echo "running"
+    else
+        echo "dead"
+    fi
+}
+
+
+case $1 in
+    start)
+        start_monitor
+    ;;
+    stop)
+        stop_monitor
+    ;;
+    status)
+        status_monitor
+    ;;
+    restart)
+        $0 stop $2
+        $0 start $2
+    ;;
+    *)
+            echo "Use this script with parameter start|stop|restart bs|sc|ctrl_panel|monitor|ptc"
+    ;;
+esac
