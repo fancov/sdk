@@ -716,8 +716,11 @@ U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *psz
     }
 
     dos_snprintf(pszBuff, ulMaxLen
-            , "%u/%04d%02d%02d/VR-%02d%02d%02d-%s-%s"
+            , "%u/%04d%02d%02d/VR-%04d%02d%02d%02d%02d%02d-%s-%s"
             , ulCustomerID
+            , pstTime->tm_year + 1900
+            , pstTime->tm_mon + 1
+            , pstTime->tm_mday
             , pstTime->tm_year + 1900
             , pstTime->tm_mon + 1
             , pstTime->tm_mday
