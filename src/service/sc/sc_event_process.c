@@ -9260,24 +9260,257 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
  */
 U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB)
 {
+    U32         ulRet       = DOS_FAIL;
+    BOOL        bIsHangUp   = DOS_TRUE;
+    U32         ulAgentID   = 0;
+    SC_ACD_AGENT_INFO_ST    stAgentInfo;
+    S8          pszCallee[SC_TEL_NUMBER_LENGTH] = {0};
+
     if (DOS_ADDR_INVALID(pstSCB))
     {
         return DOS_FAIL;
     }
 
-    pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
-    if (sc_ep_check_extension(pstSCB->szCallerNum, pstSCB->ulCustomID))
+    if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_BALANCE, dos_strlen(SC_POTS_BALANCE)) == 0)
     {
-        if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_BALANCE, dos_strlen(SC_POTS_BALANCE)) == 0)
+        /* 查询余额 */
+        pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
+        if (sc_ep_check_extension(pstSCB->szCallerNum, pstSCB->ulCustomID))
         {
-            /* 发送 查询余额 */
             sc_send_balance_query2bs(pstSCB);
 
-            return DOS_SUCC;
+            ulRet = DOS_SUCC;
+        }
+
+        bIsHangUp = DOS_FALSE;
+    }
+    else if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_AGENT_ONLINE, dos_strlen(SC_POTS_AGENT_ONLINE)) == 0)
+    {
+        /* 坐席登陆web页面 */
+        if (sc_acd_get_agent_by_userid(&stAgentInfo, pstSCB->szCallerNum) != DOS_SUCC)
+        {
+            sc_logr_info(SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
+
+            goto end;
+        }
+
+        sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), online", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_ONLINE, stAgentInfo.ulSiteID);
+
+        ulRet = DOS_SUCC;
+    }
+    else if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_AGENT_OFFLINE, dos_strlen(SC_POTS_AGENT_OFFLINE)) == 0)
+    {
+        /* 坐席从web页面下线 */
+        if (sc_acd_get_agent_by_userid(&stAgentInfo, pstSCB->szCallerNum) != DOS_SUCC)
+        {
+            sc_logr_info(SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
+
+            goto end;
+        }
+
+        sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), offline", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_OFFLINE, stAgentInfo.ulSiteID);
+
+        ulRet = DOS_SUCC;
+    }
+    else if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_AGENT_EN_QUEUE, dos_strlen(SC_POTS_AGENT_EN_QUEUE)) == 0)
+    {
+        /* 坐席置闲 */
+        if (sc_acd_get_agent_by_userid(&stAgentInfo, pstSCB->szCallerNum) != DOS_SUCC)
+        {
+            sc_logr_info(SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
+
+            goto end;
+        }
+
+        sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), en queue", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_EN_QUEUE, stAgentInfo.ulSiteID);
+
+        ulRet = DOS_SUCC;
+    }
+    else if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_AGENT_DN_QUEUE, dos_strlen(SC_POTS_AGENT_DN_QUEUE)) == 0)
+    {
+        /* 坐席置忙 */
+        if (sc_acd_get_agent_by_userid(&stAgentInfo, pstSCB->szCallerNum) != DOS_SUCC)
+        {
+            sc_logr_info(SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
+
+            goto end;
+        }
+
+        sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), dn queue", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_DN_QUEUE, stAgentInfo.ulSiteID);
+
+        ulRet = DOS_SUCC;
+    }
+    else if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_AGENT_SIGNIN, dos_strlen(SC_POTS_AGENT_SIGNIN)) == 0)
+    {
+        /* 坐席长签 */
+        if ((ulRet = sc_acd_singin_by_phone(pstSCB->szCallerNum, pstSCB)) != DOS_SUCC)
+        {
+            sc_logr_info(SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
+
+            goto end;
+        }
+
+        sc_logr_debug(SC_ACD, "POTS, agent(%u) by userid(%s), signin SUCC", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_ep_esl_execute("park", NULL, pstSCB->szUUID);
+        bIsHangUp = DOS_FALSE;
+    }
+    else if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_AGENT_SIGNOUT, dos_strlen(SC_POTS_AGENT_SIGNOUT)) == 0)
+    {
+        /* 坐席退出长签 */
+        if (sc_acd_get_agent_by_userid(&stAgentInfo, pstSCB->szCallerNum) != DOS_SUCC)
+        {
+            sc_logr_info(SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
+
+            goto end;
+        }
+
+        sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), signout", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_SIGNOUT, stAgentInfo.ulSiteID);
+
+        ulRet = DOS_SUCC;
+    }
+    else if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_BLIND_TRANSFER, dos_strlen(SC_POTS_BLIND_TRANSFER)) == 0)
+    {
+        /* 盲转 先根据被叫号码，获得被转坐席的id，根据id获找坐席 */
+        /* TODO 如果越界，会有问题 */
+
+        bIsHangUp = DOS_FALSE;
+
+        dos_sscanf(pstSCB->szCalleeNum, "*%*[^*]*%u", &ulAgentID);
+        if (ulAgentID == U32_BUTT || ulAgentID == 0)
+        {
+            sc_logr_info(SC_ACD, "POTS, format error : %s", pstSCB->szCalleeNum);
+
+            goto end;
+        }
+
+        if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgentID) != DOS_SUCC)
+        {
+            sc_logr_info(SC_ACD, "POTS, Can not find agent by agnet id(%u)", ulAgentID);
+
+            goto end;
+        }
+
+        /* 判断坐席的状态 */
+        if (!SC_ACD_SITE_IS_USEABLE(&stAgentInfo))
+        {
+            sc_logr_debug(SC_ACD, "The agent is not useable.(Agent %u)", stAgentInfo.ulSiteID);
+
+            goto end;
+        }
+
+        if (stAgentInfo.usSCBNo >= SC_MAX_SCB_NUM)
+        {
+            sc_logr_info(SC_ACD, "POTS, The scbno is invalid by agentid(%u)", stAgentInfo.usSCBNo);
+            DOS_ASSERT(0);
+
+            goto end;
+        }
+
+        /* 获取被叫号码 */
+        switch (stAgentInfo.ucBindType)
+        {
+            case AGENT_BIND_SIP:
+                dos_strncpy(pszCallee, stAgentInfo.szUserID, SC_TEL_NUMBER_LENGTH);
+                pszCallee[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+                break;
+            case AGENT_BIND_TELE:
+                dos_strncpy(pszCallee, stAgentInfo.szTelePhone, SC_TEL_NUMBER_LENGTH);
+                pszCallee[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+                break;
+            case AGENT_BIND_MOBILE:
+                dos_strncpy(pszCallee, stAgentInfo.szMobile, SC_TEL_NUMBER_LENGTH);
+                pszCallee[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+                break;
+            default:
+                goto end;
+        }
+
+        if (sc_ep_call_transfer(pstSCB, pszCallee, SC_API_TRANSFOR_BLIND) != DOS_SUCC)
+        {
+            goto end;
+        }
+
+    }
+    else if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_ATTENDED_TRANSFER, dos_strlen(SC_POTS_ATTENDED_TRANSFER)) == 0)
+    {
+        /* 协商转 */
+        bIsHangUp = DOS_FALSE;
+
+        dos_sscanf(pstSCB->szCalleeNum, "*%*[^*]*%u", &ulAgentID);
+        if (ulAgentID == U32_BUTT || ulAgentID == 0)
+        {
+            sc_logr_info(SC_ACD, "POTS, format error : %s", pstSCB->szCalleeNum);
+
+            goto end;
+        }
+
+        if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgentID) != DOS_SUCC)
+        {
+            sc_logr_info(SC_ACD, "POTS, Can not find agent by agnet id(%u)", ulAgentID);
+
+            goto end;
+        }
+
+        /* 判断坐席的状态 */
+        if (!SC_ACD_SITE_IS_USEABLE(&stAgentInfo))
+        {
+            sc_logr_debug(SC_ACD, "The agent is not useable.(Agent %u)", stAgentInfo.ulSiteID);
+
+            goto end;
+        }
+
+        if (stAgentInfo.usSCBNo >= SC_MAX_SCB_NUM)
+        {
+            sc_logr_info(SC_ACD, "POTS, The scbno is invalid by agentid(%u)", stAgentInfo.usSCBNo);
+            DOS_ASSERT(0);
+
+            goto end;
+        }
+
+        /* 获取被叫号码 */
+        switch (stAgentInfo.ucBindType)
+        {
+            case AGENT_BIND_SIP:
+                dos_strncpy(pszCallee, stAgentInfo.szUserID, SC_TEL_NUMBER_LENGTH);
+                pszCallee[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+                break;
+            case AGENT_BIND_TELE:
+                dos_strncpy(pszCallee, stAgentInfo.szTelePhone, SC_TEL_NUMBER_LENGTH);
+                pszCallee[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+                break;
+            case AGENT_BIND_MOBILE:
+                dos_strncpy(pszCallee, stAgentInfo.szMobile, SC_TEL_NUMBER_LENGTH);
+                pszCallee[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+                break;
+            default:
+                goto end;
+        }
+
+        if (sc_ep_call_transfer(pstSCB, pszCallee, SC_API_TRANSFOR_ATTAND) != DOS_SUCC)
+        {
+            goto end;
         }
     }
+    else
+    {
+        DOS_ASSERT(0);
+        sc_logr_info(SC_ACD, "POTS, Not matched any action : %s", pstSCB->szCalleeNum);
+    }
 
-    return DOS_FAIL;
+end:
+    sc_logr_debug(SC_ACD, "POTS, result : %d, callee : %s", ulRet, pstSCB->szCalleeNum);
+
+    if (bIsHangUp)
+    {
+        sc_ep_esl_execute("hangup", "", pstSCB->szUUID);
+    }
+
+    return ulRet;
 }
 
 /**

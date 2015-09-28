@@ -16,6 +16,17 @@
 /* 单个坐席最大可以属于组的个数 */
 #define MAX_GROUP_PER_SITE      2
 
+/* 1. 没有被删除
+   2. 已经登陆了
+   3. 需要连接，并且处于连接状态
+   4. 状态为EDL*/
+#define SC_ACD_SITE_IS_USEABLE(pstSiteDesc)                             \
+    (DOS_ADDR_VALID(pstSiteDesc)                                       \
+    && !(pstSiteDesc)->bWaitingDelete                                  \
+    && (pstSiteDesc)->bLogin                                           \
+    && SC_ACD_IDEL == (pstSiteDesc)->ucStatus                          \
+    && !((pstSiteDesc)->bNeedConnected && !(pstSiteDesc)->bConnected))
+
 /* IP坐席:
  * 1. 初始化为OFFLINE状态
  * 2. 登陆之后就处于AWAY状态/坐席置忙也处于AWAY状态
@@ -128,6 +139,7 @@ U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB);
 U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB);
 U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr);
 U32 sc_ep_query_agent_status(SC_ACD_AGENT_INFO_ST *pstAgentInfo);
+U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB);
 
 #endif
 
