@@ -39,6 +39,7 @@
 
 #include <dos.h>
 #include <esl.h>
+#include <libcurl/curl.h>
 #include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_acd_def.h"
@@ -280,13 +281,26 @@ VOID *sc_acd_query_agent_status_task(VOID *ptr)
     HASH_NODE_S   *pstHashNode = NULL;
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode = NULL;
     SC_ACD_AGENT_INFO_ST        *pstAgentInfo      = NULL;
+    CURL *curl = NULL;
 
     /* 检查周期 15分钟 */
-    U32           ulCheckInterval = 15 * 60 * 1000;
+    //U32           ulCheckInterval = 15 * 60 * 1000;
+    U32           ulCheckInterval = 15 * 1000;
+
+    if (DOS_ADDR_INVALID(curl))
+    {
+        curl = curl_easy_init();
+        if (DOS_ADDR_INVALID(curl))
+        {
+            DOS_ASSERT(0);
+
+            return NULL;
+        }
+    }
 
     while (1)
     {
-        dos_task_delay(ulCheckInterval);
+        dos_task_delay(1000);
 
         pthread_mutex_lock(&g_mutexAgentList);
         HASH_Scan_Table(g_pstAgentList, ulHashIndex)
@@ -317,9 +331,9 @@ VOID *sc_acd_query_agent_status_task(VOID *ptr)
                     /* 被删除了*/
                     continue;
                 }
-
+#if 0
                 /* 没有查到坐席的信息 */
-                if (sc_ep_query_agent_status(pstAgentInfo) != DOS_SUCC)
+                if (sc_ep_query_agent_status(curl, pstAgentInfo) != DOS_SUCC)
                 {
                     /* 吧坐席状态置为离线 */
                     if (SC_ACD_OFFLINE != pstAgentInfo->ucStatus)
@@ -337,14 +351,14 @@ VOID *sc_acd_query_agent_status_task(VOID *ptr)
                         sc_logr_info(SC_ACD, "Query agent status fail(%u). Set to offline status.", pstAgentInfo->ulSiteID);
                     }
                 }
+#endif
             }
 
             /* 一个HASH桶做一次线程切换(HASH表是预分配的，所以不涉及到线程切换出去之后，线程点被破坏的问题) */
-            pthread_mutex_unlock(&g_mutexAgentList);
-            dos_task_delay(10);
-            pthread_mutex_lock(&g_mutexAgentList);
         }
         pthread_mutex_unlock(&g_mutexAgentList);
+
+        dos_task_delay(ulCheckInterval);
     }
 }
 

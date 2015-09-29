@@ -57,6 +57,7 @@
 #include <list/list_pub.h>
 #include <hash/hash.h>
 #include <json/dos_json.h>
+#include <libcurl/curl.h>
 
 #if INCLUDE_LICENSE_CLIENT
 #include <license.h>

@@ -125,6 +125,7 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
     U32 ulTimeout = 2;
     U32 ulRet = 0;
 
+    return 0;
     if (DOS_ADDR_INVALID(pstAgentInfo)
         || DOS_ADDR_INVALID(szCaller))
     {
@@ -133,6 +134,7 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
         return DOS_FAIL;
     }
 
+    //curl_global_init(CURL_GLOBAL_ALL);
     if (DOS_ADDR_INVALID(g_pstCurlHandle))
     {
         g_pstCurlHandle = curl_easy_init();
@@ -190,6 +192,11 @@ static S32 sc_ep_agent_update_recv(void *pszBffer, S32 lSize, S32 lBlock, void *
         return 0;
     }
 
+    if (lSize * lBlock == 0)
+    {
+        return 0;
+    }
+
     pstIOBuffer = (IO_BUF_CB *)pArg;
 
     if (dos_iobuf_append(pstIOBuffer, pszBffer, (U32)(lSize * lBlock)) != DOS_SUCC)
@@ -198,7 +205,7 @@ static S32 sc_ep_agent_update_recv(void *pszBffer, S32 lSize, S32 lBlock, void *
         return 0;
     }
 
-    return lBlock;
+    return lSize * lBlock;
 }
 
 
@@ -328,21 +335,18 @@ process_fail:
 
 }
 
-U32 sc_ep_query_agent_status(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+U32 sc_ep_query_agent_status(CURL *curl, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
     S8 szURL[256] = { 0, };
     U32 ulRet = 0;
     IO_BUF_CB stIOBuffer = IO_BUF_INIT;
+    //U32 ulTimeout = 2;
 
-    if (DOS_ADDR_INVALID(g_pstCurlHandle))
+    if (DOS_ADDR_INVALID(curl))
     {
-        g_pstCurlHandle = curl_easy_init();
-        if (DOS_ADDR_INVALID(g_pstCurlHandle))
-        {
-            DOS_ASSERT(0);
+        DOS_ASSERT(0);
 
-            return DOS_FAIL;
-        }
+        return DOS_FAIL;
     }
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
@@ -358,15 +362,20 @@ U32 sc_ep_query_agent_status(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
                 , pstAgentInfo->szEmpNo
                 , pstAgentInfo->szExtension);
 
-    curl_easy_reset(g_pstCurlHandle);
-    curl_easy_setopt(g_pstCurlHandle, CURLOPT_URL, szURL);
-    curl_easy_setopt(g_pstCurlHandle, CURLOPT_WRITEFUNCTION, sc_ep_agent_update_recv);
-    curl_easy_setopt(g_pstCurlHandle, CURLOPT_WRITEDATA, (VOID *)&stIOBuffer);
-    ulRet = curl_easy_perform(g_pstCurlHandle);
+    curl_easy_reset(curl);
+    curl_easy_setopt(curl, CURLOPT_URL, szURL);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, sc_ep_agent_update_recv);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (VOID *)&stIOBuffer);
+    //curl_easy_setopt(curl, CURLOPT_TIMEOUT, ulTimeout);
+    //curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 2);
+    //curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 2 * 1000);
+    ulRet = curl_easy_perform(curl);
     if(CURLE_OK != ulRet)
     {
         sc_logr_notice(SC_ESL, "%s, (%s)", "CURL get agent status FAIL.", curl_easy_strerror(ulRet));
 
+        //curl_easy_cleanup(g_pstCurlHandle);
         dos_iobuf_free(&stIOBuffer);
         return DOS_FAIL;
     }
@@ -382,6 +391,7 @@ U32 sc_ep_query_agent_status(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         ulRet = DOS_SUCC;
     }
 
+    //curl_easy_cleanup(g_pstCurlHandle);
     dos_iobuf_free(&stIOBuffer);
     return ulRet;
 
@@ -393,6 +403,7 @@ U32 sc_ep_init_agent_status()
     U32 ulRet = 0;
     IO_BUF_CB stIOBuffer = IO_BUF_INIT;
 
+    //curl_global_init(CURL_GLOBAL_ALL);
     if (DOS_ADDR_INVALID(g_pstCurlHandle))
     {
         g_pstCurlHandle = curl_easy_init();
@@ -414,7 +425,7 @@ U32 sc_ep_init_agent_status()
     if(CURLE_OK != ulRet)
     {
         sc_logr_notice(SC_ESL, "%s, (%s)", "CURL get agent status FAIL.", curl_easy_strerror(ulRet));
-
+        curl_easy_cleanup(g_pstCurlHandle);
         dos_iobuf_free(&stIOBuffer);
         return DOS_FAIL;
     }
@@ -426,6 +437,7 @@ U32 sc_ep_init_agent_status()
 
     ulRet = sc_ep_update_agent_req_proc((S8 *)stIOBuffer.pszBuffer);
 
+    curl_easy_cleanup(g_pstCurlHandle);
     dos_iobuf_free(&stIOBuffer);
     return ulRet;
 }
