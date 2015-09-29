@@ -126,7 +126,15 @@ extern BOOL                 g_blSCInitOK;
 #define SC_TASK_UPDATE_DB_TIMER        1000
 
 /* 新业务 */
-#define SC_POTS_BALANCE                "*983"       /* 查询余额 */
+#define SC_POTS_BALANCE                 "*983"       /* 查询余额 */
+#define SC_POTS_AGENT_ONLINE            "*001"       /* 坐席登陆web页面 */
+#define SC_POTS_AGENT_OFFLINE           "*002"       /* 坐席从web页面下线 */
+#define SC_POTS_AGENT_EN_QUEUE          "*003"       /* 坐席在线 */
+#define SC_POTS_AGENT_DN_QUEUE          "*004"       /* 坐席离线 */
+#define SC_POTS_AGENT_SIGNIN            "*005"       /* 坐席长签 */
+#define SC_POTS_AGENT_SIGNOUT           "*006"       /* 坐席退出长签 */
+#define SC_POTS_BLIND_TRANSFER          "*007*"      /* 盲转 */
+#define SC_POTS_ATTENDED_TRANSFER       "*008*"      /* 协商转 */
 
 /* 定义运营商的ID */
 #define SC_TOP_USER_ID                 1

@@ -475,6 +475,7 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
     if (SC_ACD_PROC == ulStatus)
     {
         /* Èç¹ûÎª´¦Àí×´Ì¬£¬¿ªÆô¶¨Ê±Æ÷ */
+        sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", ulSiteID, ulProcesingTime);
         lResult = dos_tmr_start(&pstTmrHandle, ulProcesingTime * 1000, sc_acd_agent_update_status_IDEL, ulSiteID, TIMER_NORMAL_NO_LOOP);
         if (lResult < 0)
         {
@@ -1794,7 +1795,9 @@ U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
     SC_ACD_AGENT_INFO_ST        *pstAgentData       = NULL;
 
-    if (DOS_ADDR_INVALID(pstAgentInfo) || DOS_ADDR_INVALID(szUserID))
+    if (DOS_ADDR_INVALID(pstAgentInfo)
+        || DOS_ADDR_INVALID(szUserID)
+        || szUserID[0] == '\0')
     {
         return DOS_FAIL;
     }
@@ -1840,6 +1843,88 @@ U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
     return DOS_FAIL;
 }
 
+/**
+ * º¯Êý: SC_ACD_AGENT_INFO_ST *sc_acd_get_agent_addr_by_userid(S8 *szUserID)
+ * ¹¦ÄÜ: ¸ù¾Ýsip·Ö»úºÅ»ñµÃ°ó¶¨µÄ×øÏ¯µÄµØÖ·¡
+ * ²ÎÊý:
+ * ·µ»ØÖµ: ³É¹¦·µ»Ø×øÏ¯µÄµØÖ·£¬·ñÔò·µ»ØNULL
+ */
+U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB)
+{
+    U32                         ulHashIndex         = 0;
+    HASH_NODE_S                 *pstHashNode        = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_ACD_AGENT_INFO_ST        *pstAgentData       = NULL;
+
+    if (DOS_ADDR_INVALID(pstSCB)
+        || DOS_ADDR_INVALID(szUserID)
+        || szUserID[0] == '\0')
+    {
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexAgentList);
+
+    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)pstHashNode->pHandle;
+            pstAgentData = pstAgentQueueNode->pstAgentInfo;
+
+            if (DOS_ADDR_INVALID(pstAgentData))
+            {
+                continue;
+            }
+
+            if (pstAgentData->ucBindType != AGENT_BIND_SIP)
+            {
+                continue;
+            }
+
+            if (dos_strcmp(pstAgentData->szUserID, szUserID) == 0)
+            {
+                pthread_mutex_lock(&pstAgentData->mutexLock);
+
+                pstAgentData->bLogin = DOS_TRUE;
+                pstAgentData->bConnected = DOS_TRUE;
+                pstAgentData->bNeedConnected = DOS_TRUE;
+                pstAgentData->bWaitingDelete = DOS_FALSE;
+                pstAgentData->usSCBNo = pstSCB->usSCBNo;
+
+                pstSCB->bIsAgentCall = DOS_TRUE;
+                pstSCB->ulCustomID = pstAgentData->ulCustomerID;
+                pstSCB->ulAgentID = pstAgentData->ulSiteID;
+                pstSCB->ucLegRole = SC_CALLEE;
+                pstSCB->bRecord = pstAgentData->bRecord;
+
+                /* ±»½Ð½ÐºÅÂë */
+                dos_strncpy(pstSCB->szCalleeNum, pstAgentData->szUserID, sizeof(pstSCB->szCalleeNum));
+                pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_SIGNIN);
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
+
+                pstAgentData->ulLastSignInTime = time(0);
+
+                pthread_mutex_unlock(&pstAgentData->mutexLock);
+
+                pthread_mutex_unlock(&g_mutexAgentList);
+
+                return DOS_SUCC;
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexAgentList);
+
+    return DOS_FAIL;
+}
 
 U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
 {

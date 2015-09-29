@@ -16,6 +16,17 @@
 /* 单个坐席最大可以属于组的个数 */
 #define MAX_GROUP_PER_SITE      2
 
+/* 1. 没有被删除
+   2. 已经登陆了
+   3. 需要连接，并且处于连接状态
+   4. 状态为EDL*/
+#define SC_ACD_SITE_IS_USEABLE(pstSiteDesc)                             \
+    (DOS_ADDR_VALID(pstSiteDesc)                                       \
+    && !(pstSiteDesc)->bWaitingDelete                                  \
+    && (pstSiteDesc)->bLogin                                           \
+    && SC_ACD_IDEL == (pstSiteDesc)->ucStatus                          \
+    && !((pstSiteDesc)->bNeedConnected && !(pstSiteDesc)->bConnected))
+
 /* IP坐席:
  * 1. 初始化为OFFLINE状态
  * 2. 登陆之后就处于AWAY状态/坐席置忙也处于AWAY状态
