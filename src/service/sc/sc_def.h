@@ -332,10 +332,9 @@ typedef enum tagSysStatus{
 
 /* 数据库中任务状态 */
 typedef enum tagTaskStatusInDB{
-    SC_TASK_STATUS_DB_NEW              = 0,/* 新增(未开始) */
+    SC_TASK_STATUS_DB_INIT             = 0,/* 新增(未开始) */
     SC_TASK_STATUS_DB_START,               /* 开始 */
     SC_TASK_STATUS_DB_PAUSED,              /* 暂停 */
-    SC_TASK_STATUS_DB_CONTINUE,            /* 继续 */
     SC_TASK_STATUS_DB_STOP,                /* 结束 */
 
     SC_TASK_STATUS_DB_BUTT
