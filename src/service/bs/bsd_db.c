@@ -764,7 +764,7 @@ VOID bsd_save_original_cdr(BS_INTER_MSG_CDR *pstMsg)
                     , pstCDR->astSessionLeg[i].szAgentNum
                     , pstCDR->astSessionLeg[i].ulStartTimeStamp
                     , pstCDR->astSessionLeg[i].ulRingTimeStamp
-                    , pstCDR->astSessionLeg[i].ulAnswerTimeStamp
+                    , pstCDR->astSessionLeg[i].ulAnswerTimeStamp == 0 ? pstCDR->astSessionLeg[i].ulByeTimeStamp : pstCDR->astSessionLeg[i].ulAnswerTimeStamp
                     , pstCDR->astSessionLeg[i].ulIVRFinishTimeStamp
                     , pstCDR->astSessionLeg[i].ulDTMFTimeStamp
                     , pstCDR->astSessionLeg[i].ulHoldCnt
