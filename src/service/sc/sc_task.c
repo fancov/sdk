@@ -622,7 +622,7 @@ U32 sc_task_stop(SC_TASK_CB_ST *pstTCB)
     }
 
     if (!pstTCB->ucValid
-        || pstTCB->ucTaskStatus != SC_TASK_WORKING)
+        /*|| pstTCB->ucTaskStatus != SC_TASK_WORKING*/)
     {
         DOS_ASSERT(0);
 
@@ -636,6 +636,7 @@ U32 sc_task_stop(SC_TASK_CB_ST *pstTCB)
 
     pthread_mutex_lock(&pstTCB->mutexTaskList);
     pstTCB->ucTaskStatus = SC_TASK_STOP;
+    pstTCB->ucValid = DOS_FALSE;
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
 
     return DOS_SUCC;

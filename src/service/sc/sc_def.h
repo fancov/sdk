@@ -1034,6 +1034,9 @@ U32 sc_ep_transfer_publish_release(SC_SCB_ST * pstSCBPublish);
 
 /* 以下是和号码组设定相关的API */
 U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, S8 *pszNumber, U32 ulLen);
+U32  sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
+U32  sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
+
 
 /* 更新坐席状态任务主函数 */
 VOID *sc_acd_query_agent_status_task(VOID *ptr);

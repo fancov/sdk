@@ -91,9 +91,9 @@ U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc);
 VOID *mon_res_monitor(VOID *p)
 {
     U32 ulRet = 0;
+
     while (1)
     {
-
         pthread_mutex_lock(&g_stMonMutex);
         /*  获取资源信息  */
         ulRet = mon_get_res_info();

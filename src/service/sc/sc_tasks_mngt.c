@@ -251,14 +251,14 @@ U32 sc_task_mngt_delete_task(U32 ulTaskID, U32 ulCustomID)
         SC_TRACE_OUT();
         return SC_HTTP_ERRNO_INVALID_DATA;
     }
-
+#if 0
     if (pstTCB->ucTaskStatus != SC_TASK_WORKING)
     {
         DOS_ASSERT(0);
         SC_TRACE_OUT();
         return SC_HTTP_ERRNO_INVALID_TASK_STATUS;
     }
-
+#endif
     sc_task_stop(pstTCB);
 
     SC_TRACE_OUT();
