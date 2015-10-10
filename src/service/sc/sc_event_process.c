@@ -9367,7 +9367,9 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB)
         }
 
         sc_logr_debug(SC_ACD, "POTS, agent(%u) by userid(%s), signin SUCC", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
         sc_ep_esl_execute("park", NULL, pstSCB->szUUID);
+
         bIsHangUp = DOS_FALSE;
     }
     else if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_AGENT_SIGNOUT, dos_strlen(SC_POTS_AGENT_SIGNOUT)) == 0)
@@ -10809,6 +10811,10 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
             sc_ep_esl_execute("bridge", NULL, pstSCBOther->szUUID);
             sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
         }
+    }
+    else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
+    {
+        /* 坐席长签，二次拨号 */
     }
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
