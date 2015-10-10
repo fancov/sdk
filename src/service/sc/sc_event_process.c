@@ -5237,6 +5237,7 @@ BOOL sc_num_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber)
         return DOS_TRUE;
     }
 
+    pstNumLmt = (SC_NUMBER_LMT_NODE_ST *)pstHashNodeNumLmt->pHandle;
     if (pstNumLmt->ulStatUsed + ulCurrentTime >= pstNumLmt->ulLimit)
     {
         DOS_ASSERT(0);
@@ -5341,10 +5342,11 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
     DLL_NODE_S                      *pstListNode            = NULL;
     SC_NUM_TRANSFORM_DIRECTION_EN   enDirection;
     S8  szNeedTransformNum[SC_TEL_NUMBER_LENGTH]        = {0};
-    U32 ulIndex      = 0;
-    S32 lIndex       = 0;
-    U32 ulNumLen     = 0;
-    U32 ulOffsetLen  = 0;
+    U32 ulIndex         = 0;
+    S32 lIndex          = 0;
+    U32 ulNumLen        = 0;
+    U32 ulOffsetLen     = 0;
+    U32 ulCallerGrpID   = 0;
     time_t ulCurrTime   = time(NULL);
 
     if (DOS_ADDR_INVALID(pstSCB)
@@ -5536,15 +5538,32 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
         /* 完全替代 */
         if (pstNumTransform->szReplaceNum[0] == '*')
         {
-            /* TODO 使用号码组中的号码 */
-            if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER != pstNumTransform->enObject)
+            /* 使用号码组中的号码 */
+            if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER != pstNumTransform->enObject || enNumSelect != SC_NUM_TRANSFORM_SELECT_CALLER)
             {
-                /* 只有企业客户，才可以选择号码组中的号码进行替换 */
+                /* 只有企业客户 和 变换主叫号码时，才可以选择号码组中的号码进行替换 */
                 sc_logr_info(SC_DIALER, "Number transfer rule(%d) for the task %d fail : only a enterprise customers can, choose number in the group number"
                                 , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
 
                 goto fail;
             }
+
+            if (dos_atoul(&pstNumTransform->szReplaceNum[1], &ulCallerGrpID) < 0)
+            {
+                sc_logr_info(SC_DIALER, "Number transfer rule(%d), get caller group id fail.", pstNumTransform->ulID);
+
+                goto fail;
+            }
+
+            if (sc_select_number_in_order(pstSCB->ulCustomID, ulCallerGrpID, szNeedTransformNum, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
+            {
+                sc_logr_info(SC_DIALER, "Number transfer rule(%d), get caller from group id(%u) fail.", pstNumTransform->ulID, ulCallerGrpID);
+
+                goto fail;
+            }
+
+            sc_logr_debug(SC_DIALER, "Number transfer rule(%d), get caller(%s) from group id(%u) succ.", pstNumTransform->ulID, szNeedTransformNum, ulCallerGrpID);
+
         }
         else if (pstNumTransform->szReplaceNum[0] == '\0')
         {
