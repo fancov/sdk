@@ -2236,6 +2236,9 @@ U32 sc_task_concurrency_minus (U32 ulTCBNo)
         return DOS_FAIL;
     }
 
+    /* 如果任务结束后，还有一通电话正在通话中，
+        当这同电话挂断时，下面这个条件不成立，
+        则 ulCurrentConcurrency 会为1， 则这个任务永远也不会退出了
     if (!g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucValid)
     {
         DOS_ASSERT(0);
@@ -2243,6 +2246,7 @@ U32 sc_task_concurrency_minus (U32 ulTCBNo)
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
+    */
 
     pthread_mutex_lock(&g_pstTaskMngtInfo->pstTaskList[ulTCBNo].mutexTaskList);
     if (g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ulCurrentConcurrency > 0)
