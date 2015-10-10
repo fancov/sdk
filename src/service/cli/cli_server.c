@@ -118,7 +118,7 @@ S32 cli_server_process_print(U32 ulIndex, S32 argc, S8 **argv)
     ulLength = snprintf(szBuff, sizeof(szBuff), "%-32s%-16s%-10s\r\n", "Name", "Version", "Status");
     telnet_send_data(ulIndex, MSG_TYPE_CMD_RESPONCE, szBuff, ulLength);
 
-    for (i=0; i<MAX_PROCESS_NUM; i++)
+    for (i = 0; i < MAX_PROCESS_NUM; i++)
     {
         if (g_pstProcessList[i]->bVaild)
         {
@@ -371,7 +371,7 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
     cli_logr_debug("Processing process register message. Process:%s", pszName);
 
     /* 所指定的进程是否已注册了,如果注册了需要更新对端地址 */
-    for (i=0; i<MAX_PROCESS_NUM; i++)
+    for (i = 0; i < MAX_PROCESS_NUM; i++)
     {
         if (g_pstProcessList[i]->bVaild
                 && dos_strcmp(g_pstProcessList[i]->szProcessName, pszName) == 0)
@@ -416,7 +416,7 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
     if (!g_pstProcessList[i]->bActive)
     {
         g_pstProcessList[i]->bActive = DOS_TRUE;
-        cli_logr_info("Process \"%s\" registe successfully.", pszName);
+        cli_logr_info("Process \"%s\" register successfully.", pszName);
     }
 
     cli_server_send_reg_rsp2process(g_pstProcessList[i]);

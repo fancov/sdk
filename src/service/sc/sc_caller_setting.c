@@ -27,8 +27,6 @@ static U32 sc_get_dst_by_src(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, U32* 
 static U32 sc_get_number_by_callerid(U32 ulCustomerID, U32 ulCallerID, S8 *pszNumber, U32 ulLen);
 static U32 sc_get_number_by_didid(U32 ulDidID, S8* pszNumber, U32 ulLen);
 static U32 sc_get_policy_by_grpid(U32 ulGroupID);
-static U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
-static U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 static U32 sc_get_numbers_of_did(U32 ulCustomerID);
 static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen);
 #if 0
@@ -489,7 +487,7 @@ static U32 sc_get_policy_by_grpid(U32 ulGroupID)
  *       U32 ulLen         号码缓存长度，输入参数
  * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
  **/
-static U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen)
+U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen)
 {
     U32  ulHashIndex = U32_BUTT, ulNewNo = U32_BUTT, ulCount = 0, ulTempNo = 0;
     HASH_NODE_S *pstHashNode = NULL;
@@ -649,7 +647,7 @@ static U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumbe
  *       U32 ulLen         号码缓存长度
  * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
  **/
-static U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen)
+U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen)
 {
     S32  lNum = U32_BUTT, lLoop = U32_BUTT;
     BOOL bFound = DOS_FALSE;
