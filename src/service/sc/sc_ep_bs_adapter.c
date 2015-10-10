@@ -405,6 +405,12 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
             aucBSSrvList[ulBSSrvIndex] = BS_SERV_INBAND_CALL;
             ulBSSrvIndex++;
         }
+
+        if (ulBSSrvIndex < ulBSSrvCnt)
+        {
+            aucBSSrvList[ulBSSrvIndex] = BS_SERV_INTER_CALL;
+            ulBSSrvIndex++;
+        }
     }
     else
     {

@@ -50,7 +50,7 @@ typedef U32 (*log_stop)();
 typedef U32 (*log_set_level)(U32);
 
 /* 日志模块写函数类型 */
-typedef VOID (*log_write_rlog)(const S8 *, const S8 *, const S8 *, const S8 *, U32);
+typedef VOID (*log_write_rlog)(time_t, const S8 *, const S8 *, const S8 *, U32);
 
 /* 日志模块写函数类型 */
 typedef VOID (*log_write_olog)(const S8 *, const S8 *, const S8 *, const S8*, const S8 *);

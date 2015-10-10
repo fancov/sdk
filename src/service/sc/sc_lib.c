@@ -1178,10 +1178,9 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             /* 将数据库中的状态，转换成sc中的状态 SC_TASK_STATUS_DB_EN -> SC_TASK_STATUS_EN */
             switch (ulStatus)
             {
-                case SC_TASK_STATUS_DB_NEW:
+                case SC_TASK_STATUS_DB_INIT:
                 case SC_TASK_STATUS_DB_START:
                 case SC_TASK_STATUS_DB_PAUSED:
-                case SC_TASK_STATUS_DB_CONTINUE:
                     break;
                 case SC_TASK_STATUS_DB_STOP:
                 default:

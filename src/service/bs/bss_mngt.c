@@ -2818,6 +2818,11 @@ VOID bss_generate_record_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
         pstCDR->ulTimeLen = 1;
     }
 
+    if (pstCDR->ulRecordTimeStamp == 0)
+    {
+        pstCDR->ulRecordTimeStamp = pstSessionLeg->ulByeTimeStamp;
+    }
+
     pstMsgNode->pHandle = (VOID *)pstCDR;
 
     bs_trace(BS_TRACE_CDR, LOG_LEVEL_DEBUG,
@@ -2910,6 +2915,11 @@ VOID bss_generate_settle_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
     {
         /* 时间太短,保护处理 */
         pstCDR->ulLen = 1;
+    }
+
+    if (pstCDR->ulTimeStamp == 0)
+    {
+        pstCDR->ulTimeStamp = pstSessionLeg->ulByeTimeStamp;
     }
 
     bs_trace(BS_TRACE_CDR, LOG_LEVEL_DEBUG,
@@ -3008,6 +3018,11 @@ VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType)
         pstCDR->ulTimeLen = 1;
     }
 
+    if (pstCDR->ulAnswerTimeStamp == 0)
+    {
+        /* 没有接听，将answer改为结束时间 */
+        pstCDR->ulAnswerTimeStamp = pstSessionLeg->ulByeTimeStamp;
+    }
 
     bs_trace(BS_TRACE_CDR, LOG_LEVEL_DEBUG,
              "Generate voice cdr, "
@@ -3077,6 +3092,11 @@ VOID bss_generate_message_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType)
     pstCDR->usPeerTrunkID = pstSessionLeg->usPeerTrunkID;
     pstCDR->usTerminateCause = pstSessionLeg->usTerminateCause;
     pstCDR->ucServType = ucServType;
+
+    if (pstCDR->ulArrivedTimeStamp == 0)
+    {
+        pstCDR->ulArrivedTimeStamp = pstSessionLeg->ulByeTimeStamp;
+    }
 
     pstMsgNode->pHandle = (VOID *)pstCDR;
 

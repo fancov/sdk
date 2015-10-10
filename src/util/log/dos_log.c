@@ -71,7 +71,7 @@ static pthread_t         g_pthIDLogTask;
 
 
 /* 本地函数申明 */
-static char * dos_log_get_time(time_t _time, S8 *sz_time, S32 i_len);
+//static char * dos_log_get_time(time_t _time, S8 *sz_time, S32 i_len);
 
 /**
  * 函数：S32 dos_log_set_cli_level(U32 ulLeval)
@@ -292,7 +292,7 @@ void *dos_log_main_loop(void *_ptr)
                 {
                     if (g_astLogModList[ulIndex].pstLogModule->fnWriteRlog)
                     {
-                        g_astLogModList[ulIndex].pstLogModule->fnWriteRlog(dos_log_get_time(pstLogData->stTime, szTime, sizeof(szTime))
+                        g_astLogModList[ulIndex].pstLogModule->fnWriteRlog(pstLogData->stTime
                                             , pstLogData->lType >= LOG_TYPE_INVAILD ? "" : g_pszLogType[pstLogData->lType]
                                             , pstLogData->lLevel >= LOG_LEVEL_INVAILD ? "" : g_pszLogLevel[pstLogData->lLevel]
                                             , pstLogData->pszMsg
@@ -580,7 +580,7 @@ DLLEXPORT VOID dos_vlog(S32 _lLevel, S32 _lType, const S8 *format, ...)
  * 返回值：
  *      返回输出缓存的首地址
  * */
-static char * dos_log_get_time(time_t _stTime, S8 *szTime, S32 lLen)
+S8 * dos_log_get_time(time_t _stTime, S8 *szTime, S32 lLen)
 {
     struct tm *t = NULL;
 

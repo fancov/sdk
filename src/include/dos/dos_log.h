@@ -134,6 +134,8 @@ DLLEXPORT S32 dos_log_set_cli_level(U32 ulLeval);
 #define olog_emerg(_pszOpterator, _pszOpterand, _ulResult, _format, args... ) \
         dos_volog(LOG_LEVEL_EMERG, (_pszOpterator), (_pszOpterand), (_ulResult), (_format), ##args)
 
+S8 * dos_log_get_time(time_t _stTime, S8 *szTime, S32 lLen);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

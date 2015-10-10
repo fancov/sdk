@@ -203,7 +203,7 @@ U32 log_db_stop()
 }
 
 
-VOID log_db_write_rlog(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLevel, const S8 *_pszMsg, U32 _ulLevel)
+VOID log_db_write_rlog(time_t _stTime, const S8 *_pszType, const S8 *_pszLevel, const S8 *_pszMsg, U32 _ulLevel)
 {
     U32         ulLen     = 0;
     S8          *pszQuery = NULL;
@@ -247,9 +247,9 @@ VOID log_db_write_rlog(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLev
 
     /* Ìî³äÊý¾Ý */
     ulLen = LOG_DB_MAX_BUFF_LEN - sizeof(DLL_NODE_S);
-    dos_snprintf(pszQuery, ulLen, "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
+    dos_snprintf(pszQuery, ulLen, "INSERT INTO %s VALUES(NULL, %u, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
                 , "tbl_log"
-                , _pszTime
+                , _stTime
                 , _pszLevel
                 , _pszType
                 , "init"

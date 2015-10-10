@@ -671,7 +671,7 @@ U32 sc_task_continue(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_CONTINUE, NULL);
+    sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_START, NULL);
 
     pthread_mutex_lock(&pstTCB->mutexTaskList);
     pstTCB->ucTaskStatus = SC_TASK_WORKING;

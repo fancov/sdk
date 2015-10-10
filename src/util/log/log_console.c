@@ -36,8 +36,10 @@ U32 log_console_stop()
 }
 
 
-VOID log_console_write_rlog(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLevel, const S8 *_pszMsg, U32 _ulLevel)
+VOID log_console_write_rlog(time_t _stTime, const S8 *_pszType, const S8 *_pszLevel, const S8 *_pszMsg, U32 _ulLevel)
 {
+    S8 szTime[32]   = { 0 };
+
     if (!m_stConsoleLog.blInited || !m_stConsoleLog.blIsRunning)
     {
         return;
@@ -49,7 +51,7 @@ VOID log_console_write_rlog(const S8 *_pszTime, const S8 *_pszType, const S8 *_p
     }
 
     printf("%-20s[%-8s][%-10s][%-8s] %s\n"
-            , _pszTime, _pszLevel, dos_get_process_name(), _pszType, _pszMsg);
+            , dos_log_get_time(_stTime, szTime, sizeof(szTime)), _pszLevel, dos_get_process_name(), _pszType, _pszMsg);
 }
 
 VOID log_console_write_olog(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_pszOpterand, const S8* _pszResult, const S8 *_pszMsg)
