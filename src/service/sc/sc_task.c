@@ -360,7 +360,7 @@ VOID *sc_task_runtime(VOID *ptr)
         {
             if (pstTCB->ulCurrentConcurrency != 0)
             {
-                sc_logr_info(SC_TASK, "Cannot make call for stoped status. Task : %u.", pstTCB->ulTaskID);
+                sc_logr_info(SC_TASK, "Cannot make call for stoped status. Task : %u, CurrentConcurrency : %u.", pstTCB->ulTaskID, pstTCB->ulCurrentConcurrency);
                 ulTaskInterval = 1000;
                 continue;
             }
