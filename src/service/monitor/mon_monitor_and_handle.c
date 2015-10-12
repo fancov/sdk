@@ -113,6 +113,15 @@ VOID *mon_res_monitor(VOID *p)
         }
         mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Handle Exception SUCC.");
 
+        /*  将数据记录至数据库  */
+        ulRet = mon_add_data_to_db();
+        if (DOS_SUCC != ulRet)
+        {
+            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Add record to DB FAIL.");
+            exit(3);
+        }
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Add record to DB SUCC.");
+
         pthread_cond_signal(&g_stMonCond);
         pthread_mutex_unlock(&g_stMonMutex);
         sleep(5);
@@ -129,6 +138,8 @@ VOID *mon_res_monitor(VOID *p)
 VOID* mon_warning_handle(VOID *p)
 {
      U32 ulRet = 0;
+     S32  lRet = 0;
+     MON_MSG_S *pstMsg = NULL;
 
      g_pstMsgQueue =  mon_get_warning_msg_queue();
      if(DOS_ADDR_INVALID(g_pstMsgQueue))
@@ -148,14 +159,13 @@ VOID* mon_warning_handle(VOID *p)
                  break;
             }
 
-            /*  将数据记录至数据库  */
-            ulRet = mon_add_data_to_db();
-            if (DOS_SUCC != ulRet)
+            pstMsg = g_pstMsgQueue->pstHead;
+            ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
+            if(DOS_SUCC != lRet)
             {
-                mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Add record to DB FAIL.");
-                exit(3);
+                mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
+                return DOS_FAIL;
             }
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Add record to DB SUCC.");
 
             ulRet = mon_warning_msg_de_queue(g_pstMsgQueue);
             if(DOS_SUCC != ulRet)
@@ -402,14 +412,6 @@ static U32 mon_handle_excp()
 
     if (DOS_TRUE == bAddToDB)
     {
-        /* 将记录插入数据库 */
-        ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8 *)pstMsg->msg);
-        if(DOS_SUCC != lRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
-            return DOS_FAIL;
-        }
-
         /* 将消息加入消息队列 */
         ulRet = mon_warning_msg_en_queue(pstMsg);
         if(DOS_SUCC != ulRet)
@@ -498,13 +500,6 @@ static U32 mon_handle_excp()
 
     if (DOS_TRUE == bAddToDB)
     {
-        ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
-        if(DOS_SUCC != lRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
-            return DOS_FAIL;
-        }
-
         /* 将消息加入消息队列 */
         ulRet = mon_warning_msg_en_queue(pstMsg);
         if(DOS_SUCC != ulRet)
@@ -579,13 +574,6 @@ static U32 mon_handle_excp()
 
     if (DOS_TRUE == bAddToDB)
     {
-        ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
-        if(DOS_SUCC != lRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
-            return DOS_FAIL;
-        }
-
         /* 将消息加入消息队列 */
         ulRet = mon_warning_msg_en_queue(pstMsg);
         if(DOS_SUCC != ulRet)
@@ -662,13 +650,6 @@ static U32 mon_handle_excp()
 
     if (DOS_TRUE == bAddToDB)
     {
-        ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
-        if(DOS_SUCC != lRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
-            return DOS_FAIL;
-        }
-
         /* 将消息加入消息队列 */
         ulRet = mon_warning_msg_en_queue(pstMsg);
         if(DOS_SUCC != ulRet)
@@ -750,13 +731,6 @@ static U32 mon_handle_excp()
 
     if (DOS_TRUE == bAddToDB)
     {
-        ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
-        if(DOS_SUCC != lRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
-            return DOS_FAIL;
-        }
-
         /* 将消息加入消息队列 */
         ulRet = mon_warning_msg_en_queue(pstMsg);
         if(DOS_SUCC != ulRet)
@@ -834,13 +808,6 @@ static U32 mon_handle_excp()
 
     if (DOS_TRUE == bAddToDB)
     {
-        ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
-        if(DOS_SUCC != lRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
-            return DOS_FAIL;
-        }
-
         /* 将消息加入消息队列 */
         ulRet = mon_warning_msg_en_queue(pstMsg);
         if(DOS_SUCC != ulRet)
