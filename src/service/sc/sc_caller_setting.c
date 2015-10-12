@@ -948,33 +948,24 @@ static U32 sc_get_numbers_of_did(U32 ulCustomerID)
  * 参数: U32 ulAgentID  坐席id
  * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
  **/
-static U32  sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
+static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
 {
-    U32 ulHashIndex = U32_BUTT, ulRet = U32_BUTT;
+    U32 ulHashIndex = U32_BUTT;
     HASH_NODE_S  *pstHashNode = NULL;
     SC_DID_NODE_ST *pstDid = NULL;
-    SC_ACD_AGENT_INFO_ST *pstAgent = NULL;
+    SC_ACD_AGENT_INFO_ST stAgent;
     BOOL bFound = DOS_FALSE;
 
     /* 先根据坐席id查找sip_id */
-    ulRet = sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
-    if (DOS_SUCC != ulRet)
-    {
-        sc_logr_error(SC_FUNC, "Cannot find agent %u!", ulAgentID);
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex , &ulAgentID, sc_acd_agent_hash_find);
-    if (DOS_ADDR_INVALID(pstHashNode)
-        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    if (sc_acd_get_agent_by_id(&stAgent, ulAgentID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Find agent %u FAIL.", ulAgentID);
-        return DOS_FAIL;
-    }
-    pstAgent = (SC_ACD_AGENT_INFO_ST *)pstHashNode->pHandle;
-    /* 然后通过sip_id去查找 */
 
+        return DOS_FAIL;
+    }
+
+    sc_logr_debug(SC_FUNC, "Get agent SUCC.(ulAgentID : %u, sipID : %u).", ulAgentID, stAgent.ulSIPUserID);
+    /* 然后通过sip_id去查找 */
     HASH_Scan_Table(g_pstHashDIDNum, ulHashIndex)
     {
         HASH_Scan_Bucket(g_pstHashDIDNum, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -986,11 +977,12 @@ static U32  sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
             }
 
             pstDid = (SC_DID_NODE_ST *)pstHashNode->pHandle;
-            if (DOS_FALSE != pstDid->bValid && pstDid->ulBindID == pstAgent->ulSIPUserID && SC_DID_BIND_TYPE_SIP == pstDid->ulBindType)
+            if (DOS_FALSE != pstDid->bValid && pstDid->ulBindID == stAgent.ulSIPUserID && SC_DID_BIND_TYPE_SIP == pstDid->ulBindType)
             {
                 bFound = DOS_TRUE;
                 pstDid->ulTimes++;
                 dos_snprintf(pszNumber, ulLen, "%s", pstDid->szDIDNum);
+                sc_logr_info(SC_FUNC, "Get did by agent SUCC.(ulAgentID:%u, sipID : %u).", ulAgentID, stAgent.ulSIPUserID);
                 break;
             }
         }
