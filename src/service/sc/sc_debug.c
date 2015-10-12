@@ -1898,10 +1898,10 @@ U32 sc_show_numlmt(U32 ulIndex, U32 ulID)
     HASH_NODE_S *pstHashNode = NULL;
     S8  szBuff[256] = {0};
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%6s%7s%6s%6s%10s%10s%10s%24s"
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%6s%7s%10s%6s%10s%10s%10s%24s"
                     , "ID", "GrpID", "Handle", "Limit", "Cycle", "Type", "NumberID", "StatUsed", "Prefix");
     cli_out_string(ulIndex, szBuff);
-    cli_out_string(ulIndex, "\r\n------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, "\r\n----------------------------------------------------------------------------------------");
 
     HASH_Scan_Table(g_pstHashNumberlmt, ulHashIndex)
     {
@@ -1919,7 +1919,7 @@ U32 sc_show_numlmt(U32 ulIndex, U32 ulID)
                 continue;
             }
 
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%6u%7u%6u%6u%10s%10u%10u%24s"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%6u%7u%10u%6u%10s%10u%10u%24s"
                             , pstNumlmt->ulID
                             , pstNumlmt->ulGrpID
                             , pstNumlmt->ulHandle

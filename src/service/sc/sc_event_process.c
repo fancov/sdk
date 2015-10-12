@@ -2948,7 +2948,7 @@ S32 sc_load_gw_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszN
         return DOS_FAIL;
     }
 
-    for (lIndex=0; lIndex < lCount; lIndex++)
+    for (lIndex = 0; lIndex < lCount; lIndex++)
     {
         if (DOS_ADDR_INVALID(aszNames[lIndex])
             || DOS_ADDR_INVALID(aszValues[lIndex]))

@@ -100,7 +100,7 @@ VOID *mon_res_monitor(VOID *p)
         if (DOS_SUCC != ulRet)
         {
             mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Get resource Information FAIL.");
-            return NULL;
+            exit(1);
         }
         mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Get resource Information SUCC.");
 
@@ -109,18 +109,9 @@ VOID *mon_res_monitor(VOID *p)
         if (DOS_SUCC != ulRet)
         {
             mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Handle Exception FAIL.");
-            return NULL;
+            exit(2);
         }
         mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Handle Exception SUCC.");
-
-        /*  将数据记录至数据库  */
-        ulRet = mon_add_data_to_db();
-        if (DOS_SUCC != ulRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Add record to DB FAIL.");
-            return NULL;
-        }
-        mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Add record to DB SUCC.");
 
         pthread_cond_signal(&g_stMonCond);
         pthread_mutex_unlock(&g_stMonMutex);
@@ -143,7 +134,7 @@ VOID* mon_warning_handle(VOID *p)
      if(DOS_ADDR_INVALID(g_pstMsgQueue))
      {
         DOS_ASSERT(0);
-        return NULL;
+        exit(5);
      }
 
      while (1)
@@ -157,11 +148,20 @@ VOID* mon_warning_handle(VOID *p)
                  break;
             }
 
+            /*  将数据记录至数据库  */
+            ulRet = mon_add_data_to_db();
+            if (DOS_SUCC != ulRet)
+            {
+                mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Add record to DB FAIL.");
+                exit(3);
+            }
+            mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Add record to DB SUCC.");
+
             ulRet = mon_warning_msg_de_queue(g_pstMsgQueue);
             if(DOS_SUCC != ulRet)
             {
                 mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Msg DeQueue FAIL.");
-                break;
+                exit(4);
             }
        }
 
@@ -920,7 +920,7 @@ static U32 mon_add_data_to_db()
     }
 
     pstCurTime = localtime(&ulCur);
-    dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO tbl_syssrc%04u%02u(ctime,phymem," \
+    dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO syssrc.tbl_syssrc%04u%02u(ctime,phymem," \
         "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate,procmem_pct,proccpu_pct)" \
         " VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',%u,%u,%u,%u,%d,%u,%u,%u,%u,%u,%u,%u,%u);"
         , pstCurTime->tm_year + 1900
@@ -983,7 +983,7 @@ U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc)
        return DOS_FAIL;
     }
 
-    dos_snprintf(szSQLCmd, SQL_CMD_MAX_LENGTH, "INSERT INTO tbl_alarmlog(" \
+    dos_snprintf(szSQLCmd, SQL_CMD_MAX_LENGTH, "INSERT INTO syssrc.tbl_alarmlog(" \
                "ctime,warning,cause,type,object,content,cycle,status)" \
                " VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',concat(\'%s\', lower(hex(%u))),%u,%u," \
                "%u,\'%s\',%u,%u);"
