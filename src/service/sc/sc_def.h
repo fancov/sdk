@@ -622,6 +622,7 @@ typedef struct tagSCSCB{
     U32       ulAllocTime;
     U32       ulCustomID;                         /* 当前呼叫属于哪个客户 */
     U32       ulAgentID;                          /* 当前呼叫属于哪个客户 */
+    U32       ulOtherAgentID;                     /* 在坐席的web页面上上呼叫坐席时，被呼叫坐席的id */
     U32       ulTaskID;                           /* 当前任务ID */
     U32       ulTrunkID;                          /* 中继ID */
     U32       ulTrunkCount;                       /* 中继的个数 */
@@ -1025,7 +1026,7 @@ SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
 U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, S8 *pszCallee, U32 ulFlag, U32 ulCalleeAgentID);
 U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum);
 BOOL sc_ep_check_extension(S8 *pszNum, U32 ulCustomerID);
-U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService);
+U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCaller);
 U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMING_EN enTiming, SC_NUM_TRANSFORM_SELECT_EN enNumSelect);
 U32 sc_ep_get_eix_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength);
 U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService);

@@ -926,9 +926,9 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n---------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%5s%8s%8s%10s%8s%8s%8s%8s%7s%8s%12s%12s%12s%9s%10s%14s%12s%12s%9s"
+                    , "\r\n%5s%8s%8s%10s%8s%8s%8s%8s%7s%8s%12s%12s%12s%9s%10s%14s%12s%12s%9s%9s"
                     , "ID", "Status", "NeedCon", "Connected", "Custom", "Group1", "Group2"
-                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile", "TT_number", "Sip ID");
+                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile", "TT_number", "Sip ID", "ScbNO");
     cli_out_string(ulIndex, szCmdBuff);
 
     HASH_Scan_Table(g_pstAgentList, ulHashIndex)
@@ -986,7 +986,7 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%5u%8s%8s%10s%8u%8u%8u%8s%7s%8s%12s%12s%12s%9u%10s%14s%12s%12s%9u"
+                        , "\r\n%5u%8s%8s%10s%8u%8u%8u%8s%7s%8s%12s%12s%12s%9u%10s%14s%12s%12s%9u%9u"
                         , pstAgentQueueNode->pstAgentInfo->ulSiteID
                         , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucStatus)
                         , pstAgentQueueNode->pstAgentInfo->bNeedConnected ? "Y" : "N"
@@ -1005,7 +1005,8 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
                         , pstAgentQueueNode->pstAgentInfo->szTelePhone
                         , pstAgentQueueNode->pstAgentInfo->szMobile
                         , pstAgentQueueNode->pstAgentInfo->szTTNumber
-                        , pstAgentQueueNode->pstAgentInfo->ulSIPUserID);
+                        , pstAgentQueueNode->pstAgentInfo->ulSIPUserID
+                        , pstAgentQueueNode->pstAgentInfo->usSCBNo);
             cli_out_string(ulIndex, szCmdBuff);
             ulTotal++;
         }

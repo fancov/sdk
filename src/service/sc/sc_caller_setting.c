@@ -769,6 +769,7 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
     }
     /* 生成随机数 */
     lRandomNum = sc_generate_random(1, ulCount);
+    sc_logr_debug(SC_FUNC, "randomnum : %d", lRandomNum);
     HASH_Scan_Table(g_pstHashDIDNum, ulHashIndex)
     {
         HASH_Scan_Bucket(g_pstHashDIDNum, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -790,11 +791,13 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
                 }
             }
         }
-        if (DOS_FALSE == bFound)
+
+        if (DOS_TRUE == bFound)
         {
             break;
         }
     }
+
     if (DOS_FALSE == bFound)
     {
         DOS_ASSERT(0);
@@ -930,7 +933,7 @@ static U32 sc_get_numbers_of_did(U32 ulCustomerID)
     S32  lRet = U32_BUTT;
     U32  ulCount;
 
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT COUNT(id) FROM tbl_sipassign WHERE customer_id=%u;", ulCustomerID);
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT COUNT(id) FROM tbl_sipassign WHERE customer_id=%u and status=1;", ulCustomerID);
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_get_numbers_of_did_cb, &ulCount, NULL);
     if (DB_ERR_SUCC != lRet)
     {

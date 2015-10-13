@@ -218,10 +218,12 @@ esl_exec_fail:
 }
 
 /* 这个地方有个问题。 g_pstDialerHandle->stHandle 被多个线程使用，会不会出现，一个线程刚刚发送了呼叫命令。名外一个线程收到了响应?*/
-U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService)
+U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCaller)
 {
     S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
     S8    *pszEventHeader = NULL, *pszEventBody = NULL;
+    S8    szNumber[SC_TEL_NUMBER_LENGTH] = {0};
+    U32   ulRet;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -230,6 +232,31 @@ U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService)
         return DOS_FAIL;
     }
 
+    if (bIsUpdateCaller)
+    {
+        /* 调用主叫号码组接口，将主叫号码变更为对应的did */
+        if (U32_BUTT == pstSCB->ulAgentID)
+        {
+            sc_logr_info(SC_DIALER, "Call to IP not get agent ID by scd(%u)", pstSCB->usSCBNo);
+
+            goto go_on;
+        }
+
+        /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
+        ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, pstSCB->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
+        if (ulRet != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+            sc_logr_info(SC_DIALER, "Call to IP customID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+
+            goto go_on;
+        }
+
+        sc_logr_info(SC_DIALER, "Call to IP customID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+        dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
+        pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+    }
+go_on:
     dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
                     , "bgapi originate {main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s &park \r\n"
                     , ulMainService

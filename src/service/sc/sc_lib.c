@@ -253,6 +253,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->ulAllocTime = 0;
     pstSCB->ulCustomID = U32_BUTT;             /* 当前呼叫属于哪个客户 */
     pstSCB->ulAgentID = U32_BUTT;              /* 当前呼叫属于哪个客户 */
+    pstSCB->ulOtherAgentID = U32_BUTT;
     pstSCB->ulTaskID = U32_BUTT;               /* 当前任务ID */
     pstSCB->ulTrunkID = U32_BUTT;              /* 中继ID */
     pstSCB->ulTrunkCount = 0;
