@@ -218,10 +218,12 @@ esl_exec_fail:
 }
 
 /* 这个地方有个问题。 g_pstDialerHandle->stHandle 被多个线程使用，会不会出现，一个线程刚刚发送了呼叫命令。名外一个线程收到了响应?*/
-U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService)
+U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCaller)
 {
     S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
     S8    *pszEventHeader = NULL, *pszEventBody = NULL;
+    S8    szNumber[SC_TEL_NUMBER_LENGTH] = {0};
+    U32   ulRet;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -230,6 +232,31 @@ U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService)
         return DOS_FAIL;
     }
 
+    if (bIsUpdateCaller)
+    {
+        /* 调用主叫号码组接口，将主叫号码变更为对应的did */
+        if (U32_BUTT == pstSCB->ulAgentID)
+        {
+            sc_logr_info(SC_DIALER, "Call to IP not get agent ID by scd(%u)", pstSCB->usSCBNo);
+
+            goto go_on;
+        }
+
+        /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
+        ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, pstSCB->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
+        if (ulRet != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+            sc_logr_info(SC_DIALER, "Call to IP customID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+
+            goto go_on;
+        }
+
+        sc_logr_info(SC_DIALER, "Call to IP customID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+        dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
+        pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+    }
+go_on:
     dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
                     , "bgapi originate {main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s &park \r\n"
                     , ulMainService
@@ -492,10 +519,13 @@ VOID *sc_dialer_runtime(VOID * ptr)
     list_t                  *pstList;
     SC_CALL_QUEUE_NODE_ST   *pstListNode;
     SC_SCB_ST               *pstSCB;
+    SC_SCB_ST               *pstOtherSCB;
     struct timespec         stTimeout;
     U32                     ulRet = ESL_FAIL;
     U32                     ulIdelCPU = 0;
     U32                     ulIdelCPUConfig = 0;
+    U32                     ulAgentID = U32_BUTT;
+    S8                      szNumber[SC_TEL_NUMBER_LENGTH] = {0};
 
     if (config_get_min_iedl_cpu(&ulIdelCPUConfig) != DOS_SUCC)
     {
@@ -600,6 +630,43 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 continue;
             }
 
+            /* 主叫号码组 */
+            if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL)
+                && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
+            {
+                /* 查找呼叫的分机绑定的坐席 */
+                pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
+                if (DOS_ADDR_INVALID(pstOtherSCB))
+                {
+                    sc_logr_info(SC_DIALER, "Not get other scb. scbNo : %u, other : %u", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+
+                    goto go_on;
+                }
+
+                ulAgentID = pstOtherSCB->ulAgentID;
+                if (U32_BUTT == ulAgentID)
+                {
+                    sc_logr_info(SC_DIALER, "Not get agent ID by scd(%u)", pstSCB->usOtherSCBNo);
+
+                    goto go_on;
+                }
+
+                /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
+                ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
+                if (ulRet != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                    sc_logr_info(SC_DIALER, "CustomID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, ulAgentID);
+
+                    goto go_on;
+                }
+
+                sc_logr_info(SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
+                dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
+                pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+            }
+
+go_on:
             /* 路由前号码变换 主叫 */
             if (sc_ep_num_transform(pstSCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE, SC_NUM_TRANSFORM_SELECT_CALLER) != DOS_SUCC)
             {

@@ -43,9 +43,10 @@ U32 log_cli_stop()
 }
 
 
-VOID log_cli_write_rlog(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLevel, const S8 *_pszMsg, U32 _ulLevel)
+VOID log_cli_write_rlog(time_t _stTime, const S8 *_pszType, const S8 *_pszLevel, const S8 *_pszMsg, U32 _ulLevel)
 {
     S8 szBuff[1024] = { 0 };
+    S8 szTime[32]   = { 0 };
     U32 ulLength;
 
     if (!m_stCliLog.blInited || !m_stCliLog.blIsRunning)
@@ -61,7 +62,7 @@ VOID log_cli_write_rlog(const S8 *_pszTime, const S8 *_pszType, const S8 *_pszLe
 
     /* snprintf返回处理的字节数，不包括 字符串结束符的 */
     ulLength = snprintf(szBuff, sizeof(szBuff), "%-20s[%-8s][%-10s][%-8s] %s\r\n"
-                         , _pszTime, _pszLevel, dos_get_process_name(), _pszType, _pszMsg);
+                         , dos_log_get_time(_stTime, szTime, sizeof(szTime)), _pszLevel, dos_get_process_name(), _pszType, _pszMsg);
     if (ulLength < sizeof(szBuff))
     {
         szBuff[ulLength] = '\0';

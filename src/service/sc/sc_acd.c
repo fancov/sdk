@@ -580,6 +580,10 @@ U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB)
             if (dos_strcmp(pstAgentData->szUserID, szUserID) == 0)
             {
                 pstSCB->ulAgentID = pstAgentData->ulSiteID;
+                pstSCB->bRecord = pstAgentData->bRecord;
+                dos_strncpy(pstSCB->szSiteNum, pstAgentData->szEmpNo, sizeof(pstSCB->szSiteNum));
+                pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
+
                 pthread_mutex_lock(&pstAgentData->mutexLock);
                 pstAgentData->usSCBNo = pstSCB->usSCBNo;
                 pthread_mutex_unlock(&pstAgentData->mutexLock);

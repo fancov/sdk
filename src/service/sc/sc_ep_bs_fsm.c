@@ -101,7 +101,6 @@ U32 sc_play_balance(SC_SCB_ST *pstSCB)
 
     if (lBalance < 0)
     {
-        /* TODO ¸º */
         lBalance = 0 - lBalance;
         ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
                          , "%s/fu.wav!", SC_TASK_AUDIO_PATH);
@@ -451,7 +450,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
             if (pstSCB->ulCustomID == sc_ep_get_custom_by_sip_userid(pstSCB->szCalleeNum)
                 || sc_ep_check_extension(pstSCB->szCalleeNum, pstSCB->ulCustomID))
             {
-                ulRet = sc_dial_make_call2ip(pstSCB, pstSCB->ucMainService);
+                ulRet = sc_dial_make_call2ip(pstSCB, pstSCB->ucMainService, DOS_TRUE);
                 if (ulRet != DOS_SUCC)
                 {
                     DOS_ASSERT(0);

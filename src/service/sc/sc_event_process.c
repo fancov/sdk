@@ -656,6 +656,7 @@ VOID sc_ep_tt_init(SC_TT_NODE_ST *pstTTNumber)
         pstTTNumber->ulID = U32_BUTT;
         pstTTNumber->szAddr[0] = '\0';
         pstTTNumber->szPrefix[0] = '\10';
+        pstTTNumber->ulPort = 0;
     }
 }
 
@@ -991,20 +992,21 @@ S32 sc_ep_caller_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
 S32 sc_ep_caller_grp_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
 {
     SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
-    U32  ulCustomerID = U32_BUTT;
+    U32  ulID = U32_BUTT;
 
     if (DOS_ADDR_INVALID(pObj)
-            || DOS_ADDR_INVALID(pstHashNode)
-            || DOS_ADDR_INVALID(pstHashNode->pHandle))
+        || DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
+        sc_logr_error(SC_FUNC, "pObj:%p, pstHashNode:%p, pHandle:%p", pObj, pstHashNode, pstHashNode->pHandle);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
-    ulCustomerID = *(U32 *)pObj;
+    ulID = *(U32 *)pObj;
     pstCallerGrp = pstHashNode->pHandle;
 
-    if (ulCustomerID == pstCallerGrp->ulID)
+    if (ulID == pstCallerGrp->ulID)
     {
         return DOS_SUCC;
     }
@@ -1462,7 +1464,7 @@ U32 sc_caller_grp_delete(U32 ulCallerGrpID)
         return DOS_FAIL;
     }
     pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
-    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
+    pthread_mutex_lock(&g_mutexHashCallerGrp);
     while (1)
     {
         if (DLL_Count(&pstCallerGrp->stCallerList) == 0)
@@ -1480,7 +1482,7 @@ U32 sc_caller_grp_delete(U32 ulCallerGrpID)
         dos_dmem_free(pstListNode);
         pstListNode = NULL;
     }
-    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+    pthread_mutex_unlock(&g_mutexHashCallerGrp);
     hash_delete_node(g_pstHashCallerGrp, pstHashNode, ulHashIndex);
     dos_dmem_free(pstHashNode->pHandle);
     pstHashNode->pHandle = NULL;
@@ -1492,11 +1494,10 @@ U32 sc_caller_grp_delete(U32 ulCallerGrpID)
 U32 sc_caller_setting_delete(U32 ulSettingID)
 {
     HASH_NODE_S  *pstHashNode = NULL;
-    SC_CALLER_SETTING_ST *pstSetting = NULL;
     U32 ulHashIndex = U32_BUTT;
 
-    ulHashIndex = sc_ep_caller_setting_hash_func(pstSetting->ulID);
-    pstHashNode = hash_find_node(g_pstHashCallerSetting, ulHashIndex, (VOID *)&pstSetting->ulID, sc_ep_caller_setting_hash_find);
+    ulHashIndex = sc_ep_caller_setting_hash_func(ulSettingID);
+    pstHashNode = hash_find_node(g_pstHashCallerSetting, ulHashIndex, (VOID *)&ulSettingID, sc_ep_caller_setting_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
@@ -2350,7 +2351,7 @@ static S32 sc_load_tt_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **asz
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "ip_port", dos_strlen("ip_port")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "ip", dos_strlen("ip")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || '\0' == aszValues[lIndex][0])
@@ -2358,9 +2359,17 @@ static S32 sc_load_tt_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **asz
                 blProcessOK = DOS_FALSE;
                 break;
             }
-
-            dos_strncpy(pstSCTTNumber->szAddr, aszValues[lIndex], sizeof(pstSCTTNumber->szAddr));
-            pstSCTTNumber->szAddr[sizeof(pstSCTTNumber->szAddr) - 1] = '\0';
+            dos_snprintf(pstSCTTNumber->szAddr, sizeof(pstSCTTNumber->szAddr), "%s", aszValues[lIndex]);
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "port", dos_strlen("port")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0]
+                || dos_atoul(aszValues[lIndex], &pstSCTTNumber->ulPort) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "prefix_number", dos_strlen("prefix_number")))
         {
@@ -2434,18 +2443,18 @@ U32 sc_load_tt_number(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, ip_port, prefix_number FROM tbl_eix");
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, ip, port, prefix_number FROM tbl_eix;");
     }
     else
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, ip_port, prefix_number FROM tbl_eix WHERE id=%u", ulIndex);
+        dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, ip, port, prefix_number FROM tbl_eix WHERE id=%u;", ulIndex);
     }
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_load_tt_number_cb, NULL, NULL) != DB_ERR_SUCC)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ESL, "%s", "Load TT number fail.");
+        sc_logr_error(SC_ESL, "%s", "Load TT number FAIL.");
         return DOS_FAIL;
     }
 
@@ -2939,7 +2948,7 @@ S32 sc_load_gw_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszN
         return DOS_FAIL;
     }
 
-    for (lIndex=0; lIndex < lCount; lIndex++)
+    for (lIndex = 0; lIndex < lCount; lIndex++)
     {
         if (DOS_ADDR_INVALID(aszNames[lIndex])
             || DOS_ADDR_INVALID(aszValues[lIndex]))
@@ -3202,7 +3211,7 @@ S32 sc_load_caller_grp_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     BOOL blProcessOK = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(aszValues)
-            || DOS_ADDR_INVALID(aszNames))
+        || DOS_ADDR_INVALID(aszNames))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
@@ -3257,21 +3266,17 @@ S32 sc_load_caller_grp_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "is_default", dos_strlen("is_default")))
-        {
-            if (dos_atoul(aszValues[lIndex], &pstCallerGrp->bDefault) < 0)
-            {
-                DOS_ASSERT(0);
-                blProcessOK = DOS_FALSE;
-                break;
-            }
-        }
         else
         {
             DOS_ASSERT(0);
             blProcessOK = DOS_FALSE;
             break;
         }
+    }
+    if (!blProcessOK)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
 
     pthread_mutex_lock(&g_mutexHashCallerGrp);
@@ -3327,12 +3332,12 @@ U32 sc_load_caller_grp(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id,customer_id,name,policy,is_default FROM tbl_caller_grp;");
+                        , "SELECT id,customer_id,name,policy FROM tbl_caller_grp;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id,customer_id,name,policy,is_default FROM tbl_caller_grp WHERE id=%u;"
+                        , "SELECT id,customer_id,name,policy FROM tbl_caller_grp WHERE id=%u;"
                         , ulIndex);
     }
 
@@ -3353,7 +3358,7 @@ S32 sc_load_caller_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **
 {
     SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
     S32  lIndex = U32_BUTT;
-    U32  ulCallerID = U32_BUTT, ulCustomerID = U32_BUTT, ulCallerType = U32_BUTT, ulHashIndex = U32_BUTT;
+    U32  ulCallerID = U32_BUTT, ulCallerType = U32_BUTT, ulHashIndex = U32_BUTT;
     SC_DID_NODE_ST *pstDid = NULL;
     DLL_NODE_S *pstNode = NULL;
     SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
@@ -3381,15 +3386,6 @@ S32 sc_load_caller_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **
         if (0 == dos_strnicmp(aszNames[lIndex], "caller_id", dos_strlen("caller_id")))
         {
             if (dos_atoul(aszValues[lIndex], &ulCallerID) < 0)
-            {
-                blProcessOK = DOS_FALSE;
-                DOS_ASSERT(0);
-                break;
-            }
-        }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "customer_id", dos_strlen("customer_id")))
-        {
-            if (dos_atoul(aszValues[lIndex], &ulCustomerID) < 0)
             {
                 blProcessOK = DOS_FALSE;
                 DOS_ASSERT(0);
@@ -3480,9 +3476,9 @@ S32 sc_load_caller_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **
     pstNode->pHandle = (VOID *)pstCacheNode;
 
     pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pArg;
-    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
+    pthread_mutex_lock(&g_mutexHashCallerGrp);
     DLL_Add(&pstCallerGrp->stCallerList, pstNode);
-    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+    pthread_mutex_unlock(&g_mutexHashCallerGrp);
     return DOS_SUCC;
 }
 
@@ -3505,7 +3501,7 @@ U32 sc_load_caller_relationship()
             }
             pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
             /* 先加载主叫号码，再加载DID号码 */
-            dos_snprintf(szQuery, sizeof(szQuery), "SELECT caller_id,caller_type,customer_id FROM tbl_caller_assign WHERE caller_grp_id=%u", pstCallerGrp->ulID);
+            dos_snprintf(szQuery, sizeof(szQuery), "SELECT caller_id,caller_type FROM tbl_caller_assign WHERE caller_grp_id=%u;", pstCallerGrp->ulID);
             lRet = db_query(g_pstSCDBHandle, szQuery, sc_load_caller_relationship_cb, (VOID *)pstCallerGrp, NULL);
             if (DB_ERR_SUCC != lRet)
             {
@@ -3756,18 +3752,19 @@ U32 sc_refresh_caller_grp(U32 ulIndex)
     DLL_NODE_S *pstListNode = NULL;
     HASH_NODE_S *pstHashNode = NULL;
     SC_CALLER_CACHE_NODE_ST *pstCache = NULL;
-    S8  szQuery[256] = {};
+    S8  szQuery[256] = {0,};
 
     ulHashIndex = sc_ep_caller_grp_hash_func(ulIndex);
-    pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&pstCallerGrp->ulID, sc_ep_caller_grp_hash_find);
+    pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&ulIndex, sc_ep_caller_grp_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode))
     {
         DOS_ASSERT(0);
         sc_logr_error(SC_FUNC, "SC Refresh Caller Grp FAIL.(CallerGrpID:%u)", ulIndex);
         return DOS_FAIL;
     }
+    pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
 
-    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
+    pthread_mutex_lock(&g_mutexHashCallerGrp);
     while (1)
     {
         if (DLL_Count(&pstCallerGrp->stCallerList) == 0)
@@ -3791,11 +3788,11 @@ U32 sc_refresh_caller_grp(U32 ulIndex)
         dos_dmem_free(pstListNode);
         pstListNode = NULL;
     }
-    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+    pthread_mutex_unlock(&g_mutexHashCallerGrp);
 
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT caller_id,caller_type,customer_id FROM tbl_caller_assign WHERE caller_grp_id=%u", ulIndex);
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT caller_id,caller_type FROM tbl_caller_assign WHERE caller_grp_id=%u;", ulIndex);
 
-    return db_query(g_pstSCDBHandle, szQuery, sc_load_caller_grp_cb, (VOID *)pstCallerGrp, NULL);
+    return db_query(g_pstSCDBHandle, szQuery, sc_load_caller_relationship_cb, (VOID *)pstCallerGrp, NULL);
 }
 
 /**
@@ -4456,20 +4453,25 @@ S32 sc_load_customer_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
+        /* 分组编号可以为空，如果为空或者值超过最大值，都默认按0处理 */
         else if (0 == dos_strnicmp(aszNames[lIndex], "call_out_group", dos_strlen("call_out_group")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
-                || '\0' == aszValues[lIndex][0]
-                || dos_atoul(aszValues[lIndex], &ulCallOutGroup) < 0
-                || ulCallOutGroup > U16_BUTT)
+                || '\0' == aszValues[lIndex][0])
             {
-                DOS_ASSERT(0);
-
-                blProcessOK = DOS_FALSE;
-                break;
+                pstCustomer->usCallOutGroup = 0;
             }
-
-            pstCustomer->usCallOutGroup = (U16)ulCallOutGroup;
+            else
+            {
+                if (dos_atoul(aszValues[lIndex], &ulCallOutGroup) < 0
+                    || ulCallOutGroup > U16_BUTT)
+                {
+                    DOS_ASSERT(0);
+                    blProcessOK = DOS_FALSE;
+                    break;
+                }
+                pstCustomer->usCallOutGroup = (U16)ulCallOutGroup;
+            }
         }
     }
 
@@ -5235,6 +5237,7 @@ BOOL sc_num_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber)
         return DOS_TRUE;
     }
 
+    pstNumLmt = (SC_NUMBER_LMT_NODE_ST *)pstHashNodeNumLmt->pHandle;
     if (pstNumLmt->ulStatUsed + ulCurrentTime >= pstNumLmt->ulLimit)
     {
         DOS_ASSERT(0);
@@ -5280,8 +5283,8 @@ U32 sc_ep_get_callout_group_by_customerID(U32 ulCustomerID, U16 *pusCallOutGroup
 
     pthread_mutex_lock(&g_mutexCustomerList);
     pstListNode = dll_find(&g_stCustomerList, &ulCustomerID, sc_ep_customer_find);
-    if (DOS_ADDR_INVALID(pstListNode)
-        || DOS_ADDR_INVALID(pstListNode->pHandle))
+    if (DOS_ADDR_VALID(pstListNode)
+        && DOS_ADDR_VALID(pstListNode->pHandle))
     {
         pstCustomer = (SC_CUSTOMER_NODE_ST *)pstListNode->pHandle;
         *pusCallOutGroup = pstCustomer->usCallOutGroup;
@@ -5339,10 +5342,11 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
     DLL_NODE_S                      *pstListNode            = NULL;
     SC_NUM_TRANSFORM_DIRECTION_EN   enDirection;
     S8  szNeedTransformNum[SC_TEL_NUMBER_LENGTH]        = {0};
-    U32 ulIndex      = 0;
-    S32 lIndex       = 0;
-    U32 ulNumLen     = 0;
-    U32 ulOffsetLen  = 0;
+    U32 ulIndex         = 0;
+    S32 lIndex          = 0;
+    U32 ulNumLen        = 0;
+    U32 ulOffsetLen     = 0;
+    U32 ulCallerGrpID   = 0;
     time_t ulCurrTime   = time(NULL);
 
     if (DOS_ADDR_INVALID(pstSCB)
@@ -5534,15 +5538,32 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
         /* 完全替代 */
         if (pstNumTransform->szReplaceNum[0] == '*')
         {
-            /* TODO 使用号码组中的号码 */
-            if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER != pstNumTransform->enObject)
+            /* 使用号码组中的号码 */
+            if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER != pstNumTransform->enObject || enNumSelect != SC_NUM_TRANSFORM_SELECT_CALLER)
             {
-                /* 只有企业客户，才可以选择号码组中的号码进行替换 */
+                /* 只有企业客户 和 变换主叫号码时，才可以选择号码组中的号码进行替换 */
                 sc_logr_info(SC_DIALER, "Number transfer rule(%d) for the task %d fail : only a enterprise customers can, choose number in the group number"
                                 , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
 
                 goto fail;
             }
+
+            if (dos_atoul(&pstNumTransform->szReplaceNum[1], &ulCallerGrpID) < 0)
+            {
+                sc_logr_info(SC_DIALER, "Number transfer rule(%d), get caller group id fail.", pstNumTransform->ulID);
+
+                goto fail;
+            }
+
+            if (sc_select_number_in_order(pstSCB->ulCustomID, ulCallerGrpID, szNeedTransformNum, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
+            {
+                sc_logr_info(SC_DIALER, "Number transfer rule(%d), get caller from group id(%u) fail.", pstNumTransform->ulID, ulCallerGrpID);
+
+                goto fail;
+            }
+
+            sc_logr_debug(SC_DIALER, "Number transfer rule(%d), get caller(%s) from group id(%u) succ.", pstNumTransform->ulID, szNeedTransformNum, ulCallerGrpID);
+
         }
         else if (pstNumTransform->szReplaceNum[0] == '\0')
         {
@@ -6500,6 +6521,7 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
         usCallOutGroup = 0;
     }
 
+    sc_logr_debug(SC_DIALER, "usCallOutGroup : %u, custom : %u", usCallOutGroup, pstSCB->ulCustomID);
     pthread_mutex_lock(&g_mutexRouteList);
 
 loop_search:
@@ -6516,13 +6538,16 @@ loop_search:
             continue;
         }
 
-        sc_logr_info(SC_ESL, "Search Route: %d:%d, %d:%d, %s, %s. Caller:%s, Callee:%s"
+        sc_logr_info(SC_ESL, "Search Route: %d:%d, %d:%d, CallerPrefix : %s, CalleePrefix : %s. Caller:%s, Callee:%s"
+            ", customer group : %u, route group : %u"
                 , pstRouetEntry->ucHourBegin, pstRouetEntry->ucMinuteBegin
                 , pstRouetEntry->ucHourEnd, pstRouetEntry->ucMinuteEnd
                 , pstRouetEntry->szCallerPrefix
                 , pstRouetEntry->szCalleePrefix
                 , pstSCB->szCallerNum
-                , pstSCB->szCalleeNum);
+                , pstSCB->szCalleeNum
+                , usCallOutGroup
+                , pstRouetEntry->usCallOutGroup);
 
         ulStartTime = pstRouetEntry->ucHourBegin * 60 + pstRouetEntry->ucMinuteBegin;
         ulEndTime = pstRouetEntry->ucHourEnd* 60 + pstRouetEntry->ucMinuteEnd;
@@ -7022,7 +7047,10 @@ proc_error:
 
 U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
-    SC_SCB_ST     *pstSCB           = NULL;
+    SC_SCB_ST *pstSCB           = NULL;
+    U32       ulRet;
+    S8        szNumber[SC_TEL_NUMBER_LENGTH] = {0};
+
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -7079,6 +7107,29 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
         SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
 
+        /* 设置主叫号码 */
+        if (U32_BUTT == pstSCB->ulAgentID)
+        {
+            sc_logr_info(SC_DIALER, "Agent signin not get agent ID by scd(%u)", pstSCB->usSCBNo);
+
+            goto go_on;
+        }
+
+        /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
+        ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, pstSCB->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
+        if (ulRet != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+            sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+
+            goto go_on;
+        }
+
+        sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+        dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
+        pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+
+go_on:
         if (!sc_ep_black_list_check(pstSCB->ulCustomID, pstSCB->szCalleeNum))
         {
             DOS_ASSERT(0);
@@ -7100,12 +7151,12 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 
     if (AGENT_BIND_SIP == pstAgentInfo->ucBindType)
     {
-        if (sc_dial_make_call2ip(pstSCB, SC_SERV_AGENT_SIGNIN) != DOS_SUCC)
+        if (sc_dial_make_call2ip(pstSCB, SC_SERV_AGENT_SIGNIN, DOS_TRUE) != DOS_SUCC)
         {
             goto error;
         }
     }
-    else if (AGENT_BIND_SIP == pstAgentInfo->ucBindType)
+    else if (AGENT_BIND_TT_NUMBER == pstAgentInfo->ucBindType)
     {
         if (sc_dial_make_call2eix(pstSCB, SC_SERV_AGENT_SIGNIN) != DOS_SUCC)
         {
@@ -7710,6 +7761,8 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     S8            szAPPParam[512] = { 0 };
     U32           ulErrCode = BS_TERM_NONE;
     SC_SCB_ST     *pstSCBNew = NULL;
+    S8            szNumber[SC_TEL_NUMBER_LENGTH] = {0};
+    U32           ulRet;
 
     if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -7824,6 +7877,29 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
         SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
 
+        /* 设置主叫号码 */
+        if (U32_BUTT == pstSCB->ulAgentID)
+        {
+            sc_logr_info(SC_DIALER, "Agent signin not get agent ID by scd(%u)", pstSCB->usSCBNo);
+
+            goto go_on;
+        }
+
+        /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
+        ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, pstSCB->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
+        if (ulRet != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+            sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+
+            goto go_on;
+        }
+
+        sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+        dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
+        pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+
+go_on:
         if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pstSCBNew->szCalleeNum))
         {
             DOS_ASSERT(0);
@@ -7846,12 +7922,12 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 
     if (AGENT_BIND_SIP == pstAgentInfo->ucBindType)
     {
-        if (sc_dial_make_call2ip(pstSCBNew, SC_SERV_AGENT_CALLBACK) != DOS_SUCC)
+        if (sc_dial_make_call2ip(pstSCBNew, SC_SERV_AGENT_CALLBACK, DOS_TRUE) != DOS_SUCC)
         {
             goto proc_error;
         }
     }
-    else if (AGENT_BIND_SIP == pstAgentInfo->ucBindType)
+    else if (AGENT_BIND_TT_NUMBER == pstAgentInfo->ucBindType)
     {
         if (sc_dial_make_call2eix(pstSCBNew, SC_SERV_AGENT_CALLBACK) != DOS_SUCC)
         {
@@ -8070,6 +8146,9 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
                 goto make_all_fail;
             }
 
+            dos_strncpy(pstSCB->szSiteNum, stAgentInfo.szEmpNo, sizeof(pstSCB->szSiteNum));
+            pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
+
             if (stAgentInfo.bConnected && stAgentInfo.usSCBNo < SC_MAX_SCB_NUM)
             {
                 /* 坐席长连 */
@@ -8089,6 +8168,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
                 pstSCB->ulCustomID = ulCustomerID;
                 pstSCB->ulAgentID = ulAgent;
                 pstSCB->ulTaskID = ulTaskID;
+                pstSCB->bRecord = stAgentInfo.bRecord;
                 pstSCB->usOtherSCBNo = pstSCBOther->usSCBNo;
                 pstSCBOther->ulTaskID = ulTaskID;
                 pstSCBOther->usOtherSCBNo = pstSCB->usSCBNo;
@@ -8127,27 +8207,22 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             if (ulFlag == 2)
             {
                 pstSCB->bIsAgentCallOtherLeg = DOS_TRUE;
+                pstSCB->ulOtherAgentID = ulCalleeAgentID;
             }
             else
             {
                 pstSCB->bIsAgentCallOtherLeg = DOS_FALSE;
             }
+
             pstSCB->ulCustomID = ulCustomerID;
             pstSCB->ulAgentID = ulAgent;
             pstSCB->ulTaskID = ulTaskID;
             pstSCB->bRecord = stAgentInfo.bRecord;
             pstSCB->bIsAgentCall = DOS_TRUE;
 
-            /* 指定主叫号码 如果呼叫的是坐席，则把被叫坐席的id放在主叫号码上 */
-            if (ulFlag == 2)
-            {
-                dos_snprintf(pstSCB->szCallerNum, sizeof(pstSCB->szCallerNum), "%u", ulCalleeAgentID);
-            }
-            else
-            {
-                dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
-                pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
-            }
+            /* 指定主叫号码 */
+            dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
+            pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
 
             /* 指定被叫号码 */
             switch (stAgentInfo.ucBindType)
@@ -8196,7 +8271,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
 
             if (AGENT_BIND_SIP == stAgentInfo.ucBindType)
             {
-                if (sc_dial_make_call2ip(pstSCB, SC_SERV_PREVIEW_DIALING) != DOS_SUCC)
+                if (sc_dial_make_call2ip(pstSCB, SC_SERV_PREVIEW_DIALING, DOS_FALSE) != DOS_SUCC)
                 {
                     goto make_all_fail;
                 }
@@ -8398,7 +8473,7 @@ make_all_fail:
                 SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
                 SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
 
-                if (sc_dial_make_call2ip(pstSCBNew, ulMainServie) != DOS_SUCC)
+                if (sc_dial_make_call2ip(pstSCBNew, ulMainServie, DOS_TRUE) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
 
@@ -9367,7 +9442,9 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB)
         }
 
         sc_logr_debug(SC_ACD, "POTS, agent(%u) by userid(%s), signin SUCC", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
         sc_ep_esl_execute("park", NULL, pstSCB->szUUID);
+
         bIsHangUp = DOS_FALSE;
     }
     else if (dos_strncmp(pstSCB->szCalleeNum, SC_POTS_AGENT_SIGNOUT, dos_strlen(SC_POTS_AGENT_SIGNOUT)) == 0)
@@ -9545,7 +9622,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     U32       ulCallSrc, ulCallDst;
     U32       ulRet = DOS_SUCC;
     U32       ulMainService = U32_BUTT;
-    U32       ulAgentID     = 0;
     SC_SCB_ST *pstSCBOther  = NULL;
     SC_SCB_ST *pstSCBNew    = NULL;
 
@@ -9649,14 +9725,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             if (pstSCB->bIsAgentCallOtherLeg)
             {
                 /* 呼叫另一个坐席 */
-                if (dos_atoul(pstSCB->szCallerNum, &ulAgentID) < 0)
-                {
-                    sc_logr_info(SC_ESL, "Cannot make call. Get agent ID FAIL. pstscb : %d", pstSCB->usSCBNo);
-                    ulRet = DOS_FAIL;
-                    goto proc_finished;
-                }
-
-                sc_ep_call_agent_by_id(pstSCB, ulAgentID);
+                sc_ep_call_agent_by_id(pstSCB, pstSCB->ulOtherAgentID);
             }
             else
             {
@@ -10586,13 +10655,11 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             if (DOS_ADDR_VALID(pstSCBOther)
                 && !pstSCBOther->bWaitingOtherRelase)
             {
-                /* 长签就不挂断了 */
+                /* 长签就不挂断了, 修改长签坐席的状态 */
                 if (!sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN))
                 {
                     sc_ep_hangup_call(pstSCBOther, BS_TERM_HANGUP);
-
                     pstSCB->bWaitingOtherRelase = DOS_TRUE;
-
                     sc_logr_info(SC_ESL, "Waiting other leg hangup.Curretn Leg UUID: %s, Other Leg UUID: %s"
                                     , pstSCB->szUUID ? pstSCB->szUUID : "NULL"
                                     , pstSCBOther->szUUID ? pstSCBOther->szUUID : "NULL");
@@ -10601,6 +10668,8 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 }
                 else
                 {
+                    sc_acd_agent_update_status(pstSCBOther->ulAgentID, SC_ACD_PROC, pstSCBOther->usSCBNo);
+
                     sc_ep_esl_execute("park", NULL, pstSCBOther->szUUID);
                     /* unbridge, 给坐席放音 */
                     //dos_snprintf(szCMD, sizeof(szCMD), "uuid_break %s", pstSCBOther->szUUID);
@@ -10809,6 +10878,10 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
             sc_ep_esl_execute("bridge", NULL, pstSCBOther->szUUID);
             sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
         }
+    }
+    else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
+    {
+        /* 坐席长签，二次拨号 */
     }
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));

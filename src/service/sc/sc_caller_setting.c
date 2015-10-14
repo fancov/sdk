@@ -27,8 +27,6 @@ static U32 sc_get_dst_by_src(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, U32* 
 static U32 sc_get_number_by_callerid(U32 ulCustomerID, U32 ulCallerID, S8 *pszNumber, U32 ulLen);
 static U32 sc_get_number_by_didid(U32 ulDidID, S8* pszNumber, U32 ulLen);
 static U32 sc_get_policy_by_grpid(U32 ulGroupID);
-static U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
-static U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 static U32 sc_get_numbers_of_did(U32 ulCustomerID);
 static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen);
 #if 0
@@ -489,7 +487,7 @@ static U32 sc_get_policy_by_grpid(U32 ulGroupID)
  *       U32 ulLen         号码缓存长度，输入参数
  * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
  **/
-static U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen)
+U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen)
 {
     U32  ulHashIndex = U32_BUTT, ulNewNo = U32_BUTT, ulCount = 0, ulTempNo = 0;
     HASH_NODE_S *pstHashNode = NULL;
@@ -649,7 +647,7 @@ static U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumbe
  *       U32 ulLen         号码缓存长度
  * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
  **/
-static U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen)
+U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen)
 {
     S32  lNum = U32_BUTT, lLoop = U32_BUTT;
     BOOL bFound = DOS_FALSE;
@@ -771,6 +769,7 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
     }
     /* 生成随机数 */
     lRandomNum = sc_generate_random(1, ulCount);
+    sc_logr_debug(SC_FUNC, "randomnum : %d", lRandomNum);
     HASH_Scan_Table(g_pstHashDIDNum, ulHashIndex)
     {
         HASH_Scan_Bucket(g_pstHashDIDNum, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -792,11 +791,13 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
                 }
             }
         }
-        if (DOS_FALSE == bFound)
+
+        if (DOS_TRUE == bFound)
         {
             break;
         }
     }
+
     if (DOS_FALSE == bFound)
     {
         DOS_ASSERT(0);
@@ -932,7 +933,7 @@ static U32 sc_get_numbers_of_did(U32 ulCustomerID)
     S32  lRet = U32_BUTT;
     U32  ulCount;
 
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT COUNT(id) FROM tbl_sipassign WHERE customer_id=%u;", ulCustomerID);
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT COUNT(id) FROM tbl_sipassign WHERE customer_id=%u and status=1;", ulCustomerID);
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_get_numbers_of_did_cb, &ulCount, NULL);
     if (DB_ERR_SUCC != lRet)
     {
@@ -950,13 +951,24 @@ static U32 sc_get_numbers_of_did(U32 ulCustomerID)
  * 参数: U32 ulAgentID  坐席id
  * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
  **/
-static U32  sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
+static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
 {
     U32 ulHashIndex = U32_BUTT;
     HASH_NODE_S  *pstHashNode = NULL;
     SC_DID_NODE_ST *pstDid = NULL;
+    SC_ACD_AGENT_INFO_ST stAgent;
     BOOL bFound = DOS_FALSE;
 
+    /* 先根据坐席id查找sip_id */
+    if (sc_acd_get_agent_by_id(&stAgent, ulAgentID) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_logr_debug(SC_FUNC, "Get agent SUCC.(ulAgentID : %u, sipID : %u).", ulAgentID, stAgent.ulSIPUserID);
+    /* 然后通过sip_id去查找 */
     HASH_Scan_Table(g_pstHashDIDNum, ulHashIndex)
     {
         HASH_Scan_Bucket(g_pstHashDIDNum, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -968,11 +980,12 @@ static U32  sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
             }
 
             pstDid = (SC_DID_NODE_ST *)pstHashNode->pHandle;
-            if (DOS_FALSE != pstDid->bValid && pstDid->ulBindID == ulAgentID && SC_DID_BIND_TYPE_AGENT == pstDid->ulBindType)
+            if (DOS_FALSE != pstDid->bValid && pstDid->ulBindID == stAgent.ulSIPUserID && SC_DID_BIND_TYPE_SIP == pstDid->ulBindType)
             {
                 bFound = DOS_TRUE;
                 pstDid->ulTimes++;
                 dos_snprintf(pszNumber, ulLen, "%s", pstDid->szDIDNum);
+                sc_logr_info(SC_FUNC, "Get did by agent SUCC.(ulAgentID:%u, sipID : %u).", ulAgentID, stAgent.ulSIPUserID);
                 break;
             }
         }
