@@ -1060,7 +1060,7 @@ VOID bsd_save_outband_stat(BS_INTER_MSG_STAT *pstMsg)
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_outband(object_id, type,"
                     "ctime, call_cnt, ring_cnt, busy_cnt, notexist_cnt, noanswer_cnt,"
                     "reject_cnt, early_release_cnt, answer_cnt, pdd, answer_times) VALUES("
-                    "%u,%u,FROM_UNIXTIME(%u),%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
+                    "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
                     , pstStat->stStatTag.ulObjectID
                     , pstStat->stStatTag.ucObjectType
                     , pstStat->stOutBand.ulTimeStamp
@@ -1100,7 +1100,7 @@ VOID bsd_save_inband_stat(BS_INTER_MSG_STAT *pstMsg)
                     "ctime, call_cnt, ring_cnt, busy_cnt, noanswer_cnt, early_release_cnt,"
                     "answer_cnt, conn_agent_cnt, agent_answer_cnt, hold_cnt, answer_times,"
                     "wait_agent_times, agent_answer_times, hold_times) VALUES(%u,%u,"
-                    "FROM_UNIXTIME(%u),%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
+                    "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
                     , pstStat->stStatTag.ulObjectID
                     , pstStat->stStatTag.ucObjectType
                     , pstStat->stInBand.ulTimeStamp
@@ -1143,7 +1143,7 @@ VOID bsd_save_outdialing_stat(BS_INTER_MSG_STAT *pstMsg)
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_outdialing(object_id, type,"
                     "ctime, call_cnt, ring_cnt, busy_cnt, notexist_cnt, noanswer_cnt, reject_cnt,"
                     "early_release_cnt, answer_cnt, conn_agent_cnt, agent_answer_cnt, pdd,"
-                    "answer_times, wait_agent_times, agent_answer_times) VALUES(%u,%u,FROM_UNIXTIME(%u)"
+                    "answer_times, wait_agent_times, agent_answer_times) VALUES(%u,%u,%u"
                     ",%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u);"
                     , pstStat->stStatTag.ulObjectID
                     , pstStat->stStatTag.ucObjectType
@@ -1187,7 +1187,7 @@ VOID bsd_save_message_stat(BS_INTER_MSG_STAT *pstMsg)
 
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_msg(object_id, type, "
                     "ctime, send_cnt, recv_cnt, send_succ_cnt, send_fail_cnt, send_len,"
-                    "recv_len) VALUES(%u,%u,FROM_UNIXTIME(%u), %u, %u, %u, %u, %u, %u);"
+                    "recv_len) VALUES(%u,%u,%u, %u, %u, %u, %u, %u, %u);"
                     , pstStat->stStatTag.ulObjectID
                     , pstStat->stStatTag.ucObjectType
                     , pstStat->stMS.ulTimeStamp
@@ -1221,7 +1221,7 @@ VOID bsd_save_account_stat(BS_INTER_MSG_STAT *pstMsg)
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO tbl_stat_account(object_id, type,"
                     "ctime, profit, outband_fee, Inband_fee, autodialing_fee, preview_fee,"
                     "predictive_fee, record_fee, conference_fee, sms_fee, mms_fee, rent_fee)"
-                    " VALUES(%u,%u,FROM_UNIXTIME(%u), %d, %d, %d, %d, %d, %d,%d, %d, %d, %d, %d);"
+                    " VALUES(%u,%u,%u, %d, %d, %d, %d, %d, %d,%d, %d, %d, %d, %d);"
                     , pstStat->stStatTag.ulObjectID
                     , pstStat->stStatTag.ucObjectType
                     , pstStat->ulTimeStamp

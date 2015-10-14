@@ -2786,12 +2786,13 @@ U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     }
 
     dos_snprintf(szSQL, sizeof(szSQL),
-                    "INSERT INTO tbl_stat_agents(ctime, bid, \"job_number\", calls, group_id"
-                    "calls_connected, total_duration, avg_call_duration, online_time) VALUES("
-                    "%u, %u, %s, %u, %u, %u, %u, %u, %u)"
-                , time(NULL), pstAgentInfo->ulSiteID, pstAgentInfo->szEmpNo
-                , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->aulGroupID[0]
-                , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->stStat.ulTimeOnSignin, 0, 0);
+                    "INSERT INTO tbl_stat_agents(ctime, type, bid, job_number, group_id, calls"
+                    "calls_connected, total_duration, online_time, avg_call_duration) VALUES("
+                    "%u, %u, %u, \"%s\", %u, %u, %u, %u, %u, %u)"
+                , time(NULL), 0, pstAgentInfo->ulSiteID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[0]
+                , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->stStat.ulCallConnected
+                , pstAgentInfo->stStat.ulTotalDuration, pstAgentInfo->stStat.ulTimeOnthePhone
+                , pstAgentInfo->stStat.ulTotalDuration / pstAgentInfo->stStat.ulCallCnt);
 
     if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL) < 0)
     {
