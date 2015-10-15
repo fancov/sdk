@@ -1062,7 +1062,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond, ulCalledCnt;
     BOOL blProcessOK = DOS_FALSE, bFound = DOS_FALSE;
-    S32 lIndex = U32_BUTT, lLoop = U32_BUTT;
+    S32 lIndex = U32_BUTT;
     S8  szTaskName[64] = {0};
     SC_TASK_CB_ST *pstTCB = NULL;
 
@@ -1263,28 +1263,14 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     g_pstTaskMngtInfo->pstTaskList[lIndex].ulAllocTime = ulCreateTime;
     g_pstTaskMngtInfo->pstTaskList[lIndex].ulCalledCount = ulCalledCnt;
 
-    for (lLoop = 0; lLoop < SC_MAX_PERIOD_NUM; lLoop++)
-    {
-        if (!g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucValid)
-        {
-            break;
-        }
-    }
-
-    if (lLoop >= SC_MAX_PERIOD_NUM)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucValid = DOS_TRUE;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucWeekMask = 0xFF;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucHourBegin = (U8)ulStartHour;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucMinuteBegin = (U8)ulStartMinute;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucSecondBegin = (U8)ulStartSecond;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucHourEnd = (U8)ulEndHour;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucMinuteEnd = (U8)ulEndMinute;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[lLoop].ucSecondEnd = (U8)ulEndSecond;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucValid = DOS_TRUE;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucWeekMask = 0xFF;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucHourBegin = (U8)ulStartHour;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucMinuteBegin = (U8)ulStartMinute;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucSecondBegin = (U8)ulStartSecond;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucHourEnd = (U8)ulEndHour;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucMinuteEnd = (U8)ulEndMinute;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucSecondEnd = (U8)ulEndSecond;
 
     sc_logr_debug(SC_TASK, "Load task info SUCC. Index(%d), (TaskID:%u) ", lIndex, ulTaskID);
 
@@ -1307,7 +1293,6 @@ S32 sc_task_load(U32 ulIndex)
     {
         dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt FROM tbl_calltask WHERE id=%u;", ulIndex);
     }
-
     /* 加载群呼任务的相关数据 */
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
     if (DB_ERR_SUCC != lRet)
