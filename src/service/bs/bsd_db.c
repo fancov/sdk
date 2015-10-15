@@ -579,7 +579,6 @@ static S32 bsd_walk_web_cmd_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFie
     BS_WEB_CMD_INFO_ST      *pszTblRow   = NULL;
     DLL_NODE_S              *pstListNode = NULL;
     JSON_OBJ_ST             *pstJSONObj  = NULL;
-    U32                     ulTimestamp = 0;
 
     /* ²éÑ¯Èý¸ö×Ö¶Î */
     if (lCnt != 3)
@@ -627,12 +626,6 @@ static S32 bsd_walk_web_cmd_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFie
     {
         DOS_ASSERT(0);
         bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Warning: Parse the json fail!");
-        goto error_proc;
-    }
-
-    if (dos_atoul(aszData[1], &ulTimestamp) < 0)
-    {
-        DOS_ASSERT(0);
         goto error_proc;
     }
 

@@ -30,6 +30,7 @@ static DLL_S              m_stDBLogQueue;
 static DOS_LOG_MODULE_ST  m_stDBLog;
 static DB_HANDLE_ST       *m_pstDBLogHandle   = NULL;
 
+extern char *strptime(const char *buf,const char *format, struct tm *tm);
 
 static VOID *log_db_task(VOID *ptr)
 {
@@ -269,6 +270,8 @@ VOID log_db_write_olog(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
     U32         ulLen     = 0;
     S8          *pszQuery = NULL;
     DLL_NODE_S  *pstNode  = NULL;
+    struct tm   tm;
+    time_t      ulTime;
 
     if (!m_stDBLog.blInited)
     {
@@ -293,6 +296,9 @@ VOID log_db_write_olog(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
         return;
     }
 
+    strptime(_pszTime, "%Y-%m-%d %H:%M:%S", &tm);
+    ulTime = mktime(&tm);
+
     /* 将内存转化为链表节点类型 */
     pstNode = (DLL_NODE_S *)pszQuery;
     DLL_Init_Node(pstNode);
@@ -303,9 +309,9 @@ VOID log_db_write_olog(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
 
     /* 填充数据 */
     ulLen = LOG_DB_MAX_BUFF_LEN - sizeof(DLL_NODE_S);
-    dos_snprintf(pszQuery, ulLen, "INSERT INTO %s VALUES(NULL, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
+    dos_snprintf(pszQuery, ulLen, "INSERT INTO %s VALUES(NULL, %u, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
                     , "tbl_olog"
-                    , _pszTime
+                    , ulTime
                     , _pszOpterator
                     , dos_get_process_name()
                     , _pszOpterand
