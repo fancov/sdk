@@ -405,12 +405,6 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
             aucBSSrvList[ulBSSrvIndex] = BS_SERV_INBAND_CALL;
             ulBSSrvIndex++;
         }
-
-        if (ulBSSrvIndex < ulBSSrvCnt)
-        {
-            aucBSSrvList[ulBSSrvIndex] = BS_SERV_INTER_CALL;
-            ulBSSrvIndex++;
-        }
     }
     else
     {
@@ -945,6 +939,10 @@ prepare_msg:
     {
         pstSecondSCB = pstSCB;
     }
+    else
+    {
+        pstSecondSCB = pstSCB2;
+    }
 
     ulCurrentLeg = 0;
     pstCDRMsg->ucLegNum = 0;
@@ -1037,7 +1035,15 @@ prepare_msg:
         dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller, pstSecondSCB->szCallerNum, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller));
         pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller) - 1] = '\0';
 
-        dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee, pstSecondSCB->szCalleeNum, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee));
+        if (!SC_CHECK_SERVICE(pstSecondSCB, SC_SERV_EXTERNAL_CALL))
+        {
+            /* ÄÚ²¿ºô½Ð */
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee, pstFirstSCB->szCalleeNum, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee));
+        }
+        else
+        {
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee, pstSecondSCB->szCalleeNum, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee));
+        }
         pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee) - 1] = '\0';
 
         dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID, pstSecondSCB->szANINum, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID));
