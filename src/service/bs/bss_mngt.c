@@ -2583,14 +2583,14 @@ VOID bss_query_balance(DLL_NODE_S *pMsgNode)
 
     /* 借用原消息存储信息 */
     pstMsg->ulAccountID = pstCustomer->stAccount.ulAccountID;
-    pstMsg->lBalance = (U32)pstCustomer->stAccount.LBalanceActive;
+    pstMsg->LBalance = pstCustomer->stAccount.LBalanceActive;
     pstMsg->ucBalanceWarning = (pstCustomer->stAccount.LBalanceActive < pstCustomer->stAccount.lBalanceWarning)?DOS_TRUE:DOS_FALSE;
     ucErrCode = BS_ERR_SUCC;
 
     bs_trace(BS_TRACE_FS, LOG_LEVEL_DEBUG,
-             "Query succ, customer(%u:%s) balanse:%d, warning:%d!",
+             "Query succ, customer(%u:%s) balanse:%ld, warning:%d!",
              pstMsg->ulCustomerID, pstCustomer->szCustomerName,
-             pstMsg->lBalance, pstMsg->ucBalanceWarning);
+             pstMsg->LBalance, pstMsg->ucBalanceWarning);
 
 query_fail:
     pstMsg->stMsgTag.ucMsgType = BS_MSG_BALANCE_QUERY_RSP;

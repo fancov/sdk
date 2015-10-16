@@ -79,9 +79,9 @@ U32 sc_play_balance(SC_SCB_ST *pstSCB)
     U32   ulTotalLen    = sizeof(szAPPParam);
     U64   i             = 0;
     S32   j             = 0;
-    S32   lBalance      = 0;
+    S64   LBalance      = 0;
     S32   lInteger      = 0;
-    S32   lRemainder    = 0;
+    S64   LRemainder    = 0;
     BOOL  bIsGetMSB     = DOS_FALSE;
     BOOL  bIsZero       = DOS_FALSE;
 
@@ -94,28 +94,29 @@ U32 sc_play_balance(SC_SCB_ST *pstSCB)
     dos_memzero(szAPPParam, sizeof(szAPPParam));
     ulCurrentLen = 0;
 
-    lBalance = pstSCB->lBalance;
+    LBalance = pstSCB->LBalance;
 
     ulCurrentLen = dos_snprintf(szAPPParam, ulTotalLen
                         , "file_string://%s/nindyew.wav!", SC_TASK_AUDIO_PATH);
 
-    if (lBalance < 0)
+    if (LBalance < 0)
     {
-        lBalance = 0 - lBalance;
+        LBalance = 0 - LBalance;
         ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
                          , "%s/fu.wav!", SC_TASK_AUDIO_PATH);
     }
 
-    lRemainder = lBalance;
+    LRemainder = LBalance;
     bIsGetMSB = DOS_FALSE;
 
     for (i=100000000000,j=0; j<10; i/=10,j++)
     {
-        lInteger = lRemainder / i;
-        lRemainder = lRemainder % i;
+        lInteger = LRemainder / i;
+        LRemainder = LRemainder % i;
 
-        if (0 == lInteger && DOS_FALSE == bIsGetMSB)
+        if ((0 == lInteger || lInteger > 9) && DOS_FALSE == bIsGetMSB)
         {
+            /* TODO 大于9时，说明余额操作了一个亿 */
             continue;
         }
 
@@ -271,7 +272,7 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
         pstSCB->bTerminationFlag = DOS_FALSE;
     }
 
-    pstSCB->lBalance = pstAuthMsg->lBalance;
+    pstSCB->LBalance = pstAuthMsg->LBalance;
     if (pstAuthMsg->ucBalanceWarning)
     {
         pstSCB->bBanlanceWarning = DOS_TRUE;
@@ -381,7 +382,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 
     if (pstAuthMsg->ucBalanceWarning)
     {
-        pstSCB->lBalance = pstAuthMsg->lBalance;
+        pstSCB->LBalance = pstAuthMsg->lBalance;
         pstSCB->bBanlanceWarning = DOS_TRUE;
     }
     else
@@ -419,7 +420,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
                 sc_ep_esl_execute("set", "instant_ringback=true", pstSCBOther->szUUID);
                 sc_ep_esl_execute("set", "transfer_ringback=local_stream://moh", pstSCBOther->szUUID);
 
-                sc_logr_debug(SC_BS, "The balance of the alarm : %d, Balance : %u", pstSCB->bBanlanceWarning, pstSCB->lBalance);
+                sc_logr_debug(SC_BS, "The balance of the alarm : %d, Balance : %ld", pstSCB->bBanlanceWarning, pstSCB->LBalance);
                 sc_ep_esl_execute("answer", NULL, pstSCBOther->szUUID);
                 sc_dialer_alarm_balance(pstSCBOther);
                 //sc_ep_esl_execute("park", NULL, pstSCBOther->szUUID);

@@ -179,7 +179,7 @@ typedef struct
     U32             ulUserID;                   /* 用户ID,要求全数字,不超过10位,最高位小于4 */
     U32             ulCustomerID;               /* 客户ID,要求全数字,不超过10位,最高位小于4 */
     U32             ulAccountID;                /* 账户ID,要求全数字,不超过10位,最高位小于4 */
-    S32             lBalance;                   /* 余额 */
+    S64             LBalance;                   /* 余额 */
     U8              ucBalanceWarning;           /* 是否余额告警 */
     U8              ucServType;                 /* 业务类型 */
     U8              aucReserv[32];              /* 保留 */

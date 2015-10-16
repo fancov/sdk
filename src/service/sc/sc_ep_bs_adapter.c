@@ -714,7 +714,7 @@ U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
     pstQueryMsg->ulUserID           = pstSCB->ulCustomID;
     pstQueryMsg->ulCustomerID       = pstSCB->ulCustomID;
     pstQueryMsg->ulAccountID        = pstSCB->ulCustomID;
-    pstQueryMsg->lBalance           = 100;
+    pstQueryMsg->LBalance           = 100;
     pstQueryMsg->ucBalanceWarning   = 0;
 
 #if SC_BS_NEED_RESEND

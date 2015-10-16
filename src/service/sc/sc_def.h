@@ -663,7 +663,7 @@ typedef struct tagSCSCB{
 
     U32       ulRes1;
 
-    S32       lBalance;                           /* 余额,单位:分 */
+    S64       LBalance;                           /* 余额,单位:分 */
 
     S8        szCallerNum[SC_TEL_NUMBER_LENGTH];  /* 主叫号码 */
     S8        szCalleeNum[SC_TEL_NUMBER_LENGTH];  /* 被叫号码 */
