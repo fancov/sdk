@@ -198,15 +198,7 @@ success:
 }
 
 
-/** lsof -p 1  输出进程1打开的所有文件
- * COMMAND PID USER   FD   TYPE             DEVICE SIZE/OFF   NODE NAME
- * init      1 root  cwd    DIR              253,0     4096      2 /
- * init      1 root  rtd    DIR              253,0     4096      2 /
- * init      1 root  txt    REG              253,0   150352 391923 /sbin/init
- * ........
- * init      1 root    7u  unix 0xffff880037d51cc0      0t0   7637 socket
- * init      1 root    9u  unix 0xffff880037b45980      0t0  12602 socket
- * ........
+/**
  * 功能:获取进程打开的文件描述符个数
  * 参数集：
  *   参数1: S32 lPid 进程id
@@ -215,40 +207,7 @@ success:
  */
 static U32  mon_get_openfile_count(U32 ulPid)
 {
-    S8  szLsofCmd[MAX_CMD_LENGTH] = {0};
-    S8  szBuff[MAX_BUFF_LENGTH] = {0};
-    FILE  *fp = NULL;
     U32 ulCount = 0;
-
-    if (DOS_FALSE == mon_is_pid_valid(ulPid))
-    {
-        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_ERROR, "Pid %u does not exist.", ulPid);
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szLsofCmd, sizeof(szLsofCmd), "lsof -p %u | wc -l", ulPid);
-
-    fp = popen(szLsofCmd, "r");
-    if (DOS_ADDR_INVALID(fp))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    if (NULL != fgets(szBuff, sizeof(szBuff), fp))
-    {
-        if (dos_atoul(szBuff, &ulCount) < 0)
-        {
-            DOS_ASSERT(0);
-            pclose(fp);
-            fp = NULL;
-            return DOS_FAIL;
-        }
-    }
-
-    pclose(fp);
-    fp = NULL;
-
     return ulCount;
 }
 

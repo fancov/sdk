@@ -164,7 +164,7 @@ VOID* mon_warning_handle(VOID *p)
             if(DOS_SUCC != lRet)
             {
                 mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
-                return NULL;
+                exit(6);
             }
 
             ulRet = mon_warning_msg_de_queue(g_pstMsgQueue);
@@ -835,7 +835,8 @@ static U32 mon_handle_excp()
  */
 static U32 mon_add_data_to_db()
 {
-    time_t ulCur = time(0);
+    time_t ulCur = 0;
+    struct tm *pstCur;
     S8  szSQLCmd[SQL_CMD_MAX_LENGTH] = {0}, szBuff[4] = {0};
     S32 lRet = 0, lTotalDiskByte;
     U64 uLTotalDiskBytes = 0;
@@ -884,9 +885,13 @@ static U32 mon_add_data_to_db()
         return DOS_FAIL;
     }
 
+    ulCur = time(0);
+    pstCur = localtime(&ulCur);
     dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO syssrc.tbl_syssrc%04u%02u(ctime,phymem," \
         "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate,procmem_pct,proccpu_pct)" \
         " VALUES(%u,%u,%u,%u,%u,%d,%u,%u,%u,%u,%u,%u,%u,%u);"
+        , pstCur->tm_year + 1900
+        , pstCur->tm_mon + 1
         , ulCur
         , g_pstMem->ulPhysicalMemTotalBytes
         , g_pstMem->ulPhysicalMemUsageRate
@@ -904,7 +909,7 @@ static U32 mon_add_data_to_db()
     );
 
     lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
-    if(DB_ERR_SUCC != lRet)
+    if (DB_ERR_SUCC != lRet)
     {
         mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Execute SQL FAIL. SQL:%s", szSQLCmd);
         return DOS_FAIL;
