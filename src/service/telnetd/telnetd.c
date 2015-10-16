@@ -36,8 +36,10 @@ extern "C"{
 /* include private header files */
 #include "telnetd.h"
 #include "../cli/cli_server.h"
+#ifdef DIPCC_PTS
 #include "../pts/pts_telnet.h"
 #include "../pts/pts_goahead.h"
+#endif
 
 VOID telnetd_opt_init();
 VOID telnetd_set_options4client(FILE *output);

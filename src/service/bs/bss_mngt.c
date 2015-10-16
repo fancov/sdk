@@ -26,8 +26,6 @@ extern "C"{
 #include <sys/un.h>
 
 extern double ceil(double x);
-extern S8 *strptime(const S8 *s, const S8 *format, struct tm *tm);
-
 
 /* 处理WEB通知更新坐席的请求 */
 VOID bss_update_agent(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
@@ -310,9 +308,7 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 {
     S64 LMoney = 0;
     U32 ulCustomerID = 0;
-    time_t ulExpiryTime = 0;
-    S8  *pszRet = NULL;
-    struct tm stExpiryTm = {0};
+    U32 ulExpiryTime = 0;
     const S8 *pszMoney = NULL, *pszWhere  = NULL, *pszCustomID = NULL, *pszExpireTime = NULL;
     JSON_OBJ_ST  *pstJsonWhere = NULL;
     BS_CUSTOMER_ST  *pstCustomer = NULL;
@@ -386,13 +382,10 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pszExpireTime = json_get_param(pstJSONObj, "expiry");
             if (DOS_ADDR_VALID(pszExpireTime))
             {
-                dos_memzero(&stExpiryTm, sizeof(struct tm));
-                pszRet = strptime(pszExpireTime, "%Y-%m-%d", &stExpiryTm);
-                if (DOS_ADDR_INVALID(pszRet))
+                if (dos_atoul(pszExpireTime, &ulExpiryTime) < 0)
                 {
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "strptime FAIL.");
                 }
-                ulExpiryTime = mktime(&stExpiryTm);
             }
 
             /*获取where字段*/
@@ -619,13 +612,10 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             pszExpireTime = json_get_param(pstJSONObj, "expiry");
             if (DOS_ADDR_VALID(pszExpireTime))
             {
-                dos_memzero(&stExpiryTm, sizeof(struct tm));
-                pszRet = strptime(pszExpireTime, "%Y-%m-%d", &stExpiryTm);
-                if (DOS_ADDR_INVALID(pszRet))
+                if (dos_atoul(pszExpireTime, &ulExpiryTime) < 0)
                 {
                     bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "strptime FAIL.");
                 }
-                ulExpiryTime = mktime(&stExpiryTm);
             }
 
             pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
@@ -815,8 +805,7 @@ process_finished:
 VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
 {
     BS_BILLING_PACKAGE_ST *pstPkg = NULL;
-    struct tm stEffectTime, stExpiryTime;
-    time_t ulEffectTime = 0, ulExpiryTime = 0;
+    U32 ulEffectTime = 0, ulExpiryTime = 0;
     JSON_OBJ_ST  *pstJsonWhere = NULL;
     HASH_NODE_S *pstHashNode = NULL;
     const S8 *pszPkgID = NULL, *pszRuleID = NULL, *pszServType = NULL, *pszBillingType = NULL, *pszBillingRate = NULL;
@@ -825,7 +814,6 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
     const S8 *pszDstAttrType1 = NULL, *pszDstAttrType2 = NULL, *pszDstAttrValue1 = NULL, *pszDstAttrValue2 = NULL;
     const S8 *pszEffectTime = NULL, *pszExpiryTime = NULL, *pszPriority = NULL;
     const S8 *pszWhere = NULL;
-    S8       *pszRet = NULL;
     U32 ulPkgID = U32_BUTT, ulRuleID = U32_BUTT, ulServType = U32_BUTT, ulPriority = U32_BUTT;
     U32 ulSrcAttrType1 = U32_BUTT, ulSrcAttrType2 = U32_BUTT, ulSrcAttrValue1 = U32_BUTT, ulSrcAttrValue2 = U32_BUTT;
     U32 ulDstAttrType1 = U32_BUTT, ulDstAttrType2 = U32_BUTT, ulDstAttrValue1 = U32_BUTT, ulDstAttrValue2 = U32_BUTT;
@@ -849,22 +837,15 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
 
-            dos_memzero(&stEffectTime, sizeof(struct tm));
-            pszRet = strptime(pszEffectTime, "%Y-%m-%d", &stEffectTime);
-            if (DOS_ADDR_INVALID(pszRet))
+            if (dos_atoul(pszEffectTime, &ulEffectTime) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Transfer time str to time_t FAIL.");
             }
 
-            dos_memzero(&stExpiryTime, sizeof(struct tm));
-            pszRet = strptime(pszExpiryTime, "%Y-%m-%d", &stExpiryTime);
-            if (DOS_ADDR_INVALID(pszRet))
+            if (dos_atoul(pszExpiryTime, &ulExpiryTime) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Transfer time str to time_t FAIL.");
             }
-
-            ulEffectTime = mktime(&stEffectTime);
-            ulExpiryTime = mktime(&stExpiryTime);
 
             pszPkgID = json_get_param(pstJSONObj, "billing_package_id");
             pszServType = json_get_param(pstJSONObj, "serv_type");
@@ -1080,22 +1061,16 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Get Effect Time & Expiry Time FAIL.");
             }
 
-            dos_memzero(&stEffectTime, sizeof(struct tm));
-            pszRet = strptime(pszEffectTime, "%Y-%m-%d", &stEffectTime);
-            if (DOS_ADDR_INVALID(pszRet))
+            if (dos_atoul(pszEffectTime, &ulEffectTime) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Transfer time str to time_t FAIL.");
             }
 
-            dos_memzero(&stExpiryTime, sizeof(struct tm));
-            pszRet = strptime(pszExpiryTime, "%Y-%m-%d", &stExpiryTime);
-            if (DOS_ADDR_INVALID(pszRet))
+            if (dos_atoul(pszExpiryTime, &ulExpiryTime) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "Transfer time str to time_t FAIL.");
             }
 
-            ulEffectTime = mktime(&stEffectTime);
-            ulExpiryTime = mktime(&stExpiryTime);
             pszPkgID = json_get_param(pstJSONObj, "billing_package_id");
             pszSrcAttrType1 = json_get_param(pstJSONObj, "src_attr_type1");
             pszSrcAttrType2 = json_get_param(pstJSONObj, "src_attr_type2");

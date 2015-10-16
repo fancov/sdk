@@ -62,7 +62,6 @@ extern DB_HANDLE_ST      *g_pstSCDBHandle;
 
 extern U32                g_ulCPS;
 extern U32                g_ulMaxConcurrency4Task;
-extern S8 *strptime(const S8 *pszTime, const S8 *pszFormat, struct tm *tm);
 
 /* ÒµÎñ¿ØÖÆ¿é×´Ì¬ */
 static S8 *g_pszSCBStatus[] =
@@ -1065,7 +1064,6 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     BOOL blProcessOK = DOS_FALSE, bFound = DOS_FALSE;
     S32 lIndex = U32_BUTT;
     S8  szTaskName[64] = {0};
-    struct tm stModifyTime, stCreateTime;
     SC_TASK_CB_ST *pstTCB = NULL;
 
     for (blProcessOK = DOS_TRUE, lIndex = 0; lIndex < lCount; lIndex++)
@@ -1109,9 +1107,12 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
 
-            dos_memzero(&stModifyTime, sizeof(struct tm));
-            strptime(aszValues[lIndex], "%Y-%m-%d %H:%M:%S", &stModifyTime);
-            ulMoifyTime = (U32)mktime(&stModifyTime);
+            if (dos_atoul(aszValues[lIndex], &ulMoifyTime) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "mode", dos_strlen("mode")))
         {
@@ -1205,9 +1206,12 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
 
-            dos_memzero(&stCreateTime, sizeof(struct tm));
-            strptime(aszValues[lIndex], "%Y-%m-%d %H:%M:%S", &stCreateTime);
-            ulCreateTime = (U32)mktime(&stCreateTime);
+            if (dos_atoul(aszValues[lIndex], &ulCreateTime) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "calledcnt", dos_strlen("calledcnt")))
         {

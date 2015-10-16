@@ -1,0 +1,124 @@
+#!/bin/sh
+#chkconfig: 345 87 87
+#description: Start/Stop OK-CC service
+
+function start_all()
+{
+    /etc/init.d/bsd          start
+    /etc/init.d/scd          start
+    /etc/init.d/mcd          start
+    /etc/init.d/ctrl-paneld  start
+    /etc/init.d/monitord     start
+}
+
+function stop_all()
+{
+    /etc/init.d/bsd          stop
+    /etc/init.d/scd          stop
+    /etc/init.d/mcd          stop
+    /etc/init.d/ctrl-paneld  stop
+    /etc/init.d/monitord     stop
+}
+
+function status_all()
+{
+    /etc/init.d/bsd          status
+    /etc/init.d/scd          status
+    /etc/init.d/mcd          status
+    /etc/init.d/ctrl-paneld  status
+    /etc/init.d/monitord     status
+}
+
+case $1 in
+    start)
+        if [ -z $2 ]; then
+            start_all
+            
+            exit 0
+        fi
+
+        case $2 in
+            bs)
+                /etc/init.d/bsd start
+            ;;
+            sc)
+                /etc/init.d/scd start
+            ;;
+            ctrl_panel)
+                /etc/init.d/ctrl-paneld start
+            ;;
+            monitor)
+                /etc/init.d/monitord start
+            ;;
+            mc)
+                /etc/init.d/mcd start
+            ;;
+            *)
+                echo "$2 is not a component of the ipcc system."
+            ;;
+        esac
+    ;;
+    stop)
+        if [ -z $2 ]; then
+            stop_all
+            
+            exit 0
+        fi
+
+        case $2 in
+            bs)
+                /etc/init.d/bsd stop
+            ;;
+            sc)
+                /etc/init.d/scd stop
+            ;;
+            ctrl_panel)
+                /etc/init.d/ctrl-paneld stop
+            ;;
+            monitor)
+                /etc/init.d/monitord stop
+            ;;
+            mc)
+                /etc/init.d/mcd stop
+            ;;
+            *)
+                echo "$2 is not a component of the ipcc system."
+            ;;
+        esac     
+    ;;
+    status)
+        if [ -z $2 ]; then
+            status_all
+            
+            exit 0
+        fi
+
+        case $2 in
+            bs)
+                /etc/init.d/bsd status
+            ;;
+            sc)
+                /etc/init.d/scd status
+            ;;
+            ctrl_panel)
+                /etc/init.d/ctrl-paneld status
+            ;;
+            monitor)
+                /etc/init.d/monitord status
+            ;;
+            mc)
+                /etc/init.d/mcd status
+            ;;
+            *)
+                echo "$2 is not a component of the ipcc system."
+            ;;
+        esac     
+    ;;
+    restart)
+        $0 stop $2
+        $0 start $2
+    ;;
+    *)
+            echo "Use this script with parameter start|stop|restart bs|sc|ctrl_panel|monitor|ptc"
+    ;;
+esac

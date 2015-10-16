@@ -1,0 +1,153 @@
+#!/bin/sh
+#chkconfig: 345 87 87
+#description: Start/Stop Media Control Module of OK-CC System
+
+SERVICE_NAME=mc
+PROGRAM_NAME=mcd
+ADDITION_STR=ipcc-service
+SERVICE_ROOT=/dipcc
+PID_ROOT=${SERVICE_ROOT}/var/run/pid
+
+function check_status() {
+    RUN_PID=`ps aux | grep -v "grep" | grep $ADDITION_STR.$SERVICE_NAME | awk '{print $2}'`
+    
+    if [ -f $PID_ROOT/$PROGRAM_NAME.pid ]; then
+        RCD_PID=`cat $PID_ROOT/$PROGRAM_NAME.pid`
+    else
+        RCD_PID=""
+    fi
+    
+    # exception
+    if [ ! -z $RUN_PID ] && [ -z $RCD_PID ] ; then 
+       echo  $RUN_PID > $PID_ROOT/$PROGRAM_NAME.pid
+       return 0
+    fi
+    
+    # Not running
+    if [ -z $RUN_PID ] && [ -z $RCD_PID ] ; then
+        return 1
+    fi
+    
+    # dead
+    if [ -z $RUN_PID ] && [ ! -z $RCD_PID ] ; then 
+       echo  $RUN_PID > $PID_ROOT/$PROGRAM_NAME.pid
+       return 2
+    fi
+    
+    # PID file has been tamper 
+    if [ $RUN_PID -ne $RCD_PID ]; then
+        echo  $RUN_PID > $PID_ROOT/$PROGRAM_NAME.pid
+        return 0
+    fi
+    
+    return 0
+}
+
+function wait_for_pid () {
+    try=0
+
+    while test $try -lt 10 ; do
+        case "$1" in
+            'created')
+            if [ -f "$2" ] ; then
+                try=''
+                break
+            fi
+            ;;
+
+            'removed')
+            if [ ! -f "$2" ] ; then
+                try=''
+                break
+            fi
+            ;;
+        esac
+
+        printf "\b"$try
+        try=`expr $try + 1`
+        sleep 1
+
+    done
+
+    printf "\b"
+}
+
+
+function start_service()
+{
+    printf "%-30s" "Starting $SERVICE_NAME"
+    if [ -f ${PID_ROOT}/$PROGRAM_NAME.pid ]; then
+        check_status
+        if [ $? -eq 0 ]; then
+            echo "[FAIL] Already running"
+            return 1
+        fi
+    fi
+
+    (${SERVICE_ROOT}/bin/$PROGRAM_NAME --$ADDITION_STR.$SERVICE_NAME > /dev/null 2>&1 &)
+    if [ $? -ne 0 ]; then
+        echo "[FAIL] Start failed"
+        return 1
+    fi
+    
+    wait_for_pid created ${PID_ROOT}/$PROGRAM_NAME.pid 
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Start without PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function stop_service()
+{
+    printf "%-30s" "Stopping $SERVICE_NAME"
+    check_status
+    if [ $? -ne 0 ]; then
+        echo "[FAIL] Not running"
+        return 1
+    fi
+    
+    kill `cat ${PID_ROOT}/$PROGRAM_NAME.pid` > /dev/null 2>&1 &
+    
+    wait_for_pid removed ${PID_ROOT}/$PROGRAM_NAME.pid
+    if [ -n "$try" ] ; then
+        echo "[FAIL] Stop without delete PID File"
+        return 1
+    else
+        echo "[DONE]"
+    fi
+}
+
+function status_service()
+{
+    printf "%-30s" "$SERVICE_NAME"
+    check_status
+    RET=$?
+    if [ $RET -eq 0 ]; then
+        echo "Running"
+    elif [ $RET -eq 1 ]; then
+        echo "Not Running"
+    elif [ $RET -eq 2 ]; then
+        echo "Dead"
+    fi
+}
+
+case $1 in
+    start)
+        start_service
+    ;;
+    stop)
+        stop_service
+    ;;
+    status)
+        status_service
+    ;;
+    restart)
+        $0 stop $2
+        $0 start $2
+    ;;
+    *)
+        echo "Use this script with parameter start|stop|restart"
+    ;;
+esac

@@ -164,7 +164,7 @@ VOID* mon_warning_handle(VOID *p)
             if(DOS_SUCC != lRet)
             {
                 mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
-                return DOS_FAIL;
+                exit(6);
             }
 
             ulRet = mon_warning_msg_de_queue(g_pstMsgQueue);
@@ -335,7 +335,6 @@ static U32 mon_get_res_info()
  */
 static U32 mon_handle_excp()
 {
-    S32 lRet = 0;
     U32  ulRet = 0, ulProcMem = 0;
     U32  ulRows = 0;
     U32  ulIndex = 0;
@@ -836,8 +835,8 @@ static U32 mon_handle_excp()
  */
 static U32 mon_add_data_to_db()
 {
-    time_t ulCur = time(0);
-    struct tm *pstCurTime;
+    time_t ulCur = 0;
+    struct tm *pstCur;
     S8  szSQLCmd[SQL_CMD_MAX_LENGTH] = {0}, szBuff[4] = {0};
     S32 lRet = 0, lTotalDiskByte;
     U64 uLTotalDiskBytes = 0;
@@ -886,18 +885,14 @@ static U32 mon_add_data_to_db()
         return DOS_FAIL;
     }
 
-    pstCurTime = localtime(&ulCur);
+    ulCur = time(0);
+    pstCur = localtime(&ulCur);
     dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO syssrc.tbl_syssrc%04u%02u(ctime,phymem," \
         "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate,procmem_pct,proccpu_pct)" \
-        " VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',%u,%u,%u,%u,%d,%u,%u,%u,%u,%u,%u,%u,%u);"
-        , pstCurTime->tm_year + 1900
-        , pstCurTime->tm_mon + 1
-        , pstCurTime->tm_year + 1900
-        , pstCurTime->tm_mon + 1
-        , pstCurTime->tm_mday
-        , pstCurTime->tm_hour
-        , pstCurTime->tm_min
-        , pstCurTime->tm_sec
+        " VALUES(%u,%u,%u,%u,%u,%d,%u,%u,%u,%u,%u,%u,%u,%u);"
+        , pstCur->tm_year + 1900
+        , pstCur->tm_mon + 1
+        , ulCur
         , g_pstMem->ulPhysicalMemTotalBytes
         , g_pstMem->ulPhysicalMemUsageRate
         , g_pstMem->ulSwapTotalBytes
@@ -914,7 +909,7 @@ static U32 mon_add_data_to_db()
     );
 
     lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
-    if(DB_ERR_SUCC != lRet)
+    if (DB_ERR_SUCC != lRet)
     {
         mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Execute SQL FAIL. SQL:%s", szSQLCmd);
         return DOS_FAIL;
@@ -937,12 +932,10 @@ U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc)
     S32 lRet = 0;
     U32 ulIndex = 0;
     time_t lCur;
-    struct tm *pstCurTime;
 
     S8 szSQLCmd[SQL_CMD_MAX_LENGTH] = {0};
 
     time(&lCur);
-    pstCurTime = localtime(&lCur);
 
     ulIndex = mon_get_msg_index(ulResId);
     if (U32_BUTT == ulIndex)
@@ -954,12 +947,7 @@ U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc)
                "ctime,warning,cause,type,object,content,cycle,status)" \
                " VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',concat(\'%s\', lower(hex(%u))),%u,%u," \
                "%u,\'%s\',%u,%u);"
-               , pstCurTime->tm_year + 1900
-               , pstCurTime->tm_mon + 1
-               , pstCurTime->tm_mday
-               , pstCurTime->tm_hour
-               , pstCurTime->tm_min
-               , pstCurTime->tm_sec
+               , lCur
                , "0x"
                , ulResId
                , ((ulResId & 0x0fffffff) >> 24) - 1
