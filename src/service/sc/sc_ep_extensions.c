@@ -26,7 +26,7 @@ extern "C"{
 #include "sc_ep.h"
 #include "sc_acd_def.h"
 
-#define SC_EXT_EVENT_LIST "custom sofia::register sofia::unregister"
+#define SC_EXT_EVENT_LIST "custom sofia::register sofia::unregister sofia::unregister sofia::gateway_state sofia::expire"
 
 
 SC_EP_HANDLE_ST  *g_pstExtMngtHangle  = NULL;
@@ -37,7 +37,7 @@ pthread_t        g_pthExtMngtProcTask;
 
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
-U32 sc_ep_update_sip_ip(U32 ulPublicIP, U32 ulPrivateIP, SC_STATUS_TYPE_EN enStatus, U32 ulSipID)
+U32 sc_ep_update_db_sip_ip(U32 ulPublicIP, U32 ulPrivateIP, SC_SIP_STATUS_TYPE_EN enStatus, U32 ulSipID)
 {
     S8 szSQL[512] = { 0 };
 
@@ -46,19 +46,32 @@ U32 sc_ep_update_sip_ip(U32 ulPublicIP, U32 ulPrivateIP, SC_STATUS_TYPE_EN enSta
     return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
 }
 
+U32 sc_ep_update_db_trunk_status(U32 ulGateWayID, SC_TRUNK_STATE_TYPE_EN enTrunkState)
+{
+    S8 szSQL[512] = { 0 };
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_gateway SET register_status=%d WHERE id=%u", enTrunkState, ulGateWayID);
+
+    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+}
+
 VOID* sc_ep_ext_mgnt(VOID *ptr)
 {
-    struct timespec     stTimeout;
-    DLL_NODE_S          *pstListNode = NULL;
-    esl_event_t         *pstEvent    = NULL;
-    S8                  *pszUserID   = NULL;
-    S8                  *pszVal      = NULL;
-    S8                  szPrivateIP[17] = {0};
-    U32                 ulPublicIP   = 0;
-    U32                 ulPrivateIP  = 0;
-    U32                 ulSipID      = 0;
-    U32                 ulResult     = 0;
-    SC_STATUS_TYPE_EN   enStatus;
+    struct timespec         stTimeout;
+    DLL_NODE_S              *pstListNode = NULL;
+    esl_event_t             *pstEvent    = NULL;
+    S8                      *pszUserID   = NULL;
+    S8                      *pszVal      = NULL;
+    S8                      *pszSubclass = NULL;
+    S8                      szPrivateIP[17] = {0};
+    U32                     ulPublicIP   = 0;
+    U32                     ulPrivateIP  = 0;
+    U32                     ulSipID      = 0;
+    U32                     ulResult     = 0;
+    U32                     ulGateWayID  = 0;
+    SC_SIP_STATUS_TYPE_EN   enStatus;
+    SC_TRUNK_STATE_TYPE_EN  enTrunkState;
+
 
     for (;;)
     {
@@ -92,7 +105,86 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
             pstListNode->pHandle = NULL;
             if (pstEvent)
             {
+                pszSubclass = esl_event_get_header(pstEvent, "Event-Subclass");
+                if (esl_strlen_zero(pszSubclass))
+                {
+                     sc_logr_debug(SC_ACD, "%s", "Not get userid");
+
+                     goto end;
+                }
+
+                if (dos_strcmp(pszSubclass, "sofia::gateway_state") == 0)
+                {
+                    /* gateway_state 维护中继的状态 */
+                    pszVal = esl_event_get_header(pstEvent, "Gateway");
+                    if (esl_strlen_zero(pszVal) || dos_atoul(pszVal, &ulGateWayID) < 0)
+                    {
+                        sc_logr_debug(SC_ACD, "%s", "Not get Gateway");
+                        goto end;
+                    }
+
+                    pszVal = esl_event_get_header(pstEvent, "State");
+                    if (esl_strlen_zero(pszVal))
+                    {
+                        sc_logr_debug(SC_ACD, "%s", "Not get State");
+                        goto end;
+                    }
+
+                    if (dos_strcmp(pszVal, "UNREGED") == 0)
+                    {
+                        enTrunkState = SC_TRUNK_STATE_TYPE_UNREGED;
+                    }
+                    else if (dos_strcmp(pszVal, "TRYING") == 0)
+                    {
+                        enTrunkState = SC_TRUNK_STATE_TYPE_TRYING;
+                    }
+                    else if (dos_strcmp(pszVal, "REGISTER") == 0)
+                    {
+                        enTrunkState = SC_TRUNK_STATE_TYPE_REGISTER;
+                    }
+                    else if (dos_strcmp(pszVal, "REGED") == 0)
+                    {
+                        enTrunkState = SC_TRUNK_STATE_TYPE_REGED;
+                    }
+                    else if (dos_strcmp(pszVal, "FAILED") == 0)
+                    {
+                        enTrunkState = SC_TRUNK_STATE_TYPE_FAILED;
+                    }
+                    else if (dos_strcmp(pszVal, "FAIL_WAIT") == 0)
+                    {
+                        enTrunkState = SC_TRUNK_STATE_TYPE_FAIL_WAIT;
+                    }
+                    else if (dos_strcmp(pszVal, "NOREG") == 0)
+                    {
+                        enTrunkState = SC_TRUNK_STATE_TYPE_NOREG;
+                    }
+                    else
+                    {
+                        sc_logr_info(SC_ESL, "Trunk state matching FAIL. %s", pszVal);
+                        goto end;
+                    }
+
+                    /*
+                    ulResult = sc_ep_update_trunk_status(ulGateWayID, enTrunkState);
+                    if (ulResult != DOS_SUCC)
+                    {
+                        sc_logr_debug(SC_ESL, "update trunk(%u) status fail.", ulGateWayID);
+
+                        goto end;
+                    }
+                    */
+
+                    ulResult = sc_ep_update_db_trunk_status(ulGateWayID, enTrunkState);
+                    if(DB_ERR_SUCC != ulResult)
+                    {
+                        sc_logr_debug(SC_ACD, "update trunk(%u) db fail.", ulGateWayID);
+                    }
+
+                    goto end;
+                }
+
                 /* TODO 维护ACD模块中坐席所对应的SIP分机的状态 */
+                /* 维护SIP分机的状态 */
                 pszUserID = esl_event_get_header(pstEvent, "username");
                 if (esl_strlen_zero(pszUserID))
                 {
@@ -101,30 +193,21 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                      goto end;
                 }
 
-                /* 维护SIP分机的状态 */
-                pszVal = esl_event_get_header(pstEvent, "Event-Subclass");
-                if (esl_strlen_zero(pszVal))
-                {
-                     sc_logr_debug(SC_ACD, "%s", "Not get userid");
-
-                     goto end;
-                }
-
-                if (!dos_strstr(pszVal, "unregister"))
+                if (dos_strcmp(pszSubclass, "sofia::register") == 0)
                 {
                     /* register */
-                    enStatus = SC_STATUS_TYPE_REGISTER;
+                    enStatus = SC_SIP_STATUS_TYPE_UNREGISTER;
                 }
                 else
                 {
-                    /* unregister */
-                    enStatus = SC_STATUS_TYPE_UNREGISTER;
+                    /* sofia::unregister/sofia::expire */
+                    enStatus = SC_SIP_STATUS_TYPE_REGISTER;
                 }
 
                 ulResult = sc_ep_update_sip_status(pszUserID, enStatus, &ulSipID);
                 if (ulResult != DOS_SUCC)
                 {
-                    sc_logr_debug(SC_ACD, "%s", "update sip status fail");
+                    sc_logr_debug(SC_ESL, "update sip(userid : %s) status fail", pszUserID);
 
                     goto end;
                 }
@@ -160,7 +243,7 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                     }
                 }
 
-                ulResult = sc_ep_update_sip_ip(ulPublicIP, ulPrivateIP, enStatus, ulSipID);
+                ulResult = sc_ep_update_db_sip_ip(ulPublicIP, ulPrivateIP, enStatus, ulSipID);
                 if(DB_ERR_SUCC != ulResult)
                 {
                     sc_logr_debug(SC_ACD, "update sip db fail, userid is %s", pszUserID);

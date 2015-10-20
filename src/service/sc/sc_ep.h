@@ -120,7 +120,7 @@ typedef struct tagSCUserIDNode{
     S8   szUserID[SC_TEL_NUMBER_LENGTH];         /* SIPÕË»§ */
     S8   szExtension[SC_TEL_NUMBER_LENGTH];      /* ·Ö»úºÅ */
 
-    SC_STATUS_TYPE_EN  enStatus;                 /* ×´Ì¬ */
+    SC_SIP_STATUS_TYPE_EN  enStatus;             /* ×´Ì¬ */
 
     SC_SIP_ACCT_ST stStat;
 }SC_USER_ID_NODE_ST;

@@ -390,13 +390,28 @@ typedef enum tagSCBStatus
     SC_SCB_BUTT
 }SC_SCB_STATUS_EN;
 
-typedef enum tagSCStatusType
+/* sip 分机的状态 */
+typedef enum tagSCSipStatusType
 {
-    SC_STATUS_TYPE_UNREGISTER,
-    SC_STATUS_TYPE_REGISTER,
+    SC_SIP_STATUS_TYPE_UNREGISTER,
+    SC_SIP_STATUS_TYPE_REGISTER,
 
-    SC_STATUS_TYPE_BUTT
-}SC_STATUS_TYPE_EN;
+    SC_SIP_STATUS_TYPE_BUTT
+}SC_SIP_STATUS_TYPE_EN;
+
+/* 中继的状态 */
+typedef enum tagSCTrunkStateType
+{
+    SC_TRUNK_STATE_TYPE_UNREGED,
+    SC_TRUNK_STATE_TYPE_TRYING,
+    SC_TRUNK_STATE_TYPE_REGISTER,
+    SC_TRUNK_STATE_TYPE_REGED,
+    SC_TRUNK_STATE_TYPE_FAILED,
+    SC_TRUNK_STATE_TYPE_FAIL_WAIT,
+    SC_TRUNK_STATE_TYPE_NOREG,
+
+    SC_TRUNK_STATE_TYPE_BUTT
+}SC_TRUNK_STATE_TYPE_EN;
 
 typedef enum tagSCCallRole
 {
@@ -963,7 +978,8 @@ U32 sc_http_did_update_proc(U32 ulAction, U32 ulDidID);
 U32 sc_http_caller_setting_update_proc(U32 ulAction, U32 ulSettingID);
 U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerGrpID);
 U32 sc_http_caller_update_proc(U32 ulAction, U32 ulCallerID);
-U32 sc_ep_update_sip_status(S8 *szUserID, SC_STATUS_TYPE_EN enStatus, U32 *pulSipID);
+U32 sc_ep_update_sip_status(S8 *szUserID, SC_SIP_STATUS_TYPE_EN enStatus, U32 *pulSipID);
+U32 sc_ep_update_trunk_status(U32 ulGateWayID, SC_TRUNK_STATE_TYPE_EN enStatus);
 U32 sc_gateway_delete(U32 ulGatewayID);
 U32 sc_load_sip_userid(U32 ulIndex);
 U32 sc_load_gateway(U32 ulIndex);
