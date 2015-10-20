@@ -44,6 +44,7 @@
 #include "sc_debug.h"
 #include "sc_acd_def.h"
 #include "sc_acd.h"
+#include "sc_ep.h"
 
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
@@ -538,7 +539,12 @@ U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
     return DOS_SUCC;
 }
 
-/* 根据SIP，查找到绑定的坐席，更新usSCBNo字段 */
+/*
+ * 函  数: U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB)
+ * 功  能: 根据SIP，查找到绑定的坐席，更新usSCBNo字段
+ * 参  数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ **/
 U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB)
 {
     U32                         ulHashIndex         = 0;
@@ -600,7 +606,15 @@ U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB)
     return DOS_FAIL;
 }
 
-U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB)
+/*
+ * 函  数: U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, SC_AGENT_BIND_TYPE_EN enType)
+ * 功  能: 修改坐席的状态和scbno
+ * 参  数:
+ *       SC_DID_BIND_TYPE_EN enType : 如果 enType 为 SC_DID_BIND_TYPE_SIP,则要判断坐席，是否正在使用sip，
+ *                                      如果使用sip分机，才需要更新坐席的状态。
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ **/
+U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, U32 ulType)
 {
     HASH_NODE_S                *pstHashNode = NULL;
     SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode = NULL;
@@ -630,9 +644,18 @@ U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB)
         return DOS_FAIL;
     }
 
+    if (ulType == SC_DID_BIND_TYPE_SIP && pstAgentNode->pstAgentInfo->ucBindType != AGENT_BIND_SIP)
+    {
+        /* 不要更新坐席的状 */
+        return DOS_SUCC;
+    }
+
     pstAgentNode->pstAgentInfo->usSCBNo = pstSCB->usSCBNo;
     pstSCB->ulAgentID = ulAgentID;
-    pstAgentNode->pstAgentInfo->ucStatus = SC_ACD_BUSY;
+    if (pstAgentNode->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+    {
+        pstAgentNode->pstAgentInfo->ucStatus = SC_ACD_BUSY;
+    }
 
     return DOS_SUCC;
 }
