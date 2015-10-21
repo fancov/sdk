@@ -655,7 +655,7 @@ invalid_params:
 U32 sc_http_api_num_verify(list_t *pstArgv)
 {
     S8 *pszCustomer = NULL;
-    S8 *pszCaller   = NULL;
+    //S8 *pszCaller   = NULL;
     S8 *pszCallee   = NULL;
     S8 *pszPassword = NULL;
     S8 *pszPlaycnt = NULL;
@@ -670,12 +670,11 @@ U32 sc_http_api_num_verify(list_t *pstArgv)
     }
 
     pszCustomer = sc_http_api_get_value(pstArgv, "customer");
-    pszCaller = sc_http_api_get_value(pstArgv, "caller");
+    //pszCaller = sc_http_api_get_value(pstArgv, "caller");
     pszCallee = sc_http_api_get_value(pstArgv, "callee");
     pszPassword = sc_http_api_get_value(pstArgv, "verify_num");
     pszPlaycnt = sc_http_api_get_value(pstArgv, "play_cnt");
     if (DOS_ADDR_INVALID(pszCustomer)
-        || DOS_ADDR_INVALID(pszCaller)
         || DOS_ADDR_INVALID(pszCallee)
         || DOS_ADDR_INVALID(pszPassword))
     {
@@ -697,7 +696,7 @@ U32 sc_http_api_num_verify(list_t *pstArgv)
         goto invalid_params;
     }
 
-    sc_dial_make_call_for_verify(ulCustomer, pszCaller, pszCallee, pszPassword, ulPlayCnt);
+    sc_dial_make_call_for_verify(ulCustomer, pszCallee, pszPassword, ulPlayCnt);
 
     return SC_HTTP_ERRNO_SUCC;
 

@@ -40,10 +40,11 @@ typedef struct tagSCCallQueueNode
 /* dialer模块控制块示例 */
 SC_DIALER_HANDLE_ST  *g_pstDialerHandle = NULL;
 
-U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt)
+U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt)
 {
     SC_SCB_ST *pstSCB = NULL;
     U32   ulRouteID;
+    S8    szCaller[SC_TEL_NUMBER_LENGTH] = {0};
 
     if (0 == ulCustomer || U32_BUTT == ulCustomer)
     {
@@ -52,8 +53,7 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S
         return DOS_FAIL;
     }
 
-    if (DOS_ADDR_INVALID(pszCaller)
-        || DOS_ADDR_INVALID(pszNumber)
+    if (DOS_ADDR_INVALID(pszNumber)
         || DOS_ADDR_INVALID(pszPassword))
     {
         DOS_ASSERT(0);
@@ -72,7 +72,17 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszCaller, S8 *pszNumber, S
     pstSCB->ulCustomID = ulCustomer;
     dos_strncpy(pstSCB->szCalleeNum, pszNumber, sizeof(pstSCB->szCalleeNum));
     pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
-    dos_strncpy(pstSCB->szCallerNum, pszCaller, sizeof(pstSCB->szCallerNum));
+
+    /* 主叫号码，根据客户从主叫号码组中获得一个主叫号码 */
+    if (sc_caller_setting_select_number(ulCustomer, 0, SC_SRC_CALLER_TYPE_ALL, szCaller, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
+    {
+        sc_logr_info(SC_HTTPD, "Get caller FAIL by customer(%u)", ulCustomer);
+        DOS_ASSERT(0);
+        goto proc_fail;
+    }
+
+    sc_logr_debug(SC_HTTPD, "Get caller(%s) SUCC by customer(%u)", szCaller, ulCustomer);
+    dos_strncpy(pstSCB->szCallerNum, szCaller, sizeof(pstSCB->szCallerNum));
     pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
     dos_strncpy(pstSCB->szDialNum, pszPassword, sizeof(pstSCB->szDialNum));
     pstSCB->szDialNum[sizeof(pstSCB->szDialNum) - 1] = '\0';
