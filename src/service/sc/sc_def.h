@@ -737,6 +737,7 @@ typedef struct tagTaskCB
     U32        ulCalleeCount;                     /* 当前被叫号码数量 */
     U32        ulLastCalleeIndex;                 /* 用于数据分页 */
     U32        ulCalledCount;                     /* 已经呼叫过的号码数量 */
+    U32        ulCallerGrpID;                     /* 主叫号码组的ID */
     list_t     stCalleeNumQuery;                  /* 被叫号码缓存 refer to struct tagTelNumQueryNode */
     S8         szAudioFileLen[SC_MAX_AUDIO_FILENAME_LEN];  /* 语言文件文件名 */
     SC_CALLER_QUERY_NODE_ST *pstCallerNumQuery;            /* 主叫号码缓存 refer to struct tagTelNumQueryNode */
@@ -923,9 +924,9 @@ U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB);
 VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID);
 U32 sc_task_get_current_call_cnt(SC_TASK_CB_ST *pstTCB);
 S32 sc_task_load(U32 ulIndex);
-U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB);
 #if 0
+U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_load_agent_info(SC_TASK_CB_ST *pstTCB);
 S32 sc_task_load_other_info(SC_TASK_CB_ST *pstTCB);
