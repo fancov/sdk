@@ -125,7 +125,6 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
     U32 ulTimeout = 2;
     U32 ulRet = 0;
 
-    return 0;
     if (DOS_ADDR_INVALID(pstAgentInfo)
         || DOS_ADDR_INVALID(szCaller))
     {
@@ -134,7 +133,7 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
         return DOS_FAIL;
     }
 
-    //curl_global_init(CURL_GLOBAL_ALL);
+    curl_global_init(CURL_GLOBAL_ALL);
     if (DOS_ADDR_INVALID(g_pstCurlHandle))
     {
         g_pstCurlHandle = curl_easy_init();
