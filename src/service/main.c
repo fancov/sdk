@@ -162,6 +162,14 @@ int main(int argc, char ** argv)
     }
 #endif
 
+#if (INCLUDE_DB_CONFIG)
+    if (dos_db_config_init() != DOS_SUCC)
+    {
+        dos_printf("%s", "Init db config fail. exit");
+        exit(1);
+    }
+#endif
+
 #if INCLUDE_EXCEPTION_CATCH
     /* ÐÅºÅ×¥È¡£¬×¢²á */
     dos_signal_handle_reg();
