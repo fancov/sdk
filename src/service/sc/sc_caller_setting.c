@@ -809,7 +809,46 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
     return DOS_SUCC;
 }
 
-#if 0
+U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen)
+{
+    SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    U32  ulHashIndex = 0, ulRet = U32_BUTT;
+
+    ulHashIndex = sc_ep_caller_grp_hash_func(ulGrpID);
+    pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&ulGrpID, sc_ep_caller_grp_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
+    if (SC_CALLER_POLICY_IN_ORDER == pstCallerGrp->ulPolicy)
+    {
+        ulRet = sc_select_number_in_order(pstCallerGrp->ulCustomerID, ulGrpID, pszNumber, ulLen);
+        if (DOS_SUCC != ulRet)
+        {
+            sc_logr_error(SC_FUNC, "Select number in order FAIL.(CallerGrpID:%u)", ulGrpID);
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
+    }
+    else
+    {
+        ulRet = sc_select_number_random(pstCallerGrp->ulCustomerID, ulGrpID, pszNumber, ulLen);
+        if (DOS_SUCC != ulRet)
+        {
+            sc_logr_error(SC_FUNC, "Select number random FAIL.(CallerGrpID:%u)", ulGrpID);
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
+    }
+    return DOS_SUCC;
+}
+
+
 /**
  * 函数: static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
  * 功能: 根据客户ID随机选择一个主叫号码
@@ -892,7 +931,6 @@ static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
     }
     return DOS_TRUE;
 }
-#endif
 
 /**
  * 函数: S32 sc_get_numbers_of_did_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)

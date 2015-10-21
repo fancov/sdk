@@ -75,13 +75,12 @@ def make_route(ulGatewayID):
     domIncludeNode.appendChild(domGatewayNode)
     doc.appendChild(domIncludeNode)
     
-    seqCfgDir = db_config.get_db_param()['fs_config_path']
+    seqCfgDir = conf_path.get_config_path()
     if -1 == seqCfgDir:
-        file_info.print_file_info('Generate route Configuration FAIL, seqCfgDir is %d' % seqCfgDir)
+        file_info.print_file_info('Search the path of FreeSWITCH FAIL.')
         return -1
     if seqCfgDir[-1] != '/':
         seqCfgDir = seqCfgDir + '/'
-    
     seqCfgDir = seqCfgDir + 'sip_profiles/external/'
     if os.path.exists(seqCfgDir) is False:
         os.makedirs(seqCfgDir)
