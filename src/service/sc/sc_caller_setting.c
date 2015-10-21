@@ -848,7 +848,6 @@ U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen)
     return DOS_SUCC;
 }
 
-
 /**
  * 函数: static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
  * 功能: 根据客户ID随机选择一个主叫号码

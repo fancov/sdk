@@ -78,7 +78,7 @@ static U32 mon_close_db_conn();
 static U32 mon_init_warning_msg();
 static U32 mon_deinit_warning_msg();
 U32 mon_get_msg_index(U32 ulNo);
-U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc);
+U32 mon_add_warning_record(MON_MSG_S *pstMsg);
 
 
 /**
@@ -160,7 +160,7 @@ VOID* mon_warning_handle(VOID *p)
             }
 
             pstMsg = g_pstMsgQueue->pstHead;
-            ulRet = mon_add_warning_record(pstMsg->ulWarningId, (S8*)pstMsg->msg);
+            ulRet = mon_add_warning_record(pstMsg);
             if(DOS_SUCC != lRet)
             {
                 mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
@@ -927,7 +927,7 @@ static U32 mon_add_data_to_db()
  * 返回值：
  *   成功则返回DOS_SUCC，失败返回DOS_FAIL
  */
-U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc)
+U32 mon_add_warning_record(MON_MSG_S *pstMsg)
 {
     S32 lRet = 0;
     U32 ulIndex = 0;
@@ -935,28 +935,32 @@ U32 mon_add_warning_record(U32 ulResId, S8* szInfoDesc)
 
     S8 szSQLCmd[SQL_CMD_MAX_LENGTH] = {0};
 
-    time(&lCur);
-
-    ulIndex = mon_get_msg_index(ulResId);
-    if (U32_BUTT == ulIndex)
+    if (DOS_ADDR_INVALID(pstMsg))
     {
-       return DOS_FAIL;
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
 
+    ulIndex = mon_get_msg_index(pstMsg->ulWarningId);
+    if (U32_BUTT == ulIndex)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    lCur = time(0);
     dos_snprintf(szSQLCmd, SQL_CMD_MAX_LENGTH, "INSERT INTO syssrc.tbl_alarmlog(" \
                "ctime,warning,cause,type,object,content,cycle,status)" \
-               " VALUES(\'%04u-%02u-%02u %02u:%02u:%02u\',concat(\'%s\', lower(hex(%u))),%u,%u," \
-               "%u,\'%s\',%u,%u);"
+               " VALUES(%u,%u,%u,%u,%u,\'%s\',%u,%u);"
                , lCur
-               , "0x"
-               , ulResId
-               , ((ulResId & 0x0fffffff) >> 24) - 1
+               , pstMsg->ulWarningId
+               , ((pstMsg->ulWarningId >> 24) & 0x0F) - 1
                , g_pstWarningMsg[ulIndex].ulWarningLevel
                , 0
-               , szInfoDesc
+               , (S8 *)pstMsg->msg
                , 5
                , g_pstWarningMsg[ulIndex].bExcep == DOS_FALSE ? 0:1
-             );
+     );
 
     lRet = db_query(g_pstDBHandle, szSQLCmd, NULL, NULL, NULL);
     if(DB_ERR_SUCC != lRet)
