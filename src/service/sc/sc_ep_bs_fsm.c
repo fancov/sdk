@@ -65,7 +65,7 @@ U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB)
     ulCurrentLen = 0;
 
     ulCurrentLen = dos_snprintf(szAPPParam, ulTotalLen
-                        , "{play_balance=true}file_string://%s/ndyuebz.wav", SC_TASK_AUDIO_PATH);
+                        , "{not_hungup_after_play=true}file_string://%s/ndyuebz.wav", SC_TASK_AUDIO_PATH);
 
     sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
 
