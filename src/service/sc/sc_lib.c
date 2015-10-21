@@ -862,7 +862,7 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulCallerGrpID = 0;
 
     dos_list_init(&pstTCB->stCalleeNumQuery);    /* TODO: 释放所有节点 */
-    pstTCB->pstCallerNumQuery = NULL;   /* TODO: 初始化所有节点 */
+    //pstTCB->pstCallerNumQuery = NULL;   /* TODO: 初始化所有节点 */
     pstTCB->szAudioFileLen[0] = '\0';
     dos_memzero(pstTCB->astPeriod, sizeof(pstTCB->astPeriod));
 
@@ -1009,6 +1009,7 @@ VOID sc_task_update_calledcnt(U64 ulArg)
     return;
 }
 
+#if 0
 static S32 sc_task_load_caller_index_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
     SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
@@ -1058,6 +1059,7 @@ static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
 
     return DOS_SUCC;
 }
+#endif
 
 S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
@@ -1291,10 +1293,10 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 S32 sc_task_load(U32 ulIndex)
 {
     S8  szQuery[256] = {0};
-    S32 lRet = U32_BUTT, lIndex = 0;
-    U32  ulRet = U32_BUTT;
+    S32 lRet = U32_BUTT;
+    //U32  ulRet = U32_BUTT;
     SC_TASK_CB_ST *pstTCB = NULL;
-    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    //SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
@@ -1330,7 +1332,7 @@ S32 sc_task_load(U32 ulIndex)
         return DOS_FAIL;
     }
     sc_logr_debug(SC_TASK, "SC Task Load Caller SUCC.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
-#endif
+
 
     /* 加载主叫号码的数据库索引属性 */
     for (lIndex = 0; lIndex < SC_MAX_CALLER_NUM; ++lIndex)
@@ -1349,6 +1351,7 @@ S32 sc_task_load(U32 ulIndex)
         }
     }
 
+#endif
     /* 维护被叫号码数据 */
     lRet = sc_task_load_callee(pstTCB);
     if (DOS_SUCC != lRet)
@@ -2452,7 +2455,7 @@ U32 sc_http_caller_update_proc(U32 ulAction, U32 ulCallerID)
             sc_load_caller(ulCallerID);
             break;
         case SC_API_CMD_ACTION_CALLER_DELETE:
-            sc_caller_delete(ulCallerID);
+            //sc_caller_delete(ulCallerID);
             break;
         default:
             break;
