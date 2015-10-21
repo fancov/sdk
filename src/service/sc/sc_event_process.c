@@ -6293,7 +6293,7 @@ U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
         DOS_ASSERT(0);
-
+        sc_logr_info(SC_FUNC, "Get customer FAIL by sip(%s)", pszNum);
         pthread_mutex_unlock(&g_mutexHashSIPUserID);
         return U32_BUTT;
     }
@@ -7856,7 +7856,7 @@ U32 sc_ep_call_agent(SC_SCB_ST * pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     //pthread_mutex_lock(&pstSCBNew->mutexSCBLock);
 
     /* 根据ulSiteID, 找到坐席，给坐席的 usSCBNo 赋值 */
-    if (sc_acd_update_agent_scbno_by_siteid(pstAgentInfo->ulSiteID, pstSCBNew) != DOS_SUCC)
+    if (sc_acd_update_agent_scbno_by_siteid(pstAgentInfo->ulSiteID, pstSCBNew, SC_DID_BIND_TYPE_AGENT) != DOS_SUCC)
     {
         sc_logr_info(SC_ESL, "Update agent(%u) scbno(%d) fail", pstAgentInfo->ulSiteID, pstSCBNew->usSCBNo);
     }
@@ -8668,6 +8668,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 pstSCB->bRecord = stAgentInfo.bRecord;
                 if (pstSCB->bRecord)
                 {
+                    /* 录音 */
                     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_RECORDING);
                 }
 
@@ -8716,6 +8717,17 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                     DOS_ASSERT(0);
 
                     sc_logr_info(SC_ESL, "Add Call to call waiting queue FAIL.Callee: %s. Reject Call.", pstSCB->szCalleeNum);
+                    ulErrCode = BS_TERM_INTERNAL_ERR;
+                    goto proc_fail;
+                }
+                break;
+            case SC_DID_BIND_TYPE_AGENT:
+                /* 呼叫坐席 */
+                if (sc_ep_call_agent_by_id(pstSCB, ulBindID) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Call to agent(%u) FAIL.Callee: %s. Reject Call.", ulBindID, pstSCB->szCalleeNum);
                     ulErrCode = BS_TERM_INTERNAL_ERR;
                     goto proc_fail;
                 }
@@ -10359,9 +10371,9 @@ process_fail1:
     pszAgentID = esl_event_get_header(pstEvent, "variable_update_agent_id");
     if (DOS_ADDR_VALID(pszAgentID) && dos_atoul(pszAgentID, &ulAgentID) == 0)
     {
-        /* 更改坐席的状态 */
+        /* 更改坐席的状态 坐席时登陆状态，坐席绑定的是sip分机 */
         pstSCB->bIsAgentCall = DOS_TRUE;
-        if (sc_acd_update_agent_scbno_by_siteid(ulAgentID, pstSCB) != DOS_SUCC)
+        if (sc_acd_update_agent_scbno_by_siteid(ulAgentID, pstSCB, SC_DID_BIND_TYPE_SIP) != DOS_SUCC)
         {
             sc_logr_info(SC_ESL, "update(%u) agent SCBNO FAIL. SCBNO : %d!", ulAgentID, pstSCB->usSCBNo);
         }
