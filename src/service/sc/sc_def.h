@@ -787,6 +787,7 @@ typedef struct tagTaskMngtInfo{
     SC_TASK_CB_ST        *pstTaskList;            /* 任务列表 refer to struct tagTaskCB*/
     U32                  ulTaskCount;             /* 当前正在执行的任务数 */
     HASH_TABLE_S         *pstHashBGJobHash;       /* background-job hash表 */
+    U32                  ulMaxCallRate4Task;      /* 最大呼叫倍率 */
 
     SC_SYSTEM_STAT_ST    stStat;
 }SC_TASK_MNGT_ST;

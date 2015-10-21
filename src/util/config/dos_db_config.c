@@ -90,7 +90,7 @@ U32 dos_db_config_get_param(U32 ulIndex, S8 *pszBuffer, U32 ulBufferLen)
         return DOS_FAIL;
     }
 
-    dos_strncpy(pszBuffer, stBuffer.pszBuffer, ulBufferLen);
+    dos_strncpy(pszBuffer, (S8 *)stBuffer.pszBuffer, ulBufferLen);
     pszBuffer[ulBufferLen - 1] = '\0';
 
     dos_iobuf_free(&stBuffer);
