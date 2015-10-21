@@ -120,6 +120,7 @@ SC_TEL_NUM_QUERY_NODE_ST *sc_task_get_callee(SC_TASK_CB_ST *pstTCB)
  *      SC_TASK_CB_ST *pstTCB: 任务控制块
  * 返回值: 成功返回主叫号码控制块指针，否则返回NULL
  */
+#if 0
 SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
 {
     U32                      ulCallerIndex = 0;
@@ -173,7 +174,7 @@ SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
     SC_TRACE_OUT();
     return pstCaller;
 }
-
+#endif
 /*
  * 函数: U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
  * 功能: 申请业务控制块，并将呼叫添加到拨号器模块，等待呼叫
@@ -185,7 +186,8 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
 {
     SC_SCB_ST                 *pstSCB    = NULL;
     SC_TEL_NUM_QUERY_NODE_ST  *pstCallee = NULL;
-    SC_CALLER_QUERY_NODE_ST   *pstCaller = NULL;
+    //SC_CALLER_QUERY_NODE_ST   *pstCaller = NULL;
+    S8  szCaller[SC_TEL_NUMBER_LENGTH]   = {0};
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
 
@@ -206,6 +208,17 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
+    if (sc_get_number_by_callergrp(pstTCB->ulCallerGrpID, szCaller, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        sc_logr_info(SC_TASK, "Get caller from caller group(%u) FAIL.",pstTCB->ulCallerGrpID);
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+    }
+
+    sc_logr_debug(SC_TASK, "Get caller(%s) from caller group(%u)", szCaller, pstTCB->ulCallerGrpID);
+
+#if 0
     pstCaller = sc_task_get_caller(pstTCB);
     if (!pstCaller)
     {
@@ -214,6 +227,7 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
+#endif
 
     pstTCB->ulCalledCount++;
 
@@ -227,7 +241,7 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
 
     if (pstTCB->bTraceCallON || pstSCB->bTraceNo
-        || pstCallee->ucTraceON || pstCaller->bTraceON)
+        || pstCallee->ucTraceON)
     {
         pstSCB->bTraceNo  = 1;
     }
@@ -239,7 +253,7 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
     pstSCB->ulCallDuration = 0;
     pstSCB->ucLegRole = SC_CALLER;
 
-    dos_strncpy(pstSCB->szCallerNum, pstCaller->szNumber, SC_TEL_NUMBER_LENGTH);
+    dos_strncpy(pstSCB->szCallerNum, szCaller, SC_TEL_NUMBER_LENGTH);
     pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
     dos_strncpy(pstSCB->szCalleeNum, pstCallee->szNumber, SC_TEL_NUMBER_LENGTH);
     pstSCB->szCalleeNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
@@ -426,11 +440,14 @@ VOID *sc_task_runtime(VOID *ptr)
         pstCallee = NULL;
     }
 
+#if 0
     if (pstTCB->pstCallerNumQuery)
     {
         dos_dmem_free(pstTCB->pstCallerNumQuery);
         pstTCB->pstCallerNumQuery = NULL;
     }
+#endif
+
     pthread_mutex_destroy(&pstTCB->mutexTaskList);
 
     sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_STOP, NULL);

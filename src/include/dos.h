@@ -54,6 +54,7 @@
 #include <dos/dos_db.h>
 #include <dos/dos_sysstat.h>
 #include <dos/dos_iobuf.h>
+#include <dos/dos_db_config.h>
 #include <list/list_pub.h>
 #include <hash/hash.h>
 #include <json/dos_json.h>

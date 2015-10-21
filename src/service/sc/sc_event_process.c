@@ -125,7 +125,6 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
     U32 ulTimeout = 2;
     U32 ulRet = 0;
 
-    return 0;
     if (DOS_ADDR_INVALID(pstAgentInfo)
         || DOS_ADDR_INVALID(szCaller))
     {
@@ -134,7 +133,7 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
         return DOS_FAIL;
     }
 
-    //curl_global_init(CURL_GLOBAL_ALL);
+    curl_global_init(CURL_GLOBAL_ALL);
     if (DOS_ADDR_INVALID(g_pstCurlHandle))
     {
         g_pstCurlHandle = curl_easy_init();
@@ -1400,6 +1399,7 @@ U32 sc_ep_sip_userid_delete(S8 * pszSipID)
     return DOS_SUCC;
 }
 
+#if 0
 U32 sc_caller_delete(U32 ulCallerID)
 {
     HASH_NODE_S *pstHashNode = NULL;
@@ -1475,6 +1475,7 @@ U32 sc_caller_delete(U32 ulCallerID)
         return DOS_SUCC;
     }
 }
+#endif
 
 U32 sc_caller_grp_delete(U32 ulCallerGrpID)
 {

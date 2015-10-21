@@ -859,9 +859,10 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulCalleeCount = 0;
     pstTCB->usCallerCount = 0;
     pstTCB->ulCalledCount = 0;
+    pstTCB->ulCallerGrpID = 0;
 
     dos_list_init(&pstTCB->stCalleeNumQuery);    /* TODO: 释放所有节点 */
-    pstTCB->pstCallerNumQuery = NULL;   /* TODO: 初始化所有节点 */
+    //pstTCB->pstCallerNumQuery = NULL;   /* TODO: 初始化所有节点 */
     pstTCB->szAudioFileLen[0] = '\0';
     dos_memzero(pstTCB->astPeriod, sizeof(pstTCB->astPeriod));
 
@@ -1008,6 +1009,7 @@ VOID sc_task_update_calledcnt(U64 ulArg)
     return;
 }
 
+#if 0
 static S32 sc_task_load_caller_index_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
     SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
@@ -1057,10 +1059,11 @@ static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
 
     return DOS_SUCC;
 }
+#endif
 
 S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
-    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond, ulCalledCnt;
+    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond, ulCalledCnt, ulCallerGroupID;
     BOOL blProcessOK = DOS_FALSE, bFound = DOS_FALSE;
     S32 lIndex = U32_BUTT;
     S8  szTaskName[64] = {0};
@@ -1222,6 +1225,15 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "callers", dos_strlen("callers")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCallerGroupID) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
     }
 
     if (blProcessOK == DOS_FALSE)
@@ -1262,6 +1274,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     g_pstTaskMngtInfo->pstTaskList[lIndex].ucTaskStatus = ulStatus;
     g_pstTaskMngtInfo->pstTaskList[lIndex].ulAllocTime = ulCreateTime;
     g_pstTaskMngtInfo->pstTaskList[lIndex].ulCalledCount = ulCalledCnt;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ulCallerGrpID = ulCallerGroupID;
 
     g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucValid = DOS_TRUE;
     g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucWeekMask = 0xFF;
@@ -1280,18 +1293,18 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 S32 sc_task_load(U32 ulIndex)
 {
     S8  szQuery[256] = {0};
-    S32 lRet = U32_BUTT, lIndex = 0;
-    U32  ulRet = U32_BUTT;
+    S32 lRet = U32_BUTT;
+    //U32  ulRet = U32_BUTT;
     SC_TASK_CB_ST *pstTCB = NULL;
-    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    //SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt FROM tbl_calltask;");
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt,callers FROM tbl_calltask;");
     }
     else
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt FROM tbl_calltask WHERE id=%u;", ulIndex);
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt,callers FROM tbl_calltask WHERE id=%u;", ulIndex);
     }
     /* 加载群呼任务的相关数据 */
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
@@ -1310,6 +1323,7 @@ S32 sc_task_load(U32 ulIndex)
         return DOS_FAIL;
     }
 
+#if 0
     /* 同时维护一下主叫和被叫数据 */
     lRet = sc_task_load_caller(pstTCB);
     if (DOS_SUCC != lRet)
@@ -1318,6 +1332,7 @@ S32 sc_task_load(U32 ulIndex)
         return DOS_FAIL;
     }
     sc_logr_debug(SC_TASK, "SC Task Load Caller SUCC.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
+
 
     /* 加载主叫号码的数据库索引属性 */
     for (lIndex = 0; lIndex < SC_MAX_CALLER_NUM; ++lIndex)
@@ -1336,6 +1351,7 @@ S32 sc_task_load(U32 ulIndex)
         }
     }
 
+#endif
     /* 维护被叫号码数据 */
     lRet = sc_task_load_callee(pstTCB);
     if (DOS_SUCC != lRet)
@@ -1349,6 +1365,7 @@ S32 sc_task_load(U32 ulIndex)
     return DOS_SUCC;
 }
 
+#if 0
 static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
     SC_TASK_CB_ST            *pstTCB = NULL;
@@ -1523,6 +1540,8 @@ U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB)
     return DOS_SUCC;
 #endif
 }
+
+#endif
 
 static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
@@ -2436,7 +2455,7 @@ U32 sc_http_caller_update_proc(U32 ulAction, U32 ulCallerID)
             sc_load_caller(ulCallerID);
             break;
         case SC_API_CMD_ACTION_CALLER_DELETE:
-            sc_caller_delete(ulCallerID);
+            //sc_caller_delete(ulCallerID);
             break;
         default:
             break;
