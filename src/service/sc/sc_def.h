@@ -738,6 +738,7 @@ typedef struct tagTaskCB
     U32        ulLastCalleeIndex;                 /* 用于数据分页 */
     U32        ulCalledCount;                     /* 已经呼叫过的号码数量 */
     U32        ulCallerGrpID;                     /* 主叫号码组的ID */
+    U32        ulCallRate;                        /* 呼叫倍率 */
     list_t     stCalleeNumQuery;                  /* 被叫号码缓存 refer to struct tagTelNumQueryNode */
     S8         szAudioFileLen[SC_MAX_AUDIO_FILENAME_LEN];  /* 语言文件文件名 */
     //SC_CALLER_QUERY_NODE_ST *pstCallerNumQuery;            /* 主叫号码缓存 refer to struct tagTelNumQueryNode */

@@ -860,6 +860,7 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->usCallerCount = 0;
     pstTCB->ulCalledCount = 0;
     pstTCB->ulCallerGrpID = 0;
+    pstTCB->ulCallRate = 0;
 
     dos_list_init(&pstTCB->stCalleeNumQuery);    /* TODO: 释放所有节点 */
     //pstTCB->pstCallerNumQuery = NULL;   /* TODO: 初始化所有节点 */
@@ -1063,7 +1064,7 @@ static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
 
 S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
-    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond, ulCalledCnt, ulCallerGroupID;
+    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond, ulCalledCnt, ulCallerGroupID, ulCallRate;
     BOOL blProcessOK = DOS_FALSE, bFound = DOS_FALSE;
     S32 lIndex = U32_BUTT;
     S8  szTaskName[64] = {0};
@@ -1234,6 +1235,15 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "call_rate", dos_strlen("call_rate")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCallRate) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
     }
 
     if (blProcessOK == DOS_FALSE)
@@ -1275,6 +1285,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     g_pstTaskMngtInfo->pstTaskList[lIndex].ulAllocTime = ulCreateTime;
     g_pstTaskMngtInfo->pstTaskList[lIndex].ulCalledCount = ulCalledCnt;
     g_pstTaskMngtInfo->pstTaskList[lIndex].ulCallerGrpID = ulCallerGroupID;
+    g_pstTaskMngtInfo->pstTaskList[lIndex].ulCallRate = ulCallRate;
 
     g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucValid = DOS_TRUE;
     g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucWeekMask = 0xFF;
@@ -1300,11 +1311,11 @@ S32 sc_task_load(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt,callers FROM tbl_calltask;");
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt,callers,call_rate FROM tbl_calltask;");
     }
     else
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt,callers FROM tbl_calltask WHERE id=%u;", ulIndex);
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt,callers,call_rate FROM tbl_calltask WHERE id=%u;", ulIndex);
     }
     /* 加载群呼任务的相关数据 */
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
@@ -2102,6 +2113,7 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
     U32 ulInterval;
     U32 ulConcurrency;
     U32 ulMaxConcurrency;
+    U32 ulCallRate;
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
 
@@ -2126,8 +2138,9 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
     }
     else
     {
-        ulMaxConcurrency = sc_acd_get_total_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
-        ulConcurrency = ulMaxConcurrency - sc_acd_get_idel_agent(pstTCB->ulAgentQueueID) * SC_MAX_CALL_MULTIPLE;
+        ulCallRate = pstTCB->ulCallRate != 0 ? pstTCB->ulCallRate : g_pstTaskMngtInfo->ulMaxCallRate4Task;
+        ulMaxConcurrency = sc_acd_get_total_agent(pstTCB->ulAgentQueueID) * ulCallRate;
+        ulConcurrency = ulMaxConcurrency - sc_acd_get_idel_agent(pstTCB->ulAgentQueueID) * ulCallRate;
     }
 
     if (ulMaxConcurrency)

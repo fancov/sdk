@@ -642,6 +642,8 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                   "\r\n         Callee Count : %u"
                   "\r\n    Last Callee Index : %u"
                   "\r\n       Agent Queue ID : %u"
+                  "\r\n      Caller Group ID : %u"
+                  "\r\n            Call Rate : %u"
                   "\r\nTime Period 1 Weekday : %s"
                   "\r\n        Time Period 1 : %u:%u - %u:%u"
                   "\r\nTime Period 2 Weekday : %s"
@@ -667,6 +669,8 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                 , pstTCB->ulCalleeCount
                 , pstTCB->ulLastCalleeIndex
                 , pstTCB->ulAgentQueueID
+                , pstTCB->ulCallerGrpID
+                , pstTCB->ulCallRate
                 , sc_debug_make_weeks(pstTCB->astPeriod[0].ucWeekMask, szWeeks, sizeof(szWeeks))
                 , pstTCB->astPeriod[0].ucHourBegin
                 , pstTCB->astPeriod[0].ucMinuteBegin
