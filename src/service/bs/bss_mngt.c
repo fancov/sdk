@@ -5696,8 +5696,7 @@ VOID *bss_accounting(VOID *arg)
 
                 }
 
-                if (pstAccount->lRebate != 0
-                    && BS_CUSTOMER_TYPE_TOP != pstCustomer->ucCustomerType)
+                if (pstAccount->lRebate != 0)
                 {
                     /* 生成返点类账务话单 */
                     pstMsgNode = dos_dmem_alloc(sizeof(DLL_NODE_S));
@@ -5746,7 +5745,7 @@ VOID *bss_accounting(VOID *arg)
                     pstCDR->ulAccountID = pstAccount->ulAccountID;
                     pstCDR->ucOperateType = ucOperateType;
                     pstCDR->lMoney = pstAccount->lRebate;
-                    pstCDR->LBalance = pstAccount->LBalanceActive;
+                    pstCDR->LBalance = pstAccount->LBalanceActive + pstAccount->lRebate;
                     pstCDR->ulPeeAccount = 0;
                     pstCDR->ulTimeStamp = ulTimeStamp;
                     pstCDR->ulOperatorID = BS_SYS_OPERATOR_ID;
