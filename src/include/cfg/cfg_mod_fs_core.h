@@ -44,6 +44,9 @@
 #define INCLUDE_BH_CLIENT                 0
 #endif
 
+#define INCLUDE_DB_CONFIG                 1
+
+
 /* 是否包含dos内存管理模块 */
 #define INCLUDE_MEMORY_MNGT               1
 

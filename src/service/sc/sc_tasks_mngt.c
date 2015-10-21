@@ -742,7 +742,9 @@ U32 sc_task_mngt_init()
 {
     SC_TASK_CB_ST   *pstTCB = NULL;
     SC_SCB_ST       *pstSCB = NULL;
+    S8              szCallRate[32] = { 0, };
     U32             ulIndex    = 0;
+
 
     SC_TRACE_IN(0, 0, 0, 0);
 
@@ -857,6 +859,23 @@ U32 sc_task_mngt_init()
 
     g_pstTaskMngtInfo->ulTaskCount = 0;
     g_pstTaskMngtInfo->blWaitingExitFlag = 0;
+
+    if (dos_db_config_get_param(PARAM_CALL_RATE, szCallRate, sizeof(szCallRate)) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_notice(SC_TASK, "Load the global call rate fail. Use default value %u", SC_MAX_CALL_MULTIPLE);
+        g_pstTaskMngtInfo->ulMaxCallRate4Task = SC_MAX_CALL_MULTIPLE;
+    }
+    else
+    {
+        if (dos_atoul(szCallRate, &g_pstTaskMngtInfo->ulMaxCallRate4Task) < 0
+            || 0 == g_pstTaskMngtInfo->ulMaxCallRate4Task)
+        {
+            sc_logr_notice(SC_TASK, "Get the global call rate fail. Use default value %u", SC_MAX_CALL_MULTIPLE);
+            g_pstTaskMngtInfo->ulMaxCallRate4Task = SC_MAX_CALL_MULTIPLE;
+        }
+    }
 
     sc_task_mngt_load_task();
 
