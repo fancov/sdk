@@ -600,7 +600,7 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
                 pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode;
                 if (SC_NUMBER_TYPE_CFG == pstCache->ulType)
                 {
-                    if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
+                    if (DOS_TRUE != sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
                     {
                         continue;
                     }
@@ -610,7 +610,7 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
                 }
                 else if (SC_NUMBER_TYPE_DID == pstCache->ulType)
                 {
-                    if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->ulTimes, pstCache->stData.pstDid->szDIDNum))
+                    if (DOS_TRUE != sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->ulTimes, pstCache->stData.pstDid->szDIDNum))
                     {
                         continue;
                     }
@@ -697,7 +697,7 @@ U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ul
                     pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode->pHandle;
                     if (SC_NUMBER_TYPE_CFG == pstCache->ulType)
                     {
-                        if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
+                        if (DOS_TRUE != sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
                         {
                             continue;
                         }
@@ -706,7 +706,7 @@ U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ul
                     }
                     else if (SC_NUMBER_TYPE_DID == pstCache->ulType)
                     {
-                        if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstDid->szDIDNum))
+                        if (DOS_TRUE != sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstDid->szDIDNum))
                         {
                             continue;
                         }

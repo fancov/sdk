@@ -10,6 +10,7 @@ from xml.dom.minidom import Document
 import db_conn
 import file_info
 import db_config
+import conf_path
 import os
 import dom_to_xml
 from __builtin__ import str
