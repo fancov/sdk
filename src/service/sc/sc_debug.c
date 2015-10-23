@@ -601,7 +601,7 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
     S8 szCmdBuff[1024] = {0, };
     S8 szWeeks[64] = {0,};
     SC_TASK_CB_ST *pstTCB = NULL;
-    U32 i = 0;
+    //U32 i = 0;
 
     /* 如果没有指定task id，或者指定了customer id，就需要使用列表的形式显示任务概要 */
     if (U32_BUTT == ulTaskID || U32_BUTT != ulCustomID)
@@ -642,6 +642,8 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                   "\r\n         Callee Count : %u"
                   "\r\n    Last Callee Index : %u"
                   "\r\n       Agent Queue ID : %u"
+                  "\r\n      Caller Group ID : %u"
+                  "\r\n            Call Rate : %u"
                   "\r\nTime Period 1 Weekday : %s"
                   "\r\n        Time Period 1 : %u:%u - %u:%u"
                   "\r\nTime Period 2 Weekday : %s"
@@ -667,6 +669,8 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                 , pstTCB->ulCalleeCount
                 , pstTCB->ulLastCalleeIndex
                 , pstTCB->ulAgentQueueID
+                , pstTCB->ulCallerGrpID
+                , pstTCB->ulCallRate
                 , sc_debug_make_weeks(pstTCB->astPeriod[0].ucWeekMask, szWeeks, sizeof(szWeeks))
                 , pstTCB->astPeriod[0].ucHourBegin
                 , pstTCB->astPeriod[0].ucMinuteBegin
@@ -689,6 +693,7 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                 , pstTCB->astPeriod[3].ucMinuteEnd);
     cli_out_string(ulIndex, szCmdBuff);
 
+#if 0
     cli_out_string(ulIndex, "\r\nList Caller.");
     for (i = 0; i < SC_MAX_CALLER_NUM; i++)
     {
@@ -706,6 +711,7 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                         , pstTCB->pstCallerNumQuery[i].szNumber);
         cli_out_string(ulIndex, szCmdBuff);
     }
+#endif
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff),
                   "\r\n----------------Stat Information----------------");
@@ -1067,7 +1073,8 @@ VOID sc_show_caller_for_task(U32 ulIndex, U32 ulTaskID)
 {
     SC_TASK_CB_ST  *pstTCB = NULL;
     S8  szCmdBuff[1024] = {0};
-    S32 lIndex = U32_BUTT, lCount = 0;
+    //S32 lIndex = U32_BUTT;
+    S32 lCount = 0;
 
     pstTCB = sc_tcb_find_by_taskid(ulTaskID);
     if (DOS_ADDR_INVALID(pstTCB))
@@ -1081,7 +1088,7 @@ VOID sc_show_caller_for_task(U32 ulIndex, U32 ulTaskID)
                     , "Number", "TCBNo", "Valid", "TraceOn", "Index", "CustomerID", "Times");
     cli_out_string(ulIndex, szCmdBuff);
     cli_out_string(ulIndex, "\r\n---------------------------------------------------------------");
-
+#if 0
     for (lIndex = 0; lIndex < SC_MAX_CALLER_NUM; lIndex++)
     {
         if (DOS_FALSE != pstTCB->pstCallerNumQuery[lIndex].bValid && '\0' != pstTCB->pstCallerNumQuery[lIndex].szNumber[0])
@@ -1098,6 +1105,8 @@ VOID sc_show_caller_for_task(U32 ulIndex, U32 ulTaskID)
             lCount++;
         }
     }
+#endif
+
     cli_out_string(ulIndex, "\r\n---------------------------------------------------------------");
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal %d Caller(s).", lCount);
     cli_out_string(ulIndex, szCmdBuff);
@@ -1997,6 +2006,7 @@ S32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
     return 0;
 }
 
+#if 0
 S32 sc_track_call_by_caller(U32 ulIndex ,S8 *pszCaller)
 {
     S8 szCmdBuff[1024] = {0, };
@@ -2034,6 +2044,7 @@ S32 sc_track_call_by_caller(U32 ulIndex ,S8 *pszCaller)
 
     return DOS_SUCC;
 }
+#endif
 
 S32 sc_track_call_by_callee(U32 ulIndex ,S8 *pszCallee)
 {

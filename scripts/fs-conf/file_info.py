@@ -59,12 +59,12 @@ def print_file_info(info):
     _info = '%s:Line %d:In function %s:' % (seqFileName, ulLineNumber, seqFuncName)
     output = time.strftime('%Y-%m-%d %H:%M:%S')
     
-    seqLogPath = '/var/log/dipcc/fsconf' + time.strftime('%Y%m%d') + '.log'
+    seqLogPath = '/var/log/dipcc/fsconf'
     if os.path.exists(seqLogPath) is False:
-        os.system('touch %s' % seqLogPath)
+        os.makedirs(seqLogPath)
+        
+    seqLogPath = seqLogPath + time.strftime('%Y%m%d') + '.log'
     
-    fp = open(seqLogPath, 'a')
-
     try:
         fp = open(seqLogPath, 'a')
     except Exception, err:

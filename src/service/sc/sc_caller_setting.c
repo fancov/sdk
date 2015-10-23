@@ -552,7 +552,7 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
                 pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode->pHandle;
                 if (SC_NUMBER_TYPE_CFG == pstCache->ulType)
                 {
-                    if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
+                    if (DOS_TRUE != sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
                     {
                         continue;
                     }
@@ -563,7 +563,7 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
                 }
                 else if (SC_NUMBER_TYPE_DID == pstCache->ulType)
                 {
-                    if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->ulTimes, pstCache->stData.pstDid->szDIDNum))
+                    if (DOS_TRUE != sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->ulTimes, pstCache->stData.pstDid->szDIDNum))
                     {
                         continue;
                     }
@@ -600,7 +600,7 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
                 pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode;
                 if (SC_NUMBER_TYPE_CFG == pstCache->ulType)
                 {
-                    if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
+                    if (DOS_TRUE != sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
                     {
                         continue;
                     }
@@ -610,7 +610,7 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
                 }
                 else if (SC_NUMBER_TYPE_DID == pstCache->ulType)
                 {
-                    if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->ulTimes, pstCache->stData.pstDid->szDIDNum))
+                    if (DOS_TRUE != sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->ulTimes, pstCache->stData.pstDid->szDIDNum))
                     {
                         continue;
                     }
@@ -697,7 +697,7 @@ U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ul
                     pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode->pHandle;
                     if (SC_NUMBER_TYPE_CFG == pstCache->ulType)
                     {
-                        if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
+                        if (DOS_TRUE != sc_num_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
                         {
                             continue;
                         }
@@ -706,7 +706,7 @@ U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ul
                     }
                     else if (SC_NUMBER_TYPE_DID == pstCache->ulType)
                     {
-                        if (DOS_TRUE == sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstDid->szDIDNum))
+                        if (DOS_TRUE != sc_num_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstDid->szDIDNum))
                         {
                             continue;
                         }
@@ -848,13 +848,13 @@ U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen)
     return DOS_SUCC;
 }
 
-
 /**
  * 函数: static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
  * 功能: 根据客户ID随机选择一个主叫号码
  * 参数: U32 ulCustomerID  客户id
  * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL.
  **/
+#if 0
 static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
 {
     U32  ulHashIndex = U32_BUTT, ulLoop = U32_BUTT, ulCount = 0;
@@ -931,6 +931,7 @@ static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
     }
     return DOS_TRUE;
 }
+#endif
 
 /**
  * 函数: S32 sc_get_numbers_of_did_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)

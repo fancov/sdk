@@ -1399,6 +1399,7 @@ U32 sc_ep_sip_userid_delete(S8 * pszSipID)
     return DOS_SUCC;
 }
 
+#if 0
 U32 sc_caller_delete(U32 ulCallerID)
 {
     HASH_NODE_S *pstHashNode = NULL;
@@ -1474,6 +1475,7 @@ U32 sc_caller_delete(U32 ulCallerID)
         return DOS_SUCC;
     }
 }
+#endif
 
 U32 sc_caller_grp_delete(U32 ulCallerGrpID)
 {

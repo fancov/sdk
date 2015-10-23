@@ -541,7 +541,7 @@ U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
 
 /*
  * 函  数: U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB)
- * 功  能: 根据SIP，查找到绑定的坐席，更新usSCBNo字段
+ * 功  能: 根据SIP，查找到绑定的坐席，更新usSCBNo字段. (ucBindType 为 AGENT_BIND_SIP)
  * 参  数:
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
@@ -652,6 +652,9 @@ U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, U32 ul
 
     pstAgentNode->pstAgentInfo->usSCBNo = pstSCB->usSCBNo;
     pstSCB->ulAgentID = ulAgentID;
+    dos_strncpy(pstSCB->szSiteNum, pstAgentNode->pstAgentInfo->szEmpNo, sizeof(pstSCB->szSiteNum));
+    pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
+
     if (pstAgentNode->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
     {
         pstAgentNode->pstAgentInfo->ucStatus = SC_ACD_BUSY;
