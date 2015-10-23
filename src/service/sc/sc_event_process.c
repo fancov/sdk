@@ -8667,6 +8667,8 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 sc_logr_info(SC_ESL, "Find agent(%d) succ. bConnected : %d", stAgentInfo.ulSiteID, stAgentInfo.bConnected);
 
                 pstSCB->bRecord = stAgentInfo.bRecord;
+                dos_strncpy(pstSCB->szSiteNum, stAgentInfo.szEmpNo, sizeof(pstSCB->szSiteNum));
+                pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
                 if (pstSCB->bRecord)
                 {
                     /* Â¼Òô */
