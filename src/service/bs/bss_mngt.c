@@ -2917,7 +2917,7 @@ VOID bss_generate_settle_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
 }
 
 /* 生成语音类型话单 */
-VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType)
+VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType, BOOL blNeedCharge)
 {
     DLL_NODE_S          *pstMsgNode = NULL;
     BS_CDR_VOICE_ST     *pstCDR = NULL;
@@ -2963,6 +2963,7 @@ VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType)
     pstCDR->ulDTMFTime = pstSessionLeg->ulDTMFTimeStamp;
     pstCDR->ulIVRFinishTime = pstSessionLeg->ulIVRFinishTimeStamp;
     pstCDR->ulWaitAgentTime = pstSessionLeg->ulBridgeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
+    pstCDR->ucNeedCharge = (U8)blNeedCharge;
     if (pstSessionLeg->ulAnswerTimeStamp)
     {
         pstCDR->ulTimeLen = pstSessionLeg->ulByeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
@@ -3349,7 +3350,7 @@ VOID bss_cdr_factoring(BS_BILL_SESSION_LEG *pstSessionLeg)
             case BS_SERV_CALL_TRANSFER:
             case BS_SERV_PICK_UP:
             case BS_SERV_VERIFY:
-                bss_generate_voice_cdr(pstSessionLeg, ucServType);
+                bss_generate_voice_cdr(pstSessionLeg, ucServType, DOS_TRUE);
                 break;
 
             case BS_SERV_RECORDING:
@@ -3605,9 +3606,15 @@ VOID bss_billing_stop(DLL_NODE_S *pMsgNode)
         bss_cdr_factoring(&pstMsg->astSessionLeg[1]);
     }
 
+    /* 内部呼叫需要生产两个话单 */
+    if (BS_SERV_INTER_CALL == pstMsg->astSessionLeg[0].aucServType[0]
+        && BS_SERV_INTER_CALL == pstMsg->astSessionLeg[1].aucServType[0])
+    {
+        bss_generate_voice_cdr(&pstMsg->astSessionLeg[1], BS_SERV_INTER_CALL, DOS_FALSE);
+    }
+
     /* 再保存原始话单 */
     bss_send_cdr2dl(pMsgNode, BS_INTER_MSG_ORIGINAL_CDR);
-
 }
 
 VOID bss_stat_calltask_result(BS_CDR_VOICE_ST *pstVoiceCDR)
@@ -3734,6 +3741,12 @@ VOID bss_voice_cdr_proc(DLL_NODE_S *pMsgNode)
     if (0 == pstCDR->ulTimeLen)
     {
         /* 试呼话单,不用批价,只需记录即可 */
+        goto save_cdr;
+    }
+
+    if (!pstCDR->ucNeedCharge)
+    {
+        /* 如果明确不需要计费，就省了吧 */
         goto save_cdr;
     }
 
