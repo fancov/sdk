@@ -280,6 +280,12 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
 
     pstSCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
+    pstSCB->szCallerBerforRouter[0] = 0;  /* 路由时用的号码，可用于计费的 */
+    pstSCB->szCalleeBerforRouter[0] = 0;  /* 路由时用的号码,可用于计费的  */
+
+    pstSCB->szCallerAfterRouter[0] = 0;   /* 路由后号码变换之后的号码，用户发起呼叫*/
+    pstSCB->szCalleeAfterRouter[0] = 0;   /* 路由后号码变换之后的号码，用户发起呼叫 */
+
     pstSCB->szCallerNum[0] = '\0';             /* 主叫号码 */
     pstSCB->szCalleeNum[0] = '\0';             /* 被叫号码 */
     pstSCB->szANINum[0] = '\0';                /* 被叫号码 */

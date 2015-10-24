@@ -681,10 +681,17 @@ typedef struct tagSCSCB{
 
     U32       ulRes1;
 
-    S64       LBalance;                           /* 余额,单位:分 */
+    S64       LBalance;                           /* 余额,单位:万分之一元 */
 
-    S8        szCallerNum[SC_TEL_NUMBER_LENGTH];  /* 主叫号码 */
-    S8        szCalleeNum[SC_TEL_NUMBER_LENGTH];  /* 被叫号码 */
+    S8        szCallerBerforRouter[SC_TEL_NUMBER_LENGTH];  /* 路由时用的号码，可用于计费的 */
+    S8        szCalleeBerforRouter[SC_TEL_NUMBER_LENGTH];  /* 路由时用的号码,可用于计费的  */
+
+    S8        szCallerAfterRouter[SC_TEL_NUMBER_LENGTH];   /* 路由后号码变换之后的号码，用户发起呼叫*/
+    S8        szCalleeAfterRouter[SC_TEL_NUMBER_LENGTH];   /* 路由后号码变换之后的号码，用户发起呼叫 */
+
+    S8        szCallerNum[SC_TEL_NUMBER_LENGTH];  /* 主叫号码，业务发起时的号码 */
+    S8        szCalleeNum[SC_TEL_NUMBER_LENGTH];  /* 被叫号码，业务发起时的号码 */
+
     S8        szANINum[SC_TEL_NUMBER_LENGTH];     /* 被叫号码 */
     S8        szDialNum[SC_TEL_NUMBER_LENGTH];    /* 用户拨号 */
     S8        szSiteNum[SC_TEL_NUMBER_LENGTH];    /* 坐席号码 */

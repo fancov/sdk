@@ -9818,6 +9818,9 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                 pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
                 pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
 
+                dos_strncpy(pstSCBNew->szSiteNum, pstSCB->szSiteNum, sizeof(pstSCBNew->szSiteNum));
+                pstSCBNew->szSiteNum[sizeof(pstSCBNew->szSiteNum) - 1] = '\0';
+
                 /* Ö¸¶¨±»½ÐºÅÂë */
                 dos_strncpy(pstSCBNew->szCalleeNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCalleeNum));
                 pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
