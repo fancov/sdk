@@ -18,7 +18,7 @@ extern "C"{
 
 #if (INCLUDE_SYSLOG_ENABLE && INCLUDE_SYSLOG_DB)
 
-#define LOG_DB_DEFAULT_LEVEL LOG_LEVEL_DEBUG
+#define LOG_DB_DEFAULT_LEVEL LOG_LEVEL_NOTIC
 
 /* 最大buffer长度，包括DLL链表节点头，包括SQL语句部分所以内容 */
 #define LOG_DB_MAX_BUFF_LEN  1500

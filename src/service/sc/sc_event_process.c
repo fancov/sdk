@@ -8866,6 +8866,8 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 sc_logr_info(SC_ESL, "Find agent(%d) succ. bConnected : %d", stAgentInfo.ulSiteID, stAgentInfo.bConnected);
 
                 pstSCB->bRecord = stAgentInfo.bRecord;
+                dos_strncpy(pstSCB->szSiteNum, stAgentInfo.szEmpNo, sizeof(pstSCB->szSiteNum));
+                pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
                 if (pstSCB->bRecord)
                 {
                     /* Â¼Òô */
@@ -9007,6 +9009,8 @@ U32 sc_ep_outgoing_call_proc(SC_SCB_ST *pstSCB)
     pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
     dos_strncpy(pstSCBNew->szANINum, pstSCB->szCallerNum, sizeof(pstSCBNew->szANINum));
     pstSCBNew->szANINum[sizeof(pstSCBNew->szANINum) - 1] = '\0';
+    dos_strncpy(pstSCBNew->szSiteNum, pstSCB->szSiteNum, sizeof(pstSCBNew->szSiteNum));
+    pstSCBNew->szSiteNum[sizeof(pstSCBNew->szSiteNum) - 1] = '\0';
 
     pthread_mutex_unlock(&pstSCBNew->mutexSCBLock);
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
@@ -10016,6 +10020,9 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                 pstSCBNew->ulTaskID = pstSCB->ulTaskID;
                 pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
                 pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
+
+                dos_strncpy(pstSCBNew->szSiteNum, pstSCB->szSiteNum, sizeof(pstSCBNew->szSiteNum));
+                pstSCBNew->szSiteNum[sizeof(pstSCBNew->szSiteNum) - 1] = '\0';
 
                 /* Ö¸¶¨±»½ÐºÅÂë */
                 dos_strncpy(pstSCBNew->szCalleeNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCalleeNum));

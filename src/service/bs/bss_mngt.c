@@ -2917,7 +2917,7 @@ VOID bss_generate_settle_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
 }
 
 /* 生成语音类型话单 */
-VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType)
+VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType, BOOL blNeedCharge)
 {
     DLL_NODE_S          *pstMsgNode = NULL;
     BS_CDR_VOICE_ST     *pstCDR = NULL;
@@ -2963,6 +2963,7 @@ VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType)
     pstCDR->ulDTMFTime = pstSessionLeg->ulDTMFTimeStamp;
     pstCDR->ulIVRFinishTime = pstSessionLeg->ulIVRFinishTimeStamp;
     pstCDR->ulWaitAgentTime = pstSessionLeg->ulBridgeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
+    pstCDR->ucNeedCharge = (U8)blNeedCharge;
     if (pstSessionLeg->ulAnswerTimeStamp)
     {
         pstCDR->ulTimeLen = pstSessionLeg->ulByeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
@@ -3349,7 +3350,7 @@ VOID bss_cdr_factoring(BS_BILL_SESSION_LEG *pstSessionLeg)
             case BS_SERV_CALL_TRANSFER:
             case BS_SERV_PICK_UP:
             case BS_SERV_VERIFY:
-                bss_generate_voice_cdr(pstSessionLeg, ucServType);
+                bss_generate_voice_cdr(pstSessionLeg, ucServType, DOS_TRUE);
                 break;
 
             case BS_SERV_RECORDING:
@@ -3605,9 +3606,15 @@ VOID bss_billing_stop(DLL_NODE_S *pMsgNode)
         bss_cdr_factoring(&pstMsg->astSessionLeg[1]);
     }
 
+    /* 内部呼叫需要生产两个话单 */
+    if (BS_SERV_INTER_CALL == pstMsg->astSessionLeg[0].aucServType[0]
+        && BS_SERV_INTER_CALL == pstMsg->astSessionLeg[1].aucServType[0])
+    {
+        bss_generate_voice_cdr(&pstMsg->astSessionLeg[1], BS_SERV_INTER_CALL, DOS_FALSE);
+    }
+
     /* 再保存原始话单 */
     bss_send_cdr2dl(pMsgNode, BS_INTER_MSG_ORIGINAL_CDR);
-
 }
 
 VOID bss_stat_calltask_result(BS_CDR_VOICE_ST *pstVoiceCDR)
@@ -3737,6 +3744,12 @@ VOID bss_voice_cdr_proc(DLL_NODE_S *pMsgNode)
         goto save_cdr;
     }
 
+    if (!pstCDR->ucNeedCharge)
+    {
+        /* 如果明确不需要计费，就省了吧 */
+        goto save_cdr;
+    }
+
     pstCustomer = bs_get_customer_st(pstCDR->ulCustomerID);
     if (NULL == pstCustomer)
     {
@@ -3745,6 +3758,8 @@ VOID bss_voice_cdr_proc(DLL_NODE_S *pMsgNode)
         bs_trace(BS_TRACE_BILLING, LOG_LEVEL_DEBUG, "Can't find customer!");
         goto save_cdr;
     }
+
+    pstCDR->stCDRTag.ulAccountMark = pstCustomer->stAccount.ulAccountMark;
 
     dos_memzero(&stBillingMatch, sizeof(stBillingMatch));
     stBillingMatch.ulCustomerID = pstCDR->ulCustomerID;
@@ -3907,10 +3922,10 @@ VOID bss_voice_cdr_proc(DLL_NODE_S *pMsgNode)
 
     bs_trace(BS_TRACE_BILLING, LOG_LEVEL_DEBUG,
              "Porc voice cdr succ, "
-             "mark:%u, customer:%u, account:%u, servtype:%u, "
+             "mark:%u, account mark: %u, customer:%u, account:%u, servtype:%u, "
              "caller:%s, callee:%s, start time:%u, time len:%u, "
              "%s",
-             pstCDR->stCDRTag.ulCDRMark, pstCDR->ulCustomerID,
+             pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ulAccountMark, pstCDR->ulCustomerID,
              pstCDR->ulAccountID, pstCDR->ucServType,
              pstCDR->szCaller, pstCDR->szCallee,
              pstCDR->ulAnswerTimeStamp, pstCDR->ulTimeLen,
@@ -3975,6 +3990,8 @@ VOID bss_recording_cdr_proc(DLL_NODE_S *pMsgNode)
         bs_trace(BS_TRACE_BILLING, LOG_LEVEL_DEBUG, "Can't find customer!");
         goto save_cdr;
     }
+
+    pstCDR->stCDRTag.ulAccountMark = pstCustomer->stAccount.ulAccountMark;
 
     dos_memzero(&stBillingMatch, sizeof(stBillingMatch));
     stBillingMatch.ulCustomerID = pstCDR->ulCustomerID;
@@ -4137,9 +4154,9 @@ VOID bss_recording_cdr_proc(DLL_NODE_S *pMsgNode)
 
     bs_trace(BS_TRACE_BILLING, LOG_LEVEL_DEBUG,
              "Porc recording cdr succ, "
-             "mark:%u, customer:%u, account:%u, caller:%s, "
+             "mark:%u, account mark: %u, customer:%u, account:%u, caller:%s, "
              "callee:%s, start time:%u, time len:%u, %s",
-             pstCDR->stCDRTag.ulCDRMark, pstCDR->ulCustomerID,
+             pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ulAccountMark, pstCDR->ulCustomerID,
              pstCDR->ulAccountID, pstCDR->szCaller,
              pstCDR->szCallee, pstCDR->ulRecordTimeStamp,
              pstCDR->ulTimeLen, szFee);
@@ -4194,6 +4211,8 @@ VOID bss_message_cdr_proc(DLL_NODE_S *pMsgNode)
         bs_trace(BS_TRACE_BILLING, LOG_LEVEL_DEBUG, "Can't find customer!");
         goto save_cdr;
     }
+
+    pstCDR->stCDRTag.ulAccountMark = pstCustomer->stAccount.ulAccountMark;
 
     dos_memzero(&stBillingMatch, sizeof(stBillingMatch));
     stBillingMatch.ulCustomerID = pstCDR->ulCustomerID;
@@ -4340,10 +4359,10 @@ VOID bss_message_cdr_proc(DLL_NODE_S *pMsgNode)
 
     bs_trace(BS_TRACE_BILLING, LOG_LEVEL_DEBUG,
              "Porc message cdr succ, "
-             "mark:%u, customer:%u, account:%u, servtype:%u, "
+             "mark:%u, account mark:%u, customer:%u, account:%u, servtype:%u, "
              "caller:%s, callee:%s, time:%u, len:%u, "
              "%s",
-             pstCDR->stCDRTag.ulCDRMark, pstCDR->ulCustomerID,
+             pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ulAccountMark, pstCDR->ulCustomerID,
              pstCDR->ulAccountID, pstCDR->ucServType,
              pstCDR->szCaller, pstCDR->szCallee,
              pstCDR->ulTimeStamp, pstCDR->ulLen,
@@ -5659,16 +5678,18 @@ VOID *bss_accounting(VOID *arg)
                     pstCDR->ulTimeStamp = ulTimeStamp;
                     pstCDR->ulOperatorID = BS_SYS_OPERATOR_ID;
                     pstCDR->ulOperateDir = BS_ACCOUNT_PAY;
+                    pstCDR->stCDRTag.ulAccountMark = pstAccount->ulAccountMark;
                     dos_strncpy(pstCDR->szRemark, szTimeStamp, sizeof(pstCDR->szRemark));
 
                     pstMsgNode->pHandle = (VOID *)pstCDR;
 
                     bs_trace(BS_TRACE_CDR, LOG_LEVEL_DEBUG,
                              "Generate accounting cdr, "
-                             "mark:%u, type:%u, customer:%u, account:%u, "
+                             "mark:%u, account mark: %u, type:%u, customer:%u, account:%u, "
                              "operate type:%u, money:%d, balance:%ld, peer account:%u, "
                              "time:%u, operator:%u, remark:%s",
-                             pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType,
+                             pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ulAccountMark,
+                             pstCDR->stCDRTag.ucCDRType,
                              pstCDR->ulCustomerID, pstCDR->ulAccountID,
                              pstCDR->ucOperateType, pstCDR->lMoney,
                              pstCDR->LBalance, pstCDR->ulPeeAccount,
@@ -5750,16 +5771,18 @@ VOID *bss_accounting(VOID *arg)
                     pstCDR->ulTimeStamp = ulTimeStamp;
                     pstCDR->ulOperatorID = BS_SYS_OPERATOR_ID;
                     pstCDR->ulOperateDir = ulOperateDir;
+                    pstCDR->stCDRTag.ulAccountMark = pstAccount->ulAccountMark;
                     dos_strncpy(pstCDR->szRemark, szTimeStamp, sizeof(pstCDR->szRemark));
 
                     pstMsgNode->pHandle = (VOID *)pstCDR;
 
                     bs_trace(BS_TRACE_CDR, LOG_LEVEL_DEBUG,
                              "Generate accounting cdr, "
-                             "mark:%u, type:%u, customer:%u, account:%u, "
+                             "mark:%u, account mark: %u, type:%u, customer:%u, account:%u, "
                              "operate type:%u, money:%d, balance:%d, peer account:%u, "
                              "time:%u, operator:%u, remark:%s",
-                             pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType,
+                             pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ulAccountMark,
+                             pstCDR->stCDRTag.ucCDRType,
                              pstCDR->ulCustomerID, pstCDR->ulAccountID,
                              pstCDR->ucOperateType, pstCDR->lMoney,
                              pstCDR->LBalance, pstCDR->ulPeeAccount,
@@ -5788,6 +5811,13 @@ VOID *bss_accounting(VOID *arg)
                     /* 发送话单到数据层,由数据层存储到数据库中 */
                     bss_send_cdr2dl(pstMsgNode, BS_INTER_MSG_ACCOUNT_CDR);
 
+                }
+
+                /* 0为无效值，需要跳过 */
+                pstAccount->ulAccountMark++;
+                if (0 == pstAccount->ulAccountMark)
+                {
+                    pstAccount->ulAccountMark = 1;
                 }
 
                 pthread_mutex_unlock(&pstAccount->mutexAccount);

@@ -37,6 +37,7 @@ enum BS_CDR_TYPE_E
 typedef struct
 {
     U32             ulCDRMark;                  /* 话单标记,同一原始话单拆分的基础话单标记相同 */
+    U32             ulAccountMark;              /* 正对统一客户来说，同一次出账关联的CDR中Account Mark是相同的 */
     U8              ucCDRType;                  /* 话单类型 */
     U8              aucReserv[3];
 }BS_CDR_TAG;
@@ -81,13 +82,16 @@ typedef struct
     U32             aulPeerIP[4];               /* 对端IP地址,填写为发送侧IP;兼容IPv6 */
     U16             usPeerTrunkID;              /* 对端中继ID */
     U16             usTerminateCause;           /* 终止原因 */
+
     U8              ucServType;                 /* 业务类型 */
     U8              ucAgentLevel;               /* 所属层级,[0,BS_MAX_AGENT_LEVEL) */
     U8              ucRecordFlag;               /* 是否录音标记 */
     U8              ucReleasePart;              /* 会话释放方 */
+
     U8              ucPayloadType;              /* 媒体类型 */
     U8              ucPacketLossRate;           /* 收包丢包率,0-100 */
-
+    U8              ucNeedCharge;               /* 是否需要计费 */
+    U8              ucRes;                      /* 保留 */
 }BS_CDR_VOICE_ST;
 
 typedef struct
