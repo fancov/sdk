@@ -246,7 +246,7 @@ enum tagCallServiceType{
     SC_SERV_FORWORD_CFB             = 8,   /* 忙转业务 */
     SC_SERV_FORWORD_CFU             = 9,   /* 无条件转业务 */
     SC_SERV_FORWORD_CFNR            = 10,   /* 无应答转业务 */
-    SC_SERV_BLIND_TRANSFER          = 11,  /* 忙转业务 */
+    SC_SERV_BLIND_TRANSFER          = 11,  /* 盲转业务 */
     SC_SERV_ATTEND_TRANSFER         = 12,  /* 协商转业务 */
 
     SC_SERV_PICK_UP                 = 13,  /* 代答业务 */        /* ** */
@@ -1043,7 +1043,7 @@ BOOL sc_bg_job_find(U32 ulRCNo);
 U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
 U32 sc_scb_hash_tables_delete(S8 *pszUUID);
 SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
-U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, S8 *pszCallee, U32 ulFlag, U32 ulCalleeAgentID);
+U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulType, S8 *pszCallee, U32 ulFlag, U32 ulCalleeAgentID);
 U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum);
 BOOL sc_ep_check_extension(S8 *pszNum, U32 ulCustomerID);
 U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCaller);
@@ -1066,6 +1066,10 @@ VOID *sc_acd_query_agent_status_task(VOID *ptr);
 /* 周期任务 */
 U32 sc_num_lmt_stat(U32 ulType, VOID *ptr);
 U32 sc_num_lmt_update(U32 ulType, VOID *ptr);
+
+/* 错误码转换 */
+U16 sc_ep_transform_errcode_from_bs2sc(U8 ucErrcode);
+U16 sc_ep_transform_errcode_from_sc2sip(U32 ulErrcode);
 
 #ifdef __cplusplus
 }

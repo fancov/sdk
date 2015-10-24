@@ -66,6 +66,7 @@ enum BS_ERRCODE_E
     BS_ERR_BUTT                 = 255
 };
 
+#if 0
 enum BS_CALL_TERMINATE_CAUSE_E
 {
     BS_TERM_NONE                = 0,
@@ -86,6 +87,7 @@ enum BS_CALL_TERMINATE_CAUSE_E
 
     BS_TERM_BUTT
 };
+#endif
 
 /* 消息类型定义,0为无效值 */
 enum BS_MSG_TYPE_E
