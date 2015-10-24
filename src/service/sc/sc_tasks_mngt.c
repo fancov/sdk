@@ -388,7 +388,7 @@ U32 sc_task_mngt_stop_task(U32 ulTaskID, U32 ulCustomID)
         return SC_HTTP_ERRNO_INVALID_DATA;
     }
 
-    if (pstTCB->ucTaskStatus != SC_TASK_WORKING)
+    if (pstTCB->ucTaskStatus == SC_TASK_STOP)
     {
         DOS_ASSERT(0);
         SC_TRACE_OUT();
@@ -521,6 +521,10 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
             switch (pstCMD->ulAction)
             {
                 case SC_API_CMD_ACTION_ADD:
+                {
+                    /* DO Nothing */
+                    break;
+                }
                 case SC_API_CMD_ACTION_UPDATE:
                 {
                     sc_task_load(pstCMD->ulTaskID);

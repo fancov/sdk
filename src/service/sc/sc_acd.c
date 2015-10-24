@@ -2802,6 +2802,7 @@ U32 sc_acd_http_agentgrp_update_proc(U32 ulAction, U32 ulGrpID)
 U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
     S8 szSQL[512] = { 0, };
+    U32 ulAvgCallDruation = 0;
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -2810,9 +2811,20 @@ U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     }
 
     /* 没有上线过，就直接过了 */
+#if 0
     if (pstAgentInfo->stStat.ulTimeOnSignin)
     {
         return DOS_SUCC;
+    }
+#endif
+
+    if (pstAgentInfo->stStat.ulCallCnt)
+    {
+        ulAvgCallDruation = pstAgentInfo->stStat.ulTotalDuration / pstAgentInfo->stStat.ulCallCnt;
+    }
+    else
+    {
+        ulAvgCallDruation = 0;
     }
 
     dos_snprintf(szSQL, sizeof(szSQL),
@@ -2822,7 +2834,7 @@ U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
                 , time(NULL), 0, pstAgentInfo->ulSiteID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[0]
                 , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->stStat.ulCallConnected
                 , pstAgentInfo->stStat.ulTotalDuration, pstAgentInfo->stStat.ulTimeOnthePhone
-                , pstAgentInfo->stStat.ulTotalDuration / pstAgentInfo->stStat.ulCallCnt);
+                , ulAvgCallDruation);
 
     if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL) < 0)
     {
