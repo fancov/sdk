@@ -9987,8 +9987,12 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     }
     else if (SC_SERV_AGENT_SIGNIN == ulMainService)
     {
-        /* 坐席置闲 */
-        ulRet = sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_IDEL, pstSCB->usSCBNo);
+        /* 坐席长签成功 */
+        ulRet = sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECTED, pstSCB->ulAgentID);
+        if (ulRet == DOS_SUCC)
+        {
+            sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_BUTT, pstSCB->usSCBNo);
+        }
     }
     else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
     {
@@ -10758,7 +10762,7 @@ U32 sc_ep_channel_hungup_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC
  */
 U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
-    U32         ulStatus, ulRet = DOS_SUCC;
+    U32         ulStatus, ulAgentStatus, ulRet = DOS_SUCC;
     S8          szCMD[512]          = { 0, };
     S8          *pszTransforType    = NULL;
     S8          *pszGatewayID       = NULL;
@@ -10897,14 +10901,25 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             /* 如果是呼叫坐席的，需要做特殊处理,看看坐席是否长连什么的 */
             if (pstSCB->bIsAgentCall)
             {
-                if (pstSCB->pstExtraData->ulAnswerTimeStamp == 0)
+                if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN) && pstSCB->usOtherSCBNo == U16_BUTT)
                 {
-                    sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_IDEL, U32_BUTT);
+                    /* 坐席长签的电话挂断了，如果 没有另一条leg，则是主动挂断，不用更新坐席的状态
+                        如果时间有另一条leg，则需要，更改一下坐席的状态 */
+                    ulAgentStatus = SC_ACD_BUTT;
                 }
                 else
                 {
-                    sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_PROC, U32_BUTT);
+                    if (pstSCB->pstExtraData->ulAnswerTimeStamp == 0)
+                    {
+                        ulAgentStatus = SC_ACD_IDEL;
+                    }
+                    else
+                    {
+                        ulAgentStatus = SC_ACD_PROC;
+                    }
                 }
+
+                sc_acd_agent_update_status(pstSCB->ulAgentID, ulAgentStatus, U32_BUTT);
 
                 pstSCB->bIsAgentCall = DOS_FALSE;
             }

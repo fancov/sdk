@@ -69,54 +69,54 @@ enum SC_ERRCODE_E
 
     /* SC 模块的错误码 */
     CC_ERR_SC_SERV_NOT_EXIST                    = 1000,         /* 业务不存在       403 */
-    CC_ERR_SC_NO_SERV_RIGHTS,                                   /* 无业务权限       403 */
-    CC_ERR_SC_USER_OFFLINE,                                     /* 用户离线         480 */
-    CC_ERR_SC_USER_BUSY,                                        /* 用户忙           486 */
-    CC_ERR_SC_USER_HAS_BEEN_LEFT,                               /* 用户已离开       480 */
-    CC_ERR_SC_USER_DOES_NOT_EXIST,                              /* 用户不存在       403 */
-    CC_ERR_SC_CUSTOMERS_NOT_EXIST,                              /* 客户不存在       403 */
-    CC_ERR_SC_CB_ALLOC_FAIL,                                    /* 控制块分配失败   500 */
-    CC_ERR_SC_MEMORY_ALLOC_FAIL,                                /* 内存分配失败     500 */
-    CC_ERR_SC_IN_BLACKLIST,                                     /* 黑名单           404 */
-    CC_ERR_SC_CALLER_NUMBER_ILLEGAL,                            /* 主叫号码非法     404 */
-    CC_ERR_SC_CALLEE_NUMBER_ILLEGAL,                            /* 被叫号码非法     404 */
-    CC_ERR_SC_NO_ROUTE,                                         /* 无可用路由       404 */
-    CC_ERR_SC_NO_TRUNK,                                         /* 无可用中继       404 */
-    CC_ERR_SC_PERIOD_EXCEED,                                    /* 超出时间限制     480 */
-    CC_ERR_SC_RESOURCE_EXCEED,                                  /* 超出资源限制     480 */
-    CC_ERR_SC_CONFIG_ERR,                                       /* 数据配置错误     503 */
-    CC_ERR_SC_MESSAGE_PARAM_ERR,                                /* 消息参数错误     503 */
-    CC_ERR_SC_MESSAGE_SENT_ERR,                                 /* 消息发送错误     503 */
-    CC_ERR_SC_MESSAGE_RECV_ERR,                                 /* 消息接收错误     503 */
-    CC_ERR_SC_MESSAGE_TIMEOUT,                                  /* 消息超时         408 */
-    CC_ERR_SC_AUTH_TIMEOUT,                                     /* 认证超时         408 */
-    CC_ERR_SC_QUERY_TIMEOUT,                                    /* 查询超时         408 */
-    CC_ERR_SC_CLEAR_FORCE,                                      /* 强制拆除         503 */
-    CC_ERR_SC_SYSTEM_ABNORMAL,                                  /* 系统异常         503 */
-    CC_ERR_SC_SYSTEM_BUSY,                                      /* 系统忙           503 */
-    CC_ERR_SC_SYSTEM_MAINTAINING,                               /* 系统维护         503 */
+    CC_ERR_SC_NO_SERV_RIGHTS                    = 1001,         /* 无业务权限       403 */
+    CC_ERR_SC_USER_OFFLINE                      = 1002,         /* 用户离线         480 */
+    CC_ERR_SC_USER_BUSY                         = 1003,         /* 用户忙           486 */
+    CC_ERR_SC_USER_HAS_BEEN_LEFT                = 1004,         /* 用户已离开       480 */
+    CC_ERR_SC_USER_DOES_NOT_EXIST               = 1005,         /* 用户不存在       403 */
+    CC_ERR_SC_CUSTOMERS_NOT_EXIST               = 1006,         /* 客户不存在       403 */
+    CC_ERR_SC_CB_ALLOC_FAIL                     = 1007,         /* 控制块分配失败   500 */
+    CC_ERR_SC_MEMORY_ALLOC_FAIL                 = 1008,         /* 内存分配失败     500 */
+    CC_ERR_SC_IN_BLACKLIST                      = 1009,         /* 黑名单           404 */
+    CC_ERR_SC_CALLER_NUMBER_ILLEGAL             = 1010,         /* 主叫号码非法     404 */
+    CC_ERR_SC_CALLEE_NUMBER_ILLEGAL             = 1011,         /* 被叫号码非法     404 */
+    CC_ERR_SC_NO_ROUTE                          = 1012,         /* 无可用路由       404 */
+    CC_ERR_SC_NO_TRUNK                          = 1013,         /* 无可用中继       404 */
+    CC_ERR_SC_PERIOD_EXCEED                     = 1014,         /* 超出时间限制     480 */
+    CC_ERR_SC_RESOURCE_EXCEED                   = 1015,         /* 超出资源限制     480 */
+    CC_ERR_SC_CONFIG_ERR                        = 1016,         /* 数据配置错误     503 */
+    CC_ERR_SC_MESSAGE_PARAM_ERR                 = 1017,         /* 消息参数错误     503 */
+    CC_ERR_SC_MESSAGE_SENT_ERR                  = 1018,         /* 消息发送错误     503 */
+    CC_ERR_SC_MESSAGE_RECV_ERR                  = 1019,         /* 消息接收错误     503 */
+    CC_ERR_SC_MESSAGE_TIMEOUT                   = 1020,         /* 消息超时         408 */
+    CC_ERR_SC_AUTH_TIMEOUT                      = 1021,         /* 认证超时         408 */
+    CC_ERR_SC_QUERY_TIMEOUT                     = 1022,         /* 查询超时         408 */
+    CC_ERR_SC_CLEAR_FORCE                       = 1023,         /* 强制拆除         503 */
+    CC_ERR_SC_SYSTEM_ABNORMAL                   = 1024,         /* 系统异常         503 */
+    CC_ERR_SC_SYSTEM_BUSY                       = 1025,         /* 系统忙           503 */
+    CC_ERR_SC_SYSTEM_MAINTAINING                = 1026,         /* 系统维护         503 */
 
     /* BS认证错误码 */
     CC_ERR_BS_NOT_EXIST                         = 1200,         /* 不存在 */
-    CC_ERR_BS_EXPIRE,                                           /* 过期/失效 */
-    CC_ERR_BS_FROZEN,                                           /* 被冻结 */
-    CC_ERR_BS_LACK_FEE,                                         /* 余额不足 */
-    CC_ERR_BS_PASSWORD,                                         /* 密码错误 */
-    CC_ERR_BS_RESTRICT,                                         /* 业务受限 */
-    CC_ERR_BS_OVER_LIMIT,                                       /* 超过限制 */
-    CC_ERR_BS_TIMEOUT,                                          /* 超时 */
-    CC_ERR_BS_LINK_DOWN,                                        /* 连接中断 */
-    CC_ERR_BS_SYSTEM,                                           /* 系统错误 */
-    CC_ERR_BS_MAINTAIN,                                         /* 系统维护中 */
-    CC_ERR_BS_DATA_ABNORMAL,                                    /* 数据异常*/
-    CC_ERR_BS_PARAM_ERR,                                        /* 参数错误 */
-    CC_ERR_BS_NOT_MATCH,                                        /* 不匹配 */
+    CC_ERR_BS_EXPIRE                            = 1201,         /* 过期/失效 */
+    CC_ERR_BS_FROZEN                            = 1202,         /* 被冻结 */
+    CC_ERR_BS_LACK_FEE                          = 1203,         /* 余额不足 */
+    CC_ERR_BS_PASSWORD                          = 1204,         /* 密码错误 */
+    CC_ERR_BS_RESTRICT                          = 1205,         /* 业务受限 */
+    CC_ERR_BS_OVER_LIMIT                        = 1206,         /* 超过限制 */
+    CC_ERR_BS_TIMEOUT                           = 1207,         /* 超时 */
+    CC_ERR_BS_LINK_DOWN                         = 1208,         /* 连接中断 */
+    CC_ERR_BS_SYSTEM                            = 1209,         /* 系统错误 */
+    CC_ERR_BS_MAINTAIN                          = 1210,         /* 系统维护中 */
+    CC_ERR_BS_DATA_ABNORMAL                     = 1211,         /* 数据异常*/
+    CC_ERR_BS_PARAM_ERR                         = 1212,         /* 参数错误 */
+    CC_ERR_BS_NOT_MATCH                         = 1213,         /* 不匹配 */
 
-    /* 数据库 增删改查 错误码 */
-    CC_ERR_DB_ADD_FAIL                          = 1400,
-    CC_ERR_DB_DELETE_FAIL,
-    CC_ERR_DB_UPDATE_FAIL,
-    CC_ERR_DB_SELECT_FAIL,
+    /* DB 错误码 */
+    CC_ERR_DB_ADD_FAIL                          = 1400,         /* 增 */
+    CC_ERR_DB_DELETE_FAIL                       = 1401,         /* 删 */
+    CC_ERR_DB_UPDATE_FAIL                       = 1402,         /* 改 */
+    CC_ERR_DB_SELECT_FAIL                       = 1403,         /* 查 */
 
     CC_ERR_BUTT
 };
