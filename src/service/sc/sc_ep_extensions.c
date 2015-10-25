@@ -196,12 +196,12 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                 if (dos_strcmp(pszSubclass, "sofia::register") == 0)
                 {
                     /* register */
-                    enStatus = SC_SIP_STATUS_TYPE_UNREGISTER;
+                    enStatus = SC_SIP_STATUS_TYPE_REGISTER;
                 }
                 else
                 {
                     /* sofia::unregister/sofia::expire */
-                    enStatus = SC_SIP_STATUS_TYPE_REGISTER;
+                    enStatus = SC_SIP_STATUS_TYPE_UNREGISTER;
                 }
 
                 ulResult = sc_ep_update_sip_status(pszUserID, enStatus, &ulSipID);

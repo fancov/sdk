@@ -216,7 +216,6 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
 {
     SC_SCB_ST               *pstSCB         = NULL;
     BS_MSG_BALANCE_QUERY    *pstAuthMsg     = NULL;
-    S8                      szAPPParam[512] = {0};
 
     if (DOS_ADDR_INVALID(pstMsg))
     {
@@ -282,7 +281,7 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
         pstSCB->bBanlanceWarning = DOS_FALSE;
     }
 
-    pstSCB->usTerminationCause = pstMsg->ucErrcode;
+    pstSCB->usTerminationCause = sc_ep_transform_errcode_from_bs2sc(pstMsg->ucErrcode);
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
     if (pstSCB->bTerminationFlag)
@@ -301,16 +300,8 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
     else
     {
         sc_logr_notice(SC_BS, "Auth successfully. RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
-        if (pstMsg->ucErrcode == 0)
-        {
-            sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
-            sc_play_balance(pstSCB);
-            sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
-        }
-        else
-        {
-            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
-        }
+        sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
+        sc_play_balance(pstSCB);
 
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
     }
@@ -390,7 +381,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         pstSCB->bBanlanceWarning = DOS_FALSE;
     }
 
-    pstSCB->usTerminationCause = pstMsg->ucErrcode;
+    pstSCB->usTerminationCause = sc_ep_transform_errcode_from_bs2sc(pstMsg->ucErrcode);
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
     if (pstSCB->bTerminationFlag)
@@ -591,7 +582,7 @@ U32 sc_bs_billing_start_rsp_proc(BS_MSG_TAG *pstMsg)
         pstSCB->bTerminationFlag = DOS_FALSE;
     }
 
-    pstSCB->usTerminationCause = pstMsg->ucErrcode;
+    pstSCB->usTerminationCause = sc_ep_transform_errcode_from_bs2sc(pstMsg->ucErrcode);
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
     sc_logr_debug(SC_BS, "%s", "Process billing start response msg finished.");
@@ -640,7 +631,7 @@ U32 sc_bs_billing_update_rsp_proc(BS_MSG_TAG *pstMsg)
         pstSCB->bTerminationFlag = DOS_FALSE;
     }
 
-    pstSCB->usTerminationCause = pstMsg->ucErrcode;
+    pstSCB->usTerminationCause = sc_ep_transform_errcode_from_bs2sc(pstMsg->ucErrcode);
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
     sc_logr_debug(SC_BS, "%s", "Process billing update response msg finished.");
