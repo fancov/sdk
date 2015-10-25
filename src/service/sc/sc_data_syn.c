@@ -403,6 +403,16 @@ VOID* sc_data_syn_runtime(VOID *ptr)
 
     for (;;)
     {
+        /* Socket 文件被删除了 */
+        if (g_blConnected && access(SC_DATA_SYN_SOCK_PATH, F_OK) < 0)
+        {
+            sc_logr_error(SC_SYN, "%s", "Socket file has been lost.");
+
+            close(lSocket);
+            lSocket = -1;
+            g_blConnected = DOS_FALSE;
+        }
+
         while (!g_blConnected)
         {
             /* 初始化socket(UNIX STREAM方式) */
