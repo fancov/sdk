@@ -1275,7 +1275,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
     }
 
-    pstTCB->usTCBNo = (U16)lIndex;
+    //pstTCB->usTCBNo = (U16)lIndex;
     pstTCB->ucValid = DOS_TRUE;
     pstTCB->ulTaskID = ulTaskID;
     pstTCB->ulCustomID = ulCustomerID;
@@ -1290,6 +1290,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     pstTCB->ulCalledCount = ulCalledCnt;
     pstTCB->ulCallerGrpID = ulCallerGroupID;
     pstTCB->ulCallRate = ulCallRate;
+    pstTCB->ulLastCalleeIndex = ulCalledCnt;
 
     pstTCB->astPeriod[0].ucValid = DOS_TRUE;
     pstTCB->astPeriod[0].ucWeekMask = 0xFF;

@@ -158,6 +158,18 @@ U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
         return SC_HTTP_ERRNO_INVALID_DATA;
     }
 
+    if (pstTCB->ucTaskStatus == SC_TASK_INIT)
+    {
+        /* 需要加载任务 */
+        if (DOS_SUCC != sc_task_reload(ulTaskID))
+        {
+            DOS_ASSERT(0);
+            SC_TRACE_OUT();
+
+            return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+        }
+    }
+
     if (pstTCB->ucTaskStatus != SC_TASK_PAUSED)
     {
         DOS_ASSERT(0);
@@ -297,9 +309,6 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
     }
 
 #if 0
-    pstTCB = sc_tcb_find_by_taskid(ulTaskID);
-
-
     if (!pstTCB)
     {
         DOS_ASSERT(0);
@@ -333,18 +342,23 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
     }
 #endif
 
-    if (DOS_SUCC != sc_task_reload(pstTCB->ulTaskID))
+    if (DOS_SUCC != sc_task_reload(ulTaskID))
     {
         DOS_ASSERT(0);
-        sc_tcb_free(pstTCB);
         SC_TRACE_OUT();
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    pstTCB = sc_tcb_find_by_taskid(ulTaskID);
+    if (DOS_ADDR_INVALID(pstTCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
 
     if (sc_task_start(pstTCB) != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        sc_tcb_free(pstTCB);
         SC_TRACE_OUT();
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }

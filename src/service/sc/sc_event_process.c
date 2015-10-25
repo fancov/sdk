@@ -134,7 +134,7 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
         return DOS_FAIL;
     }
 
-    curl_global_init(CURL_GLOBAL_ALL);
+    //curl_global_init(CURL_GLOBAL_ALL);
     if (DOS_ADDR_INVALID(g_pstCurlHandle))
     {
         g_pstCurlHandle = curl_easy_init();
@@ -7961,7 +7961,7 @@ proc_fail:
     return DOS_FAIL;
 }
 
-U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 *pulErrCode)
+U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL bIsUpdateCaller, U32 *pulErrCode)
 {
     S8            szAPPParam[512] = { 0 };
     U32           ulErrCode = CC_ERR_NO_REASON;
@@ -8094,29 +8094,32 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 
         SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
         SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
 
-        /* 设置主叫号码 */
-        if (U32_BUTT == pstSCB->ulAgentID)
+        if (bIsUpdateCaller)
         {
-            sc_logr_info(SC_DIALER, "Agent signin not get agent ID by scd(%u)", pstSCB->usSCBNo);
+            /* 设置主叫号码 */
+            if (U32_BUTT == pstSCB->ulAgentID)
+            {
+                sc_logr_info(SC_DIALER, "Agent signin not get agent ID by scd(%u)", pstSCB->usSCBNo);
 
-            goto go_on;
+                goto go_on;
+            }
+
+            /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
+            ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, pstSCB->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+
+                goto go_on;
+            }
+
+            sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+            dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
+            pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
         }
-
-        /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
-        ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, pstSCB->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
-        if (ulRet != DOS_SUCC)
-        {
-            DOS_ASSERT(0);
-            sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
-
-            goto go_on;
-        }
-
-        sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
-        dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
-        pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
-
 go_on:
+
         if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pstSCBNew->szCalleeNum))
         {
             DOS_ASSERT(0);
@@ -8140,7 +8143,7 @@ go_on:
 
     if (AGENT_BIND_SIP == pstAgentInfo->ucBindType)
     {
-        if (sc_dial_make_call2ip(pstSCBNew, SC_SERV_AGENT_CALLBACK, DOS_TRUE) != DOS_SUCC)
+        if (sc_dial_make_call2ip(pstSCBNew, SC_SERV_AGENT_CALLBACK, bIsUpdateCaller) != DOS_SUCC)
         {
             ulErrCode = CC_ERR_SC_MESSAGE_SENT_ERR;
             goto proc_error;
@@ -8223,7 +8226,7 @@ U32 sc_ep_call_agent_by_id(SC_SCB_ST * pstSCB, U32 ulAgentID)
     }
 
     /* 呼叫坐席 */
-    if (sc_ep_call_agent(pstSCB, &stAgentInfo, &ulErrCode) != DOS_SUCC)
+    if (sc_ep_call_agent(pstSCB, &stAgentInfo, DOS_TRUE, &ulErrCode) != DOS_SUCC)
     {
         goto proc_fail;
     }
@@ -8285,7 +8288,7 @@ U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
 
 
     /* 呼叫坐席 */
-    if (sc_ep_call_agent(pstSCB, &stAgentInfo, &ulErrCode) != DOS_SUCC)
+    if (sc_ep_call_agent(pstSCB, &stAgentInfo, DOS_FALSE, &ulErrCode) != DOS_SUCC)
     {
         goto proc_fail;
     }
