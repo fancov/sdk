@@ -297,6 +297,8 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
     }
 
     pstTCB = sc_tcb_find_by_taskid(ulTaskID);
+
+
     if (!pstTCB)
     {
         DOS_ASSERT(0);
@@ -329,6 +331,7 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }
 #endif
+
     if (DOS_SUCC != sc_task_load(pstTCB->ulTaskID))
     {
         DOS_ASSERT(0);

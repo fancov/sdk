@@ -4987,7 +4987,7 @@ U32 sc_del_tt_number(U32 ulIndex)
     }
 }
 
-U32 sc_save_number_stat(U32 ulType, S8 *pszNumber, U32 ulTimes)
+U32 sc_save_number_stat(U32 ulCustomerID, U32 ulType, S8 *pszNumber, U32 ulTimes)
 {
     S8        szSQL[512];
 
@@ -4999,8 +4999,8 @@ U32 sc_save_number_stat(U32 ulType, S8 *pszNumber, U32 ulTimes)
     }
 
     dos_snprintf(szSQL, sizeof(szSQL)
-                    , "INSERT INTO tbl_stat_caller(type, ctime, caller, times) VALUE(%u, %u, \"%s\", %u)"
-                    , ulType, time(NULL), pszNumber, ulTimes);
+                    , "INSERT INTO tbl_stat_caller(customer_id, type, ctime, caller, times) VALUE(%u, %u, %u, \"%s\", %u)"
+                    , ulCustomerID, ulType, time(NULL), pszNumber, ulTimes);
 
     if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL) != DOS_SUCC)
     {
@@ -5143,7 +5143,7 @@ U32 sc_num_lmt_stat(U32 ulType, VOID *ptr)
             ulTimes = ptCaller->ulTimes;
             ptCaller->ulTimes = 0;
 
-            sc_save_number_stat(SC_NUM_LMT_TYPE_CALLER, ptCaller->szNumber, ulTimes);
+            sc_save_number_stat(ptCaller->ulCustomerID, SC_NUM_LMT_TYPE_CALLER, ptCaller->szNumber, ulTimes);
 
             ulHashIndexMunLmt = sc_ep_number_lmt_hash_func(ptCaller->szNumber);
             pthread_mutex_lock(&g_mutexHashNumberlmt);
@@ -5182,7 +5182,7 @@ U32 sc_num_lmt_stat(U32 ulType, VOID *ptr)
             ulTimes = ptDIDNumber->ulTimes;
             ptDIDNumber->ulTimes = 0;
 
-            sc_save_number_stat(SC_NUM_LMT_TYPE_DID, ptDIDNumber->szDIDNum, ulTimes);
+            sc_save_number_stat(ptDIDNumber->ulCustomID, SC_NUM_LMT_TYPE_DID, ptDIDNumber->szDIDNum, ulTimes);
 
             ulHashIndexMunLmt = sc_ep_number_lmt_hash_func(ptDIDNumber->szDIDNum);
             pthread_mutex_lock(&g_mutexHashNumberlmt);
