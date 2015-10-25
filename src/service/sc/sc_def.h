@@ -933,6 +933,7 @@ U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB);
 VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID);
 U32 sc_task_get_current_call_cnt(SC_TASK_CB_ST *pstTCB);
 S32 sc_task_load(U32 ulIndex);
+S32 sc_task_reload(U32 ulIndex);
 U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB);
 #if 0
 U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB);
