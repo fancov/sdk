@@ -2828,7 +2828,7 @@ U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     }
 
     dos_snprintf(szSQL, sizeof(szSQL),
-                    "INSERT INTO tbl_stat_agents(ctime, type, bid, job_number, group_id, calls"
+                    "INSERT INTO tbl_stat_agents(ctime, type, bid, job_number, group_id, calls, "
                     "calls_connected, total_duration, online_time, avg_call_duration) VALUES("
                     "%u, %u, %u, \"%s\", %u, %u, %u, %u, %u, %u)"
                 , time(NULL), 0, pstAgentInfo->ulSiteID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[0]
