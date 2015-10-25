@@ -2196,115 +2196,130 @@ VOID *bss_send_msg2app(VOID *arg)
     return NULL;
 }
 
+#define SOCK_PATH   "/var/www/html/temp/bsconn.sock"
+
+
 /* 业务层处理来自web 的消息 */
 VOID *bss_recv_msg_from_web(VOID *arg)
 {
-    S32                 lSocket, lAcceptedSocket, lRet, lAddrLen;
-    S8                  strBuff[BS_MAX_MSG_LEN];
+    S32                 lSocket = -1, lClientSocket, lRet, lAddrLen;
+    U8                  aucBuff[512];
     BS_MSG_TAG          *pstMsgTag;
     struct sockaddr_un  stAddr, stAddrIn;
-    struct timeval stTimeout={2, 0};
-    #define PERM    "0666"
-    mode_t lMode = strtol(PERM, 0, 8);
+    struct timeval      stTimeout={2, 0};
+    fd_set              stFDSet;
+    BOOL                blConnected = DOS_FALSE;
 
-    #define SOCK_PATH   "/var/www/html/temp/bsconn.sock"
-
-
-    /* 初始化socket(UNIX STREAM方式) */
-    lSocket = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (lSocket < 0)
+    for (;;)
     {
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: create socket fail!");
-        return NULL;
-    }
-
-    /* 初始化并绑定服务器地址 */
-    dos_memzero(&stAddrIn, sizeof(stAddrIn));
-    dos_memzero(&stAddr, sizeof(stAddr));
-    lAddrLen = sizeof(struct sockaddr_un);
-    stAddr.sun_family = AF_UNIX;
-    strncpy(stAddr.sun_path, SOCK_PATH, sizeof(stAddr.sun_path) - 1);
-    unlink(SOCK_PATH);
-    lRet = bind(lSocket, (struct sockaddr *)&stAddr, lAddrLen);
-    if (lRet < 0)
-    {
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: bind socket fail!");
-        close(lSocket);
-        return NULL;
-    }
-
-    /* 目前监听数量不确定,暂时以SOMAXCONN为准 */
-    lRet = listen(lSocket, SOMAXCONN);
-    if (lRet < 0)
-    {
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: listen socket fail!");
-        close(lSocket);
-        return NULL;
-    }
-
-    /* 修改操作权限 */
-    lRet = chmod(SOCK_PATH, lMode);
-    if (lRet < 0)
-    {
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: chmod fail!");
-        close(lSocket);
-        return NULL;
-    }
-
-    while (1)
-    {
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Watting for a connection from the web...");
-
-        lAddrLen = sizeof(struct sockaddr_un);
-        lAcceptedSocket = accept(lSocket, (struct sockaddr *)&stAddrIn, (socklen_t *)&lAddrLen);
-        if (lAcceptedSocket < 0)
+        /* Socket 文件被删除了 */
+        if (blConnected && access(SOCK_PATH, F_OK) < 0)
         {
-            bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: accept socket fail!");
-            break;
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Socket file has been lost.");
+
+            close(lSocket);
+            lSocket = -1;
+            blConnected = DOS_FALSE;
         }
 
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Accept a web connection.");
-
-        /* 设置发送接收超时,防止长时间阻塞导致响应不及时 */
-        setsockopt(lAcceptedSocket, SOL_SOCKET, SO_SNDTIMEO, (char *)&stTimeout, sizeof(stTimeout));
-        setsockopt(lAcceptedSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&stTimeout, sizeof(stTimeout));
-
-        lRet = recv(lAcceptedSocket, strBuff, sizeof(strBuff), 0);
-        if (0 == lRet || EINTR == errno || EAGAIN == errno)
+        while (!blConnected)
         {
-            /* 接收数据失败,退出连接 */
-            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Did not receive any data, close the connection.");
-            close(lAcceptedSocket);
+            /* 初始化socket(UNIX STREAM方式) */
+            lSocket = socket(AF_UNIX, SOCK_STREAM, 0);
+            if (lSocket < 0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "ERR: create socket fail!");
+                goto connect_fail;
+            }
+
+            dos_memzero(&stAddrIn, sizeof(stAddrIn));
+            dos_memzero(&stAddr, sizeof(stAddr));
+            lAddrLen = sizeof(struct sockaddr_un);
+            stAddr.sun_family = AF_UNIX;
+            strncpy(stAddr.sun_path, SOCK_PATH, sizeof(stAddr.sun_path) - 1);
+            unlink(SOCK_PATH);
+            lRet = bind(lSocket, (struct sockaddr *)&stAddr, lAddrLen);
+            if (lRet < 0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "ERR: bind socket fail!");
+                close(lSocket);
+                lSocket= -1;
+                goto connect_fail;
+            }
+
+            chmod(SOCK_PATH, S_IREAD|S_IWRITE|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+
+            /* 目前监听数量不确定,暂时以SOMAXCONN为准 */
+            lRet = listen(lSocket, SOMAXCONN);
+            if (lRet < 0)
+            {
+                bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "ERR: listen socket fail!");
+                close(lSocket);
+                goto connect_fail;
+            }
+
+            blConnected = DOS_TRUE;
+            break;
+connect_fail:
+            sleep(2000);
             continue;
         }
-        else if (lRet < 0)
+
+        FD_ZERO(&stFDSet);
+        FD_SET(lSocket, &stFDSet);
+        stTimeout.tv_sec = 1;
+        stTimeout.tv_usec = 0;
+        lRet = select(lSocket + 1, &stFDSet, NULL, NULL, &stTimeout);
+        if (lRet < 0)
         {
             DOS_ASSERT(0);
-            bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "Notice: recv data form socket fail! errno:%d", errno);
-            close(lAcceptedSocket);
-            break;
+
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Select FAIL.");
+            blConnected = DOS_FALSE;
+            continue;
         }
-        else if (lRet < sizeof(BS_MSG_TAG))
+        else if (0 == lRet)
         {
-            /* 收到的报文长度异常,错误消息 */
-            bs_trace(BS_TRACE_RUN, LOG_LEVEL_INFO, "Info: recv wrong data form socket! len:%d", lRet);
-            close(lAcceptedSocket);
             continue;
         }
 
-        pstMsgTag = (BS_MSG_TAG *)strBuff;
+        if (!FD_ISSET(lSocket, &stFDSet))
+        {
+            continue;
+        }
+
+        lClientSocket = accept(lSocket, (struct sockaddr *)&stAddrIn, (socklen_t *)&lAddrLen);
+        if (lClientSocket < 0)
+        {
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Accept FAIL.");
+            continue;
+        }
+
+        lAddrLen = sizeof(stAddrIn);
+        lRet = recv(lClientSocket, aucBuff, sizeof(aucBuff), 0);
+        if (lRet < 0)
+        {
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Recv FAIL.");
+            close(lClientSocket);
+            lClientSocket = -1;
+            blConnected = DOS_FALSE;
+            continue;
+        }
+
+        close(lClientSocket);
+        lClientSocket = 0;
+
+        /* TODO: 判断长度之后再转换 */
+        pstMsgTag = (BS_MSG_TAG *)aucBuff;
 
         pthread_mutex_lock(&g_mutexTableUpdate);
         g_bTableUpdate = DOS_TRUE;
         pthread_mutex_unlock(&g_mutexTableUpdate);
 
         bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Table requested operation: Success.");
-
-        close(lAcceptedSocket);
     }
 
-    close(lSocket);
-
+    /* @TODO 释放资源 */
     return NULL;
 }
 

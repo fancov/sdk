@@ -345,6 +345,8 @@ VOID *sc_task_runtime(VOID *ptr)
         sc_logr_error(SC_TASK, "Start timer update task(%u) calledcnt FAIL", pstTCB->ulTaskID);
     }
 
+    sc_logr_debug(SC_TASK, "Start run task(%u)", pstTCB->ulTaskID);
+
     while (1)
     {
         if (0 == ulTaskInterval)

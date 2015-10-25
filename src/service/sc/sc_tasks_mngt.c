@@ -298,6 +298,8 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
 
 #if 0
     pstTCB = sc_tcb_find_by_taskid(ulTaskID);
+
+
     if (!pstTCB)
     {
         DOS_ASSERT(0);
