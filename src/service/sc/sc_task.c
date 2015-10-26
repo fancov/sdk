@@ -345,6 +345,8 @@ VOID *sc_task_runtime(VOID *ptr)
         sc_logr_error(SC_TASK, "Start timer update task(%u) calledcnt FAIL", pstTCB->ulTaskID);
     }
 
+    sc_logr_debug(SC_TASK, "Start run task(%u)", pstTCB->ulTaskID);
+
     while (1)
     {
         if (0 == ulTaskInterval)
@@ -688,11 +690,19 @@ U32 sc_task_continue(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_START, NULL);
-
     pthread_mutex_lock(&pstTCB->mutexTaskList);
     pstTCB->ucTaskStatus = SC_TASK_WORKING;
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
+
+    if (!pstTCB->pthID)
+    {
+        /* 开始任务 */
+        sc_task_start(pstTCB);
+    }
+    else
+    {
+        sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_START, NULL);
+    }
 
     return DOS_SUCC;
 }

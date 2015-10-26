@@ -37,6 +37,7 @@ enum BS_CDR_TYPE_E
 typedef struct
 {
     U32             ulCDRMark;                  /* 话单标记,同一原始话单拆分的基础话单标记相同 */
+    U32             ulAccountMark;              /* 正对统一客户来说，同一次出账关联的CDR中Account Mark是相同的 */
     U8              ucCDRType;                  /* 话单类型 */
     U8              aucReserv[3];
 }BS_CDR_TAG;

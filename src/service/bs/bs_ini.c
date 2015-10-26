@@ -180,6 +180,7 @@ VOID bs_init_customer_st(BS_CUSTOMER_ST *pstCustomer)
     pstCustomer->ulCustomerID = U32_BUTT;
     pstCustomer->ulParentID = U32_BUTT;
     pstCustomer->ucCustomerType = BS_CUSTOMER_TYPE_BUTT;
+    pstCustomer->stAccount.ulAccountMark = 1;
     pstCustomer->ucCustomerState = BS_CUSTOMER_STATE_BUTT;
     pthread_mutex_init(&pstCustomer->stAccount.mutexAccount, NULL);
     pstCustomer->stAccount.ulAccountID = U32_BUTT;

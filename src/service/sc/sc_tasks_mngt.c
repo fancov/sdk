@@ -158,6 +158,18 @@ U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
         return SC_HTTP_ERRNO_INVALID_DATA;
     }
 
+    if (pstTCB->ucTaskStatus == SC_TASK_INIT)
+    {
+        /* 需要加载任务 */
+        if (DOS_SUCC != sc_task_reload(ulTaskID))
+        {
+            DOS_ASSERT(0);
+            SC_TRACE_OUT();
+
+            return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+        }
+    }
+
     if (pstTCB->ucTaskStatus != SC_TASK_PAUSED)
     {
         DOS_ASSERT(0);
@@ -296,7 +308,7 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
         return SC_HTTP_ERRNO_INVALID_USR;
     }
 
-    pstTCB = sc_tcb_find_by_taskid(ulTaskID);
+#if 0
     if (!pstTCB)
     {
         DOS_ASSERT(0);
@@ -308,7 +320,7 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
         sc_logr_error(SC_TASK, "ERR:TaskCB Found, But the Customer does not match Task.(TaskID:%u,CustomerID:%u)", ulTaskID, ulCustomID);
         return DOS_FAIL;
     }
-#if 0
+
     pstTCB = sc_tcb_alloc();
     if (!pstTCB)
     {
@@ -329,18 +341,24 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }
 #endif
-    if (DOS_SUCC != sc_task_load(pstTCB->ulTaskID))
+
+    if (DOS_SUCC != sc_task_reload(ulTaskID))
     {
         DOS_ASSERT(0);
-        sc_tcb_free(pstTCB);
         SC_TRACE_OUT();
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    pstTCB = sc_tcb_find_by_taskid(ulTaskID);
+    if (DOS_ADDR_INVALID(pstTCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
 
     if (sc_task_start(pstTCB) != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        sc_tcb_free(pstTCB);
         SC_TRACE_OUT();
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }
@@ -388,7 +406,7 @@ U32 sc_task_mngt_stop_task(U32 ulTaskID, U32 ulCustomID)
         return SC_HTTP_ERRNO_INVALID_DATA;
     }
 
-    if (pstTCB->ucTaskStatus != SC_TASK_WORKING)
+    if (pstTCB->ucTaskStatus == SC_TASK_STOP)
     {
         DOS_ASSERT(0);
         SC_TRACE_OUT();
@@ -521,6 +539,10 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
             switch (pstCMD->ulAction)
             {
                 case SC_API_CMD_ACTION_ADD:
+                {
+                    /* DO Nothing */
+                    break;
+                }
                 case SC_API_CMD_ACTION_UPDATE:
                 {
                     sc_task_load(pstCMD->ulTaskID);

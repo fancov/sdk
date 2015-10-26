@@ -376,6 +376,7 @@ typedef struct stBS_ACCOUNT_ST
     U32     ulAccountingTime;               /* 出账时间 */
     U32     ulExpiryTime;                   /* 失效时间 */
 
+    U32     ulAccountMark;                  /* 出账Mark 0为未设置，正则值重1开始 */
 }BS_ACCOUNT_ST;
 
 

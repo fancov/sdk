@@ -870,6 +870,23 @@ U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB)
         goto prepare_msg;
     }
 
+    /* \如果包含特殊业务，就先处理特殊业务 */
+    if (SC_CHECK_SERVICE(pstSCB, SC_SERV_AUTO_DIALING)
+        || SC_CHECK_SERVICE(pstSCB, SC_SERV_PREDICTIVE_DIALING)
+        || SC_CHECK_SERVICE(pstSCB, SC_SERV_PREVIEW_DIALING))
+    {
+        pstFirstSCB = pstSCB;
+        goto prepare_msg;
+    }
+
+    if (SC_CHECK_SERVICE(pstSCB2, SC_SERV_AUTO_DIALING)
+        || SC_CHECK_SERVICE(pstSCB2, SC_SERV_PREDICTIVE_DIALING)
+        || SC_CHECK_SERVICE(pstSCB2, SC_SERV_PREVIEW_DIALING))
+    {
+        pstFirstSCB = pstSCB2;
+        goto prepare_msg;
+    }
+
     /* \PSTN呼入，到PSTN等类型呼叫，需要使用和PSTN通讯的leg作为主leg */
     if (SC_CHECK_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL)
         && SC_CHECK_SERVICE(pstSCB, SC_SERV_INBOUND_CALL)
@@ -918,6 +935,7 @@ U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB)
     }
 
     /* @TODO: 其他情况 */
+
 
     /* 默认情况，将当前SCB作为主LEG */
     pstFirstSCB = pstSCB;

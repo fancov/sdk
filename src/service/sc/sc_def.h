@@ -246,7 +246,7 @@ enum tagCallServiceType{
     SC_SERV_FORWORD_CFB             = 8,   /* 忙转业务 */
     SC_SERV_FORWORD_CFU             = 9,   /* 无条件转业务 */
     SC_SERV_FORWORD_CFNR            = 10,   /* 无应答转业务 */
-    SC_SERV_BLIND_TRANSFER          = 11,  /* 忙转业务 */
+    SC_SERV_BLIND_TRANSFER          = 11,  /* 盲转业务 */
     SC_SERV_ATTEND_TRANSFER         = 12,  /* 协商转业务 */
 
     SC_SERV_PICK_UP                 = 13,  /* 代答业务 */        /* ** */
@@ -681,10 +681,17 @@ typedef struct tagSCSCB{
 
     U32       ulRes1;
 
-    S64       LBalance;                           /* 余额,单位:分 */
+    S64       LBalance;                           /* 余额,单位:万分之一元 */
 
-    S8        szCallerNum[SC_TEL_NUMBER_LENGTH];  /* 主叫号码 */
-    S8        szCalleeNum[SC_TEL_NUMBER_LENGTH];  /* 被叫号码 */
+    S8        szCallerBerforRouter[SC_TEL_NUMBER_LENGTH];  /* 路由时用的号码，可用于计费的 */
+    S8        szCalleeBerforRouter[SC_TEL_NUMBER_LENGTH];  /* 路由时用的号码,可用于计费的  */
+
+    S8        szCallerAfterRouter[SC_TEL_NUMBER_LENGTH];   /* 路由后号码变换之后的号码，用户发起呼叫*/
+    S8        szCalleeAfterRouter[SC_TEL_NUMBER_LENGTH];   /* 路由后号码变换之后的号码，用户发起呼叫 */
+
+    S8        szCallerNum[SC_TEL_NUMBER_LENGTH];  /* 主叫号码，业务发起时的号码 */
+    S8        szCalleeNum[SC_TEL_NUMBER_LENGTH];  /* 被叫号码，业务发起时的号码 */
+
     S8        szANINum[SC_TEL_NUMBER_LENGTH];     /* 被叫号码 */
     S8        szDialNum[SC_TEL_NUMBER_LENGTH];    /* 用户拨号 */
     S8        szSiteNum[SC_TEL_NUMBER_LENGTH];    /* 坐席号码 */
@@ -926,6 +933,7 @@ U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB);
 VOID sc_task_set_owner(SC_TASK_CB_ST *pstTCB, U32 ulTaskID, U32 ulCustomID);
 U32 sc_task_get_current_call_cnt(SC_TASK_CB_ST *pstTCB);
 S32 sc_task_load(U32 ulIndex);
+S32 sc_task_reload(U32 ulIndex);
 U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB);
 #if 0
 U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB);
@@ -1043,7 +1051,7 @@ BOOL sc_bg_job_find(U32 ulRCNo);
 U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB);
 U32 sc_scb_hash_tables_delete(S8 *pszUUID);
 SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID);
-U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, S8 *pszCallee, U32 ulFlag, U32 ulCalleeAgentID);
+U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulType, S8 *pszCallee, U32 ulFlag, U32 ulCalleeAgentID);
 U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum);
 BOOL sc_ep_check_extension(S8 *pszNum, U32 ulCustomerID);
 U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCaller);
@@ -1066,6 +1074,10 @@ VOID *sc_acd_query_agent_status_task(VOID *ptr);
 /* 周期任务 */
 U32 sc_num_lmt_stat(U32 ulType, VOID *ptr);
 U32 sc_num_lmt_update(U32 ulType, VOID *ptr);
+
+/* 错误码转换 */
+U16 sc_ep_transform_errcode_from_bs2sc(U8 ucErrcode);
+U16 sc_ep_transform_errcode_from_sc2sip(U32 ulErrcode);
 
 #ifdef __cplusplus
 }

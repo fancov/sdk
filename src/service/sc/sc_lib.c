@@ -280,6 +280,12 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
 
     pstSCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
+    pstSCB->szCallerBerforRouter[0] = 0;  /* 路由时用的号码，可用于计费的 */
+    pstSCB->szCalleeBerforRouter[0] = 0;  /* 路由时用的号码,可用于计费的  */
+
+    pstSCB->szCallerAfterRouter[0] = 0;   /* 路由后号码变换之后的号码，用户发起呼叫*/
+    pstSCB->szCalleeAfterRouter[0] = 0;   /* 路由后号码变换之后的号码，用户发起呼叫 */
+
     pstSCB->szCallerNum[0] = '\0';             /* 主叫号码 */
     pstSCB->szCalleeNum[0] = '\0';             /* 被叫号码 */
     pstSCB->szANINum[0] = '\0';                /* 被叫号码 */
@@ -1065,7 +1071,7 @@ static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
 S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond, ulCalledCnt, ulCallerGroupID, ulCallRate;
-    BOOL blProcessOK = DOS_FALSE, bFound = DOS_FALSE;
+    BOOL blProcessOK = DOS_FALSE;
     S32 lIndex = U32_BUTT;
     S8  szTaskName[64] = {0};
     SC_TASK_CB_ST *pstTCB = NULL;
@@ -1256,45 +1262,44 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     /* 如果只是加载一条数据，首先寻找有没有该控制块节点，如果有更新之
        如果没有，则重新寻找一个不可用节点，如果还是没有空闲节点，则返回失败 */
-    for (lIndex = 0; lIndex < SC_MAX_TASK_NUM; lIndex++)
+    pstTCB = sc_tcb_find_by_taskid(*(U32 *)pArg);
+    if (DOS_ADDR_INVALID(pstTCB))
     {
-        if (g_pstTaskMngtInfo->pstTaskList[lIndex].ulTaskID == *(U32 *)pArg
-            && DOS_TRUE == g_pstTaskMngtInfo->pstTaskList[lIndex].ucValid)
+        pstTCB  = sc_tcb_alloc();
+        if (DOS_ADDR_INVALID(pstTCB))
         {
-            bFound = DOS_TRUE;
-            break;
+            /* 数据不正确，不用保存 */
+            sc_logr_error(SC_TASK, "Alloc TCB fail.(TaskID:%u) ", ulTaskID);
+
+            return DOS_FAIL;
         }
     }
-    if (DOS_FALSE == bFound)
-    {
-        pstTCB = sc_tcb_alloc();
-        lIndex = pstTCB->usTCBNo;
-    }
 
-    g_pstTaskMngtInfo->pstTaskList[lIndex].usTCBNo = (U16)lIndex;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].ucValid = DOS_TRUE;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].ulTaskID = ulTaskID;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].ulCustomID = ulCustomerID;
-    dos_snprintf(g_pstTaskMngtInfo->pstTaskList[lIndex].szTaskName, sizeof(g_pstTaskMngtInfo->pstTaskList[lIndex].szTaskName), "%s", szTaskName);
-    g_pstTaskMngtInfo->pstTaskList[lIndex].ulModifyTime = ulMoifyTime;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].ucMode = (U8)ulMode;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].ucAudioPlayCnt = (U8)ulPlayCnt;
-    dos_snprintf(g_pstTaskMngtInfo->pstTaskList[lIndex].szAudioFileLen, sizeof(g_pstTaskMngtInfo->pstTaskList[lIndex].szAudioFileLen), "%s/%u/%u", SC_TASK_AUDIO_PATH, ulCustomerID, ulAudioID);
-    g_pstTaskMngtInfo->pstTaskList[lIndex].ulAgentQueueID = ulGroupID;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].ucTaskStatus = ulStatus;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].ulAllocTime = ulCreateTime;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].ulCalledCount = ulCalledCnt;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].ulCallerGrpID = ulCallerGroupID;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].ulCallRate = ulCallRate;
+    //pstTCB->usTCBNo = (U16)lIndex;
+    pstTCB->ucValid = DOS_TRUE;
+    pstTCB->ulTaskID = ulTaskID;
+    pstTCB->ulCustomID = ulCustomerID;
+    dos_snprintf(pstTCB->szTaskName, sizeof(pstTCB->szTaskName), "%s", szTaskName);
+    pstTCB->ulModifyTime = ulMoifyTime;
+    pstTCB->ucMode = (U8)ulMode;
+    pstTCB->ucAudioPlayCnt = (U8)ulPlayCnt;
+    dos_snprintf(pstTCB->szAudioFileLen, sizeof(pstTCB->szAudioFileLen), "%s/%u/%u", SC_TASK_AUDIO_PATH, ulCustomerID, ulAudioID);
+    pstTCB->ulAgentQueueID = ulGroupID;
+    pstTCB->ucTaskStatus = ulStatus;
+    pstTCB->ulAllocTime = ulCreateTime;
+    pstTCB->ulCalledCount = ulCalledCnt;
+    pstTCB->ulCallerGrpID = ulCallerGroupID;
+    pstTCB->ulCallRate = ulCallRate;
+    pstTCB->ulLastCalleeIndex = ulCalledCnt;
 
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucValid = DOS_TRUE;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucWeekMask = 0xFF;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucHourBegin = (U8)ulStartHour;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucMinuteBegin = (U8)ulStartMinute;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucSecondBegin = (U8)ulStartSecond;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucHourEnd = (U8)ulEndHour;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucMinuteEnd = (U8)ulEndMinute;
-    g_pstTaskMngtInfo->pstTaskList[lIndex].astPeriod[0].ucSecondEnd = (U8)ulEndSecond;
+    pstTCB->astPeriod[0].ucValid = DOS_TRUE;
+    pstTCB->astPeriod[0].ucWeekMask = 0xFF;
+    pstTCB->astPeriod[0].ucHourBegin = (U8)ulStartHour;
+    pstTCB->astPeriod[0].ucMinuteBegin = (U8)ulStartMinute;
+    pstTCB->astPeriod[0].ucSecondBegin = (U8)ulStartSecond;
+    pstTCB->astPeriod[0].ucHourEnd = (U8)ulEndHour;
+    pstTCB->astPeriod[0].ucMinuteEnd = (U8)ulEndMinute;
+    pstTCB->astPeriod[0].ucSecondEnd = (U8)ulEndSecond;
 
     sc_logr_debug(SC_TASK, "Load task info SUCC. Index(%d), (TaskID:%u) ", lIndex, ulTaskID);
 
@@ -1305,9 +1310,7 @@ S32 sc_task_load(U32 ulIndex)
 {
     S8  szQuery[256] = {0};
     S32 lRet = U32_BUTT;
-    //U32  ulRet = U32_BUTT;
     SC_TASK_CB_ST *pstTCB = NULL;
-    //SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
@@ -1334,35 +1337,6 @@ S32 sc_task_load(U32 ulIndex)
         return DOS_FAIL;
     }
 
-#if 0
-    /* 同时维护一下主叫和被叫数据 */
-    lRet = sc_task_load_caller(pstTCB);
-    if (DOS_SUCC != lRet)
-    {
-        sc_logr_error(SC_TASK, "SC Task Load Caller FAIL.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
-        return DOS_FAIL;
-    }
-    sc_logr_debug(SC_TASK, "SC Task Load Caller SUCC.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
-
-
-    /* 加载主叫号码的数据库索引属性 */
-    for (lIndex = 0; lIndex < SC_MAX_CALLER_NUM; ++lIndex)
-    {
-        pstCaller = &pstTCB->pstCallerNumQuery[lIndex];
-        if (!pstCaller->bValid || 0 == pstCaller->ulCustomerID)
-        {
-            continue;
-        }
-        ulRet = sc_task_load_caller_index(pstCaller);
-        if (DOS_SUCC != ulRet)
-        {
-            DOS_ASSERT(0);
-            sc_logr_error(SC_TASK, "SC Task Load Caller Index In DB FAIL.(Caller Number:%s)", pstCaller->szNumber);
-            return DOS_FAIL;
-        }
-    }
-
-#endif
     /* 维护被叫号码数据 */
     lRet = sc_task_load_callee(pstTCB);
     if (DOS_SUCC != lRet)
@@ -1373,6 +1347,31 @@ S32 sc_task_load(U32 ulIndex)
     sc_logr_debug(SC_TASK, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
 
     sc_logr_debug(SC_TASK, "Load task %u SUCC.", ulIndex);
+    return DOS_SUCC;
+}
+
+S32 sc_task_reload(U32 ulIndex)
+{
+    S8  szQuery[256] = {0};
+    S32 lRet = U32_BUTT;
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt,callers,call_rate FROM tbl_calltask;");
+    }
+    else
+    {
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt,callers,call_rate FROM tbl_calltask WHERE id=%u;", ulIndex);
+    }
+    /* 加载群呼任务的相关数据 */
+    lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_logr_error(SC_TASK, " SC Load task %u Data FAIL.", ulIndex);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
     return DOS_SUCC;
 }
 

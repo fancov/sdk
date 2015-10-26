@@ -644,6 +644,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
             if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL)
                 && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
             {
+                /* 出局呼叫 */
                 /* 查找呼叫的分机绑定的坐席 */
                 pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
                 if (DOS_ADDR_INVALID(pstOtherSCB))
