@@ -427,7 +427,7 @@ VOID sc_acd_agent_update_status_IDEL(U64 ulArg)
 
     pthread_mutex_lock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
     pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_IDEL;
-    bIsConnect = pstAgentQueueInfo->pstAgentInfo->bNeedConnected;
+    bIsConnect = pstAgentQueueInfo->pstAgentInfo->bConnected;
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
     /* 更新数据库中，坐席的状态 */
@@ -488,7 +488,7 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
     }
     pstAgentQueueInfo->pstAgentInfo->usSCBNo = (U16)ulSCBNo;
     ulProcesingTime = pstAgentQueueInfo->pstAgentInfo->ucProcesingTime;
-    bNeedConnected = pstAgentQueueInfo->pstAgentInfo->bNeedConnected;
+    bNeedConnected = pstAgentQueueInfo->pstAgentInfo->bConnected;
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
     if (SC_ACD_BUTT == ulStatus)
@@ -1080,12 +1080,13 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
             pstAgentQueueInfo->pstAgentInfo->bNeedConnected = DOS_TRUE;
             pstAgentQueueInfo->pstAgentInfo->bWaitingDelete = DOS_FALSE;
 
-            pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_AWAY;
+            //pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_AWAY;
 
             pstAgentQueueInfo->pstAgentInfo->ulLastSignInTime = time(0);
             /* 呼叫坐席 */
             sc_ep_agent_signin(pstAgentQueueInfo->pstAgentInfo);
-            bIsUpdateDB = DOS_TRUE;
+            /* 长签成功后再更新状态 */
+            //bIsUpdateDB = DOS_TRUE;
             break;
 
         case SC_ACD_SITE_ACTION_SIGNOUT:
@@ -1131,6 +1132,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
                 pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_AWAY;
             }
             pstAgentQueueInfo->pstAgentInfo->bConnected = DOS_TRUE;
+            bIsUpdateDB = DOS_TRUE;
             break;
 
         case SC_ACD_SITE_ACTION_DISCONNECT:
@@ -1150,7 +1152,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
     /* 状态发生改变，更新数据库 */
     if (bIsUpdateDB)
     {
-        sc_acd_agent_update_status_db(ulAgentID, pstAgentQueueInfo->pstAgentInfo->ucStatus, pstAgentQueueInfo->pstAgentInfo->bNeedConnected);
+        sc_acd_agent_update_status_db(ulAgentID, pstAgentQueueInfo->pstAgentInfo->ucStatus, pstAgentQueueInfo->pstAgentInfo->bConnected);
     }
 
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
@@ -2857,11 +2859,11 @@ U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     }
 
     dos_snprintf(szSQL, sizeof(szSQL),
-                    "INSERT INTO tbl_stat_agents(ctime, type, bid, job_number, group_id, calls, "
+                    "INSERT INTO tbl_stat_agents(ctime, type, bid, job_number, group1, group2, calls, "
                     "calls_connected, total_duration, online_time, avg_call_duration) VALUES("
-                    "%u, %u, %u, \"%s\", %u, %u, %u, %u, %u, %u)"
+                    "%u, %u, %u, \"%s\", %u, %u, %u, %u, %u, %u, %u)"
                 , time(NULL), 0, pstAgentInfo->ulSiteID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[0]
-                , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->stStat.ulCallConnected
+                , pstAgentInfo->aulGroupID[1], pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->stStat.ulCallConnected
                 , pstAgentInfo->stStat.ulTotalDuration, pstAgentInfo->stStat.ulTimeOnthePhone
                 , ulAvgCallDruation);
 

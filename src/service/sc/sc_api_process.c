@@ -879,6 +879,14 @@ U32 sc_http_api_call_ctrl(list_t *pstArgv)
 
         ulAction = SC_API_CONFERENCE;
     }
+    else if (dos_strnicmp(pszAction, "hold", dos_strlen("hold")) == 0)
+    {
+        ulAction = SC_API_HOLD;
+    }
+    else if (dos_strnicmp(pszAction, "unhold", dos_strlen("unhold")) == 0)
+    {
+        ulAction = SC_API_UNHOLD;
+    }
     else
     {
         DOS_ASSERT(0);
