@@ -922,7 +922,6 @@ static VOID sc_acd_grp_wolk4delete_agent(HASH_NODE_S *pNode, VOID *pulSiteID)
         || DOS_ADDR_INVALID(pstDLLNode->pHandle))
     {
         DOS_ASSERT(0);
-
         pthread_mutex_unlock(&pstGroupListNode->mutexSiteQueue);
         return;
     }
