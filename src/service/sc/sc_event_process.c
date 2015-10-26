@@ -8777,7 +8777,60 @@ make_all_fail1:
 
         case SC_API_CONFERENCE:
             break;
+        case SC_API_HOLD:
+        case SC_API_UNHOLD:
+            /* ²éÕÒ×øÏ¯ */
+            if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
 
+                sc_logr_info(SC_ESL, "Cannot hold call for agent with id %u. Agent not found..", ulAgent);
+                goto proc_fail;
+            }
+
+            if (stAgentInfo.usSCBNo >= SC_MAX_SCB_NUM)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hold call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            pstSCB = sc_scb_get(stAgentInfo.usSCBNo);
+            if (DOS_ADDR_INVALID(pstSCB) || !pstSCB->bValid)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hold call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+            if (DOS_ADDR_INVALID(pstSCBOther) || !pstSCBOther->bValid)
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hold call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+
+            if ('\0' == pstSCBOther->szUUID[0])
+            {
+                DOS_ASSERT(0);
+
+                sc_logr_info(SC_ESL, "Cannot hold call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
+                goto proc_fail;
+            }
+            if (ulAction == SC_API_HOLD)
+            {
+                sc_ep_esl_execute("hold", NULL, pstSCBOther->szUUID);
+            }
+            else
+            {
+                sc_ep_esl_execute("unhold", NULL, pstSCBOther->szUUID);
+            }
+
+            break;
         default:
             goto proc_fail;
     }
