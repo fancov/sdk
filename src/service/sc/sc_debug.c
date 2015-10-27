@@ -2003,62 +2003,34 @@ U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
     return DOS_SUCC;
 }
 
-S32 sc_show_taskmgnt(U32 ulIndex, U32 ulCBNo)
+S32 sc_show_taskmgnt(U32 ulIndex)
 {
-    U32 ulLoop = 0;
     S8  szBuff[1024] = {0};
-    SC_TASK_CB_ST    *pstTCB = NULL;
 
-    if (U32_BUTT == ulCBNo)
-    {
-        cli_out_string(ulIndex, "\r\nThe following are all tasks information:");
-        cli_out_string(ulIndex, "\r\n----------------------");
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%10s%12s", "TaskCount", "MaxCallRate");
-        cli_out_string(ulIndex, szBuff);
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%10u%12u\r\n", g_pstTaskMngtInfo->ulTaskCount, g_pstTaskMngtInfo->ulMaxCallRate4Task);
-        cli_out_string(ulIndex, szBuff);
-    }
-    else
-    {
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\nThe following are informations of TCB:%u", ulCBNo);
-        cli_out_string(ulIndex, szBuff);
-    }
-
-    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%8s%9s%13s%18s%7s%9s%15s%15s%8s%8s%10s%10s%10s%12s%9s%10s%9s%14s"
-                    , "TCB", "Status", "Priority", "AudioPlayCnt", "Mode", "TaskID", "CustomID", "CurConcurrency", "MaxConcurrency", "QueueID", "SiteCnt"
-                    , "CallerCnt", "CalleeCnt", "CalledCnt", "CallerGrpID", "CallRate", "TotalCall", "FailCall", "ConnectedCall");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%10s%17s", "TaskCount", "MaxCallRate4Task");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n---------------------------");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%10u%17u\r\n", g_pstTaskMngtInfo->ulTaskCount, g_pstTaskMngtInfo->ulMaxCallRate4Task);
     cli_out_string(ulIndex, szBuff);
 
-    for (ulLoop = 0; ulLoop < SC_MAX_TASK_NUM; ++ulLoop)
-    {
-        pstTCB = &g_pstTaskMngtInfo->pstTaskList[ulLoop];
-        if (pstTCB->ucValid)
-        {
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%8s%9u%13u%18s%7u%9u%15u%15u%8u%8u%10u%10u%10u%12u%9u%10u%9u%14u"
-                            , pstTCB->usTCBNo
-                            , sc_translate_task_status(pstTCB->ucTaskStatus)
-                            , pstTCB->ucPriority
-                            , pstTCB->ucAudioPlayCnt
-                            , sc_translate_task_mode(pstTCB->ucMode)
-                            , pstTCB->ulTaskID
-                            , pstTCB->ulCustomID
-                            , pstTCB->ulCurrentConcurrency
-                            , pstTCB->ulMaxConcurrency
-                            , pstTCB->ulAgentQueueID
-                            , pstTCB->usSiteCount
-                            , pstTCB->usCallerCount
-                            , pstTCB->ulCalleeCount
-                            , pstTCB->ulCalledCount
-                            , pstTCB->ulCallerGrpID
-                            , pstTCB->ulCallRate
-                            , pstTCB->ulTotalCall
-                            , pstTCB->ulCallFailed
-                            , pstTCB->ulCallConnected);
-            cli_out_string(ulIndex, szBuff);
-        }
-    }
-    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%9s%12s%16s%13s%14s%11s%17s%17s%13s%14s%13s", "MaxCalls", "MaxSessions", "CurrentSessions", "CurrentCalls", "TotalSessions"
+                    , "TotalCalls", "OutgoingSessions", "IncomingSessions", "FailSessions", "SysUptime", "SysIsWorking");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-----------------------------------------------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%9u%12u%16u%13u%14u%11u%17u%17u%13u%14u%13u"
+                    , g_pstTaskMngtInfo->stStat.ulMaxCalls
+                    , g_pstTaskMngtInfo->stStat.ulMaxSession
+                    , g_pstTaskMngtInfo->stStat.ulCurrentSessions
+                    , g_pstTaskMngtInfo->stStat.ulCurrentCalls
+                    , g_pstTaskMngtInfo->stStat.ulTotalSessions
+                    , g_pstTaskMngtInfo->stStat.ulTotalCalls
+                    , g_pstTaskMngtInfo->stStat.ulOutgoingSessions
+                    , g_pstTaskMngtInfo->stStat.ulIncomingSessions
+                    , g_pstTaskMngtInfo->stStat.ulFailSessions
+                    , g_pstTaskMngtInfo->stStat.ulSystemUpTime
+                    , g_pstTaskMngtInfo->stStat.ulSystemIsWorking);
+    cli_out_string(ulIndex, szBuff);
+
     return DOS_SUCC;
 }
 
@@ -2956,16 +2928,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     {
         if (3 == argc)
         {
-            sc_show_taskmgnt(ulIndex, U32_BUTT);
-        }
-        else if (4 == argc)
-        {
-            if (dos_atoul(argv[3], &ulID) < 0)
-            {
-                DOS_ASSERT(0);
-                return -1;
-            }
-            sc_show_taskmgnt(ulIndex, ulID);
+            sc_show_taskmgnt(ulIndex);
         }
     }
     return 0;
@@ -3131,7 +3094,7 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
 cc_usage:
 
     cli_out_string(ulIndex, "\r\n");
-    cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb|route|blacklist|tt|_caller|callergrp|callerset|customer|transform|numlmt|cwq [id]\r\n");
+    cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb|route|blacklist|tt|_caller|callergrp|callerset|customer|transform|numlmt|cwq|taskmgnt [id]\r\n");
     cli_out_string(ulIndex, "cc show did [did_number]\r\n");
     cli_out_string(ulIndex, "cc show task [custom] id\r\n");
     cli_out_string(ulIndex, "cc show caller|callee taskid\r\n");
