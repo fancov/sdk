@@ -278,6 +278,9 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bIsInQueue = DOS_FALSE;
     pstSCB->bChannelCreated = DOS_FALSE;
 
+    pstSCB->ulFirstDTMFTime = 0;                    /* 第一次DTMF时间戳 */
+    pstSCB->ulIVRFinishTime = 0;                    /* IVR 结束时间戳 */
+
     pstSCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
     pstSCB->szCallerBerforRouter[0] = 0;  /* 路由时用的号码，可用于计费的 */
