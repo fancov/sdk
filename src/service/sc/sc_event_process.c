@@ -253,7 +253,7 @@ U16 sc_ep_transform_errcode_from_sc2sip(U32 ulErrcode)
         return usErrcodeSC;
     }
 
-    if (ulErrcode < 1000)
+    if (ulErrcode < 1000 && ulErrcode > 99)
     {
         /* 1000以下为sip错误码，不需要转换 */
         return ulErrcode;
@@ -261,6 +261,12 @@ U16 sc_ep_transform_errcode_from_sc2sip(U32 ulErrcode)
 
     switch (ulErrcode)
     {
+        case CC_ERR_NORMAL_CLEAR:
+            usErrcodeSC = CC_ERR_SIP_SUCC;
+            break;
+        case CC_ERR_NO_REASON:
+            usErrcodeSC = CC_ERR_SIP_BUSY_EVERYWHERE;
+            break;
         case CC_ERR_SC_SERV_NOT_EXIST:
         case CC_ERR_SC_NO_SERV_RIGHTS:
             usErrcodeSC = CC_ERR_SIP_FORBIDDEN;
@@ -8329,7 +8335,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
     SC_SCB_ST *pstSCB       = NULL;
     SC_SCB_ST *pstSCBNew    = NULL;
     SC_SCB_ST *pstSCBOther  = NULL;
-    SC_ACD_AGENT_INFO_ST stAgentInfo;
+    SC_ACD_AGENT_INFO_ST stAgentInfo, stCalleeAgentInfo;
     U32       ulMainServie;
 
     if (ulAction >= SC_API_CALLCTRL_BUTT)
@@ -8340,7 +8346,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
     }
 
     sc_logr_info(SC_ESL, "Start process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
-                    , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee);
+                    , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee ? pszCallee : "");
 
     switch (ulAction)
     {
@@ -8401,9 +8407,14 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
                 dos_strncpy(pstSCB->szCalleeNum, pszCallee, sizeof(pstSCB->szCalleeNum));
                 pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
 
-                /* 指定主叫号码 TODO 号码组!! */
-                dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
-                pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+                /* 使用号码组， 获得主叫号码 */
+                if (sc_caller_setting_select_number(ulCustomerID, ulAgent, SC_SRC_CALLER_TYPE_AGENT, pstSCB->szCallerNum, sizeof(pstSCB->szCallerNum)) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                    sc_logr_info(SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", ulAgent);
+
+                    goto make_all_fail;
+                }
 
                 if (!sc_ep_black_list_check(pstSCB->ulCustomID, pszCallee))
                 {
@@ -8445,8 +8456,38 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             pstSCB->bIsAgentCall = DOS_TRUE;
 
             /* 指定主叫号码 */
-            dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
-            pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+            if (ulFlag == 2)
+            {
+                /* 如果呼叫的坐席 */
+                if (sc_acd_get_agent_by_id(&stCalleeAgentInfo, ulCalleeAgentID) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Call agent(%u) FAIL. Agent not found.", ulCalleeAgentID);
+                    goto make_all_fail;
+                }
+
+                switch (stCalleeAgentInfo.ucBindType)
+                {
+                    case AGENT_BIND_SIP:
+                        dos_strncpy(pstSCB->szCallerNum, stCalleeAgentInfo.szUserID, sizeof(pstSCB->szCallerNum));
+                        pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+                        break;
+                    case AGENT_BIND_TELE:
+                        dos_strncpy(pstSCB->szCallerNum, stCalleeAgentInfo.szTelePhone, sizeof(pstSCB->szCallerNum));
+                        pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+                        break;
+                    case AGENT_BIND_MOBILE:
+                        dos_strncpy(pstSCB->szCallerNum, stCalleeAgentInfo.szMobile, sizeof(pstSCB->szCallerNum));
+                        pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+                        break;
+                }
+            }
+            else
+            {
+                dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
+                pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+            }
 
             /* 指定被叫号码 */
             switch (stAgentInfo.ucBindType)
@@ -10088,9 +10129,17 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                 dos_strncpy(pstSCBNew->szCalleeNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCalleeNum));
                 pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
 
-                /* 指定主叫号码 TODO 号码组!! */
-                dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
-                pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
+                /* 指定主叫号码 号码组 */
+                if (sc_caller_setting_select_number(pstSCBNew->ulCustomID, pstSCBNew->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstSCBNew->szCallerNum, sizeof(pstSCBNew->szCallerNum)) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                    sc_logr_info(SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", pstSCBNew->ulAgentID);
+                    sc_scb_free(pstSCBNew);
+                    pstSCB->usOtherSCBNo = U16_BUTT;
+                    sc_ep_hangup_call(pstSCB, CC_ERR_SC_CALLER_NUMBER_ILLEGAL);
+
+                    goto proc_finished;
+                }
 
                 SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_PREVIEW_DIALING);
 
