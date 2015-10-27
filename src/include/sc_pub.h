@@ -121,6 +121,25 @@ enum SC_ERRCODE_E
     CC_ERR_BUTT
 };
 
+typedef enum tagCallResult
+{
+    CC_RST_CONNECT_FAIL          = 0,  /* 未接通 */
+    CC_RST_NOT_FOUND             = 1,  /* 空号 */
+    CC_RST_REJECTED              = 2,  /* 呼叫被拒绝 */
+    CC_RST_BUSY                  = 3,  /* 客户忙  */
+    CC_RST_NO_ANSWER             = 4,  /* 客户未接听  */
+    CC_RST_HANGUP_WHILE_IVR      = 5,  /* 播放语音时挂断 */
+    CC_RST_HANGUP_AFTER_KEY      = 6,  /* 客户输入后挂断 */
+    CC_RST_HANGUP_NO_ANSER       = 7,  /* 坐席还没接听就挂断了 */
+    CC_RST_AGNET_BUSY            = 8,  /* 坐席全忙 */
+    CC_RST_AGENT_NO_ANSER        = 9,  /* 坐席未接听 */
+    CC_RST_QUEUE_TIMEOUT         = 10,  /* 排队超时挂断 */
+    CC_RST_AGENT_HANGUP          = 11, /* 呼叫成功坐席挂断 */
+    CC_RST_CUSTOMER_HANGUP       = 12, /* 呼叫成功客户挂断 */
+
+    CC_RST_BUTT
+}CC_CALL_RESULT_EN;
+
 
 #ifdef __cplusplus
 }

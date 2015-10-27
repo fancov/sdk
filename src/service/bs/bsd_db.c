@@ -1243,46 +1243,6 @@ VOID bsd_save_account_stat(BS_INTER_MSG_STAT *pstMsg)
 
 }
 
-VOID bsd_save_calltask_result(BS_INTER_MSG_CDR *pstMsg)
-{
-    S8  szQuery[1024] = {0};
-    BS_CDR_CALLTASK_RESULT_ST *pstCallResult;
-
-    if (DOS_ADDR_INVALID(pstMsg))
-    {
-        DOS_ASSERT(0);
-        return;
-    }
-
-    pstCallResult = pstMsg->pCDR;
-    if (DOS_ADDR_INVALID(pstCallResult))
-    {
-        DOS_ASSERT(0);
-        return;
-    }
-
-    dos_snprintf(szQuery, sizeof(szQuery),
-                    "INSERT INTO tbl_calltask_result(id, customer_id, user_id, task_id, type, record_file"
-                    ", caller, callee, CID, agent_num, pdd_len, ring_times, answer_time, ivr_end_time, cdr_mark"
-                    ", dtmf_time, wait_agent_times, time_len, hold_cnt, hold_times, terminate_cause, release_part"
-                    ", result) VALUES(NULL, %u, %u, %u, %u, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %u, %u, %u, "
-                    "%u, %u, %u, %u, %u, %u, %u, %u, %u, %u)"
-                  , pstCallResult->ulCustomerID, pstCallResult->ulUserID, pstCallResult->ulTaskID
-                  , pstCallResult->ucServType, pstCallResult->szRecordFile, pstCallResult->szCaller
-                  , pstCallResult->szCallee, pstCallResult->szCID, pstCallResult->szAgentNum
-                  , pstCallResult->ulPDDLen, pstCallResult->ulRingTime, pstCallResult->ulAnswerTimeStamp
-                  , pstCallResult->ulIVRFinishTime, pstCallResult->stCDRTag.ulCDRMark, pstCallResult->ulDTMFTime
-                  , pstCallResult->ulWaitAgentTime, pstCallResult->ulTimeLen, pstCallResult->ulHoldCnt
-                  , pstCallResult->ulHoldTimeLen, pstCallResult->usTerminateCause, pstCallResult->ucReleasePart
-                  , pstCallResult->ulResult);
-
-    if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
-    {
-        bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save account stat in DB FAIL!(%s)", szQuery);
-    }
-
-    bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Save account stat in DB !");
-}
 
 S32 bs_init_db()
 {

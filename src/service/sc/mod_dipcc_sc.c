@@ -26,6 +26,8 @@ extern "C"{
 #include "sc_httpd.h"
 #include "sc_httpd_def.h"
 #include "sc_debug.h"
+#include "sc_db.h"
+
 
 /* Êý¾Ý¿â¾ä±ú */
 DB_HANDLE_ST         *g_pstSCDBHandle = NULL;
@@ -203,6 +205,16 @@ U32 mod_dipcc_sc_load()
 
 #endif
 
+    if (DOS_SUCC != sc_db_init())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init DB task FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init DB task SUCC.");
+
+
     if (sc_httpd_init() != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -330,6 +342,15 @@ U32 mod_dipcc_sc_runtime()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start dialer Successfully.");
+
+    if (DOS_SUCC != sc_db_start())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start DB task FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start DB task SUCC.");
 
     if (sc_cwq_start() != DOS_SUCC)
     {

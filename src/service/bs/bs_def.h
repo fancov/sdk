@@ -203,8 +203,6 @@ enum BS_INTER_MSG_TYPE_E
     BS_INTER_MSG_MESSAGE_STAT           = 13,       /* 消息统计 */
     BS_INTER_MSG_ACCOUNT_STAT           = 14,       /* 账务统计 */
 
-    BS_INTER_MSG_CALLTASK_RESULT        = 15,       /* 呼叫结果 */
-
     BS_INTER_MSG_BUTT                   = 255
 };
 
@@ -694,7 +692,6 @@ VOID bsd_save_message_cdr(BS_INTER_MSG_CDR *pstMsg);
 VOID bsd_save_settle_cdr(BS_INTER_MSG_CDR *pstMsg);
 VOID bsd_save_rent_cdr(BS_INTER_MSG_CDR *pstMsg);
 VOID bsd_save_account_cdr(BS_INTER_MSG_CDR *pstMsg);
-VOID bsd_save_calltask_result(BS_INTER_MSG_CDR *pstMsg);
 VOID bsd_save_outband_stat(BS_INTER_MSG_STAT *pstMsg);
 VOID bsd_save_inband_stat(BS_INTER_MSG_STAT *pstMsg);
 VOID bsd_save_outdialing_stat(BS_INTER_MSG_STAT *pstMsg);

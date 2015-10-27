@@ -663,6 +663,9 @@ typedef struct tagSCSCB{
     U16       usHoldCnt;                          /* 被hold的次数 */
     U16       usHoldTotalTime;                    /* 被hold的总时长 */
     U32       ulLastHoldTimetamp;                 /* 上次hold是的时间戳，解除hold的时候值零 */
+    U32       ulFirstDTMFTime;                    /* 第一次DTMF时间戳 */
+    U32       ulIVRFinishTime;                    /* IVR 结束时间戳 */
+    U32       ulInQueueTime;                      /* IVR 进入队列时间 */
 
     U32       bValid:1;                           /* 是否合法 */
     U32       bTraceNo:1;                         /* 是否跟踪 */

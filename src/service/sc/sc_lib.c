@@ -256,6 +256,8 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->ulTaskID = U32_BUTT;               /* 当前任务ID */
     pstSCB->ulTrunkID = U32_BUTT;              /* 中继ID */
     pstSCB->ulTrunkCount = 0;
+    pstSCB->ulInQueueTime = 0;
+    pstSCB->ucCurrentPlyCnt = 0;
 
     pstSCB->ucStatus = SC_SCB_IDEL;            /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
     pstSCB->ucServStatus = 0;
@@ -277,6 +279,11 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bIsAgentCall = DOS_FALSE;
     pstSCB->bIsInQueue = DOS_FALSE;
     pstSCB->bChannelCreated = DOS_FALSE;
+    pstSCB->bIsAgentCallOtherLeg = DOS_FALSE;
+    pstSCB->LBalance = 0;
+
+    pstSCB->ulFirstDTMFTime = 0;                    /* 第一次DTMF时间戳 */
+    pstSCB->ulIVRFinishTime = 0;                    /* IVR 结束时间戳 */
 
     pstSCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
