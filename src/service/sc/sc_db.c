@@ -54,7 +54,7 @@ static U32 sc_db_save_call_result(SC_DB_MSG_TAG_ST *pstMsg)
                     "INSERT INTO tbl_calltask_result(`id`,`customer_id`,`task_id`,`caller`,`callee`,`agent_num`,`pdd_len`,"
                     "`ring_times`,`answer_time`,`ivr_end_time`,`dtmf_time`,`wait_agent_times`,`time_len`,"
                     "`hold_cnt`,`hold_times`,`release_part`,`terminate_cause`,`result`, `agent_id`) VALUES(NULL, %u, %u, "
-                    "\"%s\", \"%s\", \"%s\", %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u)"
+                    "\"%s\", \"%s\", \"%s\", %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u)"
                   , pstCallResult->ulCustomerID, pstCallResult->ulTaskID, pstCallResult->szCaller
                   , pstCallResult->szCallee, pstCallResult->szAgentNum, pstCallResult->ulPDDLen
                   , pstCallResult->ulRingTime, pstCallResult->ulAnswerTimeStamp, pstCallResult->ulIVRFinishTime
@@ -184,6 +184,7 @@ U32 sc_send_msg2db(SC_DB_MSG_TAG_ST *pstMsg)
 
     pthread_mutex_lock(&g_mutexDBRequestQueue);
     DLL_Add(&g_stDBRequestQueue, pstNode);
+    pthread_cond_signal(&g_condDBRequestQueue);
     pthread_mutex_unlock(&g_mutexDBRequestQueue);
 
     return DOS_SUCC;

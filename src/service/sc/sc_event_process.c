@@ -140,11 +140,27 @@ U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode)
         return DOS_FAIL;
     }
 
-    pstSCB1 = sc_scb_get(pstSCB->usSCBNo);
+    sc_logr_debug(SC_ESL, "Analysis call result for task: %u, SIP Code:%u(%u)", pstSCB->ulTaskID, ulSIPRspCode, pstSCB->usTerminationCause);
+
+    if (0 == ulSIPRspCode)
+    {
+        ulSIPRspCode = sc_ep_transform_errcode_from_sc2sip(pstSCB->usTerminationCause);
+    }
+
+    pstSCB1 = sc_scb_get(pstSCB->usOtherSCBNo);
 
     dos_memzero(pstCallResult, sizeof(SC_DB_MSG_CALL_RESULT_ST));
     pstCallResult->ulCustomerID = pstSCB->ulCustomID; /* 客户ID,要求全数字,不超过10位,最高位小于4 */
-    pstCallResult->ulAgentID = pstSCB->ulAgentID;     /* 坐席ID,要求全数字,不超过10位,最高位小于4 */
+
+    /* 坐席ID,要求全数字,不超过10位,最高位小于4 */
+    if (U32_BUTT != pstSCB->ulAgentID)
+    {
+        pstCallResult->ulAgentID = pstSCB->ulAgentID;
+    }
+    else
+    {
+        pstCallResult->ulAgentID = 0;
+    }
     pstCallResult->ulTaskID = pstSCB->ulTaskID;       /* 任务ID,要求全数字,不超过10位,最高位小于4 */
 
     /* 坐席号码(工号) */
@@ -154,25 +170,42 @@ U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode)
     }
 
     /* 主叫号码 */
-    if ('\0' == pstCallResult->szCaller)
+    if ('\0' != pstCallResult->szCaller)
     {
         dos_snprintf(pstCallResult->szCaller, sizeof(pstCallResult->szCaller), "%s", pstSCB->szCallerNum);
     }
 
     /* 被叫号码 */
-    if ('\0' == pstCallResult->szCallee)
+    if ('\0' != pstCallResult->szCallee)
     {
         dos_snprintf(pstCallResult->szCallee, sizeof(pstCallResult->szCallee), "%s", pstSCB->szCalleeNum);
     }
 
     if (pstSCB->pstExtraData)
     {
-        pstCallResult->ulPDDLen = pstSCB->pstExtraData->ulRingTimeStamp - pstSCB->pstExtraData->ulStartTimeStamp; /* 接续时长:从发起呼叫到收到振铃 */
+        /* 接续时长:从发起呼叫到收到振铃 */
+        if (0 == pstSCB->pstExtraData->ulRingTimeStamp || 0 == pstSCB->pstExtraData->ulStartTimeStamp)
+        {
+            pstCallResult->ulPDDLen = 0;
+        }
+        else
+        {
+            pstCallResult->ulPDDLen = pstSCB->pstExtraData->ulRingTimeStamp - pstSCB->pstExtraData->ulStartTimeStamp;
+        }
         pstCallResult->ulRingTime = pstSCB->pstExtraData->ulRingTimeStamp;                 /* 振铃时长,单位:秒 */
         pstCallResult->ulAnswerTimeStamp = pstSCB->pstExtraData->ulAnswerTimeStamp;          /* 应答时间戳 */
         pstCallResult->ulFirstDTMFTime = pstSCB->ulFirstDTMFTime;            /* 第一个二次拨号时间,单位:秒 */
         pstCallResult->ulIVRFinishTime = pstSCB->ulIVRFinishTime;            /* IVR放音完成时间,单位:秒 */
-        pstCallResult->ulTimeLen = pstSCB->pstExtraData->ulByeTimeStamp - pstSCB->pstExtraData->ulAnswerTimeStamp; /* 呼叫时长,单位:秒 */
+
+        /* 呼叫时长,单位:秒 */
+        if (0 == pstSCB->pstExtraData->ulByeTimeStamp || 0 == pstSCB->pstExtraData->ulAnswerTimeStamp)
+        {
+            pstCallResult->ulTimeLen = 0;
+        }
+        else
+        {
+            pstCallResult->ulTimeLen = pstSCB->pstExtraData->ulByeTimeStamp - pstSCB->pstExtraData->ulAnswerTimeStamp;
+        }
     }
 
     pstCallResult->ulWaitAgentTime = pstSCB->bIsInQueue ? time(NULL) - pstSCB->ulInQueueTime : pstSCB->ulInQueueTime;            /* 等待坐席接听时间,单位:秒 */
@@ -180,21 +213,38 @@ U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode)
     pstCallResult->ulHoldTimeLen = pstSCB->usHoldTotalTime;              /* 保持总时长,单位:秒 */
     pstCallResult->usTerminateCause = pstSCB->usTerminationCause;           /* 终止原因 */
 
-    if (DOS_ADDR_VALID(pstSCB1) && pstSCB1->ucStatus <= SC_SCB_ACTIVE)
+    /* 会话释放方 */
+    if (DOS_ADDR_INVALID(pstSCB1))
     {
-        pstCallResult->ucReleasePart = SC_CALLER;              /* 会话释放方 */
+        pstCallResult->ucReleasePart = SC_CALLER;
     }
     else
     {
-        pstCallResult->ucReleasePart = SC_CALLEE;
+        if (pstSCB1->bWaitingOtherRelase)
+        {
+            pstCallResult->ucReleasePart = SC_CALLEE;
+        }
+        else
+        {
+            pstCallResult->ucReleasePart = SC_CALLER;
+        }
     }
 
     pstCallResult->ulResult = CC_RST_BUTT;
 
-    if (CC_ERR_SIP_SUCC == ulSIPRspCode)
+    if (CC_ERR_SIP_SUCC == ulSIPRspCode
+        || CC_ERR_NORMAL_CLEAR == ulSIPRspCode)
     {
+        /* 坐席全忙 */
+        if (pstSCB->bIsInQueue)
+        {
+            pstCallResult->ulResult = CC_RST_AGNET_BUSY;
+            goto proc_finished;
+        }
+
         /*有可能放音确实没有结束，客户就按键了,所有应该优先处理 */
-        if (pstCallResult->ulFirstDTMFTime)
+        if (pstCallResult->ulFirstDTMFTime
+            && DOS_ADDR_INVALID(pstSCB1))
         {
             pstCallResult->ulResult = CC_RST_HANGUP_AFTER_KEY;
             goto proc_finished;
@@ -207,18 +257,11 @@ U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode)
             goto proc_finished;
         }
 
-        /* 坐席全忙 */
-        if (pstSCB->bIsInQueue)
-        {
-            pstCallResult->ulResult = CC_RST_AGNET_BUSY;
-            goto proc_finished;
-        }
-
         /* 放音已经结束了，并且呼叫没有在队列，说明呼叫已经被转到坐席了 */
         if (pstCallResult->ulIVRFinishTime && !pstSCB->bIsInQueue)
         {
             /* 等待坐席时 挂断的 */
-            if (pstSCB1->ucStatus < SC_SCB_ACTIVE)
+            if (DOS_ADDR_VALID(pstSCB1) && pstSCB1->ucStatus < SC_SCB_ACTIVE)
             {
                 pstCallResult->ulResult = CC_RST_HANGUP_NO_ANSER;
                 goto proc_finished;
@@ -11457,6 +11500,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     U32           ulErrCode = CC_ERR_NO_REASON;
     S8            *pszMainService = NULL;
     S8            *pszPlayBalance = NULL;
+    S8            *pszSIPTermCause = NULL;
     SC_SCB_ST     *pstOtherSCB    = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
@@ -11473,6 +11517,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
 
     sc_call_trace(pstSCB, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
     pszMainService = esl_event_get_header(pstEvent, "variable_main_service");
+    pszSIPTermCause = esl_event_get_header(pstEvent, "variable_sip_term_cause");
 
     if (DOS_ADDR_INVALID(pszMainService)
         || dos_atoul(pszMainService, &ulMainService) < 0)
@@ -11502,7 +11547,11 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                 pstSCB->ucCurrentPlyCnt--;
                 if (pstSCB->ucCurrentPlyCnt <= 0)
                 {
-                    pstSCB->ulIVRFinishTime = time(NULL);
+                    /* 如果playback-stop消息中有term cause，说明该呼叫即将结束，这个地方不在记录时间 */
+                    if (DOS_ADDR_INVALID(pszSIPTermCause))
+                    {
+                        pstSCB->ulIVRFinishTime = time(NULL);
+                    }
                     ulTaskMode = sc_task_get_mode(pstSCB->usTCBNo);
                     if (ulTaskMode >= SC_TASK_MODE_BUTT)
                     {
