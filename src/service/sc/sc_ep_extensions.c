@@ -189,7 +189,6 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                 if (esl_strlen_zero(pszUserID))
                 {
                      sc_logr_debug(SC_ACD, "%s", "Not get userid");
-
                      goto end;
                 }
 

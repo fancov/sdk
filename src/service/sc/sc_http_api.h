@@ -135,6 +135,8 @@ enum tagAPICallCtrlCmd
     SC_API_TRANSFOR_ATTAND,               /* attend transfer */
     SC_API_TRANSFOR_BLIND,                /* blind transfer */
     SC_API_CONFERENCE,                    /* 会议 */
+    SC_API_HOLD,                          /* 呼叫保持 */
+    SC_API_UNHOLD,                        /* 取消呼叫保持 */
 
     SC_API_CALLCTRL_BUTT
 }SC_API_CALLCTRL_CMD_EN;
