@@ -2847,8 +2847,9 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     SC_GW_NODE_ST        *pstGWNode     = NULL;
     HASH_NODE_S          *pstHashNode   = NULL;
-    S8 *pszGWID = NULL, *pszDomain = NULL, *pszStatus = NULL;
-    U32 ulID, ulStatus;
+    S8 *pszGWID = NULL, *pszDomain = NULL, *pszStatus = NULL, *pszRegister = NULL, *pszRegisterStatus = NULL;
+    U32 ulID, ulStatus, ulRegisterStatus = 0;
+    BOOL bIsRegister;
     U32 ulHashIndex = U32_BUTT, ulRet = U32_BUTT;
 
     if (DOS_ADDR_INVALID(aszNames)
@@ -2862,14 +2863,33 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     pszGWID = aszValues[0];
     pszDomain = aszValues[1];
     pszStatus = aszValues[2];
+    pszRegister = aszValues[3];
+    pszRegisterStatus = aszValues[4];
     if (DOS_ADDR_INVALID(pszGWID)
         || DOS_ADDR_INVALID(pszDomain)
+        || DOS_ADDR_INVALID(pszStatus)
+        || DOS_ADDR_INVALID(pszRegister)
         || dos_atoul(pszGWID, &ulID) < 0
-        || dos_atoul(pszStatus, &ulStatus) < 0)
+        || dos_atoul(pszStatus, &ulStatus) < 0
+        || dos_atoul(pszRegister, &bIsRegister) < 0)
     {
         DOS_ASSERT(0);
 
         return DOS_FAIL;
+    }
+
+    if (bIsRegister)
+    {
+        /* 注册，获取注册的状态 */
+        if (dos_atoul(pszRegisterStatus, &ulRegisterStatus) < 0)
+        {
+            /* 如果状态为空，则将状态置为 trying */
+            ulRegisterStatus = SC_TRUNK_STATE_TYPE_TRYING;
+        }
+    }
+    else
+    {
+        ulRegisterStatus = SC_TRUNK_STATE_TYPE_UNREGED;
     }
 
     pthread_mutex_lock(&g_mutexHashGW);
@@ -2912,6 +2932,8 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             pstGWNode->szGWDomain[0] = '\0';
         }
         pstGWNode->bStatus = ulStatus;
+        pstGWNode->bRegister = bIsRegister;
+        pstGWNode->ulRegisterStatus = ulRegisterStatus;
 
         HASH_Init_Node(pstHashNode);
         pstHashNode->pHandle = pstGWNode;
@@ -2935,6 +2957,8 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         pstGWNode->szGWDomain[sizeof(pstGWNode->szGWDomain) - 1] = '\0';
         pstGWNode->bExist = DOS_TRUE;
         pstGWNode->bStatus = ulStatus;
+        pstGWNode->bRegister = bIsRegister;
+        pstGWNode->ulRegisterStatus = ulRegisterStatus;
     }
     pthread_mutex_unlock(&g_mutexHashGW);
 
@@ -2980,12 +3004,12 @@ U32 sc_load_gateway(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id, realm, status FROM tbl_gateway;");
+                        , "SELECT id, realm, status, register, register_status FROM tbl_gateway;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id, realm, status FROM tbl_gateway WHERE id=%d;", ulIndex);
+                        , "SELECT id, realm, status, register, register_status FROM tbl_gateway WHERE id=%d;", ulIndex);
     }
 
     ulRet = db_query(g_pstSCDBHandle, szSQL, sc_load_gateway_cb, NULL, NULL);
@@ -3003,6 +3027,43 @@ U32 sc_load_gateway(U32 ulIndex)
     }
 
     sc_logr_debug(SC_FUNC, "Load gateway SUCC.(ID:%u)", ulIndex);
+
+    return DOS_SUCC;
+}
+
+/**
+ * 函数: U32 sc_ep_gateway_register_status_update(U32 ulGWID, SC_TRUNK_STATE_TYPE_EN enRegisterStatus)
+ * 功能: 更新中继的状态
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ **/
+U32 sc_ep_gateway_register_status_update(U32 ulGWID, SC_TRUNK_STATE_TYPE_EN enRegisterStatus)
+{
+    SC_GW_NODE_ST  *pstGWNode     = NULL;
+    HASH_NODE_S    *pstHashNode   = NULL;
+    U32             ulHashIndex   = U32_BUTT;
+
+    if (enRegisterStatus >= SC_TRUNK_STATE_TYPE_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_ep_gw_hash_func(ulGWID);
+
+    pthread_mutex_lock(&g_mutexHashGW);
+    pstHashNode = hash_find_node(g_pstHashGW, ulHashIndex, (VOID *)&ulGWID, sc_ep_gw_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexHashGW);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstGWNode = (SC_GW_NODE_ST *)pstHashNode->pHandle;
+    pstGWNode->ulRegisterStatus = enRegisterStatus;
+
+    pthread_mutex_unlock(&g_mutexHashGW);
 
     return DOS_SUCC;
 }
@@ -6948,7 +7009,8 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
                                 && DOS_ADDR_VALID(pstListNode1->pHandle))
                             {
                                 pstGW = pstListNode1->pHandle;
-                                if (DOS_FALSE == pstGW->bStatus)
+                                if (DOS_FALSE == pstGW->bStatus
+                                    || (pstGW->bRegister && pstGW->ulRegisterStatus != SC_TRUNK_STATE_TYPE_NOREG))
                                 {
                                     continue;
                                 }
@@ -10966,7 +11028,11 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 sc_logr_debug(SC_ESL, "Channel-HIT-Dialplan : %s, trunk cout : %u", pszHitDiaplan, pstSCB->ulTrunkCount);
                 if (dos_strcmp(pszHitDiaplan, "false") == 0 && pstSCB->ulTrunkCount)
                 {
-                    goto process_finished;
+                    /* 判断一下振铃时间 */
+                    if (pstSCB->pstExtraData->ulRingTimeStamp == 0)
+                    {
+                        goto process_finished;
+                    }
                 }
             }
             else

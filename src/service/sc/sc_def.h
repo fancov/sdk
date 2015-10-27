@@ -402,7 +402,7 @@ typedef enum tagSCSipStatusType
 /* 中继的状态 */
 typedef enum tagSCTrunkStateType
 {
-    SC_TRUNK_STATE_TYPE_UNREGED,
+    SC_TRUNK_STATE_TYPE_UNREGED     = 0,
     SC_TRUNK_STATE_TYPE_TRYING,
     SC_TRUNK_STATE_TYPE_REGISTER,
     SC_TRUNK_STATE_TYPE_REGED,
@@ -1059,6 +1059,7 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
 U32 sc_ep_get_eix_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength);
 U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService);
 U32 sc_ep_transfer_publish_release(SC_SCB_ST * pstSCBPublish);
+U32 sc_ep_gateway_register_status_update(U32 ulGWID, SC_TRUNK_STATE_TYPE_EN enRegisterStatus);
 
 /* 以下是和号码组设定相关的API */
 U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, S8 *pszNumber, U32 ulLen);
