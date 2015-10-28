@@ -161,6 +161,8 @@ typedef struct tagSCGWNode
     S8  szGWDomain[SC_GW_DOMAIN_LEG];              /* 网关的域，暂时没有用的 */
     BOOL bExist;                                   /* 该标识用来判断数据库是否有该数据 */
     BOOL bStatus;                                  /* 网关状态，启用或者是禁用 */
+    BOOL bRegister;                                /* 是否注册 */
+    U32 ulRegisterStatus;                          /* 注册状态 */
 
     SC_TRUNK_STAT_ST stStat;
 }SC_GW_NODE_ST;
