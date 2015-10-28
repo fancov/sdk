@@ -491,7 +491,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
             ulRet = sc_dialer_add_call(pstSCB);
             if (ulRet != DOS_SUCC)
             {
-                sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECT_FAIL, pstSCB->ulAgentID);
+                sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECT_FAIL, pstSCB->ulAgentID, DOS_FALSE);
                 sc_ep_terminate_call(pstSCB);
             }
         }
