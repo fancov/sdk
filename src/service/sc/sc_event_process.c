@@ -6205,7 +6205,7 @@ U32 sc_ep_get_eix_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength)
 
     if (pstTTNumberLast)
     {
-        dos_snprintf(pszEIX, ulLength, "%s", pstTTNumberLast->szAddr);
+        dos_snprintf(pszEIX, ulLength, "%s:%u", pstTTNumberLast->szAddr, pstTTNumberLast->ulPort);
     }
     else
     {
@@ -11692,6 +11692,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                         /* 放音后接通坐席 */
                         case SC_TASK_MODE_AGENT_AFTER_AUDIO:
                             /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
+
                             sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
                             break;
 
