@@ -3836,13 +3836,13 @@ VOID bss_voice_cdr_proc(DLL_NODE_S *pMsgNode)
                                     pstCDR->aulFee[i+1],
                                     lRebate,
                                     pstCDR->ucServType);
+
+            /* 所有客户的返点均来自于顶级客户 */
+            pthread_mutex_lock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
+            g_stBssCB.pstTopCustomer->stAccount.lRebate += lRebate;
+            pthread_mutex_unlock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
         }
         pthread_mutex_unlock(&pstParent->stAccount.mutexAccount);
-
-        /* 所有客户的返点均来自于顶级客户 */
-        pthread_mutex_lock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
-        g_stBssCB.pstTopCustomer->stAccount.lRebate += lRebate;
-        pthread_mutex_unlock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
 
         pstParent = pstParent->pstParent;
     }
@@ -4062,13 +4062,13 @@ VOID bss_recording_cdr_proc(DLL_NODE_S *pMsgNode)
                                     pstCDR->aulFee[i+1],
                                     lRebate,
                                     BS_SERV_RECORDING);
+
+            /* 所有客户的返点均来自于顶级客户 */
+            pthread_mutex_lock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
+            g_stBssCB.pstTopCustomer->stAccount.lRebate += lRebate;
+            pthread_mutex_unlock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
         }
         pthread_mutex_unlock(&pstParent->stAccount.mutexAccount);
-
-        /* 所有客户的返点均来自于顶级客户 */
-        pthread_mutex_lock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
-        g_stBssCB.pstTopCustomer->stAccount.lRebate += lRebate;
-        pthread_mutex_unlock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
 
         pstParent = pstParent->pstParent;
     }
@@ -4267,13 +4267,13 @@ VOID bss_message_cdr_proc(DLL_NODE_S *pMsgNode)
                                     pstCDR->aulFee[i+1],
                                     lRebate,
                                     pstCDR->ucServType);
+
+            /* 所有客户的返点均来自于顶级客户 */
+            pthread_mutex_lock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
+            g_stBssCB.pstTopCustomer->stAccount.lRebate += lRebate;
+            pthread_mutex_unlock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
         }
         pthread_mutex_unlock(&pstParent->stAccount.mutexAccount);
-
-        /* 所有客户的返点均来自于顶级客户 */
-        pthread_mutex_lock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
-        g_stBssCB.pstTopCustomer->stAccount.lRebate += lRebate;
-        pthread_mutex_unlock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
 
         pstParent = pstParent->pstParent;
     }
@@ -4732,13 +4732,13 @@ VOID bss_cycle_billing(VOID)
                                                 pstCDR->aulFee[j+1],
                                                 lRebate,
                                                 BS_SERV_RENT);
+
+                        /* 所有客户的返点均来自于顶级客户 */
+                        pthread_mutex_lock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
+                        g_stBssCB.pstTopCustomer->stAccount.lRebate += lRebate;
+                        pthread_mutex_unlock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
                     }
                     pthread_mutex_unlock(&pstParent->stAccount.mutexAccount);
-
-                    /* 所有客户的返点均来自于顶级客户 */
-                    pthread_mutex_lock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
-                    g_stBssCB.pstTopCustomer->stAccount.lRebate += lRebate;
-                    pthread_mutex_unlock(&g_stBssCB.pstTopCustomer->stAccount.mutexAccount);
 
                     pstParent = pstParent->pstParent;
                 }
