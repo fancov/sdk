@@ -750,21 +750,6 @@ U32 sc_http_api_call_ctrl(list_t *pstArgv)
 
     if (dos_strnicmp(pszAction, "make", dos_strlen("make")) == 0)
     {
-        pszCallee = sc_http_api_get_value(pstArgv, "callee");
-        if (DOS_ADDR_INVALID(pszCallee) || '\0' == pszCallee[0])
-        {
-            DOS_ASSERT(0);
-
-            goto invalid_request;
-        }
-
-        pszTaskID = sc_http_api_get_value(pstArgv, "task");
-        if (DOS_ADDR_INVALID(pszTaskID)
-            || dos_atoul(pszTaskID, &ulTaskID) < 0)
-        {
-            ulTaskID = 0;
-        }
-
         /*
             flag :  0 -- µã»÷ºô½Ð¿Í»§
                     1 -- ÊäÈëºÅÂëºô½Ð
@@ -776,6 +761,22 @@ U32 sc_http_api_call_ctrl(list_t *pstArgv)
             DOS_ASSERT(0);
 
             goto invalid_request;
+        }
+
+        /* ºô½Ð×øÏ¯Ê±£¬CalleeÎª¿Õ */
+        pszCallee = sc_http_api_get_value(pstArgv, "callee");
+        if (DOS_ADDR_INVALID(pszCallee) || ('\0' == pszCallee[0] && ulFlag != 2))
+        {
+            DOS_ASSERT(0);
+
+            goto invalid_request;
+        }
+
+        pszTaskID = sc_http_api_get_value(pstArgv, "task");
+        if (DOS_ADDR_INVALID(pszTaskID)
+            || dos_atoul(pszTaskID, &ulTaskID) < 0)
+        {
+            ulTaskID = 0;
         }
 
         pszAgentCallee = sc_http_api_get_value(pstArgv, "agent_called");

@@ -164,6 +164,7 @@ U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID)
         }
         pstCWQNode->ulAgentGrpID = ulAgentGrpID;
         pstCWQNode->ulStartWaitingTime = 0;
+        pstSCB->ulInQueueTime = time(NULL);
         DLL_Init(&pstCWQNode->stCallWaitingQueue);
         pthread_mutex_init(&pstCWQNode->mutexCWQMngt, NULL);
 
@@ -242,6 +243,8 @@ U32 sc_cwq_del_call(SC_SCB_ST *pstSCB)
 
             if (pstSCB1 == pstSCB)
             {
+                /* 出对了之后，计算等待时间 */
+                pstSCB->ulInQueueTime = time(NULL) - pstSCB->ulInQueueTime;
                 sc_acd_agent_grp_del_call(pstCWQNode->ulAgentGrpID);
                 sc_acd_agent_grp_stat(pstCWQNode->ulAgentGrpID, 0);
 

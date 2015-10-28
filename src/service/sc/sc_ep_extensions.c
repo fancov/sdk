@@ -173,11 +173,17 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                         goto end;
                     }
                     */
-
+                    /* 更新控制块状态 */
+                    ulResult = sc_ep_gateway_register_status_update(ulGateWayID, enTrunkState);
+                    if (ulResult != DOS_SUCC)
+                    {
+                        sc_logr_info(SC_ACD, "update trunk(%u) CB fail.", ulGateWayID);
+                    }
+                    /* 更新数据库状态 */
                     ulResult = sc_ep_update_db_trunk_status(ulGateWayID, enTrunkState);
                     if(DB_ERR_SUCC != ulResult)
                     {
-                        sc_logr_debug(SC_ACD, "update trunk(%u) db fail.", ulGateWayID);
+                        sc_logr_info(SC_ACD, "update trunk(%u) db fail.", ulGateWayID);
                     }
 
                     goto end;

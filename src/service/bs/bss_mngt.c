@@ -3632,94 +3632,6 @@ VOID bss_billing_stop(DLL_NODE_S *pMsgNode)
     bss_send_cdr2dl(pMsgNode, BS_INTER_MSG_ORIGINAL_CDR);
 }
 
-VOID bss_stat_calltask_result(BS_CDR_VOICE_ST *pstVoiceCDR)
-{
-    DLL_NODE_S                *pMsgNode;
-    BS_CDR_CALLTASK_RESULT_ST *pstCallTaskResult;
-
-    if (DOS_ADDR_INVALID(pstVoiceCDR))
-    {
-        DOS_ASSERT(0);
-        return;
-    }
-
-    pMsgNode = dos_dmem_alloc(sizeof(DLL_NODE_S));
-    if (DOS_ADDR_INVALID(pMsgNode))
-    {
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: alloc memory fail!");
-        return;
-    }
-
-    pstCallTaskResult = dos_dmem_alloc(sizeof(BS_CDR_CALLTASK_RESULT_ST));
-    if (DOS_ADDR_INVALID(pstCallTaskResult))
-    {
-        dos_dmem_free(pMsgNode);
-        bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "ERR: alloc memory fail!");
-        return;
-    }
-
-    dos_memzero(pstCallTaskResult, sizeof(BS_CDR_CALLTASK_RESULT_ST));
-    DLL_Init_Node(pMsgNode);
-
-    pstCallTaskResult->stCDRTag.ulCDRMark = pstVoiceCDR->stCDRTag.ulCDRMark;
-    pstCallTaskResult->stCDRTag.ucCDRType = BS_CDR_VOICE;
-    pstCallTaskResult->ulUserID = pstVoiceCDR->ulUserID;
-    pstCallTaskResult->ulAgentID = pstVoiceCDR->ulAgentID;
-    pstCallTaskResult->ulCustomerID = pstVoiceCDR->ulCustomerID;
-    pstCallTaskResult->ulAccountID = pstVoiceCDR->ulAccountID;
-    pstCallTaskResult->ulTaskID = pstVoiceCDR->ulTaskID;
-    dos_strncpy(pstCallTaskResult->szCaller, pstVoiceCDR->szCaller, sizeof(pstCallTaskResult->szCaller));
-    pstCallTaskResult->szCaller[sizeof(pstCallTaskResult->szCaller) - 1] = '\0';
-    dos_strncpy(pstCallTaskResult->szCallee, pstVoiceCDR->szCallee, sizeof(pstCallTaskResult->szCallee));
-    pstCallTaskResult->szCallee[sizeof(pstCallTaskResult->szCallee) - 1] = '\0';
-    dos_strncpy(pstCallTaskResult->szCID, pstVoiceCDR->szCID, sizeof(pstCallTaskResult->szCID));
-    pstCallTaskResult->szCID[sizeof(pstCallTaskResult->szCID) - 1] = '\0';
-    dos_strncpy(pstCallTaskResult->szAgentNum, pstVoiceCDR->szAgentNum, sizeof(pstCallTaskResult->szAgentNum));
-    pstCallTaskResult->szAgentNum[sizeof(pstCallTaskResult->szAgentNum) - 1] = '\0';
-    dos_strncpy(pstCallTaskResult->szRecordFile, pstVoiceCDR->szRecordFile, sizeof(pstCallTaskResult->szRecordFile));
-    pstCallTaskResult->szRecordFile[sizeof(pstCallTaskResult->szRecordFile) - 1] = '\0';
-    pstCallTaskResult->ulPDDLen = pstVoiceCDR->ulPDDLen;
-    pstCallTaskResult->ulRingTime = pstVoiceCDR->ulRingTime;
-    pstCallTaskResult->ulAnswerTimeStamp = pstVoiceCDR->ulAnswerTimeStamp;
-    pstCallTaskResult->ulDTMFTime = pstVoiceCDR->ulDTMFTime;
-    pstCallTaskResult->ulIVRFinishTime = pstVoiceCDR->ulIVRFinishTime;
-    pstCallTaskResult->ulWaitAgentTime = pstVoiceCDR->ulWaitAgentTime;
-    pstCallTaskResult->ulTimeLen = pstVoiceCDR->ulTimeLen;
-    pstCallTaskResult->ulHoldCnt = pstVoiceCDR->ulHoldCnt;
-    pstCallTaskResult->ulHoldTimeLen = pstVoiceCDR->ulHoldTimeLen;
-    pstCallTaskResult->usTerminateCause = pstVoiceCDR->usTerminateCause;
-    pstCallTaskResult->ucServType = pstVoiceCDR->ucServType;
-    pstCallTaskResult->ucReleasePart = pstVoiceCDR->ucReleasePart;
-
-    pMsgNode->pHandle = (VOID *)pstCallTaskResult;
-
-    if (pstCallTaskResult->ulAnswerTimeStamp != 0 && 0 == pstCallTaskResult->ulTimeLen)
-    {
-        /* 时间太短,保护处理 */
-        pstCallTaskResult->ulTimeLen = 1;
-    }
-
-
-    bs_trace(BS_TRACE_CDR, LOG_LEVEL_DEBUG,
-             "Call task result proc, "
-             "mark:%u, type:%u, customer:%u, account:%u, "
-             "userid:%u, agentid:%u, taskid:%u, record:%s, "
-             "caller:%s, callee:%s, cid:%s, agent:%s, "
-             "start time:%u, time len:%u, servtype:%u, cause:%u",
-             pstCallTaskResult->stCDRTag.ulCDRMark, pstCallTaskResult->stCDRTag.ucCDRType,
-             pstCallTaskResult->ulCustomerID, pstCallTaskResult->ulAccountID,
-             pstCallTaskResult->ulUserID, pstCallTaskResult->ulAgentID,
-             pstCallTaskResult->ulTaskID, pstCallTaskResult->szRecordFile,
-             pstCallTaskResult->szCaller, pstCallTaskResult->szCallee,
-             pstCallTaskResult->szCID, pstCallTaskResult->szAgentNum,
-             pstCallTaskResult->ulAnswerTimeStamp, pstCallTaskResult->ulTimeLen,
-             pstCallTaskResult->ucServType, pstCallTaskResult->usTerminateCause);
-
-    /* TODO: add the result */
-
-    bss_send_cdr2dl(pMsgNode, BS_INTER_MSG_CALLTASK_RESULT);
-
-}
 
 /* 语音话单处理 */
 VOID bss_voice_cdr_proc(DLL_NODE_S *pMsgNode)
@@ -3952,12 +3864,6 @@ VOID bss_voice_cdr_proc(DLL_NODE_S *pMsgNode)
 
 save_cdr:
     bss_send_cdr2dl(pMsgNode, BS_INTER_MSG_VOICE_CDR);
-
-    if (pstCDR->ulTaskID != 0 && pstCDR->ulTaskID != U32_BUTT)
-    {
-        bss_stat_calltask_result(pstCDR);
-    }
-
 }
 
 /* 录音话单处理 */

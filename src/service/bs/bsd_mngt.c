@@ -113,10 +113,6 @@ VOID bsd_cdr(DLL_NODE_S *pMsgNode)
             bsd_save_account_cdr(pstMsg);
             break;
 
-        case BS_INTER_MSG_CALLTASK_RESULT:
-            bsd_save_calltask_result(pstMsg);
-            break;
-
         default:
             DOS_ASSERT(0);
             break;
@@ -212,7 +208,6 @@ VOID bsd_sl_msg_proc(DLL_NODE_S *pMsgNode)
         case BS_INTER_MSG_SETTLE_CDR:
         case BS_INTER_MSG_RENT_CDR:
         case BS_INTER_MSG_ACCOUNT_CDR:
-        case BS_INTER_MSG_CALLTASK_RESULT:
             bsd_cdr(pMsgNode);
             break;
 
