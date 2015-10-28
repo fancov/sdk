@@ -1384,7 +1384,7 @@ S32 sc_ep_caller_grp_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
 S32 sc_ep_caller_setting_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
 {
     SC_CALLER_SETTING_ST      *pstSetting = NULL;
-    U32  ulCustomerID = U32_BUTT;
+    U32  ulSettingID = U32_BUTT;
 
     if (DOS_ADDR_INVALID(pObj)
             || DOS_ADDR_INVALID(pstHashNode)
@@ -1393,10 +1393,10 @@ S32 sc_ep_caller_setting_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-    ulCustomerID = *(U32 *)pObj;
+    ulSettingID = *(U32 *)pObj;
     pstSetting = (SC_CALLER_SETTING_ST *)pstHashNode->pHandle;
 
-    if (ulCustomerID == pstSetting->ulID)
+    if (ulSettingID == pstSetting->ulID)
     {
         return DOS_SUCC;
     }
@@ -4123,11 +4123,11 @@ U32  sc_load_caller_setting(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT * FROM tbl_caller_setting;");
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,name,src_id,src_type,dest_id,dest_type FROM tbl_caller_setting;");
     }
     else
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT * FROM tbl_caller_setting WHERE id=%u;", ulIndex);
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,name,src_id,src_type,dest_id,dest_type FROM tbl_caller_setting WHERE id=%u;", ulIndex);
     }
 
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_load_caller_setting_cb, NULL, NULL);

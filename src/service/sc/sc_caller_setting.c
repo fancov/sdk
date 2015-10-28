@@ -318,6 +318,29 @@ static S32 sc_generate_random(S32 lUp, S32 lDown)
     return rand() % (lDiff + 1) + (lUp > lDown?lDown:lUp);
 }
 
+
+S32 sc_get_setting_id_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    U32 ulID = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pArg)
+        || DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (dos_atoul(aszValues[0], &ulID) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pArg, &ulID, sizeof(U32));
+    return DOS_SUCC;
+}
+
 /**
  * 函数: U32 sc_get_dst_by_src(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, U32 ulDstID, U32 ulDstType)
  * 功能: 根据呼叫源获得呼叫目的
@@ -332,7 +355,10 @@ static U32 sc_get_dst_by_src(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, U32* 
 {
     HASH_NODE_S *pstHashNode = NULL;
     U32 ulHashIndex = U32_BUTT;
+    U32 ulSettingID = U32_BUTT;
     SC_CALLER_SETTING_ST *pstSetting = NULL;
+    S8  szSQL[256] = {0};
+    S32  lRet = 0;
 
     if (DOS_ADDR_INVALID(pulDstID)
         || DOS_ADDR_INVALID(pulDstType))
@@ -341,10 +367,21 @@ static U32 sc_get_dst_by_src(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, U32* 
         return DOS_FAIL;
     }
 
-    ulHashIndex = sc_ep_caller_setting_hash_func(ulCustomerID);
-    pstHashNode = hash_find_node(g_pstHashCallerSetting, ulHashIndex, &ulCustomerID, sc_ep_caller_setting_hash_find);
+    /* 寻找caller setting */
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT id FROM tbl_caller_setting WHERE customer_id=%u AND src_id=%u AND src_type=%u;"
+                    , ulCustomerID, ulSrcID, ulSrcType);
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_get_setting_id_cb, &ulSettingID, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 寻找setting节点 */
+    ulHashIndex = sc_ep_caller_setting_hash_func(ulSettingID);
+    pstHashNode = hash_find_node(g_pstHashCallerSetting, ulHashIndex, &ulSettingID, sc_ep_caller_setting_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
-        ||DOS_ADDR_INVALID(pstHashNode->pHandle))
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
         return DOS_FAIL;
     }
