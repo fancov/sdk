@@ -659,20 +659,32 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 {
                     sc_logr_info(SC_DIALER, "Not get agent ID by scd(%u)", pstSCB->usOtherSCBNo);
 
-                    goto go_on;
-                }
+                    /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
+                    ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, 0, SC_SRC_CALLER_TYPE_ALL, szNumber, SC_TEL_NUMBER_LENGTH);
+                    if (ulRet != DOS_SUCC)
+                    {
+                        DOS_ASSERT(0);
+                        sc_logr_info(SC_DIALER, "CustomID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, ulAgentID);
 
-                /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
-                ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
-                if (ulRet != DOS_SUCC)
+                        goto go_on;
+                    }
+
+                    sc_logr_info(SC_DIALER, "CustomID(%u) get caller number(%s) SUCC", pstSCB->ulCustomID, szNumber);
+                }
+                else
                 {
-                    DOS_ASSERT(0);
-                    sc_logr_info(SC_DIALER, "CustomID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, ulAgentID);
+                    /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
+                    ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
+                    if (ulRet != DOS_SUCC)
+                    {
+                        DOS_ASSERT(0);
+                        sc_logr_info(SC_DIALER, "CustomID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, ulAgentID);
 
-                    goto go_on;
+                        goto go_on;
+                    }
+                    sc_logr_info(SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
                 }
 
-                sc_logr_info(SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
                 dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
                 pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
             }
