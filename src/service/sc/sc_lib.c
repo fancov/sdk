@@ -2473,7 +2473,7 @@ U32 sc_http_caller_update_proc(U32 ulAction, U32 ulCallerID)
             sc_load_caller(ulCallerID);
             break;
         case SC_API_CMD_ACTION_CALLER_DELETE:
-            //sc_caller_delete(ulCallerID);
+            sc_caller_delete(ulCallerID);
             break;
         default:
             break;

@@ -1014,6 +1014,7 @@ U32 sc_del_number_lmt(U32 ulIndex);
 U32 sc_load_customer(U32 ulIndex);
 U32 sc_load_caller_setting(U32 ulIndex);
 U32 sc_load_caller(U32 ulIndex);
+U32 sc_caller_delete(U32 ulCallerID);
 U32 sc_gateway_grp_delete(U32 ulGwGroupID);
 U32 sc_black_list_delete(U32 ulBlackListID);
 U32 sc_caller_grp_delete(U32 ulCallerGrpID);

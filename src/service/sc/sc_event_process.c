@@ -1765,14 +1765,14 @@ U32 sc_ep_sip_userid_delete(S8 * pszSipID)
     return DOS_SUCC;
 }
 
-#if 0
+#if 1
 U32 sc_caller_delete(U32 ulCallerID)
 {
     HASH_NODE_S *pstHashNode = NULL;
     SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
     U32  ulHashIndex = U32_BUTT;
     BOOL bFound = DOS_FALSE;
-#if 1
+#if 0
     S32 lIndex;
     SC_TASK_CB_ST *pstTaskCB = NULL;
 #endif
@@ -1799,7 +1799,7 @@ U32 sc_caller_delete(U32 ulCallerID)
             break;
         }
     }
-#if 1
+#if 0
     /* 现在号码组的主叫号码与群呼任务的主叫号码是两份数据，同步起来比较恼火，将来解决了两份数据问题肯定要删掉
        目前先暂时将其状态置为invalid即可 */
     for (lIndex = 0; lIndex < SC_MAX_TASK_NUM; lIndex++)
@@ -1901,6 +1901,7 @@ U32 sc_caller_setting_delete(U32 ulSettingID)
         return DOS_FAIL;
     }
 
+    hash_delete_node(g_pstHashCallerSetting, pstHashNode, ulHashIndex);
     dos_dmem_free(pstHashNode->pHandle);
     pstHashNode->pHandle = NULL;
     dos_dmem_free(pstHashNode);
@@ -5403,6 +5404,10 @@ U32 sc_del_tt_number(U32 ulIndex)
     {
         hash_delete_node(g_pstHashTTNumber, pstHashNode, ulHashIndex);
 
+        dos_dmem_free(pstHashNode->pHandle);
+        pstHashNode->pHandle = NULL;
+        dos_dmem_free(pstHashNode);
+        pstHashNode = NULL;
         pthread_mutex_unlock(&g_mutexHashTTNumber);
         return DOS_SUCC;
     }
@@ -7596,12 +7601,12 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         if (ulRet != DOS_SUCC)
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+            sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
 
             goto go_on;
         }
 
-        sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+        sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
         dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
         pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
 
@@ -8381,12 +8386,12 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
-                sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+                sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
 
                 goto go_on;
             }
 
-            sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+            sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
             dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
             pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
         }

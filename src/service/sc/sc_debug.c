@@ -3090,7 +3090,7 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
         /* 专门用来进行函数功能测试 */
         if (cli_cc_test(ulIndex, argc, argv) < 0)
         {
-            goto cc_usage;
+            return 0;
         }
     }
     else
@@ -3248,7 +3248,7 @@ S32 cli_cc_test(U32 ulIndex, S32 argc, S8 **argv)
             cli_out_string(ulIndex, "\r\nSorry, Select Number FAIL.");
             return DOS_FAIL;
         }
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\nNumber    \r\n----------\r\n%s", szNumber);
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nNumber    \r\n----------\r\n%s\r\n", szNumber);
         cli_out_string(ulIndex, szBuff);
     }
     return DOS_SUCC;

@@ -50,9 +50,11 @@ static U32 sc_get_agentgrp_by_agentid(U32 ulAgentID, U32 *paulGroupID, U32 ulLen
 U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, S8 *pszNumber, U32 ulLen)
 {
     U32 ulDstID = 0, ulDstType = 0, ulRet = 0, ulPolicy = 0;
-    U32 aulAgentGrpID[MAX_GROUP_PER_SITE] = {0};
-    /* 用来检验是否在坐席组中找到合适的主叫号码 */
-    //BOOL bFound = DOS_FALSE;
+    U32 aulAgentGrpID[MAX_GROUP_PER_SITE] = {0}, ulLoop = 0;
+    U32 ulAgentGrpID = 0, ulHashIndex = U32_BUTT;
+    SC_ACD_AGENT_INFO_ST stAgent;
+    SC_CALLER_SETTING_ST *pstSetting = NULL;
+    HASH_NODE_S  *pstHashNode = NULL;
 
     if (DOS_ADDR_INVALID(pszNumber))
     {
@@ -66,8 +68,105 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
     ulRet = sc_get_dst_by_src(ulCustomerID, ulSrcID, ulSrcType, &ulDstID, &ulDstType);
     if (DOS_SUCC != ulRet)
     {
-        sc_logr_debug(SC_FUNC, "Get dest by src FAIL.(CustomerID:%u,SrcID:%u,SrcType:%u,DstID:%u,DstType:%u)."
+        sc_logr_debug(SC_FUNC, "Get dest by src FAIL.(CustomerID:%u,SrcID:%u,SrcType:%u,DstID:%u,DstType:%u). Then find another Setting..."
                         , ulCustomerID, ulSrcID, ulSrcType, ulDstID, ulDstType);
+
+        /* 如果说呼叫源为坐席，但未匹配到，则找坐席组的设定 */
+        if (SC_SRC_CALLER_TYPE_AGENT == ulSrcType)
+        {
+            sc_logr_debug(SC_FUNC, "%s", "Find Setting From Agent Group.");
+            /* 根据坐席获取坐席组id */
+            ulRet = sc_acd_get_agent_by_id(&stAgent, ulSrcID);
+            if (DOS_SUCC == ulRet)
+            {
+                sc_logr_debug(SC_FUNC, "Get Agent By ID SUCC.(AgentID:%u)", ulSrcID);
+                /* 查找有效groupid */
+                for (ulLoop = 0; ulLoop < MAX_GROUP_PER_SITE; ulLoop++)
+                {
+                    if (0 == stAgent.aulGroupID[ulLoop] || U32_BUTT == stAgent.aulGroupID[ulLoop])
+                    {
+                        continue;
+                    }
+                    ulAgentGrpID = stAgent.aulGroupID[ulLoop];
+                    sc_logr_debug(SC_FUNC, "Find a Proper Agent Group.(AgentID:%u,AgentGrpID:%u)", ulSrcID, ulAgentGrpID);
+                    /* 通过坐席组查找设定 */
+                    HASH_Scan_Table(g_pstHashCallerSetting, ulHashIndex)
+                    {
+                        HASH_Scan_Bucket(g_pstHashCallerSetting, ulHashIndex, pstHashNode, HASH_NODE_S *)
+                        {
+                            if (DOS_ADDR_INVALID(pstHashNode)
+                                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                            {
+                                continue;
+                            }
+                            pstSetting = (SC_CALLER_SETTING_ST *)pstHashNode->pHandle;
+                            if (pstSetting->ulSrcID == ulAgentGrpID
+                                && pstSetting->ulSrcType == SC_SRC_CALLER_TYPE_AGENTGRP
+                                && pstSetting->ulCustomerID == ulCustomerID)
+                            {
+                                /* 查找设定匹配的目标 */
+                                ulDstID = pstSetting->ulDstID;
+                                ulDstType = pstSetting->ulDstType;
+                                sc_logr_debug(SC_FUNC, "Find a Proper Setting of Agent Group.(AgentGrpID:%u, DstID:%u, DstType:%u)"
+                                                , ulAgentGrpID, ulDstID, ulDstType);
+                                goto setting;
+                            }
+                        }
+                    }
+                }
+            }
+            sc_logr_debug(SC_FUNC, "Find Setting of AgentGrp FAIL.(AgentID:%u), and then find setting from ALL.", ulSrcID);
+            /* 从设定里面任意查找 */
+            HASH_Scan_Table(g_pstHashCallerSetting, ulHashIndex)
+            {
+                HASH_Scan_Bucket(g_pstHashCallerSetting, ulHashIndex, pstHashNode, HASH_NODE_S *)
+                {
+                    if (DOS_ADDR_INVALID(pstHashNode)
+                        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                    {
+                        continue;
+                    }
+                    pstSetting = (SC_CALLER_SETTING_ST *)pstHashNode->pHandle;
+                    if (0 == pstSetting->ulSrcID
+                        && pstSetting->ulCustomerID == ulCustomerID
+                        && pstSetting->ulSrcType == SC_SRC_CALLER_TYPE_ALL)
+                    {
+                        ulDstID = pstSetting->ulDstID;
+                        ulDstType = pstSetting->ulDstType;
+                        sc_logr_debug(SC_FUNC, "Find a Proper setting of ALL.(DstID:%u, DstType:%u)", ulDstID, ulDstType);
+                        goto setting;
+                    }
+                }
+            }
+            sc_logr_debug(SC_FUNC, "%s", "No Setting Matched the Call Source.");
+        }
+        else if (SC_SRC_CALLER_TYPE_AGENT == ulSrcType)
+        {
+            sc_logr_debug(SC_FUNC, "%s", "Find Setting From ALL.");
+            HASH_Scan_Table(g_pstHashCallerSetting, ulHashIndex)
+            {
+                HASH_Scan_Bucket(g_pstHashCallerSetting, ulHashIndex, pstHashNode, HASH_NODE_S *)
+                {
+                    if (DOS_ADDR_INVALID(pstHashNode)
+                        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                    {
+                        continue;
+                    }
+                    pstSetting = (SC_CALLER_SETTING_ST *)pstHashNode->pHandle;
+                    if (0 == pstSetting->ulSrcID
+                        && pstSetting->ulCustomerID == ulCustomerID
+                        && pstSetting->ulSrcType == SC_SRC_CALLER_TYPE_ALL)
+                    {
+                        ulDstID = pstSetting->ulDstID;
+                        ulDstType = pstSetting->ulDstType;
+                        sc_logr_debug(SC_FUNC, "Find a Proper setting of ALL.(DstID:%u, DstType:%u)", ulDstID, ulDstType);
+                        goto setting;
+                    }
+                }
+            }
+            sc_logr_debug(SC_FUNC, "%s", "No Setting Matched the Call Source.");
+        }
+
         /* 未找到与呼叫源相匹配的呼叫目标，找当前呼叫源绑定的DID号码 */
         switch (ulSrcType)
         {
@@ -208,9 +307,9 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
         return DOS_FAIL;
     }
 
+setting:
     sc_logr_info(SC_FUNC, "Get dest by src SUCC.(CustomerID:%u,SrcID:%u,SrcType:%u,DstID:%u,DstType:%u)."
                         , ulCustomerID, ulSrcID, ulSrcType, ulDstID, ulDstType);
-
     switch (ulDstType)
     {
         case SC_DST_CALLER_TYPE_CFG:
@@ -427,7 +526,7 @@ static U32 sc_get_number_by_callerid(U32 ulCustomerID, U32 ulCallerID, S8 *pszNu
     pstCaller = (SC_CALLER_QUERY_NODE_ST *)pstHashNode->pHandle;
     dos_snprintf(pszNumber, ulLen, "%s", pstCaller->szNumber);
 
-    sc_logr_info(SC_FUNC, "Get number by caller id SUCC.(CustomerID:%u,CallerID:%u,Nummber:%s,len:%u)"
+    sc_logr_info(SC_FUNC, "Get number by caller id SUCC.(CustomerID:%u,CallerID:%u,Number:%s,len:%u)"
                         , ulCustomerID, ulCallerID, pszNumber, ulLen);
     return DOS_SUCC;
 }

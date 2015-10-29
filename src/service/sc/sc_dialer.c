@@ -257,12 +257,12 @@ U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCal
         if (ulRet != DOS_SUCC)
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_DIALER, "Call to IP customID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+            sc_logr_info(SC_DIALER, "Call to IP customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
 
             goto go_on;
         }
 
-        sc_logr_info(SC_DIALER, "Call to IP customID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+        sc_logr_info(SC_DIALER, "Call to IP customID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
         dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
         pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
     }
@@ -664,7 +664,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
                     if (ulRet != DOS_SUCC)
                     {
                         DOS_ASSERT(0);
-                        sc_logr_info(SC_DIALER, "CustomID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, ulAgentID);
+                        sc_logr_info(SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
 
                         goto go_on;
                     }
@@ -678,11 +678,11 @@ VOID *sc_dialer_runtime(VOID * ptr)
                     if (ulRet != DOS_SUCC)
                     {
                         DOS_ASSERT(0);
-                        sc_logr_info(SC_DIALER, "CustomID(%u) get caller number FAIL by agnet(%u)", pstSCB->ulCustomID, ulAgentID);
+                        sc_logr_info(SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
 
                         goto go_on;
                     }
-                    sc_logr_info(SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agnet(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
+                    sc_logr_info(SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
                 }
 
                 dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
