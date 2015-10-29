@@ -999,7 +999,7 @@ U32 sc_acd_delete_agent(U32  ulSiteID)
 }
 
 
-U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
+U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, BOOL bIsPOTS)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueInfo = NULL;
     HASH_NODE_S                  *pstHashNode       = NULL;
@@ -1055,8 +1055,15 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
             pstAgentQueueInfo->pstAgentInfo->bConnected = DOS_FALSE;
             pstAgentQueueInfo->pstAgentInfo->bNeedConnected = DOS_FALSE;
             pstAgentQueueInfo->pstAgentInfo->bWaitingDelete = DOS_FALSE;
-
-            pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_AWAY;
+            /* 如果是新业务，则将坐席的状态置闲 */
+            if (bIsPOTS)
+            {
+                pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_IDEL;
+            }
+            else
+            {
+                pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_AWAY;
+            }
             pstAgentQueueInfo->pstAgentInfo->ulLastOnlineTime = time(0);
             bIsUpdateDB = DOS_TRUE;
             break;
@@ -1762,8 +1769,7 @@ U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID)
     dos_memcpy(pstAgentInfo, pstAgentNode->pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
 
     return DOS_SUCC;
- }
-
+}
 
 U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID, S8 *szCallerNum)
 {
@@ -1887,6 +1893,57 @@ U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
             }
 
             if (dos_strcmp(pstAgentData->szUserID, szUserID) == 0)
+            {
+                pthread_mutex_lock(&pstAgentData->mutexLock);
+                dos_memcpy(pstAgentInfo, pstAgentData, sizeof(SC_ACD_AGENT_INFO_ST));
+                pthread_mutex_unlock(&pstAgentData->mutexLock);
+
+                pthread_mutex_unlock(&g_mutexAgentList);
+
+                return DOS_SUCC;
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexAgentList);
+
+    return DOS_FAIL;
+}
+
+U32 sc_acd_get_agent_by_emp_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulCustomID, S8 *pszEmpNum)
+{
+    U32                         ulHashIndex         = 0;
+    HASH_NODE_S                 *pstHashNode        = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_ACD_AGENT_INFO_ST        *pstAgentData       = NULL;
+
+    if (DOS_ADDR_INVALID(pstAgentInfo)
+        || DOS_ADDR_INVALID(pszEmpNum)
+        || pszEmpNum[0] == '\0')
+    {
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexAgentList);
+
+    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)pstHashNode->pHandle;
+            pstAgentData = pstAgentQueueNode->pstAgentInfo;
+
+            if (DOS_ADDR_INVALID(pstAgentData))
+            {
+                continue;
+            }
+
+            if (ulCustomID == pstAgentData->ulCustomerID
+                && dos_strcmp(pstAgentData->szEmpNo, pszEmpNum) == 0)
             {
                 pthread_mutex_lock(&pstAgentData->mutexLock);
                 dos_memcpy(pstAgentInfo, pstAgentData, sizeof(SC_ACD_AGENT_INFO_ST));
@@ -2306,7 +2363,14 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.bRecord = ulRecordFlag;
     stSiteInfo.bGroupHeader = ulIsHeader;
     stSiteInfo.ucBindType = (U8)ulSelectType;
-    stSiteInfo.bLogin = DOS_FALSE;
+    if (ulStatus != SC_ACD_OFFLINE)
+    {
+        stSiteInfo.bLogin = DOS_TRUE;
+    }
+    else
+    {
+        stSiteInfo.bLogin = DOS_FALSE;
+    }
     stSiteInfo.bWaitingDelete = DOS_FALSE;
     stSiteInfo.bConnected = DOS_FALSE;
     stSiteInfo.ucProcesingTime = 0;
@@ -2789,7 +2853,7 @@ U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
         case SC_ACD_SITE_ACTION_OFFLINE:
         case SC_ACD_SITE_ACTION_EN_QUEUE:
         case SC_ACD_SITE_ACTION_DN_QUEUE:
-            sc_acd_update_agent_status(ulAction, ulAgentID);
+            sc_acd_update_agent_status(ulAction, ulAgentID, DOS_FALSE);
             break;
         case SC_ACD_SITE_ACTION_ADD:
         case SC_ACD_SITE_ACTION_UPDATE:

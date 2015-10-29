@@ -208,6 +208,9 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
+    /* 只要取到了被叫号码，就应该加一 */
+    pstTCB->ulCalledCount++;
+
     if (sc_get_number_by_callergrp(pstTCB->ulCallerGrpID, szCaller, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -228,8 +231,6 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 #endif
-
-    pstTCB->ulCalledCount++;
 
     pstSCB = sc_scb_alloc();
     if (!pstSCB)
@@ -407,8 +408,6 @@ VOID *sc_task_runtime(VOID *ptr)
         }
 #endif
     }
-
-    sc_update_task_status(pstTCB->ulTaskID, pstTCB->ucTaskStatus);
 
     sc_logr_info(SC_TASK, "Task %d finished.", pstTCB->ulTaskID);
 
