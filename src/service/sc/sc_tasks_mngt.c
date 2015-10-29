@@ -45,7 +45,7 @@ static S32 sc_task_load_callback(VOID *pArg, S32 argc, S8 **argv, S8 **columnNam
 {
     SC_TASK_CB_ST *pstTCB;
     U32 ulIndex;
-    U32 ulTaskID = U32_BUTT, ulCustomID = U32_BUTT, ulStatus;
+    U32 ulTaskID = U32_BUTT, ulCustomID = U32_BUTT;
 
     SC_TRACE_IN((U64)pArg, (U32)argc, (U64)argv, (U64)columnNames);
 
@@ -67,15 +67,6 @@ static S32 sc_task_load_callback(VOID *pArg, S32 argc, S8 **argv, S8 **columnNam
                 return DOS_FAIL;
             }
         }
-        else if (dos_strcmp(columnNames[ulIndex], "status") == 0)
-        {
-            if (dos_atoul(argv[ulIndex], &ulStatus) < 0)
-            {
-                SC_TRACE_OUT();
-                return DOS_FAIL;
-            }
-        }
-
     }
 
     pstTCB = sc_tcb_alloc();
@@ -86,27 +77,6 @@ static S32 sc_task_load_callback(VOID *pArg, S32 argc, S8 **argv, S8 **columnNam
     }
 
     sc_task_set_owner(pstTCB, ulTaskID, ulCustomID);
-
-    switch (ulStatus)
-    {
-        case 0:
-            pstTCB->ucTaskStatus = SC_TASK_INIT;
-            break;
-        case 1:
-            pstTCB->ucTaskStatus = SC_TASK_WORKING;
-            break;
-        case 2:
-            pstTCB->ucTaskStatus = SC_TASK_PAUSED;
-            break;
-        case 3:
-            pstTCB->ucTaskStatus = SC_TASK_STOP;
-            break;
-        default:
-            DOS_ASSERT(0);
-            pstTCB->ucTaskStatus = SC_TASK_STOP;
-            break;
-
-    }
 
     return DOS_SUCC;
 }
@@ -130,7 +100,7 @@ U32 sc_task_mngt_load_task()
 #if 0
                 , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask WHERE tbl_calltask.status = 1;");
 #endif
-                , "SELECT id, customer_id, status from tbl_calltask where tbl_calltask.status <> %d ;", SC_TASK_STATUS_DB_STOP);
+                , "SELECT id, customer_id from tbl_calltask where tbl_calltask.status <> %d ;", SC_TASK_STATUS_DB_STOP);
 
     ulResult = db_query(g_pstSCDBHandle
                             , szSqlQuery
@@ -149,28 +119,6 @@ U32 sc_task_mngt_load_task()
     SC_TRACE_OUT();
     return DOS_SUCC;
 }
-
-VOID sc_task_mngt_init_task_status()
-{
-    SC_TASK_CB_ST    *pstTCB = NULL;
-    U32 ulIndex = 0;
-
-    for (ulIndex = 0; ulIndex < SC_MAX_TASK_NUM; ulIndex++)
-    {
-        pstTCB = &g_pstTaskMngtInfo->pstTaskList[ulIndex];
-
-        if (pstTCB->ucValid)
-        {
-            if (pstTCB->ucTaskStatus == SC_TASK_WORKING)
-            {
-                pstTCB->ucTaskStatus = SC_TASK_PAUSED;
-                /* 修改数据库中任务的状态 */
-                sc_update_task_status(pstTCB->ulTaskID, pstTCB->ucTaskStatus);
-            }
-        }
-    }
-}
-
 
 /*
  * 函数: U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
@@ -774,6 +722,7 @@ U32 sc_task_mngt_start()
                 continue;
             }
 #endif
+
             if (DOS_SUCC != sc_task_load(pstTCB->ulTaskID))
             {
                 SC_TASK_TRACE(pstTCB, "Task Init FAIL.");
@@ -782,7 +731,8 @@ U32 sc_task_mngt_start()
                 continue;
             }
 
-            if (pstTCB->ucTaskStatus != SC_TASK_CONTINUE || pstTCB->ucTaskStatus != SC_TASK_WORKING)
+            if (pstTCB->ucTaskStatus != SC_TASK_WORKING
+                && pstTCB->ucTaskStatus != SC_TASK_CONTINUE)
             {
                 continue;
             }
@@ -795,7 +745,6 @@ U32 sc_task_mngt_start()
                 sc_tcb_free(pstTCB);
                 continue;
             }
-
             g_pstTaskMngtInfo->ulTaskCount++;
         }
     }
@@ -956,9 +905,6 @@ U32 sc_task_mngt_init()
         SC_TRACE_OUT();
         return DOS_FAIL;
     }
-
-    /* 如果有的任务是正在运行状态，则将其修改为暂停状态 */
-    sc_task_mngt_init_task_status();
 
     SC_TRACE_OUT();
     return DOS_SUCC;
