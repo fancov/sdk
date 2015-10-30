@@ -496,6 +496,11 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
         return DOS_SUCC;
     }
 
+    if (ulSCBNo == U16_BUTT)
+    {
+        sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_HUNGUP);
+    }
+
     /* 更新数据库中，坐席的状态 */
     sc_acd_agent_update_status_db(ulSiteID, ulStatus, bNeedConnected);
 
@@ -1005,14 +1010,6 @@ U32 sc_acd_query_agent_status(U32 ulAgentID)
     U32                          ulHashIndex        = 0;
 
     SC_TRACE_IN(ulAgentID, ulAgentID, 0, 0);
-
-    if (ulAgentID >= SC_ACD_SITE_ACTION_BUTT)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
 
     /* 找到坐席 */
     sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);

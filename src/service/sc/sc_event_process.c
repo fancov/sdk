@@ -11567,53 +11567,73 @@ process_finished:
  *      SC_SCB_ST *pstSCB       : SCB
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  */
-U32 sc_ep_channel_hold(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
-{
-    S8 *pszChannelStat = NULL;
-
-    SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
-
-    if (DOS_ADDR_INVALID(pstEvent)
-        || DOS_ADDR_INVALID(pstHandle)
-        || DOS_ADDR_INVALID(pstSCB))
+    U32 sc_ep_channel_hold(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
     {
-        DOS_ASSERT(0);
+        S8 *pszChannelStat = NULL;
+        SC_ACD_AGENT_INFO_ST stAgentInfo;
+        BOOL bIsFindAgent = DOS_TRUE;
+
+        SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
+
+        if (DOS_ADDR_INVALID(pstEvent)
+            || DOS_ADDR_INVALID(pstHandle)
+            || DOS_ADDR_INVALID(pstSCB))
+        {
+            DOS_ASSERT(0);
+
+            SC_TRACE_OUT();
+            /* Hold 事件不能拆呼叫的 */
+            return DOS_SUCC;
+        }
+
+        sc_call_trace(pstSCB, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
+
+        pszChannelStat = esl_event_get_header(pstEvent, "Channel-Call-State");
+        if (DOS_ADDR_VALID(pszChannelStat))
+        {
+            if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCB->ulAgentID) != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                bIsFindAgent = DOS_FALSE;
+                sc_logr_info(SC_ESL, "Cannot find agent with id %u. ", pstSCB->ulAgentID);
+            }
+
+            if (dos_strnicmp(pszChannelStat, "HELD", dos_strlen("HELD")) == 0)
+            {
+                if (0 == pstSCB->ulLastHoldTimetamp)
+                {
+                    pstSCB->ulLastHoldTimetamp = time(0);
+                    pstSCB->usHoldCnt++;
+                }
+
+                if (bIsFindAgent)
+                {
+                    sc_ep_agent_status_update(&stAgentInfo,  ACD_MSG_SUBTYPE_HOLD);
+                }
+            }
+            //else if (dos_strnicmp(pszChannelStat, "ACTIVE", dos_strlen("ACTIVE")) == 0)
+            else if (dos_strnicmp(pszChannelStat, "UNHELD", dos_strlen("UNHELD")) == 0)
+            {
+                if (pstSCB->ulLastHoldTimetamp)
+                {
+                    pstSCB->usHoldTotalTime += (time(0) - pstSCB->ulLastHoldTimetamp);
+                    pstSCB->ulLastHoldTimetamp = 0;
+                    //pstSCB->usHoldCnt++;
+                }
+
+                if (bIsFindAgent)
+                {
+                    sc_ep_agent_status_update(&stAgentInfo,  ACD_MSG_SUBTYPE_UNHOLD);
+                }
+            }
+        }
+
+        sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
 
         SC_TRACE_OUT();
-        /* Hold 事件不能拆呼叫的 */
         return DOS_SUCC;
     }
 
-    sc_call_trace(pstSCB, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
-
-    pszChannelStat = esl_event_get_header(pstEvent, "Channel-Call-State");
-    if (DOS_ADDR_VALID(pszChannelStat))
-    {
-        if (dos_strnicmp(pszChannelStat, "HELD", dos_strlen("HELD")) == 0)
-        {
-            if (0 == pstSCB->ulLastHoldTimetamp)
-            {
-                pstSCB->ulLastHoldTimetamp = time(0);
-                pstSCB->usHoldCnt++;
-            }
-        }
-        //else if (dos_strnicmp(pszChannelStat, "ACTIVE", dos_strlen("ACTIVE")) == 0)
-        else if (dos_strnicmp(pszChannelStat, "UNHELD", dos_strlen("UNHELD")) == 0)
-        {
-            if (pstSCB->ulLastHoldTimetamp)
-            {
-                pstSCB->usHoldTotalTime += (time(0) - pstSCB->ulLastHoldTimetamp);
-                pstSCB->ulLastHoldTimetamp = 0;
-                //pstSCB->usHoldCnt++;
-            }
-        }
-    }
-
-    sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
-
-    SC_TRACE_OUT();
-    return DOS_SUCC;
-}
 
 U32 sc_ep_update_corpclients(U32 ulCustomID, S32 lKey, S8 *szCallerNum)
 {
