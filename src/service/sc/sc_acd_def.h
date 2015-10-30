@@ -27,6 +27,39 @@
     && SC_ACD_IDEL == (pstSiteDesc)->ucStatus                          \
     && !((pstSiteDesc)->bNeedConnected && !(pstSiteDesc)->bConnected))
 
+enum {
+    ACD_MSG_TYPE_CALL_NOTIFY   = 0,
+    ACD_MSG_TYPE_STATUS        = 1,
+    ACD_MSG_TYPE_CALL_STATE    = 2,
+    ACD_MSG_TYPE_QUERY         = 3,
+
+    ACD_MSG_TYPE_BUTT
+};
+
+enum {
+    ACD_MSG_SUBTYPE_LOGIN      = 1,
+    ACD_MSG_SUBTYPE_ONLINE     = 2,
+    ACD_MSG_SUBTYPE_AWAY       = 3,
+    ACD_MSG_SUBTYPE_SIGNIN     = 4,
+    ACD_MSG_SUBTYPE_SIGNOUT    = 5,
+    ACD_MSG_SUBTYPE_HOLD       = 6,
+    ACD_MSG_SUBTYPE_UNHOLD     = 7,
+    ACD_MSG_SUBTYPE_TRANSFER   = 8,
+    ACD_MSG_SUBTYPE_HUNGUP     = 9,
+
+    ACD_MSG_TYPE_QUERY_STATUS  = 10,
+
+    ACD_MSG_SUBTYPE_BUTT
+};
+
+enum {
+    MSG_CALL_STATE_CONNECTING  = 0,
+    MSG_CALL_STATE_CONNECTED   = 1,
+    MSG_CALL_STATE_HOLDING     = 2,
+    MSG_CALL_STATE_TRANSFER    = 3,
+    MSG_CALL_STATE_HUNGUP      = 4,
+};
+
 /* IP坐席:
  * 1. 初始化为OFFLINE状态
  * 2. 登陆之后就处于AWAY状态/坐席置忙也处于AWAY状态
@@ -63,6 +96,10 @@ enum {
     SC_API_CMD_ACTION_AGENTGREP_DELETE,
     SC_API_CMD_ACTION_AGENTGREP_UPDATE,
 
+    SC_API_CMD_ACTION_QUERY,
+    SC_ACD_SITE_ACTION_ONLINE1,           /* 记录坐席异常时的操作 */
+    SC_ACD_SITE_ACTION_OFFLINE1,          /* 记录坐席异常时的操作 */
+
     SC_ACD_SITE_ACTION_BUTT              /* 坐席签出(长连) */
 };
 
@@ -86,11 +123,18 @@ typedef enum tagAgentBindType{
     AGENT_BIND_BUTT
 }SC_AGENT_BIND_TYPE_EN;
 
+enum tagOperatingType{
+    OPERATING_TYPE_WEB,
+    OPERATING_TYPE_PHONE,
+    OPERATING_TYPE_CHECK
+};
+
 typedef struct tagACDSiteDesc{
     U16        usSCBNo;
     U8         ucStatus;                          /* 坐席状态 refer to SC_SITE_STATUS_EN */
     U8         ucBindType;                        /* 坐席绑定类型 refer to SC_AGENT_BIND_TYPE_EN */
     U32        ulSiteID;                          /* 坐席数据库编号 */
+
     U32        ulCallCnt;                         /* 呼叫总数 */
     U32        ulCustomerID;                      /* 客户id */
     U32        ulSIPUserID;                       /* SIP账户ID */
@@ -130,7 +174,7 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo);
 S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
 U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);
 U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult);
-U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, BOOL bIsPOTS);
+U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType);
 U32 sc_acd_get_idel_agent(U32 ulGroupID);
 U32 sc_acd_get_total_agent(U32 ulGroupID);
 U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID);
@@ -142,6 +186,8 @@ U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, U32 ul
 U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr);
 U32 sc_ep_query_agent_status(CURL *curl, SC_ACD_AGENT_INFO_ST *pstAgentInfo);
 U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB);
+U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo);
+U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus);
 
 #endif
 
