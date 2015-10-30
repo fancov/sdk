@@ -10895,7 +10895,7 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         }
 
         /* 判断是否是呼叫坐席，更新坐席的状态 */
-        if (pstSCB->bIsAgentCall)
+        if (pstSCB->bIsAgentCall && !sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
         {
             sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_BUSY, ulSCBNo);
         }
