@@ -998,8 +998,52 @@ U32 sc_acd_delete_agent(U32  ulSiteID)
     return DOS_SUCC;
 }
 
+U32 sc_acd_query_agent_status(U32 ulAgentID)
+{
+    SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueInfo = NULL;
+    HASH_NODE_S                  *pstHashNode       = NULL;
+    U32                          ulHashIndex        = 0;
 
-U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
+    SC_TRACE_IN(ulAgentID, ulAgentID, 0, 0);
+
+    if (ulAgentID >= SC_ACD_SITE_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+    }
+
+    /* 找到坐席 */
+    sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, (VOID *)&ulAgentID, sc_acd_agent_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstAgentQueueInfo = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo->pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo->pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    return sc_ep_agent_status_get(pstAgentQueueInfo->pstAgentInfo);
+}
+
+U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueInfo = NULL;
     HASH_NODE_S                  *pstHashNode       = NULL;
@@ -1050,6 +1094,14 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
             pstAgentQueueInfo->pstAgentInfo->bWaitingDelete = DOS_TRUE;
             break;
 
+        case SC_ACD_SITE_ACTION_ONLINE1:
+            pstAgentQueueInfo->pstAgentInfo->bLogin = DOS_TRUE;
+            break;
+
+        case SC_ACD_SITE_ACTION_OFFLINE1:
+            pstAgentQueueInfo->pstAgentInfo->bLogin = DOS_FALSE;
+            break;
+
         case SC_ACD_SITE_ACTION_ONLINE:
             pstAgentQueueInfo->pstAgentInfo->bLogin = DOS_TRUE;
             pstAgentQueueInfo->pstAgentInfo->bConnected = DOS_FALSE;
@@ -1058,7 +1110,10 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
 
             pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_AWAY;
             pstAgentQueueInfo->pstAgentInfo->ulLastOnlineTime = time(0);
+
             bIsUpdateDB = DOS_TRUE;
+
+            sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_ONLINE);
             break;
 
         case SC_ACD_SITE_ACTION_OFFLINE:
@@ -1072,6 +1127,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
             pstAgentQueueInfo->pstAgentInfo->stStat.ulTimeOnthePhone += (time(0) - pstAgentQueueInfo->pstAgentInfo->ulLastOnlineTime);
             pstAgentQueueInfo->pstAgentInfo->ulLastOnlineTime = 0;
             bIsUpdateDB = DOS_TRUE;
+
             break;
 
         case SC_ACD_SITE_ACTION_SIGNIN:
@@ -1103,6 +1159,8 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
             /* 挂断坐席的电话 */
             sc_ep_agent_signout(pstAgentQueueInfo->pstAgentInfo);
             bIsUpdateDB = DOS_TRUE;
+
+            sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_SIGNOUT);
             break;
 
         case SC_ACD_SITE_ACTION_EN_QUEUE:
@@ -1113,6 +1171,8 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
 
             pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_IDEL;
             bIsUpdateDB = DOS_TRUE;
+
+            sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_ONLINE);
             break;
 
         case SC_ACD_SITE_ACTION_DN_QUEUE:
@@ -1123,6 +1183,8 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
 
             pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_AWAY;
             bIsUpdateDB = DOS_TRUE;
+
+            sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_AWAY);
             break;
 
         case SC_ACD_SITE_ACTION_CONNECTED:
@@ -1133,6 +1195,8 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID)
             }
             pstAgentQueueInfo->pstAgentInfo->bConnected = DOS_TRUE;
             bIsUpdateDB = DOS_TRUE;
+
+            sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_SIGNIN);
             break;
 
         case SC_ACD_SITE_ACTION_DISCONNECT:
@@ -2787,13 +2851,18 @@ U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
         case SC_ACD_SITE_ACTION_SIGNOUT:
         case SC_ACD_SITE_ACTION_ONLINE:
         case SC_ACD_SITE_ACTION_OFFLINE:
+        case SC_ACD_SITE_ACTION_ONLINE1:
+        case SC_ACD_SITE_ACTION_OFFLINE1:
         case SC_ACD_SITE_ACTION_EN_QUEUE:
         case SC_ACD_SITE_ACTION_DN_QUEUE:
-            sc_acd_update_agent_status(ulAction, ulAgentID);
+            sc_acd_update_agent_status(ulAction, ulAgentID, OPERATING_TYPE_WEB);
             break;
         case SC_ACD_SITE_ACTION_ADD:
         case SC_ACD_SITE_ACTION_UPDATE:
             sc_acd_init_agent_queue(ulAgentID);
+            break;
+        case SC_API_CMD_ACTION_QUERY:
+            sc_acd_query_agent_status(ulAgentID);
             break;
         default:
             DOS_ASSERT(0);

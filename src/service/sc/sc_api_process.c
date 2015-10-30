@@ -1018,6 +1018,14 @@ U32 sc_http_api_agent_action(list_t *pstArgv)
     {
         ulAction = SC_ACD_SITE_ACTION_SIGNOUT;
     }
+    else if (dos_strncmp(pszAction, "login1", sizeof("login1")) == 0)
+    {
+        ulAction = SC_ACD_SITE_ACTION_ONLINE1;
+    }
+    else if (dos_strncmp(pszAction, "logout1",sizeof("logout1")) == 0)
+    {
+        ulAction = SC_ACD_SITE_ACTION_OFFLINE1;
+    }
     else if (dos_strncmp(pszAction, "login", sizeof("login")) == 0)
     {
         ulAction = SC_ACD_SITE_ACTION_ONLINE;
@@ -1045,6 +1053,9 @@ U32 sc_http_api_agent_action(list_t *pstArgv)
     else if (dos_strncmp(pszAction, "busy",sizeof("busy")) == 0)
     {
         ulAction = SC_ACD_SITE_ACTION_DN_QUEUE;
+    }
+    else if (dos_strncmp(pszAction, "query",sizeof("query")) == 0) {
+        ulAction = SC_API_CMD_ACTION_QUERY;
     }
     else
     {

@@ -316,6 +316,105 @@ proc_finished:
     return sc_send_msg2db((SC_DB_MSG_TAG_ST *)pstCallResult);
 }
 
+
+U32 sc_ep_publicsh(S8 *pszURL, S8 *pszData)
+{
+    U32 ulRet;
+    U32 ulTimeout = 2;
+
+    if (DOS_ADDR_INVALID(pszURL))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(g_pstCurlHandle))
+    {
+        g_pstCurlHandle = curl_easy_init();
+        if (DOS_ADDR_INVALID(g_pstCurlHandle))
+        {
+            DOS_ASSERT(0);
+
+            return DOS_FAIL;
+        }
+    }
+
+    curl_easy_reset(g_pstCurlHandle);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_URL, pszURL);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_POSTFIELDS, pszData);
+    curl_easy_setopt(g_pstCurlHandle, CURLOPT_TIMEOUT, ulTimeout);
+    ulRet = curl_easy_perform(g_pstCurlHandle);
+    if(CURLE_OK != ulRet)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_notice(SC_ESL, "CURL post FAIL.Caller:%s.", pszData);
+        return DOS_FAIL;
+    }
+    else
+    {
+        sc_logr_notice(SC_ESL, "CURL post SUCC.URL:%s, Caller:%s.", pszURL, pszData);
+
+        return DOS_SUCC;
+    }
+
+}
+
+U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+{
+    S8 szJson[1024]       = { 0, };
+    S8 szURL[256]  = { 0, };
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%u_%s_%s"
+                , pstAgentInfo->ulSiteID
+                , pstAgentInfo->szEmpNo
+                , pstAgentInfo->szExtension);
+
+
+    dos_snprintf(szJson, sizeof(szJson)
+                    , "{\\\"type\\\":\\\"%u\\\",\\\"body\\\":{\\\"type\\\":\\\"%d\\\",\\\"call_status\\\":\\\"%u\\\",\\\"is_online\\\":\\\"%u\\\",\\\"is_signin\\\":\\\"%u\\\"}}"
+                    , ACD_MSG_TYPE_QUERY
+                    , ACD_MSG_TYPE_QUERY_STATUS
+                    , SC_ACD_BUSY == pstAgentInfo->ucStatus ? 1 : 0
+                    , SC_ACD_IDEL == pstAgentInfo->ucStatus ? 1 : 0
+                    , pstAgentInfo->bConnected ? 1 : 0);
+
+
+    return sc_ep_publicsh(szURL, szJson);
+
+}
+
+U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
+{
+    S8 szURL[256]  = { 0, };
+    S8 szData[512] = { 0, };
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+
+    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%u_%s_%s"
+                , pstAgentInfo->ulSiteID
+                , pstAgentInfo->szEmpNo
+                , pstAgentInfo->szExtension);
+
+    /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
+    dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"1\\\",\\\"body\\\":{\\\"type\\\":\\\"%u\\\",\\\"result\\\":\\\"0\\\"}}", ulStatus);
+
+    return sc_ep_publicsh(szURL, szData);
+}
+
 /**
  * 函数: sc_ep_call_notify
  * 功能: 通知坐席弹屏
@@ -357,7 +456,7 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
                 , pstAgentInfo->szExtension);
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
-    dos_snprintf(szData, sizeof(szData), "{\\\"status\\\":\\\"0\\\",\\\"number\\\":\\\"%s\\\"}", szCaller);
+    dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"0\\\", \\\"body\\\":{\\\"number\\\":\\\"%s\\\"}}", szCaller);
 
     curl_easy_reset(g_pstCurlHandle);
     curl_easy_setopt(g_pstCurlHandle, CURLOPT_URL, szURL);
@@ -619,7 +718,7 @@ U32 sc_ep_update_agent_status(S8 *pszJSONString)
 
     json_deinit(&pstJsonArrayItem);
 
-    return sc_acd_update_agent_status(SC_ACD_SITE_ACTION_DN_QUEUE, ulID);
+    return sc_acd_update_agent_status(SC_ACD_SITE_ACTION_DN_QUEUE, ulID, OPERATING_TYPE_CHECK);
 }
 
 /* 解析这样一个json字符串
@@ -10008,7 +10107,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         }
 
         sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), online", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
-        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_ONLINE, stAgentInfo.ulSiteID);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_ONLINE, stAgentInfo.ulSiteID, OPERATING_TYPE_PHONE);
 
         ulRet = DOS_SUCC;
     }
@@ -10023,7 +10122,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         }
 
         sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), offline", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
-        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_OFFLINE, stAgentInfo.ulSiteID);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_OFFLINE, stAgentInfo.ulSiteID, OPERATING_TYPE_PHONE);
 
         ulRet = DOS_SUCC;
     }
@@ -10038,7 +10137,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         }
 
         sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), en queue", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
-        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_EN_QUEUE, stAgentInfo.ulSiteID);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_EN_QUEUE, stAgentInfo.ulSiteID, OPERATING_TYPE_PHONE);
         ulRet = DOS_SUCC;
         if (bIsSecondaryDialing)
         {
@@ -10057,7 +10156,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         }
 
         sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), dn queue", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
-        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_DN_QUEUE, stAgentInfo.ulSiteID);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_DN_QUEUE, stAgentInfo.ulSiteID, OPERATING_TYPE_PHONE);
         ulRet = DOS_SUCC;
         if (bIsSecondaryDialing)
         {
@@ -10092,7 +10191,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         }
 
         sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), signout", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
-        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_SIGNOUT, stAgentInfo.ulSiteID);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_SIGNOUT, stAgentInfo.ulSiteID, OPERATING_TYPE_PHONE);
 
         ulRet = DOS_SUCC;
     }
@@ -10351,7 +10450,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     else if (SC_SERV_AGENT_SIGNIN == ulMainService)
     {
         /* 坐席长签成功 */
-        ulRet = sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECTED, pstSCB->ulAgentID);
+        ulRet = sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECTED, pstSCB->ulAgentID, OPERATING_TYPE_PHONE);
         if (ulRet == DOS_SUCC)
         {
             sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_BUTT, pstSCB->usSCBNo);
@@ -11034,7 +11133,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     {
         /* 这个地方要放音哦 */
         /* 更新坐席状态为connect */
-        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECTED, pstSCB->ulAgentID);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECTED, pstSCB->ulAgentID, OPERATING_TYPE_PHONE);
     }
     else
     {

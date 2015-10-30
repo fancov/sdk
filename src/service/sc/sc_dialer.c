@@ -503,7 +503,7 @@ esl_exec_fail:
 
     if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
     {
-        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECT_FAIL, pstSCB->ulAgentID);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECT_FAIL, pstSCB->ulAgentID, OPERATING_TYPE_PHONE);
     }
 
     pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
