@@ -3910,7 +3910,7 @@ S32 sc_load_caller_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **
                     break;
                 }
             }
-            if (DOS_FALSE == bFound)
+            if (DOS_TRUE == bFound)
             {
                 break;
             }

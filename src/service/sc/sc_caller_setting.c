@@ -308,8 +308,12 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
     }
 
 setting:
-    sc_logr_info(SC_FUNC, "Get dest by src SUCC.(CustomerID:%u,SrcID:%u,SrcType:%u,DstID:%u,DstType:%u)."
-                        , ulCustomerID, ulSrcID, ulSrcType, ulDstID, ulDstType);
+    sc_logr_debug(SC_FUNC, "Get dest by src SUCC.(CustomerID:%u,SrcID:%u,SrcType:%u,DstID:%u,DstType:%u)."
+                        , ulCustomerID
+                        , pstSetting?pstSetting->ulSrcID:ulSrcID
+                        , pstSetting?pstSetting->ulSrcType:ulSrcType
+                        , ulDstID
+                        , ulDstType);
     switch (ulDstType)
     {
         case SC_DST_CALLER_TYPE_CFG:
@@ -340,7 +344,7 @@ setting:
             }
             else
             {
-                sc_logr_error(SC_FUNC, "Get Number By Did SUCC.(DidID:%u)", ulDstID);
+                sc_logr_debug(SC_FUNC, "Get Number By Did SUCC.(DidID:%u)", ulDstID);
                 return DOS_SUCC;
             }
         }
@@ -367,7 +371,7 @@ setting:
                     }
                     else
                     {
-                        sc_logr_error(SC_FUNC, "Select number In Order SUCC.(CallerGrpID:%u)", ulDstID);
+                        sc_logr_debug(SC_FUNC, "Select number In Order SUCC.(CallerGrpID:%u)", ulDstID);
                         return DOS_SUCC;
                     }
                 }
@@ -382,7 +386,7 @@ setting:
                     }
                     else
                     {
-                        sc_logr_error(SC_FUNC, "Select number Random SUCC.(CallerGrpID:%u)", ulDstID);
+                        sc_logr_debug(SC_FUNC, "Select number Random SUCC.(CallerGrpID:%u)", ulDstID);
                         return DOS_SUCC;
                     }
                 }
@@ -394,7 +398,7 @@ setting:
         default:
             break;
     }
-    sc_logr_info(SC_FUNC, "Select Caller SUCC.(CustomerID:%u,SrcID:%u,SrcType:%u,Policy:%u,pszNumber:%s)."
+    sc_logr_debug(SC_FUNC, "Select Caller SUCC.(CustomerID:%u,SrcID:%u,SrcType:%u,Policy:%u,pszNumber:%s)."
                     , ulCustomerID, ulSrcID, ulSrcType, ulPolicy, pszNumber);
 
     return DOS_SUCC;
