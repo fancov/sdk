@@ -442,7 +442,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
             if (pstSCB->ulCustomID == sc_ep_get_custom_by_sip_userid(pstSCB->szCalleeNum)
                 || sc_ep_check_extension(pstSCB->szCalleeNum, pstSCB->ulCustomID))
             {
-                ulRet = sc_dial_make_call2ip(pstSCB, pstSCB->ucMainService, DOS_TRUE);
+                ulRet = sc_dial_make_call2ip(pstSCB, pstSCB->ucMainService, DOS_FALSE);
                 if (ulRet != DOS_SUCC)
                 {
                     DOS_ASSERT(0);

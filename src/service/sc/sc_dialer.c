@@ -382,7 +382,10 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
     if (DOS_ADDR_VALID(pstSCBOther))
     {
-        dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
+        if (!sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
+                && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
+        {
+            dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
                         , "{instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s}%s"
                         , pstSCB->usSCBNo
                         , pstSCB->usOtherSCBNo
@@ -390,7 +393,18 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , pstSCB->szCallerNum
                         , pstSCB->szCallerNum
                         , szCallString);
-
+        }
+        else
+        {
+            dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
+                        , "{instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,park_after_bridge=true,begin_to_transfer=true}%s"
+                        , pstSCB->usSCBNo
+                        , pstSCB->usOtherSCBNo
+                        , ulMainService
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCallerNum
+                        , szCallString);
+        }
         sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
 
         if (sc_ep_esl_execute("bridge", szCMDBuff, pstSCBOther->szUUID) != ESL_SUCCESS)
@@ -402,12 +416,16 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
             return DOS_FAIL;
         }
 
-        if (esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCB->szUUID) != ESL_SUCCESS)
+        if (!sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
+                    && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
         {
-            DOS_ASSERT(0);
+            if (esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCB->szUUID) != ESL_SUCCESS)
+            {
+                DOS_ASSERT(0);
 
-            esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCB->szUUID);
-            return DOS_FAIL;
+                esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCB->szUUID);
+                return DOS_FAIL;
+            }
         }
 
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
@@ -688,7 +706,6 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
                 pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
             }
-
 go_on:
             /* 路由前号码变换 主叫 */
             if (sc_ep_num_transform(pstSCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE, SC_NUM_TRANSFORM_SELECT_CALLER) != DOS_SUCC)
