@@ -186,6 +186,8 @@ U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, U32 ul
 U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr);
 U32 sc_ep_query_agent_status(CURL *curl, SC_ACD_AGENT_INFO_ST *pstAgentInfo);
 U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB);
+U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo);
+U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus);
 
 #endif
 
