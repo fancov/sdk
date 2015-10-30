@@ -1911,10 +1911,10 @@ U32 sc_show_numlmt(U32 ulIndex, U32 ulID)
     HASH_NODE_S *pstHashNode = NULL;
     S8  szBuff[256] = {0};
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%6s%7s%10s%6s%10s%10s%10s%24s"
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%6s%7s%10s%6s%10s%15s%10s%24s"
                     , "ID", "GrpID", "Handle", "Limit", "Cycle", "Type", "NumberID", "StatUsed", "Prefix");
     cli_out_string(ulIndex, szBuff);
-    cli_out_string(ulIndex, "\r\n----------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, "\r\n---------------------------------------------------------------------------------------------");
 
     HASH_Scan_Table(g_pstHashNumberlmt, ulHashIndex)
     {
@@ -1932,7 +1932,7 @@ U32 sc_show_numlmt(U32 ulIndex, U32 ulID)
                 continue;
             }
 
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%6u%7u%10u%6u%10s%10u%10u%24s"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%6u%7u%10u%6u%10s%15u%10u%24s"
                             , pstNumlmt->ulID
                             , pstNumlmt->ulGrpID
                             , pstNumlmt->ulHandle
@@ -3079,9 +3079,18 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
     }
     else if (dos_strnicmp(argv[1], "update", dos_strlen("update")) == 0)
     {
+        /* 数据强制同步 */
         if (cli_cc_update(ulIndex, argc, argv) < 0)
         {
             goto cc_usage;
+        }
+    }
+    else if (dos_strnicmp(argv[1], "test", dos_strlen("test")) == 0)
+    {
+        /* 专门用来进行函数功能测试 */
+        if (cli_cc_test(ulIndex, argc, argv) < 0)
+        {
+            return 0;
         }
     }
     else
@@ -3201,6 +3210,48 @@ help:
     dos_snprintf(szBuff, sizeof(szBuff), "\r\nParam \'%s\' is not supported.", argv[2]);
     cli_out_string(ulIndex, szBuff);
     return DOS_FAIL;
+}
+
+/**
+  * 函数名: S32 cli_cc_test(U32 ulIndex, S32 argc, S8 **argv)
+  * 参数:
+  * 功能: CC模块函数功能测试函数
+  * 返回: 成功返回DOS_SUCC,否则返回DOS_FAIL
+  **/
+S32 cli_cc_test(U32 ulIndex, S32 argc, S8 **argv)
+{
+    U32 ulRet = 0;
+    S8  szBuff[256] = {0};
+
+    /* 此分支专门用来测试主叫号码组 */
+    if (0 == dos_stricmp(argv[2], "callerset"))
+    {
+        U32 ulCustomerID = U32_BUTT, ulSrcID = U32_BUTT, ulSrcType = U32_BUTT;
+        S8  szNumber[32] = {0};
+
+        if (6 != argc)
+        {
+            cli_out_string(ulIndex, "\r\nInput error param.");
+            return DOS_FAIL;
+        }
+        if (dos_atoul(argv[3], &ulCustomerID) < 0
+            || dos_atoul(argv[4], &ulSrcID) < 0
+            || dos_atoul(argv[5], &ulSrcType) < 0)
+        {
+            cli_out_string(ulIndex, "\r\nParam 4,5,6 must be integers.");
+            return DOS_FAIL;
+        }
+
+        ulRet = sc_caller_setting_select_number(ulCustomerID, ulSrcID, ulSrcType, szNumber, sizeof(szNumber));
+        if (DOS_SUCC != ulRet)
+        {
+            cli_out_string(ulIndex, "\r\nSorry, Select Number FAIL.");
+            return DOS_FAIL;
+        }
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\nNumber    \r\n----------\r\n%s\r\n", szNumber);
+        cli_out_string(ulIndex, szBuff);
+    }
+    return DOS_SUCC;
 }
 
 /**

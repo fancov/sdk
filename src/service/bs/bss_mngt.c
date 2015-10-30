@@ -909,6 +909,15 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
             pszNextBillingCnt = json_get_param(pstJSONObj, "next_billing_cnt");
             pszBillingType = json_get_param(pstJSONObj, "billing_type");
             pszBillingRate = json_get_param(pstJSONObj, "billing_rate");
+            pszSrcAttrType1 = json_get_param(pstJSONObj, "src_attr_type1");
+            pszSrcAttrType2 = json_get_param(pstJSONObj, "src_attr_type2");
+            pszSrcAttrValue1 = json_get_param(pstJSONObj, "src_attr_value1");
+            pszSrcAttrValue2 = json_get_param(pstJSONObj, "src_attr_value2");
+            pszDstAttrType1 = json_get_param(pstJSONObj, "dst_attr_type1");
+            pszDstAttrType2 = json_get_param(pstJSONObj, "dst_attr_type2");
+            pszDstAttrValue1 = json_get_param(pstJSONObj, "dst_attr_value1");
+            pszDstAttrValue2 = json_get_param(pstJSONObj, "dst_attr_value2");
+
 
             if (DOS_ADDR_INVALID(pszFirstBillingUnit) || DOS_ADDR_INVALID(pszNextBillingUnit)
                 || DOS_ADDR_INVALID(pszFirstBillingCnt) || DOS_ADDR_INVALID(pszNextBillingCnt)
@@ -923,7 +932,15 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                 || dos_atoul(pszFirstBillingCnt, &ulFirstBillingCnt) < 0
                 || dos_atoul(pszNextBillingCnt, &ulNextBillingCnt) < 0
                 || dos_atoul(pszBillingType, &ulBillingType) < 0
-                || dos_atoul(pszBillingRate, &ulBillingRate) < 0)
+                || dos_atoul(pszBillingRate, &ulBillingRate) < 0
+                || dos_atoul(pszSrcAttrType1, &ulSrcAttrType1) < 0
+                || dos_atoul(pszSrcAttrType2, &ulSrcAttrType2) < 0
+                || dos_atoul(pszSrcAttrValue1, &ulSrcAttrValue1) < 0
+                || dos_atoul(pszSrcAttrValue2, &ulSrcAttrValue2) < 0
+                || dos_atoul(pszDstAttrType1, &ulDstAttrType1) < 0
+                || dos_atoul(pszDstAttrType2, &ulDstAttrType2) < 0
+                || dos_atoul(pszDstAttrValue1, &ulDstAttrValue1) < 0
+                || dos_atoul(pszDstAttrValue2, &ulDstAttrValue2) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_ERROR, "dos_atoul FAIL.");
                 break;
@@ -969,7 +986,14 @@ VOID bss_update_billing_package(U32 ulOperation, JSON_OBJ_ST *pstJSONObj)
                             pstPkg->astRule[ulLoop].ulEffectTimestamp = ulEffectTime;
                             pstPkg->astRule[ulLoop].ulExpireTimestamp = ulExpiryTime;
                             pstPkg->astRule[ulLoop].ucPriority = (U8)ulPriority;
-
+                            pstPkg->astRule[ulLoop].ucSrcAttrType1 = (U8)ulSrcAttrType1;
+                            pstPkg->astRule[ulLoop].ucSrcAttrType2 = (U8)ulSrcAttrType2;
+                            pstPkg->astRule[ulLoop].ulSrcAttrValue1 = ulSrcAttrValue1;
+                            pstPkg->astRule[ulLoop].ulSrcAttrValue2 = ulSrcAttrValue2;
+                            pstPkg->astRule[ulLoop].ucDstAttrType1 = (U8)ulDstAttrType1;
+                            pstPkg->astRule[ulLoop].ucDstAttrType2 = (U8)ulDstAttrType2;
+                            pstPkg->astRule[ulLoop].ulDstAttrValue1 = ulDstAttrValue1;
+                            pstPkg->astRule[ulLoop].ulDstAttrValue2 = ulDstAttrValue2;
                             bFoundRule = DOS_TRUE;
                         }
                     }
