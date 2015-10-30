@@ -179,6 +179,7 @@ U32 sc_acd_get_idel_agent(U32 ulGroupID);
 U32 sc_acd_get_total_agent(U32 ulGroupID);
 U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID);
 U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID);
+U32 sc_acd_get_agent_by_emp_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulCustomID, S8 *pszEmpNum);
 U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB);
 U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB);
 U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, U32 ulType);

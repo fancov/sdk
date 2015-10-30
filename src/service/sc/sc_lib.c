@@ -988,7 +988,6 @@ U32 sc_update_callee_status(U32 ulTaskID, S8 *pszCallee, U32 ulStatsu)
 
 U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu)
 {
-    return DOS_SUCC;
     S8 szSQL[512] = { 0 };
 
     dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_calltask SET status=%d WHERE id=%u", ulStatsu, ulTaskID);
@@ -2474,7 +2473,7 @@ U32 sc_http_caller_update_proc(U32 ulAction, U32 ulCallerID)
             sc_load_caller(ulCallerID);
             break;
         case SC_API_CMD_ACTION_CALLER_DELETE:
-            //sc_caller_delete(ulCallerID);
+            sc_caller_delete(ulCallerID);
             break;
         default:
             break;
