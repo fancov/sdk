@@ -453,6 +453,7 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
     S32                         lResult            = 0;
     DOS_TMR_ST                  pstTmrHandle       = NULL;
     BOOL                        bNeedConnected     = DOS_FALSE;
+    BOOL                        bConnected         = DOS_FALSE;
 
     /* 如果 ulStatus 为 SC_ACD_BUTT， 则不跟新状态 */
     if (ulStatus > SC_ACD_BUTT)
@@ -488,21 +489,20 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
     }
     pstAgentQueueInfo->pstAgentInfo->usSCBNo = (U16)ulSCBNo;
     ulProcesingTime = pstAgentQueueInfo->pstAgentInfo->ucProcesingTime;
-    bNeedConnected = pstAgentQueueInfo->pstAgentInfo->bConnected;
-    pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
-
-    if (SC_ACD_BUTT == ulStatus)
+    bNeedConnected = pstAgentQueueInfo->pstAgentInfo->bNeedConnected;
+    bConnected = pstAgentQueueInfo->pstAgentInfo->bConnected;
+    if (U32_BUTT == ulSCBNo)
     {
-        return DOS_SUCC;
+        pstAgentQueueInfo->pstAgentInfo->bConnected = DOS_FALSE;
     }
+    pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
     if (ulSCBNo == U16_BUTT)
     {
         sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_HUNGUP);
     }
-
     /* 更新数据库中，坐席的状态 */
-    sc_acd_agent_update_status_db(ulSiteID, ulStatus, bNeedConnected);
+    sc_acd_agent_update_status_db(ulSiteID, ulStatus, bConnected);
 
     if (SC_ACD_PROC == ulStatus)
     {
@@ -513,6 +513,12 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
         {
             sc_logr_error(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL FAIL", ulSiteID);
         }
+    }
+
+    if (U32_BUTT == ulSCBNo && bNeedConnected == DOS_TRUE)
+    {
+        /* 坐席长签挂断，需要重新呼叫 */
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_SIGNIN, ulSiteID, OPERATING_TYPE_WEB);
     }
 
     return DOS_SUCC;
