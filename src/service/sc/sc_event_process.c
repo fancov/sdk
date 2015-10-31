@@ -317,6 +317,7 @@ proc_finished:
 }
 
 
+
 U32 sc_ep_publicsh(S8 *pszURL, S8 *pszData)
 {
     U32 ulRet;
@@ -360,10 +361,33 @@ U32 sc_ep_publicsh(S8 *pszURL, S8 *pszData)
 
 }
 
+U32 sc_ep_get_channel_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *pszChannel, U32 ulLen)
+{
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pszChannel) || 0 == ulLen)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(pszChannel, ulLen, "%u_%s"
+                , pstAgentInfo->ulSiteID
+                , pstAgentInfo->szEmpNo);
+
+    return DOS_SUCC;
+}
+
+
 U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
-    S8 szJson[1024]       = { 0, };
-    S8 szURL[256]  = { 0, };
+    S8 szJson[256]        = { 0, };
+    S8 szURL[256]         = { 0, };
+    S8 szChannel[128]     = { 0, };
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -372,10 +396,13 @@ U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%u_%s_%s"
-                , pstAgentInfo->ulSiteID
-                , pstAgentInfo->szEmpNo
-                , pstAgentInfo->szExtension);
+    if (sc_ep_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
+    {
+        sc_logr_info(SC_ESL, "Get channel ID fail for agent: %u", pstAgentInfo->ulSiteID);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
 
 
     dos_snprintf(szJson, sizeof(szJson)
@@ -388,13 +415,13 @@ U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 
 
     return sc_ep_publicsh(szURL, szJson);
-
 }
 
 U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
 {
-    S8 szURL[256]  = { 0, };
-    S8 szData[512] = { 0, };
+    S8 szURL[256]         = { 0, };
+    S8 szData[512]        = { 0, };
+    S8 szChannel[128]     = { 0, };
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -403,11 +430,14 @@ U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
         return DOS_FAIL;
     }
 
+    if (sc_ep_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
+    {
+        sc_logr_info(SC_ESL, "Get channel ID fail for agent: %u", pstAgentInfo->ulSiteID);
+        return DOS_FAIL;
+    }
 
-    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%u_%s_%s"
-                , pstAgentInfo->ulSiteID
-                , pstAgentInfo->szEmpNo
-                , pstAgentInfo->szExtension);
+    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
     dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"1\\\",\\\"body\\\":{\\\"type\\\":\\\"%u\\\",\\\"result\\\":\\\"0\\\"}}", ulStatus);
@@ -425,10 +455,9 @@ U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
  */
 U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
 {
-    S8 szURL[256] = { 0, };
-    S8 szData[512] = { 0, };
-    U32 ulTimeout = 2;
-    U32 ulRet = 0;
+    S8 szURL[256]      = { 0, };
+    S8 szData[512]     = { 0, };
+    S8 szChannel[128]  = { 0, };
 
     if (DOS_ADDR_INVALID(pstAgentInfo)
         || DOS_ADDR_INVALID(szCaller))
@@ -438,44 +467,19 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
         return DOS_FAIL;
     }
 
-    //curl_global_init(CURL_GLOBAL_ALL);
-    if (DOS_ADDR_INVALID(g_pstCurlHandle))
+    if (sc_ep_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
     {
-        g_pstCurlHandle = curl_easy_init();
-        if (DOS_ADDR_INVALID(g_pstCurlHandle))
-        {
-            DOS_ASSERT(0);
-
-            return DOS_FAIL;
-        }
+        sc_logr_info(SC_ESL, "Get channel ID fail for agent: %u", pstAgentInfo->ulSiteID);
+        return DOS_FAIL;
     }
 
-    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%d_%s_%s"
-                , pstAgentInfo->ulSiteID
-                , pstAgentInfo->szEmpNo
-                , pstAgentInfo->szExtension);
+    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
     dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"0\\\", \\\"body\\\":{\\\"number\\\":\\\"%s\\\"}}", szCaller);
 
-    curl_easy_reset(g_pstCurlHandle);
-    curl_easy_setopt(g_pstCurlHandle, CURLOPT_URL, szURL);
-    curl_easy_setopt(g_pstCurlHandle, CURLOPT_POSTFIELDS, szData);
-    curl_easy_setopt(g_pstCurlHandle, CURLOPT_TIMEOUT, ulTimeout);
-    ulRet = curl_easy_perform(g_pstCurlHandle);
-    if(CURLE_OK != ulRet)
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_notice(SC_ESL, "CURL post FAIL.Caller:%s.", szData);
-        return DOS_FAIL;
-    }
-    else
-    {
-        sc_logr_notice(SC_ESL, "CURL post SUCC.Caller:%s.", szData);
-
-        return DOS_SUCC;
-    }
+    return sc_ep_publicsh(szURL, szData);
 }
 
 /**
@@ -675,14 +679,13 @@ static S32 sc_ep_agent_update_recv(void *pszBffer, S32 lSize, S32 lBlock, void *
 
 
 /* 解析一下格式的字符串
-   : {"channel": "5_10000001_1001", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}
+   : {"channel": "5_10000001", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}
    同时更新坐席状态 */
 U32 sc_ep_update_agent_status(S8 *pszJSONString)
 {
     JSON_OBJ_ST *pstJsonArrayItem     = NULL;
     const S8    *pszAgentID           = NULL;
     S8          szJobNum[16]          = { 0 };
-    S8          szExtension[16]       = { 0 };
     U32         ulID;
 
     if (DOS_ADDR_INVALID(pszJSONString))
@@ -708,7 +711,7 @@ U32 sc_ep_update_agent_status(S8 *pszJSONString)
         return DOS_FAIL;
     }
 
-    if (dos_sscanf(pszAgentID, "%u_%[^_]_%s", &ulID, szJobNum, szExtension) != 3)
+    if (dos_sscanf(pszAgentID, "%u_%[^_]", &ulID, szJobNum) != 3)
     {
         DOS_ASSERT(0);
 
@@ -727,8 +730,8 @@ U32 sc_ep_update_agent_status(S8 *pszJSONString)
     , "channels": "1"
     , "wildcard_channels": "0"
     , "uptime": "120366"
-    , "infos": [{"channel": "5_10000001_1001", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}
-                , {"channel": "6_10000002_1002", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}]}*/
+    , "infos": [{"channel": "5_10000001", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}
+                , {"channel": "6_10000002", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}]}*/
 U32 sc_ep_update_agent_req_proc(S8 *pszJSONString)
 {
     S32 lIndex;
