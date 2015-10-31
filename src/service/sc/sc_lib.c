@@ -280,6 +280,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bIsInQueue = DOS_FALSE;
     pstSCB->bChannelCreated = DOS_FALSE;
     pstSCB->bIsAgentCallOtherLeg = DOS_FALSE;
+    pstSCB->bIsPassThrough = DOS_FALSE;
     pstSCB->LBalance = 0;
 
     pstSCB->ulFirstDTMFTime = 0;                    /* 第一次DTMF时间戳 */
