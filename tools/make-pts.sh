@@ -22,7 +22,7 @@ case $1 in
 		MAKEFILE_NAME="Makefile"
 	;;
 	RELEASE)
-		APPNAME=ptsd
+		APPNAME=pts
 		MAKEFILE_NAME="Makefile.Release"
 	;;
 	*)
