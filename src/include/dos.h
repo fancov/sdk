@@ -58,7 +58,13 @@
 #include <list/list_pub.h>
 #include <hash/hash.h>
 #include <json/dos_json.h>
+
+#ifndef DIPCC_PTS
+#ifndef DIPCC_PTC
 #include <libcurl/curl.h>
+#endif
+#endif
+
 
 #if INCLUDE_LICENSE_CLIENT
 #include <license.h>

@@ -254,7 +254,7 @@ S32 hb_msg_proc(VOID *pMsg, U32 uiLen, struct sockaddr_un *pstServerAddr, S32 lA
 {
     HEARTBEAT_DATA_ST stHBData;
     PROCESS_INFO_ST *pstProcessInfo;
-    S32 lResult;
+    S32 lResult = -1;
 
     if (!pMsg || uiLen < sizeof(HEARTBEAT_DATA_ST))
     {

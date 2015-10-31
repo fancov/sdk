@@ -47,7 +47,7 @@ ALL_LIBS	= $(DOS_LIBS) $(LIBS)
 ########################################################################
 CC						= gcc
 CXX						= g++
-CFLAGS					= -Wall -Os
+CFLAGS					= -Wall -O3  -m32
 DEFINES					= -DDIPCC_PTC -DDEBUG_VERSION
 
 C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
@@ -62,10 +62,10 @@ dep :
 	$(CC) -MM $(ALL_SRCS) $(ALL_HEADERS) $(DEFINES) > $(TARGET).dep
 
 all : $(ALL_OBJS)
-	$(C_LINKS) -o $(TARGET)d $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS)
+	$(C_LINKS) -o $(TARGET) $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS)
 
 clean :
 	rm -f *.o
-	rm -f $(TARGET)d
+	rm -f $(TARGET)
 
 include $(TARGET).dep

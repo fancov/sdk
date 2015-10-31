@@ -2095,7 +2095,7 @@ VOID *bss_recv_bsd_msg(VOID *arg)
 /* 业务层发送消息到应用层 */
 VOID *bss_send_msg2app(VOID *arg)
 {
-    S32             lRet;
+    S32             lRet = 0;
     DLL_NODE_S      *pNode;
     BSS_APP_CONN    *pstAppConn;
     BS_MSG_TAG      *pstMsgTag;

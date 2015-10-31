@@ -460,7 +460,7 @@ U32 sc_task_cmd_queue_add(SC_TASK_CTRL_CMD_ST *pstCMD)
 U32 sc_task_cmd_queue_del(SC_TASK_CTRL_CMD_ST *pstCMD)
 {
     list_t                *pstListNode;
-    SC_TASK_CTRL_CMD_ST   *pstCMDNode;
+    SC_TASK_CTRL_CMD_ST   *pstCMDNode = NULL;
     U32                    ulResult;
 
     SC_TRACE_IN((U64)pstCMD, 0, 0, 0);

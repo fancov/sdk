@@ -165,7 +165,7 @@ VOID hb_set_connect_flg(BOOL bConnStatus)
 S32 hb_client_msg_proc(VOID *pMsg, U32 ulLen)
 {
     HEARTBEAT_DATA_ST stHBData;
-    S32 lResult;
+    S32 lResult = -1;
 
     if (!pMsg || ulLen <= 0)
     {

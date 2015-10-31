@@ -13,7 +13,8 @@ DOS_INCLUDES				= -I$(SROUCE)/include
 
 SUFFIX					= o
 
-LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86 -lwebs_x86
+# LIBS					= -lpthread -lmysqlclient -lmxml_x86 -lsqlite3_x86 -lwebs_x86
+LIBS					= -lpthread -lmxml_x86 -lsqlite3_x86 -lwebs_x86 -lmysqlclient -llicc_x86 -lssl_x86 -lcrypto_x86
 
 MYSQL_HEADERS				= -I/usr/include/mysql
 #MYSQL_LIBS				= -L/usr/lib64/mysql
@@ -34,6 +35,8 @@ include $(SROUCE)/util/hash/Makefile.mk
 include $(SROUCE)/util/list/Makefile.mk
 include $(SROUCE)/util/task/Makefile.mk
 include $(SROUCE)/util/heartbeat/Makefile.mk
+include $(SROUCE)/util/db/Makefile.mk
+include $(SROUCE)/util/security/Security.mk
 include $(SROUCE)/cfg/Makefile.mk
 include $(SROUCE)/service/Makefile.mk
 include $(SROUCE)/service/pts/Makefile.mk
@@ -53,8 +56,8 @@ ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS)
 ########################################################################
 CC						= gcc
 CXX						= g++
-CFLAGS					= -Wall -rdynamic -g -ggdb -fsigned-char -m32
-DEFINES					= -DDIPCC_PTS -DDEBUG_VERSION -DDIGEST_ACCESS_SUPPORT
+CFLAGS					= -Wall -O3 -m32 -ldl
+DEFINES					= -DDIPCC_PTS -DDIGEST_ACCESS_SUPPORT
 
 C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
 CXX_COMPILE				= $(CXX) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS)
@@ -68,10 +71,10 @@ dep :
 	$(CC) -MM $(ALL_SRCS) $(ALL_HEADERS) $(DEFINES) > $(TARGET).dep
 
 all : $(ALL_OBJS)
-	$(C_LINKS) -o $(TARGET)d $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS) 
+	$(C_LINKS) -o $(TARGET) $(ALL_OBJS) $(CFLAGS) $(DEFINES) $(ALL_HEADERS) $(ALL_LIBS) 
 
 clean :
 	rm -f *.o
-	rm -f $(TARGET)d
+	rm -f $(TARGET)
 
 include $(TARGET).dep
