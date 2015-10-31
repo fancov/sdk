@@ -680,7 +680,8 @@ typedef struct tagSCSCB{
     U32       bChannelCreated:1;                  /* FREESWITCH 是否为该同呼叫创建了通道 */
     U32       bIsAgentCallOtherLeg:1;             /* 另一条腿是否要呼叫坐席 */
     U32       bTerminationFlag:1;                 /* 业务终止标志 */
-    U32       ulRes:21;
+    U32       bIsPassThrough:1;                   /* 呼叫坐席时，主叫号码是否透传 */
+    U32       ulRes:20;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 

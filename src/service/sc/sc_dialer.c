@@ -660,7 +660,8 @@ VOID *sc_dialer_runtime(VOID * ptr)
 
             /* 主叫号码组 */
             if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL)
-                && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL))
+                && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL)
+                && !sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
             {
                 /* 出局呼叫 */
                 /* 查找呼叫的分机绑定的坐席 */
