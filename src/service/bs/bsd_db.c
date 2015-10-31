@@ -173,7 +173,7 @@ S32 bsd_walk_customer_tbl(BS_INTER_MSG_WALK *pstMsg)
             }
             bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Customer %u load %u agent(s) in total.", pstCustomer->ulCustomerID, pstCustomer->ulAgentNum);
 
-            dos_snprintf(szQuery, sizeof(szQuery), "SELECT count(*) FROM tbl_sipassign WHERE tbl_sipassign.customer_id=%d;", pstCustomer->ulCustomerID);
+            dos_snprintf(szQuery, sizeof(szQuery), "SELECT count(*) FROM tbl_sip WHERE tbl_sip.customer_id=%u;", pstCustomer->ulCustomerID);
             if (db_query(g_pstDBHandle, szQuery, bsd_record_cnt_cb, (VOID *)&pstCustomer->ulUserLineNum, NULL) != DB_ERR_SUCC)
             {
                 bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read Agent user line fail for custom %d!", pstCustomer->ulCustomerID);
@@ -181,7 +181,7 @@ S32 bsd_walk_customer_tbl(BS_INTER_MSG_WALK *pstMsg)
             }
             bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Customer %u load %u UserLine(s) in total.", pstCustomer->ulCustomerID ,pstCustomer->ulUserLineNum);
 
-            dos_snprintf(szQuery, sizeof(szQuery), "SELECT count(*) FROM tbl_caller WHERE tbl_caller.customer_id=%d;", pstCustomer->ulCustomerID);
+            dos_snprintf(szQuery, sizeof(szQuery), "SELECT count(*) FROM tbl_sipassign WHERE tbl_sipassign.customer_id=%u;", pstCustomer->ulCustomerID);
             if (db_query(g_pstDBHandle, szQuery, bsd_record_cnt_cb, (VOID *)&pstCustomer->ulNumberNum, NULL) != DB_ERR_SUCC)
             {
                 bs_trace(BS_TRACE_DB, LOG_LEVEL_DEBUG, "Read Agent number list fail for custom %d!", pstCustomer->ulCustomerID);
