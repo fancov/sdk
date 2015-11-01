@@ -8,7 +8,7 @@
 			 <!--进程的最简名称-->
     		  	 <param name="name"      value="bsd"/>
 		         <!--此value表示被监控的进程-->
-    		         <param name="startcmd"  value="/dipcc/bin/bsd" />
+    		         <param name="startcmd"  value="service bsd start" />
 		         <!--配置文件版本，暂未使用该参数-->
     		         <param name="version"   value="1.0"/>
 		         <!--此参数表示是否配置心跳，默认为true表配置，该参数暂未使用-->
@@ -16,25 +16,25 @@
     		  </0>
     		  <1>
     		  	 <param name="name"      value="ctrl_paneld" />
-    		  	 <param name="startcmd"  value="/dipcc/bin/ctrl_paneld" />
+    		  	 <param name="startcmd"  value="service ctrl-paneld start" />
     		  	 <param name="version"   value="1.0"/>
     		  	 <param name="heartbeat" value="true" />
     		  </1>
 	          <2>
-			 <param name="name"      value="bsd" />
-    		  	 <param name="startcmd"  value="/dipcc/bin/bsd" />
+			 <param name="name"      value="scd" />
+    		  	 <param name="startcmd"  value="service scd start" />
     		  	 <param name="version"   value="1.0"/>
     		  	 <param name="heartbeat" value="true" />
 		  </2>
 	          <3>
 			 <param name="name"      value="ptsd" />
-    		  	 <param name="startcmd"  value="/dipcc/bin/ptsd" />
+    		  	 <param name="startcmd"  value="service ptsd start" />
     		  	 <param name="version"   value="1.0"/>
     		  	 <param name="heartbeat" value="true" />
 		  </3>
 	          <4>
-			 <param name="name"      value="ptcd" />
-    		  	 <param name="startcmd"  value="/dipcc/bin/ptcd" />
+			 <param name="name"      value="mcd" />
+    		  	 <param name="startcmd"  value="service mcd start" />
     		  	 <param name="version"   value="1.0"/>
     		  	 <param name="heartbeat" value="true" />
 		  </4>
