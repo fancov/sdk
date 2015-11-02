@@ -639,7 +639,7 @@ static U32 mon_restart_immediately()
 {
     S8  szReboot[32] = {0};
 
-    dos_snprintf(szReboot, sizeof(szReboot), "%s", "shutdown -r %u", MIN_WAIT_TIME);
+    dos_snprintf(szReboot, sizeof(szReboot), "shutdown -r %u", MIN_WAIT_TIME);
     mon_system(szReboot);
 
     return DOS_SUCC;
@@ -674,6 +674,8 @@ static U32 mon_restart_fixed(U32 ulTimeStamp)
         ulTimeDiff = MIN_WAIT_TIME;
     }
     dos_snprintf(szReboot, sizeof(szReboot), "shutdown -r %u", ulTimeDiff);
+
+
     mon_system(szReboot);
 
     return DOS_SUCC;
