@@ -33,6 +33,7 @@ include $(SROUCE)/util/list/Makefile.mk
 include $(SROUCE)/util/heartbeat/Makefile.mk
 include $(SROUCE)/util/task/Makefile.mk
 include $(SROUCE)/util/db/Makefile.mk
+include $(SROUCE)/util/http_api/HttpAPI.mk
 include $(SROUCE)/cfg/Makefile.mk
 include $(SROUCE)/service/Makefile.mk
 include $(SROUCE)/service/monitor/Makefile.mk
@@ -51,7 +52,7 @@ ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS)
 ########################################################################
 CC					= gcc
 CXX					= g++
-CFLAGS					= -Wall
+CFLAGS					= -Wall -O3
 DEFINES					= -DDIPCC_MONITER
 
 C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 

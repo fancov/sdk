@@ -22,8 +22,8 @@ case $1 in
 		MAKEFILE_NAME="Makefile"
 	;;
 	RELEASE)
-		APPNAME=ptsd
-		MAKEFILE_NAME="Makefile.Realse"
+		APPNAME=pts
+		MAKEFILE_NAME="Makefile.Release"
 	;;
 	*)
 		echo "Cannot determine the Makefile. Please chech the paramaters."

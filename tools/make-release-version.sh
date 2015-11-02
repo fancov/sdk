@@ -2,36 +2,36 @@
 
 ./make-bs.sh "REALSE"
 if [ $? -ne 0 ]; then
-	echo "Make bs realse version."
+	echo "Make bs release version."
 	exit -1;
 fi
 
 ./make-ctrl-panel.sh "REALSE"
 if [ $? -ne 0 ]; then
-	echo "Make ctrl-panel realse version."
+	echo "Make ctrl-panel release version."
 	exit -1;
 fi
 
 ./make-monitor.sh "REALSE"
 if [ $? -ne 0 ]; then
-	echo "Make monitor realse version."
+	echo "Make monitor release version."
 	exit -1;
 fi
 
 ./make-ptc.sh "REALSE"
 if [ $? -ne 0 ]; then
-	echo "Make ptc realse version."
+	echo "Make ptc release version."
 	exit -1;
 fi
 
 ./make-pts.sh "REALSE"
 if [ $? -ne 0 ]; then
-	echo "Make pts realse version."
+	echo "Make pts release version."
 	exit -1;
 fi
 
 ./make-sc.sh "REALSE"
 if [ $? -ne 0 ]; then
-	echo "Make sc realse version."
+	echo "Make sc release version."
 	exit -1;
 fi

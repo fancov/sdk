@@ -317,6 +317,7 @@ proc_finished:
 }
 
 
+
 U32 sc_ep_publicsh(S8 *pszURL, S8 *pszData)
 {
     U32 ulRet;
@@ -360,10 +361,33 @@ U32 sc_ep_publicsh(S8 *pszURL, S8 *pszData)
 
 }
 
+U32 sc_ep_get_channel_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *pszChannel, U32 ulLen)
+{
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pszChannel) || 0 == ulLen)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(pszChannel, ulLen, "%u_%s"
+                , pstAgentInfo->ulSiteID
+                , pstAgentInfo->szEmpNo);
+
+    return DOS_SUCC;
+}
+
+
 U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
-    S8 szJson[1024]       = { 0, };
-    S8 szURL[256]  = { 0, };
+    S8 szJson[256]        = { 0, };
+    S8 szURL[256]         = { 0, };
+    S8 szChannel[128]     = { 0, };
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -372,10 +396,13 @@ U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%u_%s_%s"
-                , pstAgentInfo->ulSiteID
-                , pstAgentInfo->szEmpNo
-                , pstAgentInfo->szExtension);
+    if (sc_ep_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
+    {
+        sc_logr_info(SC_ESL, "Get channel ID fail for agent: %u", pstAgentInfo->ulSiteID);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
 
 
     dos_snprintf(szJson, sizeof(szJson)
@@ -388,13 +415,13 @@ U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 
 
     return sc_ep_publicsh(szURL, szJson);
-
 }
 
 U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
 {
-    S8 szURL[256]  = { 0, };
-    S8 szData[512] = { 0, };
+    S8 szURL[256]         = { 0, };
+    S8 szData[512]        = { 0, };
+    S8 szChannel[128]     = { 0, };
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -403,11 +430,14 @@ U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
         return DOS_FAIL;
     }
 
+    if (sc_ep_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
+    {
+        sc_logr_info(SC_ESL, "Get channel ID fail for agent: %u", pstAgentInfo->ulSiteID);
+        return DOS_FAIL;
+    }
 
-    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%u_%s_%s"
-                , pstAgentInfo->ulSiteID
-                , pstAgentInfo->szEmpNo
-                , pstAgentInfo->szExtension);
+    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
     dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"1\\\",\\\"body\\\":{\\\"type\\\":\\\"%u\\\",\\\"result\\\":\\\"0\\\"}}", ulStatus);
@@ -425,10 +455,9 @@ U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
  */
 U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
 {
-    S8 szURL[256] = { 0, };
-    S8 szData[512] = { 0, };
-    U32 ulTimeout = 2;
-    U32 ulRet = 0;
+    S8 szURL[256]      = { 0, };
+    S8 szData[512]     = { 0, };
+    S8 szChannel[128]  = { 0, };
 
     if (DOS_ADDR_INVALID(pstAgentInfo)
         || DOS_ADDR_INVALID(szCaller))
@@ -438,44 +467,19 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
         return DOS_FAIL;
     }
 
-    //curl_global_init(CURL_GLOBAL_ALL);
-    if (DOS_ADDR_INVALID(g_pstCurlHandle))
+    if (sc_ep_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
     {
-        g_pstCurlHandle = curl_easy_init();
-        if (DOS_ADDR_INVALID(g_pstCurlHandle))
-        {
-            DOS_ASSERT(0);
-
-            return DOS_FAIL;
-        }
+        sc_logr_info(SC_ESL, "Get channel ID fail for agent: %u", pstAgentInfo->ulSiteID);
+        return DOS_FAIL;
     }
 
-    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%d_%s_%s"
-                , pstAgentInfo->ulSiteID
-                , pstAgentInfo->szEmpNo
-                , pstAgentInfo->szExtension);
+    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
     dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"0\\\", \\\"body\\\":{\\\"number\\\":\\\"%s\\\"}}", szCaller);
 
-    curl_easy_reset(g_pstCurlHandle);
-    curl_easy_setopt(g_pstCurlHandle, CURLOPT_URL, szURL);
-    curl_easy_setopt(g_pstCurlHandle, CURLOPT_POSTFIELDS, szData);
-    curl_easy_setopt(g_pstCurlHandle, CURLOPT_TIMEOUT, ulTimeout);
-    ulRet = curl_easy_perform(g_pstCurlHandle);
-    if(CURLE_OK != ulRet)
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_notice(SC_ESL, "CURL post FAIL.Caller:%s.", szData);
-        return DOS_FAIL;
-    }
-    else
-    {
-        sc_logr_notice(SC_ESL, "CURL post SUCC.Caller:%s.", szData);
-
-        return DOS_SUCC;
-    }
+    return sc_ep_publicsh(szURL, szData);
 }
 
 /**
@@ -675,14 +679,13 @@ static S32 sc_ep_agent_update_recv(void *pszBffer, S32 lSize, S32 lBlock, void *
 
 
 /* 解析一下格式的字符串
-   : {"channel": "5_10000001_1001", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}
+   : {"channel": "5_10000001", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}
    同时更新坐席状态 */
 U32 sc_ep_update_agent_status(S8 *pszJSONString)
 {
     JSON_OBJ_ST *pstJsonArrayItem     = NULL;
     const S8    *pszAgentID           = NULL;
     S8          szJobNum[16]          = { 0 };
-    S8          szExtension[16]       = { 0 };
     U32         ulID;
 
     if (DOS_ADDR_INVALID(pszJSONString))
@@ -708,7 +711,7 @@ U32 sc_ep_update_agent_status(S8 *pszJSONString)
         return DOS_FAIL;
     }
 
-    if (dos_sscanf(pszAgentID, "%u_%[^_]_%s", &ulID, szJobNum, szExtension) != 3)
+    if (dos_sscanf(pszAgentID, "%u_%[^_]", &ulID, szJobNum) != 3)
     {
         DOS_ASSERT(0);
 
@@ -727,8 +730,8 @@ U32 sc_ep_update_agent_status(S8 *pszJSONString)
     , "channels": "1"
     , "wildcard_channels": "0"
     , "uptime": "120366"
-    , "infos": [{"channel": "5_10000001_1001", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}
-                , {"channel": "6_10000002_1002", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}]}*/
+    , "infos": [{"channel": "5_10000001", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}
+                , {"channel": "6_10000002", "published_messages": "0", "stored_messages": "0", "subscribers": "1"}]}*/
 U32 sc_ep_update_agent_req_proc(S8 *pszJSONString)
 {
     S32 lIndex;
@@ -8473,7 +8476,14 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
     pstSCBNew->ucLegRole = SC_CALLEE;
     pstSCBNew->bRecord = pstAgentInfo->bRecord;
     pstSCBNew->bIsAgentCall = DOS_TRUE;
-    dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
+    if (pstSCB->bIsPassThrough)
+    {
+        dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCallerNum));
+    }
+    else
+    {
+        dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
+    }
     pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
     dos_strncpy(pstSCBNew->szANINum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szANINum));
     pstSCBNew->szANINum[sizeof(pstSCBNew->szANINum) - 1] = '\0';
@@ -8625,9 +8635,11 @@ proc_error:
  * 参数:
  *      SC_SCB_ST *pstSCB       : 业务控制块
  *      U32 ulAgentID           : 坐席ID
+ *      BOOL bIsUpdateCaller    : 是否使用主叫号码组中的号码
+ *      BOOL bIsPassThrough     : 是否透传主叫号码
  * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
  */
-U32 sc_ep_call_agent_by_id(SC_SCB_ST * pstSCB, U32 ulAgentID)
+U32 sc_ep_call_agent_by_id(SC_SCB_ST * pstSCB, U32 ulAgentID, BOOL bIsUpdateCaller, BOOL bIsPassThrough)
 {
     SC_ACD_AGENT_INFO_ST stAgentInfo;
     U32 ulErrCode = CC_ERR_NO_REASON;
@@ -8641,8 +8653,9 @@ U32 sc_ep_call_agent_by_id(SC_SCB_ST * pstSCB, U32 ulAgentID)
         goto proc_fail;
     }
 
+    pstSCB->bIsPassThrough = bIsPassThrough;
     /* 呼叫坐席 */
-    if (sc_ep_call_agent(pstSCB, &stAgentInfo, DOS_TRUE, &ulErrCode) != DOS_SUCC)
+    if (sc_ep_call_agent(pstSCB, &stAgentInfo, bIsUpdateCaller, &ulErrCode) != DOS_SUCC)
     {
         goto proc_fail;
     }
@@ -8726,10 +8739,16 @@ proc_fail:
  *      SC_SCB_ST *pstSCB       : 业务控制块
  * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
  */
-U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
+U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID, BOOL bIsPassThrough)
 {
     U32 ulResult;
 
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return DOS_FAIL;
+    }
+
+    pstSCB->bIsPassThrough = bIsPassThrough;
     ulResult = sc_cwq_add_call(pstSCB, ulTaskAgentQueueID);
     if (ulResult == DOS_SUCC)
     {
@@ -8800,7 +8819,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
                 if (ulFlag == 2)
                 {
                     sc_scb_free(pstSCB);
-                    sc_ep_call_agent_by_id(pstSCBOther, ulCalleeAgentID);
+                    sc_ep_call_agent_by_id(pstSCBOther, ulCalleeAgentID, DOS_TRUE, DOS_FALSE);
 
                     break;
                 }
@@ -9423,7 +9442,12 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 }
                 else
                 {
-                    dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d,update_agent_id=%d}user/%s", pstSCB->usSCBNo, stAgentInfo.ulSiteID, szCallee);
+                    dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d,update_agent_id=%d,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s"
+                        , pstSCB->usSCBNo
+                        , stAgentInfo.ulSiteID
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCallerNum
+                        , szCallee);
 
                     sc_ep_esl_execute("bridge", szCallString, pstSCB->szUUID);
                     //sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
@@ -9432,7 +9456,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 break;
 
             case SC_DID_BIND_TYPE_QUEUE:
-                if (sc_ep_call_queue_add(pstSCB, ulBindID) != DOS_SUCC)
+                if (sc_ep_call_queue_add(pstSCB, ulBindID, DOS_TRUE) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
 
@@ -9443,7 +9467,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 break;
             case SC_DID_BIND_TYPE_AGENT:
                 /* 呼叫坐席 */
-                if (sc_ep_call_agent_by_id(pstSCB, ulBindID) != DOS_SUCC)
+                if (sc_ep_call_agent_by_id(pstSCB, ulBindID, DOS_FALSE, DOS_TRUE) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
                     sc_logr_info(SC_ESL, "Call to agent(%u) FAIL.Callee: %s. Reject Call.", ulBindID, pstSCB->szCalleeNum);
@@ -9693,7 +9717,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
 
         /* 直接接通坐席 */
         case SC_TASK_MODE_DIRECT4AGETN:
-            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo), DOS_FALSE);
 
             break;
 
@@ -10106,6 +10130,20 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
     return DOS_SUCC;
 }
 
+U32 sc_ep_update_corpclients(U32 ulCustomID, S32 lKey, S8 *szCallerNum)
+{
+    S8 szSQL[512] = { 0 };
+
+    if (DOS_ADDR_INVALID(szCallerNum))
+    {
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_corpclients SET type=%d WHERE customer_id=%d AND contact_number='%s'", lKey, ulCustomID, szCallerNum);
+    sc_logr_debug(SC_ESL, "dtmf proc, sql : %s", szSQL);
+    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+}
+
 /**
  * 函数: U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
  * 功能: 新业务处理
@@ -10120,6 +10158,8 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
     S8          pszCallee[SC_TEL_NUMBER_LENGTH] = {0};
     S8          pszDealNum[SC_TEL_NUMBER_LENGTH] = {0};
     S8          pszEmpNum[SC_TEL_NUMBER_LENGTH] = {0};
+    U32         ulKey       = U32_BUTT;
+    SC_SCB_ST   *pstSCBOther = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -10136,6 +10176,31 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
     }
 
     sc_logr_debug(SC_FUNC, "POTS scb(%u) num(%s)", pstSCB->usSCBNo, pszDealNum);
+
+    if (pszDealNum[0] != '*')
+    {
+        return DOS_FAIL;
+    }
+
+    /* 判断是否是客户标记 */
+    if (bIsSecondaryDialing && sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
+    {
+        if (1 == dos_sscanf(pszDealNum+1, "%d", &ulKey) && ulKey <= 9)
+        {
+            /* 客户标记 */
+            sc_ep_update_corpclients(pstSCB->ulCustomID, ulKey, pstSCB->szCallerNum);
+            sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
+
+            pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+            if (DOS_ADDR_VALID(pstSCBOther)
+                && !pstSCBOther->bWaitingOtherRelase)
+            {
+                sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
+            }
+
+            return DOS_SUCC;
+        }
+    }
 
     if (dos_strncmp(pszDealNum, SC_POTS_BALANCE, dos_strlen(SC_POTS_BALANCE)) == 0 && !bIsSecondaryDialing)
     {
@@ -10503,7 +10568,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     }
     else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
     {
-        ulRet = sc_ep_call_agent_by_id(pstSCB, pstSCB->ulAgentID);
+        ulRet = sc_ep_call_agent_by_id(pstSCB, pstSCB->ulAgentID, DOS_TRUE, DOS_FALSE);
     }
     else if (SC_SERV_PREVIEW_DIALING == ulMainService)
     {
@@ -10512,7 +10577,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             if (pstSCB->bIsAgentCallOtherLeg)
             {
                 /* 呼叫另一个坐席 */
-                sc_ep_call_agent_by_id(pstSCB, pstSCB->ulOtherAgentID);
+                sc_ep_call_agent_by_id(pstSCB, pstSCB->ulOtherAgentID, DOS_TRUE, DOS_FALSE);
             }
             else
             {
@@ -11634,21 +11699,6 @@ process_finished:
         return DOS_SUCC;
     }
 
-
-U32 sc_ep_update_corpclients(U32 ulCustomID, S32 lKey, S8 *szCallerNum)
-{
-    S8 szSQL[512] = { 0 };
-
-    if (DOS_ADDR_INVALID(szCallerNum))
-    {
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_corpclients SET type=%d WHERE customer_id=%d AND contact_number='%s'", lKey, ulCustomID, szCallerNum);
-    sc_logr_debug(SC_ESL, "dtmf proc, sql : %s", szSQL);
-    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
-}
-
 /**
  * 函数: U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
  * 功能: 处理ESL的CHANNEL DTMF事件
@@ -11662,9 +11712,8 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
 {
     S8 *pszDTMFDigit = NULL;
     U32 ulTaskMode   = U32_BUTT;
-    S32 lKey         = 0;
     U32 ulLen        = 0;
-    SC_SCB_ST *pstSCBOther = NULL;
+
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
     if (DOS_ADDR_INVALID(pstEvent)
@@ -11712,36 +11761,16 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
 
         if (SC_TASK_MODE_KEY4AGENT == ulTaskMode)
         {
-            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo), DOS_FALSE);
         }
         else if(SC_TASK_MODE_KEY4AGENT1 == ulTaskMode
                 && '0' == pszDTMFDigit[0])
         {
-            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo), DOS_FALSE);
         }
     }
-    else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
-    {
-        /* AGENT按键对客户评级 */
-        /* todo写数据 */
-        if (1 == dos_sscanf(pszDTMFDigit, "%d", &lKey))
-        {
-            if (lKey >= 0 && lKey <= 9)
-            {
-                sc_ep_update_corpclients(pstSCB->ulCustomID, lKey, pstSCB->szCallerNum);
-                sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
-            }
-        }
-
-        pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
-        if (DOS_ADDR_VALID(pstSCBOther)
-            && !pstSCBOther->bWaitingOtherRelase)
-        {
-            sc_ep_esl_execute("bridge", NULL, pstSCBOther->szUUID);
-            sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
-        }
-    }
-    else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN)
+    else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK)
+        || sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN)
         || !sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL)
         || pstSCB->bIsAgentCall)
     {
@@ -11875,7 +11904,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                                 sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
                             }
 
-                            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo));
+                            sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo), DOS_FALSE);
                             break;
 
                         /* 这个地方出故障了 */

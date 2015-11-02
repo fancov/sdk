@@ -2975,7 +2975,7 @@ S32 cli_cc_call(U32 ulIndex, S32 argc, S8 **argv)
 
 S32 cli_cc_debug(U32 ulIndex, S32 argc, S8 **argv)
 {
-    U32 ulLogLevel;
+    U32 ulLogLevel = LOG_LEVEL_INVAILD;
 
     if (argc < 3)
     {

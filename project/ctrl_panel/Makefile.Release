@@ -1,22 +1,22 @@
 ########################################################################
 #                         Define the Complie                           # 
 ########################################################################
-TARGET                  = ctrl_panel
+TARGET					= ctrl_panel
 
 ########################################################################
 #                      Define some                           # 
 ########################################################################
-PROJECT_ROOT            = ../..
-DOS_LIBS                = -L$(PROJECT_ROOT)/libs
-SROUCE                  = $(PROJECT_ROOT)/src
-DOS_INCLUDES            = -I$(SROUCE)/include
+PROJECT_ROOT			= ../..
+DOS_LIBS				= -L$(PROJECT_ROOT)/libs
+SROUCE					= $(PROJECT_ROOT)/src
+DOS_INCLUDES			= -I$(SROUCE)/include
 
-SUFFIX                  = o
+SUFFIX					= o
 
-LIBS                    = -lpthread -lmysqlclient -lmxml_x64
+LIBS					= -lpthread -lmysqlclient -lmxml_x64
 
-MYSQL_HEADERS           = -I/usr/include/mysql
-MYSQL_LIBS              = -L/usr/lib64/mysql
+MYSQL_HEADERS			= -I/usr/include/mysql
+MYSQL_LIBS				= -L/usr/lib64/mysql
 
 
 ########################################################################
@@ -40,22 +40,22 @@ include $(SROUCE)/service/Makefile.mk
 ########################################################################
 #                              All Files                               # 
 ########################################################################
-ALL_OBJS    = $(C_OBJ_FILE) $(CXX_OBJ_FILE) 
-ALL_SRCS    = $(C_FILE) $(CXX_FILE)
-ALL_HEADERS = $(DOS_INCLUDES) $(MYSQL_HEADERS)
-ALL_LIBS    = $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS) 
+ALL_OBJS	= $(C_OBJ_FILE) $(CXX_OBJ_FILE) 
+ALL_SRCS	= $(C_FILE) $(CXX_FILE)
+ALL_HEADERS	= $(DOS_INCLUDES) $(MYSQL_HEADERS)
+ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS) 
 
 ########################################################################
 #                         Define the Complie                           # 
 ########################################################################
-CC                      = gcc
-CXX                     = g++
-CFLAGS                  = -Wall 
+CC						= gcc
+CXX						= g++
+CFLAGS					= -Wall -O3
 DEFINES					= -DDIPCC_CTRL_PANEL
 
-C_COMPILE               = $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
-CXX_COMPILE             = $(CXX) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS)
-C_LINKS                 = $(CXX) -o $@
+C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 
+CXX_COMPILE				= $(CXX) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS)
+C_LINKS					= $(CXX) -o $@
 
 
 ########################################################################

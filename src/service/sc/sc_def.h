@@ -128,6 +128,7 @@ extern BOOL                 g_blSCInitOK;
 /* 新业务 */
 #define SC_POTS_CO_GROUP_PICK_UP        "***"        /* 同组代答 */
 //#define SC_POTS_CO_GROUP_PICK_UP        "*#"        /* 呼叫保持 */
+#define SC_POTS_CLIENT_TAG              "*[0-9]"     /* 客户标记 */
 #define SC_POTS_BALANCE                 "*181"       /* 查询余额 */
 #define SC_POTS_AGENT_ONLINE            "*001"       /* 坐席登陆web页面 */
 #define SC_POTS_AGENT_OFFLINE           "*000"       /* 坐席从web页面下线 */
@@ -143,7 +144,7 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_LIST_MIN_CNT                3
 
-#define SC_TASK_AUDIO_PATH             "/var/www/html/data/audio"
+#define SC_TASK_AUDIO_PATH             "/usr/local/freeswitch/sounds/okcc"
 
 #define SC_RECORD_FILE_PATH            "/var/www/html/data/voicerecord"
 
@@ -680,7 +681,8 @@ typedef struct tagSCSCB{
     U32       bChannelCreated:1;                  /* FREESWITCH 是否为该同呼叫创建了通道 */
     U32       bIsAgentCallOtherLeg:1;             /* 另一条腿是否要呼叫坐席 */
     U32       bTerminationFlag:1;                 /* 业务终止标志 */
-    U32       ulRes:21;
+    U32       bIsPassThrough:1;                   /* 呼叫坐席时，主叫号码是否透传 */
+    U32       ulRes:20;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 

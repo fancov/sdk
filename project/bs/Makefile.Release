@@ -52,7 +52,7 @@ ALL_LIBS	= $(MYSQL_LIBS) $(DOS_LIBS) $(LIBS)
 ########################################################################
 CC					= gcc
 CXX					= g++
-CFLAGS					= -Wall 
+CFLAGS					= -Wall -O3
 DEFINES					= -DDIPCC_BS
 
 C_COMPILE				= $(CC) -c $(CFLAGS) $(DEFINES) $(ALL_HEADERS) 

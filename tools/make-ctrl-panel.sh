@@ -23,7 +23,7 @@ case $1 in
 	;;
 	RELEASE)
 		APPNAME=ctrl_panel
-		MAKEFILE_NAME="Makefile.Realse"
+		MAKEFILE_NAME="Makefile.Release"
 	;;
 	*)
 		echo "Cannot determine the Makefile. Please chech the paramaters."
