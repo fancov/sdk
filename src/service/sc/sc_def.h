@@ -144,7 +144,7 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_LIST_MIN_CNT                3
 
-#define SC_TASK_AUDIO_PATH             "/var/www/html/data/audio"
+#define SC_TASK_AUDIO_PATH             "/usr/local/freeswitch/sounds/okcc"
 
 #define SC_RECORD_FILE_PATH            "/var/www/html/data/voicerecord"
 
