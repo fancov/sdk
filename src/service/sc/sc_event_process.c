@@ -10130,6 +10130,20 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
     return DOS_SUCC;
 }
 
+U32 sc_ep_update_corpclients(U32 ulCustomID, S32 lKey, S8 *szCallerNum)
+{
+    S8 szSQL[512] = { 0 };
+
+    if (DOS_ADDR_INVALID(szCallerNum))
+    {
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_corpclients SET type=%d WHERE customer_id=%d AND contact_number='%s'", lKey, ulCustomID, szCallerNum);
+    sc_logr_debug(SC_ESL, "dtmf proc, sql : %s", szSQL);
+    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+}
+
 /**
  * 函数: U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
  * 功能: 新业务处理
@@ -10144,6 +10158,8 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
     S8          pszCallee[SC_TEL_NUMBER_LENGTH] = {0};
     S8          pszDealNum[SC_TEL_NUMBER_LENGTH] = {0};
     S8          pszEmpNum[SC_TEL_NUMBER_LENGTH] = {0};
+    U32         ulKey       = U32_BUTT;
+    SC_SCB_ST   *pstSCBOther = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -10160,6 +10176,31 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
     }
 
     sc_logr_debug(SC_FUNC, "POTS scb(%u) num(%s)", pstSCB->usSCBNo, pszDealNum);
+
+    if (pszDealNum[0] != '*')
+    {
+        return DOS_FAIL;
+    }
+
+    /* 判断是否是客户标记 */
+    if (bIsSecondaryDialing && sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
+    {
+        if (1 == dos_sscanf(pszDealNum+1, "%d", &ulKey) && ulKey <= 9)
+        {
+            /* 客户标记 */
+            sc_ep_update_corpclients(pstSCB->ulCustomID, ulKey, pstSCB->szCallerNum);
+            sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
+
+            pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+            if (DOS_ADDR_VALID(pstSCBOther)
+                && !pstSCBOther->bWaitingOtherRelase)
+            {
+                sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
+            }
+
+            return DOS_SUCC;
+        }
+    }
 
     if (dos_strncmp(pszDealNum, SC_POTS_BALANCE, dos_strlen(SC_POTS_BALANCE)) == 0 && !bIsSecondaryDialing)
     {
@@ -11658,21 +11699,6 @@ process_finished:
         return DOS_SUCC;
     }
 
-
-U32 sc_ep_update_corpclients(U32 ulCustomID, S32 lKey, S8 *szCallerNum)
-{
-    S8 szSQL[512] = { 0 };
-
-    if (DOS_ADDR_INVALID(szCallerNum))
-    {
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_corpclients SET type=%d WHERE customer_id=%d AND contact_number='%s'", lKey, ulCustomID, szCallerNum);
-    sc_logr_debug(SC_ESL, "dtmf proc, sql : %s", szSQL);
-    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
-}
-
 /**
  * 函数: U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
  * 功能: 处理ESL的CHANNEL DTMF事件
@@ -11686,9 +11712,8 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
 {
     S8 *pszDTMFDigit = NULL;
     U32 ulTaskMode   = U32_BUTT;
-    S32 lKey         = 0;
     U32 ulLen        = 0;
-    SC_SCB_ST *pstSCBOther = NULL;
+
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
     if (DOS_ADDR_INVALID(pstEvent)
@@ -11744,28 +11769,8 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
             sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo), DOS_FALSE);
         }
     }
-    else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
-    {
-        /* AGENT按键对客户评级 */
-        /* todo写数据 */
-        if (1 == dos_sscanf(pszDTMFDigit, "%d", &lKey))
-        {
-            if (lKey >= 0 && lKey <= 9)
-            {
-                sc_ep_update_corpclients(pstSCB->ulCustomID, lKey, pstSCB->szCallerNum);
-                sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
-            }
-        }
-
-        pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
-        if (DOS_ADDR_VALID(pstSCBOther)
-            && !pstSCBOther->bWaitingOtherRelase)
-        {
-            sc_ep_esl_execute("bridge", NULL, pstSCBOther->szUUID);
-            sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
-        }
-    }
-    else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN)
+    else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK)
+        || sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN)
         || !sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL)
         || pstSCB->bIsAgentCall)
     {
