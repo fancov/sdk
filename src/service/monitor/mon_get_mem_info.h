@@ -19,7 +19,6 @@
 #define MEMBER_COUNT    6     //需要统计的成员个数
 #define MAX_BUFF_LENGTH 1024  //缓冲区大小
 
-
 typedef struct tagMonSysMemData
 {
     U32  ulPhysicalMemTotalBytes; //物理内存总大小KBytes
@@ -32,11 +31,11 @@ typedef struct tagMonSysMemData
     U32  ulPhysicalMemUsageRate;  //物理内存使用率
 }MON_SYS_MEM_DATA_S;
 
-
 U32  mon_mem_malloc();
 U32  mon_mem_free();
 U32  mon_read_mem_file();
 U32  mon_get_mem_data();
+U32  mon_handle_mem_warning();
 
 #endif // #if INCLUDE_RES_MONITOR
 #endif //end _MON_GET_MEM_INFO_H__

@@ -28,19 +28,6 @@ extern "C"{
 
 #define MAX_WARNING_TYPE_CNT   10 //最大告警类型个数
 
-#define GENERATE_WARNING_MSG(pstMsg, ulIndex, ulNo) \
-    pstMsg->ulWarningId = ulNo; \
-    pstMsg->ulMsgLen = dos_strlen(g_pstWarningMsg[ulIndex].szWarningDesc); \
-    pstMsg->msg = (VOID *)g_pstWarningMsg[ulIndex].szWarningDesc ; \
-    g_pstWarningMsg[ulIndex].bExcep = DOS_TRUE
-
-#define GENERATE_NORMAL_MSG(pstMsg, ulIndex, ulNo) \
-    pstMsg->ulWarningId = ulNo; \
-    pstMsg->ulMsgLen = dos_strlen(g_pstWarningMsg[ulIndex].szNormalDesc); \
-    pstMsg->msg = (VOID *)g_pstWarningMsg[ulIndex].szNormalDesc; \
-    g_pstWarningMsg[ulIndex].bExcep = DOS_FALSE
-
-
 pthread_mutex_t g_stMonMutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  g_stMonCond   = PTHREAD_COND_INITIALIZER;
 
@@ -58,7 +45,7 @@ DB_HANDLE_ST *                g_pstDBHandle = NULL;
 DB_HANDLE_ST *                g_pstCCDBHandle = NULL;
 
 static MON_MSG_QUEUE_S *      g_pstMsgQueue = NULL;//消息队列
-static MON_THRESHOLD_S *      g_pstCond = NULL;
+MON_THRESHOLD_S *             g_pstCond = NULL;
 MON_WARNING_MSG_S*            g_pstWarningMsg = NULL;
 
 S8 * g_pszAnalyseList = NULL;
@@ -77,7 +64,6 @@ static U32 mon_init_warning_cond();
 static U32 mon_close_db_conn();
 static U32 mon_init_warning_msg();
 static U32 mon_deinit_warning_msg();
-U32 mon_get_msg_index(U32 ulNo);
 U32 mon_add_warning_record(MON_MSG_S *pstMsg);
 
 
@@ -335,494 +321,64 @@ static U32 mon_get_res_info()
  */
 static U32 mon_handle_excp()
 {
-    U32  ulRet = 0, ulProcMem = 0;
-    U32  ulRows = 0;
-    U32  ulIndex = 0;
-    U32  ulTotalDiskRate = 0;
-    BOOL bDiskExcept = DOS_FALSE, bAddToDB = DOS_FALSE, bNetExcept = DOS_FALSE, bNetBWExcept = DOS_FALSE;
-    MON_MSG_S * pstMsg = NULL;
+    U32  ulRet = U32_BUTT;
 
-    /*******************************处理内存告警开始**********************************/
-    /* 先生成内存异常告警编号 */
-    ulRet = mon_generate_warning_id(MEM_RES, 0x00, RES_LACK);
-    if((U32)0xff == ulRet)
+    /* 监控内存 */
+    ulRet = mon_handle_mem_warning();
+    if (DOS_SUCC != ulRet)
     {
-        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
-
-    /* 利用告警编号找到消息的索引 */
-    ulIndex = mon_get_msg_index(ulRet);
-    if (U32_BUTT == ulIndex)
+    mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Handle memory exception SUCC.");
+    /* 监控CPU */
+    ulRet = mon_handle_cpu_warning();
+    if (DOS_SUCC != ulRet)
     {
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
-
-    /*  处理内存异常  */
-    if (g_pstMem->ulPhysicalMemUsageRate >= g_pstCond->ulMemThreshold)
+    mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Handle CPU exception SUCC.");
+    /* 监控硬盘 */
+    ulRet = mon_handle_disk_warning();
+    if (DOS_SUCC != ulRet)
     {
-        /* 如果第一次产生告警，须将其记录下来 */
-        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
-        {
-            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-
-            /* 构造告警消息并表明已产生告警 */
-            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
-            /* 发邮件 */
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "System Memory Warning", "bubble@dipcc.com");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-            }
-
-            /* 表明该记录需要添加至数据库 */
-            bAddToDB = DOS_TRUE;
-        }
-    }
-    else
-    {
-        /* 若处于正常水平，但是还没有回复告警，则恢复告警 */
-        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
-        {
-            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-
-            /* 构造恢复告警并标明告警已恢复 */
-            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            /* 发邮件 */
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "System memory Warning Recovery", "bubble@dipcc.com");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-            }
-
-            bAddToDB = DOS_TRUE;
-        }
-    }
-
-    if (DOS_TRUE == bAddToDB)
-    {
-        /* 将消息加入消息队列 */
-        ulRet = mon_warning_msg_en_queue(pstMsg);
-        if(DOS_SUCC != ulRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
-            return DOS_FAIL;
-        }
-    }
-
-    /************************内存告警处理完毕*************************/
-
-    /************************磁盘告警处理开始*************************/
-    bAddToDB = DOS_FALSE;
-    ulRet = mon_generate_warning_id(DISK_RES, 0x00, RES_LACK);
-    if ((U32)0xff == ulRet)
-    {
-         mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
-         return DOS_FAIL;
-    }
-
-    ulIndex = mon_get_msg_index(ulRet);
-    if (U32_BUTT == ulIndex)
-    {
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
-
-    for (ulRows = 0; ulRows < g_ulPartCnt; ++ulRows)
+    mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Handle disk exception SUCC.");
+    /* 监控网络传输 */
+    ulRet = mon_handle_netcard_warning();
+    if (DOS_SUCC != ulRet)
     {
-        if(g_pastPartition[ulRows]->uLPartitionUsageRate >= g_pstCond->ulPartitionThreshold)
-        {
-            bDiskExcept = DOS_TRUE;
-        }
-    }
-    ulTotalDiskRate = mon_get_total_disk_usage_rate();
-    if(ulTotalDiskRate >= g_pstCond->ulDiskThreshold)
-    {
-        bDiskExcept = DOS_TRUE;
-    }
-
-    /* 如果产生告警 */
-    if (DOS_TRUE == bDiskExcept)
-    {
-        /* 如果第一次产生告警，则将告警加入告警队列 */
-        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
-        {
-            /* 构造告警消息 */
-            pstMsg = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-
-            GENERATE_WARNING_MSG(pstMsg, ulIndex, ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "System disk Warning", "bubble@dipcc.com");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-            }
-
-            bAddToDB = DOS_TRUE;
-        }
-    }
-    else
-    {
-        /* 如果告警不产生但未恢复，则恢复之 */
-        if (g_pstWarningMsg[ulIndex].bExcep == DOS_TRUE)
-        {
-             /* 构造告警消息 */
-            pstMsg = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-
-            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "System Disk Warning Recovery", "bubble@dipcc.com");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-            }
-            bAddToDB = DOS_TRUE;
-        }
-    }
-
-    if (DOS_TRUE == bAddToDB)
-    {
-        /* 将消息加入消息队列 */
-        ulRet = mon_warning_msg_en_queue(pstMsg);
-        if(DOS_SUCC != ulRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
-            return DOS_FAIL;
-        }
-    }
-    /*************************硬盘信息处理完毕**************************/
-
-    /*************************CPU信息开始处理***************************/
-    bAddToDB = DOS_FALSE;
-
-    ulRet = mon_generate_warning_id(CPU_RES, 0x00, RES_LACK);
-    if((U32)0xff == ulRet)
-    {
-        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
-
-    ulIndex = mon_get_msg_index(ulRet);
-    if (U32_BUTT == ulIndex)
+    mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Handle NET conn exception SUCC.");
+    /* 监控网络带宽 */
+    ulRet = mon_handle_bandwidth_warning();
+    if (DOS_SUCC != ulRet)
     {
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
-
-    if(g_pstCpuRslt->ulCPUUsageRate >= g_pstCond->ulCPUThreshold
-        || g_pstCpuRslt->ulCPU5sUsageRate >= g_pstCond->ul5sCPUThreshold
-        || g_pstCpuRslt->ulCPU1minUsageRate >= g_pstCond->ul1minCPUThreshold
-        || g_pstCpuRslt->ulCPU10minUsageRate >= g_pstCond->ul10minCPUThreshold)
+    mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Handle bandwidth exception SUCC.");
+    /* 监控进程资源占用 */
+    ulRet = mon_handle_proc_mem_warning();
+    if (DOS_SUCC != ulRet)
     {
-        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
-        {
-            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-
-            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "System CPU Warning", "bubble@dipcc.com");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-            }
-
-            bAddToDB = DOS_TRUE;
-        }
-    }
-    else
-    {
-        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
-        {
-            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-
-            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "System CPU Warning Recovery", "bubble@dipcc.com");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-            }
-
-            bAddToDB = DOS_TRUE;
-        }
-    }
-
-    if (DOS_TRUE == bAddToDB)
-    {
-        /* 将消息加入消息队列 */
-        ulRet = mon_warning_msg_en_queue(pstMsg);
-        if(DOS_SUCC != ulRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
-            return DOS_FAIL;
-        }
-    }
-    /***********************CPU异常信息处理完毕***************************/
-
-    /***********************网卡异常信息处理开始**************************/
-    bAddToDB = DOS_FALSE;
-
-    ulRet = mon_generate_warning_id(NET_RES, 0x00, 0x00);
-    if((U32)0xff == ulRet)
-    {
-        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
-    ulIndex = mon_get_msg_index(ulRet);
-    if (U32_BUTT == ulIndex)
-    {
-        return DOS_FAIL;
-    }
-
-    for (ulRows = 0; ulRows < g_ulNetCnt; ++ulRows)
-    {
-        if(DOS_FALSE == mon_is_netcard_connected(g_pastNet[ulRows]->szNetDevName))
-        {
-            bNetExcept = DOS_TRUE;
-        }
-    }
-
-    if (DOS_TRUE == bNetExcept)
-    {
-        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
-        {
-            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-                DOS_ASSERT(0);
-            }
-
-            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network connection Warning", "bubble@dipcc.com");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-            }
-
-            bAddToDB = DOS_TRUE;
-        }
-    }
-    else
-    {
-        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
-        {
-            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-                DOS_ASSERT(0);
-            }
-
-            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network connection Warning Recovery", "bubble@dipcc.com");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-            }
-
-            bAddToDB = DOS_TRUE;
-        }
-    }
-
-    if (DOS_TRUE == bAddToDB)
-    {
-        /* 将消息加入消息队列 */
-        ulRet = mon_warning_msg_en_queue(pstMsg);
-        if(DOS_SUCC != ulRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
-            return DOS_FAIL;
-        }
-    }
-    /************************网卡异常信息处理结束*******************************/
-
-    /************************网络带宽占用资源过大处理开始******************************/
-    bAddToDB = DOS_FALSE;
-
-    ulRet = mon_generate_warning_id(NET_RES, 0x00, 0x01);
-    if ((U32)0xff == ulRet)
-    {
-        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
-        return DOS_FAIL;
-    }
-
-    ulIndex = mon_get_msg_index(ulRet);
-    if (U32_BUTT == ulIndex)
-    {
-        return DOS_FAIL;
-    }
-
-    for (ulRows = 0; ulRows < g_ulNetCnt; ++ulRows)
-    {
-        if (0 != dos_stricmp(g_pastNet[ulRows]->szNetDevName, "lo")
-            && g_pastNet[ulRows]->ulRWSpeed >= g_pstCond->ulMaxBandWidth * 1024)
-        {
-            bNetBWExcept = DOS_TRUE;
-        }
-    }
-
-    if (DOS_TRUE == bNetBWExcept)
-    {
-        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
-        {
-            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-
-            GENERATE_WARNING_MSG(pstMsg, ulIndex, ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network Bandwidth Warning", "bubble@dipcc.com");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-            }
-
-            bAddToDB = DOS_TRUE;
-        }
-    }
-    else
-    {
-        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
-        {
-            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-
-            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network Bandwidth Warning Recovery", "bubble@dipcc.com");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-            }
-
-            bAddToDB = DOS_TRUE;
-        }
-    }
-
-    if (DOS_TRUE == bAddToDB)
-    {
-        /* 将消息加入消息队列 */
-        ulRet = mon_warning_msg_en_queue(pstMsg);
-        if(DOS_SUCC != ulRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
-            return DOS_FAIL;
-        }
-    }
-    /************************网络带宽占用资源过大处理结束******************************/
-
-    /*************************进程占用内存过大处理开始*****************************/
-    bAddToDB = DOS_FALSE;
-
-    ulRet = mon_generate_warning_id(PROC_RES, 0x00, 0x02);
-    if((U32)0xff == ulRet)
-    {
-        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
-        return DOS_FAIL;
-    }
-
-    ulIndex = mon_get_msg_index(ulRet);
-    if (U32_BUTT == ulIndex)
-    {
-        return DOS_FAIL;
-    }
-
-    ulProcMem = mon_get_proc_total_mem_rate();
-    if (DOS_FAIL == ulProcMem)
-    {
-        return DOS_FAIL;
-    }
-
-    if (ulProcMem >= g_pstCond->ulProcMemThreshold)
-    {
-        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
-        {
-            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-               DOS_ASSERT(0);
-               return DOS_FAIL;
-            }
-
-            GENERATE_WARNING_MSG(pstMsg,ulIndex, ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "Process Memory Warning", "bubble@dipcc.com");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-            }
-
-            bAddToDB = DOS_TRUE;
-        }
-    }
-    else
-    {
-        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
-        {
-
-            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
-            if (DOS_ADDR_INVALID(pstMsg))
-            {
-               DOS_ASSERT(0);
-               return DOS_FAIL;
-            }
-
-            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "Process Memory Warning Recovery", "bubble@dipcc.com");
-            if (ulRet != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-            }
-            bAddToDB = DOS_TRUE;
-        }
-    }
-
-    if (DOS_TRUE == bAddToDB)
-    {
-        /* 将消息加入消息队列 */
-        ulRet = mon_warning_msg_en_queue(pstMsg);
-        if(DOS_SUCC != ulRet)
-        {
-            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
-            return DOS_FAIL;
-        }
-    }
-    /*************************进程占用内存过大处理结束*****************************/
-
+    mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Handle Process memory exception SUCC.");
+    /* 监控进程运行状况 */
     ulRet = mon_check_all_process();
     if (DOS_SUCC != ulRet)
     {
+        DOS_ASSERT(0);
         return DOS_FAIL;
     }
-
+    mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Handle Process Status exception SUCC.");
     return DOS_SUCC;
 }
 
@@ -837,24 +393,15 @@ static U32 mon_add_data_to_db()
 {
     time_t ulCur = 0;
     struct tm *pstCur;
-    S8  szSQLCmd[SQL_CMD_MAX_LENGTH] = {0}, szBuff[4] = {0};
+    S8  szSQLCmd[SQL_CMD_MAX_LENGTH] = {0};
     S32 lRet = 0, lTotalDiskByte;
     U64 uLTotalDiskBytes = 0;
-    U32 ulTotalDiskRate = 0, ulWriteDB = 1;
+    U32 ulTotalDiskRate = 0;
     U32 ulProcTotalMemRate = 0;
     U32 ulProcTotalCPURate = 0;
 
-    if (config_get_syssrc_write_db(szBuff, sizeof(szBuff)) < 0)
-    {
-        DOS_ASSERT(0);
-    }
-
-    if (dos_atoul(szBuff, &ulWriteDB) < 0)
-    {
-        DOS_ASSERT(0);
-    }
-
-    if (0 == ulWriteDB)
+    lRet = config_hb_write_db();
+    if (lRet <= 0)
     {
         return DOS_SUCC;
     }
@@ -918,7 +465,6 @@ static U32 mon_add_data_to_db()
     return DOS_SUCC;
 }
 
-
 /**
  * 功能:给告警数据库添加告警记录
  * 参数集：
@@ -971,7 +517,6 @@ U32 mon_add_warning_record(MON_MSG_S *pstMsg)
 
     return DOS_SUCC;
 }
-
 
 /**
  * 功能:初始化数据库连接
@@ -1269,13 +814,11 @@ static U32 mon_init_warning_msg()
     dos_snprintf(g_pstWarningMsg[3].szNormalDesc, sizeof(g_pstWarningMsg[3].szNormalDesc)
                     , "%s", "Network connection is OK");
 
-    /* 第4个节点存储被监控进程占用的内存过高相关信息 */
-    g_pstWarningMsg[4].ulNo = mon_generate_warning_id(PROC_RES, 0x00, 0x01);
-    g_pstWarningMsg[4].ulWarningLevel = MON_WARNING_SECONDARY;
-    dos_snprintf(g_pstWarningMsg[4].szWarningDesc, sizeof(g_pstWarningMsg[4].szWarningDesc)
-                    , "%s", "Memory of Process is too much");
-    dos_snprintf(g_pstWarningMsg[4].szNormalDesc, sizeof(g_pstWarningMsg[4].szNormalDesc)
-                    , "%s", "Memory of Process is OK");
+    /* 第4个节点存放进程丢失的相关信息 */
+    g_pstWarningMsg[4].ulNo = mon_generate_warning_id(PROC_RES, 0x00, 0x02);
+    g_pstWarningMsg[4].ulWarningLevel = MON_WARNING_EMERG;
+    dos_snprintf(g_pstWarningMsg[4].szNormalDesc, sizeof(g_pstWarningMsg[6].szNormalDesc)
+                , "%s", "All Processes are OK");
 
     /* 第5个节点存放带宽占用过大相关的信息 */
     g_pstWarningMsg[5].ulNo = mon_generate_warning_id(NET_RES, 0x00, 0x01);
@@ -1285,11 +828,13 @@ static U32 mon_init_warning_msg()
     dos_snprintf(g_pstWarningMsg[5].szNormalDesc, sizeof(g_pstWarningMsg[5].szNormalDesc)
                 , "%s", "Network is not busy");
 
-    /* 第6个节点存放进程丢失的相关信息 */
-    g_pstWarningMsg[6].ulNo = mon_generate_warning_id(PROC_RES, 0x00, 0x02);
-    g_pstWarningMsg[6].ulWarningLevel = MON_WARNING_EMERG;
-    dos_snprintf(g_pstWarningMsg[6].szNormalDesc, sizeof(g_pstWarningMsg[6].szNormalDesc)
-                , "%s", "All Processes are OK");
+    /* 第6个节点存储被监控进程占用的内存过高相关信息 */
+    g_pstWarningMsg[6].ulNo = mon_generate_warning_id(PROC_RES, 0x00, 0x01);
+    g_pstWarningMsg[6].ulWarningLevel = MON_WARNING_SECONDARY;
+    dos_snprintf(g_pstWarningMsg[6].szWarningDesc, sizeof(g_pstWarningMsg[4].szWarningDesc)
+                    , "%s", "Memory of Process is too high");
+    dos_snprintf(g_pstWarningMsg[6].szNormalDesc, sizeof(g_pstWarningMsg[4].szNormalDesc)
+                    , "%s", "Memory of Process is OK");
 
     return DOS_SUCC;
 }
@@ -1305,7 +850,6 @@ static U32 mon_deinit_warning_msg()
 
     return DOS_FAIL;
 }
-
 
 U32 mon_get_msg_index(U32 ulNo)
 {
@@ -1323,21 +867,21 @@ U32 mon_get_msg_index(U32 ulNo)
             ulIndex = 2;
             break;
         case NET_RES:
+        {
+            switch (ulNo & 0xff)
             {
-                switch (ulNo & 0xff)
-                {
-                    case 0:
-                        ulIndex = 3;
-                        break;
-                    case 1:
-                        ulIndex = 5;
-                        break;
-                    default:
-                        ulIndex = U32_BUTT;
-                        break;
-                }
-                break;
+                case 0:
+                    ulIndex = 3;
+                    break;
+                case 1:
+                    ulIndex = 5;
+                    break;
+                default:
+                    ulIndex = U32_BUTT;
+                    break;
             }
+            break;
+        }
         case PROC_RES:
         {
             switch (ulNo & 0xff)
@@ -1361,7 +905,6 @@ U32 mon_get_msg_index(U32 ulNo)
 
     return ulIndex;
 }
-
 
 /**
  * 功能:关闭数据库连接

@@ -390,35 +390,6 @@ U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen)
     return 0;
 }
 
-/**
- * 函数：U32 config_get_syssrc_write_db(S8 *pszBuff, U32 ulLen)
- * 功能：获取资源监控模块是否写数据库
- * 参数：
- *      S8 *pszBuff： 缓存
- *      U32 ulLen：缓存长度
- * 返回值：成功返回0.失败返回－1
- */
-U32 config_get_syssrc_write_db(S8 *pszBuff, U32 ulLen)
-{
-    S8* pszValue = NULL;
-
-    if (DOS_ADDR_INVALID(pszBuff))
-    {
-        DOS_ASSERT(0);
-        pszBuff[0] = '\0';
-        return -1;
-    }
-
-    pszValue = _config_get_param(g_pstGlobalCfg, "config/mysql", "b_write_db", pszBuff, ulLen);
-    if (!pszValue)
-    {
-        pszBuff[0] = '\0';
-        return -1;
-    }
-
-    return 0;
-}
-
 U32 config_get_shortcut_cmd(U32 ulNo, S8 *pszCtrlCmd, U32 ulLen)
 {
     S8 *pszCmd = NULL;

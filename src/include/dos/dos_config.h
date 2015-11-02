@@ -156,16 +156,6 @@ U32 config_get_py_path(S8 *pszBuff, U32 ulLen);
 U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen);
 
 /**
- * 函数：U32 config_get_syssrc_write_db(S8 *pszBuff, U32 ulLen)
- * 功能：获取资源监控模块是否写数据库
- * 参数：
- *      S8 *pszBuff： 缓存
- *      U32 ulLen：缓存长度
- * 返回值：成功返回0.失败返回－1
- */
-U32 config_get_syssrc_write_db(S8 *pszBuff, U32 ulLen);
-
-/**
  * 函数：
  *      config_get_min_iedl_cpu
  * 功能：获取最小CPU占用配置项
@@ -330,6 +320,16 @@ S32 config_hb_threshold_proc(U32* pulMem);
  * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
  */
 U32 config_get_shortcut_cmd(U32 ulNo, S8 *pszCtrlCmd, U32 ulLen);
+
+/**
+ * 函数：S32 config_hb_write_db();
+ * 功能：通过返回值告知监控模块是否写数据库
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_write_db();
 
 /**
  * 函数：S32 config_hb_get_level(S8* pszErr, S8* pszLevel, U32 ulLen);

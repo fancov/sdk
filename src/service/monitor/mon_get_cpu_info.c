@@ -11,6 +11,7 @@ extern "C"{
 #include "mon_lib.h"
 #include "mon_def.h"
 #include "mon_get_cpu_info.h"
+#include "mon_warning_msg_queue.h"
 
 
 struct tagMonCPUQueue //cpu队列
@@ -27,7 +28,9 @@ typedef struct tagMonCPUQueue MON_CPU_QUEUE_S;
 static S8 m_szMonCPUInfoFile[]            = "/proc/stat";
 static MON_CPU_QUEUE_S * m_pstCPUQueue; //CPU队列
 
-extern MON_CPU_RSLT_S * g_pstCpuRslt;
+extern MON_CPU_RSLT_S *g_pstCpuRslt;
+extern MON_THRESHOLD_S *g_pstCond;
+extern MON_WARNING_MSG_S *g_pstWarningMsg;
 
 static U32  mon_cpu_malloc(MON_SYS_CPU_TIME_S ** ppstCpu);
 static U32  mon_cpu_reset_data();
@@ -35,7 +38,6 @@ static U32  mon_get_cpu_data(MON_SYS_CPU_TIME_S * pstCpu);
 static U32  mon_cpu_en_queue(MON_SYS_CPU_TIME_S * pstCpu);
 static U32  mon_cpu_de_queue();
 static U32  mon_refresh_cpu_queue();
-
 
 /**
  * 功能:为cpu节点信息分配内存
@@ -55,10 +57,6 @@ static U32  mon_cpu_malloc(MON_SYS_CPU_TIME_S ** ppstCpu)
    dos_memzero(*ppstCpu, sizeof(MON_SYS_CPU_TIME_S));
    return DOS_SUCC;
 }
-
-
-
-
 
 /**
  * 功能:为存储cpu占用率的结构体信息分配内存
@@ -589,6 +587,84 @@ U32  mon_cpu_queue_destroy()
     dos_dmem_free(m_pstCPUQueue);
     m_pstCPUQueue = NULL;
 
+    return DOS_SUCC;
+}
+
+U32  mon_handle_cpu_warning()
+{
+    BOOL bAddToDB = DOS_FALSE;
+    U32  ulRet = U32_BUTT, ulIndex = 0;
+    MON_MSG_S *pstMsg = NULL;
+
+    ulRet = mon_generate_warning_id(CPU_RES, 0x00, RES_LACK);
+    if((U32)0xff == ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
+        return DOS_FAIL;
+    }
+
+    ulIndex = mon_get_msg_index(ulRet);
+    if (U32_BUTT == ulIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    if(g_pstCpuRslt->ulCPUUsageRate >= g_pstCond->ulCPUThreshold
+        || g_pstCpuRslt->ulCPU5sUsageRate >= g_pstCond->ul5sCPUThreshold
+        || g_pstCpuRslt->ulCPU1minUsageRate >= g_pstCond->ul1minCPUThreshold
+        || g_pstCpuRslt->ulCPU10minUsageRate >= g_pstCond->ul10minCPUThreshold)
+    {
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+
+            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "System CPU Warning", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    else
+    {
+        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "System CPU Warning Recovery", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+
+    if (DOS_TRUE == bAddToDB)
+    {
+        /* 将消息加入消息队列 */
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
+        {
+            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
+            return DOS_FAIL;
+        }
+    }
     return DOS_SUCC;
 }
 

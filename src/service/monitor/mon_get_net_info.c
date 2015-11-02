@@ -18,6 +18,7 @@ extern "C"{
 #include <errno.h>
 
 #include "mon_get_net_info.h"
+#include "mon_warning_msg_queue.h"
 #include "mon_lib.h"
 #include "mon_def.h"
 
@@ -29,6 +30,8 @@ typedef struct tagMonTransData
 
 extern MON_NET_CARD_PARAM_S * g_pastNet[MAX_NETCARD_CNT];
 extern U32 g_ulNetCnt;
+extern MON_THRESHOLD_S *g_pstCond;
+extern MON_WARNING_MSG_S *g_pstWarningMsg;
 
 //用来记录两个时间戳
 time_t *m_pt1 = NULL, *m_pt2 = NULL;
@@ -343,7 +346,6 @@ U32 mon_get_data_trans_speed(const S8 * pszDevName)
     return (LRet + LRet % ulInterval) / ulInterval;
 }
 
-
 /**
  * 功能:获取网卡数量，所有网卡的MAC地址、IPv4地址、广播IP地址、子网掩码、网卡的网口最大数据传输速率
  * 参数集：
@@ -503,6 +505,170 @@ success:
     return DOS_SUCC;
 }
 
+U32  mon_handle_netcard_warning()
+{
+    BOOL bAddToDB = DOS_FALSE, bNetExcept = DOS_FALSE;
+    U32  ulRet = U32_BUTT, ulIndex = 0, ulRows = 0;
+    MON_MSG_S  *pstMsg = NULL;
+
+    ulRet = mon_generate_warning_id(NET_RES, 0x00, 0x00);
+    if((U32)0xff == ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
+        return DOS_FAIL;
+    }
+    ulIndex = mon_get_msg_index(ulRet);
+    if (U32_BUTT == ulIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    for (ulRows = 0; ulRows < g_ulNetCnt; ++ulRows)
+    {
+        if(DOS_FALSE == mon_is_netcard_connected(g_pastNet[ulRows]->szNetDevName))
+        {
+            bNetExcept = DOS_TRUE;
+        }
+    }
+
+    if (DOS_TRUE == bNetExcept)
+    {
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+            }
+
+            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network connection Warning", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    else
+    {
+        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+            }
+
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network connection Warning Recovery", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+
+    if (DOS_TRUE == bAddToDB)
+    {
+        /* 将消息加入消息队列 */
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
+        {
+            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
+            return DOS_FAIL;
+        }
+    }
+    return DOS_SUCC;
+}
+
+U32  mon_handle_bandwidth_warning()
+{
+    BOOL bAddToDB = DOS_FALSE, bNetBWExcept = DOS_FALSE;
+    U32  ulRet = U32_BUTT, ulIndex = 0, ulRows = 0;
+    MON_MSG_S *pstMsg = NULL;
+
+    ulRet = mon_generate_warning_id(NET_RES, 0x00, 0x01);
+    if ((U32)0xff == ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
+        return DOS_FAIL;
+    }
+
+    ulIndex = mon_get_msg_index(ulRet);
+    if (U32_BUTT == ulIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    for (ulRows = 0; ulRows < g_ulNetCnt; ++ulRows)
+    {
+        if (0 != dos_stricmp(g_pastNet[ulRows]->szNetDevName, "lo")
+            && g_pastNet[ulRows]->ulRWSpeed >= g_pstCond->ulMaxBandWidth * 1024)
+        {
+            bNetBWExcept = DOS_TRUE;
+        }
+    }
+
+    if (DOS_TRUE == bNetBWExcept)
+    {
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+
+            GENERATE_WARNING_MSG(pstMsg, ulIndex, ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network Bandwidth Warning", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    else
+    {
+        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network Bandwidth Warning Recovery", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+
+    if (DOS_TRUE == bAddToDB)
+    {
+        /* 将消息加入消息队列 */
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
+        {
+            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
+            return DOS_FAIL;
+        }
+    }
+    return DOS_SUCC;
+}
 
 #endif //end #if INCLUDE_NET_MONITOR
 #endif //end #if INCLUDE_RES_MONITOR

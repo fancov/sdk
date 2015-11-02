@@ -31,13 +31,13 @@ typedef struct tagNetcardParam //网卡信息
     U32 ulRWSpeed;            //数据传输最大速率，单位KB/s
 }MON_NET_CARD_PARAM_S;
 
-
 U32  mon_netcard_malloc();
 U32  mon_netcard_free();
-BOOL mon_is_netcard_connected(const S8 * pszNetCard);
-U32  mon_get_data_trans_speed(const S8 * pszDevName);
+BOOL mon_is_netcard_connected(const S8* pszNetCard);
+U32  mon_get_data_trans_speed(const S8* pszDevName);
 U32  mon_get_netcard_data();
-
+U32  mon_handle_netcard_warning();
+U32  mon_handle_bandwidth_warning();
 
 #endif //#if INCLUDE_RES_MONITOR
 #endif // end of _MON_GET_NET_INFO_H__

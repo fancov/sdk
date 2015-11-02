@@ -9,7 +9,6 @@
   *           History:
   */
 
-
 #ifndef _MON_GET_CPU_INFO_H__
 #define _MON_GET_CPU_INFO_H__
 
@@ -46,13 +45,12 @@ typedef struct tagMonCPURslt
     U32 ulCPU10minUsageRate;//10min钟CPU平均占用率
 }MON_CPU_RSLT_S;
 
-
-
 U32  mon_cpu_rslt_malloc();
 U32  mon_cpu_rslt_free();
 U32  mon_init_cpu_queue();
 U32  mon_get_cpu_rslt_data();
 U32  mon_cpu_queue_destroy();
+U32  mon_handle_cpu_warning();
 
 #endif // end #if INCLUDE_RES_MONITOR
 #endif // end of _MON_GET_CPU_INFO_H__

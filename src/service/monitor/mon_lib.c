@@ -245,7 +245,6 @@ S32 mon_get_sp_email_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     return DOS_SUCC;
 }
 
-
 /**
  *  函数：U32 mon_get_contact(U32 ulCustomerID, U32 ulRoleID, MON_CONTACT_ST *pstContact)
  *  功能：根据客户id与客户角色id获取联系人信息
@@ -307,7 +306,6 @@ S32 mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     return DOS_SUCC;
 }
-
 
 U32 mon_system(S8 *pszCmd)
 {
@@ -383,7 +381,6 @@ U32  mon_deinit_str_array()
    g_pszAnalyseList = NULL;
    return DOS_SUCC;
 }
-
 
 /**
  * 功能:获取字符串中的一个整数

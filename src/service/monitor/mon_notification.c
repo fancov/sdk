@@ -34,7 +34,6 @@ U32 mon_send_sms(S8 * pszMsg, S8* pszTitle,S8 * pszTelNo)
     return DOS_SUCC;
 }
 
-
 /**
  * 函数: U32 mon_send_audio(S8 * pszMsg, S8 * pszWechatNo)
  * 参数:
@@ -47,7 +46,6 @@ U32 mon_send_audio(S8 * pszMsg, S8* pszTitle, S8 * pszTelNo)
 {
     return DOS_SUCC;
 }
-
 
 /**
  * 函数:U32 mon_send_email(S8* pszMsg, S8* pszTitle,S8* pszEmailAddress)

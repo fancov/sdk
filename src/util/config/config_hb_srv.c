@@ -580,6 +580,52 @@ S32 config_hb_threshold_bandwidth(U32* pulBandWidth)
 }
 
 /**
+ *  函数: S32 config_hb_write_db(U32* pulBandWidth)
+ *  参数: S8* pszErr    异常字符串描述
+ */
+S32 config_hb_write_db()
+{
+    S8  szNodePath[] = "config/db";
+    S8  *pszWrite = NULL;
+    S8  szWriteDB[4] = {0};
+    S32 lWriteDB = U32_BUTT;
+
+    if(!g_pstHBSrvCfg)
+    {
+        dos_printf("%s", ".Init hb-srv.xml config fail!");
+        DOS_ASSERT(0);
+        return -1;
+    }
+    pszWrite = _config_get_param(g_pstHBSrvCfg, szNodePath, "write"
+                        , szWriteDB, sizeof(szWriteDB));
+    if (DOS_ADDR_INVALID(pszWrite))
+    {
+        dos_printf("%s", ".Init hb-srv.xml config fail!");
+        DOS_ASSERT(0);
+        return -1;
+    }
+    if (dos_atol(pszWrite, &lWriteDB) < 0)
+    {
+        dos_printf("%s", "dos_atol failed!");
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    if (0 == lWriteDB)
+    {
+        return 0;
+    }
+    else if (lWriteDB > 0)
+    {
+        return lWriteDB;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+/**
  *  函数: S32 config_hb_get_level(S8* pszErr, S8* pszLevel, U32 ulLen)
  *  参数: S8* pszErr    异常字符串描述
  *        S8* pszLevel  级别字符串描述

@@ -9,7 +9,6 @@
   *           History:
   */
 
-
 #ifndef _MON_GET_PROC_INFO_H__
 #define _MON_GET_PROC_INFO_H__
 
@@ -41,7 +40,6 @@ typedef struct tagMonProcStatus
     U32 ulThreadsCnt;       //Ïß³ÌÊý
 }MON_PROC_STATUS_S;
 
-
 U32  mon_proc_malloc();
 U32  mon_proc_free();
 U32  mon_get_process_data();
@@ -50,6 +48,8 @@ U32  mon_get_proc_name_by_id(U32 ulPid, S8 * pszPidName, U32 ulLen);
 BOOL mon_is_proc_dead(U32 ulPid);
 U32  mon_get_proc_total_cpu_rate();
 U32  mon_get_proc_total_mem_rate();
+U32  mon_handle_proc_mem_warning();
+
 
 #endif //#if INCLUDE_RES_MONITOR
 #endif //end _MON_GET_PROC_INFO_H__

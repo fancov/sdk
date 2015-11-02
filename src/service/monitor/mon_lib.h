@@ -33,6 +33,17 @@
 #include "mon_notification.h"
 #include "../../util/heartbeat/heartbeat.h"
 
+#define GENERATE_WARNING_MSG(pstMsg, ulIndex, ulNo) \
+    pstMsg->ulWarningId = ulNo; \
+    pstMsg->ulMsgLen = dos_strlen(g_pstWarningMsg[ulIndex].szWarningDesc); \
+    pstMsg->msg = (VOID *)g_pstWarningMsg[ulIndex].szWarningDesc ; \
+    g_pstWarningMsg[ulIndex].bExcep = DOS_TRUE
+
+#define GENERATE_NORMAL_MSG(pstMsg, ulIndex, ulNo) \
+    pstMsg->ulWarningId = ulNo; \
+    pstMsg->ulMsgLen = dos_strlen(g_pstWarningMsg[ulIndex].szNormalDesc); \
+    pstMsg->msg = (VOID *)g_pstWarningMsg[ulIndex].szNormalDesc; \
+    g_pstWarningMsg[ulIndex].bExcep = DOS_FALSE
 
 enum MON_WARNING_LEVEL_E
 {
@@ -44,17 +55,8 @@ enum MON_WARNING_LEVEL_E
     MON_WARNING_BUTT = 32
 };
 
-typedef struct tagWarningMsg
-{
-    U32   ulNo;              //告警编号
-    BOOL  bExcep;            //是否正常状态
-    U32   ulWarningLevel;    //告警级别
-    S8    szWarningDesc[32]; //告警描述
-    S8    szNormalDesc[32];  //正常描述
-}MON_WARNING_MSG_S;
-
 U32  mon_get_sp_email(S8 *pszEmail);
-S32 mon_get_sp_email_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames);
+S32  mon_get_sp_email_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames);
 U32  mon_get_contact(U32 ulCustomerID, U32 ulRoleID, MON_CONTACT_ST *pstContact);
 S32  mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames);
 U32  mon_get_level(U32 ulNotifyType);
@@ -64,6 +66,8 @@ BOOL mon_is_suffix_true(S8 * pszFile, const S8 * pszSuffix);
 U32  mon_first_int_from_str(S8 * pszStr);
 U32  mon_analyse_by_reg_expr(S8* pszStr, S8* pszRegExpr, S8* pszRsltList[], U32 ulLen);
 U32  mon_generate_warning_id(U32 ulResType, U32 ulNo, U32 ulErrType);
+U32  mon_get_msg_index(U32 ulNo);
+
 
 #endif //#if INCLUDE_RES_MONITOR
 #endif // end of _MONITOR_H__

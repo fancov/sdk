@@ -69,7 +69,6 @@ U32 mon_warning_msg_en_queue(MON_MSG_S * pstMsg)
     return DOS_SUCC;
 }
 
-
 /**
  * 功能:消息出队
  * 参数集：
