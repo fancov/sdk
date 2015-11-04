@@ -65,7 +65,7 @@ U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB)
     ulCurrentLen = 0;
 
     ulCurrentLen = dos_snprintf(szAPPParam, ulTotalLen
-                        , "{not_hungup_after_play=true}file_string://%s/ndyuebz.wav", SC_TASK_AUDIO_PATH);
+                        , "{not_hungup_after_play=true}file_string://%s/ndyuebz.wav", SC_PROMPT_TONE_PATH);
 
     sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
 
@@ -97,13 +97,13 @@ U32 sc_play_balance(SC_SCB_ST *pstSCB)
     LBalance = pstSCB->LBalance;
 
     ulCurrentLen = dos_snprintf(szAPPParam, ulTotalLen
-                        , "file_string://%s/nindyew.wav!", SC_TASK_AUDIO_PATH);
+                        , "file_string://%s/nindyew.wav!", SC_PROMPT_TONE_PATH);
 
     if (LBalance < 0)
     {
         LBalance = 0 - LBalance;
         ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
-                         , "%s/fu.wav!", SC_TASK_AUDIO_PATH);
+                         , "%s/fu.wav!", SC_PROMPT_TONE_PATH);
     }
 
     LRemainder = LBalance;
@@ -132,12 +132,12 @@ U32 sc_play_balance(SC_SCB_ST *pstSCB)
             {
                 bIsZero = DOS_FALSE;
                 ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
-                                    , "%s/0.wav!%s/%d.wav!", SC_TASK_AUDIO_PATH, SC_TASK_AUDIO_PATH, lInteger);
+                                    , "%s/0.wav!%s/%d.wav!", SC_PROMPT_TONE_PATH, SC_PROMPT_TONE_PATH, lInteger);
             }
             else
             {
                 ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
-                                    , "%s/%d.wav!", SC_TASK_AUDIO_PATH, lInteger);
+                                    , "%s/%d.wav!", SC_PROMPT_TONE_PATH, lInteger);
             }
         }
 
@@ -148,7 +148,7 @@ U32 sc_play_balance(SC_SCB_ST *pstSCB)
                 if (lInteger != 0)
                 {
                     ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
-                            , "%s/qian.wav!", SC_TASK_AUDIO_PATH);
+                            , "%s/qian.wav!", SC_PROMPT_TONE_PATH);
                 }
                 break;
             case 1:
@@ -156,7 +156,7 @@ U32 sc_play_balance(SC_SCB_ST *pstSCB)
                 if (lInteger != 0)
                 {
                     ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
-                            , "%s/bai.wav!", SC_TASK_AUDIO_PATH);
+                            , "%s/bai.wav!", SC_PROMPT_TONE_PATH);
                 }
                 break;
             case 2:
@@ -164,24 +164,24 @@ U32 sc_play_balance(SC_SCB_ST *pstSCB)
                 if (lInteger != 0)
                 {
                     ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
-                            , "%s/shi.wav!", SC_TASK_AUDIO_PATH);
+                            , "%s/shi.wav!", SC_PROMPT_TONE_PATH);
                 }
                 break;
             case 3:
                 ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
-                        , "%s/wan.wav!", SC_TASK_AUDIO_PATH);
+                        , "%s/wan.wav!", SC_PROMPT_TONE_PATH);
                 bIsZero = DOS_FALSE;
                 break;
             case 7:
                 ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
-                        , "%s/yuan.wav!", SC_TASK_AUDIO_PATH);
+                        , "%s/yuan.wav!", SC_PROMPT_TONE_PATH);
                 bIsZero = DOS_FALSE;
                 break;
             case 8:
                 if (lInteger != 0)
                 {
                     ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
-                            , "%s/jiao.wav!", SC_TASK_AUDIO_PATH);
+                            , "%s/jiao.wav!", SC_PROMPT_TONE_PATH);
                 }
                 bIsZero = DOS_FALSE;
                 break;
@@ -189,7 +189,7 @@ U32 sc_play_balance(SC_SCB_ST *pstSCB)
                 if (lInteger != 0)
                 {
                     ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
-                            , "%s/fen.wav!", SC_TASK_AUDIO_PATH);
+                            , "%s/fen.wav!", SC_PROMPT_TONE_PATH);
                 }
                 break;
             default:
@@ -201,7 +201,7 @@ U32 sc_play_balance(SC_SCB_ST *pstSCB)
     {
         /* 余额是0 */
         ulCurrentLen += dos_snprintf(szAPPParam + ulCurrentLen, ulTotalLen - ulCurrentLen
-                        , "%s/0.wav!%s/yuan.wav!", SC_TASK_AUDIO_PATH, SC_TASK_AUDIO_PATH);
+                        , "%s/0.wav!%s/yuan.wav!", SC_PROMPT_TONE_PATH, SC_PROMPT_TONE_PATH);
     }
 
     /* 最后多了个一个 ! */

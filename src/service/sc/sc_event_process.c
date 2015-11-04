@@ -9786,7 +9786,7 @@ U32 sc_ep_num_verify(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *
         return DOS_FAIL;
     }
 
-    dos_snprintf(szPlayParam, sizeof(szPlayParam), "{not_hungup_after_play=true}file_string://%s/nindyzm.wav", SC_TASK_AUDIO_PATH);
+    dos_snprintf(szPlayParam, sizeof(szPlayParam), "{not_hungup_after_play=true}file_string://%s/nindyzm.wav", SC_PROMPT_TONE_PATH);
     dos_snprintf(szCmdParam, sizeof(szCmdParam), "en name_spelled iterated %s", pstSCB->szDialNum);
     sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
     sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
