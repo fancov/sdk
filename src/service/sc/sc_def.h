@@ -266,7 +266,7 @@ enum tagCallServiceType{
 
     SC_SERV_AGENT_CALLBACK          = 23,  /* 回呼坐席 */
     SC_SERV_AGENT_SIGNIN            = 24,  /* 坐席签入 */
-    SC_SERV_AGENT_CLICK_CALL        = 25,  /* 坐席签入 */
+    SC_SERV_AGENT_CLICK_CALL        = 25,  /* 可以删除掉了 */
 
     SC_SERV_NUM_VERIFY              = 26,  /* 号码验证 */
 
@@ -1067,12 +1067,24 @@ U32 sc_ep_get_eix_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength);
 U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService);
 U32 sc_ep_transfer_publish_release(SC_SCB_ST * pstSCBPublish);
 U32 sc_ep_gateway_register_status_update(U32 ulGWID, SC_TRUNK_STATE_TYPE_EN enRegisterStatus);
+U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber);
+U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled);
+U32 sc_ep_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend);
+U32 sc_ep_call_ctrl_hangup(U32 ulAgent);
+U32 sc_acd_agent_update_status2(U32 ulAction, U32 ulAgentID, U32 ulOperatingType);
+U32 sc_ep_call_ctrl_hold(U32 ulAgent, BOOL isHold);
+U32 sc_ep_call_ctrl_unhold(U32 ulAgent);
+U32 sc_ep_call_ctrl_hangup_all(U32 ulAgent);
+
 
 /* 以下是和号码组设定相关的API */
 U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, S8 *pszNumber, U32 ulLen);
 U32  sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 U32  sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen);
+
+
+U32 sc_pub_send_msg(S8 *pszURL, S8 *pszData);
 
 
 /* 更新坐席状态任务主函数 */

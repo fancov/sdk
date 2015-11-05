@@ -221,6 +221,8 @@ U32 sc_http_api_numtransform_action(list_t *pstArgv);
 U32 sc_http_api_customer_action(list_t *pstArgv);
 U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
 U32 sc_acd_http_agentgrp_update_proc(U32 ulAction, U32 ulGrpID);
+U32 sc_http_api_agent_call_ctrl(list_t *pstArgv);
+U32 sc_http_api_agent(list_t *pstArgv);
 
 
 #ifdef __cplusplus

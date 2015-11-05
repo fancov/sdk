@@ -3405,6 +3405,9 @@ VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
         case SC_SYN:
             dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_SYN:");
             break;
+        case SC_PUB:
+            dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC_PUB:");
+            break;
         default:
             dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC:");
             break;

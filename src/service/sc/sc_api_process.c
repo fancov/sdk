@@ -37,7 +37,9 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
     {"task-ctrl",                sc_http_api_task_ctrl},
     {"verify",                   sc_http_api_num_verify},
     {"callctrl",                 sc_http_api_call_ctrl},
-    {"agent",                    sc_http_api_agent_action},
+    {"agent-status",             sc_http_api_agent_action},
+    {"agent-call-ctrl",          sc_http_api_agent_call_ctrl},
+    {"agent",                    sc_http_api_agent},
     {"agentgrp",                 sc_http_api_agent_grp},
     {"gateway",                  sc_http_api_gateway_action},
     {"sip",                      sc_http_api_sip_action},
@@ -705,6 +707,172 @@ invalid_params:
     return SC_HTTP_ERRNO_INVALID_PARAM;
 }
 
+U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
+{
+    S8 *pszAction       = NULL;
+    S8 *pszCustomerID   = NULL;
+    S8 *pszAgent        = NULL;
+    S8 *pszNumber       = NULL;
+    S8 *pszAgentCalled  = NULL;
+    S8 *pszType         = NULL;
+    U32 ulType          = 0;
+    U32 ulAgent         = U32_BUTT;
+    U32 ulCustomer      = U32_BUTT;
+    U32 ulAction        = SC_ACTION_AGENT_BUTT;
+    U32 ulAgentCalled   = 0;
+    U32 ulTaskID        = U32_BUTT;
+    U32 ulRet           = DOS_FAIL;
+
+    pszAction      = sc_http_api_get_value(pstArgv, "action");
+    pszCustomerID  = sc_http_api_get_value(pstArgv, "customer");
+    pszAgent       = sc_http_api_get_value(pstArgv, "agent");
+    pszAgentCalled = sc_http_api_get_value(pstArgv, "agent_id");
+    pszType        = sc_http_api_get_value(pstArgv, "type");
+    pszNumber      = sc_http_api_get_value(pstArgv, "number");
+
+    if (DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (DOS_ADDR_INVALID(pszAgent)
+        || '\0' == pszAgent[0]
+        || dos_atoul(pszAgent, &ulAgent) < 0)
+    {
+        DOS_ASSERT(0);
+
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (DOS_ADDR_INVALID(pszCustomerID)
+        || '\0' == pszCustomerID[0]
+        || dos_atoul(pszCustomerID, &ulCustomer) < 0)
+    {
+        DOS_ASSERT(0);
+
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (dos_strncmp(pszAction, "call",sizeof("call")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_CALL;
+    }
+    else if (dos_strncmp(pszAction, "hangup",sizeof("hangup")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_HANGUP;
+    }
+    else if (dos_strncmp(pszAction, "hold",sizeof("hold")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_HOLD;
+    }
+    else if (dos_strncmp(pszAction, "unhold",sizeof("unhold")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_UNHOLD;
+    }
+    else if (dos_strncmp(pszAction, "transfer",sizeof("transfer")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_TRANSFER;
+    }
+    else if (dos_strncmp(pszAction, "transfer",sizeof("transfer")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_ATRANSFER;
+    }
+
+    if (ulAction >= SC_ACTION_AGENT_BUTT)
+    {
+        DOS_ASSERT(0);
+
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    switch (ulAction)
+    {
+        case SC_ACTION_AGENT_CALL:
+            if (DOS_ADDR_INVALID(pszType))
+            {
+                DOS_ASSERT(0);
+
+                return SC_HTTP_ERRNO_INVALID_REQUEST;
+            }
+
+            ulType = pszType[0] - '0';
+            if (ulType >= SC_ACTION_CALL_TYPE_BUTT)
+            {
+                DOS_ASSERT(0);
+
+                return SC_HTTP_ERRNO_INVALID_REQUEST;
+            }
+
+            switch (ulType)
+            {
+                case SC_ACTION_CALL_TYPE_CLICK:
+                case SC_ACTION_CALL_TYPE_CALL_NUM:
+                    if (DOS_ADDR_INVALID(pszNumber))
+                    {
+                        DOS_ASSERT(0);
+
+                        return SC_HTTP_ERRNO_INVALID_REQUEST;
+                    }
+
+                    ulRet = sc_ep_call_ctrl_call_out(ulAgent, ulTaskID, pszNumber);
+                    break;
+
+                case SC_ACTION_CALL_TYPE_CALL_AGENT:
+                    if (DOS_ADDR_INVALID(pszAgentCalled) || dos_atoul(pszAgentCalled, &ulAgentCalled) < 0)
+                    {
+                        DOS_ASSERT(0);
+
+                        return SC_HTTP_ERRNO_INVALID_REQUEST;
+                    }
+                    ulRet = sc_ep_call_ctrl_call_agent(ulAgent, ulAgentCalled);
+                    break;
+                default:
+                    ulRet = DOS_FAIL;
+            }
+            break;
+
+        case SC_ACTION_AGENT_TRANSFER:
+        case SC_ACTION_AGENT_ATRANSFER:
+            if (DOS_ADDR_INVALID(pszAgentCalled) || dos_atoul(pszAgentCalled, &ulAgentCalled) < 0)
+            {
+                DOS_ASSERT(0);
+
+                return SC_HTTP_ERRNO_INVALID_REQUEST;
+            }
+
+            ulRet = sc_ep_call_ctrl_transfer(ulAgent, ulAgentCalled, (SC_ACTION_AGENT_ATRANSFER == ulAction));
+
+            break;
+
+        case SC_ACTION_AGENT_HOLD:
+            ulRet = sc_ep_call_ctrl_hold(ulAgent, DOS_TRUE);
+            break;
+
+        case SC_ACTION_AGENT_UNHOLD:
+            ulRet = sc_ep_call_ctrl_unhold(ulAgent);
+            break;
+
+        case SC_ACTION_AGENT_HANGUP:
+            ulRet = sc_ep_call_ctrl_hangup(ulAgent);
+            break;
+
+        default:
+            ulRet = DOS_FAIL;
+    }
+
+    if (ulRet != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+    else
+    {
+        return SC_HTTP_ERRNO_SUCC;
+    }
+}
+
 U32 sc_http_api_call_ctrl(list_t *pstArgv)
 {
     S8 *pszAction       = NULL;
@@ -977,6 +1145,97 @@ invalid_params:
 }
 
 U32 sc_http_api_agent_action(list_t *pstArgv)
+{
+    S8 *pszAgent   = NULL;
+    S8 *pszAction  = NULL;
+    S8 *pszCustomer= NULL;
+    U32 ulAgent        = U32_BUTT;
+    U32 ulCustomer = U32_BUTT;
+    U32 ulAction   = SC_ACTION_AGENT_BUTT;
+
+    pszAction = sc_http_api_get_value(pstArgv, "action");
+    pszAgent  = sc_http_api_get_value(pstArgv, "agent");
+    pszCustomer = sc_http_api_get_value(pstArgv, "customer");
+
+    if (DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (DOS_ADDR_INVALID(pszAgent)
+        || '\0' == pszAgent[0]
+        || dos_atoul(pszAgent, &ulAgent) < 0)
+    {
+        DOS_ASSERT(0);
+
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (DOS_ADDR_INVALID(pszCustomer)
+        || '\0' == pszCustomer[0]
+        || dos_atoul(pszCustomer, &ulCustomer) < 0)
+    {
+        DOS_ASSERT(0);
+
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (dos_strncmp(pszAction, "busy", sizeof("busy")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_BUSY;
+    }
+    else if (dos_strncmp(pszAction, "idle", sizeof("idle")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_IDLE;
+    }
+    else if (dos_strncmp(pszAction, "rest", sizeof("rest")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_REST;
+    }
+    else if (dos_strncmp(pszAction, "signin",sizeof("signin")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_SIGNIN;
+    }
+    else if (dos_strncmp(pszAction, "signout", sizeof("signout")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_SIGNOUT;
+    }
+    else if (dos_strncmp(pszAction, "login",sizeof("login")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_LOGIN;
+    }
+    else if (dos_strncmp(pszAction, "logout",sizeof("logout")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_LOGOUT;
+    }
+    else if (dos_strncmp(pszAction, "foffline",sizeof("foffline")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_FORCE_OFFLINE;
+    }
+    else if (dos_strncmp(pszAction, "query",sizeof("query")) == 0)
+    {
+        ulAction = SC_ACTION_AGENT_QUERY;
+    }
+
+    if (SC_ACTION_AGENT_BUTT == ulAction)
+    {
+        DOS_ASSERT(0);
+
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    if (sc_acd_agent_update_status2(ulAction, ulAgent, OPERATING_TYPE_WEB) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    return SC_HTTP_ERRNO_SUCC;
+}
+
+U32 sc_http_api_agent(list_t *pstArgv)
 {
     S8 *pszAgentID    = NULL;
     S8 *pszUserID     = NULL;

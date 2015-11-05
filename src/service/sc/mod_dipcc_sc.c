@@ -57,6 +57,9 @@ U32 sc_ep_ext_init();
 U32 sc_ep_ext_start();
 U32 sc_audit_init();
 U32 sc_audit_start();
+U32 sc_pub_init();
+U32 sc_pub_start();
+S32 sc_pub_stop();
 
 
 /* define marcos */
@@ -315,6 +318,16 @@ U32 mod_dipcc_sc_load()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init audit task SUCC.");
 
+    if (DOS_SUCC != sc_pub_init())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init publish task FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init publish task SUCC.");
+
+
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Finished to init SC.");
 
     g_blSCInitOK = DOS_TRUE;
@@ -424,6 +437,15 @@ U32 mod_dipcc_sc_runtime()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start the agent status query task SUCC.");
+
+    if (DOS_SUCC != sc_pub_start())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start the publish task FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start publish task SUCC.");
 
     g_pstTaskMngtInfo->stStat.ulSystemUpTime = time(0);
     g_pstTaskMngtInfo->stStat.ulSystemIsWorking = DOS_TRUE;

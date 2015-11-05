@@ -430,6 +430,8 @@ VOID sc_acd_agent_update_status_IDEL(U64 ulArg)
     bIsConnect = pstAgentQueueInfo->pstAgentInfo->bConnected;
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
+    sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_IDLE);
+
     /* 更新数据库中，坐席的状态 */
     sc_acd_agent_update_status_db(ulSiteID, SC_ACD_IDEL, bIsConnect);
 
@@ -454,6 +456,7 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
     DOS_TMR_ST                  pstTmrHandle       = NULL;
     BOOL                        bNeedConnected     = DOS_FALSE;
     BOOL                        bConnected         = DOS_FALSE;
+    U32                         ulAction           = ACD_MSG_SUBTYPE_BUTT;
 
     /* 如果 ulStatus 为 SC_ACD_BUTT， 则不跟新状态 */
     if (ulStatus > SC_ACD_BUTT)
@@ -483,6 +486,39 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
 
     pthread_mutex_lock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
+    sc_logr_info(SC_ESL, "Change the agent status. Agent: %u, Current status: %u, New status: %u"
+                    , ulSiteID, pstAgentQueueInfo->pstAgentInfo->ucStatus, ulStatus);
+
+    if (ulStatus != pstAgentQueueInfo->pstAgentInfo->ucStatus)
+    {
+        switch (ulStatus)
+        {
+            case SC_ACD_OFFLINE:
+                ulAction = ACD_MSG_SUBTYPE_LOGINOUT;
+                break;
+            case SC_ACD_IDEL:
+                ulAction = ACD_MSG_SUBTYPE_IDLE;
+                break;
+            case SC_ACD_AWAY:
+                ulAction = ACD_MSG_SUBTYPE_AWAY;
+                break;
+            case SC_ACD_BUSY:
+                ulAction = ACD_MSG_SUBTYPE_BUSY;
+                break;
+            case SC_ACD_PROC:
+                ulAction = ACD_MSG_SUBTYPE_PROC;
+                break;
+            default:
+                /* Do Nothing */
+                break;
+        }
+
+        if (ACD_MSG_SUBTYPE_BUTT != ulAction)
+        {
+            sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ulAction);
+        }
+    }
+
     if (ulStatus != SC_ACD_BUTT)
     {
         pstAgentQueueInfo->pstAgentInfo->ucStatus = (U8)ulStatus;
@@ -497,10 +533,6 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
     }
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
-    if (ulSCBNo == U16_BUTT)
-    {
-        sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_HUNGUP);
-    }
     /* 更新数据库中，坐席的状态 */
     sc_acd_agent_update_status_db(ulSiteID, ulStatus, bConnected);
 
@@ -520,6 +552,7 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
         /* 坐席长签挂断，需要重新呼叫 */
         sc_acd_update_agent_status(SC_ACD_SITE_ACTION_SIGNIN, ulSiteID, OPERATING_TYPE_WEB);
     }
+
 
     return DOS_SUCC;
 }
@@ -695,6 +728,7 @@ U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, U32 ul
     if (pstAgentNode->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
     {
         pstAgentNode->pstAgentInfo->ucStatus = SC_ACD_BUSY;
+        sc_ep_agent_status_update(pstAgentNode->pstAgentInfo, ACD_MSG_SUBTYPE_BUSY);
     }
 
     return DOS_SUCC;
@@ -1122,8 +1156,6 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
             pstAgentQueueInfo->pstAgentInfo->ulLastOnlineTime = time(0);
 
             bIsUpdateDB = DOS_TRUE;
-
-            sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_ONLINE);
             break;
 
         case SC_ACD_SITE_ACTION_OFFLINE:
@@ -1181,8 +1213,6 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
 
             pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_IDEL;
             bIsUpdateDB = DOS_TRUE;
-
-            sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_ONLINE);
             break;
 
         case SC_ACD_SITE_ACTION_DN_QUEUE:
@@ -1216,6 +1246,8 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
         case SC_ACD_SITE_ACTION_CONNECT_FAIL:
             pstAgentQueueInfo->pstAgentInfo->bNeedConnected = DOS_FALSE;
             pstAgentQueueInfo->pstAgentInfo->bConnected = DOS_FALSE;
+
+            sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_SIGNOUT);
             break;
 
         default:
@@ -2422,7 +2454,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
 
     dos_memzero(&stSiteInfo, sizeof(stSiteInfo));
     stSiteInfo.ulSiteID = ulSiteID;
-    stSiteInfo.ucStatus = (U8)ulStatus;
+    stSiteInfo.ucStatus = SC_ACD_OFFLINE;
     stSiteInfo.ulCustomerID = ulCustomID;
     stSiteInfo.aulGroupID[0] = ulGroupID0;
     stSiteInfo.aulGroupID[1] = ulGroupID1;
@@ -2898,6 +2930,506 @@ U32 sc_acd_start()
     }
 
     return DOS_SUCC;
+}
+
+U32 sc_acd_agent_set_busy(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+        case SC_ACD_IDEL:
+        case SC_ACD_AWAY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_BUSY;
+            break;
+
+        case SC_ACD_BUSY:
+            break;
+        case SC_ACD_PROC:
+            break;
+        default:
+            sc_logr_info(SC_ACD, "Agent %u is in an invalid status.", pstAgentQueueInfo->ulSiteID);
+            return DOS_FAIL;
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_ep_agent_status_update(pstAgentQueueInfo, ACD_MSG_SUBTYPE_BUSY);
+    }
+
+    sc_logr_info(SC_ACD, "Request set agnet status to busy. Agent: %u Old status: %u, Current status: %u"
+                    , pstAgentQueueInfo->ulSiteID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+U32 sc_acd_agent_set_idle(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+        case SC_ACD_IDEL:
+            break;
+
+        case SC_ACD_AWAY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+
+        case SC_ACD_BUSY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+
+        case SC_ACD_PROC:
+            break;
+
+        default:
+            sc_logr_info(SC_ACD, "Agent %u is in an invalid status.", pstAgentQueueInfo->ulSiteID);
+            return DOS_FAIL;
+            break;
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_ep_agent_status_update(pstAgentQueueInfo, ACD_MSG_SUBTYPE_IDLE);
+    }
+
+    sc_logr_info(SC_ACD, "Request set agnet status to idle.Agent: %u, Old status: %u, Current status: %u"
+                    , pstAgentQueueInfo->ulSiteID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+U32 sc_acd_agent_set_rest(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+            break;
+        case SC_ACD_IDEL:
+            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+            break;
+
+        case SC_ACD_AWAY:
+            break;
+
+        case SC_ACD_BUSY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+            break;
+
+        case SC_ACD_PROC:
+            break;
+
+        default:
+            sc_logr_info(SC_ACD, "Agent %u is in an invalid status.", pstAgentQueueInfo->ulSiteID);
+            return DOS_FAIL;
+            break;
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_ep_agent_status_update(pstAgentQueueInfo, ACD_MSG_SUBTYPE_AWAY);
+    }
+
+    sc_logr_info(SC_ACD, "Request set agnet status to rest. Agent:%u, Old status: %u, Current status: %u"
+                    , pstAgentQueueInfo->ulSiteID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+U32 sc_acd_agent_set_signin(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    /* 发起长签 */
+    if (sc_ep_agent_signin(pstAgentQueueInfo) != DOS_SUCC)
+    {
+        sc_logr_info(SC_ACD, "Request set agnet status to signin FAIL. Agent: %u, Old status: %u, Current status: %u"
+                        , pstAgentQueueInfo->ulSiteID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+        return DOS_FAIL;
+    }
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+        case SC_ACD_IDEL:
+            break;
+
+        case SC_ACD_AWAY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+
+        case SC_ACD_BUSY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+
+        case SC_ACD_PROC:
+            break;
+
+        default:
+            sc_logr_info(SC_ACD, "Agent %u is in an invalid status.", pstAgentQueueInfo->ulSiteID);
+            return DOS_FAIL;
+            break;
+    }
+
+    pstAgentQueueInfo->bNeedConnected = DOS_TRUE;
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_ep_agent_status_update(pstAgentQueueInfo, ACD_MSG_SUBTYPE_IDLE);
+    }
+
+    sc_logr_info(SC_ACD, "Request set agnet status to signin. Agent: %u, Old status: %u, Current status: %u"
+                    , pstAgentQueueInfo->ulSiteID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+U32 sc_acd_agent_set_signout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+        case SC_ACD_IDEL:
+            break;
+
+        case SC_ACD_AWAY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+
+        case SC_ACD_BUSY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+
+        case SC_ACD_PROC:
+            break;
+
+        default:
+            sc_logr_info(SC_ACD, "Agent %u is in an invalid status.", pstAgentQueueInfo->ulSiteID);
+            return DOS_FAIL;
+            break;
+    }
+
+    /* 只要有呼叫都拆 */
+    if (pstAgentQueueInfo->bConnected || pstAgentQueueInfo->usSCBNo != U16_BUTT)
+    {
+        /* 拆呼叫 */
+        sc_ep_call_ctrl_hangup_all(pstAgentQueueInfo->ulSiteID);
+    }
+
+    pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
+    pstAgentQueueInfo->bConnected = DOS_FALSE;
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_ep_agent_status_update(pstAgentQueueInfo, ACD_MSG_SUBTYPE_IDLE);
+    }
+
+    sc_ep_agent_status_update(pstAgentQueueInfo, ACD_MSG_SUBTYPE_SIGNOUT);
+
+    sc_logr_info(SC_ACD, "Request set agnet status to signout. Agent: %u, Old status: %u, Current status: %u"
+                , pstAgentQueueInfo->ulSiteID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+U32 sc_acd_agent_set_login(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+            break;
+
+        case SC_ACD_IDEL:
+            break;
+
+        case SC_ACD_AWAY:
+            break;
+
+        case SC_ACD_BUSY:
+            break;
+
+        case SC_ACD_PROC:
+            break;
+
+        default:
+            sc_logr_info(SC_ACD, "Agent %u is in an invalid status.", pstAgentQueueInfo->ulSiteID);
+            return DOS_FAIL;
+            break;
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_ep_agent_status_update(pstAgentQueueInfo, ACD_MSG_SUBTYPE_AWAY);
+    }
+
+    sc_logr_info(SC_ACD, "Request set agnet status to login. Agent: %u, Old status: %u, Current status: %u"
+                    , pstAgentQueueInfo->ulSiteID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+U32 sc_acd_agent_set_logout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_IDEL:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_AWAY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_BUSY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_PROC:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        default:
+            sc_logr_info(SC_ACD, "Agent %u is in an invalid status.", pstAgentQueueInfo->ulSiteID);
+            return DOS_FAIL;
+            break;
+    }
+
+    /* 只有在长签了，才拆除呼叫 */
+    if (pstAgentQueueInfo->bConnected)
+    {
+        /* 拆除呼叫 */
+        sc_ep_call_ctrl_hangup(pstAgentQueueInfo->ulSiteID);
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_ep_agent_status_update(pstAgentQueueInfo, ACD_MSG_SUBTYPE_LOGINOUT);
+    }
+
+    pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
+
+    sc_logr_info(SC_ACD, "Request set agnet status to logout. Agent:%u Old status: %u, Current status: %u"
+                , pstAgentQueueInfo->ulSiteID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+U32 sc_acd_agent_set_force_logout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_IDEL:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_AWAY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_BUSY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_PROC:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        default:
+            sc_logr_info(SC_ACD, "Agent %u is in an invalid status.", pstAgentQueueInfo->ulSiteID);
+            return DOS_FAIL;
+            break;
+    }
+
+    /* 只要有呼叫都拆 */
+    if (pstAgentQueueInfo->bConnected || pstAgentQueueInfo->usSCBNo != U16_BUTT)
+    {
+        /*  拆除呼叫 */
+        sc_ep_call_ctrl_hangup_all(pstAgentQueueInfo->ulSiteID);
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_ep_agent_status_update(pstAgentQueueInfo, ACD_MSG_SUBTYPE_LOGINOUT);
+    }
+
+    sc_logr_info(SC_ACD, "Request force logout for agnet %u. Old status: %u, Current status: %u"
+                , pstAgentQueueInfo->ulSiteID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+
+}
+
+
+U32 sc_acd_agent_update_status2(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
+{
+    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_ACD_AGENT_INFO_ST   *pstAgentInfo = NULL;     /* 坐席信息 */
+    HASH_NODE_S            *pstHashNode = NULL;
+    U32                     ulHashIndex = 0;
+
+
+    pthread_mutex_lock(&g_mutexAgentList);
+    sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexAgentList);
+
+        DOS_ASSERT(0);
+        sc_logr_warning(SC_ACD, "Cannot find the agent with this id %u.", ulAgentID);
+        return DOS_FAIL;
+    }
+    pthread_mutex_unlock(&g_mutexAgentList);
+
+    if (DOS_ADDR_INVALID(pstHashNode))
+    {
+        DOS_ASSERT(0);
+        sc_logr_warning(SC_ACD, "Empty hash node for this agent. %u", ulAgentID);
+        return DOS_FAIL;
+    }
+
+    pstAgentQueueNode = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstAgentQueueNode)
+        || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+        sc_logr_warning(SC_ACD, "The hash node is empty for this agent. %u", ulAgentID);
+        return DOS_FAIL;
+    }
+
+    pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+
+    sc_logr_notice(SC_ACD, "Agent status changed. Agent: %u, Action: %u", ulAgentID, ulAction);
+
+    switch(ulAction)
+    {
+        case SC_ACTION_AGENT_BUSY:
+            return sc_acd_agent_set_busy(pstAgentInfo, ulOperatingType);
+            break;
+        case SC_ACTION_AGENT_IDLE:
+            return sc_acd_agent_set_idle(pstAgentInfo, ulOperatingType);
+            break;
+        case SC_ACTION_AGENT_REST:
+            return sc_acd_agent_set_rest(pstAgentInfo, ulOperatingType);
+            break;
+        case SC_ACTION_AGENT_SIGNIN:
+            return sc_acd_agent_set_signin(pstAgentInfo, ulOperatingType);
+            break;
+        case SC_ACTION_AGENT_SIGNOUT:
+            return sc_acd_agent_set_signout(pstAgentInfo, ulOperatingType);
+            break;
+        case SC_ACTION_AGENT_LOGIN:
+            return sc_acd_agent_set_login(pstAgentInfo, ulOperatingType);
+            break;
+        case SC_ACTION_AGENT_LOGOUT:
+            return sc_acd_agent_set_logout(pstAgentInfo, ulOperatingType);
+            break;
+        case SC_ACTION_AGENT_FORCE_OFFLINE:
+            return sc_acd_agent_set_force_logout(pstAgentInfo, ulOperatingType);
+            break;
+        case SC_ACTION_AGENT_QUERY:
+            return sc_acd_query_agent_status(ulAgentID);
+            break;
+        default:
+            sc_logr_info(SC_ACD, "Invalid action for agent. Action:%u", ulAction);
+            return DOS_FAIL;
+    }
+
 }
 
 /**
