@@ -13,15 +13,14 @@ extern "C"{
 #include <mntent.h>
 #include <sys/vfs.h>
 #include "mon_get_disk_info.h"
+#include "mon_warning_msg_queue.h"
 #include "mon_lib.h"
 #include "mon_def.h"
 
 extern  MON_SYS_PART_DATA_S * g_pastPartition[MAX_PARTITION_COUNT];
 extern  U32 g_ulPartCnt;
-
-#if 0
-static U32  mon_get_disk_temperature();
-#endif
+extern  MON_THRESHOLD_S *g_pstCond;
+extern  MON_WARNING_MSG_S *g_pstWarningMsg;
 
 U32  mon_get_disk_serial_num(S8 *pszPartitionName, S8 *pszSerialNum, U32 ulLen);
 static U32  mon_partition_reset_data();
@@ -95,22 +94,6 @@ static U32  mon_partition_reset_data()
     dos_memzero(pstPartition, MAX_PARTITION_COUNT * sizeof(MON_SYS_PART_DATA_S));
     return DOS_SUCC;
 }
-
-
-/**
- * 功能:获取磁盘的温度
- * 参数集：
- *   无参数
- * 返回值：
- *   成功返回DOS_SUCC，失败返回DOS_FAIL
- */
-#if 0
-static U32  mon_get_disk_temperature()
-{
-   /* 由于软件包hdparm安装问题，故无法采用 */
-   return DOS_SUCC;
-}
-#endif
 
 /**
  * 功能:获取磁盘的序列号信息字符串
@@ -243,6 +226,97 @@ U64 mon_get_total_disk_bytes()
     }
 
     return uLTotal;
+}
+
+U32  mon_handle_disk_warning()
+{
+    BOOL bAddToDB = DOS_FALSE, bDiskExcept = DOS_FALSE;
+    U32  ulRet = U32_BUTT, ulIndex = U32_BUTT, ulRows = 0;
+    U32  ulTotalDiskRate = U32_BUTT;
+    MON_MSG_S  *pstMsg = NULL;
+
+    ulRet = mon_generate_warning_id(DISK_RES, 0x00, RES_LACK);
+    if ((U32)0xff == ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
+        return DOS_FAIL;
+    }
+
+    ulIndex = mon_get_msg_index(ulRet);
+    if (U32_BUTT == ulIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    for (ulRows = 0; ulRows < g_ulPartCnt; ++ulRows)
+    {
+        if(g_pastPartition[ulRows]->uLPartitionUsageRate >= g_pstCond->ulPartitionThreshold)
+        {
+            bDiskExcept = DOS_TRUE;
+        }
+    }
+    ulTotalDiskRate = mon_get_total_disk_usage_rate();
+    if(ulTotalDiskRate >= g_pstCond->ulDiskThreshold)
+    {
+        bDiskExcept = DOS_TRUE;
+    }
+
+    /* 如果产生告警 */
+    if (DOS_TRUE == bDiskExcept)
+    {
+        /* 如果第一次产生告警，则将告警加入告警队列 */
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            /* 构造告警消息 */
+            pstMsg = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+
+            GENERATE_WARNING_MSG(pstMsg, ulIndex, ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "System disk Warning", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    else
+    {
+        /* 如果告警不产生但未恢复，则恢复之 */
+        if (g_pstWarningMsg[ulIndex].bExcep == DOS_TRUE)
+        {
+            /* 构造告警消息 */
+            pstMsg = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "System Disk Warning Recovery", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    if (DOS_TRUE == bAddToDB)
+    {
+        /* 将消息加入消息队列 */
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
+        {
+            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
+            return DOS_FAIL;
+        }
+    }
+    return DOS_SUCC;
 }
 
 #endif //end #if INCLUDE_DISK_MONITOR

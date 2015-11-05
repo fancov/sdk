@@ -13,12 +13,13 @@ extern "C"{
 #include "mon_get_mem_info.h"
 #include "mon_lib.h"
 #include "mon_def.h"
+#include "mon_warning_msg_queue.h"
 
 static S8  m_szMemInfoFile[] = "/proc/meminfo";
 extern MON_SYS_MEM_DATA_S * g_pstMem;
-
+extern MON_THRESHOLD_S *g_pstCond;
+extern MON_WARNING_MSG_S *g_pstWarningMsg;
 static U32  mon_mem_reset_data();
-
 
 /**
  * 功能:为g_pstMem分配内存
@@ -41,7 +42,6 @@ U32  mon_mem_malloc()
     return DOS_SUCC;
 }
 
-
 /**
  * 功能:释放为g_pstMem分配内存
  * 参数集：
@@ -62,7 +62,6 @@ U32 mon_mem_free()
 
     return DOS_SUCC;
 }
-
 
 static U32  mon_mem_reset_data()
 {
@@ -238,6 +237,90 @@ U32  mon_get_mem_data()
         g_pstMem->ulSwapUsageRate = (ulBusySwap + ulBusySwap % ulSwapTotal) / ulSwapTotal;
     }
 
+    return DOS_SUCC;
+}
+
+U32 mon_handle_mem_warning()
+{
+    U32  ulRet = U32_BUTT, ulIndex = 0;
+    MON_MSG_S *pstMsg = NULL;
+    BOOL  bAddToDB = DOS_FALSE;
+
+    ulRet = mon_generate_warning_id(MEM_RES, 0x00, RES_LACK);
+    if((U32)0xff == ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
+        return DOS_FAIL;
+    }
+
+    /* 利用告警编号找到消息的索引 */
+    ulIndex = mon_get_msg_index(ulRet);
+    if (U32_BUTT == ulIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    /*  处理内存异常  */
+    if (g_pstMem->ulPhysicalMemUsageRate >= g_pstCond->ulMemThreshold)
+    {
+        /* 如果第一次产生告警，须将其记录下来 */
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+
+            /* 构造告警消息并表明已产生告警 */
+            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
+            /* 发邮件 */
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "System Memory Warning", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+
+            /* 表明该记录需要添加至数据库 */
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    else
+    {
+        /* 若处于正常水平，但是还没有回复告警，则恢复告警 */
+        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+
+            /* 构造恢复告警并标明告警已恢复 */
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            /* 发邮件 */
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "System memory Warning Recovery", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+
+    if (DOS_TRUE == bAddToDB)
+    {
+        /* 将消息加入消息队列 */
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
+        {
+            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
+            return DOS_FAIL;
+        }
+    }
     return DOS_SUCC;
 }
 

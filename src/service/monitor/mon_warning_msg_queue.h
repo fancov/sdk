@@ -9,12 +9,10 @@
   *          History:
   */
 
-
 #ifndef _MON_WARNING_MSG_QUEUE_H__
 #define _MON_WARNING_MSG_QUEUE_H__
 
 #if INCLUDE_RES_MONITOR
-
 
 #include <dos/dos_types.h>
 
@@ -33,8 +31,6 @@ typedef struct tagMsgQueue
     MON_MSG_S * pstRear;//队列的队尾指针
     U32 ulQueueLength;   //队列的长度
 }MON_MSG_QUEUE_S;
-
-
 
 U32  mon_init_warning_msg_queue();
 U32  mon_warning_msg_en_queue(MON_MSG_S * pstMsg);

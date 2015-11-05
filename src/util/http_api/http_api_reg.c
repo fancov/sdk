@@ -110,7 +110,7 @@ U32 http_api_system_restart(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList)
     S8  *pszStyle = NULL, *pszTimeStamp = NULL;
     U32 ulStyle = U32_BUTT, ulTimeStamp = U32_BUTT, ulRet = U32_BUTT;
 
-    pszStyle = http_api_get_var(pstArgvList, "style");
+    pszStyle = http_api_get_var(pstArgvList, "action");
     pszTimeStamp = http_api_get_var(pstArgvList, "time");
 
     if (dos_atoul(pszTimeStamp, &ulTimeStamp) < 0)

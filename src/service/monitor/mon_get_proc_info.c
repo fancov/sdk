@@ -10,14 +10,15 @@ extern "C" {
 #if INCLUDE_PROC_MONITOR
 
 #include <dirent.h>
+#include "mon_get_mem_info.h"
 #include "mon_get_proc_info.h"
 #include "mon_warning_msg_queue.h"
 #include "mon_lib.h"
 #include "mon_def.h"
 
-
 extern MON_PROC_STATUS_S * g_pastProc[MAX_PROC_CNT];
 extern MON_WARNING_MSG_S*  g_pstWarningMsg;
+extern MON_THRESHOLD_S*    g_pstCond;
 
 static U32   mon_proc_reset_data();
 static BOOL  mon_is_pid_valid(U32 ulPid);
@@ -25,10 +26,8 @@ static U32   mon_get_cpu_mem_time_info(U32 ulPid, MON_PROC_STATUS_S * pstProc);
 static U32   mon_get_openfile_count(U32 ulPid);
 static U32   mon_get_threads_count(U32 ulPid);
 static U32   mon_get_proc_pid_list();
-
 extern U32 mon_get_msg_index(U32 ulNo);
 extern U32 mon_add_warning_record(U32 ulResId,S8 * szInfoDesc);
-
 
 /**
  * 功能:为监控进程数组分配内存
@@ -197,7 +196,6 @@ success:
     return DOS_SUCC;
 }
 
-
 /**
  * 功能:获取进程打开的文件描述符个数
  * 参数集：
@@ -210,7 +208,6 @@ static U32  mon_get_openfile_count(U32 ulPid)
     U32 ulCount = 0;
     return ulCount;
 }
-
 
 /**
  * 功能:获取进程的数据库连接个数
@@ -478,9 +475,22 @@ U32 mon_get_process_data()
  */
 U32  mon_check_all_process()
 {
-    U32  ulCount = 0, ulRet = 0;
+    U32  ulCount = 0, ulRet = 0, ulIndex = 0, ulNo = 0;
     S32  lCfgProcCnt = 0, lLoop = 0;
-    S8   szStartCmd[64] = {0};
+    S8   szStartCmd[128] = {0};
+    BOOL bAddToDB = DOS_FALSE;
+    S8   szBuff[128] = {0}, szTemp[16] = {0};
+    MON_MSG_S *pstMsg = NULL;
+
+    /* 先生成一个告警id */
+    ulNo = mon_generate_warning_id(PROC_RES, 0x00, 0x01);
+    if((U32)0xff == ulNo)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
+        return DOS_FAIL;
+    }
+    /* 获取索引 */
+    ulIndex = mon_get_msg_index(ulNo);
 
     /* 获取配置监控进程个数 */
     lCfgProcCnt = config_hb_get_process_cfg_cnt();
@@ -498,6 +508,9 @@ U32  mon_check_all_process()
             if (g_pastProc[lLoop]->szAbsPath
                 && '\0' != g_pastProc[lLoop]->szAbsPath[0])
             {
+                dos_snprintf(szTemp, sizeof(szTemp), "[%s]", g_pastProc[lLoop]->szProcName);
+                dos_strcat(szBuff, szTemp);
+
                 mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_DEBUG, "Process \'%s\' has been dead.", g_pastProc[lLoop]->szProcName);
                 dos_snprintf(szStartCmd, sizeof(szStartCmd), "(%s > /dev/null 2>&1 &)", g_pastProc[lLoop]->szAbsPath);
                 ulRet = mon_system(szStartCmd);
@@ -512,10 +525,45 @@ U32  mon_check_all_process()
             ++ulCount;
         }
     }
-
     if (ulCount < lCfgProcCnt)
     {
-        mon_trace(MON_TRACE_PROCESS, LOG_LEVEL_DEBUG, "%u Process(s) has been dead.", lCfgProcCnt - ulCount);
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            dos_snprintf(g_pstWarningMsg[ulIndex].szWarningDesc, sizeof(g_pstWarningMsg[ulIndex].szWarningDesc), "Process(es) %s are dead.", szBuff);
+            pstMsg = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            /* 构造告警消息并表明已产生告警 */
+            GENERATE_WARNING_MSG(pstMsg,ulIndex,ulNo);
+            /* 表明该记录需要添加至数据库 */
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    else
+    {
+        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulNo);
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    if (DOS_TRUE == bAddToDB)
+    {
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
+        {
+            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
+            return DOS_FAIL;
+        }
     }
     return DOS_SUCC;
 }
@@ -717,6 +765,89 @@ U32  mon_get_proc_total_mem_rate()
     return (U32)(fTotalMemRate + 0.5);
 }
 
+U32  mon_handle_proc_mem_warning()
+{
+    BOOL bAddToDB = DOS_FALSE;
+    U32  ulRet = U32_BUTT, ulIndex = 0;
+    U32  ulProcMem = 0;
+    MON_MSG_S *pstMsg = NULL;
+
+    ulRet = mon_generate_warning_id(PROC_RES, 0x00, 0x02);
+    if((U32)0xff == ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
+        return DOS_FAIL;
+    }
+
+    ulIndex = mon_get_msg_index(ulRet);
+    if (U32_BUTT == ulIndex)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulProcMem = mon_get_proc_total_mem_rate();
+    if (DOS_FAIL == ulProcMem)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (ulProcMem >= g_pstCond->ulProcMemThreshold)
+    {
+        if (DOS_FALSE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+               DOS_ASSERT(0);
+               return DOS_FAIL;
+            }
+
+            GENERATE_WARNING_MSG(pstMsg,ulIndex, ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "Process Memory Warning", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+
+            bAddToDB = DOS_TRUE;
+        }
+    }
+    else
+    {
+        if (DOS_TRUE == g_pstWarningMsg[ulIndex].bExcep)
+        {
+
+            pstMsg  = (MON_MSG_S *)dos_dmem_alloc(sizeof(MON_MSG_S));
+            if (DOS_ADDR_INVALID(pstMsg))
+            {
+               DOS_ASSERT(0);
+               return DOS_FAIL;
+            }
+
+            GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
+            ulRet = mon_send_email((S8 *)pstMsg->msg, "Process Memory Warning Recovery", "bubble@dipcc.com");
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+            bAddToDB = DOS_TRUE;
+        }
+    }
+
+    if (DOS_TRUE == bAddToDB)
+    {
+        /* 将消息加入消息队列 */
+        ulRet = mon_warning_msg_en_queue(pstMsg);
+        if(DOS_SUCC != ulRet)
+        {
+            mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Warning Msg EnQueue FAIL.");
+            return DOS_FAIL;
+        }
+    }
+    return DOS_SUCC;
+}
 
 #endif //end #if INCLUDE_PROC_MONITOR
 #endif //end #if INCLUDE_RES_MONITOR

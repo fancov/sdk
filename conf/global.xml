@@ -49,10 +49,8 @@
 	    <param name="src_dbname" value="syssrc"/>
         <!--资源监控数据库密码-->
         <param name="src_password" value="LLyK60ehUVdW6toN" />
-		<!--mysql数据库的socket文件路径-->
-		<param name="sockpath" value="/tmp/mysql.sock" />
-		<!--资源监控是否写数据库，若写，则value是1，否则为0-->
-		<param name="b_write_db" value="1"/>
+	<!--mysql数据库的socket文件路径-->
+	<param name="sockpath" value="/tmp/mysql.sock" />
     </mysql>
     <!-- 日志模块配置 -->
     <!-- level 值的范围

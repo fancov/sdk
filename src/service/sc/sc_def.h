@@ -128,6 +128,7 @@ extern BOOL                 g_blSCInitOK;
 /* 新业务 */
 #define SC_POTS_CO_GROUP_PICK_UP        "***"        /* 同组代答 */
 //#define SC_POTS_CO_GROUP_PICK_UP        "*#"        /* 呼叫保持 */
+#define SC_POTS_CLIENT_TAG              "*[0-9]"     /* 客户标记 */
 #define SC_POTS_BALANCE                 "*181"       /* 查询余额 */
 #define SC_POTS_AGENT_ONLINE            "*001"       /* 坐席登陆web页面 */
 #define SC_POTS_AGENT_OFFLINE           "*000"       /* 坐席从web页面下线 */
@@ -142,6 +143,8 @@ extern BOOL                 g_blSCInitOK;
 #define SC_TOP_USER_ID                 1
 
 #define SC_LIST_MIN_CNT                3
+
+#define SC_PROMPT_TONE_PATH             "/usr/local/freeswitch/sounds/okcc"
 
 #define SC_TASK_AUDIO_PATH             "/var/www/html/data/audio"
 

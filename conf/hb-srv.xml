@@ -89,4 +89,8 @@
 			<param name="lang" value="cn"/>
 		</language>
 	</warning>
+        <db>
+            <!--此处配置0表示不写数据库，大于0则写数据库-->
+            <param name="write" value="1"/>	
+        </db>
 </config>

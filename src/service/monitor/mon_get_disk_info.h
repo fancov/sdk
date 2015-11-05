@@ -9,7 +9,6 @@
   *           History:
   */
 
-
 #ifndef _MON_GET_DISK_INFO_H__
 #define _MON_GET_DISK_INFO_H__
 
@@ -22,7 +21,6 @@
 #define MAX_RAID_SERIAL_LEN   255
 #define MAX_CMD_LENGTH        64
 #define MAX_BUFF_LENGTH       1024
-
 
 typedef struct tagMonSysPartData
 {
@@ -39,6 +37,7 @@ U32  mon_disk_free();
 U32  mon_get_total_disk_usage_rate();
 U32  mon_get_partition_data();
 U64  mon_get_total_disk_bytes();
+U32  mon_handle_disk_warning();
 
 #endif //#if INCLUDE_RES_MONITOR
 #endif //end of _MON_GET_DISK_INFO_H__
