@@ -339,6 +339,8 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     S8    *pszEventHeader   = NULL;
     S8    *pszEventBody     = NULL;
     S8    *pszUUID          = NULL;
+    S8    szMOHFilePath[256]  = { 0, };
+    S8    szMOHParam[256]  = { 0, };
     S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
     S8    szCallString[SC_ESL_CMD_BUFF_LEN] = { 0 };
     U32   ulRouteID         = U32_BUTT;
@@ -382,6 +384,15 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
     if (DOS_ADDR_VALID(pstSCBOther))
     {
+        if (sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN)
+            && SC_SCB_ACTIVE == pstSCBOther->ucStatus
+            && '\0' != pstSCBOther->szUUID[0])
+        {
+            sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCBOther->szUUID);
+            dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "bgapi uuid_break %s \r\n", pstSCBOther->szUUID);
+            sc_ep_esl_execute_cmd(szCMDBuff);
+        }
+
         if (!sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
                 && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
         {
@@ -427,6 +438,14 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                 return DOS_FAIL;
             }
         }
+/*
+        if (sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN)
+            && SC_SCB_ACTIVE == pstSCBOther->ucStatus
+            && '\0' != pstSCBOther->szUUID[0])
+        {
+            sc_ep_esl_execute("park", "", pstSCBOther->szUUID);
+        }
+        */
 
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
 
@@ -594,6 +613,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
 
             sc_logr_notice(SC_DIALER, "%s", "ELS connect Back to Normal.");
         }
+
 
         pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
         stTimeout.tv_sec = time(0) + 1;

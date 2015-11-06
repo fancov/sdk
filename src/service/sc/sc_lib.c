@@ -2400,7 +2400,19 @@ U32 sc_task_save_status(U32 ulTaskID, U32 ulStatus, S8 *pszStatus)
     return DOS_SUCC;
 }
 
+U32 sc_get_moh_file(S8 *pszBuffer, S32 lLength)
+{
+    if (DOS_ADDR_INVALID(pszBuffer) || lLength <= 0)
+    {
+        DOS_ASSERT(0);
 
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(pszBuffer, lLength, "%s/moh.wav", SC_PROMPT_TONE_PATH);
+
+    return DOS_SUCC;
+}
 
 SC_SYS_STATUS_EN sc_check_sys_stat()
 {

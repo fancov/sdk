@@ -6336,9 +6336,10 @@ U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
         return DOS_FAIL;
     }
 
-    sc_logr_debug(SC_ESL, "ESL execute command SUCC. APP: %s, Param: %s"
+    sc_logr_debug(SC_ESL, "ESL execute command SUCC. APP: %s, Param: %s, UUID: %s"
                     , pszApp
-                    , DOS_ADDR_VALID(pszArg) ? pszArg : "NULL");
+                    , DOS_ADDR_VALID(pszArg) ? pszArg : "NULL"
+                    , pszUUID);
 
     return DOS_SUCC;
 }
@@ -8404,8 +8405,9 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
 
         /* 给通道设置变量 */
-        sc_ep_esl_execute("set", "hangup_after_bridge=false", pstSCBNew->szUUID);
         sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCBNew->szUUID);
+        dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_break %s \r\n", pstSCBNew->szUUID);
+        sc_ep_esl_execute_cmd(szAPPParam);
 
         dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_bridge %s %s \r\n", pstSCBNew->szUUID, pstSCB->szUUID);
         if (sc_ep_esl_execute_cmd(szAPPParam) != DOS_SUCC)
@@ -9717,8 +9719,8 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                     sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
 
                     /* 给通道设置变量 */
-                    dos_snprintf(szCallString, sizeof(szCallString), "hangup_after_bridge=false");
-                    sc_ep_esl_execute("set", szCallString, pstSCBNew->szUUID);
+                    sc_ep_esl_execute("break", NULL, pstSCBNew->szUUID);
+                    sc_ep_esl_execute("set", "hangup_after_bridge=false", pstSCBNew->szUUID);
 
                     dos_snprintf(szCallString, sizeof(szCallString), "bgapi uuid_bridge %s %s \r\n", pstSCB->szUUID, pstSCBNew->szUUID);
                     if (sc_ep_esl_execute_cmd(szCallString) != DOS_SUCC)
@@ -10739,6 +10741,118 @@ end:
     return ulRet;
 }
 
+U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
+{
+    U32       ulRet = 0;
+    S8        szMOHFilePath[256] = { 0, };
+    S8        szAPPParam[256] = { 0, };
+    SC_ACD_AGENT_INFO_ST stAgentInfo;
+
+    if (DOS_ADDR_INVALID(pstHandle) || DOS_ADDR_INVALID(pstEvent) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (U32_BUTT == pstSCB->ulAgentID)
+    {
+        sc_logr_notice(SC_ESL, "%s", "Proc the signin msg. But there is no agent.");
+
+        return DOS_FAIL;
+    }
+
+
+    if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCB->ulAgentID) != DOS_SUCC)
+    {
+        sc_logr_notice(SC_ESL, "Cannot find the agent with the id %u.", pstSCB->ulAgentID);
+
+        return DOS_FAIL;
+    }
+
+    sc_logr_info(SC_ESL, "Start process signin msg. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
+                    , stAgentInfo.ulSiteID
+                    , stAgentInfo.bNeedConnected ? "Yes" : "No"
+                    , stAgentInfo.bConnected ? "Yes" : "No"
+                    , stAgentInfo.ucStatus);
+
+    if (stAgentInfo.bNeedConnected && ! stAgentInfo.bConnected)
+    {
+        sc_logr_debug(SC_ESL, "Agent signin. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
+                        , stAgentInfo.ulSiteID
+                        , stAgentInfo.bNeedConnected ? "Yes" : "No"
+                        , stAgentInfo.bConnected ? "Yes" : "No"
+                        , stAgentInfo.ucStatus);
+
+        /* 坐席需要长签，但还没有长签成功, 这个地方就是他长签成功的流程 */
+        ulRet = sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECTED, pstSCB->ulAgentID, OPERATING_TYPE_PHONE);
+        if (ulRet == DOS_SUCC)
+        {
+            sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_BUTT, pstSCB->usSCBNo);
+        }
+
+        sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCB->szUUID);
+
+        /* 播放等待音 */
+        if (sc_get_moh_file(szMOHFilePath, sizeof(szMOHFilePath)) == DOS_SUCC)
+        {
+            sc_ep_esl_execute("playback", szMOHFilePath, pstSCB->szUUID);
+        }
+        else
+        {
+            sc_logr_info(SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
+        }
+
+        /* 如果放完等待音之后，还没有操作就PARK */
+        sc_ep_esl_execute("park", "", pstSCB->szUUID);
+    }
+    else
+    {
+        /* 这个地方则是长签成功之后的业务处理流程 */
+
+        /* 坐席还处于IDEL就直接继续放音就好 */
+        if (SC_ACD_IDEL == stAgentInfo.ucStatus)
+        {
+            sc_logr_debug(SC_ESL, "Agent signin and playback timeout. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
+                            , stAgentInfo.ulSiteID
+                            , stAgentInfo.bNeedConnected ? "Yes" : "No"
+                            , stAgentInfo.bConnected ? "Yes" : "No"
+                            , stAgentInfo.ucStatus);
+
+            /* 播放等待音 */
+            if (sc_get_moh_file(szMOHFilePath, sizeof(szMOHFilePath)) == DOS_SUCC)
+            {
+                sc_ep_esl_execute("playback", szMOHFilePath, pstSCB->szUUID);
+            }
+            else
+            {
+                sc_logr_info(SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
+            }
+
+            /* 如果放完等待音之后，还没有操作就PARK */
+            sc_ep_esl_execute("park", "", pstSCB->szUUID);
+        }
+        else if (SC_ACD_BUSY == stAgentInfo.ucStatus)
+        {
+            /* 这个地方，坐席已经在处理业务了 */
+            /* DO Nothing */
+        }
+        else if (SC_ACD_PROC == stAgentInfo.ucStatus)
+        {
+            /* 处理呼叫结果过程 */
+            /* 放音，然后接受案件 */
+            sc_logr_debug(SC_ESL, "Agent signin and a call just huangup. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
+                            , stAgentInfo.ulSiteID
+                            , stAgentInfo.bNeedConnected ? "Yes" : "No"
+                            , stAgentInfo.bConnected ? "Yes" : "No"
+                            , stAgentInfo.ucStatus);
+        }
+    }
+
+    return DOS_SUCC;
+
+}
+
 /**
  * 函数: U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
  * 功能: 处理ESL的CHANNEL PARK事件
@@ -10838,11 +10952,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     else if (SC_SERV_AGENT_SIGNIN == ulMainService)
     {
         /* 坐席长签成功 */
-        ulRet = sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECTED, pstSCB->ulAgentID, OPERATING_TYPE_PHONE);
-        if (ulRet == DOS_SUCC)
-        {
-            sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_BUTT, pstSCB->usSCBNo);
-        }
+        ulRet = sc_ep_agent_signin_proc(pstHandle, pstEvent, pstSCB);
     }
     else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
     {
@@ -11846,6 +11956,10 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 else
                 {
                     sc_acd_agent_update_status(pstSCBOther->ulAgentID, SC_ACD_PROC, pstSCBOther->usSCBNo);
+
+                    sc_ep_esl_execute("sleep", "500", pstSCBOther->szUUID);
+                    dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_park %s \r\n", pstSCBOther->szUUID);
+                    sc_ep_esl_execute_cmd(szCMD);
                 }
             }
 
@@ -12078,6 +12192,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     U32           ulTaskMode = 0;
     U32           ulMainService = U32_BUTT;
     U32           ulErrCode = CC_ERR_NO_REASON;
+    S8            szMOHFilePath[256] = { 0, };
     S8            *pszMainService = NULL;
     S8            *pszPlayBalance = NULL;
     S8            *pszSIPTermCause = NULL;
@@ -12098,6 +12213,13 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     sc_call_trace(pstSCB, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
     pszMainService = esl_event_get_header(pstEvent, "variable_main_service");
     pszSIPTermCause = esl_event_get_header(pstEvent, "variable_sip_term_cause");
+
+    if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN)
+        && SC_SCB_ACTIVE == pstSCB->ucStatus
+        && '\0' != pstSCB->szUUID[0])
+    {
+        sc_ep_agent_signin_proc(pstHandle, pstEvent, pstSCB);
+    }
 
     if (DOS_ADDR_INVALID(pszMainService)
         || dos_atoul(pszMainService, &ulMainService) < 0)
