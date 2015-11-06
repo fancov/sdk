@@ -281,9 +281,11 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bChannelCreated = DOS_FALSE;
     pstSCB->bIsAgentCallOtherLeg = DOS_FALSE;
     pstSCB->bIsPassThrough = DOS_FALSE;
+    pstSCB->bIsMarkCustomer = DOS_FALSE;
     pstSCB->LBalance = 0;
 
     pstSCB->ulFirstDTMFTime = 0;                    /* 第一次DTMF时间戳 */
+    pstSCB->ulLastDTMFTime = 0;
     pstSCB->ulIVRFinishTime = 0;                    /* IVR 结束时间戳 */
 
     pstSCB->ulCallDuration = 0;                /* 呼叫时长，防止吊死用，每次心跳时更新 */
@@ -303,6 +305,12 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->pstExtraData = NULL;
     pstSCB->pszRecordFile = NULL;
     pstSCB->ucMainService = U8_BUTT;
+    if (DOS_ADDR_VALID(pstSCB->pstTmrHandle))
+    {
+        /* 定时器没有释放 */
+        dos_tmr_stop(&pstSCB->pstTmrHandle);
+        pstSCB->pstTmrHandle = NULL;
+    }
 
     /* 业务类型 列表*/
     pstSCB->ucCurrentSrvInd = 0;               /* 当前空闲的业务类型索引 */

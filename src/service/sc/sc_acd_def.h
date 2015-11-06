@@ -195,13 +195,15 @@ typedef struct tagACDSiteDesc{
     S8         szMobile[SC_TEL_NUMBER_LENGTH];    /* 移动电话 */
     S8         szTTNumber[SC_TEL_NUMBER_LENGTH];    /* TT号码 */
 
+    S8         szLastCustomerNum[SC_TEL_NUMBER_LENGTH];    /* 最后一个通话的客户的号码 */
+
     pthread_mutex_t  mutexLock;
 
     SC_SITE_STAT_ST stStat;
 }SC_ACD_AGENT_INFO_ST;
 
 U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGroupID, S8 *szCallerNum);
-U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo);
+U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo);
 S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
 U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);
 U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult);

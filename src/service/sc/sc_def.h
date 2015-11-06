@@ -49,6 +49,9 @@ extern BOOL                 g_blSCInitOK;
 /* 电话号码长度 */
 #define SC_TEL_NUMBER_LENGTH           24
 
+/* 客户标记的长度 */
+#define SC_CUSTOMER_MARK_LENGTH        4
+
 /* IP地址长度 */
 #define SC_IP_ADDR_LEN                 32
 
@@ -138,6 +141,8 @@ extern BOOL                 g_blSCInitOK;
 #define SC_POTS_AGENT_SIGNOUT           "*88"        /* 坐席退出长签 */
 #define SC_POTS_BLIND_TRANSFER          "*70*"       /* 盲转 */
 #define SC_POTS_ATTENDED_TRANSFER       "*71*"       /* 协商转 */
+#define SC_POTS_HANGUP_CUSTOMER         "##"         /* 坐席挂断客户端电话 */
+#define SC_POTS_MARK_CUSTOMER           "*66*"       /* 坐席标记上一个客户 */
 
 /* 定义运营商的ID */
 #define SC_TOP_USER_ID                 1
@@ -669,6 +674,7 @@ typedef struct tagSCSCB{
     U16       usHoldTotalTime;                    /* 被hold的总时长 */
     U32       ulLastHoldTimetamp;                 /* 上次hold是的时间戳，解除hold的时候值零 */
     U32       ulFirstDTMFTime;                    /* 第一次DTMF时间戳 */
+    U32       ulLastDTMFTime;                     /* 上一次DTMF时间戳 */
     U32       ulIVRFinishTime;                    /* IVR 结束时间戳 */
     U32       ulInQueueTime;                      /* IVR 进入队列时间 */
 
@@ -684,7 +690,8 @@ typedef struct tagSCSCB{
     U32       bIsAgentCallOtherLeg:1;             /* 另一条腿是否要呼叫坐席 */
     U32       bTerminationFlag:1;                 /* 业务终止标志 */
     U32       bIsPassThrough:1;                   /* 呼叫坐席时，主叫号码是否透传 */
-    U32       ulRes:20;
+    U32       bIsMarkCustomer:1;                  /* 坐席是否已经标记客户 */
+    U32       ulRes:19;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -692,20 +699,22 @@ typedef struct tagSCSCB{
 
     S64       LBalance;                           /* 余额,单位:万分之一元 */
 
-    S8        szCallerBerforRouter[SC_TEL_NUMBER_LENGTH];  /* 路由时用的号码，可用于计费的 */
-    S8        szCalleeBerforRouter[SC_TEL_NUMBER_LENGTH];  /* 路由时用的号码,可用于计费的  */
+    S8        szCallerBerforRouter[SC_TEL_NUMBER_LENGTH];   /* 路由时用的号码，可用于计费的 */
+    S8        szCalleeBerforRouter[SC_TEL_NUMBER_LENGTH];   /* 路由时用的号码,可用于计费的  */
 
-    S8        szCallerAfterRouter[SC_TEL_NUMBER_LENGTH];   /* 路由后号码变换之后的号码，用户发起呼叫*/
-    S8        szCalleeAfterRouter[SC_TEL_NUMBER_LENGTH];   /* 路由后号码变换之后的号码，用户发起呼叫 */
+    S8        szCallerAfterRouter[SC_TEL_NUMBER_LENGTH];    /* 路由后号码变换之后的号码，用户发起呼叫*/
+    S8        szCalleeAfterRouter[SC_TEL_NUMBER_LENGTH];    /* 路由后号码变换之后的号码，用户发起呼叫 */
 
-    S8        szCallerNum[SC_TEL_NUMBER_LENGTH];  /* 主叫号码，业务发起时的号码 */
-    S8        szCalleeNum[SC_TEL_NUMBER_LENGTH];  /* 被叫号码，业务发起时的号码 */
+    S8        szCallerNum[SC_TEL_NUMBER_LENGTH];            /* 主叫号码，业务发起时的号码 */
+    S8        szCalleeNum[SC_TEL_NUMBER_LENGTH];            /* 被叫号码，业务发起时的号码 */
 
-    S8        szANINum[SC_TEL_NUMBER_LENGTH];     /* 被叫号码 */
-    S8        szDialNum[SC_TEL_NUMBER_LENGTH];    /* 用户拨号 */
-    S8        szSiteNum[SC_TEL_NUMBER_LENGTH];    /* 坐席号码 */
-    S8        szUUID[SC_MAX_UUID_LENGTH];         /* Leg-A UUID */
+    S8        szANINum[SC_TEL_NUMBER_LENGTH];               /* 被叫号码 */
+    S8        szDialNum[SC_TEL_NUMBER_LENGTH];              /* 用户拨号 */
+    S8        szSiteNum[SC_TEL_NUMBER_LENGTH];              /* 坐席号码 */
+    S8        szUUID[SC_MAX_UUID_LENGTH];                   /* Leg-A UUID */
+    S8        szCustomerMark[SC_CUSTOMER_MARK_LENGTH];      /* 客户标记的标记值 */
 
+    DOS_TMR_ST pstTmrHandle;                      /* 定时器句柄，坐席处理状态时使用 */
     S8        *pszRecordFile;
 
     SC_SCB_EXTRA_DATA_ST *pstExtraData;           /* 结算话单是需要的额外数据 */

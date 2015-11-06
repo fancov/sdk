@@ -404,8 +404,16 @@ VOID sc_acd_agent_update_status_IDEL(U64 ulArg)
     U32                         ulHashIndex        = 0;
     U32                         ulSiteID           = 0;
     BOOL                        bIsConnect         = DOS_FALSE;
+    SC_SCB_ST                   *pstSCB            = NULL;
 
-    ulSiteID = (U32)ulArg;
+    pstSCB = (SC_SCB_ST *)ulArg;
+    ulSiteID = pstSCB->ulAgentID;
+    pstSCB->pstTmrHandle = NULL;
+
+    /* 将被叫号码改为 客户标记的标记值, 挂断电话 */
+    dos_strcpy(pstSCB->szCalleeNum, pstSCB->szCustomerMark);
+    pstSCB->usOtherSCBNo = U16_BUTT;
+    sc_ep_esl_execute("hangup", "", pstSCB->szUUID);
 
     sc_acd_hash_func4agent(ulSiteID, &ulHashIndex);
     pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, (VOID *)&ulSiteID, sc_acd_agent_hash_find);
@@ -446,26 +454,27 @@ VOID sc_acd_agent_update_status_IDEL(U64 ulArg)
  *      U32 ulStatus  : 新状态
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
+U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueInfo = NULL;
     HASH_NODE_S                 *pstHashNode       = NULL;
     U32                         ulHashIndex        = 0;
     U32                         ulProcesingTime    = 0;
     S32                         lResult            = 0;
-    DOS_TMR_ST                  pstTmrHandle       = NULL;
+    U32                         ulSiteID           = 0;
     BOOL                        bNeedConnected     = DOS_FALSE;
     BOOL                        bConnected         = DOS_FALSE;
     U32                         ulAction           = ACD_MSG_SUBTYPE_BUTT;
 
     /* 如果 ulStatus 为 SC_ACD_BUTT， 则不跟新状态 */
-    if (ulStatus > SC_ACD_BUTT)
+    if (ulStatus > SC_ACD_BUTT || DOS_ADDR_INVALID(pstSCB))
     {
         DOS_ASSERT(0);
 
         return DOS_FAIL;
     }
 
+    ulSiteID = pstSCB->ulAgentID;
     sc_acd_hash_func4agent(ulSiteID, &ulHashIndex);
     pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, (VOID *)&ulSiteID, sc_acd_agent_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
@@ -538,9 +547,17 @@ U32 sc_acd_agent_update_status(U32 ulSiteID, U32 ulStatus, U32 ulSCBNo)
 
     if (SC_ACD_PROC == ulStatus)
     {
-        /* 如果为处理状态，开启定时器 */
+        /* 如果为处理状态，开启定时器, 应该对坐席放音 */
+        sc_ep_esl_execute("park", "", pstSCB->szUUID);
+
         sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", ulSiteID, ulProcesingTime);
-        lResult = dos_tmr_start(&pstTmrHandle, ulProcesingTime * 1000, sc_acd_agent_update_status_IDEL, ulSiteID, TIMER_NORMAL_NO_LOOP);
+        if (DOS_ADDR_VALID(pstSCB->pstTmrHandle))
+        {
+            dos_tmr_stop(&pstSCB->pstTmrHandle);
+            pstSCB->pstTmrHandle = NULL;
+        }
+
+        lResult = dos_tmr_start(&pstSCB->pstTmrHandle, ulProcesingTime * 1000, sc_acd_agent_update_status_IDEL, (U64)pstSCB, TIMER_NORMAL_NO_LOOP);
         if (lResult < 0)
         {
             sc_logr_error(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL FAIL", ulSiteID);

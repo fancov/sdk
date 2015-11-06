@@ -7847,7 +7847,7 @@ U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
 
                 /* 发送话单 */
                 pstSCBNotify->usOtherSCBNo = U16_BUTT;
-                sc_acd_agent_update_status(pstSCBNotify->ulAgentID, SC_ACD_IDEL, U32_BUTT);
+                sc_acd_agent_update_status(pstSCBNotify, SC_ACD_IDEL, U32_BUTT);
                 sc_send_billing_stop2bs(pstSCBNotify);
 
                 /* 清理资源 */
@@ -7884,7 +7884,7 @@ U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
 
             /* 发送话单 */
             pstSCBNotify->usOtherSCBNo = U16_BUTT;
-            sc_acd_agent_update_status(pstSCBNotify->ulAgentID, SC_ACD_IDEL, U32_BUTT);
+            sc_acd_agent_update_status(pstSCBNotify, SC_ACD_IDEL, U32_BUTT);
             sc_send_billing_stop2bs(pstSCBNotify);
 
             /* 清理资源 */
@@ -8396,7 +8396,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         }
 
         /* 更新坐席的状态 */
-        sc_acd_agent_update_status(pstSCBNew->ulAgentID, SC_ACD_BUSY, pstSCBNew->usSCBNo);
+        sc_acd_agent_update_status(pstSCBNew, SC_ACD_BUSY, pstSCBNew->usSCBNo);
 
         pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
         pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
@@ -8919,7 +8919,7 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
         }
 
         /* 更新坐席的状态 */
-        sc_acd_agent_update_status(pstSCBOther->ulAgentID, SC_ACD_BUSY, pstSCBOther->usSCBNo);
+        sc_acd_agent_update_status(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo);
 
         sc_scb_free(pstSCB);
         sc_ep_call_agent_by_id(pstSCBOther, ulAgentCalled, DOS_TRUE, DOS_FALSE);
@@ -9097,7 +9097,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         }
 
         /* 更新坐席的状态 */
-        sc_acd_agent_update_status(pstSCBOther->ulAgentID, SC_ACD_BUSY, pstSCBOther->usSCBNo);
+        sc_acd_agent_update_status(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo);
 
 
         pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
@@ -10375,22 +10375,34 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
     }
     else if (ESL_EVENT_CHANNEL_HANGUP_COMPLETE == pstEvent->event_id)
     {
-        g_pstTaskMngtInfo->stStat.ulCurrentSessions--;
+        if (g_pstTaskMngtInfo->stStat.ulCurrentSessions > 0)
+        {
+            g_pstTaskMngtInfo->stStat.ulCurrentSessions--;
+        }
 
         if (pstGateway && DOS_FALSE != pstGateway->bStatus)
         {
-            pstGateway->stStat.ulCurrentSessions--;
+            if (pstGateway->stStat.ulCurrentSessions > 0)
+            {
+                pstGateway->stStat.ulCurrentSessions--;
+            }
         }
 
 
         pszOtherLeg = esl_event_get_header(pstEvent, "variable_other_leg_scb");
         if (DOS_ADDR_INVALID(pszOtherLeg))
         {
-            g_pstTaskMngtInfo->stStat.ulCurrentCalls--;
+            if (g_pstTaskMngtInfo->stStat.ulCurrentCalls > 0)
+            {
+                g_pstTaskMngtInfo->stStat.ulCurrentCalls--;
+            }
 
             if (pstGateway && DOS_FALSE != pstGateway->bStatus)
             {
-                pstGateway->stStat.ulCurrentCalls--;
+                if (pstGateway->stStat.ulCurrentCalls > 0)
+                {
+                    pstGateway->stStat.ulCurrentCalls--;
+                }
             }
         }
 
@@ -10463,32 +10475,56 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
 
     sc_logr_debug(SC_FUNC, "POTS scb(%u) num(%s)", pstSCB->usSCBNo, pszDealNum);
 
-    if (pszDealNum[0] != '*')
+    if (pszDealNum[0] != '*'
+        && pszDealNum[0] != '#')
     {
+        /* 不是以 '*'或者'#'开头不处理 */
         return DOS_FAIL;
     }
 
     /* 判断是否是客户标记 */
-    if (bIsSecondaryDialing && sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
+    if (bIsSecondaryDialing
+        && 1 == dos_sscanf(pszDealNum+1, "%d", &ulKey)
+        && ulKey <= 9)
     {
-        if (1 == dos_sscanf(pszDealNum+1, "%d", &ulKey) && ulKey <= 9)
+        /* 客户标记 */
+        pstSCB->bIsMarkCustomer = DOS_TRUE;
+        pstSCB->szCustomerMark[0] = '\0';
+        dos_strncpy(pstSCB->szCustomerMark, pszDealNum, SC_CUSTOMER_MARK_LENGTH-1);
+        pstSCB->szCustomerMark[SC_CUSTOMER_MARK_LENGTH-1] = '\0';
+
+        sc_ep_update_corpclients(pstSCB->ulCustomID, ulKey, pstSCB->szCallerNum);
+        sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
+
+        pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+        if (DOS_ADDR_VALID(pstSCBOther)
+            && !pstSCBOther->bWaitingOtherRelase)
         {
-            /* 客户标记 */
-            sc_ep_update_corpclients(pstSCB->ulCustomID, ulKey, pstSCB->szCallerNum);
-            sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
-
-            pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
-            if (DOS_ADDR_VALID(pstSCBOther)
-                && !pstSCBOther->bWaitingOtherRelase)
-            {
-                sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
-            }
-
-            return DOS_SUCC;
+            sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
         }
+
+        return DOS_SUCC;
     }
 
-    if (dos_strncmp(pszDealNum, SC_POTS_BALANCE, dos_strlen(SC_POTS_BALANCE)) == 0 && !bIsSecondaryDialing)
+    if (dos_strncmp(pszDealNum, SC_POTS_HANGUP_CUSTOMER, dos_strlen(SC_POTS_HANGUP_CUSTOMER)) == 0
+        && bIsSecondaryDialing)
+    {
+        /* 二次拨号时，挂断客户的电话 */
+        pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+        if (DOS_ADDR_VALID(pstSCBOther)
+            && !pstSCBOther->bWaitingOtherRelase)
+        {
+            sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
+        }
+    }
+    else if (dos_strncmp(pszDealNum, SC_POTS_MARK_CUSTOMER, dos_strlen(SC_POTS_MARK_CUSTOMER)) == 0
+        && !bIsSecondaryDialing)
+    {
+        /* 标记上一个客户 */
+
+    }
+    else if (dos_strncmp(pszDealNum, SC_POTS_BALANCE, dos_strlen(SC_POTS_BALANCE)) == 0
+        && !bIsSecondaryDialing)
     {
         /* 查询余额 只支持话机操作 */
         pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
@@ -10502,7 +10538,8 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
 
         bIsHangUp = DOS_FALSE;
     }
-    else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_ONLINE, dos_strlen(SC_POTS_AGENT_ONLINE)) == 0 && !bIsSecondaryDialing)
+    else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_ONLINE, dos_strlen(SC_POTS_AGENT_ONLINE)) == 0
+        && !bIsSecondaryDialing)
     {
         /* 坐席登陆web页面 只支持话机操作 */
         if (sc_acd_get_agent_by_userid(&stAgentInfo, pstSCB->szCallerNum) != DOS_SUCC)
@@ -10570,7 +10607,8 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
             bIsHangUp = DOS_FALSE;
         }
     }
-    else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_SIGNIN, dos_strlen(SC_POTS_AGENT_SIGNIN)) == 0 && !bIsSecondaryDialing)
+    else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_SIGNIN, dos_strlen(SC_POTS_AGENT_SIGNIN)) == 0
+        && !bIsSecondaryDialing)
     {
         /* 坐席长签 只支持话机操作 */
         if ((ulRet = sc_acd_singin_by_phone(pstSCB->szCallerNum, pstSCB)) != DOS_SUCC)
@@ -10589,7 +10627,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
     else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_SIGNOUT, dos_strlen(SC_POTS_AGENT_SIGNOUT)) == 0)
     {
         /* 坐席退出长签 */
-        if (sc_acd_get_agent_by_userid(&stAgentInfo, pstSCB->szCallerNum) != DOS_SUCC)
+        if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCB->ulAgentID) != DOS_SUCC)
         {
             sc_logr_info(SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
 
@@ -10601,7 +10639,8 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
 
         ulRet = DOS_SUCC;
     }
-    else if (dos_strncmp(pszDealNum, SC_POTS_BLIND_TRANSFER, dos_strlen(SC_POTS_BLIND_TRANSFER)) == 0 && bIsSecondaryDialing)
+    else if (dos_strncmp(pszDealNum, SC_POTS_BLIND_TRANSFER, dos_strlen(SC_POTS_BLIND_TRANSFER)) == 0
+        && bIsSecondaryDialing)
     {
         /* 盲转  只支持二次拨号 */
         /* 先根据被叫号码，获得被转坐席的id，根据坐席的工号找个坐席 */
@@ -10658,7 +10697,8 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         }
 
     }
-    else if (dos_strncmp(pszDealNum, SC_POTS_ATTENDED_TRANSFER, dos_strlen(SC_POTS_ATTENDED_TRANSFER)) == 0 && bIsSecondaryDialing)
+    else if (dos_strncmp(pszDealNum, SC_POTS_ATTENDED_TRANSFER, dos_strlen(SC_POTS_ATTENDED_TRANSFER)) == 0
+        && bIsSecondaryDialing)
     {
         /* 协商转 只支持二次拨号 */
         bIsHangUp = DOS_FALSE;
@@ -10841,7 +10881,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         ulRet = sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECTED, pstSCB->ulAgentID, OPERATING_TYPE_PHONE);
         if (ulRet == DOS_SUCC)
         {
-            sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_BUTT, pstSCB->usSCBNo);
+            sc_acd_agent_update_status(pstSCB, SC_ACD_BUTT, pstSCB->usSCBNo);
         }
     }
     else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
@@ -11339,7 +11379,7 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         /* 判断是否是呼叫坐席，更新坐席的状态 */
         if (pstSCB->bIsAgentCall && !sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
         {
-            sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_BUSY, ulSCBNo);
+            sc_acd_agent_update_status(pstSCB, SC_ACD_BUSY, ulSCBNo);
         }
 
         /* 更新UUID */
@@ -11637,6 +11677,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
     S8          *pszHitDiaplan      = NULL;
     S8          *pszHungupCause     = NULL;
     SC_SCB_ST   *pstSCBOther        = NULL;
+    SC_ACD_AGENT_INFO_ST stAgentInfo;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -11777,7 +11818,8 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             /* 如果是呼叫坐席的，需要做特殊处理,看看坐席是否长连什么的 */
             if (pstSCB->bIsAgentCall)
             {
-                if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN) && pstSCB->usOtherSCBNo == U16_BUTT)
+                if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN)
+                    && pstSCB->usOtherSCBNo == U16_BUTT)
                 {
                     /* 坐席长签的电话挂断了，如果 没有另一条leg，则是主动挂断，不用更新坐席的状态
                         如果时间有另一条leg，则需要，更改一下坐席的状态 */
@@ -11795,7 +11837,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                     }
                 }
 
-                sc_acd_agent_update_status(pstSCB->ulAgentID, ulAgentStatus, U32_BUTT);
+                sc_acd_agent_update_status(pstSCB, ulAgentStatus, U32_BUTT);
 
                 pstSCB->bIsAgentCall = DOS_FALSE;
             }
@@ -11830,6 +11872,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             if (DOS_ADDR_VALID(pstSCBOther)
                 && !pstSCBOther->bWaitingOtherRelase)
             {
+#if 0
                 /* 长签就不挂断了, 修改长签坐席的状态 */
                 if (!sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN))
                 {
@@ -11847,8 +11890,51 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 {
                     sc_acd_agent_update_status(pstSCBOther->ulAgentID, SC_ACD_PROC, pstSCBOther->usSCBNo);
                 }
+#endif
+                /* A-leg不是坐席，B-leg是坐席，判断一下B是否已经标记客户，
+                    如果没有，获得B对应坐席的整理时长，如果不为0，则B-leg不用挂断电话，进行客户标记 */
+                if (!pstSCB->bIsAgentCall && pstSCBOther->bIsAgentCall && !pstSCBOther->bIsMarkCustomer)
+                {
+                    /* 获得坐席 */
+                    if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCBOther->ulAgentID) != DOS_SUCC)
+                    {
+                        /* 获取坐席失败， */
+                        sc_logr_notice(SC_ESL, "Get agent FAIL by agentID(%u)", pstSCBOther->ulAgentID);
+                        pstSCB->bWaitingOtherRelase = DOS_TRUE;
+                    }
+                    else
+                    {
+                        /* 判断坐席是否是长签，如果是长签 */
+                        if (sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN))
+                        {
+                            if (stAgentInfo.ucProcesingTime != 0)
+                            {
+                                /* 不要挂断坐席，把坐席置为 整理状态，放音提示坐席，可标记客户 */
+                                sc_acd_agent_update_status(pstSCBOther, SC_ACD_PROC, pstSCBOther->usSCBNo);
+                            }
+                            else
+                            {
+                                /* 修改状态为空闲状态 */
+                                sc_acd_agent_update_status(pstSCBOther, SC_ACD_IDEL, pstSCBOther->usSCBNo);
+                            }
+                        }
+                        else
+                        {
+                            if (stAgentInfo.ucProcesingTime != 0)
+                            {
+                                /* 不要挂断坐席，把坐席置为 整理状态，放音提示坐席，可标记客户 */
+                                sc_acd_agent_update_status(pstSCBOther, SC_ACD_PROC, U32_BUTT);
+                                sc_ep_esl_execute("park", "", pstSCBOther->szUUID);
+                            }
+                            else
+                            {
+                                pstSCB->bWaitingOtherRelase = DOS_TRUE;
+                                sc_acd_agent_update_status(pstSCBOther, SC_ACD_IDEL, U32_BUTT);
+                            }
+                        }
+                    }
+                }
             }
-
 
             sc_logr_debug(SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
             /* 发送话单 */
@@ -11973,6 +12059,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
     S8 *pszDTMFDigit = NULL;
     U32 ulTaskMode   = U32_BUTT;
     U32 ulLen        = 0;
+    U32 ulCurrTime   = 0;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -12035,6 +12122,38 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         || pstSCB->bIsAgentCall)
     {
         /* 坐席长签，二次拨号 */
+        /* 只有 * 或者 # 开头时才被缓存，获取时间间隔为3s，超过3s则去掉缓存中的数据。
+           一般 # 作为结束符，特别 "##", 挂断对端的电话 */
+        ulCurrTime = time(NULL);
+        if ((pstSCB->szDialNum[0] != '\0'
+            && ulCurrTime - pstSCB->ulLastDTMFTime >= 3))
+        {
+            /* 超时 */
+            pstSCB->szDialNum[0] = '\0';
+        }
+
+        if (pstSCB->szDialNum[0] == '\0'
+            && pszDTMFDigit[0] != '#'
+            && pszDTMFDigit[0] != '*')
+        {
+            /* 第一个符号不是 '#' 或者 '*'，不保存 */
+            goto process_succ;
+        }
+
+        pstSCB->ulLastDTMFTime = ulCurrTime;
+        if (pstSCB->szDialNum[0] == '#'
+            && pstSCB->szDialNum[1] == '\0'
+            && pszDTMFDigit[0] == '#')
+        {
+            /* ## */
+            pstSCB->szDialNum[1] = '#';
+            pstSCB->szDialNum[2] = '\0';
+            sc_ep_pots_pro(pstSCB, DOS_TRUE);
+            pstSCB->szDialNum[0] = '\0';
+
+            goto process_succ;
+        }
+
         if (pszDTMFDigit[0] == '#')
         {
             sc_logr_debug(SC_ESL, "Secondary dialing. caller : %s, DialNum : %s", pstSCB->szCallerNum, pstSCB->szDialNum);
@@ -12051,6 +12170,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         }
     }
 
+process_succ:
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
 
     SC_TRACE_OUT();
