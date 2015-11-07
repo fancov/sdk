@@ -146,6 +146,17 @@ py_finished:
         Py_DECREF(pstPyMod);
         pstPyMod= NULL;
     }
+
+    if (ulRet != DOS_SUCC)
+    {
+        py_deinit();
+        /*  */
+        if (py_init() != DOS_SUCC)
+        {
+            dos_log(LOG_LEVEL_EMERG, LOG_TYPE_RUNINFO, "Cannot reinit the python lib.");
+        }
+    }
+
     return ulRet;
 }
 
