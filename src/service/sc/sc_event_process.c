@@ -6427,6 +6427,10 @@ U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase)
     /* 设置错误码 */
     dos_snprintf(szParamString, sizeof(szParamString), "proto_specific_hangup_cause=sip:%u", usSipErrCode);
     sc_ep_esl_execute("set", szParamString, pstSCB->szUUID);
+    /* 保证一定可以挂断 */
+    dos_snprintf(szParamString, sizeof(szParamString), "bgapi uuid_park %s \r\n", pstSCB->szUUID);
+    sc_ep_esl_execute_cmd(szParamString);
+    /* 挂断 */
     sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
     pstSCB->usTerminationCause = ulTernmiteCase;
     pstSCB->bTerminationFlag = DOS_TRUE;
@@ -9687,8 +9691,15 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                     break;
                 }
                 sc_logr_info(SC_ESL, "Find agent(%d) succ. bConnected : %d", stAgentInfo.ulSiteID, stAgentInfo.bConnected);
+                /* 判断坐席的状态 */
+                if (stAgentInfo.ucStatus != SC_ACD_IDEL)
+                {
+                    sc_ep_hangup_call(pstSCB, CC_ERR_SC_USER_BUSY);
+                    break;
+                }
 
                 pstSCB->bRecord = stAgentInfo.bRecord;
+                pstSCB->ulAgentID = stAgentInfo.ulSiteID;
                 dos_strncpy(pstSCB->szSiteNum, stAgentInfo.szEmpNo, sizeof(pstSCB->szSiteNum));
                 pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
                 if (pstSCB->bRecord)
@@ -9731,7 +9742,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 }
                 else
                 {
-                    dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d,update_agent_id=%d,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s"
+                    dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d,update_agent_id=%d,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,mark_customer=true}user/%s"
                         , pstSCB->usSCBNo
                         , stAgentInfo.ulSiteID
                         , pstSCB->szCallerNum
@@ -10499,10 +10510,24 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
 
         pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
-        if (DOS_ADDR_VALID(pstSCBOther)
-            && !pstSCBOther->bWaitingOtherRelase)
+        if (DOS_ADDR_VALID(pstSCBOther))
         {
-            sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
+            sc_ep_hangup_call(pstSCBOther, CC_ERR_NORMAL_CLEAR);
+        }
+        else
+        {
+            /* 修改坐席的状态，如果不是长签，需要挂断电话 */
+            if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
+            {
+                /* 坐席长签的电话挂断了 */
+                sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, pstSCB->usSCBNo);
+            }
+            else
+            {
+                sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, U32_BUTT);
+
+                sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+            }
         }
 
         return DOS_SUCC;
@@ -10785,7 +10810,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 {
     U32       ulRet = 0;
     S8        szMOHFilePath[256] = { 0, };
-    S8        szAPPParam[256] = { 0, };
+    //S8        szAPPParam[256] = { 0, };
     SC_ACD_AGENT_INFO_ST stAgentInfo;
 
     if (DOS_ADDR_INVALID(pstHandle) || DOS_ADDR_INVALID(pstEvent) || DOS_ADDR_INVALID(pstSCB))
@@ -10828,7 +10853,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         ulRet = sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECTED, pstSCB->ulAgentID, OPERATING_TYPE_PHONE);
         if (ulRet == DOS_SUCC)
         {
-            sc_acd_agent_update_status(pstSCB->ulAgentID, SC_ACD_BUTT, pstSCB->usSCBNo);
+            sc_acd_agent_update_status(pstSCB, SC_ACD_BUTT, pstSCB->usSCBNo);
         }
 
         sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCB->szUUID);
@@ -10909,7 +10934,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     S8        *pszCallee     = NULL;
     S8        *pszUUID       = NULL;
     S8        *pszMainService = NULL;
-    S8        *pszIsTransfor  = NULL;
+    S8        *pszValue       = NULL;
     U32       ulCallSrc, ulCallDst;
     U32       ulRet = DOS_SUCC;
     U32       ulMainService = U32_BUTT;
@@ -10971,12 +10996,45 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         goto proc_finished;
     }
 
-    pszIsTransfor = esl_event_get_header(pstEvent, "variable_begin_to_transfer");
-    if (DOS_ADDR_VALID(pszIsTransfor)
-        && dos_strcmp(pszIsTransfor, "true") == 0)
+    pszValue = esl_event_get_header(pstEvent, "variable_begin_to_transfer");
+    if (DOS_ADDR_VALID(pszValue)
+        && dos_strcmp(pszValue, "true") == 0)
     {
         /* 转接时，第二方挂断电话后, 不要挂断第三方 */
+        ulRet = DOS_SUCC;
+
         goto proc_finished;
+    }
+
+    pszValue = esl_event_get_header(pstEvent, "variable_mark_customer_timeout");
+    if (DOS_ADDR_VALID(pszValue)
+        && dos_strcmp(pszValue, "true") == 0)
+    {
+        /* 标记完成，挂断电话 */
+        dos_strcpy(pstSCB->szCalleeNum, pstSCB->szCustomerMark);
+        pstSCB->usOtherSCBNo = U16_BUTT;
+        sc_ep_esl_execute("hangup", "", pstSCB->szUUID);
+
+        /* !!! 修改坐席的状态， 要判断是否是长签 */
+        sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, U32_BUTT);
+
+        goto proc_finished;
+    }
+
+    if (pstSCB->bIsAgentCall == DOS_TRUE
+        && pstSCB->bIsMarkCustomer == DOS_FALSE)
+    {
+        pszValue = esl_event_get_header(pstEvent, "variable_mark_customer");
+        if (DOS_ADDR_VALID(pszValue)
+            && dos_strcmp(pszValue, "true") == 0)
+        {
+            /* 客户标记 */
+
+            pstSCB->usOtherSCBNo = U16_BUTT;
+            ulRet = DOS_SUCC;
+
+            goto proc_finished;
+        }
     }
 
     if (SC_SERV_CALL_INTERCEPT == ulMainService
@@ -11604,7 +11662,7 @@ process_fail1:
         pstSCB1->usOtherSCBNo = pstSCB->usSCBNo;
     }
 
-     /* 根据参数update_agent，判断是否需要更新坐席中的 usSCBNo  */
+    /* 根据参数update_agent，判断是否需要更新坐席中的 usSCBNo  */
     pszAgentID = esl_event_get_header(pstEvent, "variable_update_agent_id");
     if (DOS_ADDR_VALID(pszAgentID) && dos_atoul(pszAgentID, &ulAgentID) == 0)
     {
@@ -11932,28 +11990,25 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             /* 如果是呼叫坐席的，需要做特殊处理,看看坐席是否长连什么的 */
             if (pstSCB->bIsAgentCall)
             {
-                if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN)
-                    && pstSCB->usOtherSCBNo == U16_BUTT)
+                //if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
+                //{
+                    /* 坐席长签的电话挂断了 */
+                //    ulAgentStatus = SC_ACD_BUTT;
+                //}
+
+                if (pstSCB->pstExtraData->ulAnswerTimeStamp == 0
+                    || pstSCB->bIsMarkCustomer == DOS_TRUE)
                 {
-                    /* 坐席长签的电话挂断了，如果 没有另一条leg，则是主动挂断，不用更新坐席的状态
-                        如果时间有另一条leg，则需要，更改一下坐席的状态 */
-                    ulAgentStatus = SC_ACD_BUTT;
+                    ulAgentStatus = SC_ACD_IDEL;
                 }
                 else
                 {
-                    if (pstSCB->pstExtraData->ulAnswerTimeStamp == 0)
-                    {
-                        ulAgentStatus = SC_ACD_IDEL;
-                    }
-                    else
-                    {
-                        ulAgentStatus = SC_ACD_PROC;
-                    }
+                    ulAgentStatus = SC_ACD_PROC;
                 }
 
                 sc_acd_agent_update_status(pstSCB, ulAgentStatus, U32_BUTT);
 
-                pstSCB->bIsAgentCall = DOS_FALSE;
+                //pstSCB->bIsAgentCall = DOS_FALSE;
             }
 
             if (pstSCB->bRecord && pstSCB->pszRecordFile)
@@ -12011,6 +12066,8 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
 #endif
                 /* A-leg不是坐席，B-leg是坐席，判断一下B是否已经标记客户，
                     如果没有，获得B对应坐席的整理时长，如果不为0，则B-leg不用挂断电话，进行客户标记 */
+                sc_logr_debug(SC_ESL, "!!!!!! pstSCB->bIsAgentCall : %u, pstSCBOther->bIsAgentCall : %u, pstSCBOther->bIsMarkCustomer : %u"
+                        , pstSCB->bIsAgentCall, pstSCBOther->bIsAgentCall, pstSCBOther->bIsMarkCustomer);
                 if (!pstSCB->bIsAgentCall && pstSCBOther->bIsAgentCall && !pstSCBOther->bIsMarkCustomer)
                 {
                     /* 获得坐席 */
@@ -12041,8 +12098,8 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                             if (stAgentInfo.ucProcesingTime != 0)
                             {
                                 /* 不要挂断坐席，把坐席置为 整理状态，放音提示坐席，可标记客户 */
+                                sc_logr_debug(SC_ESL, "!!!!!! Agent : %u", pstSCBOther->ulAgentID);
                                 sc_acd_agent_update_status(pstSCBOther, SC_ACD_PROC, U32_BUTT);
-                                sc_ep_esl_execute("park", "", pstSCBOther->szUUID);
                             }
                             else
                             {
@@ -12050,6 +12107,19 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                 sc_acd_agent_update_status(pstSCBOther, SC_ACD_IDEL, U32_BUTT);
                             }
                         }
+                    }
+                }
+                else
+                {
+                    /* 等待另一条腿的挂断 */
+                    if (sc_ep_hangup_call(pstSCBOther, CC_ERR_NORMAL_CLEAR) == DOS_SUCC)
+                    {
+                        pstSCB->bWaitingOtherRelase = DOS_TRUE;
+                        sc_logr_info(SC_ESL, "Waiting other leg hangup.Curretn Leg UUID: %s, Other Leg UUID: %s"
+                                        , pstSCB->szUUID ? pstSCB->szUUID : "NULL"
+                                        , pstSCBOther->szUUID ? pstSCBOther->szUUID : "NULL");
+
+                        break;
                     }
                 }
             }
@@ -12316,9 +12386,10 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     U32           ulTaskMode = 0;
     U32           ulMainService = U32_BUTT;
     U32           ulErrCode = CC_ERR_NO_REASON;
-    S8            szMOHFilePath[256] = { 0, };
+    //S8            szMOHFilePath[256] = { 0, };
+    //S8            szParamString[256] = {0};
     S8            *pszMainService = NULL;
-    S8            *pszPlayBalance = NULL;
+    S8            *pszValue = NULL;
     S8            *pszSIPTermCause = NULL;
     SC_SCB_ST     *pstOtherSCB    = NULL;
 
@@ -12434,18 +12505,27 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     }
     else
     {
-        pszPlayBalance = esl_event_get_header(pstEvent, "not_hungup_after_play");
-        if (DOS_ADDR_VALID(pszPlayBalance))
+        pszValue = esl_event_get_header(pstEvent, "not_hungup_after_play");
+        if (DOS_ADDR_VALID(pszValue))
         {
             /* 播放后，不需要挂断 */
-            sc_logr_debug(SC_ESL, "SCB %d play balance, %s", pstSCB->usSCBNo, pszPlayBalance);
+            sc_logr_debug(SC_ESL, "SCB %d play balance, %s", pstSCB->usSCBNo, pszValue);
+
+            goto proc_succ;
         }
-        else
+
+        pszValue = esl_event_get_header(pstEvent, "variable_mark_customer_timeout");
+        if (DOS_ADDR_VALID(pszValue))
         {
-            sc_logr_notice(SC_ESL, "SCB %d donot needs handle any playback application.", pstSCB->usSCBNo);
-            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+            goto proc_succ;
         }
+
+        sc_logr_notice(SC_ESL, "SCB %d donot needs handle any playback application.", pstSCB->usSCBNo);
+        sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+
     }
+
+proc_succ:
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
 
