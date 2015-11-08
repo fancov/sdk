@@ -354,7 +354,7 @@ VOID *sc_task_runtime(VOID *ptr)
         {
             ulTaskInterval = sc_task_get_call_interval(pstTCB);
         }
-        dos_task_delay(1000);
+        dos_task_delay(ulTaskInterval);
         ulTaskInterval = 0;
 
         /* 根据当前呼叫量，确定发起呼叫的间隔，如果当前任务已经处于受限状态，就要强制调整间隔 */
@@ -368,7 +368,7 @@ VOID *sc_task_runtime(VOID *ptr)
         if (SC_TASK_PAUSED == pstTCB->ucTaskStatus)
         {
             sc_logr_info(SC_TASK, "Cannot make call for paused status. Task : %u.", pstTCB->ulTaskID);
-            ulTaskInterval = 1000;
+            ulTaskInterval = 20000;
             continue;
         }
 
@@ -378,7 +378,7 @@ VOID *sc_task_runtime(VOID *ptr)
             if (pstTCB->ulCurrentConcurrency != 0)
             {
                 sc_logr_info(SC_TASK, "Cannot make call for stoped status. Task : %u, CurrentConcurrency : %u.", pstTCB->ulTaskID, pstTCB->ulCurrentConcurrency);
-                ulTaskInterval = 1000;
+                ulTaskInterval = 20000;
                 continue;
             }
 
@@ -390,7 +390,7 @@ VOID *sc_task_runtime(VOID *ptr)
         if (sc_task_check_can_call_by_time(pstTCB) != DOS_TRUE)
         {
             sc_logr_info(SC_TASK, "Cannot make call for invalid time period. Task : %u. %d", pstTCB->ulTaskID, pstTCB->usTCBNo);
-            ulTaskInterval = 1000;
+            ulTaskInterval = 20000;
             continue;
         }
 
