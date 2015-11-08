@@ -230,6 +230,7 @@ esl_exec_fail:
 /* 这个地方有个问题。 g_pstDialerHandle->stHandle 被多个线程使用，会不会出现，一个线程刚刚发送了呼叫命令。名外一个线程收到了响应?*/
 U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCaller)
 {
+    SC_SCB_ST *pstOtherSCB = NULL;
     S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
     S8    *pszEventHeader = NULL, *pszEventBody = NULL;
     S8    szNumber[SC_TEL_NUMBER_LENGTH] = {0};
@@ -267,6 +268,23 @@ U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCal
         pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
     }
 go_on:
+
+    /* 判断另一条腿是否存在 */
+    pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
+    if (DOS_ADDR_VALID(pstOtherSCB))
+    {
+        dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "{main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,mark_customer=true}user/%s"
+                        , ulMainService
+                        , pstSCB->usSCBNo
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCalleeNum);
+
+        sc_ep_esl_execute("bridge", szCMDBuff, pstOtherSCB->szUUID);
+
+        return DOS_SUCC;
+    }
+
     dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
                     , "bgapi originate {main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s &park \r\n"
                     , ulMainService
@@ -339,8 +357,8 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     S8    *pszEventHeader   = NULL;
     S8    *pszEventBody     = NULL;
     S8    *pszUUID          = NULL;
-    S8    szMOHFilePath[256]  = { 0, };
-    S8    szMOHParam[256]  = { 0, };
+    //S8    szMOHFilePath[256]  = { 0, };
+    //S8    szMOHParam[256]  = { 0, };
     S8    szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0 };
     S8    szCallString[SC_ESL_CMD_BUFF_LEN] = { 0 };
     U32   ulRouteID         = U32_BUTT;
