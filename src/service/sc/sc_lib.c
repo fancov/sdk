@@ -2073,7 +2073,6 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
         }
     }
 
-    DOS_ASSERT(0);
     SC_TRACE_OUT();
     return DOS_FALSE;
 }
