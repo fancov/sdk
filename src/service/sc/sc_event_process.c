@@ -10480,6 +10480,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
     S8          pszCallee[SC_TEL_NUMBER_LENGTH] = {0};
     S8          pszDealNum[SC_TEL_NUMBER_LENGTH] = {0};
     S8          pszEmpNum[SC_TEL_NUMBER_LENGTH] = {0};
+    S8          szAPPParam[512] = {0};
     U32         ulKey       = U32_BUTT;
     SC_SCB_ST   *pstSCBOther = NULL;
 
@@ -10519,6 +10520,12 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
 
         sc_ep_update_corpclients(pstSCB->ulCustomID, ulKey, pstSCB->szCallerNum);
         sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
+
+        /* 操作成功，放音提示 */
+        dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                        , "{not_hungup_after_play=true}file_string://%s/szchg.wav", SC_PROMPT_TONE_PATH);
+
+        sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
 
         pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
         if (DOS_ADDR_VALID(pstSCBOther))
@@ -12396,8 +12403,8 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         /* 给客户放音 */
 
         //sc_ep_esl_execute("set", "transfer_ringback=local_stream://moh", pstSCB->szUUID);
-        sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
-        sc_ep_esl_execute("playback", "tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
+        //sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
+        //sc_ep_esl_execute("playback", "tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
 
         if (SC_TASK_MODE_KEY4AGENT == ulTaskMode)
         {
@@ -12625,7 +12632,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     if (DOS_ADDR_VALID(pszValue))
     {
         /* 播放后，不需要挂断 */
-        sc_logr_debug(SC_ESL, "SCB %d play balance, %s", pstSCB->usSCBNo, pszValue);
+        sc_logr_debug(SC_ESL, "SCB %d playback stop not need hangup, %s", pstSCB->usSCBNo, pszValue);
 
         goto proc_succ;
     }
