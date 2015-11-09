@@ -575,19 +575,11 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo)
     {
         /* 如果为处理状态，开启定时器, 应该对坐席放音 */
         sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", ulSiteID, ulProcesingTime);
-        pstSCB->usOtherSCBNo = U16_BUTT;
-
-        //dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_setvar %s mark_customer true \r\n", pstSCB->szUUID);
-        //sc_ep_esl_execute_cmd(szAPPParam);
-        //sc_ep_esl_execute("set", "mark_customer=true", pstSCB->szUUID);
         sc_ep_esl_execute("set", "mark_customer_timeout=false", pstSCB->szUUID);
         sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
         dos_snprintf(szAPPParam, sizeof(szAPPParam), "1 3 1 %u # %s/0.wav silence_stream://%d pdtmf \\d+"
-            , ulProcesingTime * 1000, SC_TASK_AUDIO_PATH, ulProcesingTime * 1000);
-        //sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
+            , ulProcesingTime * 500, SC_TASK_AUDIO_PATH, ulProcesingTime * 500);
         sc_ep_esl_execute("play_and_get_digits", szAPPParam, pstSCB->szUUID);
-        //sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
-        //sc_ep_esl_execute("park", NULL, pstSCB->szUUID);
     }
 
     if (U32_BUTT == ulSCBNo && bNeedConnected == DOS_TRUE)
@@ -595,7 +587,6 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo)
         /* 坐席长签挂断，需要重新呼叫 */
         sc_acd_update_agent_status(SC_ACD_SITE_ACTION_SIGNIN, ulSiteID, OPERATING_TYPE_WEB);
     }
-
 
     return DOS_SUCC;
 }
@@ -2499,7 +2490,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.bRecord = ulRecordFlag;
     stSiteInfo.bGroupHeader = ulIsHeader;
     stSiteInfo.ucBindType = (U8)ulSelectType;
-    if (ulStatus != SC_ACD_OFFLINE)
+    if (stSiteInfo.ucStatus != SC_ACD_OFFLINE)
     {
         stSiteInfo.bLogin = DOS_TRUE;
     }
@@ -2631,7 +2622,11 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
             pstAgentQueueNode->pstAgentInfo->bAllowAccompanying = stSiteInfo.bAllowAccompanying;
             pstAgentQueueNode->pstAgentInfo->bGroupHeader = stSiteInfo.bGroupHeader;
             pstAgentQueueNode->pstAgentInfo->ucBindType = stSiteInfo.ucBindType;
-            pstAgentQueueNode->pstAgentInfo->ucStatus = stSiteInfo.ucStatus;
+            if (ulAgentIndex == SC_INVALID_INDEX)
+            {
+                /* 更新单个坐席时，状态不需要变化；初始化时，都置为离线 */
+                pstAgentQueueNode->pstAgentInfo->ucStatus = stSiteInfo.ucStatus;
+            }
             pstAgentQueueNode->pstAgentInfo->ulCustomerID = stSiteInfo.ulCustomerID;
             pstAgentQueueNode->pstAgentInfo->bValid = stSiteInfo.bValid;
             pstAgentQueueNode->pstAgentInfo->ulSIPUserID = stSiteInfo.ulSIPUserID;
