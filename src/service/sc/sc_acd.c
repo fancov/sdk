@@ -545,11 +545,16 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo)
         }
     }
 
-    if (ulStatus != SC_ACD_BUTT)
+    if (!pstSCB->bIsNotChangeAgentState)
     {
-        pstAgentQueueInfo->pstAgentInfo->ucStatus = (U8)ulStatus;
+        /* 更新坐席的状态 */
+        if (ulStatus != SC_ACD_BUTT)
+        {
+            pstAgentQueueInfo->pstAgentInfo->ucStatus = (U8)ulStatus;
+        }
+        pstAgentQueueInfo->pstAgentInfo->usSCBNo = (U16)ulSCBNo;
     }
-    pstAgentQueueInfo->pstAgentInfo->usSCBNo = (U16)ulSCBNo;
+
     ulProcesingTime = pstAgentQueueInfo->pstAgentInfo->ucProcesingTime;
     bNeedConnected = pstAgentQueueInfo->pstAgentInfo->bNeedConnected;
     bConnected = pstAgentQueueInfo->pstAgentInfo->bConnected;
@@ -561,34 +566,20 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo)
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
     /* 更新数据库中，坐席的状态 */
-    sc_acd_agent_update_status_db(ulSiteID, ulStatus, bConnected);
+    if (!pstSCB->bIsNotChangeAgentState)
+    {
+        sc_acd_agent_update_status_db(ulSiteID, ulStatus, bConnected);
+    }
 
     if (SC_ACD_PROC == ulStatus)
     {
         /* 如果为处理状态，开启定时器, 应该对坐席放音 */
         sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", ulSiteID, ulProcesingTime);
-        if (DOS_ADDR_VALID(pstSCB->pstTmrHandle))
-        {
-            dos_tmr_stop(&pstSCB->pstTmrHandle);
-            pstSCB->pstTmrHandle = NULL;
-        }
-
-        //lResult = dos_tmr_start(&pstSCB->pstTmrHandle, ulProcesingTime * 1000, sc_acd_agent_update_status_IDEL, (U64)pstTimerParam, TIMER_NORMAL_NO_LOOP);
-        //if (lResult < 0)
-        //{
-        //    sc_logr_error(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL FAIL", ulSiteID);
-        //}
-
-        sc_ep_esl_execute("set", "mark_customer_timeout=true", pstSCB->szUUID);
+        sc_ep_esl_execute("set", "mark_customer_timeout=false", pstSCB->szUUID);
         sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
-        dos_snprintf(szAPPParam, sizeof(szAPPParam), "0 128 1 %u # %s/0.wav pdtmf \\d+"
-            , ulProcesingTime * 1000, SC_TASK_AUDIO_PATH);
-
+        dos_snprintf(szAPPParam, sizeof(szAPPParam), "1 3 1 %u # %s/0.wav silence_stream://%d pdtmf \\d+"
+            , ulProcesingTime * 500, SC_TASK_AUDIO_PATH, ulProcesingTime * 500);
         sc_ep_esl_execute("play_and_get_digits", szAPPParam, pstSCB->szUUID);
-        sc_ep_esl_execute("park", NULL, pstSCB->szUUID);
-
-        //dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_park %s \r\n", pstSCB->szUUID);
-        //sc_ep_esl_execute_cmd(szAPPParam);
     }
 
     if (U32_BUTT == ulSCBNo && bNeedConnected == DOS_TRUE)
@@ -596,7 +587,6 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo)
         /* 坐席长签挂断，需要重新呼叫 */
         sc_acd_update_agent_status(SC_ACD_SITE_ACTION_SIGNIN, ulSiteID, OPERATING_TYPE_WEB);
     }
-
 
     return DOS_SUCC;
 }
@@ -757,12 +747,6 @@ U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, U32 ul
         sc_logr_warning(SC_ACD, "Cannot find the agent with this id %u..", ulAgentID);
         return DOS_FAIL;
     }
-
-    //if (ulType == SC_DID_BIND_TYPE_SIP && pstAgentNode->pstAgentInfo->ucBindType != AGENT_BIND_SIP)
-    //{
-        /* 不要更新坐席的状 */
-    //    return DOS_SUCC;
-    //}
 
     pstAgentNode->pstAgentInfo->usSCBNo = pstSCB->usSCBNo;
     pstSCB->ulAgentID = ulAgentID;
@@ -2506,7 +2490,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.bRecord = ulRecordFlag;
     stSiteInfo.bGroupHeader = ulIsHeader;
     stSiteInfo.ucBindType = (U8)ulSelectType;
-    if (ulStatus != SC_ACD_OFFLINE)
+    if (stSiteInfo.ucStatus != SC_ACD_OFFLINE)
     {
         stSiteInfo.bLogin = DOS_TRUE;
     }
@@ -2638,7 +2622,11 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
             pstAgentQueueNode->pstAgentInfo->bAllowAccompanying = stSiteInfo.bAllowAccompanying;
             pstAgentQueueNode->pstAgentInfo->bGroupHeader = stSiteInfo.bGroupHeader;
             pstAgentQueueNode->pstAgentInfo->ucBindType = stSiteInfo.ucBindType;
-            pstAgentQueueNode->pstAgentInfo->ucStatus = stSiteInfo.ucStatus;
+            if (ulAgentIndex == SC_INVALID_INDEX)
+            {
+                /* 更新单个坐席时，状态不需要变化；初始化时，都置为离线 */
+                pstAgentQueueNode->pstAgentInfo->ucStatus = stSiteInfo.ucStatus;
+            }
             pstAgentQueueNode->pstAgentInfo->ulCustomerID = stSiteInfo.ulCustomerID;
             pstAgentQueueNode->pstAgentInfo->bValid = stSiteInfo.bValid;
             pstAgentQueueNode->pstAgentInfo->ulSIPUserID = stSiteInfo.ulSIPUserID;

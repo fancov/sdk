@@ -691,7 +691,8 @@ typedef struct tagSCSCB{
     U32       bTerminationFlag:1;                 /* 业务终止标志 */
     U32       bIsPassThrough:1;                   /* 呼叫坐席时，主叫号码是否透传 */
     U32       bIsMarkCustomer:1;                  /* 坐席是否已经标记客户 */
-    U32       ulRes:19;
+    U32       bIsNotChangeAgentState:1;           /* 是否不更新坐席的状态 */
+    U32       ulRes:18;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -714,7 +715,6 @@ typedef struct tagSCSCB{
     S8        szUUID[SC_MAX_UUID_LENGTH];                   /* Leg-A UUID */
     S8        szCustomerMark[SC_CUSTOMER_MARK_LENGTH];      /* 客户标记的标记值 */
 
-    DOS_TMR_ST pstTmrHandle;                      /* 定时器句柄，坐席处理状态时使用 */
     S8        *pszRecordFile;
 
     SC_SCB_EXTRA_DATA_ST *pstExtraData;           /* 结算话单是需要的额外数据 */
@@ -1087,7 +1087,7 @@ U32 sc_acd_agent_update_status2(U32 ulAction, U32 ulAgentID, U32 ulOperatingType
 U32 sc_ep_call_ctrl_hold(U32 ulAgent, BOOL isHold);
 U32 sc_ep_call_ctrl_unhold(U32 ulAgent);
 U32 sc_ep_call_ctrl_hangup_all(U32 ulAgent);
-
+U32 sc_get_moh_file(S8 *pszBuffer, S32 lLength);
 
 /* 以下是和号码组设定相关的API */
 U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, S8 *pszNumber, U32 ulLen);
