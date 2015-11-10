@@ -1096,9 +1096,6 @@ U32  sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 u
 U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 
 
-U32 sc_pub_send_msg(S8 *pszURL, S8 *pszData);
-
-
 /* 更新坐席状态任务主函数 */
 VOID *sc_acd_query_agent_status_task(VOID *ptr);
 
@@ -1110,6 +1107,10 @@ U32 sc_num_lmt_update(U32 ulType, VOID *ptr);
 /* 错误码转换 */
 U16 sc_ep_transform_errcode_from_bs2sc(U8 ucErrcode);
 U16 sc_ep_transform_errcode_from_sc2sip(U32 ulErrcode);
+
+
+U32 sc_ep_reloadxml();
+U32 sc_ep_update_gateway(VOID *pData);
 
 #ifdef __cplusplus
 }

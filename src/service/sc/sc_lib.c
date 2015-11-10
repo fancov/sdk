@@ -27,6 +27,7 @@ extern "C"{
 #include "sc_httpd.h"
 #include "sc_http_api.h"
 #include "sc_acd_def.h"
+#include "sc_publish.h"
 
 
 /* 定义开发是内置测试数据 */
@@ -74,6 +75,103 @@ static S8 *g_pszSCBStatus[] =
     "RELEASE"
     ""
 };
+
+U32 sc_send_sip_update_req(U32 ulID, U32 ulAction)
+{
+    S8 szURL[256]      = { 0, };
+    S8 szData[512]     = { 0, };
+    SC_PUB_FS_DATA_ST *pstData;
+
+    pstData = dos_dmem_alloc(sizeof(SC_PUB_FS_DATA_ST));
+    if (DOS_ADDR_INVALID(pstData))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/papi");
+
+    /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
+    dos_snprintf(szData, sizeof(szData), "data={\"type\":\"%u\", \"data\":{\"id\":\"%u\", \"action\":\"%s\"}}"
+                    , SC_PUB_TYPE_SIP_XMl
+                    , ulID
+                    , SC_API_CMD_ACTION_SIP_DELETE == ulAction ? "delete" : "add");
+
+    pstData->ulID = ulID;
+    pstData->ulAction = ulAction;
+
+    if (sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_SIP_XMl, pstData) == DOS_SUCC)
+    {
+        return DOS_SUCC;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+
+        dos_dmem_free(pstData);
+        pstData = NULL;
+        return DOS_FAIL;
+    }
+}
+
+U32 sc_send_gateway_update_req(U32 ulID, U32 ulAction)
+{
+    S8 szURL[256]      = { 0, };
+    S8 szData[512]     = { 0, };
+    SC_PUB_FS_DATA_ST *pstData;
+
+    pstData = dos_dmem_alloc(sizeof(SC_PUB_FS_DATA_ST));
+    if (DOS_ADDR_INVALID(pstData))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/papi");
+
+    /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
+    dos_snprintf(szData, sizeof(szData), "data={\"type\":\"%u\", \"data\":{\"id\":\"%u\", \"action\":\"%s\"}}"
+                    , SC_PUB_TYPE_GATEWAY
+                    , ulID
+                    , SC_API_CMD_ACTION_GATEWAY_DELETE == ulAction ? "delete" : "add");
+
+    pstData->ulID = ulID;
+    pstData->ulAction = ulAction;
+
+    if (sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_GATEWAY, pstData) == DOS_SUCC)
+    {
+        return DOS_SUCC;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+
+        dos_dmem_free(pstData);
+        pstData = NULL;
+        return DOS_FAIL;
+    }
+
+}
+
+U32 sc_send_marker_update_req(U32 ulID, U32 ulAction)
+{
+    S8 szURL[256]      = { 0, };
+    S8 szData[512]     = { 0, };
+
+    dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/papi");
+
+    /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
+    dos_snprintf(szData, sizeof(szData), "data={\"type\":\"%u\", \"data\":{\"id\":\"%u\", \"action\":\"%s\"}}"
+                    , SC_PUB_TYPE_MARKER
+                    , ulID
+                    , SC_API_CMD_ACTION_GATEWAY_DELETE == ulAction ? "delete" : "add");
+
+    return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_MARKER, NULL);
+}
+
+
 
 /*
  * 函数: S8 *sc_scb_get_status(U32 ulStatus)
@@ -2602,7 +2700,6 @@ U32 sc_http_customer_update_proc(U32 ulAction, U32 ulCustomerID)
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
 {
     U32   ulRet = 0;
-    S8    szBuff[64] = {0};
 
     if (ulAction >= SC_API_CMD_ACTION_BUTT)
     {
@@ -2665,6 +2762,8 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
             break;
     }
 
+    sc_send_gateway_update_req(ulGatewayID, ulAction);
+#if 0
     /* 删除该网关 */
     dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", ulGatewayID);
     ulRet = sc_ep_esl_execute_cmd(szBuff);
@@ -2680,6 +2779,7 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+#endif
 
     return DOS_SUCC;
 }
@@ -2747,6 +2847,10 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
             break;
     }
 
+    sc_send_sip_update_req(ulSipID, ulAction);
+
+
+#if 0
     ulRet = sc_ep_esl_execute_cmd("api reloadxml\r\n");
     if (DOS_SUCC != ulRet)
     {
@@ -2754,6 +2858,7 @@ U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
         return DOS_FAIL;
     }
     logr_info("Add sip(Index:%u) SUCC, Reload XML SUCC.", ulSipID);
+#endif
 
     return DOS_SUCC;
 }

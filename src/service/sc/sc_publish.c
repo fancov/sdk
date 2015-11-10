@@ -5,7 +5,6 @@ extern "C"{
 #include <dos.h>
 #include <esl.h>
 #include <sys/time.h>
-#include <pthread.h>
 #include <bs_pub.h>
 #include <libcurl/curl.h>
 #include "sc_def.h"
@@ -16,8 +15,15 @@ extern "C"{
 #include "sc_http_api.h"
 #include "sc_pub.h"
 #include "sc_db.h"
+#include "sc_publish.h"
 
-#define SC_PUB_TASK_NUMBER       5
+
+#define SC_PUB_TASK_NUMBER       3
+
+#define SC_PUB_MASTER_INDEX      0
+#define SC_PUB_STATUS_INDEX      1
+#define SC_PUB_DATA_INDEX        2
+
 #define SC_PUB_MAX_URL           128
 #define SC_PUB_MAX_DATA          512
 
@@ -25,6 +31,9 @@ extern "C"{
 typedef struct tagPublishMsg{
     S8      *pszURL;
     S8      *pszData;
+
+    U32     ulType;
+    VOID    *pstDesc;
 }SC_PUB_MSG_ST;
 
 typedef struct tagPublishTask{
@@ -42,6 +51,29 @@ typedef struct tagPublishTask{
 static U32               g_ulPublishExit;
 static SC_PUB_TASK_ST    g_stPubTaskList[SC_PUB_TASK_NUMBER];
 
+static U32 sc_pub_on_succ(U32 ulType, VOID *pDesc)
+{
+    switch (ulType)
+    {
+        case SC_PUB_TYPE_STATUS:
+            /* Do nothing */
+            break;
+
+        case SC_PUB_TYPE_MARKER:
+            /* Do nothing */
+            break;
+
+        case SC_PUB_TYPE_SIP_XMl:
+            sc_ep_reloadxml();
+            break;
+
+        case SC_PUB_TYPE_GATEWAY:
+            sc_ep_update_gateway(pDesc);
+            break;
+    }
+
+    return DOS_SUCC;
+}
 
 static U32 sc_pub_publicsh(CURL **pstCurlHandle, S8 *pszURL, S8 *pszData)
 {
@@ -157,9 +189,17 @@ static VOID *sc_pub_runtime(VOID *ptr)
                 goto proc_fail;
             }
 
-            sc_pub_publicsh(&pstTask->pstPublishCurlHandle, pstPubData->pszURL, pstPubData->pszData);
-
+            if (sc_pub_publicsh(&pstTask->pstPublishCurlHandle, pstPubData->pszURL, pstPubData->pszData) == DOS_SUCC)
+            {
+                sc_pub_on_succ(pstPubData->ulType, pstPubData->pstDesc);
+            }
 proc_fail:
+            if (DOS_ADDR_VALID(pstPubData->pstDesc))
+            {
+                dos_dmem_free(pstPubData->pstDesc);
+                pstPubData->pstDesc = NULL;
+            }
+
             if (DOS_ADDR_VALID(pstPubData->pszURL))
             {
                 dos_dmem_free(pstPubData->pszURL);
@@ -197,9 +237,7 @@ static VOID *sc_pub_runtime_master(VOID *ptr)
 {
     DLL_NODE_S     *pstDllNode = NULL;
     SC_PUB_TASK_ST *pstTask    = NULL;
-    U32            ulLastTask  = 0;
-    BOOL           blSend      = DOS_FALSE;
-    U32 i;
+    SC_PUB_MSG_ST  *pstPubData = NULL;
 
     pstTask = (SC_PUB_TASK_ST *)ptr;
     if (DOS_ADDR_INVALID(pstTask))
@@ -241,69 +279,43 @@ static VOID *sc_pub_runtime_master(VOID *ptr)
                 break;
             }
 
-            for (blSend = DOS_FALSE,i=ulLastTask+1; i<SC_PUB_TASK_NUMBER; i++)
+            pstPubData = pstDllNode->pHandle;
+            if (DOS_ADDR_INVALID(pstPubData))
             {
-                if (!g_stPubTaskList[i].ulValid)
-                {
-                    continue;
-                }
+                sc_logr_warning(SC_PUB, "%s", "DLL Node with empty data, may be the queue is breaken");
 
-                pthread_mutex_lock(&g_stPubTaskList[i].mutexPublishQueue);
-                DLL_Add(&g_stPubTaskList[i].stPublishQueue, pstDllNode);
-                pthread_mutex_unlock(&g_stPubTaskList[i].mutexPublishQueue);
-
-                pthread_mutex_lock(&g_stPubTaskList[i].mutexPublishCurl);
-                pthread_cond_signal(&g_stPubTaskList[i].condPublishCurl);
-                pthread_mutex_unlock(&g_stPubTaskList[i].mutexPublishCurl);
-
-                ulLastTask = i;
-                blSend = DOS_TRUE;
+                dos_dmem_free(pstPubData);
+                pstPubData = NULL;
                 break;
             }
 
-            if (blSend)
+            if (SC_PUB_TYPE_STATUS == pstPubData->ulType)
             {
-                continue;
-            }
+                pthread_mutex_lock(&g_stPubTaskList[SC_PUB_STATUS_INDEX].mutexPublishQueue);
+                DLL_Add(&g_stPubTaskList[SC_PUB_STATUS_INDEX].stPublishQueue, pstDllNode);
+                pthread_mutex_unlock(&g_stPubTaskList[SC_PUB_STATUS_INDEX].mutexPublishQueue);
 
-            for (i=1; i<=ulLastTask; i++)
+                pthread_mutex_lock(&g_stPubTaskList[SC_PUB_STATUS_INDEX].mutexPublishCurl);
+                pthread_cond_signal(&g_stPubTaskList[SC_PUB_STATUS_INDEX].condPublishCurl);
+                pthread_mutex_unlock(&g_stPubTaskList[SC_PUB_STATUS_INDEX].mutexPublishCurl);
+            }
+            else
             {
-                if (!g_stPubTaskList[i].ulValid)
-                {
-                    continue;
-                }
+                pthread_mutex_lock(&g_stPubTaskList[SC_PUB_DATA_INDEX].mutexPublishQueue);
+                DLL_Add(&g_stPubTaskList[SC_PUB_DATA_INDEX].stPublishQueue, pstDllNode);
+                pthread_mutex_unlock(&g_stPubTaskList[SC_PUB_DATA_INDEX].mutexPublishQueue);
 
-                pthread_mutex_lock(&g_stPubTaskList[i].mutexPublishQueue);
-                DLL_Add(&g_stPubTaskList[i].stPublishQueue, pstDllNode);
-                pthread_mutex_unlock(&g_stPubTaskList[i].mutexPublishQueue);
-
-                pthread_mutex_lock(&g_stPubTaskList[i].mutexPublishCurl);
-                pthread_cond_signal(&g_stPubTaskList[i].condPublishCurl);
-                pthread_mutex_unlock(&g_stPubTaskList[i].mutexPublishCurl);
-
-                ulLastTask = i;
-                blSend = DOS_TRUE;
-                break;
+                pthread_mutex_lock(&g_stPubTaskList[SC_PUB_DATA_INDEX].mutexPublishCurl);
+                pthread_cond_signal(&g_stPubTaskList[SC_PUB_DATA_INDEX].condPublishCurl);
+                pthread_mutex_unlock(&g_stPubTaskList[SC_PUB_DATA_INDEX].mutexPublishCurl);
             }
-
-            if (blSend)
-            {
-                continue;
-            }
-
-            sc_logr_notice(SC_PUB, "%s", "There is no slave task to process the request. Add to queue");
-
-            /* 没有找到合适的线程处理，就让他回到队尾吧 */
-            pthread_mutex_lock(&pstTask->mutexPublishQueue);
-            DLL_Add(&pstTask->stPublishQueue, pstDllNode);
-            pthread_mutex_unlock(&pstTask->mutexPublishQueue);
         }
     }
 
     return NULL;
 }
 
-U32 sc_pub_send_msg(S8 *pszURL, S8 *pszData)
+U32 sc_pub_send_msg(S8 *pszURL, S8 *pszData, U32 ulType, VOID *pstData)
 {
     DLL_NODE_S     *pstDllNode;
     SC_PUB_MSG_ST  *pstPubData = NULL;
@@ -311,6 +323,12 @@ U32 sc_pub_send_msg(S8 *pszURL, S8 *pszData)
     if (DOS_ADDR_INVALID(pszURL))
     {
         DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (ulType >= SC_PUB_TYPE_BUUT)
+    {
+        sc_logr_error(SC_PUB, "%s", "Invalid msg type.(%u)", ulType);
         return DOS_FAIL;
     }
 
@@ -326,6 +344,8 @@ U32 sc_pub_send_msg(S8 *pszURL, S8 *pszData)
     DLL_Init_Node(pstDllNode);
     pstPubData->pszURL = NULL;
     pstPubData->pszData = NULL;
+    pstPubData->pstDesc = pstData;
+    pstPubData->ulType = ulType;
     pstPubData->pszURL = dos_strndup(pszURL, SC_PUB_MAX_URL);
     if (DOS_ADDR_INVALID(pstPubData->pszURL))
     {
@@ -410,7 +430,7 @@ U32 sc_pub_start()
 {
     U32 i;
 
-    if (pthread_create(&g_stPubTaskList[0].pthPublishCurl, NULL, sc_pub_runtime_master, &g_stPubTaskList[0]) < 0)
+    if (pthread_create(&g_stPubTaskList[SC_PUB_MASTER_INDEX].pthPublishCurl, NULL, sc_pub_runtime_master, &g_stPubTaskList[SC_PUB_MASTER_INDEX]) < 0)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
