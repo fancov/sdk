@@ -129,8 +129,8 @@ static SC_AUDIT_TASK_ST g_stAuditTaskList[] =
     {SC_AUDIT_TYPE_N_HOUR,   1,                     sc_test_hour_delay,         "Audit test for hour delay"},
 #endif
     {SC_AUDIT_TYPE_CYCLE,    SC_AUDIT_CYCLE_60MIN,  sc_acd_agent_audit,         "Agent audit"},
-    {SC_AUDIT_TYPE_N_HOUR,   0,                     sc_num_lmt_stat,            "Number usage stat"},
-    {SC_AUDIT_TYPE_N_DAY,    0,                     sc_num_lmt_update,          "Number limitation"}
+    {SC_AUDIT_TYPE_N_DAY,    1,                     sc_num_lmt_stat,            "Number usage stat"},
+    {SC_AUDIT_TYPE_N_DAY,    1,                     sc_num_lmt_update,          "Number limitation"}
 };
 
 

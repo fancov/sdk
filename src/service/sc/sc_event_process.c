@@ -29,6 +29,8 @@ extern "C"{
 #include "sc_http_api.h"
 #include "sc_pub.h"
 #include "sc_db.h"
+#include "sc_publish.h"
+
 
 /* 应用外部变量 */
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
@@ -367,7 +369,7 @@ U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
                     , pstAgentInfo->bConnected ? 1 : 0);
 
 
-    return sc_pub_send_msg(szURL, szJson);
+    return sc_pub_send_msg(szURL, szJson, SC_PUB_TYPE_STATUS, NULL);
 }
 
 U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
@@ -395,7 +397,7 @@ U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
     dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"1\\\",\\\"body\\\":{\\\"type\\\":\\\"%u\\\",\\\"result\\\":\\\"0\\\"}}", ulStatus);
 
-    return sc_pub_send_msg(szURL, szData);
+    return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_STATUS, NULL);
 }
 
 /**
@@ -432,7 +434,7 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
     dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"0\\\", \\\"body\\\":{\\\"number\\\":\\\"%s\\\"}}", szCaller);
 
-    return sc_pub_send_msg(szURL, szData);
+    return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_STATUS, NULL);
 }
 
 /**
@@ -3113,7 +3115,7 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     S8 *pszGWID = NULL, *pszDomain = NULL, *pszStatus = NULL, *pszRegister = NULL, *pszRegisterStatus = NULL;
     U32 ulID, ulStatus, ulRegisterStatus = 0;
     BOOL bIsRegister;
-    U32 ulHashIndex = U32_BUTT, ulRet = U32_BUTT;
+    U32 ulHashIndex = U32_BUTT;
 
     if (DOS_ADDR_INVALID(aszNames)
         || DOS_ADDR_INVALID(aszValues))
@@ -3224,7 +3226,7 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         pstGWNode->ulRegisterStatus = ulRegisterStatus;
     }
     pthread_mutex_unlock(&g_mutexHashGW);
-
+#if INCLUDE_SERVICE_PYTHON
     /* 在这里强制生成网关和删除网关 */
     if (DOS_FALSE == pstGWNode->bStatus)
     {
@@ -3250,6 +3252,7 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             sc_logr_debug(SC_FUNC, "Generate FreeSWITCH XML file of gateway %u SUCC by status.", pstGWNode->ulGWID);
         }
     }
+#endif
     return DOS_SUCC;
 }
 
@@ -3282,11 +3285,15 @@ U32 sc_load_gateway(U32 ulIndex)
         sc_logr_error(SC_FUNC, "Load gateway FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
-    ulRet = sc_ep_esl_execute_cmd("bgapi sofia profile external rescan");
-    if (ulRet != DOS_SUCC)
+
+    if (SC_INVALID_INDEX == ulIndex)
     {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
+        ulRet = sc_ep_esl_execute_cmd("bgapi sofia profile external rescan");
+        if (ulRet != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
     }
 
     sc_logr_debug(SC_FUNC, "Load gateway SUCC.(ID:%u)", ulIndex);
@@ -5185,6 +5192,7 @@ static S32 sc_load_number_lmt_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **as
             pstNumLmtNode->ulCycle   = ulCycle;
             pstNumLmtNode->ulType    = ulType;
             pstNumLmtNode->ulNumberID= ulBID;
+            pstNumLmtNode->ulStatUsed = 0;
             dos_strncpy(pstNumLmtNode->szPrefix, pszNumber, sizeof(pstNumLmtNode->szPrefix));
             pstNumLmtNode->szPrefix[sizeof(pstNumLmtNode->szPrefix) - 1] = '\0';
 
@@ -5223,6 +5231,7 @@ static S32 sc_load_number_lmt_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **as
         pstNumLmtNode->ulCycle   = ulCycle;
         pstNumLmtNode->ulType    = ulType;
         pstNumLmtNode->ulNumberID= ulBID;
+        pstNumLmtNode->ulStatUsed = 0;
         dos_strncpy(pstNumLmtNode->szPrefix, pszNumber, sizeof(pstNumLmtNode->szPrefix));
         pstNumLmtNode->szPrefix[sizeof(pstNumLmtNode->szPrefix) - 1] = '\0';
 
@@ -5312,6 +5321,49 @@ U32 sc_del_number_lmt(U32 ulIndex)
 }
 
 
+U32 sc_ep_reloadxml()
+{
+    sc_ep_esl_execute_cmd("api reloadxml\r\n");
+
+
+    return DOS_SUCC;
+}
+
+U32 sc_ep_update_gateway(VOID *pData)
+{
+    SC_PUB_FS_DATA_ST *pstData;
+    S8 szBuff[100] = { 0, };
+
+    pstData = pData;
+    if (DOS_ADDR_INVALID(pstData))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    switch (pstData->ulAction)
+    {
+        case SC_API_CMD_ACTION_GATEWAY_ADD:
+            sc_ep_esl_execute_cmd("bgapi sofia profile external rescan");
+            break;
+
+        case SC_API_CMD_ACTION_GATEWAY_DELETE:
+            dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", pstData->ulID);
+            sc_ep_esl_execute_cmd(szBuff);
+            break;
+
+        case SC_API_CMD_ACTION_GATEWAY_UPDATE:
+        case SC_API_CMD_ACTION_GATEWAY_SYNC:
+            dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", pstData->ulID);
+            sc_ep_esl_execute_cmd(szBuff);
+            sc_ep_esl_execute_cmd("bgapi sofia profile external rescan");
+            break;
+    }
+
+    return DOS_SUCC;
+}
+
 /**
   * 函数名: U32 sc_del_invalid_gateway()
   * 参数:
@@ -5341,6 +5393,8 @@ U32 sc_del_invalid_gateway()
             {
                 /* 记录网关id */
                 ulGWID = pstGWNode->ulGWID;
+
+#if INCLUDE_SERVICE_PYTHON
                 /* FreeSWITCH删除该配置数据 */
                 ulRet = py_exec_func("router", "del_route", "(k)", (U64)ulGWID);
                 if (DOS_SUCC != ulRet)
@@ -5348,6 +5402,8 @@ U32 sc_del_invalid_gateway()
                     DOS_ASSERT(0);
                     return DOS_FAIL;
                 }
+#endif
+
                 /* FreeSWITCH删除内存中该数据 */
                 dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", ulGWID);
                 ulRet = sc_ep_esl_execute_cmd(szBuff);
@@ -5715,7 +5771,7 @@ U32 sc_num_lmt_update(U32 ulType, VOID *ptr)
 
             pstNumLmt = pstHashNode->pHandle;
 
-            ulTimes = sc_update_number_stat(SC_NUM_LMT_TYPE_CALLER, pstNumLmt->ulCycle, pstNumLmt->szPrefix);
+            ulTimes = sc_update_number_stat(pstNumLmt->ulType, pstNumLmt->ulCycle, pstNumLmt->szPrefix);
             pstNumLmt->ulStatUsed = ulTimes;
         }
     }

@@ -58,7 +58,7 @@
 
 #define INCLUDE_CC_SC                     1
 
-#define INCLUDE_SERVICE_PYTHON            1
+#define INCLUDE_SERVICE_PYTHON            0
 
 #define DOS_INCLUDE_SYS_STAT              1
 
