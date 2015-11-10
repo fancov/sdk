@@ -566,7 +566,7 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo)
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
     /* 更新数据库中，坐席的状态 */
-    if (!pstSCB->bIsNotChangeAgentState)
+    if (!pstSCB->bIsNotChangeAgentState && ulStatus != SC_ACD_BUTT)
     {
         sc_acd_agent_update_status_db(ulSiteID, ulStatus, bConnected);
     }
@@ -575,10 +575,10 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo)
     {
         /* 如果为处理状态，开启定时器, 应该对坐席放音 */
         sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", ulSiteID, ulProcesingTime);
-        sc_ep_esl_execute("set", "mark_customer_timeout=false", pstSCB->szUUID);
+        sc_ep_esl_execute("set", "mark_customer_start=true", pstSCB->szUUID);
         sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
-        dos_snprintf(szAPPParam, sizeof(szAPPParam), "1 3 1 %u # %s/0.wav silence_stream://%d pdtmf \\d+"
-            , ulProcesingTime * 500, SC_TASK_AUDIO_PATH, ulProcesingTime * 500);
+        dos_snprintf(szAPPParam, sizeof(szAPPParam), "1 3 1 %u # %s/zxtsy2.wav silence_stream://%d pdtmf \\d+"
+            , ulProcesingTime * 500, SC_PROMPT_TONE_PATH, ulProcesingTime * 500);
         sc_ep_esl_execute("play_and_get_digits", szAPPParam, pstSCB->szUUID);
     }
 
@@ -1249,7 +1249,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
             //pstAgentQueueInfo->pstAgentInfo->bNeedConnected = DOS_FALSE;
             pstAgentQueueInfo->pstAgentInfo->bWaitingDelete = DOS_FALSE;
 
-            pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_AWAY;
+            pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_BUSY;
             bIsUpdateDB = DOS_TRUE;
 
             sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_AWAY);
