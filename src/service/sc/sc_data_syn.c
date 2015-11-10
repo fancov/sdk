@@ -31,6 +31,15 @@ extern "C"{
 #define SC_DATA_SYN_SOCK_PATH "/var/www/html/temp/sc-syn.sock"
 #define SC_DATA_SYN_BUFF_LEN  512
 
+
+typedef struct tagRequestData{
+    DLL_NODE_S stDLLNode;
+
+    U32 ulTime;
+    U32 ulID;
+    S8 *pszData;
+}SC_SYN_REQUEST_DATA_ST;
+
 pthread_mutex_t  g_mutexDataSyn = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t   g_condDataSyn  = PTHREAD_COND_INITIALIZER;
 pthread_t        g_pthDataSyn;
@@ -45,8 +54,7 @@ extern SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[];
 
 static S32 sc_walk_tmp_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFields)
 {
-    DLL_NODE_S *pstDLLNode;
-    S8         *pstData;
+    SC_SYN_REQUEST_DATA_ST *pstData;
 
     if (DOS_ADDR_INVALID(aszData) || DOS_ADDR_INVALID(aszData[2]) || aszData[2][0] == '\0')
     {
@@ -54,29 +62,48 @@ static S32 sc_walk_tmp_tbl_cb(VOID* pParam, S32 lCnt, S8 **aszData, S8 **aszFiel
         return DOS_FAIL;
     }
 
-    pstDLLNode = dos_dmem_alloc(sizeof(DLL_NODE_S));
-    if (DOS_ADDR_INVALID(pstDLLNode))
+    pstData = dos_dmem_alloc(sizeof(SC_SYN_REQUEST_DATA_ST));
+    if (DOS_ADDR_INVALID(pstData))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-    DLL_Init_Node(pstDLLNode);
+    DLL_Init_Node(&(pstData->stDLLNode));
 
-    pstData = dos_dmem_alloc(SC_DATA_SYN_BUFF_LEN);
+    pstData->pszData = dos_dmem_alloc(SC_DATA_SYN_BUFF_LEN);
     if (DOS_ADDR_INVALID(pstData))
     {
         DOS_ASSERT(0);
 
-        dos_dmem_free(pstDLLNode);
-        pstDLLNode = NULL;
+        dos_dmem_free(pstData);
+        pstData = NULL;
         return DOS_FAIL;
     }
 
-    dos_strncpy(pstData, aszData[2], SC_DATA_SYN_BUFF_LEN);
-    pstData[SC_DATA_SYN_BUFF_LEN - 1] = '\0';
+    if (DOS_ADDR_INVALID(aszData[0]) || '\0' == aszData[0][0]
+        || dos_atoul(aszData[0], &pstData->ulID) < 0)
+    {
+        DOS_ASSERT(0);
 
-    pstDLLNode->pHandle = pstData;
-    DLL_Add(&g_stSCTMPTblRecord, pstDLLNode);
+        dos_dmem_free(pstData);
+        pstData = NULL;
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(aszData[1]) || '\0' == aszData[1][0]
+        || dos_atoul(aszData[1], &pstData->ulTime) < 0)
+    {
+        DOS_ASSERT(0);
+
+        dos_dmem_free(pstData);
+        pstData = NULL;
+        return DOS_FAIL;
+    }
+
+    dos_strncpy(pstData->pszData, aszData[2], SC_DATA_SYN_BUFF_LEN);
+    pstData->pszData[SC_DATA_SYN_BUFF_LEN - 1] = '\0';
+
+    DLL_Add(&g_stSCTMPTblRecord, (DLL_NODE_S *)pstData);
 
     return DOS_SUCC;
 }
@@ -85,7 +112,7 @@ VOID sc_tmp_tbl_clean()
 {
     S8 szQuery[256] = {0, };
 
-    dos_snprintf(szQuery, sizeof(szQuery), "delete from tmp_tbl_fsmodify;");
+    dos_snprintf(szQuery, sizeof(szQuery), "delete from tmp_tbl_fsmodify where fs_related<>1;");
 
     db_transaction_begin(g_pstSCDBHandle);
     if (db_query(g_pstSCDBHandle, szQuery, NULL, NULL, NULL) != DB_ERR_SUCC)
@@ -101,6 +128,7 @@ VOID sc_tmp_tbl_clean()
 U32 sc_walk_tmp_tbl()
 {
     S8 szQuery[256] = {0, };
+    SC_SYN_REQUEST_DATA_ST *pstData;
 
     if (!g_pstSCDBHandle || g_pstSCDBHandle->ulDBStatus != DB_STATE_CONNECTED)
     {
@@ -117,13 +145,17 @@ U32 sc_walk_tmp_tbl()
         return DOS_FAIL;
     }
 
-    sc_tmp_tbl_clean();
+    DLL_Scan(&g_stSCTMPTblRecord, pstData, SC_SYN_REQUEST_DATA_ST *)
+    {
+        dos_snprintf(szQuery, sizeof(szQuery), "delete FROM tmp_tbl_fsmodify where id=%u;", pstData->ulID);
+        db_query(g_pstSCDBHandle, szQuery, NULL, NULL, NULL);
+    }
 
     return DOS_SUCC;
 }
 
 
-U32 sc_data_syn_proc(DLL_NODE_S *pstNode)
+U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
 {
     S8        *pRequest = NULL;
     S8        *pStart = NULL, *pEnd = NULL;
@@ -145,12 +177,7 @@ U32 sc_data_syn_proc(DLL_NODE_S *pstNode)
         return DOS_FAIL;
     }
 
-    if (DOS_ADDR_INVALID(pstNode->pHandle))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-    pRequest = pstNode->pHandle;
+    pRequest = pstNode->pszData;
 
     sc_logr_debug(SC_HTTP_API, "HTTP Request: %s", pRequest);
 
@@ -326,7 +353,8 @@ cmd_prase_fail1:
 VOID* sc_data_syn_proc_runtime(VOID *ptr)
 {
     struct timespec stTimeout;
-    DLL_NODE_S *pstNode;
+    SC_SYN_REQUEST_DATA_ST *pstNode;
+    static BOOL blOnStartUP = DOS_TRUE;
 
     while (1)
     {
@@ -337,49 +365,51 @@ VOID* sc_data_syn_proc_runtime(VOID *ptr)
         pthread_cond_timedwait(&g_condDataSyn, &g_mutexDataSyn, &stTimeout);
         pthread_mutex_unlock(&g_mutexDataSyn);
 
-        if (!g_blSCDataSybFlag)
+        /* 如果是第一次运行需要检查以下哦 */
+        if (!blOnStartUP)
         {
-            continue;
-        }
-
-        if (g_blSCDataSybFlag)
-        {
-            if (sc_walk_tmp_tbl() != DOS_SUCC)
+            if (!g_blSCDataSybFlag)
             {
-                DOS_ASSERT(0);
                 continue;
             }
 
             g_blSCDataSybFlag = DOS_FALSE;
+        }
+        blOnStartUP = DOS_FALSE;
 
-            while (1)
+        if (sc_walk_tmp_tbl() != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+            continue;
+        }
+
+        while (1)
+        {
+            if (DLL_Count(&g_stSCTMPTblRecord) == 0)
             {
-                if (DLL_Count(&g_stSCTMPTblRecord) == 0)
-                {
-                    break;
-                }
-
-                pstNode = dll_fetch(&g_stSCTMPTblRecord);
-                if (DOS_ADDR_INVALID(pstNode))
-                {
-                    DOS_ASSERT(0);
-
-                    continue;
-                }
-
-                sc_data_syn_proc(pstNode);
-
-                if (pstNode->pHandle)
-                {
-                    dos_dmem_free(pstNode->pHandle);
-                    pstNode->pHandle = NULL;
-                }
-
-                DLL_Init_Node(pstNode);
-                dos_dmem_free(pstNode);
-                pstNode = NULL;
+                break;
             }
-        };
+
+            pstNode = (SC_SYN_REQUEST_DATA_ST *)dll_fetch(&g_stSCTMPTblRecord);
+            if (DOS_ADDR_INVALID(pstNode))
+            {
+                DOS_ASSERT(0);
+
+                continue;
+            }
+
+            sc_data_syn_proc(pstNode);
+
+            if (pstNode->pszData)
+            {
+                dos_dmem_free(pstNode->pszData);
+                pstNode->pszData = NULL;
+            }
+
+            DLL_Init_Node((DLL_NODE_S *)pstNode);
+            dos_dmem_free(pstNode);
+            pstNode = NULL;
+        }
     }
 }
 
@@ -397,9 +427,6 @@ VOID* sc_data_syn_runtime(VOID *ptr)
     struct sockaddr_un  stAddr, stAddrIn;
     struct timeval      stTimeout={2, 0};
     fd_set              stFDSet;
-
-    /* 清空临时数据 */
-    sc_tmp_tbl_clean();
 
     for (;;)
     {
