@@ -2196,7 +2196,7 @@ U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ACD, "Cannot fine the group with the ID \"%s\" .", ulAgentGrpID);
+        sc_logr_error(SC_ACD, "Cannot fine the group with the ID \"%u\" .", ulAgentGrpID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         SC_TRACE_OUT();
