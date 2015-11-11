@@ -6440,10 +6440,16 @@ U32 sc_ep_play_sound(U32 ulSoundType, S8 *pszUUID, S32 lTime)
             pszFileName = "out_balance";
             break;
         case SC_SND_SET_SUCC:
-            pszFileName = "set_fail";
+            pszFileName = "set_succ";
             break;
         case SC_SND_SET_FAIL:
-            pszFileName = "set_succ";
+            pszFileName = "set_fail";
+            break;
+        case SC_SND_OPT_SUCC:
+            pszFileName = "opt_succ";
+            break;
+        case SC_SND_OPT_FAIL:
+            pszFileName = "opt_fail";
             break;
         case SC_SND_SYS_MAINTAIN:
             pszFileName = "sys_in_maintain";
@@ -6477,6 +6483,10 @@ U32 sc_ep_play_sound(U32 ulSoundType, S8 *pszUUID, S32 lTime)
     if (lTime <= 0)
     {
         sc_ep_esl_execute("endless_playback", szFileName, pszUUID);
+    }
+    else if (1 == lTime)
+    {
+        sc_ep_esl_execute("playback", szFileName, pszUUID);
     }
     else
     {
@@ -10695,10 +10705,8 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
 
         /* 操作成功，放音提示 */
-        dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                        , "file_string://%s/szchg.wav", SC_PROMPT_TONE_PATH);
-
-        sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
+        sc_ep_play_sound(SC_SND_OPT_SUCC, pstSCB->szUUID, 1);
+        sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1);
 
         pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
         if (DOS_ADDR_VALID(pstSCBOther))
@@ -11044,7 +11052,6 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     U32       ulRet = 0;
     S8        szMOHFilePath[256] = { 0, };
     S8        *pszValue     = NULL;
-    //S8        szAPPParam[256] = { 0, };
     SC_ACD_AGENT_INFO_ST stAgentInfo;
 
     if (DOS_ADDR_INVALID(pstHandle) || DOS_ADDR_INVALID(pstEvent) || DOS_ADDR_INVALID(pstSCB))
@@ -11094,11 +11101,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCB->szUUID);
 
         /* 播放等待音 */
-        if (sc_get_moh_file(szMOHFilePath, sizeof(szMOHFilePath)) == DOS_SUCC)
-        {
-            sc_ep_esl_execute("playback", szMOHFilePath, pstSCB->szUUID);
-        }
-        else
+        if (sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1) != DOS_SUCC)
         {
             sc_logr_info(SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
         }
@@ -11120,11 +11123,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                             , stAgentInfo.ucStatus);
 
             /* 播放等待音 */
-            if (sc_get_moh_file(szMOHFilePath, sizeof(szMOHFilePath)) == DOS_SUCC)
-            {
-                sc_ep_esl_execute("playback", szMOHFilePath, pstSCB->szUUID);
-            }
-            else
+            if (sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1) != DOS_SUCC)
             {
                 sc_logr_info(SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
             }
@@ -11297,19 +11296,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     {
         /* 坐席长签成功 */
         sc_ep_agent_signin_proc(pstHandle, pstEvent, pstSCB);
-#if 0
-        ulRet = sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECTED, pstSCB->ulAgentID, OPERATING_TYPE_PHONE);
-        if (ulRet == DOS_SUCC)
-        {
-            sc_acd_agent_update_status(pstSCB, SC_ACD_BUTT, pstSCB->usSCBNo);
-            sc_ep_esl_execute("hold", NULL, pstSCB->szUUID);
-
-            dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                        , "{not_hungup_after_play=true}file_string://%s/szchg.wav", SC_PROMPT_TONE_PATH);
-            sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
-        }
-#endif
-
     }
     else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
     {
