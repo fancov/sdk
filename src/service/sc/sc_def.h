@@ -1118,6 +1118,7 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
 U32  sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 U32  sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen);
+U32 sc_send_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCallerNum);
 
 
 /* 更新坐席状态任务主函数 */
@@ -1136,6 +1137,9 @@ U16 sc_ep_transform_errcode_from_sc2sip(U32 ulErrcode);
 U32 sc_ep_reloadxml();
 U32 sc_ep_update_gateway(VOID *pData);
 U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase);
+
+U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase);
+
 
 #ifdef __cplusplus
 }
