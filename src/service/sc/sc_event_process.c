@@ -10698,45 +10698,6 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         return DOS_FAIL;
     }
 
-    /* 判断是否是客户标记 */
-    if (bIsSecondaryDialing
-        && 1 == dos_sscanf(pszDealNum+1, "%u", &ulKey)
-        && ulKey <= 9)
-    {
-        /* 客户标记 */
-        pstSCB->bIsMarkCustomer = DOS_TRUE;
-        pstSCB->szCustomerMark[0] = '\0';
-        dos_strncpy(pstSCB->szCustomerMark, pszDealNum, SC_CUSTOMER_MARK_LENGTH-1);
-        pstSCB->szCustomerMark[SC_CUSTOMER_MARK_LENGTH-1] = '\0';
-
-        sc_send_marker_update_req(pstSCB->ulCustomID, pstSCB->ulAgentID, ulKey, pstSCB->szCallerNum);
-        sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
-
-        /* 操作成功，放音提示 */
-        sc_ep_play_sound(SC_SND_OPT_SUCC, pstSCB->szUUID, 1);
-        sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, OPERATING_TYPE_WEB, NULL);
-
-        pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
-        if (DOS_ADDR_VALID(pstSCBOther))
-        {
-            sc_ep_hangup_call(pstSCBOther, CC_ERR_NORMAL_CLEAR);
-        }
-
-        /* 判断是否是长签 */
-        if (!sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
-        {
-            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
-        }
-        else
-        {
-            /* 放音 */
-            sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
-            sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1);
-        }
-
-        return DOS_SUCC;
-    }
-
     if (dos_strncmp(pszDealNum, SC_POTS_HANGUP_CUSTOMER, dos_strlen(SC_POTS_HANGUP_CUSTOMER)) == 0
         && bIsSecondaryDialing)
     {
@@ -11055,6 +11016,45 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         {
             goto end;
         }
+    }
+    else if (bIsSecondaryDialing
+            && pszDealNum[0] == '*'
+            && pszDealNum[2] == '#'
+            && 1 == dos_sscanf(pszDealNum+1, "%u", &ulKey)
+            && ulKey <= 9)
+    {
+        /* 判断是否是客户标记 *D# */
+        pstSCB->bIsMarkCustomer = DOS_TRUE;
+        pstSCB->szCustomerMark[0] = '\0';
+        dos_strncpy(pstSCB->szCustomerMark, pszDealNum, SC_CUSTOMER_MARK_LENGTH-1);
+        pstSCB->szCustomerMark[SC_CUSTOMER_MARK_LENGTH-1] = '\0';
+
+        sc_send_marker_update_req(pstSCB->ulCustomID, pstSCB->ulAgentID, ulKey, pstSCB->szCallerNum);
+        sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
+
+        /* 操作成功，放音提示 */
+        sc_ep_play_sound(SC_SND_OPT_SUCC, pstSCB->szUUID, 1);
+        sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, OPERATING_TYPE_WEB, NULL);
+
+        pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+        if (DOS_ADDR_VALID(pstSCBOther))
+        {
+            sc_ep_hangup_call(pstSCBOther, CC_ERR_NORMAL_CLEAR);
+        }
+
+        /* 判断是否是长签 */
+        if (!sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
+        {
+            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+        }
+        else
+        {
+            /* 放音 */
+            sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
+            sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1);
+        }
+
+        return DOS_SUCC;
     }
     else
     {
@@ -12630,6 +12630,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         {
             /* 超时 */
             pstSCB->szDialNum[0] = '\0';
+            sc_logr_debug(SC_ESL, "Scb(%u) DTMF timeout.", pstSCB->usSCBNo);
         }
 
         if (pstSCB->szDialNum[0] == '\0'
@@ -12637,46 +12638,33 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
             && pszDTMFDigit[0] != '*')
         {
             /* 第一个符号不是 '#' 或者 '*'，不保存 */
+            sc_logr_debug(SC_ESL, "Scb(%u) DTMF is not * or #.", pstSCB->usSCBNo);
+
             goto process_succ;
         }
 
         pstSCB->ulLastDTMFTime = ulCurrTime;
-        if (pstSCB->szDialNum[0] == '#'
-            && pstSCB->szDialNum[1] == '\0'
-            && pszDTMFDigit[0] == '#')
+        /* 保存到缓存中 */
+        ulLen = dos_strlen(pstSCB->szDialNum);
+        if (ulLen < SC_TEL_NUMBER_LENGTH - 1)
+        {
+            dos_snprintf(pstSCB->szDialNum+ulLen, SC_TEL_NUMBER_LENGTH-ulLen, "%s", pszDTMFDigit);
+        }
+
+        if (dos_strcmp(pstSCB->szDialNum, "##") == 0)
         {
             /* ## */
-            pstSCB->szDialNum[1] = '#';
-            pstSCB->szDialNum[2] = '\0';
             sc_ep_pots_pro(pstSCB, DOS_TRUE);
+            /* 清空缓存 */
             pstSCB->szDialNum[0] = '\0';
         }
-        else if (pstSCB->szDialNum[0] == '\0'
-            && pszDTMFDigit[0] == '#')
+        else if (pszDTMFDigit[0] == '#' && dos_strlen(pstSCB->szDialNum) > 1)
         {
-            /* 第一个为'#', 保存 */
-            pstSCB->szDialNum[0] = '#';
-            pstSCB->szDialNum[1] = '\0';
-        }
-        else if (pszDTMFDigit[0] == '#')
-        {
-            ulLen = dos_strlen(pstSCB->szDialNum);
-            if (ulLen < SC_TEL_NUMBER_LENGTH - 1)
-            {
-                dos_snprintf(pstSCB->szDialNum+ulLen, SC_TEL_NUMBER_LENGTH-ulLen, "%s", pszDTMFDigit);
-            }
-
+            /* # 为结束符，收到后，就应该去解析, 特别的，如果第一个字符为#,不需要去解析 */
             sc_logr_debug(SC_ESL, "Secondary dialing. caller : %s, DialNum : %s", pstSCB->szCallerNum, pstSCB->szDialNum);
             sc_ep_pots_pro(pstSCB, DOS_TRUE);
+            /* 清空缓存 */
             pstSCB->szDialNum[0] = '\0';
-        }
-        else
-        {
-            ulLen = dos_strlen(pstSCB->szDialNum);
-            if (ulLen < SC_TEL_NUMBER_LENGTH - 1)
-            {
-                dos_snprintf(pstSCB->szDialNum+ulLen, SC_TEL_NUMBER_LENGTH-ulLen, "%s", pszDTMFDigit);
-            }
         }
     }
 
