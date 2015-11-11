@@ -469,7 +469,7 @@ VOID sc_acd_agent_update_status_IDEL(U64 ulArg)
  *      U32 ulStatus  : 新状态
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo)
+U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 *szCustomerNum)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueInfo = NULL;
     HASH_NODE_S                 *pstHashNode       = NULL;
