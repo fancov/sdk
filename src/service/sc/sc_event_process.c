@@ -8639,8 +8639,23 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
             goto proc_error;
         }
 
+        /* 更新 pstSCBNew 中的主被叫号码 */
+        if (pstSCB->bIsPassThrough)
+        {
+            dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCallerNum));
+        }
+        else
+        {
+            dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
+        }
+        pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
+        dos_strncpy(pstSCBNew->szANINum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szANINum));
+        pstSCBNew->szANINum[sizeof(pstSCBNew->szANINum) - 1] = '\0';
+        dos_strncpy(pstSCBNew->szCalleeNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCalleeNum));
+        pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
+
         /* 更新坐席的状态 */
-        sc_acd_agent_update_status(pstSCBNew, SC_ACD_BUSY, pstSCBNew->usSCBNo, NULL);
+        sc_acd_agent_update_status(pstSCBNew, SC_ACD_BUSY, pstSCBNew->usSCBNo, pstSCB->szCallerNum);
 
         pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
         pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
@@ -8689,6 +8704,8 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
     pstSCBNew->ucLegRole = SC_CALLEE;
     pstSCBNew->bRecord = pstAgentInfo->bRecord;
     pstSCBNew->bIsAgentCall = DOS_TRUE;
+    dos_strncpy(pstSCBNew->szCustomerNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCustomerNum));
+    pstSCBNew->szCustomerNum[sizeof(pstSCBNew->szCustomerNum) - 1] = '\0';
     if (pstSCB->bIsPassThrough)
     {
         dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCallerNum));
@@ -9344,7 +9361,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         }
 
         /* 更新坐席的状态 */
-        sc_acd_agent_update_status(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo, NULL);
+        sc_acd_agent_update_status(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo, pszNumber);
 
 
         pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
@@ -9406,6 +9423,8 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         dos_strncpy(pstSCB->szCallerNum, pszNumber, sizeof(pstSCB->szCallerNum));
         pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
 
+        dos_strncpy(pstSCB->szCustomerNum, pszNumber, sizeof(pstSCB->szCustomerNum));
+        pstSCB->szCustomerNum[sizeof(pstSCB->szCustomerNum) - 1] = '\0';
         /* 指定被叫号码 */
         switch (stAgentInfo.ucBindType)
         {
@@ -10701,7 +10720,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         dos_strncpy(pstSCB->szCustomerMark, pszDealNum, SC_CUSTOMER_MARK_LENGTH-1);
         pstSCB->szCustomerMark[SC_CUSTOMER_MARK_LENGTH-1] = '\0';
 
-        sc_ep_update_corpclients(pstSCB->ulCustomID, ulKey, pstSCB->szCallerNum);
+        sc_ep_update_corpclients(pstSCB->ulCustomID, ulKey, pstSCB->szCustomerNum);
         sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s", pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
 
         /* 操作成功，放音提示 */
@@ -10761,6 +10780,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         if (stAgentInfo.szLastCustomerNum[0] == '\0')
         {
             /* 不存在上一个客户，放音提示 */
+            goto end;
         }
 
         if (1 == dos_sscanf(pszDealNum+dos_strlen(SC_POTS_MARK_CUSTOMER), "%d", &ulKey) && ulKey <= 9)
@@ -10770,6 +10790,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         else
         {
             /* 格式错误，放音提示 */
+            goto end;
         }
 
         sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), mark customer", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
@@ -11063,6 +11084,15 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
 end:
     sc_logr_debug(SC_ACD, "POTS, result : %d, callee : %s", ulRet, pszDealNum);
 
+    if (ulRet != DOS_SUCC)
+    {
+        sc_ep_play_sound(SC_SND_OPT_FAIL, pstSCB->szUUID, 1);
+    }
+    else
+    {
+        sc_ep_play_sound(SC_SND_OPT_SUCC, pstSCB->szUUID, 1);
+    }
+
     if (bIsHangUp)
     {
         sc_ep_esl_execute("hangup", "", pstSCB->szUUID);
@@ -11074,7 +11104,7 @@ end:
 U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     U32       ulRet = 0;
-    S8        szMOHFilePath[256] = { 0, };
+    //S8        szMOHFilePath[256] = { 0, };
     S8        *pszValue     = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
 
@@ -11514,7 +11544,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             if (U32_BUTT != pstSCB->ulCustomID)
             {
                 /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
-                if (sc_acd_update_agent_scbno_by_userid(pstSCB->szCallerNum, pstSCB) != DOS_SUCC)
+                if (sc_acd_update_agent_scbno_by_userid(pstSCB->szCallerNum, pstSCB, pstSCB->szCalleeNum) != DOS_SUCC)
                 {
                     sc_logr_info(SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
                 }
@@ -11578,7 +11608,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         {
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
             /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
-            if (sc_acd_update_agent_scbno_by_userid(pszCaller, pstSCB) != DOS_SUCC)
+            if (sc_acd_update_agent_scbno_by_userid(pszCaller, pstSCB, NULL) != DOS_SUCC)
             {
                 sc_logr_debug(SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pszCaller, pstSCB->usSCBNo);
             }
@@ -11813,7 +11843,7 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         /* 判断是否是呼叫坐席，更新坐席的状态 */
         if (pstSCB->bIsAgentCall && !sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
         {
-            sc_acd_agent_update_status(pstSCB, SC_ACD_BUSY, ulSCBNo, NULL);
+            sc_acd_agent_update_status(pstSCB, SC_ACD_BUSY, ulSCBNo, pstSCB->szCustomerNum);
         }
 
         /* 更新UUID */
@@ -12003,7 +12033,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
         if (DOS_ADDR_INVALID(pstSCBOther))
         {
-            /* @TODO 要不要给挂断呼叫 ? */
+            /* @TODO 要不要给挂断呼叫 */
         }
         else
         {
