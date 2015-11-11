@@ -21,6 +21,7 @@ extern "C"{
 /* include private header files */
 #include <esl.h>
 #include <bs_pub.h>
+#include "sc_pub.h"
 #include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_acd_def.h"
@@ -564,7 +565,7 @@ esl_exec_fail:
     pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
     if (DOS_ADDR_VALID(pstSCBOther))
     {
-        esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCBOther->szUUID);
+        sc_ep_hangup_call_with_snd(pstSCBOther, CC_ERR_SIP_BAD_GATEWAY);
     }
 
     DOS_ASSERT(0);

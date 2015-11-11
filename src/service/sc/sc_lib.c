@@ -172,7 +172,6 @@ U32 sc_send_marker_update_req(U32 ulID, U32 ulAction)
 }
 
 
-
 /*
  * 函数: S8 *sc_scb_get_status(U32 ulStatus)
  * 功能: 根据ulStatus所指定的状态，获取业务控制块的状态
