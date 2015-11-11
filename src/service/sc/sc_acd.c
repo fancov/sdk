@@ -576,9 +576,10 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo)
         sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", ulSiteID, ulProcesingTime);
         sc_ep_esl_execute("set", "mark_customer_start=true", pstSCB->szUUID);
         sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
-        dos_snprintf(szAPPParam, sizeof(szAPPParam), "1 3 1 %u # %s/call_over.wav silence_stream://%d pdtmf \\d+"
-            , ulProcesingTime * 500, SC_PROMPT_TONE_PATH, ulProcesingTime * 500);
-        sc_ep_esl_execute("play_and_get_digits", szAPPParam, pstSCB->szUUID);
+        dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                        , "{timeout=%u}file_string://%s/call_over.wav"
+                        , ulProcesingTime * 1000, SC_PROMPT_TONE_PATH);
+        sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
         sc_ep_esl_execute("park", NULL, pstSCB->szUUID);
     }
 
