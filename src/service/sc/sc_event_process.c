@@ -10714,7 +10714,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
 
         /* 操作成功，放音提示 */
         sc_ep_play_sound(SC_SND_OPT_SUCC, pstSCB->szUUID, 1);
-        sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, OPERATING_TYPE_WEB);
+        sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, OPERATING_TYPE_WEB, NULL);
 
         pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
         if (DOS_ADDR_VALID(pstSCBOther))
@@ -10729,7 +10729,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         }
         else
         {
-			/* 放音 */
+            /* 放音 */
             sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
             sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1);
         }
@@ -10771,7 +10771,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
 
         if (1 == dos_sscanf(pszDealNum+dos_strlen(SC_POTS_MARK_CUSTOMER), "%d", &ulKey) && ulKey <= 9)
         {
-            sc_ep_update_corpclients(pstSCB->ulCustomID, ulKey, stAgentInfo.szLastCustomerNum);
+            sc_send_marker_update_req(pstSCB->ulCustomID, stAgentInfo.ulSiteID, ulKey, stAgentInfo.szLastCustomerNum);
         }
         else
         {
