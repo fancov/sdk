@@ -8980,9 +8980,10 @@ U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID, BOOL bIsPass
     ulResult = sc_cwq_add_call(pstSCB, ulTaskAgentQueueID);
     if (ulResult == DOS_SUCC)
     {
+        pstSCB->bIsInQueue = DOS_TRUE;
+
         sc_ep_play_sound(SC_SND_CONNECTING, pstSCB->szUUID, 1);
         sc_ep_play_sound(SC_SND_MUSIC_HOLD, pstSCB->szUUID, -1);
-        pstSCB->bIsInQueue = DOS_TRUE;
     }
 
     return ulResult;
