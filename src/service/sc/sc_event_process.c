@@ -165,19 +165,19 @@ U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode)
     pstCallResult->ulTaskID = pstSCB->ulTaskID;       /* 任务ID,要求全数字,不超过10位,最高位小于4 */
 
     /* 坐席号码(工号) */
-    if ('\0' != pstCallResult->szAgentNum)
+    if ('\0' != pstSCB->szSiteNum[0])
     {
         dos_snprintf(pstCallResult->szAgentNum, sizeof(pstCallResult->szAgentNum), "%s", pstSCB->szSiteNum);
     }
 
     /* 主叫号码 */
-    if ('\0' != pstCallResult->szCaller)
+    if ('\0' != pstSCB->szCallerNum[0])
     {
         dos_snprintf(pstCallResult->szCaller, sizeof(pstCallResult->szCaller), "%s", pstSCB->szCallerNum);
     }
 
     /* 被叫号码 */
-    if ('\0' != pstCallResult->szCallee)
+    if ('\0' != pstSCB->szCalleeNum[0])
     {
         dos_snprintf(pstCallResult->szCallee, sizeof(pstCallResult->szCallee), "%s", pstSCB->szCalleeNum);
     }
@@ -8629,6 +8629,10 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         goto proc_error;
     }
 
+    /* 应该把坐席的工号存储到 pstSCB 中，结果分析时，使用 */
+    dos_strncpy(pstSCB->szSiteNum, pstAgentInfo->szEmpNo, sizeof(pstSCB->szSiteNum));
+    pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
+
     /* 如果坐席长连了，就需要特殊处理 */
     if (pstAgentInfo->bConnected && pstAgentInfo->usSCBNo < SC_MAX_SCB_NUM)
     {
@@ -8712,8 +8716,19 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
     pstSCBNew->ucLegRole = SC_CALLEE;
     pstSCBNew->bRecord = pstAgentInfo->bRecord;
     pstSCBNew->bIsAgentCall = DOS_TRUE;
-    dos_strncpy(pstSCBNew->szCustomerNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCustomerNum));
-    pstSCBNew->szCustomerNum[sizeof(pstSCBNew->szCustomerNum) - 1] = '\0';
+
+    /* 如果为群呼任务，则customer num 为被叫号码，如果是呼入，则是主叫号码 */
+    if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+    {
+        dos_strncpy(pstSCBNew->szCustomerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCustomerNum));
+        pstSCBNew->szCustomerNum[sizeof(pstSCBNew->szCustomerNum) - 1] = '\0';
+    }
+    else
+    {
+        dos_strncpy(pstSCBNew->szCustomerNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCustomerNum));
+        pstSCBNew->szCustomerNum[sizeof(pstSCBNew->szCustomerNum) - 1] = '\0';
+    }
+
     if (pstSCB->bIsPassThrough)
     {
         dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCallerNum));
@@ -11904,6 +11919,7 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         /* 判断是否是呼叫坐席，更新坐席的状态 */
         if (pstSCB->bIsAgentCall && !sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
         {
+
             sc_acd_agent_update_status(pstSCB, SC_ACD_BUSY, ulSCBNo, pstSCB->szCustomerNum);
         }
 
