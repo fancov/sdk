@@ -401,6 +401,8 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->szDialNum[0] = '\0';               /* ÓÃ»§²¦ºÅ */
     pstSCB->szSiteNum[0] = '\0';               /* ×øÏ¯ºÅÂë */
     pstSCB->szUUID[0] = '\0';                  /* Leg-A UUID */
+    pstSCB->szCustomerMark[0] = '\0';
+    pstSCB->szCustomerNum[0] = '\0';
     pstSCB->pstExtraData = NULL;
     pstSCB->pszRecordFile = NULL;
     pstSCB->ucMainService = U8_BUTT;

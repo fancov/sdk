@@ -737,6 +737,7 @@ typedef struct tagSCSCB{
     S8        szSiteNum[SC_TEL_NUMBER_LENGTH];              /* 坐席号码 */
     S8        szUUID[SC_MAX_UUID_LENGTH];                   /* Leg-A UUID */
     S8        szCustomerMark[SC_CUSTOMER_MARK_LENGTH];      /* 客户标记的标记值 */
+    S8        szCustomerNum[SC_TEL_NUMBER_LENGTH];          /* 与坐席通话的客户的号码 */
 
     S8        *pszRecordFile;
 
@@ -1135,6 +1136,7 @@ U16 sc_ep_transform_errcode_from_sc2sip(U32 ulErrcode);
 
 U32 sc_ep_reloadxml();
 U32 sc_ep_update_gateway(VOID *pData);
+U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase);
 
 U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase);
 

@@ -462,14 +462,14 @@ VOID sc_acd_agent_update_status_IDEL(U64 ulArg)
 #endif
 
 /*
- * 函  数: U32 sc_acd_agent_update_status(S8 *pszUserID, U32 ulStatus)
+ * 函  数: U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 *szCustomerNum)
  * 功  能: 更新坐席状态
  * 参  数:
  *      S8 *pszUserID : 坐席的SIP USER ID
  *      U32 ulStatus  : 新状态
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo)
+U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 *szCustomerNum)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueInfo = NULL;
     HASH_NODE_S                 *pstHashNode       = NULL;
@@ -560,6 +560,13 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo)
     if (U32_BUTT == ulSCBNo)
     {
         pstAgentQueueInfo->pstAgentInfo->bConnected = DOS_FALSE;
+    }
+
+    /* 更新坐席中的最后一个呼叫的客户，用于标记上一个客户 */
+    if (ulStatus == SC_ACD_BUSY && szCustomerNum[0] != '\0')
+    {
+        dos_strcpy(pstAgentQueueInfo->pstAgentInfo->szLastCustomerNum, szCustomerNum);
+        pstAgentQueueInfo->pstAgentInfo->szLastCustomerNum[SC_TEL_NUMBER_LENGTH-1] = '\0';
     }
 
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
@@ -660,7 +667,7 @@ U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
  * 参  数:
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB)
+U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB, S8 *szCustomerNum)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
@@ -704,9 +711,13 @@ U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB)
                 pstSCB->bRecord = pstAgentData->bRecord;
                 dos_strncpy(pstSCB->szSiteNum, pstAgentData->szEmpNo, sizeof(pstSCB->szSiteNum));
                 pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
-
                 pthread_mutex_lock(&pstAgentData->mutexLock);
                 pstAgentData->usSCBNo = pstSCB->usSCBNo;
+                if (DOS_ADDR_VALID(szCustomerNum))
+                {
+                    dos_strncpy(pstAgentData->szLastCustomerNum, szCustomerNum, SC_TEL_NUMBER_LENGTH);
+                    pstAgentData->szLastCustomerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+                }
                 pthread_mutex_unlock(&pstAgentData->mutexLock);
 
                 pthread_mutex_unlock(&g_mutexAgentList);
