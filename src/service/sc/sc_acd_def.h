@@ -17,13 +17,12 @@
 #define MAX_GROUP_PER_SITE      2
 
 /* 1. 没有被删除
-   2. 已经登陆了
+   2. 已经登陆了     && (pstSiteDesc)->bLogin 这个状态不判断了
    3. 需要连接，并且处于连接状态
    4. 状态为EDL*/
 #define SC_ACD_SITE_IS_USEABLE(pstSiteDesc)                             \
     (DOS_ADDR_VALID(pstSiteDesc)                                       \
     && !(pstSiteDesc)->bWaitingDelete                                  \
-    && (pstSiteDesc)->bLogin                                           \
     && SC_ACD_IDEL == (pstSiteDesc)->ucStatus                          \
     && !((pstSiteDesc)->bNeedConnected && !(pstSiteDesc)->bConnected))
 

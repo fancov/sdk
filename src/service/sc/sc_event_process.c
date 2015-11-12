@@ -194,7 +194,7 @@ U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode)
             pstCallResult->ulPDDLen = pstSCB->pstExtraData->ulRingTimeStamp - pstSCB->pstExtraData->ulStartTimeStamp;
         }
         pstCallResult->ulRingTime = pstSCB->pstExtraData->ulRingTimeStamp;                 /* 振铃时长,单位:秒 */
-        pstCallResult->ulAnswerTimeStamp = pstSCB->pstExtraData->ulAnswerTimeStamp;          /* 应答时间戳 */
+        pstCallResult->ulAnswerTimeStamp = pstSCB->pstExtraData->ulStartTimeStamp;          /* 应答时间戳 */
         pstCallResult->ulFirstDTMFTime = pstSCB->ulFirstDTMFTime;            /* 第一个二次拨号时间,单位:秒 */
         pstCallResult->ulIVRFinishTime = pstSCB->ulIVRFinishTime;            /* IVR放音完成时间,单位:秒 */
 
@@ -6055,14 +6055,14 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
             /* 针对中继，只有路由后，才需要判断这种情况 */
             if (enTiming == SC_NUM_TRANSFORM_TIMING_AFTER)
             {
-                if (DOS_ADDR_INVALID(pstNumTransform))
+                if (pstNumTransformEntry->ulObjectID != ulTrunkID)
                 {
-                    pstNumTransform = pstNumTransformEntry;
                     continue;
                 }
 
-                if (pstNumTransformEntry->ulObjectID != ulTrunkID)
+                if (DOS_ADDR_INVALID(pstNumTransform))
                 {
+                    pstNumTransform = pstNumTransformEntry;
                     continue;
                 }
 
@@ -10469,6 +10469,8 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
         {
             if (sc_acd_get_agent_by_userid(&stAgentInfo, pszDstNum) == DOS_SUCC)
             {
+                /* 不需要再判断分机的状态 */
+#if 0
                 /* 根据分机找到分机绑定的坐席，判断坐席的状态 */
                 if (stAgentInfo.ucBindType == AGENT_BIND_SIP
                     && stAgentInfo.ucStatus != SC_ACD_IDEL)
@@ -10477,7 +10479,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
 
                     goto process_fail;
                 }
-
+#endif
                 dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d,update_agent_id=%d}user/%s", pstSCB->usSCBNo, stAgentInfo.ulSiteID, pszDstNum);
                 sc_ep_esl_execute("bridge", szCallString, pszUUID);
             }
@@ -10940,9 +10942,9 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
 
         sc_logr_debug(SC_ACD, "POTS, agent(%u) by userid(%s), signin SUCC", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
         sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
-        sc_ep_esl_execute("park", NULL, pstSCB->szUUID);
+        sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1);
 
-        bIsHangUp = DOS_FALSE;
+        return DOS_SUCC;
     }
     else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_SIGNOUT, dos_strlen(SC_POTS_AGENT_SIGNOUT)) == 0)
     {
@@ -12226,6 +12228,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
     //U32         ulAgentStatus;
     U32         ulSCBNo             = U32_BUTT;
     U32         ulHuangupCause      = 0;
+    S32         i;
     S8          szCMD[512]          = { 0, };
     S8          *pszTransforType    = NULL;
     S8          *pszGatewayID       = NULL;
@@ -12408,6 +12411,12 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                     && pstSCBOther->bIsAgentCall
                     && !pstSCBOther->bIsMarkCustomer)
                 {
+                    /* 关于录音的问题，
+                        1、坐席一端，有录音业务
+                        2、客户端先挂断的，坐席一端后挂，
+                        3、坐席还没有标记客户
+                        需要将录音业务结束，并且将业务传递给客户，生成话单
+                    */
                     /* 获得坐席 */
                     if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCBOther->ulAgentID) != DOS_SUCC)
                     {
@@ -12416,6 +12425,51 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                     }
                     else
                     {
+                        /* 判断是否有录音业务 */
+                        if (pstSCBOther->bRecord && pstSCBOther->pszRecordFile)
+                        {
+                             dos_snprintf(szCMD, sizeof(szCMD)
+                                            , "bgapi uuid_record %s stop %s/%s\r\n"
+                                            , pstSCBOther->szUUID
+                                            , SC_RECORD_FILE_PATH
+                                            , pstSCBOther->pszRecordFile);
+                            sc_ep_esl_execute_cmd(szCMD);
+
+                            dos_snprintf(szCMD, sizeof(szCMD)
+                                            , "%s/%s-in.%s"
+                                            , SC_RECORD_FILE_PATH
+                                            , pstSCBOther->pszRecordFile
+                                            , esl_event_get_header(pstEvent, "variable_read_codec"));
+                            chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
+                            chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
+
+                            dos_snprintf(szCMD, sizeof(szCMD)
+                                            , "%s/%s-out.%s"
+                                            , SC_RECORD_FILE_PATH
+                                            , pstSCBOther->pszRecordFile
+                                            , esl_event_get_header(pstEvent, "variable_read_codec"));
+                            chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
+                            chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
+
+                            dos_printf("Process recording file %s", szCMD);
+
+                            pstSCB->pszRecordFile = dos_dmem_alloc(dos_strlen(pstSCBOther->pszRecordFile) + 1);
+                            if (DOS_ADDR_VALID(pstSCB->pszRecordFile))
+                            {
+                                dos_strcpy(pstSCB->pszRecordFile, pstSCBOther->pszRecordFile);
+                            }
+
+                            SC_SCB_SET_SERVICE(pstSCB, SC_SERV_RECORDING);
+                            for (i=0; i<SC_MAX_SRV_TYPE_PRE_LEG; i++)
+                            {
+                                if (pstSCBOther->aucServiceType[i] == SC_SERV_RECORDING)
+                                {
+                                    pstSCBOther->aucServiceType[i] = U8_BUTT;
+                                    break;
+                                }
+                            }
+                        }
+
                         /* 判断坐席是否是长签 */
                         if (sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN))
                         {

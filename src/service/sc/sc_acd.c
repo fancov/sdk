@@ -2156,6 +2156,7 @@ U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB)
                 pstAgentData->bNeedConnected = DOS_TRUE;
                 pstAgentData->bWaitingDelete = DOS_FALSE;
                 pstAgentData->usSCBNo = pstSCB->usSCBNo;
+                pstAgentData->ucStatus = SC_ACD_IDEL;
 
                 pstSCB->bIsAgentCall = DOS_TRUE;
                 pstSCB->ulCustomID = pstAgentData->ulCustomerID;
