@@ -6478,7 +6478,7 @@ U32 sc_ep_play_sound(U32 ulSoundType, S8 *pszUUID, S32 lTime)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szFileName, sizeof(szFileName), "%s/%s.wav", SC_PROMPT_TONE_PATH, pszFileName);
+    dos_snprintf(szFileName, sizeof(szFileName), "{not_hungup_after_play=true}%s/%s.wav", SC_PROMPT_TONE_PATH, pszFileName);
 
     if (lTime <= 0)
     {
