@@ -7840,6 +7840,14 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         return DOS_FAIL;
     }
 
+    pstSCB = sc_scb_get(pstAgentInfo->usSCBNo);
+    if (DOS_ADDR_VALID(pstSCB) && SC_SCB_ACTIVE == pstSCB->ucStatus
+        && pstAgentInfo->bConnected && pstAgentInfo->bNeedConnected)
+    {
+        sc_logr_warning(SC_ESL, "Agent %u request signin. But it seems already signin. Exit.", pstAgentInfo->ulSiteID);
+        return DOS_SUCC;
+    }
+
     pstSCB = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -9028,6 +9036,54 @@ U32 sc_ep_call_ctrl_hangup_all(U32 ulAgent)
     return sc_ep_call_ctrl_hangup(ulAgent);
 }
 
+U32 sc_ep_call_ctrl_hangup_agent(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo)
+{
+    SC_SCB_ST *pstSCB       = NULL;
+    SC_SCB_ST *pstSCBOther  = NULL;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (pstAgentQueueInfo->usSCBNo >= SC_MAX_SCB_NUM)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u)."
+                        , pstAgentQueueInfo->ulSiteID
+                        , pstAgentQueueInfo->usSCBNo);
+
+        return DOS_FAIL;
+    }
+
+    pstSCB = sc_scb_get(pstAgentQueueInfo->usSCBNo);
+    if (DOS_ADDR_INVALID(pstSCB) || !pstSCB->bValid)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid."
+                        , pstAgentQueueInfo->ulSiteID
+                        , pstAgentQueueInfo->usSCBNo);
+
+        return DOS_FAIL;
+    }
+
+    sc_logr_notice(SC_ESL, "Hangup call for force. Agent: %u, SCB: %u"
+                    , pstAgentQueueInfo->ulSiteID
+                    , pstAgentQueueInfo->usSCBNo);
+    pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+
+    sc_ep_hangup_call(pstSCB, CC_ERR_SC_CLEAR_FORCE);
+    if (pstSCBOther)
+    {
+        sc_ep_hangup_call(pstSCBOther, CC_ERR_SC_CLEAR_FORCE);
+    }
+
+    return DOS_SUCC;
+}
 
 /* hold坐席相关的呼叫 */
 U32 sc_ep_call_ctrl_hold(U32 ulAgent, BOOL isHold)
@@ -10712,7 +10768,9 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         {
 			/* 放音 */
             sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
+            sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
             sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1);
+            sc_ep_esl_execute("set", "playback_terminators=*", pstSCB->szUUID);
         }
 
         return DOS_SUCC;
@@ -11089,6 +11147,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCB->szUUID);
 
         /* 播放等待音 */
+        sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
         if (sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1) != DOS_SUCC)
         {
             sc_logr_info(SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
@@ -11111,10 +11170,12 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                             , stAgentInfo.ucStatus);
 
             /* 播放等待音 */
+            sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
             if (sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1) != DOS_SUCC)
             {
                 sc_logr_info(SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
             }
+            sc_ep_esl_execute("set", "playback_terminators=*", pstSCB->szUUID);
 
             /* 如果放完等待音之后，还没有操作就PARK */
             sc_ep_esl_execute("park", "", pstSCB->szUUID);
@@ -11155,10 +11216,12 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     /* 修改坐席的状态 */
                     sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, pstSCB->usSCBNo);
                     sc_ep_esl_execute("park", NULL, pstSCB->szUUID);
+                    sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
                     if (sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1) != DOS_SUCC)
                     {
                         sc_logr_info(SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
                     }
+                    sc_ep_esl_execute("set", "playback_terminators=*", pstSCB->szUUID);
                 }
             }
             else
@@ -12534,6 +12597,8 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         goto process_fail;
     }
 
+    sc_logr_info(SC_ESL, "Recv DTMF: %s, Numbers Dialed: %s", pszDTMFDigit, pstSCB->szDialNum);
+
     /* 自动外呼，拨0接通坐席 */
     if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
     {
@@ -12547,11 +12612,6 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         }
 
         /* 给客户放音 */
-
-        //sc_ep_esl_execute("set", "transfer_ringback=local_stream://moh", pstSCB->szUUID);
-        //sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
-        //sc_ep_esl_execute("playback", "tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
-
         if (SC_TASK_MODE_KEY4AGENT == ulTaskMode)
         {
             sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo), DOS_FALSE);
@@ -12909,7 +12969,7 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         }
     }
 
-    sc_logr_info(SC_ESL, "Start process event: %s(%d), SCB No:%s"
+    sc_logr_debug(SC_ESL, "Start process event: %s(%d), SCB No:%s"
                     , esl_event_get_header(pstEvent, "Event-Name")
                     , pstEvent->event_id
                     , esl_event_get_header(pstEvent, "variable_scb_number"));
@@ -12982,7 +13042,7 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             break;
     }
 
-    sc_logr_info(SC_ESL, "Process finished event: %s(%d). Result:%s"
+    sc_logr_debug(SC_ESL, "Process finished event: %s(%d). Result:%s"
                     , esl_event_get_header(pstEvent, "Event-Name")
                     , pstEvent->event_id
                     , (DOS_SUCC == ulRet) ? "Successfully" : "FAIL");
@@ -13050,7 +13110,7 @@ VOID*sc_ep_process_runtime(VOID *ptr)
             DLL_Init_Node(pstListNode)
             dos_dmem_free(pstListNode);
 
-            sc_logr_info(SC_ESL, "ESL event process START. %s(%d), SCB No:%s, Channel Name: %s"
+            sc_logr_debug(SC_ESL, "ESL event process START. %s(%d), SCB No:%s, Channel Name: %s"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id
                             , esl_event_get_header(pstEvent, "variable_scb_number")
@@ -13062,7 +13122,7 @@ VOID*sc_ep_process_runtime(VOID *ptr)
                 DOS_ASSERT(0);
             }
 
-            sc_logr_info(SC_ESL, "ESL event process FINISHED. %s(%d), SCB No:%s Processed, Result: %d"
+            sc_logr_debug(SC_ESL, "ESL event process FINISHED. %s(%d), SCB No:%s Processed, Result: %d"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id
                             , esl_event_get_header(pstEvent, "variable_scb_number")
@@ -13288,7 +13348,7 @@ VOID* sc_ep_runtime(VOID *ptr)
             if (ESL_SUCCESS != ulRet)
             {
                 esl_disconnect(&g_pstHandle->stRecvHandle);
-                sc_logr_notice(SC_ESL, "ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstHandle->stRecvHandle.err);
+                sc_logr_debug(SC_ESL, "ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstHandle->stRecvHandle.err);
 
                 sleep(1);
                 continue;
@@ -13327,21 +13387,6 @@ VOID* sc_ep_runtime(VOID *ptr)
             g_pstHandle->blIsESLRunning = DOS_FALSE;
             continue;
         }
-#if 0
-        S8                   *pszIsLoopbackLeg = NULL;
-        S8                   *pszIsAutoCall = NULL;
-
-        /* 如果是AUTO Call, 需要吧loopback call的leg a丢掉 */
-        pszIsLoopbackLeg = esl_event_get_header(pstEvent, "variable_loopback_leg");
-        pszIsAutoCall = esl_event_get_header(pstEvent, "variable_auto_call");
-        if (pszIsLoopbackLeg && pszIsAutoCall
-            && 0 == dos_strnicmp(pszIsLoopbackLeg, "A", dos_strlen("A"))
-            && 0 == dos_strnicmp(pszIsAutoCall, "true", dos_strlen("true")))
-        {
-            sc_logr_info(SC_ESL, "%s", "ESL drop loopback call leg A.");
-            continue;
-        }
-#endif
 
         sc_logr_info(SC_ESL, "ESL recv thread recv event %s(%d)."
                         , esl_event_get_header(pstEvent, "Event-Name")
@@ -13352,7 +13397,7 @@ VOID* sc_ep_runtime(VOID *ptr)
         {
             DOS_ASSERT(0);
 
-            sc_logr_info(SC_ESL, "ESL recv thread recv event %s(%d). Alloc memory fail. Drop"
+            sc_logr_warning(SC_ESL, "ESL recv thread recv event %s(%d). Alloc memory fail. Drop"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id);
 
