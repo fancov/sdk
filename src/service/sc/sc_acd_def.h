@@ -98,8 +98,6 @@ enum {
     SC_API_CMD_ACTION_AGENTGREP_UPDATE,
 
     SC_API_CMD_ACTION_QUERY,
-    SC_ACD_SITE_ACTION_ONLINE1,           /* 记录坐席异常时的操作 */
-    SC_ACD_SITE_ACTION_OFFLINE1,          /* 记录坐席异常时的操作 */
 
     SC_ACD_SITE_ACTION_BUTT              /* 坐席签出(长连) */
 };
@@ -196,6 +194,8 @@ typedef struct tagACDSiteDesc{
     S8         szTTNumber[SC_TEL_NUMBER_LENGTH];    /* TT号码 */
 
     S8         szLastCustomerNum[SC_TEL_NUMBER_LENGTH];    /* 最后一个通话的客户的号码 */
+
+    DOS_TMR_ST htmrLogout;
 
     pthread_mutex_t  mutexLock;
 

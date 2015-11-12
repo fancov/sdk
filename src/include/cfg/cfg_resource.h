@@ -13,7 +13,11 @@
 /**
  * 定义每一个进程中最大定时器个数
  */
-#define DOS_TIMER_MAX_NUM                1024
+#ifdef DIPCC_FREESWITCH
+#define DOS_TIMER_MAX_NUM                5000
+#else
+#define DOS_TIMER_MAX_NUM                1000
+#endif
 
 /**
  * 定义cli server 和 监控进程中最大链接的进程数
