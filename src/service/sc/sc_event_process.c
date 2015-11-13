@@ -8839,7 +8839,7 @@ go_on:
         }
     }
 
-    if (sc_ep_call_notify(pstAgentInfo, pstSCBNew->szANINum))
+    if (sc_ep_call_notify(pstAgentInfo, pstSCBNew->szCustomerNum))
     {
         DOS_ASSERT(0);
     }
@@ -8970,6 +8970,7 @@ proc_fail:
 U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID, BOOL bIsPassThrough)
 {
     U32 ulResult;
+    S8  szAPPParam[512]    = { 0, };
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -8982,8 +8983,15 @@ U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID, BOOL bIsPass
     {
         pstSCB->bIsInQueue = DOS_TRUE;
 
+        sc_ep_esl_execute("set", "hungup_after_play=false", pstSCB->szUUID);
         sc_ep_play_sound(SC_SND_CONNECTING, pstSCB->szUUID, 1);
-        sc_ep_play_sound(SC_SND_MUSIC_HOLD, pstSCB->szUUID, -1);
+        //sc_ep_esl_execute("set", "timeout=90000,hungup_after_play=true", pstSCB->szUUID);
+        //sc_ep_play_sound(SC_SND_MUSIC_HOLD, pstSCB->szUUID, 1);
+        sc_ep_esl_execute("set", "hungup_after_play=true", pstSCB->szUUID);
+        dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                        , "{timeout=180000}file_string://%s/music_hold.wav"
+                        , SC_PROMPT_TONE_PATH);
+        sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
     }
 
     return ulResult;
@@ -10377,7 +10385,7 @@ U32 sc_ep_num_verify(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *
         return DOS_FAIL;
     }
 
-    dos_snprintf(szPlayParam, sizeof(szPlayParam), "{not_hungup_after_play=true}file_string://%s/nindyzm.wav", SC_PROMPT_TONE_PATH);
+    dos_snprintf(szPlayParam, sizeof(szPlayParam), "file_string://%s/nindyzm.wav", SC_PROMPT_TONE_PATH);
     dos_snprintf(szCmdParam, sizeof(szCmdParam), "en name_spelled iterated %s", pstSCB->szDialNum);
     sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
     sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
@@ -10834,6 +10842,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
             ulRet = DOS_SUCC;
         }
 
+        ulNeedTip = DOS_FALSE;
         bIsHangUp = DOS_FALSE;
     }
     else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_ONLINE, dos_strlen(SC_POTS_AGENT_ONLINE)) == 0
@@ -12969,11 +12978,18 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
         }
     }
 
-    pszValue = esl_event_get_header(pstEvent, "not_hungup_after_play");
+    pszValue = esl_event_get_header(pstEvent, "variable_hungup_after_play");
     if (DOS_ADDR_VALID(pszValue))
     {
-        /* 播放后，不需要挂断 */
-        sc_logr_debug(SC_ESL, "SCB %d playback stop not need hangup, %s", pstSCB->usSCBNo, pszValue);
+        if (dos_strcmp(pszValue, "false") == 0)
+        {
+            /* 播放后，不需要挂断 */
+            sc_logr_debug(SC_ESL, "SCB %d playback stop not need hangup, %s", pstSCB->usSCBNo, pszValue);
+        }
+        else
+        {
+            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+        }
 
         goto proc_succ;
     }
