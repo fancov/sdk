@@ -397,69 +397,6 @@ U32 sc_acd_agent_update_status_db(U32 ulSiteID, U32 ulStatus, BOOL bIsConnect)
     return DOS_SUCC;
 }
 
-#if 0
-VOID sc_acd_agent_update_status_IDEL(U64 ulArg)
-{
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueInfo = NULL;
-    HASH_NODE_S                 *pstHashNode       = NULL;
-    U32                         ulHashIndex        = 0;
-    U32                         ulSiteID           = 0;
-    BOOL                        bIsConnect         = DOS_FALSE;
-    SC_SCB_ST                   *pstSCB            = NULL;
-
-    pstTimerParam = (SC_AGENT_TIMER_PARAM_ST *)ulArg;
-    if (DOS_ADDR_INVALID(pstTimerParam))
-    {
-        DOS_ASSERT(0);
-        return;
-    }
-
-    pstSCB = pstTimerParam->pstSCB;
-    ulSiteID = pstTimerParam->ulAgentID;
-    pstTimerParam->pstSCB = NULL;
-    pstTimerParam->ulAgentID = 0;
-
-    if (DOS_ADDR_VALID(pstSCB) && pstSCB->bValid)
-    {
-        pstSCB->pstTmrHandle = NULL;
-
-        /* 将被叫号码改为 客户标记的标记值, 挂断电话 */
-        dos_strcpy(pstSCB->szCalleeNum, pstSCB->szCustomerMark);
-        pstSCB->usOtherSCBNo = U16_BUTT;
-        sc_ep_esl_execute("hangup", "", pstSCB->szUUID);
-    }
-
-    sc_acd_hash_func4agent(ulSiteID, &ulHashIndex);
-    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, (VOID *)&ulSiteID, sc_acd_agent_hash_find);
-    if (DOS_ADDR_INVALID(pstHashNode)
-        || DOS_ADDR_INVALID(pstHashNode->pHandle))
-    {
-        DOS_ASSERT(0);
-
-        return;
-    }
-
-    pstAgentQueueInfo = pstHashNode->pHandle;
-    if (DOS_ADDR_INVALID(pstAgentQueueInfo->pstAgentInfo))
-    {
-        DOS_ASSERT(0);
-
-        return;
-    }
-
-    pthread_mutex_lock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
-    pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_IDEL;
-    bIsConnect = pstAgentQueueInfo->pstAgentInfo->bConnected;
-    pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
-
-    sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_IDLE);
-
-    /* 更新数据库中，坐席的状态 */
-    sc_acd_agent_update_status_db(ulSiteID, SC_ACD_IDEL, bIsConnect);
-
-    return;
-}
-#endif
 
 /*
  * 函  数: U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 *szCustomerNum)
@@ -563,7 +500,7 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
     }
 
     /* 更新坐席中的最后一个呼叫的客户，用于标记上一个客户 */
-    if (ulStatus == SC_ACD_BUSY && szCustomerNum[0] != '\0')
+    if (ulStatus == SC_ACD_BUSY && DOS_ADDR_VALID(szCustomerNum) && szCustomerNum[0] != '\0')
     {
         dos_strcpy(pstAgentQueueInfo->pstAgentInfo->szLastCustomerNum, szCustomerNum);
         pstAgentQueueInfo->pstAgentInfo->szLastCustomerNum[SC_TEL_NUMBER_LENGTH-1] = '\0';
@@ -579,8 +516,12 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
 
     if (SC_ACD_PROC == ulStatus)
     {
+        pstSCB->bIsInMarkState = DOS_TRUE;
+        pstSCB->bIsMarkCustomer = DOS_FALSE;
+
         sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", ulSiteID, ulProcesingTime);
         sc_ep_esl_execute("set", "mark_customer_start=true", pstSCB->szUUID);
+        sc_ep_esl_execute("set", "playback_terminators=*", pstSCB->szUUID);
         sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
         dos_snprintf(szAPPParam, sizeof(szAPPParam)
                         , "{timeout=%u}file_string://%s/call_over.wav"
@@ -589,24 +530,24 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
         sc_ep_esl_execute("park", NULL, pstSCB->szUUID);
     }
 
-    /* 如果需要长签，但是有没有长签，且呼叫需要挂断，就不咋发起呼叫了(这个时候是首次发起长签失败) */
-    if (bNeedConnected)
-    {
-        if (U32_BUTT == ulSCBNo && bConnected == DOS_FALSE)
-        {
-            sc_logr_notice(SC_ESL, "Agent %u need contect, but connecting fail. Do not try again.", ulSiteID);
-            return DOS_SUCC;
-        }
-        else
-        {
-            sc_logr_notice(SC_ESL, "Agent %u need contect, but connect break. Try again.", ulSiteID);
-            return sc_acd_update_agent_status(SC_ACD_SITE_ACTION_SIGNIN, ulSiteID, OPERATING_TYPE_WEB);
-        }
-    }
-    else
+    /* 下面处理长签时的一些状态 */
+    if (!bNeedConnected)
     {
         return DOS_SUCC;
     }
+
+    /* 长签第一次呼叫，失败了 */
+    if (U32_BUTT == ulSCBNo && bConnected == DOS_FALSE)
+    {
+        return DOS_SUCC;
+    }
+
+    if (U32_BUTT == ulSCBNo)
+    {
+        return sc_acd_update_agent_status(SC_ACD_SITE_ACTION_SIGNIN, ulSiteID, OPERATING_TYPE_WEB);
+    }
+
+    return DOS_SUCC;
 }
 
 
@@ -1268,7 +1209,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
             pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_BUSY;
             bIsUpdateDB = DOS_TRUE;
 
-            sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_AWAY);
+            sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_BUSY);
             break;
 
         case SC_ACD_SITE_ACTION_CONNECTED:
@@ -3214,15 +3155,15 @@ U32 sc_acd_agent_set_signout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOper
             break;
     }
 
-    pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
-    pstAgentQueueInfo->bConnected = DOS_FALSE;
-
     /* 只要有呼叫都拆 */
     if (pstAgentQueueInfo->bConnected || pstAgentQueueInfo->usSCBNo != U16_BUTT)
     {
         /* 拆呼叫 */
         sc_ep_call_ctrl_hangup_agent(pstAgentQueueInfo);
     }
+
+    pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
+    pstAgentQueueInfo->bConnected = DOS_FALSE;
 
     if (ulOldStatus != pstAgentQueueInfo->ucStatus)
     {
@@ -3337,6 +3278,7 @@ VOID sc_acd_agent_set_logout(U64 p)
     }
 
     pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
+    pstAgentQueueInfo->bConnected = DOS_FALSE;
 
     sc_logr_info(SC_ACD, "Request set agnet status to logout. Agent:%u Old status: %u, Current status: %u"
                 , pstAgentQueueInfo->ulSiteID, ulOldStatus, pstAgentQueueInfo->ucStatus);

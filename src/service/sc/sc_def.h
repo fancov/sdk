@@ -715,7 +715,8 @@ typedef struct tagSCSCB{
     U32       bIsPassThrough:1;                   /* 呼叫坐席时，主叫号码是否透传 */
     U32       bIsMarkCustomer:1;                  /* 坐席是否已经标记客户 */
     U32       bIsNotChangeAgentState:1;           /* 是否不更新坐席的状态 */
-    U32       ulRes:18;
+    U32       bIsInMarkState:1;                   /* 处于标记客户阶段 */
+    U32       ulRes:17;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
