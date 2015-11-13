@@ -65,7 +65,7 @@ U32 sc_dialer_alarm_balance(SC_SCB_ST *pstSCB)
     ulCurrentLen = 0;
 
     ulCurrentLen = dos_snprintf(szAPPParam, ulTotalLen
-                        , "{not_hungup_after_play=true}file_string://%s/ndyuebz.wav", SC_PROMPT_TONE_PATH);
+                        , "file_string://%s/ndyuebz.wav", SC_PROMPT_TONE_PATH);
 
     sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
 
@@ -301,6 +301,7 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         sc_logr_notice(SC_BS, "Auth successfully. RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
         sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
+        sc_ep_esl_execute("set", "hungup_after_play=true", pstSCB->szUUID);
         sc_play_balance(pstSCB);
 
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);

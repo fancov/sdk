@@ -164,7 +164,6 @@ U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID)
         }
         pstCWQNode->ulAgentGrpID = ulAgentGrpID;
         pstCWQNode->ulStartWaitingTime = 0;
-        pstSCB->ulInQueueTime = time(NULL);
         DLL_Init(&pstCWQNode->stCallWaitingQueue);
         pthread_mutex_init(&pstCWQNode->mutexCWQMngt, NULL);
 
@@ -181,6 +180,7 @@ U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID)
 
     DLL_Init_Node(pstDLLNode);
     pstDLLNode->pHandle = pstSCB;
+    pstSCB->ulInQueueTime = time(NULL);
 
     pthread_mutex_lock(&pstCWQNode->mutexCWQMngt);
     DLL_Add(&pstCWQNode->stCallWaitingQueue, pstDLLNode);
@@ -270,6 +270,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
     SC_CWQ_NODE_ST          *pstCWQNode  = NULL;
     SC_SCB_ST               *pstSCB      = NULL;
     BOOL                    blHasIdelAgent = DOS_FALSE;
+    S8                      szAPPParam[512]  = {0};
 
     g_blCWQWaitingExit = DOS_FALSE;
     g_blCWQRunning  = DOS_TRUE;
@@ -323,6 +324,12 @@ VOID *sc_cwq_runtime(VOID *ptr)
                     continue;
                 }
 
+                /* 至少一秒后，才接通坐席，避免等待音还没有播放，uuid_break不能将其停止。 */
+                if (time(NULL) - pstSCB->ulInQueueTime < 3)
+                {
+                    continue;
+                }
+
                 if (sc_acd_query_idel_agent(pstCWQNode->ulAgentGrpID, &blHasIdelAgent) != DOS_SUCC
                     || !blHasIdelAgent)
                 {
@@ -339,6 +346,9 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 DLL_Init_Node(pstDLLNode1);
                 dos_dmem_free(pstDLLNode1);
                 pstDLLNode1 = NULL;
+
+                dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_break %s all\r\n", pstSCB->szUUID);
+                sc_ep_esl_execute_cmd(szAPPParam);
 
                 if (sc_ep_call_agent_by_grpid(pstSCB, pstCWQNode->ulAgentGrpID) != DOS_SUCC)
                 {
