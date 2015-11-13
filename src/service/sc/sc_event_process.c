@@ -4277,6 +4277,8 @@ U32 sc_refresh_caller_grp(U32 ulIndex)
     SC_CALLER_CACHE_NODE_ST *pstCache = NULL;
     S8  szQuery[256] = {0,};
 
+    sc_load_caller_grp(ulIndex);
+
     ulHashIndex = sc_ep_caller_grp_hash_func(ulIndex);
     pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&ulIndex, sc_ep_caller_grp_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode))
