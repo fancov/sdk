@@ -9123,6 +9123,7 @@ U32 sc_ep_call_ctrl_hold(U32 ulAgent, BOOL isHold)
 {
     SC_SCB_ST *pstSCB       = NULL;
     SC_SCB_ST *pstSCBOther  = NULL;
+    S8        szCMD[256] = { 0, };
     SC_ACD_AGENT_INFO_ST stAgentInfo;
 
     sc_logr_notice(SC_ESL, "Request %s call. Agent: %u", isHold ? "hold" : "unhold", ulAgent);
@@ -9172,20 +9173,22 @@ U32 sc_ep_call_ctrl_hold(U32 ulAgent, BOOL isHold)
 
     if (isHold)
     {
-        if (sc_ep_esl_execute("hold", NULL, pstSCBOther->szUUID) != DOS_SUCC)
+        dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_hold %s", pstSCB->szUUID);
+        if (sc_ep_esl_execute_cmd(szCMD) != DOS_SUCC)
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_ESL, "Hold FAIL. %s", pstSCBOther->szUUID);
+            sc_logr_info(SC_ESL, "Hold FAIL. %s", pstSCB->szUUID);
 
             goto proc_fail;
         }
     }
     else
     {
-        if (sc_ep_esl_execute("unhold", NULL, pstSCBOther->szUUID) != DOS_SUCC)
+        dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_hold off %s", pstSCB->szUUID);
+        if (sc_ep_esl_execute_cmd(szCMD) != DOS_SUCC)
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_ESL, "Unhold FAIL. %s", pstSCBOther->szUUID);
+            sc_logr_info(SC_ESL, "Unhold FAIL. %s", pstSCB->szUUID);
 
             goto proc_fail;
         }
@@ -12656,6 +12659,7 @@ process_finished:
 U32 sc_ep_channel_hold(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     S8        *pszChannelStat = NULL;
+    S8        szCMD[256] = { 0, };
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -13007,7 +13011,6 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     }
 
     sc_logr_notice(SC_ESL, "SCB %d donot needs handle any playback application.", pstSCB->usSCBNo);
-    sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
 
 proc_succ:
 
