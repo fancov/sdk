@@ -23,6 +23,12 @@
 #define RES_LACK                  0x00000001 //资源缺乏
 #define TEMP_HIGH                 0x00000002 //温度过高
 
+/* 角色定义 */
+#define ROLE_MANAGER              15  /* 管理员 */
+#define ROLE_DIRECTOR             1   /* 经理 */
+#define ROLE_OPERATOR             0   /* 操作员 */
+#define ROLE_FINANCE              2   /* 财务 */
+
 #define MAX_PID_VALUE             65535
 #define MIN_PID_VALUE             0
 
@@ -55,10 +61,7 @@ enum MON_WARNING_LEVEL_E
     MON_WARNING_BUTT = 32
 };
 
-U32  mon_get_sp_email(S8 *pszEmail);
-S32  mon_get_sp_email_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames);
-U32  mon_get_contact(U32 ulCustomerID, U32 ulRoleID, MON_CONTACT_ST *pstContact);
-S32  mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames);
+U32  mon_get_sp_email(MON_NOTIFY_MSG_ST *pstMsg);
 U32  mon_get_level(U32 ulNotifyType);
 U32  mon_init_str_array();
 U32  mon_deinit_str_array();

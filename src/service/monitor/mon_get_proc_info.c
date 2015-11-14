@@ -538,6 +538,11 @@ U32  mon_check_all_process()
             }
             /* 构造告警消息并表明已产生告警 */
             GENERATE_WARNING_MSG(pstMsg,ulIndex,ulNo);
+            ulRet = mon_send_email(1, "Process Dead Exception", (S8*)pstMsg->msg);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
             /* 表明该记录需要添加至数据库 */
             bAddToDB = DOS_TRUE;
         }
@@ -553,6 +558,11 @@ U32  mon_check_all_process()
                 return DOS_FAIL;
             }
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulNo);
+            ulRet = mon_send_email(1, "Process Dead Exception Recovery", (S8*)pstMsg->msg);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
             bAddToDB = DOS_TRUE;
         }
     }
@@ -805,7 +815,7 @@ U32  mon_handle_proc_mem_warning()
             }
 
             GENERATE_WARNING_MSG(pstMsg,ulIndex, ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "Process Memory Warning", "bubble@dipcc.com");
+            ulRet = mon_send_email(1, "Process Memory Warning", (S8 *)pstMsg->msg);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -827,7 +837,7 @@ U32  mon_handle_proc_mem_warning()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "Process Memory Warning Recovery", "bubble@dipcc.com");
+            ulRet = mon_send_email(1, "Process Memory Warning Recovery", (S8 *)pstMsg->msg);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);

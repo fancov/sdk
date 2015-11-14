@@ -276,7 +276,7 @@ U32 mon_handle_mem_warning()
             /* 构造告警消息并表明已产生告警 */
             GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
             /* 发邮件 */
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "System Memory Warning", "bubble@dipcc.com");
+            ulRet = mon_send_email(1, "System Memory Warning", (S8 *)pstMsg->msg);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -301,7 +301,7 @@ U32 mon_handle_mem_warning()
             /* 构造恢复告警并标明告警已恢复 */
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
             /* 发邮件 */
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "System memory Warning Recovery", "bubble@dipcc.com");
+            ulRet = mon_send_email(1, "System memory Warning Recovery", (S8 *)pstMsg->msg);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);

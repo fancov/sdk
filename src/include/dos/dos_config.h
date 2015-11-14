@@ -351,6 +351,36 @@ S32 config_hb_get_level(S8* pszErr, S8* pszLevel, U32 ulLen);
  */
 S32 config_hb_get_lang();
 
+/**
+ *  函数: S32 config_hb_get_mail_server(S8 *pszServer, U32 ulLen)
+ *  参数:
+ *      S8 *pszServer  SMTP服务器名称
+ *      U32 ulLen      长度
+ *  功能: 获取SMTP服务器名称
+ *  返回: 成功返回0，否则返回-1
+ */
+S32 config_hb_get_mail_server(S8 *pszServer, U32 ulLen);
+
+/**
+ *  函数: S32 config_hb_get_auth_username(S8 *pszServer, U32 ulLen)
+ *  参数:
+ *      S8 *pszServer  认证用户名
+ *      U32 ulLen      用户名长度
+ *  功能: 获取SMTP默认账户的认证名
+ *  返回: 成功返回0，否则返回-1
+ */
+S32 config_hb_get_auth_username(S8 *pszUsername, U32 ulLen);
+
+/**
+ *  函数: S32 config_hb_get_auth_passwd(S8 *pszPasswd, U32 ulLen)
+ *  参数:
+ *      S8 *pszPasswd  认证密码
+ *      U32 ulLen      密码长度
+ *  功能: 获取SMTP默认账户的认证密码
+ *  返回: 成功返回0，否则返回-1
+ */
+S32 config_hb_get_auth_passwd(S8 *pszPasswd, U32 ulLen);
+
 
 #endif //end INCLUDE_BH_SERVER
 

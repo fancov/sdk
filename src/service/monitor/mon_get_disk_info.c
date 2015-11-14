@@ -276,7 +276,7 @@ U32  mon_handle_disk_warning()
             }
 
             GENERATE_WARNING_MSG(pstMsg, ulIndex, ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "System disk Warning", "bubble@dipcc.com");
+            ulRet = mon_send_email(1, "System disk Warning", (S8 *)pstMsg->msg);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -298,7 +298,7 @@ U32  mon_handle_disk_warning()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "System Disk Warning Recovery", "bubble@dipcc.com");
+            ulRet = mon_send_email(1, "System Disk Warning Recovery", (S8 *)pstMsg->msg);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
