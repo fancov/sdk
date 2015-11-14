@@ -711,7 +711,7 @@ DLLEXPORT S32 dos_is_digit_str(S8 *str)
     {
         while ('\0' != str[i])
         {
-            if (str[i]< '0' || str[i] > '9')
+            if (str[i] < '0' || str[i] > '9')
             {
                 return -1;
             }

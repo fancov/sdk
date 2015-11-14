@@ -658,9 +658,14 @@ S32 config_hb_get_level(S8* pszErr, S8* pszLevel, U32 ulLen)
     return 0;
 }
 
+/**
+ *  函数: S32 config_hb_get_lang()
+ *  参数:
+ *  功能: 获取当前的语言环境
+ */
 S32 config_hb_get_lang()
 {
-    S8  szNodePath[] = "warning/language";
+    S8  szNodePath[] = "config/warning/language";
     S8  szLang[16] = {0};
     S8  *pszLang = NULL;
 
@@ -694,6 +699,94 @@ S32 config_hb_get_lang()
         DOS_ASSERT(0);
         return -1;
     }
+}
+
+/**
+ *  函数: S32 config_hb_get_mail_server(S8 *pszServer, U32 ulLen)
+ *  参数:
+ *      S8 *pszServer  SMTP服务器名称
+ *      U32 ulLen      长度
+ *  功能: 获取SMTP服务器名称
+ *  返回: 成功返回0，否则返回-1
+ */
+S32 config_hb_get_mail_server(S8 *pszServer, U32 ulLen)
+{
+    S8  szNodePath[] = "config/mail";
+    S8  *pszSMTP = NULL;
+
+    if (DOS_ADDR_INVALID(g_pstHBSrvCfg)
+        || DOS_ADDR_INVALID(pszServer))
+    {
+        dos_printf("%s", ".Init hb-srv.xml config fail!");
+        DOS_ASSERT(0);
+        return -1;
+    }
+    pszSMTP = _config_get_param(g_pstHBSrvCfg, szNodePath, "server", pszServer, ulLen);
+    if (!pszSMTP)
+    {
+        dos_printf("%s", "Get SMTP Server FAIL.");
+        DOS_ASSERT(0);
+        return -1;
+    }
+    return 0;
+}
+
+/**
+ *  函数: S32 config_hb_get_auth_username(S8 *pszServer, U32 ulLen)
+ *  参数:
+ *      S8 *pszServer  认证用户名
+ *      U32 ulLen      用户名长度
+ *  功能: 获取SMTP默认账户的认证名
+ *  返回: 成功返回0，否则返回-1
+ */
+S32 config_hb_get_auth_username(S8 *pszUsername, U32 ulLen)
+{
+    S8  szNodePath[] = "config/mail";
+    S8  *szServer = NULL;
+
+    if(!g_pstHBSrvCfg)
+    {
+        dos_printf("%s", ".Init hb-srv.xml config fail!");
+        DOS_ASSERT(0);
+        return -1;
+    }
+    szServer = _config_get_param(g_pstHBSrvCfg, szNodePath, "username", pszUsername, ulLen);
+    if (!szServer)
+    {
+        dos_printf("%s", "Get Auth Username FAIL.");
+        DOS_ASSERT(0);
+        return -1;
+    }
+    return 0;
+}
+
+/**
+ *  函数: S32 config_hb_get_auth_passwd(S8 *pszPasswd, U32 ulLen)
+ *  参数:
+ *      S8 *pszPasswd  认证密码
+ *      U32 ulLen      密码长度
+ *  功能: 获取SMTP默认账户的认证密码
+ *  返回: 成功返回0，否则返回-1
+ */
+S32 config_hb_get_auth_passwd(S8 *pszPasswd, U32 ulLen)
+{
+    S8  szNodePath[] = "config/mail";
+    S8  *szServer = NULL;
+
+    if(!g_pstHBSrvCfg)
+    {
+        dos_printf("%s", ".Init hb-srv.xml config fail!");
+        DOS_ASSERT(0);
+        return -1;
+    }
+    szServer = _config_get_param(g_pstHBSrvCfg, szNodePath, "password", pszPasswd, ulLen);
+    if (!szServer)
+    {
+        dos_printf("%s", "Get Auth Username FAIL.");
+        DOS_ASSERT(0);
+        return -1;
+    }
+    return 0;
 }
 
 

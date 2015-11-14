@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 
 <config version="1.0">
     <process>
@@ -93,4 +93,12 @@
             <!--此处配置0表示不写数据库，大于0则写数据库-->
             <param name="write" value="1"/>	
         </db>
+        <mail>
+            <!--此处配置邮件server-->
+            <param name="server" value="smtp.126.com"/>
+            <!--此处配置认证邮箱账户名-->
+            <param name="username" value="hll2010nwsuaf@126.com"/>
+            <!--此处配置认证邮箱账户密码-->
+            <param name="password" value="soapbubble"/>
+        </mail>
 </config>

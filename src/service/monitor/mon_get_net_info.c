@@ -542,7 +542,7 @@ U32  mon_handle_netcard_warning()
             }
 
             GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network connection Warning", "bubble@dipcc.com");
+            ulRet = mon_send_email(1, "Network connection Warning", (S8 *)pstMsg->msg);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -562,7 +562,7 @@ U32  mon_handle_netcard_warning()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network connection Warning Recovery", "bubble@dipcc.com");
+            ulRet = mon_send_email(1, "Network connection Warning Recovery", (S8 *)pstMsg->msg);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -625,7 +625,7 @@ U32  mon_handle_bandwidth_warning()
             }
 
             GENERATE_WARNING_MSG(pstMsg, ulIndex, ulRet);
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network Bandwidth Warning", "bubble@dipcc.com");
+            ulRet = mon_send_email(1, "Network Bandwidth Warning", (S8 *)pstMsg->msg);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -646,8 +646,7 @@ U32  mon_handle_bandwidth_warning()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-
-            ulRet = mon_send_email((S8 *)pstMsg->msg, "Network Bandwidth Warning Recovery", "bubble@dipcc.com");
+            ulRet = mon_send_email(1, "Network Bandwidth Warning Recovery", (S8 *)pstMsg->msg);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
