@@ -656,6 +656,7 @@ typedef struct tagSCBExtraData
     U32             ulBridgeTimeStamp;          /* LEG桥接时间戳 */
     U32             ulByeTimeStamp;             /* 释放时间戳 */
     U32             ulPeerTrunkID;              /* 对端中继ID */
+    U32             ulTransferTimeStamp;        /* 转接时间戳 */
 
     U8              ucPayloadType;              /* 媒体类型 */
     U8              ucPacketLossRate;           /* 收包丢包率,0-100 */
@@ -716,7 +717,8 @@ typedef struct tagSCSCB{
     U32       bIsMarkCustomer:1;                  /* 坐席是否已经标记客户 */
     U32       bIsNotChangeAgentState:1;           /* 是否不更新坐席的状态 */
     U32       bIsInMarkState:1;                   /* 处于标记客户阶段 */
-    U32       ulRes:17;
+    U32       bIsNotSrvAdapter:1;                 /* 转接时的特殊处理，前期已经适配好 */
+    U32       ulRes:16;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -1019,6 +1021,7 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword,
 U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB);
 U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB);
 U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB);
+U32 sc_bs_srv_type_adapter_for_transfer(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *pucBSSrv);
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
 U32 sc_load_caller_grp(U32 ulIndex);
 U32 sc_http_eix_update_proc(U32 ulAction, U32 ulEixID);

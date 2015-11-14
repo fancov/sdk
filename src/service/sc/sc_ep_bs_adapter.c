@@ -479,6 +479,58 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
     return DOS_SUCC;
 }
 
+/* 转接时的特殊处理，根据 sc 的 server type 直接获得对应的BS的server type */
+U32 sc_bs_srv_type_adapter_for_transfer(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *pucBSSrv)
+{
+    U32        ulIndex          = 0;
+    U32        ulBSSrvIndex     = 0;
+    BOOL       blIsOutboundCall = DOS_FALSE;
+    BOOL       blIsExternalCall = DOS_FALSE;
+    BOOL       blNeedOutbond    = DOS_TRUE;
+    U8         ucBSSrv          = U8_BUTT;
+
+    if (DOS_ADDR_INVALID(aucSCSrvList)
+        || ulSCSrvCnt <= 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulBSSrvIndex = 0;
+
+    for (ulIndex=0; ulIndex<ulSCSrvCnt; ulIndex++)
+    {
+        if (SC_SERV_OUTBOUND_CALL == aucSCSrvList[ulIndex])
+        {
+            blIsOutboundCall = DOS_TRUE;
+        }
+        else if (SC_SERV_EXTERNAL_CALL == aucSCSrvList[ulIndex])
+        {
+            blIsExternalCall = DOS_TRUE;
+        }
+    }
+
+    if (blIsOutboundCall && blIsExternalCall)
+    {
+        if (blNeedOutbond)
+        {
+            ucBSSrv = BS_SERV_OUTBAND_CALL;
+        }
+    }
+    else if (!blIsOutboundCall && blIsExternalCall)
+    {
+        ucBSSrv = BS_SERV_INBAND_CALL;
+    }
+    else
+    {
+        ucBSSrv = BS_SERV_INTER_CALL;
+    }
+
+    *pucBSSrv = ucBSSrv;
+
+    return DOS_SUCC;
+}
+
 /* 发送认证消息到数据到BS */
 U32 sc_send_acc_auth2bs(SC_SCB_ST *pstSCB)
 {
@@ -1028,10 +1080,13 @@ prepare_msg:
         pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstFirstSCB->ulTrunkID) ? 0 : pstFirstSCB->ulTrunkID;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstFirstSCB->usTerminationCause;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
-        sc_bs_srv_type_adapter(pstFirstSCB->aucServiceType
+        if (!pstFirstSCB->bIsNotSrvAdapter)
+        {
+            sc_bs_srv_type_adapter(pstFirstSCB->aucServiceType
                                 , sizeof(pstFirstSCB->aucServiceType)
                                 , pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType
                                 , BS_MAX_SERVICE_TYPE_IN_SESSION);
+        }
 
         ulCurrentLeg++;
         pstCDRMsg->ucLegNum++;
@@ -1100,10 +1155,13 @@ prepare_msg:
         pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstSecondSCB->ulTrunkID) ? 0 : pstSecondSCB->ulTrunkID;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstSecondSCB->usTerminationCause;
         pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
-        sc_bs_srv_type_adapter(pstSecondSCB->aucServiceType
+        if (!pstFirstSCB->bIsNotSrvAdapter)
+        {
+            sc_bs_srv_type_adapter(pstSecondSCB->aucServiceType
                                 , sizeof(pstSecondSCB->aucServiceType)
                                 , pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType
                                 , BS_MAX_SERVICE_TYPE_IN_SESSION);
+        }
 
         ulCurrentLeg++;
         pstCDRMsg->ucLegNum++;

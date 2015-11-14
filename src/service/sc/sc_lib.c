@@ -383,6 +383,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bIsNotChangeAgentState = DOS_FALSE;
     pstSCB->LBalance = 0;
     pstSCB->bIsInMarkState = DOS_FALSE;
+    pstSCB->bIsNotSrvAdapter = DOS_FALSE;
 
     pstSCB->ulFirstDTMFTime = 0;                    /* 第一次DTMF时间戳 */
     pstSCB->ulLastDTMFTime = 0;
