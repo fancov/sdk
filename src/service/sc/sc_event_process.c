@@ -12694,7 +12694,6 @@ process_finished:
 U32 sc_ep_channel_hold(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     S8        *pszChannelStat = NULL;
-    S8        szCMD[256] = { 0, };
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
