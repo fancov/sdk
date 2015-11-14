@@ -8134,7 +8134,16 @@ U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
             pstSCBSubscription->ucTranforRole = SC_TRANS_ROLE_BUTT;
             pstSCBNotify->ucTranforRole = SC_TRANS_ROLE_BUTT;
 
-            /* 发送话单 */
+            /*
+                1、B挂断的时间，记录在C的通道变量中
+                2、将B的server状态传递给C
+                3、此时的B应该生成三个话单
+                    a.A和B的话单
+                    b.转接的话单
+                    c.B和C的话单
+                    需要做特殊处理，要不怎么也不可能生成三个话单
+            */
+
             pstSCBNotify->usOtherSCBNo = U16_BUTT;
             sc_acd_agent_update_status(pstSCBNotify, SC_ACD_IDEL, U32_BUTT, NULL);
             sc_send_billing_stop2bs(pstSCBNotify);
@@ -8504,6 +8513,7 @@ U32 sc_ep_call_transfer(SC_SCB_ST * pstSCB, U32 ulNumType, S8 *pszCallee, BOOL b
     SC_SCB_ST * pstSCBNew = NULL;
     SC_SCB_ST * pstSCB1 = NULL;
     U32         ulServType;
+    S8          szBuffCMD[512] = {0};
 
     if (!SC_SCB_IS_VALID(pstSCB))
     {
@@ -8564,6 +8574,12 @@ U32 sc_ep_call_transfer(SC_SCB_ST * pstSCB, U32 ulNumType, S8 *pszCallee, BOOL b
 
         goto proc_fail;
     }
+
+    /* HOLD 住第一方，通过bridge，创建第三方 */
+    dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "hangup_after_bridge=false");
+    sc_ep_esl_execute("set", szBuffCMD, pstSCB1->szUUID);
+    dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "bgapi uuid_hold %s \r\n", pstSCB1->szUUID);
+    sc_ep_esl_execute_cmd(szBuffCMD);
 
     if (pstSCBNew->ulCustomID == sc_ep_get_custom_by_sip_userid(pszCallee)
         || sc_ep_check_extension(pszCallee, pstSCBNew->ulCustomID))
@@ -10991,8 +11007,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         /* 盲转  只支持二次拨号 */
         /* 先根据被叫号码，获得被转坐席的id，根据坐席的工号找个坐席 */
         bIsHangUp = DOS_FALSE;
-        /* TODO 使用了魔鬼数字 8 */
-        if (dos_sscanf(pszDealNum, "*%*[^*]*%8s", pszEmpNum) != 1)
+        if (dos_sscanf(pszDealNum, "*%*[^*]*%[^#]s", pszEmpNum) != 1)
         {
             sc_logr_info(SC_ACD, "POTS, format error : %s", pszDealNum);
 
@@ -11049,7 +11064,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
         /* 协商转 只支持二次拨号 */
         bIsHangUp = DOS_FALSE;
 
-        if (dos_sscanf(pszDealNum, "*%*[^*]*%8s", pszEmpNum) != 1)
+        if (dos_sscanf(pszDealNum, "*%*[^*]*%[^#]s", pszEmpNum) != 1)
         {
             sc_logr_info(SC_ACD, "POTS, format error : %s", pszDealNum);
 
@@ -11429,11 +11444,13 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     if (DOS_ADDR_VALID(pszValue)
         && dos_strcmp(pszValue, "true") == 0)
     {
-        /* 转接时，第二方挂断电话后, 不要挂断第三方 */
+        /* 转接时，第二方挂断电话后, 不要挂断第三方, bridge 第一方和第三方 */
+
         ulRet = DOS_SUCC;
 
         goto proc_finished;
     }
+
 #if 0
     if (pstSCB->bIsAgentCall == DOS_TRUE
         && pstSCB->bIsMarkCustomer == DOS_FALSE)
@@ -11974,6 +11991,13 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             && pstSCB->usTCBNo < SC_MAX_TASK_NUM)
         {
             sc_task_concurrency_add(pstSCB->usTCBNo);
+        }
+        else if (sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER)
+            || sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER))
+        {
+            /* 盲转，协商转 */
+            dos_snprintf(szBuffCmd, sizeof(szBuffCmd), "begin_to_transfer=true");
+            sc_ep_esl_execute("set", szBuffCmd, pstSCB->szUUID);
         }
 
         pstSCB->bChannelCreated = DOS_TRUE;
@@ -13023,7 +13047,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     }
 
     sc_logr_notice(SC_ESL, "SCB %d donot needs handle any playback application.", pstSCB->usSCBNo);
-    sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+    //sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
 
 proc_succ:
 
