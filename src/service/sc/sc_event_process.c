@@ -2862,7 +2862,7 @@ static S32 sc_load_tt_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **asz
             pstSCTTNumberOld = pstHashNode->pHandle;
             dos_snprintf(pstSCTTNumberOld->szAddr, sizeof(pstSCTTNumberOld->szAddr), pstSCTTNumber->szAddr);
             dos_snprintf(pstSCTTNumberOld->szPrefix, sizeof(pstSCTTNumberOld->szPrefix), pstSCTTNumber->szPrefix);
-
+            pstSCTTNumberOld->ulPort = pstSCTTNumber->ulPort;
             dos_dmem_free(pstSCTTNumber);
             pstSCTTNumber = NULL;
         }
