@@ -1907,12 +1907,17 @@ S32 telnetd_init()
 
     dos_memzero(&stListenAddr, sizeof(stListenAddr));
     stListenAddr.sin_family = AF_INET;
+#if INCLUDE_DEBUG_CLI_SERVER
+#if DEBUG_VERSION
     stListenAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    #if INCLUDE_DEBUG_CLI_SERVER
+#else
+    stListenAddr.sin_addr.s_addr = htonl((0x7F << 24) | 0x01);
+#endif
     stListenAddr.sin_port = htons(TELNETD_LISTEN_PORT);
-    #else
+#else
+    stListenAddr.sin_addr.s_addr = htonl(INADDR_ANY);
     stListenAddr.sin_port = dos_htons(config_get_pts_telnet_server_port());
-    #endif
+#endif
     if (bind(g_lTelnetdSrvSocket, (struct sockaddr *)&stListenAddr, sizeof(stListenAddr)) < 0)
     {
         perror("bind");

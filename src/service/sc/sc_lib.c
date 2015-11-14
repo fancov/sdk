@@ -2560,6 +2560,7 @@ U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerGrpID)
     {
         case SC_API_CMD_ACTION_CALLER_GRP_ADD:
             sc_load_caller_grp(ulCallerGrpID);
+            break;
         case SC_API_CMD_ACTION_CALLER_GRP_UPDATE:
             sc_refresh_caller_grp(ulCallerGrpID);
             break;
