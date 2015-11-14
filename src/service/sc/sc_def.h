@@ -72,6 +72,7 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_MAX_CALL_PRE_SEC            200
 
+#define SC_MAX_TASK_MAX_CONCURRENCY    15
 
 #define SC_MAX_SRV_TYPE_PRE_LEG        4
 
@@ -126,7 +127,8 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_BGJOB_HASH_SIZE             128
 
-#define SC_TASK_UPDATE_DB_TIMER        1000
+/* 呼叫进度同步时间 */
+#define SC_TASK_UPDATE_DB_TIMER        5
 
 /* 新业务 */
 #define SC_POTS_CO_GROUP_PICK_UP        "***"        /* 同组代答 */
@@ -789,11 +791,11 @@ typedef struct tagTaskCB
     U32        ulCalleeCount;                     /* 当前被叫号码数量 */
     U32        ulLastCalleeIndex;                 /* 用于数据分页 */
     U32        ulCalledCount;                     /* 已经呼叫过的号码数量 */
+    U32        ulCalledCountLast;                 /* 上一次同步时的数量已经呼叫过的号码数量 */
     U32        ulCallerGrpID;                     /* 主叫号码组的ID */
     U32        ulCallRate;                        /* 呼叫倍率 */
     list_t     stCalleeNumQuery;                  /* 被叫号码缓存 refer to struct tagTelNumQueryNode */
     S8         szAudioFileLen[SC_MAX_AUDIO_FILENAME_LEN];  /* 语言文件文件名 */
-    //SC_CALLER_QUERY_NODE_ST *pstCallerNumQuery;            /* 主叫号码缓存 refer to struct tagTelNumQueryNode */
     SC_TASK_ALLOW_PERIOD_ST astPeriod[SC_MAX_PERIOD_NUM];  /* 任务执行时间段 */
 
     /* 统计相关 */
@@ -1143,6 +1145,8 @@ U32 sc_ep_update_gateway(VOID *pData);
 U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase);
 
 U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase);
+
+U32 sc_acd_get_agent_cnt_by_grp(U32 ulGrpID);
 
 
 #ifdef __cplusplus

@@ -506,6 +506,13 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
         pstAgentQueueInfo->pstAgentInfo->szLastCustomerNum[SC_TEL_NUMBER_LENGTH-1] = '\0';
     }
 
+    /* 发现需要长签，但有没有长签成功，就置为长签状态 */
+    if (SC_ACD_PROC == pstAgentQueueInfo->pstAgentInfo->ucStatus
+        && pstAgentQueueInfo->pstAgentInfo->bNeedConnected)
+    {
+        pstAgentQueueInfo->pstAgentInfo->bConnected = DOS_TRUE;
+    }
+
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
     /* 更新数据库中，坐席的状态 */
@@ -1410,6 +1417,34 @@ U32 sc_acd_delete_queue(U32 ulGroupID)
     return DOS_SUCC;
 }
 
+U32 sc_acd_get_agent_cnt_by_grp(U32 ulGrpID)
+{
+    U32                       ulHashIndex;
+    HASH_NODE_S               *pstHashNode        = NULL;
+    SC_ACD_GRP_HASH_NODE_ST   *pstGroupNode       = NULL;
+
+    if (sc_acd_hash_func4grp(ulGrpID, &ulHashIndex) != DOS_SUCC)
+    {
+        sc_logr_debug(SC_ACD, "Get hash index for group %u fail.", ulGrpID);
+        return 0;
+    }
+
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashIndex, &ulGrpID, sc_acd_grp_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode))
+    {
+        sc_logr_debug(SC_ACD, "Cannot find the group with id %u.", ulGrpID);
+        return 0;
+    }
+
+    pstGroupNode = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstGroupNode))
+    {
+        sc_logr_debug(SC_ACD, "Cannot find the group with id %u. May be deleted.", ulGrpID);
+        return 0;
+    }
+
+    return DLL_Count(&pstGroupNode->stAgentList);
+}
 
 SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
 {

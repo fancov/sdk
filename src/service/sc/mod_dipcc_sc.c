@@ -383,6 +383,15 @@ U32 mod_dipcc_sc_runtime()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start start event process task Successfully.");
 
+    if (DOS_SUCC != sc_acd_start())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start the agent status query task FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start the agent status query task SUCC.");
+
     if (sc_task_mngt_start() != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -428,15 +437,6 @@ U32 mod_dipcc_sc_runtime()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start audit task SUCC.");
-
-    if (DOS_SUCC != sc_acd_start())
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start the agent status query task FAIL.");
-        return DOS_FAIL;
-    }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start the agent status query task SUCC.");
 
     if (DOS_SUCC != sc_pub_start())
     {

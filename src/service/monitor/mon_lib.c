@@ -46,6 +46,7 @@ MON_MSG_MAP_ST m_pstMsgMap[][MAX_EXCEPT_CNT] = {
 };
 
 U32 mon_system();
+BOOL mon_is_email(S8* pszAddress);
 
 /**
  * 功能:初始化通知消息队列
@@ -127,7 +128,7 @@ U32 mon_get_level(U32 ulNotifyType)
  */
 U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg)
 {
-    U32 ulLevel = U32_BUTT, ulRet = U32_BUTT, ulType = U32_BUTT;
+    U32 ulLevel = U32_BUTT,ulType = U32_BUTT;
     S8  szBuff[512] = {0}, szTime[32] = {0};
     S32 lLang = U32_BUTT;
 
@@ -162,18 +163,6 @@ U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg)
         /* 如果配置读取失败，则默认为中文 */
         lLang = MON_NOTIFY_LANG_CN;
     }
-
-    /* 获取收件人相关信息 */
-    if ('\0' == pstMsg->stContact.szEmail[0] || '\0' == pstMsg->stContact.szTelNo[0])
-    {
-        ulRet = mon_get_contact(pstMsg->ulCustomerID, pstMsg->ulRoleID, &pstMsg->stContact);
-        if (DOS_SUCC != ulRet)
-        {
-            DOS_ASSERT(0);
-            return DOS_FAIL;
-        }
-    }
-
     /* 格式化时间字符串 */
     dos_snprintf(szTime, sizeof(szTime), "%04u-%02u-%02u %02u:%02u:%02u"
                     , pstCurTime->tm_year + 1900
@@ -186,98 +175,13 @@ U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg)
     /* 格式化信息 */
     dos_snprintf(szBuff, sizeof(szBuff), m_pstMsgMap[lLang][ulType].szDesc, szTime, pstMsg->szContent, pstMsg->szNotes, pstMsg->ulCustomerID, pstMsg->ulWarningID);
 
-    if (DOS_SUCC != mon_send_email(szBuff, m_pstMsgMap[lLang][ulType].szTitle, pstMsg->stContact.szEmail))
+    if (DOS_SUCC != mon_send_email(pstMsg->ulCustomerID, m_pstMsgMap[lLang][ulType].szTitle, szBuff))
     {
         mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Send mail FAIL.");
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
-    return DOS_SUCC;
-}
-
-/**
- *  函数：U32  mon_get_sp_email(S8 *pszEmail)
- *  功能：获取当前运营商邮件地址
- *  参数：
- *      S8 *pszEmail   输出参数，为获取的邮件地址
- *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
- */
-U32  mon_get_sp_email(S8 *pszEmail)
-{
-    S8 szQuery[] = "SELECT email FROM tbl_contact WHERE customer_id=1 AND name=\'admin\';";
-
-    if (DOS_ADDR_INVALID(pszEmail))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    if (DB_ERR_SUCC != db_query(g_pstCCDBHandle, szQuery, mon_get_sp_email_cb, pszEmail, NULL))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-    return DOS_SUCC;
-}
-
-/**
- *  函数：S32 mon_get_sp_email_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
- *  功能：获取运营商邮件地址的回调函数
- *  参数：
- *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
- */
-S32 mon_get_sp_email_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
-{
-    S8 *pszEmail = (S8 *)pArg;
-
-    if (DOS_ADDR_INVALID(aszNames)
-        || DOS_ADDR_INVALID(aszValues)
-        || DOS_ADDR_INVALID(pArg))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    dos_strncpy(pszEmail, aszValues[0], dos_strlen(aszValues[0]));
-    *(pszEmail + dos_strlen(aszValues[0])) = '\0';
-
-    return DOS_SUCC;
-}
-
-/**
- *  函数：U32 mon_get_contact(U32 ulCustomerID, U32 ulRoleID, MON_CONTACT_ST *pstContact)
- *  功能：根据客户id与客户角色id获取联系人信息
- *  参数：
- *      U32 ulCustomerID           客户id
- *      U32 ulRoleID               客户角色id
- *      MON_CONTACT_ST *pstContact 输出参数，表示联系人相关信息
- *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
- */
-U32 mon_get_contact(U32 ulCustomerID, U32 ulRoleID, MON_CONTACT_ST *pstContact)
-{
-    S8  szQuery[1024] = {0};
-    S32 lRet = 0;
-
-    if (DOS_ADDR_INVALID(pstContact))
-    {
-        DOS_ASSERT(0);
-        mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Get Contact FAIL. CustomerID:%u; RoleID:%u; pstContact:%p."
-                    , ulCustomerID, ulRoleID, pstContact);
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szQuery, sizeof(szQuery)
-                    , "SELECT tel_number,email FROM tbl_contact WHERE id=%d AND customer_id=%d;"
-                    , ulRoleID
-                    , ulCustomerID);
-
-    lRet = db_query(g_pstCCDBHandle, szQuery, mon_get_contact_cb, (VOID *)pstContact, NULL);
-    if (lRet != DB_ERR_SUCC)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
     return DOS_SUCC;
 }
 
@@ -301,10 +205,66 @@ S32 mon_get_contact_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     pstContact = (MON_CONTACT_ST *)pArg;
 
+    if (dos_is_digit_str(aszValues[0]) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    if (DOS_TRUE != mon_is_email(aszValues[1]))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
     dos_snprintf(pstContact->szTelNo, sizeof(pstContact->szTelNo), "%s", aszValues[0]);
     dos_snprintf(pstContact->szEmail, sizeof(pstContact->szEmail), "%s", aszValues[1]);
 
     return DOS_SUCC;
+}
+
+/**
+ *  函数：U32  mon_get_sp_email(MON_NOTIFY_MSG_ST *pstMsg)
+ *  功能：获取当前运营商邮件地址，联系方式
+ *  参数：
+ *      S8 *pszEmail   输出参数，为获取的邮件地址
+ *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
+ */
+U32  mon_get_sp_email(MON_NOTIFY_MSG_ST *pstMsg)
+{
+    S8  szQuery[256] = {0};
+
+    /* 先查找管理员 */
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT tel_number,email FROM tbl_contact WHERE role=%u AND customer_id=%u LIMIT 0, 1;", ROLE_MANAGER, pstMsg->ulCustomerID);
+    db_query(g_pstCCDBHandle, szQuery, mon_get_contact_cb, (VOID *)&pstMsg->stContact, NULL);
+    if ('\0' != pstMsg->stContact.szEmail[0])
+    {
+        return DOS_SUCC;
+    }
+    /* 再查找经理 */
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT tel_number,email FROM tbl_contact WHERE role=%u AND customer_id=%u LIMIT 0, 1;", ROLE_DIRECTOR, pstMsg->ulCustomerID);
+    db_query(g_pstCCDBHandle, szQuery, mon_get_contact_cb, (VOID *)&pstMsg->stContact, NULL);
+    if ('\0' != pstMsg->stContact.szEmail[0])
+    {
+        return DOS_SUCC;
+    }
+
+    /* 再查找操作员 */
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT tel_number,email FROM tbl_contact WHERE role=%u AND customer_id=%u LIMIT 0, 1;", ROLE_OPERATOR, pstMsg->ulCustomerID);
+    db_query(g_pstCCDBHandle, szQuery, mon_get_contact_cb, (VOID *)&pstMsg->stContact, NULL);
+    if ('\0' != pstMsg->stContact.szEmail[0])
+    {
+        return DOS_SUCC;
+    }
+    /* 再查找财务 */
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT tel_number,email FROM tbl_contact WHERE role=%u AND customer_id=%u LIMIT 0, 1;", ROLE_FINANCE, pstMsg->ulCustomerID);
+    db_query(g_pstCCDBHandle, szQuery, mon_get_contact_cb, (VOID *)&pstMsg->stContact, NULL);
+    if ('\0' != pstMsg->stContact.szEmail[0])
+    {
+        return DOS_SUCC;
+    }
+    DOS_ASSERT(0);
+    mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Get contact FAIL.");
+    return DOS_FAIL;
 }
 
 U32 mon_system(S8 *pszCmd)
@@ -343,6 +303,30 @@ U32 mon_system(S8 *pszCmd)
     }
 
     return DOS_SUCC;
+}
+
+/**
+ *  函数：BOOL mon_is_email(S8* pszAddress)
+ *  功能：判断是否是电子邮件地址
+ *  参数：
+ *  返回值： 成功返回DOS_SUCC,失败返回DOS_FAIL
+ *     目前做的比较简单，以后再优化
+ */
+BOOL mon_is_email(S8* pszAddress)
+{
+    if (DOS_ADDR_INVALID(pszAddress)
+        || '\0' == pszAddress[0])
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+    if (DOS_FALSE == dos_strstr(pszAddress, "@")
+        || DOS_FALSE == dos_strstr(pszAddress, "."))
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+    return DOS_TRUE;
 }
 
 /**

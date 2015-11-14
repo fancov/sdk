@@ -2862,7 +2862,7 @@ static S32 sc_load_tt_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **asz
             pstSCTTNumberOld = pstHashNode->pHandle;
             dos_snprintf(pstSCTTNumberOld->szAddr, sizeof(pstSCTTNumberOld->szAddr), pstSCTTNumber->szAddr);
             dos_snprintf(pstSCTTNumberOld->szPrefix, sizeof(pstSCTTNumberOld->szPrefix), pstSCTTNumber->szPrefix);
-
+            pstSCTTNumberOld->ulPort = pstSCTTNumber->ulPort;
             dos_dmem_free(pstSCTTNumber);
             pstSCTTNumber = NULL;
         }
@@ -10896,7 +10896,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
 
         if (1 == dos_sscanf(pszDealNum+dos_strlen(SC_POTS_MARK_CUSTOMER), "%d", &ulKey) && ulKey <= 9)
         {
-            sc_send_marker_update_req(pstSCB->ulCustomID, stAgentInfo.ulSiteID, ulKey, stAgentInfo.szLastCustomerNum);
+            sc_send_marker_update_req(stAgentInfo.ulCustomerID, stAgentInfo.ulSiteID, ulKey, stAgentInfo.szLastCustomerNum);
         }
         else
         {
@@ -12752,7 +12752,6 @@ process_finished:
 U32 sc_ep_channel_hold(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     S8        *pszChannelStat = NULL;
-    //S8        szCMD[256] = { 0, };
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 

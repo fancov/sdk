@@ -978,11 +978,11 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulCalleeCount = 0;
     pstTCB->usCallerCount = 0;
     pstTCB->ulCalledCount = 0;
+    pstTCB->ulCalledCountLast = 0;
     pstTCB->ulCallerGrpID = 0;
     pstTCB->ulCallRate = 0;
 
     dos_list_init(&pstTCB->stCalleeNumQuery);    /* TODO: 释放所有节点 */
-    //pstTCB->pstCallerNumQuery = NULL;   /* TODO: 初始化所有节点 */
     pstTCB->szAudioFileLen[0] = '\0';
     dos_memzero(pstTCB->astPeriod, sizeof(pstTCB->astPeriod));
 
@@ -1112,6 +1112,13 @@ VOID sc_task_update_calledcnt(U64 ulArg)
     {
         return;
     }
+
+    if (pstTCB->ulCalledCountLast == pstTCB->ulCalledCount)
+    {
+        return;
+    }
+
+    pstTCB->ulCalledCountLast = pstTCB->ulCalledCount;
 
     dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_calltask SET calledcnt=%u WHERE id=%u", pstTCB->ulCalledCount, pstTCB->ulTaskID);
 

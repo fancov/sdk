@@ -21,10 +21,9 @@
    3. 需要连接，并且处于连接状态
    4. 状态为EDL*/
 #define SC_ACD_SITE_IS_USEABLE(pstSiteDesc)                             \
-    (DOS_ADDR_VALID(pstSiteDesc)                                       \
-    && !(pstSiteDesc)->bWaitingDelete                                  \
-    && SC_ACD_IDEL == (pstSiteDesc)->ucStatus                          \
-    && !((pstSiteDesc)->bNeedConnected && !(pstSiteDesc)->bConnected))
+    (DOS_ADDR_VALID(pstSiteDesc)                                        \
+    && !(pstSiteDesc)->bWaitingDelete                                   \
+    && SC_ACD_IDEL == (pstSiteDesc)->ucStatus)
 
 enum {
     ACD_MSG_TYPE_CALL_NOTIFY   = 0,

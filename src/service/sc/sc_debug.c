@@ -1795,10 +1795,10 @@ U32 sc_show_tt(U32 ulIndex, U32 ulTTID)
     SC_TT_NODE_ST *pstTTNumber = NULL;
     S8  szBuff[256] = {0};
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%24s %-31s"
-                            , "ID", "Prefix", "Addr");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%6s%24s %-31s"
+                            , "ID", "Port", "Prefix", "Addr");
     cli_out_string(ulIndex, szBuff);
-    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------");
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------");
 
     HASH_Scan_Table(g_pstHashTTNumber,ulHashIndex)
     {
@@ -1817,8 +1817,9 @@ U32 sc_show_tt(U32 ulIndex, U32 ulTTID)
                 continue;
             }
 
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%24s %-31s"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%6u%24s %-31s"
                             , pstTTNumber->ulID
+                            , pstTTNumber->ulPort
                             , pstTTNumber->szPrefix
                             , pstTTNumber->szAddr);
             cli_out_string(ulIndex, szBuff);
