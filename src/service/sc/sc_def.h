@@ -473,6 +473,29 @@ typedef enum tagSCNumberType
     SC_NUMBER_TYPE_DID,             /* 系统的did号码 */
 }SC_NUMBER_TYPE_EN;
 
+typedef enum tagSoundType{
+    SC_SND_CALL_OVER         = 0,
+    SC_SND_INCOMING_CALL_TIP,
+    SC_SND_LOW_BALANCE,
+    SC_SND_MUSIC_HOLD,
+    SC_SND_MUSIC_SIGNIN,
+    SC_SND_NETWORK_FAULT,
+    SC_SND_NO_PERMISSION,
+    SC_SND_NO_OUT_BALANCE,
+    SC_SND_SET_SUCC,
+    SC_SND_SET_FAIL,
+    SC_SND_OPT_SUCC,
+    SC_SND_OPT_FAIL,
+    SC_SND_SYS_MAINTAIN,
+    SC_SND_TMP_UNAVAILABLE,
+    SC_SND_USER_BUSY,
+    SC_SND_USER_LINE_FAULT,
+    SC_SND_USER_NOT_FOUND,
+    SC_SND_CONNECTING,
+
+    SC_SND_BUTT,
+}SC_SOUND_TYPE_EN;
+
 #define SC_EP_STAT_RECV 0
 #define SC_EP_STAT_PROC 1
 
@@ -692,7 +715,8 @@ typedef struct tagSCSCB{
     U32       bIsPassThrough:1;                   /* 呼叫坐席时，主叫号码是否透传 */
     U32       bIsMarkCustomer:1;                  /* 坐席是否已经标记客户 */
     U32       bIsNotChangeAgentState:1;           /* 是否不更新坐席的状态 */
-    U32       ulRes:18;
+    U32       bIsInMarkState:1;                   /* 处于标记客户阶段 */
+    U32       ulRes:17;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -709,11 +733,12 @@ typedef struct tagSCSCB{
     S8        szCallerNum[SC_TEL_NUMBER_LENGTH];            /* 主叫号码，业务发起时的号码 */
     S8        szCalleeNum[SC_TEL_NUMBER_LENGTH];            /* 被叫号码，业务发起时的号码 */
 
-    S8        szANINum[SC_TEL_NUMBER_LENGTH];               /* 被叫号码 */
+    S8        szANINum[SC_TEL_NUMBER_LENGTH];               /* 主叫号码 */
     S8        szDialNum[SC_TEL_NUMBER_LENGTH];              /* 用户拨号 */
     S8        szSiteNum[SC_TEL_NUMBER_LENGTH];              /* 坐席号码 */
     S8        szUUID[SC_MAX_UUID_LENGTH];                   /* Leg-A UUID */
     S8        szCustomerMark[SC_CUSTOMER_MARK_LENGTH];      /* 客户标记的标记值 */
+    S8        szCustomerNum[SC_TEL_NUMBER_LENGTH];          /* 与坐席通话的客户的号码 */
 
     S8        *pszRecordFile;
 
@@ -1094,6 +1119,7 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
 U32  sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 U32  sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen);
+U32 sc_send_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCallerNum);
 
 
 /* 更新坐席状态任务主函数 */
@@ -1111,6 +1137,10 @@ U16 sc_ep_transform_errcode_from_sc2sip(U32 ulErrcode);
 
 U32 sc_ep_reloadxml();
 U32 sc_ep_update_gateway(VOID *pData);
+U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase);
+
+U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase);
+
 
 #ifdef __cplusplus
 }

@@ -155,7 +155,7 @@ U32 sc_send_gateway_update_req(U32 ulID, U32 ulAction)
 
 }
 
-U32 sc_send_marker_update_req(U32 ulID, U32 ulAction)
+U32 sc_send_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCallerNum)
 {
     S8 szURL[256]      = { 0, };
     S8 szData[512]     = { 0, };
@@ -163,14 +163,14 @@ U32 sc_send_marker_update_req(U32 ulID, U32 ulAction)
     dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/papi");
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
-    dos_snprintf(szData, sizeof(szData), "data={\"type\":\"%u\", \"data\":{\"id\":\"%u\", \"action\":\"%s\"}}"
+    dos_snprintf(szData, sizeof(szData), "data={\"type\":\"%u\", \"data\":{\"customer_id\":\"%u\", \"agent_id\":\"%u\", \"marker\":\"%d\", \"number\":\"%s\"}}"
                     , SC_PUB_TYPE_MARKER
-                    , ulID
-                    , SC_API_CMD_ACTION_GATEWAY_DELETE == ulAction ? "delete" : "add");
+                    , ulCustomID, ulAgentID
+                    , lKey
+                    , szCallerNum);
 
     return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_MARKER, NULL);
 }
-
 
 
 /*
@@ -382,6 +382,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bIsMarkCustomer = DOS_FALSE;
     pstSCB->bIsNotChangeAgentState = DOS_FALSE;
     pstSCB->LBalance = 0;
+    pstSCB->bIsInMarkState = DOS_FALSE;
 
     pstSCB->ulFirstDTMFTime = 0;                    /* 第一次DTMF时间戳 */
     pstSCB->ulLastDTMFTime = 0;
@@ -401,6 +402,8 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->szDialNum[0] = '\0';               /* 用户拨号 */
     pstSCB->szSiteNum[0] = '\0';               /* 坐席号码 */
     pstSCB->szUUID[0] = '\0';                  /* Leg-A UUID */
+    pstSCB->szCustomerMark[0] = '\0';
+    pstSCB->szCustomerNum[0] = '\0';
     pstSCB->pstExtraData = NULL;
     pstSCB->pszRecordFile = NULL;
     pstSCB->ucMainService = U8_BUTT;
@@ -2557,6 +2560,7 @@ U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerGrpID)
     {
         case SC_API_CMD_ACTION_CALLER_GRP_ADD:
             sc_load_caller_grp(ulCallerGrpID);
+            break;
         case SC_API_CMD_ACTION_CALLER_GRP_UPDATE:
             sc_refresh_caller_grp(ulCallerGrpID);
             break;
