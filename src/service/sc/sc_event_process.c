@@ -10838,7 +10838,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, BOOL bIsSecondaryDialing)
 
         if (1 == dos_sscanf(pszDealNum+dos_strlen(SC_POTS_MARK_CUSTOMER), "%d", &ulKey) && ulKey <= 9)
         {
-            sc_send_marker_update_req(pstSCB->ulCustomID, stAgentInfo.ulSiteID, ulKey, stAgentInfo.szLastCustomerNum);
+            sc_send_marker_update_req(stAgentInfo.ulCustomerID, stAgentInfo.ulSiteID, ulKey, stAgentInfo.szLastCustomerNum);
         }
         else
         {

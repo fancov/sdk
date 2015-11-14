@@ -340,7 +340,11 @@ VOID *sc_task_runtime(VOID *ptr)
     pstTCB->ucTaskStatus = SC_TASK_WORKING;
 
     /* 开启一个定时器，将已经呼叫过的号码数量，定时写进数据库中 */
-    lResult = dos_tmr_start(&pstTCB->pstTmrHandle, SC_TASK_UPDATE_DB_TIMER, sc_task_update_calledcnt, (U64)pstTCB, TIMER_NORMAL_LOOP);
+    lResult = dos_tmr_start(&pstTCB->pstTmrHandle
+                            , SC_TASK_UPDATE_DB_TIMER * 1000
+                            , sc_task_update_calledcnt
+                            , (U64)pstTCB
+                            , TIMER_NORMAL_LOOP);
     if (lResult < 0)
     {
         sc_logr_error(SC_TASK, "Start timer update task(%u) calledcnt FAIL", pstTCB->ulTaskID);
