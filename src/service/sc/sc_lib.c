@@ -384,6 +384,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->LBalance = 0;
     pstSCB->bIsInMarkState = DOS_FALSE;
     pstSCB->bIsNotSrvAdapter = DOS_FALSE;
+    pstSCB->bIsHasKeyCallTask = DOS_FALSE;
 
     pstSCB->ulFirstDTMFTime = 0;                    /* 第一次DTMF时间戳 */
     pstSCB->ulLastDTMFTime = 0;
@@ -2567,8 +2568,6 @@ U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerGrpID)
     switch (ulAction)
     {
         case SC_API_CMD_ACTION_CALLER_GRP_ADD:
-            sc_load_caller_grp(ulCallerGrpID);
-            break;
         case SC_API_CMD_ACTION_CALLER_GRP_UPDATE:
             sc_refresh_caller_grp(ulCallerGrpID);
             break;

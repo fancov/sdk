@@ -1720,6 +1720,7 @@ U32 sc_show_caller_by_callergrp(U32 ulIndex, U32 ulGrpID)
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n-------------------------------------------");
 
+    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
     DLL_Scan(&pstCallerGrp->stCallerList, pstListNode, DLL_NODE_S *)
     {
         if (DOS_ADDR_INVALID(pstListNode)
@@ -1744,6 +1745,7 @@ U32 sc_show_caller_by_callergrp(U32 ulIndex, U32 ulGrpID)
         }
         cli_out_string(ulIndex, szBuff);
     }
+    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
     return DOS_SUCC;
 }
 

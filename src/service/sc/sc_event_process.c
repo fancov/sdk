@@ -1178,6 +1178,8 @@ VOID sc_ep_caller_grp_init(SC_CALLER_GRP_NODE_ST* pstCallerGrp)
         pstCallerGrp->ulPolicy = SC_CALLER_SELECT_POLICY_IN_ORDER;
         dos_memzero(pstCallerGrp->szGrpName, sizeof(pstCallerGrp->szGrpName));
         DLL_Init(&pstCallerGrp->stCallerList);
+
+        pthread_mutex_init(&pstCallerGrp->mutexCallerList, NULL);
     }
 }
 
@@ -1911,16 +1913,19 @@ U32 sc_caller_grp_delete(U32 ulCallerGrpID)
     SC_CALLER_GRP_NODE_ST  *pstCallerGrp = NULL;
 
     ulHashIndex = sc_ep_caller_grp_hash_func(ulCallerGrpID);
+    pthread_mutex_lock(&g_mutexHashCallerGrp);
     pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&ulCallerGrpID, sc_ep_caller_grp_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
+        pthread_mutex_lock(&g_mutexHashCallerGrp);
+
         sc_logr_error(SC_FUNC, "Cannot Find Caller Grp %u.", ulCallerGrpID);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
     pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
-    pthread_mutex_lock(&g_mutexHashCallerGrp);
+    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
     while (1)
     {
         if (DLL_Count(&pstCallerGrp->stCallerList) == 0)
@@ -1938,8 +1943,10 @@ U32 sc_caller_grp_delete(U32 ulCallerGrpID)
         dos_dmem_free(pstListNode);
         pstListNode = NULL;
     }
-    pthread_mutex_unlock(&g_mutexHashCallerGrp);
+    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+
     hash_delete_node(g_pstHashCallerGrp, pstHashNode, ulHashIndex);
+    pthread_mutex_unlock(&g_mutexHashCallerGrp);
     dos_dmem_free(pstHashNode->pHandle);
     pstHashNode->pHandle = NULL;
     dos_dmem_free(pstHashNode);
@@ -2094,90 +2101,6 @@ U32 sc_caller_assign_add(U32 ulGrpID, U32 ulCallerID, U32 ulCallerType)
     hash_add_node(g_pstHashCallerGrp, pstHashNode, ulHashIndex, NULL);
 
     sc_logr_info(SC_FUNC, "Add Caller Assign SUCC.(ulGrpID:%u, ulCallerID:%u).", ulGrpID, ulCallerID);
-
-    return DOS_SUCC;
-}
-
-/* 将号码从一个组中删除 */
-U32 sc_caller_assign_delete(U32 ulGrpID, U32 ulCallerID, U32 ulCallerType)
-{
-    HASH_NODE_S  *pstHashNode = NULL;
-    DLL_NODE_S   *pstNode  = NULL;
-    U32  ulHashIndex = U32_BUTT;
-    SC_CALLER_CACHE_NODE_ST *pstCache = NULL;
-    SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
-    BOOL  bFound = DOS_FALSE;
-
-    HASH_Scan_Table(g_pstHashCallerGrp, ulHashIndex)
-    {
-        HASH_Scan_Bucket(g_pstHashCallerGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
-        {
-            if (DOS_ADDR_INVALID(pstHashNode)
-                || DOS_ADDR_INVALID(pstHashNode->pHandle))
-            {
-                continue;
-            }
-
-            pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
-            if (ulGrpID == pstCallerGrp->ulID)
-            {
-                bFound = DOS_TRUE;
-                break;
-            }
-        }
-        if (DOS_TRUE == bFound)
-        {
-            break;
-        }
-    }
-    if (!bFound)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Delete Caller Assign FAIL.(ulGrpID:%u, ulCallerID:%u)", ulGrpID, ulCallerID);
-        return DOS_FAIL;
-    }
-
-    bFound = DOS_FALSE;
-    DLL_Scan(&pstCallerGrp->stCallerList, pstNode, DLL_NODE_S *)
-    {
-        if (DOS_ADDR_INVALID(pstNode)
-            || pstNode->pHandle)
-        {
-            continue;
-        }
-        pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode->pHandle;
-        if (ulCallerType != pstCache->ulType)
-        {
-            continue;
-        }
-
-        if (SC_NUMBER_TYPE_CFG == ulCallerType)
-        {
-            if (ulCallerID == pstCache->stData.pstCaller->ulIndexInDB)
-            {
-                bFound = DOS_TRUE;
-                break;
-            }
-        }
-        else if (SC_NUMBER_TYPE_DID == ulCallerType)
-        {
-            if (ulCallerID == pstCache->stData.pstDid->ulDIDID)
-            {
-                bFound = DOS_TRUE;
-                break;
-            }
-        }
-    }
-    if (!bFound)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    dll_delete(&pstCallerGrp->stCallerList, pstNode);
-    dos_dmem_free(pstCache);
-    pstCache = NULL;
-    sc_logr_info(SC_FUNC, "Delete Caller Assign SUCC.(ulGrpID:%u, ulCallerID:%u)", ulGrpID, ulCallerID);
 
     return DOS_SUCC;
 }
@@ -3964,9 +3887,9 @@ S32 sc_load_caller_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **
     pstNode->pHandle = (VOID *)pstCacheNode;
 
     pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pArg;
-    pthread_mutex_lock(&g_mutexHashCallerGrp);
+    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
     DLL_Add(&pstCallerGrp->stCallerList, pstNode);
-    pthread_mutex_unlock(&g_mutexHashCallerGrp);
+    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
     return DOS_SUCC;
 }
 
@@ -3981,9 +3904,6 @@ U32 sc_load_caller_grp(U32 ulIndex)
 {
     S8 szSQL[1024] = {0};
     U32 ulRet = U32_BUTT;
-    U32 ulHashIndex;
-    HASH_NODE_S *pstHashNode;
-    SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
@@ -4006,21 +3926,7 @@ U32 sc_load_caller_grp(U32 ulIndex)
     }
     sc_logr_debug(SC_FUNC, "Load caller group SUCC.(ID:%u)", ulIndex);
 
-
-    /* 维护关系 */
-    ulHashIndex = sc_ep_caller_grp_hash_func(ulIndex);
-    pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&ulIndex, sc_ep_caller_grp_hash_find);
-    if (DOS_ADDR_INVALID(pstHashNode))
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "SC Refresh Caller Grp FAIL.(CallerGrpID:%u)", ulIndex);
-        return DOS_FAIL;
-    }
-    pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
-
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT caller_id,caller_type FROM tbl_caller_assign WHERE caller_grp_id=%u;", ulIndex);
-
-    return db_query(g_pstSCDBHandle, szSQL, sc_load_caller_relationship_cb, (VOID *)pstCallerGrp, NULL);
+    return ulRet;
 }
 
 
@@ -4295,20 +4201,24 @@ U32 sc_refresh_caller_grp(U32 ulIndex)
     HASH_NODE_S *pstHashNode = NULL;
     SC_CALLER_CACHE_NODE_ST *pstCache = NULL;
     S8  szQuery[256] = {0,};
+    U32 ulRet = 0;
 
     sc_load_caller_grp(ulIndex);
 
     ulHashIndex = sc_ep_caller_grp_hash_func(ulIndex);
+    pthread_mutex_lock(&g_mutexHashCallerGrp);
     pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&ulIndex, sc_ep_caller_grp_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode))
     {
+        pthread_mutex_unlock(&g_mutexHashCallerGrp);
+
         DOS_ASSERT(0);
         sc_logr_error(SC_FUNC, "SC Refresh Caller Grp FAIL.(CallerGrpID:%u)", ulIndex);
         return DOS_FAIL;
     }
     pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
 
-    pthread_mutex_lock(&g_mutexHashCallerGrp);
+    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
     while (1)
     {
         if (DLL_Count(&pstCallerGrp->stCallerList) == 0)
@@ -4332,11 +4242,15 @@ U32 sc_refresh_caller_grp(U32 ulIndex)
         dos_dmem_free(pstListNode);
         pstListNode = NULL;
     }
-    pthread_mutex_unlock(&g_mutexHashCallerGrp);
+
+    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
 
     dos_snprintf(szQuery, sizeof(szQuery), "SELECT caller_id,caller_type FROM tbl_caller_assign WHERE caller_grp_id=%u;", ulIndex);
 
-    return db_query(g_pstSCDBHandle, szQuery, sc_load_caller_relationship_cb, (VOID *)pstCallerGrp, NULL);
+    ulRet = db_query(g_pstSCDBHandle, szQuery, sc_load_caller_relationship_cb, (VOID *)pstCallerGrp, NULL);
+
+    pthread_mutex_unlock(&g_mutexHashCallerGrp);
+    return ulRet;
 }
 
 /**
@@ -12872,11 +12786,13 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         /* 给客户放音 */
         if (SC_TASK_MODE_KEY4AGENT == ulTaskMode)
         {
+            pstSCB->bIsHasKeyCallTask = DOS_TRUE;
             sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo), DOS_FALSE);
         }
         else if(SC_TASK_MODE_KEY4AGENT1 == ulTaskMode
                 && '0' == pszDTMFDigit[0])
         {
+            pstSCB->bIsHasKeyCallTask = DOS_TRUE;
             sc_ep_call_queue_add(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo), DOS_FALSE);
         }
     }
@@ -13038,13 +12954,22 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                         /* 以两种放音结束后需要挂断 */
                         case SC_TASK_MODE_KEY4AGENT:
                         case SC_TASK_MODE_KEY4AGENT1:
-                        case SC_TASK_MODE_AUDIO_ONLY:
-                            /* 如果不在呼叫队列里面，就有可能要挂断 */
-                            if (!pstSCB->bIsInQueue && !SC_SCB_IS_VALID(pstOtherSCB))
+                            if (!pstSCB->bIsHasKeyCallTask)
                             {
                                 sc_logr_notice(SC_ESL, "Hangup call for there is no input.(%s)", pstSCB->szUUID);
                                 sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
                             }
+                            else
+                            {
+                                sc_logr_notice(SC_ESL, "Playback stop with there has a key input.(%s)", pstSCB->szUUID);
+                                /* 已经在按键的地方处理了，这里不用做什么 */
+                            }
+
+                            break;
+                        case SC_TASK_MODE_AUDIO_ONLY:
+                            /* 如果不在呼叫队列里面，就有可能要挂断 */
+                            sc_logr_notice(SC_ESL, "Hangup call for audio play finished.(%s)", pstSCB->szUUID);
+                            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
                             break;
 
                         /* 放音后接通坐席 */
@@ -13763,6 +13688,7 @@ U32 sc_ep_init()
     sc_load_caller(SC_INVALID_INDEX);
     sc_load_caller_grp(SC_INVALID_INDEX);
     sc_load_number_lmt(SC_INVALID_INDEX);
+
     sc_load_caller_relationship();
 
     sc_load_caller_setting(SC_INVALID_INDEX);

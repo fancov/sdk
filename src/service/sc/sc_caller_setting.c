@@ -667,6 +667,7 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
 
     ulTempNo = ulNewNo;
 
+    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
     DLL_Scan(&pstCallerGrp->stCallerList, pstNode, DLL_NODE_S *)
     {
         ++ulCount;
@@ -716,11 +717,13 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
             }
         }
     }
+    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
 
     if (DOS_FALSE == bFound)
     {
         ulCount = 0;
         /* 如果还没有找到，那么继续从头开始给当前节点查找 */
+        pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
         DLL_Scan(&pstCallerGrp->stCallerList, pstNode, DLL_NODE_S *)
         {
             ++ulCount;
@@ -730,6 +733,8 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
                 /* 还没找到，则说明了内存中不存在该节点 */
                 if (ulCount == ulTempNo)
                 {
+                    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+
                     sc_logr_error(SC_FUNC, "Select number in order FAIL.(CustomerID:%u, GrpID:%u).", ulCustomerID, ulGrpID);
                     DOS_ASSERT(0);
                     return DOS_FAIL;
@@ -760,13 +765,19 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
                 }
                 else
                 {
+                    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+
                     sc_logr_error(SC_FUNC, "Select number in order FAIL.(CustomerID:%u, GrpID:%u).", ulCustomerID, ulGrpID);
                     DOS_ASSERT(0);
                     return DOS_FAIL;
                 }
+
+                pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
                 return DOS_SUCC;
             }
         }
+
+        pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
     }
     else
     {
@@ -821,6 +832,8 @@ U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ul
     {
         lNum = sc_generate_random(1, pstCallerGrp->stCallerList.ulCount);
 
+        pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
+
         DLL_Scan(&pstCallerGrp->stCallerList, pstNode, DLL_NODE_S *)
         {
             ++ulCount;
@@ -855,6 +868,8 @@ U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ul
                     }
                     else
                     {
+                        pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+
                         sc_logr_error(SC_FUNC, "select random number FAIL.(CustomerID:%u,GrpID:%u,HashIndex:%u)"
                                         , ulCustomerID, ulGrpID, ulHashIndex);
                         DOS_ASSERT(0);
@@ -865,6 +880,8 @@ U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ul
                 }
             }
         }
+
+        pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
         if (DOS_FALSE == bFound)
         {
             /* 如果还未找到，则进行下一次循环查找 */
