@@ -9003,8 +9003,6 @@ U32 sc_ep_call_queue_add(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID, BOOL bIsPass
 
         sc_ep_esl_execute("set", "hungup_after_play=false", pstSCB->szUUID);
         sc_ep_play_sound(SC_SND_CONNECTING, pstSCB->szUUID, 1);
-        //sc_ep_esl_execute("set", "timeout=90000,hungup_after_play=true", pstSCB->szUUID);
-        //sc_ep_play_sound(SC_SND_MUSIC_HOLD, pstSCB->szUUID, 1);
         sc_ep_esl_execute("set", "hungup_after_play=true", pstSCB->szUUID);
         dos_snprintf(szAPPParam, sizeof(szAPPParam)
                         , "{timeout=180000}file_string://%s/music_hold.wav"

@@ -534,7 +534,6 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
                         , "{timeout=%u}file_string://%s/call_over.wav"
                         , ulProcesingTime * 1000, SC_PROMPT_TONE_PATH);
         sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
-        sc_ep_esl_execute("park", NULL, pstSCB->szUUID);
     }
 
     /* 下面处理长签时的一些状态 */

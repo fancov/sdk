@@ -3473,7 +3473,7 @@ trace:
      */
     sc_logr_debug(SC_ESL, "Call Trace:%s\r\n"
                   "\t[SCB Info]: No:%05d, status: %d, caller: %s, callee: %s, uuid:%s\r\n"
-                  "\t[TCB Info]: No:%05d, status: %d, Task ID: %d, Custom ID: %d\r\n"
+                  "\t[TCB Info]: No:%05d, status: %d, Task ID: %d, Custom ID: %d, AgentQueue: %u\r\n"
                   , szBuf
                   , pstSCB->usSCBNo
                   , pstSCB->bValid
@@ -3483,7 +3483,8 @@ trace:
                   , pstTCB ? pstTCB->usTCBNo : -1
                   , pstTCB ? pstTCB->ucValid : -1
                   , pstTCB ? pstTCB->ulTaskID : -1
-                  , pstTCB ? pstTCB->ulCustomID : -1);
+                  , pstTCB ? pstTCB->ulCustomID : -1
+                  , pstTCB ? pstTCB->ulAgentQueueID : -1);
 }
 
 VOID sc_task_trace(SC_TASK_CB_ST *pstTCB, const S8* szFormat, ...)
