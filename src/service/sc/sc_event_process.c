@@ -1913,7 +1913,7 @@ U32 sc_caller_grp_delete(U32 ulCallerGrpID)
     ulHashIndex = sc_ep_caller_grp_hash_func(ulCallerGrpID);
     pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&ulCallerGrpID, sc_ep_caller_grp_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
-        || pstHashNode->pHandle)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
         sc_logr_error(SC_FUNC, "Cannot Find Caller Grp %u.", ulCallerGrpID);
         DOS_ASSERT(0);
@@ -3841,41 +3841,6 @@ S32 sc_load_caller_grp_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     return DOS_SUCC;
 }
 
-/**
- * 函数: U32 sc_load_caller_grp(U32 ulIndex)
- * 功能: 加载主叫号码组数据
- * 参数:
- * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
- */
-U32 sc_load_caller_grp(U32 ulIndex)
-{
-    S8 szSQL[1024] = {0};
-    U32 ulRet = U32_BUTT;
-
-    if (SC_INVALID_INDEX == ulIndex)
-    {
-        dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id,customer_id,name,policy FROM tbl_caller_grp;");
-    }
-    else
-    {
-        dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id,customer_id,name,policy FROM tbl_caller_grp WHERE id=%u;"
-                        , ulIndex);
-    }
-
-    ulRet = db_query(g_pstSCDBHandle, szSQL, sc_load_caller_grp_cb, NULL, NULL);
-    if (ulRet != DOS_SUCC)
-    {
-        sc_logr_error(SC_FUNC, "Load caller group FAIL.(ID:%u)", ulIndex);
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-    sc_logr_debug(SC_FUNC, "Load caller group SUCC.(ID:%u)", ulIndex);
-
-    return ulRet;
-}
-
 
 S32 sc_load_caller_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
@@ -4004,6 +3969,60 @@ S32 sc_load_caller_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **
     pthread_mutex_unlock(&g_mutexHashCallerGrp);
     return DOS_SUCC;
 }
+
+
+/**
+ * 函数: U32 sc_load_caller_grp(U32 ulIndex)
+ * 功能: 加载主叫号码组数据
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_load_caller_grp(U32 ulIndex)
+{
+    S8 szSQL[1024] = {0};
+    U32 ulRet = U32_BUTT;
+    U32 ulHashIndex;
+    HASH_NODE_S *pstHashNode;
+    SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                        , "SELECT id,customer_id,name,policy FROM tbl_caller_grp;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                        , "SELECT id,customer_id,name,policy FROM tbl_caller_grp WHERE id=%u;"
+                        , ulIndex);
+    }
+
+    ulRet = db_query(g_pstSCDBHandle, szSQL, sc_load_caller_grp_cb, NULL, NULL);
+    if (ulRet != DOS_SUCC)
+    {
+        sc_logr_error(SC_FUNC, "Load caller group FAIL.(ID:%u)", ulIndex);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    sc_logr_debug(SC_FUNC, "Load caller group SUCC.(ID:%u)", ulIndex);
+
+
+    /* 维护关系 */
+    ulHashIndex = sc_ep_caller_grp_hash_func(ulIndex);
+    pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&ulIndex, sc_ep_caller_grp_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode))
+    {
+        DOS_ASSERT(0);
+        sc_logr_error(SC_FUNC, "SC Refresh Caller Grp FAIL.(CallerGrpID:%u)", ulIndex);
+        return DOS_FAIL;
+    }
+    pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
+
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT caller_id,caller_type FROM tbl_caller_assign WHERE caller_grp_id=%u;", ulIndex);
+
+    return db_query(g_pstSCDBHandle, szSQL, sc_load_caller_relationship_cb, (VOID *)pstCallerGrp, NULL);
+}
+
 
 U32 sc_load_caller_relationship()
 {
