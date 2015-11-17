@@ -1080,7 +1080,7 @@ VOID sc_ep_tt_init(SC_TT_NODE_ST *pstTTNumber)
     {
         pstTTNumber->ulID = U32_BUTT;
         pstTTNumber->szAddr[0] = '\0';
-        pstTTNumber->szPrefix[0] = '\10';
+        pstTTNumber->szPrefix[0] = '\0';
         pstTTNumber->ulPort = 0;
     }
 }
