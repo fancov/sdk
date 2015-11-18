@@ -2127,7 +2127,8 @@ U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB)
                 pthread_mutex_lock(&pstAgentData->mutexLock);
 
                 pstAgentData->bLogin = DOS_TRUE;
-                pstAgentData->bConnected = DOS_TRUE;
+                //pstAgentData->bConnected = DOS_TRUE;
+                pstAgentData->bConnected = DOS_FALSE;
                 pstAgentData->bNeedConnected = DOS_TRUE;
                 pstAgentData->bWaitingDelete = DOS_FALSE;
                 pstAgentData->usSCBNo = pstSCB->usSCBNo;
@@ -2327,10 +2328,6 @@ U32 sc_acd_get_idel_agent(U32 ulGroupID)
 
         if (SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
         {
-            sc_logr_debug(SC_ACD, "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
-                        , pstAgentNode->pstAgentInfo->ulSiteID
-                        , pstGroupListNode->ulGroupID);
-
             ulCnt++;
             continue;
         }
