@@ -720,8 +720,9 @@ typedef struct tagSCSCB{
     U32       bIsNotChangeAgentState:1;           /* 是否不更新坐席的状态 */
     U32       bIsInMarkState:1;                   /* 处于标记客户阶段 */
     U32       bIsNotSrvAdapter:1;                 /* 转接时的特殊处理，前期已经适配好 */
+    U32       bIsHasKeyCallTask:1;                /* 群呼任务是否按键了 */
     U32       bIsFristSCB:1;                      /* 是否作为主leg */
-    U32       ulRes:15;
+    U32       ulRes:14;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 

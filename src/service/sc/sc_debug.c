@@ -929,12 +929,12 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
     }
 
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%5s%8s%8s%10s%8s%8s%8s%8s%7s%8s%12s%12s%12s%9s%10s%14s%12s%12s%9s%9s%5s%8s%13s"
+                    , "\r\n%5s%8s%8s%10s%8s%8s%8s%8s%7s%8s%12s%12s%12s%9s%10s%14s%12s%12s%9s%9s%5s%8s%13s%12s"
                     , "ID", "Status", "NeedCon", "Connected", "Custom", "Group1", "Group2"
-                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile", "TT_number", "Sip ID", "ScbNO", "bDel", "bLogin", "LastCustomer");
+                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile", "TT_number", "Sip ID", "ScbNO", "bDel", "bLogin", "LastCustomer", "ProcessTime");
     cli_out_string(ulIndex, szCmdBuff);
 
     HASH_Scan_Table(g_pstAgentList, ulHashIndex)
@@ -992,7 +992,7 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%5u%8s%8s%10s%8u%8u%8u%8s%7s%8s%12s%12s%12s%9u%10s%14s%12s%12s%9u%9u%5s%8s%13s"
+                        , "\r\n%5u%8s%8s%10s%8u%8u%8u%8s%7s%8s%12s%12s%12s%9u%10s%14s%12s%12s%9u%9u%5s%8s%13s%12u"
                         , pstAgentQueueNode->pstAgentInfo->ulSiteID
                         , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucStatus)
                         , pstAgentQueueNode->pstAgentInfo->bNeedConnected ? "Y" : "N"
@@ -1015,12 +1015,13 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
                         , pstAgentQueueNode->pstAgentInfo->usSCBNo
                         , pstAgentQueueNode->pstAgentInfo->bWaitingDelete ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->bLogin ? "Y" : "N"
-                        , pstAgentQueueNode->pstAgentInfo->szLastCustomerNum);
+                        , pstAgentQueueNode->pstAgentInfo->szLastCustomerNum
+                        , pstAgentQueueNode->pstAgentInfo->ucProcesingTime);
             cli_out_string(ulIndex, szCmdBuff);
             ulTotal++;
         }
     }
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n** Bind : 0 -- SIP User ID, 1 -- Telephone, 2 -- Mobile");
     cli_out_string(ulIndex, szCmdBuff);
@@ -1720,6 +1721,7 @@ U32 sc_show_caller_by_callergrp(U32 ulIndex, U32 ulGrpID)
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n-------------------------------------------");
 
+    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
     DLL_Scan(&pstCallerGrp->stCallerList, pstListNode, DLL_NODE_S *)
     {
         if (DOS_ADDR_INVALID(pstListNode)
@@ -1744,6 +1746,7 @@ U32 sc_show_caller_by_callergrp(U32 ulIndex, U32 ulGrpID)
         }
         cli_out_string(ulIndex, szBuff);
     }
+    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
     return DOS_SUCC;
 }
 
@@ -3473,7 +3476,7 @@ trace:
      */
     sc_logr_debug(SC_ESL, "Call Trace:%s\r\n"
                   "\t[SCB Info]: No:%05d, status: %d, caller: %s, callee: %s, uuid:%s\r\n"
-                  "\t[TCB Info]: No:%05d, status: %d, Task ID: %d, Custom ID: %d\r\n"
+                  "\t[TCB Info]: No:%05d, status: %d, Task ID: %d, Custom ID: %d, AgentQueue: %u\r\n"
                   , szBuf
                   , pstSCB->usSCBNo
                   , pstSCB->bValid
@@ -3483,7 +3486,8 @@ trace:
                   , pstTCB ? pstTCB->usTCBNo : -1
                   , pstTCB ? pstTCB->ucValid : -1
                   , pstTCB ? pstTCB->ulTaskID : -1
-                  , pstTCB ? pstTCB->ulCustomID : -1);
+                  , pstTCB ? pstTCB->ulCustomID : -1
+                  , pstTCB ? pstTCB->ulAgentQueueID : -1);
 }
 
 VOID sc_task_trace(SC_TASK_CB_ST *pstTCB, const S8* szFormat, ...)

@@ -221,6 +221,8 @@ typedef struct tagCallerGrpNode
     BOOL  bDefault;      /* 是否为默认组，DOS_FALSE表示非默认组，DOS_TRUE表示默认组 */
     S8    szGrpName[64]; /* 主叫号码组名称 */
     DLL_S stCallerList;  /* 主叫号码列表 */
+
+    pthread_mutex_t mutexCallerList;
 }SC_CALLER_GRP_NODE_ST;
 
 /* 主叫号码设定描述节点 */
