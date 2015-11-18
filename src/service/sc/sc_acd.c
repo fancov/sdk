@@ -3191,7 +3191,7 @@ U32 sc_acd_agent_set_signout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOper
     }
 
     /* 硐猁衄網請飲莞 */
-    if (pstAgentQueueInfo->bConnected || pstAgentQueueInfo->usSCBNo != U16_BUTT)
+    if (pstAgentQueueInfo->bConnected && pstAgentQueueInfo->usSCBNo != U16_BUTT)
     {
         /* 莞網請 */
         sc_ep_call_ctrl_hangup_agent(pstAgentQueueInfo);
