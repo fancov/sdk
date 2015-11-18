@@ -276,7 +276,7 @@ enum tagCallServiceType{
 
     SC_SERV_AGENT_CALLBACK          = 23,  /* 回呼坐席 */
     SC_SERV_AGENT_SIGNIN            = 24,  /* 坐席签入 */
-    SC_SERV_AGENT_CLICK_CALL        = 25,  /* 可以删除掉了 */
+    SC_SERV_AGENT_CLICK_CALL        = 25,  /* 呼叫坐席的leg所带的业务 */
 
     SC_SERV_NUM_VERIFY              = 26,  /* 号码验证 */
 
@@ -720,7 +720,8 @@ typedef struct tagSCSCB{
     U32       bIsNotChangeAgentState:1;           /* 是否不更新坐席的状态 */
     U32       bIsInMarkState:1;                   /* 处于标记客户阶段 */
     U32       bIsNotSrvAdapter:1;                 /* 转接时的特殊处理，前期已经适配好 */
-    U32       ulRes:16;
+    U32       bIsFristSCB:1;                      /* 是否作为主leg */
+    U32       ulRes:15;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 

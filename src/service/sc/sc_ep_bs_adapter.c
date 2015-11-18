@@ -872,6 +872,7 @@ U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB)
     U32                   ulCurrentLeg = 0;
     SC_SCB_ST             *pstSCB2 = NULL, *pstFirstSCB = NULL, *pstSecondSCB = NULL;
     BS_MSG_CDR            *pstCDRMsg = NULL;
+    S32                   i = 0;
 #if SC_BS_NEED_RESEND
     SC_BS_MSG_NODE        *pstListNode = NULL;
     U32                   ulHashIndex = 0;
@@ -891,6 +892,22 @@ U32 sc_send_billing_stop2bs(SC_SCB_ST *pstSCB)
     if (DOS_ADDR_INVALID(pstSCB2))
     {
         pstFirstSCB = pstSCB;
+
+        goto prepare_msg;
+    }
+
+    if (pstSCB->bIsFristSCB)
+    {
+        pstFirstSCB = pstSCB;
+        pstSecondSCB = pstSCB2;
+
+        goto prepare_msg;
+    }
+
+    if (pstSCB2->bIsFristSCB)
+    {
+        pstFirstSCB = pstSCB2;
+        pstSecondSCB = pstSCB;
 
         goto prepare_msg;
     }
@@ -1086,6 +1103,14 @@ prepare_msg:
                                 , sizeof(pstFirstSCB->aucServiceType)
                                 , pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType
                                 , BS_MAX_SERVICE_TYPE_IN_SESSION);
+
+        }
+        else
+        {
+            for (i=0; i<BS_MAX_SERVICE_TYPE_IN_SESSION; i++)
+            {
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType[i] = pstFirstSCB->aucServiceType[i];
+            }
         }
 
         ulCurrentLeg++;
@@ -1161,6 +1186,13 @@ prepare_msg:
                                 , sizeof(pstSecondSCB->aucServiceType)
                                 , pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType
                                 , BS_MAX_SERVICE_TYPE_IN_SESSION);
+        }
+        else
+        {
+            for (i=0; i<BS_MAX_SERVICE_TYPE_IN_SESSION; i++)
+            {
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType[i] = pstSecondSCB->aucServiceType[i];
+            }
         }
 
         ulCurrentLeg++;
