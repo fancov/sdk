@@ -406,16 +406,19 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         {
             /* 判断是否需要余额告警 */
             pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
-            if (DOS_ADDR_VALID(pstSCBOther) && pstSCB->bBanlanceWarning)
+            if (DOS_ADDR_VALID(pstSCBOther))
             {
-                /* 给通道设置变量 */
+                /* 回铃音 */
                 sc_ep_esl_execute("set", "instant_ringback=true", pstSCBOther->szUUID);
-                sc_ep_esl_execute("set", "transfer_ringback=local_stream://moh", pstSCBOther->szUUID);
-
-                sc_logr_debug(SC_BS, "The balance of the alarm : %d, Balance : %ld", pstSCB->bBanlanceWarning, pstSCB->LBalance);
+                sc_ep_esl_execute("set", "transfer_ringback=tone_stream://%(1000,4000,450);loops=-1", pstSCBOther->szUUID);
                 sc_ep_esl_execute("answer", NULL, pstSCBOther->szUUID);
-                sc_dialer_alarm_balance(pstSCBOther);
-                //sc_ep_esl_execute("park", NULL, pstSCBOther->szUUID);
+
+                if (pstSCB->bBanlanceWarning)
+                {
+                    sc_logr_debug(SC_BS, "The balance of the alarm : %d, Balance : %ld", pstSCB->bBanlanceWarning, pstSCB->LBalance);
+                    sc_dialer_alarm_balance(pstSCBOther);
+                    //sc_ep_esl_execute("park", NULL, pstSCBOther->szUUID);
+                }
             }
         }
 
