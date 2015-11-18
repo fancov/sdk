@@ -2317,7 +2317,7 @@ U32 sc_did_delete(U32 ulDidID)
     }
 }
 
-U32 sc_black_list_delete(U32 ulFileID)
+U32 sc_black_list_delete(U32 ulID)
 {
     HASH_NODE_S        *pstHashNode  = NULL;
     SC_BLACK_LIST_NODE *pstBlackList = NULL;
@@ -2337,7 +2337,7 @@ U32 sc_black_list_delete(U32 ulFileID)
 
             pstBlackList = (SC_BLACK_LIST_NODE *)pstHashNode->pHandle;
             /* 如果找到和该fileID相同，则从哈希表中删除*/
-            if (pstBlackList->ulFileID == ulFileID)
+            if (pstBlackList->ulID == ulID)
             {
                 hash_delete_node(g_pstHashBlackList, pstHashNode, ulHashIndex);
                 dos_dmem_free(pstHashNode);
@@ -2654,6 +2654,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
         pstBlackListTmp->enType = pstBlackListNode->enType;
 
+        
         dos_strncpy(pstBlackListTmp->szNum, pstBlackListNode->szNum, sizeof(pstBlackListTmp->szNum));
         pstBlackListTmp->szNum[sizeof(pstBlackListTmp->szNum) - 1] = '\0';
         dos_dmem_free(pstBlackListNode);
@@ -2665,7 +2666,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
 
 /**
- * 函数: U32 sc_load_black_list()
+ * 函数: U32 sc_load_black_list(U32 ulIndex)
  * 功能: 加载黑名单数据
  * 参数:
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
@@ -2687,12 +2688,39 @@ U32 sc_load_black_list(U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ESL, "%s", "Load sip account fail.");
+        sc_logr_error(SC_ESL, "%s", "Load black list fail.");
         return DOS_FAIL;
     }
 
     return DOS_SUCC;
 }
+
+/**
+ * 函数: U32 sc_update_black_list(U32 ulIndex)
+ * 功能: 更新黑名单数据
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_update_black_list(U32 ulIndex)
+{
+    S8 szSQL[1024] = { 0, };
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, file_id, number, type FROM tbl_blacklist_pool WHERE id=%u;", ulIndex);
+    if (db_query(g_pstSCDBHandle, szSQL, sc_load_black_list_cb, NULL, NULL) != DB_ERR_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_ESL, "%s", "Load blacklist fail.");
+        return DOS_FAIL;
+    }
+    return DOS_SUCC;
+}
+
 
 static S32 sc_load_tt_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
