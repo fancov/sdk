@@ -1051,6 +1051,7 @@ U32 sc_refresh_gateway_grp(U32 ulIndex);
 U32 sc_refresh_caller_grp(U32 ulIndex);
 U32 sc_load_did_number(U32 ulIndex);
 U32 sc_load_black_list(U32 ulIndex);
+U32 sc_update_black_list(U32 ulIndex);
 U32 sc_load_num_transform(U32 ulIndex);
 U32 sc_load_tt_number(U32 ulIndex);
 U32 sc_del_tt_number(U32 ulIndex);
