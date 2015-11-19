@@ -2654,7 +2654,7 @@ S32 sc_load_black_list_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
         pstBlackListTmp->enType = pstBlackListNode->enType;
 
-        
+
         dos_strncpy(pstBlackListTmp->szNum, pstBlackListNode->szNum, sizeof(pstBlackListTmp->szNum));
         pstBlackListTmp->szNum[sizeof(pstBlackListTmp->szNum) - 1] = '\0';
         dos_dmem_free(pstBlackListNode);
@@ -12324,6 +12324,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     S8 *pszWaitingPark = NULL;
     S8 szFilePath[512] = { 0 };
     S8 szAPPParam[512] = { 0 };
+    SC_SCB_ST *pstSCBRecord = NULL;
     SC_SCB_ST *pstSCBOther = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
