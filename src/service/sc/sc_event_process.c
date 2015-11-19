@@ -12361,36 +12361,40 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         }
     }
 
-    if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
-    {
-    }
-    else
+    pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+    if (DOS_ADDR_VALID(pstSCB) && DOS_ADDR_VALID(pstSCBOther)
+        && pstSCB->ucStatus >= SC_SCB_EXEC && pstSCBOther->ucStatus >= SC_SCB_EXEC
+        && (pstSCB->bRecord || pstSCBOther->bRecord))
     {
         if (pstSCB->bRecord)
         {
-            SC_SCB_SET_SERVICE(pstSCB, BS_SERV_RECORDING);
-            sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCB->ulCustomID, pstSCB->szCallerNum, pstSCB->szCalleeNum);
-            pthread_mutex_lock(&pstSCB->mutexSCBLock);
-            pstSCB->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
-            if (DOS_ADDR_VALID(pstSCB->pszRecordFile))
+            pstSCBRecord = pstSCB;
+    }
+    else
+    {
+            pstSCBRecord = pstSCBOther;
+        }
+        SC_SCB_SET_SERVICE(pstSCBRecord, BS_SERV_RECORDING);
+        sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCBRecord->ulCustomID, pstSCBRecord->szCallerNum, pstSCBRecord->szCalleeNum);
+        pthread_mutex_lock(&pstSCBRecord->mutexSCBLock);
+        pstSCBRecord->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
+        if (DOS_ADDR_VALID(pstSCBRecord->pszRecordFile))
             {
-                dos_strncpy(pstSCB->pszRecordFile, szFilePath, dos_strlen(szFilePath) + 1);
-                pstSCB->pszRecordFile[dos_strlen(szFilePath)] = '\0';
+            dos_strncpy(pstSCBRecord->pszRecordFile, szFilePath, dos_strlen(szFilePath) + 1);
+            pstSCBRecord->pszRecordFile[dos_strlen(szFilePath)] = '\0';
 
                 dos_snprintf(szAPPParam, sizeof(szAPPParam)
                                 , "bgapi uuid_record %s start %s/%s\r\n"
-                                , pstSCB->szUUID
+                            , pstSCBRecord->bRecord ? pstSCBRecord->szUUID : pstSCBRecord->szUUID
                                 , SC_RECORD_FILE_PATH
                                 , szFilePath);
                 sc_ep_esl_execute_cmd(szAPPParam);
-                sc_ep_esl_execute("sleep", "300", pstSCB->szUUID);
             }
             else
             {
                 DOS_ASSERT(0);
             }
-            pthread_mutex_unlock(&pstSCB->mutexSCBLock);
-        }
+        pthread_mutex_unlock(&pstSCBRecord->mutexSCBLock);
     }
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
