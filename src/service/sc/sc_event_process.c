@@ -9554,6 +9554,7 @@ make_all_fail:
 U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
 {
     SC_SCB_ST *pstSCB       = NULL;
+    SC_SCB_ST *pstSCBAgent  = NULL;
     SC_SCB_ST *pstSCBOther  = NULL;
     S8        szParams[256] = { 0, };
     SC_ACD_AGENT_INFO_ST stAgentInfo;
@@ -9570,11 +9571,23 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         goto make_all_fail;
     }
 
-    /* 判断坐席的状态 */
+    /* 不需要判断坐席的状态 */
+#if 0
     if (stAgentInfo.ucStatus  >=  SC_ACD_BUSY)
     {
         /* 不允许呼叫 */
         sc_logr_info(SC_ESL, "Call agnet FAIL. Agent (%u) status is (%d)", ulAgent, stAgentInfo.ucStatus);
+        goto make_all_fail;
+    }
+#endif
+
+    /* 如果坐席相关的业务控制块有管理到另外一个业务控制块，就不要再呼叫了 */
+    pstSCBAgent = sc_scb_get(stAgentInfo.usSCBNo);
+    if (DOS_ADDR_VALID(pstSCBAgent)
+        && (pstSCBOther = sc_scb_get(pstSCBAgent->usOtherSCBNo)))
+    {
+        /* 不允许呼叫 */
+        sc_logr_info(SC_ESL, "Call agnet FAIL. Agent %u (status:%d) has a call already", ulAgent, stAgentInfo.ucStatus);
         goto make_all_fail;
     }
 
@@ -11451,7 +11464,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                             , stAgentInfo.ucStatus);
 
             /* 播放等待音 */
-            if (pstSCB->bIsInMarkState)
+            if (!pstSCB->bIsInMarkState)
             {
                 sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
                 if (sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1) != DOS_SUCC)
