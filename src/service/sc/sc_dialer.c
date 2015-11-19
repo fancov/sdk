@@ -280,7 +280,7 @@ go_on:
                         , pstSCB->szCallerNum
                         , pstSCB->szCallerNum
                         , pstSCB->szCalleeNum);
-        sc_ep_esl_execute("set", "sip_copy_multipart=true", pstOtherSCB->szUUID);
+        sc_ep_esl_execute("set", "sip_copy_multipart=false", pstOtherSCB->szUUID);
         sc_ep_esl_execute("bridge", szCMDBuff, pstOtherSCB->szUUID);
 
         return DOS_SUCC;
@@ -436,8 +436,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , szCallString);
         }
         sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
-        sc_ep_esl_execute("set", "sip_copy_multipart=true", pstSCBOther->szUUID);
-        sc_ep_esl_execute("set", "sip_copy_multipart=true", pstSCB->szUUID);
+        sc_ep_esl_execute("set", "sip_copy_multipart=false", pstSCBOther->szUUID);
         if (sc_ep_esl_execute("bridge", szCMDBuff, pstSCBOther->szUUID) != ESL_SUCCESS)
         {
             DOS_ASSERT(0);

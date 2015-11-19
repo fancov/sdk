@@ -432,7 +432,7 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
 
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
-    dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"0\\\", \\\"body\\\":{\\\"number\\\":\\\"%s\\\"}}", szCaller);
+    dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"0\\\",\\\"body\\\":{\\\"number\\\":\\\"%s\\\"}}", szCaller);
 
     return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_STATUS, NULL);
 }
@@ -8846,6 +8846,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
             goto proc_error;
         }
 
+
         return DOS_SUCC;
     }
 
@@ -8998,7 +8999,7 @@ go_on:
         }
     }
 
-    if (sc_ep_call_notify(pstAgentInfo, pstSCBNew->szCustomerNum))
+    if (sc_ep_call_notify(pstAgentInfo, pstSCBNew->szCustomerNum) != DOS_SUCC)
     {
         DOS_ASSERT(0);
     }
@@ -11330,8 +11331,6 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
             pstSCB->bIsMarkCustomer = DOS_FALSE;
         }
 
-        pstSCB->bIsInMarkState = DOS_FALSE;
-
         /* 判断是否是长签 */
         if (!sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
         {
@@ -11339,10 +11338,17 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         }
         else
         {
-            /* 放音 */
-            sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
-            sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1);
+#if 0
+            if (pstSCB->bIsInMarkState)
+            {
+                /* 放音 */
+                sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
+                sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1);
+            }
+#endif
         }
+
+        pstSCB->bIsInMarkState = DOS_FALSE;
 
         return DOS_SUCC;
     }
@@ -13279,6 +13285,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
     if (DOS_ADDR_VALID(pszValue)
         && 0 == dos_stricmp(pszValue, "true"))
     {
+        /* 这个地方条件比较多，说明一下1. 前面五个都是在判断是否因超时而发送的该消息，最后一个判断是否处于标记状态 */
         pszPlaybackMS = esl_event_get_header(pstEvent, "variable_playback_ms");
         pszPlaybackTimeout = esl_event_get_header(pstEvent, "timeout");
         if (DOS_ADDR_VALID(pszPlaybackMS) && DOS_ADDR_VALID(pszPlaybackTimeout)

@@ -115,12 +115,12 @@ static U32 sc_pub_publicsh(CURL **pstCurlHandle, S8 *pszURL, S8 *pszData)
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_PUB, "CURL post FAIL.Caller:%s.", pszData);
+        sc_logr_notice(SC_PUB, "CURL post FAIL. Data:%s.", pszData);
         return DOS_FAIL;
     }
     else
     {
-        sc_logr_notice(SC_PUB, "CURL post SUCC.URL:%s, Caller:%s.", pszURL, pszData);
+        sc_logr_notice(SC_PUB, "CURL post SUCC.URL:%s, Data:%s.", pszURL, pszData);
 
         return DOS_SUCC;
     }
