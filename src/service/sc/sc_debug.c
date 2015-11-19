@@ -136,8 +136,10 @@ const S8* g_pszRouteDestType[] =
 const S8* g_pszDidBindType[] =
 {
     "",
+    "SIP",
+    "AGENT-QUEUE",
     "AGENT",
-    "AGENT-QUEUE"
+
 };
 
 const S8* g_pszTaskStatus[] =
