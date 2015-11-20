@@ -11397,7 +11397,6 @@ end:
 U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     U32       ulRet = 0;
-    S8        *pszValue     = NULL;
     S8        *pszPlaybackMS = 0;
     S8        *pszPlaybackTimeout = 0;
     U32       ulPlaybackMS, ulPlaybackTimeout;
@@ -11617,7 +11616,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     pszValue = esl_event_get_header(pstEvent, "variable_will_hangup");
     if (DOS_ADDR_VALID(pszValue))
     {
-        /* 将要挂断 */
+        /* 将要挂断, 不用操作 */
         goto proc_finished;
     }
 
@@ -11642,7 +11641,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         goto proc_finished;
     }
 
-#if 0
     if (pstSCB->bIsAgentCall == DOS_TRUE
         && pstSCB->bIsMarkCustomer == DOS_FALSE)
     {
@@ -11657,7 +11655,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             goto proc_finished;
         }
     }
-#endif
 
     if (SC_SERV_CALL_INTERCEPT == ulMainService
         || SC_SERV_CALL_WHISPERS == ulMainService)
