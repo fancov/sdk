@@ -2260,7 +2260,7 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
     {
         ulCallRate = pstTCB->ulCallRate != 0 ? pstTCB->ulCallRate : g_pstTaskMngtInfo->ulMaxCallRate4Task;
         ulMaxConcurrency = sc_acd_get_total_agent(pstTCB->ulAgentQueueID) * ulCallRate;
-        ulConcurrency = ulMaxConcurrency - sc_acd_get_idel_agent(pstTCB->ulAgentQueueID) * ulCallRate;
+        ulConcurrency = pstTCB->ulCurrentConcurrency;
     }
 
     if (ulMaxConcurrency)

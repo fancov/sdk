@@ -70,7 +70,7 @@ extern BOOL                 g_blSCInitOK;
 /* ±ÈÀýºô½ÐµÄ±ÈÀý */
 #define SC_MAX_CALL_MULTIPLE           3
 
-#define SC_MAX_CALL_PRE_SEC            200
+#define SC_MAX_CALL_PRE_SEC            120
 
 #define SC_MAX_TASK_MAX_CONCURRENCY    15
 

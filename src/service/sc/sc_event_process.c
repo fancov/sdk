@@ -11489,6 +11489,12 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         }
         else if (SC_ACD_PROC == stAgentInfo.ucStatus)
         {
+            /* 不处理PARK消息 */
+            if (ESL_EVENT_CHANNEL_PARK == pstEvent->event_id)
+            {
+                goto proc_succ;
+            }
+
             /* 处理呼叫结果过程 */
             /* 放音，然后接受案件 */
             sc_logr_debug(SC_ESL, "Agent signin and a call just huangup. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
@@ -11498,9 +11504,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                             , stAgentInfo.ucStatus);
 
             /* 标记完成，修改坐席的状态 */
-            pszValue = esl_event_get_header(pstEvent, "variable_mark_customer_start");
-            if (DOS_ADDR_VALID(pszValue) && 0 == dos_stricmp(pszValue, "true")
-                && pstSCB->bIsInMarkState)
+            if (pstSCB->bIsInMarkState)
             {
                 /* 判断是否因为超时进入该流程 */
                 pszPlaybackMS = esl_event_get_header(pstEvent, "variable_playback_ms");
@@ -11510,7 +11514,6 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     && dos_atoul(pszPlaybackTimeout, &ulPlaybackTimeout) >= 0
                     && ulPlaybackMS >= ulPlaybackTimeout)
                 {
-                    sc_ep_esl_execute("set", "mark_customer_start=false", pstSCB->szUUID);
                     /* 标记超时，挂断电话, 将客户的标记值更改为 '*#'， 表示没有进行客户标记 */
                     pstSCB->szCustomerMark[0] = '\0';
                     dos_strcpy(pstSCB->szCustomerMark, "*#");
@@ -11535,8 +11538,9 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         }
     }
 
-    return DOS_SUCC;
+proc_succ:
 
+    return DOS_SUCC;
 }
 
 /**
@@ -13281,9 +13285,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
         goto proc_succ;
     }
 
-    pszValue = esl_event_get_header(pstEvent, "variable_mark_customer_start");
-    if (DOS_ADDR_VALID(pszValue)
-        && 0 == dos_stricmp(pszValue, "true"))
+    if (pstSCB->bIsInMarkState)
     {
         /* 这个地方条件比较多，说明一下1. 前面五个都是在判断是否因超时而发送的该消息，最后一个判断是否处于标记状态 */
         pszPlaybackMS = esl_event_get_header(pstEvent, "variable_playback_ms");
@@ -13293,8 +13295,6 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
             && dos_atoul(pszPlaybackTimeout, &ulPlaybackTimeout) >= 0
             && ulPlaybackMS >= ulPlaybackTimeout)
         {
-            /* 超时 */
-            sc_ep_esl_execute("set", "mark_customer_start=false", pstSCB->szUUID);
             /* 标记超时，挂断电话, 将客户的标记值更改为 '*#'， 表示没有进行客户标记 */
             pstSCB->szCustomerMark[0] = '\0';
             dos_strcpy(pstSCB->szCustomerMark, "*#");
