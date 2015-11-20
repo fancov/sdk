@@ -47,13 +47,13 @@ if [ ! -f sc.dep ]; then
 	touch sc.dep
 fi
 
-make dep -f $MAKEFILE_NAME
+#make dep -f $MAKEFILE_NAME
 if [ $? -ne 0 ]; then
 	echo "Make dep FAIL. App:"${APPNAME}
 	exit 255
 fi
 
-make clean -f $MAKEFILE_NAME
+#make clean -f $MAKEFILE_NAME
 if [ $? -ne 0 ]; then
 	echo "Make clean FAIL. App:"${APPNAME}
 	exit 255
