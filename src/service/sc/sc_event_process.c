@@ -11397,7 +11397,6 @@ end:
 U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     U32       ulRet = 0;
-    S8        *pszValue     = NULL;
     S8        *pszPlaybackMS = 0;
     S8        *pszPlaybackTimeout = 0;
     U32       ulPlaybackMS, ulPlaybackTimeout;
@@ -13004,6 +13003,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
     U32 ulTaskMode   = U32_BUTT;
     U32 ulLen        = 0;
     U32 ulCurrTime   = 0;
+    SC_SCB_ST *pstSCBOther = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -13037,6 +13037,14 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
     /* 自动外呼，拨0接通坐席 */
     if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
     {
+        /* 群呼任务的流程是，放音-按键-进队列-转坐席-坐席振铃-坐席接通, 走到这里有可能已经在按键之后了，需要排除一下 */
+        pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+        if (pstSCB->bIsInQueue || DOS_ADDR_VALID(pstSCBOther))
+        {
+            sc_logr_debug(SC_ESL, "Auto dialing recv a dtmf. The call is in queue or has connected to an agent, disgard."
+                            , pszDTMFDigit, pszDTMFDigit[0], pstSCB->szDialNum);
+            goto process_succ;
+        }
 
         ulTaskMode = sc_task_get_mode(pstSCB->usTCBNo);
         if (ulTaskMode >= SC_TASK_MODE_BUTT)
