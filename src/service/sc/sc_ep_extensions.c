@@ -25,6 +25,7 @@ extern "C"{
 #include "sc_acd_def.h"
 #include "sc_ep.h"
 #include "sc_acd_def.h"
+#include "sc_db.h"
 
 #define SC_EXT_EVENT_LIST "custom sofia::register sofia::unregister sofia::unregister sofia::gateway_state sofia::expire"
 
@@ -39,20 +40,60 @@ extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
 U32 sc_ep_update_db_sip_ip(U32 ulPublicIP, U32 ulPrivateIP, SC_SIP_STATUS_TYPE_EN enStatus, U32 ulSipID)
 {
-    S8 szSQL[512] = { 0 };
+    S8                  szSQL[512]  = { 0 };
+    SC_DB_MSG_TAG_ST    *pstMsg     = NULL;
 
     dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_sip SET public_net=%u, private_net=%u, register=%d WHERE id=%u", ulPublicIP, ulPrivateIP, enStatus, ulSipID);
 
-    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+    pstMsg = (SC_DB_MSG_TAG_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_TAG_ST));
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+    pstMsg->ulMsgType = SC_MSG_SAVE_SIP_IPADDR;
+    pstMsg->szData = dos_dmem_alloc(dos_strlen(szSQL) + 1);
+    if (DOS_ADDR_INVALID(pstMsg->szData))
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstMsg->szData);
+
+        return DOS_FAIL;
+    }
+
+    dos_strcpy(pstMsg->szData, szSQL);
+
+    return sc_send_msg2db(pstMsg);
 }
 
 U32 sc_ep_update_db_trunk_status(U32 ulGateWayID, SC_TRUNK_STATE_TYPE_EN enTrunkState)
 {
-    S8 szSQL[512] = { 0 };
+    S8                  szSQL[512]  = { 0 };
+    SC_DB_MSG_TAG_ST    *pstMsg     = NULL;
 
     dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_gateway SET register_status=%d WHERE id=%u", enTrunkState, ulGateWayID);
 
-    return db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
+    pstMsg = (SC_DB_MSG_TAG_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_TAG_ST));
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+    pstMsg->ulMsgType = SC_MSG_SAVE_TRUNK_STATUS;
+    pstMsg->szData = dos_dmem_alloc(dos_strlen(szSQL) + 1);
+    if (DOS_ADDR_INVALID(pstMsg->szData))
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstMsg->szData);
+
+        return DOS_FAIL;
+    }
+
+    dos_strcpy(pstMsg->szData, szSQL);
+
+    return sc_send_msg2db(pstMsg);
 }
 
 VOID* sc_ep_ext_mgnt(VOID *ptr)

@@ -45,6 +45,7 @@
 #include "sc_acd_def.h"
 #include "sc_acd.h"
 #include "sc_ep.h"
+#include "sc_db.h"
 
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
@@ -368,6 +369,7 @@ U32 sc_acd_agent_update_status_db(U32 ulSiteID, U32 ulStatus, BOOL bIsConnect)
 {
     S8  szQuery[512] = { 0, };
     U32 ulStatusDB = 0;
+    SC_DB_MSG_TAG_ST *pstMsg = NULL;
 
     /* 写数据库的状态
         0  -- 离线
@@ -384,17 +386,28 @@ U32 sc_acd_agent_update_status_db(U32 ulSiteID, U32 ulStatus, BOOL bIsConnect)
     }
 
     dos_snprintf(szQuery, sizeof(szQuery), "UPDATE tbl_agent SET status=%d WHERE id = %u;", ulStatusDB, ulSiteID);
+    sc_logr_debug(SC_ACD, "Update agent(%d) status(%d) SUCC", ulSiteID, ulStatus);
 
-    if (db_query(g_pstSCDBHandle, szQuery, NULL, NULL, NULL) < 0 )
+    pstMsg = (SC_DB_MSG_TAG_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_TAG_ST));
+    if (DOS_ADDR_INVALID(pstMsg))
     {
+        DOS_ASSERT(0);
 
-        sc_logr_info(SC_ACD, "Update agent(%d) status(%d) FAIL!", ulSiteID, ulStatus);
+        return DOS_FAIL;
+    }
+    pstMsg->ulMsgType = SC_MSG_SAVE_AGENT_STATUS;
+    pstMsg->szData = dos_dmem_alloc(dos_strlen(szQuery) + 1);
+    if (DOS_ADDR_INVALID(pstMsg->szData))
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstMsg->szData);
+
         return DOS_FAIL;
     }
 
-    sc_logr_debug(SC_ACD, "Update agent(%d) status(%d) SUCC", ulSiteID, ulStatus);
+    dos_strcpy(pstMsg->szData, szQuery);
 
-    return DOS_SUCC;
+    return sc_send_msg2db(pstMsg);
 }
 
 

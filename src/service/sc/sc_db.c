@@ -72,6 +72,25 @@ static U32 sc_db_save_call_result(SC_DB_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 }
 
+static U32 sc_db_execute_sql(SC_DB_MSG_TAG_ST *pstMsg)
+{
+    if (DOS_ADDR_INVALID(pstMsg)
+        || DOS_ADDR_INVALID(pstMsg->szData))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (db_query(g_pstSCDBHandle, pstMsg->szData, NULL, NULL, 0) != DOS_SUCC)
+    {
+        sc_logr_error(SC_DB, "%s", "Execute sql FAIL. %s", pstMsg->szData);
+
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
 static VOID sc_db_request_proc(SC_DB_MSG_TAG_ST *pstMsg)
 {
     U32 ulResult;
@@ -88,12 +107,22 @@ static VOID sc_db_request_proc(SC_DB_MSG_TAG_ST *pstMsg)
         case SC_MSG_SAVE_CALL_RESULT:
             ulResult = sc_db_save_call_result(pstMsg);
             break;
-
+        case SC_MSG_SAVE_AGENT_STATUS:
+        case SC_MSG_SAVE_TASK_CALLED_COUNT:
+        case SC_MSG_SAVE_SIP_IPADDR:
+        case SC_MSG_SAVE_TRUNK_STATUS:
+            ulResult = sc_db_execute_sql(pstMsg);
+            break;
         default:
             sc_logr_notice(SC_DB, "Invalid msg type(%u)", pstMsg->ulMsgType);
             break;
     }
 
+    if (DOS_ADDR_VALID(pstMsg->szData))
+    {
+        dos_dmem_free(pstMsg->szData);
+        pstMsg->szData = NULL;
+    }
     dos_dmem_free(pstMsg);
     pstMsg = NULL;
 

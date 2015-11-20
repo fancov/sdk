@@ -128,7 +128,7 @@ extern BOOL                 g_blSCInitOK;
 #define SC_BGJOB_HASH_SIZE             128
 
 /* 呼叫进度同步时间 */
-#define SC_TASK_UPDATE_DB_TIMER        5
+#define SC_TASK_UPDATE_DB_TIMER        2
 
 /* 新业务 */
 #define SC_POTS_CO_GROUP_PICK_UP        "***"        /* 同组代答 */

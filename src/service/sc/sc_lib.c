@@ -28,6 +28,7 @@ extern "C"{
 #include "sc_http_api.h"
 #include "sc_acd_def.h"
 #include "sc_publish.h"
+#include "sc_db.h"
 
 
 /* 定义开发是内置测试数据 */
@@ -1107,9 +1108,9 @@ U32 sc_update_task_status(U32 ulTaskID,  U32 ulStatsu)
 
 VOID sc_task_update_calledcnt(U64 ulArg)
 {
-    SC_TASK_CB_ST *pstTCB   = NULL;
-    S8      szSQL[512]      = { 0 };
-    S32     lRes            = 0;
+    SC_DB_MSG_TAG_ST    *pstMsg     = NULL;
+    SC_TASK_CB_ST       *pstTCB     = NULL;
+    S8                  szSQL[512]  = { 0 };
 
     pstTCB = (SC_TASK_CB_ST *)ulArg;
     if (DOS_ADDR_INVALID(pstTCB))
@@ -1126,15 +1127,26 @@ VOID sc_task_update_calledcnt(U64 ulArg)
 
     dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_calltask SET calledcnt=%u WHERE id=%u", pstTCB->ulCalledCount, pstTCB->ulTaskID);
 
-    lRes = db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL);
-    if(DB_ERR_SUCC != lRes)
+    pstMsg = (SC_DB_MSG_TAG_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_TAG_ST));
+    if (DOS_ADDR_INVALID(pstMsg))
     {
-        sc_logr_info(SC_TASK, "update task(%u) calledcnt(%u) FAIL", pstTCB->ulTaskID, pstTCB->ulCalledCount);
+        DOS_ASSERT(0);
+
+        return;
+    }
+    pstMsg->ulMsgType = SC_MSG_SAVE_TASK_CALLED_COUNT;
+    pstMsg->szData = dos_dmem_alloc(dos_strlen(szSQL) + 1);
+    if (DOS_ADDR_INVALID(pstMsg->szData))
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstMsg->szData);
 
         return;
     }
 
-    sc_logr_debug(SC_TASK, "update task(%u) calledcnt(%u) SUCC", pstTCB->ulTaskID, pstTCB->ulCalledCount);
+    dos_strcpy(pstMsg->szData, szSQL);
+
+    sc_send_msg2db(pstMsg);
 
     return;
 }
