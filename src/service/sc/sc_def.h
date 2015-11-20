@@ -1153,6 +1153,7 @@ U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase);
 
 U32 sc_acd_get_agent_cnt_by_grp(U32 ulGrpID);
 
+U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode);
 
 #ifdef __cplusplus
 }

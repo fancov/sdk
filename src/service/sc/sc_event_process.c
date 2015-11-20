@@ -12082,6 +12082,21 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
                     /* 呼叫失败了 */
                     DOS_ASSERT(0);
 
+                    /* 记录错误码 */
+                    pstSCB->usTerminationCause = sc_ep_transform_errcode_from_sc2sip(CC_ERR_SIP_BAD_GATEWAY);
+
+                    /* 如果是群呼任务，就需要分析呼叫结果 */
+                    if (pstSCB->ulTaskID != 0 && pstSCB->ulTaskID != U32_BUTT)
+                    {
+                        sc_ep_calltask_result(pstSCB, CC_ERR_SIP_BAD_GATEWAY);
+                    }
+
+                    /* 发送话单 */
+                    if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
+                    {
+                        sc_logr_notice(SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
+                    }
+
                     sc_bg_job_hash_delete(pstSCB->usSCBNo);
                     sc_scb_free(pstSCB);
                     pstSCB = NULL;

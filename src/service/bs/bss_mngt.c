@@ -2817,6 +2817,7 @@ VOID bss_generate_record_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
     pstCDR->ulCustomerID = pstSessionLeg->ulCustomerID;
     pstCDR->ulAccountID = pstSessionLeg->ulAccountID;
     pstCDR->ulTaskID = pstSessionLeg->ulTaskID;
+    pstCDR->ulCallStartTime = pstSessionLeg->ulStartTimeStamp;
 
     dos_strncpy(pstCDR->szCaller, pstSessionLeg->szCaller, sizeof(pstCDR->szCaller));
     dos_strncpy(pstCDR->szCallee, pstSessionLeg->szCallee, sizeof(pstCDR->szCallee));
@@ -2826,10 +2827,18 @@ VOID bss_generate_record_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
 
     pstCDR->ulRecordTimeStamp = pstSessionLeg->ulAnswerTimeStamp;
     pstCDR->ulTimeLen = pstSessionLeg->ulByeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
-    if (pstCDR->ulRecordTimeStamp != 0 && 0 == pstCDR->ulTimeLen)
+    if (0 == pstSessionLeg->ulAnswerTimeStamp)
     {
-        /* 时间太短,保护处理 */
-        pstCDR->ulTimeLen = 1;
+        /* 呼叫没有接通，时长为0 */
+        pstCDR->ulTimeLen = 0;
+    }
+    else
+    {
+        if (0 == pstCDR->ulTimeLen)
+        {
+            /* 时间太短,保护处理 */
+            pstCDR->ulTimeLen = 1;
+        }
     }
 
     if (pstCDR->ulRecordTimeStamp == 0)
@@ -2997,6 +3006,7 @@ VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType, B
     dos_strncpy(pstCDR->szRecordFile, pstSessionLeg->szRecordFile, sizeof(pstCDR->szRecordFile));
     pstCDR->szRecordFile[sizeof(pstCDR->szRecordFile) - 1] = '\0';
     pstCDR->ulPDDLen = pstSessionLeg->ulRingTimeStamp - pstSessionLeg->ulStartTimeStamp;
+    pstCDR->ulStartTime = pstSessionLeg->ulStartTimeStamp;
     pstCDR->ulRingTime = pstSessionLeg->ulRingTimeStamp;
     pstCDR->ulAnswerTimeStamp = pstSessionLeg->ulAnswerTimeStamp;
     pstCDR->ulDTMFTime = pstSessionLeg->ulDTMFTimeStamp;
