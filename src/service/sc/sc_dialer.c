@@ -457,14 +457,6 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                 return DOS_FAIL;
             }
         }
-/*
-        if (sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN)
-            && SC_SCB_ACTIVE == pstSCBOther->ucStatus
-            && '\0' != pstSCBOther->szUUID[0])
-        {
-            sc_ep_esl_execute("park", "", pstSCBOther->szUUID);
-        }
-        */
 
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
 
