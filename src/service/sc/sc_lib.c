@@ -365,9 +365,10 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->usHoldCnt = 0;                     /* 被hold的次数 */
     pstSCB->usHoldTotalTime = 0;               /* 被hold的总时长 */
     pstSCB->ulLastHoldTimetamp = 0;            /* 上次hold是的时间戳，解除hold的时候值零 */
-    pstSCB->ucTranforRole = SC_TRANS_ROLE_BUTT;                      /* transfer角色 */
-    pstSCB->usPublishSCB = U16_BUTT;                       /* 发起放SCBNo */
-    pstSCB->ulSiginTimeStamp = 0;              /* 长签开始时间 */
+    pstSCB->ucTranforRole = SC_TRANS_ROLE_BUTT;             /* transfer角色 */
+    pstSCB->usPublishSCB = U16_BUTT;                        /* 发起放SCBNo */
+    pstSCB->ulSiginTimeStamp = 0;                           /* 长签开始时间 */
+    pstSCB->ulMarkStartTimeStamp = 0;                       /* 坐席开始标记的时间 */
 
     pstSCB->bValid = DOS_FALSE;                /* 是否合法 */
     pstSCB->bTraceNo = DOS_FALSE;              /* 是否跟踪 */
