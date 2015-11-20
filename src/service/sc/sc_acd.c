@@ -475,7 +475,7 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
                 break;
         }
 
-        if (ACD_MSG_SUBTYPE_BUTT != ulAction)
+        if (ACD_MSG_SUBTYPE_BUTT != ulAction && !pstSCB->bIsNotChangeAgentState)
         {
             sc_ep_agent_status_update(pstAgentQueueInfo->pstAgentInfo, ulAction);
         }
