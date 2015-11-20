@@ -704,6 +704,7 @@ typedef struct tagSCSCB{
     U32       ulIVRFinishTime;                    /* IVR 结束时间戳 */
     U32       ulInQueueTime;                      /* IVR 进入队列时间 */
     U32       ulSiginTimeStamp;                   /* 坐席长签时，长签开始时间 */
+    U32       ulMarkStartTimeStamp;               /* 坐席开始标记的时间 */
 
     U32       bValid:1;                           /* 是否合法 */
     U32       bTraceNo:1;                         /* 是否跟踪 */

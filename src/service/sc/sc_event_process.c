@@ -6747,18 +6747,15 @@ U32 sc_ep_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
         return DOS_FAIL;
     }
 
-    pszTmp = esl_event_get_header(pstEvent, "variable_unbridge_time");
-    if (DOS_ADDR_VALID(pszTmp)
-        && '\0' != pszTmp[0]
-        && dos_atoull(pszTmp, &uLTmp) == 0)
+    if (pstSCB->ulMarkStartTimeStamp != 0)
     {
         /* 客户标记，ulStartTimeStamp和ulAnswerTimeStamp、 ulRingTimeStamp 就不用获取了，要修改成成这个时间 */
-        pstSCB->pstExtraData->ulStartTimeStamp = uLTmp;
-        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Created-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulStartTimeStamp);
-        pstSCB->pstExtraData->ulAnswerTimeStamp = uLTmp;
-        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulAnswerTimeStamp);
-        pstSCB->pstExtraData->ulRingTimeStamp = uLTmp;
-        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Progress-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulRingTimeStamp);
+        pstSCB->pstExtraData->ulStartTimeStamp = pstSCB->ulMarkStartTimeStamp;
+        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Created-Time=%u(%u)", pstSCB->ulMarkStartTimeStamp, pstSCB->pstExtraData->ulStartTimeStamp);
+        pstSCB->pstExtraData->ulAnswerTimeStamp = pstSCB->ulMarkStartTimeStamp;
+        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%u(%u)", pstSCB->ulMarkStartTimeStamp, pstSCB->pstExtraData->ulAnswerTimeStamp);
+        pstSCB->pstExtraData->ulRingTimeStamp = pstSCB->ulMarkStartTimeStamp;
+        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Progress-Time=%u(%u)", pstSCB->ulMarkStartTimeStamp, pstSCB->pstExtraData->ulRingTimeStamp);
     }
     else
     {
@@ -10225,6 +10222,9 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                     SC_SCB_SET_SERVICE(pstSCB, SC_SERV_RECORDING);
                 }
 
+                /* 坐席弹屏 */
+                sc_ep_call_notify(&stAgentInfo, pstSCB->szCallerNum);
+
                 /* 坐席长签，且坐席绑定的是分机，可以直接 uuid_bridge */
                 if (stAgentInfo.bConnected
                     && stAgentInfo.usSCBNo < SC_MAX_SCB_NUM
@@ -12178,7 +12178,6 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         /* 判断是否是呼叫坐席，更新坐席的状态 */
         if (pstSCB->bIsAgentCall && !sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
         {
-
             sc_acd_agent_update_status(pstSCB, SC_ACD_BUSY, ulSCBNo, pstSCB->szCustomerNum);
         }
 
@@ -12771,8 +12770,9 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                 /* 将 客户端挂断的时间戳记录下来，作为客户标记的开始时间 */
                                 if (DOS_ADDR_VALID(pstSCB->pstExtraData))
                                 {
-                                    dos_snprintf(szCMD, sizeof(szCMD), "unbridge_time=%u", pstSCB->pstExtraData->ulByeTimeStamp);
-                                    sc_ep_esl_execute("set", szCMD, pstSCBOther->szUUID);
+                                    //dos_snprintf(szCMD, sizeof(szCMD), "unbridge_time=%u", pstSCB->pstExtraData->ulByeTimeStamp);
+                                    //sc_ep_esl_execute("set", szCMD, pstSCBOther->szUUID);
+                                    pstSCBOther->ulMarkStartTimeStamp = pstSCB->pstExtraData->ulByeTimeStamp;
                                 }
 
                                 dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_break %s \r\n", pstSCBOther->szUUID);
@@ -12888,15 +12888,19 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 }
             }
 
-            sc_logr_debug(SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
-            /* 发送话单 */
-            if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
+            if (pstSCB->ulMarkStartTimeStamp == 0
+                || pstSCB->pstExtraData->ulByeTimeStamp != pstSCB->pstExtraData->ulStartTimeStamp)
             {
-                sc_logr_debug(SC_ESL, "Send CDR to bs FAIL. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
-            }
-            else
-            {
-                sc_logr_debug(SC_ESL, "Send CDR to bs SUCC. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+                sc_logr_debug(SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+                /* 发送话单 */
+                if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
+                {
+                    sc_logr_debug(SC_ESL, "Send CDR to bs FAIL. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+                }
+                else
+                {
+                    sc_logr_debug(SC_ESL, "Send CDR to bs SUCC. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+                }
             }
 
             sc_logr_debug(SC_ESL, "Start release the SCB. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
