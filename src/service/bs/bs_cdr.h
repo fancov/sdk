@@ -71,6 +71,7 @@ typedef struct
     S8              szAgentNum[BS_MAX_AGENT_NUM_LEN];               /* 坐席号码(工号) */
     S8              szRecordFile[BS_MAX_RECORD_FILE_NAME_LEN];      /* 为空代表未录音 */
     U32             ulPDDLen;                   /* 接续时长:从发起呼叫到收到振铃 */
+    U32             ulStartTime;                /* 开始时间 */
     U32             ulRingTime;                 /* 振铃时长,单位:秒 */
     U32             ulAnswerTimeStamp;          /* 应答时间戳 */
     U32             ulDTMFTime;                 /* 第一个二次拨号时间,单位:秒 */
@@ -137,6 +138,7 @@ typedef struct
     U32             ulAccountID;                /* 账户ID,要求全数字,不超过10位,最高位小于4 */
     U32             ulTaskID;                   /* 任务ID,要求全数字,不超过10位,最高位小于4 */
     U32             ulRuleID;                   /* 使用的计费规则 */
+    U32             ulCallStartTime;            /* 开始时间 */
 
     U32             aulFee[BS_MAX_AGENT_LEVEL];                     /* 每个层级的费用,单位:1/100分,毫 */
     S8              szCaller[BS_MAX_CALL_NUM_LEN];                  /* 主叫号码 */

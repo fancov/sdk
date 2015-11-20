@@ -806,10 +806,10 @@ VOID bsd_save_voice_cdr(BS_INTER_MSG_CDR *pstMsg)
                     "`pdd_len`,`ring_times`,`answer_time`,`ivr_end_times`,`dtmf_times`,`wait_agent_times`,"
                     "`time_len`,`hold_cnt`,`hold_times`,`peer_trunk_id`,`terminate_cause`,`release_part`,"
                     "`payload_type`,`package_loss_rate`,`record_flag`,`agent_level`,`cdr_mark`,`cdr_type`,"
-                    "`peer_ip1`,`peer_ip2`,`peer_ip3`,`peer_ip4`, `account_mark`)"
+                    "`peer_ip1`,`peer_ip2`,`peer_ip3`,`peer_ip4`, `account_mark`, `start_time`)"
                 "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\", \"%s\", \"%s\""
                     ", \"%s\", \"%s\", %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u"
-                    ", %u, %u, %u, %u, %u, %u, %u, %u, %u);"
+                    ", %u, %u, %u, %u, %u, %u, %u, %u, %u, %u);"
                     , pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID
                     , pstCDR->ulTaskID, pstCDR->ulRuleID, pstCDR->ucServType
                     , pstCDR->aulFee[0], pstCDR->aulFee[1], pstCDR->aulFee[2]
@@ -822,7 +822,7 @@ VOID bsd_save_voice_cdr(BS_INTER_MSG_CDR *pstMsg)
                     , pstCDR->ucPayloadType, pstCDR->ucPacketLossRate, pstCDR->ucRecordFlag
                     , pstCDR->ucAgentLevel, pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType
                     , pstCDR->aulPeerIP[0], pstCDR->aulPeerIP[1], pstCDR->aulPeerIP[2], pstCDR->aulPeerIP[3]
-                    , pstCDR->stCDRTag.ulAccountMark);
+                    , pstCDR->stCDRTag.ulAccountMark, pstCDR->ulStartTime);
 
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
@@ -851,9 +851,9 @@ VOID bsd_save_recording_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`id`,`customer_id`,`account_id`,`user_id`,`task_id`,`billing_rule_id`,"
                       "`fee_l1`,`fee_l2`,`fee_l3`,`fee_l4`,`fee_l5`,"
                       "`record_file`,`caller`,`callee`,`CID`,`agent_num`,"
-                      "`start_time`,`time_len`,`agent_level`,`cdr_mark`,`cdr_type`, `account_mark`)"
+                      "`start_time`,`time_len`,`agent_level`,`cdr_mark`,`cdr_type`, `account_mark`, `call_start_time`)"
                     "VALUES(NULL, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, \"%s\", "
-                      "\"%s\", \"%s\", \"%s\", \"%s\", %u, %u, %u, %u, %u, %u);"
+                      "\"%s\", \"%s\", \"%s\", \"%s\", %u, %u, %u, %u, %u, %u, %u);"
                     , pstCDR->ulCustomerID, pstCDR->ulAccountID, pstCDR->ulUserID
                     , pstCDR->ulTaskID, pstCDR->ulRuleID, pstCDR->aulFee[0]
                     , pstCDR->aulFee[1], pstCDR->aulFee[2], pstCDR->aulFee[3]
@@ -861,7 +861,7 @@ VOID bsd_save_recording_cdr(BS_INTER_MSG_CDR *pstMsg)
                     , pstCDR->szCallee, pstCDR->szCID, pstCDR->szAgentNum
                     , pstCDR->ulRecordTimeStamp, pstCDR->ulTimeLen, pstCDR->ucAgentLevel
                     , pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType
-                    , pstCDR->stCDRTag.ulAccountMark);
+                    , pstCDR->stCDRTag.ulAccountMark, pstCDR->ulCallStartTime);
 
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {
