@@ -10274,6 +10274,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 break;
 
             case SC_DID_BIND_TYPE_QUEUE:
+                sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
                 if (sc_ep_call_queue_add(pstSCB, ulBindID, DOS_TRUE) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
