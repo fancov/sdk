@@ -9,7 +9,10 @@ extern "C"{
 
 typedef enum  tagSCMsgType{
     SC_MSG_SAVE_CALL_RESULT,
-
+    SC_MSG_SAVE_AGENT_STATUS,
+    SC_MSG_SAVE_TASK_CALLED_COUNT,
+    SC_MSG_SAVE_SIP_IPADDR,
+    SC_MSG_SAVE_TRUNK_STATUS,
 
 }SC_MSG_TYPE_EN;
 
@@ -18,6 +21,7 @@ typedef struct tagSCDBMsgTag{
     U32     ulSrc;
     U32     ulDst;
     U32     ulRes;
+    void    *szData;            /* 存放 sql 语句，可以为 NULL */
 }SC_DB_MSG_TAG_ST;
 
 typedef struct tagSCDBMsgCallResult{
