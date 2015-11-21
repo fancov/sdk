@@ -7671,135 +7671,6 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
  *      SC_ACD_AGENT_INFO_ST *pstAgentInfo : 坐席信息
  * 返回值: 成功返回DOS_SUCC,失败返回DOS_FAIL
  */
-#if 0
-U32 sc_ep_agent_signin(const SC_ACD_AGENT_INFO_ST *pstAgentInfo)
-{
-    S8            szAPPParam[512] = { 0 };
-    U32           ulErrCode = BS_TERM_NONE;
-    SC_SCB_ST            *pstSCB = NULL;
-
-    if (DOS_ADDR_INVALID(pstAgentInfo))
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    sc_logr_info(SC_ESL, "Make call for agent signin, ID: %u, User ID: %s, Extension: %s, Emp NO: %s"
-                    , pstAgentInfo->ulSiteID
-                    , pstAgentInfo->szUserID
-                    , pstAgentInfo->szExtension
-                    , pstAgentInfo->szEmpNo);
-
-    pstSCB = sc_scb_alloc();
-    if (DOS_ADDR_INVALID(pstSCB))
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_error(SC_ESL, "%s", "Allc SCB FAIL.");
-        ulErrCode = BS_TERM_SCB_LEEK;
-        goto proc_error;
-    }
-
-    pstSCB->ulCustomID = pstAgentInfo->ulCustomerID;
-    pstSCB->ulAgentID = pstAgentInfo->ulSiteID;
-    pstSCB->ucLegRole = SC_CALLEE;
-    pstSCB->bRecord = pstAgentInfo->bRecord;
-    pstSCB->bIsAgentCall = DOS_TRUE;
-
-    switch (pstAgentInfo->ucBindType)
-    {
-        case AGENT_BIND_SIP:
-            dos_strncpy(pstSCB->szCalleeNum, pstAgentInfo->szUserID, sizeof(pstSCB->szCalleeNum));
-            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
-            break;
-        case AGENT_BIND_TELE:
-            dos_strncpy(pstSCB->szCalleeNum, pstAgentInfo->szTelePhone, sizeof(pstSCB->szCalleeNum));
-            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
-            break;
-        case AGENT_BIND_MOBILE:
-            dos_strncpy(pstSCB->szCalleeNum, pstAgentInfo->szMobile, sizeof(pstSCB->szCalleeNum));
-            pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
-            break;
-    }
-
-    dos_strncpy(pstSCB->szCallerNum, pstAgentInfo->szUserID, sizeof(pstSCB->szCallerNum));
-    pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
-
-    dos_strncpy(pstSCB->szSiteNum, pstAgentInfo->szEmpNo, sizeof(pstSCB->szSiteNum));
-    pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
-
-    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_SIGNIN);
-
-    if (AGENT_BIND_SIP != pstAgentInfo->ucBindType)
-    {
-        SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
-        SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
-
-        if (!sc_ep_black_list_check(pstSCB->ulCustomID, pstSCB->szCalleeNum))
-        {
-            DOS_ASSERT(0);
-            sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
-            goto proc_error;
-        }
-
-        if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
-        {
-            sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
-            ulErrCode = BS_TERM_COMM_FAIL;
-            goto proc_error;
-        }
-
-        return DOS_SUCC;
-    }
-
-    SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
-
-    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
-    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
-
-    dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                    , "{scb_number=%u,other_leg_scb=%u,main_service=%d,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s"
-                    , pstSCB->usSCBNo
-                    , pstSCB->usOtherSCBNo
-                    , SC_SERV_AGENT_SIGNIN
-                    , pstSCB->szCalleeNum
-                    , pstSCB->szCalleeNum
-                    , pstAgentInfo->szUserID);
-
-    if (sc_ep_esl_execute("bridge", szAPPParam, pstSCB->szUUID) != DOS_SUCC)
-    {
-        /* @TODO 用户体验优化 */
-        ulErrCode = BS_TERM_COMM_FAIL;
-        goto proc_error;
-    }
-    else
-    {
-        /* @TODO 优化  先放音，再打坐席，坐席接通之后再连接到坐席 */
-        sc_acd_agent_update_status(pstAgentInfo->ulSiteID, SC_ACD_BUSY, pstSCB->usSCBNo);
-
-        sc_ep_esl_execute("sleep", "1000", pstSCB->szUUID);
-        sc_ep_esl_execute("speak", "flite|kal|Is to connect you with an agent, please wait.", pstSCB->szUUID);
-    }
-
-    return DOS_SUCC;
-
-proc_error:
-    if (pstSCB)
-    {
-        DOS_ASSERT(0);
-        sc_scb_free(pstSCB);
-        pstSCB = NULL;
-    }
-
-    /* 连接失败，直接结束吧 要不然可能会逻辑上的死循环 */
-    sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECT_FAIL, pstSCB->ulAgentID);
-
-    return DOS_FAIL;
-}
-
-#endif
-
 U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
     SC_SCB_ST *pstSCB           = NULL;
@@ -8255,8 +8126,6 @@ U32 sc_ep_transfer_publish_release(SC_SCB_ST * pstSCBPublish)
                 sc_ep_esl_execute_cmd(szBuffCMD);
 
                 sc_ep_esl_execute("unhold", NULL, pstSCBSubscription->szUUID);
-                //dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "uuid_hold off %s \r\n", pstSCBSubscription->szUUID);
-                //sc_ep_esl_execute_cmd(szBuffCMD);
             }
             else
             {
@@ -12782,8 +12651,6 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                 /* 将 客户端挂断的时间戳记录下来，作为客户标记的开始时间 */
                                 if (DOS_ADDR_VALID(pstSCB->pstExtraData))
                                 {
-                                    //dos_snprintf(szCMD, sizeof(szCMD), "unbridge_time=%u", pstSCB->pstExtraData->ulByeTimeStamp);
-                                    //sc_ep_esl_execute("set", szCMD, pstSCBOther->szUUID);
                                     pstSCBOther->ulMarkStartTimeStamp = pstSCB->pstExtraData->ulByeTimeStamp;
                                 }
 

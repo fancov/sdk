@@ -449,6 +449,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , szCallString);
         }
         sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
+        sc_ep_esl_execute("set", "continue_on_fail=true", pstSCBOther->szUUID);
         sc_ep_esl_execute("set", "sip_copy_multipart=false", pstSCBOther->szUUID);
         if (sc_ep_esl_execute("bridge", szCMDBuff, pstSCBOther->szUUID) != ESL_SUCCESS)
         {
