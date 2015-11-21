@@ -9619,6 +9619,9 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     }
 
 make_all_succ:
+    /* 坐席弹屏 */
+    sc_ep_call_notify(&stAgentInfo, pstSCB->szCallerNum);
+
     sc_logr_info(SC_ESL, "Call out request SUCC. Agent: %u, Task: %u, Number: %s"
             , ulAgent, ulTaskID, pszNumber ? pszNumber : "");
 
@@ -10140,6 +10143,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 break;
 
             case SC_DID_BIND_TYPE_QUEUE:
+                sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
                 if (sc_ep_call_queue_add(pstSCB, ulBindID, DOS_TRUE) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
@@ -11434,6 +11438,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     U32       ulMainService = U32_BUTT;
     SC_SCB_ST *pstSCBOther  = NULL;
     SC_SCB_ST *pstSCBNew    = NULL;
+    SC_ACD_AGENT_INFO_ST stAgentData;
 
     if (DOS_ADDR_INVALID(pstEvent)
         || DOS_ADDR_INVALID(pstHandle)
@@ -11745,7 +11750,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             if (U32_BUTT != pstSCB->ulCustomID)
             {
                 /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
-                if (sc_acd_update_agent_scbno_by_userid(pstSCB->szCallerNum, pstSCB, pstSCB->szCalleeNum) != DOS_SUCC)
+                if (sc_acd_update_agent_scbno_by_userid(pstSCB->szCallerNum, pstSCB, &stAgentData, pstSCB->szCalleeNum) != DOS_SUCC)
                 {
                     sc_logr_info(SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
                 }
@@ -11756,6 +11761,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCB->szUUID);
                     sc_ep_esl_execute("set", "mark_customer=true", pstSCB->szUUID);
                     pstSCB->bIsAgentCall = DOS_TRUE;
+                    sc_ep_call_notify(&stAgentData, pstSCB->szCalleeNum);
                 }
 
                 if (sc_ep_outgoing_call_proc(pstSCB) != DOS_SUCC)
@@ -11809,7 +11815,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         {
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
             /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
-            if (sc_acd_update_agent_scbno_by_userid(pszCaller, pstSCB, NULL) != DOS_SUCC)
+            if (sc_acd_update_agent_scbno_by_userid(pszCaller, pstSCB, &stAgentData, NULL) != DOS_SUCC)
             {
                 sc_logr_debug(SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pszCaller, pstSCB->usSCBNo);
             }

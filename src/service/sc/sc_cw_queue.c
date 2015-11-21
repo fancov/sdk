@@ -350,6 +350,10 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_break %s all\r\n", pstSCB->szUUID);
                 sc_ep_esl_execute_cmd(szAPPParam);
 
+                /* ·Å»ØÁåÒô */
+                sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
+                sc_ep_esl_execute("set", "transfer_ringback=tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
+
                 if (sc_ep_call_agent_by_grpid(pstSCB, pstCWQNode->ulAgentGrpID) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
