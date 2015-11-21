@@ -9525,6 +9525,8 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
 
         SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
         SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+        SC_SCB_SET_SERVICE(pstSCB, SC_SERV_PREVIEW_DIALING);
+
         if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
         {
             DOS_ASSERT(0);
