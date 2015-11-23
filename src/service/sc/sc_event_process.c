@@ -8587,8 +8587,9 @@ U32 sc_ep_call_transfer(SC_SCB_ST * pstSCB, U32 ulNumType, S8 *pszCallee, BOOL b
     /* HOLD 住第一方，通过bridge，创建第三方 */
     dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "hangup_after_bridge=false");
     sc_ep_esl_execute("set", szBuffCMD, pstSCB1->szUUID);
-    dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "bgapi uuid_hold %s \r\n", pstSCB1->szUUID);
-    sc_ep_esl_execute_cmd(szBuffCMD);
+    //dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "bgapi uuid_hold %s \r\n", pstSCB1->szUUID);
+    //sc_ep_esl_execute_cmd(szBuffCMD);
+    sc_ep_esl_execute("soft_hold", "{0 moh_b}", pstSCB->szUUID);
 
     if (pstSCBNew->ulCustomID == sc_ep_get_custom_by_sip_userid(pszCallee)
         || sc_ep_check_extension(pszCallee, pstSCBNew->ulCustomID))
@@ -9525,6 +9526,8 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
 
         SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
         SC_SCB_SET_SERVICE(pstSCB, SC_SERV_EXTERNAL_CALL);
+        SC_SCB_SET_SERVICE(pstSCB, SC_SERV_PREVIEW_DIALING);
+
         if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
         {
             DOS_ASSERT(0);
@@ -10862,6 +10865,11 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
             /* 不存在上一个客户，放音提示 */
             goto end;
         }
+
+        /* 将主叫号码修改为被修改的客户的号码 */
+        dos_strcpy(pstSCB->szCallerNum, stAgentInfo.szLastCustomerNum);
+        dos_strcpy(pstSCB->szSiteNum, stAgentInfo.szEmpNo);
+        pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
 
         if (1 == dos_sscanf(pszDealNum+dos_strlen(SC_POTS_MARK_CUSTOMER), "%d", &ulKey) && ulKey <= 9)
         {
@@ -12862,6 +12870,7 @@ U32 sc_ep_channel_hold(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST
             {
                 pstSCB->ulLastHoldTimetamp = time(0);
                 pstSCB->usHoldCnt++;
+                pstSCB->bIsInHoldStatus = DOS_TRUE;
             }
         }
         else if (dos_strnicmp(pszChannelStat, "UNHELD", dos_strlen("UNHELD")) == 0)
@@ -12870,6 +12879,7 @@ U32 sc_ep_channel_hold(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST
             {
                 pstSCB->usHoldTotalTime += (time(0) - pstSCB->ulLastHoldTimetamp);
                 pstSCB->ulLastHoldTimetamp = 0;
+                pstSCB->bIsInHoldStatus = DOS_FALSE;
             }
         }
     }

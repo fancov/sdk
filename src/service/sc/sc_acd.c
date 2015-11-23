@@ -539,6 +539,12 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
         pstSCB->bIsInMarkState = DOS_TRUE;
         pstSCB->bIsMarkCustomer = DOS_FALSE;
 
+        if (pstSCB->bIsInHoldStatus)
+        {
+            /* 如果是在hold状态，需要先解除hold */
+            sc_ep_esl_execute("unhold", NULL, pstSCB->szUUID);
+        }
+
         sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", ulSiteID, ulProcesingTime);
         sc_ep_esl_execute("set", "playback_terminators=*", pstSCB->szUUID);
         sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
