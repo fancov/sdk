@@ -7298,16 +7298,23 @@ loop_search:
                 , usCallOutGroup
                 , pstRouetEntry->usCallOutGroup);
 
-        ulStartTime = pstRouetEntry->ucHourBegin * 60 + pstRouetEntry->ucMinuteBegin;
-        ulEndTime = pstRouetEntry->ucHourEnd* 60 + pstRouetEntry->ucMinuteEnd;
-        ulCurrentTime = pstTime->tm_hour *60 + pstTime->tm_min;
-
-        if (ulCurrentTime < ulStartTime || ulCurrentTime > ulEndTime)
+        /* 如果开始和结束时间都为 00:00, 则表示全天有效，不用判断时间了 */
+        if (pstRouetEntry->ucHourBegin
+            || pstRouetEntry->ucMinuteBegin
+            || pstRouetEntry->ucHourEnd
+            || pstRouetEntry->ucMinuteEnd)
         {
-            sc_logr_info(SC_ESL, "Search Route(FAIL): Time not match: Peroid:%u-:%u, Current:%u"
-                    , ulStartTime, ulEndTime, ulCurrentTime);
+            ulStartTime = pstRouetEntry->ucHourBegin * 60 + pstRouetEntry->ucMinuteBegin;
+            ulEndTime = pstRouetEntry->ucHourEnd* 60 + pstRouetEntry->ucMinuteEnd;
+            ulCurrentTime = pstTime->tm_hour *60 + pstTime->tm_min;
 
-            continue;
+            if (ulCurrentTime < ulStartTime || ulCurrentTime > ulEndTime)
+            {
+                sc_logr_info(SC_ESL, "Search Route(FAIL): Time not match: Peroid:%u-:%u, Current:%u"
+                        , ulStartTime, ulEndTime, ulCurrentTime);
+
+                continue;
+            }
         }
 
         if ('\0' == pstRouetEntry->szCalleePrefix[0])
