@@ -248,7 +248,7 @@ VOID log_db_write_rlog(time_t _stTime, const S8 *_pszType, const S8 *_pszLevel, 
 
     /* 野割方象 */
     ulLen = LOG_DB_MAX_BUFF_LEN - sizeof(DLL_NODE_S);
-    dos_snprintf(pszQuery, ulLen, "INSERT INTO %s VALUES(NULL, %u, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
+    dos_snprintf(pszQuery, ulLen, "INSERT INTO %s(`id`, `ctime`, `level`, `type`, `status`, `process`, `msg`) VALUES(NULL, %u, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
                 , "tbl_log"
                 , _stTime
                 , _pszLevel
@@ -309,7 +309,7 @@ VOID log_db_write_olog(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
 
     /* 野割方象 */
     ulLen = LOG_DB_MAX_BUFF_LEN - sizeof(DLL_NODE_S);
-    dos_snprintf(pszQuery, ulLen, "INSERT INTO %s VALUES(NULL, %u, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
+    dos_snprintf(pszQuery, ulLen, "INSERT INTO %s(`id`, `ctime`, `opterator`, `module`, `result`, `msg`) VALUES(NULL, %u, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
                     , "tbl_olog"
                     , ulTime
                     , _pszOpterator
