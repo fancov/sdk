@@ -680,7 +680,7 @@ U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB)
         dos_dmem_free(pstAuthMsg);
         pstAuthMsg = NULL;
 
-        sc_logr_notice(SC_BS, "%s", "Send Auth msg FAIL.");
+        sc_logr_error(SC_BS, "%s", "Send Auth msg FAIL.");
         return DOS_FAIL;
     }
 
@@ -691,7 +691,7 @@ U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB)
     pstAuthMsg = NULL;
 #endif
 
-    sc_logr_notice(SC_BS, "%s", "Send Auth msg SUCC.");
+    sc_logr_info(SC_BS, "%s", "Send Auth msg SUCC.");
 
     return DOS_SUCC;
 }

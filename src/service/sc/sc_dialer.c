@@ -170,6 +170,8 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
 
     sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
 
+    pstSCB->bIsTTCall = DOS_TRUE;
+
     if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
     {
         DOS_ASSERT(0);

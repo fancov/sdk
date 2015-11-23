@@ -11502,6 +11502,12 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         goto proc_finished;
     }
 
+    if (pstSCB->bIsTTCall)
+    {
+        sc_ep_esl_execute("unset", "sip_h_EixTTcall", pszUUID);
+        sc_ep_esl_execute("unset", "sip_h_Mime-version", pszUUID);
+    }
+
     /* 判断是否是 新业务 */
     if (pstSCB->szCalleeNum[0] == '*')
     {

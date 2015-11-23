@@ -729,7 +729,8 @@ typedef struct tagSCSCB{
     U32       bIsHasKeyCallTask:1;                /* 群呼任务是否按键了 */
     U32       bIsFristSCB:1;                      /* 是否作为主leg */
     U32       bIsInHoldStatus:1;                  /* 是否在hold状态 */
-    U32       ulRes:13;
+    U32       bIsTTCall:1;                        /* 是否作为主leg */
+    U32       ulRes:12;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
