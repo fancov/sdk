@@ -11173,11 +11173,11 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
     }
     else if (bIsSecondaryDialing
             && pszDealNum[0] == '*'
-            && pszDealNum[2] == '#'
+            && (pszDealNum[2] == '#' || pszDealNum[2] == '*')
             && 1 == dos_sscanf(pszDealNum+1, "%u", &ulKey)
             && ulKey <= 9)
     {
-        /* 判断是否是客户标记 *D# */
+        /* 判断是否是客户标记 *D# / *D* */
         pstSCB->szCustomerMark[0] = '\0';
         dos_strncpy(pstSCB->szCustomerMark, pszDealNum, SC_CUSTOMER_MARK_LENGTH-1);
         pstSCB->szCustomerMark[SC_CUSTOMER_MARK_LENGTH-1] = '\0';
@@ -13017,6 +13017,20 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
             sc_ep_pots_pro(pstSCB, pstEvent, DOS_TRUE);
             /* 清空缓存 */
             pstSCB->szDialNum[0] = '\0';
+        }
+        else if (pszDTMFDigit[0] == '*' && dos_strlen(pstSCB->szDialNum) > 1)
+        {
+            /* 判断接收到 * 号，是否需要解析 */
+            if (dos_strcmp(pstSCB->szDialNum, SC_POTS_BLIND_TRANSFER)
+                && dos_strcmp(pstSCB->szDialNum, SC_POTS_ATTENDED_TRANSFER)
+                && dos_strcmp(pstSCB->szDialNum, SC_POTS_MARK_CUSTOMER))
+            {
+                /* 解析 */
+                sc_logr_debug(SC_ESL, "Secondary dialing. caller : %s, DialNum : %s", pstSCB->szCallerNum, pstSCB->szDialNum);
+                sc_ep_pots_pro(pstSCB, pstEvent, DOS_TRUE);
+                /* 清空缓存 */
+                pstSCB->szDialNum[0] = '\0';
+            }
         }
     }
 
