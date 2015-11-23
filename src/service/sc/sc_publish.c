@@ -120,7 +120,7 @@ static U32 sc_pub_publicsh(CURL **pstCurlHandle, S8 *pszURL, S8 *pszData)
     }
     else
     {
-        sc_logr_notice(SC_PUB, "CURL post SUCC.URL:%s, Data:%s.", pszURL, pszData);
+        sc_logr_info(SC_PUB, "CURL post SUCC.URL:%s, Data:%s.", pszURL, pszData);
 
         return DOS_SUCC;
     }
@@ -373,7 +373,7 @@ U32 sc_pub_send_msg(S8 *pszURL, S8 *pszData, U32 ulType, VOID *pstData)
     pthread_cond_signal(&g_stPubTaskList[0].condPublishCurl);
     pthread_mutex_unlock(&g_stPubTaskList[0].mutexPublishCurl);
 
-    sc_logr_notice(SC_PUB, "Publish request send succ. URL: %s, Data: %s", pszURL, DOS_ADDR_VALID(pszData) ? pszData : "");
+    sc_logr_debug(SC_PUB, "Publish request send succ. URL: %s, Data: %s", pszURL, DOS_ADDR_VALID(pszData) ? pszData : "");
 
     return DOS_SUCC;
 proc_fail:

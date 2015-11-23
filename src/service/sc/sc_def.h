@@ -724,7 +724,8 @@ typedef struct tagSCSCB{
     U32       bIsNotSrvAdapter:1;                 /* 转接时的特殊处理，前期已经适配好 */
     U32       bIsHasKeyCallTask:1;                /* 群呼任务是否按键了 */
     U32       bIsFristSCB:1;                      /* 是否作为主leg */
-    U32       ulRes:14;
+    U32       bIsTTCall:1;                      /* 是否作为主leg */
+    U32       ulRes:13;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 

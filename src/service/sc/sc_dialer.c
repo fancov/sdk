@@ -170,6 +170,8 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
 
     sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
 
+    pstSCB->bIsTTCall = DOS_TRUE;
+
     if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
     {
         DOS_ASSERT(0);
@@ -429,7 +431,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                 && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
         {
             dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "{instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,sip_copy_multipart=false,sip_h_EixTTcall=FALSE}%s"
+                        , "{instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,sip_copy_multipart=false}%s"
                         , pstSCB->usSCBNo
                         , pstSCB->usOtherSCBNo
                         , ulMainService
@@ -440,7 +442,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         else
         {
             dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "{instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,park_after_bridge=true,begin_to_transfer=true,sip_copy_multipart=false,sip_h_EixTTcall=FALSE}%s"
+                        , "{instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,park_after_bridge=true,begin_to_transfer=true,sip_copy_multipart=false}%s"
                         , pstSCB->usSCBNo
                         , pstSCB->usOtherSCBNo
                         , ulMainService
