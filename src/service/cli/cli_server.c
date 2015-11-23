@@ -87,6 +87,23 @@ S32 cli_enter_log_mode(U32 ulIndex, S32 argc, S8 **argv)
 
 /**
  * 特殊命令处理函数
+ * 函数：S32 cli_cmd_exit(U32 ulIndex, S32 argc, S8 **argv)
+ * 功能：telnet客户端进入log打印模式命令处理函数
+ * 参数：
+ *      U32 ulIndex：telnet客户端的编号
+ *      S32 argc：参数个数
+ *      S8 **argv：参数列表
+ * 返回值：成功返回0，失败返回－1
+ */
+S32 cli_cmd_exit(U32 ulIndex, S32 argc, S8 **argv)
+{
+    telnet_set_exit(ulIndex);
+    return 0;
+}
+
+
+/**
+ * 特殊命令处理函数
  * 函数：S32 cli_exit_log_mode(U32 ulIndex, S32 argc, S8 **argv)
  * 功能：telnet客户端退出log打印模式命令处理函数
  * 参数：

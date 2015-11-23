@@ -115,6 +115,7 @@ enum TELNET_RECV_RESULT{
 typedef struct tagTelnetClinetInfo{
     U32    ulIndex;     /* 和其他模块通讯使用的编号 */
 
+    U32    ulWaitingExit; /* 是否在等待退出 */
     U32    ulValid;      /* 是否启用 */
     S32    lSocket;     /* 客户端socket */
     FILE   *pFDInput;   /* 输入描述符 */
@@ -247,6 +248,40 @@ S32 telnet_set_mode(U32 ulIndex, U32 ulMode)
     pstTelnetClient->ulMode = ulMode;
     return 0;
 }
+
+/**
+ * 函数：S32 telnet_set_exit(U32 ulIndex, U32 ulMode)
+ * 功能：
+ *      1.设置index所标示的客户端当前模式
+ *      2.提供给外部模块是有
+ * 参数
+ *      U32 ulIndex：客户端ID
+ *      U32 ulMode：模式
+ * 返回值：成功返回0，失败返回－1
+ */
+S32 telnet_set_exit(U32 ulIndex)
+{
+    TELNET_CLIENT_INFO_ST *pstTelnetClient;
+
+    if (ulIndex >= MAX_CLIENT_NUMBER)
+    {
+        logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    pstTelnetClient = g_pstTelnetClientList[ulIndex];
+    if (!pstTelnetClient->ulValid)
+    {
+        logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    pstTelnetClient->ulWaitingExit = DOS_TRUE;
+    return 0;
+}
+
 
 /**
  * 函数：S32 telnet_out_string(U32 ulIndex, const S8 *pszBuffer)
@@ -1487,6 +1522,8 @@ VOID *telnetd_client_task(VOID *ptr)
 
     dos_printf("%s", "Telnet negotiate finished.");
 
+    pstClientInfo->ulWaitingExit = DOS_FALSE;
+
 #if INCLUDE_DEBUG_CLI_SERVER
     fprintf(pstClientInfo->pFDOutput, "Welcome Control Panel!");
     telnetd_client_send_new_line(pstClientInfo->pFDOutput, 1);
@@ -1580,6 +1617,10 @@ VOID *telnetd_client_task(VOID *ptr)
         /* 分析并执行命令 */
         cli_server_cmd_analyse(pstClientInfo->ulIndex, pstClientInfo->ulMode, szRecvBuff, lLen);
 
+        if (pstClientInfo->ulWaitingExit)
+        {
+            break;
+        }
     }
 #else
     while (!pstClientInfo->bIsExit)
@@ -1889,6 +1930,7 @@ S32 telnetd_init()
         g_pstTelnetClientList[i]->pFDInput = NULL;
         g_pstTelnetClientList[i]->pFDOutput = NULL;
         g_pstTelnetClientList[i]->ulMode = CLIENT_LEVEL_CONFIG;
+        g_pstTelnetClientList[i]->ulWaitingExit = DOS_TRUE;
 
 #if INCLUDE_TELNET_PAGE
         DLL_Init(&g_pstTelnetClientList[i]->stCmdList);
