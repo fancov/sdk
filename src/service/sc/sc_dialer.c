@@ -274,12 +274,26 @@ go_on:
     pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
     if (DOS_ADDR_VALID(pstOtherSCB))
     {
-        dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "{main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,mark_customer=true,sip_copy_multipart=false}user/%s"
+        if (!sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
+            && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
+        {
+            dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "{main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,mark_customer=true,sip_copy_multipart=false}user/%s"
                         , ulMainService
                         , pstSCB->usSCBNo
                         , pstSCB->szCallerNum
                         , pstSCB->szCallerNum
                         , pstSCB->szCalleeNum);
+        }
+        else
+        {
+            dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "{main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,mark_customer=true,continue_on_fail=true,sip_copy_multipart=false}user/%s"
+                        , ulMainService
+                        , pstSCB->usSCBNo
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCalleeNum);
+        }
+
         sc_ep_esl_execute("set", "sip_copy_multipart=false", pstOtherSCB->szUUID);
         sc_ep_esl_execute("bridge", szCMDBuff, pstOtherSCB->szUUID);
 
@@ -440,7 +454,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         else
         {
             dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "{instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,park_after_bridge=true,begin_to_transfer=true,sip_copy_multipart=false}%s"
+                        , "{instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,park_after_bridge=true,begin_to_transfer=true,continue_on_fail=true,sip_copy_multipart=false}%s"
                         , pstSCB->usSCBNo
                         , pstSCB->usOtherSCBNo
                         , ulMainService

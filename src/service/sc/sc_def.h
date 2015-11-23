@@ -710,21 +710,26 @@ typedef struct tagSCSCB{
     U32       bTraceNo:1;                         /* 是否跟踪 */
     U32       bBanlanceWarning:1;                 /* 是否余额告警 */
     U32       bNeedConnSite:1;                    /* 接通后是否需要接通坐席 */
+
     U32       bWaitingOtherRelase:1;              /* 是否在等待另外一跳退释放 */
     U32       bRecord:1;                          /* 是否录音 */
     U32       bIsAgentCall:1;                     /* 是否在呼叫坐席 */
     U32       bIsInQueue:1;                       /* 是否已经入队列了 */
+
     U32       bChannelCreated:1;                  /* FREESWITCH 是否为该同呼叫创建了通道 */
     U32       bIsAgentCallOtherLeg:1;             /* 另一条腿是否要呼叫坐席 */
     U32       bTerminationFlag:1;                 /* 业务终止标志 */
     U32       bIsPassThrough:1;                   /* 呼叫坐席时，主叫号码是否透传 */
+
     U32       bIsMarkCustomer:1;                  /* 坐席是否已经标记客户 */
     U32       bIsNotChangeAgentState:1;           /* 是否不更新坐席的状态 */
     U32       bIsInMarkState:1;                   /* 处于标记客户阶段 */
     U32       bIsNotSrvAdapter:1;                 /* 转接时的特殊处理，前期已经适配好 */
+
     U32       bIsHasKeyCallTask:1;                /* 群呼任务是否按键了 */
     U32       bIsFristSCB:1;                      /* 是否作为主leg */
-    U32       ulRes:14;
+    U32       bIsInHoldStatus:1;                  /* 是否在hold状态 */
+    U32       ulRes:13;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
