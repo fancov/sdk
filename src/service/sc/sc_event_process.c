@@ -7298,16 +7298,23 @@ loop_search:
                 , usCallOutGroup
                 , pstRouetEntry->usCallOutGroup);
 
-        ulStartTime = pstRouetEntry->ucHourBegin * 60 + pstRouetEntry->ucMinuteBegin;
-        ulEndTime = pstRouetEntry->ucHourEnd* 60 + pstRouetEntry->ucMinuteEnd;
-        ulCurrentTime = pstTime->tm_hour *60 + pstTime->tm_min;
-
-        if (ulCurrentTime < ulStartTime || ulCurrentTime > ulEndTime)
+        /* 如果开始和结束时间都为 00:00, 则表示全天有效，不用判断时间了 */
+        if (pstRouetEntry->ucHourBegin
+            || pstRouetEntry->ucMinuteBegin
+            || pstRouetEntry->ucHourEnd
+            || pstRouetEntry->ucMinuteEnd)
         {
-            sc_logr_info(SC_ESL, "Search Route(FAIL): Time not match: Peroid:%u-:%u, Current:%u"
-                    , ulStartTime, ulEndTime, ulCurrentTime);
+            ulStartTime = pstRouetEntry->ucHourBegin * 60 + pstRouetEntry->ucMinuteBegin;
+            ulEndTime = pstRouetEntry->ucHourEnd* 60 + pstRouetEntry->ucMinuteEnd;
+            ulCurrentTime = pstTime->tm_hour *60 + pstTime->tm_min;
 
-            continue;
+            if (ulCurrentTime < ulStartTime || ulCurrentTime > ulEndTime)
+            {
+                sc_logr_info(SC_ESL, "Search Route(FAIL): Time not match: Peroid:%u-:%u, Current:%u"
+                        , ulStartTime, ulEndTime, ulCurrentTime);
+
+                continue;
+            }
         }
 
         if ('\0' == pstRouetEntry->szCalleePrefix[0])
@@ -10832,7 +10839,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         return DOS_FAIL;
     }
 
-    if (dos_strncmp(pszDealNum, SC_POTS_HANGUP_CUSTOMER, dos_strlen(SC_POTS_HANGUP_CUSTOMER)) == 0
+    if (dos_strcmp(pszDealNum, SC_POTS_HANGUP_CUSTOMER) == 0
         && bIsSecondaryDialing)
     {
         /* 二次拨号时，挂断客户的电话 */
@@ -10885,7 +10892,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
 
         ulRet = DOS_SUCC;
     }
-    else if (dos_strncmp(pszDealNum, SC_POTS_BALANCE, dos_strlen(SC_POTS_BALANCE)) == 0
+    else if (dos_strcmp(pszDealNum, SC_POTS_BALANCE) == 0
         && !bIsSecondaryDialing)
     {
         /* 查询余额 只支持话机操作 */
@@ -10901,7 +10908,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         ulNeedTip = DOS_FALSE;
         bIsHangUp = DOS_FALSE;
     }
-    else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_ONLINE, dos_strlen(SC_POTS_AGENT_ONLINE)) == 0
+    else if (dos_strcmp(pszDealNum, SC_POTS_AGENT_ONLINE) == 0
         && !bIsSecondaryDialing)
     {
         /* 坐席登陆web页面 只支持话机操作 */
@@ -10918,7 +10925,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
 
         ulRet = DOS_SUCC;
     }
-    else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_OFFLINE, dos_strlen(SC_POTS_AGENT_OFFLINE)) == 0)
+    else if (dos_strcmp(pszDealNum, SC_POTS_AGENT_OFFLINE) == 0)
     {
         /* 坐席从web页面下线 */
         if (sc_acd_get_agent_by_userid(&stAgentInfo, pstSCB->szCallerNum) != DOS_SUCC)
@@ -10933,7 +10940,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
 
         ulRet = DOS_SUCC;
     }
-    else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_EN_QUEUE, dos_strlen(SC_POTS_AGENT_EN_QUEUE)) == 0)
+    else if (dos_strcmp(pszDealNum, SC_POTS_AGENT_EN_QUEUE) == 0)
     {
         /* 坐席置闲 */
         if (bIsSecondaryDialing)
@@ -10965,7 +10972,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
             bIsHangUp = DOS_FALSE;
         }
     }
-    else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_DN_QUEUE, dos_strlen(SC_POTS_AGENT_DN_QUEUE)) == 0)
+    else if (dos_strcmp(pszDealNum, SC_POTS_AGENT_DN_QUEUE) == 0)
     {
         /* 坐席置忙 */
         if (bIsSecondaryDialing)
@@ -10997,7 +11004,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
             bIsHangUp = DOS_FALSE;
         }
     }
-    else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_SIGNIN, dos_strlen(SC_POTS_AGENT_SIGNIN)) == 0
+    else if (dos_strcmp(pszDealNum, SC_POTS_AGENT_SIGNIN) == 0
         && !bIsSecondaryDialing)
     {
         /* 坐席长签 只支持话机操作 */
@@ -11027,7 +11034,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
 
         bIsHangUp = DOS_FALSE;
     }
-    else if (dos_strncmp(pszDealNum, SC_POTS_AGENT_SIGNOUT, dos_strlen(SC_POTS_AGENT_SIGNOUT)) == 0)
+    else if (dos_strcmp(pszDealNum, SC_POTS_AGENT_SIGNOUT) == 0)
     {
         /* 坐席退出长签 */
         if (bIsSecondaryDialing)
@@ -11173,7 +11180,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
     }
     else if (bIsSecondaryDialing
             && pszDealNum[0] == '*'
-            && (pszDealNum[2] == '#' || pszDealNum[2] == '*')
+            && pszDealNum[2] == '\0'
             && 1 == dos_sscanf(pszDealNum+1, "%u", &ulKey)
             && ulKey <= 9)
     {
@@ -13015,6 +13022,8 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         {
             /* # 为结束符，收到后，就应该去解析, 特别的，如果第一个字符为#,不需要去解析 */
             sc_logr_debug(SC_ESL, "Secondary dialing. caller : %s, DialNum : %s", pstSCB->szCallerNum, pstSCB->szDialNum);
+            /* 不保存最后一个 # */
+            pstSCB->szDialNum[dos_strlen(pstSCB->szDialNum) - 1] = '\0';
             sc_ep_pots_pro(pstSCB, pstEvent, DOS_TRUE);
             /* 清空缓存 */
             pstSCB->szDialNum[0] = '\0';
@@ -13028,6 +13037,8 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
             {
                 /* 解析 */
                 sc_logr_debug(SC_ESL, "Secondary dialing. caller : %s, DialNum : %s", pstSCB->szCallerNum, pstSCB->szDialNum);
+                /* 不保存最后一个 * */
+                pstSCB->szDialNum[dos_strlen(pstSCB->szDialNum) - 1] = '\0';
                 sc_ep_pots_pro(pstSCB, pstEvent, DOS_TRUE);
                 /* 清空缓存 */
                 pstSCB->szDialNum[0] = '\0';
