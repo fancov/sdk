@@ -495,6 +495,34 @@ S32 config_hb_get_treatment()
 }
 
 /**
+ * 函数：S32 config_hb_get_papi_port()
+ * 功能：获取心跳超时的处理方式
+ * 参数：
+ * 返回值：成功返回处理方式编号.失败返回－1
+ */
+S32 config_hb_get_papi_port()
+{
+    S8 *pszValue;
+    S8 szBuff[32];
+    S32 lInterval;
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/papi", "port", szBuff, sizeof(szBuff));
+    if (!pszValue)
+    {
+        return -1;
+    }
+
+    lInterval = atoi(pszValue);
+    if (lInterval < 0)
+    {
+        return -1;
+    }
+
+    return lInterval;
+}
+
+
+/**
  * 函数：U32 config_init()
  * 功能： 初始化配置模块
  * 参数：
