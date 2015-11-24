@@ -344,6 +344,7 @@ U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     S8 szJson[256]        = { 0, };
     S8 szURL[256]         = { 0, };
     S8 szChannel[128]     = { 0, };
+    S32 ulPAPIPort = -1;
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -358,8 +359,15 @@ U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
-
+    ulPAPIPort = config_hb_get_papi_port();
+    if (ulPAPIPort <= 0)
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+    }
+    else
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/pub?id=%s", ulPAPIPort, szChannel);
+    }
 
     dos_snprintf(szJson, sizeof(szJson)
                     , "{\\\"type\\\":\\\"%u\\\",\\\"body\\\":{\\\"type\\\":\\\"%d\\\",\\\"work_status\\\":\\\"%u\\\",\\\"is_signin\\\":\\\"%u\\\"}}"
@@ -377,6 +385,7 @@ U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
     S8 szURL[256]         = { 0, };
     S8 szData[512]        = { 0, };
     S8 szChannel[128]     = { 0, };
+    S32 ulPAPIPort        = -1;
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -391,7 +400,15 @@ U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+    ulPAPIPort = config_hb_get_papi_port();
+    if (ulPAPIPort <= 0)
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+    }
+    else
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/pub?id=%s", ulPAPIPort, szChannel);
+    }
 
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
@@ -413,6 +430,7 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
     S8 szURL[256]      = { 0, };
     S8 szData[512]     = { 0, };
     S8 szChannel[128]  = { 0, };
+    S32 ulPAPIPort     = -1;
 
     if (DOS_ADDR_INVALID(pstAgentInfo)
         || DOS_ADDR_INVALID(szCaller))
@@ -428,7 +446,15 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+    ulPAPIPort = config_hb_get_papi_port();
+    if (ulPAPIPort <= 0)
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+    }
+    else
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/pub?id=%s", ulPAPIPort, szChannel);
+    }
 
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */

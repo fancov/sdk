@@ -82,6 +82,7 @@ U32 sc_send_sip_update_req(U32 ulID, U32 ulAction)
     S8 szURL[256]      = { 0, };
     S8 szData[512]     = { 0, };
     SC_PUB_FS_DATA_ST *pstData;
+    S32 ulPAPIPort = -1;
 
     pstData = dos_dmem_alloc(sizeof(SC_PUB_FS_DATA_ST));
     if (DOS_ADDR_INVALID(pstData))
@@ -91,7 +92,15 @@ U32 sc_send_sip_update_req(U32 ulID, U32 ulAction)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/papi");
+    ulPAPIPort = config_hb_get_papi_port();
+    if (ulPAPIPort <= 0)
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost/index.php/papi");
+    }
+    else
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/index.php/papi", ulPAPIPort);
+    }
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
     dos_snprintf(szData, sizeof(szData), "data={\"type\":\"%u\", \"data\":{\"id\":\"%u\", \"action\":\"%s\"}}"
@@ -121,6 +130,7 @@ U32 sc_send_gateway_update_req(U32 ulID, U32 ulAction)
     S8 szURL[256]      = { 0, };
     S8 szData[512]     = { 0, };
     SC_PUB_FS_DATA_ST *pstData;
+    S32 ulPAPIPort = -1;
 
     pstData = dos_dmem_alloc(sizeof(SC_PUB_FS_DATA_ST));
     if (DOS_ADDR_INVALID(pstData))
@@ -130,7 +140,15 @@ U32 sc_send_gateway_update_req(U32 ulID, U32 ulAction)
         return DOS_FAIL;
     }
 
-    dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/papi");
+    ulPAPIPort = config_hb_get_papi_port();
+    if (ulPAPIPort <= 0)
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost/index.php/papi");
+    }
+    else
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/index.php/papi", ulPAPIPort);
+    }
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
     dos_snprintf(szData, sizeof(szData), "data={\"type\":\"%u\", \"data\":{\"id\":\"%u\", \"action\":\"%s\"}}"
@@ -160,8 +178,17 @@ U32 sc_send_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCal
 {
     S8 szURL[256]      = { 0, };
     S8 szData[512]     = { 0, };
+    S32 ulPAPIPort     = -1;
 
-    dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/papi");
+    ulPAPIPort = config_hb_get_papi_port();
+    if (ulPAPIPort <= 0)
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost/index.php/papi");
+    }
+    else
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/index.php/papi", ulPAPIPort);
+    }
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
     dos_snprintf(szData, sizeof(szData), "data={\"type\":\"%u\", \"data\":{\"customer_id\":\"%u\", \"agent_id\":\"%u\", \"marker\":\"%d\", \"number\":\"%s\"}}"

@@ -44,6 +44,14 @@ U32 config_hb_get_max_fail_cnt();
 S32 config_hb_get_treatment();
 
 /**
+ * 函数：S32 config_hb_get_papi_port()
+ * 功能：获取papi端口
+ * 参数：
+ * 返回值：成功返回处理方式编号.失败返回－1
+ */
+S32 config_hb_get_papi_port();
+
+/**
  * 函数：S8* config_get_service_root(S8 *pszBuff, U32 ulLen)
  * 功能：获取服务程序的根目录
  * 参数：
