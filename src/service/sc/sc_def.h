@@ -143,7 +143,8 @@ extern BOOL                 g_blSCInitOK;
 #define SC_POTS_AGENT_SIGNOUT           "*88"        /* 坐席退出长签 */
 #define SC_POTS_BLIND_TRANSFER          "*70*"       /* 盲转 */
 #define SC_POTS_ATTENDED_TRANSFER       "*71*"       /* 协商转 */
-#define SC_POTS_HANGUP_CUSTOMER         "##"         /* 坐席挂断客户端电话 */
+#define SC_POTS_HANGUP_CUSTOMER1        "##"         /* 坐席挂断客户端电话 */
+#define SC_POTS_HANGUP_CUSTOMER2        "**"         /* 坐席挂断客户端电话 */
 #define SC_POTS_MARK_CUSTOMER           "*66*"       /* 坐席标记上一个客户 */
 
 /* 定义运营商的ID */

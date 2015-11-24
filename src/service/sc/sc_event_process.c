@@ -11037,7 +11037,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         return DOS_FAIL;
     }
 
-    if (dos_strcmp(pszDealNum, SC_POTS_HANGUP_CUSTOMER) == 0
+    if ((dos_strcmp(pszDealNum, SC_POTS_HANGUP_CUSTOMER1) == 0 || dos_strcmp(pszDealNum, SC_POTS_HANGUP_CUSTOMER2) == 0)
         && bIsSecondaryDialing)
     {
         /* 二次拨号时，挂断客户的电话 */
@@ -13244,9 +13244,10 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
             dos_snprintf(pstSCB->szDialNum+ulLen, SC_TEL_NUMBER_LENGTH-ulLen, "%s", pszDTMFDigit);
         }
 
-        if (dos_strcmp(pstSCB->szDialNum, "##") == 0)
+        if (dos_strcmp(pstSCB->szDialNum, SC_POTS_HANGUP_CUSTOMER1) == 0
+            || dos_strcmp(pstSCB->szDialNum, SC_POTS_HANGUP_CUSTOMER2) == 0)
         {
-            /* ## */
+            /* ## / ** */
             sc_ep_pots_pro(pstSCB, pstEvent, DOS_TRUE);
             /* 清空缓存 */
             pstSCB->szDialNum[0] = '\0';
