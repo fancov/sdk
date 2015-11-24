@@ -988,6 +988,7 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->ulCalledCountLast = 0;
     pstTCB->ulCallerGrpID = 0;
     pstTCB->ulCallRate = 0;
+    pstTCB->ulCalleeCountTotal = 0;
 
     dos_list_init(&pstTCB->stCalleeNumQuery);    /* TODO: 释放所有节点 */
     pstTCB->szAudioFileLen[0] = '\0';
@@ -1207,7 +1208,7 @@ static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
 
 S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
-    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond, ulCalledCnt, ulCallerGroupID, ulCallRate;
+    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond, ulCalleeCnt, ulCalledCnt, ulCallerGroupID, ulCallRate;
     BOOL blProcessOK = DOS_FALSE;
     S32 lIndex = U32_BUTT;
     S8  szTaskName[64] = {0};
@@ -1360,6 +1361,15 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "calleecnt", dos_strlen("calleecnt")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCalleeCnt) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
         else if (0 == dos_strnicmp(aszNames[lIndex], "calledcnt", dos_strlen("calledcnt")))
         {
             if (dos_atoul(aszValues[lIndex], &ulCalledCnt) < 0)
@@ -1424,6 +1434,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     pstTCB->ulAgentQueueID = ulGroupID;
     pstTCB->ucTaskStatus = ulStatus;
     pstTCB->ulAllocTime = ulCreateTime;
+    pstTCB->ulCalleeCountTotal = ulCalleeCnt;
     pstTCB->ulCalledCount = ulCalledCnt;
     pstTCB->ulCallerGrpID = ulCallerGroupID;
     pstTCB->ulCallRate = ulCallRate;
@@ -1451,11 +1462,11 @@ S32 sc_task_load(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt,callers,call_rate FROM tbl_calltask;");
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calleecnt,calledcnt,callers,call_rate FROM tbl_calltask;");
     }
     else
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt,callers,call_rate FROM tbl_calltask WHERE id=%u;", ulIndex);
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calleecnt,calledcnt,callers,call_rate FROM tbl_calltask WHERE id=%u;", ulIndex);
     }
     /* 加载群呼任务的相关数据 */
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
@@ -1494,11 +1505,11 @@ S32 sc_task_reload(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt,callers,call_rate FROM tbl_calltask;");
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calleecnt,calledcnt,callers,call_rate FROM tbl_calltask;");
     }
     else
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calledcnt,callers,call_rate FROM tbl_calltask WHERE id=%u;", ulIndex);
+        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calleecnt,calledcnt,callers,call_rate FROM tbl_calltask WHERE id=%u;", ulIndex);
     }
     /* 加载群呼任务的相关数据 */
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);

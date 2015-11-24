@@ -800,6 +800,7 @@ typedef struct tagTaskCB
     U16        usCallerCount;                     /* 当前主叫号码数量 */
     U32        ulCalleeCount;                     /* 当前被叫号码数量 */
     U32        ulLastCalleeIndex;                 /* 用于数据分页 */
+    U32        ulCalleeCountTotal;                /* 呼叫任务总的被叫号码数量 */
     U32        ulCalledCount;                     /* 已经呼叫过的号码数量 */
     U32        ulCalledCountLast;                 /* 上一次同步时的数量已经呼叫过的号码数量 */
     U32        ulCallerGrpID;                     /* 主叫号码组的ID */

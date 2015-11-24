@@ -455,6 +455,9 @@ VOID *sc_task_runtime(VOID *ptr)
 
     pthread_mutex_destroy(&pstTCB->mutexTaskList);
 
+    /* 群呼任务结束后，将呼叫的被叫号码数量，改为被叫号码的总数量 */
+    pstTCB->ulCalledCount = pstTCB->ulCalleeCountTotal;
+    sc_task_update_calledcnt((U64)pstTCB);
     sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_STOP, NULL);
 
     sc_tcb_free(pstTCB);
