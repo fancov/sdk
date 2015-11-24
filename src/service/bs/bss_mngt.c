@@ -5031,6 +5031,13 @@ VOID bss_trunk_stat_proc(VOID)
                 return;
             }
 
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                /* 节点未保存客户信息 */
+                DOS_ASSERT(0);
+                continue;
+            }
+
             pstSettle = (BS_SETTLE_ST *)pstHashNode->pHandle;
             if (DOS_ADDR_INVALID(pstSettle))
             {
