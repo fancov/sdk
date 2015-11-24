@@ -380,7 +380,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bIsAgentCall = DOS_FALSE;
     pstSCB->bIsInQueue = DOS_FALSE;
     pstSCB->bChannelCreated = DOS_FALSE;
-    pstSCB->bIsAgentCallOtherLeg = DOS_FALSE;
+    pstSCB->enCallCtrlType = SC_CALL_CTRL_TYPE_BUTT;
     pstSCB->bIsPassThrough = DOS_FALSE;
     pstSCB->bIsMarkCustomer = DOS_FALSE;
     pstSCB->bIsNotChangeAgentState = DOS_FALSE;

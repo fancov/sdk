@@ -475,6 +475,15 @@ typedef enum tagSCNumberType
     SC_NUMBER_TYPE_DID,             /* 系统的did号码 */
 }SC_NUMBER_TYPE_EN;
 
+typedef enum tagCallCtrlType
+{
+    SC_CALL_CTRL_TYPE_OUT,          /* 外呼 */
+    SC_CALL_CTRL_TYPE_AGENT,        /* 呼叫坐席 */
+    SC_CALL_CTRL_TYPE_SIP,          /* 呼叫SIP分机 */
+
+    SC_CALL_CTRL_TYPE_BUTT = U32_BUTT
+}SC_CALL_CTRL_TYPE_EN;
+
 typedef enum tagSoundType{
     SC_SND_CALL_OVER         = 0,
     SC_SND_INCOMING_CALL_TIP,
@@ -680,6 +689,7 @@ typedef struct tagSCSCB{
     U32       ulTaskID;                           /* 当前任务ID */
     U32       ulTrunkID;                          /* 中继ID */
     U32       ulTrunkCount;                       /* 中继的个数 */
+    U32       enCallCtrlType;                     /* 另一条腿的呼叫类型(web页面点击外呼时使用) */
 
     U8        ucStatus;                           /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
     U8        ucServStatus;                       /* 业务状态 */
@@ -717,20 +727,19 @@ typedef struct tagSCSCB{
     U32       bIsInQueue:1;                       /* 是否已经入队列了 */
 
     U32       bChannelCreated:1;                  /* FREESWITCH 是否为该同呼叫创建了通道 */
-    U32       bIsAgentCallOtherLeg:1;             /* 另一条腿是否要呼叫坐席 */
     U32       bTerminationFlag:1;                 /* 业务终止标志 */
     U32       bIsPassThrough:1;                   /* 呼叫坐席时，主叫号码是否透传 */
-
     U32       bIsMarkCustomer:1;                  /* 坐席是否已经标记客户 */
+
     U32       bIsNotChangeAgentState:1;           /* 是否不更新坐席的状态 */
     U32       bIsInMarkState:1;                   /* 处于标记客户阶段 */
     U32       bIsNotSrvAdapter:1;                 /* 转接时的特殊处理，前期已经适配好 */
-
     U32       bIsHasKeyCallTask:1;                /* 群呼任务是否按键了 */
+
     U32       bIsFristSCB:1;                      /* 是否作为主leg */
     U32       bIsInHoldStatus:1;                  /* 是否在hold状态 */
     U32       bIsTTCall:1;                        /* 是否作为主leg */
-    U32       ulRes:12;
+    U32       ulRes:13;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -1123,6 +1132,7 @@ U32 sc_ep_transfer_publish_release(SC_SCB_ST * pstSCBPublish);
 U32 sc_ep_gateway_register_status_update(U32 ulGWID, SC_TRUNK_STATE_TYPE_EN enRegisterStatus);
 U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber);
 U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled);
+U32 sc_ep_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber);
 U32 sc_ep_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend);
 U32 sc_ep_call_ctrl_hangup(U32 ulAgent);
 U32 sc_acd_agent_update_status2(U32 ulAction, U32 ulAgentID, U32 ulOperatingType);

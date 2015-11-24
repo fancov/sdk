@@ -722,6 +722,7 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
     U32 ulAgentCalled   = 0;
     U32 ulTaskID        = U32_BUTT;
     U32 ulRet           = DOS_FAIL;
+    SC_ACD_AGENT_INFO_ST stAgentInfo;
 
     pszAction      = sc_http_api_get_value(pstArgv, "action");
     pszCustomerID  = sc_http_api_get_value(pstArgv, "customer");
@@ -814,6 +815,20 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
                         DOS_ASSERT(0);
 
                         return SC_HTTP_ERRNO_INVALID_REQUEST;
+                    }
+
+                    /* 判断被叫号码是否是坐席的工号，如果是，则呼叫这个坐席 */
+                    if (sc_acd_get_agent_by_emp_num(&stAgentInfo, ulCustomer, pszNumber) == DOS_SUCC)
+                    {
+                        ulRet = sc_ep_call_ctrl_call_agent(ulAgent, stAgentInfo.ulSiteID);
+                        break;
+                    }
+
+                    /* 判断被叫号码是否是分机号，如果是同一个客户的分机号，就呼叫这个分机 */
+                    if (sc_ep_get_custom_by_sip_userid(pszNumber) == ulCustomer)
+                    {
+                        ulRet = sc_ep_call_ctrl_call_sip(ulAgent, pszNumber);
+                        break;
                     }
 
                     ulRet = sc_ep_call_ctrl_call_out(ulAgent, ulTaskID, pszNumber);
