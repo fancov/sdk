@@ -12293,11 +12293,12 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         if (pstSCB->bRecord)
         {
             pstSCBRecord = pstSCB;
-    }
-    else
-    {
+        }
+        else
+        {
             pstSCBRecord = pstSCBOther;
         }
+
         SC_SCB_SET_SERVICE(pstSCBRecord, BS_SERV_RECORDING);
         sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCBRecord->ulCustomID, pstSCBRecord->szCallerNum, pstSCBRecord->szCalleeNum);
         pthread_mutex_lock(&pstSCBRecord->mutexSCBLock);
@@ -12309,7 +12310,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
 
                 dos_snprintf(szAPPParam, sizeof(szAPPParam)
                                 , "bgapi uuid_record %s start %s/%s\r\n"
-                            , pstSCBRecord->bRecord ? pstSCBRecord->szUUID : pstSCBRecord->szUUID
+                                , pstSCBRecord->bRecord ? pstSCBRecord->szUUID : pstSCBRecord->szUUID
                                 , SC_RECORD_FILE_PATH
                                 , szFilePath);
                 sc_ep_esl_execute_cmd(szAPPParam);
@@ -12417,7 +12418,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
     }
 
     pszGatewayID = esl_event_get_header(pstEvent, "variable_sip_gateway_name");
-    if (DOS_ADDR_VALID(pszGatewayID)
+    if (DOS_ADDR_INVALID(pszGatewayID)
         || dos_atoul(pszGatewayID, &pstSCB->ulTrunkID) < 0)
     {
         pstSCB->ulTrunkID = U32_BUTT;

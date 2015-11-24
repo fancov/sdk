@@ -473,12 +473,14 @@ U32 bs_get_settle_packageid(U16 usTrunkID)
                                  bs_settle_hash_node_match);
     pthread_mutex_unlock(&g_mutexSettleTbl);
 
-    pstSettle = (BS_SETTLE_ST *)pstHashNode->pHandle;
-    if (DOS_ADDR_INVALID(pstSettle))
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
         DOS_ASSERT(0);
         return U32_BUTT;
     }
+
+    pstSettle = (BS_SETTLE_ST *)pstHashNode->pHandle;
 
     return pstSettle->ulPackageID;
 }

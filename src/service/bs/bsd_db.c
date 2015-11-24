@@ -930,7 +930,7 @@ VOID bsd_save_settle_cdr(BS_INTER_MSG_CDR *pstMsg)
         return;
     }
     dos_snprintf(szQuery, sizeof(szQuery), "INSERT INTO `tbl_cdr_settle` ("
-                      "`id`, `sp_customer_ id`,`billing_rule_id`,`ctime`,"
+                      "`id`, `sp_customer_id`,`billing_rule_id`,`ctime`,"
                       "`type`,`fee`,`caller`,`callee`,`deal_times`,`peer_trunk_id`,"
                       "`terminate_cause`,`cdr_mark`,`cdr_type`,`peer_ip1`,"
                       "`peer_ip2`,`peer_ip3`,`peer_ip4`)"
