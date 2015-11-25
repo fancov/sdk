@@ -11787,7 +11787,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             if (pstSCB->enCallCtrlType == SC_CALL_CTRL_TYPE_AGENT)
             {
                 /* ºô½ÐÁíÒ»¸ö×øÏ¯ */
-                sc_ep_call_agent_by_id(pstSCB, pstSCB->ulOtherAgentID, DOS_TRUE, DOS_FALSE);
+                sc_ep_call_agent_by_id(pstSCB, pstSCB->ulOtherAgentID, DOS_FALSE, DOS_FALSE);
             }
             else if (pstSCB->enCallCtrlType == SC_CALL_CTRL_TYPE_SIP)
             {
