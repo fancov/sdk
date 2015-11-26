@@ -11653,7 +11653,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     U32       ulRet = DOS_SUCC;
     U32       ulMainService = U32_BUTT;
     SC_SCB_ST *pstSCBOther  = NULL;
-    SC_SCB_ST *pstSCBNew    = NULL;
     SC_ACD_AGENT_INFO_ST stAgentData;
 
     if (DOS_ADDR_INVALID(pstEvent)
@@ -11786,110 +11785,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     }
     else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
     {
-        if (pstSCB->bIsAgentCall)
-        {
-            if (pstSCB->enCallCtrlType == SC_CALL_CTRL_TYPE_AGENT)
-            {
-                /* 呼叫另一个坐席 */
-                sc_ep_call_agent_by_id(pstSCB, pstSCB->ulOtherAgentID, DOS_FALSE, DOS_FALSE);
-            }
-            else if (pstSCB->enCallCtrlType == SC_CALL_CTRL_TYPE_SIP)
-            {
-                /* 呼叫一个分机 */
-                pstSCBNew = sc_scb_alloc();
-                if (DOS_ADDR_INVALID(pstSCB))
-                {
-                    sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
-                    ulRet = DOS_FAIL;
-                    DOS_ASSERT(0);
-                    goto proc_finished;
-                }
-
-                pstSCBNew->ulCustomID = pstSCB->ulCustomID;
-                pstSCBNew->ulAgentID = pstSCB->ulAgentID;
-                pstSCBNew->ulTaskID = pstSCB->ulTaskID;
-                pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
-                pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
-
-                dos_strncpy(pstSCBNew->szSiteNum, pstSCB->szSiteNum, sizeof(pstSCBNew->szSiteNum));
-                pstSCBNew->szSiteNum[sizeof(pstSCBNew->szSiteNum) - 1] = '\0';
-
-                /* 指定主被叫号码 */
-                dos_strncpy(pstSCBNew->szCalleeNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCalleeNum));
-                pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
-                dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
-                pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
-
-                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
-                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
-
-                if (sc_dial_make_call2ip(pstSCBNew, SC_SERV_BUTT, DOS_FALSE) != DOS_SUCC)
-                {
-                    goto proc_finished;
-                }
-            }
-            else
-            {
-                /* 呼叫客户 */
-                pstSCBNew = sc_scb_alloc();
-                if (DOS_ADDR_INVALID(pstSCB))
-                {
-                    sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
-                    ulRet = DOS_FAIL;
-                    DOS_ASSERT(0);
-                    goto proc_finished;
-                }
-
-                pstSCBNew->ulCustomID = pstSCB->ulCustomID;
-                pstSCBNew->ulAgentID = pstSCB->ulAgentID;
-                pstSCBNew->ulTaskID = pstSCB->ulTaskID;
-                pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
-                pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
-
-                dos_strncpy(pstSCBNew->szSiteNum, pstSCB->szSiteNum, sizeof(pstSCBNew->szSiteNum));
-                pstSCBNew->szSiteNum[sizeof(pstSCBNew->szSiteNum) - 1] = '\0';
-
-                /* 指定被叫号码 */
-                dos_strncpy(pstSCBNew->szCalleeNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCalleeNum));
-                pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
-
-                /* 指定主叫号码 号码组 */
-                if (sc_caller_setting_select_number(pstSCBNew->ulCustomID, pstSCBNew->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstSCBNew->szCallerNum, sizeof(pstSCBNew->szCallerNum)) != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
-                    sc_logr_info(SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", pstSCBNew->ulAgentID);
-                    sc_scb_free(pstSCBNew);
-                    pstSCB->usOtherSCBNo = U16_BUTT;
-                    sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_CALLER_NUMBER_ILLEGAL);
-
-                    goto proc_finished;
-                }
-
-                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_PREVIEW_DIALING);
-
-                if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pszCaller))
-                {
-                    DOS_ASSERT(0);
-
-                    sc_logr_info(SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
-                    ulRet = DOS_FAIL;
-                    goto proc_finished;
-                }
-
-                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
-                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
-                if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
-
-                    sc_logr_info(SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
-                    ulRet = DOS_FAIL;
-
-                    sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_MESSAGE_SENT_ERR);
-                    goto proc_finished;
-                }
-            }
-        }
+        ulRet = DOS_SUCC;
     }
     /* 如果是AUTO Call就不需要创建SCB，将SCB同步到HASH表中就好 */
     else if (SC_SERV_AUTO_DIALING == ulMainService)
@@ -12495,7 +12391,11 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     S8 szAPPParam[512] = { 0 };
     SC_SCB_ST *pstSCBRecord = NULL;
     SC_SCB_ST *pstSCBOther = NULL;
+    SC_SCB_ST *pstSCBNew = NULL;
     U32 ulMainService = U32_BUTT;
+    U32     ulRet;
+    S8        *pszCaller     = NULL;
+    S8        *pszCallee     = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -12510,6 +12410,9 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     }
 
     sc_call_trace(pstSCB, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
+
+    pszCaller     = esl_event_get_header(pstEvent, "Caller-Caller-ID-Number");
+    pszCallee     = esl_event_get_header(pstEvent, "Caller-Destination-Number");
 
     /* 如果没有置上waiting park标志，就直接切换状态到active */
     pszWaitingPark = esl_event_get_header(pstEvent, "variable_waiting_park");
@@ -12576,15 +12479,120 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         pthread_mutex_unlock(&pstSCBRecord->mutexSCBLock);
     }
 
-    if (SC_SERV_PREVIEW_DIALING == ulMainService)
-    {
-        sc_ep_call_agent_by_id(pstSCB, pstSCB->ulAgentID, DOS_TRUE, DOS_FALSE);
-    }
-    else if (SC_SERV_AUTO_DIALING == ulMainService)
+    if (SC_SERV_AUTO_DIALING == ulMainService)
     {
         /* 自动外呼处理 */
         sc_ep_auto_dial_proc(pstHandle, pstEvent, pstSCB);
     }
+    else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
+    {
+        if (pstSCB->bIsAgentCall)
+        {
+            if (pstSCB->enCallCtrlType == SC_CALL_CTRL_TYPE_AGENT)
+            {
+                /* 呼叫另一个坐席 */
+                sc_ep_call_agent_by_id(pstSCB, pstSCB->ulOtherAgentID, DOS_FALSE, DOS_FALSE);
+            }
+            else if (pstSCB->enCallCtrlType == SC_CALL_CTRL_TYPE_SIP)
+            {
+                /* 呼叫一个分机 */
+                pstSCBNew = sc_scb_alloc();
+                if (DOS_ADDR_INVALID(pstSCB))
+                {
+                    sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+                    ulRet = DOS_FAIL;
+                    DOS_ASSERT(0);
+                    goto proc_finished;
+                }
+
+                pstSCBNew->ulCustomID = pstSCB->ulCustomID;
+                pstSCBNew->ulAgentID = pstSCB->ulAgentID;
+                pstSCBNew->ulTaskID = pstSCB->ulTaskID;
+                pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
+                pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
+
+                dos_strncpy(pstSCBNew->szSiteNum, pstSCB->szSiteNum, sizeof(pstSCBNew->szSiteNum));
+                pstSCBNew->szSiteNum[sizeof(pstSCBNew->szSiteNum) - 1] = '\0';
+
+                /* 指定主被叫号码 */
+                dos_strncpy(pstSCBNew->szCalleeNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCalleeNum));
+                pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
+                dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
+                pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
+
+                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
+                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
+
+                if (sc_dial_make_call2ip(pstSCBNew, SC_SERV_BUTT, DOS_FALSE) != DOS_SUCC)
+                {
+                    goto proc_finished;
+                }
+            }
+            else
+            {
+                /* 呼叫客户 */
+                pstSCBNew = sc_scb_alloc();
+                if (DOS_ADDR_INVALID(pstSCB))
+                {
+                    sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+                    ulRet = DOS_FAIL;
+                    DOS_ASSERT(0);
+                    goto proc_finished;
+                }
+
+                pstSCBNew->ulCustomID = pstSCB->ulCustomID;
+                pstSCBNew->ulAgentID = pstSCB->ulAgentID;
+                pstSCBNew->ulTaskID = pstSCB->ulTaskID;
+                pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
+                pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
+
+                dos_strncpy(pstSCBNew->szSiteNum, pstSCB->szSiteNum, sizeof(pstSCBNew->szSiteNum));
+                pstSCBNew->szSiteNum[sizeof(pstSCBNew->szSiteNum) - 1] = '\0';
+
+                /* 指定被叫号码 */
+                dos_strncpy(pstSCBNew->szCalleeNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCalleeNum));
+                pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
+
+                /* 指定主叫号码 号码组 */
+                if (sc_caller_setting_select_number(pstSCBNew->ulCustomID, pstSCBNew->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstSCBNew->szCallerNum, sizeof(pstSCBNew->szCallerNum)) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                    sc_logr_info(SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", pstSCBNew->ulAgentID);
+                    sc_scb_free(pstSCBNew);
+                    pstSCB->usOtherSCBNo = U16_BUTT;
+                    sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_CALLER_NUMBER_ILLEGAL);
+
+                    goto proc_finished;
+                }
+
+                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_PREVIEW_DIALING);
+
+                if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pszCaller))
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
+                    ulRet = DOS_FAIL;
+                    goto proc_finished;
+                }
+
+                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
+                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
+                if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+
+                    sc_logr_info(SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
+                    ulRet = DOS_FAIL;
+
+                    sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_MESSAGE_SENT_ERR);
+                    goto proc_finished;
+                }
+            }
+        }
+    }
+
+proc_finished:
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
 
