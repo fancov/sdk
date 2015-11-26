@@ -482,7 +482,7 @@ typedef enum tagCallCtrlType
     SC_CALL_CTRL_TYPE_AGENT,        /* 網請釴炟 */
     SC_CALL_CTRL_TYPE_SIP,          /* 網請SIP煦儂 */
 
-    SC_CALL_CTRL_TYPE_BUTT = U32_BUTT
+    SC_CALL_CTRL_TYPE_BUTT
 }SC_CALL_CTRL_TYPE_EN;
 
 typedef enum tagSoundType{

@@ -9279,6 +9279,7 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
     SC_SCB_ST *pstSCB       = NULL;
     SC_SCB_ST *pstSCBOther  = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo, stCalleeAgentInfo;
+    S8 szParams[512]        = {0};
 
     sc_logr_info(SC_ESL, "Request call agent %u(%u)", ulAgentCalled, ulCurrentAgent);
 
@@ -9326,7 +9327,9 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
         sc_acd_agent_update_status(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo, NULL);
 
         sc_scb_free(pstSCB);
-        sc_ep_call_agent_by_id(pstSCBOther, ulAgentCalled, DOS_TRUE, DOS_FALSE);
+        dos_snprintf(szParams, sizeof(szParams), "bgapi uuid_break %s", pstSCBOther->szUUID);
+        sc_ep_esl_execute_cmd(szParams);
+        sc_ep_call_agent_by_id(pstSCBOther, ulAgentCalled, DOS_FALSE, DOS_FALSE);
     }
     else
     {
@@ -12939,15 +12942,46 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 }
                 else
                 {
-                    /* 等待另一条腿的挂断 */
-                    if (sc_ep_hangup_call(pstSCBOther, CC_ERR_NORMAL_CLEAR) == DOS_SUCC)
+                    if (pstSCBOther->bIsAgentCall
+                        && sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN))
                     {
-                        pstSCB->bWaitingOtherRelase = DOS_TRUE;
-                        sc_logr_info(SC_ESL, "Waiting other leg hangup.Curretn Leg UUID: %s, Other Leg UUID: %s"
-                                        , pstSCB->szUUID ? pstSCB->szUUID : "NULL"
-                                        , pstSCBOther->szUUID ? pstSCBOther->szUUID : "NULL");
+                        /* 另一条腿是坐席长签，不用挂断 */
+                    }
+                    else
+                    {
+                        /* 等待另一条腿的挂断 */
+                        if (sc_ep_hangup_call(pstSCBOther, CC_ERR_NORMAL_CLEAR) == DOS_SUCC)
+                        {
+                            pstSCB->bWaitingOtherRelase = DOS_TRUE;
+                            sc_logr_info(SC_ESL, "Waiting other leg hangup.Curretn Leg UUID: %s, Other Leg UUID: %s"
+                                            , pstSCB->szUUID ? pstSCB->szUUID : "NULL"
+                                            , pstSCBOther->szUUID ? pstSCBOther->szUUID : "NULL");
 
-                        break;
+                            /* 如果为坐席，则应该修改坐席的状态 */
+                            if (pstSCB->bIsAgentCall)
+                            {
+                                /* 坐席对应的leg正在等待退出，修改坐席的状态变为空闲状态 */
+                                if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCB->ulAgentID) != DOS_SUCC)
+                                {
+                                    /* 获取坐席失败 */
+                                    sc_logr_notice(SC_ESL, "Get agent FAIL by agentID(%u)", pstSCB->ulAgentID);
+                                }
+                                else
+                                {
+                                    /* 判断是否是长签 */
+                                    if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
+                                    {
+                                        sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, pstSCB->usSCBNo, NULL);
+                                    }
+                                    else
+                                    {
+                                        sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, U32_BUTT, NULL);
+                                    }
+                                }
+                            }
+
+                            break;
+                        }
                     }
                 }
             }
@@ -13013,6 +13047,13 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                             sc_acd_agent_update_status(pstSCBOther, SC_ACD_IDEL, U32_BUTT, NULL);
                         }
                     }
+                }
+                else if (pstSCB->bIsAgentCall && sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN))
+                {
+                    /* 另一条腿为坐席长签，此处不是和客户通话，直接修改为idel状态 */
+                    sc_acd_agent_update_status(pstSCBOther, SC_ACD_IDEL, pstSCBOther->usSCBNo, NULL);
+                    pstSCBOther->usOtherSCBNo = U16_BUTT;
+                    sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCBOther->szUUID, 1);
                 }
                 else
                 {
