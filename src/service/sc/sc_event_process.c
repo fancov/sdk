@@ -11781,7 +11781,8 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     }
     else if (SC_SERV_PREVIEW_DIALING == ulMainService)
     {
-        ulRet = sc_ep_call_agent_by_id(pstSCB, pstSCB->ulAgentID, DOS_TRUE, DOS_FALSE);
+        //ulRet = sc_ep_call_agent_by_id(pstSCB, pstSCB->ulAgentID, DOS_TRUE, DOS_FALSE);
+        ulRet = DOS_SUCC;
     }
     else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
     {
@@ -11894,7 +11895,8 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     else if (SC_SERV_AUTO_DIALING == ulMainService)
     {
         /* 自动外呼处理 */
-        ulRet = sc_ep_auto_dial_proc(pstHandle, pstEvent, pstSCB);
+        //ulRet = sc_ep_auto_dial_proc(pstHandle, pstEvent, pstSCB);
+        ulRet = DOS_SUCC;
     }
     else if (SC_SERV_NUM_VERIFY == ulMainService)
     {
@@ -12488,10 +12490,12 @@ process_finished:
 U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     S8 *pszWaitingPark = NULL;
+    S8 *pszMainService = NULL;
     S8 szFilePath[512] = { 0 };
     S8 szAPPParam[512] = { 0 };
     SC_SCB_ST *pstSCBRecord = NULL;
     SC_SCB_ST *pstSCBOther = NULL;
+    U32 ulMainService = U32_BUTT;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -12513,6 +12517,13 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         || 0 != dos_strncmp(pszWaitingPark, "true", dos_strlen("true")))
     {
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_ACTIVE);
+    }
+
+    pszMainService = esl_event_get_header(pstEvent, "variable_main_service");
+    if (DOS_ADDR_INVALID(pszMainService)
+        || dos_atoul(pszMainService, &ulMainService) < 0)
+    {
+        ulMainService = U32_BUTT;
     }
 
     if (U32_BUTT == pstSCB->ulCustomID)
@@ -12547,7 +12558,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         pthread_mutex_lock(&pstSCBRecord->mutexSCBLock);
         pstSCBRecord->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
         if (DOS_ADDR_VALID(pstSCBRecord->pszRecordFile))
-            {
+        {
             dos_strncpy(pstSCBRecord->pszRecordFile, szFilePath, dos_strlen(szFilePath) + 1);
             pstSCBRecord->pszRecordFile[dos_strlen(szFilePath)] = '\0';
 
@@ -12557,12 +12568,22 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                                 , SC_RECORD_FILE_PATH
                                 , szFilePath);
                 sc_ep_esl_execute_cmd(szAPPParam);
-            }
-            else
-            {
-                DOS_ASSERT(0);
-            }
+        }
+        else
+        {
+            DOS_ASSERT(0);
+        }
         pthread_mutex_unlock(&pstSCBRecord->mutexSCBLock);
+    }
+
+    if (SC_SERV_PREVIEW_DIALING == ulMainService)
+    {
+        sc_ep_call_agent_by_id(pstSCB, pstSCB->ulAgentID, DOS_TRUE, DOS_FALSE);
+    }
+    else if (SC_SERV_AUTO_DIALING == ulMainService)
+    {
+        /* 自动外呼处理 */
+        sc_ep_auto_dial_proc(pstHandle, pstEvent, pstSCB);
     }
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
@@ -12801,26 +12822,17 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 pstSCB->bIsInQueue = DOS_FALSE;
             }
 
+#if 0
             if (pstSCB->bRecord && pstSCB->pszRecordFile)
             {
                 dos_snprintf(szCMD, sizeof(szCMD)
-                                , "%s/%s-in.%s"
+                                , "bgapi uuid_record %s stop %s/%s\r\n"
+                                , pstSCB->szUUID
                                 , SC_RECORD_FILE_PATH
-                                , pstSCB->pszRecordFile
-                                , esl_event_get_header(pstEvent, "variable_read_codec"));
-                chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
-                chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
-
-                dos_snprintf(szCMD, sizeof(szCMD)
-                                , "%s/%s-out.%s"
-                                , SC_RECORD_FILE_PATH
-                                , pstSCB->pszRecordFile
-                                , esl_event_get_header(pstEvent, "variable_read_codec"));
-                chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
-                chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
-
-                dos_printf("Process recording file %s", szCMD);
+                                , pstSCB->pszRecordFile);
+                sc_ep_esl_execute_cmd(szCMD);
             }
+#endif
 
             /*
              * 1.如果有另外一条腿，有必要等待另外一条腿释放
@@ -12865,24 +12877,6 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                                 , pstSCBOther->pszRecordFile);
                                 sc_ep_esl_execute_cmd(szCMD);
 
-                                dos_snprintf(szCMD, sizeof(szCMD)
-                                                , "%s/%s-in.%s"
-                                                , SC_RECORD_FILE_PATH
-                                                , pstSCBOther->pszRecordFile
-                                                , esl_event_get_header(pstEvent, "variable_read_codec"));
-                                chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
-                                chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
-
-                                dos_snprintf(szCMD, sizeof(szCMD)
-                                                , "%s/%s-out.%s"
-                                                , SC_RECORD_FILE_PATH
-                                                , pstSCBOther->pszRecordFile
-                                                , esl_event_get_header(pstEvent, "variable_read_codec"));
-                                chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
-                                chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
-
-                                dos_printf("Process recording file %s", szCMD);
-
                                 pstSCB->pszRecordFile = dos_dmem_alloc(dos_strlen(pstSCBOther->pszRecordFile) + 1);
                                 if (DOS_ADDR_VALID(pstSCB->pszRecordFile))
                                 {
@@ -12898,6 +12892,8 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                         break;
                                     }
                                 }
+
+                                pstSCBOther->bRecord = DOS_FALSE;
                             }
 
                             /* 判断坐席是否是长签 */
@@ -13546,6 +13542,59 @@ proc_error:
 
 
 /**
+ * 函数: U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
+ * 功能: 处理放音结束事件
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送句柄
+ *      esl_event_t *pstEvent   : 时间
+ *      SC_SCB_ST *pstSCB       : SCB
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
+{
+    S8            *pszRecordFile = NULL;
+    S8            szCMD[512]        = { 0, };
+
+    if (DOS_ADDR_INVALID(pstEvent)
+        || DOS_ADDR_INVALID(pstHandle))
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+    }
+
+    sc_logr_debug(SC_ESL, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
+    pszRecordFile = esl_event_get_header(pstEvent, "Record-File-Path");
+    if (DOS_ADDR_INVALID(pszRecordFile))
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szCMD, sizeof(szCMD)
+                    , "%s-in.%s"
+                    , pszRecordFile
+                    , esl_event_get_header(pstEvent, "variable_read_codec"));
+    chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
+    chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
+
+    dos_snprintf(szCMD, sizeof(szCMD)
+                    , "%s-out.%s"
+                    , pszRecordFile
+                    , esl_event_get_header(pstEvent, "variable_read_codec"));
+    chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
+    chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
+
+    dos_printf("Process recording file %s", szCMD);
+    sc_logr_debug(SC_ESL, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
+
+    return DOS_SUCC;
+}
+
+/**
  * 函数: U32 sc_ep_session_heartbeat(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
  * 功能: 处理ESL的CHANNEL HEARTBEAT事件
  * 参数:
@@ -13606,6 +13655,12 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     {
         g_astEPMsgStat[SC_EP_STAT_PROC].ulBGJob++;
         return sc_ep_backgroud_job_proc(pstHandle, pstEvent);
+    }
+
+    if (ESL_EVENT_RECORD_STOP == pstEvent->event_id)
+    {
+        g_astEPMsgStat[SC_EP_STAT_PROC].ulRecordStop++;
+        return sc_ep_record_stop(pstHandle, pstEvent);
     }
 
     pszUUID = esl_event_get_header(pstEvent, "Caller-Unique-ID");
@@ -13889,13 +13944,18 @@ VOID*sc_ep_process_master(VOID *ptr)
                     g_astEPMsgStat[SC_EP_STAT_RECV].ulUnhold++;
                     break;
 
+                case ESL_EVENT_RECORD_STOP:
+                    g_astEPMsgStat[SC_EP_STAT_RECV].ulRecordStop++;
+                    break;
+
                 default:
                     break;
             }
 
 
             /* 一些消息特殊处理 */
-            if (ESL_EVENT_BACKGROUND_JOB == pstEvent->event_id)
+            if (ESL_EVENT_BACKGROUND_JOB == pstEvent->event_id
+                || ESL_EVENT_RECORD_STOP == pstEvent->event_id)
             {
                 sc_ep_process(&g_pstHandle->stSendHandle, pstEvent);
 

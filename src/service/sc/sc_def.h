@@ -242,7 +242,8 @@ do                                                            \
             "CHANNEL_HOLD " \
             "CHANNEL_UNHOLD " \
             "DTMF " \
-            "SESSION_HEARTBEAT "
+            "SESSION_HEARTBEAT " \
+            "RECORD_STOP"
 
 
 enum tagCallServiceType{
@@ -522,6 +523,7 @@ typedef struct tagEPMsgStat
     U32   ulBGJob;
     U32   ulHold;
     U32   ulUnhold;
+    U32   ulRecordStop;
 }SC_EP_MSG_STAT_ST;
 
 typedef struct tagBSMsgStat
