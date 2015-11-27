@@ -2280,6 +2280,49 @@ U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB)
     return DOS_TRUE;
 }
 
+
+U32 sc_task_check_can_call(SC_TASK_CB_ST *pstTCB)
+{
+    U32 ulIdleAgent    = 0;
+    U32 ulBusyAgent    = 0;
+
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+
+    if (SC_TASK_MODE_AUDIO_ONLY == pstTCB->ucMode)
+    {
+        if (pstTCB->ulCurrentConcurrency >= pstTCB->ulMaxConcurrency)
+        {
+            return DOS_FALSE;
+        }
+    }
+    else
+    {
+        sc_acd_agent_stat_by_grpid(pstTCB->ulAgentQueueID, NULL, NULL, &ulIdleAgent, &ulBusyAgent);
+
+        if (pstTCB->ulCurrentConcurrency >= (ulIdleAgent * pstTCB->ulCallRate))
+        {
+            return DOS_FALSE;
+        }
+        
+        /*
+         * 大意:
+         *    ulIdleAgent * pstTCB->ulCallRate: 需要为空闲坐席发起的呼叫数
+         *    pstTCB->ulCurrentConcurrency - ulBusyAgent: 当前系统已经为空闲坐席发起呼叫数
+         */
+        if ((pstTCB->ulCurrentConcurrency - ulBusyAgent) >= (ulIdleAgent * pstTCB->ulCallRate))
+        {
+            return DOS_FALSE;
+        }
+    }
+
+    return DOS_TRUE;
+}
+
+#if 0
 U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
 {
     U32 ulPercentage;
@@ -2341,6 +2384,7 @@ U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
     SC_TRACE_OUT();
     return ulInterval;
 }
+#endif
 
 S8 *sc_task_get_audio_file(U32 ulTCBNo)
 {

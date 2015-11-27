@@ -227,15 +227,6 @@ U32 mod_dipcc_sc_load()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init httpd server Successfully.");
 
-    if (sc_task_mngt_init() != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init task mngt FAIL.");
-        return DOS_FAIL;
-    }
-    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init task mngt Successfully.");
-
     if (sc_dialer_init() != DOS_SUCC)
     {
         DOS_ASSERT(0);
@@ -261,6 +252,15 @@ U32 mod_dipcc_sc_load()
         return DOS_FAIL;
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init acd module Successfully.");
+
+    if (sc_task_mngt_init() != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init task mngt FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init task mngt Successfully.");
 
 #if 0
     if (DOS_SUCC != sc_ep_init_agent_status())
