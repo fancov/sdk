@@ -11016,6 +11016,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
     SC_SCB_ST   *pstSCBOther = NULL;
     S8          *pszValue    = NULL;
     U64         uLTmp        = 0;
+    S8          szCMD[128]   = {0};
 
     if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstEvent))
     {
@@ -11418,6 +11419,10 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         {
             /* 挂断后标记,恢复为初始化值 */
             pstSCB->bIsMarkCustomer = DOS_FALSE;
+
+            /* 中断正在播放的标记背景音 */
+            dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_break %s \r\n", pstSCB->szUUID);
+            sc_ep_esl_execute_cmd(szCMD);
         }
 
         /* 判断是否是长签 */

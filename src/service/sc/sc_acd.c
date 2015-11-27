@@ -546,7 +546,7 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
         }
 
         sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", ulSiteID, ulProcesingTime);
-        sc_ep_esl_execute("set", "playback_terminators=*", pstSCB->szUUID);
+        sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
         sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
         dos_snprintf(szAPPParam, sizeof(szAPPParam)
                         , "{timeout=%u}file_string://%s/call_over.wav"
