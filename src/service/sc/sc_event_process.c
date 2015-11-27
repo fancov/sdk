@@ -8899,9 +8899,13 @@ go_on:
         }
     }
 
-    if (sc_ep_call_notify(pstAgentInfo, pstSCBNew->szCustomerNum) != DOS_SUCC)
+    if (!pstSCB->bIsAgentCall)
     {
-        DOS_ASSERT(0);
+        /* 不是坐席呼叫坐席时，才弹屏 */
+        if (sc_ep_call_notify(pstAgentInfo, pstSCBNew->szCustomerNum) != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+        }
     }
 
     return DOS_SUCC;
@@ -9329,6 +9333,9 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
         sc_scb_free(pstSCB);
         dos_snprintf(szParams, sizeof(szParams), "bgapi uuid_break %s", pstSCBOther->szUUID);
         sc_ep_esl_execute_cmd(szParams);
+        /* 放回铃音 */
+        sc_ep_esl_execute("set", "instant_ringback=true", pstSCBOther->szUUID);
+        sc_ep_esl_execute("set", "transfer_ringback=tone_stream://%(1000,4000,450);loops=-1", pstSCBOther->szUUID);
         sc_ep_call_agent_by_id(pstSCBOther, ulAgentCalled, DOS_FALSE, DOS_FALSE);
     }
     else
