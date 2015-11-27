@@ -1462,7 +1462,7 @@ U32 sc_acd_get_agent_cnt_by_grp(U32 ulGrpID)
         return 0;
     }
 
-    return DLL_Count(&pstGroupNode->stAgentList);
+    return pstGroupNode->usCount;
 }
 
 SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
@@ -2297,7 +2297,7 @@ U32 sc_acd_get_total_agent(U32 ulGroupID)
 }
 
 
-U32 sc_acd_get_idel_agent(U32 ulGroupID)
+U32 sc_acd_agent_stat_by_grpid(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32 *pulIdel, U32 *pulBusy)
 {
     U32 ulCnt = 0;
 
@@ -2307,6 +2307,25 @@ U32 sc_acd_get_idel_agent(U32 ulGroupID)
     DLL_NODE_S                 *pstDLLNode        = NULL;
     U32                        ulHashVal          = 0;
 
+    if (DOS_ADDR_VALID(pulTotal))
+    {
+        *pulTotal = 0;
+    }
+
+    if (DOS_ADDR_VALID(pulIdel))
+    {
+        *pulIdel = 0;
+    }
+
+    if (DOS_ADDR_VALID(pulWorking))
+    {
+        *pulWorking = 0;
+    }
+
+    if (DOS_ADDR_VALID(pulBusy))
+    {
+        *pulBusy = 0;
+    }
 
     sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
@@ -2346,10 +2365,39 @@ U32 sc_acd_get_idel_agent(U32 ulGroupID)
             continue;
         }
 
-        if (SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
+        if (pstAgentNode->pstAgentInfo->bWaitingDelete)
         {
-            ulCnt++;
             continue;
+        }
+
+        if (DOS_ADDR_VALID(pulTotal))
+        {
+            (*pulTotal)++;
+        }
+
+        if (SC_ACD_OFFLINE == pstAgentNode->pstAgentInfo->ucStatus)
+        {
+            continue;
+        }
+
+        if (DOS_ADDR_VALID(pulWorking))
+        {
+            (*pulWorking)++;
+        }
+
+        if (SC_ACD_IDEL == pstAgentNode->pstAgentInfo->ucStatus)
+        {
+            if (DOS_ADDR_VALID(pulIdel))
+            {
+                (*pulIdel)++;
+            }
+        }
+        else
+        {
+            if (DOS_ADDR_VALID(pulBusy))
+            {
+                (*pulBusy)++;
+            }
         }
     }
 

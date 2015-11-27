@@ -1013,9 +1013,9 @@ S32 sc_task_load_other_info(SC_TASK_CB_ST *pstTCB);
 #endif
 U32 sc_task_update_stat(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_save_status(U32 ulTaskID, U32 ulStatus, S8 *pszStatus);
+U32 sc_task_check_can_call(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_check_can_call_by_status(SC_TASK_CB_ST *pstTCB);
-U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_set_recall(SC_TASK_CB_ST *pstTCB);
 U32 sc_task_cmd_queue_add(SC_TASK_CTRL_CMD_ST *pstCMD);
 U32 sc_task_cmd_queue_del(SC_TASK_CTRL_CMD_ST *pstCMD);
