@@ -546,7 +546,7 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
         }
 
         sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", ulSiteID, ulProcesingTime);
-        sc_ep_esl_execute("set", "playback_terminators=*", pstSCB->szUUID);
+        sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
         sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
         dos_snprintf(szAPPParam, sizeof(szAPPParam)
                         , "{timeout=%u}file_string://%s/call_over.wav"
@@ -3328,6 +3328,7 @@ U32 sc_acd_agent_set_login(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperat
 
 VOID sc_acd_agent_set_logout(U64 p)
 {
+    S32                  i;
     U32                  ulOldStatus;
     SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo = (SC_ACD_AGENT_INFO_ST *)p;
 
@@ -3366,11 +3367,22 @@ VOID sc_acd_agent_set_logout(U64 p)
             break;
     }
 
-    /* 只有在长签了，才拆除呼叫 */
+    /* 如果 bConnected 为true，应该等待其变为false。最多等待5秒 */
+    for (i=5; i>0; i--)
+    {
+        if (pstAgentQueueInfo->bConnected)
+        {
+            sleep(1);
+        }
+        else
+        {
+            break;
+        }
+    }
+
     if (pstAgentQueueInfo->bConnected)
     {
-        /* 拆除呼叫 */
-        sc_ep_call_ctrl_hangup_agent(pstAgentQueueInfo);
+        DOS_ASSERT(0);
     }
 
     if (ulOldStatus != pstAgentQueueInfo->ucStatus)
@@ -3524,6 +3536,15 @@ U32 sc_acd_agent_update_status2(U32 ulAction, U32 ulAgentID, U32 ulOperatingType
                 dos_tmr_stop(&pstAgentInfo->htmrLogout);
                 pstAgentInfo->htmrLogout = NULL;
             }
+
+            /* 只有在长签了，才拆除呼叫 */
+            if (pstAgentInfo->bConnected)
+            {
+                /* 拆除呼叫 */
+                pstAgentInfo->bNeedConnected = DOS_FALSE;
+                sc_ep_call_ctrl_hangup_agent(pstAgentInfo);
+            }
+
             return dos_tmr_start(&pstAgentInfo->htmrLogout, 2000, sc_acd_agent_set_logout, (U64)pstAgentInfo, TIMER_NORMAL_NO_LOOP);
             break;
 
