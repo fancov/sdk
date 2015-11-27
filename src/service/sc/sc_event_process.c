@@ -11648,7 +11648,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     S8        *pszUUID       = NULL;
     S8        *pszMainService = NULL;
     S8        *pszValue       = NULL;
-    U64       uLTmp             = 0;
     U32       ulCallSrc, ulCallDst;
     U32       ulRet = DOS_SUCC;
     U32       ulMainService = U32_BUTT;
@@ -11751,10 +11750,11 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         }
     }
 
-    if (SC_SERV_CALL_INTERCEPT == ulMainService
-        || SC_SERV_CALL_WHISPERS == ulMainService)
+    if (SC_SERV_ATTEND_TRANSFER == ulMainService
+        || SC_SERV_BLIND_TRANSFER == ulMainService)
     {
-        ulRet = sc_ep_call_intercept(pstSCB);
+        //ulRet = sc_ep_transfer_publish_active(pstSCB, ulMainService);
+        ulRet = DOS_SUCC;
     }
     else if (SC_SERV_ATTEND_TRANSFER == ulMainService
         || SC_SERV_BLIND_TRANSFER == ulMainService)
@@ -11763,20 +11763,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     }
     else if (SC_SERV_AGENT_SIGNIN == ulMainService)
     {
-        sc_ep_esl_execute("answer", "", pstSCB->szUUID);
-        if (pstSCB->ulSiginTimeStamp == 0)
-        {
-            pszValue = esl_event_get_header(pstEvent, "Caller-Channel-Answered-Time");
-            if (DOS_ADDR_VALID(pszValue)
-                && '\0' != pszValue[0]
-                && dos_atoull(pszValue, &uLTmp) == 0)
-            {
-                pstSCB->ulSiginTimeStamp = uLTmp / 1000000;
-                sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszValue, pstSCB->ulSiginTimeStamp);
-            }
-        }
-        /* 坐席长签成功 */
-        ulRet = sc_ep_agent_signin_proc(pstHandle, pstEvent, pstSCB);
+        ulRet = DOS_SUCC;
     }
     else if (SC_SERV_PREVIEW_DIALING == ulMainService)
     {
@@ -11796,7 +11783,8 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     }
     else if (SC_SERV_NUM_VERIFY == ulMainService)
     {
-        ulRet = sc_ep_num_verify(pstHandle, pstEvent, pstSCB);
+        //ulRet = sc_ep_num_verify(pstHandle, pstEvent, pstSCB);
+        ulRet = DOS_SUCC;
     }
     /* 如果是回呼到坐席的呼叫。就需要连接客户和坐席 */
     else if (SC_SERV_AGENT_CALLBACK == ulMainService
@@ -12393,9 +12381,11 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     SC_SCB_ST *pstSCBOther = NULL;
     SC_SCB_ST *pstSCBNew = NULL;
     U32 ulMainService = U32_BUTT;
-    U32     ulRet;
-    S8        *pszCaller     = NULL;
-    S8        *pszCallee     = NULL;
+    U32 ulRet;
+    U64 uLTmp;
+    S8  *pszCaller     = NULL;
+    S8  *pszCallee     = NULL;
+    S8  *pszValue      = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -12479,10 +12469,36 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         pthread_mutex_unlock(&pstSCBRecord->mutexSCBLock);
     }
 
-    if (SC_SERV_AUTO_DIALING == ulMainService)
+    if (SC_SERV_CALL_INTERCEPT == ulMainService
+        || SC_SERV_CALL_WHISPERS == ulMainService)
+    {
+        ulRet = sc_ep_call_intercept(pstSCB);
+    }
+    else if (SC_SERV_AGENT_SIGNIN == ulMainService)
+    {
+        //sc_ep_esl_execute("answer", "", pstSCB->szUUID);
+        if (pstSCB->ulSiginTimeStamp == 0)
+        {
+            pszValue = esl_event_get_header(pstEvent, "Caller-Channel-Answered-Time");
+            if (DOS_ADDR_VALID(pszValue)
+                && '\0' != pszValue[0]
+                && dos_atoull(pszValue, &uLTmp) == 0)
+            {
+                pstSCB->ulSiginTimeStamp = uLTmp / 1000000;
+                sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszValue, pstSCB->ulSiginTimeStamp);
+            }
+        }
+        /* 坐席长签成功 */
+        ulRet = sc_ep_agent_signin_proc(pstHandle, pstEvent, pstSCB);
+    }
+    else if (SC_SERV_AUTO_DIALING == ulMainService)
     {
         /* 自动外呼处理 */
-        sc_ep_auto_dial_proc(pstHandle, pstEvent, pstSCB);
+        ulRet = sc_ep_auto_dial_proc(pstHandle, pstEvent, pstSCB);
+    }
+    else if (SC_SERV_NUM_VERIFY == ulMainService)
+    {
+        ulRet = sc_ep_num_verify(pstHandle, pstEvent, pstSCB);
     }
     else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
     {
@@ -12591,13 +12607,17 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
             }
         }
     }
+    else
+    {
+        ulRet = DOS_SUCC;
+    }
 
 proc_finished:
 
     sc_call_trace(pstSCB, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
 
     SC_TRACE_OUT();
-    return DOS_SUCC;
+    return ulRet;
 }
 
 /**
