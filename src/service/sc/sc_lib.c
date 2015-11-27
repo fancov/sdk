@@ -2285,6 +2285,8 @@ U32 sc_task_check_can_call(SC_TASK_CB_ST *pstTCB)
 {
     U32 ulIdleAgent    = 0;
     U32 ulBusyAgent    = 0;
+    S32 lTotalCalls    = 0;
+    S32 lNeedCalls     = 0;
 
     if (!pstTCB)
     {
@@ -2303,17 +2305,20 @@ U32 sc_task_check_can_call(SC_TASK_CB_ST *pstTCB)
     {
         sc_acd_agent_stat_by_grpid(pstTCB->ulAgentQueueID, NULL, NULL, &ulIdleAgent, &ulBusyAgent);
 
-        if (pstTCB->ulCurrentConcurrency >= (ulIdleAgent * pstTCB->ulCallRate))
-        {
-            return DOS_FALSE;
-        }
-        
         /*
          * 大意:
          *    ulIdleAgent * pstTCB->ulCallRate: 需要为空闲坐席发起的呼叫数
          *    pstTCB->ulCurrentConcurrency - ulBusyAgent: 当前系统已经为空闲坐席发起呼叫数
          */
-        if ((pstTCB->ulCurrentConcurrency - ulBusyAgent) >= (ulIdleAgent * pstTCB->ulCallRate))
+        lTotalCalls = ulIdleAgent * pstTCB->ulCallRate;
+        lNeedCalls  = pstTCB->ulCurrentConcurrency - ulBusyAgent;
+
+        if ((S32)pstTCB->ulCurrentConcurrency >= lTotalCalls)
+        {
+            return DOS_FALSE;
+        }
+
+        if (lNeedCalls >= lTotalCalls)
         {
             return DOS_FALSE;
         }
