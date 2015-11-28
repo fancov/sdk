@@ -174,15 +174,15 @@ typedef struct tagACDSiteDesc{
     U32        bRecord:1;                         /* 是否录音 */
     U32        bTraceON:1;                        /* 是否调试跟踪 */
     U32        bAllowAccompanying:1;              /* 是否允许分机随行 refer to SC_SITE_ACCOM_STATUS_EN */
-    U32        bGroupHeader:1;                    /* 是否是组长 */
 
+    U32        bGroupHeader:1;                    /* 是否是组长 */
     U32        bLogin:1;                          /* 是否已经登录 */
     U32        bConnected:1;                      /* 是否已经长连 */
     U32        bNeedConnected:1;                  /* 是否已经长连 */
-    U32        bWaitingDelete:1;                  /* 是否已经被删除 */
 
+    U32        bWaitingDelete:1;                  /* 是否已经被删除 */
     U32        ucProcesingTime:8;                 /* 坐席处理呼叫结果时间 */
-    U32        ucRes1:14;
+    U32        ucRes1:7;
 
     S8         szUserID[SC_TEL_NUMBER_LENGTH];    /* SIP User ID */
     S8         szExtension[SC_TEL_NUMBER_LENGTH]; /* 分机号 */

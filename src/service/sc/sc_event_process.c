@@ -8729,6 +8729,27 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         dos_strncpy(pstSCBNew->szCalleeNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCalleeNum));
         pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
 
+        /* 如果为群呼任务，则customer num 为被叫号码，如果是呼入，则是主叫号码 */
+        if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+        {
+            dos_strncpy(pstSCBNew->szCustomerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCustomerNum));
+            pstSCBNew->szCustomerNum[sizeof(pstSCBNew->szCustomerNum) - 1] = '\0';
+        }
+        else
+        {
+            dos_strncpy(pstSCBNew->szCustomerNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCustomerNum));
+            pstSCBNew->szCustomerNum[sizeof(pstSCBNew->szCustomerNum) - 1] = '\0';
+        }
+
+        if (!pstSCB->bIsAgentCall)
+        {
+            /* 不是坐席呼叫坐席时，才弹屏 */
+            if (sc_ep_call_notify(pstAgentInfo, pstSCBNew->szCustomerNum) != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+        }
+
         /* 更新坐席的状态 */
         sc_acd_agent_update_status(pstSCBNew, SC_ACD_BUSY, pstSCBNew->usSCBNo, pstSCB->szCallerNum);
 
@@ -10337,6 +10358,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                         DOS_ASSERT(0);
                         goto proc_fail;
                     }
+                    pstSCBNew->bCallSip = DOS_TRUE;
 
                     sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
 
@@ -11573,17 +11595,25 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                             , stAgentInfo.bConnected ? "Yes" : "No"
                             , stAgentInfo.ucStatus);
 
-            /* 播放等待音 */
-            if (!pstSCB->bIsInMarkState)
+            if (pstSCB->bCallSip)
             {
-                sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
-                if (sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1) != DOS_SUCC)
+                /* 外部电话正在呼叫坐席绑定的分机 */
+                pstSCB->bCallSip = DOS_FALSE;
+            }
+            else
+            {
+                /* 播放等待音 */
+                if (!pstSCB->bIsInMarkState)
                 {
-                    sc_logr_info(SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
-                }
-                sc_ep_esl_execute("set", "playback_terminators=*", pstSCB->szUUID);
+                    sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
+                    if (sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1) != DOS_SUCC)
+                    {
+                        sc_logr_info(SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
+                    }
+                    sc_ep_esl_execute("set", "playback_terminators=*", pstSCB->szUUID);
 
-                pstSCB->bIsInMarkState= DOS_FALSE;
+                    pstSCB->bIsInMarkState= DOS_FALSE;
+                }
             }
         }
         else if (SC_ACD_BUSY == stAgentInfo.ucStatus)
