@@ -12089,6 +12089,13 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     {
         S8 szCMDBuff[512] = { 0, };
 
+        /* 如果在标记状态，就不处理了 */
+        if (pstSCB->bIsInMarkState)
+        {
+            ulRet = DOS_SUCC;
+            goto proc_finished;
+        }
+
         pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
         if (DOS_ADDR_INVALID(pstSCBOther))
         {
@@ -12476,8 +12483,10 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         return DOS_FAIL;
     }
 
+#if 0
     dos_snprintf(szBuffCmd, sizeof(szBuffCmd), "bgapi uuid_park %s \r\n", pszUUID);
     sc_ep_esl_execute_cmd(szBuffCmd);
+#endif
 
     pszMainService = esl_event_get_header(pstEvent, "variable_main_service");
     if (DOS_ADDR_INVALID(pszMainService)

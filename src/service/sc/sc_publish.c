@@ -105,6 +105,7 @@ static U32 sc_pub_publicsh(CURL **pstCurlHandle, S8 *pszURL, S8 *pszData)
 
     curl_easy_reset(*pstCurlHandle);
     curl_easy_setopt(*pstCurlHandle, CURLOPT_URL, pszURL);
+    curl_easy_setopt(*pstCurlHandle, CURLOPT_NOSIGNAL, 1L);
     if (DOS_ADDR_VALID(pszData))
     {
         curl_easy_setopt(*pstCurlHandle, CURLOPT_POSTFIELDS, pszData);
