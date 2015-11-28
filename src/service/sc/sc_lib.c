@@ -2286,6 +2286,7 @@ U32 sc_task_check_can_call(SC_TASK_CB_ST *pstTCB)
 {
     U32 ulIdleAgent    = 0;
     U32 ulBusyAgent    = 0;
+    U32 ulTotalAgent   = 0;
     S32 lTotalCalls    = 0;
     S32 lNeedCalls     = 0;
 
@@ -2304,7 +2305,9 @@ U32 sc_task_check_can_call(SC_TASK_CB_ST *pstTCB)
     }
     else
     {
-        sc_acd_agent_stat_by_grpid(pstTCB->ulAgentQueueID, NULL, NULL, &ulIdleAgent, &ulBusyAgent);
+        sc_acd_agent_stat_by_grpid(pstTCB->ulAgentQueueID, &ulTotalAgent, NULL, &ulIdleAgent, &ulBusyAgent);
+        pstTCB->usSiteCount = ulTotalAgent;
+        pstTCB->ulMaxConcurrency = ulTotalAgent * pstTCB->ulCallRate;
 
         /*
          * Дѓвт:
