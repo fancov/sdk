@@ -280,12 +280,25 @@ go_on:
         if (!sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
             && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
         {
-            dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "{main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,mark_customer=true,sip_copy_multipart=false}user/%s"
+            if (pstSCB->bIsAgentCall && pstOtherSCB->bIsAgentCall)
+            {
+                /* 内部呼叫不用客户标记 */
+                dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "{main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s}user/%s"
                         , ulMainService
                         , pstSCB->usSCBNo
                         , pstSCB->szCallerNum
                         , pstSCB->szCallerNum
                         , pstSCB->szCalleeNum);
+            }
+            else
+            {
+                dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "{main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,mark_customer=true,sip_copy_multipart=false}user/%s"
+                        , ulMainService
+                        , pstSCB->usSCBNo
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCalleeNum);
+            }
         }
         else
         {
