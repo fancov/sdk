@@ -8689,8 +8689,11 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
     }
 
     /* 应该把坐席的工号存储到 pstSCB 中，结果分析时，使用 */
-    dos_strncpy(pstSCB->szSiteNum, pstAgentInfo->szEmpNo, sizeof(pstSCB->szSiteNum));
-    pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
+    if (!pstSCB->bIsAgentCall)
+    {
+        dos_strncpy(pstSCB->szSiteNum, pstAgentInfo->szEmpNo, sizeof(pstSCB->szSiteNum));
+        pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
+    }
 
     /* 如果坐席长连了，就需要特殊处理 */
     if (pstAgentInfo->bConnected && pstAgentInfo->usSCBNo < SC_MAX_SCB_NUM)
@@ -8710,6 +8713,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
             goto proc_error;
         }
 
+        pstSCBNew->bRecord = pstAgentInfo->bRecord;
         /* 更新 pstSCBNew 中的主被叫号码 */
         if (pstSCB->bIsPassThrough)
         {
@@ -12458,7 +12462,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
             pstSCBRecord = pstSCBOther;
         }
 
-        SC_SCB_SET_SERVICE(pstSCBRecord, BS_SERV_RECORDING);
+        SC_SCB_SET_SERVICE(pstSCBRecord, SC_SERV_RECORDING);
         sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCBRecord->ulCustomID, pstSCBRecord->szCallerNum, pstSCBRecord->szCalleeNum);
         pthread_mutex_lock(&pstSCBRecord->mutexSCBLock);
         pstSCBRecord->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
@@ -12708,6 +12712,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
     SC_SCB_ST   *pstSCBOther        = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
     U32         ulTransferFinishTime = 0;
+    BOOL        bIsClearOtherExtraData = DOS_FALSE;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -12982,6 +12987,32 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                         && sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN))
                     {
                         /* 另一条腿是坐席长签，不用挂断 */
+                        /* 判断是否有录音业务，如果有的话，需要把 pstSCB 的时间信息拷贝过来，发送完话单后，要清空  */
+                        /* 判断是否有录音业务 */
+                        if (pstSCBOther->bRecord && pstSCBOther->pszRecordFile)
+                        {
+                            dos_snprintf(szCMD, sizeof(szCMD)
+                                            , "bgapi uuid_record %s stop %s/%s\r\n"
+                                            , pstSCBOther->szUUID
+                                            , SC_RECORD_FILE_PATH
+                                            , pstSCBOther->pszRecordFile);
+                            sc_ep_esl_execute_cmd(szCMD);
+
+                            if (DOS_ADDR_INVALID(pstSCBOther->pstExtraData))
+                            {
+                                pstSCBOther->pstExtraData = dos_dmem_alloc(sizeof(SC_SCB_EXTRA_DATA_ST));
+                            }
+
+                            if (DOS_ADDR_INVALID(pstSCBOther->pstExtraData) || DOS_ADDR_INVALID(pstSCB->pstExtraData))
+                            {
+                                DOS_ASSERT(0);
+                            }
+                            else
+                            {
+                                dos_memcpy(pstSCBOther->pstExtraData, pstSCB->pstExtraData, sizeof(SC_SCB_EXTRA_DATA_ST));
+                                bIsClearOtherExtraData = DOS_TRUE;
+                            }
+                         }
                     }
                     else
                     {
@@ -13037,6 +13068,15 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
 
                 if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
                 {
+                    /* 长签的电话挂断时，不能有录音业务 */
+                    for (i=0; i<SC_MAX_SRV_TYPE_PRE_LEG; i++)
+                    {
+                        if (pstSCB->aucServiceType[i] == SC_SERV_RECORDING)
+                        {
+                            pstSCB->aucServiceType[i] = U8_BUTT;
+                        }
+                    }
+
                     /* 长签的电话被挂断，修改坐席的answer时间，修改为 ulSiginTimeStamp */
                     if (pstSCB->ulSiginTimeStamp != 0)
                     {
@@ -13117,6 +13157,15 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 else
                 {
                     sc_logr_debug(SC_ESL, "Send CDR to bs SUCC. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+                }
+            }
+
+            if (bIsClearOtherExtraData)
+            {
+                /* 清空 ExtraData 的信息  */
+                if (DOS_ADDR_VALID(pstSCBOther) && DOS_ADDR_VALID(pstSCBOther->pstExtraData))
+                {
+                    dos_memzero(pstSCBOther->pstExtraData, sizeof(SC_SCB_EXTRA_DATA_ST));
                 }
             }
 
