@@ -1130,19 +1130,22 @@ prepare_msg:
         dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID, pstSecondSCB->szUUID, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID));
         pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID) - 1] = '\0';
 
-        dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller, pstSecondSCB->szCallerNum, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller));
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller) - 1] = '\0';
-
         if (!SC_CHECK_SERVICE(pstSecondSCB, SC_SERV_EXTERNAL_CALL))
         {
             /* ÄÚ²¿ºô½Ð */
             dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee, pstFirstSCB->szCalleeNum, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee));
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee) - 1] = '\0';
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller, pstSecondSCB->szCalleeNum, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller));
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller) - 1] = '\0';
         }
         else
         {
             dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee, pstSecondSCB->szCalleeNum, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee));
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee) - 1] = '\0';
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller, pstSecondSCB->szCallerNum, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller));
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller) - 1] = '\0';
         }
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee) - 1] = '\0';
+
 
         dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID, pstSecondSCB->szANINum, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID));
         pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID) - 1] = '\0';
