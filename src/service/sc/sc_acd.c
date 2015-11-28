@@ -3328,7 +3328,6 @@ U32 sc_acd_agent_set_login(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperat
 
 VOID sc_acd_agent_set_logout(U64 p)
 {
-    S32                  i;
     U32                  ulOldStatus;
     SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo = (SC_ACD_AGENT_INFO_ST *)p;
 
@@ -3367,22 +3366,16 @@ VOID sc_acd_agent_set_logout(U64 p)
             break;
     }
 
-    /* 如果 bConnected 为true，应该等待其变为false。最多等待5秒 */
-    for (i=5; i>0; i--)
-    {
-        if (pstAgentQueueInfo->bConnected)
-        {
-            sleep(1);
-        }
-        else
-        {
-            break;
-        }
-    }
-
+    /* 如果 bConnected 为true，应该等待其变为false, 再将坐席的状态改为登出 */
     if (pstAgentQueueInfo->bConnected)
     {
-        DOS_ASSERT(0);
+        return;
+    }
+
+    if (DOS_ADDR_VALID(pstAgentQueueInfo->htmrLogout))
+    {
+        dos_tmr_stop(&pstAgentQueueInfo->htmrLogout);
+        pstAgentQueueInfo->htmrLogout = NULL;
     }
 
     if (ulOldStatus != pstAgentQueueInfo->ucStatus)
@@ -3545,7 +3538,7 @@ U32 sc_acd_agent_update_status2(U32 ulAction, U32 ulAgentID, U32 ulOperatingType
                 sc_ep_call_ctrl_hangup_agent(pstAgentInfo);
             }
 
-            return dos_tmr_start(&pstAgentInfo->htmrLogout, 2000, sc_acd_agent_set_logout, (U64)pstAgentInfo, TIMER_NORMAL_NO_LOOP);
+            return dos_tmr_start(&pstAgentInfo->htmrLogout, 2000, sc_acd_agent_set_logout, (U64)pstAgentInfo, TIMER_NORMAL_LOOP);
             break;
 
         case SC_ACTION_AGENT_FORCE_OFFLINE:
