@@ -2317,12 +2317,17 @@ U32 sc_task_check_can_call(SC_TASK_CB_ST *pstTCB)
         lTotalCalls = ulIdleAgent * pstTCB->ulCallRate;
         lNeedCalls  = pstTCB->ulCurrentConcurrency - ulBusyAgent;
 
-        if ((S32)pstTCB->ulCurrentConcurrency >= lTotalCalls)
+        if ((S32)pstTCB->ulCurrentConcurrency >= (S32)pstTCB->ulMaxConcurrency)
         {
             return DOS_FALSE;
         }
 
-        if (lNeedCalls >= lTotalCalls)
+        if (lNeedCalls > lTotalCalls)
+        {
+            return DOS_FALSE;
+        }
+
+        if (0 == ulIdleAgent)
         {
             return DOS_FALSE;
         }

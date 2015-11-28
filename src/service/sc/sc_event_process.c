@@ -12297,6 +12297,9 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         return DOS_FAIL;
     }
 
+    dos_snprintf(szBuffCmd, sizeof(szBuffCmd), "bgapi uuid_park %s \r\n", pszUUID);
+    sc_ep_esl_execute_cmd(szBuffCmd);
+
     pszMainService = esl_event_get_header(pstEvent, "variable_main_service");
     if (DOS_ADDR_INVALID(pszMainService)
         || dos_atoul(pszMainService, &ulMainService) < 0)
