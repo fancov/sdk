@@ -12691,8 +12691,8 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     SC_SCB_ST   *pstSCBOther        = NULL;
     SC_SCB_ST   *pstSCBNew          = NULL;
     U32 ulMainService               = U32_BUTT;
-    U32 ulRet;
-    U64 uLTmp;
+    U32 ulRet  = DOS_FAIL;
+    U64 uLTmp  = 0;
 
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
@@ -12905,6 +12905,8 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                         goto proc_finished;
                     }
                 }
+
+                ulRet = DOS_SUCC;
             }
         }
         else
