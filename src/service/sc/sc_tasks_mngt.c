@@ -739,18 +739,17 @@ U32 sc_task_mngt_start()
                 continue;
             }
 
-            if (pstTCB->ucTaskStatus != SC_TASK_WORKING
-                && pstTCB->ucTaskStatus != SC_TASK_CONTINUE)
-            {
-                continue;
-            }
-
             /* 获取呼叫任务最大并发数 */
             pstTCB->usSiteCount = sc_acd_get_agent_cnt_by_grp(pstTCB->ulAgentQueueID);
             pstTCB->ulMaxConcurrency = pstTCB->usSiteCount * pstTCB->ulCallRate;
             if (0 == pstTCB->ulMaxConcurrency)
             {
                 pstTCB->ulMaxConcurrency = SC_MAX_TASK_MAX_CONCURRENCY;
+            }
+
+            if (pstTCB->ucTaskStatus != SC_TASK_WORKING)
+            {
+                continue;
             }
 
             if (sc_task_start(pstTCB) != DOS_SUCC)
