@@ -157,7 +157,8 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
     }
 
     dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                    , "bgapi originate {main_service=%u,scb_number=%u,origination_caller_id_number=%s," \
+                    , "bgapi originate {absolute_codec_string=^^:G723@8000h@30i@6300b:G729@8000h@20i@8000b," \
+                      "main_service=%u,scb_number=%u,origination_caller_id_number=%s," \
                       "origination_caller_id_name=%s,sip_multipart=^^!application/x-allywll:m:=2!" \
                       "calli:=818!l:=01057063943!usert:=0!callt:=4!eig:=370!he:=5!w:=0!,sip_h_EixTTcall" \
                       "=TRUE,sip_h_Mime-version=1.0}sofia/external/%s@%s &park \r\n"
