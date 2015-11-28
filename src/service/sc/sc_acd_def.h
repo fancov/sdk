@@ -170,6 +170,8 @@ typedef struct tagACDSiteDesc{
     U32        ulLastOnlineTime;
     U32        ulLastSignInTime;
 
+    U32        ulLastIdelTime;
+
     U32        bValid:1;                          /* 是否可用 */
     U32        bRecord:1;                         /* 是否录音 */
     U32        bTraceON:1;                        /* 是否调试跟踪 */

@@ -2,17 +2,17 @@
  *            (C) Copyright 2014, DIPCC . Co., Ltd.
  *                    ALL RIGHTS RESERVED
  *
- *  ÎÄ¼şÃû: sc_acd.c
+ *  æ–‡ä»¶å: sc_acd.c
  *
- *  ´´½¨Ê±¼ä: 2015Äê1ÔÂ14ÈÕ14:42:07
- *  ×÷    Õß: Larry
- *  Ãè    Êö: ACDÄ£¿éÏà¹Ø¹¦ÄÜº¯ÊıÊµÏÖ
- *  ĞŞ¸ÄÀúÊ·:
+ *  åˆ›å»ºæ—¶é—´: 2015å¹´1æœˆ14æ—¥14:42:07
+ *  ä½œ    è€…: Larry
+ *  æ    è¿°: ACDæ¨¡å—ç›¸å…³åŠŸèƒ½å‡½æ•°å®ç°
+ *  ä¿®æ”¹å†å²:
  *
- * ×øÏ¯¹ÜÀíÔÚÄÚ´æÖĞµÄ½á¹¹
- * 1. ÓÉg_pstAgentList hash±íÎ¬»¤ËùÓĞµÄ×øÏ¯
- * 2. ÓÉg_pstGroupList Î¬»¤ËùÓĞµÄ×é£¬Í¬Ê±ÔÚ×éÀïÃæÎ¬»¤Ã¿¸ö×é³ÉÔ±µÄhash±í
- * 3. ×é³ÉÔ±µÄHash±íÖĞÓĞÖ¸Ïòg_pstSiteListÖĞ×øÏ¯³ÉÔ±µÄÖ¸Õë
+ * åå¸­ç®¡ç†åœ¨å†…å­˜ä¸­çš„ç»“æ„
+ * 1. ç”±g_pstAgentList hashè¡¨ç»´æŠ¤æ‰€æœ‰çš„åå¸­
+ * 2. ç”±g_pstGroupList ç»´æŠ¤æ‰€æœ‰çš„ç»„ï¼ŒåŒæ—¶åœ¨ç»„é‡Œé¢ç»´æŠ¤æ¯ä¸ªç»„æˆå‘˜çš„hashè¡¨
+ * 3. ç»„æˆå‘˜çš„Hashè¡¨ä¸­æœ‰æŒ‡å‘g_pstSiteListä¸­åå¸­æˆå‘˜çš„æŒ‡é’ˆ
  *  g_pstAgentList
  *    | -- table --- buget1 --- agnet1 --- agnet2 --- agnet3 ...
  *           |   --- buget2 --- agnet4 --- agnet5 --- agnet6 ...
@@ -32,9 +32,9 @@
  *            |                  |
  *            |                  ...
  *            ...
- *  ÆäÖĞg_pstGroupList tableÖĞËùÓĞµÄagnetÊ¹ÓÃÖ¸Ïòg_pstAgentListÖĞÄ³Ò»¸ö×øÏ¯,
- *  Í¬Ò»¸ö×øÏ¯¿ÉÄÜÊôÓÚ¶à¸ö×øÏ¯×é£¬ËùÒÔ¿ÉÄÜg_pstGroupListÖĞÓĞ¶à¸ö×øÏ¯Ö¸Ïòg_pstAgentListÖĞÍ¬Ò»¸ö½Úµã£¬
- *  ËùÒÔÉ¾³ıÊ±²»ÄÜÖ±½Ódelete
+ *  å…¶ä¸­g_pstGroupList tableä¸­æ‰€æœ‰çš„agnetä½¿ç”¨æŒ‡å‘g_pstAgentListä¸­æŸä¸€ä¸ªåå¸­,
+ *  åŒä¸€ä¸ªåå¸­å¯èƒ½å±äºå¤šä¸ªåå¸­ç»„ï¼Œæ‰€ä»¥å¯èƒ½g_pstGroupListä¸­æœ‰å¤šä¸ªåå¸­æŒ‡å‘g_pstAgentListä¸­åŒä¸€ä¸ªèŠ‚ç‚¹ï¼Œ
+ *  æ‰€ä»¥åˆ é™¤æ—¶ä¸èƒ½ç›´æ¥delete
  */
 
 #include <dos.h>
@@ -51,26 +51,26 @@ extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
 pthread_t          g_pthStatusTask;
 
-/* ×øÏ¯×éµÄhash±í */
+/* åå¸­ç»„çš„hashè¡¨ */
 HASH_TABLE_S      *g_pstAgentList      = NULL;
 pthread_mutex_t   g_mutexAgentList     = PTHREAD_MUTEX_INITIALIZER;
 
 HASH_TABLE_S      *g_pstGroupList      = NULL;
 pthread_mutex_t   g_mutexGroupList     = PTHREAD_MUTEX_INITIALIZER;
 
-/* ×øÏ¯×é¸öÊı */
+/* åå¸­ç»„ä¸ªæ•° */
 U32               g_ulGroupCount       = 0;
 
 extern U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo);
 extern U32 sc_ep_agent_signout(SC_ACD_AGENT_INFO_ST *pstAgentInfo);
 
 /*
- * º¯  Êı: sc_acd_hash_func4agent
- * ¹¦  ÄÜ: ×øÏ¯µÄhashº¯Êı£¬Í¨¹ı·Ö»úºÅ¼ÆËãÒ»¸öhashÖµ
- * ²Î  Êı:
- *         S8 *pszExension  : ·Ö»úºÅ
- *         U32 *pulHashIndex: Êä³ö²ÎÊı£¬¼ÆËãÖ®ºóµÄhashÖµ
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: sc_acd_hash_func4agent
+ * åŠŸ  èƒ½: åå¸­çš„hashå‡½æ•°ï¼Œé€šè¿‡åˆ†æœºå·è®¡ç®—ä¸€ä¸ªhashå€¼
+ * å‚  æ•°:
+ *         S8 *pszExension  : åˆ†æœºå·
+ *         U32 *pulHashIndex: è¾“å‡ºå‚æ•°ï¼Œè®¡ç®—ä¹‹åçš„hashå€¼
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_hash_func4agent(U32 ulSiteID, U32 *pulHashIndex)
 {
@@ -92,12 +92,12 @@ U32 sc_acd_hash_func4agent(U32 ulSiteID, U32 *pulHashIndex)
 }
 
 /*
- * º¯  Êı: sc_acd_hash_func4grp
- * ¹¦  ÄÜ: ×øÏ¯×éµÄhashº¯Êı£¬Í¨¹ı·Ö»úºÅ¼ÆËãÒ»¸öhashÖµ
- * ²Î  Êı:
- *         U32 ulGrpID  : ×øÏ¯×éID
- *         U32 *pulHashIndex: Êä³ö²ÎÊı£¬¼ÆËãÖ®ºóµÄhashÖµ
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: sc_acd_hash_func4grp
+ * åŠŸ  èƒ½: åå¸­ç»„çš„hashå‡½æ•°ï¼Œé€šè¿‡åˆ†æœºå·è®¡ç®—ä¸€ä¸ªhashå€¼
+ * å‚  æ•°:
+ *         U32 ulGrpID  : åå¸­ç»„ID
+ *         U32 *pulHashIndex: è¾“å‡ºå‚æ•°ï¼Œè®¡ç®—ä¹‹åçš„hashå€¼
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex)
 {
@@ -115,12 +115,12 @@ U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex)
 }
 
 /*
- * º¯  Êı: sc_acd_hash_func4calller_relation
- * ¹¦  ÄÜ: Ö÷½ĞºÅÂëºÍ×øÏ¯¶ÔÓ¦¹ØÏµµÄhashº¯Êı£¬Í¨¹ıÖ÷½ĞºÅÂë¼ÆËãÒ»¸öhashÖµ
- * ²Î  Êı:
- *         U32 ulGrpID  : ×øÏ¯×éID
- *         U32 *pulHashIndex: Êä³ö²ÎÊı£¬¼ÆËãÖ®ºóµÄhashÖµ
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: sc_acd_hash_func4calller_relation
+ * åŠŸ  èƒ½: ä¸»å«å·ç å’Œåå¸­å¯¹åº”å…³ç³»çš„hashå‡½æ•°ï¼Œé€šè¿‡ä¸»å«å·ç è®¡ç®—ä¸€ä¸ªhashå€¼
+ * å‚  æ•°:
+ *         U32 ulGrpID  : åå¸­ç»„ID
+ *         U32 *pulHashIndex: è¾“å‡ºå‚æ•°ï¼Œè®¡ç®—ä¹‹åçš„hashå€¼
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_hash_func4calller_relation(S8 *szCallerNum, U32 *pulHashIndex)
 {
@@ -142,12 +142,12 @@ U32 sc_acd_hash_func4calller_relation(S8 *szCallerNum, U32 *pulHashIndex)
 }
 
 /*
- * º¯  Êı: sc_acd_grp_hash_find
- * ¹¦  ÄÜ: ×øÏ¯×éµÄhash²éÕÒº¯Êı
- * ²Î  Êı:
- *         VOID *pSymName  : ×øÏ¯×éID
- *         HASH_NODE_S *pNode: HASH½Úµã
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: sc_acd_grp_hash_find
+ * åŠŸ  èƒ½: åå¸­ç»„çš„hashæŸ¥æ‰¾å‡½æ•°
+ * å‚  æ•°:
+ *         VOID *pSymName  : åå¸­ç»„ID
+ *         HASH_NODE_S *pNode: HASHèŠ‚ç‚¹
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 {
@@ -175,12 +175,12 @@ S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 }
 
 /*
- * º¯  Êı: sc_acd_agent_hash_find
- * ¹¦  ÄÜ: ×øÏ¯µÄhash²éÕÒº¯Êı
- * ²Î  Êı:
- *         VOID *pSymName  : ×øÏ¯·Ö»úºÅ
- *         HASH_NODE_S *pNode: HASH½Úµã
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: sc_acd_agent_hash_find
+ * åŠŸ  èƒ½: åå¸­çš„hashæŸ¥æ‰¾å‡½æ•°
+ * å‚  æ•°:
+ *         VOID *pSymName  : åå¸­åˆ†æœºå·
+ *         HASH_NODE_S *pNode: HASHèŠ‚ç‚¹
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 S32 sc_acd_agent_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 {
@@ -211,12 +211,12 @@ S32 sc_acd_agent_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 }
 
 /*
- * º¯  Êı: sc_acd_grp_hash_find
- * ¹¦  ÄÜ: ×øÏ¯×éµÄhash²éÕÒº¯Êı
- * ²Î  Êı:
- *         VOID *pSymName  : ×øÏ¯×éID
- *         HASH_NODE_S *pNode: HASH½Úµã
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: sc_acd_grp_hash_find
+ * åŠŸ  èƒ½: åå¸­ç»„çš„hashæŸ¥æ‰¾å‡½æ•°
+ * å‚  æ•°:
+ *         VOID *pSymName  : åå¸­ç»„ID
+ *         HASH_NODE_S *pNode: HASHèŠ‚ç‚¹
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 S32 sc_acd_caller_relation_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 {
@@ -242,12 +242,12 @@ S32 sc_acd_caller_relation_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 }
 
 /*
- * º¯  Êı: S32 sc_acd_site_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
- * ¹¦  ÄÜ: ×øÏ¯µÄhash²éÕÒº¯Êı
- * ²Î  Êı:
- *         VOID *pSymName  : ×øÏ¯·Ö»úºÅ
- *         DLL_NODE_S *pNode: Á´±í½Úµã
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: S32 sc_acd_site_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
+ * åŠŸ  èƒ½: åå¸­çš„hashæŸ¥æ‰¾å‡½æ•°
+ * å‚  æ•°:
+ *         VOID *pSymName  : åå¸­åˆ†æœºå·
+ *         DLL_NODE_S *pNode: é“¾è¡¨èŠ‚ç‚¹
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 static S32 sc_acd_agent_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
 {
@@ -285,7 +285,7 @@ VOID *sc_acd_query_agent_status_task(VOID *ptr)
     SC_ACD_AGENT_INFO_ST        *pstAgentInfo      = NULL;
     CURL *curl = NULL;
 
-    /* ¼ì²éÖÜÆÚ 15·ÖÖÓ */
+    /* æ£€æŸ¥å‘¨æœŸ 15åˆ†é’Ÿ */
     //U32           ulCheckInterval = 15 * 60 * 1000;
     U32           ulCheckInterval = 15 * 1000;
 
@@ -323,21 +323,21 @@ VOID *sc_acd_query_agent_status_task(VOID *ptr)
                 if (DOS_ADDR_INVALID(pstAgentQueueNode)
                     || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
                 {
-                    /* ÓĞ¿ÉÄÜ±»É¾³ıÁË£¬²»ĞèÒª¶ÏÑÔ */
+                    /* æœ‰å¯èƒ½è¢«åˆ é™¤äº†ï¼Œä¸éœ€è¦æ–­è¨€ */
                     continue;
                 }
 
                 pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
                 if (pstAgentInfo->bWaitingDelete)
                 {
-                    /* ±»É¾³ıÁË*/
+                    /* è¢«åˆ é™¤äº†*/
                     continue;
                 }
 #if 0
-                /* Ã»ÓĞ²éµ½×øÏ¯µÄĞÅÏ¢ */
+                /* æ²¡æœ‰æŸ¥åˆ°åå¸­çš„ä¿¡æ¯ */
                 if (sc_ep_query_agent_status(curl, pstAgentInfo) != DOS_SUCC)
                 {
-                    /* °É×øÏ¯×´Ì¬ÖÃÎªÀëÏß */
+                    /* å§åå¸­çŠ¶æ€ç½®ä¸ºç¦»çº¿ */
                     if (SC_ACD_OFFLINE != pstAgentInfo->ucStatus)
                     {
                         pstAgentInfo->bLogin = DOS_FALSE;
@@ -356,7 +356,7 @@ VOID *sc_acd_query_agent_status_task(VOID *ptr)
 #endif
             }
 
-            /* Ò»¸öHASHÍ°×öÒ»´ÎÏß³ÌÇĞ»»(HASH±íÊÇÔ¤·ÖÅäµÄ£¬ËùÒÔ²»Éæ¼°µ½Ïß³ÌÇĞ»»³öÈ¥Ö®ºó£¬Ïß³Ìµã±»ÆÆ»µµÄÎÊÌâ) */
+            /* ä¸€ä¸ªHASHæ¡¶åšä¸€æ¬¡çº¿ç¨‹åˆ‡æ¢(HASHè¡¨æ˜¯é¢„åˆ†é…çš„ï¼Œæ‰€ä»¥ä¸æ¶‰åŠåˆ°çº¿ç¨‹åˆ‡æ¢å‡ºå»ä¹‹åï¼Œçº¿ç¨‹ç‚¹è¢«ç ´åçš„é—®é¢˜) */
         }
         pthread_mutex_unlock(&g_mutexAgentList);
 
@@ -371,17 +371,17 @@ U32 sc_acd_agent_update_status_db(U32 ulSiteID, U32 ulStatus, BOOL bIsConnect)
     U32 ulStatusDB = 0;
     SC_DB_MSG_TAG_ST *pstMsg = NULL;
 
-    /* Ğ´Êı¾İ¿âµÄ×´Ì¬
-        0  -- ÀëÏß
-        1  -- ¿ÉÓÃ
-        2  -- ²»¿ÉÓÃ
-        3  -- ³¤Ç©¿ÉÓÃ
-        4  =- ³¤Ç©²»¿ÉÓÃ
+    /* å†™æ•°æ®åº“çš„çŠ¶æ€
+        0  -- ç¦»çº¿
+        1  -- å¯ç”¨
+        2  -- ä¸å¯ç”¨
+        3  -- é•¿ç­¾å¯ç”¨
+        4  =- é•¿ç­¾ä¸å¯ç”¨
     */
     ulStatusDB = ulStatus > SC_ACD_IDEL ? 2 : ulStatus;
     if (bIsConnect)
     {
-        /* Èç¹ûÊÇ³¤Ç©, Ôò°Ñ×´Ì¬ĞŞ¸ÄÎª³¤Ç©¿ÉÓÃ»òÕß³¤Ç©²»¿ÉÓÃ */
+        /* å¦‚æœæ˜¯é•¿ç­¾, åˆ™æŠŠçŠ¶æ€ä¿®æ”¹ä¸ºé•¿ç­¾å¯ç”¨æˆ–è€…é•¿ç­¾ä¸å¯ç”¨ */
         ulStatusDB += 2;
     }
 
@@ -412,12 +412,12 @@ U32 sc_acd_agent_update_status_db(U32 ulSiteID, U32 ulStatus, BOOL bIsConnect)
 
 
 /*
- * º¯  Êı: U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 *szCustomerNum)
- * ¹¦  ÄÜ: ¸üĞÂ×øÏ¯×´Ì¬
- * ²Î  Êı:
- *      S8 *pszUserID : ×øÏ¯µÄSIP USER ID
- *      U32 ulStatus  : ĞÂ×´Ì¬
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 *szCustomerNum)
+ * åŠŸ  èƒ½: æ›´æ–°åå¸­çŠ¶æ€
+ * å‚  æ•°:
+ *      S8 *pszUserID : åå¸­çš„SIP USER ID
+ *      U32 ulStatus  : æ–°çŠ¶æ€
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 *szCustomerNum)
 {
@@ -432,7 +432,7 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
 
     S8                          szAPPParam[512]    = { 0, };
 
-    /* Èç¹û ulStatus Îª SC_ACD_BUTT£¬ Ôò²»¸úĞÂ×´Ì¬ */
+    /* å¦‚æœ ulStatus ä¸º SC_ACD_BUTTï¼Œ åˆ™ä¸è·Ÿæ–°çŠ¶æ€ */
     if (ulStatus > SC_ACD_BUTT || DOS_ADDR_INVALID(pstSCB))
     {
         DOS_ASSERT(0);
@@ -463,6 +463,15 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
 
     sc_logr_info(SC_ESL, "Change the agent status. Agent: %u, Current status: %u, New status: %u"
                     , ulSiteID, pstAgentQueueInfo->pstAgentInfo->ucStatus, ulStatus);
+
+    if (SC_ACD_IDEL == ulStatus)
+    {
+        pstAgentQueueInfo->pstAgentInfo->ulLastIdelTime = time(NULL);
+    }
+    else
+    {
+        pstAgentQueueInfo->pstAgentInfo->ulLastIdelTime = 0;
+    }
 
     if (ulStatus != pstAgentQueueInfo->pstAgentInfo->ucStatus)
     {
@@ -496,7 +505,7 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
 
     if (!pstSCB->bIsNotChangeAgentState)
     {
-        /* ¸üĞÂ×øÏ¯µÄ×´Ì¬ */
+        /* æ›´æ–°åå¸­çš„çŠ¶æ€ */
         if (ulStatus != SC_ACD_BUTT)
         {
             pstAgentQueueInfo->pstAgentInfo->ucStatus = (U8)ulStatus;
@@ -512,14 +521,14 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
         pstAgentQueueInfo->pstAgentInfo->bConnected = DOS_FALSE;
     }
 
-    /* ¸üĞÂ×øÏ¯ÖĞµÄ×îºóÒ»¸öºô½ĞµÄ¿Í»§£¬ÓÃÓÚ±ê¼ÇÉÏÒ»¸ö¿Í»§ */
+    /* æ›´æ–°åå¸­ä¸­çš„æœ€åä¸€ä¸ªå‘¼å«çš„å®¢æˆ·ï¼Œç”¨äºæ ‡è®°ä¸Šä¸€ä¸ªå®¢æˆ· */
     if (ulStatus == SC_ACD_BUSY && DOS_ADDR_VALID(szCustomerNum) && szCustomerNum[0] != '\0')
     {
         dos_strcpy(pstAgentQueueInfo->pstAgentInfo->szLastCustomerNum, szCustomerNum);
         pstAgentQueueInfo->pstAgentInfo->szLastCustomerNum[SC_TEL_NUMBER_LENGTH-1] = '\0';
     }
 
-    /* ·¢ÏÖĞèÒª³¤Ç©£¬µ«ÓĞÃ»ÓĞ³¤Ç©³É¹¦£¬¾ÍÖÃÎª³¤Ç©×´Ì¬ */
+    /* å‘ç°éœ€è¦é•¿ç­¾ï¼Œä½†æœ‰æ²¡æœ‰é•¿ç­¾æˆåŠŸï¼Œå°±ç½®ä¸ºé•¿ç­¾çŠ¶æ€ */
     if (SC_ACD_PROC == pstAgentQueueInfo->pstAgentInfo->ucStatus
         && pstAgentQueueInfo->pstAgentInfo->bNeedConnected)
     {
@@ -528,7 +537,7 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
 
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
-    /* ¸üĞÂÊı¾İ¿âÖĞ£¬×øÏ¯µÄ×´Ì¬ */
+    /* æ›´æ–°æ•°æ®åº“ä¸­ï¼Œåå¸­çš„çŠ¶æ€ */
     if (!pstSCB->bIsNotChangeAgentState && ulStatus != SC_ACD_BUTT)
     {
         sc_acd_agent_update_status_db(ulSiteID, ulStatus, bConnected);
@@ -541,7 +550,7 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
 
         if (pstSCB->bIsInHoldStatus)
         {
-            /* Èç¹ûÊÇÔÚhold×´Ì¬£¬ĞèÒªÏÈ½â³ıhold */
+            /* å¦‚æœæ˜¯åœ¨holdçŠ¶æ€ï¼Œéœ€è¦å…ˆè§£é™¤hold */
             sc_ep_esl_execute("unhold", NULL, pstSCB->szUUID);
         }
 
@@ -554,13 +563,13 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
         sc_ep_esl_execute("playback", szAPPParam, pstSCB->szUUID);
     }
 
-    /* ÏÂÃæ´¦Àí³¤Ç©Ê±µÄÒ»Ğ©×´Ì¬ */
+    /* ä¸‹é¢å¤„ç†é•¿ç­¾æ—¶çš„ä¸€äº›çŠ¶æ€ */
     if (!bNeedConnected)
     {
         return DOS_SUCC;
     }
 
-    /* ³¤Ç©µÚÒ»´Îºô½Ğ£¬Ê§°ÜÁË */
+    /* é•¿ç­¾ç¬¬ä¸€æ¬¡å‘¼å«ï¼Œå¤±è´¥äº† */
     if (U32_BUTT == ulSCBNo && bConnected == DOS_FALSE)
     {
         return DOS_SUCC;
@@ -576,11 +585,11 @@ U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 
 
 
 /*
- * º¯  Êı: U32 sc_acd_agent_grp_del_call(U32 ulGrpID)
- * ¹¦  ÄÜ: ×øÏ¯×éÖĞÓĞµÈ´ı¶ÓÁĞ
- * ²Î  Êı:
+ * å‡½  æ•°: U32 sc_acd_agent_grp_del_call(U32 ulGrpID)
+ * åŠŸ  èƒ½: åå¸­ç»„ä¸­æœ‰ç­‰å¾…é˜Ÿåˆ—
+ * å‚  æ•°:
  *       U32 ulGrpID :
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_agent_grp_add_call(U32 ulGrpID)
 {
@@ -588,11 +597,11 @@ U32 sc_acd_agent_grp_add_call(U32 ulGrpID)
 }
 
 /*
- * º¯  Êı: U32 sc_acd_agent_grp_del_call(U32 ulGrpID)
- * ¹¦  ÄÜ: Í³¼Æ×øÏ¯×øÏ¯×é
- * ²Î  Êı:
- *       U32 ulGrpID : ×øÏ¯×éÖĞÄ³¸öµÈ´ıµÄºô½ĞµÃµ½µ÷¶È£¬Í¨Öª×øÏ¯×é
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: U32 sc_acd_agent_grp_del_call(U32 ulGrpID)
+ * åŠŸ  èƒ½: ç»Ÿè®¡åå¸­åå¸­ç»„
+ * å‚  æ•°:
+ *       U32 ulGrpID : åå¸­ç»„ä¸­æŸä¸ªç­‰å¾…çš„å‘¼å«å¾—åˆ°è°ƒåº¦ï¼Œé€šçŸ¥åå¸­ç»„
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_agent_grp_del_call(U32 ulGrpID)
 {
@@ -600,12 +609,12 @@ U32 sc_acd_agent_grp_del_call(U32 ulGrpID)
 }
 
 /*
- * º¯  Êı: U32 sc_acd_agent_grp_stat(U32 ulGrpID, U32 ulWaitingTime)
- * ¹¦  ÄÜ: Í³¼Æ×øÏ¯×øÏ¯×é
- * ²Î  Êı:
- *      U32 ulGrpID,       : ×øÏ¯×éID
- *      U32 ulWaitingTime  : ×øÏ¯×éÖĞºô½ĞµÈ´ıÊ±¼ä
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: U32 sc_acd_agent_grp_stat(U32 ulGrpID, U32 ulWaitingTime)
+ * åŠŸ  èƒ½: ç»Ÿè®¡åå¸­åå¸­ç»„
+ * å‚  æ•°:
+ *      U32 ulGrpID,       : åå¸­ç»„ID
+ *      U32 ulWaitingTime  : åå¸­ç»„ä¸­å‘¼å«ç­‰å¾…æ—¶é—´
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_agent_grp_stat(U32 ulGrpID, U32 ulWaitingTime)
 {
@@ -613,13 +622,13 @@ U32 sc_acd_agent_grp_stat(U32 ulGrpID, U32 ulWaitingTime)
 }
 
 /*
- * º¯  Êı: U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
- * ¹¦  ÄÜ: Í³¼Æ×øÏ¯ºô½ĞĞÅÏ¢
- * ²Î  Êı:
- *       U32 ulAgentID   : ×øÏ¯ID
- *       U32 ulCallType  : ºô½ĞÀàĞÍ
- *       U32 ulStatus    : ×´Ì¬
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
+ * åŠŸ  èƒ½: ç»Ÿè®¡åå¸­å‘¼å«ä¿¡æ¯
+ * å‚  æ•°:
+ *       U32 ulAgentID   : åå¸­ID
+ *       U32 ulCallType  : å‘¼å«ç±»å‹
+ *       U32 ulStatus    : çŠ¶æ€
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
 {
@@ -627,10 +636,10 @@ U32 sc_acd_agent_stat(U32 ulAgentID, U32 ulCallType, U32 ulStatus)
 }
 
 /*
- * º¯  Êı: U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB)
- * ¹¦  ÄÜ: ¸ù¾İSIP£¬²éÕÒµ½°ó¶¨µÄ×øÏ¯£¬¸üĞÂusSCBNo×Ö¶Î. (ucBindType Îª AGENT_BIND_SIP)
- * ²Î  Êı:
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB)
+ * åŠŸ  èƒ½: æ ¹æ®SIPï¼ŒæŸ¥æ‰¾åˆ°ç»‘å®šçš„åå¸­ï¼Œæ›´æ–°usSCBNoå­—æ®µ. (ucBindType ä¸º AGENT_BIND_SIP)
+ * å‚  æ•°:
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCustomerNum)
 {
@@ -646,7 +655,7 @@ U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB, SC_ACD_
         return DOS_FAIL;
     }
 
-    /* ²éÕÒSIP°ó¶¨µÄ×øÏ¯ */
+    /* æŸ¥æ‰¾SIPç»‘å®šçš„åå¸­ */
     pthread_mutex_lock(&g_mutexAgentList);
 
     HASH_Scan_Table(g_pstAgentList, ulHashIndex)
@@ -700,12 +709,12 @@ U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB, SC_ACD_
 }
 
 /*
- * º¯  Êı: U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, SC_AGENT_BIND_TYPE_EN enType)
- * ¹¦  ÄÜ: ĞŞ¸Ä×øÏ¯µÄ×´Ì¬ºÍscbno
- * ²Î  Êı:
- *       SC_DID_BIND_TYPE_EN enType : Èç¹û enType Îª SC_DID_BIND_TYPE_SIP,ÔòÒªÅĞ¶Ï×øÏ¯£¬ÊÇ·ñÕıÔÚÊ¹ÓÃsip£¬
- *                                      Èç¹ûÊ¹ÓÃsip·Ö»ú£¬²ÅĞèÒª¸üĞÂ×øÏ¯µÄ×´Ì¬¡£
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, SC_AGENT_BIND_TYPE_EN enType)
+ * åŠŸ  èƒ½: ä¿®æ”¹åå¸­çš„çŠ¶æ€å’Œscbno
+ * å‚  æ•°:
+ *       SC_DID_BIND_TYPE_EN enType : å¦‚æœ enType ä¸º SC_DID_BIND_TYPE_SIP,åˆ™è¦åˆ¤æ–­åå¸­ï¼Œæ˜¯å¦æ­£åœ¨ä½¿ç”¨sipï¼Œ
+ *                                      å¦‚æœä½¿ç”¨sipåˆ†æœºï¼Œæ‰éœ€è¦æ›´æ–°åå¸­çš„çŠ¶æ€ã€‚
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, U32 ulType)
 {
@@ -753,12 +762,12 @@ U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, U32 ul
 
 
 /*
- * º¯  Êı: U32 sc_acd_group_remove_agent(U32 ulGroupID, S8 *pszUserID)
- * ¹¦  ÄÜ: ´Ó×øÏ¯¶ÓÁĞÖĞÒÆ³ı×øÏ¯
- * ²Î  Êı:
- *       U32 ulGroupID: ×øÏ¯×éID
- *       S8 *pszUserID: ×øÏ¯Î¨Ò»±êÊ¾ sipÕË»§
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: U32 sc_acd_group_remove_agent(U32 ulGroupID, S8 *pszUserID)
+ * åŠŸ  èƒ½: ä»åå¸­é˜Ÿåˆ—ä¸­ç§»é™¤åå¸­
+ * å‚  æ•°:
+ *       U32 ulGroupID: åå¸­ç»„ID
+ *       S8 *pszUserID: åå¸­å”¯ä¸€æ ‡ç¤º sipè´¦æˆ·
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_group_remove_agent(U32 ulGroupID, U32 ulSiteID)
 {
@@ -768,7 +777,7 @@ U32 sc_acd_group_remove_agent(U32 ulGroupID, U32 ulSiteID)
     DLL_NODE_S                   *pstDLLNode         = NULL;
     U32                          ulHashVal           = 0;
 
-    /* ¼ì²âËùÔÚ¶ÓÁĞÊÇ·ñ´æÔÚ */
+    /* æ£€æµ‹æ‰€åœ¨é˜Ÿåˆ—æ˜¯å¦å­˜åœ¨ */
     sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
     pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
@@ -819,12 +828,12 @@ U32 sc_acd_group_remove_agent(U32 ulGroupID, U32 ulSiteID)
 }
 
 /*
- * º¯  Êı: U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
- * ¹¦  ÄÜ: ½«×øÏ¯Ìí¼Óµ½×øÏ¯¶ÓÁĞ
- * ²Î  Êı:
- *       U32 ulGroupID: ×øÏ¯×éID
- *       SC_ACD_AGENT_INFO_ST *pstAgentInfo : ×øÏ¯×éĞÅÏ¢
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC£¬·ñÔò·µ»ØDOS_FAIL
+ * å‡½  æ•°: U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+ * åŠŸ  èƒ½: å°†åå¸­æ·»åŠ åˆ°åå¸­é˜Ÿåˆ—
+ * å‚  æ•°:
+ *       U32 ulGroupID: åå¸­ç»„ID
+ *       SC_ACD_AGENT_INFO_ST *pstAgentInfo : åå¸­ç»„ä¿¡æ¯
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCCï¼Œå¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
@@ -841,7 +850,7 @@ U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         return DOS_FAIL;
     }
 
-    /* ¼ì²âËùÔÚ¶ÓÁĞÊÇ·ñ´æÔÚ */
+    /* æ£€æµ‹æ‰€åœ¨é˜Ÿåˆ—æ˜¯å¦å­˜åœ¨ */
     sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
     pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
@@ -903,13 +912,13 @@ U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 }
 
 /*
- * º¯  Êı: sc_acd_add_agent
- * ¹¦  ÄÜ: Ìí¼Ó×øÏ¯
- * ²Î  Êı:
- *         SC_ACD_AGENT_INFO_ST *pstAgentInfo, ×øÏ¯ĞÅÏ¢ÃèÊö
- *         U32 ulGrpID ËùÊô×é
- * ·µ»ØÖµ: SC_ACD_AGENT_QUEUE_NODE_ST *·µ»Ø×øÏ¯¶ÓÁĞÀïÃæµÄ½Úµã¡£±àÒëµ÷ÓÃº¯Êı½«×øÏ¯Ìí¼Óµ½×é¡£Èç¹ûÊ§°ÜÔò·µ»ØNULL
- * !!! ¸Ãº¯ÊıÖ»ÊÇ½«×øÏ¯¼ÓÈë¹ÜÀí¶ÓÁĞ£¬²»»á½«×øÏ¯¼ÓÈë×øÏ¯¶ÔÁĞ !!!
+ * å‡½  æ•°: sc_acd_add_agent
+ * åŠŸ  èƒ½: æ·»åŠ åå¸­
+ * å‚  æ•°:
+ *         SC_ACD_AGENT_INFO_ST *pstAgentInfo, åå¸­ä¿¡æ¯æè¿°
+ *         U32 ulGrpID æ‰€å±ç»„
+ * è¿”å›å€¼: SC_ACD_AGENT_QUEUE_NODE_ST *è¿”å›åå¸­é˜Ÿåˆ—é‡Œé¢çš„èŠ‚ç‚¹ã€‚ç¼–è¯‘è°ƒç”¨å‡½æ•°å°†åå¸­æ·»åŠ åˆ°ç»„ã€‚å¦‚æœå¤±è´¥åˆ™è¿”å›NULL
+ * !!! è¯¥å‡½æ•°åªæ˜¯å°†åå¸­åŠ å…¥ç®¡ç†é˜Ÿåˆ—ï¼Œä¸ä¼šå°†åå¸­åŠ å…¥åå¸­å¯¹åˆ— !!!
  **/
 SC_ACD_AGENT_INFO_ST *sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
@@ -955,7 +964,7 @@ SC_ACD_AGENT_INFO_ST *sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         return NULL;
     }
 
-    /* ¼ÓÈë×øÏ¯¹ÜÀíhash±í */
+    /* åŠ å…¥åå¸­ç®¡ç†hashè¡¨ */
     HASH_Init_Node(pstHashNode);
     pstHashNode->pHandle = pstAgentQueueNode;
     sc_acd_hash_func4agent(pstAgentInfo->ulSiteID, &ulHashVal);
@@ -967,7 +976,7 @@ SC_ACD_AGENT_INFO_ST *sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
                     , pstAgentInfo->ulSiteID, pstAgentInfo->ulCustomerID
                     , pstAgentInfo->aulGroupID[0], pstAgentInfo->aulGroupID[1]);
 
-    /* Ìí¼Óµ½¶ÓÁĞ */
+    /* æ·»åŠ åˆ°é˜Ÿåˆ— */
     dos_memcpy(pstAgentData, pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
     pthread_mutex_init(&pstAgentData->mutexLock, NULL);
     pstAgentQueueNode->pstAgentInfo = pstAgentData;
@@ -978,12 +987,12 @@ SC_ACD_AGENT_INFO_ST *sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 
 
 /*
- * º¯  Êı: sc_acd_grp_wolk4delete_site
- * ¹¦  ÄÜ: ´ÓÄ³Ò»¸ö×øÏ¯×éÀïÃæÉ¾³ı×øÏ¯
- * ²Î  Êı:
- *         HASH_NODE_S *pNode : µ±Ç°½Úµã
- *         VOID *pszExtensition : ±»É¾³ı×øÏ¯µÄ·Ö»úºÅ
- * ·µ»ØÖµ: VOID
+ * å‡½  æ•°: sc_acd_grp_wolk4delete_site
+ * åŠŸ  èƒ½: ä»æŸä¸€ä¸ªåå¸­ç»„é‡Œé¢åˆ é™¤åå¸­
+ * å‚  æ•°:
+ *         HASH_NODE_S *pNode : å½“å‰èŠ‚ç‚¹
+ *         VOID *pszExtensition : è¢«åˆ é™¤åå¸­çš„åˆ†æœºå·
+ * è¿”å›å€¼: VOID
  **/
 static VOID sc_acd_grp_wolk4delete_agent(HASH_NODE_S *pNode, VOID *pulSiteID)
 {
@@ -1014,7 +1023,7 @@ static VOID sc_acd_grp_wolk4delete_agent(HASH_NODE_S *pNode, VOID *pulSiteID)
         return;
     }
 
-    /* Õâ¸öµØ·½ÏÈ²»Òªfree£¬ÓĞ¿ÉÄÜ±ğµÄ¶ÓÁĞÒ²ÓĞÕâ¸ö×÷Ï¢ */
+    /* è¿™ä¸ªåœ°æ–¹å…ˆä¸è¦freeï¼Œæœ‰å¯èƒ½åˆ«çš„é˜Ÿåˆ—ä¹Ÿæœ‰è¿™ä¸ªä½œæ¯ */
     pstAgentQueueNode = pstDLLNode->pHandle;
     pstAgentQueueNode->pstAgentInfo = NULL;
 
@@ -1029,12 +1038,12 @@ U32 sc_acd_delete_agent(U32  ulSiteID)
 
     SC_TRACE_IN(ulSiteID, 0, 0, 0);
 
-    /* ±éÀúËùÓĞ×é£¬²¢É¾³ıÏà¹Ø×øÏ¯ */
+    /* éå†æ‰€æœ‰ç»„ï¼Œå¹¶åˆ é™¤ç›¸å…³åå¸­ */
     pthread_mutex_lock(&g_mutexGroupList);
     hash_walk_table(g_pstGroupList, &ulSiteID, sc_acd_grp_wolk4delete_agent);
     pthread_mutex_unlock(&g_mutexGroupList);
 
-    /* ×öµ½×øÏ¯£¬È»ºó½«ÆäÖµÎªÉ¾³ı×´Ì¬ */
+    /* åšåˆ°åå¸­ï¼Œç„¶åå°†å…¶å€¼ä¸ºåˆ é™¤çŠ¶æ€ */
     pthread_mutex_lock(&g_mutexAgentList);
     sc_acd_hash_func4agent(ulSiteID, &ulHashVal);
     pstHashNode = hash_find_node(g_pstAgentList, ulHashVal, &ulSiteID, sc_acd_agent_hash_find);
@@ -1068,7 +1077,7 @@ U32 sc_acd_query_agent_status(U32 ulAgentID)
 
     SC_TRACE_IN(ulAgentID, ulAgentID, 0, 0);
 
-    /* ÕÒµ½×øÏ¯ */
+    /* æ‰¾åˆ°åå¸­ */
     sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
     pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, (VOID *)&ulAgentID, sc_acd_agent_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
@@ -1114,7 +1123,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
         return DOS_FAIL;
     }
 
-    /* ÕÒµ½×øÏ¯ */
+    /* æ‰¾åˆ°åå¸­ */
     sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
     pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, (VOID *)&ulAgentID, sc_acd_agent_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
@@ -1153,7 +1162,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
             pstAgentQueueInfo->pstAgentInfo->bConnected = DOS_FALSE;
             pstAgentQueueInfo->pstAgentInfo->bNeedConnected = DOS_FALSE;
             pstAgentQueueInfo->pstAgentInfo->bWaitingDelete = DOS_FALSE;
-            /* Èç¹ûÊÇĞÂÒµÎñ£¬Ôò½«×øÏ¯µÄ×´Ì¬ÖÃÏĞ */
+            /* å¦‚æœæ˜¯æ–°ä¸šåŠ¡ï¼Œåˆ™å°†åå¸­çš„çŠ¶æ€ç½®é—² */
             if (ulOperatingType == OPERATING_TYPE_PHONE)
             {
                 pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_IDEL;
@@ -1190,9 +1199,9 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
             //pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_AWAY;
 
             pstAgentQueueInfo->pstAgentInfo->ulLastSignInTime = time(0);
-            /* ºô½Ğ×øÏ¯ */
+            /* å‘¼å«åå¸­ */
             sc_ep_agent_signin(pstAgentQueueInfo->pstAgentInfo);
-            /* ³¤Ç©³É¹¦ºóÔÙ¸üĞÂ×´Ì¬ */
+            /* é•¿ç­¾æˆåŠŸåå†æ›´æ–°çŠ¶æ€ */
             //bIsUpdateDB = DOS_TRUE;
             break;
 
@@ -1207,7 +1216,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
             pstAgentQueueInfo->pstAgentInfo->stStat.ulTimeOnSignin += (time(0) - pstAgentQueueInfo->pstAgentInfo->ulLastSignInTime);
             pstAgentQueueInfo->pstAgentInfo->ulLastSignInTime = 0;
 
-            /* ¹Ò¶Ï×øÏ¯µÄµç»° */
+            /* æŒ‚æ–­åå¸­çš„ç”µè¯ */
             sc_ep_agent_signout(pstAgentQueueInfo->pstAgentInfo);
             bIsUpdateDB = DOS_TRUE;
 
@@ -1241,7 +1250,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
         case SC_ACD_SITE_ACTION_CONNECTED:
             if (pstAgentQueueInfo->pstAgentInfo->ucStatus == SC_ACD_OFFLINE)
             {
-                /* ³¤Ç©µÄÊ±ºò£¬Èç¹û×øÏ¯×´Ì¬Îª SC_ACD_OFFLINE£¬ Ôò¸üĞÂÎª SC_ACD_AWAY */
+                /* é•¿ç­¾çš„æ—¶å€™ï¼Œå¦‚æœåå¸­çŠ¶æ€ä¸º SC_ACD_OFFLINEï¼Œ åˆ™æ›´æ–°ä¸º SC_ACD_AWAY */
                 pstAgentQueueInfo->pstAgentInfo->ucStatus = SC_ACD_AWAY;
             }
             pstAgentQueueInfo->pstAgentInfo->bConnected = DOS_TRUE;
@@ -1266,7 +1275,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
             break;
     }
 
-    /* ×´Ì¬·¢Éú¸Ä±ä£¬¸üĞÂÊı¾İ¿â */
+    /* çŠ¶æ€å‘ç”Ÿæ”¹å˜ï¼Œæ›´æ–°æ•°æ®åº“ */
     if (bIsUpdateDB)
     {
         sc_acd_agent_update_status_db(ulAgentID, pstAgentQueueInfo->pstAgentInfo->ucStatus, pstAgentQueueInfo->pstAgentInfo->bConnected);
@@ -1305,7 +1314,7 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
 
     sc_logr_debug(SC_ACD, "Load Group. ID:%u, Customer:%u, Policy: %u, Name: %s", ulGroupID, ulCustomID, ulPolicy, pszGroupName);
 
-    /* È·¶¨¶ÓÁĞ */
+    /* ç¡®å®šé˜Ÿåˆ— */
     sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
     pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
@@ -1410,7 +1419,7 @@ U32 sc_acd_delete_queue(U32 ulGroupID)
         return DOS_FAIL;
     }
 
-    /* È·¶¨¶ÓÁĞ */
+    /* ç¡®å®šé˜Ÿåˆ— */
     sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
     pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
@@ -1480,7 +1489,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST 
     }
 
     /*
-     * Ëæ»úÒ»¸ö±àºÅ£¬È»ºó´ÓÕâ¸ö±àºÅ¿ªÊ¼²éÕÒÒ»¸ö¿ÉÓÃµÄ×øÏ¯¡£Èç¹ûµ½¶ÓÎ²ÁË»¹Ã»ÓĞÕÒµ½¾ÍÔÙ´ÓÍ·À´
+     * éšæœºä¸€ä¸ªç¼–å·ï¼Œç„¶åä»è¿™ä¸ªç¼–å·å¼€å§‹æŸ¥æ‰¾ä¸€ä¸ªå¯ç”¨çš„åå¸­ã€‚å¦‚æœåˆ°é˜Ÿå°¾äº†è¿˜æ²¡æœ‰æ‰¾åˆ°å°±å†ä»å¤´æ¥
      */
 
     ulRandomAgent = dos_random(pstGroupListNode->usCount);
@@ -1562,7 +1571,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST 
                 continue;
             }
 
-            /* ååµ½ÕâÀïÒÑ¾­²éÕÒ¹ıËùÓĞµÄµÄ×øÏ¯ÁË */
+            /* é‚‹åˆ°è¿™é‡Œå·²ç»æŸ¥æ‰¾è¿‡æ‰€æœ‰çš„çš„åå¸­äº† */
             if (pstAgentQueueNode->ulID > ulRandomAgent)
             {
                 sc_logr_debug(SC_ACD, "The end of the select loop.(Group %u)"
@@ -1607,7 +1616,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST
     }
 
     /*
-     * ´ÓÉÏ´ÎÊ¹ÓÃµÄ±àºÅ¿ªÊ¼²éÕÒÒ»¸ö¿ÉÓÃµÄ×øÏ¯¡£Èç¹ûµ½¶ÓÎ²ÁË»¹Ã»ÓĞÕÒµ½¾ÍÔÙ´ÓÍ·À´
+     * ä»ä¸Šæ¬¡ä½¿ç”¨çš„ç¼–å·å¼€å§‹æŸ¥æ‰¾ä¸€ä¸ªå¯ç”¨çš„åå¸­ã€‚å¦‚æœåˆ°é˜Ÿå°¾äº†è¿˜æ²¡æœ‰æ‰¾åˆ°å°±å†ä»å¤´æ¥
      */
 
     dos_strncpy(szLastEmpNo, pstGroupListNode->szLastEmpNo, SC_EMP_NUMBER_LENGTH);
@@ -1639,7 +1648,7 @@ start_find:
             continue;
         }
 
-        /* ÕÒµ½Ò»¸ö±È×îºóÒ»¸ö´óÇÒ×îĞ¡¹¤ºÅµÄ×øÏ¯ */
+        /* æ‰¾åˆ°ä¸€ä¸ªæ¯”æœ€åä¸€ä¸ªå¤§ä¸”æœ€å°å·¥å·çš„åå¸­ */
         if (dos_strncmp(szLastEmpNo, pstAgentQueueNode->pstAgentInfo->szEmpNo, SC_EMP_NUMBER_LENGTH) >= 0)
         {
             sc_logr_debug(SC_ACD, "Found an agent. But the agent's order(%s) is less then last agent order(%s). coutinue.(Agent %u in Group %u)"
@@ -1679,7 +1688,7 @@ start_find:
 
     if (DOS_ADDR_INVALID(pstAgentInfo) && szLastEmpNo[0] != '\0')
     {
-        /* Ã»ÓĞÕÒµ½µ½£¬ÕÒ×îĞ¡µÄ¹¤ºÅ±àºÅµÄ×øÏ¯À´½Óµç»° */
+        /* æ²¡æœ‰æ‰¾åˆ°åˆ°ï¼Œæ‰¾æœ€å°çš„å·¥å·ç¼–å·çš„åå¸­æ¥æ¥ç”µè¯ */
         szLastEmpNo[0] = '\0';
 
         goto start_find;
@@ -1777,7 +1786,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_caller(SC_ACD_GRP_HASH_NODE_ST 
 
     sc_logr_debug(SC_ACD, "Select agent by the calllerNum(%s). Start find agent in group %u. %p"
                     , szCallerNum, pstGroupListNode->ulGroupID, pstGroupListNode->pstRelationList);
-    /* ¸ù¾İÖ÷½ĞºÅÂë²éÕÒ¶ÔÓ¦µÄ×øÏ¯ */
+    /* æ ¹æ®ä¸»å«å·ç æŸ¥æ‰¾å¯¹åº”çš„åå¸­ */
     sc_acd_hash_func4calller_relation(szCallerNum, &ulHashVal);
     pstHashNode = hash_find_node(pstGroupListNode->pstRelationList, ulHashVal, szCallerNum, sc_acd_caller_relation_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
@@ -1792,7 +1801,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_caller(SC_ACD_GRP_HASH_NODE_ST 
 
     pstRelationQueueNode = pstHashNode->pHandle;
     ulSiteID = pstRelationQueueNode->ulSiteID;
-    /* ¸ù¾İ×øÏ¯±àºÅ, ÔÚ×øÏ¯hashÖĞ²éÕÒµ½¶ÔÓ¦µÄ×øÏ¯ */
+    /* æ ¹æ®åå¸­ç¼–å·, åœ¨åå¸­hashä¸­æŸ¥æ‰¾åˆ°å¯¹åº”çš„åå¸­ */
     sc_acd_hash_func4agent(ulSiteID, &ulAgentHashVal);
     pstAgentHashNode = hash_find_node(g_pstAgentList, ulAgentHashVal, (VOID *)&ulSiteID, sc_acd_agent_hash_find);
     if (DOS_ADDR_INVALID(pstAgentHashNode)
@@ -1825,7 +1834,7 @@ process_call:
     pstAgentNode = sc_acd_get_agent_by_call_count(pstGroupListNode);
     if (DOS_ADDR_VALID(pstAgentNode))
     {
-        /* Ìí¼Ó»òÕß¸üĞÂ Ö÷½ĞºÅÂëºÍ×øÏ¯¶ÔÓ¦¹ØÏµµÄhash */
+        /* æ·»åŠ æˆ–è€…æ›´æ–° ä¸»å«å·ç å’Œåå¸­å¯¹åº”å…³ç³»çš„hash */
         sc_logr_notice(SC_ACD, "Found an uaeable agent. Call Count: %d. (Agent %d in Group %d)"
                         , pstAgentNode->pstAgentInfo->ulCallCnt
                         , pstAgentNode->pstAgentInfo->ulSiteID
@@ -1833,7 +1842,7 @@ process_call:
 
         if (DOS_ADDR_VALID(pstHashNode) && DOS_ADDR_VALID(pstHashNode->pHandle))
         {
-            /* ¸üĞÂ */
+            /* æ›´æ–° */
             pstRelationQueueNode->ulSiteID = pstAgentNode->pstAgentInfo->ulSiteID;
 
             goto end;
@@ -2105,10 +2114,10 @@ U32 sc_acd_get_agent_by_emp_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulCustom
 }
 
 /**
- * º¯Êı: SC_ACD_AGENT_INFO_ST *sc_acd_get_agent_addr_by_userid(S8 *szUserID)
- * ¹¦ÄÜ: ¸ù¾İsip·Ö»úºÅ»ñµÃ°ó¶¨µÄ×øÏ¯µÄµØÖ·?
- * ²ÎÊı:
- * ·µ»ØÖµ: ³É¹¦·µ»Ø×øÏ¯µÄµØÖ·£¬·ñÔò·µ»ØNULL
+ * å‡½æ•°: SC_ACD_AGENT_INFO_ST *sc_acd_get_agent_addr_by_userid(S8 *szUserID)
+ * åŠŸèƒ½: æ ¹æ®sipåˆ†æœºå·è·å¾—ç»‘å®šçš„åå¸­çš„åœ°å€?
+ * å‚æ•°:
+ * è¿”å›å€¼: æˆåŠŸè¿”å›åå¸­çš„åœ°å€ï¼Œå¦åˆ™è¿”å›NULL
  */
 U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB)
 {
@@ -2165,7 +2174,7 @@ U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB)
                 pstSCB->ucLegRole = SC_CALLEE;
                 pstSCB->bRecord = pstAgentData->bRecord;
 
-                /* ±»½Ğ½ĞºÅÂë */
+                /* è¢«å«å«å·ç  */
                 dos_strncpy(pstSCB->szCalleeNum, pstAgentData->szUserID, sizeof(pstSCB->szCalleeNum));
                 pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
 
@@ -2240,6 +2249,15 @@ U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
             || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
         {
             sc_logr_debug(SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %u."
+                            , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        if (pstAgentNode->pstAgentInfo->ulLastIdelTime
+            && (time(NULL) - pstAgentNode->pstAgentInfo->ulLastIdelTime < 3))
+        {
+            sc_logr_debug(SC_ACD, "Agent is in protect Agent: %u. Group: %u."
+                            , pstAgentNode->pstAgentInfo->ulSiteID
                             , pstGroupListNode->ulGroupID);
             continue;
         }
@@ -2392,9 +2410,21 @@ U32 sc_acd_agent_stat_by_grpid(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U3
 
         if (SC_ACD_IDEL == pstAgentNode->pstAgentInfo->ucStatus)
         {
-            if (DOS_ADDR_VALID(pulIdel))
+            /* è¿™ä¸ªåœ°æ–¹ä¿æŠ¤ä¸€ä¸‹ */
+            if (pstAgentNode->pstAgentInfo->ulLastIdelTime
+                && time(NULL) - pstAgentNode->pstAgentInfo->ulLastIdelTime < 3)
             {
-                (*pulIdel)++;
+                if (DOS_ADDR_VALID(pulBusy))
+                {
+                    (*pulBusy)++;
+                }
+            }
+            else
+            {
+                if (DOS_ADDR_VALID(pulIdel))
+                {
+                    (*pulIdel)++;
+                }
             }
         }
         else
@@ -2605,7 +2635,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         stSiteInfo.szTTNumber[sizeof(stSiteInfo.szTTNumber) - 1] = '\0';
     }
 
-    /* ²é¿´µ±Ç°ÒªÌí¼ÓµÄ×øÏ¯ÊÇ·ñÒÑ¾­´æÔÚ£¬Èç¹û´æÔÚ£¬¾Í×¼±¸¸üĞÂ¾ÍºÃ */
+    /* æŸ¥çœ‹å½“å‰è¦æ·»åŠ çš„åå¸­æ˜¯å¦å·²ç»å­˜åœ¨ï¼Œå¦‚æœå­˜åœ¨ï¼Œå°±å‡†å¤‡æ›´æ–°å°±å¥½ */
     sc_acd_hash_func4agent(stSiteInfo.ulSiteID, &ulHashIndex);
     pthread_mutex_lock(&g_mutexAgentList);
     pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex , &stSiteInfo.ulSiteID, sc_acd_agent_hash_find);
@@ -2617,19 +2647,19 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         pstAgentQueueNode = pstHashNode->pHandle;
         if (pstAgentQueueNode->pstAgentInfo)
         {
-            /* ¿´¿´×øÏ¯ÓĞÃ»ÓĞÈ¥ÁË±ğµÄ×é£¬Èç¹ûÊÇ£¬¾ÍĞèÒª½«×øÏ¯»»µ½±ğµÄ×é */
+            /* çœ‹çœ‹åå¸­æœ‰æ²¡æœ‰å»äº†åˆ«çš„ç»„ï¼Œå¦‚æœæ˜¯ï¼Œå°±éœ€è¦å°†åå¸­æ¢åˆ°åˆ«çš„ç»„ */
             for (ulIndex = 0; ulIndex < MAX_GROUP_PER_SITE; ulIndex++)
             {
                 if (pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] != U32_BUTT
                    && pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] != 0)
                 {
-                    /* ĞŞ¸ÄÖ®Ç°×éIDºÏ·¨£¬ĞŞ¸ÄÖ®ºó×éIDºÏ·¨£¬¾ÍĞèÒª¿´¿´Ç°ºóÁ½¸öIDÊÇ·ñÏàÍ¬£¬ÏàÍ¬¾Í²»×öÊ²Ã´ÁË */
+                    /* ä¿®æ”¹ä¹‹å‰ç»„IDåˆæ³•ï¼Œä¿®æ”¹ä¹‹åç»„IDåˆæ³•ï¼Œå°±éœ€è¦çœ‹çœ‹å‰åä¸¤ä¸ªIDæ˜¯å¦ç›¸åŒï¼Œç›¸åŒå°±ä¸åšä»€ä¹ˆäº† */
                     if (stSiteInfo.aulGroupID[ulIndex] != U32_BUTT
                        && stSiteInfo.aulGroupID[ulIndex] != 0 )
                     {
                         if (pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] != stSiteInfo.aulGroupID[ulIndex])
                         {
-                            /* ´Ó±ğµÄ×éÉ¾³ı */
+                            /* ä»åˆ«çš„ç»„åˆ é™¤ */
                             sc_logr_debug(SC_ACD, "Agent %u will be removed from Group %u."
                                              , pstAgentQueueNode->pstAgentInfo->ulSiteID
                                              , pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]);
@@ -2638,7 +2668,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                                                                 , pstAgentQueueNode->pstAgentInfo->ulSiteID);
                             if (DOS_SUCC == ulRest)
                             {
-                                /* Ìí¼Óµ½ĞÂµÄ×é */
+                                /* æ·»åŠ åˆ°æ–°çš„ç»„ */
                                 sc_logr_debug(SC_ACD, "Agent %u will be added into Group %u."
                                                 , stSiteInfo.aulGroupID[ulIndex]
                                                 , pstAgentQueueNode->pstAgentInfo->ulSiteID);
@@ -2649,7 +2679,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                             }
                         }
                     }
-                    /* ĞŞ¸ÄÖ®Ç°×éIDºÏ·¨£¬ĞŞ¸ÄÖ®ºó×éID²»ºÏ·¨£¬¾ÍĞèÒª°Éagent´ÓÖ®Ç°µÄ×éÀïÃæÉ¾³ıµô */
+                    /* ä¿®æ”¹ä¹‹å‰ç»„IDåˆæ³•ï¼Œä¿®æ”¹ä¹‹åç»„IDä¸åˆæ³•ï¼Œå°±éœ€è¦å§agentä»ä¹‹å‰çš„ç»„é‡Œé¢åˆ é™¤æ‰ */
                     else
                     {
                         sc_logr_debug(SC_ACD, "Agent %u will be removed from group %u."
@@ -2662,11 +2692,11 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                 }
                 else
                 {
-                    /* ĞŞ¸ÄÖ®Ç°×éID²»ºÏ·¨£¬ĞŞ¸ÄÖ®ºó×éIDºÏ·¨£¬¾ÍĞèÒª°ÉagentÌí¼Óµ½ËùÉèÖÃµÄ×é */
+                    /* ä¿®æ”¹ä¹‹å‰ç»„IDä¸åˆæ³•ï¼Œä¿®æ”¹ä¹‹åç»„IDåˆæ³•ï¼Œå°±éœ€è¦å§agentæ·»åŠ åˆ°æ‰€è®¾ç½®çš„ç»„ */
                     if (stSiteInfo.aulGroupID[ulIndex] != U32_BUTT
                         && stSiteInfo.aulGroupID[ulIndex] != 0)
                     {
-                        /* Ìí¼Óµ½ĞÂµÄ×é */
+                        /* æ·»åŠ åˆ°æ–°çš„ç»„ */
                         sc_logr_debug(SC_ACD, "Agent %u will be add into group %u."
                                         , pstAgentQueueNode->pstAgentInfo->ulSiteID
                                         , stSiteInfo.aulGroupID[ulIndex]);
@@ -2676,7 +2706,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                     }
                     else
                     {
-                        /* ĞŞ¸ÄÖ®Ç°×éID²»ºÏ·¨£¬ĞŞ¸ÄÖ®ºó×éID²»ºÏ·¨£¬¾ÍÉ¶Ò²²»×öÁ¨ */
+                        /* ä¿®æ”¹ä¹‹å‰ç»„IDä¸åˆæ³•ï¼Œä¿®æ”¹ä¹‹åç»„IDä¸åˆæ³•ï¼Œå°±å•¥ä¹Ÿä¸åšå“© */
                     }
                 }
             }
@@ -2687,7 +2717,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
             pstAgentQueueNode->pstAgentInfo->ucBindType = stSiteInfo.ucBindType;
             if (ulAgentIndex == SC_INVALID_INDEX)
             {
-                /* ¸üĞÂµ¥¸ö×øÏ¯Ê±£¬×´Ì¬²»ĞèÒª±ä»¯£»³õÊ¼»¯Ê±£¬¶¼ÖÃÎªÀëÏß */
+                /* æ›´æ–°å•ä¸ªåå¸­æ—¶ï¼ŒçŠ¶æ€ä¸éœ€è¦å˜åŒ–ï¼›åˆå§‹åŒ–æ—¶ï¼Œéƒ½ç½®ä¸ºç¦»çº¿ */
                 pstAgentQueueNode->pstAgentInfo->ucStatus = stSiteInfo.ucStatus;
             }
             pstAgentQueueNode->pstAgentInfo->ulCustomerID = stSiteInfo.ulCustomerID;
@@ -2762,7 +2792,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         return 0;
     }
 
-    /* ½«×øÏ¯¼ÓÈëµ½×é */
+    /* å°†åå¸­åŠ å…¥åˆ°ç»„ */
     if (ulAgentIndex != SC_INVALID_INDEX)
     {
         for (ulIndex = 0; ulIndex < MAX_GROUP_PER_SITE; ulIndex++)
@@ -3176,7 +3206,7 @@ U32 sc_acd_agent_set_signin(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOpera
 
     ulOldStatus = pstAgentQueueInfo->ucStatus;
 
-    /* ·¢Æğ³¤Ç© */
+    /* å‘èµ·é•¿ç­¾ */
     if (sc_ep_agent_signin(pstAgentQueueInfo) != DOS_SUCC)
     {
         sc_logr_info(SC_ACD, "Request set agnet status to signin FAIL. Agent: %u, Old status: %u, Current status: %u"
@@ -3198,7 +3228,7 @@ U32 sc_acd_agent_set_signin(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOpera
             break;
 
         case SC_ACD_BUSY:
-            /* Õâ¸öµØ·½²»Ó¦¸ÃÖÃÎªIDEL×´Ì¬£¬ÖÃÎªIDEL×´Ì¬£¬»áÔÙ´Î·ÖÅäºô½Ğ */
+            /* è¿™ä¸ªåœ°æ–¹ä¸åº”è¯¥ç½®ä¸ºIDELçŠ¶æ€ï¼Œç½®ä¸ºIDELçŠ¶æ€ï¼Œä¼šå†æ¬¡åˆ†é…å‘¼å« */
             /*pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;*/
             break;
 
@@ -3249,7 +3279,7 @@ U32 sc_acd_agent_set_signout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOper
             break;
 
         case SC_ACD_BUSY:
-            /* Õâ¸öµØ·½²»Ó¦¸ÃÖÃÎªIDEL×´Ì¬£¬ÖÃÎªIDEL×´Ì¬£¬»áÔÙ´Î·ÖÅäºô½Ğ */
+            /* è¿™ä¸ªåœ°æ–¹ä¸åº”è¯¥ç½®ä¸ºIDELçŠ¶æ€ï¼Œç½®ä¸ºIDELçŠ¶æ€ï¼Œä¼šå†æ¬¡åˆ†é…å‘¼å« */
             /*pstAgentQueueInfo->ucStatus = SC_ACD_IDEL; */
             break;
 
@@ -3262,11 +3292,11 @@ U32 sc_acd_agent_set_signout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOper
             break;
     }
 
-    /* Ö»ÒªÓĞºô½Ğ¶¼²ğ */
+    /* åªè¦æœ‰å‘¼å«éƒ½æ‹† */
     if ((pstAgentQueueInfo->bConnected || pstAgentQueueInfo->bNeedConnected)
         && pstAgentQueueInfo->usSCBNo <= SC_MAX_SCB_NUM)
     {
-        /* ²ğºô½Ğ */
+        /* æ‹†å‘¼å« */
         sc_ep_call_ctrl_hangup_agent(pstAgentQueueInfo);
     }
 
@@ -3373,7 +3403,7 @@ VOID sc_acd_agent_set_logout(U64 p)
             break;
     }
 
-    /* Èç¹û bConnected Îªtrue£¬Ó¦¸ÃµÈ´ıÆä±äÎªfalse, ÔÙ½«×øÏ¯µÄ×´Ì¬¸ÄÎªµÇ³ö */
+    /* å¦‚æœ bConnected ä¸ºtrueï¼Œåº”è¯¥ç­‰å¾…å…¶å˜ä¸ºfalse, å†å°†åå¸­çš„çŠ¶æ€æ”¹ä¸ºç™»å‡º */
     if (pstAgentQueueInfo->bConnected)
     {
         return;
@@ -3437,10 +3467,10 @@ U32 sc_acd_agent_set_force_logout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 u
             break;
     }
 
-    /* Ö»ÒªÓĞºô½Ğ¶¼²ğ */
+    /* åªè¦æœ‰å‘¼å«éƒ½æ‹† */
     if (pstAgentQueueInfo->bConnected || pstAgentQueueInfo->usSCBNo != U16_BUTT)
     {
-        /*  ²ğ³ıºô½Ğ */
+        /*  æ‹†é™¤å‘¼å« */
         sc_ep_call_ctrl_hangup_all(pstAgentQueueInfo->ulSiteID);
     }
 
@@ -3460,7 +3490,7 @@ U32 sc_acd_agent_set_force_logout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 u
 U32 sc_acd_agent_update_status2(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
 {
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
-    SC_ACD_AGENT_INFO_ST   *pstAgentInfo = NULL;     /* ×øÏ¯ĞÅÏ¢ */
+    SC_ACD_AGENT_INFO_ST   *pstAgentInfo = NULL;     /* åå¸­ä¿¡æ¯ */
     HASH_NODE_S            *pstHashNode = NULL;
     U32                     ulHashIndex = 0;
 
@@ -3537,10 +3567,10 @@ U32 sc_acd_agent_update_status2(U32 ulAction, U32 ulAgentID, U32 ulOperatingType
                 pstAgentInfo->htmrLogout = NULL;
             }
 
-            /* Ö»ÓĞÔÚ³¤Ç©ÁË£¬²Å²ğ³ıºô½Ğ */
+            /* åªæœ‰åœ¨é•¿ç­¾äº†ï¼Œæ‰æ‹†é™¤å‘¼å« */
             if (pstAgentInfo->bConnected)
             {
-                /* ²ğ³ıºô½Ğ */
+                /* æ‹†é™¤å‘¼å« */
                 pstAgentInfo->bNeedConnected = DOS_FALSE;
                 sc_ep_call_ctrl_hangup_agent(pstAgentInfo);
             }
@@ -3564,13 +3594,13 @@ U32 sc_acd_agent_update_status2(U32 ulAction, U32 ulAgentID, U32 ulOperatingType
 }
 
 /**
- * º¯Êı: U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
- * ¹¦ÄÜ: ´¦ÀíHTTP·¢¹ıÀ´µÄÃüÁî
- * ²ÎÊı:
- *      U32 ulAction : ÃüÁî
- *      U32 ulAgentID : ×øÏ¯ID
- *      S8 *pszUserID : ×øÏ¯SIP User ID
- * ·µ»ØÖµ: ³É¹¦·µ»ØDOS_SUCC,·ñÔò·µ»ØDOS_FAIL
+ * å‡½æ•°: U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
+ * åŠŸèƒ½: å¤„ç†HTTPå‘è¿‡æ¥çš„å‘½ä»¤
+ * å‚æ•°:
+ *      U32 ulAction : å‘½ä»¤
+ *      U32 ulAgentID : åå¸­ID
+ *      S8 *pszUserID : åå¸­SIP User ID
+ * è¿”å›å€¼: æˆåŠŸè¿”å›DOS_SUCC,å¦åˆ™è¿”å›DOS_FAIL
  **/
 U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
 {
@@ -3626,7 +3656,7 @@ U32 sc_acd_http_agentgrp_update_proc(U32 ulAction, U32 ulGrpID)
     return DOS_SUCC;
 }
 
-/* ¼ÇÂ¼×øÏ¯Í³¼ÆĞÅÏ¢ */
+/* è®°å½•åå¸­ç»Ÿè®¡ä¿¡æ¯ */
 U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 {
     S8 szSQL[512] = { 0, };
@@ -3638,7 +3668,7 @@ U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         return DOS_FAIL;
     }
 
-    /* Ã»ÓĞÉÏÏß¹ı£¬¾ÍÖ±½Ó¹ıÁË */
+    /* æ²¡æœ‰ä¸Šçº¿è¿‡ï¼Œå°±ç›´æ¥è¿‡äº† */
 #if 0
     if (pstAgentInfo->stStat.ulTimeOnSignin)
     {
@@ -3672,7 +3702,7 @@ U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     return DOS_SUCC;
 }
 
-/* Éó¼Æ×øÏ¯£¬ÆäÊµ¾Í Ğ´ÈëÍ³¼ÆĞÅÏ¢ */
+/* å®¡è®¡åå¸­ï¼Œå…¶å®å°± å†™å…¥ç»Ÿè®¡ä¿¡æ¯ */
 U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr)
 {
     HASH_NODE_S                 *pstHashNode       = NULL;
@@ -3696,14 +3726,14 @@ U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr)
             if (DOS_ADDR_INVALID(pstAgentQueueNode)
                 || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
             {
-                /* ÓĞ¿ÉÄÜ±»É¾³ıÁË£¬²»ĞèÒª¶ÏÑÔ */
+                /* æœ‰å¯èƒ½è¢«åˆ é™¤äº†ï¼Œä¸éœ€è¦æ–­è¨€ */
                 continue;
             }
 
             pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
             if (pstAgentInfo->bWaitingDelete)
             {
-                /* ±»É¾³ıÁË*/
+                /* è¢«åˆ é™¤äº†*/
                 continue;
             }
 
