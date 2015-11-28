@@ -7709,6 +7709,7 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     SC_SCB_ST *pstSCB           = NULL;
     U32       ulRet;
     S8        szNumber[SC_TEL_NUMBER_LENGTH] = {0};
+    S8        szCMD[200] = { 0 };
 
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
@@ -7718,11 +7719,27 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     }
 
     pstSCB = sc_scb_get(pstAgentInfo->usSCBNo);
-    if (DOS_ADDR_VALID(pstSCB) && SC_SCB_ACTIVE == pstSCB->ucStatus
-        && pstAgentInfo->bConnected && pstAgentInfo->bNeedConnected)
+    if (DOS_ADDR_VALID(pstSCB) && SC_SCB_ACTIVE == pstSCB->ucStatus)
     {
-        sc_logr_warning(SC_ESL, "Agent %u request signin. But it seems already signin. Exit.", pstAgentInfo->ulSiteID);
-        return DOS_SUCC;
+        if (pstAgentInfo->bConnected && pstAgentInfo->bNeedConnected)
+        {
+            sc_logr_warning(SC_ESL, "Agent %u request signin. But it seems already signin. Exit.", pstAgentInfo->ulSiteID);
+            return DOS_SUCC;
+        }
+        else
+        {
+            sc_logr_warning(SC_ESL, "Agent %u request signin. But it seems in a call. Exit.", pstAgentInfo->ulSiteID);
+
+            SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_SIGNIN);
+            sc_ep_agent_status_update(pstAgentInfo, ACD_MSG_SUBTYPE_SIGNIN);
+
+            dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_setval %s exec_after_bridge_app park \r\n", pstSCB->szUUID);
+            sc_ep_esl_execute_cmd(szCMD);
+
+            pstAgentInfo->bConnected = DOS_TRUE;
+            pstAgentInfo->bNeedConnected = DOS_TRUE;
+            return DOS_SUCC;
+        }
     }
 
     pstSCB = sc_scb_alloc();
@@ -8746,6 +8763,11 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
             goto proc_error;
         }
 
+        /* 弹屏 */
+        if (sc_ep_call_notify(pstAgentInfo, pstSCBNew->szCustomerNum) != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+        }
 
         return DOS_SUCC;
     }
@@ -11720,12 +11742,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         goto proc_finished;
     }
 
-    if (pstSCB->bIsTTCall)
-    {
-        sc_ep_esl_execute("unset", "sip_h_EixTTcall", pszUUID);
-        sc_ep_esl_execute("unset", "sip_h_Mime-version", pszUUID);
-    }
-
     /* 判断是否是 新业务 */
     if (pstSCB->szCalleeNum[0] == '*')
     {
@@ -12488,6 +12504,12 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     }
     else if (SC_SERV_AGENT_SIGNIN == ulMainService)
     {
+        if (pstSCB->bIsTTCall)
+        {
+            sc_ep_esl_execute("unset", "sip_h_EixTTcall", pstSCB->szUUID);
+            sc_ep_esl_execute("unset", "sip_h_Mime-version", pstSCB->szUUID);
+        }
+
         //sc_ep_esl_execute("answer", "", pstSCB->szUUID);
         if (pstSCB->ulSiginTimeStamp == 0)
         {

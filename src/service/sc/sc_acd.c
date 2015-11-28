@@ -3193,7 +3193,8 @@ U32 sc_acd_agent_set_signin(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOpera
             break;
 
         case SC_ACD_BUSY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            /* 这个地方不应该置为IDEL状态，置为IDEL状态，会再次分配呼叫 */
+            /*pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;*/
             break;
 
         case SC_ACD_PROC:
@@ -3243,7 +3244,8 @@ U32 sc_acd_agent_set_signout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOper
             break;
 
         case SC_ACD_BUSY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            /* 这个地方不应该置为IDEL状态，置为IDEL状态，会再次分配呼叫 */
+            /*pstAgentQueueInfo->ucStatus = SC_ACD_IDEL; */
             break;
 
         case SC_ACD_PROC:
@@ -3257,7 +3259,7 @@ U32 sc_acd_agent_set_signout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOper
 
     /* 只要有呼叫都拆 */
     if ((pstAgentQueueInfo->bConnected || pstAgentQueueInfo->bNeedConnected)
-        && pstAgentQueueInfo->usSCBNo != U16_BUTT)
+        && pstAgentQueueInfo->usSCBNo <= SC_MAX_SCB_NUM)
     {
         /* 拆呼叫 */
         sc_ep_call_ctrl_hangup_agent(pstAgentQueueInfo);

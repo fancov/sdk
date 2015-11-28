@@ -358,7 +358,6 @@ typedef enum tagTaskStatus{
     SC_TASK_INIT                       = 0,       /* 任务状态，初始化 */
     SC_TASK_WORKING,                              /* 任务状态，工作 */
     SC_TASK_PAUSED,                               /* 任务状态，暂停 */
-    SC_TASK_CONTINUE,                             /* 任务状态，继续 */
     SC_TASK_STOP,                                 /* 任务状态，停止，不再发起呼叫，如果所有呼叫结束即将释放资源 */
 
     SC_TASK_SYS_BUSY,                             /* 任务状态，系统忙，暂停呼叫量在80%以上的任务发起呼叫 */
