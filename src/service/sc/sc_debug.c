@@ -856,8 +856,8 @@ VOID sc_show_agent_group(U32 ulIndex, U32 ulCustomID, U32 ulGroupID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%6s%10s%10s%10s%12s%16s"
-                    , "#", "Index", "Customer", "Agent Cnt", "ACD Policy", "Name");
+                    , "\r\n%6s%10s%10s%10s%12s%16s%16s"
+                    , "#", "Index", "Customer", "Agent Cnt", "ACD Policy", "Name", "LastEmpNo");
     cli_out_string(ulIndex, szCmdBuff);
 
     HASH_Scan_Table(g_pstGroupList, ulHashIndex)
@@ -887,13 +887,14 @@ VOID sc_show_agent_group(U32 ulIndex, U32 ulCustomID, U32 ulGroupID)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n%6u%10u%10u%10u%12u%16s"
+                            , "\r\n%6u%10u%10u%10u%12u%16s%16s"
                             , pstAgentGrouop->usID
                             , pstAgentGrouop->ulGroupID
                             , pstAgentGrouop->ulCustomID
                             , pstAgentGrouop->usCount
                             , pstAgentGrouop->ucACDPolicy
-                            , pstAgentGrouop->szGroupName);
+                            , pstAgentGrouop->szGroupName
+                            , pstAgentGrouop->szLastEmpNo);
             cli_out_string(ulIndex, szCmdBuff);
 
             ulTotal++;

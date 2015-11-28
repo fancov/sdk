@@ -1685,6 +1685,11 @@ start_find:
         goto start_find;
     }
 
+    if (DOS_ADDR_VALID(pstAgentInfo))
+    {
+        dos_strncpy(pstGroupListNode->szLastEmpNo, pstAgentInfo->szEmpNo, SC_EMP_NUMBER_LENGTH);
+    }
+
     return pstAgentNodeRet;
 }
 
