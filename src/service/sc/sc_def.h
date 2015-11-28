@@ -74,7 +74,7 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_MAX_TASK_MAX_CONCURRENCY    15
 
-#define SC_MAX_SRV_TYPE_PRE_LEG        4
+#define SC_MAX_SRV_TYPE_PRE_LEG        8
 
 /* 最大呼叫数量 */
 #define SC_MAX_CALL                    3000

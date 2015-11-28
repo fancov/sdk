@@ -3210,7 +3210,7 @@ U32 sc_acd_agent_set_signin(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOpera
 
     if (ulOldStatus != pstAgentQueueInfo->ucStatus)
     {
-        sc_ep_agent_status_update(pstAgentQueueInfo, ACD_MSG_SUBTYPE_IDLE);
+        sc_ep_agent_status_update(pstAgentQueueInfo, pstAgentQueueInfo->ucStatus);
     }
 
     sc_logr_info(SC_ACD, "Request set agnet status to signin. Agent: %u, Old status: %u, Current status: %u"
@@ -3270,7 +3270,7 @@ U32 sc_acd_agent_set_signout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOper
 
     if (ulOldStatus != pstAgentQueueInfo->ucStatus)
     {
-        sc_ep_agent_status_update(pstAgentQueueInfo, ACD_MSG_SUBTYPE_IDLE);
+        sc_ep_agent_status_update(pstAgentQueueInfo, pstAgentQueueInfo->ucStatus);
     }
 
     sc_ep_agent_status_update(pstAgentQueueInfo, ACD_MSG_SUBTYPE_SIGNOUT);

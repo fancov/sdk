@@ -7728,7 +7728,7 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         }
         else
         {
-            sc_logr_warning(SC_ESL, "Agent %u request signin. But it seems in a call. Exit.", pstAgentInfo->ulSiteID);
+            sc_logr_warning(SC_ESL, "Agent %u request signin. But it seems in a call(SCB: %u). Exit.", pstAgentInfo->ulSiteID, pstAgentInfo->usSCBNo);
 
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_SIGNIN);
             sc_ep_agent_status_update(pstAgentInfo, ACD_MSG_SUBTYPE_SIGNIN);
@@ -8773,11 +8773,13 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
         pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
 
+        pstSCBNew->bCallSip = DOS_TRUE;
+
         sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
 
         /* 给通道设置变量 */
         sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCBNew->szUUID);
-        dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_break %s \r\n", pstSCBNew->szUUID);
+        dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_break %s all \r\n", pstSCBNew->szUUID);
         sc_ep_esl_execute_cmd(szAPPParam);
 
         dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_bridge %s %s \r\n", pstSCBNew->szUUID, pstSCB->szUUID);
@@ -8786,12 +8788,6 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
             ulErrCode = CC_ERR_SC_MESSAGE_SENT_ERR;
             DOS_ASSERT(0);
             goto proc_error;
-        }
-
-        /* 弹屏 */
-        if (sc_ep_call_notify(pstAgentInfo, pstSCBNew->szCustomerNum) != DOS_SUCC)
-        {
-            DOS_ASSERT(0);
         }
 
         return DOS_SUCC;
