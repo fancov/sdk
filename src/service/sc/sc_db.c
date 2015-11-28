@@ -83,7 +83,7 @@ static U32 sc_db_execute_sql(SC_DB_MSG_TAG_ST *pstMsg)
 
     if (db_query(g_pstSCDBHandle, pstMsg->szData, NULL, NULL, 0) != DOS_SUCC)
     {
-        sc_logr_error(SC_DB, "%s", "Execute sql FAIL. %s", pstMsg->szData);
+        sc_logr_error(SC_DB, "Execute sql FAIL. %s", pstMsg->szData);
 
         return DOS_FAIL;
     }

@@ -741,8 +741,9 @@ typedef struct tagSCSCB{
     U32       bIsFristSCB:1;                      /* 是否作为主leg */
     U32       bIsInHoldStatus:1;                  /* 是否在hold状态 */
     U32       bIsTTCall:1;                        /* 是否作为主leg */
-    U32       bCallSip:1;                        /* 是否有电话和SIP分机通话 (坐席长签，DID绑定这个坐席的分机时使用) */
-    U32       ulRes:12;
+    U32       bCallSip:1;                         /* 是否有电话和SIP分机通话 (坐席长签，DID绑定这个坐席的分机时使用) */
+    U32       bHasEarlyMedia:1;                   /* 是否收到早起媒体 */
+    U32       ulRes:11;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
