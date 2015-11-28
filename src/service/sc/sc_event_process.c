@@ -12905,6 +12905,8 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                         goto proc_finished;
                     }
                 }
+
+                ulRet = DOS_SUCC;
             }
         }
         else
