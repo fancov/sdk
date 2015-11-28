@@ -463,6 +463,45 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
     return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_STATUS, NULL);
 }
 
+U32 sc_ep_record(SC_SCB_ST *pstSCBRecord)
+{
+    S8 szFilePath[512] = { 0 };
+    S8 szAPPParam[512] = { 0 };
+
+    if (DOS_ADDR_INVALID(pstSCBRecord))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    SC_SCB_SET_SERVICE(pstSCBRecord, SC_SERV_RECORDING);
+    sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCBRecord->ulCustomID, pstSCBRecord->szCallerNum, pstSCBRecord->szCalleeNum);
+    pthread_mutex_lock(&pstSCBRecord->mutexSCBLock);
+    pstSCBRecord->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
+    if (DOS_ADDR_INVALID(pstSCBRecord->pszRecordFile))
+    {
+        DOS_ASSERT(0);
+        pthread_mutex_unlock(&pstSCBRecord->mutexSCBLock);
+
+        return DOS_FAIL;
+    }
+
+    dos_strncpy(pstSCBRecord->pszRecordFile, szFilePath, dos_strlen(szFilePath) + 1);
+    pstSCBRecord->pszRecordFile[dos_strlen(szFilePath)] = '\0';
+
+    dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                    , "bgapi uuid_record %s start %s/%s\r\n"
+                    , pstSCBRecord->bRecord ? pstSCBRecord->szUUID : pstSCBRecord->szUUID
+                    , SC_RECORD_FILE_PATH
+                    , szFilePath);
+    sc_ep_esl_execute_cmd(szAPPParam);
+
+    pthread_mutex_unlock(&pstSCBRecord->mutexSCBLock);
+
+    return DOS_SUCC;
+}
+
 /**
  * 函数: sc_ep_call_notify
  * 功能: BS的错误码，转换为SC中的错误码
@@ -8663,6 +8702,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
     SC_SCB_ST     *pstSCBNew = NULL;
     S8            szNumber[SC_TEL_NUMBER_LENGTH] = {0};
     U32           ulRet;
+    SC_SCB_ST     *pstSCBRecord = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstAgentInfo) || DOS_ADDR_INVALID(pulErrCode))
     {
@@ -8756,7 +8796,26 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
         pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
 
-        sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
+        //sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
+
+        /* 判断是否需要录音 */
+        if (pstSCBNew->bRecord
+            || (pstSCB->bIsAgentCall && pstSCB->bRecord))
+        {
+            if (pstSCBNew->bRecord)
+            {
+                pstSCBRecord = pstSCBNew;
+            }
+            else
+            {
+                pstSCBRecord = pstSCB;
+            }
+
+            if (sc_ep_record(pstSCBRecord) != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+            }
+        }
 
         /* 给通道设置变量 */
         sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCBNew->szUUID);
@@ -12419,19 +12478,18 @@ process_finished:
  */
 U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
-    S8 *pszWaitingPark = NULL;
-    S8 *pszMainService = NULL;
-    S8 szFilePath[512] = { 0 };
-    S8 szAPPParam[512] = { 0 };
-    SC_SCB_ST *pstSCBRecord = NULL;
-    SC_SCB_ST *pstSCBOther = NULL;
-    SC_SCB_ST *pstSCBNew = NULL;
-    U32 ulMainService = U32_BUTT;
+    S8          *pszWaitingPark     = NULL;
+    S8          *pszMainService     = NULL;
+    S8          *pszCaller          = NULL;
+    S8          *pszCallee          = NULL;
+    S8          *pszValue           = NULL;
+    SC_SCB_ST   *pstSCBRecord       = NULL;
+    SC_SCB_ST   *pstSCBOther        = NULL;
+    SC_SCB_ST   *pstSCBNew          = NULL;
+    U32 ulMainService               = U32_BUTT;
     U32 ulRet;
     U64 uLTmp;
-    S8  *pszCaller     = NULL;
-    S8  *pszCallee     = NULL;
-    S8  *pszValue      = NULL;
+
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -12492,27 +12550,11 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
             pstSCBRecord = pstSCBOther;
         }
 
-        SC_SCB_SET_SERVICE(pstSCBRecord, SC_SERV_RECORDING);
-        sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCBRecord->ulCustomID, pstSCBRecord->szCallerNum, pstSCBRecord->szCalleeNum);
-        pthread_mutex_lock(&pstSCBRecord->mutexSCBLock);
-        pstSCBRecord->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
-        if (DOS_ADDR_VALID(pstSCBRecord->pszRecordFile))
-        {
-            dos_strncpy(pstSCBRecord->pszRecordFile, szFilePath, dos_strlen(szFilePath) + 1);
-            pstSCBRecord->pszRecordFile[dos_strlen(szFilePath)] = '\0';
-
-                dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                                , "bgapi uuid_record %s start %s/%s\r\n"
-                                , pstSCBRecord->bRecord ? pstSCBRecord->szUUID : pstSCBRecord->szUUID
-                                , SC_RECORD_FILE_PATH
-                                , szFilePath);
-                sc_ep_esl_execute_cmd(szAPPParam);
-        }
-        else
+        if (sc_ep_record(pstSCBRecord) != DOS_SUCC)
         {
             DOS_ASSERT(0);
+            sc_logr_error(SC_ESL, "Record FAIL. SCB(%u)", pstSCBRecord->usSCBNo);
         }
-        pthread_mutex_unlock(&pstSCBRecord->mutexSCBLock);
     }
 
     if (SC_SERV_CALL_INTERCEPT == ulMainService
