@@ -697,7 +697,7 @@ typedef struct tagSCSCB{
     U8        ucServStatus;                       /* 业务状态 */
     U16       usTerminationCause;                 /* 业务终止原因 */
 
-    U8        aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 列表*/
+    U8        aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 列表 */
 
     U8        ucMainService;
     U8        ucCurrentSrvInd;                    /* 当前空闲的业务类型索引 */
