@@ -8813,10 +8813,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
         pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
 
-        //sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
         pstSCBNew->bCallSip = DOS_TRUE;
-
-        sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
 
         /* ÅÐ¶ÏÊÇ·ñÐèÒªÂ¼Òô */
         if (pstSCBNew->bRecord
