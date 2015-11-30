@@ -95,12 +95,13 @@ U32 sc_task_mngt_load_task()
 
     SC_TRACE_IN(0, 0, 0, 0);
 
+    /* 不加载结束和暂停的任务 */
     ulLength = dos_snprintf(szSqlQuery
                 , sizeof(szSqlQuery)
 #if 0
                 , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask WHERE tbl_calltask.status = 1;");
 #endif
-                , "SELECT id, customer_id from tbl_calltask where tbl_calltask.status <> %d ;", SC_TASK_STATUS_DB_STOP);
+                , "SELECT id, customer_id from tbl_calltask where tbl_calltask.status < %d ;", SC_TASK_STATUS_DB_PAUSED);
 
     ulResult = db_query(g_pstSCDBHandle
                             , szSqlQuery
@@ -152,9 +153,23 @@ U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
     pstTCB = sc_tcb_find_by_taskid(ulTaskID);
     if (!pstTCB)
     {
-        DOS_ASSERT(0);
-        SC_TRACE_OUT();
-        return SC_HTTP_ERRNO_INVALID_DATA;
+        /* 暂停的任务不一定加载了，如果找不到应该重新加载 */
+        if (sc_task_load(ulTaskID) != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+            SC_TRACE_OUT();
+            return SC_HTTP_ERRNO_INVALID_DATA;
+        }
+
+        pstTCB = sc_tcb_find_by_taskid(ulTaskID);
+        if (!pstTCB)
+        {
+            DOS_ASSERT(0);
+            SC_TRACE_OUT();
+            return SC_HTTP_ERRNO_INVALID_DATA;
+        }
+
+        SC_TASK_TRACE(pstTCB, "Task(%u) Load SUCC.", ulTaskID);
     }
 
     if (pstTCB->ucTaskStatus == SC_TASK_INIT)
