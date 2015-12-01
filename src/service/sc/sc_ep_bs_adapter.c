@@ -250,6 +250,7 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
     BOOL       blIsOutboundCall = DOS_FALSE;
     BOOL       blIsExternalCall = DOS_FALSE;
     BOOL       blNeedOutbond    = DOS_TRUE;
+    BOOL       bIsExit          = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(aucSCSrvList)
         || ulSCSrvCnt <= 0
@@ -369,6 +370,7 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
                     aucBSSrvList[ulBSSrvIndex] = BS_SERV_VERIFY;
                     ulBSSrvIndex++;
                 }
+                bIsExit = DOS_TRUE;
                 break;
 
             default:
@@ -376,6 +378,10 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
         }
     }
 
+    if (bIsExit)
+    {
+        return DOS_SUCC;
+    }
 
     for (ulIndex=0; ulIndex<ulSCSrvCnt; ulIndex++)
     {
