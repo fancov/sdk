@@ -8541,6 +8541,29 @@ U32 sc_ep_transfer_subscription_release(SC_SCB_ST * pstSCBSubscription)
     return DOS_SUCC;
 }
 
+BOOL sc_ep_chack_has_call4agent(U32 ulSCBNo)
+{
+    SC_SCB_ST *pstSCBAgent = NULL;
+    SC_SCB_ST *pstSCBOther = NULL;
+
+    pstSCBAgent = sc_scb_get(ulSCBNo);
+    if (DOS_ADDR_INVALID(pstSCBAgent))
+    {
+        return DOS_FALSE;
+    }
+
+    if (sc_call_check_service(pstSCBAgent, SC_SERV_AGENT_SIGNIN))
+    {
+        pstSCBOther = sc_scb_get(pstSCBAgent->usOtherSCBNo);
+        if (DOS_ADDR_INVALID(pstSCBOther))
+        {
+            return DOS_FALSE;
+        }
+    }
+
+    return DOS_TRUE;
+}
+
 U32 sc_ep_call_intercept(SC_SCB_ST * pstSCB)
 {
     SC_SCB_ST *pstSCBAgent = NULL;

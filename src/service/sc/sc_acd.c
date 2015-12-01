@@ -2582,6 +2582,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.bRecord = ulRecordFlag;
     stSiteInfo.bGroupHeader = ulIsHeader;
     stSiteInfo.ucBindType = (U8)ulSelectType;
+    stSiteInfo.ucCallStatus = SC_ACD_CALL_NONE;
     if (stSiteInfo.ucStatus != SC_ACD_OFFLINE)
     {
         stSiteInfo.bLogin = DOS_TRUE;
@@ -2724,6 +2725,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
             pstAgentQueueNode->pstAgentInfo->bValid = stSiteInfo.bValid;
             pstAgentQueueNode->pstAgentInfo->ulSIPUserID = stSiteInfo.ulSIPUserID;
             pstAgentQueueNode->pstAgentInfo->ucProcesingTime = stSiteInfo.ucProcesingTime;
+            pstAgentQueueNode->pstAgentInfo->ucCallStatus = stSiteInfo.ucCallStatus;
 
             dos_strncpy(pstAgentQueueNode->pstAgentInfo->szEmpNo, stSiteInfo.szEmpNo,SC_EMP_NUMBER_LENGTH);
             pstAgentQueueNode->pstAgentInfo->szEmpNo[SC_EMP_NUMBER_LENGTH - 1] = '\0';
@@ -3123,7 +3125,11 @@ U32 sc_acd_agent_set_idle(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperati
             break;
 
         case SC_ACD_BUSY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            if (!sc_ep_chack_has_call4agent(pstAgentQueueInfo->usSCBNo))
+            {
+                pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            }
+
             break;
 
         case SC_ACD_PROC:
@@ -3171,7 +3177,10 @@ U32 sc_acd_agent_set_rest(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperati
             break;
 
         case SC_ACD_BUSY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+            if (!sc_ep_chack_has_call4agent(pstAgentQueueInfo->usSCBNo))
+            {
+                pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+            }
             break;
 
         case SC_ACD_PROC:

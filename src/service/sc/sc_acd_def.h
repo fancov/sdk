@@ -75,6 +75,21 @@ enum {
     SC_ACD_BUTT
 };
 
+/*
+ * 坐席呼叫状态
+ * 没有呼叫时就是NONE, 到底是CALLIN还是CALLOUT由当前坐席呼叫的对端决定，
+ * 如果对端是被动接听电话这是呼出，否则即为呼入
+ * 预览外呼，群呼任务，呼叫坐席则是呼出
+ * 客户呼入，接听坐席电话则是呼入
+ */
+enum {
+    SC_ACD_CALL_NONE = 0,  /* 没有呼叫 */
+    SC_ACD_CALL_IN,        /* 呼入 */
+    SC_ACD_CALL_OUT,       /* 呼出 */
+
+    SC_ACD_CALL_BUTT
+};
+
 enum {
     SC_ACD_SITE_ACTION_DELETE = 0,       /* 坐席操作动作，删除 */
     SC_ACD_SITE_ACTION_ADD,              /* 坐席操作动作，删除 */
@@ -160,16 +175,16 @@ typedef struct tagACDSiteDesc{
     U16        usSCBNo;
     U8         ucStatus;                          /* 坐席状态 refer to SC_SITE_STATUS_EN */
     U8         ucBindType;                        /* 坐席绑定类型 refer to SC_AGENT_BIND_TYPE_EN */
-    U32        ulSiteID;                          /* 坐席数据库编号 */
 
+    U32        ulSiteID;                          /* 坐席数据库编号 */
     U32        ulCallCnt;                         /* 呼叫总数 */
     U32        ulCustomerID;                      /* 客户id */
     U32        ulSIPUserID;                       /* SIP账户ID */
+
     U32        aulGroupID[MAX_GROUP_PER_SITE];    /* 组ID */
 
     U32        ulLastOnlineTime;
     U32        ulLastSignInTime;
-
     U32        ulLastIdelTime;
 
     U32        bValid:1;                          /* 是否可用 */
@@ -183,8 +198,11 @@ typedef struct tagACDSiteDesc{
     U32        bNeedConnected:1;                  /* 是否已经长连 */
 
     U32        bWaitingDelete:1;                  /* 是否已经被删除 */
-    U32        ucProcesingTime:8;                 /* 坐席处理呼叫结果时间 */
-    U32        ucRes1:7;
+    U32        ucRes1:15;
+
+    U8         ucProcesingTime;                   /* 坐席处理呼叫结果时间 */
+    U8         ucCallStatus;                      /* 呼叫状态 */
+    U32        usRes;
 
     S8         szUserID[SC_TEL_NUMBER_LENGTH];    /* SIP User ID */
     S8         szExtension[SC_TEL_NUMBER_LENGTH]; /* 分机号 */

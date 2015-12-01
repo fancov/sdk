@@ -1134,6 +1134,7 @@ U32 sc_ep_get_eix_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength);
 U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService);
 U32 sc_ep_transfer_publish_release(SC_SCB_ST * pstSCBPublish);
 U32 sc_ep_gateway_register_status_update(U32 ulGWID, SC_TRUNK_STATE_TYPE_EN enRegisterStatus);
+BOOL sc_ep_chack_has_call4agent(U32 ulSCBNo);
 U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber);
 U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled);
 U32 sc_ep_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber);
