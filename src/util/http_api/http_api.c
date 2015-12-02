@@ -158,7 +158,7 @@ U32 http_api_handle_proc(HTTP_HANDLE_ST *pstHandle, U32 *pulErrNo)
         return DOS_FAIL;
     }
 
-    logr_debug("Recv http apit request. Prefix: %s, Query: %s, Conten Len:%s"
+    logr_debug("Recv http apit request. Prefix: %s, Query: %s, Conten Len:%d"
                 , pstHandle->uri
                 , pstHandle->query_string
                 , pstHandle->content_len);

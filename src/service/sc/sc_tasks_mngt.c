@@ -184,6 +184,14 @@ U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
         }
     }
 
+    /* 获取呼叫任务最大并发数 */
+    pstTCB->usSiteCount = sc_acd_get_agent_cnt_by_grp(pstTCB->ulAgentQueueID);
+    pstTCB->ulMaxConcurrency = pstTCB->usSiteCount * pstTCB->ulCallRate;
+    if (0 == pstTCB->ulMaxConcurrency)
+    {
+        pstTCB->ulMaxConcurrency = SC_MAX_TASK_MAX_CONCURRENCY;
+    }
+
     if (pstTCB->ucTaskStatus != SC_TASK_PAUSED)
     {
         DOS_ASSERT(0);

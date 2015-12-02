@@ -664,11 +664,22 @@ VOID *sc_dialer_runtime(VOID * ptr)
             break;
         }
 
+        pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
+        stTimeout.tv_sec = time(0) + 1;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&g_pstDialerHandle->condCallQueue, &g_pstDialerHandle->mutexCallQueue, &stTimeout);
+        pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
+
+        if (dos_list_is_empty(&g_pstDialerHandle->stCallList))
+        {
+            continue;
+        }
+
         /*
          * 检查连接是否正常
          * 如果连接不正常，就准备重连
          **/
-        if (!g_pstDialerHandle->blIsESLRunning)
+        if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
         {
             sc_logr_notice(SC_DIALER, "%s", "ELS connection has been down, re-connect.");
             ulRet = esl_connect(&g_pstDialerHandle->stHandle, "127.0.0.1", 8021, NULL, "ClueCon");
@@ -684,18 +695,6 @@ VOID *sc_dialer_runtime(VOID * ptr)
             g_pstDialerHandle->blIsESLRunning = DOS_TRUE;
 
             sc_logr_notice(SC_DIALER, "%s", "ELS connect Back to Normal.");
-        }
-
-
-        pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
-        stTimeout.tv_sec = time(0) + 1;
-        stTimeout.tv_nsec = 0;
-        pthread_cond_timedwait(&g_pstDialerHandle->condCallQueue, &g_pstDialerHandle->mutexCallQueue, &stTimeout);
-        pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
-
-        if (dos_list_is_empty(&g_pstDialerHandle->stCallList))
-        {
-            continue;
         }
 
         while (1)

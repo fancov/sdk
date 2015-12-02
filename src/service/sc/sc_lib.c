@@ -2323,7 +2323,7 @@ U32 sc_task_check_can_call(SC_TASK_CB_ST *pstTCB)
             return DOS_FALSE;
         }
 
-        if (lNeedCalls > lTotalCalls)
+        if (lNeedCalls >= lTotalCalls)
         {
             return DOS_FALSE;
         }
