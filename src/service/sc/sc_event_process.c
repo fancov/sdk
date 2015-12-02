@@ -12511,6 +12511,17 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             goto process_fail;
         }
 
+        if (pstSCB->bIsTTCall
+            && pstSCB->usOtherSCBNo < SC_MAX_SCB_NUM)
+        {
+            /* 如果坐席绑定的是 EIX，需要给对端放回铃音 */
+            pstSCB1 = sc_scb_get(pstSCB->usOtherSCBNo);
+            if (DOS_ADDR_VALID(pstSCB1))
+            {
+                sc_ep_esl_execute("ring_ready", NULL, pstSCB1->szUUID);
+            }
+        }
+
         /* 判断是否是呼叫坐席，更新坐席的状态 */
         if (pstSCB->bIsAgentCall && !sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
         {
