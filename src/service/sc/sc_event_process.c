@@ -496,6 +496,7 @@ U32 sc_ep_record(SC_SCB_ST *pstSCBRecord)
                     , SC_RECORD_FILE_PATH
                     , szFilePath);
     sc_ep_esl_execute_cmd(szAPPParam);
+    pstSCBRecord->bIsSendRecordCdr = DOS_TRUE;
 
     pthread_mutex_unlock(&pstSCBRecord->mutexSCBLock);
 
@@ -6852,13 +6853,13 @@ U32 sc_ep_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
         }
     }
 
-    pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Progress-Media-Time");
+    pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Bridged-Time");
     if (DOS_ADDR_VALID(pszTmp)
         && '\0' != pszTmp[0]
         && dos_atoull(pszTmp, &uLTmp) == 0)
     {
         pstSCB->pstExtraData->ulBridgeTimeStamp = uLTmp / 1000000;
-        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Progress-Media-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulBridgeTimeStamp);
+        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Bridged-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulBridgeTimeStamp);
     }
 
     pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Hangup-Time");
@@ -7952,6 +7953,7 @@ U32 sc_ep_agent_record(SC_SCB_ST * pstSCB)
                         , SC_RECORD_FILE_PATH
                         , szFilePath);
         sc_ep_esl_execute_cmd(szAPPParam);
+        pstSCB->bIsSendRecordCdr = DOS_TRUE;
         sc_ep_esl_execute("sleep", "300", pstSCB->szUUID);
     }
     else
@@ -13030,7 +13032,6 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
     SC_SCB_ST   *pstSCBOther        = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
     U32         ulTransferFinishTime = 0;
-    BOOL        bIsClearOtherExtraData = DOS_FALSE;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -13239,25 +13240,6 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                                 , SC_RECORD_FILE_PATH
                                                 , pstSCBOther->pszRecordFile);
                                 sc_ep_esl_execute_cmd(szCMD);
-
-                                pstSCB->pszRecordFile = dos_dmem_alloc(dos_strlen(pstSCBOther->pszRecordFile) + 1);
-                                if (DOS_ADDR_VALID(pstSCB->pszRecordFile))
-                                {
-                                    dos_strcpy(pstSCB->pszRecordFile, pstSCBOther->pszRecordFile);
-                                }
-
-                                /* 录音话单单独发送 */
-                                //SC_SCB_SET_SERVICE(pstSCB, SC_SERV_RECORDING);
-                                for (i=0; i<SC_MAX_SRV_TYPE_PRE_LEG; i++)
-                                {
-                                    if (pstSCBOther->aucServiceType[i] == SC_SERV_RECORDING)
-                                    {
-                                        pstSCBOther->aucServiceType[i] = U8_BUTT;
-                                        break;
-                                    }
-                                }
-
-                                pstSCBOther->bRecord = DOS_FALSE;
                             }
 
                             /* 判断坐席是否是长签 */
@@ -13317,20 +13299,6 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                             , pstSCBOther->pszRecordFile);
                             sc_ep_esl_execute_cmd(szCMD);
 
-                            if (DOS_ADDR_INVALID(pstSCBOther->pstExtraData))
-                            {
-                                pstSCBOther->pstExtraData = dos_dmem_alloc(sizeof(SC_SCB_EXTRA_DATA_ST));
-                            }
-
-                            if (DOS_ADDR_INVALID(pstSCBOther->pstExtraData) || DOS_ADDR_INVALID(pstSCB->pstExtraData))
-                            {
-                                DOS_ASSERT(0);
-                            }
-                            else
-                            {
-                                dos_memcpy(pstSCBOther->pstExtraData, pstSCB->pstExtraData, sizeof(SC_SCB_EXTRA_DATA_ST));
-                                bIsClearOtherExtraData = DOS_TRUE;
-                            }
                          }
                     }
                     else
@@ -13473,7 +13441,6 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                     if (pstSCB->aucServiceType[i] == SC_SERV_RECORDING)
                     {
                         pstSCB->aucServiceType[i] = U8_BUTT;
-                        break;
                     }
                 }
 
@@ -13484,7 +13451,6 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                         if (pstSCBOther->aucServiceType[i] == SC_SERV_RECORDING)
                         {
                             pstSCBOther->aucServiceType[i] = U8_BUTT;
-                            break;
                         }
                     }
                 }
@@ -13498,15 +13464,6 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 else
                 {
                     sc_logr_debug(SC_ESL, "Send CDR to bs SUCC. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
-                }
-            }
-
-            if (bIsClearOtherExtraData)
-            {
-                /* 清空 ExtraData 的信息  */
-                if (DOS_ADDR_VALID(pstSCBOther) && DOS_ADDR_VALID(pstSCBOther->pstExtraData))
-                {
-                    dos_memzero(pstSCBOther->pstExtraData, sizeof(SC_SCB_EXTRA_DATA_ST));
                 }
             }
 
@@ -14003,6 +13960,12 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         return DOS_FAIL;
     }
 
+    sc_logr_debug(SC_ESL, "ESL event process START. %s(%d), SCB No:%s, Channel Name: %s"
+                            , esl_event_get_header(pstEvent, "Event-Name")
+                            , pstEvent->event_id
+                            , esl_event_get_header(pstEvent, "variable_scb_number")
+                            , esl_event_get_header(pstEvent, "Channel-Name"));
+
     sc_logr_debug(SC_ESL, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
 
     pszUUID = esl_event_get_header(pstEvent, "Caller-Unique-ID");
@@ -14020,6 +13983,14 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
 
         return DOS_FAIL;
     }
+
+    if (!pstSCB->bIsSendRecordCdr)
+    {
+        /* 不需要发送录音话单 */
+        goto finished;
+    }
+
+    pstSCB->bIsSendRecordCdr = DOS_FALSE;
 
     ulMarkStartTimeStamp = pstSCB->ulMarkStartTimeStamp;
     /* 将当前leg的信息dump下来 */
@@ -14042,6 +14013,13 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         {
             pstSCB->pstExtraData->ulByeTimeStamp = uLTmp / 1000000;
             sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Hangup-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulByeTimeStamp);
+        }
+
+        if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
+        {
+            /* 坐席长签，将bridge的时间戳作为开始时间 */
+            pstSCB->pstExtraData->ulStartTimeStamp = pstSCB->pstExtraData->ulBridgeTimeStamp;
+            pstSCB->pstExtraData->ulAnswerTimeStamp = pstSCB->pstExtraData->ulBridgeTimeStamp;
         }
     }
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
@@ -14121,6 +14099,7 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     pstSCB->usOtherSCBNo = usOtherSCBNo;
     pstSCB->ulMarkStartTimeStamp = ulMarkStartTimeStamp;
 
+finished:
     sc_logr_debug(SC_ESL, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
 
     return DOS_SUCC;

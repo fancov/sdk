@@ -420,6 +420,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bIsTTCall = DOS_FALSE;
     pstSCB->bCallSip = DOS_FALSE;
     pstSCB->bHasEarlyMedia = DOS_FALSE;
+    pstSCB->bIsSendRecordCdr = DOS_FALSE;
 
     pstSCB->ulFirstDTMFTime = 0;                    /* 第一次DTMF时间戳 */
     pstSCB->ulLastDTMFTime = 0;
