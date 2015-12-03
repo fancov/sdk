@@ -41,6 +41,8 @@ typedef struct tagSCCallQueueNode
 /* dialer模块控制块示例 */
 SC_DIALER_HANDLE_ST  *g_pstDialerHandle = NULL;
 
+static U32 sc_dialer_reconn();
+
 U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt)
 {
     SC_SCB_ST *pstSCB = NULL;
@@ -172,6 +174,27 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
     sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
 
     pstSCB->bIsTTCall = DOS_TRUE;
+#if 0
+    if (sc_ep_esl_execute_cmd(szCMDBuff) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        goto esl_exec_fail;
+    }
+
+#else
+    if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
+    {
+        sc_logr_notice(SC_DIALER, "%s", "ESL disconnected. start re-connect.");
+
+        if (sc_dialer_reconn() != DOS_SUCC
+            || (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected))
+        {
+            sc_logr_notice(SC_DIALER, "%s", "Cannot make call for esl not connected.");
+
+            g_pstDialerHandle->blIsESLRunning = DOS_SUCC;
+            goto esl_exec_fail;
+        }
+    }
 
     if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
     {
@@ -216,7 +239,7 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
 
         goto esl_exec_fail;
     }
-
+#endif
     sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
 
     SC_TRACE_OUT();
@@ -325,6 +348,26 @@ go_on:
                     , pstSCB->szCalleeNum);
 
     sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
+#if 0
+    if (sc_ep_esl_execute_cmd(szCMDBuff) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        goto esl_exec_fail;
+    }
+#else
+    if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
+    {
+        sc_logr_notice(SC_DIALER, "%s", "ESL disconnected. start re-connect.");
+
+        if (sc_dialer_reconn() != DOS_SUCC
+            || (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected))
+        {
+            sc_logr_notice(SC_DIALER, "%s", "Cannot make call for esl not connected.");
+
+            g_pstDialerHandle->blIsESLRunning = DOS_SUCC;
+            goto esl_exec_fail;
+        }
+    }
 
     if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
     {
@@ -369,7 +412,7 @@ go_on:
 
         goto esl_exec_fail;
     }
-
+#endif
     sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
 
     SC_TRACE_OUT();
@@ -485,19 +528,19 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         {
             DOS_ASSERT(0);
 
-            esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCBOther->szUUID);
-            esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCB->szUUID);
+            sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
+            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
             return DOS_FAIL;
         }
 
         if (!sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
-                    && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
+            && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
         {
-            if (esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCB->szUUID) != ESL_SUCCESS)
+            if (sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID) != DOS_SUCC)
             {
                 DOS_ASSERT(0);
 
-                esl_execute(&g_pstDialerHandle->stHandle, "hangup", NULL, pstSCB->szUUID);
+                sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
                 return DOS_FAIL;
             }
         }
@@ -516,6 +559,20 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , szCallString);
 
     sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
+
+    if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
+    {
+        sc_logr_notice(SC_DIALER, "%s", "ESL disconnected. start re-connect.");
+
+        if (sc_dialer_reconn() != DOS_SUCC
+            || (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected))
+        {
+            sc_logr_notice(SC_DIALER, "%s", "Cannot make call for esl not connected.");
+
+            g_pstDialerHandle->blIsESLRunning = DOS_SUCC;
+            goto esl_exec_fail;
+        }
+    }
 
     if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
     {
@@ -628,6 +685,42 @@ esl_exec_fail:
     return DOS_FAIL;
 }
 
+U32 sc_dialer_disconnect()
+{
+    esl_disconnect(&g_pstDialerHandle->stHandle);
+    g_pstDialerHandle->blIsESLRunning = DOS_FALSE;
+
+    return DOS_SUCC;
+}
+
+static U32 sc_dialer_reconn()
+{
+    U32 ulRet = 0;
+
+    /*
+     * 检查连接是否正常
+     * 如果连接不正常，就准备重连
+     **/
+    if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
+    {
+        sc_logr_info(SC_DIALER, "%s", "ELS connection has been down, re-connect.");
+        ulRet = esl_connect(&g_pstDialerHandle->stHandle, "127.0.0.1", 8021, NULL, "ClueCon");
+        if (ESL_SUCCESS != ulRet)
+        {
+            esl_disconnect(&g_pstDialerHandle->stHandle);
+            sc_logr_notice(SC_DIALER, "ELS re-connect fail, return code:%d, Msg:%s. Will be retry after 2 second.", ulRet, g_pstDialerHandle->stHandle.err);
+
+            return DOS_FAIL;
+        }
+
+        g_pstDialerHandle->blIsESLRunning = DOS_TRUE;
+
+        sc_logr_notice(SC_DIALER, "%s", "ELS connect Back to Normal.");
+    }
+
+    return DOS_SUCC;
+}
+
 /*
  * 函数: VOID *sc_dialer_runtime(VOID * ptr)
  * 功能: 拨号模块主函数
@@ -664,37 +757,33 @@ VOID *sc_dialer_runtime(VOID * ptr)
             break;
         }
 
+        if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
+        {
+            if (sc_dialer_reconn() != DOS_SUCC)
+            {
+                dos_task_delay(2000);
+                continue;
+            }
+        }
+
         pthread_mutex_lock(&g_pstDialerHandle->mutexCallQueue);
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&g_pstDialerHandle->condCallQueue, &g_pstDialerHandle->mutexCallQueue, &stTimeout);
         pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
 
+		if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
+		{
+            if (sc_dialer_reconn() != DOS_SUCC)
+            {
+                dos_task_delay(2000);
+                continue;
+            }
+		}
+
         if (dos_list_is_empty(&g_pstDialerHandle->stCallList))
         {
             continue;
-        }
-
-        /*
-         * 检查连接是否正常
-         * 如果连接不正常，就准备重连
-         **/
-        if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
-        {
-            sc_logr_notice(SC_DIALER, "%s", "ELS connection has been down, re-connect.");
-            ulRet = esl_connect(&g_pstDialerHandle->stHandle, "127.0.0.1", 8021, NULL, "ClueCon");
-            if (ESL_SUCCESS != ulRet)
-            {
-                esl_disconnect(&g_pstDialerHandle->stHandle);
-                sc_logr_notice(SC_DIALER, "ELS re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstDialerHandle->stHandle.err);
-
-                sleep(1);
-                continue;
-            }
-
-            g_pstDialerHandle->blIsESLRunning = DOS_TRUE;
-
-            sc_logr_notice(SC_DIALER, "%s", "ELS connect Back to Normal.");
         }
 
         while (1)

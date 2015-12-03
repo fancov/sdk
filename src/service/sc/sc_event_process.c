@@ -14608,6 +14608,10 @@ VOID* sc_ep_runtime(VOID *ptr)
 
             sc_logr_info(SC_ESL, "%s", "ESL Recv event fail, continue.");
             g_pstHandle->blIsESLRunning = DOS_FALSE;
+
+            esl_disconnect(&g_pstHandle->stRecvHandle);
+            esl_disconnect(&g_pstHandle->stSendHandle);
+            sc_dialer_disconnect();
             continue;
         }
 
