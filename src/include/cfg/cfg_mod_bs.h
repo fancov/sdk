@@ -56,6 +56,7 @@
 /* ¶¨Ê±Æ÷Ä£¿é */
 #define INCLUDE_SERVICE_TIMER             1
 
+#define INCLUDE_DB_CLIENT                 1
 
 #endif /* END __CFG_MOD_PTS_H__ */
 

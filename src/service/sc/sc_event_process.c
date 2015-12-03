@@ -11795,7 +11795,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     S8        *pszMainService = NULL;
     S8        *pszValue       = NULL;
     S8        *pszDisposition = NULL;
-    S8        *pszTTCallHeader = NULL;
     U32       ulCallSrc, ulCallDst;
     U32       ulRet = DOS_SUCC;
     U32       ulMainService = U32_BUTT;

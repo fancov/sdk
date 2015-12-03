@@ -117,6 +117,105 @@ U32 dos_calc_app_crc(S8 *pszFileName, U32 *pulCRC)
 }
 
 /**
+ * 函数: dos_db_detect
+ * 功能: 测试MYSQL是否能够正常连接
+ * 参数:
+ * 返回值:
+ *     如果小于0，表示失败，并且无需在尝试
+ *     如果大于0, 表示失败，如果调用者愿意可以再次尝试
+ *     如果等于0，标示MYSQL能够正常连接上
+ */
+S32 dos_db_detect()
+{
+    U16 usDBPort;
+    S8  szDBHost[DB_MAX_STR_LEN] = {0, };
+    S8  szDBUsername[DB_MAX_STR_LEN] = {0, };
+    S8  szDBPassword[DB_MAX_STR_LEN] = {0, };
+    S8  szDBName[DB_MAX_STR_LEN] = {0, };
+    S8  szDBSockPath[DB_MAX_STR_LEN] = {0, };
+    DB_HANDLE_ST * pstDBHandle = NULL;
+
+    if (config_get_db_host(szDBHost, DB_MAX_STR_LEN) < 0)
+    {
+        DOS_ASSERT(0);
+        goto errno_proc;
+    }
+
+    if (config_get_db_user(szDBUsername, DB_MAX_STR_LEN) < 0)
+    {
+        DOS_ASSERT(0);
+        goto errno_proc;
+    }
+
+    if (config_get_db_password(szDBPassword, DB_MAX_STR_LEN) < 0)
+    {
+        DOS_ASSERT(0);
+        goto errno_proc;
+    }
+
+    usDBPort = config_get_db_port();
+    if (0 == usDBPort || U16_BUTT == usDBPort)
+    {
+        usDBPort = 3306;
+    }
+
+    if (config_get_db_dbname(szDBName, DB_MAX_STR_LEN) < 0)
+    {
+        DOS_ASSERT(0);
+        goto errno_proc;
+    }
+
+    if (config_get_mysqlsock_path(szDBSockPath, DB_MAX_STR_LEN) < 0)
+    {
+        DOS_ASSERT(0);
+        goto errno_proc;
+    }
+
+
+    pstDBHandle = db_create(DB_TYPE_MYSQL);
+    if (!pstDBHandle)
+    {
+        DOS_ASSERT(0);
+        return -1;
+    }
+
+    dos_strncpy(pstDBHandle->szHost, szDBHost, sizeof(pstDBHandle->szHost));
+    pstDBHandle->szHost[sizeof(pstDBHandle->szHost) - 1] = '\0';
+
+    dos_strncpy(pstDBHandle->szUsername, szDBUsername, sizeof(pstDBHandle->szUsername));
+    pstDBHandle->szUsername[sizeof(pstDBHandle->szUsername) - 1] = '\0';
+
+    dos_strncpy(pstDBHandle->szPassword, szDBPassword, sizeof(pstDBHandle->szPassword));
+    pstDBHandle->szPassword[sizeof(pstDBHandle->szPassword) - 1] = '\0';
+
+    dos_strncpy(pstDBHandle->szDBName, szDBName, sizeof(pstDBHandle->szDBName));
+    pstDBHandle->szDBName[sizeof(pstDBHandle->szDBName) - 1] = '\0';
+
+    dos_strncpy(pstDBHandle->szSockPath, szDBSockPath, sizeof(pstDBHandle->szSockPath));
+    pstDBHandle->szSockPath[sizeof(pstDBHandle->szSockPath) - 1] = '\0';
+
+    pstDBHandle->usPort = usDBPort;
+
+    if (db_open(pstDBHandle) < 0)
+    {
+        db_destroy(&pstDBHandle);
+        pstDBHandle = NULL;
+        return 1;
+    }
+
+    db_close(pstDBHandle);
+    db_destroy(&pstDBHandle);
+    pstDBHandle = NULL;
+
+    return 0;
+
+errno_proc:
+
+    return -1;
+
+}
+
+/**
  * 函数: main(int argc, char ** argv)
  * 功能: 系统主函数入口
  */
@@ -159,6 +258,34 @@ int main(int argc, char ** argv)
     {
         dos_printf("%s", "Init config fail. exit");
         exit(1);
+    }
+#endif
+
+#if (INCLUDE_DB_CLIENT)
+    {
+        S32 lRet        = 0;
+
+        lRet = dos_db_detect();
+        if (lRet != 0)
+        {
+            dos_printf("%s", "MySQL is temporary unavailable. while be try every 1 second");
+            while (1)
+            {
+                dos_task_delay(1000);
+                lRet = dos_db_detect();
+                if (0 == lRet)
+                {
+                    break;
+                }
+                else if (lRet < 0)
+                {
+                    dos_printf("%s", "MySQL is not available. Please check you configure for MySQL.");
+                    exit(100);
+                }
+            }
+
+            dos_printf("%s", "MySQL is available.");
+        }
     }
 #endif
 

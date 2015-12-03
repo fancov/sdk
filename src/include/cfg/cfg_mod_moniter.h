@@ -67,5 +67,8 @@
 #define LANG_CN                           0
 #define LANG_EN                           (!LANG_CN)
 
+#define INCLUDE_DB_CLIENT                 1
+
+
 #endif /* END __CFG_MOD_MONITER_H__ */
 

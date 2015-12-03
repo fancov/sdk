@@ -63,5 +63,7 @@
 
 #define INCLUDE_OPENSSL_LIB               1
 
+#define INCLUDE_DB_CLIENT                 1
+
 #endif /* END __CFG_MOD_PTS_H__ */
 

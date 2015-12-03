@@ -61,5 +61,8 @@
 
 #define DOS_INCLUDE_SYS_STAT              1
 
+#define INCLUDE_DB_CLIENT                 1
+
+
 #endif /* END __CFG_MOD_PTS_H__ */
 
