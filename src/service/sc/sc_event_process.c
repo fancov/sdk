@@ -11909,6 +11909,12 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         goto proc_finished;
     }
 
+    if (pstSCB->bIsTTCall)
+    {
+       sc_ep_esl_execute("unset", "sip_h_EixTTcall", pstSCB->szUUID);
+       sc_ep_esl_execute("unset", "sip_h_Mime-version", pstSCB->szUUID);
+    }
+
     if (SC_SERV_ATTEND_TRANSFER == ulMainService
         || SC_SERV_BLIND_TRANSFER == ulMainService)
     {
@@ -11930,12 +11936,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     {
         if (!pstSCB->bHasEarlyMedia)
         {
-            if (pstSCB->bIsTTCall)
-            {
-                sc_ep_esl_execute("unset", "sip_h_EixTTcall", pstSCB->szUUID);
-                sc_ep_esl_execute("unset", "sip_h_Mime-version", pstSCB->szUUID);
-            }
-
             //sc_ep_esl_execute("answer", "", pstSCB->szUUID);
             if (pstSCB->ulSiginTimeStamp == 0)
             {
