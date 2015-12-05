@@ -72,7 +72,7 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_MAX_CALL_PRE_SEC            120
 
-#define SC_MAX_TASK_MAX_CONCURRENCY    15
+#define SC_MAX_TASK_MAX_CONCURRENCY    80
 
 #define SC_MAX_SRV_TYPE_PRE_LEG        8
 
@@ -723,11 +723,11 @@ typedef struct tagSCSCB{
 
     U8        ucMainService;
     U8        ucCurrentSrvInd;                    /* 当前空闲的业务类型索引 */
-    U8        ucLegRole;                          /* 主被叫标示 */
+    U8        ucTranforRole;                      /* transfer角色 */
     U8        ucCurrentPlyCnt;                    /* 当前放音次数 */
 
-    U8        ucTranforRole;                      /* transfer角色 */
-    U8        ucRes;
+    U8        ucLegRole;                          /* 主被叫标示 */
+    U8        ucReleasePart;                      /* 挂断标示 */
     U16       usPublishSCB;                       /* 发起放SCBNo */
 
     U16       usHoldCnt;                          /* 被hold的次数 */
@@ -824,7 +824,8 @@ typedef struct tagTaskCB
     S8         szTaskName[64];                    /* 任务名称 */
 
     U8         ucMode;                            /* 任务模式 refer to SC_TASK_MODE_EN*/
-    U8         aucRess[3];
+    U8         bThreadRunning;                    /* 线程是否在运行 */
+    U8         aucRess[2];
 
     U32        ulTaskID;                          /* 呼叫任务ID */
     U32        ulCustomID;                        /* 呼叫任务所属 */

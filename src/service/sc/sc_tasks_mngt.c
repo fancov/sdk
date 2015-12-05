@@ -98,10 +98,7 @@ U32 sc_task_mngt_load_task()
     /* 不加载结束和暂停的任务 */
     ulLength = dos_snprintf(szSqlQuery
                 , sizeof(szSqlQuery)
-#if 0
-                , "SELECT tbl_calltask.id, tbl_calltask.customer_id from tbl_calltask WHERE tbl_calltask.status = 1;");
-#endif
-                , "SELECT id, customer_id from tbl_calltask where tbl_calltask.status < %d ;", SC_TASK_STATUS_DB_PAUSED);
+                , "SELECT id, customer_id from tbl_calltask where tbl_calltask.status = %d ;", SC_TASK_STATUS_DB_START);
 
     ulResult = db_query(g_pstSCDBHandle
                             , szSqlQuery
@@ -285,14 +282,7 @@ U32 sc_task_mngt_delete_task(U32 ulTaskID, U32 ulCustomID)
         SC_TRACE_OUT();
         return SC_HTTP_ERRNO_INVALID_DATA;
     }
-#if 0
-    if (pstTCB->ucTaskStatus != SC_TASK_WORKING)
-    {
-        DOS_ASSERT(0);
-        SC_TRACE_OUT();
-        return SC_HTTP_ERRNO_INVALID_TASK_STATUS;
-    }
-#endif
+
     sc_task_stop(pstTCB);
 
     SC_TRACE_OUT();
@@ -329,40 +319,6 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
         SC_TRACE_OUT();
         return SC_HTTP_ERRNO_INVALID_USR;
     }
-
-#if 0
-    if (!pstTCB)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-    if (pstTCB->ulCustomID != ulCustomID)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_TASK, "ERR:TaskCB Found, But the Customer does not match Task.(TaskID:%u,CustomerID:%u)", ulTaskID, ulCustomID);
-        return DOS_FAIL;
-    }
-
-    pstTCB = sc_tcb_alloc();
-    if (!pstTCB)
-    {
-        DOS_ASSERT(0);
-        SC_TRACE_OUT();
-        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
-    }
-
-    sc_task_set_owner(pstTCB, ulTaskID, ulCustomID);
-
-    if (sc_task_init(pstTCB) != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-
-        sc_tcb_free(pstTCB);
-
-        SC_TRACE_OUT();
-        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
-    }
-#endif
 
     if (DOS_SUCC != sc_task_reload(ulTaskID))
     {
@@ -575,7 +531,20 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
                 }
                 case SC_API_CMD_ACTION_UPDATE:
                 {
-                    sc_task_load(pstCMD->ulTaskID);
+                    /* 如果任务没有被加载到内存，就不要更新了 */
+                    if (sc_tcb_find_by_taskid(pstCMD->ulTaskID))
+                    {
+                        if (sc_task_load(pstCMD->ulTaskID) == DOS_SUCC)
+                        {
+                            pstCMD->ulCMDErrCode = SC_HTTP_ERRNO_INVALID_DATA;
+                        }
+
+                        pstCMD->ulCMDErrCode = SC_HTTP_ERRNO_SUCC;
+                    }
+                    else
+                    {
+                        pstCMD->ulCMDErrCode = SC_HTTP_ERRNO_SUCC;
+                    }
                     break;
                 }
                 case SC_API_CMD_ACTION_START:

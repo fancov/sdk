@@ -113,68 +113,7 @@ SC_TEL_NUM_QUERY_NODE_ST *sc_task_get_callee(SC_TASK_CB_ST *pstTCB)
     return pstCallee;
 }
 
-/*
- * 函数: SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
- * 功能: 获取主叫号码，在主叫号码列表里面随即选择一个
- * 参数:
- *      SC_TASK_CB_ST *pstTCB: 任务控制块
- * 返回值: 成功返回主叫号码控制块指针，否则返回NULL
- */
-#if 0
-SC_CALLER_QUERY_NODE_ST *sc_task_get_caller(SC_TASK_CB_ST *pstTCB)
-{
-    U32                      ulCallerIndex = 0;
-    S32                      lMaxSelectTime  = 0;
-    SC_CALLER_QUERY_NODE_ST  *pstCaller = NULL;
 
-    SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
-    if (DOS_ADDR_INVALID(pstTCB))
-    {
-        DOS_ASSERT(0);
-        SC_TRACE_OUT();
-        return NULL;
-    }
-
-    while (1)
-    {
-        lMaxSelectTime++;
-        if (lMaxSelectTime > pstTCB->usCallerCount)
-        {
-            DOS_ASSERT(0);
-            SC_TRACE_OUT();
-            break;
-        }
-
-        ulCallerIndex = sc_random((U32)pstTCB->usCallerCount);
-        if (ulCallerIndex >= SC_MAX_CALLER_NUM)
-        {
-            DOS_ASSERT(0);
-            SC_TRACE_OUT();
-            break;
-        }
-
-        if (!pstTCB->pstCallerNumQuery[ulCallerIndex].bValid)
-        {
-            continue;
-        }
-
-        pstCaller = &pstTCB->pstCallerNumQuery[ulCallerIndex];
-        break;
-    }
-
-    if (pstCaller)
-    {
-        sc_logr_info(SC_TASK, "Select caller %s for new call", pstCaller->szNumber);
-    }
-    else
-    {
-        sc_logr_info(SC_TASK, "%s", "There is no caller for new call");
-    }
-
-    SC_TRACE_OUT();
-    return pstCaller;
-}
-#endif
 /*
  * 函数: U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
  * 功能: 申请业务控制块，并将呼叫添加到拨号器模块，等待呼叫
@@ -475,6 +414,7 @@ VOID *sc_task_runtime(VOID *ptr)
     pthread_mutex_destroy(&pstTCB->mutexTaskList);
 
     /* 群呼任务结束后，将呼叫的被叫号码数量，改为被叫号码的总数量 */
+    pstTCB->bThreadRunning = DOS_FALSE;
     pstTCB->ulCalledCount = pstTCB->ulCalleeCountTotal;
     sc_task_update_calledcnt((U64)pstTCB);
     sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_STOP, NULL);
@@ -484,131 +424,6 @@ VOID *sc_task_runtime(VOID *ptr)
 
     return NULL;
 }
-
-#if 0
-/*
- * 函数: U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
- * 功能: 初始化呼叫任务
- * 参数:
- *      SC_TASK_CB_ST *pstTCB: 任务控制块
- * 成功返回DOS_SUCC，否则返回DOS_FAIL
- */
-U32 sc_task_init(SC_TASK_CB_ST *pstTCB)
-{
-    U32       ulIndex;
-    U32       lRet;
-    SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
-
-    if (!pstTCB)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    /* 先申请资源 */
-    pstTCB->pstCallerNumQuery = (SC_CALLER_QUERY_NODE_ST *)dos_dmem_alloc(sizeof(SC_CALLER_QUERY_NODE_ST) * SC_MAX_CALLER_NUM);
-    if (!pstTCB->pstCallerNumQuery )
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    dos_memzero(pstTCB->pstCallerNumQuery, sizeof(SC_CALLER_QUERY_NODE_ST) * SC_MAX_CALLER_NUM);
-    for (ulIndex=0; ulIndex<SC_MAX_CALLER_NUM; ulIndex++)
-    {
-        pstTCB->pstCallerNumQuery[ulIndex].usNo = ulIndex;
-        pstTCB->pstCallerNumQuery[ulIndex].bValid = 0;
-        pstTCB->pstCallerNumQuery[ulIndex].bTraceON = 0;
-        pstTCB->pstCallerNumQuery[ulIndex].szNumber[0] = '\0';
-        pstTCB->pstCallerNumQuery[ulIndex].ulIndexInDB = U32_BUTT;
-    }
-
-    pstTCB->ulLastCalleeIndex = 0;
-
-    lRet = sc_task_load_callee(pstTCB);
-    if (lRet != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_TASK, "Load callee for task %d failed, Or there in no callee number.", pstTCB->ulTaskID);
-
-        goto init_fail;
-    }
-    sc_logr_info(SC_TASK, "Task %d has been loaded %d callee(s).", pstTCB->ulTaskID, pstTCB->ulCalleeCount);
-
-    lRet = sc_task_load_caller(pstTCB);
-    if (lRet != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_TASK, "Load caller for task %d failed, Or there in no caller number.", pstTCB->ulTaskID);
-
-        goto init_fail;
-    }
-    sc_logr_info(SC_TASK, "Task %d has been loaded %d caller(s).", pstTCB->ulTaskID, pstTCB->usCallerCount);
-
-    if (sc_task_load_period(pstTCB) != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_TASK, "Load period for task %d failed.", pstTCB->ulTaskID);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    if (sc_task_load_audio(pstTCB) != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_TASK, "Load audio file for task %d FAILED.", pstTCB->ulTaskID);
-
-        goto init_fail;
-    }
-
-    if (sc_task_load_agent_info(pstTCB) != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_TASK, "Load agent info for task %d FAILED.", pstTCB->ulTaskID);
-
-        goto init_fail;
-    }
-
-    if (sc_task_load_other_info(pstTCB) != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(SC_TASK, "Load agent info for task %d FAILED.", pstTCB->ulTaskID);
-
-        goto init_fail;
-    }
-
-    if (SC_TASK_MODE_AUDIO_ONLY == pstTCB->ucMode)
-    {
-        pstTCB->ulMaxConcurrency = g_ulMaxConcurrency4Task;
-    }
-    else
-    {
-        pstTCB->ulMaxConcurrency = pstTCB->usSiteCount * SC_MAX_CALL_MULTIPLE;
-    }
-
-
-
-    sc_logr_notice(SC_TASK, "Load data for task %d finished.", pstTCB->ulTaskID);
-
-    SC_TRACE_OUT();
-    return DOS_SUCC;
-
- init_fail:
-    if (pstTCB->pstCallerNumQuery)
-    {
-        dos_dmem_free(pstTCB->pstCallerNumQuery);
-        pstTCB->pstCallerNumQuery = NULL;
-    }
-
-    SC_TRACE_OUT();
-    return DOS_FAIL;
-}
-#endif
 
 /*
  * 函数: U32 sc_task_start(SC_TASK_CB_ST *pstTCB)
@@ -630,14 +445,25 @@ U32 sc_task_start(SC_TASK_CB_ST *pstTCB)
         return DOS_FAIL;
     }
 
-    if (pthread_create(&pstTCB->pthID, NULL, sc_task_runtime, pstTCB) < 0)
+    if (pstTCB->bThreadRunning)
     {
-        DOS_ASSERT(0);
+        sc_logr_notice(SC_TASK, "Task %u already running.", pstTCB->ulTaskID);
+    }
+    else
+    {
+        if (pthread_create(&pstTCB->pthID, NULL, sc_task_runtime, pstTCB) < 0)
+        {
+            DOS_ASSERT(0);
 
-        sc_logr_notice(SC_TASK, "Start task %d faild", pstTCB->ulTaskID);
+            pstTCB->bThreadRunning = DOS_FALSE;
 
-        SC_TRACE_OUT();
-        return DOS_FAIL;
+            sc_logr_notice(SC_TASK, "Start task %d faild", pstTCB->ulTaskID);
+
+            SC_TRACE_OUT();
+            return DOS_FAIL;
+        }
+
+        pstTCB->bThreadRunning = DOS_TRUE;
     }
 
     sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_START, NULL);
@@ -680,7 +506,6 @@ U32 sc_task_stop(SC_TASK_CB_ST *pstTCB)
 
     pthread_mutex_lock(&pstTCB->mutexTaskList);
     pstTCB->ucTaskStatus = SC_TASK_STOP;
-    pstTCB->ucValid = DOS_FALSE;
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
 
     return DOS_SUCC;
@@ -709,7 +534,7 @@ U32 sc_task_continue(SC_TASK_CB_ST *pstTCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_TASK, "Cannot stop the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
+        sc_logr_info(SC_TASK, "Cannot continue the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
 
         SC_TRACE_OUT();
         return DOS_FAIL;
@@ -719,17 +544,8 @@ U32 sc_task_continue(SC_TASK_CB_ST *pstTCB)
     pstTCB->ucTaskStatus = SC_TASK_WORKING;
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
 
-    if (!pstTCB->pthID)
-    {
-        /* 开始任务 */
-        sc_task_start(pstTCB);
-    }
-    else
-    {
-        sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_START, NULL);
-    }
-
-    return DOS_SUCC;
+    /* 开始任务 */
+    return sc_task_start(pstTCB);
 }
 
 /*
