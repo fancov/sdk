@@ -8872,6 +8872,8 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCBNew->szUUID);
         dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_break %s all \r\n", pstSCBNew->szUUID);
         sc_ep_esl_execute_cmd(szAPPParam);
+        /* ²»answer£¬Ã»ÓÐÓïÒô */
+        sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
 
         dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_bridge %s %s \r\n", pstSCBNew->szUUID, pstSCB->szUUID);
         if (sc_ep_esl_execute_cmd(szAPPParam) != DOS_SUCC)
