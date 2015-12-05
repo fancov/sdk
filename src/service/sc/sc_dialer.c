@@ -501,7 +501,20 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         if (!sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
                 && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
         {
-            dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
+            if (pstSCB->bIsAgentCall)
+            {
+                dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
+                        , "{instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,mark_customer=true,sip_copy_multipart=false}%s"
+                        , pstSCB->usSCBNo
+                        , pstSCB->usOtherSCBNo
+                        , ulMainService
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCallerNum
+                        , szCallString);
+            }
+            else
+            {
+                dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
                         , "{instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,sip_copy_multipart=false}%s"
                         , pstSCB->usSCBNo
                         , pstSCB->usOtherSCBNo
@@ -509,6 +522,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , pstSCB->szCallerNum
                         , pstSCB->szCallerNum
                         , szCallString);
+            }
         }
         else
         {
@@ -841,7 +855,8 @@ VOID *sc_dialer_runtime(VOID * ptr)
             /* 主叫号码组 */
             if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL)
                 && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL)
-                && !sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK))
+                && !sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK)
+                && !sc_call_check_service(pstSCB, SC_SERV_DEMO_TASK))
             {
                 /* 出局呼叫 */
                 /* 查找呼叫的分机绑定的坐席 */

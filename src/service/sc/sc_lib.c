@@ -2823,6 +2823,31 @@ U32 sc_http_customer_update_proc(U32 ulAction, U32 ulCustomerID)
     return DOS_SUCC;
 }
 
+U32 sc_http_demo_proc(U32 ulAction, U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_DEMO_TASK:
+            sc_demo_task(ulCustomerID, pszCallee, pszAgentNum, ulAgentID);
+            break;
+        case SC_API_CMD_ACTION_DEMO_PREVIEW:
+            sc_demo_preview(ulCustomerID, pszCallee, pszAgentNum, ulAgentID);
+            break;
+        default:
+            break;
+    }
+    sc_logr_info(SC_FUNC, "Deme proc SUCC.(ulAction:%u, ulID:%d, callee : %s, agentnum : %s)"
+        , ulAction, ulCustomerID, pszCallee, pszAgentNum);
+
+    return DOS_SUCC;
+}
+
 U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
 {
     U32   ulRet = 0;

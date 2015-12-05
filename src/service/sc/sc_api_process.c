@@ -54,6 +54,7 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
     {"numlmt",                   sc_http_api_numlmt_action},
     {"numtransform",             sc_http_api_numtransform_action},
     {"customer",                 sc_http_api_customer_action},
+    {"demo",                     sc_http_api_demo_action},
 
     {"",                         NULL}
 };
@@ -1898,6 +1899,80 @@ invalid_params:
     SC_TRACE_OUT();
     return SC_HTTP_ERRNO_INVALID_PARAM;
 }
+
+U32 sc_http_api_demo_action(list_t *pstArgv)
+{
+    S8  *pszCustomerID = NULL, *pszAction = NULL, *pszCallee = NULL, *pszAgentNum = NULL, *pszAgentID = NULL;
+    U32  ulCustomerID, ulAction, ulAgentID;
+
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    /* 获取主叫号码 */
+    pszCustomerID = sc_http_api_get_value(pstArgv, "customer_id");
+    pszAction   = sc_http_api_get_value(pstArgv, "action");
+    pszCallee   = sc_http_api_get_value(pstArgv, "callee");
+    pszAgentID   = sc_http_api_get_value(pstArgv, "agent_id");
+
+    /* 坐席的手机号 */
+    pszAgentNum   = sc_http_api_get_value(pstArgv, "agent_num");
+
+    if (DOS_ADDR_INVALID(pszCustomerID)
+        || DOS_ADDR_INVALID(pszAction)
+        || DOS_ADDR_INVALID(pszCallee)
+        || DOS_ADDR_INVALID(pszAgentNum)
+        || DOS_ADDR_INVALID(pszAgentID))
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (dos_atoul(pszCustomerID, &ulCustomerID) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (dos_atoul(pszAgentID, &ulAgentID) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "demo_groupcall", dos_strlen("demo_groupcall")))
+    {
+        /* 群呼任务演示 */
+        ulAction = SC_API_CMD_ACTION_DEMO_TASK;
+    }
+    else if (0 == dos_strnicmp(pszAction, "demo_previewcall", dos_strlen("demo_previewcall")))
+    {
+        /* 预览外呼演示 */
+        ulAction = SC_API_CMD_ACTION_DEMO_PREVIEW;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    if (DOS_SUCC != sc_http_demo_proc(ulAction, ulCustomerID, pszCallee, pszAgentNum, ulAgentID))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_SUCC;
+
+invalid_params:
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_INVALID_PARAM;
+}
+
 
 U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
 {
