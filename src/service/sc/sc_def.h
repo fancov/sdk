@@ -511,6 +511,28 @@ typedef enum tagSoundType{
 #define SC_EP_STAT_RECV 0
 #define SC_EP_STAT_PROC 1
 
+typedef enum tagSCSrvCtrlAttr
+{
+    SC_SRV_CTRL_ATTR_INVLID      = 0,
+
+    SC_SRV_CTRL_ATTR_TASK_MODE   = 1,
+
+    SC_SRV_CTRL_ATTR_BUTT
+}SC_SRV_CTRL_ATTR_EN;
+
+typedef struct tagSCSrvCtrl
+{
+    U32          ulID;               /* 规则ID */
+    U32          ulCustomerID;       /* CUSTOMER ID */
+    U32          ulServType;         /* 业务类型 */
+    U32          ulEffectTimestamp;  /* 生效日期 */
+    U32          ulExpireTimestamp;  /* 失效日期 */
+    U32          ulAttr1;            /* 属性 */
+    U32          ulAttr2;            /* 属性 */
+    U32          ulAttrValue1;       /* 属性值1 */
+    U32          ulAttrValue2;       /* 属性值2 */
+}SC_SRV_CTRL_ST;
+
 typedef struct tagEPMsgStat
 {
     U32   ulCreate;

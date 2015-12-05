@@ -212,7 +212,7 @@ static VOID _assert_record(HASH_NODE_S *pNode, VOID *pParam)
         szBuff[sizeof(szBuff) - 1] = '\0';
     }
 
-    dos_syslog(LOG_LEVEL_EMERG, szBuff);
+    dos_syslog(LOG_LEVEL_ERROR, szBuff);
 }
 
 
@@ -244,7 +244,7 @@ S32 dos_assert_print(U32 ulIndex, S32 argc, S8 **argv)
  */
 S32 dos_assert_record()
 {
-    dos_syslog(LOG_LEVEL_EMERG, "Assert Info since the service start:\r\n");
+    dos_syslog(LOG_LEVEL_ERROR, "Assert Info since the service start:\r\n");
 
     pthread_mutex_lock(&g_mutexAssertInfo);
     hash_walk_table(g_pstHashAssert,  NULL, _assert_record);
