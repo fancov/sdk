@@ -213,23 +213,14 @@ U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode)
     pstCallResult->ulHoldCnt = pstSCB->usHoldCnt;                  /* 保持次数 */
     pstCallResult->ulHoldTimeLen = pstSCB->usHoldTotalTime;              /* 保持总时长,单位:秒 */
     pstCallResult->usTerminateCause = pstSCB->usTerminationCause;           /* 终止原因 */
+    pstCallResult->ucReleasePart = pstSCB->ucReleasePart;
 
-    /* 会话释放方 */
-    if (DOS_ADDR_INVALID(pstSCB1))
-    {
-        pstCallResult->ucReleasePart = SC_CALLER;
-    }
-    else
-    {
-        if (pstSCB1->bWaitingOtherRelase)
-        {
-            pstCallResult->ucReleasePart = SC_CALLEE;
-        }
-        else
-        {
-            pstCallResult->ucReleasePart = SC_CALLER;
-        }
-    }
+    sc_logr_debug(SC_ESL, "Start get call result. Release: %d, Terminate Cause: %d(%d), "
+                          "In queue: %d, DTMF Time: %u, IVR Finish Time: %u, Other leg: %d, Status: %d"
+                        , pstSCB->bIsInQueue, pstCallResult->ulFirstDTMFTime
+                        , pstCallResult->ulIVRFinishTime
+                        , pstSCB1 ? pstSCB1->usSCBNo : -1
+                        , pstSCB1 ? pstSCB1->ucStatus : SC_SCB_RELEASE);
 
     pstCallResult->ulResult = CC_RST_BUTT;
 
@@ -261,10 +252,20 @@ U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode)
         /* 放音已经结束了，并且呼叫没有在队列，说明呼叫已经被转到坐席了 */
         if (pstCallResult->ulIVRFinishTime && !pstSCB->bIsInQueue)
         {
-            /* 等待坐席时 挂断的 */
-            if (DOS_ADDR_VALID(pstSCB1) && pstSCB1->ucStatus < SC_SCB_ACTIVE)
+            /* ANSWER为0，说明坐席没有接通等待坐席时 挂断的 */
+            if (DOS_ADDR_VALID(pstSCB1)
+                && pstSCB1->pstExtraData
+                && !pstSCB1->pstExtraData->ulAnswerTimeStamp)
             {
-                pstCallResult->ulResult = CC_RST_HANGUP_NO_ANSER;
+                if (SC_CALLEE == pstCallResult->ucReleasePart)
+                {
+                    pstCallResult->ulResult = CC_RST_AGENT_NO_ANSER;
+                }
+                else
+                {
+                    pstCallResult->ulResult = CC_RST_HANGUP_NO_ANSER;
+                }
+
                 goto proc_finished;
             }
         }
@@ -295,6 +296,7 @@ U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode)
                 pstCallResult->ulResult = CC_RST_BUSY;
                 break;
 
+            case CC_ERR_SIP_REQUEST_TIMEOUT:
             case CC_ERR_SIP_REQUEST_TERMINATED:
                 pstCallResult->ulResult = CC_RST_NO_ANSWER;
                 break;
@@ -311,6 +313,13 @@ proc_finished:
     {
         pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
     }
+
+    sc_logr_debug(SC_ESL, "Call result: %u. Release: %d, Terminate Cause: %d(%d), "
+                          "In queue: %d, DTMF Time: %u, IVR Finish Time: %u, Other leg: %d, Status: %d"
+                        , pstCallResult->ulResult, pstSCB->bIsInQueue, pstCallResult->ulFirstDTMFTime
+                        , pstCallResult->ulIVRFinishTime
+                        , pstSCB1 ? pstSCB1->usSCBNo : -1
+                        , pstSCB1 ? pstSCB1->ucStatus : SC_SCB_RELEASE);
 
 
     pstCallResult->stMsgTag.ulMsgType = SC_MSG_SAVE_CALL_RESULT;
@@ -13294,6 +13303,7 @@ U32 sc_ep_channel_hungup_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC
 {
     S8 *szHangupCause = NULL;
     U32 ulHangupCause = CC_ERR_NO_REASON;
+    SC_SCB_ST *pstSCBOther = NULL;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -13308,6 +13318,19 @@ U32 sc_ep_channel_hungup_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC
     }
 
     sc_call_trace(pstSCB, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
+
+    pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+    if (DOS_ADDR_VALID(pstSCBOther))
+    {
+        if (pstSCBOther->ucStatus <= SC_SCB_ACTIVE)
+        {
+            pstSCB->ucReleasePart = pstSCB->ucLegRole;
+        }
+        else
+        {
+            pstSCB->ucReleasePart = pstSCBOther->ucLegRole;
+        }
+    }
 
     SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
 

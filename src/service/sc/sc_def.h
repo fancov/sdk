@@ -72,7 +72,7 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_MAX_CALL_PRE_SEC            120
 
-#define SC_MAX_TASK_MAX_CONCURRENCY    15
+#define SC_MAX_TASK_MAX_CONCURRENCY    80
 
 #define SC_MAX_SRV_TYPE_PRE_LEG        8
 
@@ -516,6 +516,28 @@ typedef enum tagSoundType{
 #define SC_EP_STAT_RECV 0
 #define SC_EP_STAT_PROC 1
 
+typedef enum tagSCSrvCtrlAttr
+{
+    SC_SRV_CTRL_ATTR_INVLID      = 0,
+
+    SC_SRV_CTRL_ATTR_TASK_MODE   = 1,
+
+    SC_SRV_CTRL_ATTR_BUTT
+}SC_SRV_CTRL_ATTR_EN;
+
+typedef struct tagSCSrvCtrl
+{
+    U32          ulID;               /* 规则ID */
+    U32          ulCustomerID;       /* CUSTOMER ID */
+    U32          ulServType;         /* 业务类型 */
+    U32          ulEffectTimestamp;  /* 生效日期 */
+    U32          ulExpireTimestamp;  /* 失效日期 */
+    U32          ulAttr1;            /* 属性 */
+    U32          ulAttr2;            /* 属性 */
+    U32          ulAttrValue1;       /* 属性值1 */
+    U32          ulAttrValue2;       /* 属性值2 */
+}SC_SRV_CTRL_ST;
+
 typedef struct tagEPMsgStat
 {
     U32   ulCreate;
@@ -706,11 +728,11 @@ typedef struct tagSCSCB{
 
     U8        ucMainService;
     U8        ucCurrentSrvInd;                    /* 当前空闲的业务类型索引 */
-    U8        ucLegRole;                          /* 主被叫标示 */
+    U8        ucTranforRole;                      /* transfer角色 */
     U8        ucCurrentPlyCnt;                    /* 当前放音次数 */
 
-    U8        ucTranforRole;                      /* transfer角色 */
-    U8        ucRes;
+    U8        ucLegRole;                          /* 主被叫标示 */
+    U8        ucReleasePart;                      /* 挂断标示 */
     U16       usPublishSCB;                       /* 发起放SCBNo */
 
     U16       usHoldCnt;                          /* 被hold的次数 */
@@ -807,7 +829,8 @@ typedef struct tagTaskCB
     S8         szTaskName[64];                    /* 任务名称 */
 
     U8         ucMode;                            /* 任务模式 refer to SC_TASK_MODE_EN*/
-    U8         aucRess[3];
+    U8         bThreadRunning;                    /* 线程是否在运行 */
+    U8         aucRess[2];
 
     U32        ulTaskID;                          /* 呼叫任务ID */
     U32        ulCustomID;                        /* 呼叫任务所属 */

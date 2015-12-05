@@ -397,6 +397,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->usPublishSCB = U16_BUTT;                        /* 发起放SCBNo */
     pstSCB->ulSiginTimeStamp = 0;                           /* 长签开始时间 */
     pstSCB->ulMarkStartTimeStamp = 0;                       /* 坐席开始标记的时间 */
+    pstSCB->ucReleasePart = 0;
 
     pstSCB->bValid = DOS_FALSE;                /* 是否合法 */
     pstSCB->bTraceNo = DOS_FALSE;              /* 是否跟踪 */
@@ -1004,6 +1005,7 @@ inline U32 sc_tcb_init(SC_TASK_CB_ST *pstTCB)
     pstTCB->bTraceON = 0;
     pstTCB->bTraceCallON = 0;
     pstTCB->ulLastCalleeIndex = 0;
+    pstTCB->bThreadRunning = DOS_FALSE;
 
     pstTCB->ulTaskID = U32_BUTT;
     pstTCB->ulCustomID = U32_BUTT;
