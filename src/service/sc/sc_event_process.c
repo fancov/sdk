@@ -14075,14 +14075,14 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     dos_snprintf(szCMD, sizeof(szCMD)
                     , "%s-in.%s"
                     , pszRecordFile
-                    , esl_event_get_header(pstEvent, "variable_read_codec"));
+                    , esl_event_get_header(pstEvent, "Channel-Read-Codec-Name"));
     chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
     chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
 
     dos_snprintf(szCMD, sizeof(szCMD)
                     , "%s-out.%s"
                     , pszRecordFile
-                    , esl_event_get_header(pstEvent, "variable_read_codec"));
+                    , esl_event_get_header(pstEvent, "Channel-Read-Codec-Name"));
     chown(szCMD, SC_NOBODY_UID, SC_NOBODY_GID);
     chmod(szCMD, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
 

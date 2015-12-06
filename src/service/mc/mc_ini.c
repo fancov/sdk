@@ -46,10 +46,11 @@ static U32 mc_load_data()
     DLL_NODE_S *pstDLLNode   = NULL;
     struct stat stFileStat;
 
+    /* 查找，UID为99(NOBODY)，一分钟之前修改的，后缀名为G723|G729|PCMA|PCMU的文件进行处理 */
     dos_snprintf(szFileName
                 , sizeof(szFileName)
-                , "find %s \\( -name \\*.G729 -o -name \\*.G723 -o -name \\*.PCMA -o -name \\*.PCMU \\)"
-                , MC_RECORD_FILE_PATH);
+                , "find %s -uid %d -mmin +1 \\( -name \\*.G729 -o -name \\*.G723 -o -name \\*.PCMA -o -name \\*.PCMU \\)"
+                , MC_RECORD_FILE_PATH, MC_NOBODY_UID);
 
     pFile = popen(szFileName, "r");
     if (DOS_ADDR_INVALID(pFile))
