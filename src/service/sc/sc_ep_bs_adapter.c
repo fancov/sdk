@@ -275,6 +275,7 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
                 break;
 
             case SC_SERV_AUTO_DIALING:
+            case SC_SERV_DEMO_TASK:
                 if (ulBSSrvIndex < ulBSSrvCnt)
                 {
                     aucBSSrvList[ulBSSrvIndex] = BS_SERV_AUTO_DIALING;
@@ -430,6 +431,7 @@ U32 sc_bs_srv_type_adapter(U8 *aucSCSrvList, U32 ulSCSrvCnt, U8 *aucBSSrvList, U
             case SC_SERV_INTERNAL_CALL:
             case SC_SERV_EXTERNAL_CALL:
             case SC_SERV_AUTO_DIALING:
+            case SC_SERV_DEMO_TASK:
                 break;
 
             case SC_SERV_PREVIEW_DIALING:

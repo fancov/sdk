@@ -120,6 +120,9 @@ enum tagAPICMDActionList
     SC_API_CMD_ACTION_TRANSFORM_ADD,                     /* 增加号码变换 */
     SC_API_CMD_ACTION_TRANSFORM_DELETE,                  /* 删除号码变换 */
     SC_API_CMD_ACTION_TRANSFORM_UPDATE,                  /* 更新号码变换 */
+
+    SC_API_CMD_ACTION_DEMO_TASK,                         /* 群呼任务演示 */
+    SC_API_CMD_ACTION_DEMO_PREVIEW,                      /* 预览外呼演示 */
     //---------------------------------------------------
 
     SC_API_CMD_ACTION_BUTT
@@ -219,6 +222,7 @@ U32 sc_http_api_eix_action(list_t *pstArgv);
 U32 sc_http_api_numlmt_action(list_t *pstArgv);
 U32 sc_http_api_numtransform_action(list_t *pstArgv);
 U32 sc_http_api_customer_action(list_t *pstArgv);
+U32 sc_http_api_demo_action(list_t *pstArgv);
 U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
 U32 sc_acd_http_agentgrp_update_proc(U32 ulAction, U32 ulGrpID);
 U32 sc_http_api_agent_call_ctrl(list_t *pstArgv);

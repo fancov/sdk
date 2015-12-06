@@ -158,6 +158,9 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_RECORD_FILE_PATH            "/var/www/html/data/voicerecord"
 
+#define SC_DEMOE_TASK_COUNT            3
+#define SC_DEMOE_TASK_FILE             "/var/www/html/data/audio/CC_demo.wav"
+
 #define SC_NOBODY_UID                  99
 #define SC_NOBODY_GID                  99
 
@@ -284,6 +287,8 @@ enum tagCallServiceType{
 
     SC_SERV_CALL_INTERCEPT          = 27,  /* 监听 */
     SC_SERV_CALL_WHISPERS           = 28,  /* 耳语 */
+
+    SC_SERV_DEMO_TASK               = 29,  /* 群呼任务演示 */
 
     SC_SERV_BUTT                    = 255
 }SC_CALL_SERVICE_TYPE_EN;
@@ -1078,6 +1083,7 @@ U32 sc_http_eix_update_proc(U32 ulAction, U32 ulEixID);
 U32 sc_http_num_lmt_update_proc(U32 ulAction, U32 ulNumlmtID);
 U32 sc_http_num_transform_update_proc(U32 ulAction, U32 ulNumTransID);
 U32 sc_http_customer_update_proc(U32 ulAction, U32 ulCustomerID);
+U32 sc_http_demo_proc(U32 ulAction, U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
 U32 sc_http_sip_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID);
 U32 sc_http_route_update_proc(U32 ulAction, U32 ulRouteID);
 U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID);
@@ -1203,6 +1209,8 @@ U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode);
 
 U32 sc_dialer_disconnect();
 
+U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
+U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
 
 #ifdef __cplusplus
 }
