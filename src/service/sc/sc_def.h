@@ -525,6 +525,11 @@ typedef enum tagSCSrvCtrlAttr
     SC_SRV_CTRL_ATTR_BUTT
 }SC_SRV_CTRL_ATTR_EN;
 
+typedef struct tagSCSrvCtrlFind{
+    U32          ulID;               /* 规则ID */
+    U32          ulCustomerID;       /* CUSTOMER ID */
+}SC_SRV_CTRL_FIND_ST;
+
 typedef struct tagSCSrvCtrl
 {
     U32          ulID;               /* 规则ID */
@@ -1211,6 +1216,8 @@ U32 sc_dialer_disconnect();
 
 U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
 U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
+
+BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulAttrVal1,U32 ulAttr2, U32 ulAttrVal2);
 
 #ifdef __cplusplus
 }

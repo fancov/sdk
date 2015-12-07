@@ -103,6 +103,9 @@ pthread_mutex_t          g_mutexCustomerList = PTHREAD_MUTEX_INITIALIZER;
 HASH_TABLE_S             *g_pstHashNumberlmt = NULL;
 pthread_mutex_t          g_mutexHashNumberlmt = PTHREAD_MUTEX_INITIALIZER;
 
+/* 业务控制 */
+HASH_TABLE_S             *g_pstHashServCtrl = NULL;
+pthread_mutex_t          g_mutexHashServCtrl = PTHREAD_MUTEX_INITIALIZER;
 
 SC_EP_TASK_CB            g_astEPTaskList[SC_EP_TASK_NUM];
 
@@ -5356,6 +5359,388 @@ U32 sc_del_number_lmt(U32 ulIndex)
     pthread_mutex_unlock(&g_mutexHashNumberlmt);
 
     return DOS_FAIL;
+}
+
+S32 sc_serv_ctrl_hash(U32 ulCustomerID)
+{
+    return ulCustomerID % SC_SERV_CTRL_HASH_SIZE;
+}
+
+S32 sc_serv_ctrl_hash_find_cb(VOID *pKey, DLL_NODE_S *pstDLLNode)
+{
+    SC_SRV_CTRL_ST       *pstSrvCtrl;
+    SC_SRV_CTRL_FIND_ST  *pstSrvCtrlFind;
+
+    if (DOS_ADDR_INVALID(pKey))
+    {
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pstDLLNode) || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+    {
+        return DOS_FAIL;
+    }
+
+    pstSrvCtrl     = (SC_SRV_CTRL_ST *)pstDLLNode->pHandle;
+    pstSrvCtrlFind = (SC_SRV_CTRL_FIND_ST*)pKey;
+
+    if (pstSrvCtrl->ulID != pstSrvCtrlFind->ulID
+        || pstSrvCtrl->ulCustomerID != pstSrvCtrlFind->ulCustomerID)
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+S32 sc_load_serv_ctrl_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    SC_SRV_CTRL_ST        *pstSrvCtrl;
+    HASH_NODE_S           *pstHashNode;
+    S8                    *pszTmpName;
+    S8                    *pszTmpVal;
+    U32                   ulLoop;
+    U32                   ulProcessCnt;
+    U32                   ulHashIndex;
+    BOOL                  blProcessOK;
+    SC_SRV_CTRL_FIND_ST   stFindParam;
+
+    if (lCount < 9)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstSrvCtrl = dos_dmem_alloc(sizeof(SC_SRV_CTRL_ST));
+    if (DOS_ADDR_INVALID(pstSrvCtrl))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulProcessCnt = 0;
+    blProcessOK=DOS_TRUE;
+    for (ulLoop=0; ulLoop<9; ulLoop++)
+    {
+        pszTmpName = aszNames[ulLoop];
+        pszTmpVal  = aszValues[ulLoop];
+
+        if (DOS_ADDR_INVALID(pszTmpName))
+        {
+            continue;
+        }
+
+        if (dos_strnicmp(pszTmpName, "id", dos_strlen("id")) == 0)
+        {
+            if (DOS_ADDR_INVALID(pszTmpVal) || dos_atoul(pszTmpVal, &pstSrvCtrl->ulID) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            ulProcessCnt++;
+        }
+        else if (dos_strnicmp(pszTmpName, "customer", dos_strlen("customer")) == 0)
+        {
+            if (DOS_ADDR_INVALID(pszTmpVal) || dos_atoul(pszTmpVal, &pstSrvCtrl->ulCustomerID) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            ulProcessCnt++;
+        }
+        else if (dos_strnicmp(pszTmpName, "serv_type", dos_strlen("serv_type")) == 0)
+        {
+            if (DOS_ADDR_INVALID(pszTmpVal) || dos_atoul(pszTmpVal, &pstSrvCtrl->ulServType) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            ulProcessCnt++;
+        }
+        else if (dos_strnicmp(pszTmpName, "effective", dos_strlen("effective")) == 0)
+        {
+            if (DOS_ADDR_INVALID(pszTmpVal) || dos_atoul(pszTmpVal, &pstSrvCtrl->ulEffectTimestamp) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            ulProcessCnt++;
+        }
+        else if (dos_strnicmp(pszTmpName, "expire_time", dos_strlen("expire_time")) == 0)
+        {
+            if (DOS_ADDR_INVALID(pszTmpVal) || dos_atoul(pszTmpVal, &pstSrvCtrl->ulExpireTimestamp) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            ulProcessCnt++;
+        }
+        else if (dos_strnicmp(pszTmpName, "attr1_value", dos_strlen("attr1_value")) == 0)
+        {
+            if (DOS_ADDR_INVALID(pszTmpVal) || dos_atoul(pszTmpVal, &pstSrvCtrl->ulAttrValue1) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            ulProcessCnt++;
+        }
+        else if (dos_strnicmp(pszTmpName, "attr2_value", dos_strlen("attr2_value")) == 0)
+        {
+            if (DOS_ADDR_INVALID(pszTmpVal) || dos_atoul(pszTmpVal, &pstSrvCtrl->ulAttrValue2) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            ulProcessCnt++;
+        }
+        else if (dos_strnicmp(pszTmpName, "attr1", dos_strlen("attr1")) == 0)
+        {
+            if (DOS_ADDR_INVALID(pszTmpVal) || dos_atoul(pszTmpVal, &pstSrvCtrl->ulAttr1) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            ulProcessCnt++;
+        }
+        else if (dos_strnicmp(pszTmpName, "attr2", dos_strlen("attr2")) == 0)
+        {
+            if (DOS_ADDR_INVALID(pszTmpVal) || dos_atoul(pszTmpVal, &pstSrvCtrl->ulAttr2) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            ulProcessCnt++;
+        }
+    }
+
+    if (!blProcessOK || 9 != ulProcessCnt)
+    {
+        sc_logr_notice(SC_ESL, "Load service control rule fail.(%u, %u)", ulProcessCnt, blProcessOK);
+
+        dos_dmem_free(pstSrvCtrl);
+        pstSrvCtrl = NULL;
+
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_serv_ctrl_hash(pstSrvCtrl->ulCustomerID);
+    stFindParam.ulID = pstSrvCtrl->ulID;
+    stFindParam.ulCustomerID = pstSrvCtrl->ulCustomerID;
+    pthread_mutex_lock(&g_mutexHashServCtrl);
+    pstHashNode = hash_find_node(g_pstHashServCtrl, ulHashIndex, &stFindParam, sc_serv_ctrl_hash_find_cb);
+    if (DOS_ADDR_INVALID(pstHashNode))
+    {
+        pstHashNode = dos_dmem_alloc(sizeof(SC_SRV_CTRL_ST));
+        if (DOS_ADDR_INVALID(pstHashNode))
+        {
+            pthread_mutex_unlock(&g_mutexHashServCtrl);
+
+            sc_logr_warning(SC_ESL, "Alloc memory for service ctrl block fail. ID: %u, Customer: %u", stFindParam.ulID, stFindParam.ulCustomerID);
+
+            dos_dmem_free(pstSrvCtrl);
+            pstSrvCtrl = NULL;
+            return DOS_FAIL;
+        }
+
+        HASH_Init_Node(pstHashNode);
+        pstHashNode->pHandle = pstSrvCtrl;
+
+        hash_add_node(g_pstHashServCtrl, pstHashNode, ulHashIndex, NULL);
+    }
+    else
+    {
+        if (DOS_ADDR_INVALID(pstHashNode->pHandle))
+        {
+            DOS_ASSERT(0);
+
+            pstHashNode->pHandle = pstSrvCtrl;
+        }
+        else
+        {
+            dos_memcpy(pstHashNode->pHandle, pstSrvCtrl, sizeof(SC_SRV_CTRL_ST));
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexHashServCtrl);
+
+    sc_logr_debug(SC_ESL, "Add service ctrl block. ID: %u, Customer: %u", stFindParam.ulID, stFindParam.ulCustomerID);
+    return DOS_SUCC;
+}
+
+
+U32 sc_serv_ctrl_delete(U32 ulIndex, U32 ulCustomer)
+{
+    HASH_NODE_S           *pstHashNode;
+    U32                   ulHashIndex;
+    SC_SRV_CTRL_FIND_ST   stFindParam;
+
+    ulHashIndex = sc_serv_ctrl_hash(ulCustomer);
+    stFindParam.ulID = ulIndex;
+    stFindParam.ulCustomerID = ulCustomer;
+    pthread_mutex_lock(&g_mutexHashServCtrl);
+    pstHashNode = hash_find_node(g_pstHashServCtrl, ulHashIndex, &stFindParam, sc_serv_ctrl_hash_find_cb);
+    if (DOS_ADDR_VALID(pstHashNode))
+    {
+        hash_delete_node(g_pstHashServCtrl, pstHashNode, ulHashIndex);
+    }
+    pthread_mutex_unlock(&g_mutexHashServCtrl);
+
+    return DOS_SUCC;
+}
+
+U32 sc_load_serv_ctrl(U32 ulIndex)
+{
+    S8 szSQL[1024];
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT "
+                      "tbl_serv_ctrl.id AS id, "
+                      "tbl_serv_ctrl.customer AS customer, "
+                      "tbl_serv_ctrl.serv_type AS serv_type, "
+                      "tbl_serv_ctrl.effective_time AS effective,"
+                      "tbl_serv_ctrl.expire_time AS expire_time, "
+                      "tbl_serv_ctrl.attr1 AS attr1, "
+                      "tbl_serv_ctrl.attr2 AS attr2, "
+                      "tbl_serv_ctrl.attr1_value AS attr1_value, "
+                      "tbl_serv_ctrl.attr2_value AS attr2_value "
+                      "FROM tbl_serv_ctrl");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT "
+                      "tbl_serv_ctrl.id AS id, "
+                      "tbl_serv_ctrl.customer AS customer, "
+                      "tbl_serv_ctrl.serv_type AS serv_type, "
+                      "tbl_serv_ctrl.effective_time AS effective,"
+                      "tbl_serv_ctrl.expire_time AS expire_time, "
+                      "tbl_serv_ctrl.attr1 AS attr1, "
+                      "tbl_serv_ctrl.attr2 AS attr2, "
+                      "tbl_serv_ctrl.attr1_value AS attr1_value, "
+                      "tbl_serv_ctrl.attr2_value AS attr2_value "
+                      "FROM tbl_serv_ctrl WHERE id=%u", ulIndex);
+    }
+
+    if (db_query(g_pstSCDBHandle, szSQL, sc_load_serv_ctrl_cb, NULL, NULL) != DB_ERR_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_ESL, "%s", "Load service control rule fail.");
+        return DOS_FAIL;
+    }
+
+    sc_logr_error(SC_ESL, "%s", "Load service control rule succ.");
+
+    return DOS_SUCC;
+}
+
+BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulAttrVal1,U32 ulAttr2, U32 ulAttrVal2)
+{
+    BOOL             blResult;
+    U32              ulHashIndex;
+    HASH_NODE_S      *pstHashNode;
+    SC_SRV_CTRL_ST   *pstSrvCtrl;
+    time_t           stTime;
+
+    ulHashIndex = sc_serv_ctrl_hash(ulCustomerID);
+    stTime = time(NULL);
+
+    sc_logr_info(SC_ESL, "Start match service control rule. Customer: %u, Service: %u, Attr1: %u, Attr2: %u, Attr1Val: %u, Attr2Val: %u"
+                , ulCustomerID, ulServerType, ulAttr1, ulAttrVal1, ulAttr2, ulAttrVal2);
+
+    blResult = DOS_FALSE;
+    pthread_mutex_lock(&g_mutexHashServCtrl);
+    HASH_Scan_Bucket(g_pstHashServCtrl, ulHashIndex, pstHashNode, HASH_NODE_S *)
+    {
+        /* 合法性检查 */
+        if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+        {
+            continue;
+        }
+
+        /* 一个BUCKET中可能有很多企业的，需要过滤 */
+        pstSrvCtrl = pstHashNode->pHandle;
+        if (ulCustomerID != pstSrvCtrl->ulCustomerID)
+        {
+            continue;
+        }
+
+        if (stTime < pstSrvCtrl->ulEffectTimestamp
+            || (pstSrvCtrl->ulExpireTimestamp && stTime > pstSrvCtrl->ulExpireTimestamp))
+        {
+            sc_logr_debug(SC_ESL, "Test service control rule: FAIL, Effect: %u, Expire: %u, Current: %u"
+                            , pstSrvCtrl->ulEffectTimestamp, pstSrvCtrl->ulExpireTimestamp, stTime);
+            continue;
+        }
+
+        /* 业务类型要一致, 如果业务类型不为0，才检查 */
+        if (0 != ulServerType
+            && ulServerType != pstSrvCtrl->ulServType)
+        {
+            sc_logr_debug(SC_ESL, "Test service control rule: FAIL, Request service type: %u, Current service type: %u"
+                            , ulServerType, pstSrvCtrl->ulServType);
+            continue;
+        }
+
+        /* 检查属性，不为0才检查 */
+        if (0 != ulAttr1
+            && ulAttr1 != pstSrvCtrl->ulAttr1)
+        {
+            sc_logr_debug(SC_ESL, "Test service control rule: FAIL, Request Attr1: %u, Current Attr1: %u"
+                            , ulAttr1, pstSrvCtrl->ulAttr1);
+            continue;
+        }
+
+        /* 检查属性，不为0才检查 */
+        if (0 != ulAttr2
+            && ulAttr2 != pstSrvCtrl->ulAttr2)
+        {
+            sc_logr_debug(SC_ESL, "Test service control rule: FAIL, Request Attr2: %u, Current Attr2: %u"
+                            , ulAttr2, pstSrvCtrl->ulAttr2);
+            continue;
+        }
+
+        /* 检查属性值，不为U32_BUTT才检查 */
+        if (U32_BUTT != ulAttrVal1
+            && ulAttrVal1 != pstSrvCtrl->ulAttrValue1)
+        {
+            sc_logr_debug(SC_ESL, "Test service control rule: FAIL, Request Attr1 Value: %u, Attr1 Value: %u"
+                            , ulAttrVal1, pstSrvCtrl->ulAttrValue1);
+            continue;
+        }
+
+        /* 检查属性值，不为U32_BUTT才检查 */
+        if (U32_BUTT != ulAttrVal2
+            && ulAttrVal2 != pstSrvCtrl->ulAttrValue2)
+        {
+            sc_logr_debug(SC_ESL, "Test service control rule: FAIL, Request Attr2 Value: %u, Attr2 Value: %u"
+                            , ulAttrVal2, pstSrvCtrl->ulAttrValue2);
+            continue;
+        }
+
+        /* 所有向均匹配 */
+        sc_logr_debug(SC_ESL, "Test service control rule: SUCC. ID: %u", pstSrvCtrl->ulID);
+
+        blResult = DOS_TRUE;
+        break;
+    }
+
+    sc_logr_info(SC_ESL, "Match service control rule %s.", blResult ? "SUCC" : "FAIL");
+
+    pthread_mutex_unlock(&g_mutexHashServCtrl);
+
+    return blResult;
 }
 
 
@@ -15057,6 +15442,7 @@ U32 sc_ep_init()
     g_pstHashCallerGrp = hash_create_table(SC_CALLER_GRP_HASH_SIZE, NULL);
     g_pstHashNumberlmt = hash_create_table(SC_NUMBER_LMT_HASH_SIZE, NULL);
     g_pstHashCallerSetting = hash_create_table(SC_CALLER_SETTING_HASH_SIZE, NULL);
+    g_pstHashServCtrl = hash_create_table(SC_SERV_CTRL_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(g_pstHandle)
         || DOS_ADDR_INVALID(g_pstHashGW)
         || DOS_ADDR_INVALID(g_pstHashGWGrp)
@@ -15066,7 +15452,8 @@ U32 sc_ep_init()
         || DOS_ADDR_INVALID(g_pstHashCaller)
         || DOS_ADDR_INVALID(g_pstHashCallerGrp)
         || DOS_ADDR_INVALID(g_pstHashTTNumber)
-        || DOS_ADDR_INVALID(g_pstHashNumberlmt))
+        || DOS_ADDR_INVALID(g_pstHashNumberlmt)
+        || DOS_ADDR_INVALID(g_pstHashServCtrl))
     {
         DOS_ASSERT(0);
 
@@ -15109,6 +15496,7 @@ U32 sc_ep_init()
     sc_load_caller(SC_INVALID_INDEX);
     sc_load_caller_grp(SC_INVALID_INDEX);
     sc_load_number_lmt(SC_INVALID_INDEX);
+    sc_load_serv_ctrl(SC_INVALID_INDEX);
 
     sc_load_caller_relationship();
 
@@ -15116,6 +15504,8 @@ U32 sc_ep_init()
     SC_TRACE_OUT();
     return DOS_SUCC;
 init_fail:
+
+    /* TODO: 释放资源 */
     return DOS_FAIL;
 }
 

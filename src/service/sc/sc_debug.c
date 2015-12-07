@@ -67,6 +67,8 @@ extern HASH_TABLE_S          *g_pstHashCallerGrp;
 extern HASH_TABLE_S          *g_pstHashCallerSetting;
 extern HASH_TABLE_S          *g_pstHashTTNumber;
 extern HASH_TABLE_S          *g_pstHashNumberlmt;
+extern HASH_TABLE_S           *g_pstHashServCtrl;
+extern pthread_mutex_t        g_mutexHashServCtrl;
 extern pthread_mutex_t        g_mutexHashDIDNum;
 extern pthread_mutex_t        g_mutexHashBlackList;
 extern pthread_mutex_t        g_mutexRouteList;
@@ -355,6 +357,58 @@ const S8* sc_translate_caller_policy(U32 ulPolicy)
         return g_pszCallerPolicy[ulPolicy];
     }
     return "UNKNOWN";
+}
+
+VOID sc_show_serv_ctrl(U32 ulIndex, U32 ulCustomer)
+{
+    HASH_NODE_S         *pstHashNode = NULL;
+    SC_SRV_CTRL_ST      *pstSrvCtrl  = NULL;
+    U32                 ulHashIndex;
+    S8                  szCmdBuff[300] = {0, };
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nService Control Rules:");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%11s%11s%11s%11s%11s%11s%11s%11s%11s", "ID", "Customer", "Service", "Effect", "Expire", "Attr1", "Attr2", "AttrVal1", "AttrVal2");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n----------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    pthread_mutex_lock(&g_mutexHashServCtrl);
+
+    HASH_Scan_Table(g_pstHashServCtrl, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashServCtrl, ulHashIndex, pstHashNode, HASH_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstSrvCtrl = pstHashNode->pHandle;
+
+            if (0 != ulCustomer && ulCustomer != pstSrvCtrl->ulCustomerID)
+            {
+                continue;
+            }
+
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%11u%11u%11u%11u%11u%11u%11u%11u%11u"
+                        , pstSrvCtrl->ulID
+                        , pstSrvCtrl->ulCustomerID
+                        , pstSrvCtrl->ulServType
+                        , pstSrvCtrl->ulEffectTimestamp
+                        , pstSrvCtrl->ulExpireTimestamp
+                        , pstSrvCtrl->ulAttr1
+                        , pstSrvCtrl->ulAttr2
+                        , pstSrvCtrl->ulAttrValue1
+                        , pstSrvCtrl->ulAttrValue2);
+            cli_out_string(ulIndex, szCmdBuff);
+        }
+    }
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n----------------------------------------------------------------------------------------------------\r\n\r\n");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    pthread_mutex_unlock(&g_mutexHashServCtrl);
 }
 
 /**
@@ -2937,6 +2991,30 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
         if (3 == argc)
         {
             sc_show_taskmgnt(ulIndex);
+        }
+        else
+        {
+            return -1;
+        }
+    }
+    else if (0 == dos_stricmp(argv[2], "servctrl"))
+    {
+        if (3 == argc)
+        {
+            sc_show_serv_ctrl(ulIndex, 0);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                return -1;
+            }
+
+            sc_show_serv_ctrl(ulIndex, ulID);
+        }
+        else
+        {
+            return -1;
         }
     }
     return 0;

@@ -534,7 +534,7 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
                     /* 如果任务没有被加载到内存，就不要更新了 */
                     if (sc_tcb_find_by_taskid(pstCMD->ulTaskID))
                     {
-                        if (sc_task_load(pstCMD->ulTaskID) == DOS_SUCC)
+                        if (sc_task_load(pstCMD->ulTaskID) != DOS_SUCC)
                         {
                             pstCMD->ulCMDErrCode = SC_HTTP_ERRNO_INVALID_DATA;
                         }

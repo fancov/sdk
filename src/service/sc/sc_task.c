@@ -22,6 +22,7 @@ extern "C"{
 #include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_acd_def.h"
+#include "bs_pub.h"
 
 /* define marcos */
 
@@ -279,6 +280,19 @@ VOID *sc_task_runtime(VOID *ptr)
 
     pstTCB->ucTaskStatus = SC_TASK_WORKING;
 
+    if (sc_check_server_ctrl(pstTCB->ulCustomID
+                                , BS_SERV_AUTO_DIALING
+                                , SC_SRV_CTRL_ATTR_TASK_MODE
+                                , pstTCB->ucMode
+                                , SC_SRV_CTRL_ATTR_INVLID
+                                , U32_BUTT))
+    {
+        DOS_ASSERT(0);
+        sc_logr_notice(SC_TASK, "Service not allow.(TaskID:%u) ", pstTCB->ulTaskID);
+
+        goto finished;
+    }
+
     /* 开启一个定时器，将已经呼叫过的号码数量，定时写进数据库中 */
     lResult = dos_tmr_start(&pstTCB->pstTmrHandle
                             , SC_TASK_UPDATE_DB_TIMER * 1000
@@ -371,6 +385,7 @@ VOID *sc_task_runtime(VOID *ptr)
 #endif
     }
 
+finished:
     sc_logr_info(SC_TASK, "Task %d finished.", pstTCB->ulTaskID);
 
     /* 释放相关资源 */
