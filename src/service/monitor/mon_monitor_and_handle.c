@@ -434,10 +434,9 @@ static U32 mon_add_data_to_db()
 
     ulCur = time(0);
     pstCur = localtime(&ulCur);
-    dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO syssrc.tbl_syssrc%04u%02u(ctime,phymem," \
+    dos_snprintf(szSQLCmd, MAX_BUFF_LENGTH, "INSERT INTO syssrc.tbl_syssrc%d(ctime,phymem," \
         "phymem_pct,swap,swap_pct,hd,hd_pct,cpu_pct,5scpu_pct,1mcpu_pct,10mcpu_pct,trans_rate,procmem_pct,proccpu_pct)" \
         " VALUES(%u,%u,%u,%u,%u,%d,%u,%u,%u,%u,%u,%u,%u,%u);"
-        , pstCur->tm_year + 1900
         , pstCur->tm_mon + 1
         , ulCur
         , g_pstMem->ulPhysicalMemTotalBytes

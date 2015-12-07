@@ -79,6 +79,8 @@ static VOID *log_db_task(VOID *ptr)
 
             db_query(m_pstDBLogHandle, pszQuery, NULL, NULL, NULL);
 
+            /* dos_printf("%s", pszQuery); */
+
             /* pHandle和pstNode是同一块内存 */
             pstNode->pHandle = NULL;
             free(pstNode);
@@ -115,13 +117,13 @@ U32 log_db_init()
         goto errno_proc;
     }
 
-    if (config_get_db_user(szDBUsername, MAX_DB_INFO_LEN) < 0)
+    if (config_get_syssrc_db_user(szDBUsername, MAX_DB_INFO_LEN) < 0)
     {
         DOS_ASSERT(0);
         goto errno_proc;
     }
 
-    if (config_get_db_password(szDBPassword, MAX_DB_INFO_LEN) < 0)
+    if (config_get_syssrc_db_password(szDBPassword, MAX_DB_INFO_LEN) < 0)
     {
         DOS_ASSERT(0);
         goto errno_proc;
@@ -133,7 +135,7 @@ U32 log_db_init()
         usDBPort = 3306;
     }
 
-    if (config_get_db_dbname(szDBName, MAX_DB_INFO_LEN) < 0)
+    if (config_get_syssrc_db_dbname(szDBName, MAX_DB_INFO_LEN) < 0)
     {
         DOS_ASSERT(0);
         goto errno_proc;
@@ -206,9 +208,10 @@ U32 log_db_stop()
 
 VOID log_db_write_rlog(time_t _stTime, const S8 *_pszType, const S8 *_pszLevel, const S8 *_pszMsg, U32 _ulLevel)
 {
-    U32         ulLen     = 0;
-    S8          *pszQuery = NULL;
-    DLL_NODE_S  *pstNode  = NULL;
+    U32         ulLen      = 0;
+    S8          *pszQuery  = NULL;
+    struct tm   *pstTimeTM = NULL;
+    DLL_NODE_S  *pstNode   = NULL;
 
     if (!m_stDBLog.blInited)
     {
@@ -246,10 +249,12 @@ VOID log_db_write_rlog(time_t _stTime, const S8 *_pszType, const S8 *_pszLevel, 
     pszQuery += sizeof(DLL_NODE_S);
     pstNode->pHandle = pszQuery;
 
+    pstTimeTM = localtime(&_stTime);
+
     /* 填充数据 */
     ulLen = LOG_DB_MAX_BUFF_LEN - sizeof(DLL_NODE_S);
-    dos_snprintf(pszQuery, ulLen, "INSERT INTO %s(`id`, `ctime`, `level`, `type`, `status`, `process`, `msg`) VALUES(NULL, %u, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
-                , "tbl_log"
+    dos_snprintf(pszQuery, ulLen, "INSERT INTO tbl_log%d(`id`, `ctime`, `level`, `type`, `status`, `process`, `msg`) VALUES(NULL, %u, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
+                , pstTimeTM->tm_mon + 1
                 , _stTime
                 , _pszLevel
                 , _pszType
@@ -309,7 +314,7 @@ VOID log_db_write_olog(const S8 *_pszTime, const S8 *_pszOpterator, const S8 *_p
 
     /* 填充数据 */
     ulLen = LOG_DB_MAX_BUFF_LEN - sizeof(DLL_NODE_S);
-    dos_snprintf(pszQuery, ulLen, "INSERT INTO %s(`id`, `ctime`, `opterator`, `module`, `result`, `msg`) VALUES(NULL, %u, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
+    dos_snprintf(pszQuery, ulLen, "INSERT INTO %s(`id`, `ctime`, `opterator`, `module`, `opterated`, `result`, `msg`) VALUES(NULL, %u, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")"
                     , "tbl_olog"
                     , ulTime
                     , _pszOpterator
