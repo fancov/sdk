@@ -19,6 +19,7 @@ extern S32 bs_update_test(U32 ulIndex, S32 argc, S8 **argv);
 
 #if INCLUDE_CC_SC
 extern S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv);
+extern S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv);
 #endif
 
 #if INCLUDE_RES_MONITOR
@@ -45,6 +46,18 @@ extern S32 ptc_printf_send_cache_msg(U32 ulIndex, S32 argc, S8 **argv);
 extern S32 mc_cmd_set(U32 ulIndex, S32 argc, S8 **argv);
 #endif
 
+#if INCLUDE_CC_SC
+COMMAND_ST g_stCommandSCStat[] = {
+    {NULL, "agent",         "Show agent stat info",           sc_cc_show_agent_stat},
+    {NULL, NULL,            "",                               NULL}
+};
+
+COMMAND_GROUP_ST g_stCommandSCStatGroup[] = {
+    {NULL,  g_stCommandSCStat,   sizeof(g_stCommandSCStat)/sizeof(COMMAND_ST)},
+    {NULL,  NULL,                0}
+};
+#endif
+
 COMMAND_ST g_stCommandSet[] = {
     {NULL, "assert",        "Show assert informationa",        dos_assert_print},
 #if INCLUDE_SERVICE_BS
@@ -63,7 +76,8 @@ COMMAND_ST g_stCommandSet[] = {
 #endif
 
 #if INCLUDE_CC_SC
-    {NULL, "cc",            "Debug CC mod",                    cli_cc_process},
+    {NULL,                   "cc",            "Debug CC mod",  cli_cc_process},
+    {g_stCommandSCStatGroup, "stat",          "SC cmd group",  NULL},
 #endif
 
 #if INCLUDE_PTS
@@ -94,12 +108,13 @@ COMMAND_ST g_stCommandSet[] = {
 };
 
 COMMAND_GROUP_ST g_stCommandRootGrp[] = {
-    {NULL,  g_stCommandSet,   sizeof(g_stCommandSet)/sizeof(COMMAND_ST)}
+    {NULL,  g_stCommandSet,   sizeof(g_stCommandSet)/sizeof(COMMAND_ST)},
+    {NULL,  NULL,             0}
 };
 
-COMMAND_ST * debug_cli_cmd_find(S32 argc, S8 **argv)
+COMMAND_ST * debug_cli_cmd_find(COMMAND_GROUP_ST *pstCmdGrp, S32 argc, S8 **argv)
 {
-    U32 ulGrpLoop, ulCmdLoop, ulGrpSize;
+    U32 ulGrpLoop, ulCmdLoop;
     COMMAND_GROUP_ST *pstGrpTmp;
     COMMAND_ST       *pstCmdTmp;
 
@@ -109,17 +124,30 @@ COMMAND_ST * debug_cli_cmd_find(S32 argc, S8 **argv)
         return NULL;
     }
 
-    ulGrpSize = sizeof(g_stCommandRootGrp)/sizeof(COMMAND_GROUP_ST);
-
-    for (ulGrpLoop=0; ulGrpLoop<ulGrpSize; ulGrpLoop++)
+    if (!pstCmdGrp)
     {
-        pstGrpTmp = &g_stCommandRootGrp[ulGrpLoop];
+        pstCmdGrp = g_stCommandRootGrp;
+    }
+
+    for (ulGrpLoop=0
+        ; pstCmdGrp && pstCmdGrp[ulGrpLoop].pstCmdSet && pstCmdGrp[ulGrpLoop].pstCmdSet > 0
+        ; ulGrpLoop++, pstCmdGrp++)
+    {
+        pstGrpTmp = &pstCmdGrp[ulGrpLoop];
         for (ulCmdLoop=0; ulCmdLoop<pstGrpTmp->ulSize; ulCmdLoop++)
         {
             pstCmdTmp = &pstGrpTmp->pstCmdSet[ulCmdLoop];
+            dos_printf("CMD: |%s|%s|, Argc: |%u|", argv[0], pstCmdTmp->pszCommand, argc);
             if (dos_stricmp(pstCmdTmp->pszCommand, argv[0]) == 0)
             {
-                return pstCmdTmp;
+                if (pstCmdTmp->pstGroup)
+                {
+                    return debug_cli_cmd_find(pstCmdTmp->pstGroup, argc-1, argv+1);
+                }
+                else
+                {
+                    return pstCmdTmp;
+                }
             }
         }
     }

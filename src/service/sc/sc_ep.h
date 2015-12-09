@@ -50,6 +50,10 @@
 /* 定义主叫号码设定的hash表大小 */
 #define SC_CALLER_SETTING_HASH_SIZE   128
 
+/* 业务控制HASH表 */
+#define SC_SERV_CTRL_HASH_SIZE        128
+
+
 /* 路由 中继组的最大数量 */
 #define SC_ROUT_GW_GRP_MAX_SIZE   5
 

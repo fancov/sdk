@@ -215,6 +215,79 @@ errno_proc:
 
 }
 
+S32 dos_is_running()
+{
+    FILE *fp;
+    S8  szBuffPath[256] = { 0 };
+    S8  szBuffCmd[256] = { 0 };
+    S8  szPID[16] = { 0 };
+    S8  *pszProcessName;
+    S32 lPID;
+
+    /* 创建pid文件目录 */
+    if (dos_get_pid_file_path(szBuffPath, sizeof(szBuffPath)))
+    {
+        snprintf(szBuffCmd, sizeof(szBuffCmd), "mkdir -p %s", szBuffPath);
+        system(szBuffCmd);
+    }
+    else
+    {
+        DOS_ASSERT(0);
+    }
+
+    /* 获进程块名 */
+    pszProcessName = dos_get_process_name();
+    if (!pszProcessName)
+    {
+        return 0;
+    }
+
+    szPID[0] = '\0';
+    snprintf(szBuffCmd, sizeof(szBuffCmd), "%s/%s.pid", szBuffPath, pszProcessName);
+    fp = fopen(szBuffCmd, "r");
+    if (fp)
+    {
+        fread(szPID, sizeof(szPID), 1, fp);
+        fclose(fp);
+    }
+
+    if ('\0' == szPID[0])
+    {
+        return 0;
+    }
+
+    if (dos_atol(szPID, &lPID) < 0)
+    {
+        return 0;
+    }
+
+    dos_snprintf(szBuffPath, sizeof(szBuffPath), "/proc/%s/cmdline", szPID);
+    if (access(szBuffPath, F_OK) < 0)
+    {
+        return 0;
+    }
+
+    szBuffCmd[0] = '\0';
+    fp = fopen(szBuffPath, "r");
+    if (fp)
+    {
+        fread(szBuffCmd, sizeof(szBuffCmd), 1, fp);
+        fclose(fp);
+    }
+
+    if ('\0' == szBuffCmd[0])
+    {
+        return 0;
+    }
+
+    if (dos_strstr(szBuffCmd, pszProcessName) == NULL)
+    {
+        return 0;
+    }
+
+    return lPID;
+}
+
 /**
  * 函数: main(int argc, char ** argv)
  * 功能: 系统主函数入口
@@ -222,10 +295,18 @@ errno_proc:
 int main(int argc, char ** argv)
 {
     S8  szBuff[256] = { 0 };
+    S32 lPID;
 
     dos_set_process_name(argv[0]);
 
-    printf("\n======================================================\n");
+    lPID = dos_is_running();
+    if (lPID > 0)
+    {
+        printf("%s already running, pid: %d\r\n", dos_get_process_name(), lPID);
+        exit(0);
+    }
+
+    printf("======================================================\n");
     snprintf(szBuff, sizeof(szBuff), " Process Name: %s\n", dos_get_process_name());
     printf("%s", szBuff);
     snprintf(szBuff, sizeof(szBuff), " Process Version: %s\n", dos_get_process_version());
