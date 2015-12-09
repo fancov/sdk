@@ -392,7 +392,7 @@ U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     return sc_pub_send_msg(szURL, szJson, SC_PUB_TYPE_STATUS, NULL);
 }
 
-U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
+U32 sc_ep_agent_status_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
 {
     S8 szURL[256]         = { 0, };
     S8 szData[512]        = { 0, };
@@ -8165,7 +8165,7 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
             sc_logr_warning(SC_ESL, "Agent %u request signin. But it seems in a call(SCB: %u). Exit.", pstAgentInfo->ulSiteID, pstAgentInfo->usSCBNo);
 
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_SIGNIN);
-            sc_ep_agent_status_update(pstAgentInfo, ACD_MSG_SUBTYPE_SIGNIN);
+            sc_ep_agent_status_notify(pstAgentInfo, ACD_MSG_SUBTYPE_SIGNIN);
 
             dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_setval %s exec_after_bridge_app park \r\n", pstSCB->szUUID);
             sc_ep_esl_execute_cmd(szCMD);
@@ -8416,7 +8416,7 @@ U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
 
                 /* 发送话单 */
                 pstSCBNotify->usOtherSCBNo = U16_BUTT;
-                sc_acd_agent_update_status(pstSCBNotify, SC_ACD_IDEL, U32_BUTT, NULL);
+                sc_acd_update_agent_info(pstSCBNotify, SC_ACD_IDEL, U32_BUTT, NULL);
                 sc_send_billing_stop2bs(pstSCBNotify);
 
                 /* 清理资源 */
@@ -8551,7 +8551,7 @@ U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
                 /* TODO 时间不对 */
             }
 
-            sc_acd_agent_update_status(pstSCBNotify, SC_ACD_IDEL, U32_BUTT, NULL);
+            sc_acd_update_agent_info(pstSCBNotify, SC_ACD_IDEL, U32_BUTT, NULL);
 
             /* 清理资源 */
             sc_scb_hash_tables_delete(pstSCBNotify->szUUID);
@@ -9171,6 +9171,9 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
     }
 
+    pstAgentInfo->stStat.ulCallCnt++;
+    pstAgentInfo->stStat.ulCallCnt++;
+
     /* 如果坐席长连了，就需要特殊处理 */
     if (pstAgentInfo->bConnected && pstAgentInfo->usSCBNo < SC_MAX_SCB_NUM)
     {
@@ -9227,7 +9230,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         }
 
         /* 更新坐席的状态 */
-        sc_acd_agent_update_status(pstSCBNew, SC_ACD_BUSY, pstSCBNew->usSCBNo, pstSCB->szCallerNum);
+        sc_acd_update_agent_info(pstSCBNew, SC_ACD_BUSY, pstSCBNew->usSCBNo, pstSCB->szCallerNum);
 
         pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
         pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
@@ -9397,8 +9400,6 @@ go_on:
 
         return DOS_SUCC;
     }
-
-    //sc_ep_agent_status_update(pstAgentInfo, ACD_MSG_SUBTYPE_RINGING);
 
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
@@ -9849,7 +9850,7 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
         }
 
         /* 更新坐席的状态 */
-        sc_acd_agent_update_status(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo, NULL);
+        sc_acd_update_agent_info(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo, NULL);
 
         sc_scb_free(pstSCB);
         dos_snprintf(szParams, sizeof(szParams), "bgapi uuid_break %s", pstSCBOther->szUUID);
@@ -10046,7 +10047,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         }
 
         /* 更新坐席的状态 */
-        sc_acd_agent_update_status(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo, pszNumber);
+        sc_acd_update_agent_info(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo, pszNumber);
 
 
         pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
@@ -10255,7 +10256,7 @@ U32 sc_ep_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber)
         }
 
         /* 更新坐席的状态 */
-        sc_acd_agent_update_status(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo, NULL);
+        sc_acd_update_agent_info(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo, NULL);
 
         pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
         pstSCB->ulAgentID = ulAgent;
@@ -12094,7 +12095,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         }
 
         sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), signout", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
-        sc_acd_agent_update_status2(SC_ACD_SITE_ACTION_SIGNOUT, stAgentInfo.ulSiteID, OPERATING_TYPE_PHONE);
+        sc_acd_update_agent_status(SC_ACD_SITE_ACTION_SIGNOUT, stAgentInfo.ulSiteID, OPERATING_TYPE_PHONE);
 
         ulRet = DOS_SUCC;
     }
@@ -12240,7 +12241,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
 
         /* 操作成功，放音提示 */
         sc_ep_play_sound(SC_SND_OPT_SUCC, pstSCB->szUUID, 1);
-        sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, pstSCB->usSCBNo, NULL);
+        sc_acd_update_agent_info(pstSCB, SC_ACD_IDEL, pstSCB->usSCBNo, NULL);
 
         pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
         /* 呼叫过程中挂断 */
@@ -12371,7 +12372,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         ulRet = sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECTED, pstSCB->ulAgentID, OPERATING_TYPE_PHONE);
         if (ulRet == DOS_SUCC)
         {
-            sc_acd_agent_update_status(pstSCB, SC_ACD_BUTT, pstSCB->usSCBNo, NULL);
+            sc_acd_update_agent_info(pstSCB, SC_ACD_BUTT, pstSCB->usSCBNo, NULL);
         }
 
         sc_ep_esl_execute("set", "mark_customer=true", pstSCB->szUUID);
@@ -12456,7 +12457,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     pstSCB->usOtherSCBNo = U16_BUTT;
 
                     /* 修改坐席的状态 */
-                    sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, pstSCB->usSCBNo, NULL);
+                    sc_acd_update_agent_info(pstSCB, SC_ACD_IDEL, pstSCB->usSCBNo, NULL);
                     sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
                     if (sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1) != DOS_SUCC)
                     {
@@ -13264,7 +13265,7 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         /* 判断是否是呼叫坐席，更新坐席的状态 */
         if (pstSCB->bIsAgentCall && !sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
         {
-            sc_acd_agent_update_status(pstSCB, SC_ACD_BUSY, ulSCBNo, pstSCB->szCustomerNum);
+            sc_acd_update_agent_info(pstSCB, SC_ACD_BUSY, ulSCBNo, pstSCB->szCustomerNum);
         }
 
         /* 更新UUID */
@@ -13765,6 +13766,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
     SC_SCB_ST   *pstSCBOther        = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
     U32         ulTransferFinishTime = 0;
+    U32         ulProcesingTime      = 0;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -13997,7 +13999,27 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                 sc_ep_esl_execute_cmd(szCMD);
                                 /* 不要挂断坐席，把坐席置为 整理状态，放音提示坐席，可标记客户 */
                                 pstSCBOther->usOtherSCBNo = U16_BUTT;
-                                sc_acd_agent_update_status(pstSCBOther, SC_ACD_PROC, ulSCBNo, NULL);
+                                if (sc_acd_update_agent_info(pstSCBOther, SC_ACD_PROC, ulSCBNo, NULL) == U32_BUTT)
+                                {
+                                    pstSCB->bIsInMarkState = DOS_TRUE;
+                                    pstSCB->bIsMarkCustomer = DOS_FALSE;
+
+                                    ulProcesingTime = sc_acd_get_processing_time(pstSCBOther->ulAgentID);
+
+                                    if (pstSCB->bIsInHoldStatus)
+                                    {
+                                        /* 如果是在hold状态，需要先解除hold */
+                                        sc_ep_esl_execute("unhold", NULL, pstSCB->szUUID);
+                                    }
+
+                                    sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", pstSCBOther->ulAgentID, ulProcesingTime);
+                                    sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
+                                    sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
+                                    dos_snprintf(szCMD, sizeof(szCMD)
+                                                    , "{timeout=%u}file_string://%s/call_over.wav"
+                                                    , ulProcesingTime * 1000, SC_PROMPT_TONE_PATH);
+                                    sc_ep_esl_execute("playback", szCMD, pstSCB->szUUID);
+                                }
                             }
                             else
                             {
@@ -14008,7 +14030,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                     /* 非长签，释放掉SC */
                                 }
 
-                                sc_acd_agent_update_status(pstSCBOther, SC_ACD_IDEL, ulSCBNo, NULL);
+                                sc_acd_update_agent_info(pstSCBOther, SC_ACD_IDEL, ulSCBNo, NULL);
                             }
                         }
                     }
@@ -14058,11 +14080,11 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                     /* 判断是否是长签 */
                                     if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
                                     {
-                                        sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, pstSCB->usSCBNo, NULL);
+                                        sc_acd_update_agent_info(pstSCB, SC_ACD_IDEL, pstSCB->usSCBNo, NULL);
                                     }
                                     else
                                     {
-                                        sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, U32_BUTT, NULL);
+                                        sc_acd_update_agent_info(pstSCB, SC_ACD_IDEL, U32_BUTT, NULL);
                                     }
                                 }
                             }
@@ -14083,7 +14105,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 else
                 {
                     /* 判断是否是长签, 如果是长签，需要重新呼叫坐席 */
-                    sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, U32_BUTT, NULL);
+                    sc_acd_update_agent_info(pstSCB, SC_ACD_IDEL, U32_BUTT, NULL);
                 }
 
                 if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
@@ -14136,18 +14158,18 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                         /* 判断是否是长签 */
                         if (sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN))
                         {
-                            sc_acd_agent_update_status(pstSCBOther, SC_ACD_IDEL, pstSCBOther->usSCBNo, NULL);
+                            sc_acd_update_agent_info(pstSCBOther, SC_ACD_IDEL, pstSCBOther->usSCBNo, NULL);
                         }
                         else
                         {
-                            sc_acd_agent_update_status(pstSCBOther, SC_ACD_IDEL, U32_BUTT, NULL);
+                            sc_acd_update_agent_info(pstSCBOther, SC_ACD_IDEL, U32_BUTT, NULL);
                         }
                     }
                 }
                 else if (pstSCB->bIsAgentCall && sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN))
                 {
                     /* 另一条腿为坐席长签，此处不是和客户通话，直接修改为idel状态 */
-                    sc_acd_agent_update_status(pstSCBOther, SC_ACD_IDEL, pstSCBOther->usSCBNo, NULL);
+                    sc_acd_update_agent_info(pstSCBOther, SC_ACD_IDEL, pstSCBOther->usSCBNo, NULL);
                     pstSCBOther->usOtherSCBNo = U16_BUTT;
                     sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCBOther->szUUID, 1);
                 }
@@ -14669,7 +14691,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
             pstSCB->usOtherSCBNo = U16_BUTT;
 
             /* 修改坐席的状态， 这里可以不用判断是否长签，长签的走的是 sc_ep_agent_signin_proc， 走到这里的一定不是长签的 */
-            sc_acd_agent_update_status(pstSCB, SC_ACD_IDEL, U32_BUTT, NULL);
+            sc_acd_update_agent_info(pstSCB, SC_ACD_IDEL, U32_BUTT, NULL);
             sc_ep_hangup_call(pstSCB, CC_ERR_NORMAL_CLEAR);
 
             pstSCB->bIsInMarkState = DOS_FALSE;

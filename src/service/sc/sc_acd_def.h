@@ -171,6 +171,20 @@ enum tagOperatingType{
     OPERATING_TYPE_CHECK
 };
 
+enum tagAgentStat{
+    SC_AGENT_STAT_SELECT,
+    SC_AGENT_STAT_CALL,
+    SC_AGENT_STAT_CALL_OK,
+    SC_AGENT_STAT_CALL_IN,
+    SC_AGENT_STAT_CALL_OUT,
+    SC_AGENT_STAT_ONLINE,
+    SC_AGENT_STAT_OFFLINE,
+    SC_AGENT_STAT_SIGNIN,
+    SC_AGENT_STAT_SIGNOUT,
+
+    SC_AGENT_STAT_BUTT
+};
+
 typedef struct tagACDSiteDesc{
     U16        usSCBNo;
     U8         ucStatus;                          /* ×øÏ¯×´Ì¬ refer to SC_SITE_STATUS_EN */
@@ -221,12 +235,13 @@ typedef struct tagACDSiteDesc{
 }SC_ACD_AGENT_INFO_ST;
 
 U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulGroupID, S8 *szCallerNum);
-U32 sc_acd_agent_update_status(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 *szCustomerNum);
+U32 sc_acd_update_agent_info(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 *szCustomerNum);
 S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
 U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);
 U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult);
 U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType);
 U32 sc_acd_agent_stat_by_grpid(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32 *pulIdel, U32 *pulBusy);
+U32 sc_acd_agent_stat(U32 ulType, U32 ulAgentID, SC_ACD_AGENT_INFO_ST *pstAgentInfo);
 U32 sc_acd_get_total_agent(U32 ulGroupID);
 U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID);
 U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID);
@@ -238,8 +253,10 @@ U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr);
 U32 sc_ep_query_agent_status(CURL *curl, SC_ACD_AGENT_INFO_ST *pstAgentInfo);
 U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB);
 U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo);
-U32 sc_ep_agent_status_update(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus);
+U32 sc_ep_agent_status_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus);
 U32 sc_ep_call_ctrl_hangup_agent(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo);
+U32 sc_acd_get_processing_time(U32 ulAgentID);
+
 
 #endif
 

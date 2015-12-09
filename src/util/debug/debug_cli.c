@@ -61,7 +61,7 @@ static BOOL               g_bIsConnectOK = DOS_FALSE;
 static DOS_TMR_ST         g_hTmrReRegTmr = NULL;
 
 /* Íâ²¿º¯Êý */
-extern struct tagCommand * debug_cli_cmd_find(S32 argc, S8 **argv);
+extern struct tagCommand * debug_cli_cmd_find(COMMAND_GROUP_ST *pstCmdGrp, S32 argc, S8 **argv);
 
 
 /**
@@ -136,7 +136,7 @@ S32 debug_cli_cmd_analyse(U32 ulClientIndex, S8 *pszMsg, U32 ulLength)
         goto error;
     }
 
-    pstCurrentCmd = debug_cli_cmd_find(lKeyCnt, pszKeyWord);
+    pstCurrentCmd = debug_cli_cmd_find(NULL, lKeyCnt, pszKeyWord);
     if (!pstCurrentCmd)
     {
         lRet = -1;

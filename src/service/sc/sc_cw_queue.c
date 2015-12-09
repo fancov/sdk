@@ -148,8 +148,6 @@ U32 sc_cwq_add_call(SC_SCB_ST *pstSCB, U32 ulAgentGrpID)
         pthread_mutex_lock(&g_mutexCWQMngt);
         DLL_Add(&g_stCWQMngt, pstDLLNode);
         pthread_mutex_unlock(&g_mutexCWQMngt);
-
-        sc_acd_agent_grp_add_call(ulAgentGrpID);
     }
 
     pstCWQNode = pstDLLNode->pHandle;
@@ -245,8 +243,6 @@ U32 sc_cwq_del_call(SC_SCB_ST *pstSCB)
             {
                 /* 出对了之后，计算等待时间 */
                 pstSCB->ulInQueueTime = time(NULL) - pstSCB->ulInQueueTime;
-                sc_acd_agent_grp_del_call(pstCWQNode->ulAgentGrpID);
-                sc_acd_agent_grp_stat(pstCWQNode->ulAgentGrpID, 0);
 
                 dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode1);
                 DLL_Init_Node(pstDLLNode1);
@@ -340,8 +336,6 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 }
 
                 dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode1);
-
-                sc_acd_agent_grp_del_call(pstCWQNode->ulAgentGrpID);
 
                 DLL_Init_Node(pstDLLNode1);
                 dos_dmem_free(pstDLLNode1);

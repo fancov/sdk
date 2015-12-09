@@ -612,8 +612,8 @@ typedef struct tagSiteStat
 
     U32  ulIncomingCall; /* 暂时没有实现 */
     U32  ulOutgoingCall; /* 暂时没有实现 */
-    U32  ulTimeOnSignin;             /* 长签总时间 */
-    U32  ulTimeOnthePhone;           /* 在线总时间 */
+    U32  ulTimesSignin;  /* 长签总时间 */
+    U32  ulTimesOnline;  /* 在线总时间 */
 }SC_SITE_STAT_ST;
 
 typedef struct tagSiteGrpStat

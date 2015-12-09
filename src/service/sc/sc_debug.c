@@ -57,6 +57,7 @@ extern HASH_TABLE_S          *g_pstAgentList;
 extern SC_TASK_MNGT_ST       *g_pstTaskMngtInfo;
 extern HASH_TABLE_S          *g_pstGroupList;
 extern HASH_TABLE_S          *g_pstAgentList;
+extern pthread_mutex_t       g_mutexAgentList;
 extern HASH_TABLE_S          *g_pstHashGW;
 extern HASH_TABLE_S          *g_pstHashSIPUserID;
 extern HASH_TABLE_S          *g_pstHashGWGrp;
@@ -357,6 +358,140 @@ const S8* sc_translate_caller_policy(U32 ulPolicy)
         return g_pszCallerPolicy[ulPolicy];
     }
     return "UNKNOWN";
+}
+
+S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
+{
+    U32 ulAgentID    = U32_BUTT;
+    U32 ulGroupID    = U32_BUTT;
+    U32 ulCustoemrID = U32_BUTT;
+    U32 ulHashIndex  = U32_BUTT;
+    S8                           szCmdBuff[300]     = {0, };
+    HASH_NODE_S                  *pstHashNode       = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode = NULL;
+
+    if (argc == 2)
+    {
+        /* scd stat agent */
+    }
+    else if (argc == 3)
+    {
+        /* scd stat agent id */
+        if (dos_atoul(argv[2], &ulAgentID) < 0)
+        {
+            goto process_fail;
+        }
+    }
+    else if (argc == 4)
+    {
+        /* scd stat agent customer|group id */
+        if (dos_strnicmp(argv[2], "customer", dos_strlen("customer")) == 0)
+        {
+            /* scd stat agent id */
+            if (dos_atoul(argv[3], &ulCustoemrID) < 0)
+            {
+                goto process_fail;
+            }
+        }
+        else if (dos_strnicmp(argv[2], "group", dos_strlen("group")) == 0)
+        {
+            /* scd stat agent id */
+            if (dos_atoul(argv[3], &ulGroupID) < 0)
+            {
+                goto process_fail;
+            }
+        }
+    }
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow agent stat:");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%11s%9s%11s%11s%11s%11s%11s%11s%11s"
+                          , "ID", "Num", "Group1", "Group2", "Calls"
+                          , "Connected", "Duration", "TimeLogin", "TimeOnPhone");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    pthread_mutex_lock(&g_mutexAgentList);
+    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                continue;
+            }
+
+            pstAgentQueueNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstAgentQueueNode)
+                || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+            {
+                continue;
+            }
+
+
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                                  , "\r\n%11u%9s%11u%11u%11u%11u%11u%11u%11u"
+                                  , pstAgentQueueNode->pstAgentInfo->ulSiteID
+                                  , pstAgentQueueNode->pstAgentInfo->szEmpNo
+                                  , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
+                                  , pstAgentQueueNode->pstAgentInfo->aulGroupID[1]
+                                  , pstAgentQueueNode->pstAgentInfo->stStat.ulCallCnt
+                                  , pstAgentQueueNode->pstAgentInfo->stStat.ulCallConnected
+                                  , pstAgentQueueNode->pstAgentInfo->stStat.ulTotalDuration
+                                  , pstAgentQueueNode->pstAgentInfo->stStat.ulTimesSignin
+                                  , pstAgentQueueNode->pstAgentInfo->stStat.ulTimesOnline);
+
+            if (ulAgentID != U32_BUTT)
+            {
+                if (ulAgentID == pstAgentQueueNode->pstAgentInfo->ulSiteID)
+                {
+                    /* 单个坐席的情况，打印就退出其 */
+                    cli_out_string(ulIndex, szCmdBuff);
+                    break;
+                }
+
+                continue;
+            }
+
+            if (ulCustoemrID != U32_BUTT)
+            {
+                if (ulCustoemrID == pstAgentQueueNode->pstAgentInfo->ulCustomerID)
+                {
+                    /* 单个坐席的 */
+                    cli_out_string(ulIndex, szCmdBuff);
+                }
+
+                continue;
+            }
+
+            if (ulGroupID != U32_BUTT)
+            {
+                if (ulGroupID == pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
+                   || ulGroupID == pstAgentQueueNode->pstAgentInfo->aulGroupID[1])
+                {
+                    cli_out_string(ulIndex, szCmdBuff);
+                }
+
+                continue;
+            }
+
+            /* 显示所有的哦 */
+            cli_out_string(ulIndex, szCmdBuff);
+        }
+    }
+    pthread_mutex_unlock(&g_mutexAgentList);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------\r\n\r\n");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    return 0;
+
+process_fail:
+    cli_out_string(ulIndex, "\r\nUsage:");
+    cli_out_string(ulIndex, "\r\n    scd stat agent [customer|group] id\r\n\r\n");
+
+    return 0;
 }
 
 VOID sc_show_serv_ctrl(U32 ulIndex, U32 ulCustomer)
@@ -994,6 +1129,7 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
                     , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile", "TT_number", "Sip ID", "ScbNO", "bDel", "bLogin", "LastCustomer", "ProcessTime");
     cli_out_string(ulIndex, szCmdBuff);
 
+    pthread_mutex_lock(&g_mutexAgentList);
     HASH_Scan_Table(g_pstAgentList, ulHashIndex)
     {
         HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S*)
@@ -1078,6 +1214,8 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
             ulTotal++;
         }
     }
+    pthread_mutex_unlock(&g_mutexAgentList);
+
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n** Bind : 0 -- SIP User ID, 1 -- Telephone, 2 -- Mobile");
