@@ -9164,6 +9164,8 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         goto proc_error;
     }
 
+    sc_acd_agent_stat(SC_AGENT_STAT_CALL, pstAgentInfo->ulSiteID, NULL, 0);
+
     /* 应该把坐席的工号存储到 pstSCB 中，结果分析时，使用 */
     if (!pstSCB->bIsAgentCall)
     {
@@ -10024,6 +10026,9 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         goto make_all_fail;
     }
 
+
+    sc_acd_agent_stat(SC_AGENT_STAT_CALL, stAgentInfo.ulSiteID, NULL, 0);
+
     pstSCB = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -10048,7 +10053,6 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
 
         /* 更新坐席的状态 */
         sc_acd_update_agent_info(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo, pszNumber);
-
 
         pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
         pstSCB->ulAgentID = ulAgent;
@@ -12945,6 +12949,8 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCB->szUUID);
                     sc_ep_esl_execute("set", "mark_customer=true", pstSCB->szUUID);
                     pstSCB->bIsAgentCall = DOS_TRUE;
+
+                    sc_acd_agent_stat(SC_AGENT_STAT_CALL, stAgentData.ulSiteID, NULL, 0);
                     sc_ep_call_notify(&stAgentData, pstSCB->szCalleeNum);
                 }
 
@@ -13488,6 +13494,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         }
     }
 
+    /* 判断是否需要录音，就开始录音 */
     pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
     if (DOS_ADDR_VALID(pstSCB) && DOS_ADDR_VALID(pstSCBOther)
         && pstSCB->ucStatus >= SC_SCB_EXEC && pstSCBOther->ucStatus >= SC_SCB_EXEC
@@ -13506,6 +13513,26 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         {
             DOS_ASSERT(0);
             sc_logr_error(SC_ESL, "Record FAIL. SCB(%u)", pstSCBRecord->usSCBNo);
+        }
+    }
+
+    /* 如果是坐席呼叫，就需要更新坐席状态 */
+    if (DOS_ADDR_VALID(pstSCB) && DOS_ADDR_VALID(pstSCBOther)
+        && pstSCB->ucStatus >= SC_SCB_ACTIVE && pstSCBOther->ucStatus >= SC_SCB_ACTIVE)
+    {
+        if (pstSCB->bIsAgentCall)
+        {
+            if (pstSCB->ulAgentID != 0 && pstSCB->ulAgentID != U32_BUTT)
+            {
+                sc_acd_agent_stat(SC_AGENT_STAT_CALL_OK, pstSCB->ulAgentID, NULL, 0);
+            }
+        }
+        else if (pstSCBOther->bIsAgentCall)
+        {
+            if (pstSCBOther->ulAgentID != 0 && pstSCBOther->ulAgentID != U32_BUTT)
+            {
+                sc_acd_agent_stat(SC_AGENT_STAT_CALL_OK, pstSCBOther->ulAgentID, NULL, 0);
+            }
         }
     }
 
@@ -13720,6 +13747,25 @@ U32 sc_ep_channel_hungup_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC
 
     SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
 
+    /* 统计坐席通话时长 */
+    if (DOS_ADDR_VALID(pstSCB) && DOS_ADDR_VALID(pstSCBOther))
+    {
+        if (pstSCB->bIsAgentCall)
+        {
+            if (pstSCBOther->ulAgentID != 0 && pstSCBOther->ulAgentID != U32_BUTT)
+            {
+                sc_acd_agent_stat(SC_AGENT_STAT_CALL_FINISHED, pstSCBOther->ulAgentID, NULL, 0);
+            }
+        }
+        else if (pstSCBOther->bIsAgentCall)
+        {
+            if (pstSCBOther->ulAgentID != 0 && pstSCBOther->ulAgentID != U32_BUTT)
+            {
+                sc_acd_agent_stat(SC_AGENT_STAT_CALL_FINISHED, pstSCBOther->ulAgentID, NULL, 0);
+            }
+        }
+    }
+
     /* 获取 variable_proto_specific_hangup_cause 挂断原因 */
     szHangupCause = esl_event_get_header(pstEvent, "variable_proto_specific_hangup_cause");
     if (DOS_ADDR_VALID(szHangupCause))
@@ -13921,18 +13967,6 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 pstSCB->bIsInQueue = DOS_FALSE;
             }
 
-#if 0
-            if (pstSCB->bRecord && pstSCB->pszRecordFile)
-            {
-                dos_snprintf(szCMD, sizeof(szCMD)
-                                , "bgapi uuid_record %s stop %s/%s\r\n"
-                                , pstSCB->szUUID
-                                , SC_RECORD_FILE_PATH
-                                , pstSCB->pszRecordFile);
-                sc_ep_esl_execute_cmd(szCMD);
-            }
-#endif
-
             /*
              * 1.如果有另外一条腿，有必要等待另外一条腿释放
              * 2.需要另外一条腿没有处于等待释放状态，那就等待吧
@@ -13999,26 +14033,24 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                 sc_ep_esl_execute_cmd(szCMD);
                                 /* 不要挂断坐席，把坐席置为 整理状态，放音提示坐席，可标记客户 */
                                 pstSCBOther->usOtherSCBNo = U16_BUTT;
-                                if (sc_acd_update_agent_info(pstSCBOther, SC_ACD_PROC, ulSCBNo, NULL) == U32_BUTT)
+                                if (sc_acd_update_agent_info(pstSCBOther, SC_ACD_PROC, ulSCBNo, NULL) == DOS_SUCC)
                                 {
-                                    pstSCB->bIsInMarkState = DOS_TRUE;
-                                    pstSCB->bIsMarkCustomer = DOS_FALSE;
+                                    pstSCBOther->bIsInMarkState = DOS_TRUE;
+                                    pstSCBOther->bIsMarkCustomer = DOS_FALSE;
 
-                                    ulProcesingTime = sc_acd_get_processing_time(pstSCBOther->ulAgentID);
-
-                                    if (pstSCB->bIsInHoldStatus)
+                                    if (pstSCBOther->bIsInHoldStatus)
                                     {
                                         /* 如果是在hold状态，需要先解除hold */
-                                        sc_ep_esl_execute("unhold", NULL, pstSCB->szUUID);
+                                        sc_ep_esl_execute("unhold", NULL, pstSCBOther->szUUID);
                                     }
 
                                     sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", pstSCBOther->ulAgentID, ulProcesingTime);
-                                    sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
-                                    sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
+                                    sc_ep_esl_execute("set", "playback_terminators=none", pstSCBOther->szUUID);
+                                    sc_ep_esl_execute("sleep", "500", pstSCBOther->szUUID);
                                     dos_snprintf(szCMD, sizeof(szCMD)
                                                     , "{timeout=%u}file_string://%s/call_over.wav"
-                                                    , ulProcesingTime * 1000, SC_PROMPT_TONE_PATH);
-                                    sc_ep_esl_execute("playback", szCMD, pstSCB->szUUID);
+                                                    , stAgentInfo.ucProcesingTime * 1000, SC_PROMPT_TONE_PATH);
+                                    sc_ep_esl_execute("playback", szCMD, pstSCBOther->szUUID);
                                 }
                             }
                             else
@@ -14032,6 +14064,8 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
 
                                 sc_acd_update_agent_info(pstSCBOther, SC_ACD_IDEL, ulSCBNo, NULL);
                             }
+
+
                         }
                     }
 

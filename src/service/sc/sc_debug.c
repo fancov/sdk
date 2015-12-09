@@ -407,7 +407,7 @@ S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%11s%9s%11s%11s%11s%11s%11s%11s%11s"
                           , "ID", "Num", "Group1", "Group2", "Calls"
-                          , "Connected", "Duration", "TimeLogin", "TimeOnPhone");
+                          , "Connected", "Duration", "TimesSignin", "TimesOnline");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);

@@ -137,7 +137,6 @@ COMMAND_ST * debug_cli_cmd_find(COMMAND_GROUP_ST *pstCmdGrp, S32 argc, S8 **argv
         for (ulCmdLoop=0; ulCmdLoop<pstGrpTmp->ulSize; ulCmdLoop++)
         {
             pstCmdTmp = &pstGrpTmp->pstCmdSet[ulCmdLoop];
-            dos_printf("CMD: |%s|%s|, Argc: |%u|", argv[0], pstCmdTmp->pszCommand, argc);
             if (dos_stricmp(pstCmdTmp->pszCommand, argv[0]) == 0)
             {
                 if (pstCmdTmp->pstGroup)
