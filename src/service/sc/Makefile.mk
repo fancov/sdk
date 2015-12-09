@@ -16,7 +16,8 @@ C_FILE += $(SROUCE)/service/sc/mod_dipcc_sc.c \
 	$(SROUCE)/service/sc/sc_data_syn.c \
 	$(SROUCE)/service/sc/sc_caller_setting.c \
 	$(SROUCE)/service/sc/sc_db.c \
-	$(SROUCE)/service/sc/sc_publish.c
+	$(SROUCE)/service/sc/sc_publish.c \
+	$(SROUCE)/service/sc/sc_log_digest.c
 	
 
 C_OBJ_FILE += mod_dipcc_sc.$(SUFFIX) \
@@ -37,7 +38,8 @@ C_OBJ_FILE += mod_dipcc_sc.$(SUFFIX) \
 	sc_data_syn.$(SUFFIX) \
 	sc_caller_setting.$(SUFFIX) \
 	sc_db.$(SUFFIX) \
-	sc_publish.$(SUFFIX)
+	sc_publish.$(SUFFIX) \
+	sc_log_digest.$(SUFFIX)
 
 mod_dipcc_sc.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/mod_dipcc_sc.c
@@ -95,3 +97,6 @@ sc_db.$(SUFFIX) :
 	
 sc_publish.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc/sc_publish.c
+	
+sc_log_digest.$(SUFFIX) :
+	$(C_COMPILE) $(SROUCE)/service/sc/sc_log_digest.c	

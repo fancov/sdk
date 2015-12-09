@@ -37,6 +37,7 @@ typedef enum tagSCSubmodDef
     SC_AUDIT,
     SC_DB,
     SC_PUB,
+    SC_DIGEST,
 
     SC_SUB_MOD_BUTT,
 }SC_SUB_MOD_DEF_EN;

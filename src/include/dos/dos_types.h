@@ -104,7 +104,7 @@
 #define DOS_ASSERT(f)\
 do{\
 logr_error ("Assert happened: func:%s,file=%s,line=%d, param:%d", __FUNCTION__, __FILE__, __LINE__ , f);\
-dos_assert(__FILE__, __LINE__, f); \
+dos_assert(__FUNCTION__, __FILE__, __LINE__, f); \
 }while(0)
 #endif
 

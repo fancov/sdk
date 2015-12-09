@@ -5787,6 +5787,48 @@ U32 sc_ep_update_gateway(VOID *pData)
     return DOS_SUCC;
 }
 
+U32 sc_find_gateway_by_addr(const S8 *pszAddr)
+{
+    HASH_NODE_S   *pstHashNode = NULL;
+    SC_GW_NODE_ST *pstGWNode   = NULL;
+    U32   ulHashIndex = U32_BUTT;
+    U32   ulLen = 0;
+
+    if (DOS_ADDR_INVALID(pszAddr))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    HASH_Scan_Table(g_pstHashGW,ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashGW, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstGWNode = (SC_GW_NODE_ST *)pstHashNode->pHandle;
+            if (DOS_FALSE == pstGWNode->bExist)
+            {
+                continue;
+            }
+
+            ulLen = dos_strlen(pszAddr);
+            if (ulLen < SC_GW_DOMAIN_LEG
+                && pstGWNode->szGWDomain[ulLen] == ':'
+                && dos_strncmp(pstGWNode->szGWDomain, pszAddr, ulLen) == 0)
+            {
+                return DOS_SUCC;
+            }
+        }
+    }
+
+    return DOS_FAIL;
+}
+
 /**
   * 函数名: U32 sc_del_invalid_gateway()
   * 参数:
@@ -8029,9 +8071,10 @@ BOOL sc_ep_dst_is_black(S8 *pszNum)
  *      esl_event_t *pstEvent : 需要被处理的时间
  * 返回值: 枚举值 enum tagCallDirection
  */
-U32 sc_ep_get_source(esl_event_t *pstEvent)
+U32 sc_ep_get_source(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     const S8 *pszCallSource;
+    SC_ACD_AGENT_INFO_ST stAgentInfo;
 
     pszCallSource = esl_event_get_header(pstEvent, "variable_sofia_profile_name");
     if (DOS_ADDR_INVALID(pszCallSource))
@@ -8045,6 +8088,29 @@ U32 sc_ep_get_source(esl_event_t *pstEvent)
         return SC_DIRECTION_SIP;
     }
 
+    /* 先判断 来源，是不是配置的中继 */
+    pszCallSource = esl_event_get_header(pstEvent, "Caller-Network-Addr");
+    if (DOS_ADDR_INVALID(pszCallSource))
+    {
+        DOS_ASSERT(0);
+        return SC_DIRECTION_PSTN;
+    }
+
+    if (sc_find_gateway_by_addr(pszCallSource) != DOS_SUCC)
+    {
+        return SC_DIRECTION_PSTN;
+    }
+
+    /* 判断 主叫号码 是否是 TT 号，现在 TT号 只支持外呼 */
+    if (sc_acd_get_agent_by_tt_num(&stAgentInfo, pstSCB->szCallerNum) == DOS_SUCC)
+    {
+        pstSCB->bIsCallerInTT = DOS_TRUE;
+        pstSCB->ulAgentID = stAgentInfo.ulSiteID;
+        pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
+
+        return SC_DIRECTION_SIP;
+    }
+
     return SC_DIRECTION_PSTN;
 }
 
@@ -8055,7 +8121,7 @@ U32 sc_ep_get_source(esl_event_t *pstEvent)
  *      esl_event_t *pstEvent : 需要被处理的时间
  * 返回值: 枚举值 enum tagCallDirection
  */
-U32 sc_ep_get_destination(esl_event_t *pstEvent)
+U32 sc_ep_get_destination(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 {
     S8 *pszDstNum     = NULL;
     S8 *pszSrcNum     = NULL;
@@ -8118,9 +8184,16 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent)
     }
     else
     {
+        if (pstSCB->bIsCallerInTT)
+        {
+            /* TT 号 发起的呼叫, 现在只支持外呼 */
+            return SC_DIRECTION_PSTN;
+        }
+
         ulCustomID = sc_ep_get_custom_by_did(pszDstNum);
         if (U32_BUTT == ulCustomID)
         {
+            /* 判断一下主叫是否 TT 号 */
             DOS_ASSERT(0);
 
             sc_logr_notice(SC_ESL, "The destination %s is not a DID number. Reject Call.", pszDstNum);
@@ -9289,7 +9362,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
     //pthread_mutex_lock(&pstSCBNew->mutexSCBLock);
 
     /* 根据ulSiteID, 找到坐席，给坐席的 usSCBNo 赋值 */
-    if (sc_acd_update_agent_scbno_by_siteid(pstAgentInfo->ulSiteID, pstSCBNew, SC_DID_BIND_TYPE_AGENT) != DOS_SUCC)
+    if (sc_acd_update_agent_scbno_by_siteid(pstAgentInfo->ulSiteID, pstSCBNew, NULL, NULL) != DOS_SUCC)
     {
         sc_logr_info(SC_ESL, "Update agent(%u) scbno(%d) fail", pstAgentInfo->ulSiteID, pstSCBNew->usSCBNo);
     }
@@ -12887,13 +12960,17 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     {
         /* 正常呼叫处理 */
         pstSCB->ucLegRole = SC_CALLER;
-        ulCallSrc = sc_ep_get_source(pstEvent);
-        ulCallDst = sc_ep_get_destination(pstEvent);
+        ulCallSrc = sc_ep_get_source(pstEvent, pstSCB);
+        ulCallDst = sc_ep_get_destination(pstEvent, pstSCB);
 
         /* 获得ulCustomID */
         if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_PSTN == ulCallDst)
         {
-            pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
+            /* TT 号发起呼叫时，ulCustomID已经获得，这里不需要再获得了 */
+            if (!pstSCB->bIsCallerInTT)
+            {
+                pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
+            }
         }
         else if (SC_DIRECTION_PSTN == ulCallSrc && SC_DIRECTION_SIP == ulCallDst)
         {
@@ -12937,21 +13014,39 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             /* 更改不同的主叫，获取当前呼叫时哪一个客户 */
             if (U32_BUTT != pstSCB->ulCustomID)
             {
-                /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
-                if (sc_acd_update_agent_scbno_by_userid(pstSCB->szCallerNum, pstSCB, &stAgentData, pstSCB->szCalleeNum) != DOS_SUCC)
+                if (!pstSCB->bIsCallerInTT)
                 {
-                    sc_logr_info(SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
+                    /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
+                    if (sc_acd_update_agent_scbno_by_userid(pstSCB->szCallerNum, pstSCB, &stAgentData, pstSCB->szCalleeNum) != DOS_SUCC)
+                    {
+                        sc_logr_info(SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
+                    }
+                    else
+                    {
+                        /* 绑定了坐席，要进行客户标记 */
+                        sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
+                        sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCB->szUUID);
+                        sc_ep_esl_execute("set", "mark_customer=true", pstSCB->szUUID);
+                        pstSCB->bIsAgentCall = DOS_TRUE;
+                        sc_ep_call_notify(&stAgentData, pstSCB->szCalleeNum);
+                    }
                 }
                 else
                 {
-                    /* 绑定了坐席，要进行客户标记 */
-                    sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
-                    sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCB->szUUID);
-                    sc_ep_esl_execute("set", "mark_customer=true", pstSCB->szUUID);
-                    pstSCB->bIsAgentCall = DOS_TRUE;
-
-                    sc_acd_agent_stat(SC_AGENT_STAT_CALL, stAgentData.ulSiteID, NULL, 0);
-                    sc_ep_call_notify(&stAgentData, pstSCB->szCalleeNum);
+                    /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
+                    if (sc_acd_update_agent_scbno_by_siteid(pstSCB->ulAgentID, pstSCB, &stAgentData, pstSCB->szCalleeNum) != DOS_SUCC)
+                    {
+                        sc_logr_info(SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
+                    }
+                    else
+                    {
+                        /* 绑定了坐席，要进行客户标记 */
+                        sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
+                        sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCB->szUUID);
+                        sc_ep_esl_execute("set", "mark_customer=true", pstSCB->szUUID);
+                        pstSCB->bIsAgentCall = DOS_TRUE;
+                        sc_ep_call_notify(&stAgentData, pstSCB->szCalleeNum);
+                    }
                 }
 
                 if (sc_ep_outgoing_call_proc(pstSCB) != DOS_SUCC)
@@ -13406,7 +13501,7 @@ process_fail1:
             goto process_finished;
         }
 
-        if (sc_acd_update_agent_scbno_by_siteid(ulAgentID, pstSCB, SC_DID_BIND_TYPE_SIP) != DOS_SUCC)
+        if (sc_acd_update_agent_scbno_by_siteid(ulAgentID, pstSCB, NULL, NULL) != DOS_SUCC)
         {
             sc_logr_info(SC_ESL, "update(%u) agent SCBNO FAIL. SCBNO : %d!", ulAgentID, pstSCB->usSCBNo);
         }

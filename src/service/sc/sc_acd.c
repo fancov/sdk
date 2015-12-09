@@ -635,6 +635,75 @@ U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB, SC_ACD_
     return DOS_FAIL;
 }
 
+
+U32 sc_acd_update_agent_scbno_by_tt_number(S8 *szTTNumber, SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCustomerNum)
+{
+    U32                         ulHashIndex         = 0;
+    HASH_NODE_S                 *pstHashNode        = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_ACD_AGENT_INFO_ST        *pstAgentData       = NULL;
+
+    if (DOS_ADDR_INVALID(szTTNumber)
+        || DOS_ADDR_INVALID(pstSCB)
+        || pstSCB->usSCBNo >= SC_MAX_SCB_NUM
+        || szTTNumber[0] == '\0')
+    {
+        return DOS_FAIL;
+    }
+
+    /* 查找SIP绑定的坐席 */
+    pthread_mutex_lock(&g_mutexAgentList);
+
+    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)pstHashNode->pHandle;
+            pstAgentData = pstAgentQueueNode->pstAgentInfo;
+
+            if (DOS_ADDR_INVALID(pstAgentData))
+            {
+                continue;
+            }
+
+            dos_memcpy(pstAgentInfo, pstAgentData, sizeof(SC_ACD_AGENT_INFO_ST));
+
+            if (pstAgentData->ucBindType != AGENT_BIND_SIP)
+            {
+                continue;
+            }
+
+            if (dos_strcmp(pstAgentData->szTTNumber, szTTNumber) == 0)
+            {
+                pstSCB->ulAgentID = pstAgentData->ulSiteID;
+                pstSCB->bRecord = pstAgentData->bRecord;
+                dos_strncpy(pstSCB->szSiteNum, pstAgentData->szEmpNo, sizeof(pstSCB->szSiteNum));
+                pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
+                pthread_mutex_lock(&pstAgentData->mutexLock);
+                pstAgentData->usSCBNo = pstSCB->usSCBNo;
+                if (DOS_ADDR_VALID(szCustomerNum))
+                {
+                    dos_strncpy(pstAgentData->szLastCustomerNum, szCustomerNum, SC_TEL_NUMBER_LENGTH);
+                    pstAgentData->szLastCustomerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+                }
+                pthread_mutex_unlock(&pstAgentData->mutexLock);
+
+                pthread_mutex_unlock(&g_mutexAgentList);
+
+                return DOS_SUCC;
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexAgentList);
+
+    return DOS_FAIL;
+}
+
 /*
  * 函  数: U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, SC_AGENT_BIND_TYPE_EN enType)
  * 功  能: 修改坐席的状态和scbno
@@ -643,7 +712,7 @@ U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB, SC_ACD_
  *                                      如果使用sip分机，才需要更新坐席的状态。
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, U32 ulType)
+U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCustomerNum)
 {
     HASH_NODE_S                *pstHashNode = NULL;
     SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode = NULL;
@@ -673,6 +742,12 @@ U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, U32 ul
         return DOS_FAIL;
     }
 
+    if (DOS_ADDR_VALID(pstAgentInfo))
+    {
+        dos_memcpy(pstAgentInfo, pstAgentNode->pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
+    }
+
+    pthread_mutex_lock(&pstAgentNode->pstAgentInfo->mutexLock);
     pstAgentNode->pstAgentInfo->usSCBNo = pstSCB->usSCBNo;
     pstSCB->ulAgentID = ulAgentID;
     dos_strncpy(pstSCB->szSiteNum, pstAgentNode->pstAgentInfo->szEmpNo, sizeof(pstSCB->szSiteNum));
@@ -683,6 +758,13 @@ U32 sc_acd_update_agent_scbno_by_siteid(U32 ulAgentID, SC_SCB_ST *pstSCB, U32 ul
         pstAgentNode->pstAgentInfo->ucStatus = SC_ACD_BUSY;
         sc_ep_agent_status_notify(pstAgentNode->pstAgentInfo, ACD_MSG_SUBTYPE_BUSY);
     }
+
+    if (DOS_ADDR_VALID(szCustomerNum))
+    {
+        dos_strncpy(pstAgentNode->pstAgentInfo->szLastCustomerNum, szCustomerNum, SC_TEL_NUMBER_LENGTH);
+        pstAgentNode->pstAgentInfo->szLastCustomerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+    }
+    pthread_mutex_unlock(&pstAgentNode->pstAgentInfo->mutexLock);
 
     return DOS_SUCC;
 }
@@ -1979,6 +2061,61 @@ U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
             }
 
             if (dos_strcmp(pstAgentData->szUserID, szUserID) == 0)
+            {
+                pthread_mutex_lock(&pstAgentData->mutexLock);
+                dos_memcpy(pstAgentInfo, pstAgentData, sizeof(SC_ACD_AGENT_INFO_ST));
+                pthread_mutex_unlock(&pstAgentData->mutexLock);
+
+                pthread_mutex_unlock(&g_mutexAgentList);
+
+                return DOS_SUCC;
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexAgentList);
+
+    return DOS_FAIL;
+}
+
+U32 sc_acd_get_agent_by_tt_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szTTNumber)
+{
+    U32                         ulHashIndex         = 0;
+    HASH_NODE_S                 *pstHashNode        = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_ACD_AGENT_INFO_ST        *pstAgentData       = NULL;
+
+    if (DOS_ADDR_INVALID(pstAgentInfo)
+        || DOS_ADDR_INVALID(szTTNumber)
+        || szTTNumber[0] == '\0')
+    {
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexAgentList);
+
+    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)pstHashNode->pHandle;
+            pstAgentData = pstAgentQueueNode->pstAgentInfo;
+
+            if (DOS_ADDR_INVALID(pstAgentData))
+            {
+                continue;
+            }
+
+            if (pstAgentData->ucBindType != AGENT_BIND_SIP)
+            {
+                continue;
+            }
+
+            if (dos_strcmp(pstAgentData->szTTNumber, szTTNumber) == 0)
             {
                 pthread_mutex_lock(&pstAgentData->mutexLock);
                 dos_memcpy(pstAgentInfo, pstAgentData, sizeof(SC_ACD_AGENT_INFO_ST));
