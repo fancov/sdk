@@ -771,7 +771,8 @@ typedef struct tagSCSCB{
     U32       bCallSip:1;                         /* 是否有电话和SIP分机通话 (坐席长签，DID绑定这个坐席的分机时使用) */
     U32       bHasEarlyMedia:1;                   /* 是否收到早起媒体 */
     U32       bIsSendRecordCdr:1;                 /* 是发送录音话单 */
-    U32       ulRes:10;
+    U32       bIsCallerInTT:1;                    /* 是否是TT号发起的呼叫 */
+    U32       ulRes:9;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -1211,6 +1212,8 @@ U32 sc_dialer_disconnect();
 
 U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
 U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
+
+U32 sc_log_digest_print(S8 *pszFormat, ...);
 
 #ifdef __cplusplus
 }

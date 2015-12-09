@@ -27,6 +27,7 @@ extern "C"{
 #include "sc_httpd_def.h"
 #include "sc_debug.h"
 #include "sc_db.h"
+#include "sc_log_digest.h"
 
 
 /* Êý¾Ý¿â¾ä±ú */
@@ -60,6 +61,7 @@ U32 sc_audit_start();
 U32 sc_pub_init();
 U32 sc_pub_start();
 S32 sc_pub_stop();
+U32 sc_log_digest_start();
 
 
 /* define marcos */
@@ -217,6 +219,14 @@ U32 mod_dipcc_sc_load()
     }
     sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init DB task SUCC.");
 
+    if (DOS_SUCC != sc_log_digest_init())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Init log digest FAIL.");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Init log digest SUCC.");
 
     if (sc_httpd_init() != DOS_SUCC)
     {
@@ -337,6 +347,15 @@ U32 mod_dipcc_sc_load()
 
 U32 mod_dipcc_sc_runtime()
 {
+    if (DOS_SUCC != sc_log_digest_start())
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_error(SC_SUB_MOD_BUTT, "%s", "Start log digest FAIL");
+        return DOS_FAIL;
+    }
+    sc_logr_info(SC_SUB_MOD_BUTT, "%s", "Start log digest Successfully.");
+
     if (DOS_SUCC != sc_bs_fsm_start())
     {
         DOS_ASSERT(0);
