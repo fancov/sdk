@@ -1078,15 +1078,32 @@ prepare_msg:
         pthread_mutex_lock(&pstSCB->mutexSCBLock);
         if (pstFirstSCB->pstExtraData)
         {
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = pstFirstSCB->pstExtraData->ulStartTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulRingTimeStamp = pstFirstSCB->pstExtraData->ulRingTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstFirstSCB->pstExtraData->ulAnswerTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulIVRFinishTimeStamp= pstFirstSCB->pstExtraData->ulIVRFinishTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulDTMFTimeStamp = pstFirstSCB->pstExtraData->ulDTMFTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulBridgeTimeStamp = pstFirstSCB->pstExtraData->ulBridgeTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstFirstSCB->pstExtraData->ulByeTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstFirstSCB->pstExtraData->ucPayloadType;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstFirstSCB->pstExtraData->ucPacketLossRate;
+            if (pstFirstSCB->pstExtraData->ulStartTimeStamp == 0)
+            {
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = time(NULL);
+
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulRingTimeStamp = pstFirstSCB->pstExtraData->ulRingTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = time(NULL);
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulIVRFinishTimeStamp= pstFirstSCB->pstExtraData->ulIVRFinishTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulDTMFTimeStamp = pstFirstSCB->pstExtraData->ulDTMFTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulBridgeTimeStamp = pstFirstSCB->pstExtraData->ulBridgeTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = time(NULL);
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstFirstSCB->pstExtraData->ucPayloadType;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstFirstSCB->pstExtraData->ucPacketLossRate;
+
+            }
+            else
+            {
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = pstFirstSCB->pstExtraData->ulStartTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulRingTimeStamp = pstFirstSCB->pstExtraData->ulRingTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstFirstSCB->pstExtraData->ulAnswerTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulIVRFinishTimeStamp= pstFirstSCB->pstExtraData->ulIVRFinishTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulDTMFTimeStamp = pstFirstSCB->pstExtraData->ulDTMFTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulBridgeTimeStamp = pstFirstSCB->pstExtraData->ulBridgeTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstFirstSCB->pstExtraData->ulByeTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstFirstSCB->pstExtraData->ucPayloadType;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstFirstSCB->pstExtraData->ucPacketLossRate;
+            }
         }
 
         if (pstFirstSCB->pszRecordFile)
@@ -1164,15 +1181,30 @@ prepare_msg:
         pthread_mutex_lock(&pstSCB->mutexSCBLock);
         if (pstSecondSCB->pstExtraData)
         {
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = pstSecondSCB->pstExtraData->ulStartTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulRingTimeStamp = pstSecondSCB->pstExtraData->ulRingTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstSecondSCB->pstExtraData->ulAnswerTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulIVRFinishTimeStamp= pstSecondSCB->pstExtraData->ulIVRFinishTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulDTMFTimeStamp = pstSecondSCB->pstExtraData->ulDTMFTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulBridgeTimeStamp = pstSecondSCB->pstExtraData->ulBridgeTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstSecondSCB->pstExtraData->ulByeTimeStamp;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstSecondSCB->pstExtraData->ucPayloadType;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstSecondSCB->pstExtraData->ucPacketLossRate;
+            if (pstSecondSCB->pstExtraData->ulStartTimeStamp == 0)
+            {
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = time(NULL);
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulRingTimeStamp = pstSecondSCB->pstExtraData->ulRingTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = time(NULL);
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulIVRFinishTimeStamp= pstSecondSCB->pstExtraData->ulIVRFinishTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulDTMFTimeStamp = pstSecondSCB->pstExtraData->ulDTMFTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulBridgeTimeStamp = pstSecondSCB->pstExtraData->ulBridgeTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = time(NULL);
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstSecondSCB->pstExtraData->ucPayloadType;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstSecondSCB->pstExtraData->ucPacketLossRate;
+            }
+            else
+            {
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = pstSecondSCB->pstExtraData->ulStartTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulRingTimeStamp = pstSecondSCB->pstExtraData->ulRingTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstSecondSCB->pstExtraData->ulAnswerTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulIVRFinishTimeStamp= pstSecondSCB->pstExtraData->ulIVRFinishTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulDTMFTimeStamp = pstSecondSCB->pstExtraData->ulDTMFTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulBridgeTimeStamp = pstSecondSCB->pstExtraData->ulBridgeTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstSecondSCB->pstExtraData->ulByeTimeStamp;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstSecondSCB->pstExtraData->ucPayloadType;
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstSecondSCB->pstExtraData->ucPacketLossRate;
+            }
         }
 
         if (pstSecondSCB->pszRecordFile)
