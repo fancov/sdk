@@ -30,6 +30,13 @@
     	<param name="max_fail_cnt" value="10"/>
     	<param name="treatment" value="0" />
     </heartbeat>
+    
+    <!-- 如果NGINX的监听端口不是80，需要配置下面这个配置项，确保一些API正常工作  -->
+    <!--
+    <papi>
+        <param name="port" value="" />
+    </papi>
+    -->
 
     <!--数据库配置-->
     <mysql>
