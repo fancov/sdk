@@ -13028,6 +13028,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                         sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCB->szUUID);
                         sc_ep_esl_execute("set", "mark_customer=true", pstSCB->szUUID);
                         pstSCB->bIsAgentCall = DOS_TRUE;
+                        sc_acd_agent_stat(SC_AGENT_STAT_CALL, stAgentData.ulSiteID, NULL, 0);
                         sc_ep_call_notify(&stAgentData, pstSCB->szCalleeNum);
                     }
                 }
