@@ -533,6 +533,15 @@ U32 sc_acd_update_agent_info(SC_SCB_ST *pstSCB, U32 ulStatus, U32 ulSCBNo, S8 *s
         pstAgentQueueInfo->pstAgentInfo->bConnected = DOS_TRUE;
     }
 
+    if (SC_ACD_PROC == pstAgentQueueInfo->pstAgentInfo->ucStatus)
+    {
+        pstAgentQueueInfo->pstAgentInfo->ulLastProcTime = time(NULL);
+    }
+    else
+    {
+        pstAgentQueueInfo->pstAgentInfo->ulLastProcTime = 0;
+    }
+
     pthread_mutex_unlock(&pstAgentQueueInfo->pstAgentInfo->mutexLock);
 
     /* 更新数据库中，坐席的状态 */
@@ -3998,6 +4007,56 @@ U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 
     return DOS_SUCC;
 }
+
+U32 sc_acd_agent_stat_audit(U32 ulCycle, VOID *ptr)
+{
+    HASH_NODE_S                 *pstHashNode       = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode = NULL;
+    SC_ACD_AGENT_INFO_ST        *pstAgentInfo      = NULL;
+    U32             ulHashIndex  = 0;
+
+    SC_TRACE_IN(0, 0, 0, 0);
+
+    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                DOS_ASSERT(0);
+                continue;
+            }
+
+            pstAgentQueueNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstAgentQueueNode)
+                || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+            {
+                /* 有可能被删除了，不需要断言 */
+                continue;
+            }
+
+            pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+            if (pstAgentInfo->bWaitingDelete)
+            {
+                /* 被删除了*/
+                continue;
+            }
+
+            /* 如果整理时间超过3分钟，就处理一下 */
+            if (pstAgentInfo->ucStatus == SC_ACD_PROC
+                && pstAgentInfo->ulLastProcTime != 0
+                && time(NULL) - pstAgentInfo->ulLastProcTime > 3 * 60)
+            {
+                pstAgentInfo->ucStatus = SC_ACD_IDEL;
+                sc_ep_agent_status_notify(pstAgentInfo, pstAgentInfo->ucStatus);
+            }
+        }
+    }
+
+    SC_TRACE_OUT();
+    return DOS_SUCC;
+}
+
 
 /* 审计坐席，其实就 写入统计信息 */
 U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr)

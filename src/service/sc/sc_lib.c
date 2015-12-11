@@ -305,7 +305,7 @@ VOID sc_scb_free(SC_SCB_ST *pstSCB)
     pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallList);
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     sc_call_trace(pstSCB, "Free SCB.");
-    sc_logr_error(SC_ESL, "Free SCB. ID : %u, Valid: %d", pstSCB->usSCBNo, pstSCB->bValid);
+    sc_logr_notice(SC_ESL, "Free SCB. ID : %u, Valid: %d", pstSCB->usSCBNo, pstSCB->bValid);
     if (pstSCB->pstExtraData)
     {
         dos_dmem_free(pstSCB->pstExtraData);
@@ -407,7 +407,6 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bWaitingOtherRelase = DOS_FALSE;   /* 是否在等待另外一跳退释放 */
     pstSCB->bIsAgentCall = DOS_FALSE;
     pstSCB->bIsInQueue = DOS_FALSE;
-    pstSCB->bChannelCreated = DOS_FALSE;
     pstSCB->enCallCtrlType = SC_CALL_CTRL_TYPE_BUTT;
     pstSCB->bIsPassThrough = DOS_FALSE;
     pstSCB->bIsMarkCustomer = DOS_FALSE;
@@ -3293,6 +3292,8 @@ U32 sc_bg_job_hash_delete(U32 ulRCNo)
             pNode->pHandle = NULL;
             pstBGJobNode= NULL;
         }
+
+        sc_logr_notice(SC_ESL, "Add background-job to the hash table. RCNo: %u", ulRCNo);
 
         if (pNode->pHandle)
         {

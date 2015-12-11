@@ -13237,8 +13237,7 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             else
             {
                 /* 如果还没有创建通道就释放控制块 */
-                if (!pstSCB->bChannelCreated
-                    && sc_bg_job_find(pstSCB->usSCBNo))
+                if ('\0' == pstSCB->szUUID[0])
                 {
                     /* 呼叫失败了 */
                     DOS_ASSERT(0);
@@ -13389,8 +13388,6 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             sc_ep_esl_execute("set", szBuffCmd, pstSCB->szUUID);
         }
 
-        pstSCB->bChannelCreated = DOS_TRUE;
-
         goto process_finished;
 
 process_fail:
@@ -13419,54 +13416,6 @@ process_fail:
         sc_ep_esl_execute("set", szBuffCmd, pszUUID);
 
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
-
-        pstSCB->bChannelCreated = DOS_TRUE;
-#if 0
-        /* 需要处理transfer业务 */
-        pszRefer = esl_event_get_header(pstEvent, "variable_sip_h_Referred-By");
-        if (DOS_ADDR_INVALID(pszRefer) || '\0' == pszRefer[0])
-        {
-            ulRet = DOS_SUCC;
-            goto process_fail1;
-        }
-
-        pszOtherUUID = esl_event_get_header(pstEvent, "Other-Leg-Unique-ID");
-        if (DOS_ADDR_INVALID(pszOtherUUID) || '\0' == pszOtherUUID[0])
-        {
-            DOS_ASSERT(0);
-            ulRet = DOS_FAIL;
-            goto process_fail1;
-        }
-
-        pstSCB1 = sc_scb_hash_tables_find(pszOtherUUID);
-        if (DOS_ADDR_INVALID(pstSCB1))
-        {
-            DOS_ASSERT(0);
-            ulRet = DOS_FAIL;
-            goto process_fail1;
-        }
-
-        SC_SCB_SET_SERVICE(pstSCB, SC_SERV_BLIND_TRANSFER);
-        pstSCB->usPublishSCB = pstSCB1->usSCBNo;
-        pstSCB->ucTranforRole = SC_TRANS_ROLE_PUBLISH;
-
-        pstSCB1->usOtherSCBNo = pstSCB->usSCBNo;
-        pstSCB1->ucTranforRole = SC_TRANS_ROLE_NOTIFY;
-
-        pstSCB1 = sc_scb_get(pstSCB1->usSCBNo);
-        if (DOS_ADDR_INVALID(pstSCB1))
-        {
-            DOS_ASSERT(0);
-            ulRet = DOS_FAIL;
-            goto process_fail1;
-        }
-
-        pstSCB1->ucTranforRole = SC_TRANS_ROLE_SUBSCRIPTION;
-
-        ulRet = DOS_SUCC;
-process_fail1:
-        /*  Do Nothing */;
-#endif
     }
 
     /* 根据参数  交换SCB No */
@@ -14849,6 +14798,42 @@ proc_error:
     return DOS_FAIL;
 }
 
+/**
+ * 函数: sc_ep_destroy_proc
+ * 功能: 处理FS通道结束的消息,主要清理资源，保护作用
+ * 参数:
+ *      esl_handle_t *pstHandle : 发送句柄
+ *      esl_event_t *pstEvent   : 事件
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL, 不应该影响业务流程
+ */
+U32 sc_ep_destroy_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
+{
+    S8 *pszUUID   = NULL;
+    SC_SCB_ST *pstSCB;
+
+    pszUUID = esl_event_get_header(pstEvent, "Caller-Unique-ID");
+    if (DOS_ADDR_INVALID(pszUUID))
+    {
+        return DOS_SUCC;
+    }
+
+    pstSCB = sc_scb_hash_tables_find(pszUUID);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return DOS_SUCC;
+    }
+
+    sc_logr_warning(SC_ESL, "Free scb while channel destroy, it's not in the designed.SCBNO: %s, UUID: %s", pstSCB->usSCBNo, pszUUID);
+
+    if (pstSCB->ulTaskID != 0 && pstSCB->ulTaskID != U32_BUTT)
+    {
+        sc_task_concurrency_minus(pstSCB->usTCBNo);
+    }
+
+    sc_scb_free(pstSCB);
+
+    return DOS_SUCC;
+}
 
 /**
  * 函数: U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
@@ -15094,6 +15079,12 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     {
         g_astEPMsgStat[SC_EP_STAT_PROC].ulRecordStop++;
         return sc_ep_record_stop(pstHandle, pstEvent);
+    }
+
+    if (ESL_EVENT_CHANNEL_DESTROY == pstEvent->event_id)
+    {
+        g_astEPMsgStat[SC_EP_STAT_PROC].ulDestroy++;
+        return sc_ep_destroy_proc(pstHandle, pstEvent);
     }
 
     pszUUID = esl_event_get_header(pstEvent, "Caller-Unique-ID");
@@ -15381,6 +15372,10 @@ VOID*sc_ep_process_master(VOID *ptr)
                     g_astEPMsgStat[SC_EP_STAT_RECV].ulRecordStop++;
                     break;
 
+                case ESL_EVENT_CHANNEL_DESTROY:
+                    g_astEPMsgStat[SC_EP_STAT_RECV].ulDestroy++;
+                    break;
+
                 default:
                     break;
             }
@@ -15388,7 +15383,8 @@ VOID*sc_ep_process_master(VOID *ptr)
 
             /* 一些消息特殊处理 */
             if (ESL_EVENT_BACKGROUND_JOB == pstEvent->event_id
-                || ESL_EVENT_RECORD_STOP == pstEvent->event_id)
+                || ESL_EVENT_RECORD_STOP == pstEvent->event_id
+                || ESL_EVENT_CHANNEL_DESTROY == pstEvent->event_id)
             {
                 sc_ep_process(&g_pstHandle->stSendHandle, pstEvent);
 
@@ -15510,7 +15506,7 @@ VOID* sc_ep_runtime(VOID *ptr)
             }
 
             g_pstHandle->blIsESLRunning = DOS_TRUE;
-            g_pstHandle->ulESLDebugLevel = ESL_LOG_LEVEL_NOTICE;
+            g_pstHandle->ulESLDebugLevel = ESL_LOG_LEVEL_WARNING;
             esl_global_set_default_logger(g_pstHandle->ulESLDebugLevel);
             esl_events(&g_pstHandle->stRecvHandle, ESL_EVENT_TYPE_PLAIN, SC_EP_EVENT_LIST);
 

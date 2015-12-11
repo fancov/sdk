@@ -52,6 +52,7 @@ typedef enum tagAuditType{
 
 typedef enum tagAuditCycle
 {
+    SC_AUDIT_CYCLE_5MIN   = 5 * 60,
     SC_AUDIT_CYCLE_10MIN  = 10 * 60,
     SC_AUDIT_CYCLE_30MIN  = 30 * 60,
     SC_AUDIT_CYCLE_60MIN  = 60 * 60,
@@ -128,6 +129,7 @@ static SC_AUDIT_TASK_ST g_stAuditTaskList[] =
     {SC_AUDIT_TYPE_N_HOUR,   0,                     sc_test_hour,               "Audit test for hour"},
     {SC_AUDIT_TYPE_N_HOUR,   1,                     sc_test_hour_delay,         "Audit test for hour delay"},
 #endif
+    {SC_AUDIT_TYPE_CYCLE,    SC_AUDIT_CYCLE_5MIN,   sc_acd_agent_stat_audit,    "Agent audit"},
     {SC_AUDIT_TYPE_CYCLE,    SC_AUDIT_CYCLE_60MIN,  sc_acd_agent_audit,         "Agent audit"},
     {SC_AUDIT_TYPE_N_DAY,    1,                     sc_num_lmt_stat,            "Number usage stat"},
     {SC_AUDIT_TYPE_N_DAY,    1,                     sc_num_lmt_update,          "Number limitation"}

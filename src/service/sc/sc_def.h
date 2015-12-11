@@ -152,14 +152,14 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_LIST_MIN_CNT                3
 
-#define SC_PROMPT_TONE_PATH             "/usr/local/freeswitch/sounds/okcc"
+#define SC_PROMPT_TONE_PATH            "/usr/local/freeswitch/sounds/okcc"
 
-#define SC_TASK_AUDIO_PATH             "/var/www/html/data/audio"
+#define SC_TASK_AUDIO_PATH             "/ipcc/var/data/audio"
 
-#define SC_RECORD_FILE_PATH            "/var/www/html/data/voicerecord"
+#define SC_RECORD_FILE_PATH            "/ipcc/var/data/voicerecord"
 
 #define SC_DEMOE_TASK_COUNT            3
-#define SC_DEMOE_TASK_FILE             "/var/www/html/data/audio/CC_demo.wav"
+#define SC_DEMOE_TASK_FILE             "/ipcc/var/data/audio/CC_demo.wav"
 
 #define SC_NOBODY_UID                  99
 #define SC_NOBODY_GID                  99
@@ -246,7 +246,8 @@ do                                                            \
             "CHANNEL_UNHOLD " \
             "DTMF " \
             "SESSION_HEARTBEAT " \
-            "RECORD_STOP"
+            "RECORD_STOP " \
+            "CHANNEL_DESTROY "
 
 
 enum tagCallServiceType{
@@ -555,6 +556,7 @@ typedef struct tagEPMsgStat
     U32   ulHold;
     U32   ulUnhold;
     U32   ulRecordStop;
+    U32   ulDestroy;
 }SC_EP_MSG_STAT_ST;
 
 typedef struct tagBSMsgStat
@@ -760,24 +762,24 @@ typedef struct tagSCSCB{
     U32       bIsAgentCall:1;                     /* 是否在呼叫坐席 */
     U32       bIsInQueue:1;                       /* 是否已经入队列了 */
 
-    U32       bChannelCreated:1;                  /* FREESWITCH 是否为该同呼叫创建了通道 */
     U32       bTerminationFlag:1;                 /* 业务终止标志 */
     U32       bIsPassThrough:1;                   /* 呼叫坐席时，主叫号码是否透传 */
     U32       bIsMarkCustomer:1;                  /* 坐席是否已经标记客户 */
-
     U32       bIsNotChangeAgentState:1;           /* 是否不更新坐席的状态 */
+
     U32       bIsInMarkState:1;                   /* 处于标记客户阶段 */
     U32       bIsNotSrvAdapter:1;                 /* 转接时的特殊处理，前期已经适配好 */
     U32       bIsHasKeyCallTask:1;                /* 群呼任务是否按键了 */
-
     U32       bIsFristSCB:1;                      /* 是否作为主leg */
+
     U32       bIsInHoldStatus:1;                  /* 是否在hold状态 */
     U32       bIsTTCall:1;                        /* 是否作为主leg */
     U32       bCallSip:1;                         /* 是否有电话和SIP分机通话 (坐席长签，DID绑定这个坐席的分机时使用) */
     U32       bHasEarlyMedia:1;                   /* 是否收到早起媒体 */
+
     U32       bIsSendRecordCdr:1;                 /* 是发送录音话单 */
     U32       bIsCallerInTT:1;                    /* 是否是TT号发起的呼叫 */
-    U32       ulRes:9;
+    U32       ulRes:10;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 

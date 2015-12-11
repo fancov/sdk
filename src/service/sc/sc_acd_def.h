@@ -201,6 +201,7 @@ typedef struct tagACDSiteDesc{
     U32        ulLastOnlineTime;
     U32        ulLastSignInTime;
     U32        ulLastIdelTime;
+    U32        ulLastProcTime;
     U32        ulLastCallTime;
 
     U32        bValid:1;                          /*  «∑Òø…”√ */
@@ -260,7 +261,7 @@ U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo);
 U32 sc_ep_agent_status_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus);
 U32 sc_ep_call_ctrl_hangup_agent(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo);
 U32 sc_acd_get_processing_time(U32 ulAgentID);
-
+U32 sc_acd_agent_stat_audit(U32 ulCycle, VOID *ptr);
 
 #endif
 
