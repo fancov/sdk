@@ -6643,7 +6643,7 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
     }
 
     /* 删除右边几位 */
-    ulOffsetLen = pstNumTransform->ulDelLeft;
+    ulOffsetLen = pstNumTransform->ulDelRight;
     if (ulOffsetLen != 0)
     {
         ulNumLen = dos_strlen(szNeedTransformNum);
@@ -6678,11 +6678,12 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
 
         dos_strncpy(szNeedTransformNum, pstNumTransform->szAddPrefix, ulOffsetLen);
     }
+
     /* 增加后缀 */
     if (pstNumTransform->szAddSuffix[0] != '\0')
     {
         ulNumLen = dos_strlen(szNeedTransformNum);
-        ulOffsetLen = dos_strlen(pstNumTransform->szAddPrefix);
+        ulOffsetLen = dos_strlen(pstNumTransform->szAddSuffix);
         if (ulNumLen + ulOffsetLen >= SC_TEL_NUMBER_LENGTH)
         {
             /* 超过号码的长度，失败 */
