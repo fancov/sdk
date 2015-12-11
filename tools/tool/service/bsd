@@ -5,7 +5,7 @@
 SERVICE_NAME=bs
 PROGRAM_NAME=bsd
 ADDITION_STR=ipcc-service
-SERVICE_ROOT=/dipcc
+SERVICE_ROOT=/ipcc
 PID_ROOT=${SERVICE_ROOT}/var/run/pid
 
 function check_status() {

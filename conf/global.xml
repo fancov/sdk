@@ -6,29 +6,29 @@
         <!-- 配置服务存储路径相关信息 -->
         <path>
             <!-- 服务根目录 -->
-            <param name="service_root"   value="/dipcc" />
-			<!--freeswitch相关配置-->
-			<freeswitch>
-			    <!--freeswitch脚本路径-->
-			    <param name="fs_scripts_path" value="/dipcc/scripts/fs-conf" />
-				<!--freeswitch配置文件路径-->
-			    <param name="fs_config_path" value="/usr/local/freeswitch/conf" />
-			</freeswitch>
+            <param name="service_root"   value="/ipcc" />
+            <!--freeswitch相关配置-->
+            <freeswitch>
+                <!--freeswitch脚本路径-->
+                <!-- <param name="fs_scripts_path" value="/dipcc/scripts/fs-conf" /> -->
+                <!--freeswitch配置文件路径-->
+                <!-- <param name="fs_config_path" value="/usr/local/freeswitch/conf" /> -->
+            </freeswitch>
         </path>
     </service>
-	
-	<system>
-		<!-- 最小空闲CPU比率 -->
-		<param name="min_idel_cpu" value="15" />
-	</system>
+    
+    <system>
+        <!-- 最小空闲CPU比率 -->
+        <param name="min_idel_cpu" value="15" />
+    </system>
 
     <!-- 心跳相关配置 -->
     <heartbeat>
-    	<!-- 心跳间隔3-10 -->
-    	<param name="interval" value="3"/>
-    	<!-- 最大失败次数 10-15 -->
-    	<param name="max_fail_cnt" value="10"/>
-    	<param name="treatment" value="0" />
+        <!-- 心跳间隔3-10 -->
+        <param name="interval" value="3"/>
+        <!-- 最大失败次数 10-15 -->
+        <param name="max_fail_cnt" value="10"/>
+        <param name="treatment" value="0" />
     </heartbeat>
     
     <!-- 如果NGINX的监听端口不是80，需要配置下面这个配置项，确保一些API正常工作  -->
@@ -52,12 +52,12 @@
         <param name="password" value="KfcCQf88NKHsdPzp"/>
         <!--资源监控数据库用户名-->
         <param name="src_username" value="syssrc"/>
-	    <!--系统资源数据库名-->
-	    <param name="src_dbname" value="syssrc"/>
+        <!--系统资源数据库名-->
+        <param name="src_dbname" value="syssrc"/>
         <!--资源监控数据库密码-->
         <param name="src_password" value="LLyK60ehUVdW6toN" />
-	<!--mysql数据库的socket文件路径-->
-	<param name="sockpath" value="/tmp/mysql.sock" />
+    <!--mysql数据库的socket文件路径-->
+    <param name="sockpath" value="/tmp/mysql.sock" />
     </mysql>
     <!-- 日志模块配置 -->
     <!-- level 值的范围
@@ -70,22 +70,22 @@
          6 - LOG_LEVEL_INFO,
          7 - LOG_LEVEL_DEBUG,
 
-	 8 - LOG_LEVEL_INVAILD
+     8 - LOG_LEVEL_INVAILD
     -->
     <log>
-    	<console>
-    	    <param name="leval" value=""/>
-    	</console>
-    	<db>
-    	    <param name="leval" value=""/>
-    	</db>
+        <console>
+            <param name="leval" value=""/>
+        </console>
+        <db>
+            <param name="leval" value=""/>
+        </db>
     </log>
     <pts>
         <!--pts 服务器端口-->
         <param name="pts_port1" value="80"/>
         <param name="pts_port2" value="50000"/>
 
-		<!--goahead server端口-->
+        <!--goahead server端口-->
         <param name="web_server_port" value="8080"/>
 
         <!--pts web server端口-->
@@ -105,19 +105,19 @@
         <!--ptc 名称-->
         <param name="ptc_name" value="ptc11"/>
     </ptc>
-	
-	<!--ctrl-panel模块Fn快捷键支持-->
-	<shortcut>
-		<!-- 1~10分别代表F1~F10 -->
-		<param name="1"  value=""/>
-		<param name="2"  value=""/>
-		<param name="3"  value=""/>
-		<param name="4"  value=""/>
-		<param name="5"  value=""/>
-		<param name="6"  value=""/>
-		<param name="7"  value=""/>
-		<param name="8"  value=""/>
-		<param name="9"  value=""/>
-		<param name="10" value=""/>
-	</shortcut>
+    
+    <!--ctrl-panel模块Fn快捷键支持-->
+    <shortcut>
+        <!-- 1~10分别代表F1~F10 -->
+        <param name="1"  value=""/>
+        <param name="2"  value=""/>
+        <param name="3"  value=""/>
+        <param name="4"  value=""/>
+        <param name="5"  value=""/>
+        <param name="6"  value=""/>
+        <param name="7"  value=""/>
+        <param name="8"  value=""/>
+        <param name="9"  value=""/>
+        <param name="10" value=""/>
+    </shortcut>
 </config>

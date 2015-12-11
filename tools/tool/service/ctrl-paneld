@@ -5,7 +5,7 @@
 SERVICE_NAME=control-panel
 PROGRAM_NAME=ctrl_paneld
 ADDITION_STR=ipcc-service
-SERVICE_ROOT=/dipcc
+SERVICE_ROOT=/ipcc
 PID_ROOT=${SERVICE_ROOT}/var/run/pid
 
 function check_status() {
