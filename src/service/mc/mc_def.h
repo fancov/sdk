@@ -7,7 +7,7 @@ extern "C"{
 #endif /* __cplusplus */
 
 /* 录音文件路径 */
-#define MC_RECORD_FILE_PATH       "/var/www/html/data/voicerecord"
+#define MC_RECORD_FILE_PATH       "/ipcc/var/data/voicerecord"
 
 /* 录音文件转换工具路径 */
 #define MC_SCRIPT_PATH            "/usr/bin/codec_convert.sh"
