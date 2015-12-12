@@ -264,15 +264,14 @@ S32 dos_assert_record()
  *      const S8 *pszFileName, const U32 ulLine, const U32 param ： 断言描述信息
  * 返回值: VOID
  */
-DLLEXPORT VOID dos_assert(const S8 *pszFunctionName, const S8 *pszFileName, const U32 ulLine, const U32 param)
+DLLEXPORT VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 param)
 {
     U32 ulHashIndex;
     S8 szFileLine[256] = { 0, };
     DOS_ASSERT_NODE_ST *pstFileDescNode = NULL;
 
 #ifdef INCLUDE_CC_SC
-    sc_log_digest_print("Assert happened: func:%s,file=%s,line=%d, param:%d"
-        , pszFunctionName, pszFileName, ulLine , param);
+    sc_log_digest_print("Assert happened: file=%s, line=%d, param:%d", pszFileName, ulLine , param);
 #endif
 
     /* 生产hash表key */
