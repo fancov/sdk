@@ -1372,7 +1372,7 @@ BOOL ptc_save_upgrade_package(S8 *szBuff, U32 ulLen)
             /* 验证通过，保存到文件中 */
             system(szSystemCmd);
 
-            pFileFd = fopen("/dipcc/bin/ptcd", "w");
+            pFileFd = fopen(szNewFile, "w");
             if (NULL == pFileFd)
             {
                 pt_logr_info("create file file\n");

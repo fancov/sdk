@@ -33,7 +33,7 @@ extern "C"{
 
 /* define marcos */
 #define SC_HTTP_RSP_HEADER_FMT "HTTP/1.1 %s\r\n" \
-                                "Server: DIPCC Service Control Server/1.1\r\n" \
+                                "Server: IPCC Service Control Server/1.1\r\n" \
                                 "Content-Type: text/json\r\n" \
                                 "Content-Length: %u\r\n\r\n%s"
 
