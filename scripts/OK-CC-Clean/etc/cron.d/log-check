@@ -1,7 +1,0 @@
-SHELL=/bin/bash
-PATH=/sbin:/bin:/usr/sbin:/usr/bin
-MAILTO=root
-HOME=/
-
-# Weekly check the log, eveny stat 01:40
-40 01 * * 6 root /etc/cron.weekly/log-ckeck-weekly

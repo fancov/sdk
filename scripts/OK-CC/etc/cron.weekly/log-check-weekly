@@ -1,0 +1,5 @@
+#!/bin/sh
+
+. /etc/ipcc/cc.clean.conf
+
+$ROOT_PATH"/cc.clean.main.sh"
