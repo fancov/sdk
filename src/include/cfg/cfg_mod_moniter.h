@@ -25,7 +25,7 @@
 #define INCLUDE_SYSLOG_FILE               0
 #define INCLUDE_SYSLOG_DB                 1
 #define INCLUDE_SYSLOG_CLI                INCLUDE_DEBUG_CLI
-#define INCLUDE_SYSLOG_CONSOLE            0
+#define INCLUDE_SYSLOG_CONSOLE            1
 #else
 #define INCLUDE_SYSLOG_FILE               0
 #define INCLUDE_SYSLOG_DB                 0
