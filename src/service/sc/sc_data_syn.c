@@ -117,7 +117,7 @@ VOID sc_tmp_tbl_clean()
     db_transaction_begin(g_pstSCDBHandle);
     if (db_query(g_pstSCDBHandle, szQuery, NULL, NULL, NULL) != DB_ERR_SUCC)
     {
-        sc_logr_emerg(SC_SYN, "DB query failed. (%s)", szQuery);
+        sc_logr_emerg(NULL, SC_SYN, "DB query failed. (%s)", szQuery);
         db_transaction_rollback(g_pstSCDBHandle);
         return;
     }
@@ -133,7 +133,7 @@ U32 sc_walk_tmp_tbl()
     if (!g_pstSCDBHandle || g_pstSCDBHandle->ulDBStatus != DB_STATE_CONNECTED)
     {
         DOS_ASSERT(0);
-        sc_logr_emerg(SC_SYN, "%s", "DB Has been down or not init.");
+        sc_logr_emerg(NULL, SC_SYN, "%s", "DB Has been down or not init.");
         return DOS_FAIL;
     }
 
@@ -141,7 +141,7 @@ U32 sc_walk_tmp_tbl()
 
     if (db_query(g_pstSCDBHandle, szQuery, sc_walk_tmp_tbl_cb, NULL, NULL) != DB_ERR_SUCC)
     {
-        sc_logr_emerg(SC_SYN, "DB query failed.(%s)", szQuery);
+        sc_logr_emerg(NULL, SC_SYN, "DB query failed.(%s)", szQuery);
         return DOS_FAIL;
     }
 
@@ -179,7 +179,7 @@ U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
 
     pRequest = pstNode->pszData;
 
-    sc_logr_debug(SC_HTTP_API, "HTTP Request: %s", pRequest);
+    sc_logr_debug(NULL, SC_HTTP_API, "HTTP Request: %s", pRequest);
 
     /* 获取请求的文件 */
     pStart = pRequest;
@@ -221,7 +221,7 @@ U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
     dos_strncpy(szReqLine, pStart, sizeof(szReqLine));
     szReqLine[sizeof(szReqLine) - 1] = '\0';
 
-    sc_logr_debug(SC_HTTP_API, "HTTP Request Line: %s?%s", szReqBuffer, szReqLine);
+    sc_logr_debug(NULL, SC_HTTP_API, "HTTP Request Line: %s?%s", szReqBuffer, szReqLine);
 
     /* 获取 key=value 字符串 */
     lKeyCnt = 0;
@@ -250,7 +250,7 @@ U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
         goto cmd_prase_fail1;
     }
 
-    sc_logr_debug(SC_HTTP_API, "%s", "Start parse the http request.");
+    sc_logr_debug(NULL, SC_HTTP_API, "%s", "Start parse the http request.");
 
     /* 解析key=value，并将结果存入链表 */
     dos_list_init(&stParamList);
@@ -261,7 +261,7 @@ U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
             continue;
         }
 
-        sc_logr_debug(SC_HTTP_API, "Process Token: %s", pszKeyWord[lParamIndex]);
+        sc_logr_debug(NULL, SC_HTTP_API, "Process Token: %s", pszKeyWord[lParamIndex]);
 
         pWord = dos_strstr(pszKeyWord[lParamIndex], "=");
         pValue = pWord;
@@ -293,7 +293,7 @@ U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
         dos_list_add_tail(&(stParamList), &pstParamsList->stList);
     }
 
-    sc_logr_debug(SC_HTTP_API, "Parse the http request finished. Request: %s", szReqBuffer);
+    sc_logr_debug(NULL, SC_HTTP_API, "Parse the http request finished. Request: %s", szReqBuffer);
 
     ulRet = SC_HTTP_ERRNO_INVALID_REQUEST;
     cb = sc_http_api_find(szReqBuffer);
@@ -303,10 +303,10 @@ U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
     }
     else
     {
-        sc_logr_notice(SC_HTTP_API, "Cannot find the callback function for the request %s", szReqBuffer);
+        sc_logr_notice(NULL, SC_HTTP_API, "Cannot find the callback function for the request %s", szReqBuffer);
     }
 
-    sc_logr_notice(SC_HTTP_API, "HTTP Request process finished. Return code: 0x%X", ulRet);
+    sc_logr_notice(NULL, SC_HTTP_API, "HTTP Request process finished. Return code: 0x%X", ulRet);
 
     while (1)
     {
@@ -433,7 +433,7 @@ VOID* sc_data_syn_runtime(VOID *ptr)
         /* Socket 文件被删除了 */
         if (g_blConnected && access(SC_DATA_SYN_SOCK_PATH, F_OK) < 0)
         {
-            sc_logr_error(SC_SYN, "%s", "Socket file has been lost.");
+            sc_logr_error(NULL, SC_SYN, "%s", "Socket file has been lost.");
 
             close(lSocket);
             lSocket = -1;
@@ -446,7 +446,7 @@ VOID* sc_data_syn_runtime(VOID *ptr)
             lSocket = socket(AF_UNIX, SOCK_STREAM, 0);
             if (lSocket < 0)
             {
-                sc_logr_error(SC_SYN, "%s", "ERR: create socket fail!");
+                sc_logr_error(NULL, SC_SYN, "%s", "ERR: create socket fail!");
                 goto connect_fail;
             }
 
@@ -459,7 +459,7 @@ VOID* sc_data_syn_runtime(VOID *ptr)
             lRet = bind(lSocket, (struct sockaddr *)&stAddr, lAddrLen);
             if (lRet < 0)
             {
-                sc_logr_error(SC_SYN, "%s", "ERR: bind socket fail!");
+                sc_logr_error(NULL, SC_SYN, "%s", "ERR: bind socket fail!");
                 close(lSocket);
                 lSocket= -1;
                 goto connect_fail;
@@ -471,7 +471,7 @@ VOID* sc_data_syn_runtime(VOID *ptr)
             lRet = listen(lSocket, SOMAXCONN);
             if (lRet < 0)
             {
-                sc_logr_error(SC_SYN, "%s", "ERR: listen socket fail!");
+                sc_logr_error(NULL, SC_SYN, "%s", "ERR: listen socket fail!");
                 close(lSocket);
                 goto connect_fail;
             }
@@ -492,7 +492,7 @@ connect_fail:
         {
             DOS_ASSERT(0);
 
-            sc_logr_error(SC_SYN, "%s", "Select FAIL.");
+            sc_logr_error(NULL, SC_SYN, "%s", "Select FAIL.");
             g_blConnected = DOS_FALSE;
             continue;
         }
@@ -509,7 +509,7 @@ connect_fail:
         lClientSocket = accept(lSocket, (struct sockaddr *)&stAddrIn, (socklen_t *)&lAddrLen);
         if (lClientSocket < 0)
         {
-            sc_logr_error(SC_SYN, "%s", "Accept FAIL.");
+            sc_logr_error(NULL, SC_SYN, "%s", "Accept FAIL.");
             continue;
         }
 
@@ -517,7 +517,7 @@ connect_fail:
         lRet = recv(lClientSocket, aucBuff, SC_DATA_SYN_BUFF_LEN, 0);
         if (lRet < 0)
         {
-            sc_logr_error(SC_SYN, "%s", "Recv FAIL.");
+            sc_logr_error(NULL, SC_SYN, "%s", "Recv FAIL.");
             close(lClientSocket);
             lClientSocket = -1;
             g_blConnected = DOS_FALSE;
@@ -532,7 +532,7 @@ connect_fail:
 
         /* TODO: 转换之后需要处理消息 */
 
-        sc_logr_info(SC_SYN, "%s", "Recv data syn command!");
+        sc_logr_info(NULL, SC_SYN, "%s", "Recv data syn command!");
 
         g_blSCDataSybFlag = DOS_TRUE;
 

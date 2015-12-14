@@ -221,7 +221,7 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid Msg.");
+        sc_logr_debug(pstSCB, SC_BS, "%s", "Invalid Msg.");
         return DOS_FAIL;
     }
 
@@ -229,7 +229,7 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "Invalid Msg length. Length: %d", pstMsg->usMsgLen);
+        sc_logr_debug(pstSCB, SC_BS, "Invalid Msg length. Length: %d", pstMsg->usMsgLen);
         return DOS_FAIL;
     }
 
@@ -238,7 +238,7 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid Msg body. ");
+        sc_logr_debug(pstSCB, SC_BS, "%s", "Invalid Msg body. ");
         return DOS_FAIL;
     }
 
@@ -246,7 +246,7 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "Invalid RC NO. Max: %d, Current: %d", SC_MAX_SCB_NUM, pstMsg->ulCRNo);
+        sc_logr_debug(pstSCB, SC_BS, "Invalid RC NO. Max: %d, Current: %d", SC_MAX_SCB_NUM, pstMsg->ulCRNo);
         return DOS_FAIL;
     }
 
@@ -255,11 +255,11 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid SCB.");
+        sc_logr_debug(pstSCB, SC_BS, "%s", "Invalid SCB.");
         return DOS_FAIL;
     }
 
-    sc_logr_debug(SC_BS, "%s", "Start process auth response.");
+    sc_logr_debug(pstSCB, SC_BS, "%s", "Start process auth response.");
 
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstMsg->ucErrcode != BS_ERR_SUCC)
@@ -286,7 +286,7 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
 
     if (pstSCB->bTerminationFlag)
     {
-        sc_logr_notice(SC_BS, "Terminate call for the auth fail; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
+        sc_logr_notice(pstSCB, SC_BS, "Terminate call for the auth fail; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
         if (sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
             || sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
         {
@@ -299,7 +299,7 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
     }
     else
     {
-        sc_logr_notice(SC_BS, "Auth successfully. RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
+        sc_logr_notice(pstSCB, SC_BS, "Auth successfully. RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
         sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
         sc_ep_esl_execute("set", "hungup_after_play=true", pstSCB->szUUID);
         sc_play_balance(pstSCB);
@@ -322,7 +322,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid Msg.");
+        sc_logr_debug(pstSCB, SC_BS, "%s", "Invalid Msg.");
         return DOS_FAIL;
     }
 
@@ -330,7 +330,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "Invalid Msg length. Length: %d", pstMsg->usMsgLen);
+        sc_logr_debug(pstSCB, SC_BS, "Invalid Msg length. Length: %d", pstMsg->usMsgLen);
         return DOS_FAIL;
     }
 
@@ -339,7 +339,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid Msg body. ");
+        sc_logr_debug(pstSCB, SC_BS, "%s", "Invalid Msg body. ");
         return DOS_FAIL;
     }
 
@@ -347,7 +347,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "Invalid RC NO. Max: %d, Current: %d", SC_MAX_SCB_NUM, pstMsg->ulCRNo);
+        sc_logr_debug(pstSCB, SC_BS, "Invalid RC NO. Max: %d, Current: %d", SC_MAX_SCB_NUM, pstMsg->ulCRNo);
         return DOS_FAIL;
     }
 
@@ -356,11 +356,11 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid SCB.");
+        sc_logr_debug(pstSCB, SC_BS, "%s", "Invalid SCB.");
         return DOS_FAIL;
     }
 
-    sc_logr_debug(SC_BS, "%s", "Start process auth response.");
+    sc_logr_debug(pstSCB, SC_BS, "%s", "Start process auth response.");
 
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstMsg->ucErrcode != BS_ERR_SUCC)
@@ -387,7 +387,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 
     if (pstSCB->bTerminationFlag)
     {
-        sc_logr_notice(SC_BS, "Terminate call for the auth fail; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
+        sc_logr_notice(pstSCB, SC_BS, "Terminate call for the auth fail; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
         if (sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
             || sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
         {
@@ -400,7 +400,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     }
     else
     {
-        sc_logr_notice(SC_BS, "Auth successfully. RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
+        sc_logr_notice(pstSCB, SC_BS, "Auth successfully. RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
 
         if (pstMsg->ucErrcode == 0)
         {
@@ -417,7 +417,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 
                 if (pstSCB->bBanlanceWarning)
                 {
-                    sc_logr_debug(SC_BS, "The balance of the alarm : %d, Balance : %ld", pstSCB->bBanlanceWarning, pstSCB->LBalance);
+                    sc_logr_debug(pstSCB, SC_BS, "The balance of the alarm : %d, Balance : %ld", pstSCB->bBanlanceWarning, pstSCB->LBalance);
                     sc_dialer_alarm_balance(pstSCBOther);
                 }
             }
@@ -452,7 +452,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
                 {
                     DOS_ASSERT(0);
 
-                    sc_logr_info(SC_ESL, "Cannot make call for transfer. Make call to other endpoint fail. (%s)", pstSCB->szCalleeNum);
+                    sc_logr_info(pstSCB, SC_ESL, "Cannot make call for transfer. Make call to other endpoint fail. (%s)", pstSCB->szCalleeNum);
                 }
             }
             else
@@ -462,7 +462,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
                 {
                     DOS_ASSERT(0);
 
-                    sc_logr_info(SC_ESL, "Cannot make call for transfer. Add call to dialer failed. (%s)", pstSCB->szCalleeNum);
+                    sc_logr_info(pstSCB, SC_ESL, "Cannot make call for transfer. Add call to dialer failed. (%s)", pstSCB->szCalleeNum);
                 }
             }
 
@@ -544,13 +544,13 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         }
         else
         {
-            sc_logr_notice(SC_BS, "Terminate call for the invalid service type; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
+            sc_logr_notice(pstSCB, SC_BS, "Terminate call for the invalid service type; RC:%u, ERRNO: %d", pstMsg->ulCRNo, pstMsg->ucErrcode);
             sc_ep_terminate_call(pstSCB);
             ulRet = DOS_FAIL;
         }
     }
 
-    sc_logr_debug(SC_BS, "%s", "Process auth response finished.");
+    sc_logr_debug(pstSCB, SC_BS, "%s", "Process auth response finished.");
 
     return ulRet;
 }
@@ -563,7 +563,7 @@ U32 sc_bs_billing_start_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid Msg.");
+        sc_logr_debug(pstSCB, SC_BS, "%s", "Invalid Msg.");
         return DOS_FAIL;
     }
 
@@ -571,7 +571,7 @@ U32 sc_bs_billing_start_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "Invalid RC NO. Max: %d, Current: %s", SC_MAX_SCB_NUM, pstMsg->ulCRNo);
+        sc_logr_debug(pstSCB, SC_BS, "Invalid RC NO. Max: %d, Current: %s", SC_MAX_SCB_NUM, pstMsg->ulCRNo);
         return DOS_FAIL;
     }
 
@@ -580,11 +580,11 @@ U32 sc_bs_billing_start_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid SCB.");
+        sc_logr_debug(pstSCB, SC_BS, "%s", "Invalid SCB.");
         return DOS_FAIL;
     }
 
-    sc_logr_debug(SC_BS, "%s", "Start process billing start response msg.");
+    sc_logr_debug(pstSCB, SC_BS, "%s", "Start process billing start response msg.");
 
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstMsg->ucErrcode != BS_ERR_SUCC)
@@ -599,7 +599,7 @@ U32 sc_bs_billing_start_rsp_proc(BS_MSG_TAG *pstMsg)
     pstSCB->usTerminationCause = sc_ep_transform_errcode_from_bs2sc(pstMsg->ucErrcode);
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
-    sc_logr_debug(SC_BS, "%s", "Process billing start response msg finished.");
+    sc_logr_debug(pstSCB, SC_BS, "%s", "Process billing start response msg finished.");
 
     return DOS_SUCC;
 }
@@ -612,7 +612,7 @@ U32 sc_bs_billing_update_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid Msg.");
+        sc_logr_debug(pstSCB, SC_BS, "%s", "Invalid Msg.");
         return DOS_FAIL;
     }
 
@@ -620,7 +620,7 @@ U32 sc_bs_billing_update_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid RC NO. Max: %d, Current: %s", SC_MAX_SCB_NUM, pstMsg->ulCRNo);
+        sc_logr_debug(pstSCB, SC_BS, "%s", "Invalid RC NO. Max: %d, Current: %s", SC_MAX_SCB_NUM, pstMsg->ulCRNo);
         return DOS_FAIL;
     }
 
@@ -629,11 +629,11 @@ U32 sc_bs_billing_update_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid SCB.");
+        sc_logr_debug(pstSCB, SC_BS, "%s", "Invalid SCB.");
         return DOS_FAIL;
     }
 
-    sc_logr_debug(SC_BS, "%s", "Start process billing update response msg.");
+    sc_logr_debug(pstSCB, SC_BS, "%s", "Start process billing update response msg.");
 
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstMsg->ucErrcode != BS_ERR_SUCC)
@@ -648,7 +648,7 @@ U32 sc_bs_billing_update_rsp_proc(BS_MSG_TAG *pstMsg)
     pstSCB->usTerminationCause = sc_ep_transform_errcode_from_bs2sc(pstMsg->ucErrcode);
     pthread_mutex_unlock(&pstSCB->mutexSCBLock);
 
-    sc_logr_debug(SC_BS, "%s", "Process billing update response msg finished.");
+    sc_logr_debug(pstSCB, SC_BS, "%s", "Process billing update response msg finished.");
 
 #if 0
     /* 通知删除消息 */
@@ -665,12 +665,12 @@ U32 sc_bs_billing_stop_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "%s", "Invalid Msg.");
+        sc_logr_debug(NULL, SC_BS, "%s", "Invalid Msg.");
         return DOS_FAIL;
     }
 
 
-    sc_logr_debug(SC_BS, "Process billing stop response msg finished.ERRNO: %d", pstMsg->ucErrcode);
+    sc_logr_debug(NULL, SC_BS, "Process billing stop response msg finished.ERRNO: %d", pstMsg->ucErrcode);
 
 #if 0
     /* 通知删除消息 */
@@ -697,7 +697,7 @@ VOID sc_bs_hb_timeout(U64 uLIndex)
     {
         g_pstSCBSClient[uLIndex]->ulStatus = SC_BS_STATUS_LOST;
 
-        sc_logr_notice(SC_BS, "BS Server Lost. Index:%u", uLIndex);
+        sc_logr_notice(NULL, SC_BS, "BS Server Lost. Index:%u", uLIndex);
         close(g_pstSCBSClient[uLIndex]->lSocket);
         g_pstSCBSClient[uLIndex]->lSocket = -1;
         return;
@@ -711,7 +711,7 @@ VOID sc_bs_hb_interval_timeout(U64 uLIndex)
         return;
     }
 
-    sc_logr_debug(SC_BS, "Heartbeat between BS and SC interval timeout. Client Index : %u", uLIndex);
+    sc_logr_debug(NULL, SC_BS, "Heartbeat between BS and SC interval timeout. Client Index : %u", uLIndex);
 
     sc_send_hello2bs((U32)uLIndex);
     dos_tmr_start(&g_pstSCBSClient[uLIndex]->hTmrHBTimeout, SC_BS_HB_TIMEOUT, sc_bs_hb_timeout, uLIndex, TIMER_NORMAL_NO_LOOP);
@@ -726,7 +726,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_BS, "Recv Invalid msg. Length:%s", ulLength);
+        sc_logr_info(NULL, SC_BS, "Recv Invalid msg. Length:%s", ulLength);
         return;
     }
 
@@ -734,7 +734,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_BS, "Invalid clinet index. Index:%X", ulClientIndex);
+        sc_logr_info(NULL, SC_BS, "Invalid clinet index. Index:%X", ulClientIndex);
         return;
     }
 
@@ -743,11 +743,11 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_BS, "Recv Invalid msg. Length:%s, Length in Msg", ulLength, pstMsgHeader->usMsgLen);
+        sc_logr_info(NULL, SC_BS, "Recv Invalid msg. Length:%s, Length in Msg", ulLength, pstMsgHeader->usMsgLen);
         return;
     }
 
-    sc_logr_debug(SC_BS, "Recv BS Msg. Version: %X, Port:%d, IP:%X, Seq:%d, CR No:%d, Msg Type:%d, ErrCode: %d, Msg Length:%d"
+    sc_logr_debug(NULL, SC_BS, "Recv BS Msg. Version: %X, Port:%d, IP:%X, Seq:%d, CR No:%d, Msg Type:%d, ErrCode: %d, Msg Length:%d"
                     , pstMsgHeader->usVersion
                     , pstMsgHeader->usPort
                     , pstMsgHeader->aulIPAddr[0]
@@ -761,7 +761,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_BS, "Recv Invalid msg. Version not match. Version:%X, Version in Msg", BS_MSG_INTERFACE_VERSION, pstMsgHeader->usVersion);
+        sc_logr_info(NULL, SC_BS, "Recv Invalid msg. Version not match. Version:%X, Version in Msg", BS_MSG_INTERFACE_VERSION, pstMsgHeader->usVersion);
         return;
     }
 
@@ -831,7 +831,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
         case BS_MSG_BILLING_RELEASE_ACK:
         default:
             DOS_ASSERT(0);
-            sc_logr_info(SC_BS, "Recv Invalid msg. Templetely not support. %d", pstMsgHeader->ucMsgType);
+            sc_logr_info(NULL, SC_BS, "Recv Invalid msg. Templetely not support. %d", pstMsgHeader->ucMsgType);
             break;
     }
 }
@@ -907,12 +907,12 @@ U32 sc_bs_connect(U32 ulIndex)
     }
     if (lRet < 0)
     {
-        sc_logr_debug(SC_BS, "%s", "Bind socket fail.");
+        sc_logr_debug(NULL, SC_BS, "%s", "Bind socket fail.");
         close(g_pstSCBSClient[ulIndex]->lSocket);
         return DOS_FAIL;;
     }
 
-    sc_logr_debug(SC_BS, "Bind socket to addr: %s, Len: %d.", g_pstSCBSClient[0]->stAddr.stUnAddr.sun_path, lAddrLen);
+    sc_logr_debug(NULL, SC_BS, "Bind socket to addr: %s, Len: %d.", g_pstSCBSClient[0]->stAddr.stUnAddr.sun_path, lAddrLen);
 
     if (BSCOMM_PROTO_TCP == g_pstSCBSClient[ulIndex]->usCommProto)
     {
@@ -964,7 +964,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
 
         if (ulActiveClientCnt <= 0)
         {
-            sc_logr_error(SC_BS, "%s", "All the BS server Lost, re-connect after 1 second");
+            sc_logr_error(NULL, SC_BS, "%s", "All the BS server Lost, re-connect after 1 second");
             dos_task_delay(1*1000);
             continue;
         }
@@ -999,7 +999,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
         else if (lRet < 0)
         {
             DOS_ASSERT(0);
-            sc_logr_notice(SC_BS, "Select fail. Errno:%d", errno);
+            sc_logr_notice(NULL, SC_BS, "Select fail. Errno:%d", errno);
             break;
         }
 
@@ -1022,7 +1022,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
             {
                 DOS_ASSERT(0);
 
-                sc_logr_error(SC_BS, "Disconnect BS for alloc memory FAIL. Index: %u", ulIndex);
+                sc_logr_error(NULL, SC_BS, "Disconnect BS for alloc memory FAIL. Index: %u", ulIndex);
 
                 close(g_pstSCBSClient[ulIndex]->lSocket);
                 g_pstSCBSClient[ulIndex]->blValid = DOS_FALSE;
@@ -1069,7 +1069,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
                 DOS_ASSERT(0);
                 g_pstSCBSClient[ulIndex]->ulStatus = SC_BS_STATUS_LOST;
 
-                sc_logr_notice(SC_BS, "%s", "Recv data from socket fail.");
+                sc_logr_notice(NULL, SC_BS, "%s", "Recv data from socket fail.");
                 dos_dmem_free(pBuffer);
                 pBuffer = NULL;
                 continue;
@@ -1079,7 +1079,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
             {
                 DOS_ASSERT(0);
 
-                sc_logr_notice(SC_BS, "Recv invalid data from socket fail. Length not complete. Length: %d", lRet);
+                sc_logr_notice(NULL, SC_BS, "Recv invalid data from socket fail. Length not complete. Length: %d", lRet);
                 dos_dmem_free(pBuffer);
                 pBuffer = NULL;
                 continue;
@@ -1090,7 +1090,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
             {
                 DOS_ASSERT(0);
 
-                sc_logr_notice(SC_BS, "%s", "Discard msg FROM bs for alloc mem FAIL.");
+                sc_logr_notice(NULL, SC_BS, "%s", "Discard msg FROM bs for alloc mem FAIL.");
                 dos_dmem_free(pBuffer);
                 pBuffer = NULL;
                 continue;
@@ -1166,7 +1166,7 @@ U32 sc_bs_fsm_start()
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_BS, "%s", "Create BS MSG process pthread fail");
+        sc_logr_notice(NULL, SC_BS, "%s", "Create BS MSG process pthread fail");
         DOS_ASSERT(0);
 
         return DOS_FAIL;
@@ -1176,7 +1176,7 @@ U32 sc_bs_fsm_start()
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_BS, "%s", "Create BS MSG recv pthread fail");
+        sc_logr_notice(NULL, SC_BS, "%s", "Create BS MSG recv pthread fail");
         DOS_ASSERT(0);
 
         return DOS_FAIL;
@@ -1201,7 +1201,7 @@ U32 sc_bs_fsm_init()
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_BS, "%s", "Create the hash table fail for the BS MSG.");
+        sc_logr_notice(NULL, SC_BS, "%s", "Create the hash table fail for the BS MSG.");
         return DOS_FAIL;
     }
 
@@ -1210,7 +1210,7 @@ U32 sc_bs_fsm_init()
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_BS, "%s", "Alloc memory fail for the BS Client CB.");
+        sc_logr_notice(NULL, SC_BS, "%s", "Alloc memory fail for the BS Client CB.");
         return DOS_FAIL;
     }
     dos_memzero(pszMem, sizeof(SC_BS_CLIENT_ST) * SC_MAX_BS_CLIENT);

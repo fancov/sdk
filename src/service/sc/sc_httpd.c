@@ -489,7 +489,7 @@ U32 sc_httpd_srv_init()
         g_pstHTTPDList[ulIndex]->lListenSocket = socket(AF_INET, SOCK_STREAM, 0);
         if (g_pstHTTPDList[ulIndex]->lListenSocket < 0)
         {
-            sc_logr_error(SC_HTTPD, "%s", "Create http server socket fail.");
+            sc_logr_error(NULL, SC_HTTPD, "%s", "Create http server socket fail.");
             g_pstHTTPDList[ulIndex]->lListenSocket = -1;
             continue;
         }
@@ -500,7 +500,7 @@ U32 sc_httpd_srv_init()
         stListenAddr.sin_port = dos_htons(g_pstHTTPDList[ulIndex]->usPort);
         if (bind(g_pstHTTPDList[ulIndex]->lListenSocket, (struct sockaddr *)&stListenAddr, sizeof(stListenAddr)) < 0)
         {
-            sc_logr_error(SC_HTTPD, "%s", "HTTP server bind IP/Address fail.");
+            sc_logr_error(NULL, SC_HTTPD, "%s", "HTTP server bind IP/Address fail.");
             close(g_pstHTTPDList[ulIndex]->lListenSocket);
             g_pstHTTPDList[ulIndex]->lListenSocket = -1;
             continue;
@@ -508,13 +508,13 @@ U32 sc_httpd_srv_init()
 
         if (listen(g_pstHTTPDList[ulIndex]->lListenSocket, 5) < 0)
         {
-            sc_logr_error(SC_HTTPD, "Linsten on port %d fail", g_pstHTTPDList[ulIndex]->usPort);
+            sc_logr_error(NULL, SC_HTTPD, "Linsten on port %d fail", g_pstHTTPDList[ulIndex]->usPort);
             close(g_pstHTTPDList[ulIndex]->lListenSocket);
             g_pstHTTPDList[ulIndex]->lListenSocket = -1;
             continue;
         }
 
-        sc_logr_info(SC_HTTPD, "HTTP Server create OK. On port %u.", g_pstHTTPDList[ulIndex]->usPort);
+        sc_logr_info(NULL, SC_HTTPD, "HTTP Server create OK. On port %u.", g_pstHTTPDList[ulIndex]->usPort);
     }
 
     /* 如果所有服务器都不好使，就认为错误了 */
@@ -593,7 +593,7 @@ VOID* sc_httpd_runtime(VOID *ptr)
             /* 如果所有服务器都宕机了，就进入重连阶段, 每隔2秒钟重连一次 */
             if (sc_httpd_srv_init() != DOS_SUCC)
             {
-                sc_logr_notice(SC_HTTPD, "%s", "All the http server lost, will be retry after 2 seconds.");
+                sc_logr_notice(NULL, SC_HTTPD, "%s", "All the http server lost, will be retry after 2 seconds.");
 
                 sleep(2);
 

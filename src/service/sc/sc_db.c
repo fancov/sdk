@@ -46,7 +46,7 @@ static U32 sc_db_save_call_result(SC_DB_MSG_TAG_ST *pstMsg)
 
     pstCallResult = (SC_DB_MSG_CALL_RESULT_ST *)pstMsg;
 
-    sc_logr_debug(SC_DB, "Save call result. Customer:%u, Task: %u, Agent:%s(%u), Caller:%s, Callee:%s, TerminateCause: %u, Result: %u"
+    sc_logr_debug(NULL, SC_DB, "Save call result. Customer:%u, Task: %u, Agent:%s(%u), Caller:%s, Callee:%s, TerminateCause: %u, Result: %u"
                     , pstCallResult->ulCustomerID, pstCallResult->ulTaskID, pstCallResult->szAgentNum, pstCallResult->ulAgentID
                     , pstCallResult->szCaller, pstCallResult->szCallee, pstCallResult->usTerminateCause, pstCallResult->ulResult);
 
@@ -64,7 +64,7 @@ static U32 sc_db_save_call_result(SC_DB_MSG_TAG_ST *pstMsg)
 
     if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, 0) != DOS_SUCC)
     {
-        sc_logr_error(SC_DB, "%s", "Save call result FAIL.");
+        sc_logr_error(NULL, SC_DB, "%s", "Save call result FAIL.");
 
         return DOS_FAIL;
     }
@@ -83,7 +83,7 @@ static U32 sc_db_execute_sql(SC_DB_MSG_TAG_ST *pstMsg)
 
     if (db_query(g_pstSCDBHandle, pstMsg->szData, NULL, NULL, 0) != DOS_SUCC)
     {
-        sc_logr_error(SC_DB, "Execute sql FAIL. %s", pstMsg->szData);
+        sc_logr_error(NULL, SC_DB, "Execute sql FAIL. %s", pstMsg->szData);
 
         return DOS_FAIL;
     }
@@ -100,7 +100,7 @@ static VOID sc_db_request_proc(SC_DB_MSG_TAG_ST *pstMsg)
         return;
     }
 
-    sc_logr_debug(SC_DB, "Process db request. Type: %u", pstMsg->ulMsgType);
+    sc_logr_debug(NULL, SC_DB, "Process db request. Type: %u", pstMsg->ulMsgType);
 
     switch (pstMsg->ulMsgType)
     {
@@ -114,7 +114,7 @@ static VOID sc_db_request_proc(SC_DB_MSG_TAG_ST *pstMsg)
             ulResult = sc_db_execute_sql(pstMsg);
             break;
         default:
-            sc_logr_notice(SC_DB, "Invalid msg type(%u)", pstMsg->ulMsgType);
+            sc_logr_notice(NULL, SC_DB, "Invalid msg type(%u)", pstMsg->ulMsgType);
             break;
     }
 
@@ -126,7 +126,7 @@ static VOID sc_db_request_proc(SC_DB_MSG_TAG_ST *pstMsg)
     dos_dmem_free(pstMsg);
     pstMsg = NULL;
 
-    sc_logr_debug(SC_DB, "Process db request finished. Result: %s", DOS_SUCC == ulResult ? "succ" : "FAIL");
+    sc_logr_debug(NULL, SC_DB, "Process db request finished. Result: %s", DOS_SUCC == ulResult ? "succ" : "FAIL");
 }
 
 static VOID *sc_db_runtime(VOID *ptr)
@@ -140,7 +140,7 @@ static VOID *sc_db_runtime(VOID *ptr)
     {
         if (g_blExitFlag)
         {
-            sc_logr_info(SC_DB, "%s", "Request exit.");
+            sc_logr_info(NULL, SC_DB, "%s", "Request exit.");
             break;
         }
 
@@ -166,13 +166,13 @@ static VOID *sc_db_runtime(VOID *ptr)
 
             if (DOS_ADDR_INVALID(pstDLLNode))
             {
-                sc_logr_error(SC_DB, "%s", "DB request queue error.");
+                sc_logr_error(NULL, SC_DB, "%s", "DB request queue error.");
                 break;
             }
 
             if (DOS_ADDR_INVALID(pstDLLNode->pHandle))
             {
-                sc_logr_error(SC_DB, "%s", "DB request is empty.");
+                sc_logr_error(NULL, SC_DB, "%s", "DB request is empty.");
                 break;
             }
 
@@ -204,7 +204,7 @@ U32 sc_send_msg2db(SC_DB_MSG_TAG_ST *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_DB, "%s", "Send msg to db fail. Alloc memory fail");
+        sc_logr_error(NULL, SC_DB, "%s", "Send msg to db fail. Alloc memory fail");
         return DOS_FAIL;
     }
 
@@ -232,7 +232,7 @@ U32 sc_db_start()
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_DB, "%s", "Start the DB task FAIL.");
+        sc_logr_error(NULL, SC_DB, "%s", "Start the DB task FAIL.");
         return DOS_FAIL;
     }
 

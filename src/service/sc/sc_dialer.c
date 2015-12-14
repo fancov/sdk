@@ -79,12 +79,12 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword,
     /* 主叫号码，根据客户从主叫号码组中获得一个主叫号码 */
     if (sc_caller_setting_select_number(ulCustomer, 0, SC_SRC_CALLER_TYPE_ALL, szCaller, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
     {
-        sc_logr_info(SC_HTTPD, "Get caller FAIL by customer(%u)", ulCustomer);
+        sc_logr_info(pstSCB, SC_HTTPD, "Get caller FAIL by customer(%u)", ulCustomer);
         DOS_ASSERT(0);
         goto proc_fail;
     }
 
-    sc_logr_debug(SC_HTTPD, "Get caller(%s) SUCC by customer(%u)", szCaller, ulCustomer);
+    sc_logr_debug(pstSCB, SC_HTTPD, "Get caller(%s) SUCC by customer(%u)", szCaller, ulCustomer);
     dos_strncpy(pstSCB->szCallerNum, szCaller, sizeof(pstSCB->szCallerNum));
     pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
     dos_strncpy(pstSCB->szDialNum, pszPassword, sizeof(pstSCB->szDialNum));
@@ -99,14 +99,14 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword,
     if (U32_BUTT == ulRouteID)
     {
         DOS_ASSERT(0);
-        sc_logr_info(SC_ESL, "%s", "Search route fail while make call to patn.");
+        sc_logr_info(pstSCB, SC_ESL, "%s", "Search route fail while make call to patn.");
         goto proc_fail;
     }
 
     if (!sc_ep_black_list_check(ulCustomer, pszNumber))
     {
         DOS_ASSERT(0);
-        sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pszNumber);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot make call for number %s which is in black list.", pszNumber);
         goto proc_fail;
     }
 
@@ -114,7 +114,7 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword,
     if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        sc_logr_info(SC_ESL, "%s", "Send auth msg FAIL.");
+        sc_logr_info(pstSCB, SC_ESL, "%s", "Send auth msg FAIL.");
         goto proc_fail;
     }
     else
@@ -171,7 +171,7 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
                     , pstSCB->szCalleeNum
                     , szEIXAddr);
 
-    sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
+    sc_logr_debug(pstSCB, SC_DIALER, "ESL CMD: %s", szCMDBuff);
 
     pstSCB->bIsTTCall = DOS_TRUE;
 #if 0
@@ -184,12 +184,12 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
 #else
     if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
     {
-        sc_logr_notice(SC_DIALER, "%s", "ESL disconnected. start re-connect.");
+        sc_logr_notice(pstSCB, SC_DIALER, "%s", "ESL disconnected. start re-connect.");
 
         if (sc_dialer_reconn() != DOS_SUCC
             || (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected))
         {
-            sc_logr_notice(SC_DIALER, "%s", "Cannot make call for esl not connected.");
+            sc_logr_notice(pstSCB, SC_DIALER, "%s", "Cannot make call for esl not connected.");
 
             g_pstDialerHandle->blIsESLRunning = DOS_SUCC;
             goto esl_exec_fail;
@@ -199,7 +199,7 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
     if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
+        sc_logr_notice(pstSCB, SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
         g_pstDialerHandle->blIsESLRunning = DOS_FALSE;
         goto esl_exec_fail;
     }
@@ -207,7 +207,7 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
     if (!g_pstDialerHandle->stHandle.last_sr_event)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "%s", "ESL request call successfully. But the reply event is NULL.");
+        sc_logr_notice(pstSCB, SC_DIALER, "%s", "ESL request call successfully. But the reply event is NULL.");
 
         goto esl_exec_fail;
     }
@@ -217,7 +217,7 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
         || dos_strcmp(pszEventHeader, "command/reply") != 0)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL request call successfully. But the reply event an invalid content-type.(Type:%s)", pszEventHeader);
+        sc_logr_notice(pstSCB, SC_DIALER, "ESL request call successfully. But the reply event an invalid content-type.(Type:%s)", pszEventHeader);
 
         goto esl_exec_fail;
 
@@ -227,7 +227,7 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
     if (!pszEventBody || '\0' == pszEventBody[0])
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL request call successfully. But the reply event an invalid reply-text.(Type:%s)", pszEventBody);
+        sc_logr_notice(pstSCB, SC_DIALER, "ESL request call successfully. But the reply event an invalid reply-text.(Type:%s)", pszEventBody);
 
         goto esl_exec_fail;
     }
@@ -235,19 +235,19 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
     if (dos_strnicmp(pszEventBody, "+OK", dos_strlen("+OK")) != 0)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL exec fail. (Reply-Text:%s)", pszEventBody);
+        sc_logr_notice(pstSCB, SC_DIALER, "ESL exec fail. (Reply-Text:%s)", pszEventBody);
 
         goto esl_exec_fail;
     }
 #endif
-    sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
+    sc_logr_info(pstSCB, SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
 
     SC_TRACE_OUT();
     return DOS_SUCC;
 
 esl_exec_fail:
 
-    sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
+    sc_logr_info(pstSCB, SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
 
     SC_TRACE_OUT();
     return DOS_FAIL;
@@ -275,7 +275,7 @@ U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCal
         /* 调用主叫号码组接口，将主叫号码变更为对应的did */
         if (U32_BUTT == pstSCB->ulAgentID)
         {
-            sc_logr_info(SC_DIALER, "Call to IP not get agent ID by scd(%u)", pstSCB->usSCBNo);
+            sc_logr_info(pstSCB, SC_DIALER, "Call to IP not get agent ID by scd(%u)", pstSCB->usSCBNo);
 
             goto go_on;
         }
@@ -285,12 +285,12 @@ U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCal
         if (ulRet != DOS_SUCC)
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_DIALER, "Call to IP customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+            sc_logr_info(pstSCB, SC_DIALER, "Call to IP customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
 
             goto go_on;
         }
 
-        sc_logr_info(SC_DIALER, "Call to IP customID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+        sc_logr_info(pstSCB, SC_DIALER, "Call to IP customID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
         dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
         pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
     }
@@ -347,7 +347,7 @@ go_on:
                     , pstSCB->szCallerNum
                     , pstSCB->szCalleeNum);
 
-    sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
+    sc_logr_debug(pstSCB, SC_DIALER, "ESL CMD: %s", szCMDBuff);
 #if 0
     if (sc_ep_esl_execute_cmd(szCMDBuff) != DOS_SUCC)
     {
@@ -357,12 +357,12 @@ go_on:
 #else
     if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
     {
-        sc_logr_notice(SC_DIALER, "%s", "ESL disconnected. start re-connect.");
+        sc_logr_notice(pstSCB, SC_DIALER, "%s", "ESL disconnected. start re-connect.");
 
         if (sc_dialer_reconn() != DOS_SUCC
             || (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected))
         {
-            sc_logr_notice(SC_DIALER, "%s", "Cannot make call for esl not connected.");
+            sc_logr_notice(pstSCB, SC_DIALER, "%s", "Cannot make call for esl not connected.");
 
             g_pstDialerHandle->blIsESLRunning = DOS_SUCC;
             goto esl_exec_fail;
@@ -372,7 +372,7 @@ go_on:
     if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
+        sc_logr_notice(pstSCB, SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
         g_pstDialerHandle->blIsESLRunning = DOS_FALSE;
         goto esl_exec_fail;
     }
@@ -380,7 +380,7 @@ go_on:
     if (!g_pstDialerHandle->stHandle.last_sr_event)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "%s", "ESL request call successfully. But the reply event is NULL.");
+        sc_logr_notice(pstSCB, SC_DIALER, "%s", "ESL request call successfully. But the reply event is NULL.");
 
         goto esl_exec_fail;
     }
@@ -390,7 +390,7 @@ go_on:
         || dos_strcmp(pszEventHeader, "command/reply") != 0)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL request call successfully. But the reply event an invalid content-type.(Type:%s)", pszEventHeader);
+        sc_logr_notice(pstSCB, SC_DIALER, "ESL request call successfully. But the reply event an invalid content-type.(Type:%s)", pszEventHeader);
 
         goto esl_exec_fail;
 
@@ -400,7 +400,7 @@ go_on:
     if (!pszEventBody || '\0' == pszEventBody[0])
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL request call successfully. But the reply event an invalid reply-text.(Type:%s)", pszEventBody);
+        sc_logr_notice(pstSCB, SC_DIALER, "ESL request call successfully. But the reply event an invalid reply-text.(Type:%s)", pszEventBody);
 
         goto esl_exec_fail;
     }
@@ -408,12 +408,12 @@ go_on:
     if (dos_strnicmp(pszEventBody, "+OK", dos_strlen("+OK")) != 0)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL exec fail. (Reply-Text:%s)", pszEventBody);
+        sc_logr_notice(pstSCB, SC_DIALER, "ESL exec fail. (Reply-Text:%s)", pszEventBody);
 
         goto esl_exec_fail;
     }
 #endif
-    sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
+    sc_logr_info(pstSCB, SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
 
     SC_TRACE_OUT();
     return DOS_SUCC;
@@ -432,10 +432,10 @@ esl_exec_fail:
     /* 发送话单 */
     if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
     {
-        sc_logr_notice(SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
+        sc_logr_notice(pstSCB, SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
     }
 
-    sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
+    sc_logr_info(pstSCB, SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
 
     SC_TRACE_OUT();
     return DOS_FAIL;
@@ -471,7 +471,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     if (U32_BUTT == ulRouteID)
     {
         DOS_ASSERT(0);
-        sc_logr_info(SC_ESL, "%s", "Search route fail while make call to patn.");
+        sc_logr_info(pstSCB, SC_ESL, "%s", "Search route fail while make call to patn.");
         goto esl_exec_fail;;
     }
 
@@ -535,7 +535,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , pstSCB->szCallerNum
                         , szCallString);
         }
-        sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
+        sc_logr_debug(pstSCB, SC_DIALER, "ESL CMD: %s", szCMDBuff);
         sc_ep_esl_execute("set", "continue_on_fail=true", pstSCBOther->szUUID);
         sc_ep_esl_execute("set", "sip_copy_multipart=false", pstSCBOther->szUUID);
         if (sc_ep_esl_execute("bridge", szCMDBuff, pstSCBOther->szUUID) != ESL_SUCCESS)
@@ -572,16 +572,16 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , pstSCB->szCallerNum
                         , szCallString);
 
-    sc_logr_debug(SC_DIALER, "ESL CMD: %s", szCMDBuff);
+    sc_logr_debug(pstSCB, SC_DIALER, "ESL CMD: %s", szCMDBuff);
 
     if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
     {
-        sc_logr_notice(SC_DIALER, "%s", "ESL disconnected. start re-connect.");
+        sc_logr_notice(pstSCB, SC_DIALER, "%s", "ESL disconnected. start re-connect.");
 
         if (sc_dialer_reconn() != DOS_SUCC
             || (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected))
         {
-            sc_logr_notice(SC_DIALER, "%s", "Cannot make call for esl not connected.");
+            sc_logr_notice(pstSCB, SC_DIALER, "%s", "Cannot make call for esl not connected.");
 
             g_pstDialerHandle->blIsESLRunning = DOS_SUCC;
             goto esl_exec_fail;
@@ -591,7 +591,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     if (esl_send_recv(&g_pstDialerHandle->stHandle, szCMDBuff) != ESL_SUCCESS)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
+        sc_logr_notice(pstSCB, SC_DIALER, "ESL request call FAIL.Msg:%s(%d)", g_pstDialerHandle->stHandle.err, g_pstDialerHandle->stHandle.errnum);
 
         g_pstDialerHandle->blIsESLRunning = DOS_FALSE;
 
@@ -601,7 +601,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     if (!g_pstDialerHandle->stHandle.last_sr_event)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "%s", "ESL request call successfully. But the reply event is NULL.");
+        sc_logr_notice(pstSCB, SC_DIALER, "%s", "ESL request call successfully. But the reply event is NULL.");
 
         goto esl_exec_fail;
     }
@@ -611,7 +611,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         || dos_strcmp(pszEventHeader, "command/reply") != 0)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL request call successfully. But the reply event an invalid content-type.(Type:%s)", pszEventHeader);
+        sc_logr_notice(pstSCB, SC_DIALER, "ESL request call successfully. But the reply event an invalid content-type.(Type:%s)", pszEventHeader);
 
         goto esl_exec_fail;
 
@@ -621,7 +621,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     if (!pszEventBody || '\0' == pszEventBody[0])
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL request call successfully. But the reply event an invalid reply-text.(Type:%s)", pszEventBody);
+        sc_logr_notice(pstSCB, SC_DIALER, "ESL request call successfully. But the reply event an invalid reply-text.(Type:%s)", pszEventBody);
 
         goto esl_exec_fail;
     }
@@ -629,7 +629,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
     if (dos_strnicmp(pszEventBody, "+OK", dos_strlen("+OK")) != 0)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_DIALER, "ESL exec fail. (Reply-Text:%s)", pszEventBody);
+        sc_logr_notice(pstSCB, SC_DIALER, "ESL exec fail. (Reply-Text:%s)", pszEventBody);
 
         goto esl_exec_fail;
     }
@@ -654,7 +654,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 
     SC_SCB_SET_STATUS(pstSCB, SC_SCB_EXEC);
 
-    sc_logr_info(SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
+    sc_logr_info(pstSCB, SC_DIALER, "Make call successfully. Caller:%s, Callee:%s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
     sc_call_trace(pstSCB, "Make call successfully.");
 
     SC_TRACE_OUT();
@@ -662,7 +662,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 
 esl_exec_fail:
 
-    sc_logr_info(SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
+    sc_logr_info(pstSCB, SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
 
     if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
     {
@@ -689,7 +689,7 @@ esl_exec_fail:
     /* 发送话单 */
     if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
     {
-        sc_logr_notice(SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
+        sc_logr_notice(pstSCB, SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
     }
 
     DOS_ASSERT(0);
@@ -717,19 +717,19 @@ static U32 sc_dialer_reconn()
      **/
     if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
     {
-        sc_logr_info(SC_DIALER, "%s", "ELS connection has been down, re-connect.");
+        sc_logr_info(NULL, SC_DIALER, "%s", "ELS connection has been down, re-connect.");
         ulRet = esl_connect(&g_pstDialerHandle->stHandle, "127.0.0.1", 8021, NULL, "ClueCon");
         if (ESL_SUCCESS != ulRet)
         {
             esl_disconnect(&g_pstDialerHandle->stHandle);
-            sc_logr_notice(SC_DIALER, "ELS re-connect fail, return code:%d, Msg:%s. Will be retry after 2 second.", ulRet, g_pstDialerHandle->stHandle.err);
+            sc_logr_notice(NULL, SC_DIALER, "ELS re-connect fail, return code:%d, Msg:%s. Will be retry after 2 second.", ulRet, g_pstDialerHandle->stHandle.err);
 
             return DOS_FAIL;
         }
 
         g_pstDialerHandle->blIsESLRunning = DOS_TRUE;
 
-        sc_logr_notice(SC_DIALER, "%s", "ELS connect Back to Normal.");
+        sc_logr_notice(NULL, SC_DIALER, "%s", "ELS connect Back to Normal.");
     }
 
     return DOS_SUCC;
@@ -767,7 +767,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
         /* 如果退出标志被置上，就准备退出了 */
         if (g_pstDialerHandle->blIsWaitingExit)
         {
-            sc_logr_notice(SC_DIALER, "%s", "Dialer exit flag has been set. the task will be exit.");
+            sc_logr_notice(NULL, SC_DIALER, "%s", "Dialer exit flag has been set. the task will be exit.");
             break;
         }
 
@@ -809,7 +809,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
             ulIdelCPU = dos_get_cpu_idel_percentage();
             if (ulIdelCPU < ulIdelCPUConfig)
             {
-                sc_logr_debug(SC_DIALER, "cpu too high. ulIdelCPU : %u, ulIdelCPUConfig : %u", ulIdelCPU, ulIdelCPUConfig);
+                sc_logr_debug(NULL, SC_DIALER, "cpu too high. ulIdelCPU : %u, ulIdelCPUConfig : %u", ulIdelCPU, ulIdelCPUConfig);
                 continue;
             }
 
@@ -863,7 +863,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
                 if (DOS_ADDR_INVALID(pstOtherSCB))
                 {
-                    sc_logr_info(SC_DIALER, "Not get other scb. scbNo : %u, other : %u", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+                    sc_logr_info(NULL, SC_DIALER, "Not get other scb. scbNo : %u, other : %u", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
 
                     goto go_on;
                 }
@@ -871,19 +871,19 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 ulAgentID = pstOtherSCB->ulAgentID;
                 if (U32_BUTT == ulAgentID)
                 {
-                    sc_logr_info(SC_DIALER, "Not get agent ID by scd(%u)", pstSCB->usOtherSCBNo);
+                    sc_logr_info(NULL, SC_DIALER, "Not get agent ID by scd(%u)", pstSCB->usOtherSCBNo);
 
                     /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
                     ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, 0, SC_SRC_CALLER_TYPE_ALL, szNumber, SC_TEL_NUMBER_LENGTH);
                     if (ulRet != DOS_SUCC)
                     {
                         DOS_ASSERT(0);
-                        sc_logr_info(SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
+                        sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
 
                         goto go_on;
                     }
 
-                    sc_logr_info(SC_DIALER, "CustomID(%u) get caller number(%s) SUCC", pstSCB->ulCustomID, szNumber);
+                    sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC", pstSCB->ulCustomID, szNumber);
                 }
                 else
                 {
@@ -892,11 +892,11 @@ VOID *sc_dialer_runtime(VOID * ptr)
                     if (ulRet != DOS_SUCC)
                     {
                         DOS_ASSERT(0);
-                        sc_logr_info(SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
+                        sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
 
                         goto go_on;
                     }
-                    sc_logr_info(SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
+                    sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
                 }
 
                 dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);

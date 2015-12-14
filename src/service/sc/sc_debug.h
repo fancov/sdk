@@ -22,6 +22,8 @@ extern "C"{
 /* include private header files */
 
 /* define marcos */
+#define  MAX_TRACE_NUM_SIZE  5
+
 typedef enum tagSCSubmodDef
 {
     SC_FUNC         = 0,
@@ -62,37 +64,37 @@ do{                                                                    \
     ((ulSubmod) < SC_SUB_MOD_BUTT) && (ulCtrlFrame & (0x00000001 << (ulSubmod)))
 
 
-#define sc_logr_debug(_ulSubmod, _pszFormat, ...) \
-        sc_debug(_ulSubmod, LOG_LEVEL_DEBUG, (_pszFormat), __VA_ARGS__)
+#define sc_logr_debug(pstSCB, _ulSubmod, _pszFormat, ...) \
+        sc_debug(pstSCB, _ulSubmod, LOG_LEVEL_DEBUG, (_pszFormat), __VA_ARGS__)
 
-#define sc_logr_info(_ulSubmod, _pszFormat, ...) \
-        sc_debug(_ulSubmod, LOG_LEVEL_INFO, (_pszFormat), __VA_ARGS__)
+#define sc_logr_info(pstSCB, _ulSubmod, _pszFormat, ...) \
+        sc_debug(pstSCB, _ulSubmod, LOG_LEVEL_INFO, (_pszFormat), __VA_ARGS__)
 
-#define sc_logr_notice(_ulSubmod, _pszFormat, ...) \
-        sc_debug(_ulSubmod, LOG_LEVEL_NOTIC, (_pszFormat), __VA_ARGS__)
+#define sc_logr_notice(pstSCB, _ulSubmod, _pszFormat, ...) \
+        sc_debug(pstSCB, _ulSubmod, LOG_LEVEL_NOTIC, (_pszFormat), __VA_ARGS__)
 
-#define sc_logr_warning(_ulSubmod, _pszFormat, ...) \
-        sc_debug(_ulSubmod, LOG_LEVEL_WARNING, (_pszFormat), __VA_ARGS__)
+#define sc_logr_warning(pstSCB, _ulSubmod, _pszFormat, ...) \
+        sc_debug(pstSCB, _ulSubmod, LOG_LEVEL_WARNING, (_pszFormat), __VA_ARGS__)
 
-#define sc_logr_error(_ulSubmod, _pszFormat, ...) \
-        sc_debug(_ulSubmod, LOG_LEVEL_ERROR, (_pszFormat), __VA_ARGS__)
+#define sc_logr_error(pstSCB, _ulSubmod, _pszFormat, ...) \
+        sc_debug(pstSCB, _ulSubmod, LOG_LEVEL_ERROR, (_pszFormat), __VA_ARGS__)
 
-#define sc_logr_cirt(_ulSubmod, _pszFormat, ...) \
-        sc_debug(_ulSubmod, LOG_LEVEL_CIRT, (_pszFormat), __VA_ARGS__)
+#define sc_logr_cirt(pstSCB, _ulSubmod, _pszFormat, ...) \
+        sc_debug(pstSCB, _ulSubmod, LOG_LEVEL_CIRT, (_pszFormat), __VA_ARGS__)
 
-#define sc_logr_alert(_ulSubmod, _pszFormat, ...) \
-        sc_debug(_ulSubmod, LOG_LEVEL_ALERT, (_pszFormat), __VA_ARGS__)
+#define sc_logr_alert(pstSCB, _ulSubmod, _pszFormat, ...) \
+        sc_debug(pstSCB, _ulSubmod, LOG_LEVEL_ALERT, (_pszFormat), __VA_ARGS__)
 
-#define sc_logr_emerg(_ulSubmod, _pszFormat, ...) \
-        sc_debug(_ulSubmod, LOG_LEVEL_EMERG, (_pszFormat), __VA_ARGS__)
+#define sc_logr_emerg(pstSCB, _ulSubmod, _pszFormat, ...) \
+        sc_debug(pstSCB, _ulSubmod, LOG_LEVEL_EMERG, (_pszFormat), __VA_ARGS__)
 
 #if 0
 #define SC_TRACE_IN(param0, param1, param2, param3) \
-        sc_logr_debug(SC_FUNC, "SC Trace in %s (0x%X, 0x%X, 0x%X, 0x%X)" \
+        sc_logr_debug(pstSCB, SC_FUNC, "SC Trace in %s (0x%X, 0x%X, 0x%X, 0x%X)" \
                         , __FUNCTION__, (U64)(param0), (U64)(param1), (U64)(param2), (U64)(param3));
 
 #define SC_TRACE_OUT() \
-        sc_logr_debug(SC_FUNC, "SC Trace out %s", __FUNCTION__);
+        sc_logr_debug(pstSCB, SC_FUNC, "SC Trace out %s", __FUNCTION__);
 #else
 #define SC_TRACE_IN(param0, param1, param2, param3) do{}while(0)
 
@@ -101,11 +103,11 @@ do{                                                                    \
 #endif
 
 #define SC_HTTPD_TRACE(param0, param1, param2, param3) \
-        sc_logr_debug(SC_HTTPD, "SC Trace Func:%s (%s:%d) Srv: %lu, Client: %lu, RspCode:%lu, Errno:0x%X" \
+        sc_logr_debug(NULL, SC_HTTPD, "SC Trace Func:%s (%s:%d) Srv: %lu, Client: %lu, RspCode:%lu, Errno:0x%X" \
                         , __FUNCTION__, dos_get_filename(__FILE__), __LINE__, (param0), (param1), (param2), (param3));
 
 #define SC_TASK_TRACE(pstTCB, format, ...) \
-        sc_logr_debug(SC_TASK, "SC Trace Func:%s (%s:%d) CustomID: %lu, TaskID: %lu" \
+        sc_logr_debug(NULL, SC_TASK, "SC Trace Func:%s (%s:%d) CustomID: %lu, TaskID: %lu" \
                         , __FUNCTION__, dos_get_filename(__FILE__), __LINE__, (pstTCB)->ulCustomID, (pstTCB)->ulTaskID);
 
 /* define enums */
@@ -113,7 +115,7 @@ do{                                                                    \
 /* define structs */
 
 /* declare functions */
-VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...);
+VOID sc_debug(SC_SCB_ST *pstSCB, U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...);
 VOID sc_call_trace(SC_SCB_ST *pstSCB, const S8 *szFormat, ...);
 VOID sc_task_trace(SC_TASK_CB_ST *pstTCB, const S8* szFormat, ...);
 

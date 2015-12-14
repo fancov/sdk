@@ -35,13 +35,17 @@ extern "C"{
 /* define structs */
 
 /* declare global params */
-U32       g_ulSCLogLevel        = LOG_LEVEL_DEBUG;       /* 日志级别 */
+U32       g_ulSCLogLevel        = LOG_LEVEL_NOTIC;       /* 日志级别 */
 
 U32       g_ulTaskTraceAll      = 0;       /* 是否跟踪所有任务 */
 
-U32       g_ulCallTraceAll      = 1;     /* 跟踪所有的呼叫 */
+U32       g_ulCallTraceAll      = 1;       /* 跟踪所有的呼叫 */
 
+/* 根据业务类型跟踪开关 */
+U8        g_aucServTraceFlag[SC_SERV_BUTT] = { 0 };
 
+S8        g_aszCallerTrace[MAX_TRACE_NUM_SIZE][SC_TEL_NUMBER_LENGTH] = { {0, }, };
+S8        g_aszCalleeTrace[MAX_TRACE_NUM_SIZE][SC_TEL_NUMBER_LENGTH] = { {0, }, };
 
 #ifdef DEBUG_VERSION
 U32       g_ulTraceFlags        = 0xFFFFFFFF;
@@ -3556,7 +3560,7 @@ S32 sc_update_route(U32 ulID)
     return DOS_SUCC;
 }
 
-VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
+VOID sc_debug(SC_SCB_ST *pstSCB, U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
 {
     va_list         Arg;
     U32             ulTraceTagLen;
@@ -3650,7 +3654,6 @@ VOID sc_debug(U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
     va_end(Arg);
     szTraceStr[sizeof(szTraceStr) -1] = '\0';
 
-    //printf("%s\r\n", szTraceStr);
     dos_log(ulLevel, LOG_TYPE_RUNINFO, szTraceStr);
 }
 
@@ -3699,7 +3702,7 @@ trace:
     /*
      *格式: <SCB:No, status, token, caller, callee, uuid, trunk><TCB:No, status, ID, Custom,><CALLER:No, num,><SITE:No, status, SIP, id, externsion>
      */
-    sc_logr_debug(SC_ESL, "Call Trace:%s\r\n"
+    sc_logr_debug(pstSCB, SC_ESL, "Call Trace:%s\r\n"
                   "\t[SCB Info]: No:%05d, status: %d, caller: %s, callee: %s, uuid:%s\r\n"
                   "\t[TCB Info]: No:%05d, status: %d, Task ID: %d, Custom ID: %d, AgentQueue: %u\r\n"
                   , szBuf

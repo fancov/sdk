@@ -149,7 +149,7 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                 pszSubclass = esl_event_get_header(pstEvent, "Event-Subclass");
                 if (esl_strlen_zero(pszSubclass))
                 {
-                     sc_logr_debug(SC_ACD, "%s", "Not get userid");
+                     sc_logr_debug(NULL, SC_ACD, "%s", "Not get userid");
 
                      goto end;
                 }
@@ -160,14 +160,14 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                     pszVal = esl_event_get_header(pstEvent, "Gateway");
                     if (esl_strlen_zero(pszVal) || dos_atoul(pszVal, &ulGateWayID) < 0)
                     {
-                        sc_logr_debug(SC_ACD, "%s", "Not get Gateway");
+                        sc_logr_debug(NULL, SC_ACD, "%s", "Not get Gateway");
                         goto end;
                     }
 
                     pszVal = esl_event_get_header(pstEvent, "State");
                     if (esl_strlen_zero(pszVal))
                     {
-                        sc_logr_debug(SC_ACD, "%s", "Not get State");
+                        sc_logr_debug(NULL, SC_ACD, "%s", "Not get State");
                         goto end;
                     }
 
@@ -201,7 +201,7 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                     }
                     else
                     {
-                        sc_logr_info(SC_ESL, "Trunk state matching FAIL. %s", pszVal);
+                        sc_logr_info(NULL, SC_ESL, "Trunk state matching FAIL. %s", pszVal);
                         goto end;
                     }
 
@@ -209,7 +209,7 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                     ulResult = sc_ep_update_trunk_status(ulGateWayID, enTrunkState);
                     if (ulResult != DOS_SUCC)
                     {
-                        sc_logr_debug(SC_ESL, "update trunk(%u) status fail.", ulGateWayID);
+                        sc_logr_debug(NULL, SC_ESL, "update trunk(%u) status fail.", ulGateWayID);
 
                         goto end;
                     }
@@ -218,13 +218,13 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                     ulResult = sc_ep_gateway_register_status_update(ulGateWayID, enTrunkState);
                     if (ulResult != DOS_SUCC)
                     {
-                        sc_logr_info(SC_ACD, "update trunk(%u) CB fail.", ulGateWayID);
+                        sc_logr_info(NULL, SC_ACD, "update trunk(%u) CB fail.", ulGateWayID);
                     }
                     /* 更新数据库状态 */
                     ulResult = sc_ep_update_db_trunk_status(ulGateWayID, enTrunkState);
                     if(DB_ERR_SUCC != ulResult)
                     {
-                        sc_logr_info(SC_ACD, "update trunk(%u) db fail.", ulGateWayID);
+                        sc_logr_info(NULL, SC_ACD, "update trunk(%u) db fail.", ulGateWayID);
                     }
 
                     goto end;
@@ -235,7 +235,7 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                 pszUserID = esl_event_get_header(pstEvent, "username");
                 if (esl_strlen_zero(pszUserID))
                 {
-                     sc_logr_debug(SC_ACD, "%s", "Not get userid");
+                     sc_logr_debug(NULL, SC_ACD, "%s", "Not get userid");
                      goto end;
                 }
 
@@ -253,7 +253,7 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                 ulResult = sc_ep_update_sip_status(pszUserID, enStatus, &ulSipID);
                 if (ulResult != DOS_SUCC)
                 {
-                    sc_logr_debug(SC_ESL, "update sip(userid : %s) status fail", pszUserID);
+                    sc_logr_debug(NULL, SC_ESL, "update sip(userid : %s) status fail", pszUserID);
 
                     goto end;
                 }
@@ -262,7 +262,7 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                 pszVal = esl_event_get_header(pstEvent, "network-ip");
                 if (esl_strlen_zero(pszVal))
                 {
-                    sc_logr_debug(SC_ACD, "%s", "Not get network-ip");
+                    sc_logr_debug(NULL, SC_ACD, "%s", "Not get network-ip");
                     ulPublicIP = 0;
                 }
                 else
@@ -273,7 +273,7 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                 pszVal = esl_event_get_header(pstEvent, "contact");
                 if (esl_strlen_zero(pszVal))
                 {
-                    sc_logr_debug(SC_ACD, "%s", "Not get contact");
+                    sc_logr_debug(NULL, SC_ACD, "%s", "Not get contact");
                     ulPrivateIP = 0;
                 }
                 else
@@ -284,7 +284,7 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                     }
                     else
                     {
-                        sc_logr_debug(SC_ACD, "%s", "Not get private IP from contact");
+                        sc_logr_debug(NULL, SC_ACD, "%s", "Not get private IP from contact");
                         ulPrivateIP = 0;
                     }
                 }
@@ -292,7 +292,7 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
                 ulResult = sc_ep_update_db_sip_ip(ulPublicIP, ulPrivateIP, enStatus, ulSipID);
                 if(DB_ERR_SUCC != ulResult)
                 {
-                    sc_logr_debug(SC_ACD, "update sip db fail, userid is %s", pszUserID);
+                    sc_logr_debug(NULL, SC_ACD, "update sip db fail, userid is %s", pszUserID);
                 }
 end:
                 esl_event_destroy(&pstEvent);
@@ -322,7 +322,7 @@ VOID* sc_ep_ext_runtime(VOID *ptr)
         /* 如果退出标志被置上，就准备退出了 */
         if (g_pstExtMngtHangle->blIsWaitingExit)
         {
-            sc_logr_notice(SC_ESL, "%s", "Event process exit flag has been set. the task will be exit.");
+            sc_logr_notice(NULL, SC_ESL, "%s", "Event process exit flag has been set. the task will be exit.");
             break;
         }
 
@@ -332,13 +332,13 @@ VOID* sc_ep_ext_runtime(VOID *ptr)
          **/
         if (!g_pstExtMngtHangle->blIsESLRunning)
         {
-            sc_logr_notice(SC_ESL, "%s", "ELS for event connection has been down, re-connect.");
+            sc_logr_notice(NULL, SC_ESL, "%s", "ELS for event connection has been down, re-connect.");
             g_pstExtMngtHangle->stRecvHandle.event_lock = 1;
             ulRet = esl_connect(&g_pstExtMngtHangle->stRecvHandle, "127.0.0.1", 8021, NULL, "ClueCon");
             if (ESL_SUCCESS != ulRet)
             {
                 esl_disconnect(&g_pstExtMngtHangle->stRecvHandle);
-                sc_logr_notice(SC_ESL, "ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstExtMngtHangle->stRecvHandle.err);
+                sc_logr_notice(NULL, SC_ESL, "ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstExtMngtHangle->stRecvHandle.err);
 
                 sleep(1);
                 continue;
@@ -349,7 +349,7 @@ VOID* sc_ep_ext_runtime(VOID *ptr)
             esl_global_set_default_logger(g_pstExtMngtHangle->ulESLDebugLevel);
             esl_events(&g_pstExtMngtHangle->stRecvHandle, ESL_EVENT_TYPE_PLAIN, SC_EXT_EVENT_LIST);
 
-            sc_logr_notice(SC_ESL, "%s", "ELS for event connect Back to Normal.");
+            sc_logr_notice(NULL, SC_ESL, "%s", "ELS for event connect Back to Normal.");
         }
 
         if (!bFirstConnSucc)
@@ -361,7 +361,7 @@ VOID* sc_ep_ext_runtime(VOID *ptr)
         ulRet = esl_recv_event(&g_pstExtMngtHangle->stRecvHandle, 1, NULL);
         if (ESL_FAIL == ulRet)
         {
-            sc_logr_info(SC_ESL, "%s", "ESL Recv event fail, continue.");
+            sc_logr_info(NULL, SC_ESL, "%s", "ESL Recv event fail, continue.");
             g_pstExtMngtHangle->blIsESLRunning = DOS_FALSE;
             continue;
         }
@@ -369,7 +369,7 @@ VOID* sc_ep_ext_runtime(VOID *ptr)
         esl_event_t *pstEvent = g_pstExtMngtHangle->stRecvHandle.last_ievent;
         if (DOS_ADDR_INVALID(pstEvent))
         {
-            sc_logr_info(SC_ESL, "%s", "ESL get event fail, continue.");
+            sc_logr_info(NULL, SC_ESL, "%s", "ESL get event fail, continue.");
             g_pstExtMngtHangle->blIsESLRunning = DOS_FALSE;
             continue;
         }
