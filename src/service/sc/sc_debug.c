@@ -794,7 +794,7 @@ VOID sc_show_task_list(U32 ulIndex, U32 ulCustomID)
 VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
 {
     S8 szCmdBuff[1024] = {0, };
-    S8 szWeeks[64] = {0,};
+    S8 szWeeks[4][64]     = {{0, },};
     SC_TASK_CB_ST *pstTCB = NULL;
     //U32 i = 0;
 
@@ -840,13 +840,13 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                   "\r\n      Caller Group ID : %u"
                   "\r\n            Call Rate : %u"
                   "\r\nTime Period 1 Weekday : %s"
-                  "\r\n        Time Period 1 : %u:%u - %u:%u"
+                  "\r\n        Time Period 1 : %02u:%02u:%02u - %02u:%02u:%02u"
                   "\r\nTime Period 2 Weekday : %s"
-                  "\r\n        Time Period 2 : %u:%u - %u:%u"
+                  "\r\n        Time Period 2 : %02u:%02u:%02u - %02u:%02u:%02u"
                   "\r\nTime Period 3 Weekday : %s"
-                  "\r\n        Time Period 3 : %u:%u - %u:%u"
+                  "\r\n        Time Period 3 : %02u:%02u:%02u - %02u:%02u:%02u"
                   "\r\nTime Period 4 Weekday : %s"
-                  "\r\n        Time Period 4 : %u:%u - %u:%u"
+                  "\r\n        Time Period 4 : %02u:%02u:%02u - %02u:%02u:%02u"
                 , pstTCB->ulTaskID
                 , sc_translate_task_status(pstTCB->ucTaskStatus)
                 , pstTCB->ucPriority
@@ -866,26 +866,34 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
                 , pstTCB->ulAgentQueueID
                 , pstTCB->ulCallerGrpID
                 , pstTCB->ulCallRate
-                , sc_debug_make_weeks(pstTCB->astPeriod[0].ucWeekMask, szWeeks, sizeof(szWeeks))
+                , sc_debug_make_weeks(pstTCB->astPeriod[0].ucWeekMask, szWeeks[0], sizeof(szWeeks[0]))
                 , pstTCB->astPeriod[0].ucHourBegin
                 , pstTCB->astPeriod[0].ucMinuteBegin
+                , pstTCB->astPeriod[0].ucSecondBegin
                 , pstTCB->astPeriod[0].ucHourEnd
                 , pstTCB->astPeriod[0].ucMinuteEnd
-                , sc_debug_make_weeks(pstTCB->astPeriod[1].ucWeekMask, szWeeks, sizeof(szWeeks))
+                , pstTCB->astPeriod[0].ucSecondEnd
+                , sc_debug_make_weeks(pstTCB->astPeriod[1].ucWeekMask, szWeeks[1], sizeof(szWeeks[1]))
                 , pstTCB->astPeriod[1].ucHourBegin
                 , pstTCB->astPeriod[1].ucMinuteBegin
+                , pstTCB->astPeriod[1].ucSecondBegin
                 , pstTCB->astPeriod[1].ucHourEnd
                 , pstTCB->astPeriod[1].ucMinuteEnd
-                , sc_debug_make_weeks(pstTCB->astPeriod[2].ucWeekMask, szWeeks, sizeof(szWeeks))
+                , pstTCB->astPeriod[1].ucSecondEnd
+                , sc_debug_make_weeks(pstTCB->astPeriod[2].ucWeekMask, szWeeks[2], sizeof(szWeeks[2]))
                 , pstTCB->astPeriod[2].ucHourBegin
                 , pstTCB->astPeriod[2].ucMinuteBegin
+                , pstTCB->astPeriod[2].ucSecondBegin
                 , pstTCB->astPeriod[2].ucHourEnd
                 , pstTCB->astPeriod[2].ucMinuteEnd
-                , sc_debug_make_weeks(pstTCB->astPeriod[3].ucWeekMask, szWeeks, sizeof(szWeeks))
+                , pstTCB->astPeriod[2].ucSecondEnd
+                , sc_debug_make_weeks(pstTCB->astPeriod[3].ucWeekMask, szWeeks[3], sizeof(szWeeks[3]))
                 , pstTCB->astPeriod[3].ucHourBegin
                 , pstTCB->astPeriod[3].ucMinuteBegin
+                , pstTCB->astPeriod[3].ucSecondBegin
                 , pstTCB->astPeriod[3].ucHourEnd
-                , pstTCB->astPeriod[3].ucMinuteEnd);
+                , pstTCB->astPeriod[3].ucMinuteEnd
+                , pstTCB->astPeriod[3].ucSecondEnd);
     cli_out_string(ulIndex, szCmdBuff);
 
 #if 0
@@ -922,7 +930,7 @@ VOID sc_show_task(U32 ulIndex, U32 ulTaskID, U32 ulCustomID)
     cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff),
-                  "\r\n------------------------------------------------");
+                  "\r\n------------------------------------------------\r\n\r\n");
     cli_out_string(ulIndex, szCmdBuff);
 
 }
