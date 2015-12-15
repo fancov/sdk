@@ -1,0 +1,8 @@
+/usr/local/php/etc/php-fpm.conf
+/usr/local/php/lib/php.ini
+/usr/local/nginx/conf/
+/etc/global.xml
+/etc/hb-srv.xml
+/ipcc/etc/
+/usr/local/mysql/my.cnf
+/usr/local/mysql/data
