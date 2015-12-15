@@ -361,6 +361,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     }
 
     sc_logr_debug(pstSCB, SC_BS, "%s", "Start process auth response.");
+    sc_log_digest_print("BS auth response : %u.", pstMsg->ucErrcode);
 
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     if (pstMsg->ucErrcode != BS_ERR_SUCC)

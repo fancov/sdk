@@ -818,6 +818,8 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
                         return SC_HTTP_ERRNO_INVALID_REQUEST;
                     }
 
+                    sc_log_digest_print("Agent(%u) through web click call(%s)", ulAgent, pszNumber);
+
                     /* 判断被叫号码是否是坐席的工号，如果是，则呼叫这个坐席 */
                     if (sc_acd_get_agent_by_emp_num(&stAgentInfo, ulCustomer, pszNumber) == DOS_SUCC)
                     {

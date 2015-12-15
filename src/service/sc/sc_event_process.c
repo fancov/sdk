@@ -7045,6 +7045,7 @@ U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase)
     usSipErrCode = sc_ep_transform_errcode_from_sc2sip(ulTernmiteCase);
 
     sc_logr_debug(pstSCB, SC_ESL, "Hangup call with error code %u", ulTernmiteCase);
+    sc_log_digest_print("Hangup call with error code %u. customer : %u", ulTernmiteCase, pstSCB->ulCustomID);
 
     switch (usSipErrCode)
     {
@@ -7102,7 +7103,7 @@ U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase)
         return DOS_FAIL;
     }
     sc_logr_debug(pstSCB, SC_ESL, "Hangup call with error code %d, pstscb : %d, other : %d", ulTernmiteCase, pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
-
+    sc_log_digest_print("Hangup call with error code %d, pstscb : %d, other : %d", ulTernmiteCase, pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
     /* 将 SC 的错误码转换为 SIP 的 */
     usSipErrCode = sc_ep_transform_errcode_from_sc2sip(ulTernmiteCase);
     /* 设置错误码 */
@@ -9579,6 +9580,7 @@ U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
 
     pstSCB->bIsInQueue = DOS_FALSE;
 
+    sc_log_digest_print("Start call agent by groupid(%u)", ulTaskAgentQueueID);
     /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
     if (U32_BUTT == ulTaskAgentQueueID)
     {
@@ -9617,6 +9619,8 @@ proc_fail:
     {
         sc_ep_hangup_call_with_snd(pstSCB, ulErrCode);
     }
+    sc_log_digest_print("Call agent by groupid(%u) FAIL", ulTaskAgentQueueID);
+
     return DOS_FAIL;
 }
 
@@ -9661,6 +9665,7 @@ U32 sc_ep_call_ctrl_hangup(U32 ulAgent)
     SC_SCB_ST *pstSCBOther  = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
 
+    sc_log_digest_print("Hangup Agent(%u) call.", ulAgent);
     /* 查找坐席 */
     if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
     {
@@ -9882,12 +9887,12 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
     S8 szParams[512]        = {0};
 
     sc_logr_info(pstSCB, SC_ESL, "Request call agent %u(%u)", ulAgentCalled, ulCurrentAgent);
+    sc_log_digest_print("Agent(%u) call other agent(%u) start", ulCurrentAgent, ulAgentCalled);
 
     /* 查找坐席 */
     if (sc_acd_get_agent_by_id(&stAgentInfo, ulCurrentAgent) != DOS_SUCC)
     {
         DOS_ASSERT(0);
-
         sc_logr_info(pstSCB, SC_ESL, "Cannot call agent with id %u. Agent not found.", ulCurrentAgent);
         goto make_all_fail;
     }
@@ -9923,6 +9928,8 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
             goto make_all_fail;
         }
 
+        sc_log_digest_print("Agent(%u) Connected, now call other agent(%u)", ulCurrentAgent, ulAgentCalled);
+
         /* 更新坐席的状态 */
         sc_acd_update_agent_info(pstSCBOther, SC_ACD_BUSY, pstSCBOther->usSCBNo, NULL);
 
@@ -9936,6 +9943,8 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
     }
     else
     {
+        sc_log_digest_print("Agent(%u) is not Connected, now call agent", ulCurrentAgent);
+
         pstSCB->enCallCtrlType = SC_CALL_CTRL_TYPE_AGENT;
         pstSCB->ulOtherAgentID = ulAgentCalled;
 
@@ -9995,6 +10004,8 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
                 break;
         }
 
+        sc_log_digest_print("Call agent(%u). caller : %s, callee : %s", ulCurrentAgent, pstSCB->szCallerNum, pstSCB->szCalleeNum);
+
         /* 呼叫坐席 */
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
 
@@ -10052,6 +10063,7 @@ make_all_fail:
         pstSCB = NULL;
     }
 
+    sc_log_digest_print("Agent(%u) call other agent(%u) FAIL", ulCurrentAgent, ulAgentCalled);
     sc_logr_info(pstSCB, SC_ESL, "Request call agent %u(%u) FAIL", ulAgentCalled, ulCurrentAgent);
 
     return DOS_FAIL;
@@ -10068,7 +10080,8 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
 
     sc_logr_info(pstSCB, SC_ESL, "Call out request. Agent: %u, Task: %u, Number: %s"
             , ulAgent, ulTaskID, pszNumber ? pszNumber : "");
-
+    sc_log_digest_print("Call out request. Agent: %u, Task: %u, Number: %s"
+            , ulAgent, ulTaskID, pszNumber ? pszNumber : "");
     /* 查找坐席 */
     if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
     {
@@ -10280,6 +10293,8 @@ make_all_fail:
 
     sc_logr_info(pstSCB, SC_ESL, "Call out request FAIL. Agent: %u, Task: %u, Number: %s"
             , ulAgent, ulTaskID, pszNumber ? pszNumber : "");
+    sc_log_digest_print("Call out request FAIL. Agent: %u, Task: %u, Number: %s"
+            , ulAgent, ulTaskID, pszNumber ? pszNumber : "");
 
     return DOS_FAIL;
 }
@@ -10300,6 +10315,7 @@ U32 sc_ep_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber)
     }
 
     sc_logr_info(pstSCB, SC_ESL, "Request call sip %s(%u)", pszSipNumber, ulAgent);
+    sc_log_digest_print("Request call sip %s(%u)", pszSipNumber, ulAgent);
 
     /* 查找坐席 */
     if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
@@ -10452,6 +10468,7 @@ make_all_fail:
     }
 
     sc_logr_info(pstSCB, SC_ESL, "Request call sip %s(%u) FAIL", pszSipNumber, ulAgent);
+    sc_log_digest_print("Request call sip %s(%u) FAIL", pszSipNumber, ulAgent);
 
     return DOS_FAIL;
 }
@@ -10529,6 +10546,7 @@ U32 sc_ep_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
     S8  szCallerNumber[SC_TEL_NUMBER_LENGTH] = { 0 };
 
     sc_logr_notice(pstSCB, SC_ESL, "Request transfer to %u (%u)", ulAgentCalled, ulAgent);
+    sc_log_digest_print("Request transfer to %u (%u)", ulAgentCalled, ulAgent);
 
     /* 查找坐席 */
     if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
@@ -10609,6 +10627,7 @@ proc_fail:
     }
 
     sc_logr_notice(pstSCB, SC_ESL, "Request transfer to %u FAIL. %u", ulAgentCalled, ulAgent);
+    sc_log_digest_print("Request transfer to %u FAIL. %u", ulAgentCalled, ulAgent);
 
     return DOS_FAIL;
 }
@@ -10840,6 +10859,8 @@ U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID
         return DOS_FAIL;
     }
 
+    sc_log_digest_print("Start task demo. customer : %u", ulCustomerID);
+
     /* 呼叫客户 */
     pstSCB = sc_scb_alloc();
     if (!pstSCB)
@@ -10891,6 +10912,7 @@ U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID
 
 FAIL:
 
+    sc_log_digest_print("Start task demo FAIL.");
     if (DOS_ADDR_VALID(pstSCB))
     {
         DOS_ASSERT(0);
@@ -10910,6 +10932,7 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
     sc_logr_info(pstSCB, SC_ESL, "Call out request. Agent: %u, Number: %s"
             , ulAgentID, pszCallee ? pszCallee : "");
 
+    sc_log_digest_print("Start preview demo. customer : %u", ulCustomerID);
     /* 查找坐席 */
     if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgentID) != DOS_SUCC)
     {
@@ -10980,6 +11003,8 @@ PROC_FAIL:
         sc_scb_free(pstSCB);
         pstSCB = NULL;
     }
+
+    sc_log_digest_print("Start preview demo FAIL. customer : %u", ulCustomerID);
 
     sc_logr_info(pstSCB, SC_ESL, "Call out request FAIL. Agent: %u, Number: %s"
             , ulAgentID, pszCallee ? pszCallee : "");
@@ -11102,6 +11127,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
     }
     /* 之前已经获得了 */
     //ulCustomerID = sc_ep_get_custom_by_did(pstSCB->szCalleeNum);
+    sc_log_digest_print("Start proc incoming call. caller : %s, callee : %s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
     ulCustomerID = pstSCB->ulCustomID;
     if (U32_BUTT != ulCustomerID)
     {
@@ -11252,6 +11278,8 @@ proc_fail:
         sc_ep_hangup_call_with_snd(pstSCB, ulErrCode);
     }
 
+    sc_log_digest_print("Start proc incoming call FAIL.");
+
     return DOS_FAIL;
 }
 
@@ -11275,6 +11303,7 @@ U32 sc_ep_outgoing_call_proc(SC_SCB_ST *pstSCB)
         goto proc_fail;
     }
 
+    sc_log_digest_print("Start proc outgoing call. caller : %s, callee : %s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
     pstSCBNew = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCBNew))
     {
@@ -11324,6 +11353,7 @@ U32 sc_ep_outgoing_call_proc(SC_SCB_ST *pstSCB)
 
 proc_fail:
     sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_MESSAGE_SENT_ERR);
+    sc_log_digest_print("Proc outgoing call FAIL. ");
 
     if (DOS_ADDR_VALID(pstSCBNew))
     {

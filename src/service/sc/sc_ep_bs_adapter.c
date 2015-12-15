@@ -564,6 +564,9 @@ U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB)
         return DOS_FAIL;
     }
 
+    sc_log_digest_print("Start send usr auth to BS. customer : %u"
+        , pstSCB->ulCustomID);
+
     pstAuthMsg = (BS_MSG_AUTH *)dos_dmem_alloc(sizeof(BS_MSG_AUTH));
     if (DOS_ADDR_INVALID(pstAuthMsg))
     {
@@ -754,6 +757,9 @@ U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
     {
         return DOS_FAIL;
     }
+
+    sc_log_digest_print("Start send balance query to BS. customer : %u"
+        , pstSCB->ulCustomID);
 
     pstQueryMsg = dos_dmem_alloc(sizeof(BS_MSG_BALANCE_QUERY));
     if (DOS_ADDR_INVALID(pstQueryMsg))

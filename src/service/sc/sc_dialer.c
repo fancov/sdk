@@ -49,6 +49,8 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword,
     U32   ulRouteID;
     S8    szCaller[SC_TEL_NUMBER_LENGTH] = {0};
 
+    sc_log_digest_print("Start make call for verify. ulCustomer : %u, number : %s"
+        , ulCustomer, pszNumber);
     if (0 == ulCustomer || U32_BUTT == ulCustomer)
     {
         DOS_ASSERT(0);
@@ -125,6 +127,7 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword,
     return DOS_SUCC;
 
 proc_fail:
+    sc_log_digest_print("Make call for verify FAIL.");
     pstSCB->bTerminationFlag = DOS_TRUE;
     pstSCB->usTerminationCause = BS_ERR_SYSTEM;
 
@@ -149,6 +152,9 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
 
         return DOS_FAIL;
     }
+
+    sc_log_digest_print("Make call to EIX. caller : %s, callee : %s, mainService : %u"
+        , pstSCB->szCallerNum, pstSCB->szCalleeNum, ulMainService);
 
     if (sc_ep_get_eix_by_tt(pstSCB->szCalleeNum, szEIXAddr, sizeof(szEIXAddr)) != DOS_SUCC
         || '\0' == szEIXAddr[0])
@@ -247,6 +253,7 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
 
 esl_exec_fail:
 
+    sc_log_digest_print("Make call to EIX FAIL.");
     sc_logr_info(pstSCB, SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
 
     SC_TRACE_OUT();
@@ -269,6 +276,9 @@ U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCal
 
         return DOS_FAIL;
     }
+
+    sc_log_digest_print("Make call to IP. caller : %s, callee : %s, mainService : %u"
+        , pstSCB->szCallerNum, pstSCB->szCalleeNum, ulMainService);
 
     if (bIsUpdateCaller)
     {
@@ -420,6 +430,7 @@ go_on:
 
 esl_exec_fail:
 
+    sc_log_digest_print("Make call to IP FAIL.");
     /* ¼ÇÂ¼´íÎóÂë */
     pstSCB->usTerminationCause = sc_ep_transform_errcode_from_sc2sip(CC_ERR_SIP_BAD_GATEWAY);
 
@@ -458,6 +469,9 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 
         return DOS_FAIL;
     }
+
+    sc_log_digest_print("Start make call to PSTN. caller : %s, callee : %s, MainService : %u"
+        , pstSCB->szCallerNum, pstSCB->szCalleeNum, ulMainService);
 
     if ('\0' == pstSCB->szCalleeNum[0]
         || '\0' == pstSCB->szCallerNum[0])
@@ -663,6 +677,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
 esl_exec_fail:
 
     sc_logr_info(pstSCB, SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
+    sc_log_digest_print("Make call to PSTN FAIL.");
 
     if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
     {
@@ -786,14 +801,14 @@ VOID *sc_dialer_runtime(VOID * ptr)
         pthread_cond_timedwait(&g_pstDialerHandle->condCallQueue, &g_pstDialerHandle->mutexCallQueue, &stTimeout);
         pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
 
-		if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
-		{
+        if (!g_pstDialerHandle->blIsESLRunning || !g_pstDialerHandle->stHandle.connected)
+        {
             if (sc_dialer_reconn() != DOS_SUCC)
             {
                 dos_task_delay(2000);
                 continue;
             }
-		}
+        }
 
         if (dos_list_is_empty(&g_pstDialerHandle->stCallList))
         {
@@ -973,6 +988,7 @@ U32 sc_dialer_add_call(SC_SCB_ST *pstSCB)
     dos_list_add_tail(&g_pstDialerHandle->stCallList, &(pstNode->stList));
 
     sc_call_trace(pstSCB, "Call request has been accepted by the dialer.");
+    sc_log_digest_print("Call request has been accepted by the dialer.");
 
     g_pstDialerHandle->ulCallCnt++;
     pthread_mutex_unlock(&g_pstDialerHandle->mutexCallQueue);
