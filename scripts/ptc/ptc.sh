@@ -1,5 +1,6 @@
 #!/bin/sh
 
+#ptcµÄÉý¼¶½Å±¾
 #declare -i g_processID=0
 
 help(){

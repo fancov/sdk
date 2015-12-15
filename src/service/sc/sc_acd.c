@@ -2253,6 +2253,8 @@ U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB)
     HASH_NODE_S                 *pstHashNode        = NULL;
     SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
     SC_ACD_AGENT_INFO_ST        *pstAgentData       = NULL;
+    U32                         i                   = 0;
+    U32                         ulResult            = 0;
 
     if (DOS_ADDR_INVALID(pstSCB)
         || DOS_ADDR_INVALID(szUserID)
@@ -2263,64 +2265,74 @@ U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB)
 
     pthread_mutex_lock(&g_mutexAgentList);
 
-    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+    for (i=0; i<2; i++)
     {
-        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        HASH_Scan_Table(g_pstAgentList, ulHashIndex)
         {
-            if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
             {
-                continue;
-            }
-            pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)pstHashNode->pHandle;
-            pstAgentData = pstAgentQueueNode->pstAgentInfo;
+                if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                {
+                    continue;
+                }
+                pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)pstHashNode->pHandle;
+                pstAgentData = pstAgentQueueNode->pstAgentInfo;
 
-            if (DOS_ADDR_INVALID(pstAgentData))
-            {
-                continue;
-            }
+                if (DOS_ADDR_INVALID(pstAgentData))
+                {
+                    continue;
+                }
 
-            if (pstAgentData->ucBindType != AGENT_BIND_SIP)
-            {
-                continue;
-            }
+                if (pstAgentData->ucBindType != AGENT_BIND_SIP)
+                {
+                    continue;
+                }
+                if (i == 0)
+                {
+                    ulResult = dos_strcmp(pstAgentData->szUserID, szUserID);
+                }
+                else
+                {
+                    ulResult = dos_strcmp(pstAgentData->szTTNumber, szUserID);
+                }
 
-            if (dos_strcmp(pstAgentData->szUserID, szUserID) == 0)
-            {
-                pthread_mutex_lock(&pstAgentData->mutexLock);
+                if (ulResult == 0)
+                {
+                    pthread_mutex_lock(&pstAgentData->mutexLock);
 
-                pstAgentData->bLogin = DOS_TRUE;
-                //pstAgentData->bConnected = DOS_TRUE;
-                pstAgentData->bConnected = DOS_FALSE;
-                pstAgentData->bNeedConnected = DOS_TRUE;
-                pstAgentData->bWaitingDelete = DOS_FALSE;
-                pstAgentData->usSCBNo = pstSCB->usSCBNo;
-                pstAgentData->ucStatus = SC_ACD_IDEL;
+                    pstAgentData->bLogin = DOS_TRUE;
+                    //pstAgentData->bConnected = DOS_TRUE;
+                    pstAgentData->bConnected = DOS_FALSE;
+                    pstAgentData->bNeedConnected = DOS_TRUE;
+                    pstAgentData->bWaitingDelete = DOS_FALSE;
+                    pstAgentData->usSCBNo = pstSCB->usSCBNo;
+                    pstAgentData->ucStatus = SC_ACD_IDEL;
 
-                pstSCB->bIsAgentCall = DOS_TRUE;
-                pstSCB->ulCustomID = pstAgentData->ulCustomerID;
-                pstSCB->ulAgentID = pstAgentData->ulSiteID;
-                pstSCB->ucLegRole = SC_CALLEE;
-                pstSCB->bRecord = pstAgentData->bRecord;
+                    pstSCB->bIsAgentCall = DOS_TRUE;
+                    pstSCB->ulCustomID = pstAgentData->ulCustomerID;
+                    pstSCB->ulAgentID = pstAgentData->ulSiteID;
+                    pstSCB->ucLegRole = SC_CALLEE;
+                    pstSCB->bRecord = pstAgentData->bRecord;
 
-                /* 掩請請瘍鎢 */
-                dos_strncpy(pstSCB->szCalleeNum, pstAgentData->szUserID, sizeof(pstSCB->szCalleeNum));
-                pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+                    /* 掩請請瘍鎢 */
+                    dos_strncpy(pstSCB->szCalleeNum, szUserID, sizeof(pstSCB->szCalleeNum));
+                    pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
 
-                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_SIGNIN);
-                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
-                SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
+                    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_SIGNIN);
+                    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
+                    SC_SCB_SET_SERVICE(pstSCB, SC_SERV_INTERNAL_CALL);
 
-                pstAgentData->ulLastSignInTime = time(0);
+                    pstAgentData->ulLastSignInTime = time(0);
 
-                pthread_mutex_unlock(&pstAgentData->mutexLock);
+                    pthread_mutex_unlock(&pstAgentData->mutexLock);
 
-                pthread_mutex_unlock(&g_mutexAgentList);
+                    pthread_mutex_unlock(&g_mutexAgentList);
 
-                return DOS_SUCC;
+                    return DOS_SUCC;
+                }
             }
         }
     }
-
     pthread_mutex_unlock(&g_mutexAgentList);
 
     return DOS_FAIL;
