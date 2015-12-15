@@ -187,7 +187,8 @@ typedef struct tagSCCustomerNode
     BOOL       bExist;                            /* 该标记用来检查是否来自于数据库 */
 
     U16        usCallOutGroup;
-    U8         aucReserv[2];
+    U8         bTraceCall;
+    U8         aucReserv[1];
 
 }SC_CUSTOMER_NODE_ST;
 

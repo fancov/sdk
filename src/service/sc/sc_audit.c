@@ -85,34 +85,34 @@ static pthread_t g_pthAuditTask;
 #if SC_AUDIT_TEST
 U32 sc_test_startup(U32 ulType, VOID *ptr)
 {
-    sc_logr_notice(SC_AUDIT, "Test for startup. Startup timestamp: %u", g_ulStartTimestamp);
+    sc_logr_notice(NULL, SC_AUDIT, "Test for startup. Startup timestamp: %u", g_ulStartTimestamp);
 
     return DOS_SUCC;
 }
 U32 sc_test_startup_delay(U32 ulType, VOID *ptr)
 {
-    sc_logr_notice(SC_AUDIT, "Test for startup delay. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
+    sc_logr_notice(NULL, SC_AUDIT, "Test for startup delay. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
 
     return DOS_SUCC;
 }
 
 U32 sc_test_cycle(U32 ulType, VOID *ptr)
 {
-    sc_logr_notice(SC_AUDIT, "Test for startup cycle. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
+    sc_logr_notice(NULL, SC_AUDIT, "Test for startup cycle. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
 
     return DOS_SUCC;
 }
 
 U32 sc_test_hour(U32 ulType, VOID *ptr)
 {
-    sc_logr_notice(SC_AUDIT, "Test hour. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
+    sc_logr_notice(NULL, SC_AUDIT, "Test hour. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
 
     return DOS_SUCC;
 }
 
 U32 sc_test_hour_delay(U32 ulType, VOID *ptr)
 {
-    sc_logr_notice(SC_AUDIT, "Test hour delay. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
+    sc_logr_notice(NULL, SC_AUDIT, "Test hour delay. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
 
     return DOS_SUCC;
 }
@@ -338,7 +338,7 @@ static VOID *sc_audit_task(VOID *ptr)
 
                 if (pstAuditTask)
                 {
-                    sc_logr_notice(SC_AUDIT, "Start audit. Current Timestamp:%u, Type: %u Offset: %u, Task: %s(Handle:%p)"
+                    sc_logr_notice(NULL, SC_AUDIT, "Start audit. Current Timestamp:%u, Type: %u Offset: %u, Task: %s(Handle:%p)"
                                         , ulCurrentTime
                                         , pstAuditTask->ulType
                                         , pstAuditTask->ulOffset

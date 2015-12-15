@@ -331,7 +331,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 {
                     pstCWQNode->ulStartWaitingTime = time(0);
 
-                    sc_logr_info(SC_ACD, "The group %u has no idel agent. (%d)", pstCWQNode->ulAgentGrpID, blHasIdelAgent);
+                    sc_logr_info(pstSCB, SC_ACD, "The group %u has no idel agent. (%d)", pstCWQNode->ulAgentGrpID, blHasIdelAgent);
                     break;
                 }
 

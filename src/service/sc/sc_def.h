@@ -291,7 +291,7 @@ enum tagCallServiceType{
 
     SC_SERV_DEMO_TASK               = 29,  /* 群呼任务演示 */
 
-    SC_SERV_BUTT                    = 255
+    SC_SERV_BUTT
 }SC_CALL_SERVICE_TYPE_EN;
 
 enum {

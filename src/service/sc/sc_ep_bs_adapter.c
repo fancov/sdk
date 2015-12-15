@@ -186,14 +186,14 @@ static VOID sc_resend_msg2bs(U64 uLMsgNodeAddr)
 
         pthread_mutex_unlock(&g_mutexMsgList);
 
-        sc_logr_info(SC_BS, "%s", "Delete msg!");
+        sc_logr_info(NULL, SC_BS, "%s", "Delete msg!");
 
         return;
     }
 
     sc_send_msg2bs((BS_MSG_TAG *)pstMsgNode->pData, pstMsgNode->ulLength);
 
-    sc_logr_info(SC_BS, "Re-send msg to BS. Fail Cnt: %u, RCNo: %u, Seq: %u"
+    sc_logr_info(NULL, SC_BS, "Re-send msg to BS. Fail Cnt: %u, RCNo: %u, Seq: %u"
                     , pstMsgNode->ulFailCnt, pstMsgNode->ulRCNo, pstMsgNode->ulSeq);
 
     pthread_mutex_unlock(&g_mutexMsgList);
@@ -215,7 +215,7 @@ U32 sc_bs_msg_free(U32 ulSeq)
         DOS_ASSERT(0);
 
         pthread_mutex_unlock(&g_mutexMsgList);
-        sc_logr_notice(SC_BS, "Cannot find the msg with the seq %d", ulSeq);
+        sc_logr_notice(NULL, SC_BS, "Cannot find the msg with the seq %d", ulSeq);
         return DOS_FAIL;
     }
 
@@ -560,7 +560,7 @@ U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_warning(SC_BS, "%s", "Invalid SCB while send the auth msg.");
+        sc_logr_warning(pstSCB, SC_BS, "%s", "Invalid SCB while send the auth msg.");
         return DOS_FAIL;
     }
 
@@ -569,7 +569,7 @@ U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_warning(SC_BS, "%s", "Alloc memory fail.");
+        sc_logr_warning(pstSCB, SC_BS, "%s", "Alloc memory fail.");
         return DOS_FAIL;
     }
 
@@ -616,7 +616,7 @@ U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_warning(SC_BS, "%s", "Alloc memory for list node fail.");
+        sc_logr_warning(pstSCB, SC_BS, "%s", "Alloc memory for list node fail.");
         return DOS_FAIL;
     }
     pstListNode->pData = (VOID *)pstAuthMsg;
@@ -655,7 +655,7 @@ U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB)
 
         pthread_mutex_unlock(&g_mutexMsgList);
 
-        sc_logr_notice(SC_BS, "%s", "Start the timer fail while send the auth msg.");
+        sc_logr_notice(pstSCB, SC_BS, "%s", "Start the timer fail while send the auth msg.");
         return DOS_FAIL;
     }
 #endif
@@ -688,7 +688,7 @@ U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB)
         dos_dmem_free(pstAuthMsg);
         pstAuthMsg = NULL;
 
-        sc_logr_error(SC_BS, "%s", "Send Auth msg FAIL.");
+        sc_logr_error(pstSCB, SC_BS, "%s", "Send Auth msg FAIL.");
         return DOS_FAIL;
     }
 
@@ -699,7 +699,7 @@ U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB)
     pstAuthMsg = NULL;
 #endif
 
-    sc_logr_info(SC_BS, "%s", "Send Auth msg SUCC.");
+    sc_logr_info(pstSCB, SC_BS, "%s", "Send Auth msg SUCC.");
 
     return DOS_SUCC;
 }
@@ -713,7 +713,7 @@ U32 sc_send_hello2bs(U32 ulClientIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_BS, "Invalid client index. Max : %d, Current : %d", SC_MAX_BS_CLIENT, ulClientIndex);
+        sc_logr_debug(NULL, SC_BS, "Invalid client index. Max : %d, Current : %d", SC_MAX_BS_CLIENT, ulClientIndex);
         return DOS_FAIL;
     }
 
@@ -760,7 +760,7 @@ U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_warning(SC_BS, "%s", "Alloc memory fail.");
+        sc_logr_warning(pstSCB, SC_BS, "%s", "Alloc memory fail.");
         return DOS_FAIL;
     }
 
@@ -783,7 +783,7 @@ U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_warning(SC_BS, "%s", "Alloc memory for list node fail.");
+        sc_logr_warning(pstSCB, SC_BS, "%s", "Alloc memory for list node fail.");
         return DOS_FAIL;
     }
     pstListNode->pData = (VOID *)pstQueryMsg;
@@ -820,7 +820,7 @@ U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
         pstListNode = NULL;
 
         pthread_mutex_unlock(&g_mutexMsgList);
-        sc_logr_notice(SC_BS, "%s", "Start the timer fail while send the auth msg.");
+        sc_logr_notice(pstSCB, SC_BS, "%s", "Start the timer fail while send the auth msg.");
         return DOS_FAIL;
     }
 #endif
@@ -854,7 +854,7 @@ U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
         dos_dmem_free(pstQueryMsg);
         pstQueryMsg = NULL;
 
-        sc_logr_notice(SC_BS, "%s", "Send Auth msg fail.");
+        sc_logr_notice(pstSCB, SC_BS, "%s", "Send Auth msg fail.");
         return DOS_FAIL;
     }
 
@@ -1024,7 +1024,7 @@ prepare_msg:
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_BS, "%s", "Alloc memory for the CDR msg fail.");
+        sc_logr_notice(pstSCB, SC_BS, "%s", "Alloc memory for the CDR msg fail.");
         return DOS_FAIL;
     }
 
@@ -1247,7 +1247,7 @@ prepare_msg:
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_BS, "%s", "There no leg created while send cdr msg.");
+        sc_logr_notice(pstSCB, SC_BS, "%s", "There no leg created while send cdr msg.");
         return DOS_FAIL;
     }
 
@@ -1261,7 +1261,7 @@ prepare_msg:
     {
         DOS_ASSERT(0);
 
-        sc_logr_warning(SC_BS, "%s", "Alloc memory for list node fail.");
+        sc_logr_warning(pstSCB, SC_BS, "%s", "Alloc memory for list node fail.");
         return DOS_FAIL;
     }
     pstListNode->pData = (VOID *)pstCDRMsg;
@@ -1296,7 +1296,7 @@ prepare_msg:
 
         pthread_mutex_unlock(&g_mutexMsgList);
 
-        sc_logr_notice(SC_BS, "%s", "Start the timer fail while send the auth msg.");
+        sc_logr_notice(pstSCB, SC_BS, "%s", "Start the timer fail while send the auth msg.");
         return DOS_FAIL;
     }
 #endif
@@ -1325,7 +1325,7 @@ prepare_msg:
         dos_dmem_free(pstCDRMsg);
         pstCDRMsg = NULL;
 
-        sc_logr_notice(SC_BS, "%s", "Send Auth msg fail.");
+        sc_logr_notice(pstSCB, SC_BS, "%s", "Send Auth msg fail.");
         return DOS_FAIL;
     }
 

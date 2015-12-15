@@ -269,7 +269,7 @@ SC_SCB_ST *sc_scb_alloc()
         pstSCB->bValid = 1;
         pstSCB->ulAllocTime = time(0);
         sc_call_trace(pstSCB, "Alloc SCB.");
-        sc_logr_error(SC_ESL, "Alloc SCB. ID : %u, Valid: %d", pstSCB->usSCBNo, pstSCB->bValid);
+        sc_logr_error(pstSCB, SC_ESL, "Alloc SCB. ID : %u, Valid: %d", pstSCB->usSCBNo, pstSCB->bValid);
         pthread_mutex_unlock(&pstSCB->mutexSCBLock);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallList);
         //SC_TRACE_OUT();
@@ -305,7 +305,7 @@ VOID sc_scb_free(SC_SCB_ST *pstSCB)
     pthread_mutex_lock(&g_pstTaskMngtInfo->mutexCallList);
     pthread_mutex_lock(&pstSCB->mutexSCBLock);
     sc_call_trace(pstSCB, "Free SCB.");
-    sc_logr_notice(SC_ESL, "Free SCB. ID : %u, Valid: %d", pstSCB->usSCBNo, pstSCB->bValid);
+    sc_logr_notice(pstSCB, SC_ESL, "Free SCB. ID : %u, Valid: %d", pstSCB->usSCBNo, pstSCB->bValid);
     if (pstSCB->pstExtraData)
     {
         dos_dmem_free(pstSCB->pstExtraData);
@@ -567,7 +567,7 @@ U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB)
     pstSCBHashNode = (SC_SCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pszUUID, sc_scb_hash_find);
     if (pstSCBHashNode)
     {
-        sc_logr_info(SC_TASK, "UUID %s has been added to hash list sometimes before.", pszUUID);
+        sc_logr_info(pstSCB, SC_TASK, "UUID %s has been added to hash list sometimes before.", pszUUID);
         if (DOS_ADDR_INVALID(pstSCBHashNode->pstSCB)
             && DOS_ADDR_VALID(pstSCB))
         {
@@ -584,7 +584,7 @@ U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_warning(SC_TASK, "%s", "Alloc memory fail");
+        sc_logr_warning(pstSCB, SC_TASK, "%s", "Alloc memory fail");
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
 
         SC_TRACE_OUT();
@@ -607,7 +607,7 @@ U32 sc_scb_hash_tables_add(S8 *pszUUID, SC_SCB_ST *pstSCB)
 
     hash_add_node(g_pstTaskMngtInfo->pstCallSCBHash, (HASH_NODE_S *)pstSCBHashNode, ulHashIndex, NULL);
 
-    sc_logr_warning(SC_TASK, "Add SCB %d with the UUID %s to the hash table.", pstSCB->usSCBNo, pszUUID);
+    sc_logr_warning(pstSCB, SC_TASK, "Add SCB %d with the UUID %s to the hash table.", pstSCB->usSCBNo, pszUUID);
 
     pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
 
@@ -645,7 +645,7 @@ U32 sc_scb_hash_tables_delete(S8 *pszUUID)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_TASK, "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
+        sc_logr_info(NULL, SC_TASK, "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
         SC_TRACE_OUT();
         return DOS_SUCC;
@@ -690,7 +690,7 @@ SC_SCB_ST *sc_scb_hash_tables_find(S8 *pszUUID)
     pstSCBHashNode = (SC_SCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pszUUID, sc_scb_hash_find);
     if (!pstSCBHashNode)
     {
-        sc_logr_info(SC_TASK, "Connot find the SCB with the UUID %s.", pszUUID);
+        sc_logr_info(NULL, SC_TASK, "Connot find the SCB with the UUID %s.", pszUUID);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
 
         SC_TRACE_OUT();
@@ -732,7 +732,7 @@ U32 sc_scb_syn_wait(S8 *pszUUID)
     pstSCBHashNode = (SC_SCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pszUUID, sc_scb_hash_find);
     if (!pstSCBHashNode)
     {
-        sc_logr_info(SC_TASK, "Connot find the SCB with the UUID %s.", pszUUID);
+        sc_logr_info(NULL, SC_TASK, "Connot find the SCB with the UUID %s.", pszUUID);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
 
         SC_TRACE_OUT();
@@ -776,7 +776,7 @@ U32 sc_scb_syn_post(S8 *pszUUID)
     pstSCBHashNode = (SC_SCB_HASH_NODE_ST *)hash_find_node(g_pstTaskMngtInfo->pstCallSCBHash, ulHashIndex, pszUUID, sc_scb_hash_find);
     if (!pstSCBHashNode)
     {
-        sc_logr_info(SC_TASK, "Connot find the SCB with the UUID %s.", pszUUID);
+        sc_logr_info(NULL, SC_TASK, "Connot find the SCB with the UUID %s.", pszUUID);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallHash);
 
         SC_TRACE_OUT();
@@ -1230,7 +1230,7 @@ static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
     if (DB_ERR_SUCC != lRet)
     {
         DOS_ASSERT(0);
-        sc_logr_error(SC_TASK, "SC Task Load caller Index FAIL.(Caller Number:%s)", pstCaller->szNumber);
+        sc_logr_error(NULL, SC_TASK, "SC Task Load caller Index FAIL.(Caller Number:%s)", pstCaller->szNumber);
         return DOS_FAIL;
     }
 
@@ -1434,7 +1434,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     if (blProcessOK == DOS_FALSE)
     {
         /* 数据不正确，不用保存 */
-        sc_logr_error(SC_TASK, "Load task info FAIL.(TaskID:%u) ", ulTaskID);
+        sc_logr_error(NULL, SC_TASK, "Load task info FAIL.(TaskID:%u) ", ulTaskID);
 
         return DOS_SUCC;
     }
@@ -1448,7 +1448,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         if (DOS_ADDR_INVALID(pstTCB))
         {
             /* 数据不正确，不用保存 */
-            sc_logr_error(SC_TASK, "Alloc TCB fail.(TaskID:%u) ", ulTaskID);
+            sc_logr_error(NULL, SC_TASK, "Alloc TCB fail.(TaskID:%u) ", ulTaskID);
 
             return DOS_FAIL;
         }
@@ -1481,7 +1481,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     pstTCB->astPeriod[0].ucMinuteEnd = (U8)ulEndMinute;
     pstTCB->astPeriod[0].ucSecondEnd = (U8)ulEndSecond;
 
-    sc_logr_debug(SC_TASK, "Load task info SUCC. Index(%d), (TaskID:%u) ", lIndex, ulTaskID);
+    sc_logr_debug(NULL, SC_TASK, "Load task info SUCC. Index(%d), (TaskID:%u) ", lIndex, ulTaskID);
 
     return DOS_SUCC;
 }
@@ -1504,7 +1504,7 @@ S32 sc_task_load(U32 ulIndex)
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
     if (DB_ERR_SUCC != lRet)
     {
-        sc_logr_error(SC_TASK, " SC Load task %u Data FAIL.", ulIndex);
+        sc_logr_error(NULL, SC_TASK, " SC Load task %u Data FAIL.", ulIndex);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
@@ -1513,7 +1513,7 @@ S32 sc_task_load(U32 ulIndex)
     if (!pstTCB)
     {
         DOS_ASSERT(0);
-        sc_logr_error(SC_TASK, "SC Find task By TaskID FAIL.(TaskID:%u) ", ulIndex);
+        sc_logr_error(NULL, SC_TASK, "SC Find task By TaskID FAIL.(TaskID:%u) ", ulIndex);
         return DOS_FAIL;
     }
 
@@ -1521,12 +1521,12 @@ S32 sc_task_load(U32 ulIndex)
     lRet = sc_task_load_callee(pstTCB);
     if (DOS_SUCC != lRet)
     {
-        sc_logr_error(SC_TASK, "SC Task Load Callee FAIL.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
+        sc_logr_error(NULL, SC_TASK, "SC Task Load Callee FAIL.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
         return DOS_FAIL;
     }
-    sc_logr_debug(SC_TASK, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
+    sc_logr_debug(NULL, SC_TASK, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
 
-    sc_logr_debug(SC_TASK, "Load task %u SUCC.", ulIndex);
+    sc_logr_debug(NULL, SC_TASK, "Load task %u SUCC.", ulIndex);
     return DOS_SUCC;
 }
 
@@ -1547,7 +1547,7 @@ S32 sc_task_reload(U32 ulIndex)
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
     if (DB_ERR_SUCC != lRet)
     {
-        sc_logr_error(SC_TASK, " SC Load task %u Data FAIL.", ulIndex);
+        sc_logr_error(NULL, SC_TASK, " SC Load task %u Data FAIL.", ulIndex);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
@@ -1628,7 +1628,7 @@ static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S
             }
         }
 
-        sc_logr_debug(SC_TASK, "Load Caller for task %d. Caller: %s, Index: %d", pstTCB->ulTaskID, pszCourse, ulFirstInvalidNode);
+        sc_logr_debug(NULL, SC_TASK, "Load Caller for task %d. Caller: %s, Index: %d", pstTCB->ulTaskID, pszCourse, ulFirstInvalidNode);
 
         if (ulFirstInvalidNode >= SC_MAX_CALLER_NUM)
         {
@@ -1959,7 +1959,7 @@ U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB)
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_period_cb, (VOID *)pstTCB, NULL) != DB_ERR_SUCC)
     {
-        sc_logr_debug(SC_TASK, "Load task time period for task %d fail;", pstTCB->usTCBNo);
+        sc_logr_debug(NULL, SC_TASK, "Load task time period for task %d fail;", pstTCB->usTCBNo);
 
         return DOS_FAIL;
     }
@@ -2011,7 +2011,7 @@ S32 sc_task_load_other_info(SC_TASK_CB_ST *pstTCB)
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_other_info_cb, (VOID *)pstTCB, NULL) != DB_ERR_SUCC)
     {
-        sc_logr_debug(SC_TASK, "Load task time period for task %d fail;", pstTCB->usTCBNo);
+        sc_logr_debug(NULL, SC_TASK, "Load task time period for task %d fail;", pstTCB->usTCBNo);
 
         return DOS_FAIL;
     }
@@ -2088,7 +2088,7 @@ U32 sc_task_load_agent_info(SC_TASK_CB_ST *pstTCB)
     if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_agent_queue_id_cb, (VOID *)&pstTCB->ulAgentQueueID, NULL) != DB_ERR_SUCC)
     {
         DOS_ASSERT(0);
-        sc_logr_debug(SC_TASK, "Load agent queue ID for task %d FAIL;", pstTCB->ulTaskID);
+        sc_logr_debug(NULL, SC_TASK, "Load agent queue ID for task %d FAIL;", pstTCB->ulTaskID);
 
         return DOS_FAIL;
     }
@@ -2100,7 +2100,7 @@ U32 sc_task_load_agent_info(SC_TASK_CB_ST *pstTCB)
     if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_agent_number_cb, (VOID *)&pstTCB->usSiteCount, NULL) != DB_ERR_SUCC)
     {
         DOS_ASSERT(0);
-        sc_logr_debug(SC_TASK, "Load agent number for task %d FAIL;", pstTCB->ulTaskID);
+        sc_logr_debug(NULL, SC_TASK, "Load agent number for task %d FAIL;", pstTCB->ulTaskID);
 
         return DOS_FAIL;
     }
@@ -2537,7 +2537,7 @@ U32 sc_task_callee_set_recall(SC_TASK_CB_ST *pstTCB, U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_TASK, "Set callee to waiting status FAIL. index:%d", ulIndex);
+        sc_logr_notice(NULL, SC_TASK, "Set callee to waiting status FAIL. index:%d", ulIndex);
 
         return DOS_FALSE;
     }
@@ -2621,11 +2621,11 @@ U32 sc_task_save_status(U32 ulTaskID, U32 ulStatus, S8 *pszStatus)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_TASK, "Failed update the task(%u) status to %u.", ulTaskID, ulStatus);
+        sc_logr_error(NULL, SC_TASK, "Failed update the task(%u) status to %u.", ulTaskID, ulStatus);
         return DOS_FAIL;
     }
 
-    sc_logr_info(SC_TASK, "Update the task(%u) status to %u.", ulTaskID, ulStatus);
+    sc_logr_info(NULL, SC_TASK, "Update the task(%u) status to %u.", ulTaskID, ulStatus);
     return DOS_SUCC;
 }
 
@@ -2669,7 +2669,7 @@ U32 sc_http_caller_setting_update_proc(U32 ulAction, U32 ulSettingID)
         default:
             break;
     }
-    sc_logr_info(SC_FUNC, "Update Caller Setting SUCC.(ulAction:%u, ulID:%u)", ulAction, ulSettingID);
+    sc_logr_info(NULL, SC_FUNC, "Update Caller Setting SUCC.(ulAction:%u, ulID:%u)", ulAction, ulSettingID);
 
     return DOS_SUCC;
 }
@@ -2694,7 +2694,7 @@ U32 sc_http_caller_grp_update_proc(U32 ulAction, U32 ulCallerGrpID)
         default:
             break;
     }
-    sc_logr_info(SC_FUNC, "Update Caller Group SUCC.(ulAction:%u, ulCallerGrpID:%u)", ulAction, ulCallerGrpID);
+    sc_logr_info(NULL, SC_FUNC, "Update Caller Group SUCC.(ulAction:%u, ulCallerGrpID:%u)", ulAction, ulCallerGrpID);
 
     return DOS_SUCC;
 }
@@ -2719,7 +2719,7 @@ U32 sc_http_caller_update_proc(U32 ulAction, U32 ulCallerID)
         default:
             break;
     }
-    sc_logr_info(SC_FUNC, "Update Caller SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCallerID);
+    sc_logr_info(NULL, SC_FUNC, "Update Caller SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCallerID);
 
     return DOS_SUCC;
 }
@@ -2745,7 +2745,7 @@ U32 sc_http_eix_update_proc(U32 ulAction, U32 ulEixID)
         default:
             break;
     }
-    sc_logr_info(SC_FUNC, "Update eix SUCC.(ulAction:%u, ulID:%d)", ulAction, ulEixID);
+    sc_logr_info(NULL, SC_FUNC, "Update eix SUCC.(ulAction:%u, ulID:%d)", ulAction, ulEixID);
 
     return DOS_SUCC;
 }
@@ -2770,7 +2770,7 @@ U32 sc_http_num_lmt_update_proc(U32 ulAction, U32 ulNumlmtID)
         default:
             break;
     }
-    sc_logr_info(SC_FUNC, "Update num limit SUCC.(ulAction:%u, ulID:%d)", ulAction, ulNumlmtID);
+    sc_logr_info(NULL, SC_FUNC, "Update num limit SUCC.(ulAction:%u, ulID:%d)", ulAction, ulNumlmtID);
 
     return DOS_SUCC;
 }
@@ -2795,7 +2795,7 @@ U32 sc_http_num_transform_update_proc(U32 ulAction, U32 ulNumTransID)
         default:
             break;
     }
-    sc_logr_info(SC_FUNC, "Update num transform SUCC.(ulAction:%u, ulID:%d)", ulAction, ulNumTransID);
+    sc_logr_info(NULL, SC_FUNC, "Update num transform SUCC.(ulAction:%u, ulID:%d)", ulAction, ulNumTransID);
 
     return DOS_SUCC;
 }
@@ -2820,7 +2820,7 @@ U32 sc_http_customer_update_proc(U32 ulAction, U32 ulCustomerID)
         default:
             break;
     }
-    sc_logr_info(SC_FUNC, "Update customer SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCustomerID);
+    sc_logr_info(NULL, SC_FUNC, "Update customer SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCustomerID);
 
     return DOS_SUCC;
 }
@@ -2844,7 +2844,7 @@ U32 sc_http_demo_proc(U32 ulAction, U32 ulCustomerID, S8 *pszCallee, S8 *pszAgen
         default:
             break;
     }
-    sc_logr_info(SC_FUNC, "Deme proc SUCC.(ulAction:%u, ulID:%d, callee : %s, agentnum : %s)"
+    sc_logr_info(NULL, SC_FUNC, "Deme proc SUCC.(ulAction:%u, ulID:%d, callee : %s, agentnum : %s)"
         , ulAction, ulCustomerID, pszCallee, pszAgentNum);
 
     return DOS_SUCC;
@@ -3091,7 +3091,7 @@ U32 sc_http_gw_group_update_proc(U32 ulAction, U32 ulGwGroupID)
             break;
     }
 
-    sc_logr_info(SC_ESL, "Edit gw group Finished. ID: %u Action:%u, Result: %u", ulGwGroupID, ulAction, ulRet);
+    sc_logr_info(NULL, SC_ESL, "Edit gw group Finished. ID: %u Action:%u, Result: %u", ulGwGroupID, ulAction, ulRet);
 
     return ulRet;
 }
@@ -3251,7 +3251,7 @@ U32 sc_bg_job_hash_add(S8 *pszUUID, U32 ulUUIDLen, U32 ulRCNo)
 
         hash_add_node(g_pstTaskMngtInfo->pstHashBGJobHash, pNode, ulHashVal, NULL);
 
-        sc_logr_info(SC_ESL, "Add background-job to the hash table. UUID: %s, RCNo: %u", pszUUID, ulRCNo);
+        sc_logr_info(NULL, SC_ESL, "Add background-job to the hash table. UUID: %s, RCNo: %u", pszUUID, ulRCNo);
     }
     pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexHashBGJobHash);
 
@@ -3287,13 +3287,13 @@ U32 sc_bg_job_hash_delete(U32 ulRCNo)
         if (DOS_ADDR_VALID(pNode->pHandle))
         {
             pstBGJobNode = pNode->pHandle;
-            sc_logr_info(SC_ESL, "Add background-job to the hash table. UUID: %s, RCNo: %u", pstBGJobNode->szJobUUID, ulRCNo);
+            sc_logr_info(NULL, SC_ESL, "Add background-job to the hash table. UUID: %s, RCNo: %u", pstBGJobNode->szJobUUID, ulRCNo);
             dos_dmem_free(pNode->pHandle);
             pNode->pHandle = NULL;
             pstBGJobNode= NULL;
         }
 
-        sc_logr_notice(SC_ESL, "Add background-job to the hash table. RCNo: %u", ulRCNo);
+        sc_logr_notice(NULL, SC_ESL, "Add background-job to the hash table. RCNo: %u", ulRCNo);
 
         if (pNode->pHandle)
         {

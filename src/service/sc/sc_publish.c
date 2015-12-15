@@ -116,12 +116,12 @@ static U32 sc_pub_publicsh(CURL **pstCurlHandle, S8 *pszURL, S8 *pszData)
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_PUB, "CURL post FAIL. Data:%s.", pszData);
+        sc_logr_notice(NULL, SC_PUB, "CURL post FAIL. Data:%s.", pszData);
         return DOS_FAIL;
     }
     else
     {
-        sc_logr_info(SC_PUB, "CURL post SUCC.URL:%s, Data:%s.", pszURL, pszData);
+        sc_logr_info(NULL, SC_PUB, "CURL post SUCC.URL:%s, Data:%s.", pszURL, pszData);
 
         return DOS_SUCC;
     }
@@ -172,20 +172,20 @@ static VOID *sc_pub_runtime(VOID *ptr)
 
             if (DOS_ADDR_INVALID(pstDllNode))
             {
-                sc_logr_warning(SC_PUB, "%s", "DLL Node is null, may be the queue is breaken");
+                sc_logr_warning(NULL, SC_PUB, "%s", "DLL Node is null, may be the queue is breaken");
                 break;
             }
 
             pstPubData = pstDllNode->pHandle;
             if (DOS_ADDR_INVALID(pstPubData))
             {
-                sc_logr_info(SC_PUB, "%s", "DLL Node with empty data.");
+                sc_logr_info(NULL, SC_PUB, "%s", "DLL Node with empty data.");
                 continue;
             }
 
             if (DOS_ADDR_INVALID(pstPubData->pszURL))
             {
-                sc_logr_info(SC_PUB, "%s", "Publish request is invalid.");
+                sc_logr_info(NULL, SC_PUB, "%s", "Publish request is invalid.");
 
                 goto proc_fail;
             }
@@ -276,14 +276,14 @@ static VOID *sc_pub_runtime_master(VOID *ptr)
 
             if (DOS_ADDR_INVALID(pstDllNode))
             {
-                sc_logr_warning(SC_PUB, "%s", "DLL Node is null, may be the queue is breaken");
+                sc_logr_warning(NULL, SC_PUB, "%s", "DLL Node is null, may be the queue is breaken");
                 break;
             }
 
             pstPubData = pstDllNode->pHandle;
             if (DOS_ADDR_INVALID(pstPubData))
             {
-                sc_logr_warning(SC_PUB, "%s", "DLL Node with empty data, may be the queue is breaken");
+                sc_logr_warning(NULL, SC_PUB, "%s", "DLL Node with empty data, may be the queue is breaken");
 
                 dos_dmem_free(pstPubData);
                 pstPubData = NULL;
@@ -329,7 +329,7 @@ U32 sc_pub_send_msg(S8 *pszURL, S8 *pszData, U32 ulType, VOID *pstData)
 
     if (ulType >= SC_PUB_TYPE_BUUT)
     {
-        sc_logr_error(SC_PUB, "%s", "Invalid msg type.(%u)", ulType);
+        sc_logr_error(NULL, SC_PUB, "%s", "Invalid msg type.(%u)", ulType);
         return DOS_FAIL;
     }
 
@@ -337,7 +337,7 @@ U32 sc_pub_send_msg(S8 *pszURL, S8 *pszData, U32 ulType, VOID *pstData)
     pstPubData = dos_dmem_alloc(sizeof(SC_PUB_MSG_ST));
     if (DOS_ADDR_INVALID(pstDllNode) || DOS_ADDR_INVALID(pstPubData))
     {
-        sc_logr_error(SC_PUB, "%s", "Alloc memory fail while send publish request.");
+        sc_logr_error(NULL, SC_PUB, "%s", "Alloc memory fail while send publish request.");
 
         goto proc_fail;
     }
@@ -350,7 +350,7 @@ U32 sc_pub_send_msg(S8 *pszURL, S8 *pszData, U32 ulType, VOID *pstData)
     pstPubData->pszURL = dos_strndup(pszURL, SC_PUB_MAX_URL);
     if (DOS_ADDR_INVALID(pstPubData->pszURL))
     {
-        sc_logr_error(SC_PUB, "%s", "Dump the url fail.");
+        sc_logr_error(NULL, SC_PUB, "%s", "Dump the url fail.");
         goto proc_fail;
     }
 
@@ -359,7 +359,7 @@ U32 sc_pub_send_msg(S8 *pszURL, S8 *pszData, U32 ulType, VOID *pstData)
         pstPubData->pszData = dos_strndup(pszData, SC_PUB_MAX_DATA);
         if (DOS_ADDR_INVALID(pstPubData->pszData))
         {
-            sc_logr_error(SC_PUB, "%s", "Dump the data fail.");
+            sc_logr_error(NULL, SC_PUB, "%s", "Dump the data fail.");
             goto proc_fail;
         }
     }
@@ -374,7 +374,7 @@ U32 sc_pub_send_msg(S8 *pszURL, S8 *pszData, U32 ulType, VOID *pstData)
     pthread_cond_signal(&g_stPubTaskList[0].condPublishCurl);
     pthread_mutex_unlock(&g_stPubTaskList[0].mutexPublishCurl);
 
-    sc_logr_debug(SC_PUB, "Publish request send succ. URL: %s, Data: %s", pszURL, DOS_ADDR_VALID(pszData) ? pszData : "");
+    sc_logr_debug(NULL, SC_PUB, "Publish request send succ. URL: %s, Data: %s", pszURL, DOS_ADDR_VALID(pszData) ? pszData : "");
 
     return DOS_SUCC;
 proc_fail:

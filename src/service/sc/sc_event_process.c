@@ -144,7 +144,7 @@ U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode)
         return DOS_FAIL;
     }
 
-    sc_logr_debug(SC_ESL, "Analysis call result for task: %u, SIP Code:%u(%u)", pstSCB->ulTaskID, ulSIPRspCode, pstSCB->usTerminationCause);
+    sc_logr_debug(pstSCB, SC_ESL, "Analysis call result for task: %u, SIP Code:%u(%u)", pstSCB->ulTaskID, ulSIPRspCode, pstSCB->usTerminationCause);
 
     if (0 == ulSIPRspCode)
     {
@@ -218,7 +218,7 @@ U32 sc_ep_calltask_result(SC_SCB_ST *pstSCB, U32 ulSIPRspCode)
     pstCallResult->usTerminateCause = pstSCB->usTerminationCause;           /* 终止原因 */
     pstCallResult->ucReleasePart = pstSCB->ucReleasePart;
 
-    sc_logr_debug(SC_ESL, "Start get call result. Release: %d, Terminate Cause: %d(%d), "
+    sc_logr_debug(pstSCB, SC_ESL, "Start get call result. Release: %d, Terminate Cause: %d(%d), "
                           "In queue: %d, DTMF Time: %u, IVR Finish Time: %u, Other leg: %d, Status: %d"
                         , pstSCB->bIsInQueue, pstCallResult->ulFirstDTMFTime
                         , pstCallResult->ulIVRFinishTime
@@ -317,7 +317,7 @@ proc_finished:
         pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
     }
 
-    sc_logr_debug(SC_ESL, "Call result: %u. Release: %d, Terminate Cause: %d(%d), "
+    sc_logr_debug(pstSCB, SC_ESL, "Call result: %u. Release: %d, Terminate Cause: %d(%d), "
                           "In queue: %d, DTMF Time: %u, IVR Finish Time: %u, Other leg: %d, Status: %d"
                         , pstCallResult->ulResult, pstSCB->bIsInQueue, pstCallResult->ulFirstDTMFTime
                         , pstCallResult->ulIVRFinishTime
@@ -367,7 +367,7 @@ U32 sc_ep_agent_status_get(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 
     if (sc_ep_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
     {
-        sc_logr_info(SC_ESL, "Get channel ID fail for agent: %u", pstAgentInfo->ulSiteID);
+        sc_logr_info(NULL, SC_ESL, "Get channel ID fail for agent: %u", pstAgentInfo->ulSiteID);
         return DOS_FAIL;
     }
 
@@ -408,7 +408,7 @@ U32 sc_ep_agent_status_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
 
     if (sc_ep_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
     {
-        sc_logr_info(SC_ESL, "Get channel ID fail for agent: %u", pstAgentInfo->ulSiteID);
+        sc_logr_info(NULL, SC_ESL, "Get channel ID fail for agent: %u", pstAgentInfo->ulSiteID);
         return DOS_FAIL;
     }
 
@@ -454,7 +454,7 @@ U32 sc_ep_call_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
 
     if (sc_ep_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
     {
-        sc_logr_info(SC_ESL, "Get channel ID fail for agent: %u", pstAgentInfo->ulSiteID);
+        sc_logr_info(NULL, SC_ESL, "Get channel ID fail for agent: %u", pstAgentInfo->ulSiteID);
         return DOS_FAIL;
     }
 
@@ -778,7 +778,7 @@ U32 sc_ep_update_agent_req_proc(S8 *pszJSONString)
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_ESL, "%s", "Update the agent FAIL while init the json string.");
+        sc_logr_notice(NULL, SC_ESL, "%s", "Update the agent FAIL while init the json string.");
 
         goto process_fail;
     }
@@ -788,7 +788,7 @@ U32 sc_ep_update_agent_req_proc(S8 *pszJSONString)
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_ESL, "%s", "Update the agent FAIL while get agent infos from the json string.");
+        sc_logr_notice(NULL, SC_ESL, "%s", "Update the agent FAIL while get agent infos from the json string.");
 
         goto process_fail;
     }
@@ -798,7 +798,7 @@ U32 sc_ep_update_agent_req_proc(S8 *pszJSONString)
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_ESL, "%s", "Update the agent FAIL while get agent infos json array from the json string.");
+        sc_logr_notice(NULL, SC_ESL, "%s", "Update the agent FAIL while get agent infos json array from the json string.");
 
         goto process_fail;
     }
@@ -874,7 +874,7 @@ U32 sc_ep_query_agent_status(CURL *curl, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     ulRet = curl_easy_perform(curl);
     if(CURLE_OK != ulRet)
     {
-        sc_logr_notice(SC_ESL, "%s, (%s)", "CURL get agent status FAIL.", curl_easy_strerror(ulRet));
+        sc_logr_notice(NULL, SC_ESL, "%s, (%s)", "CURL get agent status FAIL.", curl_easy_strerror(ulRet));
 
         //curl_easy_cleanup(g_pstCurlHandle);
         dos_iobuf_free(&stIOBuffer);
@@ -925,7 +925,7 @@ U32 sc_ep_init_agent_status()
     ulRet = curl_easy_perform(g_pstCurlHandle);
     if(CURLE_OK != ulRet)
     {
-        sc_logr_notice(SC_ESL, "%s, (%s)", "CURL get agent status FAIL.", curl_easy_strerror(ulRet));
+        sc_logr_notice(pstSCB, SC_ESL, "%s, (%s)", "CURL get agent status FAIL.", curl_easy_strerror(ulRet));
         curl_easy_cleanup(g_pstCurlHandle);
         dos_iobuf_free(&stIOBuffer);
         return DOS_FAIL;
@@ -933,7 +933,7 @@ U32 sc_ep_init_agent_status()
 
     stIOBuffer.pszBuffer[stIOBuffer.ulLength] = '\0';
 
-    sc_logr_notice(SC_ESL, "%s", "CURL get agent status SUCC.Result");
+    sc_logr_notice(pstSCB, SC_ESL, "%s", "CURL get agent status SUCC.Result");
     dos_printf("%s", stIOBuffer.pszBuffer);
 
     ulRet = sc_ep_update_agent_req_proc((S8 *)stIOBuffer.pszBuffer);
@@ -1049,7 +1049,7 @@ BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum)
         return DOS_FALSE;
     }
 
-    sc_logr_debug(SC_ESL, "Check num %s is in black list for customer %u", pszNum, ulCustomerID);
+    sc_logr_debug(NULL, SC_ESL, "Check num %s is in black list for customer %u", pszNum, ulCustomerID);
 
     pthread_mutex_lock(&g_mutexHashBlackList);
     HASH_Scan_Table(g_pstHashBlackList, ulHashIndex)
@@ -1081,7 +1081,7 @@ BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum)
                 if (sc_ep_black_regular_check(pstBlackListNode->szNum, pszNum) == DOS_FALSE)
                 {
                     /* 匹配成功 */
-                    sc_logr_debug(SC_ESL, "Num %s is matched black list item %s, id %u. (Customer:%u)"
+                    sc_logr_debug(NULL, SC_ESL, "Num %s is matched black list item %s, id %u. (Customer:%u)"
                                 , pszNum
                                 , pstBlackListNode->szNum
                                 , pstBlackListNode->ulID
@@ -1096,7 +1096,7 @@ BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum)
             {
                 if (0 == dos_strcmp(pstBlackListNode->szNum, pszNum))
                 {
-                    sc_logr_debug(SC_ESL, "Num %s is matched black list item %s, id %u. (Customer:%u)"
+                    sc_logr_debug(NULL, SC_ESL, "Num %s is matched black list item %s, id %u. (Customer:%u)"
                                 , pszNum
                                 , pstBlackListNode->szNum
                                 , pstBlackListNode->ulID
@@ -1110,7 +1110,7 @@ BOOL sc_ep_black_list_check(U32 ulCustomerID, S8 *pszNum)
     }
     pthread_mutex_unlock(&g_mutexHashBlackList);
 
-    sc_logr_debug(SC_ESL, "Num %s is not matched any black list. (Customer:%u)", pszNum, ulCustomerID);
+    sc_logr_debug(NULL, SC_ESL, "Num %s is not matched any black list. (Customer:%u)", pszNum, ulCustomerID);
     return DOS_TRUE;
 }
 
@@ -1503,7 +1503,7 @@ S32 sc_ep_caller_grp_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        sc_logr_error(SC_FUNC, "pObj:%p, pstHashNode:%p, pHandle:%p", pObj, pstHashNode, pstHashNode->pHandle);
+        sc_logr_error(NULL, SC_FUNC, "pObj:%p, pstHashNode:%p, pHandle:%p", pObj, pstHashNode, pstHashNode->pHandle);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
@@ -1964,7 +1964,7 @@ U32 sc_caller_delete(U32 ulCallerID)
     if (DOS_FALSE == bFound)
     {
         DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Delete Caller FAIL.(ulID:%u)", ulCallerID);
+        sc_logr_error(NULL, SC_FUNC, "Delete Caller FAIL.(ulID:%u)", ulCallerID);
         return DOS_FAIL;
     }
     else
@@ -1976,7 +1976,7 @@ U32 sc_caller_delete(U32 ulCallerID)
         dos_dmem_free(pstHashNode);
         pstHashNode = NULL;
 
-        sc_logr_info(SC_FUNC, "Delete Caller SUCC.(ulID:%u)", ulCallerID);
+        sc_logr_info(NULL, SC_FUNC, "Delete Caller SUCC.(ulID:%u)", ulCallerID);
 
         return DOS_SUCC;
     }
@@ -1998,7 +1998,7 @@ U32 sc_caller_grp_delete(U32 ulCallerGrpID)
     {
         pthread_mutex_lock(&g_mutexHashCallerGrp);
 
-        sc_logr_error(SC_FUNC, "Cannot Find Caller Grp %u.", ulCallerGrpID);
+        sc_logr_error(NULL, SC_FUNC, "Cannot Find Caller Grp %u.", ulCallerGrpID);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
@@ -2066,7 +2066,7 @@ U32 sc_transform_delete(U32 ulTransformID)
     {
         pthread_mutex_unlock(&g_mutexNumTransformList);
         DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Num Transform Delete FAIL.ID %u does not exist.", ulTransformID);
+        sc_logr_error(NULL, SC_FUNC, "Num Transform Delete FAIL.ID %u does not exist.", ulTransformID);
         return DOS_FAIL;
     }
 
@@ -2076,7 +2076,7 @@ U32 sc_transform_delete(U32 ulTransformID)
     pstListNode->pHandle= NULL;
     dos_dmem_free(pstListNode);
     pstListNode = NULL;
-    sc_logr_debug(SC_FUNC, "Delete Num Transform SUCC.(ID:%u)", ulTransformID);
+    sc_logr_debug(NULL, SC_FUNC, "Delete Num Transform SUCC.(ID:%u)", ulTransformID);
 
     return DOS_SUCC;
 }
@@ -2092,7 +2092,7 @@ U32 sc_customer_delete(U32 ulCustomerID)
     {
         pthread_mutex_unlock(&g_mutexCustomerList);
         DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Num Transform Delete FAIL.ID %u does not exist.", ulCustomerID);
+        sc_logr_error(NULL, SC_FUNC, "Num Transform Delete FAIL.ID %u does not exist.", ulCustomerID);
         return DOS_FAIL;
     }
 
@@ -2102,7 +2102,7 @@ U32 sc_customer_delete(U32 ulCustomerID)
     pstListNode->pHandle= NULL;
     dos_dmem_free(pstListNode);
     pstListNode = NULL;
-    sc_logr_debug(SC_FUNC, "Delete Num Transform SUCC.(ID:%u)", ulCustomerID);
+    sc_logr_debug(NULL, SC_FUNC, "Delete Num Transform SUCC.(ID:%u)", ulCustomerID);
 
     return DOS_SUCC;
 }
@@ -2132,7 +2132,7 @@ U32 sc_caller_assign_add(U32 ulGrpID, U32 ulCallerID, U32 ulCallerType)
             DOS_ASSERT(0);
             dos_dmem_free(pstCache);
             pstCache = NULL;
-            sc_logr_error(SC_FUNC, "Add Caller Assign FAIL.(ulGrpID:%u, ulCallerID:%u).", ulGrpID, ulCallerID);
+            sc_logr_error(NULL, SC_FUNC, "Add Caller Assign FAIL.(ulGrpID:%u, ulCallerID:%u).", ulGrpID, ulCallerID);
             return DOS_FAIL;
         }
         pstCache->stData.pstCaller = pstCaller;
@@ -2146,7 +2146,7 @@ U32 sc_caller_assign_add(U32 ulGrpID, U32 ulCallerID, U32 ulCallerType)
             DOS_ASSERT(0);
             dos_dmem_free(pstCache);
             pstCache = NULL;
-            sc_logr_error(SC_FUNC, "Add Caller Assign FAIL.(ulGrpID:%u, ulCallerID:%u).", ulGrpID, ulCallerID);
+            sc_logr_error(NULL, SC_FUNC, "Add Caller Assign FAIL.(ulGrpID:%u, ulCallerID:%u).", ulGrpID, ulCallerID);
             return DOS_FAIL;
         }
         pstCache->stData.pstDid = pstDid;
@@ -2168,7 +2168,7 @@ U32 sc_caller_assign_add(U32 ulGrpID, U32 ulCallerID, U32 ulCallerType)
             dos_dmem_free(pstDid);
             pstDid = NULL;
         }
-        sc_logr_error(SC_FUNC, "Add Caller Assign FAIL.(ulGrpID:%u, ulCallerID:%u).", ulGrpID, ulCallerID);
+        sc_logr_error(NULL, SC_FUNC, "Add Caller Assign FAIL.(ulGrpID:%u, ulCallerID:%u).", ulGrpID, ulCallerID);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
@@ -2178,7 +2178,7 @@ U32 sc_caller_assign_add(U32 ulGrpID, U32 ulCallerID, U32 ulCallerType)
     ulHashIndex = sc_ep_caller_grp_hash_func(ulGrpID);
     hash_add_node(g_pstHashCallerGrp, pstHashNode, ulHashIndex, NULL);
 
-    sc_logr_info(SC_FUNC, "Add Caller Assign SUCC.(ulGrpID:%u, ulCallerID:%u).", ulGrpID, ulCallerID);
+    sc_logr_info(NULL, SC_FUNC, "Add Caller Assign SUCC.(ulGrpID:%u, ulCallerID:%u).", ulGrpID, ulCallerID);
 
     return DOS_SUCC;
 }
@@ -2535,7 +2535,7 @@ S32 sc_load_sip_userid_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             return DOS_FAIL;
         }
 /*
-        sc_logr_info(SC_ESL, "Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
+        sc_logr_info(pstSCB, SC_ESL, "Load SIP User. ID: %d, Customer: %d, UserID: %s, Extension: %s"
                     , pstSIPUserIDNodeNew->ulSIPID
                     , pstSIPUserIDNodeNew->ulCustomID
                     , pstSIPUserIDNodeNew->szUserID
@@ -2591,7 +2591,7 @@ U32 sc_load_sip_userid(U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ESL, "%s", "Load sip account fail.");
+        sc_logr_error(NULL, SC_ESL, "%s", "Load sip account fail.");
         return DOS_FAIL;
     }
 
@@ -2766,7 +2766,7 @@ U32 sc_load_black_list(U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ESL, "%s", "Load black list fail.");
+        sc_logr_error(NULL, SC_ESL, "%s", "Load black list fail.");
         return DOS_FAIL;
     }
 
@@ -2793,7 +2793,7 @@ U32 sc_update_black_list(U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ESL, "%s", "Load blacklist fail.");
+        sc_logr_error(NULL, SC_ESL, "%s", "Load blacklist fail.");
         return DOS_FAIL;
     }
     return DOS_SUCC;
@@ -2940,7 +2940,7 @@ U32 sc_load_tt_number(U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ESL, "%s", "Load TT number FAIL.");
+        sc_logr_error(NULL, SC_ESL, "%s", "Load TT number FAIL.");
         return DOS_FAIL;
     }
 
@@ -3262,11 +3262,11 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         ulRet = py_exec_func("router", "del_route", "(k)", (U64)pstGWNode->ulGWID);
         if (DOS_SUCC != ulRet)
         {
-            sc_logr_debug(SC_FUNC, "Delete FreeSWITCH XML file of gateway %u FAIL by status.", pstGWNode->ulGWID);
+            sc_logr_debug(NULL, SC_FUNC, "Delete FreeSWITCH XML file of gateway %u FAIL by status.", pstGWNode->ulGWID);
         }
         else
         {
-            sc_logr_debug(SC_FUNC, "Delete FreeSWITCH XML file of gateway %u SUCC by status.", pstGWNode->ulGWID);
+            sc_logr_debug(NULL, SC_FUNC, "Delete FreeSWITCH XML file of gateway %u SUCC by status.", pstGWNode->ulGWID);
         }
     }
     else
@@ -3274,11 +3274,11 @@ S32 sc_load_gateway_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         ulRet = py_exec_func("router", "make_route", "(i)", pstGWNode->ulGWID);
         if (DOS_SUCC != ulRet)
         {
-            sc_logr_error(SC_FUNC, "Generate FreeSWITCH XML file of gateway %u FAIL by status.", pstGWNode->ulGWID);
+            sc_logr_error(NULL, SC_FUNC, "Generate FreeSWITCH XML file of gateway %u FAIL by status.", pstGWNode->ulGWID);
         }
         else
         {
-            sc_logr_debug(SC_FUNC, "Generate FreeSWITCH XML file of gateway %u SUCC by status.", pstGWNode->ulGWID);
+            sc_logr_debug(NULL, SC_FUNC, "Generate FreeSWITCH XML file of gateway %u SUCC by status.", pstGWNode->ulGWID);
         }
     }
 #endif
@@ -3311,7 +3311,7 @@ U32 sc_load_gateway(U32 ulIndex)
     if (DB_ERR_SUCC != ulRet)
     {
         DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Load gateway FAIL.(ID:%u)", ulIndex);
+        sc_logr_error(NULL, SC_FUNC, "Load gateway FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
 
@@ -3325,7 +3325,7 @@ U32 sc_load_gateway(U32 ulIndex)
         }
     }
 
-    sc_logr_debug(SC_FUNC, "Load gateway SUCC.(ID:%u)", ulIndex);
+    sc_logr_debug(NULL, SC_FUNC, "Load gateway SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -3462,10 +3462,10 @@ U32 sc_load_gateway_grp(U32 ulIndex)
     if (ulRet != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Load gateway Group FAIL.(ID:%u)", ulIndex);
+        sc_logr_error(NULL, SC_FUNC, "Load gateway Group FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
-    sc_logr_info(SC_FUNC, "Load gateway Group SUCC.(ID:%u)", ulIndex);
+    sc_logr_info(NULL, SC_FUNC, "Load gateway Group SUCC.(ID:%u)", ulIndex);
 
     return ulRet;
 }
@@ -3550,7 +3550,7 @@ S32 sc_load_gw_relationship_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszN
     DLL_Add(&pstGWGrp->stGWList, pstListNode);
     pthread_mutex_unlock(&pstGWGrp->mutexGWList);
 
-    sc_logr_debug(SC_FUNC, "Gateway %u will be added into group %u.", ulGatewayID, pstGWGrp->ulGWGrpID);
+    sc_logr_debug(NULL, SC_FUNC, "Gateway %u will be added into group %u.", ulGatewayID, pstGWGrp->ulGWGrpID);
 
     return DOS_FAIL;
 }
@@ -3734,11 +3734,11 @@ U32 sc_load_caller(U32 ulIndex)
     ulRet = db_query(g_pstSCDBHandle, szQuery, sc_load_caller_cb, NULL, NULL);
     if (DB_ERR_SUCC != ulRet)
     {
-        sc_logr_error(SC_FUNC, "Load caller FAIL.(ID:%u)", ulIndex);
+        sc_logr_error(NULL, SC_FUNC, "Load caller FAIL.(ID:%u)", ulIndex);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-    sc_logr_debug(SC_FUNC, "Load Caller SUCC.(ID:%u)", ulIndex);
+    sc_logr_debug(NULL, SC_FUNC, "Load Caller SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -4026,11 +4026,11 @@ U32 sc_load_caller_grp(U32 ulIndex)
     ulRet = db_query(g_pstSCDBHandle, szSQL, sc_load_caller_grp_cb, NULL, NULL);
     if (ulRet != DOS_SUCC)
     {
-        sc_logr_error(SC_FUNC, "Load caller group FAIL.(ID:%u)", ulIndex);
+        sc_logr_error(NULL, SC_FUNC, "Load caller group FAIL.(ID:%u)", ulIndex);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-    sc_logr_debug(SC_FUNC, "Load caller group SUCC.(ID:%u)", ulIndex);
+    sc_logr_debug(NULL, SC_FUNC, "Load caller group SUCC.(ID:%u)", ulIndex);
 
     return ulRet;
 }
@@ -4059,13 +4059,13 @@ U32 sc_load_caller_relationship()
             lRet = db_query(g_pstSCDBHandle, szQuery, sc_load_caller_relationship_cb, (VOID *)pstCallerGrp, NULL);
             if (DB_ERR_SUCC != lRet)
             {
-                sc_logr_error(SC_FUNC, "Load Caller RelationShip FAIL.(CallerGrpID:%u)", pstCallerGrp->ulID);
+                sc_logr_error(NULL, SC_FUNC, "Load Caller RelationShip FAIL.(CallerGrpID:%u)", pstCallerGrp->ulID);
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
         }
     }
-    sc_logr_debug(SC_FUNC, "%s", "Load Caller relationship SUCC.");
+    sc_logr_debug(NULL, SC_FUNC, "%s", "Load Caller relationship SUCC.");
 
     return DOS_SUCC;
 }
@@ -4230,11 +4230,11 @@ U32  sc_load_caller_setting(U32 ulIndex)
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_load_caller_setting_cb, NULL, NULL);
     if (DB_ERR_SUCC != lRet)
     {
-        sc_logr_error(SC_FUNC, "Load caller setting FAIL.(ID:%u)", ulIndex);
+        sc_logr_error(NULL, SC_FUNC, "Load caller setting FAIL.(ID:%u)", ulIndex);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-    sc_logr_debug(SC_FUNC, "Load caller setting SUCC.(ID:%u)", ulIndex);
+    sc_logr_debug(NULL, SC_FUNC, "Load caller setting SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -4278,7 +4278,7 @@ U32 sc_refresh_gateway_grp(U32 ulIndex)
             break;
         }
         pstGWNode = (SC_GW_NODE_ST *)pstDLLNode->pHandle;
-        sc_logr_debug(SC_FUNC, "Gateway %u will be removed from Group %u", pstGWNode->ulGWID, ulIndex);
+        sc_logr_debug(NULL, SC_FUNC, "Gateway %u will be removed from Group %u", pstGWNode->ulGWID, ulIndex);
 
         /* 此处不能释放网关数据，只需释放链表结点即可，因为一个网关可以属于多个网关组，此处删除，容易产生double free信号 */
         if (DOS_ADDR_VALID(pstDLLNode->pHandle))
@@ -4319,7 +4319,7 @@ U32 sc_refresh_caller_grp(U32 ulIndex)
         pthread_mutex_unlock(&g_mutexHashCallerGrp);
 
         DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "SC Refresh Caller Grp FAIL.(CallerGrpID:%u)", ulIndex);
+        sc_logr_error(NULL, SC_FUNC, "SC Refresh Caller Grp FAIL.(CallerGrpID:%u)", ulIndex);
         return DOS_FAIL;
     }
     pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
@@ -4645,10 +4645,10 @@ U32 sc_load_route(U32 ulIndex)
     if (DB_ERR_SUCC != lRet)
     {
         DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Load route FAIL(ID:%u).", ulIndex);
+        sc_logr_error(NULL, SC_FUNC, "Load route FAIL(ID:%u).", ulIndex);
         return DOS_FAIL;
     }
-    sc_logr_debug(SC_FUNC, "Load route SUCC.(ID:%u)", ulIndex);
+    sc_logr_debug(NULL, SC_FUNC, "Load route SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -4970,10 +4970,10 @@ U32 sc_load_num_transform(U32 ulIndex)
     if (DB_ERR_SUCC != lRet)
     {
         DOS_ASSERT(0);
-        sc_logr_error(SC_FUNC, "Load Num Transform FAIL.(ID:%u)", ulIndex);
+        sc_logr_error(NULL, SC_FUNC, "Load Num Transform FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
-    sc_logr_debug(SC_FUNC, "Load Num Transform SUCC.(ID:%u)", ulIndex);
+    sc_logr_debug(NULL, SC_FUNC, "Load Num Transform SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -5319,7 +5319,7 @@ U32 sc_load_number_lmt(U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ESL, "%s", "Load number limitation fail.");
+        sc_logr_error(NULL, SC_ESL, "%s", "Load number limitation fail.");
         return DOS_FAIL;
     }
 
@@ -5524,7 +5524,7 @@ S32 sc_load_serv_ctrl_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     if (!blProcessOK || 9 != ulProcessCnt)
     {
-        sc_logr_notice(SC_ESL, "Load service control rule fail.(%u, %u)", ulProcessCnt, blProcessOK);
+        sc_logr_notice(NULL, SC_ESL, "Load service control rule fail.(%u, %u)", ulProcessCnt, blProcessOK);
 
         dos_dmem_free(pstSrvCtrl);
         pstSrvCtrl = NULL;
@@ -5544,7 +5544,7 @@ S32 sc_load_serv_ctrl_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         {
             pthread_mutex_unlock(&g_mutexHashServCtrl);
 
-            sc_logr_warning(SC_ESL, "Alloc memory for service ctrl block fail. ID: %u, Customer: %u", stFindParam.ulID, stFindParam.ulCustomerID);
+            sc_logr_warning(NULL, SC_ESL, "Alloc memory for service ctrl block fail. ID: %u, Customer: %u", stFindParam.ulID, stFindParam.ulCustomerID);
 
             dos_dmem_free(pstSrvCtrl);
             pstSrvCtrl = NULL;
@@ -5572,7 +5572,7 @@ S32 sc_load_serv_ctrl_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     pthread_mutex_unlock(&g_mutexHashServCtrl);
 
-    sc_logr_debug(SC_ESL, "Add service ctrl block. ID: %u, Customer: %u", stFindParam.ulID, stFindParam.ulCustomerID);
+    sc_logr_debug(NULL, SC_ESL, "Add service ctrl block. ID: %u, Customer: %u", stFindParam.ulID, stFindParam.ulCustomerID);
     return DOS_SUCC;
 }
 
@@ -5636,11 +5636,11 @@ U32 sc_load_serv_ctrl(U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ESL, "%s", "Load service control rule fail.");
+        sc_logr_error(NULL, SC_ESL, "%s", "Load service control rule fail.");
         return DOS_FAIL;
     }
 
-    sc_logr_error(SC_ESL, "%s", "Load service control rule succ.");
+    sc_logr_error(NULL, SC_ESL, "%s", "Load service control rule succ.");
 
     return DOS_SUCC;
 }
@@ -5656,7 +5656,7 @@ BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 u
     ulHashIndex = sc_serv_ctrl_hash(ulCustomerID);
     stTime = time(NULL);
 
-    sc_logr_info(SC_ESL, "Start match service control rule. Customer: %u, Service: %u, Attr1: %u, Attr2: %u, Attr1Val: %u, Attr2Val: %u"
+    sc_logr_info(NULL, SC_ESL, "Start match service control rule. Customer: %u, Service: %u, Attr1: %u, Attr2: %u, Attr1Val: %u, Attr2Val: %u"
                 , ulCustomerID, ulServerType, ulAttr1, ulAttrVal1, ulAttr2, ulAttrVal2);
 
     blResult = DOS_FALSE;
@@ -5679,7 +5679,7 @@ BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 u
         if (stTime < pstSrvCtrl->ulEffectTimestamp
             || (pstSrvCtrl->ulExpireTimestamp && stTime > pstSrvCtrl->ulExpireTimestamp))
         {
-            sc_logr_debug(SC_ESL, "Test service control rule: FAIL, Effect: %u, Expire: %u, Current: %u"
+            sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Effect: %u, Expire: %u, Current: %u"
                             , pstSrvCtrl->ulEffectTimestamp, pstSrvCtrl->ulExpireTimestamp, stTime);
             continue;
         }
@@ -5688,7 +5688,7 @@ BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 u
         if (0 != ulServerType
             && ulServerType != pstSrvCtrl->ulServType)
         {
-            sc_logr_debug(SC_ESL, "Test service control rule: FAIL, Request service type: %u, Current service type: %u"
+            sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request service type: %u, Current service type: %u"
                             , ulServerType, pstSrvCtrl->ulServType);
             continue;
         }
@@ -5697,7 +5697,7 @@ BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 u
         if (0 != ulAttr1
             && ulAttr1 != pstSrvCtrl->ulAttr1)
         {
-            sc_logr_debug(SC_ESL, "Test service control rule: FAIL, Request Attr1: %u, Current Attr1: %u"
+            sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request Attr1: %u, Current Attr1: %u"
                             , ulAttr1, pstSrvCtrl->ulAttr1);
             continue;
         }
@@ -5706,7 +5706,7 @@ BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 u
         if (0 != ulAttr2
             && ulAttr2 != pstSrvCtrl->ulAttr2)
         {
-            sc_logr_debug(SC_ESL, "Test service control rule: FAIL, Request Attr2: %u, Current Attr2: %u"
+            sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request Attr2: %u, Current Attr2: %u"
                             , ulAttr2, pstSrvCtrl->ulAttr2);
             continue;
         }
@@ -5715,7 +5715,7 @@ BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 u
         if (U32_BUTT != ulAttrVal1
             && ulAttrVal1 != pstSrvCtrl->ulAttrValue1)
         {
-            sc_logr_debug(SC_ESL, "Test service control rule: FAIL, Request Attr1 Value: %u, Attr1 Value: %u"
+            sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request Attr1 Value: %u, Attr1 Value: %u"
                             , ulAttrVal1, pstSrvCtrl->ulAttrValue1);
             continue;
         }
@@ -5724,19 +5724,19 @@ BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 u
         if (U32_BUTT != ulAttrVal2
             && ulAttrVal2 != pstSrvCtrl->ulAttrValue2)
         {
-            sc_logr_debug(SC_ESL, "Test service control rule: FAIL, Request Attr2 Value: %u, Attr2 Value: %u"
+            sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request Attr2 Value: %u, Attr2 Value: %u"
                             , ulAttrVal2, pstSrvCtrl->ulAttrValue2);
             continue;
         }
 
         /* 所有向均匹配 */
-        sc_logr_debug(SC_ESL, "Test service control rule: SUCC. ID: %u", pstSrvCtrl->ulID);
+        sc_logr_debug(NULL, SC_ESL, "Test service control rule: SUCC. ID: %u", pstSrvCtrl->ulID);
 
         blResult = DOS_TRUE;
         break;
     }
 
-    sc_logr_info(SC_ESL, "Match service control rule %s.", blResult ? "SUCC" : "FAIL");
+    sc_logr_info(NULL, SC_ESL, "Match service control rule %s.", blResult ? "SUCC" : "FAIL");
 
     pthread_mutex_unlock(&g_mutexHashServCtrl);
 
@@ -6250,7 +6250,6 @@ BOOL sc_num_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber)
 {
     U32  ulHashIndexMunLmt  = 0;
     U32  ulHandleType       = 0;
-    BOOL blReachLmt         = DOS_FALSE;
     HASH_NODE_S             *pstHashNodeNumLmt = NULL;
     SC_NUMBER_LMT_NODE_ST   *pstNumLmt         = NULL;
 
@@ -6270,29 +6269,29 @@ BOOL sc_num_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber)
         || DOS_ADDR_INVALID(pstHashNodeNumLmt->pHandle))
     {
         pthread_mutex_unlock(&g_mutexHashNumberlmt);
-        DOS_ASSERT(0);
 
-        sc_debug(SC_ESL, LOG_LEVEL_DEBUG
+        sc_logr_debug(NULL, SC_ESL
                 , "Number limit check for \"%s\", There is no limitation for this number."
                 , pszNumber);
         return DOS_TRUE;
     }
 
     pstNumLmt = (SC_NUMBER_LMT_NODE_ST *)pstHashNodeNumLmt->pHandle;
-    if (pstNumLmt->ulStatUsed + ulCurrentTime >= pstNumLmt->ulLimit)
+    if (pstNumLmt->ulStatUsed + ulCurrentTime < pstNumLmt->ulLimit)
     {
-        DOS_ASSERT(0);
-        blReachLmt = DOS_TRUE;
-        sc_debug(SC_ESL, LOG_LEVEL_WARNING
-                , "Number limit check for \"%s\", This number has reached the limitation. Cycle: %u, Limitation: %u, Used: %u"
+        sc_logr_debug(NULL, SC_ESL
+                , "Number limit check for \"%s\". This number did not reached the limitation. Cycle: %u, Limitation: %u, Used: %u"
                 , pszNumber, pstNumLmt->ulCycle, pstNumLmt->ulLimit, pstNumLmt->ulStatUsed + ulCurrentTime);
+
+        pthread_mutex_unlock(&g_mutexHashNumberlmt);
+        return DOS_TRUE;
     }
 
     ulHandleType = pstNumLmt->ulHandle;
 
     pthread_mutex_unlock(&g_mutexHashNumberlmt);
 
-    sc_debug(SC_ESL, LOG_LEVEL_WARNING
+    sc_logr_notice(NULL, SC_ESL
             , "Number limit check for \"%s\", This number has reached the limitation. Process as handle: %u"
             , pszNumber, pstNumLmt->ulHandle);
 
@@ -6306,7 +6305,6 @@ BOOL sc_num_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber)
             DOS_ASSERT(0);
             return DOS_TRUE;
     }
-
 
     return DOS_TRUE;
 }
@@ -6400,7 +6398,7 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
         return DOS_FAIL;
     }
 
-    sc_logr_debug(SC_DIALER, "Search number transfer rule for the task %d, timing is : %d, number select : %d"
+    sc_logr_debug(pstSCB, SC_DIALER, "Search number transfer rule for the task %d, timing is : %d, number select : %d"
                                 , pstSCB->ulTaskID, enTiming, enNumSelect);
 
     /* 判断一下呼叫方向 呼入/呼出 */
@@ -6414,7 +6412,7 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
         enDirection = SC_NUM_TRANSFORM_DIRECTION_OUT;
     }
 
-    sc_logr_debug(SC_DIALER, "call firection : %d, pstSCB->ucLegRole : %d, pstSCB->bIsAgentCall : %d", enDirection, pstSCB->ucLegRole, pstSCB->bIsAgentCall);
+    sc_logr_debug(pstSCB, SC_DIALER, "call firection : %d, pstSCB->ucLegRole : %d, pstSCB->bIsAgentCall : %d", enDirection, pstSCB->ucLegRole, pstSCB->bIsAgentCall);
 
     /* 遍历号码变换规则的链表，查找没有过期的，优先级别高的，针对这个客户或者系统的变换规则。
         先按优先级，同优先级，客户优先于中继，中继优先于系统 */
@@ -6467,7 +6465,7 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
             }
         }
 
-        sc_logr_debug(SC_DIALER, "Call Object : %d", pstNumTransformEntry->enObject);
+        sc_logr_debug(pstSCB, SC_DIALER, "Call Object : %d", pstNumTransformEntry->enObject);
 
         if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER == pstNumTransformEntry->enObject)
         {
@@ -6553,13 +6551,13 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
     if (DOS_ADDR_INVALID(pstNumTransform))
     {
         /* 没有找到合适的变换规则 */
-        sc_logr_debug(SC_DIALER, "Not find number transfer rule for the task %d, timing is : %d, number select : %d"
+        sc_logr_debug(pstSCB, SC_DIALER, "Not find number transfer rule for the task %d, timing is : %d, number select : %d"
                                 , pstSCB->ulTaskID, enTiming, enNumSelect);
 
         goto succ;
     }
 
-    sc_logr_debug(SC_DIALER, "Find a number transfer rule(%d) for the task %d, timing is : %d, number select : %d"
+    sc_logr_debug(pstSCB, SC_DIALER, "Find a number transfer rule(%d) for the task %d, timing is : %d, number select : %d"
                                 , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
 
     if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
@@ -6583,7 +6581,7 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
             if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER != pstNumTransform->enObject || enNumSelect != SC_NUM_TRANSFORM_SELECT_CALLER)
             {
                 /* 只有企业客户 和 变换主叫号码时，才可以选择号码组中的号码进行替换 */
-                sc_logr_info(SC_DIALER, "Number transfer rule(%d) for the task %d fail : only a enterprise customers can, choose number in the group number"
+                sc_logr_info(pstSCB, SC_DIALER, "Number transfer rule(%d) for the task %d fail : only a enterprise customers can, choose number in the group number"
                                 , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
 
                 goto fail;
@@ -6591,25 +6589,25 @@ U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMIN
 
             if (dos_atoul(&pstNumTransform->szReplaceNum[1], &ulCallerGrpID) < 0)
             {
-                sc_logr_info(SC_DIALER, "Number transfer rule(%d), get caller group id fail.", pstNumTransform->ulID);
+                sc_logr_info(pstSCB, SC_DIALER, "Number transfer rule(%d), get caller group id fail.", pstNumTransform->ulID);
 
                 goto fail;
             }
 
             if (sc_select_number_in_order(pstSCB->ulCustomID, ulCallerGrpID, szNeedTransformNum, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
             {
-                sc_logr_info(SC_DIALER, "Number transfer rule(%d), get caller from group id(%u) fail.", pstNumTransform->ulID, ulCallerGrpID);
+                sc_logr_info(pstSCB, SC_DIALER, "Number transfer rule(%d), get caller from group id(%u) fail.", pstNumTransform->ulID, ulCallerGrpID);
 
                 goto fail;
             }
 
-            sc_logr_debug(SC_DIALER, "Number transfer rule(%d), get caller(%s) from group id(%u) succ.", pstNumTransform->ulID, szNeedTransformNum, ulCallerGrpID);
+            sc_logr_debug(pstSCB, SC_DIALER, "Number transfer rule(%d), get caller(%s) from group id(%u) succ.", pstNumTransform->ulID, szNeedTransformNum, ulCallerGrpID);
 
         }
         else if (pstNumTransform->szReplaceNum[0] == '\0')
         {
             /* 完全替换的号码不能为空 */
-            sc_logr_info(SC_DIALER, "The number transfer rule(%d) replace num is NULL!"
+            sc_logr_info(pstSCB, SC_DIALER, "The number transfer rule(%d) replace num is NULL!"
                                 , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
 
             goto fail;
@@ -6711,12 +6709,12 @@ succ:
 
     if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
     {
-        sc_logr_debug(SC_DIALER, "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstSCB->ulTaskID, pstSCB->szCallerNum, szNeedTransformNum);
+        sc_logr_debug(pstSCB, SC_DIALER, "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstSCB->ulTaskID, pstSCB->szCallerNum, szNeedTransformNum);
         dos_strcpy(pstSCB->szCallerNum, szNeedTransformNum);
     }
     else
     {
-        sc_logr_debug(SC_DIALER, "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstSCB->ulTaskID, pstSCB->szCalleeNum, szNeedTransformNum);
+        sc_logr_debug(pstSCB, SC_DIALER, "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstSCB->ulTaskID, pstSCB->szCalleeNum, szNeedTransformNum);
         dos_strcpy(pstSCB->szCalleeNum, szNeedTransformNum);
     }
 
@@ -6726,7 +6724,7 @@ succ:
 
 fail:
 
-    sc_logr_info(SC_DIALER, "the number transfer(%d) FAIL, task : %d", pstNumTransform->ulID, pstSCB->ulTaskID);
+    sc_logr_info(pstSCB, SC_DIALER, "the number transfer(%d) FAIL, task : %d", pstNumTransform->ulID, pstSCB->ulTaskID);
     if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
     {
         pstSCB->szCallerNum[0] = '\0';
@@ -6796,13 +6794,13 @@ U32 sc_ep_get_eix_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength)
     {
         pthread_mutex_unlock(&g_mutexHashTTNumber);
 
-        sc_logr_info(SC_ESL, "Cannot find the EIA for the TT number %s", pszTTNumber);
+        sc_logr_info(NULL, SC_ESL, "Cannot find the EIA for the TT number %s", pszTTNumber);
         return DOS_FAIL;
     }
 
     pthread_mutex_unlock(&g_mutexHashTTNumber);
 
-    sc_logr_info(SC_ESL, "Found the EIA(%s) for the TT number(%s).", pszEIX, pszTTNumber);
+    sc_logr_info(NULL, SC_ESL, "Found the EIA(%s) for the TT number(%s).", pszEIX, pszTTNumber);
     return DOS_SUCC;
 }
 
@@ -6836,7 +6834,7 @@ U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
         if (ESL_SUCCESS != ulRet)
         {
             esl_disconnect(&g_pstHandle->stSendHandle);
-            sc_logr_notice(SC_ESL, "ELS for send event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstHandle->stSendHandle.err);
+            sc_logr_notice(NULL, SC_ESL, "ELS for send event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstHandle->stSendHandle.err);
 
             DOS_ASSERT(0);
 
@@ -6849,7 +6847,7 @@ U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
     if (ESL_SUCCESS != esl_execute(&g_pstHandle->stSendHandle, pszApp, pszArg, pszUUID))
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_ESL, "ESL execute command fail. Result:%d, APP: %s, ARG : %s, UUID: %s"
+        sc_logr_notice(NULL, SC_ESL, "ESL execute command fail. Result:%d, APP: %s, ARG : %s, UUID: %s"
                         , ulRet
                         , pszApp
                         , DOS_ADDR_VALID(pszArg) ? pszArg : "NULL"
@@ -6858,7 +6856,7 @@ U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
         return DOS_FAIL;
     }
 
-    sc_logr_debug(SC_ESL, "ESL execute command SUCC. APP: %s, Param: %s, UUID: %s"
+    sc_logr_debug(NULL, SC_ESL, "ESL execute command SUCC. APP: %s, Param: %s, UUID: %s"
                     , pszApp
                     , DOS_ADDR_VALID(pszArg) ? pszArg : "NULL"
                     , pszUUID);
@@ -6990,7 +6988,7 @@ U32 sc_ep_esl_execute_cmd(const S8 *pszCmd)
         if (ESL_SUCCESS != ulRet)
         {
             esl_disconnect(&g_pstHandle->stSendHandle);
-            sc_logr_notice(SC_ESL, "ELS for send event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstHandle->stSendHandle.err);
+            sc_logr_notice(NULL, SC_ESL, "ELS for send event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstHandle->stSendHandle.err);
 
             DOS_ASSERT(0);
 
@@ -7003,14 +7001,14 @@ U32 sc_ep_esl_execute_cmd(const S8 *pszCmd)
     if (ESL_SUCCESS != esl_send(&g_pstHandle->stSendHandle, pszCmd))
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_ESL, "ESL execute command fail. Result:%d, CMD: %s"
+        sc_logr_notice(NULL, SC_ESL, "ESL execute command fail. Result:%d, CMD: %s"
                         , ulRet
                         , pszCmd);
 
         return DOS_FAIL;
     }
 
-    sc_logr_notice(SC_ESL, "ESL execute command SUCC. CMD: %s", pszCmd);
+    sc_logr_notice(NULL, SC_ESL, "ESL execute command SUCC. CMD: %s", pszCmd);
 
     return DOS_SUCC;
 }
@@ -7046,7 +7044,7 @@ U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase)
 
     usSipErrCode = sc_ep_transform_errcode_from_sc2sip(ulTernmiteCase);
 
-    sc_logr_debug(SC_ESL, "Hangup call with error code %u", ulTernmiteCase);
+    sc_logr_debug(pstSCB, SC_ESL, "Hangup call with error code %u", ulTernmiteCase);
 
     switch (usSipErrCode)
     {
@@ -7103,7 +7101,7 @@ U32 sc_ep_hangup_call(SC_SCB_ST *pstSCB, U32 ulTernmiteCase)
 
         return DOS_FAIL;
     }
-    sc_logr_debug(SC_ESL, "Hangup call with error code %d, pstscb : %d, other : %d", ulTernmiteCase, pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+    sc_logr_debug(pstSCB, SC_ESL, "Hangup call with error code %d, pstscb : %d, other : %d", ulTernmiteCase, pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
 
     /* 将 SC 的错误码转换为 SIP 的 */
     usSipErrCode = sc_ep_transform_errcode_from_sc2sip(ulTernmiteCase);
@@ -7254,11 +7252,11 @@ U32 sc_ep_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
     {
         /* 客户标记，ulStartTimeStamp和ulAnswerTimeStamp、 ulRingTimeStamp 就不用获取了，要修改成成这个时间 */
         pstSCB->pstExtraData->ulStartTimeStamp = pstSCB->ulMarkStartTimeStamp;
-        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Created-Time=%u(%u)", pstSCB->ulMarkStartTimeStamp, pstSCB->pstExtraData->ulStartTimeStamp);
+        sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Created-Time=%u(%u)", pstSCB->ulMarkStartTimeStamp, pstSCB->pstExtraData->ulStartTimeStamp);
         pstSCB->pstExtraData->ulAnswerTimeStamp = pstSCB->ulMarkStartTimeStamp;
-        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%u(%u)", pstSCB->ulMarkStartTimeStamp, pstSCB->pstExtraData->ulAnswerTimeStamp);
+        sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%u(%u)", pstSCB->ulMarkStartTimeStamp, pstSCB->pstExtraData->ulAnswerTimeStamp);
         pstSCB->pstExtraData->ulRingTimeStamp = pstSCB->ulMarkStartTimeStamp;
-        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Progress-Time=%u(%u)", pstSCB->ulMarkStartTimeStamp, pstSCB->pstExtraData->ulRingTimeStamp);
+        sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Progress-Time=%u(%u)", pstSCB->ulMarkStartTimeStamp, pstSCB->pstExtraData->ulRingTimeStamp);
     }
     else
     {
@@ -7268,7 +7266,7 @@ U32 sc_ep_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
             && dos_atoull(pszTmp, &uLTmp) == 0)
         {
             pstSCB->pstExtraData->ulStartTimeStamp = uLTmp / 1000000;
-            sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Created-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulStartTimeStamp);
+            sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Created-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulStartTimeStamp);
         }
 
         pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Answered-Time");
@@ -7277,7 +7275,7 @@ U32 sc_ep_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
             && dos_atoull(pszTmp, &uLTmp) == 0)
         {
             pstSCB->pstExtraData->ulAnswerTimeStamp = uLTmp / 1000000;
-            sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulAnswerTimeStamp);
+            sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulAnswerTimeStamp);
         }
 
         pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Progress-Time");
@@ -7286,7 +7284,7 @@ U32 sc_ep_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
             && dos_atoull(pszTmp, &uLTmp) == 0)
         {
             pstSCB->pstExtraData->ulRingTimeStamp = uLTmp / 1000000;
-            sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Progress-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulRingTimeStamp);
+            sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Progress-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulRingTimeStamp);
         }
     }
 
@@ -7296,7 +7294,7 @@ U32 sc_ep_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
         && dos_atoull(pszTmp, &uLTmp) == 0)
     {
         pstSCB->pstExtraData->ulBridgeTimeStamp = uLTmp / 1000000;
-        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Bridged-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulBridgeTimeStamp);
+        sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Bridged-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulBridgeTimeStamp);
     }
 
     pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Hangup-Time");
@@ -7305,7 +7303,7 @@ U32 sc_ep_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
         && dos_atoull(pszTmp, &uLTmp) == 0)
     {
         pstSCB->pstExtraData->ulByeTimeStamp = uLTmp / 1000000;
-        sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Hangup-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulByeTimeStamp);
+        sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Hangup-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulByeTimeStamp);
     }
 
     if (pstSCB->ucTranforRole == SC_TRANS_ROLE_NOTIFY)
@@ -7317,7 +7315,7 @@ U32 sc_ep_parse_extra_data(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
             && dos_atoull(pszTmp, &uLTmp) == 0)
         {
             pstSCB->pstExtraData->ulTransferTimeStamp = uLTmp;
-            sc_logr_debug(SC_ESL, "Get extra data: variable_bridge_epoch=%s(%u)", pszTmp, pstSCB->pstExtraData->ulTransferTimeStamp);
+            sc_logr_debug(pstSCB, SC_ESL, "Get extra data: variable_bridge_epoch=%s(%u)", pszTmp, pstSCB->pstExtraData->ulTransferTimeStamp);
         }
     }
 
@@ -7345,13 +7343,13 @@ U32 sc_ep_terminate_call(SC_SCB_ST *pstSCB)
                 bIsOtherHangup = DOS_TRUE;
             }
 
-            sc_logr_notice(SC_ESL, "Hangup Call for Auth FAIL. SCB No : %d, UUID: %s.", pstSCBOther->usSCBNo, pstSCBOther->szUUID);
+            sc_logr_notice(pstSCB, SC_ESL, "Hangup Call for Auth FAIL. SCB No : %d, UUID: %s.", pstSCBOther->usSCBNo, pstSCBOther->szUUID);
         }
         else
         {
             SC_SCB_SET_STATUS(pstSCBOther, SC_SCB_RELEASE);
             sc_call_trace(pstSCBOther, "Terminate call.");
-            sc_logr_notice(SC_ESL, "Call terminate call. SCB No : %d.", pstSCBOther->usSCBNo);
+            sc_logr_notice(pstSCB, SC_ESL, "Call terminate call. SCB No : %d.", pstSCBOther->usSCBNo);
             DOS_ASSERT(0);
             sc_scb_free(pstSCBOther);
         }
@@ -7361,7 +7359,7 @@ U32 sc_ep_terminate_call(SC_SCB_ST *pstSCB)
     {
         /* 有FS通讯的话，就直接挂断呼叫就好 */
         sc_ep_hangup_call_with_snd(pstSCB, pstSCB->usTerminationCause);
-        sc_logr_notice(SC_ESL, "Hangup Call for Auth FAIL. SCB No : %d, UUID: %d. *", pstSCB->usSCBNo, pstSCB->szUUID);
+        sc_logr_notice(pstSCB, SC_ESL, "Hangup Call for Auth FAIL. SCB No : %d, UUID: %d. *", pstSCB->usSCBNo, pstSCB->szUUID);
     }
     else
     {
@@ -7370,7 +7368,7 @@ U32 sc_ep_terminate_call(SC_SCB_ST *pstSCB)
         {
             SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
             sc_call_trace(pstSCB, "Terminate call.");
-            sc_logr_notice(SC_ESL, "Call terminate call. SCB No : %d. *", pstSCB->usSCBNo);
+            sc_logr_notice(pstSCB, SC_ESL, "Call terminate call. SCB No : %d. *", pstSCB->usSCBNo);
             DOS_ASSERT(0);
             sc_scb_free(pstSCB);
         }
@@ -7516,7 +7514,7 @@ U32 sc_ep_get_custom_by_sip_userid(S8 *pszNum)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
         DOS_ASSERT(0);
-        sc_logr_info(SC_FUNC, "Get customer FAIL by sip(%s)", pszNum);
+        sc_logr_info(NULL, SC_FUNC, "Get customer FAIL by sip(%s)", pszNum);
         pthread_mutex_unlock(&g_mutexHashSIPUserID);
         return U32_BUTT;
     }
@@ -7773,7 +7771,7 @@ U32 sc_ep_search_route(SC_SCB_ST *pstSCB)
         usCallOutGroup = 0;
     }
 
-    sc_logr_debug(SC_DIALER, "usCallOutGroup : %u, custom : %u", usCallOutGroup, pstSCB->ulCustomID);
+    sc_logr_debug(pstSCB, SC_DIALER, "usCallOutGroup : %u, custom : %u", usCallOutGroup, pstSCB->ulCustomID);
     pthread_mutex_lock(&g_mutexRouteList);
 
 loop_search:
@@ -7790,7 +7788,7 @@ loop_search:
             continue;
         }
 
-        sc_logr_info(SC_ESL, "Search Route: %d:%d, %d:%d, CallerPrefix : %s, CalleePrefix : %s. Caller:%s, Callee:%s"
+        sc_logr_info(pstSCB, SC_ESL, "Search Route: %d:%d, %d:%d, CallerPrefix : %s, CalleePrefix : %s. Caller:%s, Callee:%s"
             ", customer group : %u, route group : %u"
                 , pstRouetEntry->ucHourBegin, pstRouetEntry->ucMinuteBegin
                 , pstRouetEntry->ucHourEnd, pstRouetEntry->ucMinuteEnd
@@ -7813,7 +7811,7 @@ loop_search:
 
             if (ulCurrentTime < ulStartTime || ulCurrentTime > ulEndTime)
             {
-                sc_logr_info(SC_ESL, "Search Route(FAIL): Time not match: Peroid:%u-:%u, Current:%u"
+                sc_logr_info(pstSCB, SC_ESL, "Search Route(FAIL): Time not match: Peroid:%u-:%u, Current:%u"
                         , ulStartTime, ulEndTime, ulCurrentTime);
 
                 continue;
@@ -7867,7 +7865,7 @@ loop_search:
 
     if (DOS_ADDR_VALID(pstRouetEntry))
     {
-        sc_logr_debug(SC_ESL, "Search Route Finished. Result: %s, Route ID: %d, Dest Type:%u, Dest ID: %u"
+        sc_logr_debug(pstSCB, SC_ESL, "Search Route Finished. Result: %s, Route ID: %d, Dest Type:%u, Dest ID: %u"
                 , U32_BUTT == ulRouteGrpID ? "FAIL" : "SUCC"
                 , ulRouteGrpID
                 , pstRouetEntry->ulDestType
@@ -7875,7 +7873,7 @@ loop_search:
     }
     else
     {
-        sc_logr_debug(SC_ESL, "Search Route Finished. Result: %s, Route ID: %d"
+        sc_logr_debug(pstSCB, SC_ESL, "Search Route Finished. Result: %s, Route ID: %d"
                 , U32_BUTT == ulRouteGrpID ? "FAIL" : "SUCC"
                 , ulRouteGrpID);
     }
@@ -7979,14 +7977,14 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
                             break;
                         }
 
-                        sc_logr_debug(SC_ESL, "Search gateway froup, ID is %d", pstRouetEntry->aulDestID[lIndex]);
+                        sc_logr_debug(pstSCB, SC_ESL, "Search gateway froup, ID is %d", pstRouetEntry->aulDestID[lIndex]);
                         ulHashIndex = sc_ep_gw_grp_hash_func(pstRouetEntry->aulDestID[lIndex]);
                         pstHashNode = hash_find_node(g_pstHashGWGrp, ulHashIndex, (VOID *)&pstRouetEntry->aulDestID[lIndex], sc_ep_gw_grp_hash_find);
                         if (DOS_ADDR_INVALID(pstHashNode)
                             || DOS_ADDR_INVALID(pstHashNode->pHandle))
                         {
                             /* 没有找到对应的中继组，继续查找下一个，这种情况，理论上是不应该出现的 */
-                            sc_logr_info(SC_ESL, "Not found gateway froup %d", pstRouetEntry->aulDestID[lIndex]);
+                            sc_logr_info(pstSCB, SC_ESL, "Not found gateway froup %d", pstRouetEntry->aulDestID[lIndex]);
 
                             continue;
                         }
@@ -8042,7 +8040,7 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
     {
         /* 最后多了一个  | */
         szCalleeString[dos_strlen(szCalleeString) - 1] = '\0';
-        sc_logr_debug(SC_ESL, "callee string is %s", szCalleeString);
+        sc_logr_debug(pstSCB, SC_ESL, "callee string is %s", szCalleeString);
 
         return ulGWCount;
     }
@@ -8151,7 +8149,7 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
 
     if (sc_ep_dst_is_black(pszDstNum))
     {
-        sc_logr_notice(SC_ESL, "The destination is in black list. %s", pszDstNum);
+        sc_logr_notice(pstSCB, SC_ESL, "The destination is in black list. %s", pszDstNum);
 
         return SC_DIRECTION_INVALID;
     }
@@ -8164,7 +8162,7 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
         {
             DOS_ASSERT(0);
 
-            sc_logr_info(SC_ESL, "Source number %s is not invalid sip user id. Reject Call", pszSrcNum);
+            sc_logr_info(pstSCB, SC_ESL, "Source number %s is not invalid sip user id. Reject Call", pszSrcNum);
             return SC_DIRECTION_INVALID;
         }
 
@@ -8197,7 +8195,7 @@ U32 sc_ep_get_destination(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
             /* 判断一下主叫是否 TT 号 */
             DOS_ASSERT(0);
 
-            sc_logr_notice(SC_ESL, "The destination %s is not a DID number. Reject Call.", pszDstNum);
+            sc_logr_notice(pstSCB, SC_ESL, "The destination %s is not a DID number. Reject Call.", pszDstNum);
             return SC_DIRECTION_INVALID;
         }
 
@@ -8231,12 +8229,12 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     {
         if (pstAgentInfo->bConnected && pstAgentInfo->bNeedConnected)
         {
-            sc_logr_warning(SC_ESL, "Agent %u request signin. But it seems already signin. Exit.", pstAgentInfo->ulSiteID);
+            sc_logr_warning(pstSCB, SC_ESL, "Agent %u request signin. But it seems already signin. Exit.", pstAgentInfo->ulSiteID);
             return DOS_SUCC;
         }
         else
         {
-            sc_logr_warning(SC_ESL, "Agent %u request signin. But it seems in a call(SCB: %u). Exit.", pstAgentInfo->ulSiteID, pstAgentInfo->usSCBNo);
+            sc_logr_warning(pstSCB, SC_ESL, "Agent %u request signin. But it seems in a call(SCB: %u). Exit.", pstAgentInfo->ulSiteID, pstAgentInfo->usSCBNo);
 
             SC_SCB_SET_SERVICE(pstSCB, SC_SERV_AGENT_SIGNIN);
             sc_ep_agent_status_notify(pstAgentInfo, ACD_MSG_SUBTYPE_SIGNIN);
@@ -8255,7 +8253,7 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ESL, "%s", "Allc SCB FAIL.");
+        sc_logr_error(pstSCB, SC_ESL, "%s", "Allc SCB FAIL.");
 
         goto error;
     }
@@ -8307,7 +8305,7 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         /* 设置主叫号码 */
         if (U32_BUTT == pstSCB->ulAgentID)
         {
-            sc_logr_info(SC_DIALER, "Agent signin not get agent ID by scd(%u)", pstSCB->usSCBNo);
+            sc_logr_info(pstSCB, SC_DIALER, "Agent signin not get agent ID by scd(%u)", pstSCB->usSCBNo);
 
             goto go_on;
         }
@@ -8317,12 +8315,12 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         if (ulRet != DOS_SUCC)
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+            sc_logr_info(pstSCB, SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
 
             goto go_on;
         }
 
-        sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+        sc_logr_info(pstSCB, SC_DIALER, "Agent signin customID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
         dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
         pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
 
@@ -8330,13 +8328,13 @@ go_on:
         if (!sc_ep_black_list_check(pstSCB->ulCustomID, pstSCB->szCalleeNum))
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
+            sc_logr_info(pstSCB, SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
             goto error;
         }
 
         if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
         {
-            sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
+            sc_logr_notice(pstSCB, SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
             goto error;
         }
 
@@ -8365,7 +8363,7 @@ go_on:
 
 error:
 
-    sc_logr_notice(SC_ESL, "Agent signin fail agent: %u", pstAgentInfo->ulSiteID);
+    sc_logr_notice(pstSCB, SC_ESL, "Agent signin fail agent: %u", pstAgentInfo->ulSiteID);
 
     if (SC_SCB_IS_VALID(pstSCB))
     {
@@ -8557,15 +8555,15 @@ U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
                 pstSCBNotify->aucServiceType[1] = SC_SERV_RECORDING;
             }
 
-            sc_logr_debug(SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
+            sc_logr_debug(pstSCBNotify, SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
             /* 发送话单 */
             if (sc_send_billing_stop2bs(pstSCBNotify) != DOS_SUCC)
             {
-                sc_logr_debug(SC_ESL, "Send CDR to bs FAIL. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
+                sc_logr_debug(pstSCBNotify, SC_ESL, "Send CDR to bs FAIL. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
             }
             else
             {
-                sc_logr_debug(SC_ESL, "Send CDR to bs SUCC. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
+                sc_logr_debug(pstSCBNotify, SC_ESL, "Send CDR to bs SUCC. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
             }
 
             for (i=0; i<SC_MAX_SRV_TYPE_PRE_LEG; i++)
@@ -8609,15 +8607,15 @@ U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
                 pstSCBNotify->aucServiceType[0] = ucPublishSrv;
                 pstSCBNotify->aucServiceType[1] = BS_SERV_CALL_TRANSFER;
 
-                sc_logr_debug(SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
+                sc_logr_debug(pstSCBNotify, SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
                 /* 发送话单 */
                 if (sc_send_billing_stop2bs(pstSCBNotify) != DOS_SUCC)
                 {
-                    sc_logr_debug(SC_ESL, "Send CDR to bs FAIL. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
+                    sc_logr_debug(pstSCBNotify, SC_ESL, "Send CDR to bs FAIL. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
                 }
                 else
                 {
-                    sc_logr_debug(SC_ESL, "Send CDR to bs SUCC. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
+                    sc_logr_debug(pstSCBNotify, SC_ESL, "Send CDR to bs SUCC. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
                 }
             }
             else
@@ -8936,7 +8934,7 @@ void sc_ep_transfer_Publish_server_type(SC_SCB_ST * pstSCB, U32 ulTransferFinish
         /* 没有录音的内部呼叫 */
     }
 
-    sc_logr_debug(SC_ESL, "Transfer scb(%u) server type : %u, %u, %u"
+    sc_logr_debug(pstSCB, SC_ESL, "Transfer scb(%u) server type : %u, %u, %u"
         , pstSCBFrist->usSCBNo, pstSCBFrist->aucServiceType[0], pstSCBFrist->aucServiceType[1], pstSCBFrist->aucServiceType[2]);
 
     return;
@@ -9044,7 +9042,7 @@ U32 sc_ep_call_intercept(SC_SCB_ST * pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot intercept call for agent with id %u. Agent not found..", pstSCB->ulAgentID);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot intercept call for agent with id %u. Agent not found..", pstSCB->ulAgentID);
         goto proc_fail;
     }
 
@@ -9052,7 +9050,7 @@ U32 sc_ep_call_intercept(SC_SCB_ST * pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot intercept call for agent with id %u. Agent handle a invalid SCB No(%u).", pstSCB->ulAgentID, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot intercept call for agent with id %u. Agent handle a invalid SCB No(%u).", pstSCB->ulAgentID, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -9061,7 +9059,7 @@ U32 sc_ep_call_intercept(SC_SCB_ST * pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot intercept call for agent with id %u. Agent handle a SCB(%u) is invalid.", pstSCB->ulAgentID, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot intercept call for agent with id %u. Agent handle a SCB(%u) is invalid.", pstSCB->ulAgentID, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -9069,7 +9067,7 @@ U32 sc_ep_call_intercept(SC_SCB_ST * pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", pstSCB->ulAgentID, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", pstSCB->ulAgentID, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -9130,7 +9128,7 @@ U32 sc_ep_call_transfer(SC_SCB_ST * pstSCB, U32 ulNumType, S8 *pszCallee, BOOL b
     pstSCBNew = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCBNew))
     {
-        sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+        sc_logr_warning(pstSCB, SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
     }
 
     pstSCB->usPublishSCB = pstSCBNew->usSCBNo;
@@ -9161,7 +9159,7 @@ U32 sc_ep_call_transfer(SC_SCB_ST * pstSCB, U32 ulNumType, S8 *pszCallee, BOOL b
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
 
         goto proc_fail;
     }
@@ -9189,7 +9187,7 @@ U32 sc_ep_call_transfer(SC_SCB_ST * pstSCB, U32 ulNumType, S8 *pszCallee, BOOL b
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
 
         goto proc_fail;
     }
@@ -9234,7 +9232,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
             ulErrCode = CC_ERR_SC_USER_BUSY;
         }
 
-        sc_logr_info(SC_ESL, "Call agnet FAIL. Agent (%u) status is (%d)", pstAgentInfo->ulSiteID, pstAgentInfo->ucStatus);
+        sc_logr_info(pstSCB, SC_ESL, "Call agnet FAIL. Agent (%u) status is (%d)", pstAgentInfo->ulSiteID, pstAgentInfo->ucStatus);
         goto proc_error;
     }
 
@@ -9355,7 +9353,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ESL, "%s", "Allc SCB FAIL.");
+        sc_logr_error(pstSCB, SC_ESL, "%s", "Allc SCB FAIL.");
         ulErrCode = CC_ERR_SC_CB_ALLOC_FAIL;
         goto proc_error;
     }
@@ -9365,7 +9363,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
     /* 根据ulSiteID, 找到坐席，给坐席的 usSCBNo 赋值 */
     if (sc_acd_update_agent_scbno_by_siteid(pstAgentInfo->ulSiteID, pstSCBNew, NULL, NULL) != DOS_SUCC)
     {
-        sc_logr_info(SC_ESL, "Update agent(%u) scbno(%d) fail", pstAgentInfo->ulSiteID, pstSCBNew->usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Update agent(%u) scbno(%d) fail", pstAgentInfo->ulSiteID, pstSCBNew->usSCBNo);
     }
 
     pstSCBNew->bIsAgentCall = DOS_TRUE;
@@ -9438,7 +9436,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
             /* 设置主叫号码 */
             if (U32_BUTT == pstSCB->ulAgentID)
             {
-                sc_logr_info(SC_DIALER, "Agent signin not get agent ID by scd(%u)", pstSCB->usSCBNo);
+                sc_logr_info(pstSCB, SC_DIALER, "Agent signin not get agent ID by scd(%u)", pstSCB->usSCBNo);
 
                 goto go_on;
             }
@@ -9448,12 +9446,12 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
-                sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+                sc_logr_info(pstSCB, SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
 
                 goto go_on;
             }
 
-            sc_logr_info(SC_DIALER, "Agent signin customID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+            sc_logr_info(pstSCB, SC_DIALER, "Agent signin customID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
             dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
             pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
         }
@@ -9462,14 +9460,14 @@ go_on:
         if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pstSCBNew->szCalleeNum))
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCBNew->szCalleeNum);
+            sc_logr_info(pstSCB, SC_ESL, "Cannot make call for number %s which is in black list.", pstSCBNew->szCalleeNum);
             ulErrCode = CC_ERR_SC_IN_BLACKLIST;
             goto proc_error;
         }
 
         if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
         {
-            sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCBNew->usSCBNo);
+            sc_logr_notice(pstSCB, SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCBNew->usSCBNo);
             ulErrCode = CC_ERR_SC_MESSAGE_SENT_ERR;
             goto proc_error;
         }
@@ -9539,7 +9537,7 @@ U32 sc_ep_call_agent_by_id(SC_SCB_ST * pstSCB, U32 ulAgentID, BOOL bIsUpdateCall
     {
         DOS_ASSERT(0);
         ulErrCode = CC_ERR_SC_USER_DOES_NOT_EXIST;
-        sc_logr_info(SC_ESL, "Cannot call agent with id %u. Agent not found, Errcode : %u", ulAgentID, ulErrCode);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot call agent with id %u. Agent not found, Errcode : %u", ulAgentID, ulErrCode);
         goto proc_fail;
     }
 
@@ -9586,7 +9584,7 @@ U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     {
         /* 前面已经判断过，如果还出错，暂定为 系统错误 */
         DOS_ASSERT(0);
-        sc_logr_info(SC_ESL, "Cannot get the agent queue for the task %d", pstSCB->ulTaskID);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot get the agent queue for the task %d", pstSCB->ulTaskID);
         ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
         goto proc_fail;
     }
@@ -9594,12 +9592,12 @@ U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
     if (sc_acd_get_agent_by_grpid(&stAgentInfo, ulTaskAgentQueueID, pstSCB->szCalleeNum) != DOS_SUCC)
     {
         DOS_ASSERT(0);
-        sc_logr_notice(SC_ESL, "There is no useable agent for the task %d. Queue: %d. ", pstSCB->ulTaskID, ulTaskAgentQueueID);
+        sc_logr_notice(pstSCB, SC_ESL, "There is no useable agent for the task %d. Queue: %d. ", pstSCB->ulTaskID, ulTaskAgentQueueID);
         ulErrCode = CC_ERR_SC_USER_BUSY;
         goto proc_fail;
     }
 
-    sc_logr_info(SC_ESL, "Select agent for call OK. Agent ID: %d, User ID: %s, Externsion: %s, Job-Num: %s"
+    sc_logr_info(pstSCB, SC_ESL, "Select agent for call OK. Agent ID: %d, User ID: %s, Externsion: %s, Job-Num: %s"
                     , stAgentInfo.ulSiteID
                     , stAgentInfo.szUserID
                     , stAgentInfo.szExtension
@@ -9668,7 +9666,7 @@ U32 sc_ep_call_ctrl_hangup(U32 ulAgent)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
         goto proc_fail;
     }
 
@@ -9676,7 +9674,7 @@ U32 sc_ep_call_ctrl_hangup(U32 ulAgent)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -9685,7 +9683,7 @@ U32 sc_ep_call_ctrl_hangup(U32 ulAgent)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -9693,7 +9691,7 @@ U32 sc_ep_call_ctrl_hangup(U32 ulAgent)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
     }
     else
     {
@@ -9708,7 +9706,7 @@ U32 sc_ep_call_ctrl_hangup(U32 ulAgent)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -9716,17 +9714,17 @@ U32 sc_ep_call_ctrl_hangup(U32 ulAgent)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
     sc_ep_hangup_call(pstSCBOther, CC_ERR_SC_CLEAR_FORCE);
 
-    sc_logr_notice(SC_ESL, "Request hangup call FAIL. Agent: %u", ulAgent);
+    sc_logr_notice(pstSCB, SC_ESL, "Request hangup call FAIL. Agent: %u", ulAgent);
     return DOS_SUCC;
 
 proc_fail:
-    sc_logr_notice(SC_ESL, "Request hangup call FAIL. Agent: %u", ulAgent);
+    sc_logr_notice(pstSCB, SC_ESL, "Request hangup call FAIL. Agent: %u", ulAgent);
     return DOS_FAIL;
 }
 
@@ -9752,7 +9750,7 @@ U32 sc_ep_call_ctrl_hangup_agent(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u)."
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u)."
                         , pstAgentQueueInfo->ulSiteID
                         , pstAgentQueueInfo->usSCBNo);
 
@@ -9764,14 +9762,14 @@ U32 sc_ep_call_ctrl_hangup_agent(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid."
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid."
                         , pstAgentQueueInfo->ulSiteID
                         , pstAgentQueueInfo->usSCBNo);
 
         return DOS_FAIL;
     }
 
-    sc_logr_notice(SC_ESL, "Hangup call for force. Agent: %u, SCB: %u"
+    sc_logr_notice(pstSCB, SC_ESL, "Hangup call for force. Agent: %u, SCB: %u"
                     , pstAgentQueueInfo->ulSiteID
                     , pstAgentQueueInfo->usSCBNo);
     pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
@@ -9793,14 +9791,14 @@ U32 sc_ep_call_ctrl_hold(U32 ulAgent, BOOL isHold)
     S8        szCMD[256] = { 0, };
     SC_ACD_AGENT_INFO_ST stAgentInfo;
 
-    sc_logr_notice(SC_ESL, "Request %s call. Agent: %u", isHold ? "hold" : "unhold", ulAgent);
+    sc_logr_notice(pstSCB, SC_ESL, "Request %s call. Agent: %u", isHold ? "hold" : "unhold", ulAgent);
 
     /* 查找坐席 */
     if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hold call for agent with id %u. Agent not found..", ulAgent);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hold call for agent with id %u. Agent not found..", ulAgent);
         goto proc_fail;
     }
 
@@ -9808,7 +9806,7 @@ U32 sc_ep_call_ctrl_hold(U32 ulAgent, BOOL isHold)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hold call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hold call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -9817,7 +9815,7 @@ U32 sc_ep_call_ctrl_hold(U32 ulAgent, BOOL isHold)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hold call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hold call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -9826,7 +9824,7 @@ U32 sc_ep_call_ctrl_hold(U32 ulAgent, BOOL isHold)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hold call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hold call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -9834,7 +9832,7 @@ U32 sc_ep_call_ctrl_hold(U32 ulAgent, BOOL isHold)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hold call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hold call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -9844,7 +9842,7 @@ U32 sc_ep_call_ctrl_hold(U32 ulAgent, BOOL isHold)
         if (sc_ep_esl_execute_cmd(szCMD) != DOS_SUCC)
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_ESL, "Hold FAIL. %s", pstSCB->szUUID);
+            sc_logr_info(pstSCB, SC_ESL, "Hold FAIL. %s", pstSCB->szUUID);
 
             goto proc_fail;
         }
@@ -9855,17 +9853,17 @@ U32 sc_ep_call_ctrl_hold(U32 ulAgent, BOOL isHold)
         if (sc_ep_esl_execute_cmd(szCMD) != DOS_SUCC)
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_ESL, "Unhold FAIL. %s", pstSCB->szUUID);
+            sc_logr_info(pstSCB, SC_ESL, "Unhold FAIL. %s", pstSCB->szUUID);
 
             goto proc_fail;
         }
     }
 
-    sc_logr_notice(SC_ESL, "Request %s call SUCC. Agent: %u", isHold ? "hold" : "unhold", ulAgent);
+    sc_logr_notice(pstSCB, SC_ESL, "Request %s call SUCC. Agent: %u", isHold ? "hold" : "unhold", ulAgent);
     return DOS_SUCC;
 
 proc_fail:
-    sc_logr_notice(SC_ESL, "Request %s call FAIL. Agent: %u", isHold ? "hold" : "unhold", ulAgent);
+    sc_logr_notice(pstSCB, SC_ESL, "Request %s call FAIL. Agent: %u", isHold ? "hold" : "unhold", ulAgent);
     return DOS_FAIL;
 }
 
@@ -9883,14 +9881,14 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
     SC_ACD_AGENT_INFO_ST stAgentInfo, stCalleeAgentInfo;
     S8 szParams[512]        = {0};
 
-    sc_logr_info(SC_ESL, "Request call agent %u(%u)", ulAgentCalled, ulCurrentAgent);
+    sc_logr_info(pstSCB, SC_ESL, "Request call agent %u(%u)", ulAgentCalled, ulCurrentAgent);
 
     /* 查找坐席 */
     if (sc_acd_get_agent_by_id(&stAgentInfo, ulCurrentAgent) != DOS_SUCC)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot call agent with id %u. Agent not found.", ulCurrentAgent);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot call agent with id %u. Agent not found.", ulCurrentAgent);
         goto make_all_fail;
     }
 
@@ -9899,7 +9897,7 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
     if (stAgentInfo.ucStatus != SC_ACD_IDEL && )
     {
         /* 不允许呼叫 */
-        sc_logr_info(SC_ESL, "Call agnet FAIL. Agent (%u) status is (%d)", ulCurrentAgent, stAgentInfo.ucStatus);
+        sc_logr_info(pstSCB, SC_ESL, "Call agnet FAIL. Agent (%u) status is (%d)", ulCurrentAgent, stAgentInfo.ucStatus);
         goto make_all_fail;
     }
 #endif
@@ -9907,7 +9905,7 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
     pstSCB = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCB))
     {
-        sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+        sc_logr_warning(pstSCB, SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
 
         goto make_all_fail;
     }
@@ -9921,7 +9919,7 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
         pstSCBOther = sc_scb_get(stAgentInfo.usSCBNo);
         if (DOS_ADDR_INVALID(pstSCBOther))
         {
-            sc_logr_warning(SC_ESL, "%s", "Get SCB fail for signin agent.");
+            sc_logr_warning(pstSCB, SC_ESL, "%s", "Get SCB fail for signin agent.");
             goto make_all_fail;
         }
 
@@ -9952,7 +9950,7 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
         {
             DOS_ASSERT(0);
 
-            sc_logr_info(SC_ESL, "Call agent(%u) FAIL. Agent not found.", ulAgentCalled);
+            sc_logr_info(pstSCB, SC_ESL, "Call agent(%u) FAIL. Agent not found.", ulAgentCalled);
             goto make_all_fail;
         }
 
@@ -10009,13 +10007,13 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
             if (!sc_ep_black_list_check(pstSCB->ulCustomID, pstSCB->szCalleeNum))
             {
                 DOS_ASSERT(0);
-                sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
+                sc_logr_info(pstSCB, SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
                 goto make_all_fail;
             }
 
             if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
             {
-                sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
+                sc_logr_notice(pstSCB, SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
                 goto make_all_fail;
             }
 
@@ -10043,7 +10041,7 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
 
 make_call_succ:
 
-    sc_logr_info(SC_ESL, "Request call agent %u(%u) SUCC", ulAgentCalled, ulCurrentAgent);
+    sc_logr_info(pstSCB, SC_ESL, "Request call agent %u(%u) SUCC", ulAgentCalled, ulCurrentAgent);
 
     return DOS_SUCC;
 
@@ -10054,7 +10052,7 @@ make_all_fail:
         pstSCB = NULL;
     }
 
-    sc_logr_info(SC_ESL, "Request call agent %u(%u) FAIL", ulAgentCalled, ulCurrentAgent);
+    sc_logr_info(pstSCB, SC_ESL, "Request call agent %u(%u) FAIL", ulAgentCalled, ulCurrentAgent);
 
     return DOS_FAIL;
 }
@@ -10068,7 +10066,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     S8        szParams[256] = { 0, };
     SC_ACD_AGENT_INFO_ST stAgentInfo;
 
-    sc_logr_info(SC_ESL, "Call out request. Agent: %u, Task: %u, Number: %s"
+    sc_logr_info(pstSCB, SC_ESL, "Call out request. Agent: %u, Task: %u, Number: %s"
             , ulAgent, ulTaskID, pszNumber ? pszNumber : "");
 
     /* 查找坐席 */
@@ -10076,7 +10074,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot call agent with id %u. Agent not found.", ulAgent);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot call agent with id %u. Agent not found.", ulAgent);
         goto make_all_fail;
     }
 
@@ -10085,7 +10083,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     if (stAgentInfo.ucStatus  >=  SC_ACD_BUSY)
     {
         /* 不允许呼叫 */
-        sc_logr_info(SC_ESL, "Call agnet FAIL. Agent (%u) status is (%d)", ulAgent, stAgentInfo.ucStatus);
+        sc_logr_info(pstSCB, SC_ESL, "Call agnet FAIL. Agent (%u) status is (%d)", ulAgent, stAgentInfo.ucStatus);
         goto make_all_fail;
     }
 #endif
@@ -10096,7 +10094,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         && (pstSCBOther = sc_scb_get(pstSCBAgent->usOtherSCBNo)))
     {
         /* 不允许呼叫 */
-        sc_logr_info(SC_ESL, "Call agnet FAIL. Agent %u (status:%d) has a call already", ulAgent, stAgentInfo.ucStatus);
+        sc_logr_info(pstSCB, SC_ESL, "Call agnet FAIL. Agent %u (status:%d) has a call already", ulAgent, stAgentInfo.ucStatus);
         goto make_all_fail;
     }
 
@@ -10106,7 +10104,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     pstSCB = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCB))
     {
-        sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+        sc_logr_warning(pstSCB, SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
 
         goto make_all_fail;
     }
@@ -10120,7 +10118,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         pstSCBOther = sc_scb_get(stAgentInfo.usSCBNo);
         if (DOS_ADDR_INVALID(pstSCBOther))
         {
-            sc_logr_warning(SC_ESL, "%s", "Cannot make find the scb for a signin agent.");
+            sc_logr_warning(pstSCB, SC_ESL, "%s", "Cannot make find the scb for a signin agent.");
 
             goto make_all_fail;
         }
@@ -10149,7 +10147,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         if (sc_caller_setting_select_number(pstSCB->ulCustomID, ulAgent, SC_SRC_CALLER_TYPE_AGENT, pstSCB->szCallerNum, sizeof(pstSCB->szCallerNum)) != DOS_SUCC)
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", ulAgent);
+            sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", ulAgent);
 
             goto make_all_fail;
         }
@@ -10159,7 +10157,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         {
             DOS_ASSERT(0);
 
-            sc_logr_info(SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszNumber);
+            sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszNumber);
 
             goto make_all_fail;
         }
@@ -10175,7 +10173,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         {
             DOS_ASSERT(0);
 
-            sc_logr_info(SC_ESL, "Cannot make call. Send auth fail.", pszNumber);
+            sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Send auth fail.", pszNumber);
 
             goto make_all_fail;
         }
@@ -10216,7 +10214,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
 
         }
 
-        sc_logr_info(SC_ESL, "Call agent %u, bind type: %u, bind number: %s", stAgentInfo.ulSiteID, stAgentInfo.ucBindType, pstSCB->szCalleeNum);
+        sc_logr_info(pstSCB, SC_ESL, "Call agent %u, bind type: %u, bind number: %s", stAgentInfo.ulSiteID, stAgentInfo.ucBindType, pstSCB->szCalleeNum);
 
         /* 呼叫坐席 */
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
@@ -10231,13 +10229,13 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
             if (!sc_ep_black_list_check(pstSCB->ulCustomID, pstSCB->szCalleeNum))
             {
                 DOS_ASSERT(0);
-                sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
+                sc_logr_info(pstSCB, SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
                 goto make_all_fail;
             }
 
             if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
             {
-                sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
+                sc_logr_notice(pstSCB, SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
                 goto make_all_fail;
             }
 
@@ -10268,7 +10266,7 @@ make_all_succ:
     /* 坐席弹屏 */
     sc_ep_call_notify(&stAgentInfo, pstSCB->szCallerNum);
 
-    sc_logr_info(SC_ESL, "Call out request SUCC. Agent: %u, Task: %u, Number: %s"
+    sc_logr_info(pstSCB, SC_ESL, "Call out request SUCC. Agent: %u, Task: %u, Number: %s"
             , ulAgent, ulTaskID, pszNumber ? pszNumber : "");
 
     return DOS_SUCC;
@@ -10280,7 +10278,7 @@ make_all_fail:
         pstSCB = NULL;
     }
 
-    sc_logr_info(SC_ESL, "Call out request FAIL. Agent: %u, Task: %u, Number: %s"
+    sc_logr_info(pstSCB, SC_ESL, "Call out request FAIL. Agent: %u, Task: %u, Number: %s"
             , ulAgent, ulTaskID, pszNumber ? pszNumber : "");
 
     return DOS_FAIL;
@@ -10301,21 +10299,21 @@ U32 sc_ep_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber)
         return DOS_FAIL;
     }
 
-    sc_logr_info(SC_ESL, "Request call sip %s(%u)", pszSipNumber, ulAgent);
+    sc_logr_info(pstSCB, SC_ESL, "Request call sip %s(%u)", pszSipNumber, ulAgent);
 
     /* 查找坐席 */
     if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot call agent with id %u. Agent not found.", ulAgent);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot call agent with id %u. Agent not found.", ulAgent);
         goto make_all_fail;
     }
 
     pstSCB = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCB))
     {
-        sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+        sc_logr_warning(pstSCB, SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
 
         goto make_all_fail;
     }
@@ -10329,7 +10327,7 @@ U32 sc_ep_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber)
         pstSCBOther = sc_scb_get(stAgentInfo.usSCBNo);
         if (DOS_ADDR_INVALID(pstSCBOther))
         {
-            sc_logr_warning(SC_ESL, "%s", "Get SCB fail for signin agent.");
+            sc_logr_warning(pstSCB, SC_ESL, "%s", "Get SCB fail for signin agent.");
             goto make_all_fail;
         }
 
@@ -10407,13 +10405,13 @@ U32 sc_ep_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber)
             if (!sc_ep_black_list_check(pstSCB->ulCustomID, pstSCB->szCalleeNum))
             {
                 DOS_ASSERT(0);
-                sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
+                sc_logr_info(pstSCB, SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
                 goto make_all_fail;
             }
 
             if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
             {
-                sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
+                sc_logr_notice(pstSCB, SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
                 goto make_all_fail;
             }
 
@@ -10442,7 +10440,7 @@ U32 sc_ep_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber)
 
 make_call_succ:
 
-    sc_logr_info(SC_ESL, "Request call sip %s(%u) SUCC", pszSipNumber, ulAgent);
+    sc_logr_info(pstSCB, SC_ESL, "Request call sip %s(%u) SUCC", pszSipNumber, ulAgent);
 
     return DOS_SUCC;
 
@@ -10453,7 +10451,7 @@ make_all_fail:
         pstSCB = NULL;
     }
 
-    sc_logr_info(SC_ESL, "Request call sip %s(%u) FAIL", pszSipNumber, ulAgent);
+    sc_logr_info(pstSCB, SC_ESL, "Request call sip %s(%u) FAIL", pszSipNumber, ulAgent);
 
     return DOS_FAIL;
 }
@@ -10469,7 +10467,7 @@ U32 sc_ep_call_ctrl_record(U32 ulAgent)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
         goto proc_fail;
     }
 
@@ -10477,7 +10475,7 @@ U32 sc_ep_call_ctrl_record(U32 ulAgent)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -10486,7 +10484,7 @@ U32 sc_ep_call_ctrl_record(U32 ulAgent)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -10494,7 +10492,7 @@ U32 sc_ep_call_ctrl_record(U32 ulAgent)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -10503,11 +10501,11 @@ U32 sc_ep_call_ctrl_record(U32 ulAgent)
         goto proc_fail;
     }
 
-    sc_logr_notice(SC_ESL, "Request record agent %u SUCC", ulAgent);
+    sc_logr_notice(pstSCB, SC_ESL, "Request record agent %u SUCC", ulAgent);
     return DOS_FAIL;
 
 proc_fail:
-    sc_logr_notice(SC_ESL, "Request record agent %u FAIL", ulAgent);
+    sc_logr_notice(pstSCB, SC_ESL, "Request record agent %u FAIL", ulAgent);
     return DOS_FAIL;
 }
 
@@ -10530,14 +10528,14 @@ U32 sc_ep_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
     SC_ACD_AGENT_INFO_ST stAgentInfo, stCalleeAgentInfo;
     S8  szCallerNumber[SC_TEL_NUMBER_LENGTH] = { 0 };
 
-    sc_logr_notice(SC_ESL, "Request transfer to %u (%u)", ulAgentCalled, ulAgent);
+    sc_logr_notice(pstSCB, SC_ESL, "Request transfer to %u (%u)", ulAgentCalled, ulAgent);
 
     /* 查找坐席 */
     if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
         goto proc_fail;
     }
 
@@ -10546,7 +10544,7 @@ U32 sc_ep_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Call agent(%u) FAIL. Agent called not found.", ulAgentCalled);
+        sc_logr_info(pstSCB, SC_ESL, "Call agent(%u) FAIL. Agent called not found.", ulAgentCalled);
         goto proc_fail;
     }
 
@@ -10554,7 +10552,7 @@ U32 sc_ep_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -10563,7 +10561,7 @@ U32 sc_ep_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
         goto proc_fail;
     }
 
@@ -10599,7 +10597,7 @@ U32 sc_ep_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
         goto proc_fail;
     }
 
-    sc_logr_notice(SC_ESL, "Request transfer to %u SUCC. %u", ulAgentCalled, ulAgent);
+    sc_logr_notice(pstSCB, SC_ESL, "Request transfer to %u SUCC. %u", ulAgentCalled, ulAgent);
     return DOS_SUCC;
 
 proc_fail:
@@ -10610,7 +10608,7 @@ proc_fail:
         pstSCB = NULL;
     }
 
-    sc_logr_notice(SC_ESL, "Request transfer to %u FAIL. %u", ulAgentCalled, ulAgent);
+    sc_logr_notice(pstSCB, SC_ESL, "Request transfer to %u FAIL. %u", ulAgentCalled, ulAgent);
 
     return DOS_FAIL;
 }
@@ -10636,7 +10634,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
         goto proc_fail;
     }
 
-    sc_logr_info(SC_ESL, "Start process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
+    sc_logr_info(pstSCB, SC_ESL, "Start process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
                     , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee ? pszCallee : "");
 
     switch (ulAction)
@@ -10659,7 +10657,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             {
                 DOS_ASSERT(0);
 
-                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
+                sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
                 goto proc_fail;
             }
 
@@ -10667,7 +10665,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             {
                 DOS_ASSERT(0);
 
-                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
+                sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
                 goto proc_fail;
             }
 
@@ -10676,7 +10674,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             {
                 DOS_ASSERT(0);
 
-                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+                sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
                 goto proc_fail;
             }
 
@@ -10684,7 +10682,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             {
                 DOS_ASSERT(0);
 
-                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
+                sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
                 goto proc_fail;
             }
 
@@ -10701,7 +10699,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             {
                 DOS_ASSERT(0);
 
-                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
+                sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
                 goto proc_fail;
             }
 
@@ -10709,7 +10707,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             {
                 DOS_ASSERT(0);
 
-                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
+                sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
                 goto proc_fail;
             }
 
@@ -10718,7 +10716,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             {
                 DOS_ASSERT(0);
 
-                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
+                sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
                 goto proc_fail;
             }
 
@@ -10726,14 +10724,14 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             {
                 DOS_ASSERT(0);
 
-                sc_logr_info(SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
+                sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
                 goto proc_fail;
             }
 
             pstSCBNew = sc_scb_alloc();
             if (DOS_ADDR_INVALID(pstSCBNew))
             {
-                sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL..");
+                sc_logr_warning(pstSCB, SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL..");
             }
 
             pstSCBNew->ulCustomID = ulCustomerID;
@@ -10761,7 +10759,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             {
                 DOS_ASSERT(0);
 
-                sc_logr_info(SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
+                sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
 
                 goto make_all_fail1;
             }
@@ -10778,7 +10776,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
                 {
                     DOS_ASSERT(0);
 
-                    sc_logr_info(SC_ESL, "Cannot make call. Make call to other endpoint fail. callee : %s, type :%u", pszCallee, ulType);
+                    sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Make call to other endpoint fail. callee : %s, type :%u", pszCallee, ulType);
                     goto make_all_fail1;
                 }
             }
@@ -10786,7 +10784,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             {
                 if (sc_dial_make_call2eix(pstSCBNew, SC_SERV_AGENT_CALLBACK) != DOS_SUCC)
                 {
-                    sc_logr_info(SC_ESL, "Cannot make call. Make call to other endpoint fail. callee : %s, type :%u", pszCallee, ulType);
+                    sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Make call to other endpoint fail. callee : %s, type :%u", pszCallee, ulType);
                     goto make_all_fail1;
                 }
             }
@@ -10798,7 +10796,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
                 {
                     DOS_ASSERT(0);
 
-                    sc_logr_info(SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
+                    sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
 
                     goto make_all_fail1;
                 }
@@ -10818,13 +10816,13 @@ make_all_fail1:
             goto proc_fail;
     }
 
-    sc_logr_info(SC_ESL, "Finished to process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
+    sc_logr_info(pstSCB, SC_ESL, "Finished to process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
                     , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee);
 
     return DOS_SUCC;
 
 proc_fail:
-    sc_logr_info(SC_ESL, "Process call ctrl msg FAIL. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
+    sc_logr_info(pstSCB, SC_ESL, "Process call ctrl msg FAIL. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
                     , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee);
 
     return DOS_FAIL;
@@ -10846,7 +10844,7 @@ U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID
     pstSCB = sc_scb_alloc();
     if (!pstSCB)
     {
-        sc_logr_notice(SC_TASK, "Make call for demo task fail. Alloc SCB fail. customer : %u", ulCustomerID);
+        sc_logr_notice(pstSCB, SC_TASK, "Make call for demo task fail. Alloc SCB fail. customer : %u", ulCustomerID);
         goto FAIL;
     }
 
@@ -10873,7 +10871,7 @@ U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID
     if (!sc_ep_black_list_check(pstSCB->ulCustomID, pstSCB->szCalleeNum))
     {
         DOS_ASSERT(0);
-        sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
         goto FAIL;
     }
 
@@ -10909,7 +10907,7 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
     SC_SCB_ST *pstSCB       = NULL;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
 
-    sc_logr_info(SC_ESL, "Call out request. Agent: %u, Number: %s"
+    sc_logr_info(pstSCB, SC_ESL, "Call out request. Agent: %u, Number: %s"
             , ulAgentID, pszCallee ? pszCallee : "");
 
     /* 查找坐席 */
@@ -10917,14 +10915,14 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "Cannot call agent with id %u. Agent not found.", ulAgentID);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot call agent with id %u. Agent not found.", ulAgentID);
         goto PROC_FAIL;
     }
 
     pstSCB = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCB))
     {
-        sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+        sc_logr_warning(pstSCB, SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
 
         goto PROC_FAIL;
     }
@@ -10958,20 +10956,20 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
     if (!sc_ep_black_list_check(pstSCB->ulCustomID, pstSCB->szCalleeNum))
     {
         DOS_ASSERT(0);
-        sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot make call for number %s which is in black list.", pstSCB->szCalleeNum);
         goto PROC_FAIL;
     }
 
     if (sc_send_usr_auth2bs(pstSCB) != DOS_SUCC)
     {
-        sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
+        sc_logr_notice(pstSCB, SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCB->usSCBNo);
         goto PROC_FAIL;
     }
 
     /* 坐席弹屏 */
     sc_ep_call_notify(&stAgentInfo, pstSCB->szCallerNum);
 
-    sc_logr_info(SC_ESL, "Call out request SUCC. Agent: %u, Number: %s"
+    sc_logr_info(pstSCB, SC_ESL, "Call out request SUCC. Agent: %u, Number: %s"
             , ulAgentID, pszCallee ? pszCallee : "");
 
     return DOS_SUCC;
@@ -10983,7 +10981,7 @@ PROC_FAIL:
         pstSCB = NULL;
     }
 
-    sc_logr_info(SC_ESL, "Call out request FAIL. Agent: %u, Number: %s"
+    sc_logr_info(pstSCB, SC_ESL, "Call out request FAIL. Agent: %u, Number: %s"
             , ulAgentID, pszCallee ? pszCallee : "");
 
     return DOS_FAIL;
@@ -11000,7 +10998,7 @@ U32 sc_ep_demo_task_call_agent(SC_SCB_ST *pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ESL, "%s", "Allc SCB FAIL.");
+        sc_logr_error(pstSCB, SC_ESL, "%s", "Allc SCB FAIL.");
         ulErrCode = CC_ERR_SC_CB_ALLOC_FAIL;
         goto proc_error;
     }
@@ -11010,7 +11008,7 @@ U32 sc_ep_demo_task_call_agent(SC_SCB_ST *pstSCB)
     {
         DOS_ASSERT(0);
         ulErrCode = CC_ERR_SC_USER_DOES_NOT_EXIST;
-        sc_logr_info(SC_ESL, "Cannot call agent with id %u. Agent not found, Errcode : %u", pstSCB->ulAgentID, ulErrCode);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot call agent with id %u. Agent not found, Errcode : %u", pstSCB->ulAgentID, ulErrCode);
         goto proc_error;
     }
 
@@ -11045,14 +11043,14 @@ U32 sc_ep_demo_task_call_agent(SC_SCB_ST *pstSCB)
     if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pstSCBNew->szCalleeNum))
     {
         DOS_ASSERT(0);
-        sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCBNew->szCalleeNum);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot make call for number %s which is in black list.", pstSCBNew->szCalleeNum);
         ulErrCode = CC_ERR_SC_IN_BLACKLIST;
         goto proc_error;
     }
 
     if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
     {
-        sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCBNew->usSCBNo);
+        sc_logr_notice(pstSCB, SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCBNew->usSCBNo);
         ulErrCode = CC_ERR_SC_MESSAGE_SENT_ERR;
         goto proc_error;
     }
@@ -11113,12 +11111,12 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
         {
             DOS_ASSERT(0);
 
-            sc_logr_info(SC_ESL, "Cannot get the bind info for the DID number %s, Reject Call.", pstSCB->szCalleeNum);
+            sc_logr_info(pstSCB, SC_ESL, "Cannot get the bind info for the DID number %s, Reject Call.", pstSCB->szCalleeNum);
             ulErrCode = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
             goto proc_fail;
         }
 
-        sc_logr_info(SC_ESL, "Process Incoming Call, DID Number %s. Bind Type: %u, Bind ID: %u"
+        sc_logr_info(pstSCB, SC_ESL, "Process Incoming Call, DID Number %s. Bind Type: %u, Bind ID: %u"
                         , pstSCB->szCalleeNum
                         , ulBindType
                         , ulBindID);
@@ -11131,12 +11129,12 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 {
                     DOS_ASSERT(0);
 
-                    sc_logr_info(SC_ESL, "DID number %s seems donot bind a SIP User ID, Reject Call.", pstSCB->szCalleeNum);
+                    sc_logr_info(pstSCB, SC_ESL, "DID number %s seems donot bind a SIP User ID, Reject Call.", pstSCB->szCalleeNum);
                     ulErrCode = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
                     goto proc_fail;
                 }
 
-                sc_logr_info(SC_ESL, "Start find agent by userid(%s)", szCallee);
+                sc_logr_info(pstSCB, SC_ESL, "Start find agent by userid(%s)", szCallee);
                 if (sc_acd_get_agent_by_userid(&stAgentInfo, szCallee) != DOS_SUCC)
                 {
                     /* 没有找到绑定的坐席 */
@@ -11145,7 +11143,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                     sc_ep_esl_execute("bridge", szCallString, pstSCB->szUUID);
                     break;
                 }
-                sc_logr_info(SC_ESL, "Find agent(%d) succ. bConnected : %d", stAgentInfo.ulSiteID, stAgentInfo.bConnected);
+                sc_logr_info(pstSCB, SC_ESL, "Find agent(%d) succ. bConnected : %d", stAgentInfo.ulSiteID, stAgentInfo.bConnected);
 
                 pstSCB->bRecord = stAgentInfo.bRecord;
                 pstSCB->ulAgentID = stAgentInfo.ulSiteID;
@@ -11212,7 +11210,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 {
                     DOS_ASSERT(0);
 
-                    sc_logr_info(SC_ESL, "Add Call to call waiting queue FAIL.Callee: %s. Reject Call.", pstSCB->szCalleeNum);
+                    sc_logr_info(pstSCB, SC_ESL, "Add Call to call waiting queue FAIL.Callee: %s. Reject Call.", pstSCB->szCalleeNum);
                     ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
                     goto proc_fail;
                 }
@@ -11222,7 +11220,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 if (sc_ep_call_agent_by_id(pstSCB, ulBindID, DOS_FALSE, DOS_TRUE) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
-                    sc_logr_info(SC_ESL, "Call to agent(%u) FAIL.Callee: %s. Reject Call.", ulBindID, pstSCB->szCalleeNum);
+                    sc_logr_info(pstSCB, SC_ESL, "Call to agent(%u) FAIL.Callee: %s. Reject Call.", ulBindID, pstSCB->szCalleeNum);
                     /* 失败后，已经挂断，不需要再挂断 */
                     return DOS_FAIL;
                 }
@@ -11231,7 +11229,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
             default:
                 DOS_ASSERT(0);
                 ulErrCode = CC_ERR_SC_CONFIG_ERR;
-                sc_logr_info(SC_ESL, "DID number %s has bind an error number, Reject Call.", pstSCB->szCalleeNum);
+                sc_logr_info(pstSCB, SC_ESL, "DID number %s has bind an error number, Reject Call.", pstSCB->szCalleeNum);
                 goto proc_fail;
         }
     }
@@ -11239,7 +11237,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
     {
         DOS_ASSERT(0);
         ulErrCode = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
-        sc_logr_info(SC_ESL, "Destination is not a DID number, Reject Call. Destination: %s", pstSCB->szCalleeNum);
+        sc_logr_info(pstSCB, SC_ESL, "Destination is not a DID number, Reject Call. Destination: %s", pstSCB->szCalleeNum);
         goto proc_fail;
 
     }
@@ -11282,7 +11280,7 @@ U32 sc_ep_outgoing_call_proc(SC_SCB_ST *pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_ESL, "Alloc SCB FAIL, %s:%d", __FUNCTION__, __LINE__);
+        sc_logr_error(pstSCB, SC_ESL, "Alloc SCB FAIL, %s:%d", __FUNCTION__, __LINE__);
 
         goto proc_fail;
     }
@@ -11311,13 +11309,13 @@ U32 sc_ep_outgoing_call_proc(SC_SCB_ST *pstSCB)
     if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pstSCBNew->szCalleeNum))
     {
         DOS_ASSERT(0);
-        sc_logr_info(SC_ESL, "Cannot make call for number %s which is in black list.", pstSCBNew->szCalleeNum);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot make call for number %s which is in black list.", pstSCBNew->szCalleeNum);
         goto proc_fail;
     }
 
     if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
     {
-        sc_logr_notice(SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCBNew->usSCBNo);
+        sc_logr_notice(pstSCB, SC_ESL, "Send auth msg FAIL. SCB No: %d", pstSCBNew->usSCBNo);
 
         goto proc_fail;
     }
@@ -11369,7 +11367,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_ESL, "Process event %s finished. SCB do not include service auto call."
+        sc_logr_debug(pstSCB, SC_ESL, "Process event %s finished. SCB do not include service auto call."
                             , esl_event_get_header(pstEvent, "Event-Name"));
 
         ulErrCode = CC_ERR_SC_NO_SERV_RIGHTS;
@@ -11381,7 +11379,7 @@ U32 sc_ep_auto_dial_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_ESL, "Process event %s finished. Cannot get the task mode for task %d."
+        sc_logr_debug(pstSCB, SC_ESL, "Process event %s finished. Cannot get the task mode for task %d."
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstSCB->usTCBNo);
 
@@ -11479,7 +11477,7 @@ U32 sc_ep_demo_task_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     {
         DOS_ASSERT(0);
 
-        sc_logr_debug(SC_ESL, "Process event %s finished. SCB do not include service auto call."
+        sc_logr_debug(pstSCB, SC_ESL, "Process event %s finished. SCB do not include service auto call."
                             , esl_event_get_header(pstEvent, "Event-Name"));
 
         ulErrCode = CC_ERR_SC_NO_SERV_RIGHTS;
@@ -11635,7 +11633,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
     {
         DOS_ASSERT(0);
 
-        sc_logr_info(SC_ESL, "The source number %s seem not beyound to any customer, Reject Call", pszSrcNum);
+        sc_logr_info(pstSCB, SC_ESL, "The source number %s seem not beyound to any customer, Reject Call", pszSrcNum);
         ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
         goto process_fail;
     }
@@ -11673,7 +11671,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
         {
             DOS_ASSERT(0);
 
-            sc_logr_info(SC_ESL, "Cannot call other customer direct, Reject Call. Src %s is owned by customer %d, Dst %s is owned by customer %d"
+            sc_logr_info(pstSCB, SC_ESL, "Cannot call other customer direct, Reject Call. Src %s is owned by customer %d, Dst %s is owned by customer %d"
                             , pszSrcNum, ulCustomerID, pszDstNum, ulCustomerID1);
             ulErrCode = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
             goto process_fail;
@@ -11685,7 +11683,7 @@ U32 sc_ep_internal_call_process(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
         {
             DOS_ASSERT(0);
 
-            sc_logr_info(SC_ESL, "Destination number %s is not seems a SIP User ID or Extension. Reject Call", pszDstNum);
+            sc_logr_info(pstSCB, SC_ESL, "Destination number %s is not seems a SIP User ID or Extension. Reject Call", pszDstNum);
             ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
             goto process_fail;
         }
@@ -11718,7 +11716,7 @@ U32 sc_ep_internal_service_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, 
 {
     S8    *pszUUID = NULL;
 
-    sc_logr_info(SC_ESL, "%s", "Start exec internal service.");
+    sc_logr_info(pstSCB, SC_ESL, "%s", "Start exec internal service.");
 
     pszUUID = esl_event_get_header(pstEvent, "Unique-ID");
     if (DOS_ADDR_INVALID(pszUUID))
@@ -11993,7 +11991,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         dos_strcpy(pszDealNum, pstSCB->szCalleeNum);
     }
 
-    sc_logr_debug(SC_FUNC, "POTS scb(%u) num(%s)", pstSCB->usSCBNo, pszDealNum);
+    sc_logr_debug(pstSCB, SC_FUNC, "POTS scb(%u) num(%s)", pstSCB->usSCBNo, pszDealNum);
 
     if (pszDealNum[0] != '*'
         && pszDealNum[0] != '#')
@@ -12051,7 +12049,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
             goto end;
         }
 
-        sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), mark customer", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_logr_debug(pstSCB, SC_ACD, "POTS, find agent(%u) by userid(%s), mark customer", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
 
         ulRet = DOS_SUCC;
     }
@@ -12091,7 +12089,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
             goto end;
         }
 
-        sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), online", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_logr_debug(pstSCB, SC_ACD, "POTS, find agent(%u) by userid(%s), online", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
         sc_acd_update_agent_status(SC_ACD_SITE_ACTION_ONLINE, stAgentInfo.ulSiteID, OPERATING_TYPE_PHONE);
 
         ulRet = DOS_SUCC;
@@ -12107,7 +12105,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
             goto end;
         }
 
-        sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), offline", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_logr_debug(pstSCB, SC_ACD, "POTS, find agent(%u) by userid(%s), offline", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
         sc_acd_update_agent_status(SC_ACD_SITE_ACTION_OFFLINE, stAgentInfo.ulSiteID, OPERATING_TYPE_PHONE);
 
         ulRet = DOS_SUCC;
@@ -12119,7 +12117,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         {
             if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCB->ulAgentID) != DOS_SUCC)
             {
-                sc_logr_info(SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
+                sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
                 bIsHangUp = DOS_FALSE;
 
                 goto end;
@@ -12135,7 +12133,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
             }
         }
 
-        sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), en queue", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_logr_debug(pstSCB, SC_ACD, "POTS, find agent(%u) by userid(%s), en queue", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
         sc_acd_update_agent_status(SC_ACD_SITE_ACTION_EN_QUEUE, stAgentInfo.ulSiteID, OPERATING_TYPE_PHONE);
         ulRet = DOS_SUCC;
         if (bIsSecondaryDialing)
@@ -12151,7 +12149,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         {
             if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCB->ulAgentID) != DOS_SUCC)
             {
-                sc_logr_info(SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
+                sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
                 bIsHangUp = DOS_FALSE;
 
                 goto end;
@@ -12167,7 +12165,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
             }
         }
 
-        sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), dn queue", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_logr_debug(pstSCB, SC_ACD, "POTS, find agent(%u) by userid(%s), dn queue", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
         sc_acd_update_agent_status(SC_ACD_SITE_ACTION_DN_QUEUE, stAgentInfo.ulSiteID, OPERATING_TYPE_PHONE);
         ulRet = DOS_SUCC;
         if (bIsSecondaryDialing)
@@ -12187,7 +12185,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
             goto end;
         }
 
-        sc_logr_debug(SC_ACD, "POTS, agent(%u) by userid(%s), signin SUCC", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_logr_debug(pstSCB, SC_ACD, "POTS, agent(%u) by userid(%s), signin SUCC", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
         sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
         sc_ep_esl_execute("park", NULL, pstSCB->szUUID);
 
@@ -12201,7 +12199,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
             && dos_atoull(pszValue, &uLTmp) == 0)
         {
             pstSCB->ulSiginTimeStamp = uLTmp / 1000000;
-            sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszValue, pstSCB->ulSiginTimeStamp);
+            sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszValue, pstSCB->ulSiginTimeStamp);
         }
 
         bIsHangUp = DOS_FALSE;
@@ -12213,7 +12211,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         {
             if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCB->ulAgentID) != DOS_SUCC)
             {
-                sc_logr_info(SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
+                sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
 
                 goto end;
             }
@@ -12222,13 +12220,13 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         {
             if (sc_ep_get_agent_by_caller(&stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
             {
-                sc_logr_info(SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
+                sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
 
                 goto end;
             }
         }
 
-        sc_logr_debug(SC_ACD, "POTS, find agent(%u) by userid(%s), signout", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
+        sc_logr_debug(pstSCB, SC_ACD, "POTS, find agent(%u) by userid(%s), signout", stAgentInfo.ulSiteID, pstSCB->szCallerNum);
         sc_acd_update_agent_status(SC_ACD_SITE_ACTION_SIGNOUT, stAgentInfo.ulSiteID, OPERATING_TYPE_PHONE);
 
         ulRet = DOS_SUCC;
@@ -12241,14 +12239,14 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         bIsHangUp = DOS_FALSE;
         if (dos_sscanf(pszDealNum, "*%*[^*]*%[^#]s", pszEmpNum) != 1)
         {
-            sc_logr_info(SC_ACD, "POTS, format error : %s", pszDealNum);
+            sc_logr_info(pstSCB, SC_ACD, "POTS, format error : %s", pszDealNum);
 
             goto end;
         }
 
         if (sc_acd_get_agent_by_emp_num(&stAgentInfo, pstSCB->ulCustomID, pszEmpNum) != DOS_SUCC)
         {
-            sc_logr_info(SC_ACD, "POTS, Can not find agent. customer id(%u), empNum(%s)", pstSCB->ulCustomID, pszEmpNum);
+            sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent. customer id(%u), empNum(%s)", pstSCB->ulCustomID, pszEmpNum);
 
             goto end;
         }
@@ -12256,7 +12254,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         /* 判断坐席的状态 */
         if (!SC_ACD_SITE_IS_USEABLE(&stAgentInfo))
         {
-            sc_logr_debug(SC_ACD, "The agent is not useable.(Agent %u)", stAgentInfo.ulSiteID);
+            sc_logr_debug(pstSCB, SC_ACD, "The agent is not useable.(Agent %u)", stAgentInfo.ulSiteID);
 
             goto end;
         }
@@ -12298,14 +12296,14 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
 
         if (dos_sscanf(pszDealNum, "*%*[^*]*%[^#]s", pszEmpNum) != 1)
         {
-            sc_logr_info(SC_ACD, "POTS, format error : %s", pszDealNum);
+            sc_logr_info(pstSCB, SC_ACD, "POTS, format error : %s", pszDealNum);
 
             goto end;
         }
 
         if (sc_acd_get_agent_by_emp_num(&stAgentInfo, pstSCB->ulCustomID, pszEmpNum) != DOS_SUCC)
         {
-            sc_logr_info(SC_ACD, "POTS, Can not find agent. customer id(%u), empNum(%s)", pstSCB->ulCustomID, pszEmpNum);
+            sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent. customer id(%u), empNum(%s)", pstSCB->ulCustomID, pszEmpNum);
 
             goto end;
         }
@@ -12313,7 +12311,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         /* 判断坐席的状态 */
         if (!SC_ACD_SITE_IS_USEABLE(&stAgentInfo))
         {
-            sc_logr_debug(SC_ACD, "The agent is not useable.(Agent %u)", stAgentInfo.ulSiteID);
+            sc_logr_debug(pstSCB, SC_ACD, "The agent is not useable.(Agent %u)", stAgentInfo.ulSiteID);
 
             goto end;
         }
@@ -12370,7 +12368,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
             sc_send_marker_update_req(pstSCB->ulCustomID, pstSCB->ulAgentID, ulKey, pstSCB->szCalleeNum);
         }
 
-        sc_logr_debug(SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s"
+        sc_logr_debug(pstSCB, SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s"
             , pstSCB->szCalleeNum, pstSCB->szCallerNum, pstSCB->szUUID);
 
         /* 操作成功，放音提示 */
@@ -12419,7 +12417,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
     else
     {
         DOS_ASSERT(0);
-        sc_logr_info(SC_ACD, "POTS, Not matched any action : %s", pszDealNum);
+        sc_logr_info(pstSCB, SC_ACD, "POTS, Not matched any action : %s", pszDealNum);
 
         if (bIsSecondaryDialing)
         {
@@ -12428,7 +12426,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
     }
 
 end:
-    sc_logr_debug(SC_ACD, "POTS, result : %d, callee : %s", ulRet, pszDealNum);
+    sc_logr_debug(pstSCB, SC_ACD, "POTS, result : %d, callee : %s", ulRet, pszDealNum);
 
     if (ulRet != DOS_SUCC)
     {
@@ -12475,7 +12473,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
     if (U32_BUTT == pstSCB->ulAgentID)
     {
-        sc_logr_notice(SC_ESL, "%s", "Proc the signin msg. But there is no agent.");
+        sc_logr_notice(pstSCB, SC_ESL, "%s", "Proc the signin msg. But there is no agent.");
 
         return DOS_FAIL;
     }
@@ -12483,12 +12481,12 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
     if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCB->ulAgentID) != DOS_SUCC)
     {
-        sc_logr_notice(SC_ESL, "Cannot find the agent with the id %u.", pstSCB->ulAgentID);
+        sc_logr_notice(pstSCB, SC_ESL, "Cannot find the agent with the id %u.", pstSCB->ulAgentID);
 
         return DOS_FAIL;
     }
 
-    sc_logr_info(SC_ESL, "Start process signin msg. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
+    sc_logr_info(pstSCB, SC_ESL, "Start process signin msg. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
                     , stAgentInfo.ulSiteID
                     , stAgentInfo.bNeedConnected ? "Yes" : "No"
                     , stAgentInfo.bConnected ? "Yes" : "No"
@@ -12496,7 +12494,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
     if (stAgentInfo.bNeedConnected && !stAgentInfo.bConnected)
     {
-        sc_logr_debug(SC_ESL, "Agent signin. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
+        sc_logr_debug(pstSCB, SC_ESL, "Agent signin. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
                         , stAgentInfo.ulSiteID
                         , stAgentInfo.bNeedConnected ? "Yes" : "No"
                         , stAgentInfo.bConnected ? "Yes" : "No"
@@ -12516,7 +12514,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
         if (sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1) != DOS_SUCC)
         {
-            sc_logr_info(SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
+            sc_logr_info(pstSCB, SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
         }
     }
     else
@@ -12526,7 +12524,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         /* 坐席还处于IDEL就直接继续放音就好 */
         if (SC_ACD_IDEL == stAgentInfo.ucStatus)
         {
-            sc_logr_debug(SC_ESL, "Agent signin and playback timeout. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
+            sc_logr_debug(pstSCB, SC_ESL, "Agent signin and playback timeout. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
                             , stAgentInfo.ulSiteID
                             , stAgentInfo.bNeedConnected ? "Yes" : "No"
                             , stAgentInfo.bConnected ? "Yes" : "No"
@@ -12545,7 +12543,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
                     if (sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1) != DOS_SUCC)
                     {
-                        sc_logr_info(SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
+                        sc_logr_info(pstSCB, SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
                     }
                     sc_ep_esl_execute("set", "playback_terminators=*", pstSCB->szUUID);
 
@@ -12568,7 +12566,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
             /* 处理呼叫结果过程 */
             /* 放音，然后接受案件 */
-            sc_logr_debug(SC_ESL, "Agent signin and a call just huangup. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
+            sc_logr_debug(pstSCB, SC_ESL, "Agent signin and a call just huangup. Agent: %u, Need Connect: %s, Connected: %s Status: %u"
                             , stAgentInfo.ulSiteID
                             , stAgentInfo.bNeedConnected ? "Yes" : "No"
                             , stAgentInfo.bConnected ? "Yes" : "No"
@@ -12595,7 +12593,7 @@ U32 sc_ep_agent_signin_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     sc_ep_esl_execute("set", "playback_terminators=none", pstSCB->szUUID);
                     if (sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCB->szUUID, 1) != DOS_SUCC)
                     {
-                        sc_logr_info(SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
+                        sc_logr_info(pstSCB, SC_ESL, "%s", "Cannot find the music on hold. just park the call.");
                     }
                     sc_ep_esl_execute("set", "playback_terminators=*", pstSCB->szUUID);
                 }
@@ -12649,7 +12647,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         return DOS_FAIL;
     }
 
-    sc_logr_debug(SC_ESL, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
+    sc_logr_debug(pstSCB, SC_ESL, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
 
     /*  1.申请控制块
      *  2.判断是否是自动外呼
@@ -12674,7 +12672,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     pszIsAutoCall = esl_event_get_header(pstEvent, "variable_auto_call");
     pszCaller     = esl_event_get_header(pstEvent, "Caller-Caller-ID-Number");
     pszCallee     = esl_event_get_header(pstEvent, "Caller-Destination-Number");
-    sc_logr_info(SC_ESL, "Route Call Start: Auto Call Flag: %s, Caller: %s, Callee: %s, pstSCB : %u"
+    sc_logr_info(pstSCB, SC_ESL, "Route Call Start: Auto Call Flag: %s, Caller: %s, Callee: %s, pstSCB : %u"
                 , NULL == pszIsAutoCall ? "NULL" : pszIsAutoCall
                 , NULL == pszCaller ? "NULL" : pszCaller
                 , NULL == pszCallee ? "NULL" : pszCallee, pstSCB->usSCBNo);
@@ -12741,7 +12739,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     {
         ulRet = DOS_SUCC;
 
-        sc_logr_info(SC_ESL, "Recv park without disposition give up to process. UUID: %s", pstSCB->szUUID);
+        sc_logr_info(pstSCB, SC_ESL, "Recv park without disposition give up to process. UUID: %s", pstSCB->szUUID);
 
         goto proc_finished;
     }
@@ -12782,7 +12780,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     && dos_atoull(pszValue, &uLTmp) == 0)
                 {
                     pstSCB->ulSiginTimeStamp = uLTmp / 1000000;
-                    sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszValue, pstSCB->ulSiginTimeStamp);
+                    sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszValue, pstSCB->ulSiginTimeStamp);
                 }
             }
             /* 坐席长签成功 */
@@ -12821,7 +12819,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     pstSCBNew = sc_scb_alloc();
                     if (DOS_ADDR_INVALID(pstSCB))
                     {
-                        sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+                        sc_logr_warning(pstSCB, SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
                         ulRet = DOS_FAIL;
                         DOS_ASSERT(0);
                         goto proc_finished;
@@ -12856,7 +12854,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     pstSCBNew = sc_scb_alloc();
                     if (DOS_ADDR_INVALID(pstSCB))
                     {
-                        sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+                        sc_logr_warning(pstSCB, SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
                         ulRet = DOS_FAIL;
                         DOS_ASSERT(0);
                         goto proc_finished;
@@ -12879,7 +12877,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     if (sc_caller_setting_select_number(pstSCBNew->ulCustomID, pstSCBNew->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstSCBNew->szCallerNum, sizeof(pstSCBNew->szCallerNum)) != DOS_SUCC)
                     {
                         DOS_ASSERT(0);
-                        sc_logr_info(SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", pstSCBNew->ulAgentID);
+                        sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", pstSCBNew->ulAgentID);
                         sc_scb_free(pstSCBNew);
                         pstSCB->usOtherSCBNo = U16_BUTT;
                         sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_CALLER_NUMBER_ILLEGAL);
@@ -12893,7 +12891,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     {
                         DOS_ASSERT(0);
 
-                        sc_logr_info(SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
+                        sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
                         ulRet = DOS_FAIL;
                         goto proc_finished;
                     }
@@ -12904,7 +12902,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     {
                         DOS_ASSERT(0);
 
-                        sc_logr_info(SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
+                        sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
                         ulRet = DOS_FAIL;
 
                         sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_MESSAGE_SENT_ERR);
@@ -12997,7 +12995,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
         SC_SCB_SET_STATUS(pstSCB, SC_SCB_ACTIVE);
 
-        sc_logr_info(SC_ESL, "Agent has been connected. UUID: %s <> %s. SCBNo: %d <> %d."
+        sc_logr_info(pstSCB, SC_ESL, "Agent has been connected. UUID: %s <> %s. SCBNo: %d <> %d."
                      , pstSCB->szUUID, pstSCBOther->szUUID
                      , pstSCB->usSCBNo, pstSCBOther->usSCBNo);
     }
@@ -13040,7 +13038,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         else
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_ESL, "Invalid call source or destension. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
+            sc_logr_info(pstSCB, SC_ESL, "Invalid call source or destension. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
 
             sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_CUSTOMERS_NOT_EXIST);
 
@@ -13056,12 +13054,12 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
             SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
             ulRet = DOS_FAIL;
-            sc_logr_info(SC_ESL, "Invalid call source or destension. Source: %d, Dest: %d, CustomID(%u) is not vest in enterprise", ulCallSrc, ulCallDst, pstSCB->ulCustomID);
+            sc_logr_info(pstSCB, SC_ESL, "Invalid call source or destension. Source: %d, Dest: %d, CustomID(%u) is not vest in enterprise", ulCallSrc, ulCallDst, pstSCB->ulCustomID);
 
             goto proc_finished;
         }
 
-        sc_logr_info(SC_ESL, "Get call source and dest. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
+        sc_logr_info(pstSCB, SC_ESL, "Get call source and dest. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
 
         if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_PSTN == ulCallDst)
         {
@@ -13076,12 +13074,12 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
                     if (sc_acd_update_agent_scbno_by_userid(pstSCB->szCallerNum, pstSCB, &stAgentData, pstSCB->szCalleeNum) != DOS_SUCC)
                     {
-                        sc_logr_info(SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
+                        sc_logr_info(pstSCB, SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
                     }
                     else
                     {
                         /* 绑定了坐席，要进行客户标记 */
-                        sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
+                        sc_logr_debug(pstSCB, SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
                         sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCB->szUUID);
                         sc_ep_esl_execute("set", "mark_customer=true", pstSCB->szUUID);
                         pstSCB->bIsAgentCall = DOS_TRUE;
@@ -13094,12 +13092,12 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
                     if (sc_acd_update_agent_scbno_by_siteid(pstSCB->ulAgentID, pstSCB, &stAgentData, pstSCB->szCalleeNum) != DOS_SUCC)
                     {
-                        sc_logr_info(SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
+                        sc_logr_info(pstSCB, SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
                     }
                     else
                     {
                         /* 绑定了坐席，要进行客户标记 */
-                        sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
+                        sc_logr_debug(pstSCB, SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", pstSCB->szCallerNum, pstSCB->usSCBNo);
                         sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCB->szUUID);
                         sc_ep_esl_execute("set", "mark_customer=true", pstSCB->szUUID);
                         pstSCB->bIsAgentCall = DOS_TRUE;
@@ -13160,11 +13158,11 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             /* 根据SIP，找到坐席，将SCB的usSCBNo, 绑定到坐席上 */
             if (sc_acd_update_agent_scbno_by_userid(pszCaller, pstSCB, &stAgentData, NULL) != DOS_SUCC)
             {
-                sc_logr_debug(SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pszCaller, pstSCB->usSCBNo);
+                sc_logr_debug(pstSCB, SC_ESL, "Not found agent by sip(%s). SCBNO : %d", pszCaller, pstSCB->usSCBNo);
             }
             else
             {
-                sc_logr_debug(SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", pszCaller, pstSCB->usSCBNo);
+                sc_logr_debug(pstSCB, SC_ESL, "update agent SCBNO SUCC. sip : %s, SCBNO : %d", pszCaller, pstSCB->usSCBNo);
             }
 
             ulRet = sc_ep_internal_call_process(pstHandle, pstEvent, pstSCB);
@@ -13172,7 +13170,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         else
         {
             DOS_ASSERT(0);
-            sc_logr_info(SC_ESL, "Invalid call source or destension. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
+            sc_logr_info(pstSCB, SC_ESL, "Invalid call source or destension. Source: %d, Dest: %d", ulCallSrc, ulCallDst);
 
             sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_CUSTOMERS_NOT_EXIST);
             ulRet = DOS_FAIL;
@@ -13224,7 +13222,7 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             ulProcessResult = DOS_FAIL;
         }
 
-        sc_logr_info(SC_ESL, "Execute command %s %s %s, Info: %s."
+        sc_logr_info(pstSCB, SC_ESL, "Execute command %s %s %s, Info: %s."
                         , pszAppName
                         , pszAppArg
                         , DOS_SUCC == ulProcessResult ? "SUCC" : "FAIL"
@@ -13311,7 +13309,7 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
                     /* 发送话单 */
                     if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
                     {
-                        sc_logr_notice(SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
+                        sc_logr_notice(pstSCB, SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
                     }
 
                     sc_bg_job_hash_delete(pstSCB->usSCBNo);
@@ -13320,7 +13318,7 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
                 }
             }
 
-            sc_logr_error(SC_ESL, "ERROR: BGJOB Fail.Argv: %s, SCB-NO: %s(%u)", pszAppArg, szSCBNo, ulSCBNo);
+            sc_logr_error(pstSCB, SC_ESL, "ERROR: BGJOB Fail.Argv: %s, SCB-NO: %s(%u)", pszAppArg, szSCBNo, ulSCBNo);
         }
     }
 
@@ -13367,7 +13365,7 @@ U32 sc_ep_channel_create_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         return DOS_FAIL;
     }
 
-    sc_logr_debug(SC_ESL, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
+    sc_logr_debug(pstSCB, SC_ESL, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
 
     pszUUID = esl_event_get_header(pstEvent, "Caller-Unique-ID");
     if (DOS_ADDR_INVALID(pszUUID))
@@ -13456,7 +13454,7 @@ process_fail:
         if (DOS_ADDR_INVALID(pstSCB))
         {
             DOS_ASSERT(0);
-            sc_logr_error(SC_ESL, "%s", "Alloc SCB FAIL.");
+            sc_logr_error(pstSCB, SC_ESL, "%s", "Alloc SCB FAIL.");
 
             SC_TRACE_OUT();
             return DOS_FAIL;
@@ -13510,11 +13508,11 @@ process_fail:
 
         if (sc_acd_update_agent_scbno_by_siteid(ulAgentID, pstSCB, NULL, NULL) != DOS_SUCC)
         {
-            sc_logr_info(SC_ESL, "update(%u) agent SCBNO FAIL. SCBNO : %d!", ulAgentID, pstSCB->usSCBNo);
+            sc_logr_info(pstSCB, SC_ESL, "update(%u) agent SCBNO FAIL. SCBNO : %d!", ulAgentID, pstSCB->usSCBNo);
         }
         else
         {
-            sc_logr_debug(SC_ESL, "update(%u) agent SCBNO SUCC. SCBNO : %d!", ulAgentID, pstSCB->usSCBNo);
+            sc_logr_debug(pstSCB, SC_ESL, "update(%u) agent SCBNO SUCC. SCBNO : %d!", ulAgentID, pstSCB->usSCBNo);
         }
     }
 
@@ -13614,7 +13612,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         if (sc_ep_record(pstSCBRecord) != DOS_SUCC)
         {
             DOS_ASSERT(0);
-            sc_logr_error(SC_ESL, "Record FAIL. SCB(%u)", pstSCBRecord->usSCBNo);
+            sc_logr_error(pstSCB, SC_ESL, "Record FAIL. SCB(%u)", pstSCBRecord->usSCBNo);
         }
     }
 
@@ -13662,7 +13660,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                     && dos_atoull(pszValue, &uLTmp) == 0)
                 {
                     pstSCB->ulSiginTimeStamp = uLTmp / 1000000;
-                    sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszValue, pstSCB->ulSiginTimeStamp);
+                    sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszValue, pstSCB->ulSiginTimeStamp);
                 }
             }
             /* 坐席长签成功 */
@@ -13697,7 +13695,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                     pstSCBNew = sc_scb_alloc();
                     if (DOS_ADDR_INVALID(pstSCB))
                     {
-                        sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+                        sc_logr_warning(pstSCB, SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
                         ulRet = DOS_FAIL;
                         DOS_ASSERT(0);
                         goto proc_finished;
@@ -13732,7 +13730,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                     pstSCBNew = sc_scb_alloc();
                     if (DOS_ADDR_INVALID(pstSCB))
                     {
-                        sc_logr_warning(SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
+                        sc_logr_warning(pstSCB, SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL.");
                         ulRet = DOS_FAIL;
                         DOS_ASSERT(0);
                         goto proc_finished;
@@ -13755,7 +13753,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                     if (sc_caller_setting_select_number(pstSCBNew->ulCustomID, pstSCBNew->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstSCBNew->szCallerNum, sizeof(pstSCBNew->szCallerNum)) != DOS_SUCC)
                     {
                         DOS_ASSERT(0);
-                        sc_logr_info(SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", pstSCBNew->ulAgentID);
+                        sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", pstSCBNew->ulAgentID);
                         sc_scb_free(pstSCBNew);
                         pstSCB->usOtherSCBNo = U16_BUTT;
                         sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_CALLER_NUMBER_ILLEGAL);
@@ -13769,7 +13767,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                     {
                         DOS_ASSERT(0);
 
-                        sc_logr_info(SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
+                        sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
                         ulRet = DOS_FAIL;
                         goto proc_finished;
                     }
@@ -13780,7 +13778,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                     {
                         DOS_ASSERT(0);
 
-                        sc_logr_info(SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
+                        sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
                         ulRet = DOS_FAIL;
 
                         sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_MESSAGE_SENT_ERR);
@@ -13941,7 +13939,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
         if (dos_strnicmp(pszTransforType, "blind", dos_strlen("blind")) == 0
             || dos_strnicmp(pszTransforType, "attend", dos_strlen("attend")) == 0)
         {
-            sc_logr_info(SC_ESL, "Got into transfor. transfor type: %s", pszTransforType);
+            sc_logr_info(pstSCB, SC_ESL, "Got into transfor. transfor type: %s", pszTransforType);
 
             pstSCB->bWaitingOtherRelase = DOS_TRUE;
             goto process_finished;
@@ -14011,7 +14009,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             pszHitDiaplan = esl_event_get_header(pstEvent, "Channel-HIT-Dialplan");
             if (DOS_ADDR_VALID(pszHitDiaplan))
             {
-                sc_logr_debug(SC_ESL, "Channel-HIT-Dialplan : %s, trunk cout : %u", pszHitDiaplan, pstSCB->ulTrunkCount);
+                sc_logr_debug(pstSCB, SC_ESL, "Channel-HIT-Dialplan : %s, trunk cout : %u", pszHitDiaplan, pstSCB->ulTrunkCount);
                 if (dos_strcmp(pszHitDiaplan, "false") == 0 && pstSCB->ulTrunkCount)
                 {
                     /* 判断一下振铃时间 */
@@ -14023,7 +14021,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
             }
             else
             {
-                sc_logr_debug(SC_ESL, "Not foung Channel-HIT-Dialplan, trunk cout : %u", pstSCB->ulTrunkCount);
+                sc_logr_debug(pstSCB, SC_ESL, "Not foung Channel-HIT-Dialplan, trunk cout : %u", pstSCB->ulTrunkCount);
             }
 
             if (pstSCB->ucTranforRole == SC_TRANS_ROLE_PUBLISH
@@ -14081,7 +14079,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 /* pstSCB 是先挂断的一方 */
                 /* A-leg不是坐席，B-leg是坐席，判断一下B是否已经标记客户，
                     如果没有，获得B对应坐席的整理时长，如果不为0，则B-leg不用挂断电话，进行客户标记 */
-                sc_logr_debug(SC_ESL, "Hungup : SCB(%u) bIsAgentCall : %u, SCBOther(%u) bIsAgentCall : %u, SCBOther bIsMarkCustomer : %u", pstSCB->usSCBNo, pstSCB->bIsAgentCall, pstSCBOther->usSCBNo, pstSCBOther->bIsAgentCall, pstSCBOther->bIsMarkCustomer);
+                sc_logr_debug(pstSCB, SC_ESL, "Hungup : SCB(%u) bIsAgentCall : %u, SCBOther(%u) bIsAgentCall : %u, SCBOther bIsMarkCustomer : %u", pstSCB->usSCBNo, pstSCB->bIsAgentCall, pstSCBOther->usSCBNo, pstSCBOther->bIsAgentCall, pstSCBOther->bIsMarkCustomer);
                 if (!pstSCB->bIsAgentCall
                     && pstSCBOther->bIsAgentCall)
                 {
@@ -14098,7 +14096,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                         if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCBOther->ulAgentID) != DOS_SUCC)
                         {
                             /* 获取坐席失败，直接释放 */
-                            sc_logr_notice(SC_ESL, "Get agent FAIL by agentID(%u)", pstSCBOther->ulAgentID);
+                            sc_logr_notice(pstSCB, SC_ESL, "Get agent FAIL by agentID(%u)", pstSCBOther->ulAgentID);
                         }
                         else
                         {
@@ -14146,7 +14144,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                         sc_ep_esl_execute("unhold", NULL, pstSCBOther->szUUID);
                                     }
 
-                                    sc_logr_debug(SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", pstSCBOther->ulAgentID, ulProcesingTime);
+                                    sc_logr_debug(pstSCB, SC_ACD, "Start timer change agent(%u) from SC_ACD_PROC to SC_ACD_IDEL, time : %d", pstSCBOther->ulAgentID, ulProcesingTime);
                                     sc_ep_esl_execute("set", "playback_terminators=none", pstSCBOther->szUUID);
                                     sc_ep_esl_execute("sleep", "500", pstSCBOther->szUUID);
                                     dos_snprintf(szCMD, sizeof(szCMD)
@@ -14198,7 +14196,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                         if (sc_ep_hangup_call(pstSCBOther, CC_ERR_NORMAL_CLEAR) == DOS_SUCC)
                         {
                             pstSCB->bWaitingOtherRelase = DOS_TRUE;
-                            sc_logr_info(SC_ESL, "Waiting other leg hangup.Curretn Leg UUID: %s, Other Leg UUID: %s"
+                            sc_logr_info(pstSCB, SC_ESL, "Waiting other leg hangup.Curretn Leg UUID: %s, Other Leg UUID: %s"
                                             , pstSCB->szUUID ? pstSCB->szUUID : "NULL"
                                             , pstSCBOther->szUUID ? pstSCBOther->szUUID : "NULL");
 
@@ -14209,7 +14207,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                 if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCB->ulAgentID) != DOS_SUCC)
                                 {
                                     /* 获取坐席失败 */
-                                    sc_logr_notice(SC_ESL, "Get agent FAIL by agentID(%u)", pstSCB->ulAgentID);
+                                    sc_logr_notice(pstSCB, SC_ESL, "Get agent FAIL by agentID(%u)", pstSCB->ulAgentID);
                                 }
                                 else
                                 {
@@ -14236,7 +14234,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCB->ulAgentID) != DOS_SUCC)
                 {
                     /* 获取坐席失败 */
-                    sc_logr_notice(SC_ESL, "Get agent FAIL by agentID(%u)", pstSCB->ulAgentID);
+                    sc_logr_notice(pstSCB, SC_ESL, "Get agent FAIL by agentID(%u)", pstSCB->ulAgentID);
                 }
                 else
                 {
@@ -14287,7 +14285,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                     if (sc_acd_get_agent_by_id(&stAgentInfo, pstSCBOther->ulAgentID) != DOS_SUCC)
                     {
                         /* 获取坐席失败 */
-                        sc_logr_notice(SC_ESL, "Get agent FAIL by agentID(%u)", pstSCBOther->ulAgentID);
+                        sc_logr_notice(pstSCB, SC_ESL, "Get agent FAIL by agentID(%u)", pstSCBOther->ulAgentID);
                     }
                     else
                     {
@@ -14346,19 +14344,19 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                     }
                 }
 
-                sc_logr_debug(SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+                sc_logr_debug(pstSCB, SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
                 /* 发送话单 */
                 if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
                 {
-                    sc_logr_debug(SC_ESL, "Send CDR to bs FAIL. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+                    sc_logr_debug(pstSCB, SC_ESL, "Send CDR to bs FAIL. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
                 }
                 else
                 {
-                    sc_logr_debug(SC_ESL, "Send CDR to bs SUCC. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+                    sc_logr_debug(pstSCB, SC_ESL, "Send CDR to bs SUCC. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
                 }
             }
 
-            sc_logr_debug(SC_ESL, "Start release the SCB. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+            sc_logr_debug(pstSCB, SC_ESL, "Start release the SCB. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
             /* 维护资源 */
             sc_scb_hash_tables_delete(pstSCB->szUUID);
             if (DOS_ADDR_VALID(pstSCBOther) && pstSCBOther->bWaitingOtherRelase)
@@ -14490,7 +14488,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         goto process_fail;
     }
 
-    sc_logr_info(SC_ESL, "Recv DTMF: %s, %d, Numbers Dialed: %s", pszDTMFDigit, pszDTMFDigit[0], pstSCB->szDialNum);
+    sc_logr_info(pstSCB, SC_ESL, "Recv DTMF: %s, %d, Numbers Dialed: %s", pszDTMFDigit, pszDTMFDigit[0], pstSCB->szDialNum);
 
     /* 自动外呼，拨0接通坐席 */
     if (sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
@@ -14499,7 +14497,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
         if (pstSCB->bIsInQueue || DOS_ADDR_VALID(pstSCBOther))
         {
-            sc_logr_debug(SC_ESL, "Auto dialing recv a dtmf. The call is in queue or has connected to an agent, disgard."
+            sc_logr_debug(pstSCB, SC_ESL, "Auto dialing recv a dtmf. The call is in queue or has connected to an agent, disgard."
                             , pszDTMFDigit, pszDTMFDigit[0], pstSCB->szDialNum);
             goto process_succ;
         }
@@ -14530,7 +14528,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
         if (pstSCB->bIsInQueue || DOS_ADDR_VALID(pstSCBOther))
         {
-            sc_logr_debug(SC_ESL, "Auto dialing recv a dtmf. The call is in queue or has connected to an agent, disgard."
+            sc_logr_debug(pstSCB, SC_ESL, "Auto dialing recv a dtmf. The call is in queue or has connected to an agent, disgard."
                             , pszDTMFDigit, pszDTMFDigit[0], pstSCB->szDialNum);
             goto process_succ;
         }
@@ -14554,14 +14552,14 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         {
             /* 超时 */
             pstSCB->szDialNum[0] = '\0';
-            sc_logr_debug(SC_ESL, "Scb(%u) DTMF timeout.", pstSCB->usSCBNo);
+            sc_logr_debug(pstSCB, SC_ESL, "Scb(%u) DTMF timeout.", pstSCB->usSCBNo);
         }
 
         if (pstSCB->szDialNum[0] == '\0'
             && (pszDTMFDigit[0] != '#' && pszDTMFDigit[0] != '*'))
         {
             /* 第一个符号不是 '#' 或者 '*'，不保存 */
-            sc_logr_debug(SC_ESL, "Scb(%u) DTMF is not * or #.", pstSCB->usSCBNo);
+            sc_logr_debug(pstSCB, SC_ESL, "Scb(%u) DTMF is not * or #.", pstSCB->usSCBNo);
 
             goto process_succ;
         }
@@ -14585,7 +14583,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
         else if (pszDTMFDigit[0] == '#' && dos_strlen(pstSCB->szDialNum) > 1)
         {
             /* # 为结束符，收到后，就应该去解析, 特别的，如果第一个字符为#,不需要去解析 */
-            sc_logr_debug(SC_ESL, "Secondary dialing. caller : %s, DialNum : %s", pstSCB->szCallerNum, pstSCB->szDialNum);
+            sc_logr_debug(pstSCB, SC_ESL, "Secondary dialing. caller : %s, DialNum : %s", pstSCB->szCallerNum, pstSCB->szDialNum);
             /* 不保存最后一个 # */
             pstSCB->szDialNum[dos_strlen(pstSCB->szDialNum) - 1] = '\0';
             sc_ep_pots_pro(pstSCB, pstEvent, DOS_TRUE);
@@ -14600,7 +14598,7 @@ U32 sc_ep_dtmf_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *p
                 && dos_strcmp(pstSCB->szDialNum, SC_POTS_MARK_CUSTOMER))
             {
                 /* 解析 */
-                sc_logr_debug(SC_ESL, "Secondary dialing. caller : %s, DialNum : %s", pstSCB->szCallerNum, pstSCB->szDialNum);
+                sc_logr_debug(pstSCB, SC_ESL, "Secondary dialing. caller : %s, DialNum : %s", pstSCB->szCallerNum, pstSCB->szDialNum);
                 /* 不保存最后一个 * */
                 pstSCB->szDialNum[dos_strlen(pstSCB->szDialNum) - 1] = '\0';
                 sc_ep_pots_pro(pstSCB, pstEvent, DOS_TRUE);
@@ -14710,19 +14708,19 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                         case SC_TASK_MODE_KEY4AGENT1:
                             if (!pstSCB->bIsHasKeyCallTask)
                             {
-                                sc_logr_notice(SC_ESL, "Hangup call for there is no input.(%s)", pstSCB->szUUID);
+                                sc_logr_notice(pstSCB, SC_ESL, "Hangup call for there is no input.(%s)", pstSCB->szUUID);
                                 sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
                             }
                             else
                             {
-                                sc_logr_notice(SC_ESL, "Playback stop with there has a key input.(%s)", pstSCB->szUUID);
+                                sc_logr_notice(pstSCB, SC_ESL, "Playback stop with there has a key input.(%s)", pstSCB->szUUID);
                                 /* 已经在按键的地方处理了，这里不用做什么 */
                             }
 
                             break;
                         case SC_TASK_MODE_AUDIO_ONLY:
                             /* 如果不在呼叫队列里面，就有可能要挂断 */
-                            sc_logr_notice(SC_ESL, "Hangup call for audio play finished.(%s)", pstSCB->szUUID);
+                            sc_logr_notice(pstSCB, SC_ESL, "Hangup call for audio play finished.(%s)", pstSCB->szUUID);
                             sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
                             break;
 
@@ -14732,7 +14730,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                             /* 判断一下scd是否是active状态。如果不是，则直接挂断，不用接通坐席了 */
                             if (pstSCB->ucStatus != SC_SCB_ACTIVE)
                             {
-                                sc_logr_info(SC_ESL, "Hangup call. SCB(%u) status is %u.(%s)", pstSCB->usSCBNo, pstSCB->ucStatus, pstSCB->szUUID);
+                                sc_logr_info(pstSCB, SC_ESL, "Hangup call. SCB(%u) status is %u.(%s)", pstSCB->usSCBNo, pstSCB->ucStatus, pstSCB->szUUID);
                                 sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
                             }
 
@@ -14762,12 +14760,12 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
 
                     if (!pstSCB->bIsHasKeyCallTask)
                     {
-                        sc_logr_notice(SC_ESL, "Hangup call for there is no input.(%s)", pstSCB->szUUID);
+                        sc_logr_notice(pstSCB, SC_ESL, "Hangup call for there is no input.(%s)", pstSCB->szUUID);
                         sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
                     }
                     else
                     {
-                        sc_logr_notice(SC_ESL, "Playback stop with there has a key input.(%s)", pstSCB->szUUID);
+                        sc_logr_notice(pstSCB, SC_ESL, "Playback stop with there has a key input.(%s)", pstSCB->szUUID);
                         /* 已经在按键的地方处理了，这里不用做什么 */
                     }
                 }
@@ -14801,7 +14799,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
                 goto proc_succ;
             }
 
-            sc_logr_debug(SC_ESL, "SCB %d playback stop not need hangup, %s", pstSCB->usSCBNo, pszValue);
+            sc_logr_debug(pstSCB, SC_ESL, "SCB %d playback stop not need hangup, %s", pstSCB->usSCBNo, pszValue);
         }
         else
         {
@@ -14836,7 +14834,7 @@ U32 sc_ep_playback_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_S
         }
     }
 
-    sc_logr_notice(SC_ESL, "SCB %d donot needs handle any playback application.", pstSCB->usSCBNo);
+    sc_logr_notice(pstSCB, SC_ESL, "SCB %d donot needs handle any playback application.", pstSCB->usSCBNo);
 
 proc_succ:
 
@@ -14880,7 +14878,7 @@ U32 sc_ep_destroy_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         return DOS_SUCC;
     }
 
-    sc_logr_warning(SC_ESL, "Free scb while channel destroy, it's not in the designed.SCBNO: %s, UUID: %s", pstSCB->usSCBNo, pszUUID);
+    sc_logr_warning(pstSCB, SC_ESL, "Free scb while channel destroy, it's not in the designed.SCBNO: %s, UUID: %s", pstSCB->usSCBNo, pszUUID);
 
     if (pstSCB->ulTaskID != 0 && pstSCB->ulTaskID != U32_BUTT)
     {
@@ -14924,13 +14922,13 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         return DOS_FAIL;
     }
 
-    sc_logr_debug(SC_ESL, "ESL event process START. %s(%d), SCB No:%s, Channel Name: %s"
+    sc_logr_debug(pstSCB, SC_ESL, "ESL event process START. %s(%d), SCB No:%s, Channel Name: %s"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id
                             , esl_event_get_header(pstEvent, "variable_scb_number")
                             , esl_event_get_header(pstEvent, "Channel-Name"));
 
-    sc_logr_debug(SC_ESL, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
+    sc_logr_debug(pstSCB, SC_ESL, "Start process event %s.", esl_event_get_header(pstEvent, "Event-Name"));
 
     pszUUID = esl_event_get_header(pstEvent, "Caller-Unique-ID");
     if (DOS_ADDR_INVALID(pszUUID))
@@ -14976,7 +14974,7 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             && dos_atoull(pszTmp, &uLTmp) == 0)
         {
             pstSCB->pstExtraData->ulByeTimeStamp = uLTmp / 1000000;
-            sc_logr_debug(SC_ESL, "Get extra data: Caller-Channel-Hangup-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulByeTimeStamp);
+            sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Hangup-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulByeTimeStamp);
         }
 
         if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
@@ -15037,15 +15035,15 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     }
 
     /* 发送录音话单 */
-    sc_logr_debug(SC_ESL, "Send CDR Record to bs. SCB1 No:%d", pstSCB->usSCBNo);
+    sc_logr_debug(pstSCB, SC_ESL, "Send CDR Record to bs. SCB1 No:%d", pstSCB->usSCBNo);
     /* 发送话单 */
     if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
     {
-        sc_logr_debug(SC_ESL, "Send CDR Record to bs FAIL. SCB1 No:%d", pstSCB->usSCBNo);
+        sc_logr_debug(pstSCB, SC_ESL, "Send CDR Record to bs FAIL. SCB1 No:%d", pstSCB->usSCBNo);
     }
     else
     {
-        sc_logr_debug(SC_ESL, "Send CDR Record to bs SUCC. SCB1 No:%d", pstSCB->usSCBNo);
+        sc_logr_debug(pstSCB, SC_ESL, "Send CDR Record to bs SUCC. SCB1 No:%d", pstSCB->usSCBNo);
     }
 
     /* 将 pstSCB 中的数据还原 */
@@ -15064,7 +15062,7 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     pstSCB->ulMarkStartTimeStamp = ulMarkStartTimeStamp;
 
 finished:
-    sc_logr_debug(SC_ESL, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
+    sc_logr_debug(pstSCB, SC_ESL, "Finished to process %s event.", esl_event_get_header(pstEvent, "Event-Name"));
 
     return DOS_SUCC;
 }
@@ -15167,7 +15165,7 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         }
     }
 
-    sc_logr_debug(SC_ESL, "Start process event: %s(%d), SCB No:%s"
+    sc_logr_debug(pstSCB, SC_ESL, "Start process event: %s(%d), SCB No:%s"
                     , esl_event_get_header(pstEvent, "Event-Name")
                     , pstEvent->event_id
                     , esl_event_get_header(pstEvent, "variable_scb_number"));
@@ -15180,7 +15178,7 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             ulRet = sc_ep_channel_park_proc(pstHandle, pstEvent, pstSCB);
             if (ulRet != DOS_SUCC)
             {
-                sc_logr_info(SC_ESL, "Hangup for process event %s fail. UUID: %s", esl_event_get_header(pstEvent, "Event-Name"), pszUUID);
+                sc_logr_info(pstSCB, SC_ESL, "Hangup for process event %s fail. UUID: %s", esl_event_get_header(pstEvent, "Event-Name"), pszUUID);
             }
             break;
 
@@ -15190,7 +15188,7 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             if (ulRet != DOS_SUCC)
             {
                 sc_ep_esl_execute("hangup", NULL, pszUUID);
-                sc_logr_info(SC_ESL, "Hangup for process event %s fail. UUID: %s", esl_event_get_header(pstEvent, "Event-Name"), pszUUID);
+                sc_logr_info(pstSCB, SC_ESL, "Hangup for process event %s fail. UUID: %s", esl_event_get_header(pstEvent, "Event-Name"), pszUUID);
             }
             break;
 
@@ -15236,11 +15234,11 @@ U32 sc_ep_process(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             DOS_ASSERT(0);
             ulRet = DOS_FAIL;
 
-            sc_logr_info(SC_ESL, "Recv unhandled event: %s(%d)", esl_event_get_header(pstEvent, "Event-Name"), pstEvent->event_id);
+            sc_logr_info(pstSCB, SC_ESL, "Recv unhandled event: %s(%d)", esl_event_get_header(pstEvent, "Event-Name"), pstEvent->event_id);
             break;
     }
 
-    sc_logr_debug(SC_ESL, "Process finished event: %s(%d). Result:%s"
+    sc_logr_debug(pstSCB, SC_ESL, "Process finished event: %s(%d). Result:%s"
                     , esl_event_get_header(pstEvent, "Event-Name")
                     , pstEvent->event_id
                     , (DOS_SUCC == ulRet) ? "Successfully" : "FAIL");
@@ -15308,7 +15306,7 @@ VOID*sc_ep_process_runtime(VOID *ptr)
             DLL_Init_Node(pstListNode)
             dos_dmem_free(pstListNode);
 
-            sc_logr_debug(SC_ESL, "ESL event process START. %s(%d), SCB No:%s, Channel Name: %s"
+            sc_logr_debug(NULL, SC_ESL, "ESL event process START. %s(%d), SCB No:%s, Channel Name: %s"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id
                             , esl_event_get_header(pstEvent, "variable_scb_number")
@@ -15320,7 +15318,7 @@ VOID*sc_ep_process_runtime(VOID *ptr)
                 DOS_ASSERT(0);
             }
 
-            sc_logr_debug(SC_ESL, "ESL event process FINISHED. %s(%d), SCB No:%s Processed, Result: %d"
+            sc_logr_debug(NULL, SC_ESL, "ESL event process FINISHED. %s(%d), SCB No:%s Processed, Result: %d"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id
                             , esl_event_get_header(pstEvent, "variable_scb_number")
@@ -15540,7 +15538,7 @@ VOID* sc_ep_runtime(VOID *ptr)
         /* 如果退出标志被置上，就准备退出了 */
         if (g_pstHandle->blIsWaitingExit)
         {
-            sc_logr_notice(SC_ESL, "%s", "Event process exit flag has been set. the task will be exit.");
+            sc_logr_notice(NULL, SC_ESL, "%s", "Event process exit flag has been set. the task will be exit.");
             break;
         }
 
@@ -15550,13 +15548,13 @@ VOID* sc_ep_runtime(VOID *ptr)
          **/
         if (!g_pstHandle->blIsESLRunning)
         {
-            sc_logr_notice(SC_ESL, "%s", "ELS for event connection has been down, re-connect.");
+            sc_logr_notice(NULL, SC_ESL, "%s", "ELS for event connection has been down, re-connect.");
             g_pstHandle->stRecvHandle.event_lock = 1;
             ulRet = esl_connect(&g_pstHandle->stRecvHandle, "127.0.0.1", 8021, NULL, "ClueCon");
             if (ESL_SUCCESS != ulRet)
             {
                 esl_disconnect(&g_pstHandle->stRecvHandle);
-                sc_logr_debug(SC_ESL, "ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstHandle->stRecvHandle.err);
+                sc_logr_debug(NULL, SC_ESL, "ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_pstHandle->stRecvHandle.err);
 
                 sleep(1);
                 continue;
@@ -15567,7 +15565,7 @@ VOID* sc_ep_runtime(VOID *ptr)
             esl_global_set_default_logger(g_pstHandle->ulESLDebugLevel);
             esl_events(&g_pstHandle->stRecvHandle, ESL_EVENT_TYPE_PLAIN, SC_EP_EVENT_LIST);
 
-            sc_logr_notice(SC_ESL, "%s", "ELS for event connect Back to Normal.");
+            sc_logr_notice(NULL, SC_ESL, "%s", "ELS for event connect Back to Normal.");
         }
 
         if (!bFirstConnSucc)
@@ -15581,7 +15579,7 @@ VOID* sc_ep_runtime(VOID *ptr)
         {
             DOS_ASSERT(0);
 
-            sc_logr_info(SC_ESL, "%s", "ESL Recv event fail, continue.");
+            sc_logr_info(NULL, SC_ESL, "%s", "ESL Recv event fail, continue.");
             g_pstHandle->blIsESLRunning = DOS_FALSE;
 
             esl_disconnect(&g_pstHandle->stRecvHandle);
@@ -15595,12 +15593,12 @@ VOID* sc_ep_runtime(VOID *ptr)
         {
             DOS_ASSERT(0);
 
-            sc_logr_info(SC_ESL, "%s", "ESL get event fail, continue.");
+            sc_logr_info(NULL, SC_ESL, "%s", "ESL get event fail, continue.");
             g_pstHandle->blIsESLRunning = DOS_FALSE;
             continue;
         }
 
-        sc_logr_info(SC_ESL, "ESL recv thread recv event %s(%d)."
+        sc_logr_info(NULL, SC_ESL, "ESL recv thread recv event %s(%d)."
                         , esl_event_get_header(pstEvent, "Event-Name")
                         , pstEvent->event_id);
 
@@ -15609,7 +15607,7 @@ VOID* sc_ep_runtime(VOID *ptr)
         {
             DOS_ASSERT(0);
 
-            sc_logr_warning(SC_ESL, "ESL recv thread recv event %s(%d). Alloc memory fail. Drop"
+            sc_logr_warning(NULL, SC_ESL, "ESL recv thread recv event %s(%d). Alloc memory fail. Drop"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id);
 

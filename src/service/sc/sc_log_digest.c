@@ -44,7 +44,7 @@ static VOID *sc_log_digest_mainloop(VOID *ptr)
     {
         if (g_blExitFlag)
         {
-            sc_logr_info(SC_DIGEST, "%s", "Request exit.");
+            sc_logr_info(NULL, SC_DIGEST, "%s", "Request exit.");
             break;
         }
 
@@ -70,7 +70,7 @@ static VOID *sc_log_digest_mainloop(VOID *ptr)
                 if (DOS_ADDR_INVALID(pstLogFile))
                 {
                     DOS_ASSERT(0);
-                    sc_logr_error(SC_DIGEST, "Create Log File FILE. %s", strerror(errno));
+                    sc_logr_error(NULL, SC_DIGEST, "Create Log File FILE. %s", strerror(errno));
                     sleep(2);
                     break;
                 }
@@ -85,13 +85,13 @@ static VOID *sc_log_digest_mainloop(VOID *ptr)
 
             if (DOS_ADDR_INVALID(pstDLLNode))
             {
-                sc_logr_error(SC_DIGEST, "%s", "Log digest error.");
+                sc_logr_error(NULL, SC_DIGEST, "%s", "Log digest error.");
                 break;
             }
 
             if (DOS_ADDR_INVALID(pstDLLNode->pHandle))
             {
-                sc_logr_error(SC_DIGEST, "%s", "Log digest is empty.");
+                sc_logr_error(NULL, SC_DIGEST, "%s", "Log digest is empty.");
                 break;
             }
 
@@ -104,7 +104,7 @@ static VOID *sc_log_digest_mainloop(VOID *ptr)
             if (fwrite(pstMsg, dos_strlen(pstMsg), 1, pstLogFile) != 1)
             {
                 DOS_ASSERT(0);
-                sc_logr_error(SC_DIGEST, "%s", "Write into file FILE.");
+                sc_logr_error(NULL, SC_DIGEST, "%s", "Write into file FILE.");
             }
 
             ulFileSize += dos_strlen(pstMsg);
@@ -124,7 +124,7 @@ static VOID *sc_log_digest_mainloop(VOID *ptr)
                 if (DOS_ADDR_INVALID(fp))
                 {
                     DOS_ASSERT(0);
-                    sc_logr_debug(SC_DIGEST, "execute %s FAIL!!!", szPsCmd);
+                    sc_logr_debug(NULL, SC_DIGEST, "execute %s FAIL!!!", szPsCmd);
                 }
             }
         }
@@ -149,7 +149,7 @@ U32 sc_log_digest_print(S8 *pszFormat, ...)
     {
         DOS_ASSERT(0);
 
-        sc_logr_error(SC_DIGEST, "%s", "Add log digest fail. Alloc memory fail");
+        sc_logr_error(NULL, SC_DIGEST, "%s", "Add log digest fail. Alloc memory fail");
         return DOS_FAIL;
     }
     dos_snprintf(pszBuf, SC_LOG_DIGEST_LEN, "%s", szCurTime);
@@ -165,14 +165,14 @@ U32 sc_log_digest_print(S8 *pszFormat, ...)
 
         dos_dmem_free(pszBuf);
         pszBuf = NULL;
-        sc_logr_error(SC_DIGEST, "%s", "Add log digest fail. Alloc memory fail");
+        sc_logr_error(NULL, SC_DIGEST, "%s", "Add log digest fail. Alloc memory fail");
         return DOS_FAIL;
     }
 
     DLL_Init_Node(pstNode);
     pstNode->pHandle = pszBuf;
 
-    sc_logr_debug(SC_DIGEST, "%s", pszBuf);
+    sc_logr_debug(NULL, SC_DIGEST, "%s", pszBuf);
     pthread_mutex_lock(&g_mutexLogDigestQueue);
     DLL_Add(&g_stLogDigestQueue, pstNode);
     pthread_cond_signal(&g_condLogDigestQueue);
@@ -194,7 +194,7 @@ U32 sc_log_digest_start()
     {
         DOS_ASSERT(0);
 
-        sc_logr_notice(SC_BS, "%s", "Create Log digest process pthread fail");
+        sc_logr_notice(NULL, SC_BS, "%s", "Create Log digest process pthread fail");
         DOS_ASSERT(0);
 
         return DOS_FAIL;
