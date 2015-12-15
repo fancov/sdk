@@ -1186,61 +1186,13 @@ VOID sc_task_update_calledcnt(U64 ulArg)
     return;
 }
 
-#if 0
-static S32 sc_task_load_caller_index_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
-{
-    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
-    U32  ulIndex = U32_BUTT;
-
-    if (DOS_ADDR_INVALID(pArg)
-        || DOS_ADDR_INVALID(pszValues)
-        || DOS_ADDR_INVALID(pszNames))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstCaller = (SC_CALLER_QUERY_NODE_ST *)pArg;
-    if (DOS_ADDR_INVALID(pszValues[0])
-        || '\0' == pszValues[0][0]
-        || dos_atoul(pszValues[0], &ulIndex) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstCaller->ulIndexInDB = ulIndex;
-    return DOS_SUCC;
-}
-
-static U32 sc_task_load_caller_index(SC_CALLER_QUERY_NODE_ST *pstCaller)
-{
-    S8  szQuery[256] = {0};
-    S32 lRet = U32_BUTT;
-
-    if (DOS_ADDR_INVALID(pstCaller))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szQuery, sizeof(szQuery), "SELECT id FROM tbl_caller WHERE cid=\'%s\' AND customer_id = %u;"
-                    , pstCaller->szNumber, pstCaller->ulCustomerID);
-    lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_caller_index_cb, (VOID *)pstCaller, NULL);
-    if (DB_ERR_SUCC != lRet)
-    {
-        DOS_ASSERT(0);
-        sc_logr_error(NULL, SC_TASK, "SC Task Load caller Index FAIL.(Caller Number:%s)", pstCaller->szNumber);
-        return DOS_FAIL;
-    }
-
-    return DOS_SUCC;
-}
-#endif
 
 S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
-    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus, ulMoifyTime, ulCreateTime, ulStartHour, ulStartMinute, ulStartSecond, ulEndHour, ulEndMinute, ulEndSecond, ulCalleeCnt, ulCalledCnt, ulCallerGroupID, ulCallRate;
+    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus;
+    U32 ulMoifyTime, ulCreateTime, ulCalleeCnt, ulCalledCnt, ulCallerGroupID, ulCallRate;
+    U32 ulStartTime1, ulEndTime1, ulStartTime2, ulEndTime2;
+    U32 ulStartTime3, ulEndTime3, ulStartTime4, ulEndTime4;
     BOOL blProcessOK = DOS_FALSE;
     S32 lIndex = U32_BUTT;
     S8  szTaskName[64] = {0};
@@ -1312,18 +1264,72 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "start_time", dos_strlen("start_time")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "start_time1", dos_strlen("start_time1")))
         {
-            if (3 != dos_sscanf(aszValues[lIndex], "%u:%u:%u", &ulStartHour, &ulStartMinute, &ulStartSecond))
+            if (dos_atoul(aszValues[lIndex], &ulStartTime1) < 0)
             {
                 DOS_ASSERT(0);
                 blProcessOK = DOS_FALSE;
                 break;
             }
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "end_time", dos_strlen("end_time")))
+        else if (0 == dos_strnicmp(aszNames[lIndex], "end_time1", dos_strlen("end_time1")))
         {
-            if (3 != dos_sscanf(aszValues[lIndex], "%u:%u:%u", &ulEndHour, &ulEndMinute, &ulEndSecond))
+            if (dos_atoul(aszValues[lIndex], &ulEndTime1) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "start_time2", dos_strlen("start_time2")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulStartTime2) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "end_time2", dos_strlen("end_time2")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulEndTime2) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "start_time3", dos_strlen("start_time3")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulStartTime3) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "end_time3", dos_strlen("end_time3")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulEndTime3) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "start_time4", dos_strlen("start_time4")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulStartTime4) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "end_time4", dos_strlen("end_time4")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulEndTime4) < 0)
             {
                 DOS_ASSERT(0);
                 blProcessOK = DOS_FALSE;
@@ -1454,7 +1460,6 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
     }
 
-    //pstTCB->usTCBNo = (U16)lIndex;
     pstTCB->ucValid = DOS_TRUE;
     pstTCB->ulTaskID = ulTaskID;
     pstTCB->ulCustomID = ulCustomerID;
@@ -1473,13 +1478,64 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     pstTCB->ulLastCalleeIndex = ulCalledCnt;
 
     pstTCB->astPeriod[0].ucValid = DOS_TRUE;
-    pstTCB->astPeriod[0].ucWeekMask = 0xFF;
-    pstTCB->astPeriod[0].ucHourBegin = (U8)ulStartHour;
-    pstTCB->astPeriod[0].ucMinuteBegin = (U8)ulStartMinute;
-    pstTCB->astPeriod[0].ucSecondBegin = (U8)ulStartSecond;
-    pstTCB->astPeriod[0].ucHourEnd = (U8)ulEndHour;
-    pstTCB->astPeriod[0].ucMinuteEnd = (U8)ulEndMinute;
-    pstTCB->astPeriod[0].ucSecondEnd = (U8)ulEndSecond;
+    pstTCB->astPeriod[0].ucWeekMask = (ulStartTime1 >> 24) & 0xFF;
+    pstTCB->astPeriod[0].ucHourBegin = (ulStartTime1 >> 16) & 0xFF;
+    pstTCB->astPeriod[0].ucMinuteBegin = (ulStartTime1 >> 8) & 0xFF;
+    pstTCB->astPeriod[0].ucSecondBegin = (ulStartTime1) & 0xFF;
+    pstTCB->astPeriod[0].ucHourEnd = (ulEndTime1>> 16) & 0xFF;
+    pstTCB->astPeriod[0].ucMinuteEnd = (ulEndTime1>> 8) & 0xFF;
+    pstTCB->astPeriod[0].ucSecondEnd = (ulEndTime1) & 0xFF;
+
+    if (ulStartTime2 == 0)
+    {
+        dos_memzero(&pstTCB->astPeriod[1], sizeof(pstTCB->astPeriod[1]));
+        pstTCB->astPeriod[1].ucValid = DOS_FALSE;
+    }
+    else
+    {
+        pstTCB->astPeriod[1].ucValid = DOS_TRUE;
+        pstTCB->astPeriod[1].ucWeekMask = (ulStartTime2 >> 24) & 0xFF;
+        pstTCB->astPeriod[1].ucHourBegin = (ulStartTime2 >> 16) & 0xFF;
+        pstTCB->astPeriod[1].ucMinuteBegin = (ulStartTime2 >> 8) & 0xFF;
+        pstTCB->astPeriod[1].ucSecondBegin = (ulStartTime2) & 0xFF;
+        pstTCB->astPeriod[1].ucHourEnd = (ulEndTime2>> 16) & 0xFF;
+        pstTCB->astPeriod[1].ucMinuteEnd = (ulEndTime2>> 8) & 0xFF;
+        pstTCB->astPeriod[1].ucSecondEnd = (ulEndTime2) & 0xFF;
+    }
+
+    if (ulStartTime3 == 0)
+    {
+        dos_memzero(&pstTCB->astPeriod[2], sizeof(pstTCB->astPeriod[2]));
+        pstTCB->astPeriod[2].ucValid = DOS_FALSE;
+    }
+    else
+    {
+        pstTCB->astPeriod[2].ucValid = DOS_TRUE;
+        pstTCB->astPeriod[2].ucWeekMask = (ulStartTime3 >> 24) & 0xFF;
+        pstTCB->astPeriod[2].ucHourBegin = (ulStartTime3 >> 16) & 0xFF;
+        pstTCB->astPeriod[2].ucMinuteBegin = (ulStartTime3 >> 8) & 0xFF;
+        pstTCB->astPeriod[2].ucSecondBegin = (ulStartTime3) & 0xFF;
+        pstTCB->astPeriod[2].ucHourEnd = (ulEndTime3>> 16) & 0xFF;
+        pstTCB->astPeriod[2].ucMinuteEnd = (ulEndTime3>> 8) & 0xFF;
+        pstTCB->astPeriod[2].ucSecondEnd = (ulEndTime3) & 0xFF;
+    }
+
+    if (ulStartTime4 == 0)
+    {
+        dos_memzero(&pstTCB->astPeriod[3], sizeof(pstTCB->astPeriod[3]));
+        pstTCB->astPeriod[3].ucValid = DOS_FALSE;
+    }
+    else
+    {
+        pstTCB->astPeriod[3].ucValid = DOS_TRUE;
+        pstTCB->astPeriod[3].ucWeekMask = (ulStartTime4 >> 24) & 0xFF;
+        pstTCB->astPeriod[3].ucHourBegin = (ulStartTime4 >> 16) & 0xFF;
+        pstTCB->astPeriod[3].ucMinuteBegin = (ulStartTime4 >> 8) & 0xFF;
+        pstTCB->astPeriod[3].ucSecondBegin = (ulStartTime4) & 0xFF;
+        pstTCB->astPeriod[3].ucHourEnd = (ulEndTime4>> 16) & 0xFF;
+        pstTCB->astPeriod[3].ucMinuteEnd = (ulEndTime4>> 8) & 0xFF;
+        pstTCB->astPeriod[3].ucSecondEnd = (ulEndTime4) & 0xFF;
+    }
 
     sc_logr_debug(NULL, SC_TASK, "Load task info SUCC. Index(%d), (TaskID:%u) ", lIndex, ulTaskID);
 
@@ -1494,12 +1550,23 @@ S32 sc_task_load(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calleecnt,calledcnt,callers,call_rate FROM tbl_calltask;");
+        dos_snprintf(szQuery, sizeof(szQuery),
+                        "SELECT id,customer_id,task_name,mtime,mode,playcnt," \
+                        "audio_id,group_id,status,ctime,calleecnt,calledcnt," \
+                        "start_time1, end_time1, start_time2, end_time2," \
+                        "start_time3, end_time3, start_time4, end_time4," \
+                        "callers,call_rate FROM tbl_calltask;");
     }
     else
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calleecnt,calledcnt,callers,call_rate FROM tbl_calltask WHERE id=%u;", ulIndex);
+        dos_snprintf(szQuery, sizeof(szQuery),
+                        "SELECT id,customer_id,task_name,mtime,mode,playcnt," \
+                        "audio_id,group_id,status,ctime,calleecnt,calledcnt," \
+                        "start_time1, end_time1, start_time2, end_time2," \
+                        "start_time3, end_time3, start_time4, end_time4," \
+                        "callers,call_rate FROM tbl_calltask WHERE id=%u;", ulIndex);
     }
+
     /* 加载群呼任务的相关数据 */
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
     if (DB_ERR_SUCC != lRet)
@@ -1537,11 +1604,21 @@ S32 sc_task_reload(U32 ulIndex)
 
     if (SC_INVALID_INDEX == ulIndex)
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calleecnt,calledcnt,callers,call_rate FROM tbl_calltask;");
+        dos_snprintf(szQuery, sizeof(szQuery),
+                        "SELECT id,customer_id,task_name,mtime,mode,playcnt," \
+                        "audio_id,group_id,status,ctime,calleecnt,calledcnt," \
+                        "start_time1, end_time1, start_time2, end_time2," \
+                        "start_time3, end_time3, start_time4, end_time4," \
+                        "callers,call_rate FROM tbl_calltask;");
     }
     else
     {
-        dos_snprintf(szQuery, sizeof(szQuery), "SELECT id,customer_id,task_name,mtime,mode,playcnt,start_time,end_time,audio_id,group_id,status,ctime,calleecnt,calledcnt,callers,call_rate FROM tbl_calltask WHERE id=%u;", ulIndex);
+        dos_snprintf(szQuery, sizeof(szQuery),
+                        "SELECT id,customer_id,task_name,mtime,mode,playcnt," \
+                        "audio_id,group_id,status,ctime,calleecnt,calledcnt," \
+                        "start_time1, end_time1, start_time2, end_time2," \
+                        "start_time3, end_time3, start_time4, end_time4," \
+                        "callers,call_rate FROM tbl_calltask WHERE id=%u;", ulIndex);
     }
     /* 加载群呼任务的相关数据 */
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
@@ -1555,183 +1632,6 @@ S32 sc_task_reload(U32 ulIndex)
     return DOS_SUCC;
 }
 
-#if 0
-static S32 sc_task_load_caller_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
-{
-    SC_TASK_CB_ST            *pstTCB = NULL;
-    S8                       *pszCallers = NULL, *pszCourse = NULL;;
-    U32                      ulFirstInvalidNode = U32_BUTT, ulIndex = 0;
-    U32                      ulMaxLen = 0;
-    BOOL                     blNeedAdd = DOS_TRUE;
-
-    pstTCB = (SC_TASK_CB_ST *)pArg;
-    if (DOS_ADDR_INVALID(pstTCB))
-    {
-        DOS_ASSERT(0);
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    if (DOS_ADDR_INVALID(pszValues) || DOS_ADDR_INVALID(pszNames)
-        || DOS_ADDR_INVALID(pszValues[0]) || '\0' == pszValues[0][0])
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-     /* 如果说未申请内存，则申请内存 */
-    if (!pstTCB->pstCallerNumQuery)
-    {
-        pstTCB->pstCallerNumQuery = (SC_CALLER_QUERY_NODE_ST *)dos_dmem_alloc(SC_MAX_CALLER_NUM * sizeof(SC_CALLER_QUERY_NODE_ST));
-        if (!pstTCB->pstCallerNumQuery)
-        {
-            DOS_ASSERT(0);
-            return DOS_FAIL;
-        }
-        dos_memzero(pstTCB->pstCallerNumQuery, SC_MAX_CALLER_NUM * sizeof(SC_CALLER_QUERY_NODE_ST));
-    }
-
-    ulMaxLen = dos_strlen(pszValues[0]) + 1;
-    pszCallers = dos_dmem_alloc(ulMaxLen);
-    if (DOS_ADDR_INVALID(pszCallers))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    dos_strncpy(pszCallers, pszValues[0], ulMaxLen);
-    pszCallers[ulMaxLen - 1] = '\0';
-
-    pszCourse = strtok(pszCallers, ",");
-    while (pszCourse)
-    {
-        blNeedAdd = DOS_TRUE;
-        ulFirstInvalidNode = U32_BUTT;
-
-        /* 检测号码是否重复了，并且找到一个空闲的控制块 */
-        for (ulIndex = 0; ulIndex < SC_MAX_CALLER_NUM; ulIndex++)
-        {
-            if (!pstTCB->pstCallerNumQuery[ulIndex].bValid
-                && U32_BUTT == ulFirstInvalidNode)
-            {
-                ulFirstInvalidNode = ulIndex;
-            }
-
-            if (pstTCB->pstCallerNumQuery[ulIndex].bValid
-                && dos_strcmp(pstTCB->pstCallerNumQuery[ulIndex].szNumber, pszCourse) == 0)
-            {
-                blNeedAdd = DOS_FALSE;
-            }
-        }
-
-        sc_logr_debug(NULL, SC_TASK, "Load Caller for task %d. Caller: %s, Index: %d", pstTCB->ulTaskID, pszCourse, ulFirstInvalidNode);
-
-        if (ulFirstInvalidNode >= SC_MAX_CALLER_NUM)
-        {
-            DOS_ASSERT(0);
-
-            break;
-        }
-
-        if (blNeedAdd)
-        {
-            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bValid = 1;
-            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].ulCustomerID = pstTCB->ulCustomID;
-            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].usNo = ulFirstInvalidNode;
-            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].bTraceON = pstTCB->bTraceCallON;
-            dos_strncpy(pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber, pszCourse, SC_MAX_CALLER_NUM);
-            pstTCB->pstCallerNumQuery[ulFirstInvalidNode].szNumber[SC_MAX_CALLER_NUM - 1] = '\0';
-            pstTCB->usCallerCount++;
-        }
-
-        pszCourse = strtok(NULL, ",");
-        if (NULL == pszCourse)
-        {
-            break;
-        }
-    }
-
-    if (pszCallers)
-    {
-        dos_dmem_free(pszCallers);
-    }
-
-    SC_TRACE_OUT();
-    return DOS_TRUE;
-}
-
-U32 sc_task_load_caller(SC_TASK_CB_ST *pstTCB)
-{
-#if SC_USE_BUILDIN_DATA
-    U32 ulIndex;
-    S32 lCnt;
-
-    SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
-
-    if (DOS_ADDR_INVALID(pstTCB))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return -1;
-    }
-
-    if (!g_pstTaskMngtInfo)
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return -1;
-    }
-
-    lCnt = 0;
-
-    /* 检测号码是否重复了，并且找到一个空闲的控制块 */
-    for (ulIndex = 0; ulIndex < sizeof(g_pszCallerList) / sizeof(S8 *); ulIndex++)
-    {
-        pstTCB->pstCallerNumQuery[ulIndex].bValid   = 1;
-        pstTCB->pstCallerNumQuery[ulIndex].bTraceON = 1;
-        pstTCB->pstCallerNumQuery[ulIndex].ulIndexInDB = ulIndex;
-        dos_strncpy(pstTCB->pstCallerNumQuery[ulIndex].szNumber, g_pszCallerList[ulIndex], SC_TEL_NUMBER_LENGTH);
-        pstTCB->pstCallerNumQuery[ulIndex].szNumber[SC_TEL_NUMBER_LENGTH - 1] = '\0';
-        lCnt++;
-    }
-
-    SC_TRACE_OUT();
-    return lCnt;
-#else
-    S8 szSqlQuery[1024]= { 0 };
-    U32 ulLength, ulResult;
-
-
-    ulLength = dos_snprintf(szSqlQuery
-                , sizeof(szSqlQuery)
-                , "SELECT tbl_calltask.callers  FROM tbl_calltask WHERE id=%d;"
-                , pstTCB->ulTaskID);
-
-    ulResult = db_query(g_pstSCDBHandle
-                            , szSqlQuery
-                            , sc_task_load_caller_callback
-                            , pstTCB
-                            , NULL);
-
-    if (ulResult != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        SC_TRACE_OUT();
-        return DOS_FAIL;
-    }
-
-    SC_TRACE_OUT();
-    return DOS_SUCC;
-#endif
-}
-
-#endif
 
 static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {
@@ -1848,349 +1748,12 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
 #endif
 }
 
-#if 0
-static S32 sc_task_load_period_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
-{
-    S8 *pszStarTime = NULL, *pszEndTime = NULL;
-    S32 lStartHour, lStartMin, lStartSecond;
-    S32 lEndHour, lEndMin, lEndSecond;
-    SC_TASK_CB_ST *pstTCB = NULL;
-    U32 ulIndex;
-
-    if (DOS_ADDR_INVALID(pArg)
-        || DOS_ADDR_INVALID(aszValues)
-        || DOS_ADDR_INVALID(aszNames))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstTCB = (SC_TASK_CB_ST *)pArg;
-    pszStarTime = aszValues[0];
-    pszEndTime = aszValues[1];
-
-    if (DOS_ADDR_INVALID(pszStarTime)
-        || DOS_ADDR_INVALID(pszEndTime))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    if (dos_sscanf(pszStarTime, "%d:%d:%d", &lStartHour, &lStartMin, &lStartSecond) != 3
-        || dos_sscanf(pszEndTime, "%d:%d:%d", &lEndHour, &lEndMin, &lEndSecond) != 3)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    if (lStartHour > 23 || lEndHour > 23
-        || lStartMin > 59 || lEndMin > 59
-        || lStartSecond > 59 || lEndSecond > 59)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    for (ulIndex=0; ulIndex < SC_MAX_PERIOD_NUM; ulIndex++)
-    {
-        if (!pstTCB->astPeriod[0].ucValid)
-        {
-            break;
-        }
-    }
-
-    if (ulIndex >= SC_MAX_PERIOD_NUM)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstTCB->astPeriod[ulIndex].ucValid = DOS_TRUE;
-    pstTCB->astPeriod[ulIndex].ucWeekMask = 0xFF;
-
-    pstTCB->astPeriod[ulIndex].ucHourBegin = (U8)lStartHour;
-    pstTCB->astPeriod[ulIndex].ucMinuteBegin = (U8)lStartMin;
-    pstTCB->astPeriod[ulIndex].ucSecondBegin = (U8)lStartSecond;
-
-    pstTCB->astPeriod[ulIndex].ucHourEnd = (U8)lEndHour;
-    pstTCB->astPeriod[ulIndex].ucMinuteEnd = (U8)lEndMin;
-    pstTCB->astPeriod[ulIndex].ucSecondEnd= (U8)lEndSecond;
-
-    return DOS_SUCC;
-}
-
-U32 sc_task_load_period(SC_TASK_CB_ST *pstTCB)
-{
-#if SC_USE_BUILDIN_DATA
-
-    SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
-
-    if (DOS_ADDR_INVALID(pstTCB))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return -1;
-    }
-
-    pstTCB->astPeriod[0].ucValid = 1;
-
-    pstTCB->astPeriod[0].ucWeekMask = 0xFF;
-
-    pstTCB->astPeriod[0].ucHourBegin = 0;
-    pstTCB->astPeriod[0].ucMinuteBegin = 0;
-
-    pstTCB->astPeriod[0].ucHourEnd = 23;
-    pstTCB->astPeriod[0].ucMinuteEnd = 59;
-
-    SC_TRACE_OUT();
-    return 1;
-
-#else
-    S8 szSQL[128] = { 0, };
-
-    if (DOS_ADDR_INVALID(pstTCB))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT start_time, end_time from tbl_calltask WHERE id=%d;", pstTCB->ulTaskID);
-
-    if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_period_cb, (VOID *)pstTCB, NULL) != DB_ERR_SUCC)
-    {
-        sc_logr_debug(NULL, SC_TASK, "Load task time period for task %d fail;", pstTCB->usTCBNo);
-
-        return DOS_FAIL;
-    }
-
-    return DOS_SUCC;
-#endif
-}
-
-S32 sc_task_load_other_info_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
-{
-    U32 ulTaskMode;
-    SC_TASK_CB_ST *pstTCB;
-
-    if (DOS_ADDR_INVALID(pArg)
-        || lColumnCount<= 0
-        || DOS_ADDR_INVALID(aszValues)
-        || DOS_ADDR_INVALID(aszNames))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstTCB = (SC_TASK_CB_ST *)pArg;
-
-    if (DOS_ADDR_INVALID(aszValues[0])
-        || '\0' == aszValues[0][0]
-        || dos_atoul(aszValues[0], &ulTaskMode) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstTCB->ucMode = (U8)ulTaskMode;
-    return DOS_SUCC;
-
-}
-
-S32 sc_task_load_other_info(SC_TASK_CB_ST *pstTCB)
-{
-    S8 szSQL[128] = { 0, };
-
-    if (DOS_ADDR_INVALID(pstTCB))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT mode from tbl_calltask WHERE id=%d;", pstTCB->ulTaskID);
-
-    if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_other_info_cb, (VOID *)pstTCB, NULL) != DB_ERR_SUCC)
-    {
-        sc_logr_debug(NULL, SC_TASK, "Load task time period for task %d fail;", pstTCB->usTCBNo);
-
-        return DOS_FAIL;
-    }
-
-    return DOS_SUCC;
-
-}
-
-S32 sc_task_load_agent_queue_id_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
-{
-    U32 ulAgentQueueID;
-
-    if (DOS_ADDR_INVALID(pArg)
-        || lColumnCount<= 0
-        || DOS_ADDR_INVALID(aszValues)
-        || DOS_ADDR_INVALID(aszNames))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    if (DOS_ADDR_INVALID(aszValues[0])
-        || '\0' == aszValues[0][0]
-        || dos_atoul(aszValues[0], &ulAgentQueueID) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    *(U32 *)pArg = ulAgentQueueID;
-    return DOS_SUCC;
-}
-
-S32 sc_task_load_agent_number_cb(VOID *pArg, S32 lColumnCount, S8 **aszValues, S8 **aszNames)
-{
-    U32 ulAgentCount;
-
-    if (DOS_ADDR_INVALID(pArg)
-        || lColumnCount<= 0
-        || DOS_ADDR_INVALID(aszValues)
-        || DOS_ADDR_INVALID(aszNames))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    if (DOS_ADDR_INVALID(aszValues[0])
-        || '\0' == aszValues[0][0]
-        || dos_atoul(aszValues[0], &ulAgentCount) < 0)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    *(U16 *)pArg = (U16)ulAgentCount;
-    return DOS_SUCC;
-
-}
-
-U32 sc_task_load_agent_info(SC_TASK_CB_ST *pstTCB)
-{
-    /* 初始化坐席队列编号 */
-    S8 szSQL[128] = { 0, };
-
-    if (DOS_ADDR_INVALID(pstTCB))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT group_id FROM tbl_calltask WHERE tbl_calltask.id = %d;"
-                    , pstTCB->ulTaskID);
-    if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_agent_queue_id_cb, (VOID *)&pstTCB->ulAgentQueueID, NULL) != DB_ERR_SUCC)
-    {
-        DOS_ASSERT(0);
-        sc_logr_debug(NULL, SC_TASK, "Load agent queue ID for task %d FAIL;", pstTCB->ulTaskID);
-
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT count(*) as number FROM tbl_agent WHERE tbl_agent.group1_id=%d OR tbl_agent.group2_id=%d;"
-                    , pstTCB->ulAgentQueueID
-                    , pstTCB->ulAgentQueueID);
-    if (db_query(g_pstSCDBHandle, szSQL, sc_task_load_agent_number_cb, (VOID *)&pstTCB->usSiteCount, NULL) != DB_ERR_SUCC)
-    {
-        DOS_ASSERT(0);
-        sc_logr_debug(NULL, SC_TASK, "Load agent number for task %d FAIL;", pstTCB->ulTaskID);
-
-        return DOS_FAIL;
-    }
-
-    return DOS_SUCC;
-}
-
-U32 sc_task_update_stat(SC_TASK_CB_ST *pstTCB)
-{
-    return 0;
-}
-
-S32 sc_task_load_audio_cb(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
-{
-    SC_TASK_CB_ST *pstTCB = NULL;
-    S8 *pszFilePath = NULL;
-    S8 *pszPlatCNT = NULL;
-    U32 ulPlaycnt;
-
-
-    pstTCB = pArg;
-    pszFilePath = pszValues[0];
-    pszPlatCNT  = pszValues[1];
-    if (DOS_ADDR_INVALID(pstTCB)
-        || DOS_ADDR_INVALID(pszFilePath)
-        || '\0' == pszFilePath[0])
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    if (DOS_ADDR_INVALID(pszPlatCNT)
-        || '\0' == pszPlatCNT[0]
-        || dos_atoul(pszPlatCNT, &ulPlaycnt) < 0)
-    {
-        DOS_ASSERT(0);
-
-        ulPlaycnt = 3;
-    }
-
-    pstTCB->ucAudioPlayCnt = (U8)ulPlaycnt;
-    dos_snprintf(pstTCB->szAudioFileLen, sizeof(pstTCB->szAudioFileLen), "%s/%u/%s", SC_TASK_AUDIO_PATH, pstTCB->ulCustomID, pszFilePath);
-
-    return DOS_SUCC;
-}
-
-U32 sc_task_load_audio(SC_TASK_CB_ST *pstTCB)
-{
-#if SC_USE_BUILDIN_DATA
-    SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
-
-    if (DOS_ADDR_INVALID(pstTCB))
-    {
-        DOS_ASSERT(0);
-
-        SC_TRACE_OUT();
-        return -1;
-    }
-
-    pstTCB->ucAudioPlayCnt = 3;
-    dos_strncpy(pstTCB->szAudioFileLen, "/usr/local/freeswitch/sounds/mmt1_speex_8k.wav", SC_MAX_AUDIO_FILENAME_LEN);
-    pstTCB->szAudioFileLen[SC_MAX_AUDIO_FILENAME_LEN - 1] = '\0';
-
-    SC_TRACE_OUT();
-    return 1;
-#else
-    S8 szSQL[512] = { 0 };
-
-    if (DOS_ADDR_INVALID(pstTCB))
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    dos_snprintf(szSQL, sizeof(szSQL), "SELECT audio_id,playcnt FROM tbl_calltask WHERE id = %u;", pstTCB->ulTaskID);
-
-    db_query(g_pstSCDBHandle, szSQL, sc_task_load_audio_cb, pstTCB, NULL);
-
-    return DOS_SUCC;
-#endif
-}
-#endif
 
 U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
 {
     time_t     now;
     struct tm  *timenow;
-    U32 ulWeek, ulHour, ulMinute, ulIndex;
+    U32 ulWeek, ulHour, ulMinute, ulSecond, ulIndex;
     U32 ulStartTime, ulEndTime, ulCurrentTime;
 
     SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
@@ -2208,8 +1771,8 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
     ulWeek = timenow->tm_wday;
     ulHour = timenow->tm_hour;
     ulMinute = timenow->tm_min;
+    ulSecond = timenow->tm_sec;
 
-    //printf("Current Time %02d:%02d\r\n", ulHour, ulMinute);
 
     for (ulIndex=0; ulIndex<SC_MAX_PERIOD_NUM; ulIndex++)
     {
@@ -2218,7 +1781,7 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
             continue;
         }
 #if 0
-        printf("Time peroid: %02d:%02d-%02d:%02d\r\n"
+        dos_printf("Time peroid: %02d:%02d-%02d:%02d\r\n"
                 , pstTCB->astPeriod[ulIndex].ucHourBegin, pstTCB->astPeriod[ulIndex].ucMinuteBegin
                 , pstTCB->astPeriod[ulIndex].ucHourEnd, pstTCB->astPeriod[ulIndex].ucMinuteEnd);
 #endif
@@ -2227,9 +1790,9 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB_ST *pstTCB)
             continue;
         }
 
-        ulStartTime = pstTCB->astPeriod[ulIndex].ucHourBegin * 60 + pstTCB->astPeriod[ulIndex].ucMinuteBegin;
-        ulEndTime = pstTCB->astPeriod[ulIndex].ucHourEnd * 60 + pstTCB->astPeriod[ulIndex].ucMinuteEnd;
-        ulCurrentTime = ulHour * 60 + ulMinute;
+        ulStartTime = pstTCB->astPeriod[ulIndex].ucHourBegin * 60 * 60 + pstTCB->astPeriod[ulIndex].ucMinuteBegin * 60 + pstTCB->astPeriod[ulIndex].ucSecondBegin;
+        ulEndTime = pstTCB->astPeriod[ulIndex].ucHourEnd * 60 * 60 + pstTCB->astPeriod[ulIndex].ucMinuteEnd * 60 + pstTCB->astPeriod[ulIndex].ucSecondEnd;
+        ulCurrentTime = ulHour * 60 * 60 + ulMinute * 60 + ulSecond;
 
         if (ulCurrentTime >= ulStartTime && ulCurrentTime < ulEndTime)
         {
@@ -2340,69 +1903,6 @@ U32 sc_task_check_can_call(SC_TASK_CB_ST *pstTCB)
     return DOS_TRUE;
 }
 
-#if 0
-U32 sc_task_get_call_interval(SC_TASK_CB_ST *pstTCB)
-{
-    U32 ulPercentage;
-    U32 ulInterval;
-    U32 ulConcurrency;
-    U32 ulMaxConcurrency;
-    U32 ulCallRate;
-
-    SC_TRACE_IN((U64)pstTCB, 0, 0, 0);
-
-    if (!pstTCB)
-    {
-        DOS_ASSERT(0);
-        SC_TRACE_OUT();
-        return 1000;
-    }
-
-    if (SC_TASK_PAUSED == pstTCB->ucTaskStatus
-        || SC_TASK_STOP == pstTCB->ucTaskStatus)
-    {
-        SC_TRACE_OUT();
-        return 3000;
-    }
-
-    if (SC_TASK_MODE_AUDIO_ONLY == pstTCB->ucMode)
-    {
-        ulMaxConcurrency = g_ulMaxConcurrency4Task;
-        ulConcurrency = pstTCB->ulCurrentConcurrency;
-    }
-    else
-    {
-        ulCallRate = pstTCB->ulCallRate != 0 ? pstTCB->ulCallRate : g_pstTaskMngtInfo->ulMaxCallRate4Task;
-        ulMaxConcurrency = sc_acd_get_total_agent(pstTCB->ulAgentQueueID) * ulCallRate;
-        ulConcurrency = pstTCB->ulCurrentConcurrency;
-    }
-
-    if (ulMaxConcurrency)
-    {
-        ulPercentage = ulConcurrency / ulMaxConcurrency;
-    }
-    else
-    {
-        ulPercentage = 0;
-    }
-
-    if (ulPercentage < 40)
-    {
-        ulInterval = 20;
-    }
-    else if (ulPercentage < 80)
-    {
-        ulInterval = 100;
-    }
-    else
-    {
-        ulInterval = 200;
-    }
-
-    SC_TRACE_OUT();
-    return ulInterval;
-}
-#endif
 
 S8 *sc_task_get_audio_file(U32 ulTCBNo)
 {
