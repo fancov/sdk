@@ -11909,7 +11909,7 @@ U32 sc_ep_system_stat(esl_event_t *pstEvent)
     return DOS_SUCC;
 }
 
-U32 sc_ep_get_agent_by_caller(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCallerNum, esl_event_t *pstEvent)
+U32 sc_ep_get_agent_by_caller(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCallerNum, esl_event_t *pstEvent)
 {
     const S8 *pszCallSource;
 
@@ -11924,12 +11924,12 @@ U32 sc_ep_get_agent_by_caller(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCallerNu
     /* 将caller作为sip分机查找坐席，如果找不到，再作为 TT 号，继续查找 */
     if (sc_acd_get_agent_by_userid(pstAgentInfo, szCallerNum) == DOS_SUCC)
     {
-        sc_logr_debug(SC_ESL, "POTS, Find agent(%u) by userid(%s) SUCC", pstAgentInfo->ulSiteID, szCallerNum);
+        sc_logr_debug(pstSCB, SC_ESL, "POTS, Find agent(%u) by userid(%s) SUCC", pstAgentInfo->ulSiteID, szCallerNum);
 
         return DOS_SUCC;
     }
 
-    sc_logr_debug(SC_ESL, "POTS, Can not find agent by userid(%s)", szCallerNum);
+    sc_logr_debug(pstSCB, SC_ESL, "POTS, Can not find agent by userid(%s)", szCallerNum);
 
     /* 判断 来源，是不是配置的中继 */
     pszCallSource = esl_event_get_header(pstEvent, "Caller-Network-Addr");
@@ -11941,7 +11941,7 @@ U32 sc_ep_get_agent_by_caller(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCallerNu
 
     if (sc_find_gateway_by_addr(pszCallSource) != DOS_SUCC)
     {
-        sc_logr_info(SC_ESL, "POTS, Find gateway by addr(%s) FAIL", pszCallSource);
+        sc_logr_info(pstSCB, SC_ESL, "POTS, Find gateway by addr(%s) FAIL", pszCallSource);
 
         return DOS_FAIL;
     }
@@ -11949,7 +11949,7 @@ U32 sc_ep_get_agent_by_caller(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szCallerNu
     /* 判断 主叫号码 是否是 TT 号，现在 TT号 只支持外呼 */
     if (sc_acd_get_agent_by_tt_num(pstAgentInfo, szCallerNum) == DOS_SUCC)
     {
-        sc_logr_debug(SC_ESL, "POTS, Find agent(%u) by TT num(%s) SUCC", pstAgentInfo->ulSiteID, szCallerNum);
+        sc_logr_debug(pstSCB, SC_ESL, "POTS, Find agent(%u) by TT num(%s) SUCC", pstAgentInfo->ulSiteID, szCallerNum);
 
         return DOS_SUCC;
     }
@@ -12020,9 +12020,9 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         && !bIsSecondaryDialing)
     {
         /* 标记上一个客户，只支持话机操作 */
-        if (sc_ep_get_agent_by_caller(&stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
+        if (sc_ep_get_agent_by_caller(pstSCB, &stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
         {
-            sc_logr_info(SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
+            sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
             bIsHangUp = DOS_FALSE;
 
             goto end;
@@ -12081,9 +12081,9 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         && !bIsSecondaryDialing)
     {
         /* 坐席登陆web页面 只支持话机操作 */
-        if (sc_ep_get_agent_by_caller(&stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
+        if (sc_ep_get_agent_by_caller(pstSCB, &stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
         {
-            sc_logr_info(SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
+            sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
             bIsHangUp = DOS_FALSE;
 
             goto end;
@@ -12098,9 +12098,9 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         && !bIsSecondaryDialing)
     {
         /* 坐席从web页面下线 */
-        if (sc_ep_get_agent_by_caller(&stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
+        if (sc_ep_get_agent_by_caller(pstSCB, &stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
         {
-            sc_logr_info(SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
+            sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
 
             goto end;
         }
@@ -12125,9 +12125,9 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         }
         else
         {
-            if (sc_ep_get_agent_by_caller(&stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
+            if (sc_ep_get_agent_by_caller(pstSCB, &stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
             {
-                sc_logr_info(SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
+                sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
 
                 goto end;
             }
@@ -12157,9 +12157,9 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         }
         else
         {
-            if (sc_ep_get_agent_by_caller(&stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
+            if (sc_ep_get_agent_by_caller(pstSCB, &stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
             {
-                sc_logr_info(SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
+                sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
 
                 goto end;
             }
@@ -12180,7 +12180,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         /* 坐席长签 只支持话机操作 */
         if ((ulRet = sc_acd_singin_by_phone(pstSCB->szCallerNum, pstSCB)) != DOS_SUCC)
         {
-            sc_logr_info(SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
+            sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
 
             goto end;
         }
@@ -12218,7 +12218,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         }
         else
         {
-            if (sc_ep_get_agent_by_caller(&stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
+            if (sc_ep_get_agent_by_caller(pstSCB, &stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
             {
                 sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by userid(%s)", pstSCB->szCallerNum);
 
