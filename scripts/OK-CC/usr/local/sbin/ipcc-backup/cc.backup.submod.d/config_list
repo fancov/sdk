@@ -5,4 +5,4 @@
 /etc/hb-srv.xml
 /ipcc/etc/
 /usr/local/mysql/my.cnf
-/usr/local/mysql/data
+/usr/local/mysql/data/

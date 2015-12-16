@@ -3,7 +3,7 @@
 # $1 : 需要备份的日期
 # $2 : 备份文件的路径
 
-source /etc/ipcc/backup.conf
+source /etc/ipcc/cc.backup.conf
 
 if [ "$backup_voice_file" != "true" ];then
 	#不需要备份
@@ -22,6 +22,7 @@ cd $2
 
 function ftp_upload() {
     #ftp 上传
+    echo "upload file :"$1
     ftp -n<<!
     open $remote_backup_addr $remote_backup_port
     user $ftp_user_name $ftp_password

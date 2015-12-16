@@ -1,0 +1,5 @@
+#!/bin/sh
+
+. /etc/ipcc/cc.backup.conf
+
+$root_path"/cc.data.backup.main.sh" >> $log_path

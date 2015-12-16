@@ -1,0 +1,7 @@
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=root
+HOME=/
+
+# Dayly proceed data backup, eveny stat 00:01
+1 0 * * * root /etc/cron.daily/data-backup-dayly >> /opt/ipcc/data/log
