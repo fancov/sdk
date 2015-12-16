@@ -332,6 +332,11 @@ VOID *sc_task_runtime(VOID *ptr)
         dos_task_delay(ulTaskInterval);
         ulTaskInterval = 0;
 
+        if (!pstTCB->ucValid)
+        {
+            return NULL;
+        }
+
         /* 根据当前呼叫量，确定发起呼叫的间隔，如果当前任务已经处于受限状态，就要强制调整间隔 */
         if (!sc_task_check_can_call(pstTCB))
         {

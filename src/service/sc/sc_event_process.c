@@ -14908,7 +14908,7 @@ U32 sc_ep_destroy_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         return DOS_SUCC;
     }
 
-    sc_logr_warning(pstSCB, SC_ESL, "Free scb while channel destroy, it's not in the designed.SCBNO: %s, UUID: %s", pstSCB->usSCBNo, pszUUID);
+    sc_logr_warning(pstSCB, SC_ESL, "Free scb while channel destroy, it's not in the designed.SCBNO: %u, UUID: %s", pstSCB->usSCBNo, pszUUID);
 
     if (pstSCB->ulTaskID != 0 && pstSCB->ulTaskID != U32_BUTT)
     {
