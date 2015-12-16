@@ -15024,6 +15024,11 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
             pstSCB->pstExtraData->ulByeTimeStamp = uLTmp / 1000000;
             sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Hangup-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulByeTimeStamp);
         }
+        else
+        {
+            DOS_ASSERT(0);
+            pstSCB->pstExtraData->ulByeTimeStamp = time(NULL);
+        }
 
         if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
         {
