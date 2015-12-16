@@ -823,6 +823,8 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
                     /* 判断被叫号码是否是坐席的工号，如果是，则呼叫这个坐席 */
                     if (sc_acd_get_agent_by_emp_num(&stAgentInfo, ulCustomer, pszNumber) == DOS_SUCC)
                     {
+                        sc_log_digest_print("Number(%s) is a job number of agent(%u)"
+                            , pszNumber, stAgentInfo.ulSiteID);
                         ulRet = sc_ep_call_ctrl_call_agent(ulAgent, stAgentInfo.ulSiteID);
                         break;
                     }
@@ -830,6 +832,7 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
                     /* 判断被叫号码是否是分机号，如果是同一个客户的分机号，就呼叫这个分机 */
                     if (sc_ep_get_custom_by_sip_userid(pszNumber) == ulCustomer)
                     {
+                        sc_log_digest_print("Number(%s) is a sip", pszNumber);
                         ulRet = sc_ep_call_ctrl_call_sip(ulAgent, pszNumber);
                         break;
                     }

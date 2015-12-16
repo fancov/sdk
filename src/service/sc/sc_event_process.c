@@ -12642,6 +12642,22 @@ proc_succ:
     return DOS_SUCC;
 }
 
+S8 *sc_ep_call_type(U32 ulCallType)
+{
+    if (ulCallType == SC_DIRECTION_PSTN)
+    {
+        return "PSTN";
+    }
+    else if (ulCallType == SC_DIRECTION_SIP)
+    {
+        return "SIP";
+    }
+    else
+    {
+        return "INVALID";
+    }
+}
+
 /**
  * 函数: U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
  * 功能: 处理ESL的CHANNEL PARK事件
@@ -13047,6 +13063,8 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         pstSCB->ucLegRole = SC_CALLER;
         ulCallSrc = sc_ep_get_source(pstEvent, pstSCB);
         ulCallDst = sc_ep_get_destination(pstEvent, pstSCB);
+        sc_log_digest_print("source type is %s, destination type is %s"
+            , sc_ep_call_type(ulCallSrc), sc_ep_call_type(ulCallDst));
 
         /* 获得ulCustomID */
         if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_PSTN == ulCallDst)
