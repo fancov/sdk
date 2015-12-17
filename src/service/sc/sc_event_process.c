@@ -488,7 +488,7 @@ U32 sc_ep_record(SC_SCB_ST *pstSCBRecord)
     }
 
     SC_SCB_SET_SERVICE(pstSCBRecord, SC_SERV_RECORDING);
-    sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCBRecord->ulCustomID, pstSCBRecord->szCallerNum, pstSCBRecord->szCalleeNum);
+    sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCBRecord->ulCustomID, pstSCBRecord->szSiteNum, pstSCBRecord->szCallerNum, pstSCBRecord->szCalleeNum);
     pthread_mutex_lock(&pstSCBRecord->mutexSCBLock);
     pstSCBRecord->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
     if (DOS_ADDR_INVALID(pstSCBRecord->pszRecordFile))
@@ -514,6 +514,7 @@ U32 sc_ep_record(SC_SCB_ST *pstSCBRecord)
 
     return DOS_SUCC;
 }
+
 
 /**
  * º¯Êý: sc_ep_call_notify
@@ -8406,48 +8407,6 @@ U32 sc_ep_agent_signout(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     return DOS_SUCC;
 }
 
-
-U32 sc_ep_agent_record(SC_SCB_ST * pstSCB)
-{
-    S8 szAPPParam[256] = { 0 };
-    S8 szFilePath[256] = { 0 };
-
-    if (DOS_ADDR_INVALID(pstSCB))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCB->ulCustomID, pstSCB->szCallerNum, pstSCB->szCalleeNum);
-    pthread_mutex_lock(&pstSCB->mutexSCBLock);
-    pstSCB->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
-    if (DOS_ADDR_VALID(pstSCB->pszRecordFile))
-    {
-        dos_strncpy(pstSCB->pszRecordFile, szFilePath, dos_strlen(szFilePath) + 1);
-        pstSCB->pszRecordFile[dos_strlen(szFilePath)] = '\0';
-
-        dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                        , "bgapi uuid_record %s start %s/%s\r\n"
-                        , pstSCB->szUUID
-                        , SC_RECORD_FILE_PATH
-                        , szFilePath);
-        sc_ep_esl_execute_cmd(szAPPParam);
-        pstSCB->bIsSendRecordCdr = DOS_TRUE;
-        sc_ep_esl_execute("sleep", "300", pstSCB->szUUID);
-    }
-    else
-    {
-        DOS_ASSERT(0);
-        goto proc_fail;
-    }
-    pthread_mutex_unlock(&pstSCB->mutexSCBLock);
-
-    return DOS_SUCC;
-proc_fail:
-
-    return DOS_FAIL;
-}
-
 U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
 {
     SC_SCB_ST* pstSCBSubscription = NULL;
@@ -10525,7 +10484,7 @@ U32 sc_ep_call_ctrl_record(U32 ulAgent)
         goto proc_fail;
     }
 
-    if (sc_ep_agent_record(pstSCB) != DOS_SUCC)
+    if (sc_ep_record(pstSCB) != DOS_SUCC)
     {
         goto proc_fail;
     }
@@ -10717,7 +10676,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
                 goto proc_fail;
             }
 
-            if (sc_ep_agent_record(pstSCB) != DOS_SUCC)
+            if (sc_ep_record(pstSCB) != DOS_SUCC)
             {
                 goto proc_fail;
             }
@@ -13605,7 +13564,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     SC_SCB_ST   *pstSCBOther        = NULL;
     SC_SCB_ST   *pstSCBNew          = NULL;
     U32 ulMainService               = U32_BUTT;
-    U32 ulRet  = DOS_FAIL;
+    U32 ulRet  = DOS_SUCC;
     U64 uLTmp  = 0;
 
 

@@ -1081,7 +1081,7 @@ S8 *sc_scb_get_status(U32 ulStatus);
 SC_SYS_STATUS_EN sc_check_sys_stat();
 U32 sc_ep_search_route(SC_SCB_ST *pstSCB);
 U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString, U32 ulLength);
-U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszCaller, S8 *pszCallee);
+U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszJobNum, S8 *pszCaller, S8 *pszCallee);
 U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt);
 U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB);
 U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB);

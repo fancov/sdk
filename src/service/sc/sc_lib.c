@@ -843,7 +843,7 @@ U32 sc_call_set_trunk(SC_SCB_ST *pstSCB, U32 ulTrunkID)
 
 }
 
-U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszCaller, S8 *pszCallee)
+U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszJobNum, S8 *pszCaller, S8 *pszCallee)
 {
     struct tm            *pstTime;
     time_t               timep;
@@ -873,11 +873,12 @@ U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *psz
     }
 
     dos_snprintf(pszBuff, ulMaxLen
-            , "%u/%04d%02d%02d/VR-%04d%02d%02d%02d%02d%02d-%s-%s"
+            , "%u/%04d%02d%02d/VR-%s-%04d%02d%02d%02d%02d%02d-%s-%s"
             , ulCustomerID
             , pstTime->tm_year + 1900
             , pstTime->tm_mon + 1
             , pstTime->tm_mday
+            , pszJobNum
             , pstTime->tm_year + 1900
             , pstTime->tm_mon + 1
             , pstTime->tm_mday
