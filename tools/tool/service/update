@@ -1,0 +1,83 @@
+#!/bin/bash
+
+BACKDIR="/opt/ipcc/software"
+#检查参数
+if [ -z "$1" ];then
+	echo "Usage: service update upgradePatch"
+    exit
+else
+	if [ ! -f "$1" ];then
+		echo "Cannot find $1"
+		exit
+	fi
+fi
+
+YEAR=`date +%Y`
+MONTH=`date +%m`
+DAY=`date +%d`
+
+DIRNAME=$BACKDIR/$YEAR$MONTH$DAY
+DATE=`date +%Y-%m-%d\ %H:%M":"%S`
+LOG=${BACKDIR}"/log"
+
+start_update() {
+echo "Extracting $1...."
+unzip $2 $1 -d ${1%/*}
+echo "Extract finished"
+
+echo "Checking...."
+directory=${1%.*}
+cd $directory
+if [ ! -f "ChangeLog" ];then
+	echo "Not find file : ChangeLog"
+	exit
+fi
+cd ..
+echo "Checking finished"
+
+echo "Backup...."
+
+if [ ! -d $DIRNAME ];then
+	mkdir $DIRNAME -p
+fi
+
+#拷贝升级包
+cp $1 $DIRNAME -R
+
+#将 ChangeLog 写入更新日志
+if [ ! -f $LOG ];then
+	touch $LOG
+fi
+
+cd $directory
+
+echo -e >> $LOG
+echo $DATE >> $LOG
+cat ChangeLog >> $LOG
+
+#判断日志的大小，如果超过1M,则将log更名为log+时间
+if [ -f $LOG ]; then
+{
+    log_size=`du -b $LOG | awk '{print int($1/1024)}'`
+    if [ ${log_size} -ge 1024 ]; then
+    {
+        mv $LOG $LOG`date +%Y%m%d`
+    }
+    fi
+}
+fi
+
+echo "Backup finished"
+
+#运行升级脚本
+cd BIN
+chmod +x update.sh
+./update.sh
+}
+case $1 in
+    *)
+		echo $1
+		echo $2
+        start_update $1 $2
+    ;;
+esac

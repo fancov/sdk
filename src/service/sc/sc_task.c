@@ -262,6 +262,7 @@ VOID *sc_task_runtime(VOID *ptr)
     U32             ulTaskInterval = 0;
     S32             lResult        = 0;
     U32             ulMinInterval  = 0;
+    U32             ulCount        = 0;
 
     if (!ptr)
     {
@@ -356,8 +357,10 @@ VOID *sc_task_runtime(VOID *ptr)
         /* 如果被停止了，就检测还有没有呼叫，如果有呼叫，就等待，等待没有呼叫时退出任务 */
         if (SC_TASK_STOP == pstTCB->ucTaskStatus)
         {
-            if (pstTCB->ulCurrentConcurrency != 0)
+            /* 第一次 SC_TASK_STOP 时，不结束任务，等待20s */
+            if (pstTCB->ulCurrentConcurrency != 0 || ulCount == 0)
             {
+                ulCount++;
                 sc_logr_debug(NULL, SC_TASK, "Cannot make call for stoped status. Task : %u, CurrentConcurrency : %u.", pstTCB->ulTaskID, pstTCB->ulCurrentConcurrency);
                 ulTaskInterval = 20000;
                 continue;
