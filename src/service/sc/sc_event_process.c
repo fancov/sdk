@@ -5577,20 +5577,32 @@ S32 sc_load_serv_ctrl_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 }
 
 
-U32 sc_serv_ctrl_delete(U32 ulIndex, U32 ulCustomer)
+U32 sc_serv_ctrl_delete(U32 ulIndex)
 {
     HASH_NODE_S           *pstHashNode;
     U32                   ulHashIndex;
-    SC_SRV_CTRL_FIND_ST   stFindParam;
+    SC_SRV_CTRL_ST        *pstServCtrl;
 
-    ulHashIndex = sc_serv_ctrl_hash(ulCustomer);
-    stFindParam.ulID = ulIndex;
-    stFindParam.ulCustomerID = ulCustomer;
     pthread_mutex_lock(&g_mutexHashServCtrl);
-    pstHashNode = hash_find_node(g_pstHashServCtrl, ulHashIndex, &stFindParam, sc_serv_ctrl_hash_find_cb);
-    if (DOS_ADDR_VALID(pstHashNode))
+    HASH_Scan_Table(g_pstHashServCtrl, ulHashIndex)
     {
-        hash_delete_node(g_pstHashServCtrl, pstHashNode, ulHashIndex);
+        HASH_Scan_Bucket(g_pstHashServCtrl, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstServCtrl = pstHashNode->pHandle;
+            if (pstServCtrl->ulID == ulIndex)
+            {
+                hash_delete_node(g_pstHashServCtrl, pstHashNode, ulHashIndex);
+
+                pthread_mutex_unlock(&g_mutexHashServCtrl);
+
+                return DOS_SUCC;
+            }
+        }
     }
     pthread_mutex_unlock(&g_mutexHashServCtrl);
 

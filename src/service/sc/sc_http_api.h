@@ -123,7 +123,6 @@ enum tagAPICMDActionList
 
     SC_API_CMD_ACTION_DEMO_TASK,                         /* 群呼任务演示 */
     SC_API_CMD_ACTION_DEMO_PREVIEW,                      /* 预览外呼演示 */
-    //---------------------------------------------------
 
     SC_API_CMD_ACTION_BUTT
 };
@@ -227,6 +226,7 @@ U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
 U32 sc_acd_http_agentgrp_update_proc(U32 ulAction, U32 ulGrpID);
 U32 sc_http_api_agent_call_ctrl(list_t *pstArgv);
 U32 sc_http_api_agent(list_t *pstArgv);
+U32 sc_http_api_serv_ctrl_action(list_t *pstArgv);
 
 
 #ifdef __cplusplus

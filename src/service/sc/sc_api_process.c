@@ -55,6 +55,7 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
     {"numtransform",             sc_http_api_numtransform_action},
     {"customer",                 sc_http_api_customer_action},
     {"demo",                     sc_http_api_demo_action},
+    {"serv-ctrl",                sc_http_api_serv_ctrl_action},
 
     {"",                         NULL}
 };
@@ -1717,6 +1718,66 @@ invalid_params:
     SC_TRACE_OUT();
     return SC_HTTP_ERRNO_INVALID_PARAM;
 
+}
+
+U32 sc_http_api_serv_ctrl_action(list_t *pstArgv)
+{
+    S8  *pszID = NULL, *pszAction = NULL;
+    U32  ulID, ulAction;
+
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    pszID       = sc_http_api_get_value(pstArgv, "id");
+    pszAction   = sc_http_api_get_value(pstArgv, "action");
+
+    if (DOS_ADDR_INVALID(pszID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (dos_atoul(pszID, &ulID) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    if (DOS_SUCC != sc_http_serv_ctrl_update_proc(ulAction, ulID))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_SUCC;
+
+invalid_params:
+
+    SC_TRACE_OUT();
+    return SC_HTTP_ERRNO_INVALID_PARAM;
 }
 
 U32 sc_http_api_numlmt_action(list_t *pstArgv)
