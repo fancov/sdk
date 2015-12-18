@@ -6,16 +6,18 @@ function start_all()
     /etc/init.d/scd          start
     /etc/init.d/mcd          start
     /etc/init.d/ctrl-paneld  start
+    
     /etc/init.d/monitord     start
 }
 
 function stop_all()
 {
+    /etc/init.d/monitord     stop
+    
     /etc/init.d/bsd          stop
     /etc/init.d/scd          stop
     /etc/init.d/mcd          stop
     /etc/init.d/ctrl-paneld  stop
-    /etc/init.d/monitord     stop
 }
 
 function status_all()
