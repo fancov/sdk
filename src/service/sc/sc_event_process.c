@@ -487,6 +487,18 @@ U32 sc_ep_record(SC_SCB_ST *pstSCBRecord)
         return DOS_FAIL;
     }
 
+
+    if (sc_check_server_ctrl(pstSCBRecord->ulCustomID
+                            , SC_SERV_RECORDING
+                            , SC_SRV_CTRL_ATTR_INVLID
+                            , U32_BUTT
+                            , SC_SRV_CTRL_ATTR_INVLID
+                            , U32_BUTT))
+    {
+        sc_logr_debug(pstSCBRecord, SC_ESL, "Recording service is under control, reject recoding request. Customer: %u", pstSCBRecord->ulCustomID);
+        return DOS_SUCC;
+    }
+
     SC_SCB_SET_SERVICE(pstSCBRecord, SC_SERV_RECORDING);
     sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCBRecord->ulCustomID, pstSCBRecord->szSiteNum, pstSCBRecord->szCallerNum, pstSCBRecord->szCalleeNum);
     pthread_mutex_lock(&pstSCBRecord->mutexSCBLock);
@@ -5533,6 +5545,20 @@ S32 sc_load_serv_ctrl_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         return DOS_FAIL;
     }
 
+    /*
+      * 定义属性类型如果为0，标示属性是无效的，这里将属性值设置为U32_BUTT, 方便程序处理
+      * 目前在某些情况下属性值为0，也是一种合法值，因此将U32_BUTT视为无效值
+      */
+    if (0 == pstSrvCtrl->ulAttr1)
+    {
+        pstSrvCtrl->ulAttrValue1 = U32_BUTT;
+    }
+
+    if (0 == pstSrvCtrl->ulAttr2)
+    {
+        pstSrvCtrl->ulAttrValue2 = U32_BUTT;
+    }
+
     ulHashIndex = sc_serv_ctrl_hash(pstSrvCtrl->ulCustomerID);
     stFindParam.ulID = pstSrvCtrl->ulID;
     stFindParam.ulCustomerID = pstSrvCtrl->ulCustomerID;
@@ -5669,7 +5695,7 @@ BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 u
     ulHashIndex = sc_serv_ctrl_hash(ulCustomerID);
     stTime = time(NULL);
 
-    sc_logr_info(NULL, SC_ESL, "Start match service control rule. Customer: %u, Service: %u, Attr1: %u, Attr2: %u, Attr1Val: %u, Attr2Val: %u"
+    sc_logr_debug(NULL, SC_ESL, "match service control rule. Customer: %u, Service: %u, Attr1: %u, Attr2: %u, Attr1Val: %u, Attr2Val: %u"
                 , ulCustomerID, ulServerType, ulAttr1, ulAttrVal1, ulAttr2, ulAttrVal2);
 
     blResult = DOS_FALSE;
@@ -5749,7 +5775,89 @@ BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 u
         break;
     }
 
+    if (!blResult)
+    {
+        sc_logr_debug(NULL, SC_ESL, "match service ctrl rule in all. CustomerID", ulServerType);
+
+        /* BUCKET 0 中保存的是针对所有客户的规则 */
+        HASH_Scan_Bucket(g_pstHashServCtrl, 0, pstHashNode, HASH_NODE_S *)
+        {
+            /* 合法性检查 */
+            if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            /* 一个BUCKET中可能有很多企业的，需要过滤 */
+            pstSrvCtrl = pstHashNode->pHandle;
+            if (0 != pstSrvCtrl->ulCustomerID)
+            {
+                continue;
+            }
+
+            if (stTime < pstSrvCtrl->ulEffectTimestamp
+                || (pstSrvCtrl->ulExpireTimestamp && stTime > pstSrvCtrl->ulExpireTimestamp))
+            {
+                sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Effect: %u, Expire: %u, Current: %u(BUCKET 0)"
+                                , pstSrvCtrl->ulEffectTimestamp, pstSrvCtrl->ulExpireTimestamp, stTime);
+                continue;
+            }
+
+            /* 业务类型要一致, 如果业务类型不为0，才检查 */
+            if (0 != ulServerType
+                && ulServerType != pstSrvCtrl->ulServType)
+            {
+                sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request service type: %u, Current service type: %u(BUCKET 0)"
+                                , ulServerType, pstSrvCtrl->ulServType);
+                continue;
+            }
+
+            /* 检查属性，不为0才检查 */
+            if (0 != ulAttr1
+                && ulAttr1 != pstSrvCtrl->ulAttr1)
+            {
+                sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request Attr1: %u, Current Attr1: %u(BUCKET 0)"
+                                , ulAttr1, pstSrvCtrl->ulAttr1);
+                continue;
+            }
+
+            /* 检查属性，不为0才检查 */
+            if (0 != ulAttr2
+                && ulAttr2 != pstSrvCtrl->ulAttr2)
+            {
+                sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request Attr2: %u, Current Attr2: %u(BUCKET 0)"
+                                , ulAttr2, pstSrvCtrl->ulAttr2);
+                continue;
+            }
+
+            /* 检查属性值，不为U32_BUTT才检查 */
+            if (U32_BUTT != ulAttrVal1
+                && ulAttrVal1 != pstSrvCtrl->ulAttrValue1)
+            {
+                sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request Attr1 Value: %u, Attr1 Value: %u(BUCKET 0)"
+                                , ulAttrVal1, pstSrvCtrl->ulAttrValue1);
+                continue;
+            }
+
+            /* 检查属性值，不为U32_BUTT才检查 */
+            if (U32_BUTT != ulAttrVal2
+                && ulAttrVal2 != pstSrvCtrl->ulAttrValue2)
+            {
+                sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request Attr2 Value: %u, Attr2 Value: %u(BUCKET 0)"
+                                , ulAttrVal2, pstSrvCtrl->ulAttrValue2);
+                continue;
+            }
+
+            /* 所有向均匹配 */
+            sc_logr_debug(NULL, SC_ESL, "Test service control rule: SUCC. ID: %u(BUCKET 0)", pstSrvCtrl->ulID);
+
+            blResult = DOS_TRUE;
+            break;
+        }
+    }
+
     sc_logr_info(NULL, SC_ESL, "Match service control rule %s.", blResult ? "SUCC" : "FAIL");
+
 
     pthread_mutex_unlock(&g_mutexHashServCtrl);
 
