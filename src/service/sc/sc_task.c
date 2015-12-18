@@ -30,8 +30,8 @@ extern "C"{
 
 /* define structs */
 
-extern U32                g_ulMaxConcurrency4Task;
-
+extern U32       g_ulMaxConcurrency4Task;
+extern U32       g_ulTaskTraceAll;
 
 
 /* declare functions */
@@ -181,8 +181,10 @@ U32 sc_task_make_call(SC_TASK_CB_ST *pstTCB)
 
     SC_SCB_SET_STATUS(pstSCB, SC_SCB_INIT);
 
-    if (pstTCB->bTraceCallON || pstSCB->bTraceNo
-        || pstCallee->ucTraceON)
+    if (pstTCB->bTraceCallON
+        || pstTCB->bTraceON
+        || pstCallee->ucTraceON
+        || g_ulTaskTraceAll)
     {
         pstSCB->bTraceNo  = 1;
     }

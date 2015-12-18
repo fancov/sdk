@@ -8385,6 +8385,7 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     pstSCB->ulAgentID = pstAgentInfo->ulSiteID;
     pstSCB->ucLegRole = SC_CALLEE;
     pstSCB->bRecord = pstAgentInfo->bRecord;
+    pstSCB->bTraceNo = pstAgentInfo->bTraceON;
     pstSCB->bIsAgentCall = DOS_TRUE;
 
     switch (pstAgentInfo->ucBindType)
@@ -9347,6 +9348,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         }
 
         pstSCBNew->bRecord = pstAgentInfo->bRecord;
+        pstSCBNew->bTraceNo = pstAgentInfo->bTraceON;
         /* 更新 pstSCBNew 中的主被叫号码 */
         if (pstSCB->bIsPassThrough)
         {
@@ -9453,6 +9455,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
     pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
     pstSCBNew->ucLegRole = SC_CALLEE;
     pstSCBNew->bRecord = pstAgentInfo->bRecord;
+    pstSCBNew->bTraceNo = pstAgentInfo->bTraceON;
     pstSCBNew->bIsAgentCall = DOS_TRUE;
 
     /* 如果为群呼任务，则customer num 为被叫号码，如果是呼入，则是主叫号码 */
@@ -10031,6 +10034,7 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
         pstSCB->ulAgentID  = ulCurrentAgent;
         pstSCB->ulTaskID   = U32_BUTT;
         pstSCB->bRecord    = stAgentInfo.bRecord;
+        pstSCB->bTraceNo   = stAgentInfo.bTraceON;
         pstSCB->bIsAgentCall = DOS_TRUE;
 
         /* 如果呼叫的坐席 */
@@ -10222,6 +10226,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         pstSCB->ulAgentID = ulAgent;
         pstSCB->ulTaskID = ulTaskID;
         pstSCB->bRecord = stAgentInfo.bRecord;
+        pstSCB->bTraceNo = stAgentInfo.bTraceON;
         pstSCB->usOtherSCBNo = pstSCBOther->usSCBNo;
         pstSCBOther->ulTaskID = ulTaskID;
         pstSCBOther->usOtherSCBNo = pstSCB->usSCBNo;
@@ -10277,6 +10282,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         pstSCB->ulAgentID = ulAgent;
         pstSCB->ulTaskID = ulTaskID;
         pstSCB->bRecord = stAgentInfo.bRecord;
+        pstSCB->bTraceNo = stAgentInfo.bTraceON;
         pstSCB->bIsAgentCall = DOS_TRUE;
 
         dos_strncpy(pstSCB->szCallerNum, pszNumber, sizeof(pstSCB->szCallerNum));
@@ -10432,6 +10438,7 @@ U32 sc_ep_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber)
         pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
         pstSCB->ulAgentID = ulAgent;
         pstSCB->bRecord = stAgentInfo.bRecord;
+        pstSCB->bTraceNo = stAgentInfo.bTraceON;
         pstSCB->usOtherSCBNo = pstSCBOther->usSCBNo;
         pstSCBOther->usOtherSCBNo = pstSCB->usSCBNo;
 
@@ -10461,6 +10468,7 @@ U32 sc_ep_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber)
         pstSCB->ulAgentID  = ulAgent;
         pstSCB->ulTaskID   = U32_BUTT;
         pstSCB->bRecord    = stAgentInfo.bRecord;
+        pstSCB->bTraceNo   = stAgentInfo.bTraceON;
         pstSCB->bIsAgentCall = DOS_TRUE;
 
         dos_strncpy(pstSCB->szCallerNum, pszSipNumber, sizeof(pstSCB->szCallerNum));
@@ -11037,6 +11045,7 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
     pstSCB->ulAgentID = ulAgentID;
     pstSCB->ulTaskID = 0;
     pstSCB->bRecord = stAgentInfo.bRecord;
+    pstSCB->bTraceNo = stAgentInfo.bTraceON;
     pstSCB->bIsAgentCall = DOS_TRUE;
 
     dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
@@ -11123,6 +11132,7 @@ U32 sc_ep_demo_task_call_agent(SC_SCB_ST *pstSCB)
     pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
     pstSCBNew->ucLegRole = SC_CALLEE;
     pstSCBNew->bRecord = stAgentInfo.bRecord;
+    pstSCBNew->bTraceNo = stAgentInfo.bTraceON;
 
     /* 如果为群呼任务，则customer num 为被叫号码，如果是呼入，则是主叫号码 */
     dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
@@ -11251,6 +11261,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 sc_logr_info(pstSCB, SC_ESL, "Find agent(%d) succ. bConnected : %d", stAgentInfo.ulSiteID, stAgentInfo.bConnected);
 
                 pstSCB->bRecord = stAgentInfo.bRecord;
+                pstSCB->bTraceNo = stAgentInfo.bTraceON;
                 pstSCB->ulAgentID = stAgentInfo.ulSiteID;
                 dos_strncpy(pstSCB->szSiteNum, stAgentInfo.szEmpNo, sizeof(pstSCB->szSiteNum));
                 pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';

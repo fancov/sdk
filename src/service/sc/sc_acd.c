@@ -621,6 +621,7 @@ U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB, SC_ACD_
             {
                 pstSCB->ulAgentID = pstAgentData->ulSiteID;
                 pstSCB->bRecord = pstAgentData->bRecord;
+                pstSCB->bTraceNo = pstAgentData->bTraceON;
                 dos_strncpy(pstSCB->szSiteNum, pstAgentData->szEmpNo, sizeof(pstSCB->szSiteNum));
                 pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
                 pthread_mutex_lock(&pstAgentData->mutexLock);
@@ -690,6 +691,7 @@ U32 sc_acd_update_agent_scbno_by_tt_number(S8 *szTTNumber, SC_SCB_ST *pstSCB, SC
             {
                 pstSCB->ulAgentID = pstAgentData->ulSiteID;
                 pstSCB->bRecord = pstAgentData->bRecord;
+                pstSCB->bTraceNo = pstAgentData->bTraceON;
                 dos_strncpy(pstSCB->szSiteNum, pstAgentData->szEmpNo, sizeof(pstSCB->szSiteNum));
                 pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
                 pthread_mutex_lock(&pstAgentData->mutexLock);
@@ -2313,6 +2315,7 @@ U32 sc_acd_singin_by_phone(S8 *szUserID, SC_SCB_ST *pstSCB)
                     pstSCB->ulAgentID = pstAgentData->ulSiteID;
                     pstSCB->ucLegRole = SC_CALLEE;
                     pstSCB->bRecord = pstAgentData->bRecord;
+                    pstSCB->bTraceNo = pstAgentData->bTraceON;
 
                     /* 被叫叫号码 */
                     dos_strncpy(pstSCB->szCalleeNum, szUserID, sizeof(pstSCB->szCalleeNum));
@@ -3813,6 +3816,50 @@ U32 sc_acd_http_agentgrp_update_proc(U32 ulAction, U32 ulGrpID)
         default:
             break;
     }
+    return DOS_SUCC;
+}
+
+U32 sc_acd_update_agent_trace(U32 ulTraceFlag, U32 ulAgentID)
+{
+    HASH_NODE_S                *pstHashNode     = NULL;
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode    = NULL;
+    U32                        ulHashIndex      = 0;
+    SC_SCB_ST                  *pstSCB          = NULL;
+
+    sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        sc_logr_warning(NULL, SC_ACD, "Cannot find the agent with this id %u.", ulAgentID);
+        return DOS_FAIL;
+    }
+
+    pstAgentNode = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+        sc_logr_warning(NULL, SC_ACD, "Cannot find the agent with this id %u..", ulAgentID);
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&pstAgentNode->pstAgentInfo->mutexLock);
+    pstAgentNode->pstAgentInfo->bTraceON = (U8)ulTraceFlag;
+
+    /* 如果坐席长签，需要修改SCB控制块中 跟踪标识 */
+    if (pstAgentNode->pstAgentInfo->bConnected && pstAgentNode->pstAgentInfo->usSCBNo < SC_MAX_SCB_NUM)
+    {
+        /* 坐席长连 */
+        pstSCB = sc_scb_get(pstAgentNode->pstAgentInfo->usSCBNo);
+        if (DOS_ADDR_VALID(pstSCB))
+        {
+            pstSCB->bTraceNo= (U8)ulTraceFlag;
+        }
+    }
+
+    pthread_mutex_unlock(&pstAgentNode->pstAgentInfo->mutexLock);
+
     return DOS_SUCC;
 }
 
