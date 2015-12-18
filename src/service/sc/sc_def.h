@@ -542,6 +542,8 @@ typedef struct tagSCSrvCtrl
     U32          ulAttr2;            /* 属性 */
     U32          ulAttrValue1;       /* 属性值1 */
     U32          ulAttrValue2;       /* 属性值2 */
+
+    BOOL         bExist;             /* 该标识用来判断数据库是否有该数据 */
 }SC_SRV_CTRL_ST;
 
 typedef struct tagEPMsgStat
@@ -1079,7 +1081,7 @@ S8 *sc_scb_get_status(U32 ulStatus);
 SC_SYS_STATUS_EN sc_check_sys_stat();
 U32 sc_ep_search_route(SC_SCB_ST *pstSCB);
 U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString, U32 ulLength);
-U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszCaller, S8 *pszCallee);
+U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszJobNum, S8 *pszCaller, S8 *pszCallee);
 U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt);
 U32 sc_send_usr_auth2bs(SC_SCB_ST *pstSCB);
 U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB);
@@ -1089,6 +1091,7 @@ U32 sc_http_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
 U32 sc_load_caller_grp(U32 ulIndex);
 U32 sc_http_eix_update_proc(U32 ulAction, U32 ulEixID);
 U32 sc_http_num_lmt_update_proc(U32 ulAction, U32 ulNumlmtID);
+U32 sc_http_serv_ctrl_update_proc(U32 ulAction, U32 ulID);
 U32 sc_http_num_transform_update_proc(U32 ulAction, U32 ulNumTransID);
 U32 sc_http_customer_update_proc(U32 ulAction, U32 ulCustomerID);
 U32 sc_http_demo_proc(U32 ulAction, U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
@@ -1199,6 +1202,10 @@ VOID *sc_acd_query_agent_status_task(VOID *ptr);
 /* 周期任务 */
 U32 sc_num_lmt_stat(U32 ulType, VOID *ptr);
 U32 sc_num_lmt_update(U32 ulType, VOID *ptr);
+
+U32 sc_load_serv_ctrl(U32 ulIndex);
+U32 sc_serv_ctrl_delete(U32 ulIndex);
+
 
 /* 错误码转换 */
 U16 sc_ep_transform_errcode_from_bs2sc(U8 ucErrcode);

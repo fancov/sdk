@@ -487,8 +487,20 @@ U32 sc_ep_record(SC_SCB_ST *pstSCBRecord)
         return DOS_FAIL;
     }
 
+
+    if (sc_check_server_ctrl(pstSCBRecord->ulCustomID
+                            , SC_SERV_RECORDING
+                            , SC_SRV_CTRL_ATTR_INVLID
+                            , U32_BUTT
+                            , SC_SRV_CTRL_ATTR_INVLID
+                            , U32_BUTT))
+    {
+        sc_logr_debug(pstSCBRecord, SC_ESL, "Recording service is under control, reject recoding request. Customer: %u", pstSCBRecord->ulCustomID);
+        return DOS_SUCC;
+    }
+
     SC_SCB_SET_SERVICE(pstSCBRecord, SC_SERV_RECORDING);
-    sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCBRecord->ulCustomID, pstSCBRecord->szCallerNum, pstSCBRecord->szCalleeNum);
+    sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCBRecord->ulCustomID, pstSCBRecord->szSiteNum, pstSCBRecord->szCallerNum, pstSCBRecord->szCalleeNum);
     pthread_mutex_lock(&pstSCBRecord->mutexSCBLock);
     pstSCBRecord->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
     if (DOS_ADDR_INVALID(pstSCBRecord->pszRecordFile))
@@ -514,6 +526,7 @@ U32 sc_ep_record(SC_SCB_ST *pstSCBRecord)
 
     return DOS_SUCC;
 }
+
 
 /**
  * 函数: sc_ep_call_notify
@@ -5532,6 +5545,20 @@ S32 sc_load_serv_ctrl_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         return DOS_FAIL;
     }
 
+    /*
+      * 定义属性类型如果为0，标示属性是无效的，这里将属性值设置为U32_BUTT, 方便程序处理
+      * 目前在某些情况下属性值为0，也是一种合法值，因此将U32_BUTT视为无效值
+      */
+    if (0 == pstSrvCtrl->ulAttr1)
+    {
+        pstSrvCtrl->ulAttrValue1 = U32_BUTT;
+    }
+
+    if (0 == pstSrvCtrl->ulAttr2)
+    {
+        pstSrvCtrl->ulAttrValue2 = U32_BUTT;
+    }
+
     ulHashIndex = sc_serv_ctrl_hash(pstSrvCtrl->ulCustomerID);
     stFindParam.ulID = pstSrvCtrl->ulID;
     stFindParam.ulCustomerID = pstSrvCtrl->ulCustomerID;
@@ -5577,20 +5604,32 @@ S32 sc_load_serv_ctrl_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 }
 
 
-U32 sc_serv_ctrl_delete(U32 ulIndex, U32 ulCustomer)
+U32 sc_serv_ctrl_delete(U32 ulIndex)
 {
     HASH_NODE_S           *pstHashNode;
     U32                   ulHashIndex;
-    SC_SRV_CTRL_FIND_ST   stFindParam;
+    SC_SRV_CTRL_ST        *pstServCtrl;
 
-    ulHashIndex = sc_serv_ctrl_hash(ulCustomer);
-    stFindParam.ulID = ulIndex;
-    stFindParam.ulCustomerID = ulCustomer;
     pthread_mutex_lock(&g_mutexHashServCtrl);
-    pstHashNode = hash_find_node(g_pstHashServCtrl, ulHashIndex, &stFindParam, sc_serv_ctrl_hash_find_cb);
-    if (DOS_ADDR_VALID(pstHashNode))
+    HASH_Scan_Table(g_pstHashServCtrl, ulHashIndex)
     {
-        hash_delete_node(g_pstHashServCtrl, pstHashNode, ulHashIndex);
+        HASH_Scan_Bucket(g_pstHashServCtrl, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstServCtrl = pstHashNode->pHandle;
+            if (pstServCtrl->ulID == ulIndex)
+            {
+                hash_delete_node(g_pstHashServCtrl, pstHashNode, ulHashIndex);
+
+                pthread_mutex_unlock(&g_mutexHashServCtrl);
+
+                return DOS_SUCC;
+            }
+        }
     }
     pthread_mutex_unlock(&g_mutexHashServCtrl);
 
@@ -5656,7 +5695,7 @@ BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 u
     ulHashIndex = sc_serv_ctrl_hash(ulCustomerID);
     stTime = time(NULL);
 
-    sc_logr_info(NULL, SC_ESL, "Start match service control rule. Customer: %u, Service: %u, Attr1: %u, Attr2: %u, Attr1Val: %u, Attr2Val: %u"
+    sc_logr_debug(NULL, SC_ESL, "match service control rule. Customer: %u, Service: %u, Attr1: %u, Attr2: %u, Attr1Val: %u, Attr2Val: %u"
                 , ulCustomerID, ulServerType, ulAttr1, ulAttrVal1, ulAttr2, ulAttrVal2);
 
     blResult = DOS_FALSE;
@@ -5736,7 +5775,89 @@ BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 u
         break;
     }
 
+    if (!blResult)
+    {
+        sc_logr_debug(NULL, SC_ESL, "match service ctrl rule in all. CustomerID", ulServerType);
+
+        /* BUCKET 0 中保存的是针对所有客户的规则 */
+        HASH_Scan_Bucket(g_pstHashServCtrl, 0, pstHashNode, HASH_NODE_S *)
+        {
+            /* 合法性检查 */
+            if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            /* 一个BUCKET中可能有很多企业的，需要过滤 */
+            pstSrvCtrl = pstHashNode->pHandle;
+            if (0 != pstSrvCtrl->ulCustomerID)
+            {
+                continue;
+            }
+
+            if (stTime < pstSrvCtrl->ulEffectTimestamp
+                || (pstSrvCtrl->ulExpireTimestamp && stTime > pstSrvCtrl->ulExpireTimestamp))
+            {
+                sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Effect: %u, Expire: %u, Current: %u(BUCKET 0)"
+                                , pstSrvCtrl->ulEffectTimestamp, pstSrvCtrl->ulExpireTimestamp, stTime);
+                continue;
+            }
+
+            /* 业务类型要一致, 如果业务类型不为0，才检查 */
+            if (0 != ulServerType
+                && ulServerType != pstSrvCtrl->ulServType)
+            {
+                sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request service type: %u, Current service type: %u(BUCKET 0)"
+                                , ulServerType, pstSrvCtrl->ulServType);
+                continue;
+            }
+
+            /* 检查属性，不为0才检查 */
+            if (0 != ulAttr1
+                && ulAttr1 != pstSrvCtrl->ulAttr1)
+            {
+                sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request Attr1: %u, Current Attr1: %u(BUCKET 0)"
+                                , ulAttr1, pstSrvCtrl->ulAttr1);
+                continue;
+            }
+
+            /* 检查属性，不为0才检查 */
+            if (0 != ulAttr2
+                && ulAttr2 != pstSrvCtrl->ulAttr2)
+            {
+                sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request Attr2: %u, Current Attr2: %u(BUCKET 0)"
+                                , ulAttr2, pstSrvCtrl->ulAttr2);
+                continue;
+            }
+
+            /* 检查属性值，不为U32_BUTT才检查 */
+            if (U32_BUTT != ulAttrVal1
+                && ulAttrVal1 != pstSrvCtrl->ulAttrValue1)
+            {
+                sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request Attr1 Value: %u, Attr1 Value: %u(BUCKET 0)"
+                                , ulAttrVal1, pstSrvCtrl->ulAttrValue1);
+                continue;
+            }
+
+            /* 检查属性值，不为U32_BUTT才检查 */
+            if (U32_BUTT != ulAttrVal2
+                && ulAttrVal2 != pstSrvCtrl->ulAttrValue2)
+            {
+                sc_logr_debug(NULL, SC_ESL, "Test service control rule: FAIL, Request Attr2 Value: %u, Attr2 Value: %u(BUCKET 0)"
+                                , ulAttrVal2, pstSrvCtrl->ulAttrValue2);
+                continue;
+            }
+
+            /* 所有向均匹配 */
+            sc_logr_debug(NULL, SC_ESL, "Test service control rule: SUCC. ID: %u(BUCKET 0)", pstSrvCtrl->ulID);
+
+            blResult = DOS_TRUE;
+            break;
+        }
+    }
+
     sc_logr_info(NULL, SC_ESL, "Match service control rule %s.", blResult ? "SUCC" : "FAIL");
+
 
     pthread_mutex_unlock(&g_mutexHashServCtrl);
 
@@ -8395,48 +8516,6 @@ U32 sc_ep_agent_signout(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
     return DOS_SUCC;
 }
 
-
-U32 sc_ep_agent_record(SC_SCB_ST * pstSCB)
-{
-    S8 szAPPParam[256] = { 0 };
-    S8 szFilePath[256] = { 0 };
-
-    if (DOS_ADDR_INVALID(pstSCB))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    sc_get_record_file_path(szFilePath, sizeof(szFilePath), pstSCB->ulCustomID, pstSCB->szCallerNum, pstSCB->szCalleeNum);
-    pthread_mutex_lock(&pstSCB->mutexSCBLock);
-    pstSCB->pszRecordFile = dos_dmem_alloc(dos_strlen(szFilePath) + 1);
-    if (DOS_ADDR_VALID(pstSCB->pszRecordFile))
-    {
-        dos_strncpy(pstSCB->pszRecordFile, szFilePath, dos_strlen(szFilePath) + 1);
-        pstSCB->pszRecordFile[dos_strlen(szFilePath)] = '\0';
-
-        dos_snprintf(szAPPParam, sizeof(szAPPParam)
-                        , "bgapi uuid_record %s start %s/%s\r\n"
-                        , pstSCB->szUUID
-                        , SC_RECORD_FILE_PATH
-                        , szFilePath);
-        sc_ep_esl_execute_cmd(szAPPParam);
-        pstSCB->bIsSendRecordCdr = DOS_TRUE;
-        sc_ep_esl_execute("sleep", "300", pstSCB->szUUID);
-    }
-    else
-    {
-        DOS_ASSERT(0);
-        goto proc_fail;
-    }
-    pthread_mutex_unlock(&pstSCB->mutexSCBLock);
-
-    return DOS_SUCC;
-proc_fail:
-
-    return DOS_FAIL;
-}
-
 U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
 {
     SC_SCB_ST* pstSCBSubscription = NULL;
@@ -10521,7 +10600,7 @@ U32 sc_ep_call_ctrl_record(U32 ulAgent)
         goto proc_fail;
     }
 
-    if (sc_ep_agent_record(pstSCB) != DOS_SUCC)
+    if (sc_ep_record(pstSCB) != DOS_SUCC)
     {
         goto proc_fail;
     }
@@ -10713,7 +10792,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
                 goto proc_fail;
             }
 
-            if (sc_ep_agent_record(pstSCB) != DOS_SUCC)
+            if (sc_ep_record(pstSCB) != DOS_SUCC)
             {
                 goto proc_fail;
             }
@@ -13604,7 +13683,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     SC_SCB_ST   *pstSCBOther        = NULL;
     SC_SCB_ST   *pstSCBNew          = NULL;
     U32 ulMainService               = U32_BUTT;
-    U32 ulRet  = DOS_FAIL;
+    U32 ulRet  = DOS_SUCC;
     U64 uLTmp  = 0;
 
 

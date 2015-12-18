@@ -843,7 +843,7 @@ U32 sc_call_set_trunk(SC_SCB_ST *pstSCB, U32 ulTrunkID)
 
 }
 
-U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszCaller, S8 *pszCallee)
+U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszJobNum, S8 *pszCaller, S8 *pszCallee)
 {
     struct tm            *pstTime;
     time_t               timep;
@@ -873,11 +873,12 @@ U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *psz
     }
 
     dos_snprintf(pszBuff, ulMaxLen
-            , "%u/%04d%02d%02d/VR-%04d%02d%02d%02d%02d%02d-%s-%s"
+            , "%u/%04d%02d%02d/VR-%s-%04d%02d%02d%02d%02d%02d-%s-%s"
             , ulCustomerID
             , pstTime->tm_year + 1900
             , pstTime->tm_mon + 1
             , pstTime->tm_mday
+            , pszJobNum
             , pstTime->tm_year + 1900
             , pstTime->tm_mon + 1
             , pstTime->tm_mday
@@ -2248,6 +2249,35 @@ U32 sc_http_eix_update_proc(U32 ulAction, U32 ulEixID)
     sc_logr_info(NULL, SC_FUNC, "Update eix SUCC.(ulAction:%u, ulID:%d)", ulAction, ulEixID);
 
     return DOS_SUCC;
+}
+
+U32 sc_http_serv_ctrl_update_proc(U32 ulAction, U32 ulID)
+{
+    U32 ulRet = DOS_SUCC;
+
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_ADD:
+        case SC_API_CMD_ACTION_UPDATE:
+            ulRet = sc_load_serv_ctrl(ulID);
+            break;
+
+       case SC_API_CMD_ACTION_DELETE:
+            ulRet = sc_serv_ctrl_delete(ulID);
+            break;
+        default:
+            break;
+    }
+
+    sc_logr_info(NULL, SC_FUNC, "Update serv ctrl rule finished.(ulAction:%u, ulID:%d, Ret: %u)", ulAction, ulID, ulRet);
+
+    return ulRet;
 }
 
 U32 sc_http_num_lmt_update_proc(U32 ulAction, U32 ulNumlmtID)
