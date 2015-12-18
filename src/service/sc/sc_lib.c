@@ -1709,7 +1709,7 @@ U32 sc_task_load_callee(SC_TASK_CB_ST *pstTCB)
             break;
         }
 
-        pstCalledNode->ucTraceON = 1;
+        pstCalledNode->ucTraceON = 0;
         pstCalledNode->ucCalleeType = SC_CALL_NUM_TYPE_NORMOAL;
         dos_strncpy(pstCalledNode->szNumber, g_pszCalledList[ulIndex], SC_TEL_NUMBER_LENGTH);
         pstCalledNode->szNumber[SC_TEL_NUMBER_LENGTH - 1] = '\0';

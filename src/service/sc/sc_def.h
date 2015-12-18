@@ -1221,6 +1221,8 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
 
 BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulAttrVal1,U32 ulAttr2, U32 ulAttrVal2);
 U32 sc_log_digest_print(S8 *pszFormat, ...);
+U32 sc_ep_customer_list_find(U32 ulCustomerID);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

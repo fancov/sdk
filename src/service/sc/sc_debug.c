@@ -43,7 +43,7 @@ U32       g_ulCallTraceAll      = 1;       /* 跟踪所有的呼叫 */
 
 /* 根据业务类型跟踪开关 */
 U8        g_aucServTraceFlag[SC_SERV_BUTT] = { 0 };
-
+U32       g_aulCustomerTrace[MAX_TRACE_NUM_SIZE] = {0, };
 S8        g_aszCallerTrace[MAX_TRACE_NUM_SIZE][SC_TEL_NUMBER_LENGTH] = { {0, }, };
 S8        g_aszCalleeTrace[MAX_TRACE_NUM_SIZE][SC_TEL_NUMBER_LENGTH] = { {0, }, };
 
@@ -2246,11 +2246,6 @@ S32 sc_show_taskmgnt(U32 ulIndex)
     return DOS_SUCC;
 }
 
-S32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
-{
-    return 0;
-}
-
 #if 0
 S32 sc_track_call_by_caller(U32 ulIndex ,S8 *pszCaller)
 {
@@ -2313,6 +2308,458 @@ S32 sc_track_call_by_callee(U32 ulIndex ,S8 *pszCallee)
 
         pstTCB->stCalleeNumQuery
     }*/
+    return DOS_SUCC;
+}
+
+U32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
+{
+    U32 i       = 0;
+    U32 lRet    = DOS_FAIL;
+
+    if (DOS_ADDR_INVALID(pszCaller)
+        && DOS_ADDR_INVALID(pszCallee))
+    {
+        return DOS_FAIL;
+    }
+
+    if (ulTraceFlag)
+    {
+        /* 打开跟踪 */
+        if (DOS_ADDR_VALID(pszCaller))
+        {
+            for (i=0; i<MAX_TRACE_NUM_SIZE; i++)
+            {
+                if (g_aszCallerTrace[i][0] == '\0')
+                {
+                    dos_strncpy(g_aszCallerTrace[i], pszCaller, SC_TEL_NUMBER_LENGTH-1);
+                    g_aszCallerTrace[i][SC_TEL_NUMBER_LENGTH-1] = '\0';
+
+                    lRet = DOS_SUCC;
+                    break;
+                }
+            }
+        }
+
+        if (DOS_ADDR_VALID(pszCallee))
+        {
+            for (i=0; i<MAX_TRACE_NUM_SIZE; i++)
+            {
+                if (g_aszCalleeTrace[i][0] == '\0')
+                {
+                    dos_strncpy(g_aszCalleeTrace[i], pszCallee, SC_TEL_NUMBER_LENGTH-1);
+                    g_aszCalleeTrace[i][SC_TEL_NUMBER_LENGTH-1] = '\0';
+
+                    lRet = DOS_SUCC;
+                    break;
+                }
+            }
+        }
+
+    }
+    else
+    {
+        /* 关闭跟踪 */
+        if (DOS_ADDR_VALID(pszCaller))
+        {
+            for (i=0; i<MAX_TRACE_NUM_SIZE; i++)
+            {
+                if (dos_strcmp(g_aszCallerTrace[i], pszCaller) == 0)
+                {
+                    g_aszCallerTrace[i][0] = '\0';
+
+                    lRet = DOS_SUCC;
+                    break;
+                }
+
+            }
+        }
+
+        if (DOS_ADDR_VALID(pszCallee))
+        {
+            for (i=0; i<MAX_TRACE_NUM_SIZE; i++)
+            {
+                if (dos_strcmp(g_aszCalleeTrace[i], pszCallee) == 0)
+                {
+                    g_aszCalleeTrace[i][0] = '\0';
+
+                    lRet = DOS_SUCC;
+                    break;
+                }
+            }
+        }
+    }
+
+    return lRet;
+}
+
+S8 *sc_show_server_name(U32 ulServerType)
+{
+    switch (ulServerType)
+    {
+        case SC_SERV_OUTBOUND_CALL:
+            return "SC_SERV_OUTBOUND_CALL";
+        case SC_SERV_INBOUND_CALL:
+            return "SC_SERV_INBOUND_CALL";
+        case SC_SERV_INTERNAL_CALL:
+            return "SC_SERV_INTERNAL_CALL";
+        case SC_SERV_EXTERNAL_CALL:
+            return "SC_SERV_EXTERNAL_CALL";
+        case SC_SERV_AUTO_DIALING:
+            return "SC_SERV_AUTO_DIALING";
+        case SC_SERV_PREVIEW_DIALING:
+            return "SC_SERV_PREVIEW_DIALING";
+        case SC_SERV_PREDICTIVE_DIALING:
+            return "SC_SERV_PREDICTIVE_DIALING";
+        case SC_SERV_RECORDING:
+            return "SC_SERV_RECORDING";
+        case SC_SERV_FORWORD_CFB:
+            return "SC_SERV_FORWORD_CFB";
+        case SC_SERV_FORWORD_CFU:
+            return "SC_SERV_FORWORD_CFU";
+        case SC_SERV_FORWORD_CFNR:
+            return "SC_SERV_FORWORD_CFNR";
+        case SC_SERV_BLIND_TRANSFER:
+            return "SC_SERV_BLIND_TRANSFER";
+        case SC_SERV_ATTEND_TRANSFER:
+            return "SC_SERV_ATTEND_TRANSFER";
+        case SC_SERV_PICK_UP:
+            return "SC_SERV_PICK_UP";
+        case SC_SERV_CONFERENCE:
+            return "SC_SERV_CONFERENCE";
+        case SC_SERV_VOICE_MAIL_RECORD:
+            return "SC_SERV_VOICE_MAIL_RECORD";
+        case SC_SERV_VOICE_MAIL_GET:
+            return "SC_SERV_VOICE_MAIL_GET";
+        case SC_SERV_SMS_RECV:
+            return "SC_SERV_SMS_RECV";
+        case SC_SERV_SMS_SEND:
+            return "SC_SERV_SMS_SEND";
+        case SC_SERV_MMS_RECV:
+            return "SC_SERV_MMS_RECV";
+        case SC_SERV_MMS_SNED:
+            return "SC_SERV_MMS_SNED";
+        case SC_SERV_FAX:
+            return "SC_SERV_FAX";
+        case SC_SERV_INTERNAL_SERVICE:
+            return "SC_SERV_INTERNAL_SERVICE";
+        case SC_SERV_AGENT_CALLBACK:
+            return "SC_SERV_AGENT_CALLBACK";
+        case SC_SERV_AGENT_SIGNIN:
+            return "SC_SERV_AGENT_SIGNIN";
+        case SC_SERV_AGENT_CLICK_CALL:
+            return "SC_SERV_AGENT_CLICK_CALL";
+        case SC_SERV_NUM_VERIFY:
+            return "SC_SERV_NUM_VERIFY";
+        case SC_SERV_CALL_INTERCEPT:
+            return "SC_SERV_CALL_INTERCEPT";
+        case SC_SERV_CALL_WHISPERS:
+            return "SC_SERV_CALL_WHISPERS";
+        case SC_SERV_DEMO_TASK:
+            return "SC_SERV_DEMO_TASK";
+        default:
+            return "NULL";
+    }
+}
+
+U32 sc_debug_trace_server(U32 ulTraceFlag, S8 *pszServer, U32 ulIndex)
+{
+    U32 ulServerType = 0;
+    S8  szBuff[256] = {0};
+
+    if (DOS_ADDR_INVALID(pszServer))
+    {
+        return DOS_FAIL;
+    }
+
+    if (dos_atoul(pszServer, &ulServerType) < 0)
+    {
+        return DOS_FAIL;
+    }
+
+    if (ulServerType >= SC_SERV_BUTT)
+    {
+
+        dos_snprintf(szBuff, sizeof(szBuff), "%u can not exceed %u\r\n"
+                        , ulServerType, SC_SERV_BUTT);
+    }
+    else
+    {
+        if (ulTraceFlag)
+        {
+            g_aucServTraceFlag[ulServerType] = 1;
+            dos_snprintf(szBuff, sizeof(szBuff), "Trace %s(%u) ON SUCC %u\r\n"
+                            , sc_show_server_name(ulServerType), ulServerType);
+        }
+        else
+        {
+            g_aucServTraceFlag[ulServerType] = 0;
+            dos_snprintf(szBuff, sizeof(szBuff), "Trace %s(%u) OFF SUCC %u\r\n"
+                            , sc_show_server_name(ulServerType), ulServerType);
+        }
+    }
+
+    cli_out_string(ulIndex, szBuff);
+
+    return DOS_SUCC;
+}
+
+U32 sc_debug_trace_customer(U32 ulTraceFlag, S8 *pszCustomerID, U32 ulIndex)
+{
+    U32 ulCustomerID = 0;
+    S8  szBuff[256] = {0};
+    U32 i = 0;
+
+    if (DOS_ADDR_INVALID(pszCustomerID))
+    {
+        return DOS_FAIL;
+    }
+
+    if (dos_atoul(pszCustomerID, &ulCustomerID) < 0)
+    {
+        return DOS_FAIL;
+    }
+
+    if (ulCustomerID == 0 || ulCustomerID == U32_BUTT)
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "Customer(%u) is not a company\r\n", ulCustomerID);
+        cli_out_string(ulIndex, szBuff);
+
+        return DOS_SUCC;
+    }
+
+    if (ulTraceFlag)
+    {
+        /* 判断SIP是否属于企业 */
+        if (sc_ep_customer_list_find(ulCustomerID) != DOS_SUCC)
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "Customer(%u) is not a company\r\n", ulCustomerID);
+        }
+        else
+        {
+            for (i=0; i<MAX_TRACE_NUM_SIZE; i++)
+            {
+                if (g_aulCustomerTrace[i] == 0)
+                {
+                    g_aulCustomerTrace[i] = ulCustomerID;
+                    dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) ON SUCC\r\n", ulCustomerID);
+                    break;
+                }
+            }
+
+            if (i == MAX_TRACE_NUM_SIZE)
+            {
+                dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) ON FAIL\r\n", ulCustomerID);
+            }
+        }
+    }
+    else
+    {
+        for (i=0; i<MAX_TRACE_NUM_SIZE; i++)
+        {
+            if (g_aulCustomerTrace[i] == ulCustomerID)
+            {
+                g_aulCustomerTrace[i] = 0;
+                dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) OFF SUCC\r\n", ulCustomerID);
+                break;
+            }
+        }
+
+        if (i == MAX_TRACE_NUM_SIZE)
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) OFF FAIL\r\n", ulCustomerID);
+        }
+    }
+
+
+    cli_out_string(ulIndex, szBuff);
+
+    return DOS_SUCC;
+}
+
+
+U32 sc_debug_trace_agent(U32 ulTraceFlag, S8 *pszAgentID, U32 ulIndex)
+{
+    U32 ulAgentID = 0;
+    S8  szBuff[256] = {0};
+
+    if (DOS_ADDR_INVALID(pszAgentID))
+    {
+        return DOS_FAIL;
+    }
+
+    if (dos_atoul(pszAgentID, &ulAgentID) < 0)
+    {
+        return DOS_FAIL;
+    }
+
+    if (sc_acd_update_agent_trace(ulTraceFlag, ulAgentID) != DOS_SUCC)
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "Not find agent(%u)\r\n", ulAgentID);
+    }
+    else
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "Trace Agent(%u) %s SUCC.\r\n"
+                            , ulAgentID, ulTraceFlag ? "ON" : "OFF");
+    }
+
+    cli_out_string(ulIndex, szBuff);
+
+    return DOS_SUCC;
+}
+
+U32 sc_show_trace_caller(U32 ulIndex)
+{
+    S8  szBuff[256] = {0};
+    U32 i = 0;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%24s"
+                            , "ID", "Number");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------");
+
+    for (i=0; i<MAX_TRACE_NUM_SIZE; i++)
+    {
+        if (g_aszCallerTrace[i][0] != '\0')
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%24s"
+                            , i
+                            , g_aszCallerTrace[i]);
+
+            cli_out_string(ulIndex, szBuff);
+        }
+     }
+
+
+    return DOS_SUCC;
+}
+
+U32 sc_show_trace_callee(U32 ulIndex)
+{
+    S8  szBuff[256] = {0};
+    U32 i = 0;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%24s"
+                            , "ID", "Number");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------");
+
+    for (i=0; i<MAX_TRACE_NUM_SIZE; i++)
+    {
+        if (g_aszCalleeTrace[i][0] != '\0')
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%24s"
+                            , i
+                            , g_aszCalleeTrace[i]);
+
+            cli_out_string(ulIndex, szBuff);
+        }
+     }
+
+    return DOS_SUCC;
+}
+
+U32 sc_show_trace_server(U32 ulIndex)
+{
+    S8  szBuff[256] = {0};
+    U32 i = 0;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%40s%10s"
+                            , "ID", "Server", "Status");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------");
+
+    for (i=0; i<SC_SERV_BUTT; i++)
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%40s%10s"
+                        , i
+                        , sc_show_server_name(i)
+                        , g_aucServTraceFlag[i] ? "ON" : "OFF");
+
+        cli_out_string(ulIndex, szBuff);
+    }
+
+    return DOS_SUCC;
+}
+
+U32 sc_show_trace_customer(U32 ulIndex)
+{
+    S8  szBuff[256] = {0};
+    U32 i = 0;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%10s%20s"
+                            , "ID", "CustomerID");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------");
+
+    for (i=0; i<MAX_TRACE_NUM_SIZE; i++)
+    {
+        if (g_aulCustomerTrace[i] != 0)
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%10u%20u"
+                            , i, g_aulCustomerTrace[i]);
+
+            cli_out_string(ulIndex, szBuff);
+        }
+     }
+
+    return DOS_SUCC;
+}
+
+S8 *sc_trace_mod_name(U32 ulModID)
+{
+    switch (ulModID)
+    {
+        case SC_FUNC:
+            return "SC_FUNC";
+        case SC_HTTPD:
+            return "SC_HTTPD";
+        case SC_HTTP_API:
+            return "SC_HTTP_API";
+        case SC_ACD:
+            return "SC_ACD";
+        case SC_TASK_MNGT:
+            return "SC_TASK_MNGT";
+        case SC_TASK:
+            return "SC_TASK";
+        case SC_DIALER:
+            return "SC_DIALER";
+        case SC_ESL:
+            return "SC_ESL";
+        case SC_BS:
+            return "SC_BS";
+        case SC_SYN:
+            return "SC_SYN";
+        case SC_AUDIT:
+            return "SC_AUDIT";
+        case SC_DB:
+            return "SC_DB";
+        case SC_PUB:
+            return "SC_PUB";
+        case SC_DIGEST:
+            return "SC_DIGEST";
+        default:
+            return "ERROR";
+    }
+}
+
+U32 sc_show_trace_mod(U32 ulIndex)
+{
+    S8  szBuff[256] = {0};
+    U32 i = 0;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%10s%20s%10s"
+                            , "ID", "CustomerID", "Status");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------");
+
+    for (i=0; i<SC_SUB_MOD_BUTT; i++)
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%10u%20s%10s"
+                        , i, sc_trace_mod_name(i), (g_ulTraceFlags & (0x00000001 << i)) ? "ON" : "OFF");
+
+        cli_out_string(ulIndex, szBuff);
+     }
+
     return DOS_SUCC;
 }
 
@@ -2457,11 +2904,25 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
             {
                 if (dos_strnicmp(argv[5], "off", dos_strlen("off")) == 0)
                 {
-                    sc_debug_call(DOS_FALSE, NULL, argv[4]);
+                    if (sc_debug_call(DOS_FALSE, NULL, argv[4]) != DOS_SUCC)
+                    {
+                        cli_out_string(ulIndex, "Trace Callee off FAIL\r\n");
+                    }
+                    else
+                    {
+                        cli_out_string(ulIndex, "Trace Callee off SUCC\r\n");
+                    }
                 }
                 else if (dos_strnicmp(argv[5], "on", dos_strlen("on")) == 0)
                 {
-                    sc_debug_call(DOS_TRUE, NULL, argv[4]);
+                    if (sc_debug_call(DOS_TRUE, NULL, argv[4]) != DOS_SUCC)
+                    {
+                        cli_out_string(ulIndex, "Trace Callee on FAIL\r\n");
+                    }
+                    else
+                    {
+                        cli_out_string(ulIndex, "Trace Callee on SUCC\r\n");
+                    }
                 }
                 else
                 {
@@ -2472,11 +2933,25 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
             {
                 if (dos_strnicmp(argv[5], "off", dos_strlen("off")) == 0)
                 {
-                    sc_debug_call(DOS_FALSE, argv[4], NULL);
+                    if (sc_debug_call(DOS_FALSE, argv[4], NULL) != DOS_SUCC)
+                    {
+                        cli_out_string(ulIndex, "Trace Caller off FAIL\r\n");
+                    }
+                    else
+                    {
+                        cli_out_string(ulIndex, "Trace Caller off SUCC\r\n");
+                    }
                 }
                 else if (dos_strnicmp(argv[5], "on", dos_strlen("on")) == 0)
                 {
-                    sc_debug_call(DOS_TRUE, argv[4], NULL);
+                    if (sc_debug_call(DOS_TRUE, argv[4], NULL) != DOS_SUCC)
+                    {
+                        cli_out_string(ulIndex, "Trace Caller on FAIL\r\n");
+                    }
+                    else
+                    {
+                        cli_out_string(ulIndex, "Trace Caller on SUCC\r\n");
+                    }
                 }
                 else
                 {
@@ -2520,11 +2995,97 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
 
             if (dos_strnicmp(argv[5], "off", dos_strlen("off")) == 0)
             {
-                sc_debug_call(DOS_FALSE, pszCaller, pszCallee);
+                if (sc_debug_call(DOS_FALSE, pszCaller, pszCallee) != DOS_SUCC)
+                {
+                    cli_out_string(ulIndex, "Trace Caller or Callee off FAIL\r\n");
+                }
+                else
+                {
+                    cli_out_string(ulIndex, "Trace Caller and Callee off SUCC\r\n");
+                }
             }
             else if (dos_strnicmp(argv[5], "off", dos_strlen("off")) == 0)
             {
-                sc_debug_call(DOS_TRUE, pszCaller, pszCallee);
+                if (sc_debug_call(DOS_TRUE, pszCaller, pszCallee) != DOS_SUCC)
+                {
+                    cli_out_string(ulIndex, "Trace Caller or Callee on FAIL\r\n");
+                }
+                else
+                {
+                    cli_out_string(ulIndex, "Trace Caller and Callee on SUCC\r\n");
+                }
+            }
+        }
+        else
+        {
+            return -1;
+        }
+
+        return 0;
+    }
+    else if (dos_strnicmp(argv[2], "server", dos_strlen("server")) == 0)
+    {
+        if (5 == argc)
+        {
+            if (dos_strnicmp(argv[4], "off", dos_strlen("off")) == 0)
+            {
+                return sc_debug_trace_server(DOS_FALSE, argv[3], ulIndex);
+            }
+            else if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
+            {
+                return sc_debug_trace_server(DOS_TRUE, argv[3], ulIndex);
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        else
+        {
+            return -1;
+        }
+
+        return 0;
+    }
+    else if (dos_strnicmp(argv[2], "customer", dos_strlen("customer")) == 0)
+    {
+        if (5 == argc)
+        {
+            if (dos_strnicmp(argv[4], "off", dos_strlen("off")) == 0)
+            {
+                return sc_debug_trace_customer(DOS_FALSE, argv[3], ulIndex);
+            }
+            else if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
+            {
+                return sc_debug_trace_customer(DOS_TRUE, argv[3], ulIndex);
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        else
+        {
+            return -1;
+        }
+
+        return 0;
+    }
+    else if (dos_strnicmp(argv[2], "agent", dos_strlen("agent")) == 0)
+    {
+        if (5 == argc)
+        {
+            if (dos_strnicmp(argv[4], "off", dos_strlen("off")) == 0)
+            {
+                return sc_debug_trace_agent(DOS_FALSE, argv[3], ulIndex);
+            }
+            else if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
+            {
+                return sc_debug_trace_agent(DOS_TRUE, argv[3], ulIndex);
+            }
+            else
+            {
+                return -1;
             }
         }
         else
@@ -3167,6 +3728,33 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
+    else if (0 == dos_stricmp(argv[2], "trace"))
+    {
+        if (4 == argc)
+        {
+            if (0 == dos_stricmp(argv[3], "caller"))
+            {
+                sc_show_trace_caller(ulIndex);
+            }
+            else if (0 == dos_stricmp(argv[3], "callee"))
+            {
+                sc_show_trace_callee(ulIndex);
+            }
+            else if (0 == dos_stricmp(argv[3], "server"))
+            {
+                sc_show_trace_server(ulIndex);
+            }
+            else if (0 == dos_stricmp(argv[3], "customer"))
+            {
+                sc_show_trace_customer(ulIndex);
+            }
+            else if (0 == dos_stricmp(argv[3], "mod"))
+            {
+                sc_show_trace_mod(ulIndex);
+            }
+        }
+    }
+
     return 0;
 }
 
@@ -3568,6 +4156,65 @@ S32 sc_update_route(U32 ulID)
     return DOS_SUCC;
 }
 
+BOOL sc_check_trace(SC_SCB_ST *pstSCB)
+{
+    BOOL bIsNeedTrace = DOS_FALSE;
+    U32 i = 0;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        goto finish;
+    }
+
+    /* 判断控制块是否需要跟踪 */
+    if (pstSCB->bTraceNo)
+    {
+        bIsNeedTrace = DOS_TRUE;
+        goto finish;
+    }
+
+    /* 判断主被叫号码/客户是否需要跟踪 */
+    for (i=0; i<MAX_TRACE_NUM_SIZE; i++)
+    {
+        if (g_aszCallerTrace[i][0] != '\0'
+            && dos_strcmp(g_aszCallerTrace[i], pstSCB->szCallerNum) == 0)
+        {
+            bIsNeedTrace = DOS_TRUE;
+            goto finish;
+        }
+
+        if (g_aszCalleeTrace[i][0] != '\0'
+            && dos_strcmp(g_aszCalleeTrace[i], pstSCB->szCalleeNum) == 0)
+        {
+            bIsNeedTrace = DOS_TRUE;
+            goto finish;
+        }
+
+        if (pstSCB->ulCustomID != U32_BUTT
+            && g_aulCustomerTrace[i] == pstSCB->ulCustomID)
+        {
+            bIsNeedTrace = DOS_TRUE;
+            goto finish;
+        }
+    }
+
+    /* 业务跟踪 aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG] */
+    for (i=0; i<SC_MAX_SRV_TYPE_PRE_LEG; i++)
+    {
+        if (pstSCB->aucServiceType[i] < SC_SERV_BUTT
+            && g_aucServTraceFlag[pstSCB->aucServiceType[i]])
+        {
+            bIsNeedTrace = DOS_TRUE;
+            goto finish;
+        }
+    }
+
+
+finish:
+
+    return bIsNeedTrace;
+}
+
 VOID sc_debug(SC_SCB_ST *pstSCB, U32 ulSubMod, U32 ulLevel, const S8* szFormat, ...)
 {
     va_list         Arg;
@@ -3601,6 +4248,14 @@ VOID sc_debug(SC_SCB_ST *pstSCB, U32 ulSubMod, U32 ulLevel, const S8* szFormat, 
     if (!bIsOutput
         && ulLevel <= g_ulSCLogLevel)
     {
+        bIsOutput = DOS_TRUE;
+    }
+
+    /* 检查是否需要跟踪 */
+    if (!bIsOutput
+        && sc_check_trace(pstSCB))
+    {
+        /* 需要跟踪 */
         bIsOutput = DOS_TRUE;
     }
 
