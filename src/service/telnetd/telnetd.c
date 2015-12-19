@@ -1619,6 +1619,7 @@ VOID *telnetd_client_task(VOID *ptr)
 
         if (pstClientInfo->ulWaitingExit)
         {
+            fprintf(pstClientInfo->pFDOutput, "\033[?25h");
             break;
         }
     }
