@@ -1192,7 +1192,6 @@ static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
     }
     if (DOS_FALSE == bFound)
     {
-        DOS_ASSERT(0);
         sc_logr_error(NULL, SC_FUNC, "Get did by agent FAIL.(ulAgentID:%u).", ulAgentID);
         return DOS_FAIL;
     }
@@ -1241,7 +1240,6 @@ static U32 sc_get_did_by_agentgrp(U32 ulAgentGrpID, S8 *pszNumber, U32 ulLen)
     }
     if (DOS_FALSE == bFound)
     {
-        DOS_ASSERT(0);
         sc_logr_error(NULL, SC_FUNC, "Get DID by agent group FAIL.(AgentGrpID:%u)", ulAgentGrpID);
         return DOS_FAIL;
     }

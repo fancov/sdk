@@ -131,6 +131,8 @@ U32 sc_task_mngt_load_task()
 U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
 {
     SC_TASK_CB_ST *pstTCB = NULL;
+    U32 ulRet = DOS_FAIL;
+
     SC_TRACE_IN((U32)ulTaskID, ulCustomID, 0, 0);
 
     if (0 == ulTaskID || U32_BUTT == ulTaskID)
@@ -166,13 +168,23 @@ U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
             return SC_HTTP_ERRNO_INVALID_DATA;
         }
 
+        ulRet = sc_task_load_callee(pstTCB);
+        if (DOS_SUCC != ulRet)
+        {
+            sc_logr_error(NULL, SC_TASK, "SC Task Load Callee FAIL.(TaskID:%u, usNo:%u)", ulTaskID, pstTCB->usTCBNo);
+            DOS_ASSERT(0);
+            SC_TRACE_OUT();
+            return SC_HTTP_ERRNO_INVALID_DATA;
+        }
+        sc_logr_debug(NULL, SC_TASK, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", ulTaskID, pstTCB->usTCBNo);
+
         SC_TASK_TRACE(pstTCB, "Task(%u) Load SUCC.", ulTaskID);
     }
 
     if (pstTCB->ucTaskStatus == SC_TASK_INIT)
     {
         /* 需要加载任务 */
-        if (DOS_SUCC != sc_task_reload(ulTaskID))
+        if (DOS_SUCC != sc_task_load(ulTaskID))
         {
             DOS_ASSERT(0);
             SC_TRACE_OUT();
@@ -189,7 +201,8 @@ U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
         pstTCB->ulMaxConcurrency = SC_MAX_TASK_MAX_CONCURRENCY;
     }
 
-    if (pstTCB->ucTaskStatus != SC_TASK_PAUSED)
+    if (pstTCB->ucTaskStatus != SC_TASK_PAUSED
+        && pstTCB->ucTaskStatus != SC_TASK_STOP)
     {
         DOS_ASSERT(0);
         SC_TRACE_OUT();
@@ -320,7 +333,7 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
         return SC_HTTP_ERRNO_INVALID_USR;
     }
 
-    if (DOS_SUCC != sc_task_reload(ulTaskID))
+    if (DOS_SUCC != sc_task_load(ulTaskID))
     {
         DOS_ASSERT(0);
         SC_TRACE_OUT();
@@ -534,7 +547,7 @@ VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
                     /* 如果任务没有被加载到内存，就不要更新了 */
                     if (sc_tcb_find_by_taskid(pstCMD->ulTaskID))
                     {
-                        if (sc_task_load(pstCMD->ulTaskID) != DOS_SUCC)
+                        if (sc_task_and_callee_load(pstCMD->ulTaskID) != DOS_SUCC)
                         {
                             pstCMD->ulCMDErrCode = SC_HTTP_ERRNO_INVALID_DATA;
                         }
@@ -723,7 +736,7 @@ U32 sc_task_mngt_start()
             }
 #endif
 
-            if (DOS_SUCC != sc_task_load(pstTCB->ulTaskID))
+            if (DOS_SUCC != sc_task_and_callee_load(pstTCB->ulTaskID))
             {
                 SC_TASK_TRACE(pstTCB, "Task Init FAIL.");
                 sc_logr_notice(NULL, SC_TASK_MNGT, "Task init fail. Custom ID: %d, Task ID: %d", pstTCB->ulCustomID, pstTCB->ulTaskID);

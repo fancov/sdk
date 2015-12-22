@@ -7475,7 +7475,6 @@ U32 sc_ep_terminate_call(SC_SCB_ST *pstSCB)
             SC_SCB_SET_STATUS(pstSCBOther, SC_SCB_RELEASE);
             sc_call_trace(pstSCBOther, "Terminate call.");
             sc_logr_notice(pstSCB, SC_ESL, "Call terminate call. SCB No : %d.", pstSCBOther->usSCBNo);
-            DOS_ASSERT(0);
             sc_scb_free(pstSCBOther);
         }
     }
@@ -7494,7 +7493,6 @@ U32 sc_ep_terminate_call(SC_SCB_ST *pstSCB)
             SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
             sc_call_trace(pstSCB, "Terminate call.");
             sc_logr_notice(pstSCB, SC_ESL, "Call terminate call. SCB No : %d. *", pstSCB->usSCBNo);
-            DOS_ASSERT(0);
             sc_scb_free(pstSCB);
         }
     }
@@ -8440,7 +8438,6 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, pstSCB->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
         if (ulRet != DOS_SUCC)
         {
-            DOS_ASSERT(0);
             sc_logr_info(pstSCB, SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
 
             goto go_on;
@@ -9531,7 +9528,6 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
             ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, pstSCB->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
             if (ulRet != DOS_SUCC)
             {
-                DOS_ASSERT(0);
                 sc_logr_info(pstSCB, SC_DIALER, "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
 
                 goto go_on;
@@ -12539,7 +12535,6 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
     }
     else
     {
-        DOS_ASSERT(0);
         sc_logr_info(pstSCB, SC_ACD, "POTS, Not matched any action : %s", pszDealNum);
 
         if (bIsSecondaryDialing)
@@ -13015,7 +13010,6 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     /* 指定主叫号码 号码组 */
                     if (sc_caller_setting_select_number(pstSCBNew->ulCustomID, pstSCBNew->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstSCBNew->szCallerNum, sizeof(pstSCBNew->szCallerNum)) != DOS_SUCC)
                     {
-                        DOS_ASSERT(0);
                         sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", pstSCBNew->ulAgentID);
                         sc_scb_free(pstSCBNew);
                         pstSCB->usOtherSCBNo = U16_BUTT;
@@ -13373,8 +13367,6 @@ U32 sc_ep_backgroud_job_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         {
             goto process_finished;
         }
-
-        DOS_ASSERT(0);
 
         pszStart = dos_strstr(pszAppArg, "scb_number=");
         if (DOS_ADDR_INVALID(pszStart))
@@ -13893,7 +13885,6 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
                     /* 指定主叫号码 号码组 */
                     if (sc_caller_setting_select_number(pstSCBNew->ulCustomID, pstSCBNew->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstSCBNew->szCallerNum, sizeof(pstSCBNew->szCallerNum)) != DOS_SUCC)
                     {
-                        DOS_ASSERT(0);
                         sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", pstSCBNew->ulAgentID);
                         sc_scb_free(pstSCBNew);
                         pstSCB->usOtherSCBNo = U16_BUTT;
