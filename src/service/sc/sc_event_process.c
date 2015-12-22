@@ -7065,6 +7065,9 @@ U32 sc_ep_play_sound(U32 ulSoundType, S8 *pszUUID, S32 lTime)
 
     dos_snprintf(szFileName, sizeof(szFileName), "%s/%s.wav", SC_PROMPT_TONE_PATH, pszFileName);
 
+    /* Nat下开始那段媒体可能会被丢掉，线延迟一下再放音 */
+    sc_ep_esl_execute("playback", "silence_stream://300", pszUUID);
+
     if (lTime <= 0)
     {
         sc_ep_esl_execute("endless_playback", szFileName, pszUUID);

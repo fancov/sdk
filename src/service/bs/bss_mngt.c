@@ -2826,7 +2826,30 @@ VOID bss_generate_record_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
     dos_strncpy(pstCDR->szRecordFile, pstSessionLeg->szRecordFile, sizeof(pstCDR->szRecordFile));
 
     pstCDR->ulRecordTimeStamp = pstSessionLeg->ulAnswerTimeStamp;
-    pstCDR->ulTimeLen = pstSessionLeg->ulByeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
+    if (pstSessionLeg->ulByeTimeStamp >= pstSessionLeg->ulAnswerTimeStamp)
+    {
+        pstCDR->ulTimeLen = pstSessionLeg->ulByeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
+    }
+    else
+    {
+        /*
+           * 保护措施，如果byetime小于answer time，就需要以当前时间计算
+           * 以后如果是远程CDR，那就需要从新考虑
+           */
+        DOS_ASSERT(0);
+
+        if (time(NULL) > pstSessionLeg->ulAnswerTimeStamp)
+        {
+            pstCDR->ulTimeLen = time(NULL) - pstSessionLeg->ulAnswerTimeStamp;
+        }
+        else
+        {
+            DOS_ASSERT(0);
+
+            pstCDR->ulTimeLen = 0;
+        }
+    }
+
     if (0 == pstSessionLeg->ulAnswerTimeStamp)
     {
         /* 呼叫没有接通，时长为0 */
@@ -5519,9 +5542,17 @@ VOID *bss_billing(VOID *arg)
                     bs_trace(BS_TRACE_BILLING, LOG_LEVEL_ERROR, "Err: unexpected cdr, type:%u",
                              pstMsgTag->ucCDRType);
                     /* 未知消息,不做处理,释放内存 */
-                    dos_dmem_free(pMsgNode->pHandle);
-                    pMsgNode->pHandle = NULL;
-                    dos_dmem_free(pMsgNode);
+                    if (DOS_ADDR_VALID(pMsgNode) && DOS_ADDR_VALID(pMsgNode->pHandle))
+                    {
+                        dos_dmem_free(pMsgNode->pHandle);
+                        pMsgNode->pHandle = NULL;
+                    }
+
+                    if (DOS_ADDR_VALID(pMsgNode))
+                    {
+                        dos_dmem_free(pMsgNode);
+                        pMsgNode = NULL;
+                    }
                     break;
             }
         }
