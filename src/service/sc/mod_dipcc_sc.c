@@ -40,7 +40,6 @@ U32 sc_task_mngt_init();
 U32 sc_dialer_init();
 U32 sc_ep_init();
 U32 sc_acd_init();
-U32 sc_acd_start();
 U32 sc_bs_fsm_init();
 U32 sc_ep_ext_start();
 U32 sc_httpd_start();
@@ -55,7 +54,6 @@ U32 sc_ep_init_agent_status();
 U32 sc_data_syn_init();
 U32 sc_data_syn_start();
 U32 sc_ep_ext_init();
-U32 sc_ep_ext_start();
 U32 sc_audit_init();
 U32 sc_audit_start();
 U32 sc_pub_init();
@@ -401,15 +399,6 @@ U32 mod_dipcc_sc_runtime()
         return DOS_FAIL;
     }
     sc_logr_info(NULL, SC_SUB_MOD_BUTT, "%s", "Start start event process task Successfully.");
-
-    if (DOS_SUCC != sc_acd_start())
-    {
-        DOS_ASSERT(0);
-
-        sc_logr_error(NULL, SC_SUB_MOD_BUTT, "%s", "Start the agent status query task FAIL.");
-        return DOS_FAIL;
-    }
-    sc_logr_info(NULL, SC_SUB_MOD_BUTT, "%s", "Start the agent status query task SUCC.");
 
     if (sc_task_mngt_start() != DOS_SUCC)
     {

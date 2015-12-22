@@ -172,7 +172,6 @@ U32 sc_log_digest_print(S8 *pszFormat, ...)
     DLL_Init_Node(pstNode);
     pstNode->pHandle = pszBuf;
 
-    sc_logr_debug(NULL, SC_DIGEST, "%s", pszBuf);
     pthread_mutex_lock(&g_mutexLogDigestQueue);
     DLL_Add(&g_stLogDigestQueue, pstNode);
     pthread_cond_signal(&g_condLogDigestQueue);
