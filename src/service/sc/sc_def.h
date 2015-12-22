@@ -1194,11 +1194,6 @@ U32  sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 u
 U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 U32 sc_send_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCallerNum);
 
-
-/* 更新坐席状态任务主函数 */
-VOID *sc_acd_query_agent_status_task(VOID *ptr);
-
-
 /* 周期任务 */
 U32 sc_num_lmt_stat(U32 ulType, VOID *ptr);
 U32 sc_num_lmt_update(U32 ulType, VOID *ptr);
