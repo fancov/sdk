@@ -7188,9 +7188,19 @@ U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase)
         case CC_ERR_SIP_BAD_GATEWAY:
             sc_ep_play_sound(SC_SND_NETWORK_FAULT, pstSCB->szUUID, 1);
             break;
-        default:
-            sc_ep_play_sound(SC_SND_TMP_UNAVAILABLE, pstSCB->szUUID, 3);
+        case CC_ERR_BS_LACK_FEE:
+            sc_ep_play_sound(SC_SND_LOW_BALANCE, pstSCB->szUUID, 1);
             break;
+        default:
+            switch (ulTernmiteCase)
+            {
+                case CC_ERR_BS_LACK_FEE:
+                    sc_ep_play_sound(SC_SND_NO_OUT_BALANCE, pstSCB->szUUID, 1);
+                    break;
+                default:
+                    sc_ep_play_sound(SC_SND_TMP_UNAVAILABLE, pstSCB->szUUID, 3);
+                    break;
+            }
     }
 
     dos_snprintf(szParamString, sizeof(szParamString), "proto_specific_hangup_cause=sip:%u", usSipErrCode);
