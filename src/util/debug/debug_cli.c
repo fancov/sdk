@@ -524,6 +524,18 @@ S32 debug_cli_reconn()
     S8 szBuffSockPath[256] = { 0 };
     S32 lAddrLen;
 
+    if (g_lCliSocket > 0)
+    {
+        close(g_lCliSocket);
+        g_lCliSocket = -1;
+    }
+
+    if (debug_cli_init(0, NULL) != DOS_SUCC)
+    {
+        cli_logr_info("Create socket fail.(%d)", errno);
+        return DOS_FAIL;
+    }
+
     dos_memzero(&g_stSrvAddr, sizeof(g_stSrvAddr));
     g_stSrvAddr.sun_family = AF_UNIX;
     snprintf(szBuffSockPath, sizeof(szBuffSockPath)
@@ -601,7 +613,9 @@ static VOID * debug_cli_main_loop(VOID *ptr)
         if (g_lCliSocket < 0)
         {
             cli_logr_debug("%s", "Socket has been closed!");
-            break;
+
+            g_bIsConnectOK = DOS_FALSE;
+            continue;
         }
 
         FD_ZERO(&stFdset);
@@ -667,7 +681,7 @@ S32 debug_cli_init(S32 _iArgc, S8 **_pszArgv)
     S32 lAddrLen;
     static struct sockaddr_un stSrvAddr;
 
-    //create unix socket
+    /* ´´½¨SOCKET */
     g_lCliSocket = socket(AF_UNIX, SOCK_DGRAM, 0);
     if(g_lCliSocket < 0)
     {
