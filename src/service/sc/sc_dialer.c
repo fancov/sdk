@@ -514,7 +514,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
         }
 
         if (!sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
-                && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
+            && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
         {
             if (pstSCB->bIsAgentCall)
             {
@@ -538,37 +538,46 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
                         , pstSCB->szCallerNum
                         , szCallString);
             }
+
+            sc_logr_debug(pstSCB, SC_DIALER, "ESL CMD: %s", szCMDBuff);
+            sc_ep_esl_execute("set", "continue_on_fail=true", pstSCBOther->szUUID);
+            sc_ep_esl_execute("set", "sip_copy_multipart=false", pstSCBOther->szUUID);
+            if (sc_ep_esl_execute("bridge", szCMDBuff, pstSCBOther->szUUID) != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+
+                sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
+                sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+                return DOS_FAIL;
+            }
+
+            if (sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID) != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+
+                sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
+                return DOS_FAIL;
+            }
         }
         else
         {
             dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                        , "{instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,park_after_bridge=true,begin_to_transfer=true,continue_on_fail=true,sip_copy_multipart=false}%s"
+                        , "bgapi originate {instant_ringback=true,scb_number=%u,other_leg_scb=%u,main_service=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,park_after_bridge=true,begin_to_transfer=true,continue_on_fail=true,sip_copy_multipart=false}%s &park \r\n"
                         , pstSCB->usSCBNo
                         , pstSCB->usOtherSCBNo
                         , ulMainService
                         , pstSCB->szCallerNum
                         , pstSCB->szCallerNum
                         , szCallString);
-        }
-        sc_logr_debug(pstSCB, SC_DIALER, "ESL CMD: %s", szCMDBuff);
-        sc_ep_esl_execute("set", "continue_on_fail=true", pstSCBOther->szUUID);
-        sc_ep_esl_execute("set", "sip_copy_multipart=false", pstSCBOther->szUUID);
-        if (sc_ep_esl_execute("bridge", szCMDBuff, pstSCBOther->szUUID) != ESL_SUCCESS)
-        {
-            DOS_ASSERT(0);
 
-            sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
-            sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
-            return DOS_FAIL;
-        }
-
-        if (!sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
-            && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
-        {
-            if (sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID) != DOS_SUCC)
+            sc_logr_debug(pstSCB, SC_DIALER, "ESL CMD: %s", szCMDBuff);
+            sc_ep_esl_execute("set", "continue_on_fail=true", pstSCBOther->szUUID);
+            sc_ep_esl_execute("set", "sip_copy_multipart=false", pstSCBOther->szUUID);
+            if (sc_ep_esl_execute_cmd(szCMDBuff) != DOS_SUCC)
             {
                 DOS_ASSERT(0);
 
+                sc_ep_esl_execute("hangup", NULL, pstSCBOther->szUUID);
                 sc_ep_esl_execute("hangup", NULL, pstSCB->szUUID);
                 return DOS_FAIL;
             }
