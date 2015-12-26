@@ -623,6 +623,8 @@ U16 sc_ep_transform_errcode_from_sc2sip(U32 ulErrcode)
             break;
         case CC_ERR_SC_SERV_NOT_EXIST:
         case CC_ERR_SC_NO_SERV_RIGHTS:
+        case CC_ERR_SC_USER_DOES_NOT_EXIST:
+        case CC_ERR_SC_CUSTOMERS_NOT_EXIST:
             usErrcodeSC = CC_ERR_SIP_FORBIDDEN;
             break;
         case CC_ERR_SC_USER_OFFLINE:
@@ -633,10 +635,6 @@ U16 sc_ep_transform_errcode_from_sc2sip(U32 ulErrcode)
             break;
         case CC_ERR_SC_USER_BUSY:
             usErrcodeSC = CC_ERR_SIP_BUSY_HERE;
-            break;
-        case CC_ERR_SC_USER_DOES_NOT_EXIST:
-        case CC_ERR_SC_CUSTOMERS_NOT_EXIST:
-            usErrcodeSC = CC_ERR_SIP_FORBIDDEN;
             break;
         case CC_ERR_SC_CB_ALLOC_FAIL:
         case CC_ERR_SC_MEMORY_ALLOC_FAIL:
@@ -7171,36 +7169,35 @@ U32 sc_ep_hangup_call_with_snd(SC_SCB_ST * pstSCB, U32 ulTernmiteCase)
     sc_logr_debug(pstSCB, SC_ESL, "Hangup call with error code %u", ulTernmiteCase);
     sc_log_digest_print("Hangup call with error code %u. customer : %u", ulTernmiteCase, pstSCB->ulCustomID);
 
-    switch (usSipErrCode)
+    switch (ulTernmiteCase)
     {
-        case CC_ERR_SIP_BUSY_EVERYWHERE:
+        case CC_ERR_NO_REASON:
             sc_ep_play_sound(SC_SND_USER_BUSY, pstSCB->szUUID, 3);
             break;
-        case CC_ERR_SIP_NOT_FOUND:
+        case CC_ERR_SC_IN_BLACKLIST:
+        case CC_ERR_SC_CALLER_NUMBER_ILLEGAL:
+        case CC_ERR_SC_CALLEE_NUMBER_ILLEGAL:
             sc_ep_play_sound(SC_SND_USER_NOT_FOUND, pstSCB->szUUID, 3);
             break;
-        case CC_ERR_SIP_TEMPORARILY_UNAVAILABLE:
+        case CC_ERR_SC_USER_OFFLINE:
+        case CC_ERR_SC_USER_HAS_BEEN_LEFT:
+        case CC_ERR_SC_PERIOD_EXCEED:
+        case CC_ERR_SC_RESOURCE_EXCEED:
             sc_ep_play_sound(SC_SND_TMP_UNAVAILABLE, pstSCB->szUUID, 3);
             break;
-        case CC_ERR_SIP_BUSY_HERE:
+        case CC_ERR_SC_USER_BUSY:
             sc_ep_play_sound(SC_SND_USER_BUSY, pstSCB->szUUID, 3);
             break;
-        case CC_ERR_SIP_BAD_GATEWAY:
+        case CC_ERR_SC_NO_ROUTE:
+        case CC_ERR_SC_NO_TRUNK:
             sc_ep_play_sound(SC_SND_NETWORK_FAULT, pstSCB->szUUID, 1);
             break;
         case CC_ERR_BS_LACK_FEE:
-            sc_ep_play_sound(SC_SND_LOW_BALANCE, pstSCB->szUUID, 1);
+            sc_ep_play_sound(SC_SND_NO_OUT_BALANCE, pstSCB->szUUID, 1);
             break;
         default:
-            switch (ulTernmiteCase)
-            {
-                case CC_ERR_BS_LACK_FEE:
-                    sc_ep_play_sound(SC_SND_NO_OUT_BALANCE, pstSCB->szUUID, 1);
-                    break;
-                default:
-                    sc_ep_play_sound(SC_SND_TMP_UNAVAILABLE, pstSCB->szUUID, 3);
-                    break;
-            }
+            sc_ep_play_sound(SC_SND_TMP_UNAVAILABLE, pstSCB->szUUID, 3);
+            break;
     }
 
     dos_snprintf(szParamString, sizeof(szParamString), "proto_specific_hangup_cause=sip:%u", usSipErrCode);
@@ -9432,7 +9429,7 @@ U32 sc_ep_call_agent(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentInfo, BOOL
         dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_bridge %s %s \r\n", pstSCBNew->szUUID, pstSCB->szUUID);
         if (sc_ep_esl_execute_cmd(szAPPParam) != DOS_SUCC)
         {
-            ulErrCode = CC_ERR_SC_MESSAGE_SENT_ERR;
+            ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
             DOS_ASSERT(0);
             goto proc_error;
         }
@@ -9574,7 +9571,7 @@ go_on:
     {
         if (sc_dial_make_call2ip(pstSCBNew, SC_SERV_AGENT_CALLBACK, bIsUpdateCaller) != DOS_SUCC)
         {
-            ulErrCode = CC_ERR_SC_MESSAGE_SENT_ERR;
+            ulErrCode = CC_ERR_SIP_BAD_GATEWAY;
             goto proc_error;
         }
     }
@@ -9582,7 +9579,7 @@ go_on:
     {
         if (sc_dial_make_call2eix(pstSCBNew, SC_SERV_AGENT_CALLBACK) != DOS_SUCC)
         {
-            ulErrCode = CC_ERR_SC_MESSAGE_SENT_ERR;
+            ulErrCode = CC_ERR_SIP_BAD_GATEWAY;
             goto proc_error;
         }
     }
@@ -12149,6 +12146,15 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         && !bIsSecondaryDialing)
     {
         /* 标记上一个客户，只支持话机操作 */
+        pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
+        if (U32_BUTT == pstSCB->ulCustomID)
+        {
+            if (sc_acd_get_agent_by_tt_num(&stAgentInfo, pstSCB->szCallerNum) == DOS_SUCC)
+            {
+                pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
+            }
+        }
+
         if (sc_ep_get_agent_by_caller(pstSCB, &stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
         {
             sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
@@ -12166,7 +12172,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         /* 将主叫号码修改为被修改的客户的号码 */
         dos_strcpy(pstSCB->szCallerNum, stAgentInfo.szLastCustomerNum);
         dos_strcpy(pstSCB->szSiteNum, stAgentInfo.szEmpNo);
-        pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
+        //pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
 
         if (1 == dos_sscanf(pszDealNum+dos_strlen(SC_POTS_MARK_CUSTOMER), "%d", &ulKey) && ulKey <= 9)
         {
@@ -13113,7 +13119,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
         {
             DOS_ASSERT(0);
 
-            sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_CLEAR_FORCE);
+            sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_SYSTEM_ABNORMAL);
             ulRet = DOS_FAIL;
 
             goto proc_finished;
