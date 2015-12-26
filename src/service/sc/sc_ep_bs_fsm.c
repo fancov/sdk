@@ -416,10 +416,6 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
             {
                 /* 回铃音 */
                 sc_ep_esl_execute("set", "instant_ringback=true", pstSCBOther->szUUID);
-                /*
-                sc_ep_esl_execute("set", "transfer_ringback=tone_stream://%(1000,4000,450);loops=-1", pstSCBOther->szUUID);
-                sc_ep_esl_execute("answer", NULL, pstSCBOther->szUUID);
-                */
 
                 if (pstSCB->bBanlanceWarning)
                 {
@@ -447,36 +443,50 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
                 sc_ep_terminate_call(pstSCB);
             }
         }
-        else if (sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
-            || sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
+        else if (sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER)
+            || sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER))
         {
-            if (pstSCB->ulCustomID == sc_ep_get_custom_by_sip_userid(pstSCB->szCalleeNum)
-                || sc_ep_check_extension(pstSCB->szCalleeNum, pstSCB->ulCustomID))
-            {
-                ulRet = sc_dial_make_call2ip(pstSCB, pstSCB->ucMainService, DOS_FALSE);
-                if (ulRet != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
+            SC_SCB_ST   *pstSCBFirst  = NULL;
+            SC_SCB_ST   *pstSCBSecond = NULL;
+            S8 szBuffer[128] = { 0, };
 
-                    sc_logr_info(pstSCB, SC_ESL, "Cannot make call for transfer. Make call to other endpoint fail. (%s)", pstSCB->szCalleeNum);
-                }
-            }
-            else
+            pstSCBSecond = sc_scb_get(pstSCB->usOtherSCBNo);
+            pstSCBFirst = sc_scb_get(pstSCBSecond->usOtherSCBNo);
+            if (DOS_ADDR_INVALID(pstSCBSecond) || DOS_ADDR_INVALID(pstSCBFirst))
             {
-                ulRet = sc_dialer_add_call(pstSCB);
-                if (ulRet != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
+                DOS_ASSERT(0);
 
-                    sc_logr_info(pstSCB, SC_ESL, "Cannot make call for transfer. Add call to dialer failed. (%s)", pstSCB->szCalleeNum);
-                }
-            }
+                sc_logr_notice(pstSCB, SC_BS, "%s", "transfer not complete.");
 
-            if (ulRet != DOS_SUCC)
-            {
                 sc_scb_free(pstSCB);
                 pstSCB = NULL;
             }
+
+            /* HOLD 住第一方，通过bridge，创建第三方 */
+            dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s hangup_after_bridge false \r\n", pstSCBSecond->szUUID);
+            sc_ep_esl_execute_cmd(szBuffer);
+            dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s hangup_after_bridge false \r\n", pstSCBFirst->szUUID);
+            sc_ep_esl_execute_cmd(szBuffer);
+
+            if (sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
+            {
+                dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_hold %s \r\n", pstSCBFirst->szUUID);
+                sc_ep_esl_execute_cmd(szBuffer);
+            }
+
+            pstSCBFirst->ucServStatus = SC_SERVICE_EXEC;
+            sc_ep_esl_execute("set", "instant_ringback=true", pstSCBFirst->szUUID);
+            sc_ep_esl_execute("set", "hangup_after_bridge=false", pstSCBSecond->szUUID);
+            if (sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER))
+            {
+                dos_snprintf(szBuffer, sizeof(szBuffer), "main_service=%u", SC_SERV_ATTEND_TRANSFER);
+            }
+            else
+            {
+                dos_snprintf(szBuffer, sizeof(szBuffer), "main_service=%u", SC_SERV_BLIND_TRANSFER);
+            }
+            sc_ep_esl_execute("set", szBuffer, pstSCBFirst->szUUID);
+            sc_ep_esl_execute("transfer", pstSCB->szCalleeNum, pstSCBFirst->szUUID);
         }
         else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CLICK_CALL))
         {

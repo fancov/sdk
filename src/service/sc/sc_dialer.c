@@ -330,19 +330,22 @@ go_on:
                         , pstSCB->szCallerNum
                         , pstSCB->szCalleeNum);
             }
+
+            sc_ep_esl_execute("set", "sip_copy_multipart=false", pstOtherSCB->szUUID);
+            sc_ep_esl_execute("bridge", szCMDBuff, pstOtherSCB->szUUID);
         }
         else
         {
-            dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "{main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,mark_customer=true,continue_on_fail=true,sip_copy_multipart=false}user/%s"
+            dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "bgapi originate {main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,sip_copy_multipart=false}user/%s &park"
                         , ulMainService
                         , pstSCB->usSCBNo
                         , pstSCB->szCallerNum
                         , pstSCB->szCallerNum
                         , pstSCB->szCalleeNum);
-        }
 
-        sc_ep_esl_execute("set", "sip_copy_multipart=false", pstOtherSCB->szUUID);
-        sc_ep_esl_execute("bridge", szCMDBuff, pstOtherSCB->szUUID);
+            sc_ep_esl_execute("set", "sip_copy_multipart=false", pstOtherSCB->szUUID);
+            sc_ep_esl_execute_cmd(szCMDBuff);
+        }
 
         return DOS_SUCC;
     }

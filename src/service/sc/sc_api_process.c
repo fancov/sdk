@@ -778,7 +778,7 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
     {
         ulAction = SC_ACTION_AGENT_TRANSFER;
     }
-    else if (dos_strncmp(pszAction, "transfer",sizeof("transfer")) == 0)
+    else if (dos_strncmp(pszAction, "atransfer",sizeof("atransfer")) == 0)
     {
         ulAction = SC_ACTION_AGENT_ATRANSFER;
     }

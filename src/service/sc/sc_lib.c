@@ -269,7 +269,6 @@ SC_SCB_ST *sc_scb_alloc()
         pstSCB->bValid = 1;
         pstSCB->ulAllocTime = time(0);
         sc_call_trace(pstSCB, "Alloc SCB.");
-        sc_logr_error(pstSCB, SC_ESL, "Alloc SCB. ID : %u, Valid: %d", pstSCB->usSCBNo, pstSCB->bValid);
         pthread_mutex_unlock(&pstSCB->mutexSCBLock);
         pthread_mutex_unlock(&g_pstTaskMngtInfo->mutexCallList);
         //SC_TRACE_OUT();
@@ -386,7 +385,7 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->ucCurrentPlyCnt = 0;
 
     pstSCB->ucStatus = SC_SCB_IDEL;            /* 呼叫控制块编号，refer to SC_SCB_STATUS_EN */
-    pstSCB->ucServStatus = 0;
+    pstSCB->ucServStatus = SC_SERVICE_INIT;
     pstSCB->bTerminationFlag = 0;             /* 业务终止标志 */
     pstSCB->usTerminationCause = 0;            /* 业务终止原因 */
     pstSCB->ucLegRole = SC_CALL_ROLE_BUTT;

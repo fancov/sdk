@@ -152,6 +152,8 @@ DLLEXPORT VOID _mem_free(VOID *p)
     MEM_INFO_NODE_ST *pstFileDescNode = NULL;
     MEM_CCB_ST *pstMemCCB;
     VOID *ptr;
+    S8 szBuffer[64] = { 0 };
+    U32 ulLen, ulLenUsed;
 
     if (!p)
     {
@@ -171,7 +173,19 @@ DLLEXPORT VOID _mem_free(VOID *p)
     {
         pstMemCCB->ulMemDesc = 0;
         DOS_ASSERT(0);
-        free(ptr);
+
+        /* 严重错误，打印一下 */
+        for (ulLen=0,ulLenUsed=0; ulLen<64; ulLen++)
+        {
+            ulLenUsed += dos_snprintf(szBuffer+ulLenUsed, sizeof(ulLenUsed) - ulLenUsed, "%02X ", *((U8 *)(ptr + ulLen)));
+
+            if (ulLen != 0 && !(ulLen % 16))
+            {
+                dos_syslog(LOG_LEVEL_DEBUG, szBuffer);
+
+                ulLenUsed = 0;
+            }
+        }
     }
 
     /* 看看内存分配点描述信息正确与否 */
