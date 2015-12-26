@@ -3436,6 +3436,14 @@ VOID sc_acd_agent_set_logout(U64 p)
         return;
     }
 
+    /* 只有在长签了，才拆除呼叫 */
+    if (pstAgentQueueInfo->bConnected)
+    {
+        /* 拆除呼叫 */
+        pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
+        sc_ep_call_ctrl_hangup_agent(pstAgentQueueInfo);
+    }
+
     ulOldStatus = pstAgentQueueInfo->ucStatus;
 
     sc_acd_agent_stat(SC_AGENT_STAT_ONLINE, pstAgentQueueInfo->ulSiteID, pstAgentQueueInfo, 0);
@@ -3628,14 +3636,6 @@ U32 sc_acd_agent_update_status2(U32 ulAction, U32 ulAgentID, U32 ulOperatingType
             {
                 dos_tmr_stop(&pstAgentInfo->htmrLogout);
                 pstAgentInfo->htmrLogout = NULL;
-            }
-
-            /* 只有在长签了，才拆除呼叫 */
-            if (pstAgentInfo->bConnected)
-            {
-                /* 拆除呼叫 */
-                pstAgentInfo->bNeedConnected = DOS_FALSE;
-                sc_ep_call_ctrl_hangup_agent(pstAgentInfo);
             }
 
             return dos_tmr_start(&pstAgentInfo->htmrLogout, 2000, sc_acd_agent_set_logout, (U64)pstAgentInfo, TIMER_NORMAL_LOOP);

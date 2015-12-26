@@ -325,7 +325,7 @@ go_on:
             }
             else
             {
-                dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "{main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,sip_copy_multipart=false}user/%s"
+                dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "{main_service=%u,scb_number=%u,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,mark_customer=true,sip_copy_multipart=false}user/%s"
                         , ulMainService
                         , pstSCB->usSCBNo
                         , pstSCB->szCallerNum
