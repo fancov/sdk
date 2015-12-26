@@ -27,8 +27,8 @@ extern "C"{
 #include "sc_acd_def.h"
 #include "sc_db.h"
 
-#define SC_EXT_EVENT_LIST "custom sofia::register sofia::unregister sofia::unregister sofia::gateway_state sofia::expire"
-
+#define SC_EXT_EVENT_LIST "custom sofia::register_attempt sofia::gateway_state sofia::expire"
+//sofia::register sofia::unregister
 
 SC_EP_HANDLE_ST  *g_pstExtMngtHangle  = NULL;
 DLL_S            g_stExtMngtMsg;
@@ -232,17 +232,31 @@ VOID* sc_ep_ext_mgnt(VOID *ptr)
 
                 /* TODO 维护ACD模块中坐席所对应的SIP分机的状态 */
                 /* 维护SIP分机的状态 */
-                pszUserID = esl_event_get_header(pstEvent, "username");
+                pszUserID = esl_event_get_header(pstEvent, "from-user");
                 if (esl_strlen_zero(pszUserID))
                 {
                      sc_logr_debug(NULL, SC_ACD, "%s", "Not get userid");
                      goto end;
                 }
 
-                if (dos_strcmp(pszSubclass, "sofia::register") == 0)
+                if (dos_strcmp(pszSubclass, "sofia::register_attempt") == 0)
                 {
-                    /* register */
-                    enStatus = SC_SIP_STATUS_TYPE_REGISTER;
+                    /* 判断 expires 字段，如果为0，则为取消注册，反之为注册消息 */
+                    pszVal = esl_event_get_header(pstEvent, "expires");
+                    if (esl_strlen_zero(pszVal))
+                    {
+                        sc_logr_info(NULL, SC_ACD, "%s", "Not get expires");
+                        goto end;
+                    }
+
+                    if (pszVal[0] == '0')
+                    {
+                        enStatus = SC_SIP_STATUS_TYPE_UNREGISTER;
+                    }
+                    else
+                    {
+                        enStatus = SC_SIP_STATUS_TYPE_REGISTER;
+                    }
                 }
                 else
                 {
