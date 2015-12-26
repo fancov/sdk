@@ -514,6 +514,14 @@ typedef enum tagSoundType{
     SC_SND_BUTT,
 }SC_SOUND_TYPE_EN;
 
+typedef enum tagServiceStatue{
+    SC_SERVICE_INIT,        /**< 业务初始化 */
+    SC_SERVICE_AUTH,        /**< 业务在认证 */
+    SC_SERVICE_EXEC,        /**< 业务在执行 */
+    SC_SERVICE_ACTIVE,      /**< 业务激活 */
+    SC_SERVICE_REALSE,      /**< 正在释放 */
+}SC_SERV_STATUE_EN;
+
 #define SC_EP_STAT_RECV 0
 #define SC_EP_STAT_PROC 1
 
