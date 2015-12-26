@@ -14061,6 +14061,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
     SC_ACD_AGENT_INFO_ST stAgentInfo;
     U32         ulTransferFinishTime = 0;
     U32         ulProcesingTime      = 0;
+    BOOL        bIsInitExtraData     = DOS_FALSE;
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
 
@@ -14448,15 +14449,19 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                         }
                     }
                 }
-                else if (pstSCB->bIsAgentCall && sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN))
-                {
-                    /* 另一条腿为坐席长签，此处不是和客户通话，直接修改为idel状态 */
-                    sc_acd_update_agent_info(pstSCBOther, SC_ACD_IDEL, pstSCBOther->usSCBNo, NULL);
-                    pstSCBOther->usOtherSCBNo = U16_BUTT;
-                    sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCBOther->szUUID, 1);
-                }
                 else
                 {
+                    if (pstSCB->bIsAgentCall && sc_call_check_service(pstSCBOther, SC_SERV_AGENT_SIGNIN))
+                    {
+                        /* 另一条腿为坐席长签，此处不是和客户通话，直接修改为idel状态 */
+                        sc_acd_update_agent_info(pstSCBOther, SC_ACD_IDEL, pstSCBOther->usSCBNo, NULL);
+                        pstSCBOther->usOtherSCBNo = U16_BUTT;
+                        sc_ep_play_sound(SC_SND_MUSIC_SIGNIN, pstSCBOther->szUUID, 1);
+
+                        /* 需要给长签的那条leg的时间戳赋值，否则显示1970-01-01，发送完账单后，清空 */
+                        bIsInitExtraData = DOS_TRUE;
+                    }
+
                     /* 坐席处在整理状态，应该另一条腿的时间信息，拷贝到坐席这条leg上 */
                     if (DOS_ADDR_INVALID(pstSCBOther->pstExtraData))
                     {
@@ -14501,6 +14506,13 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 else
                 {
                     sc_logr_debug(pstSCB, SC_ESL, "Send CDR to bs SUCC. SCB1 No:%d, SCB2 No:%d", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+                }
+
+                if (bIsInitExtraData
+                    && DOS_ADDR_VALID(pstSCBOther)
+                    && DOS_ADDR_VALID(pstSCBOther->pstExtraData))
+                {
+                    dos_memzero(pstSCBOther->pstExtraData, sizeof(SC_SCB_EXTRA_DATA_ST));
                 }
             }
 
