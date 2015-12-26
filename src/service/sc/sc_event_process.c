@@ -12328,6 +12328,18 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
 
     sc_logr_debug(pstSCB, SC_FUNC, "POTS scb(%u) num(%s)", pstSCB->usSCBNo, pszDealNum);
 
+    if (!bIsSecondaryDialing)
+    {
+        pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
+        if (U32_BUTT == pstSCB->ulCustomID)
+        {
+            if (sc_acd_get_agent_by_tt_num(&stAgentInfo, pstSCB->szCallerNum) == DOS_SUCC)
+            {
+                pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
+            }
+        }
+    }
+
     if (pszDealNum[0] != '*'
         && pszDealNum[0] != '#')
     {
@@ -12355,15 +12367,6 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         && !bIsSecondaryDialing)
     {
         /* 标记上一个客户，只支持话机操作 */
-        pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
-        if (U32_BUTT == pstSCB->ulCustomID)
-        {
-            if (sc_acd_get_agent_by_tt_num(&stAgentInfo, pstSCB->szCallerNum) == DOS_SUCC)
-            {
-                pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
-            }
-        }
-
         if (sc_ep_get_agent_by_caller(pstSCB, &stAgentInfo, pstSCB->szCallerNum, pstEvent) != DOS_SUCC)
         {
             sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
@@ -12401,15 +12404,6 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         && !bIsSecondaryDialing)
     {
         /* 查询余额 只支持话机操作 */
-        pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
-        if (U32_BUTT == pstSCB->ulCustomID)
-        {
-            if (sc_acd_get_agent_by_tt_num(&stAgentInfo, pstSCB->szCallerNum) == DOS_SUCC)
-            {
-                pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
-            }
-        }
-
         if (pstSCB->ulCustomID != U32_BUTT
             && sc_ep_check_extension(pstSCB->szCallerNum, pstSCB->ulCustomID))
         {
