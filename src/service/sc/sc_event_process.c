@@ -9370,19 +9370,6 @@ U32 sc_ep_call_transfer(SC_SCB_ST * pstSCB, U32 ulNumType, S8 *pszCallee, BOOL b
         goto proc_fail;
     }
 
-    /* HOLD 住第一方，通过bridge，创建第三方 */
-    dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "bgapi uuid_setvar %s hangup_after_bridge false \r\n", pstSCB1->szUUID);
-    sc_ep_esl_execute_cmd(szBuffCMD);
-    dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "bgapi uuid_setvar %s hangup_after_bridge false \r\n", pstSCB->szUUID);
-    sc_ep_esl_execute_cmd(szBuffCMD);
-
-    if (!bIsAttend)
-    {
-        dos_snprintf(szBuffCMD, sizeof(szBuffCMD), "bgapi uuid_hold %s \r\n", pstSCB1->szUUID);
-        sc_ep_esl_execute_cmd(szBuffCMD);
-    }
-
-
     if (pstSCBNew->ulCustomID == sc_ep_get_custom_by_sip_userid(pszCallee)
         || sc_ep_check_extension(pszCallee, pstSCBNew->ulCustomID))
     {

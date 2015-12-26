@@ -457,6 +457,18 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
                 pstSCB = NULL;
             }
 
+            /* HOLD 住第一方，通过bridge，创建第三方 */
+            dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s hangup_after_bridge false \r\n", pstSCBSecond->szUUID);
+            sc_ep_esl_execute_cmd(szBuffer);
+            dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s hangup_after_bridge false \r\n", pstSCBFirst->szUUID);
+            sc_ep_esl_execute_cmd(szBuffer);
+
+            if (sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
+            {
+                dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_hold %s \r\n", pstSCBFirst->szUUID);
+                sc_ep_esl_execute_cmd(szBuffer);
+            }
+
             pstSCBFirst->ucServStatus = SC_SERVICE_EXEC;
             sc_ep_esl_execute("set", "instant_ringback=true", pstSCBFirst->szUUID);
             sc_ep_esl_execute("set", "hangup_after_bridge=false", pstSCBSecond->szUUID);
