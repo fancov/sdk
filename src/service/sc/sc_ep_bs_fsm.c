@@ -396,6 +396,11 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
         }
         else
         {
+            pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+            if (DOS_ADDR_VALID(pstSCBOther))
+            {
+                pstSCBOther->usTerminationCause = pstSCB->usTerminationCause;
+            }
             sc_ep_terminate_call(pstSCB);
         }
     }

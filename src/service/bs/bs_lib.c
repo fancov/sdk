@@ -476,7 +476,6 @@ U32 bs_get_settle_packageid(U16 usTrunkID)
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        DOS_ASSERT(0);
         return U32_BUTT;
     }
 
@@ -514,7 +513,6 @@ BS_BILLING_PACKAGE_ST *bs_get_billing_package(U32 ulPackageID, U8 ucServType)
     ulHashIndex = bs_hash_get_index(BS_HASH_TBL_BILLING_PACKAGE_SIZE, ulPackageID);
     if (U32_BUTT == ulHashIndex)
     {
-        DOS_ASSERT(0);
         return NULL;
     }
 

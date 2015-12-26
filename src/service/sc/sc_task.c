@@ -555,7 +555,7 @@ U32 sc_task_continue(SC_TASK_CB_ST *pstTCB)
     }
 
     if (!pstTCB->ucValid
-        || pstTCB->ucTaskStatus != SC_TASK_PAUSED)
+        || (pstTCB->ucTaskStatus != SC_TASK_PAUSED && pstTCB->ucTaskStatus != SC_TASK_STOP))
     {
         DOS_ASSERT(0);
 

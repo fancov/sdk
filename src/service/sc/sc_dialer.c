@@ -82,7 +82,6 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword,
     if (sc_caller_setting_select_number(ulCustomer, 0, SC_SRC_CALLER_TYPE_ALL, szCaller, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
     {
         sc_logr_info(pstSCB, SC_HTTPD, "Get caller FAIL by customer(%u)", ulCustomer);
-        DOS_ASSERT(0);
         goto proc_fail;
     }
 
@@ -101,7 +100,7 @@ U32 sc_dial_make_call_for_verify(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword,
     if (U32_BUTT == ulRouteID)
     {
         DOS_ASSERT(0);
-        sc_logr_info(pstSCB, SC_ESL, "%s", "Search route fail while make call to patn.");
+        sc_logr_info(pstSCB, SC_ESL, "%s", "Search route fail while make call to pstn.");
         goto proc_fail;
     }
 
@@ -294,7 +293,6 @@ U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCal
         ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, pstSCB->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
         if (ulRet != DOS_SUCC)
         {
-            DOS_ASSERT(0);
             sc_logr_info(pstSCB, SC_DIALER, "Call to IP customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
 
             goto go_on;
@@ -895,7 +893,6 @@ VOID *sc_dialer_runtime(VOID * ptr)
                     ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, 0, SC_SRC_CALLER_TYPE_ALL, szNumber, SC_TEL_NUMBER_LENGTH);
                     if (ulRet != DOS_SUCC)
                     {
-                        DOS_ASSERT(0);
                         sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
 
                         goto go_on;
@@ -909,7 +906,6 @@ VOID *sc_dialer_runtime(VOID * ptr)
                     ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
                     if (ulRet != DOS_SUCC)
                     {
-                        DOS_ASSERT(0);
                         sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
 
                         goto go_on;

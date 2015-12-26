@@ -1369,8 +1369,8 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 case SC_TASK_STATUS_DB_INIT:
                 case SC_TASK_STATUS_DB_START:
                 case SC_TASK_STATUS_DB_PAUSED:
-                    break;
                 case SC_TASK_STATUS_DB_STOP:
+                    break;
                 default:
                     blProcessOK = DOS_FALSE;
                     break;
@@ -1546,7 +1546,6 @@ S32 sc_task_load(U32 ulIndex)
 {
     S8  szQuery[256] = {0};
     S32 lRet = U32_BUTT;
-    SC_TASK_CB_ST *pstTCB = NULL;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
@@ -1573,6 +1572,20 @@ S32 sc_task_load(U32 ulIndex)
     {
         sc_logr_error(NULL, SC_TASK, " SC Load task %u Data FAIL.", ulIndex);
         DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_logr_debug(NULL, SC_TASK, "Load task %u SUCC.", ulIndex);
+    return DOS_SUCC;
+}
+
+S32 sc_task_and_callee_load(U32 ulIndex)
+{
+    SC_TASK_CB_ST *pstTCB = NULL;
+    S32 lRet = U32_BUTT;
+
+    if (sc_task_load(ulIndex) != DOS_SUCC)
+    {
         return DOS_FAIL;
     }
 
@@ -1593,45 +1606,8 @@ S32 sc_task_load(U32 ulIndex)
     }
     sc_logr_debug(NULL, SC_TASK, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
 
-    sc_logr_debug(NULL, SC_TASK, "Load task %u SUCC.", ulIndex);
     return DOS_SUCC;
 }
-
-S32 sc_task_reload(U32 ulIndex)
-{
-    S8  szQuery[256] = {0};
-    S32 lRet = U32_BUTT;
-
-    if (SC_INVALID_INDEX == ulIndex)
-    {
-        dos_snprintf(szQuery, sizeof(szQuery),
-                        "SELECT id,customer_id,task_name,mtime,mode,playcnt," \
-                        "audio_id,group_id,status,ctime,calleecnt,calledcnt," \
-                        "start_time1, end_time1, start_time2, end_time2," \
-                        "start_time3, end_time3, start_time4, end_time4," \
-                        "callers,call_rate FROM tbl_calltask;");
-    }
-    else
-    {
-        dos_snprintf(szQuery, sizeof(szQuery),
-                        "SELECT id,customer_id,task_name,mtime,mode,playcnt," \
-                        "audio_id,group_id,status,ctime,calleecnt,calledcnt," \
-                        "start_time1, end_time1, start_time2, end_time2," \
-                        "start_time3, end_time3, start_time4, end_time4," \
-                        "callers,call_rate FROM tbl_calltask WHERE id=%u;", ulIndex);
-    }
-    /* 加载群呼任务的相关数据 */
-    lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
-    if (DB_ERR_SUCC != lRet)
-    {
-        sc_logr_error(NULL, SC_TASK, " SC Load task %u Data FAIL.", ulIndex);
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    return DOS_SUCC;
-}
-
 
 static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
 {

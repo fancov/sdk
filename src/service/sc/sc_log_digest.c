@@ -191,8 +191,6 @@ U32 sc_log_digest_start()
 {
     if (pthread_create(&g_pthreadLogDigest, NULL, sc_log_digest_mainloop, NULL) < 0)
     {
-        DOS_ASSERT(0);
-
         sc_logr_notice(NULL, SC_BS, "%s", "Create Log digest process pthread fail");
         DOS_ASSERT(0);
 
