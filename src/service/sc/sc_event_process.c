@@ -8070,6 +8070,26 @@ U32 sc_ep_get_callee_string(U32 ulRouteID, SC_SCB_ST *pstSCB, S8 *szCalleeString
             {
                 case SC_DEST_TYPE_GATEWAY:
                     /* TODO 路由后号码变换。现在只支持中继的，不支持中继组 */
+                    /* 获得中继，判断中继是否可用 */
+                    ulHashIndex = sc_ep_gw_hash_func(pstRouetEntry->aulDestID[0]);
+                    pthread_mutex_lock(&g_mutexHashGW);
+                    pstHashNode = hash_find_node(g_pstHashGW, ulHashIndex, (VOID *)&pstRouetEntry->aulDestID[0], sc_ep_gw_hash_find);
+                    if (DOS_ADDR_INVALID(pstHashNode)
+                        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                    {
+                        pthread_mutex_unlock(&g_mutexHashGW);
+                        break;
+                    }
+
+                    pstGW = pstHashNode->pHandle;
+                    if (DOS_FALSE == pstGW->bStatus
+                        || (pstGW->bRegister && pstGW->ulRegisterStatus != SC_TRUNK_STATE_TYPE_NOREG))
+                    {
+                        pthread_mutex_unlock(&g_mutexHashGW);
+                        break;
+                    }
+                    pthread_mutex_unlock(&g_mutexHashGW);
+
                     if (sc_ep_num_transform(pstSCB, pstRouetEntry->aulDestID[0], SC_NUM_TRANSFORM_TIMING_AFTER, SC_NUM_TRANSFORM_SELECT_CALLER) != DOS_SUCC)
                     {
                         DOS_ASSERT(0);
