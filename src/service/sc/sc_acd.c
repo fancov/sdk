@@ -1110,6 +1110,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
                                 , pstAgentQueueInfo->pstAgentInfo, 0);
 
             bIsUpdateDB = DOS_TRUE;
+            sc_ep_agent_status_notify(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_LOGIN);
             break;
 
         case SC_ACD_SITE_ACTION_OFFLINE:
@@ -1125,7 +1126,7 @@ U32 sc_acd_update_agent_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
                                 , pstAgentQueueInfo->pstAgentInfo, 0);
 
             bIsUpdateDB = DOS_TRUE;
-
+            sc_ep_agent_status_notify(pstAgentQueueInfo->pstAgentInfo, ACD_MSG_SUBTYPE_LOGINOUT);
             break;
 
         case SC_ACD_SITE_ACTION_SIGNIN:
