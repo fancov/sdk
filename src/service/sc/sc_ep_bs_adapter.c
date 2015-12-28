@@ -1111,6 +1111,12 @@ prepare_msg:
                 pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstFirstSCB->pstExtraData->ucPacketLossRate;
             }
         }
+        else
+        {
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = time(NULL);
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = time(NULL);
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = time(NULL);
+        }
 
         if (pstFirstSCB->pszRecordFile)
         {
@@ -1211,6 +1217,12 @@ prepare_msg:
                 pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstSecondSCB->pstExtraData->ucPayloadType;
                 pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstSecondSCB->pstExtraData->ucPacketLossRate;
             }
+        }
+        else
+        {
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = time(NULL);
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = time(NULL);
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = time(NULL);
         }
 
         if (pstSecondSCB->pszRecordFile)
