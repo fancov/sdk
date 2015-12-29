@@ -694,14 +694,6 @@ esl_exec_fail:
         sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECT_FAIL, pstSCB->ulAgentID, OPERATING_TYPE_PHONE);
     }
 
-#if 0
-    /* 这段到吗不可能被执行，因为如果otherSCB不为空，已经提前返回了 */
-    pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
-    if (DOS_ADDR_VALID(pstSCBOther))
-    {
-        sc_ep_hangup_call_with_snd(pstSCBOther, CC_ERR_SIP_BAD_GATEWAY);
-    }
-#endif
     /* 记录错误码 */
     pstSCB->usTerminationCause = sc_ep_transform_errcode_from_sc2sip(CC_ERR_SIP_BAD_GATEWAY);
 
@@ -711,14 +703,25 @@ esl_exec_fail:
         sc_ep_calltask_result(pstSCB, CC_ERR_SIP_BAD_GATEWAY);
     }
 
-    /* 发送话单 */
-    if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
+    /* 提示对端电话，线路不通 */
+    pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+    if (DOS_ADDR_VALID(pstSCBOther))
     {
-        sc_logr_notice(pstSCB, SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
+        pstSCB->bWaitingOtherRelase = DOS_TRUE;
+        SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
+        sc_ep_hangup_call_with_snd(pstSCBOther, CC_ERR_SC_NO_TRUNK);
     }
+    else
+    {
+        /* 发送话单 */
+        if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
+        {
+            sc_logr_notice(pstSCB, SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
+        }
 
-    DOS_ASSERT(0);
-    sc_scb_free(pstSCB);
+        DOS_ASSERT(0);
+        sc_scb_free(pstSCB);
+    }
 
     SC_TRACE_OUT();
     return DOS_FAIL;

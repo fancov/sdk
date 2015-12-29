@@ -235,7 +235,6 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                             ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
                             if (DOS_SUCC != ulRet)
                             {
-                                DOS_ASSERT(0);
                                 sc_logr_error(NULL, SC_FUNC, "%s", "Select Random FAIL, Select number FAIL.");
                                 return DOS_FAIL;
                             }
@@ -957,7 +956,6 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
 
     if (DOS_FALSE == bFound)
     {
-        DOS_ASSERT(0);
         sc_logr_error(NULL, SC_FUNC, "Select random did FAIL.(CustomerID:%u)"
                         , ulCustomerID);
         return DOS_FAIL;
