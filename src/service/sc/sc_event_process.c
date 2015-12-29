@@ -8251,11 +8251,9 @@ U32 sc_ep_get_source(esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
     }
 
     /* 判断 主叫号码 是否是 TT 号，现在 TT号 只支持外呼 */
-    if (sc_acd_get_agent_by_tt_num(&stAgentInfo, pstSCB->szCallerNum) == DOS_SUCC)
+    if (sc_acd_get_agent_by_tt_num(&stAgentInfo, pstSCB->szCallerNum, pstSCB) == DOS_SUCC)
     {
         pstSCB->bIsCallerInTT = DOS_TRUE;
-        pstSCB->ulAgentID = stAgentInfo.ulSiteID;
-        pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
 
         return SC_DIRECTION_SIP;
     }
@@ -12302,7 +12300,7 @@ U32 sc_ep_get_agent_by_caller(SC_SCB_ST *pstSCB, SC_ACD_AGENT_INFO_ST *pstAgentI
     }
 
     /* 判断 主叫号码 是否是 TT 号，现在 TT号 只支持外呼 */
-    if (sc_acd_get_agent_by_tt_num(pstAgentInfo, szCallerNum) == DOS_SUCC)
+    if (sc_acd_get_agent_by_tt_num(pstAgentInfo, szCallerNum, NULL) == DOS_SUCC)
     {
         sc_logr_debug(pstSCB, SC_ESL, "POTS, Find agent(%u) by TT num(%s) SUCC", pstAgentInfo->ulSiteID, szCallerNum);
 
@@ -12353,7 +12351,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
         if (U32_BUTT == pstSCB->ulCustomID)
         {
-            if (sc_acd_get_agent_by_tt_num(&stAgentInfo, pstSCB->szCallerNum) == DOS_SUCC)
+            if (sc_acd_get_agent_by_tt_num(&stAgentInfo, pstSCB->szCallerNum, NULL) == DOS_SUCC)
             {
                 pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
             }
@@ -12731,7 +12729,9 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
     {
         /* 判断是否是客户标记 *D# / *D* */
         pstSCB->szCustomerMark[0] = '\0';
-        dos_strncpy(pstSCB->szCustomerMark, pszDealNum, SC_CUSTOMER_MARK_LENGTH-1);
+        dos_strcpy(pstSCB->szCustomerMark, pszDealNum);
+        /* 最后加上#，与之前的版本保持一致 */
+        pstSCB->szCustomerMark[2] = '#';
         pstSCB->szCustomerMark[SC_CUSTOMER_MARK_LENGTH-1] = '\0';
 
         if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL))

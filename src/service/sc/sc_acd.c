@@ -2002,7 +2002,7 @@ U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
     return DOS_FAIL;
 }
 
-U32 sc_acd_get_agent_by_tt_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szTTNumber)
+U32 sc_acd_get_agent_by_tt_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szTTNumber, SC_SCB_ST *pstSCB)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
@@ -2034,14 +2034,23 @@ U32 sc_acd_get_agent_by_tt_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szTTNumbe
                 continue;
             }
 
-            if (pstAgentData->ucBindType != AGENT_BIND_SIP)
-            {
-                continue;
-            }
-
             if (dos_strcmp(pstAgentData->szTTNumber, szTTNumber) == 0)
             {
                 pthread_mutex_lock(&pstAgentData->mutexLock);
+
+                if (DOS_ADDR_VALID(pstSCB))
+                {
+                    pstSCB->ulAgentID = pstAgentData->ulSiteID;
+                    pstSCB->bRecord = pstAgentData->bRecord;
+                    pstSCB->bTraceNo = pstAgentData->bTraceON;
+                    dos_strncpy(pstSCB->szSiteNum, pstAgentData->szEmpNo, sizeof(pstSCB->szSiteNum));
+                    pstSCB->szSiteNum[sizeof(pstSCB->szSiteNum) - 1] = '\0';
+
+                    pstAgentData->usSCBNo = pstSCB->usSCBNo;
+                    dos_strncpy(pstAgentData->szLastCustomerNum, pstSCB->szCalleeNum, SC_TEL_NUMBER_LENGTH);
+                    pstAgentData->szLastCustomerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+                }
+
                 dos_memcpy(pstAgentInfo, pstAgentData, sizeof(SC_ACD_AGENT_INFO_ST));
                 pthread_mutex_unlock(&pstAgentData->mutexLock);
 
