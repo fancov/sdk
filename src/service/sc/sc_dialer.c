@@ -893,7 +893,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 {
                     sc_logr_info(NULL, SC_DIALER, "Not get other scb. scbNo : %u, other : %u", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
 
-                    goto go_on;
+                    goto free_res;
                 }
 
                 ulAgentID = pstOtherSCB->ulAgentID;
@@ -907,7 +907,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
                     {
                         sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
 
-                        goto go_on;
+                        goto free_res;
                     }
 
                     sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC", pstSCB->ulCustomID, szNumber);
@@ -920,7 +920,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
                     {
                         sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
 
-                        goto go_on;
+                        goto free_res;
                     }
                     sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
                 }
@@ -928,7 +928,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
                 pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
             }
-go_on:
+
             /* 路由前号码变换 主叫 */
             if (sc_ep_num_transform(pstSCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE, SC_NUM_TRANSFORM_SELECT_CALLER) != DOS_SUCC)
             {

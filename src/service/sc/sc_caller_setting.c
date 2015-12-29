@@ -29,6 +29,8 @@ static U32 sc_get_number_by_didid(U32 ulDidID, S8* pszNumber, U32 ulLen);
 static U32 sc_get_policy_by_grpid(U32 ulGroupID);
 static U32 sc_get_numbers_of_did(U32 ulCustomerID);
 static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen);
+static U32 sc_get_numbers_of_caller(U32 ulCustomerID);
+static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen);
 #if 0
 static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen);
 #endif
@@ -185,13 +187,23 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                         ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
                         if (DOS_SUCC != ulRet)
                         {
-                            DOS_ASSERT(0);
-                            sc_logr_error(NULL, SC_FUNC, "%s", "Select a Random Did FAIL,Select number FAIL.");
-                            return DOS_FAIL;
+                            sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random Did FAIL,Select number FAIL.");
                         }
                         else
                         {
                             sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random Did SUCC.");
+                            return DOS_SUCC;
+                        }
+
+                        ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
+                        if (DOS_SUCC != ulRet)
+                        {
+                            sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random caller FAIL,Select number FAIL.");
+                            return DOS_FAIL;
+                        }
+                        else
+                        {
+                            sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random caller SUCC.");
                             return DOS_SUCC;
                         }
                     }
@@ -212,9 +224,24 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                                 ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
                                 if (DOS_SUCC != ulRet)
                                 {
-                                    DOS_ASSERT(0);
-                                    sc_logr_error(NULL, SC_FUNC, "%s", "Select Did Random FAIL,Select number FAIL.");
+                                    sc_logr_debug(NULL, SC_FUNC, "%s", "Select Did Random FAIL,Select number FAIL.");
+                                }
+                                else
+                                {
+                                    sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random Did SUCC.");
+                                    return DOS_SUCC;
+                                }
+
+                                ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
+                                if (DOS_SUCC != ulRet)
+                                {
+                                    sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random caller FAIL,Select number FAIL.");
                                     return DOS_FAIL;
+                                }
+                                else
+                                {
+                                    sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random caller SUCC.");
+                                    return DOS_SUCC;
                                 }
                             }
                         }
@@ -235,14 +262,25 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                             ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
                             if (DOS_SUCC != ulRet)
                             {
-                                sc_logr_error(NULL, SC_FUNC, "%s", "Select Random FAIL, Select number FAIL.");
+                                sc_logr_debug(NULL, SC_FUNC, "%s", "Select Did Random FAIL,Select number FAIL.");
+                            }
+                            else
+                            {
+                                sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random Did SUCC.");
+                                return DOS_SUCC;
+                            }
+
+                            ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
+                            if (DOS_SUCC != ulRet)
+                            {
+                                sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random caller FAIL,Select number FAIL.");
                                 return DOS_FAIL;
                             }
                             else
                             {
-                                sc_logr_debug(NULL, SC_FUNC, "%s", "Select Random SUCC.");
+                                sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random caller SUCC.");
                                 return DOS_SUCC;
-                            }
+                                }
                         }
                         else
                         {
@@ -268,13 +306,23 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                     ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
                     if (DOS_SUCC != ulRet)
                     {
-                        DOS_ASSERT(0);
-                        sc_logr_error(NULL, SC_FUNC, "%s", "Select Random Did FAIL. Select number FAIL.");
+                        sc_logr_debug(NULL, SC_FUNC, "%s", "Select Did Random FAIL,Select number FAIL.");
+                    }
+                    else
+                    {
+                        sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random Did SUCC.");
+                        return DOS_SUCC;
+                    }
+
+                    ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
+                    if (DOS_SUCC != ulRet)
+                    {
+                        sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random caller FAIL,Select number FAIL.");
                         return DOS_FAIL;
                     }
                     else
                     {
-                        sc_logr_debug(NULL, SC_FUNC, "%s", "Select Random Did SUCC.");
+                        sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random caller SUCC.");
                         return DOS_SUCC;
                     }
                 }
@@ -290,15 +338,26 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                 ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
                 if (DOS_SUCC != ulRet)
                 {
-                    DOS_ASSERT(0);
-                    sc_logr_debug(NULL, SC_FUNC, "%s", "Select Random Did FAIL.");
+                    sc_logr_debug(NULL, SC_FUNC, "%s", "Select Did Random FAIL,Select number FAIL.");
+                }
+                else
+                {
+                    sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random Did SUCC.");
+                    return DOS_SUCC;
+                }
+
+                ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
+                if (DOS_SUCC != ulRet)
+                {
+                    sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random caller FAIL,Select number FAIL.");
                     return DOS_FAIL;
                 }
                 else
                 {
-                    sc_logr_debug(NULL, SC_FUNC, "%s", "Select Random Did SUCC.");
+                    sc_logr_debug(NULL, SC_FUNC, "%s", "Select a Random caller SUCC.");
                     return DOS_SUCC;
                 }
+
             }
             default:
                 break;
@@ -964,6 +1023,62 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
     return DOS_SUCC;
 }
 
+static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
+{
+    U32  ulCount = 0, ulTick = 0, ulHashIndex = U32_BUTT;
+    S32  lRandomNum = U32_BUTT;
+    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    BOOL  bFound = DOS_FALSE;
+
+    /* 先获取该客户拥有的caller个数 */
+    ulCount = sc_get_numbers_of_caller(ulCustomerID);
+    if (DOS_FAIL == ulCount)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    /* 生成随机数 */
+    lRandomNum = sc_generate_random(1, ulCount);
+    sc_logr_debug(NULL, SC_FUNC, "randomnum : %d", lRandomNum);
+    HASH_Scan_Table(g_pstHashCaller, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCaller, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstCaller = (SC_CALLER_QUERY_NODE_ST *)pstHashNode->pHandle;
+            if (DOS_FALSE != pstCaller->bValid && pstCaller->ulCustomerID == ulCustomerID)
+            {
+                ulTick++;
+                if (ulTick == (U32)lRandomNum)
+                {
+                    dos_snprintf(pszNumber, ulLen, "%s", pstCaller->szNumber);
+                    bFound = DOS_TRUE;
+                    break;
+                }
+            }
+        }
+
+        if (DOS_TRUE == bFound)
+        {
+            break;
+        }
+    }
+
+    if (DOS_FALSE == bFound)
+    {
+        sc_logr_error(NULL, SC_FUNC, "Select random caller FAIL.(CustomerID:%u)"
+                        , ulCustomerID);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
 U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen)
 {
     SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
@@ -1115,6 +1230,27 @@ S32 sc_get_numbers_of_did_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
     return DOS_SUCC;
 }
 
+S32 sc_get_numbers_of_caller_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    U32 *pulCount = NULL;
+
+    if (DOS_ADDR_INVALID(pArg)
+        || DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pulCount = (U32 *)pArg;
+    if (dos_atoul(aszValues[0], pulCount) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    return DOS_SUCC;
+}
+
 /**
  * 函数: U32 sc_get_numbers_of_did(U32 ulCustomerID)
  * 功能: 返回某一个客户的did号码个数
@@ -1135,7 +1271,25 @@ static U32 sc_get_numbers_of_did(U32 ulCustomerID)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-    sc_logr_info(NULL, SC_FUNC, "Get numbers of did FAIL.(ulCustomerID:%u, ulCount:%u)", ulCustomerID, ulCount);
+    sc_logr_info(NULL, SC_FUNC, "Get numbers of did SUCC.(ulCustomerID:%u, ulCount:%u)", ulCustomerID, ulCount);
+    return ulCount;
+}
+
+static U32 sc_get_numbers_of_caller(U32 ulCustomerID)
+{
+    S8   szQuery[256] = {0};
+    S32  lRet = U32_BUTT;
+    U32  ulCount;
+
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT COUNT(id) FROM tbl_caller WHERE customer_id=%u and verify_status=1;", ulCustomerID);
+    lRet = db_query(g_pstSCDBHandle, szQuery, sc_get_numbers_of_caller_cb, &ulCount, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_logr_error(NULL, SC_FUNC, "Get numbers of caller FAIL.(ulCustomerID:%u)", ulCustomerID);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    sc_logr_info(NULL, SC_FUNC, "Get numbers of caller SUCC.(ulCustomerID:%u, ulCount:%u)", ulCustomerID, ulCount);
     return ulCount;
 }
 
