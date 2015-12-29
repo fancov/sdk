@@ -2007,7 +2007,7 @@ U32 sc_caller_grp_delete(U32 ulCallerGrpID)
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        pthread_mutex_lock(&g_mutexHashCallerGrp);
+        pthread_mutex_unlock(&g_mutexHashCallerGrp);
 
         sc_logr_error(NULL, SC_FUNC, "Cannot Find Caller Grp %u.", ulCallerGrpID);
         DOS_ASSERT(0);
