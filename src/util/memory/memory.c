@@ -216,9 +216,11 @@ DLLEXPORT VOID _mem_free(VOID *p)
         pstFileDescNode->ulTotalSize -= pstMemCCB->ulSize;
     }
     pthread_mutex_unlock(&g_mutexMemMngtTable);
-    free(ptr);
+
     /* ÐÞ¸ÄÄ§Êõ×Ö */
     MEM_SET_FREE_MAGIC(pstMemCCB);
+
+    free(ptr);
 }
 
 
