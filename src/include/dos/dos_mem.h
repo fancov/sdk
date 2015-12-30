@@ -21,7 +21,11 @@
 
     #define dos_mem_mngt_init() _mem_mngt_init()
     #define dos_dmem_alloc(_size) _mem_alloc(__FILE__, __LINE__, (_size), 1)
-    #define dos_dmem_free(_ptr) _mem_free((_ptr))
+    #define dos_dmem_free(_ptr) \
+        do{ \
+            _mem_free((_ptr)); \
+            _ptr=NULL; \
+        }while(0)
 
     #define dos_smem_alloc(_size) _mem_alloc(__FILE__, __LINE__, (_size), 0)
     #define dos_smem_free(_ptr) _mem_free((_ptr))

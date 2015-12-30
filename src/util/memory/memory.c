@@ -167,6 +167,13 @@ DLLEXPORT VOID _mem_free(VOID *p)
     pstFileDescNode = pstMemCCB->pstRefer;
 
     //dos_printf("Free memory:%p", ptr);
+    /* 通过魔术字判断，内存是否已经释放 */
+    if (MEM_CHECK_FREE_MAGIC(pstMemCCB))
+    {
+        dos_snprintf(szBuffer, sizeof(szBuffer), "Pointer %p has already free!", p);
+        dos_syslog(LOG_LEVEL_ERROR, szBuffer);
+        return;
+    }
 
     /* 发现魔术字不正确，打断言之后，使用系统调用释放 */
     if (!MEM_CHECK_MAGIC(pstMemCCB))
@@ -210,6 +217,8 @@ DLLEXPORT VOID _mem_free(VOID *p)
     }
     pthread_mutex_unlock(&g_mutexMemMngtTable);
     free(ptr);
+    /* 修改魔术字 */
+    MEM_SET_FREE_MAGIC(pstMemCCB);
 }
 
 
