@@ -2040,6 +2040,7 @@ U32 sc_acd_get_agent_by_tt_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szTTNumbe
 
                 if (DOS_ADDR_VALID(pstSCB))
                 {
+                    pstSCB->ulCustomID = pstAgentData->ulCustomerID;
                     pstSCB->ulAgentID = pstAgentData->ulSiteID;
                     pstSCB->bRecord = pstAgentData->bRecord;
                     pstSCB->bTraceNo = pstAgentData->bTraceON;
