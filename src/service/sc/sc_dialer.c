@@ -509,7 +509,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
             && '\0' != pstSCBOther->szUUID[0])
         {
             sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCBOther->szUUID);
-            dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "bgapi uuid_break %s \r\n", pstSCBOther->szUUID);
+            dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "bgapi uuid_break %s all \r\n", pstSCBOther->szUUID);
             sc_ep_esl_execute_cmd(szCMDBuff);
         }
 

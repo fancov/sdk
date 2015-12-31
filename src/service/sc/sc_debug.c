@@ -4366,7 +4366,7 @@ trace:
      *∏Ò Ω: <SCB:No, status, token, caller, callee, uuid, trunk><TCB:No, status, ID, Custom,><CALLER:No, num,><SITE:No, status, SIP, id, externsion>
      */
     sc_logr_debug(pstSCB, SC_ESL, "Call Trace:%s\r\n"
-                  "\t[SCB Info]: No:%05d, status: %d, caller: %s, callee: %s, uuid:%s\r\n"
+                  "\t[SCB Info]: No:%05d, status: %d, caller: %s, callee: %s, uuid:%s, Other Leg:%u\r\n"
                   "\t[TCB Info]: No:%05d, status: %d, Task ID: %d, Custom ID: %d, AgentQueue: %u\r\n"
                   , szBuf
                   , pstSCB->usSCBNo
@@ -4374,6 +4374,7 @@ trace:
                   , ('\0' == pstSCB->szCallerNum[0]) ? "NULL" : pstSCB->szCallerNum
                   , ('\0' == pstSCB->szCalleeNum[0]) ? "NULL" : pstSCB->szCalleeNum
                   , ('\0' == pstSCB->szUUID[0]) ? "NULL" : pstSCB->szUUID
+                  , pstSCB->usOtherSCBNo
                   , pstTCB ? pstTCB->usTCBNo : -1
                   , pstTCB ? pstTCB->ucValid : -1
                   , pstTCB ? pstTCB->ulTaskID : -1
