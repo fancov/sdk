@@ -794,8 +794,6 @@ VOID *sc_dialer_runtime(VOID * ptr)
 
     while(1)
     {
-        bIsErrorPro = DOS_FALSE;
-
         /* 如果退出标志被置上，就准备退出了 */
         if (g_pstDialerHandle->blIsWaitingExit)
         {
@@ -834,6 +832,8 @@ VOID *sc_dialer_runtime(VOID * ptr)
 
         while (1)
         {
+            bIsErrorPro = DOS_FALSE;
+
             /* 控制CPS */
             dos_task_delay(1000 / SC_MAX_CALL_PRE_SEC);
 
@@ -889,7 +889,8 @@ VOID *sc_dialer_runtime(VOID * ptr)
             if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL)
                 && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL)
                 && !sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK)
-                && !sc_call_check_service(pstSCB, SC_SERV_DEMO_TASK))
+                && !sc_call_check_service(pstSCB, SC_SERV_DEMO_TASK)
+                && !sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
             {
                 /* 出局呼叫 */
                 /* 查找呼叫的分机绑定的坐席 */
