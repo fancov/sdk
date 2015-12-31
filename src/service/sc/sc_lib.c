@@ -2292,9 +2292,11 @@ U32 sc_http_num_lmt_update_proc(U32 ulAction, U32 ulNumlmtID)
         case SC_API_CMD_ACTION_CALLER_UPDATE:
             sc_load_number_lmt(ulNumlmtID);
             break;
+
         case SC_API_CMD_ACTION_CALLER_DELETE:
             sc_del_number_lmt(ulNumlmtID);
             break;
+
         default:
             break;
     }

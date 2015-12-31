@@ -5320,7 +5320,7 @@ U32 sc_load_number_lmt(U32 ulIndex)
                       "LEFT JOIN tbl_caller_limitation b ON a.limitation_id = b.id " \
                       "LEFT JOIN tbl_caller c ON a.btype = %u AND a.bid = c.id " \
                       "LEFT JOIN tbl_sipassign d ON a.btype = %u AND a.bid = d.id " \
-                      "WHERE a.id = %u"
+                      "WHERE a.limitation_id = %u"
                     , SC_NUM_LMT_TYPE_CALLER, SC_NUM_LMT_TYPE_DID, ulIndex);
 
     }
@@ -5357,12 +5357,9 @@ U32 sc_del_number_lmt(U32 ulIndex)
             }
 
             pstNumLmtNode = pstHashNode->pHandle;
-            if (pstNumLmtNode->ulID == ulIndex)
+            if (pstNumLmtNode->ulGrpID == ulIndex)
             {
                 hash_delete_node(g_pstHashNumberlmt, pstHashNode, ulHashIndex);
-                pthread_mutex_unlock(&g_mutexHashNumberlmt);
-
-                return DOS_SUCC;
             }
         }
     }
