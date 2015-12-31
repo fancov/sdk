@@ -1824,7 +1824,6 @@ U32 sc_ep_update_sip_status(S8 *szUserID, SC_SIP_STATUS_TYPE_EN enStatus, U32 *p
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
         pthread_mutex_unlock(&g_mutexHashSIPUserID);
-        DOS_ASSERT(0);
 
         return DOS_FAIL;
     }
@@ -14692,7 +14691,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 }
                 else
                 {
-                    if (DOS_ADDR_INVALID(pstSCBOther))
+                    if (DOS_ADDR_INVALID(pstSCBOther) && pstSCB->ulMarkStartTimeStamp != 0)
                     {
                         /* 修改 pstSCB 的被叫号码，修改为 客户标记值 */
                         if (pstSCB->szCustomerMark[0] != '\0')
@@ -14701,7 +14700,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                         }
                         else
                         {
-                            /* 没有标记、且标记没有超时，坐席一次直接挂断了 */
+                            /* 没有标记、且标记没有超时，坐席一侧直接挂断了 */
                             dos_strncpy(pstSCB->szCalleeNum, "*#", SC_TEL_NUMBER_LENGTH);
                         }
                     }
