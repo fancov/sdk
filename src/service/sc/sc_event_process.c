@@ -2007,7 +2007,7 @@ U32 sc_caller_grp_delete(U32 ulCallerGrpID)
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        pthread_mutex_lock(&g_mutexHashCallerGrp);
+        pthread_mutex_unlock(&g_mutexHashCallerGrp);
 
         sc_logr_error(NULL, SC_FUNC, "Cannot Find Caller Grp %u.", ulCallerGrpID);
         DOS_ASSERT(0);
@@ -6145,8 +6145,7 @@ S32 sc_update_number_stat_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
 {
     U32 ulTimes;
 
-    if (lCount != 0
-        || DOS_ADDR_INVALID(pArg)
+    if (DOS_ADDR_INVALID(pArg)
         || DOS_ADDR_INVALID(aszValues)
         || DOS_ADDR_INVALID(aszNames))
     {
@@ -15639,9 +15638,10 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
 
     dos_printf("Process recording file %s", szCMD);
 
+    pstOtherSCB = sc_scb_get(usOtherSCBNo);
+
     if (pstSCB->ulTaskID == U32_BUTT || pstSCB->ulTaskID == 0)
     {
-        pstOtherSCB = sc_scb_get(usOtherSCBNo);
         if (DOS_ADDR_VALID(pstOtherSCB))
         {
             pstSCB->ulTaskID = pstOtherSCB->ulTaskID;
@@ -15659,6 +15659,23 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     {
         sc_logr_debug(pstSCB, SC_ESL, "Send CDR Record to bs SUCC. SCB1 No:%d", pstSCB->usSCBNo);
     }
+#if 0
+    /* 如果是和坐席相关的leg，则把， 录音文件名称 */
+    if (pstSCB->bIsAgentCall
+        && DOS_ADDR_VALID(pstSCB->pszRecordFile))
+    {
+        dos_dmem_free(pstSCB->pszRecordFile);
+        pstSCB->pszRecordFile = NULL;
+    }
+
+    if (DOS_ADDR_VALID(pstOtherSCB)
+        && pstOtherSCB->bIsAgentCall
+        && DOS_ADDR_VALID(pstOtherSCB->pszRecordFile))
+    {
+        dos_dmem_free(pstOtherSCB->pszRecordFile);
+        pstOtherSCB->pszRecordFile = NULL;
+    }
+#endif
 
     /* 将 pstSCB 中的数据还原 */
     if (DOS_ADDR_VALID(pstSCB->pstExtraData))

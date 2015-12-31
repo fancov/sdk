@@ -89,8 +89,8 @@ DLLEXPORT VOID * _mem_alloc(S8 *pszFileName, U32 ulLine, U32 ulSize, U32 ulFlag)
         pstFileDescNode = (MEM_INFO_NODE_ST *)malloc(sizeof(MEM_INFO_NODE_ST));
         if (!pstFileDescNode)
         {
-            DOS_ASSERT(0);
             pthread_mutex_unlock(&g_mutexMemMngtTable);
+            DOS_ASSERT(0);
             return NULL;
         }
 
@@ -167,6 +167,13 @@ DLLEXPORT VOID _mem_free(VOID *p)
     pstFileDescNode = pstMemCCB->pstRefer;
 
     //dos_printf("Free memory:%p", ptr);
+    /* 通过魔术字判断，内存是否已经释放 */
+    if (MEM_CHECK_FREE_MAGIC(pstMemCCB))
+    {
+        dos_snprintf(szBuffer, sizeof(szBuffer), "Pointer %p has already free!", p);
+        dos_syslog(LOG_LEVEL_ERROR, szBuffer);
+        return;
+    }
 
     /* 发现魔术字不正确，打断言之后，使用系统调用释放 */
     if (!MEM_CHECK_MAGIC(pstMemCCB))
@@ -193,7 +200,7 @@ DLLEXPORT VOID _mem_free(VOID *p)
     pthread_mutex_lock(&g_mutexMemMngtTable);
     if (0 == pstFileDescNode->ulRef)
     {
-        DOS_ASSERT(0);
+        //DOS_ASSERT(0);
     }
     else
     {
@@ -202,13 +209,17 @@ DLLEXPORT VOID _mem_free(VOID *p)
 
     if (pstFileDescNode->ulTotalSize < pstMemCCB->ulSize)
     {
-        DOS_ASSERT(0);
+        //DOS_ASSERT(0);
     }
     else
     {
         pstFileDescNode->ulTotalSize -= pstMemCCB->ulSize;
     }
     pthread_mutex_unlock(&g_mutexMemMngtTable);
+
+    /* 修改魔术字 */
+    MEM_SET_FREE_MAGIC(pstMemCCB);
+
     free(ptr);
 }
 
