@@ -11651,6 +11651,9 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                     dos_strncpy(pstSCBNew->szCustomerNum, pstSCB->szCallerNum, SC_TEL_NUMBER_LENGTH);
                     pstSCBNew->szCustomerNum[SC_TEL_NUMBER_LENGTH-1] = '\0';
 
+                    pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
+                    pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
+
                     sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
 
                     /* 给通道设置变量 */
