@@ -12867,13 +12867,20 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         pstSCB->szCustomerMark[2] = '#';
         pstSCB->szCustomerMark[SC_CUSTOMER_MARK_LENGTH-1] = '\0';
 
-        if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL))
+        if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
         {
-            sc_send_marker_update_req(pstSCB->ulCustomID, pstSCB->ulAgentID, ulKey, pstSCB->szCallerNum);
+            sc_send_marker_update_req(pstSCB->ulCustomID, pstSCB->ulAgentID, ulKey, pstSCB->szCustomerNum);
         }
         else
         {
-            sc_send_marker_update_req(pstSCB->ulCustomID, pstSCB->ulAgentID, ulKey, pstSCB->szCalleeNum);
+            if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL))
+            {
+                sc_send_marker_update_req(pstSCB->ulCustomID, pstSCB->ulAgentID, ulKey, pstSCB->szCallerNum);
+            }
+            else
+            {
+                sc_send_marker_update_req(pstSCB->ulCustomID, pstSCB->ulAgentID, ulKey, pstSCB->szCalleeNum);
+            }
         }
 
         sc_logr_debug(pstSCB, SC_ESL, "dtmf proc, callee : %s, caller : %s, UUID : %s"
