@@ -14780,6 +14780,7 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                 if (ulSCBNo == U32_BUTT)
                                 {
                                     /* ∑«≥§«©£¨ Õ∑≈µÙSC */
+                                    sc_ep_hangup_call(pstSCBOther, CC_ERR_NORMAL_CLEAR);
                                 }
 
                                 sc_acd_update_agent_info(pstSCBOther, SC_ACD_IDEL, ulSCBNo, NULL);
