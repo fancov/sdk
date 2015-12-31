@@ -154,12 +154,12 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_PROMPT_TONE_PATH            "/usr/local/freeswitch/sounds/okcc"
 
-#define SC_TASK_AUDIO_PATH             "/ipcc/var/data/audio"
+#define SC_TASK_AUDIO_PATH             "/home/ipcc/data/audio"
 
-#define SC_RECORD_FILE_PATH            "/ipcc/var/data/voicerecord"
+#define SC_RECORD_FILE_PATH            "/home/ipcc/data/voicerecord"
 
 #define SC_DEMOE_TASK_COUNT            3
-#define SC_DEMOE_TASK_FILE             "/ipcc/var/data/audio/CC_demo.wav"
+#define SC_DEMOE_TASK_FILE             "/usr/local/freeswitch/sounds/okcc/CC_demo.wav"
 
 #define SC_NOBODY_UID                  99
 #define SC_NOBODY_GID                  99
