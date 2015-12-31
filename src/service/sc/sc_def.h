@@ -789,7 +789,9 @@ typedef struct tagSCSCB{
 
     U32       bIsSendRecordCdr:1;                 /* 是发送录音话单 */
     U32       bIsCallerInTT:1;                    /* 是否是TT号发起的呼叫 */
-    U32       ulRes:10;
+    U32       bParkHack:1;                        /* Park消息的特殊处理，如果该park消息被置上，则不要处理 */
+    U32       bTransWaitingBridge:1;              /* 转接相关，不允许随便使用 */
+    U32       ulRes:8;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -1232,6 +1234,9 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
 BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulAttrVal1,U32 ulAttr2, U32 ulAttrVal2);
 U32 sc_log_digest_print(S8 *pszFormat, ...);
 U32 sc_ep_customer_list_find(U32 ulCustomerID);
+
+U32 sc_call_clear_service(SC_SCB_ST *pstSCB, U32 ulService);
+
 
 #ifdef __cplusplus
 }

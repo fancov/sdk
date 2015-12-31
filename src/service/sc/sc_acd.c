@@ -2645,6 +2645,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     stSiteInfo.aulGroupID[1] = ulGroupID1;
     stSiteInfo.bValid = DOS_TRUE;
     stSiteInfo.bRecord = ulRecordFlag;
+    stSiteInfo.usSCBNo = U16_BUTT;
     stSiteInfo.bGroupHeader = ulIsHeader;
     stSiteInfo.ucBindType = (U8)ulSelectType;
     stSiteInfo.ucCallStatus = SC_ACD_CALL_NONE;
