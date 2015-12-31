@@ -10563,12 +10563,15 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         pstSCBOther->ulTaskID = ulTaskID;
         pstSCBOther->usOtherSCBNo = pstSCB->usSCBNo;
 
+        dos_strncpy(pstSCBOther->szCustomerNum, pszNumber, sizeof(pstSCB->szCalleeNum));
+        pstSCBOther->szCustomerNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
+
         /* 指定被叫号码 */
         dos_strncpy(pstSCB->szCalleeNum, pszNumber, sizeof(pstSCB->szCalleeNum));
         pstSCB->szCalleeNum[sizeof(pstSCB->szCalleeNum) - 1] = '\0';
 
         /* 后面会获取主叫号码，这里就不需要获取了，随便填个就行了 */
-        dos_strncpy(pstSCB->szCallerNum, pszNumber, sizeof(pstSCB->szCallerNum));
+        dos_strncpy(pstSCB->szCallerNum, stAgentInfo.szUserID, sizeof(pstSCB->szCallerNum));
         pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
 
 #if 0
@@ -11553,6 +11556,7 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
     U32   ulBindType = U32_BUTT;
     U32   ulBindID = U32_BUTT;
     S8    szCallString[512] = { 0, };
+    S8    szAPPParam[512] = { 0, };
     S8    szCallee[32] = { 0, };
     U32   ulErrCode = CC_ERR_NO_REASON;
     SC_ACD_AGENT_INFO_ST stAgentInfo;
@@ -11644,9 +11648,17 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                     }
                     pstSCBNew->bCallSip = DOS_TRUE;
 
+                    dos_strncpy(pstSCBNew->szCustomerNum, pstSCB->szCallerNum, SC_TEL_NUMBER_LENGTH);
+                    pstSCBNew->szCustomerNum[SC_TEL_NUMBER_LENGTH-1] = '\0';
+
+                    pstSCBNew->usOtherSCBNo = pstSCB->usSCBNo;
+                    pstSCB->usOtherSCBNo = pstSCBNew->usSCBNo;
+
                     sc_ep_esl_execute("answer", NULL, pstSCB->szUUID);
 
                     /* 给通道设置变量 */
+                    dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_break %s all\r\n", pstSCBNew->szUUID);
+                    sc_ep_esl_execute_cmd(szAPPParam);
                     sc_ep_esl_execute("break", NULL, pstSCBNew->szUUID);
                     sc_ep_esl_execute("set", "hangup_after_bridge=false", pstSCBNew->szUUID);
 
@@ -11659,8 +11671,9 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
                 }
                 else
                 {
-                    dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d,update_agent_id=0,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,mark_customer=true}user/%s"
+                    dos_snprintf(szCallString, sizeof(szCallString), "{other_leg_scb=%d,update_agent_id=0,origination_caller_id_number=%s,origination_caller_id_name=%s,exec_after_bridge_app=park,mark_customer=true,customer_num=%s}user/%s"
                         , pstSCB->usSCBNo
+                        , pstSCB->szCallerNum
                         , pstSCB->szCallerNum
                         , pstSCB->szCallerNum
                         , szCallee);
@@ -12864,7 +12877,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         pstSCB->szCustomerMark[2] = '#';
         pstSCB->szCustomerMark[SC_CUSTOMER_MARK_LENGTH-1] = '\0';
 
-        if (sc_call_check_service(pstSCB, SC_SERV_AGENT_SIGNIN))
+        if (pstSCB->szCustomerNum[0] != '\0')
         {
             sc_send_marker_update_req(pstSCB->ulCustomID, pstSCB->ulAgentID, ulKey, pstSCB->szCustomerNum);
         }
@@ -13290,6 +13303,13 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
             /* 客户标记, 客户一侧挂断电话后，坐席一侧保持，进入客户标记状态 */
             pstSCB->usOtherSCBNo = U16_BUTT;
             ulRet = DOS_SUCC;
+
+            pszValue = esl_event_get_header(pstEvent, "variable_customer_num");
+            if (DOS_ADDR_VALID(pszValue))
+            {
+                dos_strncpy(pstSCB->szCustomerNum, pszValue, SC_TEL_NUMBER_LENGTH);
+                pstSCB->szCustomerNum[SC_TEL_NUMBER_LENGTH-1] = '\0';
+            }
 
             sc_call_trace(pstSCB, "Agent is in marker statue.");
 
