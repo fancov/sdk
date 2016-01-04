@@ -12565,8 +12565,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         && !bIsSecondaryDialing)
     {
         /* 查询余额 只支持话机操作 */
-        if (pstSCB->ulCustomID != U32_BUTT
-            && sc_ep_check_extension(pstSCB->szCallerNum, pstSCB->ulCustomID))
+        if (pstSCB->ulCustomID != U32_BUTT)
         {
             sc_send_balance_query2bs(pstSCB);
 
@@ -15683,8 +15682,8 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     {
         sc_logr_debug(pstSCB, SC_ESL, "Send CDR Record to bs SUCC. SCB1 No:%d", pstSCB->usSCBNo);
     }
-#if 0
-    /* 如果是和坐席相关的leg，则把， 录音文件名称 */
+
+    /* 如果是和坐席相关的leg，则把录音文件名称删除 */
     if (pstSCB->bIsAgentCall
         && DOS_ADDR_VALID(pstSCB->pszRecordFile))
     {
@@ -15699,7 +15698,6 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         dos_dmem_free(pstOtherSCB->pszRecordFile);
         pstOtherSCB->pszRecordFile = NULL;
     }
-#endif
 
     /* 将 pstSCB 中的数据还原 */
     if (DOS_ADDR_VALID(pstSCB->pstExtraData))
