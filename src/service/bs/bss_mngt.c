@@ -2853,7 +2853,7 @@ VOID bss_generate_record_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
         if (0 == pstCDR->ulTimeLen)
         {
             /* 时间太短,保护处理 */
-            pstCDR->ulTimeLen = 1;
+            //pstCDR->ulTimeLen = 1;
         }
     }
 
@@ -2953,7 +2953,7 @@ VOID bss_generate_settle_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
     if (pstCDR->ulTimeStamp != 0 && 0 == pstCDR->ulLen)
     {
         /* 时间太短,保护处理 */
-        pstCDR->ulLen = 1;
+        //pstCDR->ulLen = 1;
     }
 
     if (pstCDR->ulTimeStamp == 0)
@@ -3056,7 +3056,7 @@ VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType, B
     if (pstCDR->ulAnswerTimeStamp != 0 && 0 == pstCDR->ulTimeLen)
     {
         /* 时间太短,保护处理 */
-        pstCDR->ulTimeLen = 1;
+        //pstCDR->ulTimeLen = 1;
     }
 
     if (pstCDR->ulAnswerTimeStamp == 0)
