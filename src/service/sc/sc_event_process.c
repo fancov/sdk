@@ -13339,7 +13339,19 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
        sc_ep_esl_execute("unset", "sip_h_Mime-version", pstSCB->szUUID);
     }
 
-    if (SC_SERV_ATTEND_TRANSFER == ulMainService
+    if (SC_SERV_CALL_INTERCEPT == ulMainService
+            || SC_SERV_CALL_WHISPERS == ulMainService)
+    {
+        if (!pstSCB->bHasEarlyMedia)
+        {
+            ulRet = sc_ep_call_intercept(pstSCB);
+        }
+        else
+        {
+            ulRet = DOS_SUCC;
+        }
+    }
+    else if (SC_SERV_ATTEND_TRANSFER == ulMainService
         || SC_SERV_BLIND_TRANSFER == ulMainService)
     {
         sc_logr_info(pstSCB, SC_ESL, "Park for trans. role: %u, service: %u", pstSCB->ucTranforRole, ulMainService);
