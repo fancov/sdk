@@ -12592,8 +12592,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         && !bIsSecondaryDialing)
     {
         /* 查询余额 只支持话机操作 */
-        if (pstSCB->ulCustomID != U32_BUTT
-            && sc_ep_check_extension(pstSCB->szCallerNum, pstSCB->ulCustomID))
+        if (pstSCB->ulCustomID != U32_BUTT)
         {
             sc_send_balance_query2bs(pstSCB);
 
@@ -13367,7 +13366,19 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
        sc_ep_esl_execute("unset", "sip_h_Mime-version", pstSCB->szUUID);
     }
 
-    if (SC_SERV_ATTEND_TRANSFER == ulMainService
+    if (SC_SERV_CALL_INTERCEPT == ulMainService
+            || SC_SERV_CALL_WHISPERS == ulMainService)
+    {
+        if (!pstSCB->bHasEarlyMedia)
+        {
+            ulRet = sc_ep_call_intercept(pstSCB);
+        }
+        else
+        {
+            ulRet = DOS_SUCC;
+        }
+    }
+    else if (SC_SERV_ATTEND_TRANSFER == ulMainService
         || SC_SERV_BLIND_TRANSFER == ulMainService)
     {
         sc_logr_info(pstSCB, SC_ESL, "Park for trans. role: %u, service: %u", pstSCB->ucTranforRole, ulMainService);
@@ -13515,6 +13526,10 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     dos_strncpy(pstSCBNew->szCalleeNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCalleeNum));
                     pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
 
+                    /* 呼叫 PSTN 时，会从主叫号码组中获取一个主叫号码，这里就不需要获取了 */
+                    dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
+                    pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
+#if 0
                     /* 指定主叫号码 号码组 */
                     if (sc_caller_setting_select_number(pstSCBNew->ulCustomID, pstSCBNew->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstSCBNew->szCallerNum, sizeof(pstSCBNew->szCallerNum)) != DOS_SUCC)
                     {
@@ -13525,10 +13540,10 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
 
                         goto proc_finished;
                     }
-
+#endif
                     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_PREVIEW_DIALING);
 
-                    if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pszCaller))
+                    if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pstSCBNew->szCalleeNum))
                     {
                         DOS_ASSERT(0);
 
@@ -14816,6 +14831,12 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
 
                         }
                     }
+                    else
+                    {
+                        /* 通话过程中进行了客户标记，等待坐席挂断 */
+                        pstSCB->bWaitingOtherRelase = DOS_TRUE;
+                        break;
+                    }
 
                     pstSCBOther->bIsMarkCustomer = DOS_FALSE;
                 }
@@ -14911,6 +14932,25 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                 {
                     if (DOS_ADDR_INVALID(pstSCBOther) && pstSCB->ulMarkStartTimeStamp != 0)
                     {
+                        /* 修改主叫号码，修改为客户的号码 */
+                        if (pstSCB->szCustomerNum[0] != '\0')
+                        {
+                            dos_strncpy(pstSCB->szCallerNum, pstSCB->szCustomerNum, SC_TEL_NUMBER_LENGTH);
+
+                        }
+                        else
+                        {
+                            if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL))
+                            {
+                                /* 不用修改 */
+                            }
+                            else
+                            {
+                                dos_strncpy(pstSCB->szCallerNum, pstSCB->szCalleeNum, SC_TEL_NUMBER_LENGTH);
+                            }
+                        }
+                        pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH-1] = '\0';
+
                         /* 修改 pstSCB 的被叫号码，修改为 客户标记值 */
                         if (pstSCB->szCustomerMark[0] != '\0')
                         {
@@ -15025,11 +15065,17 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
 
             sc_bg_job_hash_delete(pstSCB->usSCBNo);
             sc_scb_free(pstSCB);
+
             if (pstSCBOther && pstSCBOther->bWaitingOtherRelase)
             {
                 sc_bg_job_hash_delete(pstSCBOther->usSCBNo);
                 sc_scb_free(pstSCBOther);
             }
+            else if (DOS_ADDR_VALID(pstSCBOther))
+            {
+                pstSCBOther->usOtherSCBNo = U16_BUTT;
+            }
+
             break;
         default:
             DOS_ASSERT(0);
@@ -15522,8 +15568,9 @@ proc_error:
  */
 U32 sc_ep_destroy_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
 {
-    S8 *pszUUID   = NULL;
-    SC_SCB_ST *pstSCB;
+    S8          *pszUUID      = NULL;
+    SC_SCB_ST   *pstSCB       = NULL;
+    SC_SCB_ST   *pstSCBOther  = NULL;
 
     pszUUID = esl_event_get_header(pstEvent, "Caller-Unique-ID");
     if (DOS_ADDR_INVALID(pszUUID))
@@ -15536,6 +15583,15 @@ U32 sc_ep_destroy_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     {
         return DOS_SUCC;
     }
+
+    pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+    if (DOS_ADDR_VALID(pstSCBOther)
+        && !pstSCBOther->bWaitingOtherRelase)
+    {
+        /* 另一条leg还没有释放，这里不要释放这一条leg了，否则话单会有问题 */
+        return DOS_SUCC;
+    }
+
 
     sc_logr_warning(pstSCB, SC_ESL, "Free scb while channel destroy, it's not in the designed.SCBNO: %u, UUID: %s", pstSCB->usSCBNo, pszUUID);
 
@@ -15710,8 +15766,8 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     {
         sc_logr_debug(pstSCB, SC_ESL, "Send CDR Record to bs SUCC. SCB1 No:%d", pstSCB->usSCBNo);
     }
-#if 0
-    /* 如果是和坐席相关的leg，则把， 录音文件名称 */
+
+    /* 如果是和坐席相关的leg，则把录音文件名称删除 */
     if (pstSCB->bIsAgentCall
         && DOS_ADDR_VALID(pstSCB->pszRecordFile))
     {
@@ -15726,7 +15782,6 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         dos_dmem_free(pstOtherSCB->pszRecordFile);
         pstOtherSCB->pszRecordFile = NULL;
     }
-#endif
 
     /* 将 pstSCB 中的数据还原 */
     if (DOS_ADDR_VALID(pstSCB->pstExtraData))
