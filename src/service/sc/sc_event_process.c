@@ -9335,7 +9335,14 @@ U32 sc_ep_transfer_exec(SC_SCB_ST * pstSCBTmp, U32 ulMainService)
             }
             else
             {
-                sc_dial_make_call2ip(pstSCBPublish, ulMainService, DOS_FALSE);
+                if (pstSCBPublish->bIsTTCall)
+                {
+                    sc_dial_make_call2eix(pstSCBPublish, ulMainService);
+                }
+                else
+                {
+                    sc_dial_make_call2ip(pstSCBPublish, ulMainService, DOS_FALSE);
+                }
             }
 
             /* ·ÅÒô */
@@ -9419,7 +9426,14 @@ U32 sc_ep_transfer_exec(SC_SCB_ST * pstSCBTmp, U32 ulMainService)
             }
             else
             {
-                sc_dial_make_call2ip(pstSCBPublish, ulMainService, DOS_FALSE);
+                if (pstSCBPublish->bIsTTCall)
+                {
+                    sc_dial_make_call2eix(pstSCBPublish, ulMainService);
+                }
+                else
+                {
+                    sc_dial_make_call2ip(pstSCBPublish, ulMainService, DOS_FALSE);
+                }
             }
         }
     }
@@ -9496,17 +9510,30 @@ U32 sc_ep_call_transfer(SC_SCB_ST * pstSCB, U32 ulAgentCalled, U32 ulNumType, S8
         goto proc_fail;
     }
 
-    if (pstSCBNew->ulCustomID == sc_ep_get_custom_by_sip_userid(pszCallee)
-        || sc_ep_check_extension(pszCallee, pstSCBNew->ulCustomID))
+    switch (ulNumType)
     {
-        SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
-        SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
+        case AGENT_BIND_SIP:
+            SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
+            SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
+            break;
+
+        case AGENT_BIND_TELE:
+        case AGENT_BIND_MOBILE:
+            SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
+            SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
+            break;
+
+        case AGENT_BIND_TT_NUMBER:
+            SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
+            SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
+            pstSCBNew->bIsTTCall = DOS_TRUE;
+            break;
+
+        default:
+            DOS_ASSERT(0);
+            goto proc_fail;
     }
-    else
-    {
-        SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
-        SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
-    }
+
 
     pstSCBNew->ucServStatus = SC_SERVICE_AUTH;
     if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
