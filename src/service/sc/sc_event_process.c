@@ -10694,7 +10694,11 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
             goto make_all_fail;
         }
 
-        dos_snprintf(szParams, sizeof(szParams), "bgapi uuid_break %s", pstSCBOther->szUUID);
+        dos_snprintf(szParams, sizeof(szParams), "bgapi uuid_break %s all \r\n", pstSCBOther->szUUID);
+        sc_ep_esl_execute_cmd(szParams);
+        dos_snprintf(szParams, sizeof(szParams), "bgapi uuid_setvar %s instant_ringback true \r\n", pstSCBOther->szUUID);
+        sc_ep_esl_execute_cmd(szParams);
+        dos_snprintf(szParams, sizeof(szParams), "bgapi uuid_setvar %s transfer_ringback tone_stream://%(1000,4000,450);loops=-1 \r\n", pstSCBOther->szUUID);
         sc_ep_esl_execute_cmd(szParams);
 
         SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
@@ -10884,7 +10888,11 @@ U32 sc_ep_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber)
         dos_strncpy(pstSCB->szCallerNum, pstSCBOther->szSiteNum, sizeof(pstSCB->szCallerNum));
         pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
 
-        dos_snprintf(szParams, sizeof(szParams), "bgapi uuid_break %s", pstSCBOther->szUUID);
+        dos_snprintf(szParams, sizeof(szParams), "bgapi uuid_break %s all \r\n", pstSCBOther->szUUID);
+        sc_ep_esl_execute_cmd(szParams);
+        dos_snprintf(szParams, sizeof(szParams), "bgapi uuid_setvar %s instant_ringback true \r\n", pstSCBOther->szUUID);
+        sc_ep_esl_execute_cmd(szParams);
+        dos_snprintf(szParams, sizeof(szParams), "bgapi uuid_setvar %s transfer_ringback tone_stream://%(1000,4000,450);loops=-1 \r\n", pstSCBOther->szUUID);
         sc_ep_esl_execute_cmd(szParams);
 
         SC_SCB_SET_SERVICE(pstSCB, SC_SERV_OUTBOUND_CALL);
