@@ -139,12 +139,14 @@ proc_fail:
     return DOS_FAIL;
 }
 
-U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
+U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCaller)
 {
     S8 szEIXAddr[SC_IP_ADDR_LEN] = { 0, };
     S8 szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0, };
     S8   *pszEventHeader = NULL, *pszEventBody = NULL;
     SC_SCB_ST *pstOtherSCB = NULL;
+    S8    szNumber[SC_TEL_NUMBER_LENGTH] = {0};
+    U32   ulRet;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -155,6 +157,31 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
 
     sc_log_digest_print("Make call to EIX. caller : %s, callee : %s, mainService : %u"
         , pstSCB->szCallerNum, pstSCB->szCalleeNum, ulMainService);
+
+    if (bIsUpdateCaller)
+    {
+        /* 调用主叫号码组接口，将主叫号码变更为对应的did */
+        if (U32_BUTT == pstSCB->ulAgentID)
+        {
+            sc_logr_info(pstSCB, SC_DIALER, "Call to IP not get agent ID by scd(%u)", pstSCB->usSCBNo);
+
+            goto go_on;
+        }
+
+        /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
+        ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, pstSCB->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
+        if (ulRet != DOS_SUCC)
+        {
+            sc_logr_info(pstSCB, SC_DIALER, "Call to IP customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+
+            goto go_on;
+        }
+
+        sc_logr_info(pstSCB, SC_DIALER, "Call to IP customID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+        dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
+        pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+    }
+go_on:
 
     if (sc_ep_get_eix_by_tt(pstSCB->szCalleeNum, szEIXAddr, sizeof(szEIXAddr)) != DOS_SUCC
         || '\0' == szEIXAddr[0])

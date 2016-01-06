@@ -8438,7 +8438,8 @@ U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
             goto error;
     }
 
-    dos_strncpy(pstSCB->szCallerNum, pstAgentInfo->szUserID, sizeof(pstSCB->szCallerNum));
+    /* 主叫号码暂时这么写，后面会从主叫号码组中获取号码 */
+    dos_strncpy(pstSCB->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCB->szCallerNum));
     pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
 
     dos_strncpy(pstSCB->szSiteNum, pstAgentInfo->szEmpNo, sizeof(pstSCB->szSiteNum));
@@ -8503,7 +8504,7 @@ go_on:
     }
     else if (AGENT_BIND_TT_NUMBER == pstAgentInfo->ucBindType)
     {
-        if (sc_dial_make_call2eix(pstSCB, SC_SERV_AGENT_SIGNIN) != DOS_SUCC)
+        if (sc_dial_make_call2eix(pstSCB, SC_SERV_AGENT_SIGNIN, DOS_TRUE) != DOS_SUCC)
         {
             goto error;
         }
@@ -9407,7 +9408,7 @@ U32 sc_ep_transfer_exec(SC_SCB_ST * pstSCBTmp, U32 ulMainService)
             {
                 if (pstSCBPublish->bIsTTCall)
                 {
-                    sc_dial_make_call2eix(pstSCBPublish, ulMainService);
+                    sc_dial_make_call2eix(pstSCBPublish, ulMainService, DOS_FALSE);
                 }
                 else
                 {
@@ -9500,7 +9501,7 @@ U32 sc_ep_transfer_exec(SC_SCB_ST * pstSCBTmp, U32 ulMainService)
             {
                 if (pstSCBPublish->bIsTTCall)
                 {
-                    sc_dial_make_call2eix(pstSCBPublish, ulMainService);
+                    sc_dial_make_call2eix(pstSCBPublish, ulMainService, DOS_FALSE);
                 }
                 else
                 {
@@ -10002,7 +10003,7 @@ go_on:
     }
     else if (AGENT_BIND_TT_NUMBER == pstAgentInfo->ucBindType)
     {
-        if (sc_dial_make_call2eix(pstSCBNew, SC_SERV_AGENT_CALLBACK) != DOS_SUCC)
+        if (sc_dial_make_call2eix(pstSCBNew, SC_SERV_AGENT_CALLBACK, bIsUpdateCaller) != DOS_SUCC)
         {
             ulErrCode = CC_ERR_SIP_BAD_GATEWAY;
             goto proc_error;
@@ -10557,7 +10558,7 @@ U32 sc_ep_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
         }
         else if (AGENT_BIND_TT_NUMBER == stAgentInfo.ucBindType)
         {
-            if (sc_dial_make_call2eix(pstSCB, SC_SERV_AGENT_CLICK_CALL) != DOS_SUCC)
+            if (sc_dial_make_call2eix(pstSCB, SC_SERV_AGENT_CLICK_CALL, DOS_FALSE) != DOS_SUCC)
             {
                 goto make_all_fail;
             }
@@ -10787,7 +10788,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         }
         else if (AGENT_BIND_TT_NUMBER == stAgentInfo.ucBindType)
         {
-            if (sc_dial_make_call2eix(pstSCB, SC_SERV_AGENT_CLICK_CALL) != DOS_SUCC)
+            if (sc_dial_make_call2eix(pstSCB, SC_SERV_AGENT_CLICK_CALL, DOS_FALSE) != DOS_SUCC)
             {
                 goto make_all_fail;
             }
@@ -10968,7 +10969,7 @@ U32 sc_ep_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber)
         }
         else if (AGENT_BIND_TT_NUMBER == stAgentInfo.ucBindType)
         {
-            if (sc_dial_make_call2eix(pstSCB, SC_SERV_AGENT_CLICK_CALL) != DOS_SUCC)
+            if (sc_dial_make_call2eix(pstSCB, SC_SERV_AGENT_CLICK_CALL, DOS_FALSE) != DOS_SUCC)
             {
                 goto make_all_fail;
             }
@@ -11340,7 +11341,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             }
             else if (AGENT_BIND_TT_NUMBER == ulType)
             {
-                if (sc_dial_make_call2eix(pstSCBNew, SC_SERV_AGENT_CALLBACK) != DOS_SUCC)
+                if (sc_dial_make_call2eix(pstSCBNew, SC_SERV_AGENT_CALLBACK, DOS_TRUE) != DOS_SUCC)
                 {
                     sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Make call to other endpoint fail. callee : %s, type :%u", pszCallee, ulType);
                     goto make_all_fail1;
