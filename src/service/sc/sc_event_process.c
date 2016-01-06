@@ -14927,6 +14927,8 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                 }
 
                                 sc_acd_update_agent_info(pstSCBOther, SC_ACD_IDEL, ulSCBNo, NULL);
+                                pstSCB->bWaitingOtherRelase = DOS_TRUE;
+                                break;
                             }
 
 
