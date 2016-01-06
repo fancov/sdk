@@ -791,7 +791,9 @@ typedef struct tagSCSCB{
     U32       bIsCallerInTT:1;                    /* 是否是TT号发起的呼叫 */
     U32       bParkHack:1;                        /* Park消息的特殊处理，如果该park消息被置上，则不要处理 */
     U32       bTransWaitingBridge:1;              /* 转接相关，不允许随便使用 */
-    U32       ulRes:8;
+
+    U32       bIsBlindTransfer:1;                 /* 是否是盲转 */
+    U32       ulRes:7;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
