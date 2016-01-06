@@ -14933,8 +14933,14 @@ U32 sc_ep_channel_hungup_complete_proc(esl_handle_t *pstHandle, esl_event_t *pst
                                     /* 非长签，释放掉SC */
                                     sc_ep_hangup_call(pstSCBOther, CC_ERR_NORMAL_CLEAR);
                                 }
+                                else
+                                {
+                                    sc_acd_update_agent_info(pstSCBOther, SC_ACD_IDEL, ulSCBNo, NULL);
+                                    /* 放长签音 */
+                                    pstSCBOther->usOtherSCBNo = U16_BUTT;
+                                    sc_ep_agent_signin_proc(pstHandle, pstEvent, pstSCBOther);
+                                }
 
-                                sc_acd_update_agent_info(pstSCBOther, SC_ACD_IDEL, ulSCBNo, NULL);
                                 pstSCB->bWaitingOtherRelase = DOS_TRUE;
                                 break;
                             }
