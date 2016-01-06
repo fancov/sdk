@@ -13280,6 +13280,7 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     U64       uLTmp = DOS_SUCC;
     SC_SCB_ST *pstSCBOther  = NULL, *pstSCBNew = NULL;
     SC_ACD_AGENT_INFO_ST stAgentData;
+    S8        szAPPParam[512] = {0, };
 
     if (DOS_ADDR_INVALID(pstEvent)
         || DOS_ADDR_INVALID(pstHandle)
@@ -13535,6 +13536,17 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
     {
         if (!pstSCB->bHasEarlyMedia)
         {
+            /* 放回铃音 */
+            dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_break %s all\r\n", pstSCB->szUUID);
+            sc_ep_esl_execute_cmd(szAPPParam);
+            dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_setvar %s instant_ringback true \r\n", pstSCB->szUUID);
+            sc_ep_esl_execute_cmd(szAPPParam);
+            dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_setvar %s transfer_ringback tone_stream://%(1000,4000,450);loops=-1 \r\n", pstSCB->szUUID);
+            sc_ep_esl_execute_cmd(szAPPParam);
+            //sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
+            //sc_ep_esl_execute("set", "transfer_ringback=tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
+            //sc_ep_esl_execute("playback", "tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
+
             if (pstSCB->bIsAgentCall)
             {
                 if (pstSCB->enCallCtrlType == SC_CALL_CTRL_TYPE_AGENT)
@@ -14279,6 +14291,7 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
     U32 ulMainService               = U32_BUTT;
     U32 ulRet  = DOS_SUCC;
     U64 uLTmp  = 0;
+    S8          szAPPParam[512]     = {0, };
 
 
     SC_TRACE_IN(pstEvent, pstHandle, pstSCB, 0);
@@ -14414,6 +14427,17 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         }
         else if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
         {
+            /* 放回铃音 */
+            dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_break %s all\r\n", pstSCB->szUUID);
+            sc_ep_esl_execute_cmd(szAPPParam);
+            dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_setvar %s instant_ringback true \r\n", pstSCB->szUUID);
+            sc_ep_esl_execute_cmd(szAPPParam);
+            dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_setvar %s transfer_ringback tone_stream://%(1000,4000,450);loops=-1 \r\n", pstSCB->szUUID);
+            sc_ep_esl_execute_cmd(szAPPParam);
+            //sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
+            //sc_ep_esl_execute("set", "transfer_ringback=tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
+            //sc_ep_esl_execute("playback", "tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
+
             if (pstSCB->bIsAgentCall)
             {
                 if (pstSCB->enCallCtrlType == SC_CALL_CTRL_TYPE_AGENT)
@@ -14523,15 +14547,6 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         else
         {
             ulRet = DOS_SUCC;
-        }
-    }
-    else
-    {
-        if (SC_SERV_AGENT_CLICK_CALL == ulMainService)
-        {
-            /* 放回铃音 */
-            sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
-            sc_ep_esl_execute("set", "transfer_ringback=tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
         }
     }
 
