@@ -193,21 +193,25 @@ go_on:
     pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
     if (DOS_ADDR_VALID(pstOtherSCB))
     {
-        dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                    , "{absolute_codec_string=^^:G723@8000h@30i@6300b:G729@8000h@20i@8000b," \
-                      "main_service=%u,scb_number=%u,origination_caller_id_number=%s,exec_after_bridge_app=park," \
-                      "origination_caller_id_name=%s,sip_multipart=^^!application/x-allywll:m:=2!" \
-                      "calli:=818!l:=01057063943!usert:=0!callt:=4!eig:=370!he:=5!w:=0!,sip_h_EixTTcall" \
-                      "=TRUE,sip_h_Mime-version=1.0}sofia/external/%s@%s"
-                    , ulMainService
-                    , pstSCB->usSCBNo
-                    , pstSCB->szCallerNum
-                    , pstSCB->szCallerNum
-                    , pstSCB->szCalleeNum
-                    , szEIXAddr);
-        sc_ep_esl_execute("bridge", szCMDBuff, pstOtherSCB->szUUID);
+        if (!sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
+            && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
+        {
+            dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
+                        , "{absolute_codec_string=^^:G723@8000h@30i@6300b:G729@8000h@20i@8000b," \
+                          "main_service=%u,scb_number=%u,origination_caller_id_number=%s,exec_after_bridge_app=park," \
+                          "origination_caller_id_name=%s,sip_multipart=^^!application/x-allywll:m:=2!" \
+                          "calli:=818!l:=01057063943!usert:=0!callt:=4!eig:=370!he:=5!w:=0!,sip_h_EixTTcall" \
+                          "=TRUE,sip_h_Mime-version=1.0}sofia/external/%s@%s"
+                        , ulMainService
+                        , pstSCB->usSCBNo
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCalleeNum
+                        , szEIXAddr);
+            sc_ep_esl_execute("bridge", szCMDBuff, pstOtherSCB->szUUID);
 
-        return DOS_SUCC;
+            return DOS_SUCC;
+        }
     }
 
     dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
