@@ -9408,6 +9408,8 @@ U32 sc_ep_transfer_exec(SC_SCB_ST * pstSCBTmp, U32 ulMainService)
             {
                 if (pstSCBPublish->bIsTTCall)
                 {
+                    /* 如果不修改的话，bridge会失败 ORIGINATOR_CANCEL */
+                    pstSCBPublish->usOtherSCBNo = pstSCBSubscription->usSCBNo;
                     sc_dial_make_call2eix(pstSCBPublish, ulMainService, DOS_FALSE);
                 }
                 else
