@@ -12567,6 +12567,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
     S8          *pszValue    = NULL;
     U64         uLTmp        = 0;
     S8          szCMD[128]   = {0};
+    SC_AGENT_BIND_TYPE_EN enType = AGENT_BIND_BUTT;
 
     if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstEvent))
     {
@@ -12589,10 +12590,17 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         pstSCB->ulCustomID = sc_ep_get_custom_by_sip_userid(pstSCB->szCallerNum);
         if (U32_BUTT == pstSCB->ulCustomID)
         {
-            if (sc_acd_get_agent_by_tt_num(&stAgentInfo, pstSCB->szCallerNum, NULL) == DOS_SUCC)
+            if (sc_acd_get_agent_by_tt_num(&stAgentInfo, pstSCB->szCallerNum, NULL) != DOS_SUCC)
             {
-                pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
+                DOS_ASSERT(0);
+                goto end;
             }
+            pstSCB->ulCustomID = stAgentInfo.ulCustomerID;
+            enType = AGENT_BIND_TT_NUMBER;
+        }
+        else
+        {
+            enType = AGENT_BIND_SIP;
         }
     }
 
@@ -12784,7 +12792,7 @@ U32 sc_ep_pots_pro(SC_SCB_ST *pstSCB, esl_event_t *pstEvent, BOOL bIsSecondaryDi
         && !bIsSecondaryDialing)
     {
         /* 坐席长签 只支持话机操作 */
-        if ((ulRet = sc_acd_singin_by_phone(pstSCB->szCallerNum, pstSCB)) != DOS_SUCC)
+        if ((ulRet = sc_acd_singin_by_phone(pstSCB->szCallerNum, pstSCB, enType)) != DOS_SUCC)
         {
             sc_logr_info(pstSCB, SC_ACD, "POTS, Can not find agent by caller(%s)", pstSCB->szCallerNum);
 
