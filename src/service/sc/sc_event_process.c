@@ -15742,6 +15742,7 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
     U8          aucServiceType[SC_MAX_SRV_TYPE_PRE_LEG];        /* 业务类型 列表 */
     S32         i                   = 0;
     U32         ulMarkStartTimeStamp = 0;
+    U32         ulOtherAnserTimeStamp = 0;
 
     if (DOS_ADDR_INVALID(pstEvent)
         || DOS_ADDR_INVALID(pstHandle))
@@ -15796,6 +15797,17 @@ U32 sc_ep_record_stop(esl_handle_t *pstHandle, esl_event_t *pstEvent)
         pstSCB->ulMarkStartTimeStamp = 0;
         dos_memzero(pstSCB->pstExtraData, sizeof(SC_SCB_EXTRA_DATA_ST));
         sc_ep_parse_extra_data(pstEvent, pstSCB);
+
+        /* 获取 Other-Leg-Channel-Answered-Time， 和  Caller-Channel-Answered-Time 之间取较大的值 */
+        pszTmp = esl_event_get_header(pstEvent, "Other-Leg-Channel-Answered-Time");
+        if (DOS_ADDR_VALID(pszTmp)
+            && '\0' != pszTmp[0]
+            && dos_atoull(pszTmp, &uLTmp) == 0)
+        {
+            ulOtherAnserTimeStamp = uLTmp / 1000000;
+            pstSCB->pstExtraData->ulAnswerTimeStamp = pstSCB->pstExtraData->ulAnswerTimeStamp > ulOtherAnserTimeStamp ? pstSCB->pstExtraData->ulAnswerTimeStamp : ulOtherAnserTimeStamp;
+            sc_logr_debug(pstSCB, SC_ESL, "Get extra data: Caller-Channel-Answered-Time=%s(%u)", pszTmp, pstSCB->pstExtraData->ulAnswerTimeStamp);
+        }
 
         /* 用这个变量作为录音结束时间 */
         pszTmp = esl_event_get_header(pstEvent, "Event-Date-Timestamp");
