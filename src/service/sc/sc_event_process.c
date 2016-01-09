@@ -8549,10 +8549,8 @@ U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
     SC_SCB_ST* pstSCBSubscription = NULL;
     SC_SCB_ST* pstSCBPublish = NULL;
     S8         szBuffCMD[512] = { 0 };
-#if 0
-    U8         ucSubscriptionSrv    = U8_BUTT;
+    //U8         ucSubscriptionSrv    = U8_BUTT;
     U8         ucPublishSrv         = U8_BUTT;
-#endif
     U8         ucNotifySrv          = U8_BUTT;
     S32        i;
 
@@ -8721,6 +8719,7 @@ U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
             pstSCBSubscription->usOtherSCBNo = pstSCBPublish->usSCBNo;
             pstSCBNotify->ucTranforRole = SC_TRANS_ROLE_BUTT;
             pstSCBSubscription->ucTranforRole = SC_TRANS_ROLE_BUTT;
+            pstSCBPublish->ucTranforRole = SC_TRANS_ROLE_BUTT;
 
             /* 将A中的被叫号码改为C中的 */
             dos_strcpy(pstSCBSubscription->szCalleeNum, pstSCBPublish->szCalleeNum);
@@ -8729,28 +8728,31 @@ U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
                 1、B挂断的时间，记录在C的通道变量中
                 2、将B的server状态传递给C
                 3、此时的B应该生成三个话单
-                    a.A和B的话单
+                    a.A和B的话单(B leg上的话单)
                     b.转接的话单
-                    c.B和C的话单
+                    c.B和C的话单(B 和 C leg上的都需要生成)
                 4、可以将B,分两次发送话单。
                     A-B的话单一次，如果有录音业务，则可以包含录音业务的话单
                     B-C一次，包含B-C的通话、转接。
             */
             pstSCBNotify->usOtherSCBNo = U16_BUTT;
-#if 0
+
+            /* 判断一下 A 的业务 */
+            sc_bs_srv_type_adapter_for_transfer(pstSCBNotify->aucServiceType, sizeof(pstSCBNotify->aucServiceType), &ucNotifySrv);
             for (i=0; i<SC_MAX_SRV_TYPE_PRE_LEG; i++)
             {
                 pstSCBNotify->aucServiceType[i] = U8_BUTT;
             }
             pstSCBNotify->bIsNotSrvAdapter = DOS_TRUE;
-            /* 分析出A的业务 */
-            sc_bs_srv_type_adapter_for_transfer(pstSCBSubscription->aucServiceType, sizeof(pstSCBSubscription->aucServiceType), &ucSubscriptionSrv);
-            pstSCBNotify->aucServiceType[0] = ucSubscriptionSrv;
-            /* 判断是否有录音 */
-            if (sc_call_check_service(pstSCBNotify, SC_SERV_RECORDING))
+
+            if (ucNotifySrv != BS_SERV_INTER_CALL)
             {
-                pstSCBNotify->aucServiceType[1] = SC_SERV_RECORDING;
+                /* 判断一下是否是内部呼叫，如果是就不用发送了 */
+                pstSCBNotify->aucServiceType[0] = ucNotifySrv;
             }
+            /* 分析出A的业务 */
+            //sc_bs_srv_type_adapter_for_transfer(pstSCBSubscription->aucServiceType, sizeof(pstSCBSubscription->aucServiceType), &ucSubscriptionSrv);
+            //pstSCBNotify->aucServiceType[0] = ucSubscriptionSrv;
 
             sc_logr_debug(pstSCBNotify, SC_ESL, "Send CDR to bs. SCB1 No:%d, SCB2 No:%d", pstSCBNotify->usSCBNo, pstSCBNotify->usOtherSCBNo);
             /* 发送话单 */
@@ -8784,14 +8786,7 @@ U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
             }
             else
             {
-                for (i=0; i<SC_MAX_SRV_TYPE_PRE_LEG; i++)
-                {
-                    if (pstSCBPublish->aucServiceType[i] == SC_SERV_BLIND_TRANSFER
-                        || pstSCBPublish->aucServiceType[i] == SC_SERV_ATTEND_TRANSFER)
-                    {
-                        pstSCBPublish->aucServiceType[i] = U8_BUTT;
-                    }
-                }
+                sc_call_clear_service(pstSCBNotify, SC_SERV_ATTEND_TRANSFER);
             }
 
             /* 将B bridge的时间，设置为开始时间 */
@@ -8819,7 +8814,6 @@ U32 sc_ep_transfer_notify_release(SC_SCB_ST * pstSCBNotify)
             {
                 /* TODO 时间不对 */
             }
-#endif
 
             sc_acd_agent_update_status2(SC_ACTION_AGENT_IDLE, pstSCBNotify->ulAgentID, OPERATING_TYPE_PHONE);
 
@@ -9429,7 +9423,7 @@ U32 sc_ep_transfer_exec(SC_SCB_ST * pstSCBTmp, U32 ulMainService)
         pstSCBSubscription->ucTranforRole = SC_TRANS_ROLE_BUTT;
         pstSCBPublish->ucTranforRole = SC_TRANS_ROLE_BUTT;
 
-        /* 关系先不要解除，生成话单时，需要 */
+        /* 关系先不要解除，生成话单时，需要使用 */
         //pstSCBNotify->ucTranforRole = SC_TRANS_ROLE_BUTT;
         //pstSCBNotify->usPublishSCB = U16_BUTT;
         //pstSCBNotify->usOtherSCBNo = U16_BUTT;
