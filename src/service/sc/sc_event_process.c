@@ -10720,8 +10720,17 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         pstSCB->bTraceNo = stAgentInfo.bTraceON;
         pstSCB->bIsAgentCall = DOS_TRUE;
 
-        dos_strncpy(pstSCB->szCallerNum, pszNumber, sizeof(pstSCB->szCallerNum));
-        pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+        /* 从主叫号码组中获取主叫号码 */
+        if (sc_caller_setting_select_number(pstSCB->ulCustomID, ulAgent, SC_SRC_CALLER_TYPE_AGENT, pstSCB->szCallerNum, sizeof(pstSCB->szCallerNum)) != DOS_SUCC)
+        {
+            DOS_ASSERT(0);
+            sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", ulAgent);
+
+            goto make_all_fail;
+        }
+
+        //dos_strncpy(pstSCB->szCallerNum, pszNumber, sizeof(pstSCB->szCallerNum));
+        //pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
 
         dos_strncpy(pstSCB->szCustomerNum, pszNumber, sizeof(pstSCB->szCustomerNum));
         pstSCB->szCustomerNum[sizeof(pstSCB->szCustomerNum) - 1] = '\0';
@@ -10797,7 +10806,7 @@ U32 sc_ep_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
 
 make_all_succ:
     /* 坐席弹屏 */
-    sc_ep_call_notify(&stAgentInfo, pstSCB->szCallerNum);
+    sc_ep_call_notify(&stAgentInfo, pszNumber);
 
     sc_logr_info(pstSCB, SC_ESL, "Call out request SUCC. Agent: %u, Task: %u, Number: %s"
             , ulAgent, ulTaskID, pszNumber ? pszNumber : "");
@@ -11505,8 +11514,16 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
     pstSCB->bTraceNo = stAgentInfo.bTraceON;
     pstSCB->bIsAgentCall = DOS_TRUE;
 
-    dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
-    pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
+    /* 从主叫号码组中获取主叫号码 */
+    if (sc_caller_setting_select_number(pstSCB->ulCustomID, ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstSCB->szCallerNum, sizeof(pstSCB->szCallerNum)) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", ulAgentID);
+
+        goto PROC_FAIL;
+    }
+    //dos_strncpy(pstSCB->szCallerNum, pszCallee, sizeof(pstSCB->szCallerNum));
+    //pstSCB->szCallerNum[sizeof(pstSCB->szCallerNum) - 1] = '\0';
 
     dos_strncpy(pstSCB->szCustomerNum, pszCallee, sizeof(pstSCB->szCustomerNum));
     pstSCB->szCustomerNum[sizeof(pstSCB->szCustomerNum) - 1] = '\0';
@@ -13623,25 +13640,14 @@ U32 sc_ep_channel_park_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_S
                     dos_strncpy(pstSCBNew->szSiteNum, pstSCB->szSiteNum, sizeof(pstSCBNew->szSiteNum));
                     pstSCBNew->szSiteNum[sizeof(pstSCBNew->szSiteNum) - 1] = '\0';
 
-                    /* 指定被叫号码 */
-                    dos_strncpy(pstSCBNew->szCalleeNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCalleeNum));
+                    /* 指定被叫号码，被叫号码，存放在了 szCustomerNum 中 */
+                    dos_strncpy(pstSCBNew->szCalleeNum, pstSCB->szCustomerNum, sizeof(pstSCBNew->szCalleeNum));
                     pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
 
-                    /* 呼叫 PSTN 时，会从主叫号码组中获取一个主叫号码，这里就不需要获取了 */
-                    dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCalleeNum, sizeof(pstSCBNew->szCallerNum));
+                    /* 这里的 szCallerNum 就是在主叫号码组中获取的，后续就不要获取了 */
+                    dos_strncpy(pstSCBNew->szCallerNum, pstSCB->szCallerNum, sizeof(pstSCBNew->szCallerNum));
                     pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
-#if 0
-                    /* 指定主叫号码 号码组 */
-                    if (sc_caller_setting_select_number(pstSCBNew->ulCustomID, pstSCBNew->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstSCBNew->szCallerNum, sizeof(pstSCBNew->szCallerNum)) != DOS_SUCC)
-                    {
-                        sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Get caller fail by agent(%u). ", pstSCBNew->ulAgentID);
-                        sc_scb_free(pstSCBNew);
-                        pstSCB->usOtherSCBNo = U16_BUTT;
-                        sc_ep_hangup_call_with_snd(pstSCB, CC_ERR_SC_CALLER_NUMBER_ILLEGAL);
 
-                        goto proc_finished;
-                    }
-#endif
                     SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_PREVIEW_DIALING);
 
                     if (!sc_ep_black_list_check(pstSCBNew->ulCustomID, pstSCBNew->szCalleeNum))

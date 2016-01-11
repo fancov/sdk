@@ -956,7 +956,8 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL)
                 && !sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK)
                 && !sc_call_check_service(pstSCB, SC_SERV_DEMO_TASK)
-                && !sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+                && !sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
+                && !sc_call_check_service(pstSCB, SC_SERV_PREVIEW_DIALING))
             {
                 /* 出局呼叫 */
                 /* 查找呼叫的分机绑定的坐席 */
