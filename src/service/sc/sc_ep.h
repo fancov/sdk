@@ -51,7 +51,7 @@
 #define SC_CALLER_SETTING_HASH_SIZE   128
 
 /* 业务控制HASH表 */
-#define SC_SERV_CTRL_HASH_SIZE        128
+#define SC_SERV_CTRL_HASH_SIZE        512
 
 
 /* 路由 中继组的最大数量 */

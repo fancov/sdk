@@ -415,12 +415,13 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
             if (DOS_ADDR_VALID(pstSCBOther))
             {
                 /* 回铃音 */
-                sc_ep_esl_execute("set", "instant_ringback=true", pstSCBOther->szUUID);
-
                 if (pstSCB->bBanlanceWarning)
                 {
+                    sc_ep_esl_execute("set", "instant_ringback=true", pstSCBOther->szUUID);
                     sc_logr_debug(pstSCB, SC_BS, "The balance of the alarm : %d, Balance : %ld", pstSCB->bBanlanceWarning, pstSCB->LBalance);
                     sc_dialer_alarm_balance(pstSCBOther);
+                    sc_ep_esl_execute("answer", NULL, pstSCBOther->szUUID);
+                    sc_ep_esl_execute("set", "transfer_ringback=tone_stream://%(1000,4000,450);loops=-1", pstSCBOther->szUUID);
                 }
             }
         }
@@ -462,31 +463,48 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
                 pstSCB = NULL;
             }
 
-            /* HOLD 住第一方，通过bridge，创建第三方 */
+            pstSCBFirst->ucServStatus = SC_SERVICE_EXEC;
+            dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s instant_ringback true \r\n", pstSCBSecond->szUUID);
+            sc_ep_esl_execute_cmd(szBuffer);
+            dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s instant_ringback true \r\n", pstSCBFirst->szUUID);
+            sc_ep_esl_execute_cmd(szBuffer);
+
+            dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s park_after_bridge true \r\n", pstSCBSecond->szUUID);
+            sc_ep_esl_execute_cmd(szBuffer);
+            pstSCBSecond->bParkHack = DOS_TRUE;
+
+            /* bridge之后不要把呼叫挂断 */
             dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s hangup_after_bridge false \r\n", pstSCBSecond->szUUID);
             sc_ep_esl_execute_cmd(szBuffer);
             dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s hangup_after_bridge false \r\n", pstSCBFirst->szUUID);
             sc_ep_esl_execute_cmd(szBuffer);
 
-            if (sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
-            {
-                dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_hold %s \r\n", pstSCBFirst->szUUID);
-                sc_ep_esl_execute_cmd(szBuffer);
-            }
+            /* bridge之后不要执行任何APP */
+            /*
+            dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s exec_after_bridge_app \r\n", pstSCBSecond->szUUID);
+            sc_ep_esl_execute_cmd(szBuffer);
+            dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s exec_after_bridge_app \r\n", pstSCBFirst->szUUID);
+            sc_ep_esl_execute_cmd(szBuffer);
+            */
 
-            pstSCBFirst->ucServStatus = SC_SERVICE_EXEC;
-            sc_ep_esl_execute("set", "instant_ringback=true", pstSCBFirst->szUUID);
-            sc_ep_esl_execute("set", "hangup_after_bridge=false", pstSCBSecond->szUUID);
+            /* 取消相关标记 */
+            dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s mark_customer false \r\n", pstSCBSecond->szUUID);
+            sc_ep_esl_execute_cmd(szBuffer);
+
+            /* 设置业务类型 */
             if (sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER))
             {
-                dos_snprintf(szBuffer, sizeof(szBuffer), "main_service=%u", SC_SERV_ATTEND_TRANSFER);
+                dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s main_service %u", pstSCBFirst->szUUID, SC_SERV_ATTEND_TRANSFER);
             }
             else
             {
-                dos_snprintf(szBuffer, sizeof(szBuffer), "main_service=%u", SC_SERV_BLIND_TRANSFER);
+                dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_setvar %s main_service %u", pstSCBFirst->szUUID, SC_SERV_BLIND_TRANSFER);
             }
-            sc_ep_esl_execute("set", szBuffer, pstSCBFirst->szUUID);
-            sc_ep_esl_execute("transfer", pstSCB->szCalleeNum, pstSCBFirst->szUUID);
+            sc_ep_esl_execute_cmd(szBuffer);
+
+            /* 转接 */
+            dos_snprintf(szBuffer, sizeof(szBuffer), "bgapi uuid_transfer %s %s", pstSCBFirst->szUUID, pstSCB->szCalleeNum);
+            sc_ep_esl_execute_cmd(szBuffer);
         }
         else if (sc_call_check_service(pstSCB, SC_SERV_AGENT_CLICK_CALL))
         {

@@ -16,7 +16,8 @@
 #if INCLUDE_MEMORY_MNGT
 
 /* 定义魔术字 */
-#define MEM_CCB_MEGIC     0x002B3CF4
+#define MEM_CCB_MEGIC           0x002B3CF4
+#define MEM_CCB_FREE_MEGIC      0x00EB3CF4
 
 /* 定义内存类型 */
 #define MEM_TYPE_STATIC   0x01000000
@@ -33,15 +34,20 @@ do {                                               \
     (p)->ulMemDesc = (p)->ulMemDesc | (type);      \
 }while(0)
 
+#define MEM_SET_FREE_MAGIC(p)                             \
+do {                                                 \
+    (p)->ulMemDesc = (p)->ulMemDesc | MEM_CCB_FREE_MEGIC; \
+}while(0)
+
 
 #define MEM_CHECK_MAGIC(p) (MEM_CCB_MEGIC == (p)->ulMemDesc)
-
+#define MEM_CHECK_FREE_MAGIC(p) (MEM_CCB_FREE_MEGIC == (p)->ulMemDesc)
 
 typedef struct tagMemInfoNode{
     HASH_NODE_S stNode;   /* hash表节点, 请保持该成员为第一个元素 */
     S8 szFileName[48];    /* 分配内存调用点所在的文件 */
     U32 ulLine;           /* 分配内存调用点所在的行数 */
-    
+
     U32 ulRef;            /* 当前分配之后还没有释放的内存块数 */
     U32 ulTotalSize;      /* 当前内存分配点分配的内存大小总和, 当前还没有释放的内存 */
 }MEM_INFO_NODE_ST;

@@ -370,11 +370,11 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
         {
             HASH_NODE_S     *pstHashNode = NULL;
             JSON_OBJ_ST     *pstSubJsonWhere = NULL;
-            U32             ulHashIndex, ulCustomerType, ulCustomerState, ulCustomID;
+            U32             ulHashIndex, ulCustomerState, ulCustomID;
             U32             ulPackageID;
             S32             lMinimumBalance = U32_BUTT ,lBanlanceWarning = U32_BUTT;
             BOOL            bSMSRemind = DOS_FALSE;
-            const S8        *pszCustomType = NULL, *pszCustomState = NULL, *pszCustomID = NULL, *pszCustomName = NULL, *pszMinBalance = NULL;
+            const S8        *pszCustomState = NULL, *pszCustomID = NULL, *pszMinBalance = NULL;
             const S8        *pszBillingPkgID = NULL, *pszBalanceWarning = NULL;
             const S8        *pszSubWhere = NULL, *pszRemind = NULL;
 
@@ -442,18 +442,15 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
                 break;
             }
 
-            pszCustomName = json_get_param(pstSubJsonWhere, "name");
             pszMinBalance = json_get_param(pstJSONObj, "minimum_balance");
             pszRemind = json_get_param(pstJSONObj, "remind");
 
             pszCustomState = json_get_param(pstJSONObj, "status");
-            pszCustomType = json_get_param(pstSubJsonWhere, "type");
             pszBillingPkgID = json_get_param(pstJSONObj, "billing_package_id");
 
             pszBalanceWarning = json_get_param(pstJSONObj, "balance_warning");
 
-            if (DOS_ADDR_INVALID(pszCustomName) || DOS_ADDR_INVALID(pszCustomState)
-               || DOS_ADDR_INVALID(pszCustomType) || DOS_ADDR_INVALID(pszBillingPkgID)
+            if (DOS_ADDR_INVALID(pszCustomState) || DOS_ADDR_INVALID(pszBillingPkgID)
                || DOS_ADDR_INVALID(pszBalanceWarning) || DOS_ADDR_INVALID(pszMinBalance)
                || DOS_ADDR_INVALID(pszRemind))
             {
@@ -467,13 +464,11 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
 
             /* 参数合法性 */
             if (dos_atoul(pszCustomID, &pstCustomer->ulCustomerID) < 0
-                || dos_atoul(pszCustomType, &ulCustomerType) < 0
                 || dos_atoul(pszCustomState, &ulCustomerState) < 0
                 || dos_atoul(pszBillingPkgID, &ulPackageID) < 0
                 || dos_atol(pszBalanceWarning, &lBanlanceWarning) < 0
                 || dos_atol(pszMinBalance, &lMinimumBalance) < 0
-                || dos_atoul(pszRemind, &bSMSRemind) < 0
-                || '\0' == pszCustomName[0])
+                || dos_atoul(pszRemind, &bSMSRemind) < 0)
             {
                 bs_trace(BS_TRACE_RUN, LOG_LEVEL_NOTIC, "ERR: Invalid param while adding custom.");
 
@@ -493,13 +488,11 @@ VOID bss_update_customer(U32 ulOpteration, JSON_OBJ_ST *pstJSONObj)
             }
             pstCustomer->stAccount.lCreditLine  = lMinimumBalance;
 
-            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Expiry:%u,CustomerID:%u,Name:%s,MinBalance:%d,State:%u,Type:%u,PackageID:%u,BalanceWarning:%u"
+            bs_trace(BS_TRACE_RUN, LOG_LEVEL_DEBUG, "Expiry:%u,CustomerID:%u,MinBalance:%d,State:%u,PackageID:%u,BalanceWarning:%u"
                         , pstCustomer->stAccount.ulExpiryTime
                         , pstCustomer->ulCustomerID
-                        , pszCustomName
                         , lMinimumBalance
                         , ulCustomerState
-                        , ulCustomerType
                         , ulPackageID
                         , lBanlanceWarning);
             json_deinit(&pstSubJsonWhere);
@@ -2860,7 +2853,7 @@ VOID bss_generate_record_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
         if (0 == pstCDR->ulTimeLen)
         {
             /* 时间太短,保护处理 */
-            pstCDR->ulTimeLen = 1;
+            //pstCDR->ulTimeLen = 1;
         }
     }
 
@@ -2960,7 +2953,7 @@ VOID bss_generate_settle_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
     if (pstCDR->ulTimeStamp != 0 && 0 == pstCDR->ulLen)
     {
         /* 时间太短,保护处理 */
-        pstCDR->ulLen = 1;
+        //pstCDR->ulLen = 1;
     }
 
     if (pstCDR->ulTimeStamp == 0)
@@ -3063,7 +3056,7 @@ VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType, B
     if (pstCDR->ulAnswerTimeStamp != 0 && 0 == pstCDR->ulTimeLen)
     {
         /* 时间太短,保护处理 */
-        pstCDR->ulTimeLen = 1;
+        //pstCDR->ulTimeLen = 1;
     }
 
     if (pstCDR->ulAnswerTimeStamp == 0)

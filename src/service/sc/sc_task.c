@@ -264,7 +264,8 @@ VOID *sc_task_runtime(VOID *ptr)
     U32             ulTaskInterval = 0;
     S32             lResult        = 0;
     U32             ulMinInterval  = 0;
-    U32             ulCount        = 0;
+    U32             blStopFlag     = DOS_FALSE;
+    BOOL            blPauseFlag    = DOS_FALSE;
 
     if (!ptr)
     {
@@ -351,18 +352,26 @@ VOID *sc_task_runtime(VOID *ptr)
         /* 如果暂停了就继续等待 */
         if (SC_TASK_PAUSED == pstTCB->ucTaskStatus)
         {
-            sc_logr_debug(NULL, SC_TASK, "Cannot make call for paused status. Task : %u.", pstTCB->ulTaskID);
-            ulTaskInterval = 20000;
-            continue;
+            /* 第一次 暂停 时，不结束任务，等待20s */
+            if (pstTCB->ulCurrentConcurrency != 0 || !blPauseFlag)
+            {
+                blPauseFlag = DOS_TRUE;
+                sc_logr_debug(NULL, SC_TASK, "Cannot make call for paused status. Task : %u.", pstTCB->ulTaskID);
+                ulTaskInterval = 20000;
+                continue;
+            }
+
+            break;
         }
+        blPauseFlag = DOS_FALSE;
 
         /* 如果被停止了，就检测还有没有呼叫，如果有呼叫，就等待，等待没有呼叫时退出任务 */
         if (SC_TASK_STOP == pstTCB->ucTaskStatus)
         {
             /* 第一次 SC_TASK_STOP 时，不结束任务，等待20s */
-            if (pstTCB->ulCurrentConcurrency != 0 || ulCount == 0)
+            if (pstTCB->ulCurrentConcurrency != 0 || !blStopFlag)
             {
-                ulCount++;
+                blStopFlag = DOS_TRUE;
                 sc_logr_debug(NULL, SC_TASK, "Cannot make call for stoped status. Task : %u, CurrentConcurrency : %u.", pstTCB->ulTaskID, pstTCB->ulCurrentConcurrency);
                 ulTaskInterval = 20000;
                 continue;
@@ -371,6 +380,7 @@ VOID *sc_task_runtime(VOID *ptr)
             /* 任务结束了，退出主循环 */
             break;
         }
+        blStopFlag = DOS_FALSE;
 
         /* 检查当前是否在允许的时间段 */
         if (sc_task_check_can_call_by_time(pstTCB) != DOS_TRUE)
@@ -440,9 +450,8 @@ finished:
 
     /* 群呼任务结束后，将呼叫的被叫号码数量，改为被叫号码的总数量 */
     pstTCB->bThreadRunning = DOS_FALSE;
-    pstTCB->ulCalledCount = pstTCB->ulCalleeCountTotal;
     sc_task_update_calledcnt((U64)pstTCB);
-    sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_STOP, NULL);
+    sc_task_save_status(pstTCB->ulTaskID, blStopFlag ? SC_TASK_STATUS_DB_STOP : SC_TASK_STATUS_DB_PAUSED, NULL);
 
     sc_tcb_free(pstTCB);
     pstTCB = NULL;

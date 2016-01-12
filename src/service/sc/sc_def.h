@@ -154,12 +154,12 @@ extern BOOL                 g_blSCInitOK;
 
 #define SC_PROMPT_TONE_PATH            "/usr/local/freeswitch/sounds/okcc"
 
-#define SC_TASK_AUDIO_PATH             "/ipcc/var/data/audio"
+#define SC_TASK_AUDIO_PATH             "/home/ipcc/data/audio"
 
-#define SC_RECORD_FILE_PATH            "/ipcc/var/data/voicerecord"
+#define SC_RECORD_FILE_PATH            "/home/ipcc/data/voicerecord"
 
 #define SC_DEMOE_TASK_COUNT            3
-#define SC_DEMOE_TASK_FILE             "/ipcc/var/data/audio/CC_demo.wav"
+#define SC_DEMOE_TASK_FILE             "/usr/local/freeswitch/sounds/okcc/CC_demo.wav"
 
 #define SC_NOBODY_UID                  99
 #define SC_NOBODY_GID                  99
@@ -789,7 +789,11 @@ typedef struct tagSCSCB{
 
     U32       bIsSendRecordCdr:1;                 /* 是发送录音话单 */
     U32       bIsCallerInTT:1;                    /* 是否是TT号发起的呼叫 */
-    U32       ulRes:10;
+    U32       bParkHack:1;                        /* Park消息的特殊处理，如果该park消息被置上，则不要处理 */
+    U32       bTransWaitingBridge:1;              /* 转接相关，不允许随便使用 */
+
+    U32       bIsBlindTransfer:1;                 /* 是否是盲转 */
+    U32       ulRes:7;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -1180,7 +1184,7 @@ BOOL sc_ep_check_extension(S8 *pszNum, U32 ulCustomerID);
 U32 sc_dial_make_call2ip(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCaller);
 U32 sc_ep_num_transform(SC_SCB_ST *pstSCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMING_EN enTiming, SC_NUM_TRANSFORM_SELECT_EN enNumSelect);
 U32 sc_ep_get_eix_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength);
-U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService);
+U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCaller);
 U32 sc_ep_transfer_publish_release(SC_SCB_ST * pstSCBPublish);
 U32 sc_ep_gateway_register_status_update(U32 ulGWID, SC_TRUNK_STATE_TYPE_EN enRegisterStatus);
 BOOL sc_ep_chack_has_call4agent(U32 ulSCBNo);
@@ -1198,7 +1202,7 @@ U32 sc_get_moh_file(S8 *pszBuffer, S32 lLength);
 /* 以下是和号码组设定相关的API */
 U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, S8 *pszNumber, U32 ulLen);
 U32  sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
-U32  sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
+U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 U32 sc_send_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCallerNum);
 
@@ -1232,6 +1236,9 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
 BOOL sc_check_server_ctrl(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulAttrVal1,U32 ulAttr2, U32 ulAttrVal2);
 U32 sc_log_digest_print(S8 *pszFormat, ...);
 U32 sc_ep_customer_list_find(U32 ulCustomerID);
+
+U32 sc_call_clear_service(SC_SCB_ST *pstSCB, U32 ulService);
+
 
 #ifdef __cplusplus
 }

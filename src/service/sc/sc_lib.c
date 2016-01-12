@@ -421,6 +421,9 @@ inline U32 sc_scb_init(SC_SCB_ST *pstSCB)
     pstSCB->bHasEarlyMedia = DOS_FALSE;
     pstSCB->bIsSendRecordCdr = DOS_FALSE;
     pstSCB->bIsCallerInTT = DOS_FALSE;
+    pstSCB->bParkHack = DOS_FALSE;
+    pstSCB->bTransWaitingBridge = DOS_FALSE;
+    pstSCB->bIsBlindTransfer = DOS_FALSE;
 
     pstSCB->ulFirstDTMFTime = 0;                    /* 第一次DTMF时间戳 */
     pstSCB->ulLastDTMFTime = 0;
@@ -821,6 +824,27 @@ BOOL sc_call_check_service(SC_SCB_ST *pstSCB, U32 ulService)
     return DOS_FALSE;
 }
 
+
+U32 sc_call_clear_service(SC_SCB_ST *pstSCB, U32 ulService)
+{
+    U32 ulIndex;
+
+    if (DOS_ADDR_INVALID(pstSCB) || ulService >= SC_SERV_BUTT)
+    {
+        return DOS_FALSE;
+    }
+
+    for (ulIndex=0; ulIndex<SC_MAX_SRV_TYPE_PRE_LEG; ulIndex++)
+    {
+        if (ulService == pstSCB->aucServiceType[ulIndex])
+        {
+            pstSCB->aucServiceType[ulIndex] = U8_BUTT;
+        }
+    }
+
+    return DOS_FALSE;
+
+}
 
 U32 sc_call_set_trunk(SC_SCB_ST *pstSCB, U32 ulTrunkID)
 {
@@ -2269,9 +2293,11 @@ U32 sc_http_num_lmt_update_proc(U32 ulAction, U32 ulNumlmtID)
         case SC_API_CMD_ACTION_CALLER_UPDATE:
             sc_load_number_lmt(ulNumlmtID);
             break;
+
         case SC_API_CMD_ACTION_CALLER_DELETE:
             sc_del_number_lmt(ulNumlmtID);
             break;
+
         default:
             break;
     }

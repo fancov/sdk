@@ -139,11 +139,14 @@ proc_fail:
     return DOS_FAIL;
 }
 
-U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
+U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService, BOOL bIsUpdateCaller)
 {
     S8 szEIXAddr[SC_IP_ADDR_LEN] = { 0, };
     S8 szCMDBuff[SC_ESL_CMD_BUFF_LEN] = { 0, };
     S8   *pszEventHeader = NULL, *pszEventBody = NULL;
+    SC_SCB_ST *pstOtherSCB = NULL;
+    S8    szNumber[SC_TEL_NUMBER_LENGTH] = {0};
+    U32   ulRet;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -155,6 +158,31 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
     sc_log_digest_print("Make call to EIX. caller : %s, callee : %s, mainService : %u"
         , pstSCB->szCallerNum, pstSCB->szCalleeNum, ulMainService);
 
+    if (bIsUpdateCaller)
+    {
+        /* 调用主叫号码组接口，将主叫号码变更为对应的did */
+        if (U32_BUTT == pstSCB->ulAgentID)
+        {
+            sc_logr_info(pstSCB, SC_DIALER, "Call to IP not get agent ID by scd(%u)", pstSCB->usSCBNo);
+
+            goto go_on;
+        }
+
+        /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
+        ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, pstSCB->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
+        if (ulRet != DOS_SUCC)
+        {
+            sc_logr_info(pstSCB, SC_DIALER, "Call to IP customID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, pstSCB->ulAgentID);
+
+            goto go_on;
+        }
+
+        sc_logr_info(pstSCB, SC_DIALER, "Call to IP customID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, pstSCB->ulAgentID);
+        dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);
+        pstSCB->szCallerNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+    }
+go_on:
+
     if (sc_ep_get_eix_by_tt(pstSCB->szCalleeNum, szEIXAddr, sizeof(szEIXAddr)) != DOS_SUCC
         || '\0' == szEIXAddr[0])
     {
@@ -162,19 +190,42 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
 
         return DOS_FAIL;
     }
+    pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
+    if (DOS_ADDR_VALID(pstOtherSCB))
+    {
+        if (!sc_call_check_service(pstSCB, SC_SERV_ATTEND_TRANSFER)
+            && !sc_call_check_service(pstSCB, SC_SERV_BLIND_TRANSFER))
+        {
+            dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
+                        , "{absolute_codec_string=^^:G723@8000h@30i@6300b:G729@8000h@20i@8000b," \
+                          "main_service=%u,scb_number=%u,origination_caller_id_number=%s,exec_after_bridge_app=park," \
+                          "origination_caller_id_name=%s,sip_multipart=^^!application/x-allywll:m:=2!" \
+                          "calli:=818!l:=01057063943!usert:=0!callt:=4!eig:=370!he:=5!w:=0!,sip_h_EixTTcall" \
+                          "=TRUE,sip_h_Mime-version=1.0}sofia/external/%s@%s"
+                        , ulMainService
+                        , pstSCB->usSCBNo
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCallerNum
+                        , pstSCB->szCalleeNum
+                        , szEIXAddr);
+            sc_ep_esl_execute("bridge", szCMDBuff, pstOtherSCB->szUUID);
+
+            return DOS_SUCC;
+        }
+    }
 
     dos_snprintf(szCMDBuff, sizeof(szCMDBuff)
-                    , "bgapi originate {absolute_codec_string=^^:G723@8000h@30i@6300b:G729@8000h@20i@8000b," \
-                      "main_service=%u,scb_number=%u,origination_caller_id_number=%s,exec_after_bridge_app=park," \
-                      "origination_caller_id_name=%s,sip_multipart=^^!application/x-allywll:m:=2!" \
-                      "calli:=818!l:=01057063943!usert:=0!callt:=4!eig:=370!he:=5!w:=0!,sip_h_EixTTcall" \
-                      "=TRUE,sip_h_Mime-version=1.0}sofia/external/%s@%s &park \r\n"
-                    , ulMainService
-                    , pstSCB->usSCBNo
-                    , pstSCB->szCallerNum
-                    , pstSCB->szCallerNum
-                    , pstSCB->szCalleeNum
-                    , szEIXAddr);
+                , "bgapi originate {absolute_codec_string=^^:G723@8000h@30i@6300b:G729@8000h@20i@8000b," \
+                  "main_service=%u,scb_number=%u,origination_caller_id_number=%s,exec_after_bridge_app=park," \
+                  "origination_caller_id_name=%s,sip_multipart=^^!application/x-allywll:m:=2!" \
+                  "calli:=818!l:=01057063943!usert:=0!callt:=4!eig:=370!he:=5!w:=0!,sip_h_EixTTcall" \
+                  "=TRUE,sip_h_Mime-version=1.0}sofia/external/%s@%s &park \r\n"
+                , ulMainService
+                , pstSCB->usSCBNo
+                , pstSCB->szCallerNum
+                , pstSCB->szCallerNum
+                , pstSCB->szCalleeNum
+                , szEIXAddr);
 
     sc_logr_debug(pstSCB, SC_DIALER, "ESL CMD: %s", szCMDBuff);
 
@@ -253,6 +304,21 @@ U32 sc_dial_make_call2eix(SC_SCB_ST *pstSCB, U32 ulMainService)
 esl_exec_fail:
 
     sc_log_digest_print("Make call to EIX FAIL.");
+    /* 记录错误码 */
+    pstSCB->usTerminationCause = sc_ep_transform_errcode_from_sc2sip(CC_ERR_SIP_BAD_GATEWAY);
+
+    /* 如果是群呼任务，就需要分析呼叫结果 */
+    if (pstSCB->ulTaskID != 0 && pstSCB->ulTaskID != U32_BUTT)
+    {
+        sc_ep_calltask_result(pstSCB, CC_ERR_SIP_BAD_GATEWAY);
+    }
+
+    /* 发送话单 */
+    if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
+    {
+        sc_logr_notice(pstSCB, SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
+    }
+
     sc_logr_info(pstSCB, SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
 
     SC_TRACE_OUT();
@@ -509,7 +575,7 @@ U32 sc_dialer_make_call2pstn(SC_SCB_ST *pstSCB, U32 ulMainService)
             && '\0' != pstSCBOther->szUUID[0])
         {
             sc_ep_esl_execute("set", "exec_after_bridge_app=park", pstSCBOther->szUUID);
-            dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "bgapi uuid_break %s \r\n", pstSCBOther->szUUID);
+            dos_snprintf(szCMDBuff, sizeof(szCMDBuff), "bgapi uuid_break %s all \r\n", pstSCBOther->szUUID);
             sc_ep_esl_execute_cmd(szCMDBuff);
         }
 
@@ -694,14 +760,6 @@ esl_exec_fail:
         sc_acd_update_agent_status(SC_ACD_SITE_ACTION_CONNECT_FAIL, pstSCB->ulAgentID, OPERATING_TYPE_PHONE);
     }
 
-#if 0
-    /* 这段到吗不可能被执行，因为如果otherSCB不为空，已经提前返回了 */
-    pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
-    if (DOS_ADDR_VALID(pstSCBOther))
-    {
-        sc_ep_hangup_call_with_snd(pstSCBOther, CC_ERR_SIP_BAD_GATEWAY);
-    }
-#endif
     /* 记录错误码 */
     pstSCB->usTerminationCause = sc_ep_transform_errcode_from_sc2sip(CC_ERR_SIP_BAD_GATEWAY);
 
@@ -711,14 +769,25 @@ esl_exec_fail:
         sc_ep_calltask_result(pstSCB, CC_ERR_SIP_BAD_GATEWAY);
     }
 
-    /* 发送话单 */
-    if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
+    /* 提示对端电话，线路不通 */
+    pstSCBOther = sc_scb_get(pstSCB->usOtherSCBNo);
+    if (DOS_ADDR_VALID(pstSCBOther))
     {
-        sc_logr_notice(pstSCB, SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
+        pstSCB->bWaitingOtherRelase = DOS_TRUE;
+        SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
+        sc_ep_hangup_call_with_snd(pstSCBOther, CC_ERR_SC_NO_TRUNK);
     }
+    else
+    {
+        /* 发送话单 */
+        if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
+        {
+            sc_logr_notice(pstSCB, SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
+        }
 
-    DOS_ASSERT(0);
-    sc_scb_free(pstSCB);
+        DOS_ASSERT(0);
+        sc_scb_free(pstSCB);
+    }
 
     SC_TRACE_OUT();
     return DOS_FAIL;
@@ -777,6 +846,8 @@ VOID *sc_dialer_runtime(VOID * ptr)
     U32                     ulIdelCPUConfig = 0;
     U32                     ulAgentID = U32_BUTT;
     S8                      szNumber[SC_TEL_NUMBER_LENGTH] = {0};
+    U32                     ulErrorNo = CC_ERR_NO_REASON;
+    BOOL                    bIsErrorPro = DOS_FALSE;
 
     if (config_get_min_iedl_cpu(&ulIdelCPUConfig) != DOS_SUCC)
     {
@@ -827,6 +898,8 @@ VOID *sc_dialer_runtime(VOID * ptr)
 
         while (1)
         {
+            bIsErrorPro = DOS_FALSE;
+
             /* 控制CPS */
             dos_task_delay(1000 / SC_MAX_CALL_PRE_SEC);
 
@@ -874,22 +947,23 @@ VOID *sc_dialer_runtime(VOID * ptr)
             if (!pstSCB)
             {
                 goto free_res;
-                continue;
             }
 
+            /* 用的时候会判断是否为NULL，这里就不用判断了 */
+            pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
             /* 主叫号码组 */
             if (sc_call_check_service(pstSCB, SC_SERV_OUTBOUND_CALL)
                 && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL)
                 && !sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK)
-                && !sc_call_check_service(pstSCB, SC_SERV_DEMO_TASK))
+                && !sc_call_check_service(pstSCB, SC_SERV_DEMO_TASK)
+                && !sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
+                && !sc_call_check_service(pstSCB, SC_SERV_PREVIEW_DIALING))
             {
                 /* 出局呼叫 */
                 /* 查找呼叫的分机绑定的坐席 */
-                pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
                 if (DOS_ADDR_INVALID(pstOtherSCB))
                 {
                     sc_logr_info(pstSCB, SC_DIALER, "Not get other scb. scbNo : %u, other : %u", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
-
                     goto go_on;
                 }
 
@@ -903,8 +977,9 @@ VOID *sc_dialer_runtime(VOID * ptr)
                     if (ulRet != DOS_SUCC)
                     {
                         sc_logr_info(pstSCB, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
-
-                        goto go_on;
+                        ulErrorNo = CC_ERR_SC_CALLER_NUMBER_ILLEGAL;
+                        bIsErrorPro = DOS_TRUE;
+                        goto free_res;
                     }
 
                     sc_logr_info(pstSCB, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC", pstSCB->ulCustomID, szNumber);
@@ -916,8 +991,9 @@ VOID *sc_dialer_runtime(VOID * ptr)
                     if (ulRet != DOS_SUCC)
                     {
                         sc_logr_info(pstSCB, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
-
-                        goto go_on;
+                        ulErrorNo = CC_ERR_SC_CALLER_NUMBER_ILLEGAL;
+                        bIsErrorPro = DOS_TRUE;
+                        goto free_res;
                     }
                     sc_logr_info(pstSCB, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
                 }
@@ -929,17 +1005,19 @@ go_on:
             /* 路由前号码变换 主叫 */
             if (sc_ep_num_transform(pstSCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE, SC_NUM_TRANSFORM_SELECT_CALLER) != DOS_SUCC)
             {
-                 DOS_ASSERT(0);
-
-                 goto free_res;
+                DOS_ASSERT(0);
+                ulErrorNo = CC_ERR_SC_CALLER_NUMBER_ILLEGAL;
+                bIsErrorPro = DOS_TRUE;
+                goto free_res;
             }
 
             /* 被叫号码 */
             if (sc_ep_num_transform(pstSCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE, SC_NUM_TRANSFORM_SELECT_CALLEE) != DOS_SUCC)
             {
-                 DOS_ASSERT(0);
-
-                 goto free_res;
+                DOS_ASSERT(0);
+                ulErrorNo = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
+                bIsErrorPro = DOS_TRUE;
+                goto free_res;
             }
 
             if (sc_dialer_make_call2pstn(pstSCB, pstSCB->ucMainService) != DOS_SUCC)
@@ -954,6 +1032,37 @@ free_res:
             pstListNode->stList.prev = NULL;
             dos_dmem_free(pstListNode);
             pstListNode = NULL;
+
+            if (bIsErrorPro)
+            {
+                /* 错误处理 */
+                pstSCB->usTerminationCause = sc_ep_transform_errcode_from_sc2sip(ulErrorNo);
+
+                /* 如果是群呼任务，就需要分析呼叫结果 */
+                if (pstSCB->ulTaskID != 0 && pstSCB->ulTaskID != U32_BUTT)
+                {
+                    sc_ep_calltask_result(pstSCB, pstSCB->usTerminationCause);
+                }
+
+                /* 提示对端电话，线路不通 */
+                if (DOS_ADDR_VALID(pstOtherSCB))
+                {
+                    pstSCB->bWaitingOtherRelase = DOS_TRUE;
+                    SC_SCB_SET_STATUS(pstSCB, SC_SCB_RELEASE);
+                    sc_ep_hangup_call_with_snd(pstOtherSCB, ulErrorNo);
+                }
+                else
+                {
+                    /* 发送话单 */
+                    if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
+                    {
+                        sc_logr_notice(pstSCB, SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
+                    }
+
+                    DOS_ASSERT(0);
+                    sc_scb_free(pstSCB);
+                }
+            }
         }
     }
 
