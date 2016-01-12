@@ -888,7 +888,7 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 pstOtherSCB = sc_scb_get(pstSCB->usOtherSCBNo);
                 if (DOS_ADDR_INVALID(pstOtherSCB))
                 {
-                    sc_logr_info(NULL, SC_DIALER, "Not get other scb. scbNo : %u, other : %u", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+                    sc_logr_info(pstSCB, SC_DIALER, "Not get other scb. scbNo : %u, other : %u", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
 
                     goto go_on;
                 }
@@ -896,18 +896,18 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 ulAgentID = pstOtherSCB->ulAgentID;
                 if (U32_BUTT == ulAgentID)
                 {
-                    sc_logr_info(NULL, SC_DIALER, "Not get agent ID by scd(%u)", pstSCB->usOtherSCBNo);
+                    sc_logr_info(pstSCB, SC_DIALER, "Not get agent ID by scd(%u)", pstSCB->usOtherSCBNo);
 
                     /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
                     ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, 0, SC_SRC_CALLER_TYPE_ALL, szNumber, SC_TEL_NUMBER_LENGTH);
                     if (ulRet != DOS_SUCC)
                     {
-                        sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
+                        sc_logr_info(pstSCB, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
 
                         goto go_on;
                     }
 
-                    sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC", pstSCB->ulCustomID, szNumber);
+                    sc_logr_info(pstSCB, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC", pstSCB->ulCustomID, szNumber);
                 }
                 else
                 {
@@ -915,11 +915,11 @@ VOID *sc_dialer_runtime(VOID * ptr)
                     ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
                     if (ulRet != DOS_SUCC)
                     {
-                        sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
+                        sc_logr_info(pstSCB, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
 
                         goto go_on;
                     }
-                    sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
+                    sc_logr_info(pstSCB, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
                 }
 
                 dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);

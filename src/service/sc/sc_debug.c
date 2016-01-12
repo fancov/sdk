@@ -2842,7 +2842,7 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
 
         return 0;
     }
-    else if (dos_strnicmp(argv[2], "task", dos_strlen("debug")) == 0)
+    else if (dos_strnicmp(argv[2], "task", dos_strlen("task")) == 0)
     {
         if (5 == argc)
         {

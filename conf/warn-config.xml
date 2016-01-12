@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<config version="1.0">
+    <mail>
+        <!--此处配置邮件server-->
+        <param name="server" value="smtp.126.com"/>
+        <!--此处配置邮件port-->
+        <param name="port" value="25"/>
+        <!--此处配置认证邮箱账户名-->
+        <param name="username" value="hll2010nwsuaf@126.com"/>
+        <!--此处配置认证邮箱账户密码-->
+        <param name="password" value="soapbubble"/>
+    </mail>
+</config>

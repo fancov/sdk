@@ -75,4 +75,6 @@
  */
 #define  DOS_PTS_SERVER_PORT            28100
 
+#define  DOS_MON_MAIL_PORT              25
+
 #define  DOS_MIN_IDEL_CPU               15

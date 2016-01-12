@@ -417,6 +417,18 @@ U32 config_set_pts_minor_port(S8 *pszBuff);
 
 #endif //end INCLUDE_PTC
 
+#if INCLUDE_MONITOR
+
+S32 config_warn_init();
+S32 config_warn_deinit();
+S32 config_warn_save();
+S32 config_warn_get_mail_server(S8 *pszServer, U32 ulLen);
+S32 config_warn_get_auth_username(S8 *pszUsername, U32 ulLen);
+S32 config_warn_get_auth_passwd(S8 *pszPasswd, U32 ulLen);
+U32 config_warn_get_mail_port();
+
+#endif
+
 #endif  //end INCLUDE_XML_CONFIG
 
 #ifdef __cplusplus

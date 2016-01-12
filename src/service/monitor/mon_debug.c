@@ -310,6 +310,12 @@ VOID mon_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...)
         case MON_TRACE_WARNING_MSG:
             dos_strcpy(szTraceStr, "MON-WARNING-MSG:");
             break;
+        case MON_TRACE_MAIL:
+            dos_strcpy(szTraceStr, "MON_MAIL:");
+            break;
+        case MON_TRACE_CONFIG:
+            dos_strcpy(szTraceStr, "MON_CONFIG:");
+            break;
         default:
             dos_strcpy(szTraceStr, "MON-BUTT:");
             break;

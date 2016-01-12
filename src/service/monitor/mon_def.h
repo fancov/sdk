@@ -15,6 +15,8 @@ enum tagMonSubMod
     MON_TRACE_LIB,          /* 资源监控库模块 */
     MON_TRACE_NOTIFY,       /* 告警通知模块 */
     MON_TRACE_WARNING_MSG,  /* 告警消息模块 */
+    MON_TRACE_MAIL,         /* 邮件模块 */
+    MON_TRACE_CONFIG,       /* 配置文件模块 */
 
     MON_TRACE_BUTT = 32 /* 无效模块 */
 };

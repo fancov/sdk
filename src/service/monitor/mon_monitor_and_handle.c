@@ -25,6 +25,7 @@ extern "C"{
 #include "mon_get_proc_info.h"
 #include "mon_monitor_and_handle.h"
 #include "mon_warning_msg_queue.h"
+#include "mon_mail.h"
 
 #define MAX_WARNING_TYPE_CNT   10 //最大告警类型个数
 
@@ -175,6 +176,23 @@ VOID* mon_warning_handle(VOID *p)
 U32 mon_res_alloc()
 {
     U32 ulRet = 0;
+
+    /* 加载配置文件 */
+    ulRet = config_warn_init();
+    if (ulRet != DOS_SUCC)
+    {
+        mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_ERROR, "Config init FAIL.");
+        return DOS_FAIL;
+    }
+    mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_DEBUG, "Config init SUCC.");
+
+    ulRet = mon_mail_init();
+    if (ulRet != DOS_SUCC)
+    {
+        mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_ERROR, "Mail init FAIL.");
+        return DOS_FAIL;
+    }
+    mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_DEBUG, "Mail init SUCC.");
 
     ulRet = mon_init_cpu_queue();
     if (DOS_SUCC != ulRet)
@@ -930,6 +948,12 @@ static U32 mon_close_db_conn()
 U32 mon_res_destroy()
 {
     U32 ulRet = 0;
+
+    ulRet = config_warn_deinit();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_ERROR, "Free config warn FAIL.");
+    }
 
     ulRet = mon_mem_free();
     if (DOS_SUCC != ulRet)
