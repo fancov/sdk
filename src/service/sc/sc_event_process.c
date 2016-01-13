@@ -11354,7 +11354,7 @@ U32 sc_ep_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomer
             }
             else if (AGENT_BIND_TT_NUMBER == ulType)
             {
-                if (sc_dial_make_call2eix(pstSCBNew, SC_SERV_AGENT_CALLBACK, DOS_TRUE) != DOS_SUCC)
+                if (sc_dial_make_call2eix(pstSCBNew, ulMainServie, DOS_TRUE) != DOS_SUCC)
                 {
                     sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Make call to other endpoint fail. callee : %s, type :%u", pszCallee, ulType);
                     goto make_all_fail1;
