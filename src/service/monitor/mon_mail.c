@@ -14,6 +14,9 @@
 extern "C"{
 #endif /* __cplusplus */
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <dos.h>
 #include "mon_def.h"
@@ -21,7 +24,9 @@ extern "C"{
 
 static BOOL             g_blExitFlag = DOS_TRUE;
 static pthread_t        g_pthreadMailRecv;
-static pthread_mutex_t  g_mutexMailQue = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t  g_stWarnQueueMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t   g_stWarnQueueCond = PTHREAD_COND_INITIALIZER;
+static sem_t g_stSem;
 
 MON_MAIL_GLOBAL_ST g_astMonMailGlobal[MON_MAIL_SERV_COUNT];
 MON_WARNING_CB_ST g_astMonWarnCB[MON_WARNING_LEVEL_BUTT];
@@ -93,14 +98,14 @@ U32 mon_mail_connect(U32 ulIndex)
     bzero(&stServerAddr, sizeof(stServerAddr));
     stServerAddr.sin_family = AF_INET;
     stServerAddr.sin_port = htons(g_astMonMailGlobal[ulIndex].ulMailPort);
-    inet_pton(AF_INET, g_astMonMailGlobal[ulIndex].szMailIP, (VOID *)(stServerAddr.sin_addr));
+    inet_pton(AF_INET, g_astMonMailGlobal[ulIndex].szMailIP, (VOID *)(&stServerAddr.sin_addr));
 
     /* 客户程序发起连接请求 */
     lRet = connect(g_astMonMailGlobal[ulIndex].lMonMailSockfd, (struct sockaddr *)(&stServerAddr), sizeof(struct sockaddr));
     if (lRet < 0)
     {
         g_astMonMailGlobal[ulIndex].lMonMailSockfd = -1;
-        mon_trace(MON_TRACE_MAIL,  LOG_LEVEL_ERROR, "Mail Server Connect error. errno:%u, cause:%s", errno, strerror(errno));
+        mon_trace(MON_TRACE_MAIL, LOG_LEVEL_ERROR, "Mail Server Connect error. errno:%u, cause:%s", errno, strerror(errno));
         return DOS_FAIL;
     }
     mon_trace(MON_TRACE_MAIL, LOG_LEVEL_DEBUG, "Mail Server Connect SUCC.");
@@ -119,6 +124,9 @@ static VOID *mon_mail_recv_mainloop(VOID *ptr)
     U32 ulIndex = 0;
     struct timeval stTimeval = {2, 0};
     struct timeval stTvCopy;
+    S8  szRecvBuff[512] = {0, };
+    S32 lRecvRes = 0;
+    U32 ulErrno = 0;
 
     g_blExitFlag = DOS_FALSE;
 
@@ -141,6 +149,7 @@ static VOID *mon_mail_recv_mainloop(VOID *ptr)
                 FD_SET(lSocketFd, &ReadFds);
                 lMaxFdp = lMaxFdp > lSocketFd ? lMaxFdp : lSocketFd;
                 ulCount++;
+                mon_trace(MON_TRACE_MAIL, LOG_LEVEL_DEBUG, "add socket : %d", lSocketFd);
             }
         }
 
@@ -159,6 +168,7 @@ static VOID *mon_mail_recv_mainloop(VOID *ptr)
         }
         else if (0 == lResult)
         {
+            sleep(1);
             continue;
         }
 
@@ -179,7 +189,24 @@ static VOID *mon_mail_recv_mainloop(VOID *ptr)
                     continue;
                 }
 
-                /* TODO */
+                lRecvRes = recv(i, szRecvBuff, sizeof(szRecvBuff), 0);
+                if (lRecvRes <= 0)
+                {
+                    sem_post(&g_astMonMailGlobal[ulIndex].stSem);
+                    close(i);
+                    g_astMonMailGlobal[ulIndex].lMonMailSockfd = -1;
+                    continue;
+                }
+
+                /* 获取错误码 */
+                dos_sscanf(szRecvBuff, "%u ", &ulErrno);
+                g_astMonMailGlobal[ulIndex].ulErrno = ulErrno;
+                mon_trace(MON_TRACE_MAIL, LOG_LEVEL_NOTIC, "proc : %u, errno : %u"
+                    , g_astMonMailGlobal[ulIndex].enOperate, ulErrno);
+
+                mon_trace(MON_TRACE_MAIL, LOG_LEVEL_NOTIC, "%s", szRecvBuff);
+
+                sem_post(&g_astMonMailGlobal[ulIndex].stSem);
             }
         }
     }
@@ -187,32 +214,406 @@ static VOID *mon_mail_recv_mainloop(VOID *ptr)
     return NULL;
 }
 
+U32 mon_mail_get_warn_msg(U32 ulIndex, MON_WARNING_MSG_ST *pstWarningMsg)
+{
+    S32 i = 0;
+    MON_WARNING_ST *pstWarningList = NULL;
+
+    if (ulIndex >= MON_WARNING_LEVEL_BUTT
+        || DOS_ADDR_INVALID(pstWarningMsg))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    pstWarningList = g_astMonWarnCB[ulIndex].pstWarningList;
+    for (i=0; i<MON_MAIL_QUE_COUNT; i++)
+    {
+        if (pstWarningList[i].bIsValid)
+        {
+            if (DOS_ADDR_INVALID(pstWarningList[i].pstWarningMsg))
+            {
+                pstWarningList[i].bIsValid = DOS_FALSE;
+                continue;
+            }
+
+            dos_memcpy(pstWarningMsg, pstWarningList[i].pstWarningMsg, sizeof(MON_WARNING_MSG_ST));
+            dos_dmem_free(pstWarningList[i].pstWarningMsg);
+            pstWarningList[i].pstWarningMsg = NULL;
+            pstWarningList[i].bIsValid = DOS_FALSE;
+            g_astMonWarnCB[ulIndex].ulWarningCount--;
+
+            return DOS_SUCC;
+        }
+    }
+
+    return DOS_FAIL;
+}
+
+U32 mon_mail_sem_wait(sem_t *pstSem, U32 ulTimeSecond)
+{
+    struct timespec stSemTime;
+    struct timeval now;
+    S32 lRes;
+
+    if (DOS_ADDR_INVALID(pstSem))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    gettimeofday(&now, NULL);
+    stSemTime.tv_sec = now.tv_sec + ulTimeSecond;
+    stSemTime.tv_nsec = now.tv_usec * 1000;
+    lRes = sem_timedwait(pstSem, &stSemTime);
+
+    if (lRes == -1)
+    {
+        if (errno == ETIMEDOUT)
+        {
+            mon_trace(MON_TRACE_MAIL, LOG_LEVEL_INFO, "Sem time wait timeout");
+            return DOS_FAIL;
+        }
+        else
+        {
+            mon_trace(MON_TRACE_MAIL, LOG_LEVEL_INFO, "Sem time wait FAIL");
+            return DOS_FAIL;
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+U32 mon_mail_send_mail(U32 ulIndex, MON_WARNING_MSG_ST *pstWarningMsg)
+{
+    S32 lRet = DOS_FAIL;
+    S32 lSocket = 0;
+    S8  szBuff[512] = {0};
+
+    if (DOS_ADDR_INVALID(pstWarningMsg)
+        || ulIndex >= MON_MAIL_SERV_COUNT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (!g_astMonMailGlobal[ulIndex].bIsValid)
+    {
+        return DOS_FAIL;
+    }
+
+    mon_trace(MON_TRACE_MAIL, LOG_LEVEL_NOTIC, "Start send mail.");
+
+    lSocket = g_astMonMailGlobal[ulIndex].lMonMailSockfd;
+    if (lSocket < 0)
+    {
+        while (1)
+        {
+            if (mon_mail_connect(ulIndex) != DOS_SUCC)
+            {
+                sleep(2);
+                continue;
+            }
+            lSocket = g_astMonMailGlobal[ulIndex].lMonMailSockfd;
+            break;
+        }
+    }
+
+    /* 将 信号量 stSem 置为0 */
+    while (1)
+    {
+        if (sem_trywait(&g_astMonMailGlobal[ulIndex].stSem) == -1)
+        {
+            break;
+        }
+    }
+
+    /* hello */
+    mon_trace(MON_TRACE_MAIL, LOG_LEVEL_DEBUG, "[HELO]");
+    dos_snprintf(szBuff, sizeof(szBuff), "%s", "HELO ");
+    dos_strcat(szBuff, g_astMonMailGlobal[ulIndex].szMailServ);
+    dos_strcat(szBuff, " \r\n");
+    g_astMonMailGlobal[ulIndex].enOperate = MON_WARN_MAIL_HELO;
+    lRet = send(lSocket, szBuff, dos_strlen(szBuff), 0);
+    if (lRet <= 0)
+    {
+        goto send_fail;
+    }
+    if (mon_mail_sem_wait(&g_astMonMailGlobal[ulIndex].stSem, MON_MAIL_WAIT_TIMEOUT) != DOS_SUCC)
+    {
+        goto smtp_error;
+    }
+
+    if (g_astMonMailGlobal[ulIndex].ulErrno != MON_SMTP_ERRNO_220
+        && g_astMonMailGlobal[ulIndex].ulErrno != MON_SMTP_ERRNO_250)
+    {
+        goto smtp_error;
+    }
+
+    /* 发送准备登录信息 */
+    mon_trace(MON_TRACE_MAIL, LOG_LEVEL_DEBUG, "[AUTH LOGIN]");
+    g_astMonMailGlobal[ulIndex].enOperate = MON_WARN_MAIL_AUTH;
+    lRet = send(lSocket, "AUTH LOGIN\r\n", dos_strlen("AUTH LOGIN\r\n"), 0);
+    if (lRet <= 0)
+    {
+        goto send_fail;
+    }
+
+    if (mon_mail_sem_wait(&g_astMonMailGlobal[ulIndex].stSem, MON_MAIL_WAIT_TIMEOUT) != DOS_SUCC)
+    {
+        goto smtp_error;
+    }
+
+    if (g_astMonMailGlobal[ulIndex].ulErrno != MON_SMTP_ERRNO_334)
+    {
+        goto smtp_error;
+    }
+
+    /* 发送用户名以及密码 */
+    mon_trace(MON_TRACE_MAIL, LOG_LEVEL_DEBUG, "[User name]");
+    g_astMonMailGlobal[ulIndex].enOperate = MON_WARN_MAIL_USERNAME;
+    lRet = send(lSocket, g_astMonMailGlobal[ulIndex].szUsernameBase64, dos_strlen(g_astMonMailGlobal[ulIndex].szUsernameBase64), 0);
+    if (lRet <= 0)
+    {
+        goto send_fail;
+    }
+
+    if (mon_mail_sem_wait(&g_astMonMailGlobal[ulIndex].stSem, MON_MAIL_WAIT_TIMEOUT) != DOS_SUCC)
+    {
+        goto smtp_error;
+    }
+
+    if (g_astMonMailGlobal[ulIndex].ulErrno != MON_SMTP_ERRNO_334)
+    {
+        goto smtp_error;
+    }
+
+    mon_trace(MON_TRACE_MAIL, LOG_LEVEL_DEBUG, "[password]");
+    g_astMonMailGlobal[ulIndex].enOperate = MON_WARN_MAIL_PASSWORD;
+    lRet = send(lSocket, g_astMonMailGlobal[ulIndex].szPasswdBase64, dos_strlen(g_astMonMailGlobal[ulIndex].szPasswdBase64), 0);
+    if (lRet <= 0)
+    {
+        goto send_fail;
+    }
+
+    if (mon_mail_sem_wait(&g_astMonMailGlobal[ulIndex].stSem, MON_MAIL_WAIT_TIMEOUT) != DOS_SUCC)
+    {
+        goto smtp_error;
+    }
+
+    if (g_astMonMailGlobal[ulIndex].ulErrno != MON_SMTP_ERRNO_235)
+    {
+        goto smtp_error;
+    }
+
+    /* 发送[发送邮箱]的信箱，该邮箱与用户名一致 */
+    g_astMonMailGlobal[ulIndex].enOperate = MON_WARN_MAIL_FROM;
+    dos_snprintf(szBuff, sizeof(szBuff), "MAIL FROM: <%s>\r\n", g_astMonMailGlobal[ulIndex].szUsername);
+    mon_trace(MON_TRACE_MAIL, LOG_LEVEL_DEBUG, "%s", szBuff);
+    lRet = send(lSocket, szBuff, dos_strlen(szBuff), 0);
+    if (lRet <= 0)
+    {
+        goto send_fail;
+    }
+
+    if (mon_mail_sem_wait(&g_astMonMailGlobal[ulIndex].stSem, MON_MAIL_WAIT_TIMEOUT) != DOS_SUCC)
+    {
+        goto smtp_error;
+    }
+
+    if (g_astMonMailGlobal[ulIndex].ulErrno != MON_SMTP_ERRNO_250)
+    {
+        goto smtp_error;
+    }
+
+    /* 发送[接收邮箱]的信箱 */
+    g_astMonMailGlobal[ulIndex].enOperate = MON_WARN_MAIL_RCPT_TO;
+    dos_snprintf(szBuff, sizeof(szBuff), "RCPT TO: <%s>\r\n", pstWarningMsg->szEmail);
+    mon_trace(MON_TRACE_MAIL, LOG_LEVEL_DEBUG, "%s", szBuff);
+    lRet = send(lSocket, szBuff, dos_strlen(szBuff), 0);
+    if (lRet <= 0)
+    {
+        goto send_fail;
+    }
+
+    if (mon_mail_sem_wait(&g_astMonMailGlobal[ulIndex].stSem, MON_MAIL_WAIT_TIMEOUT) != DOS_SUCC)
+    {
+        goto smtp_error;
+    }
+
+    if (g_astMonMailGlobal[ulIndex].ulErrno != MON_SMTP_ERRNO_250)
+    {
+        goto smtp_error;
+    }
+
+    if (pstWarningMsg->ulWarningLevel == MON_WARNING_LEVEL_CRITICAL)
+    {
+        /* 密送 */
+        dos_snprintf(szBuff, sizeof(szBuff), "RCPT TO: <%s>\r\n", MON_MAIL_BSS_MAIL);
+        mon_trace(MON_TRACE_MAIL, LOG_LEVEL_DEBUG, "%s", szBuff);
+        lRet = send(lSocket, szBuff, dos_strlen(szBuff), 0);
+        if (lRet <= 0)
+        {
+            goto send_fail;
+        }
+
+        if (mon_mail_sem_wait(&g_astMonMailGlobal[ulIndex].stSem, MON_MAIL_WAIT_TIMEOUT) != DOS_SUCC)
+        {
+            goto smtp_error;
+        }
+
+        if (g_astMonMailGlobal[ulIndex].ulErrno != MON_SMTP_ERRNO_250)
+        {
+            goto smtp_error;
+        }
+    }
+
+    /* 告诉邮件服务器准备发送邮件内容 */
+    g_astMonMailGlobal[ulIndex].enOperate = MON_WARN_MAIL_DATA;
+    mon_trace(MON_TRACE_MAIL, LOG_LEVEL_DEBUG, "[Data]");
+    lRet = send(lSocket, "DATA\r\n", dos_strlen("DATA\r\n"), 0);
+    if (lRet <= 0)
+    {
+        goto send_fail;
+    }
+
+    /* 发送邮件标题 */
+    if (pstWarningMsg->ulWarningLevel == MON_WARNING_LEVEL_CRITICAL)
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "From: \"%s\"<%s>\r\nTo: %s\r\nBSS: %s\r\nContent-type: text/html;charset=gb2312\r\nSubject: %s\r\n\r\n"
+                    , g_astMonMailGlobal[ulIndex].szUsername
+                    , g_astMonMailGlobal[ulIndex].szUsername
+                    , pstWarningMsg->szEmail
+                    , MON_MAIL_BSS_MAIL
+                    , pstWarningMsg->szTitle);
+    }
+    else
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "From: \"%s\"<%s>\r\nTo: %s\r\nContent-type: text/html;charset=gb2312\r\nSubject: %s\r\n\r\n"
+                    , g_astMonMailGlobal[ulIndex].szUsername
+                    , g_astMonMailGlobal[ulIndex].szUsername
+                    , pstWarningMsg->szEmail
+                    , pstWarningMsg->szTitle);
+    }
+    mon_trace(MON_TRACE_MAIL, LOG_LEVEL_NOTIC, "%s", szBuff);
+    lRet = send(lSocket, szBuff, dos_strlen(szBuff), 0);
+    if (lRet <= 0)
+    {
+        goto send_fail;
+    }
+
+    /* 发送邮件内容 */
+    dos_strcat(pstWarningMsg->szMessage, "\r\n");
+    lRet = send(lSocket, pstWarningMsg->szMessage, dos_strlen(pstWarningMsg->szMessage), 0);
+    if (lRet <= 0)
+    {
+        goto send_fail;
+    }
+
+    /* 发送邮件结束 */
+    lRet = send(lSocket, "\r\n.\r\n", dos_strlen("\r\n.\r\n"), 0);
+    if (lRet <= 0)
+    {
+        goto send_fail;
+    }
+
+    if (mon_mail_sem_wait(&g_astMonMailGlobal[ulIndex].stSem, MON_MAIL_WAIT_TIMEOUT) != DOS_SUCC)
+    {
+        goto smtp_error;
+    }
+
+    //if (g_astMonMailGlobal[ulIndex].ulErrno != MON_SMTP_ERRNO_354)
+    //{
+    //    goto smtp_error;
+    //}
+
+    if (mon_mail_sem_wait(&g_astMonMailGlobal[ulIndex].stSem, MON_MAIL_WAIT_TIMEOUT) != DOS_SUCC)
+    {
+        goto smtp_error;
+    }
+
+    if (g_astMonMailGlobal[ulIndex].ulErrno != MON_SMTP_ERRNO_250)
+    {
+        goto smtp_error;
+    }
+
+    /* 告诉离开邮件服务器 */
+    mon_trace(MON_TRACE_MAIL, LOG_LEVEL_DEBUG, "[QUIT]");
+    g_astMonMailGlobal[ulIndex].enOperate = MON_WARN_MAIL_QUIT;
+    lRet = send(lSocket, "QUIT\r\n", dos_strlen("QUIT\r\n"), 0);
+    if (lRet <= 0)
+    {
+        goto send_fail;
+    }
+
+    if (mon_mail_sem_wait(&g_astMonMailGlobal[ulIndex].stSem, MON_MAIL_WAIT_TIMEOUT) != DOS_SUCC)
+    {
+        /* 超时/或者失败，邮件发送失败 */
+        goto smtp_error;
+    }
+
+    if (g_astMonMailGlobal[ulIndex].ulErrno != MON_SMTP_ERRNO_221)
+    {
+        goto smtp_error;
+    }
+
+    return DOS_SUCC;
+
+send_fail:
+    /* send() 失败 */
+    return DOS_FAIL;
+
+smtp_error:
+    /* 响应码错误。或者没有收到响应 */
+    mon_trace(MON_TRACE_MAIL, LOG_LEVEL_NOTIC, "FAIL. operate : %u, errno : %u"
+        , g_astMonMailGlobal[ulIndex].enOperate, g_astMonMailGlobal[ulIndex].ulErrno);
+
+    return DOS_FAIL;
+}
+
+U32 mon_mail_warn_proc(U32 ulIndex, MON_WARNING_MSG_ST *pstWarningMsg)
+{
+    U32 ulRet = DOS_FAIL;
+
+    if (DOS_ADDR_INVALID(pstWarningMsg)
+        || ulIndex >= MON_MAIL_SERV_COUNT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstWarningMsg->ucWarningType)
+    {
+        case MON_WARNING_TYPE_MAIL:
+            /* 邮件告警 */
+            ulRet = mon_mail_send_mail(ulIndex, pstWarningMsg);
+            break;
+        case MON_WARNING_TYPE_SMS:
+            /* 短信告警 TODO */
+        case MON_WARNING_TYPE_VOICE:
+            /* 语音告警 TODO */
+            break;
+        default:
+            break;
+    }
+
+    return ulRet;
+}
+
 static VOID *mon_mail_send_mainloop(VOID *ptr)
 {
     U32 ulIndex = 0;
-    S32 lSocketFd = 0;
-    S8  szBuff[512] = {0};
+    S32 i = 0;
+    MON_WARNING_MSG_ST stWarningMsg;
 
     g_blExitFlag = DOS_FALSE;
     ulIndex = *(U32 *)ptr;
+
+    sem_post(&g_stSem);
 
     if (ulIndex >= MON_MAIL_SERV_COUNT)
     {
         DOS_ASSERT(0);
         return NULL;
-    }
-
-    /* 创建 socket */
-    while (1)
-    {
-        if (mon_mail_connect(ulIndex) != DOS_SUCC)
-        {
-            sleep(2);
-            continue;
-        }
-
-        lSocketFd = g_astMonMailGlobal[ulIndex].lMonMailSockfd;
-        break;
     }
 
     while (1)
@@ -223,11 +624,43 @@ static VOID *mon_mail_send_mainloop(VOID *ptr)
             break;
         }
 
-        pthread_mutex_lock(&g_mutexMailQue);
-        if ()
+        pthread_mutex_lock(&g_stWarnQueueMutex);
+        pthread_cond_wait(&g_stWarnQueueCond, &g_stWarnQueueMutex);
+        pthread_mutex_unlock(&g_stWarnQueueMutex);
 
+        /* 创建socket */
+        while (g_astMonMailGlobal[ulIndex].lMonMailSockfd <= 0)
+        {
+            if (mon_mail_connect(ulIndex) != DOS_SUCC)
+            {
+                sleep(2);
+                continue;
+            }
 
+            break;
+        }
 
+        for (i=0; i<MON_WARNING_LEVEL_BUTT; i++)
+        {
+            if (g_astMonWarnCB[i].ulWarningCount == 0)
+            {
+                continue;
+            }
+
+            while (1)
+            {
+                pthread_mutex_lock(&g_astMonWarnCB[i].stMutex);
+                if (mon_mail_get_warn_msg(i, &stWarningMsg) != DOS_SUCC)
+                {
+                    pthread_mutex_unlock(&g_astMonWarnCB[i].stMutex);
+                    break;
+                }
+                pthread_mutex_unlock(&g_astMonWarnCB[i].stMutex);
+                mon_trace(MON_TRACE_MAIL, LOG_LEVEL_NOTIC, "!!!!!!!!!!!!!!!!!start proce warn. type : %u"
+                    , stWarningMsg.ucWarningType);
+                mon_mail_warn_proc(ulIndex, &stWarningMsg);
+            }
+        }
     }
 
     return NULL;
@@ -260,6 +693,11 @@ U32 mon_mail_read_configure()
         return DOS_FAIL;
     }
 
+    base64_encode((const U8 *)g_astMonMailGlobal[0].szUsername, g_astMonMailGlobal[0].szUsernameBase64, dos_strlen(g_astMonMailGlobal[0].szUsername));
+    dos_strcat(g_astMonMailGlobal[0].szUsernameBase64, "\r\n");
+    base64_encode((const U8 *)g_astMonMailGlobal[0].szPasswd, g_astMonMailGlobal[0].szPasswdBase64, dos_strlen(g_astMonMailGlobal[0].szPasswd));
+    dos_strcat(g_astMonMailGlobal[0].szPasswdBase64, "\r\n");
+
     /* 获得端口 */
     g_astMonMailGlobal[0].ulMailPort = config_warn_get_mail_port();
     if (g_astMonMailGlobal[0].ulMailPort > U16_BUTT)
@@ -284,7 +722,7 @@ void mon_mail_free_resource()
             dos_dmem_free(g_astMonWarnCB[i].pstWarningList);
             g_astMonWarnCB[i].pstWarningList = NULL;
 
-            pthread_mutexattr_destroy(&g_astMonWarnCB[i].mutexList);
+            pthread_mutex_destroy(&g_astMonWarnCB[i].stMutex);
         }
     }
 }
@@ -305,7 +743,8 @@ U32 mon_mail_alloc_resource()
             break;
         }
         dos_memzero(g_astMonWarnCB[i].pstWarningList, sizeof(MON_WARNING_ST) * MON_MAIL_QUE_COUNT);
-        pthread_mutex_init(&g_astMonWarnCB[i].mutexList, NULL);
+        pthread_mutex_init(&g_astMonWarnCB[i].stMutex, NULL);
+        //pthread_cond_init(&g_astMonWarnCB[i].stCont, NULL);
     }
 
     if (i != MON_WARNING_LEVEL_BUTT)
@@ -317,6 +756,82 @@ U32 mon_mail_alloc_resource()
 
     return DOS_SUCC;
 }
+
+U32 mon_mail_send_warning(MON_WARNING_TYPE_EN enWarnType, MON_WARNING_LEVEL_EN enWarnLevel, S8 *szAddr, S8 *szTitle, S8 *szMessage)
+{
+    MON_WARNING_MSG_ST *pstWarnMsg = NULL;
+    S32 i = 0;
+    U32 ulRet = DOS_FAIL;
+
+    if (enWarnType >= MON_WARNING_TYPE_BUTT
+        || enWarnLevel >= MON_WARNING_LEVEL_BUTT
+        || DOS_ADDR_INVALID(szAddr)
+        || DOS_ADDR_INVALID(szTitle)
+        || DOS_ADDR_INVALID(szMessage))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstWarnMsg = (MON_WARNING_MSG_ST *)dos_dmem_alloc(sizeof(MON_WARNING_MSG_ST));
+    if (DOS_ADDR_INVALID(pstWarnMsg))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstWarnMsg->ucWarningType = enWarnType;
+    pstWarnMsg->ulWarningLevel = enWarnLevel;
+    if (enWarnType == MON_WARNING_TYPE_MAIL)
+    {
+        dos_strncpy(pstWarnMsg->szEmail, szAddr, sizeof(pstWarnMsg->szEmail));
+        pstWarnMsg->szEmail[sizeof(pstWarnMsg->szEmail)-1] = '\0';
+    }
+    else
+    {
+        dos_strncpy(pstWarnMsg->szTelNo, szAddr, sizeof(pstWarnMsg->szTelNo));
+        pstWarnMsg->szTelNo[sizeof(pstWarnMsg->szTelNo)-1] = '\0';
+    }
+
+    dos_strncpy(pstWarnMsg->szTitle, szTitle, sizeof(pstWarnMsg->szTitle));
+    pstWarnMsg->szTitle[sizeof(pstWarnMsg->szTitle)-1] = '\0';
+    dos_strncpy(pstWarnMsg->szMessage, szMessage, sizeof(pstWarnMsg->szMessage));
+    pstWarnMsg->szMessage[sizeof(pstWarnMsg->szMessage)-1] = '\0';
+
+    pthread_mutex_lock(&g_astMonWarnCB[enWarnLevel].stMutex);
+    for (i=0; i<MON_MAIL_QUE_COUNT; i++)
+    {
+        if (g_astMonWarnCB[enWarnLevel].pstWarningList[i].bIsValid == DOS_FALSE)
+        {
+            g_astMonWarnCB[enWarnLevel].pstWarningList[i].bIsValid = DOS_TRUE;
+            g_astMonWarnCB[enWarnLevel].pstWarningList[i].pstWarningMsg = pstWarnMsg;
+            g_astMonWarnCB[enWarnLevel].ulWarningCount++;
+            ulRet = DOS_SUCC;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&g_astMonWarnCB[enWarnLevel].stMutex);
+
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstWarnMsg);
+        pstWarnMsg = NULL;
+        mon_trace(MON_TRACE_MAIL, LOG_LEVEL_INFO, "Add into warning queue FAIL");
+
+        return DOS_FAIL;
+    }
+
+    mon_trace(MON_TRACE_MAIL, LOG_LEVEL_DEBUG, "Add into warning queue SUCC");
+
+    pthread_mutex_lock(&g_stWarnQueueMutex);
+    pthread_cond_signal(&g_stWarnQueueCond);
+    pthread_mutex_unlock(&g_stWarnQueueMutex);
+
+    return DOS_SUCC;
+}
+
 
 U32 mon_mail_init()
 {
@@ -338,6 +853,7 @@ U32 mon_mail_init()
         {
             continue;
         }
+        sem_init(&g_astMonMailGlobal[i].stSem, 0, 0);
         /* 域名解析 */
         ulRes = mon_mail_dns_analyze(g_astMonMailGlobal[i].szMailServ, g_astMonMailGlobal[i].szMailIP);
         if (ulRes <= 0)
@@ -367,6 +883,8 @@ U32 mon_mail_start()
 {
     S32 i = 0;
 
+    sem_init(&g_stSem, 0, 0);
+
     if (pthread_create(&g_pthreadMailRecv, NULL, mon_mail_recv_mainloop, NULL) < 0)
     {
         mon_trace(MON_TRACE_MAIL, LOG_LEVEL_NOTIC, "Create recv pthread fail");
@@ -382,18 +900,31 @@ U32 mon_mail_start()
             continue;
         }
 
-        if (pthread_create(&g_astMonMailGlobal[i].pthreadMailSend, NULL, mon_mail_send_mainloop, (void*)&i) < 0)
+        if (pthread_create(&g_astMonMailGlobal[i].pthreadMailSend, NULL, mon_mail_send_mainloop, (void *)&i) < 0)
         {
             mon_trace(MON_TRACE_MAIL, LOG_LEVEL_NOTIC, "Create send pthread fail");
             DOS_ASSERT(0);
 
             return DOS_FAIL;
         }
+        sem_wait(&g_stSem);
     }
+
+    sem_destroy(&g_stSem);
 
     return DOS_SUCC;
 }
 
+
+void mon_mail_test(S32 argc, S8 **argv)
+{
+    if (argc != 5)
+    {
+        return;
+    }
+
+    mon_mail_send_warning(MON_WARNING_TYPE_MAIL, MON_WARNING_LEVEL_CRITICAL, argv[2], argv[3], argv[4]);
+}
 
 #ifdef __cplusplus
 }

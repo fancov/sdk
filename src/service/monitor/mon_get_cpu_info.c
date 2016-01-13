@@ -12,6 +12,7 @@ extern "C"{
 #include "mon_def.h"
 #include "mon_get_cpu_info.h"
 #include "mon_warning_msg_queue.h"
+#include "mon_mail.h"
 
 
 struct tagMonCPUQueue //cpu¶ÓÁÐ
@@ -624,7 +625,7 @@ U32  mon_handle_cpu_warning()
             }
 
             GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email(1, "System CPU Warning", (S8 *)pstMsg->msg);
+            ulRet = mon_send_email(1, "System CPU Warning", (S8 *)pstMsg->msg, MON_WARNING_LEVEL_CRITICAL, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -645,7 +646,7 @@ U32  mon_handle_cpu_warning()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email(1, "System CPU Warning Recovery", (S8 *)pstMsg->msg);
+            ulRet = mon_send_email(1, "System CPU Warning Recovery", (S8 *)pstMsg->msg, MON_WARNING_LEVEL_CRITICAL, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);

@@ -11,6 +11,7 @@ extern "C"{
 #include <iconv.h>
 #include "mon_lib.h"
 #include "mon_def.h"
+#include "mon_mail.h"
 
 #ifndef MAX_PID_VALUE
 #define MAX_PID_VALUE 65535
@@ -175,7 +176,7 @@ U32 mon_notify_customer(MON_NOTIFY_MSG_ST *pstMsg)
     /* 格式化信息 */
     dos_snprintf(szBuff, sizeof(szBuff), m_pstMsgMap[lLang][ulType].szDesc, szTime, pstMsg->szContent, pstMsg->szNotes, pstMsg->ulCustomerID, pstMsg->ulWarningID);
 
-    if (DOS_SUCC != mon_send_email(pstMsg->ulCustomerID, m_pstMsgMap[lLang][ulType].szTitle, szBuff))
+    if (DOS_SUCC != mon_send_email(pstMsg->ulCustomerID, m_pstMsgMap[lLang][ulType].szTitle, szBuff, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL))
     {
         mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_ERROR, "Send mail FAIL.");
         DOS_ASSERT(0);

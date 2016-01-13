@@ -17,7 +17,9 @@
 #if INCLUDE_RES_MONITOR
 U32  mon_send_sms(S8 * pszMsg, S8* pszTitle,S8 * pszTelNo);
 U32  mon_send_audio(S8 * pszMsg, S8* pszTitle, S8 * pszTelNo);
-U32  mon_send_email(U32 ulCustomerID, S8 *pszTitle, S8 *pszMessage);
+U32  mon_send_email(U32 ulCustomerID, S8 *pszTitle, S8 *pszMessage, U32 ulWarnLevel, U32 ulWarnType);
 U32  mon_stream_client(S8 *pszAddress, S8 *pszTitle, S8 *pszMessage);
+S32 base64_encode(const U8* ulBinData, S8* szBase64, S32 ulBinLen);
+
 #endif //#if INCLUDE_RES_MONITOR
 #endif // end _NOTIFICATION_H__

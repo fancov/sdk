@@ -30,6 +30,7 @@ extern "C"{
 pthread_t g_pMonthr, g_pHndthr;
 S32  g_lMailSockfd = U32_BUTT;
 U32  mon_cli_conn_init();
+U32 mon_mail_start();
 
 /**
  * 功能:生成并初始化所有资源
@@ -111,6 +112,12 @@ U32  mon_cli_conn_init()
 U32 mon_start()
 {
     S32 lRet = 0;
+
+    if (mon_mail_start() != DOS_SUCC)
+    {
+        mon_trace(MON_TRACE_MAIL, LOG_LEVEL_ERROR, "Create warning mail pthread FAIL.");
+        return DOS_FAIL;
+    }
 
     lRet = pthread_create(&g_pHndthr, NULL, mon_warning_handle, NULL);
     if (lRet != 0)
