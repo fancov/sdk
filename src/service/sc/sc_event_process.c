@@ -9752,6 +9752,8 @@ U32 sc_ep_transfer_exec(SC_SCB_ST * pstSCBTmp, U32 ulMainService)
             sc_ep_esl_execute("set", "playback_terminators=*", pstSCBNotify->szUUID);
 
             pstSCBNotify->bIsInMarkState= DOS_FALSE;
+            /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬ */
+            sc_acd_update_agent_info(pstSCBNotify, SC_ACD_IDEL, pstSCBNotify->usSCBNo, NULL);
         }
     }
     else if (SC_SERV_ATTEND_TRANSFER == ulMainService)
