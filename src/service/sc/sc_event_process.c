@@ -10064,7 +10064,14 @@ U32 sc_ep_call_agent_by_id(SC_SCB_ST * pstSCB, U32 ulAgentID, BOOL bIsUpdateCall
 proc_fail:
     if (DOS_ADDR_VALID(pstSCB))
     {
-        sc_ep_hangup_call_with_snd(pstSCB, ulErrCode);
+        if (!pstSCB->bIsDidCallIn)
+        {
+            sc_ep_hangup_call_with_snd(pstSCB, ulErrCode);
+        }
+        else
+        {
+            sc_ep_hangup_call(pstSCB, ulErrCode);
+        }
     }
     return DOS_FAIL;
 }
@@ -10127,7 +10134,14 @@ U32 sc_ep_call_agent_by_grpid(SC_SCB_ST *pstSCB, U32 ulTaskAgentQueueID)
 proc_fail:
     if (DOS_ADDR_VALID(pstSCB))
     {
-        sc_ep_hangup_call_with_snd(pstSCB, ulErrCode);
+        if (!pstSCB->bIsDidCallIn)
+        {
+            sc_ep_hangup_call_with_snd(pstSCB, ulErrCode);
+        }
+        else
+        {
+            sc_ep_hangup_call(pstSCB, ulErrCode);
+        }
     }
     sc_log_digest_print("Call agent by groupid(%u) FAIL", ulTaskAgentQueueID);
 
@@ -11689,6 +11703,8 @@ U32 sc_ep_incoming_call_proc(SC_SCB_ST *pstSCB)
 
         goto proc_fail;
     }
+
+    pstSCB->bIsDidCallIn = DOS_TRUE;
     /* 之前已经获得了 */
     //ulCustomerID = sc_ep_get_custom_by_did(pstSCB->szCalleeNum);
     sc_log_digest_print("Start proc incoming call. caller : %s, callee : %s", pstSCB->szCallerNum, pstSCB->szCalleeNum);
