@@ -14380,13 +14380,26 @@ U32 sc_ep_channel_answer(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_
         && pstSCB->ucStatus >= SC_SCB_EXEC && pstSCBOther->ucStatus >= SC_SCB_EXEC
         && (pstSCB->bRecord || pstSCBOther->bRecord))
     {
-        if (pstSCB->bRecord)
+        if (pstSCB->bIsAgentCall
+            && !pstSCBOther->bIsAgentCall)
+        {
+            pstSCBRecord = pstSCBOther;
+        }
+        else if (!pstSCB->bIsAgentCall
+            && pstSCBOther->bIsAgentCall)
         {
             pstSCBRecord = pstSCB;
         }
         else
         {
-            pstSCBRecord = pstSCBOther;
+            if (pstSCB->bRecord)
+            {
+                pstSCBRecord = pstSCB;
+            }
+            else
+            {
+                pstSCBRecord = pstSCBOther;
+            }
         }
 
         if (sc_ep_record(pstSCBRecord) != DOS_SUCC)
