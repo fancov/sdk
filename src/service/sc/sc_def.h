@@ -795,7 +795,8 @@ typedef struct tagSCSCB{
     U32       bTransWaitingBridge:1;              /* 转接相关，不允许随便使用 */
 
     U32       bIsBlindTransfer:1;                 /* 是否是盲转 */
-    U32       ulRes:7;
+    U32       bIsDidCallIn:1;                     /* 是否是did呼入 */
+    U32       ulRes:6;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
