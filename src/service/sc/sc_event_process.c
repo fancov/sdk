@@ -1160,6 +1160,7 @@ VOID sc_ep_did_init(SC_DID_NODE_ST *pstDIDNum)
         pstDIDNum->ulCustomID = U32_BUTT;
         pstDIDNum->ulDIDID = U32_BUTT;
         pstDIDNum->ulTimes = 0;
+        pstDIDNum->bExist = DOS_FALSE;
     }
 }
 
@@ -1238,6 +1239,7 @@ VOID sc_ep_caller_init(SC_CALLER_QUERY_NODE_ST  *pstCaller)
         pstCaller->ulIndexInDB = 0;
         /* 号码被命中次数初始化为0 */
         pstCaller->ulTimes = 0;
+        pstCaller->bExist = DOS_FALSE;
 
         dos_memzero(pstCaller->szNumber, sizeof(pstCaller->szNumber));
     }
@@ -1258,7 +1260,7 @@ VOID sc_ep_caller_grp_init(SC_CALLER_GRP_NODE_ST* pstCallerGrp)
 
         /* 初始化为非默认组 */
         pstCallerGrp->bDefault = DOS_FALSE;
-
+        pstCallerGrp->bExist = DOS_FALSE;
         pstCallerGrp->ulID = 0;
         pstCallerGrp->ulCustomerID = 0;
         /* 暂时保留现状 */
@@ -1915,17 +1917,72 @@ U32 sc_ep_sip_userid_delete(S8 * pszSipID)
     return DOS_SUCC;
 }
 
-#if 1
+U32 sc_clear_invalid_num_from_callergrp(void *pszNumAddr, SC_NUMBER_TYPE_EN enNumType)
+{
+    DLL_NODE_S *pstNode = NULL;
+    DLL_NODE_S *pstNodeDel = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
+    SC_CALLER_CACHE_NODE_ST *pstCache = NULL;
+    U32  ulHashIndex = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pszNumAddr))
+    {
+        return DOS_FAIL;
+    }
+
+    HASH_Scan_Table(g_pstHashCallerGrp, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCallerGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstCallerGrp))
+            {
+                continue;
+            }
+
+            pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
+            DLL_Scan(&pstCallerGrp->stCallerList, pstNode, DLL_NODE_S *)
+            {
+                pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode->pHandle;
+                if (DOS_ADDR_INVALID(pstCache))
+                {
+                    continue;
+                }
+
+                if (enNumType == pstCache->ulType)
+                {
+                    if (pstCache->stData.pstCaller == pszNumAddr)
+                    {
+                        pstCache->stData.pstCaller = NULL;
+                        /* 删除这个节点 */
+                        pstNodeDel = pstNode;
+                        pstNode = pstNode->pPrev;
+                        dll_delete(&pstCallerGrp->stCallerList, pstNodeDel);
+                        dos_dmem_free(pstNodeDel);
+                        pstNodeDel = NULL;
+                    }
+                }
+            }
+            pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+
+        }
+    }
+
+    return DOS_SUCC;
+}
+
 U32 sc_caller_delete(U32 ulCallerID)
 {
     HASH_NODE_S *pstHashNode = NULL;
     SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
     U32  ulHashIndex = U32_BUTT;
     BOOL bFound = DOS_FALSE;
-#if 0
-    S32 lIndex;
-    SC_TASK_CB_ST *pstTaskCB = NULL;
-#endif
 
     HASH_Scan_Table(g_pstHashCaller, ulHashIndex)
     {
@@ -1949,28 +2006,7 @@ U32 sc_caller_delete(U32 ulCallerID)
             break;
         }
     }
-#if 0
-    /* 现在号码组的主叫号码与群呼任务的主叫号码是两份数据，同步起来比较恼火，将来解决了两份数据问题肯定要删掉
-       目前先暂时将其状态置为invalid即可 */
-    for (lIndex = 0; lIndex < SC_MAX_TASK_NUM; lIndex++)
-    {
-        pstTaskCB = &g_pstTaskMngtInfo->pstTaskList[lIndex];
-        if (g_pstTaskMngtInfo->pstTaskList[lIndex].ulCustomID == pstCaller->ulCustomerID)
-        {
-            break;
-        }
-    }
-    for (lIndex = 0; lIndex < SC_MAX_CALLER_NUM; lIndex++)
-    {
-        if (pstTaskCB->pstCallerNumQuery[lIndex].bValid
-            && pstTaskCB->pstCallerNumQuery[lIndex].ulIndexInDB == pstCaller->ulIndexInDB
-            && 0 == dos_strcmp(pstTaskCB->pstCallerNumQuery[lIndex].szNumber, pstCaller->szNumber))
-        {
-            pstTaskCB->pstCallerNumQuery[lIndex].bValid = DOS_FALSE;
-            break;
-        }
-    }
-#endif
+
     if (DOS_FALSE == bFound)
     {
         DOS_ASSERT(0);
@@ -1991,7 +2027,6 @@ U32 sc_caller_delete(U32 ulCallerID)
         return DOS_SUCC;
     }
 }
-#endif
 
 U32 sc_caller_grp_delete(U32 ulCallerGrpID)
 {
@@ -3077,6 +3112,7 @@ S32 sc_load_did_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
 
         HASH_Init_Node(pstHashNode);
+        pstDIDNumNode->bExist = DOS_TRUE;
         pstHashNode->pHandle = pstDIDNumNode;
         ulHashIndex = sc_sip_did_hash_func(pstDIDNumNode->szDIDNum);
 
@@ -3102,6 +3138,7 @@ S32 sc_load_did_number_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         pstDIDNumTmp->ulBindType = pstDIDNumNode->ulBindType;
         pstDIDNumTmp->ulBindID  = pstDIDNumNode->ulBindID;
         pstDIDNumTmp->bValid = pstDIDNumNode->bValid;
+        pstDIDNumTmp->bExist = DOS_TRUE;
         dos_strncpy(pstDIDNumTmp->szDIDNum, pstDIDNumNode->szDIDNum, sizeof(pstDIDNumTmp->szDIDNum));
         pstDIDNumTmp->szDIDNum[sizeof(pstDIDNumTmp->szDIDNum) - 1] = '\0';
 
@@ -5944,6 +5981,29 @@ U32 sc_find_gateway_by_addr(const S8 *pszAddr)
     return DOS_FAIL;
 }
 
+
+void sc_force_syn_init_gateway()
+{
+    HASH_NODE_S   *pstHashNode = NULL;
+    SC_GW_NODE_ST *pstGWNode   = NULL;
+    U32   ulHashIndex = U32_BUTT;
+
+    HASH_Scan_Table(g_pstHashGW,ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashGW, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstGWNode = (SC_GW_NODE_ST *)pstHashNode->pHandle;
+            pstGWNode->bExist = DOS_FALSE;
+        }
+    }
+}
+
+
 /**
   * 函数名: U32 sc_del_invalid_gateway()
   * 参数:
@@ -6010,6 +6070,24 @@ U32 sc_del_invalid_gateway()
     return DOS_SUCC;
 }
 
+void sc_force_syn_init_route()
+{
+    SC_ROUTE_NODE_ST  *pstRoute = NULL;
+    DLL_NODE_S        *pstNode  = NULL;
+
+    DLL_Scan(&g_stRouteList, pstNode, DLL_NODE_S *)
+    {
+        if (DOS_ADDR_INVALID(pstNode)
+            || DOS_ADDR_INVALID(pstNode->pHandle))
+        {
+            continue;
+        }
+
+        pstRoute = (SC_ROUTE_NODE_ST *)pstNode->pHandle;
+        pstRoute->bExist = DOS_FALSE;
+    }
+}
+
 /**
   * 函数名: U32 sc_del_invalid_route()
   * 参数:
@@ -6055,6 +6133,231 @@ U32 sc_del_invalid_route()
     return DOS_SUCC;
 }
 
+void sc_force_syn_init_did()
+{
+    SC_DID_NODE_ST *pstDid      = NULL;
+    HASH_NODE_S    *pstHashNode = NULL;
+    U32   ulHashIndex = 0;
+
+    HASH_Scan_Table(g_pstHashDIDNum,ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashDIDNum, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                    || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstDid = (SC_DID_NODE_ST *)pstHashNode->pHandle;
+            pstDid->bExist = DOS_FALSE;
+        }
+    }
+}
+
+U32 sc_del_invalid_did()
+{
+    SC_DID_NODE_ST *pstDid      = NULL;
+    HASH_NODE_S    *pstHashNode = NULL;
+    U32   ulHashIndex = 0;
+
+    HASH_Scan_Table(g_pstHashDIDNum,ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashDIDNum, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                    || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstDid = (SC_DID_NODE_ST *)pstHashNode->pHandle;
+
+            if (pstDid->bExist == DOS_FALSE)
+            {
+                sc_clear_invalid_num_from_callergrp(pstDid, SC_NUMBER_TYPE_DID);
+                /* 从节点中删除数据 */
+                hash_delete_node(g_pstHashDIDNum, pstHashNode, ulHashIndex);
+                if (DOS_ADDR_VALID(pstDid))
+                {
+                    dos_dmem_free(pstDid);
+                    pstDid = NULL;
+                }
+                if (DOS_ADDR_VALID(pstHashNode))
+                {
+                    dos_dmem_free(pstHashNode);
+                    pstHashNode = NULL;
+                }
+            }
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+void sc_force_syn_init_caller()
+{
+    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    HASH_NODE_S             *pstHashNode = NULL;
+    U32   ulHashIndex = 0;
+
+    HASH_Scan_Table(g_pstHashCaller,ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCaller, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                    || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstCaller = (SC_CALLER_QUERY_NODE_ST *)pstHashNode->pHandle;
+            pstCaller->bExist = DOS_FALSE;
+        }
+    }
+}
+
+U32 sc_del_invalid_caller()
+{
+    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    HASH_NODE_S    *pstHashNode = NULL;
+    U32   ulHashIndex = 0;
+
+    HASH_Scan_Table(g_pstHashCaller,ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCaller, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstCaller = (SC_CALLER_QUERY_NODE_ST *)pstHashNode->pHandle;
+
+            if (pstCaller->bExist == DOS_FALSE)
+            {
+                /* 从主叫号码组中删除 */
+                sc_clear_invalid_num_from_callergrp(pstCaller, SC_NUMBER_TYPE_CFG);
+                /* 从节点中删除数据 */
+                hash_delete_node(g_pstHashDIDNum, pstHashNode, ulHashIndex);
+                if (DOS_ADDR_VALID(pstCaller))
+                {
+                    dos_dmem_free(pstCaller);
+                    pstCaller = NULL;
+                }
+                if (DOS_ADDR_VALID(pstHashNode))
+                {
+                    dos_dmem_free(pstHashNode);
+                    pstHashNode = NULL;
+                }
+            }
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+void sc_force_syn_init_callergrp()
+{
+    SC_CALLER_GRP_NODE_ST   *pstCallerGrp = NULL;
+    HASH_NODE_S             *pstHashNode = NULL;
+    U32   ulHashIndex = 0;
+
+    HASH_Scan_Table(g_pstHashCallerGrp,ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCallerGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
+            pstCallerGrp->bExist = DOS_FALSE;
+        }
+    }
+}
+
+U32 sc_del_invalid_callergrp()
+{
+    SC_CALLER_GRP_NODE_ST   *pstCallerGrp = NULL;
+    HASH_NODE_S    *pstHashNode = NULL;
+    DLL_NODE_S  *pstListNode = NULL;
+    U32   ulHashIndex = 0;
+
+    HASH_Scan_Table(g_pstHashCallerGrp, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCallerGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
+
+            if (pstCallerGrp->bExist == DOS_FALSE)
+            {
+                /* 从节点中删除数据 */
+                pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
+                while (1)
+                {
+                    if (DLL_Count(&pstCallerGrp->stCallerList) == 0)
+                    {
+                        break;
+                    }
+                    pstListNode = dll_fetch(&pstCallerGrp->stCallerList);
+                    if (DOS_ADDR_VALID(pstListNode->pHandle))
+                    {
+                        dos_dmem_free(pstListNode->pHandle);
+                        pstListNode->pHandle = NULL;
+                    }
+
+                    dll_delete(&pstCallerGrp->stCallerList, pstListNode);
+                    dos_dmem_free(pstListNode);
+                    pstListNode = NULL;
+                }
+                pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+
+                hash_delete_node(g_pstHashCallerGrp, pstHashNode, ulHashIndex);
+                pthread_mutex_unlock(&g_mutexHashCallerGrp);
+                dos_dmem_free(pstHashNode->pHandle);
+                pstHashNode->pHandle = NULL;
+                dos_dmem_free(pstHashNode);
+                pstHashNode = NULL;
+            }
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+
+void sc_force_syn_init_gateway_grp()
+{
+    SC_GW_GRP_NODE_ST * pstGWGrp = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    U32  ulHashIndex = 0;
+
+    HASH_Scan_Table(g_pstHashGWGrp, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashGWGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstGWGrp = (SC_GW_GRP_NODE_ST *)pstHashNode->pHandle;
+            pstGWGrp->bExist = DOS_FALSE;
+        }
+    }
+}
+
 U32 sc_del_invalid_gateway_grp()
 {
     SC_GW_GRP_NODE_ST * pstGWGrp = NULL;
@@ -6075,7 +6378,7 @@ U32 sc_del_invalid_gateway_grp()
             if (DOS_FALSE == pstGWGrp->bExist)
             {
                 /* 删除之 */
-                sc_gateway_grp_delete(pstGWGrp->bExist);
+                sc_gateway_grp_delete(pstGWGrp->ulGWGrpID);
             }
             else
             {
