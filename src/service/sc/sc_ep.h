@@ -143,6 +143,7 @@ typedef struct tagSCDIDNode{
     U32   ulCustomID;                             /* 用户ID */
     U32   ulDIDID;                                /* DID 号码ID */
     BOOL  bValid;                                 /* 是否可用标识 */
+    BOOL  bExist;                                 /* 用于强制数据更新 */
     S8    szDIDNum[SC_TEL_NUMBER_LENGTH];         /* DID 号码 */
     U32   ulBindType;                             /* 绑定类型 refer to SC_DID_BIND_TYPE_EN */
     U32   ulBindID;                               /* 绑定结果 */
@@ -224,6 +225,7 @@ typedef struct tagCallerGrpNode
     U32   ulLastNo;      /* 上一次参与呼叫的主叫号码序列号 */
     U32   ulPolicy;      /* 呼叫策略 */
     BOOL  bDefault;      /* 是否为默认组，DOS_FALSE表示非默认组，DOS_TRUE表示默认组 */
+    BOOL  bExist;
     S8    szGrpName[64]; /* 主叫号码组名称 */
     DLL_S stCallerList;  /* 主叫号码列表 */
 

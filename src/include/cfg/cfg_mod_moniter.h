@@ -57,6 +57,7 @@
 #define INCLUDE_SERVICE_TIMER             1
 
 /* ×ÊÔ´¼à¿ØÄ£¿é*/
+#define INCLUDE_MONITOR                   1
 #define INCLUDE_RES_MONITOR               1
 #define INCLUDE_MEM_MONITOR               1
 #define INCLUDE_CPU_MONITOR               1

@@ -15,6 +15,7 @@ extern "C" {
 #include "mon_warning_msg_queue.h"
 #include "mon_lib.h"
 #include "mon_def.h"
+#include "mon_mail.h"
 
 extern MON_PROC_STATUS_S * g_pastProc[MAX_PROC_CNT];
 extern MON_WARNING_MSG_S*  g_pstWarningMsg;
@@ -538,7 +539,7 @@ U32  mon_check_all_process()
             }
             /* 构造告警消息并表明已产生告警 */
             GENERATE_WARNING_MSG(pstMsg,ulIndex,ulNo);
-            ulRet = mon_send_email(1, "Process Dead Exception", (S8*)pstMsg->msg);
+            ulRet = mon_send_email(1, "Process Dead Exception", (S8*)pstMsg->msg, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -558,7 +559,7 @@ U32  mon_check_all_process()
                 return DOS_FAIL;
             }
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulNo);
-            ulRet = mon_send_email(1, "Process Dead Exception Recovery", (S8*)pstMsg->msg);
+            ulRet = mon_send_email(1, "Process Dead Exception Recovery", (S8*)pstMsg->msg, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -815,7 +816,7 @@ U32  mon_handle_proc_mem_warning()
             }
 
             GENERATE_WARNING_MSG(pstMsg,ulIndex, ulRet);
-            ulRet = mon_send_email(1, "Process Memory Warning", (S8 *)pstMsg->msg);
+            ulRet = mon_send_email(1, "Process Memory Warning", (S8 *)pstMsg->msg, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -837,7 +838,7 @@ U32  mon_handle_proc_mem_warning()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email(1, "Process Memory Warning Recovery", (S8 *)pstMsg->msg);
+            ulRet = mon_send_email(1, "Process Memory Warning Recovery", (S8 *)pstMsg->msg, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);

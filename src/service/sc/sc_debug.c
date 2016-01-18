@@ -2842,7 +2842,7 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
 
         return 0;
     }
-    else if (dos_strnicmp(argv[2], "task", dos_strlen("debug")) == 0)
+    else if (dos_strnicmp(argv[2], "task", dos_strlen("task")) == 0)
     {
         if (5 == argc)
         {
@@ -4014,6 +4014,11 @@ S32 cli_cc_update(U32 ulIndex, S32 argc, S8 **argv)
         else if(4 == argc)
         {
             /* 根据id去处理 */
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
             sc_update_gateway_grp(ulID);
         }
         else
@@ -4023,6 +4028,78 @@ S32 cli_cc_update(U32 ulIndex, S32 argc, S8 **argv)
             return DOS_FAIL;
         }
     }
+    else if (0 == dos_strnicmp(argv[2], "did", dos_strlen("did")))
+    {
+        /* 强制同步 DID */
+        if (3 == argc)
+        {
+            sc_update_did(U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            sc_update_did(ulID);
+        }
+        else
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "You inputed %d %s.", argc, argc == 1 ? "param" : "params");
+            cli_out_string(ulIndex, szBuff);
+            return DOS_FAIL;
+        }
+    }
+    else if (0 == dos_strnicmp(argv[2], "caller", dos_strlen("caller")))
+    {
+        /* 主叫号码 */
+        if (3 == argc)
+        {
+            sc_update_caller(U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            sc_update_caller(ulID);
+        }
+        else
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "You inputed %d %s.", argc, argc == 1 ? "param" : "params");
+            cli_out_string(ulIndex, szBuff);
+            return DOS_FAIL;
+        }
+
+    }
+    else if (0 == dos_strnicmp(argv[2], "callergrp", dos_strlen("callergrp")))
+    {
+        /* 主叫号码 */
+        if (3 == argc)
+        {
+            sc_update_callergrp(U32_BUTT);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) < 0)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            sc_update_callergrp(ulID);
+        }
+        else
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "You inputed %d %s.", argc, argc == 1 ? "param" : "params");
+            cli_out_string(ulIndex, szBuff);
+            return DOS_FAIL;
+        }
+
+    }
+
     else
     {
         /* 直接goto help */
@@ -4090,6 +4167,7 @@ S32 sc_update_gateway(U32 ulID)
 
     if (U32_BUTT == ulID)
     {
+        sc_force_syn_init_gateway();
         /* 所有数据全部强制更新 */
         sc_load_gateway(SC_INVALID_INDEX);
         /* 删除多余数据 */
@@ -4122,6 +4200,7 @@ S32 sc_update_gateway_grp(U32 ulID)
 {
     if (U32_BUTT == ulID)
     {
+        sc_force_syn_init_gateway_grp();
         /* 加载数据 */
         sc_load_gateway_grp(SC_INVALID_INDEX);
         /* 删除没有来自数据库的数据 */
@@ -4145,6 +4224,7 @@ S32 sc_update_route(U32 ulID)
     if (U32_BUTT == ulID)
     {
         /* 全部更新 */
+        sc_force_syn_init_route();
         sc_load_route(SC_INVALID_INDEX);
         /* 删除不在数据库中的成员 */
         sc_del_invalid_route();
@@ -4152,6 +4232,57 @@ S32 sc_update_route(U32 ulID)
     else
     {
         sc_load_route(ulID);
+    }
+    return DOS_SUCC;
+}
+
+S32 sc_update_did(U32 ulID)
+{
+    if (U32_BUTT == ulID)
+    {
+        /* 全部更新 */
+        sc_force_syn_init_did();
+        sc_load_did_number(SC_INVALID_INDEX);
+        /* 删除不在数据库中的成员 */
+        sc_del_invalid_did();
+    }
+    else
+    {
+        sc_load_did_number(ulID);
+    }
+    return DOS_SUCC;
+}
+
+S32 sc_update_caller(U32 ulID)
+{
+    if (U32_BUTT == ulID)
+    {
+        /* 全部更新 */
+        sc_force_syn_init_caller();
+        sc_load_caller(SC_INVALID_INDEX);
+        /* 删除不在数据库中的成员 */
+        sc_del_invalid_caller();
+    }
+    else
+    {
+        sc_load_caller(ulID);
+    }
+    return DOS_SUCC;
+}
+
+S32 sc_update_callergrp(U32 ulID)
+{
+    if (U32_BUTT == ulID)
+    {
+        /* 全部更新 */
+        sc_force_syn_init_callergrp();
+        sc_refresh_caller_grp(SC_INVALID_INDEX);
+        /* 删除不在数据库中的成员 */
+        sc_del_invalid_callergrp();
+    }
+    else
+    {
+        sc_load_caller(ulID);
     }
     return DOS_SUCC;
 }

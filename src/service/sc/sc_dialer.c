@@ -304,6 +304,21 @@ go_on:
 esl_exec_fail:
 
     sc_log_digest_print("Make call to EIX FAIL.");
+    /* 记录错误码 */
+    pstSCB->usTerminationCause = sc_ep_transform_errcode_from_sc2sip(CC_ERR_SIP_BAD_GATEWAY);
+
+    /* 如果是群呼任务，就需要分析呼叫结果 */
+    if (pstSCB->ulTaskID != 0 && pstSCB->ulTaskID != U32_BUTT)
+    {
+        sc_ep_calltask_result(pstSCB, CC_ERR_SIP_BAD_GATEWAY);
+    }
+
+    /* 发送话单 */
+    if (sc_send_billing_stop2bs(pstSCB) != DOS_SUCC)
+    {
+        sc_logr_notice(pstSCB, SC_DIALER, "Send billing stop FAIL where make call fail. (SCB: %u)", pstSCB->usSCBNo);
+    }
+
     sc_logr_info(pstSCB, SC_DIALER, "%s", "ESL Exec fail, the call will be FREE.");
 
     SC_TRACE_OUT();
@@ -941,32 +956,33 @@ VOID *sc_dialer_runtime(VOID * ptr)
                 && sc_call_check_service(pstSCB, SC_SERV_EXTERNAL_CALL)
                 && !sc_call_check_service(pstSCB, SC_SERV_AGENT_CALLBACK)
                 && !sc_call_check_service(pstSCB, SC_SERV_DEMO_TASK)
-                && !sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING))
+                && !sc_call_check_service(pstSCB, SC_SERV_AUTO_DIALING)
+                && !sc_call_check_service(pstSCB, SC_SERV_PREVIEW_DIALING))
             {
                 /* 出局呼叫 */
                 /* 查找呼叫的分机绑定的坐席 */
                 if (DOS_ADDR_INVALID(pstOtherSCB))
                 {
-                    sc_logr_info(NULL, SC_DIALER, "Not get other scb. scbNo : %u, other : %u", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
+                    sc_logr_info(pstSCB, SC_DIALER, "Not get other scb. scbNo : %u, other : %u", pstSCB->usSCBNo, pstSCB->usOtherSCBNo);
                     goto go_on;
                 }
 
                 ulAgentID = pstOtherSCB->ulAgentID;
                 if (U32_BUTT == ulAgentID)
                 {
-                    sc_logr_info(NULL, SC_DIALER, "Not get agent ID by scd(%u)", pstSCB->usOtherSCBNo);
+                    sc_logr_info(pstSCB, SC_DIALER, "Not get agent ID by scd(%u)", pstSCB->usOtherSCBNo);
 
                     /* 查找呼叫源和号码的对应关系，如果匹配上某一呼叫源，就选择特定号码 */
                     ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, 0, SC_SRC_CALLER_TYPE_ALL, szNumber, SC_TEL_NUMBER_LENGTH);
                     if (ulRet != DOS_SUCC)
                     {
-                        sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
+                        sc_logr_info(pstSCB, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
                         ulErrorNo = CC_ERR_SC_CALLER_NUMBER_ILLEGAL;
                         bIsErrorPro = DOS_TRUE;
                         goto free_res;
                     }
 
-                    sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC", pstSCB->ulCustomID, szNumber);
+                    sc_logr_info(pstSCB, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC", pstSCB->ulCustomID, szNumber);
                 }
                 else
                 {
@@ -974,12 +990,12 @@ VOID *sc_dialer_runtime(VOID * ptr)
                     ulRet = sc_caller_setting_select_number(pstSCB->ulCustomID, ulAgentID, SC_SRC_CALLER_TYPE_AGENT, szNumber, SC_TEL_NUMBER_LENGTH);
                     if (ulRet != DOS_SUCC)
                     {
-                        sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
+                        sc_logr_info(pstSCB, SC_DIALER, "CustomID(%u) get caller number FAIL by agent(%u)", pstSCB->ulCustomID, ulAgentID);
                         ulErrorNo = CC_ERR_SC_CALLER_NUMBER_ILLEGAL;
                         bIsErrorPro = DOS_TRUE;
                         goto free_res;
                     }
-                    sc_logr_info(NULL, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
+                    sc_logr_info(pstSCB, SC_DIALER, "CustomID(%u) get caller number(%s) SUCC by agent(%u)", pstSCB->ulCustomID, szNumber, ulAgentID);
                 }
 
                 dos_strncpy(pstSCB->szCallerNum, szNumber, SC_TEL_NUMBER_LENGTH);

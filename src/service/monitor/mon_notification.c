@@ -10,13 +10,14 @@ extern "C"{
 #include "mon_notification.h"
 #include "mon_def.h"
 #include "../../util/heartbeat/heartbeat.h"
+#include "mon_mail.h"
 
 const S8* m_szBase64Char = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 extern MON_MSG_MAP_ST m_pstMsgMap;
 extern S32  g_lMailSockfd;
 extern U32 mon_get_sp_email(MON_NOTIFY_MSG_ST *pstMsg);
 extern U32 mon_cli_conn_init();
-static S32 base64_encode(const U8* ulBinData, S8* szBase64, S32 ulBinLen);
+//static S32 base64_encode(const U8* ulBinData, S8* szBase64, S32 ulBinLen);
 /**
  * 函数: U32 mon_send_sms(S8 * pszMsg, S8 * pszTelNo)
  * 参数:
@@ -51,11 +52,20 @@ U32 mon_send_audio(S8 * pszMsg, S8* pszTitle, S8 * pszTelNo)
  * 返回:
  *   成功返回DOS_SUCC,反之返回DOS_FAIL
  */
-U32  mon_send_email(U32 ulCustomerID, S8 *pszTitle, S8 *pszMessage)
+U32  mon_send_email(U32 ulCustomerID, S8 *pszTitle, S8 *pszMessage, U32 ulWarnLevel, U32 ulWarnType)
 {
     S32  lRet;
     U32  ulRet = U32_BUTT;
     MON_NOTIFY_MSG_ST   stMsg = {0};
+
+    if (DOS_ADDR_INVALID(pszTitle)
+        || DOS_ADDR_INVALID(pszMessage)
+        || ulWarnLevel >= MON_WARNING_LEVEL_BUTT
+        || ulWarnType >= MON_WARNING_TYPE_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
     /* 获取邮件联系人，保留 */
     stMsg.ulCustomerID = ulCustomerID;
@@ -66,7 +76,8 @@ U32  mon_send_email(U32 ulCustomerID, S8 *pszTitle, S8 *pszMessage)
         return DOS_FAIL;
     }
     /* 发邮件 */
-    lRet = mon_stream_client(stMsg.stContact.szEmail, pszTitle, pszMessage);
+    //lRet = mon_stream_client(stMsg.stContact.szEmail, pszTitle, pszMessage);
+    lRet = mon_mail_send_warning(ulWarnType, ulWarnLevel, stMsg.stContact.szEmail, pszTitle, pszMessage);
     if (DOS_SUCC != lRet)
     {
         mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_DEBUG, "Send Email FAIL.");

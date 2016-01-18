@@ -19,9 +19,17 @@ extern U32 g_ulPartCnt;
 
 #define MON_TRACE_BUFF_LEN  1024
 
+extern void mon_mail_test(S32 argc, S8 **argv);
+
 S32 mon_command_proc(U32 ulIndex, S32 argc, S8 **argv)
 {
     S8  szBuff[1024] = {0};
+
+    if (0 == dos_stricmp(argv[1], "mail"))
+    {
+        mon_mail_test(argc, argv);
+        goto help;
+    }
 
     if (3 != argc)
     {
@@ -309,6 +317,12 @@ VOID mon_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...)
             break;
         case MON_TRACE_WARNING_MSG:
             dos_strcpy(szTraceStr, "MON-WARNING-MSG:");
+            break;
+        case MON_TRACE_MAIL:
+            dos_strcpy(szTraceStr, "MON_MAIL:");
+            break;
+        case MON_TRACE_CONFIG:
+            dos_strcpy(szTraceStr, "MON_CONFIG:");
             break;
         default:
             dos_strcpy(szTraceStr, "MON-BUTT:");

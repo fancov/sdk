@@ -124,6 +124,9 @@ S32 cli_cc_update(U32 ulIndex, S32 argc, S8 **argv);
 S32 sc_update_route(U32 ulID);
 S32 sc_update_gateway_grp(U32 ulID);
 S32 sc_update_gateway(U32 ulID);
+S32 sc_update_did(U32 ulID);
+S32 sc_update_caller(U32 ulID);
+S32 sc_update_callergrp(U32 ulID);
 
 /* º¯Êý¹¦ÄÜ²âÊÔ */
 S32 cli_cc_test(U32 ulIndex, S32 argc, S8 **argv);

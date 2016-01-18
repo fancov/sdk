@@ -16,6 +16,7 @@ extern "C"{
 #include "mon_warning_msg_queue.h"
 #include "mon_lib.h"
 #include "mon_def.h"
+#include "mon_mail.h"
 
 extern  MON_SYS_PART_DATA_S * g_pastPartition[MAX_PARTITION_COUNT];
 extern  U32 g_ulPartCnt;
@@ -276,7 +277,7 @@ U32  mon_handle_disk_warning()
             }
 
             GENERATE_WARNING_MSG(pstMsg, ulIndex, ulRet);
-            ulRet = mon_send_email(1, "System disk Warning", (S8 *)pstMsg->msg);
+            ulRet = mon_send_email(1, "System disk Warning", (S8 *)pstMsg->msg, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -298,7 +299,7 @@ U32  mon_handle_disk_warning()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email(1, "System Disk Warning Recovery", (S8 *)pstMsg->msg);
+            ulRet = mon_send_email(1, "System Disk Warning Recovery", (S8 *)pstMsg->msg, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);

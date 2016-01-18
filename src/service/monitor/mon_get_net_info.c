@@ -21,6 +21,7 @@ extern "C"{
 #include "mon_warning_msg_queue.h"
 #include "mon_lib.h"
 #include "mon_def.h"
+#include "mon_mail.h"
 
 typedef struct tagMonTransData
 {
@@ -542,7 +543,7 @@ U32  mon_handle_netcard_warning()
             }
 
             GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email(1, "Network connection Warning", (S8 *)pstMsg->msg);
+            ulRet = mon_send_email(1, "Network connection Warning", (S8 *)pstMsg->msg, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -562,7 +563,7 @@ U32  mon_handle_netcard_warning()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email(1, "Network connection Warning Recovery", (S8 *)pstMsg->msg);
+            ulRet = mon_send_email(1, "Network connection Warning Recovery", (S8 *)pstMsg->msg, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -625,7 +626,7 @@ U32  mon_handle_bandwidth_warning()
             }
 
             GENERATE_WARNING_MSG(pstMsg, ulIndex, ulRet);
-            ulRet = mon_send_email(1, "Network Bandwidth Warning", (S8 *)pstMsg->msg);
+            ulRet = mon_send_email(1, "Network Bandwidth Warning", (S8 *)pstMsg->msg, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -646,7 +647,7 @@ U32  mon_handle_bandwidth_warning()
             }
 
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
-            ulRet = mon_send_email(1, "Network Bandwidth Warning Recovery", (S8 *)pstMsg->msg);
+            ulRet = mon_send_email(1, "Network Bandwidth Warning Recovery", (S8 *)pstMsg->msg, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);

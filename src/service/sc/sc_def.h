@@ -653,6 +653,8 @@ typedef struct tagCallerQueryNode{
     U32        ulCustomerID;                      /* 所属客户id */
     U32        ulTimes;                           /* 号码被呼叫选中的次数，用做统计 */
 
+    BOOL       bExist;
+
     S8         szNumber[SC_TEL_NUMBER_LENGTH];    /* 号码缓存 */
 }SC_CALLER_QUERY_NODE_ST;
 
@@ -793,7 +795,8 @@ typedef struct tagSCSCB{
     U32       bTransWaitingBridge:1;              /* 转接相关，不允许随便使用 */
 
     U32       bIsBlindTransfer:1;                 /* 是否是盲转 */
-    U32       ulRes:7;
+    U32       bIsDidCallIn:1;                     /* 是否是did呼入 */
+    U32       ulRes:6;
 
     U32       ulCallDuration;                     /* 呼叫时长，防止吊死用，每次心跳时更新 */
 
@@ -1139,9 +1142,19 @@ U32 sc_ep_sip_userid_delete(S8 * pszSipID);
 U32 sc_transform_delete(U32 ulTransformID);
 U32 sc_customer_delete(U32 ulCustomerID);
 U32 sc_http_black_update_proc(U32 ulAction, U32 ulBlackID);
+U32 sc_clear_invalid_num_from_callergrp(void *pszNumAddr, SC_NUMBER_TYPE_EN enNumType);
 U32 sc_del_invalid_gateway();
 U32 sc_del_invalid_gateway_grp();
 U32 sc_del_invalid_route();
+U32 sc_del_invalid_did();
+U32 sc_del_invalid_caller();
+U32 sc_del_invalid_callergrp();
+void sc_force_syn_init_gateway();
+void sc_force_syn_init_route();
+void sc_force_syn_init_gateway_grp();
+void sc_force_syn_init_did();
+void sc_force_syn_init_caller();
+void sc_force_syn_init_callergrp();
 U32 sc_ep_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID);
 U32 sc_ep_esl_execute_cmd(const S8* pszCmd);
 U32 sc_ep_get_userid_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);

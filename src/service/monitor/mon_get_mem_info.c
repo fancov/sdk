@@ -14,6 +14,7 @@ extern "C"{
 #include "mon_lib.h"
 #include "mon_def.h"
 #include "mon_warning_msg_queue.h"
+#include "mon_mail.h"
 
 static S8  m_szMemInfoFile[] = "/proc/meminfo";
 extern MON_SYS_MEM_DATA_S * g_pstMem;
@@ -276,7 +277,7 @@ U32 mon_handle_mem_warning()
             /* 构造告警消息并表明已产生告警 */
             GENERATE_WARNING_MSG(pstMsg,ulIndex,ulRet);
             /* 发邮件 */
-            ulRet = mon_send_email(1, "System Memory Warning", (S8 *)pstMsg->msg);
+            ulRet = mon_send_email(1, "System Memory Warning", (S8 *)pstMsg->msg, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
@@ -301,7 +302,7 @@ U32 mon_handle_mem_warning()
             /* 构造恢复告警并标明告警已恢复 */
             GENERATE_NORMAL_MSG(pstMsg,ulIndex,ulRet);
             /* 发邮件 */
-            ulRet = mon_send_email(1, "System memory Warning Recovery", (S8 *)pstMsg->msg);
+            ulRet = mon_send_email(1, "System memory Warning Recovery", (S8 *)pstMsg->msg, MON_WARNING_LEVEL_MAJOR, MON_WARNING_TYPE_MAIL);
             if (ulRet != DOS_SUCC)
             {
                 DOS_ASSERT(0);
