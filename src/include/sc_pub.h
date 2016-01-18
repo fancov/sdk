@@ -142,6 +142,7 @@ typedef enum tagCallResult
     CC_RST_BUTT
 }CC_CALL_RESULT_EN;
 
+U32 sc_esl_reloadxml();
 
 #ifdef __cplusplus
 }

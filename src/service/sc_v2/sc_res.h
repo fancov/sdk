@@ -420,6 +420,15 @@ typedef struct tagSCSrvCtrlFind{
     U32          ulCustomerID;       /* CUSTOMER ID */
 }SC_SRV_CTRL_FIND_ST;
 
+typedef enum tagSCSrvCtrlAttr
+{
+    SC_SRV_CTRL_ATTR_INVLID      = 0,
+
+    SC_SRV_CTRL_ATTR_TASK_MODE   = 1,
+
+    SC_SRV_CTRL_ATTR_BUTT
+}SC_SRV_CTRL_ATTR_EN;
+
 typedef struct tagSCSrvCtrl
 {
     U32          ulID;               /* 规则ID */
@@ -454,6 +463,32 @@ typedef enum tagSCNumberType
     SC_NUMBER_TYPE_DID,             /* 系统的did号码 */
 }SC_NUMBER_TYPE_EN;
 
+/* 定义主叫号码选择策略 */
+typedef enum tagCallerPolicy
+{
+    SC_CALLER_POLICY_IN_ORDER = 0,   /* 循环顺序选择策略 */
+    SC_CALLER_POLICY_RANDOM = 1,     /* 随机选择策略 */
+
+    SC_CALLER_POLICY_BUTT
+}SC_CALLER_POLICY_EN;
+
+/* 定义呼叫源类型 */
+typedef enum tagSrcCallerType
+{
+    SC_SRC_CALLER_TYPE_AGENT = 1,      /* 坐席 */
+    SC_SRC_CALLER_TYPE_AGENTGRP = 2,   /* 坐席组 */
+    SC_SRC_CALLER_TYPE_ALL = 10        /* 所有呼叫 */
+}SC_SRC_CALLER_TYPE_EN;
+
+/* 定义呼叫目标类型 */
+typedef enum tagDstCallerType
+{
+    SC_DST_CALLER_TYPE_CFG = 0,     /* 系统配置号码 */
+    SC_DST_CALLER_TYPE_DID,         /* did号码 */
+    SC_DST_CALLER_TYPE_CALLERGRP    /* 号码组 */
+}SC_DST_CALLER_TYPE_EN;
+
+
 typedef struct tagCallerCacheNode
 {
     U32   ulType;   /* 号码类型 */
@@ -464,10 +499,11 @@ typedef struct tagCallerCacheNode
     }stData;
 }SC_CALLER_CACHE_NODE_ST;
 
+U32 sc_int_hash_func(U32 ulVal, U32 ulHashSize);
 
 U32 sc_serv_ctrl_load(U32 ulIndex);
 U32 sc_number_lmt_load(U32 ulIndex);
-U32  sc_caller_setting_load(U32 ulIndex);
+U32 sc_caller_setting_load(U32 ulIndex);
 U32 sc_caller_relationship_load();
 U32 sc_caller_group_load(U32 ulIndex);
 U32 sc_caller_load(U32 ulIndex);
@@ -484,6 +520,34 @@ U32 sc_gateway_load(U32 ulIndex);
 U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee);
 U32 sc_route_get_trunks(U32 ulRouteID, U32 *paulTrunkList, U32 ulTrunkListSize);
 U32 sc_sip_account_get_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUserID, U32 ulLength);
+S32 sc_caller_setting_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);
+S32 sc_caller_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);
+S32 sc_caller_group_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);
+U32 sc_caller_setting_update_proc(U32 ulAction, U32 ulSettingID);
+U32 sc_caller_group_update_proc(U32 ulAction, U32 ulCallerGrpID);
+U32 sc_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
+U32 sc_sip_account_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID);
+U32 sc_route_update_proc(U32 ulAction, U32 ulRouteID);
+U32 sc_gateway_group_update_proc(U32 ulAction, U32 ulGwGroupID);
+U32 sc_did_update_proc(U32 ulAction, U32 ulDidID);
+U32 sc_black_list_update_proc(U32 ulAction, U32 ulBlackID);
+U32 sc_caller_update_proc(U32 ulAction, U32 ulCallerID);
+U32 sc_eix_dev_update_proc(U32 ulAction, U32 ulEixID);
+U32 sc_serv_ctrl_update_proc(U32 ulAction, U32 ulID);
+U32 sc_transform_update_proc(U32 ulAction, U32 ulNumTransID);
+U32 sc_customer_update_proc(U32 ulAction, U32 ulCustomerID);
+BOOL sc_number_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber);
+U32 sc_number_lmt_update_proc(U32 ulAction, U32 ulNumlmtID);
+
+
+S32 sc_task_load(U32 ulIndex);
+U32 sc_task_load_callee(SC_TASK_CB *pstTCB);
+U32 sc_task_mngt_load_task();
+U32 sc_task_save_status(U32 ulTaskID, U32 ulStatus, S8 *pszStatus);
+
+U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen);
+BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulAttrVal1,U32 ulAttr2, U32 ulAttrVal2);
+
 
 #endif /* __SC_RES_H__ */
 

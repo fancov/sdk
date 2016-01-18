@@ -27,32 +27,120 @@ DB_HANDLE_ST         *g_pstSCDBHandle = NULL;
 /* 是否已经初始化OK */
 BOOL                 g_blSCInitOK     = DOS_FALSE;
 
+U32          g_ulCPS                  = SC_MAX_CALL_PRE_SEC;
+U32          g_ulMaxConcurrency4Task  = SC_MAX_CALL / 3;
 
 /* define marcos */
 
 /* define enums */
+typedef enum tagSCSUBMod{
+    SC_MOD_DB,
+    SC_MOD_RES,
+    SC_MOD_ESL,
+    SC_MOD_EVENT,
+    SC_MOD_SU,
+    SC_MOD_BS,
+    SC_MOD_ACD,
+    SC_MOD_EXT_MNGT,
+    SC_MOD_CWQ,
+    SC_MOD_DIGIST,
+    SC_MOD_DATA_SYN,
+    SC_MOD_HTTP_API,
+    SC_MOD_PUBLISH,
+    SC_MOD_DB_WQ,
+    SC_MOD_TASK,
+
+    SC_MOD_BUTT,
+}SC_SUBMOD_EN;
 
 /* define structs */
+typedef struct tagSCModList{
+    U32   ulIndex;
+    S8    *pszName;
+    U32   ulDefaultLogLevel;
+    U32   (*fn_init)();
+    U32   (*fn_start)();
+    U32   (*fn_stop)();
+}SC_MOD_LIST_ST;
 
-/* global variables */
+U32 sc_init_db();
 
 
-/* declare functions */
 U32 sc_res_init();
 U32 sc_res_start();
 U32 sc_res_stop();
+
 U32 sc_esl_init();
 U32 sc_esl_start();
 U32 sc_esl_stop();
+
 U32 sc_event_init();
 U32 sc_event_start();
 U32 sc_event_stop();
+
 U32 sc_su_mngt_init();
 U32 sc_su_mngt_start();
 U32 sc_su_mngt_stop();
+
 U32 sc_bs_fsm_init();
 U32 sc_bs_fsm_start();
+U32 sc_bs_fsm_stop();
+
 U32 sc_acd_init();
+
+U32 sc_ext_mngt_init();
+U32 sc_ext_mngt_start();
+U32 sc_ext_mngt_stop();
+
+U32 sc_cwq_init();
+U32 sc_cwq_start();
+U32 sc_cwq_stop();
+
+U32 sc_log_digest_init();
+U32 sc_log_digest_start();
+U32 sc_log_digest_stop();
+
+U32 sc_data_syn_init();
+U32 sc_data_syn_start();
+U32 sc_data_syn_stop();
+
+U32 sc_httpd_init();
+U32 sc_httpd_start();
+U32 sc_httpd_stop();
+
+U32 sc_pub_init();
+U32 sc_pub_start();
+U32 sc_pub_stop();
+
+U32 sc_db_init();
+U32 sc_db_start();
+U32 sc_db_stop();
+
+U32 sc_task_mngt_init();
+U32 sc_task_mngt_start();
+U32 sc_task_mngt_stop();
+
+
+/* global variables */
+SC_MOD_LIST_ST  astSCModList[] = {
+    {SC_MOD_DB,         "db handle",          LOG_LEVEL_NOTIC, sc_init_db,           NULL,                   NULL},
+    {SC_MOD_DB_WQ,      "db write queue",     LOG_LEVEL_NOTIC, sc_db_init,           sc_db_start,            sc_db_stop},
+    {SC_MOD_DIGIST,     "digist log",         LOG_LEVEL_NOTIC, sc_log_digest_init,   sc_log_digest_start,    sc_log_digest_stop},
+    {SC_MOD_RES,        "resource mngt",      LOG_LEVEL_NOTIC, sc_res_init,          sc_res_start,           sc_res_stop},
+    {SC_MOD_ACD,        "agent mngt",         LOG_LEVEL_NOTIC, sc_acd_init,          NULL,                   NULL},
+    {SC_MOD_EVENT,      "core event proc",    LOG_LEVEL_NOTIC, sc_event_init,        sc_event_start,         sc_event_stop},
+    {SC_MOD_SU,         "esl event proc",     LOG_LEVEL_NOTIC, sc_su_mngt_init,      sc_su_mngt_start,       sc_su_mngt_stop},
+    {SC_MOD_BS,         "bs msg proc",        LOG_LEVEL_NOTIC, sc_bs_fsm_init,       sc_bs_fsm_start,        sc_su_mngt_stop},
+    {SC_MOD_EXT_MNGT,   "extension mngt",     LOG_LEVEL_NOTIC, sc_ext_mngt_init,     sc_ext_mngt_start,      sc_ext_mngt_stop},
+    {SC_MOD_CWQ,        "call waiting queue", LOG_LEVEL_NOTIC, sc_cwq_init,          sc_cwq_start,           sc_cwq_stop},
+    {SC_MOD_PUBLISH,    "http publish",       LOG_LEVEL_NOTIC, sc_pub_init,          sc_pub_start,           sc_pub_stop},
+    {SC_MOD_ESL,        "esl send&recv",      LOG_LEVEL_NOTIC, sc_esl_init,          sc_esl_start,           sc_esl_stop},
+    {SC_MOD_HTTP_API,   "http api",           LOG_LEVEL_NOTIC, sc_httpd_init,        sc_httpd_start,         sc_httpd_stop},
+    {SC_MOD_DATA_SYN,   "data syn",           LOG_LEVEL_NOTIC, sc_data_syn_init,     sc_data_syn_start,      sc_data_syn_stop},
+
+    {SC_MOD_TASK,       "task mngt",          LOG_LEVEL_NOTIC, sc_task_mngt_init,    sc_task_mngt_start,     sc_task_mngt_stop},
+};
+
 
 U32 sc_init_db()
 {
@@ -146,65 +234,45 @@ U32 sc_init_db()
 
 U32 sc_init()
 {
-    sc_log(LOG_LEVEL_INFO, "%s", "Start init SC.");
+    U32   ulIndex = 0;
+    U32   ulRet = DOS_SUCC;
 
-    if (sc_init_db() != DOS_SUCC)
+    sc_log(LOG_LEVEL_NOTIC, "Start init SC. %u", time(NULL));
+
+    for (ulIndex=0; ulIndex<sizeof(astSCModList)/sizeof(SC_MOD_LIST_ST); ulIndex++)
     {
-        DOS_ASSERT(0);
+        if (astSCModList[ulIndex].ulIndex >= SC_MOD_BUTT)
+        {
+            continue;
+        }
 
-        sc_log(LOG_LEVEL_ERROR, "%s", "Init DB Handle FAIL.");
-        return DOS_FAIL;
+        if (DOS_ADDR_INVALID(astSCModList[ulIndex].pszName))
+        {
+            continue;
+        }
+
+        sc_log(LOG_LEVEL_INFO, "Init %s mod.", astSCModList[ulIndex].pszName);
+
+        if (DOS_ADDR_VALID(astSCModList[ulIndex].fn_init))
+        {
+            ulRet = astSCModList[ulIndex].fn_init();
+        }
+
+        sc_log(LOG_LEVEL_INFO, "Init %s mod %s.", astSCModList[ulIndex].pszName, DOS_SUCC == ulRet ? "succ" : "FAIL");
+
+        if (ulRet != DOS_SUCC)
+        {
+            break;
+        }
     }
-    sc_log(LOG_LEVEL_INFO, "%s", "Init DB Handle Successfully.");
 
-    if (DOS_SUCC != sc_bs_fsm_init())
+    if (ulRet != DOS_SUCC)
     {
-        DOS_ASSERT(0);
-
-        sc_log(LOG_LEVEL_ERROR, "%s", "Init bs client FAIL.");
-        return DOS_FAIL;
+        sc_log(LOG_LEVEL_NOTIC, "Init SC FAIL. %u", time(NULL));
+        return DOS_SUCC;
     }
-    sc_log(LOG_LEVEL_INFO, "%s", "Init bs client Successfully.");
 
-
-    if (sc_acd_init() != DOS_SUCC)
-    {
-        sc_log(LOG_LEVEL_ERROR, "%s", "Init ACD FAIL.");
-        return DOS_FAIL;
-    }
-    sc_log(LOG_LEVEL_INFO, "%s", "Init ACD succ.");
-
-    if (sc_res_init() != DOS_SUCC)
-    {
-        sc_log(LOG_LEVEL_ERROR, "%s", "Init resource FAIL.");
-        return DOS_FAIL;
-    }
-    sc_log(LOG_LEVEL_INFO, "%s", "Init resource succ.");
-
-    if (sc_event_init() != DOS_SUCC)
-    {
-        sc_log(LOG_LEVEL_ERROR, "%s", "Init sc core fail.");
-        return DOS_FAIL;
-    }
-    sc_log(LOG_LEVEL_INFO, "%s", "Init sc core succ.");
-
-    if (sc_su_mngt_init() != DOS_SUCC)
-    {
-        sc_log(LOG_LEVEL_ERROR, "%s", "Init service unit FAIL.");
-        return DOS_FAIL;
-    }
-    sc_log(LOG_LEVEL_INFO, "%s", "Init service unit succ.");
-
-
-    if (sc_esl_init() != DOS_SUCC)
-    {
-        sc_log(LOG_LEVEL_ERROR, "%s", "Init esl client FAIL.");
-        return DOS_FAIL;
-    }
-    sc_log(LOG_LEVEL_INFO, "%s", "Init esl client suc.");
-
-
-    sc_log(LOG_LEVEL_INFO, "%s", "Start init SC finished.");
+    sc_log(LOG_LEVEL_NOTIC, "Init SC finished. %u", time(NULL));
 
     g_blSCInitOK = DOS_TRUE;
 
@@ -213,53 +281,49 @@ U32 sc_init()
 
 U32 sc_start()
 {
-    sc_log(LOG_LEVEL_INFO, "%s", "Start SC.");
+    U32   ulIndex = 0;
+    U32   ulRet = DOS_SUCC;
 
+    sc_log(LOG_LEVEL_NOTIC, "Start SC. %d", time(NULL));
 
-
-    if (DOS_SUCC != sc_bs_fsm_start())
+    for (ulIndex=0; ulIndex<sizeof(astSCModList)/sizeof(SC_MOD_LIST_ST); ulIndex++)
     {
-        sc_log(LOG_LEVEL_ERROR, "%s", "Start bs client FAIL");
-        return DOS_FAIL;
-    }
-    sc_log(LOG_LEVEL_INFO, "%s", "Start bs client Successfully.");
+        if (astSCModList[ulIndex].ulIndex >= SC_MOD_BUTT)
+        {
+            continue;
+        }
 
-    if (sc_res_start() != DOS_SUCC)
+        if (DOS_ADDR_INVALID(astSCModList[ulIndex].pszName))
+        {
+            continue;
+        }
+
+        sc_log(LOG_LEVEL_INFO, "satrt %s mod.", astSCModList[ulIndex].pszName);
+
+        if (DOS_ADDR_VALID(astSCModList[ulIndex].fn_start))
+        {
+            ulRet = astSCModList[ulIndex].fn_start();
+        }
+
+        sc_log(LOG_LEVEL_INFO, "start %s mod %s.", astSCModList[ulIndex].pszName, DOS_SUCC == ulRet ? "succ" : "FAIL");
+
+        if (ulRet != DOS_SUCC)
+        {
+            break;
+        }
+    }
+
+    if (ulRet != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "%s", "Start resource management FAIL.");
-        return DOS_FAIL;
+        sc_log(LOG_LEVEL_NOTIC, "start SC FAIL. %u", time(NULL));
+        return DOS_SUCC;
     }
-    sc_log(LOG_LEVEL_INFO, "%s", "Start resource management succ.");
 
-    if (sc_event_start() != DOS_SUCC)
-    {
-        sc_log(LOG_LEVEL_ERROR, "%s", "start sc core fail.");
-        return DOS_FAIL;
-    }
-    sc_log(LOG_LEVEL_INFO, "%s", "start sc core succ.");
-
-    if (sc_su_mngt_start() != DOS_SUCC)
-    {
-        sc_log(LOG_LEVEL_ERROR, "%s", "start service unit FAIL.");
-        return DOS_FAIL;
-    }
-    sc_log(LOG_LEVEL_INFO, "%s", "start service unit succ.");
-
-
-    if (sc_esl_start() != DOS_SUCC)
-    {
-        sc_log(LOG_LEVEL_ERROR, "%s", "start esl client FAIL.");
-        return DOS_FAIL;
-    }
-    sc_log(LOG_LEVEL_INFO, "%s", "start esl client suc.");
-
-
-    sc_log(LOG_LEVEL_INFO, "%s", "Start SC finished.");
+    sc_log(LOG_LEVEL_NOTIC, "start SC finished. %u", time(NULL));
 
     g_blSCInitOK = DOS_TRUE;
 
     return DOS_SUCC;
-
 }
 
 U32 mod_dipcc_sc_shutdown()

@@ -46,6 +46,7 @@ U32 sc_bgjob_hash_delete(S8 *pszUUID);
 
 U32 sc_get_snd_list(U32 *pulSndIndList, U32 ulSndCnt, S8 *pszBuffer, U32 ulBuffLen, S8 *pszSep);
 
+U32 sc_esl_update_gateway(U32 ulAction, U32 ulID);
 
 #ifdef __cplusplus
 }

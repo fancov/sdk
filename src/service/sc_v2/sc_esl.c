@@ -17,8 +17,11 @@ extern "C" {
 #include <dos.h>
 #include <esl.h>
 #include "sc_def.h"
-#include "sc_debug.h"
 #include "sc_su.h"
+#include "sc_debug.h"
+#include "sc_publish.h"
+#include "sc_http_api.h"
+
 
 #define SC_ESL_EVENT_LIST \
             "BACKGROUND_JOB " \
@@ -62,6 +65,54 @@ esl_handle_t          g_stESLSendHandle;
 
 /** 是否要求退出 */
 BOOL                  g_blESLEventRunning = DOS_FALSE;
+
+
+/**
+ * 重新加载所有的xml配置文件
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_esl_reloadxml()
+{
+    sc_esl_execute_cmd("api reloadxml\r\n", NULL, 0);
+
+    return DOS_SUCC;
+}
+
+/**
+ * 重新加载所有的xml配置文件
+ *
+ * @param 更新数据的请求源数据
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_esl_update_gateway(U32 ulAction, U32 ulID)
+{
+    S8 szBuff[100] = { 0, };
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_GATEWAY_ADD:
+            sc_esl_execute_cmd("bgapi sofia profile external rescan", NULL, 0);
+            break;
+
+        case SC_API_CMD_ACTION_GATEWAY_DELETE:
+            dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", ulID);
+            sc_esl_execute_cmd(szBuff, NULL, 0);
+            break;
+
+        case SC_API_CMD_ACTION_GATEWAY_UPDATE:
+        case SC_API_CMD_ACTION_GATEWAY_SYNC:
+            dos_snprintf(szBuff, sizeof(szBuff), "bgapi sofia profile external killgw %u", ulID);
+            sc_esl_execute_cmd(szBuff, NULL, 0);
+            sc_esl_execute_cmd("bgapi sofia profile external rescan", NULL, 0);
+            break;
+    }
+
+    return DOS_SUCC;
+}
+
+
 
 /**
  * 发送ESL命令 @a pszApp，参数为 @a pszArg，对象为 @a pszUUID

@@ -20,6 +20,7 @@ extern "C" {
 #include "sc_pub.h"
 #include "bs_pub.h"
 #include "sc_hint.h"
+#include "sc_res.h"
 
 
 /** 管理background job的HASH表 */
@@ -61,6 +62,13 @@ extern pthread_mutex_t g_mutexEventQueue;
 
 /** 业务子层上报时间消息队列条件变量 */
 extern pthread_cond_t  g_condEventQueue;
+
+/** 任务列表 refer to struct tagTaskCB*/
+extern SC_TASK_CB           *g_pstTaskList;
+extern pthread_mutex_t      g_mutexTaskList;
+
+extern U32          g_ulCPS;
+extern U32          g_ulMaxConcurrency4Task;
 
 
 /**
@@ -1133,6 +1141,352 @@ U32 sc_scb_set_service(SC_SRV_CB *pstSCB, U32 ulService)
     return DOS_FAIL;
 }
 
+U32 sc_tcb_init(SC_TASK_CB *pstTCB)
+{
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstTCB->ulAllocTime = 0;
+    pstTCB->ucTaskStatus = SC_TASK_BUTT;
+    pstTCB->ucMode = SC_TASK_MODE_BUTT;
+    pstTCB->ucPriority = SC_TASK_PRI_NORMAL;
+    pstTCB->bTraceON = 0;
+    pstTCB->bTraceCallON = 0;
+    pstTCB->ulLastCalleeIndex = 0;
+    pstTCB->bThreadRunning = DOS_FALSE;
+
+    pstTCB->ulTaskID = U32_BUTT;
+    pstTCB->ulCustomID = U32_BUTT;
+    pstTCB->ulCurrentConcurrency = 0;
+    pstTCB->ulMaxConcurrency = SC_MAX_CALL;
+    pstTCB->usSiteCount = 0;
+    pstTCB->ulAgentQueueID = U32_BUTT;
+    pstTCB->ucAudioPlayCnt = 0;
+    pstTCB->ulCalleeCount = 0;
+    pstTCB->usCallerCount = 0;
+    pstTCB->ulCalledCount = 0;
+    pstTCB->ulCalledCountLast = 0;
+    pstTCB->ulCallerGrpID = 0;
+    pstTCB->ulCallRate = 0;
+    pstTCB->ulCalleeCountTotal = 0;
+
+    dos_list_init(&pstTCB->stCalleeNumQuery);    /* TODO: 释放所有节点 */
+    pstTCB->szAudioFileLen[0] = '\0';
+    dos_memzero(pstTCB->astPeriod, sizeof(pstTCB->astPeriod));
+
+    /* 统计相关 */
+    pstTCB->ulTotalCall = 0;
+    pstTCB->ulCallFailed = 0;
+    pstTCB->ulCallConnected = 0;
+
+    pstTCB->pstTmrHandle = NULL;
+
+    return DOS_SUCC;
+}
+
+SC_TASK_CB *sc_tcb_alloc()
+{
+    static U32 ulIndex = 0;
+    U32 ulLastIndex;
+    SC_TASK_CB  *pstTCB = NULL;
+
+    pthread_mutex_lock(&g_mutexTaskList);
+
+    ulLastIndex = ulIndex;
+
+    for (; ulIndex < SC_MAX_TASK_NUM; ulIndex++)
+    {
+        if (!g_pstTaskList[ulIndex].ucValid)
+        {
+            pstTCB = &g_pstTaskList[ulIndex];
+            break;
+        }
+    }
+
+    if (!pstTCB)
+    {
+        for (ulIndex = 0; ulIndex < ulLastIndex; ulIndex++)
+        {
+            if (!g_pstTaskList[ulIndex].ucValid)
+            {
+                pstTCB = &g_pstTaskList[ulIndex];
+                break;
+            }
+        }
+    }
+
+    if (pstTCB)
+    {
+        pthread_mutex_init(&pstTCB->mutexTaskList, NULL);
+
+        pthread_mutex_lock(&pstTCB->mutexTaskList);
+        sc_tcb_init(pstTCB);
+        pstTCB->ucValid = 1;
+        pstTCB->ulAllocTime = time(0);
+
+        sc_trace_task(pstTCB, "Alloc TCB %d.", pstTCB->usTCBNo);
+
+        return pstTCB;
+    }
+
+    pthread_mutex_unlock(&g_mutexTaskList);
+    return NULL;
+
+}
+
+VOID sc_tcb_free(SC_TASK_CB *pstTCB)
+{
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    sc_trace_task(pstTCB, "Free TCB. %d", pstTCB->usTCBNo);
+
+    pthread_mutex_lock(&g_mutexTaskList);
+
+    sc_tcb_init(pstTCB);
+    pstTCB->ucValid = 0;
+
+    pthread_mutex_unlock(&g_mutexTaskList);
+    return;
+}
+
+
+SC_TASK_CB *sc_tcb_get(U32 ulTCBNo)
+{
+    if (ulTCBNo >= SC_MAX_TASK_NUM)
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    return &g_pstTaskList[ulTCBNo];
+}
+
+SC_TASK_CB *sc_tcb_find_by_taskid(U32 ulTaskID)
+{
+    U32 ulIndex;
+
+    for (ulIndex = 0; ulIndex < SC_MAX_TASK_NUM; ulIndex++)
+    {
+        if (g_pstTaskList[ulIndex].ucValid
+            && g_pstTaskList[ulIndex].ulTaskID == ulTaskID)
+        {
+            return &g_pstTaskList[ulIndex];
+        }
+    }
+
+    return NULL;
+}
+
+U32 sc_task_check_can_call(SC_TASK_CB *pstTCB)
+{
+    U32 ulIdleAgent    = 0;
+    U32 ulBusyAgent    = 0;
+    U32 ulTotalAgent   = 0;
+    S32 lTotalCalls    = 0;
+    S32 lNeedCalls     = 0;
+
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+
+    if (SC_TASK_MODE_AUDIO_ONLY == pstTCB->ucMode)
+    {
+        if (pstTCB->ulCurrentConcurrency >= pstTCB->ulMaxConcurrency)
+        {
+            return DOS_FALSE;
+        }
+    }
+    else
+    {
+        sc_acd_agent_stat_by_grpid(pstTCB->ulAgentQueueID, &ulTotalAgent, NULL, &ulIdleAgent, &ulBusyAgent);
+        pstTCB->usSiteCount = ulTotalAgent;
+        pstTCB->ulMaxConcurrency = ulTotalAgent * pstTCB->ulCallRate;
+
+        /*
+          * 大意:
+          *    ulIdleAgent * pstTCB->ulCallRate: 需要为空闲坐席发起的呼叫数
+          *    pstTCB->ulCurrentConcurrency - ulBusyAgent: 当前系统已经为空闲坐席发起呼叫数
+          */
+        lTotalCalls = ulIdleAgent * pstTCB->ulCallRate;
+        lNeedCalls  = pstTCB->ulCurrentConcurrency - ulBusyAgent;
+
+        if ((S32)pstTCB->ulCurrentConcurrency >= (S32)pstTCB->ulMaxConcurrency)
+        {
+            return DOS_FALSE;
+        }
+
+        if (lNeedCalls >= lTotalCalls)
+        {
+            return DOS_FALSE;
+        }
+
+        if (0 == ulIdleAgent)
+        {
+            return DOS_FALSE;
+        }
+    }
+
+    return DOS_TRUE;
+}
+
+U32 sc_task_check_can_call_by_time(SC_TASK_CB *pstTCB)
+{
+    time_t     now;
+    struct tm  *timenow;
+    U32 ulWeek, ulHour, ulMinute, ulSecond, ulIndex;
+    U32 ulStartTime, ulEndTime, ulCurrentTime;
+
+
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+
+    time(&now);
+    timenow = localtime(&now);
+
+    ulWeek = timenow->tm_wday;
+    ulHour = timenow->tm_hour;
+    ulMinute = timenow->tm_min;
+    ulSecond = timenow->tm_sec;
+
+
+    for (ulIndex=0; ulIndex<SC_MAX_PERIOD_NUM; ulIndex++)
+    {
+        if (!pstTCB->astPeriod[ulIndex].ucValid)
+        {
+            continue;
+        }
+
+        if (!((pstTCB->astPeriod[ulIndex].ucWeekMask >> ulWeek) & 0x01))
+        {
+            continue;
+        }
+
+        ulStartTime = pstTCB->astPeriod[ulIndex].ucHourBegin * 60 * 60 + pstTCB->astPeriod[ulIndex].ucMinuteBegin * 60 + pstTCB->astPeriod[ulIndex].ucSecondBegin;
+        ulEndTime = pstTCB->astPeriod[ulIndex].ucHourEnd * 60 * 60 + pstTCB->astPeriod[ulIndex].ucMinuteEnd * 60 + pstTCB->astPeriod[ulIndex].ucSecondEnd;
+        ulCurrentTime = ulHour * 60 * 60 + ulMinute * 60 + ulSecond;
+
+        if (ulCurrentTime >= ulStartTime && ulCurrentTime < ulEndTime)
+        {
+            return DOS_TRUE;
+        }
+    }
+
+    return DOS_FALSE;
+}
+
+U32 sc_task_check_can_call_by_status(SC_TASK_CB *pstTCB)
+{
+    U32 ulIdelCPUConfig, ulIdelCPU;
+
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+
+    ulIdelCPU = dos_get_cpu_idel_percentage();
+    if (config_get_min_iedl_cpu(&ulIdelCPUConfig) != DOS_SUCC)
+    {
+        ulIdelCPUConfig = DOS_MIN_IDEL_CPU * 100;
+    }
+    else
+    {
+        ulIdelCPUConfig = ulIdelCPUConfig * 100;
+    }
+
+    /* 系统整体并发量控制 */
+    if (pstTCB->ulCurrentConcurrency >= g_ulMaxConcurrency4Task)
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+
+#if 0
+    if (g_pstTaskMngtInfo->stStat.ulCurrentSessions >= SC_MAX_CALL)
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+#endif
+
+    /* CPU占用控制 */
+    if (ulIdelCPU < ulIdelCPUConfig)
+    {
+        dos_printf("Current Idel CPU: %u, Config Idel CPU: %u", ulIdelCPU , ulIdelCPUConfig);
+        return DOS_FALSE;
+    }
+
+    return DOS_TRUE;
+}
+
+VOID sc_task_set_owner(SC_TASK_CB *pstTCB, U32 ulTaskID, U32 ulCustomID)
+{
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+
+        return;
+    }
+
+    if (0 == ulTaskID || U32_BUTT == ulTaskID)
+    {
+        DOS_ASSERT(0);
+
+        return;
+    }
+
+    if (0 == ulCustomID || U32_BUTT == ulCustomID)
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pthread_mutex_lock(&pstTCB->mutexTaskList);
+    pstTCB->ulTaskID = ulTaskID;
+    pstTCB->ulCustomID = ulCustomID;
+    pthread_mutex_unlock(&pstTCB->mutexTaskList);
+}
+
+S32 sc_task_and_callee_load(U32 ulIndex)
+{
+    SC_TASK_CB *pstTCB = NULL;
+    S32 lRet = U32_BUTT;
+
+    if (sc_task_load(ulIndex) != DOS_SUCC)
+    {
+        return DOS_FAIL;
+    }
+
+    pstTCB = sc_tcb_find_by_taskid(ulIndex);
+    if (!pstTCB)
+    {
+        sc_log(LOG_LEVEL_ERROR, "SC Find task By TaskID FAIL.(TaskID:%u) ", ulIndex);
+        return DOS_FAIL;
+    }
+
+    /* 维护被叫号码数据 */
+    lRet = sc_task_load_callee(pstTCB);
+    if (DOS_SUCC != lRet)
+    {
+        sc_log(LOG_LEVEL_ERROR, "SC Task Load Callee FAIL.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
+        return DOS_FAIL;
+    }
+    sc_log(LOG_LEVEL_DEBUG, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
+
+    return DOS_SUCC;
+}
 
 /**
  * 向业务子层发送命令
@@ -2065,7 +2419,7 @@ U32 sc_leg_get_destination(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
         }
 
         /*  测试被叫是否是分机号 */
-        if (sc_sip_extension_check(pstLegCB->stCall.stNumInfo.szOriginalCallee, pstSCB->ulCustomerID))
+        if (sc_sip_account_extension_check(pstLegCB->stCall.stNumInfo.szOriginalCallee, pstSCB->ulCustomerID))
         {
             return SC_DIRECTION_SIP;
         }

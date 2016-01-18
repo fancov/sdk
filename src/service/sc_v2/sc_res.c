@@ -15,9 +15,10 @@ extern "C" {
 
 #include <dos.h>
 #include "sc_def.h"
+#include "sc_db.h"
 #include "sc_res.h"
 #include "sc_debug.h"
-
+#include "sc_http_api.h"
 
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
@@ -240,6 +241,59 @@ U32 sc_sip_account_get_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUse
     return DOS_FAIL;
 }
 
+/**
+ * 功能: 获取ID为ulSIPUserID SIP User ID，并将SIP USER ID Copy到缓存pszUserID中
+ * 参数:
+ *      U32 ulSIPUserID : SIP User ID的所以
+ *      S8 *pszUserID   : 账户ID缓存
+ *      U32 ulLength    : 缓存长度
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_sip_account_get_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength)
+{
+    SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
+    HASH_NODE_S        *pstHashNode   = NULL;
+    U32                ulHashIndex    = 0;
+
+    if (DOS_ADDR_INVALID(pszUserID)
+        || ulLength <= 0)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexHashSIPUserID);
+    HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashSIPUserID, ulHashIndex, pstHashNode, HASH_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                continue;
+            }
+
+            pstUserIDNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstUserIDNode))
+            {
+                continue;
+            }
+
+            if (ulSipID == pstUserIDNode->ulSIPID)
+            {
+                dos_strncpy(pszUserID, pstUserIDNode->szUserID, ulLength);
+                pszUserID[ulLength - 1] = '\0';
+                pthread_mutex_unlock(&g_mutexHashSIPUserID);
+                return DOS_SUCC;
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_mutexHashSIPUserID);
+    return DOS_FAIL;
+
+}
+
+
 
 /* 删除SIP账户 */
 U32 sc_sip_account_delete(S8 * pszSipID)
@@ -430,6 +484,58 @@ U32 sc_sip_account_load(U32 ulIndex)
     return DOS_SUCC;
 }
 
+U32 sc_sip_account_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
+{
+    U32  ulRet = 0;
+    S8   szUserID[32] = {0, };
+
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch(ulAction)
+    {
+        case SC_API_CMD_ACTION_SIP_ADD:
+        case SC_API_CMD_ACTION_SIP_UPDATE:
+        {
+            ulRet = sc_sip_account_load(ulSipID);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            break;
+        }
+        case SC_API_CMD_ACTION_SIP_DELETE:
+        {
+            ulRet = sc_sip_account_get_by_id(ulSipID, szUserID, sizeof(szUserID));
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+
+            ulRet = sc_sip_account_delete(szUserID);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+
+            break;
+        }
+        default:
+            break;
+    }
+
+    //sc_send_sip_update_req(ulSipID, ulAction);
+
+    return DOS_SUCC;
+}
+
+
 
 /**
  * 检查pszNum所执行的分机号，是否输入编号为ulCustomerID的客户
@@ -439,7 +545,7 @@ U32 sc_sip_account_load(U32 ulIndex)
  *
  * @return 成功返回DOS_TRUE，否则返回DOS_FALSE
  */
-BOOL sc_sip_extension_check(S8 *pszNum, U32 ulCustomerID)
+BOOL sc_sip_account_extension_check(S8 *pszNum, U32 ulCustomerID)
 {
     SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
     HASH_NODE_S        *pstHashNode   = NULL;
@@ -480,6 +586,37 @@ BOOL sc_sip_extension_check(S8 *pszNum, U32 ulCustomerID)
 
     return DOS_FALSE;
 }
+
+U32 sc_sip_account_update_info2db(U32 ulPublicIP, U32 ulPrivateIP, SC_SIP_STATUS_TYPE_EN enStatus, U32 ulSipID)
+{
+    S8                  szSQL[512]  = { 0 };
+    SC_DB_MSG_TAG_ST    *pstMsg     = NULL;
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_sip SET public_net=%u, private_net=%u, register=%d WHERE id=%u", ulPublicIP, ulPrivateIP, enStatus, ulSipID);
+
+    pstMsg = (SC_DB_MSG_TAG_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_TAG_ST));
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+    pstMsg->ulMsgType = SC_MSG_SAVE_SIP_IPADDR;
+    pstMsg->szData = dos_dmem_alloc(dos_strlen(szSQL) + 1);
+    if (DOS_ADDR_INVALID(pstMsg->szData))
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstMsg->szData);
+
+        return DOS_FAIL;
+    }
+
+    dos_strcpy(pstMsg->szData, szSQL);
+
+    return sc_send_msg2db(pstMsg);
+}
+
+
 
 
 /**
@@ -825,6 +962,39 @@ U32 sc_did_get_custom(S8 *pszNum)
     return ulCustomerID;
 }
 
+U32 sc_did_update_proc(U32 ulAction, U32 ulDidID)
+{
+    U32 ulRet = U32_BUTT;
+
+    if (ulAction > SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch(ulAction)
+    {
+        case SC_API_CMD_ACTION_DID_ADD:
+        case SC_API_CMD_ACTION_DID_UPDATE:
+            sc_did_load(ulDidID);
+            break;
+        case SC_API_CMD_ACTION_DID_DELETE:
+            {
+                ulRet = sc_did_delete(ulDidID);
+                if (ulRet != DOS_SUCC)
+                {
+                   DOS_ASSERT(0);
+                   return DOS_FAIL;
+                }
+            }
+            break;
+        default:
+            break;
+    }
+    return DOS_SUCC;
+}
+
+
 
 VOID sc_customer_init(SC_CUSTOMER_NODE_ST *pstCustomer)
 {
@@ -1051,6 +1221,31 @@ U32 sc_customer_get_callout_group(U32 ulCustomerID, U32 *pusCallOutGroup)
     return DOS_FAIL;
 }
 
+U32 sc_customer_update_proc(U32 ulAction, U32 ulCustomerID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_ADD:
+        case SC_API_CMD_ACTION_CALLER_UPDATE:
+            sc_customer_load(ulCustomerID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_DELETE:
+            sc_customer_delete(ulCustomerID);
+            break;
+        default:
+            break;
+    }
+    sc_log(LOG_LEVEL_DEBUG, "Update customer SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCustomerID);
+
+    return DOS_SUCC;
+}
+
 
 /**
  * 函数: VOID sc_ep_gw_init(SC_GW_NODE_ST *pstGW)
@@ -1273,6 +1468,34 @@ U32 sc_gateway_delete(U32 ulGatewayID)
     return DOS_SUCC;
 }
 
+U32 sc_gateway_update_status2db(U32 ulGateWayID, SC_TRUNK_STATE_TYPE_EN enTrunkState)
+{
+    S8                  szSQL[512]  = { 0 };
+    SC_DB_MSG_TAG_ST    *pstMsg     = NULL;
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_gateway SET register_status=%d WHERE id=%u", enTrunkState, ulGateWayID);
+
+    pstMsg = (SC_DB_MSG_TAG_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_TAG_ST));
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+    pstMsg->ulMsgType = SC_MSG_SAVE_TRUNK_STATUS;
+    pstMsg->szData = dos_dmem_alloc(dos_strlen(szSQL) + 1);
+    if (DOS_ADDR_INVALID(pstMsg->szData))
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstMsg->szData);
+
+        return DOS_FAIL;
+    }
+
+    dos_strcpy(pstMsg->szData, szSQL);
+
+    return sc_send_msg2db(pstMsg);
+}
 
 /**
  * 加载网关数据
@@ -1315,6 +1538,123 @@ U32 sc_gateway_load(U32 ulIndex)
     }
 #endif
     sc_log(LOG_LEVEL_DEBUG, "Load gateway SUCC.(ID:%u)", ulIndex);
+
+    return DOS_SUCC;
+}
+
+/**
+ * 加载路由网关组关系数据
+ *
+ * @param VOID *pArg: 参数
+ * @param S32 lCount: 列数量
+ * @param S8 **aszValues: 值裂变
+ * @param S8 **aszNames: 字段名列表
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+S32 sc_gateway_relationship_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    SC_GW_GRP_NODE_ST    *pstGWGrp      = NULL;
+    DLL_NODE_S           *pstListNode   = NULL;
+    HASH_NODE_S          *pstHashNode   = NULL;
+    U32                  ulGatewayID    = U32_BUTT;
+    U32                  ulHashIndex    = U32_BUTT;
+    S32                  lIndex         = 0;
+    BOOL                 blProcessOK    = DOS_TRUE;
+
+    if (DOS_ADDR_INVALID(pArg)
+        || lCount <= 0
+        || DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    for (lIndex = 0; lIndex < lCount; lIndex++)
+    {
+        if (DOS_ADDR_INVALID(aszNames[lIndex])
+            || DOS_ADDR_INVALID(aszValues[lIndex]))
+        {
+            break;
+        }
+
+        if (0 == dos_strncmp(aszNames[lIndex], "gateway_id", dos_strlen("gateway_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulGatewayID) < 0)
+            {
+                blProcessOK  = DOS_FALSE;
+                break;
+            }
+        }
+    }
+
+    if (!blProcessOK
+        || U32_BUTT == ulGatewayID)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_int_hash_func(ulGatewayID, SC_GW_HASH_SIZE);
+    pstHashNode = hash_find_node(g_pstHashGW, ulHashIndex, &ulGatewayID, sc_gateway_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstListNode = dos_dmem_alloc(sizeof(DLL_NODE_S));
+    if (DOS_ADDR_INVALID(pstListNode))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    DLL_Init_Node(pstListNode);
+    pstListNode->pHandle = pstHashNode->pHandle;
+
+    pstGWGrp = (SC_GW_GRP_NODE_ST *)pArg;
+
+    pthread_mutex_lock(&pstGWGrp->mutexGWList);
+    DLL_Add(&pstGWGrp->stGWList, pstListNode);
+    pthread_mutex_unlock(&pstGWGrp->mutexGWList);
+
+    sc_log(LOG_LEVEL_DEBUG, "Gateway %u will be added into group %u.", ulGatewayID, pstGWGrp->ulGWGrpID);
+
+    return DOS_FAIL;
+}
+
+/**
+ * 加载路由网关组关系数据
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_gateway_relationship_load()
+{
+    SC_GW_GRP_NODE_ST    *pstGWGrp      = NULL;
+    HASH_NODE_S          *pstHashNode   = NULL;
+    U32                  ulHashIndex = 0;
+    S8 szSQL[1024] = {0, };
+
+    HASH_Scan_Table(g_pstHashGWGrp, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashGWGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            pstGWGrp = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstGWGrp))
+            {
+                DOS_ASSERT(0);
+                continue;
+            }
+
+            dos_snprintf(szSQL, sizeof(szSQL), "SELECT gateway_id FROM tbl_gateway_assign WHERE gateway_grp_id=%d;", pstGWGrp->ulGWGrpID);
+
+            db_query(g_pstSCDBHandle, szSQL, sc_gateway_relationship_load_cb, (VOID *)pstGWGrp, NULL);
+        }
+    }
 
     return DOS_SUCC;
 }
@@ -1524,123 +1864,171 @@ U32 sc_gateway_group_delete(U32 ulGwGroupID)
     return DOS_SUCC;
 }
 
-
-/**
- * 加载路由网关组关系数据
- *
- * @param VOID *pArg: 参数
- * @param S32 lCount: 列数量
- * @param S8 **aszValues: 值裂变
- * @param S8 **aszNames: 字段名列表
- *
- * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
- */
-S32 sc_gateway_relationship_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+U32 sc_gateway_group_refresh(U32 ulIndex)
 {
-    SC_GW_GRP_NODE_ST    *pstGWGrp      = NULL;
-    DLL_NODE_S           *pstListNode   = NULL;
+    S8 szSQL[1024];
+    U32 ulHashIndex;
+    SC_GW_GRP_NODE_ST    *pstGWGrpNode  = NULL;
+    SC_GW_NODE_ST        *pstGWNode = NULL;
     HASH_NODE_S          *pstHashNode   = NULL;
-    U32                  ulGatewayID    = U32_BUTT;
-    U32                  ulHashIndex    = U32_BUTT;
-    S32                  lIndex         = 0;
-    BOOL                 blProcessOK    = DOS_TRUE;
+    DLL_NODE_S           *pstDLLNode    = NULL;
 
-    if (DOS_ADDR_INVALID(pArg)
-        || lCount <= 0
-        || DOS_ADDR_INVALID(aszValues)
-        || DOS_ADDR_INVALID(aszNames))
+    if (SC_INVALID_INDEX == ulIndex || U32_BUTT == ulIndex)
     {
         DOS_ASSERT(0);
-
         return DOS_FAIL;
     }
 
-    for (lIndex = 0; lIndex < lCount; lIndex++)
+    ulHashIndex = sc_int_hash_func(ulIndex, SC_CALLER_GRP_HASH_SIZE);
+    pstHashNode = hash_find_node(g_pstHashGWGrp, ulHashIndex, &ulIndex, sc_gateway_group_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode) || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        if (DOS_ADDR_INVALID(aszNames[lIndex])
-            || DOS_ADDR_INVALID(aszValues[lIndex]))
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstGWGrpNode = pstHashNode->pHandle;
+    pthread_mutex_lock(&pstGWGrpNode->mutexGWList);
+    while (1)
+    {
+        if (DLL_Count(&pstGWGrpNode->stGWList) == 0)
         {
             break;
         }
 
-        if (0 == dos_strncmp(aszNames[lIndex], "gateway_id", dos_strlen("gateway_id")))
+        pstDLLNode = dll_fetch(&pstGWGrpNode->stGWList);
+        if (DOS_ADDR_INVALID(pstDLLNode))
         {
-            if (dos_atoul(aszValues[lIndex], &ulGatewayID) < 0)
-            {
-                blProcessOK  = DOS_FALSE;
-                break;
-            }
+            DOS_ASSERT(0);
+            break;
         }
+        pstGWNode = (SC_GW_NODE_ST *)pstDLLNode->pHandle;
+        sc_log(LOG_LEVEL_DEBUG, "Gateway %u will be removed from Group %u", pstGWNode->ulGWID, ulIndex);
+
+        /* 此处不能释放网关数据，只需释放链表结点即可，因为一个网关可以属于多个网关组，此处删除，容易产生double free信号 */
+        if (DOS_ADDR_VALID(pstDLLNode->pHandle))
+        {
+            /*dos_dmem_free(pstDLLNode->pHandle);*/
+            pstDLLNode->pHandle = NULL;
+        }
+
+        dos_dmem_free(pstDLLNode);
+        pstDLLNode = NULL;
     }
+    pthread_mutex_unlock(&pstGWGrpNode->mutexGWList);
 
-    if (!blProcessOK
-        || U32_BUTT == ulGatewayID)
-    {
-        DOS_ASSERT(0);
+    dos_snprintf(szSQL, sizeof(szSQL)
+                        , "SELECT tbl_gateway_assign.gateway_id FROM tbl_gateway_assign WHERE tbl_gateway_assign.gateway_grp_id = %u;"
+                        , ulIndex);
 
-        return DOS_FAIL;
-    }
-
-    ulHashIndex = sc_int_hash_func(ulGatewayID, SC_GW_HASH_SIZE);
-    pstHashNode = hash_find_node(g_pstHashGW, ulHashIndex, &ulGatewayID, sc_gateway_hash_find);
-    if (DOS_ADDR_INVALID(pstHashNode)
-        || DOS_ADDR_INVALID(pstHashNode->pHandle))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstListNode = dos_dmem_alloc(sizeof(DLL_NODE_S));
-    if (DOS_ADDR_INVALID(pstListNode))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-    DLL_Init_Node(pstListNode);
-    pstListNode->pHandle = pstHashNode->pHandle;
-
-    pstGWGrp = (SC_GW_GRP_NODE_ST *)pArg;
-
-    pthread_mutex_lock(&pstGWGrp->mutexGWList);
-    DLL_Add(&pstGWGrp->stGWList, pstListNode);
-    pthread_mutex_unlock(&pstGWGrp->mutexGWList);
-
-    sc_log(LOG_LEVEL_DEBUG, "Gateway %u will be added into group %u.", ulGatewayID, pstGWGrp->ulGWGrpID);
-
-    return DOS_FAIL;
+    return db_query(g_pstSCDBHandle, szSQL, sc_gateway_relationship_load_cb, pstGWGrpNode, NULL);
 }
 
-/**
- * 加载路由网关组关系数据
- *
- * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
- */
-U32 sc_gateway_relationship_load()
-{
-    SC_GW_GRP_NODE_ST    *pstGWGrp      = NULL;
-    HASH_NODE_S          *pstHashNode   = NULL;
-    U32                  ulHashIndex = 0;
-    S8 szSQL[1024] = {0, };
 
-    HASH_Scan_Table(g_pstHashGWGrp, ulHashIndex)
+U32 sc_gateway_group_update_proc(U32 ulAction, U32 ulGwGroupID)
+{
+    U32  ulRet = U32_BUTT;
+
+    if (ulAction > SC_API_CMD_ACTION_BUTT)
     {
-        HASH_Scan_Bucket(g_pstHashGWGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
-        {
-            pstGWGrp = pstHashNode->pHandle;
-            if (DOS_ADDR_INVALID(pstGWGrp))
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch(ulAction)
+    {
+        case SC_API_CMD_ACTION_GW_GROUP_ADD:
+            ulRet = sc_gateway_group_load(ulGwGroupID);
+            if (DOS_SUCC != ulRet)
             {
                 DOS_ASSERT(0);
-                continue;
+                break;
+            }
+            /* 这里没有break */
+
+        case SC_API_CMD_ACTION_GW_GROUP_UPDATE:
+            ulRet = sc_gateway_group_refresh(ulGwGroupID);
+            break;
+
+        case SC_API_CMD_ACTION_GW_GROUP_DELETE:
+            ulRet = sc_gateway_group_delete(ulGwGroupID);
+            break;
+        default:
+            break;
+    }
+
+    sc_log(LOG_LEVEL_INFO, "Edit gw group Finished. ID: %u Action:%u, Result: %u", ulGwGroupID, ulAction, ulRet);
+
+    return ulRet;
+}
+
+
+/**
+ * 函数名:S32 sc_update_gateway(U32 ulID)
+ * 参数:  U32 ulID  网关ID
+ * 功能:  强制更新网关，根据id或者表名
+ * 返回:  更新成功则返回DOS_SUCC，否则返回DOS_FAIL;
+ **/
+S32 sc_gateway_update(U32 ulID)
+{
+    return DOS_SUCC;
+}
+
+
+U32 sc_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
+{
+    U32   ulRet = 0;
+
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch(ulAction)
+    {
+        case SC_API_CMD_ACTION_GATEWAY_ADD:
+        case SC_API_CMD_ACTION_GATEWAY_UPDATE:
+        {
+            ulRet = sc_gateway_load(ulGatewayID);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
             }
 
-            dos_snprintf(szSQL, sizeof(szSQL), "SELECT gateway_id FROM tbl_gateway_assign WHERE gateway_grp_id=%d;", pstGWGrp->ulGWGrpID);
-
-            db_query(g_pstSCDBHandle, szSQL, sc_gateway_relationship_load_cb, (VOID *)pstGWGrp, NULL);
+            break;
         }
+
+        case SC_API_CMD_ACTION_GATEWAY_DELETE:
+        {
+            ulRet = sc_gateway_delete(ulGatewayID);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            break;
+        }
+        case SC_API_CMD_ACTION_GATEWAY_SYNC:
+        {
+            ulRet = sc_gateway_update(U32_BUTT);
+            if (DOS_SUCC != ulRet)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            break;
+        }
+        default:
+            break;
     }
+
+    //sc_send_gateway_update_req(ulGatewayID, ulAction);
 
     return DOS_SUCC;
 }
+
 
 
 /**
@@ -1980,7 +2368,7 @@ U32 sc_route_load(U32 ulIndex)
         sc_log(LOG_LEVEL_ERROR, "Load route FAIL(ID:%u).", ulIndex);
         return DOS_FAIL;
     }
-    sc_log(LOG_LEVEL_ERROR, "Load route SUCC.(ID:%u)", ulIndex);
+    sc_log(LOG_LEVEL_DEBUG, "Load route SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -2300,6 +2688,53 @@ U32 sc_route_get_trunks(U32 ulRouteID, U32 *paulTrunkList, U32 ulTrunkListSize)
 
     return ulCurrentIndex;
 }
+
+
+U32 sc_route_update_proc(U32 ulAction, U32 ulRouteID)
+{
+    U32 ulRet = U32_BUTT;
+
+    if (ulAction > SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch(ulAction)
+    {
+        case SC_API_CMD_ACTION_ROUTE_ADD:
+        case SC_API_CMD_ACTION_ROUTE_UPDATE:
+            sc_route_load(ulRouteID);
+            break;
+
+        case SC_API_CMD_ACTION_ROUTE_DELETE:
+            {
+                ulRet = sc_route_delete(ulRouteID);
+                if (ulRet != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                    return DOS_FAIL;
+                }
+            }
+            break;
+        case SC_API_CMD_ACTION_ROUTE_SYNC:
+#if 0
+            {
+                ulRet = sc_update_route(U32_BUTT);
+                if (ulRet != DOS_SUCC)
+                {
+                    DOS_ASSERT(0);
+                    return DOS_FAIL;
+                }
+            }
+#endif
+            break;
+        default:
+            break;
+    }
+    return DOS_SUCC;
+}
+
 
 
 VOID sc_transform_init(SC_NUM_TRANSFORM_NODE_ST *pstNumTransform)
@@ -2689,6 +3124,30 @@ U32 sc_transform_load(U32 ulIndex)
     return DOS_SUCC;
 }
 
+U32 sc_transform_update_proc(U32 ulAction, U32 ulNumTransID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_ADD:
+        case SC_API_CMD_ACTION_CALLER_UPDATE:
+            sc_transform_load(ulNumTransID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_DELETE:
+            sc_transform_delete(ulNumTransID);
+            break;
+        default:
+            break;
+    }
+    sc_log(LOG_LEVEL_INFO, "Update num transform SUCC.(ulAction:%u, ulID:%d)", ulAction, ulNumTransID);
+
+    return DOS_SUCC;
+}
 
 
 /**
@@ -2922,6 +3381,33 @@ BOOL sc_black_list_check(S8 *pszNum)
     return DOS_FALSE;
 }
 
+/**
+ * 函数: U32 sc_update_black_list(U32 ulIndex)
+ * 功能: 更新黑名单数据
+ * 参数:
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_black_list_update(U32 ulIndex)
+{
+    S8 szSQL[1024] = { 0, };
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT id, customer_id, file_id, number, type FROM tbl_blacklist_pool WHERE id=%u;", ulIndex);
+    if (db_query(g_pstSCDBHandle, szSQL, sc_black_list_load_cb, NULL, NULL) != DB_ERR_SUCC)
+    {
+        DOS_ASSERT(0);
+
+        sc_log(LOG_LEVEL_ERROR, "%s", "Load blacklist fail.");
+        return DOS_FAIL;
+    }
+    return DOS_SUCC;
+}
+
+
 U32 sc_black_list_delete(U32 ulID)
 {
     HASH_NODE_S        *pstHashNode  = NULL;
@@ -2955,6 +3441,43 @@ U32 sc_black_list_delete(U32 ulID)
         }
     }
     pthread_mutex_unlock(&g_mutexHashBlackList);
+
+    return DOS_SUCC;
+}
+
+U32 sc_black_list_update_proc(U32 ulAction, U32 ulBlackID)
+{
+    U32 ulRet = U32_BUTT;
+
+    if (ulAction > SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch(ulAction)
+    {
+        case SC_API_CMD_ACTION_BLACK_ADD:
+            sc_black_list_load(ulBlackID);
+            break;
+        case SC_API_CMD_ACTION_BLACK_UPDATE:
+            /* 注明: 该ID为黑名单在数据库中的索引 */
+            sc_black_list_update(ulBlackID);
+            break;
+        case SC_API_CMD_ACTION_BLACK_DELETE:
+        {
+            /*注明: 该参数代表的是黑名单文件ID*/
+            ulRet = sc_black_list_delete(ulBlackID);
+            if (ulRet != DOS_SUCC)
+            {
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+            break;
+        }
+        default:
+            break;
+    }
 
     return DOS_SUCC;
 }
@@ -3279,6 +3802,170 @@ S32 sc_caller_group_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
     }
 }
 
+S32 sc_caller_relationship_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
+    S32  lIndex = U32_BUTT;
+    U32  ulCallerID = U32_BUTT, ulCallerType = U32_BUTT, ulHashIndex = U32_BUTT;
+    SC_DID_NODE_ST *pstDid = NULL;
+    DLL_NODE_S *pstNode = NULL;
+    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    HASH_NODE_S *pstHashNode = NULL;
+    SC_CALLER_CACHE_NODE_ST *pstCacheNode = NULL;
+    BOOL blProcessOK = DOS_TRUE, bFound = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(pArg)
+        || lCount <= 0
+        || DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    for (lIndex = 0; lIndex < lCount; lIndex++)
+    {
+        if (DOS_ADDR_INVALID(aszNames[lIndex])
+            || DOS_ADDR_INVALID(aszValues[lIndex]))
+        {
+            break;
+        }
+
+        if (0 == dos_strnicmp(aszNames[lIndex], "caller_id", dos_strlen("caller_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCallerID) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                DOS_ASSERT(0);
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "caller_type", dos_strlen("caller_type")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCallerType) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+            }
+        }
+    }
+
+    if (!blProcessOK
+        || U32_BUTT == ulCallerID)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCacheNode = (SC_CALLER_CACHE_NODE_ST *)dos_dmem_alloc(sizeof(SC_CALLER_CACHE_NODE_ST));
+    if (DOS_ADDR_INVALID(pstCacheNode))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 如果是配置的主叫号码，先查找到对应的主叫号码节点 */
+    if (SC_NUMBER_TYPE_CFG == ulCallerType)
+    {
+        pstCacheNode->ulType = SC_NUMBER_TYPE_CFG;
+        ulHashIndex = sc_int_hash_func(ulCallerID, SC_CALLER_HASH_SIZE);
+        pstHashNode = hash_find_node(g_pstHashCaller, ulHashIndex, (VOID *)&ulCallerID, sc_caller_hash_find);
+
+        if (DOS_ADDR_INVALID(pstHashNode)
+            || DOS_ADDR_INVALID(pstHashNode->pHandle))
+        {
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
+        pstCaller = (SC_CALLER_QUERY_NODE_ST *)pstHashNode->pHandle;
+        pstCacheNode->stData.pstCaller = pstCaller;
+    }
+    else if (SC_NUMBER_TYPE_DID == ulCallerType)
+    {
+        pstCacheNode->ulType = SC_NUMBER_TYPE_DID;
+        /* 目前由于索引未采用id，故只能遍历哈希表 */
+        HASH_Scan_Table(g_pstHashDIDNum, ulHashIndex)
+        {
+            HASH_Scan_Bucket(g_pstHashDIDNum ,ulHashIndex ,pstHashNode, HASH_NODE_S *)
+            {
+                if (DOS_ADDR_INVALID(pstHashNode)
+                    || DOS_ADDR_INVALID(pstHashNode->pHandle))
+                {
+                    continue;
+                }
+
+                pstDid = (SC_DID_NODE_ST *)pstHashNode->pHandle;
+                if (ulCallerID == pstDid->ulDIDID)
+                {
+                    bFound = DOS_TRUE;
+                    break;
+                }
+            }
+            if (DOS_TRUE == bFound)
+            {
+                break;
+            }
+        }
+        if (DOS_FALSE == bFound)
+        {
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+        }
+        pstCacheNode->stData.pstDid = pstDid;
+    }
+
+    pstNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
+    if (DOS_ADDR_INVALID(pstNode))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    DLL_Init_Node(pstNode);
+    pstNode->pHandle = (VOID *)pstCacheNode;
+
+    pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pArg;
+    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
+    DLL_Add(&pstCallerGrp->stCallerList, pstNode);
+    pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+    return DOS_SUCC;
+}
+
+
+
+U32 sc_caller_relationship_load()
+{
+    SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
+    U32  ulHashIndex = U32_BUTT;
+    S32 lRet = U32_BUTT;
+    S8   szQuery[256] = {0};
+    HASH_NODE_S *pstHashNode = NULL;
+
+    HASH_Scan_Table(g_pstHashCallerGrp, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCallerGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
+            /* 先加载主叫号码，再加载DID号码 */
+            dos_snprintf(szQuery, sizeof(szQuery), "SELECT caller_id,caller_type FROM tbl_caller_assign WHERE caller_grp_id=%u;", pstCallerGrp->ulID);
+            lRet = db_query(g_pstSCDBHandle, szQuery, sc_caller_relationship_load_cb, (VOID *)pstCallerGrp, NULL);
+            if (DB_ERR_SUCC != lRet)
+            {
+                sc_log(LOG_LEVEL_ERROR, "Load Caller RelationShip FAIL.(CallerGrpID:%u)", pstCallerGrp->ulID);
+                DOS_ASSERT(0);
+                return DOS_FAIL;
+            }
+        }
+    }
+    sc_log(LOG_LEVEL_DEBUG, "%s", "Load Caller relationship SUCC.");
+
+    return DOS_SUCC;
+}
+
 /**
  * 函数: S32 sc_load_caller_grp_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
  * 功能: 加载主叫号码数据
@@ -3488,169 +4175,116 @@ U32 sc_caller_group_delete(U32 ulCallerGrpID)
     return DOS_SUCC;
 }
 
-S32 sc_caller_relationship_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+U32 sc_caller_group_refresh(U32 ulIndex)
 {
-    SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
-    S32  lIndex = U32_BUTT;
-    U32  ulCallerID = U32_BUTT, ulCallerType = U32_BUTT, ulHashIndex = U32_BUTT;
-    SC_DID_NODE_ST *pstDid = NULL;
-    DLL_NODE_S *pstNode = NULL;
-    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    U32  ulHashIndex = U32_BUTT;
+    SC_CALLER_GRP_NODE_ST  *pstCallerGrp = NULL;
+    DLL_NODE_S *pstListNode = NULL;
     HASH_NODE_S *pstHashNode = NULL;
-    SC_CALLER_CACHE_NODE_ST *pstCacheNode = NULL;
-    BOOL blProcessOK = DOS_TRUE, bFound = DOS_FALSE;
+    SC_CALLER_CACHE_NODE_ST *pstCache = NULL;
+    S8  szQuery[256] = {0,};
+    U32 ulRet = 0;
 
-    if (DOS_ADDR_INVALID(pArg)
-        || lCount <= 0
-        || DOS_ADDR_INVALID(aszValues)
-        || DOS_ADDR_INVALID(aszNames))
+    sc_caller_group_load(ulIndex);
+
+    ulHashIndex = sc_int_hash_func(ulIndex, SC_CALLER_GRP_HASH_SIZE);
+    pthread_mutex_lock(&g_mutexHashCallerGrp);
+    pstHashNode = hash_find_node(g_pstHashCallerGrp, ulHashIndex, (VOID *)&ulIndex, sc_caller_group_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode))
     {
-        DOS_ASSERT(0);
+        pthread_mutex_unlock(&g_mutexHashCallerGrp);
+
+        sc_log(LOG_LEVEL_ERROR, "SC Refresh Caller Grp FAIL.(CallerGrpID:%u)", ulIndex);
         return DOS_FAIL;
     }
+    pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
 
-    for (lIndex = 0; lIndex < lCount; lIndex++)
+    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
+    while (1)
     {
-        if (DOS_ADDR_INVALID(aszNames[lIndex])
-            || DOS_ADDR_INVALID(aszValues[lIndex]))
+        if (DLL_Count(&pstCallerGrp->stCallerList) == 0)
         {
             break;
         }
 
-        if (0 == dos_strnicmp(aszNames[lIndex], "caller_id", dos_strlen("caller_id")))
+        pstListNode = dll_fetch(&pstCallerGrp->stCallerList);
+        if (DOS_ADDR_INVALID(pstListNode))
         {
-            if (dos_atoul(aszValues[lIndex], &ulCallerID) < 0)
-            {
-                blProcessOK = DOS_FALSE;
-                DOS_ASSERT(0);
-                break;
-            }
+            continue;
         }
-        else if (0 == dos_strnicmp(aszNames[lIndex], "caller_type", dos_strlen("caller_type")))
+
+        pstCache = (SC_CALLER_CACHE_NODE_ST *)pstListNode->pHandle;
+        if (DOS_ADDR_VALID(pstCache))
         {
-            if (dos_atoul(aszValues[lIndex], &ulCallerType) < 0)
-            {
-                blProcessOK = DOS_FALSE;
-            }
+            dos_dmem_free(pstCache);
+            pstCache = NULL;
         }
+        dll_delete(&pstCallerGrp->stCallerList, pstListNode);
+        dos_dmem_free(pstListNode);
+        pstListNode = NULL;
     }
 
-    if (!blProcessOK
-        || U32_BUTT == ulCallerID)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstCacheNode = (SC_CALLER_CACHE_NODE_ST *)dos_dmem_alloc(sizeof(SC_CALLER_CACHE_NODE_ST));
-    if (DOS_ADDR_INVALID(pstCacheNode))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    /* 如果是配置的主叫号码，先查找到对应的主叫号码节点 */
-    if (SC_NUMBER_TYPE_CFG == ulCallerType)
-    {
-        pstCacheNode->ulType = SC_NUMBER_TYPE_CFG;
-        ulHashIndex = sc_int_hash_func(ulCallerID, SC_CALLER_HASH_SIZE);
-        pstHashNode = hash_find_node(g_pstHashCaller, ulHashIndex, (VOID *)&ulCallerID, sc_caller_hash_find);
-
-        if (DOS_ADDR_INVALID(pstHashNode)
-            || DOS_ADDR_INVALID(pstHashNode->pHandle))
-        {
-            DOS_ASSERT(0);
-            return DOS_FAIL;
-        }
-        pstCaller = (SC_CALLER_QUERY_NODE_ST *)pstHashNode->pHandle;
-        pstCacheNode->stData.pstCaller = pstCaller;
-    }
-    else if (SC_NUMBER_TYPE_DID == ulCallerType)
-    {
-        pstCacheNode->ulType = SC_NUMBER_TYPE_DID;
-        /* 目前由于索引未采用id，故只能遍历哈希表 */
-        HASH_Scan_Table(g_pstHashDIDNum, ulHashIndex)
-        {
-            HASH_Scan_Bucket(g_pstHashDIDNum ,ulHashIndex ,pstHashNode, HASH_NODE_S *)
-            {
-                if (DOS_ADDR_INVALID(pstHashNode)
-                    || DOS_ADDR_INVALID(pstHashNode->pHandle))
-                {
-                    continue;
-                }
-
-                pstDid = (SC_DID_NODE_ST *)pstHashNode->pHandle;
-                if (ulCallerID == pstDid->ulDIDID)
-                {
-                    bFound = DOS_TRUE;
-                    break;
-                }
-            }
-            if (DOS_TRUE == bFound)
-            {
-                break;
-            }
-        }
-        if (DOS_FALSE == bFound)
-        {
-            DOS_ASSERT(0);
-            return DOS_FAIL;
-        }
-        pstCacheNode->stData.pstDid = pstDid;
-    }
-
-    pstNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
-    if (DOS_ADDR_INVALID(pstNode))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    DLL_Init_Node(pstNode);
-    pstNode->pHandle = (VOID *)pstCacheNode;
-
-    pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pArg;
-    pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
-    DLL_Add(&pstCallerGrp->stCallerList, pstNode);
     pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
-    return DOS_SUCC;
+
+    dos_snprintf(szQuery, sizeof(szQuery), "SELECT caller_id,caller_type FROM tbl_caller_assign WHERE caller_grp_id=%u;", ulIndex);
+
+    ulRet = db_query(g_pstSCDBHandle, szQuery, sc_caller_relationship_load_cb, (VOID *)pstCallerGrp, NULL);
+
+    pthread_mutex_unlock(&g_mutexHashCallerGrp);
+    return ulRet;
 }
 
 
-
-U32 sc_caller_relationship_load()
+U32 sc_caller_group_update_proc(U32 ulAction, U32 ulCallerGrpID)
 {
-    SC_CALLER_GRP_NODE_ST *pstCallerGrp = NULL;
-    U32  ulHashIndex = U32_BUTT;
-    S32 lRet = U32_BUTT;
-    S8   szQuery[256] = {0};
-    HASH_NODE_S *pstHashNode = NULL;
-
-    HASH_Scan_Table(g_pstHashCallerGrp, ulHashIndex)
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
     {
-        HASH_Scan_Bucket(g_pstHashCallerGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
-        {
-            if (DOS_ADDR_INVALID(pstHashNode)
-                || DOS_ADDR_INVALID(pstHashNode->pHandle))
-            {
-                continue;
-            }
-            pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
-            /* 先加载主叫号码，再加载DID号码 */
-            dos_snprintf(szQuery, sizeof(szQuery), "SELECT caller_id,caller_type FROM tbl_caller_assign WHERE caller_grp_id=%u;", pstCallerGrp->ulID);
-            lRet = db_query(g_pstSCDBHandle, szQuery, sc_caller_relationship_load_cb, (VOID *)pstCallerGrp, NULL);
-            if (DB_ERR_SUCC != lRet)
-            {
-                sc_log(LOG_LEVEL_ERROR, "Load Caller RelationShip FAIL.(CallerGrpID:%u)", pstCallerGrp->ulID);
-                DOS_ASSERT(0);
-                return DOS_FAIL;
-            }
-        }
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
-    sc_log(LOG_LEVEL_DEBUG, "%s", "Load Caller relationship SUCC.");
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_GRP_ADD:
+        case SC_API_CMD_ACTION_CALLER_GRP_UPDATE:
+            sc_caller_group_refresh(ulCallerGrpID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_GRP_DELETE:
+            sc_caller_group_delete(ulCallerGrpID);
+            break;
+        default:
+            break;
+    }
+    sc_log(LOG_LEVEL_INFO, "Update Caller Group SUCC.(ulAction:%u, ulCallerGrpID:%u)", ulAction, ulCallerGrpID);
 
     return DOS_SUCC;
 }
+
+U32 sc_caller_update_proc(U32 ulAction, U32 ulCallerID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_ADD:
+        case SC_API_CMD_ACTION_CALLER_UPDATE:
+            sc_caller_load(ulCallerID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_DELETE:
+            sc_caller_delete(ulCallerID);
+            break;
+        default:
+            break;
+    }
+    sc_log(LOG_LEVEL_INFO, "Update Caller SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCallerID);
+
+    return DOS_SUCC;
+}
+
 
 
 VOID sc_eix_dev_init(SC_TT_NODE_ST *pstTTNumber)
@@ -3924,6 +4558,32 @@ U32 sc_eix_dev_get_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength)
     sc_log(LOG_LEVEL_DEBUG, "Found the EIA(%s) for the TT number(%s).", pszEIX, pszTTNumber);
     return DOS_SUCC;
 }
+
+U32 sc_eix_dev_update_proc(U32 ulAction, U32 ulEixID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_ADD:
+        case SC_API_CMD_ACTION_CALLER_UPDATE:
+            sc_eix_dev_load(ulEixID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_DELETE:
+            sc_eix_dev_delete(ulEixID);
+            break;
+        default:
+            break;
+    }
+    sc_log(LOG_LEVEL_INFO, "Update eix SUCC.(ulAction:%u, ulID:%d)", ulAction, ulEixID);
+
+    return DOS_SUCC;
+}
+
 
 S32 sc_number_lmt_find(VOID *pObj, HASH_NODE_S *pstHashNode)
 {
@@ -4506,6 +5166,34 @@ U32 sc_number_lmt_stat(U32 ulType, VOID *ptr)
     return DOS_SUCC;
 }
 
+U32 sc_number_lmt_update_proc(U32 ulAction, U32 ulNumlmtID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_ADD:
+        case SC_API_CMD_ACTION_CALLER_UPDATE:
+            sc_number_lmt_load(ulNumlmtID);
+            break;
+
+        case SC_API_CMD_ACTION_CALLER_DELETE:
+            sc_number_lmt_delete(ulNumlmtID);
+            break;
+
+        default:
+            break;
+    }
+    sc_log(LOG_LEVEL_INFO, "Update num limit SUCC.(ulAction:%u, ulID:%d)", ulAction, ulNumlmtID);
+
+    return DOS_SUCC;
+}
+
+
 
 S32 sc_serv_ctrl_hash_find_cb(VOID *pKey, DLL_NODE_S *pstDLLNode)
 {
@@ -4839,8 +5527,38 @@ U32 sc_serv_ctrl_delete(U32 ulIndex)
     return DOS_SUCC;
 }
 
+U32 sc_serv_ctrl_update_proc(U32 ulAction, U32 ulID)
+{
+    U32 ulRet = DOS_SUCC;
 
-BOOL sc_server_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulAttrVal1,U32 ulAttr2, U32 ulAttrVal2)
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_ADD:
+        case SC_API_CMD_ACTION_UPDATE:
+            ulRet = sc_serv_ctrl_load(ulID);
+            break;
+
+       case SC_API_CMD_ACTION_DELETE:
+            ulRet = sc_serv_ctrl_delete(ulID);
+            break;
+        default:
+            break;
+    }
+
+    sc_log(LOG_LEVEL_INFO, "Update serv ctrl rule finished.(ulAction:%u, ulID:%d, Ret: %u)", ulAction, ulID, ulRet);
+
+    return ulRet;
+}
+
+
+
+BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulAttrVal1,U32 ulAttr2, U32 ulAttrVal2)
 {
     BOOL             blResult;
     U32              ulHashIndex;
@@ -5252,6 +5970,617 @@ U32 sc_caller_setting_delete(U32 ulSettingID)
 
     return DOS_SUCC;
 }
+
+U32 sc_caller_setting_update_proc(U32 ulAction, U32 ulSettingID)
+{
+    U32  ulRet = DOS_FAIL;
+
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_CALLER_SET_ADD:
+        case SC_API_CMD_ACTION_CALLER_SET_UPDATE:
+            ulRet = sc_caller_setting_load(ulSettingID);
+            break;
+        case SC_API_CMD_ACTION_CALLER_SET_DELETE:
+            ulRet = sc_caller_setting_delete(ulSettingID);
+            break;
+        default:
+            break;
+    }
+
+    sc_log(LOG_LEVEL_INFO, "Update Caller Setting %s.(ulAction:%u, ulID:%u)"
+                    , (DOS_SUCC == ulRet) ? "succ" : "FAIL", ulAction, ulSettingID);
+
+    return DOS_SUCC;
+}
+
+static S32 sc_task_load_callee_callback(VOID *pArg, S32 lArgc, S8 **pszValues, S8 **pszNames)
+{
+    SC_TASK_CB               *pstTCB = NULL;
+    SC_TEL_NUM_QUERY_NODE_ST *pstCallee = NULL;
+    U32 ulIndex;
+    S8 *pszIndex = NULL;
+    S8 *pszNum = NULL;
+
+    if (DOS_ADDR_INVALID(pArg)
+        || DOS_ADDR_INVALID(pszValues)
+        || DOS_ADDR_INVALID(pszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstTCB = (SC_TASK_CB *)pArg;
+    pszIndex = pszValues[0];
+    pszNum = pszValues[1];
+
+    if (DOS_ADDR_INVALID(pszIndex)
+        || DOS_ADDR_INVALID(pszNum)
+        || dos_atoul(pszIndex, &ulIndex) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCallee = (SC_TEL_NUM_QUERY_NODE_ST *)dos_dmem_alloc(sizeof(SC_TEL_NUM_QUERY_NODE_ST));
+    if (DOS_ADDR_INVALID(pstCallee))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_list_node_init(&pstCallee->stLink);
+    pstCallee->ulIndex = ulIndex;
+    pstCallee->ucTraceON = 0;
+    pstCallee->ucCalleeType = SC_CALL_NUM_TYPE_NORMOAL;
+    dos_strncpy(pstCallee->szNumber, pszNum, sizeof(pstCallee->szNumber));
+    pstCallee->szNumber[sizeof(pstCallee->szNumber) - 1] = '\0';
+
+    pstTCB->ulCalleeCount++;
+    pstTCB->ulLastCalleeIndex++;
+    dos_list_add_tail(&pstTCB->stCalleeNumQuery, &pstCallee->stLink);
+
+    return DOS_SUCC;
+}
+
+
+U32 sc_task_load_callee(SC_TASK_CB *pstTCB)
+{
+    S8 szSQL[512] = { 0, };
+
+    if (DOS_ADDR_INVALID(pstTCB))
+    {
+        return -1;
+    }
+
+    dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, number FROM tbl_callee_pool WHERE `status`=0 AND file_id = (SELECT tbl_calltask.callee_id FROM tbl_calltask WHERE id=%u) LIMIT %u, 1000;"
+                    , pstTCB->ulTaskID
+                    , pstTCB->ulLastCalleeIndex);
+
+    if (DB_ERR_SUCC != db_query(g_pstSCDBHandle, szSQL, sc_task_load_callee_callback, (VOID *)pstTCB, NULL))
+    {
+        sc_log(LOG_LEVEL_WARNING, "Load task fail.");
+        return DOS_FAIL;
+    }
+
+    sc_log(LOG_LEVEL_NOTIC, "Load task SUCC.");
+    return DOS_SUCC;
+}
+
+
+/*
+ * 函数 : sc_task_save_status
+ * 功能 : 保存任务状态
+ * 参数 :
+ *        U32 ulTaskID   : 任务ID
+ *        U32 ulStatus   : 新状态
+ *        S8 *pszStatus  : 如果呼叫名单是正则号码，(暂停时)需要把正则号码的分析状态记录下来
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ */
+U32 sc_task_save_status(U32 ulTaskID, U32 ulStatus, S8 *pszStatus)
+{
+    /* 初始化坐席队列编号 */
+    S8 szSQL[128] = { 0, };
+
+    if (0 == ulTaskID || U32_BUTT == ulTaskID)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (ulStatus >= SC_TASK_STATUS_DB_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_calltask set status=%u WHERE id=%u", ulStatus, ulTaskID);
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL) < 0)
+    {
+        sc_log(LOG_LEVEL_ERROR, "Failed update the task(%u) status to %u.", ulTaskID, ulStatus);
+        return DOS_FAIL;
+    }
+
+    sc_log(LOG_LEVEL_DEBUG, "Update the task(%u) status to %u.", ulTaskID, ulStatus);
+    return DOS_SUCC;
+}
+
+S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    U32 ulTaskID, ulCustomerID, ulMode, ulPlayCnt, ulAudioID, ulGroupID, ulStatus;
+    U32 ulMoifyTime, ulCreateTime, ulCalleeCnt, ulCalledCnt, ulCallerGroupID, ulCallRate;
+    U32 ulStartTime1, ulEndTime1, ulStartTime2, ulEndTime2;
+    U32 ulStartTime3, ulEndTime3, ulStartTime4, ulEndTime4;
+    BOOL blProcessOK = DOS_FALSE;
+    S32 lIndex = U32_BUTT;
+    S8  szTaskName[64] = {0};
+    SC_TASK_CB *pstTCB = NULL;
+
+    for (blProcessOK = DOS_TRUE, lIndex = 0; lIndex < lCount; lIndex++)
+    {
+        if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulTaskID) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "customer_id", dos_strlen("customer_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCustomerID) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "task_name", dos_strlen("task_name")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0])
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+            dos_snprintf(szTaskName, sizeof(szTaskName), "%s", aszValues[lIndex]);
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "mtime", dos_strlen("mtime")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0])
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            if (dos_atoul(aszValues[lIndex], &ulMoifyTime) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "mode", dos_strlen("mode")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulMode) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "playcnt", dos_strlen("playcnt")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulPlayCnt) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "start_time1", dos_strlen("start_time1")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulStartTime1) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "end_time1", dos_strlen("end_time1")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulEndTime1) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "start_time2", dos_strlen("start_time2")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulStartTime2) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "end_time2", dos_strlen("end_time2")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulEndTime2) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "start_time3", dos_strlen("start_time3")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulStartTime3) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "end_time3", dos_strlen("end_time3")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulEndTime3) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "start_time4", dos_strlen("start_time4")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulStartTime4) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "end_time4", dos_strlen("end_time4")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulEndTime4) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "audio_id", dos_strlen("audio_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulAudioID) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "group_id", dos_strlen("group_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulGroupID) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "status", dos_strlen("status")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulStatus) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            /* 将数据库中的状态，转换成sc中的状态 SC_TASK_STATUS_DB_EN -> SC_TASK_STATUS_EN */
+            switch (ulStatus)
+            {
+                case SC_TASK_STATUS_DB_INIT:
+                case SC_TASK_STATUS_DB_START:
+                case SC_TASK_STATUS_DB_PAUSED:
+                case SC_TASK_STATUS_DB_STOP:
+                    break;
+                default:
+                    blProcessOK = DOS_FALSE;
+                    break;
+            }
+
+            if (blProcessOK == DOS_FALSE)
+            {
+                DOS_ASSERT(0);
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "ctime", dos_strlen("ctime")))
+        {
+            if (DOS_ADDR_INVALID(aszValues[lIndex])
+                || '\0' == aszValues[lIndex][0])
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+
+            if (dos_atoul(aszValues[lIndex], &ulCreateTime) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "calleecnt", dos_strlen("calleecnt")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCalleeCnt) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "calledcnt", dos_strlen("calledcnt")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCalledCnt) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "callers", dos_strlen("callers")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCallerGroupID) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "call_rate", dos_strlen("call_rate")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulCallRate) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+    }
+
+    if (blProcessOK == DOS_FALSE)
+    {
+        /* 数据不正确，不用保存 */
+        sc_log(LOG_LEVEL_ERROR, "Load task info FAIL.(TaskID:%u) ", ulTaskID);
+
+        return DOS_SUCC;
+    }
+
+    /* 如果只是加载一条数据，首先寻找有没有该控制块节点，如果有更新之
+       如果没有，则重新寻找一个不可用节点，如果还是没有空闲节点，则返回失败 */
+    pstTCB = sc_tcb_find_by_taskid(*(U32 *)pArg);
+    if (DOS_ADDR_INVALID(pstTCB))
+    {
+        pstTCB  = sc_tcb_alloc();
+        if (DOS_ADDR_INVALID(pstTCB))
+        {
+            /* 数据不正确，不用保存 */
+            sc_log(LOG_LEVEL_ERROR, "Alloc TCB fail.(TaskID:%u) ", ulTaskID);
+
+            return DOS_FAIL;
+        }
+    }
+
+    pstTCB->ucValid = DOS_TRUE;
+    pstTCB->ulTaskID = ulTaskID;
+    pstTCB->ulCustomID = ulCustomerID;
+    dos_snprintf(pstTCB->szTaskName, sizeof(pstTCB->szTaskName), "%s", szTaskName);
+    pstTCB->ulModifyTime = ulMoifyTime;
+    pstTCB->ucMode = (U8)ulMode;
+    pstTCB->ucAudioPlayCnt = (U8)ulPlayCnt;
+    dos_snprintf(pstTCB->szAudioFileLen, sizeof(pstTCB->szAudioFileLen), "%s/%u/%u", SC_TASK_AUDIO_PATH, ulCustomerID, ulAudioID);
+    pstTCB->ulAgentQueueID = ulGroupID;
+    pstTCB->ucTaskStatus = ulStatus;
+    pstTCB->ulAllocTime = ulCreateTime;
+    pstTCB->ulCalleeCountTotal = ulCalleeCnt;
+    pstTCB->ulCalledCount = ulCalledCnt;
+    pstTCB->ulCallerGrpID = ulCallerGroupID;
+    pstTCB->ulCallRate = ulCallRate;
+    pstTCB->ulLastCalleeIndex = ulCalledCnt;
+
+    pstTCB->astPeriod[0].ucValid = DOS_TRUE;
+    pstTCB->astPeriod[0].ucWeekMask = (ulStartTime1 >> 24) & 0xFF;
+    pstTCB->astPeriod[0].ucHourBegin = (ulStartTime1 >> 16) & 0xFF;
+    pstTCB->astPeriod[0].ucMinuteBegin = (ulStartTime1 >> 8) & 0xFF;
+    pstTCB->astPeriod[0].ucSecondBegin = (ulStartTime1) & 0xFF;
+    pstTCB->astPeriod[0].ucHourEnd = (ulEndTime1>> 16) & 0xFF;
+    pstTCB->astPeriod[0].ucMinuteEnd = (ulEndTime1>> 8) & 0xFF;
+    pstTCB->astPeriod[0].ucSecondEnd = (ulEndTime1) & 0xFF;
+
+    if (ulStartTime2 == 0)
+    {
+        dos_memzero(&pstTCB->astPeriod[1], sizeof(pstTCB->astPeriod[1]));
+        pstTCB->astPeriod[1].ucValid = DOS_FALSE;
+    }
+    else
+    {
+        pstTCB->astPeriod[1].ucValid = DOS_TRUE;
+        pstTCB->astPeriod[1].ucWeekMask = (ulStartTime2 >> 24) & 0xFF;
+        pstTCB->astPeriod[1].ucHourBegin = (ulStartTime2 >> 16) & 0xFF;
+        pstTCB->astPeriod[1].ucMinuteBegin = (ulStartTime2 >> 8) & 0xFF;
+        pstTCB->astPeriod[1].ucSecondBegin = (ulStartTime2) & 0xFF;
+        pstTCB->astPeriod[1].ucHourEnd = (ulEndTime2>> 16) & 0xFF;
+        pstTCB->astPeriod[1].ucMinuteEnd = (ulEndTime2>> 8) & 0xFF;
+        pstTCB->astPeriod[1].ucSecondEnd = (ulEndTime2) & 0xFF;
+    }
+
+    if (ulStartTime3 == 0)
+    {
+        dos_memzero(&pstTCB->astPeriod[2], sizeof(pstTCB->astPeriod[2]));
+        pstTCB->astPeriod[2].ucValid = DOS_FALSE;
+    }
+    else
+    {
+        pstTCB->astPeriod[2].ucValid = DOS_TRUE;
+        pstTCB->astPeriod[2].ucWeekMask = (ulStartTime3 >> 24) & 0xFF;
+        pstTCB->astPeriod[2].ucHourBegin = (ulStartTime3 >> 16) & 0xFF;
+        pstTCB->astPeriod[2].ucMinuteBegin = (ulStartTime3 >> 8) & 0xFF;
+        pstTCB->astPeriod[2].ucSecondBegin = (ulStartTime3) & 0xFF;
+        pstTCB->astPeriod[2].ucHourEnd = (ulEndTime3>> 16) & 0xFF;
+        pstTCB->astPeriod[2].ucMinuteEnd = (ulEndTime3>> 8) & 0xFF;
+        pstTCB->astPeriod[2].ucSecondEnd = (ulEndTime3) & 0xFF;
+    }
+
+    if (ulStartTime4 == 0)
+    {
+        dos_memzero(&pstTCB->astPeriod[3], sizeof(pstTCB->astPeriod[3]));
+        pstTCB->astPeriod[3].ucValid = DOS_FALSE;
+    }
+    else
+    {
+        pstTCB->astPeriod[3].ucValid = DOS_TRUE;
+        pstTCB->astPeriod[3].ucWeekMask = (ulStartTime4 >> 24) & 0xFF;
+        pstTCB->astPeriod[3].ucHourBegin = (ulStartTime4 >> 16) & 0xFF;
+        pstTCB->astPeriod[3].ucMinuteBegin = (ulStartTime4 >> 8) & 0xFF;
+        pstTCB->astPeriod[3].ucSecondBegin = (ulStartTime4) & 0xFF;
+        pstTCB->astPeriod[3].ucHourEnd = (ulEndTime4>> 16) & 0xFF;
+        pstTCB->astPeriod[3].ucMinuteEnd = (ulEndTime4>> 8) & 0xFF;
+        pstTCB->astPeriod[3].ucSecondEnd = (ulEndTime4) & 0xFF;
+    }
+
+    sc_log(LOG_LEVEL_INFO, "Load task info SUCC. Index(%d), (TaskID:%u) ", lIndex, ulTaskID);
+
+    return DOS_SUCC;
+}
+
+S32 sc_task_load(U32 ulIndex)
+{
+    S8  szQuery[256] = {0};
+    S32 lRet = U32_BUTT;
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szQuery, sizeof(szQuery),
+                        "SELECT id,customer_id,task_name,mtime,mode,playcnt," \
+                        "audio_id,group_id,status,ctime,calleecnt,calledcnt," \
+                        "start_time1, end_time1, start_time2, end_time2," \
+                        "start_time3, end_time3, start_time4, end_time4," \
+                        "callers,call_rate FROM tbl_calltask;");
+    }
+    else
+    {
+        dos_snprintf(szQuery, sizeof(szQuery),
+                        "SELECT id,customer_id,task_name,mtime,mode,playcnt," \
+                        "audio_id,group_id,status,ctime,calleecnt,calledcnt," \
+                        "start_time1, end_time1, start_time2, end_time2," \
+                        "start_time3, end_time3, start_time4, end_time4," \
+                        "callers,call_rate FROM tbl_calltask WHERE id=%u;", ulIndex);
+    }
+
+    /* 加载群呼任务的相关数据 */
+    lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_log(LOG_LEVEL_ERROR, " SC Load task %u Data FAIL.", ulIndex);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_log(LOG_LEVEL_DEBUG, "Load task %u SUCC.", ulIndex);
+    return DOS_SUCC;
+}
+
+/*
+ * 函数: S32 sc_task_load_callback(VOID *pArg, S32 argc, S8 **argv, S8 **columnNames)
+ * 功能: 任务控制模块加载任务回调函数
+ * 参数:
+ * 返回值
+ *      成功返回DOS_SUCC,失败返回DOS_FAIL
+ **/
+static S32 sc_task_load_callback(VOID *pArg, S32 argc, S8 **argv, S8 **columnNames)
+{
+    SC_TASK_CB  *pstTCB;
+    U32 ulIndex;
+    U32 ulTaskID = U32_BUTT, ulCustomID = U32_BUTT;
+
+    for (ulIndex = 0; ulIndex < argc; ulIndex++)
+    {
+        if (dos_strcmp(columnNames[ulIndex], "id") == 0)
+        {
+            if (dos_atoul(argv[ulIndex], &ulTaskID) < 0)
+            {
+                return DOS_FAIL;
+            }
+        }
+        else if (dos_strcmp(columnNames[ulIndex], "customer_id") == 0)
+        {
+            if (dos_atoul(argv[ulIndex], &ulCustomID) < 0)
+            {
+                return DOS_FAIL;
+            }
+        }
+    }
+
+    pstTCB = sc_tcb_alloc();
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_task_set_owner(pstTCB, ulTaskID, ulCustomID);
+
+    return DOS_SUCC;
+}
+
+/*
+ * 函数: U32 sc_task_mngt_load_task()
+ * 功能: 初始化时任务控制模块加载任务
+ * 参数:
+ * 返回值
+ *      成功返回DOS_SUCC,失败返回DOS_FAIL
+ **/
+U32 sc_task_mngt_load_task()
+{
+    S8 szSqlQuery[128]= { 0 };
+    U32 ulLength, ulResult;
+
+    /* 不加载结束和暂停的任务 */
+    ulLength = dos_snprintf(szSqlQuery
+                , sizeof(szSqlQuery)
+                , "SELECT id, customer_id from tbl_calltask where tbl_calltask.status = %d ;", SC_TASK_STATUS_DB_START);
+
+    ulResult = db_query(g_pstSCDBHandle
+                            , szSqlQuery
+                            , sc_task_load_callback
+                            , NULL
+                            , NULL);
+
+    if (ulResult != DOS_SUCC)
+    {
+        sc_log(LOG_LEVEL_ERROR, "Load call task fail.");
+        return DOS_FAIL;
+    }
+
+    sc_log(LOG_LEVEL_NOTIC, "Load call task fail.");
+
+    return DOS_SUCC;
+}
+
 
 #ifdef __cplusplus
 }

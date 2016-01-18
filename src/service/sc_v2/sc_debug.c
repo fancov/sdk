@@ -137,6 +137,21 @@ VOID sc_trace_leg(SC_LEG_CB *pstLCB, const S8 *pszFormat, ...)
     dos_log(LOG_LEVEL_DEBUG, LOG_TYPE_RUNINFO, szTraceStr);
 }
 
+VOID sc_trace_task(SC_TASK_CB *pstLCB, const S8 *pszFormat, ...)
+{
+    va_list         Arg;
+    S8              szTraceStr[1024] = {0, };
+    U32             ulTraceTagLen = 0;
+
+    va_start(Arg, pszFormat);
+    vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
+    va_end(Arg);
+    szTraceStr[sizeof(szTraceStr) -1] = '\0';
+
+    dos_log(LOG_LEVEL_DEBUG, LOG_TYPE_RUNINFO, szTraceStr);
+}
+
+
 #ifdef __cplusplus
 }
 #endif /* End of __cplusplus */

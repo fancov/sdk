@@ -39,9 +39,9 @@
 
 #include <dos.h>
 #include "sc_def.h"
-#include "sc_debug.h"
 #include "sc_acd.h"
 #include "sc_res.h"
+#include "sc_debug.h"
 
 
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
@@ -2868,6 +2868,141 @@ U32 sc_acd_http_agentgrp_update_proc(U32 ulAction, U32 ulGrpID)
             break;
     }
     return DOS_SUCC;
+}
+
+/**
+ * 函数: U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
+ * 功能: 处理HTTP发过来的命令
+ * 参数:
+ *      U32 ulAction : 命令
+ *      U32 ulAgentID : 坐席ID
+ *      S8 *pszUserID : 坐席SIP User ID
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ **/
+U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
+{
+    switch (ulAction)
+    {
+        case SC_ACD_SITE_ACTION_DELETE:
+        case SC_ACD_SITE_ACTION_SIGNIN:
+        case SC_ACD_SITE_ACTION_SIGNOUT:
+        case SC_ACD_SITE_ACTION_ONLINE:
+        case SC_ACD_SITE_ACTION_OFFLINE:
+        case SC_ACD_SITE_ACTION_EN_QUEUE:
+        case SC_ACD_SITE_ACTION_DN_QUEUE:
+            break;
+        case SC_ACD_SITE_ACTION_ADD:
+        case SC_ACD_SITE_ACTION_UPDATE:
+            sc_acd_init_agent_queue(ulAgentID);
+            break;
+        case SC_API_CMD_ACTION_QUERY:
+            break;
+        default:
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+            break;
+    }
+
+    return DOS_SUCC;
+}
+
+
+U32 sc_acd_agent_update_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
+{
+    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_ACD_AGENT_INFO_ST   *pstAgentInfo = NULL;     /* 坐席信息 */
+    HASH_NODE_S            *pstHashNode = NULL;
+    U32                     ulHashIndex = 0;
+    U32                     ulResult    = DOS_FAIL;
+    U32                     ulOldStatus;
+
+
+    pthread_mutex_lock(&g_mutexAgentList);
+    sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexAgentList);
+
+        sc_log(LOG_LEVEL_WARNING, "Cannot find the agent with this id %u.", ulAgentID);
+        return DOS_FAIL;
+    }
+    pthread_mutex_unlock(&g_mutexAgentList);
+
+    if (DOS_ADDR_INVALID(pstHashNode))
+    {
+        sc_log(LOG_LEVEL_WARNING, "Empty hash node for this agent. %u", ulAgentID);
+        return DOS_FAIL;
+    }
+
+    pstAgentQueueNode = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstAgentQueueNode)
+        || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+    {
+        sc_log(LOG_LEVEL_WARNING, "The hash node is empty for this agent. %u", ulAgentID);
+        return DOS_FAIL;
+    }
+
+    pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+    ulOldStatus = pstAgentInfo->ucStatus;
+    sc_log(LOG_LEVEL_WARNING, "Agent status changed. Agent: %u, Action: %u", ulAgentID, ulAction);
+
+    switch(ulAction)
+    {
+        case SC_ACTION_AGENT_BUSY:
+            ulResult = sc_acd_agent_set_busy(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_IDLE:
+            ulResult = sc_acd_agent_set_idle(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_REST:
+            ulResult = sc_acd_agent_set_rest(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_SIGNIN:
+            ulResult = sc_acd_agent_set_signin(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_SIGNOUT:
+            ulResult = sc_acd_agent_set_signout(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_LOGIN:
+            if (pstAgentInfo->htmrLogout)
+            {
+                dos_tmr_stop(&pstAgentInfo->htmrLogout);
+                pstAgentInfo->htmrLogout = NULL;
+            }
+            ulResult = sc_acd_agent_set_login(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_LOGOUT:
+            if (pstAgentInfo->htmrLogout)
+            {
+                dos_tmr_stop(&pstAgentInfo->htmrLogout);
+                pstAgentInfo->htmrLogout = NULL;
+            }
+
+            ulResult = dos_tmr_start(&pstAgentInfo->htmrLogout, 2000, sc_acd_agent_set_logout, (U64)pstAgentInfo, TIMER_NORMAL_LOOP);
+            break;
+
+        case SC_ACTION_AGENT_FORCE_OFFLINE:
+            ulResult = sc_acd_agent_set_force_logout(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_QUERY:
+            //ulResult = sc_acd_query_agent_status(ulAgentID);
+            break;
+
+        default:
+            sc_log(LOG_LEVEL_WARNING, "Invalid action for agent. Action:%u", ulAction);
+            ulResult = DOS_FAIL;
+    }
+
+    return ulResult;
 }
 
 

@@ -20,6 +20,7 @@ extern "C" {
 
 #define SC_HINT_FILE_PATH       "/usr/local/freeswitch/sounds/okcc"
 
+
 #define SC_HINT_LANG_CN         1
 
 typedef enum tagSoundType{
