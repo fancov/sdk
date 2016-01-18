@@ -17,7 +17,7 @@ extern S32 bs_update_test(U32 ulIndex, S32 argc, S8 **argv);
 
 #endif
 
-#if INCLUDE_CC_SC
+#if 0//INCLUDE_CC_SC
 extern S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv);
 extern S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv);
 #endif
@@ -46,7 +46,7 @@ extern S32 ptc_printf_send_cache_msg(U32 ulIndex, S32 argc, S8 **argv);
 extern S32 mc_cmd_set(U32 ulIndex, S32 argc, S8 **argv);
 #endif
 
-#if INCLUDE_CC_SC
+#if 0//INCLUDE_CC_SC
 COMMAND_ST g_stCommandSCStat[] = {
     {NULL, "agent",         "Show agent stat info",           sc_cc_show_agent_stat},
     {NULL, NULL,            "",                               NULL}
@@ -75,7 +75,7 @@ COMMAND_ST g_stCommandSet[] = {
     {NULL, "timer",         "Show timer usage",                cli_show_timer},
 #endif
 
-#if INCLUDE_CC_SC
+#if 0//INCLUDE_CC_SC
     {NULL,                   "cc",            "Debug CC mod",  cli_cc_process},
     {g_stCommandSCStatGroup, "stat",          "SC cmd group",  NULL},
 #endif

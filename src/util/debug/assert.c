@@ -60,7 +60,7 @@ static HASH_TABLE_S     *g_pstHashAssert = NULL;
  */
 static pthread_mutex_t  g_mutexAssertInfo = PTHREAD_MUTEX_INITIALIZER;
 
-#ifdef INCLUDE_CC_SC
+#if 0
 extern U32 sc_log_digest_print(S8 *pszFormat, ...);
 #endif
 
@@ -270,14 +270,13 @@ DLLEXPORT VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 par
     S8 szFileLine[256] = { 0, };
     DOS_ASSERT_NODE_ST *pstFileDescNode = NULL;
 
-#ifdef INCLUDE_CC_SC
+#if 0
     sc_log_digest_print("Assert happened: file=%s, line=%d, param:%d", pszFileName, ulLine , param);
 #endif
 
     /* Éú²úhash±íkey */
     dos_snprintf(szFileLine, sizeof(szFileLine), "%s:%d", pszFileName, ulLine);
     _assert_string_hash(szFileLine, &ulHashIndex);
-    //dos_printf("Assert info. Fileline:%s, hash index:%d", szFileLine, ulHashIndex);
 
     pthread_mutex_lock(&g_mutexAssertInfo);
     pstFileDescNode = (DOS_ASSERT_NODE_ST *)hash_find_node(g_pstHashAssert, ulHashIndex, szFileLine, _assert_find_node);
@@ -298,8 +297,6 @@ DLLEXPORT VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 par
         time(&pstFileDescNode->stFirstTime);
         time(&pstFileDescNode->stLastTime);
         hash_add_node(g_pstHashAssert, (HASH_NODE_S *)pstFileDescNode, ulHashIndex, NULL);
-
-        //dos_printf("New assert ecord node for fileline:%s, %x", szFileLine, pstFileDescNode);
     }
 
     pstFileDescNode->ulTimes++;

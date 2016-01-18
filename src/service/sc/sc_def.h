@@ -884,12 +884,6 @@ typedef struct tagTaskCB
     pthread_mutex_t  mutexTaskList;               /* 保护任务队列使用的互斥量 */
 }SC_TASK_CB_ST;
 
-typedef struct tagBGJobHash{
-    S8       szJobUUID[SC_MAX_UUID_LENGTH];
-
-    U32      ulRCNo;                 /* 对应资源编号 */
-}SC_BG_JOB_HASH_NODE_ST;
-
 typedef struct tagTaskCtrlCMD{
     list_t      stLink;
     U32         ulTaskID;                         /* 任务ID */

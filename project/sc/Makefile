@@ -37,7 +37,7 @@ include $(SROUCE)/util/db/Makefile.mk
 include $(SROUCE)/cfg/Makefile.mk
 include $(SROUCE)/service/Makefile.mk
 include $(SROUCE)/service/esl/Makefile.mk
-include $(SROUCE)/service/sc/Makefile.mk
+include $(SROUCE)/service/sc_v2/Makefile.mk
 
 
 ########################################################################

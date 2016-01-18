@@ -95,8 +95,10 @@ enum SC_ERRCODE_E
     CC_ERR_SC_SYSTEM_ABNORMAL                   = 1024,         /* 系统异常         503 */
     CC_ERR_SC_SYSTEM_BUSY                       = 1025,         /* 系统忙           503 */
     CC_ERR_SC_SYSTEM_MAINTAINING                = 1026,         /* 系统维护         503 */
+    CC_ERR_SC_FORBIDDEN                         = 1027,         /* 系统维护         403 */
 
     /* BS认证错误码 */
+    CC_ERR_BS_HEAD                              = 1199,         /* BS错误码开始 */
     CC_ERR_BS_NOT_EXIST                         = 1200,         /* 不存在 */
     CC_ERR_BS_EXPIRE                            = 1201,         /* 过期/失效 */
     CC_ERR_BS_FROZEN                            = 1202,         /* 被冻结 */

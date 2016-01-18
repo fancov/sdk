@@ -55,33 +55,12 @@ extern U32 mon_init_notify_list();
 
 
 #if INCLUDE_CC_SC
-U32 mod_dipcc_sc_load();
-U32 mod_dipcc_sc_runtime();
+U32 sc_init();
+U32 sc_start();
 #endif
 
 S32 root(S32 _argc, S8 ** _argv)
 {
-#if INCLUDE_SERVICE_PYTHON
-    S8 szPyVersion[256] = {0};
-
-    /* 全局加载python库 */
-    if (py_init() != DOS_SUCC)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    dos_printf("Python LIB Init SUCC.");
-
-    /* 获取python解释器版本号信息 */
-    if (DOS_SUCC != py_get_version(szPyVersion, sizeof(szPyVersion)))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-    dos_printf("Python Interpreter Version: %s", szPyVersion);
-#endif
-
 #if INCLUDE_SERVICE_MC
     if (mc_init() != DOS_SUCC)
     {
@@ -172,7 +151,7 @@ S32 root(S32 _argc, S8 ** _argv)
 
 #ifdef INCLUDE_CC_SC
 
-    if (DOS_SUCC != mod_dipcc_sc_load())
+    if (DOS_SUCC != sc_init())
     {
         DOS_ASSERT(0);
 
@@ -180,7 +159,7 @@ S32 root(S32 _argc, S8 ** _argv)
         return -1;
     }
 
-    if (DOS_SUCC != mod_dipcc_sc_runtime())
+    if (DOS_SUCC != sc_start())
     {
         DOS_ASSERT(0);
 

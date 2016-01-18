@@ -1,0 +1,2161 @@
+/**
+ * @file : sc_lib.c
+ *
+ *            (C) Copyright 2014, DIPCC . Co., Ltd.
+ *                    ALL RIGHTS RESERVED
+ *
+ * 各种辅助函数集合
+ *
+ * @date: 2016年1月9日
+ * @arthur: Larry
+ */
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* End of __cplusplus */
+
+#include <dos.h>
+#include "sc_def.h"
+#include "sc_debug.h"
+#include "sc_pub.h"
+#include "bs_pub.h"
+#include "sc_hint.h"
+
+
+/** 管理background job的HASH表 */
+extern HASH_TABLE_S          *g_pstBGJobHash;
+
+/** 管理background job的HASH表锁 */
+extern pthread_mutex_t        g_mutexBGJobHash;
+
+/** LEG业务控制块列表 */
+extern SC_LEG_CB             *g_pstLegCB;
+/** LEG业务控制块锁 */
+extern pthread_mutex_t       g_mutexLegCB;
+
+/** 呼叫LEG控制块 */
+extern HASH_TABLE_S         *g_pstLCBHash;
+/** 保护呼叫控制块使用的互斥量 */
+extern pthread_mutex_t      g_mutexLCBHash;
+
+/** 业务控制块指针 */
+extern SC_SRV_CB       *g_pstSCBList;
+
+/** 业务控制块锁 */
+extern pthread_mutex_t g_mutexSCBList;
+
+/** 业务子层上报时间消息队列 */
+DLL_S                 g_stCommandQueue;
+
+/** 业务子层上报时间消息队列锁 */
+extern pthread_mutex_t       g_mutexCommandQueue;
+
+/** 业务子层上报时间消息队列条件变量 */
+extern pthread_cond_t        g_condCommandQueue;
+
+/** 业务子层上报时间消息队列 */
+extern DLL_S           g_stEventQueue;
+
+/** 业务子层上报时间消息队列锁 */
+extern pthread_mutex_t g_mutexEventQueue;
+
+/** 业务子层上报时间消息队列条件变量 */
+extern pthread_cond_t  g_condEventQueue;
+
+
+/**
+ * 根据 @a pszUUID 计算HASH值
+ *
+ * @param U32 ulLegNo LEG控制块编号
+ * @param S8 *pszUUID BG-JOB的UUID
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note 参与计算的UUID长度为18
+ */
+static U32 sc_uuid_hash_func(S8 *pszUUID, U32 ulHashSize)
+{
+    U32  ulIndex;
+    U32  ulLoop;
+
+    if (DOS_ADDR_INVALID(pszUUID) || '\0' == pszUUID[0] || ulHashSize == 0)
+    {
+        DOS_ASSERT(0);
+        return U32_BUTT;
+    }
+
+    for (ulLoop=0, ulIndex=0; ulLoop<SC_UUID_HASH_LEN; ulLoop++)
+    {
+        ulIndex += pszUUID[ulLoop];
+    }
+
+    return (ulIndex % ulHashSize);
+
+}
+
+S32 sc_bgjob_hash_find_func(VOID *pSymName, HASH_NODE_S *pNode)
+{
+    SC_BG_JOB_HASH_NODE_ST *pstNode;
+
+    if (DOS_ADDR_INVALID(pSymName) || DOS_ADDR_INVALID(pNode))
+    {
+        return DOS_FAIL;
+    }
+
+    pstNode = (SC_BG_JOB_HASH_NODE_ST *)pNode;
+
+    if (dos_strncmp(pstNode->szUUID, (S8 *)pSymName, sizeof(pstNode->szUUID)))
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+/**
+ * 记录BG-JOB的UUID
+ *
+ * @param U32 ulLegNo LEG控制块编号
+ * @param S8 *pszUUID BG-JOB的UUID
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_bgjob_hash_add(U32 ulLegNo, S8 *pszUUID)
+{
+    U32  ulHashIndex;
+    SC_BG_JOB_HASH_NODE_ST *pstHashNode;
+
+    if (ulLegNo >= SC_LEG_CB_SIZE)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pszUUID) || '\0' == pszUUID[0])
+    {
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_uuid_hash_func(pszUUID, SC_BG_JOB_HASH_SIZE);
+    if (U32_BUTT == ulHashIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    pstHashNode = dos_dmem_alloc(sizeof(SC_BG_JOB_HASH_NODE_ST));
+    if (DOS_ADDR_INVALID(pstHashNode))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Alloc memory fail.");
+        return DOS_FAIL;
+    }
+
+    pstHashNode->ulLegNo = ulLegNo;
+    dos_snprintf(pstHashNode->szUUID, sizeof(pstHashNode->szUUID), pszUUID);
+
+    pthread_mutex_lock(&g_mutexBGJobHash);
+    hash_add_node(g_pstBGJobHash, (HASH_NODE_S *)pstHashNode, ulHashIndex, NULL);
+    pthread_mutex_unlock(&g_mutexBGJobHash);
+
+    sc_log(LOG_LEVEL_DEBUG, "Add BG-JOB %s(%u) to hash table.", pszUUID, ulLegNo);
+
+    return DOS_SUCC;
+}
+
+/**
+ * 删除BG-JOB的UUID
+ *
+ * @param S8 *pszUUID BG-JOB的UUID
+ *
+ * @return 成功返回LEG控制块编号，否则返回U32_BUTT
+ */
+U32 sc_bgjob_hash_delete(S8 *pszUUID)
+{
+    U32  ulHashIndex;
+    U32  ulLegNo = 0;
+    SC_BG_JOB_HASH_NODE_ST *pstHashNode;
+
+    if (DOS_ADDR_INVALID(pszUUID) || '\0' == pszUUID[0])
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_uuid_hash_func(pszUUID, SC_BG_JOB_HASH_SIZE);
+    if (U32_BUTT == ulHashIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexBGJobHash);
+    pstHashNode = (SC_BG_JOB_HASH_NODE_ST *)hash_find_node(g_pstBGJobHash, ulHashIndex, pszUUID, sc_bgjob_hash_find_func);
+    if (DOS_ADDR_VALID(pstHashNode))
+    {
+        ulLegNo = pstHashNode->ulLegNo;
+        hash_delete_node(g_pstBGJobHash, (HASH_NODE_S *)pstHashNode, ulHashIndex);
+
+        dos_dmem_free(pstHashNode);
+    }
+    pthread_mutex_unlock(&g_mutexBGJobHash);
+
+
+
+    sc_log(LOG_LEVEL_DEBUG, "Add BG-JOB %s(%u) to hash table.", pszUUID, ulLegNo);
+
+    return ulLegNo;
+}
+
+/**
+ * 查找BG-JOB的UUID
+ *
+ * @param S8 *pszUUID BG-JOB的UUID
+ *
+ * @return 成功返回LEG控制块编号，否则返回U32_BUTT
+ */
+U32 sc_bgjob_hash_find(S8 *pszUUID)
+{
+    U32  ulHashIndex;
+    U32  ulLegNo = U32_BUTT;
+    SC_BG_JOB_HASH_NODE_ST *pstHashNode;
+
+    if (DOS_ADDR_INVALID(pszUUID) || '\0' == pszUUID[0])
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_uuid_hash_func(pszUUID, SC_BG_JOB_HASH_SIZE);
+    if (U32_BUTT == ulHashIndex)
+    {
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexBGJobHash);
+    pstHashNode = (SC_BG_JOB_HASH_NODE_ST *)hash_find_node(g_pstBGJobHash, ulHashIndex, pszUUID, sc_bgjob_hash_find_func);
+    if (DOS_ADDR_VALID(pstHashNode))
+    {
+        ulLegNo = pstHashNode->ulLegNo;
+    }
+    pthread_mutex_unlock(&g_mutexBGJobHash);
+
+    return ulLegNo;
+
+}
+
+/**
+ * 初始化 @a pstCall 所指向的基础呼叫业务单元控制块
+ *
+ * @param SC_SU_CALL_ST *pstCall 基础呼叫业务单元控制块
+ *
+ * @return VOID
+ */
+VOID sc_lcb_call_init(SC_SU_CALL_ST *pstCall)
+{
+    if (DOS_ADDR_INVALID(pstCall))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+    pstCall->bValid = DOS_FALSE;
+    pstCall->bTrace = DOS_FALSE;
+    pstCall->bEarlyMedia =  DOS_FALSE;
+
+    pstCall->ucStatus = SC_LEG_INIT;
+    pstCall->ucHoldCnt = 0;
+    pstCall->ucPeerType = SC_LEG_PEER_BUTT;
+    pstCall->ucLocalMode = SC_LEG_LOCAL_BUTT;
+
+    pstCall->ulHoldTotalTime = 0;
+    pstCall->ulTrunkID = 0;
+    pstCall->ulTrunkCount = 0;
+
+    pstCall->stTimeInfo.ulStartTime = 0;
+    pstCall->stTimeInfo.ulRingTime = 0;
+    pstCall->stTimeInfo.ulAnswerTime = 0;
+    pstCall->stTimeInfo.ulBridgeTime = 0;
+    pstCall->stTimeInfo.ulByeTime = 0;
+    pstCall->stTimeInfo.ulIVREndTime = 0;
+    pstCall->stTimeInfo.ulDTMFStartTime = 0;
+    pstCall->stTimeInfo.ulDTMFLastTime = 0;
+    pstCall->stTimeInfo.ulRecordStartTime = 0;
+    pstCall->stTimeInfo.ulRecordStopTime = 0;
+    pstCall->stNumInfo.szOriginalCallee[0] = '\0';
+    pstCall->stNumInfo.szOriginalCalling[0] = '\0';
+    pstCall->stNumInfo.szRealCallee[0] = '\0';
+    pstCall->stNumInfo.szRealCalling[0] = '\0';
+    pstCall->stNumInfo.szCallee[0] = '\0';
+    pstCall->stNumInfo.szCalling[0] = '\0';
+    pstCall->stNumInfo.szANI[0] = '\0';
+    pstCall->stNumInfo.szCID[0] = '\0';
+    pstCall->stNumInfo.szDial[0] = '\0';
+}
+
+/**
+ * 初始化 @a pstRecord 所指向的录音业务单元控制块
+ *
+ * @param SC_SU_RECORD_ST *pstRecord 录音业务单元控制块
+ *
+ * @return VOID
+ */
+VOID sc_lcb_record_init(SC_SU_RECORD_ST *pstRecord)
+{
+    if (DOS_ADDR_INVALID(pstRecord))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstRecord->bValid = DOS_FALSE;
+    pstRecord->bTrace = DOS_FALSE;
+    pstRecord->usStatus = SC_SU_RECORD_INIT;
+    pstRecord->szRecordFilename[0] = '\0';
+}
+
+/**
+ * 初始化 @a pstPlayback 所指向的放音业务单元控制块
+ *
+ * @param SC_SU_PLAYBACK_ST *pstPlayback 放音业务控制块
+ *
+ * @return VOID
+ */
+VOID sc_lcb_playback_init(SC_SU_PLAYBACK_ST *pstPlayback)
+{
+    if (DOS_ADDR_INVALID(pstPlayback))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstPlayback->bValid = DOS_FALSE;
+    pstPlayback->bTrace = DOS_FALSE;
+    pstPlayback->usStatus = SC_SU_PLAYBACK_INIT;
+    pstPlayback->ulCurretnIndex = 0;
+}
+
+/**
+ * 初始化 @a pstBridge 所指向的桥接业务单元控制块
+ *
+ * @param SC_SU_BRIDGE_ST *pstBridge 桥接业务控制块
+ *
+ * @return VOID
+ */
+VOID sc_lcb_bridge_init(SC_SU_BRIDGE_ST *pstBridge)
+{
+    if (DOS_ADDR_INVALID(pstBridge))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstBridge->bValid = DOS_FALSE;
+    pstBridge->bTrace = DOS_FALSE;
+    pstBridge->usStatus = SC_SU_BRIDGE_INIT;
+    pstBridge->ulOtherLEGNo = U32_BUTT;
+}
+
+/**
+ * 初始化 @a pstHold 所指向的呼叫保持业务单元控制块
+ *
+ * @param SC_SU_HOLD_ST *pstHold 呼叫保持业务控制块
+ *
+ * @return VOID
+ */
+VOID sc_lcb_hold_init(SC_SU_HOLD_ST *pstHold)
+{
+    if (DOS_ADDR_INVALID(pstHold))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstHold->bValid = DOS_FALSE;
+    pstHold->bTrace = DOS_FALSE;
+    pstHold->usStatus = SC_SU_HOLD_INIT;
+    pstHold->usMode = 0;
+}
+
+/**
+ * 初始化 @a pstMux 所指向的混音业务单元控制块
+ *
+ * @param SC_SU_MUX_ST *pstMux 混音业务控制块
+ *
+ * @return VOID
+ */
+VOID sc_lcb_mux_init(SC_SU_MUX_ST *pstMux)
+{
+    if (DOS_ADDR_INVALID(pstMux))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstMux->bValid = DOS_FALSE;
+    pstMux->bTrace = DOS_FALSE;
+    pstMux->usStatus = SC_SU_MUX_INIT;
+    pstMux->usMode = 0;
+    pstMux->ulOtherLegNo = U32_BUTT;
+}
+
+/**
+ * 初始化 @a pstMCX 所指向的修改连接业务单元控制块
+ *
+ * @param SC_SU_MCX_ST *pstMCX 混音业务控制块
+ *
+ * @return VOID
+ */
+VOID sc_lcb_mcx_init(SC_SU_MCX_ST *pstMCX)
+{
+    if (DOS_ADDR_INVALID(pstMCX))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstMCX->bValid = DOS_FALSE;
+    pstMCX->bTrace = DOS_FALSE;
+    pstMCX->usStatus = SC_SU_MCX_INIT;
+}
+
+/**
+ * 初始化 @a pstIVR 所指向的IVR业务单元控制块
+ *
+ * @param SC_SU_IVR_ST *pstIVR IVR业务控制块
+ *
+ * @return VOID
+ */
+VOID sc_lcb_ivr_init(SC_SU_IVR_ST *pstIVR)
+{
+    if (DOS_ADDR_INVALID(pstIVR))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstIVR->bValid = DOS_FALSE;
+    pstIVR->bTrace = DOS_FALSE;
+    pstIVR->usStatus = SC_SU_IVR_INIT;
+}
+
+/**
+ * 初始化 @a pstLCB 指向的LEG控制块
+ *
+ * @param SC_LEG_CB *pstLCB LEG控制块指针
+ *
+ * @return NULL
+ */
+VOID sc_lcb_init(SC_LEG_CB *pstLCB)
+{
+    U32  ulIndex;
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstLCB->bValid = DOS_FALSE;
+    pstLCB->bTrace = DOS_FALSE;
+    pstLCB->szUUID[0] = '\0';
+    pstLCB->ulAllocTime = 0;
+
+    for (ulIndex=0; ulIndex<SC_MAX_CODEC_NUM; ulIndex++)
+    {
+        pstLCB->aucCodecList[ulIndex] = U8_BUTT;
+    }
+    pstLCB->ucCodec = U8_BUTT;
+    pstLCB->ucPtime = 0;
+    pstLCB->bValid = DOS_FALSE;
+    pstLCB->bTrace = DOS_FALSE;
+    pstLCB->ulSCBNo = U32_BUTT;
+
+    sc_lcb_call_init(&pstLCB->stCall);
+    sc_lcb_record_init(&pstLCB->stRecord);
+    sc_lcb_playback_init(&pstLCB->stPlayback);
+    sc_lcb_bridge_init(&pstLCB->stBridge);
+    sc_lcb_mcx_init(&pstLCB->stMcx);
+    sc_lcb_mux_init(&pstLCB->stMux);
+    sc_lcb_hold_init(&pstLCB->stHold);
+    sc_lcb_ivr_init(&pstLCB->stIVR);
+}
+
+/**
+ * 申请空闲的LEG控制块
+ *
+ * @return 成功返回LEG控制块指针，否则返回NULL
+ */
+SC_LEG_CB *sc_lcb_alloc()
+{
+    static U32 ulIndex = 0;
+    U32 ulLastIndex = 0;
+    SC_LEG_CB *pstLCB = NULL;
+
+    pthread_mutex_lock(&g_mutexLegCB);
+    ulLastIndex = ulIndex;
+    for (; ulIndex<SC_LEG_CB_SIZE; ulIndex++)
+    {
+        if (g_pstLegCB[ulIndex].bValid)
+        {
+            continue;
+        }
+
+        pstLCB = &g_pstLegCB[ulIndex];
+        break;
+    }
+
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        for (ulIndex=0; ulIndex<ulLastIndex; ulIndex++)
+        {
+            if (g_pstLegCB[ulIndex].bValid)
+            {
+                continue;
+            }
+
+            pstLCB = &g_pstLegCB[ulIndex];
+            break;
+        }
+    }
+
+    if (DOS_ADDR_VALID(pstLCB))
+    {
+        sc_lcb_init(pstLCB);
+        pstLCB->bValid = DOS_TRUE;
+        pstLCB->ulAllocTime = time(NULL);
+    }
+    else
+    {
+        sc_log(LOG_LEVEL_ERROR, "Alloc leg CB fail.");
+    }
+    pthread_mutex_unlock(&g_mutexLegCB);
+
+    if (pstLCB)
+    {
+        sc_log(LOG_LEVEL_DEBUG, "Alloc leg CB. No:%u", pstLCB->ulCBNo);
+    }
+
+    return pstLCB;
+}
+
+/**
+ * 释放@a pstLCB所指定的LEG控制块
+ *
+ * @param SC_LEG_CB *pstLCB LEG控制块指针
+ *
+ * @return 成功返回LEG控制块指针，否则返回NULL
+ */
+VOID sc_lcb_free(SC_LEG_CB *pstLCB)
+{
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    sc_log(LOG_LEVEL_DEBUG, "Free LCB. No:%u", pstLCB->ulCBNo);
+
+    pthread_mutex_lock(&g_mutexLegCB);
+    sc_lcb_init(pstLCB);
+    pthread_mutex_unlock(&g_mutexLegCB);
+}
+
+/**
+ * 通过 @a ulCBNo 获取LEG控制块
+ *
+ * @param U32 ulCBNo LEG控制块编号
+ *
+ * @return 成功返回LEG控制块指针，否则返回NULL
+ *
+ * @note 如果 @a ulCBNo 所指定的业务控制块为未分配状态，也会返回NULL
+ */
+SC_LEG_CB *sc_lcb_get(U32 ulCBNo)
+{
+    if (ulCBNo >= SC_LEG_CB_SIZE)
+    {
+        sc_log(LOG_LEVEL_INFO, "Invalid LCB No. %u", ulCBNo);
+        return NULL;
+    }
+
+    if (!g_pstLegCB[ulCBNo].bValid)
+    {
+        sc_log(LOG_LEVEL_INFO, "LCB %u not alloced.", ulCBNo);
+        return NULL;
+    }
+
+    return &g_pstLegCB[ulCBNo];
+}
+
+/**
+ * LEG控制块hash表中查找一个业务控制块
+ *
+ * @param VOID *pSymName,
+ * @param HASH_NODE_S *pNode
+ *
+ * @return 成功返回业务控制块指向，失败返回NULL
+ */
+static S32 sc_lcb_hash_find_func(VOID *pSymName, HASH_NODE_S *pNode)
+{
+    SC_LCB_HASH_NODE_ST *pstLCBHashNode = (SC_LCB_HASH_NODE_ST *)pNode;
+
+    if (!pstLCBHashNode)
+    {
+        return DOS_FAIL;
+    }
+
+    if (dos_strncmp(pstLCBHashNode->szUUID, (S8 *)pSymName, sizeof(pstLCBHashNode->szUUID)))
+    {
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+/**
+ * 向HASH表添加一个节点
+ *
+ * @param S8 *pszUUID 由FS参数的UUID
+ * @param SC_SCB_ST *pstSCB
+ *
+ * @return 成功返回DOS_SUCC，失败返回DOS_FAIL
+ */
+U32 sc_lcb_hash_add(S8 *pszUUID, SC_LEG_CB *pstLCB)
+{
+    U32  ulHashIndex;
+    SC_LCB_HASH_NODE_ST *pstLCBHashNode;
+
+    if (!pszUUID)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_uuid_hash_func(pszUUID, SC_UUID_HASH_SIZE);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexLCBHash);
+    pstLCBHashNode = (SC_LCB_HASH_NODE_ST *)hash_find_node(g_pstLCBHash, ulHashIndex, pszUUID, sc_lcb_hash_find_func);
+    if (pstLCBHashNode)
+    {
+        sc_trace_leg(pstLCB, "UUID %s has been added to hash list sometimes before.", pszUUID);
+        if (DOS_ADDR_INVALID(pstLCBHashNode->pstLCB)
+            && DOS_ADDR_VALID(pstLCB))
+        {
+            pstLCBHashNode->pstLCB = pstLCB;
+        }
+        pthread_mutex_unlock(&g_mutexLCBHash);
+
+        return DOS_SUCC;
+    }
+
+    pstLCBHashNode = (SC_LCB_HASH_NODE_ST *)dos_dmem_alloc(sizeof(SC_LCB_HASH_NODE_ST));
+    if (!pstLCBHashNode)
+    {
+        sc_trace_leg(pstLCB, "Alloc memory fail.");
+        pthread_mutex_unlock(&g_mutexLCBHash);
+
+        return DOS_FAIL;
+    }
+
+    HASH_Init_Node((HASH_NODE_S *)&pstLCBHashNode->stNode);
+    pstLCBHashNode->pstLCB = NULL;
+    pstLCBHashNode->szUUID[0] = '\0';
+
+    if (DOS_ADDR_INVALID(pstLCBHashNode->pstLCB)
+        && DOS_ADDR_VALID(pstLCB))
+    {
+        pstLCBHashNode->pstLCB = pstLCB;
+    }
+
+    dos_strncpy(pstLCBHashNode->szUUID, pszUUID, sizeof(pstLCBHashNode->szUUID));
+    pstLCBHashNode->szUUID[sizeof(pstLCBHashNode->szUUID) - 1] = '\0';
+
+    hash_add_node(g_pstLCBHash, (HASH_NODE_S *)pstLCBHashNode, ulHashIndex, NULL);
+
+    sc_trace_leg(pstLCB, "Add SCB %d with the UUID %s to the hash table.", pstLCB->ulCBNo, pszUUID);
+
+    pthread_mutex_unlock(&g_mutexLCBHash);
+    return DOS_SUCC;
+}
+
+U32 sc_lcb_hash_delete(S8 *pszUUID)
+{
+    U32  ulHashIndex;
+    SC_LCB_HASH_NODE_ST *pstLCBHashNode;
+
+    if (!pszUUID)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_uuid_hash_func(pszUUID, SC_UUID_HASH_SIZE);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexLCBHash);
+    pstLCBHashNode = (SC_LCB_HASH_NODE_ST *)hash_find_node(g_pstLCBHash, ulHashIndex, pszUUID, sc_lcb_hash_find_func);
+    if (!pstLCBHashNode)
+    {
+        DOS_ASSERT(0);
+
+        sc_log(LOG_LEVEL_WARNING, "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
+        pthread_mutex_unlock(&g_mutexLCBHash);
+        return DOS_SUCC;
+    }
+
+    hash_delete_node(g_pstLCBHash, (HASH_NODE_S *)pstLCBHashNode, ulHashIndex);
+    pstLCBHashNode->pstLCB = NULL;
+    pstLCBHashNode->szUUID[sizeof(pstLCBHashNode->szUUID) - 1] = '\0';
+
+    dos_dmem_free(pstLCBHashNode);
+    pthread_mutex_unlock(&g_mutexLCBHash);
+
+    return DOS_SUCC;
+}
+
+SC_LEG_CB *sc_lcb_hash_find(S8 *pszUUID)
+{
+    U32  ulHashIndex;
+    SC_LCB_HASH_NODE_ST *pstLCBHashNode = NULL;
+    SC_LEG_CB           *pstLCB = NULL;
+
+    if (!pszUUID)
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    ulHashIndex = sc_uuid_hash_func(pszUUID, SC_UUID_HASH_SIZE);
+    if (U32_BUTT == ulHashIndex)
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    pthread_mutex_lock(&g_mutexLCBHash);
+    pstLCBHashNode = (SC_LCB_HASH_NODE_ST *)hash_find_node(g_pstLCBHash, ulHashIndex, pszUUID, sc_lcb_hash_find_func);
+    if (!pstLCBHashNode)
+    {
+        sc_log(LOG_LEVEL_WARNING, "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
+        pthread_mutex_unlock(&g_mutexLCBHash);
+        return NULL;
+    }
+    pstLCB = pstLCBHashNode->pstLCB;
+    pthread_mutex_unlock(&g_mutexLCBHash);
+
+    return pstLCB;
+}
+
+
+VOID sc_scb_call_init(SC_SRV_CALL_ST *pstCall)
+{
+    if (DOS_ADDR_INVALID(pstCall))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstCall->stSCBTag.bTrace = DOS_FALSE;
+    pstCall->stSCBTag.bValid = DOS_FALSE;
+    pstCall->stSCBTag.bWaitingExit = DOS_FALSE;
+    pstCall->stSCBTag.usSrvType = SC_SRV_CALL;
+    pstCall->stSCBTag.usStatus = SC_CALL_IDEL;
+    pstCall->ulCallingLegNo = U32_BUTT;
+    pstCall->ulCalleeLegNo = U32_BUTT;
+    pstCall->pstAgentCallee = NULL;
+    pstCall->pstAgentCalling = NULL;
+}
+
+VOID sc_scb_preview_call_init(SC_PREVIEW_CALL_ST *pstPreviewCall)
+{
+    if (DOS_ADDR_INVALID(pstPreviewCall))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstPreviewCall->stSCBTag.bTrace = DOS_FALSE;
+    pstPreviewCall->stSCBTag.bValid = DOS_FALSE;
+    pstPreviewCall->stSCBTag.usSrvType = SC_SRV_PREVIEW_CALL;
+    pstPreviewCall->stSCBTag.usStatus = SC_PREVIEW_CALL_IDEL;
+    pstPreviewCall->ulCallingLegNo = U32_BUTT;
+    pstPreviewCall->ulCalleeLegNo = U32_BUTT;
+    pstPreviewCall->ulAgentID = U32_BUTT;
+}
+
+VOID sc_scb_auto_call_init(SC_AUTO_CALL_ST *pstAutoCall)
+{
+    if (DOS_ADDR_INVALID(pstAutoCall))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstAutoCall->stSCBTag.bTrace = DOS_FALSE;
+    pstAutoCall->stSCBTag.bValid = DOS_FALSE;
+    pstAutoCall->stSCBTag.usSrvType = SC_SRV_AUTO_CALL;
+    pstAutoCall->stSCBTag.usStatus = SC_AUTO_CALL_IDEL;
+    pstAutoCall->ulCallingLegNo = U32_BUTT;
+    pstAutoCall->ulCalleeLegNo = U32_BUTT;
+    pstAutoCall->ulAudioID = 0;
+    pstAutoCall->ulKeyMode = 0;
+    pstAutoCall->ulAgentID = 0;
+    pstAutoCall->ulTaskID = 0;
+    pstAutoCall->ulTcbID = U32_BUTT;
+
+}
+
+VOID sc_scb_voice_verify_init(SC_VOICE_VERIFY_ST *pstVoiceVerify)
+{
+    if (DOS_ADDR_INVALID(pstVoiceVerify))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstVoiceVerify->stSCBTag.bValid = DOS_FALSE;
+    pstVoiceVerify->stSCBTag.bTrace = DOS_FALSE;
+    pstVoiceVerify->stSCBTag.usSrvType = SC_SRV_VOICE_VERIFY;
+    pstVoiceVerify->stSCBTag.usStatus = SC_VOICE_VERIFY_IDEL;
+    pstVoiceVerify->ulLegNo = U32_BUTT;
+    pstVoiceVerify->ulTipsHitNo1 = 0;
+    pstVoiceVerify->ulTipsHitNo2 = 0;
+    pstVoiceVerify->szVerifyCode[0] = '\0';
+}
+
+VOID sc_scb_access_code_init(SC_ACCESS_CODE_ST *pstAccessCode)
+{
+    if (DOS_ADDR_INVALID(pstAccessCode))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstAccessCode->stSCBTag.bTrace = DOS_FALSE;
+    pstAccessCode->stSCBTag.bValid = DOS_FALSE;
+    pstAccessCode->stSCBTag.usSrvType = SC_SRV_ACCESS_CODE;
+    pstAccessCode->stSCBTag.usStatus = SC_ACCESS_CODE_IDEL;
+    pstAccessCode->ulLegNo = U32_BUTT;
+    pstAccessCode->ulSrvType = 0;
+    pstAccessCode->szDialCache[0] = '\0';
+    pstAccessCode->ulAgentID = 0;
+}
+
+VOID sc_scb_hold_init(SC_CALL_HOLD_ST *pstHold)
+{
+    if (DOS_ADDR_INVALID(pstHold))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstHold->stSCBTag.bTrace = DOS_FALSE;
+    pstHold->stSCBTag.bValid = DOS_FALSE;
+    pstHold->stSCBTag.usSrvType = SC_SRV_HOLD;
+    pstHold->stSCBTag.usStatus = SC_HOLD_IDEL;
+    pstHold->ulCallLegNo = U32_BUTT;
+}
+
+VOID sc_scb_transfer_init(SC_CALL_TRANSFER_ST *pstTransfer)
+{
+    if (DOS_ADDR_INVALID(pstTransfer))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstTransfer->stSCBTag.bTrace = DOS_FALSE;
+    pstTransfer->stSCBTag.bValid = DOS_FALSE;
+    pstTransfer->stSCBTag.usSrvType = SC_SRV_TRANSFER;
+    pstTransfer->stSCBTag.usStatus = SC_TRANSFER_IDEL;
+    pstTransfer->ulOtherSCBNo = U32_BUTT;
+    pstTransfer->ulPublishLegNo = U32_BUTT;
+    pstTransfer->ulNotifyLegNo = U32_BUTT;
+}
+
+VOID sc_scb_incoming_queue_init(SC_INCOMING_QUEUE_ST *pstIncomingQueue)
+{
+    if (DOS_ADDR_INVALID(pstIncomingQueue))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstIncomingQueue->stSCBTag.bValid = DOS_FALSE;
+    pstIncomingQueue->stSCBTag.bTrace = DOS_FALSE;
+    pstIncomingQueue->stSCBTag.usSrvType = SC_SRV_INCOMING_QUEUE;
+    pstIncomingQueue->stSCBTag.usStatus = SC_INQUEUE_IDEL;
+    pstIncomingQueue->ulLegNo = U32_BUTT;
+    pstIncomingQueue->ulQueueType = 0;
+    pstIncomingQueue->ulEnqueuTime = 0;
+    pstIncomingQueue->ulDequeuTime = 0;
+}
+
+VOID sc_scb_interception_init(SC_INTERCEPTION_ST *pstInterception)
+{
+    if (DOS_ADDR_INVALID(pstInterception))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstInterception->stSCBTag.bValid = DOS_FALSE;
+    pstInterception->stSCBTag.bTrace = DOS_FALSE;
+    pstInterception->stSCBTag.usSrvType = SC_SRV_INTERCEPTION;
+    pstInterception->stSCBTag.usStatus = SC_INTERCEPTION_IDEL;
+    pstInterception->ulLegNo = U32_BUTT;
+}
+
+VOID sc_scb_whisper_init(SC_SRV_WHISPER_ST *pstWhisper)
+{
+    if (DOS_ADDR_INVALID(pstWhisper))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstWhisper->stSCBTag.bValid = DOS_FALSE;
+    pstWhisper->stSCBTag.bTrace = DOS_FALSE;
+    pstWhisper->stSCBTag.usSrvType = SC_SRV_WHISPER;
+    pstWhisper->stSCBTag.usStatus = SC_WHISPER_IDEL;
+    pstWhisper->ulLegNo = U32_BUTT;
+}
+
+VOID sc_scb_mark_custom_init(SC_MARK_CUSTOM_ST *pstMarkCustom)
+{
+    if (DOS_ADDR_INVALID(pstMarkCustom))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstMarkCustom->stSCBTag.bValid = DOS_FALSE;
+    pstMarkCustom->stSCBTag.bTrace = DOS_FALSE;
+    pstMarkCustom->stSCBTag.usSrvType = SC_SRV_MARK_CUSTOM;
+    pstMarkCustom->stSCBTag.usStatus = SC_MAKR_CUSTOM_IDEL;
+    pstMarkCustom->ulLegNo = U32_BUTT;
+    pstMarkCustom->szDialCache[0] = '\0';
+}
+
+
+/**
+ * 初始化也控制块
+ *
+ * @param pstSCB 需要被初始化的业务控制块编号
+ *
+ * @return NULL
+ */
+VOID sc_scb_init(SC_SRV_CB *pstSCB)
+{
+    U32 ulIndex;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+
+    pstSCB->bValid = DOS_FALSE;
+    pstSCB->bTrace = DOS_FALSE;
+    for (ulIndex=0; ulIndex<SC_SRV_BUTT; ulIndex++)
+    {
+        pstSCB->pstServiceList[ulIndex] = NULL;
+    }
+
+    for (ulIndex=0; ulIndex<SC_MAX_SERVICE_TYPE; ulIndex++)
+    {
+        pstSCB->pstServiceList[ulIndex] = 0;
+    }
+
+    pstSCB->ulCurrentSrv = 0;
+    pstSCB->ulCustomerID = U32_BUTT;
+    pstSCB->ulAgentID = 0;
+    pstSCB->ulAllocTime = 0;
+
+    sc_scb_call_init(&pstSCB->stCall);
+    sc_scb_preview_call_init(&pstSCB->stPreviewCall);
+    sc_scb_auto_call_init(&pstSCB->stAutoCall);
+    sc_scb_voice_verify_init(&pstSCB->stVoiceVerify);
+    sc_scb_access_code_init(&pstSCB->stAccessCode);
+    sc_scb_hold_init(&pstSCB->stHold);
+    sc_scb_transfer_init(&pstSCB->stTransfer);
+    sc_scb_incoming_queue_init(&pstSCB->stIncomingQueue);
+    sc_scb_interception_init(&pstSCB->stInterception);
+    sc_scb_whisper_init(&pstSCB->stWhisoered);
+    sc_scb_mark_custom_init(&pstSCB->stMarkCustom);
+}
+
+/**
+ * 申请一个空闲的业务控制块
+ *
+ * @return 成功返回业务控制块指针，否则返回NULL
+ */
+SC_SRV_CB *sc_scb_alloc()
+{
+    static U32 ulIndex = 0;
+    U32        ulLastIndex = 0;
+    SC_SRV_CB  *pstSCB = NULL;
+
+    pthread_mutex_lock(&g_mutexSCBList);
+    ulLastIndex = ulIndex;
+    for (; ulIndex<SC_SCB_SIZE; ulIndex++)
+    {
+        if (g_pstSCBList[ulIndex].bValid)
+        {
+            continue;
+        }
+
+        pstSCB = &g_pstSCBList[ulIndex];
+        break;
+    }
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        for (ulIndex=0; ulIndex<ulLastIndex; ulIndex++)
+        {
+            if (g_pstSCBList[ulIndex].bValid)
+            {
+                continue;
+            }
+
+            pstSCB = &g_pstSCBList[ulIndex];
+            break;
+        }
+    }
+
+    if (DOS_ADDR_VALID(pstSCB))
+    {
+        sc_scb_init(pstSCB);
+        pstSCB->bValid = DOS_TRUE;
+        pstSCB->ulAllocTime = time(NULL);
+    }
+    else
+    {
+        sc_log(LOG_LEVEL_ERROR, "Alloc Service CB fail.");
+    }
+    pthread_mutex_unlock(&g_mutexSCBList);
+
+    if (pstSCB)
+    {
+        sc_log(LOG_LEVEL_DEBUG, "Alloc Service CB. No:%u", pstSCB->ulSCBNo);
+    }
+
+    return pstSCB;
+}
+
+
+/**
+ * 释放 @a pstSCB 指定的业务控制块
+ *
+ * @param SC_SRV_CB *pstSCB 业务控制块指针
+ *
+ * @return VOID
+ */
+VOID sc_scb_free(SC_SRV_CB *pstSCB)
+{
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    sc_log(LOG_LEVEL_DEBUG, "Free SCB. No:%u", pstSCB->ulSCBNo);
+
+    pthread_mutex_lock(&g_mutexSCBList);
+    sc_scb_init(pstSCB);
+    pthread_mutex_unlock(&g_mutexSCBList);
+}
+
+/**
+ * 通过 @a ulCBNo 获取业务控制块
+ *
+ * @param U32 ulCBNo 业务控制块编号
+ *
+ * @return 成功返回业务控制块指针，否则返回NULL
+ *
+ * @note 如果 @a ulCBNo 所指定的业务控制块为未分配状态，也会返回NULL
+ */
+SC_SRV_CB *sc_scb_get(U32 ulCBNo)
+{
+    if (ulCBNo >= SC_SCB_SIZE)
+    {
+        sc_log(LOG_LEVEL_INFO, "Invalid SCB No.");
+        return NULL;
+    }
+
+    if (!g_pstSCBList[ulCBNo].bValid)
+    {
+        sc_log(LOG_LEVEL_INFO, "SCB %u not alloc.", ulCBNo);
+        return NULL;
+    }
+
+    return &g_pstSCBList[ulCBNo];
+}
+
+/**
+ * 给指定的SCB设置业务
+ *
+ * @param SC_SRV_CB *pstSCB
+ * @param U32 ulService
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_scb_set_service(SC_SRV_CB *pstSCB, U32 ulService)
+{
+    U32  ulIndex;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (0 == ulService || ulService >= BS_SERV_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    for (ulIndex=0; ulIndex<SC_MAX_SERVICE_TYPE; ulIndex++)
+    {
+        if (pstSCB->aucServType[ulIndex] == 0)
+        {
+            pstSCB->aucServType[ulIndex] = ulService;
+            return DOS_SUCC;
+        }
+    }
+
+    return DOS_FAIL;
+}
+
+
+/**
+ * 向业务子层发送命令
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_command(SC_MSG_TAG_ST *pstMsg)
+{
+    DLL_NODE_S   *pstDLLNode = NULL;
+
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstDLLNode = dos_dmem_alloc(sizeof(DLL_NODE_S));
+    if (DOS_ADDR_INVALID(pstDLLNode))
+    {
+        DOS_ASSERT(0);
+
+        dos_dmem_free(pstMsg);
+        return DOS_FAIL;
+    }
+
+    DLL_Init_Node(pstDLLNode);
+    pstDLLNode->pHandle = pstMsg;
+
+    pthread_mutex_lock(&g_mutexCommandQueue);
+    DLL_Add(&g_stCommandQueue, pstDLLNode);
+    pthread_cond_signal(&g_condCommandQueue);
+    pthread_mutex_unlock(&g_mutexCommandQueue);
+
+    sc_log(LOG_LEVEL_DEBUG, "Send sc cmd. Type: %u, scb: %u, errno: %u"
+                , pstMsg->ulMsgType, pstMsg->ulSCBNo, pstMsg->usInterErr);
+
+    return DOS_SUCC;
+}
+
+/**
+ * 向业务子层发送发起呼叫命令
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg)
+{
+    SC_MSG_CMD_CALL_ST *pstCMDCall = NULL;
+    U32                ulRet;
+
+    pstCMDCall = (SC_MSG_CMD_CALL_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_CALL_ST));
+    if (DOS_ADDR_INVALID(pstCMDCall))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstCMDCall, pstMsg, sizeof(SC_MSG_CMD_CALL_ST));
+
+    ulRet = sc_send_command(&pstCMDCall->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        sc_log(LOG_LEVEL_ERROR, "Make call request send fail. SCB: %u", pstMsg->ulSCBNo);
+
+        dos_dmem_free(pstCMDCall);
+        pstCMDCall = NULL;
+    }
+
+    sc_log(LOG_LEVEL_DEBUG, "Send new call request. SCB: %u", pstMsg->ulSCBNo);
+
+    return ulRet;
+}
+
+U32 sc_send_cmd_bridge(SC_MSG_TAG_ST *pstMsg)
+{
+    return DOS_SUCC;
+}
+
+U32 sc_send_cmd_release(SC_MSG_TAG_ST *pstMsg)
+{
+    return DOS_SUCC;
+}
+
+U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg)
+{
+    return DOS_SUCC;
+}
+
+U32 sc_send_cmd_playback_stop(SC_MSG_TAG_ST *pstMsg)
+{
+    return DOS_SUCC;
+}
+
+U32 sc_send_cmd_record(SC_MSG_TAG_ST *pstMsg)
+{
+    return DOS_SUCC;
+}
+
+U32 sc_send_cmd_record_stop(SC_MSG_TAG_ST *pstMsg)
+{
+    return DOS_SUCC;
+}
+
+U32 sc_send_cmd_hold(SC_MSG_TAG_ST *pstMsg)
+{
+    return DOS_SUCC;
+}
+
+U32 sc_send_cmd_unhold(SC_MSG_TAG_ST *pstMsg)
+{
+    return DOS_SUCC;
+}
+
+U32 sc_send_cmd_ivr(SC_MSG_TAG_ST *pstMsg)
+{
+    return DOS_SUCC;
+}
+
+/**
+ * 向业务子层发送放音命令，正对单个声音文件
+ *
+ * @param U32 ulSCBNo
+ * @param U32 ulLegNo
+ * @param U32 ulSndInd
+ * @param U32 ulLoop
+ * @param U32 ulInterval
+ * @param U32 ulSilence
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_req_play_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulSndInd, U32 ulLoop, U32 ulInterval, U32 ulSilence)
+{
+    SC_MSG_CMD_PLAYBACK_ST  *pstCMDPlayback;
+    U32                     ulRet;
+
+    pstCMDPlayback = (SC_MSG_CMD_PLAYBACK_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_PLAYBACK_ST));
+    if (DOS_ADDR_INVALID(pstCMDPlayback))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstCMDPlayback->stMsgTag.ulMsgType = SC_CMD_PLAYBACK;
+    pstCMDPlayback->stMsgTag.ulSCBNo = ulSCBNo;
+    pstCMDPlayback->stMsgTag.usInterErr = 0;
+
+    pstCMDPlayback->ulMode = 0;
+    pstCMDPlayback->ulSCBNo = ulSCBNo;
+    pstCMDPlayback->ulLegNo = ulLegNo;
+    pstCMDPlayback->aulAudioList[0] = ulSndInd;
+    pstCMDPlayback->ulLoopCnt = ulLoop;
+    pstCMDPlayback->ulTotalAudioCnt = 1;
+    pstCMDPlayback->ulInterval = ulInterval;
+    pstCMDPlayback->ulSilence = ulSilence;
+
+    ulRet = sc_send_command(&pstCMDPlayback->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCMDPlayback);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+/**
+ * 向业务子层发送放音命令，正对多个声音文件
+ *
+ * @param U32 ulSCBNo
+ * @param U32 ulLegNo
+ * @param U32 *pulSndInd
+ * @param U32 ulSndCnt
+ * @param U32 ulLoop
+ * @param U32 ulInterval
+ * @param U32 ulSilence
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_req_play_sounds(U32 ulSCBNo, U32 ulLegNo, U32 *pulSndInd, U32 ulSndCnt, U32 ulLoop, U32 ulInterval, U32 ulSilence)
+{
+    SC_MSG_CMD_PLAYBACK_ST  *pstCMDPlayback;
+    U32                     ulRet;
+    U32                     i;
+
+    pstCMDPlayback = (SC_MSG_CMD_PLAYBACK_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_PLAYBACK_ST));
+    if (DOS_ADDR_INVALID(pstCMDPlayback))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstCMDPlayback->stMsgTag.ulMsgType = SC_CMD_PLAYBACK;
+    pstCMDPlayback->stMsgTag.ulSCBNo = ulSCBNo;
+    pstCMDPlayback->stMsgTag.usInterErr = 0;
+
+    pstCMDPlayback->ulMode = 0;
+    pstCMDPlayback->ulSCBNo = ulSCBNo;
+    pstCMDPlayback->ulLegNo = ulLegNo;
+
+    pstCMDPlayback->ulTotalAudioCnt = 0;
+    for (i=0; i<ulSndCnt; i++)
+    {
+        pstCMDPlayback->aulAudioList[i] = pulSndInd[i];
+        pstCMDPlayback->ulTotalAudioCnt++;
+    }
+
+    pstCMDPlayback->ulLoopCnt = ulLoop;
+    pstCMDPlayback->ulInterval = ulInterval;
+    pstCMDPlayback->ulSilence = ulSilence;
+
+    ulRet = sc_send_command(&pstCMDPlayback->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCMDPlayback);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+
+/**
+ * 向业务子层发送挂断命令
+ *
+ * @param U32 ulSCBNo
+ * @param U32 ulLegNo
+ * @param U32 ulErrNo
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_req_hungup(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo)
+{
+    SC_MSG_CMD_HUNGUP_ST   *pstCMDHungup = NULL;
+    U32                    ulRet;
+
+    pstCMDHungup = (SC_MSG_CMD_HUNGUP_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_HUNGUP_ST));
+    if (DOS_ADDR_INVALID(pstCMDHungup))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstCMDHungup->stMsgTag.ulMsgType = SC_CMD_RELEASE_CALL;
+    pstCMDHungup->stMsgTag.ulSCBNo = ulSCBNo;
+    pstCMDHungup->stMsgTag.usInterErr = 0;
+    pstCMDHungup->ulLegNo = ulLegNo;
+    pstCMDHungup->ulSCBNo = ulSCBNo;
+    pstCMDHungup->ulErrCode = ulErrNo;
+
+    ulRet = sc_send_command(&pstCMDHungup->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCMDHungup);
+
+        sc_log(LOG_LEVEL_ERROR, "Send hungup request fail. SCB: %u, LCB: %u, Error: %u", ulSCBNo, ulLegNo, ulErrNo);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+/**
+ * 向业务子层发送挂断命令，在这之前给当前LEG放音
+ *
+ * @param U32 ulSCBNo
+ * @param U32 ulLegNo
+ * @param U32 ulErrNo
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_req_hungup_with_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo)
+{
+    U32 ulSoundIndex = U32_BUTT;
+
+    switch (ulErrNo)
+    {
+        case CC_ERR_NO_REASON:
+            ulSoundIndex = U32_BUTT;
+            break;
+
+        case CC_ERR_SC_IN_BLACKLIST:
+        case CC_ERR_SC_CALLER_NUMBER_ILLEGAL:
+        case CC_ERR_SC_CALLEE_NUMBER_ILLEGAL:
+            ulSoundIndex = SC_SND_USER_NOT_FOUND;
+            break;
+
+        case CC_ERR_SC_USER_OFFLINE:
+        case CC_ERR_SC_USER_HAS_BEEN_LEFT:
+        case CC_ERR_SC_PERIOD_EXCEED:
+        case CC_ERR_SC_RESOURCE_EXCEED:
+            ulSoundIndex = SC_SND_TMP_UNAVAILABLE;
+            break;
+
+        case CC_ERR_SC_USER_BUSY:
+            ulSoundIndex = SC_SND_USER_BUSY;
+            break;
+
+        case CC_ERR_SC_NO_ROUTE:
+        case CC_ERR_SC_NO_TRUNK:
+            ulSoundIndex = SC_SND_NETWORK_FAULT;
+            break;
+
+        case CC_ERR_BS_LACK_FEE:
+            ulSoundIndex = SC_SND_LOW_BALANCE;
+            break;
+
+        case CC_ERR_SC_SYSTEM_BUSY:
+            ulSoundIndex = SC_SND_TMP_UNAVAILABLE;
+            break;
+
+        default:
+            ulSoundIndex = SC_SND_TMP_UNAVAILABLE;
+            break;
+    }
+
+    if (U32_BUTT != ulSoundIndex)
+    {
+        /* 如果请求放音失败了，也要发送挂断请求 */
+        sc_req_play_sound(ulSCBNo, ulLegNo, ulSoundIndex, SC_CALL_HIT_LOOP, SC_CALL_HIT_INTERVAL, SC_CALL_HIT_SILENCE);
+    }
+
+    return sc_req_hungup(ulSCBNo, ulLegNo, ulErrNo);
+}
+
+/**
+ * 向业务子层发桥接LEG请求
+ *
+ * @param U32 ulSCBNo
+ * @param U32 ulCallingLegNo
+ * @param U32 ulCalleeLegNo
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_req_bridge_call(U32 ulSCBNo, U32 ulCallingLegNo, U32 ulCalleeLegNo)
+{
+    SC_MSG_CMD_BRIDGE_ST  *pstCMDBridge = NULL;
+    U32                   ulRet = 0;
+
+    pstCMDBridge = (SC_MSG_CMD_BRIDGE_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_BRIDGE_ST));
+    if (DOS_ADDR_INVALID(pstCMDBridge))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCMDBridge->stMsgTag.ulMsgType = SC_CMD_BRIDGE_CALL;
+    pstCMDBridge->stMsgTag.ulSCBNo = ulSCBNo;
+    pstCMDBridge->stMsgTag.usInterErr = 0;
+    pstCMDBridge->ulSCBNo = ulSCBNo;
+    pstCMDBridge->ulCallingLegNo = ulCallingLegNo;
+    pstCMDBridge->ulCalleeLegNo = ulCalleeLegNo;
+
+    ulRet = sc_send_command(&pstCMDBridge->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCMDBridge);
+        pstCMDBridge = NULL;
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+/**
+ * 向业务子层发ANSWER命令
+ *
+ * @param U32 ulSCBNo
+ * @param U32 ulLegNo
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_req_answer_call(U32 ulSCBNo, U32 ulLegNo)
+{
+    SC_MSG_CMD_ANSWER_ST *pstCMDAnswer = NULL;
+    U32                   ulRet = 0;
+
+    pstCMDAnswer = (SC_MSG_CMD_ANSWER_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_ANSWER_ST));
+    if (DOS_ADDR_INVALID(pstCMDAnswer))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCMDAnswer->stMsgTag.ulMsgType = SC_CMD_ANSWER_CALL;
+    pstCMDAnswer->stMsgTag.ulSCBNo = ulSCBNo;
+    pstCMDAnswer->stMsgTag.usInterErr = 0;
+    pstCMDAnswer->ulSCBNo = ulSCBNo;
+    pstCMDAnswer->ulLegNo = ulLegNo;
+
+    ulRet = sc_send_command(&pstCMDAnswer->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCMDAnswer);
+        pstCMDAnswer = NULL;
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+
+/**
+ * 向业务子层发RINGBACK命令
+ *
+ * @param U32 ulSCBNo
+ * @param U32 ulLegNo
+ * @param BOOL blHasMedia
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_req_ringback(U32 ulSCBNo, U32 ulLegNo, BOOL blHasMedia)
+{
+    SC_MSG_CMD_RINGBACK_ST *pstCMDRingback = NULL;
+    U32                    ulRet = 0;
+
+    pstCMDRingback = (SC_MSG_CMD_RINGBACK_ST*)dos_dmem_alloc(sizeof(SC_MSG_CMD_RINGBACK_ST));
+    if (DOS_ADDR_INVALID(pstCMDRingback))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCMDRingback->stMsgTag.ulMsgType = SC_CMD_RINGBACK;
+    pstCMDRingback->stMsgTag.ulSCBNo = ulSCBNo;
+    pstCMDRingback->stMsgTag.usInterErr = 0;
+    pstCMDRingback->ulSCBNo = ulSCBNo;
+    pstCMDRingback->ulLegNo = ulLegNo;
+    pstCMDRingback->ulMediaConnected = blHasMedia;
+
+    ulRet = sc_send_command(&pstCMDRingback->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCMDRingback);
+        pstCMDRingback = NULL;
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+/**
+ * 向业务层发送事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event(SC_MSG_TAG_ST *pstMsg)
+{
+    DLL_NODE_S   *pstDLLNode = NULL;
+
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstDLLNode = dos_dmem_alloc(sizeof(DLL_NODE_S));
+    if (DOS_ADDR_INVALID(pstDLLNode))
+    {
+        DOS_ASSERT(0);
+
+        dos_dmem_free(pstMsg);
+        return DOS_FAIL;
+    }
+
+    DLL_Init_Node(pstDLLNode);
+    pstDLLNode->pHandle = pstMsg;
+
+    pthread_mutex_lock(&g_mutexEventQueue);
+    DLL_Add(&g_stEventQueue, pstDLLNode);
+    pthread_cond_signal(&g_condEventQueue);
+    pthread_mutex_unlock(&g_mutexEventQueue);
+
+    sc_log(LOG_LEVEL_DEBUG, "Send sc event succ. Type: %u, SCB: %u", pstMsg->ulMsgType, pstMsg->ulSCBNo);
+
+    return DOS_SUCC;
+}
+
+/**
+ * 向业务层发送呼叫创建事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event_call_create(SC_MSG_EVT_CALL_ST *pstEvent)
+{
+    SC_MSG_EVT_CALL_ST *pstEventCall = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEventCall = (SC_MSG_EVT_CALL_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_CALL_ST));
+    if (DOS_ADDR_INVALID(pstEventCall))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEventCall, pstEvent, sizeof(SC_MSG_EVT_CALL_ST));
+
+    return sc_send_event(&pstEventCall->stMsgTag);
+}
+
+/**
+ * 向业务层发送媒体交换事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event_exchange_media(SC_MSG_EVT_MEDIA_ST *pstEvent)
+{
+    SC_MSG_EVT_MEDIA_ST *pstEventMedia = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEventMedia = (SC_MSG_EVT_MEDIA_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_MEDIA_ST));
+    if (DOS_ADDR_INVALID(pstEventMedia))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEventMedia, pstEvent, sizeof(SC_MSG_EVT_MEDIA_ST));
+
+    return sc_send_event(&pstEventMedia->stMsgTag);
+}
+
+/**
+ * 向业务层发送应答事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event_ringing(SC_MSG_EVT_RINGING_ST *pstEvent)
+{
+    SC_MSG_EVT_RINGING_ST *pstEventRinging = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEventRinging = (SC_MSG_EVT_RINGING_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_RINGING_ST));
+    if (DOS_ADDR_INVALID(pstEventRinging))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEventRinging, pstEvent, sizeof(SC_MSG_EVT_RINGING_ST));
+
+    return sc_send_event(&pstEventRinging->stMsgTag);
+}
+
+/**
+ * 向业务层发送应答事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event_answer(SC_MSG_EVT_ANSWER_ST *pstEvent)
+{
+    SC_MSG_EVT_ANSWER_ST *pstEventAnswer = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEventAnswer = (SC_MSG_EVT_ANSWER_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_ANSWER_ST));
+    if (DOS_ADDR_INVALID(pstEventAnswer))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEventAnswer, pstEvent, sizeof(SC_MSG_EVT_ANSWER_ST));
+
+    return sc_send_event(&pstEventAnswer->stMsgTag);
+}
+
+
+/**
+ * 向业务层发送呼叫释放事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event_release(SC_MSG_EVT_HUNGUP_ST *pstEvent)
+{
+    SC_MSG_EVT_HUNGUP_ST *pstEventHungup = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEventHungup = (SC_MSG_EVT_HUNGUP_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_HUNGUP_ST));
+    if (DOS_ADDR_INVALID(pstEventHungup))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEventHungup, pstEvent, sizeof(SC_MSG_EVT_HUNGUP_ST));
+
+    return sc_send_event(&pstEventHungup->stMsgTag);
+}
+
+/**
+ * 向业务层发送呼叫变化事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event_status()
+{
+    return DOS_SUCC;
+}
+
+/**
+ * 向业务层发送DTMF事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event_dtmf(SC_MSG_EVT_DTMF_ST *pstEvent)
+{
+    SC_MSG_EVT_DTMF_ST *pstEventDTMF = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEventDTMF = (SC_MSG_EVT_DTMF_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_DTMF_ST));
+    if (DOS_ADDR_INVALID(pstEventDTMF))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEventDTMF, pstEvent, sizeof(SC_MSG_EVT_DTMF_ST));
+
+    return sc_send_event(&pstEventDTMF->stMsgTag);
+}
+
+/**
+ * 向业务层发送录音业务状态变化事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event_record(SC_MSG_EVT_RECORD_ST *pstEvent)
+{
+    SC_MSG_EVT_RECORD_ST *pstEventRecord = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEventRecord = (SC_MSG_EVT_RECORD_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_RECORD_ST));
+    if (DOS_ADDR_INVALID(pstEventRecord))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEventRecord, pstEvent, sizeof(SC_MSG_EVT_RECORD_ST));
+
+    return sc_send_event(&pstEventRecord->stMsgTag);
+}
+
+/**
+ * 向业务层发送PLAYBACK业务状态变化事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event_playback(SC_MSG_EVT_PLAYBACK_ST *pstEvent)
+{
+    SC_MSG_EVT_PLAYBACK_ST *pstEventPlayback = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEventPlayback = (SC_MSG_EVT_PLAYBACK_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_PLAYBACK_ST));
+    if (DOS_ADDR_INVALID(pstEventPlayback))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEventPlayback, pstEvent, sizeof(SC_MSG_EVT_PLAYBACK_ST));
+
+    return sc_send_event(&pstEventPlayback->stMsgTag);
+}
+
+/**
+ * 向业务层发送HOLD业务状态变化事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event_hold(SC_MSG_EVT_HOLD_ST *pstEvent)
+{
+    SC_MSG_EVT_HOLD_ST *pstEventHold = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEventHold = (SC_MSG_EVT_HOLD_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_HOLD_ST));
+    if (DOS_ADDR_INVALID(pstEventHold))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEventHold, pstEvent, sizeof(SC_MSG_EVT_HOLD_ST));
+
+    return sc_send_event(&pstEventHold->stMsgTag);
+}
+
+/**
+ * 向业务层发送错误上报事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event_err_report(SC_MSG_EVT_ERR_REPORT_ST *pstEvent)
+{
+    SC_MSG_EVT_ERR_REPORT_ST *pstErrInfo = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstErrInfo = (SC_MSG_EVT_ERR_REPORT_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_ERR_REPORT_ST));
+    if (DOS_ADDR_INVALID(pstErrInfo))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstErrInfo, pstEvent, sizeof(SC_MSG_EVT_ERR_REPORT_ST));
+
+    return sc_send_event(&pstErrInfo->stMsgTag);
+}
+
+U32 sc_send_event_auth_rsp(SC_MSG_EVT_AUTH_RESULT_ST *pstEvent)
+{
+    SC_MSG_EVT_AUTH_RESULT_ST *pstAuthInfo = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstAuthInfo = (SC_MSG_EVT_AUTH_RESULT_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_AUTH_RESULT_ST));
+    if (DOS_ADDR_INVALID(pstAuthInfo))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstAuthInfo, pstEvent, sizeof(SC_MSG_EVT_AUTH_RESULT_ST));
+
+    return sc_send_event(&pstAuthInfo->stMsgTag);
+
+}
+
+
+U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
+{
+    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgent;
+
+    if (DOS_ADDR_INVALID(pstLegCB) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return SC_DIRECTION_INVALID;
+    }
+
+    if (SC_LEG_PEER_INTERNAL_INBOUND == pstLegCB->stCall.ucPeerType)
+    {
+        pstSCB->ulCustomerID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCalling);
+        pstAgent = sc_get_agent_by_sip_acc(pstLegCB->stCall.stNumInfo.szOriginalCalling);
+        if (DOS_ADDR_VALID(pstAgent) && DOS_ADDR_VALID(pstAgent->pstAgentInfo))
+        {
+            pstSCB->ulCustomerID = pstAgent->pstAgentInfo->ulCustomerID;
+            pstSCB->ulAgentID = pstAgent->pstAgentInfo->ulAgentID;
+            pstSCB->stCall.pstAgentCalling = pstAgent;
+            return SC_DIRECTION_SIP;
+        }
+
+        return SC_DIRECTION_SIP;
+    }
+    else if (SC_LEG_PEER_INBOUND == pstLegCB->stCall.ucPeerType)
+    {
+        /* external可能是TT号呼入哦 */
+        pstSCB->ulCustomerID = sc_did_get_custom(pstLegCB->stCall.stNumInfo.szOriginalCalling);
+        if (U32_BUTT == pstSCB->ulCustomerID)
+        {
+            pstAgent = sc_get_agent_by_tt_num(pstLegCB->stCall.stNumInfo.szOriginalCalling);
+            if (DOS_ADDR_VALID(pstAgent) && DOS_ADDR_VALID(pstAgent->pstAgentInfo))
+            {
+                pstSCB->ulCustomerID = pstAgent->pstAgentInfo->ulCustomerID;
+                pstSCB->ulAgentID = pstAgent->pstAgentInfo->ulAgentID;
+                pstSCB->stCall.pstAgentCalling = pstAgent;
+                pstLegCB->stCall.bIsTTCall = DOS_TRUE;
+                pstLegCB->stCall.ucPeerType = SC_LEG_PEER_INBOUND_TT;
+                return SC_DIRECTION_SIP;
+            }
+        }
+
+        return SC_DIRECTION_PSTN;
+    }
+
+    return SC_DIRECTION_PSTN;
+}
+
+U32 sc_leg_get_destination(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
+{
+    U32 ulCustomID    = U32_BUTT;
+
+    if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstLegCB))
+    {
+        DOS_ASSERT(0);
+        return SC_DIRECTION_INVALID;
+    }
+
+    if (sc_black_list_check(pstLegCB->stCall.stNumInfo.szOriginalCallee))
+    {
+        sc_trace_scb(pstSCB, "The destination is in black list. %s", pstLegCB->stCall.stNumInfo.szOriginalCallee);
+
+        return SC_DIRECTION_INVALID;
+    }
+
+    if (SC_LEG_PEER_INTERNAL_INBOUND == pstLegCB->stCall.ucPeerType
+        || SC_LEG_PEER_INBOUND_TT == pstLegCB->stCall.ucPeerType)
+    {
+        /* 被叫号码是否是同一个客户下的SIP User ID */
+        ulCustomID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCallee);
+        if (ulCustomID == pstSCB->ulCustomerID)
+        {
+            return SC_DIRECTION_SIP;
+        }
+
+        /*  测试被叫是否是分机号 */
+        if (sc_sip_extension_check(pstLegCB->stCall.stNumInfo.szOriginalCallee, pstSCB->ulCustomerID))
+        {
+            return SC_DIRECTION_SIP;
+        }
+
+        return SC_DIRECTION_PSTN;
+    }
+    else
+    {
+        if (U32_BUTT == pstSCB->ulCustomerID)
+        {
+            /* 判断一下主叫是否 TT 号 */
+            DOS_ASSERT(0);
+
+            sc_trace_scb(pstSCB, "The destination %s is not a DID number. Reject Call.", pstLegCB->stCall.stNumInfo.szOriginalCallee);
+            return SC_DIRECTION_INVALID;
+        }
+
+        return SC_DIRECTION_SIP;
+    }
+
+    return SC_DIRECTION_PSTN;
+}
+
+/**
+ * 获取语音文件文件名列表
+ *
+ * @param  *pulSndIndList
+ * @param  ulCnt
+ * @param *pszBuffer,
+ * @param  ulBuffLen
+ * @param  pszSep, 如果为NULL，将会使用默认值 "!"
+ *
+ * @return 成功返回录音文件个数， 失败返回0
+ */
+U32 sc_get_snd_list(U32 *pulSndIndList, U32 ulSndCnt, S8 *pszBuffer, U32 ulBuffLen, S8 *pszSep)
+{
+    U32   ulLen = 0;
+    U32   ulLoop = 0;
+    U32   ulCnt = 0;
+    S8    *pszName = NULL;
+    S8    *pszSepReal = NULL;
+
+    if (DOS_ADDR_INVALID(pulSndIndList) || 0 == ulSndCnt)
+    {
+        DOS_ASSERT(0);
+        return 0;
+    }
+
+    if (DOS_ADDR_INVALID(pszBuffer) || 0 == ulBuffLen)
+    {
+        DOS_ASSERT(0);
+        return 0;
+    }
+
+    if (DOS_ADDR_INVALID(pszSep))
+    {
+        pszSepReal = "!";
+    }
+
+    for (ulLen=0, ulLoop=0, ulCnt=0; ulLoop<ulSndCnt; ulLoop++)
+    {
+        pszName = sc_hint_get_name(pulSndIndList[ulLoop]);
+        if (DOS_ADDR_INVALID(pszName) || '\0' == pszName[0])
+        {
+            DOS_ASSERT(0);
+            continue;
+        }
+
+        if (ulBuffLen - ulLen < dos_strlen(SC_HINT_FILE_PATH) + dos_strlen(pszName) + dos_strlen(pszSepReal))
+        {
+            ulCnt = 0;
+
+            sc_log(LOG_LEVEL_WARNING, "Buffer not enought.");
+            break;
+        }
+
+        ulLen += dos_snprintf(pszBuffer + ulLen, ulBuffLen - ulLen
+                                , "%s/%s.wav%s"
+                                , SC_HINT_FILE_PATH
+                                , pszName
+                                , pszSepReal);
+
+        ulCnt++;
+    }
+
+    return ulCnt;
+}
+
+#ifdef __cplusplus
+}
+#endif /* End of __cplusplus */
+
+

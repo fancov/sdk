@@ -25,7 +25,6 @@
 #include <asm/errno.h>
 #include <errno.h>
 #include <sys/stat.h>
-#include <pthread.h>
 #include <netinet/in.h>
 #include <semaphore.h>
 #include <sys/socket.h>
@@ -42,6 +41,7 @@
 #include <syscfg.h>
 #include <cfg/cfg_resource.h>
 #include <dos/dos_config.h>
+#include <dos/dos_pthread.h>
 #include <dos/dos_task.h>
 #include <dos/dos_def.h>
 #include <dos/dos_mem.h>
