@@ -362,7 +362,7 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     pstSCB->stCall.stSCBTag.usStatus = SC_CALL_EXEC;
 
-    //if (pstAuthRsp->ucBalanceWarning)
+    if (pstAuthRsp->ucBalanceWarning)
     {
         return sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, SC_SND_LOW_BALANCE, 1, 0, 0);
     }

@@ -71,6 +71,7 @@ typedef struct tagSCHintDesc{
 
 
 S8 *sc_hint_get_name(U32 ulSndInd);
+S8 *sc_hine_get_tone(U32 ulSNDInd);
 
 #endif
 

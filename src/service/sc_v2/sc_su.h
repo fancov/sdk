@@ -43,6 +43,10 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght);
 U32 sc_bgjob_hash_find(S8 *pszUUID);
 U32 sc_bgjob_hash_delete(S8 *pszUUID);
 
+
+U32 sc_get_snd_list(U32 *pulSndIndList, U32 ulSndCnt, S8 *pszBuffer, U32 ulBuffLen, S8 *pszSep);
+
+
 #ifdef __cplusplus
 }
 #endif /* End of __cplusplus */
