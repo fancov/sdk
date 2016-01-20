@@ -728,7 +728,7 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
 
                     /* 判断被叫号码是否是坐席的工号，如果是，则呼叫这个坐席 */
                     pstAgentNode = sc_agent_get_by_emp_num(ulCustomer, pszNumber);
-                    if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+                    if (DOS_ADDR_VALID(pstAgentNode) && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
                     {
                         ulRet = sc_call_ctrl_call_agent(ulAgent, pstAgentNode);
                         break;

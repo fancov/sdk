@@ -60,9 +60,8 @@ U32 sc_srv_call_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *ps
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing event. service:%u type: %u, scb:%u len: %u"
-                , pstSubServ->usSrvType, pstMsg->ulMsgType
-                , pstSCB->ulSCBNo, pstMsg->usMsgLen);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Call service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
 
     switch (pstMsg->ulMsgType)
     {
@@ -130,9 +129,9 @@ U32 sc_srv_call_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *ps
             break;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed event. service:%u, type: %u, len: %u. Ret: %s"
-                    , pstSubServ->usSrvType, pstMsg->ulMsgType
-                    , pstMsg->usMsgLen, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Call service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
     return ulRet;
 }
@@ -157,9 +156,8 @@ U32 sc_srv_preview_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing event. service:%u type: %u, scb:%u len: %u"
-                , pstSubServ->usSrvType, pstMsg->ulMsgType
-                , pstSCB->ulSCBNo, pstMsg->usMsgLen);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Preview Call Service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
 
     switch (pstMsg->ulMsgType)
     {
@@ -227,9 +225,9 @@ U32 sc_srv_preview_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
             break;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed event. service:%u, type: %u, len: %u. Ret: %s"
-                    , pstSubServ->usSrvType, pstMsg->ulMsgType
-                    , pstMsg->usMsgLen, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Preview Call Service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
     return ulRet;
 }
@@ -245,6 +243,22 @@ U32 sc_srv_preview_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
  */
 U32 sc_srv_auto_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
 {
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Auto Call Service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Auto Call Service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
     return DOS_SUCC;
 }
 
@@ -268,9 +282,8 @@ U32 sc_srv_voice_verify_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing event. service:%u, type: %u, scb:%u len: %u"
-                , pstSubServ->usSrvType, pstMsg->ulMsgType
-                , pstSCB->ulSCBNo, pstMsg->usMsgLen);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Voice Verify Service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
 
     switch (pstMsg->ulMsgType)
     {
@@ -315,9 +328,9 @@ U32 sc_srv_voice_verify_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
             break;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed event. service:%u, type: %u, len: %u. Ret: %s"
-                    , pstSubServ->usSrvType, pstMsg->ulMsgType
-                    , pstMsg->usMsgLen, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Voice Verify Service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
     return ulRet;
 
@@ -334,6 +347,22 @@ U32 sc_srv_voice_verify_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
  */
 U32 sc_srv_access_code_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
 {
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Access Code Service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Access Code Service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
     return DOS_SUCC;
 }
 
@@ -348,6 +377,22 @@ U32 sc_srv_access_code_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG
  */
 U32 sc_srv_hold_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
 {
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Hold Service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Hold Service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
     return DOS_SUCC;
 }
 
@@ -362,6 +407,22 @@ U32 sc_srv_hold_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *ps
  */
 U32 sc_srv_transfer_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
 {
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Transfer Service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Transfer Service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
     return DOS_SUCC;
 }
 
@@ -376,6 +437,22 @@ U32 sc_srv_transfer_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST
  */
 U32 sc_srv_incoming_queue_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
 {
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Incoming Queue Service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Incoming Queue Service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
     return DOS_SUCC;
 }
 
@@ -391,6 +468,22 @@ U32 sc_srv_incoming_queue_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_
  */
 U32 sc_srv_interception_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
 {
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Interception Service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Interception Service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
     return DOS_SUCC;
 }
 
@@ -405,6 +498,22 @@ U32 sc_srv_interception_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
  */
 U32 sc_srv_whisoered_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
 {
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Whisoered Service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Whisoered Service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
     return DOS_SUCC;
 }
 
@@ -419,6 +528,22 @@ U32 sc_srv_whisoered_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
  */
 U32 sc_srv_mark_custom_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
 {
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Customer Mark Service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Customer Mark Service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
     return DOS_SUCC;
 }
 
@@ -498,8 +623,8 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
 
     ulSCBNo = pstMsg->ulSCBNo;
 
-    sc_trace_scb(pstSCB, "Processing sc event. type: %u. scb: %u, errno: %u"
-                    , pstMsg->ulMsgType, pstMsg->ulSCBNo, pstMsg->usInterErr);
+    sc_trace_scb(pstSCB, "Processing %s(%u), SCB:%u, errno: %u"
+                    , sc_event_str(pstMsg->ulMsgType), pstMsg->ulMsgType, pstMsg->ulSCBNo, pstMsg->usInterErr);
 
     /* 使用循环处理业务栈 */
     while (1)
@@ -603,7 +728,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
         }
     }
 
-    sc_trace_scb(pstSCB, "Processed sc event. type: %u.", pstMsg->ulMsgType);
+    sc_trace_scb(pstSCB, "Processed %s. ", sc_event_str(pstMsg->ulMsgType));
 }
 
 /**

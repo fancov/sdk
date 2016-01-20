@@ -1525,8 +1525,9 @@ U32 sc_send_command(SC_MSG_TAG_ST *pstMsg)
     pthread_cond_signal(&g_condCommandQueue);
     pthread_mutex_unlock(&g_mutexCommandQueue);
 
-    sc_log(LOG_LEVEL_DEBUG, "Send sc cmd. Type: %u, scb: %u, errno: %u"
-                , pstMsg->ulMsgType, pstMsg->ulSCBNo, pstMsg->usInterErr);
+    sc_log(LOG_LEVEL_DEBUG, "Send %s(%u). SCB: %u, Error: %u"
+                , sc_command_str(pstMsg->ulMsgType), pstMsg->ulMsgType
+                , pstMsg->ulSCBNo, pstMsg->usInterErr);
 
     return DOS_SUCC;
 }
@@ -2014,7 +2015,9 @@ U32 sc_send_event(SC_MSG_TAG_ST *pstMsg)
     pthread_cond_signal(&g_condEventQueue);
     pthread_mutex_unlock(&g_mutexEventQueue);
 
-    sc_log(LOG_LEVEL_DEBUG, "Send sc event succ. Type: %u, SCB: %u", pstMsg->ulMsgType, pstMsg->ulSCBNo);
+    sc_log(LOG_LEVEL_DEBUG, "Send %s(%u). SCB: %u, Error: %u"
+                , sc_event_str(pstMsg->ulMsgType), pstMsg->ulMsgType
+                , pstMsg->ulSCBNo, pstMsg->usInterErr);
 
     return DOS_SUCC;
 }

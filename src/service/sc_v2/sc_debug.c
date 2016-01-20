@@ -37,9 +37,64 @@ extern SC_TASK_CB           *g_pstTaskList;
 extern pthread_mutex_t      g_mutexTaskList;
 extern BOOL                 g_blSCInitOK;
 
-
-
 U32         g_ulSCLogLevel = LOG_LEVEL_DEBUG;
+
+S8 *g_pszSCCommandStr[] = {
+    "CMD_CALL_SETUP",
+    "CMD_CALL_RINGING",
+    "CMD_CALL_ANSWER",
+    "CMD_CALL_BRIDGE",
+    "CMD_CALL_RELEASE",
+    "CMD_PLAYBACK",
+    "CMD_PLAYBACK_STOP",
+    "CMD_RECORD",
+    "CMD_RECORD_STOP",
+    "CMD_HOLD",
+    "CMD_UNHOLD",
+    "CMD_IVR_CTR",
+    ""
+};
+
+S8 *g_pszSCEventStr[] = {
+    "EVT_CALL_SETUP",
+    "EVT_CALL_RINGING",
+    "EVT_CALL_AMSWERED",
+    "EVT_BRIDGE_START",
+    "EVT_HOLD",
+    "EVT_BRIDGE_STOP",
+    "EVT_CALL_RERLEASE",
+    "EVT_CALL_STATUS",
+    "EVT_DTMF",
+    "EVT_RECORD_START",
+    "EVT_RECORD_END",
+    "EVT_PLAYBACK_START",
+    "EVT_PLAYBACK_END",
+    "EVT_AUTH_RESULT",
+    "EVT_ERROR_PORT",
+
+    "",
+};
+
+S8 *sc_command_str(U32 ulCommand)
+{
+    if (ulCommand >= SC_CMD_BUTT)
+    {
+        return NULL;
+    }
+
+    return g_pszSCCommandStr[ulCommand];
+}
+
+S8 *sc_event_str(U32 ulEvent)
+{
+    if (ulEvent >= SC_EVT_BUTT)
+    {
+        return NULL;
+    }
+
+    return g_pszSCEventStr[ulEvent];
+}
+
 
 const S8* g_pszTaskStatus[] =
 {

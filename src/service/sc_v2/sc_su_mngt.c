@@ -1751,7 +1751,7 @@ VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
         return;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processing cmd, type: %u, len: %u", pstMsg->ulMsgType, pstMsg->usMsgLen);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processing %s(%u), SCB: %u", sc_command_str(pstMsg->ulMsgType), pstMsg->ulMsgType, pstMsg->ulSCBNo);
 
     switch (pstMsg->ulMsgType)
     {
@@ -1808,7 +1808,7 @@ VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
             break;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processed cmd, type: %u, len: %u. Ret: %s", pstMsg->ulMsgType, pstMsg->usMsgLen, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processed %s(%u), Ret:", sc_command_str(pstMsg->ulMsgType), pstMsg->ulMsgType, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 }
 
 /**
