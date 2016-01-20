@@ -4829,7 +4829,7 @@ S32 sc_number_lmt_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         return DOS_FAIL;
     }
 
-    ulHashIndex = sc_string_hash_func(pszNumber, SC_MAX_SCB_HASH_NUM);
+    ulHashIndex = sc_string_hash_func(pszNumber, SC_NUMBER_LMT_HASH_SIZE);
     pthread_mutex_lock(&g_mutexHashNumberlmt);
     pstHashNode = hash_find_node(g_pstHashNumberlmt, ulHashIndex, pszNumber, sc_number_lmt_find);
     if (DOS_ADDR_VALID(pstHashNode))
