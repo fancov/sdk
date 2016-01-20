@@ -18,8 +18,8 @@ extern HASH_TABLE_S *g_pstHashCallerGrp;
 extern HASH_TABLE_S *g_pstHashDIDNum;
 extern DB_HANDLE_ST *g_pstSCDBHandle;
 extern HASH_TABLE_S *g_pstAgentList;
-extern U32 sc_acd_hash_func4agent(U32 ulSiteID, U32 *pulHashIndex);
-extern S32 sc_acd_agent_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
+extern U32 sc_agent_hash_func4agent(U32 ulSiteID, U32 *pulHashIndex);
+extern S32 sc_agent_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
 static S32 sc_generate_random(S32 lUp, S32 lDown);
 static U32 sc_get_dst_by_src(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, U32* pulDstID, U32* pulDstType);
 static U32 sc_get_number_by_callerid(U32 ulCallerID, S8 *pszNumber, U32 ulLen);
@@ -51,7 +51,7 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
     U32 ulDstID = 0, ulDstType = 0, ulRet = 0;
     U32 aulAgentGrpID[MAX_GROUP_PER_SITE] = {0}, ulLoop = 0;
     U32 ulAgentGrpID = 0, ulHashIndex = U32_BUTT;
-    SC_AGENT_INFO_ST stAgent;
+    SC_AGENT_NODE_ST     *pstAgent;
     SC_CALLER_SETTING_ST *pstSetting = NULL;
     HASH_NODE_S  *pstHashNode = NULL;
 
@@ -91,18 +91,18 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Find Setting From Agent Group.");
         /* 根据坐席获取坐席组id */
-        ulRet = sc_acd_get_agent_by_id(&stAgent, ulSrcID);
-        if (DOS_SUCC == ulRet)
+        pstAgent = sc_agent_get_by_id(ulSrcID);
+        if (DOS_ADDR_INVALID(pstAgent) || DOS_ADDR_INVALID(pstAgent->pstAgentInfo))
         {
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Agent By ID SUCC.(AgentID:%u)", ulSrcID);
             /* 查找有效groupid */
             for (ulLoop = 0; ulLoop < MAX_GROUP_PER_SITE; ulLoop++)
             {
-                if (0 == stAgent.aulGroupID[ulLoop] || U32_BUTT == stAgent.aulGroupID[ulLoop])
+                if (0 == pstAgent->pstAgentInfo->aulGroupID[ulLoop] || U32_BUTT == pstAgent->pstAgentInfo->aulGroupID[ulLoop])
                 {
                     continue;
                 }
-                ulAgentGrpID = stAgent.aulGroupID[ulLoop];
+                ulAgentGrpID = pstAgent->pstAgentInfo->aulGroupID[ulLoop];
                 sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Find a Proper Agent Group.(AgentID:%u,AgentGrpID:%u)", ulSrcID, ulAgentGrpID);
                 /* 通过坐席组查找设定 */
                 HASH_Scan_Table(g_pstHashCallerSetting, ulHashIndex)
@@ -1288,18 +1288,22 @@ static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
     U32 ulHashIndex = U32_BUTT;
     HASH_NODE_S  *pstHashNode = NULL;
     SC_DID_NODE_ST *pstDid = NULL;
-    SC_AGENT_INFO_ST stAgent;
+    SC_AGENT_NODE_ST *pstAgent = NULL;
     BOOL bFound = DOS_FALSE;
 
     /* 先根据坐席id查找sip_id */
-    if (sc_acd_get_agent_by_id(&stAgent, ulAgentID) != DOS_SUCC)
+    pstAgent = sc_agent_get_by_id(ulAgentID);
+    if (DOS_ADDR_INVALID(pstAgent) || DOS_ADDR_INVALID(pstAgent->pstAgentInfo))
     {
         DOS_ASSERT(0);
 
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get agent SUCC.(ulAgentID : %u, sipID : %u).", ulAgentID, stAgent.ulSIPUserID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES)
+                , "Get agent SUCC.(ulAgentID : %u, sipID : %u)."
+                , ulAgentID, pstAgent->pstAgentInfo->ulSIPUserID);
+
     /* 然后通过sip_id去查找 */
     HASH_Scan_Table(g_pstHashDIDNum, ulHashIndex)
     {
@@ -1315,8 +1319,8 @@ static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
             if (DOS_FALSE != pstDid->bValid)
             {
                 /* DID绑定 SIP 分机或者坐席 */
-                if ((SC_DID_BIND_TYPE_SIP == pstDid->ulBindType && pstDid->ulBindID == stAgent.ulSIPUserID)
-                    || (SC_DID_BIND_TYPE_AGENT == pstDid->ulBindType && pstDid->ulBindID == stAgent.ulAgentID))
+                if ((SC_DID_BIND_TYPE_SIP == pstDid->ulBindType && pstDid->ulBindID == pstAgent->pstAgentInfo->ulSIPUserID)
+                    || (SC_DID_BIND_TYPE_AGENT == pstDid->ulBindType && pstDid->ulBindID == pstAgent->pstAgentInfo->ulAgentID))
                 {
                     /* 判断主叫超频 */
                     if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstDid->ulTimes, pstDid->szDIDNum))
@@ -1327,7 +1331,7 @@ static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
                     bFound = DOS_TRUE;
                     pstDid->ulTimes++;
                     dos_snprintf(pszNumber, ulLen, "%s", pstDid->szDIDNum);
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Get did by agent SUCC.(ulAgentID:%u, sipID : %u).", ulAgentID, stAgent.ulSIPUserID);
+                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Get did by agent SUCC.(ulAgentID:%u, sipID : %u).", ulAgentID, pstAgent->pstAgentInfo->ulSIPUserID);
                     break;
                 }
             }
@@ -1418,13 +1422,13 @@ static U32 sc_get_agentgrp_by_agentid(U32 ulAgentID, U32 *paulGroupID, U32 ulLen
     SC_AGENT_INFO_ST *pstAgent = NULL;
     S32  lIndex = U32_BUTT;
 
-    ulRet = sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
+    ulRet = sc_agent_hash_func4agent(ulAgentID, &ulHashIndex);
     if (DOS_SUCC != ulRet)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Cannot find agent %u!", ulAgentID);
         return DOS_FAIL;
     }
-    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex , &ulAgentID, sc_acd_agent_hash_find);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex , &ulAgentID, sc_agent_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {

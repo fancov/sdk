@@ -1307,7 +1307,7 @@ U32 sc_task_check_can_call(SC_TASK_CB *pstTCB)
     }
     else
     {
-        sc_acd_agent_stat_by_grpid(pstTCB->ulAgentQueueID, &ulTotalAgent, NULL, &ulIdleAgent, &ulBusyAgent);
+        sc_agent_group_stat_by_id(pstTCB->ulAgentQueueID, &ulTotalAgent, NULL, &ulIdleAgent, &ulBusyAgent);
         pstTCB->usSiteCount = ulTotalAgent;
         pstTCB->ulMaxConcurrency = ulTotalAgent * pstTCB->ulCallRate;
 
@@ -2350,7 +2350,7 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
     if (SC_LEG_PEER_INBOUND_INTERNAL == pstLegCB->stCall.ucPeerType)
     {
         pstSCB->ulCustomerID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCalling);
-        pstAgent = sc_get_agent_by_sip_acc(pstLegCB->stCall.stNumInfo.szOriginalCalling);
+        pstAgent = sc_agent_get_by_sip_acc(pstLegCB->stCall.stNumInfo.szOriginalCalling);
         if (DOS_ADDR_VALID(pstAgent) && DOS_ADDR_VALID(pstAgent->pstAgentInfo))
         {
             pstSCB->ulCustomerID = pstAgent->pstAgentInfo->ulCustomerID;
@@ -2367,7 +2367,7 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
         pstSCB->ulCustomerID = sc_did_get_custom(pstLegCB->stCall.stNumInfo.szOriginalCalling);
         if (U32_BUTT == pstSCB->ulCustomerID)
         {
-            pstAgent = sc_get_agent_by_tt_num(pstLegCB->stCall.stNumInfo.szOriginalCalling);
+            pstAgent = sc_agent_get_by_tt_num(pstLegCB->stCall.stNumInfo.szOriginalCalling);
             if (DOS_ADDR_VALID(pstAgent) && DOS_ADDR_VALID(pstAgent->pstAgentInfo))
             {
                 pstSCB->ulCustomerID = pstAgent->pstAgentInfo->ulCustomerID;

@@ -161,7 +161,7 @@ U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
                     , sizeof(pstLegCB->stCall.stNumInfo.szRealCalling)
                     , pstLegCB->stCall.stNumInfo.szOriginalCalling);
 
-    pstAgent = sc_get_agent_by_sip_acc(pstLegCB->stCall.stNumInfo.szRealCallee);
+    pstAgent = sc_agent_get_by_sip_acc(pstLegCB->stCall.stNumInfo.szRealCallee);
     if (DOS_ADDR_INVALID(pstAgent)
         || DOS_ADDR_INVALID(pstAgent->pstAgentInfo))
     {
@@ -471,7 +471,7 @@ fail_proc:
     return DOS_FAIL;
 }
 
-U32 sc_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled)
+U32 sc_call_ctrl_call_agent(U32 ulCurrentAgent, SC_AGENT_NODE_ST  *pstAgentNode)
 {
     return DOS_SUCC;
 }

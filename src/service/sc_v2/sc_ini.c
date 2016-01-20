@@ -66,7 +66,7 @@ U32 sc_bs_fsm_init();
 U32 sc_bs_fsm_start();
 U32 sc_bs_fsm_stop();
 
-U32 sc_acd_init();
+U32 sc_agent_mngt_init();
 
 U32 sc_ext_mngt_init();
 U32 sc_ext_mngt_start();
@@ -107,7 +107,7 @@ SC_MOD_LIST_ST  astSCModList[] = {
     {SC_MOD_DB_WQ,      "db write queue",     LOG_LEVEL_NOTIC, sc_db_init,           sc_db_start,            sc_db_stop},
     {SC_MOD_DIGIST,     "digist log",         LOG_LEVEL_NOTIC, sc_log_digest_init,   sc_log_digest_start,    sc_log_digest_stop},
     {SC_MOD_RES,        "resource mngt",      LOG_LEVEL_NOTIC, sc_res_init,          sc_res_start,           sc_res_stop},
-    {SC_MOD_ACD,        "agent mngt",         LOG_LEVEL_NOTIC, sc_acd_init,          NULL,                   NULL},
+    {SC_MOD_ACD,        "agent mngt",         LOG_LEVEL_NOTIC, sc_agent_mngt_init,   NULL,                   NULL},
     {SC_MOD_EVENT,      "core event proc",    LOG_LEVEL_NOTIC, sc_event_init,        sc_event_start,         sc_event_stop},
     {SC_MOD_SU,         "esl event proc",     LOG_LEVEL_NOTIC, sc_su_mngt_init,      sc_su_mngt_start,       sc_su_mngt_stop},
     {SC_MOD_BS,         "bs msg proc",        LOG_LEVEL_NOTIC, sc_bs_fsm_init,       sc_bs_fsm_start,        sc_su_mngt_stop},

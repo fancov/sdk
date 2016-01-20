@@ -96,7 +96,7 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                 if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling))
                 {
-                    sc_acd_agent_stat(SC_AGENT_STAT_CALL, pstSCB->stCall.pstAgentCalling->pstAgentInfo, 0, 0);
+                    sc_agent_stat(SC_AGENT_STAT_CALL, pstSCB->stCall.pstAgentCalling->pstAgentInfo, 0, 0);
                 }
 
                 sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
@@ -111,7 +111,7 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                 if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling))
                 {
-                    sc_acd_agent_stat(SC_AGENT_STAT_CALL, pstSCB->stCall.pstAgentCalling->pstAgentInfo, 0, 0);
+                    sc_agent_stat(SC_AGENT_STAT_CALL, pstSCB->stCall.pstAgentCalling->pstAgentInfo, 0, 0);
                 }
 
                 sc_scb_set_service(pstSCB, BS_SERV_INBAND_CALL);

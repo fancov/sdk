@@ -632,7 +632,7 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
     U32 ulAgentCalled   = 0;
     U32 ulTaskID        = U32_BUTT;
     U32 ulRet           = DOS_FAIL;
-    SC_AGENT_INFO_ST stAgentInfo;
+    SC_AGENT_NODE_ST  *pstAgentNode = NULL;
 
     pszAction      = sc_http_api_get_value(pstArgv, "action");
     pszCustomerID  = sc_http_api_get_value(pstArgv, "customer");
@@ -728,9 +728,10 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
                     }
 
                     /* 判断被叫号码是否是坐席的工号，如果是，则呼叫这个坐席 */
-                    if (sc_acd_get_agent_by_emp_num(&stAgentInfo, ulCustomer, pszNumber) == DOS_SUCC)
+                    pstAgentNode = sc_agent_get_by_emp_num(ulCustomer, pszNumber);
+                    if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
                     {
-                        ulRet = sc_call_ctrl_call_agent(ulAgent, stAgentInfo.ulAgentID);
+                        ulRet = sc_call_ctrl_call_agent(ulAgent, pstAgentNode);
                         break;
                     }
 
@@ -755,8 +756,13 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
 
                         return SC_HTTP_ERRNO_INVALID_REQUEST;
                     }
-                    ulRet = sc_call_ctrl_call_agent(ulAgent, ulAgentCalled);
+                    pstAgentNode = sc_agent_get_by_id(ulAgentCalled);
+                    if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+                    {
+                        ulRet = sc_call_ctrl_call_agent(ulAgent, pstAgentNode);
+                    }
                     break;
+
                 default:
                     ulRet = DOS_FAIL;
             }
@@ -1057,7 +1063,7 @@ U32 sc_http_api_agent_grp(list_t *pstArgv)
         goto invalid_params;
     }
 
-    if (sc_acd_http_agentgrp_update_proc(ulAction, ulAgentGrpID) != DOS_SUCC)
+    if (sc_agent_group_http_update_proc(ulAction, ulAgentGrpID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
@@ -1153,7 +1159,7 @@ U32 sc_http_api_agent_action(list_t *pstArgv)
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    if (sc_acd_agent_update_status(ulAction, ulAgent, OPERATING_TYPE_WEB) != DOS_SUCC)
+    if (sc_agent_status_update(ulAction, ulAgent, OPERATING_TYPE_WEB) != DOS_SUCC)
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
@@ -1241,7 +1247,7 @@ U32 sc_http_api_agent(list_t *pstArgv)
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "Recv HTTP API CMD. Action: %u, AgentID: %u, sip_userid: %s"
                     , ulAction, ulAgentID, pszUserID);
 
-    if (sc_acd_http_agent_update_proc(ulAction, ulAgentID, pszUserID) != DOS_SUCC)
+    if (sc_agent_http_update_proc(ulAction, ulAgentID, pszUserID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;

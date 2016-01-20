@@ -782,8 +782,8 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nThe detail info for the Agent Group %u:", ulID);
     cli_out_string(ulIndex, szCmdBuff);
 
-    sc_acd_hash_func4grp(ulID, &ulHashIndex);
-    pstHashNode = hash_find_node(g_pstGroupList, ulHashIndex, &ulID, sc_acd_grp_hash_find);
+    sc_agent_hash_func4grp(ulID, &ulHashIndex);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashIndex, &ulID, sc_agent_group_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {

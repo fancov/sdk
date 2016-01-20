@@ -58,19 +58,17 @@ pthread_mutex_t   g_mutexGroupList     = PTHREAD_MUTEX_INITIALIZER;
 /* 坐席组个数 */
 U32               g_ulGroupCount       = 0;
 
-U32 sc_ep_agent_signin(SC_AGENT_INFO_ST *pstAgentInfo)
+U32 sc_agent_signin_proc(SC_AGENT_INFO_ST *pstAgentInfo)
 {
     return DOS_SUCC;
 }
 
-U32 sc_ep_agent_signout(SC_AGENT_INFO_ST *pstAgentInfo)
+U32 sc_agent_signout_proc(SC_AGENT_INFO_ST *pstAgentInfo)
 {
     return DOS_SUCC;
 }
 
-U32 sc_acd_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam);
-
-U32 sc_ep_get_channel_id(SC_AGENT_INFO_ST *pstAgentInfo, S8 *pszChannel, U32 ulLen)
+U32 sc_agent_notify_get_channel_id(SC_AGENT_INFO_ST *pstAgentInfo, S8 *pszChannel, U32 ulLen)
 {
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -91,7 +89,7 @@ U32 sc_ep_get_channel_id(SC_AGENT_INFO_ST *pstAgentInfo, S8 *pszChannel, U32 ulL
     return DOS_SUCC;
 }
 
-U32 sc_ep_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
+U32 sc_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
 {
     S8 szURL[256]         = { 0, };
     S8 szData[512]        = { 0, };
@@ -105,7 +103,7 @@ U32 sc_ep_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
         return DOS_FAIL;
     }
 
-    if (sc_ep_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
+    if (sc_agent_notify_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Get channel ID fail for agent: %u", pstAgentInfo->ulAgentID);
         return DOS_FAIL;
@@ -137,7 +135,7 @@ U32 sc_ep_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
  *         U32 *pulHashIndex: 输出参数，计算之后的hash值
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_hash_func4agent(U32 ulAgentID, U32 *pulHashIndex)
+U32 sc_agent_hash_func4agent(U32 ulAgentID, U32 *pulHashIndex)
 {
     if (DOS_ADDR_INVALID(pulHashIndex))
     {
@@ -160,7 +158,7 @@ U32 sc_acd_hash_func4agent(U32 ulAgentID, U32 *pulHashIndex)
  *         U32 *pulHashIndex: 输出参数，计算之后的hash值
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex)
+U32 sc_agent_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex)
 {
     if (DOS_ADDR_INVALID(pulHashIndex))
     {
@@ -179,7 +177,7 @@ U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex)
  *         U32 *pulHashIndex: 输出参数，计算之后的hash值
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_hash_func4calller_relation(S8 *szCallerNum, U32 *pulHashIndex)
+U32 sc_agent_hash_func4calller_relation(S8 *szCallerNum, U32 *pulHashIndex)
 {
     U64 ulCallerNum = 0;
 
@@ -202,7 +200,7 @@ U32 sc_acd_hash_func4calller_relation(S8 *szCallerNum, U32 *pulHashIndex)
  *         HASH_NODE_S *pNode: HASH节点
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
+S32 sc_agent_group_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 {
     SC_AGENT_GRP_NODE_ST    *pstGrpHashNode = NULL;
     U32                        ulIndex         = 0;
@@ -235,7 +233,7 @@ S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
  *         HASH_NODE_S *pNode: HASH节点
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-S32 sc_acd_agent_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
+S32 sc_agent_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 {
     SC_AGENT_NODE_ST   *pstAgentQueueNode = NULL;
     U32                          ulAgentID;
@@ -271,7 +269,7 @@ S32 sc_acd_agent_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
  *         HASH_NODE_S *pNode: HASH节点
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-S32 sc_acd_caller_relation_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
+S32 sc_agent_caller_relation_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 {
     SC_ACD_MEMORY_RELATION_QUEUE_NODE_ST *pstHashNode = NULL;
     S8  *szCallerNum = NULL;
@@ -302,7 +300,7 @@ S32 sc_acd_caller_relation_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
  *         DLL_NODE_S *pNode: 链表节点
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-static S32 sc_acd_agent_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
+static S32 sc_agent_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
 {
     SC_AGENT_NODE_ST   *pstAgentQueueNode = NULL;
     U32                          ulAgentID;
@@ -336,7 +334,7 @@ static S32 sc_acd_agent_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
  * 参  数:
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-SC_AGENT_NODE_ST *sc_get_agent_by_sip_acc(S8 *szUserID)
+SC_AGENT_NODE_ST *sc_agent_get_by_sip_acc(S8 *szUserID)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
@@ -395,7 +393,7 @@ SC_AGENT_NODE_ST *sc_get_agent_by_sip_acc(S8 *szUserID)
  *       S8 *pszUserID: 坐席唯一标示 sip账户
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_group_remove_agent(U32 ulGroupID, U32 ulAgentID)
+U32 sc_agent_group_remove_agent(U32 ulGroupID, U32 ulAgentID)
 {
     SC_AGENT_NODE_ST   *pstAgentQueueNode  = NULL;
     SC_AGENT_GRP_NODE_ST      *pstGroupNode       = NULL;
@@ -404,9 +402,9 @@ U32 sc_acd_group_remove_agent(U32 ulGroupID, U32 ulAgentID)
     U32                          ulHashVal           = 0;
 
     /* 检测所在队列是否存在 */
-    sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
+    sc_agent_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
-    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_agent_group_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
@@ -418,7 +416,7 @@ U32 sc_acd_group_remove_agent(U32 ulGroupID, U32 ulAgentID)
 
     pstGroupNode = pstHashNode->pHandle;
 
-    pstDLLNode = dll_find(&pstGroupNode->stAgentList, (VOID *)&ulAgentID, sc_acd_agent_dll_find);
+    pstDLLNode = dll_find(&pstGroupNode->stAgentList, (VOID *)&ulAgentID, sc_agent_dll_find);
     if (DOS_ADDR_INVALID(pstDLLNode)
         || DOS_ADDR_INVALID(pstDLLNode->pHandle))
     {
@@ -455,7 +453,7 @@ U32 sc_acd_group_remove_agent(U32 ulGroupID, U32 ulAgentID)
  *       SC_AGENT_INFO_ST *pstAgentInfo : 坐席组信息
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_group_add_agent(U32 ulGroupID, SC_AGENT_INFO_ST *pstAgentInfo)
+U32 sc_agent_group_add_agent(U32 ulGroupID, SC_AGENT_INFO_ST *pstAgentInfo)
 {
     SC_AGENT_NODE_ST   *pstAgentQueueNode  = NULL;
     SC_AGENT_GRP_NODE_ST      *pstGroupNode       = NULL;
@@ -471,9 +469,9 @@ U32 sc_acd_group_add_agent(U32 ulGroupID, SC_AGENT_INFO_ST *pstAgentInfo)
     }
 
     /* 检测所在队列是否存在 */
-    sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
+    sc_agent_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
-    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_agent_group_hash_find);
     pthread_mutex_unlock(&g_mutexGroupList);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
@@ -536,7 +534,7 @@ U32 sc_acd_group_add_agent(U32 ulGroupID, SC_AGENT_INFO_ST *pstAgentInfo)
  * 返回值: SC_AGENT_NODE_ST *返回坐席队列里面的节点。编译调用函数将坐席添加到组。如果失败则返回NULL
  * !!! 该函数只是将坐席加入管理队列，不会将坐席加入坐席对列 !!!
  **/
-SC_AGENT_INFO_ST *sc_acd_add_agent(SC_AGENT_INFO_ST *pstAgentInfo)
+SC_AGENT_INFO_ST *sc_agent_add(SC_AGENT_INFO_ST *pstAgentInfo)
 {
     SC_AGENT_NODE_ST   *pstAgentQueueNode  = NULL;
     SC_AGENT_INFO_ST         *pstAgentData       = NULL;
@@ -577,7 +575,7 @@ SC_AGENT_INFO_ST *sc_acd_add_agent(SC_AGENT_INFO_ST *pstAgentInfo)
     /* 加入坐席管理hash表 */
     HASH_Init_Node(pstHashNode);
     pstHashNode->pHandle = pstAgentQueueNode;
-    sc_acd_hash_func4agent(pstAgentInfo->ulAgentID, &ulHashVal);
+    sc_agent_hash_func4agent(pstAgentInfo->ulAgentID, &ulHashVal);
     pthread_mutex_lock(&g_mutexAgentList);
     hash_add_node(g_pstAgentList, pstHashNode, ulHashVal, NULL);
     pthread_mutex_unlock(&g_mutexAgentList);
@@ -603,7 +601,7 @@ SC_AGENT_INFO_ST *sc_acd_add_agent(SC_AGENT_INFO_ST *pstAgentInfo)
  *         VOID *pszExtensition : 被删除坐席的分机号
  * 返回值: VOID
  **/
-static VOID sc_acd_grp_wolk4delete_agent(HASH_NODE_S *pNode, VOID *pulAgentID)
+static VOID sc_agent_group_wolk4delete_agent(HASH_NODE_S *pNode, VOID *pulAgentID)
 {
     SC_AGENT_GRP_NODE_ST      *pstGroupListNode  = NULL;
     SC_AGENT_NODE_ST   *pstAgentQueueNode = NULL;
@@ -623,7 +621,7 @@ static VOID sc_acd_grp_wolk4delete_agent(HASH_NODE_S *pNode, VOID *pulAgentID)
 
     pstGroupListNode = (SC_AGENT_GRP_NODE_ST *)pNode->pHandle;
     pthread_mutex_lock(&pstGroupListNode->mutexSiteQueue);
-    pstDLLNode = dll_find(&pstGroupListNode->stAgentList, (VOID *)pulAgentID, sc_acd_agent_dll_find);
+    pstDLLNode = dll_find(&pstGroupListNode->stAgentList, (VOID *)pulAgentID, sc_agent_dll_find);
     if (DOS_ADDR_INVALID(pstAgentQueueNode)
         || DOS_ADDR_INVALID(pstDLLNode->pHandle))
     {
@@ -639,7 +637,7 @@ static VOID sc_acd_grp_wolk4delete_agent(HASH_NODE_S *pNode, VOID *pulAgentID)
     pthread_mutex_unlock(&pstGroupListNode->mutexSiteQueue);
 }
 
-U32 sc_acd_delete_agent(U32  ulAgentID)
+U32 sc_agent_delete(U32  ulAgentID)
 {
     SC_AGENT_NODE_ST   *pstAgentQueueNode = NULL;
     HASH_NODE_S                  *pstHashNode       = NULL;
@@ -647,13 +645,13 @@ U32 sc_acd_delete_agent(U32  ulAgentID)
 
     /* 遍历所有组，并删除相关坐席 */
     pthread_mutex_lock(&g_mutexGroupList);
-    hash_walk_table(g_pstGroupList, &ulAgentID, sc_acd_grp_wolk4delete_agent);
+    hash_walk_table(g_pstGroupList, &ulAgentID, sc_agent_group_wolk4delete_agent);
     pthread_mutex_unlock(&g_mutexGroupList);
 
     /* 做到坐席，然后将其值为删除状态 */
     pthread_mutex_lock(&g_mutexAgentList);
-    sc_acd_hash_func4agent(ulAgentID, &ulHashVal);
-    pstHashNode = hash_find_node(g_pstAgentList, ulHashVal, &ulAgentID, sc_acd_agent_hash_find);
+    sc_agent_hash_func4agent(ulAgentID, &ulHashVal);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashVal, &ulAgentID, sc_agent_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
@@ -674,7 +672,7 @@ U32 sc_acd_delete_agent(U32  ulAgentID)
     return DOS_SUCC;
 }
 
-U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupName)
+U32 sc_agent_group_add(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupName)
 {
     SC_AGENT_GRP_NODE_ST    *pstGroupListNode = NULL;
     HASH_NODE_S                *pstHashNode      = NULL;
@@ -698,9 +696,9 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Load Group. ID:%u, Customer:%u, Policy: %u, Name: %s", ulGroupID, ulCustomID, ulPolicy, pszGroupName);
 
     /* 确定队列 */
-    sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
+    sc_agent_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
-    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_agent_group_hash_find);
     if (DOS_ADDR_VALID(pstHashNode)
         && DOS_ADDR_VALID(pstHashNode->pHandle))
     {
@@ -777,7 +775,7 @@ U32 sc_acd_add_queue(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroupNa
     return DOS_SUCC;
 }
 
-U32 sc_acd_delete_queue(U32 ulGroupID)
+U32 sc_agent_group_delete(U32 ulGroupID)
 {
     SC_AGENT_GRP_NODE_ST    *pstGroupListNode = NULL;
     HASH_NODE_S                *pstHashNode      = NULL;
@@ -790,9 +788,9 @@ U32 sc_acd_delete_queue(U32 ulGroupID)
     }
 
     /* 确定队列 */
-    sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
+    sc_agent_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
-    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_agent_group_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
@@ -813,36 +811,8 @@ U32 sc_acd_delete_queue(U32 ulGroupID)
     return DOS_SUCC;
 }
 
-U32 sc_acd_get_agent_cnt_by_grp(U32 ulGrpID)
-{
-    U32                       ulHashIndex;
-    HASH_NODE_S               *pstHashNode        = NULL;
-    SC_AGENT_GRP_NODE_ST   *pstGroupNode       = NULL;
 
-    if (sc_acd_hash_func4grp(ulGrpID, &ulHashIndex) != DOS_SUCC)
-    {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Get hash index for group %u fail.", ulGrpID);
-        return 0;
-    }
-
-    pstHashNode = hash_find_node(g_pstGroupList, ulHashIndex, &ulGrpID, sc_acd_grp_hash_find);
-    if (DOS_ADDR_INVALID(pstHashNode))
-    {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot find the group with id %u.", ulGrpID);
-        return 0;
-    }
-
-    pstGroupNode = pstHashNode->pHandle;
-    if (DOS_ADDR_INVALID(pstGroupNode))
-    {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot find the group with id %u. May be deleted.", ulGrpID);
-        return 0;
-    }
-
-    return pstGroupNode->usCount;
-}
-
-SC_AGENT_NODE_ST * sc_acd_get_agent_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListNode)
+SC_AGENT_NODE_ST * sc_agent_select_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListNode)
 {
     U32     ulRandomAgent      = 0;
     SC_AGENT_NODE_ST *pstAgentQueueNode = NULL;
@@ -968,7 +938,7 @@ SC_AGENT_NODE_ST * sc_acd_get_agent_by_random(SC_AGENT_GRP_NODE_ST *pstGroupList
     return pstAgentNodeRet;
 }
 
-SC_AGENT_NODE_ST * sc_acd_get_agent_by_inorder(SC_AGENT_GRP_NODE_ST *pstGroupListNode)
+SC_AGENT_NODE_ST * sc_agent_select_by_inorder(SC_AGENT_GRP_NODE_ST *pstGroupListNode)
 {
     S8      szLastEmpNo[SC_EMP_NUMBER_LENGTH]     = {0};
     S8      szEligibleEmpNo[SC_EMP_NUMBER_LENGTH] = {0};
@@ -1070,7 +1040,7 @@ start_find:
     return pstAgentNodeRet;
 }
 
-SC_AGENT_NODE_ST * sc_acd_get_agent_by_call_count(SC_AGENT_GRP_NODE_ST *pstGroupListNode)
+SC_AGENT_NODE_ST * sc_agent_select_by_call_count(SC_AGENT_GRP_NODE_ST *pstGroupListNode)
 {
     SC_AGENT_NODE_ST *pstAgentQueueNode = NULL;
     SC_AGENT_NODE_ST *pstAgentNode      = NULL;
@@ -1136,7 +1106,7 @@ SC_AGENT_NODE_ST * sc_acd_get_agent_by_call_count(SC_AGENT_GRP_NODE_ST *pstGroup
 }
 
 
-SC_AGENT_NODE_ST * sc_acd_get_agent_by_caller(SC_AGENT_GRP_NODE_ST *pstGroupListNode, S8 *szCallerNum)
+SC_AGENT_NODE_ST * sc_agent_select_by_caller(SC_AGENT_GRP_NODE_ST *pstGroupListNode, S8 *szCallerNum)
 {
     SC_ACD_MEMORY_RELATION_QUEUE_NODE_ST *pstRelationQueueNode = NULL;
     SC_AGENT_NODE_ST *pstAgentNode      = NULL;
@@ -1155,8 +1125,8 @@ SC_AGENT_NODE_ST * sc_acd_get_agent_by_caller(SC_AGENT_GRP_NODE_ST *pstGroupList
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Select agent by the calllerNum(%s). Start find agent in group %u. %p"
                     , szCallerNum, pstGroupListNode->ulGroupID, pstGroupListNode->pstRelationList);
     /* 根据主叫号码查找对应的坐席 */
-    sc_acd_hash_func4calller_relation(szCallerNum, &ulHashVal);
-    pstHashNode = hash_find_node(pstGroupListNode->pstRelationList, ulHashVal, szCallerNum, sc_acd_caller_relation_hash_find);
+    sc_agent_hash_func4calller_relation(szCallerNum, &ulHashVal);
+    pstHashNode = hash_find_node(pstGroupListNode->pstRelationList, ulHashVal, szCallerNum, sc_agent_caller_relation_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
@@ -1170,8 +1140,8 @@ SC_AGENT_NODE_ST * sc_acd_get_agent_by_caller(SC_AGENT_GRP_NODE_ST *pstGroupList
     pstRelationQueueNode = pstHashNode->pHandle;
     ulAgentID = pstRelationQueueNode->ulAgentID;
     /* 根据坐席编号, 在坐席hash中查找到对应的坐席 */
-    sc_acd_hash_func4agent(ulAgentID, &ulAgentHashVal);
-    pstAgentHashNode = hash_find_node(g_pstAgentList, ulAgentHashVal, (VOID *)&ulAgentID, sc_acd_agent_hash_find);
+    sc_agent_hash_func4agent(ulAgentID, &ulAgentHashVal);
+    pstAgentHashNode = hash_find_node(g_pstAgentList, ulAgentHashVal, (VOID *)&ulAgentID, sc_agent_hash_find);
     if (DOS_ADDR_INVALID(pstAgentHashNode)
         || DOS_ADDR_INVALID(pstAgentHashNode->pHandle))
     {
@@ -1199,7 +1169,7 @@ SC_AGENT_NODE_ST * sc_acd_get_agent_by_caller(SC_AGENT_GRP_NODE_ST *pstGroupList
     return pstAgentNode;
 
 process_call:
-    pstAgentNode = sc_acd_get_agent_by_call_count(pstGroupListNode);
+    pstAgentNode = sc_agent_select_by_call_count(pstGroupListNode);
     if (DOS_ADDR_VALID(pstAgentNode))
     {
         /* 添加或者更新 主叫号码和坐席对应关系的hash */
@@ -1255,14 +1225,15 @@ end:
     return pstAgentNode;
 }
 
+
 SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID)
 {
-    HASH_NODE_S           *pstHashNode = NULL;
-    SC_AGENT_NODE_ST      *pstAgentNode = NULL;
-    U32                   ulHashIndex = 0;
+    HASH_NODE_S      *pstHashNode = NULL;
+    SC_AGENT_NODE_ST *pstAgentNode = NULL;
+    U32              ulHashIndex = 0;
 
-    sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
-    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
+    sc_agent_hash_func4agent(ulAgentID, &ulHashIndex);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_agent_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
@@ -1274,73 +1245,42 @@ SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID)
     if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u..", ulAgentID);
+        return NULL;
+    }
+
+    if (pstAgentNode->pstAgentInfo->bWaitingDelete)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent will be delete later. %u", ulAgentID);
         return NULL;
     }
 
     return pstAgentNode;
 }
 
-
-U32 sc_acd_get_agent_by_id(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID)
+SC_AGENT_NODE_ST *sc_agent_select_by_grpid(U32 ulGroupID, S8 *szCallerNum)
 {
-    HASH_NODE_S                *pstHashNode = NULL;
-    SC_AGENT_NODE_ST *pstAgentNode = NULL;
-    U32                        ulHashIndex = 0;
+    SC_AGENT_NODE_ST     *pstAgentNode      = NULL;
+    SC_AGENT_GRP_NODE_ST *pstGroupListNode  = NULL;
+    HASH_NODE_S          *pstHashNode       = NULL;
+    U32                  ulHashVal          = 0;
 
-    if (DOS_ADDR_INVALID(pstAgentInfo))
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
-    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
-    if (DOS_ADDR_INVALID(pstHashNode)
-        || DOS_ADDR_INVALID(pstHashNode->pHandle))
-    {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
-        return DOS_FAIL;
-    }
-
-    pstAgentNode = pstHashNode->pHandle;
-    if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
-    {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u..", ulAgentID);
-        return DOS_FAIL;
-    }
-
-    dos_memcpy(pstAgentInfo, pstAgentNode->pstAgentInfo, sizeof(SC_AGENT_INFO_ST));
-
-    return DOS_SUCC;
-}
-
-U32 sc_acd_get_agent_by_grpid(SC_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID, S8 *szCallerNum)
-{
-    SC_AGENT_NODE_ST *pstAgentNode      = NULL;
-    SC_AGENT_GRP_NODE_ST    *pstGroupListNode  = NULL;
-    HASH_NODE_S                *pstHashNode       = NULL;
-    U32                        ulHashVal          = 0;
-    U32                        ulResult           = DOS_SUCC;
-
-    if (DOS_ADDR_INVALID(pstAgentBuff)
-        || 0 == ulGroupID
+    if (0 == ulGroupID
         || U32_BUTT == ulGroupID)
     {
         DOS_ASSERT(0);
-        return DOS_FAIL;
+        return NULL;
     }
 
-    sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
+    sc_agent_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
-    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_agent_group_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot fine the group with the ID \"%s\".", ulGroupID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
-        return DOS_FAIL;
+        return NULL;
     }
 
     pstGroupListNode = pstHashNode->pHandle;
@@ -1350,15 +1290,15 @@ U32 sc_acd_get_agent_by_grpid(SC_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID, S8 
     switch (pstGroupListNode->ucACDPolicy)
     {
         case SC_ACD_POLICY_IN_ORDER:
-            pstAgentNode = sc_acd_get_agent_by_inorder(pstGroupListNode);
+            pstAgentNode = sc_agent_select_by_inorder(pstGroupListNode);
             break;
 
         case SC_ACD_POLICY_MIN_CALL:
-            pstAgentNode = sc_acd_get_agent_by_call_count(pstGroupListNode);
+            pstAgentNode = sc_agent_select_by_call_count(pstGroupListNode);
             break;
 
         case SC_ACD_POLICY_RANDOM:
-            pstAgentNode = sc_acd_get_agent_by_random(pstGroupListNode);
+            pstAgentNode = sc_agent_select_by_random(pstGroupListNode);
             break;
 
         case SC_ACD_POLICY_RECENT:
@@ -1366,7 +1306,7 @@ U32 sc_acd_get_agent_by_grpid(SC_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID, S8 
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Template not support policy %d", pstGroupListNode->ucACDPolicy);
             break;
         case SC_ACD_POLICY_MEMORY:
-            pstAgentNode = sc_acd_get_agent_by_caller(pstGroupListNode, szCallerNum);
+            pstAgentNode = sc_agent_select_by_caller(pstGroupListNode, szCallerNum);
             break;
         default:
             break;
@@ -1383,31 +1323,29 @@ U32 sc_acd_get_agent_by_grpid(SC_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID, S8 
         pstAgentNode->pstAgentInfo->stStat.ulCallCnt++;
         pstAgentNode->pstAgentInfo->stStat.ulSelectCnt++;
 
-        dos_memcpy(pstAgentBuff, pstAgentNode->pstAgentInfo, sizeof(SC_AGENT_INFO_ST));
-        ulResult = DOS_SUCC;
+        pthread_mutex_unlock(&g_mutexGroupList);
+
+        return pstAgentNode;
     }
     else
     {
-        dos_memzero(pstAgentBuff, sizeof(SC_AGENT_INFO_ST));
-        ulResult = DOS_FAIL;
-    }
-    pthread_mutex_unlock(&g_mutexGroupList);
+        pthread_mutex_unlock(&g_mutexGroupList);
 
-    return ulResult;
+        return NULL;
+    }
 }
 
-U32 sc_acd_get_agent_by_userid(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
+SC_AGENT_NODE_ST *sc_agent_get_by_userid(S8 *szUserID)
 {
-    U32                         ulHashIndex         = 0;
-    HASH_NODE_S                 *pstHashNode        = NULL;
+    U32               ulHashIndex         = 0;
+    HASH_NODE_S       *pstHashNode        = NULL;
     SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
-    SC_AGENT_INFO_ST        *pstAgentData       = NULL;
+    SC_AGENT_INFO_ST  *pstAgentData       = NULL;
 
-    if (DOS_ADDR_INVALID(pstAgentInfo)
-        || DOS_ADDR_INVALID(szUserID)
+    if (DOS_ADDR_INVALID(szUserID)
         || szUserID[0] == '\0')
     {
-        return DOS_FAIL;
+        return NULL;
     }
 
     pthread_mutex_lock(&g_mutexAgentList);
@@ -1435,20 +1373,16 @@ U32 sc_acd_get_agent_by_userid(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
 
             if (dos_strcmp(pstAgentData->szUserID, szUserID) == 0)
             {
-                pthread_mutex_lock(&pstAgentData->mutexLock);
-                dos_memcpy(pstAgentInfo, pstAgentData, sizeof(SC_AGENT_INFO_ST));
-                pthread_mutex_unlock(&pstAgentData->mutexLock);
-
                 pthread_mutex_unlock(&g_mutexAgentList);
 
-                return DOS_SUCC;
+                return pstAgentQueueNode;
             }
         }
     }
 
     pthread_mutex_unlock(&g_mutexAgentList);
 
-    return DOS_FAIL;
+    return NULL;
 }
 
 /**
@@ -1458,7 +1392,7 @@ U32 sc_acd_get_agent_by_userid(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
  *
  * @return 坐席指针
  */
-SC_AGENT_NODE_ST *sc_get_agent_by_tt_num(S8 *szTTNumber)
+SC_AGENT_NODE_ST *sc_agent_get_by_tt_num(S8 *szTTNumber)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
@@ -1503,18 +1437,17 @@ SC_AGENT_NODE_ST *sc_get_agent_by_tt_num(S8 *szTTNumber)
     return NULL;
 }
 
-U32 sc_acd_get_agent_by_emp_num(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulCustomID, S8 *pszEmpNum)
+SC_AGENT_NODE_ST *sc_agent_get_by_emp_num(U32 ulCustomID, S8 *pszEmpNum)
 {
-    U32                         ulHashIndex         = 0;
-    HASH_NODE_S                 *pstHashNode        = NULL;
-    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
-    SC_AGENT_INFO_ST        *pstAgentData       = NULL;
+    U32                 ulHashIndex         = 0;
+    HASH_NODE_S         *pstHashNode        = NULL;
+    SC_AGENT_NODE_ST    *pstAgentQueueNode  = NULL;
+    SC_AGENT_INFO_ST    *pstAgentData       = NULL;
 
-    if (DOS_ADDR_INVALID(pstAgentInfo)
-        || DOS_ADDR_INVALID(pszEmpNum)
+    if (DOS_ADDR_INVALID(pszEmpNum)
         || pszEmpNum[0] == '\0')
     {
-        return DOS_FAIL;
+        return NULL;
     }
 
     pthread_mutex_lock(&g_mutexAgentList);
@@ -1538,23 +1471,19 @@ U32 sc_acd_get_agent_by_emp_num(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulCustomID, 
             if (ulCustomID == pstAgentData->ulCustomerID
                 && dos_strcmp(pstAgentData->szEmpNo, pszEmpNum) == 0)
             {
-                pthread_mutex_lock(&pstAgentData->mutexLock);
-                dos_memcpy(pstAgentInfo, pstAgentData, sizeof(SC_AGENT_INFO_ST));
-                pthread_mutex_unlock(&pstAgentData->mutexLock);
-
                 pthread_mutex_unlock(&g_mutexAgentList);
 
-                return DOS_SUCC;
+                return pstAgentQueueNode;
             }
         }
     }
 
     pthread_mutex_unlock(&g_mutexAgentList);
 
-    return DOS_FAIL;
+    return NULL;
 }
 
-U32 sc_acd_get_processing_time(U32 ulAgentID)
+U32 sc_agent_get_processing_time(U32 ulAgentID)
 {
     SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
     HASH_NODE_S            *pstHashNode   = NULL;
@@ -1562,8 +1491,8 @@ U32 sc_acd_get_processing_time(U32 ulAgentID)
     U32                     ulProcessTime = 0;
 
     pthread_mutex_lock(&g_mutexAgentList);
-    sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
-    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
+    sc_agent_hash_func4agent(ulAgentID, &ulHashIndex);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_agent_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
@@ -1600,7 +1529,7 @@ finished:
 }
 
 
-U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
+U32 sc_agent_group_has_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
 {
     SC_AGENT_NODE_ST *pstAgentNode      = NULL;
     SC_AGENT_GRP_NODE_ST    *pstGroupListNode  = NULL;
@@ -1617,9 +1546,9 @@ U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
     *pblResult = DOS_FALSE;
 
 
-    sc_acd_hash_func4grp(ulAgentGrpID, &ulHashVal);
+    sc_agent_hash_func4grp(ulAgentGrpID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
-    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulAgentGrpID, sc_acd_grp_hash_find);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulAgentGrpID, sc_agent_group_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
@@ -1680,7 +1609,7 @@ U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
 
 }
 
-U32 sc_acd_get_total_agent(U32 ulGroupID)
+U32 sc_agent_group_agent_count(U32 ulGroupID)
 {
     U32 ulCnt = 0;
 
@@ -1689,9 +1618,9 @@ U32 sc_acd_get_total_agent(U32 ulGroupID)
     U32                        ulHashVal          = 0;
 
 
-    sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
+    sc_agent_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
-    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_agent_group_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
@@ -1716,7 +1645,7 @@ U32 sc_acd_get_total_agent(U32 ulGroupID)
 }
 
 
-U32 sc_acd_agent_stat_by_grpid(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32 *pulIdel, U32 *pulBusy)
+U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32 *pulIdel, U32 *pulBusy)
 {
     U32 ulCnt = 0;
 
@@ -1746,9 +1675,9 @@ U32 sc_acd_agent_stat_by_grpid(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U3
         *pulBusy = 0;
     }
 
-    sc_acd_hash_func4grp(ulGroupID, &ulHashVal);
+    sc_agent_hash_func4grp(ulGroupID, &ulHashVal);
     pthread_mutex_lock(&g_mutexGroupList);
-    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_acd_grp_hash_find);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal , &ulGroupID, sc_agent_group_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
@@ -1837,7 +1766,944 @@ U32 sc_acd_agent_stat_by_grpid(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U3
 
 }
 
-static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
+
+U32 sc_agent_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+        case SC_ACD_IDEL:
+        case SC_ACD_AWAY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_BUSY;
+            break;
+
+        case SC_ACD_BUSY:
+            break;
+        case SC_ACD_PROC:
+            break;
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_BUSY);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to busy. Agent: %u Old status: %u, Current status: %u"
+                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+        case SC_ACD_IDEL:
+            break;
+
+        case SC_ACD_AWAY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+
+        case SC_ACD_BUSY:
+            /*在没有呼叫之前 都应该不让设置*/
+
+            break;
+
+        case SC_ACD_PROC:
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+            break;
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_IDLE);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to idle.Agent: %u, Old status: %u, Current status: %u"
+                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_set_rest(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+            break;
+        case SC_ACD_IDEL:
+            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+            break;
+
+        case SC_ACD_AWAY:
+            break;
+
+        case SC_ACD_BUSY:
+            /*在没有呼叫之前 都应该不让设置*/
+            break;
+
+        case SC_ACD_PROC:
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+            break;
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_AWAY);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to rest. Agent:%u, Old status: %u, Current status: %u"
+                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_set_signin(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    if (pstAgentQueueInfo->ulLastSignInTime)
+    {
+        sc_agent_stat(SC_AGENT_STAT_SIGNIN, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
+    }
+    pstAgentQueueInfo->ulLastSignInTime = 0;
+
+    /* 发起长签 */
+    if (sc_agent_signin_proc(pstAgentQueueInfo) != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin FAIL. Agent: %u, Old status: %u, Current status: %u"
+                        , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+        return DOS_FAIL;
+    }
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+        case SC_ACD_IDEL:
+            break;
+
+        case SC_ACD_AWAY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+
+        case SC_ACD_BUSY:
+            /* 这个地方不应该置为IDEL状态，置为IDEL状态，会再次分配呼叫 */
+            /*pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;*/
+            break;
+
+        case SC_ACD_PROC:
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+            break;
+    }
+
+    pstAgentQueueInfo->bNeedConnected = DOS_TRUE;
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo, pstAgentQueueInfo->ucStatus);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin. Agent: %u, Old status: %u, Current status: %u"
+                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    sc_agent_stat(SC_AGENT_STAT_SIGNOUT, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+        case SC_ACD_IDEL:
+            break;
+
+        case SC_ACD_AWAY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            break;
+
+        case SC_ACD_BUSY:
+            /* 这个地方不应该置为IDEL状态，置为IDEL状态，会再次分配呼叫 */
+            /*pstAgentQueueInfo->ucStatus = SC_ACD_IDEL; */
+            break;
+
+        case SC_ACD_PROC:
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+            break;
+    }
+
+    /* 只要有呼叫都拆 */
+    if ((pstAgentQueueInfo->bConnected || pstAgentQueueInfo->bNeedConnected)
+        && pstAgentQueueInfo->ulSCBNo <= SC_SCB_SIZE)
+    {
+        /* 拆呼叫 */
+    }
+
+    pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
+    pstAgentQueueInfo->bConnected = DOS_FALSE;
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo, pstAgentQueueInfo->ucStatus);
+    }
+
+    sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_SIGNOUT);
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signout. Agent: %u, Old status: %u, Current status: %u"
+                , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_set_login(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    sc_agent_stat(SC_AGENT_STAT_ONLINE, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+            break;
+
+        case SC_ACD_IDEL:
+            break;
+
+        case SC_ACD_AWAY:
+            break;
+
+        case SC_ACD_BUSY:
+            break;
+
+        case SC_ACD_PROC:
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+            break;
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_AWAY);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to login. Agent: %u, Old status: %u, Current status: %u"
+                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
+VOID sc_agent_set_logout(U64 p)
+{
+    U32                  ulOldStatus;
+    SC_AGENT_INFO_ST *pstAgentQueueInfo = (SC_AGENT_INFO_ST *)p;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    /* 只有在长签了，才拆除呼叫 */
+    if (pstAgentQueueInfo->bConnected)
+    {
+        /* 拆除呼叫 */
+        pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    sc_agent_stat(SC_AGENT_STAT_ONLINE, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_IDEL:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_AWAY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_BUSY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_PROC:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            break;
+    }
+
+    /* 如果 bConnected 为true，应该等待其变为false, 再将坐席的状态改为登出 */
+    if (pstAgentQueueInfo->bConnected)
+    {
+        return;
+    }
+
+    if (DOS_ADDR_VALID(pstAgentQueueInfo->htmrLogout))
+    {
+        dos_tmr_stop(&pstAgentQueueInfo->htmrLogout);
+        pstAgentQueueInfo->htmrLogout = NULL;
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_LOGINOUT);
+    }
+
+    pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
+    pstAgentQueueInfo->bConnected = DOS_FALSE;
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to logout. Agent:%u Old status: %u, Current status: %u"
+                , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+}
+
+U32 sc_agent_set_force_logout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_IDEL:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_AWAY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_BUSY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        case SC_ACD_PROC:
+            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+    }
+
+    /* 只要有呼叫都拆 */
+    if (pstAgentQueueInfo->bConnected || pstAgentQueueInfo->ulSCBNo != U16_BUTT)
+    {
+        /*  拆除呼叫 */
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+
+        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_LOGINOUT);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request force logout for agnet %u. Old status: %u, Current status: %u"
+                , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+
+}
+
+
+U32 sc_agent_group_http_update_proc(U32 ulAction, U32 ulGrpID)
+{
+    if (ulAction > SC_ACD_SITE_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch(ulAction)
+    {
+        case SC_API_CMD_ACTION_AGENTGREP_ADD:
+        case SC_API_CMD_ACTION_AGENTGREP_UPDATE:
+            sc_agent_group_init(ulGrpID);
+            break;
+
+        case SC_API_CMD_ACTION_AGENTGREP_DELETE:
+            sc_agent_group_delete(ulGrpID);
+            break;
+
+        default:
+            break;
+    }
+    return DOS_SUCC;
+}
+
+/**
+ * 函数: U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
+ * 功能: 处理HTTP发过来的命令
+ * 参数:
+ *      U32 ulAction : 命令
+ *      U32 ulAgentID : 坐席ID
+ *      S8 *pszUserID : 坐席SIP User ID
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ **/
+U32 sc_agent_http_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
+{
+    switch (ulAction)
+    {
+        case SC_ACD_SITE_ACTION_DELETE:
+        case SC_ACD_SITE_ACTION_SIGNIN:
+        case SC_ACD_SITE_ACTION_SIGNOUT:
+        case SC_ACD_SITE_ACTION_ONLINE:
+        case SC_ACD_SITE_ACTION_OFFLINE:
+        case SC_ACD_SITE_ACTION_EN_QUEUE:
+        case SC_ACD_SITE_ACTION_DN_QUEUE:
+            break;
+        case SC_ACD_SITE_ACTION_ADD:
+        case SC_ACD_SITE_ACTION_UPDATE:
+            sc_agent_init(ulAgentID);
+            break;
+        case SC_API_CMD_ACTION_QUERY:
+            break;
+        default:
+            DOS_ASSERT(0);
+            return DOS_FAIL;
+            break;
+    }
+
+    return DOS_SUCC;
+}
+
+
+U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
+{
+    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_AGENT_INFO_ST   *pstAgentInfo = NULL;     /* 坐席信息 */
+    HASH_NODE_S            *pstHashNode = NULL;
+    U32                     ulHashIndex = 0;
+    U32                     ulResult    = DOS_FAIL;
+    U32                     ulOldStatus;
+
+
+    pthread_mutex_lock(&g_mutexAgentList);
+    sc_agent_hash_func4agent(ulAgentID, &ulHashIndex);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_agent_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexAgentList);
+
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
+        return DOS_FAIL;
+    }
+    pthread_mutex_unlock(&g_mutexAgentList);
+
+    if (DOS_ADDR_INVALID(pstHashNode))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Empty hash node for this agent. %u", ulAgentID);
+        return DOS_FAIL;
+    }
+
+    pstAgentQueueNode = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstAgentQueueNode)
+        || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "The hash node is empty for this agent. %u", ulAgentID);
+        return DOS_FAIL;
+    }
+
+    pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+    ulOldStatus = pstAgentInfo->ucStatus;
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent status changed. Agent: %u, Action: %u", ulAgentID, ulAction);
+
+    switch(ulAction)
+    {
+        case SC_ACTION_AGENT_BUSY:
+            ulResult = sc_agent_set_busy(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_IDLE:
+            ulResult = sc_agent_set_idle(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_REST:
+            ulResult = sc_agent_set_rest(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_SIGNIN:
+            ulResult = sc_agent_set_signin(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_SIGNOUT:
+            ulResult = sc_agent_set_signout(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_LOGIN:
+            if (pstAgentInfo->htmrLogout)
+            {
+                dos_tmr_stop(&pstAgentInfo->htmrLogout);
+                pstAgentInfo->htmrLogout = NULL;
+            }
+            ulResult = sc_agent_set_login(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_LOGOUT:
+            if (pstAgentInfo->htmrLogout)
+            {
+                dos_tmr_stop(&pstAgentInfo->htmrLogout);
+                pstAgentInfo->htmrLogout = NULL;
+            }
+
+            ulResult = dos_tmr_start(&pstAgentInfo->htmrLogout, 2000, sc_agent_set_logout, (U64)pstAgentInfo, TIMER_NORMAL_LOOP);
+            break;
+
+        case SC_ACTION_AGENT_FORCE_OFFLINE:
+            ulResult = sc_agent_set_force_logout(pstAgentInfo, ulOperatingType);
+            break;
+
+        case SC_ACTION_AGENT_QUERY:
+            //ulResult = sc_acd_query_agent_status(ulAgentID);
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Invalid action for agent. Action:%u", ulAction);
+            ulResult = DOS_FAIL;
+    }
+
+    return ulResult;
+}
+
+
+/* 记录坐席统计信息 */
+U32 sc_agent_stat_save(SC_AGENT_INFO_ST *pstAgentInfo)
+{
+    S8  szSQL[512]        = { 0, };
+    U32 ulAvgCallDruation = 0;
+    U32 i;
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (pstAgentInfo->stStat.ulCallCnt)
+    {
+        ulAvgCallDruation = pstAgentInfo->stStat.ulTotalDuration / pstAgentInfo->stStat.ulCallCnt;
+    }
+    else
+    {
+        ulAvgCallDruation = 0;
+    }
+
+    for (i=0; i<2; i++)
+    {
+        if (0 == pstAgentInfo->aulGroupID[i] || U32_BUTT == pstAgentInfo->aulGroupID[i])
+        {
+            continue;
+        }
+
+        dos_snprintf(szSQL, sizeof(szSQL),
+                        "INSERT INTO tbl_stat_agents(ctime, type, bid, job_number, group_id, calls, "
+                        "calls_connected, total_duration, online_time, avg_call_duration) VALUES("
+                        "%u, %u, %u, \"%s\", %u, %u, %u, %u, %u, %u)"
+                    , time(NULL), 0, pstAgentInfo->ulAgentID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[i]
+                    , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->stStat.ulCallConnected
+                    , pstAgentInfo->stStat.ulTotalDuration, pstAgentInfo->stStat.ulTimesOnline
+                    , ulAvgCallDruation);
+
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Save agent stat. agent: %u(%s), group: %u, callcnt: %u, call connected: %u, duration: %u, total time: %u"
+                    , pstAgentInfo->ulAgentID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[i]
+                    , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->stStat.ulCallConnected
+                    , pstAgentInfo->stStat.ulTotalDuration, pstAgentInfo->stStat.ulTimesOnline);
+
+        if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL) < 0)
+        {
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Save agent stat fail.Agent:%u", pstAgentInfo->ulAgentID);
+        }
+        else
+        {
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Save agent stat succ.Agent:%u", pstAgentInfo->ulAgentID);
+        }
+    }
+
+    dos_memzero(&pstAgentInfo->stStat, sizeof(pstAgentInfo->stStat));
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_stat_audit(U32 ulCycle, VOID *ptr)
+{
+    HASH_NODE_S                 *pstHashNode       = NULL;
+    SC_AGENT_NODE_ST  *pstAgentQueueNode = NULL;
+    SC_AGENT_INFO_ST        *pstAgentInfo      = NULL;
+    U32             ulHashIndex  = 0;
+
+    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                DOS_ASSERT(0);
+                continue;
+            }
+
+            pstAgentQueueNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstAgentQueueNode)
+                || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+            {
+                /* 有可能被删除了，不需要断言 */
+                continue;
+            }
+
+            pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+            if (pstAgentInfo->bWaitingDelete)
+            {
+                /* 被删除了*/
+                continue;
+            }
+
+            /* 如果整理时间超过3分钟，就处理一下 */
+            if (pstAgentInfo->ucStatus == SC_ACD_PROC
+                && pstAgentInfo->ulLastProcTime != 0
+                && time(NULL) - pstAgentInfo->ulLastProcTime > 3 * 60)
+            {
+                pstAgentInfo->ucStatus = SC_ACD_IDEL;
+                sc_agent_status_notify(pstAgentInfo, pstAgentInfo->ucStatus);
+            }
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+
+/*
+ * 函  数: sc_acd_agent_stat
+ * 功  能: 统计坐席呼叫信息
+ * 参  数:
+ *       U32 ulType : 统计类型
+ *       U32 ulAgentID : 坐席ID
+ *       SC_AGENT_INFO_ST *pstAgentInfo: 坐席结构
+ * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
+ **/
+U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam)
+{
+    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
+    HASH_NODE_S            *pstHashNode = NULL;
+    U32                     ulHashIndex = 0;
+    U32                     ulCurrentTime = 0;
+
+    if (ulType >= SC_AGENT_STAT_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Update agent stat. Type: %u, Ageng: %u", ulType, ulAgentID);
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        pthread_mutex_lock(&g_mutexAgentList);
+        sc_agent_hash_func4agent(ulAgentID, &ulHashIndex);
+        pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_agent_hash_find);
+        if (DOS_ADDR_INVALID(pstHashNode)
+            || DOS_ADDR_INVALID(pstHashNode->pHandle))
+        {
+            pthread_mutex_unlock(&g_mutexAgentList);
+
+            DOS_ASSERT(0);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
+            return DOS_FAIL;
+        }
+        pthread_mutex_unlock(&g_mutexAgentList);
+
+        if (DOS_ADDR_INVALID(pstHashNode))
+        {
+            DOS_ASSERT(0);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Empty hash node for this agent. %u", ulAgentID);
+            return DOS_FAIL;
+        }
+
+        pstAgentQueueNode = pstHashNode->pHandle;
+        if (DOS_ADDR_INVALID(pstAgentQueueNode)
+            || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+        {
+            DOS_ASSERT(0);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "The hash node is empty for this agent. %u", ulAgentID);
+            return DOS_FAIL;
+        }
+
+        pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+    }
+
+    ulCurrentTime = time(NULL);
+    switch (ulType)
+    {
+        case SC_AGENT_STAT_SELECT:
+            pstAgentInfo->stStat.ulSelectCnt++;
+            break;
+
+        case SC_AGENT_STAT_CALL_IN:
+        case SC_AGENT_STAT_CALL_OUT:
+        case SC_AGENT_STAT_CALL:
+            pstAgentInfo->stStat.ulCallCnt++;
+            pstAgentInfo->stStat.ulSelectCnt++;
+            break;
+
+        case SC_AGENT_STAT_CALL_OK:
+            pstAgentInfo->stStat.ulCallConnected++;
+            pstAgentInfo->ulLastCallTime = ulCurrentTime;
+            break;
+
+        case SC_AGENT_STAT_CALL_FINISHED:
+            if (pstAgentInfo->ulLastCallTime !=0 && ulCurrentTime >= pstAgentInfo->ulLastCallTime)
+            {
+                pstAgentInfo->stStat.ulTotalDuration = ulCurrentTime - pstAgentInfo->ulLastCallTime;
+            }
+
+            pstAgentInfo->ulLastCallTime = 0;
+            break;
+
+        case SC_AGENT_STAT_ONLINE:
+            if (pstAgentInfo->ulLastOnlineTime != 0 && pstAgentInfo->ulLastOnlineTime < ulCurrentTime)
+            {
+                pstAgentInfo->stStat.ulTimesOnline += (ulCurrentTime - pstAgentInfo->ulLastOnlineTime);
+            }
+
+            pstAgentInfo->ulLastOnlineTime = ulCurrentTime;
+            break;
+
+        case SC_AGENT_STAT_OFFLINE:
+            if (pstAgentInfo->ulLastOnlineTime != 0 && ulCurrentTime >= pstAgentInfo->ulLastOnlineTime)
+            {
+                pstAgentInfo->stStat.ulTimesOnline += (ulCurrentTime - pstAgentInfo->ulLastOnlineTime);
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+            pstAgentInfo->ulLastOnlineTime = 0;
+            break;
+
+        case SC_AGENT_STAT_SIGNIN:
+            if (pstAgentInfo->ulLastSignInTime != 0 && pstAgentInfo->ulLastSignInTime < ulCurrentTime)
+            {
+                pstAgentInfo->stStat.ulTimesSignin += (ulCurrentTime - pstAgentInfo->ulLastSignInTime);
+            }
+
+            pstAgentInfo->ulLastSignInTime = ulCurrentTime;
+            break;
+
+        case SC_AGENT_STAT_SIGNOUT:
+            if (ulCurrentTime >= pstAgentInfo->ulLastSignInTime)
+            {
+                pstAgentInfo->stStat.ulTimesSignin += (ulCurrentTime - pstAgentInfo->ulLastSignInTime);
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+            pstAgentInfo->ulLastSignInTime = 0;
+            break;
+
+        default:
+            return DOS_SUCC;
+    }
+
+
+    return DOS_SUCC;
+}
+
+
+/* 审计坐席，其实就 写入统计信息 */
+U32 sc_agent_audit(U32 ulCycle, VOID *ptr)
+{
+    HASH_NODE_S                 *pstHashNode       = NULL;
+    SC_AGENT_NODE_ST  *pstAgentQueueNode = NULL;
+    SC_AGENT_INFO_ST        *pstAgentInfo      = NULL;
+    U32             ulHashIndex  = 0;
+
+    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                DOS_ASSERT(0);
+                continue;
+            }
+
+            pstAgentQueueNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstAgentQueueNode)
+                || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+            {
+                /* 有可能被删除了，不需要断言 */
+                continue;
+            }
+
+            pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
+            if (pstAgentInfo->bWaitingDelete)
+            {
+                /* 被删除了*/
+                continue;
+            }
+
+            sc_agent_stat_save(pstAgentInfo);
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+static VOID sc_agent_hash_wolk4init(HASH_NODE_S *pNode, VOID *pParam)
+{
+    SC_AGENT_NODE_ST  *pstAgentQueueNode    = NULL;
+    U32                         ulIndex               = 0;
+
+    if (DOS_ADDR_INVALID(pNode)
+        || DOS_ADDR_INVALID(pNode->pHandle))
+    {
+        DOS_ASSERT(0);
+        return ;
+    }
+
+    pstAgentQueueNode = pNode->pHandle;
+    if (DOS_ADDR_INVALID(pstAgentQueueNode)
+        || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
+    {
+        return;
+    }
+
+    for (ulIndex=0; ulIndex<MAX_GROUP_PER_SITE; ulIndex++)
+    {
+        if (0 != pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]
+            && U32_BUTT != pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex])
+        {
+            sc_agent_group_add_agent(pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex], pstAgentQueueNode->pstAgentInfo);
+        }
+    }
+}
+
+static U32 sc_agent_relationship_init()
+{
+    HASH_NODE_S     *pstHashNode = NULL;
+    U32             ulHashIndex  = 0;
+
+    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            sc_agent_hash_wolk4init(pstHashNode, NULL);
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+
+static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
 {
     SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
     HASH_NODE_S                 *pstHashNode = NULL;
@@ -2031,9 +2897,9 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     }
 
     /* 查看当前要添加的坐席是否已经存在，如果存在，就准备更新就好 */
-    sc_acd_hash_func4agent(stSiteInfo.ulAgentID, &ulHashIndex);
+    sc_agent_hash_func4agent(stSiteInfo.ulAgentID, &ulHashIndex);
     pthread_mutex_lock(&g_mutexAgentList);
-    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex , &stSiteInfo.ulAgentID, sc_acd_agent_hash_find);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex , &stSiteInfo.ulAgentID, sc_agent_hash_find);
     if (DOS_ADDR_VALID(pstHashNode)
         && DOS_ADDR_VALID(pstHashNode->pHandle))
     {
@@ -2059,7 +2925,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                                              , pstAgentQueueNode->pstAgentInfo->ulAgentID
                                              , pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]);
 
-                            ulRest = sc_acd_group_remove_agent(pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]
+                            ulRest = sc_agent_group_remove_agent(pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]
                                                                 , pstAgentQueueNode->pstAgentInfo->ulAgentID);
                             if (DOS_SUCC == ulRest)
                             {
@@ -2070,7 +2936,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
 
                                 pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] = stSiteInfo.aulGroupID[ulIndex];
 
-                                sc_acd_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstAgentQueueNode->pstAgentInfo);
+                                sc_agent_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstAgentQueueNode->pstAgentInfo);
                             }
                         }
                     }
@@ -2080,7 +2946,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent %u will be removed from group %u."
                                         , pstAgentQueueNode->pstAgentInfo->ulAgentID
                                         , pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]);
-                        sc_acd_group_remove_agent(pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]
+                        sc_agent_group_remove_agent(pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]
                                                     , pstAgentQueueNode->pstAgentInfo->ulAgentID);
                         pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] = 0;
                     }
@@ -2097,7 +2963,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                                         , stSiteInfo.aulGroupID[ulIndex]);
 
                         pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] = stSiteInfo.aulGroupID[ulIndex];
-                        sc_acd_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstAgentQueueNode->pstAgentInfo);
+                        sc_agent_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstAgentQueueNode->pstAgentInfo);
                     }
                     else
                     {
@@ -2180,7 +3046,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     }
     pthread_mutex_unlock(&g_mutexAgentList);
 
-    pstSiteInfo = sc_acd_add_agent(&stSiteInfo);
+    pstSiteInfo = sc_agent_add(&stSiteInfo);
     if (DOS_ADDR_INVALID(pstSiteInfo))
     {
         DOS_ASSERT(0);
@@ -2197,7 +3063,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
                 continue;
             }
 
-            if (sc_acd_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstSiteInfo) != DOS_SUCC)
+            if (sc_agent_group_add_agent(stSiteInfo.aulGroupID[ulIndex], pstSiteInfo) != DOS_SUCC)
             {
                 DOS_ASSERT(0);
             }
@@ -2206,7 +3072,7 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     return 0;
 }
 
-static U32 sc_acd_init_agent_queue(U32 ulIndex)
+U32 sc_agent_init(U32 ulIndex)
 {
     S8 szSQL[1024] = { 0, };
 
@@ -2242,7 +3108,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
                       ulIndex);
     }
 
-    if (db_query(g_pstSCDBHandle, szSQL, sc_acd_init_agent_queue_cb, &ulIndex, NULL) < 0)
+    if (db_query(g_pstSCDBHandle, szSQL, sc_agent_init_cb, &ulIndex, NULL) < 0)
     {
         return DOS_FAIL;
     }
@@ -2250,7 +3116,7 @@ static U32 sc_acd_init_agent_queue(U32 ulIndex)
     return DOS_SUCC;
 }
 
-static S32 sc_acd_init_group_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
+static S32 sc_agent_group_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
 {
     U32     ulGroupID = 0, ulCustomID = 0, ulPolicy = 0;
     S8      *pszGroupID = NULL, *pszCustomID = NULL, *pszPolicy = NULL, *pszGroupName = NULL;
@@ -2273,10 +3139,10 @@ static S32 sc_acd_init_group_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
         return 0;
     }
 
-    return sc_acd_add_queue(ulGroupID, ulCustomID, ulPolicy,pszGroupName);
+    return sc_agent_group_add(ulGroupID, ulCustomID, ulPolicy,pszGroupName);
 }
 
-U32 sc_acd_init_group_queue(U32 ulIndex)
+U32 sc_agent_group_init(U32 ulIndex)
 {
     S8 szSql[1024] = { 0, };
 
@@ -2289,7 +3155,7 @@ U32 sc_acd_init_group_queue(U32 ulIndex)
         dos_snprintf(szSql, sizeof(szSql), "SELECT id,customer_id,acd_policy,`name` from tbl_group WHERE id=%d;", ulIndex);
     }
 
-    if (db_query(g_pstSCDBHandle, szSql, sc_acd_init_group_queue_cb, NULL, NULL) < 0)
+    if (db_query(g_pstSCDBHandle, szSql, sc_agent_group_init_cb, NULL, NULL) < 0)
     {
         return DOS_FAIL;
     }
@@ -2297,62 +3163,17 @@ U32 sc_acd_init_group_queue(U32 ulIndex)
     return DOS_SUCC;
 }
 
-static U32 sc_acd_deinit_agent_queue()
+static U32 sc_agent_deinit()
 {
     return DOS_SUCC;
 }
 
-static U32 sc_acd_deinit_group_queue()
+static U32 sc_agent_group_deinit()
 {
     return DOS_SUCC;
 }
 
-static VOID sc_acd_agent_wolk4init(HASH_NODE_S *pNode, VOID *pParam)
-{
-    SC_AGENT_NODE_ST  *pstAgentQueueNode    = NULL;
-    U32                         ulIndex               = 0;
-
-    if (DOS_ADDR_INVALID(pNode)
-        || DOS_ADDR_INVALID(pNode->pHandle))
-    {
-        DOS_ASSERT(0);
-        return ;
-    }
-
-    pstAgentQueueNode = pNode->pHandle;
-    if (DOS_ADDR_INVALID(pstAgentQueueNode)
-        || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
-    {
-        return;
-    }
-
-    for (ulIndex=0; ulIndex<MAX_GROUP_PER_SITE; ulIndex++)
-    {
-        if (0 != pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]
-            && U32_BUTT != pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex])
-        {
-            sc_acd_group_add_agent(pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex], pstAgentQueueNode->pstAgentInfo);
-        }
-    }
-}
-
-static U32 sc_acd_init_relationship()
-{
-    HASH_NODE_S     *pstHashNode = NULL;
-    U32             ulHashIndex  = 0;
-
-    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
-    {
-        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
-        {
-            sc_acd_agent_wolk4init(pstHashNode, NULL);
-        }
-    }
-
-    return DOS_SUCC;
-}
-
-U32 sc_acd_init()
+U32 sc_agent_mngt_init()
 {
     g_pstGroupList = hash_create_table(SC_ACD_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(g_pstGroupList))
@@ -2375,7 +3196,7 @@ U32 sc_acd_init()
     }
     g_pstAgentList->NodeNum = 0;
 
-    if (sc_acd_init_group_queue(SC_INVALID_INDEX) != DOS_SUCC)
+    if (sc_agent_group_init(SC_INVALID_INDEX) != DOS_SUCC)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init group list fail in ACD.");
 
@@ -2390,11 +3211,11 @@ U32 sc_acd_init()
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Init group list finished. Load %d agent group(s).", g_pstGroupList->NodeNum);
 
 
-    if (sc_acd_init_agent_queue(SC_INVALID_INDEX) != DOS_SUCC)
+    if (sc_agent_init(SC_INVALID_INDEX) != DOS_SUCC)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init sites list fail in ACD.");
 
-        sc_acd_deinit_agent_queue();
+        sc_agent_group_deinit();
 
         hash_delete_table(g_pstAgentList, NULL);
         g_pstAgentList = NULL;
@@ -2406,12 +3227,12 @@ U32 sc_acd_init()
     }
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Init agent list finished. Load %d agent(s).", g_pstAgentList->NodeNum);
 
-    if (sc_acd_init_relationship() != DOS_SUCC)
+    if (sc_agent_relationship_init() != DOS_SUCC)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init ACD Data FAIL.");
 
-        sc_acd_deinit_group_queue();
-        sc_acd_deinit_agent_queue();
+        sc_agent_group_deinit();
+        sc_agent_deinit();
 
         hash_delete_table(g_pstAgentList, NULL);
         g_pstAgentList = NULL;
@@ -2420,896 +3241,6 @@ U32 sc_acd_init()
         g_pstGroupList = NULL;
 
         return DOS_FAIL;
-    }
-
-    return DOS_SUCC;
-}
-
-U32 sc_acd_agent_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
-{
-    U32 ulOldStatus;
-
-    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    switch (pstAgentQueueInfo->ucStatus)
-    {
-        case SC_ACD_OFFLINE:
-        case SC_ACD_IDEL:
-        case SC_ACD_AWAY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_BUSY;
-            break;
-
-        case SC_ACD_BUSY:
-            break;
-        case SC_ACD_PROC:
-            break;
-        default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
-            return DOS_FAIL;
-    }
-
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
-    {
-        sc_ep_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_BUSY);
-    }
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to busy. Agent: %u Old status: %u, Current status: %u"
-                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
-
-    return DOS_SUCC;
-}
-
-U32 sc_acd_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
-{
-    U32 ulOldStatus;
-
-    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    switch (pstAgentQueueInfo->ucStatus)
-    {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
-            break;
-        case SC_ACD_IDEL:
-            break;
-
-        case SC_ACD_AWAY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
-            break;
-
-        case SC_ACD_BUSY:
-            /*在没有呼叫之前 都应该不让设置*/
-
-            break;
-
-        case SC_ACD_PROC:
-            break;
-
-        default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
-            return DOS_FAIL;
-            break;
-    }
-
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
-    {
-        sc_ep_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_IDLE);
-    }
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to idle.Agent: %u, Old status: %u, Current status: %u"
-                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
-
-    return DOS_SUCC;
-}
-
-U32 sc_acd_agent_set_rest(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
-{
-    U32 ulOldStatus;
-
-    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    switch (pstAgentQueueInfo->ucStatus)
-    {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
-            break;
-        case SC_ACD_IDEL:
-            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
-            break;
-
-        case SC_ACD_AWAY:
-            break;
-
-        case SC_ACD_BUSY:
-            /*在没有呼叫之前 都应该不让设置*/
-            break;
-
-        case SC_ACD_PROC:
-            break;
-
-        default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
-            return DOS_FAIL;
-            break;
-    }
-
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
-    {
-        sc_ep_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_AWAY);
-    }
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to rest. Agent:%u, Old status: %u, Current status: %u"
-                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
-
-    return DOS_SUCC;
-}
-
-U32 sc_acd_agent_set_signin(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
-{
-    U32 ulOldStatus;
-
-    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    if (pstAgentQueueInfo->ulLastSignInTime)
-    {
-        sc_acd_agent_stat(SC_AGENT_STAT_SIGNIN, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
-    }
-    pstAgentQueueInfo->ulLastSignInTime = 0;
-
-    /* 发起长签 */
-    if (sc_ep_agent_signin(pstAgentQueueInfo) != DOS_SUCC)
-    {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin FAIL. Agent: %u, Old status: %u, Current status: %u"
-                        , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
-
-        return DOS_FAIL;
-    }
-
-    switch (pstAgentQueueInfo->ucStatus)
-    {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
-            break;
-        case SC_ACD_IDEL:
-            break;
-
-        case SC_ACD_AWAY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
-            break;
-
-        case SC_ACD_BUSY:
-            /* 这个地方不应该置为IDEL状态，置为IDEL状态，会再次分配呼叫 */
-            /*pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;*/
-            break;
-
-        case SC_ACD_PROC:
-            break;
-
-        default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
-            return DOS_FAIL;
-            break;
-    }
-
-    pstAgentQueueInfo->bNeedConnected = DOS_TRUE;
-
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
-    {
-        sc_ep_agent_status_notify(pstAgentQueueInfo, pstAgentQueueInfo->ucStatus);
-    }
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin. Agent: %u, Old status: %u, Current status: %u"
-                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
-
-    return DOS_SUCC;
-}
-
-U32 sc_acd_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
-{
-    U32 ulOldStatus;
-
-    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    sc_acd_agent_stat(SC_AGENT_STAT_SIGNOUT, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
-    switch (pstAgentQueueInfo->ucStatus)
-    {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
-            break;
-        case SC_ACD_IDEL:
-            break;
-
-        case SC_ACD_AWAY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
-            break;
-
-        case SC_ACD_BUSY:
-            /* 这个地方不应该置为IDEL状态，置为IDEL状态，会再次分配呼叫 */
-            /*pstAgentQueueInfo->ucStatus = SC_ACD_IDEL; */
-            break;
-
-        case SC_ACD_PROC:
-            break;
-
-        default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
-            return DOS_FAIL;
-            break;
-    }
-
-    /* 只要有呼叫都拆 */
-    if ((pstAgentQueueInfo->bConnected || pstAgentQueueInfo->bNeedConnected)
-        && pstAgentQueueInfo->ulSCBNo <= SC_SCB_SIZE)
-    {
-        /* 拆呼叫 */
-    }
-
-    pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
-    pstAgentQueueInfo->bConnected = DOS_FALSE;
-
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
-    {
-        sc_ep_agent_status_notify(pstAgentQueueInfo, pstAgentQueueInfo->ucStatus);
-    }
-
-    sc_ep_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_SIGNOUT);
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signout. Agent: %u, Old status: %u, Current status: %u"
-                , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
-
-    return DOS_SUCC;
-}
-
-U32 sc_acd_agent_set_login(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
-{
-    U32 ulOldStatus;
-
-    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    sc_acd_agent_stat(SC_AGENT_STAT_ONLINE, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
-
-    switch (pstAgentQueueInfo->ucStatus)
-    {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
-            break;
-
-        case SC_ACD_IDEL:
-            break;
-
-        case SC_ACD_AWAY:
-            break;
-
-        case SC_ACD_BUSY:
-            break;
-
-        case SC_ACD_PROC:
-            break;
-
-        default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
-            return DOS_FAIL;
-            break;
-    }
-
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
-    {
-        sc_ep_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_AWAY);
-    }
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to login. Agent: %u, Old status: %u, Current status: %u"
-                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
-
-    return DOS_SUCC;
-}
-
-VOID sc_acd_agent_set_logout(U64 p)
-{
-    U32                  ulOldStatus;
-    SC_AGENT_INFO_ST *pstAgentQueueInfo = (SC_AGENT_INFO_ST *)p;
-
-    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
-    {
-        DOS_ASSERT(0);
-        return;
-    }
-
-    /* 只有在长签了，才拆除呼叫 */
-    if (pstAgentQueueInfo->bConnected)
-    {
-        /* 拆除呼叫 */
-        pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
-    }
-
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    sc_acd_agent_stat(SC_AGENT_STAT_ONLINE, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
-
-    switch (pstAgentQueueInfo->ucStatus)
-    {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_IDEL:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_AWAY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_BUSY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_PROC:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
-            break;
-    }
-
-    /* 如果 bConnected 为true，应该等待其变为false, 再将坐席的状态改为登出 */
-    if (pstAgentQueueInfo->bConnected)
-    {
-        return;
-    }
-
-    if (DOS_ADDR_VALID(pstAgentQueueInfo->htmrLogout))
-    {
-        dos_tmr_stop(&pstAgentQueueInfo->htmrLogout);
-        pstAgentQueueInfo->htmrLogout = NULL;
-    }
-
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
-    {
-        sc_ep_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_LOGINOUT);
-    }
-
-    pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
-    pstAgentQueueInfo->bConnected = DOS_FALSE;
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to logout. Agent:%u Old status: %u, Current status: %u"
-                , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
-}
-
-U32 sc_acd_agent_set_force_logout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
-{
-    U32 ulOldStatus;
-
-    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    switch (pstAgentQueueInfo->ucStatus)
-    {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_IDEL:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_AWAY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_BUSY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_PROC:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
-            return DOS_FAIL;
-    }
-
-    /* 只要有呼叫都拆 */
-    if (pstAgentQueueInfo->bConnected || pstAgentQueueInfo->ulSCBNo != U16_BUTT)
-    {
-        /*  拆除呼叫 */
-    }
-
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
-    {
-
-        sc_ep_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_LOGINOUT);
-    }
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request force logout for agnet %u. Old status: %u, Current status: %u"
-                , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
-
-    return DOS_SUCC;
-
-}
-
-
-U32 sc_acd_http_agentgrp_update_proc(U32 ulAction, U32 ulGrpID)
-{
-    if (ulAction > SC_ACD_SITE_ACTION_BUTT)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    switch(ulAction)
-    {
-        case SC_API_CMD_ACTION_AGENTGREP_ADD:
-        case SC_API_CMD_ACTION_AGENTGREP_UPDATE:
-            sc_acd_init_group_queue(ulGrpID);
-            break;
-
-        case SC_API_CMD_ACTION_AGENTGREP_DELETE:
-            sc_acd_delete_queue(ulGrpID);
-            break;
-
-        default:
-            break;
-    }
-    return DOS_SUCC;
-}
-
-/**
- * 函数: U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
- * 功能: 处理HTTP发过来的命令
- * 参数:
- *      U32 ulAction : 命令
- *      U32 ulAgentID : 坐席ID
- *      S8 *pszUserID : 坐席SIP User ID
- * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
- **/
-U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
-{
-    switch (ulAction)
-    {
-        case SC_ACD_SITE_ACTION_DELETE:
-        case SC_ACD_SITE_ACTION_SIGNIN:
-        case SC_ACD_SITE_ACTION_SIGNOUT:
-        case SC_ACD_SITE_ACTION_ONLINE:
-        case SC_ACD_SITE_ACTION_OFFLINE:
-        case SC_ACD_SITE_ACTION_EN_QUEUE:
-        case SC_ACD_SITE_ACTION_DN_QUEUE:
-            break;
-        case SC_ACD_SITE_ACTION_ADD:
-        case SC_ACD_SITE_ACTION_UPDATE:
-            sc_acd_init_agent_queue(ulAgentID);
-            break;
-        case SC_API_CMD_ACTION_QUERY:
-            break;
-        default:
-            DOS_ASSERT(0);
-            return DOS_FAIL;
-            break;
-    }
-
-    return DOS_SUCC;
-}
-
-
-U32 sc_acd_agent_update_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
-{
-    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
-    SC_AGENT_INFO_ST   *pstAgentInfo = NULL;     /* 坐席信息 */
-    HASH_NODE_S            *pstHashNode = NULL;
-    U32                     ulHashIndex = 0;
-    U32                     ulResult    = DOS_FAIL;
-    U32                     ulOldStatus;
-
-
-    pthread_mutex_lock(&g_mutexAgentList);
-    sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
-    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
-    if (DOS_ADDR_INVALID(pstHashNode)
-        || DOS_ADDR_INVALID(pstHashNode->pHandle))
-    {
-        pthread_mutex_unlock(&g_mutexAgentList);
-
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
-        return DOS_FAIL;
-    }
-    pthread_mutex_unlock(&g_mutexAgentList);
-
-    if (DOS_ADDR_INVALID(pstHashNode))
-    {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Empty hash node for this agent. %u", ulAgentID);
-        return DOS_FAIL;
-    }
-
-    pstAgentQueueNode = pstHashNode->pHandle;
-    if (DOS_ADDR_INVALID(pstAgentQueueNode)
-        || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
-    {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "The hash node is empty for this agent. %u", ulAgentID);
-        return DOS_FAIL;
-    }
-
-    pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-    ulOldStatus = pstAgentInfo->ucStatus;
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent status changed. Agent: %u, Action: %u", ulAgentID, ulAction);
-
-    switch(ulAction)
-    {
-        case SC_ACTION_AGENT_BUSY:
-            ulResult = sc_acd_agent_set_busy(pstAgentInfo, ulOperatingType);
-            break;
-
-        case SC_ACTION_AGENT_IDLE:
-            ulResult = sc_acd_agent_set_idle(pstAgentInfo, ulOperatingType);
-            break;
-
-        case SC_ACTION_AGENT_REST:
-            ulResult = sc_acd_agent_set_rest(pstAgentInfo, ulOperatingType);
-            break;
-
-        case SC_ACTION_AGENT_SIGNIN:
-            ulResult = sc_acd_agent_set_signin(pstAgentInfo, ulOperatingType);
-            break;
-
-        case SC_ACTION_AGENT_SIGNOUT:
-            ulResult = sc_acd_agent_set_signout(pstAgentInfo, ulOperatingType);
-            break;
-
-        case SC_ACTION_AGENT_LOGIN:
-            if (pstAgentInfo->htmrLogout)
-            {
-                dos_tmr_stop(&pstAgentInfo->htmrLogout);
-                pstAgentInfo->htmrLogout = NULL;
-            }
-            ulResult = sc_acd_agent_set_login(pstAgentInfo, ulOperatingType);
-            break;
-
-        case SC_ACTION_AGENT_LOGOUT:
-            if (pstAgentInfo->htmrLogout)
-            {
-                dos_tmr_stop(&pstAgentInfo->htmrLogout);
-                pstAgentInfo->htmrLogout = NULL;
-            }
-
-            ulResult = dos_tmr_start(&pstAgentInfo->htmrLogout, 2000, sc_acd_agent_set_logout, (U64)pstAgentInfo, TIMER_NORMAL_LOOP);
-            break;
-
-        case SC_ACTION_AGENT_FORCE_OFFLINE:
-            ulResult = sc_acd_agent_set_force_logout(pstAgentInfo, ulOperatingType);
-            break;
-
-        case SC_ACTION_AGENT_QUERY:
-            //ulResult = sc_acd_query_agent_status(ulAgentID);
-            break;
-
-        default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Invalid action for agent. Action:%u", ulAction);
-            ulResult = DOS_FAIL;
-    }
-
-    return ulResult;
-}
-
-
-/*
- * 函  数: sc_acd_agent_stat
- * 功  能: 统计坐席呼叫信息
- * 参  数:
- *       U32 ulType : 统计类型
- *       U32 ulAgentID : 坐席ID
- *       SC_AGENT_INFO_ST *pstAgentInfo: 坐席结构
- * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
- **/
-U32 sc_acd_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam)
-{
-    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
-    HASH_NODE_S            *pstHashNode = NULL;
-    U32                     ulHashIndex = 0;
-    U32                     ulCurrentTime = 0;
-
-    if (ulType >= SC_AGENT_STAT_BUTT)
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Update agent stat. Type: %u, Ageng: %u", ulType, ulAgentID);
-
-    if (DOS_ADDR_INVALID(pstAgentInfo))
-    {
-        pthread_mutex_lock(&g_mutexAgentList);
-        sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
-        pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
-        if (DOS_ADDR_INVALID(pstHashNode)
-            || DOS_ADDR_INVALID(pstHashNode->pHandle))
-        {
-            pthread_mutex_unlock(&g_mutexAgentList);
-
-            DOS_ASSERT(0);
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
-            return DOS_FAIL;
-        }
-        pthread_mutex_unlock(&g_mutexAgentList);
-
-        if (DOS_ADDR_INVALID(pstHashNode))
-        {
-            DOS_ASSERT(0);
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Empty hash node for this agent. %u", ulAgentID);
-            return DOS_FAIL;
-        }
-
-        pstAgentQueueNode = pstHashNode->pHandle;
-        if (DOS_ADDR_INVALID(pstAgentQueueNode)
-            || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
-        {
-            DOS_ASSERT(0);
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "The hash node is empty for this agent. %u", ulAgentID);
-            return DOS_FAIL;
-        }
-
-        pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-    }
-
-    ulCurrentTime = time(NULL);
-    switch (ulType)
-    {
-        case SC_AGENT_STAT_SELECT:
-            pstAgentInfo->stStat.ulSelectCnt++;
-            break;
-
-        case SC_AGENT_STAT_CALL_IN:
-        case SC_AGENT_STAT_CALL_OUT:
-        case SC_AGENT_STAT_CALL:
-            pstAgentInfo->stStat.ulCallCnt++;
-            pstAgentInfo->stStat.ulSelectCnt++;
-            break;
-
-        case SC_AGENT_STAT_CALL_OK:
-            pstAgentInfo->stStat.ulCallConnected++;
-            pstAgentInfo->ulLastCallTime = ulCurrentTime;
-            break;
-
-        case SC_AGENT_STAT_CALL_FINISHED:
-            if (pstAgentInfo->ulLastCallTime !=0 && ulCurrentTime >= pstAgentInfo->ulLastCallTime)
-            {
-                pstAgentInfo->stStat.ulTotalDuration = ulCurrentTime - pstAgentInfo->ulLastCallTime;
-            }
-
-            pstAgentInfo->ulLastCallTime = 0;
-            break;
-
-        case SC_AGENT_STAT_ONLINE:
-            if (pstAgentInfo->ulLastOnlineTime != 0 && pstAgentInfo->ulLastOnlineTime < ulCurrentTime)
-            {
-                pstAgentInfo->stStat.ulTimesOnline += (ulCurrentTime - pstAgentInfo->ulLastOnlineTime);
-            }
-
-            pstAgentInfo->ulLastOnlineTime = ulCurrentTime;
-            break;
-
-        case SC_AGENT_STAT_OFFLINE:
-            if (pstAgentInfo->ulLastOnlineTime != 0 && ulCurrentTime >= pstAgentInfo->ulLastOnlineTime)
-            {
-                pstAgentInfo->stStat.ulTimesOnline += (ulCurrentTime - pstAgentInfo->ulLastOnlineTime);
-            }
-            else
-            {
-                DOS_ASSERT(0);
-            }
-            pstAgentInfo->ulLastOnlineTime = 0;
-            break;
-
-        case SC_AGENT_STAT_SIGNIN:
-            if (pstAgentInfo->ulLastSignInTime != 0 && pstAgentInfo->ulLastSignInTime < ulCurrentTime)
-            {
-                pstAgentInfo->stStat.ulTimesSignin += (ulCurrentTime - pstAgentInfo->ulLastSignInTime);
-            }
-
-            pstAgentInfo->ulLastSignInTime = ulCurrentTime;
-            break;
-
-        case SC_AGENT_STAT_SIGNOUT:
-            if (ulCurrentTime >= pstAgentInfo->ulLastSignInTime)
-            {
-                pstAgentInfo->stStat.ulTimesSignin += (ulCurrentTime - pstAgentInfo->ulLastSignInTime);
-            }
-            else
-            {
-                DOS_ASSERT(0);
-            }
-            pstAgentInfo->ulLastSignInTime = 0;
-            break;
-
-        default:
-            return DOS_SUCC;
-    }
-
-
-    return DOS_SUCC;
-}
-
-
-/* 记录坐席统计信息 */
-U32 sc_acd_save_agent_stat(SC_AGENT_INFO_ST *pstAgentInfo)
-{
-    S8  szSQL[512]        = { 0, };
-    U32 ulAvgCallDruation = 0;
-    U32 i;
-
-    if (DOS_ADDR_INVALID(pstAgentInfo))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    if (pstAgentInfo->stStat.ulCallCnt)
-    {
-        ulAvgCallDruation = pstAgentInfo->stStat.ulTotalDuration / pstAgentInfo->stStat.ulCallCnt;
-    }
-    else
-    {
-        ulAvgCallDruation = 0;
-    }
-
-    for (i=0; i<2; i++)
-    {
-        if (0 == pstAgentInfo->aulGroupID[i] || U32_BUTT == pstAgentInfo->aulGroupID[i])
-        {
-            continue;
-        }
-
-        dos_snprintf(szSQL, sizeof(szSQL),
-                        "INSERT INTO tbl_stat_agents(ctime, type, bid, job_number, group_id, calls, "
-                        "calls_connected, total_duration, online_time, avg_call_duration) VALUES("
-                        "%u, %u, %u, \"%s\", %u, %u, %u, %u, %u, %u)"
-                    , time(NULL), 0, pstAgentInfo->ulAgentID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[i]
-                    , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->stStat.ulCallConnected
-                    , pstAgentInfo->stStat.ulTotalDuration, pstAgentInfo->stStat.ulTimesOnline
-                    , ulAvgCallDruation);
-
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Save agent stat. agent: %u(%s), group: %u, callcnt: %u, call connected: %u, duration: %u, total time: %u"
-                    , pstAgentInfo->ulAgentID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[i]
-                    , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->stStat.ulCallConnected
-                    , pstAgentInfo->stStat.ulTotalDuration, pstAgentInfo->stStat.ulTimesOnline);
-
-        if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL) < 0)
-        {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Save agent stat fail.Agent:%u", pstAgentInfo->ulAgentID);
-        }
-        else
-        {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Save agent stat succ.Agent:%u", pstAgentInfo->ulAgentID);
-        }
-    }
-
-    dos_memzero(&pstAgentInfo->stStat, sizeof(pstAgentInfo->stStat));
-
-    return DOS_SUCC;
-}
-
-U32 sc_acd_agent_stat_audit(U32 ulCycle, VOID *ptr)
-{
-    HASH_NODE_S                 *pstHashNode       = NULL;
-    SC_AGENT_NODE_ST  *pstAgentQueueNode = NULL;
-    SC_AGENT_INFO_ST        *pstAgentInfo      = NULL;
-    U32             ulHashIndex  = 0;
-
-    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
-    {
-        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
-        {
-            if (DOS_ADDR_INVALID(pstHashNode))
-            {
-                DOS_ASSERT(0);
-                continue;
-            }
-
-            pstAgentQueueNode = pstHashNode->pHandle;
-            if (DOS_ADDR_INVALID(pstAgentQueueNode)
-                || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
-            {
-                /* 有可能被删除了，不需要断言 */
-                continue;
-            }
-
-            pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-            if (pstAgentInfo->bWaitingDelete)
-            {
-                /* 被删除了*/
-                continue;
-            }
-
-            /* 如果整理时间超过3分钟，就处理一下 */
-            if (pstAgentInfo->ucStatus == SC_ACD_PROC
-                && pstAgentInfo->ulLastProcTime != 0
-                && time(NULL) - pstAgentInfo->ulLastProcTime > 3 * 60)
-            {
-                pstAgentInfo->ucStatus = SC_ACD_IDEL;
-                sc_ep_agent_status_notify(pstAgentInfo, pstAgentInfo->ucStatus);
-            }
-        }
-    }
-
-    return DOS_SUCC;
-}
-
-
-/* 审计坐席，其实就 写入统计信息 */
-U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr)
-{
-    HASH_NODE_S                 *pstHashNode       = NULL;
-    SC_AGENT_NODE_ST  *pstAgentQueueNode = NULL;
-    SC_AGENT_INFO_ST        *pstAgentInfo      = NULL;
-    U32             ulHashIndex  = 0;
-
-    HASH_Scan_Table(g_pstAgentList, ulHashIndex)
-    {
-        HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)
-        {
-            if (DOS_ADDR_INVALID(pstHashNode))
-            {
-                DOS_ASSERT(0);
-                continue;
-            }
-
-            pstAgentQueueNode = pstHashNode->pHandle;
-            if (DOS_ADDR_INVALID(pstAgentQueueNode)
-                || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
-            {
-                /* 有可能被删除了，不需要断言 */
-                continue;
-            }
-
-            pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-            if (pstAgentInfo->bWaitingDelete)
-            {
-                /* 被删除了*/
-                continue;
-            }
-
-            sc_acd_save_agent_stat(pstAgentInfo);
-        }
     }
 
     return DOS_SUCC;
