@@ -52,12 +52,14 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
         return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_SYSTEM_BUSY);
     }
 
-    stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
+    stCallMsg.ulLCBNo = pstCalleeLegCB->ulCBNo;
 
     pstCalleeLegCB->stCall.bValid = DOS_TRUE;
     pstCalleeLegCB->stCall.ucStatus = SC_LEG_INIT;
     pstCalleeLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
     pstCalleeLegCB->ulSCBNo = pstSCB->ulSCBNo;
+
+    pstSCB->stCall.ulCalleeLegNo = pstCalleeLegCB->ulCBNo;
 
     /* 维护一下主叫号码 */
     dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCalling
