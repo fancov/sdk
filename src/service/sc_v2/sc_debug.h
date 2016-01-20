@@ -34,6 +34,16 @@ typedef enum tagSCSUBMod{
     SC_MOD_BUTT
 }SC_SUBMOD_EN;
 
+typedef struct tagSCModList{
+    U32   ulIndex;
+    S8    *pszName;
+    U32   ulDefaultLogLevel;
+    U32   (*fn_init)();
+    U32   (*fn_start)();
+    U32   (*fn_stop)();
+}SC_MOD_LIST_ST;
+
+
 typedef enum tagSCLogFlags{
     SC_LOG_DISIST  = 1 << 11,        /* 是否记录摘要 */
 
@@ -41,9 +51,9 @@ typedef enum tagSCLogFlags{
 }SC_LOG_FLAG_EN;
 
 /* 日志标记 */
-#define SC_LOG_SET_MOD(level, mod) (level & 0xF) | (mod & 0x3F0)
+#define SC_LOG_SET_MOD(level, mod) (level & 0xF) | ((mod << 4) & 0x3F0)
 
-#define SC_LOG_SET_FLAG(level, mod, flags) (level & 0xF) | (mod & 0x3F0) | (flags & 0xFFFFFC00)
+#define SC_LOG_SET_FLAG(level, mod, flags) (level & 0xF) | ((mod << 4) & 0x3F0) | (flags & 0xFFFFFC00)
 
 /** 记录日志
  |----------------------|  ------  |   ----    |

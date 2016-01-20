@@ -19,7 +19,7 @@ extern "C" {
 #include "sc_res.h"
 #include "sc_httpd.h"
 #include "sc_http_api.h"
-
+#include "sc_debug.h"
 
 /* 坐席组的hash表 */
 extern HASH_TABLE_S      *g_pstAgentList;
@@ -36,6 +36,8 @@ extern U32          g_ulCPS;
 extern SC_TASK_CB           *g_pstTaskList;
 extern pthread_mutex_t      g_mutexTaskList;
 extern BOOL                 g_blSCInitOK;
+
+extern SC_MOD_LIST_ST       astSCModList[];
 
 U32         g_ulSCLogLevel = LOG_LEVEL_DEBUG;
 
@@ -3903,7 +3905,22 @@ VOID sc_log(U32 ulLogFlags, const S8 *pszFormat, ...)
         return;
     }
 
-    ulTraceTagLen = dos_strlen(szTraceStr);
+    /* 这个地方有个BUG，0为合法值，但是如果不指定模块，也就是为0，冲突了，考虑到模块0只是初始化句柄，这么就把0过滤了 */
+    if (ulMod >= SC_MOD_BUTT || 0 == ulMod)
+    {
+        ulTraceTagLen = dos_snprintf(szTraceStr, sizeof(szTraceStr), "SC:");
+    }
+    else
+    {
+        ulTraceTagLen = dos_snprintf(szTraceStr, sizeof(szTraceStr), "%s:", astSCModList[ulMod].pszName);
+
+        /* 各个模块的日志级别定义 */
+        if (!bIsOutput && ulLevel > astSCModList[ulMod].ulDefaultLogLevel)
+        {
+            return;
+        }
+    }
+
 
     va_start(Arg, pszFormat);
     vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
