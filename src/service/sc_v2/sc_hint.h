@@ -42,6 +42,7 @@ typedef enum tagSoundType{
     SC_SND_USER_LINE_FAULT,       /**< 用户线忙 */
     SC_SND_USER_NOT_FOUND,        /**< 你所拨打的用户忙不存在，请查证后再拨 */
     SC_SND_CONNECTING,            /**< 正在为你接通 */
+    SC_SND_YOUR_CODE_IS,          /**< 你的验证码为 */
     SC_SND_1_YAO,
     SC_SND_0,
     SC_SND_1,

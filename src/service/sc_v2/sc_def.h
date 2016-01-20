@@ -81,27 +81,27 @@ extern "C" {
 /* 工号长度最大值 */
 #define SC_EMP_NUMBER_LENGTH         12
 
-#define SC_ACD_GROUP_NAME_LEN         24
+#define SC_ACD_GROUP_NAME_LEN        24
 
-#define SC_ACD_HASH_SIZE              128
+#define SC_ACD_HASH_SIZE             128
 
 #define SC_ACD_CALLER_NUM_RELATION_HASH_SIZE    512         /* 主叫号码和坐席对应关系hash的大小 */
 
 
 /* 单个坐席最大可以属于组的个数 */
-#define MAX_GROUP_PER_SITE      2
+#define MAX_GROUP_PER_SITE           2
 
 
-#define SC_NOBODY_UID                  99
-#define SC_NOBODY_GID                  99
+#define SC_NOBODY_UID                99
+#define SC_NOBODY_GID                99
 
-#define SC_UUID_HASH_LEN    18
+#define SC_UUID_HASH_LEN             18
 
-#define SC_BG_JOB_HASH_SIZE 1024
-#define SC_UUID_HASH_SIZE   1024
+#define SC_BG_JOB_HASH_SIZE          1024
+#define SC_UUID_HASH_SIZE            1024
 
 /* 单个坐席最大可以属于组的个数 */
-#define SC_MAX_FILELIST_LEN    4096
+#define SC_MAX_FILELIST_LEN          4096
 
 /* 定义最多有16个客户端连接HTTP服务器 */
 #define SC_MAX_HTTP_CLIENT_NUM         16
@@ -430,8 +430,8 @@ typedef enum tagSCLegPeerType{
     SC_LEG_PEER_OUTBOUND,             /**< 呼出 */
     SC_LEG_PEER_INBOUND_TT,           /**< 对端是TT号 */
     SC_LEG_PEER_OUTBOUND_TT,          /**< 对端是TT号 */
-    SC_LEG_PEER_INTERNAL_INBOUND,     /**< 内部呼叫呼入 */
-    SC_LEG_PEER_INTERNAL_OUTBOUND,    /**< 内部呼叫呼出 */
+    SC_LEG_PEER_INBOUND_INTERNAL,     /**< 内部呼叫呼入 */
+    SC_LEG_PEER_OUTBOUND_INTERNAL,    /**< 内部呼叫呼出 */
 
     SC_LEG_PEER_BUTT
 }SC_LEG_PEER_TYPE_EN;
@@ -495,6 +495,7 @@ typedef struct tagSCAgentGrpStat
 
 
 typedef struct tagACDSiteDesc{
+    /* 附加信息，主要存储SCB，主要用于和SCB的交互，需要在SCB释放时检查，并清除 */
     U32        ulSCBNo;
 
     U8         ucStatus;                          /* 坐席状态 refer to SC_SITE_STATUS_EN */
@@ -545,14 +546,14 @@ typedef struct tagACDSiteDesc{
     pthread_mutex_t  mutexLock;
 
     SC_AGENT_STAT_ST stStat;
-}SC_ACD_AGENT_INFO_ST;
+}SC_AGENT_INFO_ST;
 
 
 typedef struct tagACDQueueNode{
     U32                     ulID;             /* 当前节点在当前队列里面的编号 */
 
-    SC_ACD_AGENT_INFO_ST   *pstAgentInfo;     /* 坐席信息 */
-}SC_ACD_AGENT_QUEUE_NODE_ST;
+    SC_AGENT_INFO_ST   *pstAgentInfo;     /* 坐席信息 */
+}SC_AGENT_NODE_ST;
 
 typedef struct tagACDMemoryNode{
     U32        ulAgentID;                            /* 坐席数据库编号 */
@@ -587,7 +588,7 @@ typedef struct tagACDFindSiteParam
     U32                  ulLastSieUsed;
     U32                  ulResult;
 
-    SC_ACD_AGENT_INFO_ST *pstResult;
+    SC_AGENT_INFO_ST *pstResult;
 }SC_ACD_FIND_SITE_PARAM_ST;
 
 
@@ -615,8 +616,8 @@ typedef struct tagSCSUNumInfo{
     S8      szOriginalCallee[SC_NUM_LENGTH]; /**< 原始被叫号码(业务发起时的) */
     S8      szOriginalCalling[SC_NUM_LENGTH];/**< 原始主叫号码(业务发起时的) */
 
-    S8      szRealCallee[SC_NUM_LENGTH];     /**< 号码变换之后的主叫(业务应该使用的) */
-    S8      szRealCalling[SC_NUM_LENGTH];    /**< 号码变换之后的主叫(业务应该使用的) */
+    S8      szRealCallee[SC_NUM_LENGTH];     /**< 号码变换之前的主叫(业务应该使用的) */
+    S8      szRealCalling[SC_NUM_LENGTH];    /**< 号码变换之前的主叫(业务应该使用的) */
 
     S8      szCallee[SC_NUM_LENGTH];         /**< 号码变换之后的主叫(经过号码变换之后的) */
     S8      szCalling[SC_NUM_LENGTH];        /**< 号码变换之后的主叫(经过号码变换之后的) */
@@ -656,8 +657,17 @@ typedef struct tagSCSUCall{
     U32                  ulHoldTotalTime;/**< 呼叫保持总时长 */
     U32                  ulTrunkID;      /**< 中继ID */
     U32                  ulTrunkCount;   /**< 中继的个数 */
-    SC_SU_TIME_INFO_ST   stTimeInfo;      /**< 号码信息 */
-    SC_SU_NUM_INFO_ST    stNumInfo;     /**< 时间信息 */
+    U32                  ulCause;        /**< 挂断原因 */
+    SC_SU_TIME_INFO_ST   stTimeInfo;     /**< 号码信息 */
+    SC_SU_NUM_INFO_ST    stNumInfo;      /**< 时间信息 */
+
+
+    U8      aucCodecList[SC_MAX_CODEC_NUM];  /**< 编解码列表 */
+    U32     ulCodecCnt;
+    U32     aulTrunkList[SC_MAX_TRUCK_NUM];  /**< 中继列表 */
+    U32     ulTrunkCnt;
+
+    S8      szEIXAddr[SC_MAX_IP_LEN];        /**< TT号呼叫时需要EIXIP地址 */
 
     U32     ulRes;
 }SC_SU_CALL_ST;
@@ -918,21 +928,56 @@ typedef struct tagSCSrvCall{
     U32               ulRouteID;
 
     /** 主叫坐席指针 */
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentCalling;
+    SC_AGENT_NODE_ST *pstAgentCalling;
 
     /** 被叫坐席指针 */
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentCallee;
+    SC_AGENT_NODE_ST *pstAgentCallee;
 }SC_SRV_CALL_ST;
 
 
-/** 愉快外呼业务 */
+/** 外呼业务状态机定义
+ *   AGENT Leg                     SC                         Custom Leg          BS
+ *   |                             |     Auth Request         |                    |
+ *   |                      (AUTH) | --------------------------------------------> |
+ *   |                             |      Auth Rsp            |                    |
+ *   |                      (EXEC) | <-------------------------------------------- |
+ *   |        Call request         |                          |                    |
+ *   | <-------------------------- |                          |
+ *   |      Call Setup Event       |                          |
+ *   | --------------------------> | (PROC)                   |
+ *   |     Call Ringing Event      |                          |
+ *   | --------------------------> | (ALERTING)               |
+ *   |      Call Answer Event      |                          |
+ *   | --------------------------> | (ACTIVE)                 |
+ *   |                             |     Call request         |
+ *   |                             | -----------------------> |
+ *   |                             |     Call Setup Event     |
+ *   |                (CONNECTING) | <----------------------- |
+ *   |                             |    Call Ringing Event    |
+ *   |                 (ALERTING2) | <----------------------- |
+ *   |                             |     Call Answer Event    |
+ *   |                 (CONNECTED) | <----------------------- |
+ *   |                          Talking                       |
+ *   | <----------------------------------------------------> |
+ *   |                             |       Hungup Event       |
+ *   |                   (PROCESS) | <----------------------- |
+ *   |      Hungup Event           |                          |
+ *   | --------------------------> | (IDEL)                   |
+ *   |                             |                          |
+ *
+ *   如果发起客户那一侧的呼叫失败，可能会有早起媒体过来，需要将两个LEG桥接
+ */
 typedef enum tagSCPreviewCallStatus{
     SC_PREVIEW_CALL_IDEL,       /**< 状态初始化 */
+    SC_PREVIEW_CALL_AUTH,       /**< 状态初始化 */
+    SC_PREVIEW_CALL_EXEC,       /**< 状态初始化 */
     SC_PREVIEW_CALL_PORC,       /**< 发起到坐席的呼叫 */
-    SC_PREVIEW_CALL_CALL_SECOND,/**< 呼叫客户 */
-    SC_PREVIEW_CALL_CONNECTED,  /**< 客户接通了 */
+    SC_PREVIEW_CALL_ALERTING,   /**< 坐席在振铃了 */
+    SC_PREVIEW_CALL_ACTIVE,     /**< 坐席接通 */
+    SC_PREVIEW_CALL_CONNECTING, /**< 呼叫客户 */
+    SC_PREVIEW_CALL_ALERTING2,  /**< 客户开始振铃了 */
+    SC_PREVIEW_CALL_CONNECTED,  /**< 呼叫接通了 */
     SC_PREVIEW_CALL_PROCESS,    /**< 通话结束之后，如果有客户标记，就开始标记，没有直接到释放 */
-    SC_PREVIEW_CALL_RELEASE,    /**< 结束 */
 }SC_PREVIEW_CALL_STATE_EN;
 
 /**
@@ -992,11 +1037,32 @@ typedef struct tagSCAUTOCall{
 }SC_AUTO_CALL_ST;
 
 
-/** 语音验证码业务 */
+/** 语音验证码业务状态机
+* Leg                      SC                       BS
+* |                        |         Auth           |
+* |                 (AUTH) | ---------------------> |
+* |                        |        Auth Rsp        |
+* |        Call Req        | <--------------------- |
+* | <--------------------- | (EXEC)                 |
+* |    Call setup event    |                        |
+* | ---------------------> | (PROC)                 |
+* |   Call Ringing event   |                        |
+* | ---------------------> | (ALERTING)             |
+* |   Call Answer event    |                        |
+* | ---------------------> | (ACTIVE)               |
+* |    Playback Req        |                        |
+* | <--------------------- |                        |
+* |     Playback stop      |                        |
+* | ---------------------> | (RELEASE->INIT)        |
+* |                        |                        |
+*/
 typedef enum tagSCVoiceVerifyStatus{
-    SC_VOICE_VERIFY_IDEL,       /**< 状态初始化 */
-    SC_VOICE_VERIFY_PORC,       /**< 发起呼叫 */
-    SC_VOICE_VERIFY_ACTIVE,     /**< 播放语音 */
+    SC_VOICE_VERIFY_INIT,       /**< 状态初始化 */
+    SC_VOICE_VERIFY_AUTH,       /**< 发起呼叫 */
+    SC_VOICE_VERIFY_EXEC,       /**< 播放语音 */
+    SC_VOICE_VERIFY_PROC,       /**< 结束 */
+    SC_VOICE_VERIFY_ALERTING,   /**< 结束 */
+    SC_VOICE_VERIFY_ACTIVE,     /**< 结束 */
     SC_VOICE_VERIFY_RELEASE,    /**< 结束 */
 }SC_VOICE_VERIFY_STATE_EN;
 
@@ -1180,6 +1246,10 @@ typedef struct tagSCCallHold{
     U32               ulCallLegNo;
 }SC_CALL_HOLD_ST;
 
+typedef struct tagSCBalanceWarning{
+    SC_SCB_TAG_ST     stSCBTag;
+}SC_BALANCE_WARNING_ST;
+
 #define SC_SCB_IS_VALID(pstSCB) \
             (DOS_ADDR_VALID((pstSCB)) && (pstSCB)->bValid)
 
@@ -1236,6 +1306,8 @@ typedef struct tagSCSrvCB{
     SC_SRV_WHISPER_ST    stWhisoered;
     /** 客户标记业务控制块 */
     SC_MARK_CUSTOM_ST    stMarkCustom;
+    /** 余额告警业务是否启用 */
+    SC_BALANCE_WARNING_ST stBalanceWarning;
 }SC_SRV_CB;
 
 
@@ -1254,15 +1326,8 @@ typedef struct tagSCMsgCmdCall{
     SC_MSG_TAG_ST      stMsgTag;             /**< 消息头 */
 
     SC_SU_NUM_INFO_ST  stNumInfo;            /**< 号码信息 */
-
-    U32     ulPeerType;                      /**< 新LEG的业务类型 */
-    U32     ulSCBNo;                         /**< SCB编号 */
-    U8      aucCodecList[SC_MAX_CODEC_NUM];  /**< 编解码列表 */
-    U32     ulCodecCnt;
-    U32     aulTrunkList[SC_MAX_TRUCK_NUM];  /**< 中继列表 */
-    U32     ulTrunkCnt;
-
-    S8      szEIXAddr[SC_MAX_IP_LEN];        /**< TT号呼叫时需要EIXIP地址 */
+    U32     ulSCBNo;
+    U32     ulLCBNo;                         /**< 新LEG编号 */
 }SC_MSG_CMD_CALL_ST;
 
 /** 桥接请求 */
@@ -1688,7 +1753,7 @@ U32 sc_send_event_record(SC_MSG_EVT_RECORD_ST *pstEvent);
 U32 sc_send_event_playback(SC_MSG_EVT_PLAYBACK_ST *pstEvent);
 U32 sc_send_usr_auth2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_scb_set_service(SC_SRV_CB *pstSCB, U32 ulService);
-U32 sc_acd_agent_stat(U32 ulType, SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam);
+U32 sc_acd_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam);
 U32 sc_leg_get_destination(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB);
 U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB);
 
@@ -1696,15 +1761,16 @@ BOOL sc_black_list_check(S8 *pszNum);
 BOOL sc_sip_account_extension_check(S8 *pszNum, U32 ulCustomerID);
 U32 sc_did_get_custom(S8 *pszNum);
 U32 sc_sip_account_get_customer(S8 *pszNum);
-U32 sc_acd_get_agent_by_emp_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulCustomID, S8 *pszEmpNum);
-SC_ACD_AGENT_QUEUE_NODE_ST *sc_get_agent_by_sip_acc(S8 *szUserID);
-SC_ACD_AGENT_QUEUE_NODE_ST *sc_get_agent_by_tt_num(S8 *szTTNumber);
+U32 sc_acd_get_agent_by_emp_num(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulCustomID, S8 *pszEmpNum);
+SC_AGENT_NODE_ST *sc_get_agent_by_sip_acc(S8 *szUserID);
+SC_AGENT_NODE_ST *sc_get_agent_by_tt_num(S8 *szTTNumber);
 U32 sc_req_hungup(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
 U32 sc_req_bridge_call(U32 ulSCBNo, U32 ulCallingLegNo, U32 ulCalleeLegNo);
 U32 sc_req_ringback(U32 ulSCBNo, U32 ulLegNo, BOOL blHasMedia);
 U32 sc_req_answer_call(U32 ulSCBNo, U32 ulLegNo);
 U32 sc_req_play_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulSndInd, U32 ulLoop, U32 ulInterval, U32 ulSilence);
 U32 sc_req_play_sounds(U32 ulSCBNo, U32 ulLegNo, U32 *pulSndInd, U32 ulSndCnt, U32 ulLoop, U32 ulInterval, U32 ulSilence);
+U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg);
 
 U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -1722,7 +1788,7 @@ U32 sc_req_hungup_with_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
 U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg);
 U32 sc_bgjob_hash_add(U32 ulLegNo, S8 *pszUUID);
 
-U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID);
+U32 sc_acd_get_agent_by_id(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID);
 U32 sc_call_ctrl_call_agent(U32 ulCurrentAgent, U32 ulAgentCalled);
 U32 sc_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber);
 U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber);
@@ -1736,6 +1802,7 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
 
 U32 sc_acd_get_agent_cnt_by_grp(U32 ulGrpID);
 U32 sc_acd_agent_stat_by_grpid(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32 *pulIdel, U32 *pulBusy);
+SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID);
 
 SC_TASK_CB *sc_tcb_alloc();
 SC_TASK_CB *sc_tcb_find_by_taskid(U32 ulTaskID);
@@ -1746,6 +1813,31 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB *pstTCB);
 U32 sc_task_check_can_call_by_status(SC_TASK_CB *pstTCB);
 S32 sc_task_and_callee_load(U32 ulIndex);
 
+
+U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_exchange_media(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
+U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB);
+U32 sc_make_call2pstn(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
+U32 sc_make_call2eix(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
+U32 sc_make_call2sip(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
+
+
+U32 sc_voice_verify_proc(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt);
+U32 sc_voice_verify_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_voice_verify_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_voice_verify_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_voice_verify_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_voice_verify_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_voice_verify_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 #endif  /* end of __SC_DEF_V2_H__ */
 

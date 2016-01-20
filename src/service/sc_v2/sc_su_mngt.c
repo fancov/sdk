@@ -182,11 +182,11 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     {
         if (dos_strnicmp(pszCallDirection, "Inbound", dos_strlen("Inbound")) == 0)
         {
-            pstLCB->stCall.ucPeerType = SC_LEG_PEER_INTERNAL_INBOUND;
+            pstLCB->stCall.ucPeerType = SC_LEG_PEER_INBOUND_INTERNAL;
         }
         else
         {
-            pstLCB->stCall.ucPeerType = SC_LEG_PEER_INTERNAL_OUTBOUND;
+            pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
         }
     }
 
@@ -815,7 +815,10 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         return DOS_FAIL;
     }
 
-    sc_trace_leg(pstLegCB, "processing playback stop event. status: ", pstLegCB->stPlayback.usStatus);
+    sc_trace_leg(pstLegCB, "processing playback stop event. status: %u (%u:%u)"
+                        , pstLegCB->stPlayback.usStatus
+                        , pstLegCB->stPlayback.ulCurretnIndex
+                        , pstLegCB->stPlayback.ulTotal);
 
     pstLegCB->stPlayback.ulCurretnIndex++;
 
@@ -879,11 +882,9 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
         return DOS_FAIL;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Processing call command. SCB: %u, peer type: %u, calling: %s, callee:%s"
-                            , pstCMDMakeCall->ulSCBNo, pstCMDMakeCall->ulPeerType
-                            , pstCMDMakeCall->stNumInfo.szCalling, pstCMDMakeCall->stNumInfo.szCallee);
+    sc_log(LOG_LEVEL_DEBUG, "Processing call command. SCB: %u, LCB: %u", pstCMDMakeCall->ulSCBNo, pstCMDMakeCall->ulLCBNo);
 
-    pstLegCB = sc_lcb_alloc();
+    pstLegCB = sc_lcb_get(pstCMDMakeCall->ulLCBNo);
     if (DOS_ADDR_INVALID(pstLegCB))
     {
         sc_log(LOG_LEVEL_ERROR, "Alloc lcb fail.");
@@ -892,26 +893,20 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
         goto proc_fail;
     }
 
-    pstLegCB->stCall.bValid = DOS_TRUE;
-    pstLegCB->stCall.ucStatus = SC_LEG_CALLING;
-    pstLegCB->stCall.ucLocalMode = SC_LEG_LOCAL_NORMAL;
-    pstLegCB->stCall.ucPeerType = (U8)pstCMDMakeCall->ulPeerType;
-    pstLegCB->ulSCBNo = pstCMDMakeCall->ulSCBNo;
-
-    if (pstCMDMakeCall->ulCodecCnt > 0)
+    if (pstLegCB->stCall.ulCodecCnt > 0)
     {
         ulLength = 0;
 
         ulLength += dos_snprintf(szCodecList + ulLength, sizeof(szCodecList) - ulLength, "absolute_codec_string=^^:");
 
-        for (ulLoop=0; ulLoop<pstCMDMakeCall->ulCodecCnt; ulLoop++)
+        for (ulLoop=0; ulLoop<pstLegCB->stCall.ulCodecCnt; ulLoop++)
         {
-            if (pstCMDMakeCall->aucCodecList[ulLoop] == U8_BUTT)
+            if (pstLegCB->stCall.aucCodecList[ulLoop] == U8_BUTT)
             {
                 break;
             }
 
-            switch (pstCMDMakeCall->aucCodecList[ulLoop])
+            switch (pstLegCB->stCall.aucCodecList[ulLoop])
             {
                 case PT_PCMU:
                     ulLength += dos_snprintf(szCodecList + ulLength, sizeof(szCodecList) - ulLength, "PCMU@8000h@20i@8000b:");
@@ -948,18 +943,18 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
         }
     }
 
-    if (SC_LEG_PEER_INTERNAL_OUTBOUND == pstCMDMakeCall->ulPeerType)
+    if (SC_LEG_PEER_OUTBOUND_INTERNAL == pstLegCB->stCall.ucPeerType)
     {
         dos_snprintf(szCallString, sizeof(szCallString)
                         , "bgapi originate {%slcb_number=%u,origination_caller_id_number=%s," \
                           "origination_caller_id_name=%s,exec_after_bridge_app=park}user/%s &park \r\n"
                         , szCodecList
                         , pstLegCB->ulCBNo
-                        , pstCMDMakeCall->stNumInfo.szCalling
-                        , pstCMDMakeCall->stNumInfo.szCalling
-                        , pstCMDMakeCall->stNumInfo.szCallee);
+                        , pstLegCB->stCall.stNumInfo.szCalling
+                        , pstLegCB->stCall.stNumInfo.szCalling
+                        , pstLegCB->stCall.stNumInfo.szCallee);
     }
-    else if (SC_LEG_PEER_OUTBOUND_TT == pstCMDMakeCall->ulPeerType)
+    else if (SC_LEG_PEER_OUTBOUND_TT == pstLegCB->stCall.ucPeerType)
     {
         dos_snprintf(szCallString, sizeof(szCallString)
                     , "bgapi originate {%slcb_number=%u,origination_caller_id_number=%s," \
@@ -969,14 +964,14 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
                       "sofia/external/%s@%s &park \r\n"
                     , szCodecList
                     , pstLegCB->ulCBNo
-                    , pstCMDMakeCall->stNumInfo.szCalling
-                    , pstCMDMakeCall->stNumInfo.szCalling
-                    , pstCMDMakeCall->stNumInfo.szCallee
-                    , pstCMDMakeCall->szEIXAddr);
+                    , pstLegCB->stCall.stNumInfo.szCalling
+                    , pstLegCB->stCall.stNumInfo.szCalling
+                    , pstLegCB->stCall.stNumInfo.szCallee
+                    , pstLegCB->stCall.szEIXAddr);
     }
     else
     {
-        if (pstCMDMakeCall->ulTrunkCnt <= 0)
+        if (pstLegCB->stCall.ulTrunkCnt <= 0)
         {
             /** 上报错误 */
             sc_log(LOG_LEVEL_ERROR, "There is no trunk .");
@@ -984,13 +979,13 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
             goto proc_fail;
         }
 
-        for (ulLoop=0,ulLength=0; ulLoop<pstCMDMakeCall->ulTrunkCnt; ulLoop++)
+        for (ulLoop=0,ulLength=0; ulLoop<pstLegCB->stCall.ulTrunkCnt; ulLoop++)
         {
             ulLength += dos_snprintf(szGateway + ulLength
                                         , sizeof(szGateway) - ulLength
                                         , "sofia/gateway/%u/%s|"
-                                        , pstCMDMakeCall->aulTrunkList[ulLoop]
-                                        , pstCMDMakeCall->stNumInfo.szCallee);
+                                        , pstLegCB->stCall.aulTrunkList[ulLoop]
+                                        , pstLegCB->stCall.stNumInfo.szCallee);
         }
 
         if (ulLength <= 0)
@@ -1008,12 +1003,10 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
                           "origination_caller_id_number=%s,origination_caller_id_name=%s}%s &park \r\n"
                         , szCodecList
                         , pstLegCB->ulCBNo
-                        , pstCMDMakeCall->stNumInfo.szCalling
-                        , pstCMDMakeCall->stNumInfo.szCalling
+                        , pstLegCB->stCall.stNumInfo.szCalling
+                        , pstLegCB->stCall.stNumInfo.szCalling
                         , szGateway);
     }
-
-    dos_memcpy(&pstLegCB->stCall.stNumInfo, &pstCMDMakeCall->stNumInfo, sizeof(pstCMDMakeCall->stNumInfo));
 
     if (sc_esl_execute_cmd(szCallString, szBGJOBUUID, sizeof(szBGJOBUUID)) != DOS_SUCC)
     {
@@ -1335,7 +1328,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         goto proc_fail;
     }
 
-    ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "file_string://");
+    ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u file_string://", pstPlayback->ulLoopCnt);
 
     ulTotalCnt = sc_get_snd_list(pstPlayback->aulAudioList, pstPlayback->ulTotalAudioCnt
                                     , pszPlayCMDArg + ulLen, SC_MAX_FILELIST_LEN - ulLen, NULL);
@@ -1344,7 +1337,10 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         stErrReport.stMsgTag.ulMsgType = SC_ERR_INVALID_MSG;
         goto proc_fail;
     }
-
+/*
+    ulLen = dos_strlen(pszPlayCMDArg);
+    dos_snprintf(pszPlayCMDArg + ulLen, SC_MAX_FILELIST_LEN - ulLen, ";loops=%u", pstPlayback->ulLoopCnt);
+*/
     /* 根据状态处理 */
     switch (pstLCB->stPlayback.usStatus)
     {
@@ -1364,9 +1360,9 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
                 pstLCB->stPlayback.ulTotal++;
             }
 
-            if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
+            if (sc_esl_execute("loop_playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
             {
-                pstLCB->stPlayback.ulTotal += ulTotalCnt * pstPlayback->ulLoopCnt;
+                pstLCB->stPlayback.ulTotal = pstPlayback->ulLoopCnt;
             }
             break;
 

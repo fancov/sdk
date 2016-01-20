@@ -152,7 +152,94 @@ U32 sc_srv_call_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *ps
  */
 U32 sc_srv_preview_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
 {
-    return DOS_SUCC;
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(LOG_LEVEL_DEBUG, "Processing event. service:%u type: %u, scb:%u len: %u"
+                , pstSubServ->usSrvType, pstMsg->ulMsgType
+                , pstSCB->ulSCBNo, pstMsg->usMsgLen);
+
+    switch (pstMsg->ulMsgType)
+    {
+        case SC_EVT_AUTH_RESULT:
+            ulRet = sc_preview_auth_rsp(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_SETUP:
+            ulRet = sc_preview_setup(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_EXCHANGE_MEDIA:
+            ulRet = sc_preview_exchange_media(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_AMSWERED:
+            ulRet = sc_preview_answer(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_RINGING:
+            ulRet = sc_preview_ringing(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_BRIDGE_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_BRIDGE_STOP:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_HOLD:
+            ulRet = sc_preview_hold(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_RERLEASE:
+            ulRet = sc_preview_release(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_STATUS:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_DTMF:
+            ulRet = sc_preview_dtmf(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_RECORD_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_RECORD_END:
+            ulRet = sc_preview_record_stop(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_PLAYBACK_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_PLAYBACK_END:
+            ulRet = sc_preview_playback_stop(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_ERROR_PORT:
+            break;
+
+        default:
+            sc_log(LOG_LEVEL_NOTIC, "Invalid event type. %u", pstMsg->ulMsgType);
+            break;
+    }
+
+    sc_log(LOG_LEVEL_DEBUG, "Processed event. service:%u, type: %u, len: %u. Ret: %s"
+                    , pstSubServ->usSrvType, pstMsg->ulMsgType
+                    , pstMsg->usMsgLen, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
 }
 
 /**
@@ -180,7 +267,69 @@ U32 sc_srv_auto_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
  */
 U32 sc_srv_voice_verify_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
 {
-    return DOS_SUCC;
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(LOG_LEVEL_DEBUG, "Processing event. service:%u, type: %u, scb:%u len: %u"
+                , pstSubServ->usSrvType, pstMsg->ulMsgType
+                , pstSCB->ulSCBNo, pstMsg->usMsgLen);
+
+    switch (pstMsg->ulMsgType)
+    {
+        case SC_EVT_AUTH_RESULT:
+            ulRet = sc_voice_verify_auth_rsp(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_SETUP:
+            ulRet = sc_voice_verify_setup(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_AMSWERED:
+            ulRet = sc_voice_verify_answer(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_RINGING:
+            ulRet = sc_voice_verify_ringing(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_RERLEASE:
+            ulRet = sc_voice_verify_release(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_PLAYBACK_END:
+            ulRet = sc_voice_verify_playback_stop(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_EXCHANGE_MEDIA:
+        case SC_EVT_CALL_STATUS:
+        case SC_EVT_DTMF:
+        case SC_EVT_RECORD_START:
+        case SC_EVT_RECORD_END:
+        case SC_EVT_PLAYBACK_START:
+        case SC_EVT_BRIDGE_START:
+        case SC_EVT_BRIDGE_STOP:
+        case SC_EVT_HOLD:
+        case SC_EVT_ERROR_PORT:
+            ulRet = DOS_SUCC;
+            break;
+
+        default:
+            sc_log(LOG_LEVEL_NOTIC, "Invalid event type. %u", pstMsg->ulMsgType);
+            break;
+    }
+
+    sc_log(LOG_LEVEL_DEBUG, "Processed event. service:%u, type: %u, len: %u. Ret: %s"
+                    , pstSubServ->usSrvType, pstMsg->ulMsgType
+                    , pstMsg->usMsgLen, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
+
 }
 
 /**
@@ -334,7 +483,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
         }
         else
         {
-            sc_log(LOG_LEVEL_DEBUG, "Call setup event with scb %u", pstMsg->ulSCBNo);
+            sc_log(LOG_LEVEL_DEBUG, "Call setup event with scb %u, Event type:%u", pstMsg->ulSCBNo, pstMsg->ulMsgType);
 
             pstSCB = sc_scb_get(pstMsg->ulSCBNo);
             if (DOS_ADDR_INVALID(pstSCB))
@@ -346,7 +495,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
     }
     else
     {
-        sc_log(LOG_LEVEL_DEBUG, "Event with scb %u", pstMsg->ulMsgType, pstMsg->ulSCBNo);
+        sc_log(LOG_LEVEL_DEBUG, "Recv event with scb %u, Event type:%u", pstMsg->ulSCBNo, pstMsg->ulMsgType);
 
         pstSCB = sc_scb_get(pstMsg->ulSCBNo);
         if (DOS_ADDR_INVALID(pstSCB))
@@ -381,43 +530,43 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
                 break;
 
             case SC_SRV_PREVIEW_CALL:
-                ulRet = sc_srv_call_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                ulRet = sc_srv_preview_dial_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
 
             case SC_SRV_AUTO_CALL:
-                ulRet = sc_srv_call_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                ulRet = DOS_SUCC;
                 break;
 
             case SC_SRV_VOICE_VERIFY:
-                ulRet = sc_srv_call_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                ulRet = sc_srv_voice_verify_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
 
             case SC_SRV_ACCESS_CODE:
-                ulRet = sc_srv_call_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                ulRet = DOS_SUCC;
                 break;
 
             case SC_SRV_HOLD:
-                ulRet = sc_srv_call_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                ulRet = DOS_SUCC;
                 break;
 
             case SC_SRV_TRANSFER:
-                ulRet = sc_srv_call_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                ulRet = DOS_SUCC;
                 break;
 
             case SC_SRV_INCOMING_QUEUE:
-                ulRet = sc_srv_call_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                ulRet = DOS_SUCC;
                 break;
 
             case SC_SRV_INTERCEPTION:
-                ulRet = sc_srv_call_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                ulRet = DOS_SUCC;
                 break;
 
             case SC_SRV_WHISPER:
-                ulRet = sc_srv_call_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                ulRet = DOS_SUCC;
                 break;
 
             case SC_SRV_MARK_CUSTOM:
-                ulRet = sc_srv_call_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                ulRet = DOS_SUCC;
                 break;
             default:
                 sc_trace_scb(pstSCB, "Invalid service type : %u", pstSCB->pstServiceList[ulCurrentSrv]->usSrvType);

@@ -51,7 +51,7 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
     U32 ulDstID = 0, ulDstType = 0, ulRet = 0;
     U32 aulAgentGrpID[MAX_GROUP_PER_SITE] = {0}, ulLoop = 0;
     U32 ulAgentGrpID = 0, ulHashIndex = U32_BUTT;
-    SC_ACD_AGENT_INFO_ST stAgent;
+    SC_AGENT_INFO_ST stAgent;
     SC_CALLER_SETTING_ST *pstSetting = NULL;
     HASH_NODE_S  *pstHashNode = NULL;
 
@@ -1288,7 +1288,7 @@ static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
     U32 ulHashIndex = U32_BUTT;
     HASH_NODE_S  *pstHashNode = NULL;
     SC_DID_NODE_ST *pstDid = NULL;
-    SC_ACD_AGENT_INFO_ST stAgent;
+    SC_AGENT_INFO_ST stAgent;
     BOOL bFound = DOS_FALSE;
 
     /* 先根据坐席id查找sip_id */
@@ -1415,7 +1415,7 @@ static U32 sc_get_agentgrp_by_agentid(U32 ulAgentID, U32 *paulGroupID, U32 ulLen
 {
     HASH_NODE_S *pstHashNode = NULL;
     U32 ulHashIndex = U32_BUTT, ulRet = U32_BUTT;
-    SC_ACD_AGENT_INFO_ST *pstAgent = NULL;
+    SC_AGENT_INFO_ST *pstAgent = NULL;
     S32  lIndex = U32_BUTT;
 
     ulRet = sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
@@ -1431,7 +1431,7 @@ static U32 sc_get_agentgrp_by_agentid(U32 ulAgentID, U32 *paulGroupID, U32 ulLen
         sc_log(LOG_LEVEL_DEBUG, "No agent %u in AgentList!", ulAgentID);
         return DOS_FAIL;
     }
-    pstAgent = (SC_ACD_AGENT_INFO_ST *)pstHashNode->pHandle;
+    pstAgent = (SC_AGENT_INFO_ST *)pstHashNode->pHandle;
 
     if (ulLen != MAX_GROUP_PER_SITE)
     {

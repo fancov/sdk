@@ -15,7 +15,7 @@
 
 U32 sc_acd_agent_update_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType);
 U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
-U32 sc_acd_get_agent_by_emp_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulCustomID, S8 *pszEmpNum);
+U32 sc_acd_get_agent_by_emp_num(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulCustomID, S8 *pszEmpNum);
 U32 sc_number_lmt_update_proc(U32 ulAction, U32 ulNumlmtID);
 
 #endif /* end of __SC_ACD_H__ */

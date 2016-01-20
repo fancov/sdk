@@ -828,7 +828,7 @@ VOID sc_scb_voice_verify_init(SC_VOICE_VERIFY_ST *pstVoiceVerify)
     pstVoiceVerify->stSCBTag.bValid = DOS_FALSE;
     pstVoiceVerify->stSCBTag.bTrace = DOS_FALSE;
     pstVoiceVerify->stSCBTag.usSrvType = SC_SRV_VOICE_VERIFY;
-    pstVoiceVerify->stSCBTag.usStatus = SC_VOICE_VERIFY_IDEL;
+    pstVoiceVerify->stSCBTag.usStatus = SC_VOICE_VERIFY_INIT;
     pstVoiceVerify->ulLegNo = U32_BUTT;
     pstVoiceVerify->ulTipsHitNo1 = 0;
     pstVoiceVerify->ulTipsHitNo2 = 0;
@@ -1580,6 +1580,31 @@ U32 sc_send_cmd_release(SC_MSG_TAG_ST *pstMsg)
 
 U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg)
 {
+    SC_MSG_CMD_PLAYBACK_ST *pstCMDPlayback = NULL;
+    U32 ulRet;
+
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCMDPlayback = (SC_MSG_CMD_PLAYBACK_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_PLAYBACK_ST));
+    if (DOS_ADDR_INVALID(pstCMDPlayback))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstCMDPlayback, pstMsg, sizeof(SC_MSG_CMD_PLAYBACK_ST));
+
+    ulRet = sc_send_command(&pstCMDPlayback->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCMDPlayback);
+        return DOS_FAIL;
+    }
+
     return DOS_SUCC;
 }
 
@@ -2345,7 +2370,7 @@ U32 sc_send_event_auth_rsp(SC_MSG_EVT_AUTH_RESULT_ST *pstEvent)
 
 U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgent;
+    SC_AGENT_NODE_ST *pstAgent;
 
     if (DOS_ADDR_INVALID(pstLegCB) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -2353,7 +2378,7 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
         return SC_DIRECTION_INVALID;
     }
 
-    if (SC_LEG_PEER_INTERNAL_INBOUND == pstLegCB->stCall.ucPeerType)
+    if (SC_LEG_PEER_INBOUND_INTERNAL == pstLegCB->stCall.ucPeerType)
     {
         pstSCB->ulCustomerID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCalling);
         pstAgent = sc_get_agent_by_sip_acc(pstLegCB->stCall.stNumInfo.szOriginalCalling);
@@ -2408,7 +2433,7 @@ U32 sc_leg_get_destination(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
         return SC_DIRECTION_INVALID;
     }
 
-    if (SC_LEG_PEER_INTERNAL_INBOUND == pstLegCB->stCall.ucPeerType
+    if (SC_LEG_PEER_INBOUND_INTERNAL == pstLegCB->stCall.ucPeerType
         || SC_LEG_PEER_INBOUND_TT == pstLegCB->stCall.ucPeerType)
     {
         /* 被叫号码是否是同一个客户下的SIP User ID */
@@ -2504,6 +2529,8 @@ U32 sc_get_snd_list(U32 *pulSndIndList, U32 ulSndCnt, S8 *pszBuffer, U32 ulBuffL
 
         ulCnt++;
     }
+
+    pszBuffer[ulLen - 1] = '\0';
 
     return ulCnt;
 }

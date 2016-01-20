@@ -39,6 +39,7 @@ SC_HINT_DESC_ST  astHitList[] = {
     {SC_SND_USER_LINE_FAULT,           "user_line_fault"},
     {SC_SND_USER_NOT_FOUND,            "user_not_found"},
     {SC_SND_CONNECTING,                "connecting"},
+    {SC_SND_YOUR_CODE_IS,              "nindyzm"},
     {SC_SND_1_YAO,                     "1yao"},
     {SC_SND_0,                         "0"},
     {SC_SND_1,                         "1"},

@@ -606,7 +606,10 @@ U32 sc_http_api_num_verify(list_t *pstArgv)
         goto invalid_params;
     }
 
-    //sc_dial_make_call_for_verify(ulCustomer, pszCallee, pszPassword, ulPlayCnt);
+    if (sc_voice_verify_proc(ulCustomer, pszCallee, pszPassword, ulPlayCnt) != DOS_SUCC)
+    {
+        return SC_HTTP_ERRNO_SERVER_ERROR;
+    }
 
     return SC_HTTP_ERRNO_SUCC;
 
@@ -629,7 +632,7 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
     U32 ulAgentCalled   = 0;
     U32 ulTaskID        = U32_BUTT;
     U32 ulRet           = DOS_FAIL;
-    SC_ACD_AGENT_INFO_ST stAgentInfo;
+    SC_AGENT_INFO_ST stAgentInfo;
 
     pszAction      = sc_http_api_get_value(pstArgv, "action");
     pszCustomerID  = sc_http_api_get_value(pstArgv, "customer");

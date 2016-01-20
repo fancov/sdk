@@ -58,19 +58,19 @@ pthread_mutex_t   g_mutexGroupList     = PTHREAD_MUTEX_INITIALIZER;
 /* 坐席组个数 */
 U32               g_ulGroupCount       = 0;
 
-U32 sc_ep_agent_signin(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+U32 sc_ep_agent_signin(SC_AGENT_INFO_ST *pstAgentInfo)
 {
     return DOS_SUCC;
 }
 
-U32 sc_ep_agent_signout(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+U32 sc_ep_agent_signout(SC_AGENT_INFO_ST *pstAgentInfo)
 {
     return DOS_SUCC;
 }
 
-U32 sc_acd_agent_stat(U32 ulType, SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam);
+U32 sc_acd_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam);
 
-U32 sc_ep_get_channel_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *pszChannel, U32 ulLen)
+U32 sc_ep_get_channel_id(SC_AGENT_INFO_ST *pstAgentInfo, S8 *pszChannel, U32 ulLen)
 {
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -91,7 +91,7 @@ U32 sc_ep_get_channel_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *pszChannel, U32
     return DOS_SUCC;
 }
 
-U32 sc_ep_agent_status_notify(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
+U32 sc_ep_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
 {
     S8 szURL[256]         = { 0, };
     S8 szData[512]        = { 0, };
@@ -237,7 +237,7 @@ S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
  **/
 S32 sc_acd_agent_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode = NULL;
+    SC_AGENT_NODE_ST   *pstAgentQueueNode = NULL;
     U32                          ulAgentID;
 
     if (DOS_ADDR_INVALID(pSymName)
@@ -304,7 +304,7 @@ S32 sc_acd_caller_relation_hash_find(VOID *pSymName, HASH_NODE_S *pNode)
  **/
 static S32 sc_acd_agent_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode = NULL;
+    SC_AGENT_NODE_ST   *pstAgentQueueNode = NULL;
     U32                          ulAgentID;
 
     if (DOS_ADDR_INVALID(pSymName)
@@ -336,12 +336,12 @@ static S32 sc_acd_agent_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
  * 参  数:
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-SC_ACD_AGENT_QUEUE_NODE_ST *sc_get_agent_by_sip_acc(S8 *szUserID)
+SC_AGENT_NODE_ST *sc_get_agent_by_sip_acc(S8 *szUserID)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
-    SC_ACD_AGENT_INFO_ST        *pstAgentData       = NULL;
+    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_AGENT_INFO_ST        *pstAgentData       = NULL;
 
     if (DOS_ADDR_INVALID(szUserID) || '\0' == szUserID[0])
     {
@@ -359,7 +359,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST *sc_get_agent_by_sip_acc(S8 *szUserID)
             {
                 continue;
             }
-            pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)pstHashNode->pHandle;
+            pstAgentQueueNode = (SC_AGENT_NODE_ST *)pstHashNode->pHandle;
             pstAgentData = pstAgentQueueNode->pstAgentInfo;
 
             if (DOS_ADDR_INVALID(pstAgentData))
@@ -397,7 +397,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST *sc_get_agent_by_sip_acc(S8 *szUserID)
  **/
 U32 sc_acd_group_remove_agent(U32 ulGroupID, U32 ulAgentID)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode  = NULL;
+    SC_AGENT_NODE_ST   *pstAgentQueueNode  = NULL;
     SC_ACD_GRP_HASH_NODE_ST      *pstGroupNode       = NULL;
     HASH_NODE_S                  *pstHashNode        = NULL;
     DLL_NODE_S                   *pstDLLNode         = NULL;
@@ -448,16 +448,16 @@ U32 sc_acd_group_remove_agent(U32 ulGroupID, U32 ulAgentID)
 }
 
 /*
- * 函  数: U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+ * 函  数: U32 sc_acd_group_add_agent(U32 ulGroupID, SC_AGENT_INFO_ST *pstAgentInfo)
  * 功  能: 将坐席添加到坐席队列
  * 参  数:
  *       U32 ulGroupID: 坐席组ID
- *       SC_ACD_AGENT_INFO_ST *pstAgentInfo : 坐席组信息
+ *       SC_AGENT_INFO_ST *pstAgentInfo : 坐席组信息
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+U32 sc_acd_group_add_agent(U32 ulGroupID, SC_AGENT_INFO_ST *pstAgentInfo)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode  = NULL;
+    SC_AGENT_NODE_ST   *pstAgentQueueNode  = NULL;
     SC_ACD_GRP_HASH_NODE_ST      *pstGroupNode       = NULL;
     HASH_NODE_S                  *pstHashNode        = NULL;
     DLL_NODE_S                   *pstDLLNode         = NULL;
@@ -493,7 +493,7 @@ U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         return DOS_FAIL;
     }
 
-    pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)dos_dmem_alloc(sizeof(SC_ACD_AGENT_QUEUE_NODE_ST));
+    pstAgentQueueNode = (SC_AGENT_NODE_ST *)dos_dmem_alloc(sizeof(SC_AGENT_NODE_ST));
     if (DOS_ADDR_INVALID(pstAgentQueueNode))
     {
         sc_log(LOG_LEVEL_ERROR, "Add agent to group FAILED, Alloc memory fail. Agent ID: %u, Group ID:%u"
@@ -531,15 +531,15 @@ U32 sc_acd_group_add_agent(U32 ulGroupID, SC_ACD_AGENT_INFO_ST *pstAgentInfo)
  * 函  数: sc_acd_add_agent
  * 功  能: 添加坐席
  * 参  数:
- *         SC_ACD_AGENT_INFO_ST *pstAgentInfo, 坐席信息描述
+ *         SC_AGENT_INFO_ST *pstAgentInfo, 坐席信息描述
  *         U32 ulGrpID 所属组
- * 返回值: SC_ACD_AGENT_QUEUE_NODE_ST *返回坐席队列里面的节点。编译调用函数将坐席添加到组。如果失败则返回NULL
+ * 返回值: SC_AGENT_NODE_ST *返回坐席队列里面的节点。编译调用函数将坐席添加到组。如果失败则返回NULL
  * !!! 该函数只是将坐席加入管理队列，不会将坐席加入坐席对列 !!!
  **/
-SC_ACD_AGENT_INFO_ST *sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+SC_AGENT_INFO_ST *sc_acd_add_agent(SC_AGENT_INFO_ST *pstAgentInfo)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode  = NULL;
-    SC_ACD_AGENT_INFO_ST         *pstAgentData       = NULL;
+    SC_AGENT_NODE_ST   *pstAgentQueueNode  = NULL;
+    SC_AGENT_INFO_ST         *pstAgentData       = NULL;
     HASH_NODE_S                  *pstHashNode        = NULL;
     U32                          ulHashVal           = 0;
 
@@ -550,7 +550,7 @@ SC_ACD_AGENT_INFO_ST *sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         return NULL;
     }
 
-    pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)dos_dmem_alloc(sizeof(SC_ACD_AGENT_QUEUE_NODE_ST));
+    pstAgentQueueNode = (SC_AGENT_NODE_ST *)dos_dmem_alloc(sizeof(SC_AGENT_NODE_ST));
     if (DOS_ADDR_INVALID(pstAgentQueueNode))
     {
         DOS_ASSERT(0);
@@ -558,7 +558,7 @@ SC_ACD_AGENT_INFO_ST *sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
         return NULL;
     }
 
-    pstAgentData = (SC_ACD_AGENT_INFO_ST *)dos_dmem_alloc(sizeof(SC_ACD_AGENT_INFO_ST));
+    pstAgentData = (SC_AGENT_INFO_ST *)dos_dmem_alloc(sizeof(SC_AGENT_INFO_ST));
     if (DOS_ADDR_INVALID(pstAgentData))
     {
         DOS_ASSERT(0);
@@ -587,7 +587,7 @@ SC_ACD_AGENT_INFO_ST *sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
                     , pstAgentInfo->aulGroupID[0], pstAgentInfo->aulGroupID[1]);
 
     /* 添加到队列 */
-    dos_memcpy(pstAgentData, pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
+    dos_memcpy(pstAgentData, pstAgentInfo, sizeof(SC_AGENT_INFO_ST));
     pthread_mutex_init(&pstAgentData->mutexLock, NULL);
     pstAgentQueueNode->pstAgentInfo = pstAgentData;
 
@@ -606,7 +606,7 @@ SC_ACD_AGENT_INFO_ST *sc_acd_add_agent(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 static VOID sc_acd_grp_wolk4delete_agent(HASH_NODE_S *pNode, VOID *pulAgentID)
 {
     SC_ACD_GRP_HASH_NODE_ST      *pstGroupListNode  = NULL;
-    SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode = NULL;
+    SC_AGENT_NODE_ST   *pstAgentQueueNode = NULL;
     DLL_NODE_S                   *pstDLLNode        = NULL;
 
     if (DOS_ADDR_INVALID(pNode) || DOS_ADDR_INVALID(pulAgentID))
@@ -641,7 +641,7 @@ static VOID sc_acd_grp_wolk4delete_agent(HASH_NODE_S *pNode, VOID *pulAgentID)
 
 U32 sc_acd_delete_agent(U32  ulAgentID)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST   *pstAgentQueueNode = NULL;
+    SC_AGENT_NODE_ST   *pstAgentQueueNode = NULL;
     HASH_NODE_S                  *pstHashNode       = NULL;
     U32                          ulHashVal          = 0;
 
@@ -842,12 +842,12 @@ U32 sc_acd_get_agent_cnt_by_grp(U32 ulGrpID)
     return pstGroupNode->usCount;
 }
 
-SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
+SC_AGENT_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
 {
     U32     ulRandomAgent      = 0;
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentQueueNode = NULL;
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNodeRet   = NULL;
-    SC_ACD_AGENT_INFO_ST       *pstAgentInfo      = NULL;
+    SC_AGENT_NODE_ST *pstAgentQueueNode = NULL;
+    SC_AGENT_NODE_ST *pstAgentNodeRet   = NULL;
+    SC_AGENT_INFO_ST       *pstAgentInfo      = NULL;
     DLL_NODE_S                 *pstDLLNode        = NULL;
 
     if (DOS_ADDR_INVALID(pstGroupListNode))
@@ -968,13 +968,13 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_random(SC_ACD_GRP_HASH_NODE_ST 
     return pstAgentNodeRet;
 }
 
-SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
+SC_AGENT_NODE_ST * sc_acd_get_agent_by_inorder(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
 {
     S8      szLastEmpNo[SC_EMP_NUMBER_LENGTH]     = {0};
     S8      szEligibleEmpNo[SC_EMP_NUMBER_LENGTH] = {0};
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentQueueNode = NULL;
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNodeRet   = NULL;
-    SC_ACD_AGENT_INFO_ST       *pstAgentInfo      = NULL;
+    SC_AGENT_NODE_ST *pstAgentQueueNode = NULL;
+    SC_AGENT_NODE_ST *pstAgentNodeRet   = NULL;
+    SC_AGENT_INFO_ST       *pstAgentInfo      = NULL;
     DLL_NODE_S                 *pstDLLNode        = NULL;
 
     if (DOS_ADDR_INVALID(pstGroupListNode))
@@ -1070,10 +1070,10 @@ start_find:
     return pstAgentNodeRet;
 }
 
-SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_call_count(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
+SC_AGENT_NODE_ST * sc_acd_get_agent_by_call_count(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentQueueNode = NULL;
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode      = NULL;
+    SC_AGENT_NODE_ST *pstAgentQueueNode = NULL;
+    SC_AGENT_NODE_ST *pstAgentNode      = NULL;
     DLL_NODE_S                 *pstDLLNode        = NULL;
 
     if (DOS_ADDR_INVALID(pstGroupListNode))
@@ -1136,10 +1136,10 @@ SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_call_count(SC_ACD_GRP_HASH_NODE
 }
 
 
-SC_ACD_AGENT_QUEUE_NODE_ST * sc_acd_get_agent_by_caller(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode, S8 *szCallerNum)
+SC_AGENT_NODE_ST * sc_acd_get_agent_by_caller(SC_ACD_GRP_HASH_NODE_ST *pstGroupListNode, S8 *szCallerNum)
 {
     SC_ACD_MEMORY_RELATION_QUEUE_NODE_ST *pstRelationQueueNode = NULL;
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode      = NULL;
+    SC_AGENT_NODE_ST *pstAgentNode      = NULL;
     HASH_NODE_S                *pstHashNode       = NULL;
     HASH_NODE_S                *pstAgentHashNode  = NULL;
     U32                         ulHashVal         = 0;
@@ -1255,10 +1255,36 @@ end:
     return pstAgentNode;
 }
 
-U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID)
+SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID)
+{
+    HASH_NODE_S           *pstHashNode = NULL;
+    SC_AGENT_NODE_ST      *pstAgentNode = NULL;
+    U32                   ulHashIndex = 0;
+
+    sc_acd_hash_func4agent(ulAgentID, &ulHashIndex);
+    pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex, &ulAgentID, sc_acd_agent_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        sc_log(LOG_LEVEL_WARNING, "Cannot find the agent with this id %u.", ulAgentID);
+        return NULL;
+    }
+
+    pstAgentNode = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+    {
+        sc_log(LOG_LEVEL_WARNING, "Cannot find the agent with this id %u..", ulAgentID);
+        return NULL;
+    }
+
+    return pstAgentNode;
+}
+
+
+U32 sc_acd_get_agent_by_id(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID)
 {
     HASH_NODE_S                *pstHashNode = NULL;
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode = NULL;
+    SC_AGENT_NODE_ST *pstAgentNode = NULL;
     U32                        ulHashIndex = 0;
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
@@ -1284,14 +1310,14 @@ U32 sc_acd_get_agent_by_id(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID)
         return DOS_FAIL;
     }
 
-    dos_memcpy(pstAgentInfo, pstAgentNode->pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
+    dos_memcpy(pstAgentInfo, pstAgentNode->pstAgentInfo, sizeof(SC_AGENT_INFO_ST));
 
     return DOS_SUCC;
 }
 
-U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID, S8 *szCallerNum)
+U32 sc_acd_get_agent_by_grpid(SC_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID, S8 *szCallerNum)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode      = NULL;
+    SC_AGENT_NODE_ST *pstAgentNode      = NULL;
     SC_ACD_GRP_HASH_NODE_ST    *pstGroupListNode  = NULL;
     HASH_NODE_S                *pstHashNode       = NULL;
     U32                        ulHashVal          = 0;
@@ -1357,12 +1383,12 @@ U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID,
         pstAgentNode->pstAgentInfo->stStat.ulCallCnt++;
         pstAgentNode->pstAgentInfo->stStat.ulSelectCnt++;
 
-        dos_memcpy(pstAgentBuff, pstAgentNode->pstAgentInfo, sizeof(SC_ACD_AGENT_INFO_ST));
+        dos_memcpy(pstAgentBuff, pstAgentNode->pstAgentInfo, sizeof(SC_AGENT_INFO_ST));
         ulResult = DOS_SUCC;
     }
     else
     {
-        dos_memzero(pstAgentBuff, sizeof(SC_ACD_AGENT_INFO_ST));
+        dos_memzero(pstAgentBuff, sizeof(SC_AGENT_INFO_ST));
         ulResult = DOS_FAIL;
     }
     pthread_mutex_unlock(&g_mutexGroupList);
@@ -1370,12 +1396,12 @@ U32 sc_acd_get_agent_by_grpid(SC_ACD_AGENT_INFO_ST *pstAgentBuff, U32 ulGroupID,
     return ulResult;
 }
 
-U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
+U32 sc_acd_get_agent_by_userid(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
-    SC_ACD_AGENT_INFO_ST        *pstAgentData       = NULL;
+    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_AGENT_INFO_ST        *pstAgentData       = NULL;
 
     if (DOS_ADDR_INVALID(pstAgentInfo)
         || DOS_ADDR_INVALID(szUserID)
@@ -1394,7 +1420,7 @@ U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
             {
                 continue;
             }
-            pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)pstHashNode->pHandle;
+            pstAgentQueueNode = (SC_AGENT_NODE_ST *)pstHashNode->pHandle;
             pstAgentData = pstAgentQueueNode->pstAgentInfo;
 
             if (DOS_ADDR_INVALID(pstAgentData))
@@ -1410,7 +1436,7 @@ U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
             if (dos_strcmp(pstAgentData->szUserID, szUserID) == 0)
             {
                 pthread_mutex_lock(&pstAgentData->mutexLock);
-                dos_memcpy(pstAgentInfo, pstAgentData, sizeof(SC_ACD_AGENT_INFO_ST));
+                dos_memcpy(pstAgentInfo, pstAgentData, sizeof(SC_AGENT_INFO_ST));
                 pthread_mutex_unlock(&pstAgentData->mutexLock);
 
                 pthread_mutex_unlock(&g_mutexAgentList);
@@ -1432,12 +1458,12 @@ U32 sc_acd_get_agent_by_userid(SC_ACD_AGENT_INFO_ST *pstAgentInfo, S8 *szUserID)
  *
  * @return 坐席指针
  */
-SC_ACD_AGENT_QUEUE_NODE_ST *sc_get_agent_by_tt_num(S8 *szTTNumber)
+SC_AGENT_NODE_ST *sc_get_agent_by_tt_num(S8 *szTTNumber)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
-    SC_ACD_AGENT_INFO_ST        *pstAgentData       = NULL;
+    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_AGENT_INFO_ST        *pstAgentData       = NULL;
 
     if (DOS_ADDR_INVALID(szTTNumber) || szTTNumber[0] == '\0')
     {
@@ -1455,7 +1481,7 @@ SC_ACD_AGENT_QUEUE_NODE_ST *sc_get_agent_by_tt_num(S8 *szTTNumber)
             {
                 continue;
             }
-            pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)pstHashNode->pHandle;
+            pstAgentQueueNode = (SC_AGENT_NODE_ST *)pstHashNode->pHandle;
             pstAgentData = pstAgentQueueNode->pstAgentInfo;
 
             if (DOS_ADDR_INVALID(pstAgentData))
@@ -1477,12 +1503,12 @@ SC_ACD_AGENT_QUEUE_NODE_ST *sc_get_agent_by_tt_num(S8 *szTTNumber)
     return NULL;
 }
 
-U32 sc_acd_get_agent_by_emp_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulCustomID, S8 *pszEmpNum)
+U32 sc_acd_get_agent_by_emp_num(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulCustomID, S8 *pszEmpNum)
 {
     U32                         ulHashIndex         = 0;
     HASH_NODE_S                 *pstHashNode        = NULL;
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
-    SC_ACD_AGENT_INFO_ST        *pstAgentData       = NULL;
+    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_AGENT_INFO_ST        *pstAgentData       = NULL;
 
     if (DOS_ADDR_INVALID(pstAgentInfo)
         || DOS_ADDR_INVALID(pszEmpNum)
@@ -1501,7 +1527,7 @@ U32 sc_acd_get_agent_by_emp_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulCustom
             {
                 continue;
             }
-            pstAgentQueueNode = (SC_ACD_AGENT_QUEUE_NODE_ST *)pstHashNode->pHandle;
+            pstAgentQueueNode = (SC_AGENT_NODE_ST *)pstHashNode->pHandle;
             pstAgentData = pstAgentQueueNode->pstAgentInfo;
 
             if (DOS_ADDR_INVALID(pstAgentData))
@@ -1513,7 +1539,7 @@ U32 sc_acd_get_agent_by_emp_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulCustom
                 && dos_strcmp(pstAgentData->szEmpNo, pszEmpNum) == 0)
             {
                 pthread_mutex_lock(&pstAgentData->mutexLock);
-                dos_memcpy(pstAgentInfo, pstAgentData, sizeof(SC_ACD_AGENT_INFO_ST));
+                dos_memcpy(pstAgentInfo, pstAgentData, sizeof(SC_AGENT_INFO_ST));
                 pthread_mutex_unlock(&pstAgentData->mutexLock);
 
                 pthread_mutex_unlock(&g_mutexAgentList);
@@ -1530,7 +1556,7 @@ U32 sc_acd_get_agent_by_emp_num(SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulCustom
 
 U32 sc_acd_get_processing_time(U32 ulAgentID)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
     HASH_NODE_S            *pstHashNode   = NULL;
     U32                     ulHashIndex   = 0;
     U32                     ulProcessTime = 0;
@@ -1576,7 +1602,7 @@ finished:
 
 U32 sc_acd_query_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode      = NULL;
+    SC_AGENT_NODE_ST *pstAgentNode      = NULL;
     SC_ACD_GRP_HASH_NODE_ST    *pstGroupListNode  = NULL;
     HASH_NODE_S                *pstHashNode       = NULL;
     DLL_NODE_S                 *pstDLLNode        = NULL;
@@ -1694,7 +1720,7 @@ U32 sc_acd_agent_stat_by_grpid(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U3
 {
     U32 ulCnt = 0;
 
-    SC_ACD_AGENT_QUEUE_NODE_ST *pstAgentNode      = NULL;
+    SC_AGENT_NODE_ST *pstAgentNode      = NULL;
     SC_ACD_GRP_HASH_NODE_ST    *pstGroupListNode  = NULL;
     HASH_NODE_S                *pstHashNode       = NULL;
     DLL_NODE_S                 *pstDLLNode        = NULL;
@@ -1813,7 +1839,7 @@ U32 sc_acd_agent_stat_by_grpid(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U3
 
 static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
     HASH_NODE_S                 *pstHashNode = NULL;
     S8                          *pszSiteID     = NULL, *pszCustomID = NULL;
     S8                          *pszGroupID0   = NULL, *pszGroupID1 = NULL;
@@ -1825,8 +1851,8 @@ static S32 sc_acd_init_agent_queue_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **
     S8                          *pszTTNumber = NULL;
     S8                          *pszSIPID = NULL;
     S8                          *pszFinishTime = NULL;
-    SC_ACD_AGENT_INFO_ST        *pstSiteInfo = NULL;
-    SC_ACD_AGENT_INFO_ST        stSiteInfo;
+    SC_AGENT_INFO_ST        *pstSiteInfo = NULL;
+    SC_AGENT_INFO_ST        stSiteInfo;
     U32                         ulAgentID   = 0, ulCustomID   = 0, ulGroupID0  = 0;
     U32                         ulGroupID1 = 0, ulRecordFlag = 0, ulIsHeader = 0;
     U32                         ulHashIndex = 0, ulIndex = 0, ulRest = 0, ulSelectType = 0;
@@ -2283,7 +2309,7 @@ static U32 sc_acd_deinit_group_queue()
 
 static VOID sc_acd_agent_wolk4init(HASH_NODE_S *pNode, VOID *pParam)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode    = NULL;
+    SC_AGENT_NODE_ST  *pstAgentQueueNode    = NULL;
     U32                         ulIndex               = 0;
 
     if (DOS_ADDR_INVALID(pNode)
@@ -2399,7 +2425,7 @@ U32 sc_acd_init()
     return DOS_SUCC;
 }
 
-U32 sc_acd_agent_set_busy(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+U32 sc_acd_agent_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 {
     U32 ulOldStatus;
 
@@ -2439,7 +2465,7 @@ U32 sc_acd_agent_set_busy(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperati
     return DOS_SUCC;
 }
 
-U32 sc_acd_agent_set_idle(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+U32 sc_acd_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 {
     U32 ulOldStatus;
 
@@ -2488,7 +2514,7 @@ U32 sc_acd_agent_set_idle(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperati
     return DOS_SUCC;
 }
 
-U32 sc_acd_agent_set_rest(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+U32 sc_acd_agent_set_rest(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 {
     U32 ulOldStatus;
 
@@ -2536,7 +2562,7 @@ U32 sc_acd_agent_set_rest(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperati
     return DOS_SUCC;
 }
 
-U32 sc_acd_agent_set_signin(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+U32 sc_acd_agent_set_signin(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 {
     U32 ulOldStatus;
 
@@ -2602,7 +2628,7 @@ U32 sc_acd_agent_set_signin(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOpera
     return DOS_SUCC;
 }
 
-U32 sc_acd_agent_set_signout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+U32 sc_acd_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 {
     U32 ulOldStatus;
 
@@ -2664,7 +2690,7 @@ U32 sc_acd_agent_set_signout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOper
     return DOS_SUCC;
 }
 
-U32 sc_acd_agent_set_login(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+U32 sc_acd_agent_set_login(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 {
     U32 ulOldStatus;
 
@@ -2716,7 +2742,7 @@ U32 sc_acd_agent_set_login(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperat
 VOID sc_acd_agent_set_logout(U64 p)
 {
     U32                  ulOldStatus;
-    SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo = (SC_ACD_AGENT_INFO_ST *)p;
+    SC_AGENT_INFO_ST *pstAgentQueueInfo = (SC_AGENT_INFO_ST *)p;
 
     if (DOS_ADDR_INVALID(pstAgentQueueInfo))
     {
@@ -2786,7 +2812,7 @@ VOID sc_acd_agent_set_logout(U64 p)
                 , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
 }
 
-U32 sc_acd_agent_set_force_logout(SC_ACD_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+U32 sc_acd_agent_set_force_logout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 {
     U32 ulOldStatus;
 
@@ -2909,8 +2935,8 @@ U32 sc_acd_http_agent_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
 
 U32 sc_acd_agent_update_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
-    SC_ACD_AGENT_INFO_ST   *pstAgentInfo = NULL;     /* 坐席信息 */
+    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_AGENT_INFO_ST   *pstAgentInfo = NULL;     /* 坐席信息 */
     HASH_NODE_S            *pstHashNode = NULL;
     U32                     ulHashIndex = 0;
     U32                     ulResult    = DOS_FAIL;
@@ -3012,12 +3038,12 @@ U32 sc_acd_agent_update_status(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
  * 参  数:
  *       U32 ulType : 统计类型
  *       U32 ulAgentID : 坐席ID
- *       SC_ACD_AGENT_INFO_ST *pstAgentInfo: 坐席结构
+ *       SC_AGENT_INFO_ST *pstAgentInfo: 坐席结构
  * 返回值: 成功返回DOS_SUCC，否则返回DOS_FAIL
  **/
-U32 sc_acd_agent_stat(U32 ulType, SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam)
+U32 sc_acd_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam)
 {
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode  = NULL;
+    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
     HASH_NODE_S            *pstHashNode = NULL;
     U32                     ulHashIndex = 0;
     U32                     ulCurrentTime = 0;
@@ -3145,7 +3171,7 @@ U32 sc_acd_agent_stat(U32 ulType, SC_ACD_AGENT_INFO_ST *pstAgentInfo, U32 ulAgen
 
 
 /* 记录坐席统计信息 */
-U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
+U32 sc_acd_save_agent_stat(SC_AGENT_INFO_ST *pstAgentInfo)
 {
     S8  szSQL[512]        = { 0, };
     U32 ulAvgCallDruation = 0;
@@ -3205,8 +3231,8 @@ U32 sc_acd_save_agent_stat(SC_ACD_AGENT_INFO_ST *pstAgentInfo)
 U32 sc_acd_agent_stat_audit(U32 ulCycle, VOID *ptr)
 {
     HASH_NODE_S                 *pstHashNode       = NULL;
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode = NULL;
-    SC_ACD_AGENT_INFO_ST        *pstAgentInfo      = NULL;
+    SC_AGENT_NODE_ST  *pstAgentQueueNode = NULL;
+    SC_AGENT_INFO_ST        *pstAgentInfo      = NULL;
     U32             ulHashIndex  = 0;
 
     HASH_Scan_Table(g_pstAgentList, ulHashIndex)
@@ -3253,8 +3279,8 @@ U32 sc_acd_agent_stat_audit(U32 ulCycle, VOID *ptr)
 U32 sc_acd_agent_audit(U32 ulCycle, VOID *ptr)
 {
     HASH_NODE_S                 *pstHashNode       = NULL;
-    SC_ACD_AGENT_QUEUE_NODE_ST  *pstAgentQueueNode = NULL;
-    SC_ACD_AGENT_INFO_ST        *pstAgentInfo      = NULL;
+    SC_AGENT_NODE_ST  *pstAgentQueueNode = NULL;
+    SC_AGENT_INFO_ST        *pstAgentInfo      = NULL;
     U32             ulHashIndex  = 0;
 
     HASH_Scan_Table(g_pstAgentList, ulHashIndex)

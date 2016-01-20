@@ -547,7 +547,8 @@ U32 sc_task_save_status(U32 ulTaskID, U32 ulStatus, S8 *pszStatus);
 
 U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulAttrVal1,U32 ulAttr2, U32 ulAttrVal2);
-
+U32 sc_eix_dev_get_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength);
+U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, S8 *pszNumber, U32 ulLen);
 
 #endif /* __SC_RES_H__ */
 

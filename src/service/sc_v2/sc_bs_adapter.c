@@ -688,7 +688,7 @@ U32 sc_send_usr_auth2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
 
     dos_strncpy(pstAuthMsg->szCID, pstLegCB->stCall.stNumInfo.szANI, sizeof(pstAuthMsg->szCID));
     pstAuthMsg->szCID[sizeof(pstAuthMsg->szCID) - 1] = '\0';
-
+#if 0
     if (pstLegCB->ulCBNo == pstSCB->stCall.ulCallingLegNo)
     {
         if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling) && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
@@ -713,7 +713,7 @@ U32 sc_send_usr_auth2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
             pstAuthMsg->szAgentNum[0] = '\0';
         }
     }
-
+#endif
 #if SC_BS_NEED_RESEND
     pstListNode = dos_dmem_alloc(sizeof(SC_BS_MSG_NODE));
     if (DOS_ADDR_INVALID(pstListNode))
