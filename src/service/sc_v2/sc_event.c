@@ -60,7 +60,7 @@ U32 sc_srv_call_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *ps
         return DOS_FAIL;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Processing event. service:%u type: %u, scb:%u len: %u"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing event. service:%u type: %u, scb:%u len: %u"
                 , pstSubServ->usSrvType, pstMsg->ulMsgType
                 , pstSCB->ulSCBNo, pstMsg->usMsgLen);
 
@@ -72,10 +72,6 @@ U32 sc_srv_call_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *ps
 
         case SC_EVT_CALL_SETUP:
             ulRet = sc_call_setup(pstMsg, pstSCB);
-            break;
-
-        case SC_EVT_EXCHANGE_MEDIA:
-            ulRet = sc_call_exchange_media(pstMsg, pstSCB);
             break;
 
         case SC_EVT_CALL_AMSWERED:
@@ -130,11 +126,11 @@ U32 sc_srv_call_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *ps
             break;
 
         default:
-            sc_log(LOG_LEVEL_NOTIC, "Invalid event type. %u", pstMsg->ulMsgType);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Invalid event type. %u", pstMsg->ulMsgType);
             break;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Processed event. service:%u, type: %u, len: %u. Ret: %s"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed event. service:%u, type: %u, len: %u. Ret: %s"
                     , pstSubServ->usSrvType, pstMsg->ulMsgType
                     , pstMsg->usMsgLen, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
@@ -161,7 +157,7 @@ U32 sc_srv_preview_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
         return DOS_FAIL;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Processing event. service:%u type: %u, scb:%u len: %u"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing event. service:%u type: %u, scb:%u len: %u"
                 , pstSubServ->usSrvType, pstMsg->ulMsgType
                 , pstSCB->ulSCBNo, pstMsg->usMsgLen);
 
@@ -173,10 +169,6 @@ U32 sc_srv_preview_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
 
         case SC_EVT_CALL_SETUP:
             ulRet = sc_preview_setup(pstMsg, pstSCB);
-            break;
-
-        case SC_EVT_EXCHANGE_MEDIA:
-            ulRet = sc_preview_exchange_media(pstMsg, pstSCB);
             break;
 
         case SC_EVT_CALL_AMSWERED:
@@ -231,11 +223,11 @@ U32 sc_srv_preview_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
             break;
 
         default:
-            sc_log(LOG_LEVEL_NOTIC, "Invalid event type. %u", pstMsg->ulMsgType);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Invalid event type. %u", pstMsg->ulMsgType);
             break;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Processed event. service:%u, type: %u, len: %u. Ret: %s"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed event. service:%u, type: %u, len: %u. Ret: %s"
                     , pstSubServ->usSrvType, pstMsg->ulMsgType
                     , pstMsg->usMsgLen, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
@@ -276,7 +268,7 @@ U32 sc_srv_voice_verify_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
         return DOS_FAIL;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Processing event. service:%u, type: %u, scb:%u len: %u"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing event. service:%u, type: %u, scb:%u len: %u"
                 , pstSubServ->usSrvType, pstMsg->ulMsgType
                 , pstSCB->ulSCBNo, pstMsg->usMsgLen);
 
@@ -306,7 +298,6 @@ U32 sc_srv_voice_verify_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
             ulRet = sc_voice_verify_playback_stop(pstMsg, pstSCB);
             break;
 
-        case SC_EVT_EXCHANGE_MEDIA:
         case SC_EVT_CALL_STATUS:
         case SC_EVT_DTMF:
         case SC_EVT_RECORD_START:
@@ -320,11 +311,11 @@ U32 sc_srv_voice_verify_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
             break;
 
         default:
-            sc_log(LOG_LEVEL_NOTIC, "Invalid event type. %u", pstMsg->ulMsgType);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Invalid event type. %u", pstMsg->ulMsgType);
             break;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Processed event. service:%u, type: %u, len: %u. Ret: %s"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed event. service:%u, type: %u, len: %u. Ret: %s"
                     , pstSubServ->usSrvType, pstMsg->ulMsgType
                     , pstMsg->usMsgLen, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
@@ -458,7 +449,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
     {
         if (pstMsg->ulSCBNo >= SC_SCB_SIZE)
         {
-            sc_log(LOG_LEVEL_DEBUG, "Call setup event. alloc new scb");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Call setup event. alloc new scb");
 
             pstEventCallSetup = (SC_MSG_EVT_CALL_ST *)pstMsg;
             pstLCB = sc_lcb_get(pstEventCallSetup->ulLegNo);
@@ -483,24 +474,24 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
         }
         else
         {
-            sc_log(LOG_LEVEL_DEBUG, "Call setup event with scb %u, Event type:%u", pstMsg->ulSCBNo, pstMsg->ulMsgType);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Call setup event with scb %u, Event type:%u", pstMsg->ulSCBNo, pstMsg->ulMsgType);
 
             pstSCB = sc_scb_get(pstMsg->ulSCBNo);
             if (DOS_ADDR_INVALID(pstSCB))
             {
-                sc_log(LOG_LEVEL_ERROR, "Get SCB fail. %u", pstMsg->ulSCBNo);
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Get SCB fail. %u", pstMsg->ulSCBNo);
                 return;
             }
         }
     }
     else
     {
-        sc_log(LOG_LEVEL_DEBUG, "Recv event with scb %u, Event type:%u", pstMsg->ulSCBNo, pstMsg->ulMsgType);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Recv event with scb %u, Event type:%u", pstMsg->ulSCBNo, pstMsg->ulMsgType);
 
         pstSCB = sc_scb_get(pstMsg->ulSCBNo);
         if (DOS_ADDR_INVALID(pstSCB))
         {
-            sc_log(LOG_LEVEL_ERROR, "Get SCB fail. %u", pstMsg->ulSCBNo);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Get SCB fail. %u", pstMsg->ulSCBNo);
             return;
         }
     }
@@ -576,7 +567,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
         /* 如果返回错误，需要在返回之前将SCB释放掉 */
         if (ulRet != DOS_SUCC)
         {
-            sc_log(LOG_LEVEL_ERROR, "Process event fail.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Process event fail.");
             break;
         }
 

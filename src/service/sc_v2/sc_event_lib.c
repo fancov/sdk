@@ -47,7 +47,7 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
     pstCalleeLegCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstCalleeLegCB))
     {
-        sc_log(LOG_LEVEL_ERROR, "Alloc SCB fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc SCB fail.");
 
         return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_SYSTEM_BUSY);
     }
@@ -222,7 +222,7 @@ processing:
     if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
     {
         sc_lcb_free(pstCalleeLeg);
-        sc_log(LOG_LEVEL_ERROR, "Send new call request fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send new call request fail.");
         return DOS_FAIL;
     }
 
@@ -286,7 +286,7 @@ U32 sc_make_call2pstn(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB)
 
     if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Send new call request fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send new call request fail.");
         return DOS_FAIL;
     }
 
@@ -320,7 +320,7 @@ U32 sc_make_call2eix(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB)
 
     if (sc_eix_dev_get_by_tt(pstLCB->stCall.stNumInfo.szRealCallee, pstLCB->stCall.szEIXAddr, sizeof(pstLCB->stCall.szEIXAddr)) != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Get EIX ip fail by the TT number. %s", pstLCB->stCall.stNumInfo.szRealCallee);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Get EIX ip fail by the TT number. %s", pstLCB->stCall.stNumInfo.szRealCallee);
         return DOS_FAIL;
     }
 
@@ -338,7 +338,7 @@ U32 sc_make_call2eix(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB)
 
     if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Send new call request fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send new call request fail.");
         return DOS_FAIL;
     }
 
@@ -379,7 +379,7 @@ U32 sc_make_call2sip(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB)
 
     if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Send new call request fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send new call request fail.");
         return DOS_FAIL;
     }
 
@@ -393,27 +393,27 @@ U32 sc_voice_verify_proc(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulP
 
     if (DOS_ADDR_INVALID(pszNumber) || '\0' == pszNumber[0])
     {
-        sc_log(LOG_LEVEL_ERROR, "Empty number for voice verify");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Empty number for voice verify");
         goto fail_proc;
     }
 
     if (DOS_ADDR_INVALID(pszPassword) || '\0' == pszPassword[0])
     {
-        sc_log(LOG_LEVEL_ERROR, "Empty verify code for voice verify");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Empty verify code for voice verify");
         goto fail_proc;
     }
 
     pstSCB = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCB))
     {
-        sc_log(LOG_LEVEL_ERROR, "Alloc SCB fail");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc SCB fail");
         goto fail_proc;
     }
 
     pstLCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(LOG_LEVEL_ERROR, "Alloc LCB fail");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc LCB fail");
         goto fail_proc;
     }
 
@@ -426,7 +426,7 @@ U32 sc_voice_verify_proc(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulP
     pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stVoiceVerify.stSCBTag;
     if (sc_scb_set_service(pstSCB, BS_SERV_VERIFY) != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Add voice verify service to scb fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add voice verify service to scb fail.");
         goto fail_proc;
     }
 
@@ -436,7 +436,7 @@ U32 sc_voice_verify_proc(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulP
     if (sc_caller_setting_select_number(ulCustomer, 0, SC_SRC_CALLER_TYPE_ALL
                         , pstLCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH) != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "There is no caller for number verify.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is no caller for number verify.");
         goto fail_proc;
     }
 
@@ -444,13 +444,13 @@ U32 sc_voice_verify_proc(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulP
 
     if (sc_send_usr_auth2bs(pstSCB, pstLCB) != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Send auth request fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send auth request fail.");
         goto fail_proc;
     }
 
     pstSCB->stVoiceVerify.stSCBTag.usStatus = SC_VOICE_VERIFY_AUTH;
 
-    sc_log(LOG_LEVEL_NOTIC, "Send auth request for number verify succ. Customer: %u, Code: %s, Callee: %s", ulCustomer, pszPassword, pszNumber);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Send auth request for number verify succ. Customer: %u, Code: %s, Callee: %s", ulCustomer, pszPassword, pszNumber);
     return DOS_SUCC;
 
 fail_proc:
@@ -466,7 +466,7 @@ fail_proc:
         pstSCB = NULL;
     }
 
-    sc_log(LOG_LEVEL_NOTIC, "Send auth request for number verify FAIL. Customer: %u, Code: %s, Callee: %s", ulCustomer, pszPassword, pszNumber);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Send auth request for number verify FAIL. Customer: %u, Code: %s, Callee: %s", ulCustomer, pszPassword, pszNumber);
 
     return DOS_FAIL;
 }
@@ -488,25 +488,25 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     SC_SRV_CB        *pstSCB       = NULL;
     SC_LEG_CB        *pstLCB       = NULL;
 
-    sc_log(LOG_LEVEL_NOTIC, "Request call out. Agent: %u, Task: %u, Number: %u", ulAgent, ulTaskID, NULL == pszNumber ? "NULL" : pszNumber);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request call out. Agent: %u, Task: %u, Number: %u", ulAgent, ulTaskID, NULL == pszNumber ? "NULL" : pszNumber);
 
     if (DOS_ADDR_INVALID(pszNumber) || '\0' == pszNumber[0])
     {
-        sc_log(LOG_LEVEL_WARNING, "Request call out. Number is empty");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Request call out. Number is empty");
         return DOS_FAIL;
     }
 
     pstAgentNode = sc_agent_get_by_id(ulAgent);
     if (DOS_ADDR_INVALID(pstAgentNode))
     {
-        sc_log(LOG_LEVEL_WARNING, "Cannot found the agent %u", ulAgent);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Cannot found the agent %u", ulAgent);
         return DOS_FAIL;
     }
 
     pstLCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(LOG_LEVEL_WARNING, "Alloc lcb fail");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Alloc lcb fail");
         return DOS_FAIL;
     }
 
@@ -516,7 +516,7 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         sc_lcb_free(pstLCB);
         pstLCB = NULL;
 
-        sc_log(LOG_LEVEL_WARNING, "Alloc scb fail");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Alloc scb fail");
         return DOS_FAIL;
     }
 
@@ -528,7 +528,7 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stPreviewCall.stSCBTag;
     if (sc_scb_set_service(pstSCB, BS_SERV_PREVIEW_DIALING) != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_WARNING, "Set service fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Set service fail.");
 
         goto process_fail;
     }
@@ -545,7 +545,7 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
             if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
             {
-                sc_log(LOG_LEVEL_ERROR, "Add outbound service fail.");
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
 
                 goto process_fail;
             }
@@ -556,7 +556,7 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
             if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
             {
-                sc_log(LOG_LEVEL_ERROR, "Add outbound service fail.");
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
 
                 goto process_fail;
             }
@@ -576,7 +576,7 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     {
         if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
         {
-            sc_log(LOG_LEVEL_ERROR, "Add record service fail.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add record service fail.");
         }
         else
         {
@@ -590,12 +590,12 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
 
     if (sc_send_usr_auth2bs(pstSCB, pstLCB) != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Send auth fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send auth fail.");
 
         goto process_fail;
     }
 
-    sc_log(LOG_LEVEL_NOTIC, "Request call out. send auth succ.");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request call out. send auth succ.");
 
     return DOS_SUCC;
 
@@ -651,7 +651,7 @@ U32 sc_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID,
         goto proc_fail;
     }
 
-    sc_log(LOG_LEVEL_INFO, "Start process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_EVENT), "Start process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
                     , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee ? pszCallee : "");
 
     switch (ulAction)
@@ -673,7 +673,7 @@ U32 sc_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID,
             /* ²éÕÒ×øÏ¯ */
             if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
             {
-                sc_log(LOG_LEVEL_NOTIC, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
                 goto proc_fail;
             }
 
@@ -833,13 +833,13 @@ make_all_fail1:
             goto proc_fail;
     }
 
-    sc_log(LOG_LEVEL_INFO, "Finished to process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_EVENT), "Finished to process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
                     , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee);
 
     return DOS_SUCC;
 
 proc_fail:
-    sc_log(LOG_LEVEL_NOTIC, "Process call ctrl msg FAIL. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Process call ctrl msg FAIL. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
                     , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee);
 
     return DOS_FAIL;

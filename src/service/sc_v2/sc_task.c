@@ -106,14 +106,14 @@ SC_TEL_NUM_QUERY_NODE_ST *sc_task_get_callee(SC_TASK_CB *pstTCB)
     if (dos_list_is_empty(&pstTCB->stCalleeNumQuery))
     {
         ulCount = sc_task_load_callee(pstTCB);
-        sc_log(LOG_LEVEL_INFO, "Load callee number for task %d. Load result : %d", pstTCB->ulTaskID, ulCount);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_TASK), "Load callee number for task %d. Load result : %d", pstTCB->ulTaskID, ulCount);
     }
 
     if (dos_list_is_empty(&pstTCB->stCalleeNumQuery))
     {
         pstTCB->ucTaskStatus = SC_TASK_STOP;
 
-        sc_log(LOG_LEVEL_INFO, "Task %d has finished. or there is no callees.", pstTCB->ulTaskID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_TASK), "Task %d has finished. or there is no callees.", pstTCB->ulTaskID);
 
         return NULL;
     }
@@ -143,7 +143,7 @@ SC_TEL_NUM_QUERY_NODE_ST *sc_task_get_callee(SC_TASK_CB *pstTCB)
     pstCallee->stLink.next = NULL;
     pstCallee->stLink.prev = NULL;
 
-    sc_log(LOG_LEVEL_INFO, "Select callee %s for new call.", pstCallee->szNumber);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_TASK), "Select callee %s for new call.", pstCallee->szNumber);
 
     return pstCallee;
 }
@@ -180,7 +180,7 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
 
     if (sc_get_number_by_callergrp(pstTCB->ulCallerGrpID, szCaller, SC_NUM_LENGTH) != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_NOTIC, "Get caller from caller group(%u) FAIL.", pstTCB->ulCallerGrpID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Get caller from caller group(%u) FAIL.", pstTCB->ulCallerGrpID);
         return DOS_FAIL;
     }
 
@@ -206,14 +206,14 @@ VOID *sc_task_runtime(VOID *ptr)
 
     if (!ptr)
     {
-        sc_log(LOG_LEVEL_ERROR, "%s", "Fail to start the thread for task, invalid parameter");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_TASK), "%s", "Fail to start the thread for task, invalid parameter");
         pthread_exit(0);
     }
 
     pstTCB = (SC_TASK_CB *)ptr;
     if (DOS_ADDR_INVALID(pstTCB))
     {
-        sc_log(LOG_LEVEL_ERROR, "%s", "Start task without pointer a TCB.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_TASK), "%s", "Start task without pointer a TCB.");
         return NULL;
     }
 
@@ -226,7 +226,7 @@ VOID *sc_task_runtime(VOID *ptr)
                                 , SC_SRV_CTRL_ATTR_INVLID
                                 , U32_BUTT))
     {
-        sc_log(LOG_LEVEL_NOTIC, "Service not allow.(TaskID:%u) ", pstTCB->ulTaskID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Service not allow.(TaskID:%u) ", pstTCB->ulTaskID);
 
         goto finished;
     }
@@ -239,7 +239,7 @@ VOID *sc_task_runtime(VOID *ptr)
                             , TIMER_NORMAL_LOOP);
     if (lResult < 0)
     {
-        sc_log(LOG_LEVEL_ERROR, "Start timer update task(%u) calledcnt FAIL", pstTCB->ulTaskID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_TASK), "Start timer update task(%u) calledcnt FAIL", pstTCB->ulTaskID);
     }
 
     /*
@@ -259,7 +259,7 @@ VOID *sc_task_runtime(VOID *ptr)
         ulMinInterval = 1000 / 20;
     }
 
-    sc_log(LOG_LEVEL_INFO, "Start run task(%u), Min interval: %ums", pstTCB->ulTaskID, ulMinInterval);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_TASK), "Start run task(%u), Min interval: %ums", pstTCB->ulTaskID, ulMinInterval);
 
     while (1)
     {
@@ -290,7 +290,7 @@ VOID *sc_task_runtime(VOID *ptr)
             if (pstTCB->ulCurrentConcurrency != 0 || !blPauseFlag)
             {
                 blPauseFlag = DOS_TRUE;
-                sc_log(LOG_LEVEL_DEBUG, "Cannot make call for paused status. Task : %u.", pstTCB->ulTaskID);
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_TASK), "Cannot make call for paused status. Task : %u.", pstTCB->ulTaskID);
                 ulTaskInterval = 20000;
                 continue;
             }
@@ -306,7 +306,7 @@ VOID *sc_task_runtime(VOID *ptr)
             if (pstTCB->ulCurrentConcurrency != 0 || !blStopFlag)
             {
                 blStopFlag = DOS_TRUE;
-                sc_log(LOG_LEVEL_DEBUG, "Cannot make call for stoped status. Task : %u, CurrentConcurrency : %u.", pstTCB->ulTaskID, pstTCB->ulCurrentConcurrency);
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_TASK), "Cannot make call for stoped status. Task : %u, CurrentConcurrency : %u.", pstTCB->ulTaskID, pstTCB->ulCurrentConcurrency);
                 ulTaskInterval = 20000;
                 continue;
             }
@@ -319,7 +319,7 @@ VOID *sc_task_runtime(VOID *ptr)
         /* 检查当前是否在允许的时间段 */
         if (sc_task_check_can_call_by_time(pstTCB) != DOS_TRUE)
         {
-            sc_log(LOG_LEVEL_DEBUG, "Cannot make call for invalid time period. Task : %u. %d", pstTCB->ulTaskID, pstTCB->usTCBNo);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_TASK), "Cannot make call for invalid time period. Task : %u. %d", pstTCB->ulTaskID, pstTCB->usTCBNo);
             ulTaskInterval = 20000;
             continue;
         }
@@ -327,20 +327,20 @@ VOID *sc_task_runtime(VOID *ptr)
         /* 检测当时任务是否可以发起呼叫 */
         if (sc_task_check_can_call_by_status(pstTCB) != DOS_TRUE)
         {
-            sc_log(LOG_LEVEL_DEBUG, "Cannot make call for system busy. Task : %u.", pstTCB->ulTaskID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_TASK), "Cannot make call for system busy. Task : %u.", pstTCB->ulTaskID);
             continue;
         }
 #if 1
         /* 发起呼叫 */
         if (sc_task_make_call(pstTCB))
         {
-            sc_log(LOG_LEVEL_DEBUG, "%s", "Make call fail.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_TASK), "%s", "Make call fail.");
         }
 #endif
     }
 
 finished:
-    sc_log(LOG_LEVEL_NOTIC, "Task %d finished.", pstTCB->ulTaskID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Task %d finished.", pstTCB->ulTaskID);
 
     /* 释放相关资源 */
     if (DOS_ADDR_VALID(pstTCB->pstTmrHandle))
@@ -412,7 +412,7 @@ U32 sc_task_start(SC_TASK_CB *pstTCB)
 
     if (pstTCB->bThreadRunning)
     {
-        sc_log(LOG_LEVEL_NOTIC, "Task %u already running.", pstTCB->ulTaskID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Task %u already running.", pstTCB->ulTaskID);
     }
     else
     {
@@ -422,7 +422,7 @@ U32 sc_task_start(SC_TASK_CB *pstTCB)
 
             pstTCB->bThreadRunning = DOS_FALSE;
 
-            sc_log(LOG_LEVEL_NOTIC, "Start task %d faild", pstTCB->ulTaskID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Start task %d faild", pstTCB->ulTaskID);
 
             return DOS_FAIL;
         }
@@ -432,7 +432,7 @@ U32 sc_task_start(SC_TASK_CB *pstTCB)
 
     sc_task_save_status(pstTCB->ulTaskID, SC_TASK_STATUS_DB_START, NULL);
 
-    sc_log(LOG_LEVEL_NOTIC, "Start task %d finished.", pstTCB->ulTaskID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Start task %d finished.", pstTCB->ulTaskID);
 
     return DOS_SUCC;
 }
@@ -458,7 +458,7 @@ U32 sc_task_stop(SC_TASK_CB *pstTCB)
     {
         DOS_ASSERT(0);
 
-        sc_log(LOG_LEVEL_ERROR, "Cannot stop the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_TASK), "Cannot stop the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
 
         return DOS_FAIL;
     }
@@ -491,7 +491,7 @@ U32 sc_task_continue(SC_TASK_CB *pstTCB)
     if (!pstTCB->ucValid
         || (pstTCB->ucTaskStatus != SC_TASK_PAUSED && pstTCB->ucTaskStatus != SC_TASK_STOP))
     {
-        sc_log(LOG_LEVEL_ERROR, "Cannot continue the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_TASK), "Cannot continue the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
 
         return DOS_FAIL;
     }
@@ -523,7 +523,7 @@ U32 sc_task_pause(SC_TASK_CB *pstTCB)
     if (!pstTCB->ucValid
         || pstTCB->ucTaskStatus != SC_TASK_WORKING)
     {
-        sc_log(LOG_LEVEL_ERROR, "Cannot stop the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_TASK), "Cannot stop the task. TCB Valid:%d, TCB Status: %d", pstTCB->ucValid, pstTCB->ucTaskStatus);
 
         return DOS_FAIL;
     }
@@ -584,11 +584,10 @@ U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
         ulRet = sc_task_load_callee(pstTCB);
         if (DOS_SUCC != ulRet)
         {
-            sc_log(LOG_LEVEL_ERROR, "SC Task Load Callee FAIL.(TaskID:%u, usNo:%u)", ulTaskID, pstTCB->usTCBNo);
-            DOS_ASSERT(0);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_TASK), "SC Task Load Callee FAIL.(TaskID:%u, usNo:%u)", ulTaskID, pstTCB->usTCBNo);
             return SC_HTTP_ERRNO_INVALID_DATA;
         }
-        sc_log(LOG_LEVEL_ERROR, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", ulTaskID, pstTCB->usTCBNo);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_TASK), "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", ulTaskID, pstTCB->usTCBNo);
     }
 
     if (pstTCB->ucTaskStatus == SC_TASK_INIT)
@@ -810,7 +809,7 @@ U32 sc_task_mngt_cmd_proc(U32 ulAction, U32 ulCustomerID, U32 ulTaskID)
 {
     U32 ulRet = SC_HTTP_ERRNO_INVALID_REQUEST;
 
-    sc_log(LOG_LEVEL_INFO, "Process CMD, Action:%u, Task: %u, CustomID: %u"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_TASK), "Process CMD, Action:%u, Task: %u, CustomID: %u"
                     , ulAction, ulTaskID, ulCustomerID);
 
     switch (ulAction)
@@ -866,12 +865,12 @@ U32 sc_task_mngt_cmd_proc(U32 ulAction, U32 ulCustomerID, U32 ulTaskID)
         }
         default:
         {
-            sc_log(LOG_LEVEL_NOTIC, "Action templately not support. ACTION: %d", ulAction, ulAction);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Action templately not support. ACTION: %d", ulAction, ulAction);
             break;
         }
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "CMD Process finished. Action: %u, ErrCode:%u"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_TASK), "CMD Process finished. Action: %u, ErrCode:%u"
                     , ulAction, ulRet);
 
     return ulRet;
@@ -897,7 +896,7 @@ U32 sc_task_mngt_start()
         {
             if (DOS_SUCC != sc_task_and_callee_load(pstTCB->ulTaskID))
             {
-                sc_log(LOG_LEVEL_NOTIC, "Task init fail. Custom ID: %d, Task ID: %d", pstTCB->ulCustomID, pstTCB->ulTaskID);
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Task init fail. Custom ID: %d, Task ID: %d", pstTCB->ulCustomID, pstTCB->ulTaskID);
                 sc_tcb_free(pstTCB);
                 continue;
             }
@@ -917,7 +916,7 @@ U32 sc_task_mngt_start()
 
             if (sc_task_start(pstTCB) != DOS_SUCC)
             {
-                sc_log(LOG_LEVEL_NOTIC, "Task start fail. Custom ID: %d, Task ID: %d", pstTCB->ulCustomID, pstTCB->ulTaskID);
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Task start fail. Custom ID: %d, Task ID: %d", pstTCB->ulCustomID, pstTCB->ulTaskID);
 
                 sc_tcb_free(pstTCB);
                 continue;
@@ -925,7 +924,7 @@ U32 sc_task_mngt_start()
         }
     }
 
-    sc_log(LOG_LEVEL_INFO, "Start call task mngt service finished.");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_TASK), "Start call task mngt service finished.");
 
     return DOS_SUCC;
 }
@@ -966,7 +965,7 @@ U32 sc_task_mngt_init()
     /* 加载群呼任务 */
     if (sc_task_mngt_load_task() != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Load call task fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_TASK), "Load call task fail.");
         return DOS_FAIL;
     }
 

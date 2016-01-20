@@ -710,7 +710,7 @@ U32 sc_lcb_hash_delete(S8 *pszUUID)
     {
         DOS_ASSERT(0);
 
-        sc_log(LOG_LEVEL_WARNING, "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
         pthread_mutex_unlock(&g_mutexLCBHash);
         return DOS_SUCC;
     }
@@ -748,7 +748,7 @@ SC_LEG_CB *sc_lcb_hash_find(S8 *pszUUID)
     pstLCBHashNode = (SC_LCB_HASH_NODE_ST *)hash_find_node(g_pstLCBHash, ulHashIndex, pszUUID, sc_lcb_hash_find_func);
     if (!pstLCBHashNode)
     {
-        sc_log(LOG_LEVEL_WARNING, "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
         pthread_mutex_unlock(&g_mutexLCBHash);
         return NULL;
     }
@@ -994,7 +994,7 @@ VOID sc_scb_init(SC_SRV_CB *pstSCB)
     sc_scb_transfer_init(&pstSCB->stTransfer);
     sc_scb_incoming_queue_init(&pstSCB->stIncomingQueue);
     sc_scb_interception_init(&pstSCB->stInterception);
-    sc_scb_whisper_init(&pstSCB->stWhisoered);
+    sc_scb_whisper_init(&pstSCB->stWhispered);
     sc_scb_mark_custom_init(&pstSCB->stMarkCustom);
 }
 
@@ -2051,37 +2051,6 @@ U32 sc_send_event_call_create(SC_MSG_EVT_CALL_ST *pstEvent)
 }
 
 /**
- * 向业务层发送媒体交换事件
- *
- * @param pstMsg 消息头
- *
- * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
- *
- * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
- */
-U32 sc_send_event_exchange_media(SC_MSG_EVT_MEDIA_ST *pstEvent)
-{
-    SC_MSG_EVT_MEDIA_ST *pstEventMedia = NULL;
-
-    if (DOS_ADDR_INVALID(pstEvent))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstEventMedia = (SC_MSG_EVT_MEDIA_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_MEDIA_ST));
-    if (DOS_ADDR_INVALID(pstEventMedia))
-    {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
-        return DOS_FAIL;
-    }
-
-    dos_memcpy(pstEventMedia, pstEvent, sizeof(SC_MSG_EVT_MEDIA_ST));
-
-    return sc_send_event(&pstEventMedia->stMsgTag);
-}
-
-/**
  * 向业务层发送应答事件
  *
  * @param pstMsg 消息头
@@ -2517,7 +2486,7 @@ U32 sc_get_snd_list(U32 *pulSndIndList, U32 ulSndCnt, S8 *pszBuffer, U32 ulBuffL
         {
             ulCnt = 0;
 
-            sc_log(LOG_LEVEL_WARNING, "Buffer not enought.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Buffer not enought.");
             break;
         }
 

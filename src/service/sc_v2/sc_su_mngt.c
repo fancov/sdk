@@ -125,7 +125,7 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     {
         if (dos_atoul(pszLegCBNo, &ulLCBNo) < 0)
         {
-            sc_log(LOG_LEVEL_ERROR, "Channel vaiable is broken. %s", pszLegCBNo);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Channel vaiable is broken. %s", pszLegCBNo);
 
             return DOS_FAIL;
         }
@@ -139,7 +139,7 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
 
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(LOG_LEVEL_ERROR, "Create leg without a LEG CB. Leg No:%s(%u)"
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Create leg without a LEG CB. Leg No:%s(%u)"
                               , pszLegCBNo ? pszLegCBNo : "NULL"
                               , ulLCBNo);
 
@@ -150,7 +150,7 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     pszCallSrc = esl_event_get_header(pstEvent, "variable_sofia_profile_name");
     if (DOS_ADDR_INVALID(pszCallSrc))
     {
-        sc_log(LOG_LEVEL_ERROR, "Create leg without profile.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Create leg without profile.");
 
         goto proc_fail;
     }
@@ -159,7 +159,7 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     pszCallDirection = esl_event_get_header(pstEvent, "Call-Direction");
     if (DOS_ADDR_INVALID(pszCallDirection))
     {
-        sc_log(LOG_LEVEL_ERROR, "Create leg without call direction.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Create leg without call direction.");
 
         goto proc_fail;
     }
@@ -202,7 +202,8 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     if (DOS_ADDR_INVALID(pszCalling) || DOS_ADDR_INVALID(pszCallee)
         || DOS_ADDR_INVALID(pszANI) || DOS_ADDR_INVALID(pszLegUUID))
     {
-        sc_log(LOG_LEVEL_ERROR, "Create leg without number info. Leg No:%u. Calling: %s, Callee: %s, ANI: %s"
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU)
+                              , "Create leg without number info. Leg No:%u. Calling: %s, Callee: %s, ANI: %s"
                               , pstLCB->ulCBNo
                               , pszCalling ? pszCalling : "NULL"
                               , pszCallee ? pszCallee : "NULL"
@@ -283,6 +284,13 @@ U32 sc_esl_event_answer(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     }
 
     sc_trace_leg(pstLegCB, "Call has been answered. Leg: %u, SCB: %u", pstLegCB->ulCBNo, pstLegCB->ulSCBNo);
+
+    if (!pstLegCB->stCall.bEarlyMedia)
+    {
+        sc_trace_leg(pstLegCB, "Call has been answered, waiting park. Leg: %u, SCB: %u", pstLegCB->ulCBNo, pstLegCB->ulSCBNo);
+
+        return DOS_SUCC;
+    }
 
     pstLegCB->stCall.ucStatus = SC_LEG_ACTIVE;
 
@@ -393,7 +401,7 @@ U32 sc_esl_event_progress(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 {
     S8  *pszDisposition = NULL;
-    SC_MSG_EVT_MEDIA_ST stMedia;
+    SC_MSG_EVT_ANSWER_ST  stSCEvent;
 
     if (DOS_ADDR_INVALID(pstLegCB))
     {
@@ -401,22 +409,33 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         return DOS_FAIL;
     }
 
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Start exchange media. LEG:%u, SCB:%u", pstLegCB->ulCBNo, pstLegCB->ulSCBNo);
+
     pszDisposition = esl_event_get_header(pstEvent, "variable_endpoint_disposition");
-    if (DOS_ADDR_INVALID(pszDisposition)
-        || dos_strnicmp(pszDisposition, "EARLY MEDIA", dos_strlen("EARLY MEDIA")))
+    if (DOS_ADDR_VALID(pszDisposition))
     {
-        sc_trace_leg(pstLegCB, "Park after answer");
+        if (dos_strnicmp(pszDisposition, "EARLY MEDIA", dos_strlen("EARLY MEDIA")) == 0)
+        {
+            pstLegCB->stCall.bEarlyMedia = DOS_TRUE;
+        }
+    }
+
+    if (pstLegCB->stCall.bEarlyMedia)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_SU), "Start exchange media for early media. LEG:%u, SCB:%u", pstLegCB->ulCBNo, pstLegCB->ulSCBNo);
+
         return DOS_SUCC;
     }
 
-    stMedia.stMsgTag.ulMsgType = pstLegCB->ulSCBNo;
-    stMedia.stMsgTag.ulMsgType = SC_EVT_EXCHANGE_MEDIA;
-    stMedia.stMsgTag.usInterErr = 0;
-    stMedia.stMsgTag.usMsgLen = 0;
-    stMedia.ulLegNo = pstLegCB->ulCBNo;
-    stMedia.ulSCBNo = pstLegCB->ulSCBNo;
+    pstLegCB->stCall.ucStatus = SC_LEG_ACTIVE;
 
-    sc_send_event_exchange_media(&stMedia);
+    stSCEvent.stMsgTag.ulMsgType = SC_EVT_CALL_AMSWERED;
+    stSCEvent.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
+    stSCEvent.ulSCBNo = pstLegCB->ulSCBNo;
+    stSCEvent.ulLegNo = pstLegCB->ulCBNo;
+
+    sc_send_event_answer(&stSCEvent);
+
 
     return DOS_SUCC;
 }
@@ -586,12 +605,12 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
 
     if (dos_strnicmp(pszBody, "+OK", dos_strlen("+OK")) == 0)
     {
-        sc_log(LOG_LEVEL_DEBUG, "BJ-JOB exec succ. Command: %s, Argv: %s", pszCommand, pszArgv);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "BJ-JOB exec succ. Command: %s, Argv: %s", pszCommand, pszArgv);
 
         return DOS_SUCC;
     }
 
-    sc_log(LOG_LEVEL_WARNING, "BJ-JOB exec fail. Command: %s, Argv: %s, Reply: %s", pszCommand, pszArgv, pszBody);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_SU), "BJ-JOB exec fail. Command: %s, Argv: %s, Reply: %s", pszCommand, pszArgv, pszBody);
 
     if (dos_strnicmp(pszCommand, "originate", dos_strlen("originate")) == 0)
     {
@@ -882,12 +901,12 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
         return DOS_FAIL;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Processing call command. SCB: %u, LCB: %u", pstCMDMakeCall->ulSCBNo, pstCMDMakeCall->ulLCBNo);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processing call command. SCB: %u, LCB: %u", pstCMDMakeCall->ulSCBNo, pstCMDMakeCall->ulLCBNo);
 
     pstLegCB = sc_lcb_get(pstCMDMakeCall->ulLCBNo);
     if (DOS_ADDR_INVALID(pstLegCB))
     {
-        sc_log(LOG_LEVEL_ERROR, "Alloc lcb fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Alloc lcb fail.");
 
         stErrReport.stMsgTag.usInterErr = SC_ERR_ALLOC_RES_FAIL;
         goto proc_fail;
@@ -974,7 +993,7 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
         if (pstLegCB->stCall.ulTrunkCnt <= 0)
         {
             /** 上报错误 */
-            sc_log(LOG_LEVEL_ERROR, "There is no trunk .");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "There is no trunk .");
             stErrReport.stMsgTag.usInterErr = SC_ERR_INVALID_MSG;
             goto proc_fail;
         }
@@ -991,7 +1010,7 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
         if (ulLength <= 0)
         {
             /** 上报错误 */
-            sc_log(LOG_LEVEL_ERROR, "There is no valid trunk.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "There is no valid trunk.");
             stErrReport.stMsgTag.usInterErr = SC_ERR_INVALID_MSG;
             goto proc_fail;
         }
@@ -1011,14 +1030,14 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
     if (sc_esl_execute_cmd(szCallString, szBGJOBUUID, sizeof(szBGJOBUUID)) != DOS_SUCC)
     {
         /** 上报错误 */
-        sc_log(LOG_LEVEL_ERROR, "Exec esl cmd fail");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Exec esl cmd fail");
         stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
         goto proc_fail;
     }
 
     sc_bgjob_hash_add(pstLegCB->ulSCBNo, szBGJOBUUID);
 
-    sc_log(LOG_LEVEL_DEBUG, "send call succ.");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "send call succ.");
 
     return DOS_SUCC;
 
@@ -1055,13 +1074,13 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
 
     pstAnswer = (SC_MSG_CMD_RINGBACK_ST *)pstMsg;
 
-    sc_log(LOG_LEVEL_DEBUG, "request answer leg %u", pstAnswer->ulLegNo);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "request answer leg %u", pstAnswer->ulLegNo);
 
     pstLeg = sc_lcb_get(pstAnswer->ulLegNo);
     if (DOS_ADDR_INVALID(pstLeg))
     {
         stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
-        sc_log(LOG_LEVEL_DEBUG, "Get scb fail. %u", pstAnswer->ulLegNo);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
         goto proc_fail;
     }
 
@@ -1077,7 +1096,7 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
         if (sc_esl_execute("playback", pszArgv, pstLeg->szUUID) != DOS_SUCC)
         {
             stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-            sc_log(LOG_LEVEL_DEBUG, "Play ringback tone. %u.", pstAnswer->ulLegNo);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u.", pstAnswer->ulLegNo);
             goto proc_fail;
         }
     }
@@ -1086,7 +1105,7 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
         if (sc_esl_execute("ring_ready", "", pstLeg->szUUID) != DOS_SUCC)
         {
             stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-            sc_log(LOG_LEVEL_DEBUG, "Play ringback tone. %u", pstAnswer->ulLegNo);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u", pstAnswer->ulLegNo);
             goto proc_fail;
         }
     }
@@ -1121,13 +1140,13 @@ U32 sc_cmd_answer_call(SC_MSG_TAG_ST *pstMsg)
 
     pstAnswer = (SC_MSG_CMD_ANSWER_ST *)pstMsg;
 
-    sc_log(LOG_LEVEL_DEBUG, "request answer leg %u", pstAnswer->ulLegNo);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "request answer leg %u", pstAnswer->ulLegNo);
 
     pstLeg = sc_lcb_get(pstAnswer->ulLegNo);
     if (DOS_ADDR_INVALID(pstLeg))
     {
         stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
-        sc_log(LOG_LEVEL_DEBUG, "Get scb fail. %u", pstAnswer->ulLegNo);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
         goto proc_fail;
     }
 
@@ -1136,7 +1155,7 @@ U32 sc_cmd_answer_call(SC_MSG_TAG_ST *pstMsg)
     if (sc_esl_execute_cmd(szCMD, szUUID, sizeof(szUUID)) != DOS_SUCC)
     {
         stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-        sc_log(LOG_LEVEL_DEBUG, "Get scb fail. %u", pstAnswer->ulLegNo);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
         goto proc_fail;
     }
 
@@ -1229,7 +1248,7 @@ U32 sc_cmd_bridge_call(SC_MSG_TAG_ST *pstMsg)
 
     pstBridge = (SC_MSG_CMD_BRIDGE_ST *)pstMsg;
 
-    sc_log(LOG_LEVEL_DEBUG, "request bridge leg %u<-->%u", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "request bridge leg %u<-->%u", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
 
     pstCallingLeg = sc_lcb_get(pstBridge->ulCallingLegNo);
     pstCalleeLeg = sc_lcb_get(pstBridge->ulCalleeLegNo);
@@ -1237,14 +1256,14 @@ U32 sc_cmd_bridge_call(SC_MSG_TAG_ST *pstMsg)
     {
         stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
 
-        sc_log(LOG_LEVEL_ERROR, "request bridge leg %u<-->%u. Leg not exist", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "request bridge leg %u<-->%u. Leg not exist", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
         goto proc_fail;
     }
 
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_bridge %s %s \r\n", pstCallingLeg->szUUID, pstCalleeLeg->szUUID);
     if (sc_esl_execute_cmd(szCMD, NULL, 0) != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "request bridge leg %u<-->%u. exec esl cmd fail.", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "request bridge leg %u<-->%u. exec esl cmd fail.", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
 
         stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
         goto proc_fail;
@@ -1337,10 +1356,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         stErrReport.stMsgTag.ulMsgType = SC_ERR_INVALID_MSG;
         goto proc_fail;
     }
-/*
-    ulLen = dos_strlen(pszPlayCMDArg);
-    dos_snprintf(pszPlayCMDArg + ulLen, SC_MAX_FILELIST_LEN - ulLen, ";loops=%u", pstPlayback->ulLoopCnt);
-*/
+
     /* 根据状态处理 */
     switch (pstLCB->stPlayback.usStatus)
     {
@@ -1390,7 +1406,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
 
     if (0 == pstLCB->stPlayback.ulTotal)
     {
-        sc_log(LOG_LEVEL_WARNING, "there is no voice hint to play.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_SU), "there is no voice hint to play.");
 
         sc_lcb_playback_init(&pstLCB->stPlayback);
 
@@ -1735,7 +1751,7 @@ VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
         return;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Processing cmd, type: %u, len: %u", pstMsg->ulMsgType, pstMsg->usMsgLen);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processing cmd, type: %u, len: %u", pstMsg->ulMsgType, pstMsg->usMsgLen);
 
     switch (pstMsg->ulMsgType)
     {
@@ -1788,11 +1804,11 @@ VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
             break;
 
         default:
-            sc_log(LOG_LEVEL_NOTIC, "Invalid cmd type. %u", pstMsg->ulMsgType);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SU), "Invalid cmd type. %u", pstMsg->ulMsgType);
             break;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Processed cmd, type: %u, len: %u. Ret: %s", pstMsg->ulMsgType, pstMsg->usMsgLen, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processed cmd, type: %u, len: %u. Ret: %s", pstMsg->ulMsgType, pstMsg->usMsgLen, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 }
 
 /**

@@ -32,26 +32,6 @@ U32          g_ulMaxConcurrency4Task  = SC_MAX_CALL / 3;
 
 /* define marcos */
 
-/* define enums */
-typedef enum tagSCSUBMod{
-    SC_MOD_DB,
-    SC_MOD_RES,
-    SC_MOD_ESL,
-    SC_MOD_EVENT,
-    SC_MOD_SU,
-    SC_MOD_BS,
-    SC_MOD_ACD,
-    SC_MOD_EXT_MNGT,
-    SC_MOD_CWQ,
-    SC_MOD_DIGIST,
-    SC_MOD_DATA_SYN,
-    SC_MOD_HTTP_API,
-    SC_MOD_PUBLISH,
-    SC_MOD_DB_WQ,
-    SC_MOD_TASK,
-
-    SC_MOD_BUTT,
-}SC_SUBMOD_EN;
 
 /* define structs */
 typedef struct tagSCModList{

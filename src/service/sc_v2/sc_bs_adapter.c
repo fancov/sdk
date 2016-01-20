@@ -599,7 +599,7 @@ U32 sc_send_hello2bs(U32 ulClientIndex)
 
     if (ulClientIndex >= SC_MAX_BS_CLIENT)
     {
-        sc_log(LOG_LEVEL_WARNING, "Invalid client index. Max : %d, Current : %d", SC_MAX_BS_CLIENT, ulClientIndex);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Invalid client index. Max : %d, Current : %d", SC_MAX_BS_CLIENT, ulClientIndex);
         return DOS_FAIL;
     }
 
@@ -637,7 +637,7 @@ U32 sc_send_usr_auth2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     {
         DOS_ASSERT(0);
 
-        sc_log(LOG_LEVEL_WARNING, "%s", "Invalid SCB while send the auth msg.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Invalid SCB while send the auth msg.");
         return DOS_FAIL;
     }
 

@@ -130,7 +130,7 @@ U32 mon_mail_init();
 U32 mon_mail_start();
 U32 mon_mail_send_warning(MON_WARNING_TYPE_EN enWarnType, MON_WARNING_LEVEL_EN enWarnLevel, S8 *szAddr, S8 *szTitle, S8 *szMessage);
 
-#endif /* end of __SC_LOG_DIGEST_H__ */
+#endif /* end of __MON_MAIL_H__ */
 
 #ifdef __cplusplus
 }

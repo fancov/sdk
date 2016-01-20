@@ -390,8 +390,7 @@ typedef enum tagSCSUCommand{
  */
 typedef enum tagSCSUEvent{
     SC_EVT_CALL_SETUP,          /**< 呼叫被创建 */
-    SC_EVT_EXCHANGE_MEDIA,      /**< 呼叫开始交换媒体 */
-    SC_EVT_CALL_RINGING,       /**< 呼叫被应答 */
+    SC_EVT_CALL_RINGING,        /**< 呼叫被应答 */
     SC_EVT_CALL_AMSWERED,       /**< 呼叫被应答 */
     SC_EVT_BRIDGE_START,        /**< 开始桥接开始 */
     SC_EVT_HOLD,                /**< 呼叫保持 */
@@ -580,7 +579,7 @@ typedef struct tagACDQueryMngtNode
     HASH_TABLE_S     *pstRelationList;             /* 主叫号码和坐席的对应关系列表 */
 
     SC_AGENT_GRP_STAT_ST stStat;
-}SC_ACD_GRP_HASH_NODE_ST;
+}SC_AGENT_GRP_NODE_ST;
 
 typedef struct tagACDFindSiteParam
 {
@@ -1303,7 +1302,7 @@ typedef struct tagSCSrvCB{
     /** 监听业务控制块 */
     SC_INTERCEPTION_ST   stInterception;
     /** 耳语业务控制块 */
-    SC_SRV_WHISPER_ST    stWhisoered;
+    SC_SRV_WHISPER_ST    stWhispered;
     /** 客户标记业务控制块 */
     SC_MARK_CUSTOM_ST    stMarkCustom;
     /** 余额告警业务是否启用 */
@@ -1455,17 +1454,6 @@ typedef struct tagSCMsgEvtRinging{
     /** 是否带有媒体 */
     U32     ulWithMedia;
 }SC_MSG_EVT_RINGING_ST;
-
-/** 媒体交换事件 */
-typedef struct tagSCMsgEvtMedia{
-    SC_MSG_TAG_ST    stMsgTag;              /**< 消息头 */
-
-    /** 业务控制块编号 */
-    U32     ulSCBNo;
-
-    /** LEG编号 */
-    U32     ulLegNo;
-}SC_MSG_EVT_MEDIA_ST;
 
 /** 呼叫接听事件 */
 typedef struct tagSCMsgEvtAnswer{
@@ -1746,7 +1734,6 @@ U32 sc_send_event_auth_rsp(SC_MSG_EVT_AUTH_RESULT_ST *pstEvent);
 U32 sc_send_event_answer(SC_MSG_EVT_ANSWER_ST *pstEvent);
 U32 sc_send_event_release(SC_MSG_EVT_HUNGUP_ST *pstEvent);
 U32 sc_send_event_ringing(SC_MSG_EVT_RINGING_ST *pstEvent);
-U32 sc_send_event_exchange_media(SC_MSG_EVT_MEDIA_ST *pstEvent);
 U32 sc_send_event_hold(SC_MSG_EVT_HOLD_ST *pstEvent);
 U32 sc_send_event_dtmf(SC_MSG_EVT_DTMF_ST *pstEvent);
 U32 sc_send_event_record(SC_MSG_EVT_RECORD_ST *pstEvent);
@@ -1800,6 +1787,8 @@ U32 sc_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID,
 U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
 U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
 
+U32 sc_acd_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);
+S32 sc_acd_grp_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
 U32 sc_acd_get_agent_cnt_by_grp(U32 ulGrpID);
 U32 sc_acd_agent_stat_by_grpid(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32 *pulIdel, U32 *pulBusy);
 SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID);

@@ -60,9 +60,6 @@ static HASH_TABLE_S     *g_pstHashAssert = NULL;
  */
 static pthread_mutex_t  g_mutexAssertInfo = PTHREAD_MUTEX_INITIALIZER;
 
-#if 0
-extern U32 sc_log_digest_print(S8 *pszFormat, ...);
-#endif
 
 /**
  * 函数: static U32 _assert_string_hash(S8 *pszString, U32 *pulIndex)
@@ -269,10 +266,6 @@ DLLEXPORT VOID dos_assert(const S8 *pszFileName, const U32 ulLine, const U32 par
     U32 ulHashIndex;
     S8 szFileLine[256] = { 0, };
     DOS_ASSERT_NODE_ST *pstFileDescNode = NULL;
-
-#if 0
-    sc_log_digest_print("Assert happened: file=%s, line=%d, param:%d", pszFileName, ulLine , param);
-#endif
 
     /* 生产hash表key */
     dos_snprintf(szFileLine, sizeof(szFileLine), "%s:%d", pszFileName, ulLine);

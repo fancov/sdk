@@ -177,7 +177,7 @@ U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
 
     pRequest = pstNode->pszData;
 
-    sc_log(LOG_LEVEL_DEBUG, "HTTP Request: %s", pRequest);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DATA_SYN), "HTTP Request: %s", pRequest);
 
     /* 获取请求的文件 */
     pStart = pRequest;
@@ -219,7 +219,7 @@ U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
     dos_strncpy(szReqLine, pStart, sizeof(szReqLine));
     szReqLine[sizeof(szReqLine) - 1] = '\0';
 
-    sc_log(LOG_LEVEL_DEBUG, "HTTP Request Line: %s?%s", szReqBuffer, szReqLine);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DATA_SYN), "HTTP Request Line: %s?%s", szReqBuffer, szReqLine);
 
     /* 获取 key=value 字符串 */
     lKeyCnt = 0;
@@ -248,7 +248,7 @@ U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
         goto cmd_prase_fail1;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "%s", "Start parse the http request.");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DATA_SYN), "%s", "Start parse the http request.");
 
     /* 解析key=value，并将结果存入链表 */
     dos_list_init(&stParamList);
@@ -259,7 +259,7 @@ U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
             continue;
         }
 
-        sc_log(LOG_LEVEL_DEBUG, "Process Token: %s", pszKeyWord[lParamIndex]);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DATA_SYN), "Process Token: %s", pszKeyWord[lParamIndex]);
 
         pWord = dos_strstr(pszKeyWord[lParamIndex], "=");
         pValue = pWord;
@@ -291,7 +291,7 @@ U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
         dos_list_add_tail(&(stParamList), &pstParamsList->stList);
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Parse the http request finished. Request: %s", szReqBuffer);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DATA_SYN), "Parse the http request finished. Request: %s", szReqBuffer);
 
     ulRet = SC_HTTP_ERRNO_INVALID_REQUEST;
     cb = sc_http_api_find(szReqBuffer);
@@ -301,10 +301,10 @@ U32 sc_data_syn_proc(SC_SYN_REQUEST_DATA_ST *pstNode)
     }
     else
     {
-        sc_log(LOG_LEVEL_NOTIC, "Cannot find the callback function for the request %s", szReqBuffer);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_DATA_SYN), "Cannot find the callback function for the request %s", szReqBuffer);
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "HTTP Request process finished. Return code: 0x%X", ulRet);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DATA_SYN), "HTTP Request process finished. Return code: 0x%X", ulRet);
 
     while (1)
     {
@@ -430,7 +430,7 @@ VOID* sc_data_syn_runtime(VOID *ptr)
         /* Socket 文件被删除了 */
         if (g_blConnected && access(SC_DATA_SYN_SOCK_PATH, F_OK) < 0)
         {
-            sc_log(LOG_LEVEL_ERROR, "%s", "Socket file has been lost.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DATA_SYN), "%s", "Socket file has been lost.");
 
             close(lSocket);
             lSocket = -1;
@@ -443,7 +443,7 @@ VOID* sc_data_syn_runtime(VOID *ptr)
             lSocket = socket(AF_UNIX, SOCK_STREAM, 0);
             if (lSocket < 0)
             {
-                sc_log(LOG_LEVEL_ERROR, "%s", "ERR: create socket fail!");
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DATA_SYN), "%s", "ERR: create socket fail!");
                 goto connect_fail;
             }
 
@@ -456,7 +456,7 @@ VOID* sc_data_syn_runtime(VOID *ptr)
             lRet = bind(lSocket, (struct sockaddr *)&stAddr, lAddrLen);
             if (lRet < 0)
             {
-                sc_log(LOG_LEVEL_ERROR, "%s", "ERR: bind socket fail!");
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DATA_SYN), "%s", "ERR: bind socket fail!");
                 close(lSocket);
                 lSocket= -1;
                 goto connect_fail;
@@ -468,7 +468,7 @@ VOID* sc_data_syn_runtime(VOID *ptr)
             lRet = listen(lSocket, SOMAXCONN);
             if (lRet < 0)
             {
-                sc_log(LOG_LEVEL_ERROR, "%s", "ERR: listen socket fail!");
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DATA_SYN), "%s", "ERR: listen socket fail!");
                 close(lSocket);
                 goto connect_fail;
             }
@@ -487,7 +487,7 @@ connect_fail:
         lRet = select(lSocket + 1, &stFDSet, NULL, NULL, &stTimeout);
         if (lRet < 0)
         {
-            sc_log(LOG_LEVEL_ERROR, "%s", "Select FAIL.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DATA_SYN), "%s", "Select FAIL.");
             g_blConnected = DOS_FALSE;
             continue;
         }
@@ -504,7 +504,7 @@ connect_fail:
         lClientSocket = accept(lSocket, (struct sockaddr *)&stAddrIn, (socklen_t *)&lAddrLen);
         if (lClientSocket < 0)
         {
-            sc_log(LOG_LEVEL_ERROR, "%s", "Accept FAIL.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DATA_SYN), "%s", "Accept FAIL.");
             continue;
         }
 
@@ -512,7 +512,7 @@ connect_fail:
         lRet = recv(lClientSocket, aucBuff, SC_DATA_SYN_BUFF_LEN, 0);
         if (lRet < 0)
         {
-            sc_log(LOG_LEVEL_ERROR, "%s", "Recv FAIL.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DATA_SYN), "%s", "Recv FAIL.");
             close(lClientSocket);
             lClientSocket = -1;
             g_blConnected = DOS_FALSE;
@@ -527,7 +527,7 @@ connect_fail:
 
         /* TODO: 转换之后需要处理消息 */
 
-        sc_log(LOG_LEVEL_INFO, "%s", "Recv data syn command!");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_DATA_SYN), "%s", "Recv data syn command!");
 
         g_blSCDataSybFlag = DOS_TRUE;
 

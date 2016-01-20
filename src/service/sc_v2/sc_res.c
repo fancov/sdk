@@ -157,7 +157,7 @@ U32 sc_sip_account_get_customer(S8 *pszNum)
     pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)pszNum, sc_sip_account_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode))
     {
-        sc_log(LOG_LEVEL_DEBUG, "Get customer FAIL by sip(%s)", pszNum);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get customer FAIL by sip(%s)", pszNum);
         pthread_mutex_unlock(&g_mutexHashSIPUserID);
         return U32_BUTT;
     }
@@ -166,7 +166,7 @@ U32 sc_sip_account_get_customer(S8 *pszNum)
     {
         DOS_ASSERT(0);
 
-        sc_log(LOG_LEVEL_DEBUG, "Get customer FAIL by sip(%s), data error", pszNum);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get customer FAIL by sip(%s), data error", pszNum);
         pthread_mutex_unlock(&g_mutexHashSIPUserID);
         return U32_BUTT;
     }
@@ -477,7 +477,7 @@ U32 sc_sip_account_load(U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_log(LOG_LEVEL_DEBUG, "Load sip account fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Load sip account fail.");
         return DOS_FAIL;
     }
 
@@ -1041,7 +1041,7 @@ U32 sc_customer_delete(U32 ulCustomerID)
     {
         pthread_mutex_unlock(&g_mutexCustomerList);
 
-        sc_log(LOG_LEVEL_ERROR, "Num Transform Delete FAIL.ID %u does not exist.", ulCustomerID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Num Transform Delete FAIL.ID %u does not exist.", ulCustomerID);
         return DOS_FAIL;
     }
 
@@ -1051,7 +1051,7 @@ U32 sc_customer_delete(U32 ulCustomerID)
     pstListNode->pHandle= NULL;
     dos_dmem_free(pstListNode);
     pstListNode = NULL;
-    sc_log(LOG_LEVEL_ERROR, "Delete Num Transform SUCC.(ID:%u)", ulCustomerID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Delete Num Transform SUCC.(ID:%u)", ulCustomerID);
 
     return DOS_SUCC;
 }
@@ -1241,7 +1241,7 @@ U32 sc_customer_update_proc(U32 ulAction, U32 ulCustomerID)
         default:
             break;
     }
-    sc_log(LOG_LEVEL_DEBUG, "Update customer SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCustomerID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Update customer SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCustomerID);
 
     return DOS_SUCC;
 }
@@ -1523,7 +1523,7 @@ U32 sc_gateway_load(U32 ulIndex)
     ulRet = db_query(g_pstSCDBHandle, szSQL, sc_gateway_load_cb, NULL, NULL);
     if (DB_ERR_SUCC != ulRet)
     {
-        sc_log(LOG_LEVEL_ERROR, "Load gateway FAIL.(ID:%u)", ulIndex);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Load gateway FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
 #if 0
@@ -1537,7 +1537,7 @@ U32 sc_gateway_load(U32 ulIndex)
         }
     }
 #endif
-    sc_log(LOG_LEVEL_DEBUG, "Load gateway SUCC.(ID:%u)", ulIndex);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Load gateway SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -1622,7 +1622,7 @@ S32 sc_gateway_relationship_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 *
     DLL_Add(&pstGWGrp->stGWList, pstListNode);
     pthread_mutex_unlock(&pstGWGrp->mutexGWList);
 
-    sc_log(LOG_LEVEL_DEBUG, "Gateway %u will be added into group %u.", ulGatewayID, pstGWGrp->ulGWGrpID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Gateway %u will be added into group %u.", ulGatewayID, pstGWGrp->ulGWGrpID);
 
     return DOS_FAIL;
 }
@@ -1785,10 +1785,10 @@ U32 sc_gateway_group_load(U32 ulIndex)
     ulRet = db_query(g_pstSCDBHandle, szSQL, sc_gateway_group_load_cb, NULL, NULL);
     if (ulRet != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Load gateway Group FAIL.(ID:%u)", ulIndex);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Load gateway Group FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
-    sc_log(LOG_LEVEL_DEBUG, "Load gateway Group SUCC.(ID:%u)", ulIndex);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Load gateway Group SUCC.(ID:%u)", ulIndex);
 
     return ulRet;
 }
@@ -1903,7 +1903,7 @@ U32 sc_gateway_group_refresh(U32 ulIndex)
             break;
         }
         pstGWNode = (SC_GW_NODE_ST *)pstDLLNode->pHandle;
-        sc_log(LOG_LEVEL_DEBUG, "Gateway %u will be removed from Group %u", pstGWNode->ulGWID, ulIndex);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Gateway %u will be removed from Group %u", pstGWNode->ulGWID, ulIndex);
 
         /* 此处不能释放网关数据，只需释放链表结点即可，因为一个网关可以属于多个网关组，此处删除，容易产生double free信号 */
         if (DOS_ADDR_VALID(pstDLLNode->pHandle))
@@ -1957,7 +1957,7 @@ U32 sc_gateway_group_update_proc(U32 ulAction, U32 ulGwGroupID)
             break;
     }
 
-    sc_log(LOG_LEVEL_INFO, "Edit gw group Finished. ID: %u Action:%u, Result: %u", ulGwGroupID, ulAction, ulRet);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Edit gw group Finished. ID: %u Action:%u, Result: %u", ulGwGroupID, ulAction, ulRet);
 
     return ulRet;
 }
@@ -2365,10 +2365,10 @@ U32 sc_route_load(U32 ulIndex)
     if (DB_ERR_SUCC != lRet)
     {
         DOS_ASSERT(0);
-        sc_log(LOG_LEVEL_ERROR, "Load route FAIL(ID:%u).", ulIndex);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Load route FAIL(ID:%u).", ulIndex);
         return DOS_FAIL;
     }
-    sc_log(LOG_LEVEL_DEBUG, "Load route SUCC.(ID:%u)", ulIndex);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Load route SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -2600,7 +2600,7 @@ U32 sc_route_get_trunks(U32 ulRouteID, U32 *paulTrunkList, U32 ulTrunkListSize)
     pthread_mutex_unlock(&g_mutexRouteList);
     if (DOS_ADDR_INVALID(pstListNode))
     {
-        sc_log(LOG_LEVEL_ERROR, "cannot the route by the id %u", ulRouteID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "cannot the route by the id %u", ulRouteID);
         return 0;
     }
 
@@ -2642,7 +2642,7 @@ U32 sc_route_get_trunks(U32 ulRouteID, U32 *paulTrunkList, U32 ulTrunkListSize)
                     break;
                 }
 
-                sc_log(LOG_LEVEL_DEBUG, "Search gateway Group, ID is %u", pstRouetEntry->aulDestID[lIndex]);
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Search gateway Group, ID is %u", pstRouetEntry->aulDestID[lIndex]);
 
                 ulHashIndex = sc_int_hash_func(pstRouetEntry->aulDestID[lIndex], SC_GW_GRP_HASH_SIZE);
                 pstHashNode = hash_find_node(g_pstHashGWGrp, ulHashIndex, (VOID *)&pstRouetEntry->aulDestID[lIndex], sc_gateway_group_hash_find);
@@ -2650,7 +2650,7 @@ U32 sc_route_get_trunks(U32 ulRouteID, U32 *paulTrunkList, U32 ulTrunkListSize)
                     || DOS_ADDR_INVALID(pstHashNode->pHandle))
                 {
                     /* 没有找到对应的中继组，继续查找下一个，这种情况，理论上是不应该出现的 */
-                    sc_log(LOG_LEVEL_WARNING, "Not found gateway group %d", pstRouetEntry->aulDestID[lIndex]);
+                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_RES), "Not found gateway group %d", pstRouetEntry->aulDestID[lIndex]);
                     continue;
                 }
 
@@ -2783,7 +2783,7 @@ U32 sc_transform_delete(U32 ulTransformID)
     {
         pthread_mutex_unlock(&g_mutexNumTransformList);
 
-        sc_log(LOG_LEVEL_ERROR, "Num Transform Delete FAIL.ID %u does not exist.", ulTransformID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Num Transform Delete FAIL.ID %u does not exist.", ulTransformID);
         return DOS_FAIL;
     }
 
@@ -2793,7 +2793,7 @@ U32 sc_transform_delete(U32 ulTransformID)
     pstListNode->pHandle= NULL;
     dos_dmem_free(pstListNode);
     pstListNode = NULL;
-    sc_log(LOG_LEVEL_DEBUG, "Delete Num Transform SUCC.(ID:%u)", ulTransformID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Delete Num Transform SUCC.(ID:%u)", ulTransformID);
 
     return DOS_SUCC;
 }
@@ -3116,10 +3116,10 @@ U32 sc_transform_load(U32 ulIndex)
     lRet = db_query(g_pstSCDBHandle, szSQL, sc_transform_load_cb, NULL, NULL);
     if (DB_ERR_SUCC != lRet)
     {
-        sc_log(LOG_LEVEL_ERROR, "Load Num Transform FAIL.(ID:%u)", ulIndex);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Load Num Transform FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
-    sc_log(LOG_LEVEL_DEBUG, "Load Num Transform SUCC.(ID:%u)", ulIndex);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Load Num Transform SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -3144,7 +3144,7 @@ U32 sc_transform_update_proc(U32 ulAction, U32 ulNumTransID)
         default:
             break;
     }
-    sc_log(LOG_LEVEL_INFO, "Update num transform SUCC.(ulAction:%u, ulID:%d)", ulAction, ulNumTransID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Update num transform SUCC.(ulAction:%u, ulID:%d)", ulAction, ulNumTransID);
 
     return DOS_SUCC;
 }
@@ -3360,11 +3360,11 @@ U32 sc_black_list_load(U32 ulIndex)
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_black_list_load_cb, NULL, NULL) != DB_ERR_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "%s", "Load black list fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "%s", "Load black list fail.");
         return DOS_FAIL;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "%s", "Load black list succ.");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Load black list succ.");
 
     return DOS_SUCC;
 }
@@ -3401,7 +3401,7 @@ U32 sc_black_list_update(U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_log(LOG_LEVEL_ERROR, "%s", "Load blacklist fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "%s", "Load blacklist fail.");
         return DOS_FAIL;
     }
     return DOS_SUCC;
@@ -3680,10 +3680,10 @@ U32 sc_caller_load(U32 ulIndex)
     ulRet = db_query(g_pstSCDBHandle, szQuery, sc_caller_load_cb, NULL, NULL);
     if (DB_ERR_SUCC != ulRet)
     {
-        sc_log(LOG_LEVEL_ERROR, "Load caller FAIL.(ID:%u)", ulIndex);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Load caller FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
-    sc_log(LOG_LEVEL_DEBUG, "Load Caller SUCC.(ID:%u)", ulIndex);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Load Caller SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -3721,7 +3721,7 @@ U32 sc_caller_delete(U32 ulCallerID)
 
     if (DOS_FALSE == bFound)
     {
-        sc_log(LOG_LEVEL_ERROR, "Delete Caller FAIL.(ulID:%u)", ulCallerID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Delete Caller FAIL.(ulID:%u)", ulCallerID);
         return DOS_FAIL;
     }
     else
@@ -3733,7 +3733,7 @@ U32 sc_caller_delete(U32 ulCallerID)
         dos_dmem_free(pstHashNode);
         pstHashNode = NULL;
 
-        sc_log(LOG_LEVEL_DEBUG, "Delete Caller SUCC.(ulID:%u)", ulCallerID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Delete Caller SUCC.(ulID:%u)", ulCallerID);
 
         return DOS_SUCC;
     }
@@ -3955,13 +3955,13 @@ U32 sc_caller_relationship_load()
             lRet = db_query(g_pstSCDBHandle, szQuery, sc_caller_relationship_load_cb, (VOID *)pstCallerGrp, NULL);
             if (DB_ERR_SUCC != lRet)
             {
-                sc_log(LOG_LEVEL_ERROR, "Load Caller RelationShip FAIL.(CallerGrpID:%u)", pstCallerGrp->ulID);
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Load Caller RelationShip FAIL.(CallerGrpID:%u)", pstCallerGrp->ulID);
                 DOS_ASSERT(0);
                 return DOS_FAIL;
             }
         }
     }
-    sc_log(LOG_LEVEL_DEBUG, "%s", "Load Caller relationship SUCC.");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Load Caller relationship SUCC.");
 
     return DOS_SUCC;
 }
@@ -4118,10 +4118,10 @@ U32 sc_caller_group_load(U32 ulIndex)
     ulRet = db_query(g_pstSCDBHandle, szSQL, sc_caller_group_load_cb, NULL, NULL);
     if (ulRet != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Load caller group FAIL.(ID:%u)", ulIndex);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Load caller group FAIL.(ID:%u)", ulIndex);
         return DOS_FAIL;
     }
-    sc_log(LOG_LEVEL_DEBUG, "Load caller group SUCC.(ID:%u)", ulIndex);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Load caller group SUCC.(ID:%u)", ulIndex);
 
     return ulRet;
 }
@@ -4194,7 +4194,7 @@ U32 sc_caller_group_refresh(U32 ulIndex)
     {
         pthread_mutex_unlock(&g_mutexHashCallerGrp);
 
-        sc_log(LOG_LEVEL_ERROR, "SC Refresh Caller Grp FAIL.(CallerGrpID:%u)", ulIndex);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "SC Refresh Caller Grp FAIL.(CallerGrpID:%u)", ulIndex);
         return DOS_FAIL;
     }
     pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
@@ -4255,7 +4255,7 @@ U32 sc_caller_group_update_proc(U32 ulAction, U32 ulCallerGrpID)
         default:
             break;
     }
-    sc_log(LOG_LEVEL_INFO, "Update Caller Group SUCC.(ulAction:%u, ulCallerGrpID:%u)", ulAction, ulCallerGrpID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Update Caller Group SUCC.(ulAction:%u, ulCallerGrpID:%u)", ulAction, ulCallerGrpID);
 
     return DOS_SUCC;
 }
@@ -4280,7 +4280,7 @@ U32 sc_caller_update_proc(U32 ulAction, U32 ulCallerID)
         default:
             break;
     }
-    sc_log(LOG_LEVEL_INFO, "Update Caller SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCallerID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Update Caller SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCallerID);
 
     return DOS_SUCC;
 }
@@ -4460,7 +4460,7 @@ U32 sc_eix_dev_load(U32 ulIndex)
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_eix_dev_load_cb, NULL, NULL) != DB_ERR_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "%s", "Load TT number FAIL.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "%s", "Load TT number FAIL.");
         return DOS_FAIL;
     }
 
@@ -4549,13 +4549,13 @@ U32 sc_eix_dev_get_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength)
     {
         pthread_mutex_unlock(&g_mutexHashTTNumber);
 
-        sc_log(LOG_LEVEL_ERROR, "Cannot find the EIA for the TT number %s", pszTTNumber);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Cannot find the EIA for the TT number %s", pszTTNumber);
         return DOS_FAIL;
     }
 
     pthread_mutex_unlock(&g_mutexHashTTNumber);
 
-    sc_log(LOG_LEVEL_DEBUG, "Found the EIA(%s) for the TT number(%s).", pszEIX, pszTTNumber);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Found the EIA(%s) for the TT number(%s).", pszEIX, pszTTNumber);
     return DOS_SUCC;
 }
 
@@ -4579,7 +4579,7 @@ U32 sc_eix_dev_update_proc(U32 ulAction, U32 ulEixID)
         default:
             break;
     }
-    sc_log(LOG_LEVEL_INFO, "Update eix SUCC.(ulAction:%u, ulID:%d)", ulAction, ulEixID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Update eix SUCC.(ulAction:%u, ulID:%d)", ulAction, ulEixID);
 
     return DOS_SUCC;
 }
@@ -4951,7 +4951,7 @@ U32 sc_number_lmt_load(U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_log(LOG_LEVEL_DEBUG, "%s", "Load number limitation fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Load number limitation fail.");
         return DOS_FAIL;
     }
 
@@ -5015,7 +5015,7 @@ BOOL sc_number_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber)
     {
         pthread_mutex_unlock(&g_mutexHashNumberlmt);
 
-        sc_log(LOG_LEVEL_DEBUG
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES)
                 , "Number limit check for \"%s\", There is no limitation for this number."
                 , pszNumber);
         return DOS_TRUE;
@@ -5024,7 +5024,7 @@ BOOL sc_number_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber)
     pstNumLmt = (SC_NUMBER_LMT_NODE_ST *)pstHashNodeNumLmt->pHandle;
     if (pstNumLmt->ulStatUsed + ulCurrentTime < pstNumLmt->ulLimit)
     {
-        sc_log(LOG_LEVEL_DEBUG
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES)
                 , "Number limit check for \"%s\". This number did not reached the limitation. Cycle: %u, Limitation: %u, Used: %u"
                 , pszNumber, pstNumLmt->ulCycle, pstNumLmt->ulLimit, pstNumLmt->ulStatUsed + ulCurrentTime);
 
@@ -5036,7 +5036,7 @@ BOOL sc_number_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber)
 
     pthread_mutex_unlock(&g_mutexHashNumberlmt);
 
-    sc_log(LOG_LEVEL_NOTIC
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_RES)
             , "Number limit check for \"%s\", This number has reached the limitation. Process as handle: %u"
             , pszNumber, pstNumLmt->ulHandle);
 
@@ -5188,7 +5188,7 @@ U32 sc_number_lmt_update_proc(U32 ulAction, U32 ulNumlmtID)
         default:
             break;
     }
-    sc_log(LOG_LEVEL_INFO, "Update num limit SUCC.(ulAction:%u, ulID:%d)", ulAction, ulNumlmtID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Update num limit SUCC.(ulAction:%u, ulID:%d)", ulAction, ulNumlmtID);
 
     return DOS_SUCC;
 }
@@ -5380,7 +5380,7 @@ S32 sc_serv_ctrl_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     if (!blProcessOK || 9 != ulProcessCnt)
     {
-        sc_log(LOG_LEVEL_NOTIC, "Load service control rule fail.(%u, %u)", ulProcessCnt, blProcessOK);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_RES), "Load service control rule fail.(%u, %u)", ulProcessCnt, blProcessOK);
 
         dos_dmem_free(pstSrvCtrl);
         pstSrvCtrl = NULL;
@@ -5414,7 +5414,7 @@ S32 sc_serv_ctrl_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         {
             pthread_mutex_unlock(&g_mutexHashServCtrl);
 
-            sc_log(LOG_LEVEL_WARNING, "Alloc memory for service ctrl block fail. ID: %u, Customer: %u", stFindParam.ulID, stFindParam.ulCustomerID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_RES), "Alloc memory for service ctrl block fail. ID: %u, Customer: %u", stFindParam.ulID, stFindParam.ulCustomerID);
 
             dos_dmem_free(pstSrvCtrl);
             pstSrvCtrl = NULL;
@@ -5442,7 +5442,7 @@ S32 sc_serv_ctrl_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
     pthread_mutex_unlock(&g_mutexHashServCtrl);
 
-    sc_log(LOG_LEVEL_DEBUG, "Add service ctrl block. ID: %u, Customer: %u", stFindParam.ulID, stFindParam.ulCustomerID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Add service ctrl block. ID: %u, Customer: %u", stFindParam.ulID, stFindParam.ulCustomerID);
     return DOS_SUCC;
 }
 
@@ -5486,11 +5486,11 @@ U32 sc_serv_ctrl_load(U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_log(LOG_LEVEL_ERROR, "%s", "Load service control rule fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "%s", "Load service control rule fail.");
         return DOS_FAIL;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "%s", "Load service control rule succ.");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Load service control rule succ.");
 
     return DOS_SUCC;
 }
@@ -5551,7 +5551,7 @@ U32 sc_serv_ctrl_update_proc(U32 ulAction, U32 ulID)
             break;
     }
 
-    sc_log(LOG_LEVEL_INFO, "Update serv ctrl rule finished.(ulAction:%u, ulID:%d, Ret: %u)", ulAction, ulID, ulRet);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Update serv ctrl rule finished.(ulAction:%u, ulID:%d, Ret: %u)", ulAction, ulID, ulRet);
 
     return ulRet;
 }
@@ -5569,7 +5569,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
     ulHashIndex = sc_int_hash_func(ulCustomerID, SC_SERV_CTRL_HASH_SIZE);
     stTime = time(NULL);
 
-    sc_log(LOG_LEVEL_DEBUG, "match service control rule. Customer: %u, Service: %u, Attr1: %u, Attr2: %u, Attr1Val: %u, Attr2Val: %u"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "match service control rule. Customer: %u, Service: %u, Attr1: %u, Attr2: %u, Attr1Val: %u, Attr2Val: %u"
                 , ulCustomerID, ulServerType, ulAttr1, ulAttrVal1, ulAttr2, ulAttrVal2);
 
     blResult = DOS_FALSE;
@@ -5592,7 +5592,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
         if (stTime < pstSrvCtrl->ulEffectTimestamp
             || (pstSrvCtrl->ulExpireTimestamp && stTime > pstSrvCtrl->ulExpireTimestamp))
         {
-            sc_log(LOG_LEVEL_DEBUG, "Test service control rule: FAIL, Effect: %u, Expire: %u, Current: %u"
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: FAIL, Effect: %u, Expire: %u, Current: %u"
                             , pstSrvCtrl->ulEffectTimestamp, pstSrvCtrl->ulExpireTimestamp, stTime);
             continue;
         }
@@ -5601,7 +5601,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
         if (0 != ulServerType
             && ulServerType != pstSrvCtrl->ulServType)
         {
-            sc_log(LOG_LEVEL_DEBUG, "Test service control rule: FAIL, Request service type: %u, Current service type: %u"
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: FAIL, Request service type: %u, Current service type: %u"
                             , ulServerType, pstSrvCtrl->ulServType);
             continue;
         }
@@ -5610,7 +5610,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
         if (0 != ulAttr1
             && ulAttr1 != pstSrvCtrl->ulAttr1)
         {
-            sc_log(LOG_LEVEL_DEBUG, "Test service control rule: FAIL, Request Attr1: %u, Current Attr1: %u"
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: FAIL, Request Attr1: %u, Current Attr1: %u"
                             , ulAttr1, pstSrvCtrl->ulAttr1);
             continue;
         }
@@ -5619,7 +5619,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
         if (0 != ulAttr2
             && ulAttr2 != pstSrvCtrl->ulAttr2)
         {
-            sc_log(LOG_LEVEL_DEBUG, "Test service control rule: FAIL, Request Attr2: %u, Current Attr2: %u"
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: FAIL, Request Attr2: %u, Current Attr2: %u"
                             , ulAttr2, pstSrvCtrl->ulAttr2);
             continue;
         }
@@ -5628,7 +5628,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
         if (U32_BUTT != ulAttrVal1
             && ulAttrVal1 != pstSrvCtrl->ulAttrValue1)
         {
-            sc_log(LOG_LEVEL_DEBUG, "Test service control rule: FAIL, Request Attr1 Value: %u, Attr1 Value: %u"
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: FAIL, Request Attr1 Value: %u, Attr1 Value: %u"
                             , ulAttrVal1, pstSrvCtrl->ulAttrValue1);
             continue;
         }
@@ -5637,13 +5637,13 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
         if (U32_BUTT != ulAttrVal2
             && ulAttrVal2 != pstSrvCtrl->ulAttrValue2)
         {
-            sc_log(LOG_LEVEL_DEBUG, "Test service control rule: FAIL, Request Attr2 Value: %u, Attr2 Value: %u"
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: FAIL, Request Attr2 Value: %u, Attr2 Value: %u"
                             , ulAttrVal2, pstSrvCtrl->ulAttrValue2);
             continue;
         }
 
         /* 所有向均匹配 */
-        sc_log(LOG_LEVEL_DEBUG, "Test service control rule: SUCC. ID: %u", pstSrvCtrl->ulID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: SUCC. ID: %u", pstSrvCtrl->ulID);
 
         blResult = DOS_TRUE;
         break;
@@ -5651,7 +5651,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
 
     if (!blResult)
     {
-        sc_log(LOG_LEVEL_DEBUG, "match service ctrl rule in all. CustomerID", ulServerType);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "match service ctrl rule in all. CustomerID", ulServerType);
 
         /* BUCKET 0 中保存的是针对所有客户的规则 */
         HASH_Scan_Bucket(g_pstHashServCtrl, 0, pstHashNode, HASH_NODE_S *)
@@ -5672,7 +5672,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
             if (stTime < pstSrvCtrl->ulEffectTimestamp
                 || (pstSrvCtrl->ulExpireTimestamp && stTime > pstSrvCtrl->ulExpireTimestamp))
             {
-                sc_log(LOG_LEVEL_DEBUG, "Test service control rule: FAIL, Effect: %u, Expire: %u, Current: %u(BUCKET 0)"
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: FAIL, Effect: %u, Expire: %u, Current: %u(BUCKET 0)"
                                 , pstSrvCtrl->ulEffectTimestamp, pstSrvCtrl->ulExpireTimestamp, stTime);
                 continue;
             }
@@ -5681,7 +5681,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
             if (0 != ulServerType
                 && ulServerType != pstSrvCtrl->ulServType)
             {
-                sc_log(LOG_LEVEL_DEBUG, "Test service control rule: FAIL, Request service type: %u, Current service type: %u(BUCKET 0)"
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: FAIL, Request service type: %u, Current service type: %u(BUCKET 0)"
                                 , ulServerType, pstSrvCtrl->ulServType);
                 continue;
             }
@@ -5690,7 +5690,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
             if (0 != ulAttr1
                 && ulAttr1 != pstSrvCtrl->ulAttr1)
             {
-                sc_log(LOG_LEVEL_DEBUG, "Test service control rule: FAIL, Request Attr1: %u, Current Attr1: %u(BUCKET 0)"
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: FAIL, Request Attr1: %u, Current Attr1: %u(BUCKET 0)"
                                 , ulAttr1, pstSrvCtrl->ulAttr1);
                 continue;
             }
@@ -5699,7 +5699,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
             if (0 != ulAttr2
                 && ulAttr2 != pstSrvCtrl->ulAttr2)
             {
-                sc_log(LOG_LEVEL_DEBUG, "Test service control rule: FAIL, Request Attr2: %u, Current Attr2: %u(BUCKET 0)"
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: FAIL, Request Attr2: %u, Current Attr2: %u(BUCKET 0)"
                                 , ulAttr2, pstSrvCtrl->ulAttr2);
                 continue;
             }
@@ -5708,7 +5708,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
             if (U32_BUTT != ulAttrVal1
                 && ulAttrVal1 != pstSrvCtrl->ulAttrValue1)
             {
-                sc_log(LOG_LEVEL_DEBUG, "Test service control rule: FAIL, Request Attr1 Value: %u, Attr1 Value: %u(BUCKET 0)"
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: FAIL, Request Attr1 Value: %u, Attr1 Value: %u(BUCKET 0)"
                                 , ulAttrVal1, pstSrvCtrl->ulAttrValue1);
                 continue;
             }
@@ -5717,20 +5717,20 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
             if (U32_BUTT != ulAttrVal2
                 && ulAttrVal2 != pstSrvCtrl->ulAttrValue2)
             {
-                sc_log(LOG_LEVEL_DEBUG, "Test service control rule: FAIL, Request Attr2 Value: %u, Attr2 Value: %u(BUCKET 0)"
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: FAIL, Request Attr2 Value: %u, Attr2 Value: %u(BUCKET 0)"
                                 , ulAttrVal2, pstSrvCtrl->ulAttrValue2);
                 continue;
             }
 
             /* 所有向均匹配 */
-            sc_log(LOG_LEVEL_DEBUG, "Test service control rule: SUCC. ID: %u(BUCKET 0)", pstSrvCtrl->ulID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Test service control rule: SUCC. ID: %u(BUCKET 0)", pstSrvCtrl->ulID);
 
             blResult = DOS_TRUE;
             break;
         }
     }
 
-    sc_log(LOG_LEVEL_INFO, "Match service control rule %s.", blResult ? "SUCC" : "FAIL");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Match service control rule %s.", blResult ? "SUCC" : "FAIL");
 
 
     pthread_mutex_unlock(&g_mutexHashServCtrl);
@@ -5939,11 +5939,11 @@ U32  sc_caller_setting_load(U32 ulIndex)
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_caller_setting_load_cb, NULL, NULL);
     if (DB_ERR_SUCC != lRet)
     {
-        sc_log(LOG_LEVEL_ERROR, "Load caller setting FAIL.(ID:%u)", ulIndex);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Load caller setting FAIL.(ID:%u)", ulIndex);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-    sc_log(LOG_LEVEL_DEBUG, "Load caller setting SUCC.(ID:%u)", ulIndex);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Load caller setting SUCC.(ID:%u)", ulIndex);
 
     return DOS_SUCC;
 }
@@ -5993,7 +5993,7 @@ U32 sc_caller_setting_update_proc(U32 ulAction, U32 ulSettingID)
             break;
     }
 
-    sc_log(LOG_LEVEL_INFO, "Update Caller Setting %s.(ulAction:%u, ulID:%u)"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Update Caller Setting %s.(ulAction:%u, ulID:%u)"
                     , (DOS_SUCC == ulRet) ? "succ" : "FAIL", ulAction, ulSettingID);
 
     return DOS_SUCC;
@@ -6065,11 +6065,11 @@ U32 sc_task_load_callee(SC_TASK_CB *pstTCB)
 
     if (DB_ERR_SUCC != db_query(g_pstSCDBHandle, szSQL, sc_task_load_callee_callback, (VOID *)pstTCB, NULL))
     {
-        sc_log(LOG_LEVEL_WARNING, "Load task fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_RES), "Load task fail.");
         return DOS_FAIL;
     }
 
-    sc_log(LOG_LEVEL_NOTIC, "Load task SUCC.");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_RES), "Load task SUCC.");
     return DOS_SUCC;
 }
 
@@ -6104,11 +6104,11 @@ U32 sc_task_save_status(U32 ulTaskID, U32 ulStatus, S8 *pszStatus)
 
     if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL) < 0)
     {
-        sc_log(LOG_LEVEL_ERROR, "Failed update the task(%u) status to %u.", ulTaskID, ulStatus);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Failed update the task(%u) status to %u.", ulTaskID, ulStatus);
         return DOS_FAIL;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Update the task(%u) status to %u.", ulTaskID, ulStatus);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Update the task(%u) status to %u.", ulTaskID, ulStatus);
     return DOS_SUCC;
 }
 
@@ -6365,7 +6365,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     if (blProcessOK == DOS_FALSE)
     {
         /* 数据不正确，不用保存 */
-        sc_log(LOG_LEVEL_ERROR, "Load task info FAIL.(TaskID:%u) ", ulTaskID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Load task info FAIL.(TaskID:%u) ", ulTaskID);
 
         return DOS_SUCC;
     }
@@ -6379,7 +6379,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         if (DOS_ADDR_INVALID(pstTCB))
         {
             /* 数据不正确，不用保存 */
-            sc_log(LOG_LEVEL_ERROR, "Alloc TCB fail.(TaskID:%u) ", ulTaskID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Alloc TCB fail.(TaskID:%u) ", ulTaskID);
 
             return DOS_FAIL;
         }
@@ -6462,7 +6462,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         pstTCB->astPeriod[3].ucSecondEnd = (ulEndTime4) & 0xFF;
     }
 
-    sc_log(LOG_LEVEL_INFO, "Load task info SUCC. Index(%d), (TaskID:%u) ", lIndex, ulTaskID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Load task info SUCC. Index(%d), (TaskID:%u) ", lIndex, ulTaskID);
 
     return DOS_SUCC;
 }
@@ -6495,12 +6495,12 @@ S32 sc_task_load(U32 ulIndex)
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_task_load_cb, &ulIndex, NULL);
     if (DB_ERR_SUCC != lRet)
     {
-        sc_log(LOG_LEVEL_ERROR, " SC Load task %u Data FAIL.", ulIndex);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), " SC Load task %u Data FAIL.", ulIndex);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Load task %u SUCC.", ulIndex);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Load task %u SUCC.", ulIndex);
     return DOS_SUCC;
 }
 
@@ -6572,11 +6572,11 @@ U32 sc_task_mngt_load_task()
 
     if (ulResult != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Load call task fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Load call task fail.");
         return DOS_FAIL;
     }
 
-    sc_log(LOG_LEVEL_NOTIC, "Load call task fail.");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_RES), "Load call task fail.");
 
     return DOS_SUCC;
 }

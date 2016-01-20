@@ -194,7 +194,7 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
         sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, CC_ERR_BS_HEAD + pstAuthRsp->stMsgTag.usInterErr);
         return DOS_SUCC;
@@ -210,17 +210,6 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return sc_outgoing_call_process(pstSCB, pstLegCB);
 }
 
-U32 sc_call_exchange_media(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
-{
-
-    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    return DOS_SUCC;
-}
 
 U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
@@ -286,7 +275,7 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
         case SC_CALL_ALERTING:
             /* 主叫LEG状态变换 */
-            sc_log(LOG_LEVEL_INFO, "Calling has been ringback.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_EVENT), "Calling has been ringback.");
             break;
 
         case SC_CALL_ACTIVE:
@@ -345,7 +334,7 @@ U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_ACTIVE:
         case SC_CALL_PROCESS:
         case SC_CALL_RELEASE:
-            sc_log(LOG_LEVEL_INFO, "Calling has been answered");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_EVENT), "Calling has been answered");
             break;
     }
 
@@ -463,7 +452,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Leg %u has hunguped. ", pstHungup->ulLegNo);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Leg %u has hunguped. ", pstHungup->ulLegNo);
 
     return DOS_SUCC;
 }
@@ -702,7 +691,7 @@ U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(LOG_LEVEL_WARNING, "Discard auth event.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard auth event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -777,7 +766,7 @@ U32 sc_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(LOG_LEVEL_WARNING, "Discard call setup event.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -794,11 +783,6 @@ fail_proc:
 
 }
 
-U32 sc_preview_exchange_media(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
-{
-    /* 暂时不处理 */
-    return DOS_SUCC;
-}
 
 U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
@@ -839,7 +823,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             pstCalleeCB = sc_lcb_alloc();
             if (DOS_ADDR_INVALID(pstCalleeCB))
             {
-                sc_log(LOG_LEVEL_ERROR, "Alloc lcb fail");
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc lcb fail");
                 goto fail_proc;
             }
 
@@ -856,7 +840,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_make_call2pstn(pstSCB, pstCalleeCB) != DOS_SUCC)
             {
-                sc_log(LOG_LEVEL_ERROR, "Make call to pstn fail.");
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Make call to pstn fail.");
                 goto fail_proc;
             }
 
@@ -887,7 +871,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(LOG_LEVEL_WARNING, "Discard call setup event.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -976,7 +960,7 @@ U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(LOG_LEVEL_WARNING, "Discard call setup event.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -1023,7 +1007,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_PREVIEW_CALL_ALERTING:
         case SC_PREVIEW_CALL_ACTIVE:
             /* 这个时候挂断只会是坐席的LEG清理资源即可 */
-            sc_log(LOG_LEVEL_NOTIC, "Hungup with agent not connected.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
 
             pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
             if (pstCallingCB)
@@ -1041,7 +1025,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
         case SC_PREVIEW_CALL_CONNECTED:
             /* 这个时候挂断，就是正常释放的节奏，处理完就好 */
-            sc_log(LOG_LEVEL_NOTIC, "Hungup with agent connected.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent connected.");
 
 
             pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
@@ -1075,7 +1059,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(LOG_LEVEL_WARNING, "Discard call hungup event.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -1120,7 +1104,7 @@ U32 sc_voice_verify_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(LOG_LEVEL_ERROR, "There is leg for voice verify.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         goto proc_finishe;
     }
 
@@ -1133,7 +1117,7 @@ U32 sc_voice_verify_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             ulRet = sc_make_call2pstn(pstSCB, pstLCB);
             if (ulRet != DOS_SUCC)
             {
-                sc_log(LOG_LEVEL_ERROR, "Make call for voice verify fail.");
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Make call for voice verify fail.");
                 goto proc_finishe;
             }
 
@@ -1198,7 +1182,7 @@ U32 sc_voice_verify_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(LOG_LEVEL_ERROR, "There is leg for voice verify.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         goto proc_finishe;
     }
 
@@ -1273,7 +1257,7 @@ U32 sc_voice_verify_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(LOG_LEVEL_ERROR, "There is leg for voice verify.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         goto proc_finishe;
     }
 
@@ -1347,7 +1331,7 @@ U32 sc_voice_verify_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(LOG_LEVEL_ERROR, "There is leg for voice verify.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         goto proc_finishe;
     }
 
@@ -1374,6 +1358,7 @@ U32 sc_voice_verify_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             stPlaybackRsp.ulInterval = 0;
             stPlaybackRsp.ulSilence  = 0;
             stPlaybackRsp.blTone = DOS_FALSE;
+            stPlaybackRsp.ulTotalAudioCnt = 0;
 
             stPlaybackRsp.aulAudioList[0] = pstSCB->stVoiceVerify.ulTipsHitNo1;
             stPlaybackRsp.ulTotalAudioCnt++;
@@ -1407,7 +1392,7 @@ U32 sc_voice_verify_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_send_cmd_playback(&stPlaybackRsp.stMsgTag) != DOS_SUCC)
             {
-                sc_log(LOG_LEVEL_ERROR, "Playback request send fail.");
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
                 goto proc_finishe;
             }
 
@@ -1468,7 +1453,7 @@ U32 sc_voice_verify_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         sc_scb_free(pstSCB);
         pstSCB = NULL;
 
-        sc_log(LOG_LEVEL_ERROR, "There is leg for voice verify.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         return DOS_FAIL;
     }
 
@@ -1521,7 +1506,7 @@ U32 sc_voice_verify_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         sc_scb_free(pstSCB);
         pstSCB = NULL;
 
-        sc_log(LOG_LEVEL_ERROR, "There is leg for voice verify.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         return DOS_FAIL;
     }
 
