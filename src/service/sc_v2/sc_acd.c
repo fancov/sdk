@@ -39,7 +39,6 @@
 
 #include <dos.h>
 #include "sc_def.h"
-#include "sc_acd.h"
 #include "sc_res.h"
 #include "sc_debug.h"
 

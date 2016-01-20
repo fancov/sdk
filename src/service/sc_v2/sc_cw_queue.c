@@ -26,7 +26,6 @@
 #include <esl.h>
 #include "sc_def.h"
 #include "sc_debug.h"
-#include "sc_acd.h"
 
 #ifdef __cplusplus
 #if __cplusplus

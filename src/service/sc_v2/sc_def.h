@@ -1717,17 +1717,27 @@ typedef struct tagTaskCB
 
 
 VOID sc_scb_init(SC_SRV_CB *pstSCB);
-VOID sc_lcb_playback_init(SC_SU_PLAYBACK_ST *pstPlayback);
 SC_SRV_CB *sc_scb_alloc();
 VOID sc_scb_free(SC_SRV_CB *pstSCB);
+SC_SRV_CB *sc_scb_get(U32 ulCBNo);
+U32 sc_scb_set_service(SC_SRV_CB *pstSCB, U32 ulService);
+
 VOID sc_lcb_init(SC_LEG_CB *pstLCB);
 SC_LEG_CB *sc_lcb_alloc();
 VOID sc_lcb_free(SC_LEG_CB *pstLCB);
-SC_SRV_CB *sc_scb_get(U32 ulCBNo);
 SC_LEG_CB *sc_lcb_get(U32 ulCBNo);
 SC_LEG_CB *sc_lcb_hash_find(S8 *pszUUID);
 U32 sc_lcb_hash_add(S8 *pszUUID, SC_LEG_CB *pstLCB);
 U32 sc_lcb_hash_delete(S8 *pszUUID);
+U32 sc_leg_get_destination(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB);
+U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB);
+
+U32 sc_bgjob_hash_add(U32 ulLegNo, S8 *pszUUID);
+
+
+VOID sc_lcb_playback_init(SC_SU_PLAYBACK_ST *pstPlayback);
+
+
 U32 sc_send_event_call_create(SC_MSG_EVT_CALL_ST *pstEvent);
 U32 sc_send_event_err_report(SC_MSG_EVT_ERR_REPORT_ST *pstEvent);
 U32 sc_send_event_auth_rsp(SC_MSG_EVT_AUTH_RESULT_ST *pstEvent);
@@ -1739,31 +1749,35 @@ U32 sc_send_event_dtmf(SC_MSG_EVT_DTMF_ST *pstEvent);
 U32 sc_send_event_record(SC_MSG_EVT_RECORD_ST *pstEvent);
 U32 sc_send_event_playback(SC_MSG_EVT_PLAYBACK_ST *pstEvent);
 U32 sc_send_usr_auth2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
-U32 sc_scb_set_service(SC_SRV_CB *pstSCB, U32 ulService);
-U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam);
-U32 sc_leg_get_destination(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB);
-U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB);
 
-BOOL sc_black_list_check(S8 *pszNum);
-BOOL sc_sip_account_extension_check(S8 *pszNum, U32 ulCustomerID);
-U32 sc_did_get_custom(S8 *pszNum);
-U32 sc_sip_account_get_customer(S8 *pszNum);
-SC_AGENT_NODE_ST * sc_agent_get_by_id(U32 ulAgentID);
-SC_AGENT_NODE_ST *sc_agent_get_by_emp_num(U32 ulCustomID, S8 *pszEmpNum);
-SC_AGENT_NODE_ST *sc_agent_get_by_sip_acc(S8 *szUserID);
-SC_AGENT_NODE_ST *sc_agent_get_by_tt_num(S8 *szTTNumber);
-U32 sc_agent_group_agent_count(U32 ulGroupID);
 U32 sc_req_hungup(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
 U32 sc_req_bridge_call(U32 ulSCBNo, U32 ulCallingLegNo, U32 ulCalleeLegNo);
 U32 sc_req_ringback(U32 ulSCBNo, U32 ulLegNo, BOOL blHasMedia);
 U32 sc_req_answer_call(U32 ulSCBNo, U32 ulLegNo);
 U32 sc_req_play_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulSndInd, U32 ulLoop, U32 ulInterval, U32 ulSilence);
 U32 sc_req_play_sounds(U32 ulSCBNo, U32 ulLegNo, U32 *pulSndInd, U32 ulSndCnt, U32 ulLoop, U32 ulInterval, U32 ulSilence);
+U32 sc_req_hungup_with_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
+U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg);
+
+
+U32 sc_agent_group_agent_count(U32 ulGroupID);
+U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam);
+SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID);
+SC_AGENT_NODE_ST *sc_agent_get_by_emp_num(U32 ulCustomID, S8 *pszEmpNum);
+SC_AGENT_NODE_ST *sc_agent_get_by_sip_acc(S8 *szUserID);
+SC_AGENT_NODE_ST *sc_agent_get_by_tt_num(S8 *szTTNumber);
+U32 sc_agent_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);
+S32 sc_agent_group_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
+U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32 *pulIdel, U32 *pulBusy);
+U32 sc_agent_init(U32 ulIndex);
+U32 sc_agent_group_init(U32 ulIndex);
+U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType);
+U32 sc_agent_http_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
+
 
 U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_call_exchange_media(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_bridge(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -1773,24 +1787,24 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_req_hungup_with_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
-U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg);
-U32 sc_bgjob_hash_add(U32 ulLegNo, S8 *pszUUID);
-U32 sc_call_ctrl_call_agent(U32 ulCurrentAgent, SC_AGENT_NODE_ST  *pstAgentNode);
-U32 sc_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber);
-U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber);
-U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend);
-U32 sc_call_ctrl_hold(U32 ulAgent, BOOL isHold);
-U32 sc_call_ctrl_unhold(U32 ulAgent);
-U32 sc_call_ctrl_hangup(U32 ulAgent);
-U32 sc_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulType, S8 *pszCallee, U32 ulFlag, U32 ulCalleeAgentID);
-U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
-U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
 
-U32 sc_agent_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);
-S32 sc_agent_group_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
-U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32 *pulIdel, U32 *pulBusy);
-SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID);
+U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_preview_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
+U32 sc_voice_verify_proc(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt);
+U32 sc_voice_verify_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_voice_verify_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_voice_verify_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_voice_verify_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_voice_verify_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_voice_verify_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 SC_TASK_CB *sc_tcb_alloc();
 SC_TASK_CB *sc_tcb_find_by_taskid(U32 ulTaskID);
@@ -1801,31 +1815,22 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB *pstTCB);
 U32 sc_task_check_can_call_by_status(SC_TASK_CB *pstTCB);
 S32 sc_task_and_callee_load(U32 ulIndex);
 
-
-U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_preview_exchange_media(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_preview_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_preview_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_preview_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB);
 U32 sc_make_call2pstn(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
 U32 sc_make_call2eix(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
 U32 sc_make_call2sip(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
 
-
-U32 sc_voice_verify_proc(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt);
-U32 sc_voice_verify_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_voice_verify_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_voice_verify_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_voice_verify_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_voice_verify_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-U32 sc_voice_verify_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_call_ctrl_call_agent(U32 ulCurrentAgent, SC_AGENT_NODE_ST  *pstAgentNode);
+U32 sc_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber);
+U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber);
+U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend);
+U32 sc_call_ctrl_hold(U32 ulAgent, BOOL isHold);
+U32 sc_call_ctrl_unhold(U32 ulAgent);
+U32 sc_call_ctrl_hangup(U32 ulAgent);
+U32 sc_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulType, S8 *pszCallee, U32 ulFlag, U32 ulCalleeAgentID);
+U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
+U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
 
 #endif  /* end of __SC_DEF_V2_H__ */
 

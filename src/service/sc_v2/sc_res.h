@@ -500,55 +500,69 @@ typedef struct tagCallerCacheNode
 }SC_CALLER_CACHE_NODE_ST;
 
 U32 sc_int_hash_func(U32 ulVal, U32 ulHashSize);
+U32 sc_string_hash_func(S8 *pszSrting, U32 ulHashSize);
 
 U32 sc_serv_ctrl_load(U32 ulIndex);
+U32 sc_serv_ctrl_update_proc(U32 ulAction, U32 ulID);
+BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulAttrVal1,U32 ulAttr2, U32 ulAttrVal2);
+
 U32 sc_number_lmt_load(U32 ulIndex);
+U32 sc_number_lmt_update_proc(U32 ulAction, U32 ulNumlmtID);
+BOOL sc_number_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber);
+
 U32 sc_caller_setting_load(U32 ulIndex);
-U32 sc_caller_relationship_load();
-U32 sc_caller_group_load(U32 ulIndex);
-U32 sc_caller_load(U32 ulIndex);
-U32 sc_eix_dev_load(U32 ulIndex);
-U32 sc_black_list_load(U32 ulIndex);
-U32 sc_sip_account_load(U32 ulIndex);
-U32 sc_did_load(U32 ulIndex);
-U32 sc_customer_load(U32 ulIndex);
-U32 sc_transform_load(U32 ulIndex);
-U32 sc_route_load(U32 ulIndex);
-U32 sc_gateway_relationship_load();
-U32 sc_gateway_group_load(U32 ulIndex);
-U32 sc_gateway_load(U32 ulIndex);
-U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee);
-U32 sc_route_get_trunks(U32 ulRouteID, U32 *paulTrunkList, U32 ulTrunkListSize);
-U32 sc_sip_account_get_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUserID, U32 ulLength);
 S32 sc_caller_setting_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);
 S32 sc_caller_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);
 S32 sc_caller_group_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);
 U32 sc_caller_setting_update_proc(U32 ulAction, U32 ulSettingID);
 U32 sc_caller_group_update_proc(U32 ulAction, U32 ulCallerGrpID);
-U32 sc_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
-U32 sc_sip_account_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID);
-U32 sc_route_update_proc(U32 ulAction, U32 ulRouteID);
-U32 sc_gateway_group_update_proc(U32 ulAction, U32 ulGwGroupID);
-U32 sc_did_update_proc(U32 ulAction, U32 ulDidID);
-U32 sc_black_list_update_proc(U32 ulAction, U32 ulBlackID);
+U32 sc_caller_relationship_load();
+U32 sc_caller_group_load(U32 ulIndex);
+U32 sc_caller_load(U32 ulIndex);
 U32 sc_caller_update_proc(U32 ulAction, U32 ulCallerID);
-U32 sc_eix_dev_update_proc(U32 ulAction, U32 ulEixID);
-U32 sc_serv_ctrl_update_proc(U32 ulAction, U32 ulID);
-U32 sc_transform_update_proc(U32 ulAction, U32 ulNumTransID);
-U32 sc_customer_update_proc(U32 ulAction, U32 ulCustomerID);
-BOOL sc_number_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber);
-U32 sc_number_lmt_update_proc(U32 ulAction, U32 ulNumlmtID);
+U32 sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, S8 *pszNumber, U32 ulLen);
 
+U32 sc_eix_dev_load(U32 ulIndex);
+U32 sc_eix_dev_get_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength);
+U32 sc_eix_dev_update_proc(U32 ulAction, U32 ulEixID);
+
+U32 sc_black_list_load(U32 ulIndex);
+BOOL sc_black_list_check(S8 *pszNum);
+U32 sc_black_list_update_proc(U32 ulAction, U32 ulBlackID);
+
+U32 sc_sip_account_load(U32 ulIndex);
+U32 sc_sip_account_get_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUserID, U32 ulLength);
+U32 sc_sip_account_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID);
+U32 sc_sip_account_get_customer(S8 *pszNum);
+BOOL sc_sip_account_extension_check(S8 *pszNum, U32 ulCustomerID);
+
+U32 sc_did_load(U32 ulIndex);
+U32 sc_did_update_proc(U32 ulAction, U32 ulDidID);
+U32 sc_did_get_custom(S8 *pszNum);
+
+U32 sc_customer_load(U32 ulIndex);
+U32 sc_customer_update_proc(U32 ulAction, U32 ulCustomerID);
+
+U32 sc_transform_load(U32 ulIndex);
+U32 sc_transform_update_proc(U32 ulAction, U32 ulNumTransID);
+
+U32 sc_route_load(U32 ulIndex);
+U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee);
+U32 sc_route_get_trunks(U32 ulRouteID, U32 *paulTrunkList, U32 ulTrunkListSize);
+U32 sc_route_update_proc(U32 ulAction, U32 ulRouteID);
+
+U32 sc_gateway_relationship_load();
+U32 sc_gateway_group_load(U32 ulIndex);
+U32 sc_gateway_load(U32 ulIndex);
+U32 sc_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
+U32 sc_gateway_group_update_proc(U32 ulAction, U32 ulGwGroupID);
 
 S32 sc_task_load(U32 ulIndex);
 U32 sc_task_load_callee(SC_TASK_CB *pstTCB);
 U32 sc_task_mngt_load_task();
 U32 sc_task_save_status(U32 ulTaskID, U32 ulStatus, S8 *pszStatus);
 
-U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen);
-BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulAttrVal1,U32 ulAttr2, U32 ulAttrVal2);
-U32 sc_eix_dev_get_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength);
-U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, S8 *pszNumber, U32 ulLen);
+U32 sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 
 #endif /* __SC_RES_H__ */
 

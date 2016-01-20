@@ -19,7 +19,6 @@ extern "C"{
 #include <esl.h>
 #include "sc_def.h"
 #include "sc_debug.h"
-#include "sc_acd.h"
 #include "sc_db.h"
 
 #define SC_MAX_SQL_LEN  1024
