@@ -1543,6 +1543,342 @@ U32 sc_voice_verify_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return DOS_SUCC;
 }
 
+U32 sc_interception_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    U32  ulRet = DOS_FAIL;
+    SC_LEG_CB *pstLCB = NULL;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing interception auth event.");
+
+    pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstSCB->stInterception.stSCBTag.usStatus)
+    {
+        case SC_INTERCEPTION_IDEL:
+            ulRet = DOS_SUCC;
+            break;
+
+        case SC_INTERCEPTION_AUTH:
+            switch (pstLCB->stCall.ucPeerType)
+            {
+                case SC_LEG_PEER_OUTBOUND:
+                    ulRet = sc_make_call2pstn(pstSCB, pstLCB);
+                    break;
+
+                case SC_LEG_PEER_OUTBOUND_TT:
+                    ulRet = sc_make_call2eix(pstSCB, pstLCB);
+                    break;
+
+                case SC_LEG_PEER_OUTBOUND_INTERNAL:
+                    ulRet = sc_make_call2sip(pstSCB, pstLCB);
+                    break;
+
+                default:
+                    sc_trace_scb(pstSCB, "Invalid perr type. %u", pstLCB->stCall.ucPeerType);
+                    goto proc_finishe;
+                    break;
+            }
+
+            pstSCB->stInterception.stSCBTag.usStatus = SC_INTERCEPTION_EXEC;
+            break;
+
+        case SC_INTERCEPTION_EXEC:
+        case SC_INTERCEPTION_PROC:
+        case SC_INTERCEPTION_ALERTING:
+        case SC_INTERCEPTION_ACTIVE:
+        case SC_INTERCEPTION_RELEASE:
+            ulRet = DOS_SUCC;
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard auth event.");
+            ulRet = DOS_SUCC;
+            break;
+    }
+
+proc_finishe:
+    sc_trace_scb(pstSCB, "Proccessed interception call setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    if (ulRet != DOS_SUCC)
+    {
+        if (DOS_ADDR_VALID(pstLCB))
+        {
+            sc_lcb_free(pstLCB);
+            pstLCB = NULL;
+        }
+    }
+
+    return ulRet;
+}
+
+U32 sc_interception_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    U32  ulRet = DOS_FAIL;
+    SC_LEG_CB    *pstLCB = NULL;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing interception call setup event event.");
+
+    pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        sc_trace_scb(pstSCB, "There is no calling leg.");
+
+        goto proc_finishe;
+    }
+
+    switch (pstSCB->stInterception.stSCBTag.usStatus)
+    {
+        case SC_INTERCEPTION_IDEL:
+        case SC_INTERCEPTION_AUTH:
+            /* 未认证通过，放音挂断呼叫 */
+            goto proc_finishe;
+            break;
+
+        case SC_INTERCEPTION_EXEC:
+        case SC_INTERCEPTION_PROC:
+        case SC_INTERCEPTION_ALERTING:
+            /* 迁移状态到proc */
+            pstSCB->stInterception.stSCBTag.usStatus = SC_INTERCEPTION_PROC;
+            ulRet = DOS_SUCC;
+            break;
+
+        case SC_INTERCEPTION_ACTIVE:
+            ulRet = DOS_SUCC;
+            break;
+
+        case SC_INTERCEPTION_RELEASE:
+            ulRet = DOS_SUCC;
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            ulRet = DOS_SUCC;
+            break;
+    }
+
+proc_finishe:
+    sc_trace_scb(pstSCB, "Proccessed interception call setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    if (ulRet != DOS_SUCC)
+    {
+        if (DOS_ADDR_VALID(pstLCB))
+        {
+            sc_lcb_free(pstLCB);
+            pstLCB = NULL;
+        }
+    }
+
+    return ulRet;
+
+}
+
+U32 sc_interception_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_LEG_CB  *pstLCB = NULL;
+    U32        ulRet   = DOS_FAIL;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing call ringing event for voice verify.");
+
+    pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
+        goto proc_finishe;
+    }
+
+    switch (pstSCB->stInterception.stSCBTag.usStatus)
+    {
+        case SC_INTERCEPTION_IDEL:
+            break;
+
+        case SC_INTERCEPTION_AUTH:
+            break;
+
+        case SC_INTERCEPTION_EXEC:
+        case SC_INTERCEPTION_PROC:
+            pstSCB->stInterception.stSCBTag.usStatus = SC_INTERCEPTION_ALERTING;
+            ulRet = DOS_SUCC;
+            break;
+
+        case SC_INTERCEPTION_ALERTING:
+            break;
+
+        case SC_INTERCEPTION_ACTIVE:
+            break;
+
+        case SC_INTERCEPTION_RELEASE:
+            break;
+    }
+
+proc_finishe:
+    sc_trace_scb(pstSCB, "Proccessed interception call setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    if (ulRet != DOS_SUCC)
+    {
+        if (DOS_ADDR_VALID(pstLCB))
+        {
+            sc_lcb_free(pstLCB);
+            pstLCB = NULL;
+        }
+    }
+
+    return ulRet;
+}
+
+U32 sc_interception_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_LEG_CB  *pstLCB      = NULL;
+    SC_LEG_CB  *pstAgentLCB = NULL;
+    U32        ulRet        = DOS_FAIL;
+    SC_MSG_CMD_INTERCEPT_ST stInterceptRsp;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing call ringing event for voice verify.");
+
+    pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
+        goto proc_finishe;
+    }
+
+    pstAgentLCB = sc_lcb_get(pstSCB->stInterception.ulAgentLegNo);
+    if (DOS_ADDR_INVALID(pstAgentLCB))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
+        goto proc_finishe;
+    }
+
+    switch (pstSCB->stInterception.stSCBTag.usStatus)
+    {
+        case SC_INTERCEPTION_IDEL:
+            break;
+
+        case SC_INTERCEPTION_AUTH:
+            break;
+
+        case SC_INTERCEPTION_EXEC:
+        case SC_INTERCEPTION_PROC:
+        case SC_INTERCEPTION_ALERTING:
+            pstSCB->stInterception.stSCBTag.usStatus = SC_INTERCEPTION_ACTIVE;
+
+            stInterceptRsp.stMsgTag.ulMsgType = SC_CMD_INTERCEPT;
+            stInterceptRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+            stInterceptRsp.stMsgTag.usInterErr = 0;
+
+            stInterceptRsp.ulSCBNo = pstSCB->ulSCBNo;
+            stInterceptRsp.ulLegNo = pstLCB->ulCBNo;
+            stInterceptRsp.ulAgentLegNo = pstAgentLCB->ulCBNo;
+
+            if (sc_send_cmd_intercept(&stInterceptRsp.stMsgTag) != DOS_SUCC)
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
+                goto proc_finishe;
+            }
+
+            ulRet = DOS_SUCC;
+
+            break;
+
+        case SC_INTERCEPTION_ACTIVE:
+            break;
+
+        case SC_INTERCEPTION_RELEASE:
+            break;
+    }
+
+proc_finishe:
+    sc_trace_scb(pstSCB, "Proccessed interception call setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    if (ulRet != DOS_SUCC)
+    {
+        if (DOS_ADDR_VALID(pstLCB))
+        {
+            sc_lcb_free(pstLCB);
+            pstLCB = NULL;
+        }
+    }
+
+    return ulRet;
+}
+
+U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_LEG_CB  *pstLCB      = NULL;
+    U32        ulRet        = DOS_FAIL;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing call ringing event for voice verify.");
+
+    pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
+        return DOS_FAIL;
+    }
+
+    switch (pstSCB->stInterception.stSCBTag.usStatus)
+    {
+        case SC_INTERCEPTION_IDEL:
+            break;
+
+        case SC_INTERCEPTION_AUTH:
+            break;
+
+        case SC_INTERCEPTION_EXEC:
+        case SC_INTERCEPTION_PROC:
+        case SC_INTERCEPTION_ALERTING:
+            break;
+
+        case SC_INTERCEPTION_ACTIVE:
+        case SC_INTERCEPTION_RELEASE:
+            /* 发送话单 */
+            if (ulRet != DOS_SUCC)
+            {
+                if (DOS_ADDR_VALID(pstLCB))
+                {
+                    sc_lcb_free(pstLCB);
+                    pstLCB = NULL;
+                }
+            }
+            pstSCB->stInterception.stSCBTag.bValid = DOS_FALSE;
+            break;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessed interception call setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
+
+}
 
 #ifdef __cplusplus
 }

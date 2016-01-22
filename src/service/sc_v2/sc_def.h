@@ -381,6 +381,7 @@ typedef enum tagSCSUCommand{
     SC_CMD_HOLD,               /**< 请求呼叫保持 */
     SC_CMD_UNHOLD,             /**< 请求呼叫解除保持 */
     SC_CMD_IVR_CTRL,           /**< IVR控制命令 */
+    SC_CMD_INTERCEPT,          /**< 监听命令 */
 
     SC_CMD_BUTT,
 }SC_SU_COMMANGEN;
@@ -495,7 +496,7 @@ typedef struct tagSCAgentGrpStat
 
 typedef struct tagACDSiteDesc{
     /* 附加信息，主要存储SCB，主要用于和SCB的交互，需要在SCB释放时检查，并清除 */
-    U32        ulSCBNo;
+    U32        ulLegNo;
 
     U8         ucStatus;                          /* 坐席状态 refer to SC_SITE_STATUS_EN */
     U8         ucBindType;                        /* 坐席绑定类型 refer to SC_AGENT_BIND_TYPE_EN */
@@ -1139,11 +1140,13 @@ typedef struct tagSCIncomingQueue{
     U32               ulDequeuTime;
 }SC_INCOMING_QUEUE_ST;
 
-
 /** 监听业务状态 */
 typedef enum tagSCInterStatus{
     SC_INTERCEPTION_IDEL,       /**< 状态初始化 */
-    SC_INTERCEPTION_PROC,       /**< 呼叫流程 */
+    SC_INTERCEPTION_AUTH,       /**< 发起呼叫 */
+    SC_INTERCEPTION_EXEC,       /**< 呼叫流程 */
+    SC_INTERCEPTION_PROC,       /**< 创建leg */
+    SC_INTERCEPTION_ALERTING,   /**< 振铃 */
     SC_INTERCEPTION_ACTIVE,     /**< 开始监听 */
     SC_INTERCEPTION_RELEASE,    /**< 结束 */
 }SC_INTERCEPTION_STATE_EN;
@@ -1155,8 +1158,12 @@ typedef struct tagSCInterception{
     /** 基本信息 */
     SC_SCB_TAG_ST     stSCBTag;
 
-    /* 呼叫客户的LEG */
+    /* 呼叫监听话机的LEG */
     U32               ulLegNo;
+
+    /* 被监听坐席的LEG */
+    U32               ulAgentLegNo;
+
 }SC_INTERCEPTION_ST;
 
 /** 耳语业务状态 */
@@ -1429,6 +1436,20 @@ typedef struct tagSCMsgCmdIVR{
     /** 业务控制块编号 */
     U32     ulSCBNo;
 }SC_MSG_CMD_IVR_ST;
+
+/** 监听请求 */
+typedef struct tagSCMsgCmdIntercept{
+    SC_MSG_TAG_ST    stMsgTag;              /**< 消息头 */
+
+    /** LEG编号 */
+    U32     ulLegNo;
+
+    /** 监听的坐席的LEG编号 */
+    U32     ulAgentLegNo;
+
+    /** 业务控制块编号 */
+    U32     ulSCBNo;
+}SC_MSG_CMD_INTERCEPT_ST;
 
 /** 呼叫建立事件 */
 typedef struct tagSCMsgEvtCall{
@@ -1759,6 +1780,7 @@ U32 sc_req_play_sounds(U32 ulSCBNo, U32 ulLegNo, U32 *pulSndInd, U32 ulSndCnt, U
 U32 sc_req_hungup_with_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
 U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg);
+U32 sc_send_cmd_intercept(SC_MSG_TAG_ST *pstMsg);
 
 
 U32 sc_agent_group_agent_count(U32 ulGroupID);
@@ -1805,6 +1827,12 @@ U32 sc_voice_verify_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_voice_verify_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_voice_verify_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_voice_verify_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
+U32 sc_interception_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_interception_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_interception_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_interception_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 SC_TASK_CB *sc_tcb_alloc();
 SC_TASK_CB *sc_tcb_find_by_taskid(U32 ulTaskID);

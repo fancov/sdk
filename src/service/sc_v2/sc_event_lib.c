@@ -168,16 +168,16 @@ U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
         goto processing;
     }
 
-    if (pstAgent->pstAgentInfo->ulSCBNo < SC_SCB_SIZE)
+    if (pstAgent->pstAgentInfo->ulLegNo < SC_LEG_CB_SIZE)
     {
-        pstSCBAgent = sc_scb_get(pstAgent->pstAgentInfo->ulSCBNo);
-        if (DOS_ADDR_INVALID(pstSCBAgent))
+        pstLegCBAgent = sc_lcb_get(pstAgent->pstAgentInfo->ulLegNo);
+        if (DOS_ADDR_INVALID(pstLegCBAgent) || pstLegCBAgent->stCall.ucLocalMode != SC_LEG_LOCAL_SIGNIN)
         {
             goto processing;
         }
 
-        pstLegCBAgent = sc_lcb_get(pstSCBAgent->stCall.ulCallingLegNo);
-        if (DOS_ADDR_INVALID(pstLegCBAgent) || pstLegCBAgent->stCall.ucLocalMode != SC_LEG_LOCAL_SIGNIN)
+        pstSCBAgent = sc_scb_get(pstLegCBAgent->ulSCBNo);
+        if (DOS_ADDR_INVALID(pstSCBAgent))
         {
             goto processing;
         }
@@ -587,6 +587,7 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     pstSCB->stPreviewCall.ulCallingLegNo = pstLCB->ulCBNo;
     pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_AUTH;
     pstLCB->ulSCBNo = pstSCB->ulSCBNo;
+    pstAgentNode->pstAgentInfo->ulLegNo = pstLCB->ulCBNo;
 
     if (sc_send_usr_auth2bs(pstSCB, pstLCB) != DOS_SUCC)
     {
@@ -640,15 +641,157 @@ U32 sc_call_ctrl_hangup_all(U32 ulAgent)
     return DOS_SUCC;
 }
 
+U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulType, S8 *pszCallee)
+{
+    SC_AGENT_NODE_ST *pstAgentNode = NULL;
+    SC_LEG_CB        *pstLCB       = NULL;
+    SC_SRV_CB        *pstSCB       = NULL;
+    SC_LEG_CB        *pstLCBAgent  = NULL;
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request intercept. Agent: %u, Task: %u, Number: %s", ulAgent, ulTaskID, NULL == pszCallee ? "NULL" : pszCallee);
+
+    if (DOS_ADDR_INVALID(pszCallee))
+    {
+        return DOS_FAIL;
+    }
+
+    pstAgentNode = sc_agent_get_by_id(ulAgent);
+    if (DOS_ADDR_INVALID(pstAgentNode))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Cannot found the agent %u", ulAgent);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Agent CB Error %u", ulAgent);
+        return DOS_FAIL;
+    }
+
+    if (pstAgentNode->pstAgentInfo->ulLegNo >= SC_LEG_CB_SIZE)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Agent not in calling %u", ulAgent);
+        return DOS_FAIL;
+    }
+
+    pstLCBAgent = sc_lcb_get(pstAgentNode->pstAgentInfo->ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCBAgent))
+    {
+        return DOS_FAIL;
+    }
+
+    pstSCB = sc_scb_get(pstLCBAgent->ulSCBNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return DOS_FAIL;
+    }
+
+    pstLCB = sc_lcb_alloc();
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Alloc lcb fail");
+        return DOS_FAIL;
+    }
+
+    pstSCB->stInterception.stSCBTag.bValid = DOS_TRUE;
+    pstSCB->stInterception.stSCBTag.usStatus = SC_INTERCEPTION_IDEL;
+    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stInterception.stSCBTag;
+
+    pstLCB->stCall.bValid = DOS_SUCC;
+    pstLCB->stCall.ucStatus = SC_LEG_INIT;
+
+/*
+    if (!sc_ep_black_list_check(ulCustomerID, pszCallee))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
+
+        goto process_fail;
+    }
+*/
+    /* 主叫号码， 从主叫号码组中获取 */
+    if (sc_caller_setting_select_number(ulCustomerID, 0, SC_SRC_CALLER_TYPE_ALL
+                        , pstLCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH) != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is no caller for number verify.");
+
+        goto process_fail;
+    }
+
+    /* 被叫号码 */
+    dos_snprintf(pstLCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLCB->stCall.stNumInfo.szOriginalCallee), pszCallee);
+    switch (ulType)
+    {
+        case AGENT_BIND_SIP:
+            pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+            break;
+
+        case AGENT_BIND_TELE:
+            pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+            if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
+
+                goto process_fail;
+            }
+            break;
+
+        case AGENT_BIND_MOBILE:
+            pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+            if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
+
+                goto process_fail;
+            }
+            break;
+
+        case AGENT_BIND_TT_NUMBER:
+            pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
+            break;
+
+        default:
+            break;
+    }
+
+    pstSCB->stInterception.ulLegNo = pstLCB->ulCBNo;
+    pstSCB->stInterception.ulAgentLegNo = pstLCBAgent->ulCBNo;
+    pstSCB->stInterception.stSCBTag.usStatus = SC_INTERCEPTION_AUTH;
+    pstLCB->ulSCBNo = pstSCB->ulSCBNo;
+
+    if (sc_send_usr_auth2bs(pstSCB, pstLCB) != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send auth fail.");
+
+        goto process_fail;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request call out. send auth succ.");
+
+    return DOS_SUCC;
+
+process_fail:
+
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        sc_lcb_free(pstLCB);
+        pstLCB = NULL;
+    }
+
+    return DOS_FAIL;
+}
 
 
 U32 sc_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulType, S8 *pszCallee, U32 ulFlag, U32 ulCalleeAgentID)
 {
+    U32 ulRet = DOS_FAIL;
+
     if (ulAction >= SC_API_CALLCTRL_BUTT)
     {
         DOS_ASSERT(0);
 
-        goto proc_fail;
+        goto proc_end;
     }
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_EVENT), "Start process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
@@ -662,10 +805,11 @@ U32 sc_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID,
         case SC_API_CONFERENCE:
         case SC_API_HOLD:
         case SC_API_UNHOLD:
+            ulRet = DOS_SUCC;
             break;
 
         case SC_API_HANGUP_CALL:
-            return sc_call_ctrl_hangup_all(ulAgent);
+            ulRet = sc_call_ctrl_hangup_all(ulAgent);
             break;
 
         case SC_API_RECORD:
@@ -710,141 +854,28 @@ U32 sc_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID,
             break;
 
         case SC_API_WHISPERS:
-        case SC_API_INTERCEPT:
-#if 0
-            /* 查找坐席 */
-            if (sc_acd_get_agent_by_id(&stAgentInfo, ulAgent) != DOS_SUCC)
-            {
-                DOS_ASSERT(0);
-
-                sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent not found..", ulAgent);
-                goto proc_fail;
-            }
-
-            if (stAgentInfo.usSCBNo >= SC_MAX_SCB_NUM)
-            {
-                DOS_ASSERT(0);
-
-                sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a invalid SCB No(%u).", ulAgent, stAgentInfo.usSCBNo);
-                goto proc_fail;
-            }
-
-            pstSCB = sc_scb_get(stAgentInfo.usSCBNo);
-            if (DOS_ADDR_INVALID(pstSCB) || !pstSCB->bValid)
-            {
-                DOS_ASSERT(0);
-
-                sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) is invalid.", ulAgent, stAgentInfo.usSCBNo);
-                goto proc_fail;
-            }
-
-            if ('\0' == pstSCB->szUUID[0])
-            {
-                DOS_ASSERT(0);
-
-                sc_logr_info(pstSCB, SC_ESL, "Cannot hangup call for agent with id %u. Agent handle a SCB(%u) without UUID.", ulAgent, stAgentInfo.usSCBNo);
-                goto proc_fail;
-            }
-
-            pstSCBNew = sc_scb_alloc();
-            if (DOS_ADDR_INVALID(pstSCBNew))
-            {
-                sc_logr_warning(pstSCB, SC_ESL, "%s", "Cannot make call for the API CMD. Alloc SCB FAIL..");
-            }
-
-            pstSCBNew->ulCustomID = ulCustomerID;
-            pstSCBNew->ulAgentID = ulAgent;
-            pstSCBNew->ulTaskID = ulTaskID;
-
-            /* 需要指定主叫号码 */
-            dos_strncpy(pstSCBNew->szCalleeNum, pszCallee, sizeof(pstSCBNew->szCalleeNum));
-            pstSCBNew->szCalleeNum[sizeof(pstSCBNew->szCalleeNum) - 1] = '\0';
-            dos_strncpy(pstSCBNew->szCallerNum, pszCallee, sizeof(pstSCBNew->szCallerNum));
-            pstSCBNew->szCallerNum[sizeof(pstSCBNew->szCallerNum) - 1] = '\0';
-
-            if (SC_API_WHISPERS == ulAction)
-            {
-                ulMainServie = SC_SERV_CALL_WHISPERS;
-            }
-            else
-            {
-                ulMainServie = SC_SERV_CALL_INTERCEPT;
-            }
-
-            SC_SCB_SET_SERVICE(pstSCBNew, ulMainServie);
-
-            if (!sc_ep_black_list_check(ulCustomerID, pszCallee))
-            {
-                DOS_ASSERT(0);
-
-                sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
-
-                goto make_all_fail1;
-            }
-
-            if (AGENT_BIND_SIP == ulType)
-            {
-                /* 呼叫的是sip */
-                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
-                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_INTERNAL_CALL);
-
-                if (sc_dial_make_call2ip(pstSCBNew, ulMainServie, DOS_TRUE) != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
-
-                    sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Make call to other endpoint fail. callee : %s, type :%u", pszCallee, ulType);
-                    goto make_all_fail1;
-                }
-            }
-            else if (AGENT_BIND_TT_NUMBER == ulType)
-            {
-                if (sc_dial_make_call2eix(pstSCBNew, ulMainServie, DOS_TRUE) != DOS_SUCC)
-                {
-                    sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Make call to other endpoint fail. callee : %s, type :%u", pszCallee, ulType);
-                    goto make_all_fail1;
-                }
-            }
-            else
-            {
-                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_OUTBOUND_CALL);
-                SC_SCB_SET_SERVICE(pstSCBNew, SC_SERV_EXTERNAL_CALL);
-                if (sc_send_usr_auth2bs(pstSCBNew) != DOS_SUCC)
-                {
-                    DOS_ASSERT(0);
-
-                    sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Send auth fail.", pszCallee);
-
-                    goto make_all_fail1;
-                }
-            }
-
+            ulRet = DOS_SUCC;
             break;
-make_all_fail1:
-            if (DOS_ADDR_INVALID(pstSCBNew))
-            {
-                sc_scb_free(pstSCBNew);
-                pstSCBNew = NULL;
-            }
-
-            goto proc_fail;
-#endif
+        case SC_API_INTERCEPT:
+            ulRet = sc_call_ctrl_intercept(ulTaskID, ulAgent, ulCustomerID, ulType, pszCallee);
             break;
         default:
-            goto proc_fail;
+            ulRet = DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_EVENT), "Finished to process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
+proc_end:
+    if (ulRet != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Process call ctrl msg FAIL. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
                     , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee);
-
-    return DOS_SUCC;
-
-proc_fail:
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Process call ctrl msg FAIL. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
+    }
+    else
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_EVENT), "Finished to process call ctrl msg. Action: %u, Agent: %u, Customer: %u, Task: %u, Caller: %s"
                     , ulAction, ulAgent, ulCustomerID, ulTaskID, pszCallee);
+    }
 
-    return DOS_FAIL;
-
-    return DOS_SUCC;
+    return ulRet;
 }
 
 U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID)

@@ -2010,7 +2010,7 @@ U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingTyp
 
     /* 硐猁衄網請飲莞 */
     if ((pstAgentQueueInfo->bConnected || pstAgentQueueInfo->bNeedConnected)
-        && pstAgentQueueInfo->ulSCBNo <= SC_SCB_SIZE)
+        && pstAgentQueueInfo->ulLegNo <= SC_LEG_CB_SIZE)
     {
         /* 莞網請 */
     }
@@ -2193,7 +2193,7 @@ U32 sc_agent_set_force_logout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperati
     }
 
     /* 硐猁衄網請飲莞 */
-    if (pstAgentQueueInfo->bConnected || pstAgentQueueInfo->ulSCBNo != U16_BUTT)
+    if (pstAgentQueueInfo->bConnected || pstAgentQueueInfo->ulLegNo != U32_BUTT)
     {
         /*  莞壺網請 */
     }
@@ -2838,7 +2838,7 @@ static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
     stSiteInfo.aulGroupID[1] = ulGroupID1;
     stSiteInfo.bValid = DOS_TRUE;
     stSiteInfo.bRecord = ulRecordFlag;
-    stSiteInfo.ulSCBNo = U32_BUTT;
+    stSiteInfo.ulLegNo = U32_BUTT;
     stSiteInfo.bGroupHeader = ulIsHeader;
     stSiteInfo.ucBindType = (U8)ulSelectType;
     stSiteInfo.ucCallStatus = SC_ACD_CALL_NONE;

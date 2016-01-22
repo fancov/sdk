@@ -1639,6 +1639,36 @@ U32 sc_send_cmd_ivr(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 }
 
+U32 sc_send_cmd_intercept(SC_MSG_TAG_ST *pstMsg)
+{
+    SC_MSG_CMD_INTERCEPT_ST *pstCMDIntercept = NULL;
+    U32 ulRet;
+
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCMDIntercept = (SC_MSG_CMD_INTERCEPT_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_INTERCEPT_ST));
+    if (DOS_ADDR_INVALID(pstCMDIntercept))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstCMDIntercept, pstMsg, sizeof(SC_MSG_CMD_INTERCEPT_ST));
+
+    ulRet = sc_send_command(&pstCMDIntercept->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCMDIntercept);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
 /**
  * 向业务子层发送放音命令，正对单个声音文件
  *

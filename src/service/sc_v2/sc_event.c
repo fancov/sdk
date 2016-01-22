@@ -480,6 +480,72 @@ U32 sc_srv_interception_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Interception Service, SCB:%u"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
 
+    switch (pstMsg->ulMsgType)
+    {
+        case SC_EVT_AUTH_RESULT:
+            ulRet = sc_interception_auth_rsp(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_SETUP:
+            ulRet = sc_interception_setup(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_AMSWERED:
+            ulRet = sc_interception_answer(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_RINGING:
+            ulRet = sc_interception_ringing(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_BRIDGE_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_BRIDGE_STOP:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_HOLD:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_CALL_RERLEASE:
+            ulRet = sc_interception_release(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_STATUS:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_DTMF:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_RECORD_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_RECORD_END:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_PLAYBACK_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_PLAYBACK_END:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_ERROR_PORT:
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Invalid event type. %u", pstMsg->ulMsgType);
+            break;
+    }
+
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Interception Service, SCB:%u, Ret: %s"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
                 , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
@@ -674,7 +740,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
                 break;
 
             case SC_SRV_INTERCEPTION:
-                ulRet = DOS_SUCC;
+                ulRet = sc_srv_interception_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
 
             case SC_SRV_WHISPER:

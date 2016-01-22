@@ -1102,7 +1102,7 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
                         , pstAgentQueueNode->pstAgentInfo->szMobile
                         , pstAgentQueueNode->pstAgentInfo->szTTNumber
                         , pstAgentQueueNode->pstAgentInfo->ulSIPUserID
-                        , pstAgentQueueNode->pstAgentInfo->ulSCBNo
+                        , pstAgentQueueNode->pstAgentInfo->ulLegNo
                         , pstAgentQueueNode->pstAgentInfo->bWaitingDelete ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->bLogin ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->szLastCustomerNum

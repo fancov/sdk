@@ -1732,6 +1732,51 @@ U32 sc_cmd_ivr(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 }
 
+U32 sc_cmd_intercept(SC_MSG_TAG_ST *pstMsg)
+{
+    SC_MSG_EVT_ERR_REPORT_ST   stErrReport;
+    SC_MSG_CMD_INTERCEPT_ST    *pstIntercept = NULL;
+    SC_LEG_CB                  *pstLCB          = NULL;
+    SC_LEG_CB                  *pstAgentLCB     = NULL;
+
+    pstIntercept = (SC_MSG_CMD_INTERCEPT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstIntercept))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstLCB = sc_lcb_get(pstIntercept->ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        goto proc_fail;
+    }
+
+    pstAgentLCB = sc_lcb_get(pstIntercept->ulAgentLegNo);
+    if (DOS_ADDR_INVALID(pstAgentLCB))
+    {
+        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        goto proc_fail;
+    }
+
+    if (sc_esl_execute("eavesdrop", pstAgentLCB->szUUID, pstLCB->szUUID) != DOS_SUCC)
+    {
+        stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+        goto proc_fail;
+    }
+
+    return DOS_SUCC;
+
+proc_fail:
+    stErrReport.stMsgTag.ulSCBNo = pstIntercept->ulSCBNo;
+    stErrReport.ulSCBNo = pstIntercept->ulSCBNo;
+    stErrReport.ulCMD = pstIntercept->stMsgTag.ulMsgType;
+
+    sc_send_event_err_report(&stErrReport);
+
+    return DOS_FAIL;
+}
 
 /**
  * 处理业务控制层发过来的请求命令，主要是分发
@@ -1802,7 +1847,9 @@ VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
         case SC_CMD_IVR_CTRL:
             ulRet = sc_cmd_ivr(pstMsg);
             break;
-
+        case SC_CMD_INTERCEPT:
+            ulRet = sc_cmd_intercept(pstMsg);
+            break;
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SU), "Invalid cmd type. %u", pstMsg->ulMsgType);
             break;
