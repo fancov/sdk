@@ -1750,7 +1750,7 @@ U32 sc_interception_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_LEG_CB  *pstLCB      = NULL;
     SC_LEG_CB  *pstAgentLCB = NULL;
     U32        ulRet        = DOS_FAIL;
-    SC_MSG_CMD_INTERCEPT_ST stInterceptRsp;
+    SC_MSG_CMD_MUX_ST stInterceptRsp;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -1787,15 +1787,16 @@ U32 sc_interception_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_INTERCEPTION_ALERTING:
             pstSCB->stInterception.stSCBTag.usStatus = SC_INTERCEPTION_ACTIVE;
 
-            stInterceptRsp.stMsgTag.ulMsgType = SC_CMD_INTERCEPT;
+            stInterceptRsp.stMsgTag.ulMsgType = SC_CMD_MUX;
             stInterceptRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
             stInterceptRsp.stMsgTag.usInterErr = 0;
 
+            stInterceptRsp.ulMode = SC_MUX_CMD_INTERCEPT;
             stInterceptRsp.ulSCBNo = pstSCB->ulSCBNo;
             stInterceptRsp.ulLegNo = pstLCB->ulCBNo;
             stInterceptRsp.ulAgentLegNo = pstAgentLCB->ulCBNo;
 
-            if (sc_send_cmd_intercept(&stInterceptRsp.stMsgTag) != DOS_SUCC)
+            if (sc_send_cmd_mux(&stInterceptRsp.stMsgTag) != DOS_SUCC)
             {
                 sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
                 goto proc_finishe;

@@ -381,7 +381,7 @@ typedef enum tagSCSUCommand{
     SC_CMD_HOLD,               /**< ÇëÇóºô½Ð±£³Ö */
     SC_CMD_UNHOLD,             /**< ÇëÇóºô½Ð½â³ý±£³Ö */
     SC_CMD_IVR_CTRL,           /**< IVR¿ØÖÆÃüÁî */
-    SC_CMD_INTERCEPT,          /**< ¼àÌýÃüÁî */
+    SC_CMD_MUX,                /**< »ìÒôÃüÁî */
 
     SC_CMD_BUTT,
 }SC_SU_COMMANGEN;
@@ -1437,9 +1437,20 @@ typedef struct tagSCMsgCmdIVR{
     U32     ulSCBNo;
 }SC_MSG_CMD_IVR_ST;
 
-/** ¼àÌýÇëÇó */
-typedef struct tagSCMsgCmdIntercept{
+typedef enum tagScMuxCmdMode{
+    SC_MUX_CMD_INTERCEPT,               /**< ¼àÌý */
+    SC_MUX_CMD_WHISPER,                 /**< ¶úÓï */
+
+    SC_MUX_CMD_BUTT
+}SC_MUX_CMD_MODE_EN;
+
+
+/** »ìÒô ÇëÇó */
+typedef struct tagSCMsgCmdMux{
     SC_MSG_TAG_ST    stMsgTag;              /**< ÏûÏ¢Í· */
+
+    /** ÀàÐÍ¡£SC_MUX_CMD_MODE_EN */
+    U32     ulMode;
 
     /** LEG±àºÅ */
     U32     ulLegNo;
@@ -1449,7 +1460,7 @@ typedef struct tagSCMsgCmdIntercept{
 
     /** ÒµÎñ¿ØÖÆ¿é±àºÅ */
     U32     ulSCBNo;
-}SC_MSG_CMD_INTERCEPT_ST;
+}SC_MSG_CMD_MUX_ST;
 
 /** ºô½Ð½¨Á¢ÊÂ¼þ */
 typedef struct tagSCMsgEvtCall{
@@ -1780,7 +1791,7 @@ U32 sc_req_play_sounds(U32 ulSCBNo, U32 ulLegNo, U32 *pulSndInd, U32 ulSndCnt, U
 U32 sc_req_hungup_with_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
 U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg);
-U32 sc_send_cmd_intercept(SC_MSG_TAG_ST *pstMsg);
+U32 sc_send_cmd_mux(SC_MSG_TAG_ST *pstMsg);
 
 
 U32 sc_agent_group_agent_count(U32 ulGroupID);

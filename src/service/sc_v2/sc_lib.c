@@ -1639,9 +1639,9 @@ U32 sc_send_cmd_ivr(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 }
 
-U32 sc_send_cmd_intercept(SC_MSG_TAG_ST *pstMsg)
+U32 sc_send_cmd_mux(SC_MSG_TAG_ST *pstMsg)
 {
-    SC_MSG_CMD_INTERCEPT_ST *pstCMDIntercept = NULL;
+    SC_MSG_CMD_MUX_ST *pstCMDMux = NULL;
     U32 ulRet;
 
     if (DOS_ADDR_INVALID(pstMsg))
@@ -1650,19 +1650,19 @@ U32 sc_send_cmd_intercept(SC_MSG_TAG_ST *pstMsg)
         return DOS_FAIL;
     }
 
-    pstCMDIntercept = (SC_MSG_CMD_INTERCEPT_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_INTERCEPT_ST));
-    if (DOS_ADDR_INVALID(pstCMDIntercept))
+    pstCMDMux = (SC_MSG_CMD_MUX_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_MUX_ST));
+    if (DOS_ADDR_INVALID(pstCMDMux))
     {
         sc_log(LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
-    dos_memcpy(pstCMDIntercept, pstMsg, sizeof(SC_MSG_CMD_INTERCEPT_ST));
+    dos_memcpy(pstCMDMux, pstMsg, sizeof(SC_MSG_CMD_MUX_ST));
 
-    ulRet = sc_send_command(&pstCMDIntercept->stMsgTag);
+    ulRet = sc_send_command(&pstCMDMux->stMsgTag);
     if (ulRet != DOS_SUCC)
     {
-        dos_dmem_free(pstCMDIntercept);
+        dos_dmem_free(pstCMDMux);
         return DOS_FAIL;
     }
 
