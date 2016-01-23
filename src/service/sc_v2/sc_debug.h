@@ -38,6 +38,7 @@ typedef struct tagSCModList{
     U32   ulIndex;
     S8    *pszName;
     U32   ulDefaultLogLevel;
+    BOOL  bTrace;                       /* 模块跟踪 */
     U32   (*fn_init)();
     U32   (*fn_start)();
     U32   (*fn_stop)();
@@ -53,7 +54,7 @@ typedef enum tagSCLogFlags{
 /* 日志标记 */
 #define SC_LOG_SET_MOD(level, mod) (level & 0xF) | ((mod << 4) & 0x3F0)
 
-#define SC_LOG_SET_FLAG(level, mod, flags) (level & 0xF) | ((mod << 4) & 0x3F0) | (flags & 0xFFFFFC00)
+#define SC_LOG_SET_FLAG(level, mod, flags) (level & 0xF) | ((mod << 4) & 0x3F0) | ((flags << 10) & 0xFFFFFC00)
 
 /** 记录日志
  |----------------------|  ------  |   ----    |

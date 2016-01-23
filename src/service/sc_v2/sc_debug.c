@@ -20,6 +20,7 @@ extern "C" {
 #include "sc_httpd.h"
 #include "sc_http_api.h"
 #include "sc_debug.h"
+#include "bs_pub.h"
 
 /* 坐席组的hash表 */
 extern HASH_TABLE_S      *g_pstAgentList;
@@ -38,6 +39,9 @@ extern pthread_mutex_t      g_mutexTaskList;
 extern BOOL                 g_blSCInitOK;
 
 extern SC_MOD_LIST_ST       astSCModList[];
+
+extern SC_SRV_CB       *g_pstSCBList;
+extern SC_LEG_CB       *g_pstLegCB;
 
 U32         g_ulSCLogLevel = LOG_LEVEL_DEBUG;
 
@@ -309,6 +313,147 @@ const S8* sc_translate_caller_type(U32 ulType)
     return "UNKNOWN";
 }
 
+const S8* sc_translate_server_cb(SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstServerAddr)
+{
+    if (DOS_ADDR_INVALID(pstSCB)
+        || DOS_ADDR_INVALID(pstServerAddr))
+    {
+        return "Error";
+    }
+
+    if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stCall)
+    {
+        return "Basic Call";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stPreviewCall)
+    {
+        return "Preview Call";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stAutoCall)
+    {
+        return "Auto Call";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stVoiceVerify)
+    {
+        return "Voice Verify";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stAccessCode)
+    {
+        return "Access Code";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stHold)
+    {
+        return "Hold";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stTransfer)
+    {
+        return "Transfer";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stIncomingQueue)
+    {
+        return "Incoming Queue";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stInterception)
+    {
+        return "Interception";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stWhispered)
+    {
+        return "Whispered";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stMarkCustom)
+    {
+        return "Mark Customer";
+    }
+
+    return "Error";
+}
+
+const S8* sc_translate_server_type(U32 ulSrvType)
+{
+    switch (ulSrvType)
+    {
+        case BS_SERV_OUTBAND_CALL:
+            return "OUTBAND CALL";
+        case BS_SERV_INBAND_CALL:
+            return "INBAND CALL";
+        case BS_SERV_INTER_CALL:
+            return "INTER CALL";
+        case BS_SERV_AUTO_DIALING:
+            return "AUTO CALL";
+        case BS_SERV_PREVIEW_DIALING:
+            return "PREVIEW CALL";
+        case BS_SERV_PREDICTIVE_DIALING:
+            return "PREDICTIVE CALL";
+        case BS_SERV_RECORDING:
+            return "RECORD";
+        case BS_SERV_CALL_FORWARD:
+            return "CALL FORWARD";
+        case BS_SERV_CALL_TRANSFER:
+            return "CALL TRANSFER";
+        case BS_SERV_PICK_UP:
+            return "PICK UP";
+        case BS_SERV_CONFERENCE:
+            return "CONFERENCE";
+        case BS_SERV_VOICE_MAIL:
+            return "VOICE MAIL";
+        case BS_SERV_SMS_SEND:
+            return "SMS SEND";
+        case BS_SERV_SMS_RECV:
+            return "SMS RECV";
+        case BS_SERV_MMS_SEND:
+            return "MMS SEND";
+        case BS_SERV_MMS_RECV:
+            return "MMS RECV";
+        case BS_SERV_RENT:
+            return "RENT";
+        case BS_SERV_SETTLE:
+            return "SETTLE";
+        case BS_SERV_VERIFY:
+            return "VERIFY";
+        default:
+            return "ERROR";
+    }
+}
+
+const S8 *sc_translate_module(U32 ulMod)
+{
+    switch (ulMod)
+    {
+        case SC_MOD_DB:
+            return "DB";
+        case SC_MOD_DB_WQ:
+            return "DB_WQ";
+        case SC_MOD_DIGIST:
+            return "DIGIST";
+        case SC_MOD_RES:
+            return "RES";
+        case SC_MOD_ACD:
+            return "ACD";
+        case SC_MOD_EVENT:
+            return "EVENT";
+        case SC_MOD_SU:
+            return "SU";
+        case SC_MOD_BS:
+            return "BS";
+        case SC_MOD_EXT_MNGT:
+            return "EXT_MNGT";
+        case SC_MOD_CWQ:
+            return "CWQ";
+        case SC_MOD_PUBLISH:
+            return "PUBLISH";
+        case SC_MOD_ESL:
+            return "ESL";
+        case SC_MOD_HTTP_API:
+            return "HTTP_API";
+        case SC_MOD_DATA_SYN:
+            return "DATA_SYN";
+        case SC_MOD_TASK:
+            return "TASK";
+        default:
+            return "ERROR";
+    }
+}
 
 
 S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
@@ -590,6 +735,263 @@ VOID sc_show_http(U32 ulIndex, U32 ulID)
 
 VOID sc_show_scb_all(U32 ulIndex)
 {
+    S8 szCmdBuff[1024] = {0, };
+    U32 i = 0, ulCnt = 0;
+    SC_SRV_CB *pstSCB = NULL;
+    S8  szAllocTime[32]  = {0,};
+    time_t  stTime;
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow the SCB List:");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                    , "\r\n%7s%12s%12s%24s%10s%24s"
+                    , "Index", "Cusomer", "Agent", "Alloc Time", "Trace", "CurrentSrv");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    for (i=0; i<SC_SCB_SIZE; i++)
+    {
+        pstSCB = &g_pstSCBList[i];
+        if (!pstSCB->bValid)
+        {
+            continue;
+        }
+
+        stTime = (time_t)pstSCB->ulAllocTime;
+        strftime(szAllocTime, sizeof(szAllocTime), "%Y-%m-%d %H:%M:%S", localtime(&stTime));
+
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                        , "\r\n%7u%12u%12u%24s%10s%24s"
+                        , pstSCB->ulSCBNo
+                        , pstSCB->ulCustomerID == U32_BUTT ? 0 : pstSCB->ulCustomerID
+                        , pstSCB->ulAgentID == U32_BUTT ? 0 : pstSCB->ulAgentID
+                        , szAllocTime
+                        , pstSCB->bTrace ? "true" : "false"
+                        , sc_translate_server_cb(pstSCB, pstSCB->pstServiceList[pstSCB->ulCurrentSrv]));
+        cli_out_string(ulIndex, szCmdBuff);
+        ulCnt++;
+    }
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------\r\n\r\n");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %u\r\n\r\n", ulCnt);
+    cli_out_string(ulIndex, szCmdBuff);
+}
+
+VOID sc_show_scb_detail(U32 ulIndex, U32 ulSCBID)
+{
+    S8 szCmdBuff[1024] = {0, };
+    U32 i = 0;
+    SC_SRV_CB *pstSCB = NULL;
+    S8  szAllocTime[32]  = {0,};
+    time_t  stTime;
+
+    pstSCB = sc_scb_get(ulSCBID);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nThe SCBNo %u is invalid", ulSCBID);
+        cli_out_string(ulIndex, szCmdBuff);
+        return;
+    }
+
+    if (!pstSCB->bValid)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nThe SCBNo %u is not alloc", ulSCBID);
+        cli_out_string(ulIndex, szCmdBuff);
+        return;
+    }
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow the SCB %u detail:", ulSCBID);
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                    , "\r\n%7s%12s%12s%24s%10s%24s"
+                    , "Index", "Cusomer", "Agent", "Alloc Time", "Trace", "CurrentSrv");
+    cli_out_string(ulIndex, szCmdBuff);
+    stTime = (time_t)pstSCB->ulAllocTime;
+    strftime(szAllocTime, sizeof(szAllocTime), "%Y-%m-%d %H:%M:%S", localtime(&stTime));
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                    , "\r\n%7u%12u%12u%24s%10s%24s"
+                    , pstSCB->ulSCBNo
+                    , pstSCB->ulCustomerID == U32_BUTT ? 0 : pstSCB->ulCustomerID
+                    , pstSCB->ulAgentID == U32_BUTT ? 0 : pstSCB->ulAgentID
+                    , szAllocTime
+                    , pstSCB->bTrace ? "true" : "false"
+                    , sc_translate_server_cb(pstSCB, pstSCB->pstServiceList[pstSCB->ulCurrentSrv]));
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow server list:");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+    for (i=0; i<SC_SRV_BUTT; i++)
+    {
+        if (pstSCB->pstServiceList[i] != NULL)
+        {
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%s", sc_translate_server_cb(pstSCB, pstSCB->pstServiceList[i]));
+            cli_out_string(ulIndex, szCmdBuff);
+        }
+    }
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow server type:");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+    for (i=0; i<SC_MAX_SERVICE_TYPE; i++)
+    {
+        if (pstSCB->aucServType[i] >= BS_SERV_BUTT
+            || pstSCB->aucServType[i] == 0)
+        {
+            continue;
+        }
+
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%s", sc_translate_server_type(pstSCB->aucServType[i]));
+        cli_out_string(ulIndex, szCmdBuff);
+    }
+}
+
+VOID sc_show_leg_all(U32 ulIndex)
+{
+    S8 szCmdBuff[1024] = {0, };
+    U32 i = 0, ulCnt = 0;
+    SC_LEG_CB *pstLeg = NULL;
+    S8  szAllocTime[32]  = {0,};
+    time_t  stTime;
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow the Leg List:");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                    , "\r\n%7s%7s%7s%7s%24s%10s%45s"
+                    , "Index", "SCBNo", "Codec", "Ptime", "Alloc Time", "Trace", "szUUID");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    for (i=0; i<SC_LEG_CB_SIZE; i++)
+    {
+        pstLeg = &g_pstLegCB[i];
+        if (!pstLeg->bValid)
+        {
+            continue;
+        }
+
+        stTime = (time_t)pstLeg->ulAllocTime;
+        strftime(szAllocTime, sizeof(szAllocTime), "%Y-%m-%d %H:%M:%S", localtime(&stTime));
+
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                        , "\r\n%7u%7u%7u%7u%24s%10s%45s"
+                        , pstLeg->ulCBNo
+                        , pstLeg->ulSCBNo
+                        , pstLeg->ucCodec
+                        , pstLeg->ucPtime
+                        , szAllocTime
+                        , pstLeg->bTrace ? "true" : "false"
+                        , pstLeg->szUUID);
+        cli_out_string(ulIndex, szCmdBuff);
+        ulCnt++;
+    }
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------\r\n\r\n");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %u\r\n\r\n", ulCnt);
+    cli_out_string(ulIndex, szCmdBuff);
+}
+
+VOID sc_show_leg_detail(U32 ulIndex, U32 ulLegID)
+{
+    S8 szCmdBuff[1024] = {0, };
+    SC_LEG_CB *pstLeg = NULL;
+    S8  szAllocTime[32]  = {0,};
+    time_t  stTime;
+
+    pstLeg = sc_lcb_get(ulLegID);
+    if (DOS_ADDR_INVALID(pstLeg))
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nThe LegNo %u is invalid", ulLegID);
+        cli_out_string(ulIndex, szCmdBuff);
+        return;
+    }
+
+    if (!pstLeg->bValid)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nThe LegNo %u is not alloc", ulLegID);
+        cli_out_string(ulIndex, szCmdBuff);
+        return;
+    }
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow the LegNo %u detail:", ulLegID);
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                    , "\r\n%7s%7s%7s%7s%24s%10s%45s"
+                    , "Index", "SCBNo", "Codec", "Ptime", "Alloc Time", "Trace", "szUUID");
+    cli_out_string(ulIndex, szCmdBuff);
+    stTime = (time_t)pstLeg->ulAllocTime;
+    strftime(szAllocTime, sizeof(szAllocTime), "%Y-%m-%d %H:%M:%S", localtime(&stTime));
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                        , "\r\n%7u%7u%7u%7u%24s%10s%45s"
+                        , pstLeg->ulCBNo
+                        , pstLeg->ulSCBNo
+                        , pstLeg->ucCodec
+                        , pstLeg->ucPtime
+                        , szAllocTime
+                        , pstLeg->bTrace ? "true" : "false"
+                        , pstLeg->szUUID);
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow server list:");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                        , "\r\n%20s%10s%10s"
+                        , "Type", "Status", "Model");
+    cli_out_string(ulIndex, szCmdBuff);
+
+    if (pstLeg->stCall.bValid)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u", "Basic Call", pstLeg->stCall.ucStatus);
+        cli_out_string(ulIndex, szCmdBuff);
+    }
+    if (pstLeg->stRecord.bValid)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u", "Record", pstLeg->stRecord.usStatus);
+        cli_out_string(ulIndex, szCmdBuff);
+    }
+    if (pstLeg->stPlayback.bValid)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u", "Playback", pstLeg->stPlayback.usStatus);
+        cli_out_string(ulIndex, szCmdBuff);
+    }
+    if (pstLeg->stBridge.bValid)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u", "Bridge", pstLeg->stBridge.usStatus);
+        cli_out_string(ulIndex, szCmdBuff);
+    }
+    if (pstLeg->stHold.bValid)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u", "Hold", pstLeg->stHold.usStatus);
+        cli_out_string(ulIndex, szCmdBuff);
+    }
+    if (pstLeg->stMux.bValid)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u%10u", "Mux", pstLeg->stMux.usStatus, pstLeg->stMux.usMode);
+        cli_out_string(ulIndex, szCmdBuff);
+    }
+    if (pstLeg->stMcx.bValid)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u", "Mcx", pstLeg->stMcx.usStatus);
+        cli_out_string(ulIndex, szCmdBuff);
+    }
+    if (pstLeg->stIVR.bValid)
+    {
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u", "IVR", pstLeg->stIVR.usStatus);
+        cli_out_string(ulIndex, szCmdBuff);
+    }
 }
 
 static S8* sc_debug_make_weeks(U32 ulWeekMask, S8 *pszWeeks, U32 ulLength)
@@ -1189,11 +1591,6 @@ VOID sc_show_caller_for_task(U32 ulIndex, U32 ulTaskID)
     cli_out_string(ulIndex, "\r\n---------------------------------------------------------------");
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal %d Caller(s).", lCount);
     cli_out_string(ulIndex, szCmdBuff);
-}
-
-VOID sc_show_scb_detail(U32 ulIndex, U32 ulSCBID)
-{
-
 }
 
 VOID sc_show_gateway(U32 ulIndex, U32 ulID)
@@ -2026,6 +2423,26 @@ S32 sc_track_call_by_callee(U32 ulIndex ,S8 *pszCallee)
     return DOS_SUCC;
 }
 
+S32 sc_show_trace_mod(U32 ulIndex)
+{
+    S8  szBuff[1024] = {0};
+    U32 i = 0;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%30s%10s"
+                    , "Modul", "Trace");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------------");
+
+    for (i=0; i<SC_MOD_BUTT; i++)
+    {
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%30s%10s"
+            , sc_translate_module(i), astSCModList[i].bTrace ? "ON" : "OFF");
+        cli_out_string(ulIndex, szBuff);
+    }
+
+    return DOS_SUCC;
+}
+
 #if 0
 U32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
 {
@@ -2520,9 +2937,90 @@ S32 sc_track_call_by_task(U32 ulIndex ,U32 ulTaskID)
 }
 #endif
 
+S32 cli_cc_trace_mod(U32 ulIndex, S32 argc, S8 **argv)
+{
+    U32 i = 0, ulMod = 0;
+    BOOL bIsTrace = DOS_FALSE;
+    S8 szMsg[512] = {0};
+
+    if (5 == argc)
+    {
+        if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
+        {
+            bIsTrace = DOS_TRUE;
+        }
+
+        if (dos_strnicmp(argv[3], "all", dos_strlen("all")) == 0)
+        {
+            for (i=0; i<SC_MOD_BUTT; i++)
+            {
+                astSCModList[i].bTrace = bIsTrace;
+            }
+
+            dos_snprintf(szMsg, sizeof(szMsg), "Trave mod all %s SUCC\r\n", bIsTrace ? "ON" : "OFF");
+            cli_out_string(ulIndex, szMsg);
+        }
+        else
+        {
+            if (dos_atoul(argv[3], &ulMod) != DOS_SUCC)
+            {
+                goto proc_fail;
+            }
+
+            if (ulMod < SC_MOD_BUTT)
+            {
+                astSCModList[ulMod].bTrace = bIsTrace;
+
+                dos_snprintf(szMsg, sizeof(szMsg), "Trave mod %s %s SUCC\r\n", sc_translate_module(ulMod), bIsTrace ? "ON" : "OFF");
+                cli_out_string(ulIndex, szMsg);
+            }
+            else
+            {
+                goto proc_fail;
+            }
+        }
+    }
+    else
+    {
+        goto proc_fail;
+    }
+
+    return DOS_SUCC;
+
+proc_fail:
+    /* 打印帮助信息 */
+
+    return DOS_FAIL;
+}
+
 S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
 {
+    S32 lRet = DOS_FALSE;
+
+    if (argc < 4)
+    {
+        return -1;
+    }
+
+    if (dos_strnicmp(argv[2], "mod", dos_strlen("mod")) == 0)
+    {
+        /* 模块跟踪 */
+        lRet = cli_cc_trace_mod(ulIndex, argc, argv);
+        if (lRet != DOS_SUCC)
+        {
+            /* 打印帮助信息 */
+        }
+
+    }
+
+    return DOS_SUCC;
+}
+
+
 #if 0
+S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
+{
+
     U32 ulSubMod = SC_SUB_MOD_BUTT;
     U32 ulSubMod1 = SC_SUB_MOD_BUTT;
     U32 ulTraceAll = DOS_FALSE;
@@ -2902,9 +3400,10 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-#endif
+
     return 0;
 }
+#endif
 
 VOID sc_show_cb(U32 ulIndex)
 {
@@ -3032,6 +3531,39 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
         if (3 == argc)
         {
             sc_show_scb_all(ulIndex);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) == 0)
+            {
+                sc_show_scb_detail(ulIndex, ulID);
+            }
+            else
+            {
+                return -1;
+            }
+        }
+        else
+        {
+            return -1;
+        }
+    }
+    else if (dos_stricmp(argv[2], "leg") == 0)
+    {
+        if (3 == argc)
+        {
+            sc_show_leg_all(ulIndex);
+        }
+        else if (4 == argc)
+        {
+            if (dos_atoul(argv[3], &ulID) == 0)
+            {
+                sc_show_leg_detail(ulIndex, ulID);
+            }
+            else
+            {
+                return -1;
+            }
         }
         else
         {
@@ -3433,28 +3965,26 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     {
         if (4 == argc)
         {
-#if 0
             if (0 == dos_stricmp(argv[3], "caller"))
             {
-                sc_show_trace_caller(ulIndex);
+                //sc_show_trace_caller(ulIndex);
             }
             else if (0 == dos_stricmp(argv[3], "callee"))
             {
-                sc_show_trace_callee(ulIndex);
+                //sc_show_trace_callee(ulIndex);
             }
             else if (0 == dos_stricmp(argv[3], "server"))
             {
-                sc_show_trace_server(ulIndex);
+                //sc_show_trace_server(ulIndex);
             }
             else if (0 == dos_stricmp(argv[3], "customer"))
             {
-                sc_show_trace_customer(ulIndex);
+                //sc_show_trace_customer(ulIndex);
             }
             else if (0 == dos_stricmp(argv[3], "mod"))
             {
                 sc_show_trace_mod(ulIndex);
             }
-#endif
         }
     }
 
@@ -3898,6 +4428,20 @@ VOID sc_log(U32 ulLogFlags, const S8 *pszFormat, ...)
         && ulLevel <= g_ulSCLogLevel)
     {
         bIsOutput = DOS_TRUE;
+    }
+
+    /* 模块跟踪，不判断 SC_MOD_DB 模块 */
+    if (ulMod >= SC_MOD_BUTT || 0 == ulMod)
+    {
+        /* 不需要处理 */
+    }
+    else
+    {
+        if (!bIsOutput
+            && astSCModList[ulMod].bTrace)
+        {
+            bIsOutput = DOS_TRUE;
+        }
     }
 
     if(!bIsOutput)

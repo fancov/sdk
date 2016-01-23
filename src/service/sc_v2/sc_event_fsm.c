@@ -406,10 +406,35 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_ACTIVE:
             pstCallee = sc_lcb_get(pstSCB->stCall.ulCalleeLegNo);
             pstCalling = sc_lcb_get(pstSCB->stCall.ulCallingLegNo);
+            if (DOS_ADDR_VALID(pstCallee))
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Callee leg : %u, start time : %u"
+                    , pstCallee->ulCBNo, pstCallee->stCall.stTimeInfo.ulStartTime);
+            }
+
+            if (DOS_ADDR_VALID(pstCalling))
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Calling leg : %u, start time : %u"
+                    , pstCalling->ulCBNo, pstCalling->stCall.stTimeInfo.ulStartTime);
+            }
+
+            /* 生成挂断的leg的话单 */
+            if (pstHungup->ulLegNo == pstSCB->stCall.ulCalleeLegNo)
+            {
+                if (DOS_ADDR_VALID(pstCallee))
+                {
+                    //sc_send_billing_stop2bs
+                }
+            }
+            else
+            {
+
+
+            }
+
             if (DOS_ADDR_INVALID(pstCallee) || DOS_ADDR_INVALID(pstCalling))
             {
                 /* 发送话单，释放业务控制块 */
-
                 if (pstCallee)
                 {
                     sc_lcb_free(pstCallee);

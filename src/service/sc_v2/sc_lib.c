@@ -977,7 +977,7 @@ VOID sc_scb_init(SC_SRV_CB *pstSCB)
 
     for (ulIndex=0; ulIndex<SC_MAX_SERVICE_TYPE; ulIndex++)
     {
-        pstSCB->pstServiceList[ulIndex] = 0;
+        pstSCB->aucServType[ulIndex] = 0;
     }
 
     pstSCB->ulCurrentSrv = 0;

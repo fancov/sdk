@@ -95,22 +95,22 @@ U32 sc_task_mngt_stop();
 
 /* global variables */
 SC_MOD_LIST_ST  astSCModList[] = {
-    {SC_MOD_DB,         "SC_DB",     LOG_LEVEL_NOTIC, sc_init_db,           NULL,                   NULL},
-    {SC_MOD_DB_WQ,      "SC_DB_WQ",  LOG_LEVEL_NOTIC, sc_db_init,           sc_db_start,            sc_db_stop},
-    {SC_MOD_DIGIST,     "SC_DLOG",   LOG_LEVEL_NOTIC, sc_log_digest_init,   sc_log_digest_start,    sc_log_digest_stop},
-    {SC_MOD_RES,        "SC_RES",    LOG_LEVEL_NOTIC, sc_res_init,          sc_res_start,           sc_res_stop},
-    {SC_MOD_ACD,        "SC_AGENT",  LOG_LEVEL_NOTIC, sc_agent_mngt_init,   NULL,                   NULL},
-    {SC_MOD_EVENT,      "SC_EVT",    LOG_LEVEL_NOTIC, sc_event_init,        sc_event_start,         sc_event_stop},
-    {SC_MOD_SU,         "SC_ESL",    LOG_LEVEL_NOTIC, sc_su_mngt_init,      sc_su_mngt_start,       sc_su_mngt_stop},
-    {SC_MOD_BS,         "SC_BS",     LOG_LEVEL_NOTIC, sc_bs_fsm_init,       sc_bs_fsm_start,        sc_su_mngt_stop},
-    {SC_MOD_EXT_MNGT,   "SC_EXT",    LOG_LEVEL_NOTIC, sc_ext_mngt_init,     sc_ext_mngt_start,      sc_ext_mngt_stop},
-    {SC_MOD_CWQ,        "SC_CWQ",    LOG_LEVEL_NOTIC, sc_cwq_init,          sc_cwq_start,           sc_cwq_stop},
-    {SC_MOD_PUBLISH,    "SC_PUB",    LOG_LEVEL_NOTIC, sc_pub_init,          sc_pub_start,           sc_pub_stop},
-    {SC_MOD_ESL,        "SC_ESL_WR", LOG_LEVEL_NOTIC, sc_esl_init,          sc_esl_start,           sc_esl_stop},
-    {SC_MOD_HTTP_API,   "SC_HTTP",   LOG_LEVEL_NOTIC, sc_httpd_init,        sc_httpd_start,         sc_httpd_stop},
-    {SC_MOD_DATA_SYN,   "SC_SYN",    LOG_LEVEL_NOTIC, sc_data_syn_init,     sc_data_syn_start,      sc_data_syn_stop},
+    {SC_MOD_DB,         "SC_DB",     LOG_LEVEL_NOTIC, DOS_FALSE, sc_init_db,           NULL,                   NULL},
+    {SC_MOD_DB_WQ,      "SC_DB_WQ",  LOG_LEVEL_NOTIC, DOS_FALSE, sc_db_init,           sc_db_start,            sc_db_stop},
+    {SC_MOD_DIGIST,     "SC_DLOG",   LOG_LEVEL_NOTIC, DOS_FALSE, sc_log_digest_init,   sc_log_digest_start,    sc_log_digest_stop},
+    {SC_MOD_RES,        "SC_RES",    LOG_LEVEL_NOTIC, DOS_FALSE, sc_res_init,          sc_res_start,           sc_res_stop},
+    {SC_MOD_ACD,        "SC_AGENT",  LOG_LEVEL_NOTIC, DOS_FALSE, sc_agent_mngt_init,   NULL,                   NULL},
+    {SC_MOD_EVENT,      "SC_EVT",    LOG_LEVEL_NOTIC, DOS_FALSE, sc_event_init,        sc_event_start,         sc_event_stop},
+    {SC_MOD_SU,         "SC_ESL",    LOG_LEVEL_NOTIC, DOS_FALSE, sc_su_mngt_init,      sc_su_mngt_start,       sc_su_mngt_stop},
+    {SC_MOD_BS,         "SC_BS",     LOG_LEVEL_NOTIC, DOS_FALSE, sc_bs_fsm_init,       sc_bs_fsm_start,        sc_su_mngt_stop},
+    {SC_MOD_EXT_MNGT,   "SC_EXT",    LOG_LEVEL_NOTIC, DOS_FALSE, sc_ext_mngt_init,     sc_ext_mngt_start,      sc_ext_mngt_stop},
+    {SC_MOD_CWQ,        "SC_CWQ",    LOG_LEVEL_NOTIC, DOS_FALSE, sc_cwq_init,          sc_cwq_start,           sc_cwq_stop},
+    {SC_MOD_PUBLISH,    "SC_PUB",    LOG_LEVEL_NOTIC, DOS_FALSE, sc_pub_init,          sc_pub_start,           sc_pub_stop},
+    {SC_MOD_ESL,        "SC_ESL_WR", LOG_LEVEL_NOTIC, DOS_FALSE, sc_esl_init,          sc_esl_start,           sc_esl_stop},
+    {SC_MOD_HTTP_API,   "SC_HTTP",   LOG_LEVEL_NOTIC, DOS_FALSE, sc_httpd_init,        sc_httpd_start,         sc_httpd_stop},
+    {SC_MOD_DATA_SYN,   "SC_SYN",    LOG_LEVEL_NOTIC, DOS_FALSE, sc_data_syn_init,     sc_data_syn_start,      sc_data_syn_stop},
 
-    {SC_MOD_TASK,       "SC_TASK",   LOG_LEVEL_NOTIC, sc_task_mngt_init,    sc_task_mngt_start,     sc_task_mngt_stop},
+    {SC_MOD_TASK,       "SC_TASK",   LOG_LEVEL_NOTIC, DOS_FALSE, sc_task_mngt_init,    sc_task_mngt_start,     sc_task_mngt_stop},
 };
 
 

@@ -875,6 +875,7 @@ typedef struct tagSCLegCB{
     SC_SU_MCX_ST          stMcx;
     /** IVR业务单元控制块 */
     SC_SU_IVR_ST          stIVR;
+
 }SC_LEG_CB;
 
 /**

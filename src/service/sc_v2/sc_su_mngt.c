@@ -79,6 +79,8 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     SC_LEG_CB *pstLCB     = NULL;
     SC_MSG_EVT_CALL_ST       stCallEvent;
     SC_MSG_EVT_ERR_REPORT_ST stErrReport;
+    S8  *pszTmp = NULL;
+    U64 uLTmp  = 0;
 
     if (DOS_ADDR_INVALID(pstEvent))
     {
@@ -144,6 +146,17 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
                               , ulLCBNo);
 
         goto proc_fail;
+    }
+
+    /* 获取 create 的时间，存放在leg中 */
+    pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Created-Time");
+    if (DOS_ADDR_VALID(pszTmp)
+        && '\0' != pszTmp[0]
+        && dos_atoull(pszTmp, &uLTmp) == 0)
+    {
+        pstLCB->stCall.stTimeInfo.ulStartTime = uLTmp / 1000000;
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Get leg(%u) extra data: Caller-Channel-Created-Time=%s(%u)"
+            , pstLCB->ulCBNo, pszTmp, pstLCB->stCall.stTimeInfo.ulStartTime);
     }
 
     /** 没有获取到profile说明有问题 */

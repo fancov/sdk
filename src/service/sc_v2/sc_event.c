@@ -662,6 +662,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
             pstSCB->stCall.ulCallingLegNo = pstEventCallSetup->ulLegNo;
             pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stCall.stSCBTag;
             pstLCB->ulSCBNo = pstSCB->ulSCBNo;
+            pstMsg->ulSCBNo = pstSCB->ulSCBNo;
         }
         else
         {
