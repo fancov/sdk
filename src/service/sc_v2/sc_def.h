@@ -625,7 +625,7 @@ typedef struct tagSCSUNumInfo{
     S8      szANI[SC_NUM_LENGTH];            /**< 主叫号码 */
     S8      szCID[SC_NUM_LENGTH];            /**< 来电显示 */
 
-    S8      szDial[SC_NUM_LENGTH];           /**< 来电显示 */
+    S8      szDial[SC_NUM_LENGTH];           /**< 二次拨号等 */
 
 }SC_SU_NUM_INFO_ST;
 
@@ -905,6 +905,7 @@ typedef enum tagSCCallStatus{
     SC_CALL_IDEL,       /**< 状态初始化 */
     SC_CALL_PORC,       /**< 呼叫预处理，确定客户等信息 */
     SC_CALL_AUTH,       /**< 认证 */
+    SC_CALL_AUTH_CALLEE,/**< 认证被叫 */
     SC_CALL_EXEC,       /**< 开始呼叫被叫 */
     SC_CALL_ALERTING,   /**< 被叫开始振铃 */
     SC_CALL_ACTIVE,     /**< 呼叫接通 */
@@ -924,6 +925,12 @@ typedef struct tagSCSrvCall{
 
     /* 关联LEG编号 */
     U32               ulCalleeLegNo;
+
+    /* 呼叫来源 SC_LEG_DIRACTION_EN */
+    U32               ulCallSrc;
+
+    /* 呼叫目的 SC_LEG_DIRACTION_EN */
+    U32               ulCallDst;
 
     /* 路由ID */
     U32               ulRouteID;
@@ -1754,6 +1761,8 @@ SC_SRV_CB *sc_scb_alloc();
 VOID sc_scb_free(SC_SRV_CB *pstSCB);
 SC_SRV_CB *sc_scb_get(U32 ulCBNo);
 U32 sc_scb_set_service(SC_SRV_CB *pstSCB, U32 ulService);
+U32 sc_scb_remove_service(SC_SRV_CB *pstSCB, U32 ulService);
+BOOL sc_scb_is_exit_service(SC_SRV_CB *pstSCB, U32 ulService);
 
 VOID sc_lcb_init(SC_LEG_CB *pstLCB);
 SC_LEG_CB *sc_lcb_alloc();
@@ -1809,7 +1818,6 @@ U32 sc_agent_group_init(U32 ulIndex);
 U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType);
 U32 sc_agent_http_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
 
-
 U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -1857,6 +1865,7 @@ S32 sc_task_and_callee_load(U32 ulIndex);
 
 U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB);
+U32 sc_incoming_call_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB);
 U32 sc_make_call2pstn(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
 U32 sc_make_call2eix(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
 U32 sc_make_call2sip(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
@@ -1871,6 +1880,11 @@ U32 sc_call_ctrl_hangup(U32 ulAgent);
 U32 sc_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulType, S8 *pszCallee, U32 ulFlag, U32 ulCalleeAgentID);
 U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
 U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
+
+U32 sc_did_bind_info_get(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID);
+U32 sc_sip_account_get_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
+BOOL sc_customer_is_exit(U32 ulCustomerID);
+U32 sc_log_digest_print(const S8 *szTraceStr);
 
 #endif  /* end of __SC_DEF_V2_H__ */
 

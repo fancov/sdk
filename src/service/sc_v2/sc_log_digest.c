@@ -130,13 +130,17 @@ static VOID *sc_log_digest_mainloop(VOID *ptr)
     return NULL;
 }
 
-U32 sc_log_digest_print(S8 *pszFormat, ...)
+U32 sc_log_digest_print(const S8 *szTraceStr)
 {
     DLL_NODE_S  *pstNode        = NULL;
-    va_list     argptr;
     S8          *pszBuf         = NULL;
     S8          szCurTime[32]   = {0,};
     time_t      stTime;
+
+    if (DOS_ADDR_INVALID(szTraceStr))
+    {
+        return DOS_FAIL;
+    }
 
     stTime = time(NULL);
     strftime(szCurTime, sizeof(szCurTime), "%Y-%m-%d %H:%M:%S ", localtime(&stTime));
@@ -147,11 +151,7 @@ U32 sc_log_digest_print(S8 *pszFormat, ...)
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DIGIST), "%s", "Add log digest fail. Alloc memory fail");
         return DOS_FAIL;
     }
-    dos_snprintf(pszBuf, SC_LOG_DIGEST_LEN, "%s", szCurTime);
-    va_start(argptr, pszFormat);
-    vsnprintf(pszBuf+dos_strlen(pszBuf), SC_LOG_DIGEST_LEN-dos_strlen(pszBuf), pszFormat, argptr);
-    va_end(argptr);
-    dos_snprintf(pszBuf+dos_strlen(pszBuf), SC_LOG_DIGEST_LEN-dos_strlen(pszBuf), "\r\n");
+    dos_snprintf(pszBuf, SC_LOG_DIGEST_LEN, "%s%s\r\n", szCurTime, szTraceStr);
 
     pstNode = dos_dmem_alloc(sizeof(DLL_NODE_S));
     if (DOS_ADDR_INVALID(pstNode))

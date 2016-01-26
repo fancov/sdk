@@ -44,6 +44,10 @@ extern SC_SRV_CB       *g_pstSCBList;
 extern SC_LEG_CB       *g_pstLegCB;
 
 U32         g_ulSCLogLevel = LOG_LEVEL_DEBUG;
+U32         g_aulCustomerTrace[SC_TRACE_CUSTOMER_SIZE] = {0, };
+S8          g_aszCallerTrace[SC_TRACE_CALLER_SIZE][SC_NUM_LENGTH] = { {0, }, };
+S8          g_aszCalleeTrace[SC_TRACE_CALLEE_SIZE][SC_NUM_LENGTH] = { {0, }, };
+U8          g_aucServTraceFlag[BS_SERV_BUTT] = { 0 };
 
 S8 *g_pszSCCommandStr[] = {
     "CMD_CALL_SETUP",
@@ -455,6 +459,26 @@ const S8 *sc_translate_module(U32 ulMod)
     }
 }
 
+const S8 *sc_translate_basic_type(U32 ulType)
+{
+    switch (ulType)
+    {
+        case SC_LEG_PEER_INBOUND:
+            return "INBOUND";
+        case SC_LEG_PEER_OUTBOUND:
+            return "OUTBOUND";
+        case SC_LEG_PEER_INBOUND_TT:
+            return "INBOUND_TT";
+        case SC_LEG_PEER_OUTBOUND_TT:
+            return "OUTBOUND_TT";
+        case SC_LEG_PEER_INBOUND_INTERNAL:
+            return "INBOUND_INTERNAL";
+        case SC_LEG_PEER_OUTBOUND_INTERNAL:
+            return "OUTBOUND_INTERNAL";
+        default:
+            return "ERROR";
+    }
+}
 
 S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
 {
@@ -948,13 +972,16 @@ VOID sc_show_leg_detail(U32 ulIndex, U32 ulLegID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%20s%10s%10s"
+                        , "\r\n%20s%10s%20s"
                         , "Type", "Status", "Model");
     cli_out_string(ulIndex, szCmdBuff);
 
     if (pstLeg->stCall.bValid)
     {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u", "Basic Call", pstLeg->stCall.ucStatus);
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u%20s"
+            , "Basic Call"
+            , pstLeg->stCall.ucStatus
+            , sc_translate_basic_type(pstLeg->stCall.ucPeerType));
         cli_out_string(ulIndex, szCmdBuff);
     }
     if (pstLeg->stRecord.bValid)
@@ -979,7 +1006,7 @@ VOID sc_show_leg_detail(U32 ulIndex, U32 ulLegID)
     }
     if (pstLeg->stMux.bValid)
     {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u%10u", "Mux", pstLeg->stMux.usStatus, pstLeg->stMux.usMode);
+        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u%20u", "Mux", pstLeg->stMux.usStatus, pstLeg->stMux.usMode);
         cli_out_string(ulIndex, szCmdBuff);
     }
     if (pstLeg->stMcx.bValid)
@@ -2423,6 +2450,30 @@ S32 sc_track_call_by_callee(U32 ulIndex ,S8 *pszCallee)
     return DOS_SUCC;
 }
 
+U32 sc_show_trace_customer(U32 ulIndex)
+{
+    S8  szBuff[256] = {0};
+    U32 i = 0;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%10s%20s"
+                            , "ID", "CustomerID");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------");
+
+    for (i=0; i<SC_TRACE_CUSTOMER_SIZE; i++)
+    {
+        if (g_aulCustomerTrace[i] != 0)
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%10u%20u"
+                            , i, g_aulCustomerTrace[i]);
+
+            cli_out_string(ulIndex, szBuff);
+        }
+     }
+
+    return DOS_SUCC;
+}
+
 S32 sc_show_trace_mod(U32 ulIndex)
 {
     S8  szBuff[1024] = {0};
@@ -2442,6 +2493,86 @@ S32 sc_show_trace_mod(U32 ulIndex)
 
     return DOS_SUCC;
 }
+
+U32 sc_show_trace_caller(U32 ulIndex)
+{
+    S8  szBuff[256] = {0};
+    U32 i = 0;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%24s"
+                            , "ID", "Number");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------");
+
+    for (i=0; i<SC_TRACE_CALLER_SIZE; i++)
+    {
+        if (g_aszCallerTrace[i][0] != '\0')
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%24s"
+                            , i
+                            , g_aszCallerTrace[i]);
+
+            cli_out_string(ulIndex, szBuff);
+        }
+     }
+
+
+    return DOS_SUCC;
+}
+
+U32 sc_show_trace_callee(U32 ulIndex)
+{
+    S8  szBuff[256] = {0};
+    U32 i = 0;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%24s"
+                            , "ID", "Number");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------");
+
+    for (i=0; i<SC_TRACE_CALLEE_SIZE; i++)
+    {
+        if (g_aszCalleeTrace[i][0] != '\0')
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%24s"
+                            , i
+                            , g_aszCalleeTrace[i]);
+
+            cli_out_string(ulIndex, szBuff);
+        }
+     }
+
+    return DOS_SUCC;
+}
+
+U32 sc_show_trace_server(U32 ulIndex)
+{
+    S8  szBuff[256] = {0};
+    U32 i = 0;
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%40s%10s"
+                            , "ID", "Server", "Status");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------");
+
+    for (i=0; i<BS_SERV_BUTT; i++)
+    {
+        if (!g_aucServTraceFlag[i])
+        {
+            continue;
+        }
+
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%40s%10s"
+                        , i
+                        , sc_translate_server_type(i)
+                        , g_aucServTraceFlag[i] ? "ON" : "OFF");
+
+        cli_out_string(ulIndex, szBuff);
+    }
+
+    return DOS_SUCC;
+}
+
 
 #if 0
 U32 sc_debug_call(U32 ulTraceFlag, S8 *pszCaller, S8 *pszCallee)
@@ -2993,6 +3124,275 @@ proc_fail:
     return DOS_FAIL;
 }
 
+S32 cli_cc_trace_customer(U32 ulIndex, S32 argc, S8 **argv)
+{
+    BOOL bIsTrace = DOS_FALSE;
+    U32 ulCustomerID = 0;
+    S8  szBuff[256] = {0};
+    U32 i = 0;
+
+    if (5 == argc)
+    {
+        if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
+        {
+            bIsTrace = DOS_TRUE;
+        }
+
+        if (dos_atoul(argv[3], &ulCustomerID) < 0
+            || ulCustomerID == 0
+            || ulCustomerID == U32_BUTT)
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "Customer(%u) is not a company\r\n", ulCustomerID);
+            cli_out_string(ulIndex, szBuff);
+
+            return DOS_SUCC;
+        }
+
+        if (bIsTrace)
+        {
+            /* 判断SIP是否属于企业 */
+            if (!sc_customer_is_exit(ulCustomerID))
+            {
+                dos_snprintf(szBuff, sizeof(szBuff), "Customer(%u) is not a company\r\n", ulCustomerID);
+            }
+            else
+            {
+                for (i=0; i<SC_TRACE_CUSTOMER_SIZE; i++)
+                {
+                    if (g_aulCustomerTrace[i] == 0)
+                    {
+                        g_aulCustomerTrace[i] = ulCustomerID;
+                        dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) ON SUCC\r\n", ulCustomerID);
+                        break;
+                    }
+                }
+
+                if (i == SC_TRACE_CUSTOMER_SIZE)
+                {
+                    dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) ON FAIL\r\n", ulCustomerID);
+                }
+            }
+        }
+        else
+        {
+            for (i=0; i<SC_TRACE_CUSTOMER_SIZE; i++)
+            {
+                if (g_aulCustomerTrace[i] == ulCustomerID)
+                {
+                    g_aulCustomerTrace[i] = 0;
+                    dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) OFF SUCC\r\n", ulCustomerID);
+                    break;
+                }
+            }
+
+            if (i == SC_TRACE_CUSTOMER_SIZE)
+            {
+                dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) OFF FAIL\r\n", ulCustomerID);
+            }
+        }
+
+        cli_out_string(ulIndex, szBuff);
+
+        return DOS_SUCC;
+    }
+
+    /* 打印帮助信息 */
+
+    return DOS_FAIL;
+}
+
+S32 cli_cc_trace_caller(U32 ulIndex, S32 argc, S8 **argv)
+{
+    BOOL bIsTrace = DOS_FALSE;
+    U32 i = 0;
+
+    if (5 == argc)
+    {
+        if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
+        {
+            bIsTrace = DOS_TRUE;
+        }
+
+        if (bIsTrace)
+        {
+            /* 打开跟踪 */
+            if (DOS_ADDR_VALID(argv[3]))
+            {
+                for (i=0; i<SC_TRACE_CALLER_SIZE; i++)
+                {
+                    if (g_aszCallerTrace[i][0] == '\0')
+                    {
+                        dos_strncpy(g_aszCallerTrace[i], argv[3], SC_NUM_LENGTH-1);
+                        g_aszCallerTrace[i][SC_NUM_LENGTH-1] = '\0';
+
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            /* 关闭跟踪 */
+            if (DOS_ADDR_VALID(argv[3]))
+            {
+                for (i=0; i<SC_TRACE_CALLER_SIZE; i++)
+                {
+                    if (dos_strcmp(g_aszCallerTrace[i], argv[3]) == 0)
+                    {
+                        g_aszCallerTrace[i][0] = '\0';
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        //cli_out_string(ulIndex, szBuff);
+
+        return DOS_SUCC;
+    }
+
+    /* 打印帮助信息 */
+
+    return DOS_FAIL;
+}
+
+
+S32 cli_cc_trace_callee(U32 ulIndex, S32 argc, S8 **argv)
+{
+    BOOL bIsTrace = DOS_FALSE;
+    U32 i = 0;
+
+    if (5 == argc)
+    {
+        if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
+        {
+            bIsTrace = DOS_TRUE;
+        }
+
+        if (bIsTrace)
+        {
+            /* 打开跟踪 */
+            if (DOS_ADDR_VALID(argv[3]))
+            {
+                for (i=0; i<SC_TRACE_CALLEE_SIZE; i++)
+                {
+                    if (g_aszCalleeTrace[i][0] == '\0')
+                    {
+                        dos_strncpy(g_aszCalleeTrace[i], argv[3], SC_NUM_LENGTH-1);
+                        g_aszCalleeTrace[i][SC_NUM_LENGTH-1] = '\0';
+
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            /* 关闭跟踪 */
+            if (DOS_ADDR_VALID(argv[3]))
+            {
+                for (i=0; i<SC_TRACE_CALLEE_SIZE; i++)
+                {
+                    if (dos_strcmp(g_aszCalleeTrace[i], argv[3]) == 0)
+                    {
+                        g_aszCalleeTrace[i][0] = '\0';
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        //cli_out_string(ulIndex, szBuff);
+
+        return DOS_SUCC;
+    }
+
+    /* 打印帮助信息 */
+
+    return DOS_FAIL;
+}
+
+U32 sc_cc_trace_server(U32 ulIndex, S32 argc, S8 **argv)
+{
+    U32 ulServerType = 0;
+    BOOL bIsTrace = DOS_FALSE;
+    S8  szBuff[256] = {0};
+
+    if (5 == argc)
+    {
+        if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
+        {
+            bIsTrace = DOS_TRUE;
+        }
+
+        if (dos_atoul(argv[3], &ulServerType) < 0
+            || ulServerType > BS_SERV_BUTT)
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "Server(%s) is error\r\n", argv[3]);
+            cli_out_string(ulIndex, szBuff);
+
+            return DOS_SUCC;
+        }
+
+        g_aucServTraceFlag[ulServerType] = bIsTrace;
+
+        dos_snprintf(szBuff, sizeof(szBuff), "Trace %s(%u) %s SUCC\r\n"
+                            , sc_translate_server_type(ulServerType), ulServerType
+                            , bIsTrace ? "ON" : "OFF");
+
+        cli_out_string(ulIndex, szBuff);
+
+        return DOS_SUCC;
+    }
+
+    return DOS_FAIL;
+}
+
+U32 sc_cc_trace_agent(U32 ulIndex, S32 argc, S8 **argv)
+{
+    U32 ulAgentID = 0;
+    BOOL bIsTrace = DOS_FALSE;
+    S8  szBuff[256] = {0};
+    SC_AGENT_NODE_ST *pstAgentNode = NULL;
+
+    if (5 == argc)
+    {
+        if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
+        {
+            bIsTrace = DOS_TRUE;
+        }
+
+        if (dos_atoul(argv[3], &ulAgentID) < 0)
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "Agent(%s) is error\r\n", argv[3]);
+            cli_out_string(ulIndex, szBuff);
+
+            return DOS_SUCC;
+        }
+
+        pstAgentNode = sc_agent_get_by_id(ulAgentID);
+        if (DOS_ADDR_INVALID(pstAgentNode))
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "Agent(%u) is not found\r\n", ulAgentID);
+            cli_out_string(ulIndex, szBuff);
+
+            return DOS_SUCC;
+        }
+
+        pstAgentNode->pstAgentInfo->bTraceON = bIsTrace;
+
+        dos_snprintf(szBuff, sizeof(szBuff), "Agent(%u) trace %s succ\r\n", ulAgentID, bIsTrace ? "ON" : "OFF");
+        cli_out_string(ulIndex, szBuff);
+
+        return DOS_SUCC;
+
+    }
+
+    return DOS_FAIL;
+}
+
 S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
 {
     S32 lRet = DOS_FALSE;
@@ -3010,7 +3410,52 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
         {
             /* 打印帮助信息 */
         }
+    }
+    if (dos_strnicmp(argv[2], "customer", dos_strlen("customer")) == 0)
+    {
+        /* 客户跟踪 */
+        lRet = cli_cc_trace_customer(ulIndex, argc, argv);
+        if (lRet != DOS_SUCC)
+        {
+            /* 打印帮助信息 */
+        }
+    }
+    else if (dos_strnicmp(argv[2], "caller", dos_strlen("caller")) == 0)
+    {
+        /* 主叫号码 */
+        lRet = cli_cc_trace_caller(ulIndex, argc, argv);
+        if (lRet != DOS_SUCC)
+        {
+            /* 打印帮助信息 */
+        }
 
+    }
+    else if (dos_strnicmp(argv[2], "callee", dos_strlen("callee")) == 0)
+    {
+        /* 被叫号码 */
+        lRet = cli_cc_trace_callee(ulIndex, argc, argv);
+        if (lRet != DOS_SUCC)
+        {
+            /* 打印帮助信息 */
+        }
+    }
+    else if (dos_strnicmp(argv[2], "server", dos_strlen("server")) == 0)
+    {
+        /* 服务 */
+        lRet = sc_cc_trace_server(ulIndex, argc, argv);
+        if (lRet != DOS_SUCC)
+        {
+            /* 打印帮助信息 */
+        }
+    }
+    else if (dos_strnicmp(argv[2], "agent", dos_strlen("agent")) == 0)
+    {
+        /* 坐席 */
+        lRet = sc_cc_trace_agent(ulIndex, argc, argv);
+        if (lRet != DOS_SUCC)
+        {
+            /* 打印帮助信息 */
+        }
     }
 
     return DOS_SUCC;
@@ -3967,19 +4412,19 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
         {
             if (0 == dos_stricmp(argv[3], "caller"))
             {
-                //sc_show_trace_caller(ulIndex);
+                sc_show_trace_caller(ulIndex);
             }
             else if (0 == dos_stricmp(argv[3], "callee"))
             {
-                //sc_show_trace_callee(ulIndex);
+                sc_show_trace_callee(ulIndex);
             }
             else if (0 == dos_stricmp(argv[3], "server"))
             {
-                //sc_show_trace_server(ulIndex);
+                sc_show_trace_server(ulIndex);
             }
             else if (0 == dos_stricmp(argv[3], "customer"))
             {
-                //sc_show_trace_customer(ulIndex);
+                sc_show_trace_customer(ulIndex);
             }
             else if (0 == dos_stricmp(argv[3], "mod"))
             {
@@ -4411,11 +4856,22 @@ VOID sc_log(U32 ulLogFlags, const S8 *pszFormat, ...)
 
     ulLevel = ulLogFlags & 0xF;
     ulMod   = (ulLogFlags & 0x3F0) >> 4;
-    ulFlags = (ulLogFlags & 0xFFFFFC00);
+    ulFlags = (ulLogFlags & 0xFFFFFC00) >> 10;
 
     if (ulLevel >= LOG_LEVEL_INVAILD)
     {
         return;
+    }
+
+    if (ulFlags & 0x1)
+    {
+        /* 摘要 */
+        va_start(Arg, pszFormat);
+        vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
+        va_end(Arg);
+        szTraceStr[sizeof(szTraceStr) -1] = '\0';
+
+        sc_log_digest_print(szTraceStr);
     }
 
     /* warning级别以上强制输出 */
@@ -4444,7 +4900,7 @@ VOID sc_log(U32 ulLogFlags, const S8 *pszFormat, ...)
         }
     }
 
-    if(!bIsOutput)
+    if (!bIsOutput)
     {
         return;
     }
@@ -4465,12 +4921,13 @@ VOID sc_log(U32 ulLogFlags, const S8 *pszFormat, ...)
         }
     }
 
-
-    va_start(Arg, pszFormat);
-    vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
-    va_end(Arg);
-    szTraceStr[sizeof(szTraceStr) -1] = '\0';
-
+    if (!(ulFlags & 0x1))
+    {
+        va_start(Arg, pszFormat);
+        vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
+        va_end(Arg);
+        szTraceStr[sizeof(szTraceStr) -1] = '\0';
+    }
     dos_log(ulLevel, LOG_TYPE_RUNINFO, szTraceStr);
 
 }

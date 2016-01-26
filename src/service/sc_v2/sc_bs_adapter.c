@@ -1486,8 +1486,421 @@ U32 sc_send_release_ack2bs(BS_MSG_TAG *pstMsg)
     return DOS_SUCC;
 }
 
+/* 发送终止计费消息 */
+U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB *pstSecondLeg)
+{
+    U32                   ulCurrentLeg = 0;
+    BS_MSG_CDR            *pstCDRMsg = NULL;
+    S32                   i = 0;
+#if SC_BS_NEED_RESEND
+    SC_BS_MSG_NODE        *pstListNode = NULL;
+    U32                   ulHashIndex = 0;
+#endif
+
+    stBSMsgStat.ulBillingReq++;
+
+    if (DOS_ADDR_INVALID(pstSCB)
+        || DOS_ADDR_INVALID(pstFristLeg))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 申请资源 */
+    pstCDRMsg = dos_dmem_alloc(sizeof(BS_MSG_CDR));
+    if (DOS_ADDR_INVALID(pstCDRMsg))
+    {
+        DOS_ASSERT(0);
+
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Alloc memory for the CDR msg fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memzero(pstCDRMsg, sizeof(BS_MSG_CDR));
+
+    ulCurrentLeg = 0;
+    pstCDRMsg->ucLegNum = 0;
+
+    /* 填充数据 */
+    pstCDRMsg->stMsgTag.usVersion = BS_MSG_INTERFACE_VERSION;
+    pstCDRMsg->stMsgTag.ulMsgSeq  = g_ulMsgSeq++;
+    pstCDRMsg->stMsgTag.ulCRNo    = pstFristLeg->ulSCBNo;
+    pstCDRMsg->stMsgTag.ucMsgType = BS_MSG_BILLING_STOP_REQ;
+    pstCDRMsg->stMsgTag.ucErrcode = BS_ERR_SUCC;
+    pstCDRMsg->stMsgTag.usMsgLen  = sizeof(BS_MSG_BALANCE_QUERY);
+
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulCDRMark = 0;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulUserID = (U32_BUTT == pstSCB->ulCustomerID) ? 0 : pstSCB->ulCustomerID;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAgentID = (U32_BUTT == pstSCB->ulAgentID) ? 0 : pstSCB->ulAgentID;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulCustomerID = (U32_BUTT == pstSCB->ulCustomerID) ? 0 : pstSCB->ulCustomerID;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAccountID = (U32_BUTT == pstSCB->ulCustomerID) ? 0 : pstSCB->ulCustomerID;
+    if (pstSCB->stAutoCall.stSCBTag.bValid)
+    {
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulTaskID = (U32_BUTT == pstSCB->stAutoCall.ulTaskID) ? 0 : pstSCB->stAutoCall.ulTaskID;
+    }
+
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile[0] = '\0';
+
+    dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID, pstFristLeg->szUUID, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID));
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID) - 1] = '\0';
+
+    dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller, pstFristLeg->stCall.stNumInfo.szOriginalCalling, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller));
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller) - 1] = '\0';
+
+    dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee, pstFristLeg->stCall.stNumInfo.szOriginalCallee, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee));
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee) - 1] = '\0';
+
+    dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID, pstFristLeg->stCall.stNumInfo.szCalling, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID));
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID) - 1] = '\0';
+
+    if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+        && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+    {
+        dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCall.pstAgentCalling->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+    }
+    else if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
+        && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+    {
+        dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCall.pstAgentCallee->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+    }
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum) - 1] = '\0';
+
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = pstFristLeg->stCall.stTimeInfo.ulStartTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulRingTimeStamp = pstFristLeg->stCall.stTimeInfo.ulRingTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstFristLeg->stCall.stTimeInfo.ulAnswerTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulIVRFinishTimeStamp = pstFristLeg->stCall.stTimeInfo.ulIVREndTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulDTMFTimeStamp = pstFristLeg->stCall.stTimeInfo.ulDTMFStartTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulBridgeTimeStamp = pstFristLeg->stCall.stTimeInfo.ulBridgeTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstFristLeg->stCall.stTimeInfo.ulByeTime;
+    //pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstFristLeg->stCall.stTimeInfo.ul;
+    //pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstFristLeg->stCall.stTimeInfo.ulStartTime;
+
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldCnt = pstFristLeg->stCall.ucHoldCnt;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldTimeLen = pstFristLeg->stCall.ulHoldTotalTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[0] = 0;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[1] = 0;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[2] = 0;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[3] = 0;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstFristLeg->stCall.ulTrunkID) ? 0 : pstFristLeg->stCall.ulTrunkID;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstFristLeg->stCall.ulCause;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
+
+    for (i=0; i<BS_MAX_SERVICE_TYPE_IN_SESSION; i++)
+    {
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType[i] = pstSCB->aucServType[i];
+    }
+
+    ulCurrentLeg++;
+    pstCDRMsg->ucLegNum++;
+
+    if (DOS_ADDR_VALID(pstSecondLeg))
+    {
+        /* TODO */
+    }
+
+    /* 如果没有leg被加入，就放弃 */
+    if (ulCurrentLeg <= 0)
+    {
+        DOS_ASSERT(0);
+
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "There no leg created while send cdr msg.");
+        return DOS_FAIL;
+    }
+
+    /* 记录当前有几个LEG */
+    //pstCDRMsg->ucLegNum = (U8)ulCurrentLeg;
+
+#if SC_BS_NEED_RESEND
+    /* 将消息存放hash表的节点 */
+    pstListNode = dos_dmem_alloc(sizeof(SC_BS_MSG_NODE));
+    if (DOS_ADDR_INVALID(pstListNode))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_warning(pstSCB, SC_BS, "%s", "Alloc memory for list node fail.");
+        return DOS_FAIL;
+    }
+    pstListNode->pData = (VOID *)pstCDRMsg;
+    pstListNode->ulFailCnt = 0;
+    pstListNode->ulRCNo = U32_BUTT;
+    pstListNode->ulLength = sizeof(BS_MSG_BALANCE_QUERY);
+    pstListNode->ulSeq = pstCDRMsg->stMsgTag.ulMsgSeq;
+    pstListNode->blNeedSyn = DOS_FALSE;
+    pstListNode->hTmrSendInterval = NULL;
+    HASH_INIT_NODE((HASH_NODE_S *)pstListNode);
+
+    /* 加入HASH表 */
+    pthread_mutex_lock(&g_mutexMsgList);
+    ulHashIndex = sc_bs_msg_hash_func(pstListNode->ulSeq);
+    hash_add_node(g_pstMsgList, (HASH_NODE_S *)pstListNode, ulHashIndex, NULL);
+    pthread_mutex_unlock(&g_mutexMsgList);
+
+    /* 启动定时器 */
+    if (dos_tmr_start(&pstListNode->hTmrSendInterval, SC_BS_SEND_INTERVAL, sc_resend_msg2bs, (U64)pstListNode, TIMER_NORMAL_LOOP) < 0)
+    {
+        DOS_ASSERT(0);
+
+        pthread_mutex_lock(&g_mutexMsgList);
+        hash_delete_node(g_pstMsgList, (HASH_NODE_S *)pstListNode, ulHashIndex);
 
 
+        pstListNode->pData = NULL;
+        dos_dmem_free(pstListNode);
+        pstListNode = NULL;
+        dos_dmem_free(pstCDRMsg);
+        pstCDRMsg = NULL;
+
+        pthread_mutex_unlock(&g_mutexMsgList);
+
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Start the timer fail while send the auth msg.");
+        return DOS_FAIL;
+    }
+#endif
+
+    /* 发送数据 */
+    if (sc_send_msg2bs((BS_MSG_TAG *)pstCDRMsg, sizeof(BS_MSG_CDR)) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+#if SC_BS_NEED_RESEND
+        /* 停定时器 */
+        dos_tmr_stop(&pstListNode->hTmrSendInterval);
+
+        /* 删除缓存 */
+        pthread_mutex_lock(&g_mutexMsgList);
+        hash_delete_node(g_pstMsgList, (HASH_NODE_S *)pstListNode, ulHashIndex);
+
+
+        pstListNode->pData = NULL;
+        dos_dmem_free(pstListNode);
+        pstListNode = NULL;
+
+        pthread_mutex_unlock(&g_mutexMsgList);
+#endif
+
+        dos_dmem_free(pstCDRMsg);
+        pstCDRMsg = NULL;
+
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Send Auth msg fail.");
+        return DOS_FAIL;
+    }
+
+    stBSMsgStat.ulBillingReqSend++;
+
+#if (!SC_BS_NEED_RESEND)
+    dos_dmem_free(pstCDRMsg);
+    pstCDRMsg = NULL;
+#endif
+
+    return DOS_SUCC;
+}
+
+U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
+{
+    U32                   ulCurrentLeg = 0;
+    BS_MSG_CDR            *pstCDRMsg = NULL;
+    S32                   i = 0;
+#if SC_BS_NEED_RESEND
+    SC_BS_MSG_NODE        *pstListNode = NULL;
+    U32                   ulHashIndex = 0;
+#endif
+
+    stBSMsgStat.ulBillingReq++;
+
+    if (DOS_ADDR_INVALID(pstSCB)
+        || DOS_ADDR_INVALID(pstLeg)
+        || !pstLeg->stRecord.bValid)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 申请资源 */
+    pstCDRMsg = dos_dmem_alloc(sizeof(BS_MSG_CDR));
+    if (DOS_ADDR_INVALID(pstCDRMsg))
+    {
+        DOS_ASSERT(0);
+
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Alloc memory for the CDR msg fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memzero(pstCDRMsg, sizeof(BS_MSG_CDR));
+
+    ulCurrentLeg = 0;
+    pstCDRMsg->ucLegNum = 0;
+
+    /* 填充数据 */
+    pstCDRMsg->stMsgTag.usVersion = BS_MSG_INTERFACE_VERSION;
+    pstCDRMsg->stMsgTag.ulMsgSeq  = g_ulMsgSeq++;
+    pstCDRMsg->stMsgTag.ulCRNo    = pstLeg->ulSCBNo;
+    pstCDRMsg->stMsgTag.ucMsgType = BS_MSG_BILLING_STOP_REQ;
+    pstCDRMsg->stMsgTag.ucErrcode = BS_ERR_SUCC;
+    pstCDRMsg->stMsgTag.usMsgLen  = sizeof(BS_MSG_BALANCE_QUERY);
+
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulCDRMark = 0;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulUserID = (U32_BUTT == pstSCB->ulCustomerID) ? 0 : pstSCB->ulCustomerID;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAgentID = (U32_BUTT == pstSCB->ulAgentID) ? 0 : pstSCB->ulAgentID;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulCustomerID = (U32_BUTT == pstSCB->ulCustomerID) ? 0 : pstSCB->ulCustomerID;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAccountID = (U32_BUTT == pstSCB->ulCustomerID) ? 0 : pstSCB->ulCustomerID;
+    if (pstSCB->stAutoCall.stSCBTag.bValid)
+    {
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulTaskID = (U32_BUTT == pstSCB->stAutoCall.ulTaskID) ? 0 : pstSCB->stAutoCall.ulTaskID;
+    }
+
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile[0] = '\0';
+
+    dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID, pstLeg->szUUID, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID));
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szSessionID) - 1] = '\0';
+
+    dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller, pstLeg->stCall.stNumInfo.szOriginalCalling, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller));
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCaller) - 1] = '\0';
+
+    dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee, pstLeg->stCall.stNumInfo.szOriginalCallee, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee));
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCallee) - 1] = '\0';
+
+    dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID, pstLeg->stCall.stNumInfo.szCalling, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID));
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID) - 1] = '\0';
+
+    if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+        && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+    {
+        dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCall.pstAgentCalling->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+    }
+    else if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
+        && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+    {
+        dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCall.pstAgentCallee->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+    }
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum) - 1] = '\0';
+
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = pstLeg->stCall.stTimeInfo.ulRecordStartTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulRingTimeStamp = pstLeg->stCall.stTimeInfo.ulRingTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstLeg->stCall.stTimeInfo.ulAnswerTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulIVRFinishTimeStamp = pstLeg->stCall.stTimeInfo.ulIVREndTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulDTMFTimeStamp = pstLeg->stCall.stTimeInfo.ulDTMFStartTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulBridgeTimeStamp = pstLeg->stCall.stTimeInfo.ulBridgeTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstLeg->stCall.stTimeInfo.ulRecordStopTime;
+    //pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstFristLeg->stCall.stTimeInfo.ul;
+    //pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstFristLeg->stCall.stTimeInfo.ulStartTime;
+
+    dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile, pstLeg->stRecord.szRecordFilename, BS_MAX_RECORD_FILE_NAME_LEN);
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile[BS_MAX_RECORD_FILE_NAME_LEN - 1] = '\0';
+
+    //pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldCnt = pstFirstSCB->usHoldCnt;
+    //pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldTimeLen = pstFirstSCB->usHoldTotalTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[0] = 0;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[1] = 0;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[2] = 0;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[3] = 0;
+    //pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstFirstSCB->ulTrunkID) ? 0 : pstFirstSCB->ulTrunkID;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstLeg->stCall.ulCause;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
+
+    for (i=0; i<BS_MAX_SERVICE_TYPE_IN_SESSION; i++)
+    {
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType[i] = pstSCB->aucServType[i];
+    }
+
+    ulCurrentLeg++;
+    pstCDRMsg->ucLegNum++;
+
+    /* 如果没有leg被加入，就放弃 */
+    if (ulCurrentLeg <= 0)
+    {
+        DOS_ASSERT(0);
+
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "There no leg created while send cdr msg.");
+        return DOS_FAIL;
+    }
+
+    /* 记录当前有几个LEG */
+    //pstCDRMsg->ucLegNum = (U8)ulCurrentLeg;
+
+#if SC_BS_NEED_RESEND
+    /* 将消息存放hash表的节点 */
+    pstListNode = dos_dmem_alloc(sizeof(SC_BS_MSG_NODE));
+    if (DOS_ADDR_INVALID(pstListNode))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_warning(pstSCB, SC_BS, "%s", "Alloc memory for list node fail.");
+        return DOS_FAIL;
+    }
+    pstListNode->pData = (VOID *)pstCDRMsg;
+    pstListNode->ulFailCnt = 0;
+    pstListNode->ulRCNo = U32_BUTT;
+    pstListNode->ulLength = sizeof(BS_MSG_BALANCE_QUERY);
+    pstListNode->ulSeq = pstCDRMsg->stMsgTag.ulMsgSeq;
+    pstListNode->blNeedSyn = DOS_FALSE;
+    pstListNode->hTmrSendInterval = NULL;
+    HASH_INIT_NODE((HASH_NODE_S *)pstListNode);
+
+    /* 加入HASH表 */
+    pthread_mutex_lock(&g_mutexMsgList);
+    ulHashIndex = sc_bs_msg_hash_func(pstListNode->ulSeq);
+    hash_add_node(g_pstMsgList, (HASH_NODE_S *)pstListNode, ulHashIndex, NULL);
+    pthread_mutex_unlock(&g_mutexMsgList);
+
+    /* 启动定时器 */
+    if (dos_tmr_start(&pstListNode->hTmrSendInterval, SC_BS_SEND_INTERVAL, sc_resend_msg2bs, (U64)pstListNode, TIMER_NORMAL_LOOP) < 0)
+    {
+        DOS_ASSERT(0);
+
+        pthread_mutex_lock(&g_mutexMsgList);
+        hash_delete_node(g_pstMsgList, (HASH_NODE_S *)pstListNode, ulHashIndex);
+
+
+        pstListNode->pData = NULL;
+        dos_dmem_free(pstListNode);
+        pstListNode = NULL;
+        dos_dmem_free(pstCDRMsg);
+        pstCDRMsg = NULL;
+
+        pthread_mutex_unlock(&g_mutexMsgList);
+
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Start the timer fail while send the auth msg.");
+        return DOS_FAIL;
+    }
+#endif
+
+    /* 发送数据 */
+    if (sc_send_msg2bs((BS_MSG_TAG *)pstCDRMsg, sizeof(BS_MSG_CDR)) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+
+#if SC_BS_NEED_RESEND
+        /* 停定时器 */
+        dos_tmr_stop(&pstListNode->hTmrSendInterval);
+
+        /* 删除缓存 */
+        pthread_mutex_lock(&g_mutexMsgList);
+        hash_delete_node(g_pstMsgList, (HASH_NODE_S *)pstListNode, ulHashIndex);
+
+
+        pstListNode->pData = NULL;
+        dos_dmem_free(pstListNode);
+        pstListNode = NULL;
+
+        pthread_mutex_unlock(&g_mutexMsgList);
+#endif
+
+        dos_dmem_free(pstCDRMsg);
+        pstCDRMsg = NULL;
+
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Send Auth msg fail.");
+        return DOS_FAIL;
+    }
+
+    stBSMsgStat.ulBillingReqSend++;
+
+#if (!SC_BS_NEED_RESEND)
+    dos_dmem_free(pstCDRMsg);
+    pstCDRMsg = NULL;
+#endif
+
+    return DOS_SUCC;
+}
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

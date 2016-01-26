@@ -994,6 +994,42 @@ U32 sc_did_update_proc(U32 ulAction, U32 ulDidID)
     return DOS_SUCC;
 }
 
+U32 sc_did_bind_info_get(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID)
+{
+    SC_DID_NODE_ST     *pstDIDNumNode = NULL;
+    HASH_NODE_S        *pstHashNode   = NULL;
+    U32                ulHashIndex    = 0;
+
+    if (DOS_ADDR_INVALID(pszDidNum)
+        || DOS_ADDR_INVALID(pulBindType)
+        || DOS_ADDR_INVALID(pulBindID))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_string_hash_func(pszDidNum, SC_DID_HASH_SIZE);
+    pthread_mutex_lock(&g_mutexHashDIDNum);
+    pstHashNode = hash_find_node(g_pstHashDIDNum, ulHashIndex, (VOID *)pszDidNum, sc_did_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        pthread_mutex_unlock(&g_mutexHashDIDNum);
+        return DOS_FAIL;
+    }
+
+    pstDIDNumNode = pstHashNode->pHandle;
+
+    *pulBindType = pstDIDNumNode->ulBindType;
+    *pulBindID = pstDIDNumNode->ulBindID;
+
+    pthread_mutex_unlock(&g_mutexHashDIDNum);
+
+    return DOS_SUCC;
+}
 
 
 VOID sc_customer_init(SC_CUSTOMER_NODE_ST *pstCustomer)
@@ -1246,6 +1282,23 @@ U32 sc_customer_update_proc(U32 ulAction, U32 ulCustomerID)
     return DOS_SUCC;
 }
 
+BOOL sc_customer_is_exit(U32 ulCustomerID)
+{
+    DLL_NODE_S           *pstListNode       = NULL;
+
+    pthread_mutex_lock(&g_mutexCustomerList);
+    pstListNode = dll_find(&g_stCustomerList, &ulCustomerID, sc_customer_find);
+    if (DOS_ADDR_INVALID(pstListNode)
+        || DOS_ADDR_INVALID(pstListNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexCustomerList);
+
+        return DOS_FALSE;
+    }
+    pthread_mutex_unlock(&g_mutexCustomerList);
+
+    return DOS_TRUE;
+}
 
 /**
  * º¯Êý: VOID sc_ep_gw_init(SC_GW_NODE_ST *pstGW)

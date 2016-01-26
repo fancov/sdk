@@ -776,6 +776,8 @@ VOID sc_scb_call_init(SC_SRV_CALL_ST *pstCall)
     pstCall->ulCalleeLegNo = U32_BUTT;
     pstCall->pstAgentCallee = NULL;
     pstCall->pstAgentCalling = NULL;
+    pstCall->ulCallSrc = U32_BUTT;
+    pstCall->ulCallDst = U32_BUTT;
 }
 
 VOID sc_scb_preview_call_init(SC_PREVIEW_CALL_ST *pstPreviewCall)
@@ -1139,6 +1141,60 @@ U32 sc_scb_set_service(SC_SRV_CB *pstSCB, U32 ulService)
     }
 
     return DOS_FAIL;
+}
+
+U32 sc_scb_remove_service(SC_SRV_CB *pstSCB, U32 ulService)
+{
+    U32  ulIndex;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (0 == ulService || ulService >= BS_SERV_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    for (ulIndex=0; ulIndex<SC_MAX_SERVICE_TYPE; ulIndex++)
+    {
+        if (pstSCB->aucServType[ulIndex] == ulService)
+        {
+            pstSCB->aucServType[ulIndex] = 0;
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+BOOL sc_scb_is_exit_service(SC_SRV_CB *pstSCB, U32 ulService)
+{
+    U32  ulIndex;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+
+    if (0 == ulService || ulService >= BS_SERV_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+
+    for (ulIndex=0; ulIndex<SC_MAX_SERVICE_TYPE; ulIndex++)
+    {
+        if (pstSCB->aucServType[ulIndex] == ulService)
+        {
+            return DOS_TRUE;
+        }
+    }
+
+    return DOS_FALSE;
 }
 
 U32 sc_tcb_init(SC_TASK_CB *pstTCB)
@@ -1564,7 +1620,7 @@ U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg)
         pstCMDCall = NULL;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Send new call request. SCB: %u", pstMsg->ulSCBNo);
+    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, 0, SC_LOG_DISIST), "Send new call request. SCB: %u", pstMsg->ulSCBNo);
 
     return ulRet;
 }
@@ -2397,10 +2453,10 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
     else if (SC_LEG_PEER_INBOUND == pstLegCB->stCall.ucPeerType)
     {
         /* external可能是TT号呼入哦 */
-        pstSCB->ulCustomerID = sc_did_get_custom(pstLegCB->stCall.stNumInfo.szOriginalCalling);
+        pstSCB->ulCustomerID = sc_did_get_custom(pstLegCB->stCall.stNumInfo.szOriginalCallee);
         if (U32_BUTT == pstSCB->ulCustomerID)
         {
-            pstAgent = sc_agent_get_by_tt_num(pstLegCB->stCall.stNumInfo.szOriginalCalling);
+            pstAgent = sc_agent_get_by_tt_num(pstLegCB->stCall.stNumInfo.szOriginalCallee);
             if (DOS_ADDR_VALID(pstAgent) && DOS_ADDR_VALID(pstAgent->pstAgentInfo))
             {
                 pstSCB->ulCustomerID = pstAgent->pstAgentInfo->ulCustomerID;

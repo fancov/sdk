@@ -79,8 +79,6 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     SC_LEG_CB *pstLCB     = NULL;
     SC_MSG_EVT_CALL_ST       stCallEvent;
     SC_MSG_EVT_ERR_REPORT_ST stErrReport;
-    S8  *pszTmp = NULL;
-    U64 uLTmp  = 0;
 
     if (DOS_ADDR_INVALID(pstEvent))
     {
@@ -146,17 +144,6 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
                               , ulLCBNo);
 
         goto proc_fail;
-    }
-
-    /* 获取 create 的时间，存放在leg中 */
-    pszTmp = esl_event_get_header(pstEvent, "Caller-Channel-Created-Time");
-    if (DOS_ADDR_VALID(pszTmp)
-        && '\0' != pszTmp[0]
-        && dos_atoull(pszTmp, &uLTmp) == 0)
-    {
-        pstLCB->stCall.stTimeInfo.ulStartTime = uLTmp / 1000000;
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Get leg(%u) extra data: Caller-Channel-Created-Time=%s(%u)"
-            , pstLCB->ulCBNo, pszTmp, pstLCB->stCall.stTimeInfo.ulStartTime);
     }
 
     /** 没有获取到profile说明有问题 */
@@ -228,11 +215,14 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     sc_lcb_hash_add(pszLegUUID, pstLCB);
 
     /* 将相关数据写入SCB中 */
-    dos_strncpy(pstLCB->stCall.stNumInfo.szOriginalCallee, pszCallee, SC_NUM_LENGTH);
-    pstLCB->stCall.stNumInfo.szOriginalCallee[SC_NUM_LENGTH -1] = '\0';
+    if (pstLCB->ulSCBNo == U32_BUTT)
+    {
+        dos_strncpy(pstLCB->stCall.stNumInfo.szOriginalCallee, pszCallee, SC_NUM_LENGTH);
+        pstLCB->stCall.stNumInfo.szOriginalCallee[SC_NUM_LENGTH -1] = '\0';
 
-    dos_strncpy(pstLCB->stCall.stNumInfo.szOriginalCalling, pszCalling, SC_NUM_LENGTH);
-    pstLCB->stCall.stNumInfo.szOriginalCalling[SC_NUM_LENGTH -1] = '\0';
+        dos_strncpy(pstLCB->stCall.stNumInfo.szOriginalCalling, pszCalling, SC_NUM_LENGTH);
+        pstLCB->stCall.stNumInfo.szOriginalCalling[SC_NUM_LENGTH -1] = '\0';
+    }
 
     dos_strncpy(pstLCB->stCall.stNumInfo.szANI, pszANI, SC_NUM_LENGTH);
     pstLCB->stCall.stNumInfo.szANI[SC_NUM_LENGTH -1] = '\0';
@@ -305,6 +295,8 @@ U32 sc_esl_event_answer(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         return DOS_SUCC;
     }
 
+    pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);
+
     pstLegCB->stCall.ucStatus = SC_LEG_ACTIVE;
 
     stSCEvent.stMsgTag.ulMsgType = SC_EVT_CALL_AMSWERED;
@@ -341,6 +333,8 @@ U32 sc_esl_event_hangup(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    pstLegCB->stCall.stTimeInfo.ulByeTime = time(NULL);
 
     pszTermCause = esl_event_get_header(pstEvent, "variable_sip_term_status");
     if (DOS_ADDR_INVALID(pszTermCause)
@@ -379,6 +373,7 @@ U32 sc_esl_event_progress(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     pstLegCB->stCall.ucStatus = SC_LEG_ALERTING;
 
+    pstLegCB->stCall.stTimeInfo.ulRingTime = time(NULL);
     /* 暂时不用往业务层发什么消息 */
     stEventRinging.stMsgTag.ulMsgType = SC_EVT_CALL_RINGING;
     stEventRinging.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
@@ -439,6 +434,8 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
         return DOS_SUCC;
     }
+
+    pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);
 
     pstLegCB->stCall.ucStatus = SC_LEG_ACTIVE;
 
@@ -554,11 +551,14 @@ U32 sc_esl_event_dtmf(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
             pstLegCB->stCall.stNumInfo.szDial[0] = '\0';
         }
     }
+    else
+    {
+        pstLegCB->stCall.stTimeInfo.ulDTMFStartTime = time(NULL);
+        pstLegCB->stCall.stTimeInfo.ulDTMFLastTime = pstLegCB->stCall.stTimeInfo.ulDTMFStartTime;
+    }
 
     dos_strcat(pstLegCB->stCall.stNumInfo.szDial, pszDTMF);
     pstLegCB->stCall.stNumInfo.szDial[SC_NUM_LENGTH - 1] = '\0';
-
-    pstLegCB->stCall.stTimeInfo.ulDTMFLastTime = time(NULL);
 
     stDTMF.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
     stDTMF.stMsgTag.ulMsgType = SC_EVT_HOLD;
@@ -697,6 +697,8 @@ U32 sc_esl_event_record_start(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         return DOS_FAIL;
     }
 
+    pstLegCB->stCall.stTimeInfo.ulRecordStartTime = time(NULL);
+
     pstLegCB->stRecord.usStatus = SC_SU_RECORD_ACTIVE;
 
     stRecord.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
@@ -738,6 +740,8 @@ U32 sc_esl_event_record_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    pstLegCB->stCall.stTimeInfo.ulRecordStopTime = time(NULL);
 
     dos_snprintf(szRecordFullName, sizeof(szRecordFullName)
                     , "%s-in.%s"

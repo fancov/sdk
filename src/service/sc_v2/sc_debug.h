@@ -13,6 +13,10 @@
 #ifndef __SC_DEBUG_H__
 #define __SC_DEBUG_H__
 
+#define  SC_TRACE_CUSTOMER_SIZE  5
+#define  SC_TRACE_CALLER_SIZE    5
+#define  SC_TRACE_CALLEE_SIZE    5
+
 /* define enums */
 typedef enum tagSCSUBMod{
     SC_MOD_DB        = 0,
@@ -46,9 +50,9 @@ typedef struct tagSCModList{
 
 
 typedef enum tagSCLogFlags{
-    SC_LOG_DISIST  = 1 << 11,        /* 是否记录摘要 */
+    SC_LOG_DISIST  = 0x1,      /* 记录摘要 */
 
-    SC_LOG_NONE    = 0,        /* 是否记录摘要 */
+    SC_LOG_NONE    = 0,        /*  */
 }SC_LOG_FLAG_EN;
 
 /* 日志标记 */
