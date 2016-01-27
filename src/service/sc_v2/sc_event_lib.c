@@ -252,7 +252,13 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
     pstAgentInfo = sc_agent_get_by_sip_acc(szCallee);
     if (DOS_ADDR_VALID(pstAgentInfo))
     {
+        pstSCB->stCall.pstAgentCallee = pstAgentInfo;
         /* TODO 绑定了坐席。判断是否录音，坐席是否长签，坐席弹屏 */
+        if (pstAgentInfo->pstAgentInfo->bRecord)
+        {
+            pstCallingLegCB->stRecord.bValid = DOS_TRUE;
+            pstCallingLegCB->stRecord.usStatus = SC_SU_RECORD_INIT;
+        }
     }
 
     /* 申请一个新的leg，发起呼叫 */
@@ -365,6 +371,8 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
         else
         {
             pstCalleeLegCB->stRecord.bValid = DOS_TRUE;
+            pstCalleeLegCB->stRecord.usStatus = SC_SU_RECORD_PROC;
+            pstSCB->stCall.pstAgentCallee = pstAgentNode;
         }
     }
 

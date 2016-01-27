@@ -1711,6 +1711,7 @@ U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
         || DOS_ADDR_INVALID(pstLeg)
         || !pstLeg->stRecord.bValid)
     {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "!!!!!!!!!!!%u", pstLeg->ulCBNo);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
@@ -1797,10 +1798,7 @@ U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
     pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstLeg->stCall.ulCause;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
 
-    for (i=0; i<BS_MAX_SERVICE_TYPE_IN_SESSION; i++)
-    {
-        pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType[i] = pstSCB->aucServType[i];
-    }
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType[0] = BS_SERV_RECORDING;
 
     ulCurrentLeg++;
     pstCDRMsg->ucLegNum++;

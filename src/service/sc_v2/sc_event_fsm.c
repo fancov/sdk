@@ -331,7 +331,10 @@ proc_fail:
 U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_LEG_CB             *pstCalleeLegCB = NULL;
+    SC_LEG_CB             *pstCallingLegCB = NULL;
+    SC_LEG_CB             *pstRecordLegCB = NULL;
     SC_MSG_EVT_ANSWER_ST  *pstEvtAnswer   = NULL;
+    SC_MSG_CMD_RECORD_ST  stRecordRsp;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -363,6 +366,34 @@ U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 {
                     sc_trace_scb(pstSCB, "Bridge call when early media fail.");
                     goto proc_fail;
+                }
+
+                /* ÅÐ¶ÏÊÇ·ñÐèÒªÂ¼Òô */
+                if (pstCalleeLegCB->stRecord.bValid)
+                {
+                    pstRecordLegCB = pstCalleeLegCB;
+                }
+                else
+                {
+                    pstCallingLegCB = sc_lcb_get(pstSCB->stCall.ulCallingLegNo);
+                    if (DOS_ADDR_VALID(pstCallingLegCB) && pstCallingLegCB->stRecord.bValid)
+                    {
+                        pstRecordLegCB = pstCallingLegCB;
+                    }
+                }
+
+                if (DOS_ADDR_VALID(pstRecordLegCB))
+                {
+                    stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
+                    stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+                    stRecordRsp.stMsgTag.usInterErr = 0;
+                    stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
+                    stRecordRsp.ulLegNo = pstRecordLegCB->ulCBNo;
+
+                    if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
+                    {
+                        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
+                    }
                 }
             }
 

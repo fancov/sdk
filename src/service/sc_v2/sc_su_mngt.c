@@ -760,8 +760,8 @@ U32 sc_esl_event_record_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     dos_printf("Process recording file %s", szRecordFullName);
 
 
-    pstLegCB->stRecord.usStatus = SC_SU_RECORD_INIT;
-    pstLegCB->stRecord.bValid = DOS_FALSE;
+    pstLegCB->stRecord.usStatus = SC_SU_RECORD_RELEASE;
+    //pstLegCB->stRecord.bValid = DOS_FALSE;
 
     stRecord.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
     stRecord.stMsgTag.ulMsgType = SC_EVT_RECORD_END;
@@ -1541,7 +1541,7 @@ U32 sc_cmd_record(SC_MSG_TAG_ST *pstMsg)
         goto proc_fail;
     }
 
-    dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_record %s start %s \r\n", pstLCB->szUUID, pstRecord->szRecordFile);
+    dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_record %s start %s/%s \r\n", pstLCB->szUUID, SC_RECORD_FILE_PATH, pstRecord->szRecordFile);
     if (sc_esl_execute_cmd(szCMD, szUUID, sizeof(szUUID)) != DOS_SUCC)
     {
         stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;

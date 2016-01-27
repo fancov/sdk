@@ -4370,7 +4370,7 @@ VOID sc_log(U32 ulLogFlags, const S8 *pszFormat, ...)
         return;
     }
 
-    if (ulFlags & 0x1)
+    if (ulFlags & SC_LOG_DISIST)
     {
         /* ժҪ */
         va_start(Arg, pszFormat);
@@ -4428,13 +4428,11 @@ VOID sc_log(U32 ulLogFlags, const S8 *pszFormat, ...)
         }
     }
 
-    if (!(ulFlags & 0x1))
-    {
-        va_start(Arg, pszFormat);
-        vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
-        va_end(Arg);
-        szTraceStr[sizeof(szTraceStr) -1] = '\0';
-    }
+    va_start(Arg, pszFormat);
+    vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
+    va_end(Arg);
+    szTraceStr[sizeof(szTraceStr) -1] = '\0';
+
     dos_log(ulLevel, LOG_TYPE_RUNINFO, szTraceStr);
 
 }

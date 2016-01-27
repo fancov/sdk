@@ -70,6 +70,53 @@ extern pthread_mutex_t      g_mutexTaskList;
 extern U32          g_ulCPS;
 extern U32          g_ulMaxConcurrency4Task;
 
+U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszJobNum, S8 *pszCaller, S8 *pszCallee)
+{
+    struct tm            *pstTime;
+    time_t               timep;
+
+    timep = time(NULL);
+    pstTime = localtime(&timep);
+
+    if (DOS_ADDR_INVALID( pszBuff)
+        || ulMaxLen <= 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(pszBuff, ulMaxLen
+            , "%s/%u/%04d%02d%02d"
+            , SC_RECORD_FILE_PATH
+            , ulCustomerID
+            , pstTime->tm_year + 1900
+            , pstTime->tm_mon + 1
+            , pstTime->tm_mday);
+    if (access(pszBuff, F_OK) < 0)
+    {
+        mkdir(pszBuff, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
+        chown(pszBuff, SC_NOBODY_UID, SC_NOBODY_GID);
+        chmod(pszBuff, S_IXOTH|S_IWOTH|S_IROTH|S_IRUSR|S_IWUSR|S_IXUSR);
+    }
+
+    dos_snprintf(pszBuff, ulMaxLen
+            , "%u/%04d%02d%02d/VR-%s-%04d%02d%02d%02d%02d%02d-%s-%s"
+            , ulCustomerID
+            , pstTime->tm_year + 1900
+            , pstTime->tm_mon + 1
+            , pstTime->tm_mday
+            , pszJobNum
+            , pstTime->tm_year + 1900
+            , pstTime->tm_mon + 1
+            , pstTime->tm_mday
+            , pstTime->tm_hour
+            , pstTime->tm_min
+            , pstTime->tm_sec
+            , pszCallee
+            , pszCaller);
+
+    return DOS_SUCC;
+}
 
 /**
  * 根据 @a pszUUID 计算HASH值
@@ -1672,6 +1719,88 @@ U32 sc_send_cmd_playback_stop(SC_MSG_TAG_ST *pstMsg)
 
 U32 sc_send_cmd_record(SC_MSG_TAG_ST *pstMsg)
 {
+    SC_MSG_CMD_RECORD_ST  *pstRecordRsp = NULL;
+    SC_SRV_CB   *pstSCB = NULL;
+    SC_LEG_CB   *pstRecordLegCB = NULL;
+    S8         szEmpNo[SC_NUM_LENGTH] = {0};
+
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstRecordRsp = (SC_MSG_CMD_RECORD_ST *)pstMsg;
+    pstSCB = sc_scb_get(pstRecordRsp->ulSCBNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstRecordLegCB = sc_lcb_get(pstRecordRsp->ulLegNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (sc_serv_ctrl_check(pstSCB->ulCustomerID
+                                , BS_SERV_RECORDING
+                                , SC_SRV_CTRL_ATTR_INVLID
+                                , U32_BUTT
+                                , SC_SRV_CTRL_ATTR_INVLID
+                                , U32_BUTT))
+    {
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Recording service is under control, reject recoding request. Customer: %u", pstSCB->ulCustomerID);
+        return DOS_SUCC;
+    }
+
+    if (sc_scb_set_service(pstSCB, BS_SERV_RECORDING))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add record service fail.");
+
+        return DOS_SUCC;
+    }
+
+    if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
+        && pstSCB->stCall.pstAgentCallee->pstAgentInfo->bRecord)
+    {
+        dos_strcpy(szEmpNo, pstSCB->stCall.pstAgentCallee->pstAgentInfo->szEmpNo);
+    }
+    else if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling))
+    {
+        dos_strcpy(szEmpNo, pstSCB->stCall.pstAgentCalling->pstAgentInfo->szEmpNo);
+    }
+    else if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee))
+    {
+        dos_strcpy(szEmpNo, pstSCB->stCall.pstAgentCallee->pstAgentInfo->szEmpNo);
+    }
+    else
+    {
+        /* 没有找到坐席 */
+        szEmpNo[0] = '\0';
+    }
+
+    /* 录音文件名 */
+    sc_get_record_file_path(pstRecordRsp->szRecordFile, sizeof(pstRecordRsp->szRecordFile), pstSCB->ulCustomerID, szEmpNo, pstRecordLegCB->stCall.stNumInfo.szOriginalCalling, pstRecordLegCB->stCall.stNumInfo.szOriginalCallee);
+
+    pstRecordRsp = NULL;
+    pstRecordRsp = (SC_MSG_CMD_RECORD_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_RECORD_ST));
+    if (DOS_ADDR_INVALID(pstRecordRsp))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstRecordRsp, pstMsg, sizeof(SC_MSG_CMD_RECORD_ST));
+
+    if (sc_send_command(&pstRecordRsp->stMsgTag) != DOS_SUCC)
+    {
+        dos_dmem_free(pstRecordRsp);
+        return DOS_FAIL;
+    }
+
     return DOS_SUCC;
 }
 

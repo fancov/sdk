@@ -123,6 +123,8 @@ extern "C" {
 
 #define SC_TASK_AUDIO_PATH             "/home/ipcc/data/audio"
 
+#define SC_RECORD_FILE_PATH            "/home/ipcc/data/voicerecord"
+
 /* 每个任务最多时间段描述节点 */
 #define SC_MAX_PERIOD_NUM              4
 
@@ -1802,6 +1804,7 @@ U32 sc_req_hungup_with_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
 U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_mux(SC_MSG_TAG_ST *pstMsg);
+U32 sc_send_cmd_record(SC_MSG_TAG_ST *pstMsg);
 
 
 U32 sc_agent_group_agent_count(U32 ulGroupID);
