@@ -461,6 +461,7 @@ typedef enum tagSCNumberType
 {
     SC_NUMBER_TYPE_CFG = 0,         /* 系统手动配置的主叫号码 */
     SC_NUMBER_TYPE_DID,             /* 系统的did号码 */
+    SC_NUMBER_TYPE_BUTT
 }SC_NUMBER_TYPE_EN;
 
 /* 定义主叫号码选择策略 */
@@ -499,6 +500,14 @@ typedef struct tagCallerCacheNode
     }stData;
 }SC_CALLER_CACHE_NODE_ST;
 
+typedef struct tagScLimitCallerStat
+{
+    SC_NUMBER_TYPE_EN   enNumType;                          /* 号码类型 */
+    S8                  szNumber[SC_NUM_LENGTH];     /* 号码 */
+
+}SC_LIMIT_CALLER_STAT_ST;
+
+
 U32 sc_int_hash_func(U32 ulVal, U32 ulHashSize);
 U32 sc_string_hash_func(S8 *pszSrting, U32 ulHashSize);
 
@@ -506,9 +515,11 @@ U32 sc_serv_ctrl_load(U32 ulIndex);
 U32 sc_serv_ctrl_update_proc(U32 ulAction, U32 ulID);
 BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulAttrVal1,U32 ulAttr2, U32 ulAttrVal2);
 
-U32 sc_number_lmt_load(U32 ulIndex);
 U32 sc_number_lmt_update_proc(U32 ulAction, U32 ulNumlmtID);
-BOOL sc_number_lmt_check(U32 ulType, U32 ulCurrentTime, S8 *pszNumber);
+U32 sc_number_lmt_load(U32 ulIndex);
+U32 sc_number_lmt_delete(U32 ulIndex);
+U32 sc_number_lmt_stat_add(U32 ulNumType, S8 *szNumber);
+BOOL sc_number_lmt_check(U32 ulType, U32 ulCustomerID, S8 *pszNumber);
 
 U32 sc_caller_setting_load(U32 ulIndex);
 S32 sc_caller_setting_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);

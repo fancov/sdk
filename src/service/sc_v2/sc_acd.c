@@ -41,6 +41,8 @@
 #include "sc_def.h"
 #include "sc_res.h"
 #include "sc_debug.h"
+#include "sc_publish.h"
+#include "sc_db.h"
 
 
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
@@ -56,6 +58,118 @@ pthread_mutex_t   g_mutexGroupList     = PTHREAD_MUTEX_INITIALIZER;
 
 /* 坐席组个数 */
 U32               g_ulGroupCount       = 0;
+
+U32 sc_agent_get_channel_id(SC_AGENT_INFO_ST *pstAgentInfo, S8 *pszChannel, U32 ulLen)
+{
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pszChannel) || 0 == ulLen)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(pszChannel, ulLen, "%u_%s"
+                , pstAgentInfo->ulAgentID
+                , pstAgentInfo->szEmpNo);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_status_http_get_rsp(U32 ulAgentID)
+{
+    SC_AGENT_NODE_ST   *pstAgentNode = NULL;
+    SC_AGENT_INFO_ST   *pstAgentInfo = NULL;
+    S8 szJson[256]        = { 0, };
+    S8 szURL[256]         = { 0, };
+    S8 szChannel[128]     = { 0, };
+    S32 ulPAPIPort = -1;
+
+    /* 找到坐席 */
+    pstAgentNode = sc_agent_get_by_id(ulAgentID);
+    if (DOS_ADDR_INVALID(pstAgentNode)
+        || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+    {
+        return DOS_FAIL;
+    }
+
+    pstAgentInfo = pstAgentNode->pstAgentInfo;
+    if (sc_agent_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Get channel ID fail for agent: %u", pstAgentInfo->ulAgentID);
+        return DOS_FAIL;
+    }
+
+    ulPAPIPort = config_hb_get_papi_port();
+    if (ulPAPIPort <= 0)
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+    }
+    else
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/pub?id=%s", ulPAPIPort, szChannel);
+    }
+
+    dos_snprintf(szJson, sizeof(szJson)
+                    , "{\\\"type\\\":\\\"%u\\\",\\\"body\\\":{\\\"type\\\":\\\"%d\\\",\\\"work_status\\\":\\\"%u\\\",\\\"is_signin\\\":\\\"%u\\\"}}"
+                    , ACD_MSG_TYPE_QUERY
+                    , ACD_MSG_TYPE_QUERY_STATUS
+                    , pstAgentInfo->ucStatus
+                    , pstAgentInfo->bConnected ? 1 : 0);
+
+
+    return sc_pub_send_msg(szURL, szJson, SC_PUB_TYPE_STATUS, NULL);
+}
+
+U32 sc_agent_update_status_db(U32 ulSiteID, U32 ulStatus, BOOL bIsConnect)
+{
+    S8  szQuery[512] = { 0, };
+    U32 ulStatusDB = 0;
+    SC_DB_MSG_TAG_ST *pstMsg = NULL;
+
+    /* 写数据库的状态
+        0  -- 离线
+        1  -- 可用
+        2  -- 不可用
+        3  -- 长签可用
+        4  =- 长签不可用
+    */
+    ulStatusDB = ulStatus > SC_ACD_IDEL ? 2 : ulStatus;
+    if (bIsConnect)
+    {
+        /* 如果是长签, 则把状态修改为长签可用或者长签不可用 */
+        ulStatusDB += 2;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Update agent(%d) status(%d)", ulSiteID, ulStatus);
+
+    dos_snprintf(szQuery, sizeof(szQuery), "UPDATE tbl_agent SET status=%d WHERE id = %u;", ulStatusDB, ulSiteID);
+
+    pstMsg = (SC_DB_MSG_TAG_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_TAG_ST));
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+    pstMsg->ulMsgType = SC_MSG_SAVE_AGENT_STATUS;
+    pstMsg->szData = dos_dmem_alloc(dos_strlen(szQuery) + 1);
+    if (DOS_ADDR_INVALID(pstMsg->szData))
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstMsg->szData);
+
+        return DOS_FAIL;
+    }
+
+    dos_strcpy(pstMsg->szData, szQuery);
+
+    return sc_send_msg2db(pstMsg);
+}
 
 U32 sc_agent_signin_proc(SC_AGENT_INFO_ST *pstAgentInfo)
 {
@@ -122,7 +236,7 @@ U32 sc_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
     dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"1\\\",\\\"body\\\":{\\\"type\\\":\\\"%u\\\",\\\"result\\\":\\\"0\\\"}}", ulStatus);
 
-    return DOS_SUCC;
+    return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_STATUS, NULL);
 }
 
 
@@ -1831,7 +1945,11 @@ U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
             break;
 
         case SC_ACD_BUSY:
-            /*在没有呼叫之前 都应该不让设置*/
+            /* TODO */
+            //if (!sc_ep_chack_has_call4agent(pstAgentQueueInfo->usSCBNo))
+            {
+                pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            }
 
             break;
 
@@ -1839,7 +1957,7 @@ U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
@@ -1880,7 +1998,11 @@ U32 sc_agent_set_rest(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
             break;
 
         case SC_ACD_BUSY:
-            /*在没有呼叫之前 都应该不让设置*/
+            /* TODO 在没有呼叫之前 都应该不让设置 */
+            //if (!sc_ep_chack_has_call4agent(pstAgentQueueInfo->usSCBNo))
+            {
+                pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+            }
             break;
 
         case SC_ACD_PROC:
@@ -2361,12 +2483,19 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
             break;
 
         case SC_ACTION_AGENT_QUERY:
-            //ulResult = sc_acd_query_agent_status(ulAgentID);
+            ulResult = sc_agent_status_http_get_rsp(ulAgentID);
             break;
 
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Invalid action for agent. Action:%u", ulAction);
             ulResult = DOS_FAIL;
+    }
+
+    if (ulOldStatus != pstAgentInfo->ucStatus
+        && (ulOldStatus <= SC_ACD_IDEL || pstAgentInfo->ucStatus <= SC_ACD_IDEL))
+    {
+        /* 状态不相同，并且不全部是 忙 的状态，则修改数据库 */
+        sc_agent_update_status_db(ulAgentID, pstAgentInfo->ucStatus, pstAgentInfo->bConnected);
     }
 
     return ulResult;

@@ -92,6 +92,10 @@ U32 sc_task_mngt_init();
 U32 sc_task_mngt_start();
 U32 sc_task_mngt_stop();
 
+U32 sc_limit_start();
+U32 sc_limit_init();
+U32 sc_limit_stop();
+
 
 /* global variables */
 SC_MOD_LIST_ST  astSCModList[] = {
@@ -99,6 +103,7 @@ SC_MOD_LIST_ST  astSCModList[] = {
     {SC_MOD_DB_WQ,      "SC_DB_WQ",  LOG_LEVEL_NOTIC, DOS_FALSE, sc_db_init,           sc_db_start,            sc_db_stop},
     {SC_MOD_DIGIST,     "SC_DLOG",   LOG_LEVEL_NOTIC, DOS_FALSE, sc_log_digest_init,   sc_log_digest_start,    sc_log_digest_stop},
     {SC_MOD_RES,        "SC_RES",    LOG_LEVEL_NOTIC, DOS_FALSE, sc_res_init,          sc_res_start,           sc_res_stop},
+    {SC_MOD_LIMIT,      "SC_LIMIT",  LOG_LEVEL_NOTIC, DOS_FALSE, sc_limit_init,        sc_limit_start,         sc_limit_stop},
     {SC_MOD_ACD,        "SC_AGENT",  LOG_LEVEL_NOTIC, DOS_FALSE, sc_agent_mngt_init,   NULL,                   NULL},
     {SC_MOD_EVENT,      "SC_EVT",    LOG_LEVEL_NOTIC, DOS_FALSE, sc_event_init,        sc_event_start,         sc_event_stop},
     {SC_MOD_SU,         "SC_ESL",    LOG_LEVEL_NOTIC, DOS_FALSE, sc_su_mngt_init,      sc_su_mngt_start,       sc_su_mngt_stop},

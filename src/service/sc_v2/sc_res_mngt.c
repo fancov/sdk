@@ -90,7 +90,6 @@ U32 sc_res_init()
     g_pstHashTTNumber = hash_create_table(SC_EIX_DEV_HASH_SIZE, NULL);
     g_pstHashCaller = hash_create_table(SC_CALLER_HASH_SIZE, NULL);
     g_pstHashCallerGrp = hash_create_table(SC_CALLER_GRP_HASH_SIZE, NULL);
-    g_pstHashNumberlmt = hash_create_table(SC_NUMBER_LMT_HASH_SIZE, NULL);
     g_pstHashCallerSetting = hash_create_table(SC_CALLER_SETTING_HASH_SIZE, NULL);
     g_pstHashServCtrl = hash_create_table(SC_SERV_CTRL_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(g_pstHashGW)
@@ -101,7 +100,6 @@ U32 sc_res_init()
         || DOS_ADDR_INVALID(g_pstHashCaller)
         || DOS_ADDR_INVALID(g_pstHashCallerGrp)
         || DOS_ADDR_INVALID(g_pstHashTTNumber)
-        || DOS_ADDR_INVALID(g_pstHashNumberlmt)
         || DOS_ADDR_INVALID(g_pstHashServCtrl))
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Alloc memort for res hash table fail");
@@ -128,7 +126,6 @@ U32 sc_res_init()
     sc_caller_relationship_load();
 
     sc_caller_setting_load(SC_INVALID_INDEX);
-    sc_number_lmt_load(SC_INVALID_INDEX);
     sc_serv_ctrl_load(SC_INVALID_INDEX);
 
     return DOS_SUCC;

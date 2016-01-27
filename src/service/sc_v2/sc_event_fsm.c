@@ -232,7 +232,7 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             /* ºô½Ð±»½Ð */
             pstSCB->stCall.stSCBTag.usStatus = SC_CALL_EXEC;
 
-            pstCalleeLegCB =sc_lcb_get(pstSCB->stCall.ulCalleeLegNo);
+            pstCalleeLegCB = sc_lcb_get(pstSCB->stCall.ulCalleeLegNo);
             if (DOS_ADDR_INVALID(pstCalleeLegCB))
             {
                 return DOS_FAIL;

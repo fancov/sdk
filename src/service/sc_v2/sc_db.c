@@ -109,6 +109,7 @@ static VOID sc_db_request_proc(SC_DB_MSG_TAG_ST *pstMsg)
         case SC_MSG_SAVE_TASK_CALLED_COUNT:
         case SC_MSG_SAVE_SIP_IPADDR:
         case SC_MSG_SAVE_TRUNK_STATUS:
+        case SC_MSG_SAVE_STAT_LIMIT_CALLER:
             ulResult = sc_db_execute_sql(pstMsg);
             break;
         default:

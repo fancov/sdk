@@ -561,13 +561,13 @@ static U32 sc_get_number_by_callerid(U32 ulCallerID, S8 *pszNumber, U32 ulLen)
     }
     pstCaller = (SC_CALLER_QUERY_NODE_ST *)pstHashNode->pHandle;
 
-    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstCaller->ulTimes, pstCaller->szNumber))
+    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_CFG, pstCaller->ulCustomerID, pstCaller->szNumber))
     {
         return DOS_FAIL;
     }
     dos_snprintf(pszNumber, ulLen, "%s", pstCaller->szNumber);
     pstCaller->ulTimes++;
-
+    sc_number_lmt_stat_add(SC_NUMBER_TYPE_CFG, pstCaller->szNumber);
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Get number by caller id SUCC.(CallerID:%u,Number:%s,len:%u)"
                         , ulCallerID, pszNumber, ulLen);
     return DOS_SUCC;
@@ -612,12 +612,13 @@ static U32 sc_get_number_by_didid(U32 ulDidID, S8* pszNumber, U32 ulLen)
                 continue;
             }
 
-            if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstDid->ulTimes, pstDid->szDIDNum))
+            if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstDid->ulCustomID, pstDid->szDIDNum))
             {
                 return DOS_FAIL;
             }
 
             pstDid->ulTimes++;
+            sc_number_lmt_stat_add(SC_NUMBER_TYPE_DID, pstDid->szDIDNum);
             dos_snprintf(pszNumber, ulLen, "%s", pstDid->szDIDNum);
             bFound = DOS_TRUE;
         }
@@ -738,22 +739,24 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
                 pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode->pHandle;
                 if (SC_NUMBER_TYPE_CFG == pstCache->ulType)
                 {
-                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
+                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulCustomerID, pstCache->stData.pstCaller->szNumber))
                     {
                         continue;
                     }
                     dos_snprintf(pszNumber, ulLen, "%s", pstCache->stData.pstCaller->szNumber);
+                    sc_number_lmt_stat_add(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->szNumber);
                     pstCache->stData.pstCaller->ulTimes++;
                     pstCallerGrp->ulLastNo = ulNewNo;
                     bFound = DOS_TRUE;
                 }
                 else if (SC_NUMBER_TYPE_DID == pstCache->ulType)
                 {
-                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->ulTimes, pstCache->stData.pstDid->szDIDNum))
+                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->ulCustomID, pstCache->stData.pstDid->szDIDNum))
                     {
                         continue;
                     }
                     dos_snprintf(pszNumber, ulLen, "%s", pstCache->stData.pstDid->szDIDNum);
+                    sc_number_lmt_stat_add(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->szDIDNum);
                     pstCache->stData.pstDid->ulTimes++;
                     pstCallerGrp->ulLastNo = ulNewNo;
                     bFound = DOS_TRUE;
@@ -790,21 +793,23 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
                 pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode;
                 if (SC_NUMBER_TYPE_CFG == pstCache->ulType)
                 {
-                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
+                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulCustomerID, pstCache->stData.pstCaller->szNumber))
                     {
                         continue;
                     }
                     dos_snprintf(pszNumber, ulLen, "%s", pstCache->stData.pstCaller->szNumber);
                     pstCache->stData.pstCaller->ulTimes++;
+                    sc_number_lmt_stat_add(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->szNumber);
                     pstCallerGrp->ulLastNo = ulCount;
                 }
                 else if (SC_NUMBER_TYPE_DID == pstCache->ulType)
                 {
-                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->ulTimes, pstCache->stData.pstDid->szDIDNum))
+                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->ulCustomID, pstCache->stData.pstDid->szDIDNum))
                     {
                         continue;
                     }
                     dos_snprintf(pszNumber, ulLen, "%s", pstCache->stData.pstDid->szDIDNum);
+                    sc_number_lmt_stat_add(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->szDIDNum);
                     pstCache->stData.pstDid->ulTimes++;
                     pstCallerGrp->ulLastNo = ulCount;
                 }
@@ -895,20 +900,22 @@ U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ul
                     pstCache = (SC_CALLER_CACHE_NODE_ST *)pstNode->pHandle;
                     if (SC_NUMBER_TYPE_CFG == pstCache->ulType)
                     {
-                        if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstCaller->szNumber))
+                        if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->ulCustomerID, pstCache->stData.pstCaller->szNumber))
                         {
                             continue;
                         }
                         dos_snprintf(pszNumber, ulLen, "%s", pstCache->stData.pstCaller->szNumber);
+                        sc_number_lmt_stat_add(SC_NUMBER_TYPE_CFG, pstCache->stData.pstCaller->szNumber);
                         pstCache->stData.pstCaller->ulTimes++;
                     }
                     else if (SC_NUMBER_TYPE_DID == pstCache->ulType)
                     {
-                        if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstCaller->ulTimes, pstCache->stData.pstDid->szDIDNum))
+                        if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstCache->stData.pstCaller->ulCustomerID, pstCache->stData.pstDid->szDIDNum))
                         {
                             continue;
                         }
                         dos_snprintf(pszNumber, ulLen, "%s", pstCache->stData.pstDid->szDIDNum);
+                        sc_number_lmt_stat_add(SC_NUMBER_TYPE_DID, pstCache->stData.pstDid->szDIDNum);
                         pstCache->stData.pstDid->ulTimes++;
                     }
                     else
@@ -993,12 +1000,13 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
                 if (bIsCheckBegin)
                 {
                     /* ÅÐ¶ÏÖ÷½Ð³¬Æµ */
-                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstDid->ulTimes, pstDid->szDIDNum))
+                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstDid->ulCustomID, pstDid->szDIDNum))
                     {
                         continue;
                     }
 
                     dos_snprintf(pszNumber, ulLen, "%s", pstDid->szDIDNum);
+                    sc_number_lmt_stat_add(SC_NUMBER_TYPE_DID, pstDid->szDIDNum);
                     pstDid->ulTimes++;
                     return DOS_SUCC;
                 }
@@ -1034,12 +1042,13 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
                     if (bIsCheckBegin)
                     {
                         /* ÅÐ¶ÏÖ÷½Ð³¬Æµ */
-                        if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstDid->ulTimes, pstDid->szDIDNum))
+                        if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstDid->ulCustomID, pstDid->szDIDNum))
                         {
                             continue;
                         }
 
                         dos_snprintf(pszNumber, ulLen, "%s", pstDid->szDIDNum);
+                        sc_number_lmt_stat_add(SC_NUMBER_TYPE_DID, pstDid->szDIDNum);
                         pstDid->ulTimes++;
                         return DOS_SUCC;
                     }
@@ -1092,12 +1101,13 @@ static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
                 if (bIsCheckBegin)
                 {
                     /* ÅÐ¶ÏÖ÷½Ð³¬Æµ */
-                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstCaller->ulTimes, pstCaller->szNumber))
+                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstCaller->ulCustomerID, pstCaller->szNumber))
                     {
                         continue;
                     }
 
                     dos_snprintf(pszNumber, ulLen, "%s", pstCaller->szNumber);
+                    sc_number_lmt_stat_add(SC_NUMBER_TYPE_DID, pstCaller->szNumber);
                     pstCaller->ulTimes++;
                     return DOS_SUCC;
                 }
@@ -1131,12 +1141,13 @@ static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
 
                     if (bIsCheckBegin)
                     {
-                        if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstCaller->ulTimes, pstCaller->szNumber))
+                        if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstCaller->ulCustomerID, pstCaller->szNumber))
                         {
                             continue;
                         }
 
                         dos_snprintf(pszNumber, ulLen, "%s", pstCaller->szNumber);
+                        sc_number_lmt_stat_add(SC_NUMBER_TYPE_DID, pstCaller->szNumber);
                         pstCaller->ulTimes++;
                         return DOS_SUCC;
                     }
@@ -1323,7 +1334,7 @@ static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
                     || (SC_DID_BIND_TYPE_AGENT == pstDid->ulBindType && pstDid->ulBindID == pstAgent->pstAgentInfo->ulAgentID))
                 {
                     /* ÅÐ¶ÏÖ÷½Ð³¬Æµ */
-                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstDid->ulTimes, pstDid->szDIDNum))
+                    if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstDid->ulCustomID, pstDid->szDIDNum))
                     {
                         continue;
                     }
@@ -1331,6 +1342,7 @@ static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
                     bFound = DOS_TRUE;
                     pstDid->ulTimes++;
                     dos_snprintf(pszNumber, ulLen, "%s", pstDid->szDIDNum);
+                    sc_number_lmt_stat_add(SC_NUMBER_TYPE_DID, pstDid->szDIDNum);
                     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Get did by agent SUCC.(ulAgentID:%u, sipID : %u).", ulAgentID, pstAgent->pstAgentInfo->ulSIPUserID);
                     break;
                 }
@@ -1379,7 +1391,7 @@ static U32 sc_get_did_by_agentgrp(U32 ulAgentGrpID, S8 *pszNumber, U32 ulLen)
             pstDid = (SC_DID_NODE_ST *)pstHashNode->pHandle;
             if (DOS_FALSE != pstDid->bValid && pstDid->ulBindID == ulAgentGrpID && SC_DID_BIND_TYPE_QUEUE == pstDid->ulBindType)
             {
-                if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstDid->ulTimes, pstDid->szDIDNum))
+                if (DOS_TRUE != sc_number_lmt_check(SC_NUMBER_TYPE_DID, pstDid->ulCustomID, pstDid->szDIDNum))
                 {
                     continue;
                 }
@@ -1387,6 +1399,7 @@ static U32 sc_get_did_by_agentgrp(U32 ulAgentGrpID, S8 *pszNumber, U32 ulLen)
                 bFound = DOS_TRUE;
                 pstDid->ulTimes++;
                 dos_snprintf(pszNumber, ulLen, "%s", pstDid->szDIDNum);
+                sc_number_lmt_stat_add(SC_NUMBER_TYPE_DID, pstDid->szDIDNum);
                 break;
             }
         }

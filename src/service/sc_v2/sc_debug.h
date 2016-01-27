@@ -23,6 +23,7 @@ typedef enum tagSCSUBMod{
     SC_MOD_DB_WQ,
     SC_MOD_DIGIST,
     SC_MOD_RES,
+    SC_MOD_LIMIT,
     SC_MOD_ACD,
     SC_MOD_EVENT,
     SC_MOD_SU,

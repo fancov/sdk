@@ -459,7 +459,7 @@ typedef enum tagCallNumType{
 typedef enum tagSCSrvType{
     SC_SRV_CALL           = 0,   /**< 基本呼叫业务 */
     SC_SRV_PREVIEW_CALL   = 1,   /**< 预览外呼业务 */
-    SC_SRV_AUTO_CALL      = 2,   /**< 基本呼叫业务 */
+    SC_SRV_AUTO_CALL      = 2,   /**< 群呼任务业务 */
     SC_SRV_VOICE_VERIFY   = 3,   /**< 语音验证码业务 */
     SC_SRV_ACCESS_CODE    = 4,   /**< 接入码业务 */
     SC_SRV_HOLD           = 5,   /**< HOLD业务 */
