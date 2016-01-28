@@ -43,6 +43,7 @@
 #include "sc_debug.h"
 #include "sc_publish.h"
 #include "sc_db.h"
+#include "bs_pub.h"
 
 
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
@@ -173,6 +174,141 @@ U32 sc_agent_update_status_db(U32 ulSiteID, U32 ulStatus, BOOL bIsConnect)
 
 U32 sc_agent_signin_proc(SC_AGENT_INFO_ST *pstAgentInfo)
 {
+    SC_LEG_CB   *pstLegCB = NULL;
+    SC_SRV_CB   *pstSCB   = NULL;
+    U32 ulRet = DOS_FAIL;
+    SC_MSG_CMD_CALL_ST stCallMsg;
+
+    if (DOS_ADDR_INVALID(pstAgentInfo))
+    {
+        return DOS_FAIL;
+    }
+
+    /* 判断一下坐席的状态，看看是否已经长签 */
+    if (pstAgentInfo->bNeedConnected && pstAgentInfo->bConnected)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent %u request signin. But it seems already signin. Exit.", pstAgentInfo->ulAgentID);
+
+        return DOS_FAIL;
+    }
+
+    pstLegCB = sc_lcb_get(pstAgentInfo->ulLegNo);
+    if (DOS_ADDR_VALID(pstLegCB))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent %u request signin. But it seems in a call(LEG: %u). Exit.", pstAgentInfo->ulAgentID, pstAgentInfo->ulLegNo);
+        return DOS_FAIL;
+    }
+
+    pstSCB = sc_scb_alloc();
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstLegCB = sc_lcb_alloc();
+    if (DOS_ADDR_INVALID(pstLegCB))
+    {
+        sc_scb_free(pstSCB);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    pstLegCB->stSigin.bValid = DOS_TRUE;
+    pstLegCB->stSigin.pstAgentInfo = pstAgentInfo;
+    pstLegCB->ulSCBNo = pstSCB->ulSCBNo;
+
+    pstSCB->stCall.stSCBTag.bValid = DOS_TRUE;
+    //pstSCB->stCall.pstAgentCallee = pstAgentInfo;
+    pstSCB->stCall.ulCalleeLegNo = pstLegCB->ulCBNo;
+
+    pstSCB->ulAgentID = pstAgentInfo->ulAgentID;
+    pstSCB->ulCustomerID = pstAgentInfo->ulCustomerID;
+
+    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = (SC_SCB_TAG_ST *)&pstSCB->stCall;
+
+    /* 从主叫号码组中获取主叫号码 */
+    ulRet = sc_caller_setting_select_number(pstAgentInfo->ulCustomerID, pstAgentInfo->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstLegCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
+    if (ulRet != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstAgentInfo->ulCustomerID, pstAgentInfo->ulAgentID);
+        sc_scb_free(pstSCB);
+        sc_lcb_free(pstLegCB);
+
+        return DOS_FAIL;
+    }
+
+    switch (pstAgentInfo->ucBindType)
+    {
+        case AGENT_BIND_SIP:
+            dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee), pstAgentInfo->szUserID);
+            pstLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+            sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
+
+            break;
+
+        case AGENT_BIND_TELE:
+            dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee), pstAgentInfo->szTelePhone);
+            pstLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+            sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
+
+            break;
+
+        case AGENT_BIND_MOBILE:
+            dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee), pstAgentInfo->szMobile);
+            pstLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+
+            break;
+
+        case AGENT_BIND_TT_NUMBER:
+            dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee), pstAgentInfo->szTTNumber);
+            pstLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
+            break;
+
+        default:
+            break;
+    }
+    pstLegCB->stCall.stNumInfo.szOriginalCallee[sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee)-1] = '\0';
+
+    if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
+    {
+        /* 需要认证 */
+        pstLegCB->stSigin.usStatus = SC_SU_SIGIN_AUTH;
+        ulRet = sc_send_usr_auth2bs(pstSCB, pstLegCB);
+        if (ulRet != DOS_SUCC)
+        {
+            sc_scb_free(pstSCB);
+            sc_lcb_free(pstLegCB);
+
+            return DOS_FAIL;
+        }
+    }
+    else
+    {
+        /* 发起呼叫 */
+        /* 处理一下号码 */
+        dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstLegCB->stCall.stNumInfo.szCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
+        dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstLegCB->stCall.stNumInfo.szCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
+
+        dos_snprintf(pstLegCB->stCall.stNumInfo.szCallee, sizeof(pstLegCB->stCall.stNumInfo.szCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
+        dos_snprintf(pstLegCB->stCall.stNumInfo.szCalling, sizeof(pstLegCB->stCall.stNumInfo.szCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
+
+        pstLegCB->stSigin.usStatus = SC_SU_SIGIN_EXEC;
+
+        stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
+        stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+        stCallMsg.stMsgTag.usInterErr = 0;
+        stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
+        stCallMsg.ulLCBNo = pstLegCB->ulCBNo;
+
+        if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
+        {
+            sc_scb_free(pstSCB);
+            sc_lcb_free(pstLegCB);
+
+            return DOS_FAIL;
+        }
+    }
+
     return DOS_SUCC;
 }
 

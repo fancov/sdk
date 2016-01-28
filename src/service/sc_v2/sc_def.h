@@ -833,6 +833,33 @@ typedef struct tagSCSUIVR{
     U32      ulRes;
 }SC_SU_IVR_ST;
 
+
+/**< 单条LEG 修改连接状态状态  */
+typedef enum tagSCSUSIGINStatus{
+    SC_SU_SIGIN_INIT,          /**< 初始化状态 */
+    SC_SU_SIGIN_AUTH,          /**< 初始化状态 */
+    SC_SU_SIGIN_EXEC,          /**< 开始呼叫 */
+    SC_SU_SIGIN_PORC,          /**<  */
+    SC_SU_SIGIN_ALERTING,      /**< 开始振铃 */
+    SC_SU_SIGIN_ACTIVE,        /**< 激活状态 */
+    SC_SU_SIGIN_RELEASE,       /**< 释放状态 */
+}SC_SU_SIGIN_SATUE_EN;
+
+/**
+ * 业务单元,  呼叫长签业务
+ */
+typedef struct tagSCSUSIGIN{
+    U32                 bValid:1;       /**< 是否已经分配 */
+    U32                 bTrace:1;       /**< 是否调试跟踪 */
+    U32                 bRes:30;
+
+    U16                 usStatus;       /**< 当前LEG的状态 */
+    U16                 usRes;
+    SC_AGENT_INFO_ST    *pstAgentInfo;     /* 长签的坐席 */
+    U32                 ulRes;
+}SC_SU_SIGIN_ST;
+
+
 /**
  * 呼叫LEG控制块
  */
@@ -877,6 +904,8 @@ typedef struct tagSCLegCB{
     SC_SU_MCX_ST          stMcx;
     /** IVR业务单元控制块 */
     SC_SU_IVR_ST          stIVR;
+    /** 长签业务单元控制块 */
+    SC_SU_SIGIN_ST        stSigin;
 
 }SC_LEG_CB;
 

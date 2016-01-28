@@ -1699,7 +1699,6 @@ U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
 {
     U32                   ulCurrentLeg = 0;
     BS_MSG_CDR            *pstCDRMsg = NULL;
-    S32                   i = 0;
 #if SC_BS_NEED_RESEND
     SC_BS_MSG_NODE        *pstListNode = NULL;
     U32                   ulHashIndex = 0;

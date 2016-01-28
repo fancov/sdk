@@ -490,6 +490,20 @@ VOID sc_lcb_ivr_init(SC_SU_IVR_ST *pstIVR)
     pstIVR->usStatus = SC_SU_IVR_INIT;
 }
 
+VOID sc_lcb_sigin_init(SC_SU_SIGIN_ST *pstSigin)
+{
+    if (DOS_ADDR_INVALID(pstSigin))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstSigin->bValid = DOS_FALSE;
+    pstSigin->bTrace = DOS_FALSE;
+    pstSigin->usStatus = SC_SU_SIGIN_INIT;
+    pstSigin->pstAgentInfo = NULL;
+}
+
 /**
  * 初始化 @a pstLCB 指向的LEG控制块
  *
@@ -529,6 +543,7 @@ VOID sc_lcb_init(SC_LEG_CB *pstLCB)
     sc_lcb_mux_init(&pstLCB->stMux);
     sc_lcb_hold_init(&pstLCB->stHold);
     sc_lcb_ivr_init(&pstLCB->stIVR);
+    sc_lcb_sigin_init(&pstLCB->stSigin);
 }
 
 /**

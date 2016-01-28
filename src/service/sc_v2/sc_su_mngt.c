@@ -856,6 +856,16 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
                         , pstLegCB->stPlayback.ulCurretnIndex
                         , pstLegCB->stPlayback.ulTotal);
 
+    if (pstLegCB->stSigin.bValid
+        && pstLegCB->stSigin.usStatus == SC_SU_SIGIN_ACTIVE
+        && DOS_ADDR_VALID(pstLegCB->stSigin.pstAgentInfo)
+        && pstLegCB->stSigin.pstAgentInfo->ucStatus != SC_ACD_PROC)
+    {
+        /* ¼ÌÐø·Å³¤Ç©Òô */
+        sc_req_play_sound(pstLegCB->ulSCBNo, pstLegCB->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
+        return DOS_SUCC;
+    }
+
     pstLegCB->stPlayback.ulCurretnIndex++;
 
     switch (pstLegCB->stPlayback.usStatus)
@@ -1321,6 +1331,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
     S8                     szCMD[128] = { 0, };
     U32                    ulTotalCnt   = 0;
     U32                    ulLen;
+    BOOL                   bIsAllocPlayArg = DOS_FALSE;
 
     pstPlayback = (SC_MSG_CMD_PLAYBACK_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstPlayback))
@@ -1363,6 +1374,8 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         stErrReport.stMsgTag.ulMsgType = SC_ERR_ALLOC_RES_FAIL;
         goto proc_fail;
     }
+
+    bIsAllocPlayArg = DOS_TRUE;
 
     ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u file_string://", pstPlayback->ulLoopCnt);
 
@@ -1439,7 +1452,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 
 proc_fail:
-    if (pszPlayCMDArg)
+    if (pszPlayCMDArg && bIsAllocPlayArg)
     {
         dos_dmem_free(pszPlayCMDArg);
         pszPlayCMDArg = NULL;
@@ -1482,7 +1495,6 @@ U32 sc_cmd_playback_stop(SC_MSG_TAG_ST *pstMsg)
         stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
         goto proc_fail;
     }
-
 
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_break %s all \r\n", pstLCB->szUUID);
     if (sc_esl_execute_cmd(szCMD, szUUID, sizeof(szUUID)) != DOS_SUCC)

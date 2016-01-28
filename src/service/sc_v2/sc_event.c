@@ -698,7 +698,8 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
     {
         /* 如果业务栈中只有一个业务，且这个业务不合法，需要释放 */
         ulCurrentSrv = pstSCB->ulCurrentSrv;
-        if (0 == pstSCB->ulCurrentSrv && !pstSCB->pstServiceList[ulCurrentSrv]->bValid)
+        if (0 == pstSCB->ulCurrentSrv &&
+            (DOS_ADDR_INVALID(pstSCB->pstServiceList[ulCurrentSrv]) || !pstSCB->pstServiceList[ulCurrentSrv]->bValid))
         {
             sc_scb_free(pstSCB);
             break;
