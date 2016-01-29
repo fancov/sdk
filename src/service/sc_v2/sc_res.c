@@ -6050,7 +6050,6 @@ U32 sc_task_mngt_load_task()
     return DOS_SUCC;
 }
 
-
 #ifdef __cplusplus
 }
 #endif /* End of __cplusplus */

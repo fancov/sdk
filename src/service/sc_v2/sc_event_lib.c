@@ -459,6 +459,219 @@ process_fail:
     return DOS_FAIL;
 }
 
+U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
+{
+    SC_LEG_CB *pstCallingLegCB = NULL;
+    SC_LEG_CB *pstCalleeLegCB = NULL;
+    SC_MSG_CMD_CALL_ST stCallMsg;
+    U32 ulErrCode = CC_ERR_NO_REASON;
+    S8 szCallee[SC_NUM_LENGTH] = {0,};
+
+    if (DOS_ADDR_INVALID(pstSCB)
+        || DOS_ADDR_INVALID(pstCallingLegCB))
+    {
+        return DOS_FAIL;
+    }
+
+    /* 判断坐席是否长签 */
+
+    /* 申请一个新的leg，发起呼叫 */
+    stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
+    stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+    stCallMsg.stMsgTag.usInterErr = 0;
+    stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
+
+    pstCalleeLegCB = sc_lcb_alloc();
+    if (DOS_ADDR_INVALID(pstCalleeLegCB))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc SCB fail.");
+        ulErrCode = CC_ERR_SC_SYSTEM_BUSY;
+
+        goto process_fail;
+    }
+
+    stCallMsg.ulLCBNo = pstCalleeLegCB->ulCBNo;
+
+    pstCalleeLegCB->stCall.bValid = DOS_TRUE;
+    pstCalleeLegCB->stCall.ucStatus = SC_LEG_INIT;
+    //pstCalleeLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+    pstCalleeLegCB->ulSCBNo = pstSCB->ulSCBNo;
+
+    pstSCB->stCall.ulCalleeLegNo = pstCalleeLegCB->ulCBNo;
+
+    /* 是否需要录音 */
+    if (pstAgentNode->pstAgentInfo->bRecord)
+    {
+        if (sc_scb_set_service(pstSCB, BS_SERV_RECORDING))
+        {
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add record service fail.");
+        }
+        else
+        {
+            pstCalleeLegCB->stRecord.bValid = DOS_TRUE;
+            pstCalleeLegCB->stRecord.usStatus = SC_SU_RECORD_PROC;
+            pstSCB->stCall.pstAgentCallee = pstAgentNode;
+        }
+    }
+
+    switch (pstAgentNode->pstAgentInfo->ucBindType)
+    {
+        case AGENT_BIND_SIP:
+            dos_snprintf(szCallee, sizeof(szCallee), pstAgentNode->pstAgentInfo->szUserID);
+            pstCalleeLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+            break;
+
+        case AGENT_BIND_TELE:
+            dos_snprintf(szCallee, sizeof(szCallee), pstAgentNode->pstAgentInfo->szTelePhone);
+            pstCalleeLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+            if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
+                ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
+                goto process_fail;
+            }
+            break;
+
+        case AGENT_BIND_MOBILE:
+            dos_snprintf(szCallee, sizeof(szCallee), pstAgentNode->pstAgentInfo->szMobile);
+            pstCalleeLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+            if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
+                ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
+                goto process_fail;
+            }
+            break;
+
+        case AGENT_BIND_TT_NUMBER:
+            dos_snprintf(szCallee, sizeof(szCallee), pstAgentNode->pstAgentInfo->szTTNumber);
+            pstCalleeLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
+            break;
+
+        default:
+            break;
+    }
+
+    /* 维护一下主叫号码 */
+    //dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCalling), pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+    //dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCallee), szCallee);
+
+    /* 新LEG处理一下号码 */
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), szCallee);
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), szCallee);
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCallee);
+
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), szCallee);
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCallee);
+
+    if (pstCalleeLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
+    {
+        /* 这里需要去认证 */
+        if (sc_send_usr_auth2bs(pstSCB, pstCalleeLegCB) != DOS_SUCC)
+        {
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send auth fail.");
+
+            goto process_fail;
+        }
+        pstSCB->stAutoCall.stSCBTag.usStatus = SC_CALL_AUTH_CALLEE;
+
+        return DOS_SUCC;
+    }
+
+    if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
+    {
+        ulErrCode = CC_ERR_SC_MESSAGE_SENT_ERR;
+
+        return DOS_FAIL;
+    }
+
+    pstSCB->stAutoCall.stSCBTag.usStatus = SC_CALL_EXEC;
+
+    return DOS_SUCC;
+
+process_fail:
+
+    sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, ulErrCode);
+    return DOS_FAIL;
+}
+
+
+U32 sc_agent_call_by_grpid(SC_SRV_CB *pstSCB, U32 ulAgentGrpID)
+{
+    U32             ulErrCode = CC_ERR_NO_REASON;
+    SC_AGENT_NODE_ST *pstAgentNode = NULL;
+    SC_LEG_CB *pstCallingLegCB = NULL;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    //pstSCB->bIsInQueue = DOS_FALSE;
+
+    //sc_log_digest_print("Start call agent by groupid(%u)", ulAgentGrpID);
+    /* 1.获取坐席队列，2.查找坐席。3.接通坐席 */
+    if (U32_BUTT == ulAgentGrpID)
+    {
+        /* 前面已经判断过，如果还出错，暂定为 系统错误 */
+        DOS_ASSERT(0);
+        //sc_logr_info(pstSCB, SC_ESL, "Cannot get the agent queue for the task %d", pstSCB->ulTaskID);
+        ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
+        goto proc_fail;
+    }
+
+    pstCallingLegCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
+    if (DOS_ADDR_INVALID(pstCallingLegCB))
+    {
+        goto proc_fail;
+    }
+
+    //pstAgentNode = sc_agent_select_by_grpid(ulAgentGrpID, pstSCB->szCalleeNum);
+    if (DOS_ADDR_INVALID(pstAgentNode))
+    {
+        DOS_ASSERT(0);
+        //sc_logr_notice(pstSCB, SC_ESL, "There is no useable agent for the task %d. Queue: %d. ", pstSCB->ulTaskID, ulTaskAgentQueueID);
+        ulErrCode = CC_ERR_SC_USER_BUSY;
+        goto proc_fail;
+    }
+
+    //sc_logr_info(pstSCB, SC_ESL, "Select agent for call OK. Agent ID: %d, User ID: %s, Externsion: %s, Job-Num: %s"
+    //                , stAgentInfo.ulSiteID
+    //                , stAgentInfo.szUserID
+    //                , stAgentInfo.szExtension
+    //                , stAgentInfo.szEmpNo);
+
+    /* 呼叫坐席 */
+    if (sc_agent_call_by_id(pstSCB, pstCallingLegCB, pstAgentNode->pstAgentInfo->ulAgentID) != DOS_SUCC)
+    {
+        goto proc_fail;
+    }
+
+    return DOS_SUCC;
+
+proc_fail:
+    if (DOS_ADDR_VALID(pstSCB))
+    {
+        #if 0
+        if (!pstSCB->bIsDidCallIn)
+        {
+            sc_ep_hangup_call_with_snd(pstSCB, ulErrCode);
+        }
+        else
+        {
+            sc_ep_hangup_call(pstSCB, ulErrCode);
+        }
+        #endif
+    }
+    //sc_log_digest_print("Call agent by groupid(%u) FAIL", ulTaskAgentQueueID);
+
+    return DOS_FAIL;
+}
+
 /**
  * 函数: U32 sc_ep_incoming_call_proc(esl_handle_t *pstHandle, esl_event_t *pstEvent, SC_SCB_ST *pstSCB)
  * 功能: 处理由PSTN呼入到SIP测的呼叫

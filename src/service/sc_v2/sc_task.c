@@ -37,6 +37,25 @@ extern "C"{
 SC_TASK_CB           *g_pstTaskList  = NULL;
 pthread_mutex_t      g_mutexTaskList = PTHREAD_MUTEX_INITIALIZER;
 
+U32 sc_task_get_mode(U32 ulTCBNo)
+{
+    if (ulTCBNo > SC_MAX_TASK_NUM)
+    {
+        DOS_ASSERT(0);
+
+        return U32_BUTT;
+    }
+
+    if (!g_pstTaskList[ulTCBNo].ucValid)
+    {
+        DOS_ASSERT(0);
+
+        return U32_BUTT;
+    }
+
+    return g_pstTaskList[ulTCBNo].ucMode;
+}
+
 VOID sc_task_update_calledcnt(U64 ulArg)
 {
     SC_DB_MSG_TAG_ST    *pstMsg     = NULL;
@@ -160,6 +179,8 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
 {
     SC_TEL_NUM_QUERY_NODE_ST  *pstCallee = NULL;
     S8  szCaller[SC_NUM_LENGTH]   = {0};
+    SC_SRV_CB *pstSCB = NULL;
+    SC_LEG_CB *pstLegCB = NULL;
 
     if (DOS_ADDR_INVALID(pstTCB))
     {
@@ -184,6 +205,49 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
         return DOS_FAIL;
     }
 
+    /* TODO 黑名单 */
+
+    /* 申请一个scb，leg */
+    pstSCB = sc_scb_alloc();
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        goto make_call_file;
+    }
+
+    pstLegCB = sc_lcb_alloc();
+    if (DOS_ADDR_INVALID(pstLegCB))
+    {
+        DOS_ASSERT(0);
+        goto make_call_file;
+    }
+
+    pstSCB->stAutoCall.stSCBTag.bValid = DOS_TRUE;
+    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAutoCall.stSCBTag;
+    pstSCB->stAutoCall.ulCallingLegNo = pstLegCB->ulCBNo;
+    pstSCB->stAutoCall.ulTaskID = pstTCB->ulTaskID;
+    pstSCB->stAutoCall.ulTcbID = pstTCB->usTCBNo;
+    pstSCB->stAutoCall.ulKeyMode = pstTCB->ucMode;
+
+    pstLegCB->stCall.bValid = DOS_TRUE;
+    pstLegCB->ulSCBNo = pstSCB->ulSCBNo;
+
+    dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee), pstCallee->szNumber);
+    dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCalling), szCaller);
+
+    pstLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+    sc_scb_set_service(pstSCB, BS_SERV_AUTO_DIALING);
+
+    /* 认证 */
+    pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_AUTH;
+    if (sc_send_usr_auth2bs(pstSCB, pstLegCB) != DOS_SUCC)
+    {
+        goto make_call_file;
+    }
+
+    return DOS_SUCC;
+
+make_call_file:
 
     return DOS_FAIL;
 }

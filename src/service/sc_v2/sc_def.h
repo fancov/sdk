@@ -1039,7 +1039,10 @@ typedef struct tagSCPreviewCall{
 /** 自动外呼业务 */
 typedef enum tagSCAutoCallStatus{
     SC_AUTO_CALL_IDEL,       /**< 状态初始化 */
+    SC_AUTO_CALL_AUTH,
+    SC_AUTO_CALL_EXEC,
     SC_AUTO_CALL_PORC,       /**< 发起呼叫 */
+    SC_AUTO_CALL_ALERTING,
     SC_AUTO_CALL_ACTIVE,     /**< 播放语音 */
     SC_AUTO_CALL_AFTER_KEY,  /**< 按键之后，开始呼叫坐席班组 */
     SC_AUTO_CALL_CONNECTED,  /**< 和坐席开始通话 */
@@ -1842,6 +1845,7 @@ SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID);
 SC_AGENT_NODE_ST *sc_agent_get_by_emp_num(U32 ulCustomID, S8 *pszEmpNum);
 SC_AGENT_NODE_ST *sc_agent_get_by_sip_acc(S8 *szUserID);
 SC_AGENT_NODE_ST *sc_agent_get_by_tt_num(S8 *szTTNumber);
+SC_AGENT_NODE_ST *sc_agent_select_by_grpid(U32 ulGroupID, S8 *szCallerNum);
 U32 sc_agent_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);
 S32 sc_agent_group_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
 U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32 *pulIdel, U32 *pulBusy);
@@ -1849,6 +1853,9 @@ U32 sc_agent_init(U32 ulIndex);
 U32 sc_agent_group_init(U32 ulIndex);
 U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType);
 U32 sc_agent_http_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
+U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult);
+U32 sc_agent_call_by_grpid(SC_SRV_CB *pstSCB, U32 ulAgentGrpID);
+
 
 U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -1886,6 +1893,15 @@ U32 sc_interception_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_interception_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
+U32 sc_auto_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
+U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
 SC_TASK_CB *sc_tcb_alloc();
 SC_TASK_CB *sc_tcb_find_by_taskid(U32 ulTaskID);
 VOID sc_tcb_free(SC_TASK_CB *pstTCB);
@@ -1894,6 +1910,7 @@ U32 sc_task_check_can_call(SC_TASK_CB *pstTCB);
 U32 sc_task_check_can_call_by_time(SC_TASK_CB *pstTCB);
 U32 sc_task_check_can_call_by_status(SC_TASK_CB *pstTCB);
 S32 sc_task_and_callee_load(U32 ulIndex);
+U32 sc_task_get_mode(U32 ulTCBNo);
 
 U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB);

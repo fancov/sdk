@@ -1916,7 +1916,7 @@ U32 sc_interception_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Processing call ringing event for voice verify.");
+    sc_trace_scb(pstSCB, "Processing interception ringing event for voice verify.");
 
     pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
@@ -1976,7 +1976,7 @@ U32 sc_interception_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Processing call ringing event for voice verify.");
+    sc_trace_scb(pstSCB, "Processing interception answer event for voice verify.");
 
     pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
@@ -2056,7 +2056,7 @@ U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Processing call ringing event for voice verify.");
+    sc_trace_scb(pstSCB, "Processing interception release event for voice verify.");
 
     pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
@@ -2098,6 +2098,333 @@ U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return ulRet;
 
 }
+
+U32 sc_auto_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_AUTH_RESULT_ST  *pstAuthRsp;
+    SC_LEG_CB                  *pstLegCB = NULL;
+    U32                         ulRet = DOS_FAIL;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstAuthRsp = (SC_MSG_EVT_AUTH_RESULT_ST *)pstMsg;
+    pstLegCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
+    if (DOS_ADDR_INVALID(pstLegCB))
+    {
+        sc_scb_free(pstSCB);
+
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        /* 注意通过偏移量，找到CC统一定义的错误码 */
+
+        return DOS_SUCC;
+    }
+
+    switch (pstSCB->stAutoCall.stSCBTag.usStatus)
+    {
+        case SC_AUTO_CALL_AUTH:
+            pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_EXEC;
+            ulRet = sc_make_call2pstn(pstSCB, pstLegCB);
+            break;
+            /* TODO 呼叫坐席时，也可能也需要认证 */
+        default:
+            break;
+    }
+
+    return ulRet;
+}
+
+U32 sc_auto_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    U32  ulRet = DOS_FAIL;
+    SC_LEG_CB    *pstLCB = NULL;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing auto call setup event event.");
+
+    pstLCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        sc_trace_scb(pstSCB, "There is no calling leg.");
+
+        goto proc_finishe;
+    }
+
+    switch (pstSCB->stAutoCall.stSCBTag.usStatus)
+    {
+        case SC_AUTO_CALL_IDEL:
+        case SC_AUTO_CALL_AUTH:
+            /* 未认证通过，放音挂断呼叫 */
+            goto proc_finishe;
+            break;
+
+        case SC_AUTO_CALL_EXEC:
+        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_ALERTING:
+            /* 迁移状态到proc */
+            pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_PORC;
+            ulRet = DOS_SUCC;
+            break;
+
+        case SC_AUTO_CALL_ACTIVE:
+            ulRet = DOS_SUCC;
+            break;
+        case SC_AUTO_CALL_AFTER_KEY:
+            /* TODO */
+        case SC_AUTO_CALL_CONNECTED:
+        case SC_AUTO_CALL_PROCESS:
+            ulRet = DOS_SUCC;
+            break;
+        case SC_AUTO_CALL_RELEASE:
+            ulRet = DOS_SUCC;
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            ulRet = DOS_SUCC;
+            break;
+    }
+
+proc_finishe:
+    sc_trace_scb(pstSCB, "Proccessed auto call setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    if (ulRet != DOS_SUCC)
+    {
+        if (DOS_ADDR_VALID(pstLCB))
+        {
+            sc_lcb_free(pstLCB);
+            pstLCB = NULL;
+        }
+    }
+
+    return ulRet;
+}
+
+U32 sc_auto_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    U32        ulRet   = DOS_FAIL;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing auto call ringing event for voice verify.");
+
+    switch (pstSCB->stAutoCall.stSCBTag.usStatus)
+    {
+        case SC_AUTO_CALL_IDEL:
+        case SC_AUTO_CALL_AUTH:
+            /* 未认证通过，放音挂断呼叫 */
+            goto proc_finishe;
+            break;
+
+        case SC_AUTO_CALL_EXEC:
+        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_ALERTING:
+            pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_ALERTING;
+            ulRet = DOS_SUCC;
+            break;
+
+        case SC_AUTO_CALL_ACTIVE:
+            ulRet = DOS_SUCC;
+            break;
+        case SC_AUTO_CALL_AFTER_KEY:
+            /* TODO */
+        case SC_AUTO_CALL_CONNECTED:
+        case SC_AUTO_CALL_PROCESS:
+            ulRet = DOS_SUCC;
+            break;
+        case SC_AUTO_CALL_RELEASE:
+            ulRet = DOS_SUCC;
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            ulRet = DOS_SUCC;
+            break;
+    }
+
+proc_finishe:
+    sc_trace_scb(pstSCB, "Proccessed auto call ringing event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
+}
+
+
+U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    U32          ulRet       = DOS_FAIL;
+    U32          ulTaskMode  = U32_BUTT;
+    SC_LEG_CB    *pstLCB     = NULL;
+    //SC_MSG_CMD_PLAYBACK_ST  stPlaybackRsp;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing auto call answer event for voice verify.");
+
+    pstLCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        sc_trace_scb(pstSCB, "There is no calling leg.");
+
+        goto proc_finishe;
+    }
+
+    switch (pstSCB->stAutoCall.stSCBTag.usStatus)
+    {
+        case SC_AUTO_CALL_IDEL:
+        case SC_AUTO_CALL_AUTH:
+            /* 未认证通过，放音挂断呼叫 */
+            goto proc_finishe;
+            break;
+
+        case SC_AUTO_CALL_EXEC:
+        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_ALERTING:
+            ulRet = DOS_SUCC;
+            break;
+
+        case SC_AUTO_CALL_ACTIVE:
+            /* 播放语音 */
+            ulTaskMode = sc_task_get_mode(pstSCB->stAutoCall.ulTaskID);
+            if (ulTaskMode >= SC_TASK_MODE_BUTT)
+            {
+                DOS_ASSERT(0);
+
+                //ulErrCode = CC_ERR_SC_CONFIG_ERR;
+                ulRet = DOS_FAIL;
+                goto proc_finishe;
+            }
+
+            switch (ulTaskMode)
+            {
+                /* 需要放音的，统一先放音。在放音结束后请处理后续流程 */
+                case SC_TASK_MODE_KEY4AGENT:
+                case SC_TASK_MODE_KEY4AGENT1:
+                #if 0
+                    sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
+                    sc_ep_esl_execute("set", "timer_name=soft", pstSCB->szUUID);
+                    sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
+
+                    dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                                    , "1 1 %u 0 # %s pdtmf \\d+"
+                                    , sc_task_audio_playcnt(pstSCB->usTCBNo)
+                                    , sc_task_get_audio_file(pstSCB->usTCBNo));
+
+                    sc_ep_esl_execute("play_and_get_digits", szAPPParam, pstSCB->szUUID);
+                    pstSCB->ucCurrentPlyCnt = sc_task_audio_playcnt(pstSCB->usTCBNo);
+
+                    stPlaybackRsp.stMsgTag.ulMsgType = SC_CMD_PLAYBACK;
+                    stPlaybackRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+                    stPlaybackRsp.stMsgTag.usInterErr = 0;
+                    stPlaybackRsp.ulMode = 0;
+                    stPlaybackRsp.ulSCBNo = pstSCB->ulSCBNo;
+                    stPlaybackRsp.ulLegNo = pstLCB->ulCBNo;
+                    stPlaybackRsp.ulLoopCnt = sc_task_audio_playcnt(pstSCB->usTCBNo);
+                    stPlaybackRsp.ulInterval = 0;
+                    stPlaybackRsp.ulSilence  = 0;
+                    stPlaybackRsp.blTone = DOS_FALSE;
+                    stPlaybackRsp.ulTotalAudioCnt++;
+                    stPlaybackRsp.aulAudioList[0] = sc_task_get_audio_file(pstSCB->usTCBNo);
+
+
+                    if (sc_send_cmd_playback(&stPlaybackRsp.stMsgTag) != DOS_SUCC)
+                    {
+                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
+                        goto proc_finishe;
+                    }
+                #endif
+                    break;
+
+                case SC_TASK_MODE_AUDIO_ONLY:
+                case SC_TASK_MODE_AGENT_AFTER_AUDIO:
+                    #if 0
+                    sc_ep_esl_execute("set", "ignore_early_media=true", pstSCB->szUUID);
+                    sc_ep_esl_execute("set", "timer_name=soft", pstSCB->szUUID);
+                    sc_ep_esl_execute("sleep", "500", pstSCB->szUUID);
+
+                    dos_snprintf(szAPPParam, sizeof(szAPPParam)
+                                    , "+%d %s"
+                                    , sc_task_audio_playcnt(pstSCB->usTCBNo)
+                                    , sc_task_get_audio_file(pstSCB->usTCBNo));
+
+                    sc_ep_esl_execute("loop_playback", szAPPParam, pstSCB->szUUID);
+                    pstSCB->ucCurrentPlyCnt = sc_task_audio_playcnt(pstSCB->usTCBNo);
+                    #endif
+                    break;
+
+                /* 直接接通坐席 */
+                case SC_TASK_MODE_DIRECT4AGETN:
+                    //sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->usTCBNo), DOS_FALSE);
+
+                    break;
+
+                default:
+                    DOS_ASSERT(0);
+                    //ulErrCode = CC_ERR_SC_CONFIG_ERR;
+                    //goto auto_call_proc_error;
+            }
+            ulRet = DOS_SUCC;
+            break;
+        case SC_AUTO_CALL_AFTER_KEY:
+            /* TODO */
+        case SC_AUTO_CALL_CONNECTED:
+        case SC_AUTO_CALL_PROCESS:
+            ulRet = DOS_SUCC;
+            break;
+        case SC_AUTO_CALL_RELEASE:
+            ulRet = DOS_SUCC;
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            ulRet = DOS_SUCC;
+            break;
+    }
+
+proc_finishe:
+    sc_trace_scb(pstSCB, "Proccessed auto call answer event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
+}
+
+U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    /* 判断一下群呼任务的模式，如果是呼叫后，转坐席，则转坐席，否则通话结束 */
+    return DOS_SUCC;
+}
+
+U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    return DOS_SUCC;
+}
+
+U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    return DOS_SUCC;
+}
+
 
 #ifdef __cplusplus
 }

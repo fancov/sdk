@@ -577,6 +577,87 @@ static S32 sc_agent_dll_find(VOID *pSymName, DLL_NODE_S *pNode)
     return DOS_SUCC;
 }
 
+U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult)
+{
+    SC_AGENT_NODE_ST           *pstAgentNode      = NULL;
+    SC_AGENT_GRP_NODE_ST       *pstGroupListNode  = NULL;
+    HASH_NODE_S                *pstHashNode       = NULL;
+    DLL_NODE_S                 *pstDLLNode        = NULL;
+    U32                        ulHashVal          = 0;
+
+    if (DOS_ADDR_INVALID(pblResult))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    *pblResult = DOS_FALSE;
+
+    sc_agent_hash_func4grp(ulAgentGrpID, &ulHashVal);
+    pthread_mutex_lock(&g_mutexGroupList);
+    pstHashNode = hash_find_node(g_pstGroupList, ulHashVal, &ulAgentGrpID, sc_agent_group_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        //sc_logr_error(NULL, SC_ACD, "Cannot fine the group with the ID \"%u\" .", ulAgentGrpID);
+        pthread_mutex_unlock(&g_mutexGroupList);
+
+        return DOS_FAIL;
+    }
+
+    pstGroupListNode = pstHashNode->pHandle;
+
+    pthread_mutex_lock(&pstGroupListNode->mutexSiteQueue);
+
+    DLL_Scan(&pstGroupListNode->stAgentList, pstDLLNode, DLL_NODE_S*)
+    {
+        if (DOS_ADDR_INVALID(pstDLLNode)
+            || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+        {
+            //sc_logr_debug(NULL, SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %u."
+            //                , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        pstAgentNode = pstDLLNode->pHandle;
+        if (DOS_ADDR_INVALID(pstAgentNode)
+            || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+        {
+            //sc_logr_debug(NULL, SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %u."
+            //                , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        if (pstAgentNode->pstAgentInfo->ulLastIdelTime
+            && (time(NULL) - pstAgentNode->pstAgentInfo->ulLastIdelTime < 3))
+        {
+            //sc_logr_debug(NULL, SC_ACD, "Agent is in protect Agent: %u. Group: %u."
+            //                , pstAgentNode->pstAgentInfo->ulSiteID
+            //                , pstGroupListNode->ulGroupID);
+            continue;
+        }
+
+        if (SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
+        {
+            //sc_logr_debug(NULL, SC_ACD, "Found an useable agent. (Agent %u in Group %u)"
+            //            , pstAgentNode->pstAgentInfo->ulSiteID
+            //            , pstGroupListNode->ulGroupID);
+
+            *pblResult = DOS_TRUE;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&pstGroupListNode->mutexSiteQueue);
+
+    pthread_mutex_unlock(&g_mutexGroupList);
+
+    return DOS_SUCC;
+
+}
+
 /*
  * 函  数: U32 sc_acd_update_agent_scbno_by_userid(S8 *szUserID, SC_SCB_ST *pstSCB)
  * 功  能: 根据SIP，查找到绑定的坐席，更新usSCBNo字段. (ucBindType 为 AGENT_BIND_SIP)

@@ -235,6 +235,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
     DLL_NODE_S              *pstDLLNode1 = NULL;
     SC_CWQ_NODE_ST          *pstCWQNode  = NULL;
     SC_SRV_CB               *pstSCB      = NULL;
+    BOOL                    blHasIdelAgent = DOS_FALSE;
 
     g_blCWQWaitingExit = DOS_FALSE;
     g_blCWQRunning  = DOS_TRUE;
@@ -287,19 +288,19 @@ VOID *sc_cwq_runtime(VOID *ptr)
                     DOS_ASSERT(0);
                     continue;
                 }
-#if 0
+#if 1
                 /* 至少一秒后，才接通坐席，避免等待音还没有播放，uuid_break不能将其停止。 */
-                if (time(NULL) - pstSCB->ulInQueueTime < 3)
-                {
-                    continue;
-                }
+                //if (time(NULL) - pstSCB->ulInQueueTime < 3)
+                //{
+                //    continue;
+                //}
 
-                if (sc_acd_query_idel_agent(pstCWQNode->ulAgentGrpID, &blHasIdelAgent) != DOS_SUCC
+                if (sc_agent_query_idel(pstCWQNode->ulAgentGrpID, &blHasIdelAgent) != DOS_SUCC
                     || !blHasIdelAgent)
                 {
                     pstCWQNode->ulStartWaitingTime = time(0);
 
-                    sc_logr_info(pstSCB, SC_ACD, "The group %u has no idel agent. (%d)", pstCWQNode->ulAgentGrpID, blHasIdelAgent);
+                    //sc_logr_info(pstSCB, SC_ACD, "The group %u has no idel agent. (%d)", pstCWQNode->ulAgentGrpID, blHasIdelAgent);
                     break;
                 }
 
@@ -309,14 +310,14 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 dos_dmem_free(pstDLLNode1);
                 pstDLLNode1 = NULL;
 
-                dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_break %s all\r\n", pstSCB->szUUID);
-                sc_ep_esl_execute_cmd(szAPPParam);
+                //dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_break %s all\r\n", pstSCB->szUUID);
+                //sc_ep_esl_execute_cmd(szAPPParam);
 
                 /* 放回铃音 */
-                sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
-                sc_ep_esl_execute("set", "transfer_ringback=tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
+                //sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
+                //sc_ep_esl_execute("set", "transfer_ringback=tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
 
-                if (sc_ep_call_agent_by_grpid(pstSCB, pstCWQNode->ulAgentGrpID) != DOS_SUCC)
+                if (sc_agent_call_by_grpid(pstSCB, pstCWQNode->ulAgentGrpID) != DOS_SUCC)
                 {
                     DOS_ASSERT(0);
                 }
