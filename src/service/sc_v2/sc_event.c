@@ -252,10 +252,76 @@ U32 sc_srv_auto_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Auto Call Service, SCB:%u"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in auto call Service, SCB:%u"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Auto Call Service, SCB:%u, Ret: %s"
+    switch (pstMsg->ulMsgType)
+    {
+        case SC_EVT_AUTH_RESULT:
+            ulRet = sc_auto_call_auth_rsp(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_SETUP:
+            ulRet = sc_auto_call_setup(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_AMSWERED:
+            ulRet = sc_auto_call_answer(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_RINGING:
+            ulRet = sc_auto_call_ringing(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_BRIDGE_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_BRIDGE_STOP:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_HOLD:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_CALL_RERLEASE:
+            ulRet = sc_auto_call_release(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_STATUS:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_DTMF:
+            ulRet = sc_auto_call_dtmf(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_RECORD_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_RECORD_END:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_PLAYBACK_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_PLAYBACK_END:
+            ulRet = sc_auto_call_palayback_end(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_ERROR_PORT:
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Invalid event type. %u", pstMsg->ulMsgType);
+            break;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Interception Service, SCB:%u, Ret: %s"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
                 , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
@@ -553,93 +619,6 @@ U32 sc_srv_interception_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
     return DOS_SUCC;
 }
 
-U32 sc_srv_auto_call_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
-{
-    U32 ulRet = DOS_SUCC;
-
-    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in auto call Service, SCB:%u"
-                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
-
-    switch (pstMsg->ulMsgType)
-    {
-        case SC_EVT_AUTH_RESULT:
-            ulRet = sc_auto_call_auth_rsp(pstMsg, pstSCB);
-            break;
-
-        case SC_EVT_CALL_SETUP:
-            ulRet = sc_auto_call_setup(pstMsg, pstSCB);
-            break;
-
-        case SC_EVT_CALL_AMSWERED:
-            ulRet = sc_auto_call_answer(pstMsg, pstSCB);
-            break;
-
-        case SC_EVT_CALL_RINGING:
-            ulRet = sc_auto_call_ringing(pstMsg, pstSCB);
-            break;
-
-        case SC_EVT_BRIDGE_START:
-            /* 暂时不处理 */
-            break;
-
-        case SC_EVT_BRIDGE_STOP:
-            /* 暂时不处理 */
-            break;
-
-        case SC_EVT_HOLD:
-            /* 暂时不处理 */
-            break;
-
-        case SC_EVT_CALL_RERLEASE:
-            ulRet = sc_auto_call_release(pstMsg, pstSCB);
-            break;
-
-        case SC_EVT_CALL_STATUS:
-            /* 暂时不处理 */
-            break;
-
-        case SC_EVT_DTMF:
-            ulRet = sc_auto_call_dtmf(pstMsg, pstSCB);
-            break;
-
-        case SC_EVT_RECORD_START:
-            /* 暂时不处理 */
-            break;
-
-        case SC_EVT_RECORD_END:
-            /* 暂时不处理 */
-            break;
-
-        case SC_EVT_PLAYBACK_START:
-            /* 暂时不处理 */
-            break;
-
-        case SC_EVT_PLAYBACK_END:
-            ulRet = sc_auto_call_palayback_end(pstMsg, pstSCB);
-            break;
-
-        case SC_EVT_ERROR_PORT:
-            break;
-
-        default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Invalid event type. %u", pstMsg->ulMsgType);
-            break;
-    }
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Interception Service, SCB:%u, Ret: %s"
-                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
-                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
-
-    return DOS_SUCC;
-}
-
 /**
  * 基本呼叫业务状态机处理
  *
@@ -698,6 +677,102 @@ U32 sc_srv_mark_custom_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG
                 , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
     return DOS_SUCC;
+}
+
+/**
+ * 坐席长签业务状态机处理
+ *
+ * @param SC_MSG_HEAD_ST *pstMsg 当前事件
+ * @param SC_SRV_CB *pstSCB      当前业务控制块
+ * @param SC_SRV_INFO_ST *pstSubServ 基本呼叫业务控制块
+ *
+ * return 成功返回DOS_SUCC，否则返回DOS_FALSE
+ */
+U32 sc_srv_sigin_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
+{
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in sigin service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+    switch (pstMsg->ulMsgType)
+    {
+        case SC_EVT_AUTH_RESULT:
+            ulRet = sc_sigin_auth_rsp(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_SETUP:
+            ulRet = sc_sigin_setup(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_AMSWERED:
+            ulRet = sc_sigin_answer(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_RINGING:
+            ulRet = sc_sigin_ringing(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_BRIDGE_START:
+           /* 暂时不处理 */
+            break;
+
+        case SC_EVT_BRIDGE_STOP:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_HOLD:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_CALL_RERLEASE:
+            ulRet = sc_sigin_release(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_STATUS:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_DTMF:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_RECORD_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_RECORD_END:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_PLAYBACK_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_PLAYBACK_END:
+            ulRet = sc_sigin_playback_stop(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_ERROR_PORT:
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Invalid event type. %u", pstMsg->ulMsgType);
+            break;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in sigin service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
 }
 
 /**
@@ -777,7 +852,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
 
     ulSCBNo = pstMsg->ulSCBNo;
 
-    sc_trace_scb(pstSCB, "Processing %s(%u), SCB:%u, errno: %u"
+    sc_trace_scb(pstSCB, "Processing event %s(%u), SCB:%u, errno: %u"
                     , sc_event_str(pstMsg->ulMsgType), pstMsg->ulMsgType, pstMsg->ulSCBNo, pstMsg->usInterErr);
 
     /* 使用循环处理业务栈 */
@@ -805,7 +880,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
                 break;
 
             case SC_SRV_AUTO_CALL:
-                ulRet = sc_srv_auto_call_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                ulRet = sc_srv_auto_dial_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
 
             case SC_SRV_VOICE_VERIFY:
@@ -838,6 +913,9 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
 
             case SC_SRV_MARK_CUSTOM:
                 ulRet = DOS_SUCC;
+                break;
+            case SC_SRV_AGENT_SIGIN:
+                ulRet = sc_srv_sigin_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
             default:
                 sc_trace_scb(pstSCB, "Invalid service type : %u", pstSCB->pstServiceList[ulCurrentSrv]->usSrvType);

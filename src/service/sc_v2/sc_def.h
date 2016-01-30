@@ -470,6 +470,7 @@ typedef enum tagSCSrvType{
     SC_SRV_INTERCEPTION   = 8,   /**< 监听业务 */
     SC_SRV_WHISPER        = 9,   /**< 耳语业务 */
     SC_SRV_MARK_CUSTOM    = 10,  /**< 客户标记业务 */
+    SC_SRV_AGENT_SIGIN    = 11,  /**< 坐席长签业务 这是个独立业务 */
 
     SC_SRV_BUTT,
 }SC_SRV_TYPE_EN;
@@ -833,33 +834,6 @@ typedef struct tagSCSUIVR{
     U32      ulRes;
 }SC_SU_IVR_ST;
 
-
-/**< 单条LEG 修改连接状态状态  */
-typedef enum tagSCSUSIGINStatus{
-    SC_SU_SIGIN_INIT,          /**< 初始化状态 */
-    SC_SU_SIGIN_AUTH,          /**< 初始化状态 */
-    SC_SU_SIGIN_EXEC,          /**< 开始呼叫 */
-    SC_SU_SIGIN_PORC,          /**<  */
-    SC_SU_SIGIN_ALERTING,      /**< 开始振铃 */
-    SC_SU_SIGIN_ACTIVE,        /**< 激活状态 */
-    SC_SU_SIGIN_RELEASE,       /**< 释放状态 */
-}SC_SU_SIGIN_SATUE_EN;
-
-/**
- * 业务单元,  呼叫长签业务
- */
-typedef struct tagSCSUSIGIN{
-    U32                 bValid:1;       /**< 是否已经分配 */
-    U32                 bTrace:1;       /**< 是否调试跟踪 */
-    U32                 bRes:30;
-
-    U16                 usStatus;       /**< 当前LEG的状态 */
-    U16                 usRes;
-    SC_AGENT_INFO_ST    *pstAgentInfo;     /* 长签的坐席 */
-    U32                 ulRes;
-}SC_SU_SIGIN_ST;
-
-
 /**
  * 呼叫LEG控制块
  */
@@ -868,6 +842,8 @@ typedef struct tagSCLegCB{
     U32                   ulCBNo;
     /** 记录当前LEG管理的业务控制块 */
     U32                   ulSCBNo;
+    /** 记录独立业务控制块 */
+    U32                   ulIndSCBNo;
     /** 是否已经分配 */
     U32                   bValid:1;
     /** 是否调试跟踪 */
@@ -888,6 +864,9 @@ typedef struct tagSCLegCB{
     U8                    ucPtime;
     U16                   usRes;
 
+    /** 保证事件被业务控制块处理完后，再被独立业务控制块处理，暂时不需要，现在是一个线程在处理 */
+    sem_t                 stEventSem;
+
     /** 基本呼叫业务单元控制块 */
     SC_SU_CALL_ST         stCall;
     /** 录音业务单元控制块 */
@@ -904,8 +883,6 @@ typedef struct tagSCLegCB{
     SC_SU_MCX_ST          stMcx;
     /** IVR业务单元控制块 */
     SC_SU_IVR_ST          stIVR;
-    /** 长签业务单元控制块 */
-    SC_SU_SIGIN_ST        stSigin;
 
 }SC_LEG_CB;
 
@@ -1294,6 +1271,32 @@ typedef struct tagSCCallHold{
     U32               ulCallLegNo;
 }SC_CALL_HOLD_ST;
 
+/**< 坐席长签业务状态  */
+typedef enum tagSCSUSIGINStatus{
+    SC_SIGIN_IDEL,          /**< 初始化状态 */
+    SC_SIGIN_AUTH,          /**< 初始化状态 */
+    SC_SIGIN_EXEC,          /**< 开始呼叫 */
+    SC_SIGIN_PORC,          /**<  */
+    SC_SIGIN_ALERTING,      /**< 开始振铃 */
+    SC_SIGIN_ACTIVE,        /**< 激活状态 */
+    SC_SIGIN_RELEASE,       /**< 释放状态 */
+}SC_SIGIN_SATUE_EN;
+
+/**
+ * 业务单元,  呼叫长签业务
+ */
+typedef struct tagSCSIGIN{
+     /** 基本信息 */
+    SC_SCB_TAG_ST     stSCBTag;
+
+    /* 呼叫客户的LEG */
+    U32               ulLegNo;
+
+    /* 坐席的信息 */
+    SC_AGENT_NODE_ST *pstAgentNode;
+
+}SC_SIGIN_ST;
+
 typedef struct tagSCBalanceWarning{
     SC_SCB_TAG_ST     stSCBTag;
 }SC_BALANCE_WARNING_ST;
@@ -1354,8 +1357,11 @@ typedef struct tagSCSrvCB{
     SC_SRV_WHISPER_ST    stWhispered;
     /** 客户标记业务控制块 */
     SC_MARK_CUSTOM_ST    stMarkCustom;
+    /** 坐席长签业务控制块 */
+    SC_SIGIN_ST          stSigin;
     /** 余额告警业务是否启用 */
     SC_BALANCE_WARNING_ST stBalanceWarning;
+
 }SC_SRV_CB;
 
 
@@ -1832,6 +1838,7 @@ U32 sc_req_ringback(U32 ulSCBNo, U32 ulLegNo, BOOL blHasMedia);
 U32 sc_req_answer_call(U32 ulSCBNo, U32 ulLegNo);
 U32 sc_req_play_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulSndInd, U32 ulLoop, U32 ulInterval, U32 ulSilence);
 U32 sc_req_play_sounds(U32 ulSCBNo, U32 ulLegNo, U32 *pulSndInd, U32 ulSndCnt, U32 ulLoop, U32 ulInterval, U32 ulSilence);
+U32 sc_req_playback_stop(U32 ulSCBNo, U32 ulLegNo);
 U32 sc_req_hungup_with_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
 U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg);
@@ -1868,6 +1875,13 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
+U32 sc_sigin_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_sigin_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_sigin_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_sigin_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_sigin_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);

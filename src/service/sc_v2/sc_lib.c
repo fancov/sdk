@@ -490,20 +490,6 @@ VOID sc_lcb_ivr_init(SC_SU_IVR_ST *pstIVR)
     pstIVR->usStatus = SC_SU_IVR_INIT;
 }
 
-VOID sc_lcb_sigin_init(SC_SU_SIGIN_ST *pstSigin)
-{
-    if (DOS_ADDR_INVALID(pstSigin))
-    {
-        DOS_ASSERT(0);
-        return;
-    }
-
-    pstSigin->bValid = DOS_FALSE;
-    pstSigin->bTrace = DOS_FALSE;
-    pstSigin->usStatus = SC_SU_SIGIN_INIT;
-    pstSigin->pstAgentInfo = NULL;
-}
-
 /**
  * 初始化 @a pstLCB 指向的LEG控制块
  *
@@ -534,6 +520,8 @@ VOID sc_lcb_init(SC_LEG_CB *pstLCB)
     pstLCB->bValid = DOS_FALSE;
     pstLCB->bTrace = DOS_FALSE;
     pstLCB->ulSCBNo = U32_BUTT;
+    pstLCB->ulIndSCBNo = U32_BUTT;
+    sem_init(&pstLCB->stEventSem, 0, 1);
 
     sc_lcb_call_init(&pstLCB->stCall);
     sc_lcb_record_init(&pstLCB->stRecord);
@@ -543,7 +531,6 @@ VOID sc_lcb_init(SC_LEG_CB *pstLCB)
     sc_lcb_mux_init(&pstLCB->stMux);
     sc_lcb_hold_init(&pstLCB->stHold);
     sc_lcb_ivr_init(&pstLCB->stIVR);
-    sc_lcb_sigin_init(&pstLCB->stSigin);
 }
 
 /**
@@ -1013,6 +1000,21 @@ VOID sc_scb_mark_custom_init(SC_MARK_CUSTOM_ST *pstMarkCustom)
     pstMarkCustom->szDialCache[0] = '\0';
 }
 
+VOID sc_scb_sigin_init(SC_SIGIN_ST *pstSigin)
+{
+    if (DOS_ADDR_INVALID(pstSigin))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstSigin->stSCBTag.bValid = DOS_FALSE;
+    pstSigin->stSCBTag.bTrace = DOS_FALSE;
+    pstSigin->stSCBTag.usSrvType = SC_SRV_AGENT_SIGIN;
+    pstSigin->stSCBTag.usStatus = SC_SIGIN_IDEL;
+    pstSigin->ulLegNo = U32_BUTT;
+    pstSigin->pstAgentNode = NULL;
+}
 
 /**
  * 初始化也控制块
@@ -1060,6 +1062,7 @@ VOID sc_scb_init(SC_SRV_CB *pstSCB)
     sc_scb_interception_init(&pstSCB->stInterception);
     sc_scb_whisper_init(&pstSCB->stWhispered);
     sc_scb_mark_custom_init(&pstSCB->stMarkCustom);
+    sc_scb_sigin_init(&pstSCB->stSigin);
 }
 
 /**
@@ -1908,6 +1911,7 @@ U32 sc_req_play_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulSndInd, U32 ulLoop, U32 ul
     pstCMDPlayback->ulTotalAudioCnt = 1;
     pstCMDPlayback->ulInterval = ulInterval;
     pstCMDPlayback->ulSilence = ulSilence;
+    pstCMDPlayback->blTone = DOS_FALSE;
 
     ulRet = sc_send_command(&pstCMDPlayback->stMsgTag);
     if (ulRet != DOS_SUCC)
@@ -1966,6 +1970,51 @@ U32 sc_req_play_sounds(U32 ulSCBNo, U32 ulLegNo, U32 *pulSndInd, U32 ulSndCnt, U
     pstCMDPlayback->ulLoopCnt = ulLoop;
     pstCMDPlayback->ulInterval = ulInterval;
     pstCMDPlayback->ulSilence = ulSilence;
+
+    ulRet = sc_send_command(&pstCMDPlayback->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCMDPlayback);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+/**
+ * 向业务子层发送放音结束命令
+ *
+ * @param U32 ulSCBNo
+ * @param U32 ulLegNo
+ * @param U32 ulSndInd
+ * @param U32 ulLoop
+ * @param U32 ulInterval
+ * @param U32 ulSilence
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_req_playback_stop(U32 ulSCBNo, U32 ulLegNo)
+{
+    SC_MSG_CMD_PLAYBACK_ST  *pstCMDPlayback;
+    U32                     ulRet;
+
+    pstCMDPlayback = (SC_MSG_CMD_PLAYBACK_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_PLAYBACK_ST));
+    if (DOS_ADDR_INVALID(pstCMDPlayback))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstCMDPlayback->stMsgTag.ulMsgType = SC_CMD_PLAYBACK_STOP;
+    pstCMDPlayback->stMsgTag.ulSCBNo = ulSCBNo;
+    pstCMDPlayback->stMsgTag.usInterErr = 0;
+
+    pstCMDPlayback->ulMode = 0;
+    pstCMDPlayback->ulSCBNo = ulSCBNo;
+    pstCMDPlayback->ulLegNo = ulLegNo;
 
     ulRet = sc_send_command(&pstCMDPlayback->stMsgTag);
     if (ulRet != DOS_SUCC)

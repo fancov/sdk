@@ -1021,11 +1021,6 @@ VOID sc_show_leg_detail(U32 ulIndex, U32 ulLegID)
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u", "IVR", pstLeg->stIVR.usStatus);
         cli_out_string(ulIndex, szCmdBuff);
     }
-    if (pstLeg->stSigin.bValid)
-    {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%20s%10u%20u", "Sigin", pstLeg->stSigin.usStatus, pstLeg->stSigin.pstAgentInfo->ulAgentID);
-        cli_out_string(ulIndex, szCmdBuff);
-    }
 }
 
 static S8* sc_debug_make_weeks(U32 ulWeekMask, S8 *pszWeeks, U32 ulLength)

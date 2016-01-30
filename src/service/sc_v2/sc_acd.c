@@ -44,7 +44,7 @@
 #include "sc_publish.h"
 #include "sc_db.h"
 #include "bs_pub.h"
-
+#include "sc_pub.h"
 
 extern DB_HANDLE_ST         *g_pstSCDBHandle;
 
@@ -172,17 +172,21 @@ U32 sc_agent_update_status_db(U32 ulSiteID, U32 ulStatus, BOOL bIsConnect)
     return sc_send_msg2db(pstMsg);
 }
 
-U32 sc_agent_signin_proc(SC_AGENT_INFO_ST *pstAgentInfo)
+U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
 {
-    SC_LEG_CB   *pstLegCB = NULL;
-    SC_SRV_CB   *pstSCB   = NULL;
-    U32 ulRet = DOS_FAIL;
+    SC_AGENT_INFO_ST    *pstAgentInfo   = NULL;
+    SC_LEG_CB           *pstLegCB       = NULL;
+    SC_SRV_CB           *pstSCB         = NULL;
+    U32                 ulRet           = DOS_FAIL;
     SC_MSG_CMD_CALL_ST stCallMsg;
 
-    if (DOS_ADDR_INVALID(pstAgentInfo))
+    if (DOS_ADDR_INVALID(pstAgentNode)
+        || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
     {
         return DOS_FAIL;
     }
+
+    pstAgentInfo = pstAgentNode->pstAgentInfo;
 
     /* 判断一下坐席的状态，看看是否已经长签 */
     if (pstAgentInfo->bNeedConnected && pstAgentInfo->bConnected)
@@ -213,18 +217,17 @@ U32 sc_agent_signin_proc(SC_AGENT_INFO_ST *pstAgentInfo)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
-    pstLegCB->stSigin.bValid = DOS_TRUE;
-    pstLegCB->stSigin.pstAgentInfo = pstAgentInfo;
-    pstLegCB->ulSCBNo = pstSCB->ulSCBNo;
+    pstLegCB->stCall.bValid = DOS_TRUE;
+    pstLegCB->ulIndSCBNo = pstSCB->ulSCBNo;
 
-    pstSCB->stCall.stSCBTag.bValid = DOS_TRUE;
-    //pstSCB->stCall.pstAgentCallee = pstAgentInfo;
-    pstSCB->stCall.ulCalleeLegNo = pstLegCB->ulCBNo;
-
+    pstSCB->stSigin.stSCBTag.bValid = DOS_TRUE;
+    pstSCB->stSigin.pstAgentNode = pstAgentNode;
+    pstSCB->stSigin.ulLegNo = pstLegCB->ulCBNo;
+    pstSCB->stSigin.pstAgentNode = pstAgentNode;
     pstSCB->ulAgentID = pstAgentInfo->ulAgentID;
     pstSCB->ulCustomerID = pstAgentInfo->ulCustomerID;
 
-    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = (SC_SCB_TAG_ST *)&pstSCB->stCall;
+    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = (SC_SCB_TAG_ST *)&pstSCB->stSigin;
 
     /* 从主叫号码组中获取主叫号码 */
     ulRet = sc_caller_setting_select_number(pstAgentInfo->ulCustomerID, pstAgentInfo->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstLegCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
@@ -272,7 +275,7 @@ U32 sc_agent_signin_proc(SC_AGENT_INFO_ST *pstAgentInfo)
     if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
     {
         /* 需要认证 */
-        pstLegCB->stSigin.usStatus = SC_SU_SIGIN_AUTH;
+        pstSCB->stSigin.stSCBTag.usStatus = SC_SIGIN_AUTH;
         ulRet = sc_send_usr_auth2bs(pstSCB, pstLegCB);
         if (ulRet != DOS_SUCC)
         {
@@ -292,7 +295,7 @@ U32 sc_agent_signin_proc(SC_AGENT_INFO_ST *pstAgentInfo)
         dos_snprintf(pstLegCB->stCall.stNumInfo.szCallee, sizeof(pstLegCB->stCall.stNumInfo.szCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
         dos_snprintf(pstLegCB->stCall.stNumInfo.szCalling, sizeof(pstLegCB->stCall.stNumInfo.szCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
 
-        pstLegCB->stSigin.usStatus = SC_SU_SIGIN_EXEC;
+        pstSCB->stSigin.stSCBTag.usStatus = SC_SIGIN_EXEC;
 
         stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
         stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
@@ -2242,43 +2245,46 @@ U32 sc_agent_set_rest(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
     return DOS_SUCC;
 }
 
-U32 sc_agent_set_signin(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
 {
     U32 ulOldStatus;
+    SC_AGENT_INFO_ST   *pstAgentInfo = NULL;     /* 坐席信息 */
 
-    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    if (DOS_ADDR_INVALID(pstAgentNode)
+        || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
+    pstAgentInfo = pstAgentNode->pstAgentInfo;
+    ulOldStatus = pstAgentInfo->ucStatus;
 
-    if (pstAgentQueueInfo->ulLastSignInTime)
+    if (pstAgentInfo->ulLastSignInTime)
     {
-        sc_agent_stat(SC_AGENT_STAT_SIGNIN, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
+        sc_agent_stat(SC_AGENT_STAT_SIGNIN, pstAgentInfo, pstAgentInfo->ulAgentID, 0);
     }
-    pstAgentQueueInfo->ulLastSignInTime = 0;
+    pstAgentInfo->ulLastSignInTime = 0;
 
     /* 发起长签 */
-    if (sc_agent_signin_proc(pstAgentQueueInfo) != DOS_SUCC)
+    if (sc_agent_signin_proc(pstAgentNode) != DOS_SUCC)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin FAIL. Agent: %u, Old status: %u, Current status: %u"
-                        , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+                        , pstAgentInfo->ulAgentID, ulOldStatus, pstAgentInfo->ucStatus);
 
         return DOS_FAIL;
     }
 
-    switch (pstAgentQueueInfo->ucStatus)
+    switch (pstAgentInfo->ucStatus)
     {
         case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            pstAgentInfo->ucStatus = SC_ACD_IDEL;
             break;
         case SC_ACD_IDEL:
             break;
 
         case SC_ACD_AWAY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+            pstAgentInfo->ucStatus = SC_ACD_IDEL;
             break;
 
         case SC_ACD_BUSY:
@@ -2290,20 +2296,20 @@ U32 sc_agent_set_signin(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
 
-    pstAgentQueueInfo->bNeedConnected = DOS_TRUE;
+    pstAgentInfo->bNeedConnected = DOS_TRUE;
 
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    if (ulOldStatus != pstAgentInfo->ucStatus)
     {
-        sc_agent_status_notify(pstAgentQueueInfo, pstAgentQueueInfo->ucStatus);
+        sc_agent_status_notify(pstAgentInfo, pstAgentInfo->ucStatus);
     }
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin. Agent: %u, Old status: %u, Current status: %u"
-                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+                    , pstAgentInfo->ulAgentID, ulOldStatus, pstAgentInfo->ucStatus);
 
     return DOS_SUCC;
 }
@@ -2311,6 +2317,8 @@ U32 sc_agent_set_signin(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType
 U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 {
     U32 ulOldStatus;
+    SC_SRV_CB *pstSCB       = NULL;
+    SC_LEG_CB *pstLegCB     = NULL;
 
     if (DOS_ADDR_INVALID(pstAgentQueueInfo))
     {
@@ -2352,17 +2360,41 @@ U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingTyp
         && pstAgentQueueInfo->ulLegNo <= SC_LEG_CB_SIZE)
     {
         /* 拆呼叫 */
+        pstLegCB = sc_lcb_get(pstAgentQueueInfo->ulLegNo);
+        if (DOS_ADDR_INVALID(pstLegCB))
+        {
+
+        }
+        else
+        {
+            pstSCB = sc_scb_get(pstLegCB->ulIndSCBNo);
+            if (DOS_ADDR_INVALID(pstSCB))
+            {
+                sc_lcb_free(pstLegCB);
+                pstLegCB = NULL;
+            }
+            else
+            {
+                pstSCB->stSigin.stSCBTag.usStatus = SC_SIGIN_RELEASE;
+                /* 先执行playback_stop，否者hungup执行不到 */
+                sc_req_playback_stop(pstLegCB->ulIndSCBNo, pstAgentQueueInfo->ulLegNo);
+                if (sc_req_hungup(pstLegCB->ulIndSCBNo, pstAgentQueueInfo->ulLegNo, CC_ERR_NORMAL_CLEAR) != DOS_SUCC)
+                {
+                    sc_scb_free(pstSCB);
+                    pstSCB = NULL;
+                    sc_lcb_free(pstLegCB);
+                    pstLegCB = NULL;
+                }
+            }
+        }
     }
 
     pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
-    pstAgentQueueInfo->bConnected = DOS_FALSE;
 
     if (ulOldStatus != pstAgentQueueInfo->ucStatus)
     {
-        sc_agent_status_notify(pstAgentQueueInfo, pstAgentQueueInfo->ucStatus);
+        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_SIGNOUT);
     }
-
-    sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_SIGNOUT);
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signout. Agent: %u, Old status: %u, Current status: %u"
                 , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
@@ -2669,7 +2701,7 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
             break;
 
         case SC_ACTION_AGENT_SIGNIN:
-            ulResult = sc_agent_set_signin(pstAgentInfo, ulOperatingType);
+            ulResult = sc_agent_set_signin(pstAgentQueueNode, ulOperatingType);
             break;
 
         case SC_ACTION_AGENT_SIGNOUT:
