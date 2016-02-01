@@ -604,7 +604,7 @@ U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult)
     {
         DOS_ASSERT(0);
 
-        //sc_logr_error(NULL, SC_ACD, "Cannot fine the group with the ID \"%u\" .", ulAgentGrpID);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot fine the group with the ID \"%u\" .", ulAgentGrpID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         return DOS_FAIL;
@@ -619,8 +619,8 @@ U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult)
         if (DOS_ADDR_INVALID(pstDLLNode)
             || DOS_ADDR_INVALID(pstDLLNode->pHandle))
         {
-            //sc_logr_debug(NULL, SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %u."
-            //                , pstGroupListNode->ulGroupID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+                            , pstGroupListNode->ulGroupID);
             continue;
         }
 
@@ -628,25 +628,25 @@ U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult)
         if (DOS_ADDR_INVALID(pstAgentNode)
             || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
         {
-            //sc_logr_debug(NULL, SC_ACD, "Group List node has no data. Maybe the data has been deleted. Group: %u."
-            //                , pstGroupListNode->ulGroupID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+                            , pstGroupListNode->ulGroupID);
             continue;
         }
 
         if (pstAgentNode->pstAgentInfo->ulLastIdelTime
             && (time(NULL) - pstAgentNode->pstAgentInfo->ulLastIdelTime < 3))
         {
-            //sc_logr_debug(NULL, SC_ACD, "Agent is in protect Agent: %u. Group: %u."
-            //                , pstAgentNode->pstAgentInfo->ulSiteID
-            //                , pstGroupListNode->ulGroupID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent is in protect Agent: %u. Group: %u."
+                            , pstAgentNode->pstAgentInfo->ulAgentID
+                            , pstGroupListNode->ulGroupID);
             continue;
         }
 
         if (SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
         {
-            //sc_logr_debug(NULL, SC_ACD, "Found an useable agent. (Agent %u in Group %u)"
-            //            , pstAgentNode->pstAgentInfo->ulSiteID
-            //            , pstGroupListNode->ulGroupID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Found an useable agent. (Agent %u in Group %u)"
+                        , pstAgentNode->pstAgentInfo->ulAgentID
+                        , pstGroupListNode->ulGroupID);
 
             *pblResult = DOS_TRUE;
             break;
@@ -3229,6 +3229,7 @@ static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
         stSiteInfo.bLogin = DOS_FALSE;
     }
     stSiteInfo.bWaitingDelete = DOS_FALSE;
+    stSiteInfo.bSelected = DOS_FALSE;
     stSiteInfo.bConnected = DOS_FALSE;
     stSiteInfo.ucProcesingTime = 0;
     stSiteInfo.ulSIPUserID = ulSIPID;

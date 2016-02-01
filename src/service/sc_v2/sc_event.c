@@ -312,7 +312,9 @@ U32 sc_srv_auto_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
         case SC_EVT_PLAYBACK_END:
             ulRet = sc_auto_call_palayback_end(pstMsg, pstSCB);
             break;
-
+        case SC_EVT_LEACE_CALL_QUEUE:
+            ulRet = sc_auto_call_queue_leave(pstMsg, pstSCB);
+            break;
         case SC_EVT_ERROR_PORT:
             break;
 
@@ -514,6 +516,16 @@ U32 sc_srv_incoming_queue_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Incoming Queue Service, SCB:%u"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+    switch (pstMsg->ulMsgType)
+    {
+        case SC_EVT_LEACE_CALL_QUEUE:
+            ulRet = sc_incoming_queue_leave(pstMsg, pstSCB);
+            break;
+        default:
+            break;
+    }
+
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Incoming Queue Service, SCB:%u, Ret: %s"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
@@ -900,7 +912,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
                 break;
 
             case SC_SRV_INCOMING_QUEUE:
-                ulRet = DOS_SUCC;
+                ulRet = sc_srv_incoming_queue_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
 
             case SC_SRV_INTERCEPTION:

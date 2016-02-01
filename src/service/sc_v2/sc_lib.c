@@ -1911,7 +1911,7 @@ U32 sc_req_play_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulSndInd, U32 ulLoop, U32 ul
     pstCMDPlayback->ulTotalAudioCnt = 1;
     pstCMDPlayback->ulInterval = ulInterval;
     pstCMDPlayback->ulSilence = ulSilence;
-    pstCMDPlayback->blTone = DOS_FALSE;
+    pstCMDPlayback->enType = SC_CND_PLAYBACK_SYSTEM;
 
     ulRet = sc_send_command(&pstCMDPlayback->stMsgTag);
     if (ulRet != DOS_SUCC)
@@ -2618,6 +2618,28 @@ U32 sc_send_event_auth_rsp(SC_MSG_EVT_AUTH_RESULT_ST *pstEvent)
 
 }
 
+U32 sc_send_event_leave_call_queue_rsp(SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvent)
+{
+    SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvtLeaveCallque = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEvtLeaveCallque = (SC_MSG_EVT_LEAVE_CALLQUE_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_LEAVE_CALLQUE_ST));
+    if (DOS_ADDR_INVALID(pstEvtLeaveCallque))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEvtLeaveCallque, pstEvent, sizeof(SC_MSG_EVT_LEAVE_CALLQUE_ST));
+
+    return sc_send_event(&pstEvtLeaveCallque->stMsgTag);
+
+}
 
 U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
 {

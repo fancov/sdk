@@ -81,12 +81,13 @@ static S32 sc_cwq_find_agentgrp(VOID *pParam, DLL_NODE_S *pstNode)
  * !!! 如果ulAgentGrpID所指定的grp不存在，会重新创建
  * !!! 该函数任务 0 和 U32_BUTT 为非法ID
  */
-U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID)
+U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller)
 {
     SC_CWQ_NODE_ST *pstCWQNode = NULL;
     DLL_NODE_S     *pstDLLNode = NULL;
+    SC_INCOMING_CALL_NODE_ST *pstCallNode = NULL;
 
-    if (DOS_ADDR_INVALID(pstSCB))
+    if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(szCaller))
     {
         DOS_ASSERT(0);
 
@@ -145,10 +146,23 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID)
     }
 
     DLL_Init_Node(pstDLLNode);
-#if 0
-    pstDLLNode->pHandle = pstSCB;
-    pstSCB->ulInQueueTime = time(NULL);
-#endif
+
+    pstCallNode = (SC_INCOMING_CALL_NODE_ST *)dos_dmem_alloc(sizeof(SC_INCOMING_CALL_NODE_ST));
+    if (DOS_ADDR_INVALID(pstCallNode))
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstDLLNode);
+
+        return DOS_FAIL;
+    }
+
+    pstCallNode->pstSCB = pstSCB;
+    dos_strncpy(pstCallNode->szCaller, szCaller, SC_NUM_LENGTH-1);
+    pstCallNode->szCaller[SC_NUM_LENGTH-1] = '\0';
+
+    pstDLLNode->pHandle = pstCallNode;
+    //pstSCB->ulInQueueTime = time(NULL);
+
     pthread_mutex_lock(&pstCWQNode->mutexCWQMngt);
     DLL_Add(&pstCWQNode->stCallWaitingQueue, pstDLLNode);
     pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);
@@ -236,6 +250,9 @@ VOID *sc_cwq_runtime(VOID *ptr)
     SC_CWQ_NODE_ST          *pstCWQNode  = NULL;
     SC_SRV_CB               *pstSCB      = NULL;
     BOOL                    blHasIdelAgent = DOS_FALSE;
+    SC_MSG_EVT_LEAVE_CALLQUE_ST  stEvtLeaveCallque;
+    SC_INCOMING_CALL_NODE_ST *pstCallNode = NULL;
+    SC_AGENT_NODE_ST        *pstAgentNode = NULL;
 
     g_blCWQWaitingExit = DOS_FALSE;
     g_blCWQRunning  = DOS_TRUE;
@@ -282,46 +299,61 @@ VOID *sc_cwq_runtime(VOID *ptr)
                     break;
                 }
 
-                pstSCB = pstDLLNode1->pHandle;
-                if (DOS_ADDR_INVALID(pstSCB))
+                pstCallNode = pstDLLNode1->pHandle;
+                if (DOS_ADDR_INVALID(pstCallNode))
                 {
                     DOS_ASSERT(0);
                     continue;
                 }
-#if 1
+
+                pstSCB = pstCallNode->pstSCB;
+#if 0
                 /* 至少一秒后，才接通坐席，避免等待音还没有播放，uuid_break不能将其停止。 */
-                //if (time(NULL) - pstSCB->ulInQueueTime < 3)
-                //{
-                //    continue;
-                //}
+                if (time(NULL) - pstSCB->ulInQueueTime < 3)
+                {
+                    continue;
+                }
 
                 if (sc_agent_query_idel(pstCWQNode->ulAgentGrpID, &blHasIdelAgent) != DOS_SUCC
                     || !blHasIdelAgent)
                 {
                     pstCWQNode->ulStartWaitingTime = time(0);
 
-                    //sc_logr_info(pstSCB, SC_ACD, "The group %u has no idel agent. (%d)", pstCWQNode->ulAgentGrpID, blHasIdelAgent);
+                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u has no idel agent. (%d)", pstCWQNode->ulAgentGrpID, blHasIdelAgent);
                     break;
                 }
+#endif
+                /* 获取一个坐席 */
+                pstAgentNode = sc_agent_select_by_grpid(pstCWQNode->ulAgentGrpID, pstCallNode->szCaller);
+                if (DOS_ADDR_INVALID(pstAgentNode))
+                {
+                    pstCWQNode->ulStartWaitingTime = time(0);
+
+                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u has no idel agent. (%d)", pstCWQNode->ulAgentGrpID, blHasIdelAgent);
+                    break;
+                }
+
+                pstAgentNode->pstAgentInfo->bSelected = DOS_TRUE;
 
                 dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode1);
 
                 DLL_Init_Node(pstDLLNode1);
                 dos_dmem_free(pstDLLNode1);
                 pstDLLNode1 = NULL;
+                dos_dmem_free(pstCallNode);
+                pstCallNode = NULL;
 
-                //dos_snprintf(szAPPParam, sizeof(szAPPParam), "bgapi uuid_break %s all\r\n", pstSCB->szUUID);
-                //sc_ep_esl_execute_cmd(szAPPParam);
+                /* 发送消息，现在可以转坐席了 */
+                stEvtLeaveCallque.stMsgTag.ulMsgType = SC_EVT_LEACE_CALL_QUEUE;
+                stEvtLeaveCallque.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+                stEvtLeaveCallque.stMsgTag.usInterErr = SC_LEAVE_CALL_QUE_SUCC;
+                stEvtLeaveCallque.ulSCBNo = pstSCB->ulSCBNo;
+                stEvtLeaveCallque.pstAgentNode = pstAgentNode;
 
-                /* 放回铃音 */
-                //sc_ep_esl_execute("set", "instant_ringback=true", pstSCB->szUUID);
-                //sc_ep_esl_execute("set", "transfer_ringback=tone_stream://%(1000,4000,450);loops=-1", pstSCB->szUUID);
-
-                if (sc_agent_call_by_grpid(pstSCB, pstCWQNode->ulAgentGrpID) != DOS_SUCC)
+                if (sc_send_event_leave_call_queue_rsp(&stEvtLeaveCallque) != DOS_SUCC)
                 {
-                    DOS_ASSERT(0);
+                    /* TODO 发送消息失败 */
                 }
-#endif
             }
             pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);
         }

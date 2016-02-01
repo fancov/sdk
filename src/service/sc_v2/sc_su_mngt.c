@@ -625,7 +625,7 @@ U32 sc_esl_event_dtmf(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     {
         stDTMF.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
     }
-    stDTMF.stMsgTag.ulMsgType = SC_EVT_HOLD;
+    stDTMF.stMsgTag.ulMsgType = SC_EVT_DTMF;
     stDTMF.stMsgTag.usInterErr = 0;
     stDTMF.stMsgTag.usMsgLen = 0;
     stDTMF.ulLegNo = pstLegCB->ulCBNo;
@@ -1425,7 +1425,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
     S8                     szCMD[128] = { 0, };
     U32                    ulTotalCnt   = 0;
     U32                    ulLen;
-    BOOL                   bIsAllocPlayArg = DOS_FALSE;
+    BOOL                   bIsAllocPlayArg = DOS_FALSE;         /* 是否申请了 pszPlayCMDArg */
 
     pstPlayback = (SC_MSG_CMD_PLAYBACK_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstPlayback))
@@ -1441,44 +1441,63 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         goto proc_fail;
     }
 
-    if (pstPlayback->blTone)
+    if (SC_CND_PLAYBACK_TONE == pstPlayback->enType)
     {
-        pszPlayCMDArg = sc_hine_get_tone(pstPlayback->aulAudioList[0]);
+            pszPlayCMDArg = sc_hine_get_tone(pstPlayback->aulAudioList[0]);
+            if (DOS_ADDR_INVALID(pszPlayCMDArg))
+            {
+                stErrReport.stMsgTag.ulMsgType = SC_ERR_INVALID_MSG;
+                goto proc_fail;
+            }
+
+            if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
+            {
+                pstLCB->stPlayback.ulTotal += ulTotalCnt * pstPlayback->ulLoopCnt;
+
+                stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+                goto proc_fail;
+            }
+
+            return DOS_SUCC;
+    }
+
+    if (SC_CND_PLAYBACK_SYSTEM == pstPlayback->enType)
+    {
+        /* 获取文件列表再说 */
+        pszPlayCMDArg = (S8 *)dos_dmem_alloc(SC_MAX_FILELIST_LEN);
         if (DOS_ADDR_INVALID(pszPlayCMDArg))
+        {
+            stErrReport.stMsgTag.ulMsgType = SC_ERR_ALLOC_RES_FAIL;
+            goto proc_fail;
+        }
+
+        bIsAllocPlayArg = DOS_TRUE;
+
+        ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u file_string://", pstPlayback->ulLoopCnt);
+
+        ulTotalCnt = sc_get_snd_list(pstPlayback->aulAudioList, pstPlayback->ulTotalAudioCnt
+                                        , pszPlayCMDArg + ulLen, SC_MAX_FILELIST_LEN - ulLen, NULL);
+        if (0 == ulTotalCnt)
         {
             stErrReport.stMsgTag.ulMsgType = SC_ERR_INVALID_MSG;
             goto proc_fail;
         }
-
-        if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
+    }
+    else
+    {
+        pszPlayCMDArg = (S8 *)dos_dmem_alloc(SC_MAX_FILELIST_LEN);
+        if (DOS_ADDR_INVALID(pszPlayCMDArg))
         {
-            pstLCB->stPlayback.ulTotal += ulTotalCnt * pstPlayback->ulLoopCnt;
-
-            stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+            stErrReport.stMsgTag.ulMsgType = SC_ERR_ALLOC_RES_FAIL;
             goto proc_fail;
         }
 
-        return DOS_SUCC;
-    }
+        bIsAllocPlayArg = DOS_TRUE;
 
-    /* 获取文件列表再说 */
-    pszPlayCMDArg = (S8 *)dos_dmem_alloc(SC_MAX_FILELIST_LEN);
-    if (DOS_ADDR_INVALID(pszPlayCMDArg))
-    {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_ALLOC_RES_FAIL;
-        goto proc_fail;
-    }
+        ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u file_string://%s"
+            , pstPlayback->ulLoopCnt, pstPlayback->szAudioFile);
 
-    bIsAllocPlayArg = DOS_TRUE;
-
-    ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u file_string://", pstPlayback->ulLoopCnt);
-
-    ulTotalCnt = sc_get_snd_list(pstPlayback->aulAudioList, pstPlayback->ulTotalAudioCnt
-                                    , pszPlayCMDArg + ulLen, SC_MAX_FILELIST_LEN - ulLen, NULL);
-    if (0 == ulTotalCnt)
-    {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_INVALID_MSG;
-        goto proc_fail;
+        ulTotalCnt = 1;
     }
 
     /* 根据状态处理 */

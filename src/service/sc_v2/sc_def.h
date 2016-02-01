@@ -150,7 +150,8 @@ extern "C" {
 #define SC_ACD_SITE_IS_USEABLE(pstSiteDesc)                             \
             (DOS_ADDR_VALID(pstSiteDesc)                                \
             && !(pstSiteDesc)->bWaitingDelete                           \
-            && SC_ACD_IDEL == (pstSiteDesc)->ucStatus)
+            && SC_ACD_IDEL == (pstSiteDesc)->ucStatus)                  \
+            && !(pstSiteDesc)->bSelected
 
 enum {
     ACD_MSG_TYPE_CALL_NOTIFY   = 0,
@@ -395,9 +396,9 @@ typedef enum tagSCSUEvent{
     SC_EVT_CALL_SETUP,          /**< 呼叫被创建 */
     SC_EVT_CALL_RINGING,        /**< 呼叫被应答 */
     SC_EVT_CALL_AMSWERED,       /**< 呼叫被应答 */
-    SC_EVT_BRIDGE_START,        /**< 开始桥接开始 */
+    SC_EVT_BRIDGE_START,        /**< 桥接开始 */
     SC_EVT_HOLD,                /**< 呼叫保持 */
-    SC_EVT_BRIDGE_STOP,         /**< 桥接结束开始 */
+    SC_EVT_BRIDGE_STOP,         /**< 桥接结束 */
     SC_EVT_CALL_RERLEASE,       /**< 呼叫被释放 */
     SC_EVT_CALL_STATUS,         /**< 呼叫状态上报 */
     SC_EVT_DTMF,                /**< 二次拨号 */
@@ -406,6 +407,7 @@ typedef enum tagSCSUEvent{
     SC_EVT_PLAYBACK_START,      /**< 放音开始 */
     SC_EVT_PLAYBACK_END,        /**< 放音结束 */
     SC_EVT_AUTH_RESULT,         /**< 认证结果 */
+    SC_EVT_LEACE_CALL_QUEUE,    /**< 出呼叫队列 */
 
     SC_EVT_ERROR_PORT,          /**< 错误上报事件 */
 
@@ -529,7 +531,8 @@ typedef struct tagACDSiteDesc{
     U32        bNeedConnected:1;                  /* 是否已经长连 */
 
     U32        bWaitingDelete:1;                  /* 是否已经被删除 */
-    U32        ucRes1:15;
+    U32        bSelected:1;                       /* 是否被呼叫队列选中 */
+    U32        ucRes1:14;
 
     U8         ucProcesingTime;                   /* 坐席处理呼叫结果时间 */
     U8         ucCallStatus;                      /* 呼叫状态 */
@@ -913,7 +916,7 @@ typedef enum tagSCCallStatus{
     SC_CALL_IDEL,       /**< 状态初始化 */
     SC_CALL_PORC,       /**< 呼叫预处理，确定客户等信息 */
     SC_CALL_AUTH,       /**< 认证 */
-    SC_CALL_AUTH_CALLEE,/**< 认证被叫 */
+    SC_CALL_AUTH2,      /**< 认证被叫 */
     SC_CALL_EXEC,       /**< 开始呼叫被叫 */
     SC_CALL_ALERTING,   /**< 被叫开始振铃 */
     SC_CALL_ACTIVE,     /**< 呼叫接通 */
@@ -1015,16 +1018,21 @@ typedef struct tagSCPreviewCall{
 
 /** 自动外呼业务 */
 typedef enum tagSCAutoCallStatus{
-    SC_AUTO_CALL_IDEL,       /**< 状态初始化 */
+    SC_AUTO_CALL_IDEL,          /**< 状态初始化 */
     SC_AUTO_CALL_AUTH,
     SC_AUTO_CALL_EXEC,
-    SC_AUTO_CALL_PORC,       /**< 发起呼叫 */
+    SC_AUTO_CALL_PORC,          /**< 发起呼叫 */
     SC_AUTO_CALL_ALERTING,
-    SC_AUTO_CALL_ACTIVE,     /**< 播放语音 */
-    SC_AUTO_CALL_AFTER_KEY,  /**< 按键之后，开始呼叫坐席班组 */
-    SC_AUTO_CALL_CONNECTED,  /**< 和坐席开始通话 */
-    SC_AUTO_CALL_PROCESS,    /**< 通话结束之后，如果有满意度调查，就需要这个状态，没有直接到释放 */
-    SC_AUTO_CALL_RELEASE,    /**< 结束 */
+    SC_AUTO_CALL_ACTIVE,        /**< 播放语音 */
+    SC_AUTO_CALL_AFTER_KEY,     /**< 按键之后，加入到呼叫队列 */
+    SC_AUTO_CALL_AUTH2,         /**< 坐席绑定手机、电话时，呼叫坐席，需要认证 */
+    SC_AUTO_CALL_EXEC2,         /**< 呼叫坐席 */
+    SC_AUTO_CALL_PORC2,         /**< 坐席的channel创建 */
+    SC_AUTO_CALL_ALERTING2,     /**< 坐席振铃 */
+    SC_AUTO_CALL_CONNECTED,     /**< 和坐席开始通话 */
+    SC_AUTO_CALL_PROCESS,       /**< 通话结束之后，如果有满意度调查，就需要这个状态，没有直接到释放 */
+    SC_AUTO_CALL_RELEASE,       /**< 结束 */
+
 }SC_AUTO_CALL_STATE_EN;
 
 /**
@@ -1410,6 +1418,14 @@ typedef struct tagSCMsgCmdAnswer{
     U32     ulLegNo;                        /**< 主叫LEG */
 }SC_MSG_CMD_ANSWER_ST;
 
+typedef enum tagSCCmdPlaybackType{
+    SC_CND_PLAYBACK_TONE,                   /**< 回铃音等 */
+    SC_CND_PLAYBACK_SYSTEM,                 /**< 系统语音 */
+    SC_CND_PLAYBACK_FILE,                   /**< 指定语音文件名 */
+
+    SC_CND_PLAYBACK_BUTT
+
+}SC_CND_PLAYBACK_TYPE_EN;
 
 /** 放音请求 */
 typedef struct tagSCMsgCmdPlayback{
@@ -1423,7 +1439,9 @@ typedef struct tagSCMsgCmdPlayback{
     U32     ulInterval;                      /**< 每次循环时间间隔 ms */
     U32     ulSilence;                       /**< 播放之前Silence的时长 ms */
 
-    U32     blTone;                          /**< 是否是tone */
+    S8      szAudioFile[SC_MAX_AUDIO_FILENAME_LEN];  /**< 语言文件文件名 */
+
+    U32     enType;                          /**< SC_CND_PLAYBACK_TYPE_EN */
 }SC_MSG_CMD_PLAYBACK_ST;
 
 /** 录音请求 */
@@ -1667,6 +1685,24 @@ typedef struct tagSCMsgEvtAuthResult{
     U32              ucBalanceWarning;
 }SC_MSG_EVT_AUTH_RESULT_ST;
 
+typedef enum tagSCLeaveCallQueReason{
+    SC_LEAVE_CALL_QUE_SUCC,
+    SC_LEAVE_CALL_QUE_TIMEOUT,
+
+    SC_LEAVE_CALL_QUE_BUTT
+}SC_LEAVE_CALL_QUE_REASON_EN;
+
+/** 呼叫队列结果 */
+typedef struct tagSCMsgEvtLeaveCallQue{
+    SC_MSG_TAG_ST    stMsgTag;              /**< 消息头 */
+
+    /** 业务控制块编号 */
+    U32     ulSCBNo;
+
+    /** 选中的坐席 */
+    SC_AGENT_NODE_ST        *pstAgentNode;
+
+}SC_MSG_EVT_LEAVE_CALLQUE_ST;
 
 /**
  * backgroup job管理的hash表节点
@@ -1794,6 +1830,11 @@ typedef struct tagTaskCB
     pthread_mutex_t  mutexTaskList;               /* 保护任务队列使用的互斥量 */
 }SC_TASK_CB;
 
+typedef struct tagSCInconmingCallNode
+{
+    SC_SRV_CB   *pstSCB;
+    S8          szCaller[SC_NUM_LENGTH];
+}SC_INCOMING_CALL_NODE_ST;
 
 
 VOID sc_scb_init(SC_SRV_CB *pstSCB);
@@ -1830,6 +1871,7 @@ U32 sc_send_event_hold(SC_MSG_EVT_HOLD_ST *pstEvent);
 U32 sc_send_event_dtmf(SC_MSG_EVT_DTMF_ST *pstEvent);
 U32 sc_send_event_record(SC_MSG_EVT_RECORD_ST *pstEvent);
 U32 sc_send_event_playback(SC_MSG_EVT_PLAYBACK_ST *pstEvent);
+U32 sc_send_event_leave_call_queue_rsp(SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvent);
 U32 sc_send_usr_auth2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 
 U32 sc_req_hungup(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
@@ -1861,8 +1903,7 @@ U32 sc_agent_group_init(U32 ulIndex);
 U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType);
 U32 sc_agent_http_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
 U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult);
-U32 sc_agent_call_by_grpid(SC_SRV_CB *pstSCB, U32 ulAgentGrpID);
-
+U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
 
 U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -1913,8 +1954,10 @@ U32 sc_auto_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
-
+U32 sc_auto_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
+U32 sc_incoming_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 SC_TASK_CB *sc_tcb_alloc();
 SC_TASK_CB *sc_tcb_find_by_taskid(U32 ulTaskID);
@@ -1925,6 +1968,9 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB *pstTCB);
 U32 sc_task_check_can_call_by_status(SC_TASK_CB *pstTCB);
 S32 sc_task_and_callee_load(U32 ulIndex);
 U32 sc_task_get_mode(U32 ulTCBNo);
+U32 sc_task_get_playcnt(U32 ulTCBNo);
+S8 *sc_task_get_audio_file(U32 ulTCBNo);
+U32 sc_task_get_agent_queue(U32 ulTCBNo);
 
 U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB);
@@ -1948,6 +1994,7 @@ U32 sc_did_bind_info_get(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID);
 U32 sc_sip_account_get_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
 BOOL sc_customer_is_exit(U32 ulCustomerID);
 U32 sc_log_digest_print(const S8 *szTraceStr);
+U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller);
 
 #endif  /* end of __SC_DEF_V2_H__ */
 

@@ -56,6 +56,63 @@ U32 sc_task_get_mode(U32 ulTCBNo)
     return g_pstTaskList[ulTCBNo].ucMode;
 }
 
+U32 sc_task_get_playcnt(U32 ulTCBNo)
+{
+    if (ulTCBNo > SC_MAX_TASK_NUM)
+    {
+        DOS_ASSERT(0);
+
+        return 0;
+    }
+
+    if (!g_pstTaskList[ulTCBNo].ucValid)
+    {
+        DOS_ASSERT(0);
+
+        return 0;
+    }
+
+    return g_pstTaskList[ulTCBNo].ucAudioPlayCnt;
+}
+
+S8 *sc_task_get_audio_file(U32 ulTCBNo)
+{
+    if (ulTCBNo > SC_MAX_TASK_NUM)
+    {
+        DOS_ASSERT(0);
+
+        return NULL;
+    }
+
+    if (!g_pstTaskList[ulTCBNo].ucValid)
+    {
+        DOS_ASSERT(0);
+
+        return NULL;
+    }
+
+    return g_pstTaskList[ulTCBNo].szAudioFileLen;
+}
+
+U32 sc_task_get_agent_queue(U32 ulTCBNo)
+{
+    if (ulTCBNo > SC_MAX_TASK_NUM)
+    {
+        DOS_ASSERT(0);
+
+        return U32_BUTT;
+    }
+
+    if (!g_pstTaskList[ulTCBNo].ucValid)
+    {
+        DOS_ASSERT(0);
+
+        return U32_BUTT;
+    }
+
+    return g_pstTaskList[ulTCBNo].ulAgentQueueID;
+}
+
 VOID sc_task_update_calledcnt(U64 ulArg)
 {
     SC_DB_MSG_TAG_ST    *pstMsg     = NULL;
