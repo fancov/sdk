@@ -967,6 +967,7 @@ VOID sc_scb_interception_init(SC_INTERCEPTION_ST *pstInterception)
     pstInterception->stSCBTag.usSrvType = SC_SRV_INTERCEPTION;
     pstInterception->stSCBTag.usStatus = SC_INTERCEPTION_IDEL;
     pstInterception->ulLegNo = U32_BUTT;
+    pstInterception->ulAgentLegNo = U32_BUTT;
 }
 
 VOID sc_scb_whisper_init(SC_SRV_WHISPER_ST *pstWhisper)
@@ -982,6 +983,7 @@ VOID sc_scb_whisper_init(SC_SRV_WHISPER_ST *pstWhisper)
     pstWhisper->stSCBTag.usSrvType = SC_SRV_WHISPER;
     pstWhisper->stSCBTag.usStatus = SC_WHISPER_IDEL;
     pstWhisper->ulLegNo = U32_BUTT;
+    pstWhisper->ulAgentLegNo = U32_BUTT;
 }
 
 VOID sc_scb_mark_custom_init(SC_MARK_CUSTOM_ST *pstMarkCustom)

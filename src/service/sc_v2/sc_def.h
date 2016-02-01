@@ -1196,8 +1196,11 @@ typedef struct tagSCInterception{
 /** 耳语业务状态 */
 typedef enum tagSCWhisperStatus{
     SC_WHISPER_IDEL,       /**< 状态初始化 */
-    SC_WHISPER_PROC,       /**< 呼叫流程 */
-    SC_WHISPER_ACTIVE,     /**< 呼叫接通开始耳语 */
+    SC_WHISPER_AUTH,       /**< 发起呼叫 */
+    SC_WHISPER_EXEC,       /**< 呼叫流程 */
+    SC_WHISPER_PROC,       /**< 创建leg */
+    SC_WHISPER_ALERTING,   /**< 振铃 */
+    SC_WHISPER_ACTIVE,     /**< 开始监听 */
     SC_WHISPER_RELEASE,    /**< 结束 */
 }SC_WHISPER_STATE_EN;
 
@@ -1210,6 +1213,10 @@ typedef struct tagSCWhisper{
 
     /* 呼叫客户的LEG */
     U32               ulLegNo;
+
+    /* 被监听坐席的LEG */
+    U32               ulAgentLegNo;
+
 }SC_SRV_WHISPER_ST;
 
 /** 客户标记 */
@@ -1947,6 +1954,12 @@ U32 sc_interception_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_interception_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_interception_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
+U32 sc_whisper_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_whisper_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_whisper_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_whisper_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_whisper_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 U32 sc_auto_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);

@@ -1912,6 +1912,30 @@ U32 sc_cmd_mux(SC_MSG_TAG_ST *pstMsg)
             }
             break;
         case SC_MUX_CMD_WHISPER:
+            pstLCB = sc_lcb_get(pstMux->ulLegNo);
+            if (DOS_ADDR_INVALID(pstLCB))
+            {
+                stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+                goto proc_fail;
+            }
+
+            pstAgentLCB = sc_lcb_get(pstMux->ulAgentLegNo);
+            if (DOS_ADDR_INVALID(pstAgentLCB))
+            {
+                stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+                goto proc_fail;
+            }
+
+            if (sc_esl_execute("queue_dtmf", "w2@500", pstLCB->szUUID) != DOS_SUCC)
+            {
+                stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+                goto proc_fail;
+            }
+            if (sc_esl_execute("eavesdrop", pstAgentLCB->szUUID, pstLCB->szUUID) != DOS_SUCC)
+            {
+                stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+                goto proc_fail;
+            }
             break;
         default:
             break;
