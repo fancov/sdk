@@ -2965,9 +2965,9 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
 
-    sc_trace_scb(pstSCB, "Proccessing auto call hungup event.");
+    sc_trace_scb(pstSCB, "Proccessing auto call hungup event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
 
-    switch (pstSCB->stPreviewCall.stSCBTag.usStatus)
+    switch (pstSCB->stAutoCall.stSCBTag.usStatus)
     {
         case SC_AUTO_CALL_IDEL:
         case SC_AUTO_CALL_AUTH:
@@ -3011,7 +3011,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             else
             {
-                if (pstCalleeCB->ulSCBNo != U32_BUTT)
+                if (pstCalleeCB->ulIndSCBNo != U32_BUTT)
                 {
                     /* TODO 长签，判断一下是否需要标记客户。要注意scb的释放 */
                 }
