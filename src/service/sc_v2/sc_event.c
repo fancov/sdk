@@ -121,6 +121,10 @@ U32 sc_srv_call_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *ps
             ulRet = sc_call_playback_stop(pstMsg, pstSCB);
             break;
 
+        case SC_EVT_LEACE_CALL_QUEUE:
+            ulRet = sc_call_queue_leave(pstMsg, pstSCB);
+            break;
+
         case SC_EVT_ERROR_PORT:
             break;
 
@@ -312,9 +316,11 @@ U32 sc_srv_auto_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
         case SC_EVT_PLAYBACK_END:
             ulRet = sc_auto_call_palayback_end(pstMsg, pstSCB);
             break;
+
         case SC_EVT_LEACE_CALL_QUEUE:
             ulRet = sc_auto_call_queue_leave(pstMsg, pstSCB);
             break;
+
         case SC_EVT_ERROR_PORT:
             break;
 

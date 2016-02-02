@@ -210,8 +210,7 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stCall.stSCBTag.usStatus)
     {
         case SC_CALL_AUTH:
-            pstSCB->stCall.stSCBTag.usStatus = SC_CALL_EXEC;
-
+            //pstSCB->stCall.stSCBTag.usStatus = SC_CALL_EXEC;
             if (pstAuthRsp->ucBalanceWarning)
             {
                 /* TODO */
@@ -754,6 +753,58 @@ U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     return DOS_SUCC;
+}
+
+U32 sc_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvtCall = NULL;
+    U32                 ulRet               = DOS_FAIL;
+    SC_LEG_CB           *pstCallingLegCB    = NULL;
+    U32                 ulErrCode           = CC_ERR_NO_REASON;
+
+    pstEvtCall = (SC_MSG_EVT_LEAVE_CALLQUE_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstEvtCall) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing call queue event. status : %u", pstSCB->stCall.stSCBTag.usStatus);
+
+    switch (pstSCB->stCall.stSCBTag.usStatus)
+    {
+        case SC_CALL_AUTH:
+            if (SC_LEAVE_CALL_QUE_TIMEOUT == pstMsg->usInterErr)
+            {
+                /* 加入队列超时 */
+            }
+            else if (SC_LEAVE_CALL_QUE_SUCC == pstMsg->usInterErr)
+            {
+                if (DOS_ADDR_INVALID(pstEvtCall->pstAgentNode))
+                {
+                    /* 错误 */
+                }
+                else
+                {
+                    pstCallingLegCB = sc_lcb_get(pstSCB->stCall.ulCallingLegNo);
+                    /* 呼叫坐席 */
+                    ulRet = sc_agent_call_by_id(pstSCB, pstCallingLegCB, pstEvtCall->pstAgentNode->pstAgentInfo->ulAgentID, &ulErrCode);
+                }
+            }
+        default:
+            break;
+
+     }
+
+    sc_trace_scb(pstSCB, "Proccessed call queue event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    if (ulRet != DOS_SUCC)
+    {
+        /* TODO 失败的处理 */
+    }
+
+    return ulRet;
+
 }
 
 U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
@@ -3280,13 +3331,8 @@ U32 sc_incoming_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     {
         case SC_INQUEUE_ACTIVE:
             {
-                pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_RELEASE;
-                pstSCB->stIncomingQueue.stSCBTag.bValid = DOS_FALSE;
-                pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = NULL;
-                if (pstSCB->ulCurrentSrv > 0)
-                {
-                    pstSCB->ulCurrentSrv--;
-                }
+                pstSCB->stIncomingQueue.stSCBTag.bWaitingExit = DOS_TRUE;
+
             }
             break;
         default:
