@@ -1493,8 +1493,8 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         }
 
         bIsAllocPlayArg = DOS_TRUE;
-
-        ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u file_string://%s"
+//file_string://  添加这个之后，群呼任务，放语音文件，提示找不到文件
+        ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u %s"
             , pstPlayback->ulLoopCnt, pstPlayback->szAudioFile);
 
         ulTotalCnt = 1;

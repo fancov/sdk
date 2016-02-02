@@ -1349,6 +1349,9 @@ SC_TASK_CB *sc_tcb_alloc()
         sc_tcb_init(pstTCB);
         pstTCB->ucValid = 1;
         pstTCB->ulAllocTime = time(0);
+        pthread_mutex_unlock(&pstTCB->mutexTaskList);
+
+        pthread_mutex_unlock(&g_mutexTaskList);
 
         sc_trace_task(pstTCB, "Alloc TCB %d.", pstTCB->usTCBNo);
 

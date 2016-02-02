@@ -285,6 +285,7 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
     pstSCB->stAutoCall.ulTaskID = pstTCB->ulTaskID;
     pstSCB->stAutoCall.ulTcbID = pstTCB->usTCBNo;
     pstSCB->stAutoCall.ulKeyMode = pstTCB->ucMode;
+    pstSCB->ulCustomerID = pstTCB->ulCustomID;
 
     pstLegCB->stCall.bValid = DOS_TRUE;
     pstLegCB->ulSCBNo = pstSCB->ulSCBNo;

@@ -2745,6 +2745,97 @@ proc_finishe:
 U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     /* 判断一下群呼任务的模式，如果是呼叫后，转坐席，则转坐席，否则通话结束 */
+    SC_LEG_CB              *pstLCB          = NULL;
+    SC_MSG_EVT_PLAYBACK_ST *pstRlayback     = NULL;
+    U32                    ulTaskMode       = U32_BUTT;
+    U32                    ulErrCode        = CC_ERR_NO_REASON;
+    U32                    ulRet            = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "process the auto call playback stop msg. status: %u", pstSCB->stCall.stSCBTag.usStatus);
+
+    pstRlayback = (SC_MSG_EVT_PLAYBACK_ST *)pstMsg;
+
+    pstLCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        sc_trace_scb(pstSCB, "There is no calling leg.");
+
+        goto proc_finishe;
+    }
+
+    if (pstLCB->stPlayback.usStatus == SC_SU_PLAYBACK_INIT)
+    {
+        /* 这里是 silence_stream 延时的stop事件，不需要处理。 这里存在问题，正常的playstop事件没有上传 */
+        ulRet = DOS_SUCC;
+
+        goto proc_finishe;
+    }
+
+    switch (pstSCB->stAutoCall.stSCBTag.usStatus)
+    {
+        case SC_AUTO_CALL_ACTIVE:
+            ulTaskMode = sc_task_get_mode(pstSCB->stAutoCall.ulTcbID);
+            if (ulTaskMode >= SC_TASK_MODE_BUTT)
+            {
+                DOS_ASSERT(0);
+
+                ulErrCode = CC_ERR_SC_CONFIG_ERR;
+                ulRet = DOS_FAIL;
+                goto proc_finishe;
+            }
+
+            switch (ulTaskMode)
+            {
+                /* 需要放音的，统一先放音。在放音结束后请处理后续流程 */
+                case SC_TASK_MODE_AGENT_AFTER_AUDIO:
+                    /* 转坐席 */
+                    pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_AFTER_KEY;
+                    /* 开启呼入队列队列业务控制块 */
+                    pstSCB->stIncomingQueue.stSCBTag.bValid = DOS_TRUE;
+                    pstSCB->ulCurrentSrv++;
+                    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stIncomingQueue.stSCBTag;
+                    pstSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
+                    pstSCB->stIncomingQueue.ulLegNo = pstSCB->stAutoCall.ulCallingLegNo;
+                    pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
+                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szRealCallee) != DOS_SUCC)
+                    {
+                        /* 加入队列失败 */
+                        DOS_ASSERT(0);
+                        ulRet = DOS_FAIL;
+                    }
+                    else
+                    {
+                        /* 放音提示客户等待 */
+                        pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
+                        sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
+                        ulRet = DOS_SUCC;
+                    }
+
+                    break;
+                case SC_TASK_MODE_AUDIO_ONLY:
+                    /* 挂断客户 */
+                    pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_RELEASE;
+                    if (sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, CC_ERR_NORMAL_CLEAR) != DOS_SUCC)
+                    {
+
+                    }
+
+                    break;
+                default:
+                    break;
+            }
+    }
+
+proc_finishe:
+
+    sc_trace_scb(pstSCB, "Proccessed auto call playk stop event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
     return DOS_SUCC;
 }
 
@@ -2958,6 +3049,23 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             pstSCB = NULL;
             break;
         case SC_AUTO_CALL_RELEASE:
+            pstCalleeCB = sc_lcb_get(pstSCB->stCall.ulCalleeLegNo);
+            if (DOS_ADDR_VALID(pstCalleeCB))
+            {
+                sc_lcb_free(pstCalleeCB);
+                pstCalleeCB = NULL;
+            }
+
+            pstCallingCB = sc_lcb_get(pstSCB->stCall.ulCallingLegNo);
+            if (DOS_ADDR_VALID(pstCallingCB))
+            {
+                sc_lcb_free(pstCallingCB);
+                pstCallingCB = NULL;
+            }
+
+            sc_scb_free(pstSCB);
+            pstSCB = NULL;
+
             break;
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
@@ -3192,7 +3300,7 @@ U32 sc_sigin_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (pstSCB->stSigin.pstAgentNode->pstAgentInfo->bNeedConnected)
             {
-                if (pstSCB->stSigin.stSCBTag.usStatus == SC_SU_PLAYBACK_INIT)
+                if (pstLegCB->stPlayback.usStatus == SC_SU_PLAYBACK_INIT)
                 {
                     /* 放长签音 */
                     sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stSigin.ulLegNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);

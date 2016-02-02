@@ -420,7 +420,7 @@ VOID *sc_esl_process_runtime(VOID *ptr)
             pstListNode->pHandle = NULL;
             DLL_Init_Node(pstListNode)
             dos_dmem_free(pstListNode);
-#if 0
+#if 1
             /* 感觉日志有点多，所以处理一下 */
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "Recv ESL event. %s(%d), Channel Name: %s"
                             , esl_event_get_header(pstEvent, "Event-Name")

@@ -5120,7 +5120,7 @@ BOOL sc_serv_ctrl_check(U32 ulCustomerID, U32 ulServerType, U32 ulAttr1, U32 ulA
 
     if (!blResult)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "match service ctrl rule in all. CustomerID", ulServerType);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "match service ctrl rule in all. server type: %u", ulServerType);
 
         /* BUCKET 0 中保存的是针对所有客户的规则 */
         HASH_Scan_Bucket(g_pstHashServCtrl, 0, pstHashNode, HASH_NODE_S *)
