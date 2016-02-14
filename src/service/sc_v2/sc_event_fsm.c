@@ -1537,6 +1537,7 @@ U32 sc_voice_verify_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             stPlaybackRsp.ulSilence  = 0;
             stPlaybackRsp.enType = SC_CND_PLAYBACK_SYSTEM;
             stPlaybackRsp.ulTotalAudioCnt = 0;
+            stPlaybackRsp.blNeedDTMF = DOS_FALSE;
 
             stPlaybackRsp.aulAudioList[0] = pstSCB->stVoiceVerify.ulTipsHitNo1;
             stPlaybackRsp.ulTotalAudioCnt++;
@@ -2659,6 +2660,7 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     stPlaybackRsp.ulInterval = 0;
                     stPlaybackRsp.ulSilence  = 0;
                     stPlaybackRsp.enType = SC_CND_PLAYBACK_FILE;
+                    stPlaybackRsp.blNeedDTMF = DOS_TRUE;
                     stPlaybackRsp.ulTotalAudioCnt++;
                     if (sc_task_get_audio_file(pstSCB->stAutoCall.ulTcbID) == NULL)
                     {

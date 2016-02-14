@@ -1446,6 +1446,8 @@ typedef struct tagSCMsgCmdPlayback{
     U32     ulInterval;                      /**< 每次循环时间间隔 ms */
     U32     ulSilence;                       /**< 播放之前Silence的时长 ms */
 
+    U32     blNeedDTMF;                      /**< 是否需要DTMF */
+
     S8      szAudioFile[SC_MAX_AUDIO_FILENAME_LEN];  /**< 语言文件文件名 */
 
     U32     enType;                          /**< SC_CND_PLAYBACK_TYPE_EN */

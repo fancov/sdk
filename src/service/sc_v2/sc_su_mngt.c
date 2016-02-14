@@ -1436,6 +1436,30 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         goto proc_fail;
     }
 
+    if (SC_CND_PLAYBACK_FILE == pstPlayback->enType
+        && pstPlayback->blNeedDTMF)
+    {
+        pszPlayCMDArg = (S8 *)dos_dmem_alloc(SC_MAX_FILELIST_LEN);
+        if (DOS_ADDR_INVALID(pszPlayCMDArg))
+        {
+            stErrReport.stMsgTag.ulMsgType = SC_ERR_ALLOC_RES_FAIL;
+            goto proc_fail;
+        }
+
+        bIsAllocPlayArg = DOS_TRUE;
+        ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "1 1 %u 0 # %s pdtmf \\d+"
+                                , pstPlayback->ulLoopCnt, pstPlayback->szAudioFile);
+        if (sc_esl_execute("play_and_get_digits", pszPlayCMDArg, pstLCB->szUUID) != DOS_SUCC)
+        {
+            stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+            goto proc_fail;
+        }
+
+        pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
+
+        return DOS_SUCC;
+    }
+
     if (SC_CND_PLAYBACK_TONE == pstPlayback->enType)
     {
             pszPlayCMDArg = sc_hine_get_tone(pstPlayback->aulAudioList[0]);
@@ -1445,15 +1469,13 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
                 goto proc_fail;
             }
 
-            if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
+            if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) != DOS_SUCC)
             {
-                pstLCB->stPlayback.ulTotal += ulTotalCnt * pstPlayback->ulLoopCnt;
-
                 stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
                 goto proc_fail;
             }
 
-            pstLCB->stPlayback.ulTotal = 1;
+            pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
 
             return DOS_SUCC;
     }
@@ -1490,9 +1512,15 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         }
 
         bIsAllocPlayArg = DOS_TRUE;
-//file_string://  添加这个之后，群呼任务，放语音文件，提示找不到文件
+        /* file_string://  添加这个之后，群呼任务，放语音文件，提示找不到文件 */
         ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u %s"
             , pstPlayback->ulLoopCnt, pstPlayback->szAudioFile);
+    }
+
+    dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_setvar %s playback_terminators none \r\n", pstLCB->szUUID);
+    if (sc_esl_execute_cmd(szCMD, NULL, 0) == DOS_SUCC)
+    {
+        pstLCB->stPlayback.ulTotal++;
     }
 
     /* 根据状态处理 */
@@ -1611,7 +1639,7 @@ U32 sc_cmd_playback_stop(SC_MSG_TAG_ST *pstMsg)
         goto proc_fail;
     }
 
-    sc_bgjob_hash_add(szUUID, pstLCB);
+    sc_bgjob_hash_add(pstLCB->ulCBNo, szUUID);
 
     pstLCB->stPlayback.bValid = DOS_TRUE;
     pstLCB->stPlayback.usStatus = SC_SU_PLAYBACK_RELEASE;
