@@ -449,7 +449,10 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Start exchange media. LEG:%u, SCB:%u", pstLegCB->ulCBNo, pstLegCB->ulSCBNo);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU)
+                , "Start exchange media. LEG:%u, SCB:%u, EndPoint: %s"
+                , pstLegCB->ulCBNo, pstLegCB->ulSCBNo
+                , esl_event_get_header(pstEvent, "variable_endpoint_disposition"));
 
     pszDisposition = esl_event_get_header(pstEvent, "variable_endpoint_disposition");
     if (DOS_ADDR_VALID(pszDisposition))
@@ -457,14 +460,17 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         if (dos_strnicmp(pszDisposition, "EARLY MEDIA", dos_strlen("EARLY MEDIA")) == 0)
         {
             pstLegCB->stCall.bEarlyMedia = DOS_TRUE;
+
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_SU), "Start exchange media for early media. LEG:%u, SCB:%u", pstLegCB->ulCBNo, pstLegCB->ulSCBNo);
+
+            return DOS_SUCC;
+
         }
-    }
-
-    if (pstLegCB->stCall.bEarlyMedia)
-    {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_SU), "Start exchange media for early media. LEG:%u, SCB:%u", pstLegCB->ulCBNo, pstLegCB->ulSCBNo);
-
-        return DOS_SUCC;
+        else if (dos_strnicmp(pszDisposition, "DELAYED NEGOTIATION", dos_strlen("DELAYED NEGOTIATION")) == 0)
+        {
+            /* 有些PARK消息是不需要处理的 */
+            return DOS_SUCC;
+        }
     }
 
     pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);
@@ -472,7 +478,6 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     pstLegCB->stCall.ucStatus = SC_LEG_ACTIVE;
 
     stSCEvent.stMsgTag.ulMsgType = SC_EVT_CALL_AMSWERED;
-    //stSCEvent.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
     if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
     {
         stSCEvent.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
@@ -510,7 +515,6 @@ U32 sc_esl_event_hold(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     pstLegCB->stHold.usStatus = SC_SU_HOLD_ACTIVE;
 
-    //stHold.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
     if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
     {
         stHold.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
@@ -552,7 +556,6 @@ U32 sc_esl_event_unhold(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     pstLegCB->stHold.usStatus = SC_SU_HOLD_INIT;
     pstLegCB->stHold.bValid = DOS_FALSE;
 
-    //stHold.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
     if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
     {
         stHold.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
@@ -616,7 +619,6 @@ U32 sc_esl_event_dtmf(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     dos_strcat(pstLegCB->stCall.stNumInfo.szDial, pszDTMF);
     pstLegCB->stCall.stNumInfo.szDial[SC_NUM_LENGTH - 1] = '\0';
 
-    //stDTMF.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
     if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
     {
         stDTMF.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
@@ -714,7 +716,6 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
 
 
     stErrReport.stMsgTag.ulMsgType = SC_EVT_ERROR_PORT;
-    //stErrReport.stMsgTag.ulSCBNo = pstLCB->ulSCBNo;
     if (pstLCB->ulIndSCBNo != U32_BUTT && pstLCB->ulSCBNo == U32_BUTT)
     {
         stErrReport.stMsgTag.ulSCBNo = pstLCB->ulIndSCBNo;
@@ -773,7 +774,6 @@ U32 sc_esl_event_record_start(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     pstLegCB->stRecord.usStatus = SC_SU_RECORD_ACTIVE;
 
-    //stRecord.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
     if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
     {
         stRecord.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
@@ -841,9 +841,6 @@ U32 sc_esl_event_record_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
 
     pstLegCB->stRecord.usStatus = SC_SU_RECORD_RELEASE;
-    //pstLegCB->stRecord.bValid = DOS_FALSE;
-
-    //stRecord.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
     if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
     {
         stRecord.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
@@ -897,7 +894,6 @@ U32 sc_esl_event_playback_start(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         case SC_SU_PLAYBACK_PROC:
             pstLegCB->stPlayback.usStatus = SC_SU_PLAYBACK_ACTIVE;
 
-            //stPlayback.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
             if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
             {
                 stPlayback.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
@@ -971,7 +967,6 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
             /*  没有break，让他继续执行 */
 
         case SC_SU_PLAYBACK_RELEASE:
-            //stPlayback.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
             if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
             {
                 stPlayback.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
