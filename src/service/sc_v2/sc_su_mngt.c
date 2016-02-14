@@ -1453,6 +1453,8 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
                 goto proc_fail;
             }
 
+            pstLCB->stPlayback.ulTotal = 1;
+
             return DOS_SUCC;
     }
 
@@ -1491,8 +1493,6 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
 //file_string://  添加这个之后，群呼任务，放语音文件，提示找不到文件
         ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u %s"
             , pstPlayback->ulLoopCnt, pstPlayback->szAudioFile);
-
-        ulTotalCnt = 1;
     }
 
     /* 根据状态处理 */
@@ -1516,7 +1516,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
 
             if (sc_esl_execute("loop_playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
             {
-                pstLCB->stPlayback.ulTotal = pstPlayback->ulLoopCnt;
+                pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
             }
             break;
 
@@ -1524,7 +1524,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         case SC_SU_PLAYBACK_ACTIVE:
             if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
             {
-                pstLCB->stPlayback.ulTotal += ulTotalCnt * pstPlayback->ulLoopCnt;
+                pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
             }
             break;
 
@@ -1532,7 +1532,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
             /* 被手动停止了，这个地方说明，正在等待上一次最后一个playback stop事件 */
             if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
             {
-                pstLCB->stPlayback.ulTotal = ulTotalCnt * pstPlayback->ulLoopCnt;
+                pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
 
                 /* 为了上次放音最后一个playback stop消息 */
                 pstLCB->stPlayback.ulTotal++;
@@ -1611,7 +1611,7 @@ U32 sc_cmd_playback_stop(SC_MSG_TAG_ST *pstMsg)
         goto proc_fail;
     }
 
-    sc_lcb_hash_add(szUUID, pstLCB);
+    sc_bgjob_hash_add(szUUID, pstLCB);
 
     pstLCB->stPlayback.bValid = DOS_TRUE;
     pstLCB->stPlayback.usStatus = SC_SU_PLAYBACK_RELEASE;

@@ -383,6 +383,7 @@ VOID sc_lcb_playback_init(SC_SU_PLAYBACK_ST *pstPlayback)
     pstPlayback->bValid = DOS_FALSE;
     pstPlayback->bTrace = DOS_FALSE;
     pstPlayback->usStatus = SC_SU_PLAYBACK_INIT;
+    pstPlayback->ulTotal = 0;
     pstPlayback->ulCurretnIndex = 0;
 }
 
