@@ -378,6 +378,73 @@ U32 sc_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
     return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_STATUS, NULL);
 }
 
+/**
+    呼叫弹屏
+*/
+U32 sc_agent_call_notify(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
+{
+    S8 szURL[256]      = { 0, };
+    S8 szData[512]     = { 0, };
+    S8 szChannel[128]  = { 0, };
+    S32 ulPAPIPort     = -1;
+
+    if (DOS_ADDR_INVALID(pstAgentInfo)
+        || DOS_ADDR_INVALID(szCaller))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (sc_agent_notify_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Get channel ID fail for agent: %u", pstAgentInfo->ulAgentID);
+        return DOS_FAIL;
+    }
+
+    ulPAPIPort = config_hb_get_papi_port();
+    if (ulPAPIPort <= 0)
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+    }
+    else
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/pub?id=%s", ulPAPIPort, szChannel);
+    }
+
+
+    /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
+    dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"0\\\",\\\"body\\\":{\\\"number\\\":\\\"%s\\\"}}", szCaller);
+
+    return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_STATUS, NULL);
+}
+
+
+U32 sc_agent_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCallerNum)
+{
+    S8 szURL[256]      = { 0, };
+    S8 szData[512]     = { 0, };
+    S32 ulPAPIPort     = -1;
+
+    ulPAPIPort = config_hb_get_papi_port();
+    if (ulPAPIPort <= 0)
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost/index.php/papi");
+    }
+    else
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/index.php/papi", ulPAPIPort);
+    }
+
+    /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
+    dos_snprintf(szData, sizeof(szData), "data={\"type\":\"%u\", \"data\":{\"customer_id\":\"%u\", \"agent_id\":\"%u\", \"marker\":\"%d\", \"number\":\"%s\"}}"
+                    , SC_PUB_TYPE_MARKER
+                    , ulCustomID, ulAgentID
+                    , lKey
+                    , szCallerNum);
+
+    return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_MARKER, NULL);
+}
 
 /*
  * 函  数: sc_acd_hash_func4agent
@@ -2582,6 +2649,48 @@ U32 sc_agent_set_force_logout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperati
 
 }
 
+U32 sc_agent_set_proc(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    U32 ulOldStatus;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulOldStatus = pstAgentQueueInfo->ucStatus;
+
+    switch (pstAgentQueueInfo->ucStatus)
+    {
+        case SC_ACD_OFFLINE:
+        case SC_ACD_IDEL:
+        case SC_ACD_AWAY:
+            break;
+
+        case SC_ACD_BUSY:
+            pstAgentQueueInfo->ucStatus = SC_ACD_PROC;
+            break;
+
+        case SC_ACD_PROC:
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+            break;
+    }
+
+    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_PROC);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to proc.Agent: %u, Old status: %u, Current status: %u"
+                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+
+    return DOS_SUCC;
+}
 
 U32 sc_agent_group_http_update_proc(U32 ulAction, U32 ulGrpID)
 {

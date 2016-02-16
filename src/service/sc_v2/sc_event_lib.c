@@ -101,11 +101,37 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
 
         return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_NO_TRUNK);
     }
-
+#if 0
+    if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+            && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo)
+            && pstSCB->stCall.pstAgentCalling->pstAgentInfo->bRecord)
+    {
+        pstCalleeLegCB->stRecord.bValid = DOS_TRUE;
+        pstCallingLegCB->stRecord.usStatus = SC_SU_RECORD_INIT;
+    }
+#endif
     ulRet = sc_send_cmd_new_call(&stCallMsg.stMsgTag);
     if (ulRet == DOS_SUCC)
     {
         pstSCB->stCall.stSCBTag.usStatus = SC_CALL_EXEC;
+
+        if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+            && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+        {
+            /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬ */
+            pthread_mutex_lock(&pstSCB->stCall.pstAgentCalling->pstAgentInfo->mutexLock);
+            if (pstSCB->stCall.pstAgentCalling->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+            {
+                sc_agent_set_busy(pstSCB->stCall.pstAgentCalling->pstAgentInfo, OPERATING_TYPE_PHONE);
+            }
+
+            pstSCB->stCall.pstAgentCalling->pstAgentInfo->ulLegNo = pstSCB->stCall.ulCallingLegNo;
+            dos_snprintf(pstSCB->stCall.pstAgentCalling->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+
+            pthread_mutex_unlock(&pstSCB->stCall.pstAgentCalling->pstAgentInfo->mutexLock);
+            /* µ¯ÆÁÌáÐÑ */
+            sc_agent_call_notify(pstSCB->stCall.pstAgentCalling->pstAgentInfo, pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+        }
     }
 
     return ulRet;

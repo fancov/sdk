@@ -1492,7 +1492,14 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
 
         bIsAllocPlayArg = DOS_TRUE;
 
-        ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u file_string://", pstPlayback->ulLoopCnt);
+        if (pstPlayback->ulLoopCnt == 1)
+        {
+            ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "file_string://");
+        }
+        else
+        {
+            ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u file_string://", pstPlayback->ulLoopCnt);
+        }
 
         ulTotalCnt = sc_get_snd_list(pstPlayback->aulAudioList, pstPlayback->ulTotalAudioCnt
                                         , pszPlayCMDArg + ulLen, SC_MAX_FILELIST_LEN - ulLen, NULL);
@@ -1513,8 +1520,14 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
 
         bIsAllocPlayArg = DOS_TRUE;
         /* file_string://  添加这个之后，群呼任务，放语音文件，提示找不到文件 */
-        ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u %s"
-            , pstPlayback->ulLoopCnt, pstPlayback->szAudioFile);
+        if (pstPlayback->ulLoopCnt == 1)
+        {
+            ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "file_string://%s", pstPlayback->szAudioFile);
+        }
+        else
+        {
+            ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "+%u file_string://%s", pstPlayback->ulLoopCnt, pstPlayback->szAudioFile);
+        }
     }
 
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_setvar %s playback_terminators none \r\n", pstLCB->szUUID);
@@ -1542,9 +1555,19 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
                 pstLCB->stPlayback.ulTotal++;
             }
 
-            if (sc_esl_execute("loop_playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
+            if (pstPlayback->ulLoopCnt == 1)
             {
-                pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
+                if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
+                {
+                    pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
+                }
+            }
+            else
+            {
+                if (sc_esl_execute("loop_playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
+                {
+                    pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
+                }
             }
             break;
 

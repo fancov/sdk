@@ -777,11 +777,42 @@ U32 sc_srv_mark_custom_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Customer Mark Service, SCB:%u"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
 
+    switch (pstMsg->ulMsgType)
+    {
+        case SC_EVT_CALL_SETUP:
+        case SC_EVT_CALL_RINGING:
+        case SC_EVT_CALL_AMSWERED:
+        case SC_EVT_BRIDGE_START:
+        case SC_EVT_HOLD:
+        case SC_EVT_BRIDGE_STOP:
+        case SC_EVT_CALL_STATUS:
+        case SC_EVT_RECORD_START:
+        case SC_EVT_RECORD_END:
+        case SC_EVT_PLAYBACK_START:
+        case SC_EVT_PLAYBACK_END:
+        case SC_EVT_AUTH_RESULT:
+        case SC_EVT_LEACE_CALL_QUEUE:
+            ulRet = DOS_SUCC;
+            break;
+        case SC_EVT_DTMF:
+            ulRet = sc_mark_custom_dtmf(pstMsg, pstSCB);
+            break;
+        case SC_EVT_CALL_RERLEASE:
+            ulRet = sc_mark_custom_release(pstMsg, pstSCB);
+            break;
+        case SC_EVT_ERROR_PORT:
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Invalid event type. %u", pstMsg->ulMsgType);
+            break;
+    }
+
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Customer Mark Service, SCB:%u, Ret: %s"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
                 , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
-    return DOS_SUCC;
+    return ulRet;
 }
 
 /**
@@ -1017,7 +1048,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
                 break;
 
             case SC_SRV_MARK_CUSTOM:
-                ulRet = DOS_SUCC;
+                ulRet = sc_srv_mark_custom_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
             case SC_SRV_AGENT_SIGIN:
                 ulRet = sc_srv_sigin_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);

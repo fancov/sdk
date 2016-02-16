@@ -1234,13 +1234,18 @@ typedef struct tagSCMarkCustom{
     /** 基本信息 */
     SC_SCB_TAG_ST     stSCBTag;
 
-    /* 呼叫客户的LEG */
+    /* 呼叫坐席的LEG */
     U32               ulLegNo;
+
+    /* 坐席的信息 */
+    SC_AGENT_NODE_ST *pstAgentCall;
+
 
     /** 接入码缓存 */
     S8                szDialCache[SC_MAX_ACCESS_CODE_LENGTH];
 
     /* 定时器，超时之后结束呼叫 */
+    DOS_TMR_ST        stTmrHandle;
 }SC_MARK_CUSTOM_ST;
 
 /** 呼叫转接业务状态 */
@@ -1914,6 +1919,11 @@ U32 sc_agent_http_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
 U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult);
 U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
 U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAgentID, U32 *pulErrCode);
+U32 sc_agent_call_notify(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller);
+U32 sc_agent_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType);
+U32 sc_agent_set_proc(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType);
+U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType);
+void sc_agent_mark_custom_callback(U64 arg);
 
 U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -1975,6 +1985,11 @@ U32 sc_auto_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 U32 sc_incoming_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
+U32 sc_mark_custom_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
+U32 sc_agent_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCallerNum);
 
 SC_TASK_CB *sc_tcb_alloc();
 SC_TASK_CB *sc_tcb_find_by_taskid(U32 ulTaskID);

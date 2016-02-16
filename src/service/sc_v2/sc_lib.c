@@ -1000,7 +1000,9 @@ VOID sc_scb_mark_custom_init(SC_MARK_CUSTOM_ST *pstMarkCustom)
     pstMarkCustom->stSCBTag.usSrvType = SC_SRV_MARK_CUSTOM;
     pstMarkCustom->stSCBTag.usStatus = SC_MAKR_CUSTOM_IDEL;
     pstMarkCustom->ulLegNo = U32_BUTT;
+    pstMarkCustom->pstAgentCall = NULL;
     pstMarkCustom->szDialCache[0] = '\0';
+    pstMarkCustom->stTmrHandle = NULL;
 }
 
 VOID sc_scb_sigin_init(SC_SIGIN_ST *pstSigin)
@@ -1918,6 +1920,7 @@ U32 sc_req_play_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulSndInd, U32 ulLoop, U32 ul
     pstCMDPlayback->ulInterval = ulInterval;
     pstCMDPlayback->ulSilence = ulSilence;
     pstCMDPlayback->enType = SC_CND_PLAYBACK_SYSTEM;
+    pstCMDPlayback->blNeedDTMF = DOS_FALSE;
 
     ulRet = sc_send_command(&pstCMDPlayback->stMsgTag);
     if (ulRet != DOS_SUCC)
@@ -2649,7 +2652,7 @@ U32 sc_send_event_leave_call_queue_rsp(SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvent)
 
 U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
 {
-    SC_AGENT_NODE_ST *pstAgent;
+    SC_AGENT_NODE_ST *pstAgent = NULL;
 
     if (DOS_ADDR_INVALID(pstLegCB) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -2712,8 +2715,7 @@ U32 sc_leg_get_destination(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
         return SC_DIRECTION_INVALID;
     }
 
-    if (SC_LEG_PEER_INBOUND_INTERNAL == pstLegCB->stCall.ucPeerType
-        || SC_LEG_PEER_INBOUND_TT == pstLegCB->stCall.ucPeerType)
+    if (SC_LEG_PEER_INBOUND_INTERNAL == pstLegCB->stCall.ucPeerType)
     {
         /* 被叫号码是否是同一个客户下的SIP User ID */
         ulCustomID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCallee);
@@ -2730,11 +2732,15 @@ U32 sc_leg_get_destination(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
 
         return SC_DIRECTION_PSTN;
     }
+    else if (SC_LEG_PEER_INBOUND_TT == pstLegCB->stCall.ucPeerType)
+    {
+        /* 现在 TT号，只支持呼出 */
+        return SC_DIRECTION_PSTN;
+    }
     else
     {
         if (U32_BUTT == pstSCB->ulCustomerID)
         {
-            /* 判断一下主叫是否 TT 号 */
             DOS_ASSERT(0);
 
             sc_trace_scb(pstSCB, "The destination %s is not a DID number. Reject Call.", pstLegCB->stCall.stNumInfo.szOriginalCallee);
@@ -2812,6 +2818,56 @@ U32 sc_get_snd_list(U32 *pulSndIndList, U32 ulSndCnt, S8 *pszBuffer, U32 ulBuffL
     pszBuffer[ulLen - 1] = '\0';
 
     return ulCnt;
+}
+
+void sc_agent_mark_custom_callback(U64 arg)
+{
+    U32                 ulLcbNo    = U32_BUTT;
+    SC_LEG_CB           *pstLeg    = NULL;
+    SC_SRV_CB           *pstSCB    = NULL;
+
+    ulLcbNo = (U32)arg;
+
+    pstLeg = sc_lcb_get(ulLcbNo);
+    if (DOS_ADDR_INVALID(pstLeg))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstSCB = sc_scb_get(pstLeg->ulSCBNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        sc_lcb_free(pstLeg);
+        return;
+    }
+
+    /* 停止放音 */
+    sc_req_playback_stop(pstSCB->ulSCBNo, pstLeg->ulCBNo);
+
+    /* 判断坐席是否是长签，如果不是则挂断电话 */
+    if (pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+    {
+        sc_agent_set_idle(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+    }
+
+    if (pstLeg->ulIndSCBNo != U32_BUTT)
+    {
+        /* 长签，继续放音 */
+        pstLeg->ulSCBNo = U32_BUTT;
+        sc_req_play_sound(pstLeg->ulIndSCBNo, pstLeg->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
+        /* 释放掉 SCB */
+        sc_scb_free(pstSCB);
+        pstSCB = NULL;
+    }
+    else
+    {
+        sc_req_hungup(pstSCB->ulSCBNo, pstLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
+        pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_ACTIVE;
+    }
+
+    return;
 }
 
 #ifdef __cplusplus
