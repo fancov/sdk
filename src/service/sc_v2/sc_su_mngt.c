@@ -1457,6 +1457,9 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
 
         pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
 
+        dos_dmem_free(pszPlayCMDArg);
+        pszPlayCMDArg = NULL;
+
         return DOS_SUCC;
     }
 
