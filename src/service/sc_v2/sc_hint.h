@@ -54,6 +54,14 @@ typedef enum tagSoundType{
     SC_SND_7,
     SC_SND_8,
     SC_SND_9,
+    SC_SND_FU,                    /**< 负 */
+    SC_SND_WAN,                   /**< 万 */
+    SC_SND_QIAN,                  /**< 千 */
+    SC_SND_BAI,                   /**< 白 */
+    SC_SND_SHI,                   /**< 十 */
+    SC_SND_YUAN,                  /**< 元 */
+    SC_SND_JIAO,                  /**< 角 */
+    SC_SND_FEN,                   /**< 分 */
 
     SC_SND_BUTT
 }SC_SOUND_TYPE_EN;

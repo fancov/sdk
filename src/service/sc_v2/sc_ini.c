@@ -118,6 +118,21 @@ SC_MOD_LIST_ST  astSCModList[] = {
     {SC_MOD_TASK,       "SC_TASK",   LOG_LEVEL_NOTIC, DOS_FALSE, sc_task_mngt_init,    sc_task_mngt_start,     sc_task_mngt_stop},
 };
 
+/* 接入码，应该从配置文件中读取 */
+SC_ACCESS_CODE_LIST_ST astSCAccessList[] = {
+    {SC_ACCESS_BALANCE_ENQUIRY,     "*181",     DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   DOS_TRUE,   sc_access_balance_enquiry},
+    {SC_ACCESS_AGENT_ONLINE,        "*001",     DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   DOS_TRUE,   sc_access_agent_proc},
+    {SC_ACCESS_AGENT_OFFLINE,       "*000",     DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   DOS_TRUE,   sc_access_agent_proc},
+    {SC_ACCESS_AGENT_EN_QUEUE,      "*101",     DOS_TRUE,   DOS_TRUE,   DOS_TRUE,   DOS_TRUE,   sc_access_agent_proc},
+    {SC_ACCESS_AGENT_DN_QUEUE,      "*100",     DOS_TRUE,   DOS_TRUE,   DOS_TRUE,   DOS_TRUE,   sc_access_agent_proc},
+    {SC_ACCESS_AGENT_SIGNIN,        "*99",      DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   DOS_TRUE,   sc_access_agent_proc},
+    {SC_ACCESS_AGENT_SIGNOUT,       "*88",      DOS_TRUE,   DOS_TRUE,   DOS_TRUE,   DOS_TRUE,   sc_access_agent_proc},
+    {SC_ACCESS_MARK_CUSTOMER,       "*66*",     DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   sc_access_agent_proc},
+    {SC_ACCESS_BLIND_TRANSFER,      "*70*",     DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   NULL},
+    {SC_ACCESS_ATTENDED_TRANSFER,   "*71*",     DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   NULL},
+    {SC_ACCESS_HANGUP_CUSTOMER1,    "##",       DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   NULL},
+    {SC_ACCESS_HANGUP_CUSTOMER2,    "**",       DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   NULL},
+};
 
 U32 sc_init_db()
 {

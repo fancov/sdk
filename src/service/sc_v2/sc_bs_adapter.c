@@ -844,9 +844,10 @@ U32 sc_send_startup2bs()
     /* 暂时不实现 */
     return DOS_SUCC;
 }
+#endif
 
 /* 发送余额查询消息 */
-U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
+U32 sc_send_balance_query2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
 {
     BS_MSG_BALANCE_QUERY *pstQueryMsg = NULL;
 #if SC_BS_NEED_RESEND
@@ -854,34 +855,31 @@ U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
     U32                  ulHashIndex = 0;
 #endif
 
-    if (DOS_ADDR_INVALID(pstSCB))
+    if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstLegCB))
     {
         return DOS_FAIL;
     }
-
-    sc_log_digest_print("Start send balance query to BS. customer : %u"
-        , pstSCB->ulCustomID);
 
     pstQueryMsg = dos_dmem_alloc(sizeof(BS_MSG_BALANCE_QUERY));
     if (DOS_ADDR_INVALID(pstQueryMsg))
     {
         DOS_ASSERT(0);
 
-        sc_logr_warning(pstSCB, SC_BS, "%s", "Alloc memory fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Alloc memory fail.");
         return DOS_FAIL;
     }
 
     dos_memzero(pstQueryMsg, sizeof(BS_MSG_BALANCE_QUERY));
     pstQueryMsg->stMsgTag.usVersion = BS_MSG_INTERFACE_VERSION;
     pstQueryMsg->stMsgTag.ulMsgSeq  = g_ulMsgSeq++;
-    pstQueryMsg->stMsgTag.ulCRNo    = pstSCB->usSCBNo;
+    pstQueryMsg->stMsgTag.ulCRNo    = pstLegCB->ulCBNo;
     pstQueryMsg->stMsgTag.ucMsgType = BS_MSG_BALANCE_QUERY_REQ;
     pstQueryMsg->stMsgTag.ucErrcode = BS_ERR_SUCC;
     pstQueryMsg->stMsgTag.usMsgLen  = sizeof(BS_MSG_BALANCE_QUERY);
-    pstQueryMsg->ulUserID           = pstSCB->ulCustomID;
-    pstQueryMsg->ulCustomerID       = pstSCB->ulCustomID;
-    pstQueryMsg->ulAccountID        = pstSCB->ulCustomID;
-    pstQueryMsg->LBalance           = 100;
+    pstQueryMsg->ulUserID           = pstSCB->ulCustomerID;
+    pstQueryMsg->ulCustomerID       = pstSCB->ulCustomerID;
+    pstQueryMsg->ulAccountID        = pstSCB->ulCustomerID;
+    pstQueryMsg->LBalance           = 0;
     pstQueryMsg->ucBalanceWarning   = 0;
 
 #if SC_BS_NEED_RESEND
@@ -890,7 +888,7 @@ U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
     {
         DOS_ASSERT(0);
 
-        sc_logr_warning(pstSCB, SC_BS, "%s", "Alloc memory for list node fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Alloc memory for list node fail.");
         return DOS_FAIL;
     }
     pstListNode->pData = (VOID *)pstQueryMsg;
@@ -927,7 +925,7 @@ U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
         pstListNode = NULL;
 
         pthread_mutex_unlock(&g_mutexMsgList);
-        sc_logr_notice(pstSCB, SC_BS, "%s", "Start the timer fail while send the auth msg.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Start the timer fail while send the auth msg.");
         return DOS_FAIL;
     }
 #endif
@@ -961,7 +959,7 @@ U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
         dos_dmem_free(pstQueryMsg);
         pstQueryMsg = NULL;
 
-        sc_logr_notice(pstSCB, SC_BS, "%s", "Send Auth msg fail.");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Send Auth msg fail.");
         return DOS_FAIL;
     }
 
@@ -974,6 +972,7 @@ U32 sc_send_balance_query2bs(SC_SCB_ST *pstSCB)
 
 }
 
+#if 0
 #define SC_CHECK_SERVICE(pstSCB, ulSrvType)                        \
         ((pstSCB)                                                 \
             && ((pstSCB)->aucServiceType[0] == (ulSrvType)         \

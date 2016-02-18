@@ -85,7 +85,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     stEvtAuth.stMsgTag.ulMsgType = SC_EVT_AUTH_RESULT;
     stEvtAuth.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
     stEvtAuth.stMsgTag.usInterErr = pstAuthMsg->stMsgTag.ucErrcode;
-    stEvtAuth.lBalance = pstAuthMsg->lBalance;
+    stEvtAuth.LBalance = pstAuthMsg->lBalance;
     stEvtAuth.ulSCBNo = pstLegCB->ulSCBNo;
     stEvtAuth.ulLCBNo = pstAuthMsg->stMsgTag.ulCRNo;
     stEvtAuth.ulMaxSession = pstAuthMsg->ulMaxSession;
@@ -98,6 +98,55 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 
     return ulRet;
 }
+
+U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
+{
+    SC_MSG_EVT_AUTH_RESULT_ST stEvtAuth;
+    SC_LEG_CB                 *pstLegCB;
+    BS_MSG_BALANCE_QUERY      *pstAuthMsg = NULL;
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg.");
+        return DOS_FAIL;
+    }
+
+    if (pstMsg->usMsgLen != sizeof(BS_MSG_BALANCE_QUERY))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "Invalid Msg length. Length: %d", pstMsg->usMsgLen);
+        return DOS_FAIL;
+    }
+
+    pstAuthMsg = (BS_MSG_BALANCE_QUERY *)pstMsg;
+    if (DOS_ADDR_INVALID(pstAuthMsg))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg body. ");
+        return DOS_FAIL;
+    }
+
+    pstLegCB = sc_lcb_get(pstAuthMsg->stMsgTag.ulCRNo);
+    if (DOS_ADDR_INVALID(pstLegCB))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg body. ");
+        return DOS_FAIL;
+    }
+
+    stEvtAuth.stMsgTag.ulMsgType = SC_EVT_AUTH_RESULT;
+    stEvtAuth.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
+    stEvtAuth.stMsgTag.usInterErr = pstAuthMsg->stMsgTag.ucErrcode;
+    stEvtAuth.LBalance = pstAuthMsg->LBalance;
+    stEvtAuth.ulSCBNo = pstLegCB->ulSCBNo;
+    stEvtAuth.ulLCBNo = pstAuthMsg->stMsgTag.ulCRNo;
+    stEvtAuth.ucBalanceWarning = pstAuthMsg->ucBalanceWarning;
+
+    ulRet = sc_send_event_auth_rsp(&stEvtAuth);
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Process auth response finished. CR:%u SCB: %u", pstLegCB->ulSCBNo, pstLegCB->ulSCBNo);
+
+    return ulRet;
+}
+
 
 U32 sc_bs_billing_start_rsp_proc(BS_MSG_TAG *pstMsg)
 {
@@ -279,7 +328,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
             stBSMsgStat.ulHBRsp++;
             break;
         case BS_MSG_BALANCE_QUERY_RSP:
-            //sc_bs_balance_enquiry_rsp_proc(pstMsgHeader);
+            sc_bs_balance_enquiry_rsp_proc(pstMsgHeader);
             break;
         case BS_MSG_USER_AUTH_RSP:
         case BS_MSG_ACCOUNT_AUTH_RSP:

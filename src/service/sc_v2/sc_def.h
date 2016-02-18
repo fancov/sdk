@@ -140,6 +140,7 @@ extern "C" {
 /* 单个群呼任务最大并发数 */
 #define SC_MAX_TASK_MAX_CONCURRENCY    80
 
+#define SC_ACCESS_CODE_LEN             8
 
 /**
  * 1. 没有被删除
@@ -1690,7 +1691,7 @@ typedef struct tagSCMsgEvtAuthResult{
     U32     ulLCBNo;
 
     /** 余额,单位:分 */
-    S32             lBalance;
+    S64             LBalance;
     /** 会话次数,可用于SMS类业务 */
     U32             ulSessionNum;
     /** 可通话时长/最大数量,单位:秒/条 */
@@ -1850,6 +1851,35 @@ typedef struct tagSCInconmingCallNode
     S8          szCaller[SC_NUM_LENGTH];
 }SC_INCOMING_CALL_NODE_ST;
 
+typedef enum tagAccessCodeType{
+    SC_ACCESS_BALANCE_ENQUIRY   = 0,          /**< 余额查询 */
+    SC_ACCESS_AGENT_ONLINE      = 1,          /**< 坐席登陆 */
+    SC_ACCESS_AGENT_OFFLINE     = 2,          /**< 坐席登出 */
+    SC_ACCESS_AGENT_EN_QUEUE    = 3,          /**< 坐席置闲 */
+    SC_ACCESS_AGENT_DN_QUEUE    = 4,          /**< 坐席置忙 */
+    SC_ACCESS_AGENT_SIGNIN      = 5,          /**< 坐席长签 */
+    SC_ACCESS_AGENT_SIGNOUT     = 6,          /**< 坐席退出长签 */
+    SC_ACCESS_MARK_CUSTOMER     = 7,          /**< 标记客户 */
+    SC_ACCESS_BLIND_TRANSFER    = 8,          /**< 盲转 */
+    SC_ACCESS_ATTENDED_TRANSFER = 9,          /**< 协商转 */
+    SC_ACCESS_HANGUP_CUSTOMER1  = 10,         /**< 挂断客户的电话1 */
+    SC_ACCESS_HANGUP_CUSTOMER2  = 11,         /**< 挂断客户的电话2 */
+
+    SC_ACCESS_BUTT
+
+}SC_ACCESS_CODE_TYPE_EN;
+
+typedef struct tagAccessCodeList
+{
+    U32  ulType;                                /**< 接入码类型 */
+    S8   szCodeFormat[SC_ACCESS_CODE_LEN];      /**< 接入码格式 */
+    BOOL bSupportDirectDial;                    /**< 是否支持直接拨号 */
+    BOOL bSupportSecondDial;                    /**< 是否支持二次拨号 */
+    BOOL bExactMatch;                           /**< 是否是完全匹配 */
+    BOOL bValid;                                /**< 是否有效 */
+    U32   (*fn_init)(SC_SRV_CB *, SC_LEG_CB *); /**< 接入号处理函数 */
+
+}SC_ACCESS_CODE_LIST_ST;
 
 VOID sc_scb_init(SC_SRV_CB *pstSCB);
 SC_SRV_CB *sc_scb_alloc();
@@ -1887,6 +1917,7 @@ U32 sc_send_event_record(SC_MSG_EVT_RECORD_ST *pstEvent);
 U32 sc_send_event_playback(SC_MSG_EVT_PLAYBACK_ST *pstEvent);
 U32 sc_send_event_leave_call_queue_rsp(SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvent);
 U32 sc_send_usr_auth2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
+U32 sc_send_balance_query2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 
 U32 sc_req_hungup(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
 U32 sc_req_bridge_call(U32 ulSCBNo, U32 ulCallingLegNo, U32 ulCalleeLegNo);
@@ -1923,6 +1954,8 @@ U32 sc_agent_call_notify(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller);
 U32 sc_agent_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType);
 U32 sc_agent_set_proc(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType);
 U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType);
+U32 sc_agent_set_login(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType);
+U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 void sc_agent_mark_custom_callback(U64 arg);
 
 U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -1943,6 +1976,7 @@ U32 sc_sigin_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_sigin_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_sigin_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_sigin_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_sigin_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -1989,6 +2023,11 @@ U32 sc_incoming_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_mark_custom_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
+U32 sc_access_code_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_access_code_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_access_code_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_access_code_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
 U32 sc_agent_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCallerNum);
 
 SC_TASK_CB *sc_tcb_alloc();
@@ -2027,6 +2066,9 @@ U32 sc_sip_account_get_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
 BOOL sc_customer_is_exit(U32 ulCustomerID);
 U32 sc_log_digest_print(const S8 *szTraceStr);
 U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller);
+
+U32 sc_access_balance_enquiry(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
+U32 sc_access_agent_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 
 #endif  /* end of __SC_DEF_V2_H__ */
 

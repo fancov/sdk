@@ -51,6 +51,14 @@ SC_HINT_DESC_ST  astHitList[] = {
     {SC_SND_7,                         "7"},
     {SC_SND_8,                         "8"},
     {SC_SND_9,                         "9"},
+    {SC_SND_FU,                        "fu"},
+    {SC_SND_WAN,                       "wan"},
+    {SC_SND_QIAN,                      "qian"},
+    {SC_SND_BAI,                       "bai"},
+    {SC_SND_SHI,                       "shi"},
+    {SC_SND_YUAN,                      "yuan"},
+    {SC_SND_JIAO,                      "jiao"},
+    {SC_SND_FEN,                       "fen"},
     {SC_SND_BUTT,                      NULL}
 };
 

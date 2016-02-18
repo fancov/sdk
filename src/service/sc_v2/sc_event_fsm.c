@@ -23,9 +23,200 @@ extern "C" {
 #include "sc_pub.h"
 #include "sc_bs.h"
 
+extern SC_ACCESS_CODE_LIST_ST astSCAccessList[];
 
-U32 sc_call_access_code(SC_SRV_CB *pstSCB, S8 *pszAccessCode)
+U32 sc_access_balance_enquiry(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
 {
+    return sc_send_balance_query2bs(pstSCB, pstLegCB);
+}
+
+U32 sc_access_agent_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
+{
+    SC_AGENT_NODE_ST    *pstAgent = NULL;
+    U32                 ulResult  = DOS_FAIL;
+    BOOL                bPlayRes  = DOS_TRUE;
+    U32                 ulKey;
+
+    if (pstSCB->stAccessCode.ulAgentID == 0)
+    {
+        /* 根据主叫号码获得坐席 */
+        if (SC_LEG_PEER_INBOUND_INTERNAL == pstLegCB->stCall.ucPeerType)
+        {
+            pstAgent = sc_agent_get_by_sip_acc(pstLegCB->stCall.stNumInfo.szOriginalCalling);
+        }
+        else
+        {
+            pstAgent = sc_agent_get_by_tt_num(pstLegCB->stCall.stNumInfo.szOriginalCalling);
+        }
+    }
+    else
+    {
+        pstAgent = sc_agent_get_by_id(pstSCB->stAccessCode.ulAgentID);
+    }
+
+    if (DOS_ADDR_INVALID(pstAgent) || DOS_ADDR_INVALID(pstAgent->pstAgentInfo))
+    {
+        /* 没有找到坐席，放提示音 */
+        ulResult = DOS_FAIL;
+    }
+    else
+    {
+        switch (pstSCB->stAccessCode.ulSrvType)
+        {
+            case SC_ACCESS_AGENT_ONLINE:
+                ulResult = sc_agent_status_update(SC_ACTION_AGENT_LOGIN, pstAgent->pstAgentInfo->ulAgentID, OPERATING_TYPE_PHONE);
+                break;
+            case SC_ACCESS_AGENT_OFFLINE:
+                ulResult = sc_agent_status_update(SC_ACTION_AGENT_LOGOUT, pstAgent->pstAgentInfo->ulAgentID, OPERATING_TYPE_PHONE);
+                break;
+            case SC_ACCESS_AGENT_EN_QUEUE:
+                ulResult = sc_agent_status_update(SC_ACTION_AGENT_IDLE, pstAgent->pstAgentInfo->ulAgentID, OPERATING_TYPE_PHONE);
+                break;
+            case SC_ACCESS_AGENT_DN_QUEUE:
+                ulResult = sc_agent_status_update(SC_ACTION_AGENT_BUSY, pstAgent->pstAgentInfo->ulAgentID, OPERATING_TYPE_PHONE);
+                break;
+            case SC_ACCESS_AGENT_SIGNIN:
+                ulResult = sc_agent_access_set_sigin(pstAgent, pstSCB, pstLegCB);
+                if (ulResult == DOS_SUCC)
+                {
+                    sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stSigin.ulLegNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
+                    bPlayRes = DOS_FALSE;
+                }
+                break;
+            case SC_ACCESS_AGENT_SIGNOUT:
+                ulResult = sc_agent_status_update(SC_ACTION_AGENT_SIGNOUT, pstAgent->pstAgentInfo->ulAgentID, OPERATING_TYPE_PHONE);
+                break;
+            case SC_ACCESS_MARK_CUSTOMER:
+                if (pstAgent->pstAgentInfo->szLastCustomerNum[0] == '\0')
+                {
+                    ulResult = DOS_FAIL;
+                    break;
+                }
+
+                if (1 != dos_sscanf(pstLegCB->stCall.stNumInfo.szOriginalCallee+dos_strlen(astSCAccessList[SC_ACCESS_MARK_CUSTOMER].szCodeFormat), "%d", &ulKey) && ulKey <= 9)
+                {
+                    /* 格式错误 */
+                    ulResult = DOS_FAIL;
+                    break;
+                }
+
+                /* 修改主被叫号码 */
+                dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee), "*%u#", pstLegCB->stCall.stNumInfo.szOriginalCallee);
+                dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCalling), pstAgent->pstAgentInfo->szLastCustomerNum);
+
+                dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstLegCB->stCall.stNumInfo.szRealCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
+                dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstLegCB->stCall.stNumInfo.szRealCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
+
+                dos_snprintf(pstLegCB->stCall.stNumInfo.szCallee, sizeof(pstLegCB->stCall.stNumInfo.szCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
+                dos_snprintf(pstLegCB->stCall.stNumInfo.szCalling, sizeof(pstLegCB->stCall.stNumInfo.szCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
+
+                /* 标记客户 */
+                ulResult = sc_agent_marker_update_req(pstSCB->ulCustomerID, pstAgent->pstAgentInfo->ulAgentID, ulKey, pstAgent->pstAgentInfo->szLastCustomerNum);
+                break;
+        }
+    }
+
+    if (DOS_SUCC != ulResult)
+    {
+        sc_req_play_sound(pstSCB->ulSCBNo, pstLegCB->ulCBNo, SC_SND_SET_FAIL, 1, 0, 0);
+    }
+    else if (bPlayRes)
+    {
+        sc_req_play_sound(pstSCB->ulSCBNo, pstLegCB->ulCBNo, SC_SND_SET_SUCC, 1, 0, 0);
+    }
+
+    return ulResult;
+}
+
+U32 sc_call_access_code(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, S8 *szNum, BOOL bIsSecondDial)
+{
+    U32     i                        = 0;
+    S8      szDealNum[SC_NUM_LENGTH] = {0,};
+
+    if (DOS_ADDR_INVALID(pstSCB)
+        || DOS_ADDR_INVALID(pstCallingLegCB)
+        || DOS_ADDR_INVALID(szNum))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (!bIsSecondDial)
+    {
+        /* 根据分机号，获取customer */
+        if (SC_LEG_PEER_INBOUND_INTERNAL == pstCallingLegCB->stCall.ucPeerType)
+        {
+            pstSCB->ulCustomerID = sc_sip_account_get_customer(pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+        }
+        else if (SC_LEG_PEER_INBOUND == pstCallingLegCB->stCall.ucPeerType)
+        {
+            /* external可能是TT号呼入哦 */
+            pstSCB->ulCustomerID = sc_did_get_custom(pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+        }
+    }
+
+    if (pstSCB->ulCustomerID == U32_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstSCB->stCall.stSCBTag.usStatus = SC_CALL_ACTIVE;
+    pstSCB->ulCurrentSrv++;
+    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+    pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+    pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+    pstSCB->stAccessCode.ulLegNo = pstCallingLegCB->ulCBNo;
+
+    dos_strncpy(szDealNum, szNum, SC_NUM_LENGTH-1);
+    if (szDealNum[dos_strlen(szDealNum)] == '#')
+    {
+        szDealNum[dos_strlen(szDealNum)] = '\0';
+    }
+
+    /* 判断业务 */
+    for (i=0; i<SC_ACCESS_BUTT; i++)
+    {
+        if (!astSCAccessList[i].bValid)
+        {
+            continue;
+        }
+
+        if ((bIsSecondDial && !astSCAccessList[i].bSupportDirectDial)
+            || (!bIsSecondDial && !astSCAccessList[i].bSupportDirectDial))
+        {
+            continue;
+        }
+
+        if (astSCAccessList[i].bExactMatch)
+        {
+            if (dos_strcmp(szDealNum, astSCAccessList[i].szCodeFormat) == 0)
+            {
+                break;
+            }
+        }
+        else
+        {
+            if (dos_strncmp(szDealNum, astSCAccessList[i].szCodeFormat, dos_strlen(astSCAccessList[i].szCodeFormat)) == 0)
+            {
+                break;
+            }
+        }
+    }
+
+    if (i >= SC_ACCESS_BUTT)
+    {
+        /* 没有找个匹配的 */
+        return DOS_FAIL;
+    }
+
+    pstSCB->stAccessCode.ulSrvType = astSCAccessList[i].ulType;
+    pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_ACTIVE;
+    if (DOS_ADDR_VALID(astSCAccessList[i].fn_init))
+    {
+        astSCAccessList[i].fn_init(pstSCB, pstCallingLegCB);
+    }
+
     return DOS_SUCC;
 }
 
@@ -74,7 +265,18 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             /* 如果是接入码业务需要发起接入码业务 */
             if ('*' == pstCallingLegCB->stCall.stNumInfo.szOriginalCallee[0])
             {
-                ulRet = sc_call_access_code(pstSCB, pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+                pstCallingLegCB->stCall.stTimeInfo.ulAnswerTime = pstCallingLegCB->stCall.stTimeInfo.ulStartTime;
+                if (SC_LEG_PEER_INBOUND_INTERNAL == pstCallingLegCB->stCall.ucPeerType
+                    || SC_LEG_PEER_INBOUND_TT == pstCallingLegCB->stCall.ucPeerType)
+                {
+                    sc_scb_set_service(pstSCB, BS_SERV_INTER_CALL);
+                }
+                else
+                {
+                    sc_scb_set_service(pstSCB, BS_SERV_INBAND_CALL);
+                }
+
+                ulRet = sc_call_access_code(pstSCB, pstCallingLegCB, pstCallingLegCB->stCall.stNumInfo.szOriginalCallee, DOS_FALSE);
                 goto proc_finished;
             }
 
@@ -482,7 +684,16 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (DOS_ADDR_INVALID(pstCallee)
                 || DOS_ADDR_INVALID(pstCalling))
             {
-                /* TODO 错误处理 */
+                if (DOS_ADDR_VALID(pstCalling))
+                {
+                    /* 可能是新业务等 */
+                    sc_send_billing_stop2bs(pstSCB, pstCalling, NULL);
+                    sc_lcb_free(pstCalling);
+                    sc_scb_free(pstSCB);
+                    break;
+                }
+
+                /* 错误处理 */
             }
 
             if (pstSCB->stCall.ulCallingLegNo == pstHungup->ulLegNo)
@@ -763,16 +974,8 @@ U32 sc_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         }
     }
 
-    if (pstDTMF->ulLegNo == pstSCB->stCall.ulCalleeLegNo)
-    {
-        if (DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee))
-        {
-            return DOS_SUCC;
-        }
-    }
-
     /* 处理客户标记 */
-    if (dos_strnlen(pstLCB->stCall.stNumInfo.szDial, SC_NUM_LENGTH) == 3)
+    if (dos_strlen(pstLCB->stCall.stNumInfo.szDial) == 3)
     {
         /* 第一位是*, 第二位是一个数字, 第三位为*或者# */
         if ('*' == pstLCB->stCall.stNumInfo.szDial[0]
@@ -3432,6 +3635,58 @@ U32 sc_sigin_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return DOS_SUCC;
 }
 
+U32 sc_sigin_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_DTMF_ST    *pstDTMF = NULL;
+    SC_LEG_CB             *pstLCB =  NULL;
+
+    pstDTMF = (SC_MSG_EVT_DTMF_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstDTMF) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstLCB = sc_lcb_get(pstDTMF->ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 长签电话没有业务时，才有效 */
+    if (pstLCB->ulSCBNo != U32_BUTT)
+    {
+        return DOS_SUCC;
+    }
+
+    if (DOS_ADDR_INVALID(pstSCB->stSigin.pstAgentNode)
+        || DOS_ADDR_INVALID(pstSCB->stSigin.pstAgentNode->pstAgentInfo))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (!pstSCB->stAccessCode.stSCBTag.bValid)
+    {
+        if (pstDTMF->cDTMFVal != '*')
+        {
+            /* 第一个字符不是 '*' 不保存  */
+            return DOS_SUCC;
+        }
+
+        pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+        pstSCB->stAccessCode.szDialCache[0] = '\0';
+        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+        pstSCB->stAccessCode.ulAgentID = pstSCB->stSigin.pstAgentNode->pstAgentInfo->ulAgentID;
+        pstSCB->ulCurrentSrv++;
+        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+    }
+
+    return DOS_SUCC;
+}
+
 U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_LEG_CB              *pstLegCB        = NULL;
@@ -3445,7 +3700,7 @@ U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "process the sigin playback msg. status: %u", pstSCB->stSigin.stSCBTag.usStatus);
+    sc_trace_scb(pstSCB, "process the sigin release msg. status: %u", pstSCB->stSigin.stSCBTag.usStatus);
 
     pstRlayback = (SC_MSG_EVT_PLAYBACK_ST *)pstMsg;
 
@@ -3475,6 +3730,7 @@ U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 /* 需要重新呼叫坐席，进行长签 */
                 pstLegCB->stPlayback.usStatus = SC_SU_PLAYBACK_INIT;
                 pstSCB->stSigin.pstAgentNode->pstAgentInfo->bConnected = DOS_FALSE;
+
                 if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
                 {
                     /* 需要认证 */
@@ -3693,6 +3949,340 @@ U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_send_billing_stop2bs(pstSCB, pstMarkLeg, NULL);
             }
             pstSCB->stMarkCustom.stSCBTag.bWaitingExit = DOS_TRUE;
+            break;
+        default:
+            break;
+    }
+
+    return DOS_SUCC;
+}
+
+U32 sc_play_balance(U64 LBalance, U32 aulAudioList[], U32 *pulCount)
+{
+    U64   i             = 0;
+    S32   j             = 0;
+    S32   lInteger      = 0;
+    S64   LRemainder    = 0;
+    BOOL  bIsGetMSB     = DOS_FALSE;
+    BOOL  bIsZero       = DOS_FALSE;
+    U32   ulIndex       = 0;
+
+    /* 根据余额拼接出语音 */
+    aulAudioList[ulIndex++] = SC_SND_YOUR_BALANCE;
+
+    if (LBalance < 0)
+    {
+        LBalance = 0 - LBalance;
+        aulAudioList[ulIndex++] = SC_SND_FU;
+    }
+
+    LRemainder = LBalance;
+    bIsGetMSB = DOS_FALSE;
+
+    for (i=100000000000,j=0; j<10; i/=10,j++)
+    {
+        lInteger = LRemainder / i;
+        LRemainder = LRemainder % i;
+
+        if ((0 == lInteger || lInteger > 9) && DOS_FALSE == bIsGetMSB)
+        {
+            /* TODO 大于9时，说明余额操作了一个亿 */
+            continue;
+        }
+
+        bIsGetMSB = DOS_TRUE;
+
+        if (0 == lInteger)
+        {
+            bIsZero = DOS_TRUE;
+        }
+        else
+        {
+            if (bIsZero == DOS_TRUE)
+            {
+                bIsZero = DOS_FALSE;
+                aulAudioList[ulIndex++] = SC_SND_0;
+                aulAudioList[ulIndex++] = SC_SND_0 + lInteger;
+            }
+            else
+            {
+                aulAudioList[ulIndex++] = SC_SND_0 + lInteger;
+            }
+        }
+
+        switch (j)
+        {
+            case 0:
+            case 4:
+                if (lInteger != 0)
+                {
+                    aulAudioList[ulIndex++] = SC_SND_QIAN;
+                }
+                break;
+            case 1:
+            case 5:
+                if (lInteger != 0)
+                {
+                    aulAudioList[ulIndex++] = SC_SND_BAI;
+                }
+                break;
+            case 2:
+            case 6:
+                if (lInteger != 0)
+                {
+                    aulAudioList[ulIndex++] = SC_SND_SHI;
+                }
+                break;
+            case 3:
+                aulAudioList[ulIndex++] = SC_SND_WAN;
+                bIsZero = DOS_FALSE;
+                break;
+            case 7:
+                aulAudioList[ulIndex++] = SC_SND_YUAN;
+                bIsZero = DOS_FALSE;
+                break;
+            case 8:
+                if (lInteger != 0)
+                {
+                    aulAudioList[ulIndex++] = SC_SND_JIAO;
+                }
+                bIsZero = DOS_FALSE;
+                break;
+            case 9:
+                if (lInteger != 0)
+                {
+                    aulAudioList[ulIndex++] = SC_SND_FEN;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    if (DOS_FALSE == bIsGetMSB)
+    {
+        /* 余额是0 */
+        aulAudioList[ulIndex++] = SC_SND_0;
+        aulAudioList[ulIndex++] = SC_SND_YUAN;
+    }
+
+    *pulCount = ulIndex;
+
+    return DOS_SUCC;
+}
+
+U32 sc_access_code_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_AUTH_RESULT_ST  *pstAuthRsp;
+    SC_LEG_CB                  *pstLegCB = NULL;
+    U32                         ulRet = DOS_FAIL;
+    SC_MSG_CMD_PLAYBACK_ST      stPlaybackRsp;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing access code event. status : %u", pstSCB->stAccessCode.stSCBTag.usStatus);
+
+    pstAuthRsp = (SC_MSG_EVT_AUTH_RESULT_ST *)pstMsg;
+
+    if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        /* 注意通过偏移量，找到CC统一定义的错误码 */
+
+        return DOS_SUCC;
+    }
+
+    pstLegCB = sc_lcb_get(pstSCB->stAccessCode.ulLegNo);
+    if (DOS_ADDR_INVALID(pstLegCB))
+    {
+        /* 错误处理 */
+    }
+
+    switch (pstSCB->stAccessCode.stSCBTag.usStatus)
+    {
+        case SC_ACCESS_CODE_ACTIVE:
+            pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_RELEASE;
+
+            switch (pstSCB->stAccessCode.ulSrvType)
+            {
+                case SC_ACCESS_BALANCE_ENQUIRY:
+                    /* 播放余额 */
+                    stPlaybackRsp.stMsgTag.ulMsgType = SC_CMD_PLAYBACK;
+                    stPlaybackRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+                    stPlaybackRsp.stMsgTag.usInterErr = 0;
+                    stPlaybackRsp.ulMode = 0;
+                    stPlaybackRsp.ulSCBNo = pstSCB->ulSCBNo;
+                    stPlaybackRsp.ulLegNo = pstLegCB->ulCBNo;
+                    stPlaybackRsp.ulLoopCnt = 1;
+                    stPlaybackRsp.ulInterval = 0;
+                    stPlaybackRsp.ulSilence  = 0;
+                    stPlaybackRsp.enType = SC_CND_PLAYBACK_SYSTEM;
+                    stPlaybackRsp.blNeedDTMF = DOS_TRUE;
+                    sc_play_balance(pstAuthRsp->LBalance, stPlaybackRsp.aulAudioList, &stPlaybackRsp.ulTotalAudioCnt);
+
+                    if (sc_send_cmd_playback(&stPlaybackRsp.stMsgTag) != DOS_SUCC)
+                    {
+                        /* 错误处理 */
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            break;
+        default:
+            break;
+    }
+
+    return ulRet;
+}
+
+U32 sc_access_code_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_DTMF_ST    *pstDTMF = NULL;
+    SC_LEG_CB             *pstLCB  =  NULL;
+    U32                   ulRet    = DOS_SUCC;
+
+    pstDTMF = (SC_MSG_EVT_DTMF_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstDTMF) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstLCB = sc_lcb_get(pstDTMF->ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstSCB->stAccessCode.stSCBTag.usStatus)
+    {
+        case SC_ACCESS_CODE_OVERLAP:
+            /* 保存到缓存中 */
+            dos_snprintf(pstSCB->stAccessCode.szDialCache+dos_strlen(pstSCB->stAccessCode.szDialCache), SC_MAX_ACCESS_CODE_LENGTH-dos_strlen(pstSCB->stAccessCode.szDialCache), "%c", pstDTMF->cDTMFVal);
+
+            if (dos_strcmp(pstSCB->stAccessCode.szDialCache, astSCAccessList[SC_ACCESS_HANGUP_CUSTOMER1].szCodeFormat) == 0
+                    || dos_strcmp(pstSCB->stAccessCode.szDialCache, astSCAccessList[SC_ACCESS_HANGUP_CUSTOMER2].szCodeFormat) == 0)
+            {
+                /* ## / ** */
+                pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_ACTIVE;
+                astSCAccessList[SC_ACCESS_HANGUP_CUSTOMER1].fn_init(pstSCB, pstLCB);
+                /* 清空缓存 */
+                pstSCB->stAccessCode.szDialCache[0] = '\0';
+            }
+            else if (pstDTMF->cDTMFVal == '#' && dos_strlen(pstSCB->stAccessCode.szDialCache) > 1)
+            {
+                /* # 为结束符，收到后，就应该去解析, 特别的，如果第一个字符为#,不需要去解析 */
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Secondary dialing. caller : %s, DialNum : %s", pstLCB->stCall.stNumInfo.szRealCalling, pstSCB->stAccessCode.szDialCache);
+                /* 不保存最后一个 # */
+                pstSCB->stAccessCode.szDialCache[dos_strlen(pstSCB->stAccessCode.szDialCache) - 1] = '\0';
+                ulRet = sc_call_access_code(pstSCB, pstLCB, pstSCB->stAccessCode.szDialCache, DOS_TRUE);
+                /* 清空缓存 */
+                pstSCB->stAccessCode.szDialCache[0] = '\0';
+            }
+            else if (pstDTMF->cDTMFVal == '*' && dos_strlen(pstSCB->stAccessCode.szDialCache) > 1)
+            {
+                /* 判断接收到 * 号，是否需要解析 */
+                if (dos_strcmp(pstSCB->stAccessCode.szDialCache, astSCAccessList[SC_ACCESS_MARK_CUSTOMER].szCodeFormat)
+                    && dos_strcmp(pstSCB->stAccessCode.szDialCache, astSCAccessList[SC_ACCESS_BLIND_TRANSFER].szCodeFormat)
+                    && dos_strcmp(pstSCB->stAccessCode.szDialCache, astSCAccessList[SC_ACCESS_ATTENDED_TRANSFER].szCodeFormat))
+                {
+                    /* 解析 */
+                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Secondary dialing. caller : %s, DialNum : %s", pstLCB->stCall.stNumInfo.szRealCalling, pstSCB->stAccessCode.szDialCache);
+                    /* 不保存最后一个 * */
+                    pstSCB->stAccessCode.szDialCache[dos_strlen(pstSCB->stAccessCode.szDialCache) - 1] = '\0';
+                    ulRet = sc_call_access_code(pstSCB, pstLCB, pstSCB->stAccessCode.szDialCache, DOS_TRUE);
+                    /* 清空缓存 */
+                    pstSCB->stAccessCode.szDialCache[0] = '\0';
+                }
+            }
+            break;
+        default:
+            break;
+     }
+
+    return ulRet;
+}
+
+U32 sc_access_code_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_LEG_CB              *pstLegCB        = NULL;
+    SC_MSG_EVT_PLAYBACK_ST *pstRlayback     = NULL;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "process the access code playback stop msg. status: %u", pstSCB->stAccessCode.stSCBTag.usStatus);
+
+    pstRlayback = (SC_MSG_EVT_PLAYBACK_ST *)pstMsg;
+
+    pstLegCB = sc_lcb_get(pstSCB->stAccessCode.ulLegNo);
+    if (DOS_ADDR_INVALID(pstLegCB))
+    {
+        sc_scb_free(pstSCB);
+
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstSCB->stAccessCode.stSCBTag.usStatus)
+    {
+        case SC_ACCESS_CODE_ACTIVE:
+            switch (pstSCB->stAccessCode.ulSrvType)
+            {
+                case SC_ACCESS_BALANCE_ENQUIRY:
+                case SC_ACCESS_AGENT_ONLINE:
+                case SC_ACCESS_AGENT_OFFLINE:
+                    if (pstLegCB->stPlayback.usStatus == SC_SU_PLAYBACK_INIT)
+                    {
+                        /* 挂断电话 */
+                        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_RELEASE;
+                        sc_req_hungup(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                    }
+                    break;
+                case SC_ACCESS_AGENT_EN_QUEUE:
+                case SC_ACCESS_AGENT_DN_QUEUE:
+                    break;
+                default:
+                    break;
+            }
+
+            break;
+        default:
+            break;
+    }
+
+    return DOS_SUCC;
+}
+
+U32 sc_access_code_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvtCall = NULL;
+
+    pstEvtCall = (SC_MSG_EVT_LEAVE_CALLQUE_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstEvtCall) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing access code realse event. status : %u", pstSCB->stIncomingQueue.stSCBTag.usStatus);
+
+    switch (pstSCB->stAccessCode.stSCBTag.usStatus)
+    {
+        case SC_ACCESS_CODE_ACTIVE:
+        case SC_ACCESS_CODE_RELEASE:
+            pstSCB->stAccessCode.stSCBTag.bWaitingExit = DOS_TRUE;
             break;
         default:
             break;

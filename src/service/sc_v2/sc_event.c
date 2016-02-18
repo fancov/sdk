@@ -432,7 +432,23 @@ U32 sc_srv_access_code_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Access Code Service, SCB:%u"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
-
+    switch (pstMsg->ulMsgType)
+    {
+        case SC_EVT_AUTH_RESULT:
+            ulRet = sc_access_code_auth_rsp(pstMsg, pstSCB);
+            break;
+        case SC_EVT_DTMF:
+            ulRet = sc_access_code_dtmf(pstMsg, pstSCB);
+            break;
+        case SC_EVT_PLAYBACK_END:
+            ulRet = sc_access_code_playback_stop(pstMsg, pstSCB);
+            break;
+        case SC_EVT_CALL_RERLEASE:
+            ulRet = sc_access_code_release(pstMsg, pstSCB);
+            break;
+        default:
+            break;
+    }
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Access Code Service, SCB:%u, Ret: %s"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
                 , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
@@ -877,7 +893,7 @@ U32 sc_srv_sigin_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *p
             break;
 
         case SC_EVT_DTMF:
-            /* 暂时不处理 */
+            ulRet = sc_sigin_dtmf(pstMsg, pstSCB);
             break;
 
         case SC_EVT_RECORD_START:
@@ -1024,7 +1040,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
                 break;
 
             case SC_SRV_ACCESS_CODE:
-                ulRet = DOS_SUCC;
+                ulRet = sc_srv_access_code_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
 
             case SC_SRV_HOLD:

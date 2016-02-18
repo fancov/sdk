@@ -80,6 +80,7 @@ S8 *g_pszSCEventStr[] = {
     "EVT_PLAYBACK_START",
     "EVT_PLAYBACK_END",
     "EVT_AUTH_RESULT",
+    "EVT_LEACE_CALL_QUEUE"
     "EVT_ERROR_PORT",
 
     "",

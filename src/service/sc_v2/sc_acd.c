@@ -223,7 +223,6 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
     pstSCB->stSigin.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stSigin.pstAgentNode = pstAgentNode;
     pstSCB->stSigin.ulLegNo = pstLegCB->ulCBNo;
-    pstSCB->stSigin.pstAgentNode = pstAgentNode;
     pstSCB->ulAgentID = pstAgentInfo->ulAgentID;
     pstSCB->ulCustomerID = pstAgentInfo->ulCustomerID;
 
@@ -245,7 +244,6 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
         case AGENT_BIND_SIP:
             dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee), pstAgentInfo->szUserID);
             pstLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
-            sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
 
             break;
 
@@ -259,7 +257,7 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
         case AGENT_BIND_MOBILE:
             dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee), pstAgentInfo->szMobile);
             pstLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
-
+            sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
             break;
 
         case AGENT_BIND_TT_NUMBER:
@@ -289,8 +287,8 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
     {
         /* 发起呼叫 */
         /* 处理一下号码 */
-        dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstLegCB->stCall.stNumInfo.szCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
-        dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstLegCB->stCall.stNumInfo.szCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
+        dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstLegCB->stCall.stNumInfo.szRealCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
+        dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstLegCB->stCall.stNumInfo.szRealCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
 
         dos_snprintf(pstLegCB->stCall.stNumInfo.szCallee, sizeof(pstLegCB->stCall.stNumInfo.szCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
         dos_snprintf(pstLegCB->stCall.stNumInfo.szCalling, sizeof(pstLegCB->stCall.stNumInfo.szCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
@@ -2381,6 +2379,83 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
     return DOS_SUCC;
 }
 
+U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
+{
+    U32 ulRet = DOS_FAIL;
+
+    if (DOS_ADDR_INVALID(pstAgent)
+        || DOS_ADDR_INVALID(pstAgent->pstAgentInfo)
+        || DOS_ADDR_INVALID(pstSCB)
+        || DOS_ADDR_INVALID(pstLegCB))
+    {
+        return DOS_FAIL;
+    }
+
+    /* 通过 接入码 长签时 */
+    if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_INBOUND_INTERNAL)
+    {
+        pstLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+    }
+    else if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_INBOUND_TT)
+    {
+        pstLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
+    }
+    else
+    {
+        return DOS_FAIL;
+    }
+
+    /* 修改主被叫号码 */
+    dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee), pstLegCB->stCall.stNumInfo.szOriginalCalling);
+    /* 从主叫号码组中获取主叫号码 */
+    ulRet = sc_caller_setting_select_number(pstAgent->pstAgentInfo->ulCustomerID, pstAgent->pstAgentInfo->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstLegCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
+    if (ulRet != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstAgent->pstAgentInfo->ulCustomerID, pstAgent->pstAgentInfo->ulAgentID);
+
+        return DOS_FAIL;
+    }
+
+    dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstLegCB->stCall.stNumInfo.szRealCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
+    dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstLegCB->stCall.stNumInfo.szRealCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
+
+    dos_snprintf(pstLegCB->stCall.stNumInfo.szCallee, sizeof(pstLegCB->stCall.stNumInfo.szCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
+    dos_snprintf(pstLegCB->stCall.stNumInfo.szCalling, sizeof(pstLegCB->stCall.stNumInfo.szCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
+
+    if (pstAgent->pstAgentInfo->ulLastSignInTime)
+    {
+        sc_agent_stat(SC_AGENT_STAT_SIGNIN, pstAgent->pstAgentInfo, pstAgent->pstAgentInfo->ulAgentID, 0);
+    }
+    pstAgent->pstAgentInfo->ulLastSignInTime = 0;
+
+    pstAgent->pstAgentInfo->ulLegNo = pstLegCB->ulCBNo;
+    pstAgent->pstAgentInfo->bNeedConnected = DOS_TRUE;
+    pstAgent->pstAgentInfo->bConnected = DOS_TRUE;
+
+    pstLegCB->ulIndSCBNo = pstSCB->ulSCBNo;
+    pstLegCB->ulSCBNo = U32_BUTT;
+
+    sc_scb_init(pstSCB);
+    pstSCB->bValid = DOS_TRUE;
+    pstSCB->ulAllocTime = time(NULL);
+
+    pstSCB->stSigin.stSCBTag.bValid = DOS_TRUE;
+    pstSCB->stSigin.pstAgentNode = pstAgent;
+    pstSCB->stSigin.ulLegNo = pstLegCB->ulCBNo;
+    pstSCB->ulAgentID = pstAgent->pstAgentInfo->ulAgentID;
+    pstSCB->ulCustomerID = pstAgent->pstAgentInfo->ulCustomerID;
+
+    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = (SC_SCB_TAG_ST *)&pstSCB->stSigin;
+
+    pstSCB->stSigin.stSCBTag.usStatus = SC_SIGIN_ACTIVE;
+
+    pstAgent->pstAgentInfo->ucStatus = SC_ACD_IDEL;
+
+    sc_agent_status_notify(pstAgent->pstAgentInfo, pstAgent->pstAgentInfo->ucStatus);
+
+    return DOS_SUCC;
+}
+
 U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 {
     U32 ulOldStatus;
@@ -2756,13 +2831,12 @@ U32 sc_agent_http_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
 
 U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
 {
-    SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
-    SC_AGENT_INFO_ST   *pstAgentInfo = NULL;     /* 坐席信息 */
-    HASH_NODE_S            *pstHashNode = NULL;
-    U32                     ulHashIndex = 0;
-    U32                     ulResult    = DOS_FAIL;
+    SC_AGENT_NODE_ST        *pstAgentQueueNode  = NULL;
+    SC_AGENT_INFO_ST        *pstAgentInfo       = NULL;     /* 坐席信息 */
+    HASH_NODE_S             *pstHashNode        = NULL;
+    U32                     ulHashIndex         = 0;
+    U32                     ulResult            = DOS_FAIL;
     U32                     ulOldStatus;
-
 
     pthread_mutex_lock(&g_mutexAgentList);
     sc_agent_hash_func4agent(ulAgentID, &ulHashIndex);
