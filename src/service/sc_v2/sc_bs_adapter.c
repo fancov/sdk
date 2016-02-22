@@ -669,10 +669,12 @@ U32 sc_send_usr_auth2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
 
     for (ulIndex=0, ulLoop=0; ulLoop<SC_MAX_SERVICE_TYPE; ulLoop++)
     {
-        if (pstSCB->aucServType[ulLoop] != 0 && pstSCB->aucServType[ulLoop] < BS_SERV_BUTT)
+        if (pstSCB->aucServType[ulLoop] != 0
+            && pstSCB->aucServType[ulLoop] < BS_SERV_BUTT
+            && ulIndex < BS_MAX_SERVICE_TYPE_IN_SESSION)
         {
             pstAuthMsg->aucServType[ulIndex] = pstSCB->aucServType[ulLoop];
-            ulLoop++;
+            ulIndex++;
         }
     }
 
@@ -1709,7 +1711,6 @@ U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
         || DOS_ADDR_INVALID(pstLeg)
         || !pstLeg->stRecord.bValid)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "!!!!!!!!!!!%u", pstLeg->ulCBNo);
         DOS_ASSERT(0);
         return DOS_FAIL;
     }

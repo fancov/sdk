@@ -609,6 +609,8 @@ U32 sc_esl_event_dtmf(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         {
             pstLegCB->stCall.stNumInfo.szDial[0] = '\0';
         }
+
+        pstLegCB->stCall.stTimeInfo.ulDTMFLastTime = time(NULL);
     }
     else
     {
@@ -1536,7 +1538,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_setvar %s playback_terminators none \r\n", pstLCB->szUUID);
     if (sc_esl_execute_cmd(szCMD, NULL, 0) == DOS_SUCC)
     {
-        pstLCB->stPlayback.ulTotal++;
+        //pstLCB->stPlayback.ulTotal++;
     }
 
     /* 根据状态处理 */
@@ -1555,7 +1557,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
             dos_snprintf(szCMD, sizeof(szCMD), "silence_stream://%u", pstPlayback->ulSilence);
             if (sc_esl_execute("playback", szCMD, pstLCB->szUUID) == DOS_SUCC)
             {
-                pstLCB->stPlayback.ulTotal++;
+                //pstLCB->stPlayback.ulTotal++;
             }
 
             if (pstPlayback->ulLoopCnt == 1)

@@ -509,11 +509,33 @@ U32 sc_srv_transfer_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Transfer Service, SCB:%u"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
 
+    switch (pstMsg->ulMsgType)
+    {
+        case SC_EVT_AUTH_RESULT:
+            ulRet = sc_transfer_auth_rsp(pstMsg, pstSCB);
+            break;
+        case SC_EVT_CALL_SETUP:
+            ulRet = sc_transfer_setup(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_AMSWERED:
+            ulRet = sc_transfer_answer(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_RINGING:
+            ulRet = sc_transfer_ringing(pstMsg, pstSCB);
+            break;
+        case SC_EVT_CALL_RERLEASE:
+            ulRet = sc_transfer_release(pstMsg, pstSCB);
+        default:
+            break;
+    }
+
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Transfer Service, SCB:%u, Ret: %s"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
                 , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
-    return DOS_SUCC;
+    return ulRet;
 }
 
 /**
@@ -804,8 +826,14 @@ U32 sc_srv_mark_custom_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG
         case SC_EVT_CALL_STATUS:
         case SC_EVT_RECORD_START:
         case SC_EVT_RECORD_END:
+            ulRet = DOS_SUCC;
+            break;
         case SC_EVT_PLAYBACK_START:
+            ulRet = sc_mark_custom_playback_start(pstMsg, pstSCB);
+            break;
         case SC_EVT_PLAYBACK_END:
+            ulRet = sc_mark_custom_playback_end(pstMsg, pstSCB);
+            break;
         case SC_EVT_AUTH_RESULT:
         case SC_EVT_LEACE_CALL_QUEUE:
             ulRet = DOS_SUCC;
@@ -1048,7 +1076,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
                 break;
 
             case SC_SRV_TRANSFER:
-                ulRet = DOS_SUCC;
+                ulRet = sc_srv_transfer_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
 
             case SC_SRV_INCOMING_QUEUE:

@@ -37,12 +37,24 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
 {
     SC_MSG_CMD_CALL_ST          stCallMsg;
     SC_LEG_CB                   *pstCalleeLegCB = NULL;
+    SC_AGENT_INFO_ST            *pstAgentInfo   = NULL;
     U32                         ulRet = DOS_FAIL;
+
+    if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstCallingLegCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
     stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
     stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
     stCallMsg.stMsgTag.usInterErr = 0;
     stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
+
+    if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling))
+    {
+        pstAgentInfo = pstSCB->stCall.pstAgentCalling->pstAgentInfo;
+    }
 
     pstCalleeLegCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstCalleeLegCB))
@@ -58,17 +70,33 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
     pstCalleeLegCB->stCall.ucStatus = SC_LEG_INIT;
     pstCalleeLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
     pstCalleeLegCB->ulSCBNo = pstSCB->ulSCBNo;
+    if (DOS_ADDR_VALID(pstAgentInfo))
+    {
+        pstCalleeLegCB->stRecord.bValid = pstAgentInfo->bRecord;
+    }
 
     pstSCB->stCall.ulCalleeLegNo = pstCalleeLegCB->ulCBNo;
 
-    /* 维护一下主叫号码 */
-    dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCalling
-                    , sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCalling)
-                    , pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+    /* 维护一下主叫号码，主叫号码从主叫号码组中获得 */
+    if (DOS_ADDR_VALID(pstAgentInfo))
+    {
+        ulRet = sc_caller_setting_select_number(pstSCB->ulCustomerID, pstAgentInfo->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstCallingLegCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
+    }
+    else
+    {
+        ulRet = sc_caller_setting_select_number(pstSCB->ulCustomerID, 0, SC_SRC_CALLER_TYPE_ALL, pstCallingLegCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
+    }
 
-    dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCallee
-                    , sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCallee)
-                    , pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+    if (ulRet != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number", pstSCB->ulCustomerID);
+        sc_lcb_free(pstCalleeLegCB);
+
+        return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_CALLER_NUMBER_ILLEGAL);;
+    }
+
+    dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCalling), pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+    dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCallee), pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
 
     /* 新LEG处理一下号码 */
     dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), pstCallingLegCB->stCall.stNumInfo.szRealCallee);
@@ -101,36 +129,27 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
 
         return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_NO_TRUNK);
     }
-#if 0
-    if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
-            && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo)
-            && pstSCB->stCall.pstAgentCalling->pstAgentInfo->bRecord)
-    {
-        pstCalleeLegCB->stRecord.bValid = DOS_TRUE;
-        pstCallingLegCB->stRecord.usStatus = SC_SU_RECORD_INIT;
-    }
-#endif
+
     ulRet = sc_send_cmd_new_call(&stCallMsg.stMsgTag);
     if (ulRet == DOS_SUCC)
     {
         pstSCB->stCall.stSCBTag.usStatus = SC_CALL_EXEC;
 
-        if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
-            && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+        if (DOS_ADDR_VALID(pstAgentInfo))
         {
             /* 修改坐席的状态 */
-            pthread_mutex_lock(&pstSCB->stCall.pstAgentCalling->pstAgentInfo->mutexLock);
-            if (pstSCB->stCall.pstAgentCalling->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+            pthread_mutex_lock(&pstAgentInfo->mutexLock);
+            if (pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
             {
-                sc_agent_set_busy(pstSCB->stCall.pstAgentCalling->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_busy(pstAgentInfo, OPERATING_TYPE_PHONE);
             }
 
-            pstSCB->stCall.pstAgentCalling->pstAgentInfo->ulLegNo = pstSCB->stCall.ulCallingLegNo;
-            dos_snprintf(pstSCB->stCall.pstAgentCalling->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+            pstAgentInfo->ulLegNo = pstSCB->stCall.ulCallingLegNo;
+            dos_snprintf(pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
 
-            pthread_mutex_unlock(&pstSCB->stCall.pstAgentCalling->pstAgentInfo->mutexLock);
+            pthread_mutex_unlock(&pstAgentInfo->mutexLock);
             /* 弹屏提醒 */
-            sc_agent_call_notify(pstSCB->stCall.pstAgentCalling->pstAgentInfo, pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+            sc_agent_call_notify(pstAgentInfo, pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
         }
     }
 
