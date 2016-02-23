@@ -920,6 +920,7 @@ typedef enum tagSCCallStatus{
     SC_CALL_AUTH2,      /**< 认证被叫 */
     SC_CALL_EXEC,       /**< 开始呼叫被叫 */
     SC_CALL_ALERTING,   /**< 被叫开始振铃 */
+    SC_CALL_TONE,       /**< 坐席长签时，给长签的坐席放提示音 */
     SC_CALL_ACTIVE,     /**< 呼叫接通 */
     SC_CALL_PROCESS,    /**< 呼叫之后的处理 */
     SC_CALL_RELEASE,    /**< 结束 */

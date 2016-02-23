@@ -950,12 +950,17 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stCall.stSCBTag.usStatus)
     {
         case SC_CALL_IDEL:
-            break;
-
         case SC_CALL_PORC:
-            break;
-
         case SC_CALL_AUTH:
+            /* 还没有呼叫被叫，主叫挂断了，直接释放就行了 */
+            pstCalling = sc_lcb_get(pstSCB->stCall.ulCallingLegNo);
+            if (DOS_ADDR_VALID(pstCalling))
+            {
+                sc_lcb_free(pstCalling);
+                pstCalling = NULL;
+            }
+            sc_scb_free(pstSCB);
+            pstSCB = NULL;
             break;
 
         case SC_CALL_EXEC:
@@ -997,7 +1002,11 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (pstSCB->stCall.ulCallingLegNo == pstHungup->ulLegNo)
             {
-                pstCallee->stCall.stTimeInfo.ulByeTime = pstCalling->stCall.stTimeInfo.ulByeTime;
+                pstHungupLeg = pstCalling;
+            }
+            else
+            {
+                pstHungupLeg = pstCallee;
             }
 
             /* 生成话单 */
@@ -1005,7 +1014,8 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
             }
-            sc_send_billing_stop2bs(pstSCB, pstCallee, NULL);
+
+            sc_send_billing_stop2bs(pstSCB, pstHungupLeg, NULL);
 
             /* 到这里，说明两个leg都OK */
             /*
@@ -1045,7 +1055,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 if (pstOtherLeg->ulIndSCBNo == U32_BUTT)
                 {
                     /* 非长签时，要把坐席对应的leg的结束时间，赋值给开始时间，出标记话单时使用 */
-                    pstOtherLeg->stCall.stTimeInfo.ulStartTime = pstHungupLeg->stCall.stTimeInfo.ulByeTime;
+                    pstOtherLeg->stCall.stTimeInfo.ulAnswerTime = pstHungupLeg->stCall.stTimeInfo.ulByeTime;
                     for (i=0; i<SC_MAX_SERVICE_TYPE; i++)
                     {
                         pstSCB->aucServType[i] = 0;
@@ -1147,7 +1157,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_CALL_PROCESS:
-            /* 两个LEG都挂断了 */
+            /* 修改坐席状态, 两个LEG都挂断了 */
             pstCallee = sc_lcb_get(pstSCB->stCall.ulCalleeLegNo);
             if (DOS_ADDR_VALID(pstCallee))
             {
@@ -1377,9 +1387,19 @@ U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             ulRet = sc_outgoing_call_process(pstSCB, pstCallingLegCB);
             break;
 
-        case SC_CALL_ALERTING:
+        case SC_CALL_TONE:
+            /* 坐席长签时，给坐席放提示音结束 */
+            //sc_req_answer_call(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo);
+            if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.ulCallingLegNo) != DOS_SUCC)
+            {
+                sc_trace_scb(pstSCB, "Bridge call when early media fail.");
+                return DOS_FAIL;
+            }
+            pstSCB->stCall.stSCBTag.usStatus = SC_CALL_ACTIVE;
             break;
 
+        case SC_CALL_ALERTING:
+            break;
         case SC_CALL_ACTIVE:
             break;
         case SC_CALL_PROCESS:
@@ -4056,6 +4076,7 @@ U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 /* 需要重新呼叫坐席，进行长签 */
                 pstLegCB->stPlayback.usStatus = SC_SU_PLAYBACK_INIT;
                 pstSCB->stSigin.pstAgentNode->pstAgentInfo->bConnected = DOS_FALSE;
+                pstSCB->stSigin.pstAgentNode->pstAgentInfo->ulLegNo = U32_BUTT;
 
                 if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
                 {
@@ -4101,6 +4122,7 @@ U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 /* 释放 */
                 pstSCB->stSigin.pstAgentNode->pstAgentInfo->bConnected = DOS_FALSE;
+                pstSCB->stSigin.pstAgentNode->pstAgentInfo->ulLegNo = U32_BUTT;
                 sc_scb_free(pstSCB);
                 sc_lcb_free(pstLegCB);
             }
@@ -4217,9 +4239,13 @@ U32 sc_mark_custom_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     sc_req_playback_stop(pstSCB->ulSCBNo, pstLCB->ulCBNo);
 
                     /* 判断坐席是否是长签，如果不是则挂断电话 */
-                    if (pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+                    if (DOS_ADDR_VALID(pstSCB->stMarkCustom.pstAgentCall)
+                         && DOS_ADDR_VALID(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo))
                     {
-                        sc_agent_set_idle(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+                        if (pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+                        {
+                            sc_agent_set_idle(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+                        }
                     }
 
                     if (pstLCB->ulIndSCBNo != U32_BUTT)
@@ -4233,6 +4259,7 @@ U32 sc_mark_custom_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     }
                     else
                     {
+                        pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ulLegNo = U32_BUTT;
                         sc_req_hungup(pstSCB->ulSCBNo, pstLCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
                         pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_ACTIVE;
                     }
@@ -4326,6 +4353,17 @@ U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                 sc_send_billing_stop2bs(pstSCB, pstMarkLeg, NULL);
             }
+
+            if (DOS_ADDR_VALID(pstSCB->stMarkCustom.pstAgentCall)
+                         && DOS_ADDR_VALID(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo))
+            {
+                if (pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+                {
+                    sc_agent_set_idle(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+                }
+                pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ulLegNo = U32_BUTT;
+            }
+
             pstSCB->stMarkCustom.stSCBTag.bWaitingExit = DOS_TRUE;
             break;
         default:

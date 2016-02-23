@@ -302,7 +302,10 @@ U32 sc_esl_event_answer(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         return DOS_SUCC;
     }
 
-    pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);
+    if (pstLegCB->stCall.stTimeInfo.ulAnswerTime == 0)
+    {
+        pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);
+    }
 
     pstLegCB->stCall.ucStatus = SC_LEG_ACTIVE;
 
@@ -473,7 +476,10 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         }
     }
 
-    pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);
+    if (pstLegCB->stCall.stTimeInfo.ulAnswerTime == 0)
+    {
+        pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);
+    }
 
     pstLegCB->stCall.ucStatus = SC_LEG_ACTIVE;
 
@@ -945,12 +951,12 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         return DOS_FAIL;
     }
 
+    pstLegCB->stPlayback.ulCurretnIndex++;
+
     sc_trace_leg(pstLegCB, "processing playback stop event. status: %u (%u:%u)"
                         , pstLegCB->stPlayback.usStatus
                         , pstLegCB->stPlayback.ulCurretnIndex
                         , pstLegCB->stPlayback.ulTotal);
-
-    pstLegCB->stPlayback.ulCurretnIndex++;
 
     switch (pstLegCB->stPlayback.usStatus)
     {
@@ -1467,22 +1473,22 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
 
     if (SC_CND_PLAYBACK_TONE == pstPlayback->enType)
     {
-            pszPlayCMDArg = sc_hine_get_tone(pstPlayback->aulAudioList[0]);
-            if (DOS_ADDR_INVALID(pszPlayCMDArg))
-            {
-                stErrReport.stMsgTag.ulMsgType = SC_ERR_INVALID_MSG;
-                goto proc_fail;
-            }
+        pszPlayCMDArg = sc_hine_get_tone(pstPlayback->aulAudioList[0]);
+        if (DOS_ADDR_INVALID(pszPlayCMDArg))
+        {
+            stErrReport.stMsgTag.ulMsgType = SC_ERR_INVALID_MSG;
+            goto proc_fail;
+        }
 
-            if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) != DOS_SUCC)
-            {
-                stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
-                goto proc_fail;
-            }
+        if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) != DOS_SUCC)
+        {
+            stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+            goto proc_fail;
+        }
 
-            pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
+        pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
 
-            return DOS_SUCC;
+        return DOS_SUCC;
     }
 
     if (SC_CND_PLAYBACK_SYSTEM == pstPlayback->enType)
@@ -1553,11 +1559,12 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
             pstLCB->stPlayback.bValid = DOS_TRUE;
             pstLCB->stPlayback.usStatus = SC_SU_PLAYBACK_PROC;
             pstLCB->stPlayback.ulCurretnIndex = 0;
+            pstLCB->stPlayback.ulTotal = 0;
 
             dos_snprintf(szCMD, sizeof(szCMD), "silence_stream://%u", pstPlayback->ulSilence);
             if (sc_esl_execute("playback", szCMD, pstLCB->szUUID) == DOS_SUCC)
             {
-                //pstLCB->stPlayback.ulTotal++;
+                pstLCB->stPlayback.ulTotal++;
             }
 
             if (pstPlayback->ulLoopCnt == 1)
@@ -1591,7 +1598,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
                 pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
 
                 /* 为了上次放音最后一个playback stop消息 */
-                pstLCB->stPlayback.ulTotal++;
+                //pstLCB->stPlayback.ulTotal++;
             }
 
             pstLCB->stPlayback.usStatus = SC_SU_PLAYBACK_ACTIVE;
@@ -1671,6 +1678,8 @@ U32 sc_cmd_playback_stop(SC_MSG_TAG_ST *pstMsg)
 
     pstLCB->stPlayback.bValid = DOS_TRUE;
     pstLCB->stPlayback.usStatus = SC_SU_PLAYBACK_RELEASE;
+
+    return DOS_SUCC;
 
 proc_fail:
     stErrReport.stMsgTag.ulSCBNo = pstPlayback->ulSCBNo;
