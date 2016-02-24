@@ -36,6 +36,8 @@ typedef enum tagSCSUBMod{
     SC_MOD_DATA_SYN,
     SC_MOD_TASK,
 
+    SC_MOD_SCH,
+
     SC_MOD_BUTT
 }SC_SUBMOD_EN;
 
