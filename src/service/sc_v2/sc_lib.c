@@ -932,9 +932,13 @@ VOID sc_scb_transfer_init(SC_CALL_TRANSFER_ST *pstTransfer)
     pstTransfer->stSCBTag.bValid = DOS_FALSE;
     pstTransfer->stSCBTag.usSrvType = SC_SRV_TRANSFER;
     pstTransfer->stSCBTag.usStatus = SC_TRANSFER_IDEL;
-    pstTransfer->ulOtherSCBNo = U32_BUTT;
+    pstTransfer->ulType = U32_BUTT;
+    pstTransfer->ulSubLegNo = U32_BUTT;
     pstTransfer->ulPublishLegNo = U32_BUTT;
     pstTransfer->ulNotifyLegNo = U32_BUTT;
+    pstTransfer->ulSubAgentID = 0;
+    pstTransfer->ulPublishAgentID = 0;
+    pstTransfer->ulNotifyAgentID = 0;
 }
 
 VOID sc_scb_incoming_queue_init(SC_INCOMING_QUEUE_ST *pstIncomingQueue)
@@ -2265,6 +2269,48 @@ U32 sc_req_ringback(U32 ulSCBNo, U32 ulLegNo, BOOL blHasMedia)
 
     return DOS_SUCC;
 }
+
+/**
+ * 向业务子层发RINGBACK命令
+ *
+ * @param U32 ulSCBNo
+ * @param U32 ulLegNo
+ * @param BOOL blHasMedia
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_req_hold(U32 ulSCBNo, U32 ulLegNo, U32 ulFlag)
+{
+    SC_MSG_CMD_HOLD_ST  *pstCMDHold = NULL;
+    U32                    ulRet = 0;
+
+    pstCMDHold = (SC_MSG_CMD_HOLD_ST*)dos_dmem_alloc(sizeof(SC_MSG_CMD_HOLD_ST));
+    if (DOS_ADDR_INVALID(pstCMDHold))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCMDHold->stMsgTag.ulMsgType = SC_CMD_HOLD;
+    pstCMDHold->stMsgTag.ulSCBNo = ulSCBNo;
+    pstCMDHold->stMsgTag.usInterErr = 0;
+    pstCMDHold->ulSCBNo = ulSCBNo;
+    pstCMDHold->ulLegNo = ulLegNo;
+    pstCMDHold->ulFlag = ulFlag;
+
+    ulRet = sc_send_command(&pstCMDHold->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCMDHold);
+        pstCMDHold = NULL;
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
 
 /**
  * 向业务层发送事件

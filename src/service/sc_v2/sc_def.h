@@ -920,6 +920,7 @@ typedef enum tagSCCallStatus{
     SC_CALL_AUTH2,      /**< 认证被叫 */
     SC_CALL_EXEC,       /**< 开始呼叫被叫 */
     SC_CALL_ALERTING,   /**< 被叫开始振铃 */
+    SC_CALL_TONE,       /**< 坐席长签时，给长签的坐席放提示音 */
     SC_CALL_ACTIVE,     /**< 呼叫接通 */
     SC_CALL_PROCESS,    /**< 呼叫之后的处理 */
     SC_CALL_RELEASE,    /**< 结束 */
@@ -998,6 +999,7 @@ typedef enum tagSCPreviewCallStatus{
     SC_PREVIEW_CALL_ALERTING2,  /**< 客户开始振铃了 */
     SC_PREVIEW_CALL_CONNECTED,  /**< 呼叫接通了 */
     SC_PREVIEW_CALL_PROCESS,    /**< 通话结束之后，如果有客户标记，就开始标记，没有直接到释放 */
+    SC_PREVIEW_CALL_RELEASE
 }SC_PREVIEW_CALL_STATE_EN;
 
 /**
@@ -1252,10 +1254,20 @@ typedef struct tagSCMarkCustom{
 /** 呼叫转接业务状态 */
 typedef enum tagSCTransStatus{
     SC_TRANSFER_IDEL,       /**< 状态初始化 */
+    SC_TRANSFER_AUTH,       /**< 验证转接业务，如果第三方为PSTN，也要一起认证 */
+    SC_TRANSFER_EXEC,
     SC_TRANSFER_PROC,       /**< 呼叫转接处理(请求呼叫第三方的流程) */
+    SC_TRANSFER_ALERTING,
     SC_TRANSFER_ACTIVE,     /**< 第三方接通 */
+    SC_TRANSFER_TRANSFER,   /**< 协商转时，转接呼叫 */
+    SC_TRANSFER_FINISHED,   /**< 转接完成 */
     SC_TRANSFER_RELEASE,    /**< 转接业务结束 */
 }SC_TRANS_STATE_EN;
+
+typedef enum tagSCTransType{
+    SC_TRANSFER_BLIND,      /**< 盲转 */
+    SC_TRANSFER_ATTENDED,   /**< 协商转 */
+}SC_TRANS_TYPE_EN;
 
 /**
  * 业务控制块, 转接业务
@@ -1264,13 +1276,21 @@ typedef struct tagSCCallTransfer{
     /** 基本信息 */
     SC_SCB_TAG_ST     stSCBTag;
 
+    /** 转接类型 */
+    U32               ulType;
+
     /** 订阅放所在的SCB */
-    U32               ulOtherSCBNo;
+    U32               ulSubLegNo;
 
     /** 发布方LEG，即转接的目的地LEG */
     U32               ulPublishLegNo;
     /** 通知方LEG，即发起转接的LEG */
     U32               ulNotifyLegNo;
+
+    /** 要转接的坐席，要修改坐席的状态 */
+    U32               ulSubAgentID;
+    U32               ulPublishAgentID;
+    U32               ulNotifyAgentID;
 }SC_CALL_TRANSFER_ST;
 
 /** 呼叫保持业务状态 */
@@ -1489,6 +1509,11 @@ typedef struct tagSCMsgCmdHungup{
     /** 挂断原因 */
     U32     ulErrCode;
 }SC_MSG_CMD_HUNGUP_ST;
+
+typedef enum tagSCHoldFlag{
+    SC_HOLD_FLAG_HOLD      = 0,
+    SC_HOLD_FLAG_UNHOLD
+}SC_CMD_HOLD_FLAG_EN;
 
 /** 呼叫保持请求 */
 typedef struct tagSCMsgCmdHold{
@@ -1938,6 +1963,7 @@ U32 sc_req_play_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulSndInd, U32 ulLoop, U32 ul
 U32 sc_req_play_sounds(U32 ulSCBNo, U32 ulLegNo, U32 *pulSndInd, U32 ulSndCnt, U32 ulLoop, U32 ulInterval, U32 ulSilence);
 U32 sc_req_playback_stop(U32 ulSCBNo, U32 ulLegNo);
 U32 sc_req_hungup_with_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
+U32 sc_req_hold(U32 ulSCBNo, U32 ulLegNo, U32 ulFlag);
 U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_mux(SC_MSG_TAG_ST *pstMsg);
@@ -2029,9 +2055,17 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
+U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_transfer_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
 U32 sc_incoming_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 U32 sc_mark_custom_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_mark_custom_playback_start(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_mark_custom_playback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 U32 sc_access_code_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -2080,6 +2114,8 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller);
 
 U32 sc_access_balance_enquiry(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_access_agent_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
+U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
+U32 sc_access_hungup(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 
 #endif  /* end of __SC_DEF_V2_H__ */
 

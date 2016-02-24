@@ -2194,7 +2194,7 @@ U32 sc_agent_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
             return DOS_FAIL;
     }
 
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    if (pstAgentQueueInfo->ucStatus == SC_ACD_BUSY)
     {
         sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_BUSY);
     }
@@ -2231,7 +2231,7 @@ U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 
         case SC_ACD_BUSY:
             /* TODO */
-            //if (!sc_ep_chack_has_call4agent(pstAgentQueueInfo->usSCBNo))
+            if (pstAgentQueueInfo->ulLegNo != U32_BUTT)
             {
                 pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
             }
@@ -2239,6 +2239,7 @@ U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
             break;
 
         case SC_ACD_PROC:
+            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
             break;
 
         default:
@@ -2247,7 +2248,7 @@ U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
             break;
     }
 
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    if (pstAgentQueueInfo->ucStatus == SC_ACD_IDEL)
     {
         sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_IDLE);
     }
@@ -2368,10 +2369,7 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
 
     pstAgentInfo->bNeedConnected = DOS_TRUE;
 
-    if (ulOldStatus != pstAgentInfo->ucStatus)
-    {
-        sc_agent_status_notify(pstAgentInfo, pstAgentInfo->ucStatus);
-    }
+    sc_agent_status_notify(pstAgentInfo, ACD_MSG_SUBTYPE_SIGNIN);
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin. Agent: %u, Old status: %u, Current status: %u"
                     , pstAgentInfo->ulAgentID, ulOldStatus, pstAgentInfo->ucStatus);
@@ -2451,7 +2449,7 @@ U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_
 
     pstAgent->pstAgentInfo->ucStatus = SC_ACD_IDEL;
 
-    sc_agent_status_notify(pstAgent->pstAgentInfo, pstAgent->pstAgentInfo->ucStatus);
+    sc_agent_status_notify(pstAgent->pstAgentInfo, ACD_MSG_SUBTYPE_SIGNIN);
 
     return DOS_SUCC;
 }
@@ -2533,10 +2531,7 @@ U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingTyp
 
     pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
 
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
-    {
-        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_SIGNOUT);
-    }
+    sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_SIGNOUT);
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signout. Agent: %u, Old status: %u, Current status: %u"
                 , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);

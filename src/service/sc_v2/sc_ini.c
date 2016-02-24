@@ -131,10 +131,10 @@ SC_ACCESS_CODE_LIST_ST astSCAccessList[] = {
     {SC_ACCESS_AGENT_SIGNIN,        "*99",      DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   DOS_TRUE,   sc_access_agent_proc},
     {SC_ACCESS_AGENT_SIGNOUT,       "*88",      DOS_TRUE,   DOS_TRUE,   DOS_TRUE,   DOS_TRUE,   sc_access_agent_proc},
     {SC_ACCESS_MARK_CUSTOMER,       "*66*",     DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   sc_access_agent_proc},
-    {SC_ACCESS_BLIND_TRANSFER,      "*70*",     DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   NULL},
-    {SC_ACCESS_ATTENDED_TRANSFER,   "*71*",     DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   NULL},
-    {SC_ACCESS_HANGUP_CUSTOMER1,    "##",       DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   NULL},
-    {SC_ACCESS_HANGUP_CUSTOMER2,    "**",       DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   NULL},
+    {SC_ACCESS_BLIND_TRANSFER,      "*70*",     DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   sc_access_transfer},
+    {SC_ACCESS_ATTENDED_TRANSFER,   "*71*",     DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   sc_access_transfer},
+    {SC_ACCESS_HANGUP_CUSTOMER1,    "##",       DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   sc_access_hungup},
+    {SC_ACCESS_HANGUP_CUSTOMER2,    "**",       DOS_FALSE,  DOS_TRUE,   DOS_FALSE,  DOS_TRUE,   sc_access_hungup},
 };
 
 U32 sc_init_db()
