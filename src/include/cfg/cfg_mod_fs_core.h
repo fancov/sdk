@@ -64,5 +64,28 @@
 
 #define INCLUDE_DB_CLIENT                 1
 
+#define INCLUDE_OPENSSL_LIB               1
+
+#define INCLUDE_LICENSE_CLIENT            1
+
+typedef enum tagLicMods{
+    LIC_EIA_AGENT = 1,
+    LIC_RECORD,
+    LIC_VOICE_VERIFY,
+    LIC_SMS,
+    LIC_GRAPHIC_REPORT,
+
+    LIC_TOTAL_CALLS,
+    LIC_AGENTS,
+    LIC_PTCS,
+    LIC_G723,
+    LIC_G729,
+
+    LIC_TOTAL_CALLTIME,
+    LIC_OUTBOUND_CALLTIME,
+    LIC_INBOUND_CALLTIME,
+    LIC_AUTO_CALLTIME,
+}LIC_MODS_EN;
+
 #endif /* END __CFG_MOD_FS_CORE_H__ */
 

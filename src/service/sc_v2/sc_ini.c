@@ -30,6 +30,9 @@ BOOL                 g_blSCInitOK     = DOS_FALSE;
 U32          g_ulCPS                  = SC_MAX_CALL_PRE_SEC;
 U32          g_ulMaxConcurrency4Task  = SC_MAX_CALL / 3;
 
+SC_SYS_STAT_ST       g_stSysStat;
+
+
 /* define marcos */
 
 
@@ -230,6 +233,8 @@ U32 sc_init()
     U32   ulRet = DOS_SUCC;
 
     sc_log(LOG_LEVEL_NOTIC, "Start init SC. %u", time(NULL));
+
+    dos_memzero((VOID *)&g_stSysStat, sizeof(g_stSysStat));
 
     for (ulIndex=0; ulIndex<sizeof(astSCModList)/sizeof(SC_MOD_LIST_ST); ulIndex++)
     {

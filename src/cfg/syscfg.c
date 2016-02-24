@@ -27,7 +27,7 @@ typedef struct tagModDesc{
     S8  *pszName;          /* 模块名称 */
     S8  *pzsMask;          /* 模块掩码 */
     U32 ulDefaultLimit;    /* 默认限制 */
-    U32 ulExtraData;       /* 其他数据 */
+    S8  *pszExtraData;     /* 其他数据 */
 }MOD_DESC_ST;
 
 /* 定时模块相关信息 */
@@ -45,6 +45,25 @@ static MOD_DESC_ST g_stModList[] = {
 #ifdef DIPCC_PTS
     {PTS_SUBMOD_PTCS,   "PTC",        "pts-ptc",  2,   ""},
 #endif
+#ifdef DIPCC_FREESWITCH
+    {LIC_EIA_AGENT,            "EIA AGENT",       "eia-agent",     1,        ""},
+    {LIC_RECORD,               "RECORD",          "record",        1,        ""},
+    {LIC_VOICE_VERIFY,         "VOICE VERIFY",    "voice-verify",  1,        ""},
+    {LIC_SMS,                  "SMS",             "sms send/recv", 1,        ""},
+    {LIC_GRAPHIC_REPORT,       "GRAPH REPORT",    "graph report",  1,        ""},
+
+    {LIC_TOTAL_CALLS,          "CALLS",           "total calls",   10,       ""},
+    {LIC_AGENTS,               "AGENTS",          "total agents",  10,       ""},
+    {LIC_PTCS,                 "PTCS",            "ptc numbers",   2,        ""},
+    {LIC_G723,                 "G723",            "G723 Calls",    5000,     ""},
+    {LIC_G729,                 "G729",            "G729 Calls",    5000,     ""},
+
+    {LIC_TOTAL_CALLTIME,       "TOTAL CALL TIME", "total call time",     0,        ""},
+    {LIC_OUTBOUND_CALLTIME,    "OUT CALL TIME",   "outgoing call time",  0,        ""},
+    {LIC_INBOUND_CALLTIME,     "IN CALL TIME",    "incoming call time",  0,        ""},
+    {LIC_AUTO_CALLTIME,        "AUTO CALL TIME",  "auto call time",      0,        ""}
+#endif
+
 };
 
 /**

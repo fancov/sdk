@@ -150,5 +150,16 @@ extern U32 licc_get_license_validity(U32 *pulValidity, U32 *pulTimeRemaining);
  **/
 extern U32 licc_get_license_mod_validity(U32 ulModIndex, U32 *pulValidity, U32 *pulTimeRemaining);
 
+/*
+ * 函数: licc_set_srv_stat
+ * 功能: 设置ulModuleID所指定的模块的的统计值
+ * 参数:
+ *     U32 ulModuleID:  模块ID
+ *     U32 ulStat:      统计值
+ * 返回值:
+ *     成功返回SUCC，是否反正FAIL
+ **/
+U32 licc_set_srv_stat(U32 ulModuleID, U32 ulStat);
+
 #endif /* __LICENSE_H__ */
 
