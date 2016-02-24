@@ -999,6 +999,7 @@ typedef enum tagSCPreviewCallStatus{
     SC_PREVIEW_CALL_ALERTING2,  /**< 客户开始振铃了 */
     SC_PREVIEW_CALL_CONNECTED,  /**< 呼叫接通了 */
     SC_PREVIEW_CALL_PROCESS,    /**< 通话结束之后，如果有客户标记，就开始标记，没有直接到释放 */
+    SC_PREVIEW_CALL_RELEASE
 }SC_PREVIEW_CALL_STATE_EN;
 
 /**

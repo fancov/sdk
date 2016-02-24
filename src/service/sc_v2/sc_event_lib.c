@@ -1165,6 +1165,8 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     SC_AGENT_NODE_ST *pstAgentNode = NULL;
     SC_SRV_CB        *pstSCB       = NULL;
     SC_LEG_CB        *pstLCB       = NULL;
+    SC_LEG_CB        *pstAgentLCB  = NULL;
+    U32              ulRet         = DOS_FAIL;
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request call out. Agent: %u, Task: %u, Number: %u", ulAgent, ulTaskID, NULL == pszNumber ? "NULL" : pszNumber);
 
@@ -1175,9 +1177,20 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     }
 
     pstAgentNode = sc_agent_get_by_id(ulAgent);
-    if (DOS_ADDR_INVALID(pstAgentNode))
+    if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Cannot found the agent %u", ulAgent);
+        return DOS_FAIL;
+    }
+
+    pstAgentLCB = sc_lcb_get(pstAgentNode->pstAgentInfo->ulLegNo);
+    if (DOS_ADDR_VALID(pstAgentLCB)
+        && (!pstAgentNode->pstAgentInfo->bNeedConnected
+            || !pstAgentNode->pstAgentInfo->bConnected
+            || pstAgentLCB->ulIndSCBNo == U32_BUTT))
+    {
+        /* 坐席不是长签，但是已经存在一条leg通话 */
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The agent %u is not sigin, but have a leg(%u)", ulAgent, pstAgentNode->pstAgentInfo->ulLegNo);
         return DOS_FAIL;
     }
 
@@ -1201,6 +1214,7 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     pstLCB->stCall.bValid = DOS_SUCC;
     pstLCB->stCall.ucStatus = SC_LEG_INIT;
 
+    pstSCB->ulCustomerID = pstAgentNode->pstAgentInfo->ulAgentID;
     pstSCB->stPreviewCall.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_IDEL;
     pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stPreviewCall.stSCBTag;
@@ -1209,6 +1223,56 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Set service fail.");
 
         goto process_fail;
+    }
+
+    /* 长签 */
+    if (DOS_ADDR_VALID(pstAgentLCB))
+    {
+        /* 从主叫号码组中获取主叫号码 */
+        ulRet = sc_caller_setting_select_number(pstSCB->ulCustomerID, ulAgent, SC_SRC_CALLER_TYPE_AGENT, pstLCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
+        if (ulRet != DOS_SUCC)
+        {
+            sc_lcb_free(pstLCB);
+            pstLCB = NULL;
+            sc_scb_free(pstSCB);
+            pstSCB = NULL;
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Get caller fail by agent(%u).", ulAgent);
+
+            goto process_fail;
+        }
+
+        dos_snprintf(pstLCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLCB->stCall.stNumInfo.szOriginalCallee), pszNumber);
+        dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pszNumber);
+
+        pstSCB->stPreviewCall.ulCallingLegNo = pstAgentLCB->ulCBNo;
+        pstSCB->stPreviewCall.ulCalleeLegNo = pstLCB->ulCBNo;
+        pstSCB->stPreviewCall.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
+
+        pstAgentLCB->ulSCBNo = pstSCB->ulSCBNo;
+        pstLCB->ulSCBNo = pstSCB->ulSCBNo;
+
+        /* 判断是否录音 */
+        if (pstAgentNode->pstAgentInfo->bRecord)
+        {
+            pstLCB->stRecord.bValid = DOS_TRUE;
+        }
+
+        pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_AUTH;
+
+        if (sc_send_usr_auth2bs(pstSCB, pstLCB) != DOS_SUCC)
+        {
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send auth fail.");
+
+            goto process_fail;
+        }
+
+        /* 修改坐席的状态，置忙 */
+        sc_agent_set_busy(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+
+        /* 坐席弹屏 */
+        sc_agent_call_notify(pstAgentNode->pstAgentInfo, pszNumber);
+
+        return DOS_SUCC;
     }
 
     switch (pstAgentNode->pstAgentInfo->ucBindType)
@@ -1248,20 +1312,29 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         default:
             break;
     }
-    dos_snprintf(pstLCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstLCB->stCall.stNumInfo.szOriginalCalling), pszNumber);
 
-    if (pstAgentNode->pstAgentInfo->bRecord)
+    /* 从主叫号码组中获取主叫号码 */
+    ulRet = sc_caller_setting_select_number(pstSCB->ulCustomerID, ulAgent, SC_SRC_CALLER_TYPE_AGENT, pstLCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
+    if (ulRet != DOS_SUCC)
     {
-        if (sc_scb_set_service(pstSCB, BS_SERV_RECORDING))
-        {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add record service fail.");
-        }
-        else
-        {
-            pstLCB->stRecord.bValid = DOS_TRUE;
-        }
+        sc_lcb_free(pstLCB);
+        pstLCB = NULL;
+        sc_scb_free(pstSCB);
+        pstSCB = NULL;
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Get caller fail by agent(%u).", ulAgent);
+
+        goto process_fail;
     }
 
+    dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pszNumber);
+
+    /* 判断是否录音 */
+    if (pstAgentNode->pstAgentInfo->bRecord)
+    {
+        pstLCB->stRecord.bValid = DOS_TRUE;
+    }
+
+    pstSCB->stPreviewCall.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
     pstSCB->stPreviewCall.ulCallingLegNo = pstLCB->ulCBNo;
     pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_AUTH;
     pstLCB->ulSCBNo = pstSCB->ulSCBNo;
@@ -1273,6 +1346,12 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
 
         goto process_fail;
     }
+
+    /* 修改坐席的状态，置忙 */
+    sc_agent_set_busy(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+
+    /* 坐席弹屏 */
+    sc_agent_call_notify(pstAgentNode->pstAgentInfo, pszNumber);
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request call out. send auth succ.");
 
