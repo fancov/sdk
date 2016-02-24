@@ -1714,6 +1714,7 @@ U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
 {
     U32                   ulCurrentLeg = 0;
     BS_MSG_CDR            *pstCDRMsg = NULL;
+    SC_AGENT_NODE_ST      *pstAgentNode     = NULL;
 #if SC_BS_NEED_RESEND
     SC_BS_MSG_NODE        *pstListNode = NULL;
     U32                   ulHashIndex = 0;
@@ -1776,15 +1777,27 @@ U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
     dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID, pstLeg->stCall.stNumInfo.szCalling, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID));
     pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szCID) - 1] = '\0';
 
-    if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
-        && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+    if (pstSCB->stCall.stSCBTag.bValid)
     {
-        dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCall.pstAgentCalling->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+        if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+            && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+        {
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCall.pstAgentCalling->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+        }
+        else if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
+            && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+        {
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCall.pstAgentCallee->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+        }
     }
-    else if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
-        && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+    else if (pstSCB->stPreviewCall.stSCBTag.bValid)
     {
-        dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCall.pstAgentCallee->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+        pstAgentNode = sc_agent_get_by_id(pstSCB->stPreviewCall.ulAgentID);
+        if (DOS_ADDR_VALID(pstAgentNode)
+            && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+        {
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstAgentNode->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+        }
     }
     pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum) - 1] = '\0';
 
