@@ -30,6 +30,10 @@ BOOL                 g_blSCInitOK     = DOS_FALSE;
 U32          g_ulCPS                  = SC_MAX_CALL_PRE_SEC;
 U32          g_ulMaxConcurrency4Task  = SC_MAX_CALL / 3;
 
+SC_SYS_STAT_ST       g_stSysStat;
+SC_SYS_STAT_ST       g_stSysStatLocal;
+
+
 /* define marcos */
 
 
@@ -96,6 +100,9 @@ U32 sc_limit_start();
 U32 sc_limit_init();
 U32 sc_limit_stop();
 
+U32 sc_schedule_init();
+U32 sc_schedule_start();
+U32 sc_schedule_stop();
 
 /* global variables */
 SC_MOD_LIST_ST  astSCModList[] = {
@@ -116,6 +123,7 @@ SC_MOD_LIST_ST  astSCModList[] = {
     {SC_MOD_DATA_SYN,   "SC_SYN",    LOG_LEVEL_NOTIC, DOS_FALSE, sc_data_syn_init,     sc_data_syn_start,      sc_data_syn_stop},
 
     {SC_MOD_TASK,       "SC_TASK",   LOG_LEVEL_NOTIC, DOS_FALSE, sc_task_mngt_init,    sc_task_mngt_start,     sc_task_mngt_stop},
+    {SC_MOD_SCH,        "SC_SCH",    LOG_LEVEL_NOTIC, DOS_FALSE, sc_schedule_init,     sc_schedule_start,      sc_schedule_stop},
 };
 
 /* 接入码，应该从配置文件中读取 */
@@ -230,6 +238,8 @@ U32 sc_init()
     U32   ulRet = DOS_SUCC;
 
     sc_log(LOG_LEVEL_NOTIC, "Start init SC. %u", time(NULL));
+
+    dos_memzero((VOID *)&g_stSysStat, sizeof(g_stSysStat));
 
     for (ulIndex=0; ulIndex<sizeof(astSCModList)/sizeof(SC_MOD_LIST_ST); ulIndex++)
     {

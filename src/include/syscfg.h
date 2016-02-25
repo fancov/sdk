@@ -94,6 +94,8 @@ U32 dos_get_mod_mask(U32 ulIndex, S8 *pszModuleName, S32 *plLength);
 U32 dos_get_check_mod(U32 ulIndex);
 U32 dos_get_max_mod_id();
 
+U32  dos_get_default_limitation(U32 ulModIndex, U32 * pulLimitation);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

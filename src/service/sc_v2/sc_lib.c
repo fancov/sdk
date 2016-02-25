@@ -1115,8 +1115,25 @@ SC_SRV_CB *sc_scb_alloc()
     if (DOS_ADDR_VALID(pstSCB))
     {
         sc_scb_init(pstSCB);
-        pstSCB->bValid = DOS_TRUE;
-        pstSCB->ulAllocTime = time(NULL);
+
+        if (g_stSysStat.ulCurrentCalls < sc_get_call_limitation())
+        {
+            if (g_stSysStat.ulCurrentCalls != U32_BUTT)
+            {
+                g_stSysStat.ulCurrentCalls++;
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+
+            pstSCB->bValid = DOS_TRUE;
+            pstSCB->ulAllocTime = time(NULL);
+        }
+        else
+        {
+            pstSCB = NULL;
+        }
     }
     else
     {
@@ -1153,6 +1170,15 @@ VOID sc_scb_free(SC_SRV_CB *pstSCB)
     pthread_mutex_lock(&g_mutexSCBList);
     sc_scb_init(pstSCB);
     pthread_mutex_unlock(&g_mutexSCBList);
+
+    if (g_stSysStat.ulCurrentCalls != 0)
+    {
+        g_stSysStat.ulCurrentCalls--;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+    }
 }
 
 /**
@@ -1180,6 +1206,42 @@ SC_SRV_CB *sc_scb_get(U32 ulCBNo)
 
     return &g_pstSCBList[ulCBNo];
 }
+
+/**
+ * 检查业务控制块 @a pstSCB 中是否有 @a ulService这种业务
+ *
+ * @param SC_SRV_CB *pstSCB
+ * @param U32 ulService
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_scb_check_service(SC_SRV_CB *pstSCB, U32 ulService)
+{
+    U32  ulIndex;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (0 == ulService || ulService >= BS_SERV_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    for (ulIndex=0; ulIndex<SC_MAX_SERVICE_TYPE; ulIndex++)
+    {
+        if (pstSCB->aucServType[ulIndex] != 0 && ulService == pstSCB->aucServType[ulIndex])
+        {
+            return DOS_SUCC;
+        }
+    }
+
+    return DOS_FAIL;
+}
+
 
 /**
  * 给指定的SCB设置业务
@@ -2914,6 +2976,89 @@ void sc_agent_mark_custom_callback(U64 arg)
     }
 
     return;
+}
+
+U32 sc_stat_syn(U32 ulType, VOID *ptr)
+{
+    SC_SYS_STAT_ST       stSysStat;
+
+    dos_memcpy((VOID *)&stSysStat, (VOID *)&g_stSysStat, sizeof(SC_SYS_STAT_ST));
+    dos_memzero((VOID *)&stSysStat, sizeof(SC_SYS_STAT_ST));
+
+    if (U32_BUTT - g_stSysStatLocal.ulCurrentCalls > stSysStat.ulCurrentCalls)
+    {
+        g_stSysStatLocal.ulCurrentCalls       += stSysStat.ulCurrentCalls;
+    }
+    if (U32_BUTT - g_stSysStatLocal.ulIncomingCalls > stSysStat.ulIncomingCalls)
+    {
+        g_stSysStatLocal.ulIncomingCalls      += stSysStat.ulIncomingCalls;
+    }
+    if (U32_BUTT - g_stSysStatLocal.ulOutgoingCalls > stSysStat.ulOutgoingCalls)
+    {
+        g_stSysStatLocal.ulOutgoingCalls      += stSysStat.ulOutgoingCalls;
+    }
+    if (U32_BUTT - g_stSysStatLocal.ulTotalTime > stSysStat.ulTotalTime)
+    {
+        g_stSysStatLocal.ulTotalTime          += stSysStat.ulTotalTime;
+    }
+    if (U32_BUTT - g_stSysStatLocal.ulOutgoingTime > stSysStat.ulOutgoingTime)
+    {
+        g_stSysStatLocal.ulOutgoingTime       += stSysStat.ulOutgoingTime;
+    }
+    if (U32_BUTT - g_stSysStatLocal.ulIncomingTime > stSysStat.ulIncomingTime)
+    {
+        g_stSysStatLocal.ulIncomingTime       += stSysStat.ulIncomingTime;
+    }
+    if (U32_BUTT - g_stSysStatLocal.ulAutoCallTime > stSysStat.ulAutoCallTime)
+    {
+        g_stSysStatLocal.ulAutoCallTime       += stSysStat.ulAutoCallTime;
+    }
+    if (U32_BUTT - g_stSysStatLocal.ulPreviewCallTime > stSysStat.ulPreviewCallTime)
+    {
+        g_stSysStatLocal.ulPreviewCallTime    += stSysStat.ulPreviewCallTime;
+    }
+    if (U32_BUTT - g_stSysStatLocal.ulPredictiveCallTime > stSysStat.ulPredictiveCallTime)
+    {
+        g_stSysStatLocal.ulPredictiveCallTime += stSysStat.ulPredictiveCallTime;
+    }
+    if (U32_BUTT - g_stSysStatLocal.ulInternalCallTime > stSysStat.ulInternalCallTime)
+    {
+        g_stSysStatLocal.ulInternalCallTime   += stSysStat.ulInternalCallTime;
+    }
+
+    licc_set_srv_stat(LIC_TOTAL_CALLTIME, stSysStat.ulTotalTime);
+    licc_set_srv_stat(LIC_OUTBOUND_CALLTIME, stSysStat.ulOutgoingTime);
+    licc_set_srv_stat(LIC_INBOUND_CALLTIME, stSysStat.ulIncomingTime);
+    licc_set_srv_stat(LIC_AUTO_CALLTIME, stSysStat.ulAutoCallTime);
+
+    sc_log(LOG_LEVEL_INFO, "%s", "Stat data syn");
+
+    return DOS_SUCC;
+}
+
+U32 sc_stat_write(U32 ulType, VOID *ptr)
+{
+    return DOS_SUCC;
+}
+
+U32 sc_get_call_limitation()
+{
+    U32 ulLimitation;
+
+    if (licc_get_limitation(LIC_TOTAL_CALLS, &ulLimitation) != DOS_SUCC)
+    {
+        if (dos_get_default_limitation(LIC_TOTAL_CALLS, &ulLimitation) != DOS_SUCC)
+        {
+            ulLimitation = 0;
+
+            sc_log(LOG_LEVEL_INFO, "Get license limitation fail.. Use default: %u", ulLimitation);
+            return DOS_FAIL;
+        }
+
+        sc_log(LOG_LEVEL_INFO, "Get license limitation fail. Use default: %u", ulLimitation);
+    }
+
+    return ulLimitation;
 }
 
 #ifdef __cplusplus

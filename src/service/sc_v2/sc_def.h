@@ -1904,14 +1904,36 @@ typedef struct tagAccessCodeList
     BOOL bExactMatch;                           /**< 是否是完全匹配 */
     BOOL bValid;                                /**< 是否有效 */
     U32   (*fn_init)(SC_SRV_CB *, SC_LEG_CB *); /**< 接入号处理函数 */
-
 }SC_ACCESS_CODE_LIST_ST;
+
+/** 呼叫统计相关 */
+typedef struct tagSysStat{
+    U32      ulCRC;
+
+    U32      ulCurrentCalls;       /**< 当前并发量，业务控制块分配的个数 */
+    U32      ulIncomingCalls;      /**< 当前呼入量，创建/释放LEG时处理 */
+    U32      ulOutgoingCalls;      /**< 当前呼出量，创建/释放LEG时处理 */
+
+    U32      ulTotalTime;          /**< 总时间 */
+    U32      ulOutgoingTime;       /**< 呼出 */
+    U32      ulIncomingTime;       /**< 呼入 */
+    U32      ulAutoCallTime;       /**< 自动呼叫时长 */
+    U32      ulPreviewCallTime;    /**< 预览外呼时长 */
+    U32      ulPredictiveCallTime; /**< 预测外呼时长 */
+    U32      ulInternalCallTime;   /**< 内部呼叫时长 */
+}SC_SYS_STAT_ST;
+
+
+extern SC_SYS_STAT_ST       g_stSysStat;
+extern SC_SYS_STAT_ST       g_stSysStatLocal;
+
 
 VOID sc_scb_init(SC_SRV_CB *pstSCB);
 SC_SRV_CB *sc_scb_alloc();
 VOID sc_scb_free(SC_SRV_CB *pstSCB);
 SC_SRV_CB *sc_scb_get(U32 ulCBNo);
 U32 sc_scb_set_service(SC_SRV_CB *pstSCB, U32 ulService);
+U32 sc_scb_check_service(SC_SRV_CB *pstSCB, U32 ulService);
 U32 sc_scb_remove_service(SC_SRV_CB *pstSCB, U32 ulService);
 BOOL sc_scb_is_exit_service(SC_SRV_CB *pstSCB, U32 ulService);
 
@@ -1927,6 +1949,7 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB);
 
 U32 sc_bgjob_hash_add(U32 ulLegNo, S8 *pszUUID);
 
+U32 sc_get_call_limitation();
 
 VOID sc_lcb_playback_init(SC_SU_PLAYBACK_ST *pstPlayback);
 

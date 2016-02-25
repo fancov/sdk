@@ -1491,6 +1491,7 @@ U32 sc_send_release_ack2bs(BS_MSG_TAG *pstMsg)
 U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB *pstSecondLeg)
 {
     U32                   ulCurrentLeg      = 0;
+    U32                   ulTimeLen         = 0;
     BS_MSG_CDR            *pstCDRMsg        = NULL;
     S32                   i                 = 0;
     SC_AGENT_NODE_ST      *pstAgentNode     = NULL;
@@ -1612,6 +1613,91 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
     for (i=0; i<BS_MAX_SERVICE_TYPE_IN_SESSION; i++)
     {
         pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType[i] = pstSCB->aucServType[i];
+    }
+
+    /* 统计信息  */
+    if (pstFristLeg->stCall.stTimeInfo.ulAnswerTime != 0
+        && pstFristLeg->stCall.stTimeInfo.ulAnswerTime < pstFristLeg->stCall.stTimeInfo.ulByeTime)
+    {
+        ulTimeLen = pstFristLeg->stCall.stTimeInfo.ulByeTime - pstFristLeg->stCall.stTimeInfo.ulAnswerTime;
+
+        if (sc_scb_check_service(pstSCB, BS_SERV_OUTBAND_CALL) == DOS_SUCC)
+        {
+            if (g_stSysStat.ulOutgoingTime < U32_BUTT - ulTimeLen)
+            {
+                g_stSysStat.ulOutgoingTime += ulTimeLen;
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+        }
+        else if (sc_scb_check_service(pstSCB, BS_SERV_INBAND_CALL) == DOS_SUCC)
+        {
+            if (g_stSysStat.ulIncomingTime < U32_BUTT - ulTimeLen)
+            {
+                g_stSysStat.ulIncomingTime += ulTimeLen;
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+        }
+        else if (sc_scb_check_service(pstSCB, BS_SERV_AUTO_DIALING) == DOS_SUCC)
+        {
+            if (g_stSysStat.ulAutoCallTime < U32_BUTT - ulTimeLen)
+            {
+                g_stSysStat.ulAutoCallTime += ulTimeLen;
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+        }
+        else if (sc_scb_check_service(pstSCB, BS_SERV_PREDICTIVE_DIALING) == DOS_SUCC)
+        {
+            if (g_stSysStat.ulPredictiveCallTime < U32_BUTT - ulTimeLen)
+            {
+                g_stSysStat.ulPredictiveCallTime += ulTimeLen;
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+        }
+        else if (sc_scb_check_service(pstSCB, BS_SERV_PREVIEW_DIALING) == DOS_SUCC)
+        {
+            if (g_stSysStat.ulPreviewCallTime < U32_BUTT - ulTimeLen)
+            {
+                g_stSysStat.ulPreviewCallTime += ulTimeLen;
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+        }
+        else if (sc_scb_check_service(pstSCB, BS_SERV_PREVIEW_DIALING) == DOS_SUCC)
+        {
+            if (g_stSysStat.ulPreviewCallTime < U32_BUTT - ulTimeLen)
+            {
+                g_stSysStat.ulPreviewCallTime += ulTimeLen;
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+        }
+        else if (sc_scb_check_service(pstSCB, BS_SERV_INTER_CALL) == DOS_SUCC)
+        {
+            if (g_stSysStat.ulInternalCallTime < U32_BUTT - ulTimeLen)
+            {
+                g_stSysStat.ulInternalCallTime += ulTimeLen;
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
+        }
     }
 
     ulCurrentLeg++;

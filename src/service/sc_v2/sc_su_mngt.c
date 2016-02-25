@@ -172,10 +172,28 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
         if (dos_strnicmp(pszCallDirection, "Inbound", dos_strlen("Inbound")) == 0)
         {
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_INBOUND;
+
+            if (g_stSysStat.ulIncomingCalls != U32_BUTT)
+            {
+                g_stSysStat.ulIncomingCalls++;
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
         }
         else
         {
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+
+            if (g_stSysStat.ulOutgoingCalls != U32_BUTT)
+            {
+                g_stSysStat.ulOutgoingCalls ++;
+            }
+            else
+            {
+                DOS_ASSERT(0);
+            }
         }
     }
     else
@@ -231,7 +249,6 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     pstLCB->szUUID[SC_UUID_LENGTH -1] = '\0';
 
     stCallEvent.stMsgTag.ulMsgType = SC_EVT_CALL_SETUP;
-    //stCallEvent.stMsgTag.ulSCBNo = pstLCB->ulSCBNo;
     if (pstLCB->ulIndSCBNo != U32_BUTT && pstLCB->ulSCBNo == U32_BUTT)
     {
         stCallEvent.stMsgTag.ulSCBNo = pstLCB->ulIndSCBNo;
@@ -375,6 +392,29 @@ U32 sc_esl_event_hangup(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     {
         stSCEvent.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
         sc_send_event_release(&stSCEvent);
+    }
+
+    if (SC_LEG_PEER_INBOUND == pstLegCB->stCall.ucPeerType)
+    {
+        if (g_stSysStat.ulIncomingCalls != 0)
+        {
+            g_stSysStat.ulIncomingCalls--;
+        }
+        else
+        {
+            DOS_ASSERT(0);
+        }
+    }
+    else if (SC_LEG_PEER_OUTBOUND == pstLegCB->stCall.ucPeerType)
+    {
+        if (g_stSysStat.ulOutgoingCalls != 0)
+        {
+            g_stSysStat.ulOutgoingCalls--;
+        }
+        else
+        {
+            DOS_ASSERT(0);
+        }
     }
 
     return DOS_SUCC;
