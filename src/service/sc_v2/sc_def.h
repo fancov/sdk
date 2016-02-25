@@ -1032,6 +1032,7 @@ typedef enum tagSCAutoCallStatus{
     SC_AUTO_CALL_EXEC2,         /**< 呼叫坐席 */
     SC_AUTO_CALL_PORC2,         /**< 坐席的channel创建 */
     SC_AUTO_CALL_ALERTING2,     /**< 坐席振铃 */
+    SC_AUTO_CALL_TONE,
     SC_AUTO_CALL_CONNECTED,     /**< 和坐席开始通话 */
     SC_AUTO_CALL_PROCESS,       /**< 通话结束之后，如果有满意度调查，就需要这个状态，没有直接到释放 */
     SC_AUTO_CALL_RELEASE,       /**< 结束 */
@@ -2042,6 +2043,7 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_call_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);

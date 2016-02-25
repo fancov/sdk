@@ -614,7 +614,6 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
     SC_LEG_CB *pstCallingLegCB = NULL;
     SC_LEG_CB *pstCalleeLegCB = NULL;
     SC_MSG_CMD_CALL_ST      stCallMsg;
-    SC_MSG_CMD_RECORD_ST    stRecordRsp;
     U32 ulErrCode = CC_ERR_NO_REASON;
     S8 szCallee[SC_NUM_LENGTH] = {0,};
     SC_SRV_CB *pstIndSCB = NULL;
@@ -632,13 +631,19 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
     }
 
     /* 判断修改坐席的状态 */
+    pstSCB->stAutoCall.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
     pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
+    sc_agent_set_busy(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
 
-    /* 判断是否需要录音 */
+    dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+
+    /* 坐席弹屏 */
+    sc_agent_call_notify(pstAgentNode->pstAgentInfo, pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+
+    /* 是否需要录音 */
     if (pstAgentNode->pstAgentInfo->bRecord)
     {
         pstCallingLegCB->stRecord.bValid = DOS_TRUE;
-        pstCallingLegCB->stRecord.usStatus = SC_SU_RECORD_INIT;
     }
 
     /* 判断坐席是否长签 */
@@ -651,33 +656,14 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
             pstSCB->stAutoCall.ulCalleeLegNo = pstAgentNode->pstAgentInfo->ulLegNo;
             pstCalleeLegCB->ulSCBNo = pstSCB->ulSCBNo;
             /* 放提示音给坐席 */
+            sc_req_playback_stop(pstSCB->ulSCBNo, pstCalleeLegCB->ulCBNo);
             pstIndSCB = sc_scb_get(pstCalleeLegCB->ulIndSCBNo);
             if (DOS_ADDR_VALID(pstIndSCB))
             {
                 sc_req_play_sound(pstIndSCB->ulSCBNo, pstIndSCB->stSigin.ulLegNo, SC_SND_INCOMING_CALL_TIP, 1, 0, 0);
             }
 
-            if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCalleeLegNo, pstSCB->stAutoCall.ulCallingLegNo) != DOS_SUCC)
-            {
-                sc_trace_scb(pstSCB, "Bridge call when early media fail.");
-                goto process_fail;
-            }
-
-            /* 判断是否需要录音 */
-            if (pstCallingLegCB->stRecord.bValid)
-            {
-                stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
-                stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-                stRecordRsp.stMsgTag.usInterErr = 0;
-                stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
-                stRecordRsp.ulLegNo = pstCallingLegCB->ulCBNo;
-
-                if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
-                {
-                    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
-                }
-            }
-            pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_CONNECTED;
+            pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_TONE;
 
             return DOS_SUCC;
         }
@@ -705,14 +691,6 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
     pstCalleeLegCB->ulSCBNo = pstSCB->ulSCBNo;
 
     pstSCB->stAutoCall.ulCalleeLegNo = pstCalleeLegCB->ulCBNo;
-
-    /* 是否需要录音 */
-    if (pstAgentNode->pstAgentInfo->bRecord)
-    {
-        sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
-        pstCalleeLegCB->stRecord.bValid = DOS_TRUE;
-        pstCalleeLegCB->stRecord.usStatus = SC_SU_RECORD_PROC;
-    }
 
     switch (pstAgentNode->pstAgentInfo->ucBindType)
     {
@@ -751,10 +729,6 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
         default:
             break;
     }
-
-    /* 维护一下主叫号码 */
-    //dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCalling), pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
-    //dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCallee), szCallee);
 
     /* 新LEG处理一下号码 */
     dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), szCallee);

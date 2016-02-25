@@ -307,6 +307,7 @@ U32 sc_srv_auto_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
 
         case SC_EVT_RECORD_END:
             /* 暂时不处理 */
+            ulRet = sc_auto_call_record_stop(pstMsg, pstSCB);
             break;
 
         case SC_EVT_PLAYBACK_START:
@@ -329,7 +330,7 @@ U32 sc_srv_auto_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
             break;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Interception Service, SCB:%u, Ret: %s"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in auto call Service, SCB:%u, Ret: %s"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
                 , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 

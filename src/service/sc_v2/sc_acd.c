@@ -2231,10 +2231,10 @@ U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 
         case SC_ACD_BUSY:
             /* TODO */
-            if (pstAgentQueueInfo->ulLegNo != U32_BUTT)
-            {
+            //if (pstAgentQueueInfo->ulLegNo == U32_BUTT)
+            //{
                 pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
-            }
+            //}
 
             break;
 

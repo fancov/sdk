@@ -1577,6 +1577,15 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
             dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstAgentNode->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
         }
     }
+    else if (pstSCB->stAutoCall.stSCBTag.bValid)
+    {
+        pstAgentNode = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
+        if (DOS_ADDR_VALID(pstAgentNode)
+            && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+        {
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstAgentNode->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+        }
+    }
 
     pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum) - 1] = '\0';
 
@@ -1799,11 +1808,21 @@ U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
             dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstAgentNode->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
         }
     }
+    else if (pstSCB->stAutoCall.stSCBTag.bValid)
+    {
+        pstAgentNode = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
+        if (DOS_ADDR_VALID(pstAgentNode)
+            && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+        {
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstAgentNode->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+        }
+    }
+
     pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum) - 1] = '\0';
 
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = pstLeg->stCall.stTimeInfo.ulRecordStartTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = pstLeg->stCall.stTimeInfo.ulStartTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulRingTimeStamp = pstLeg->stCall.stTimeInfo.ulRingTime;
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstLeg->stCall.stTimeInfo.ulAnswerTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstLeg->stCall.stTimeInfo.ulRecordStartTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulIVRFinishTimeStamp = pstLeg->stCall.stTimeInfo.ulIVREndTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulDTMFTimeStamp = pstLeg->stCall.stTimeInfo.ulDTMFStartTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulBridgeTimeStamp = pstLeg->stCall.stTimeInfo.ulBridgeTime;
