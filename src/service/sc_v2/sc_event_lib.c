@@ -1214,7 +1214,7 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     pstLCB->stCall.bValid = DOS_SUCC;
     pstLCB->stCall.ucStatus = SC_LEG_INIT;
 
-    pstSCB->ulCustomerID = pstAgentNode->pstAgentInfo->ulAgentID;
+    pstSCB->ulCustomerID = pstAgentNode->pstAgentInfo->ulCustomerID;
     pstSCB->stPreviewCall.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_IDEL;
     pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stPreviewCall.stSCBTag;
