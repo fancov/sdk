@@ -2077,7 +2077,7 @@ U32 sc_gateway_update_proc(U32 ulAction, U32 ulGatewayID)
             break;
     }
 
-    //sc_send_gateway_update_req(ulGatewayID, ulAction);
+    sc_send_gateway_update_req(ulGatewayID, ulAction);
 
     return DOS_SUCC;
 }
