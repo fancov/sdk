@@ -25,6 +25,68 @@ extern "C" {
 
 extern SC_ACCESS_CODE_LIST_ST astSCAccessList[];
 
+/**
+  * 先判断是够符合客户标记的条件。
+  *  1、按键的是坐席
+  *  2、对端是客户
+  * 如果不符合条件，不需要处理
+  */
+U32 sc_access_mark_customer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB, U32 ulKey)
+{
+    BOOL                bIsMatch        = DOS_FALSE;
+    SC_AGENT_NODE_ST    *pstAgentNode   = NULL;
+    U32                 ulCustomerLegNo;
+
+    if (DOS_ADDR_INVALID(pstSCB)
+        || DOS_ADDR_INVALID(pstLegCB)
+        || ulKey > 9)
+    {
+        return DOS_FAIL;
+    }
+
+    pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_ACTIVE;
+
+    /* 判断是否符合条件 */
+    if (pstSCB->stCall.stSCBTag.bValid)
+    {
+        /* 基础呼叫 */
+        if (pstLegCB->ulCBNo == pstSCB->stCall.ulCallingLegNo
+            && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+            && DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee))
+        {
+            ulCustomerLegNo = pstSCB->stCall.ulCalleeLegNo;
+            bIsMatch = DOS_TRUE;
+        }
+        else if (pstLegCB->ulCBNo == pstSCB->stCall.ulCalleeLegNo
+            && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
+            && DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCalling))
+        {
+            ulCustomerLegNo = pstSCB->stCall.ulCallingLegNo;
+            bIsMatch = DOS_TRUE;
+        }
+    }
+
+    if (!bIsMatch)
+    {
+        return DOS_FAIL;
+    }
+
+    pstAgentNode = sc_agent_get_by_id(pstSCB->stAccessCode.ulAgentID);
+    if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+    {
+        return DOS_FAIL;
+    }
+
+    /* 客户标记 */
+    sc_agent_marker_update_req(pstSCB->ulCustomerID, pstSCB->stAccessCode.ulAgentID, ulKey, pstAgentNode->pstAgentInfo->szLastCustomerNum);
+    pstAgentNode->pstAgentInfo->bMarkCustomer = DOS_TRUE;
+
+    /* 挂断客户的电话 */
+    sc_req_hungup(pstSCB->ulSCBNo, ulCustomerLegNo, CC_ERR_NORMAL_CLEAR);
+
+    return DOS_SUCC;
+}
+
 U32 sc_access_balance_enquiry(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
 {
     return sc_send_balance_query2bs(pstSCB, pstLegCB);
@@ -375,7 +437,8 @@ U32 sc_access_agent_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
                 ulResult = sc_agent_access_set_sigin(pstAgent, pstSCB, pstLegCB);
                 if (ulResult == DOS_SUCC)
                 {
-                    sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stSigin.ulLegNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
+                    /* answer */
+                    sc_req_answer_call(pstSCB->ulSCBNo, pstSCB->stSigin.ulLegNo);
                     bPlayRes = DOS_FALSE;
                 }
                 break;
@@ -427,6 +490,7 @@ U32 sc_access_agent_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
 U32 sc_call_access_code(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, S8 *szNum, BOOL bIsSecondDial)
 {
     U32     i                        = 0;
+    U32     ulKey                    = U32_BUTT;
     S8      szDealNum[SC_NUM_LENGTH] = {0,};
 
     if (DOS_ADDR_INVALID(pstSCB)
@@ -465,7 +529,8 @@ U32 sc_call_access_code(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, S8 *szNum
     pstSCB->stAccessCode.ulLegNo = pstCallingLegCB->ulCBNo;
 
     dos_strncpy(szDealNum, szNum, SC_NUM_LENGTH-1);
-    if (szDealNum[dos_strlen(szDealNum)] == '#')
+    if (szDealNum[dos_strlen(szDealNum)] == '#'
+        || szDealNum[dos_strlen(szDealNum)] == '*')
     {
         szDealNum[dos_strlen(szDealNum)] = '\0';
     }
@@ -502,19 +567,32 @@ U32 sc_call_access_code(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, S8 *szNum
 
     if (i >= SC_ACCESS_BUTT)
     {
-        /* 没有找个匹配的 */
+        /* 判断一下是不是客户标记 */
+        if (bIsSecondDial
+            && szDealNum[0] == '*'
+            && szDealNum[2] == '\0'
+            && 1 == dos_sscanf(szDealNum+1, "%u", &ulKey)
+            && ulKey <= 9)
+        {
+            return sc_access_mark_customer(pstSCB, pstCallingLegCB, ulKey);
+        }
+
+        /* 没有找个匹配的, 提示操作失败 */
+        pstSCB->stAccessCode.bIsSecondDial = bIsSecondDial;
+        pstSCB->stAccessCode.ulSrvType = SC_ACCESS_BUTT;
+        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_ACTIVE;
+        sc_req_play_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, SC_SND_SET_FAIL, 1, 0, 0);
+
         return DOS_FAIL;
     }
 
+    pstSCB->stAccessCode.bIsSecondDial = bIsSecondDial;
     pstSCB->stAccessCode.ulSrvType = astSCAccessList[i].ulType;
     pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_ACTIVE;
     if (DOS_ADDR_VALID(astSCAccessList[i].fn_init))
     {
         astSCAccessList[i].fn_init(pstSCB, pstCallingLegCB);
     }
-
-    /* 退出 接入码业务 */
-    pstSCB->stAccessCode.stSCBTag.bWaitingExit = DOS_TRUE;
 
     return DOS_SUCC;
 }
@@ -1036,7 +1114,8 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 || pstHungupLeg->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
                 && DOS_ADDR_VALID(pstAgentCall)
                 && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo)
-                && pstAgentCall->pstAgentInfo->ucProcesingTime != 0)
+                && pstAgentCall->pstAgentInfo->ucProcesingTime != 0
+                && !pstAgentCall->pstAgentInfo->bMarkCustomer)
             {
                 /* 客户标记 */
                 pstSCB->stMarkCustom.stSCBTag.bValid = DOS_TRUE;
@@ -1071,6 +1150,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     dos_strcpy(pstOtherLeg->stCall.stNumInfo.szOriginalCalling, pstAgentCall->pstAgentInfo->szLastCustomerNum);
                 }
 
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT),  "!!!!!!!!!!!!!!!!!!!!!!!%u", __LINE__);
                 /* 修改坐席状态为 proc，播放 标记背景音 */
                 if (pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
                 {
@@ -1102,6 +1182,13 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstSCB->stCall.stSCBTag.usStatus = SC_CALL_PROCESS;
 
                 break;
+            }
+
+            if (DOS_ADDR_VALID(pstAgentCall)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo)
+                && !pstAgentCall->pstAgentInfo->bMarkCustomer)
+            {
+                pstAgentCall->pstAgentInfo->bMarkCustomer = DOS_FALSE;
             }
 
             /* 不需要客户标记 */
@@ -1255,8 +1342,9 @@ U32 sc_call_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_MSG_EVT_DTMF_ST    *pstDTMF = NULL;
-    SC_LEG_CB             *pstLCB =  NULL;
+    SC_MSG_EVT_DTMF_ST    *pstDTMF      = NULL;
+    SC_LEG_CB             *pstLCB       =  NULL;
+    U32                    ulAgentID    = U32_BUTT;
 
     pstDTMF = (SC_MSG_EVT_DTMF_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstDTMF) || DOS_ADDR_INVALID(pstSCB))
@@ -1272,61 +1360,44 @@ U32 sc_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    /* 正常呼叫过程，DTMF只能是客户标记，其他没有业务了, 但是只有当前LEG为坐席时才需要 */
-    if (pstDTMF->ulLegNo == pstSCB->stCall.ulCalleeLegNo)
-    {
-        if (DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee))
-        {
-            return DOS_SUCC;
-        }
-    }
-
     /* 开启 接入码 业务 */
     if (!pstSCB->stAccessCode.stSCBTag.bValid)
     {
         /* 开启接入码业务 */
         if (pstDTMF->cDTMFVal != '*'
-            || pstDTMF->cDTMFVal != '#' )
+            && pstDTMF->cDTMFVal != '#' )
         {
             /* 第一个字符不是 '*' 或者 '#' 不保存  */
             return DOS_SUCC;
         }
 
+        /* 只有坐席对应的leg执行接入码业务 */
+        if (pstDTMF->ulLegNo == pstSCB->stCall.ulCallingLegNo)
+        {
+            if (DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCalling)
+                || DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+            {
+                return DOS_SUCC;
+            }
+            ulAgentID = pstSCB->stCall.pstAgentCalling->pstAgentInfo->ulAgentID;
+        }
+
+        if (pstDTMF->ulLegNo == pstSCB->stCall.ulCalleeLegNo)
+        {
+            if (DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee)
+                || DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+            {
+                return DOS_SUCC;
+            }
+            ulAgentID = pstSCB->stCall.pstAgentCallee->pstAgentInfo->ulAgentID;
+        }
+
         pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
         pstSCB->stAccessCode.szDialCache[0] = '\0';
         pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
-        pstSCB->stAccessCode.ulAgentID = pstSCB->stSigin.pstAgentNode->pstAgentInfo->ulAgentID;
+        pstSCB->stAccessCode.ulAgentID = ulAgentID;
         pstSCB->ulCurrentSrv++;
         pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
-    }
-
-    /* 处理客户标记 */
-    if (dos_strlen(pstLCB->stCall.stNumInfo.szDial) == 3)
-    {
-        /* 第一位是*, 第二位是一个数字, 第三位为*或者# */
-        if ('*' == pstLCB->stCall.stNumInfo.szDial[0]
-            && (pstLCB->stCall.stNumInfo.szDial[1] >= '0'  && pstLCB->stCall.stNumInfo.szDial[1] < '9')
-            && ('*' == pstLCB->stCall.stNumInfo.szDial[2]  || '#' == pstLCB->stCall.stNumInfo.szDial[2]))
-        {
-            /* 记录客户标记 */
-            sc_trace_scb(pstSCB, "Mark custom. %d", pstLCB->stCall.stNumInfo.szDial[1]);
-            return DOS_SUCC;
-        }
-    }
-
-    /* 坐席强制挂段呼叫 */
-    if (dos_strnicmp(pstLCB->stCall.stNumInfo.szDial, "##", SC_NUM_LENGTH) == 0
-        || dos_strnicmp(pstLCB->stCall.stNumInfo.szDial, "**", SC_NUM_LENGTH) == 0)
-    {
-        /* 挂断对端 */
-        if (pstLCB->ulCBNo == pstSCB->stCall.ulCalleeLegNo)
-        {
-            return sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, CC_ERR_NORMAL_CLEAR);
-        }
-        else
-        {
-            return sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCalleeLegNo, CC_ERR_NORMAL_CLEAR);
-        }
     }
 
     return DOS_SUCC;
@@ -5331,7 +5402,6 @@ U32 sc_access_code_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     {
         case SC_ACCESS_CODE_ACTIVE:
             pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_RELEASE;
-
             switch (pstSCB->stAccessCode.ulSrvType)
             {
                 case SC_ACCESS_BALANCE_ENQUIRY:
@@ -5470,22 +5540,42 @@ U32 sc_access_code_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stAccessCode.stSCBTag.usStatus)
     {
         case SC_ACCESS_CODE_ACTIVE:
+        case SC_ACCESS_CODE_RELEASE:
             switch (pstSCB->stAccessCode.ulSrvType)
             {
                 case SC_ACCESS_BALANCE_ENQUIRY:
                 case SC_ACCESS_AGENT_ONLINE:
                 case SC_ACCESS_AGENT_OFFLINE:
-                    if (pstLegCB->stPlayback.usStatus == SC_SU_PLAYBACK_INIT)
+                case SC_ACCESS_MARK_CUSTOMER:
+                    /* 挂断电话 */
+                    pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_RELEASE;
+                    sc_req_hungup(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                    break;
+                case SC_ACCESS_AGENT_EN_QUEUE:
+                case SC_ACCESS_AGENT_DN_QUEUE:
+                case SC_ACCESS_AGENT_SIGNOUT:
+                    if (pstSCB->stAccessCode.bIsSecondDial)
+                    {
+                        /* 二次拨号，直接退出接入码业务就行了 */
+                        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_RELEASE;
+                        pstSCB->stAccessCode.stSCBTag.bWaitingExit = DOS_TRUE;
+                    }
+                    else
                     {
                         /* 挂断电话 */
                         pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_RELEASE;
                         sc_req_hungup(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
                     }
                     break;
-                case SC_ACCESS_AGENT_EN_QUEUE:
-                case SC_ACCESS_AGENT_DN_QUEUE:
+                case SC_ACCESS_AGENT_SIGNIN:
+                case SC_ACCESS_BLIND_TRANSFER:
+                case SC_ACCESS_ATTENDED_TRANSFER:
+                case SC_ACCESS_HANGUP_CUSTOMER1:
+                case SC_ACCESS_HANGUP_CUSTOMER2:
                     break;
                 default:
+                    pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_RELEASE;
+                    sc_req_hungup(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
                     break;
             }
 
@@ -5512,6 +5602,8 @@ U32 sc_access_code_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     switch (pstSCB->stAccessCode.stSCBTag.usStatus)
     {
+        case SC_ACCESS_CODE_IDEL:
+        case SC_ACCESS_CODE_OVERLAP:
         case SC_ACCESS_CODE_ACTIVE:
         case SC_ACCESS_CODE_RELEASE:
             pstSCB->stAccessCode.stSCBTag.bWaitingExit = DOS_TRUE;

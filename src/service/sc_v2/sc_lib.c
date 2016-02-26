@@ -950,6 +950,7 @@ VOID sc_scb_access_code_init(SC_ACCESS_CODE_ST *pstAccessCode)
     pstAccessCode->stSCBTag.usSrvType = SC_SRV_ACCESS_CODE;
     pstAccessCode->stSCBTag.usStatus = SC_ACCESS_CODE_IDEL;
     pstAccessCode->ulLegNo = U32_BUTT;
+    pstAccessCode->bIsSecondDial = DOS_FALSE;
     pstAccessCode->ulSrvType = 0;
     pstAccessCode->szDialCache[0] = '\0';
     pstAccessCode->ulAgentID = 0;

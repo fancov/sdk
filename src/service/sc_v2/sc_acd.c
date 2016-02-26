@@ -2445,10 +2445,11 @@ U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_
 
     pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = (SC_SCB_TAG_ST *)&pstSCB->stSigin;
 
-    pstSCB->stSigin.stSCBTag.usStatus = SC_SIGIN_ACTIVE;
+    pstSCB->stSigin.stSCBTag.usStatus = SC_SIGIN_ALERTING;
 
     pstAgent->pstAgentInfo->ucStatus = SC_ACD_IDEL;
 
+    sc_agent_status_notify(pstAgent->pstAgentInfo, ACD_MSG_SUBTYPE_IDLE);
     sc_agent_status_notify(pstAgent->pstAgentInfo, ACD_MSG_SUBTYPE_SIGNIN);
 
     return DOS_SUCC;
@@ -3409,6 +3410,7 @@ static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
     stSiteInfo.bWaitingDelete = DOS_FALSE;
     stSiteInfo.bSelected = DOS_FALSE;
     stSiteInfo.bConnected = DOS_FALSE;
+    stSiteInfo.bMarkCustomer = DOS_FALSE;
     stSiteInfo.ucProcesingTime = 0;
     stSiteInfo.ulSIPUserID = ulSIPID;
     stSiteInfo.ucProcesingTime = (U8)ulFinishTime;

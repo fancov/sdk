@@ -533,7 +533,8 @@ typedef struct tagACDSiteDesc{
 
     U32        bWaitingDelete:1;                  /* 是否已经被删除 */
     U32        bSelected:1;                       /* 是否被呼叫队列选中 */
-    U32        ucRes1:14;
+    U32        bMarkCustomer:1;                   /* 是否标记了客户 */
+    U32        ucRes1:13;
 
     U8         ucProcesingTime;                   /* 坐席处理呼叫结果时间 */
     U8         ucCallStatus;                      /* 呼叫状态 */
@@ -1132,6 +1133,9 @@ typedef struct tagSCAccessCode{
 
     /* 呼叫客户的LEG */
     U32               ulLegNo;
+
+    /** 是否是二次拨号 */
+    BOOL              bIsSecondDial;
 
     /** 接入码种类 */
     U32               ulSrvType;
