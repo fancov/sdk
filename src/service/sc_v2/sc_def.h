@@ -2131,6 +2131,8 @@ U32 sc_access_agent_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_access_hungup(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 
+U32 sc_send_sip_update_req(U32 ulID, U32 ulAction);
+
 #endif  /* end of __SC_DEF_V2_H__ */
 
 #ifdef __cplusplus

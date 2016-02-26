@@ -530,7 +530,7 @@ U32 sc_sip_account_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID)
             break;
     }
 
-    //sc_send_sip_update_req(ulSipID, ulAction);
+    sc_send_sip_update_req(ulSipID, ulAction);
 
     return DOS_SUCC;
 }

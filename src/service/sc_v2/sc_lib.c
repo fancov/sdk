@@ -21,7 +21,8 @@ extern "C" {
 #include "bs_pub.h"
 #include "sc_hint.h"
 #include "sc_res.h"
-
+#include "sc_publish.h"
+#include "sc_http_api.h"
 
 /** 管理background job的HASH表 */
 extern HASH_TABLE_S          *g_pstBGJobHash;
@@ -69,6 +70,55 @@ extern pthread_mutex_t      g_mutexTaskList;
 
 extern U32          g_ulCPS;
 extern U32          g_ulMaxConcurrency4Task;
+
+U32 sc_send_sip_update_req(U32 ulID, U32 ulAction)
+{
+    S8 szURL[256]      = { 0, };
+    S8 szData[512]     = { 0, };
+    SC_PUB_FS_DATA_ST *pstData;
+    S32 ulPAPIPort = -1;
+
+    pstData = dos_dmem_alloc(sizeof(SC_PUB_FS_DATA_ST));
+    if (DOS_ADDR_INVALID(pstData))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    ulPAPIPort = config_hb_get_papi_port();
+    if (ulPAPIPort <= 0)
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost/index.php/papi");
+    }
+    else
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/index.php/papi", ulPAPIPort);
+    }
+
+    /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
+    dos_snprintf(szData, sizeof(szData), "data={\"type\":\"%u\", \"data\":{\"id\":\"%u\", \"action\":\"%s\"}}"
+                    , SC_PUB_TYPE_SIP_XMl
+                    , ulID
+                    , SC_API_CMD_ACTION_SIP_DELETE == ulAction ? "delete" : "add");
+
+    pstData->ulID = ulID;
+    pstData->ulAction = ulAction;
+
+    if (sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_SIP_XMl, pstData) == DOS_SUCC)
+    {
+        return DOS_SUCC;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+
+        dos_dmem_free(pstData);
+        pstData = NULL;
+        return DOS_FAIL;
+    }
+}
+
 
 U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszJobNum, S8 *pszCaller, S8 *pszCallee)
 {
