@@ -25,6 +25,31 @@ extern "C" {
 
 extern SC_ACCESS_CODE_LIST_ST astSCAccessList[];
 
+
+U32 sc_errcode_transfer_from_intererr(U32 ulInterErr)
+{
+    U32 ulErrNo = CC_ERR_NO_REASON;
+
+    switch (ulInterErr)
+    {
+        case SC_ERR_INVALID_MSG:
+        case SC_ERR_ALLOC_RES_FAIL:
+        case SC_ERR_EXEC_FAIL:
+        case SC_ERR_LEG_NOT_EXIST:
+            ulErrNo = CC_ERR_SC_MESSAGE_PARAM_ERR;
+            break;
+        case SC_ERR_CALL_FAIL:
+        case SC_ERR_BRIDGE_FAIL:
+        case SC_ERR_RECORD_FAIL:
+        case SC_ERR_BREAK_FAIL:
+            break;
+        default:
+            break;
+    }
+
+    return ulErrNo;
+}
+
 /**
   * 先判断是够符合客户标记的条件。
   *  1、按键的是坐席
@@ -808,13 +833,6 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stCall.stSCBTag.usStatus)
     {
         case SC_CALL_AUTH:
-            //pstSCB->stCall.stSCBTag.usStatus = SC_CALL_EXEC;
-            if (pstAuthRsp->ucBalanceWarning)
-            {
-                /* TODO */
-                return sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, SC_SND_LOW_BALANCE, 1, 0, 0);
-            }
-
             if (SC_DIRECTION_PSTN == pstSCB->stCall.ulCallSrc && SC_DIRECTION_SIP == pstSCB->stCall.ulCallDst)
             {
                 /* 入局呼叫 */
@@ -822,6 +840,12 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             else
             {
+                if (pstAuthRsp->ucBalanceWarning)
+                {
+                    /* 余额告警 */
+                    return sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, SC_SND_LOW_BALANCE, 1, 0, 0);
+                }
+
                 ulRet = sc_outgoing_call_process(pstSCB, pstLegCB);
             }
             break;
@@ -1081,6 +1105,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_CALL_ALERTING:
+        case SC_CALL_TONE:
         case SC_CALL_ACTIVE:
             pstCallee = sc_lcb_get(pstSCB->stCall.ulCalleeLegNo);
             pstCalling = sc_lcb_get(pstSCB->stCall.ulCallingLegNo);
@@ -1089,13 +1114,11 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 if (DOS_ADDR_VALID(pstCalling))
                 {
-                    /* 可能是新业务等 */
                     sc_send_billing_stop2bs(pstSCB, pstCalling, NULL);
                     sc_lcb_free(pstCalling);
                     sc_scb_free(pstSCB);
                     break;
                 }
-
                 /* 错误处理 */
             }
 
@@ -1480,15 +1503,14 @@ U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_CALL_AUTH:
+            ulRet = sc_outgoing_call_process(pstSCB, pstCallingLegCB);
             break;
 
         case SC_CALL_EXEC:
-            ulRet = sc_outgoing_call_process(pstSCB, pstCallingLegCB);
             break;
 
         case SC_CALL_TONE:
             /* 坐席长签时，给坐席放提示音结束，需要录音 */
-            //sc_req_answer_call(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo);
             pstCalleeLegCB = sc_lcb_get(pstSCB->stCall.ulCalleeLegNo);
             if (DOS_ADDR_VALID(pstCalleeLegCB) && pstCalleeLegCB->stRecord.bValid)
             {
@@ -1518,7 +1540,6 @@ U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
         case SC_CALL_PROCESS:
             break;
-
         case SC_CALL_RELEASE:
             break;
 
@@ -1581,6 +1602,57 @@ U32 sc_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     return ulRet;
 
+}
+
+U32 sc_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
+    U32                         ulRet               = DOS_SUCC;
+    U32                         ulErrCode           = CC_ERR_NO_REASON;
+
+    pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing call error event. status : %u", pstSCB->stCall.stSCBTag.usStatus);
+    /* 记录错误码 */
+    ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
+
+    switch (pstSCB->stCall.stSCBTag.usStatus)
+    {
+        case SC_CALL_IDEL:
+        case SC_CALL_PORC:
+        case SC_CALL_AUTH:
+            ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, ulErrCode);
+            break;
+        case SC_CALL_AUTH2:
+        case SC_CALL_EXEC:
+        case SC_CALL_ALERTING:
+        case SC_CALL_TONE:
+        case SC_CALL_ACTIVE:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCalleeLegNo, ulErrCode);
+            break;
+        case SC_CALL_PROCESS:
+        case SC_CALL_RELEASE:
+            if (pstSCB->stCall.ulCalleeLegNo != U32_BUTT)
+            {
+                ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCalleeLegNo, ulErrCode);
+            }
+            else
+            {
+                ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, ulErrCode);
+            }
+            break;
+        default:
+            break;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
 }
 
 U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
@@ -2222,7 +2294,8 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (pstHungupLeg == pstCalleeCB
                 && DOS_ADDR_VALID(pstAgentCall)
                 && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo)
-                && pstAgentCall->pstAgentInfo->ucProcesingTime != 0)
+                && pstAgentCall->pstAgentInfo->ucProcesingTime != 0
+                && !pstAgentCall->pstAgentInfo->bMarkCustomer)
             {
                 /* 客户标记 */
                 pstSCB->stMarkCustom.stSCBTag.bValid = DOS_TRUE;
@@ -2288,6 +2361,13 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_PROCESS;
 
                 break;
+            }
+
+            if (DOS_ADDR_VALID(pstAgentCall)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo)
+                && !pstAgentCall->pstAgentInfo->bMarkCustomer)
+            {
+                pstAgentCall->pstAgentInfo->bMarkCustomer = DOS_FALSE;
             }
 
             /* 不需要客户标记 */
@@ -2387,7 +2467,50 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_preview_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    /* 处理各种二次拨号 */
+    SC_MSG_EVT_DTMF_ST    *pstDTMF      = NULL;
+    SC_LEG_CB             *pstLCB       =  NULL;
+
+    pstDTMF = (SC_MSG_EVT_DTMF_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstDTMF) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing preview call dtmf event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
+
+    pstLCB = sc_lcb_get(pstDTMF->ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 开启 接入码 业务 */
+    if (!pstSCB->stAccessCode.stSCBTag.bValid)
+    {
+        /* 开启接入码业务 */
+        if (pstDTMF->cDTMFVal != '*'
+            && pstDTMF->cDTMFVal != '#' )
+        {
+            /* 第一个字符不是 '*' 或者 '#' 不保存  */
+            return DOS_SUCC;
+        }
+
+        /* 只有坐席对应的leg执行接入码业务 */
+        if (pstDTMF->ulLegNo != pstSCB->stPreviewCall.ulCallingLegNo)
+        {
+            return DOS_SUCC;
+        }
+
+        pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+        pstSCB->stAccessCode.szDialCache[0] = '\0';
+        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+        pstSCB->stAccessCode.ulAgentID = pstSCB->stPreviewCall.ulAgentID;
+        pstSCB->ulCurrentSrv++;
+        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+    }
+
     return DOS_SUCC;
 }
 
@@ -2403,6 +2526,8 @@ U32 sc_preview_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    sc_trace_scb(pstSCB, "Proccessing preview call record stop event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
 
     pstLCB = sc_lcb_get(pstRecord->ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
@@ -2421,6 +2546,51 @@ U32 sc_preview_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     /* 处理放音结束 */
     return DOS_SUCC;
+}
+
+U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
+    U32                         ulRet               = DOS_SUCC;
+    U32                         ulErrCode           = CC_ERR_NO_REASON;
+
+    pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
+    /* 记录错误码 */
+    ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
+
+    switch (pstSCB->stPreviewCall.stSCBTag.usStatus)
+    {
+        case SC_PREVIEW_CALL_IDEL:
+        case SC_PREVIEW_CALL_AUTH:
+        case SC_PREVIEW_CALL_EXEC:
+        case SC_PREVIEW_CALL_PORC:
+        case SC_PREVIEW_CALL_ALERTING:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCalleeLegNo, ulErrCode);
+            break;
+        case SC_PREVIEW_CALL_ACTIVE:
+        case SC_PREVIEW_CALL_CONNECTING:
+        case SC_PREVIEW_CALL_ALERTING2:
+            ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo, ulErrCode);
+            break;
+        case SC_PREVIEW_CALL_CONNECTED:
+        case SC_PREVIEW_CALL_PROCESS:
+        case SC_PREVIEW_CALL_RELEASE:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCalleeLegNo, ulErrCode);
+            break;
+        default:
+            break;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
 }
 
 U32 sc_voice_verify_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
@@ -2854,7 +3024,6 @@ U32 sc_voice_verify_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_VOICE_VERIFY_PROC:
         case SC_VOICE_VERIFY_ALERTING:
             break;
-
         case SC_VOICE_VERIFY_ACTIVE:
             sc_req_hungup(pstSCB->ulSCBNo, pstLCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
             break;
@@ -2877,6 +3046,43 @@ U32 sc_voice_verify_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     sc_trace_scb(pstSCB, "Processed call release event for voice verify.");
 
     return DOS_SUCC;
+}
+
+U32 sc_voice_verify_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
+    U32                         ulRet               = DOS_SUCC;
+    U32                         ulErrCode           = CC_ERR_NO_REASON;
+
+    pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stVoiceVerify.stSCBTag.usStatus);
+    /* 记录错误码 */
+    ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
+
+    switch (pstSCB->stVoiceVerify.stSCBTag.usStatus)
+    {
+        case SC_VOICE_VERIFY_INIT:
+        case SC_VOICE_VERIFY_AUTH:
+        case SC_VOICE_VERIFY_EXEC:
+        case SC_VOICE_VERIFY_PROC:
+        case SC_VOICE_VERIFY_ALERTING:
+        case SC_VOICE_VERIFY_ACTIVE:
+        case SC_VOICE_VERIFY_RELEASE:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stVoiceVerify.ulLegNo, ulErrCode);
+            break;
+        default:
+            break;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
 }
 
 U32 sc_interception_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
@@ -3217,6 +3423,43 @@ U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 }
 
+U32 sc_interception_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
+    U32                         ulRet               = DOS_SUCC;
+    U32                         ulErrCode           = CC_ERR_NO_REASON;
+
+    pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stInterception.stSCBTag.usStatus);
+    /* 记录错误码 */
+    ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
+
+    switch (pstSCB->stInterception.stSCBTag.usStatus)
+    {
+        case SC_INTERCEPTION_IDEL:
+        case SC_INTERCEPTION_AUTH:
+        case SC_INTERCEPTION_EXEC:
+        case SC_INTERCEPTION_PROC:
+        case SC_INTERCEPTION_ALERTING:
+        case SC_INTERCEPTION_ACTIVE:
+        case SC_INTERCEPTION_RELEASE:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stInterception.ulLegNo, ulErrCode);
+            break;
+        default:
+            break;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
+}
+
 U32 sc_whisper_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     U32  ulRet = DOS_FAIL;
@@ -3553,6 +3796,43 @@ U32 sc_whisper_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     return ulRet;
 
+}
+
+U32 sc_whisper_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
+    U32                         ulRet               = DOS_SUCC;
+    U32                         ulErrCode           = CC_ERR_NO_REASON;
+
+    pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stWhispered.stSCBTag.usStatus);
+    /* 记录错误码 */
+    ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
+
+    switch (pstSCB->stWhispered.stSCBTag.usStatus)
+    {
+        case SC_WHISPER_IDEL:
+        case SC_WHISPER_AUTH:
+        case SC_WHISPER_EXEC:
+        case SC_WHISPER_PROC:
+        case SC_WHISPER_ALERTING:
+        case SC_WHISPER_ACTIVE:
+        case SC_WHISPER_RELEASE:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stWhispered.ulLegNo, ulErrCode);
+            break;
+        default:
+            break;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
 }
 
 U32 sc_auto_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
@@ -4214,6 +4494,32 @@ U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     break;
             }
             break;
+         case SC_AUTO_CALL_CONNECTED:
+            /* 开启 接入码 业务 */
+            if (!pstSCB->stAccessCode.stSCBTag.bValid)
+            {
+                /* 开启接入码业务 */
+                if (pstDTMF->cDTMFVal != '*'
+                    && pstDTMF->cDTMFVal != '#' )
+                {
+                    /* 第一个字符不是 '*' 或者 '#' 不保存  */
+                    return DOS_SUCC;
+                }
+
+                /* 只有坐席对应的leg执行接入码业务 */
+                if (pstDTMF->ulLegNo != pstSCB->stAutoCall.ulCalleeLegNo)
+                {
+                    return DOS_SUCC;
+                }
+
+                pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+                pstSCB->stAccessCode.szDialCache[0] = '\0';
+                pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+                pstSCB->stAccessCode.ulAgentID = pstSCB->stAutoCall.ulAgentID;
+                pstSCB->ulCurrentSrv++;
+                pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+            }
+            break;
          default:
             break;
     }
@@ -4480,7 +4786,8 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (pstHungupLeg == pstCallingCB
                 && DOS_ADDR_VALID(pstAgentCall)
                 && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo)
-                && pstAgentCall->pstAgentInfo->ucProcesingTime != 0)
+                && pstAgentCall->pstAgentInfo->ucProcesingTime != 0
+                && !pstAgentCall->pstAgentInfo->bMarkCustomer)
             {
                 /* 客户标记 */
                 pstSCB->stMarkCustom.stSCBTag.bValid = DOS_TRUE;
@@ -4546,6 +4853,13 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_PROCESS;
 
                 break;
+            }
+
+            if (DOS_ADDR_VALID(pstAgentCall)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo)
+                && !pstAgentCall->pstAgentInfo->bMarkCustomer)
+            {
+                pstAgentCall->pstAgentInfo->bMarkCustomer = DOS_FALSE;
             }
 
             /* 不需要客户标记 */
@@ -4642,6 +4956,55 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return DOS_SUCC;
 }
 
+U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
+    U32                         ulRet               = DOS_SUCC;
+    U32                         ulErrCode           = CC_ERR_NO_REASON;
+
+    pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
+    /* 记录错误码 */
+    ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
+
+    switch (pstSCB->stAutoCall.stSCBTag.usStatus)
+    {
+        case SC_AUTO_CALL_IDEL:
+        case SC_AUTO_CALL_AUTH:
+        case SC_AUTO_CALL_EXEC:
+        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_ALERTING:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
+            break;
+        case SC_AUTO_CALL_ACTIVE:
+        case SC_AUTO_CALL_AFTER_KEY:
+        case SC_AUTO_CALL_AUTH2:
+        case SC_AUTO_CALL_EXEC2:
+        case SC_AUTO_CALL_PORC2:
+        case SC_AUTO_CALL_ALERTING2:
+            ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
+            break;
+        case SC_AUTO_CALL_TONE:
+            break;
+        case SC_AUTO_CALL_CONNECTED:
+        case SC_AUTO_CALL_PROCESS:
+        case SC_AUTO_CALL_RELEASE:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
+            break;
+        default:
+            break;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
+}
 
 U32 sc_sigin_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
@@ -5039,6 +5402,43 @@ U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return DOS_SUCC;
 }
 
+U32 sc_sigin_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
+    U32                         ulRet               = DOS_SUCC;
+    U32                         ulErrCode           = CC_ERR_NO_REASON;
+
+    pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stSigin.stSCBTag.usStatus);
+    /* 记录错误码 */
+    ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
+
+    switch (pstSCB->stSigin.stSCBTag.usStatus)
+    {
+        case SC_SIGIN_IDEL:
+        case SC_SIGIN_AUTH:
+        case SC_SIGIN_EXEC:
+        case SC_SIGIN_PORC:
+        case SC_SIGIN_ALERTING:
+        case SC_SIGIN_ACTIVE:
+        case SC_SIGIN_RELEASE:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stSigin.ulLegNo, ulErrCode);
+            break;
+        default:
+            break;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
+}
+
 U32 sc_incoming_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvtCall = NULL;
@@ -5268,6 +5668,40 @@ U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     return DOS_SUCC;
+}
+
+U32 sc_mark_custom_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
+    U32                         ulRet               = DOS_SUCC;
+    U32                         ulErrCode           = CC_ERR_NO_REASON;
+
+    pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stMarkCustom.stSCBTag.usStatus);
+    /* 记录错误码 */
+    ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
+
+    switch (pstSCB->stMarkCustom.stSCBTag.usStatus)
+    {
+        case SC_MAKR_CUSTOM_IDEL:
+        case SC_MAKR_CUSTOM_PROC:
+        case SC_MAKR_CUSTOM_ACTIVE:
+        case SC_MAKR_CUSTOM_RELEASE:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stMarkCustom.ulLegNo, ulErrCode);
+            break;
+        default:
+            break;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
 }
 
 U32 sc_play_balance(U64 LBalance, U32 aulAudioList[], U32 *pulCount)
@@ -5633,6 +6067,40 @@ U32 sc_access_code_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return DOS_SUCC;
 }
 
+U32 sc_access_code_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
+    U32                         ulRet               = DOS_SUCC;
+    U32                         ulErrCode           = CC_ERR_NO_REASON;
+
+    pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stAccessCode.stSCBTag.usStatus);
+    /* 记录错误码 */
+    ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
+
+    switch (pstSCB->stAccessCode.stSCBTag.usStatus)
+    {
+        case SC_ACCESS_CODE_IDEL:
+        case SC_ACCESS_CODE_OVERLAP:
+        case SC_ACCESS_CODE_ACTIVE:
+        case SC_ACCESS_CODE_RELEASE:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAccessCode.ulLegNo, ulErrCode);
+            break;
+        default:
+            break;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
+}
+
 U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_AUTH_RESULT_ST  *pstAuthRsp      = NULL;
@@ -5995,6 +6463,28 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     return DOS_SUCC;
+}
+
+U32 sc_transfer_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
+    U32                         ulRet               = DOS_SUCC;
+    U32                         ulErrCode           = CC_ERR_NO_REASON;
+
+    pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stTransfer.stSCBTag.usStatus);
+    /* 记录错误码 */
+    ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
+
+    sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
 }
 
 U32 sc_demo_task_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
@@ -6410,6 +6900,32 @@ U32 sc_demo_task_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_demo_task_callback(pstSCB, pstAgentNode);
             }
             break;
+         case SC_AUTO_CALL_CONNECTED:
+            /* 开启 接入码 业务 */
+            if (!pstSCB->stAccessCode.stSCBTag.bValid)
+            {
+                /* 开启接入码业务 */
+                if (pstDTMF->cDTMFVal != '*'
+                    && pstDTMF->cDTMFVal != '#' )
+                {
+                    /* 第一个字符不是 '*' 或者 '#' 不保存  */
+                    return DOS_SUCC;
+                }
+
+                /* 只有坐席对应的leg执行接入码业务 */
+                if (pstDTMF->ulLegNo != pstSCB->stDemoTask.ulCalleeLegNo)
+                {
+                    return DOS_SUCC;
+                }
+
+                pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+                pstSCB->stAccessCode.szDialCache[0] = '\0';
+                pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+                pstSCB->stAccessCode.ulAgentID = pstSCB->stDemoTask.ulAgentID;
+                pstSCB->ulCurrentSrv++;
+                pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+            }
+            break;
          default:
             break;
     }
@@ -6675,7 +7191,8 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (pstHungupLeg == pstCallingCB
                 && DOS_ADDR_VALID(pstAgentCall)
                 && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo)
-                && pstAgentCall->pstAgentInfo->ucProcesingTime != 0)
+                && pstAgentCall->pstAgentInfo->ucProcesingTime != 0
+                && !pstAgentCall->pstAgentInfo->bMarkCustomer)
             {
                 /* 客户标记 */
                 pstSCB->stMarkCustom.stSCBTag.bValid = DOS_TRUE;
@@ -6741,6 +7258,13 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstSCB->stDemoTask.stSCBTag.usStatus = SC_AUTO_CALL_PROCESS;
 
                 break;
+            }
+
+            if (DOS_ADDR_VALID(pstAgentCall)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo)
+                && !pstAgentCall->pstAgentInfo->bMarkCustomer)
+            {
+                pstAgentCall->pstAgentInfo->bMarkCustomer = DOS_FALSE;
             }
 
             /* 不需要客户标记 */
@@ -6843,7 +7367,6 @@ U32 sc_demo_task_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_LEG_CB              *pstLCB          = NULL;
     SC_MSG_EVT_PLAYBACK_ST *pstRlayback     = NULL;
     U32                    ulRet            = DOS_SUCC;
-    SC_AGENT_NODE_ST       *pstAgentNode    = NULL;
     SC_MSG_CMD_RECORD_ST  stRecordRsp;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
@@ -6875,18 +7398,9 @@ U32 sc_demo_task_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 goto proc_finishe;
             }
 
-            /* 转坐席 */
-            pstAgentNode = sc_agent_get_by_id(pstSCB->stDemoTask.ulAgentID);
-            if (DOS_ADDR_INVALID(pstAgentNode)
-                || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
-            {
-                /* TODO 没找到坐席 */
-            }
-            else
-            {
-                pstSCB->stDemoTask.stSCBTag.usStatus = SC_AUTO_CALL_EXEC2;
-                sc_demo_task_callback(pstSCB, pstAgentNode);
-            }
+            /* 挂断电话 */
+            pstSCB->stDemoTask.stSCBTag.usStatus = SC_AUTO_CALL_RELEASE;
+            sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stDemoTask.ulCallingLegNo, CC_ERR_NORMAL_CLEAR);
 
             break;
         case SC_AUTO_CALL_TONE:
@@ -6922,6 +7436,56 @@ proc_finishe:
     sc_trace_scb(pstSCB, "Proccessed auto call playk stop event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
     return DOS_SUCC;
+}
+
+U32 sc_demo_task_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
+    U32                         ulRet               = DOS_SUCC;
+    U32                         ulErrCode           = CC_ERR_NO_REASON;
+
+    pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stDemoTask.stSCBTag.usStatus);
+    /* 记录错误码 */
+    ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
+
+    switch (pstSCB->stDemoTask.stSCBTag.usStatus)
+    {
+        case SC_AUTO_CALL_IDEL:
+        case SC_AUTO_CALL_AUTH:
+        case SC_AUTO_CALL_EXEC:
+        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_ALERTING:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stDemoTask.ulCallingLegNo, ulErrCode);
+            break;
+        case SC_AUTO_CALL_ACTIVE:
+        case SC_AUTO_CALL_AFTER_KEY:
+        case SC_AUTO_CALL_AUTH2:
+        case SC_AUTO_CALL_EXEC2:
+        case SC_AUTO_CALL_PORC2:
+        case SC_AUTO_CALL_ALERTING2:
+            ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stDemoTask.ulCallingLegNo, ulErrCode);
+            break;
+        case SC_AUTO_CALL_TONE:
+            break;
+        case SC_AUTO_CALL_CONNECTED:
+        case SC_AUTO_CALL_PROCESS:
+        case SC_AUTO_CALL_RELEASE:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stDemoTask.ulCallingLegNo, ulErrCode);
+            break;
+        default:
+            break;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
 }
 
 #ifdef __cplusplus

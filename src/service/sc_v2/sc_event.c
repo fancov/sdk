@@ -126,6 +126,7 @@ U32 sc_srv_call_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *ps
             break;
 
         case SC_EVT_ERROR_PORT:
+            ulRet = sc_call_error(pstMsg, pstSCB);
             break;
 
         default:
@@ -222,6 +223,7 @@ U32 sc_srv_preview_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
             break;
 
         case SC_EVT_ERROR_PORT:
+            ulRet = sc_preview_error(pstMsg, pstSCB);
             break;
 
         default:
@@ -323,6 +325,7 @@ U32 sc_srv_auto_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
             break;
 
         case SC_EVT_ERROR_PORT:
+            ulRet = sc_auto_call_error(pstMsg, pstSCB);
             break;
 
         default:
@@ -394,8 +397,10 @@ U32 sc_srv_voice_verify_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
         case SC_EVT_BRIDGE_START:
         case SC_EVT_BRIDGE_STOP:
         case SC_EVT_HOLD:
-        case SC_EVT_ERROR_PORT:
             ulRet = DOS_SUCC;
+            break;
+        case SC_EVT_ERROR_PORT:
+            ulRet = sc_voice_verify_error(pstMsg, pstSCB);
             break;
 
         default:
@@ -446,6 +451,9 @@ U32 sc_srv_access_code_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG
             break;
         case SC_EVT_CALL_RERLEASE:
             ulRet = sc_access_code_release(pstMsg, pstSCB);
+            break;
+        case SC_EVT_ERROR_PORT:
+            ulRet = sc_access_code_error(pstMsg, pstSCB);
             break;
         default:
             break;
@@ -528,6 +536,10 @@ U32 sc_srv_transfer_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST
             break;
         case SC_EVT_CALL_RERLEASE:
             ulRet = sc_transfer_release(pstMsg, pstSCB);
+            break;
+        case SC_EVT_ERROR_PORT:
+            ulRet = sc_transfer_error(pstMsg, pstSCB);
+            break;
         default:
             break;
     }
@@ -662,6 +674,7 @@ U32 sc_srv_interception_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
             break;
 
         case SC_EVT_ERROR_PORT:
+            ulRet = sc_interception_error(pstMsg, pstSCB);
             break;
 
         default:
@@ -749,6 +762,7 @@ U32 sc_srv_whisper_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST 
             break;
 
         case SC_EVT_ERROR_PORT:
+            ulRet = sc_whisper_error(pstMsg, pstSCB);
             break;
 
         default:
@@ -846,6 +860,7 @@ U32 sc_srv_mark_custom_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG
             ulRet = sc_mark_custom_release(pstMsg, pstSCB);
             break;
         case SC_EVT_ERROR_PORT:
+            ulRet = sc_mark_custom_error(pstMsg, pstSCB);
             break;
 
         default:
@@ -942,6 +957,7 @@ U32 sc_srv_sigin_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *p
             break;
 
         case SC_EVT_ERROR_PORT:
+            ulRet = sc_sigin_error(pstMsg, pstSCB);
             break;
 
         default:
@@ -1043,6 +1059,7 @@ U32 sc_srv_demo_task_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
             break;
 
         case SC_EVT_ERROR_PORT:
+            ulRet = sc_demo_task_error(pstMsg, pstSCB);
             break;
 
         default:
