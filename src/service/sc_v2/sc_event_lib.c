@@ -331,7 +331,6 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
         if (pstAgentNode->pstAgentInfo->bRecord)
         {
             pstCallingLegCB->stRecord.bValid = DOS_TRUE;
-            pstCallingLegCB->stRecord.usStatus = SC_SU_RECORD_INIT;
         }
 
         dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
