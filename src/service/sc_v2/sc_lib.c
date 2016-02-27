@@ -1125,6 +1125,28 @@ VOID sc_scb_sigin_init(SC_SIGIN_ST *pstSigin)
     pstSigin->pstAgentNode = NULL;
 }
 
+VOID sc_scb_demo_task_init(SC_AUTO_CALL_ST *pstAutoCall)
+{
+    if (DOS_ADDR_INVALID(pstAutoCall))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstAutoCall->stSCBTag.bTrace = DOS_FALSE;
+    pstAutoCall->stSCBTag.bValid = DOS_FALSE;
+    pstAutoCall->stSCBTag.usSrvType = SC_SRV_DEMO_TASK;
+    pstAutoCall->stSCBTag.usStatus = SC_AUTO_CALL_IDEL;
+    pstAutoCall->ulCallingLegNo = U32_BUTT;
+    pstAutoCall->ulCalleeLegNo = U32_BUTT;
+    pstAutoCall->ulAudioID = 0;
+    pstAutoCall->ulKeyMode = 0;
+    pstAutoCall->ulAgentID = 0;
+    pstAutoCall->ulTaskID = 0;
+    pstAutoCall->ulTcbID = U32_BUTT;
+
+}
+
 /**
  * 初始化也控制块
  *
@@ -1172,6 +1194,7 @@ VOID sc_scb_init(SC_SRV_CB *pstSCB)
     sc_scb_whisper_init(&pstSCB->stWhispered);
     sc_scb_mark_custom_init(&pstSCB->stMarkCustom);
     sc_scb_sigin_init(&pstSCB->stSigin);
+    sc_scb_demo_task_init(&pstSCB->stDemoTask);
 }
 
 /**

@@ -142,6 +142,9 @@ extern "C" {
 
 #define SC_ACCESS_CODE_LEN             8
 
+#define SC_DEMOE_TASK_COUNT            3
+#define SC_DEMOE_TASK_FILE             "/usr/local/freeswitch/sounds/okcc/CC_demo.wav"
+
 /**
  * 1. 没有被删除
  * 2. 已经登陆了     && (pstSiteDesc)->bLogin 这个状态不判断了
@@ -462,18 +465,19 @@ typedef enum tagCallNumType{
  * @warning 枚举值必须连续，其不能重复
  */
 typedef enum tagSCSrvType{
-    SC_SRV_CALL           = 0,   /**< 基本呼叫业务 */
-    SC_SRV_PREVIEW_CALL   = 1,   /**< 预览外呼业务 */
-    SC_SRV_AUTO_CALL      = 2,   /**< 群呼任务业务 */
-    SC_SRV_VOICE_VERIFY   = 3,   /**< 语音验证码业务 */
-    SC_SRV_ACCESS_CODE    = 4,   /**< 接入码业务 */
-    SC_SRV_HOLD           = 5,   /**< HOLD业务 */
-    SC_SRV_TRANSFER       = 6,   /**< 转接业务 */
-    SC_SRV_INCOMING_QUEUE = 7,   /**< 呼入队列业务 */
-    SC_SRV_INTERCEPTION   = 8,   /**< 监听业务 */
-    SC_SRV_WHISPER        = 9,   /**< 耳语业务 */
-    SC_SRV_MARK_CUSTOM    = 10,  /**< 客户标记业务 */
-    SC_SRV_AGENT_SIGIN    = 11,  /**< 坐席长签业务 这是个独立业务 */
+    SC_SRV_CALL                 = 0,   /**< 基本呼叫业务 */
+    SC_SRV_PREVIEW_CALL         = 1,   /**< 预览外呼业务 */
+    SC_SRV_AUTO_CALL            = 2,   /**< 群呼任务业务 */
+    SC_SRV_VOICE_VERIFY         = 3,   /**< 语音验证码业务 */
+    SC_SRV_ACCESS_CODE          = 4,   /**< 接入码业务 */
+    SC_SRV_HOLD                 = 5,   /**< HOLD业务 */
+    SC_SRV_TRANSFER             = 6,   /**< 转接业务 */
+    SC_SRV_INCOMING_QUEUE       = 7,   /**< 呼入队列业务 */
+    SC_SRV_INTERCEPTION         = 8,   /**< 监听业务 */
+    SC_SRV_WHISPER              = 9,   /**< 耳语业务 */
+    SC_SRV_MARK_CUSTOM          = 10,  /**< 客户标记业务 */
+    SC_SRV_AGENT_SIGIN          = 11,  /**< 坐席长签业务 这是个独立业务 */
+    SC_SRV_DEMO_TASK            = 12,  /**< 群呼任务demo */
 
     SC_SRV_BUTT,
 }SC_SRV_TYPE_EN;
@@ -1033,7 +1037,7 @@ typedef enum tagSCAutoCallStatus{
     SC_AUTO_CALL_EXEC2,         /**< 呼叫坐席 */
     SC_AUTO_CALL_PORC2,         /**< 坐席的channel创建 */
     SC_AUTO_CALL_ALERTING2,     /**< 坐席振铃 */
-    SC_AUTO_CALL_TONE,
+    SC_AUTO_CALL_TONE,          /**< 坐席长签时，给坐席放提示音 */
     SC_AUTO_CALL_CONNECTED,     /**< 和坐席开始通话 */
     SC_AUTO_CALL_PROCESS,       /**< 通话结束之后，如果有满意度调查，就需要这个状态，没有直接到释放 */
     SC_AUTO_CALL_RELEASE,       /**< 结束 */
@@ -1318,7 +1322,7 @@ typedef struct tagSCCallHold{
 }SC_CALL_HOLD_ST;
 
 /**< 坐席长签业务状态  */
-typedef enum tagSCSUSIGINStatus{
+typedef enum tagSCSiginStatus{
     SC_SIGIN_IDEL,          /**< 初始化状态 */
     SC_SIGIN_AUTH,          /**< 初始化状态 */
     SC_SIGIN_EXEC,          /**< 开始呼叫 */
@@ -1331,7 +1335,7 @@ typedef enum tagSCSUSIGINStatus{
 /**
  * 业务单元,  呼叫长签业务
  */
-typedef struct tagSCSIGIN{
+typedef struct tagSCSigin{
      /** 基本信息 */
     SC_SCB_TAG_ST     stSCBTag;
 
@@ -1405,6 +1409,8 @@ typedef struct tagSCSrvCB{
     SC_MARK_CUSTOM_ST    stMarkCustom;
     /** 坐席长签业务控制块 */
     SC_SIGIN_ST          stSigin;
+    /** 群呼任务demo控制块 */
+    SC_AUTO_CALL_ST      stDemoTask;
     /** 余额告警业务是否启用 */
     SC_BALANCE_WARNING_ST stBalanceWarning;
 
@@ -2003,6 +2009,7 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType);
 U32 sc_agent_http_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
 U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult);
 U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
+U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
 U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAgentID, U32 *pulErrCode);
 U32 sc_agent_call_notify(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller);
 U32 sc_agent_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType);
@@ -2090,6 +2097,15 @@ U32 sc_access_code_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_access_code_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_access_code_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_access_code_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
+U32 sc_demo_task_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_demo_task_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_demo_task_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_demo_task_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_demo_task_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_demo_task_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_demo_task_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 U32 sc_agent_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCallerNum);
 
