@@ -704,7 +704,8 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             /* 一定要通过主叫把客户信息分析出来，否则不能在进行了  */
             if (U32_BUTT == pstSCB->ulCustomerID)
             {
-                ulRet = sc_req_hungup_with_sound(U32_BUTT, pstSCB->stCall.ulCallingLegNo, CC_ERR_SC_NO_SERV_RIGHTS);
+                sc_trace_scb(pstSCB, "Get source is %d", ulCallSrc);
+                ulRet = sc_req_hungup_with_sound(pstSCB, pstSCB->stCall.ulCallingLegNo, CC_ERR_SC_NO_SERV_RIGHTS);
                 goto proc_finished;
             }
 
