@@ -705,7 +705,7 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (U32_BUTT == pstSCB->ulCustomerID)
             {
                 sc_trace_scb(pstSCB, "Get source is %d", ulCallSrc);
-                ulRet = sc_req_hungup_with_sound(pstSCB, pstSCB->stCall.ulCallingLegNo, CC_ERR_SC_NO_SERV_RIGHTS);
+                ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, CC_ERR_SC_NO_SERV_RIGHTS);
                 goto proc_finished;
             }
 
