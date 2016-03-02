@@ -3078,10 +3078,7 @@ void sc_agent_mark_custom_callback(U64 arg)
     sc_req_playback_stop(pstSCB->ulSCBNo, pstLeg->ulCBNo);
 
     /* 判断坐席是否是长签，如果不是则挂断电话 */
-    if (pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
-    {
-        sc_agent_set_idle(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
-    }
+    sc_agent_set_idle(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo);
 
     if (pstLeg->ulIndSCBNo != U32_BUTT)
     {

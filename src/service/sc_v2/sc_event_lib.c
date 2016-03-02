@@ -137,16 +137,11 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
 
         if (DOS_ADDR_VALID(pstAgentInfo))
         {
-            /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬ */
+            /* ÐÞ¸Ä×øÏ¯µÄ¹¤×÷×´Ì¬ */
             pthread_mutex_lock(&pstAgentInfo->mutexLock);
-            if (pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
-            {
-                sc_agent_set_busy(pstAgentInfo, OPERATING_TYPE_PHONE);
-            }
-
+            sc_agent_set_ringback(pstAgentInfo);
             pstAgentInfo->ulLegNo = pstSCB->stCall.ulCallingLegNo;
             dos_snprintf(pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
-
             pthread_mutex_unlock(&pstAgentInfo->mutexLock);
             /* µ¯ÆÁÌáÐÑ */
             sc_agent_call_notify(pstAgentInfo, pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
@@ -255,10 +250,9 @@ processing:
             sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE);
 
             if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
-                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo)
-                && pstSCB->stCall.pstAgentCallee->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
             {
-                sc_agent_set_busy(pstSCB->stCall.pstAgentCallee->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_ringing(pstSCB->stCall.pstAgentCallee->pstAgentInfo);
             }
 
             return DOS_SUCC;
@@ -355,7 +349,6 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
                 }
 
                 /* ·Å»ØÁåÒô¸øÖ÷½Ð */
-                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE);
                 pstSCB->stCall.stSCBTag.usStatus = SC_CALL_TONE;
 
                 return DOS_SUCC;
@@ -440,10 +433,11 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
     }
 
     /* ÅÐ¶Ï×øÏ¯µÄ×´Ì¬ */
-    if (pstAgentNode->pstAgentInfo->ucStatus != SC_ACD_IDEL)
+    if (pstAgentNode->pstAgentInfo->ucWorkStatus != SC_ACD_WORK_IDEL
+        || pstAgentNode->pstAgentInfo->ucServStatus != SC_ACD_SERV_IDEL)
     {
         /* ²»ÔÊÐíºô½Ð */
-        if (pstAgentNode->pstAgentInfo->ucStatus == SC_ACD_OFFLINE)
+        if (pstAgentNode->pstAgentInfo->ucWorkStatus != SC_ACD_WORK_IDEL)
         {
             *pulErrCode = CC_ERR_SC_USER_HAS_BEEN_LEFT;
         }
@@ -452,7 +446,8 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
             *pulErrCode = CC_ERR_SC_USER_BUSY;
         }
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Call agnet FAIL. Agent (%u) status is (%d)", pstAgentNode->pstAgentInfo->ulAgentID, pstAgentNode->pstAgentInfo->ucStatus);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Call agnet FAIL. Agent (%u) work_status : %d, serv_status : %d"
+            , pstAgentNode->pstAgentInfo->ulAgentID, pstAgentNode->pstAgentInfo->ucWorkStatus, pstAgentNode->pstAgentInfo->ucServStatus);
 
         return DOS_FAIL;
     }
@@ -495,7 +490,7 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
             pstSCB->stCall.stSCBTag.usStatus = SC_CALL_TONE;
 
             /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬£¬ÖÃÃ¦ */
-            sc_agent_set_busy(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+            sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
 
             return DOS_SUCC;
         }
@@ -570,7 +565,7 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
     dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
 
     /* ÐÞ¸Ä×øÏ¯×´Ì¬ */
-    sc_agent_set_busy(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+    sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
 
     if (pstCalleeLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
     {
@@ -632,7 +627,7 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
     /* ÅÐ¶ÏÐÞ¸Ä×øÏ¯µÄ×´Ì¬ */
     pstSCB->stAutoCall.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
     pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
-    sc_agent_set_busy(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+    sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
 
     dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
 
@@ -794,7 +789,7 @@ U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
     /* ÅÐ¶ÏÐÞ¸Ä×øÏ¯µÄ×´Ì¬ */
     pstSCB->stDemoTask.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
     pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
-    sc_agent_set_busy(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+    sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
 
     dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
 
@@ -1402,8 +1397,8 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
             goto process_fail;
         }
 
-        /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬£¬ÖÃÃ¦ */
-        sc_agent_set_busy(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+        /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬ */
+        sc_agent_set_ringback(pstAgentNode->pstAgentInfo);
 
         /* ×øÏ¯µ¯ÆÁ */
         sc_agent_call_notify(pstAgentNode->pstAgentInfo, pszNumber);
@@ -1484,7 +1479,7 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     }
 
     /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬£¬ÖÃÃ¦ */
-    sc_agent_set_busy(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+    sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
 
     /* ×øÏ¯µ¯ÆÁ */
     sc_agent_call_notify(pstAgentNode->pstAgentInfo, pszNumber);
@@ -1946,7 +1941,7 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
         }
 
         /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬£¬ÖÃÃ¦ */
-        sc_agent_set_busy(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+        sc_agent_set_ringback(pstAgentNode->pstAgentInfo);
 
         /* ×øÏ¯µ¯ÆÁ */
         sc_agent_call_notify(pstAgentNode->pstAgentInfo, pszCallee);
@@ -2027,7 +2022,7 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
     }
 
     /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬£¬ÖÃÃ¦ */
-    sc_agent_set_busy(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+    sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
 
     /* ×øÏ¯µ¯ÆÁ */
     sc_agent_call_notify(pstAgentNode->pstAgentInfo, pszCallee);

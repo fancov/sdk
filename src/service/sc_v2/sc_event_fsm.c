@@ -901,7 +901,6 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_AUTH2:
         case SC_CALL_EXEC:
             pstSCB->stCall.stSCBTag.usStatus = SC_CALL_ALERTING;
-
             if (pstEvent->ulLegNo == pstSCB->stCall.ulCalleeLegNo)
             {
                 if (pstEvent->ulWithMedia)
@@ -910,6 +909,24 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     if (DOS_ADDR_VALID(pstCalleeLegCB))
                     {
                         pstCalleeLegCB->stCall.bEarlyMedia = DOS_TRUE;
+                        if (SC_DIRECTION_PSTN == pstSCB->stCall.ulCallSrc && SC_DIRECTION_SIP == pstSCB->stCall.ulCallDst)
+                        {
+                            /* 入局呼叫 */
+                            if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
+                                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+                            {
+                                sc_agent_set_call_in(pstSCB->stCall.pstAgentCallee->pstAgentInfo);
+                            }
+                        }
+                        else if (SC_DIRECTION_SIP == pstSCB->stCall.ulCallSrc && SC_DIRECTION_PSTN == pstSCB->stCall.ulCallDst)
+                        {
+                            /* 出局呼叫 */
+                            if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+                                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+                            {
+                                sc_agent_set_call_out(pstSCB->stCall.pstAgentCalling->pstAgentInfo);
+                            }
+                        }
 
                         if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.ulCallingLegNo) != DOS_SUCC)
                         {
@@ -983,6 +1000,25 @@ U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (DOS_ADDR_VALID(pstCalleeLegCB)
                 && !pstCalleeLegCB->stCall.bEarlyMedia)
             {
+                if (SC_DIRECTION_PSTN == pstSCB->stCall.ulCallSrc && SC_DIRECTION_SIP == pstSCB->stCall.ulCallDst)
+                {
+                    /* 入局呼叫 */
+                    if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
+                        && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+                    {
+                        sc_agent_set_call_in(pstSCB->stCall.pstAgentCallee->pstAgentInfo);
+                    }
+                }
+                else if (SC_DIRECTION_SIP == pstSCB->stCall.ulCallSrc && SC_DIRECTION_PSTN == pstSCB->stCall.ulCallDst)
+                {
+                    /* 出局呼叫 */
+                    if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+                        && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+                    {
+                        sc_agent_set_call_out(pstSCB->stCall.pstAgentCalling->pstAgentInfo);
+                    }
+                }
+
                 if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.ulCallingLegNo) != DOS_SUCC)
                 {
                     sc_trace_scb(pstSCB, "Bridge call when early media fail.");
@@ -1191,12 +1227,8 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     dos_strcpy(pstOtherLeg->stCall.stNumInfo.szOriginalCalling, pstAgentCall->pstAgentInfo->szLastCustomerNum);
                 }
 
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT),  "!!!!!!!!!!!!!!!!!!!!!!!%u", __LINE__);
                 /* 修改坐席状态为 proc，播放 标记背景音 */
-                if (pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
-                {
-                    sc_agent_set_proc(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
-                }
+                sc_agent_set_proc(pstAgentCall->pstAgentInfo);
                 sc_req_play_sound(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, SC_SND_CALL_OVER, 1, 0, 0);
                 pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_IDEL;
 
@@ -1244,17 +1276,15 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             /* 修改坐席的状态 */
             if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
-                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo)
-                && pstSCB->stCall.pstAgentCallee->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
             {
-                sc_agent_set_idle(pstSCB->stCall.pstAgentCallee->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_idle(pstSCB->stCall.pstAgentCallee->pstAgentInfo);
             }
 
             if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
-                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo)
-                && pstSCB->stCall.pstAgentCalling->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
             {
-                sc_agent_set_idle(pstSCB->stCall.pstAgentCalling->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_idle(pstSCB->stCall.pstAgentCalling->pstAgentInfo);
             }
 
             if (pstOtherLeg->ulIndSCBNo != U32_BUTT)
@@ -1526,6 +1556,12 @@ U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
             }
 
+            if (DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee)
+                && DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+            {
+                sc_agent_set_call_in(pstSCB->stCall.pstAgentCallee->pstAgentInfo);
+            }
+
             if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.ulCallingLegNo) != DOS_SUCC)
             {
                 sc_trace_scb(pstSCB, "Bridge call when early media fail.");
@@ -1700,7 +1736,7 @@ U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             pstLCB->ulCBNo = U32_BUTT;
             /* 坐席置闲，继续放音 */
-            sc_agent_set_idle(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+            sc_agent_set_idle(pstAgentNode->pstAgentInfo);
             sc_req_play_sound(pstLCB->ulIndSCBNo, pstLCB->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
 
             pstCalleeLCB = sc_lcb_get(pstSCB->stPreviewCall.ulCalleeLegNo);
@@ -1720,7 +1756,7 @@ U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 /* 没有找到坐席，挂断吧 */
                 pstAgentNode->pstAgentInfo->ulLegNo = U32_BUTT;
-                sc_agent_set_idle(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_idle(pstAgentNode->pstAgentInfo);
             }
 
             sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, CC_ERR_BS_HEAD + pstAuthRsp->stMsgTag.usInterErr);
@@ -1957,7 +1993,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             /* 给坐席放回铃音 */
             sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo, DOS_TRUE);
-
+            sc_agent_set_ringback(pstAgentNode->pstAgentInfo);
             pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_CONNECTING;
             break;
 
@@ -1968,13 +2004,24 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_PREVIEW_CALL_CONNECTING:
         case SC_PREVIEW_CALL_ALERTING2:
             pstCalleeCB = sc_lcb_get(pstSCB->stPreviewCall.ulCalleeLegNo);
-
             if (DOS_ADDR_INVALID(pstCalleeCB))
             {
                 sc_trace_scb(pstSCB, "There is no calling leg.");
 
                 goto fail_proc;
             }
+
+            pstAgentNode = sc_agent_get_by_id(pstSCB->stPreviewCall.ulAgentID);
+            if (DOS_ADDR_INVALID(pstAgentNode)
+                || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+            {
+                /* TODO 坐席没找到，错误 */
+                DOS_ASSERT(0);
+                break;
+            }
+
+            /* 修改坐席的业务状态 */
+            sc_agent_set_call_out(pstAgentNode->pstAgentInfo);
 
             if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCalleeLegNo, pstSCB->stPreviewCall.ulCallingLegNo) != DOS_SUCC)
             {
@@ -2199,7 +2246,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_RELEASE;
                 }
 
-                sc_agent_set_idle(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_idle(pstAgentCall->pstAgentInfo);
 
                 if (pstCallingCB->ulIndSCBNo != U32_BUTT)
                 {
@@ -2234,7 +2281,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 /* 坐席挂断，修改坐席的状态，挂断客户的电话 */
                 if (DOS_ADDR_VALID(pstAgentCall) && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
                 {
-                    sc_agent_set_idle(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+                    sc_agent_set_idle(pstAgentCall->pstAgentInfo);
                     pstAgentCall->pstAgentInfo->ulLegNo = U32_BUTT;
                 }
 
@@ -2331,10 +2378,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
 
                 /* 修改坐席状态为 proc，播放 标记背景音 */
-                if (pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
-                {
-                    sc_agent_set_proc(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
-                }
+                sc_agent_set_proc(pstAgentCall->pstAgentInfo);
                 sc_req_play_sound(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, SC_SND_CALL_OVER, 1, 0, 0);
                 pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_IDEL;
 
@@ -2382,10 +2426,9 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             /* 修改坐席的状态 */
             if (DOS_ADDR_VALID(pstAgentCall)
-                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo)
-                && pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
             {
-                sc_agent_set_idle(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_idle(pstAgentCall->pstAgentInfo);
             }
 
             if (pstOtherLeg->ulIndSCBNo != U32_BUTT)
@@ -4665,7 +4708,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
 
                 /* 坐席置闲 */
-                sc_agent_set_idle(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_idle(pstAgentCall->pstAgentInfo);
 
                 if (pstCalleeCB->ulIndSCBNo != U32_BUTT)
                 {
@@ -4714,7 +4757,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
                 if (DOS_ADDR_VALID(pstAgentCall) && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
                 {
-                    sc_agent_set_idle(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+                    sc_agent_set_idle(pstAgentCall->pstAgentInfo);
                     if (pstCalleeCB->ulIndSCBNo != U32_BUTT)
                     {
                         /* 长签的电话挂断了，取消关系就行了，不用释放 */
@@ -4830,10 +4873,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
 
                 /* 修改坐席状态为 proc，播放 标记背景音 */
-                if (pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
-                {
-                    sc_agent_set_proc(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
-                }
+                sc_agent_set_proc(pstAgentCall->pstAgentInfo);
                 sc_req_play_sound(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, SC_SND_CALL_OVER, 1, 0, 0);
                 pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_IDEL;
 
@@ -4881,10 +4921,9 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             /* 修改坐席的状态 */
             if (DOS_ADDR_VALID(pstAgentCall)
-                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo)
-                && pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
             {
-                sc_agent_set_idle(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_idle(pstAgentCall->pstAgentInfo);
             }
 
             if (pstOtherLeg->ulIndSCBNo != U32_BUTT)
@@ -5553,10 +5592,7 @@ U32 sc_mark_custom_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     if (DOS_ADDR_VALID(pstSCB->stMarkCustom.pstAgentCall)
                          && DOS_ADDR_VALID(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo))
                     {
-                        if (pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
-                        {
-                            sc_agent_set_idle(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
-                        }
+                        sc_agent_set_idle(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo);
                     }
 
                     if (pstLCB->ulIndSCBNo != U32_BUTT)
@@ -5666,12 +5702,9 @@ U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
 
             if (DOS_ADDR_VALID(pstSCB->stMarkCustom.pstAgentCall)
-                         && DOS_ADDR_VALID(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo))
+                && DOS_ADDR_VALID(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo))
             {
-                if (pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
-                {
-                    sc_agent_set_idle(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
-                }
+                sc_agent_set_idle(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo);
                 pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ulLegNo = U32_BUTT;
             }
 
@@ -6158,7 +6191,7 @@ U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             pstAgentNode =  sc_agent_get_by_id(pstSCB->stTransfer.ulPublishLegNo);
             if (DOS_ADDR_VALID(pstAgentNode) && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
             {
-                sc_agent_set_busy(pstAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
                 pstAgentNode->pstAgentInfo->ulLegNo = pstPublishLeg->ulCBNo;
             }
 
@@ -6359,7 +6392,7 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
                 if (DOS_ADDR_VALID(pstNotifyAgentNode) && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
                 {
-                    sc_agent_set_idle(pstNotifyAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+                    sc_agent_set_idle(pstNotifyAgentNode->pstAgentInfo);
                 }
 
                 pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
@@ -6392,7 +6425,7 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
                 if (DOS_ADDR_VALID(pstNotifyAgentNode) && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
                 {
-                    sc_agent_set_idle(pstNotifyAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+                    sc_agent_set_idle(pstNotifyAgentNode->pstAgentInfo);
                 }
 
                 pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
@@ -6427,12 +6460,12 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (DOS_ADDR_VALID(pstHungAgentNode) && DOS_ADDR_VALID(pstHungAgentNode->pstAgentInfo))
             {
-                sc_agent_set_idle(pstHungAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_idle(pstHungAgentNode->pstAgentInfo);
             }
 
             if (DOS_ADDR_VALID(pstOtherAgentNode) && DOS_ADDR_VALID(pstOtherAgentNode->pstAgentInfo))
             {
-                sc_agent_set_idle(pstOtherAgentNode->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_idle(pstOtherAgentNode->pstAgentInfo);
             }
 
             if (pstOtherLegCB->ulIndSCBNo != U32_BUTT)
@@ -7077,7 +7110,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
 
                 /* 坐席置闲 */
-                sc_agent_set_idle(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_idle(pstAgentCall->pstAgentInfo);
 
                 if (pstCalleeCB->ulIndSCBNo != U32_BUTT)
                 {
@@ -7126,7 +7159,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstAgentCall = sc_agent_get_by_id(pstSCB->stDemoTask.ulAgentID);
                 if (DOS_ADDR_VALID(pstAgentCall) && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
                 {
-                    sc_agent_set_idle(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+                    sc_agent_set_idle(pstAgentCall->pstAgentInfo);
                     if (pstCalleeCB->ulIndSCBNo != U32_BUTT)
                     {
                         /* 长签的电话挂断了，取消关系就行了，不用释放 */
@@ -7242,10 +7275,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
 
                 /* 修改坐席状态为 proc，播放 标记背景音 */
-                if (pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
-                {
-                    sc_agent_set_proc(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
-                }
+                sc_agent_set_proc(pstAgentCall->pstAgentInfo);
                 sc_req_play_sound(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, SC_SND_CALL_OVER, 1, 0, 0);
                 pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_IDEL;
 
@@ -7293,10 +7323,9 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             /* 修改坐席的状态 */
             if (DOS_ADDR_VALID(pstAgentCall)
-                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo)
-                && pstAgentCall->pstAgentInfo->ucStatus != SC_ACD_OFFLINE)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
             {
-                sc_agent_set_idle(pstAgentCall->pstAgentInfo, OPERATING_TYPE_PHONE);
+                sc_agent_set_idle(pstAgentCall->pstAgentInfo);
             }
 
             if (pstOtherLeg->ulIndSCBNo != U32_BUTT)

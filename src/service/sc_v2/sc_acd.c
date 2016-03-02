@@ -116,60 +116,45 @@ U32 sc_agent_status_http_get_rsp(U32 ulAgentID)
     }
 
     dos_snprintf(szJson, sizeof(szJson)
-                    , "{\\\"type\\\":\\\"%u\\\",\\\"body\\\":{\\\"type\\\":\\\"%d\\\",\\\"work_status\\\":\\\"%u\\\",\\\"is_signin\\\":\\\"%u\\\"}}"
+                    , "{\\\"type\\\":\\\"%u\\\",\\\"body\\\":{\\\"work_status\\\":\\\"%d\\\",\\\"server_status\\\":\\\"%u\\\",\\\"is_signin\\\":\\\"%u\\\"}}"
                     , ACD_MSG_TYPE_QUERY
-                    , ACD_MSG_TYPE_QUERY_STATUS
-                    , pstAgentInfo->ucStatus
+                    , pstAgentInfo->ucWorkStatus
+                    , pstAgentInfo->ucServStatus
                     , pstAgentInfo->bConnected ? 1 : 0);
 
 
     return sc_pub_send_msg(szURL, szJson, SC_PUB_TYPE_STATUS, NULL);
 }
 
-U32 sc_agent_update_status_db(U32 ulSiteID, U32 ulStatus, BOOL bIsConnect)
+U32 sc_agent_update_status_db(SC_AGENT_INFO_ST *pstAgentInfo)
 {
-    S8  szQuery[512] = { 0, };
-    U32 ulStatusDB = 0;
-    SC_DB_MSG_TAG_ST *pstMsg = NULL;
+    SC_DB_MSG_AGENT_STATUS_ST   *pstAgentStatus = NULL;
 
-    /* 写数据库的状态
-        0  -- 离线
-        1  -- 可用
-        2  -- 不可用
-        3  -- 长签可用
-        4  =- 长签不可用
-    */
-    ulStatusDB = ulStatus > SC_ACD_IDEL ? 2 : ulStatus;
-    if (bIsConnect)
-    {
-        /* 如果是长签, 则把状态修改为长签可用或者长签不可用 */
-        ulStatusDB += 2;
-    }
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Update agent(%d) status(%d)", ulSiteID, ulStatus);
-
-    dos_snprintf(szQuery, sizeof(szQuery), "UPDATE tbl_agent SET status=%d WHERE id = %u;", ulStatusDB, ulSiteID);
-
-    pstMsg = (SC_DB_MSG_TAG_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_TAG_ST));
-    if (DOS_ADDR_INVALID(pstMsg))
+    if (DOS_ADDR_INVALID(pstAgentInfo))
     {
         DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-    pstMsg->ulMsgType = SC_MSG_SAVE_AGENT_STATUS;
-    pstMsg->szData = dos_dmem_alloc(dos_strlen(szQuery) + 1);
-    if (DOS_ADDR_INVALID(pstMsg->szData))
-    {
-        DOS_ASSERT(0);
-        dos_dmem_free(pstMsg->szData);
-
         return DOS_FAIL;
     }
 
-    dos_strcpy(pstMsg->szData, szQuery);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Update agent(%u), w-status(%u), s-status(%u)"
+        , pstAgentInfo->ulAgentID, pstAgentInfo->ucWorkStatus, pstAgentInfo->ucServStatus);
 
-    return sc_send_msg2db(pstMsg);
+    pstAgentStatus = (SC_DB_MSG_AGENT_STATUS_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_AGENT_STATUS_ST));
+    if (DOS_ADDR_INVALID(pstAgentStatus))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstAgentStatus->stMsgTag.ulMsgType = SC_MSG_SAVE_AGENT_STATUS;
+    pstAgentStatus->ulAgentID = pstAgentInfo->ulAgentID;
+    pstAgentStatus->ulServStatus = pstAgentInfo->ucServStatus;
+    pstAgentStatus->ulWorkStatus = pstAgentInfo->ucWorkStatus;
+    pstAgentStatus->bIsSigin = pstAgentInfo->bNeedConnected;
+    pstAgentStatus->bIsInterception = pstAgentInfo->bIsInterception;
+    pstAgentStatus->bIsWhisper = pstAgentInfo->bIsWhisper;
+
+    return sc_send_msg2db((SC_DB_MSG_TAG_ST *)pstAgentStatus);
 }
 
 U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
@@ -339,7 +324,7 @@ U32 sc_agent_notify_get_channel_id(SC_AGENT_INFO_ST *pstAgentInfo, S8 *pszChanne
     return DOS_SUCC;
 }
 
-U32 sc_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
+U32 sc_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo)
 {
     S8 szURL[256]         = { 0, };
     S8 szData[512]        = { 0, };
@@ -371,7 +356,8 @@ U32 sc_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo, U32 ulStatus)
 
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
-    dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"1\\\",\\\"body\\\":{\\\"type\\\":\\\"%u\\\",\\\"result\\\":\\\"0\\\"}}", ulStatus);
+    dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"1\\\",\\\"body\\\":{\\\"work_status\\\":\\\"%u\\\",\\\"server_status\\\":\\\"%u\\\",\\\"is_signin\\\":\\\"%u\\\",\\\"result\\\":\\\"0\\\"}}"
+        , pstAgentInfo->ucWorkStatus, pstAgentInfo->ucServStatus, pstAgentInfo->bNeedConnected);
 
     return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_STATUS, NULL);
 }
@@ -2118,7 +2104,7 @@ U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32
             (*pulTotal)++;
         }
 
-        if (SC_ACD_OFFLINE == pstAgentNode->pstAgentInfo->ucStatus)
+        if (SC_ACD_WORK_OFFLINE == pstAgentNode->pstAgentInfo->ucWorkStatus)
         {
             continue;
         }
@@ -2128,7 +2114,7 @@ U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32
             (*pulWorking)++;
         }
 
-        if (SC_ACD_IDEL == pstAgentNode->pstAgentInfo->ucStatus)
+        if (SC_ACD_SERV_IDEL == pstAgentNode->pstAgentInfo->ucServStatus)
         {
             /* 这个地方保护一下 */
             if (pstAgentNode->pstAgentInfo->ulLastIdelTime
@@ -2164,10 +2150,9 @@ U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32
 
 }
 
-
-U32 sc_agent_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+U32 sc_agent_set_ringing(SC_AGENT_INFO_ST *pstAgentQueueInfo)
 {
-    U32 ulOldStatus;
+    BOOL                bIsPub       = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pstAgentQueueInfo))
     {
@@ -2175,93 +2160,38 @@ U32 sc_agent_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
         return DOS_FAIL;
     }
 
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    switch (pstAgentQueueInfo->ucStatus)
+    switch (pstAgentQueueInfo->ucServStatus)
     {
-        case SC_ACD_OFFLINE:
-        case SC_ACD_IDEL:
-        case SC_ACD_AWAY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_BUSY;
+        case SC_ACD_SERV_IDEL:
+        case SC_ACD_SERV_CALL_OUT:
+        case SC_ACD_SERV_CALL_IN:
+        case SC_ACD_SERV_RINGBACK:
+        case SC_ACD_SERV_PROC:
+            pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_RINGING;
+            bIsPub = DOS_TRUE;
             break;
-
-        case SC_ACD_BUSY:
+        case SC_ACD_SERV_RINGING:
             break;
-        case SC_ACD_PROC:
-            break;
-        default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
-            return DOS_FAIL;
-    }
-
-    if (pstAgentQueueInfo->ucStatus == SC_ACD_BUSY)
-    {
-        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_BUSY);
-    }
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to busy. Agent: %u Old status: %u, Current status: %u"
-                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
-
-    return DOS_SUCC;
-}
-
-U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
-{
-    U32 ulOldStatus;
-
-    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    switch (pstAgentQueueInfo->ucStatus)
-    {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
-            break;
-        case SC_ACD_IDEL:
-            break;
-
-        case SC_ACD_AWAY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
-            break;
-
-        case SC_ACD_BUSY:
-            /* TODO */
-            //if (pstAgentQueueInfo->ulLegNo == U32_BUTT)
-            //{
-                pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
-            //}
-
-            break;
-
-        case SC_ACD_PROC:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
-            break;
-
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
 
-    if (pstAgentQueueInfo->ucStatus == SC_ACD_IDEL)
+    if (bIsPub)
     {
-        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_IDLE);
+        sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to idle.Agent: %u, Old status: %u, Current status: %u"
-                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to ringing. Agent: %u"
+                    , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
 }
 
-U32 sc_agent_set_rest(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+U32 sc_agent_set_ringback(SC_AGENT_INFO_ST *pstAgentQueueInfo)
 {
-    U32 ulOldStatus;
+    BOOL                bIsPub       = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pstAgentQueueInfo))
     {
@@ -2269,51 +2199,194 @@ U32 sc_agent_set_rest(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
         return DOS_FAIL;
     }
 
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    switch (pstAgentQueueInfo->ucStatus)
+    switch (pstAgentQueueInfo->ucServStatus)
     {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+        case SC_ACD_SERV_IDEL:
+        case SC_ACD_SERV_CALL_OUT:
+        case SC_ACD_SERV_CALL_IN:
+        case SC_ACD_SERV_RINGING:
+        case SC_ACD_SERV_PROC:
+            pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_RINGBACK;
+            bIsPub = DOS_TRUE;
             break;
-        case SC_ACD_IDEL:
-            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+        case SC_ACD_SERV_RINGBACK:
             break;
-
-        case SC_ACD_AWAY:
-            break;
-
-        case SC_ACD_BUSY:
-            /* TODO 在没有呼叫之前 都应该不让设置 */
-            //if (!sc_ep_chack_has_call4agent(pstAgentQueueInfo->usSCBNo))
-            {
-                pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
-            }
-            break;
-
-        case SC_ACD_PROC:
-            break;
-
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
 
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    if (bIsPub)
     {
-        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_AWAY);
+        sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to rest. Agent:%u, Old status: %u, Current status: %u"
-                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to ring back. Agent: %u"
+                    , pstAgentQueueInfo->ulAgentID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_set_call_out(SC_AGENT_INFO_ST *pstAgentQueueInfo)
+{
+    BOOL                bIsPub       = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstAgentQueueInfo->ucServStatus)
+    {
+        case SC_ACD_SERV_IDEL:
+        case SC_ACD_SERV_RINGBACK:
+        case SC_ACD_SERV_CALL_IN:
+        case SC_ACD_SERV_RINGING:
+        case SC_ACD_SERV_PROC:
+            pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_CALL_OUT;
+            bIsPub = DOS_TRUE;
+            break;
+        case SC_ACD_SERV_CALL_OUT:
+            break;
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+            break;
+    }
+
+    if (bIsPub)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to call out.Agent: %u"
+                    , pstAgentQueueInfo->ulAgentID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_set_call_in(SC_AGENT_INFO_ST *pstAgentQueueInfo)
+{
+    BOOL                bIsPub       = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstAgentQueueInfo->ucServStatus)
+    {
+        case SC_ACD_SERV_IDEL:
+        case SC_ACD_SERV_RINGING:
+        case SC_ACD_SERV_CALL_OUT:
+        case SC_ACD_SERV_RINGBACK:
+        case SC_ACD_SERV_PROC:
+            pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_CALL_IN;
+            bIsPub = DOS_TRUE;
+            break;
+        case SC_ACD_SERV_CALL_IN:
+            break;
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+            break;
+    }
+
+    if (bIsPub)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to call in.Agent: %u"
+                    , pstAgentQueueInfo->ulAgentID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
+{
+    BOOL                bIsPub       = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstAgentQueueInfo->ucServStatus)
+    {
+        case SC_ACD_SERV_IDEL:
+            break;
+        case SC_ACD_SERV_CALL_OUT:
+        case SC_ACD_SERV_CALL_IN:
+        case SC_ACD_SERV_RINGING:
+        case SC_ACD_SERV_RINGBACK:
+        case SC_ACD_SERV_PROC:
+            pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_IDEL;
+            bIsPub = DOS_TRUE;
+            break;
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+            break;
+    }
+
+    if (bIsPub)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to idle. Agent: %u"
+                    , pstAgentQueueInfo->ulAgentID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_set_proc(SC_AGENT_INFO_ST *pstAgentQueueInfo)
+{
+    BOOL                bIsPub       = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstAgentQueueInfo->ucServStatus)
+    {
+        case SC_ACD_SERV_CALL_OUT:
+        case SC_ACD_SERV_CALL_IN:
+            pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_PROC;
+            bIsPub = DOS_TRUE;
+            break;
+        case SC_ACD_SERV_IDEL:
+        case SC_ACD_SERV_RINGING:
+        case SC_ACD_SERV_RINGBACK:
+        case SC_ACD_SERV_PROC:
+            break;
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+            break;
+    }
+
+    if (bIsPub)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to proc.Agent: %u"
+                    , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
 }
 
 U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
 {
-    U32 ulOldStatus;
+    BOOL                bIsPub       = DOS_FALSE;
     SC_AGENT_INFO_ST   *pstAgentInfo = NULL;     /* 坐席信息 */
 
     if (DOS_ADDR_INVALID(pstAgentNode)
@@ -2324,7 +2397,6 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
     }
 
     pstAgentInfo = pstAgentNode->pstAgentInfo;
-    ulOldStatus = pstAgentInfo->ucStatus;
 
     if (pstAgentInfo->ulLastSignInTime)
     {
@@ -2335,32 +2407,22 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
     /* 发起长签 */
     if (sc_agent_signin_proc(pstAgentNode) != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin FAIL. Agent: %u, Old status: %u, Current status: %u"
-                        , pstAgentInfo->ulAgentID, ulOldStatus, pstAgentInfo->ucStatus);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin FAIL. Agent: %u"
+                        , pstAgentInfo->ulAgentID);
 
         return DOS_FAIL;
     }
 
-    switch (pstAgentInfo->ucStatus)
+    switch (pstAgentInfo->ucWorkStatus)
     {
-        case SC_ACD_OFFLINE:
-            pstAgentInfo->ucStatus = SC_ACD_IDEL;
+        case SC_ACD_WORK_OFFLINE:
+        case SC_ACD_WORK_BUSY:
+        case SC_ACD_WORK_AWAY:
+            pstAgentInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
+            bIsPub = DOS_TRUE;
             break;
-        case SC_ACD_IDEL:
+        case SC_ACD_WORK_IDEL:
             break;
-
-        case SC_ACD_AWAY:
-            pstAgentInfo->ucStatus = SC_ACD_IDEL;
-            break;
-
-        case SC_ACD_BUSY:
-            /* 这个地方不应该置为IDEL状态，置为IDEL状态，会再次分配呼叫 */
-            /*pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;*/
-            break;
-
-        case SC_ACD_PROC:
-            break;
-
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentInfo->ulAgentID);
             return DOS_FAIL;
@@ -2369,10 +2431,13 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
 
     pstAgentInfo->bNeedConnected = DOS_TRUE;
 
-    sc_agent_status_notify(pstAgentInfo, ACD_MSG_SUBTYPE_SIGNIN);
+    if (bIsPub)
+    {
+        sc_agent_status_notify(pstAgentInfo);
+    }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin. Agent: %u, Old status: %u, Current status: %u"
-                    , pstAgentInfo->ulAgentID, ulOldStatus, pstAgentInfo->ucStatus);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin. Agent: %u"
+                    , pstAgentInfo->ulAgentID);
 
     return DOS_SUCC;
 }
@@ -2447,19 +2512,18 @@ U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_
 
     pstSCB->stSigin.stSCBTag.usStatus = SC_SIGIN_ALERTING;
 
-    pstAgent->pstAgentInfo->ucStatus = SC_ACD_IDEL;
+    pstAgent->pstAgentInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
 
-    sc_agent_status_notify(pstAgent->pstAgentInfo, ACD_MSG_SUBTYPE_IDLE);
-    sc_agent_status_notify(pstAgent->pstAgentInfo, ACD_MSG_SUBTYPE_SIGNIN);
+    sc_agent_status_notify(pstAgent->pstAgentInfo);
 
     return DOS_SUCC;
 }
 
 U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 {
-    U32 ulOldStatus;
-    SC_SRV_CB *pstSCB       = NULL;
-    SC_LEG_CB *pstLegCB     = NULL;
+    SC_SRV_CB   *pstSCB       = NULL;
+    SC_LEG_CB   *pstLegCB     = NULL;
+    BOOL         bIsPub       = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pstAgentQueueInfo))
     {
@@ -2467,29 +2531,17 @@ U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingTyp
         return DOS_FAIL;
     }
 
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
     sc_agent_stat(SC_AGENT_STAT_SIGNOUT, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
-    switch (pstAgentQueueInfo->ucStatus)
+    switch (pstAgentQueueInfo->ucWorkStatus)
     {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
+        case SC_ACD_WORK_OFFLINE:
+        case SC_ACD_WORK_BUSY:
+        case SC_ACD_WORK_AWAY:
+            pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
+            bIsPub = DOS_TRUE;
             break;
-        case SC_ACD_IDEL:
+        case SC_ACD_WORK_IDEL:
             break;
-
-        case SC_ACD_AWAY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_IDEL;
-            break;
-
-        case SC_ACD_BUSY:
-            /* 这个地方不应该置为IDEL状态，置为IDEL状态，会再次分配呼叫 */
-            /*pstAgentQueueInfo->ucStatus = SC_ACD_IDEL; */
-            break;
-
-        case SC_ACD_PROC:
-            break;
-
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
@@ -2531,18 +2583,20 @@ U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingTyp
     }
 
     pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
+    if (bIsPub)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo);
+    }
 
-    sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_SIGNOUT);
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signout. Agent: %u, Old status: %u, Current status: %u"
-                , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signout. Agent: %u"
+                , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
 }
 
-U32 sc_agent_set_login(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+U32 sc_agent_work_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo)
 {
-    U32 ulOldStatus;
+    BOOL bIsPub     = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pstAgentQueueInfo))
     {
@@ -2550,49 +2604,150 @@ U32 sc_agent_set_login(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
         return DOS_FAIL;
     }
 
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
+    switch (pstAgentQueueInfo->ucWorkStatus)
+    {
+        case SC_ACD_WORK_OFFLINE:
+        case SC_ACD_WORK_IDEL:
+        case SC_ACD_WORK_AWAY:
+            pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_BUSY;
+            bIsPub = DOS_TRUE;
+            break;
+
+        case SC_ACD_WORK_BUSY:
+            break;
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+    }
+
+    if (bIsPub)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to busy. Agent: %u"
+                    , pstAgentQueueInfo->ulAgentID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_work_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
+{
+    BOOL bIsPub     = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstAgentQueueInfo->ucWorkStatus)
+    {
+        case SC_ACD_WORK_OFFLINE:
+        case SC_ACD_WORK_BUSY:
+        case SC_ACD_WORK_AWAY:
+            pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
+            bIsPub = DOS_TRUE;
+            break;
+
+        case SC_ACD_WORK_IDEL:
+            break;
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+    }
+
+    if (bIsPub)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to idle. Agent: %u"
+                    , pstAgentQueueInfo->ulAgentID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_work_set_rest(SC_AGENT_INFO_ST *pstAgentQueueInfo)
+{
+    BOOL bIsPub     = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstAgentQueueInfo->ucWorkStatus)
+    {
+        case SC_ACD_WORK_OFFLINE:
+        case SC_ACD_WORK_IDEL:
+        case SC_ACD_WORK_BUSY:
+            pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_AWAY;
+            bIsPub = DOS_TRUE;
+            break;
+
+        case SC_ACD_WORK_AWAY:
+            break;
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            return DOS_FAIL;
+    }
+
+    if (bIsPub)
+    {
+        sc_agent_status_notify(pstAgentQueueInfo);
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to busy. Agent: %u"
+                    , pstAgentQueueInfo->ulAgentID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_agent_work_set_login(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+{
+    BOOL         bIsPub       = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
     sc_agent_stat(SC_AGENT_STAT_ONLINE, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
 
-    switch (pstAgentQueueInfo->ucStatus)
+    switch (pstAgentQueueInfo->ucWorkStatus)
     {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_AWAY;
+        case SC_ACD_WORK_OFFLINE:
+            pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_AWAY;
+            bIsPub = DOS_TRUE;
             break;
-
-        case SC_ACD_IDEL:
+        case SC_ACD_WORK_IDEL:
+        case SC_ACD_WORK_BUSY:
+        case SC_ACD_WORK_AWAY:
             break;
-
-        case SC_ACD_AWAY:
-            break;
-
-        case SC_ACD_BUSY:
-            break;
-
-        case SC_ACD_PROC:
-            break;
-
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
 
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    if (bIsPub)
     {
-        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_AWAY);
+        sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to login. Agent: %u, Old status: %u, Current status: %u"
-                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to login. Agent: %u"
+                    , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
 }
 
-VOID sc_agent_set_logout(U64 p)
+VOID sc_agent_work_set_logout(U64 p)
 {
-    U32                  ulOldStatus;
     SC_AGENT_INFO_ST *pstAgentQueueInfo = (SC_AGENT_INFO_ST *)p;
+    BOOL              bIsPub            = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pstAgentQueueInfo))
     {
@@ -2607,32 +2762,19 @@ VOID sc_agent_set_logout(U64 p)
         pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
     }
 
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
     sc_agent_stat(SC_AGENT_STAT_ONLINE, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
 
-    switch (pstAgentQueueInfo->ucStatus)
+    switch (pstAgentQueueInfo->ucWorkStatus)
     {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+        case SC_ACD_WORK_OFFLINE:
             break;
 
-        case SC_ACD_IDEL:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+        case SC_ACD_WORK_IDEL:
+        case SC_ACD_WORK_BUSY:
+        case SC_ACD_WORK_AWAY:
+            pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_OFFLINE;
+            bIsPub = DOS_TRUE;
             break;
-
-        case SC_ACD_AWAY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_BUSY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_PROC:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             break;
@@ -2650,21 +2792,21 @@ VOID sc_agent_set_logout(U64 p)
         pstAgentQueueInfo->htmrLogout = NULL;
     }
 
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    if (bIsPub)
     {
-        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_LOGINOUT);
+        sc_agent_status_notify(pstAgentQueueInfo);
     }
 
     pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
     pstAgentQueueInfo->bConnected = DOS_FALSE;
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to logout. Agent:%u Old status: %u, Current status: %u"
-                , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to logout. Agent:%u"
+                , pstAgentQueueInfo->ulAgentID);
 }
 
-U32 sc_agent_set_force_logout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
+U32 sc_agent_work_set_force_logout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
 {
-    U32 ulOldStatus;
+    BOOL              bIsPub            = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pstAgentQueueInfo))
     {
@@ -2672,28 +2814,14 @@ U32 sc_agent_set_force_logout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperati
         return DOS_FAIL;
     }
 
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    switch (pstAgentQueueInfo->ucStatus)
+    switch (pstAgentQueueInfo->ucWorkStatus)
     {
-        case SC_ACD_OFFLINE:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_IDEL:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_AWAY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_BUSY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
-            break;
-
-        case SC_ACD_PROC:
-            pstAgentQueueInfo->ucStatus = SC_ACD_OFFLINE;
+        case SC_ACD_WORK_OFFLINE:
+        case SC_ACD_WORK_IDEL:
+        case SC_ACD_WORK_BUSY:
+        case SC_ACD_WORK_AWAY:
+            pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_OFFLINE;
+            bIsPub = DOS_TRUE;
             break;
 
         default:
@@ -2707,61 +2835,17 @@ U32 sc_agent_set_force_logout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperati
         /*  拆除呼叫 */
     }
 
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
+    if (bIsPub)
     {
-
-        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_LOGINOUT);
+        sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request force logout for agnet %u. Old status: %u, Current status: %u"
-                , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
-
-    return DOS_SUCC;
-
-}
-
-U32 sc_agent_set_proc(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType)
-{
-    U32 ulOldStatus;
-
-    if (DOS_ADDR_INVALID(pstAgentQueueInfo))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    ulOldStatus = pstAgentQueueInfo->ucStatus;
-
-    switch (pstAgentQueueInfo->ucStatus)
-    {
-        case SC_ACD_OFFLINE:
-        case SC_ACD_IDEL:
-        case SC_ACD_AWAY:
-            break;
-
-        case SC_ACD_BUSY:
-            pstAgentQueueInfo->ucStatus = SC_ACD_PROC;
-            break;
-
-        case SC_ACD_PROC:
-            break;
-
-        default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
-            return DOS_FAIL;
-            break;
-    }
-
-    if (ulOldStatus != pstAgentQueueInfo->ucStatus)
-    {
-        sc_agent_status_notify(pstAgentQueueInfo, ACD_MSG_SUBTYPE_PROC);
-    }
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to proc.Agent: %u, Old status: %u, Current status: %u"
-                    , pstAgentQueueInfo->ulAgentID, ulOldStatus, pstAgentQueueInfo->ucStatus);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request force logout for agnet %u. "
+                , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
 }
+
 
 U32 sc_agent_group_http_update_proc(U32 ulAction, U32 ulGrpID)
 {
@@ -2832,7 +2916,7 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
     HASH_NODE_S             *pstHashNode        = NULL;
     U32                     ulHashIndex         = 0;
     U32                     ulResult            = DOS_FAIL;
-    U32                     ulOldStatus;
+    //U32                     ulOldStatus;
 
     pthread_mutex_lock(&g_mutexAgentList);
     sc_agent_hash_func4agent(ulAgentID, &ulHashIndex);
@@ -2862,21 +2946,21 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
     }
 
     pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-    ulOldStatus = pstAgentInfo->ucStatus;
+    //ulOldStatus = pstAgentInfo->ucStatus;
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent status changed. Agent: %u, Action: %u", ulAgentID, ulAction);
 
     switch(ulAction)
     {
         case SC_ACTION_AGENT_BUSY:
-            ulResult = sc_agent_set_busy(pstAgentInfo, ulOperatingType);
+            ulResult = sc_agent_work_set_busy(pstAgentInfo);
             break;
 
         case SC_ACTION_AGENT_IDLE:
-            ulResult = sc_agent_set_idle(pstAgentInfo, ulOperatingType);
+            ulResult = sc_agent_work_set_idle(pstAgentInfo);
             break;
 
         case SC_ACTION_AGENT_REST:
-            ulResult = sc_agent_set_rest(pstAgentInfo, ulOperatingType);
+            ulResult = sc_agent_work_set_rest(pstAgentInfo);
             break;
 
         case SC_ACTION_AGENT_SIGNIN:
@@ -2893,7 +2977,7 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
                 dos_tmr_stop(&pstAgentInfo->htmrLogout);
                 pstAgentInfo->htmrLogout = NULL;
             }
-            ulResult = sc_agent_set_login(pstAgentInfo, ulOperatingType);
+            ulResult = sc_agent_work_set_login(pstAgentInfo, ulOperatingType);
             break;
 
         case SC_ACTION_AGENT_LOGOUT:
@@ -2903,11 +2987,11 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
                 pstAgentInfo->htmrLogout = NULL;
             }
 
-            ulResult = dos_tmr_start(&pstAgentInfo->htmrLogout, 2000, sc_agent_set_logout, (U64)pstAgentInfo, TIMER_NORMAL_LOOP);
+            ulResult = dos_tmr_start(&pstAgentInfo->htmrLogout, 2000, sc_agent_work_set_logout, (U64)pstAgentInfo, TIMER_NORMAL_LOOP);
             break;
 
         case SC_ACTION_AGENT_FORCE_OFFLINE:
-            ulResult = sc_agent_set_force_logout(pstAgentInfo, ulOperatingType);
+            ulResult = sc_agent_work_set_force_logout(pstAgentInfo, ulOperatingType);
             break;
 
         case SC_ACTION_AGENT_QUERY:
@@ -2919,12 +3003,8 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
             ulResult = DOS_FAIL;
     }
 
-    if (ulOldStatus != pstAgentInfo->ucStatus
-        && (ulOldStatus <= SC_ACD_IDEL || pstAgentInfo->ucStatus <= SC_ACD_IDEL))
-    {
-        /* 状态不相同，并且不全部是 忙 的状态，则修改数据库 */
-        sc_agent_update_status_db(ulAgentID, pstAgentInfo->ucStatus, pstAgentInfo->bConnected);
-    }
+    /* 修改数据库 */
+    sc_agent_update_status_db(pstAgentInfo);
 
     return ulResult;
 }
@@ -3021,12 +3101,12 @@ U32 sc_agent_stat_audit(U32 ulCycle, VOID *ptr)
             }
 
             /* 如果整理时间超过3分钟，就处理一下 */
-            if (pstAgentInfo->ucStatus == SC_ACD_PROC
+            if (pstAgentInfo->ucServStatus == SC_ACD_SERV_PROC
                 && pstAgentInfo->ulLastProcTime != 0
                 && time(NULL) - pstAgentInfo->ulLastProcTime > 3 * 60)
             {
-                pstAgentInfo->ucStatus = SC_ACD_IDEL;
-                sc_agent_status_notify(pstAgentInfo, pstAgentInfo->ucStatus);
+                pstAgentInfo->ucServStatus = SC_ACD_SERV_IDEL;
+                sc_agent_status_notify(pstAgentInfo);
             }
         }
     }
@@ -3389,7 +3469,8 @@ static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
 
     dos_memzero(&stSiteInfo, sizeof(stSiteInfo));
     stSiteInfo.ulAgentID = ulAgentID;
-    stSiteInfo.ucStatus = SC_ACD_OFFLINE;
+    stSiteInfo.ucWorkStatus = SC_ACD_WORK_OFFLINE;
+    stSiteInfo.ucServStatus = SC_ACD_SERV_IDEL;
     stSiteInfo.ulCustomerID = ulCustomID;
     stSiteInfo.aulGroupID[0] = ulGroupID0;
     stSiteInfo.aulGroupID[1] = ulGroupID1;
@@ -3399,7 +3480,7 @@ static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
     stSiteInfo.bGroupHeader = ulIsHeader;
     stSiteInfo.ucBindType = (U8)ulSelectType;
     stSiteInfo.ucCallStatus = SC_ACD_CALL_NONE;
-    if (stSiteInfo.ucStatus != SC_ACD_OFFLINE)
+    if (stSiteInfo.ucWorkStatus != SC_ACD_WORK_OFFLINE)
     {
         stSiteInfo.bLogin = DOS_TRUE;
     }
@@ -3411,6 +3492,8 @@ static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
     stSiteInfo.bSelected = DOS_FALSE;
     stSiteInfo.bConnected = DOS_FALSE;
     stSiteInfo.bMarkCustomer = DOS_FALSE;
+    stSiteInfo.bIsInterception = DOS_FALSE;
+    stSiteInfo.bIsWhisper = DOS_FALSE;
     stSiteInfo.ucProcesingTime = 0;
     stSiteInfo.ulSIPUserID = ulSIPID;
     stSiteInfo.ucProcesingTime = (U8)ulFinishTime;
@@ -3537,7 +3620,7 @@ static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
             if (ulAgentIndex == SC_INVALID_INDEX)
             {
                 /* 更新单个坐席时，状态不需要变化；初始化时，都置为离线 */
-                pstAgentQueueNode->pstAgentInfo->ucStatus = stSiteInfo.ucStatus;
+                pstAgentQueueNode->pstAgentInfo->ucWorkStatus = stSiteInfo.ucWorkStatus;
             }
             pstAgentQueueNode->pstAgentInfo->ulCustomerID = stSiteInfo.ulCustomerID;
             pstAgentQueueNode->pstAgentInfo->bValid = stSiteInfo.bValid;

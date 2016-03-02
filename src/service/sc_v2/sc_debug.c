@@ -123,7 +123,16 @@ const S8* g_pszAgentStatus[] =
     "OFFLINE",
     "IDLE",
     "AWAY",
-    "BUSY",
+    "BUSY"
+};
+
+const S8* g_pszAgentServStatus[] =
+{
+    "IDLE",
+    "CALLOUT",
+    "CALLIN",
+    "RINGING",
+    "RINGBACK",
     "PROC"
 };
 
@@ -208,6 +217,15 @@ const S8* sc_translate_agent_status(U32 ulStatus)
     if (ulStatus < sizeof(g_pszAgentStatus)/sizeof(S8*))
     {
         return g_pszAgentStatus[ulStatus];
+    }
+    return "UNKNOWN";
+}
+
+const S8* sc_translate_agent_serv_status(U32 ulStatus)
+{
+    if (ulStatus < sizeof(g_pszAgentServStatus)/sizeof(S8*))
+    {
+        return g_pszAgentServStatus[ulStatus];
     }
     return "UNKNOWN";
 }
@@ -1306,8 +1324,8 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n---------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s%9s%10s%12s%12s"
-                    , "ID", "Status", "Custom", "Group1", "Group2"
+                    , "\r\n%10s%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s%9s%10s%12s%12s"
+                    , "ID", "w-Status", "s-Status", "Custom", "Group1", "Group2"
                     , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile");
     cli_out_string(ulIndex, szCmdBuff);
 
@@ -1326,9 +1344,10 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%10u%10s%10u%10u%10u%8s%7s%8s%12s%12s%12s%9u%10s%12s%12s"
+                    , "\r\n%10u%10s%10s%10u%10u%10u%8s%7s%8s%12s%12s%12s%9u%10s%12s%12s"
                     , pstAgentQueueNode->pstAgentInfo->ulAgentID
-                    , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucStatus)
+                    , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucWorkStatus)
+                    , sc_translate_agent_serv_status(pstAgentQueueNode->pstAgentInfo->ucServStatus)
                     , pstAgentQueueNode->pstAgentInfo->ulCustomerID
                     , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
                     , pstAgentQueueNode->pstAgentInfo->aulGroupID[1]
@@ -1455,8 +1474,8 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%5s%8s%8s%10s%8s%8s%8s%8s%7s%8s%12s%12s%12s%9s%10s%14s%12s%12s%9s%9s%5s%8s%13s%12s"
-                    , "ID", "Status", "NeedCon", "Connected", "Custom", "Group1", "Group2"
+                    , "\r\n%5s%10s%10s%8s%10s%8s%8s%8s%8s%7s%8s%12s%12s%12s%9s%10s%14s%12s%12s%9s%9s%5s%8s%13s%12s"
+                    , "ID", "w-Status", "s-Status", "NeedCon", "Connected", "Custom", "Group1", "Group2"
                     , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile", "TT_number", "Sip ID", "ScbNO", "bDel", "bLogin", "LastCustomer", "ProcessTime");
     cli_out_string(ulIndex, szCmdBuff);
 
@@ -1516,9 +1535,10 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%5u%8s%8s%10s%8u%8u%8u%8s%7s%8s%12s%12s%12s%9u%10s%14s%12s%12s%9u%9u%5s%8s%13s%12u"
+                        , "\r\n%5u%10s%10s%8s%10s%8u%8u%8u%8s%7s%8s%12s%12s%12s%9u%10s%14s%12s%12s%9u%9u%5s%8s%13s%12u"
                         , pstAgentQueueNode->pstAgentInfo->ulAgentID
-                        , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucStatus)
+                        , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucWorkStatus)
+                        , sc_translate_agent_serv_status(pstAgentQueueNode->pstAgentInfo->ucServStatus)
                         , pstAgentQueueNode->pstAgentInfo->bNeedConnected ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->bConnected ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->ulCustomerID

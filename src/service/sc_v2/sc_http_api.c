@@ -284,6 +284,10 @@ U32 sc_http_api_task_ctrl(list_t *pstArgv)
     {
         ulAction = SC_API_CMD_ACTION_UPDATE;
     }
+    else if (dos_strcmp(pszAction, "status") == 0)
+    {
+        ulAction = SC_API_CMD_ACTION_STATUS;
+    }
     else
     {
         DOS_ASSERT(0);

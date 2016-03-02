@@ -154,8 +154,9 @@ extern "C" {
 #define SC_ACD_SITE_IS_USEABLE(pstSiteDesc)                             \
             (DOS_ADDR_VALID(pstSiteDesc)                                \
             && !(pstSiteDesc)->bWaitingDelete                           \
-            && SC_ACD_IDEL == (pstSiteDesc)->ucStatus)                  \
-            && !(pstSiteDesc)->bSelected
+            && SC_ACD_WORK_IDEL == (pstSiteDesc)->ucWorkStatus          \
+            && SC_ACD_SERV_IDEL == (pstSiteDesc)->ucServStatus          \
+            && !(pstSiteDesc)->bSelected)
 
 enum {
     ACD_MSG_TYPE_CALL_NOTIFY   = 0,
@@ -198,13 +199,23 @@ enum {
 * 4. 接通呼叫就处于BUSY状态
 */
 enum {
-    SC_ACD_OFFLINE = 0,                 /* 离线状态，不可用 */
-    SC_ACD_IDEL,                        /* 坐席已可用 */
-    SC_ACD_AWAY,                        /* 坐席暂时离开，不可用 */
-    SC_ACD_BUSY,                        /* 坐席忙，不可用 */
-    SC_ACD_PROC,                        /* 坐席正在处理通话结果 */
+    SC_ACD_WORK_OFFLINE     = 0,             /* 离线 */
+    SC_ACD_WORK_IDEL,                        /* 空闲 */
+    SC_ACD_WORK_BUSY,                        /* 忙 */
+    SC_ACD_WORK_AWAY,                        /* 离开 */
 
-    SC_ACD_BUTT
+    SC_ACD_WORK_BUTT
+};
+
+enum {
+    SC_ACD_SERV_IDEL        = 0,              /* 空闲 */
+    SC_ACD_SERV_CALL_OUT,                     /* 呼出 */
+    SC_ACD_SERV_CALL_IN,                      /* 呼入 */
+    SC_ACD_SERV_RINGING,                      /* 振铃 */
+    SC_ACD_SERV_RINGBACK,                     /* 回铃 */
+    SC_ACD_SERV_PROC,                         /* 整理 */
+
+    SC_ACD_SERV_BUTT
 };
 
 /*
@@ -508,9 +519,10 @@ typedef struct tagACDSiteDesc{
     /* 附加信息，主要存储SCB，主要用于和SCB的交互，需要在SCB释放时检查，并清除 */
     U32        ulLegNo;
 
-    U8         ucStatus;                          /* 坐席状态 refer to SC_SITE_STATUS_EN */
+    U8         ucWorkStatus;                      /* 坐席工作状态 refer to L200 */
+    U8         ucServStatus;                      /* 坐席业务状态 refer to L209 */
     U8         ucBindType;                        /* 坐席绑定类型 refer to SC_AGENT_BIND_TYPE_EN */
-    U16        usResl;
+    U8         usResl;
 
     U32        ulAgentID;                          /* 坐席数据库编号 */
     U32        ulCallCnt;                         /* 呼叫总数 */
@@ -538,7 +550,10 @@ typedef struct tagACDSiteDesc{
     U32        bWaitingDelete:1;                  /* 是否已经被删除 */
     U32        bSelected:1;                       /* 是否被呼叫队列选中 */
     U32        bMarkCustomer:1;                   /* 是否标记了客户 */
-    U32        ucRes1:13;
+    U32        bIsInterception:1;                 /* 是否监听 */
+
+    U32        bIsWhisper:1;                      /* 是否耳语 */
+    U32        ucRes1:11;
 
     U8         ucProcesingTime;                   /* 坐席处理呼叫结果时间 */
     U8         ucCallStatus;                      /* 呼叫状态 */
@@ -2012,10 +2027,14 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
 U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
 U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAgentID, U32 *pulErrCode);
 U32 sc_agent_call_notify(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller);
-U32 sc_agent_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType);
-U32 sc_agent_set_proc(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType);
-U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType);
-U32 sc_agent_set_login(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingType);
+
+U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo);
+U32 sc_agent_set_ringing(SC_AGENT_INFO_ST *pstAgentQueueInfo);
+U32 sc_agent_set_ringback(SC_AGENT_INFO_ST *pstAgentQueueInfo);
+U32 sc_agent_set_call_out(SC_AGENT_INFO_ST *pstAgentQueueInfo);
+U32 sc_agent_set_call_in(SC_AGENT_INFO_ST *pstAgentQueueInfo);
+U32 sc_agent_set_proc(SC_AGENT_INFO_ST *pstAgentQueueInfo);
+
 U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 void sc_agent_mark_custom_callback(U64 arg);
 

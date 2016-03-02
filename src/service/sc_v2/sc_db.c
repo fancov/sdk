@@ -70,6 +70,143 @@ static U32 sc_db_save_call_result(SC_DB_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 }
 
+S32 sc_is_exit_in_db_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    U32 *pulCount = NULL;
+
+    if (DOS_ADDR_INVALID(pArg)
+        || DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pulCount = (U32 *)pArg;
+    if (dos_atoul(aszValues[0], pulCount) < 0)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    return DOS_SUCC;
+}
+
+static U32 sc_db_save_task_status(SC_DB_MSG_TAG_ST *pstMsg)
+{
+    SC_DB_MSG_TASK_STATUS_ST *pstTaskStatus         = NULL;
+    S8                       szSQL[SC_MAX_SQL_LEN]  = {0,};
+    S32                      lRet                   = DOS_FAIL;
+    U32                      ulCount                = 0;
+
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstTaskStatus = (SC_DB_MSG_TASK_STATUS_ST *)pstMsg;
+
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT COUNT(id) FROM tmp_task_status WHERE task_id=%u;", pstTaskStatus->ulTaskID);
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_is_exit_in_db_cb, &ulCount, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "Get numbers of task FAIL.(task ID:%u)", pstTaskStatus->ulTaskID);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* ÅÐ¶ÏÊÇ·ñ´æÔÚ */
+    if (0 == ulCount)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL),
+                    "INSERT INTO tmp_task_status(`id`,`task_id`,`max_concurrent`,`cur_concurrent`,`total_agent`,`idel_agent`,`called_count`)"
+                    "VALUES(NULL, %u, %u, %u, %u, %u, %u)"
+                    , pstTaskStatus->ulTaskID
+                    , pstTaskStatus->ulMaxConcurrency
+                    , pstTaskStatus->ulCurrentConcurrency
+                    , pstTaskStatus->ulTotalAgent
+                    , pstTaskStatus->ulIdleAgent
+                    , pstTaskStatus->ulCalledCount);
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tmp_task_status SET max_concurrent=%u, cur_concurrent=%u, total_agent=%u, idel_agent=%u, called_count=%u WHERE task_id=%u"
+                    , pstTaskStatus->ulMaxConcurrency
+                    , pstTaskStatus->ulCurrentConcurrency
+                    , pstTaskStatus->ulTotalAgent
+                    , pstTaskStatus->ulIdleAgent
+                    , pstTaskStatus->ulCalledCount
+                    , pstTaskStatus->ulTaskID);
+    }
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, 0) != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "%s", "Save call task status FAIL.");
+
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+static U32 sc_db_save_agent_status(SC_DB_MSG_TAG_ST *pstMsg)
+{
+    SC_DB_MSG_AGENT_STATUS_ST   *pstAgentStatus        = NULL;
+    S8                          szSQL[SC_MAX_SQL_LEN]  = {0,};
+    S32                         lRet                   = DOS_FAIL;
+    U32                         ulCount                = 0;
+
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstAgentStatus = (SC_DB_MSG_AGENT_STATUS_ST *)pstMsg;
+
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT COUNT(id) FROM tmp_agent_status WHERE agent_id=%u;", pstAgentStatus->ulAgentID);
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_is_exit_in_db_cb, &ulCount, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "Get numbers of task FAIL.(agent ID:%u)", pstAgentStatus->ulAgentID);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* ÅÐ¶ÏÊÇ·ñ´æÔÚ */
+    if (0 == ulCount)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL),
+                    "INSERT INTO tmp_agent_status(`id`,`agent_id`,`work_status`,`server_status`,`singin`,`interception`,`whisper`)"
+                    "VALUES(NULL, %u, %u, %u, %u, %u, %u)"
+                    , pstAgentStatus->ulAgentID
+                    , pstAgentStatus->ulWorkStatus
+                    , pstAgentStatus->ulServStatus
+                    , pstAgentStatus->bIsSigin
+                    , pstAgentStatus->bIsInterception
+                    , pstAgentStatus->bIsWhisper);
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tmp_agent_status SET max_concurrent=%u, cur_concurrent=%u, total_agent=%u, idel_agent=%u, called_count=%u WHERE agent_id=%u"
+                    , pstAgentStatus->ulWorkStatus
+                    , pstAgentStatus->ulServStatus
+                    , pstAgentStatus->bIsSigin
+                    , pstAgentStatus->bIsInterception
+                    , pstAgentStatus->bIsWhisper
+                    , pstAgentStatus->ulAgentID);
+    }
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, 0) != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "%s", "Save call agent status FAIL.");
+
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
 static U32 sc_db_execute_sql(SC_DB_MSG_TAG_ST *pstMsg)
 {
     if (DOS_ADDR_INVALID(pstMsg)
@@ -106,11 +243,16 @@ static VOID sc_db_request_proc(SC_DB_MSG_TAG_ST *pstMsg)
             ulResult = sc_db_save_call_result(pstMsg);
             break;
         case SC_MSG_SAVE_AGENT_STATUS:
+            ulResult = sc_db_save_agent_status(pstMsg);
+            break;
         case SC_MSG_SAVE_TASK_CALLED_COUNT:
         case SC_MSG_SAVE_SIP_IPADDR:
         case SC_MSG_SAVE_TRUNK_STATUS:
         case SC_MSG_SAVE_STAT_LIMIT_CALLER:
             ulResult = sc_db_execute_sql(pstMsg);
+            break;
+        case SC_MSG_SACE_TASK_STATUS:
+            ulResult = sc_db_save_task_status(pstMsg);
             break;
         default:
             sc_log(LOG_LEVEL_WARNING, "Invalid msg type(%u)", pstMsg->ulMsgType);

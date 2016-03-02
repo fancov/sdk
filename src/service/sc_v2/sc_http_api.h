@@ -69,6 +69,7 @@ enum tagAPICMDActionList
     SC_API_CMD_ACTION_STOP,                       /* API命令task ctrl附加值，停止任务 */
     SC_API_CMD_ACTION_CONTINUE,                   /* API命令task ctrl附加值，重新启动任务 */
     SC_API_CMD_ACTION_PAUSE,                      /* API命令task ctrl附加值，暂停任务 */
+    SC_API_CMD_ACTION_STATUS,
 
     SC_API_CMD_ACTION_MONITORING,                 /* API命令call ctrl附加值，监听呼叫 */
     SC_API_CMD_ACTION_HUNGUP,                     /* API命令call ctrl附加值，挂断呼叫 */

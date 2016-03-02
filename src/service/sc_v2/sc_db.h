@@ -14,6 +14,7 @@ typedef enum  tagSCMsgType{
     SC_MSG_SAVE_SIP_IPADDR,
     SC_MSG_SAVE_TRUNK_STATUS,
     SC_MSG_SAVE_STAT_LIMIT_CALLER,
+    SC_MSG_SACE_TASK_STATUS
 
 }SC_MSG_TYPE_EN;
 
@@ -54,7 +55,33 @@ typedef struct tagSCDBMsgCallResult{
     U32             ulResult;                   /* 呼叫结果 */
 }SC_DB_MSG_CALL_RESULT_ST;
 
+typedef struct tagSCDBMsgTaskStatus{
+    SC_DB_MSG_TAG_ST stMsgTag;
 
+    U32             ulTaskID;
+
+    U32             ulTotalAgent;
+    U32             ulIdleAgent;
+
+    U32             ulCurrentConcurrency;              /* 当前并发数 */
+    U32             ulMaxConcurrency;                  /* 当前并发数 */
+
+    U32             ulCalledCount;
+}SC_DB_MSG_TASK_STATUS_ST;
+
+typedef struct tagSCDBMsgAgentStatus{
+    SC_DB_MSG_TAG_ST stMsgTag;
+
+    U32             ulAgentID;
+
+    U32             ulWorkStatus;
+    U32             ulServStatus;
+
+    BOOL            bIsSigin;
+    BOOL            bIsInterception;
+    BOOL            bIsWhisper;
+
+}SC_DB_MSG_AGENT_STATUS_ST;
 
 
 U32 sc_send_msg2db(SC_DB_MSG_TAG_ST *pstMsg);
