@@ -2911,7 +2911,7 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
         pstSCB->ulCustomerID = sc_did_get_custom(pstLegCB->stCall.stNumInfo.szOriginalCallee);
         if (U32_BUTT == pstSCB->ulCustomerID)
         {
-            pstAgent = sc_agent_get_by_tt_num(pstLegCB->stCall.stNumInfo.szOriginalCallee);
+            pstAgent = sc_agent_get_by_tt_num(pstLegCB->stCall.stNumInfo.szOriginalCalling);
             if (DOS_ADDR_VALID(pstAgent) && DOS_ADDR_VALID(pstAgent->pstAgentInfo))
             {
                 pstSCB->ulCustomerID = pstAgent->pstAgentInfo->ulCustomerID;
