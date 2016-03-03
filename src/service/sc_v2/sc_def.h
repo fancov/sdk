@@ -2013,7 +2013,6 @@ U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_mux(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_record(SC_MSG_TAG_ST *pstMsg);
 
-
 U32 sc_agent_group_agent_count(U32 ulGroupID);
 U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam);
 SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID);

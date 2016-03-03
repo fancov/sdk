@@ -349,6 +349,8 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
                 }
 
                 /* 放回铃音给主叫 */
+                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE);
+
                 pstSCB->stCall.stSCBTag.usStatus = SC_CALL_TONE;
 
                 return DOS_SUCC;

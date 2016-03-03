@@ -1086,14 +1086,15 @@ U32 sc_call_unbridge(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_MSG_EVT_HUNGUP_ST *pstHungup     = NULL;
-    SC_LEG_CB            *pstCallee     = NULL;
-    SC_LEG_CB            *pstCalling    = NULL;
-    SC_LEG_CB            *pstHungupLeg  = NULL;
-    SC_LEG_CB            *pstOtherLeg   = NULL;
-    SC_AGENT_NODE_ST     *pstAgentCall  = NULL;
-    S32                  i              = 0;
-    S32                  lRes           = DOS_FAIL;
+    SC_MSG_EVT_HUNGUP_ST *pstHungup         = NULL;
+    SC_LEG_CB            *pstCallee         = NULL;
+    SC_LEG_CB            *pstCalling        = NULL;
+    SC_LEG_CB            *pstHungupLeg      = NULL;
+    SC_LEG_CB            *pstOtherLeg       = NULL;
+    SC_AGENT_NODE_ST     *pstAgentCall      = NULL;
+    SC_AGENT_NODE_ST     *pstAgentHungup    = NULL;
+    S32                  i                  = 0;
+    S32                  lRes               = DOS_FAIL;
 
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstHungup) || DOS_ADDR_INVALID(pstSCB))
@@ -1164,12 +1165,14 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstHungupLeg = pstCalling;
                 pstOtherLeg = pstCallee;
                 pstAgentCall = pstSCB->stCall.pstAgentCallee;
+                pstAgentHungup = pstSCB->stCall.pstAgentCalling;
             }
             else
             {
                 pstHungupLeg = pstCallee;
                 pstOtherLeg = pstCalling;
                 pstAgentCall = pstSCB->stCall.pstAgentCalling;
+                pstAgentHungup = pstSCB->stCall.pstAgentCallee;
             }
 
             /* 生成话单 */
@@ -1273,6 +1276,14 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             else
             {
                 pstSCB->stCall.ulCallingLegNo = U32_BUTT;
+            }
+
+            /* 如果是坐席先挂断的，判断坐席是否是长签的 */
+            if (DOS_ADDR_VALID(pstAgentHungup)
+                && DOS_ADDR_VALID(pstAgentHungup->pstAgentInfo)
+                && pstAgentHungup->pstAgentInfo->bNeedConnected)
+            {
+                pstHungupLeg->ulSCBNo = U32_BUTT;
             }
 
             /* 修改坐席的状态 */
