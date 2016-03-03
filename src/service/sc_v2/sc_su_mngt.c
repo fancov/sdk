@@ -1494,6 +1494,8 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
             goto proc_fail;
         }
 
+        pstLCB->stPlayback.bValid = DOS_TRUE;
+        pstLCB->stPlayback.usStatus = SC_SU_PLAYBACK_PROC;
         bIsAllocPlayArg = DOS_TRUE;
         ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "1 1 %u 0 # %s pdtmf \\d+"
                                 , pstPlayback->ulLoopCnt, pstPlayback->szAudioFile);

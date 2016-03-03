@@ -4389,14 +4389,6 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stAutoCall.stSCBTag.usStatus)
     {
         case SC_AUTO_CALL_ACTIVE:
-            if (pstLCB->stPlayback.usStatus == SC_SU_PLAYBACK_INIT)
-            {
-                /* 这里是 silence_stream 延时的stop事件，不需要处理。 这里存在问题，正常的playstop事件没有上传 */
-                ulRet = DOS_SUCC;
-
-                goto proc_finishe;
-            }
-
             ulTaskMode = sc_task_get_mode(pstSCB->stAutoCall.ulTcbID);
             if (ulTaskMode >= SC_TASK_MODE_BUTT)
             {
@@ -4437,11 +4429,7 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     break;
                 case SC_TASK_MODE_AUDIO_ONLY:
                     /* 挂断客户 */
-                    pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_RELEASE;
-                    if (sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, CC_ERR_NORMAL_CLEAR) != DOS_SUCC)
-                    {
-
-                    }
+                    sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, CC_ERR_NORMAL_CLEAR);
 
                     break;
                 default:
@@ -4696,14 +4684,16 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
             }
 
-            sc_send_billing_stop2bs(pstSCB, pstCallingCB, NULL);
-
             pstCallingCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
-            if (pstCallingCB)
+            if (DOS_ADDR_VALID(pstCallingCB))
+            {
+                sc_send_billing_stop2bs(pstSCB, pstCallingCB, NULL);
+            }
+
+            if (DOS_ADDR_VALID(pstCallingCB))
             {
                 sc_lcb_free(pstCallingCB);
             }
-
             sc_scb_free(pstSCB);
             break;
         case SC_AUTO_CALL_AFTER_KEY:
