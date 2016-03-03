@@ -139,7 +139,7 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
         {
             /* ÐÞ¸Ä×øÏ¯µÄ¹¤×÷×´Ì¬ */
             pthread_mutex_lock(&pstAgentInfo->mutexLock);
-            sc_agent_set_ringback(pstAgentInfo);
+            sc_agent_serv_status_update(pstAgentInfo, SC_ACD_SERV_RINGBACK);
             pstAgentInfo->ulLegNo = pstSCB->stCall.ulCallingLegNo;
             dos_snprintf(pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
             pthread_mutex_unlock(&pstAgentInfo->mutexLock);
@@ -252,7 +252,7 @@ processing:
             if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
                 && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
             {
-                sc_agent_set_ringing(pstSCB->stCall.pstAgentCallee->pstAgentInfo);
+                sc_agent_serv_status_update(pstSCB->stCall.pstAgentCallee->pstAgentInfo, SC_ACD_SERV_RINGING);
             }
 
             return DOS_SUCC;
@@ -490,7 +490,7 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
             pstSCB->stCall.stSCBTag.usStatus = SC_CALL_TONE;
 
             /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬£¬ÖÃÃ¦ */
-            sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
+            sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
 
             return DOS_SUCC;
         }
@@ -565,7 +565,7 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
     dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
 
     /* ÐÞ¸Ä×øÏ¯×´Ì¬ */
-    sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
+    sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
 
     if (pstCalleeLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
     {
@@ -627,7 +627,7 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
     /* ÅÐ¶ÏÐÞ¸Ä×øÏ¯µÄ×´Ì¬ */
     pstSCB->stAutoCall.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
     pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
-    sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
+    sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
 
     dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
 
@@ -789,7 +789,7 @@ U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
     /* ÅÐ¶ÏÐÞ¸Ä×øÏ¯µÄ×´Ì¬ */
     pstSCB->stDemoTask.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
     pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
-    sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
+    sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
 
     dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
 
@@ -1398,7 +1398,7 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
         }
 
         /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬ */
-        sc_agent_set_ringback(pstAgentNode->pstAgentInfo);
+        sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGBACK);
 
         /* ×øÏ¯µ¯ÆÁ */
         sc_agent_call_notify(pstAgentNode->pstAgentInfo, pszNumber);
@@ -1479,7 +1479,7 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     }
 
     /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬£¬ÖÃÃ¦ */
-    sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
+    sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
 
     /* ×øÏ¯µ¯ÆÁ */
     sc_agent_call_notify(pstAgentNode->pstAgentInfo, pszNumber);
@@ -1645,6 +1645,7 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
 
     pstSCB->stInterception.ulLegNo = pstLCB->ulCBNo;
     pstSCB->stInterception.ulAgentLegNo = pstLCBAgent->ulCBNo;
+    pstSCB->stInterception.pstAgentInfo = pstAgentNode;
     pstSCB->stInterception.stSCBTag.usStatus = SC_INTERCEPTION_AUTH;
     pstLCB->ulSCBNo = pstSCB->ulSCBNo;
 
@@ -1670,6 +1671,147 @@ process_fail:
     return DOS_FAIL;
 }
 
+U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulType, S8 *pszCallee)
+{
+    SC_AGENT_NODE_ST *pstAgentNode = NULL;
+    SC_LEG_CB        *pstLCB       = NULL;
+    SC_SRV_CB        *pstSCB       = NULL;
+    SC_LEG_CB        *pstLCBAgent  = NULL;
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request intercept. Agent: %u, Task: %u, Number: %s", ulAgent, ulTaskID, NULL == pszCallee ? "NULL" : pszCallee);
+
+    if (DOS_ADDR_INVALID(pszCallee))
+    {
+        return DOS_FAIL;
+    }
+
+    pstAgentNode = sc_agent_get_by_id(ulAgent);
+    if (DOS_ADDR_INVALID(pstAgentNode))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Cannot found the agent %u", ulAgent);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Agent CB Error %u", ulAgent);
+        return DOS_FAIL;
+    }
+
+    if (pstAgentNode->pstAgentInfo->ulLegNo >= SC_LEG_CB_SIZE)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Agent not in calling %u", ulAgent);
+        return DOS_FAIL;
+    }
+
+    pstLCBAgent = sc_lcb_get(pstAgentNode->pstAgentInfo->ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCBAgent))
+    {
+        return DOS_FAIL;
+    }
+
+    pstSCB = sc_scb_get(pstLCBAgent->ulSCBNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return DOS_FAIL;
+    }
+
+    pstLCB = sc_lcb_alloc();
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Alloc lcb fail");
+        return DOS_FAIL;
+    }
+
+    pstSCB->stWhispered.stSCBTag.bValid = DOS_TRUE;
+    pstSCB->stWhispered.stSCBTag.usStatus = SC_WHISPER_IDEL;
+    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stWhispered.stSCBTag;
+
+    pstLCB->stCall.bValid = DOS_SUCC;
+    pstLCB->stCall.ucStatus = SC_LEG_INIT;
+
+/*
+    if (!sc_ep_black_list_check(ulCustomerID, pszCallee))
+    {
+        DOS_ASSERT(0);
+
+        sc_logr_info(pstSCB, SC_ESL, "Cannot make call. Callee in blocak list. (%s)", pszCallee);
+
+        goto process_fail;
+    }
+*/
+    /* Ö÷½ÐºÅÂë£¬ ´ÓÖ÷½ÐºÅÂë×éÖÐ»ñÈ¡ */
+    if (sc_caller_setting_select_number(ulCustomerID, 0, SC_SRC_CALLER_TYPE_ALL
+                        , pstLCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH) != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is no caller for number verify.");
+
+        goto process_fail;
+    }
+
+    /* ±»½ÐºÅÂë */
+    dos_snprintf(pstLCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLCB->stCall.stNumInfo.szOriginalCallee), pszCallee);
+    switch (ulType)
+    {
+        case AGENT_BIND_SIP:
+            pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+            break;
+
+        case AGENT_BIND_TELE:
+            pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+            if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
+
+                goto process_fail;
+            }
+            break;
+
+        case AGENT_BIND_MOBILE:
+            pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+            if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
+
+                goto process_fail;
+            }
+            break;
+
+        case AGENT_BIND_TT_NUMBER:
+            pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
+            break;
+
+        default:
+            break;
+    }
+
+    pstSCB->stWhispered.ulLegNo = pstLCB->ulCBNo;
+    pstSCB->stWhispered.ulAgentLegNo = pstLCBAgent->ulCBNo;
+    pstSCB->stWhispered.pstAgentInfo = pstAgentNode;
+    pstSCB->stWhispered.stSCBTag.usStatus = SC_WHISPER_AUTH;
+    pstLCB->ulSCBNo = pstSCB->ulSCBNo;
+
+    if (sc_send_usr_auth2bs(pstSCB, pstLCB) != DOS_SUCC)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send auth fail.");
+
+        goto process_fail;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request call out. send auth succ.");
+
+    return DOS_SUCC;
+
+process_fail:
+
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        sc_lcb_free(pstLCB);
+        pstLCB = NULL;
+    }
+
+    return DOS_FAIL;
+}
 
 U32 sc_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulType, S8 *pszCallee, U32 ulFlag, U32 ulCalleeAgentID)
 {
@@ -1742,7 +1884,7 @@ U32 sc_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID,
             break;
 
         case SC_API_WHISPERS:
-            ulRet = DOS_SUCC;
+            ulRet = sc_call_ctrl_whispers(ulTaskID, ulAgent, ulCustomerID, ulType, pszCallee);
             break;
         case SC_API_INTERCEPT:
             ulRet = sc_call_ctrl_intercept(ulTaskID, ulAgent, ulCustomerID, ulType, pszCallee);
@@ -1941,7 +2083,7 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
         }
 
         /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬£¬ÖÃÃ¦ */
-        sc_agent_set_ringback(pstAgentNode->pstAgentInfo);
+        sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGBACK);
 
         /* ×øÏ¯µ¯ÆÁ */
         sc_agent_call_notify(pstAgentNode->pstAgentInfo, pszCallee);
@@ -2022,7 +2164,7 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
     }
 
     /* ÐÞ¸Ä×øÏ¯µÄ×´Ì¬£¬ÖÃÃ¦ */
-    sc_agent_set_ringing(pstAgentNode->pstAgentInfo);
+    sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
 
     /* ×øÏ¯µ¯ÆÁ */
     sc_agent_call_notify(pstAgentNode->pstAgentInfo, pszCallee);

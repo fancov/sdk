@@ -153,6 +153,8 @@ U32 sc_agent_update_status_db(SC_AGENT_INFO_ST *pstAgentInfo)
     pstAgentStatus->bIsSigin = pstAgentInfo->bNeedConnected;
     pstAgentStatus->bIsInterception = pstAgentInfo->bIsInterception;
     pstAgentStatus->bIsWhisper = pstAgentInfo->bIsWhisper;
+    dos_strncpy(pstAgentStatus->szEmpNo, pstAgentInfo->szEmpNo, SC_NUM_LENGTH-1);
+    pstAgentStatus->szEmpNo[SC_NUM_LENGTH-1] = '\0';
 
     return sc_send_msg2db((SC_DB_MSG_TAG_ST *)pstAgentStatus);
 }
@@ -2384,6 +2386,50 @@ U32 sc_agent_set_proc(SC_AGENT_INFO_ST *pstAgentQueueInfo)
     return DOS_SUCC;
 }
 
+U32 sc_agent_serv_status_update(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulServStatus)
+{
+    U32 ulRet = DOS_FAIL;
+
+    if (DOS_ADDR_INVALID(pstAgentQueueInfo)
+        || ulServStatus >= SC_ACD_SERV_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (ulServStatus)
+    {
+        case SC_ACD_SERV_IDEL:
+            ulRet = sc_agent_set_idle(pstAgentQueueInfo);
+            break;
+        case SC_ACD_SERV_CALL_OUT:
+            ulRet = sc_agent_set_call_out(pstAgentQueueInfo);
+            break;
+        case SC_ACD_SERV_CALL_IN:
+            ulRet = sc_agent_set_call_in(pstAgentQueueInfo);
+            break;
+        case SC_ACD_SERV_RINGING:
+            ulRet = sc_agent_set_ringing(pstAgentQueueInfo);
+            break;
+        case SC_ACD_SERV_RINGBACK:
+            ulRet = sc_agent_set_ringback(pstAgentQueueInfo);
+            break;
+        case SC_ACD_SERV_PROC:
+            ulRet = sc_agent_set_proc(pstAgentQueueInfo);
+            break;
+        default:
+            break;
+    }
+
+    if (ulRet)
+    {
+        /* 保存到数据库 */
+        sc_agent_update_status_db(pstAgentQueueInfo);
+    }
+
+    return ulRet;
+}
+
 U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
 {
     BOOL                bIsPub       = DOS_FALSE;
@@ -2916,7 +2962,6 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
     HASH_NODE_S             *pstHashNode        = NULL;
     U32                     ulHashIndex         = 0;
     U32                     ulResult            = DOS_FAIL;
-    //U32                     ulOldStatus;
 
     pthread_mutex_lock(&g_mutexAgentList);
     sc_agent_hash_func4agent(ulAgentID, &ulHashIndex);

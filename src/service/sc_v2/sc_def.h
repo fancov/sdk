@@ -1218,6 +1218,9 @@ typedef struct tagSCInterception{
     /* 被监听坐席的LEG */
     U32               ulAgentLegNo;
 
+    /* 坐席 */
+    SC_AGENT_NODE_ST  *pstAgentInfo;
+
 }SC_INTERCEPTION_ST;
 
 /** 耳语业务状态 */
@@ -1243,6 +1246,9 @@ typedef struct tagSCWhisper{
 
     /* 被监听坐席的LEG */
     U32               ulAgentLegNo;
+
+    /* 坐席 */
+    SC_AGENT_NODE_ST  *pstAgentInfo;
 
 }SC_SRV_WHISPER_ST;
 
@@ -2027,13 +2033,8 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
 U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
 U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAgentID, U32 *pulErrCode);
 U32 sc_agent_call_notify(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller);
-
-U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo);
-U32 sc_agent_set_ringing(SC_AGENT_INFO_ST *pstAgentQueueInfo);
-U32 sc_agent_set_ringback(SC_AGENT_INFO_ST *pstAgentQueueInfo);
-U32 sc_agent_set_call_out(SC_AGENT_INFO_ST *pstAgentQueueInfo);
-U32 sc_agent_set_call_in(SC_AGENT_INFO_ST *pstAgentQueueInfo);
-U32 sc_agent_set_proc(SC_AGENT_INFO_ST *pstAgentQueueInfo);
+U32 sc_agent_serv_status_update(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulServStatus);
+U32 sc_agent_update_status_db(SC_AGENT_INFO_ST *pstAgentInfo);
 
 U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 void sc_agent_mark_custom_callback(U64 arg);

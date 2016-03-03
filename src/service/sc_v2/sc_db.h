@@ -81,6 +81,8 @@ typedef struct tagSCDBMsgAgentStatus{
     BOOL            bIsInterception;
     BOOL            bIsWhisper;
 
+    S8              szEmpNo[SC_NUM_LENGTH];     /* ¹¤ºÅ */
+
 }SC_DB_MSG_AGENT_STATUS_ST;
 
 

@@ -1073,6 +1073,8 @@ VOID sc_scb_interception_init(SC_INTERCEPTION_ST *pstInterception)
     pstInterception->stSCBTag.usStatus = SC_INTERCEPTION_IDEL;
     pstInterception->ulLegNo = U32_BUTT;
     pstInterception->ulAgentLegNo = U32_BUTT;
+    pstInterception->pstAgentInfo = NULL;
+
 }
 
 VOID sc_scb_whisper_init(SC_SRV_WHISPER_ST *pstWhisper)
@@ -1089,6 +1091,7 @@ VOID sc_scb_whisper_init(SC_SRV_WHISPER_ST *pstWhisper)
     pstWhisper->stSCBTag.usStatus = SC_WHISPER_IDEL;
     pstWhisper->ulLegNo = U32_BUTT;
     pstWhisper->ulAgentLegNo = U32_BUTT;
+    pstWhisper->pstAgentInfo = NULL;
 }
 
 VOID sc_scb_mark_custom_init(SC_MARK_CUSTOM_ST *pstMarkCustom)
@@ -3078,7 +3081,7 @@ void sc_agent_mark_custom_callback(U64 arg)
     sc_req_playback_stop(pstSCB->ulSCBNo, pstLeg->ulCBNo);
 
     /* 判断坐席是否是长签，如果不是则挂断电话 */
-    sc_agent_set_idle(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo);
+    sc_agent_serv_status_update(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL);
 
     if (pstLeg->ulIndSCBNo != U32_BUTT)
     {

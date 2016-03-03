@@ -177,23 +177,25 @@ static U32 sc_db_save_agent_status(SC_DB_MSG_TAG_ST *pstMsg)
     if (0 == ulCount)
     {
         dos_snprintf(szSQL, sizeof(szSQL),
-                    "INSERT INTO tmp_agent_status(`id`,`agent_id`,`work_status`,`server_status`,`singin`,`interception`,`whisper`)"
-                    "VALUES(NULL, %u, %u, %u, %u, %u, %u)"
+                    "INSERT INTO tmp_agent_status(`id`,`agent_id`,`work_status`,`server_status`,`singin`,`interception`,`whisper`, `job_number`)"
+                    "VALUES(NULL, %u, %u, %u, %u, %u, %u, \"%s\")"
                     , pstAgentStatus->ulAgentID
                     , pstAgentStatus->ulWorkStatus
                     , pstAgentStatus->ulServStatus
                     , pstAgentStatus->bIsSigin
                     , pstAgentStatus->bIsInterception
-                    , pstAgentStatus->bIsWhisper);
+                    , pstAgentStatus->bIsWhisper
+                    , pstAgentStatus->szEmpNo);
     }
     else
     {
-        dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tmp_agent_status SET max_concurrent=%u, cur_concurrent=%u, total_agent=%u, idel_agent=%u, called_count=%u WHERE agent_id=%u"
+        dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tmp_agent_status SET work_status=%u, server_status=%u, singin=%u, interception=%u, whisper=%u, job_number=\"%s\" WHERE agent_id=%u"
                     , pstAgentStatus->ulWorkStatus
                     , pstAgentStatus->ulServStatus
                     , pstAgentStatus->bIsSigin
                     , pstAgentStatus->bIsInterception
                     , pstAgentStatus->bIsWhisper
+                    , pstAgentStatus->szEmpNo
                     , pstAgentStatus->ulAgentID);
     }
 
