@@ -1528,6 +1528,45 @@ U32 sc_call_ctrl_hangup(U32 ulAgent)
 
 U32 sc_call_ctrl_hangup_all(U32 ulAgent)
 {
+    SC_AGENT_NODE_ST *pstAgentNode = NULL;
+    SC_SRV_CB        *pstSCB       = NULL;
+    SC_LEG_CB        *pstLCBAgent  = NULL;
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request hangup. Agent: %u", ulAgent);
+
+    pstAgentNode = sc_agent_get_by_id(ulAgent);
+    if (DOS_ADDR_INVALID(pstAgentNode))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Cannot found the agent %u", ulAgent);
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Agent CB Error %u", ulAgent);
+        return DOS_FAIL;
+    }
+
+    if (pstAgentNode->pstAgentInfo->ulLegNo >= SC_LEG_CB_SIZE)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Agent not in calling %u", ulAgent);
+        return DOS_FAIL;
+    }
+
+    pstLCBAgent = sc_lcb_get(pstAgentNode->pstAgentInfo->ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCBAgent))
+    {
+        return DOS_FAIL;
+    }
+
+    pstSCB = sc_scb_get(pstLCBAgent->ulSCBNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return DOS_FAIL;
+    }
+
+    sc_req_hungup(pstSCB->ulSCBNo, pstLCBAgent->ulCBNo, CC_ERR_SC_CLEAR_FORCE);
+
     return DOS_SUCC;
 }
 
