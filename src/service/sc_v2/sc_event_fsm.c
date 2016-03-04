@@ -2248,6 +2248,54 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (DOS_ADDR_INVALID(pstCallingCB) || DOS_ADDR_INVALID(pstCalleeCB))
             {
                 /* 异常 */
+                DOS_ASSERT(0);
+                if (DOS_ADDR_VALID(pstCallingCB))
+                {
+                    sc_lcb_free(pstCallingCB);
+                }
+                if (DOS_ADDR_VALID(pstCalleeCB))
+                {
+                    sc_lcb_free(pstCalleeCB);
+                }
+
+                sc_scb_free(pstSCB);
+                break;
+            }
+
+            if (pstSCB->stPreviewCall.ulCalleeLegNo == pstHungup->ulLegNo)
+            {
+                pstHungupLeg = pstCalleeCB;
+                pstOtherLeg  = pstCallingCB;
+                pstCalleeCB->stCall.stTimeInfo.ulAnswerTime = pstCalleeCB->stCall.stTimeInfo.ulByeTime;
+                pstCallingCB->stCall.stTimeInfo.ulByeTime = pstCalleeCB->stCall.stTimeInfo.ulByeTime;
+            }
+            else
+            {
+                pstHungupLeg = pstCallingCB;
+                pstOtherLeg  = pstCalleeCB;
+                pstCalleeCB->stCall.stTimeInfo.ulByeTime = pstCallingCB->stCall.stTimeInfo.ulByeTime;
+                pstCalleeCB->stCall.stTimeInfo.ulAnswerTime = pstCalleeCB->stCall.stTimeInfo.ulByeTime;
+            }
+
+            /* 生成话单 */
+            if (sc_scb_is_exit_service(pstSCB, BS_SERV_RECORDING))
+            {
+                sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
+            }
+
+            if (sc_scb_is_exit_service(pstSCB, BS_SERV_OUTBAND_CALL))
+            {
+                /* 如果有出局呼叫，应该先将出局呼叫删除 */
+                sc_scb_remove_service(pstSCB, BS_SERV_OUTBAND_CALL);
+                sc_send_billing_stop2bs(pstSCB, pstCalleeCB, NULL);
+                /* 出局呼叫的话单应该用坐席那条leg产生 */
+                sc_scb_remove_service(pstSCB, BS_SERV_PREVIEW_DIALING);
+                sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
+                sc_send_billing_stop2bs(pstSCB, pstCallingCB, NULL);
+            }
+            else
+            {
+                sc_send_billing_stop2bs(pstSCB, pstCalleeCB, NULL);
             }
 
             pstAgentCall = sc_agent_get_by_id(pstSCB->stPreviewCall.ulAgentID);
