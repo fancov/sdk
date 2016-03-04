@@ -748,7 +748,7 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
                     /* 从系统呼出 */
                     else
                     {
-                        ulRet = sc_call_ctrl_call_out(ulAgent, ulTaskID, pszNumber);
+                        ulRet = sc_call_ctrl_call_out(ulCustomer, ulAgent, ulTaskID, pszNumber);
                         break;
                     }
 

@@ -3422,6 +3422,89 @@ U32 sc_black_list_load(U32 ulIndex)
     return DOS_SUCC;
 }
 
+BOOL sc_black_regular_check(S8 *szRegularNum, S8 *szNum)
+{
+    S8 aszRegular[SC_NUM_LENGTH][SC_SINGLE_NUMBER_SRT_LEN] = {{0}};
+    S8 szAllNum[SC_SINGLE_NUMBER_SRT_LEN] = "0123456789";
+    S32 lIndex = 0;
+    U32 ulLen  = 0;
+    S8 *pszPos = szRegularNum;
+    S8 ucChar;
+    S32 i = 0;
+
+    if (DOS_ADDR_INVALID(szRegularNum) || DOS_ADDR_INVALID(szNum))
+    {
+        /* 按照匹配不成功处理 */
+        return DOS_TRUE;
+    }
+
+    while (*pszPos != '\0' && lIndex < SC_NUM_LENGTH)
+    {
+        ucChar = *pszPos;
+
+        if (ucChar == '*')
+        {
+            dos_strcpy(aszRegular[lIndex], szAllNum);
+        }
+        else if (dos_strchr(szAllNum, ucChar) != NULL)
+        {
+            /* 0-9 */
+            aszRegular[lIndex][0] = ucChar;
+            aszRegular[lIndex][1] = '\0';
+        }
+        else if (ucChar == '[')
+        {
+            aszRegular[lIndex][0] = '\0';
+            pszPos++;
+            while (*pszPos != ']' && *pszPos != '\0')
+            {
+                if (dos_strchr(szAllNum, *pszPos) != NULL)
+                {
+                    /* 0-9, 先判断一下是否已经存在 */
+                    if (dos_strchr(aszRegular[lIndex], *pszPos) == NULL)
+                    {
+                        ulLen = dos_strlen(aszRegular[lIndex]);
+                        aszRegular[lIndex][ulLen] = *pszPos;
+                        aszRegular[lIndex][ulLen+1] = '\0';
+                    }
+                }
+                pszPos++;
+            }
+
+            if (*pszPos == '\0')
+            {
+                /* 正则表达式错误, 按照不匹配来处理 */
+                return DOS_TRUE;
+            }
+        }
+        else
+        {
+            /* 正则表达式错误, 按照不匹配来处理 */
+            return DOS_TRUE;
+        }
+
+        pszPos++;
+        lIndex++;
+    }
+
+    /* 正则表达式解析完成，比较号码是否满足正则表达式。首先比较长度，lIndex即为正则表达式的长度 */
+    if (dos_strlen(szNum) != lIndex)
+    {
+        return DOS_TRUE;
+    }
+
+    for (i=0; i<lIndex; i++)
+    {
+        if (dos_strchr(aszRegular[i], *(szNum+i)) == NULL)
+        {
+            /* 不匹配 */
+            return DOS_TRUE;
+        }
+    }
+
+    return DOS_FALSE;
+}
+
 /**
  * 判断pszNum所指定的号码是否在黑名单中
  *
@@ -3429,9 +3512,83 @@ U32 sc_black_list_load(U32 ulIndex)
  *
  * @retrun 成功返DOS_TRUE，否则返回DOS_FALSE
  */
-BOOL sc_black_list_check(S8 *pszNum)
+BOOL sc_black_list_check(U32 ulCustomerID, S8 *pszNum)
 {
-    return DOS_FALSE;
+    U32                ulHashIndex;
+    HASH_NODE_S        *pstHashNode = NULL;
+    SC_BLACK_LIST_NODE *pstBlackListNode = NULL;
+
+
+    if (DOS_ADDR_INVALID(pszNum))
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Check num %s is in black list for customer %u", pszNum, ulCustomerID);
+
+    pthread_mutex_lock(&g_mutexHashBlackList);
+    HASH_Scan_Table(g_pstHashBlackList, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashBlackList, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                DOS_ASSERT(0);
+                break;
+            }
+
+            pstBlackListNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstBlackListNode))
+            {
+                DOS_ASSERT(0);
+                continue;
+            }
+
+            if (SC_TOP_USER_ID != pstBlackListNode->ulCustomerID
+                && ulCustomerID != pstBlackListNode->ulCustomerID)
+            {
+                continue;
+            }
+
+            if (SC_NUM_BLACK_REGULAR == pstBlackListNode->enType)
+            {
+                /* 正则号码 */
+                if (sc_black_regular_check(pstBlackListNode->szNum, pszNum) == DOS_FALSE)
+                {
+                    /* 匹配成功 */
+                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Num %s is matched black list item %s, id %u. (Customer:%u)"
+                                , pszNum
+                                , pstBlackListNode->szNum
+                                , pstBlackListNode->ulID
+                                , ulCustomerID);
+
+                    pthread_mutex_unlock(&g_mutexHashBlackList);
+
+                    return DOS_FALSE;
+                }
+            }
+            else
+            {
+                if (0 == dos_strcmp(pstBlackListNode->szNum, pszNum))
+                {
+                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Num %s is matched black list item %s, id %u. (Customer:%u)"
+                                , pszNum
+                                , pstBlackListNode->szNum
+                                , pstBlackListNode->ulID
+                                , ulCustomerID);
+
+                    pthread_mutex_unlock(&g_mutexHashBlackList);
+                    return DOS_FALSE;
+                }
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_mutexHashBlackList);
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Num %s is not matched any black list. (Customer:%u)", pszNum, ulCustomerID);
+
+    return DOS_TRUE;
 }
 
 /**
@@ -4950,6 +5107,8 @@ U32 sc_serv_ctrl_load(U32 ulIndex)
                       "tbl_serv_ctrl.attr2_value AS attr2_value "
                       "FROM tbl_serv_ctrl WHERE id=%u", ulIndex);
     }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "szSQL : %s", szSQL);
 
     if (db_query(g_pstSCDBHandle, szSQL, sc_serv_ctrl_load_cb, NULL, NULL) != DB_ERR_SUCC)
     {

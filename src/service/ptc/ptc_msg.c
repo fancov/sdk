@@ -1375,9 +1375,9 @@ BOOL ptc_save_upgrade_package(S8 *szBuff, U32 ulLen)
             pFileFd = fopen(szNewFile, "w");
             if (NULL == pFileFd)
             {
-                pt_logr_info("create file file\n");
+                pt_logr_info("create file FAIL\n");
                 dos_snprintf(szSystemCmd, PT_DATA_BUFF_256, "mv %s %s", szOldFile, szNewFile);
-                system("szSystemCmd");
+                system(szSystemCmd);
             }
             else
             {

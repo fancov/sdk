@@ -353,7 +353,7 @@ U32 sc_bgjob_hash_delete(S8 *pszUUID)
 
 
 
-    sc_log(LOG_LEVEL_DEBUG, "Add BG-JOB %s(%u) to hash table.", pszUUID, ulLegNo);
+    sc_log(LOG_LEVEL_DEBUG, "Del BG-JOB %s(%u) to hash table.", pszUUID, ulLegNo);
 
     return ulLegNo;
 }
@@ -374,13 +374,13 @@ U32 sc_bgjob_hash_find(S8 *pszUUID)
     if (DOS_ADDR_INVALID(pszUUID) || '\0' == pszUUID[0])
     {
         DOS_ASSERT(0);
-        return DOS_FAIL;
+        return U32_BUTT;
     }
 
     ulHashIndex = sc_uuid_hash_func(pszUUID, SC_BG_JOB_HASH_SIZE);
     if (U32_BUTT == ulHashIndex)
     {
-        return DOS_FAIL;
+        return U32_BUTT;
     }
 
     pthread_mutex_lock(&g_mutexBGJobHash);
@@ -2942,7 +2942,7 @@ U32 sc_leg_get_destination(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
         return SC_DIRECTION_INVALID;
     }
 
-    if (sc_black_list_check(pstLegCB->stCall.stNumInfo.szOriginalCallee))
+    if (!sc_black_list_check(pstSCB->ulCustomerID, pstLegCB->stCall.stNumInfo.szOriginalCallee))
     {
         sc_trace_scb(pstSCB, "The destination is in black list. %s", pstLegCB->stCall.stNumInfo.szOriginalCallee);
 

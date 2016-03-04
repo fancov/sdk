@@ -2162,7 +2162,7 @@ U32 sc_make_call2sip(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
 
 U32 sc_call_ctrl_call_agent(U32 ulCurrentAgent, SC_AGENT_NODE_ST  *pstAgentNode);
 U32 sc_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber);
-U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber);
+U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNumber);
 U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend);
 U32 sc_call_ctrl_hold(U32 ulAgent, BOOL isHold);
 U32 sc_call_ctrl_unhold(U32 ulAgent);

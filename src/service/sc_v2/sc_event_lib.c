@@ -1132,7 +1132,7 @@ U32 sc_make_call2eix(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB)
     stCallMsg.ulLCBNo = pstLCB->ulCBNo;
     stCallMsg.ulSCBNo = pstLCB->ulSCBNo;
 
-    if (sc_eix_dev_get_by_tt(pstLCB->stCall.stNumInfo.szRealCallee, pstLCB->stCall.szEIXAddr, sizeof(pstLCB->stCall.szEIXAddr)) != DOS_SUCC)
+    if (sc_eix_dev_get_by_tt(pstLCB->stCall.stNumInfo.szOriginalCallee, pstLCB->stCall.szEIXAddr, sizeof(pstLCB->stCall.szEIXAddr)) != DOS_SUCC)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Get EIX ip fail by the TT number. %s", pstLCB->stCall.stNumInfo.szRealCallee);
         return DOS_FAIL;
@@ -1297,7 +1297,7 @@ U32 sc_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber)
     return DOS_SUCC;
 }
 
-U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
+U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
 {
     SC_AGENT_NODE_ST *pstAgentNode = NULL;
     SC_SRV_CB        *pstSCB       = NULL;
@@ -1310,6 +1310,14 @@ U32 sc_call_ctrl_call_out(U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
     if (DOS_ADDR_INVALID(pszNumber) || '\0' == pszNumber[0])
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Request call out. Number is empty");
+        return DOS_FAIL;
+    }
+
+    /* 判断是否在黑名单中 */
+    if (!sc_black_list_check(ulCustomerID, pszNumber))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The destination is in black list. %s", pszNumber);
+
         return DOS_FAIL;
     }
 
@@ -1963,6 +1971,14 @@ U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID
         || DOS_ADDR_INVALID(pszAgentNum))
     {
         DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    /* 判断是否在黑名单中 */
+    if (!sc_black_list_check(ulCustomerID, pszCallee))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The destination is in black list. %s", pszCallee);
 
         return DOS_FAIL;
     }

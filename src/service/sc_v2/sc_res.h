@@ -47,6 +47,10 @@ extern pthread_mutex_t          g_mutexHashServCtrl;
 extern HASH_TABLE_S             *g_pstHashCallerSetting;
 extern pthread_mutex_t          g_mutexHashCallerSetting;
 
+/* 定义运营商的ID */
+#define SC_TOP_USER_ID           1
+
+#define SC_SINGLE_NUMBER_SRT_LEN       11           /* 0123456789 字符串的长度 */
 
 #define SC_INVALID_INDEX       U32_BUTT
 
@@ -538,7 +542,7 @@ U32 sc_eix_dev_get_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength);
 U32 sc_eix_dev_update_proc(U32 ulAction, U32 ulEixID);
 
 U32 sc_black_list_load(U32 ulIndex);
-BOOL sc_black_list_check(S8 *pszNum);
+BOOL sc_black_list_check(U32 ulCustomerID, S8 *pszNum);
 U32 sc_black_list_update_proc(U32 ulAction, U32 ulBlackID);
 
 U32 sc_sip_account_load(U32 ulIndex);

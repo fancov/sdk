@@ -256,13 +256,19 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
     /* 只要取到了被叫号码，就应该加一 */
     pstTCB->ulCalledCount++;
 
+    /* 判断是否在黑名单中 */
+    if (!sc_black_list_check(pstTCB->ulCustomID, pstCallee->szNumber))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The destination is in black list. %s", pstCallee->szNumber);
+
+        return DOS_FAIL;
+    }
+
     if (sc_get_number_by_callergrp(pstTCB->ulCallerGrpID, szCaller, SC_NUM_LENGTH) != DOS_SUCC)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Get caller from caller group(%u) FAIL.", pstTCB->ulCallerGrpID);
         return DOS_FAIL;
     }
-
-    /* TODO 黑名单 */
 
     /* 申请一个scb，leg */
     pstSCB = sc_scb_alloc();
@@ -456,7 +462,9 @@ VOID *sc_task_runtime(VOID *ptr)
         /* 发起呼叫 */
         if (sc_task_make_call(pstTCB))
         {
+            /* 发送呼叫失败 */
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_TASK), "%s", "Make call fail.");
+
         }
 #endif
     }
