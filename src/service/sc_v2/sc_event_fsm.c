@@ -2042,13 +2042,10 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
 
             /* ÅÐ¶ÏÊÇ·ñÐèÒªÂ¼Òô */
-            if (pstCalleeCB->stRecord.bValid)
+            if (pstCalleeCB->stRecord.bValid
+                || pstCallingCB->stRecord.bValid)
             {
                 pstRecordLegCB = pstCalleeCB;
-            }
-            else
-            {
-                pstRecordLegCB = pstCallingCB;
             }
 
             if (DOS_ADDR_VALID(pstRecordLegCB))
