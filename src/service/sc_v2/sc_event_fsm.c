@@ -2316,6 +2316,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 pstHungupLeg = pstCalleeCB;
                 pstOtherLeg  = pstCallingCB;
+                pstCallingCB->stCall.stTimeInfo.ulByeTime = pstCalleeCB->stCall.stTimeInfo.ulByeTime;
             }
             else
             {
@@ -2330,7 +2331,20 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
             }
 
-            sc_send_billing_stop2bs(pstSCB, pstCalleeCB, NULL);
+            if (sc_scb_is_exit_service(pstSCB, BS_SERV_OUTBAND_CALL))
+            {
+                /* 如果有出局呼叫，应该先将出局呼叫删除 */
+                sc_scb_remove_service(pstSCB, BS_SERV_OUTBAND_CALL);
+                sc_send_billing_stop2bs(pstSCB, pstCalleeCB, NULL);
+                /* 出局呼叫的话单应该用坐席那条leg产生 */
+                sc_scb_remove_service(pstSCB, BS_SERV_PREVIEW_DIALING);
+                sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
+                sc_send_billing_stop2bs(pstSCB, pstCallingCB, NULL);
+            }
+            else
+            {
+                sc_send_billing_stop2bs(pstSCB, pstCalleeCB, NULL);
+            }
 
             /* 到这里，说明两个leg都OK */
             /*
