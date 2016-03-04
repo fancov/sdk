@@ -579,6 +579,9 @@ U32 sc_srv_incoming_queue_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_
         case SC_EVT_LEACE_CALL_QUEUE:
             ulRet = sc_incoming_queue_leave(pstMsg, pstSCB);
             break;
+        case SC_EVT_PLAYBACK_END:
+            ulRet = sc_incoming_playback_stop(pstMsg, pstSCB);
+            break;
         default:
             break;
     }

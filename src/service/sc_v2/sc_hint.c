@@ -22,6 +22,7 @@ extern "C" {
 #if SC_HINT_LANG_CN
 SC_HINT_DESC_ST  astHitList[] = {
     {SC_SND_CALL_OVER,                 "call_over"},
+    {SC_SND_CALL_QUEUE_WAIT,           "queue_wait"},
     {SC_SND_INCOMING_CALL_TIP,         "incoming_tip"},
     {SC_SND_LOW_BALANCE,               "low_balance"},
     {SC_SND_YOUR_BALANCE,              "nindyew"},

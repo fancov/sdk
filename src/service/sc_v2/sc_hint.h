@@ -25,6 +25,7 @@ extern "C" {
 
 typedef enum tagSoundType{
     SC_SND_CALL_OVER         = 0, /**< 标记提示音 */
+    SC_SND_CALL_QUEUE_WAIT,       /**< 呼叫等待队列背景音 */
     SC_SND_INCOMING_CALL_TIP,     /**< 长签时，呼叫提示音 */
     SC_SND_LOW_BALANCE,           /**< 你的余额已不足 */
     SC_SND_YOUR_BALANCE,          /**< 你的余额为 */

@@ -3170,6 +3170,8 @@ U32 sc_voice_verify_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstLCB = NULL;
             }
             break;
+        default:
+            break;
     }
 
     sc_trace_scb(pstSCB, "Processed call release event for voice verify.");
@@ -4634,7 +4636,23 @@ U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 case SC_TASK_MODE_KEY4AGENT:
                     /* 转坐席 */
                     pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_AFTER_KEY;
-                    sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szCallee);
+                    pstSCB->stIncomingQueue.stSCBTag.bValid = DOS_TRUE;
+                    pstSCB->ulCurrentSrv++;
+                    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stIncomingQueue.stSCBTag;
+                    pstSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
+                    pstSCB->stIncomingQueue.ulLegNo = pstSCB->stAutoCall.ulCallingLegNo;
+                    pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
+                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szCallee) != DOS_SUCC)
+                    {
+                        /* 加入队列失败 */
+                        DOS_ASSERT(0);
+                    }
+                    else
+                    {
+                        /* 放音提示客户等待 */
+                        pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
+                        sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
+                    }
                     break;
 
                 default:
@@ -5591,6 +5609,44 @@ U32 sc_sigin_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return ulRet;
 }
 
+U32 sc_incoming_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_LEG_CB  *pstLCB = NULL;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing call release event for voice verify.");
+
+    pstLCB = sc_lcb_get(pstSCB->stIncomingQueue.ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        sc_scb_free(pstSCB);
+        pstSCB = NULL;
+
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
+        return DOS_FAIL;
+    }
+
+    switch (pstSCB->stIncomingQueue.stSCBTag.usStatus)
+    {
+        case SC_INQUEUE_IDEL:
+        case SC_INQUEUE_ACTIVE:
+            /* 给客户放提示音 */
+            sc_req_play_sound(pstLCB->ulSCBNo, pstLCB->ulCBNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
+            break;
+        default:
+            break;
+    }
+
+    sc_trace_scb(pstSCB, "Processed call release event for voice verify.");
+
+    return DOS_SUCC;
+}
+
 U32 sc_incoming_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvtCall = NULL;
@@ -5612,7 +5668,6 @@ U32 sc_incoming_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         default:
             break;
     }
-
 
     return DOS_SUCC;
 }

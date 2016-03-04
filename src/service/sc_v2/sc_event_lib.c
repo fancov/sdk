@@ -757,6 +757,10 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
         return DOS_FAIL;
     }
 
+    /* 放回铃音给客户 */
+    //sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo);
+    //sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, DOS_TRUE);
+
     pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_EXEC2;
 
     return DOS_SUCC;
