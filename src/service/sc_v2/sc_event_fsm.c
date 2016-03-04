@@ -3034,6 +3034,8 @@ U32 sc_voice_verify_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_VOICE_VERIFY_ACTIVE:
         case SC_VOICE_VERIFY_RELEASE:
             /* ·¢ËÍ»°µ¥ */
+            sc_send_billing_stop2bs(pstSCB, pstLCB, NULL);
+
             if (DOS_ADDR_VALID(pstSCB))
             {
                 sc_scb_free(pstSCB);

@@ -1228,6 +1228,7 @@ U32 sc_voice_verify_proc(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulP
         goto fail_proc;
     }
 
+    pstSCB->ulCustomerID = ulCustomer;
     pstSCB->stVoiceVerify.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stVoiceVerify.stSCBTag.usStatus = SC_VOICE_VERIFY_INIT;
     pstSCB->stVoiceVerify.ulLegNo = pstLCB->ulCBNo;
