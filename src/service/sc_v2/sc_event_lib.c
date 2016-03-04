@@ -1025,13 +1025,12 @@ U32 sc_incoming_call_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
     }
 
 proc_finished:
-
     if (ulRet != DOS_SUCC)
     {
         /* 给主叫放提示音挂断 */
         if (pstSCB)
         {
-            sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo,ulErrCode);
+            sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, ulErrCode);
         }
 
         return DOS_FAIL;

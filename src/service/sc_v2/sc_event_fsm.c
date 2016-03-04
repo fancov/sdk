@@ -1110,10 +1110,11 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_IDEL:
         case SC_CALL_PORC:
         case SC_CALL_AUTH:
-            /* 还没有呼叫被叫，主叫挂断了，直接释放就行了 */
+            /* 还没有呼叫被叫, 生成话单 */
             pstCalling = sc_lcb_get(pstSCB->stCall.ulCallingLegNo);
             if (DOS_ADDR_VALID(pstCalling))
             {
+                sc_send_billing_stop2bs(pstSCB, pstCalling, NULL);
                 sc_lcb_free(pstCalling);
                 pstCalling = NULL;
             }
@@ -1126,6 +1127,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             pstCalling = sc_lcb_get(pstSCB->stCall.ulCallingLegNo);
             if (DOS_ADDR_VALID(pstCalling))
             {
+                sc_send_billing_stop2bs(pstSCB, pstCalling, NULL);
                 if (sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, CC_ERR_NORMAL_CLEAR) != DOS_SUCC)
                 {
                     sc_lcb_free(pstCalling);
@@ -1603,7 +1605,7 @@ U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 U32 sc_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvtCall = NULL;
-    U32                 ulRet               = DOS_FAIL;
+    U32                 ulRet               = DOS_SUCC;
     SC_LEG_CB           *pstCallingLegCB    = NULL;
     U32                 ulErrCode           = CC_ERR_NO_REASON;
 
@@ -1622,12 +1624,16 @@ U32 sc_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (SC_LEAVE_CALL_QUE_TIMEOUT == pstMsg->usInterErr)
             {
                 /* 加入队列超时 */
+                ulErrCode = CC_ERR_SIP_REQUEST_TIMEOUT;
+                ulRet = DOS_FAIL;
             }
             else if (SC_LEAVE_CALL_QUE_SUCC == pstMsg->usInterErr)
             {
                 if (DOS_ADDR_INVALID(pstEvtCall->pstAgentNode))
                 {
                     /* 错误 */
+                    ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
+                    ulRet = DOS_FAIL;
                 }
                 else
                 {
@@ -1645,7 +1651,7 @@ U32 sc_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (ulRet != DOS_SUCC)
     {
-        /* TODO 失败的处理 */
+        sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, ulErrCode);
     }
 
     return ulRet;
