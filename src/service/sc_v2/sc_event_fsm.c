@@ -5627,21 +5627,9 @@ U32 sc_mark_custom_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         sc_agent_serv_status_update(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL);
                     }
 
-                    if (pstLCB->ulIndSCBNo != U32_BUTT)
-                    {
-                        /* 长签，继续放音 */
-                        pstLCB->ulSCBNo = U32_BUTT;
-                        sc_req_play_sound(pstLCB->ulIndSCBNo, pstLCB->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
-                        /* 释放掉 SCB */
-                        sc_scb_free(pstSCB);
-                        pstSCB = NULL;
-                    }
-                    else
-                    {
-                        pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ulLegNo = U32_BUTT;
-                        sc_req_hungup(pstSCB->ulSCBNo, pstLCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
-                        pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_ACTIVE;
-                    }
+                    /* 放提示音 */
+                    sc_req_play_sound(pstLCB->ulSCBNo, pstLCB->ulCBNo, SC_SND_SET_SUCC, 1, 0, 0);
+                    pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_ACTIVE;
                 }
                 else
                 {
@@ -5693,6 +5681,27 @@ U32 sc_mark_custom_playback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_req_play_sound(pstSCB->ulSCBNo, (pstLCB)->ulCBNo, SC_SND_CALL_OVER, 1, 0, 0);
             }
             break;
+        case SC_MAKR_CUSTOM_ACTIVE:
+            pstLCB = sc_lcb_get(pstRlayback->ulLegNo);
+            if (DOS_ADDR_VALID(pstLCB))
+            {
+                if (pstLCB->ulIndSCBNo != U32_BUTT)
+                {
+                    /* 长签，继续放音 */
+                    pstLCB->ulSCBNo = U32_BUTT;
+                    sc_req_play_sound(pstLCB->ulIndSCBNo, pstLCB->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
+                    /* 释放掉 SCB */
+                    sc_scb_free(pstSCB);
+                    pstSCB = NULL;
+                }
+                else
+                {
+                    pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ulLegNo = U32_BUTT;
+                    sc_req_hungup(pstSCB->ulSCBNo, pstLCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                    pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_RELEASE;
+                }
+            }
+            break;
         default:
             break;
     }
@@ -5712,6 +5721,7 @@ U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
         case SC_MAKR_CUSTOM_PROC:
         case SC_MAKR_CUSTOM_ACTIVE:
+        case SC_MAKR_CUSTOM_RELEASE:
             /* 需要生成客户标记的话单，leg在其它业务中释放 */
             pstMarkLeg = sc_lcb_get(pstSCB->stMarkCustom.ulLegNo);
             if (DOS_ADDR_VALID(pstMarkLeg))
