@@ -288,7 +288,7 @@ U32 sc_srv_auto_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
             break;
 
         case SC_EVT_HOLD:
-            /* 暂时不处理 */
+            ulRet = sc_auto_call_hold(pstMsg, pstSCB);
             break;
 
         case SC_EVT_CALL_RERLEASE:
@@ -487,6 +487,21 @@ U32 sc_srv_hold_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *ps
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in Hold Service, SCB:%u"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+     switch (pstMsg->ulMsgType)
+    {
+        case SC_EVT_HOLD:
+            ulRet = sc_hold_hold(pstMsg, pstSCB);
+            break;
+        case SC_EVT_CALL_RERLEASE:
+            ulRet = sc_hold_release(pstMsg, pstSCB);
+            break;
+        case SC_EVT_ERROR_PORT:
+            ulRet = sc_hold_error(pstMsg, pstSCB);
+            break;
+        default:
+            break;
+    }
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Hold Service, SCB:%u, Ret: %s"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
@@ -1025,7 +1040,7 @@ U32 sc_srv_demo_task_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
             break;
 
         case SC_EVT_HOLD:
-            /* 暂时不处理 */
+            ulRet = sc_demo_task_hold(pstMsg, pstSCB);
             break;
 
         case SC_EVT_CALL_RERLEASE:
@@ -1194,7 +1209,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
                 break;
 
             case SC_SRV_HOLD:
-                ulRet = DOS_SUCC;
+                ulRet = sc_srv_hold_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
 
             case SC_SRV_TRANSFER:

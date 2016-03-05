@@ -2481,7 +2481,14 @@ U32 sc_req_hold(U32 ulSCBNo, U32 ulLegNo, U32 ulFlag)
         return DOS_FAIL;
     }
 
-    pstCMDHold->stMsgTag.ulMsgType = SC_CMD_HOLD;
+    if (ulFlag == SC_HOLD_FLAG_HOLD)
+    {
+        pstCMDHold->stMsgTag.ulMsgType = SC_CMD_HOLD;
+    }
+    else
+    {
+        pstCMDHold->stMsgTag.ulMsgType = SC_CMD_UNHOLD;
+    }
     pstCMDHold->stMsgTag.ulSCBNo = ulSCBNo;
     pstCMDHold->stMsgTag.usInterErr = 0;
     pstCMDHold->ulSCBNo = ulSCBNo;
