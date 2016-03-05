@@ -977,6 +977,29 @@ U32 sc_task_mngt_query_task(U32 ulTaskID, U32 ulCustomID)
     return SC_HTTP_ERRNO_SUCC;
 }
 
+
+/*
+ * 函数 : sc_task_write_stat
+ * 功能 : 保存任务运行状态
+ * 参数 :
+ * 返回值: 成功返回DOS_SUCC,否则返回DOS_FAIL
+ */
+U32 sc_task_write_stat(U32 ulType, VOID *ptr)
+{
+    U32 i;
+
+    for (i=0; i<SC_MAX_TASK_NUM; i++)
+    {
+        if (g_pstTaskList[i].ucValid)
+        {
+            sc_task_mngt_query_task(g_pstTaskList[i].ulTaskID, g_pstTaskList[i].ulCustomID);
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+
 /*
  * 函数: VOID sc_task_mngt_cmd_process(SC_TASK_CTRL_CMD_ST *pstCMD)
  * 功能: 处理任务控制，呼叫控制API
