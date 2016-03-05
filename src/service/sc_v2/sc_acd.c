@@ -358,8 +358,11 @@ U32 sc_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo)
 
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
-    dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"1\\\",\\\"body\\\":{\\\"work_status\\\":\\\"%u\\\",\\\"server_status\\\":\\\"%u\\\",\\\"is_signin\\\":\\\"%u\\\",\\\"result\\\":\\\"0\\\"}}"
-        , pstAgentInfo->ucWorkStatus, pstAgentInfo->ucServStatus, pstAgentInfo->bNeedConnected);
+    dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"%u\\\",\\\"body\\\":{\\\"work_status\\\":\\\"%u\\\",\\\"server_status\\\":\\\"%u\\\",\\\"is_signin\\\":\\\"%u\\\",\\\"result\\\":\\\"0\\\"}}"
+                    , ACD_MSG_TYPE_STATUS
+                    , pstAgentInfo->ucWorkStatus
+                    , pstAgentInfo->ucServStatus
+                    , pstAgentInfo->bNeedConnected);
 
     return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_STATUS, NULL);
 }
@@ -400,7 +403,8 @@ U32 sc_agent_call_notify(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
 
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
-    dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"0\\\",\\\"body\\\":{\\\"number\\\":\\\"%s\\\"}}", szCaller);
+    dos_snprintf(szData, sizeof(szData), "{\\\"type\\\":\\\"%u\\\",\\\"body\\\":{\\\"number\\\":\\\"%s\\\"}}"
+                    , ACD_MSG_TYPE_CALL_NOTIFY, szCaller);
 
     return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_STATUS, NULL);
 }
