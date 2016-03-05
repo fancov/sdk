@@ -574,7 +574,7 @@ U32 sc_esl_event_hold(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     stHold.stMsgTag.usMsgLen = 0;
     stHold.ulLegNo = pstLegCB->ulCBNo;
     stHold.ulSCBNo = pstLegCB->ulSCBNo;
-    stHold.blIsHold = DOS_TRUE;
+    stHold.bIsHold = DOS_TRUE;
 
     sc_send_event_hold(&stHold);
 
@@ -615,7 +615,7 @@ U32 sc_esl_event_unhold(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     stHold.stMsgTag.usMsgLen = 0;
     stHold.ulLegNo = pstLegCB->ulCBNo;
     stHold.ulSCBNo = pstLegCB->ulSCBNo;
-    stHold.blIsHold = DOS_FALSE;
+    stHold.bIsHold = DOS_FALSE;
 
     sc_send_event_hold(&stHold);
 
@@ -2110,11 +2110,11 @@ VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
             break;
 
         case SC_CMD_RECORD_STOP:
-            ulRet = sc_cmd_hold(pstMsg);
+            ulRet = sc_cmd_record_stop(pstMsg);
             break;
 
         case SC_CMD_HOLD:
-            ulRet = sc_cmd_unhold(pstMsg);
+            ulRet = sc_cmd_hold(pstMsg);
             break;
 
         case SC_CMD_UNHOLD:

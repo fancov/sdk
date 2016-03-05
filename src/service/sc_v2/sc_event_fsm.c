@@ -1395,7 +1395,7 @@ U32 sc_call_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    if (pstHold->blIsHold)
+    if (pstHold->bIsHold)
     {
         /* 如果是被HOLD的，需要激活HOLD业务哦 */
         pstSCB->stHold.stSCBTag.bValid = DOS_TRUE;
@@ -1412,14 +1412,6 @@ U32 sc_call_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     else
     {
         /* 如果是被UNHOLD的，已经没有HOLD业务了，单纯处理呼叫就好 */
-        if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.ulCallingLegNo) != DOS_SUCC)
-        {
-            sc_trace_scb(pstSCB, "Bridge call when early media fail.");
-
-            sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCalleeLegNo, CC_ERR_SC_SERV_NOT_EXIST);
-            sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, CC_ERR_SC_SERV_NOT_EXIST);
-            return DOS_FAIL;
-        }
     }
 
     return DOS_SUCC;
@@ -2186,11 +2178,6 @@ fail_proc:
 
 }
 
-U32 sc_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
-{
-    return DOS_SUCC;
-}
-
 U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     U32                     ulRet           = DOS_SUCC;
@@ -2629,6 +2616,39 @@ U32 sc_preview_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         pstSCB->stAccessCode.ulAgentID = pstSCB->stPreviewCall.ulAgentID;
         pstSCB->ulCurrentSrv++;
         pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+    }
+
+    return DOS_SUCC;
+}
+
+U32 sc_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+
+    pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (pstHold->bIsHold)
+    {
+        /* 如果是被HOLD的，需要激活HOLD业务哦 */
+        pstSCB->stHold.stSCBTag.bValid = DOS_TRUE;
+        pstSCB->stHold.stSCBTag.bWaitingExit = DOS_FALSE;
+        pstSCB->stHold.stSCBTag.usStatus = SC_HOLD_ACTIVE;
+        pstSCB->stHold.ulCallLegNo = pstHold->ulLegNo;
+
+        pstSCB->ulCurrentSrv++;
+        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stHold.stSCBTag;
+
+        /* 给HOLD方 播放拨号音 */
+        /* 给HOLD对方 播放呼叫保持音 */
+    }
+    else
+    {
+        /* 如果是被UNHOLD的，已经没有HOLD业务了，单纯处理呼叫就好 */
     }
 
     return DOS_SUCC;
@@ -4725,6 +4745,39 @@ U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
     }
 
+
+    return DOS_SUCC;
+}
+
+U32 sc_auto_call_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+
+    pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (pstHold->bIsHold)
+    {
+        /* 如果是被HOLD的，需要激活HOLD业务哦 */
+        pstSCB->stHold.stSCBTag.bValid = DOS_TRUE;
+        pstSCB->stHold.stSCBTag.bWaitingExit = DOS_FALSE;
+        pstSCB->stHold.stSCBTag.usStatus = SC_HOLD_ACTIVE;
+        pstSCB->stHold.ulCallLegNo = pstHold->ulLegNo;
+
+        pstSCB->ulCurrentSrv++;
+        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stHold.stSCBTag;
+
+        /* 给HOLD方 播放拨号音 */
+        /* 给HOLD对方 播放呼叫保持音 */
+    }
+    else
+    {
+        /* 如果是被UNHOLD的，已经没有HOLD业务了，单纯处理呼叫就好 */
+    }
 
     return DOS_SUCC;
 }
@@ -7189,6 +7242,39 @@ U32 sc_demo_task_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return DOS_SUCC;
 }
 
+U32 sc_demo_task_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+
+    pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (pstHold->bIsHold)
+    {
+        /* 如果是被HOLD的，需要激活HOLD业务哦 */
+        pstSCB->stHold.stSCBTag.bValid = DOS_TRUE;
+        pstSCB->stHold.stSCBTag.bWaitingExit = DOS_FALSE;
+        pstSCB->stHold.stSCBTag.usStatus = SC_HOLD_ACTIVE;
+        pstSCB->stHold.ulCallLegNo = pstHold->ulLegNo;
+
+        pstSCB->ulCurrentSrv++;
+        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stHold.stSCBTag;
+
+        /* 给HOLD方 播放拨号音 */
+        /* 给HOLD对方 播放呼叫保持音 */
+    }
+    else
+    {
+        /* 如果是被UNHOLD的，已经没有HOLD业务了，单纯处理呼叫就好 */
+    }
+
+    return DOS_SUCC;
+}
+
 U32 sc_demo_task_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     /* 处理录音结束 */
@@ -7752,6 +7838,151 @@ U32 sc_demo_task_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
+}
+
+U32 sc_hold_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_HOLD_ST  *pstHold        = NULL;
+    U32                 ulRet           = DOS_SUCC;
+    U32                 ulLegCBNo       = U32_BUTT;
+    U32                 ulOtherLegNo    = U32_BUTT;
+
+    pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing hold hold event. status : %u", pstSCB->stHold.stSCBTag.usStatus);
+
+    ulLegCBNo = pstHold->ulLegNo;
+
+    switch (pstSCB->stHold.stSCBTag.usStatus)
+    {
+        case SC_HOLD_PROC:
+            if (pstHold->bIsHold)
+            {
+                /* hold，需要找到另外一个leg，放播放拨号音  */
+                pstSCB->stHold.stSCBTag.usStatus = SC_HOLD_ACTIVE;
+
+                if (pstSCB->stCall.stSCBTag.bValid)
+                {
+                    if (ulLegCBNo == pstSCB->stCall.ulCallingLegNo)
+                    {
+                        ulOtherLegNo = pstSCB->stCall.ulCalleeLegNo;
+                    }
+                    else
+                    {
+                        ulOtherLegNo = pstSCB->stCall.ulCallingLegNo;
+                    }
+                }
+                else if (pstSCB->stPreviewCall.stSCBTag.bValid)
+                {
+                    if (ulLegCBNo == pstSCB->stPreviewCall.ulCallingLegNo)
+                    {
+                        ulOtherLegNo = pstSCB->stPreviewCall.ulCalleeLegNo;
+                    }
+                }
+                else if (pstSCB->stAutoCall.stSCBTag.bValid)
+                {
+                    if (ulLegCBNo == pstSCB->stAutoCall.ulCallingLegNo)
+                    {
+                        ulOtherLegNo = pstSCB->stAutoCall.ulCalleeLegNo;
+                    }
+                }
+                else if (pstSCB->stTransfer.stSCBTag.bValid)
+                {
+                    if (ulLegCBNo == pstSCB->stTransfer.ulPublishLegNo)
+                    {
+                        ulOtherLegNo = pstSCB->stTransfer.ulSubLegNo;
+                    }
+                }
+
+                /* TODO 放拨号音 */
+
+            }
+            break;
+        case SC_HOLD_ACTIVE:
+        case SC_HOLD_RELEASE:
+            if (!pstHold->bIsHold)
+            {
+                /* hold */
+                pstSCB->stHold.stSCBTag.bWaitingExit = DOS_TRUE;
+            }
+            break;
+        default:
+            break;
+    }
+
+    return ulRet;
+}
+
+U32 sc_hold_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+    U32                 ulRet    = DOS_SUCC;
+
+    pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing hold release event. status : %u", pstSCB->stHold.stSCBTag.usStatus);
+
+    switch (pstSCB->stHold.stSCBTag.usStatus)
+    {
+        case SC_HOLD_IDEL:
+        case SC_HOLD_PROC:
+        case SC_HOLD_ACTIVE:
+        case SC_HOLD_RELEASE:
+            /* hold */
+            pstSCB->stHold.stSCBTag.bWaitingExit = DOS_TRUE;
+            break;
+        default:
+            break;
+    }
+
+    return ulRet;
+}
+
+U32 sc_hold_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+    U32                 ulRet    = DOS_SUCC;
+
+    pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing hold error event. status : %u", pstSCB->stHold.stSCBTag.usStatus);
+
+    switch (pstSCB->stHold.stSCBTag.usStatus)
+    {
+        case SC_HOLD_IDEL:
+            break;
+        case SC_HOLD_PROC:
+            /* 可能发送或者执行hold命令失败 */
+            pstSCB->stHold.stSCBTag.bWaitingExit = DOS_TRUE;
+            break;
+        case SC_HOLD_ACTIVE:
+            /* 可能发送或者执行unhold命令失败 */
+            pstSCB->stHold.stSCBTag.bWaitingExit = DOS_TRUE;
+            break;
+        case SC_HOLD_RELEASE:
+            /* hold */
+            pstSCB->stHold.stSCBTag.bWaitingExit = DOS_TRUE;
+            break;
+        default:
+            break;
+    }
 
     return ulRet;
 }
