@@ -228,6 +228,9 @@ U32 sc_init_db()
         return DOS_FAIL;
     }
 
+    /* 清空坐席的状态表 */
+    db_query(g_pstSCDBHandle, "truncate table tmp_agent_status;", NULL, NULL, 0);
+
     return DOS_SUCC;
 }
 

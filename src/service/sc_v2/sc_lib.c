@@ -1150,6 +1150,26 @@ VOID sc_scb_demo_task_init(SC_AUTO_CALL_ST *pstAutoCall)
 
 }
 
+VOID sc_scb_call_agent_init(SC_SRV_CALL_AGENT_ST *pstCallAgent)
+{
+    if (DOS_ADDR_INVALID(pstCallAgent))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstCallAgent->stSCBTag.bTrace = DOS_FALSE;
+    pstCallAgent->stSCBTag.bValid = DOS_FALSE;
+    pstCallAgent->stSCBTag.usSrvType = SC_SRV_CALL_AGENT;
+    pstCallAgent->stSCBTag.usStatus = SC_CALL_AGENT_IDEL;
+    pstCallAgent->ulCallingLegNo = U32_BUTT;
+    pstCallAgent->ulCalleeLegNo = U32_BUTT;
+    pstCallAgent->ulCalleeType = U32_BUTT;
+    pstCallAgent->pstAgentCalling = NULL;
+    pstCallAgent->pstAgentCalling = NULL;
+    pstCallAgent->szCalleeNum[0] = '\0';
+}
+
 /**
  * 初始化也控制块
  *
@@ -1198,6 +1218,7 @@ VOID sc_scb_init(SC_SRV_CB *pstSCB)
     sc_scb_mark_custom_init(&pstSCB->stMarkCustom);
     sc_scb_sigin_init(&pstSCB->stSigin);
     sc_scb_demo_task_init(&pstSCB->stDemoTask);
+    sc_scb_call_agent_init(&pstSCB->stCallAgent);
 }
 
 /**

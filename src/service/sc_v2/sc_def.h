@@ -489,6 +489,7 @@ typedef enum tagSCSrvType{
     SC_SRV_MARK_CUSTOM          = 10,  /**< 客户标记业务 */
     SC_SRV_AGENT_SIGIN          = 11,  /**< 坐席长签业务 这是个独立业务 */
     SC_SRV_DEMO_TASK            = 12,  /**< 群呼任务demo */
+    SC_SRV_CALL_AGENT           = 13,  /**< 通过web，呼叫同组坐席 */
 
     SC_SRV_BUTT,
 }SC_SRV_TYPE_EN;
@@ -1368,6 +1369,59 @@ typedef struct tagSCSigin{
 
 }SC_SIGIN_ST;
 
+
+/** web呼叫同组坐席或者sip分机 */
+typedef enum tagSCCallAgentStatus{
+    SC_CALL_AGENT_IDEL,       /**< 状态初始化 */
+    SC_CALL_AGENT_AUTH,       /**< 状态初始化 */
+    SC_CALL_AGENT_EXEC,       /**< 状态初始化 */
+    SC_CALL_AGENT_PORC,       /**< 发起到坐席的呼叫 */
+    SC_CALL_AGENT_ALERTING,   /**< 坐席在振铃了 */
+    SC_CALL_AGENT_ACTIVE,     /**< 坐席接通 */
+    SC_CALL_AGENT_AUTH2,      /**< 另一个坐席可能绑定pstn，就需要认证 */
+    SC_CALL_AGENT_EXEC2,      /**< 呼叫另一个坐席 */
+    SC_CALL_AGENT_PORC2,
+    SC_CALL_AGENT_ALERTING2,  /**< 另一个坐席开始振铃了 */
+    SC_CALL_AGENT_TONE,       /**< 被叫坐席长签时，给坐席放提示音 */
+    SC_CALL_AGENT_CONNECTED,  /**< 呼叫接通了 */
+    SC_CALL_AGENT_RELEASE
+}SC_CALL_AGENT_STATE_EN;
+
+enum{
+    SC_SRV_CALL_TYEP_AGENT = 0,
+    SC_SRV_CALL_TYEP_SIP,
+};
+
+/**
+ * 业务控制块, 基本呼叫
+ */
+typedef struct tagSCSrvCallAgent{
+    /** 基本信息 */
+    SC_SCB_TAG_ST     stSCBTag;
+
+    /* 呼叫主叫坐席的leg */
+    U32               ulCallingLegNo;
+
+    /* 被叫坐席或者sip分机的leg */
+    U32               ulCalleeLegNo;
+
+    /* 路由ID */
+    U32               ulRouteID;
+
+    /** 主叫坐席指针 */
+    SC_AGENT_NODE_ST *pstAgentCalling;
+
+    /** 被叫的类型 */
+    U32               ulCalleeType;
+
+    /** 被叫坐席指针 */
+    SC_AGENT_NODE_ST *pstAgentCallee;
+
+    /** 被叫的sip分机 */
+    S8                szCalleeNum[SC_NUM_LENGTH];
+
+}SC_SRV_CALL_AGENT_ST;
+
 typedef struct tagSCBalanceWarning{
     SC_SCB_TAG_ST     stSCBTag;
 }SC_BALANCE_WARNING_ST;
@@ -1432,6 +1486,8 @@ typedef struct tagSCSrvCB{
     SC_SIGIN_ST          stSigin;
     /** 群呼任务demo控制块 */
     SC_AUTO_CALL_ST      stDemoTask;
+    /* 坐席同坐web呼叫另一个坐席 */
+    SC_SRV_CALL_AGENT_ST stCallAgent;
     /** 余额告警业务是否启用 */
     SC_BALANCE_WARNING_ST stBalanceWarning;
 
@@ -2144,6 +2200,16 @@ U32 sc_hold_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_hold_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_hold_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
+U32 sc_call_agent_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_call_agent_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_call_agent_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_call_agent_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_call_agent_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_call_agent_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_call_agent_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_call_agent_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
 U32 sc_agent_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCallerNum);
 
 SC_TASK_CB *sc_tcb_alloc();
@@ -2166,7 +2232,7 @@ U32 sc_make_call2pstn(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
 U32 sc_make_call2eix(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
 U32 sc_make_call2sip(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
 
-U32 sc_call_ctrl_call_agent(U32 ulCurrentAgent, SC_AGENT_NODE_ST  *pstAgentNode);
+U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST  *pstAgentNodeCallee);
 U32 sc_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber);
 U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNumber);
 U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend);

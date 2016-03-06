@@ -1092,6 +1092,95 @@ U32 sc_srv_demo_task_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
     return DOS_SUCC;
 }
 
+U32 sc_srv_call_agent_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
+{
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in call agent Service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+    switch (pstMsg->ulMsgType)
+    {
+        case SC_EVT_AUTH_RESULT:
+            ulRet = sc_call_agent_auth_rsp(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_SETUP:
+            ulRet = sc_call_agent_setup(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_AMSWERED:
+            ulRet = sc_call_agent_answer(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_RINGING:
+            ulRet = sc_call_agent_ringing(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_BRIDGE_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_BRIDGE_STOP:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_HOLD:
+            ulRet = sc_call_agent_hold(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_RERLEASE:
+            ulRet = sc_call_agent_release(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_STATUS:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_DTMF:
+            ulRet = sc_call_agent_dtmf(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_RECORD_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_RECORD_END:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_PLAYBACK_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_PLAYBACK_END:
+            ulRet = sc_call_agent_playback_stop(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_ERROR_PORT:
+            ulRet = sc_call_agent_error(pstMsg, pstSCB);
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Invalid event type. %u", pstMsg->ulMsgType);
+            break;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in call agent Service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
+}
+
+
 /**
  * 处理业务子层发过来的事件，根据事件中指示的业务类型执行不同业务类型的状态机, 如果有多个业务，需要执行业务栈来处理
  *
@@ -1231,12 +1320,19 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
             case SC_SRV_MARK_CUSTOM:
                 ulRet = sc_srv_mark_custom_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
+
             case SC_SRV_AGENT_SIGIN:
                 ulRet = sc_srv_sigin_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
+
             case SC_SRV_DEMO_TASK:
                 ulRet = sc_srv_demo_task_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
+
+            case SC_SRV_CALL_AGENT:
+                ulRet = sc_srv_call_agent_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                break;
+
             default:
                 sc_trace_scb(pstSCB, "Invalid service type : %u", pstSCB->pstServiceList[ulCurrentSrv]->usSrvType);
                 break;

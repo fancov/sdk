@@ -1596,6 +1596,14 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
             dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstAgentNode->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
         }
     }
+    else if (pstSCB->stCallAgent.stSCBTag.bValid)
+    {
+        if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling)
+            && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo))
+        {
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+        }
+    }
 
     pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum) - 1] = '\0';
 

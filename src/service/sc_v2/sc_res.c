@@ -2675,7 +2675,7 @@ U32 sc_route_get_trunks(U32 ulRouteID, U32 *paulTrunkList, U32 ulTrunkListSize)
 
             pstGW = pstHashNode->pHandle;
             if (DOS_FALSE == pstGW->bStatus
-                || (pstGW->bRegister && pstGW->ulRegisterStatus != SC_TRUNK_STATE_TYPE_NOREG))
+                || (pstGW->bRegister && pstGW->ulRegisterStatus != SC_TRUNK_STATE_TYPE_REGED))
             {
                 pthread_mutex_unlock(&g_mutexHashGW);
                 break;
@@ -3201,7 +3201,372 @@ U32 sc_transform_update_proc(U32 ulAction, U32 ulNumTransID)
 
     return DOS_SUCC;
 }
+#if 0
+U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMING_EN enTiming, SC_NUM_TRANSFORM_SELECT_EN enNumSelect)
+{
+    SC_NUM_TRANSFORM_NODE_ST        *pstNumTransform        = NULL;
+    SC_NUM_TRANSFORM_NODE_ST        *pstNumTransformEntry   = NULL;
+    DLL_NODE_S                      *pstListNode            = NULL;
+    SC_NUM_TRANSFORM_DIRECTION_EN   enDirection;
+    S8  szNeedTransformNum[SC_NUM_LENGTH]                   = {0};
+    U32 ulIndex         = 0;
+    S32 lIndex          = 0;
+    U32 ulNumLen        = 0;
+    U32 ulOffsetLen     = 0;
+    U32 ulCallerGrpID   = 0;
+    time_t ulCurrTime   = time(NULL);
 
+    if (DOS_ADDR_INVALID(pstSCB)
+        || '\0' == pstSCB->szCalleeNum[0]
+        || '\0' == pstSCB->szCallerNum[0]
+        || enTiming >= SC_NUM_TRANSFORM_TIMING_BUTT
+        || enNumSelect >= SC_NUM_TRANSFORM_SELECT_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Search number transfer rule, timing is : %d, number select : %d"
+                                , enTiming, enNumSelect);
+
+    /* 判断一下呼叫方向 呼入/呼出 */
+    if (pstSCB->ucLegRole == SC_CALLEE && pstSCB->bIsAgentCall)
+    {
+        /* 被叫是坐席则为呼入, 否则为呼出 */
+        enDirection = SC_NUM_TRANSFORM_DIRECTION_IN;
+    }
+    else
+    {
+        enDirection = SC_NUM_TRANSFORM_DIRECTION_OUT;
+    }
+
+    sc_logr_debug(pstSCB, SC_DIALER, "call firection : %d, pstSCB->ucLegRole : %d, pstSCB->bIsAgentCall : %d", enDirection, pstSCB->ucLegRole, pstSCB->bIsAgentCall);
+
+    /* 遍历号码变换规则的链表，查找没有过期的，优先级别高的，针对这个客户或者系统的变换规则。
+        先按优先级，同优先级，客户优先于中继，中继优先于系统 */
+    pthread_mutex_lock(&g_mutexNumTransformList);
+    DLL_Scan(&g_stNumTransformList, pstListNode, DLL_NODE_S *)
+    {
+        pstNumTransformEntry = (SC_NUM_TRANSFORM_NODE_ST *)pstListNode->pHandle;
+        if (DOS_ADDR_INVALID(pstNumTransformEntry))
+        {
+            continue;
+        }
+
+        /* 判断有效期 */
+        if (pstNumTransformEntry->ulExpiry < ulCurrTime)
+        {
+            continue;
+        }
+
+        /* 判断 路由前/后 */
+        if (pstNumTransformEntry->enTiming != enTiming)
+        {
+            continue;
+        }
+        /* 判断 呼叫方向 */
+        if (pstNumTransformEntry->enDirection != enDirection)
+        {
+            continue;
+        }
+        /* 判断主被叫 */
+        if (pstNumTransformEntry->enNumSelect != enNumSelect)
+        {
+            continue;
+        }
+
+        /* 判断主叫号码前缀 */
+        if ('\0' != pstNumTransformEntry->szCallerPrefix[0])
+        {
+            if (0 != dos_strnicmp(pstNumTransformEntry->szCallerPrefix, pstSCB->szCallerNum, dos_strlen(pstNumTransformEntry->szCallerPrefix)))
+            {
+                continue;
+            }
+        }
+
+        /* 判断被叫号码前缀 */
+        if ('\0' != pstNumTransformEntry->szCalleePrefix[0])
+        {
+            if (0 != dos_strnicmp(pstNumTransformEntry->szCalleePrefix, pstSCB->szCalleeNum, dos_strlen(pstNumTransformEntry->szCalleePrefix)))
+            {
+                continue;
+            }
+        }
+
+        sc_logr_debug(pstSCB, SC_DIALER, "Call Object : %d", pstNumTransformEntry->enObject);
+
+        if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER == pstNumTransformEntry->enObject)
+        {
+            /* 针对客户 */
+            if (pstNumTransformEntry->ulObjectID == pstSCB->ulCustomID)
+            {
+                if (DOS_ADDR_INVALID(pstNumTransform))
+                {
+                    pstNumTransform = pstNumTransformEntry;
+                    continue;
+                }
+
+                if (pstNumTransformEntry->enPriority < pstNumTransform->enPriority)
+                {
+                    /* 选择优先级高的 */
+                    pstNumTransform = pstNumTransformEntry;
+
+                    continue;
+                }
+
+                if (pstNumTransformEntry->enPriority == pstNumTransform->enPriority && pstNumTransform->enObject != SC_NUM_TRANSFORM_OBJECT_CUSTOMER)
+                {
+                    /* 优先级相同，选择客户的 */
+                    pstNumTransform = pstNumTransformEntry;
+
+                    continue;
+                }
+            }
+        }
+        else if (SC_NUM_TRANSFORM_OBJECT_SYSTEM == pstNumTransformEntry->enObject)
+        {
+            /* 针对系统 */
+            if (DOS_ADDR_INVALID(pstNumTransform))
+            {
+                pstNumTransform = pstNumTransformEntry;
+
+                continue;
+            }
+
+            if (pstNumTransformEntry->enPriority < pstNumTransform->enPriority)
+            {
+                /* 选择优先级高的 */
+                pstNumTransform = pstNumTransformEntry;
+
+                continue;
+            }
+        }
+        else if (SC_NUM_TRANSFORM_OBJECT_TRUNK == pstNumTransformEntry->enObject)
+        {
+            /* 针对中继，只有路由后，才需要判断这种情况 */
+            if (enTiming == SC_NUM_TRANSFORM_TIMING_AFTER)
+            {
+                if (pstNumTransformEntry->ulObjectID != ulTrunkID)
+                {
+                    continue;
+                }
+
+                if (DOS_ADDR_INVALID(pstNumTransform))
+                {
+                    pstNumTransform = pstNumTransformEntry;
+                    continue;
+                }
+
+                if (pstNumTransformEntry->enPriority < pstNumTransform->enPriority)
+                {
+                    /* 选择优先级高的 */
+                    pstNumTransform = pstNumTransformEntry;
+
+                    continue;
+                }
+
+                if (pstNumTransformEntry->enPriority == pstNumTransform->enPriority && pstNumTransform->enObject == SC_NUM_TRANSFORM_OBJECT_SYSTEM)
+                {
+                    /* 优先级相同，如果是系统的，则换成中继的 */
+                    pstNumTransform = pstNumTransformEntry;
+
+                    continue;
+                }
+            }
+        }
+    }
+
+    if (DOS_ADDR_INVALID(pstNumTransform))
+    {
+        /* 没有找到合适的变换规则 */
+        sc_logr_debug(pstSCB, SC_DIALER, "Not find number transfer rule for the task %d, timing is : %d, number select : %d"
+                                , pstSCB->ulTaskID, enTiming, enNumSelect);
+
+        goto succ;
+    }
+
+    sc_logr_debug(pstSCB, SC_DIALER, "Find a number transfer rule(%d) for the task %d, timing is : %d, number select : %d"
+                                , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
+
+    if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
+    {
+        dos_strncpy(szNeedTransformNum, pstSCB->szCallerNum, SC_TEL_NUMBER_LENGTH);
+    }
+    else
+    {
+        dos_strncpy(szNeedTransformNum, pstSCB->szCalleeNum, SC_TEL_NUMBER_LENGTH);
+    }
+
+    szNeedTransformNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+
+    /* 根据找到的规则变换号码 */
+    if (pstNumTransform->bReplaceAll)
+    {
+        /* 完全替代 */
+        if (pstNumTransform->szReplaceNum[0] == '*')
+        {
+            /* 使用号码组中的号码 */
+            if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER != pstNumTransform->enObject || enNumSelect != SC_NUM_TRANSFORM_SELECT_CALLER)
+            {
+                /* 只有企业客户 和 变换主叫号码时，才可以选择号码组中的号码进行替换 */
+                sc_logr_info(pstSCB, SC_DIALER, "Number transfer rule(%d) for the task %d fail : only a enterprise customers can, choose number in the group number"
+                                , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
+
+                goto fail;
+            }
+
+            if (dos_atoul(&pstNumTransform->szReplaceNum[1], &ulCallerGrpID) < 0)
+            {
+                sc_logr_info(pstSCB, SC_DIALER, "Number transfer rule(%d), get caller group id fail.", pstNumTransform->ulID);
+
+                goto fail;
+            }
+
+            if (sc_select_number_in_order(pstSCB->ulCustomID, ulCallerGrpID, szNeedTransformNum, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
+            {
+                sc_logr_info(pstSCB, SC_DIALER, "Number transfer rule(%d), get caller from group id(%u) fail.", pstNumTransform->ulID, ulCallerGrpID);
+
+                goto fail;
+            }
+
+            sc_logr_debug(pstSCB, SC_DIALER, "Number transfer rule(%d), get caller(%s) from group id(%u) succ.", pstNumTransform->ulID, szNeedTransformNum, ulCallerGrpID);
+
+        }
+        else if (pstNumTransform->szReplaceNum[0] == '\0')
+        {
+            /* 完全替换的号码不能为空 */
+            sc_logr_info(pstSCB, SC_DIALER, "The number transfer rule(%d) replace num is NULL!"
+                                , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
+
+            goto fail;
+        }
+        else
+        {
+            dos_strcpy(szNeedTransformNum, pstNumTransform->szReplaceNum);
+        }
+
+        goto succ;
+    }
+
+    /* 删除左边几位 */
+    ulOffsetLen = pstNumTransform->ulDelLeft;
+    if (ulOffsetLen != 0)
+    {
+        ulNumLen = dos_strlen(szNeedTransformNum);
+
+        if (ulOffsetLen >= ulNumLen)
+        {
+            /* 删除的位数大于号码的长度，整个号码置空 */
+            szNeedTransformNum[0] = '\0';
+        }
+        else
+        {
+            for (ulIndex=ulOffsetLen; ulIndex<=ulNumLen; ulIndex++)
+            {
+                szNeedTransformNum[ulIndex-ulOffsetLen] = szNeedTransformNum[ulIndex];
+            }
+        }
+    }
+
+    /* 删除右边几位 */
+    ulOffsetLen = pstNumTransform->ulDelRight;
+    if (ulOffsetLen != 0)
+    {
+        ulNumLen = dos_strlen(szNeedTransformNum);
+
+        if (ulOffsetLen >= ulNumLen)
+        {
+            /* 删除的位数大于号码的长度，整个号码置空 */
+            szNeedTransformNum[0] = '\0';
+        }
+        else
+        {
+            szNeedTransformNum[ulNumLen-ulOffsetLen] = '\0';
+        }
+    }
+
+    /* 增加前缀 */
+    if (pstNumTransform->szAddPrefix[0] != '\0')
+    {
+        ulNumLen = dos_strlen(szNeedTransformNum);
+        ulOffsetLen = dos_strlen(pstNumTransform->szAddPrefix);
+        if (ulNumLen + ulOffsetLen >= SC_TEL_NUMBER_LENGTH)
+        {
+            /* 超过号码的长度，失败 */
+
+            goto fail;
+        }
+
+        for (lIndex=ulNumLen; lIndex>=0; lIndex--)
+        {
+            szNeedTransformNum[lIndex+ulOffsetLen] = szNeedTransformNum[lIndex];
+        }
+
+        dos_strncpy(szNeedTransformNum, pstNumTransform->szAddPrefix, ulOffsetLen);
+    }
+
+    /* 增加后缀 */
+    if (pstNumTransform->szAddSuffix[0] != '\0')
+    {
+        ulNumLen = dos_strlen(szNeedTransformNum);
+        ulOffsetLen = dos_strlen(pstNumTransform->szAddSuffix);
+        if (ulNumLen + ulOffsetLen >= SC_TEL_NUMBER_LENGTH)
+        {
+            /* 超过号码的长度，失败 */
+
+            goto fail;
+        }
+
+        dos_strcat(szNeedTransformNum, pstNumTransform->szAddSuffix);
+    }
+
+    if (szNeedTransformNum[0] == '\0')
+    {
+        goto fail;
+    }
+    szNeedTransformNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+
+succ:
+
+    if (DOS_ADDR_INVALID(pstNumTransform))
+    {
+        pthread_mutex_unlock(&g_mutexNumTransformList);
+
+        return DOS_SUCC;
+    }
+
+    if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
+    {
+        sc_logr_debug(pstSCB, SC_DIALER, "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstSCB->ulTaskID, pstSCB->szCallerNum, szNeedTransformNum);
+        dos_strcpy(pstSCB->szCallerNum, szNeedTransformNum);
+    }
+    else
+    {
+        sc_logr_debug(pstSCB, SC_DIALER, "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstSCB->ulTaskID, pstSCB->szCalleeNum, szNeedTransformNum);
+        dos_strcpy(pstSCB->szCalleeNum, szNeedTransformNum);
+    }
+
+    pthread_mutex_unlock(&g_mutexNumTransformList);
+
+    return DOS_SUCC;
+
+fail:
+
+    sc_logr_info(pstSCB, SC_DIALER, "the number transfer(%d) FAIL, task : %d", pstNumTransform->ulID, pstSCB->ulTaskID);
+    if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
+    {
+        pstSCB->szCallerNum[0] = '\0';
+    }
+    else
+    {
+        pstSCB->szCalleeNum[0] = '\0';
+    }
+
+    pthread_mutex_unlock(&g_mutexNumTransformList);
+
+    return DOS_FAIL;
+}
+#endif
 
 /**
  * 函数: VOID sc_ep_gw_init(SC_GW_NODE_ST *pstGW)

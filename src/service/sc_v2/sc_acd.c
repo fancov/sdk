@@ -3302,7 +3302,7 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
 }
 
 
-/* 审计坐席，其实就 写入统计信息 */
+/* 审计坐席，其实就 写入统计信息 2h */
 U32 sc_agent_audit(U32 ulCycle, VOID *ptr)
 {
     HASH_NODE_S                 *pstHashNode       = NULL;
@@ -3899,7 +3899,6 @@ U32 sc_agent_mngt_init()
         return DOS_FAIL;
     }
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Init group list finished. Load %d agent group(s).", g_pstGroupList->NodeNum);
-
 
     if (sc_agent_init(SC_INVALID_INDEX) != DOS_SUCC)
     {
