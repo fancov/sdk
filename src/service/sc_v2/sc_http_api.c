@@ -53,6 +53,7 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
     {"customer",                 sc_http_api_customer_action},
     {"demo",                     sc_http_api_demo_action},
     {"serv-ctrl",                sc_http_api_serv_ctrl_action},
+    {"stat-syn",                 sc_http_api_stat_syn},
 
     {"",                         NULL}
 };
@@ -1238,7 +1239,8 @@ U32 sc_http_api_agent(list_t *pstArgv)
     {
         ulAction = SC_ACD_SITE_ACTION_DN_QUEUE;
     }
-    else if (dos_strncmp(pszAction, "query",sizeof("query")) == 0) {
+    else if (dos_strncmp(pszAction, "query",sizeof("query")) == 0)
+    {
         ulAction = SC_API_CMD_ACTION_QUERY;
     }
     else
@@ -1934,6 +1936,29 @@ invalid_params:
     return SC_HTTP_ERRNO_INVALID_PARAM;
 }
 
+U32 sc_http_api_stat_syn(list_t *pstArgv)
+{
+    S8 *pszType = NULL;
+
+    pszType = sc_http_api_get_value(pstArgv, "type");
+    if (DOS_ADDR_INVALID(pszType) || '\0' == pszType[0])
+    {
+        sc_log(LOG_LEVEL_NOTIC, "%s", "Call not find the data syn type.");
+        return DOS_FAIL;
+    }
+
+    if (dos_strnicmp(pszType, "agent", dos_strlen("agent")) == 0)
+    {
+        sc_agent_audit(0, NULL);
+    }
+    else
+    {
+        sc_log(LOG_LEVEL_NOTIC, "Unknown data syn type. %s", pszType);
+        return DOS_FAIL;
+    }
+
+    return DOS_FALSE;
+}
 
 U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
 {

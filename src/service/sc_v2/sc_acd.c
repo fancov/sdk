@@ -3310,6 +3310,22 @@ U32 sc_agent_audit(U32 ulCycle, VOID *ptr)
     SC_AGENT_INFO_ST        *pstAgentInfo      = NULL;
     U32             ulHashIndex  = 0;
 
+    static U32 ulLastWriteTime = 0;
+
+    if (ulLastWriteTime == 0)
+    {
+        ulLastWriteTime = time(NULL);
+    }
+    else
+    {
+        if (time(NULL) - ulLastWriteTime < 10 * 60)
+        {
+            return DOS_SUCC;
+        }
+
+        ulLastWriteTime = time(NULL);
+    }
+
     HASH_Scan_Table(g_pstAgentList, ulHashIndex)
     {
         HASH_Scan_Bucket(g_pstAgentList, ulHashIndex, pstHashNode, HASH_NODE_S *)

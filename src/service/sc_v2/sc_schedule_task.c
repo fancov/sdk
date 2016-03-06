@@ -123,6 +123,7 @@ U32 sc_num_lmt_stat(U32 ulType, VOID *ptr);
 U32 sc_num_lmt_update(U32 ulType, VOID *ptr);
 U32 sc_stat_write(U32 ulType, VOID *ptr);
 U32 sc_stat_syn(U32 ulType, VOID *ptr);
+U32 sc_task_write_stat(U32 ulType, VOID *ptr);
 
 
 /* 注册审计任务 */
@@ -142,7 +143,9 @@ static SC_SCHEDULE_TASK_ST g_stScheduleTaskList[] =
     {SC_SCHEDULE_TYPE_CYCLE,    6 * 60 * 60,              sc_stat_write,              "Write stat info"},
 
     /* 20分钟同步数据到license模块 */
-    {SC_SCHEDULE_TYPE_CYCLE,    20 * 60,                  sc_stat_syn,                "Stat data syn "}
+    {SC_SCHEDULE_TYPE_CYCLE,    20 * 60,                  sc_stat_syn,                "Stat data syn "},
+
+    {SC_SCHEDULE_TYPE_CYCLE,    60,                       sc_task_write_stat,         "Write task stat"},
 };
 
 

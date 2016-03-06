@@ -255,6 +255,8 @@ enum {
 
     SC_API_CMD_ACTION_QUERY,
 
+    SC_API_CMD_ACTION_STAT_SYN,
+
     SC_ACD_SITE_ACTION_BUTT              /* 坐席签出(长连) */
 };
 
@@ -2256,6 +2258,9 @@ U32 sc_access_hungup(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 
 U32 sc_send_sip_update_req(U32 ulID, U32 ulAction);
 U32 sc_send_gateway_update_req(U32 ulID, U32 ulAction);
+
+U32 sc_agent_audit(U32 ulCycle, VOID *ptr);
+
 
 #endif  /* end of __SC_DEF_V2_H__ */
 

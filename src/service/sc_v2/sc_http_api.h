@@ -227,6 +227,7 @@ U32 sc_agent_group_http_update_proc(U32 ulAction, U32 ulGrpID);
 U32 sc_http_api_agent_call_ctrl(list_t *pstArgv);
 U32 sc_http_api_agent(list_t *pstArgv);
 U32 sc_http_api_serv_ctrl_action(list_t *pstArgv);
+U32 sc_http_api_stat_syn(list_t *pstArgv);
 U32 sc_task_mngt_cmd_proc(U32 ulAction, U32 ulCustomerID, U32 ulTaskID);
 
 #ifdef __cplusplus
