@@ -2261,6 +2261,8 @@ U32 sc_send_gateway_update_req(U32 ulID, U32 ulAction);
 
 U32 sc_agent_audit(U32 ulCycle, VOID *ptr);
 
+U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
+U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 ulTiming, U32 ulNumSelect, U32 ulDirection);
 
 #endif  /* end of __SC_DEF_V2_H__ */
 

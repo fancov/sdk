@@ -3201,13 +3201,13 @@ U32 sc_transform_update_proc(U32 ulAction, U32 ulNumTransID)
 
     return DOS_SUCC;
 }
-#if 0
-U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, SC_NUM_TRANSFORM_TIMING_EN enTiming, SC_NUM_TRANSFORM_SELECT_EN enNumSelect)
+
+
+U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 ulTiming, U32 ulNumSelect, U32 ulDirection)
 {
     SC_NUM_TRANSFORM_NODE_ST        *pstNumTransform        = NULL;
     SC_NUM_TRANSFORM_NODE_ST        *pstNumTransformEntry   = NULL;
     DLL_NODE_S                      *pstListNode            = NULL;
-    SC_NUM_TRANSFORM_DIRECTION_EN   enDirection;
     S8  szNeedTransformNum[SC_NUM_LENGTH]                   = {0};
     U32 ulIndex         = 0;
     S32 lIndex          = 0;
@@ -3217,30 +3217,17 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, SC_N
     time_t ulCurrTime   = time(NULL);
 
     if (DOS_ADDR_INVALID(pstSCB)
-        || '\0' == pstSCB->szCalleeNum[0]
-        || '\0' == pstSCB->szCallerNum[0]
-        || enTiming >= SC_NUM_TRANSFORM_TIMING_BUTT
-        || enNumSelect >= SC_NUM_TRANSFORM_SELECT_BUTT)
+        || DOS_ADDR_INVALID(pstLCB)
+        || ulTiming >= SC_NUM_TRANSFORM_TIMING_BUTT
+        || ulNumSelect >= SC_NUM_TRANSFORM_SELECT_BUTT
+        || ulDirection >= SC_NUM_TRANSFORM_DIRECTION_BUTT)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Search number transfer rule, timing is : %d, number select : %d"
-                                , enTiming, enNumSelect);
-
-    /* 判断一下呼叫方向 呼入/呼出 */
-    if (pstSCB->ucLegRole == SC_CALLEE && pstSCB->bIsAgentCall)
-    {
-        /* 被叫是坐席则为呼入, 否则为呼出 */
-        enDirection = SC_NUM_TRANSFORM_DIRECTION_IN;
-    }
-    else
-    {
-        enDirection = SC_NUM_TRANSFORM_DIRECTION_OUT;
-    }
-
-    sc_logr_debug(pstSCB, SC_DIALER, "call firection : %d, pstSCB->ucLegRole : %d, pstSCB->bIsAgentCall : %d", enDirection, pstSCB->ucLegRole, pstSCB->bIsAgentCall);
+                                , ulTiming, ulNumSelect);
 
     /* 遍历号码变换规则的链表，查找没有过期的，优先级别高的，针对这个客户或者系统的变换规则。
         先按优先级，同优先级，客户优先于中继，中继优先于系统 */
@@ -3260,17 +3247,17 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, SC_N
         }
 
         /* 判断 路由前/后 */
-        if (pstNumTransformEntry->enTiming != enTiming)
+        if (pstNumTransformEntry->enTiming != ulTiming)
         {
             continue;
         }
         /* 判断 呼叫方向 */
-        if (pstNumTransformEntry->enDirection != enDirection)
+        if (pstNumTransformEntry->enDirection != ulDirection)
         {
             continue;
         }
         /* 判断主被叫 */
-        if (pstNumTransformEntry->enNumSelect != enNumSelect)
+        if (pstNumTransformEntry->enNumSelect != ulNumSelect)
         {
             continue;
         }
@@ -3278,7 +3265,7 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, SC_N
         /* 判断主叫号码前缀 */
         if ('\0' != pstNumTransformEntry->szCallerPrefix[0])
         {
-            if (0 != dos_strnicmp(pstNumTransformEntry->szCallerPrefix, pstSCB->szCallerNum, dos_strlen(pstNumTransformEntry->szCallerPrefix)))
+            if (0 != dos_strnicmp(pstNumTransformEntry->szCallerPrefix, pstLCB->stCall.stNumInfo.szOriginalCalling, dos_strlen(pstNumTransformEntry->szCallerPrefix)))
             {
                 continue;
             }
@@ -3287,18 +3274,18 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, SC_N
         /* 判断被叫号码前缀 */
         if ('\0' != pstNumTransformEntry->szCalleePrefix[0])
         {
-            if (0 != dos_strnicmp(pstNumTransformEntry->szCalleePrefix, pstSCB->szCalleeNum, dos_strlen(pstNumTransformEntry->szCalleePrefix)))
+            if (0 != dos_strnicmp(pstNumTransformEntry->szCalleePrefix, pstLCB->stCall.stNumInfo.szOriginalCallee, dos_strlen(pstNumTransformEntry->szCalleePrefix)))
             {
                 continue;
             }
         }
 
-        sc_logr_debug(pstSCB, SC_DIALER, "Call Object : %d", pstNumTransformEntry->enObject);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Call Object : %d", pstNumTransformEntry->enObject);
 
         if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER == pstNumTransformEntry->enObject)
         {
             /* 针对客户 */
-            if (pstNumTransformEntry->ulObjectID == pstSCB->ulCustomID)
+            if (pstNumTransformEntry->ulObjectID == pstSCB->ulCustomerID)
             {
                 if (DOS_ADDR_INVALID(pstNumTransform))
                 {
@@ -3344,7 +3331,7 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, SC_N
         else if (SC_NUM_TRANSFORM_OBJECT_TRUNK == pstNumTransformEntry->enObject)
         {
             /* 针对中继，只有路由后，才需要判断这种情况 */
-            if (enTiming == SC_NUM_TRANSFORM_TIMING_AFTER)
+            if (ulTiming == SC_NUM_TRANSFORM_TIMING_AFTER)
             {
                 if (pstNumTransformEntry->ulObjectID != ulTrunkID)
                 {
@@ -3379,25 +3366,40 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, SC_N
     if (DOS_ADDR_INVALID(pstNumTransform))
     {
         /* 没有找到合适的变换规则 */
-        sc_logr_debug(pstSCB, SC_DIALER, "Not find number transfer rule for the task %d, timing is : %d, number select : %d"
-                                , pstSCB->ulTaskID, enTiming, enNumSelect);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Not find number transfer rule. timing is : %d, number select : %d"
+                                , ulTiming, ulNumSelect);
+
+        if (SC_NUM_TRANSFORM_SELECT_CALLER == ulNumSelect)
+        {
+            if (pstLCB->stCall.stNumInfo.szRealCalling[0] == '\0')
+            {
+                dos_strcpy(pstLCB->stCall.stNumInfo.szRealCalling, pstLCB->stCall.stNumInfo.szOriginalCalling);
+            }
+        }
+        else
+        {
+            if (pstLCB->stCall.stNumInfo.szRealCallee[0] == '\0')
+            {
+                dos_strcpy(pstLCB->stCall.stNumInfo.szRealCallee, pstLCB->stCall.stNumInfo.szOriginalCallee);
+            }
+        }
 
         goto succ;
     }
 
-    sc_logr_debug(pstSCB, SC_DIALER, "Find a number transfer rule(%d) for the task %d, timing is : %d, number select : %d"
-                                , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Find a number transfer rule(%d), timing is : %d, number select : %d"
+                                , pstNumTransform->ulID, ulTiming, ulNumSelect);
 
-    if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
+    if (SC_NUM_TRANSFORM_SELECT_CALLER == ulNumSelect)
     {
-        dos_strncpy(szNeedTransformNum, pstSCB->szCallerNum, SC_TEL_NUMBER_LENGTH);
+        dos_strncpy(szNeedTransformNum, pstLCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
     }
     else
     {
-        dos_strncpy(szNeedTransformNum, pstSCB->szCalleeNum, SC_TEL_NUMBER_LENGTH);
+        dos_strncpy(szNeedTransformNum, pstLCB->stCall.stNumInfo.szOriginalCallee, SC_NUM_LENGTH);
     }
 
-    szNeedTransformNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+    szNeedTransformNum[SC_NUM_LENGTH - 1] = '\0';
 
     /* 根据找到的规则变换号码 */
     if (pstNumTransform->bReplaceAll)
@@ -3406,37 +3408,37 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, SC_N
         if (pstNumTransform->szReplaceNum[0] == '*')
         {
             /* 使用号码组中的号码 */
-            if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER != pstNumTransform->enObject || enNumSelect != SC_NUM_TRANSFORM_SELECT_CALLER)
+            if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER != pstNumTransform->enObject || ulNumSelect != SC_NUM_TRANSFORM_SELECT_CALLER)
             {
                 /* 只有企业客户 和 变换主叫号码时，才可以选择号码组中的号码进行替换 */
-                sc_logr_info(pstSCB, SC_DIALER, "Number transfer rule(%d) for the task %d fail : only a enterprise customers can, choose number in the group number"
-                                , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Number transfer rule(%d) fail : only a enterprise customers can, choose number in the group number"
+                                , pstNumTransform->ulID, ulTiming, ulNumSelect);
 
                 goto fail;
             }
 
             if (dos_atoul(&pstNumTransform->szReplaceNum[1], &ulCallerGrpID) < 0)
             {
-                sc_logr_info(pstSCB, SC_DIALER, "Number transfer rule(%d), get caller group id fail.", pstNumTransform->ulID);
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Number transfer rule(%d), get caller group id fail.", pstNumTransform->ulID);
 
                 goto fail;
             }
 
-            if (sc_select_number_in_order(pstSCB->ulCustomID, ulCallerGrpID, szNeedTransformNum, SC_TEL_NUMBER_LENGTH) != DOS_SUCC)
+            if (sc_select_number_in_order(pstSCB->ulCustomerID, ulCallerGrpID, szNeedTransformNum, SC_NUM_LENGTH) != DOS_SUCC)
             {
-                sc_logr_info(pstSCB, SC_DIALER, "Number transfer rule(%d), get caller from group id(%u) fail.", pstNumTransform->ulID, ulCallerGrpID);
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Number transfer rule(%d), get caller from group id(%u) fail.", pstNumTransform->ulID, ulCallerGrpID);
 
                 goto fail;
             }
 
-            sc_logr_debug(pstSCB, SC_DIALER, "Number transfer rule(%d), get caller(%s) from group id(%u) succ.", pstNumTransform->ulID, szNeedTransformNum, ulCallerGrpID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Number transfer rule(%d), get caller(%s) from group id(%u) succ.", pstNumTransform->ulID, szNeedTransformNum, ulCallerGrpID);
 
         }
         else if (pstNumTransform->szReplaceNum[0] == '\0')
         {
             /* 完全替换的号码不能为空 */
-            sc_logr_info(pstSCB, SC_DIALER, "The number transfer rule(%d) replace num is NULL!"
-                                , pstNumTransform->ulID, pstSCB->ulTaskID, enTiming, enNumSelect);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "The number transfer rule(%d) replace num is NULL!"
+                                , pstNumTransform->ulID);
 
             goto fail;
         }
@@ -3490,7 +3492,7 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, SC_N
     {
         ulNumLen = dos_strlen(szNeedTransformNum);
         ulOffsetLen = dos_strlen(pstNumTransform->szAddPrefix);
-        if (ulNumLen + ulOffsetLen >= SC_TEL_NUMBER_LENGTH)
+        if (ulNumLen + ulOffsetLen >= SC_NUM_LENGTH)
         {
             /* 超过号码的长度，失败 */
 
@@ -3510,7 +3512,7 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, SC_N
     {
         ulNumLen = dos_strlen(szNeedTransformNum);
         ulOffsetLen = dos_strlen(pstNumTransform->szAddSuffix);
-        if (ulNumLen + ulOffsetLen >= SC_TEL_NUMBER_LENGTH)
+        if (ulNumLen + ulOffsetLen >= SC_NUM_LENGTH)
         {
             /* 超过号码的长度，失败 */
 
@@ -3524,7 +3526,7 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, SC_N
     {
         goto fail;
     }
-    szNeedTransformNum[SC_TEL_NUMBER_LENGTH - 1] = '\0';
+    szNeedTransformNum[SC_NUM_LENGTH - 1] = '\0';
 
 succ:
 
@@ -3535,15 +3537,16 @@ succ:
         return DOS_SUCC;
     }
 
-    if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
+    if (SC_NUM_TRANSFORM_SELECT_CALLER == ulNumSelect)
     {
-        sc_logr_debug(pstSCB, SC_DIALER, "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstSCB->ulTaskID, pstSCB->szCallerNum, szNeedTransformNum);
-        dos_strcpy(pstSCB->szCallerNum, szNeedTransformNum);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "The number transfer(%d) SUCC, befor : %s ,after : %s", pstNumTransform->ulID, pstLCB->stCall.stNumInfo.szOriginalCalling, szNeedTransformNum);
+        dos_strcpy(pstLCB->stCall.stNumInfo.szRealCalling, szNeedTransformNum);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "!!!!!!!!!The number transfer(%d) SUCC, befor : %s ,after : %s", pstNumTransform->ulID, pstLCB->stCall.stNumInfo.szOriginalCalling, pstLCB->stCall.stNumInfo.szRealCalling);
     }
     else
     {
-        sc_logr_debug(pstSCB, SC_DIALER, "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstSCB->ulTaskID, pstSCB->szCalleeNum, szNeedTransformNum);
-        dos_strcpy(pstSCB->szCalleeNum, szNeedTransformNum);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstLCB->stCall.stNumInfo.szOriginalCallee, szNeedTransformNum);
+        dos_strcpy(pstLCB->stCall.stNumInfo.szRealCallee, szNeedTransformNum);
     }
 
     pthread_mutex_unlock(&g_mutexNumTransformList);
@@ -3551,22 +3554,20 @@ succ:
     return DOS_SUCC;
 
 fail:
-
-    sc_logr_info(pstSCB, SC_DIALER, "the number transfer(%d) FAIL, task : %d", pstNumTransform->ulID, pstSCB->ulTaskID);
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "the number transfer(%d) FAIL", pstNumTransform->ulID);
     if (SC_NUM_TRANSFORM_SELECT_CALLER == pstNumTransform->enNumSelect)
     {
-        pstSCB->szCallerNum[0] = '\0';
+        pstLCB->stCall.stNumInfo.szRealCalling[0] = '\0';
     }
     else
     {
-        pstSCB->szCalleeNum[0] = '\0';
+        pstLCB->stCall.stNumInfo.szRealCallee[0] = '\0';
     }
 
     pthread_mutex_unlock(&g_mutexNumTransformList);
 
     return DOS_FAIL;
 }
-#endif
 
 /**
  * 函数: VOID sc_ep_gw_init(SC_GW_NODE_ST *pstGW)

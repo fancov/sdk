@@ -95,21 +95,19 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
         return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_CALLER_NUMBER_ILLEGAL);;
     }
 
-    dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCalling), pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
-    dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCallee), pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+    /* 路由前变换 */
+    if (sc_transform_being(pstSCB, pstCallingLegCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE, SC_NUM_TRANSFORM_SELECT_CALLER, SC_NUM_TRANSFORM_DIRECTION_OUT) != DOS_SUCC)
+    {
+        return DOS_FAIL;
+    }
 
-    /* 新LEG处理一下号码 */
-    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), pstCallingLegCB->stCall.stNumInfo.szRealCallee);
-    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
-
-    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), pstCallingLegCB->stCall.stNumInfo.szRealCallee);
-    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
-
-    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), pstCallingLegCB->stCall.stNumInfo.szRealCallee);
-    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
+    if (sc_transform_being(pstSCB, pstCallingLegCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE, SC_NUM_TRANSFORM_SELECT_CALLEE, SC_NUM_TRANSFORM_DIRECTION_OUT) != DOS_SUCC)
+    {
+        return DOS_FAIL;
+    }
 
     /* 出局呼叫需要找路由 */
-    pstSCB->stCall.ulRouteID = sc_route_search(pstSCB, pstCalleeLegCB->stCall.stNumInfo.szRealCalling, pstCalleeLegCB->stCall.stNumInfo.szRealCallee);
+    pstSCB->stCall.ulRouteID = sc_route_search(pstSCB, pstCallingLegCB->stCall.stNumInfo.szRealCalling, pstCallingLegCB->stCall.stNumInfo.szRealCallee);
     if (U32_BUTT == pstSCB->stCall.ulRouteID)
     {
         sc_trace_scb(pstSCB, "no route to pstn.");
@@ -129,6 +127,30 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
 
         return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_NO_TRUNK);
     }
+
+    if (1 == pstCalleeLegCB->stCall.ulTrunkCnt)
+    {
+        if (sc_transform_being(pstSCB, pstCallingLegCB, pstCalleeLegCB->stCall.aulTrunkList[0], SC_NUM_TRANSFORM_TIMING_AFTER, SC_NUM_TRANSFORM_SELECT_CALLER, SC_NUM_TRANSFORM_DIRECTION_OUT) != DOS_SUCC)
+        {
+            return DOS_FAIL;
+        }
+
+        if (sc_transform_being(pstSCB, pstCallingLegCB, pstCalleeLegCB->stCall.aulTrunkList[0], SC_NUM_TRANSFORM_TIMING_AFTER, SC_NUM_TRANSFORM_SELECT_CALLEE, SC_NUM_TRANSFORM_DIRECTION_OUT) != DOS_SUCC)
+        {
+            return DOS_FAIL;
+        }
+    }
+
+    /* 新LEG处理一下号码 */
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee), pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling), pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szRealCallee), pstCallingLegCB->stCall.stNumInfo.szRealCallee);
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szRealCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
+
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), pstCallingLegCB->stCall.stNumInfo.szRealCallee);
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
+
 
     ulRet = sc_send_cmd_new_call(&stCallMsg.stMsgTag);
     if (ulRet == DOS_SUCC)
@@ -1065,8 +1087,15 @@ U32 sc_make_call2pstn(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB)
     }
 
     /* @TODO 做号码变换，并将结果COPY到 pstLCB->stCall.stNumInfo.szRealCalling 和 pstLCB->stCall.stNumInfo.szRealCalling*/
-    dos_snprintf(pstLCB->stCall.stNumInfo.szRealCalling, sizeof(pstLCB->stCall.stNumInfo.szRealCalling), pstLCB->stCall.stNumInfo.szOriginalCalling);
-    dos_snprintf(pstLCB->stCall.stNumInfo.szRealCallee, sizeof(pstLCB->stCall.stNumInfo.szRealCallee), pstLCB->stCall.stNumInfo.szOriginalCallee);
+    if (sc_transform_being(pstSCB, pstLCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE, SC_NUM_TRANSFORM_SELECT_CALLER, SC_NUM_TRANSFORM_DIRECTION_OUT) != DOS_SUCC)
+    {
+        return DOS_FAIL;
+    }
+
+    if (sc_transform_being(pstSCB, pstLCB, 0, SC_NUM_TRANSFORM_TIMING_BEFORE, SC_NUM_TRANSFORM_SELECT_CALLEE, SC_NUM_TRANSFORM_DIRECTION_OUT) != DOS_SUCC)
+    {
+        return DOS_FAIL;
+    }
 
     /* 出局呼叫需要找路由 */
     pstSCB->stCall.ulRouteID = sc_route_search(pstSCB, pstLCB->stCall.stNumInfo.szRealCalling, pstLCB->stCall.stNumInfo.szRealCallee);
@@ -1086,6 +1115,20 @@ U32 sc_make_call2pstn(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB)
 
         pstLCB->stCall.ulCause = CC_ERR_SC_NO_TRUNK;
         return DOS_FAIL;
+    }
+
+    if (1 == pstLCB->stCall.ulTrunkCnt)
+    {
+        /* 一个中继进行路由后号码变换 */
+        if (sc_transform_being(pstSCB, pstLCB, pstLCB->stCall.aulTrunkList[0], SC_NUM_TRANSFORM_TIMING_AFTER, SC_NUM_TRANSFORM_SELECT_CALLER, SC_NUM_TRANSFORM_DIRECTION_OUT) != DOS_SUCC)
+        {
+            return DOS_FAIL;
+        }
+
+        if (sc_transform_being(pstSCB, pstLCB, pstLCB->stCall.aulTrunkList[0], SC_NUM_TRANSFORM_TIMING_AFTER, SC_NUM_TRANSFORM_SELECT_CALLEE, SC_NUM_TRANSFORM_DIRECTION_OUT) != DOS_SUCC)
+        {
+            return DOS_FAIL;
+        }
     }
 
     /* @TODO 做号码变换，并将结果COPY到 pstLCB->stCall.stNumInfo.szCalling 和 pstLCB->stCall.stNumInfo.szCallee*/
