@@ -463,8 +463,8 @@ typedef struct tagCallerSetting
 /* 定义加入号码组的号码类型 */
 typedef enum tagSCNumberType
 {
-    SC_NUMBER_TYPE_CFG = 0,         /* 系统手动配置的主叫号码 */
-    SC_NUMBER_TYPE_DID,             /* 系统的did号码 */
+    SC_NUMBER_TYPE_DID = 0,         /* 系统的did号码 */
+    SC_NUMBER_TYPE_CFG,         /* 系统手动配置的主叫号码 */
     SC_NUMBER_TYPE_BUTT
 }SC_NUMBER_TYPE_EN;
 
