@@ -1834,6 +1834,40 @@ VOID sc_show_sip_acc(U32 ulIndex, S32 argc, S8 **argv)
     cli_out_string(ulIndex, "\r\n----------------------------------------------------------------------------------------\r\n\r\n");
 }
 
+VOID sc_show_sysstat(U32 ulIndex, S32 argc, S8 **argv)
+{
+    S8 szBuff[1024] = {0, };
+
+    cli_out_string(ulIndex, "\r\n\r\nSystem Stat:");
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------------");
+    dos_snprintf(szBuff, sizeof(szBuff),
+               "\r\n          Current Calls : %u \
+                \r\n         Incoming Calls : %u \
+                \r\n         Outgoing Calls : %u \
+                \r\n             Total Time : %u \
+                \r\n          Outgoing Time : %u \
+                \r\n          Incoming Time : %u \
+                \r\n         Auto Call Time : %u \
+                \r\n      Preview Call Time : %u \
+                \r\n   Predictive Call Time : %u \
+                \r\n     Internal Call Time : %u"
+                ,g_stSysStat.ulCurrentCalls
+                ,g_stSysStat.ulIncomingCalls
+                ,g_stSysStat.ulOutgoingCalls
+                ,g_stSysStat.ulTotalTime
+                ,g_stSysStat.ulOutgoingTime
+                ,g_stSysStat.ulIncomingTime
+                ,g_stSysStat.ulAutoCallTime
+                ,g_stSysStat.ulPreviewCallTime
+                ,g_stSysStat.ulPredictiveCallTime
+                ,g_stSysStat.ulInternalCallTime);
+
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n--------------------------------------------------------");
+
+    cli_out_string(ulIndex, "\r\n\r\n");
+}
+
 VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
 {
     SC_ROUTE_NODE_ST *pstRoute = NULL;
@@ -3398,6 +3432,10 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     else if (dos_stricmp(argv[2], "sip") == 0)
     {
         sc_show_sip_acc(ulIndex, argc, argv);
+    }
+    else if (dos_stricmp(argv[2], "sysstat") == 0)
+    {
+        sc_show_sysstat(ulIndex, argc, argv);
     }
     else if (dos_stricmp(argv[2], "cb") == 0)
     {
