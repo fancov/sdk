@@ -1676,6 +1676,9 @@ U32 sc_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
         case SC_CALL_AUTH2:
         case SC_CALL_EXEC:
+            /* 呼叫被叫时失败，给主叫放提示音挂断 */
+            ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, ulErrCode);
+            break;
         case SC_CALL_ALERTING:
         case SC_CALL_TONE:
         case SC_CALL_ACTIVE:

@@ -379,7 +379,7 @@ VOID *sc_task_runtime(VOID *ptr)
     */
     if (pstTCB->usSiteCount * pstTCB->ulCallRate)
     {
-        ulMinInterval = 5000 / pstTCB->usSiteCount * pstTCB->ulCallRate;
+        ulMinInterval = 5000 / ceil(1.0 * (pstTCB->usSiteCount * pstTCB->ulCallRate) / 10);
         ulMinInterval = (ulMinInterval < 20) ? 20 : (ulMinInterval > 1000) ? 1000 : ulMinInterval;
     }
     else
@@ -733,7 +733,7 @@ U32 sc_task_mngt_continue_task(U32 ulTaskID, U32 ulCustomID)
 
     /* 获取呼叫任务最大并发数 */
     pstTCB->usSiteCount = sc_agent_group_agent_count(pstTCB->ulAgentQueueID);
-    pstTCB->ulMaxConcurrency = pstTCB->usSiteCount * pstTCB->ulCallRate;
+    pstTCB->ulMaxConcurrency = ceil(1.0 * (pstTCB->usSiteCount * pstTCB->ulCallRate) / 10);
     if (0 == pstTCB->ulMaxConcurrency)
     {
         pstTCB->ulMaxConcurrency = SC_MAX_TASK_MAX_CONCURRENCY;
@@ -867,7 +867,7 @@ U32 sc_task_mngt_start_task(U32 ulTaskID, U32 ulCustomID)
 
     /* 获取呼叫任务最大并发数 */
     pstTCB->usSiteCount = sc_agent_group_agent_count(pstTCB->ulAgentQueueID);
-    pstTCB->ulMaxConcurrency = pstTCB->usSiteCount * pstTCB->ulCallRate;
+    pstTCB->ulMaxConcurrency = ceil(1.0 * (pstTCB->usSiteCount * pstTCB->ulCallRate) / 10);
     if (0 == pstTCB->ulMaxConcurrency)
     {
         pstTCB->ulMaxConcurrency = SC_MAX_TASK_MAX_CONCURRENCY;
@@ -1111,7 +1111,7 @@ U32 sc_task_mngt_start()
 
             /* 获取呼叫任务最大并发数 */
             pstTCB->usSiteCount = sc_agent_group_agent_count(pstTCB->ulAgentQueueID);
-            pstTCB->ulMaxConcurrency = pstTCB->usSiteCount * pstTCB->ulCallRate;
+            pstTCB->ulMaxConcurrency = ceil(1.0 * (pstTCB->usSiteCount * pstTCB->ulCallRate) / 10);
             if (0 == pstTCB->ulMaxConcurrency)
             {
                 pstTCB->ulMaxConcurrency = SC_MAX_TASK_MAX_CONCURRENCY;

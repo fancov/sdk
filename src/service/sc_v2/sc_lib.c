@@ -15,6 +15,7 @@ extern "C" {
 #endif /* End of __cplusplus */
 
 #include <dos.h>
+#include <math.h>
 #include "sc_def.h"
 #include "sc_debug.h"
 #include "sc_pub.h"
@@ -1651,14 +1652,14 @@ U32 sc_task_check_can_call(SC_TASK_CB *pstTCB)
     {
         sc_agent_group_stat_by_id(pstTCB->ulAgentQueueID, &ulTotalAgent, NULL, &ulIdleAgent, &ulBusyAgent);
         pstTCB->usSiteCount = ulTotalAgent;
-        pstTCB->ulMaxConcurrency = ulTotalAgent * pstTCB->ulCallRate;
+        pstTCB->ulMaxConcurrency = ceil(1.0 * (ulTotalAgent * pstTCB->ulCallRate) / 10);
 
         /*
           * 大意:
           *    ulIdleAgent * pstTCB->ulCallRate: 需要为空闲坐席发起的呼叫数
           *    pstTCB->ulCurrentConcurrency - ulBusyAgent: 当前系统已经为空闲坐席发起呼叫数
           */
-        lTotalCalls = ulIdleAgent * pstTCB->ulCallRate;
+        lTotalCalls = ceil(1.0 * (ulIdleAgent * pstTCB->ulCallRate) / 10);
         lNeedCalls  = pstTCB->ulCurrentConcurrency - ulBusyAgent;
 
         if ((S32)pstTCB->ulCurrentConcurrency >= (S32)pstTCB->ulMaxConcurrency)
