@@ -146,7 +146,9 @@ U32 sc_agent_update_status_db(SC_AGENT_INFO_ST *pstAgentInfo)
         return DOS_FAIL;
     }
 
+    dos_memzero(pstAgentStatus, sizeof(SC_DB_MSG_AGENT_STATUS_ST));
     pstAgentStatus->stMsgTag.ulMsgType = SC_MSG_SAVE_AGENT_STATUS;
+    pstAgentStatus->stMsgTag.szData = NULL;
     pstAgentStatus->ulAgentID = pstAgentInfo->ulAgentID;
     pstAgentStatus->ulServStatus = pstAgentInfo->ucServStatus;
     pstAgentStatus->ulWorkStatus = pstAgentInfo->ucWorkStatus;
