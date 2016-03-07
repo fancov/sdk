@@ -2509,6 +2509,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             else if (pstHungupLeg->ulIndSCBNo != U32_BUTT)
             {
                 /* 长签的坐席挂断了电话，不要释放leg，解除关系就行 */
+                pstHungupLeg->ulSCBNo = U32_BUTT;
                 pstSCB->stPreviewCall.ulCallingLegNo = U32_BUTT;
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_RELEASE;
@@ -2692,7 +2693,7 @@ U32 sc_preview_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     switch (pstSCB->stPreviewCall.stSCBTag.usStatus)
     {
-        case SC_PREVIEW_CALL_CONNECTING:
+        case SC_PREVIEW_CALL_RELEASE:
             pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
             if (DOS_ADDR_VALID(pstCallingCB)
                 && pstCallingCB->ulIndSCBNo != U32_BUTT)
@@ -2777,6 +2778,7 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                     sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo);
                     sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo, SC_SND_NETWORK_FAULT, 1, 0, 0);
+                    pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_RELEASE;
                     break;
                 }
             }
