@@ -439,6 +439,8 @@ VOID *sc_task_runtime(VOID *ptr)
                 continue;
             }
 
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_TASK), "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Task : %u, CurrentConcurrency : %u.", pstTCB->ulTaskID, pstTCB->ulCurrentConcurrency);
+
             /* 任务结束了，退出主循环 */
             break;
         }
@@ -663,6 +665,68 @@ U32 sc_task_pause(SC_TASK_CB *pstTCB)
     pthread_mutex_lock(&pstTCB->mutexTaskList);
     pstTCB->ucTaskStatus = SC_TASK_PAUSED;
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
+
+    return DOS_SUCC;
+}
+
+U32 sc_task_concurrency_add(U32 ulTCBNo)
+{
+    if (ulTCBNo >= SC_MAX_TASK_NUM)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (!g_pstTaskList[ulTCBNo].ucValid)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_pstTaskList[ulTCBNo].mutexTaskList);
+    g_pstTaskList[ulTCBNo].ulCurrentConcurrency++;
+    if (g_pstTaskList[ulTCBNo].ulCurrentConcurrency > g_pstTaskList[ulTCBNo].ulMaxConcurrency)
+    {
+        DOS_ASSERT(0);
+    }
+    pthread_mutex_unlock(&g_pstTaskList[ulTCBNo].mutexTaskList);
+
+    return DOS_SUCC;
+}
+
+U32 sc_task_concurrency_minus(U32 ulTCBNo)
+{
+    if (ulTCBNo >= SC_MAX_TASK_NUM)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    /* 如果任务结束后，还有一通电话正在通话中，
+        当这同电话挂断时，下面这个条件不成立，
+        则 ulCurrentConcurrency 会为1， 则这个任务永远也不会退出了
+    if (!g_pstTaskMngtInfo->pstTaskList[ulTCBNo].ucValid)
+    {
+        DOS_ASSERT(0);
+
+        SC_TRACE_OUT();
+        return DOS_FAIL;
+    }
+    */
+
+    pthread_mutex_lock(&g_pstTaskList[ulTCBNo].mutexTaskList);
+    if (g_pstTaskList[ulTCBNo].ulCurrentConcurrency > 0)
+    {
+        g_pstTaskList[ulTCBNo].ulCurrentConcurrency--;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+    }
+    pthread_mutex_unlock(&g_pstTaskList[ulTCBNo].mutexTaskList);
 
     return DOS_SUCC;
 }

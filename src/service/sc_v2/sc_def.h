@@ -2169,6 +2169,7 @@ U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_transfer_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
@@ -2226,6 +2227,8 @@ U32 sc_task_get_mode(U32 ulTCBNo);
 U32 sc_task_get_playcnt(U32 ulTCBNo);
 S8 *sc_task_get_audio_file(U32 ulTCBNo);
 U32 sc_task_get_agent_queue(U32 ulTCBNo);
+U32 sc_task_concurrency_add(U32 ulTCBNo);
+U32 sc_task_concurrency_minus (U32 ulTCBNo);
 
 U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB);
