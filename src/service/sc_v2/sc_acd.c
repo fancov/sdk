@@ -2593,6 +2593,7 @@ U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingTyp
             bIsPub = DOS_TRUE;
             break;
         case SC_ACD_WORK_IDEL:
+            bIsPub = DOS_TRUE;
             break;
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
