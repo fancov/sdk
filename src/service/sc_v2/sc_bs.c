@@ -83,10 +83,20 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
     }
 
     stEvtAuth.stMsgTag.ulMsgType = SC_EVT_AUTH_RESULT;
-    stEvtAuth.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
+    if (pstLegCB->ulSCBNo == U32_BUTT
+        && pstLegCB->ulIndSCBNo != U32_BUTT)
+    {
+        stEvtAuth.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
+        stEvtAuth.ulSCBNo = pstLegCB->ulIndSCBNo;
+    }
+    else
+    {
+        stEvtAuth.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
+        stEvtAuth.ulSCBNo = pstLegCB->ulSCBNo;
+    }
+
     stEvtAuth.stMsgTag.usInterErr = pstAuthMsg->stMsgTag.ucErrcode;
     stEvtAuth.LBalance = pstAuthMsg->lBalance;
-    stEvtAuth.ulSCBNo = pstLegCB->ulSCBNo;
     stEvtAuth.ulLCBNo = pstAuthMsg->stMsgTag.ulCRNo;
     stEvtAuth.ulMaxSession = pstAuthMsg->ulMaxSession;
     stEvtAuth.ucBalanceWarning = pstAuthMsg->ucBalanceWarning;
