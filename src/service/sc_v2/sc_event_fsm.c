@@ -249,7 +249,7 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     pstSCB->stTransfer.ulNotifyLegNo = pstLegCB->ulCBNo;
     switch (pstSCB->stAccessCode.ulSrvType)
     {
-        case SC_ACCESS_AGENT_ONLINE:
+        case SC_ACCESS_BLIND_TRANSFER:
             pstSCB->stTransfer.ulType = SC_ACCESS_BLIND_TRANSFER;
             break;
         default:
@@ -566,7 +566,19 @@ U32 sc_call_access_code(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, S8 *szNum
         return DOS_FAIL;
     }
 
-    pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+    if (!pstSCB->stAccessCode.stSCBTag.bValid )
+    {
+        pstSCB->stCall.stSCBTag.usStatus = SC_CALL_ACTIVE;
+        pstSCB->ulCurrentSrv++;
+        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+        pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+        pstSCB->stAccessCode.ulLegNo = pstCallingLegCB->ulCBNo;
+    }
+    else
+    {
+        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+    }
 
     dos_strncpy(szDealNum, szNum, SC_NUM_LENGTH-1);
     if (szDealNum[dos_strlen(szDealNum)] == '#'
