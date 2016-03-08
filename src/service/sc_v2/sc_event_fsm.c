@@ -247,15 +247,7 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
 
     pstSCB->stTransfer.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stTransfer.ulNotifyLegNo = pstLegCB->ulCBNo;
-    switch (pstSCB->stAccessCode.ulSrvType)
-    {
-        case SC_ACCESS_BLIND_TRANSFER:
-            pstSCB->stTransfer.ulType = SC_ACCESS_BLIND_TRANSFER;
-            break;
-        default:
-            pstSCB->stTransfer.ulType = SC_ACCESS_ATTENDED_TRANSFER;
-            break;
-    }
+    pstSCB->stTransfer.ulType = pstSCB->stAccessCode.ulSrvType;
 
     pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_IDEL;
     pstSCB->stTransfer.ulPublishAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
@@ -4219,6 +4211,7 @@ U32 sc_auto_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_PORC:
         case SC_AUTO_CALL_ALERTING:
             /* 迁移状态到proc */
+            sc_task_concurrency_add(pstSCB->stAutoCall.ulTcbID);
             pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_PORC;
             ulRet = DOS_SUCC;
             break;
@@ -4897,6 +4890,8 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing auto call hungup event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
+
+    sc_task_concurrency_minus(pstSCB->stAutoCall.ulTcbID);
 
     switch (pstSCB->stAutoCall.stSCBTag.usStatus)
     {
@@ -6481,10 +6476,9 @@ U32 sc_access_code_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_AUTH_RESULT_ST  *pstAuthRsp      = NULL;
-    SC_LEG_CB                  *pstLegCB        = NULL;
     SC_LEG_CB                  *pstPublishLeg   = NULL;
     SC_AGENT_NODE_ST           *pstAgentNode    = NULL;
-    U32                         ulRet           = DOS_FAIL;
+    U32                         ulRet           = DOS_SUCC;
     SC_MSG_CMD_CALL_ST          stCallMsg;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
@@ -6518,7 +6512,7 @@ U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
 
             /* 修改坐席的状态，置忙 */
-            pstAgentNode =  sc_agent_get_by_id(pstSCB->stTransfer.ulPublishLegNo);
+            pstAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
             if (DOS_ADDR_VALID(pstAgentNode) && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
             {
                 sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
@@ -6531,7 +6525,7 @@ U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
                 {
                     /* 长签，直接挂断发起方，bridge第二方和第三方 */
-                    sc_req_hungup(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                    sc_req_hungup(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 }
                 else
                 {
@@ -6553,8 +6547,8 @@ U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
             {
                 /* hold住订阅方，挂断发起方 */
+                sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stTransfer.ulNotifyLegNo, CC_ERR_NORMAL_CLEAR);
                 sc_req_hold(pstSCB->ulSCBNo, pstSCB->stTransfer.ulSubLegNo, SC_HOLD_FLAG_HOLD);
-                sc_req_hungup(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
             }
             else
             {
@@ -6612,6 +6606,48 @@ U32 sc_transfer_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     return ulRet;
+}
+
+U32 sc_transfer_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+
+    pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstSCB->stTransfer.stSCBTag.usStatus)
+    {
+        case SC_TRANSFER_EXEC:
+            /* 转接过程中，hold被转接方，直接放提示音就行了 */
+            sc_req_play_sound(pstSCB->ulSCBNo, pstHold->ulLegNo, SC_SND_MUSIC_HOLD, 1, 0, 0);
+            break;
+        default:
+            if (pstHold->bIsHold)
+            {
+                /* 如果是被HOLD的，需要激活HOLD业务哦 */
+                pstSCB->stHold.stSCBTag.bValid = DOS_TRUE;
+                pstSCB->stHold.stSCBTag.bWaitingExit = DOS_FALSE;
+                pstSCB->stHold.stSCBTag.usStatus = SC_HOLD_ACTIVE;
+                pstSCB->stHold.ulCallLegNo = pstHold->ulLegNo;
+
+                pstSCB->ulCurrentSrv++;
+                pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stHold.stSCBTag;
+
+                /* 给HOLD方 播放拨号音 */
+                /* 给HOLD对方 播放呼叫保持音 */
+            }
+            else
+            {
+                /* 如果是被UNHOLD的，已经没有HOLD业务了，单纯处理呼叫就好 */
+            }
+            break;
+    }
+
+    return DOS_SUCC;
 }
 
 U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
