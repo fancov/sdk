@@ -1294,8 +1294,7 @@ typedef enum tagSCTransStatus{
     SC_TRANSFER_PROC,           /**< 呼叫转接处理(请求呼叫第三方的流程) */
     SC_TRANSFER_ALERTING,
     SC_TRANSFER_TONE,
-    SC_TRANSFER_ACTIVE,         /**< 第三方接通 */
-    SC_TRANSFER_TRANSFER,       /**< 协商转时，转接呼叫 */
+    SC_TRANSFER_TRANSFER,       /**< 协商转时，A 和 B 通话 */
     SC_TRANSFER_FINISHED,       /**< 转接完成 */
     SC_TRANSFER_RELEASE,        /**< 转接业务结束 */
 }SC_TRANS_STATE_EN;

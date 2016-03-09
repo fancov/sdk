@@ -6654,7 +6654,7 @@ U32 sc_transfer_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    U32                     ulRet                   = DOS_FAIL;
+    U32                     ulRet                   = DOS_SUCC;
     SC_MSG_EVT_RINGING_ST   *pstEvent               = NULL;
     SC_LEG_CB               *pstPublishLeg          = NULL;
 
@@ -6673,6 +6673,7 @@ U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_TRANSFER_PROC:
             if (pstEvent->ulWithMedia)
             {
+                sc_trace_scb(pstSCB, "witch media : %u.", pstEvent->ulWithMedia);
                 pstPublishLeg = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
                 if (DOS_ADDR_VALID(pstPublishLeg))
                 {
@@ -6696,7 +6697,9 @@ U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     }
                 }
             }
+
             pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_ALERTING;
+
             break;
         default:
             break;
@@ -6707,7 +6710,7 @@ U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    U32                 ulRet                   = DOS_FAIL;
+    U32                 ulRet                   = DOS_SUCC;
     SC_LEG_CB           *pstPublishLeg          = NULL;
     SC_LEG_CB           *pstNotifyLeg           = NULL;
     SC_AGENT_NODE_ST    *pstNotifyAgentNode     = NULL;
@@ -6865,6 +6868,7 @@ U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             break;
 
+        case SC_TRANSFER_PROC:
         case SC_TRANSFER_ALERTING:
             pstPublishLeg = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
             if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
@@ -6880,6 +6884,7 @@ U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         ulRet = DOS_FAIL;
                     }
                 }
+
                 pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_FINISHED;
             }
             else
@@ -6897,6 +6902,14 @@ U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
                 pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_TRANSFER;
             }
+
+            pstPublishAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+            if (DOS_ADDR_VALID(pstPublishAgentNode)
+                && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+            {
+                sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_CALL_IN);
+            }
+
             break;
 
         default:
@@ -6940,16 +6953,20 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         switch (pstSCB->stTransfer.stSCBTag.usStatus)
         {
             case SC_TRANSFER_AUTH:
+            case SC_TRANSFER_TRANSFERRING:
                 /* TODO 异常处理 */
                 break;
             case SC_TRANSFER_EXEC:
-            case SC_TRANSFER_ACTIVE:
+            case SC_TRANSFER_PROC:
+            case SC_TRANSFER_ALERTING:
+            case SC_TRANSFER_TONE:
                 if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
                 {
                     /* 发起方 挂断，生成转接的话单;生成话单后应该删除转接业务和B对应的业务；如果存在 ulNotifyAgentID，则需要修改坐席的状态 */
                     /* 修改 B 对应的坐席的状态 */
                     pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
-                    if (DOS_ADDR_VALID(pstNotifyAgentNode) && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
+                    if (DOS_ADDR_VALID(pstNotifyAgentNode)
+                        && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
                     {
                         sc_agent_serv_status_update(pstNotifyAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
                     }
@@ -6957,29 +6974,50 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
                     pstSCB->stTransfer.ulNotifyAgentID = 0;
                 }
-                else if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
+                else
                 {
+                    /* 修改坐席状态，释放 */
+                    pstPublishAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+                    if (DOS_ADDR_VALID(pstPublishAgentNode)
+                        && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+                    {
+                        sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                    }
 
+                    pstSubAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
+                    if (DOS_ADDR_VALID(pstSubAgentNode)
+                        && DOS_ADDR_VALID(pstSubAgentNode->pstAgentInfo))
+                    {
+                        sc_agent_serv_status_update(pstSubAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                    }
+
+                    pstSCB->stTransfer.ulPublishAgentID = 0;
+                    pstSCB->stTransfer.ulSubAgentID = 0;
+
+                    if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
+                    {
+                        pstSCB->stTransfer.ulPublishLegNo = U32_BUTT;
+                    }
+                    else
+                    {
+                        pstSCB->stTransfer.ulSubLegNo = U32_BUTT;
+                    }
+
+                    pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_RELEASE;
+                }
+
+                if (psthungLegCB->ulIndSCBNo != U32_BUTT)
+                {
+                    /* 挂断的坐席是长签，这里不需要释放 */
+                    psthungLegCB->ulSCBNo = U32_BUTT;
                 }
                 else
                 {
-
+                    sc_lcb_free(psthungLegCB);
                 }
 
                 break;
 
-            case SC_TRANSFER_TRANSFER:
-                pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_FINISHED;
-                if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
-                {
-                    /* 盲转 */
-                    if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
-                    {
-                        /* 正常结束，修改 */
-                    }
-                }
-
-                break;
             case SC_TRANSFER_FINISHED:
                 /* 正常挂断，判断坐席是否长签，判断是否需要进行客户标记等 */
                 if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulSubLegNo)
@@ -7022,6 +7060,7 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                 pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_RELEASE;
                 break;
+
             case SC_TRANSFER_RELEASE:
                 if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulSubLegNo)
                 {
@@ -7054,13 +7093,15 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 /* TODO 异常处理 */
                 break;
             case SC_TRANSFER_EXEC:
-            case SC_TRANSFER_ACTIVE:
+            case SC_TRANSFER_PROC:
+            case SC_TRANSFER_ALERTING:
+            case SC_TRANSFER_TONE:
                 if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
                 {
                     /* 发起方 挂断，生成转接的话单;生成话单后应该删除转接业务和B对应的业务；如果存在 ulNotifyAgentID，则需要修改坐席的状态 */
-                    /* 修改 B 对应的坐席的状态 */
                     pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
-                    if (DOS_ADDR_VALID(pstNotifyAgentNode) && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
+                    if (DOS_ADDR_VALID(pstNotifyAgentNode)
+                        && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
                     {
                         sc_agent_serv_status_update(pstNotifyAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
                     }
@@ -7077,6 +7118,15 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                 }
 
+                if (psthungLegCB->ulIndSCBNo != U32_BUTT)
+                {
+                    /* 挂断的坐席是长签，这里不需要释放 */
+                    psthungLegCB->ulSCBNo = U32_BUTT;
+                }
+                else
+                {
+                    sc_lcb_free(psthungLegCB);
+                }
                 break;
 
             case SC_TRANSFER_TRANSFER:
