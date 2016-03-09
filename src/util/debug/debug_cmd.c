@@ -20,6 +20,7 @@ extern S32 bs_update_test(U32 ulIndex, S32 argc, S8 **argv);
 #if INCLUDE_CC_SC
 extern S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv);
 extern S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv);
+extern S32 cli_cc_license(U32 ulIndex, S32 argc, S8 **argv);
 #endif
 
 #if INCLUDE_RES_MONITOR
@@ -77,6 +78,7 @@ COMMAND_ST g_stCommandSet[] = {
 
 #if INCLUDE_CC_SC
     {NULL,                   "cc",            "Debug CC mod",  cli_cc_process},
+    {NULL,                   "license",       "Show license info",  cli_cc_license},
     {g_stCommandSCStatGroup, "stat",          "SC cmd group",  NULL},
 #endif
 

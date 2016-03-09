@@ -4403,6 +4403,63 @@ cc_usage:
 }
 
 
+S32 cli_cc_license(U32 ulIndex, S32 argc, S8 **argv)
+{
+    S8 szOutput[128] = { 0 };
+    S8 szBuffer[64] = { 0 };
+    U32 ulTmp = 0;
+
+    cli_out_string(ulIndex, "\r\n");
+    cli_out_string(ulIndex, "License information:\r\n");
+
+    if (licc_save_customer_id((U8 *)szBuffer, sizeof(szBuffer)) != DOS_SUCC)
+    {
+        dos_snprintf(szOutput, sizeof(szOutput), "Username: <NULL>\r\n");
+    }
+    else
+    {
+        dos_snprintf(szOutput, sizeof(szOutput), "Username: %s\r\n", szBuffer);
+    }
+    cli_out_string(ulIndex, szOutput);
+
+    ulTmp = sizeof(szBuffer);
+    if (licc_get_machine(szBuffer, (S32 *)&ulTmp) != DOS_SUCC)
+    {
+        dos_snprintf(szOutput, sizeof(szOutput), "Password: <ERROR>\r\n");
+    }
+    else
+    {
+        dos_snprintf(szOutput, sizeof(szOutput), "Password: %s\r\n", szBuffer);
+    }
+    cli_out_string(ulIndex, szOutput);
+
+    if (!licc_get_license_loaded())
+    {
+        cli_out_string(ulIndex, "\r\n");
+        return 0;
+    }
+
+    if (licc_get_license_version(&ulTmp) != DOS_SUCC)
+    {
+        dos_snprintf(szOutput, sizeof(szOutput), "Version: 0\r\n");
+    }
+    else
+    {
+        dos_snprintf(szOutput, sizeof(szOutput), "Version: %X\r\n", ulTmp);
+    }
+
+    if (licc_get_license_expire(&ulTmp) != DOS_SUCC)
+    {
+        dos_snprintf(szOutput, sizeof(szOutput), "Expire: 0\r\n");
+    }
+    else
+    {
+        dos_snprintf(szOutput, sizeof(szOutput), "Expire: %u\r\n", ulTmp);
+    }
+
+    return 0;
+}
+
 /**
  * SCÄ£¿é´òÓ¡º¯Êý
  *
