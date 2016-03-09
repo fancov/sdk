@@ -402,6 +402,7 @@ typedef enum tagSCSUCommand{
     SC_CMD_UNHOLD,             /**< 请求呼叫解除保持 */
     SC_CMD_IVR_CTRL,           /**< IVR控制命令 */
     SC_CMD_MUX,                /**< 混音命令 */
+    SC_CMD_TRANSFER,           /**< 转接命令 */
 
     SC_CMD_BUTT,
 }SC_SU_COMMANGEN;
@@ -1658,6 +1659,20 @@ typedef struct tagSCMsgCmdMux{
     U32     ulSCBNo;
 }SC_MSG_CMD_MUX_ST;
 
+/** 转接 uuid_transfer 请求 */
+typedef struct tagSCMsgCmdTransfer{
+    SC_MSG_TAG_ST    stMsgTag;              /**< 消息头 */
+
+    /** 被转接的leg */
+    U32     ulLegNo;
+
+    /** 被叫号码 */
+    S8      szCalleeNum[SC_NUM_LENGTH];
+
+     /** 业务控制块编号 */
+    U32     ulSCBNo;
+}SC_MSG_CMD_TRANSFER_ST;
+
 /** 呼叫建立事件 */
 typedef struct tagSCMsgEvtCall{
     SC_MSG_TAG_ST    stMsgTag;              /**< 消息头 */
@@ -2069,6 +2084,7 @@ U32 sc_req_hold(U32 ulSCBNo, U32 ulLegNo, U32 ulFlag);
 U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_mux(SC_MSG_TAG_ST *pstMsg);
+U32 sc_send_cmd_transfer(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_record(SC_MSG_TAG_ST *pstMsg);
 
 U32 sc_agent_group_agent_count(U32 ulGroupID);

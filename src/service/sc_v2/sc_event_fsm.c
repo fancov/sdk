@@ -3854,7 +3854,6 @@ proc_finishe:
     }
 
     return ulRet;
-
 }
 
 U32 sc_whisper_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
@@ -6476,10 +6475,10 @@ U32 sc_access_code_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_AUTH_RESULT_ST  *pstAuthRsp      = NULL;
-    SC_LEG_CB                  *pstPublishLeg   = NULL;
-    SC_AGENT_NODE_ST           *pstAgentNode    = NULL;
+    //SC_LEG_CB                  *pstPublishLeg   = NULL;
+    //SC_AGENT_NODE_ST           *pstAgentNode    = NULL;
     U32                         ulRet           = DOS_SUCC;
-    SC_MSG_CMD_CALL_ST          stCallMsg;
+    //SC_MSG_CMD_CALL_ST          stCallMsg;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -6504,6 +6503,7 @@ U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     {
         case SC_TRANSFER_AUTH:
             /* 呼叫第三方 */
+#if 0
             pstPublishLeg = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
             if (DOS_ADDR_INVALID(pstPublishLeg))
             {
@@ -6576,6 +6576,7 @@ U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 /* TODO 错误处理 */
                 return DOS_FAIL;
             }
+#endif
             break;
         default:
             break;

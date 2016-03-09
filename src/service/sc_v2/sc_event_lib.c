@@ -2425,11 +2425,6 @@ U32 sc_call_ctrl_unhold(U32 ulAgent)
     return sc_call_ctrl_hold(ulAgent, DOS_FALSE);
 }
 
-U32 sc_call_ctrl_hangup(U32 ulAgent)
-{
-    return DOS_SUCC;
-}
-
 U32 sc_call_ctrl_hangup_all(U32 ulAgent)
 {
     SC_AGENT_NODE_ST *pstAgentNode = NULL;
@@ -2472,6 +2467,11 @@ U32 sc_call_ctrl_hangup_all(U32 ulAgent)
     sc_req_hungup(pstSCB->ulSCBNo, pstLCBAgent->ulCBNo, CC_ERR_SC_CLEAR_FORCE);
 
     return DOS_SUCC;
+}
+
+U32 sc_call_ctrl_hangup(U32 ulAgent)
+{
+    return sc_call_ctrl_hangup_all(ulAgent);
 }
 
 U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulType, S8 *pszCallee)

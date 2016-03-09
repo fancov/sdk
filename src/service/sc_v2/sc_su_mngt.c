@@ -2033,6 +2033,7 @@ U32 sc_cmd_mux(SC_MSG_TAG_ST *pstMsg)
                 stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
                 goto proc_fail;
             }
+
             if (sc_esl_execute("eavesdrop", pstAgentLCB->szUUID, pstLCB->szUUID) != DOS_SUCC)
             {
                 stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
@@ -2049,6 +2050,55 @@ proc_fail:
     stErrReport.stMsgTag.ulSCBNo = pstMux->ulSCBNo;
     stErrReport.ulSCBNo = pstMux->ulSCBNo;
     stErrReport.ulCMD = pstMux->stMsgTag.ulMsgType;
+
+    sc_send_event_err_report(&stErrReport);
+
+    return DOS_FAIL;
+}
+
+U32 sc_cmd_transfer(SC_MSG_TAG_ST *pstMsg)
+{
+    SC_MSG_EVT_ERR_REPORT_ST   stErrReport;
+    SC_MSG_CMD_TRANSFER_ST     *pstTransfer     = NULL;
+    SC_LEG_CB                  *pstLCB          = NULL;
+    S8                          szCMD[256];
+    S8                          szUUID[SC_UUID_LENGTH];
+
+    pstTransfer = (SC_MSG_CMD_TRANSFER_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstTransfer))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstLCB = sc_lcb_get(pstTransfer->ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        goto proc_fail;
+    }
+
+    if (pstLCB->szUUID[0] == '\0')
+    {
+        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        goto proc_fail;
+    }
+
+    dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_transfer %s %s\r\n", pstLCB->szUUID, pstTransfer->szCalleeNum);
+    if (sc_esl_execute_cmd(szCMD, szUUID, sizeof(szUUID)) != DOS_SUCC)
+    {
+        stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+        goto proc_fail;
+    }
+
+    sc_lcb_hash_add(szUUID, pstLCB);
+
+    return DOS_SUCC;
+
+proc_fail:
+    stErrReport.stMsgTag.ulSCBNo = pstTransfer->ulSCBNo;
+    stErrReport.ulSCBNo = pstTransfer->ulSCBNo;
+    stErrReport.ulCMD = pstTransfer->stMsgTag.ulMsgType;
 
     sc_send_event_err_report(&stErrReport);
 
@@ -2124,9 +2174,15 @@ VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
         case SC_CMD_IVR_CTRL:
             ulRet = sc_cmd_ivr(pstMsg);
             break;
+
         case SC_CMD_MUX:
             ulRet = sc_cmd_mux(pstMsg);
             break;
+
+        case SC_CMD_TRANSFER:
+            ulRet = sc_cmd_transfer(pstMsg);
+            break;
+
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SU), "Invalid cmd type. %u", pstMsg->ulMsgType);
             break;
