@@ -6475,10 +6475,12 @@ U32 sc_access_code_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_AUTH_RESULT_ST  *pstAuthRsp      = NULL;
-    //SC_LEG_CB                  *pstPublishLeg   = NULL;
+    SC_LEG_CB                  *pstSubLeg       = NULL;
+    SC_LEG_CB                  *pstPublishLeg   = NULL;
     //SC_AGENT_NODE_ST           *pstAgentNode    = NULL;
     U32                         ulRet           = DOS_SUCC;
     //SC_MSG_CMD_CALL_ST          stCallMsg;
+    SC_MSG_CMD_TRANSFER_ST      stTransferRsp;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -6502,82 +6504,34 @@ U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stTransfer.stSCBTag.usStatus)
     {
         case SC_TRANSFER_AUTH:
-            /* 呼叫第三方 */
-#if 0
+            pstSubLeg = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
             pstPublishLeg = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
-            if (DOS_ADDR_INVALID(pstPublishLeg))
+            if (DOS_ADDR_INVALID(pstSubLeg)
+                || DOS_ADDR_INVALID(pstPublishLeg))
             {
                 /* TODO 错误处理 */
                 return DOS_FAIL;
             }
 
-            /* 修改坐席的状态，置忙 */
-            pstAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
-            if (DOS_ADDR_VALID(pstAgentNode) && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+            /* 执行 transfer 命令 */
+            stTransferRsp.stMsgTag.ulMsgType = SC_CMD_TRANSFER;
+            stTransferRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+            stTransferRsp.stMsgTag.usInterErr = 0;
+
+            stTransferRsp.ulSCBNo = pstSCB->ulSCBNo;
+            stTransferRsp.ulLegNo = pstSubLeg->ulCBNo;
+            dos_strncpy(stTransferRsp.szCalleeNum, pstPublishLeg->stCall.stNumInfo.szOriginalCallee, SC_NUM_LENGTH-1);
+            stTransferRsp.szCalleeNum[SC_NUM_LENGTH-1] = '\0';
+
+            if (sc_send_cmd_transfer(&stTransferRsp.stMsgTag) != DOS_SUCC)
             {
-                sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
-                pstAgentNode->pstAgentInfo->ulLegNo = pstPublishLeg->ulCBNo;
-            }
-
-            /* 判断坐席是否长签 */
-            if (pstPublishLeg->ulIndSCBNo != U32_BUTT)
-            {
-                if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
-                {
-                    /* 长签，直接挂断发起方，bridge第二方和第三方 */
-                    sc_req_hungup(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
-                }
-                else
-                {
-                    /* 协商转，hold 订阅方，给发起方放回铃音 */
-                    sc_req_hold(pstSCB->ulSCBNo, pstSCB->stTransfer.ulSubLegNo, SC_HOLD_FLAG_HOLD);
-                    sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stTransfer.ulNotifyLegNo, DOS_TRUE);
-                }
-
-                if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stTransfer.ulPublishLegNo, pstSCB->stTransfer.ulSubLegNo) != DOS_SUCC)
-                {
-                    sc_trace_scb(pstSCB, "Bridge call when early media fail.");
-                    return DOS_FAIL;
-                }
-                pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_FINISHED;
-
-                break;
-            }
-
-            if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
-            {
-                /* hold住订阅方，挂断发起方 */
-                sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stTransfer.ulNotifyLegNo, CC_ERR_NORMAL_CLEAR);
-                sc_req_hold(pstSCB->ulSCBNo, pstSCB->stTransfer.ulSubLegNo, SC_HOLD_FLAG_HOLD);
-            }
-            else
-            {
-                sc_req_hold(pstSCB->ulSCBNo, pstSCB->stTransfer.ulSubLegNo, SC_HOLD_FLAG_HOLD);
-                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stTransfer.ulNotifyLegNo, DOS_TRUE);
-            }
-
-            /* 呼叫第三方，处理一下号码 */
-            dos_snprintf(pstPublishLeg->stCall.stNumInfo.szRealCallee, sizeof(pstPublishLeg->stCall.stNumInfo.szRealCallee), pstPublishLeg->stCall.stNumInfo.szOriginalCallee);
-            dos_snprintf(pstPublishLeg->stCall.stNumInfo.szRealCalling, sizeof(pstPublishLeg->stCall.stNumInfo.szRealCalling), pstPublishLeg->stCall.stNumInfo.szOriginalCalling);
-
-            dos_snprintf(pstPublishLeg->stCall.stNumInfo.szCallee, sizeof(pstPublishLeg->stCall.stNumInfo.szCallee), pstPublishLeg->stCall.stNumInfo.szOriginalCallee);
-            dos_snprintf(pstPublishLeg->stCall.stNumInfo.szCalling, sizeof(pstPublishLeg->stCall.stNumInfo.szCalling), pstPublishLeg->stCall.stNumInfo.szOriginalCalling);
-
-            pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_EXEC;
-
-            stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
-            stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-            stCallMsg.stMsgTag.usInterErr = 0;
-            stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
-            stCallMsg.ulLCBNo = pstPublishLeg->ulCBNo;
-
-            if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
-            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
                 /* TODO 错误处理 */
                 return DOS_FAIL;
             }
-#endif
+            pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_TRANSFERRING;
             break;
+
         default:
             break;
     }
@@ -6651,9 +6605,9 @@ U32 sc_transfer_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return DOS_SUCC;
 }
 
-U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+U32 sc_transfer_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    U32        ulRet = DOS_FAIL;
+    U32                 ulRet               = DOS_FAIL;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -6661,11 +6615,87 @@ U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
+    sc_trace_scb(pstSCB, "Processing transfer play stop event. status : %u", pstSCB->stTransfer.stSCBTag.usStatus);
+
+    switch (pstSCB->stTransfer.stSCBTag.usStatus)
+    {
+        case SC_TRANSFER_TONE:
+            if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
+            {
+                /* 盲转，直接bridge */
+                if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stTransfer.ulSubLegNo, pstSCB->stTransfer.ulPublishLegNo) != DOS_SUCC)
+                {
+                    /* 错误处理 */
+                    sc_trace_scb(pstSCB, "Bridge call when early media fail.");
+                    ulRet = DOS_FAIL;
+                }
+                pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_FINISHED;
+            }
+            else
+            {
+                /* 协商转 */
+                if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stTransfer.ulNotifyLegNo, pstSCB->stTransfer.ulPublishLegNo) != DOS_SUCC)
+                {
+                    /* 错误处理 */
+                    sc_trace_scb(pstSCB, "Bridge call when early media fail.");
+                    ulRet = DOS_FAIL;
+                }
+                pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_TRANSFER;
+            }
+
+            break;
+
+        default:
+            break;
+    }
+
+    return ulRet;
+}
+
+U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    U32                     ulRet                   = DOS_FAIL;
+    SC_MSG_EVT_RINGING_ST   *pstEvent               = NULL;
+    SC_LEG_CB               *pstPublishLeg          = NULL;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEvent = (SC_MSG_EVT_RINGING_ST *)pstMsg;
+
     sc_trace_scb(pstSCB, "Processing transfer ringing event. status : %u", pstSCB->stTransfer.stSCBTag.usStatus);
 
     switch (pstSCB->stTransfer.stSCBTag.usStatus)
     {
         case SC_TRANSFER_PROC:
+            if (pstEvent->ulWithMedia)
+            {
+                pstPublishLeg = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+                if (DOS_ADDR_VALID(pstPublishLeg))
+                {
+                    pstPublishLeg->stCall.bEarlyMedia = DOS_TRUE;
+
+                    if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
+                    {
+                        if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stTransfer.ulPublishLegNo, pstSCB->stTransfer.ulSubLegNo) != DOS_SUCC)
+                        {
+                            sc_trace_scb(pstSCB, "Bridge call when early media fail.");
+                            ulRet = DOS_FAIL;
+                        }
+                    }
+                    else
+                    {
+                        if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stTransfer.ulPublishLegNo, pstSCB->stTransfer.ulNotifyLegNo) != DOS_SUCC)
+                        {
+                            sc_trace_scb(pstSCB, "Bridge call when early media fail.");
+                            ulRet = DOS_FAIL;
+                        }
+                    }
+                }
+            }
             pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_ALERTING;
             break;
         default:
@@ -6677,7 +6707,11 @@ U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    U32         ulRet         = DOS_FAIL;
+    U32                 ulRet                   = DOS_FAIL;
+    SC_LEG_CB           *pstPublishLeg          = NULL;
+    SC_LEG_CB           *pstNotifyLeg           = NULL;
+    SC_AGENT_NODE_ST    *pstNotifyAgentNode     = NULL;
+    SC_AGENT_NODE_ST    *pstPublishAgentNode    = NULL;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -6689,31 +6723,182 @@ U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     switch (pstSCB->stTransfer.stSCBTag.usStatus)
     {
-        case SC_TRANSFER_ALERTING:
+        case SC_TRANSFER_TRANSFERRING:
+            pstPublishLeg = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+            pstNotifyLeg = sc_lcb_get(pstSCB->stTransfer.ulNotifyLegNo);
+            if (DOS_ADDR_INVALID(pstPublishLeg)
+                || DOS_ADDR_INVALID(pstNotifyLeg))
+            {
+                /* TODO 错误处理 */
+                DOS_ASSERT(0);
+                break;
+            }
+
+            pstPublishAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+
             if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
             {
-                /* 盲转，将 A 和 C 接通 */
-                if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stTransfer.ulPublishLegNo, pstSCB->stTransfer.ulSubLegNo) != DOS_SUCC)
+                /* 盲转，判断是否是长签 */
+                if (pstPublishLeg->ulIndSCBNo != U32_BUTT)
                 {
-                    /* 错误处理 */
-                    sc_trace_scb(pstSCB, "Bridge call when early media fail.");
-                    ulRet = DOS_FAIL;
+                    /* 长签，将被叫坐席置忙，放提示音 */
+                    if (DOS_ADDR_VALID(pstPublishAgentNode)
+                        && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+                    {
+                        sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_CALL_IN);
+                    }
+
+                    pstPublishLeg->ulSCBNo = pstSCB->ulSCBNo;
+                    sc_req_playback_stop(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo);
+                    sc_req_play_sound(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo, SC_SND_INCOMING_CALL_TIP, 1, 0, 0);
+                    pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_TONE;
+                }
+                else
+                {
+                    /* 呼叫需要转接的坐席 */
+                    switch (pstPublishLeg->stCall.ucPeerType)
+                    {
+                        case SC_LEG_PEER_OUTBOUND:
+                            ulRet = sc_make_call2pstn(pstSCB, pstPublishLeg);
+                            break;
+
+                        case SC_LEG_PEER_OUTBOUND_TT:
+                            ulRet = sc_make_call2eix(pstSCB, pstPublishLeg);
+                            break;
+
+                        case SC_LEG_PEER_OUTBOUND_INTERNAL:
+                            ulRet = sc_make_call2sip(pstSCB, pstPublishLeg);
+                            break;
+
+                        default:
+                            sc_trace_scb(pstSCB, "Invalid perr type. %u", pstPublishLeg->stCall.ucPeerType);
+                            break;
+                    }
+
+                    if (DOS_ADDR_VALID(pstPublishAgentNode)
+                        && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+                    {
+                        sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
+                    }
+
+                    pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_EXEC;
+                }
+
+                /* 修改主叫坐席的状态 */
+                pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
+                if (DOS_ADDR_VALID(pstNotifyAgentNode)
+                    && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstNotifyAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                }
+
+                /* 判断 ulNotifyLegNo 是不是长签 */
+                if (pstNotifyLeg->ulIndSCBNo != U32_BUTT)
+                {
+                    pstSCB->stTransfer.ulNotifyAgentID = 0;
+                    pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
+                    pstNotifyLeg->ulSCBNo = U32_BUTT;
+                    sc_req_play_sound(pstNotifyLeg->ulIndSCBNo, pstNotifyLeg->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
+                }
+                else
+                {
+                    /* 挂断电话 */
+                    sc_req_hungup(pstSCB->ulSCBNo, pstNotifyLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                }
+
+                /* 给被转接方放回铃音 */
+                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stTransfer.ulSubLegNo, DOS_TRUE);
+            }
+            else
+            {
+                /* 协商转，hold ulSubAgentID */
+                sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stTransfer.ulSubLegNo, SC_SND_MUSIC_HOLD, 1, 0, 0);
+
+                if (pstPublishLeg->ulIndSCBNo != U32_BUTT)
+                {
+                    /* 长签，将被叫坐席置忙，放提示音 */
+                    if (DOS_ADDR_VALID(pstPublishAgentNode)
+                        && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+                    {
+                        sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_CALL_IN);
+                    }
+
+                    pstPublishLeg->ulSCBNo = pstSCB->ulSCBNo;
+                    sc_req_playback_stop(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo);
+                    sc_req_play_sound(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo, SC_SND_INCOMING_CALL_TIP, 1, 0, 0);
+                    pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_TONE;
+                }
+                else
+                {
+                    /* 呼叫需要转接的坐席 */
+                    switch (pstPublishLeg->stCall.ucPeerType)
+                    {
+                        case SC_LEG_PEER_OUTBOUND:
+                            ulRet = sc_make_call2pstn(pstSCB, pstPublishLeg);
+                            break;
+
+                        case SC_LEG_PEER_OUTBOUND_TT:
+                            ulRet = sc_make_call2eix(pstSCB, pstPublishLeg);
+                            break;
+
+                        case SC_LEG_PEER_OUTBOUND_INTERNAL:
+                            ulRet = sc_make_call2sip(pstSCB, pstPublishLeg);
+                            break;
+
+                        default:
+                            sc_trace_scb(pstSCB, "Invalid perr type. %u", pstPublishLeg->stCall.ucPeerType);
+                            break;
+                    }
+
+                    if (DOS_ADDR_VALID(pstPublishAgentNode)
+                        && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+                    {
+                        sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
+                    }
+
+                    pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_EXEC;
+                }
+
+                /* 给 ulNotifyLegNo 放回铃音 */
+                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stTransfer.ulNotifyLegNo, DOS_TRUE);
+            }
+
+            break;
+
+        case SC_TRANSFER_ALERTING:
+            pstPublishLeg = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+            if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
+            {
+                if (DOS_ADDR_VALID(pstPublishLeg)
+                    && !pstPublishLeg->stCall.bEarlyMedia)
+                {
+                    /* 盲转，将 A 和 C 接通 */
+                    if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stTransfer.ulPublishLegNo, pstSCB->stTransfer.ulSubLegNo) != DOS_SUCC)
+                    {
+                        /* 错误处理 */
+                        sc_trace_scb(pstSCB, "Bridge call when early media fail.");
+                        ulRet = DOS_FAIL;
+                    }
                 }
                 pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_FINISHED;
             }
             else
             {
-                /* 协商转，将B和C接通 */
-                if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stTransfer.ulNotifyLegNo, pstSCB->stTransfer.ulPublishLegNo) != DOS_SUCC)
+                if (DOS_ADDR_VALID(pstPublishLeg)
+                    && !pstPublishLeg->stCall.bEarlyMedia)
                 {
-                    /* 错误处理 */
-                    sc_trace_scb(pstSCB, "Bridge call when early media fail.");
-                    ulRet = DOS_FAIL;
+                    /* 协商转，将B和C接通 */
+                    if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stTransfer.ulNotifyLegNo, pstSCB->stTransfer.ulPublishLegNo) != DOS_SUCC)
+                    {
+                        /* 错误处理 */
+                        sc_trace_scb(pstSCB, "Bridge call when early media fail.");
+                        ulRet = DOS_FAIL;
+                    }
                 }
                 pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_TRANSFER;
             }
-
             break;
+
         default:
             break;
     }
@@ -6727,6 +6912,8 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_LEG_CB               *psthungLegCB         = NULL;
     SC_LEG_CB               *pstOtherLegCB        = NULL;
     SC_AGENT_NODE_ST        *pstNotifyAgentNode   = NULL;
+    SC_AGENT_NODE_ST        *pstPublishAgentNode  = NULL;
+    SC_AGENT_NODE_ST        *pstSubAgentNode      = NULL;
     SC_AGENT_NODE_ST        *pstHungAgentNode     = NULL;
     SC_AGENT_NODE_ST        *pstOtherAgentNode    = NULL;
     U32                     ulRet                 = DOS_SUCC;
@@ -6747,133 +6934,290 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    switch (pstSCB->stTransfer.stSCBTag.usStatus)
+    if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
     {
-        case SC_TRANSFER_AUTH:
-        case SC_TRANSFER_EXEC:
-        case SC_TRANSFER_ACTIVE:
-            if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
-            {
-                /* 发起方 挂断，生成转接的话单;生成话单后应该删除转接业务和B对应的业务；如果存在 ulNotifyAgentID，则需要修改坐席的状态 */
-                /* 修改 B 对应的坐席的状态 */
-                pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
-                if (DOS_ADDR_VALID(pstNotifyAgentNode) && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
+        /* 盲转 */
+        switch (pstSCB->stTransfer.stSCBTag.usStatus)
+        {
+            case SC_TRANSFER_AUTH:
+                /* TODO 异常处理 */
+                break;
+            case SC_TRANSFER_EXEC:
+            case SC_TRANSFER_ACTIVE:
+                if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
                 {
-                    sc_agent_serv_status_update(pstNotifyAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                    /* 发起方 挂断，生成转接的话单;生成话单后应该删除转接业务和B对应的业务；如果存在 ulNotifyAgentID，则需要修改坐席的状态 */
+                    /* 修改 B 对应的坐席的状态 */
+                    pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
+                    if (DOS_ADDR_VALID(pstNotifyAgentNode) && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
+                    {
+                        sc_agent_serv_status_update(pstNotifyAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                    }
+
+                    pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
+                    pstSCB->stTransfer.ulNotifyAgentID = 0;
+                }
+                else if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
+                {
+
+                }
+                else
+                {
+
                 }
 
-                pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
-                pstSCB->stTransfer.ulNotifyAgentID = 0;
-            }
-            else if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
-            {
+                break;
 
-            }
-            else
-            {
-
-            }
-
-            break;
-        case SC_TRANSFER_TRANSFER:
-            /* 协商转 */
-            if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
-            {
-                /* 接通 A 和 C，生成 B 的话单 */
-                if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stTransfer.ulPublishLegNo, pstSCB->stTransfer.ulSubLegNo) != DOS_SUCC)
-                {
-                    /* 错误处理 */
-                    sc_trace_scb(pstSCB, "Bridge call when early media fail.");
-                    ulRet = DOS_FAIL;
-                    break;
-                }
-
-                /* 修改 B 对应的坐席的状态 */
-                pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
-                if (DOS_ADDR_VALID(pstNotifyAgentNode) && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
-                {
-                    sc_agent_serv_status_update(pstNotifyAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
-                }
-
-                pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
-                pstSCB->stTransfer.ulNotifyAgentID = 0;
-
+            case SC_TRANSFER_TRANSFER:
                 pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_FINISHED;
-            }
-            else if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
-            {
-                /* TODO 第三方挂断 */
-            }
-            else
-            {
-                /* TODO 第一方挂断 */
-            }
+                if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
+                {
+                    /* 盲转 */
+                    if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
+                    {
+                        /* 正常结束，修改 */
+                    }
+                }
 
-            break;
-        case SC_TRANSFER_FINISHED:
-            /* 正常挂断，判断坐席是否长签，判断是否需要进行客户标记等 */
-            if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulSubLegNo)
-            {
-                pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
-                pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
-                pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
-            }
-            else
-            {
-                pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
-                pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
-                pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
-            }
+                break;
+            case SC_TRANSFER_FINISHED:
+                /* 正常挂断，判断坐席是否长签，判断是否需要进行客户标记等 */
+                if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulSubLegNo)
+                {
+                    pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
+                    pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+                    pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+                }
+                else
+                {
+                    pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+                    pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
+                    pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
+                }
 
-            if (DOS_ADDR_VALID(pstHungAgentNode) && DOS_ADDR_VALID(pstHungAgentNode->pstAgentInfo))
-            {
-                sc_agent_serv_status_update(pstHungAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
-            }
+                if (DOS_ADDR_VALID(pstHungAgentNode) && DOS_ADDR_VALID(pstHungAgentNode->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstHungAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                }
 
-            if (DOS_ADDR_VALID(pstOtherAgentNode) && DOS_ADDR_VALID(pstOtherAgentNode->pstAgentInfo))
-            {
-                sc_agent_serv_status_update(pstOtherAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
-            }
+                if (DOS_ADDR_VALID(pstOtherAgentNode) && DOS_ADDR_VALID(pstOtherAgentNode->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstOtherAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                }
 
-            if (pstOtherLegCB->ulIndSCBNo != U32_BUTT)
-            {
-                /* 长签，继续放音 */
-                pstOtherLegCB->ulSCBNo = U32_BUTT;
-                sc_req_play_sound(pstOtherLegCB->ulIndSCBNo, pstOtherLegCB->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
-                /* 释放掉 SCB */
+                if (pstOtherLegCB->ulIndSCBNo != U32_BUTT)
+                {
+                    /* 长签，继续放音 */
+                    pstOtherLegCB->ulSCBNo = U32_BUTT;
+                    sc_req_play_sound(pstOtherLegCB->ulIndSCBNo, pstOtherLegCB->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
+                    /* 释放掉 SCB */
+                    sc_scb_free(pstSCB);
+                    pstSCB = NULL;
+                }
+                else
+                {
+                    sc_req_hungup(pstSCB->ulSCBNo, pstOtherLegCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                    pstSCB->stCall.stSCBTag.usStatus = SC_CALL_RELEASE;
+                }
+
+                pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_RELEASE;
+                break;
+            case SC_TRANSFER_RELEASE:
+                if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulSubLegNo)
+                {
+                    pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+                }
+                else
+                {
+                    pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
+                }
+
+                sc_lcb_free(psthungLegCB);
+                psthungLegCB = NULL;
+                if (DOS_ADDR_VALID(pstOtherLegCB))
+                {
+                    sc_lcb_free(pstOtherLegCB);
+                    pstOtherLegCB = NULL;
+                }
                 sc_scb_free(pstSCB);
-                pstSCB = NULL;
-            }
-            else
-            {
-                sc_req_hungup(pstSCB->ulSCBNo, pstOtherLegCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
-                pstSCB->stCall.stSCBTag.usStatus = SC_CALL_RELEASE;
-            }
 
-            pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_RELEASE;
-            break;
-        case SC_TRANSFER_RELEASE:
-            if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulSubLegNo)
-            {
-                pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
-            }
-            else
-            {
-                pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
-            }
+                break;
+            default:
+                break;
+        }
+    }
+    else
+    {
+        switch (pstSCB->stTransfer.stSCBTag.usStatus)
+        {
+            case SC_TRANSFER_AUTH:
+                /* TODO 异常处理 */
+                break;
+            case SC_TRANSFER_EXEC:
+            case SC_TRANSFER_ACTIVE:
+                if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
+                {
+                    /* 发起方 挂断，生成转接的话单;生成话单后应该删除转接业务和B对应的业务；如果存在 ulNotifyAgentID，则需要修改坐席的状态 */
+                    /* 修改 B 对应的坐席的状态 */
+                    pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
+                    if (DOS_ADDR_VALID(pstNotifyAgentNode) && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
+                    {
+                        sc_agent_serv_status_update(pstNotifyAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                    }
 
-            sc_lcb_free(psthungLegCB);
-            psthungLegCB = NULL;
-            if (DOS_ADDR_VALID(pstOtherLegCB))
-            {
-                sc_lcb_free(pstOtherLegCB);
-                pstOtherLegCB = NULL;
-            }
-            sc_scb_free(pstSCB);
+                    pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
+                    pstSCB->stTransfer.ulNotifyAgentID = 0;
+                }
+                else if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
+                {
 
-            break;
-        default:
-            break;
+                }
+                else
+                {
+
+                }
+
+                break;
+
+            case SC_TRANSFER_TRANSFER:
+                pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_FINISHED;
+                if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
+                {
+                    /* 接通 A 和 C，生成 B 的话单 */
+                    if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stTransfer.ulPublishLegNo, pstSCB->stTransfer.ulSubLegNo) != DOS_SUCC)
+                    {
+                        /* 错误处理 */
+                        sc_trace_scb(pstSCB, "Bridge call fail.");
+                        ulRet = DOS_FAIL;
+                        break;
+                    }
+
+                    /* 修改 A 对应的坐席的状态 */
+                    pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
+                    if (DOS_ADDR_VALID(pstNotifyAgentNode)
+                        && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
+                    {
+                        sc_agent_serv_status_update(pstNotifyAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                    }
+
+                    pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
+                    pstSCB->stTransfer.ulNotifyAgentID = 0;
+                }
+                else if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
+                {
+                    /* 第三方挂断，重新连接 A 和 B */
+                    if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stTransfer.ulNotifyLegNo, pstSCB->stTransfer.ulSubLegNo) != DOS_SUCC)
+                    {
+                        /* 错误处理 */
+                        sc_trace_scb(pstSCB, "Bridge call fail.");
+                        ulRet = DOS_FAIL;
+                        break;
+                    }
+
+                    /* 修改 C 对应的坐席的状态 */
+                    pstPublishAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+                    if (DOS_ADDR_VALID(pstPublishAgentNode)
+                        && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+                    {
+                        sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                    }
+
+                    pstSCB->stTransfer.ulPublishLegNo = U32_BUTT;
+                    pstSCB->stTransfer.ulPublishAgentID = 0;
+                }
+                else
+                {
+                    /* 第一方挂断，通话结束了，将其它的都挂断吧 */
+                    pstSubAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
+                    if (DOS_ADDR_VALID(pstSubAgentNode)
+                        && DOS_ADDR_VALID(pstSubAgentNode->pstAgentInfo))
+                    {
+                        sc_agent_serv_status_update(pstSubAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                    }
+
+                    pstSCB->stTransfer.ulSubLegNo = U32_BUTT;
+                    pstSCB->stTransfer.ulSubAgentID = 0;
+
+                    /* 挂断发起方吧 */
+                    sc_req_hungup(pstSCB->ulSCBNo, pstOtherLegCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                }
+
+                if (psthungLegCB->ulIndSCBNo != U32_BUTT)
+                {
+                    /* 挂断的坐席是长签，这里不需要释放 */
+                    psthungLegCB->ulSCBNo = U32_BUTT;
+                }
+                else
+                {
+                    sc_lcb_free(psthungLegCB);
+                }
+
+                break;
+            case SC_TRANSFER_FINISHED:
+                /* 正常挂断，判断坐席是否长签，判断是否需要进行客户标记等 */
+                if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulSubLegNo)
+                {
+                    pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
+                    pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+                    pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+                }
+                else
+                {
+                    pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+                    pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
+                    pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
+                }
+
+                if (DOS_ADDR_VALID(pstHungAgentNode) && DOS_ADDR_VALID(pstHungAgentNode->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstHungAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                }
+
+                if (DOS_ADDR_VALID(pstOtherAgentNode) && DOS_ADDR_VALID(pstOtherAgentNode->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstOtherAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
+                }
+
+                if (pstOtherLegCB->ulIndSCBNo != U32_BUTT)
+                {
+                    /* 长签，继续放音 */
+                    pstOtherLegCB->ulSCBNo = U32_BUTT;
+                    sc_req_play_sound(pstOtherLegCB->ulIndSCBNo, pstOtherLegCB->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
+                    /* 释放掉 SCB */
+                    sc_scb_free(pstSCB);
+                    pstSCB = NULL;
+                }
+                else
+                {
+                    sc_req_hungup(pstSCB->ulSCBNo, pstOtherLegCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                    pstSCB->stCall.stSCBTag.usStatus = SC_CALL_RELEASE;
+                }
+
+                pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_RELEASE;
+                break;
+            case SC_TRANSFER_RELEASE:
+                if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulSubLegNo)
+                {
+                    pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+                }
+                else
+                {
+                    pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
+                }
+
+                sc_lcb_free(psthungLegCB);
+                psthungLegCB = NULL;
+                if (DOS_ADDR_VALID(pstOtherLegCB))
+                {
+                    sc_lcb_free(pstOtherLegCB);
+                    pstOtherLegCB = NULL;
+                }
+                sc_scb_free(pstSCB);
+
+                break;
+            default:
+                break;
+        }
     }
 
     return DOS_SUCC;

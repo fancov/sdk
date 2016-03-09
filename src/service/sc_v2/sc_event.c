@@ -443,18 +443,23 @@ U32 sc_srv_access_code_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG
         case SC_EVT_AUTH_RESULT:
             ulRet = sc_access_code_auth_rsp(pstMsg, pstSCB);
             break;
+
         case SC_EVT_DTMF:
             ulRet = sc_access_code_dtmf(pstMsg, pstSCB);
             break;
+
         case SC_EVT_PLAYBACK_END:
             ulRet = sc_access_code_playback_stop(pstMsg, pstSCB);
             break;
+
         case SC_EVT_CALL_RERLEASE:
             ulRet = sc_access_code_release(pstMsg, pstSCB);
             break;
+
         case SC_EVT_ERROR_PORT:
             ulRet = sc_access_code_error(pstMsg, pstSCB);
             break;
+
         default:
             break;
     }
@@ -552,6 +557,10 @@ U32 sc_srv_transfer_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST
 
         case SC_EVT_HOLD:
             ulRet = sc_transfer_hold(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_PLAYBACK_END:
+            ulRet = sc_transfer_playback_stop(pstMsg, pstSCB);
             break;
 
         case SC_EVT_CALL_RERLEASE:
