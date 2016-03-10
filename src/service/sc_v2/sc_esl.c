@@ -109,6 +109,8 @@ U32 sc_esl_update_gateway(U32 ulAction, U32 ulID)
             break;
     }
 
+    sc_esl_execute_cmd("bgapi reloadacl reloadxml", NULL, 0);
+
     return DOS_SUCC;
 }
 
