@@ -5676,7 +5676,7 @@ U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 /* 需要重新呼叫坐席，进行长签 */
                 pstLegCB->stPlayback.usStatus = SC_SU_PLAYBACK_INIT;
                 pstSCB->stSigin.pstAgentNode->pstAgentInfo->bConnected = DOS_FALSE;
-                //pstSCB->stSigin.pstAgentNode->pstAgentInfo->ulLegNo = U32_BUTT;
+
                 if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
                 {
                     /* 需要认证 */
@@ -6937,6 +6937,7 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
+    /* 因为盲转和协商转同一状态下的处理可能不相同，故完全分开 */
     if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
     {
         /* 盲转 */
@@ -6953,7 +6954,6 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
                 {
                     /* 发起方 挂断，生成转接的话单;生成话单后应该删除转接业务和B对应的业务；如果存在 ulNotifyAgentID，则需要修改坐席的状态 */
-                    /* 修改 B 对应的坐席的状态 */
                     pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
                     if (DOS_ADDR_VALID(pstNotifyAgentNode)
                         && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
