@@ -1294,12 +1294,20 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
             {
                 sc_agent_serv_status_update(pstSCB->stCall.pstAgentCallee->pstAgentInfo, SC_ACD_SERV_IDEL);
+                if (!pstSCB->stCall.pstAgentCallee->pstAgentInfo->bNeedConnected)
+                {
+                    pstSCB->stCall.pstAgentCallee->pstAgentInfo->ulLegNo = U32_BUTT;
+                }
             }
 
             if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
                 && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
             {
                 sc_agent_serv_status_update(pstSCB->stCall.pstAgentCalling->pstAgentInfo, SC_ACD_SERV_IDEL);
+                if (!pstSCB->stCall.pstAgentCalling->pstAgentInfo->bNeedConnected)
+                {
+                    pstSCB->stCall.pstAgentCalling->pstAgentInfo->ulLegNo = U32_BUTT;
+                }
             }
 
             if (pstOtherLeg->ulIndSCBNo != U32_BUTT)
@@ -1563,8 +1571,8 @@ U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
             }
 
-            if (DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee)
-                && DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+            if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
+                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
             {
                 sc_agent_serv_status_update(pstSCB->stCall.pstAgentCallee->pstAgentInfo, SC_ACD_SERV_CALL_IN);
             }
@@ -5633,7 +5641,6 @@ U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_LEG_CB              *pstLegCB        = NULL;
     U32                     ulRet           = DOS_FAIL;
-    SC_MSG_CMD_CALL_ST stCallMsg;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -5669,8 +5676,7 @@ U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 /* 需要重新呼叫坐席，进行长签 */
                 pstLegCB->stPlayback.usStatus = SC_SU_PLAYBACK_INIT;
                 pstSCB->stSigin.pstAgentNode->pstAgentInfo->bConnected = DOS_FALSE;
-                pstSCB->stSigin.pstAgentNode->pstAgentInfo->ulLegNo = U32_BUTT;
-
+                //pstSCB->stSigin.pstAgentNode->pstAgentInfo->ulLegNo = U32_BUTT;
                 if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
                 {
                     /* 需要认证 */
@@ -5684,31 +5690,15 @@ U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         return DOS_FAIL;
                     }
                 }
+                else if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND_TT)
+                {
+                    ulRet = sc_make_call2eix(pstSCB, pstLegCB);
+                    pstSCB->stSigin.stSCBTag.usStatus = SC_SIGIN_EXEC;
+                }
                 else
                 {
-                    /* 发起呼叫 */
-                    /* 处理一下号码 */
-                    dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstLegCB->stCall.stNumInfo.szCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
-                    dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstLegCB->stCall.stNumInfo.szCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
-
-                    dos_snprintf(pstLegCB->stCall.stNumInfo.szCallee, sizeof(pstLegCB->stCall.stNumInfo.szCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
-                    dos_snprintf(pstLegCB->stCall.stNumInfo.szCalling, sizeof(pstLegCB->stCall.stNumInfo.szCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
-
+                    ulRet = sc_make_call2sip(pstSCB, pstLegCB);
                     pstSCB->stSigin.stSCBTag.usStatus = SC_SIGIN_EXEC;
-
-                    stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
-                    stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-                    stCallMsg.stMsgTag.usInterErr = 0;
-                    stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
-                    stCallMsg.ulLCBNo = pstLegCB->ulCBNo;
-
-                    if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
-                    {
-                        sc_scb_free(pstSCB);
-                        sc_lcb_free(pstLegCB);
-
-                        return DOS_FAIL;
-                    }
                 }
             }
             else
@@ -8686,7 +8676,6 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_LEG_CB           *pstCallingCB   = NULL;
     SC_LEG_CB           *pstCalleeCB    = NULL;
     SC_AGENT_NODE_ST    *pstAgentNode   = NULL;
-    SC_MSG_CMD_CALL_ST stCallMsg;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -8835,19 +8824,13 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             else
             {
-                /* 直接呼叫主叫坐席 */
-                pstSCB->stCallAgent.stSCBTag.usStatus = SC_CALL_AGENT_EXEC;
-
-                stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
-                stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-                stCallMsg.stMsgTag.usInterErr = 0;
-                stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
-                stCallMsg.ulLCBNo = pstCalleeCB->ulCBNo;
-
-                if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
+                if (pstCalleeCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND_TT)
                 {
-                    DOS_ASSERT(0);
-                    return DOS_FAIL;
+                    ulRet = sc_make_call2eix(pstSCB, pstCalleeCB);
+                }
+                else
+                {
+                    ulRet = sc_make_call2sip(pstSCB, pstCalleeCB);
                 }
 
                 if (DOS_ADDR_VALID(pstAgentNode)
@@ -8856,6 +8839,7 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
                 }
                 pstSCB->stCallAgent.stSCBTag.usStatus = SC_CALL_AGENT_EXEC2;
+
             }
 
             /* 给坐席放回铃音 */

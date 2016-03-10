@@ -167,7 +167,6 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
     SC_LEG_CB           *pstLegCB       = NULL;
     SC_SRV_CB           *pstSCB         = NULL;
     U32                 ulRet           = DOS_FAIL;
-    SC_MSG_CMD_CALL_ST stCallMsg;
 
     if (DOS_ADDR_INVALID(pstAgentNode)
         || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
@@ -272,31 +271,15 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
             return DOS_FAIL;
         }
     }
+    else if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND_TT)
+    {
+        ulRet = sc_make_call2eix(pstSCB, pstLegCB);
+        pstSCB->stSigin.stSCBTag.usStatus = SC_SIGIN_EXEC;
+    }
     else
     {
-        /* 发起呼叫 */
-        /* 处理一下号码 */
-        dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstLegCB->stCall.stNumInfo.szRealCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
-        dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstLegCB->stCall.stNumInfo.szRealCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
-
-        dos_snprintf(pstLegCB->stCall.stNumInfo.szCallee, sizeof(pstLegCB->stCall.stNumInfo.szCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
-        dos_snprintf(pstLegCB->stCall.stNumInfo.szCalling, sizeof(pstLegCB->stCall.stNumInfo.szCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
-
+        ulRet = sc_make_call2sip(pstSCB, pstLegCB);
         pstSCB->stSigin.stSCBTag.usStatus = SC_SIGIN_EXEC;
-
-        stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
-        stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-        stCallMsg.stMsgTag.usInterErr = 0;
-        stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
-        stCallMsg.ulLCBNo = pstLegCB->ulCBNo;
-
-        if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
-        {
-            sc_scb_free(pstSCB);
-            sc_lcb_free(pstLegCB);
-
-            return DOS_FAIL;
-        }
     }
 
     return DOS_SUCC;
@@ -2848,6 +2831,9 @@ VOID sc_agent_work_set_logout(U64 p)
     if (bIsPub)
     {
         sc_agent_status_notify(pstAgentQueueInfo);
+
+        /* 修改数据库 */
+        sc_agent_update_status_db(pstAgentQueueInfo);
     }
 
     pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
