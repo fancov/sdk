@@ -438,7 +438,6 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
     SC_AGENT_NODE_ST    *pstAgentNode   = NULL;
     SC_LEG_CB           *pstCalleeLegCB = NULL;
     SC_SRV_CB           *pstIndSCB      = NULL;
-    SC_MSG_CMD_CALL_ST stCallMsg;
     S8 szCallee[SC_NUM_LENGTH] = {0,};
 
     if (DOS_ADDR_INVALID(pstSCB)
@@ -456,6 +455,8 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
 
         return DOS_FAIL;
     }
+
+    pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
 
     /* 判断坐席的状态 */
     if (pstAgentNode->pstAgentInfo->ucWorkStatus != SC_ACD_WORK_IDEL
@@ -580,8 +581,8 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
     dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCallee), szCallee);
 
     /* 新LEG处理一下号码 */
-    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
-    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), szCallee);
+    dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
 
     dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), szCallee);
     dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
@@ -606,17 +607,13 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
         return DOS_SUCC;
     }
 
-    stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
-    stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-    stCallMsg.stMsgTag.usInterErr = 0;
-    stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
-    stCallMsg.ulLCBNo = pstCalleeLegCB->ulCBNo;
-
-    if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
+    if (pstCalleeLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND_TT)
     {
-        *pulErrCode = CC_ERR_SC_MESSAGE_SENT_ERR;
-
-        return DOS_FAIL;
+        sc_make_call2eix(pstSCB, pstCalleeLegCB);
+    }
+    else
+    {
+        sc_make_call2sip(pstSCB, pstCalleeLegCB);
     }
 
     pstSCB->stCall.stSCBTag.usStatus = SC_CALL_EXEC;
@@ -630,12 +627,11 @@ process_fail:
 
 U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
 {
-    SC_LEG_CB *pstCallingLegCB = NULL;
-    SC_LEG_CB *pstCalleeLegCB = NULL;
-    SC_MSG_CMD_CALL_ST      stCallMsg;
-    U32 ulErrCode = CC_ERR_NO_REASON;
-    S8 szCallee[SC_NUM_LENGTH] = {0,};
-    SC_SRV_CB *pstIndSCB = NULL;
+    SC_LEG_CB       *pstCallingLegCB            = NULL;
+    SC_LEG_CB       *pstCalleeLegCB             = NULL;
+    U32             ulErrCode                   = CC_ERR_NO_REASON;
+    S8              szCallee[SC_NUM_LENGTH]     = {0,};
+    SC_SRV_CB       *pstIndSCB                  = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB)
         || DOS_ADDR_INVALID(pstAgentNode))
@@ -688,11 +684,6 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
         }
     }
     /* 申请一个新的leg，发起呼叫 */
-    stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
-    stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-    stCallMsg.stMsgTag.usInterErr = 0;
-    stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
-
     pstCalleeLegCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstCalleeLegCB))
     {
@@ -701,8 +692,6 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
 
         goto process_fail;
     }
-
-    stCallMsg.ulLCBNo = pstCalleeLegCB->ulCBNo;
 
     pstCalleeLegCB->stCall.bValid = DOS_TRUE;
     pstCalleeLegCB->stCall.ucStatus = SC_LEG_INIT;
@@ -773,11 +762,13 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
         return DOS_SUCC;
     }
 
-    if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
+    if (pstCalleeLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND_TT)
     {
-        ulErrCode = CC_ERR_SC_MESSAGE_SENT_ERR;
-
-        return DOS_FAIL;
+        sc_make_call2eix(pstSCB, pstCalleeLegCB);
+    }
+    else
+    {
+        sc_make_call2sip(pstSCB, pstCalleeLegCB);
     }
 
     /* 放回铃音给客户 */
@@ -798,7 +789,6 @@ U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
 {
     SC_LEG_CB *pstCallingLegCB = NULL;
     SC_LEG_CB *pstCalleeLegCB = NULL;
-    SC_MSG_CMD_CALL_ST      stCallMsg;
     U32 ulErrCode = CC_ERR_NO_REASON;
     S8 szCallee[SC_NUM_LENGTH] = {0,};
     SC_SRV_CB *pstIndSCB = NULL;
@@ -854,11 +844,6 @@ U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
         }
     }
     /* 申请一个新的leg，发起呼叫 */
-    stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
-    stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-    stCallMsg.stMsgTag.usInterErr = 0;
-    stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
-
     pstCalleeLegCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstCalleeLegCB))
     {
@@ -867,8 +852,6 @@ U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
 
         goto process_fail;
     }
-
-    stCallMsg.ulLCBNo = pstCalleeLegCB->ulCBNo;
 
     pstCalleeLegCB->stCall.bValid = DOS_TRUE;
     pstCalleeLegCB->stCall.ucStatus = SC_LEG_INIT;
@@ -939,11 +922,13 @@ U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
         return DOS_SUCC;
     }
 
-    if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
+    if (pstCalleeLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND_TT)
     {
-        ulErrCode = CC_ERR_SC_MESSAGE_SENT_ERR;
-
-        return DOS_FAIL;
+        sc_make_call2eix(pstSCB, pstCalleeLegCB);
+    }
+    else
+    {
+        sc_make_call2sip(pstSCB, pstCalleeLegCB);
     }
 
     pstSCB->stDemoTask.stSCBTag.usStatus = SC_AUTO_CALL_EXEC2;
@@ -1338,7 +1323,6 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST  *pstAgentNodeCallee
     SC_LEG_CB        *pstAgentLCB       = NULL;
     SC_LEG_CB        *pstAgentCalleeLCB = NULL;
     U32              ulRet              = DOS_FAIL;
-    SC_MSG_CMD_CALL_ST stCallMsg;
 
     if (DOS_ADDR_INVALID(pstAgentNodeCallee)
         || DOS_ADDR_INVALID(pstAgentNodeCallee->pstAgentInfo))
@@ -1515,23 +1499,13 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST  *pstAgentNodeCallee
             /* 直接呼叫被叫坐席 */
             pstSCB->stCallAgent.stSCBTag.usStatus = SC_CALL_AGENT_EXEC2;
 
-            /* 新LEG处理一下号码 */
-            dos_snprintf(pstLCB->stCall.stNumInfo.szRealCallee, sizeof(pstLCB->stCall.stNumInfo.szRealCallee), pstLCB->stCall.stNumInfo.szOriginalCallee);
-            dos_snprintf(pstLCB->stCall.stNumInfo.szRealCalling, sizeof(pstLCB->stCall.stNumInfo.szRealCalling), pstLCB->stCall.stNumInfo.szOriginalCalling);
-
-            dos_snprintf(pstLCB->stCall.stNumInfo.szCallee, sizeof(pstLCB->stCall.stNumInfo.szCallee), pstLCB->stCall.stNumInfo.szRealCallee);
-            dos_snprintf(pstLCB->stCall.stNumInfo.szCalling, sizeof(pstLCB->stCall.stNumInfo.szCalling), pstLCB->stCall.stNumInfo.szRealCalling);
-
-            stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
-            stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-            stCallMsg.stMsgTag.usInterErr = 0;
-            stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
-            stCallMsg.ulLCBNo = pstLCB->ulCBNo;
-
-            if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
+            if (pstLCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND_TT)
             {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
+                sc_make_call2eix(pstSCB, pstLCB);
+            }
+            else
+            {
+                sc_make_call2sip(pstSCB, pstLCB);
             }
 
             /* 给主叫坐席放回铃音 */
@@ -1625,16 +1599,13 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST  *pstAgentNodeCallee
         /* 直接呼叫主叫坐席 */
         pstSCB->stCallAgent.stSCBTag.usStatus = SC_CALL_AGENT_EXEC;
 
-        stCallMsg.stMsgTag.ulMsgType = SC_CMD_CALL;
-        stCallMsg.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-        stCallMsg.stMsgTag.usInterErr = 0;
-        stCallMsg.ulSCBNo = pstSCB->ulSCBNo;
-        stCallMsg.ulLCBNo = pstLCB->ulCBNo;
-
-        if (sc_send_cmd_new_call(&stCallMsg.stMsgTag) != DOS_SUCC)
+        if (pstLCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND_TT)
         {
-            DOS_ASSERT(0);
-            return DOS_FAIL;
+            sc_make_call2eix(pstSCB, pstLCB);
+        }
+        else
+        {
+            sc_make_call2sip(pstSCB, pstLCB);
         }
         sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
     }

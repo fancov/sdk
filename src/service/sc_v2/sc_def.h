@@ -637,6 +637,8 @@ typedef struct tagSCSUTimeInfo{
     U32          ulDTMFLastTime;       /**< 最后一次DTMF的时间 */
     U32          ulRecordStartTime;    /**< 录音开始的时间 */
     U32          ulRecordStopTime;     /**< 录音结束的时间 */
+    U32          ulTransferStartTime;  /**< 转接开始的时间 */
+    U32          ulTransferEndTime;    /**< 转接结束的时间 */
 
 }SC_SU_TIME_INFO_ST;
 
@@ -1287,15 +1289,16 @@ typedef struct tagSCMarkCustom{
 
 /** 呼叫转接业务状态 */
 typedef enum tagSCTransStatus{
-    SC_TRANSFER_IDEL,       /**< 状态初始化 */
-    SC_TRANSFER_AUTH,       /**< 验证转接业务，如果第三方为PSTN，也要一起认证 */
+    SC_TRANSFER_IDEL,           /**< 状态初始化 */
+    SC_TRANSFER_AUTH,           /**< 验证转接业务，如果第三方为PSTN，也要一起认证 */
+    SC_TRANSFER_TRANSFERRING,   /**< 执行转接命令 */
     SC_TRANSFER_EXEC,
-    SC_TRANSFER_PROC,       /**< 呼叫转接处理(请求呼叫第三方的流程) */
+    SC_TRANSFER_PROC,           /**< 呼叫转接处理(请求呼叫第三方的流程) */
     SC_TRANSFER_ALERTING,
-    SC_TRANSFER_ACTIVE,     /**< 第三方接通 */
-    SC_TRANSFER_TRANSFER,   /**< 协商转时，转接呼叫 */
-    SC_TRANSFER_FINISHED,   /**< 转接完成 */
-    SC_TRANSFER_RELEASE,    /**< 转接业务结束 */
+    SC_TRANSFER_TONE,
+    SC_TRANSFER_TRANSFER,       /**< 协商转时，A 和 B 通话 */
+    SC_TRANSFER_FINISHED,       /**< 转接完成 */
+    SC_TRANSFER_RELEASE,        /**< 转接业务结束 */
 }SC_TRANS_STATE_EN;
 
 typedef enum tagSCTransType{
@@ -2186,6 +2189,9 @@ U32 sc_transfer_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_transfer_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_transfer_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_transfer_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 

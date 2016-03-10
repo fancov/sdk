@@ -1604,6 +1604,14 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
             dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
         }
     }
+    else if (pstSCB->stSigin.stSCBTag.bValid)
+    {
+        if (DOS_ADDR_VALID(pstSCB->stSigin.pstAgentNode)
+            && DOS_ADDR_VALID(pstSCB->stSigin.pstAgentNode->pstAgentInfo))
+        {
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stSigin.pstAgentNode->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+        }
+    }
 
     pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum) - 1] = '\0';
 
@@ -1822,7 +1830,7 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
     return DOS_SUCC;
 }
 
-U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
+U32 sc_send_special_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg, U32 ulType)
 {
     U32                   ulCurrentLeg = 0;
     BS_MSG_CDR            *pstCDRMsg = NULL;
@@ -1836,7 +1844,8 @@ U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
 
     if (DOS_ADDR_INVALID(pstSCB)
         || DOS_ADDR_INVALID(pstLeg)
-        || !pstLeg->stRecord.bValid)
+        || !pstLeg->stRecord.bValid
+        || ulType >= BS_SERV_BUTT)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
@@ -1934,17 +1943,32 @@ U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
 
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulStartTimeStamp = pstLeg->stCall.stTimeInfo.ulStartTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulRingTimeStamp = pstLeg->stCall.stTimeInfo.ulRingTime;
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstLeg->stCall.stTimeInfo.ulRecordStartTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulIVRFinishTimeStamp = pstLeg->stCall.stTimeInfo.ulIVREndTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulDTMFTimeStamp = pstLeg->stCall.stTimeInfo.ulDTMFStartTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulBridgeTimeStamp = pstLeg->stCall.stTimeInfo.ulBridgeTime;
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstLeg->stCall.stTimeInfo.ulRecordStopTime;
+
     //pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstFristLeg->stCall.stTimeInfo.ul;
     //pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstFristLeg->stCall.stTimeInfo.ulStartTime;
+    switch (ulType)
+    {
+        case BS_SERV_RECORDING:
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstLeg->stCall.stTimeInfo.ulRecordStartTime;
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstLeg->stCall.stTimeInfo.ulRecordStopTime;
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile, pstLeg->stRecord.szRecordFilename, BS_MAX_RECORD_FILE_NAME_LEN);
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile[BS_MAX_RECORD_FILE_NAME_LEN - 1] = '\0';
+            break;
+        case BS_SERV_CALL_TRANSFER:
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstLeg->stCall.stTimeInfo.ulTransferStartTime;
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstLeg->stCall.stTimeInfo.ulTransferEndTime;
+            break;
 
-    dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile, pstLeg->stRecord.szRecordFilename, BS_MAX_RECORD_FILE_NAME_LEN);
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].szRecordFile[BS_MAX_RECORD_FILE_NAME_LEN - 1] = '\0';
+        default:
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstLeg->stCall.stTimeInfo.ulAnswerTime;
+            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstLeg->stCall.stTimeInfo.ulByeTime;
+            break;
+    }
 
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType[0] = ulType;
     //pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldCnt = pstFirstSCB->usHoldCnt;
     //pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldTimeLen = pstFirstSCB->usHoldTotalTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[0] = 0;
@@ -1954,8 +1978,6 @@ U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
     //pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstFirstSCB->ulTrunkID) ? 0 : pstFirstSCB->ulTrunkID;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstLeg->stCall.ulCause;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
-
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType[0] = BS_SERV_RECORDING;
 
     ulCurrentLeg++;
     pstCDRMsg->ucLegNum++;
@@ -2056,6 +2078,7 @@ U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg)
 
     return DOS_SUCC;
 }
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

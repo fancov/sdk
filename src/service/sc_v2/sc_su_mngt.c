@@ -166,45 +166,48 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
 
     pstLCB->stCall.ucLocalMode = SC_LEG_LOCAL_NORMAL;
     pstLCB->stCall.stTimeInfo.ulStartTime = time(NULL);
-
-    if (dos_strnicmp(pszCallSrc, "external", dos_strlen("external")) == 0)
+    if (pstLCB->ulSCBNo == U32_BUTT
+        && pstLCB->ulIndSCBNo == U32_BUTT)
     {
-        if (dos_strnicmp(pszCallDirection, "Inbound", dos_strlen("Inbound")) == 0)
+        if (dos_strnicmp(pszCallSrc, "external", dos_strlen("external")) == 0)
         {
-            pstLCB->stCall.ucPeerType = SC_LEG_PEER_INBOUND;
-
-            if (g_stSysStat.ulIncomingCalls != U32_BUTT)
+            if (dos_strnicmp(pszCallDirection, "Inbound", dos_strlen("Inbound")) == 0)
             {
-                g_stSysStat.ulIncomingCalls++;
+                pstLCB->stCall.ucPeerType = SC_LEG_PEER_INBOUND;
+
+                if (g_stSysStat.ulIncomingCalls != U32_BUTT)
+                {
+                    g_stSysStat.ulIncomingCalls++;
+                }
+                else
+                {
+                    DOS_ASSERT(0);
+                }
             }
             else
             {
-                DOS_ASSERT(0);
+                pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+
+                if (g_stSysStat.ulOutgoingCalls != U32_BUTT)
+                {
+                    g_stSysStat.ulOutgoingCalls ++;
+                }
+                else
+                {
+                    DOS_ASSERT(0);
+                }
             }
         }
         else
         {
-            pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
-
-            if (g_stSysStat.ulOutgoingCalls != U32_BUTT)
+            if (dos_strnicmp(pszCallDirection, "Inbound", dos_strlen("Inbound")) == 0)
             {
-                g_stSysStat.ulOutgoingCalls ++;
+                pstLCB->stCall.ucPeerType = SC_LEG_PEER_INBOUND_INTERNAL;
             }
             else
             {
-                DOS_ASSERT(0);
+                pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
             }
-        }
-    }
-    else
-    {
-        if (dos_strnicmp(pszCallDirection, "Inbound", dos_strlen("Inbound")) == 0)
-        {
-            pstLCB->stCall.ucPeerType = SC_LEG_PEER_INBOUND_INTERNAL;
-        }
-        else
-        {
-            pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
         }
     }
 
