@@ -1508,7 +1508,7 @@ U32 sc_call_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     /* 生成录音话单 */
-    sc_send_billing_stop2bs_record(pstSCB, pstLCB);
+    sc_send_special_billing_stop2bs(pstSCB, pstLCB, BS_SERV_RECORDING);
     sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
 
     return DOS_SUCC;
@@ -2689,7 +2689,7 @@ U32 sc_preview_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     /* 生成录音话单 */
-    sc_send_billing_stop2bs_record(pstSCB, pstLCB);
+    sc_send_special_billing_stop2bs(pstSCB, pstLCB, BS_SERV_RECORDING);
     sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
 
     return DOS_SUCC;
@@ -4870,7 +4870,7 @@ U32 sc_auto_call_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     /* 生成录音话单 */
-    sc_send_billing_stop2bs_record(pstSCB, pstLCB);
+    sc_send_special_billing_stop2bs(pstSCB, pstLCB, BS_SERV_RECORDING);
     sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
 
     return DOS_SUCC;
@@ -5667,6 +5667,9 @@ U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    /* 挂断时，生成长签的话单 */
+    sc_send_billing_stop2bs(pstSCB, pstLegCB, NULL);
 
     switch (pstSCB->stSigin.stSCBTag.usStatus)
     {
@@ -6727,6 +6730,8 @@ U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 break;
             }
 
+            pstNotifyLeg->stCall.stTimeInfo.ulTransferStartTime = time(NULL);
+
             pstPublishAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
 
             if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
@@ -6792,6 +6797,8 @@ U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
                     pstNotifyLeg->ulSCBNo = U32_BUTT;
                     sc_req_play_sound(pstNotifyLeg->ulIndSCBNo, pstNotifyLeg->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
+
+                    /* TODO 这里需要生成转接的话单 */
                 }
                 else
                 {
@@ -6909,11 +6916,87 @@ U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return ulRet;
 }
 
+U32 sc_transfer_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_DTMF_ST    *pstDTMF      = NULL;
+    SC_LEG_CB             *pstLCB       =  NULL;
+
+    pstDTMF = (SC_MSG_EVT_DTMF_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstDTMF) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing transfer dtmf event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
+
+    pstLCB = sc_lcb_get(pstDTMF->ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 开启 接入码 业务 */
+    if (!pstSCB->stAccessCode.stSCBTag.bValid)
+    {
+        /* 开启接入码业务 */
+        if (pstDTMF->cDTMFVal != '*'
+            && pstDTMF->cDTMFVal != '#' )
+        {
+            /* 第一个字符不是 '*' 或者 '#' 不保存  */
+            return DOS_SUCC;
+        }
+
+        /* 只有坐席对应的leg执行接入码业务 */
+        if (pstSCB->stTransfer.stSCBTag.usStatus != SC_TRANSFER_FINISHED)
+        {
+            return DOS_SUCC;
+        }
+
+        pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+        pstSCB->stAccessCode.szDialCache[0] = '\0';
+        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+        pstSCB->stAccessCode.ulAgentID = pstSCB->stPreviewCall.ulAgentID;
+        pstSCB->ulCurrentSrv++;
+        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+    }
+
+    return DOS_SUCC;
+}
+
+U32 sc_transfer_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    /* 处理录音结束 */
+    SC_MSG_CMD_RECORD_ST *pstRecord = NULL;
+    SC_LEG_CB            *pstLCB    = NULL;
+
+    pstRecord = (SC_MSG_CMD_RECORD_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstRecord) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstLCB = sc_lcb_get(pstRecord->ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        return DOS_FAIL;
+    }
+
+    /* 生成录音话单 */
+    sc_send_special_billing_stop2bs(pstSCB, pstLCB, BS_SERV_RECORDING);
+    sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
+
+    return DOS_SUCC;
+}
+
 U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_HUNGUP_ST    *pstEvtCall           = NULL;
     SC_LEG_CB               *psthungLegCB         = NULL;
     SC_LEG_CB               *pstOtherLegCB        = NULL;
+    SC_LEG_CB               *pstNotifyLegCB       = NULL;
     SC_AGENT_NODE_ST        *pstNotifyAgentNode   = NULL;
     SC_AGENT_NODE_ST        *pstPublishAgentNode  = NULL;
     SC_AGENT_NODE_ST        *pstSubAgentNode      = NULL;
@@ -6963,6 +7046,32 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                     pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
                     pstSCB->stTransfer.ulNotifyAgentID = 0;
+
+                    /* 生成转接的话单，盲转就按1秒计算 */
+                    psthungLegCB->stCall.stTimeInfo.ulTransferEndTime = psthungLegCB->stCall.stTimeInfo.ulTransferStartTime + 1;
+                    sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_CALL_TRANSFER);
+                    sc_scb_remove_service(pstSCB, BS_SERV_CALL_TRANSFER);
+
+                    /* 出 ulNotifyLegNo 自己的话单  */
+                    if (psthungLegCB->ulIndSCBNo == U32_BUTT)
+                    {
+                        if (psthungLegCB->stCall.ucPeerType == SC_LEG_PEER_INBOUND)
+                        {
+                            sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_INBAND_CALL);
+                        }
+                        else if (psthungLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
+                        {
+                            sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_OUTBAND_CALL);
+                        }
+                        else
+                        {
+                            /* 内部呼叫就不用生成话单了 */
+                        }
+                    }
+                    else
+                    {
+                        /* 长签时，会在长签业务中生成话单，这里就不需要了 */
+                    }
                 }
                 else
                 {
@@ -7015,12 +7124,32 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
                     pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
                     pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+
+                    pstOtherLegCB->stCall.stTimeInfo.ulByeTime = psthungLegCB->stCall.stTimeInfo.ulByeTime;
+
+                    /* 生成话单 */
+                    if (SC_LEG_PEER_OUTBOUND == pstOtherLegCB->stCall.ucPeerType)
+                    {
+                        sc_send_special_billing_stop2bs(pstSCB, pstOtherLegCB, BS_SERV_OUTBAND_CALL);
+                    }
+
+                    sc_send_billing_stop2bs(pstSCB, psthungLegCB, NULL);
                 }
                 else
                 {
                     pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
                     pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
                     pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
+
+                    pstOtherLegCB->stCall.stTimeInfo.ulByeTime = psthungLegCB->stCall.stTimeInfo.ulByeTime;
+
+                    /* 生成话单 */
+                    if (SC_LEG_PEER_OUTBOUND == psthungLegCB->stCall.ucPeerType)
+                    {
+                        sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_OUTBAND_CALL);
+                    }
+
+                    sc_send_billing_stop2bs(pstSCB, pstOtherLegCB, NULL);
                 }
 
                 if (DOS_ADDR_VALID(pstHungAgentNode) && DOS_ADDR_VALID(pstHungAgentNode->pstAgentInfo))
@@ -7142,6 +7271,34 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                     pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
                     pstSCB->stTransfer.ulNotifyAgentID = 0;
+
+                    psthungLegCB->stCall.stTimeInfo.ulTransferEndTime = psthungLegCB->stCall.stTimeInfo.ulByeTime;
+                    /* 生成转接换单 */
+                    sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_CALL_TRANSFER);
+                    sc_scb_remove_service(pstSCB, BS_SERV_CALL_TRANSFER);
+
+                    /* 出 ulNotifyLegNo 自己的话单  */
+                    if (psthungLegCB->ulIndSCBNo == U32_BUTT)
+                    {
+                        if (psthungLegCB->stCall.ucPeerType == SC_LEG_PEER_INBOUND)
+                        {
+                            sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_INBAND_CALL);
+                            sc_scb_remove_service(pstSCB, BS_SERV_INBAND_CALL);
+                        }
+                        else if (psthungLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
+                        {
+                            sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_OUTBAND_CALL);
+                            sc_scb_remove_service(pstSCB, BS_SERV_OUTBAND_CALL);
+                        }
+                        else
+                        {
+                            /* 内部呼叫就不用生成话单了 */
+                        }
+                    }
+                    else
+                    {
+                        /* 长签时，会在长签业务中生成话单，这里就不需要了 */
+                    }
                 }
                 else if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
                 {
@@ -7164,6 +7321,32 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                     pstSCB->stTransfer.ulPublishLegNo = U32_BUTT;
                     pstSCB->stTransfer.ulPublishAgentID = 0;
+
+                    pstNotifyLegCB = sc_lcb_get(pstSCB->stTransfer.ulNotifyLegNo);
+                    if (DOS_ADDR_VALID(pstNotifyLegCB))
+                    {
+                        pstNotifyLegCB->stCall.stTimeInfo.ulTransferEndTime = psthungLegCB->stCall.stTimeInfo.ulByeTime;
+                        /* 生成转接换单 */
+                        sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_CALL_TRANSFER);
+                        sc_scb_remove_service(pstSCB, BS_SERV_CALL_TRANSFER);
+                    }
+
+                    /* 生成C的话单，呼叫C的时候没有将C的业务存放到scb中,所以这里不用删除 */
+                    if (psthungLegCB->ulIndSCBNo == U32_BUTT)
+                    {
+                        if (psthungLegCB->stCall.ucPeerType == SC_LEG_PEER_INBOUND)
+                        {
+                            sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_INBAND_CALL);
+                        }
+                        else if (psthungLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
+                        {
+                            sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_OUTBAND_CALL);
+                        }
+                        else
+                        {
+                            /* 内部呼叫就不用生成话单了 */
+                        }
+                    }
                 }
                 else
                 {
@@ -7180,6 +7363,18 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                     /* 挂断发起方吧 */
                     sc_req_hungup(pstSCB->ulSCBNo, pstOtherLegCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+
+                    /* 生成转接话单 */
+                    pstNotifyLegCB = sc_lcb_get(pstSCB->stTransfer.ulNotifyLegNo);
+                    if (DOS_ADDR_VALID(pstNotifyLegCB))
+                    {
+                        pstNotifyLegCB->stCall.stTimeInfo.ulTransferEndTime = psthungLegCB->stCall.stTimeInfo.ulByeTime;
+                        /* 生成转接换单 */
+                        sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_CALL_TRANSFER);
+                        sc_scb_remove_service(pstSCB, BS_SERV_CALL_TRANSFER);
+                    }
+
+                    sc_send_billing_stop2bs(pstSCB, psthungLegCB, NULL);
                 }
 
                 if (psthungLegCB->ulIndSCBNo != U32_BUTT)
@@ -7200,12 +7395,28 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
                     pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
                     pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+
+                    /* 生成话单 */
+                    if (SC_LEG_PEER_OUTBOUND == pstOtherLegCB->stCall.ucPeerType)
+                    {
+                        sc_send_special_billing_stop2bs(pstSCB, pstOtherLegCB, BS_SERV_OUTBAND_CALL);
+                    }
+
+                    sc_send_billing_stop2bs(pstSCB, psthungLegCB, NULL);
                 }
                 else
                 {
                     pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
                     pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
                     pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
+
+                    /* 生成话单 */
+                    if (SC_LEG_PEER_OUTBOUND == psthungLegCB->stCall.ucPeerType)
+                    {
+                        sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_OUTBAND_CALL);
+                    }
+
+                    sc_send_billing_stop2bs(pstSCB, pstOtherLegCB, NULL);
                 }
 
                 if (DOS_ADDR_VALID(pstHungAgentNode) && DOS_ADDR_VALID(pstHungAgentNode->pstAgentInfo))
@@ -7784,7 +7995,7 @@ U32 sc_demo_task_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     /* 生成录音话单 */
-    sc_send_billing_stop2bs_record(pstSCB, pstLCB);
+    sc_send_special_billing_stop2bs(pstSCB, pstLCB, BS_SERV_RECORDING);
     sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
 
     return DOS_SUCC;

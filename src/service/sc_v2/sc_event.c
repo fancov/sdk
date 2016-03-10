@@ -559,8 +559,16 @@ U32 sc_srv_transfer_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST
             ulRet = sc_transfer_hold(pstMsg, pstSCB);
             break;
 
+        case SC_EVT_DTMF:
+            ulRet = sc_transfer_dtmf(pstMsg, pstSCB);
+            break;
+
         case SC_EVT_PLAYBACK_END:
             ulRet = sc_transfer_playback_stop(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_RECORD_END:
+            ulRet = sc_transfer_record_stop(pstMsg, pstSCB);
             break;
 
         case SC_EVT_CALL_RERLEASE:

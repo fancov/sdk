@@ -232,7 +232,7 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
         case AGENT_BIND_SIP:
             dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee), pstAgentInfo->szUserID);
             pstLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
-
+            sc_scb_set_service(pstSCB, BS_SERV_INTER_CALL);
             break;
 
         case AGENT_BIND_TELE:
@@ -251,6 +251,7 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
         case AGENT_BIND_TT_NUMBER:
             dos_snprintf(pstLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee), pstAgentInfo->szTTNumber);
             pstLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
+            sc_scb_set_service(pstSCB, BS_SERV_INTER_CALL);
             break;
 
         default:

@@ -433,6 +433,8 @@ VOID sc_lcb_call_init(SC_SU_CALL_ST *pstCall)
     pstCall->stTimeInfo.ulDTMFLastTime = 0;
     pstCall->stTimeInfo.ulRecordStartTime = 0;
     pstCall->stTimeInfo.ulRecordStopTime = 0;
+    pstCall->stTimeInfo.ulTransferStartTime = 0;
+    pstCall->stTimeInfo.ulTransferEndTime = 0;
     pstCall->stNumInfo.szOriginalCallee[0] = '\0';
     pstCall->stNumInfo.szOriginalCalling[0] = '\0';
     pstCall->stNumInfo.szRealCallee[0] = '\0';

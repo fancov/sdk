@@ -637,6 +637,8 @@ typedef struct tagSCSUTimeInfo{
     U32          ulDTMFLastTime;       /**< 最后一次DTMF的时间 */
     U32          ulRecordStartTime;    /**< 录音开始的时间 */
     U32          ulRecordStopTime;     /**< 录音结束的时间 */
+    U32          ulTransferStartTime;  /**< 转接开始的时间 */
+    U32          ulTransferEndTime;    /**< 转接结束的时间 */
 
 }SC_SU_TIME_INFO_ST;
 
@@ -2187,7 +2189,9 @@ U32 sc_transfer_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_transfer_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_transfer_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_transfer_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 

@@ -72,7 +72,7 @@ typedef struct tagBSMsgNode
 U32 sc_send_release_ind2bs(BS_MSG_TAG *pstMsg);
 U32 sc_send_hello2bs(U32 ulClientIndex);
 U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB *pstSecondLeg);
-U32 sc_send_billing_stop2bs_record(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg);
+U32 sc_send_special_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg, U32 ulType);
 #if SC_BS_NEED_RESEND
 U32 sc_bs_msg_free(U32 ulSeq);
 #endif
