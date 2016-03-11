@@ -616,7 +616,50 @@ U32 sc_sip_account_update_info2db(U32 ulPublicIP, U32 ulPrivateIP, SC_SIP_STATUS
     return sc_send_msg2db(pstMsg);
 }
 
+U32 sc_sip_account_update_status(S8 *szUserID, SC_SIP_STATUS_TYPE_EN enStatus, U32 *pulSipID)
+{
+    SC_USER_ID_NODE_ST *pstUserID   = NULL;
+    HASH_NODE_S        *pstHashNode = NULL;
+    U32                ulHashIndex  = U32_BUTT;
 
+    ulHashIndex = sc_string_hash_func(szUserID, SC_SIP_ACCOUNT_HASH_SIZE);
+    pthread_mutex_lock(&g_mutexHashSIPUserID);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)szUserID, sc_sip_account_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexHashSIPUserID);
+
+        return DOS_FAIL;
+    }
+
+    pstUserID = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstUserID))
+    {
+        pthread_mutex_unlock(&g_mutexHashSIPUserID);
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstUserID->enStatus = enStatus;
+    switch (enStatus)
+    {
+        case SC_SIP_STATUS_TYPE_REGISTER:
+            pstUserID->stStat.ulRegisterCnt++;
+            break;
+        case SC_SIP_STATUS_TYPE_UNREGISTER:
+            pstUserID->stStat.ulUnregisterCnt++;
+            break;
+        default:
+            break;
+    }
+
+    *pulSipID = pstUserID->ulSIPID;
+    pthread_mutex_unlock(&g_mutexHashSIPUserID);
+
+    return DOS_SUCC;
+}
 
 
 /**
@@ -1548,6 +1591,38 @@ U32 sc_gateway_update_status2db(U32 ulGateWayID, SC_TRUNK_STATE_TYPE_EN enTrunkS
     dos_strcpy(pstMsg->szData, szSQL);
 
     return sc_send_msg2db(pstMsg);
+}
+
+U32 sc_gateway_update_status(U32 ulGWID, SC_TRUNK_STATE_TYPE_EN enRegisterStatus)
+{
+    SC_GW_NODE_ST  *pstGWNode     = NULL;
+    HASH_NODE_S    *pstHashNode   = NULL;
+    U32             ulHashIndex   = U32_BUTT;
+
+    if (enRegisterStatus >= SC_TRUNK_STATE_TYPE_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_int_hash_func(ulGWID, SC_GW_HASH_SIZE);
+
+    pthread_mutex_lock(&g_mutexHashGW);
+    pstHashNode = hash_find_node(g_pstHashGW, ulHashIndex, (VOID *)&ulGWID, sc_gateway_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexHashGW);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstGWNode = (SC_GW_NODE_ST *)pstHashNode->pHandle;
+    pstGWNode->ulRegisterStatus = enRegisterStatus;
+
+    pthread_mutex_unlock(&g_mutexHashGW);
+
+    return DOS_SUCC;
 }
 
 /**

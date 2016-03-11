@@ -550,6 +550,8 @@ U32 sc_sip_account_get_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUse
 U32 sc_sip_account_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID);
 U32 sc_sip_account_get_customer(S8 *pszNum);
 BOOL sc_sip_account_extension_check(S8 *pszNum, U32 ulCustomerID);
+U32 sc_sip_account_update_status(S8 *szUserID, SC_SIP_STATUS_TYPE_EN enStatus, U32 *pulSipID);
+U32 sc_sip_account_update_info2db(U32 ulPublicIP, U32 ulPrivateIP, SC_SIP_STATUS_TYPE_EN enStatus, U32 ulSipID);
 
 U32 sc_did_load(U32 ulIndex);
 U32 sc_did_update_proc(U32 ulAction, U32 ulDidID);
@@ -571,6 +573,8 @@ U32 sc_gateway_group_load(U32 ulIndex);
 U32 sc_gateway_load(U32 ulIndex);
 U32 sc_gateway_update_proc(U32 ulAction, U32 ulGatewayID);
 U32 sc_gateway_group_update_proc(U32 ulAction, U32 ulGwGroupID);
+U32 sc_gateway_update_status(U32 ulGWID, SC_TRUNK_STATE_TYPE_EN enRegisterStatus);
+U32 sc_gateway_update_status2db(U32 ulGateWayID, SC_TRUNK_STATE_TYPE_EN enTrunkState);
 
 S32 sc_task_load(U32 ulIndex);
 U32 sc_task_load_callee(SC_TASK_CB *pstTCB);
