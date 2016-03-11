@@ -423,15 +423,6 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
         pstExtData->pszNetworkIP = dos_strndup(esl_event_get_header(pstEvent, "network-ip"), MAX_BUFFER_LEN);
         pstExtData->pszContact = dos_strndup(esl_event_get_header(pstEvent, "contact"), MAX_BUFFER_LEN);
 
-        dos_printf("Params: %s, %s, %s, %s, %s, %s, %s"
-                    , pstExtData->pszSUBClass
-                    , pstExtData->pszGateway
-                    , pstExtData->pszStatus
-                    , pstExtData->pszFromUser
-                    , pstExtData->pszExpire
-                    , pstExtData->pszNetworkIP
-                    , pstExtData->pszContact);
-
         pthread_mutex_lock(&g_mutexExtMngtMsg);
 
         DLL_Init_Node(pstDLLNode);

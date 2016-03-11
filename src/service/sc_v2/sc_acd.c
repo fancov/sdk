@@ -2684,6 +2684,7 @@ U32 sc_agent_work_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_WORK_BUSY:
         case SC_ACD_WORK_AWAY:
             pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
+            pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_IDEL;
             bIsPub = DOS_TRUE;
             break;
 

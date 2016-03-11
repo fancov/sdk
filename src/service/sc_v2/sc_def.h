@@ -874,6 +874,8 @@ typedef struct tagSCLegCB{
     U32                   ulSCBNo;
     /** 记录独立业务控制块 */
     U32                   ulIndSCBNo;
+    /** 记录第三方控制块，如监听的业务控制块等 */
+    U32                   ulOtherSCBNo;
     /** 是否已经分配 */
     U32                   bValid:1;
     /** 是否调试跟踪 */

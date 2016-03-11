@@ -624,6 +624,7 @@ VOID sc_lcb_init(SC_LEG_CB *pstLCB)
     pstLCB->bTrace = DOS_FALSE;
     pstLCB->ulSCBNo = U32_BUTT;
     pstLCB->ulIndSCBNo = U32_BUTT;
+    pstLCB->ulOtherSCBNo = U32_BUTT;
     sem_init(&pstLCB->stEventSem, 0, 1);
 
     sc_lcb_call_init(&pstLCB->stCall);
