@@ -287,6 +287,8 @@ processing:
         return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_SC_SYSTEM_BUSY);
     }
 
+    pstSCB->stCall.ulCalleeLegNo = pstCalleeLeg->ulCBNo;
+
     pstCalleeLeg->ulSCBNo = pstSCB->ulSCBNo;
     pstCalleeLeg->stCall.bValid = DOS_TRUE;
     pstCalleeLeg->stCall.ucStatus = SC_LEG_INIT;
