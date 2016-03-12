@@ -7348,45 +7348,11 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         switch (pstSCB->stTransfer.stSCBTag.usStatus)
         {
             case SC_TRANSFER_AUTH:
-                /* TODO 异常处理 */
                 break;
             case SC_TRANSFER_EXEC:
             case SC_TRANSFER_PROC:
             case SC_TRANSFER_ALERTING:
             case SC_TRANSFER_TONE:
-                if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
-                {
-                    /* 发起方 挂断，生成转接的话单;生成话单后应该删除转接业务和B对应的业务；如果存在 ulNotifyAgentID，则需要修改坐席的状态 */
-                    pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
-                    if (DOS_ADDR_VALID(pstNotifyAgentNode)
-                        && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
-                    {
-                        sc_agent_serv_status_update(pstNotifyAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
-                    }
-
-                    pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
-                    pstSCB->stTransfer.ulNotifyAgentID = 0;
-                }
-                else if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
-                {
-
-                }
-                else
-                {
-
-                }
-
-                if (psthungLegCB->ulIndSCBNo != U32_BUTT)
-                {
-                    /* 挂断的坐席是长签，这里不需要释放 */
-                    psthungLegCB->ulSCBNo = U32_BUTT;
-                }
-                else
-                {
-                    sc_lcb_free(psthungLegCB);
-                }
-                break;
-
             case SC_TRANSFER_TRANSFER:
                 pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_FINISHED;
                 if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
@@ -7529,12 +7495,21 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 break;
 
             case SC_TRANSFER_FINISHED:
-                /* 正常挂断，判断坐席是否长签，判断是否需要进行客户标记等 */
+                /* 在这个状态，一定只有两通电话而且必须有被转接的那个电话 */
                 if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulSubLegNo)
                 {
                     pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
-                    pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
-                    pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+                    if (pstSCB->stTransfer.ulPublishLegNo != U32_BUTT)
+                    {
+                        pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+                        pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+                    }
+                    else
+                    {
+                        pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
+                        pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulNotifyLegNo);
+                    }
+
                     pstOtherLegCB->stCall.stTimeInfo.ulByeTime = psthungLegCB->stCall.stTimeInfo.ulByeTime;
 
                     /* 生成话单 */
@@ -7547,9 +7522,18 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
                 else
                 {
-                    pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+                    if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
+                    {
+                        pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+                    }
+                    else
+                    {
+                        pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
+                    }
+
                     pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
                     pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
+
                     pstOtherLegCB->stCall.stTimeInfo.ulByeTime = psthungLegCB->stCall.stTimeInfo.ulByeTime;
 
                     /* 生成话单 */
