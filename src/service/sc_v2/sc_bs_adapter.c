@@ -1844,7 +1844,6 @@ U32 sc_send_special_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg, U32 ul
 
     if (DOS_ADDR_INVALID(pstSCB)
         || DOS_ADDR_INVALID(pstLeg)
-        || !pstLeg->stRecord.bValid
         || ulType >= BS_SERV_BUTT)
     {
         DOS_ASSERT(0);

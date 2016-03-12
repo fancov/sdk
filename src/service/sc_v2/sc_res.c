@@ -3625,7 +3625,7 @@ succ:
     {
         if (DOS_ADDR_VALID(pstNumTransform))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstLCB->stCall.stNumInfo.szOriginalCallee, szNeedTransformNum);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "The number transfer(%d) SUCC, befor : %s ,after : %s", pstNumTransform->ulID, pstLCB->stCall.stNumInfo.szOriginalCallee, szNeedTransformNum);
         }
         dos_strcpy(pstLCB->stCall.stNumInfo.szRealCallee, szNeedTransformNum);
     }

@@ -7527,6 +7527,7 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
 
                 break;
+
             case SC_TRANSFER_FINISHED:
                 /* 正常挂断，判断坐席是否长签，判断是否需要进行客户标记等 */
                 if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulSubLegNo)
@@ -7534,6 +7535,7 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
                     pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
                     pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+                    pstOtherLegCB->stCall.stTimeInfo.ulByeTime = psthungLegCB->stCall.stTimeInfo.ulByeTime;
 
                     /* 生成话单 */
                     if (SC_LEG_PEER_OUTBOUND == pstOtherLegCB->stCall.ucPeerType)
@@ -7548,6 +7550,7 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
                     pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
                     pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
+                    pstOtherLegCB->stCall.stTimeInfo.ulByeTime = psthungLegCB->stCall.stTimeInfo.ulByeTime;
 
                     /* 生成话单 */
                     if (SC_LEG_PEER_OUTBOUND == psthungLegCB->stCall.ucPeerType)

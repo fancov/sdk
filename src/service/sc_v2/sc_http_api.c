@@ -761,7 +761,8 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
                         return SC_HTTP_ERRNO_INVALID_REQUEST;
                     }
                     pstAgentNode = sc_agent_get_by_id(ulAgentCalled);
-                    if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+                    if (DOS_ADDR_VALID(pstAgentNode)
+                        && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
                     {
                         ulRet = sc_call_ctrl_call_agent(ulAgent, pstAgentNode);
                     }
