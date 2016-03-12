@@ -2318,6 +2318,10 @@ U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_SERV_RINGBACK:
         case SC_ACD_SERV_PROC:
             pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_IDEL;
+            if (!pstAgentQueueInfo->bNeedConnected)
+            {
+                pstAgentQueueInfo->ulLegNo = U32_BUTT;
+            }
             bIsPub = DOS_TRUE;
             break;
         default:

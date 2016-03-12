@@ -1637,6 +1637,10 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
 
     for (i=0; i<BS_MAX_SERVICE_TYPE_IN_SESSION; i++)
     {
+        if (pstSCB->aucServType[i] == BS_SERV_RECORDING)
+        {
+            continue;
+        }
         pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType[i] = pstSCB->aucServType[i];
     }
 

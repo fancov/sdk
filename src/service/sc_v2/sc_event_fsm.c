@@ -7276,6 +7276,11 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_OUTBAND_CALL);
                     }
 
+                    if (sc_scb_is_exit_service(pstSCB, BS_SERV_RECORDING))
+                    {
+                        sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
+                    }
+
                     sc_send_billing_stop2bs(pstSCB, pstOtherLegCB, NULL);
                 }
 
@@ -8302,6 +8307,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstSCB->stDemoTask.stSCBTag.usStatus = SC_AUTO_CALL_RELEASE;
             }
             break;
+
         case SC_AUTO_CALL_CONNECTED:
             /* 这个时候挂断，就是正常释放的节奏，处理完就好，判断坐席的状态 */
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent connected.");
