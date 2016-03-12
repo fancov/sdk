@@ -422,6 +422,7 @@ VOID sc_lcb_call_init(SC_SU_CALL_ST *pstCall)
     pstCall->ulHoldTotalTime = 0;
     pstCall->ulTrunkID = 0;
     pstCall->ulTrunkCount = 0;
+    pstCall->ulCodecCnt = 0;
 
     pstCall->stTimeInfo.ulStartTime = 0;
     pstCall->stTimeInfo.ulRingTime = 0;

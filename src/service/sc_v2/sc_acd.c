@@ -2683,12 +2683,10 @@ U32 sc_agent_work_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_WORK_OFFLINE:
         case SC_ACD_WORK_BUSY:
         case SC_ACD_WORK_AWAY:
+        case SC_ACD_WORK_IDEL:
             pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
             pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_IDEL;
             bIsPub = DOS_TRUE;
-            break;
-
-        case SC_ACD_WORK_IDEL:
             break;
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);

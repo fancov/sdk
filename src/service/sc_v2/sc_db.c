@@ -237,8 +237,6 @@ static VOID sc_db_request_proc(SC_DB_MSG_TAG_ST *pstMsg)
         return;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DB_WQ), "Process db request. Type: %u", pstMsg->ulMsgType);
-
     switch (pstMsg->ulMsgType)
     {
         case SC_MSG_SAVE_CALL_RESULT:
@@ -268,8 +266,6 @@ static VOID sc_db_request_proc(SC_DB_MSG_TAG_ST *pstMsg)
     }
     dos_dmem_free(pstMsg);
     pstMsg = NULL;
-
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DB_WQ), "Process db request finished. Result: %s", DOS_SUCC == ulResult ? "succ" : "FAIL");
 }
 
 static VOID *sc_db_runtime(VOID *ptr)
