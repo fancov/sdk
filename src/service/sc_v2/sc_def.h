@@ -1308,6 +1308,11 @@ typedef enum tagSCTransType{
     SC_TRANSFER_ATTENDED,   /**< 协商转 */
 }SC_TRANS_TYPE_EN;
 
+enum{
+    SC_TRANSFER_PUBLISH_AGENT,      /**< 呼叫转接坐席 */
+    SC_TRANSFER_PUBLISH_SIP,        /**< 转接sip分机 */
+};
+
 /**
  * 业务控制块, 转接业务
  */
@@ -1317,6 +1322,9 @@ typedef struct tagSCCallTransfer{
 
     /** 转接类型 */
     U32               ulType;
+
+    /** 转接sip/坐席工号 */
+    U32               ulPublishType;
 
     /** 订阅放所在的SCB */
     U32               ulSubLegNo;
@@ -1330,6 +1338,9 @@ typedef struct tagSCCallTransfer{
     U32               ulSubAgentID;
     U32               ulPublishAgentID;
     U32               ulNotifyAgentID;
+
+    S8                szSipNum[SC_NUM_LENGTH];
+
 }SC_CALL_TRANSFER_ST;
 
 /** 呼叫保持业务状态 */

@@ -1038,12 +1038,14 @@ VOID sc_scb_transfer_init(SC_CALL_TRANSFER_ST *pstTransfer)
     pstTransfer->stSCBTag.usSrvType = SC_SRV_TRANSFER;
     pstTransfer->stSCBTag.usStatus = SC_TRANSFER_IDEL;
     pstTransfer->ulType = U32_BUTT;
+    pstTransfer->ulPublishType = U32_BUTT;
     pstTransfer->ulSubLegNo = U32_BUTT;
     pstTransfer->ulPublishLegNo = U32_BUTT;
     pstTransfer->ulNotifyLegNo = U32_BUTT;
     pstTransfer->ulSubAgentID = 0;
     pstTransfer->ulPublishAgentID = 0;
     pstTransfer->ulNotifyAgentID = 0;
+    pstTransfer->szSipNum[0] = '\0';
 }
 
 VOID sc_scb_incoming_queue_init(SC_INCOMING_QUEUE_ST *pstIncomingQueue)

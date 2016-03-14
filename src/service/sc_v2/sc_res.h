@@ -552,6 +552,7 @@ U32 sc_sip_account_get_customer(S8 *pszNum);
 BOOL sc_sip_account_extension_check(S8 *pszNum, U32 ulCustomerID);
 U32 sc_sip_account_update_status(S8 *szUserID, SC_SIP_STATUS_TYPE_EN enStatus, U32 *pulSipID);
 U32 sc_sip_account_update_info2db(U32 ulPublicIP, U32 ulPrivateIP, SC_SIP_STATUS_TYPE_EN enStatus, U32 ulSipID);
+BOOL sc_sip_account_be_is_exit(U32 ulCustomID, S8 *szUserID);
 
 U32 sc_did_load(U32 ulIndex);
 U32 sc_did_update_proc(U32 ulAction, U32 ulDidID);

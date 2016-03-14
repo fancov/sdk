@@ -241,6 +241,53 @@ U32 sc_sip_account_get_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUse
     return DOS_FAIL;
 }
 
+BOOL sc_sip_account_be_is_exit(U32 ulCustomID, S8 *szUserID)
+{
+    SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
+    HASH_NODE_S        *pstHashNode   = NULL;
+    U32                ulHashIndex    = 0;
+
+    if (DOS_ADDR_INVALID(szUserID))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FALSE;
+    }
+
+    pthread_mutex_lock(&g_mutexHashSIPUserID);
+    HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashSIPUserID, ulHashIndex, pstHashNode, HASH_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                continue;
+            }
+
+            pstUserIDNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstUserIDNode))
+            {
+                continue;
+            }
+
+            if (ulCustomID != pstUserIDNode->ulCustomID)
+            {
+                continue;
+            }
+
+            if (0 != dos_strcmp(pstUserIDNode->szUserID, szUserID))
+            {
+                continue;
+            }
+
+            pthread_mutex_unlock(&g_mutexHashSIPUserID);
+            return DOS_TRUE;
+        }
+    }
+    pthread_mutex_unlock(&g_mutexHashSIPUserID);
+    return DOS_FALSE;
+}
+
 /**
  * 功能: 获取ID为ulSIPUserID SIP User ID，并将SIP USER ID Copy到缓存pszUserID中
  * 参数:
@@ -292,8 +339,6 @@ U32 sc_sip_account_get_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength)
     return DOS_FAIL;
 
 }
-
-
 
 /* 删除SIP账户 */
 U32 sc_sip_account_delete(S8 * pszSipID)
