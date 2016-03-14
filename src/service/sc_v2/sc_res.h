@@ -52,6 +52,8 @@ extern pthread_mutex_t          g_mutexHashCallerSetting;
 
 #define SC_SINGLE_NUMBER_SRT_LEN       11           /* 0123456789 字符串的长度 */
 
+#define SC_NAME_STR_LEN         32
+
 #define SC_INVALID_INDEX       U32_BUTT
 
 #define SC_STRING_HASH_LIMIT     20
@@ -91,6 +93,16 @@ extern pthread_mutex_t          g_mutexHashCallerSetting;
 #define SC_CALLER_SETTING_HASH_SIZE   128
 
 
+/* 客户类型 */
+typedef enum tagSCCustomerType
+{
+    SC_CUSTOMER_TYPE_CONSUMER           = 0,        /* 消费者 */
+    SC_CUSTOMER_TYPE_AGENT              = 1,        /* 代理商 */
+    SC_CUSTOMER_TYPE_TOP                = 2,        /* 顶级客户(即系统所有者) */
+    SC_CUSTOMER_TYPE_SP                 = 3,        /* 业务提供商 */
+
+    BS_CUSTOMER_TYPE_BUTT               = 255
+}SC_CUSTOMER_TYPE_E;
 
 /* sip 分机的状态 */
 typedef enum tagSCSipStatusType
@@ -259,6 +271,7 @@ typedef struct tagSCDIDNode{
 typedef struct tagSCRouteNode
 {
     U32        ulID;
+    S8         szRouteName[SC_NAME_STR_LEN];
     BOOL       bExist;                            /* 该标记用来检查是否来自于数据库 */
     BOOL       bStatus;                           /* 标记路由是否可用 */
 
@@ -283,8 +296,9 @@ typedef struct tagSCRouteNode
 typedef struct tagSCCustomerNode
 {
     U32        ulID;
+    S8         szName[SC_NAME_STR_LEN];
     BOOL       bExist;                            /* 该标记用来检查是否来自于数据库 */
-
+    U8         ucCustomerType;
     U16        usCallOutGroup;
     U8         bTraceCall;
     U8         aucReserv[1];
@@ -315,11 +329,13 @@ typedef struct tagTrunkStat
 typedef struct tagSCGWNode
 {
     U32 ulGWID;                                    /* 网关ID */
+    S8  szGWName[SC_NAME_STR_LEN];                              /* 网关名字*/
     S8  szGWDomain[SC_GW_DOMAIN_LEG];              /* 网关的域，暂时没有用的 */
     BOOL bExist;                                   /* 该标识用来判断数据库是否有该数据 */
     BOOL bStatus;                                  /* 网关状态，启用或者是禁用 */
     BOOL bRegister;                                /* 是否注册 */
     U32 ulRegisterStatus;                          /* 注册状态 */
+    BOOL bPing;                                    /* KeepAlive*/
 
     SC_TRUNK_STAT_ST stStat;
 }SC_GW_NODE_ST;
@@ -328,6 +344,7 @@ typedef struct tagSCGWNode
 typedef struct tagGatewayGrpNode
 {
     U32        ulGWGrpID;                         /* 网关组ID */
+    S8         szGWGrpName[SC_NAME_STR_LEN];
     BOOL       bExist;                            /* 该标记用来检验该数据是否来自与数据库 */
     DLL_S      stGWList;                          /* 网关列表 refer to SC_GW_NODE_ST */
     pthread_mutex_t  mutexGWList;                 /* 路由组的锁 */
@@ -451,13 +468,13 @@ typedef struct tagSCSrvCtrl
 /* 主叫号码设定描述节点 */
 typedef struct tagCallerSetting
 {
-    U32   ulID;               /* 号码绑定关系id */
-    U32   ulCustomerID;       /* 客户id */
-    S8    szSettingName[64];  /* 关系名称 */
-    U32   ulSrcID;            /* 呼叫源id */
-    U32   ulSrcType;          /* 呼叫源类型 */
-    U32   ulDstID;            /* 目的ID */
-    U32   ulDstType;          /* 目标类型 */
+    U32   ulID;                                 /* 号码绑定关系id */
+    U32   ulCustomerID;                         /* 客户id */
+    S8    szSettingName[SC_NAME_STR_LEN];       /* 关系名称 */
+    U32   ulSrcID;                              /* 呼叫源id */
+    U32   ulSrcType;                            /* 呼叫源类型 */
+    U32   ulDstID;                              /* 目的ID */
+    U32   ulDstType;                            /* 目标类型 */
 }SC_CALLER_SETTING_ST;
 
 /* 定义加入号码组的号码类型 */
