@@ -2458,10 +2458,9 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
         case SC_ACD_WORK_OFFLINE:
         case SC_ACD_WORK_BUSY:
         case SC_ACD_WORK_AWAY:
+        case SC_ACD_WORK_IDEL:
             pstAgentInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
             bIsPub = DOS_TRUE;
-            break;
-        case SC_ACD_WORK_IDEL:
             break;
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentInfo->ulAgentID);

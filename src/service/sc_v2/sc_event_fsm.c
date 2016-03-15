@@ -9758,7 +9758,7 @@ U32 sc_call_agent_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Proccessing preview error event. status : %u", pstSCB->stCallAgent.stSCBTag.usStatus);
+    sc_trace_scb(pstSCB, "Proccessing call agent error event. status : %u", pstSCB->stCallAgent.stSCBTag.usStatus);
     /* ¼ÇÂ¼´íÎóÂë */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 
