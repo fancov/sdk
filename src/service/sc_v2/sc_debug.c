@@ -1441,9 +1441,9 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n---------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%10s%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s%9s%10s%12s%12s"
+                    , "\r\n%10s%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s%9s%10s%12s%12s%12s"
                     , "ID", "w-Status", "s-Status", "Custom", "Group1", "Group2"
-                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile");
+                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile", "MemoryID");
     cli_out_string(ulIndex, szCmdBuff);
 
     DLL_Scan(&pstAgentGrouop->stAgentList, pstDLLNode, DLL_NODE_S *)
@@ -1461,7 +1461,7 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%10u%10s%10s%10u%10u%10u%8s%7s%8s%12s%12s%12s%9u%10s%12s%12s"
+                    , "\r\n%10u%10s%10s%10u%10u%10u%8s%7s%8s%12s%12s%12s%9u%10s%12s%12s%12u"
                     , pstAgentQueueNode->pstAgentInfo->ulAgentID
                     , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucWorkStatus)
                     , sc_translate_agent_serv_status(pstAgentQueueNode->pstAgentInfo->ucServStatus)
@@ -1477,7 +1477,8 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
                     , pstAgentQueueNode->pstAgentInfo->ulCallCnt
                     , sc_translate_agent_bind_type(pstAgentQueueNode->pstAgentInfo->ucBindType)
                     , pstAgentQueueNode->pstAgentInfo->szTelePhone
-                    , pstAgentQueueNode->pstAgentInfo->szMobile);
+                    , pstAgentQueueNode->pstAgentInfo->szMobile
+                    , pstAgentQueueNode->ulID);
 
         cli_out_string(ulIndex, szCmdBuff);
     }
@@ -5008,11 +5009,6 @@ VOID sc_trace_scb(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...)
     va_list         Arg;
     S8              szTraceStr[1024] = {0, };
     U32             ulTraceTagLen = 0;
-
-    if (!pstSCB->bTrace)
-    {
-        return;
-    }
 
     va_start(Arg, pszFormat);
     vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
