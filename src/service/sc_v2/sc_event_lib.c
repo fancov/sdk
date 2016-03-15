@@ -73,6 +73,10 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
     if (DOS_ADDR_VALID(pstAgentInfo))
     {
         pstCalleeLegCB->stRecord.bValid = pstAgentInfo->bRecord;
+        if (pstCalleeLegCB->stRecord.bValid)
+        {
+            sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
+        }
     }
 
     pstSCB->stCall.ulCalleeLegNo = pstCalleeLegCB->ulCBNo;
@@ -349,6 +353,7 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
         if (pstAgentNode->pstAgentInfo->bRecord)
         {
             pstCallingLegCB->stRecord.bValid = DOS_TRUE;
+            sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
         }
 
         dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
@@ -484,7 +489,7 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
     if (pstAgentNode->pstAgentInfo->bRecord)
     {
         pstCallingLegCB->stRecord.bValid = DOS_TRUE;
-        pstCallingLegCB->stRecord.usStatus = SC_SU_RECORD_INIT;
+        sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
     }
 
     dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
@@ -661,6 +666,7 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
     if (pstAgentNode->pstAgentInfo->bRecord)
     {
         pstCallingLegCB->stRecord.bValid = DOS_TRUE;
+        sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
     }
 
     /* ÅÐ¶Ï×øÏ¯ÊÇ·ñ³¤Ç© */
@@ -821,6 +827,7 @@ U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
     if (pstAgentNode->pstAgentInfo->bRecord)
     {
         pstCallingLegCB->stRecord.bValid = DOS_TRUE;
+        sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
     }
 
     /* ÅÐ¶Ï×øÏ¯ÊÇ·ñ³¤Ç© */
@@ -1959,6 +1966,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
         if (pstAgentNode->pstAgentInfo->bRecord)
         {
             pstLCB->stRecord.bValid = DOS_TRUE;
+            sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
         }
 
         pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_AUTH;
@@ -2036,6 +2044,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
     if (pstAgentNode->pstAgentInfo->bRecord)
     {
         pstLCB->stRecord.bValid = DOS_TRUE;
+        sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
     }
 
     pstSCB->stPreviewCall.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
@@ -2997,6 +3006,7 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
         if (pstAgentNode->pstAgentInfo->bRecord)
         {
             pstLCB->stRecord.bValid = DOS_TRUE;
+            sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
         }
 
         pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_AUTH;
@@ -3074,6 +3084,7 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
     if (pstAgentNode->pstAgentInfo->bRecord)
     {
         pstLCB->stRecord.bValid = DOS_TRUE;
+        sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
     }
 
     pstSCB->stPreviewCall.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
