@@ -441,6 +441,7 @@ typedef enum tagSCInterErr{
     SC_ERR_BRIDGE_FAIL,
     SC_ERR_RECORD_FAIL,
     SC_ERR_BREAK_FAIL,
+    SC_ERR_BRIDGE_SUCC,
 
     SC_ERR_BUTT
 }SC_INTER_ERR_EN;
