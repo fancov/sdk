@@ -4996,6 +4996,134 @@ VOID sc_printf(const S8 *pszFormat, ...)
     dos_log(LOG_LEVEL_DEBUG, LOG_TYPE_RUNINFO, szTraceStr);
 }
 
+
+BOOL sc_trace_check_by_leg(SC_LEG_CB *pstLCB)
+{
+    S32 i = 0;
+
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        return DOS_FALSE;
+    }
+
+    for (i=0; i<SC_TRACE_CUSTOMER_SIZE; i++)
+    {
+        if (g_aszCallerTrace[i][0] != '\0'
+            && dos_strcmp(g_aszCallerTrace[i], pstLCB->stCall.stNumInfo.szOriginalCalling) == 0)
+        {
+            return DOS_TRUE;
+        }
+
+        if (g_aszCalleeTrace[i][0] != '\0'
+            && dos_strcmp(g_aszCalleeTrace[i], pstLCB->stCall.stNumInfo.szOriginalCallee) == 0)
+        {
+            return DOS_TRUE;
+        }
+    }
+
+    return DOS_FALSE;
+}
+
+/**
+ * 根据scb判断是否需要进行业务或者客户跟踪
+ *
+ * @parma SC_SRV_CB *pstSCB 业务控制块
+ *
+ * return NULL
+ */
+BOOL sc_trace_check_by_scb(SC_SRV_CB *pstSCB)
+{
+    S32                 i               = 0;
+    U32                 ulLegNo         = U32_BUTT;
+    SC_LEG_CB           *pstLegCB       = NULL;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return DOS_FALSE;
+    }
+
+    /* 判断是否需要跟踪业务 */
+    for (i=0; i<BS_SERV_BUTT; i++)
+    {
+        if (pstSCB->aucServType[i] < BS_SERV_BUTT
+            && g_aucServTraceFlag[pstSCB->aucServType[i]])
+        {
+            return DOS_TRUE;
+        }
+    }
+
+    for (i=0; i<SC_TRACE_CUSTOMER_SIZE; i++)
+    {
+        /* 判断是否需要跟踪客户 */
+        if (pstSCB->ulCustomerID != U32_BUTT
+            && g_aulCustomerTrace[i] == pstSCB->ulCustomerID)
+        {
+            return DOS_TRUE;
+        }
+    }
+
+    if (pstSCB->ulCurrentSrv >= SC_SRV_BUTT
+        || DOS_ADDR_INVALID(pstSCB->pstServiceList[pstSCB->ulCurrentSrv])
+        || !pstSCB->pstServiceList[pstSCB->ulCurrentSrv]->bValid)
+    {
+        return DOS_FALSE;
+    }
+
+    /* 只从最新的业务中查找leg */
+    switch (pstSCB->pstServiceList[pstSCB->ulCurrentSrv]->usSrvType)
+    {
+        case SC_SRV_CALL:
+            ulLegNo = pstSCB->stCall.ulCallingLegNo;
+            break;
+        case SC_SRV_PREVIEW_CALL:
+            ulLegNo = pstSCB->stPreviewCall.ulCallingLegNo;
+            break;
+        case SC_SRV_AUTO_CALL:
+            ulLegNo = pstSCB->stAutoCall.ulCallingLegNo;
+            break;
+        case SC_SRV_VOICE_VERIFY:
+            ulLegNo = pstSCB->stVoiceVerify.ulLegNo;
+            break;
+        case SC_SRV_ACCESS_CODE:
+            ulLegNo = pstSCB->stAccessCode.ulLegNo;
+            break;
+        case SC_SRV_HOLD:
+            ulLegNo = pstSCB->stHold.ulCallLegNo;
+            break;
+        case SC_SRV_TRANSFER:
+            ulLegNo = pstSCB->stTransfer.ulNotifyLegNo;
+            break;
+        case SC_SRV_INCOMING_QUEUE:
+            ulLegNo = pstSCB->stIncomingQueue.ulLegNo;
+            break;
+        case SC_SRV_INTERCEPTION:
+            ulLegNo = pstSCB->stInterception.ulLegNo;
+            break;
+        case SC_SRV_WHISPER:
+            ulLegNo = pstSCB->stWhispered.ulLegNo;
+            break;
+        case SC_SRV_MARK_CUSTOM:
+            ulLegNo = pstSCB->stMarkCustom.ulLegNo;
+            break;
+        case SC_SRV_AGENT_SIGIN:
+            ulLegNo = pstSCB->stSigin.ulLegNo;
+            break;
+        case SC_SRV_DEMO_TASK:
+            ulLegNo = pstSCB->stDemoTask.ulCallingLegNo;
+            break;
+        case SC_SRV_CALL_AGENT:
+            ulLegNo = pstSCB->stCallAgent.ulCallingLegNo;
+            break;
+        default:
+            break;
+    }
+
+    pstLegCB = sc_lcb_get(ulLegNo);
+    /* 通过leg，判断是否需要主被叫号码跟踪 */
+
+    return sc_trace_check_by_leg(pstLegCB);
+}
+
 /**
  * 跟踪打印业务控制块
  *
@@ -5007,15 +5135,21 @@ VOID sc_printf(const S8 *pszFormat, ...)
 VOID sc_trace_scb(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...)
 {
     va_list         Arg;
-    S8              szTraceStr[1024] = {0, };
-    U32             ulTraceTagLen = 0;
+    S8              szTraceStr[1024]    = {0, };
+    U32             ulTraceTagLen       = 0;
+    U32             ulLogLevel          = LOG_LEVEL_DEBUG;
 
     va_start(Arg, pszFormat);
     vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
     va_end(Arg);
     szTraceStr[sizeof(szTraceStr) -1] = '\0';
 
-    dos_log(LOG_LEVEL_DEBUG, LOG_TYPE_RUNINFO, szTraceStr);
+    if (sc_trace_check_by_scb(pstSCB))
+    {
+        ulLogLevel = LOG_LEVEL_NOTIC;
+    }
+
+    dos_log(ulLogLevel, LOG_TYPE_RUNINFO, szTraceStr);
 }
 
 /**
@@ -5029,15 +5163,21 @@ VOID sc_trace_scb(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...)
 VOID sc_trace_leg(SC_LEG_CB *pstLCB, const S8 *pszFormat, ...)
 {
     va_list         Arg;
-    S8              szTraceStr[1024] = {0, };
-    U32             ulTraceTagLen = 0;
+    S8              szTraceStr[1024]    = {0, };
+    U32             ulTraceTagLen       = 0;
+    U32             ulLogLevel          = LOG_LEVEL_DEBUG;
 
     va_start(Arg, pszFormat);
     vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
     va_end(Arg);
     szTraceStr[sizeof(szTraceStr) -1] = '\0';
 
-    dos_log(LOG_LEVEL_DEBUG, LOG_TYPE_RUNINFO, szTraceStr);
+    if (sc_trace_check_by_leg(pstLCB))
+    {
+        ulLogLevel = LOG_LEVEL_NOTIC;
+    }
+
+    dos_log(ulLogLevel, LOG_TYPE_RUNINFO, szTraceStr);
 }
 
 VOID sc_trace_task(SC_TASK_CB *pstLCB, const S8 *pszFormat, ...)

@@ -959,7 +959,7 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_trace_scb(pstSCB, "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
         sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, CC_ERR_BS_HEAD + pstAuthRsp->stMsgTag.usInterErr);
         return DOS_SUCC;
@@ -1085,7 +1085,7 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
         case SC_CALL_ALERTING:
             /* 主叫LEG状态变换 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_EVENT), "Calling has been ringback.");
+            sc_trace_scb(pstSCB, "Calling has been ringback.");
             break;
 
         case SC_CALL_ACTIVE:
@@ -1165,7 +1165,7 @@ U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_ACTIVE:
         case SC_CALL_PROCESS:
         case SC_CALL_RELEASE:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_EVENT), "Calling has been answered");
+            sc_trace_scb(pstSCB, "Calling has been answered");
             break;
     }
 
@@ -1503,7 +1503,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Leg %u has hunguped. ", pstHungup->ulLegNo);
+    sc_trace_scb(pstSCB, "Leg %u has hunguped. ", pstHungup->ulLegNo);
 
     return DOS_SUCC;
 }
