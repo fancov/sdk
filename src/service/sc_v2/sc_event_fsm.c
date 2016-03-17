@@ -1526,6 +1526,7 @@ U32 sc_call_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         pstSCB->stHold.stSCBTag.bWaitingExit = DOS_FALSE;
         pstSCB->stHold.stSCBTag.usStatus = SC_HOLD_ACTIVE;
         pstSCB->stHold.ulCallLegNo = pstHold->ulLegNo;
+        pstSCB->stHold.ulHoldCount++;
 
         pstSCB->ulCurrentSrv++;
         pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stHold.stSCBTag;
@@ -2785,6 +2786,7 @@ U32 sc_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         pstSCB->stHold.stSCBTag.bWaitingExit = DOS_FALSE;
         pstSCB->stHold.stSCBTag.usStatus = SC_HOLD_ACTIVE;
         pstSCB->stHold.ulCallLegNo = pstHold->ulLegNo;
+        pstSCB->stHold.ulHoldCount++;
 
         pstSCB->ulCurrentSrv++;
         pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stHold.stSCBTag;
@@ -4346,6 +4348,10 @@ U32 sc_auto_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
+
+        /* 分析呼叫结果 */
+        sc_task_call_result(pstSCB, pstSCB->stAutoCall.ulCallingLegNo, pstAuthRsp->stMsgTag.usInterErr + CC_ERR_BS_HEAD);
+
         pstLegCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
         if (DOS_ADDR_VALID(pstLegCB))
         {
@@ -4370,6 +4376,13 @@ U32 sc_auto_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 return DOS_FAIL;
             }
             ulRet = sc_make_call2pstn(pstSCB, pstLegCB);
+            if (ulRet != DOS_SUCC)
+            {
+                /* 发起呼叫失败 */
+                sc_task_call_result(pstSCB, pstSCB->stAutoCall.ulCallingLegNo, pstLegCB->stCall.ulCause);
+                sc_lcb_free(pstLegCB);
+                sc_scb_free(pstSCB);
+            }
             break;
         case SC_AUTO_CALL_AUTH2:
             /* 呼叫坐席时，进行的认证，呼叫坐席 */
@@ -4381,6 +4394,12 @@ U32 sc_auto_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_EXEC2;
             ulRet = sc_make_call2pstn(pstSCB, pstCalleeLegCB);
+            if (ulRet != DOS_SUCC)
+            {
+                /* 挂断 客户 */
+                sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, pstCalleeLegCB->stCall.ulCause);
+            }
+
             break;
 
         default:
@@ -4993,6 +5012,7 @@ U32 sc_auto_call_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         pstSCB->stHold.stSCBTag.bWaitingExit = DOS_FALSE;
         pstSCB->stHold.stSCBTag.usStatus = SC_HOLD_ACTIVE;
         pstSCB->stHold.ulCallLegNo = pstHold->ulLegNo;
+        pstSCB->stHold.ulHoldCount++;
 
         pstSCB->ulCurrentSrv++;
         pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stHold.stSCBTag;
@@ -5057,6 +5077,17 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     sc_trace_scb(pstSCB, "Proccessing auto call hungup event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
 
     sc_task_concurrency_minus(pstSCB->stAutoCall.ulTcbID);
+
+    /* 呼叫结果 */
+    if (SC_AUTO_CALL_PROCESS != pstSCB->stAutoCall.stSCBTag.usStatus
+        && SC_AUTO_CALL_RELEASE != pstSCB->stAutoCall.stSCBTag.usStatus)
+    {
+        pstHungupLeg = sc_lcb_get(pstHungup->ulLegNo);
+        if (DOS_ADDR_VALID(pstHungupLeg))
+        {
+            sc_task_call_result(pstSCB, pstHungupLeg->ulCBNo, pstHungupLeg->stCall.ulCause);
+        }
+    }
 
     switch (pstSCB->stAutoCall.stSCBTag.usStatus)
     {
@@ -6820,6 +6851,7 @@ U32 sc_transfer_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstSCB->stHold.stSCBTag.bWaitingExit = DOS_FALSE;
                 pstSCB->stHold.stSCBTag.usStatus = SC_HOLD_ACTIVE;
                 pstSCB->stHold.ulCallLegNo = pstHold->ulLegNo;
+                pstSCB->stHold.ulHoldCount++;
 
                 pstSCB->ulCurrentSrv++;
                 pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stHold.stSCBTag;
@@ -8204,6 +8236,7 @@ U32 sc_demo_task_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         pstSCB->stHold.stSCBTag.bWaitingExit = DOS_FALSE;
         pstSCB->stHold.stSCBTag.usStatus = SC_HOLD_ACTIVE;
         pstSCB->stHold.ulCallLegNo = pstHold->ulLegNo;
+        pstSCB->stHold.ulHoldCount++;
 
         pstSCB->ulCurrentSrv++;
         pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stHold.stSCBTag;
@@ -9745,6 +9778,7 @@ U32 sc_call_agent_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         pstSCB->stHold.stSCBTag.bWaitingExit = DOS_FALSE;
         pstSCB->stHold.stSCBTag.usStatus = SC_HOLD_ACTIVE;
         pstSCB->stHold.ulCallLegNo = pstHold->ulLegNo;
+        pstSCB->stHold.ulHoldCount++;
 
         pstSCB->ulCurrentSrv++;
         pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stHold.stSCBTag;

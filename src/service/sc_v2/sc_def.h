@@ -218,6 +218,14 @@ enum {
     SC_ACD_SERV_BUTT
 };
 
+typedef enum tagSCCallRole
+{
+    SC_CALLEE,
+    SC_CALLING,
+
+    SC_CALL_ROLE_BUTT
+}SC_CALL_ROLE_EN;
+
 /*
 * 坐席呼叫状态
 * 没有呼叫时就是NONE, 到底是CALLIN还是CALLOUT由当前坐席呼叫的对端决定，
@@ -1361,6 +1369,10 @@ typedef struct tagSCCallHold{
 
     /* 呼叫客户的LEG */
     U32               ulCallLegNo;
+
+    /* 保持 次数 */
+    U32               ulHoldCount;
+
 }SC_CALL_HOLD_ST;
 
 /**< 坐席长签业务状态  */
@@ -2302,6 +2314,8 @@ U32 sc_agent_audit(U32 ulCycle, VOID *ptr);
 
 U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 ulTiming, U32 ulNumSelect, U32 ulDirection);
+
+U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode);
 
 #endif  /* end of __SC_DEF_V2_H__ */
 

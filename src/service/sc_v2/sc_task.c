@@ -24,6 +24,7 @@ extern "C"{
 #include "sc_debug.h"
 #include "sc_db.h"
 #include "bs_pub.h"
+#include "sc_pub.h"
 #include "sc_http_api.h"
 
 /* define marcos */
@@ -36,6 +37,279 @@ extern "C"{
 /* 任务列表 refer to struct tagTaskCB*/
 SC_TASK_CB           *g_pstTaskList  = NULL;
 pthread_mutex_t      g_mutexTaskList = PTHREAD_MUTEX_INITIALIZER;
+
+U32 sc_task_call_result_make_call_before(U32 ulCustomerID, U32 ulTaskID, S8 *szCallingNum, S8 *szCalleeNum, U32 ulSIPRspCode)
+{
+    SC_DB_MSG_CALL_RESULT_ST *pstCallResult     = NULL;
+
+    pstCallResult = dos_dmem_alloc(sizeof(SC_DB_MSG_CALL_RESULT_ST));
+    if (DOS_ADDR_INVALID(pstCallResult))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Analysis call result for task: %u, SIP Code:%u", ulTaskID, ulSIPRspCode);
+
+    dos_memzero(pstCallResult, sizeof(SC_DB_MSG_CALL_RESULT_ST));
+    pstCallResult->ulCustomerID = ulCustomerID;
+    pstCallResult->ulTaskID = ulTaskID;
+
+    /* 主叫号码 */
+    if (DOS_ADDR_VALID(szCallingNum))
+    {
+        dos_snprintf(pstCallResult->szCaller, sizeof(pstCallResult->szCaller), "%s", szCallingNum);
+    }
+
+    /* 被叫号码 */
+    if (DOS_ADDR_VALID(szCalleeNum))
+    {
+        dos_snprintf(pstCallResult->szCallee, sizeof(pstCallResult->szCallee), "%s", szCalleeNum);
+    }
+
+    pstCallResult->ulAnswerTimeStamp = time(NULL);
+    switch (ulSIPRspCode)
+    {
+        case CC_ERR_SC_CALLER_NUMBER_ILLEGAL:
+        case CC_ERR_SC_CALLEE_NUMBER_ILLEGAL:
+            pstCallResult->ulResult = CC_RST_CALLING_NUM_INVALID;
+            break;
+
+        default:
+            pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
+            break;
+    }
+
+    pstCallResult->stMsgTag.ulMsgType = SC_MSG_SAVE_CALL_RESULT;
+
+    return sc_send_msg2db((SC_DB_MSG_TAG_ST *)pstCallResult);
+}
+
+U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
+{
+    SC_DB_MSG_CALL_RESULT_ST *pstCallResult     = NULL;
+    SC_LEG_CB                *pstCallingLegCB   = NULL;
+    SC_LEG_CB                *pstCalleeLegCB    = NULL;
+    SC_AGENT_NODE_ST         *pstAgentCall      = NULL;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (0 == pstSCB->stAutoCall.ulTaskID || U32_BUTT == pstSCB->stAutoCall.ulTaskID)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstCallingLegCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
+    if (DOS_ADDR_INVALID(pstCallingLegCB))
+    {
+        return DOS_FAIL;
+    }
+
+    pstCallResult = dos_dmem_alloc(sizeof(SC_DB_MSG_CALL_RESULT_ST));
+    if (DOS_ADDR_INVALID(pstCallResult))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Analysis call result for task: %u, SIP Code:%u", pstSCB->stAutoCall.ulTaskID, ulSIPRspCode);
+
+    if (0 == ulSIPRspCode)
+    {
+        //ulSIPRspCode = sc_ep_transform_errcode_from_sc2sip(pstSCB->usTerminationCause);
+    }
+
+    dos_memzero(pstCallResult, sizeof(SC_DB_MSG_CALL_RESULT_ST));
+    pstCallResult->ulCustomerID = pstSCB->ulCustomerID; /* 客户ID,要求全数字,不超过10位,最高位小于4 */
+
+    /* 坐席ID,要求全数字,不超过10位,最高位小于4 */
+    if (U32_BUTT != pstSCB->stAutoCall.ulAgentID)
+    {
+        pstCallResult->ulAgentID = pstSCB->stAutoCall.ulAgentID;
+    }
+    else
+    {
+        pstCallResult->ulAgentID = 0;
+    }
+    pstCallResult->ulTaskID = pstSCB->stAutoCall.ulTaskID;       /* 任务ID,要求全数字,不超过10位,最高位小于4 */
+
+    /* 坐席号码(工号) */
+    pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
+    if (DOS_ADDR_VALID(pstAgentCall)
+        && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+    {
+        dos_snprintf(pstCallResult->szAgentNum, sizeof(pstCallResult->szAgentNum), "%s", pstAgentCall->pstAgentInfo->szEmpNo);
+    }
+
+    /* 主叫号码 */
+    if ('\0' != pstCallingLegCB->stCall.stNumInfo.szOriginalCalling[0])
+    {
+        dos_snprintf(pstCallResult->szCaller, sizeof(pstCallResult->szCaller), "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+    }
+
+    /* 被叫号码 */
+    if ('\0' != pstCallingLegCB->stCall.stNumInfo.szOriginalCallee[0])
+    {
+        dos_snprintf(pstCallResult->szCallee, sizeof(pstCallResult->szCallee), "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+    }
+
+    /* 接续时长:从发起呼叫到收到振铃 */
+    if (0 == pstCallingLegCB->stCall.stTimeInfo.ulRingTime || 0 == pstCallingLegCB->stCall.stTimeInfo.ulStartTime)
+    {
+        pstCallResult->ulPDDLen = 0;
+    }
+    else
+    {
+        pstCallResult->ulPDDLen = pstCallingLegCB->stCall.stTimeInfo.ulRingTime - pstCallingLegCB->stCall.stTimeInfo.ulStartTime;
+    }
+    pstCallResult->ulRingTime = pstCallingLegCB->stCall.stTimeInfo.ulStartTime;                 /* 振铃时长,单位:秒 */
+    pstCallResult->ulAnswerTimeStamp = pstCallingLegCB->stCall.stTimeInfo.ulAnswerTime;         /* 应答时间戳 */
+    pstCallResult->ulFirstDTMFTime = pstCallingLegCB->stCall.stTimeInfo.ulDTMFStartTime;        /* 第一个二次拨号时间,单位:秒 */
+    pstCallResult->ulIVRFinishTime = pstCallingLegCB->stCall.stTimeInfo.ulIVREndTime;           /* IVR放音完成时间,单位:秒 */
+
+    /* 呼叫时长,单位:秒 */
+    if (0 == pstCallingLegCB->stCall.stTimeInfo.ulByeTime || 0 == pstCallingLegCB->stCall.stTimeInfo.ulAnswerTime)
+    {
+        pstCallResult->ulTimeLen = 0;
+    }
+    else
+    {
+        pstCallResult->ulTimeLen = pstCallingLegCB->stCall.stTimeInfo.ulByeTime - pstCallingLegCB->stCall.stTimeInfo.ulAnswerTime;
+    }
+
+    if (pstSCB->stIncomingQueue.ulEnqueuTime != 0)
+    {
+        if (pstSCB->stIncomingQueue.ulDequeuTime != 0)
+        {
+            pstCallResult->ulWaitAgentTime = pstSCB->stIncomingQueue.ulDequeuTime - pstSCB->stIncomingQueue.ulEnqueuTime;
+        }
+        else
+        {
+            pstCallResult->ulWaitAgentTime = time(NULL) - pstSCB->stIncomingQueue.ulEnqueuTime;
+        }
+    }
+
+    pstCallResult->ulHoldCnt = pstSCB->stHold.ulHoldCount;                  /* 保持次数 */
+    //pstCallResult->ulHoldTimeLen = pstSCB->usHoldTotalTime;              /* 保持总时长,单位:秒 */
+    //pstCallResult->usTerminateCause = pstSCB->usTerminationCause;           /* 终止原因 */
+    if (ulLegNo == pstSCB->stAutoCall.ulCallingLegNo)
+    {
+        pstCallResult->ucReleasePart = SC_CALLING;
+    }
+    else
+    {
+        pstCallResult->ucReleasePart = SC_CALLEE;
+    }
+
+    pstCalleeLegCB = sc_lcb_get(pstSCB->stAutoCall.ulCalleeLegNo);
+    pstCallResult->ulResult = CC_RST_BUTT;
+
+    if (CC_ERR_SIP_SUCC == ulSIPRspCode
+        || CC_ERR_NORMAL_CLEAR == ulSIPRspCode)
+    {
+        /* 坐席全忙 */
+        if (pstSCB->stIncomingQueue.ulEnqueuTime != 0
+            && pstSCB->stIncomingQueue.ulDequeuTime == 0)
+        {
+            pstCallResult->ulResult = CC_RST_AGNET_BUSY;
+            goto proc_finished;
+        }
+
+        /*有可能放音确实没有结束，客户就按键了,所有应该优先处理 */
+        if (pstCallResult->ulFirstDTMFTime
+            && DOS_ADDR_INVALID(pstCalleeLegCB))
+        {
+            pstCallResult->ulResult = CC_RST_HANGUP_AFTER_KEY;
+            goto proc_finished;
+        }
+
+        /* 播放语音时挂断 */
+        if (0 == pstCallResult->ulIVRFinishTime)
+        {
+            pstCallResult->ulResult = CC_RST_HANGUP_WHILE_IVR;
+            goto proc_finished;
+        }
+
+        /* 放音已经结束了，并且呼叫没有在队列，说明呼叫已经被转到坐席了 */
+        if (pstCallResult->ulIVRFinishTime && DOS_ADDR_VALID(pstCalleeLegCB))
+        {
+            /* ANSWER为0，说明坐席没有接通等待坐席时 挂断的 */
+            if (DOS_ADDR_VALID(pstCalleeLegCB)
+                && !pstCalleeLegCB->stCall.stTimeInfo.ulAnswerTime)
+            {
+                if (SC_CALLEE == pstCallResult->ucReleasePart)
+                {
+                    pstCallResult->ulResult = CC_RST_AGENT_NO_ANSER;
+                }
+                else
+                {
+                    pstCallResult->ulResult = CC_RST_HANGUP_NO_ANSER;
+                }
+
+                goto proc_finished;
+            }
+        }
+
+        if (SC_CALLEE == pstCallResult->ucReleasePart)
+        {
+            pstCallResult->ulResult = CC_RST_AGENT_HANGUP;
+        }
+        else
+        {
+            pstCallResult->ulResult = CC_RST_CUSTOMER_HANGUP;
+        }
+    }
+    else
+    {
+        switch (ulSIPRspCode)
+        {
+
+            case CC_ERR_SIP_NOT_FOUND:
+                pstCallResult->ulResult = CC_RST_NOT_FOUND;
+                break;
+
+            case CC_ERR_SIP_TEMPORARILY_UNAVAILABLE:
+                pstCallResult->ulResult = CC_RST_REJECTED;
+                break;
+
+            case CC_ERR_SIP_BUSY_HERE:
+                pstCallResult->ulResult = CC_RST_BUSY;
+                break;
+
+            case CC_ERR_SIP_REQUEST_TIMEOUT:
+            case CC_ERR_SIP_REQUEST_TERMINATED:
+                pstCallResult->ulResult = CC_RST_NO_ANSWER;
+                break;
+
+            case CC_ERR_SC_CALLEE_NUMBER_ILLEGAL:
+                pstCallResult->ulResult = CC_RST_CALLING_NUM_INVALID;
+                break;
+
+            default:
+                pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
+                break;
+        }
+    }
+
+proc_finished:
+
+    if (CC_RST_BUTT == pstCallResult->ulResult)
+    {
+        pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
+    }
+
+    pstCallResult->stMsgTag.ulMsgType = SC_MSG_SAVE_CALL_RESULT;
+    return sc_send_msg2db((SC_DB_MSG_TAG_ST *)pstCallResult);
+}
 
 U32 sc_task_get_mode(U32 ulTCBNo)
 {
@@ -234,10 +508,11 @@ SC_TEL_NUM_QUERY_NODE_ST *sc_task_get_callee(SC_TASK_CB *pstTCB)
  */
 U32 sc_task_make_call(SC_TASK_CB *pstTCB)
 {
-    SC_TEL_NUM_QUERY_NODE_ST  *pstCallee = NULL;
-    S8  szCaller[SC_NUM_LENGTH]   = {0};
-    SC_SRV_CB *pstSCB = NULL;
-    SC_LEG_CB *pstLegCB = NULL;
+    SC_TEL_NUM_QUERY_NODE_ST    *pstCallee                  = NULL;
+    S8                          szCaller[SC_NUM_LENGTH]     = {0};
+    SC_SRV_CB                   *pstSCB                     = NULL;
+    SC_LEG_CB                   *pstLegCB                   = NULL;
+    U32                         ulErrNo                     = CC_ERR_NO_REASON;
 
     if (DOS_ADDR_INVALID(pstTCB))
     {
@@ -256,18 +531,30 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
     /* 只要取到了被叫号码，就应该加一 */
     pstTCB->ulCalledCount++;
 
+    /* 不允许呼叫国际长途 */
+    if (pstCallee->szNumber[0] == '0'
+        && pstCallee->szNumber[1] == '0')
+    {
+        /* 外呼时，被叫号码以00开头，禁止呼叫 */
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "callee is %s. Not alloc call", pstCallee->szNumber);
+        ulErrNo = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
+        goto make_call_file;
+    }
+
+
     /* 判断是否在黑名单中 */
     if (!sc_black_list_check(pstTCB->ulCustomID, pstCallee->szNumber))
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The destination is in black list. %s", pstCallee->szNumber);
-
-        return DOS_FAIL;
+        ulErrNo = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
+        goto make_call_file;
     }
 
     if (sc_get_number_by_callergrp(pstTCB->ulCallerGrpID, szCaller, SC_NUM_LENGTH) != DOS_SUCC)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Get caller from caller group(%u) FAIL.", pstTCB->ulCallerGrpID);
-        return DOS_FAIL;
+        ulErrNo = CC_ERR_SC_CALLER_NUMBER_ILLEGAL;
+        goto make_call_file;
     }
 
     /* 申请一个scb，leg */
@@ -312,7 +599,17 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
     return DOS_SUCC;
 
 make_call_file:
-
+    if (DOS_ADDR_VALID(pstSCB))
+    {
+        sc_scb_free(pstSCB);
+        pstSCB = NULL;
+    }
+    if (DOS_ADDR_VALID(pstLegCB))
+    {
+        sc_lcb_free(pstLegCB);
+        pstLegCB = NULL;
+    }
+    sc_task_call_result_make_call_before(pstTCB->ulCustomID, pstTCB->ulTaskID, szCaller, pstCallee->szNumber, ulErrNo);
     return DOS_FAIL;
 }
 

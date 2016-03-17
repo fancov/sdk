@@ -1023,6 +1023,7 @@ VOID sc_scb_hold_init(SC_CALL_HOLD_ST *pstHold)
     pstHold->stSCBTag.usSrvType = SC_SRV_HOLD;
     pstHold->stSCBTag.usStatus = SC_HOLD_IDEL;
     pstHold->ulCallLegNo = U32_BUTT;
+    pstHold->ulHoldCount = 0;
 }
 
 VOID sc_scb_transfer_init(SC_CALL_TRANSFER_ST *pstTransfer)

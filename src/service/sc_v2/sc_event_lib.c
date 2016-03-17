@@ -1116,11 +1116,13 @@ U32 sc_make_call2pstn(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB)
         /* 一个中继进行路由后号码变换 */
         if (sc_transform_being(pstSCB, pstLCB, pstLCB->stCall.aulTrunkList[0], SC_NUM_TRANSFORM_TIMING_AFTER, SC_NUM_TRANSFORM_SELECT_CALLER, SC_NUM_TRANSFORM_DIRECTION_OUT) != DOS_SUCC)
         {
+            pstLCB->stCall.ulCause = CC_ERR_SC_CONFIG_ERR;
             return DOS_FAIL;
         }
 
         if (sc_transform_being(pstSCB, pstLCB, pstLCB->stCall.aulTrunkList[0], SC_NUM_TRANSFORM_TIMING_AFTER, SC_NUM_TRANSFORM_SELECT_CALLEE, SC_NUM_TRANSFORM_DIRECTION_OUT) != DOS_SUCC)
         {
+            pstLCB->stCall.ulCause = CC_ERR_SC_CONFIG_ERR;
             return DOS_FAIL;
         }
     }
@@ -2386,6 +2388,7 @@ U32 sc_call_ctrl_hold(U32 ulAgent, BOOL bIsHold)
         pstSCB->stHold.stSCBTag.bWaitingExit = DOS_FALSE;
         pstSCB->stHold.stSCBTag.usStatus = SC_HOLD_IDEL;
         pstSCB->stHold.ulCallLegNo = pstLCBAgent->ulCBNo;
+        pstSCB->stHold.ulHoldCount++;
 
         pstSCB->ulCurrentSrv++;
         pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stHold.stSCBTag;
