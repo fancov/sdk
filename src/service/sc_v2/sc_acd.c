@@ -2318,6 +2318,10 @@ U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_SERV_RINGBACK:
         case SC_ACD_SERV_PROC:
             pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_IDEL;
+            if (!pstAgentQueueInfo->bNeedConnected)
+            {
+                pstAgentQueueInfo->ulLegNo = U32_BUTT;
+            }
             bIsPub = DOS_TRUE;
             break;
         default:
@@ -2454,10 +2458,9 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
         case SC_ACD_WORK_OFFLINE:
         case SC_ACD_WORK_BUSY:
         case SC_ACD_WORK_AWAY:
+        case SC_ACD_WORK_IDEL:
             pstAgentInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
             bIsPub = DOS_TRUE;
-            break;
-        case SC_ACD_WORK_IDEL:
             break;
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentInfo->ulAgentID);
@@ -2683,11 +2686,10 @@ U32 sc_agent_work_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_WORK_OFFLINE:
         case SC_ACD_WORK_BUSY:
         case SC_ACD_WORK_AWAY:
-            pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
-            bIsPub = DOS_TRUE;
-            break;
-
         case SC_ACD_WORK_IDEL:
+            pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
+            pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_IDEL;
+            bIsPub = DOS_TRUE;
             break;
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);

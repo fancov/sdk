@@ -25,6 +25,86 @@ extern "C" {
 
 extern SC_ACCESS_CODE_LIST_ST astSCAccessList[];
 
+VOID sc_hungup_third_leg(U32 ulScbNo)
+{
+    SC_SRV_CB *pstSCB = NULL;
+    SC_LEG_CB *pstLeg = NULL;
+
+    pstSCB = sc_scb_get(ulScbNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return;
+    }
+
+    /* 先查看是哪种业务，现在只有监听和耳语两种 */
+    if (pstSCB->stInterception.stSCBTag.bValid)
+    {
+        pstLeg = sc_lcb_get(pstSCB->stInterception.ulLegNo);
+        if (DOS_ADDR_INVALID(pstLeg))
+        {
+            sc_scb_free(pstSCB);
+            return;
+        }
+
+        switch (pstSCB->stInterception.stSCBTag.usStatus)
+        {
+            case SC_INTERCEPTION_IDEL:
+            case SC_INTERCEPTION_AUTH:
+            case SC_INTERCEPTION_EXEC:
+                /* 释放掉就行了 */
+                sc_scb_free(pstSCB);
+                sc_lcb_free(pstLeg);
+                break;
+
+            case SC_INTERCEPTION_PROC:
+            case SC_INTERCEPTION_ALERTING:
+            case SC_INTERCEPTION_ACTIVE:
+            case SC_INTERCEPTION_RELEASE:
+                /* 挂断电话 */
+                sc_req_hungup(pstSCB->ulSCBNo, pstLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                break;
+
+            default:
+                break;
+        }
+    }
+    else if (pstSCB->stWhispered.stSCBTag.bValid)
+    {
+        pstLeg = sc_lcb_get(pstSCB->stWhispered.ulLegNo);
+        if (DOS_ADDR_INVALID(pstLeg))
+        {
+            sc_scb_free(pstSCB);
+            return;
+        }
+
+        switch (pstSCB->stWhispered.stSCBTag.usStatus)
+        {
+            case SC_WHISPER_IDEL:
+            case SC_WHISPER_AUTH:
+            case SC_WHISPER_EXEC:
+                /* 释放掉就行了 */
+                sc_scb_free(pstSCB);
+                sc_lcb_free(pstLeg);
+                break;
+
+            case SC_WHISPER_PROC:
+            case SC_WHISPER_ALERTING:
+            case SC_WHISPER_ACTIVE:
+            case SC_WHISPER_RELEASE:
+                sc_req_hungup(pstSCB->ulSCBNo, pstLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                break;
+
+            default:
+                break;
+        }
+    }
+    else
+    {
+        /* 暂时不处理 */
+    }
+
+    return;
+}
 
 U32 sc_errcode_transfer_from_intererr(U32 ulInterErr)
 {
@@ -215,15 +295,22 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "POTS, Can not find agent. customer id(%u), empNum(%s)", pstSCB->ulCustomerID, pszEmpNum);
 
-        return DOS_FAIL;
+        /* 判断一下是不是分机号 */
+        if (!sc_sip_account_be_is_exit(pstSCB->ulCustomerID, pszEmpNum))
+        {
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "POTS, empNum(%s) is not sip", pszEmpNum);
+            return DOS_FAIL;
+        }
     }
-
-    /* 判断坐席的状态 */
-    if (!SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
+    else
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "The agent is not useable.(Agent %u)", pstAgentNode->pstAgentInfo->ulAgentID);
+        /* 判断坐席的状态 */
+        if (!SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
+        {
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "The agent is not useable.(Agent %u)", pstAgentNode->pstAgentInfo->ulAgentID);
 
-        return DOS_FAIL;
+            return DOS_FAIL;
+        }
     }
 
     if (pstSCB->stTransfer.stSCBTag.bValid)
@@ -245,12 +332,23 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
         stTransfer.stSCBTag.bValid = DOS_FALSE;
     }
 
+    if (DOS_ADDR_VALID(pstAgentNode))
+    {
+        pstSCB->stTransfer.ulPublishType = SC_TRANSFER_PUBLISH_AGENT;
+        pstSCB->stTransfer.ulPublishAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
+    }
+    else
+    {
+        pstSCB->stTransfer.ulPublishType = SC_TRANSFER_PUBLISH_SIP;
+        dos_strncpy(pstSCB->stTransfer.szSipNum, pszEmpNum, SC_NUM_LENGTH-1);
+        pstSCB->stTransfer.szSipNum[SC_NUM_LENGTH-1] = '\0';
+    }
+
     pstSCB->stTransfer.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stTransfer.ulNotifyLegNo = pstLegCB->ulCBNo;
     pstSCB->stTransfer.ulType = pstSCB->stAccessCode.ulSrvType;
 
     pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_IDEL;
-    pstSCB->stTransfer.ulPublishAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
 
     /* 从之前的业务中拷贝信息到转接业务中 */
     if (pstSCB->stCall.stSCBTag.bValid)
@@ -336,20 +434,81 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
         goto proc_fail;
     }
 
-    /* 判断坐席是否是长签 */
-    if (pstAgentNode->pstAgentInfo->bConnected
-        && pstAgentNode->pstAgentInfo->ulLegNo < SC_LEG_CB_SIZE)
+    if (pstSCB->stTransfer.ulPublishType == SC_TRANSFER_PUBLISH_AGENT)
     {
-        pstPublishLeg = sc_lcb_get(pstAgentNode->pstAgentInfo->ulLegNo);
-        if (DOS_ADDR_VALID(pstPublishLeg) && pstPublishLeg->ulIndSCBNo != U32_BUTT)
+        /* 判断坐席是否是长签 */
+        if (pstAgentNode->pstAgentInfo->bConnected
+            && pstAgentNode->pstAgentInfo->ulLegNo < SC_LEG_CB_SIZE)
         {
-            /* 长签 */
-            pstSCB->stTransfer.ulPublishLegNo = pstAgentNode->pstAgentInfo->ulLegNo;
+            pstPublishLeg = sc_lcb_get(pstAgentNode->pstAgentInfo->ulLegNo);
+            if (DOS_ADDR_VALID(pstPublishLeg) && pstPublishLeg->ulIndSCBNo != U32_BUTT)
+            {
+                /* 长签 */
+                pstSCB->stTransfer.ulPublishLegNo = pstAgentNode->pstAgentInfo->ulLegNo;
+            }
+        }
+
+        if (pstSCB->stTransfer.ulPublishLegNo == U32_BUTT)
+        {
+            pstPublishLeg = sc_lcb_alloc();
+            if (DOS_ADDR_INVALID(pstPublishLeg))
+            {
+                DOS_ASSERT(0);
+                goto proc_fail;
+            }
+
+            /* 主被叫号码 */
+            pstPublishLeg->stCall.bValid = DOS_TRUE;
+            pstPublishLeg->ulSCBNo = pstSCB->ulSCBNo;
+            /* 主被叫号码 */
+            ulRet = sc_caller_setting_select_number(pstAgentNode->pstAgentInfo->ulCustomerID, pstAgentNode->pstAgentInfo->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstPublishLeg->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
+            if (ulRet != DOS_SUCC)
+            {
+                /* TODO 没有找到主叫号码，错误处理 */
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstAgentNode->pstAgentInfo->ulCustomerID, pstAgentNode->pstAgentInfo->ulAgentID);
+                pstLegCB->ulSCBNo = pstSCB->ulSCBNo;
+                sc_lcb_free(pstPublishLeg);
+
+                goto proc_fail;
+            }
+
+            switch (pstAgentNode->pstAgentInfo->ucBindType)
+            {
+                case AGENT_BIND_SIP:
+                    dos_snprintf(pstPublishLeg->stCall.stNumInfo.szOriginalCallee, sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee), pstAgentNode->pstAgentInfo->szUserID);
+                    pstPublishLeg->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+
+                    break;
+
+                case AGENT_BIND_TELE:
+                    dos_snprintf(pstPublishLeg->stCall.stNumInfo.szOriginalCallee, sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee), pstAgentNode->pstAgentInfo->szTelePhone);
+                    pstPublishLeg->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+                    sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
+
+                    break;
+
+                case AGENT_BIND_MOBILE:
+                    dos_snprintf(pstPublishLeg->stCall.stNumInfo.szOriginalCallee, sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee), pstAgentNode->pstAgentInfo->szMobile);
+                    pstPublishLeg->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+                    sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
+                    break;
+
+                case AGENT_BIND_TT_NUMBER:
+                    dos_snprintf(pstPublishLeg->stCall.stNumInfo.szOriginalCallee, sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee), pstAgentNode->pstAgentInfo->szTTNumber);
+                    pstPublishLeg->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
+                    break;
+
+                default:
+                    break;
+            }
+            pstPublishLeg->stCall.stNumInfo.szOriginalCallee[sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee)-1] = '\0';
+
+            pstSCB->stTransfer.ulPublishLegNo = pstPublishLeg->ulCBNo;
         }
     }
-
-    if (pstSCB->stTransfer.ulPublishLegNo == U32_BUTT)
+    else
     {
+        /* 转接sip分机 */
         pstPublishLeg = sc_lcb_alloc();
         if (DOS_ADDR_INVALID(pstPublishLeg))
         {
@@ -361,46 +520,20 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
         pstPublishLeg->stCall.bValid = DOS_TRUE;
         pstPublishLeg->ulSCBNo = pstSCB->ulSCBNo;
         /* 主被叫号码 */
-        ulRet = sc_caller_setting_select_number(pstAgentNode->pstAgentInfo->ulCustomerID, pstAgentNode->pstAgentInfo->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstPublishLeg->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
+        ulRet = sc_caller_setting_select_number(pstSCB->ulCustomerID, 0, SC_SRC_CALLER_TYPE_ALL, pstPublishLeg->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
         if (ulRet != DOS_SUCC)
         {
             /* TODO 没有找到主叫号码，错误处理 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstAgentNode->pstAgentInfo->ulCustomerID, pstAgentNode->pstAgentInfo->ulAgentID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL.", pstSCB->ulSCBNo);
             pstLegCB->ulSCBNo = pstSCB->ulSCBNo;
             sc_lcb_free(pstPublishLeg);
 
             goto proc_fail;
         }
 
-        switch (pstAgentNode->pstAgentInfo->ucBindType)
-        {
-            case AGENT_BIND_SIP:
-                dos_snprintf(pstPublishLeg->stCall.stNumInfo.szOriginalCallee, sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee), pstAgentNode->pstAgentInfo->szUserID);
-                pstPublishLeg->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+        dos_snprintf(pstPublishLeg->stCall.stNumInfo.szOriginalCallee, sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee), pstSCB->stTransfer.szSipNum);
+        pstPublishLeg->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
 
-                break;
-
-            case AGENT_BIND_TELE:
-                dos_snprintf(pstPublishLeg->stCall.stNumInfo.szOriginalCallee, sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee), pstAgentNode->pstAgentInfo->szTelePhone);
-                pstPublishLeg->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
-                sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
-
-                break;
-
-            case AGENT_BIND_MOBILE:
-                dos_snprintf(pstPublishLeg->stCall.stNumInfo.szOriginalCallee, sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee), pstAgentNode->pstAgentInfo->szMobile);
-                pstPublishLeg->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
-                sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
-                break;
-
-            case AGENT_BIND_TT_NUMBER:
-                dos_snprintf(pstPublishLeg->stCall.stNumInfo.szOriginalCallee, sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee), pstAgentNode->pstAgentInfo->szTTNumber);
-                pstPublishLeg->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
-                break;
-
-            default:
-                break;
-        }
         pstPublishLeg->stCall.stNumInfo.szOriginalCallee[sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee)-1] = '\0';
 
         pstSCB->stTransfer.ulPublishLegNo = pstPublishLeg->ulCBNo;
@@ -826,7 +959,7 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_trace_scb(pstSCB, "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
         sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, CC_ERR_BS_HEAD + pstAuthRsp->stMsgTag.usInterErr);
         return DOS_SUCC;
@@ -952,7 +1085,7 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
         case SC_CALL_ALERTING:
             /* 主叫LEG状态变换 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_EVENT), "Calling has been ringback.");
+            sc_trace_scb(pstSCB, "Calling has been ringback.");
             break;
 
         case SC_CALL_ACTIVE:
@@ -971,10 +1104,7 @@ proc_fail:
 U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_LEG_CB             *pstCalleeLegCB = NULL;
-    SC_LEG_CB             *pstCallingLegCB = NULL;
-    SC_LEG_CB             *pstRecordLegCB = NULL;
     SC_MSG_EVT_ANSWER_ST  *pstEvtAnswer   = NULL;
-    SC_MSG_CMD_RECORD_ST  stRecordRsp;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -1027,33 +1157,6 @@ U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     goto proc_fail;
                 }
 
-                /* 判断是否需要录音 */
-                if (pstCalleeLegCB->stRecord.bValid)
-                {
-                    pstRecordLegCB = pstCalleeLegCB;
-                }
-                else
-                {
-                    pstCallingLegCB = sc_lcb_get(pstSCB->stCall.ulCallingLegNo);
-                    if (DOS_ADDR_VALID(pstCallingLegCB) && pstCallingLegCB->stRecord.bValid)
-                    {
-                        pstRecordLegCB = pstCallingLegCB;
-                    }
-                }
-
-                if (DOS_ADDR_VALID(pstRecordLegCB))
-                {
-                    stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
-                    stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-                    stRecordRsp.stMsgTag.usInterErr = 0;
-                    stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
-                    stRecordRsp.ulLegNo = pstRecordLegCB->ulCBNo;
-
-                    if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
-                    {
-                        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
-                    }
-                }
             }
 
             pstSCB->stCall.stSCBTag.usStatus = SC_CALL_ACTIVE;
@@ -1062,7 +1165,7 @@ U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_ACTIVE:
         case SC_CALL_PROCESS:
         case SC_CALL_RELEASE:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_EVENT), "Calling has been answered");
+            sc_trace_scb(pstSCB, "Calling has been answered");
             break;
     }
 
@@ -1161,6 +1264,18 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     break;
                 }
                 /* 错误处理 */
+            }
+
+            if (pstCallee->ulOtherSCBNo != U32_BUTT)
+            {
+                sc_hungup_third_leg(pstCallee->ulOtherSCBNo);
+                pstCallee->ulOtherSCBNo = U32_BUTT;
+            }
+
+            if (pstCalling->ulOtherSCBNo != U32_BUTT)
+            {
+                sc_hungup_third_leg(pstCalling->ulOtherSCBNo);
+                pstCalling->ulOtherSCBNo = U32_BUTT;
             }
 
             if (pstSCB->stCall.ulCallingLegNo == pstHungup->ulLegNo)
@@ -1388,7 +1503,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Leg %u has hunguped. ", pstHungup->ulLegNo);
+    sc_trace_scb(pstSCB, "Leg %u has hunguped. ", pstHungup->ulLegNo);
 
     return DOS_SUCC;
 }
@@ -1517,10 +1632,8 @@ U32 sc_call_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_LEG_CB              *pstCallingLegCB = NULL;
-    SC_LEG_CB              *pstCalleeLegCB  = NULL;
     SC_MSG_EVT_PLAYBACK_ST *pstCallSetup    = NULL;
     U32                    ulRet            = DOS_FAIL;
-    SC_MSG_CMD_RECORD_ST  stRecordRsp;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -1555,22 +1668,7 @@ U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_CALL_TONE:
-            /* 坐席长签时，给坐席放提示音结束，需要录音 */
-            pstCalleeLegCB = sc_lcb_get(pstSCB->stCall.ulCalleeLegNo);
-            if (DOS_ADDR_VALID(pstCalleeLegCB) && pstCalleeLegCB->stRecord.bValid)
-            {
-                stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
-                stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-                stRecordRsp.stMsgTag.usInterErr = 0;
-                stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
-                stRecordRsp.ulLegNo = pstCalleeLegCB->ulCBNo;
-
-                if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
-                {
-                    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
-                }
-            }
-
+            /* 坐席长签时，给坐席放提示音结束 */
             if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
                 && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
             {
@@ -1664,6 +1762,10 @@ U32 sc_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
     U32                         ulRet               = DOS_SUCC;
     U32                         ulErrCode           = CC_ERR_NO_REASON;
+    SC_LEG_CB                   *pstCalleeLegCB     = NULL;
+    SC_LEG_CB                   *pstCallingLegCB    = NULL;
+    SC_LEG_CB                   *pstRecordLegCB     = NULL;
+    SC_MSG_CMD_RECORD_ST        stRecordRsp;
 
     pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
@@ -1673,6 +1775,46 @@ U32 sc_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Processing call error event. status : %u", pstSCB->stCall.stSCBTag.usStatus);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+        if (!sc_scb_is_exit_service(pstSCB, BS_SERV_RECORDING))
+        {
+            return DOS_SUCC;
+        }
+
+        pstCalleeLegCB = sc_lcb_get(pstSCB->stCall.ulCalleeLegNo);
+        if (pstCalleeLegCB->stRecord.bValid)
+        {
+            pstRecordLegCB = pstCalleeLegCB;
+        }
+        else
+        {
+            pstCallingLegCB = sc_lcb_get(pstSCB->stCall.ulCallingLegNo);
+            if (DOS_ADDR_VALID(pstCallingLegCB) && pstCallingLegCB->stRecord.bValid)
+            {
+                pstRecordLegCB = pstCallingLegCB;
+            }
+        }
+
+        if (DOS_ADDR_VALID(pstRecordLegCB))
+        {
+            stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
+            stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+            stRecordRsp.stMsgTag.usInterErr = 0;
+            stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
+            stRecordRsp.ulLegNo = pstRecordLegCB->ulCBNo;
+
+            if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
+            {
+                sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
+            }
+        }
+
+        return DOS_SUCC;
+    }
+
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 
@@ -1946,9 +2088,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     U32                 ulRet           = DOS_FAIL;
     SC_LEG_CB           *pstCallingCB   = NULL;
     SC_LEG_CB           *pstCalleeCB    = NULL;
-    SC_LEG_CB           *pstRecordLegCB = NULL;
     SC_AGENT_NODE_ST    *pstAgentNode   = NULL;
-    SC_MSG_CMD_RECORD_ST  stRecordRsp;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -2047,27 +2187,6 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 sc_trace_scb(pstSCB, "Bridge call when early media fail.");
                 goto fail_proc;
-            }
-
-            /* 判断是否需要录音 */
-            if (pstCalleeCB->stRecord.bValid
-                || pstCallingCB->stRecord.bValid)
-            {
-                pstRecordLegCB = pstCalleeCB;
-            }
-
-            if (DOS_ADDR_VALID(pstRecordLegCB))
-            {
-                stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
-                stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-                stRecordRsp.stMsgTag.usInterErr = 0;
-                stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
-                stRecordRsp.ulLegNo = pstRecordLegCB->ulCBNo;
-
-                if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
-                {
-                    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
-                }
             }
 
             pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_CONNECTED;
@@ -2220,7 +2339,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_PREVIEW_CALL_PORC:
         case SC_PREVIEW_CALL_ALERTING:
         case SC_PREVIEW_CALL_ACTIVE:
-            /* 这个时候挂断只会是坐席的LEG清理资源即可 */
+            /* 这个时候挂断只会是坐席的LEG，修改坐席的状态 */
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
             pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
             pstCalleeCB = sc_lcb_get(pstSCB->stPreviewCall.ulCalleeLegNo);
@@ -2376,6 +2495,18 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstHungupLeg = pstCallingCB;
                 pstOtherLeg  = pstCalleeCB;
                 pstCalleeCB->stCall.stTimeInfo.ulByeTime = pstCallingCB->stCall.stTimeInfo.ulByeTime;
+            }
+
+            if (pstCalleeCB->ulOtherSCBNo != U32_BUTT)
+            {
+                sc_hungup_third_leg(pstCalleeCB->ulOtherSCBNo);
+                pstCalleeCB->ulOtherSCBNo = U32_BUTT;
+            }
+
+            if (pstCallingCB->ulOtherSCBNo != U32_BUTT)
+            {
+                sc_hungup_third_leg(pstCallingCB->ulOtherSCBNo);
+                pstCallingCB->ulOtherSCBNo = U32_BUTT;
             }
 
             /* 生成话单 */
@@ -2555,6 +2686,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             sc_scb_free(pstSCB);
             pstSCB = NULL;
             break;
+
         case SC_PREVIEW_CALL_RELEASE:
             pstCalleeCB = sc_lcb_get(pstSCB->stPreviewCall.ulCalleeLegNo);
             if (DOS_ADDR_VALID(pstCalleeCB))
@@ -2573,6 +2705,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             sc_scb_free(pstSCB);
             pstSCB = NULL;
             break;
+
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
             ulRet = DOS_SUCC;
@@ -2714,12 +2847,23 @@ U32 sc_preview_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 if (DOS_ADDR_VALID(pstAgentCall)
                     && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
                 {
-                    /* 坐席长签的时候，呼叫对端失败，方提示音后到这里，修改坐席的状态，放提示音 */
-                    pstCallingCB->ulSCBNo = U32_BUTT;
-                    sc_scb_free(pstSCB);
-                    pstSCB = NULL;
-                    sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL);
-                    sc_req_play_sound(pstCallingCB->ulIndSCBNo, pstCallingCB->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
+                    if (pstCallingCB->ulIndSCBNo != U32_BUTT)
+                    {
+                        /* 坐席长签的时候，呼叫对端失败，方提示音后到这里，修改坐席的状态，放提示音 */
+                        pstCallingCB->ulSCBNo = U32_BUTT;
+                        sc_scb_free(pstSCB);
+                        pstSCB = NULL;
+                        sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL);
+                        sc_req_play_sound(pstCallingCB->ulIndSCBNo, pstCallingCB->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
+                    }
+                    else
+                    {
+                        sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL);
+                        sc_lcb_free(pstCallingCB);
+                        pstCallingCB = NULL;
+                        sc_scb_free(pstSCB);
+                        pstSCB = NULL;
+                    }
                 }
             }
             break;
@@ -2738,6 +2882,7 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_LEG_CB                   *pstCallingCB       = NULL;
     SC_LEG_CB                   *pstCalleeCB        = NULL;
     SC_AGENT_NODE_ST            *pstAgentCall       = NULL;
+    SC_MSG_CMD_RECORD_ST        stRecordRsp;
 
     pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
@@ -2746,7 +2891,35 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Proccessing preview error event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
+    sc_trace_scb(pstSCB, "Proccessing preview error event. status : %u, msg type : %u"
+        , pstSCB->stPreviewCall.stSCBTag.usStatus, pstErrReport->stMsgTag.ulMsgType);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+        if (!sc_scb_is_exit_service(pstSCB, BS_SERV_RECORDING))
+        {
+            return DOS_SUCC;
+        }
+
+        pstCalleeCB = sc_lcb_get(pstSCB->stPreviewCall.ulCalleeLegNo);
+        if (DOS_ADDR_VALID(pstCalleeCB))
+        {
+            stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
+            stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+            stRecordRsp.stMsgTag.usInterErr = 0;
+            stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
+            stRecordRsp.ulLegNo = pstCalleeCB->ulCBNo;
+
+            if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
+            {
+                sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
+            }
+        }
+
+        return DOS_SUCC;
+    }
+
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 
@@ -2765,21 +2938,18 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
         case SC_PREVIEW_CALL_PORC:
         case SC_PREVIEW_CALL_ALERTING:
-            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCalleeLegNo, ulErrCode);
-            break;
         case SC_PREVIEW_CALL_ACTIVE:
         case SC_PREVIEW_CALL_CONNECTING:
         case SC_PREVIEW_CALL_ALERTING2:
             /* 判断坐席是不是长签 */
             pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
-            if (DOS_ADDR_VALID(pstCallingCB)
-                && pstCallingCB->ulIndSCBNo != U32_BUTT)
+            if (DOS_ADDR_VALID(pstCallingCB))
             {
                 pstAgentCall = sc_agent_get_by_id(pstSCB->stPreviewCall.ulAgentID);
                 if (DOS_ADDR_VALID(pstAgentCall)
                     && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
                 {
-                    /* 坐席长签，释放掉被叫leg，放个提示音 */
+                    /* 释放掉被叫leg，放个提示音 */
                     pstCalleeCB = sc_lcb_get(pstSCB->stPreviewCall.ulCalleeLegNo);
                     if (DOS_ADDR_VALID(pstCalleeCB))
                     {
@@ -3291,6 +3461,14 @@ U32 sc_voice_verify_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing verify error event. status : %u", pstSCB->stVoiceVerify.stSCBTag.usStatus);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+
+        return DOS_SUCC;
+    }
+
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 
@@ -3616,6 +3794,7 @@ proc_finishe:
 U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_LEG_CB  *pstLCB      = NULL;
+    SC_LEG_CB  *pstAgentLCB = NULL;
     U32        ulRet        = DOS_FAIL;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
@@ -3636,26 +3815,23 @@ U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stInterception.stSCBTag.usStatus)
     {
         case SC_INTERCEPTION_IDEL:
-            break;
-
         case SC_INTERCEPTION_AUTH:
+        case SC_INTERCEPTION_EXEC:
             break;
 
-        case SC_INTERCEPTION_EXEC:
         case SC_INTERCEPTION_PROC:
         case SC_INTERCEPTION_ALERTING:
-            break;
-
+             /* 电话没有接听， */
+             pstLCB->stCall.stTimeInfo.ulAnswerTime = pstLCB->stCall.stTimeInfo.ulByeTime;
         case SC_INTERCEPTION_ACTIVE:
         case SC_INTERCEPTION_RELEASE:
             /* 发送话单 */
-            if (ulRet != DOS_SUCC)
+            sc_send_billing_stop2bs(pstSCB, pstLCB, NULL);
+
+            pstAgentLCB = sc_lcb_get(pstSCB->stInterception.ulAgentLegNo);
+            if (DOS_ADDR_VALID(pstAgentLCB))
             {
-                if (DOS_ADDR_VALID(pstLCB))
-                {
-                    sc_lcb_free(pstLCB);
-                    pstLCB = NULL;
-                }
+                pstAgentLCB->ulOtherSCBNo = U32_BUTT;
             }
 
             if (DOS_ADDR_VALID(pstSCB->stInterception.pstAgentInfo)
@@ -3665,7 +3841,13 @@ U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_agent_update_status_db(pstSCB->stInterception.pstAgentInfo->pstAgentInfo);
             }
 
-            pstSCB->stInterception.stSCBTag.bValid = DOS_FALSE;
+            sc_lcb_free(pstLCB);
+            pstLCB = NULL;
+            sc_scb_free(pstSCB);
+            pstSCB = NULL;
+            break;
+
+        default:
             break;
     }
 
@@ -3690,6 +3872,14 @@ U32 sc_interception_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing interception error event. status : %u", pstSCB->stInterception.stSCBTag.usStatus);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+
+        return DOS_SUCC;
+    }
+
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 
@@ -4014,6 +4204,7 @@ proc_finishe:
 U32 sc_whisper_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_LEG_CB  *pstLCB      = NULL;
+    SC_LEG_CB  *pstAgentLCB = NULL;
     U32        ulRet        = DOS_FAIL;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
@@ -4037,24 +4228,16 @@ U32 sc_whisper_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_WHISPER_AUTH:
+        case SC_WHISPER_EXEC:
             break;
 
-        case SC_WHISPER_EXEC:
         case SC_WHISPER_PROC:
         case SC_WHISPER_ALERTING:
-            break;
-
+            pstLCB->stCall.stTimeInfo.ulAnswerTime = pstLCB->stCall.stTimeInfo.ulByeTime;
         case SC_WHISPER_ACTIVE:
         case SC_WHISPER_RELEASE:
             /* 发送话单 */
-            if (ulRet != DOS_SUCC)
-            {
-                if (DOS_ADDR_VALID(pstLCB))
-                {
-                    sc_lcb_free(pstLCB);
-                    pstLCB = NULL;
-                }
-            }
+            sc_send_billing_stop2bs(pstSCB, pstLCB, NULL);
 
             if (DOS_ADDR_VALID(pstSCB->stWhispered.pstAgentInfo)
                 && DOS_ADDR_VALID(pstSCB->stWhispered.pstAgentInfo->pstAgentInfo))
@@ -4063,7 +4246,19 @@ U32 sc_whisper_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_agent_update_status_db(pstSCB->stWhispered.pstAgentInfo->pstAgentInfo);
             }
 
-            pstSCB->stWhispered.stSCBTag.bValid = DOS_FALSE;
+            pstAgentLCB = sc_lcb_get(pstSCB->stWhispered.ulAgentLegNo);
+            if (DOS_ADDR_VALID(pstAgentLCB))
+            {
+                pstAgentLCB->ulOtherSCBNo = U32_BUTT;
+            }
+
+            sc_lcb_free(pstLCB);
+            pstLCB = NULL;
+            sc_scb_free(pstSCB);
+            pstSCB = NULL;
+            break;
+
+        default:
             break;
     }
 
@@ -4088,6 +4283,14 @@ U32 sc_whisper_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing whisper error event. status : %u", pstSCB->stWhispered.stSCBTag.usStatus);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+
+        return DOS_SUCC;
+    }
+
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 
@@ -4104,12 +4307,14 @@ U32 sc_whisper_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             sc_scb_free(pstSCB);
             break;
+
         case SC_WHISPER_PROC:
         case SC_WHISPER_ALERTING:
         case SC_WHISPER_ACTIVE:
         case SC_WHISPER_RELEASE:
             ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stWhispered.ulLegNo, ulErrCode);
             break;
+
         default:
             break;
     }
@@ -4357,10 +4562,7 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     U32          ulTaskMode         = U32_BUTT;
     SC_LEG_CB    *pstLCB            = NULL;
     SC_LEG_CB    *pstCalleeLegCB    = NULL;
-    SC_LEG_CB    *pstCallingLegCB   = NULL;
-    SC_LEG_CB    *pstRecordLegCB    = NULL;
     SC_MSG_CMD_PLAYBACK_ST  stPlaybackRsp;
-    SC_MSG_CMD_RECORD_ST    stRecordRsp;
     U32          ulErrCode   = CC_ERR_NO_REASON;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
@@ -4496,34 +4698,6 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     ulRet = DOS_FAIL;
                     goto proc_finishe;
                 }
-
-                /* 判断是否需要录音 */
-                if (pstCalleeLegCB->stRecord.bValid)
-                {
-                    pstRecordLegCB = pstCalleeLegCB;
-                }
-                else
-                {
-                    pstCallingLegCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
-                    if (DOS_ADDR_VALID(pstCallingLegCB) && pstCallingLegCB->stRecord.bValid)
-                    {
-                        pstRecordLegCB = pstCallingLegCB;
-                    }
-                }
-
-                if (DOS_ADDR_VALID(pstRecordLegCB))
-                {
-                    stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
-                    stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-                    stRecordRsp.stMsgTag.usInterErr = 0;
-                    stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
-                    stRecordRsp.ulLegNo = pstRecordLegCB->ulCBNo;
-
-                    if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
-                    {
-                        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
-                    }
-                }
             }
             break;
         case SC_AUTO_CALL_CONNECTED:
@@ -4559,7 +4733,6 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     U32                    ulTaskMode       = U32_BUTT;
     U32                    ulErrCode        = CC_ERR_NO_REASON;
     U32                    ulRet            = DOS_SUCC;
-    SC_MSG_CMD_RECORD_ST  stRecordRsp;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -4629,22 +4802,8 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     break;
             }
             break;
+
         case SC_AUTO_CALL_TONE:
-            /* 录音 */
-            if (DOS_ADDR_VALID(pstLCB) && pstLCB->stRecord.bValid)
-            {
-                stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
-                stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-                stRecordRsp.stMsgTag.usInterErr = 0;
-                stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
-                stRecordRsp.ulLegNo = pstLCB->ulCBNo;
-
-                if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
-                {
-                    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
-                }
-            }
-
             if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCalleeLegNo, pstSCB->stAutoCall.ulCallingLegNo) != DOS_SUCC)
             {
                 sc_trace_scb(pstSCB, "Bridge call when early media fail.");
@@ -4812,7 +4971,6 @@ U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
          default:
             break;
     }
-
 
     return DOS_SUCC;
 }
@@ -5073,6 +5231,18 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstCalleeCB->stCall.stTimeInfo.ulByeTime = pstCallingCB->stCall.stTimeInfo.ulByeTime;
             }
 
+            if (pstCalleeCB->ulOtherSCBNo != U32_BUTT)
+            {
+                sc_hungup_third_leg(pstCalleeCB->ulOtherSCBNo);
+                pstCalleeCB->ulOtherSCBNo = U32_BUTT;
+            }
+
+            if (pstCallingCB->ulOtherSCBNo != U32_BUTT)
+            {
+                sc_hungup_third_leg(pstCallingCB->ulOtherSCBNo);
+                pstCallingCB->ulOtherSCBNo = U32_BUTT;
+            }
+
             /* 生成话单 */
             if (sc_scb_is_exit_service(pstSCB, BS_SERV_RECORDING))
             {
@@ -5284,6 +5454,9 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     U32                         ulRet               = DOS_SUCC;
     U32                         ulErrCode           = CC_ERR_NO_REASON;
     SC_LEG_CB                   *pstCallingCB       = NULL;
+    SC_LEG_CB                   *pstCalleeCB        = NULL;
+    SC_LEG_CB                   *pstRecordLegCB    = NULL;
+    SC_MSG_CMD_RECORD_ST        stRecordRsp;
 
     pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
@@ -5293,6 +5466,48 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing auto call error event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+        if (!sc_scb_is_exit_service(pstSCB, BS_SERV_RECORDING))
+        {
+            return DOS_SUCC;
+        }
+
+        /* 判断是否需要录音 */
+        pstCalleeCB = sc_lcb_get(pstSCB->stAutoCall.ulCalleeLegNo);
+        if (DOS_ADDR_VALID(pstCalleeCB)
+            && pstCalleeCB->stRecord.bValid)
+        {
+            pstRecordLegCB = pstCalleeCB;
+        }
+        else
+        {
+            pstCallingCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
+            if (DOS_ADDR_VALID(pstCallingCB) && pstCallingCB->stRecord.bValid)
+            {
+                pstRecordLegCB = pstCallingCB;
+            }
+        }
+
+        if (DOS_ADDR_VALID(pstRecordLegCB))
+        {
+            stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
+            stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+            stRecordRsp.stMsgTag.usInterErr = 0;
+            stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
+            stRecordRsp.ulLegNo = pstRecordLegCB->ulCBNo;
+
+            if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
+            {
+                sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
+            }
+        }
+
+        return DOS_SUCC;
+    }
+
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 
@@ -5739,6 +5954,14 @@ U32 sc_sigin_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing sigin error event. status : %u", pstSCB->stSigin.stSCBTag.usStatus);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+
+        return DOS_SUCC;
+    }
+
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 
@@ -6048,6 +6271,14 @@ U32 sc_mark_custom_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing mark customer error event. status : %u", pstSCB->stMarkCustom.stSCBTag.usStatus);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+
+        return DOS_SUCC;
+    }
+
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 
@@ -6445,6 +6676,14 @@ U32 sc_access_code_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing access code error event. status : %u", pstSCB->stAccessCode.stSCBTag.usStatus);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+
+        return DOS_SUCC;
+    }
+
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 
@@ -6732,54 +6971,66 @@ U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             pstNotifyLeg->stCall.stTimeInfo.ulTransferStartTime = time(NULL);
 
-            pstPublishAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+            if (SC_TRANSFER_PUBLISH_AGENT == pstSCB->stTransfer.ulPublishType)
+            {
+                pstPublishAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+            }
 
             if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
             {
-                /* 盲转，判断是否是长签 */
-                if (pstPublishLeg->ulIndSCBNo != U32_BUTT)
+                if (SC_TRANSFER_PUBLISH_SIP == pstSCB->stTransfer.ulPublishType)
                 {
-                    /* 长签，将被叫坐席置忙，放提示音 */
-                    if (DOS_ADDR_VALID(pstPublishAgentNode)
-                        && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
-                    {
-                        sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_CALL_IN);
-                    }
-
-                    pstPublishLeg->ulSCBNo = pstSCB->ulSCBNo;
-                    sc_req_playback_stop(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo);
-                    sc_req_play_sound(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo, SC_SND_INCOMING_CALL_TIP, 1, 0, 0);
-                    pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_TONE;
+                    /* 转接sip分机 */
+                    ulRet = sc_make_call2sip(pstSCB, pstPublishLeg);
+                    pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_EXEC;
                 }
                 else
                 {
-                    /* 呼叫需要转接的坐席 */
-                    switch (pstPublishLeg->stCall.ucPeerType)
+                    /* 判断是否是长签 */
+                    if (pstPublishLeg->ulIndSCBNo != U32_BUTT)
                     {
-                        case SC_LEG_PEER_OUTBOUND:
-                            ulRet = sc_make_call2pstn(pstSCB, pstPublishLeg);
-                            break;
+                        /* 长签，将被叫坐席置忙，放提示音 */
+                        if (DOS_ADDR_VALID(pstPublishAgentNode)
+                            && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+                        {
+                            sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_CALL_IN);
+                        }
 
-                        case SC_LEG_PEER_OUTBOUND_TT:
-                            ulRet = sc_make_call2eix(pstSCB, pstPublishLeg);
-                            break;
-
-                        case SC_LEG_PEER_OUTBOUND_INTERNAL:
-                            ulRet = sc_make_call2sip(pstSCB, pstPublishLeg);
-                            break;
-
-                        default:
-                            sc_trace_scb(pstSCB, "Invalid perr type. %u", pstPublishLeg->stCall.ucPeerType);
-                            break;
+                        pstPublishLeg->ulSCBNo = pstSCB->ulSCBNo;
+                        sc_req_playback_stop(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo);
+                        sc_req_play_sound(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo, SC_SND_INCOMING_CALL_TIP, 1, 0, 0);
+                        pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_TONE;
                     }
-
-                    if (DOS_ADDR_VALID(pstPublishAgentNode)
-                        && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+                    else
                     {
-                        sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
-                    }
+                        /* 呼叫需要转接的坐席 */
+                        switch (pstPublishLeg->stCall.ucPeerType)
+                        {
+                            case SC_LEG_PEER_OUTBOUND:
+                                ulRet = sc_make_call2pstn(pstSCB, pstPublishLeg);
+                                break;
 
-                    pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_EXEC;
+                            case SC_LEG_PEER_OUTBOUND_TT:
+                                ulRet = sc_make_call2eix(pstSCB, pstPublishLeg);
+                                break;
+
+                            case SC_LEG_PEER_OUTBOUND_INTERNAL:
+                                ulRet = sc_make_call2sip(pstSCB, pstPublishLeg);
+                                break;
+
+                            default:
+                                sc_trace_scb(pstSCB, "Invalid perr type. %u", pstPublishLeg->stCall.ucPeerType);
+                                break;
+                        }
+
+                        if (DOS_ADDR_VALID(pstPublishAgentNode)
+                            && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+                        {
+                            sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
+                        }
+
+                        pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_EXEC;
+                    }
                 }
 
                 /* 修改主叫坐席的状态 */
@@ -6814,51 +7065,59 @@ U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 /* 协商转，hold ulSubAgentID */
                 sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stTransfer.ulSubLegNo, SC_SND_MUSIC_HOLD, 1, 0, 0);
 
-                if (pstPublishLeg->ulIndSCBNo != U32_BUTT)
+                if (SC_TRANSFER_PUBLISH_SIP == pstSCB->stTransfer.ulPublishType)
                 {
-                    /* 长签，将被叫坐席置忙，放提示音 */
-                    if (DOS_ADDR_VALID(pstPublishAgentNode)
-                        && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
-                    {
-                        sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_CALL_IN);
-                    }
-
-                    pstPublishLeg->ulSCBNo = pstSCB->ulSCBNo;
-                    sc_req_playback_stop(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo);
-                    sc_req_play_sound(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo, SC_SND_INCOMING_CALL_TIP, 1, 0, 0);
-                    pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_TONE;
+                    /* 转接sip分机 */
+                    ulRet = sc_make_call2sip(pstSCB, pstPublishLeg);
+                    pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_EXEC;
                 }
                 else
                 {
-                    /* 呼叫需要转接的坐席 */
-                    switch (pstPublishLeg->stCall.ucPeerType)
+                    if (pstPublishLeg->ulIndSCBNo != U32_BUTT)
                     {
-                        case SC_LEG_PEER_OUTBOUND:
-                            ulRet = sc_make_call2pstn(pstSCB, pstPublishLeg);
-                            break;
+                        /* 长签，将被叫坐席置忙，放提示音 */
+                        if (DOS_ADDR_VALID(pstPublishAgentNode)
+                            && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+                        {
+                            sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_CALL_IN);
+                        }
 
-                        case SC_LEG_PEER_OUTBOUND_TT:
-                            ulRet = sc_make_call2eix(pstSCB, pstPublishLeg);
-                            break;
-
-                        case SC_LEG_PEER_OUTBOUND_INTERNAL:
-                            ulRet = sc_make_call2sip(pstSCB, pstPublishLeg);
-                            break;
-
-                        default:
-                            sc_trace_scb(pstSCB, "Invalid perr type. %u", pstPublishLeg->stCall.ucPeerType);
-                            break;
+                        pstPublishLeg->ulSCBNo = pstSCB->ulSCBNo;
+                        sc_req_playback_stop(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo);
+                        sc_req_play_sound(pstSCB->ulSCBNo, pstPublishLeg->ulCBNo, SC_SND_INCOMING_CALL_TIP, 1, 0, 0);
+                        pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_TONE;
                     }
-
-                    if (DOS_ADDR_VALID(pstPublishAgentNode)
-                        && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+                    else
                     {
-                        sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
-                    }
+                        /* 呼叫需要转接的坐席 */
+                        switch (pstPublishLeg->stCall.ucPeerType)
+                        {
+                            case SC_LEG_PEER_OUTBOUND:
+                                ulRet = sc_make_call2pstn(pstSCB, pstPublishLeg);
+                                break;
 
-                    pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_EXEC;
+                            case SC_LEG_PEER_OUTBOUND_TT:
+                                ulRet = sc_make_call2eix(pstSCB, pstPublishLeg);
+                                break;
+
+                            case SC_LEG_PEER_OUTBOUND_INTERNAL:
+                                ulRet = sc_make_call2sip(pstSCB, pstPublishLeg);
+                                break;
+
+                            default:
+                                sc_trace_scb(pstSCB, "Invalid perr type. %u", pstPublishLeg->stCall.ucPeerType);
+                                break;
+                        }
+
+                        if (DOS_ADDR_VALID(pstPublishAgentNode)
+                            && DOS_ADDR_VALID(pstPublishAgentNode->pstAgentInfo))
+                        {
+                            sc_agent_serv_status_update(pstPublishAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING);
+                        }
+
+                        pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_EXEC;
+                    }
                 }
-
                 /* 给 ulNotifyLegNo 放回铃音 */
                 sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stTransfer.ulNotifyLegNo, DOS_TRUE);
             }
@@ -7149,7 +7408,24 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         sc_send_special_billing_stop2bs(pstSCB, psthungLegCB, BS_SERV_OUTBAND_CALL);
                     }
 
+                    if (sc_scb_is_exit_service(pstSCB, BS_SERV_RECORDING))
+                    {
+                        sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
+                    }
+
                     sc_send_billing_stop2bs(pstSCB, pstOtherLegCB, NULL);
+                }
+
+                if (psthungLegCB->ulOtherSCBNo != U32_BUTT)
+                {
+                    sc_hungup_third_leg(psthungLegCB->ulOtherSCBNo);
+                    psthungLegCB->ulOtherSCBNo = U32_BUTT;
+                }
+
+                if (pstOtherLegCB->ulOtherSCBNo != U32_BUTT)
+                {
+                    sc_hungup_third_leg(pstOtherLegCB->ulOtherSCBNo);
+                    pstOtherLegCB->ulOtherSCBNo = U32_BUTT;
                 }
 
                 if (DOS_ADDR_VALID(pstHungAgentNode) && DOS_ADDR_VALID(pstHungAgentNode->pstAgentInfo))
@@ -7209,45 +7485,11 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         switch (pstSCB->stTransfer.stSCBTag.usStatus)
         {
             case SC_TRANSFER_AUTH:
-                /* TODO 异常处理 */
                 break;
             case SC_TRANSFER_EXEC:
             case SC_TRANSFER_PROC:
             case SC_TRANSFER_ALERTING:
             case SC_TRANSFER_TONE:
-                if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
-                {
-                    /* 发起方 挂断，生成转接的话单;生成话单后应该删除转接业务和B对应的业务；如果存在 ulNotifyAgentID，则需要修改坐席的状态 */
-                    pstNotifyAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
-                    if (DOS_ADDR_VALID(pstNotifyAgentNode)
-                        && DOS_ADDR_VALID(pstNotifyAgentNode->pstAgentInfo))
-                    {
-                        sc_agent_serv_status_update(pstNotifyAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL);
-                    }
-
-                    pstSCB->stTransfer.ulNotifyLegNo = U32_BUTT;
-                    pstSCB->stTransfer.ulNotifyAgentID = 0;
-                }
-                else if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
-                {
-
-                }
-                else
-                {
-
-                }
-
-                if (psthungLegCB->ulIndSCBNo != U32_BUTT)
-                {
-                    /* 挂断的坐席是长签，这里不需要释放 */
-                    psthungLegCB->ulSCBNo = U32_BUTT;
-                }
-                else
-                {
-                    sc_lcb_free(psthungLegCB);
-                }
-                break;
-
             case SC_TRANSFER_TRANSFER:
                 pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_FINISHED;
                 if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulNotifyLegNo)
@@ -7388,13 +7630,24 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
 
                 break;
+
             case SC_TRANSFER_FINISHED:
-                /* 正常挂断，判断坐席是否长签，判断是否需要进行客户标记等 */
+                /* 在这个状态，一定只有两通电话而且必须有被转接的那个电话 */
                 if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulSubLegNo)
                 {
                     pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
-                    pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
-                    pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+                    if (pstSCB->stTransfer.ulPublishLegNo != U32_BUTT)
+                    {
+                        pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+                        pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulPublishLegNo);
+                    }
+                    else
+                    {
+                        pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
+                        pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulNotifyLegNo);
+                    }
+
+                    pstOtherLegCB->stCall.stTimeInfo.ulByeTime = psthungLegCB->stCall.stTimeInfo.ulByeTime;
 
                     /* 生成话单 */
                     if (SC_LEG_PEER_OUTBOUND == pstOtherLegCB->stCall.ucPeerType)
@@ -7406,9 +7659,19 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
                 else
                 {
-                    pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+                    if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
+                    {
+                        pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+                    }
+                    else
+                    {
+                        pstHungAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
+                    }
+
                     pstOtherAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulSubAgentID);
                     pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
+
+                    pstOtherLegCB->stCall.stTimeInfo.ulByeTime = psthungLegCB->stCall.stTimeInfo.ulByeTime;
 
                     /* 生成话单 */
                     if (SC_LEG_PEER_OUTBOUND == psthungLegCB->stCall.ucPeerType)
@@ -7488,6 +7751,18 @@ U32 sc_transfer_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing transfer call error event. status : %u", pstSCB->stTransfer.stSCBTag.usStatus);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+        if (!sc_scb_is_exit_service(pstSCB, BS_SERV_RECORDING))
+        {
+            return DOS_SUCC;
+        }
+
+        return DOS_SUCC;
+    }
+
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 
@@ -7642,10 +7917,7 @@ U32 sc_demo_task_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     U32          ulRet              = DOS_FAIL;
     SC_LEG_CB    *pstLCB            = NULL;
     SC_LEG_CB    *pstCalleeLegCB    = NULL;
-    SC_LEG_CB    *pstCallingLegCB   = NULL;
-    SC_LEG_CB    *pstRecordLegCB    = NULL;
     SC_MSG_CMD_PLAYBACK_ST  stPlaybackRsp;
-    SC_MSG_CMD_RECORD_ST    stRecordRsp;
     U32          ulErrCode   = CC_ERR_NO_REASON;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
@@ -7723,34 +7995,6 @@ U32 sc_demo_task_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     sc_trace_scb(pstSCB, "Bridge call when early media fail.");
                     ulRet = DOS_FAIL;
                     goto proc_finishe;
-                }
-
-                /* 判断是否需要录音 */
-                if (pstCalleeLegCB->stRecord.bValid)
-                {
-                    pstRecordLegCB = pstCalleeLegCB;
-                }
-                else
-                {
-                    pstCallingLegCB = sc_lcb_get(pstSCB->stDemoTask.ulCallingLegNo);
-                    if (DOS_ADDR_VALID(pstCallingLegCB) && pstCallingLegCB->stRecord.bValid)
-                    {
-                        pstRecordLegCB = pstCallingLegCB;
-                    }
-                }
-
-                if (DOS_ADDR_VALID(pstRecordLegCB))
-                {
-                    stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
-                    stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-                    stRecordRsp.stMsgTag.usInterErr = 0;
-                    stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
-                    stRecordRsp.ulLegNo = pstRecordLegCB->ulCBNo;
-
-                    if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
-                    {
-                        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
-                    }
                 }
             }
             break;
@@ -8176,6 +8420,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstSCB->stDemoTask.stSCBTag.usStatus = SC_AUTO_CALL_RELEASE;
             }
             break;
+
         case SC_AUTO_CALL_CONNECTED:
             /* 这个时候挂断，就是正常释放的节奏，处理完就好，判断坐席的状态 */
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent connected.");
@@ -8192,6 +8437,18 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstHungupLeg = pstCallingCB;
                 pstOtherLeg  = pstCalleeCB;
                 pstCalleeCB->stCall.stTimeInfo.ulByeTime = pstCallingCB->stCall.stTimeInfo.ulByeTime;
+            }
+
+            if (pstCallingCB->ulOtherSCBNo != U32_BUTT)
+            {
+                sc_hungup_third_leg(pstCallingCB->ulOtherSCBNo);
+                pstCallingCB->ulOtherSCBNo = U32_BUTT;
+            }
+
+            if (pstCalleeCB->ulOtherSCBNo != U32_BUTT)
+            {
+                sc_hungup_third_leg(pstCalleeCB->ulOtherSCBNo);
+                pstCalleeCB->ulOtherSCBNo = U32_BUTT;
             }
 
             /* 生成话单 */
@@ -8405,7 +8662,6 @@ U32 sc_demo_task_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_LEG_CB              *pstLCB          = NULL;
     SC_MSG_EVT_PLAYBACK_ST *pstRlayback     = NULL;
     U32                    ulRet            = DOS_SUCC;
-    SC_MSG_CMD_RECORD_ST  stRecordRsp;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -8441,22 +8697,8 @@ U32 sc_demo_task_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stDemoTask.ulCallingLegNo, CC_ERR_NORMAL_CLEAR);
 
             break;
+
         case SC_AUTO_CALL_TONE:
-            /* 录音 */
-            if (DOS_ADDR_VALID(pstLCB) && pstLCB->stRecord.bValid)
-            {
-                stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
-                stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-                stRecordRsp.stMsgTag.usInterErr = 0;
-                stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
-                stRecordRsp.ulLegNo = pstLCB->ulCBNo;
-
-                if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
-                {
-                    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
-                }
-            }
-
             if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stDemoTask.ulCalleeLegNo, pstSCB->stDemoTask.ulCallingLegNo) != DOS_SUCC)
             {
                 sc_trace_scb(pstSCB, "Bridge call when early media fail.");
@@ -8482,6 +8724,9 @@ U32 sc_demo_task_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     U32                         ulRet               = DOS_SUCC;
     U32                         ulErrCode           = CC_ERR_NO_REASON;
     SC_LEG_CB                   *pstCallingCB       = NULL;
+    SC_LEG_CB                   *pstCalleeCB        = NULL;
+    SC_LEG_CB                   *pstRecordLegCB     = NULL;
+    SC_MSG_CMD_RECORD_ST        stRecordRsp;
 
     pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
@@ -8491,6 +8736,47 @@ U32 sc_demo_task_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing demo task call error event. status : %u", pstSCB->stDemoTask.stSCBTag.usStatus);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+        if (!sc_scb_is_exit_service(pstSCB, BS_SERV_RECORDING))
+        {
+            return DOS_SUCC;
+        }
+
+        pstCalleeCB = sc_lcb_get(pstSCB->stDemoTask.ulCalleeLegNo);
+        if (DOS_ADDR_VALID(pstCalleeCB)
+            && pstCalleeCB->stRecord.bValid)
+        {
+            pstRecordLegCB = pstCalleeCB;
+        }
+        else
+        {
+            pstCallingCB = sc_lcb_get(pstSCB->stDemoTask.ulCallingLegNo);
+            if (DOS_ADDR_VALID(pstCallingCB) && pstCallingCB->stRecord.bValid)
+            {
+                pstRecordLegCB = pstCallingCB;
+            }
+        }
+
+        if (DOS_ADDR_VALID(pstRecordLegCB))
+        {
+            stRecordRsp.stMsgTag.ulMsgType = SC_CMD_RECORD;
+            stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+            stRecordRsp.stMsgTag.usInterErr = 0;
+            stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
+            stRecordRsp.ulLegNo = pstRecordLegCB->ulCBNo;
+
+            if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
+            {
+                sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
+            }
+        }
+
+        return DOS_SUCC;
+    }
+
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 
@@ -8652,17 +8938,24 @@ U32 sc_hold_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_hold_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+    SC_MSG_EVT_ERR_REPORT_ST  *pstErrReport = NULL;
     U32                 ulRet    = DOS_SUCC;
 
-    pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
-    if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
+    pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstErrReport) || DOS_ADDR_INVALID(pstSCB))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
     sc_trace_scb(pstSCB, "Proccessing hold error event. status : %u", pstSCB->stHold.stSCBTag.usStatus);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+
+        return DOS_SUCC;
+    }
 
     switch (pstSCB->stHold.stSCBTag.usStatus)
     {
@@ -9255,6 +9548,18 @@ U32 sc_call_agent_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 break;
             }
 
+            if (pstCallingCB->ulOtherSCBNo != U32_BUTT)
+            {
+                sc_hungup_third_leg(pstCallingCB->ulOtherSCBNo);
+                pstCallingCB->ulOtherSCBNo = U32_BUTT;
+            }
+
+            if (pstCalleeCB->ulOtherSCBNo != U32_BUTT)
+            {
+                sc_hungup_third_leg(pstCalleeCB->ulOtherSCBNo);
+                pstCalleeCB->ulOtherSCBNo = U32_BUTT;
+            }
+
             if (pstSCB->stCallAgent.ulCalleeLegNo == pstHungup->ulLegNo)
             {
                 pstHungupLeg = pstCalleeCB;
@@ -9521,7 +9826,15 @@ U32 sc_call_agent_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Proccessing preview error event. status : %u", pstSCB->stCallAgent.stSCBTag.usStatus);
+    sc_trace_scb(pstSCB, "Proccessing call agent error event. status : %u", pstSCB->stCallAgent.stSCBTag.usStatus);
+
+    if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
+    {
+        /* bridge 成功，判断是否需要录音 */
+
+        return DOS_SUCC;
+    }
+
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
 

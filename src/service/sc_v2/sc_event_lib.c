@@ -73,6 +73,10 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
     if (DOS_ADDR_VALID(pstAgentInfo))
     {
         pstCalleeLegCB->stRecord.bValid = pstAgentInfo->bRecord;
+        if (pstCalleeLegCB->stRecord.bValid)
+        {
+            sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
+        }
     }
 
     pstSCB->stCall.ulCalleeLegNo = pstCalleeLegCB->ulCBNo;
@@ -287,6 +291,8 @@ processing:
         return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_SC_SYSTEM_BUSY);
     }
 
+    pstSCB->stCall.ulCalleeLegNo = pstCalleeLeg->ulCBNo;
+
     pstCalleeLeg->ulSCBNo = pstSCB->ulSCBNo;
     pstCalleeLeg->stCall.bValid = DOS_TRUE;
     pstCalleeLeg->stCall.ucStatus = SC_LEG_INIT;
@@ -347,6 +353,7 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
         if (pstAgentNode->pstAgentInfo->bRecord)
         {
             pstCallingLegCB->stRecord.bValid = DOS_TRUE;
+            sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
         }
 
         dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
@@ -482,7 +489,7 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
     if (pstAgentNode->pstAgentInfo->bRecord)
     {
         pstCallingLegCB->stRecord.bValid = DOS_TRUE;
-        pstCallingLegCB->stRecord.usStatus = SC_SU_RECORD_INIT;
+        sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
     }
 
     dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
@@ -659,6 +666,7 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
     if (pstAgentNode->pstAgentInfo->bRecord)
     {
         pstCallingLegCB->stRecord.bValid = DOS_TRUE;
+        sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
     }
 
     /* 判断坐席是否长签 */
@@ -819,6 +827,7 @@ U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
     if (pstAgentNode->pstAgentInfo->bRecord)
     {
         pstCallingLegCB->stRecord.bValid = DOS_TRUE;
+        sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
     }
 
     /* 判断坐席是否长签 */
@@ -1957,6 +1966,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
         if (pstAgentNode->pstAgentInfo->bRecord)
         {
             pstLCB->stRecord.bValid = DOS_TRUE;
+            sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
         }
 
         pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_AUTH;
@@ -2034,6 +2044,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
     if (pstAgentNode->pstAgentInfo->bRecord)
     {
         pstLCB->stRecord.bValid = DOS_TRUE;
+        sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
     }
 
     pstSCB->stPreviewCall.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
@@ -2077,31 +2088,41 @@ process_fail:
 
 U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
 {
-#if 0
-    S8                  pszEmpNum[SC_NUM_LENGTH]    = {0};
+    SC_SRV_CB           *pstSCB                     = NULL;
+    SC_LEG_CB           *pstLegCB                   = NULL;
     SC_AGENT_NODE_ST    *pstAgentNode               = NULL;
+    SC_AGENT_NODE_ST    *pstCallingAgentNode        = NULL;
     U32                 ulRet                       = DOS_FAIL;
     SC_LEG_CB           *pstPublishLeg              = NULL;
     SC_CALL_TRANSFER_ST stTransfer;
 
-    if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstLegCB))
+    pstCallingAgentNode = sc_agent_get_by_id(ulAgent);
+    if (DOS_ADDR_INVALID(pstCallingAgentNode))
     {
-        DOS_ASSERT(0);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not find agent. agentID(%u)", ulAgent);
         return DOS_FAIL;
     }
 
-    /* 获得要转接的坐席的工号 */
-    if (dos_sscanf(pstSCB->stAccessCode.szDialCache, "*%*[^*]*%[^#]s", pszEmpNum) != 1)
+    pstLegCB = sc_lcb_get(pstCallingAgentNode->pstAgentInfo->ulLegNo);
+    if (DOS_ADDR_INVALID(pstLegCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "POTS, format error : %s", pstSCB->stAccessCode.szDialCache);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not get leg from agent. agentID(%u)", ulAgent);
+        return DOS_FAIL;
+    }
 
+    pstSCB = sc_scb_get(pstLegCB->ulSCBNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not get scb by leg(%u). agentID(%u)", pstLegCB->ulCBNo, ulAgent);
         return DOS_FAIL;
     }
 
     /* 根据工号找到坐席 */
-    pstAgentNode = sc_agent_get_by_emp_num(pstSCB->ulCustomerID, pszEmpNum);
+    pstAgentNode = sc_agent_get_by_id(ulAgentCalled);
+    if (DOS_ADDR_INVALID(pstAgentNode)
+         || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "POTS, Can not find agent. customer id(%u), empNum(%s)", pstSCB->ulCustomerID, pszEmpNum);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not find agent. agentID(%u)", ulAgentCalled);
 
         return DOS_FAIL;
     }
@@ -2135,14 +2156,13 @@ U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
 
     pstSCB->stTransfer.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stTransfer.ulNotifyLegNo = pstLegCB->ulCBNo;
-    switch (pstSCB->stAccessCode.ulSrvType)
+    if (bIsAttend)
     {
-        case SC_ACCESS_AGENT_ONLINE:
-            pstSCB->stTransfer.ulType = SC_ACCESS_BLIND_TRANSFER;
-            break;
-        default:
-            pstSCB->stTransfer.ulType = SC_ACCESS_ATTENDED_TRANSFER;
-            break;
+        pstSCB->stTransfer.ulType = SC_ACCESS_ATTENDED_TRANSFER;
+    }
+    else
+    {
+        pstSCB->stTransfer.ulType = SC_ACCESS_BLIND_TRANSFER;
     }
 
     pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_IDEL;
@@ -2319,9 +2339,6 @@ U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
 proc_fail:
 
     return DOS_FAIL;
-#endif
-
-    return DOS_SUCC;
 }
 
 U32 sc_call_ctrl_hold(U32 ulAgent, BOOL bIsHold)
@@ -2484,7 +2501,7 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
         return DOS_FAIL;
     }
 
-    pstSCB = sc_scb_get(pstLCBAgent->ulSCBNo);
+    pstSCB = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCB))
     {
         return DOS_FAIL;
@@ -2496,6 +2513,7 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Alloc lcb fail");
         return DOS_FAIL;
     }
+    pstLCBAgent->ulOtherSCBNo = pstSCB->ulSCBNo;
 
     pstSCB->stInterception.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stInterception.stSCBTag.usStatus = SC_INTERCEPTION_IDEL;
@@ -2626,7 +2644,7 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
         return DOS_FAIL;
     }
 
-    pstSCB = sc_scb_get(pstLCBAgent->ulSCBNo);
+    pstSCB = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCB))
     {
         return DOS_FAIL;
@@ -2638,6 +2656,8 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Alloc lcb fail");
         return DOS_FAIL;
     }
+
+    pstLCBAgent->ulOtherSCBNo = pstSCB->ulSCBNo;
 
     pstSCB->stWhispered.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stWhispered.stSCBTag.usStatus = SC_WHISPER_IDEL;
@@ -2675,22 +2695,12 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
 
         case AGENT_BIND_TELE:
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
-            if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
-            {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
-
-                goto process_fail;
-            }
+            sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
             break;
 
         case AGENT_BIND_MOBILE:
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
-            if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
-            {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
-
-                goto process_fail;
-            }
+            sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL);
             break;
 
         case AGENT_BIND_TT_NUMBER:
@@ -2705,6 +2715,7 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
     pstSCB->stWhispered.ulAgentLegNo = pstLCBAgent->ulCBNo;
     pstSCB->stWhispered.pstAgentInfo = pstAgentNode;
     pstSCB->stWhispered.stSCBTag.usStatus = SC_WHISPER_AUTH;
+
     pstLCB->ulSCBNo = pstSCB->ulSCBNo;
 
     if (sc_send_usr_auth2bs(pstSCB, pstLCB) != DOS_SUCC)
@@ -2995,6 +3006,7 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
         if (pstAgentNode->pstAgentInfo->bRecord)
         {
             pstLCB->stRecord.bValid = DOS_TRUE;
+            sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
         }
 
         pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_AUTH;
@@ -3072,6 +3084,7 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
     if (pstAgentNode->pstAgentInfo->bRecord)
     {
         pstLCB->stRecord.bValid = DOS_TRUE;
+        sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
     }
 
     pstSCB->stPreviewCall.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;

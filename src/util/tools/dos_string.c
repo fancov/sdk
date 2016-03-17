@@ -373,8 +373,11 @@ DLLEXPORT S8 *dos_strndup(const S8 *s, S32 count)
         return NULL;
     }
 
-    dos_strncpy(pStr, s, count);
-    pStr[count - 1] ='\0';
+    if (DOS_ADDR_VALID(s))
+    {
+        dos_strncpy(pStr, s, count);
+        pStr[count - 1] ='\0';
+    }
 
     return pStr;
 }

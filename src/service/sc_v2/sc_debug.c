@@ -205,6 +205,98 @@ const S8* g_pszCallerType[] =
     "DID"
 };
 
+const S8* g_pszSCTrunkStateType[] =
+{
+    "unregisterd",
+    "trying",
+    "register",
+    "registerd",
+    "failed",
+    "fail_wait",
+    "noregistered"
+};
+
+typedef enum tagSCShowGatewayCondition{
+    SC_SHOW_GATEWAY_ALL,
+    SC_SHOW_GATEWAY_BY_ID,
+    SC_SHOW_GATEWAY_BY_STATUS_ENABLE,
+    SC_SHOW_GATEWAY_BY_STATUS_DISABLE
+
+}SC_SHOW_GATEWAY_CONDITION_EN;
+
+typedef enum tagSCShowCustomerCondition{
+    SC_SHOW_CUSTOMER_ALL,
+    SC_SHOW_CUSTOMER_BY_ID,
+    SC_SHOW_CUSTOMER_BY_CALL_GROUP_NUM,
+    SC_SHOW_CUSTOMER_BY_TYPE
+
+}SC_SHOW_CUSTOM_CONDITION_EN;
+
+typedef enum tagSCShowBlacklistCondition{
+    SC_SHOW_BLACKLIST_ALL,
+    SC_SHOW_BLACKLIST_BY_ID,
+    SC_SHOW_BLACKLIST_BY_NUM
+
+}SC_SHOW_BLACKLIST_CONDITION_EN;
+
+typedef enum tagSCShowGwgrpCondition{
+    SC_SHOW_GWGRP_ALL,
+    SC_SHOW_GWGRP_BY_GRP_ID,
+    SC_SHOW_GWGRP_BY_GW_ID,
+    SC_SHOW_GWGRP_BY_GW_ENABLE,
+    SC_SHOW_GWGRP_BY_GW_DISABLE
+
+}SC_SHOW_GWGRP_CONDITION_EN;
+
+typedef enum tagSCShowAgentCondition{
+    SC_SHOW_AGENT_ALL,
+    SC_SHOW_AGENT_BY_ID,
+    SC_SHOW_AGENT_BY_CUSTOMER,
+    SC_SHOW_AGENT_BY_SIP,
+    SC_SHOW_AGENT_BY_JOBNUM,
+    SC_SHOW_AGENT_BY_STATUS,
+    SC_SHOW_AGENT_BY_GROUP,
+
+}SC_SHOW_AGENT_CONDITION_EN;
+
+typedef enum tagSCShowTTCondition{
+    SC_SHOW_TT_ALL,
+    SC_SHOW_TT_BY_ID,
+    SC_SHOW_TT_BY_PORT,
+    SC_SHOW_TT_BY_IP
+}SC_SHOW_TT_CONDITION_EN;
+
+typedef enum tagSCShowNumlmtCondition{
+    SC_SHOW_NUMLMT_ALL,
+    SC_SHOW_NUMLMT_BY_NUM,
+    SC_SHOW_NUMLMT_BY_ID
+}SC_SHOW_NUMLMT_CONDITION_EN;
+
+typedef enum tagSCShowDidCondition{
+     SC_SHOW_DID_ALL,
+     SC_SHOW_DID_BY_DIDID,
+     SC_SHOW_DID_BY_CUSTOMER,
+     SC_SHOW_DID_BY_NUM
+}SC_SHOW_DID_CONDITION_EN;
+
+typedef enum tagSCShowTransformCondition{
+     SC_SHOW_TRANSFORM_ALL,
+     SC_SHOW_TRANSFORM_BY_ID,
+     SC_SHOW_TRANSFORM_BY_CUSTOMER,
+     SC_SHOW_TRANSFORM_BY_CALLERPREFIX,
+     SC_SHOW_TRANSFORM_BY_CALLEEPREFIX,
+     SC_SHOW_TRANSFORM_BY_REPLACE_NUM
+}SC_SHOW_TRANSFORM_CONDITION_EN;
+
+const S8* sc_translate_trunk_register_status(U32 ulRegisterStatus)
+{
+    if (ulRegisterStatus < sizeof(g_pszSCTrunkStateType) / sizeof(S8 *))
+    {
+        return g_pszSCTrunkStateType[ulRegisterStatus];
+    }
+    return "UNKNOWN";
+}
+
 const S8* sc_translate_task_status(U32 ulStatus)
 {
     if (ulStatus < sizeof(g_pszTaskStatus) / sizeof(S8 *))
@@ -501,6 +593,29 @@ const S8 *sc_translate_basic_type(U32 ulType)
         default:
             return "ERROR";
     }
+}
+
+const S8 *sc_get_customer_name_by_id(U32 ulCustomerID)
+{
+    SC_CUSTOMER_NODE_ST *pstCustomer = NULL;
+    DLL_NODE_S *pstNode = NULL;
+
+    DLL_Scan(&g_stCustomerList, pstNode, DLL_NODE_S *)
+    {
+        if (DOS_ADDR_INVALID(pstNode)
+            || DOS_ADDR_INVALID(pstNode->pHandle))
+        {
+            continue;
+        }
+
+        pstCustomer = (SC_CUSTOMER_NODE_ST *)pstNode->pHandle;
+
+        if (ulCustomerID == pstCustomer->ulID)
+        {
+            return pstCustomer->szName;
+        }
+    }
+    return NULL;
 }
 
 S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
@@ -1326,9 +1441,9 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n---------------------------------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%10s%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s%9s%10s%12s%12s"
+                    , "\r\n%10s%10s%10s%10s%10s%10s%8s%7s%8s%12s%12s%12s%9s%10s%12s%12s%12s"
                     , "ID", "w-Status", "s-Status", "Custom", "Group1", "Group2"
-                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile");
+                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile", "MemoryID");
     cli_out_string(ulIndex, szCmdBuff);
 
     DLL_Scan(&pstAgentGrouop->stAgentList, pstDLLNode, DLL_NODE_S *)
@@ -1346,7 +1461,7 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%10u%10s%10s%10u%10u%10u%8s%7s%8s%12s%12s%12s%9u%10s%12s%12s"
+                    , "\r\n%10u%10s%10s%10u%10u%10u%8s%7s%8s%12s%12s%12s%9u%10s%12s%12s%12u"
                     , pstAgentQueueNode->pstAgentInfo->ulAgentID
                     , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucWorkStatus)
                     , sc_translate_agent_serv_status(pstAgentQueueNode->pstAgentInfo->ucServStatus)
@@ -1362,7 +1477,8 @@ VOID sc_show_agent_group_detail(U32 ulIndex, U32 ulID)
                     , pstAgentQueueNode->pstAgentInfo->ulCallCnt
                     , sc_translate_agent_bind_type(pstAgentQueueNode->pstAgentInfo->ucBindType)
                     , pstAgentQueueNode->pstAgentInfo->szTelePhone
-                    , pstAgentQueueNode->pstAgentInfo->szMobile);
+                    , pstAgentQueueNode->pstAgentInfo->szMobile
+                    , pstAgentQueueNode->ulID);
 
         cli_out_string(ulIndex, szCmdBuff);
     }
@@ -1448,38 +1564,12 @@ VOID sc_show_agent_group(U32 ulIndex, U32 ulCustomID, U32 ulGroupID)
 
 }
 
-VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
+VOID sc_show_agent(U32 ulIndex, U8 ucCondition, U32 ulID, S8* pszCondition)
 {
     U32 ulHashIndex, i, blNeedPrint, ulTotal = 0;
     S8  szCmdBuff[1024] = {0, };
     SC_AGENT_NODE_ST *pstAgentQueueNode = NULL;
     HASH_NODE_S      *pstHashNode = NULL;
-
-    if (U32_BUTT != ulGroupID)
-    {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the agents in the Group %u:", ulGroupID);
-    }
-    else if (U32_BUTT != ulCustomID)
-    {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the agents own by Customer %u: ", ulCustomID);
-    }
-    else if (U32_BUTT != ulID)
-    {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the agents %u: ", ulID);
-    }
-    else
-    {
-        dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the agents: ");
-    }
-
-    cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
-    cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%5s%10s%10s%8s%10s%8s%8s%8s%8s%7s%8s%12s%12s%12s%9s%10s%14s%12s%12s%9s%9s%5s%8s%13s%12s"
-                    , "ID", "w-Status", "s-Status", "NeedCon", "Connected", "Custom", "Group1", "Group2"
-                    , "Record", "Trace", "Leader", "SIP Acc", "Extension", "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile", "TT_number", "Sip ID", "ScbNO", "bDel", "bLogin", "LastCustomer", "ProcessTime");
-    cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexAgentList);
     HASH_Scan_Table(g_pstAgentList, ulHashIndex)
@@ -1498,59 +1588,107 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
                 continue;
             }
 
-            blNeedPrint = DOS_FALSE;
+            if (ucCondition == SC_SHOW_AGENT_BY_ID && ulID != pstAgentQueueNode->pstAgentInfo->ulAgentID)
+            {
+                continue;
+            }
 
-            if (U32_BUTT != ulGroupID)
+            if (ucCondition == SC_SHOW_AGENT_BY_CUSTOMER)
+            {
+                if (NULL != pszCondition)
+                {
+                    if (0 != dos_stricmp(pszCondition, sc_get_customer_name_by_id(pstAgentQueueNode->pstAgentInfo->ulCustomerID)))
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (ulID != pstAgentQueueNode->pstAgentInfo->ulCustomerID)
+                    {
+                        continue;
+                    }
+                }
+            }
+
+
+            if (ucCondition == SC_SHOW_AGENT_BY_GROUP)
             {
                 blNeedPrint = DOS_FALSE;
                 for (i=0; i<MAX_GROUP_PER_SITE; i++)
                 {
-                    if (pstAgentQueueNode->pstAgentInfo->aulGroupID[i] == ulGroupID)
+                    if (pstAgentQueueNode->pstAgentInfo->aulGroupID[i] == ulID)
                     {
                         blNeedPrint = DOS_TRUE;
                         break;
                     }
                 }
-            }
-            else if (U32_BUTT != ulCustomID)
-            {
-                if (ulCustomID == pstAgentQueueNode->pstAgentInfo->ulCustomerID)
+
+                if (!blNeedPrint)
                 {
-                    blNeedPrint = DOS_TRUE;
+                    continue;
                 }
-            }
-            else if (U32_BUTT != ulID)
-            {
-                if (ulID == pstAgentQueueNode->pstAgentInfo->ulAgentID)
-                {
-                    blNeedPrint = DOS_TRUE;
-                }
-            }
-            else
-            {
-                blNeedPrint = DOS_TRUE;
             }
 
-            if (!blNeedPrint)
+            if (ucCondition == SC_SHOW_AGENT_BY_SIP
+                && NULL != pszCondition
+                && dos_stricmp(pszCondition, pstAgentQueueNode->pstAgentInfo->szUserID) != 0 )
             {
                 continue;
             }
 
+            if (ucCondition == SC_SHOW_AGENT_BY_JOBNUM
+                && NULL != pszCondition
+                && dos_stricmp(pszCondition, pstAgentQueueNode->pstAgentInfo->szEmpNo) != 0 )
+            {
+                continue;
+            }
+
+            if (ucCondition == SC_SHOW_AGENT_BY_STATUS
+                && NULL != pszCondition
+                && dos_stricmp(pszCondition, sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucWorkStatus)))
+            {
+                continue;
+            }
+
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n==================================================================================================================================");
+            cli_out_string(ulIndex, szCmdBuff);
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%5u%10s%10s%8s%10s%8u%8u%8u%8s%7s%8s%12s%12s%12s%9u%10s%14s%12s%12s%9u%9u%5s%8s%13s%12u"
+                            , "\r\n%-5s%-10s%-10s%-8s%-10s%-12s%-12s%-10s%-10s%-8s%-7s%-8s%-12s%-12s"
+                            , "ID", "w-Status", "s-Status", "NeedCon", "Connected", "CustomID", "CustomNa" ,"Group1", "Group2"
+                            , "Record", "Trace", "Leader", "SIP Acc", "Extension");
+            cli_out_string(ulIndex, szCmdBuff);
+
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                        , "\r\n%-5u%-10s%-10s%-8s%-10s%-12u%-12s%-10u%-10u%-8s%-7s%-8s%-12s%-12s"
                         , pstAgentQueueNode->pstAgentInfo->ulAgentID
                         , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucWorkStatus)
                         , sc_translate_agent_serv_status(pstAgentQueueNode->pstAgentInfo->ucServStatus)
                         , pstAgentQueueNode->pstAgentInfo->bNeedConnected ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->bConnected ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->ulCustomerID
+                        , sc_get_customer_name_by_id(pstAgentQueueNode->pstAgentInfo->ulCustomerID)
                         , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
                         , pstAgentQueueNode->pstAgentInfo->aulGroupID[1]
                         , pstAgentQueueNode->pstAgentInfo->bRecord ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->bTraceON ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->bGroupHeader ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->szUserID
-                        , pstAgentQueueNode->pstAgentInfo->szExtension
+                        , pstAgentQueueNode->pstAgentInfo->szExtension);
+            cli_out_string(ulIndex, szCmdBuff);
+
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------\r\n");
+            cli_out_string(ulIndex, szCmdBuff);
+
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+                        , "%-12s%-9s%-10s%-14s%-12s%-12s%-9s%-16s%-5s%-8s%-13s%-12s"
+                        , "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile", "TT_number"
+                        , "Sip ID", "ScbNO", "bDel", "bLogin", "LastCustomer", "ProcessTime");
+            cli_out_string(ulIndex, szCmdBuff);
+            cli_out_string(ulIndex, "\r\n");
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
+
+                        , "%-12s%-9u%-10s%-14s%-12s%-12s%-9u%-16u%-5s%-8s%-13s%-12u"
                         , pstAgentQueueNode->pstAgentInfo->szEmpNo
                         , pstAgentQueueNode->pstAgentInfo->ulCallCnt
                         , sc_translate_agent_bind_type(pstAgentQueueNode->pstAgentInfo->ucBindType)
@@ -1564,12 +1702,15 @@ VOID sc_show_agent(U32 ulIndex, U32 ulID, U32 ulCustomID, U32 ulGroupID)
                         , pstAgentQueueNode->pstAgentInfo->szLastCustomerNum
                         , pstAgentQueueNode->pstAgentInfo->ucProcesingTime);
             cli_out_string(ulIndex, szCmdBuff);
+
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n==================================================================================================================================");
+            cli_out_string(ulIndex, szCmdBuff);
             ulTotal++;
         }
     }
     pthread_mutex_unlock(&g_mutexAgentList);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n** Bind : 0 -- SIP User ID, 1 -- Telephone, 2 -- Mobile");
     cli_out_string(ulIndex, szCmdBuff);
@@ -1645,18 +1786,21 @@ VOID sc_show_caller_for_task(U32 ulIndex, U32 ulTaskID)
     cli_out_string(ulIndex, szCmdBuff);
 }
 
-VOID sc_show_gateway(U32 ulIndex, U32 ulID)
+VOID sc_show_trunk(U32 ulIndex, U8 ucCondition, U32 ulID)
 {
     SC_GW_NODE_ST        *pstGWNode     = NULL;
     HASH_NODE_S          *pstHashNode   = NULL;
     S8 szCmdBuff[1024] = {0, };
+    S8 szGwStatus[16] = {0, };
+    S8 szGwRegisterEnable[16] = {0, };
+    S8 szGwRegisterStatus[16] = {0, };
     U32 ulHashIndex;
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList all the gateway:");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12s%8s%36s", "Index", "Status", "Domain");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%-9s%-20s%-10s%-24s%-12s%-18s%-13s", "Index", "name", "Status", "Domain", "Register", "RegisterStatus", "KeepAlive");
     cli_out_string(ulIndex, szCmdBuff);
 
     HASH_Scan_Table(g_pstHashGW, ulHashIndex)
@@ -1671,19 +1815,59 @@ VOID sc_show_gateway(U32 ulIndex, U32 ulID)
 
             pstGWNode = pstHashNode->pHandle;
 
-            if (U32_BUTT != ulID && ulID != pstGWNode->ulGWID)
+            if ( SC_SHOW_GATEWAY_BY_ID == ucCondition && ulID != pstGWNode->ulGWID)
             {
                 continue;
             }
 
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12u%8u%36s", pstGWNode->ulGWID, pstGWNode->bStatus, pstGWNode->szGWDomain);
+            if (SC_SHOW_GATEWAY_BY_STATUS_ENABLE == ucCondition  && !pstGWNode->bStatus)
+            {
+                continue;
+            }
+
+            if (SC_SHOW_GATEWAY_BY_STATUS_DISABLE == ucCondition && pstGWNode->bStatus)
+            {
+                continue;
+            }
+
+            if (pstGWNode->bStatus)
+            {
+                dos_snprintf(szGwStatus,sizeof(szGwStatus),"enable");
+            }
+            else
+            {
+                dos_snprintf(szGwStatus, sizeof(szGwStatus), "disable");
+            }
+
+            if (pstGWNode->bRegister)
+            {
+                dos_snprintf(szGwRegisterEnable, sizeof(szGwRegisterEnable), "enable");
+                dos_snprintf(szGwRegisterStatus, sizeof(szGwRegisterStatus), sc_translate_trunk_register_status(pstGWNode->ulRegisterStatus));
+            }
+            else
+            {
+                dos_snprintf(szGwRegisterEnable, sizeof(szGwRegisterEnable), "disable");
+                dos_snprintf(szGwRegisterStatus, sizeof(szGwRegisterStatus), "NULL");
+            }
+
+
+
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%-9u%-20s%-10s%-24s%-12s%-18s%-13s"
+                                                        , pstGWNode->ulGWID
+                                                        , pstGWNode->szGWName
+                                                        , szGwStatus
+                                                        , pstGWNode->szGWDomain
+                                                        , szGwRegisterEnable
+                                                        , szGwRegisterStatus
+                                                        , (pstGWNode->bPing)?"yes":"no");
             cli_out_string(ulIndex, szCmdBuff);
         }
     }
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------------------\r\n\r\n");
+    cli_out_string(ulIndex, szCmdBuff);
 }
 
-VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
+VOID sc_show_trunk_grp(U32 ulIndex, U8 ucCondition, U32 ulID)
 {
     SC_GW_GRP_NODE_ST    *pstGWGrpNode  = NULL;
     SC_GW_NODE_ST        *pstGWNode     = NULL;
@@ -1692,6 +1876,13 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
     S8 szCmdBuff[1024] = {0, };
     U32 ulHashIndex;
     BOOL bFound = DOS_FALSE;
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the gateway in the gateway group:");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%-8s%-20s%-9s%-20s%-24s%-8s", "GWID", "GWName", "GrpID", "GrpName", "Domain","status");
+    cli_out_string(ulIndex, szCmdBuff);
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, szCmdBuff);
 
     HASH_Scan_Table(g_pstHashGWGrp, ulHashIndex)
     {
@@ -1704,17 +1895,10 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
             }
 
             pstGWGrpNode = (SC_GW_GRP_NODE_ST *)pstHashNode->pHandle;
-            if (U32_BUTT != ulID && ulID != pstGWGrpNode->ulGWGrpID)
+            if (SC_SHOW_GWGRP_BY_GRP_ID == ucCondition && ulID != pstGWGrpNode->ulGWGrpID)
             {
                 continue;
             }
-
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the gateway in the gateway group %u:", ulID);
-            cli_out_string(ulIndex, szCmdBuff);
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12s%12s%36s", "GWID","GrpID", "Domain");
-            cli_out_string(ulIndex, szCmdBuff);
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------");
-            cli_out_string(ulIndex, szCmdBuff);
 
             DLL_Scan(&pstGWGrpNode->stGWList, pstDLLNode, DLL_NODE_S *)
             {
@@ -1724,15 +1908,40 @@ VOID sc_show_gateway_grp(U32 ulIndex, U32 ulID)
                     continue;
                 }
 
+
                 pstGWNode = pstDLLNode->pHandle;
 
-                dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%12u%12u%36s", pstGWNode->ulGWID, pstGWGrpNode->ulGWGrpID, pstGWNode->szGWDomain);
+                if (SC_SHOW_GWGRP_BY_GW_ID == ucCondition && ulID != pstGWNode->ulGWID)
+                {
+                    continue;
+                }
+
+                if (SC_SHOW_GWGRP_BY_GW_ENABLE == ucCondition && !pstGWNode->bStatus)
+                {
+                    continue;
+                }
+
+                if (SC_SHOW_GWGRP_BY_GW_DISABLE == ucCondition && pstGWNode->bStatus)
+                {
+                    continue;
+                }
+
+                dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%-8u%-20s%-9u%-20s%-24s%-8s"
+                                                    , pstGWNode->ulGWID
+                                                    , pstGWNode->szGWName
+                                                    , pstGWGrpNode->ulGWGrpID
+                                                    , pstGWGrpNode->szGWGrpName
+                                                    , pstGWNode->szGWDomain
+                                                    , pstGWNode->bStatus?"enable":"disable");
                 cli_out_string(ulIndex, szCmdBuff);
             }
             bFound = DOS_TRUE;
         }
 
-}
+    }
+
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------\r\n\r\n");
+    cli_out_string(ulIndex, szCmdBuff);
 
     if (DOS_FALSE == bFound)
     {
@@ -1767,7 +1976,7 @@ VOID sc_show_stat(U32 ulIndex, S32 argc, S8 **argv)
 }
 
 
-U32 sc_show_status(U32 ulIndex, S32 argc, S8 **argv)
+U32  sc_show_status(U32 ulIndex, S32 argc, S8 **argv)
 {
     S8 szBuff[1024] = {0, };
     U32 ulIdelCPU, ulIdelCPUConfig;
@@ -1895,7 +2104,7 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              |     Time      |             Prefix              |               |                  |          |          |              |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|      ID      +-------+-------+----------------+----------------+   Dest Type   |      Dest ID     |  Status  | Priority | CallOutGroup |");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|   Name(ID)   +-------+-------+----------------+----------------+   Dest Type   |      Dest ID     |  Status  | Priority | CallOutGroup |");
     cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|              | Start |  End  |     Callee     |     Caller     |               |                  |          |          |              |");
@@ -1938,7 +2147,8 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
         }
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n|%14u| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%-18s|%10s|%10u|%14u|"
+                    , "\r\n|%10s(%-2u)| %02u:%02u | %02u:%02u |%-16s|%-16s|%-15s|%-18s|%-10s|%-10u|%-14u|"
+                    , pstRoute->szRouteName
                     , pstRoute->ulID
                     , pstRoute->ucHourBegin
                     , pstRoute->ucMinuteBegin
@@ -1964,7 +2174,7 @@ VOID sc_show_route(U32 ulIndex, U32 ulRouteID)
     cli_out_string(ulIndex, szCmdBuff);
 }
 
-VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
+VOID sc_show_did(U32 ulIndex, U8 ucCondition, U32 ulID, S8 *pszCondition)
 {
     SC_DID_NODE_ST *pstDid      = NULL;
     HASH_NODE_S    *pstHashNode = NULL;
@@ -1972,22 +2182,10 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
     U32   ulHashIndex = 0;
     S8    szCmdBuff[1024] = {0, };
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nList the did list.");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------------------------------------------------------------------------------------------+----------+");
-    cli_out_string(ulIndex, szCmdBuff);
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                                                  Did List                                                   |");
-    cli_out_string(ulIndex,szCmdBuff);
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+---------------+--------------+-----------+----------|");
-    cli_out_string(ulIndex, szCmdBuff);
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|    Did ID    |  Customer ID  |        Did Num         |   Bind Type   |    Bind ID   |   Times   |  Status  |");
-    cli_out_string(ulIndex, szCmdBuff);
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+---------------+--------------+-----------+----------|");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%-4s%-12s%-16s%-20s%-13s%-9s%-9s%-8s","ID", "CustomerID", "CustomerNa", "Did Num" , "Bind Type", "Bind ID" , "Times" , "Status");
     cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexHashDIDNum);
@@ -2008,15 +2206,39 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
                 continue;
             }
 
-            if (NULL != pszDidNum && 0 != dos_strcmp(pszDidNum, pstDid->szDIDNum))
+            if (ucCondition == SC_SHOW_DID_BY_DIDID && ulID != pstDid->ulDIDID)
+            {
+                continue;
+            }
+
+            if (ucCondition == SC_SHOW_DID_BY_CUSTOMER)
+            {
+                if (NULL != pszCondition)
+                {
+                    if (0 != dos_stricmp(pszCondition, sc_get_customer_name_by_id(pstDid->ulCustomID)))
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (ulID != pstDid->ulCustomID)
+                    {
+                        continue;
+                    }
+                }
+            }
+
+            if (ucCondition == SC_SHOW_DID_BY_NUM && NULL != pszCondition && 0 != dos_stricmp(pszCondition, pstDid->szDIDNum))
             {
                 continue;
             }
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n|%14u|%15u|%-24s|%-15s|%14u|%11u|%10s|"
+                            , "\r\n%-4u%-12u%-16s%-20s%-13s%-9u%-9u%-8s"
                             , pstDid->ulDIDID
                             , pstDid->ulCustomID
+                            , sc_get_customer_name_by_id(pstDid->ulCustomID)
                             , pstDid->szDIDNum[0] == '\0' ? "NULL": pstDid->szDIDNum
                             , sc_translate_did_bind_type(pstDid->ulBindType)
                             , pstDid->ulBindID
@@ -2030,14 +2252,14 @@ VOID sc_show_did(U32 ulIndex, S8 *pszDidNum)
 
     pthread_mutex_unlock(&g_mutexHashDIDNum);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+------------------------+---------------+--------------+-----------+----------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n--------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d did numbers.\r\n\r\n", ulDidCnt);
     cli_out_string(ulIndex, szCmdBuff);
 }
 
-VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
+VOID sc_show_black_list(U32 ulIndex, U8 ucCondition, U32 ulBlackListID, S8* pszBlackNum)
 {
     SC_BLACK_LIST_NODE *pstBlackList = NULL;
     HASH_NODE_S * pstHashNode = NULL;
@@ -2045,22 +2267,10 @@ VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
     U32 ulBlackListCnt = 0;
     S8    szCmdBuff[1024] = {0, };
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "List the black list.");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|ID            |Customer ID    |Customer Name       |Num                         |");
     cli_out_string(ulIndex, szCmdBuff);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+-----------------------------------------------------------+");
-    cli_out_string(ulIndex, szCmdBuff);
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|                        Black List                         |");
-    cli_out_string(ulIndex, szCmdBuff);
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+----------------------------+");
-    cli_out_string(ulIndex, szCmdBuff);
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n|      ID      |  Customer ID  |            Num             |");
-    cli_out_string(ulIndex, szCmdBuff);
-
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+----------------------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+--------------------+----------------------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexHashBlackList);
@@ -2081,14 +2291,21 @@ VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
                 continue;
             }
 
-            if (U32_BUTT != ulBlackListID && ulBlackListID != pstBlackList->ulID)
+            if (ucCondition == SC_SHOW_BLACKLIST_BY_ID && ulBlackListID != pstBlackList->ulID)
             {
                 continue;
             }
+
+            if (ucCondition == SC_SHOW_BLACKLIST_BY_NUM && (NULL != pszBlackNum && 0 != dos_stricmp(pszBlackNum, pstBlackList->szNum)))
+            {
+                continue;
+            }
+
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n|%14u|%15u|%28s|"
+                            , "\r\n|%-14u|%-15u|%-20s|%-28s|"
                             , pstBlackList->ulID
                             , pstBlackList->ulCustomerID
+                            , sc_get_customer_name_by_id(pstBlackList->ulCustomerID)?sc_get_customer_name_by_id(pstBlackList->ulCustomerID):"NULL"
                             , pstBlackList->szNum[0] == '\0'? "NULL" : pstBlackList->szNum);
             cli_out_string(ulIndex, szCmdBuff);
             ++ulBlackListCnt;
@@ -2097,7 +2314,7 @@ VOID sc_show_black_list(U32 ulIndex, U32 ulBlackListID)
 
     pthread_mutex_unlock(&g_mutexHashBlackList);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+----------------------------+");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n+--------------+---------------+--------------------+----------------------------+");
     cli_out_string(ulIndex, szCmdBuff);
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nTotal: %d Black List(s).\r\n\r\n", ulBlackListCnt);
@@ -2111,8 +2328,8 @@ U32 sc_show_caller(U32 ulIndex, U32 ulCallerID)
     S8  szBuff[128] = {0};
     U32 ulHashIndex = U32_BUTT;
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%8s%8s%8s%12s%8s%25s"
-                    , "No.", "Valid", "TraceOn", "Index", "CustomerID", "Times", "Number");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-5s%-8s%-8s%-8s%-12s%-12s%-8s%-25s"
+                    , "No.", "Valid", "TraceOn", "Index", "CustomerID", "name", "Times", "Number");
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------");
 
@@ -2131,12 +2348,13 @@ U32 sc_show_caller(U32 ulIndex, U32 ulCallerID)
             {
                 continue;
             }
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%8s%8s%8u%12u%8u%25s"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-5u%-8s%-8s%-8u%-12u%-12s%-8u%-25s"
                             , pstCaller->usNo
                             , pstCaller->bValid == DOS_FALSE ? "No":"Yes"
                             , pstCaller->bTraceON == DOS_FALSE ? "No":"Yes"
                             , pstCaller->ulIndexInDB
                             , pstCaller->ulCustomerID
+                            , sc_get_customer_name_by_id(pstCaller->ulCustomerID)
                             , pstCaller->ulTimes
                             , pstCaller->szNumber);
              cli_out_string(ulIndex, szBuff);
@@ -2153,8 +2371,8 @@ U32 sc_show_caller_grp(U32 ulIndex, U32 ulGrpID)
     U32 ulHashIndex = U32_BUTT;
     S8  szBuff[128] = {0};
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6s%12s%8s%10s%10s%-64s"
-                    , "Index", "CustomerID", "LastNo", "Policy", "Default", " GroupName");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-6s%-12s%-16s%-8s%-10s%-10s%-24s"
+                    , "Index", "CustomerID", "CustomerName", "LastNo", "Policy", "Default", "GroupName");
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n----------------------------------------------------------------------------------------------------");
 
@@ -2174,9 +2392,10 @@ U32 sc_show_caller_grp(U32 ulIndex, U32 ulGrpID)
                 continue;
             }
 
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6u%12u%8u%10s%10s %-63s"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-6u%-12u%-16s%-8u%-10s%-10s%-24s"
                             , pstCallerGrp->ulID
                             , pstCallerGrp->ulCustomerID
+                            , sc_get_customer_name_by_id(pstCallerGrp->ulCustomerID)
                             , pstCallerGrp->ulLastNo
                             , sc_translate_caller_policy(pstCallerGrp->ulPolicy)
                             , pstCallerGrp->bDefault == DOS_FALSE?"No":"Yes"
@@ -2248,8 +2467,8 @@ U32  sc_show_caller_setting(U32 ulIndex, U32 ulSettingID)
     U32 ulHashIndex = U32_BUTT;
     HASH_NODE_S *pstHashNode  = NULL;
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6s%12s%14s%9s%7s%11s%-64s"
-                    , "Index", "CustomerID", "SrcID", "SrcType", "DstID", "DstType", " SettingName");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-6s%-16s%-12s%-16s%-9s%-12s%-7s%-11s"
+                    , "Index", "SettingName", "CustomerID", "CustomerName", "SrcID", "SrcType", "DstID", "DstType");
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n-----------------------------------------------------------------------------------------------------------------");
 
@@ -2268,21 +2487,23 @@ U32  sc_show_caller_setting(U32 ulIndex, U32 ulSettingID)
                 continue;
             }
             pstSetting = (SC_CALLER_SETTING_ST *)pstHashNode->pHandle;
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%6u%12u%14u%9s%7u%11s %-64s"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-6u%-16s%-12u%-16s%-9u%-12s%-7u%-11s"
                             , pstSetting->ulID
+                            , pstSetting->szSettingName
                             , pstSetting->ulCustomerID
+                            , sc_get_customer_name_by_id(pstSetting->ulCustomerID)
                             , pstSetting->ulSrcID
                             , sc_translate_caller_srctype(pstSetting->ulSrcType)
                             , pstSetting->ulDstID
-                            , sc_translate_caller_dsttype(pstSetting->ulDstType)
-                            , pstSetting->szSettingName);
+                            , sc_translate_caller_dsttype(pstSetting->ulDstType));
             cli_out_string(ulIndex, szBuff);
         }
     }
+    cli_out_string(ulIndex, "\r\n-----------------------------------------------------------------------------------------------------------------\r\n\r\n");
     return DOS_SUCC;
 }
 
-U32 sc_show_tt(U32 ulIndex, U32 ulTTID)
+U32 sc_show_tt(U32 ulIndex, U8 ucCondition, U32 ulID, S8* pszCondition)
 {
     U32  ulHashIndex = U32_BUTT;
     HASH_NODE_S *pstHashNode = NULL;
@@ -2306,7 +2527,17 @@ U32 sc_show_tt(U32 ulIndex, U32 ulTTID)
 
             pstTTNumber = (SC_TT_NODE_ST *)pstHashNode->pHandle;
 
-            if (U32_BUTT != ulTTID && ulTTID != pstTTNumber->ulID)
+            if (SC_SHOW_TT_BY_ID == ucCondition && ulID != pstTTNumber->ulID)
+            {
+                continue;
+            }
+
+            if (SC_SHOW_TT_BY_PORT == ucCondition && ulID != pstTTNumber->ulPort)
+            {
+                continue;
+            }
+
+            if (SC_SHOW_TT_BY_IP == ucCondition && NULL != pszCondition && dos_stricmp(pszCondition, pstTTNumber->szAddr) !=0 )
             {
                 continue;
             }
@@ -2319,20 +2550,20 @@ U32 sc_show_tt(U32 ulIndex, U32 ulTTID)
             cli_out_string(ulIndex, szBuff);
         }
     }
-
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------\r\n");
     return DOS_SUCC;
 }
 
-U32 sc_show_customer(U32 ulIndex, U32 ulCustomerID)
+U32 sc_show_customer(U32 ulIndex, S8 ucCondition, U32 ulID)
 {
     SC_CUSTOMER_NODE_ST *pstCustomer = NULL;
     DLL_NODE_S *pstNode = NULL;
     S8  szBuff[256] = {0};
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5s%8s%15s"
-                    , "ID", "bExist", "CallOutGroup");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-6s%-8s%-10s%-16s"
+                    , "ID", "name", "bExist", "CallOutGroup");
     cli_out_string(ulIndex, szBuff);
-    cli_out_string(ulIndex, "\r\n----------------------------");
+    cli_out_string(ulIndex, "\r\n--------------------------------------");
 
     DLL_Scan(&g_stCustomerList, pstNode, DLL_NODE_S *)
     {
@@ -2342,29 +2573,43 @@ U32 sc_show_customer(U32 ulIndex, U32 ulCustomerID)
             continue;
         }
         pstCustomer = (SC_CUSTOMER_NODE_ST *)pstNode->pHandle;
-        if (U32_BUTT != ulCustomerID && ulCustomerID != pstCustomer->ulID)
+
+        dos_snprintf(szBuff, sizeof(szBuff), "name_len: %d\n",dos_strlen(pstCustomer->szName));
+        cli_out_string(ulIndex, szBuff);
+
+        if (ucCondition == SC_SHOW_CUSTOMER_BY_ID && ulID != pstCustomer->ulID)
         {
             continue;
         }
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%5u%8s%15u"
+
+        if (ucCondition == SC_SHOW_CUSTOMER_BY_CALL_GROUP_NUM && ulID != pstCustomer->usCallOutGroup)
+        {
+            continue;
+        }
+
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-6u%-8s%-10s%-16u"
                         , pstCustomer->ulID
+                        , pstCustomer->szName
                         , DOS_FALSE == pstCustomer->bExist?"No":"Yes"
                         , pstCustomer->usCallOutGroup);
         cli_out_string(ulIndex, szBuff);
     }
+    cli_out_string(ulIndex, "\r\n--------------------------------------\r\n");
     return DOS_SUCC;
 }
 
-U32 sc_show_transform(U32 ulIndex, U32 ulID)
+U32 sc_show_transform(U32 ulIndex, U8 ucCondition, U32 ulID, S8* pszCondition)
 {
     SC_NUM_TRANSFORM_NODE_ST *pstTransform = NULL;
     DLL_NODE_S *pstNode = NULL;
+    S8  szCustomerName[SC_NAME_STR_LEN] = {0};
     S8  szBuff[1024] = {0};
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%3s%10s%6s%10s%14s%10s%13s%13s%11s%11s%8s%9s%10s%10s%9s%11s"
-                    , "ID", "Obj", "ObjID", "Direction", "TransformTime", "NumSelect", "CalleePrefix", "CallerPrefix", "ReplaceAll", "ReplaceNum", "DelLeft", "DelRight", "AddPrefix", "AddSuffix", "Priority", "Expiry");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-3s%-10s%-6s%-10s%-16s%-14s%-10s%-13s%-13s%-11s%-11s%-8s%-9s%-10s%-10s%-9s%-11s"
+                    , "ID", "Obj", "ObjID", "ObjName","Direction", "TransformTime", "NumSelect", "CalleePrefix"
+                    , "CallerPrefix", "ReplaceAll", "ReplaceNum", "DelLeft", "DelRight", "AddPrefix", "AddSuffix", "Priority", "Expiry");
     cli_out_string(ulIndex, szBuff);
-    cli_out_string(ulIndex, "\r\n--------------------------------------------------------------------------------------------------------------------------------------------------------------");
+    cli_out_string(ulIndex, "\r\n----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 
     DLL_Scan(&g_stNumTransformList, pstNode, DLL_NODE_S *)
     {
@@ -2374,14 +2619,56 @@ U32 sc_show_transform(U32 ulIndex, U32 ulID)
             continue;
         }
         pstTransform = (SC_NUM_TRANSFORM_NODE_ST *)pstNode->pHandle;
-        if (U32_BUTT != ulID && ulID != pstTransform->ulID)
+
+        if (0 == pstTransform->ulObjectID)
+        {
+            dos_strcpy(szCustomerName, "all");
+        }
+        else
+        {
+            dos_strcpy(szCustomerName, sc_get_customer_name_by_id(pstTransform->ulObjectID));
+        }
+
+
+        if (ucCondition == SC_SHOW_TRANSFORM_BY_ID && ulID != pstTransform->ulID)
+        {
+                continue;
+        }
+        else if (ucCondition == SC_SHOW_TRANSFORM_BY_CUSTOMER)
+        {
+            if (NULL == pszCondition)
+            {
+                if (ulID != pstTransform->ulObjectID)
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                if (0 != dos_stricmp(pszCondition, szCustomerName))
+                {
+                    continue;
+                }
+            }
+        }
+        else if (ucCondition == SC_SHOW_TRANSFORM_BY_CALLERPREFIX && 0 != dos_stricmp(pszCondition, pstTransform->szCallerPrefix))
         {
             continue;
         }
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%3u%10s%6u%10s%14s%10s%13s%13s%11s%11s%8u%9u%10s%10s%9u%11u"
+        else if (ucCondition == SC_SHOW_TRANSFORM_BY_CALLEEPREFIX && 0 != dos_stricmp(pszCondition, pstTransform->szCalleePrefix))
+        {
+            continue;
+        }
+        else if (ucCondition == SC_SHOW_TRANSFORM_BY_REPLACE_NUM && 0 != dos_stricmp(pszCondition, pstTransform->szReplaceNum))
+        {
+            continue;
+        }
+
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-3u%-10s%-6u%-10s%-16s%-14s%-10s%-13s%-13s%-11s%-11s%-8u%-9u%-10s%-10s%-9u%-11u"
                         , pstTransform->ulID
                         , sc_translate_transform_object(pstTransform->enObject)
                         , pstTransform->ulObjectID
+                        , szCustomerName
                         , sc_translate_transform_direction(pstTransform->enDirection)
                         , sc_translate_transform_time(pstTransform->enTiming)
                         , sc_translate_transfrom_numselect(pstTransform->enNumSelect)
@@ -2397,10 +2684,11 @@ U32 sc_show_transform(U32 ulIndex, U32 ulID)
                         , pstTransform->ulExpiry);
         cli_out_string(ulIndex, szBuff);
     }
+    cli_out_string(ulIndex, "\r\n----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\r\n");
     return DOS_SUCC;
 }
 
-U32 sc_show_numlmt(U32 ulIndex, U32 ulID)
+U32 sc_show_numlmt(U32 ulIndex, U8 ucCondition ,U32 ulID, S8* pszCondition)
 {
     SC_NUMBER_LMT_NODE_ST *pstNumlmt = NULL;
     U32 ulHashIndex = U32_BUTT;
@@ -2423,7 +2711,12 @@ U32 sc_show_numlmt(U32 ulIndex, U32 ulID)
             }
 
             pstNumlmt = (SC_NUMBER_LMT_NODE_ST *)pstHashNode->pHandle;
-            if (ulID != U32_BUTT && ulID != pstNumlmt->ulID)
+            if (ucCondition == SC_SHOW_NUMLMT_BY_ID && ulID != pstNumlmt->ulID)
+            {
+                continue;
+            }
+
+            if (ucCondition == SC_SHOW_NUMLMT_BY_NUM && NULL != pszCondition && dos_stricmp(pszCondition, pstNumlmt->szPrefix) !=0)
             {
                 continue;
             }
@@ -2441,6 +2734,7 @@ U32 sc_show_numlmt(U32 ulIndex, U32 ulID)
              cli_out_string(ulIndex, szBuff);
         }
     }
+    cli_out_string(ulIndex, "\r\n---------------------------------------------------------------------------------------------");
     return DOS_SUCC;
 }
 
@@ -2714,7 +3008,7 @@ S32 cli_cc_trace_customer(U32 ulIndex, S32 argc, S8 **argv)
 
         if (bIsTrace)
         {
-            /* 判断SIP是否属于企业 */
+            /* 判断企业是否存在 */
             if (!sc_customer_is_exit(ulCustomerID))
             {
                 dos_snprintf(szBuff, sizeof(szBuff), "Customer(%u) is not a company\r\n", ulCustomerID);
@@ -3493,21 +3787,29 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (dos_stricmp(argv[2], "gateway") == 0)
+    else if (dos_stricmp(argv[2], "trunk") == 0)
     {
         if (3 == argc)
         {
-            sc_show_gateway(ulIndex, U32_BUTT);
+            sc_show_trunk(ulIndex, SC_SHOW_GATEWAY_ALL,U32_BUTT);
         }
         else if (4 == argc)
         {
             if (dos_atoul(argv[3], &ulID) == 0)
             {
-                sc_show_gateway(ulIndex, ulID);
+                sc_show_trunk(ulIndex,SC_SHOW_GATEWAY_BY_ID, ulID);
+            }
+            else if (dos_stricmp(argv[3], "enable"))
+            {
+                sc_show_trunk(ulIndex, SC_SHOW_GATEWAY_BY_STATUS_ENABLE, U32_BUTT);
+            }
+            else if (dos_stricmp(argv[3], "disable"))
+            {
+                sc_show_trunk(ulIndex, SC_SHOW_GATEWAY_BY_STATUS_DISABLE, U32_BUTT);
             }
             else
             {
-                cli_out_string(ulIndex, "\r\n\tERRNO: Invalid gateway ID while show the gateway(s).\r\n");
+                cli_out_string(ulIndex, "\r\n\tERRNO: Invalid gateway parameters while show the gateway(s).\r\n");
                 return -1;
             }
         }
@@ -3516,22 +3818,45 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             return -1;
         }
     }
-    else if (dos_stricmp(argv[2], "gwgrp") == 0)
+    else if (dos_stricmp(argv[2], "trunkgrp") == 0)
     {
         if (3 == argc)
         {
-            sc_show_gateway_grp(ulIndex, U32_BUTT);
+            sc_show_trunk_grp(ulIndex, SC_SHOW_GWGRP_ALL, U32_BUTT);
         }
         else if (4 == argc)
         {
             if (dos_atoul(argv[3], &ulID) == 0)
             {
-                sc_show_gateway_grp(ulIndex, ulID);
+                sc_show_trunk_grp(ulIndex, SC_SHOW_GWGRP_BY_GRP_ID, ulID);
             }
             else
             {
                 cli_out_string(ulIndex, "\r\n\tERROR:Invalid gateway group ID while show the gateway group(s).\r\n");
                 return -1;
+            }
+        }
+        else if (5 == argc)
+        {
+            if (dos_stricmp(argv[3], "gw") == 0)
+            {
+                if (dos_atoul(argv[4], &ulID) == 0)
+                {
+                    sc_show_trunk_grp(ulIndex, SC_SHOW_GWGRP_BY_GW_ID, ulID);
+                }
+                else if (dos_stricmp(argv[4],"enable") == 0)
+                {
+                    sc_show_trunk_grp(ulIndex, SC_SHOW_GWGRP_BY_GW_ENABLE, ulID);
+                }
+                else if (dos_stricmp(argv[4], "disable") == 0)
+                {
+                    sc_show_trunk_grp(ulIndex, SC_SHOW_GWGRP_BY_GW_DISABLE, ulID);
+                }
+                else
+                {
+                    cli_out_string(ulIndex, "\r\n\tERROR:Invalid paramers while show the gateway group(s).\r\n");
+                    return -1;
+                }
             }
         }
         else
@@ -3717,39 +4042,44 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     {
         if (3 == argc)
         {
-            sc_show_agent(ulIndex, U32_BUTT, U32_BUTT, U32_BUTT);
-        }
-        else if (4 == argc)
-        {
-            if (dos_atoul(argv[3], &ulID) == 0)
-            {
-                sc_show_agent(ulIndex, ulID, U32_BUTT, U32_BUTT);
-            }
-            else
-            {
-                cli_out_string(ulIndex, "\r\n\tERROR: Invalid Agent Group ID while show the Agent Group(s).\r\n");
-                return -1;
-            }
+            sc_show_agent(ulIndex, SC_SHOW_AGENT_ALL, U32_BUTT, NULL);
         }
         else if (5 == argc)
         {
-            if (dos_atoul(argv[4], &ulID) < 0)
+            if (dos_strnicmp(argv[3], "customer", dos_strlen("customer")) == 0)
             {
-                cli_out_string(ulIndex, "\r\n\tERROR: Invalid Agent Group ID while show the Agent Group(s).\r\n");
-                return -1;
+                if (dos_atoul(argv[4], &ulID) == 0)
+                {
+                    sc_show_agent(ulIndex, SC_SHOW_AGENT_BY_CUSTOMER, ulID, NULL);
+                }
+                else
+                {
+                    sc_show_agent(ulIndex, SC_SHOW_AGENT_BY_CUSTOMER, U32_BUTT, argv[4]);
+                }
             }
-
-            if (dos_strnicmp(argv[3], "custom", dos_strlen("custom")) == 0)
+            else if (dos_strnicmp(argv[3], "sip", dos_strlen("sip")) == 0)
             {
-                sc_show_agent(ulIndex, U32_BUTT, ulID, U32_BUTT);
+                sc_show_agent(ulIndex, SC_SHOW_AGENT_BY_SIP, U32_BUTT, argv[4]);
             }
-            else if (dos_strnicmp(argv[3], "group", dos_strlen("group")) == 0)
+            else if (dos_strnicmp(argv[3], "status", dos_strlen("status")) == 0)
             {
-                sc_show_agent(ulIndex, U32_BUTT, U32_BUTT, ulID);
+                sc_show_agent(ulIndex, SC_SHOW_AGENT_BY_STATUS, U32_BUTT, argv[4]);
+            }
+            else if (dos_strnicmp(argv[3], "jobnum", dos_strlen("jobnum")) == 0)
+            {
+                sc_show_agent(ulIndex, SC_SHOW_AGENT_BY_JOBNUM, U32_BUTT, argv[4]);
+            }
+            else if (dos_strnicmp(argv[3], "id", dos_strlen("id")) == 0 && dos_atoul(argv[4], &ulID) == 0)
+            {
+                sc_show_agent(ulIndex, SC_SHOW_AGENT_BY_ID, ulID, NULL);
+            }
+            else if (dos_strnicmp(argv[3], "group", dos_strlen("group")) == 0 && dos_atoul(argv[4], &ulID) == 0)
+            {
+                sc_show_agent(ulIndex, SC_SHOW_AGENT_BY_GROUP, ulID, NULL);
             }
             else
             {
-                return -1;
+                    return -1;
             }
         }
         else
@@ -3777,28 +4107,60 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     {
         if (3 == argc)
         {
-            sc_show_did(ulIndex, NULL);
+            sc_show_did(ulIndex, SC_SHOW_DID_ALL, U32_BUTT, NULL);
         }
-        else if (4 == argc)
+        else if (5 == argc)
         {
-            sc_show_did(ulIndex, argv[3]);
+            if (0 == dos_stricmp(argv[3],"id") && 0 == dos_atoul(argv[4], &ulID))
+            {
+                sc_show_did(ulIndex, SC_SHOW_DID_BY_DIDID, ulID, NULL);
+            }
+            else if (0 == dos_stricmp(argv[3], "num"))
+            {
+                sc_show_did(ulIndex, SC_SHOW_DID_BY_NUM, U32_BUTT, argv[4]);
+            }
+            else if (0 == dos_stricmp(argv[3], "customer"))
+            {
+                if (0 == dos_atoul(argv[4], &ulID))
+                {
+                    sc_show_did(ulIndex, SC_SHOW_DID_BY_CUSTOMER, ulID, NULL);
+                }
+                else if (NULL != argv[4])
+                {
+                    sc_show_did(ulIndex, SC_SHOW_DID_BY_CUSTOMER, U32_BUTT, argv[4]);
+                }
+                else
+                {
+                    return -1;
+                }
+            }
+            else
+            {
+                return -1;
+            }
         }
     }
     else if (0 == dos_stricmp(argv[2], "blacklist"))
     {
-        if (4 == argc)
-        {
-            if (dos_atoul(argv[3], &ulID) < 0)
-            {
-                DOS_ASSERT(0);
-                return -1;
-            }
-        }
-        else if (3 == argc)
+        if (3 == argc)
         {
             ulID = U32_BUTT;
+            sc_show_black_list(ulIndex, SC_SHOW_BLACKLIST_ALL,ulID, NULL);
         }
-        sc_show_black_list(ulIndex, ulID);
+        else if (5 == argc)
+        {
+            if (0 == dos_stricmp(argv[3], "id"))
+            {
+                if (0 == dos_atoul(argv[4], &ulID))
+                {
+                    sc_show_black_list(ulIndex, SC_SHOW_BLACKLIST_BY_ID, ulID, NULL);
+                }
+            }
+            else if (0 == dos_stricmp(argv[3], "num"))
+            {
+                sc_show_black_list(ulIndex, SC_SHOW_BLACKLIST_BY_NUM, ulID, argv[4]);
+            }
+        }
     }
     else if (0 == dos_stricmp(argv[2], "_caller"))
     {
@@ -3867,64 +4229,122 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     {
         if (3 == argc)
         {
-            sc_show_tt(ulIndex, U32_BUTT);
+            sc_show_tt(ulIndex, SC_SHOW_TT_ALL, U32_BUTT, NULL);
         }
-        else if (4 == argc)
+        else if (5 == argc)
         {
-            if (dos_atoul(argv[3], &ulID) < 0)
+            if (dos_stricmp(argv[3], "port") == 0  && dos_atoul(argv[4], &ulID) == 0)
             {
-                DOS_ASSERT(0);
+                sc_show_tt(ulIndex, SC_SHOW_TT_BY_PORT, ulID, NULL);
+            }
+            else if (dos_stricmp(argv[3], "id") == 0 && dos_atoul(argv[4], &ulID) == 0)
+            {
+                sc_show_tt(ulIndex, SC_SHOW_AGENT_BY_ID, ulID, NULL);
+            }
+            else if (dos_stricmp(argv[3], "ip") == 0 && argv[4])
+            {
+                sc_show_tt(ulIndex, SC_SHOW_TT_BY_IP, U32_BUTT, argv[4]);
+            }
+            else
+            {
                 return -1;
             }
-            sc_show_tt(ulIndex, ulID);
         }
     }
     else if (0 == dos_stricmp(argv[2], "customer"))
     {
         if (3 == argc)
         {
-            sc_show_customer(ulIndex, U32_BUTT);
+            sc_show_customer(ulIndex, SC_SHOW_CUSTOMER_ALL, U32_BUTT);
         }
-        else if (4 == argc)
+        else if (5 == argc)
         {
-            if (dos_atoul(argv[3], &ulID) < 0)
+            if (dos_atoul(argv[4], &ulID) == 0 && dos_stricmp(argv[3],"group") == 0)
             {
-                DOS_ASSERT(0);
-                return -1;
+                sc_show_customer(ulIndex, SC_SHOW_CUSTOMER_BY_CALL_GROUP_NUM, ulID);
             }
-            sc_show_customer(ulIndex, ulID);
+            else if (dos_atoul(argv[4], &ulID) == 0 && dos_stricmp(argv[3],"id")== 0)
+            {
+                sc_show_customer(ulIndex, SC_SHOW_CUSTOMER_BY_ID, ulID);
+            }
+            else
+            {
+                cli_out_string(ulIndex, "\r\n\tERROR: Invalid paramers, please check it! \r\n");
+            }
         }
     }
     else if (0 == dos_stricmp(argv[2], "transform"))
     {
         if (3 == argc)
         {
-            sc_show_transform(ulIndex, U32_BUTT);
+            sc_show_transform(ulIndex, SC_SHOW_TRANSFORM_ALL, U32_BUTT, NULL);
         }
-        else if (4 == argc)
+        else if (5 == argc)
         {
-            if (dos_atoul(argv[3], &ulID) < 0)
+            if (0 == dos_stricmp(argv[3], "id"))
             {
-                DOS_ASSERT(0);
+                if (dos_atoul(argv[4], &ulID) < 0)
+                {
+                    DOS_ASSERT(0);
+                    return -1;
+                }
+                sc_show_transform(ulIndex, SC_SHOW_TRANSFORM_BY_ID, ulID, NULL);
+            }
+            else if (0 == dos_stricmp(argv[3], "customer"))
+            {
+                if (dos_atoul(argv[4], &ulID) == 0)
+                {
+                    sc_show_transform(ulIndex, SC_SHOW_TRANSFORM_BY_CUSTOMER, ulID, NULL);
+                }
+                else
+                {
+                    sc_show_transform(ulIndex, SC_SHOW_TRANSFORM_BY_CUSTOMER, ulID, argv[4]);
+                }
+            }
+            else if (0 == dos_stricmp(argv[3], "caller"))
+            {
+                sc_show_transform(ulIndex, SC_SHOW_TRANSFORM_BY_CALLERPREFIX, U32_BUTT, argv[4]);
+            }
+            else if (0 == dos_stricmp(argv[3], "callee"))
+            {
+                sc_show_transform(ulIndex, SC_SHOW_TRANSFORM_BY_CALLEEPREFIX, U32_BUTT, argv[4]);
+            }
+            else if (0 == dos_stricmp(argv[3], "num"))
+            {
+                sc_show_transform(ulIndex, SC_SHOW_TRANSFORM_BY_REPLACE_NUM, U32_BUTT, argv[4]);
+            }
+            else
+            {
                 return -1;
             }
-            sc_show_transform(ulIndex, ulID);
+
         }
     }
     else if (0 == dos_stricmp(argv[2], "numlmt"))
     {
         if (3 == argc)
         {
-            sc_show_numlmt(ulIndex, U32_BUTT);
+            sc_show_numlmt(ulIndex, SC_SHOW_NUMLMT_ALL, U32_BUTT, NULL);
         }
-        else if (4 == argc)
+        else if (5 == argc)
         {
-            if (dos_atoul(argv[3], &ulID) < 0)
+            if (dos_stricmp(argv[3], "id") == 0 && dos_atoul(argv[4], &ulID) == 0)
+            {
+                 sc_show_numlmt(ulIndex,SC_SHOW_NUMLMT_BY_ID, ulID, NULL);
+            }
+            else if (dos_stricmp(argv[3], "num") == 0 && argv[4])
+            {
+                sc_show_numlmt(ulIndex, SC_SHOW_NUMLMT_BY_NUM, U32_BUTT, argv[4]);
+            }
+            else
             {
                 DOS_ASSERT(0);
                 return -1;
             }
-            sc_show_numlmt(ulIndex, ulID);
+        }
+        else
+        {
+            return -1;
         }
     }
     else if (0 == dos_stricmp(argv[2], "cwq"))
@@ -4576,6 +4996,134 @@ VOID sc_printf(const S8 *pszFormat, ...)
     dos_log(LOG_LEVEL_DEBUG, LOG_TYPE_RUNINFO, szTraceStr);
 }
 
+
+BOOL sc_trace_check_by_leg(SC_LEG_CB *pstLCB)
+{
+    S32 i = 0;
+
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        return DOS_FALSE;
+    }
+
+    for (i=0; i<SC_TRACE_CUSTOMER_SIZE; i++)
+    {
+        if (g_aszCallerTrace[i][0] != '\0'
+            && dos_strcmp(g_aszCallerTrace[i], pstLCB->stCall.stNumInfo.szOriginalCalling) == 0)
+        {
+            return DOS_TRUE;
+        }
+
+        if (g_aszCalleeTrace[i][0] != '\0'
+            && dos_strcmp(g_aszCalleeTrace[i], pstLCB->stCall.stNumInfo.szOriginalCallee) == 0)
+        {
+            return DOS_TRUE;
+        }
+    }
+
+    return DOS_FALSE;
+}
+
+/**
+ * 根据scb判断是否需要进行业务或者客户跟踪
+ *
+ * @parma SC_SRV_CB *pstSCB 业务控制块
+ *
+ * return NULL
+ */
+BOOL sc_trace_check_by_scb(SC_SRV_CB *pstSCB)
+{
+    S32                 i               = 0;
+    U32                 ulLegNo         = U32_BUTT;
+    SC_LEG_CB           *pstLegCB       = NULL;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return DOS_FALSE;
+    }
+
+    /* 判断是否需要跟踪业务 */
+    for (i=0; i<BS_SERV_BUTT; i++)
+    {
+        if (pstSCB->aucServType[i] < BS_SERV_BUTT
+            && g_aucServTraceFlag[pstSCB->aucServType[i]])
+        {
+            return DOS_TRUE;
+        }
+    }
+
+    for (i=0; i<SC_TRACE_CUSTOMER_SIZE; i++)
+    {
+        /* 判断是否需要跟踪客户 */
+        if (pstSCB->ulCustomerID != U32_BUTT
+            && g_aulCustomerTrace[i] == pstSCB->ulCustomerID)
+        {
+            return DOS_TRUE;
+        }
+    }
+
+    if (pstSCB->ulCurrentSrv >= SC_SRV_BUTT
+        || DOS_ADDR_INVALID(pstSCB->pstServiceList[pstSCB->ulCurrentSrv])
+        || !pstSCB->pstServiceList[pstSCB->ulCurrentSrv]->bValid)
+    {
+        return DOS_FALSE;
+    }
+
+    /* 只从最新的业务中查找leg */
+    switch (pstSCB->pstServiceList[pstSCB->ulCurrentSrv]->usSrvType)
+    {
+        case SC_SRV_CALL:
+            ulLegNo = pstSCB->stCall.ulCallingLegNo;
+            break;
+        case SC_SRV_PREVIEW_CALL:
+            ulLegNo = pstSCB->stPreviewCall.ulCallingLegNo;
+            break;
+        case SC_SRV_AUTO_CALL:
+            ulLegNo = pstSCB->stAutoCall.ulCallingLegNo;
+            break;
+        case SC_SRV_VOICE_VERIFY:
+            ulLegNo = pstSCB->stVoiceVerify.ulLegNo;
+            break;
+        case SC_SRV_ACCESS_CODE:
+            ulLegNo = pstSCB->stAccessCode.ulLegNo;
+            break;
+        case SC_SRV_HOLD:
+            ulLegNo = pstSCB->stHold.ulCallLegNo;
+            break;
+        case SC_SRV_TRANSFER:
+            ulLegNo = pstSCB->stTransfer.ulNotifyLegNo;
+            break;
+        case SC_SRV_INCOMING_QUEUE:
+            ulLegNo = pstSCB->stIncomingQueue.ulLegNo;
+            break;
+        case SC_SRV_INTERCEPTION:
+            ulLegNo = pstSCB->stInterception.ulLegNo;
+            break;
+        case SC_SRV_WHISPER:
+            ulLegNo = pstSCB->stWhispered.ulLegNo;
+            break;
+        case SC_SRV_MARK_CUSTOM:
+            ulLegNo = pstSCB->stMarkCustom.ulLegNo;
+            break;
+        case SC_SRV_AGENT_SIGIN:
+            ulLegNo = pstSCB->stSigin.ulLegNo;
+            break;
+        case SC_SRV_DEMO_TASK:
+            ulLegNo = pstSCB->stDemoTask.ulCallingLegNo;
+            break;
+        case SC_SRV_CALL_AGENT:
+            ulLegNo = pstSCB->stCallAgent.ulCallingLegNo;
+            break;
+        default:
+            break;
+    }
+
+    pstLegCB = sc_lcb_get(ulLegNo);
+    /* 通过leg，判断是否需要主被叫号码跟踪 */
+
+    return sc_trace_check_by_leg(pstLegCB);
+}
+
 /**
  * 跟踪打印业务控制块
  *
@@ -4587,15 +5135,21 @@ VOID sc_printf(const S8 *pszFormat, ...)
 VOID sc_trace_scb(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...)
 {
     va_list         Arg;
-    S8              szTraceStr[1024] = {0, };
-    U32             ulTraceTagLen = 0;
+    S8              szTraceStr[1024]    = {0, };
+    U32             ulTraceTagLen       = 0;
+    U32             ulLogLevel          = LOG_LEVEL_DEBUG;
 
     va_start(Arg, pszFormat);
     vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
     va_end(Arg);
     szTraceStr[sizeof(szTraceStr) -1] = '\0';
 
-    dos_log(LOG_LEVEL_DEBUG, LOG_TYPE_RUNINFO, szTraceStr);
+    if (sc_trace_check_by_scb(pstSCB))
+    {
+        ulLogLevel = LOG_LEVEL_NOTIC;
+    }
+
+    dos_log(ulLogLevel, LOG_TYPE_RUNINFO, szTraceStr);
 }
 
 /**
@@ -4609,15 +5163,21 @@ VOID sc_trace_scb(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...)
 VOID sc_trace_leg(SC_LEG_CB *pstLCB, const S8 *pszFormat, ...)
 {
     va_list         Arg;
-    S8              szTraceStr[1024] = {0, };
-    U32             ulTraceTagLen = 0;
+    S8              szTraceStr[1024]    = {0, };
+    U32             ulTraceTagLen       = 0;
+    U32             ulLogLevel          = LOG_LEVEL_DEBUG;
 
     va_start(Arg, pszFormat);
     vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
     va_end(Arg);
     szTraceStr[sizeof(szTraceStr) -1] = '\0';
 
-    dos_log(LOG_LEVEL_DEBUG, LOG_TYPE_RUNINFO, szTraceStr);
+    if (sc_trace_check_by_leg(pstLCB))
+    {
+        ulLogLevel = LOG_LEVEL_NOTIC;
+    }
+
+    dos_log(ulLogLevel, LOG_TYPE_RUNINFO, szTraceStr);
 }
 
 VOID sc_trace_task(SC_TASK_CB *pstLCB, const S8 *pszFormat, ...)

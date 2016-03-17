@@ -441,6 +441,7 @@ typedef enum tagSCInterErr{
     SC_ERR_BRIDGE_FAIL,
     SC_ERR_RECORD_FAIL,
     SC_ERR_BREAK_FAIL,
+    SC_ERR_BRIDGE_SUCC,
 
     SC_ERR_BUTT
 }SC_INTER_ERR_EN;
@@ -874,6 +875,8 @@ typedef struct tagSCLegCB{
     U32                   ulSCBNo;
     /** 记录独立业务控制块 */
     U32                   ulIndSCBNo;
+    /** 记录第三方控制块，如监听的业务控制块等 */
+    U32                   ulOtherSCBNo;
     /** 是否已经分配 */
     U32                   bValid:1;
     /** 是否调试跟踪 */
@@ -1306,6 +1309,11 @@ typedef enum tagSCTransType{
     SC_TRANSFER_ATTENDED,   /**< 协商转 */
 }SC_TRANS_TYPE_EN;
 
+enum{
+    SC_TRANSFER_PUBLISH_AGENT,      /**< 呼叫转接坐席 */
+    SC_TRANSFER_PUBLISH_SIP,        /**< 转接sip分机 */
+};
+
 /**
  * 业务控制块, 转接业务
  */
@@ -1315,6 +1323,9 @@ typedef struct tagSCCallTransfer{
 
     /** 转接类型 */
     U32               ulType;
+
+    /** 转接sip/坐席工号 */
+    U32               ulPublishType;
 
     /** 订阅放所在的SCB */
     U32               ulSubLegNo;
@@ -1328,6 +1339,9 @@ typedef struct tagSCCallTransfer{
     U32               ulSubAgentID;
     U32               ulPublishAgentID;
     U32               ulNotifyAgentID;
+
+    S8                szSipNum[SC_NUM_LENGTH];
+
 }SC_CALL_TRANSFER_ST;
 
 /** 呼叫保持业务状态 */

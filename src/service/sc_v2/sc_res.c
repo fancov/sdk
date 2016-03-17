@@ -241,6 +241,53 @@ U32 sc_sip_account_get_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUse
     return DOS_FAIL;
 }
 
+BOOL sc_sip_account_be_is_exit(U32 ulCustomID, S8 *szUserID)
+{
+    SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
+    HASH_NODE_S        *pstHashNode   = NULL;
+    U32                ulHashIndex    = 0;
+
+    if (DOS_ADDR_INVALID(szUserID))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FALSE;
+    }
+
+    pthread_mutex_lock(&g_mutexHashSIPUserID);
+    HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashSIPUserID, ulHashIndex, pstHashNode, HASH_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                continue;
+            }
+
+            pstUserIDNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstUserIDNode))
+            {
+                continue;
+            }
+
+            if (ulCustomID != pstUserIDNode->ulCustomID)
+            {
+                continue;
+            }
+
+            if (0 != dos_strcmp(pstUserIDNode->szUserID, szUserID))
+            {
+                continue;
+            }
+
+            pthread_mutex_unlock(&g_mutexHashSIPUserID);
+            return DOS_TRUE;
+        }
+    }
+    pthread_mutex_unlock(&g_mutexHashSIPUserID);
+    return DOS_FALSE;
+}
+
 /**
  * 功能: 获取ID为ulSIPUserID SIP User ID，并将SIP USER ID Copy到缓存pszUserID中
  * 参数:
@@ -292,8 +339,6 @@ U32 sc_sip_account_get_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength)
     return DOS_FAIL;
 
 }
-
-
 
 /* 删除SIP账户 */
 U32 sc_sip_account_delete(S8 * pszSipID)
@@ -616,7 +661,50 @@ U32 sc_sip_account_update_info2db(U32 ulPublicIP, U32 ulPrivateIP, SC_SIP_STATUS
     return sc_send_msg2db(pstMsg);
 }
 
+U32 sc_sip_account_update_status(S8 *szUserID, SC_SIP_STATUS_TYPE_EN enStatus, U32 *pulSipID)
+{
+    SC_USER_ID_NODE_ST *pstUserID   = NULL;
+    HASH_NODE_S        *pstHashNode = NULL;
+    U32                ulHashIndex  = U32_BUTT;
 
+    ulHashIndex = sc_string_hash_func(szUserID, SC_SIP_ACCOUNT_HASH_SIZE);
+    pthread_mutex_lock(&g_mutexHashSIPUserID);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)szUserID, sc_sip_account_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexHashSIPUserID);
+
+        return DOS_FAIL;
+    }
+
+    pstUserID = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstUserID))
+    {
+        pthread_mutex_unlock(&g_mutexHashSIPUserID);
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstUserID->enStatus = enStatus;
+    switch (enStatus)
+    {
+        case SC_SIP_STATUS_TYPE_REGISTER:
+            pstUserID->stStat.ulRegisterCnt++;
+            break;
+        case SC_SIP_STATUS_TYPE_UNREGISTER:
+            pstUserID->stStat.ulUnregisterCnt++;
+            break;
+        default:
+            break;
+    }
+
+    *pulSipID = pstUserID->ulSIPID;
+    pthread_mutex_unlock(&g_mutexHashSIPUserID);
+
+    return DOS_SUCC;
+}
 
 
 /**
@@ -1058,7 +1146,7 @@ S32 sc_customer_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
     ulIndex = *(U32 *)pKey;
     pstCustomerCurrent = pstDLLNode->pHandle;
 
-    if (ulIndex == pstCustomerCurrent->ulID)
+    if (ulIndex == pstCustomerCurrent->ulID && SC_CUSTOMER_TYPE_CONSUMER == pstCustomerCurrent->ucCustomerType)
     {
         return DOS_SUCC;
     }
@@ -1101,6 +1189,7 @@ S32 sc_customer_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     S32                  lIndex;
     BOOL                 blProcessOK = DOS_FALSE;
     U32                  ulCallOutGroup;
+    U32                  ulType;
 
     if (DOS_ADDR_INVALID(aszValues)
         || DOS_ADDR_INVALID(aszNames))
@@ -1131,6 +1220,22 @@ S32 sc_customer_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 blProcessOK = DOS_FALSE;
                 break;
             }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "name", dos_strlen("name")))
+        {
+            dos_strncpy(pstCustomer->szName, aszValues[lIndex], sizeof(pstCustomer->szName));
+        }
+
+        else if (0 == dos_strnicmp(aszNames[lIndex], "type", dos_strlen("type")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulType) < 0
+                || ulType> U8_BUTT)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+            pstCustomer->ucCustomerType = (U8)ulType;
         }
         /* 分组编号可以为空，如果为空或者值超过最大值，都默认按0处理 */
         else if (0 == dos_strnicmp(aszNames[lIndex], "call_out_group", dos_strlen("call_out_group")))
@@ -1215,12 +1320,12 @@ U32 sc_customer_load(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, call_out_group FROM tbl_customer where tbl_customer.type=0;");
+                    , "SELECT id, name,type, call_out_group FROM tbl_customer;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, call_out_group FROM tbl_customer where tbl_customer.type=0 and tbl_customer.id=%u;"
+                    , "SELECT id, name, type, call_out_group FROM tbl_customer where tbl_customer.id=%u;"
                     , ulIndex);
     }
 
@@ -1364,9 +1469,10 @@ S32 sc_gateway_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 {
     SC_GW_NODE_ST        *pstGWNode     = NULL;
     HASH_NODE_S          *pstHashNode   = NULL;
-    S8 *pszGWID = NULL, *pszDomain = NULL, *pszStatus = NULL, *pszRegister = NULL, *pszRegisterStatus = NULL;
+    S8 *pszGWID = NULL, *pszGWName = NULL, *pszDomain = NULL, *pszStatus = NULL, *pszRegister = NULL, *pszRegisterStatus = NULL, *pszPing = NULL;
     U32 ulID, ulStatus, ulRegisterStatus = 0;
     BOOL bIsRegister;
+    BOOL bPing;
     U32 ulHashIndex = U32_BUTT;
 
     if (DOS_ADDR_INVALID(aszNames)
@@ -1378,17 +1484,20 @@ S32 sc_gateway_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     }
 
     pszGWID = aszValues[0];
-    pszDomain = aszValues[1];
-    pszStatus = aszValues[2];
-    pszRegister = aszValues[3];
-    pszRegisterStatus = aszValues[4];
+    pszGWName = aszValues[1];
+    pszDomain = aszValues[2];
+    pszStatus = aszValues[3];
+    pszRegister = aszValues[4];
+    pszRegisterStatus = aszValues[5];
+    pszPing = aszValues[6];
     if (DOS_ADDR_INVALID(pszGWID)
         || DOS_ADDR_INVALID(pszDomain)
         || DOS_ADDR_INVALID(pszStatus)
         || DOS_ADDR_INVALID(pszRegister)
         || dos_atoul(pszGWID, &ulID) < 0
         || dos_atoul(pszStatus, &ulStatus) < 0
-        || dos_atoul(pszRegister, &bIsRegister) < 0)
+        || dos_atoul(pszRegister, &bIsRegister) < 0
+        || dos_atoul(pszPing, &bPing) < 0 )
     {
         DOS_ASSERT(0);
 
@@ -1439,6 +1548,17 @@ S32 sc_gateway_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         sc_gateway_init(pstGWNode);
 
         pstGWNode->ulGWID = ulID;
+        if ('\0' != pszGWName[0])
+        {
+            dos_strncpy(pstGWNode->szGWName, pszGWName, sizeof(pstGWNode->szGWName));
+            pstGWNode->szGWName[sizeof(pstGWNode->szGWName) - 1] = '\0';
+        }
+        else
+        {
+            pstGWNode->szGWName[0] = '\0';
+        }
+
+
         if ('\0' != pszDomain[0])
         {
             dos_strncpy(pstGWNode->szGWDomain, pszDomain, sizeof(pstGWNode->szGWDomain));
@@ -1448,8 +1568,10 @@ S32 sc_gateway_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         {
             pstGWNode->szGWDomain[0] = '\0';
         }
+
         pstGWNode->bStatus = ulStatus;
         pstGWNode->bRegister = bIsRegister;
+        pstGWNode->bPing = bPing;
         pstGWNode->ulRegisterStatus = ulRegisterStatus;
 
         HASH_Init_Node(pstHashNode);
@@ -1475,6 +1597,7 @@ S32 sc_gateway_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         pstGWNode->bExist = DOS_TRUE;
         pstGWNode->bStatus = ulStatus;
         pstGWNode->bRegister = bIsRegister;
+        pstGWNode->bPing = bPing;
         pstGWNode->ulRegisterStatus = ulRegisterStatus;
     }
     pthread_mutex_unlock(&g_mutexHashGW);
@@ -1550,6 +1673,38 @@ U32 sc_gateway_update_status2db(U32 ulGateWayID, SC_TRUNK_STATE_TYPE_EN enTrunkS
     return sc_send_msg2db(pstMsg);
 }
 
+U32 sc_gateway_update_status(U32 ulGWID, SC_TRUNK_STATE_TYPE_EN enRegisterStatus)
+{
+    SC_GW_NODE_ST  *pstGWNode     = NULL;
+    HASH_NODE_S    *pstHashNode   = NULL;
+    U32             ulHashIndex   = U32_BUTT;
+
+    if (enRegisterStatus >= SC_TRUNK_STATE_TYPE_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulHashIndex = sc_int_hash_func(ulGWID, SC_GW_HASH_SIZE);
+
+    pthread_mutex_lock(&g_mutexHashGW);
+    pstHashNode = hash_find_node(g_pstHashGW, ulHashIndex, (VOID *)&ulGWID, sc_gateway_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexHashGW);
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstGWNode = (SC_GW_NODE_ST *)pstHashNode->pHandle;
+    pstGWNode->ulRegisterStatus = enRegisterStatus;
+
+    pthread_mutex_unlock(&g_mutexHashGW);
+
+    return DOS_SUCC;
+}
+
 /**
  * 加载网关数据
  *
@@ -1565,12 +1720,12 @@ U32 sc_gateway_load(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id, realm, status, register, register_status FROM tbl_gateway;");
+                        , "SELECT id, sip_name, realm, status, register, register_status, ping FROM tbl_gateway;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id, realm, status, register, register_status FROM tbl_gateway WHERE id=%d;", ulIndex);
+                        , "SELECT id, sip_name, realm, status, register, register_status, ping FROM tbl_gateway WHERE id=%d;", ulIndex);
     }
 
     ulRet = db_query(g_pstSCDBHandle, szSQL, sc_gateway_load_cb, NULL, NULL);
@@ -1758,6 +1913,7 @@ S32 sc_gateway_group_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
     SC_GW_GRP_NODE_ST    *pstGWGrpNode  = NULL;
     HASH_NODE_S          *pstHashNode   = NULL;
     S8 *pszGWGrpID = NULL;
+    S8  szGWGrpName[SC_NAME_STR_LEN];
     U32 ulID = 0;
     U32 ulHashIndex = 0;
 
@@ -1769,6 +1925,7 @@ S32 sc_gateway_group_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
     }
 
     pszGWGrpID = aszValues[0];
+    dos_strncpy(szGWGrpName, aszValues[1], sizeof(szGWGrpName));
     if (DOS_ADDR_INVALID(pszGWGrpID)
         || dos_atoul(pszGWGrpID, &ulID) < 0)
     {
@@ -1796,6 +1953,7 @@ S32 sc_gateway_group_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNam
 
     pstGWGrpNode->ulGWGrpID = ulID;
     pstGWGrpNode->bExist = DOS_TRUE;
+    dos_strncpy(pstGWGrpNode->szGWGrpName, szGWGrpName, sizeof(pstGWGrpNode->szGWGrpName));
 
     HASH_Init_Node(pstHashNode);
     pstHashNode->pHandle = pstGWGrpNode;
@@ -1826,12 +1984,12 @@ U32 sc_gateway_group_load(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id FROM tbl_gateway_grp WHERE tbl_gateway_grp.status = 0;");
+                        , "SELECT id, name FROM tbl_gateway_grp WHERE tbl_gateway_grp.status = 0;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                        , "SELECT id FROM tbl_gateway_grp WHERE tbl_gateway_grp.status = 0 AND id = %d;"
+                        , "SELECT id, name FROM tbl_gateway_grp WHERE tbl_gateway_grp.status = 0 AND id = %d;"
                         , ulIndex);
     }
 
@@ -2185,6 +2343,11 @@ S32 sc_route_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
+        else if ( 0 == dos_strnicmp(aszNames[lIndex], "name", dos_strlen("name")))
+        {
+            dos_strncpy(pstRoute->szRouteName, aszValues[lIndex], sizeof(pstRoute->szRouteName));
+        }
+
         else if (0 == dos_strnicmp(aszNames[lIndex], "start_time", dos_strlen("start_time")))
         {
             lRet = dos_sscanf(aszValues[lIndex]
@@ -2405,12 +2568,12 @@ U32 sc_route_load(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, seq FROM tbl_route ORDER BY tbl_route.seq ASC;");
+                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, seq FROM tbl_route ORDER BY tbl_route.seq ASC;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, seq FROM tbl_route WHERE id=%d ORDER BY tbl_route.seq ASC;"
+                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, seq FROM tbl_route WHERE id=%d ORDER BY tbl_route.seq ASC;"
                     , ulIndex);
     }
 
@@ -3550,7 +3713,7 @@ succ:
     {
         if (DOS_ADDR_VALID(pstNumTransform))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "The number transfer(%d) SUCC, task : %d, befor : %s ,after : %s", pstNumTransform->ulID, pstLCB->stCall.stNumInfo.szOriginalCallee, szNeedTransformNum);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "The number transfer(%d) SUCC, befor : %s ,after : %s", pstNumTransform->ulID, pstLCB->stCall.stNumInfo.szOriginalCallee, szNeedTransformNum);
         }
         dos_strcpy(pstLCB->stCall.stNumInfo.szRealCallee, szNeedTransformNum);
     }

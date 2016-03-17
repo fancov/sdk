@@ -707,6 +707,7 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
     U32  ulLegCBNo  = 0;
     SC_LEG_CB * pstLCB = NULL;
     SC_MSG_EVT_ERR_REPORT_ST   stErrReport;
+    BOOL bIsSucc    = DOS_FALSE;
 
     pszJobUUID = esl_event_get_header(pstEvent, "Job-UUID");
     pszCommand = esl_event_get_header(pstEvent, "Job-Command");
@@ -717,6 +718,8 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "BJ-JOB exec. Command: %s, Argv: %s", pszCommand, pszArgv);
 
     ulLegCBNo = sc_bgjob_hash_find(pszJobUUID);
     if (ulLegCBNo > SC_LEG_CB_SIZE)
@@ -735,36 +738,48 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
 
     if (dos_strnicmp(pszBody, "+OK", dos_strlen("+OK")) == 0)
     {
+        bIsSucc = DOS_TRUE;
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "BJ-JOB exec succ. Command: %s, Argv: %s", pszCommand, pszArgv);
-
-        return DOS_SUCC;
+        //return DOS_SUCC;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_SU), "BJ-JOB exec fail. Command: %s, Argv: %s, Reply: %s", pszCommand, pszArgv, pszBody);
-
-    if (dos_strnicmp(pszCommand, "originate", dos_strlen("originate")) == 0)
+    if (bIsSucc)
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_CALL_FAIL;
-    }
-    else if (dos_strnicmp(pszCommand, "uuid_bridge", dos_strlen("uuid_bridge")) == 0)
-    {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_BRIDGE_FAIL;
-    }
-    else if (dos_strnicmp(pszCommand, "uuid_break", dos_strlen("uuid_break")) == 0)
-    {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_BREAK_FAIL;
-    }
-    else if (dos_strnicmp(pszCommand, "uuid_record", dos_strlen("uuid_record")) == 0)
-    {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_RECORD_FAIL;
+        if (dos_strnicmp(pszCommand, "uuid_bridge", dos_strlen("uuid_bridge")) == 0)
+        {
+            stErrReport.stMsgTag.usInterErr = SC_ERR_BRIDGE_SUCC;
+        }
+        else
+        {
+            return DOS_SUCC;
+        }
     }
     else
     {
-        /* 处理别的一些错误，一旦遇到应该是需要挂断呼叫的，但是暂时不这么处理 */
-        return DOS_SUCC;
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_SU), "BJ-JOB exec fail. Command: %s, Argv: %s, Reply: %s", pszCommand, pszArgv, pszBody);
+
+        if (dos_strnicmp(pszCommand, "originate", dos_strlen("originate")) == 0)
+        {
+            stErrReport.stMsgTag.usInterErr = SC_ERR_CALL_FAIL;
+        }
+        else if (dos_strnicmp(pszCommand, "uuid_bridge", dos_strlen("uuid_bridge")) == 0)
+        {
+            stErrReport.stMsgTag.usInterErr = SC_ERR_BRIDGE_FAIL;
+        }
+        else if (dos_strnicmp(pszCommand, "uuid_break", dos_strlen("uuid_break")) == 0)
+        {
+            stErrReport.stMsgTag.usInterErr = SC_ERR_BREAK_FAIL;
+        }
+        else if (dos_strnicmp(pszCommand, "uuid_record", dos_strlen("uuid_record")) == 0)
+        {
+            stErrReport.stMsgTag.usInterErr = SC_ERR_RECORD_FAIL;
+        }
+        else
+        {
+            /* 处理别的一些错误，一旦遇到应该是需要挂断呼叫的，但是暂时不这么处理 */
+            return DOS_SUCC;
+        }
     }
-
-
 
     stErrReport.stMsgTag.ulMsgType = SC_EVT_ERROR_PORT;
     if (pstLCB->ulIndSCBNo != U32_BUTT && pstLCB->ulSCBNo == U32_BUTT)
@@ -1202,7 +1217,7 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
         goto proc_fail;
     }
 
-    sc_bgjob_hash_add(pstLegCB->ulSCBNo, szBGJOBUUID);
+    sc_bgjob_hash_add(pstLegCB->ulCBNo, szBGJOBUUID);
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "send call succ.");
 
@@ -1365,7 +1380,7 @@ U32 sc_cmd_hungup_call(SC_MSG_TAG_ST *pstMsg)
     pstLCB = sc_lcb_get(pstHuangup->ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
         goto proc_fail;
     }
 
@@ -1382,7 +1397,7 @@ U32 sc_cmd_hungup_call(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 
 proc_fail:
-    stErrReport.stMsgTag.ulSCBNo = pstHuangup->ulSCBNo;
+    stErrReport.stMsgTag.ulSCBNo = SC_EVT_ERROR_PORT;
     stErrReport.ulSCBNo = pstHuangup->ulSCBNo;
     stErrReport.ulCMD = pstHuangup->stMsgTag.ulMsgType;
 
@@ -1406,6 +1421,7 @@ U32 sc_cmd_bridge_call(SC_MSG_TAG_ST *pstMsg)
     SC_LEG_CB            *pstCallingLeg = NULL;
     SC_LEG_CB            *pstCalleeLeg = NULL;
     S8                   szCMD[256];
+    S8                   szBGJOBUUID[64] = { 0 };
 
     if (DOS_ADDR_INVALID(pstMsg))
     {
@@ -1421,20 +1437,22 @@ U32 sc_cmd_bridge_call(SC_MSG_TAG_ST *pstMsg)
     pstCalleeLeg = sc_lcb_get(pstBridge->ulCalleeLegNo);
     if (DOS_ADDR_INVALID(pstCallingLeg) || DOS_ADDR_INVALID(pstCalleeLeg))
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
 
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "request bridge leg %u<-->%u. Leg not exist", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
         goto proc_fail;
     }
 
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_bridge %s %s \r\n", pstCallingLeg->szUUID, pstCalleeLeg->szUUID);
-    if (sc_esl_execute_cmd(szCMD, NULL, 0) != DOS_SUCC)
+    if (sc_esl_execute_cmd(szCMD, szBGJOBUUID, sizeof(szBGJOBUUID)) != DOS_SUCC)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "request bridge leg %u<-->%u. exec esl cmd fail.", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
 
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
         goto proc_fail;
     }
+
+    sc_bgjob_hash_add(pstCallingLeg->ulCBNo, szBGJOBUUID);
 
     pstCalleeLeg->stBridge.bValid = DOS_TRUE;
     pstCalleeLeg->stBridge.bValid = SC_SU_BRIDGE_INIT;
@@ -1443,10 +1461,11 @@ U32 sc_cmd_bridge_call(SC_MSG_TAG_ST *pstMsg)
     pstCallingLeg->stBridge.bValid = SC_SU_BRIDGE_INIT;
     pstCallingLeg->stBridge.ulOtherLEGNo = pstCalleeLeg->ulCBNo;
 
+
     return DOS_SUCC;
 
 proc_fail:
-    stErrReport.stMsgTag.ulMsgType = pstBridge->ulSCBNo;
+    stErrReport.stMsgTag.ulMsgType = SC_EVT_ERROR_PORT;
     stErrReport.ulSCBNo = pstBridge->ulSCBNo;
     stErrReport.ulCMD = pstBridge->stMsgTag.ulMsgType;
 
@@ -1483,7 +1502,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
     pstLCB = sc_lcb_get(pstPlayback->ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
         goto proc_fail;
     }
 
@@ -1493,7 +1512,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         pszPlayCMDArg = (S8 *)dos_dmem_alloc(SC_MAX_FILELIST_LEN);
         if (DOS_ADDR_INVALID(pszPlayCMDArg))
         {
-            stErrReport.stMsgTag.ulMsgType = SC_ERR_ALLOC_RES_FAIL;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_ALLOC_RES_FAIL;
             goto proc_fail;
         }
 
@@ -1504,7 +1523,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
                                 , pstPlayback->ulLoopCnt, pstPlayback->szAudioFile);
         if (sc_esl_execute("play_and_get_digits", pszPlayCMDArg, pstLCB->szUUID) != DOS_SUCC)
         {
-            stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
             goto proc_fail;
         }
 
@@ -1521,13 +1540,13 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         pszPlayCMDArg = sc_hine_get_tone(pstPlayback->aulAudioList[0]);
         if (DOS_ADDR_INVALID(pszPlayCMDArg))
         {
-            stErrReport.stMsgTag.ulMsgType = SC_ERR_INVALID_MSG;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_INVALID_MSG;
             goto proc_fail;
         }
 
         if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) != DOS_SUCC)
         {
-            stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
             goto proc_fail;
         }
 
@@ -1542,7 +1561,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         pszPlayCMDArg = (S8 *)dos_dmem_alloc(SC_MAX_FILELIST_LEN);
         if (DOS_ADDR_INVALID(pszPlayCMDArg))
         {
-            stErrReport.stMsgTag.ulMsgType = SC_ERR_ALLOC_RES_FAIL;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_ALLOC_RES_FAIL;
             goto proc_fail;
         }
 
@@ -1561,7 +1580,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
                                         , pszPlayCMDArg + ulLen, SC_MAX_FILELIST_LEN - ulLen, NULL);
         if (0 == ulTotalCnt)
         {
-            stErrReport.stMsgTag.ulMsgType = SC_ERR_INVALID_MSG;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_INVALID_MSG;
             goto proc_fail;
         }
     }
@@ -1570,7 +1589,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         pszPlayCMDArg = (S8 *)dos_dmem_alloc(SC_MAX_FILELIST_LEN);
         if (DOS_ADDR_INVALID(pszPlayCMDArg))
         {
-            stErrReport.stMsgTag.ulMsgType = SC_ERR_ALLOC_RES_FAIL;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_ALLOC_RES_FAIL;
             goto proc_fail;
         }
 
@@ -1674,6 +1693,7 @@ proc_fail:
         pszPlayCMDArg = NULL;
     }
 
+    stErrReport.stMsgTag.ulMsgType = SC_EVT_ERROR_PORT;
     stErrReport.stMsgTag.ulSCBNo = pstPlayback->ulSCBNo;
     stErrReport.ulSCBNo = pstPlayback->ulSCBNo;
     stErrReport.ulCMD = pstPlayback->stMsgTag.ulMsgType;
@@ -1708,14 +1728,14 @@ U32 sc_cmd_playback_stop(SC_MSG_TAG_ST *pstMsg)
     pstLCB = sc_lcb_get(pstPlayback->ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
         goto proc_fail;
     }
 
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_break %s all \r\n", pstLCB->szUUID);
     if (sc_esl_execute_cmd(szCMD, szUUID, sizeof(szUUID)) != DOS_SUCC)
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
         goto proc_fail;
     }
 
@@ -1727,6 +1747,7 @@ U32 sc_cmd_playback_stop(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 
 proc_fail:
+    stErrReport.stMsgTag.ulMsgType = SC_EVT_ERROR_PORT;
     stErrReport.stMsgTag.ulSCBNo = pstPlayback->ulSCBNo;
     stErrReport.ulSCBNo = pstPlayback->ulSCBNo;
     stErrReport.ulCMD = pstPlayback->stMsgTag.ulMsgType;
@@ -1761,20 +1782,20 @@ U32 sc_cmd_record(SC_MSG_TAG_ST *pstMsg)
     pstLCB = sc_lcb_get(pstRecord->ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
         goto proc_fail;
     }
 
     if ('\0' == pstRecord->szRecordFile[0])
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_INVALID_MSG;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_INVALID_MSG;
         goto proc_fail;
     }
 
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_record %s start %s/%s \r\n", pstLCB->szUUID, SC_RECORD_FILE_PATH, pstRecord->szRecordFile);
     if (sc_esl_execute_cmd(szCMD, szUUID, sizeof(szUUID)) != DOS_SUCC)
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
         goto proc_fail;
     }
 
@@ -1789,6 +1810,7 @@ U32 sc_cmd_record(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 
 proc_fail:
+    stErrReport.stMsgTag.ulMsgType = SC_EVT_ERROR_PORT;
     stErrReport.stMsgTag.ulSCBNo = pstRecord->ulSCBNo;
     stErrReport.ulSCBNo = pstRecord->ulSCBNo;
     stErrReport.ulCMD = pstRecord->stMsgTag.ulMsgType;
@@ -1823,20 +1845,20 @@ U32 sc_cmd_record_stop(SC_MSG_TAG_ST *pstMsg)
     pstLCB = sc_lcb_get(pstRecord->ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
         goto proc_fail;
     }
 
     if ('\0' == pstRecord->szRecordFile[0])
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_INVALID_MSG;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_INVALID_MSG;
         goto proc_fail;
     }
 
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_record %s stop %s \r\n", pstLCB->szUUID, pstRecord->szRecordFile);
     if (sc_esl_execute_cmd(szCMD, szUUID, sizeof(szUUID)) != DOS_SUCC)
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
         goto proc_fail;
     }
 
@@ -1851,6 +1873,7 @@ U32 sc_cmd_record_stop(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 
 proc_fail:
+    stErrReport.stMsgTag.ulMsgType = SC_EVT_ERROR_PORT;
     stErrReport.stMsgTag.ulSCBNo = pstRecord->ulSCBNo;
     stErrReport.ulSCBNo = pstRecord->ulSCBNo;
     stErrReport.ulCMD = pstRecord->stMsgTag.ulMsgType;
@@ -1885,14 +1908,14 @@ U32 sc_cmd_hold(SC_MSG_TAG_ST *pstMsg)
     pstLCB = sc_lcb_get(pstHold->ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
         goto proc_fail;
     }
 
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_hold %s \r\n", pstLCB->szUUID);
     if (sc_esl_execute_cmd(szCMD, szUUID, sizeof(szUUID)) != DOS_SUCC)
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
         goto proc_fail;
     }
 
@@ -1904,6 +1927,7 @@ U32 sc_cmd_hold(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 
 proc_fail:
+    stErrReport.stMsgTag.ulMsgType = SC_EVT_ERROR_PORT;
     stErrReport.stMsgTag.ulSCBNo = pstLCB->ulSCBNo;
     stErrReport.ulSCBNo = pstLCB->ulSCBNo;
     stErrReport.ulCMD = pstHold->stMsgTag.ulMsgType;
@@ -1938,14 +1962,14 @@ U32 sc_cmd_unhold(SC_MSG_TAG_ST *pstMsg)
     pstLCB = sc_lcb_get(pstHold->ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
         goto proc_fail;
     }
 
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_hold off %s \r\n", pstLCB->szUUID);
     if (sc_esl_execute_cmd(szCMD, szUUID, sizeof(szUUID)) != DOS_SUCC)
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
         goto proc_fail;
     }
 
@@ -1957,6 +1981,7 @@ U32 sc_cmd_unhold(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 
 proc_fail:
+    stErrReport.stMsgTag.ulMsgType = SC_EVT_ERROR_PORT;
     stErrReport.stMsgTag.ulSCBNo = pstLCB->ulSCBNo;
     stErrReport.ulSCBNo = pstLCB->ulSCBNo;
     stErrReport.ulCMD = pstHold->stMsgTag.ulMsgType;
@@ -1999,20 +2024,20 @@ U32 sc_cmd_mux(SC_MSG_TAG_ST *pstMsg)
             pstLCB = sc_lcb_get(pstMux->ulLegNo);
             if (DOS_ADDR_INVALID(pstLCB))
             {
-                stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+                stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
                 goto proc_fail;
             }
 
             pstAgentLCB = sc_lcb_get(pstMux->ulAgentLegNo);
             if (DOS_ADDR_INVALID(pstAgentLCB))
             {
-                stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+                stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
                 goto proc_fail;
             }
 
             if (sc_esl_execute("eavesdrop", pstAgentLCB->szUUID, pstLCB->szUUID) != DOS_SUCC)
             {
-                stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+                stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
                 goto proc_fail;
             }
             break;
@@ -2020,26 +2045,26 @@ U32 sc_cmd_mux(SC_MSG_TAG_ST *pstMsg)
             pstLCB = sc_lcb_get(pstMux->ulLegNo);
             if (DOS_ADDR_INVALID(pstLCB))
             {
-                stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+                stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
                 goto proc_fail;
             }
 
             pstAgentLCB = sc_lcb_get(pstMux->ulAgentLegNo);
             if (DOS_ADDR_INVALID(pstAgentLCB))
             {
-                stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+                stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
                 goto proc_fail;
             }
 
             if (sc_esl_execute("queue_dtmf", "w2@500", pstLCB->szUUID) != DOS_SUCC)
             {
-                stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+                stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
                 goto proc_fail;
             }
 
             if (sc_esl_execute("eavesdrop", pstAgentLCB->szUUID, pstLCB->szUUID) != DOS_SUCC)
             {
-                stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+                stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
                 goto proc_fail;
             }
             break;
@@ -2050,6 +2075,7 @@ U32 sc_cmd_mux(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 
 proc_fail:
+    stErrReport.stMsgTag.ulMsgType = SC_EVT_ERROR_PORT;
     stErrReport.stMsgTag.ulSCBNo = pstMux->ulSCBNo;
     stErrReport.ulSCBNo = pstMux->ulSCBNo;
     stErrReport.ulCMD = pstMux->stMsgTag.ulMsgType;
@@ -2077,20 +2103,20 @@ U32 sc_cmd_transfer(SC_MSG_TAG_ST *pstMsg)
     pstLCB = sc_lcb_get(pstTransfer->ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
         goto proc_fail;
     }
 
     if (pstLCB->szUUID[0] == '\0')
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_LEG_NOT_EXIST;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
         goto proc_fail;
     }
 
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_transfer %s %s\r\n", pstLCB->szUUID, pstTransfer->szCalleeNum);
     if (sc_esl_execute_cmd(szCMD, szUUID, sizeof(szUUID)) != DOS_SUCC)
     {
-        stErrReport.stMsgTag.ulMsgType = SC_ERR_EXEC_FAIL;
+        stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
         goto proc_fail;
     }
 
@@ -2099,6 +2125,7 @@ U32 sc_cmd_transfer(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 
 proc_fail:
+    stErrReport.stMsgTag.ulMsgType = SC_EVT_ERROR_PORT;
     stErrReport.stMsgTag.ulSCBNo = pstTransfer->ulSCBNo;
     stErrReport.ulSCBNo = pstTransfer->ulSCBNo;
     stErrReport.ulCMD = pstTransfer->stMsgTag.ulMsgType;

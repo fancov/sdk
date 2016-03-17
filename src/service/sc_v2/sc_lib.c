@@ -422,6 +422,7 @@ VOID sc_lcb_call_init(SC_SU_CALL_ST *pstCall)
     pstCall->ulHoldTotalTime = 0;
     pstCall->ulTrunkID = 0;
     pstCall->ulTrunkCount = 0;
+    pstCall->ulCodecCnt = 0;
 
     pstCall->stTimeInfo.ulStartTime = 0;
     pstCall->stTimeInfo.ulRingTime = 0;
@@ -624,6 +625,7 @@ VOID sc_lcb_init(SC_LEG_CB *pstLCB)
     pstLCB->bTrace = DOS_FALSE;
     pstLCB->ulSCBNo = U32_BUTT;
     pstLCB->ulIndSCBNo = U32_BUTT;
+    pstLCB->ulOtherSCBNo = U32_BUTT;
     sem_init(&pstLCB->stEventSem, 0, 1);
 
     sc_lcb_call_init(&pstLCB->stCall);
@@ -1036,12 +1038,14 @@ VOID sc_scb_transfer_init(SC_CALL_TRANSFER_ST *pstTransfer)
     pstTransfer->stSCBTag.usSrvType = SC_SRV_TRANSFER;
     pstTransfer->stSCBTag.usStatus = SC_TRANSFER_IDEL;
     pstTransfer->ulType = U32_BUTT;
+    pstTransfer->ulPublishType = U32_BUTT;
     pstTransfer->ulSubLegNo = U32_BUTT;
     pstTransfer->ulPublishLegNo = U32_BUTT;
     pstTransfer->ulNotifyLegNo = U32_BUTT;
     pstTransfer->ulSubAgentID = 0;
     pstTransfer->ulPublishAgentID = 0;
     pstTransfer->ulNotifyAgentID = 0;
+    pstTransfer->szSipNum[0] = '\0';
 }
 
 VOID sc_scb_incoming_queue_init(SC_INCOMING_QUEUE_ST *pstIncomingQueue)
