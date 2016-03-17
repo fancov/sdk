@@ -2342,6 +2342,14 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_PREVIEW_CALL_ACTIVE:
             /* 这个时候挂断只会是坐席的LEG，修改坐席的状态 */
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
+            pstAgentCall = sc_agent_get_by_id(pstSCB->stPreviewCall.ulAgentID);
+            if (DOS_ADDR_VALID(pstAgentCall)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+            {
+                sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL);
+                pstAgentCall->pstAgentInfo->ulLegNo = U32_BUTT;
+            }
+
             pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
             pstCalleeCB = sc_lcb_get(pstSCB->stPreviewCall.ulCalleeLegNo);
             if (pstCallingCB)
