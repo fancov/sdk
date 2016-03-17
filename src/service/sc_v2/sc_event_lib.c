@@ -1883,6 +1883,15 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
         return DOS_FAIL;
     }
 
+    /* 判断一下是不是国际长途 */
+    if (pszNumber[0] == '0'
+        && pszNumber[1] == '0')
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The destination is not alloc. %s", pszNumber);
+
+        return DOS_FAIL;
+    }
+
     /* 判断是否在黑名单中 */
     if (!sc_black_list_check(ulCustomerID, pszNumber))
     {

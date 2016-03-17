@@ -854,6 +854,17 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             /* 堤擁網請 */
             if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_PSTN == ulCallDst)
             {
+                /* 輦砦網請弊暱酗芴 */
+                if (pstCallingLegCB->stCall.stNumInfo.szOriginalCallee[0] == '\0'
+                    || (pstCallingLegCB->stCall.stNumInfo.szOriginalCallee[0] == '0'
+                        && pstCallingLegCB->stCall.stNumInfo.szOriginalCallee[1] == '0'))
+                {
+                    /* 輦砦網請 */
+                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "callee is %s. Not alloc call", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+                    sc_req_hungup(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_CALLEE_NUMBER_ILLEGAL);
+                    break;
+                }
+
                 pstSCB->stCall.stSCBTag.usStatus = SC_CALL_AUTH;
 
                 if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
