@@ -82,7 +82,7 @@ static U32 sc_pub_on_succ(U32 ulType, VOID *pDesc)
 static U32 sc_pub_publicsh(CURL **pstCurlHandle, S8 *pszURL, S8 *pszData)
 {
     U32 ulRet;
-    U32 ulTimeout = 2;
+    U32 ulTimeout = 1;
 
     if (DOS_ADDR_INVALID(pszURL))
     {
@@ -137,6 +137,7 @@ static VOID *sc_pub_runtime(VOID *ptr)
     DLL_NODE_S     *pstDllNode = NULL;
     SC_PUB_MSG_ST  *pstPubData = NULL;
     SC_PUB_TASK_ST *pstTask    = NULL;
+    S8             szBuffer[200] = { 0 };
 
     pstTask = (SC_PUB_TASK_ST *)ptr;
     if (DOS_ADDR_INVALID(pstTask))
@@ -193,6 +194,16 @@ static VOID *sc_pub_runtime(VOID *ptr)
 
                 goto proc_fail;
             }
+
+            if ('\0' != szBuffer[0])
+            {
+                if (dos_strnicmp(szBuffer, pstPubData->pszURL, sizeof(szBuffer)) == 0)
+                {
+                    dos_task_delay(200);
+                }
+            }
+
+            dos_snprintf(szBuffer, sizeof(szBuffer), pstPubData->pszURL);
 
             if (sc_pub_publicsh(&pstTask->pstPublishCurlHandle, pstPubData->pszURL, pstPubData->pszData) == DOS_SUCC)
             {
