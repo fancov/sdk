@@ -1654,13 +1654,13 @@ VOID sc_show_agent(U32 ulIndex, U8 ucCondition, U32 ulID, S8* pszCondition)
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n==================================================================================================================================");
             cli_out_string(ulIndex, szCmdBuff);
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n%-5s%-10s%-10s%-8s%-10s%-12s%-12s%-10s%-10s%-8s%-7s%-8s%-12s%-12s"
+                            , "\r\n%-5s%-10s%-10s%-8s%-10s%-12s%-12s%-10s%-10s%-8s%-7s%-8s%-12s%-12s%-12s"
                             , "ID", "w-Status", "s-Status", "NeedCon", "Connected", "CustomID", "CustomNa" ,"Group1", "Group2"
-                            , "Record", "Trace", "Leader", "SIP Acc", "Extension");
+                            , "Record", "Trace", "Leader", "SIP Acc", "Extension", "LegNo");
             cli_out_string(ulIndex, szCmdBuff);
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%-5u%-10s%-10s%-8s%-10s%-12u%-12s%-10u%-10u%-8s%-7s%-8s%-12s%-12s"
+                        , "\r\n%-5u%-10s%-10s%-8s%-10s%-12u%-12s%-10u%-10u%-8s%-7s%-8s%-12s%-12s%-12d"
                         , pstAgentQueueNode->pstAgentInfo->ulAgentID
                         , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucWorkStatus)
                         , sc_translate_agent_serv_status(pstAgentQueueNode->pstAgentInfo->ucServStatus)
@@ -1674,7 +1674,8 @@ VOID sc_show_agent(U32 ulIndex, U8 ucCondition, U32 ulID, S8* pszCondition)
                         , pstAgentQueueNode->pstAgentInfo->bTraceON ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->bGroupHeader ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->szUserID
-                        , pstAgentQueueNode->pstAgentInfo->szExtension);
+                        , pstAgentQueueNode->pstAgentInfo->szExtension
+                        , pstAgentQueueNode->pstAgentInfo->ulLegNo);
             cli_out_string(ulIndex, szCmdBuff);
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------\r\n");
@@ -4079,7 +4080,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             }
             else
             {
-                    return -1;
+                return -1;
             }
         }
         else
