@@ -2884,7 +2884,7 @@ U32 sc_route_get_trunks(U32 ulRouteID, U32 *paulTrunkList, U32 ulTrunkListSize)
 
                     pstGW = pstListNode->pHandle;
                     if (DOS_FALSE == pstGW->bStatus
-                        || (pstGW->bRegister && pstGW->ulRegisterStatus != SC_TRUNK_STATE_TYPE_NOREG))
+                        || (pstGW->bRegister && pstGW->ulRegisterStatus != SC_TRUNK_STATE_TYPE_REGED))
                     {
                         continue;
                     }
