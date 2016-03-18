@@ -2876,8 +2876,8 @@ U32 sc_route_get_trunks(U32 ulRouteID, U32 *paulTrunkList, U32 ulTrunkListSize)
                 pthread_mutex_lock(&pstGWGrp->mutexGWList);
                 DLL_Scan(&pstGWGrp->stGWList, pstListNode, DLL_NODE_S *)
                 {
-                    if (DOS_ADDR_VALID(pstListNode)
-                        && DOS_ADDR_VALID(pstListNode->pHandle))
+                    if (DOS_ADDR_INVALID(pstListNode)
+                        || DOS_ADDR_INVALID(pstListNode->pHandle))
                     {
                         continue;
                     }
