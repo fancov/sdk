@@ -236,6 +236,8 @@ U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
         goto processing;
     }
 
+    pstSCB->stCall.pstAgentCallee = pstAgent;
+
     if (pstAgent->pstAgentInfo->ulLegNo < SC_LEG_CB_SIZE)
     {
         pstLegCBAgent = sc_lcb_get(pstAgent->pstAgentInfo->ulLegNo);
@@ -256,6 +258,12 @@ processing:
     if (DOS_ADDR_VALID(pstSCBAgent))
     {
         return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_SC_USER_BUSY);
+    }
+
+    if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+        && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+    {
+        sc_agent_serv_status_update(pstSCB->stCall.pstAgentCalling->pstAgentInfo, SC_ACD_SERV_RINGBACK, SC_SRV_CALL);
     }
 
     if (DOS_ADDR_VALID(pstLegCBAgent))
@@ -289,6 +297,13 @@ processing:
     if (DOS_ADDR_INVALID(pstCalleeLeg))
     {
         return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_SC_SYSTEM_BUSY);
+    }
+
+    if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
+        && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+    {
+        pstSCB->stCall.pstAgentCallee->pstAgentInfo->ulLegNo = pstCalleeLeg->ulCBNo;
+        sc_agent_serv_status_update(pstSCB->stCall.pstAgentCallee->pstAgentInfo, SC_ACD_SERV_RINGING, SC_SRV_CALL);
     }
 
     pstSCB->stCall.ulCalleeLegNo = pstCalleeLeg->ulCBNo;
@@ -341,7 +356,7 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "DID number %s seems donot bind a SIP User ID, Reject Call.", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
         *pulErrCode = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
 
-        return DOS_FAIL;
+        goto proc_fail;
     }
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Start find agent by userid(%s)", szCallee);
@@ -350,40 +365,63 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
         && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
     {
         pstSCB->stCall.pstAgentCallee = pstAgentNode;
-        /* 绑定了坐席。判断是否录音，坐席是否长签，坐席弹屏 */
-        if (pstAgentNode->pstAgentInfo->bRecord)
+
+        /* 如果坐席绑定是sip, 判断坐席状态 */
+        if (AGENT_BIND_SIP == pstAgentNode->pstAgentInfo->ucBindType)
         {
-            pstCallingLegCB->stRecord.bValid = DOS_TRUE;
-            sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
+            if (!SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent(%u) is not can be use. s-status : %u", pstAgentNode->pstAgentInfo->ucServStatus);
+                *pulErrCode = CC_ERR_SC_USER_BUSY;
+                goto proc_fail;
+            }
+
+            /* 修改坐席的状态 */
+            sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING, SC_SRV_CALL);
+        }
+        else
+        {
+            pstAgentNode = NULL;
         }
 
-        dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
-
-        /* 弹屏提醒 */
-        sc_agent_call_notify(pstAgentNode->pstAgentInfo, pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
-
-        if (pstAgentNode->pstAgentInfo->bConnected
-            && pstAgentNode->pstAgentInfo->ucBindType == AGENT_BIND_SIP)
+        if (DOS_ADDR_VALID(pstAgentNode)
+            && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
         {
-            pstCalleeLegCB = sc_lcb_get(pstAgentNode->pstAgentInfo->ulLegNo);
-            if (DOS_ADDR_VALID(pstCalleeLegCB))
+            /* 绑定了坐席。判断是否录音，坐席是否长签，坐席弹屏 */
+            if (pstAgentNode->pstAgentInfo->bRecord)
             {
-                pstSCB->stCall.ulCalleeLegNo = pstAgentNode->pstAgentInfo->ulLegNo;
-                pstCalleeLegCB->ulSCBNo = pstSCB->ulSCBNo;
-                sc_req_playback_stop(pstSCB->ulSCBNo, pstCalleeLegCB->ulCBNo);
-                /* 放提示音给坐席 */
-                pstIndSCB = sc_scb_get(pstCalleeLegCB->ulIndSCBNo);
-                if (DOS_ADDR_VALID(pstIndSCB))
+                pstCallingLegCB->stRecord.bValid = DOS_TRUE;
+                sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
+            }
+
+            dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+
+            /* 弹屏提醒 */
+            sc_agent_call_notify(pstAgentNode->pstAgentInfo, pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+
+            if (pstAgentNode->pstAgentInfo->bConnected
+                && pstAgentNode->pstAgentInfo->ucBindType == AGENT_BIND_SIP)
+            {
+                pstCalleeLegCB = sc_lcb_get(pstAgentNode->pstAgentInfo->ulLegNo);
+                if (DOS_ADDR_VALID(pstCalleeLegCB))
                 {
-                    sc_req_play_sound(pstSCB->ulSCBNo, pstIndSCB->stSigin.ulLegNo, SC_SND_INCOMING_CALL_TIP, 1, 0, 0);
+                    pstSCB->stCall.ulCalleeLegNo = pstAgentNode->pstAgentInfo->ulLegNo;
+                    pstCalleeLegCB->ulSCBNo = pstSCB->ulSCBNo;
+                    sc_req_playback_stop(pstSCB->ulSCBNo, pstCalleeLegCB->ulCBNo);
+                    /* 放提示音给坐席 */
+                    pstIndSCB = sc_scb_get(pstCalleeLegCB->ulIndSCBNo);
+                    if (DOS_ADDR_VALID(pstIndSCB))
+                    {
+                        sc_req_play_sound(pstSCB->ulSCBNo, pstIndSCB->stSigin.ulLegNo, SC_SND_INCOMING_CALL_TIP, 1, 0, 0);
+                    }
+
+                    /* 放回铃音给主叫 */
+                    sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE);
+
+                    pstSCB->stCall.stSCBTag.usStatus = SC_CALL_TONE;
+
+                    return DOS_SUCC;
                 }
-
-                /* 放回铃音给主叫 */
-                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE);
-
-                pstSCB->stCall.stSCBTag.usStatus = SC_CALL_TONE;
-
-                return DOS_SUCC;
             }
         }
     }
@@ -410,6 +448,12 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
     pstCalleeLegCB->ulSCBNo = pstSCB->ulSCBNo;
 
     pstSCB->stCall.ulCalleeLegNo = pstCalleeLegCB->ulCBNo;
+
+    if (DOS_ADDR_VALID(pstAgentNode)
+        && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+    {
+        pstAgentNode->pstAgentInfo->ulLegNo = pstCalleeLegCB->ulCBNo;
+    }
 
     /* 维护一下主叫号码 */
     dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCalling), pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
@@ -1328,7 +1372,7 @@ fail_proc:
     return DOS_FAIL;
 }
 
-U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST  *pstAgentNodeCallee)
+U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
 {
     SC_AGENT_NODE_ST *pstAgentNode      = NULL;
     SC_SRV_CB        *pstSCB            = NULL;
@@ -1645,14 +1689,24 @@ process_fail:
 
 U32 sc_call_ctrl_call_sip(U32 ulAgentID, S8 *pszSipNumber)
 {
-    SC_AGENT_NODE_ST *pstAgentNode      = NULL;
-    SC_SRV_CB        *pstSCB            = NULL;
-    SC_LEG_CB        *pstLCB            = NULL;
-    SC_LEG_CB        *pstAgentLCB       = NULL;
-    U32              ulRet              = DOS_FAIL;
+    SC_AGENT_NODE_ST *pstAgentNode          = NULL;
+    SC_AGENT_NODE_ST *pstCalleeAgentNode    = NULL;
+    SC_SRV_CB        *pstSCB                = NULL;
+    SC_LEG_CB        *pstLCB                = NULL;
+    SC_LEG_CB        *pstAgentLCB           = NULL;
+    U32              ulRet                  = DOS_FAIL;
     SC_MSG_CMD_CALL_ST stCallMsg;
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request call sip. Agent: %u, callee sip : %s", ulAgentID, pszSipNumber);
+
+    /* 根据sip找到对应的坐席 */
+    pstCalleeAgentNode = sc_agent_get_by_sip_acc(pszSipNumber);
+    if (DOS_ADDR_VALID(pstCalleeAgentNode)
+        && DOS_ADDR_VALID(pstCalleeAgentNode->pstAgentInfo)
+        && pstCalleeAgentNode->pstAgentInfo->ucBindType == AGENT_BIND_SIP)
+    {
+        return sc_call_ctrl_call_agent(ulAgentID, pstCalleeAgentNode);
+    }
 
     pstAgentNode = sc_agent_get_by_id(ulAgentID);
     if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))

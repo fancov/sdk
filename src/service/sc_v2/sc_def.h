@@ -963,6 +963,13 @@ typedef enum tagSCCallStatus{
     SC_CALL_RELEASE,    /**< 结束 */
 }SC_CALL_STATE_EN;
 
+enum{
+    SC_SERV_CALL_TYPE_INTERNAL,     /**< 内部呼叫 */
+    SC_SERV_CALL_TYPE_INCOMING,     /**< 入局呼叫 */
+    SC_SERV_CALL_TYPE_OUTGOING,     /**< 出局呼叫 */
+    SC_SERV_CALL_TYPE_BUTT,
+};
+
 /**
  * 业务控制块, 基本呼叫
  */
