@@ -2380,7 +2380,7 @@ U32 sc_agent_set_proc(SC_AGENT_INFO_ST *pstAgentQueueInfo)
     return DOS_SUCC;
 }
 
-U32 sc_agent_serv_status_update(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulServStatus)
+U32 sc_agent_serv_status_update(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulServStatus, U32 ulServType)
 {
     U32 ulRet = DOS_FAIL;
 
@@ -2395,22 +2395,39 @@ U32 sc_agent_serv_status_update(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulServS
     {
         case SC_ACD_SERV_IDEL:
             ulRet = sc_agent_set_idle(pstAgentQueueInfo);
+            sc_agent_stat(SC_AGENT_STAT_CALL_FINISHED, pstAgentQueueInfo, 0, 0);
             break;
+
         case SC_ACD_SERV_CALL_OUT:
             ulRet = sc_agent_set_call_out(pstAgentQueueInfo);
+            sc_agent_stat(SC_AGENT_STAT_CALL_OK, pstAgentQueueInfo, 0, 0);
             break;
+
         case SC_ACD_SERV_CALL_IN:
             ulRet = sc_agent_set_call_in(pstAgentQueueInfo);
+            sc_agent_stat(SC_AGENT_STAT_CALL_OK, pstAgentQueueInfo, 0, 0);
             break;
+
         case SC_ACD_SERV_RINGING:
             ulRet = sc_agent_set_ringing(pstAgentQueueInfo);
+
+            if (ulServType == SC_SRV_PREVIEW_CALL)
+            {
+                break;
+            }
+
+            sc_agent_stat(SC_AGENT_STAT_CALL_IN, pstAgentQueueInfo, 0, 0);
             break;
+
         case SC_ACD_SERV_RINGBACK:
             ulRet = sc_agent_set_ringback(pstAgentQueueInfo);
+            sc_agent_stat(SC_AGENT_STAT_CALL_OUT, pstAgentQueueInfo, 0, 0);
             break;
+
         case SC_ACD_SERV_PROC:
             ulRet = sc_agent_set_proc(pstAgentQueueInfo);
             break;
+
         default:
             break;
     }
@@ -2438,12 +2455,6 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
 
     pstAgentInfo = pstAgentNode->pstAgentInfo;
 
-    if (pstAgentInfo->ulLastSignInTime)
-    {
-        sc_agent_stat(SC_AGENT_STAT_SIGNIN, pstAgentInfo, pstAgentInfo->ulAgentID, 0);
-    }
-    pstAgentInfo->ulLastSignInTime = 0;
-
     /* ·¢Æð³¤Ç© */
     if (sc_agent_signin_proc(pstAgentNode) != DOS_SUCC)
     {
@@ -2460,6 +2471,7 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
         case SC_ACD_WORK_AWAY:
         case SC_ACD_WORK_IDEL:
             pstAgentInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
+            sc_agent_stat(SC_AGENT_STAT_ONLINE, pstAgentNode->pstAgentInfo, pstAgentNode->pstAgentInfo->ulAgentID, 0);
             bIsPub = DOS_TRUE;
             break;
         default:
@@ -2523,12 +2535,6 @@ U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_
 
     dos_snprintf(pstLegCB->stCall.stNumInfo.szCallee, sizeof(pstLegCB->stCall.stNumInfo.szCallee), pstLegCB->stCall.stNumInfo.szOriginalCallee);
     dos_snprintf(pstLegCB->stCall.stNumInfo.szCalling, sizeof(pstLegCB->stCall.stNumInfo.szCalling), pstLegCB->stCall.stNumInfo.szOriginalCalling);
-
-    if (pstAgent->pstAgentInfo->ulLastSignInTime)
-    {
-        sc_agent_stat(SC_AGENT_STAT_SIGNIN, pstAgent->pstAgentInfo, pstAgent->pstAgentInfo->ulAgentID, 0);
-    }
-    pstAgent->pstAgentInfo->ulLastSignInTime = 0;
 
     pstAgent->pstAgentInfo->ulLegNo = pstLegCB->ulCBNo;
     pstAgent->pstAgentInfo->bNeedConnected = DOS_TRUE;
@@ -2801,7 +2807,7 @@ VOID sc_agent_work_set_logout(U64 p)
         pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
     }
 
-    sc_agent_stat(SC_AGENT_STAT_ONLINE, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
+    sc_agent_stat(SC_AGENT_STAT_OFFLINE, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
 
     switch (pstAgentQueueInfo->ucWorkStatus)
     {
@@ -2855,6 +2861,8 @@ U32 sc_agent_work_set_force_logout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOp
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    sc_agent_stat(SC_AGENT_STAT_OFFLINE, pstAgentQueueInfo, pstAgentQueueInfo->ulAgentID, 0);
 
     switch (pstAgentQueueInfo->ucWorkStatus)
     {
@@ -3223,10 +3231,17 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
             break;
 
         case SC_AGENT_STAT_CALL_IN:
+            pstAgentInfo->stStat.ulCallCnt++;
+            pstAgentInfo->stStat.ulIncomingCall++;
+            break;
+
         case SC_AGENT_STAT_CALL_OUT:
+            pstAgentInfo->stStat.ulCallCnt++;
+            pstAgentInfo->stStat.ulOutgoingCall++;
+            break;
+
         case SC_AGENT_STAT_CALL:
             pstAgentInfo->stStat.ulCallCnt++;
-            pstAgentInfo->stStat.ulSelectCnt++;
             break;
 
         case SC_AGENT_STAT_CALL_OK:
@@ -3235,7 +3250,7 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
             break;
 
         case SC_AGENT_STAT_CALL_FINISHED:
-            if (pstAgentInfo->ulLastCallTime !=0 && ulCurrentTime >= pstAgentInfo->ulLastCallTime)
+            if (pstAgentInfo->ulLastCallTime != 0 && ulCurrentTime >= pstAgentInfo->ulLastCallTime)
             {
                 pstAgentInfo->stStat.ulTotalDuration = ulCurrentTime - pstAgentInfo->ulLastCallTime;
             }
@@ -3244,16 +3259,15 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
             break;
 
         case SC_AGENT_STAT_ONLINE:
-            if (pstAgentInfo->ulLastOnlineTime != 0 && pstAgentInfo->ulLastOnlineTime < ulCurrentTime)
+            if (pstAgentInfo->ulLastOnlineTime == 0)
             {
-                pstAgentInfo->stStat.ulTimesOnline += (ulCurrentTime - pstAgentInfo->ulLastOnlineTime);
-            }
-
-            pstAgentInfo->ulLastOnlineTime = ulCurrentTime;
+                pstAgentInfo->ulLastOnlineTime = ulCurrentTime;
+            }
             break;
 
         case SC_AGENT_STAT_OFFLINE:
-            if (pstAgentInfo->ulLastOnlineTime != 0 && ulCurrentTime >= pstAgentInfo->ulLastOnlineTime)
+            if (pstAgentInfo->ulLastOnlineTime != 0
+                && ulCurrentTime >= pstAgentInfo->ulLastOnlineTime)
             {
                 pstAgentInfo->stStat.ulTimesOnline += (ulCurrentTime - pstAgentInfo->ulLastOnlineTime);
             }
@@ -3265,16 +3279,12 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
             break;
 
         case SC_AGENT_STAT_SIGNIN:
-            if (pstAgentInfo->ulLastSignInTime != 0 && pstAgentInfo->ulLastSignInTime < ulCurrentTime)
-            {
-                pstAgentInfo->stStat.ulTimesSignin += (ulCurrentTime - pstAgentInfo->ulLastSignInTime);
-            }
-
             pstAgentInfo->ulLastSignInTime = ulCurrentTime;
             break;
 
         case SC_AGENT_STAT_SIGNOUT:
-            if (ulCurrentTime >= pstAgentInfo->ulLastSignInTime)
+            if (pstAgentInfo->ulLastSignInTime != 0
+                && ulCurrentTime >= pstAgentInfo->ulLastSignInTime)
             {
                 pstAgentInfo->stStat.ulTimesSignin += (ulCurrentTime - pstAgentInfo->ulLastSignInTime);
             }

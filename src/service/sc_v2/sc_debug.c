@@ -663,7 +663,7 @@ S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow agent stat:");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%11s%9s%11s%11s%11s%11s%11s%11s%11s"
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%11s%9s%11s%11s%11s%11s%11s%22s%22s"
                           , "ID", "Num", "Group1", "Group2", "Calls"
                           , "Connected", "Duration", "TimesSignin", "TimesOnline");
     cli_out_string(ulIndex, szCmdBuff);
@@ -689,7 +689,7 @@ S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
 
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                                  , "\r\n%11u%9s%11u%11u%11u%11u%11u%11u%11u"
+                                  , "\r\n%11u%9s%11u%11u%11u%11u%11u%22u%22u"
                                   , pstAgentQueueNode->pstAgentInfo->ulAgentID
                                   , pstAgentQueueNode->pstAgentInfo->szEmpNo
                                   , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]

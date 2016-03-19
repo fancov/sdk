@@ -3203,7 +3203,7 @@ void sc_agent_mark_custom_callback(U64 arg)
     sc_req_playback_stop(pstSCB->ulSCBNo, pstLeg->ulCBNo);
 
     /* 判断坐席是否是长签，如果不是则挂断电话 */
-    sc_agent_serv_status_update(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL);
+    sc_agent_serv_status_update(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_MARK_CUSTOM);
 
     if (pstLeg->ulIndSCBNo != U32_BUTT)
     {
