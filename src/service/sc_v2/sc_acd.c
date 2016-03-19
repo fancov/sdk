@@ -2679,7 +2679,8 @@ U32 sc_agent_work_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo)
 
 U32 sc_agent_work_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
 {
-    BOOL bIsPub     = DOS_FALSE;
+    BOOL            bIsPub          = DOS_FALSE;
+    SC_LEG_CB       *pstCallingCB   = NULL;
 
     if (DOS_ADDR_INVALID(pstAgentQueueInfo))
     {
@@ -2695,6 +2696,18 @@ U32 sc_agent_work_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_WORK_IDEL:
             pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
             pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_IDEL;
+            if (!pstAgentQueueInfo->bNeedConnected)
+            {
+                if (pstAgentQueueInfo->ulLegNo != U32_BUTT)
+                {
+                    pstCallingCB = sc_lcb_get(pstAgentQueueInfo->ulLegNo);
+                    if (DOS_ADDR_VALID(pstCallingCB))
+                    {
+                        sc_lcb_free(pstCallingCB);
+                    }
+                    pstAgentQueueInfo->ulLegNo = U32_BUTT;
+                }
+            }
             bIsPub = DOS_TRUE;
             break;
         default:

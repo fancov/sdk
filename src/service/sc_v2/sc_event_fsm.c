@@ -2048,7 +2048,7 @@ U32 sc_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Proccessing preview call setup event event.");
+    sc_trace_scb(pstSCB, "Proccessing preview call setup event event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
 
     pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
     if (DOS_ADDR_INVALID(pstCallingCB))
@@ -2063,7 +2063,7 @@ U32 sc_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_PREVIEW_CALL_IDEL:
         case SC_PREVIEW_CALL_AUTH:
             /* 未认证通过，放音挂断呼叫 */
-            goto unauth_proc;
+            goto fail_proc;
             break;
 
         case SC_PREVIEW_CALL_EXEC:
@@ -2096,9 +2096,6 @@ U32 sc_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     return DOS_SUCC;
 
-unauth_proc:
-    return DOS_FAIL;
-
 fail_proc:
     return DOS_FAIL;
 
@@ -2118,7 +2115,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Proccessing preview call setup event event.");
+    sc_trace_scb(pstSCB, "Proccessing preview call setup event event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
 
     pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
     if (DOS_ADDR_INVALID(pstCallingCB))
@@ -2133,7 +2130,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_PREVIEW_CALL_IDEL:
         case SC_PREVIEW_CALL_AUTH:
             ulRet = DOS_FAIL;
-            goto unauth_proc;
+            goto fail_proc;
             break;
 
         case SC_PREVIEW_CALL_EXEC:
@@ -2228,12 +2225,9 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
     }
 
-    sc_trace_scb(pstSCB, "Proccessed preview call setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    sc_trace_scb(pstSCB, "Proccessed preview call answer event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
     return DOS_SUCC;
-
-unauth_proc:
-    return DOS_FAIL;
 
 fail_proc:
     /* TODO 错误处理 */
@@ -2261,7 +2255,7 @@ U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_PREVIEW_CALL_AUTH:
             /* 未认证通过，放音挂断呼叫 */
             ulRet = DOS_FAIL;
-            goto unauth_proc;
+            goto fail_proc;
             break;
 
         case SC_PREVIEW_CALL_EXEC:
@@ -2320,11 +2314,9 @@ U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
     }
 
-    sc_trace_scb(pstSCB, "Proccessed preview call setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    sc_trace_scb(pstSCB, "Proccessed preview call ringing event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
     return DOS_SUCC;
-unauth_proc:
-    return DOS_FAIL;
 
 fail_proc:
     return DOS_FAIL;
@@ -2742,7 +2734,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
     }
 
-    sc_trace_scb(pstSCB, "Proccessed preview call setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    sc_trace_scb(pstSCB, "Proccessed preview call release event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
     return DOS_SUCC;
 
@@ -9200,7 +9192,7 @@ U32 sc_call_agent_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_AGENT_IDEL:
         case SC_CALL_AGENT_AUTH:
             /* 未认证通过，放音挂断呼叫 */
-            goto unauth_proc;
+            goto fail_proc;
             break;
 
         case SC_CALL_AGENT_EXEC:
@@ -9211,7 +9203,7 @@ U32 sc_call_agent_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_CALL_AGENT_AUTH2:
-            goto unauth_proc;
+            goto fail_proc;
             break;
 
         case SC_CALL_AGENT_EXEC2:
@@ -9225,12 +9217,9 @@ U32 sc_call_agent_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
     }
 
-    sc_trace_scb(pstSCB, "Proccessed preview call setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    sc_trace_scb(pstSCB, "Proccessed call agent setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
     return DOS_SUCC;
-
-unauth_proc:
-    return DOS_FAIL;
 
 fail_proc:
     return DOS_FAIL;
@@ -9266,7 +9255,7 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_AGENT_IDEL:
         case SC_CALL_AGENT_AUTH:
             ulRet = DOS_FAIL;
-            goto unauth_proc;
+            goto fail_proc;
             break;
 
         case SC_CALL_AGENT_EXEC:
@@ -9454,13 +9443,9 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
     }
 
-    sc_trace_scb(pstSCB, "Proccessed preview call setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    sc_trace_scb(pstSCB, "Proccessed call agent answer event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
     return DOS_SUCC;
-
-unauth_proc:
-    return DOS_FAIL;
-
 fail_proc:
     /* TODO 错误处理 */
     return DOS_FAIL;
@@ -9522,7 +9507,7 @@ U32 sc_call_agent_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
     }
 
-    sc_trace_scb(pstSCB, "Proccessed preview call setup event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    sc_trace_scb(pstSCB, "Proccessed call agent ringing event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
     return DOS_SUCC;
 
