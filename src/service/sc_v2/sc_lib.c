@@ -3019,16 +3019,20 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
     if (SC_LEG_PEER_INBOUND_INTERNAL == pstLegCB->stCall.ucPeerType)
     {
         pstSCB->ulCustomerID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCalling);
-        pstAgent = sc_agent_get_by_sip_acc(pstLegCB->stCall.stNumInfo.szOriginalCalling);
-        if (DOS_ADDR_VALID(pstAgent) && DOS_ADDR_VALID(pstAgent->pstAgentInfo))
+        if (pstSCB->ulCustomerID != U32_BUTT)
         {
-            pstSCB->ulCustomerID = pstAgent->pstAgentInfo->ulCustomerID;
-            pstSCB->ulAgentID = pstAgent->pstAgentInfo->ulAgentID;
-            pstSCB->stCall.pstAgentCalling = pstAgent;
+            pstAgent = sc_agent_get_by_sip_acc(pstLegCB->stCall.stNumInfo.szOriginalCalling);
+            if (DOS_ADDR_VALID(pstAgent) && DOS_ADDR_VALID(pstAgent->pstAgentInfo))
+            {
+                pstSCB->ulAgentID = pstAgent->pstAgentInfo->ulAgentID;
+                pstSCB->stCall.pstAgentCalling = pstAgent;
+                return SC_DIRECTION_SIP;
+            }
+
             return SC_DIRECTION_SIP;
         }
 
-        return SC_DIRECTION_SIP;
+        return SC_DIRECTION_INVALID;
     }
     else if (SC_LEG_PEER_INBOUND == pstLegCB->stCall.ucPeerType)
     {

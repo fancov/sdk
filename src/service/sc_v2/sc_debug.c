@@ -1821,12 +1821,12 @@ VOID sc_show_trunk(U32 ulIndex, U8 ucCondition, U32 ulID)
                 continue;
             }
 
-            if (SC_SHOW_GATEWAY_BY_STATUS_ENABLE == ucCondition  && !pstGWNode->bStatus)
+            if (SC_SHOW_GATEWAY_BY_STATUS_ENABLE == ucCondition  && pstGWNode->bStatus)
             {
                 continue;
             }
 
-            if (SC_SHOW_GATEWAY_BY_STATUS_DISABLE == ucCondition && pstGWNode->bStatus)
+            if (SC_SHOW_GATEWAY_BY_STATUS_DISABLE == ucCondition && !pstGWNode->bStatus)
             {
                 continue;
             }
@@ -3798,7 +3798,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
         {
             if (dos_atoul(argv[3], &ulID) == 0)
             {
-                sc_show_trunk(ulIndex,SC_SHOW_GATEWAY_BY_ID, ulID);
+                sc_show_trunk(ulIndex, SC_SHOW_GATEWAY_BY_ID, ulID);
             }
             else if (dos_stricmp(argv[3], "enable"))
             {
@@ -4810,16 +4810,23 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
 cc_usage:
 
     cli_out_string(ulIndex, "\r\n");
-    cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb|route|blacklist|tt|_caller|callergrp|callerset|customer|transform|numlmt|cwq|taskmgnt [id]\r\n");
-    cli_out_string(ulIndex, "cc show did [did_number]\r\n");
-    cli_out_string(ulIndex, "cc show task [custom] id\r\n");
-    cli_out_string(ulIndex, "cc show caller|callee taskid\r\n");
-    cli_out_string(ulIndex, "cc show agent|agentgrp [custom|group] id\r\n");
+    cli_out_string(ulIndex, "cc show status|sip|sysstat|stat|taskmgnt\r\n");
+    cli_out_string(ulIndex, "cc show httpd|http|scb|leg|caller|callee|route|_caller|callerset|cwq|servctrl [id]\r\n");
+    cli_out_string(ulIndex, "cc show trunk [$id|enable|disable]\r\n");
+    cli_out_string(ulIndex, "cc show trunkgrp [$id|gw [$id|enable|disable]]\r\n");
+    cli_out_string(ulIndex, "cc show task [custom] [$id]\r\n");
     cli_out_string(ulIndex, "cc debug debug|info|notice|warning|error|cirt|alert|emerg\r\n");
-    cli_out_string(ulIndex, "cc trace func|http|api|acd|task|dialer|esl|bss|all on|off\r\n");
-    cli_out_string(ulIndex, "cc trace scb scbid|all on|off\r\n");
-    cli_out_string(ulIndex, "cc trace task taskid|all on|off\r\n");
-    cli_out_string(ulIndex, "cc trace call <callee num> <caller num> on|off\r\n");
+    cli_out_string(ulIndex, "cc show agentgrp [custom|group] [$id]\r\n");
+    cli_out_string(ulIndex, "cc show agent [customer|sip|status|jobnum|id|group] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show did [id|num|customer] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show blacklist [id|num] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show callergrp [id] [$value] [caller]\r\n");
+    cli_out_string(ulIndex, "cc show tt [port|id|ip] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show customer [group|id] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show transform [id|customer|caller|callee|num] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show numlmt [id|num] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show trace <caller|callee|server|customer|mod>\r\n");
+    cli_out_string(ulIndex, "cc trace <mod|customer|caller|callee|server> <$value> <on|off>\r\n");
     cli_out_string(ulIndex, "cc update route|gateway|gwgrp [id]\r\n");
 
     return 0;
