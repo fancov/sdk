@@ -484,7 +484,7 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
         if (bFirstConn)
         {
             bFirstConn = DOS_FALSE;
-            sc_esl_execute_cmd("api reloadxml\r\n", NULL, 0);
+            sc_esl_execute_cmd("bgapi reloadxml\r\n", NULL, 0);
         }
 
         ulRet = esl_recv_event(&g_stESLRecvHandle, 1, NULL);
