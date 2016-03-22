@@ -138,6 +138,7 @@ typedef enum tagCallResult
     CC_RST_QUEUE_TIMEOUT         = 10,  /* 排队超时挂断 */
     CC_RST_AGENT_HANGUP          = 11, /* 呼叫成功坐席挂断 */
     CC_RST_CUSTOMER_HANGUP       = 12, /* 呼叫成功客户挂断 */
+    CC_RST_CALLING_NUM_INVALID   = 13, /* 客户号码非法 */
 
     CC_RST_BUTT
 }CC_CALL_RESULT_EN;

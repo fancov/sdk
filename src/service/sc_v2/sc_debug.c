@@ -663,7 +663,7 @@ S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow agent stat:");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%11s%9s%11s%11s%11s%11s%11s%11s%11s"
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%11s%9s%11s%11s%11s%11s%11s%22s%22s"
                           , "ID", "Num", "Group1", "Group2", "Calls"
                           , "Connected", "Duration", "TimesSignin", "TimesOnline");
     cli_out_string(ulIndex, szCmdBuff);
@@ -689,7 +689,7 @@ S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
 
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                                  , "\r\n%11u%9s%11u%11u%11u%11u%11u%11u%11u"
+                                  , "\r\n%11u%9s%11u%11u%11u%11u%11u%22u%22u"
                                   , pstAgentQueueNode->pstAgentInfo->ulAgentID
                                   , pstAgentQueueNode->pstAgentInfo->szEmpNo
                                   , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
@@ -1654,13 +1654,13 @@ VOID sc_show_agent(U32 ulIndex, U8 ucCondition, U32 ulID, S8* pszCondition)
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n==================================================================================================================================");
             cli_out_string(ulIndex, szCmdBuff);
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                            , "\r\n%-5s%-10s%-10s%-8s%-10s%-12s%-12s%-10s%-10s%-8s%-7s%-8s%-12s%-12s"
+                            , "\r\n%-5s%-10s%-10s%-8s%-10s%-12s%-12s%-10s%-10s%-8s%-7s%-8s%-12s%-12s%-12s"
                             , "ID", "w-Status", "s-Status", "NeedCon", "Connected", "CustomID", "CustomNa" ,"Group1", "Group2"
-                            , "Record", "Trace", "Leader", "SIP Acc", "Extension");
+                            , "Record", "Trace", "Leader", "SIP Acc", "Extension", "LegNo");
             cli_out_string(ulIndex, szCmdBuff);
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "\r\n%-5u%-10s%-10s%-8s%-10s%-12u%-12s%-10u%-10u%-8s%-7s%-8s%-12s%-12s"
+                        , "\r\n%-5u%-10s%-10s%-8s%-10s%-12u%-12s%-10u%-10u%-8s%-7s%-8s%-12s%-12s%-12d"
                         , pstAgentQueueNode->pstAgentInfo->ulAgentID
                         , sc_translate_agent_status(pstAgentQueueNode->pstAgentInfo->ucWorkStatus)
                         , sc_translate_agent_serv_status(pstAgentQueueNode->pstAgentInfo->ucServStatus)
@@ -1674,7 +1674,8 @@ VOID sc_show_agent(U32 ulIndex, U8 ucCondition, U32 ulID, S8* pszCondition)
                         , pstAgentQueueNode->pstAgentInfo->bTraceON ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->bGroupHeader ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->szUserID
-                        , pstAgentQueueNode->pstAgentInfo->szExtension);
+                        , pstAgentQueueNode->pstAgentInfo->szExtension
+                        , pstAgentQueueNode->pstAgentInfo->ulLegNo);
             cli_out_string(ulIndex, szCmdBuff);
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------------------------------\r\n");
@@ -1820,12 +1821,12 @@ VOID sc_show_trunk(U32 ulIndex, U8 ucCondition, U32 ulID)
                 continue;
             }
 
-            if (SC_SHOW_GATEWAY_BY_STATUS_ENABLE == ucCondition  && !pstGWNode->bStatus)
+            if (SC_SHOW_GATEWAY_BY_STATUS_ENABLE == ucCondition  && pstGWNode->bStatus)
             {
                 continue;
             }
 
-            if (SC_SHOW_GATEWAY_BY_STATUS_DISABLE == ucCondition && pstGWNode->bStatus)
+            if (SC_SHOW_GATEWAY_BY_STATUS_DISABLE == ucCondition && !pstGWNode->bStatus)
             {
                 continue;
             }
@@ -3797,7 +3798,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
         {
             if (dos_atoul(argv[3], &ulID) == 0)
             {
-                sc_show_trunk(ulIndex,SC_SHOW_GATEWAY_BY_ID, ulID);
+                sc_show_trunk(ulIndex, SC_SHOW_GATEWAY_BY_ID, ulID);
             }
             else if (dos_stricmp(argv[3], "enable"))
             {
@@ -4079,7 +4080,7 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
             }
             else
             {
-                    return -1;
+                return -1;
             }
         }
         else
@@ -4809,16 +4810,23 @@ S32 cli_cc_process(U32 ulIndex, S32 argc, S8 **argv)
 cc_usage:
 
     cli_out_string(ulIndex, "\r\n");
-    cli_out_string(ulIndex, "cc show httpd|http|gateway|gwgrp|scb|route|blacklist|tt|_caller|callergrp|callerset|customer|transform|numlmt|cwq|taskmgnt [id]\r\n");
-    cli_out_string(ulIndex, "cc show did [did_number]\r\n");
-    cli_out_string(ulIndex, "cc show task [custom] id\r\n");
-    cli_out_string(ulIndex, "cc show caller|callee taskid\r\n");
-    cli_out_string(ulIndex, "cc show agent|agentgrp [custom|group] id\r\n");
+    cli_out_string(ulIndex, "cc show status|sip|sysstat|stat|taskmgnt\r\n");
+    cli_out_string(ulIndex, "cc show httpd|http|scb|leg|caller|callee|route|_caller|callerset|cwq|servctrl [id]\r\n");
+    cli_out_string(ulIndex, "cc show trunk [$id|enable|disable]\r\n");
+    cli_out_string(ulIndex, "cc show trunkgrp [$id|gw [$id|enable|disable]]\r\n");
+    cli_out_string(ulIndex, "cc show task [custom] [$id]\r\n");
     cli_out_string(ulIndex, "cc debug debug|info|notice|warning|error|cirt|alert|emerg\r\n");
-    cli_out_string(ulIndex, "cc trace func|http|api|acd|task|dialer|esl|bss|all on|off\r\n");
-    cli_out_string(ulIndex, "cc trace scb scbid|all on|off\r\n");
-    cli_out_string(ulIndex, "cc trace task taskid|all on|off\r\n");
-    cli_out_string(ulIndex, "cc trace call <callee num> <caller num> on|off\r\n");
+    cli_out_string(ulIndex, "cc show agentgrp [custom|group] [$id]\r\n");
+    cli_out_string(ulIndex, "cc show agent [customer|sip|status|jobnum|id|group] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show did [id|num|customer] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show blacklist [id|num] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show callergrp [id] [$value] [caller]\r\n");
+    cli_out_string(ulIndex, "cc show tt [port|id|ip] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show customer [group|id] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show transform [id|customer|caller|callee|num] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show numlmt [id|num] [$value]\r\n");
+    cli_out_string(ulIndex, "cc show trace <caller|callee|server|customer|mod>\r\n");
+    cli_out_string(ulIndex, "cc trace <mod|customer|caller|callee|server> <$value> <on|off>\r\n");
     cli_out_string(ulIndex, "cc update route|gateway|gwgrp [id]\r\n");
 
     return 0;

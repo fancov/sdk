@@ -218,6 +218,14 @@ enum {
     SC_ACD_SERV_BUTT
 };
 
+typedef enum tagSCCallRole
+{
+    SC_CALLEE,
+    SC_CALLING,
+
+    SC_CALL_ROLE_BUTT
+}SC_CALL_ROLE_EN;
+
 /*
 * 坐席呼叫状态
 * 没有呼叫时就是NONE, 到底是CALLIN还是CALLOUT由当前坐席呼叫的对端决定，
@@ -955,6 +963,13 @@ typedef enum tagSCCallStatus{
     SC_CALL_RELEASE,    /**< 结束 */
 }SC_CALL_STATE_EN;
 
+enum{
+    SC_SERV_CALL_TYPE_INTERNAL,     /**< 内部呼叫 */
+    SC_SERV_CALL_TYPE_INCOMING,     /**< 入局呼叫 */
+    SC_SERV_CALL_TYPE_OUTGOING,     /**< 出局呼叫 */
+    SC_SERV_CALL_TYPE_BUTT,
+};
+
 /**
  * 业务控制块, 基本呼叫
  */
@@ -1361,6 +1376,10 @@ typedef struct tagSCCallHold{
 
     /* 呼叫客户的LEG */
     U32               ulCallLegNo;
+
+    /* 保持 次数 */
+    U32               ulHoldCount;
+
 }SC_CALL_HOLD_ST;
 
 /**< 坐席长签业务状态  */
@@ -2123,7 +2142,7 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
 U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
 U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAgentID, U32 *pulErrCode);
 U32 sc_agent_call_notify(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller);
-U32 sc_agent_serv_status_update(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulServStatus);
+U32 sc_agent_serv_status_update(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulServStatus, U32 ulServType);
 U32 sc_agent_update_status_db(SC_AGENT_INFO_ST *pstAgentInfo);
 
 U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
@@ -2302,6 +2321,8 @@ U32 sc_agent_audit(U32 ulCycle, VOID *ptr);
 
 U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ulLen);
 U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 ulTiming, U32 ulNumSelect, U32 ulDirection);
+
+U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode);
 
 #endif  /* end of __SC_DEF_V2_H__ */
 

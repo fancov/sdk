@@ -144,7 +144,6 @@ U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
         ulRet = esl_connect(&g_stESLSendHandle, "127.0.0.1", 8021, NULL, "ClueCon");
         if (ESL_SUCCESS != ulRet)
         {
-            esl_disconnect(&g_stESLSendHandle);
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for send event re-connect fail, return code:%d, Msg:%s. ", ulRet, g_stESLSendHandle.err);
 
             return DOS_FAIL;
@@ -160,6 +159,7 @@ U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
                         , pszApp
                         , DOS_ADDR_VALID(pszArg) ? pszArg : "NULL"
                         , DOS_ADDR_VALID(pszUUID) ? pszUUID : "NULL");
+        esl_disconnect(&g_stESLSendHandle);
 
         return DOS_FAIL;
     }
@@ -206,7 +206,6 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
         ulRet = esl_connect(&g_stESLSendHandle, "127.0.0.1", 8021, NULL, "ClueCon");
         if (ESL_SUCCESS != ulRet)
         {
-            esl_disconnect(&g_stESLSendHandle);
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for send event re-connect fail, return code:%d, Msg:%s. ", ulRet, g_stESLSendHandle.err);
 
             return DOS_FAIL;
@@ -221,6 +220,7 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. Result:%d, CMD: %s"
                         , ulRet
                         , pszCmd);
+        esl_disconnect(&g_stESLSendHandle);
 
         return DOS_FAIL;
     }
@@ -469,8 +469,6 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
             ulRet = esl_connect(&g_stESLRecvHandle, "127.0.0.1", 8021, NULL, "ClueCon");
             if (ESL_SUCCESS != ulRet)
             {
-                esl_disconnect(&g_stESLRecvHandle);
-                esl_disconnect(&g_stESLSendHandle);
                 sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_stESLRecvHandle.err);
 
                 sleep(1);
@@ -486,7 +484,7 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
         if (bFirstConn)
         {
             bFirstConn = DOS_FALSE;
-            sc_esl_execute_cmd("api reloadxml\r\n", NULL, 0);
+            sc_esl_execute_cmd("bgapi reloadxml\r\n", NULL, 0);
         }
 
         ulRet = esl_recv_event(&g_stESLRecvHandle, 1, NULL);
