@@ -329,6 +329,7 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     }
     else
     {
+        stTransfer = pstSCB->stTransfer;
         stTransfer.stSCBTag.bValid = DOS_FALSE;
     }
 
@@ -5124,7 +5125,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         pstHungupLeg = sc_lcb_get(pstHungup->ulLegNo);
         if (DOS_ADDR_VALID(pstHungupLeg))
         {
-            sc_task_call_result(pstSCB, pstHungupLeg->ulCBNo, pstHungupLeg->stCall.ulCause);
+            sc_task_call_result(pstSCB, pstHungupLeg->ulCBNo, pstHungup->ulErrCode);
         }
     }
 
@@ -5586,15 +5587,18 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_IDEL:
         case SC_AUTO_CALL_AUTH:
         case SC_AUTO_CALL_EXEC:
-            /* 发起呼叫失败，直接释放资源 */
+        case SC_AUTO_CALL_PORC:
+            /* 发起呼叫失败，生成呼叫结果，释放资源 */
             pstCallingCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
             if (DOS_ADDR_VALID(pstCallingCB))
             {
+                pstCallingCB->stCall.stTimeInfo.ulByeTime = pstCallingCB->stCall.stTimeInfo.ulStartTime;
+                sc_task_call_result(pstSCB, pstCallingCB->ulCBNo, ulErrCode);
                 sc_lcb_free(pstCallingCB);
             }
             sc_scb_free(pstSCB);
             break;
-        case SC_AUTO_CALL_PORC:
+
         case SC_AUTO_CALL_ALERTING:
             ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
             break;
@@ -6111,6 +6115,7 @@ U32 sc_incoming_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stIncomingQueue.stSCBTag.usStatus)
     {
         case SC_INQUEUE_ACTIVE:
+            pstSCB->stIncomingQueue.ulDequeuTime = time(NULL);
             pstSCB->stIncomingQueue.stSCBTag.bWaitingExit = DOS_TRUE;
             break;
         default:

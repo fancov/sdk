@@ -39,6 +39,7 @@ typedef struct tagSCDBMsgCallResult{
     S8              szCallee[SC_NUM_LENGTH];                  /* 被叫号码 */
 
     U32             ulPDDLen;                   /* 接续时长:从发起呼叫到收到振铃 */
+    U32             ulStartTime;                /* 开始时间,单位:秒 */
     U32             ulRingTime;                 /* 振铃时长,单位:秒 */
     U32             ulAnswerTimeStamp;          /* 应答时间戳 */
     U32             ulFirstDTMFTime;            /* 第一个二次拨号时间,单位:秒 */

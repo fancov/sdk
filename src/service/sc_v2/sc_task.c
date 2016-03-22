@@ -86,12 +86,104 @@ U32 sc_task_call_result_make_call_before(U32 ulCustomerID, U32 ulTaskID, S8 *szC
     return sc_send_msg2db((SC_DB_MSG_TAG_ST *)pstCallResult);
 }
 
+U16 sc_task_transform_errcode_from_sc2sip(U32 ulErrcode)
+{
+    U16 usErrcodeSC = CC_ERR_SIP_UNDECIPHERABLE;
+
+    if (ulErrcode >= CC_ERR_BUTT)
+    {
+        DOS_ASSERT(0);
+        return usErrcodeSC;
+    }
+
+    if (ulErrcode < 1000 && ulErrcode > 99)
+    {
+        /* 1000以下为sip错误码，不需要转换 */
+        return ulErrcode;
+    }
+
+    switch (ulErrcode)
+    {
+        case CC_ERR_NORMAL_CLEAR:
+            usErrcodeSC = CC_ERR_SIP_SUCC;
+            break;
+        case CC_ERR_NO_REASON:
+            usErrcodeSC = CC_ERR_SIP_BUSY_EVERYWHERE;
+            break;
+        case CC_ERR_SC_SERV_NOT_EXIST:
+        case CC_ERR_SC_NO_SERV_RIGHTS:
+        case CC_ERR_SC_USER_DOES_NOT_EXIST:
+        case CC_ERR_SC_CUSTOMERS_NOT_EXIST:
+            usErrcodeSC = CC_ERR_SIP_FORBIDDEN;
+            break;
+        case CC_ERR_SC_USER_OFFLINE:
+        case CC_ERR_SC_USER_HAS_BEEN_LEFT:
+        case CC_ERR_SC_PERIOD_EXCEED:
+        case CC_ERR_SC_RESOURCE_EXCEED:
+            usErrcodeSC = CC_ERR_SIP_TEMPORARILY_UNAVAILABLE;
+            break;
+        case CC_ERR_SC_USER_BUSY:
+            usErrcodeSC = CC_ERR_SIP_BUSY_HERE;
+            break;
+        case CC_ERR_SC_CB_ALLOC_FAIL:
+        case CC_ERR_SC_MEMORY_ALLOC_FAIL:
+            usErrcodeSC = CC_ERR_SIP_INTERNAL_SERVER_ERROR;
+            break;
+        case CC_ERR_SC_IN_BLACKLIST:
+        case CC_ERR_SC_CALLER_NUMBER_ILLEGAL:
+        case CC_ERR_SC_CALLEE_NUMBER_ILLEGAL:
+            usErrcodeSC = CC_ERR_SIP_NOT_FOUND;
+            break;
+        case CC_ERR_SC_NO_ROUTE:
+        case CC_ERR_SC_NO_TRUNK:
+            break;
+        case CC_ERR_SC_MESSAGE_TIMEOUT:
+        case CC_ERR_SC_AUTH_TIMEOUT:
+        case CC_ERR_SC_QUERY_TIMEOUT:
+            usErrcodeSC = CC_ERR_SIP_REQUEST_TIMEOUT;
+            break;
+        case CC_ERR_SC_CONFIG_ERR:
+        case CC_ERR_SC_MESSAGE_PARAM_ERR:
+        case CC_ERR_SC_MESSAGE_SENT_ERR:
+        case CC_ERR_SC_MESSAGE_RECV_ERR:
+        case CC_ERR_SC_CLEAR_FORCE:
+        case CC_ERR_SC_SYSTEM_ABNORMAL:
+        case CC_ERR_SC_SYSTEM_BUSY:
+        case CC_ERR_SC_SYSTEM_MAINTAINING:
+            usErrcodeSC = CC_ERR_SIP_SERVICE_UNAVAILABLE;
+            break;
+        case CC_ERR_BS_NOT_EXIST:
+        case CC_ERR_BS_EXPIRE:
+        case CC_ERR_BS_FROZEN:
+        case CC_ERR_BS_LACK_FEE:
+        case CC_ERR_BS_PASSWORD:
+        case CC_ERR_BS_RESTRICT:
+        case CC_ERR_BS_OVER_LIMIT:
+        case CC_ERR_BS_TIMEOUT:
+        case CC_ERR_BS_LINK_DOWN:
+        case CC_ERR_BS_SYSTEM:
+        case CC_ERR_BS_MAINTAIN:
+        case CC_ERR_BS_DATA_ABNORMAL:
+        case CC_ERR_BS_PARAM_ERR:
+        case CC_ERR_BS_NOT_MATCH:
+            usErrcodeSC = CC_ERR_SIP_PAYMENT_REQUIRED;
+            break;
+        default:
+            DOS_ASSERT(0);
+            break;
+    }
+
+    return usErrcodeSC;
+}
+
 U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
 {
     SC_DB_MSG_CALL_RESULT_ST *pstCallResult     = NULL;
     SC_LEG_CB                *pstCallingLegCB   = NULL;
     SC_LEG_CB                *pstCalleeLegCB    = NULL;
+    SC_LEG_CB                *pstHungupLegCB    = NULL;
     SC_AGENT_NODE_ST         *pstAgentCall      = NULL;
+    SC_TASK_CB               *pstTCB            = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -100,7 +192,23 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
         return DOS_FAIL;
     }
 
+    pstHungupLegCB = sc_lcb_get(ulLegNo);
+    if (DOS_ADDR_INVALID(pstHungupLegCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
     if (0 == pstSCB->stAutoCall.ulTaskID || U32_BUTT == pstSCB->stAutoCall.ulTaskID)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstTCB = sc_tcb_find_by_taskid(pstSCB->stAutoCall.ulTaskID);
+    if (DOS_ADDR_INVALID(pstTCB))
     {
         DOS_ASSERT(0);
 
@@ -125,7 +233,7 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
 
     if (0 == ulSIPRspCode)
     {
-        //ulSIPRspCode = sc_ep_transform_errcode_from_sc2sip(pstSCB->usTerminationCause);
+        //ulSIPRspCode = sc_task_transform_errcode_from_sc2sip(pstSCB->usTerminationCause);
     }
 
     dos_memzero(pstCallResult, sizeof(SC_DB_MSG_CALL_RESULT_ST));
@@ -141,6 +249,11 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
         pstCallResult->ulAgentID = 0;
     }
     pstCallResult->ulTaskID = pstSCB->stAutoCall.ulTaskID;       /* 任务ID,要求全数字,不超过10位,最高位小于4 */
+
+    if (pstCallingLegCB->ulCBNo != ulLegNo)
+    {
+        pstCallingLegCB->stCall.stTimeInfo.ulByeTime = pstHungupLegCB->stCall.stTimeInfo.ulByeTime;
+    }
 
     /* 坐席号码(工号) */
     pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
@@ -171,7 +284,8 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
     {
         pstCallResult->ulPDDLen = pstCallingLegCB->stCall.stTimeInfo.ulRingTime - pstCallingLegCB->stCall.stTimeInfo.ulStartTime;
     }
-    pstCallResult->ulRingTime = pstCallingLegCB->stCall.stTimeInfo.ulStartTime;                 /* 振铃时长,单位:秒 */
+    pstCallResult->ulStartTime = pstCallingLegCB->stCall.stTimeInfo.ulStartTime;
+    pstCallResult->ulRingTime = pstCallingLegCB->stCall.stTimeInfo.ulRingTime;                  /* 振铃时长,单位:秒 */
     pstCallResult->ulAnswerTimeStamp = pstCallingLegCB->stCall.stTimeInfo.ulAnswerTime;         /* 应答时间戳 */
     pstCallResult->ulFirstDTMFTime = pstCallingLegCB->stCall.stTimeInfo.ulDTMFStartTime;        /* 第一个二次拨号时间,单位:秒 */
     pstCallResult->ulIVRFinishTime = pstCallingLegCB->stCall.stTimeInfo.ulIVREndTime;           /* IVR放音完成时间,单位:秒 */
@@ -220,42 +334,55 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
         if (pstSCB->stIncomingQueue.ulEnqueuTime != 0
             && pstSCB->stIncomingQueue.ulDequeuTime == 0)
         {
+            pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime ? pstCallResult->ulStartTime : time(NULL);
             pstCallResult->ulResult = CC_RST_AGNET_BUSY;
             goto proc_finished;
         }
 
-        /*有可能放音确实没有结束，客户就按键了,所有应该优先处理 */
-        if (pstCallResult->ulFirstDTMFTime
+        if (pstCallResult->ulAnswerTimeStamp == 0
             && DOS_ADDR_INVALID(pstCalleeLegCB))
         {
-            pstCallResult->ulResult = CC_RST_HANGUP_AFTER_KEY;
+            /* 未接听 */
+            pstCallResult->ulAnswerTimeStamp = pstCallResult->ulRingTime;
+            pstCallResult->ulResult = CC_RST_NO_ANSWER;
             goto proc_finished;
         }
 
-        /* 播放语音时挂断 */
-        if (0 == pstCallResult->ulIVRFinishTime)
+        if (pstTCB->ucMode != SC_TASK_MODE_DIRECT4AGETN)
         {
-            pstCallResult->ulResult = CC_RST_HANGUP_WHILE_IVR;
-            goto proc_finished;
-        }
-
-        /* 放音已经结束了，并且呼叫没有在队列，说明呼叫已经被转到坐席了 */
-        if (pstCallResult->ulIVRFinishTime && DOS_ADDR_VALID(pstCalleeLegCB))
-        {
-            /* ANSWER为0，说明坐席没有接通等待坐席时 挂断的 */
-            if (DOS_ADDR_VALID(pstCalleeLegCB)
-                && !pstCalleeLegCB->stCall.stTimeInfo.ulAnswerTime)
+            /* 有可能放音确实没有结束，客户就按键了,所有应该优先处理 */
+            if (pstCallResult->ulFirstDTMFTime
+                && DOS_ADDR_INVALID(pstCalleeLegCB))
             {
-                if (SC_CALLEE == pstCallResult->ucReleasePart)
-                {
-                    pstCallResult->ulResult = CC_RST_AGENT_NO_ANSER;
-                }
-                else
-                {
-                    pstCallResult->ulResult = CC_RST_HANGUP_NO_ANSER;
-                }
-
+                pstCallResult->ulResult = CC_RST_HANGUP_AFTER_KEY;
                 goto proc_finished;
+            }
+
+            /* 播放语音时挂断 */
+            if (0 == pstCallResult->ulIVRFinishTime)
+            {
+                pstCallResult->ulResult = CC_RST_HANGUP_WHILE_IVR;
+                goto proc_finished;
+            }
+
+            /* 放音已经结束了，并且呼叫没有在队列，说明呼叫已经被转到坐席了 */
+            if (pstCallResult->ulIVRFinishTime && DOS_ADDR_VALID(pstCalleeLegCB))
+            {
+                /* ANSWER为0，说明坐席没有接通等待坐席时 挂断的 */
+                if (DOS_ADDR_VALID(pstCalleeLegCB)
+                    && !pstCalleeLegCB->stCall.stTimeInfo.ulAnswerTime)
+                {
+                    if (SC_CALLEE == pstCallResult->ucReleasePart)
+                    {
+                        pstCallResult->ulResult = CC_RST_AGENT_NO_ANSER;
+                    }
+                    else
+                    {
+                        pstCallResult->ulResult = CC_RST_HANGUP_NO_ANSER;
+                    }
+
+                    goto proc_finished;
+                }
             }
         }
 
@@ -278,16 +405,25 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
                 break;
 
             case CC_ERR_SIP_TEMPORARILY_UNAVAILABLE:
+                pstCallResult->ulAnswerTimeStamp = pstCallResult->ulRingTime;
                 pstCallResult->ulResult = CC_RST_REJECTED;
                 break;
 
             case CC_ERR_SIP_BUSY_HERE:
+                pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime;
                 pstCallResult->ulResult = CC_RST_BUSY;
                 break;
 
             case CC_ERR_SIP_REQUEST_TIMEOUT:
             case CC_ERR_SIP_REQUEST_TERMINATED:
-                pstCallResult->ulResult = CC_RST_NO_ANSWER;
+                if (DOS_ADDR_INVALID(pstCalleeLegCB))
+                {
+                    pstCallResult->ulResult = CC_RST_NO_ANSWER;
+                }
+                else
+                {
+                    pstCallResult->ulResult = CC_RST_AGENT_NO_ANSER;
+                }
                 break;
 
             case CC_ERR_SC_CALLEE_NUMBER_ILLEGAL:
@@ -295,6 +431,7 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
                 break;
 
             default:
+                pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime ? pstCallResult->ulStartTime : time(NULL);
                 pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
                 break;
         }
@@ -304,6 +441,11 @@ proc_finished:
 
     if (CC_RST_BUTT == pstCallResult->ulResult)
     {
+        if (pstCallResult->ulAnswerTimeStamp == 0)
+        {
+            pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime ? pstCallResult->ulStartTime : time(NULL);
+        }
+
         pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
     }
 

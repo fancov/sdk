@@ -1046,7 +1046,7 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
             stPlayback.stMsgTag.usMsgLen = 0;
             stPlayback.ulLegNo = pstLegCB->ulCBNo;
             stPlayback.ulSCBNo = pstLegCB->ulSCBNo;
-
+            pstLegCB->stCall.stTimeInfo.ulIVREndTime = time(NULL);
             sc_send_event_playback(&stPlayback);
 
             sc_lcb_playback_init(&pstLegCB->stPlayback);
