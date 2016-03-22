@@ -2144,7 +2144,7 @@ proc_fail:
  */
 VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
 {
-    U32 ulRet;
+    U32 ulRet = DOS_FAIL;
 
     if (DOS_ADDR_INVALID(pstMsg))
     {
