@@ -2432,7 +2432,7 @@ U32 sc_agent_serv_status_update(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulServS
             break;
     }
 
-    if (ulRet)
+    if (DOS_SUCC == ulRet)
     {
         /* 保存到数据库 */
         sc_agent_update_status_db(pstAgentQueueInfo);
