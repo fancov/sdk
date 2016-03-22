@@ -229,7 +229,7 @@ U32 sc_init_db()
     }
 
     /* 清空坐席的状态表 */
-    db_query(g_pstSCDBHandle, "truncate table tmp_agent_status;", NULL, NULL, 0);
+    db_query(g_pstSCDBHandle, "delete from tmp_agent_status;", NULL, NULL, 0);
 
     return DOS_SUCC;
 }

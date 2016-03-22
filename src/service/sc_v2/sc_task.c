@@ -736,8 +736,6 @@ VOID *sc_task_runtime(VOID *ptr)
                 continue;
             }
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_TASK), "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Task : %u, CurrentConcurrency : %u.", pstTCB->ulTaskID, pstTCB->ulCurrentConcurrency);
-
             /* 任务结束了，退出主循环 */
             break;
         }
