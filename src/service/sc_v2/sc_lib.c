@@ -423,6 +423,7 @@ VOID sc_lcb_call_init(SC_SU_CALL_ST *pstCall)
     pstCall->ulTrunkID = 0;
     pstCall->ulTrunkCount = 0;
     pstCall->ulCodecCnt = 0;
+    pstCall->ulCause = 0;
 
     pstCall->stTimeInfo.ulStartTime = 0;
     pstCall->stTimeInfo.ulRingTime = 0;
@@ -3207,7 +3208,10 @@ void sc_agent_mark_custom_callback(U64 arg)
     sc_req_playback_stop(pstSCB->ulSCBNo, pstLeg->ulCBNo);
 
     /* 判断坐席是否是长签，如果不是则挂断电话 */
-    sc_agent_serv_status_update(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_MARK_CUSTOM);
+    if (DOS_ADDR_VALID(pstSCB->stMarkCustom.pstAgentCall))
+    {
+        sc_agent_serv_status_update(pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_MARK_CUSTOM);
+    }
 
     if (pstLeg->ulIndSCBNo != U32_BUTT)
     {

@@ -392,10 +392,6 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
             continue;
         }
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EXT_MNGT), "recv esl event %s(%d)."
-                        , esl_event_get_header(pstEvent, "Event-Name")
-                        , pstEvent->event_id);
-
         pstDLLNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
         if (DOS_ADDR_INVALID(pstDLLNode))
         {

@@ -124,8 +124,8 @@ const S8* g_pszAgentStatus[] =
 {
     "OFFLINE",
     "IDLE",
-    "AWAY",
-    "BUSY"
+    "BUSY",
+    "AWAY"
 };
 
 const S8* g_pszAgentServStatus[] =
