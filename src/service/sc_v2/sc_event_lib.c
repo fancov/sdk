@@ -2218,6 +2218,7 @@ U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
     }
     else
     {
+        stTransfer = pstSCB->stTransfer;
         stTransfer.stSCBTag.bValid = DOS_FALSE;
     }
 

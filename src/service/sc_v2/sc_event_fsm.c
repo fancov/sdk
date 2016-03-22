@@ -329,6 +329,7 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     }
     else
     {
+        stTransfer = pstSCB->stTransfer;
         stTransfer.stSCBTag.bValid = DOS_FALSE;
     }
 
