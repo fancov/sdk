@@ -4834,7 +4834,7 @@ S32 cli_cc_license(U32 ulIndex, S32 argc, S8 **argv)
     cli_out_string(ulIndex, "\r\n");
     cli_out_string(ulIndex, "License information:\r\n");
 
-    if (licc_save_customer_id((U8 *)szBuffer, sizeof(szBuffer)) != DOS_SUCC)
+    if (licc_load_customer_id((U8 *)szBuffer, sizeof(szBuffer)) != DOS_SUCC)
     {
         dos_snprintf(szOutput, sizeof(szOutput), "Username: <NULL>\r\n");
     }

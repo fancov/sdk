@@ -59,6 +59,9 @@ static pthread_mutex_t g_mutexCliServer = PTHREAD_MUTEX_INITIALIZER;
 /* server的socket */
 static S32 g_lSrvSocket = -1;
 
+/* 是否等待重建SOCKET */
+static S32 g_blIsWaitingRebuild = DOS_TRUE;
+
 /* 线程是否正在等待退出 */
 static BOOL g_bCliSrvWaitingExit = 0;
 
@@ -68,6 +71,7 @@ static PROCESS_INFO_NODE_ST *g_pstProcessList[MAX_PROCESS_NUM] = { NULL };
 /* 外部变量 */
 extern COMMAND_GROUP_ST g_stCmdRootGrp[];
 
+extern S32 telnet_set_exit(U32 ulIndex);
 
 /**
  * 特殊命令处理函数
@@ -204,6 +208,11 @@ S32 cli_server_send_reg_rsp2process(PROCESS_INFO_NODE_ST *pstProcess)
         return DOS_FAIL;
     }
 
+    if (g_lSrvSocket < 0)
+    {
+        return DOS_FAIL;
+    }
+
     /* 填充消息头 */
     pstMsgHeader = (CLI_MSG_HEADER *)szSendBuff;
     pstMsgHeader->usClientIndex = INVALID_CLIENT_INDEX;
@@ -229,7 +238,9 @@ S32 cli_server_send_reg_rsp2process(PROCESS_INFO_NODE_ST *pstProcess)
     ulRet = sendto(g_lSrvSocket, szSendBuff, ulMsgLen, 0, (struct sockaddr *)&pstProcess->stClientAddr, pstProcess->uiClientAddrLen);
     if (ulRet < 0)
     {
+        dos_printf("Send to return : %d error: %d\r\n", ulRet, errno);
         pstProcess->bActive = DOS_FALSE;
+        g_blIsWaitingRebuild = DOS_TRUE;
     }
 
     return DOS_SUCC;
@@ -318,8 +329,8 @@ S32 cli_server_send_cmd2process(U32 ulClientIndex
     if (lRet < 0)
     {
         cli_logr_warning("Request send data to process. Send fail.(%d)", errno);
-        DOS_ASSERT(0);
         pstProcess->bActive = DOS_FALSE;
+        g_blIsWaitingRebuild = DOS_TRUE;
         return DOS_FAIL;
     }
     else
@@ -406,8 +417,6 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
         {
             if (!g_pstProcessList[i]->bVaild)
             {
-                dos_memcpy((VOID *)&g_pstProcessList[i]->stClientAddr, pstAddr, sizeof(g_pstProcessList[i]->stClientAddr));
-                g_pstProcessList[i]->uiClientAddrLen = ulSockLen;
                 break;
             }
         }
@@ -436,10 +445,12 @@ S32 cli_server_reg_proc(S8 *pszName, S8 *pszVersion, struct sockaddr_un *pstAddr
         cli_logr_info("Process \"%s\" register successfully.", pszName);
     }
 
-    cli_server_send_reg_rsp2process(g_pstProcessList[i]);
-
-    dos_memcpy((VOID *)&g_pstProcessList[i]->stClientAddr, pstAddr, sizeof(g_pstProcessList[i]->stClientAddr));
+    g_pstProcessList[i]->stClientAddr.sun_family = AF_UNIX;
+    dos_strncpy(g_pstProcessList[i]->stClientAddr.sun_path, pstAddr->sun_path, ulSockLen);
+    g_pstProcessList[i]->stClientAddr.sun_path[ulSockLen] = '\0';
     g_pstProcessList[i]->uiClientAddrLen = ulSockLen;
+
+    cli_server_send_reg_rsp2process(g_pstProcessList[i]);
 
     cli_logr_debug("Process registe message processed. Process:%s", pszName);
 
@@ -608,15 +619,6 @@ VOID *cli_server_main_loop(VOID *p)
 
     while (1)
     {
-        /* 处理异常 */
-        if (g_lSrvSocket < 0)
-        {
-            dos_log(LOG_LEVEL_ERROR, LOG_TYPE_RUNINFO, "Unexpection cli server socket status. exit.\n");
-            break;
-        }
-
-        //printf("\nActive\n");
-
         /* 处理退出 */
         pthread_mutex_lock(&g_mutexCliServer);
         if (g_bCliSrvWaitingExit)
@@ -625,6 +627,33 @@ VOID *cli_server_main_loop(VOID *p)
             break;
         }
         pthread_mutex_unlock(&g_mutexCliServer);
+
+        /* 处理异常 */
+        if (g_blIsWaitingRebuild || g_lSrvSocket < 0)
+        {
+            cli_logr_notice("Start rebuild socket. %u, %d", g_blIsWaitingRebuild, g_lSrvSocket);
+
+            /* 有必要close连接 */
+            if (g_lSrvSocket > 0)
+            {
+                close(g_lSrvSocket);
+                g_lSrvSocket = -1;
+            }
+
+            if (cli_server_init() != DOS_SUCC)
+            {
+                cli_logr_debug("%s", "Rebuild socket FAIL. Will be do after 10 seconds");
+
+                dos_task_delay(10000);
+
+                continue;
+            }
+
+            cli_logr_notice("Rebuild socket OK. %u, %d", g_blIsWaitingRebuild, g_lSrvSocket);
+
+            /* 如果重连成功，在做一次，判断是否真的OK了 */
+            continue;
+        }
 
         /* 准备select */
         FD_ZERO(&stFDSet);
@@ -637,8 +666,8 @@ VOID *cli_server_main_loop(VOID *p)
         lRet = select(lMaxFd, &stFDSet, NULL, NULL, &stTimeout);
         if (lRet < 0)
         {
-            DOS_ASSERT(0);
-            cli_logr_warning("%s", "Cli server select fail. exit.");
+            cli_logr_warning("%s", "Cli server select fail. will be rebuild");
+            g_blIsWaitingRebuild = DOS_TRUE;
             break;
         }
         else if (0 == lRet)
@@ -650,8 +679,8 @@ VOID *cli_server_main_loop(VOID *p)
         sockClientAddrLen = sizeof(stClientAddr);
         dos_memzero((VOID *)&stClientAddr, sockClientAddrLen);
         lRet = recvfrom(g_lSrvSocket, szRecvBuf, sizeof(szRecvBuf)
-                , MSG_DONTWAIT, (struct sockaddr *)&stClientAddr, &sockClientAddrLen);
-        if (EAGAIN == errno || EWOULDBLOCK == errno)
+                , 0, (struct sockaddr *)&stClientAddr, &sockClientAddrLen);
+        if (EAGAIN == errno || EWOULDBLOCK == errno || EAGAIN == errno)
         {
             continue;
         }
@@ -696,6 +725,8 @@ S32 cli_server_init()
     struct sockaddr_un stSrvAddr;
     S8 szBuffSockPath[256] = { 0 };
     S8 szBuffCMD[256];
+
+    dos_task_delay(3000);
 
     /* 初始化所有客户端 */
     pstProcessMem = (PROCESS_INFO_NODE_ST *)dos_smem_alloc(sizeof(PROCESS_INFO_NODE_ST) * MAX_PROCESS_NUM);
@@ -747,6 +778,8 @@ S32 cli_server_init()
         return DOS_FAIL;
     }
 
+    g_blIsWaitingRebuild = DOS_FALSE;
+
     return DOS_SUCC;
 }
 
@@ -765,8 +798,6 @@ S32 cli_server_start()
     {
         return DOS_FAIL;
     }
-
-    //pthread_join(g_pthCliServer, NULL);
 
     return DOS_SUCC;
 }

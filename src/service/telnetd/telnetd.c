@@ -690,19 +690,17 @@ S32 telnet_send_data(U32 ulIndex, U32 ulType, S8 *pszBuffer, U32 ulLen)
         return -1;
     }
 
-    /* 强制给结束符 */
-    //pszBuffer[ulLen] = '\0';
-
     if (MSG_TYPE_LOG == ulType)
     {
         logr_debug("%s", "Request telnet server send log to client.");
         goto broadcast;
     }
 
+    /* 强制给结束符 */
+    //pszBuffer[ulLen] = '\0';
     if (ulIndex >= MAX_CLIENT_NUMBER)
     {
         logr_debug("Request telnet server send data to client, but given an invalid client index(%d).", ulIndex);
-        DOS_ASSERT(0);
         return -1;
     }
 
@@ -710,7 +708,6 @@ S32 telnet_send_data(U32 ulIndex, U32 ulType, S8 *pszBuffer, U32 ulLen)
     if (!pstTelnetClient->ulValid)
     {
         logr_debug("Cannot find a valid client which have an index %d.", ulIndex);
-        DOS_ASSERT(0);
         return -1;
     }
 
@@ -719,9 +716,10 @@ S32 telnet_send_data(U32 ulIndex, U32 ulType, S8 *pszBuffer, U32 ulLen)
         logr_debug("Client with the index %d have an invalid socket.", ulIndex);
         pstTelnetClient->pFDOutput = NULL;
         pstTelnetClient->pFDOutput = NULL;
-        DOS_ASSERT(0);
         return -1;
     }
+
+
 #if INCLUDE_PTS
     pStrstr = memchr(pszBuffer, 0xff, ulLen);
     if (pStrstr != NULL)
