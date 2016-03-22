@@ -2506,6 +2506,24 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
             pstCalleeCB = sc_lcb_get(pstSCB->stPreviewCall.ulCalleeLegNo);
+            if (DOS_ADDR_INVALID(pstCallingCB) || DOS_ADDR_INVALID(pstCalleeCB))
+            {
+                /* Òì³£ */
+                DOS_ASSERT(0);
+                if (DOS_ADDR_VALID(pstCallingCB))
+                {
+                    sc_lcb_free(pstCallingCB);
+                }
+
+                if (DOS_ADDR_VALID(pstCalleeCB))
+                {
+                    sc_lcb_free(pstCalleeCB);
+                }
+
+                sc_scb_free(pstSCB);
+                break;
+            }
+
             if (pstSCB->stPreviewCall.ulCalleeLegNo == pstHungup->ulLegNo)
             {
                 pstHungupLeg = pstCalleeCB;
