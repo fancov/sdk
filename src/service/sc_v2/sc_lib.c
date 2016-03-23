@@ -3023,7 +3023,9 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
         if (pstSCB->ulCustomerID != U32_BUTT)
         {
             pstAgent = sc_agent_get_by_sip_acc(pstLegCB->stCall.stNumInfo.szOriginalCalling);
-            if (DOS_ADDR_VALID(pstAgent) && DOS_ADDR_VALID(pstAgent->pstAgentInfo))
+            if (DOS_ADDR_VALID(pstAgent)
+                && DOS_ADDR_VALID(pstAgent->pstAgentInfo)
+                && pstAgent->pstAgentInfo->ucBindType == AGENT_BIND_SIP)
             {
                 pstSCB->ulAgentID = pstAgent->pstAgentInfo->ulAgentID;
                 pstSCB->stCall.pstAgentCalling = pstAgent;

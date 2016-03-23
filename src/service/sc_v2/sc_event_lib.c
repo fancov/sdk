@@ -187,12 +187,12 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
  */
 U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
 {
-    SC_AGENT_NODE_ST *pstAgent    = NULL;
+    SC_AGENT_NODE_ST            *pstAgent       = NULL;
     SC_MSG_CMD_CALL_ST          stCallMsg;
-    SC_SRV_CB                  *pstSCBAgent = NULL;
-    SC_LEG_CB                  *pstLegCBAgent = NULL;
-    SC_LEG_CB                  *pstCalleeLeg = NULL;
-    U32                        ulCustomerID;
+    SC_SRV_CB                   *pstSCBAgent     = NULL;
+    SC_LEG_CB                   *pstLegCBAgent   = NULL;
+    SC_LEG_CB                   *pstCalleeLeg    = NULL;
+    U32                         ulCustomerID;
 
     if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstLegCB))
     {
@@ -231,7 +231,8 @@ U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
 
     pstAgent = sc_agent_get_by_sip_acc(pstLegCB->stCall.stNumInfo.szRealCallee);
     if (DOS_ADDR_INVALID(pstAgent)
-        || DOS_ADDR_INVALID(pstAgent->pstAgentInfo))
+        || DOS_ADDR_INVALID(pstAgent->pstAgentInfo)
+        || AGENT_BIND_SIP != pstAgent->pstAgentInfo->ucBindType)
     {
         goto processing;
     }
@@ -263,6 +264,7 @@ processing:
     if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
         && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
     {
+        pstSCB->stCall.pstAgentCalling->pstAgentInfo->ulLegNo = pstSCB->stCall.ulCallingLegNo;
         sc_agent_serv_status_update(pstSCB->stCall.pstAgentCalling->pstAgentInfo, SC_ACD_SERV_RINGBACK, SC_SRV_CALL);
     }
 
@@ -362,7 +364,8 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Start find agent by userid(%s)", szCallee);
     pstAgentNode = sc_agent_get_by_sip_acc(szCallee);
     if (DOS_ADDR_VALID(pstAgentNode)
-        && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+        && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo)
+        && AGENT_BIND_SIP == pstAgentNode->pstAgentInfo->ucBindType)
     {
         pstSCB->stCall.pstAgentCallee = pstAgentNode;
 
