@@ -221,7 +221,7 @@ U32 sc_http_client_alloc(U32 ulSrvNo, S32 lSock)
         return DOS_FAIL;
     }
 
-    if (ulSrvNo >= SC_MAX_HTTPD_NUM)
+    if (ulSrvNo > SC_MAX_HTTPD_NUM)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
