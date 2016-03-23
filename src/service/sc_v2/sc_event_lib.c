@@ -1387,7 +1387,7 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request call agent. Agent: %u, callee agent : %u", ulAgentID, pstAgentNodeCallee->pstAgentInfo->ulAgentID);
+    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "Request call agent. Agent: %u, callee agent : %u", ulAgentID, pstAgentNodeCallee->pstAgentInfo->ulAgentID);
 
     /* 判断被叫坐席的状态 */
     if (pstAgentNodeCallee->pstAgentInfo->ucWorkStatus != SC_ACD_WORK_IDEL
@@ -1697,7 +1697,7 @@ U32 sc_call_ctrl_call_sip(U32 ulAgentID, S8 *pszSipNumber)
     U32              ulRet                  = DOS_FAIL;
     SC_MSG_CMD_CALL_ST stCallMsg;
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request call sip. Agent: %u, callee sip : %s", ulAgentID, pszSipNumber);
+    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "Request call sip. Agent: %u, callee sip : %s", ulAgentID, pszSipNumber);
 
     /* 根据sip找到对应的坐席 */
     pstCalleeAgentNode = sc_agent_get_by_sip_acc(pszSipNumber);
@@ -1931,7 +1931,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
     SC_LEG_CB        *pstAgentLCB  = NULL;
     U32              ulRet         = DOS_FAIL;
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request call out. Agent: %u, Task: %u, Number: %u", ulAgent, ulTaskID, NULL == pszNumber ? "NULL" : pszNumber);
+    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "Request call out. Agent: %u, Task: %u, Number: %u", ulAgent, ulTaskID, NULL == pszNumber ? "NULL" : pszNumber);
 
     if (DOS_ADDR_INVALID(pszNumber) || '\0' == pszNumber[0])
     {
@@ -2138,6 +2138,8 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
     return DOS_SUCC;
 
 process_fail:
+
+    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "Request call out FAIL. Agent: %u, Task: %u, Number: %u", ulAgent, ulTaskID, NULL == pszNumber ? "NULL" : pszNumber);
     if (DOS_ADDR_VALID(pstSCB))
     {
         sc_scb_free(pstSCB);

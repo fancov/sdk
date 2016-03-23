@@ -752,15 +752,22 @@ U32 sc_call_access_code(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, S8 *szNum
             && 1 == dos_sscanf(szDealNum+1, "%u", &ulKey)
             && ulKey <= 9)
         {
-            return sc_access_mark_customer(pstSCB, pstCallingLegCB, ulKey);
+            if (sc_access_mark_customer(pstSCB, pstCallingLegCB, ulKey) != DOS_SUCC)
+            {
+                pstSCB->stAccessCode.stSCBTag.bWaitingExit = DOS_TRUE;
+            }
+
+            return DOS_SUCC;
         }
 
         /* 没有找个匹配的, 提示操作失败 */
+        pstSCB->stAccessCode.stSCBTag.bWaitingExit = DOS_TRUE;
+#if 0
         pstSCB->stAccessCode.bIsSecondDial = bIsSecondDial;
         pstSCB->stAccessCode.ulSrvType = SC_ACCESS_BUTT;
         pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_ACTIVE;
         sc_req_play_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, SC_SND_SET_FAIL, 1, 0, 0);
-
+#endif
         return DOS_FAIL;
     }
 
@@ -1577,6 +1584,8 @@ U32 sc_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
+    sc_trace_scb(pstSCB, "Processing the call dtmf msg. status: %u", pstSCB->stCall.stSCBTag.usStatus);
+
     pstLCB = sc_lcb_get(pstDTMF->ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
@@ -1584,45 +1593,41 @@ U32 sc_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    /* 开启 接入码 业务 */
-    if (!pstSCB->stAccessCode.stSCBTag.bValid)
+    /* 开启接入码业务 */
+    if (pstDTMF->cDTMFVal != '*'
+        && pstDTMF->cDTMFVal != '#' )
     {
-        /* 开启接入码业务 */
-        if (pstDTMF->cDTMFVal != '*'
-            && pstDTMF->cDTMFVal != '#' )
+        /* 第一个字符不是 '*' 或者 '#' 不保存  */
+        return DOS_SUCC;
+    }
+
+    /* 只有坐席对应的leg执行接入码业务 */
+    if (pstDTMF->ulLegNo == pstSCB->stCall.ulCallingLegNo)
+    {
+        if (DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCalling)
+            || DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
         {
-            /* 第一个字符不是 '*' 或者 '#' 不保存  */
             return DOS_SUCC;
         }
-
-        /* 只有坐席对应的leg执行接入码业务 */
-        if (pstDTMF->ulLegNo == pstSCB->stCall.ulCallingLegNo)
-        {
-            if (DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCalling)
-                || DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
-            {
-                return DOS_SUCC;
-            }
-            ulAgentID = pstSCB->stCall.pstAgentCalling->pstAgentInfo->ulAgentID;
-        }
-
-        if (pstDTMF->ulLegNo == pstSCB->stCall.ulCalleeLegNo)
-        {
-            if (DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee)
-                || DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
-            {
-                return DOS_SUCC;
-            }
-            ulAgentID = pstSCB->stCall.pstAgentCallee->pstAgentInfo->ulAgentID;
-        }
-
-        pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
-        pstSCB->stAccessCode.szDialCache[0] = '\0';
-        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
-        pstSCB->stAccessCode.ulAgentID = ulAgentID;
-        pstSCB->ulCurrentSrv++;
-        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+        ulAgentID = pstSCB->stCall.pstAgentCalling->pstAgentInfo->ulAgentID;
     }
+
+    if (pstDTMF->ulLegNo == pstSCB->stCall.ulCalleeLegNo)
+    {
+        if (DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee)
+            || DOS_ADDR_INVALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+        {
+            return DOS_SUCC;
+        }
+        ulAgentID = pstSCB->stCall.pstAgentCallee->pstAgentInfo->ulAgentID;
+    }
+
+    pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+    pstSCB->stAccessCode.szDialCache[0] = '\0';
+    pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+    pstSCB->stAccessCode.ulAgentID = ulAgentID;
+    pstSCB->ulCurrentSrv++;
+    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
 
     return DOS_SUCC;
 }
@@ -1696,6 +1701,12 @@ U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
             {
                 sc_agent_serv_status_update(pstSCB->stCall.pstAgentCallee->pstAgentInfo, SC_ACD_SERV_CALL_IN, SC_SRV_CALL);
+            }
+
+            if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+            {
+                sc_agent_serv_status_update(pstSCB->stCall.pstAgentCalling->pstAgentInfo, SC_ACD_SERV_CALL_OUT, SC_SRV_CALL);
             }
 
             if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.ulCallingLegNo) != DOS_SUCC)
@@ -2780,30 +2791,26 @@ U32 sc_preview_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    /* 开启 接入码 业务 */
-    if (!pstSCB->stAccessCode.stSCBTag.bValid)
+    /* 开启接入码业务 */
+    if (pstDTMF->cDTMFVal != '*'
+        && pstDTMF->cDTMFVal != '#' )
     {
-        /* 开启接入码业务 */
-        if (pstDTMF->cDTMFVal != '*'
-            && pstDTMF->cDTMFVal != '#' )
-        {
-            /* 第一个字符不是 '*' 或者 '#' 不保存  */
-            return DOS_SUCC;
-        }
-
-        /* 只有坐席对应的leg执行接入码业务 */
-        if (pstDTMF->ulLegNo != pstSCB->stPreviewCall.ulCallingLegNo)
-        {
-            return DOS_SUCC;
-        }
-
-        pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
-        pstSCB->stAccessCode.szDialCache[0] = '\0';
-        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
-        pstSCB->stAccessCode.ulAgentID = pstSCB->stPreviewCall.ulAgentID;
-        pstSCB->ulCurrentSrv++;
-        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+        /* 第一个字符不是 '*' 或者 '#' 不保存  */
+        return DOS_SUCC;
     }
+
+    /* 只有坐席对应的leg执行接入码业务 */
+    if (pstDTMF->ulLegNo != pstSCB->stPreviewCall.ulCallingLegNo)
+    {
+        return DOS_SUCC;
+    }
+
+    pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+    pstSCB->stAccessCode.szDialCache[0] = '\0';
+    pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+    pstSCB->stAccessCode.ulAgentID = pstSCB->stPreviewCall.ulAgentID;
+    pstSCB->ulCurrentSrv++;
+    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
 
     return DOS_SUCC;
 }
@@ -5001,32 +5008,30 @@ U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     break;
             }
             break;
+
          case SC_AUTO_CALL_CONNECTED:
-            /* 开启 接入码 业务 */
-            if (!pstSCB->stAccessCode.stSCBTag.bValid)
+            /* 开启接入码业务 */
+            if (pstDTMF->cDTMFVal != '*'
+                && pstDTMF->cDTMFVal != '#' )
             {
-                /* 开启接入码业务 */
-                if (pstDTMF->cDTMFVal != '*'
-                    && pstDTMF->cDTMFVal != '#' )
-                {
-                    /* 第一个字符不是 '*' 或者 '#' 不保存  */
-                    return DOS_SUCC;
-                }
-
-                /* 只有坐席对应的leg执行接入码业务 */
-                if (pstDTMF->ulLegNo != pstSCB->stAutoCall.ulCalleeLegNo)
-                {
-                    return DOS_SUCC;
-                }
-
-                pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
-                pstSCB->stAccessCode.szDialCache[0] = '\0';
-                pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
-                pstSCB->stAccessCode.ulAgentID = pstSCB->stAutoCall.ulAgentID;
-                pstSCB->ulCurrentSrv++;
-                pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+                /* 第一个字符不是 '*' 或者 '#' 不保存  */
+                return DOS_SUCC;
             }
+
+            /* 只有坐席对应的leg执行接入码业务 */
+            if (pstDTMF->ulLegNo != pstSCB->stAutoCall.ulCalleeLegNo)
+            {
+                return DOS_SUCC;
+            }
+
+            pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+            pstSCB->stAccessCode.szDialCache[0] = '\0';
+            pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+            pstSCB->stAccessCode.ulAgentID = pstSCB->stAutoCall.ulAgentID;
+            pstSCB->ulCurrentSrv++;
+            pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
             break;
+
          default:
             break;
     }
@@ -5887,6 +5892,8 @@ U32 sc_sigin_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
+    sc_trace_scb(pstSCB, "Processing sigin dtmf.");
+
     pstLCB = sc_lcb_get(pstDTMF->ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
@@ -5908,22 +5915,20 @@ U32 sc_sigin_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    if (!pstSCB->stAccessCode.stSCBTag.bValid)
+    /* 开启 接入码 业务 */
+    if (pstDTMF->cDTMFVal != '*')
     {
-        /* 开启 接入码 业务 */
-        if (pstDTMF->cDTMFVal != '*')
-        {
-            /* 长签时，接入码的第一个字符必须是 '*'  */
-            return DOS_SUCC;
-        }
-
-        pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
-        pstSCB->stAccessCode.szDialCache[0] = '\0';
-        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
-        pstSCB->stAccessCode.ulAgentID = pstSCB->stSigin.pstAgentNode->pstAgentInfo->ulAgentID;
-        pstSCB->ulCurrentSrv++;
-        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+        /* 长签时，接入码的第一个字符必须是 '*'  */
+        return DOS_SUCC;
     }
+
+    pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+    pstSCB->stAccessCode.szDialCache[0] = '\0';
+    pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+    pstSCB->stAccessCode.ulLegNo = pstSCB->stSigin.ulLegNo;
+    pstSCB->stAccessCode.ulAgentID = pstSCB->stSigin.pstAgentNode->pstAgentInfo->ulAgentID;
+    pstSCB->ulCurrentSrv++;
+    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
 
     return DOS_SUCC;
 }
@@ -6573,6 +6578,8 @@ U32 sc_access_code_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
+    sc_trace_scb(pstSCB, "Processing access code dtmf. status : %u", pstSCB->stAccessCode.stSCBTag.usStatus);
+
     pstLCB = sc_lcb_get(pstDTMF->ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
@@ -6592,6 +6599,8 @@ U32 sc_access_code_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             dos_strcpy(pstSCB->stAccessCode.szDialCache, pstLCB->stCall.stNumInfo.szDial);
 
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Secondary dialing. caller : %s, DialNum : %s", pstLCB->stCall.stNumInfo.szRealCalling, pstSCB->stAccessCode.szDialCache);
+
             if (dos_strcmp(pstSCB->stAccessCode.szDialCache, astSCAccessList[SC_ACCESS_HANGUP_CUSTOMER1].szCodeFormat) == 0
                  || dos_strcmp(pstSCB->stAccessCode.szDialCache, astSCAccessList[SC_ACCESS_HANGUP_CUSTOMER2].szCodeFormat) == 0)
             {
@@ -6599,17 +6608,15 @@ U32 sc_access_code_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_ACTIVE;
                 astSCAccessList[SC_ACCESS_HANGUP_CUSTOMER1].fn_init(pstSCB, pstLCB);
                 /* 清空缓存 */
-                pstSCB->stAccessCode.szDialCache[0] = '\0';
+                pstLCB->stCall.stNumInfo.szDial[0] = '\0';
             }
             else if (pstDTMF->cDTMFVal == '#' && dos_strlen(pstSCB->stAccessCode.szDialCache) > 1)
             {
                 /* # 为结束符，收到后，就应该去解析, 特别的，如果第一个字符为#,不需要去解析 */
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Secondary dialing. caller : %s, DialNum : %s", pstLCB->stCall.stNumInfo.szRealCalling, pstSCB->stAccessCode.szDialCache);
                 /* 不保存最后一个 # */
                 pstSCB->stAccessCode.szDialCache[dos_strlen(pstSCB->stAccessCode.szDialCache) - 1] = '\0';
                 ulRet = sc_call_access_code(pstSCB, pstLCB, pstSCB->stAccessCode.szDialCache, DOS_TRUE);
                 /* 清空缓存 */
-                pstSCB->stAccessCode.szDialCache[0] = '\0';
                 pstLCB->stCall.stNumInfo.szDial[0] = '\0';
             }
             else if (pstDTMF->cDTMFVal == '*' && dos_strlen(pstSCB->stAccessCode.szDialCache) > 1)
@@ -6619,13 +6626,10 @@ U32 sc_access_code_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     && dos_strcmp(pstSCB->stAccessCode.szDialCache, astSCAccessList[SC_ACCESS_BLIND_TRANSFER].szCodeFormat)
                     && dos_strcmp(pstSCB->stAccessCode.szDialCache, astSCAccessList[SC_ACCESS_ATTENDED_TRANSFER].szCodeFormat))
                 {
-                    /* 解析 */
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Secondary dialing. caller : %s, DialNum : %s", pstLCB->stCall.stNumInfo.szRealCalling, pstSCB->stAccessCode.szDialCache);
                     /* 不保存最后一个 * */
                     pstSCB->stAccessCode.szDialCache[dos_strlen(pstSCB->stAccessCode.szDialCache) - 1] = '\0';
                     ulRet = sc_call_access_code(pstSCB, pstLCB, pstSCB->stAccessCode.szDialCache, DOS_TRUE);
                     /* 清空缓存 */
-                    pstSCB->stAccessCode.szDialCache[0] = '\0';
                     pstLCB->stCall.stNumInfo.szDial[0] = '\0';
                 }
             }
@@ -7274,30 +7278,26 @@ U32 sc_transfer_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    /* 开启 接入码 业务 */
-    if (!pstSCB->stAccessCode.stSCBTag.bValid)
+    /* 开启接入码业务 */
+    if (pstDTMF->cDTMFVal != '*'
+        && pstDTMF->cDTMFVal != '#' )
     {
-        /* 开启接入码业务 */
-        if (pstDTMF->cDTMFVal != '*'
-            && pstDTMF->cDTMFVal != '#' )
-        {
-            /* 第一个字符不是 '*' 或者 '#' 不保存  */
-            return DOS_SUCC;
-        }
-
-        /* 只有坐席对应的leg执行接入码业务 */
-        if (pstSCB->stTransfer.stSCBTag.usStatus != SC_TRANSFER_FINISHED)
-        {
-            return DOS_SUCC;
-        }
-
-        pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
-        pstSCB->stAccessCode.szDialCache[0] = '\0';
-        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
-        pstSCB->stAccessCode.ulAgentID = pstSCB->stPreviewCall.ulAgentID;
-        pstSCB->ulCurrentSrv++;
-        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+        /* 第一个字符不是 '*' 或者 '#' 不保存  */
+        return DOS_SUCC;
     }
+
+    /* 只有坐席对应的leg执行接入码业务 */
+    if (pstSCB->stTransfer.stSCBTag.usStatus != SC_TRANSFER_FINISHED)
+    {
+        return DOS_SUCC;
+    }
+
+    pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+    pstSCB->stAccessCode.szDialCache[0] = '\0';
+    pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+    pstSCB->stAccessCode.ulAgentID = pstSCB->stPreviewCall.ulAgentID;
+    pstSCB->ulCurrentSrv++;
+    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
 
     return DOS_SUCC;
 }
@@ -8231,32 +8231,31 @@ U32 sc_demo_task_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_demo_task_callback(pstSCB, pstAgentNode);
             }
             break;
+
          case SC_AUTO_CALL_CONNECTED:
-            /* 开启 接入码 业务 */
-            if (!pstSCB->stAccessCode.stSCBTag.bValid)
+            /* 开启接入码业务 */
+            if (pstDTMF->cDTMFVal != '*'
+                && pstDTMF->cDTMFVal != '#' )
             {
-                /* 开启接入码业务 */
-                if (pstDTMF->cDTMFVal != '*'
-                    && pstDTMF->cDTMFVal != '#' )
-                {
-                    /* 第一个字符不是 '*' 或者 '#' 不保存  */
-                    return DOS_SUCC;
-                }
-
-                /* 只有坐席对应的leg执行接入码业务 */
-                if (pstDTMF->ulLegNo != pstSCB->stDemoTask.ulCalleeLegNo)
-                {
-                    return DOS_SUCC;
-                }
-
-                pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
-                pstSCB->stAccessCode.szDialCache[0] = '\0';
-                pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
-                pstSCB->stAccessCode.ulAgentID = pstSCB->stDemoTask.ulAgentID;
-                pstSCB->ulCurrentSrv++;
-                pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+                /* 第一个字符不是 '*' 或者 '#' 不保存  */
+                return DOS_SUCC;
             }
+
+            /* 只有坐席对应的leg执行接入码业务 */
+            if (pstDTMF->ulLegNo != pstSCB->stDemoTask.ulCalleeLegNo)
+            {
+                return DOS_SUCC;
+            }
+
+            pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+            pstSCB->stAccessCode.szDialCache[0] = '\0';
+            pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+            pstSCB->stAccessCode.ulAgentID = pstSCB->stDemoTask.ulAgentID;
+            pstSCB->ulCurrentSrv++;
+            pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+
             break;
+
          default:
             break;
     }
@@ -9761,40 +9760,36 @@ U32 sc_call_agent_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    /* 开启 接入码 业务 */
-    if (!pstSCB->stAccessCode.stSCBTag.bValid)
+    /* 开启接入码业务 */
+    if (pstDTMF->cDTMFVal != '*'
+        && pstDTMF->cDTMFVal != '#' )
     {
-        /* 开启接入码业务 */
-        if (pstDTMF->cDTMFVal != '*'
-            && pstDTMF->cDTMFVal != '#' )
-        {
-            /* 第一个字符不是 '*' 或者 '#' 不保存  */
-            return DOS_SUCC;
-        }
-
-        pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
-        pstSCB->stAccessCode.szDialCache[0] = '\0';
-        pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
-        if (pstDTMF->ulLegNo == pstSCB->stCallAgent.ulCallingLegNo)
-        {
-            if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling)
-                && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo))
-            {
-                pstSCB->stAccessCode.ulAgentID = pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo->ulAgentID;
-            }
-        }
-        else
-        {
-            if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee)
-                && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo))
-            {
-                pstSCB->stAccessCode.ulAgentID = pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo->ulAgentID;
-            }
-        }
-
-        pstSCB->ulCurrentSrv++;
-        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
+        /* 第一个字符不是 '*' 或者 '#' 不保存  */
+        return DOS_SUCC;
     }
+
+    pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
+    pstSCB->stAccessCode.szDialCache[0] = '\0';
+    pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
+    if (pstDTMF->ulLegNo == pstSCB->stCallAgent.ulCallingLegNo)
+    {
+        if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling)
+            && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo))
+        {
+            pstSCB->stAccessCode.ulAgentID = pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo->ulAgentID;
+        }
+    }
+    else
+    {
+        if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee)
+            && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo))
+        {
+            pstSCB->stAccessCode.ulAgentID = pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo->ulAgentID;
+        }
+    }
+
+    pstSCB->ulCurrentSrv++;
+    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
 
     return DOS_SUCC;
 }

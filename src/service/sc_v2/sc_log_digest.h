@@ -8,7 +8,7 @@ extern "C"{
 
 #define SC_LOG_DIGEST_LEN               512
 #define SC_LOG_DIGEST_FILE_MAX_SIZE     10485760    /* 10M */
-#define SC_LOG_DIGEST_PATH              "/var/ipcc/digest/log"
+#define SC_LOG_DIGEST_PATH              "/dev/shm/log"
 
 U32 sc_log_digest_init();
 U32 sc_log_digest_stop();
