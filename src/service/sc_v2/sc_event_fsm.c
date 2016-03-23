@@ -411,6 +411,41 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
             pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stAutoCall.ulAgentID;
         }
     }
+    else if (pstSCB->stCallAgent.stSCBTag.bValid)
+    {
+        if (pstLegCB->ulCBNo == pstSCB->stCallAgent.ulCallingLegNo)
+        {
+            pstSCB->stTransfer.ulSubLegNo = pstSCB->stCallAgent.ulCalleeLegNo;
+
+            if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling)
+                && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo))
+            {
+                pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo->ulAgentID;
+            }
+
+            if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee)
+                && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo))
+            {
+                pstSCB->stTransfer.ulSubAgentID = pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo->ulAgentID;
+            }
+        }
+        else
+        {
+            pstSCB->stTransfer.ulSubLegNo = pstSCB->stCallAgent.ulCallingLegNo;
+
+            if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling)
+                && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo))
+            {
+                pstSCB->stTransfer.ulSubAgentID = pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo->ulAgentID;
+            }
+
+            if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee)
+                && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo))
+            {
+                pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo->ulAgentID;
+            }
+        }
+    }
     else if (stTransfer.stSCBTag.bValid)
     {
         /* 之前存在的是转接业务 */
