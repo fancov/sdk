@@ -1179,6 +1179,25 @@ VOID sc_scb_call_agent_init(SC_SRV_CALL_AGENT_ST *pstCallAgent)
     pstCallAgent->szCalleeNum[0] = '\0';
 }
 
+VOID sc_scb_auto_preview_init(SC_AUTO_PREVIEW_ST *pstPreviewCall)
+{
+    if (DOS_ADDR_INVALID(pstPreviewCall))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstPreviewCall->stSCBTag.bTrace = DOS_FALSE;
+    pstPreviewCall->stSCBTag.bValid = DOS_FALSE;
+    pstPreviewCall->stSCBTag.usSrvType = SC_SRV_AUTO_PREVIEW;
+    pstPreviewCall->stSCBTag.usStatus = SC_AUTO_PREVIEW_IDEL;
+    pstPreviewCall->ulCallingLegNo = U32_BUTT;
+    pstPreviewCall->ulCalleeLegNo = U32_BUTT;
+    pstPreviewCall->ulAgentID = 0;
+    pstPreviewCall->ulTaskID = 0;
+    pstPreviewCall->ulTcbID = U32_BUTT;
+}
+
 /**
  * 初始化也控制块
  *
@@ -1228,6 +1247,7 @@ VOID sc_scb_init(SC_SRV_CB *pstSCB)
     sc_scb_sigin_init(&pstSCB->stSigin);
     sc_scb_demo_task_init(&pstSCB->stDemoTask);
     sc_scb_call_agent_init(&pstSCB->stCallAgent);
+    sc_scb_auto_preview_init(&pstSCB->stAutoPreview);
 }
 
 /**
@@ -2075,6 +2095,19 @@ U32 sc_send_cmd_record(SC_MSG_TAG_ST *pstMsg)
     else if (pstSCB->stTransfer.stSCBTag.bValid)
     {
         pstAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulNotifyAgentID);
+        if (DOS_ADDR_VALID(pstAgentNode)
+            && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+        {
+            dos_strcpy(szEmpNo, pstAgentNode->pstAgentInfo->szEmpNo);
+        }
+        else
+        {
+            szEmpNo[0] = '\0';
+        }
+    }
+    else if (pstSCB->stAutoPreview.stSCBTag.bValid)
+    {
+        pstAgentNode = sc_agent_get_by_id(pstSCB->stAutoPreview.ulAgentID);
         if (DOS_ADDR_VALID(pstAgentNode)
             && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
         {

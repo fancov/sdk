@@ -1612,6 +1612,15 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
             dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stSigin.pstAgentNode->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
         }
     }
+    else if (pstSCB->stAutoPreview.stSCBTag.bValid)
+    {
+        pstAgentNode = sc_agent_get_by_id(pstSCB->stAutoPreview.ulAgentID);
+        if (DOS_ADDR_VALID(pstAgentNode)
+            && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+        {
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstAgentNode->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+        }
+    }
 
     pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum[sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum) - 1] = '\0';
 
@@ -1935,6 +1944,15 @@ U32 sc_send_special_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg, U32 ul
     else if (pstSCB->stDemoTask.stSCBTag.bValid)
     {
         pstAgentNode = sc_agent_get_by_id(pstSCB->stDemoTask.ulAgentID);
+        if (DOS_ADDR_VALID(pstAgentNode)
+            && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+        {
+            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstAgentNode->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+        }
+    }
+    else if (pstSCB->stAutoPreview.stSCBTag.bValid)
+    {
+        pstAgentNode = sc_agent_get_by_id(pstSCB->stAutoPreview.ulAgentID);
         if (DOS_ADDR_VALID(pstAgentNode)
             && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
         {

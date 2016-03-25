@@ -375,6 +375,7 @@ typedef enum tagTaskMode{
     SC_TASK_MODE_DIRECT4AGETN,                    /* 呼叫任务模式，接通后直接转坐席 */
     SC_TASK_MODE_AUDIO_ONLY,                      /* 呼叫任务模式，放音后结束 */
     SC_TASK_MODE_AGENT_AFTER_AUDIO,               /* 呼叫任务模式，放音后转坐席 */
+    SC_TASK_MODE_CALL_AGNET_FIRST,                /* 呼叫任务模式，先呼叫坐席，再呼叫客户 */
 
     SC_TASK_MODE_BUTT
 }SC_TASK_MODE_EN;
@@ -502,6 +503,7 @@ typedef enum tagSCSrvType{
     SC_SRV_AGENT_SIGIN          = 11,  /**< 坐席长签业务 这是个独立业务 */
     SC_SRV_DEMO_TASK            = 12,  /**< 群呼任务demo */
     SC_SRV_CALL_AGENT           = 13,  /**< 通过web，呼叫同组坐席 */
+    SC_SRV_AUTO_PREVIEW         = 14,  /**< 预览外呼群呼任务 */
 
     SC_SRV_BUTT,
 }SC_SRV_TYPE_EN;
@@ -1061,6 +1063,7 @@ typedef struct tagSCPreviewCall{
 
     /** 坐席ID */
     U32               ulAgentID;
+
 }SC_PREVIEW_CALL_ST;
 
 /** 自动外呼业务 */
@@ -1461,6 +1464,44 @@ typedef struct tagSCSrvCallAgent{
 
 }SC_SRV_CALL_AGENT_ST;
 
+
+typedef enum tagSCAutoPreviewStatus{
+    SC_AUTO_PREVIEW_IDEL,       /**< 状态初始化 */
+    SC_AUTO_PREVIEW_AUTH,       /**< 业务认证 */
+    SC_AUTO_PREVIEW_QUEUE,      /**< 进入呼叫队列 */
+    SC_AUTO_PREVIEW_AUTH2,      /**< 呼叫坐席认证 */
+    SC_AUTO_PREVIEW_EXEC,       /**< 状态初始化 */
+    SC_AUTO_PREVIEW_PORC,       /**< 发起到坐席的呼叫 */
+    SC_AUTO_PREVIEW_ALERTING,   /**< 坐席在振铃了 */
+    SC_AUTO_PREVIEW_ACTIVE,     /**< 坐席接通 */
+    SC_AUTO_PREVIEW_CONNECTING, /**< 呼叫客户 */
+    SC_AUTO_PREVIEW_ALERTING2,  /**< 客户开始振铃了 */
+    SC_AUTO_PREVIEW_CONNECTED,  /**< 呼叫接通了 */
+    SC_AUTO_PREVIEW_PROCESS,    /**< 通话结束之后，如果有客户标记，就开始标记，没有直接到释放 */
+    SC_AUTO_PREVIEW_RELEASE
+}SC_AUTO_PREVIEW_STATE_EN;
+
+typedef struct tagSCAutoPreview{
+    /** 基本信息 */
+    SC_SCB_TAG_ST     stSCBTag;
+
+    /** 呼叫坐席的LEG */
+    U32               ulCallingLegNo;
+
+    /** 呼叫客户的LEG */
+    U32               ulCalleeLegNo;
+
+    /** 坐席ID */
+    U32               ulAgentID;
+
+    /** 群呼任务ID */
+    U32               ulTaskID;
+
+    /** 群呼任务控制块ID */
+    U32               ulTcbID;
+
+}SC_AUTO_PREVIEW_ST;
+
 typedef struct tagSCBalanceWarning{
     SC_SCB_TAG_ST     stSCBTag;
 }SC_BALANCE_WARNING_ST;
@@ -1527,6 +1568,8 @@ typedef struct tagSCSrvCB{
     SC_AUTO_CALL_ST      stDemoTask;
     /* 坐席同坐web呼叫另一个坐席 */
     SC_SRV_CALL_AGENT_ST stCallAgent;
+    /* 预览外呼群呼任务 */
+    SC_AUTO_PREVIEW_ST   stAutoPreview;
     /** 余额告警业务是否启用 */
     SC_BALANCE_WARNING_ST stBalanceWarning;
 
@@ -2139,6 +2182,7 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType);
 U32 sc_agent_http_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID);
 U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult);
 U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
+U32 sc_agent_auto_preview_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
 U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode);
 U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAgentID, U32 *pulErrCode);
 U32 sc_agent_call_notify(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller);
@@ -2268,6 +2312,18 @@ U32 sc_call_agent_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_agent_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_agent_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
+U32 sc_auto_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_preview_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_preview_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_preview_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_preview_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
 U32 sc_agent_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCallerNum);
 
 SC_TASK_CB *sc_tcb_alloc();
@@ -2323,6 +2379,7 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
 U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 ulTiming, U32 ulNumSelect, U32 ulDirection);
 
 U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode);
+U32 sc_preview_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode);
 
 #endif  /* end of __SC_DEF_V2_H__ */
 

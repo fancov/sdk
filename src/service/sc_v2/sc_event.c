@@ -1206,6 +1206,108 @@ U32 sc_srv_call_agent_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_
 
 
 /**
+ * 基本呼叫业务状态机处理
+ *
+ * @param SC_MSG_HEAD_ST *pstMsg 当前事件
+ * @param SC_SRV_CB *pstSCB      当前业务控制块
+ * @param SC_SRV_INFO_ST *pstSubServ 基本呼叫业务控制块
+ *
+ * return 成功返回DOS_SUCC，否则返回DOS_FALSE
+ */
+U32 sc_srv_auto_preview_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
+{
+    U32 ulRet = DOS_SUCC;
+
+    if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in auto Preview Service, SCB:%u"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+    switch (pstMsg->ulMsgType)
+    {
+        case SC_EVT_AUTH_RESULT:
+            ulRet = sc_auto_preview_auth_rsp(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_SETUP:
+            ulRet = sc_auto_preview_setup(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_AMSWERED:
+            ulRet = sc_auto_preview_answer(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_RINGING:
+            ulRet = sc_auto_preview_ringing(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_BRIDGE_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_BRIDGE_STOP:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_HOLD:
+            ulRet = sc_auto_preview_hold(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_RERLEASE:
+            ulRet = sc_auto_preview_release(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_CALL_STATUS:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_DTMF:
+            ulRet = sc_auto_preview_dtmf(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_RECORD_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_RECORD_END:
+            ulRet = sc_auto_preview_record_stop(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_PLAYBACK_START:
+            /* 暂时不处理 */
+            break;
+
+        case SC_EVT_PLAYBACK_END:
+            ulRet = sc_auto_preview_playback_stop(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_LEACE_CALL_QUEUE:
+            ulRet = sc_auto_preview_queue_leave(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_ERROR_PORT:
+            ulRet = sc_auto_preview_error(pstMsg, pstSCB);
+            break;
+
+        default:
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Invalid event type. %u", pstMsg->ulMsgType);
+            break;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Auto Preview Service, SCB:%u, Ret: %s"
+                , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+
+    return ulRet;
+}
+
+
+/**
  * 处理业务子层发过来的事件，根据事件中指示的业务类型执行不同业务类型的状态机, 如果有多个业务，需要执行业务栈来处理
  *
  * @param SC_MSG_HEAD_ST *pstMsg 时间消息头
@@ -1355,6 +1457,10 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
 
             case SC_SRV_CALL_AGENT:
                 ulRet = sc_srv_call_agent_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                break;
+
+            case SC_SRV_AUTO_PREVIEW:
+                ulRet = sc_srv_auto_preview_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
 
             default:

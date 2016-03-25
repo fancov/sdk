@@ -482,6 +482,22 @@ const S8* sc_translate_server_cb(SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstServerAddr
     {
         return "Mark Customer";
     }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stSigin)
+    {
+        return "Sigin";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stDemoTask)
+    {
+        return "Demo Task";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stCallAgent)
+    {
+        return "Call Agent";
+    }
+    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stAutoPreview)
+    {
+        return "Auto Preview";
+    }
 
     return "Error";
 }
@@ -5084,6 +5100,7 @@ BOOL sc_trace_check_by_scb(SC_SRV_CB *pstSCB)
             ulLegNo = pstSCB->stCall.ulCallingLegNo;
             break;
         case SC_SRV_PREVIEW_CALL:
+        case SC_SRV_AUTO_PREVIEW:
             ulLegNo = pstSCB->stPreviewCall.ulCallingLegNo;
             break;
         case SC_SRV_AUTO_CALL:

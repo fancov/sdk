@@ -842,6 +842,187 @@ process_fail:
     return DOS_FAIL;
 }
 
+U32 sc_agent_auto_preview_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
+{
+    SC_LEG_CB       *pstCallingLegCB            = NULL;
+    SC_LEG_CB       *pstCalleeLegCB             = NULL;
+    U32             ulErrCode                   = CC_ERR_NO_REASON;
+    S8              szCallee[SC_NUM_LENGTH]     = {0,};
+
+    if (DOS_ADDR_INVALID(pstSCB)
+        || DOS_ADDR_INVALID(pstAgentNode))
+    {
+        return DOS_FAIL;
+    }
+
+    pstCalleeLegCB = sc_lcb_get(pstSCB->stAutoPreview.ulCalleeLegNo);
+    if (DOS_ADDR_INVALID(pstCalleeLegCB))
+    {
+        return DOS_FAIL;
+    }
+
+    /* 判断修改坐席的状态 */
+    pstSCB->stAutoPreview.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
+    pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
+
+    dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee);
+
+    /* 坐席弹屏 */
+    sc_agent_call_notify(pstAgentNode->pstAgentInfo, pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee);
+
+    /* 是否需要录音 */
+    if (pstAgentNode->pstAgentInfo->bRecord)
+    {
+        pstCalleeLegCB->stRecord.bValid = DOS_TRUE;
+        sc_scb_set_service(pstSCB, BS_SERV_RECORDING);
+    }
+
+    /* 判断坐席是否长签 */
+    if (pstAgentNode->pstAgentInfo->bConnected)
+    {
+        pstCallingLegCB = sc_lcb_get(pstAgentNode->pstAgentInfo->ulLegNo);
+        if (DOS_ADDR_VALID(pstCallingLegCB)
+            && pstCallingLegCB->ulIndSCBNo != U32_BUTT)
+        {
+            pstSCB->stAutoPreview.ulCallingLegNo = pstAgentNode->pstAgentInfo->ulLegNo;
+            pstCallingLegCB->ulSCBNo = pstSCB->ulSCBNo;
+
+            /* 呼叫客户 */
+            if (sc_make_call2pstn(pstSCB, pstCalleeLegCB) != DOS_SUCC)
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Make call to pstn fail.");
+                pstCallingLegCB->ulSCBNo = U32_BUTT;
+                pstCallingLegCB = NULL;
+
+                goto process_fail;
+            }
+
+            /* 放回铃音给坐席 */
+            sc_req_playback_stop(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo);
+            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, DOS_TRUE);
+            sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGBACK, SC_SRV_AUTO_PREVIEW);
+            pstSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_ACTIVE;
+
+            return DOS_SUCC;
+        }
+    }
+
+    /* 申请一个新的leg，发起呼叫 */
+    pstCallingLegCB = sc_lcb_alloc();
+    if (DOS_ADDR_INVALID(pstCallingLegCB))
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc SCB fail.");
+        ulErrCode = CC_ERR_SC_SYSTEM_BUSY;
+
+        goto process_fail;
+    }
+
+    pstCallingLegCB->stCall.bValid = DOS_TRUE;
+    pstCallingLegCB->stCall.ucStatus = SC_LEG_INIT;
+    //pstCalleeLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+    pstCallingLegCB->ulSCBNo = pstSCB->ulSCBNo;
+
+    pstSCB->stAutoPreview.ulCallingLegNo = pstCallingLegCB->ulCBNo;
+
+    switch (pstAgentNode->pstAgentInfo->ucBindType)
+    {
+        case AGENT_BIND_SIP:
+            dos_snprintf(szCallee, sizeof(szCallee), pstAgentNode->pstAgentInfo->szUserID);
+            pstCallingLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+            break;
+
+        case AGENT_BIND_TELE:
+            dos_snprintf(szCallee, sizeof(szCallee), pstAgentNode->pstAgentInfo->szTelePhone);
+            pstCallingLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+            if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
+                ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
+                goto process_fail;
+            }
+            break;
+
+        case AGENT_BIND_MOBILE:
+            dos_snprintf(szCallee, sizeof(szCallee), pstAgentNode->pstAgentInfo->szMobile);
+            pstCallingLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+            if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
+                ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
+                goto process_fail;
+            }
+            break;
+
+        case AGENT_BIND_TT_NUMBER:
+            dos_snprintf(szCallee, sizeof(szCallee), pstAgentNode->pstAgentInfo->szTTNumber);
+            pstCallingLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
+            break;
+
+        default:
+            break;
+    }
+
+    /* 新LEG处理一下号码 */
+    dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstCallingLegCB->stCall.stNumInfo.szOriginalCallee), szCallee);
+    dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstCallingLegCB->stCall.stNumInfo.szOriginalCalling), pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling);
+
+    dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCallee), szCallee);
+    dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstCallingLegCB->stCall.stNumInfo.szRealCalling), pstCallingLegCB->stCall.stNumInfo.szRealCallee);
+
+    dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szCallee, sizeof(pstCallingLegCB->stCall.stNumInfo.szCallee), szCallee);
+    dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szCalling, sizeof(pstCallingLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCallee);
+
+    if (pstCallingLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
+    {
+        /* 这里需要去认证 */
+        if (sc_send_usr_auth2bs(pstSCB, pstCallingLegCB) != DOS_SUCC)
+        {
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send auth fail.");
+
+            goto process_fail;
+        }
+        pstSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_AUTH2;
+
+        return DOS_SUCC;
+    }
+
+    if (pstCallingLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND_TT)
+    {
+        sc_make_call2eix(pstSCB, pstCallingLegCB);
+    }
+    else
+    {
+        sc_make_call2sip(pstSCB, pstCallingLegCB);
+    }
+
+    /* 放回铃音给客户 */
+    //sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo);
+    //sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, DOS_TRUE);
+
+    sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING, SC_SRV_AUTO_PREVIEW);
+
+    pstSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_EXEC;
+
+    return DOS_SUCC;
+
+process_fail:
+    /* 生成呼叫结果 */
+    sc_preview_task_call_result(pstSCB, pstSCB->stAutoPreview.ulCalleeLegNo, CC_ERR_SC_SYSTEM_ABNORMAL);
+    /* 释放资源 */
+    sc_scb_free(pstSCB);
+    if (DOS_ADDR_VALID(pstCallingLegCB))
+    {
+        sc_lcb_free(pstCallingLegCB);
+    }
+
+    if (DOS_ADDR_VALID(pstCalleeLegCB))
+    {
+        sc_lcb_free(pstCalleeLegCB);
+    }
+
+    return DOS_FAIL;
+}
+
 U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
 {
     SC_LEG_CB *pstCallingLegCB = NULL;

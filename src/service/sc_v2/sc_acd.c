@@ -1253,10 +1253,10 @@ SC_AGENT_NODE_ST * sc_agent_select_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListN
 
         pstAgentNodeRet = pstAgentQueueNode;
         pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Found an uaeable agent.(Agent %u in Group %u)"
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Found an useable agent.(Agent %u in Group %u)"
                         , pstAgentInfo->ulAgentID
                         , pstGroupListNode->ulGroupID);
-         break;
+        break;
     }
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
@@ -2411,7 +2411,8 @@ U32 sc_agent_serv_status_update(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulServS
         case SC_ACD_SERV_RINGING:
             ulRet = sc_agent_set_ringing(pstAgentQueueInfo);
 
-            if (ulServType == SC_SRV_PREVIEW_CALL)
+            if (ulServType == SC_SRV_PREVIEW_CALL
+                || ulServType == SC_SRV_AUTO_PREVIEW)
             {
                 break;
             }

@@ -176,6 +176,245 @@ U16 sc_task_transform_errcode_from_sc2sip(U32 ulErrcode)
     return usErrcodeSC;
 }
 
+U32 sc_preview_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
+{
+    SC_DB_MSG_CALL_RESULT_ST *pstCallResult     = NULL;
+    SC_LEG_CB                *pstCallingLegCB   = NULL;
+    SC_LEG_CB                *pstCalleeLegCB    = NULL;
+    SC_LEG_CB                *pstHungupLegCB    = NULL;
+    SC_AGENT_NODE_ST         *pstAgentCall      = NULL;
+    SC_TASK_CB               *pstTCB            = NULL;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstHungupLegCB = sc_lcb_get(ulLegNo);
+    if (DOS_ADDR_INVALID(pstHungupLegCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    if (0 == pstSCB->stAutoPreview.ulTaskID || U32_BUTT == pstSCB->stAutoPreview.ulTaskID)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstTCB = sc_tcb_find_by_taskid(pstSCB->stAutoPreview.ulTaskID);
+    if (DOS_ADDR_INVALID(pstTCB))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstCalleeLegCB = sc_lcb_get(pstSCB->stAutoPreview.ulCalleeLegNo);
+    if (DOS_ADDR_INVALID(pstCalleeLegCB))
+    {
+        return DOS_FAIL;
+    }
+
+    pstCallResult = dos_dmem_alloc(sizeof(SC_DB_MSG_CALL_RESULT_ST));
+    if (DOS_ADDR_INVALID(pstCallResult))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Analysis call result for task: %u, SIP Code:%u", pstSCB->stAutoCall.ulTaskID, ulSIPRspCode);
+
+    if (ulSIPRspCode >= CC_ERR_SC_SERV_NOT_EXIST)
+    {
+         ulSIPRspCode = sc_task_transform_errcode_from_sc2sip(ulSIPRspCode);
+    }
+
+    dos_memzero(pstCallResult, sizeof(SC_DB_MSG_CALL_RESULT_ST));
+    pstCallResult->ulCustomerID = pstSCB->ulCustomerID; /* 客户ID,要求全数字,不超过10位,最高位小于4 */
+
+    /* 坐席ID,要求全数字,不超过10位,最高位小于4 */
+    if (U32_BUTT != pstSCB->stAutoPreview.ulAgentID)
+    {
+        pstCallResult->ulAgentID = pstSCB->stAutoPreview.ulAgentID;
+    }
+    else
+    {
+        pstCallResult->ulAgentID = 0;
+    }
+    pstCallResult->ulTaskID = pstSCB->stAutoPreview.ulTaskID;       /* 任务ID,要求全数字,不超过10位,最高位小于4 */
+
+    if (pstCalleeLegCB->ulCBNo != ulLegNo)
+    {
+        pstCalleeLegCB->stCall.stTimeInfo.ulByeTime = pstHungupLegCB->stCall.stTimeInfo.ulByeTime;
+    }
+
+    /* 坐席号码(工号) */
+    pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoPreview.ulAgentID);
+
+    if (DOS_ADDR_VALID(pstAgentCall)
+        && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+    {
+        dos_snprintf(pstCallResult->szAgentNum, sizeof(pstCallResult->szAgentNum), "%s", pstAgentCall->pstAgentInfo->szEmpNo);
+    }
+
+    /* 主叫号码 */
+    if ('\0' != pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling[0])
+    {
+        dos_snprintf(pstCallResult->szCaller, sizeof(pstCallResult->szCaller), "%s", pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling);
+    }
+
+    /* 被叫号码 */
+    if ('\0' != pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee[0])
+    {
+        dos_snprintf(pstCallResult->szCallee, sizeof(pstCallResult->szCallee), "%s", pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee);
+    }
+
+    /* 接续时长:从发起呼叫到收到振铃 */
+    if (0 == pstCalleeLegCB->stCall.stTimeInfo.ulRingTime || 0 == pstCalleeLegCB->stCall.stTimeInfo.ulStartTime)
+    {
+        pstCallResult->ulPDDLen = 0;
+    }
+    else
+    {
+        pstCallResult->ulPDDLen = pstCalleeLegCB->stCall.stTimeInfo.ulRingTime - pstCalleeLegCB->stCall.stTimeInfo.ulStartTime;
+    }
+    pstCallResult->ulStartTime = pstCalleeLegCB->stCall.stTimeInfo.ulStartTime;
+    pstCallResult->ulRingTime = pstCalleeLegCB->stCall.stTimeInfo.ulRingTime;                  /* 振铃时长,单位:秒 */
+    pstCallResult->ulAnswerTimeStamp = pstCalleeLegCB->stCall.stTimeInfo.ulAnswerTime;         /* 应答时间戳 */
+    pstCallResult->ulFirstDTMFTime = pstCalleeLegCB->stCall.stTimeInfo.ulDTMFStartTime;        /* 第一个二次拨号时间,单位:秒 */
+    pstCallResult->ulIVRFinishTime = pstCalleeLegCB->stCall.stTimeInfo.ulIVREndTime;           /* IVR放音完成时间,单位:秒 */
+
+    /* 呼叫时长,单位:秒 */
+    if (0 == pstCalleeLegCB->stCall.stTimeInfo.ulByeTime || 0 == pstCalleeLegCB->stCall.stTimeInfo.ulAnswerTime)
+    {
+        pstCallResult->ulTimeLen = 0;
+    }
+    else
+    {
+        pstCallResult->ulTimeLen = pstCalleeLegCB->stCall.stTimeInfo.ulByeTime - pstCalleeLegCB->stCall.stTimeInfo.ulAnswerTime;
+    }
+
+    if (pstSCB->stIncomingQueue.ulEnqueuTime != 0)
+    {
+        if (pstSCB->stIncomingQueue.ulDequeuTime != 0)
+        {
+            pstCallResult->ulWaitAgentTime = pstSCB->stIncomingQueue.ulDequeuTime - pstSCB->stIncomingQueue.ulEnqueuTime;
+        }
+        else
+        {
+            pstCallResult->ulWaitAgentTime = time(NULL) - pstSCB->stIncomingQueue.ulEnqueuTime;
+        }
+    }
+
+    pstCallResult->ulHoldCnt = pstSCB->stHold.ulHoldCount;                  /* 保持次数 */
+    //pstCallResult->ulHoldTimeLen = pstSCB->usHoldTotalTime;              /* 保持总时长,单位:秒 */
+    //pstCallResult->usTerminateCause = pstSCB->usTerminationCause;           /* 终止原因 */
+    if (ulLegNo == pstSCB->stAutoPreview.ulCallingLegNo)
+    {
+        pstCallResult->ucReleasePart = SC_CALLING;
+    }
+    else
+    {
+        pstCallResult->ucReleasePart = SC_CALLEE;
+    }
+
+    pstCallingLegCB = sc_lcb_get(pstSCB->stAutoPreview.ulCallingLegNo);
+
+    pstCallResult->ulResult = CC_RST_BUTT;
+
+    if (CC_ERR_SIP_SUCC == ulSIPRspCode
+        || CC_ERR_NORMAL_CLEAR == ulSIPRspCode)
+    {
+        /* 坐席全忙 */
+        if (pstSCB->stIncomingQueue.ulEnqueuTime != 0
+            && pstSCB->stIncomingQueue.ulDequeuTime == 0)
+        {
+            pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime ? pstCallResult->ulStartTime : time(NULL);
+            pstCallResult->ulResult = CC_RST_AGNET_BUSY;
+            goto proc_finished;
+        }
+
+        if (pstCallResult->ulAnswerTimeStamp == 0)
+        {
+            /* 未接听 */
+            pstCallResult->ulAnswerTimeStamp = pstCallResult->ulRingTime;
+            pstCallResult->ulResult = CC_RST_NO_ANSWER;
+            goto proc_finished;
+        }
+
+        if (SC_CALLEE == pstCallResult->ucReleasePart)
+        {
+            pstCallResult->ulResult = CC_RST_CUSTOMER_HANGUP;
+        }
+        else
+        {
+            pstCallResult->ulResult = CC_RST_AGENT_HANGUP;
+        }
+    }
+    else
+    {
+        switch (ulSIPRspCode)
+        {
+            case CC_ERR_SIP_NOT_FOUND:
+                pstCallResult->ulResult = CC_RST_NOT_FOUND;
+                break;
+
+            case CC_ERR_SIP_TEMPORARILY_UNAVAILABLE:
+                pstCallResult->ulAnswerTimeStamp = pstCallResult->ulRingTime;
+                pstCallResult->ulResult = CC_RST_REJECTED;
+                break;
+
+            case CC_ERR_SIP_BUSY_HERE:
+                pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime;
+                pstCallResult->ulResult = CC_RST_BUSY;
+                break;
+
+            case CC_ERR_SIP_REQUEST_TIMEOUT:
+            case CC_ERR_SIP_REQUEST_TERMINATED:
+                if (DOS_ADDR_INVALID(pstCalleeLegCB))
+                {
+                    pstCallResult->ulResult = CC_RST_NO_ANSWER;
+                }
+                else
+                {
+                    pstCallResult->ulResult = CC_RST_AGENT_NO_ANSER;
+                }
+                break;
+
+            case CC_ERR_SC_CALLEE_NUMBER_ILLEGAL:
+                pstCallResult->ulResult = CC_RST_CALLING_NUM_INVALID;
+                break;
+
+            default:
+                pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime ? pstCallResult->ulStartTime : time(NULL);
+                pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
+                break;
+        }
+    }
+
+proc_finished:
+
+    if (CC_RST_BUTT == pstCallResult->ulResult)
+    {
+        if (pstCallResult->ulAnswerTimeStamp == 0)
+        {
+            pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime ? pstCallResult->ulStartTime : time(NULL);
+        }
+
+        pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
+    }
+
+    pstCallResult->stMsgTag.ulMsgType = SC_MSG_SAVE_CALL_RESULT;
+    return sc_send_msg2db((SC_DB_MSG_TAG_ST *)pstCallResult);
+}
+
 U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
 {
     SC_DB_MSG_CALL_RESULT_ST *pstCallResult     = NULL;
@@ -231,9 +470,9 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Analysis call result for task: %u, SIP Code:%u", pstSCB->stAutoCall.ulTaskID, ulSIPRspCode);
 
-    if (0 == ulSIPRspCode)
+    if (ulSIPRspCode >= CC_ERR_SC_SERV_NOT_EXIST)
     {
-        //ulSIPRspCode = sc_task_transform_errcode_from_sc2sip(pstSCB->usTerminationCause);
+         ulSIPRspCode = sc_task_transform_errcode_from_sc2sip(ulSIPRspCode);
     }
 
     dos_memzero(pstCallResult, sizeof(SC_DB_MSG_CALL_RESULT_ST));
@@ -257,6 +496,7 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
 
     /* 坐席号码(工号) */
     pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
+
     if (DOS_ADDR_VALID(pstAgentCall)
         && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
     {
@@ -312,9 +552,9 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
         }
     }
 
-    pstCallResult->ulHoldCnt = pstSCB->stHold.ulHoldCount;                  /* 保持次数 */
+    pstCallResult->ulHoldCnt = pstSCB->stHold.ulHoldCount;                 /* 保持次数 */
     //pstCallResult->ulHoldTimeLen = pstSCB->usHoldTotalTime;              /* 保持总时长,单位:秒 */
-    //pstCallResult->usTerminateCause = pstSCB->usTerminationCause;           /* 终止原因 */
+    //pstCallResult->usTerminateCause = pstSCB->usTerminationCause;        /* 终止原因 */
     if (ulLegNo == pstSCB->stAutoCall.ulCallingLegNo)
     {
         pstCallResult->ucReleasePart = SC_CALLING;
@@ -325,6 +565,7 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
     }
 
     pstCalleeLegCB = sc_lcb_get(pstSCB->stAutoCall.ulCalleeLegNo);
+
     pstCallResult->ulResult = CC_RST_BUTT;
 
     if (CC_ERR_SIP_SUCC == ulSIPRspCode
@@ -399,7 +640,6 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
     {
         switch (ulSIPRspCode)
         {
-
             case CC_ERR_SIP_NOT_FOUND:
                 pstCallResult->ulResult = CC_RST_NOT_FOUND;
                 break;
@@ -683,7 +923,6 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
         goto make_call_file;
     }
 
-
     /* 判断是否在黑名单中 */
     if (!sc_black_list_check(pstTCB->ulCustomID, pstCallee->szNumber))
     {
@@ -714,13 +953,27 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
         goto make_call_file;
     }
 
-    pstSCB->stAutoCall.stSCBTag.bValid = DOS_TRUE;
-    pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAutoCall.stSCBTag;
-    pstSCB->stAutoCall.ulCallingLegNo = pstLegCB->ulCBNo;
-    pstSCB->stAutoCall.ulTaskID = pstTCB->ulTaskID;
-    pstSCB->stAutoCall.ulTcbID = pstTCB->usTCBNo;
-    pstSCB->stAutoCall.ulKeyMode = pstTCB->ucMode;
-    pstSCB->ulCustomerID = pstTCB->ulCustomID;
+    if (pstTCB->ucMode == SC_TASK_MODE_CALL_AGNET_FIRST)
+    {
+        /* 先呼叫客户 */
+        pstSCB->stAutoPreview.stSCBTag.bValid = DOS_TRUE;
+        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAutoPreview.stSCBTag;
+        pstSCB->stAutoPreview.ulCalleeLegNo = pstLegCB->ulCBNo;
+        pstSCB->stAutoPreview.ulTaskID = pstTCB->ulTaskID;
+        pstSCB->stAutoPreview.ulTcbID = pstTCB->usTCBNo;
+        pstSCB->ulCustomerID = pstTCB->ulCustomID;
+    }
+    else
+    {
+        pstSCB->stAutoCall.stSCBTag.bValid = DOS_TRUE;
+        pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAutoCall.stSCBTag;
+        pstSCB->stAutoCall.ulCallingLegNo = pstLegCB->ulCBNo;
+        pstSCB->stAutoCall.ulTaskID = pstTCB->ulTaskID;
+        pstSCB->stAutoCall.ulTcbID = pstTCB->usTCBNo;
+        pstSCB->stAutoCall.ulKeyMode = pstTCB->ucMode;
+        pstSCB->ulCustomerID = pstTCB->ulCustomID;
+
+    }
 
     pstLegCB->stCall.bValid = DOS_TRUE;
     pstLegCB->ulSCBNo = pstSCB->ulSCBNo;
@@ -732,7 +985,15 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
     sc_scb_set_service(pstSCB, BS_SERV_AUTO_DIALING);
 
     /* 认证 */
-    pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_AUTH;
+    if (pstTCB->ucMode == SC_TASK_MODE_CALL_AGNET_FIRST)
+    {
+        pstSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_AUTH;
+    }
+    else
+    {
+        pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_AUTH;
+    }
+
     if (sc_send_usr_auth2bs(pstSCB, pstLegCB) != DOS_SUCC)
     {
         goto make_call_file;
