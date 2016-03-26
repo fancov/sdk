@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source /etc/ipcc/cc.backup.conf
+
 #前一天的日期
 yesterday=`date -d "1 days ago" +%Y%m%d`
 today=`date +%Y%m%d`
