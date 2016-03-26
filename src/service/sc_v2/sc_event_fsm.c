@@ -3059,7 +3059,7 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_PREVIEW_CALL_ACTIVE:
         case SC_PREVIEW_CALL_CONNECTING:
         case SC_PREVIEW_CALL_ALERTING2:
-            /* 判断坐席是不是长签 */
+            /* 呼叫客户失败 */
             pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
             if (DOS_ADDR_VALID(pstCallingCB))
             {
@@ -7510,10 +7510,28 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     if (psthungLegCB->ulCBNo == pstSCB->stTransfer.ulPublishLegNo)
                     {
                         pstSCB->stTransfer.ulPublishLegNo = U32_BUTT;
+
+                        pstOtherLegCB = sc_lcb_get(pstSCB->stTransfer.ulSubLegNo);
+                        if (DOS_ADDR_VALID(pstOtherLegCB))
+                        {
+                            pstOtherLegCB->stCall.stTimeInfo.ulByeTime = psthungLegCB->stCall.stTimeInfo.ulByeTime;
+                            /* ulSubLegNo 挂断，生成 ulSubLegNo 对应的话单 */
+                            sc_send_billing_stop2bs(pstSCB, pstOtherLegCB, NULL);
+                        }
+
+                        /* 挂断 ulPublishLegNo */
+                        sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stTransfer.ulSubLegNo);
+                        sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stTransfer.ulSubLegNo, CC_ERR_NORMAL_CLEAR);
                     }
                     else
                     {
                         pstSCB->stTransfer.ulSubLegNo = U32_BUTT;
+
+                        /* ulSubLegNo 挂断，生成 ulSubLegNo 对应的话单 */
+                        sc_send_billing_stop2bs(pstSCB, psthungLegCB, NULL);
+
+                        /* 挂断 ulPublishLegNo */
+                        sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stTransfer.ulPublishLegNo, CC_ERR_NORMAL_CLEAR);
                     }
 
                     pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_RELEASE;
@@ -7920,6 +7938,32 @@ U32 sc_transfer_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     /* 记录错误码 */
     ulErrCode = sc_errcode_transfer_from_intererr(pstErrReport->stMsgTag.usInterErr);
+
+    switch (pstSCB->stTransfer.stSCBTag.usStatus)
+    {
+        case SC_TRANSFER_IDEL:
+        case SC_TRANSFER_AUTH:
+        case SC_TRANSFER_TRANSFERRING:
+            break;
+
+        case SC_TRANSFER_EXEC:
+        case SC_TRANSFER_PROC:
+        case SC_TRANSFER_ALERTING:
+            /* TODO 暂时不处理 */
+            //ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stDemoTask.ulCallingLegNo, ulErrCode);
+            break;
+
+        case SC_TRANSFER_TONE:
+            break;
+        case SC_TRANSFER_TRANSFER:
+        case SC_TRANSFER_FINISHED:
+        case SC_TRANSFER_RELEASE:
+            /* 暂时不处理 */
+            break;
+
+        default:
+            break;
+    }
 
     sc_trace_scb(pstSCB, "Proccessed call error event. Result: %s", (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 
@@ -9475,7 +9519,12 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     goto fail_proc;
                 }
 
-                sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGBACK, SC_SRV_CALL_AGENT);
+                if (DOS_ADDR_VALID(pstAgentNode)
+                    && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGBACK, SC_SRV_CALL_AGENT);
+                    pstAgentNode->pstAgentInfo->ulLegNo = pstCalleeCB->ulCBNo;
+                }
                 pstSCB->stCallAgent.stSCBTag.usStatus = SC_CALL_AGENT_AUTH2;
             }
             else
@@ -9492,6 +9541,7 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 if (DOS_ADDR_VALID(pstAgentNode)
                      && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
                 {
+                    pstAgentNode->pstAgentInfo->ulLegNo = pstCalleeCB->ulCBNo;
                     sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING, SC_SRV_CALL_AGENT);
                 }
                 pstSCB->stCallAgent.stSCBTag.usStatus = SC_CALL_AGENT_EXEC2;
