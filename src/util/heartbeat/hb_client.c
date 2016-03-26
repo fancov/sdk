@@ -332,6 +332,7 @@ S32 hb_client_init()
     g_lHBTaskWaitingExit = 0;
     S32 lAddrLen;
     struct sockaddr_un stLocalAddr;
+    struct timeval stTimeout={2, 0};
 
     memset((VOID*)&g_stProcessInfo, 0, sizeof(g_stProcessInfo));
     g_stProcessInfo.ulPeerAddrLen = 0;
@@ -354,6 +355,9 @@ S32 hb_client_init()
         perror ("create socket failed");
         return -1;
     }
+
+    /* 给socket设置超时 */
+    setsockopt(g_stProcessInfo.lSocket, SOL_SOCKET, SO_SNDTIMEO,(const char*)&stTimeout,sizeof(stTimeout));
 
     /* 检查目录，如果不存在就要创建 */
     snprintf(szBuffCMD, sizeof(szBuffCMD), "mkdir -p %s/var/run/socket", dos_get_sys_root_path());
