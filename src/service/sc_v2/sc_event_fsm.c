@@ -2958,8 +2958,7 @@ U32 sc_preview_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     {
         case SC_PREVIEW_CALL_RELEASE:
             pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
-            if (DOS_ADDR_VALID(pstCallingCB)
-                && pstCallingCB->ulIndSCBNo != U32_BUTT)
+            if (DOS_ADDR_VALID(pstCallingCB))
             {
                 pstAgentCall = sc_agent_get_by_id(pstSCB->stPreviewCall.ulAgentID);
                 if (DOS_ADDR_VALID(pstAgentCall)
@@ -2976,6 +2975,7 @@ U32 sc_preview_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     }
                     else
                     {
+                        sc_req_hungup(pstSCB->ulSCBNo, pstCallingCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
                         sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_PREVIEW_CALL);
                         sc_lcb_free(pstCallingCB);
                         pstCallingCB = NULL;
