@@ -125,6 +125,10 @@ U32 sc_srv_call_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *ps
             ulRet = sc_call_queue_leave(pstMsg, pstSCB);
             break;
 
+        case SC_EVT_RINGING_TIMEOUT:
+            ulRet = sc_call_ringing_timeout(pstMsg, pstSCB);
+            break;
+
         case SC_EVT_ERROR_PORT:
             ulRet = sc_call_error(pstMsg, pstSCB);
             break;
@@ -322,6 +326,10 @@ U32 sc_srv_auto_dial_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_S
 
         case SC_EVT_LEACE_CALL_QUEUE:
             ulRet = sc_auto_call_queue_leave(pstMsg, pstSCB);
+            break;
+
+        case SC_EVT_RINGING_TIMEOUT:
+            ulRet = sc_auto_call_ringing_timeout(pstMsg, pstSCB);
             break;
 
         case SC_EVT_ERROR_PORT:
@@ -618,13 +626,17 @@ U32 sc_srv_incoming_queue_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_
         case SC_EVT_LEACE_CALL_QUEUE:
             ulRet = sc_incoming_queue_leave(pstMsg, pstSCB);
             break;
+
         case SC_EVT_PLAYBACK_END:
             ulRet = sc_incoming_playback_stop(pstMsg, pstSCB);
             break;
+
+        case SC_EVT_CALL_RERLEASE:
+            break;
+
         default:
             break;
     }
-
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in Incoming Queue Service, SCB:%u, Ret: %s"
                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo

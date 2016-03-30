@@ -1233,6 +1233,7 @@ U32 sc_incoming_call_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
 
             case SC_DID_BIND_TYPE_QUEUE:
                 /* 开启呼入队列队列业务控制块 */
+                pstSCB->stCall.ulAgentGrpID = ulBindID;
                 pstSCB->stIncomingQueue.stSCBTag.bValid = DOS_TRUE;
                 pstSCB->ulCurrentSrv++;
                 pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stIncomingQueue.stSCBTag;
@@ -1254,6 +1255,7 @@ U32 sc_incoming_call_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
                 }
 
                 break;
+
             case SC_DID_BIND_TYPE_AGENT:
                 /* 呼叫坐席 */
                 ulRet = sc_agent_call_by_id(pstSCB, pstCallingLegCB, ulBindID, &ulErrCode);

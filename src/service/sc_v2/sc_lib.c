@@ -933,6 +933,9 @@ VOID sc_scb_call_init(SC_SRV_CALL_ST *pstCall)
     pstCall->pstAgentCalling = NULL;
     pstCall->ulCallSrc = U32_BUTT;
     pstCall->ulCallDst = U32_BUTT;
+    pstCall->bIsRingTimer = DOS_FALSE;
+    pstCall->stTmrHandle = NULL;
+    pstCall->ulAgentGrpID = 0;
 }
 
 VOID sc_scb_preview_call_init(SC_PREVIEW_CALL_ST *pstPreviewCall)
@@ -971,6 +974,8 @@ VOID sc_scb_auto_call_init(SC_AUTO_CALL_ST *pstAutoCall)
     pstAutoCall->ulAgentID = 0;
     pstAutoCall->ulTaskID = 0;
     pstAutoCall->ulTcbID = U32_BUTT;
+    pstAutoCall->bIsRingTimer = DOS_FALSE;
+    pstAutoCall->stTmrHandle = NULL;
 
 }
 
@@ -1156,7 +1161,8 @@ VOID sc_scb_demo_task_init(SC_AUTO_CALL_ST *pstAutoCall)
     pstAutoCall->ulAgentID = 0;
     pstAutoCall->ulTaskID = 0;
     pstAutoCall->ulTcbID = U32_BUTT;
-
+    pstAutoCall->bIsRingTimer = DOS_FALSE;
+    pstAutoCall->stTmrHandle = NULL;
 }
 
 VOID sc_scb_call_agent_init(SC_SRV_CALL_AGENT_ST *pstCallAgent)
@@ -1381,6 +1387,98 @@ SC_SRV_CB *sc_scb_get(U32 ulCBNo)
     }
 
     return &g_pstSCBList[ulCBNo];
+}
+
+U32 sc_scb_copy(SC_SRV_CB *pstDstSCB, SC_SRV_CB *pstSrcSCB)
+{
+    U32             ulScbNo         = U32_BUTT;
+    S32             i               = 0;
+    SC_SCB_TAG_ST   *pstSCBTag      = NULL;
+
+    if (DOS_ADDR_INVALID(pstSrcSCB)
+        || DOS_ADDR_INVALID(pstDstSCB))
+    {
+        return DOS_FAIL;
+    }
+
+    ulScbNo = pstDstSCB->ulSCBNo;
+    dos_memcpy(pstDstSCB, pstSrcSCB, sizeof(SC_SRV_CB));
+    pstDstSCB->ulSCBNo = ulScbNo;
+
+    for (i=0; i<=pstDstSCB->ulCurrentSrv; i++)
+    {
+        switch (pstDstSCB->pstServiceList[i]->usSrvType)
+        {
+            case SC_SRV_CALL:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stCall;
+                break;
+
+            case SC_SRV_PREVIEW_CALL:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stPreviewCall;
+                break;
+
+            case SC_SRV_AUTO_CALL:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stAutoCall;
+                break;
+
+            case SC_SRV_VOICE_VERIFY:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stVoiceVerify;
+                break;
+
+            case SC_SRV_ACCESS_CODE:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stAccessCode;
+                break;
+
+            case SC_SRV_HOLD:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stHold;
+                break;
+
+            case SC_SRV_TRANSFER:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stTransfer;
+                break;
+
+            case SC_SRV_INCOMING_QUEUE:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stIncomingQueue;
+                break;
+
+            case SC_SRV_INTERCEPTION:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stInterception;
+                break;
+
+            case SC_SRV_WHISPER:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stWhispered;
+                break;
+
+            case SC_SRV_MARK_CUSTOM:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stMarkCustom;
+                break;
+
+            case SC_SRV_AGENT_SIGIN:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stSigin;
+                break;
+
+            case SC_SRV_DEMO_TASK:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stDemoTask;
+                break;
+
+            case SC_SRV_CALL_AGENT:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stCallAgent;
+                break;
+
+            case SC_SRV_AUTO_PREVIEW:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stAutoPreview;
+                break;
+
+            default:
+                DOS_ASSERT(0);
+                pstSCBTag = NULL;
+                break;
+        }
+
+        pstDstSCB->pstServiceList[i] = pstSCBTag;
+    }
+
+    return DOS_SUCC;
 }
 
 /**
@@ -3040,6 +3138,29 @@ U32 sc_send_event_leave_call_queue_rsp(SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvent)
 
 }
 
+U32 sc_send_event_ringing_timeout_rsp(SC_MSG_EVT_RINGING_TIMEOUT_ST *pstEvent)
+{
+    SC_MSG_EVT_RINGING_TIMEOUT_ST *pstEvtRingingTimeout = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEvtRingingTimeout = (SC_MSG_EVT_RINGING_TIMEOUT_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_RINGING_TIMEOUT_ST));
+    if (DOS_ADDR_INVALID(pstEvtRingingTimeout))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEvtRingingTimeout, pstEvent, sizeof(SC_MSG_EVT_RINGING_TIMEOUT_ST));
+
+    return sc_send_event(&pstEvtRingingTimeout->stMsgTag);
+
+}
+
 U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
 {
     SC_AGENT_NODE_ST *pstAgent = NULL;
@@ -3265,6 +3386,46 @@ void sc_agent_mark_custom_callback(U64 arg)
 
     return;
 }
+
+void sc_agent_ringing_timeout_callback(U64 arg)
+{
+    U32                 ulLCBNo    = U32_BUTT;
+    SC_LEG_CB           *pstLeg    = NULL;
+    SC_SRV_CB           *pstSCB    = NULL;
+    SC_MSG_EVT_RINGING_TIMEOUT_ST stEvtRingingTimeOut;
+
+    ulLCBNo = (U32)arg;
+
+    pstLeg = sc_lcb_get(ulLCBNo);
+    if (DOS_ADDR_INVALID(pstLeg))
+    {
+        return;
+    }
+
+    pstSCB = sc_scb_get(pstLeg->ulSCBNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return;
+    }
+
+    if (pstSCB->stCall.stSCBTag.usStatus == SC_CALL_ALERTING
+        || pstSCB->stAutoCall.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING2
+        || pstSCB->stDemoTask.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING2)
+    {
+        /* 发送超时提醒给fsm */
+        stEvtRingingTimeOut.stMsgTag.ulMsgType = SC_EVT_RINGING_TIMEOUT;
+        stEvtRingingTimeOut.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+        stEvtRingingTimeOut.ulSCBNo = pstSCB->ulSCBNo;
+        stEvtRingingTimeOut.ulLCBNo = ulLCBNo;
+        if (sc_send_event_ringing_timeout_rsp(&stEvtRingingTimeOut) != DOS_SUCC)
+        {
+            /* TODO 发送消息失败 */
+        }
+    }
+
+    return;
+}
+
 
 U32 sc_stat_syn(U32 ulType, VOID *ptr)
 {
