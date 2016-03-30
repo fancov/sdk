@@ -100,7 +100,6 @@ S32 hb_send_msg(U8 *pszBuff, U32 ulBuffLen, struct sockaddr_un *pstAddr, U32 ulA
     if (lSocket < 0)
     {
         hb_logr_warning("%s", "Invalid socket while send heartbeat to process.");
-        DOS_ASSERT(0);
         return -1;
     }
 
@@ -109,8 +108,7 @@ S32 hb_send_msg(U8 *pszBuff, U32 ulBuffLen, struct sockaddr_un *pstAddr, U32 ulA
             , ulAddrLen);
     if (ulBuffLen != lRet)
     {
-        hb_logr_warning("Exception occurred while send hreatbeat msg.(errno:%d,cause:%s)", errno, strerror(errno));
-        DOS_ASSERT(0);
+        hb_logr_info("Exception occurred while send hreatbeat msg.(errno:%d,cause:%s)", errno, strerror(errno));
 
 #if INCLUDE_BH_CLIENT
         hb_set_connect_flg(DOS_FALSE);
