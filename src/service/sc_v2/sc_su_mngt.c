@@ -55,6 +55,9 @@ HASH_TABLE_S         *g_pstLCBHash;
 /** 保护呼叫控制块使用的互斥量 */
 pthread_mutex_t      g_mutexLCBHash = PTHREAD_MUTEX_INITIALIZER;
 
+/* 呼出统计，如果超过一定阀值，就重启业务控制模块 */
+U32                  g_ulOutgoingCallCnt = 0;
+
 
 /**
  * 处理CHANNEL_CREATE事件
@@ -76,9 +79,24 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     S8  *pszLegUUID       = NULL;
     S8  szCMD[128]        = { 0 };
     U32 ulLCBNo           = U32_BUTT;
+    U32 ulThreshold       = -1;
     SC_LEG_CB *pstLCB     = NULL;
     SC_MSG_EVT_CALL_ST       stCallEvent;
     SC_MSG_EVT_ERR_REPORT_ST stErrReport;
+
+    ulThreshold = config_get_exit_threshold();
+    if (ulThreshold < 0)
+    {
+        ulThreshold = MAX_FAIL_CALL_CNT;
+    }
+
+    if (g_ulOutgoingCallCnt > ulThreshold)
+    {
+        dos_snprintf(szCMD, sizeof(szCMD), "Outgoing call failed count %u. The system will be shutdown with 2 seconds", ulThreshold);
+        dos_log(LOG_LEVEL_EMERG, LOG_TYPE_RUNINFO, szCMD);
+        dos_task_delay(2000);
+        exit(0);
+    }
 
     if (DOS_ADDR_INVALID(pstEvent))
     {
@@ -187,6 +205,8 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
             else
             {
                 pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
+
+                g_ulOutgoingCallCnt++;
 
                 if (g_stSysStat.ulOutgoingCalls != U32_BUTT)
                 {
@@ -344,6 +364,11 @@ U32 sc_esl_event_answer(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     sc_send_event_answer(&stSCEvent);
 
+    if (SC_LEG_PEER_OUTBOUND == pstLegCB->stCall.ucPeerType)
+    {
+        g_ulOutgoingCallCnt = 0;
+    }
+
     return DOS_SUCC;
 }
 
@@ -410,6 +435,11 @@ U32 sc_esl_event_hangup(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     }
     else if (SC_LEG_PEER_OUTBOUND == pstLegCB->stCall.ucPeerType)
     {
+        if (CC_ERR_SIP_REQUEST_TERMINATED == stSCEvent.ulErrCode)
+        {
+            g_ulOutgoingCallCnt = 0;
+        }
+
         if (g_stSysStat.ulOutgoingCalls != 0)
         {
             g_stSysStat.ulOutgoingCalls--;
@@ -469,6 +499,11 @@ U32 sc_esl_event_progress(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     {
         pstLegCB->stCall.bEarlyMedia = DOS_FALSE;
         stEventRinging.ulWithMedia = DOS_FALSE;
+    }
+
+    if (SC_LEG_PEER_OUTBOUND == pstLegCB->stCall.ucPeerType)
+    {
+        g_ulOutgoingCallCnt = 0;
     }
 
     sc_send_event_ringing(&stEventRinging);

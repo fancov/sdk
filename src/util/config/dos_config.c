@@ -521,6 +521,32 @@ S32 config_hb_get_papi_port()
     return lInterval;
 }
 
+/**
+ * 函数：S32 config_get_exit_threshold()
+ * 功能：获取业务控制模块重启阀值
+ * 参数：
+ * 返回值：成功返回处理方式编号.失败返回－1
+ */
+U32 config_get_exit_threshold()
+{
+    S8 *pszValue;
+    S8 szBuff[32];
+    U32 ulThreshold;
+
+    pszValue = _config_get_param(g_pstGlobalCfg, "config/exception", "threshold", szBuff, sizeof(szBuff));
+    if (!pszValue)
+    {
+        return U32_BUTT;
+    }
+
+    if (dos_atoul(pszValue, &ulThreshold) < 0)
+    {
+        return U32_BUTT;
+    }
+
+    return ulThreshold;
+}
+
 
 /**
  * 函数：U32 config_init()

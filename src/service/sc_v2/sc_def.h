@@ -18,6 +18,9 @@ extern "C" {
 #ifndef __SC_DEF_V2_H__
 #define __SC_DEF_V2_H__
 
+
+#define MAX_FAIL_CALL_CNT            100
+
 /**
  * 常用术语
  * SU -- 业务单元
