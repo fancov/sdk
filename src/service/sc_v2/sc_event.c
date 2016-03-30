@@ -632,6 +632,7 @@ U32 sc_srv_incoming_queue_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_
             break;
 
         case SC_EVT_CALL_RERLEASE:
+            ulRet = sc_incoming_queue_release(pstMsg, pstSCB);
             break;
 
         default:

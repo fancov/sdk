@@ -6426,6 +6426,35 @@ U32 sc_incoming_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return DOS_SUCC;
 }
 
+U32 sc_incoming_queue_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_HUNGUP_ST *pstEvtCall = NULL;
+
+    pstEvtCall = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstEvtCall) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing incoming realse event. status : %u", pstSCB->stIncomingQueue.stSCBTag.usStatus);
+
+    switch (pstSCB->stIncomingQueue.stSCBTag.usStatus)
+    {
+        case SC_INQUEUE_ACTIVE:
+            /* 从队列中删除 */
+
+        case SC_INQUEUE_IDEL:
+        case SC_INQUEUE_RELEASE:
+            pstSCB->stIncomingQueue.stSCBTag.bWaitingExit = DOS_TRUE;
+            break;
+        default:
+            break;
+    }
+
+    return DOS_SUCC;
+}
+
 U32 sc_mark_custom_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_DTMF_ST    *pstDTMF      = NULL;
