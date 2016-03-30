@@ -174,6 +174,14 @@ U32 config_get_mysqlsock_path(S8 *pszBuff, U32 ulLen);
 U32 config_get_min_iedl_cpu(U32 *pulIdelCpu);
 
 /**
+ * 函数：S32 config_get_exit_threshold()
+ * 功能：获取业务控制模块重启阀值
+ * 参数：
+ * 返回值：成功返回处理方式编号.失败返回－1
+ */
+U32 config_get_exit_threshold();
+
+/**
  * 函数：U32 config_init()
  * 功能： 初始化配置模块
  * 参数：
