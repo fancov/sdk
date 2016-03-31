@@ -3180,8 +3180,12 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             sc_scb_free(pstSCB);
             break;
+
         case SC_PREVIEW_CALL_PORC:
         case SC_PREVIEW_CALL_ALERTING:
+            /* 坐席没有接听，不用处理，release中会处理 */
+            break;
+
         case SC_PREVIEW_CALL_ACTIVE:
         case SC_PREVIEW_CALL_CONNECTING:
         case SC_PREVIEW_CALL_ALERTING2:
@@ -3210,6 +3214,7 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo, ulErrCode);
             break;
+
         case SC_PREVIEW_CALL_CONNECTED:
         case SC_PREVIEW_CALL_PROCESS:
         case SC_PREVIEW_CALL_RELEASE:
