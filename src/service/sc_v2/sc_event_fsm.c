@@ -1907,6 +1907,12 @@ U32 sc_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (ulRet != DOS_SUCC)
     {
+        if (DOS_ADDR_VALID(pstEvtCall->pstAgentNode)
+            && DOS_ADDR_VALID(pstEvtCall->pstAgentNode->pstAgentInfo))
+        {
+            pstEvtCall->pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
+        }
+
         sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, ulErrCode);
     }
 
@@ -5088,6 +5094,12 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     pstRlayback = (SC_MSG_EVT_PLAYBACK_ST *)pstMsg;
 
+    if (pstRlayback->stMsgTag.usInterErr != U16_BUTT)
+    {
+        /* 挂断了，这里不用处理 */
+        return DOS_SUCC;
+    }
+
     pstLCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
@@ -5214,7 +5226,13 @@ U32 sc_auto_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (ulRet != DOS_SUCC)
     {
-        /* TODO 失败的处理 */
+        /* TODO 失败的处理，修改坐席状态 */
+        if (DOS_ADDR_VALID(pstEvtCall->pstAgentNode)
+            && DOS_ADDR_VALID(pstEvtCall->pstAgentNode->pstAgentInfo))
+        {
+            pstEvtCall->pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
+        }
+
     }
 
     return ulRet;
@@ -10479,6 +10497,11 @@ U32 sc_auto_preview_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     if (ulRet != DOS_SUCC)
     {
         /* TODO 失败的处理 */
+        if (DOS_ADDR_VALID(pstEvtCall->pstAgentNode)
+            && DOS_ADDR_VALID(pstEvtCall->pstAgentNode->pstAgentInfo))
+        {
+            pstEvtCall->pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
+        }
     }
 
     return ulRet;

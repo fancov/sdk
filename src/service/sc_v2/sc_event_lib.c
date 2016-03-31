@@ -502,6 +502,12 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
         return DOS_FAIL;
     }
 
+    if (DOS_ADDR_VALID(pstAgentNode)
+        && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+    {
+        pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
+    }
+
     pstAgentNode = sc_agent_get_by_id(ulAgentID);
     if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
     {
@@ -510,8 +516,6 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
 
         return DOS_FAIL;
     }
-
-    pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
 
     /* ÅÐ¶Ï×øÏ¯µÄ×´Ì¬ */
     if (pstAgentNode->pstAgentInfo->ucWorkStatus != SC_ACD_WORK_IDEL
@@ -695,6 +699,12 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
         return DOS_FAIL;
     }
 
+    if (DOS_ADDR_VALID(pstAgentNode)
+        && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+    {
+        pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
+    }
+
     pstCallingLegCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
     if (DOS_ADDR_INVALID(pstCallingLegCB))
     {
@@ -703,7 +713,6 @@ U32 sc_agent_auto_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
 
     /* ÅÐ¶ÏÐÞ¸Ä×øÏ¯µÄ×´Ì¬ */
     pstSCB->stAutoCall.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
-    pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
     sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING, SC_SRV_AUTO_CALL);
 
     dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
@@ -855,6 +864,12 @@ U32 sc_agent_auto_preview_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgent
         return DOS_FAIL;
     }
 
+    if (DOS_ADDR_VALID(pstAgentNode)
+        && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+    {
+        pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
+    }
+
     pstCalleeLegCB = sc_lcb_get(pstSCB->stAutoPreview.ulCalleeLegNo);
     if (DOS_ADDR_INVALID(pstCalleeLegCB))
     {
@@ -863,7 +878,6 @@ U32 sc_agent_auto_preview_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgent
 
     /* ÅÐ¶ÏÐÞ¸Ä×øÏ¯µÄ×´Ì¬ */
     pstSCB->stAutoPreview.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
-    pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
 
     dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee);
 
@@ -1037,6 +1051,12 @@ U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
         return DOS_FAIL;
     }
 
+    if (DOS_ADDR_VALID(pstAgentNode)
+        && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+    {
+        pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
+    }
+
     pstCallingLegCB = sc_lcb_get(pstSCB->stDemoTask.ulCallingLegNo);
     if (DOS_ADDR_INVALID(pstCallingLegCB))
     {
@@ -1045,7 +1065,6 @@ U32 sc_demo_task_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgentNode)
 
     /* ÅÐ¶ÏÐÞ¸Ä×øÏ¯µÄ×´Ì¬ */
     pstSCB->stDemoTask.ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
-    pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
     sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING, SC_SRV_DEMO_TASK);
 
     dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);

@@ -1698,14 +1698,14 @@ VOID sc_show_agent(U32 ulIndex, U8 ucCondition, U32 ulID, S8* pszCondition)
             cli_out_string(ulIndex, szCmdBuff);
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                        , "%-12s%-9s%-10s%-14s%-12s%-12s%-9s%-16s%-5s%-8s%-13s%-12s"
+                        , "%-12s%-9s%-10s%-14s%-12s%-12s%-9s%-16s%-5s%-8s%-13s%-12s%-12s"
                         , "Emp NO.", "CallCnt", "Bind", "Telephone", "Mobile", "TT_number"
-                        , "Sip ID", "ScbNO", "bDel", "bLogin", "LastCustomer", "ProcessTime");
+                        , "Sip ID", "ScbNO", "bDel", "bLogin", "LastCustomer", "ProcessTime", "bSelect");
             cli_out_string(ulIndex, szCmdBuff);
             cli_out_string(ulIndex, "\r\n");
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
 
-                        , "%-12s%-9u%-10s%-14s%-12s%-12s%-9u%-16u%-5s%-8s%-13s%-12u"
+                        , "%-12s%-9u%-10s%-14s%-12s%-12s%-9u%-16u%-5s%-8s%-13s%-12u%-12s"
                         , pstAgentQueueNode->pstAgentInfo->szEmpNo
                         , pstAgentQueueNode->pstAgentInfo->ulCallCnt
                         , sc_translate_agent_bind_type(pstAgentQueueNode->pstAgentInfo->ucBindType)
@@ -1717,7 +1717,8 @@ VOID sc_show_agent(U32 ulIndex, U8 ucCondition, U32 ulID, S8* pszCondition)
                         , pstAgentQueueNode->pstAgentInfo->bWaitingDelete ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->bLogin ? "Y" : "N"
                         , pstAgentQueueNode->pstAgentInfo->szLastCustomerNum
-                        , pstAgentQueueNode->pstAgentInfo->ucProcesingTime);
+                        , pstAgentQueueNode->pstAgentInfo->ucProcesingTime
+                        , pstAgentQueueNode->pstAgentInfo->bSelected ? "Y" : "N");
             cli_out_string(ulIndex, szCmdBuff);
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n==================================================================================================================================");
@@ -2799,7 +2800,7 @@ U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
             }
             pstSCB = (SC_SRV_CB *)pstListNode1->pHandle;
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12u%20s%6u"
-                            , ulAgentGrpID
+                            , sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID)
                             , szTime
                             , pstSCB->ulSCBNo);
             cli_out_string(ulIndex, szBuff);

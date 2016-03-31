@@ -1050,6 +1050,8 @@ U32 sc_esl_event_playback_start(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 {
     SC_MSG_EVT_PLAYBACK_ST stPlayback;
+    S8             *pszTermCause = NULL;
+    U32             usInterErr   = U16_BUTT;
 
     if (DOS_ADDR_INVALID(pstLegCB))
     {
@@ -1063,6 +1065,14 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
                         , pstLegCB->stPlayback.usStatus
                         , pstLegCB->stPlayback.ulCurretnIndex
                         , pstLegCB->stPlayback.ulTotal);
+
+    pszTermCause = esl_event_get_header(pstEvent, "variable_sip_term_status");
+    if (DOS_ADDR_VALID(pszTermCause)
+        && pszTermCause[0] != '\0'
+        && dos_atoul(pszTermCause, &usInterErr) < 0)
+    {
+        usInterErr = CC_ERR_NORMAL_CLEAR;
+    }
 
     switch (pstLegCB->stPlayback.usStatus)
     {
@@ -1090,7 +1100,7 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
                 stPlayback.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
             }
             stPlayback.stMsgTag.ulMsgType = SC_EVT_PLAYBACK_END;
-            stPlayback.stMsgTag.usInterErr = 0;
+            stPlayback.stMsgTag.usInterErr = usInterErr;
             stPlayback.stMsgTag.usMsgLen = 0;
             stPlayback.ulLegNo = pstLegCB->ulCBNo;
             stPlayback.ulSCBNo = pstLegCB->ulSCBNo;
