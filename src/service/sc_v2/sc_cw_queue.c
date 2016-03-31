@@ -309,18 +309,10 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 pstSCB = pstCallNode->pstSCB;
 #if 0
                 /* 至少一秒后，才接通坐席，避免等待音还没有播放，uuid_break不能将其停止。 */
-                if (time(NULL) - pstSCB->ulInQueueTime < 3)
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "now : %u, ulEnqueuTime : %u, ulDequeuTime : %u", time(NULL), pstSCB->stIncomingQueue.ulEnqueuTime, pstSCB->stIncomingQueue.ulDequeuTime);
+                if (time(NULL) - pstSCB->stIncomingQueue.ulEnqueuTime < 3)
                 {
                     continue;
-                }
-
-                if (sc_agent_query_idel(pstCWQNode->ulAgentGrpID, &blHasIdelAgent) != DOS_SUCC
-                    || !blHasIdelAgent)
-                {
-                    pstCWQNode->ulStartWaitingTime = time(0);
-
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u has no idel agent. (%d)", pstCWQNode->ulAgentGrpID, blHasIdelAgent);
-                    break;
                 }
 #endif
                 /* 获取一个坐席 */

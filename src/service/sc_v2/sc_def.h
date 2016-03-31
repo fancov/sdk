@@ -150,6 +150,8 @@ extern "C" {
 #define SC_DEMOE_TASK_COUNT            3
 #define SC_DEMOE_TASK_FILE             "/usr/local/freeswitch/sounds/okcc/CC_demo.wav"
 
+#define SC_AGENT_RINGING_TIMEOUT       10000
+
 /**
  * 1. 没有被删除
  * 2. 已经登陆了     && (pstSiteDesc)->bLogin 这个状态不判断了
@@ -440,6 +442,7 @@ typedef enum tagSCSUEvent{
     SC_EVT_PLAYBACK_END,        /**< 放音结束 */
     SC_EVT_AUTH_RESULT,         /**< 认证结果 */
     SC_EVT_LEACE_CALL_QUEUE,    /**< 出呼叫队列 */
+    SC_EVT_RINGING_TIMEOUT,     /**< 坐席振铃超时 */
 
     SC_EVT_ERROR_PORT,          /**< 错误上报事件 */
 
@@ -999,6 +1002,13 @@ typedef struct tagSCSrvCall{
     /* 路由ID */
     U32               ulRouteID;
 
+    /* 是否是呼入到坐席组，增加定时器，8s不接电话，转另一个坐席 */
+    BOOL              bIsRingTimer;
+
+    DOS_TMR_ST        stTmrHandle;
+
+    U32               ulAgentGrpID;
+
     /** 主叫坐席指针 */
     SC_AGENT_NODE_ST *pstAgentCalling;
 
@@ -1117,6 +1127,12 @@ typedef struct tagSCAUTOCall{
     U32               ulTaskID;
     /** 群呼任务控制块ID */
     U32               ulTcbID;
+
+    /* 是否是呼入到坐席组，增加定时器，8s不接电话，转另一个坐席 */
+    BOOL              bIsRingTimer;
+
+    DOS_TMR_ST        stTmrHandle;
+
 }SC_AUTO_CALL_ST;
 
 
@@ -1933,6 +1949,18 @@ typedef struct tagSCMsgEvtLeaveCallQue{
 
 }SC_MSG_EVT_LEAVE_CALLQUE_ST;
 
+/** 坐席振铃超时 */
+typedef struct tagSCMsgEvtAgentRingTimeout{
+    SC_MSG_TAG_ST    stMsgTag;              /**< 消息头 */
+
+    /** 业务控制块编号 */
+    U32     ulSCBNo;
+
+    /** LEG控制块编号 */
+    U32     ulLCBNo;
+
+}SC_MSG_EVT_RINGING_TIMEOUT_ST;
+
 /**
  * backgroup job管理的hash表节点
  */
@@ -2124,6 +2152,7 @@ U32 sc_scb_set_service(SC_SRV_CB *pstSCB, U32 ulService);
 U32 sc_scb_check_service(SC_SRV_CB *pstSCB, U32 ulService);
 U32 sc_scb_remove_service(SC_SRV_CB *pstSCB, U32 ulService);
 BOOL sc_scb_is_exit_service(SC_SRV_CB *pstSCB, U32 ulService);
+U32 sc_scb_copy(SC_SRV_CB *pstSrcSCB, SC_SRV_CB *pstDstSCB);
 
 VOID sc_lcb_init(SC_LEG_CB *pstLCB);
 SC_LEG_CB *sc_lcb_alloc();
@@ -2153,6 +2182,7 @@ U32 sc_send_event_dtmf(SC_MSG_EVT_DTMF_ST *pstEvent);
 U32 sc_send_event_record(SC_MSG_EVT_RECORD_ST *pstEvent);
 U32 sc_send_event_playback(SC_MSG_EVT_PLAYBACK_ST *pstEvent);
 U32 sc_send_event_leave_call_queue_rsp(SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvent);
+U32 sc_send_event_ringing_timeout_rsp(SC_MSG_EVT_RINGING_TIMEOUT_ST *pstEvent);
 U32 sc_send_usr_auth2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_send_balance_query2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 
@@ -2196,6 +2226,7 @@ U32 sc_agent_update_status_db(SC_AGENT_INFO_ST *pstAgentInfo);
 
 U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 void sc_agent_mark_custom_callback(U64 arg);
+void sc_agent_ringing_timeout_callback(U64 arg);
 
 U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -2209,6 +2240,7 @@ U32 sc_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 U32 sc_sigin_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -2257,6 +2289,7 @@ U32 sc_whisper_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_call_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -2279,6 +2312,7 @@ U32 sc_transfer_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 U32 sc_incoming_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_incoming_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_incoming_queue_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 U32 sc_mark_custom_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_mark_custom_playback_start(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);

@@ -2036,7 +2036,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
     dos_strncpy(szReqLine, pStart, pEnd - pStart);
     szReqLine[pEnd - pStart] = '\0';
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API), "HTTP Request Line: %s?%s", szReqBuffer, szReqLine);
+    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "HTTP Request Line: %s?%s", szReqBuffer, szReqLine);
 
     /* »ñÈ¡ key=value ×Ö·û´® */
     lKeyCnt = 0;
@@ -2118,7 +2118,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
     }
 
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "HTTP Request process finished. Return code: %d", ulRet);
+    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API, SC_LOG_DISIST), "HTTP Request process finished. Return code: %d", ulRet);
 
     while (1)
     {

@@ -99,7 +99,6 @@ static U32 sc_send_msg2bs(BS_MSG_TAG *pstMsgTag, U32 ulLength)
                         return DOS_SUCC;
                     }
                     break;
-
             }
         }
     }

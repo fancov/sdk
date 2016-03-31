@@ -1233,6 +1233,7 @@ U32 sc_incoming_call_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
 
             case SC_DID_BIND_TYPE_QUEUE:
                 /* 开启呼入队列队列业务控制块 */
+                pstSCB->stCall.ulAgentGrpID = ulBindID;
                 pstSCB->stIncomingQueue.stSCBTag.bValid = DOS_TRUE;
                 pstSCB->ulCurrentSrv++;
                 pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stIncomingQueue.stSCBTag;
@@ -1254,6 +1255,7 @@ U32 sc_incoming_call_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
                 }
 
                 break;
+
             case SC_DID_BIND_TYPE_AGENT:
                 /* 呼叫坐席 */
                 ulRet = sc_agent_call_by_id(pstSCB, pstCallingLegCB, ulBindID, &ulErrCode);
@@ -1586,14 +1588,14 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
         && pstAgentCalleeLCB->ulIndSCBNo == U32_BUTT)
     {
         /* 坐席不是长签，但是已经存在一条leg通话 */
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The agent %u is not sigin, but have a leg(%u)", pstAgentNodeCallee->pstAgentInfo->ulAgentID, pstAgentNodeCallee->pstAgentInfo->ulLegNo);
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_HTTP_API, SC_LOG_DISIST), "The agent %u is not sigin, but have a leg(%u)", pstAgentNodeCallee->pstAgentInfo->ulAgentID, pstAgentNodeCallee->pstAgentInfo->ulLegNo);
         return DOS_FAIL;
     }
 
     pstAgentNode = sc_agent_get_by_id(ulAgentID);
     if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Cannot found the agent %u", ulAgentID);
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_HTTP_API, SC_LOG_DISIST), "Cannot found the agent %u", ulAgentID);
         return DOS_FAIL;
     }
 
@@ -1602,14 +1604,14 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
         && pstAgentLCB->ulIndSCBNo == U32_BUTT)
     {
         /* 坐席不是长签，但是已经存在一条leg通话 */
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The agent %u is not sigin, but have a leg(%u)", ulAgentID, pstAgentNode->pstAgentInfo->ulLegNo);
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_HTTP_API, SC_LOG_DISIST), "The agent %u is not sigin, but have a leg(%u)", ulAgentID, pstAgentNode->pstAgentInfo->ulLegNo);
         return DOS_FAIL;
     }
 
     pstLCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Alloc lcb fail");
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_HTTP_API, SC_LOG_DISIST), "Alloc lcb fail");
         return DOS_FAIL;
     }
 
@@ -1619,7 +1621,7 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
         sc_lcb_free(pstLCB);
         pstLCB = NULL;
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Alloc scb fail");
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_HTTP_API, SC_LOG_DISIST), "Alloc scb fail");
         return DOS_FAIL;
     }
 
@@ -1669,7 +1671,7 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
             pstLCB = NULL;
             sc_scb_free(pstSCB);
             pstSCB = NULL;
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Get caller fail by agent(%u).", ulAgentID);
+            sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_HTTP_API, SC_LOG_DISIST), "Get caller fail by agent(%u).", ulAgentID);
 
             goto process_fail;
         }
@@ -1723,7 +1725,7 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
 
             if (sc_send_usr_auth2bs(pstSCB, pstLCB) != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send auth fail.");
+                sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_HTTP_API, SC_LOG_DISIST), "Send auth fail.");
 
                 goto process_fail;
             }
@@ -1807,7 +1809,7 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
         pstLCB = NULL;
         sc_scb_free(pstSCB);
         pstSCB = NULL;
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Get caller fail by agent(%u).", ulAgentID);
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_HTTP_API, SC_LOG_DISIST), "Get caller fail by agent(%u).", ulAgentID);
 
         goto process_fail;
     }
@@ -2115,11 +2117,11 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
     SC_LEG_CB        *pstAgentLCB  = NULL;
     U32              ulRet         = DOS_FAIL;
 
-    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "Request call out. Agent: %u, Task: %u, Number: %u", ulAgent, ulTaskID, NULL == pszNumber ? "NULL" : pszNumber);
+    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "Request preview call. Agent: %u, Task: %u, Number: %u", ulAgent, ulTaskID, NULL == pszNumber ? "NULL" : pszNumber);
 
     if (DOS_ADDR_INVALID(pszNumber) || '\0' == pszNumber[0])
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Request call out. Number is empty");
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Request call out. Number is empty");
         return DOS_FAIL;
     }
 
@@ -2127,7 +2129,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
     if (pszNumber[0] == '0'
         && pszNumber[1] == '0')
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The destination is not alloc. %s", pszNumber);
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "The destination is not alloc. %s", pszNumber);
 
         return DOS_FAIL;
     }
@@ -2135,7 +2137,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
     /* 判断是否在黑名单中 */
     if (!sc_black_list_check(ulCustomerID, pszNumber))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The destination is in black list. %s", pszNumber);
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "The destination is in black list. %s", pszNumber);
 
         return DOS_FAIL;
     }
@@ -2143,7 +2145,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
     pstAgentNode = sc_agent_get_by_id(ulAgent);
     if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Cannot found the agent %u", ulAgent);
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Cannot found the agent %u", ulAgent);
         return DOS_FAIL;
     }
 
@@ -2152,14 +2154,14 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
         && pstAgentLCB->ulIndSCBNo == U32_BUTT)
     {
         /* 坐席不是长签，但是已经存在一条leg通话 */
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The agent %u is not sigin, but have a leg(%u)", ulAgent, pstAgentNode->pstAgentInfo->ulLegNo);
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "The agent %u is not sigin, but have a leg(%u)", ulAgent, pstAgentNode->pstAgentInfo->ulLegNo);
         return DOS_FAIL;
     }
 
     pstLCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Alloc lcb fail");
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Alloc lcb fail");
         return DOS_FAIL;
     }
 
@@ -2169,7 +2171,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
         sc_lcb_free(pstLCB);
         pstLCB = NULL;
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Alloc scb fail");
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Alloc scb fail");
         return DOS_FAIL;
     }
 
@@ -2182,7 +2184,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
     pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stPreviewCall.stSCBTag;
     if (sc_scb_set_service(pstSCB, BS_SERV_PREVIEW_DIALING) != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Set service fail.");
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Set service fail.");
 
         goto process_fail;
     }
@@ -2198,7 +2200,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
             pstLCB = NULL;
             sc_scb_free(pstSCB);
             pstSCB = NULL;
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Get caller fail by agent(%u).", ulAgent);
+            sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Get caller fail by agent(%u).", ulAgent);
 
             goto process_fail;
         }
@@ -2224,7 +2226,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
 
         if (sc_send_usr_auth2bs(pstSCB, pstLCB) != DOS_SUCC)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send auth fail.");
+            sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Send auth fail.");
 
             goto process_fail;
         }
@@ -2284,7 +2286,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
         pstLCB = NULL;
         sc_scb_free(pstSCB);
         pstSCB = NULL;
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Get caller fail by agent(%u).", ulAgent);
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Get caller fail by agent(%u).", ulAgent);
 
         goto process_fail;
     }
@@ -2306,7 +2308,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
 
     if (sc_send_usr_auth2bs(pstSCB, pstLCB) != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send auth fail.");
+        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Send auth fail.");
 
         goto process_fail;
     }
