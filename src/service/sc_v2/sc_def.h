@@ -18,8 +18,10 @@ extern "C" {
 #ifndef __SC_DEF_V2_H__
 #define __SC_DEF_V2_H__
 
-
+/* 异常处理 */
 #define MAX_FAIL_CALL_CNT            100
+#define MAX_FAIL_CALL_CNT_DELAY      5
+
 
 /**
  * 常用术语
