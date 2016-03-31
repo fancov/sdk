@@ -2170,6 +2170,47 @@ proc_fail:
     return DOS_FAIL;
 }
 
+U32 sc_cmd_default(SC_MSG_TAG_ST *pstMsg)
+{
+    SC_MSG_EVT_ERR_REPORT_ST   stErrReport;
+    SC_MSG_CMD_MANAGE_ST       *pstCmd          = NULL;
+    S8                          szCMD[256]      = {0, };
+
+    pstCmd = (SC_MSG_CMD_MANAGE_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstCmd))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstCmd->ulType)
+    {
+        case SC_CMD_TYPE_MANAGE_RELOAD:
+            dos_snprintf(szCMD, sizeof(szCMD), "bgapi reloadxml\r\n");
+            break;
+
+        case SC_CMD_TYPE_MANAGE_HUPALL:
+            dos_snprintf(szCMD, sizeof(szCMD), "bgapi hupall\r\n");
+            break;
+
+        default:
+            break;
+    }
+
+    if (szCMD[0] != '\0')
+    {
+        if (sc_esl_execute_cmd(szCMD, NULL, 0) != DOS_SUCC)
+        {
+            stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
+            return DOS_FAIL;
+        }
+
+        return DOS_SUCC;
+    }
+
+    return DOS_FAIL;
+}
+
 /**
  * 处理业务控制层发过来的请求命令，主要是分发
  *
@@ -2246,6 +2287,10 @@ VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
 
         case SC_CMD_TRANSFER:
             ulRet = sc_cmd_transfer(pstMsg);
+            break;
+
+        case SC_CMD_MANAGE:
+            ulRet = sc_cmd_default(pstMsg);
             break;
 
         default:

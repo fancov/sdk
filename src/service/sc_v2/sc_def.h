@@ -90,6 +90,8 @@ extern "C" {
 
 #define SC_ACD_CALLER_NUM_RELATION_HASH_SIZE    512         /* 主叫号码和坐席对应关系hash的大小 */
 
+#define SC_CMD_MSG_LEN               256
+
 
 /* 单个坐席最大可以属于组的个数 */
 #define MAX_GROUP_PER_SITE           2
@@ -417,6 +419,7 @@ typedef enum tagSCSUCommand{
     SC_CMD_IVR_CTRL,           /**< IVR控制命令 */
     SC_CMD_MUX,                /**< 混音命令 */
     SC_CMD_TRANSFER,           /**< 转接命令 */
+    SC_CMD_MANAGE,             /**< 管理命令 */
 
     SC_CMD_BUTT,
 }SC_SU_COMMANGEN;
@@ -1771,6 +1774,22 @@ typedef struct tagSCMsgCmdTransfer{
     U32     ulSCBNo;
 }SC_MSG_CMD_TRANSFER_ST;
 
+enum{
+    SC_CMD_TYPE_MANAGE_RELOAD,
+    SC_CMD_TYPE_MANAGE_HUPALL,
+
+    SC_CMD_TYPE_MANAGE_BUTT
+};
+
+/** 其它命令请求 */
+typedef struct tagSCMsgCmdManage{
+    SC_MSG_TAG_ST    stMsgTag;              /**< 消息头 */
+
+    /** 命令字符串 */
+    U32              ulType;
+
+}SC_MSG_CMD_MANAGE_ST;
+
 /** 呼叫建立事件 */
 typedef struct tagSCMsgEvtCall{
     SC_MSG_TAG_ST    stMsgTag;              /**< 消息头 */
@@ -2198,6 +2217,7 @@ U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_mux(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_transfer(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_record(SC_MSG_TAG_ST *pstMsg);
+U32 sc_send_cmd_manage(U32 ulType);
 
 U32 sc_agent_group_agent_count(U32 ulGroupID);
 U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam);
