@@ -1895,6 +1895,8 @@ U32 sc_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         && pstSCB->stCall.stSCBTag.usStatus != SC_CALL_TONE)
                     {
                         pstSCB->stCall.bIsRingTimer = DOS_TRUE;
+                        sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo);
+                        sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE);
                     }
                 }
             }
@@ -5214,6 +5216,8 @@ U32 sc_auto_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         && pstSCB->stAutoCall.stSCBTag.usStatus != SC_AUTO_CALL_TONE)
                     {
                         pstSCB->stAutoCall.bIsRingTimer = DOS_TRUE;
+                        sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
+                        sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, DOS_TRUE);
                     }
                 }
             }
@@ -6395,7 +6399,7 @@ U32 sc_incoming_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Processing call release event for voice verify.");
+    sc_trace_scb(pstSCB, "Processing incoming playback stop event. status : %u", pstSCB->stIncomingQueue.stSCBTag.usStatus);
 
     pstLCB = sc_lcb_get(pstSCB->stIncomingQueue.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))

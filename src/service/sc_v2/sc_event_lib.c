@@ -502,12 +502,6 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
         return DOS_FAIL;
     }
 
-    if (DOS_ADDR_VALID(pstAgentNode)
-        && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
-    {
-        pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
-    }
-
     pstAgentNode = sc_agent_get_by_id(ulAgentID);
     if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
     {
@@ -515,6 +509,12 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Not found agnet by id %u", ulAgentID);
 
         return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_VALID(pstAgentNode)
+        && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+    {
+        pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
     }
 
     /* ÅÐ¶Ï×øÏ¯µÄ×´Ì¬ */
