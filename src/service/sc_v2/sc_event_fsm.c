@@ -4910,10 +4910,11 @@ U32 sc_auto_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_ANSWER_ST *pstEvtAnswer = NULL;
-    U32          ulRet              = DOS_FAIL;
-    U32          ulTaskMode         = U32_BUTT;
-    SC_LEG_CB    *pstLCB            = NULL;
-    SC_LEG_CB    *pstCalleeLegCB    = NULL;
+    U32                 ulRet              = DOS_SUCC;
+    U32                 ulTaskMode         = U32_BUTT;
+    SC_LEG_CB           *pstLCB            = NULL;
+    SC_LEG_CB           *pstCalleeLegCB    = NULL;
+    SC_AGENT_NODE_ST    *pstAgentCallee    = NULL;
     SC_MSG_CMD_PLAYBACK_ST  stPlaybackRsp;
     U32          ulErrCode   = CC_ERR_NO_REASON;
 
@@ -4986,13 +4987,13 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                     if (sc_send_cmd_playback(&stPlaybackRsp.stMsgTag) != DOS_SUCC)
                     {
+                        ulRet = DOS_FAIL;
                         ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
                         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
                         goto proc_finishe;
                     }
 
                     pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_ACTIVE;
-                    ulRet = DOS_SUCC;
                     break;
 
                 /* 直接接通坐席 */
@@ -5016,7 +5017,6 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         /* 放音提示客户等待 */
                         pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
                         sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
-                        ulRet = DOS_SUCC;
                     }
 
                     break;
@@ -5032,6 +5032,8 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_AFTER_KEY:
             /* TODO */
             break;
+
+        case SC_AUTO_CALL_PORC2:
         case SC_AUTO_CALL_ALERTING2:
             pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_CONNECTED;
             pstEvtAnswer = (SC_MSG_EVT_ANSWER_ST *)pstMsg;
@@ -5048,14 +5050,20 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 {
                     sc_trace_scb(pstSCB, "Bridge call when early media fail.");
                     ulRet = DOS_FAIL;
+                    ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
                     goto proc_finishe;
+                }
+
+                pstAgentCallee = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
+                if (DOS_ADDR_VALID(pstAgentCallee)
+                    && DOS_ADDR_VALID(pstAgentCallee->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstAgentCallee->pstAgentInfo, SC_ACD_SERV_CALL_IN, SC_SRV_AUTO_CALL);
                 }
             }
             break;
         case SC_AUTO_CALL_CONNECTED:
         case SC_AUTO_CALL_PROCESS:
-            ulRet = DOS_SUCC;
-            break;
         case SC_AUTO_CALL_RELEASE:
             ulRet = DOS_SUCC;
             break;
@@ -5071,7 +5079,9 @@ proc_finishe:
 
     if (ulRet != DOS_SUCC)
     {
-        /* TODO 失败的处理 */
+        /* 失败的处理 */
+        sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
+        ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
     }
 
     return ulRet;

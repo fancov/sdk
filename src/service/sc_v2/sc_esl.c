@@ -546,6 +546,8 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
 U32 sc_esl_init()
 {
     DLL_Init(&g_stESLEventQueue);
+    dos_memzero(&g_stESLSendHandle, sizeof(esl_handle_t));
+    dos_memzero(&g_stESLRecvHandle, sizeof(esl_handle_t));
 
     return DOS_SUCC;
 }
