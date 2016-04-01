@@ -2423,6 +2423,7 @@ U32 sc_sip_account_get_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
 BOOL sc_customer_is_exit(U32 ulCustomerID);
 U32 sc_log_digest_print(const S8 *szTraceStr);
 U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller);
+U32 sc_cwq_del_call(SC_SRV_CB *pstSCB);
 
 U32 sc_access_balance_enquiry(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_access_agent_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);

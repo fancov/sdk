@@ -6473,6 +6473,7 @@ U32 sc_incoming_queue_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
         case SC_INQUEUE_IDEL:
         case SC_INQUEUE_RELEASE:
+            sc_cwq_del_call(pstSCB);
             pstSCB->stIncomingQueue.stSCBTag.bWaitingExit = DOS_TRUE;
             break;
         default:

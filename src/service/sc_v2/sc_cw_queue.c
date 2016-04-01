@@ -183,10 +183,10 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller)
  */
 U32 sc_cwq_del_call(SC_SRV_CB *pstSCB)
 {
-    DLL_NODE_S              *pstDLLNode  = NULL;
-    DLL_NODE_S              *pstDLLNode1 = NULL;
-    SC_CWQ_NODE_ST          *pstCWQNode  = NULL;
-    SC_SRV_CB               *pstSCB1     = NULL;
+    DLL_NODE_S                  *pstDLLNode         = NULL;
+    DLL_NODE_S                  *pstDLLNode1        = NULL;
+    SC_CWQ_NODE_ST              *pstCWQNode         = NULL;
+    SC_INCOMING_CALL_NODE_ST    *pstIncomingNode    = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {
@@ -216,13 +216,13 @@ U32 sc_cwq_del_call(SC_SRV_CB *pstSCB)
                 break;
             }
 
-            pstSCB1 = pstDLLNode1->pHandle;
-            if (DOS_ADDR_INVALID(pstSCB1))
+            pstIncomingNode = pstDLLNode1->pHandle;
+            if (DOS_ADDR_INVALID(pstIncomingNode))
             {
                 continue;
             }
 
-            if (pstSCB1 == pstSCB)
+            if (pstIncomingNode->pstSCB == pstSCB)
             {
 #if 0
                 /* 出对了之后，计算等待时间 */

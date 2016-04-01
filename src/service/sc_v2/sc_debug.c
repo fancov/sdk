@@ -2758,10 +2758,11 @@ U32 sc_show_numlmt(U32 ulIndex, U8 ucCondition ,U32 ulID, S8* pszCondition)
 
 U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
 {
-    DLL_NODE_S *pstListNode = NULL, *pstListNode1 = NULL;
-    SC_CWQ_NODE_ST *pstCWQNode = NULL;
-    SC_SRV_CB      *pstSCB = NULL;
-    struct tm *pstSWTime = NULL;
+    DLL_NODE_S                  *pstListNode = NULL, *pstListNode1 = NULL;
+    SC_CWQ_NODE_ST              *pstCWQNode = NULL;
+    struct tm                   *pstSWTime = NULL;
+    SC_INCOMING_CALL_NODE_ST    *pstIncomingNode    = NULL;
+
     S8  szBuff[256] = {0}, szTime[32] = {0};
 
     DLL_Scan(&g_stCWQMngt, pstListNode, DLL_NODE_S *)
@@ -2787,7 +2788,7 @@ U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
 
         dos_snprintf(szBuff, sizeof(szBuff), "\r\nList the cwq of agentgrp %u.", ulAgentGrpID);
         cli_out_string(ulIndex, szBuff);
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12s%20s%6s"
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12s%30s%10s"
                         , "AgentGrpID", "StartWaitingTime", "SCBNo");
         cli_out_string(ulIndex, szBuff);
         cli_out_string(ulIndex, "\r\n--------------------------------------");
@@ -2798,12 +2799,15 @@ U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
             {
                 continue;
             }
-            pstSCB = (SC_SRV_CB *)pstListNode1->pHandle;
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12u%20s%6u"
-                            , sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID)
-                            , szTime
-                            , pstSCB->ulSCBNo);
-            cli_out_string(ulIndex, szBuff);
+            pstIncomingNode = (SC_INCOMING_CALL_NODE_ST *)pstListNode1->pHandle;
+            if (DOS_ADDR_VALID(pstIncomingNode))
+            {
+                dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12u%30s%10u"
+                                , sc_task_get_agent_queue(pstIncomingNode->pstSCB->stAutoCall.ulTcbID)
+                                , szTime
+                                , pstIncomingNode->pstSCB->ulSCBNo);
+                cli_out_string(ulIndex, szBuff);
+            }
         }
         cli_out_string(ulIndex, "\r\n--------------------------------------");
     }

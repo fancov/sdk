@@ -2193,7 +2193,7 @@ proc_fail:
     return DOS_FAIL;
 }
 
-U32 sc_cmd_default(SC_MSG_TAG_ST *pstMsg)
+U32 sc_cmd_manage(SC_MSG_TAG_ST *pstMsg)
 {
     SC_MSG_EVT_ERR_REPORT_ST   stErrReport;
     SC_MSG_CMD_MANAGE_ST       *pstCmd          = NULL;
@@ -2217,6 +2217,7 @@ U32 sc_cmd_default(SC_MSG_TAG_ST *pstMsg)
             break;
 
         default:
+            szCMD[0] = '\0';
             break;
     }
 
@@ -2313,7 +2314,7 @@ VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
             break;
 
         case SC_CMD_MANAGE:
-            ulRet = sc_cmd_default(pstMsg);
+            ulRet = sc_cmd_manage(pstMsg);
             break;
 
         default:
