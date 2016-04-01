@@ -24,6 +24,7 @@ S8 *dos_get_localtime(U32 ulTimestamp, S8 *pszBuffer, S32 lLength)
     const S32 lSecondsInYear = 365 * 24 * 60 * 60;
     const S32 lsecondsInLeapYear = 366 * 24 * 60 * 60;
     const S32 lMonthDays[] = {31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    const S32 lSecondsInDay = 24 * 60 * 60;
 
     if (DOS_ADDR_INVALID(pszBuffer) || lLength < TIME_STR_LEN)
     {
@@ -66,30 +67,30 @@ S8 *dos_get_localtime(U32 ulTimestamp, S8 *pszBuffer, S32 lLength)
         {
             if((lYear%4 == 0 && lYear % 100 != 0) || lYear % 400 == 0)
             {
-                if (ulTimestamp - lSecondsUsed < 29 * 24 * 60 * 60)
+                if (ulTimestamp - lSecondsUsed < 29 * lSecondsInDay)
                 {
                     break;
                 }
 
-                lSecondsUsed += 29 * 24 * 60 * 60;
+                lSecondsUsed += 29 * lSecondsInDay;
             }
             else
             {
-                if (ulTimestamp - lSecondsUsed < 28 * 24 * 60 * 60)
+                if (ulTimestamp - lSecondsUsed < 28 * lSecondsInDay)
                 {
                     break;
                 }
 
-                lSecondsUsed += 28 * 24 * 60 * 60;
+                lSecondsUsed += 28 * lSecondsInDay;
             }
         }
         else
         {
-            if (ulTimestamp - lSecondsUsed < lMonthDays[lMonth] * 24 * 60 * 60)
+            if (ulTimestamp - lSecondsUsed < lMonthDays[lMonth] * lSecondsInDay)
             {
                 break;
             }
-            lSecondsUsed += lMonthDays[lMonth] * 24 * 60 * 60;
+            lSecondsUsed += lMonthDays[lMonth] * lSecondsInDay;
         }
 
         lMonth++;
@@ -97,10 +98,10 @@ S8 *dos_get_localtime(U32 ulTimestamp, S8 *pszBuffer, S32 lLength)
 
     lMonth++;
 
-    lDays = (ulTimestamp - lSecondsUsed) / (24 * 60 * 60);
+    lDays = (ulTimestamp - lSecondsUsed) / (lSecondsInDay);
     lDays++;
 
-    lHour = (ulTimestamp % (24 * 60 * 60)) / (60 * 60);
+    lHour = (ulTimestamp % (lSecondsInDay)) / (60 * 60);
     lMin = (ulTimestamp / 60 ) % 60;
     lSec = ulTimestamp % 60;
 
