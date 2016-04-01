@@ -14,6 +14,7 @@
 extern "C"{
 #endif /* __cplusplus */
 
+S8 *dos_get_localtime(U32 ulTimestamp, S8 *pszBuffer, S32 lLength);
 VOID dos_task_delay(U32 ulMSec);
 void dos_clean_watchdog();
 DLLEXPORT VOID dos_random_init();

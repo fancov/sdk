@@ -16,6 +16,100 @@ extern "C"{
 
 #include <dos.h>
 
+
+S8 *dos_get_localtime(U32 ulTimestamp, S8 *pszBuffer, S32 lLength)
+{
+    S32 lYear, lMonth, lDays, lHour, lMin, lSec;
+    S32 lSecondsUsed =0;
+    const S32 lSecondsInYear = 365 * 24 * 60 * 60;
+    const S32 lsecondsInLeapYear = 366 * 24 * 60 * 60;
+    const S32 lMonthDays[] = {31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+    if (DOS_ADDR_INVALID(pszBuffer) || lLength < TIME_STR_LEN)
+    {
+        DOS_ASSERT(0);
+        return NULL;
+    }
+
+    /* 获取北京时间 */
+    ulTimestamp += 8 * 60 * 60;
+
+    lYear = 1970;
+    while (1)
+    {
+        if((lYear % 4 == 0 && lYear % 100 != 0) || lYear % 400 == 0)
+        {
+            if (ulTimestamp - lSecondsUsed < lsecondsInLeapYear)
+            {
+                break;
+            }
+
+            lSecondsUsed += lsecondsInLeapYear;
+        }
+        else
+        {
+            if (ulTimestamp - lSecondsUsed < lSecondsInYear)
+            {
+                break;
+            }
+
+            lSecondsUsed += lSecondsInYear;
+        }
+
+        lYear++;
+    }
+
+    lMonth = 0;
+    while (1)
+    {
+        if (1 == lMonth)
+        {
+            if((lYear%4 == 0 && lYear % 100 != 0) || lYear % 400 == 0)
+            {
+                if (ulTimestamp - lSecondsUsed < 29 * 24 * 60 * 60)
+                {
+                    break;
+                }
+
+                lSecondsUsed += 29 * 24 * 60 * 60;
+            }
+            else
+            {
+                if (ulTimestamp - lSecondsUsed < 28 * 24 * 60 * 60)
+                {
+                    break;
+                }
+
+                lSecondsUsed += 28 * 24 * 60 * 60;
+            }
+        }
+        else
+        {
+            if (ulTimestamp - lSecondsUsed < lMonthDays[lMonth] * 24 * 60 * 60)
+            {
+                break;
+            }
+            lSecondsUsed += lMonthDays[lMonth] * 24 * 60 * 60;
+        }
+
+        lMonth++;
+    }
+
+    lMonth++;
+
+    lDays = (ulTimestamp - lSecondsUsed) / (24 * 60 * 60);
+    lDays++;
+
+    lHour = (ulTimestamp % (24 * 60 * 60)) / (60 * 60);
+    lMin = (ulTimestamp / 60 ) % 60;
+    lSec = ulTimestamp % 60;
+
+    dos_snprintf(pszBuffer, lLength, "%04d-%02d-%02d %02d:%02d:%02d", lYear, lMonth, lDays, lHour, lMin, lSec);
+
+    return pszBuffer;
+}
+
+
 /**
  * 函数: void dos_task_delay(U32 ulMsSec)
  * 功能: 使某一个线程睡眠 ulMsSec毫秒之后再执行

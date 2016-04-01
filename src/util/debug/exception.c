@@ -40,18 +40,15 @@ VOID dos_backtrace(S32 lSig)
     char **strFrame = NULL;
     U32 i = 0;
     S8 szBuff[512] = { 0 };
-    time_t stTime;
-    struct tm *pstTime;
     S8 szTime[32] = { 0 };
+    U32 ulTime = (U32)time(NULL);
 
-    time(&stTime);
-    pstTime = localtime(&stTime);
-    strftime(szTime, sizeof(szTime), "%Y-%m-%d %H:%M:%S", pstTime);
+    dos_get_localtime(ulTime, szTime, sizeof(szTime));
 
     ulSize = backtrace(pArray, 100);
     strFrame = (char **)backtrace_symbols(pArray, ulSize);
 
-    dos_snprintf(szBuff, sizeof(szBuff), "--------------------%s-------------------\r\n", szTime);
+    dos_snprintf(szBuff, sizeof(szBuff), "--------------------%s(%u)-------------------\r\n", szTime, ulTime);
     dos_syslog(LOG_LEVEL_CIRT, szBuff);
 
     dos_snprintf(szBuff, sizeof(szBuff), "Start record call stack backtrace: \r\n");

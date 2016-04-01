@@ -182,7 +182,6 @@ static VOID _assert_record(HASH_NODE_S *pNode, VOID *pParam)
     DOS_ASSERT_NODE_ST *pstAssertInfoNode = (DOS_ASSERT_NODE_ST *)pNode;
     S8 szBuff[512];
     U32 ulLen;
-    TIME_ST *pstTimeFirst, *pstTimeLast;
     S8 szTime1[32] = { 0 }, szTime2[32] = { 0 };
 
     if (!pNode)
@@ -190,19 +189,18 @@ static VOID _assert_record(HASH_NODE_S *pNode, VOID *pParam)
         return;
     }
 
-    pstTimeFirst = localtime(&pstAssertInfoNode->stFirstTime);
-    pstTimeLast = localtime(&pstAssertInfoNode->stLastTime);
-
-    strftime(szTime1, sizeof(szTime1), "%Y-%m-%d %H:%M:%S", pstTimeFirst);
-    strftime(szTime2, sizeof(szTime2), "%Y-%m-%d %H:%M:%S", pstTimeLast);
+    dos_get_localtime((U32)pstAssertInfoNode->stFirstTime, szTime1, sizeof(szTime1));
+    dos_get_localtime((U32)pstAssertInfoNode->stLastTime, szTime2, sizeof(szTime2));
 
     ulLen = dos_snprintf(szBuff, sizeof(szBuff)
-            , "Assert happened %4d times, first time: %s, last time: %s. File:%s, line:%d.\r\n"
+            , "Assert happened %4d times, first time: %s, last time: %s. File:%s, line:%d.(%u/%u)\r\n"
             , pstAssertInfoNode->ulTimes
             , szTime1
             , szTime2
             , pstAssertInfoNode->szFilename
-            , pstAssertInfoNode->ulLine);
+            , pstAssertInfoNode->ulLine
+            , pstAssertInfoNode->stFirstTime
+            , pstAssertInfoNode->stLastTime);
     if (ulLen < sizeof(szBuff))
     {
         szBuff[ulLen] = '\0';

@@ -59,6 +59,9 @@
 #include <hash/hash.h>
 #include <json/dos_json.h>
 
+
+#define TIME_STR_LEN  20
+
 #ifndef DIPCC_PTS
 #ifndef DIPCC_PTC
 #include <libcurl/curl.h>
