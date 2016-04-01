@@ -680,6 +680,7 @@ S32 debug_cli_init(S32 _iArgc, S8 **_pszArgv)
     S8 szBuffCMD[256] = { 0 };
     S32 lAddrLen;
     static struct sockaddr_un stSrvAddr;
+    struct timeval stTimeout = {1, 0};
 
     /* 创建SOCKET */
     g_lCliSocket = socket(AF_UNIX, SOCK_DGRAM, 0);
@@ -689,6 +690,10 @@ S32 debug_cli_init(S32 _iArgc, S8 **_pszArgv)
         perror("Cannot create communication socket");
         return DOS_FAIL;
     }
+
+    /* 给socket设置超时 */
+    setsockopt(g_lCliSocket, SOL_SOCKET, SO_SNDTIMEO,(const char*)&stTimeout,sizeof(stTimeout));
+    setsockopt(g_lCliSocket, SOL_SOCKET, SO_RCVTIMEO,(const char*)&stTimeout,sizeof(stTimeout));
 
     /* 检查目录，如果不存在就要创建 */
     snprintf(szBuffCMD, sizeof(szBuffCMD), "mkdir -p %s/var/run/socket", dos_get_sys_root_path());
