@@ -2319,6 +2319,38 @@ U32 sc_send_cmd_transfer(SC_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 }
 
+U32 sc_send_cmd_manage(U32 ulType)
+{
+    SC_MSG_CMD_MANAGE_ST *pstCmd = NULL;
+    U32 ulRet;
+
+    if (ulType >= SC_CMD_TYPE_MANAGE_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCmd = (SC_MSG_CMD_MANAGE_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_MANAGE_ST));
+    if (DOS_ADDR_INVALID(pstCmd))
+    {
+        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    pstCmd->stMsgTag.ulMsgType = SC_CMD_MANAGE;
+    pstCmd->stMsgTag.usInterErr = 0;
+    pstCmd->ulType = ulType;
+
+    ulRet = sc_send_command(&pstCmd->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCmd);
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
 /**
  * 向业务子层发送放音命令，正对单个声音文件
  *

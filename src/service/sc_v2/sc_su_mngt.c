@@ -1050,6 +1050,8 @@ U32 sc_esl_event_playback_start(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 {
     SC_MSG_EVT_PLAYBACK_ST stPlayback;
+    S8             *pszTermCause = NULL;
+    U32             usInterErr   = U16_BUTT;
 
     if (DOS_ADDR_INVALID(pstLegCB))
     {
@@ -1063,6 +1065,14 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
                         , pstLegCB->stPlayback.usStatus
                         , pstLegCB->stPlayback.ulCurretnIndex
                         , pstLegCB->stPlayback.ulTotal);
+
+    pszTermCause = esl_event_get_header(pstEvent, "variable_sip_term_status");
+    if (DOS_ADDR_VALID(pszTermCause)
+        && pszTermCause[0] != '\0'
+        && dos_atoul(pszTermCause, &usInterErr) < 0)
+    {
+        usInterErr = CC_ERR_NORMAL_CLEAR;
+    }
 
     switch (pstLegCB->stPlayback.usStatus)
     {
@@ -1090,7 +1100,7 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
                 stPlayback.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
             }
             stPlayback.stMsgTag.ulMsgType = SC_EVT_PLAYBACK_END;
-            stPlayback.stMsgTag.usInterErr = 0;
+            stPlayback.stMsgTag.usInterErr = usInterErr;
             stPlayback.stMsgTag.usMsgLen = 0;
             stPlayback.ulLegNo = pstLegCB->ulCBNo;
             stPlayback.ulSCBNo = pstLegCB->ulSCBNo;
@@ -2183,6 +2193,48 @@ proc_fail:
     return DOS_FAIL;
 }
 
+U32 sc_cmd_manage(SC_MSG_TAG_ST *pstMsg)
+{
+    SC_MSG_EVT_ERR_REPORT_ST   stErrReport;
+    SC_MSG_CMD_MANAGE_ST       *pstCmd          = NULL;
+    S8                          szCMD[256]      = {0, };
+
+    pstCmd = (SC_MSG_CMD_MANAGE_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstCmd))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch (pstCmd->ulType)
+    {
+        case SC_CMD_TYPE_MANAGE_RELOAD:
+            dos_snprintf(szCMD, sizeof(szCMD), "bgapi reloadxml\r\n");
+            break;
+
+        case SC_CMD_TYPE_MANAGE_HUPALL:
+            dos_snprintf(szCMD, sizeof(szCMD), "bgapi hupall\r\n");
+            break;
+
+        default:
+            szCMD[0] = '\0';
+            break;
+    }
+
+    if (szCMD[0] != '\0')
+    {
+        if (sc_esl_execute_cmd(szCMD, NULL, 0) != DOS_SUCC)
+        {
+            stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
+            return DOS_FAIL;
+        }
+
+        return DOS_SUCC;
+    }
+
+    return DOS_FAIL;
+}
+
 /**
  * 处理业务控制层发过来的请求命令，主要是分发
  *
@@ -2259,6 +2311,10 @@ VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
 
         case SC_CMD_TRANSFER:
             ulRet = sc_cmd_transfer(pstMsg);
+            break;
+
+        case SC_CMD_MANAGE:
+            ulRet = sc_cmd_manage(pstMsg);
             break;
 
         default:

@@ -1895,6 +1895,8 @@ U32 sc_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         && pstSCB->stCall.stSCBTag.usStatus != SC_CALL_TONE)
                     {
                         pstSCB->stCall.bIsRingTimer = DOS_TRUE;
+                        sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo);
+                        sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE);
                     }
                 }
             }
@@ -1907,6 +1909,12 @@ U32 sc_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (ulRet != DOS_SUCC)
     {
+        if (DOS_ADDR_VALID(pstEvtCall->pstAgentNode)
+            && DOS_ADDR_VALID(pstEvtCall->pstAgentNode->pstAgentInfo))
+        {
+            pstEvtCall->pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
+        }
+
         sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, ulErrCode);
     }
 
@@ -5088,6 +5096,12 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     pstRlayback = (SC_MSG_EVT_PLAYBACK_ST *)pstMsg;
 
+    if (pstRlayback->stMsgTag.usInterErr != U16_BUTT)
+    {
+        /* 挂断了，这里不用处理 */
+        return DOS_SUCC;
+    }
+
     pstLCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
@@ -5202,6 +5216,8 @@ U32 sc_auto_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         && pstSCB->stAutoCall.stSCBTag.usStatus != SC_AUTO_CALL_TONE)
                     {
                         pstSCB->stAutoCall.bIsRingTimer = DOS_TRUE;
+                        sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
+                        sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, DOS_TRUE);
                     }
                 }
             }
@@ -5214,7 +5230,13 @@ U32 sc_auto_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (ulRet != DOS_SUCC)
     {
-        /* TODO 失败的处理 */
+        /* TODO 失败的处理，修改坐席状态 */
+        if (DOS_ADDR_VALID(pstEvtCall->pstAgentNode)
+            && DOS_ADDR_VALID(pstEvtCall->pstAgentNode->pstAgentInfo))
+        {
+            pstEvtCall->pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
+        }
+
     }
 
     return ulRet;
@@ -6377,7 +6399,7 @@ U32 sc_incoming_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Processing call release event for voice verify.");
+    sc_trace_scb(pstSCB, "Processing incoming playback stop event. status : %u", pstSCB->stIncomingQueue.stSCBTag.usStatus);
 
     pstLCB = sc_lcb_get(pstSCB->stIncomingQueue.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
@@ -6451,6 +6473,7 @@ U32 sc_incoming_queue_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
         case SC_INQUEUE_IDEL:
         case SC_INQUEUE_RELEASE:
+            sc_cwq_del_call(pstSCB);
             pstSCB->stIncomingQueue.stSCBTag.bWaitingExit = DOS_TRUE;
             break;
         default:
@@ -10479,6 +10502,11 @@ U32 sc_auto_preview_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     if (ulRet != DOS_SUCC)
     {
         /* TODO 失败的处理 */
+        if (DOS_ADDR_VALID(pstEvtCall->pstAgentNode)
+            && DOS_ADDR_VALID(pstEvtCall->pstAgentNode->pstAgentInfo))
+        {
+            pstEvtCall->pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
+        }
     }
 
     return ulRet;

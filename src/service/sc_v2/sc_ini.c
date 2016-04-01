@@ -324,6 +324,9 @@ U32 sc_start()
         return DOS_SUCC;
     }
 
+    sc_send_cmd_manage(SC_CMD_TYPE_MANAGE_RELOAD);
+    sc_send_cmd_manage(SC_CMD_TYPE_MANAGE_HUPALL);
+
     sc_log(LOG_LEVEL_NOTIC, "start SC finished. %u", time(NULL));
 
     g_blSCInitOK = DOS_TRUE;
