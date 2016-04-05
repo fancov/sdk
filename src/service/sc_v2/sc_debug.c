@@ -4928,7 +4928,82 @@ VOID sc_log_digest_print_only(SC_SRV_CB *pstSCB, U32 ulSrvType, const S8 *pszFor
     /* 增加scb的信息打印 */
     if (DOS_ADDR_VALID(pstSCB))
     {
+        dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, " scbNo(%d", pstSCB->ulSCBNo);
 
+        if (DOS_ADDR_INVALID(pstSCB->pstServiceList[pstSCB->ulCurrentSrv])
+            || !pstSCB->pstServiceList[pstSCB->ulCurrentSrv]->bValid)
+        {
+            dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, ")", pstSCB->ulSCBNo);
+        }
+        else
+        {
+            switch (pstSCB->pstServiceList[pstSCB->ulCurrentSrv]->usSrvType)
+            {
+                case SC_SRV_CALL:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stCall.ulCallingLegNo, pstSCB->stCall.ulCalleeLegNo);
+                    break;
+
+                case SC_SRV_PREVIEW_CALL:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stPreviewCall.ulCallingLegNo, pstSCB->stPreviewCall.ulCalleeLegNo);
+                    break;
+
+                case SC_SRV_AUTO_CALL:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stAutoCall.ulCallingLegNo, pstSCB->stAutoCall.ulCalleeLegNo);
+                    break;
+
+                case SC_SRV_VOICE_VERIFY:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stVoiceVerify.ulLegNo);
+                    break;
+
+                case SC_SRV_ACCESS_CODE:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stAccessCode.ulLegNo);
+                    break;
+
+                case SC_SRV_HOLD:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stHold.ulCallLegNo);
+                    break;
+
+                case SC_SRV_TRANSFER:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d-%d)", pstSCB->stTransfer.ulNotifyLegNo, pstSCB->stTransfer.ulSubLegNo, pstSCB->stTransfer.ulPublishLegNo);
+                    break;
+
+                case SC_SRV_INCOMING_QUEUE:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stIncomingQueue.ulLegNo);
+                    break;
+
+                case SC_SRV_INTERCEPTION:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stInterception.ulLegNo);
+                    break;
+
+                case SC_SRV_WHISPER:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stWhispered.ulLegNo);
+                    break;
+
+                case SC_SRV_MARK_CUSTOM:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stMarkCustom.ulLegNo);
+                    break;
+
+                case SC_SRV_AGENT_SIGIN:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stSigin.ulLegNo);
+                    break;
+
+                case SC_SRV_DEMO_TASK:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stDemoTask.ulCallingLegNo, pstSCB->stDemoTask.ulCalleeLegNo);
+                    break;
+
+                case SC_SRV_CALL_AGENT:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stCallAgent.ulCallingLegNo, pstSCB->stCallAgent.ulCalleeLegNo);
+                    break;
+
+                case SC_SRV_AUTO_PREVIEW:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stAutoPreview.ulCallingLegNo, pstSCB->stAutoPreview.ulCalleeLegNo);
+                    break;
+
+                default:
+                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, ")");
+                    break;
+            }
+        }
     }
 
     sc_log_digest_print(szTraceStr);

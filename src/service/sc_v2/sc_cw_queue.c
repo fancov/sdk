@@ -81,7 +81,7 @@ static S32 sc_cwq_find_agentgrp(VOID *pParam, DLL_NODE_S *pstNode)
  * !!! 如果ulAgentGrpID所指定的grp不存在，会重新创建
  * !!! 该函数任务 0 和 U32_BUTT 为非法ID
  */
-U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller)
+U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller, BOOL BIsAddHead)
 {
     SC_CWQ_NODE_ST *pstCWQNode = NULL;
     DLL_NODE_S     *pstDLLNode = NULL;
@@ -115,7 +115,14 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller)
         pstDLLNode->pHandle = NULL;
 
         pthread_mutex_lock(&g_mutexCWQMngt);
-        DLL_Add(&g_stCWQMngt, pstDLLNode);
+        if (BIsAddHead)
+        {
+            DLL_Add_Head(&g_stCWQMngt, pstDLLNode);
+        }
+        else
+        {
+            DLL_Add(&g_stCWQMngt, pstDLLNode);
+        }
         pthread_mutex_unlock(&g_mutexCWQMngt);
     }
 
@@ -164,7 +171,14 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller)
     //pstSCB->ulInQueueTime = time(NULL);
 
     pthread_mutex_lock(&pstCWQNode->mutexCWQMngt);
-    DLL_Add(&pstCWQNode->stCallWaitingQueue, pstDLLNode);
+    if (BIsAddHead)
+    {
+        DLL_Add_Head(&pstCWQNode->stCallWaitingQueue, pstDLLNode);
+    }
+    else
+    {
+        DLL_Add(&pstCWQNode->stCallWaitingQueue, pstDLLNode);
+    }
     pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);
 
     pthread_mutex_lock(&g_mutexCWQMngt);
@@ -249,7 +263,6 @@ VOID *sc_cwq_runtime(VOID *ptr)
     DLL_NODE_S              *pstDLLNode1 = NULL;
     SC_CWQ_NODE_ST          *pstCWQNode  = NULL;
     SC_SRV_CB               *pstSCB      = NULL;
-    BOOL                    blHasIdelAgent = DOS_FALSE;
     SC_MSG_EVT_LEAVE_CALLQUE_ST  stEvtLeaveCallque;
     SC_INCOMING_CALL_NODE_ST *pstCallNode = NULL;
     SC_AGENT_NODE_ST        *pstAgentNode = NULL;
@@ -321,7 +334,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 {
                     pstCWQNode->ulStartWaitingTime = time(0);
 
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u has no idel agent. (%d)", pstCWQNode->ulAgentGrpID, blHasIdelAgent);
+                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u has no idel agent. scbNo(%u)", pstCWQNode->ulAgentGrpID, pstSCB->ulSCBNo);
                     break;
                 }
 
@@ -341,6 +354,8 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 stEvtLeaveCallque.stMsgTag.usInterErr = SC_LEAVE_CALL_QUE_SUCC;
                 stEvtLeaveCallque.ulSCBNo = pstSCB->ulSCBNo;
                 stEvtLeaveCallque.pstAgentNode = pstAgentNode;
+
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u send leave call queue. AgentID(%d), scbNo(%u)", pstCWQNode->ulAgentGrpID, pstAgentNode->pstAgentInfo, pstSCB->ulSCBNo);
 
                 if (sc_send_event_leave_call_queue_rsp(&stEvtLeaveCallque) != DOS_SUCC)
                 {

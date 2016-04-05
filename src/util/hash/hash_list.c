@@ -67,6 +67,15 @@ VOID dll_insert_in_middle (DLL_S  *pList, DLL_NODE_S *pPrev, DLL_NODE_S *pMid, D
     pNext->pPrev = pMid;
 }
 
+VOID dll_insert_in_head (DLL_S  *pList, DLL_NODE_S *pPrev, DLL_NODE_S *pMid, DLL_NODE_S *pNext)
+{
+    pList->ulCount++;
+    pMid->pNext  = pNext;
+    pMid->pPrev  = pPrev;
+    pPrev->pNext = pMid;
+    pNext->pPrev = pMid;
+}
+
 
 /***************************************************************/
 /*  Function Name   : dll_delete_in_middle                 */

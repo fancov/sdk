@@ -1259,7 +1259,7 @@ U32 sc_incoming_call_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
                 pstSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
                 pstSCB->stIncomingQueue.ulLegNo = pstSCB->stCall.ulCallingLegNo;
                 pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
-                if (sc_cwq_add_call(pstSCB, ulBindID, pstCallingLegCB->stCall.stNumInfo.szRealCallee) != DOS_SUCC)
+                if (sc_cwq_add_call(pstSCB, ulBindID, pstCallingLegCB->stCall.stNumInfo.szRealCallee, DOS_FALSE) != DOS_SUCC)
                 {
                     /* 加入队列失败 */
                     DOS_ASSERT(0);

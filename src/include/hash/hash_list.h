@@ -44,6 +44,9 @@ extern "C"{
 #define DLL_Add(pList,pNode) \
         dll_insert_in_middle((pList),(pList)->Head.pPrev,(pNode),&(pList)->Head)
 
+#define DLL_Add_Head(pList,pNode) \
+        dll_insert_in_middle((pList),&(pList)->Head,(pNode),(pList)->Head.pNext)
+
 #define DLL_Count(pList) ((pList)->ulCount)
 
 #define DLL_First(pList) \

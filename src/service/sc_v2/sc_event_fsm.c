@@ -1994,7 +1994,7 @@ U32 sc_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstNewSCB->stIncomingQueue.ulLegNo = pstNewSCB->stCall.ulCallingLegNo;
     pstNewSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
     pstNewSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
-    if (sc_cwq_add_call(pstNewSCB, pstNewSCB->stCall.ulAgentGrpID, pstCallingLegCB->stCall.stNumInfo.szRealCallee) != DOS_SUCC)
+    if (sc_cwq_add_call(pstNewSCB, pstNewSCB->stCall.ulAgentGrpID, pstCallingLegCB->stCall.stNumInfo.szRealCallee, DOS_TRUE) != DOS_SUCC)
     {
         /* 加入队列失败 */
         DOS_ASSERT(0);
@@ -4912,7 +4912,7 @@ U32 sc_auto_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstNewSCB->stIncomingQueue.ulLegNo = pstNewSCB->stAutoCall.ulCallingLegNo;
     pstNewSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
     pstNewSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
-    if (sc_cwq_add_call(pstNewSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstCallingLegCB->stCall.stNumInfo.szRealCallee) != DOS_SUCC)
+    if (sc_cwq_add_call(pstNewSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstCallingLegCB->stCall.stNumInfo.szRealCallee, DOS_TRUE) != DOS_SUCC)
     {
         /* 加入队列失败 */
         DOS_ASSERT(0);
@@ -5027,7 +5027,7 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
                     pstSCB->stIncomingQueue.ulLegNo = pstSCB->stAutoCall.ulCallingLegNo;
                     pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
-                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szRealCallee) != DOS_SUCC)
+                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szRealCallee, DOS_FALSE) != DOS_SUCC)
                     {
                         /* 加入队列失败 */
                         DOS_ASSERT(0);
@@ -5167,7 +5167,7 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
                     pstSCB->stIncomingQueue.ulLegNo = pstSCB->stAutoCall.ulCallingLegNo;
                     pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
-                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szRealCallee) != DOS_SUCC)
+                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szRealCallee, DOS_FALSE) != DOS_SUCC)
                     {
                         /* 加入队列失败 */
                         DOS_ASSERT(0);
@@ -5327,7 +5327,7 @@ U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
                     pstSCB->stIncomingQueue.ulLegNo = pstSCB->stAutoCall.ulCallingLegNo;
                     pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
-                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szCallee) != DOS_SUCC)
+                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szCallee, DOS_FALSE) != DOS_SUCC)
                     {
                         /* 加入队列失败 */
                         DOS_ASSERT(0);
@@ -10469,7 +10469,7 @@ U32 sc_auto_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             pstSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
             pstSCB->stIncomingQueue.ulLegNo = pstSCB->stAutoPreview.ulCalleeLegNo;
             pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
-            if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoPreview.ulTcbID), pstLegCB->stCall.stNumInfo.szCallee) != DOS_SUCC)
+            if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoPreview.ulTcbID), pstLegCB->stCall.stNumInfo.szCallee, DOS_FALSE) != DOS_SUCC)
             {
                 /* 加入队列失败 */
                 DOS_ASSERT(0);
