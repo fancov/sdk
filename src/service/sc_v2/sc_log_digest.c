@@ -129,15 +129,13 @@ U32 sc_log_digest_print(const S8 *szTraceStr)
     DLL_NODE_S  *pstNode        = NULL;
     S8          *pszBuf         = NULL;
     S8          szCurTime[32]   = {0,};
-    time_t      stTime;
 
     if (DOS_ADDR_INVALID(szTraceStr))
     {
         return DOS_FAIL;
     }
 
-    stTime = time(NULL);
-    strftime(szCurTime, sizeof(szCurTime), "%Y-%m-%d %H:%M:%S ", localtime(&stTime));
+    dos_get_localtime(time(NULL), szCurTime, sizeof(szCurTime));
 
     pszBuf = (S8 *)dos_dmem_alloc(SC_LOG_DIGEST_LEN);
     if (DOS_ADDR_INVALID(pszBuf))

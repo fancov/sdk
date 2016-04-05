@@ -415,7 +415,7 @@ proc_finished:
     return sc_send_msg2db((SC_DB_MSG_TAG_ST *)pstCallResult);
 }
 
-U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
+U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode, U32 ulStatus)
 {
     SC_DB_MSG_CALL_RESULT_ST *pstCallResult     = NULL;
     SC_LEG_CB                *pstCallingLegCB   = NULL;
@@ -633,7 +633,14 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode)
         }
         else
         {
-            pstCallResult->ulResult = CC_RST_CUSTOMER_HANGUP;
+            if (ulStatus < SC_AUTO_CALL_PORC2)
+            {
+                pstCallResult->ulResult = CC_RST_NOT_FOUND;
+            }
+            else
+            {
+                pstCallResult->ulResult = CC_RST_CUSTOMER_HANGUP;
+            }
         }
     }
     else

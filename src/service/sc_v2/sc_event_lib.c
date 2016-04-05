@@ -1598,7 +1598,7 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
     if (pstAgentNodeCallee->pstAgentInfo->ucWorkStatus != SC_ACD_WORK_IDEL
         || pstAgentNodeCallee->pstAgentInfo->ucServStatus != SC_ACD_SERV_IDEL)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Callee agnent status is not can been call");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Callee agent status is not can been call");
         return DOS_FAIL;
     }
 

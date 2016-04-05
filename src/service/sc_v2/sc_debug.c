@@ -83,6 +83,7 @@ S8 *g_pszSCEventStr[] = {
     "EVT_PLAYBACK_END",
     "EVT_AUTH_RESULT",
     "EVT_LEACE_CALL_QUEUE",
+    "EVT_RINGING_TIMEOUT",
     "EVT_ERROR_PORT",
 
     "",
@@ -2500,11 +2501,13 @@ U32  sc_show_caller_setting(U32 ulIndex, U32 ulSettingID)
                 continue;
             }
 
+            pstSetting = (SC_CALLER_SETTING_ST *)pstHashNode->pHandle;
+
             if (U32_BUTT != ulSettingID && ulSettingID != pstSetting->ulID)
             {
                 continue;
             }
-            pstSetting = (SC_CALLER_SETTING_ST *)pstHashNode->pHandle;
+
             dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-6u%-16s%-12u%-16s%-9u%-12s%-7u%-11s"
                             , pstSetting->ulID
                             , pstSetting->szSettingName
@@ -4909,6 +4912,28 @@ S32 cli_cc_license(U32 ulIndex, S32 argc, S8 **argv)
     }
 
     return 0;
+}
+
+VOID sc_log_digest_print_only(SC_SRV_CB *pstSCB, U32 ulSrvType, const S8 *pszFormat, ...)
+{
+    va_list         Arg;
+    U32             ulTraceTagLen = 0;
+    S8              szTraceStr[1024] = {0, };
+
+    va_start(Arg, pszFormat);
+    vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
+    va_end(Arg);
+    szTraceStr[sizeof(szTraceStr) -1] = '\0';
+
+    /* 增加scb的信息打印 */
+    if (DOS_ADDR_VALID(pstSCB))
+    {
+
+    }
+
+    sc_log_digest_print(szTraceStr);
+
+    return;
 }
 
 /**
