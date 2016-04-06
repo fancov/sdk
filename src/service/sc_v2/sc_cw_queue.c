@@ -81,7 +81,7 @@ static S32 sc_cwq_find_agentgrp(VOID *pParam, DLL_NODE_S *pstNode)
  * !!! 如果ulAgentGrpID所指定的grp不存在，会重新创建
  * !!! 该函数任务 0 和 U32_BUTT 为非法ID
  */
-U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller, BOOL BIsAddHead)
+U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller, BOOL bIsAddHead)
 {
     SC_CWQ_NODE_ST *pstCWQNode = NULL;
     DLL_NODE_S     *pstDLLNode = NULL;
@@ -115,7 +115,7 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller, BOOL BIsA
         pstDLLNode->pHandle = NULL;
 
         pthread_mutex_lock(&g_mutexCWQMngt);
-        if (BIsAddHead)
+        if (bIsAddHead)
         {
             DLL_Add_Head(&g_stCWQMngt, pstDLLNode);
         }
@@ -171,7 +171,7 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller, BOOL BIsA
     //pstSCB->ulInQueueTime = time(NULL);
 
     pthread_mutex_lock(&pstCWQNode->mutexCWQMngt);
-    if (BIsAddHead)
+    if (bIsAddHead)
     {
         DLL_Add_Head(&pstCWQNode->stCallWaitingQueue, pstDLLNode);
     }

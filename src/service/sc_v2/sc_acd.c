@@ -2025,11 +2025,11 @@ U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32
 {
     U32 ulCnt = 0;
 
-    SC_AGENT_NODE_ST *pstAgentNode      = NULL;
-    SC_AGENT_GRP_NODE_ST    *pstGroupListNode  = NULL;
-    HASH_NODE_S                *pstHashNode       = NULL;
-    DLL_NODE_S                 *pstDLLNode        = NULL;
-    U32                        ulHashVal          = 0;
+    SC_AGENT_NODE_ST            *pstAgentNode      = NULL;
+    SC_AGENT_GRP_NODE_ST        *pstGroupListNode  = NULL;
+    HASH_NODE_S                 *pstHashNode       = NULL;
+    DLL_NODE_S                  *pstDLLNode        = NULL;
+    U32                         ulHashVal          = 0;
 
     if (DOS_ADDR_VALID(pulTotal))
     {
@@ -2096,7 +2096,7 @@ U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32
             (*pulTotal)++;
         }
 
-        if (SC_ACD_WORK_OFFLINE == pstAgentNode->pstAgentInfo->ucWorkStatus)
+        if (SC_ACD_WORK_IDEL != pstAgentNode->pstAgentInfo->ucWorkStatus)
         {
             continue;
         }
