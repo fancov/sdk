@@ -1120,6 +1120,12 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (pstEvent->ulLegNo == pstSCB->stCall.ulCalleeLegNo)
             {
                 pstSCB->stCall.stSCBTag.usStatus = SC_CALL_ALERTING;
+
+                if (sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_FALSE, pstEvent->ulWithMedia) != DOS_SUCC)
+                {
+                    sc_trace_scb(pstSCB, "Send ringback request fail.");
+                }
+
                 if (pstEvent->ulWithMedia)
                 {
                     pstCalleeLegCB = sc_lcb_get(pstSCB->stCall.ulCalleeLegNo);
@@ -1150,15 +1156,6 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                             sc_trace_scb(pstSCB, "Bridge call when early media fail.");
                             goto proc_fail;
                         }
-                    }
-                }
-                else
-                {
-                    if (sc_req_ringback(pstSCB->ulSCBNo
-                                            , pstSCB->stCall.ulCallingLegNo
-                                            , pstCallingLegCB->stCall.bEarlyMedia) != DOS_SUCC)
-                    {
-                        sc_trace_scb(pstSCB, "Send ringback request fail.");
                     }
                 }
 
@@ -1908,7 +1905,7 @@ U32 sc_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     {
                         pstSCB->stCall.bIsRingTimer = DOS_TRUE;
                         sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo);
-                        sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE);
+                        //sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
                     }
                 }
             }
@@ -2205,7 +2202,7 @@ U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                 /* 放回铃音给坐席 */
                 sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo);
-                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo, DOS_TRUE);
+                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
             }
             else
             {
@@ -2490,10 +2487,10 @@ U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_PREVIEW_CALL_EXEC:
         case SC_PREVIEW_CALL_PORC:
             /* 迁移到alerting状态 */
-            if (pstRinging->ulWithMedia)
-            {
-                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo, DOS_TRUE);
-            }
+            //if (pstRinging->ulWithMedia)
+            //{
+            //    sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
+            //}
 
             pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_ALERTING;
 
@@ -2510,6 +2507,7 @@ U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_PREVIEW_CALL_CONNECTING:
             /* 迁移到alerting状态 */
             /* 如果有媒体需要bridge呼叫，否则给主动放回铃音 */
+            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo, DOS_TRUE, pstRinging->ulWithMedia);
             if (pstRinging->ulWithMedia)
             {
                 if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCalleeLegNo, pstSCB->stPreviewCall.ulCallingLegNo) != DOS_SUCC)
@@ -2519,8 +2517,6 @@ U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
             }
 
-            /* 给坐席放回铃音 */
-            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo, DOS_TRUE);
             pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_ALERTING2;
             break;
 
@@ -4799,7 +4795,10 @@ U32 sc_auto_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             ulRet = DOS_SUCC;
             break;
         case SC_AUTO_CALL_PORC2:
-            /* 坐席振铃 */
+            /* 坐席振铃, 给客户放回铃音 */
+            sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
+            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, DOS_TRUE, pstEvent->ulWithMedia);
+
             if (pstEvent->ulWithMedia)
             {
                 pstCalleeLegCB = sc_lcb_get(pstSCB->stAutoCall.ulCalleeLegNo);
@@ -5247,8 +5246,8 @@ U32 sc_auto_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         && pstSCB->stAutoCall.stSCBTag.usStatus != SC_AUTO_CALL_TONE)
                     {
                         pstSCB->stAutoCall.bIsRingTimer = DOS_TRUE;
-                        sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
-                        sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, DOS_TRUE);
+                        //sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
+                        //sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
                     }
                 }
             }
@@ -7386,6 +7385,15 @@ U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stTransfer.stSCBTag.usStatus)
     {
         case SC_TRANSFER_PROC:
+            if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)
+            {
+                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stTransfer.ulSubLegNo, DOS_TRUE, pstEvent->ulWithMedia);
+            }
+            else
+            {
+                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stTransfer.ulNotifyLegNo, DOS_TRUE, pstEvent->ulWithMedia);
+            }
+
             if (pstEvent->ulWithMedia)
             {
                 sc_trace_scb(pstSCB, "witch media : %u.", pstEvent->ulWithMedia);
@@ -7539,9 +7547,6 @@ U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     /* 挂断电话 */
                     sc_req_hungup(pstSCB->ulSCBNo, pstNotifyLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 }
-
-                /* 给被转接方放回铃音 */
-                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stTransfer.ulSubLegNo, DOS_TRUE);
             }
             else
             {
@@ -7601,8 +7606,7 @@ U32 sc_transfer_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         pstSCB->stTransfer.stSCBTag.usStatus = SC_TRANSFER_EXEC;
                     }
                 }
-                /* 给 ulNotifyLegNo 放回铃音 */
-                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stTransfer.ulNotifyLegNo, DOS_TRUE);
+
             }
 
             break;
@@ -7951,6 +7955,7 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     /* 释放掉 SCB */
                     sc_scb_free(pstSCB);
                     pstSCB = NULL;
+                    break;
                 }
                 else
                 {
@@ -7979,8 +7984,9 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstOtherLegCB = NULL;
                 }
                 sc_scb_free(pstSCB);
-
+                pstSCB = NULL;
                 break;
+
             default:
                 break;
         }
@@ -8205,6 +8211,7 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     /* 释放掉 SCB */
                     sc_scb_free(pstSCB);
                     pstSCB = NULL;
+                    break;
                 }
                 else
                 {
@@ -8593,6 +8600,9 @@ U32 sc_demo_task_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
         case SC_AUTO_CALL_PORC2:
             /* 坐席振铃 */
+            sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stDemoTask.ulCallingLegNo);
+            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stDemoTask.ulCallingLegNo, DOS_TRUE, pstEvent->ulWithMedia);
+
             if (pstEvent->ulWithMedia)
             {
                 pstCalleeLegCB = sc_lcb_get(pstSCB->stDemoTask.ulCalleeLegNo);
@@ -8608,17 +8618,6 @@ U32 sc_demo_task_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     }
                 }
             }
-            #if 0
-            else
-            {
-                if (sc_req_ringback(pstSCB->ulSCBNo
-                                        , pstSCB->stCall.ulCallingLegNo
-                                        , pstCallingLegCB->stCall.bEarlyMedia) != DOS_SUCC)
-                {
-                    sc_trace_scb(pstSCB, "Send ringback request fail.");
-                }
-            }
-            #endif
 
             pstSCB->stDemoTask.stSCBTag.usStatus = SC_AUTO_CALL_ALERTING2;
             break;
@@ -9761,7 +9760,7 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstSCB->stCallAgent.stSCBTag.usStatus = SC_CALL_AGENT_TONE;
 
                     /* 给主叫坐席放回铃音 */
-                    sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCallAgent.ulCallingLegNo, DOS_TRUE);
+                    sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCallAgent.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
                     sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING, SC_SRV_CALL_AGENT);
 
                     break;
@@ -9881,7 +9880,7 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
 
             /* 给坐席放回铃音 */
-            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCallAgent.ulCallingLegNo, DOS_TRUE);
+            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCallAgent.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
             break;
 
         case SC_CALL_AGENT_PORC2:
@@ -9952,10 +9951,10 @@ U32 sc_call_agent_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_AGENT_EXEC:
         case SC_CALL_AGENT_PORC:
             /* 迁移到alerting状态 */
-            if (pstRinging->ulWithMedia)
-            {
-                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCallAgent.ulCallingLegNo, DOS_TRUE);
-            }
+            //if (pstRinging->ulWithMedia)
+            //{
+            //    sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCallAgent.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
+            //}
 
             pstSCB->stCallAgent.stSCBTag.usStatus = SC_CALL_AGENT_ALERTING;
 
@@ -9965,6 +9964,8 @@ U32 sc_call_agent_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_AGENT_PORC2:
             /* 迁移到alerting状态 */
             /* 如果有媒体需要bridge呼叫，否则给主动放回铃音 */
+            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCallAgent.ulCallingLegNo, DOS_TRUE, pstRinging->ulWithMedia);
+
             if (pstRinging->ulWithMedia)
             {
                 if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stCallAgent.ulCalleeLegNo, pstSCB->stCallAgent.ulCallingLegNo) != DOS_SUCC)
@@ -10644,10 +10645,10 @@ U32 sc_auto_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_PREVIEW_EXEC:
         case SC_AUTO_PREVIEW_PORC:
             /* 迁移到alerting状态 */
-            if (pstRinging->ulWithMedia)
-            {
-                sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, DOS_TRUE);
-            }
+            //if (pstRinging->ulWithMedia)
+            //{
+            //    sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
+            //}
 
             pstSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_ALERTING;
 
@@ -10657,6 +10658,7 @@ U32 sc_auto_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_PREVIEW_CONNECTING:
             /* 迁移到alerting状态 */
             /* 如果有媒体需要bridge呼叫，否则给主动放回铃音 */
+            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, DOS_TRUE, pstRinging->ulWithMedia);
             if (pstRinging->ulWithMedia)
             {
                 if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCalleeLegNo, pstSCB->stAutoPreview.ulCallingLegNo) != DOS_SUCC)
@@ -10667,7 +10669,7 @@ U32 sc_auto_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
 
             /* 给坐席放回铃音 */
-            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, DOS_TRUE);
+            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
             pstSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_ALERTING2;
             break;
 

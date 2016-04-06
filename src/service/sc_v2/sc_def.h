@@ -1634,7 +1634,8 @@ typedef struct tagSCMsgCmdRingback{
 
     U32     ulSCBNo;                        /**< SCB编号 */
     U32     ulLegNo;                        /**< 主叫LEG */
-    U32     ulMediaConnected;               /**< 主叫LEG */
+    U32     ulCallConnected;                /**< 通话是否已接通 */
+    U32     ulEarlyMedia;                   /**< 是否是早期媒体 */
 }SC_MSG_CMD_RINGBACK_ST;
 
 /** 应答请求 */
@@ -2207,7 +2208,7 @@ U32 sc_send_balance_query2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 
 U32 sc_req_hungup(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
 U32 sc_req_bridge_call(U32 ulSCBNo, U32 ulCallingLegNo, U32 ulCalleeLegNo);
-U32 sc_req_ringback(U32 ulSCBNo, U32 ulLegNo, BOOL blHasMedia);
+U32 sc_req_ringback(U32 ulSCBNo, U32 ulLegNo, BOOL blHasMedia, BOOL bIsEarlyMedia);
 U32 sc_req_answer_call(U32 ulSCBNo, U32 ulLegNo);
 U32 sc_req_play_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulSndInd, U32 ulLoop, U32 ulInterval, U32 ulSilence);
 U32 sc_req_play_sounds(U32 ulSCBNo, U32 ulLegNo, U32 *pulSndInd, U32 ulSndCnt, U32 ulLoop, U32 ulInterval, U32 ulSilence);

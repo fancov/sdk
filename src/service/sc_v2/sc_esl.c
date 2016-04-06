@@ -130,6 +130,8 @@ U32 sc_esl_update_gateway(U32 ulAction, U32 ulID)
 U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
 {
     U32 ulRet;
+    S32 lCount = 20;
+    S8  szCMD[512] = {0};
 
     if (DOS_ADDR_INVALID(pszApp)
         || DOS_ADDR_INVALID(pszUUID))
@@ -139,17 +141,30 @@ U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
         return DOS_FAIL;
     }
 
-    if (!g_stESLSendHandle.connected)
+    while (1)
     {
-        ulRet = esl_connect(&g_stESLSendHandle, "127.0.0.1", 8021, NULL, "ClueCon");
-        if (ESL_SUCCESS != ulRet)
+        if (!g_stESLSendHandle.connected)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for send event re-connect fail, return code:%d, Msg:%s. ", ulRet, g_stESLSendHandle.err);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
+            g_stESLSendHandle.event_lock = 1;
+            ulRet = esl_connect_timeout(&g_stESLSendHandle, "127.0.0.1", 8021, NULL, "ClueCon", 100);
+            if (ESL_SUCCESS != ulRet)
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for send event re-connect fail, return code:%d, Msg:%s. ", ulRet, g_stESLSendHandle.err);
 
-            return DOS_FAIL;
+                if (lCount-- < 0)
+                {
+                    dos_snprintf(szCMD, sizeof(szCMD), "Esl re-connect fail 20. The system will be shutdown with 2 seconds");
+                    dos_log(LOG_LEVEL_EMERG, LOG_TYPE_RUNINFO, szCMD);
+                    dos_task_delay(2000);
+                    exit(0);
+                }
+
+                continue;
+            }
         }
 
-        g_stESLSendHandle.event_lock = 1;
+        break;
     }
 
     if (ESL_SUCCESS != esl_execute(&g_stESLSendHandle, pszApp, pszArg, pszUUID))
@@ -192,6 +207,8 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
     U32 ulRet;
     S8  *pszReply;
     S8  *pszReplyTextStart;
+    S32 lCount = 20;
+    S8  szCMD[512] = {0};
 
     if (DOS_ADDR_INVALID(pszCmd))
     {
@@ -201,17 +218,32 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
     }
 
     /* 判断是否需要重连 */
-    if (!g_stESLSendHandle.connected)
+    while (1)
     {
-        ulRet = esl_connect(&g_stESLSendHandle, "127.0.0.1", 8021, NULL, "ClueCon");
-        if (ESL_SUCCESS != ulRet)
+        if (!g_stESLSendHandle.connected)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for send event re-connect fail, return code:%d, Msg:%s. ", ulRet, g_stESLSendHandle.err);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
+            g_stESLSendHandle.event_lock = 1;
+            ulRet = esl_connect_timeout(&g_stESLSendHandle, "127.0.0.1", 8021, NULL, "ClueCon", 100);
+            if (ESL_SUCCESS != ulRet)
+            {
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for send event re-connect fail, return code:%d, Msg:%s. ", ulRet, g_stESLSendHandle.err);
 
-            return DOS_FAIL;
+                if (lCount-- < 0)
+                {
+                    dos_snprintf(szCMD, sizeof(szCMD), "Esl re-connect fail 20. The system will be shutdown with 2 seconds");
+                    dos_log(LOG_LEVEL_EMERG, LOG_TYPE_RUNINFO, szCMD);
+                    dos_task_delay(2000);
+                    exit(0);
+                }
+
+                continue;
+            }
+
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connect Back to Normal. %s", __FUNCTION__);
         }
 
-        g_stESLSendHandle.event_lock = 1;
+        break;
     }
 
     /* 发送并接受数据 */
@@ -230,7 +262,7 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
         pszReply = esl_event_get_header(g_stESLSendHandle.last_sr_event, "reply-text");
         if (DOS_ADDR_INVALID(pszReply) || dos_strnicmp(pszReply, "-ERR", 4) == 0)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. reply text: %s", pszReply);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. reply text: %s. CMD: %s", pszReply, pszCmd);
 
             return DOS_FAIL;
         }
@@ -464,7 +496,7 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
            **/
         if (!g_stESLRecvHandle.connected)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "%s", "ELS for event connection has been down, re-connect.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
             g_stESLRecvHandle.event_lock = 1;
             ulRet = esl_connect(&g_stESLRecvHandle, "127.0.0.1", 8021, NULL, "ClueCon");
             if (ESL_SUCCESS != ulRet)
@@ -478,7 +510,7 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
             esl_global_set_default_logger(ESL_LOG_LEVEL_WARNING);
             esl_events(&g_stESLRecvHandle, ESL_EVENT_TYPE_PLAIN, SC_ESL_EVENT_LIST);
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "%s", "ELS for event connect Back to Normal.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connect Back to Normal. %s", __FUNCTION__);
         }
 
         if (bFirstConn)

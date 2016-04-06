@@ -283,7 +283,7 @@ processing:
             sc_req_play_sound(pstSCB->ulSCBNo, pstSCBAgent->stSigin.ulLegNo, SC_SND_INCOMING_CALL_TIP, 1, 0, 0);
 
             /* 放回铃音给主叫 */
-            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE);
+            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
 
             if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
                 && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
@@ -419,7 +419,7 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
                     }
 
                     /* 放回铃音给主叫 */
-                    sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE);
+                    sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
 
                     pstSCB->stCall.stSCBTag.usStatus = SC_CALL_TONE;
 
@@ -570,7 +570,7 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
             }
 
             /* 放回铃音给主叫 */
-            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE);
+            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
 
             pstSCB->stCall.stSCBTag.usStatus = SC_CALL_TONE;
 
@@ -913,7 +913,7 @@ U32 sc_agent_auto_preview_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgent
 
             /* 放回铃音给坐席 */
             sc_req_playback_stop(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo);
-            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, DOS_TRUE);
+            sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
             sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGBACK, SC_SRV_AUTO_PREVIEW);
             pstSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_ACTIVE;
 
@@ -1751,7 +1751,7 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
 
             /* 给主叫坐席放回铃音 */
             sc_req_playback_stop(pstSCB->ulSCBNo, pstAgentLCB->ulCBNo);
-            sc_req_ringback(pstSCB->ulSCBNo, pstAgentLCB->ulCBNo, DOS_TRUE);
+            sc_req_ringback(pstSCB->ulSCBNo, pstAgentLCB->ulCBNo, DOS_TRUE, DOS_FALSE);
             sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGBACK, SC_SRV_CALL_AGENT);
             sc_agent_serv_status_update(pstAgentNodeCallee->pstAgentInfo, SC_ACD_SERV_RINGING, SC_SRV_CALL_AGENT);
             pstAgentNodeCallee->pstAgentInfo->ulLegNo = pstLCB->ulCBNo;
@@ -1772,7 +1772,7 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
 
             /* 给主叫坐席放回铃音 */
             sc_req_playback_stop(pstSCB->ulSCBNo, pstAgentLCB->ulCBNo);
-            sc_req_ringback(pstSCB->ulSCBNo, pstAgentLCB->ulCBNo, DOS_TRUE);
+            sc_req_ringback(pstSCB->ulSCBNo, pstAgentLCB->ulCBNo, DOS_TRUE, DOS_FALSE);
             sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGBACK, SC_SRV_CALL_AGENT);
             sc_agent_serv_status_update(pstAgentNodeCallee->pstAgentInfo, SC_ACD_SERV_RINGING, SC_SRV_CALL_AGENT);
             pstAgentNodeCallee->pstAgentInfo->ulLegNo = pstLCB->ulCBNo;
@@ -2008,7 +2008,7 @@ U32 sc_call_ctrl_call_sip(U32 ulAgentID, S8 *pszSipNumber)
 
         /* 给主叫坐席放回铃音 */
         sc_req_playback_stop(pstSCB->ulSCBNo, pstAgentLCB->ulCBNo);
-        sc_req_ringback(pstSCB->ulSCBNo, pstAgentLCB->ulCBNo, DOS_TRUE);
+        sc_req_ringback(pstSCB->ulSCBNo, pstAgentLCB->ulCBNo, DOS_TRUE, DOS_FALSE);
         sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGBACK, SC_SRV_CALL_AGENT);
 
         return DOS_SUCC;

@@ -244,6 +244,9 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_setvar %s exec_after_bridge_app park \r\n", pszLegUUID);
     sc_esl_execute_cmd(szCMD, NULL, 0);
 
+    dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_setvar %s uuid_bridge_continue_on_cancel true \r\n", pszLegUUID);
+    sc_esl_execute_cmd(szCMD, NULL, 0);
+
     pszGwName  = esl_event_get_header(pstEvent, "variable_sip_gateway_name");
     pszTrunkIP = esl_event_get_header(pstEvent, "Caller-Network-Addr");
     pszCalling = esl_event_get_header(pstEvent, "Caller-Caller-ID-Number");
@@ -1304,7 +1307,8 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
     SC_MSG_CMD_RINGBACK_ST *pstAnswer = NULL;
     SC_LEG_CB              *pstLeg    = NULL;
     S8                     *pszArgv   = NULL;
-    S8                     szUUID[SC_UUID_LENGTH];
+    S8                     szCMD[256];
+    //S8                     szUUID[SC_UUID_LENGTH];
 
     if (DOS_ADDR_INVALID(pstMsg))
     {
@@ -1324,7 +1328,7 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
         goto proc_fail;
     }
 
-    if (pstAnswer->ulMediaConnected)
+    if (pstAnswer->ulCallConnected)
     {
         pszArgv = sc_hine_get_tone(SC_TONE_RINGBACK);
         if (DOS_ADDR_INVALID(pszArgv))
@@ -1342,15 +1346,29 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
     }
     else
     {
-        if (sc_esl_execute("ring_ready", "", pstLeg->szUUID) != DOS_SUCC)
+        if (pstAnswer->ulEarlyMedia)
         {
-            stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u", pstAnswer->ulLegNo);
-            goto proc_fail;
+            dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_pre_answer %s \r\n", pstLeg->szUUID);
+
+            if (sc_esl_execute_cmd(szCMD, NULL, 0) != DOS_SUCC)
+            {
+                stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
+                goto proc_fail;
+            }
+        }
+        else
+        {
+            if (sc_esl_execute("ring_ready", "", pstLeg->szUUID) != DOS_SUCC)
+            {
+                stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u", pstAnswer->ulLegNo);
+                goto proc_fail;
+            }
         }
     }
 
-    sc_bgjob_hash_add(pstAnswer->ulLegNo, szUUID);
+    //sc_bgjob_hash_add(pstAnswer->ulLegNo, szUUID);
 
     return DOS_SUCC;
 

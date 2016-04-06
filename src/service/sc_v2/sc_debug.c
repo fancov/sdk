@@ -64,6 +64,7 @@ S8 *g_pszSCCommandStr[] = {
     "CMD_IVR_CTR",
     "CMD_MUX",
     "CMD_TRANSFER",
+    "CMD_MANAGE",
     ""
 };
 

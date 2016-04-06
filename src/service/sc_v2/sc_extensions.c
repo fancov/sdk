@@ -351,7 +351,7 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
          **/
         if (!g_stESLExtRecvHandle.connected)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "ELS for event connection has been down, re-connect.");
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
             g_stESLExtRecvHandle.event_lock = 1;
             ulRet = esl_connect(&g_stESLExtRecvHandle, "127.0.0.1", 8021, NULL, "ClueCon");
             if (ESL_SUCCESS != ulRet)

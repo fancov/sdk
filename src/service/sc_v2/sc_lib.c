@@ -2707,7 +2707,7 @@ U32 sc_req_answer_call(U32 ulSCBNo, U32 ulLegNo)
  *
  * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
  */
-U32 sc_req_ringback(U32 ulSCBNo, U32 ulLegNo, BOOL blHasMedia)
+U32 sc_req_ringback(U32 ulSCBNo, U32 ulLegNo, BOOL bIsConnected, BOOL bIsEarlyMedia)
 {
     SC_MSG_CMD_RINGBACK_ST *pstCMDRingback = NULL;
     U32                    ulRet = 0;
@@ -2724,7 +2724,8 @@ U32 sc_req_ringback(U32 ulSCBNo, U32 ulLegNo, BOOL blHasMedia)
     pstCMDRingback->stMsgTag.usInterErr = 0;
     pstCMDRingback->ulSCBNo = ulSCBNo;
     pstCMDRingback->ulLegNo = ulLegNo;
-    pstCMDRingback->ulMediaConnected = blHasMedia;
+    pstCMDRingback->ulCallConnected = bIsConnected;
+    pstCMDRingback->ulEarlyMedia = bIsEarlyMedia;
 
     ulRet = sc_send_command(&pstCMDRingback->stMsgTag);
     if (ulRet != DOS_SUCC)
