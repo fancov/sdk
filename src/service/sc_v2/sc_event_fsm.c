@@ -1607,6 +1607,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 {
                     pstSCB->stCall.ulCallingLegNo = U32_BUTT;
                 }
+                pstHungupLeg->ulCBNo = U32_BUTT;
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 pstSCB->stCall.stSCBTag.usStatus = SC_CALL_RELEASE;
             }
@@ -2928,6 +2929,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 /* 长签的坐席挂断了电话，不要释放leg，解除关系就行 */
                 pstHungupLeg->ulSCBNo = U32_BUTT;
                 pstSCB->stPreviewCall.ulCallingLegNo = U32_BUTT;
+                pstHungupLeg->ulCBNo = U32_BUTT;
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_RELEASE;
             }
@@ -5128,6 +5130,7 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     U32                    ulTaskMode       = U32_BUTT;
     U32                    ulErrCode        = CC_ERR_NO_REASON;
     U32                    ulRet            = DOS_SUCC;
+    SC_AGENT_NODE_ST       *pstAgentCall    = NULL;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -5209,6 +5212,14 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 sc_trace_scb(pstSCB, "Bridge call when early media fail.");
                 ulRet = DOS_FAIL;
+            }
+
+            /* 修改坐席状态 */
+            pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
+            if (DOS_ADDR_VALID(pstAgentCall)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+            {
+                sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_CALL_IN, SC_SRV_AUTO_CALL);
             }
 
             pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_CONNECTED;
@@ -5853,6 +5864,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 /* 长签的坐席挂断了电话，不要释放leg，解除关系就行 */
                 pstSCB->stAutoCall.ulCallingLegNo = U32_BUTT;
+                pstHungupLeg->ulSCBNo = U32_BUTT;
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_RELEASE;
             }
@@ -6723,6 +6735,8 @@ U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stMarkCustom.stSCBTag.usStatus)
     {
         case SC_MAKR_CUSTOM_IDEL:
+            pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_PROC;
+            break;
         case SC_MAKR_CUSTOM_PROC:
         case SC_MAKR_CUSTOM_ACTIVE:
         case SC_MAKR_CUSTOM_RELEASE:
@@ -9186,6 +9200,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 /* 长签的坐席挂断了电话，不要释放leg，解除关系就行 */
                 pstSCB->stDemoTask.ulCallingLegNo = U32_BUTT;
+                pstHungupLeg->ulCBNo = U32_BUTT;
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 pstSCB->stDemoTask.stSCBTag.usStatus = SC_AUTO_CALL_RELEASE;
             }
