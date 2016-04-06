@@ -6723,7 +6723,6 @@ U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stMarkCustom.stSCBTag.usStatus)
     {
         case SC_MAKR_CUSTOM_IDEL:
-            break;
         case SC_MAKR_CUSTOM_PROC:
         case SC_MAKR_CUSTOM_ACTIVE:
         case SC_MAKR_CUSTOM_RELEASE:
