@@ -432,76 +432,43 @@ const S8* sc_translate_caller_type(U32 ulType)
     return "UNKNOWN";
 }
 
-const S8* sc_translate_server_cb(SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstServerAddr)
+const S8* sc_translate_server(U32 ulType)
 {
-    if (DOS_ADDR_INVALID(pstSCB)
-        || DOS_ADDR_INVALID(pstServerAddr))
+    switch (ulType)
     {
-        return "Error";
+        case SC_SRV_CALL:
+            return "SC_SRV_CALL";
+        case SC_SRV_PREVIEW_CALL:
+            return "SC_SRV_PREVIEW_CALL";
+        case SC_SRV_AUTO_CALL:
+            return "SC_SRV_AUTO_CALL";
+        case SC_SRV_VOICE_VERIFY:
+            return "SC_SRV_VOICE_VERIFY";
+        case SC_SRV_ACCESS_CODE:
+            return "SC_SRV_ACCESS_CODE";
+        case SC_SRV_HOLD:
+            return "SC_SRV_HOLD";
+        case SC_SRV_TRANSFER:
+            return "SC_SRV_TRANSFER";
+        case SC_SRV_INCOMING_QUEUE:
+            return "SC_SRV_INCOMING_QUEUE";
+        case SC_SRV_INTERCEPTION:
+            return "SC_SRV_INTERCEPTION";
+        case SC_SRV_WHISPER:
+            return "SC_SRV_WHISPER";
+        case SC_SRV_MARK_CUSTOM:
+            return "SC_SRV_MARK_CUSTOM";
+        case SC_SRV_AGENT_SIGIN:
+            return "SC_SRV_AGENT_SIGIN";
+        case SC_SRV_DEMO_TASK:
+            return "SC_SRV_DEMO_TASK";
+        case SC_SRV_CALL_AGENT:
+            return "SC_SRV_CALL_AGENT";
+        case SC_SRV_AUTO_PREVIEW:
+            return "SC_SRV_AUTO_PREVIEW";
+        default:
+            return "ERROR";
     }
-
-    if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stCall)
-    {
-        return "Basic Call";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stPreviewCall)
-    {
-        return "Preview Call";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stAutoCall)
-    {
-        return "Auto Call";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stVoiceVerify)
-    {
-        return "Voice Verify";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stAccessCode)
-    {
-        return "Access Code";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stHold)
-    {
-        return "Hold";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stTransfer)
-    {
-        return "Transfer";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stIncomingQueue)
-    {
-        return "Incoming Queue";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stInterception)
-    {
-        return "Interception";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stWhispered)
-    {
-        return "Whispered";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stMarkCustom)
-    {
-        return "Mark Customer";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stSigin)
-    {
-        return "Sigin";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stDemoTask)
-    {
-        return "Demo Task";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stCallAgent)
-    {
-        return "Call Agent";
-    }
-    else if (pstServerAddr == (SC_SCB_TAG_ST *)&pstSCB->stAutoPreview)
-    {
-        return "Auto Preview";
-    }
-
-    return "Error";
 }
 
 const S8* sc_translate_server_type(U32 ulSrvType)
@@ -948,7 +915,7 @@ VOID sc_show_scb_all(U32 ulIndex)
                         , pstSCB->ulAgentID == U32_BUTT ? 0 : pstSCB->ulAgentID
                         , szAllocTime
                         , pstSCB->bTrace ? "true" : "false"
-                        , sc_translate_server_cb(pstSCB, pstSCB->pstServiceList[pstSCB->ulCurrentSrv]));
+                        , sc_translate_server(pstSCB->pstServiceList[pstSCB->ulCurrentSrv]->usSrvType));
         cli_out_string(ulIndex, szCmdBuff);
         ulCnt++;
     }
@@ -988,30 +955,29 @@ VOID sc_show_scb_detail(U32 ulIndex, U32 ulSCBID)
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%7s%12s%12s%24s%10s%24s"
-                    , "Index", "Cusomer", "Agent", "Alloc Time", "Trace", "CurrentSrv");
+                    , "\r\n%7s%12s%12s%24s%10s"
+                    , "Index", "Cusomer", "Agent", "Alloc Time", "Trace");
     cli_out_string(ulIndex, szCmdBuff);
     stTime = (time_t)pstSCB->ulAllocTime;
     strftime(szAllocTime, sizeof(szAllocTime), "%Y-%m-%d %H:%M:%S", localtime(&stTime));
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                    , "\r\n%7u%12u%12u%24s%10s%24s"
+                    , "\r\n%7u%12u%12u%24s%10s"
                     , pstSCB->ulSCBNo
                     , pstSCB->ulCustomerID == U32_BUTT ? 0 : pstSCB->ulCustomerID
                     , pstSCB->ulAgentID == U32_BUTT ? 0 : pstSCB->ulAgentID
                     , szAllocTime
-                    , pstSCB->bTrace ? "true" : "false"
-                    , sc_translate_server_cb(pstSCB, pstSCB->pstServiceList[pstSCB->ulCurrentSrv]));
+                    , pstSCB->bTrace ? "true" : "false");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow server list:");
     cli_out_string(ulIndex, szCmdBuff);
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
-    for (i=0; i<SC_SRV_BUTT; i++)
+    for (i=0; i<=pstSCB->ulCurrentSrv; i++)
     {
         if (pstSCB->pstServiceList[i] != NULL)
         {
-            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%s", sc_translate_server_cb(pstSCB, pstSCB->pstServiceList[i]));
+            dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%50s%10u", sc_translate_server(pstSCB->pstServiceList[i]->usSrvType), pstSCB->pstServiceList[i]->usStatus);
             cli_out_string(ulIndex, szCmdBuff);
         }
     }

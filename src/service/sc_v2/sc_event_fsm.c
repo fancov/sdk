@@ -1474,7 +1474,8 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 && DOS_ADDR_VALID(pstAgentCall)
                 && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo)
                 && pstAgentCall->pstAgentInfo->ucProcesingTime != 0
-                && !pstAgentCall->pstAgentInfo->bMarkCustomer)
+                && !pstAgentCall->pstAgentInfo->bMarkCustomer
+                && pstOtherLeg->stCall.stTimeInfo.ulAnswerTime != 0)
             {
                 /* 客户标记 */
                 pstSCB->stMarkCustom.stSCBTag.bValid = DOS_TRUE;
@@ -2346,7 +2347,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Proccessing preview call setup event event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
+    sc_trace_scb(pstSCB, "Proccessing preview call answer event event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
 
     pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
     if (DOS_ADDR_INVALID(pstCallingCB))
@@ -2432,11 +2433,13 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             /* 修改坐席的业务状态 */
             sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_CALL_OUT, SC_SRV_PREVIEW_CALL);
-
-            if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCalleeLegNo, pstSCB->stPreviewCall.ulCallingLegNo) != DOS_SUCC)
+            if (!pstCalleeCB->stCall.bEarlyMedia)
             {
-                sc_trace_scb(pstSCB, "Bridge call when early media fail.");
-                goto fail_proc;
+                if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCalleeLegNo, pstSCB->stPreviewCall.ulCallingLegNo) != DOS_SUCC)
+                {
+                    sc_trace_scb(pstSCB, "Bridge call when early media fail.");
+                    goto fail_proc;
+                }
             }
 
             pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_CONNECTED;
@@ -5097,6 +5100,7 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
             }
             break;
+
         case SC_AUTO_CALL_CONNECTED:
         case SC_AUTO_CALL_PROCESS:
         case SC_AUTO_CALL_RELEASE:
