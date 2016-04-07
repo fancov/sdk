@@ -3167,8 +3167,8 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Proccessing preview error event. status : %u, msg type : %u"
-        , pstSCB->stPreviewCall.stSCBTag.usStatus, pstErrReport->stMsgTag.ulMsgType);
+    sc_trace_scb(pstSCB, "Proccessing preview error event. status : %u, msg type : %u, interErr : %u"
+        , pstSCB->stPreviewCall.stSCBTag.usStatus, pstErrReport->stMsgTag.ulMsgType, pstErrReport->stMsgTag.usInterErr);
 
     if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
     {
@@ -3236,7 +3236,7 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 if (DOS_ADDR_VALID(pstAgentCall)
                     && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
                 {
-                    /* 释放掉被叫leg，放个提示音 */
+                    /* 释放掉被叫leg */
                     pstCalleeCB = sc_lcb_get(pstSCB->stPreviewCall.ulCalleeLegNo);
                     if (DOS_ADDR_VALID(pstCalleeCB))
                     {
@@ -3245,9 +3245,21 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         pstSCB->stPreviewCall.ulCalleeLegNo = U32_BUTT;
                     }
 
-                    sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo);
-                    sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo, SC_SND_NETWORK_FAULT, 1, 0, 0);
-                    pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_RELEASE;
+                    if (pstCallingCB->ulIndSCBNo != U32_BUTT)
+                    {
+                        /* 坐席长签的时候，呼叫对端失败，方提示音后到这里，修改坐席的状态，放提示音 */
+                        pstCallingCB->ulSCBNo = U32_BUTT;
+                        sc_scb_free(pstSCB);
+                        pstSCB = NULL;
+                        sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_PREVIEW_CALL);
+                        sc_req_play_sound(pstCallingCB->ulIndSCBNo, pstCallingCB->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
+                    }
+                    else
+                    {
+                        sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo);
+                        sc_req_hungup(pstSCB->ulSCBNo, pstCallingCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                        sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_PREVIEW_CALL);
+                    }
                     break;
                 }
             }

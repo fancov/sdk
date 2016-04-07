@@ -159,7 +159,7 @@ U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
                     dos_task_delay(2000);
                     exit(0);
                 }
-
+                dos_task_delay(1000);
                 continue;
             }
         }
@@ -236,7 +236,7 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
                     dos_task_delay(2000);
                     exit(0);
                 }
-
+                dos_task_delay(1000);
                 continue;
             }
 
