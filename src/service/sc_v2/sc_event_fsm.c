@@ -2401,6 +2401,11 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (sc_make_call2pstn(pstSCB, pstCalleeCB) != DOS_SUCC)
             {
                 sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Make call to pstn fail.");
+                /* 给主叫放提示音，并挂断 */
+                pstSCB->stPreviewCall.ulCalleeLegNo = U32_BUTT;
+                sc_lcb_free(pstCalleeCB);
+                pstCalleeCB = NULL;
+                sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stPreviewCall.ulCallingLegNo, CC_ERR_SC_NO_ROUTE);
                 goto fail_proc;
             }
 
