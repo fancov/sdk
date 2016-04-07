@@ -2680,6 +2680,11 @@ U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee)
                 continue;
             }
 
+            if (!pstRouetEntry->bStatus)
+            {
+                continue;
+            }
+
             if ((U16)ulCallOutGroup != pstRouetEntry->usCallOutGroup)
             {
                 continue;
