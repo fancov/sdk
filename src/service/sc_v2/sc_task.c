@@ -1797,7 +1797,12 @@ U32 sc_task_mngt_cmd_proc(U32 ulAction, U32 ulCustomerID, U32 ulTaskID)
             /* 如果任务没有被加载到内存，就不要更新了 */
             if (sc_tcb_find_by_taskid(ulTaskID))
             {
-                if (sc_task_and_callee_load(ulTaskID) != DOS_SUCC)
+                //if (sc_task_and_callee_load(ulTaskID) != DOS_SUCC)
+                //{
+                //    ulRet = SC_HTTP_ERRNO_INVALID_DATA;
+                //}
+
+                if (sc_task_load(ulTaskID) != DOS_SUCC)
                 {
                     ulRet = SC_HTTP_ERRNO_INVALID_DATA;
                 }

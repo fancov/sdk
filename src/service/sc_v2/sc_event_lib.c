@@ -2448,112 +2448,143 @@ U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
     /* 从之前的业务中拷贝信息到转接业务中 */
     if (pstSCB->stCall.stSCBTag.bValid)
     {
-        if (pstLegCB->ulCBNo == pstSCB->stCall.ulCallingLegNo)
+        if (pstSCB->stCall.stSCBTag.usStatus == SC_CALL_ACTIVE)
         {
-            pstSCB->stTransfer.ulSubLegNo = pstSCB->stCall.ulCalleeLegNo;
-            if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
-                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+            if (pstLegCB->ulCBNo == pstSCB->stCall.ulCallingLegNo)
             {
-                pstSCB->stTransfer.ulSubAgentID = pstSCB->stCall.pstAgentCallee->pstAgentInfo->ulAgentID;
-            }
+                pstSCB->stTransfer.ulSubLegNo = pstSCB->stCall.ulCalleeLegNo;
+                if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
+                    && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+                {
+                    pstSCB->stTransfer.ulSubAgentID = pstSCB->stCall.pstAgentCallee->pstAgentInfo->ulAgentID;
+                }
 
-            if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
-                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
-            {
-                pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stCall.pstAgentCalling->pstAgentInfo->ulAgentID;
+                if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+                    && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+                {
+                    pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stCall.pstAgentCalling->pstAgentInfo->ulAgentID;
+                }
             }
-        }
-        else
-        {
-            pstSCB->stTransfer.ulSubLegNo = pstSCB->stCall.ulCallingLegNo;
-            if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
-                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+            else
             {
-                pstSCB->stTransfer.ulSubAgentID = pstSCB->stCall.pstAgentCalling->pstAgentInfo->ulAgentID;
-            }
+                pstSCB->stTransfer.ulSubLegNo = pstSCB->stCall.ulCallingLegNo;
+                if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+                    && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+                {
+                    pstSCB->stTransfer.ulSubAgentID = pstSCB->stCall.pstAgentCalling->pstAgentInfo->ulAgentID;
+                }
 
-            if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
-                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
-            {
-                pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stCall.pstAgentCallee->pstAgentInfo->ulAgentID;
+                if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
+                    && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+                {
+                    pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stCall.pstAgentCallee->pstAgentInfo->ulAgentID;
+                }
             }
         }
     }
     else if (pstSCB->stPreviewCall.stSCBTag.bValid)
     {
-        if (pstLegCB->ulCBNo == pstSCB->stPreviewCall.ulCallingLegNo)
+        if (pstSCB->stPreviewCall.stSCBTag.usStatus == SC_PREVIEW_CALL_CONNECTED)
         {
-            pstSCB->stTransfer.ulSubLegNo = pstSCB->stPreviewCall.ulCalleeLegNo;
-            pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stPreviewCall.ulAgentID;
-        }
-        else
-        {
-            pstSCB->stTransfer.ulSubLegNo = pstSCB->stPreviewCall.ulCallingLegNo;
-            pstSCB->stTransfer.ulSubAgentID = pstSCB->stPreviewCall.ulAgentID;
+            if (pstLegCB->ulCBNo == pstSCB->stPreviewCall.ulCallingLegNo)
+            {
+                pstSCB->stTransfer.ulSubLegNo = pstSCB->stPreviewCall.ulCalleeLegNo;
+                pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stPreviewCall.ulAgentID;
+            }
+            else
+            {
+                pstSCB->stTransfer.ulSubLegNo = pstSCB->stPreviewCall.ulCallingLegNo;
+                pstSCB->stTransfer.ulSubAgentID = pstSCB->stPreviewCall.ulAgentID;
+            }
         }
     }
     else if (pstSCB->stAutoCall.stSCBTag.bValid)
     {
-        if (pstLegCB->ulCBNo == pstSCB->stAutoCall.ulCallingLegNo)
+        if (pstSCB->stAutoCall.stSCBTag.usStatus == SC_AUTO_CALL_CONNECTED)
         {
-            pstSCB->stTransfer.ulSubLegNo = pstSCB->stAutoCall.ulCalleeLegNo;
-            pstSCB->stTransfer.ulSubAgentID = pstSCB->stAutoCall.ulAgentID;
-        }
-        else
-        {
-            pstSCB->stTransfer.ulSubLegNo = pstSCB->stAutoCall.ulCallingLegNo;
-            pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stAutoCall.ulAgentID;
+            if (pstLegCB->ulCBNo == pstSCB->stAutoCall.ulCallingLegNo)
+            {
+                pstSCB->stTransfer.ulSubLegNo = pstSCB->stAutoCall.ulCalleeLegNo;
+                pstSCB->stTransfer.ulSubAgentID = pstSCB->stAutoCall.ulAgentID;
+            }
+            else
+            {
+                pstSCB->stTransfer.ulSubLegNo = pstSCB->stAutoCall.ulCallingLegNo;
+                pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stAutoCall.ulAgentID;
+            }
         }
     }
     else if (pstSCB->stCallAgent.stSCBTag.bValid)
     {
-        if (pstLegCB->ulCBNo == pstSCB->stCallAgent.ulCallingLegNo)
+        if (pstSCB->stCallAgent.stSCBTag.usStatus == SC_CALL_AGENT_CONNECTED)
         {
-            pstSCB->stTransfer.ulSubLegNo = pstSCB->stCallAgent.ulCalleeLegNo;
-
-            if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling)
-                && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo))
+            if (pstLegCB->ulCBNo == pstSCB->stCallAgent.ulCallingLegNo)
             {
-                pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo->ulAgentID;
+                pstSCB->stTransfer.ulSubLegNo = pstSCB->stCallAgent.ulCalleeLegNo;
+
+                if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling)
+                    && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo))
+                {
+                    pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo->ulAgentID;
+                }
+
+                if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee)
+                    && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo))
+                {
+                    pstSCB->stTransfer.ulSubAgentID = pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo->ulAgentID;
+                }
             }
-
-            if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee)
-                && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo))
+            else
             {
-                pstSCB->stTransfer.ulSubAgentID = pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo->ulAgentID;
-            }
-        }
-        else
-        {
-            pstSCB->stTransfer.ulSubLegNo = pstSCB->stCallAgent.ulCallingLegNo;
+                pstSCB->stTransfer.ulSubLegNo = pstSCB->stCallAgent.ulCallingLegNo;
 
-            if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling)
-                && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo))
-            {
-                pstSCB->stTransfer.ulSubAgentID = pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo->ulAgentID;
-            }
+                if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling)
+                    && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo))
+                {
+                    pstSCB->stTransfer.ulSubAgentID = pstSCB->stCallAgent.pstAgentCalling->pstAgentInfo->ulAgentID;
+                }
 
-            if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee)
-                && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo))
-            {
-                pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo->ulAgentID;
+                if (DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee)
+                    && DOS_ADDR_VALID(pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo))
+                {
+                    pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stCallAgent.pstAgentCallee->pstAgentInfo->ulAgentID;
+                }
             }
         }
     }
     else if (stTransfer.stSCBTag.bValid)
     {
-        /* 之前存在的是转接业务 */
-        if (pstLegCB->ulCBNo == stTransfer.ulPublishLegNo)
+        if (pstSCB->stTransfer.stSCBTag.usStatus == SC_TRANSFER_FINISHED)
         {
-            pstSCB->stTransfer.ulSubLegNo = stTransfer.ulSubLegNo;
-            pstSCB->stTransfer.ulSubAgentID = stTransfer.ulSubAgentID;
-            pstSCB->stTransfer.ulNotifyAgentID = stTransfer.ulPublishAgentID;
+            /* 之前存在的是转接业务 */
+            if (pstLegCB->ulCBNo == stTransfer.ulPublishLegNo)
+            {
+                pstSCB->stTransfer.ulSubLegNo = stTransfer.ulSubLegNo;
+                pstSCB->stTransfer.ulSubAgentID = stTransfer.ulSubAgentID;
+                pstSCB->stTransfer.ulNotifyAgentID = stTransfer.ulPublishAgentID;
+            }
+            else
+            {
+                pstSCB->stTransfer.ulSubLegNo = stTransfer.ulPublishLegNo;
+                pstSCB->stTransfer.ulSubAgentID = stTransfer.ulPublishAgentID;
+                pstSCB->stTransfer.ulNotifyAgentID = stTransfer.ulSubAgentID;
+            }
         }
-        else
+    }
+    else if (pstSCB->stAutoPreview.stSCBTag.bValid)
+    {
+        if (pstSCB->stAutoPreview.stSCBTag.usStatus == SC_AUTO_PREVIEW_CONNECTED)
         {
-            pstSCB->stTransfer.ulSubLegNo = stTransfer.ulPublishLegNo;
-            pstSCB->stTransfer.ulSubAgentID = stTransfer.ulPublishAgentID;
-            pstSCB->stTransfer.ulNotifyAgentID = stTransfer.ulSubAgentID;
+            if (pstLegCB->ulCBNo == pstSCB->stAutoPreview.ulCallingLegNo)
+            {
+                pstSCB->stTransfer.ulSubLegNo = pstSCB->stAutoPreview.ulCalleeLegNo;
+                pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stAutoPreview.ulAgentID;
+            }
+            else
+            {
+                pstSCB->stTransfer.ulSubLegNo = pstSCB->stAutoPreview.ulCallingLegNo;
+                pstSCB->stTransfer.ulSubAgentID = pstSCB->stAutoPreview.ulAgentID;
+            }
         }
     }
 

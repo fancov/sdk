@@ -2680,6 +2680,11 @@ U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee)
                 continue;
             }
 
+            if (!pstRouetEntry->bStatus)
+            {
+                continue;
+            }
+
             if ((U16)ulCallOutGroup != pstRouetEntry->usCallOutGroup)
             {
                 continue;
@@ -3389,7 +3394,7 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Search number transfer rule, timing is : %d, number select : %d"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Search number transfer rule, timing is : %d, number select : %d"
                                 , ulTiming, ulNumSelect);
 
     /* 遍历号码变换规则的链表，查找没有过期的，优先级别高的，针对这个客户或者系统的变换规则。
@@ -3443,7 +3448,7 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 
             }
         }
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Call Object : %d", pstNumTransformEntry->enObject);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Call Object : %d", pstNumTransformEntry->enObject);
 
         if (SC_NUM_TRANSFORM_OBJECT_CUSTOMER == pstNumTransformEntry->enObject)
         {
@@ -3529,7 +3534,7 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 
     if (DOS_ADDR_INVALID(pstNumTransform))
     {
         /* 没有找到合适的变换规则 */
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Not find number transfer rule. timing is : %d, number select : %d"
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Not find number transfer rule. timing is : %d, number select : %d"
                                 , ulTiming, ulNumSelect);
 
         if (SC_NUM_TRANSFORM_SELECT_CALLER == ulNumSelect)
@@ -3550,7 +3555,7 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 
         goto succ;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Find a number transfer rule(%d), timing is : %d, number select : %d"
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Find a number transfer rule(%d), timing is : %d, number select : %d"
                                 , pstNumTransform->ulID, ulTiming, ulNumSelect);
 
     if (SC_NUM_TRANSFORM_SELECT_CALLER == ulNumSelect)
@@ -3594,7 +3599,7 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 
                 goto fail;
             }
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Number transfer rule(%d), get caller(%s) from group id(%u) succ.", pstNumTransform->ulID, szNeedTransformNum, ulCallerGrpID);
+            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Number transfer rule(%d), get caller(%s) from group id(%u) succ.", pstNumTransform->ulID, szNeedTransformNum, ulCallerGrpID);
 
         }
         else if (pstNumTransform->szReplaceNum[0] == '\0')
@@ -6289,6 +6294,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     S32 lIndex = U32_BUTT;
     S8  szTaskName[64] = {0};
     SC_TASK_CB *pstTCB = NULL;
+    BOOL    bIsExist   = DOS_TRUE;
 
     for (blProcessOK = DOS_TRUE, lIndex = 0; lIndex < lCount; lIndex++)
     {
@@ -6542,6 +6548,7 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     pstTCB = sc_tcb_find_by_taskid(*(U32 *)pArg);
     if (DOS_ADDR_INVALID(pstTCB))
     {
+        bIsExist = DOS_FALSE;
         pstTCB  = sc_tcb_alloc();
         if (DOS_ADDR_INVALID(pstTCB))
         {
@@ -6564,10 +6571,16 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     pstTCB->ucTaskStatus = ulStatus;
     pstTCB->ulAllocTime = ulCreateTime;
     pstTCB->ulCalleeCountTotal = ulCalleeCnt;
-    pstTCB->ulCalledCount = ulCalledCnt;
+    if (!bIsExist)
+    {
+        pstTCB->ulCalledCount = ulCalledCnt;
+    }
     pstTCB->ulCallerGrpID = ulCallerGroupID;
     pstTCB->ulCallRate = ulCallRate;
-    pstTCB->ulLastCalleeIndex = ulCalledCnt;
+    if (!bIsExist)
+    {
+        pstTCB->ulLastCalleeIndex = ulCalledCnt;
+    }
 
     pstTCB->astPeriod[0].ucValid = DOS_TRUE;
     pstTCB->astPeriod[0].ucWeekMask = (ulStartTime1 >> 24) & 0xFF;
