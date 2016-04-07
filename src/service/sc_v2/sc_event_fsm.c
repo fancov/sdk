@@ -3664,6 +3664,18 @@ U32 sc_voice_verify_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_VOICE_VERIFY_EXEC:
         case SC_VOICE_VERIFY_PROC:
         case SC_VOICE_VERIFY_ALERTING:
+            /* ÊÍ·Å×ÊÔ´ */
+            if (DOS_ADDR_VALID(pstSCB))
+            {
+                sc_scb_free(pstSCB);
+                pstSCB = NULL;
+            }
+
+            if (DOS_ADDR_VALID(pstLCB))
+            {
+                sc_lcb_free(pstLCB);
+                pstLCB = NULL;
+            }
             break;
 
         case SC_VOICE_VERIFY_ACTIVE:
@@ -3785,6 +3797,7 @@ U32 sc_voice_verify_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             sc_scb_free(pstSCB);
             break;
+
         case SC_VOICE_VERIFY_PROC:
         case SC_VOICE_VERIFY_ALERTING:
         case SC_VOICE_VERIFY_ACTIVE:
