@@ -244,9 +244,6 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_setvar %s exec_after_bridge_app park \r\n", pszLegUUID);
     sc_esl_execute_cmd(szCMD, NULL, 0);
 
-    dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_setvar %s uuid_bridge_continue_on_cancel true \r\n", pszLegUUID);
-    sc_esl_execute_cmd(szCMD, NULL, 0);
-
     pszGwName  = esl_event_get_header(pstEvent, "variable_sip_gateway_name");
     pszTrunkIP = esl_event_get_header(pstEvent, "Caller-Network-Addr");
     pszCalling = esl_event_get_header(pstEvent, "Caller-Caller-ID-Number");
@@ -491,7 +488,6 @@ U32 sc_esl_event_progress(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     pstLegCB->stCall.stTimeInfo.ulRingTime = time(NULL);
     /* 暂时不用往业务层发什么消息 */
     stEventRinging.stMsgTag.ulMsgType = SC_EVT_CALL_RINGING;
-    //stEventRinging.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
     if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
     {
         stEventRinging.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
@@ -522,7 +518,11 @@ U32 sc_esl_event_progress(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         g_ulOutgoingCallCntDelay = 0;
     }
 
-    sc_send_event_ringing(&stEventRinging);
+    /* 如果是收到180就上报振铃消息，如果是183就在park消息中处理 */
+    if (pstEvent->event_id != ESL_EVENT_CHANNEL_PROGRESS_MEDIA)
+    {
+        sc_send_event_ringing(&stEventRinging);
+    }
 
     return DOS_SUCC;
 }
@@ -539,6 +539,7 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 {
     S8  *pszDisposition = NULL;
     SC_MSG_EVT_ANSWER_ST  stSCEvent;
+    SC_MSG_EVT_RINGING_ST stEventRinging;
 
     if (DOS_ADDR_INVALID(pstLegCB))
     {
@@ -556,7 +557,28 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     {
         if (dos_strnicmp(pszDisposition, "EARLY MEDIA", dos_strlen("EARLY MEDIA")) == 0)
         {
+            /* 早期媒体开始有媒体报文收发了，就需要告诉上层开始桥接一些 */
             pstLegCB->stCall.bEarlyMedia = DOS_TRUE;
+
+            /* 暂时不用往业务层发什么消息 */
+            stEventRinging.stMsgTag.ulMsgType = SC_EVT_CALL_RINGING;
+            if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
+            {
+                stEventRinging.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
+            }
+            else
+            {
+                stEventRinging.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
+            }
+            stEventRinging.stMsgTag.usInterErr = 0;
+
+            stEventRinging.ulLegNo = pstLegCB->ulCBNo;
+            stEventRinging.ulSCBNo = pstLegCB->ulSCBNo;
+
+            pstLegCB->stCall.bEarlyMedia = DOS_TRUE;
+            stEventRinging.ulWithMedia = DOS_TRUE;
+
+            sc_send_event_ringing(&stEventRinging);
 
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_SU), "Start exchange media for early media. LEG:%u, SCB:%u", pstLegCB->ulCBNo, pstLegCB->ulSCBNo);
 
@@ -1330,18 +1352,22 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
 
     if (pstAnswer->ulCallConnected)
     {
-        pszArgv = sc_hine_get_tone(SC_TONE_RINGBACK);
-        if (DOS_ADDR_INVALID(pszArgv))
+        /* 已经接通，且没有早期媒体，就需要放回铃，否则就不要处理，等待上传桥接 */
+        if (!pstAnswer->ulEarlyMedia)
         {
-            stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-            goto proc_fail;
-        }
+            pszArgv = sc_hine_get_tone(SC_TONE_RINGBACK);
+            if (DOS_ADDR_INVALID(pszArgv))
+            {
+                stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
+                goto proc_fail;
+            }
 
-        if (sc_esl_execute("playback", pszArgv, pstLeg->szUUID) != DOS_SUCC)
-        {
-            stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u.", pstAnswer->ulLegNo);
-            goto proc_fail;
+            if (sc_esl_execute("playback", pszArgv, pstLeg->szUUID) != DOS_SUCC)
+            {
+                stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
+                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u.", pstAnswer->ulLegNo);
+                goto proc_fail;
+            }
         }
     }
     else
