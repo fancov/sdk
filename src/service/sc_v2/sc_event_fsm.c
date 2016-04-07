@@ -5528,12 +5528,11 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstSCB->stAutoCall.ulCallingLegNo != U32_BUTT)
     {
-        sc_task_concurrency_minus(pstSCB->stAutoCall.ulTcbID);
-
         /* 呼叫结果 */
         if (SC_AUTO_CALL_PROCESS != pstSCB->stAutoCall.stSCBTag.usStatus
             && SC_AUTO_CALL_RELEASE != pstSCB->stAutoCall.stSCBTag.usStatus)
         {
+            sc_task_concurrency_minus(pstSCB->stAutoCall.ulTcbID);
             pstHungupLeg = sc_lcb_get(pstHungup->ulLegNo);
             if (DOS_ADDR_VALID(pstHungupLeg))
             {
@@ -5981,7 +5980,8 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     U32                         ulErrCode           = CC_ERR_NO_REASON;
     SC_LEG_CB                   *pstCallingCB       = NULL;
     SC_LEG_CB                   *pstCalleeCB        = NULL;
-    SC_LEG_CB                   *pstRecordLegCB    = NULL;
+    SC_LEG_CB                   *pstRecordLegCB     = NULL;
+    SC_LEG_CB                   *pstHungupLeg       = NULL;
     SC_MSG_CMD_RECORD_ST        stRecordRsp;
 
     pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
@@ -6042,8 +6042,27 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_IDEL:
         case SC_AUTO_CALL_AUTH:
         case SC_AUTO_CALL_EXEC:
-        case SC_AUTO_CALL_PORC:
             /* 发起呼叫失败，生成呼叫结果，释放资源 */
+            pstCallingCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
+            if (DOS_ADDR_VALID(pstCallingCB))
+            {
+                pstCallingCB->stCall.stTimeInfo.ulByeTime = pstCallingCB->stCall.stTimeInfo.ulStartTime;
+                sc_task_call_result(pstSCB, pstCallingCB->ulCBNo, ulErrCode, pstSCB->stAutoCall.stSCBTag.usStatus);
+                sc_lcb_free(pstCallingCB);
+            }
+            sc_scb_free(pstSCB);
+            pstSCB = NULL;
+            break;
+
+        case SC_AUTO_CALL_PORC:
+            /* 呼叫结果 */
+            sc_task_concurrency_minus(pstSCB->stAutoCall.ulTcbID);
+            pstHungupLeg = sc_lcb_get(pstErrReport->ulLegNo);
+            if (DOS_ADDR_VALID(pstHungupLeg))
+            {
+                sc_task_call_result(pstSCB, pstHungupLeg->ulCBNo, ulErrCode, pstSCB->stAutoCall.stSCBTag.usStatus);
+            }
+
             pstCallingCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
             if (DOS_ADDR_VALID(pstCallingCB))
             {
