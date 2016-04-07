@@ -1564,6 +1564,12 @@ typedef struct tagSCSrvCB{
     /** 业务类型 */
     U8                       aucServType[SC_MAX_SERVICE_TYPE];
 
+    /** 预览外呼时的客户ID */
+    U32                     ulClientID;
+
+    /** 与坐席通话的客户的号码 */
+    S8                      szClientNum[SC_NUM_LENGTH];
+
     /** 基本呼叫业务控制块 */
     SC_SRV_CALL_ST       stCall;
     /** 预览外呼业务控制块 */
@@ -2205,6 +2211,7 @@ U32 sc_send_event_leave_call_queue_rsp(SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvent);
 U32 sc_send_event_ringing_timeout_rsp(SC_MSG_EVT_RINGING_TIMEOUT_ST *pstEvent);
 U32 sc_send_usr_auth2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_send_balance_query2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
+U32 sc_send_client_contect_req(U32 ulCustomerID, U32 ulClientID, S8 *pszNumber, BOOL blCallContected);
 
 U32 sc_req_hungup(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
 U32 sc_req_bridge_call(U32 ulSCBNo, U32 ulCallingLegNo, U32 ulCalleeLegNo);
@@ -2410,7 +2417,7 @@ U32 sc_make_call2sip(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB);
 
 U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST  *pstAgentNodeCallee);
 U32 sc_call_ctrl_call_sip(U32 ulAgent, S8 *pszSipNumber);
-U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNumber);
+U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNumber, U32 ulCientID);
 U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend);
 U32 sc_call_ctrl_hold(U32 ulAgent, BOOL bIsHold);
 U32 sc_call_ctrl_unhold(U32 ulAgent);

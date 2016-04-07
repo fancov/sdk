@@ -2130,7 +2130,7 @@ process_fail:
     return DOS_FAIL;
 }
 
-U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNumber)
+U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNumber, U32 ulCientID)
 {
     SC_AGENT_NODE_ST *pstAgentNode = NULL;
     SC_SRV_CB        *pstSCB       = NULL;
@@ -2195,6 +2195,9 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
         sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Alloc scb fail");
         return DOS_FAIL;
     }
+
+    pstSCB->ulClientID = ulCientID;
+    dos_snprintf(pstSCB->szClientNum, sizeof(pstSCB->szClientNum), pszNumber);
 
     pstLCB->stCall.bValid = DOS_SUCC;
     pstLCB->stCall.ucStatus = SC_LEG_INIT;

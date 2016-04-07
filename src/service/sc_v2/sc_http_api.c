@@ -629,6 +629,7 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
     S8 *pszNumber       = NULL;
     S8 *pszAgentCalled  = NULL;
     S8 *pszType         = NULL;
+    S8 *pszClientID     = NULL;
     U32 ulType          = 0;
     U32 ulAgent         = U32_BUTT;
     U32 ulCustomer      = U32_BUTT;
@@ -636,6 +637,7 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
     U32 ulAgentCalled   = 0;
     U32 ulTaskID        = U32_BUTT;
     U32 ulRet           = DOS_FAIL;
+    U32 ulClietnID      = 0;
     SC_AGENT_NODE_ST  *pstAgentNode = NULL;
 
     pszAction      = sc_http_api_get_value(pstArgv, "action");
@@ -644,6 +646,16 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
     pszAgentCalled = sc_http_api_get_value(pstArgv, "agent_id");
     pszType        = sc_http_api_get_value(pstArgv, "type");
     pszNumber      = sc_http_api_get_value(pstArgv, "number");
+    pszClientID    = sc_http_api_get_value(pstArgv, "client_id");
+
+    if (DOS_ADDR_VALID(pszClientID))
+    {
+        if (dos_atoul(pszClientID, &ulClietnID) < 0)
+        {
+            ulClietnID = 0;
+        }
+    }
+
 
     if (DOS_ADDR_INVALID(pszAction))
     {
@@ -749,7 +761,7 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
                     /* 从系统呼出 */
                     else
                     {
-                        ulRet = sc_call_ctrl_call_out(ulCustomer, ulAgent, ulTaskID, pszNumber);
+                        ulRet = sc_call_ctrl_call_out(ulCustomer, ulAgent, ulTaskID, pszNumber, ulClietnID);
                         break;
                     }
 

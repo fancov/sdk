@@ -11,6 +11,8 @@ enum {
     SC_PUB_TYPE_SIP_XMl  = 2,
     SC_PUB_TYPE_GATEWAY  = 3,
 
+    SC_PUB_TYPE_CLIENT   = 4,
+
     SC_PUB_TYPE_BUUT,
 };
 

@@ -1238,6 +1238,8 @@ VOID sc_scb_init(SC_SRV_CB *pstSCB)
     pstSCB->ulCustomerID = U32_BUTT;
     pstSCB->ulAgentID = 0;
     pstSCB->ulAllocTime = 0;
+    pstSCB->ulClientID = 0;
+    pstSCB->szClientNum[0] = '\0';
 
     sc_scb_call_init(&pstSCB->stCall);
     sc_scb_preview_call_init(&pstSCB->stPreviewCall);
@@ -3541,6 +3543,32 @@ U32 sc_get_call_limitation()
     }
 
     return ulLimitation;
+}
+
+U32 sc_send_client_contect_req(U32 ulCustomerID, U32 ulClientID, S8 *pszNumber, BOOL blCallContected)
+{
+    S8 szURL[256]      = { 0, };
+    S8 szData[512]     = { 0, };
+    S32 ulPAPIPort     = -1;
+
+    ulPAPIPort = config_hb_get_papi_port();
+    if (ulPAPIPort <= 0)
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost/index.php/papi");
+    }
+    else
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/index.php/papi", ulPAPIPort);
+    }
+
+    /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
+    dos_snprintf(szData, sizeof(szData), "data={\"type\":\"%u\", \"data\":{\"customer_id\":\"%u\", \"client_id\":\"%u\", \"is_contact\":\"%s\", \"number\":\"%s\"}}"
+                    , SC_PUB_TYPE_CLIENT
+                    , ulCustomerID, ulClientID
+                    , blCallContected ? "true" : "false"
+                    , pszNumber);
+
+    return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_MARKER, NULL);
 }
 
 #ifdef __cplusplus
