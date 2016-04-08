@@ -22,7 +22,7 @@ extern "C"{
 #include "sc_log_digest.h"
 
 static BOOL             g_blExitFlag = DOS_TRUE;
-static DLL_S            g_stLogDigestQueue;
+DLL_S                   g_stLogDigestQueue;
 static pthread_t        g_pthreadLogDigest;
 static pthread_mutex_t  g_mutexLogDigestQueue = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t   g_condLogDigestQueue  = PTHREAD_COND_INITIALIZER;

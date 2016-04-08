@@ -43,6 +43,16 @@ extern SC_MOD_LIST_ST       astSCModList[];
 extern SC_SRV_CB       *g_pstSCBList;
 extern SC_LEG_CB       *g_pstLegCB;
 
+extern DLL_S           g_stCommandQueue;
+extern DLL_S           g_stEventQueue;
+extern DLL_S           g_stBSMsgList;
+extern DLL_S           g_stCWQMngt;
+extern DLL_S           g_stDBRequestQueue;
+extern DLL_S           g_stESLEventQueue;
+extern DLL_S           g_stExtMngtMsg;
+extern DLL_S           g_stLimitStatQueue;
+extern DLL_S           g_stLogDigestQueue;
+
 U32         g_ulSCLogLevel = LOG_LEVEL_DEBUG;
 U32         g_aulCustomerTrace[SC_TRACE_CUSTOMER_SIZE] = {0, };
 S8          g_aszCallerTrace[SC_TRACE_CALLER_SIZE][SC_NUM_LENGTH] = { {0, }, };
@@ -2919,6 +2929,46 @@ U32 sc_show_trace_server(U32 ulIndex)
     return DOS_SUCC;
 }
 
+
+
+U32 sc_show_all_queue(U32 ulIndex)
+{
+    S8  szBuff[256] = {0};
+    U32 i = 0;
+    SC_DLL_QUEUE_LIST_ST astDllList[] = {
+        {&g_stCommandQueue      , "g_stCommandQueue"        , "Send CMD from business to sub"},
+        {&g_stEventQueue        , "g_stEventQueue"          , "Send event from sub to business"},
+        {&g_stBSMsgList         , "g_stBSMsgList"           , "Recv msg from BS"},
+        {&g_stCWQMngt           , "g_stCWQMngt"             , "call wait queue"},
+        {&g_stDBRequestQueue    , "g_stDBRequestQueue"      , "update DB"},
+        {&g_stESLEventQueue     , "g_stESLEventQueue"       , "Recv event from fs"},
+        {&g_stExtMngtMsg        , "g_stExtMngtMsg"          , "Recv event from fs"},
+        {&g_stLimitStatQueue    , "g_stLimitStatQueue"      , "Caller limit"},
+        {&g_stLogDigestQueue    , "g_stLogDigestQueue"      , "Log digest"}
+    };
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%40s%10s%125s", "Name", "Count", "Description");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------");
+
+    for (i=0; i<sizeof(astDllList)/sizeof(SC_DLL_QUEUE_LIST_ST); i++)
+    {
+        if (DOS_ADDR_INVALID(astDllList[i].pstDLLHead))
+        {
+            continue;
+        }
+
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%40s%10u%125s"
+                        , astDllList[i].szName
+                        , astDllList[i].pstDLLHead->ulCount
+                        , astDllList[i].szDescription);
+
+        cli_out_string(ulIndex, szBuff);
+    }
+
+    return DOS_SUCC;
+}
+
 S32 cli_cc_trace_mod(U32 ulIndex, S32 argc, S8 **argv)
 {
     U32 i = 0, ulMod = 0;
@@ -4412,6 +4462,10 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
                 sc_show_trace_mod(ulIndex);
             }
         }
+    }
+    else if (0 == dos_stricmp(argv[2], "queue"))
+    {
+        sc_show_all_queue(ulIndex);
     }
 
     return 0;
