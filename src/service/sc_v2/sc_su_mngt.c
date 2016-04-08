@@ -80,6 +80,8 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     S8  *pszGwName    = NULL;
     S8  *pszCallDirection = NULL;
     S8  *pszLegUUID       = NULL;
+    S8  *pszLocalSdp      = NULL;
+    S8  *pszSdpRecv       = NULL;
     S8  szCMD[128]        = { 0 };
     U32 ulLCBNo           = U32_BUTT;
     U32 ulThreshold       = -1;
@@ -113,6 +115,15 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
         DOS_ASSERT(0);
         return DOS_SUCC;
     }
+
+    pszLocalSdp = esl_event_get_header(pstEvent, "variable_rtp_local_sdp_str");
+    pszSdpRecv = esl_event_get_header(pstEvent, "variable_switch_r_sdp");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg setup event(%s).\r\nLocalSDP: %s\r\nSDP Recv: %s"
+                , esl_event_get_header(pstEvent, "Call-Direction")
+                , esl_event_get_header(pstEvent, "Channel-Name")
+                , NULL == pszLocalSdp ? "NULL" : pszLocalSdp
+                , NULL == pszSdpRecv ? "NULL" : pszSdpRecv);
+
 
     /* 从ESL EVENT中回去相关呼叫信息 */
     /*
@@ -190,6 +201,16 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Create leg without call direction.");
 
         goto proc_fail;
+    }
+
+    if (DOS_ADDR_VALID(pszLocalSdp))
+    {
+        sc_leg_parse_codec(pstLCB->aucLocalCodecList, SC_MAX_CODEC_NUM, pszLocalSdp);
+    }
+
+    if (DOS_ADDR_VALID(pszSdpRecv))
+    {
+        sc_leg_parse_codec(pstLCB->aucLocalCodecList, SC_MAX_CODEC_NUM, pszSdpRecv);
     }
 
     pstLCB->stCall.ucLocalMode = SC_LEG_LOCAL_NORMAL;
@@ -330,12 +351,25 @@ proc_fail:
 U32 sc_esl_event_answer(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 {
     SC_MSG_EVT_ANSWER_ST  stSCEvent;
+    S8 *pszLocalSdp = NULL;
+    S8 *pszSdpRecv  = NULL;
+    S8 *pszCodec    = NULL;
+    U32 ulVal       = 0;
 
     if (DOS_ADDR_INVALID(pstEvent))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    pszLocalSdp = esl_event_get_header(pstEvent, "variable_rtp_local_sdp_str");
+    pszSdpRecv = esl_event_get_header(pstEvent, "variable_switch_r_sdp");
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg answer event(%s).\r\nLocalSDP: %s\r\nSDP Recv: %s"
+                , esl_event_get_header(pstEvent, "Call-Direction")
+                , esl_event_get_header(pstEvent, "Channel-Name")
+                , NULL == pszLocalSdp ? "NULL" : pszLocalSdp
+                , NULL == pszSdpRecv ? "NULL" : pszSdpRecv);
+
 
     if (DOS_ADDR_INVALID(pstLegCB))
     {
@@ -344,6 +378,40 @@ U32 sc_esl_event_answer(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     }
 
     sc_trace_leg(pstLegCB, "Call has been answered. Leg: %u, SCB: %u", pstLegCB->ulCBNo, pstLegCB->ulSCBNo);
+
+    if (DOS_ADDR_VALID(pszLocalSdp))
+    {
+        sc_leg_parse_codec(pstLegCB->aucLocalCodecList, SC_MAX_CODEC_NUM, pszLocalSdp);
+    }
+
+    if (DOS_ADDR_VALID(pszSdpRecv))
+    {
+        sc_leg_parse_codec(pstLegCB->aucLocalCodecList, SC_MAX_CODEC_NUM, pszSdpRecv);
+    }
+
+    pszCodec = esl_event_get_header(pstEvent, "variable_rtp_use_codec_name");
+    if (DOS_ADDR_VALID(pszCodec))
+    {
+        pstLegCB->ucCodec = sc_leg_get_codec_pt(pszCodec);
+    }
+
+    pszCodec = esl_event_get_header(pstEvent, "variable_write_codec");
+    if (DOS_ADDR_VALID(pszCodec))
+    {
+        pstLegCB->ucWriteCodec = sc_leg_get_codec_pt(pszCodec);
+    }
+
+    pszCodec = esl_event_get_header(pstEvent, "variable_read_codec");
+    if (DOS_ADDR_VALID(pszCodec))
+    {
+        pstLegCB->ucReadCodec = sc_leg_get_codec_pt(pszCodec);
+    }
+
+    pszCodec = esl_event_get_header(pstEvent, "variable_rtp_use_codec_ptime");
+    if (DOS_ADDR_VALID(pszCodec) && dos_atoul(pszCodec, &ulVal) == 0)
+    {
+        pstLegCB->ucPtime = (U8)ulVal;
+    }
 
     if (!pstLegCB->stCall.bEarlyMedia)
     {
@@ -394,6 +462,12 @@ U32 sc_esl_event_answer(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 U32 sc_esl_event_hangup(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 {
     S8             *pszTermCause = NULL;
+    S8             *pszStartTime;
+    S8             *pszEndTime;
+    S8             *pszPackageCnt;
+    U64            uLStartTime;
+    U64            uLEndTime;
+    U32            ulPackageCnt;
     SC_MSG_EVT_HUNGUP_ST stSCEvent;
 
     if (DOS_ADDR_INVALID(pstEvent))
@@ -409,6 +483,11 @@ U32 sc_esl_event_hangup(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     }
 
     pstLegCB->stCall.stTimeInfo.ulByeTime = time(NULL);
+
+    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg hangup event. (%s) Cause: %s"
+                , esl_event_get_header(pstEvent, "Call-Direction")
+                , esl_event_get_header(pstEvent, "Channel-Name")
+                , esl_event_get_header(pstEvent, "Hangup-Cause"));
 
     pszTermCause = esl_event_get_header(pstEvent, "variable_sip_term_status");
     if (DOS_ADDR_INVALID(pszTermCause)
@@ -431,6 +510,44 @@ U32 sc_esl_event_hangup(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     {
         stSCEvent.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
         sc_send_event_release(&stSCEvent);
+    }
+
+    pszStartTime = esl_event_get_header(pstEvent, "Caller-Channel-Progress-Media-Time");
+    pszEndTime = esl_event_get_header(pstEvent, "Caller-Channel-Hangup-Time");
+    pszPackageCnt = esl_event_get_header(pstEvent, "variable_rtp_audio_in_packet_count");
+    if (DOS_ADDR_INVALID(pszPackageCnt)
+        || dos_atoul(pszPackageCnt, &pstLegCB->ulInPackageCnt) < 0)
+    {
+        pstLegCB->ulInPackageCnt = 0;
+    }
+
+    pszPackageCnt = esl_event_get_header(pstEvent, "variable_rtp_audio_out_packet_count");
+    if (DOS_ADDR_INVALID(pszPackageCnt)
+        || dos_atoul(pszPackageCnt, &pstLegCB->ulOtherSCBNo) < 0)
+    {
+        pstLegCB->ulOtherSCBNo = 0;
+    }
+
+    if (DOS_ADDR_VALID(pszStartTime)
+        && dos_atoull(pszStartTime, &uLStartTime) == 0
+        && DOS_ADDR_VALID(pszEndTime)
+        && dos_atoull(pszEndTime, &uLEndTime) == 0
+        && uLEndTime > uLStartTime
+        && pstLegCB->ucPtime != 0
+        && pstLegCB->ulInPackageCnt != 0)
+    {
+        uLStartTime = uLStartTime / 1000;
+        uLEndTime = uLEndTime / 1000;
+
+        ulPackageCnt = (uLEndTime - uLStartTime) / pstLegCB->ucPtime;
+        if (ulPackageCnt && ulPackageCnt > pstLegCB->ulInPackageCnt)
+        {
+            pstLegCB->ucLossRate = ((ulPackageCnt - pstLegCB->ulInPackageCnt) * 100) / ulPackageCnt;
+        }
+        else
+        {
+            pstLegCB->ucLossRate = 0;
+        }
     }
 
     if (SC_LEG_PEER_INBOUND == pstLegCB->stCall.ucPeerType)
@@ -476,12 +593,64 @@ U32 sc_esl_event_hangup(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 U32 sc_esl_event_progress(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 {
     SC_MSG_EVT_RINGING_ST stEventRinging;
+    S8 *pszLocalSdp = NULL;
+    S8 *pszSdpRecv  = NULL;
+    S8 *pszCodec    = NULL;
+    U32 ulVal       = 0;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (ESL_EVENT_CHANNEL_PROGRESS_MEDIA == pstEvent->event_id)
+    {
+        pszLocalSdp = esl_event_get_header(pstEvent, "variable_rtp_local_sdp_str");
+        pszSdpRecv = esl_event_get_header(pstEvent, "variable_switch_r_sdp");
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg ringing event with media(%s).\r\nLocalSDP: %s\r\nSDP Recv: %s"
+                    , esl_event_get_header(pstEvent, "Call-Direction")
+                    , esl_event_get_header(pstEvent, "Channel-Name")
+                    , NULL == pszLocalSdp ? "NULL" : pszLocalSdp
+                    , NULL == pszSdpRecv ? "NULL" : pszSdpRecv);
+    }
+    else
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg ringing event without media(%s)."
+                    , esl_event_get_header(pstEvent, "Call-Direction")
+                    , esl_event_get_header(pstEvent, "Channel-Name"));
+    }
 
     if (DOS_ADDR_INVALID(pstLegCB))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    pszCodec = esl_event_get_header(pstEvent, "variable_rtp_use_codec_name");
+    if (DOS_ADDR_VALID(pszCodec))
+    {
+        pstLegCB->ucCodec = sc_leg_get_codec_pt(pszCodec);
+    }
+
+    pszCodec = esl_event_get_header(pstEvent, "variable_write_codec");
+    if (DOS_ADDR_VALID(pszCodec))
+    {
+        pstLegCB->ucWriteCodec = sc_leg_get_codec_pt(pszCodec);
+    }
+
+    pszCodec = esl_event_get_header(pstEvent, "variable_read_codec");
+    if (DOS_ADDR_VALID(pszCodec))
+    {
+        pstLegCB->ucReadCodec = sc_leg_get_codec_pt(pszCodec);
+    }
+
+    pszCodec = esl_event_get_header(pstEvent, "variable_rtp_use_codec_ptime");
+    if (DOS_ADDR_VALID(pszCodec) && dos_atoul(pszCodec, &ulVal) == 0)
+    {
+        pstLegCB->ucPtime = (U8)ulVal;
+    }
+
 
     pstLegCB->stCall.ucStatus = SC_LEG_ALERTING;
 
@@ -522,6 +691,18 @@ U32 sc_esl_event_progress(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     if (pstEvent->event_id != ESL_EVENT_CHANNEL_PROGRESS_MEDIA)
     {
         sc_send_event_ringing(&stEventRinging);
+    }
+    else
+    {
+        if (DOS_ADDR_VALID(pszLocalSdp))
+        {
+            sc_leg_parse_codec(pstLegCB->aucLocalCodecList, SC_MAX_CODEC_NUM, pszLocalSdp);
+        }
+
+        if (DOS_ADDR_VALID(pszSdpRecv))
+        {
+            sc_leg_parse_codec(pstLegCB->aucLocalCodecList, SC_MAX_CODEC_NUM, pszSdpRecv);
+        }
     }
 
     return DOS_SUCC;

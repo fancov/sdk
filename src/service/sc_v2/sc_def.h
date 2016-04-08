@@ -911,12 +911,23 @@ typedef struct tagSCLegCB{
     U32                   ulAllocTime;
 
     /** 原始编解码列表 */
-    U8                    aucCodecList[SC_MAX_CODEC_NUM];
+    U8                    aucLocalCodecList[SC_MAX_CODEC_NUM];
+    U8                    aucPeerCodecList[SC_MAX_CODEC_NUM];
+
     /** 使用的编解码 */
     U8                    ucCodec;
+    U8                    ucReadCodec;
+    U8                    ucWriteCodec;
     /** 打包时长 */
     U8                    ucPtime;
-    U16                   usRes;
+
+    /* 丢包率 */
+    U8                    ucLossRate;
+    U8                    ucRes1;
+    U16                   usRes1;
+
+    U32                   ulInPackageCnt;
+    U32                   ulOutPackageCnt;
 
     /** 保证事件被业务控制块处理完后，再被独立业务控制块处理，暂时不需要，现在是一个线程在处理 */
     sem_t                 stEventSem;

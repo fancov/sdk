@@ -175,11 +175,10 @@ DLLEXPORT VOID _mem_free(VOID *p)
         return;
     }
 
-    /* 发现魔术字不正确，打断言之后，使用系统调用释放 */
+    /* 发现魔术字不正确，打断言之后，结束处理 */
     if (!MEM_CHECK_MAGIC(pstMemCCB))
     {
         pstMemCCB->ulMemDesc = 0;
-        DOS_ASSERT(0);
 
         /* 严重错误，打印一下 */
         for (ulLen=0,ulLenUsed=0; ulLen<64; ulLen++)
@@ -193,6 +192,8 @@ DLLEXPORT VOID _mem_free(VOID *p)
                 ulLenUsed = 0;
             }
         }
+
+        return;
     }
 
     /* 看看内存分配点描述信息正确与否 */

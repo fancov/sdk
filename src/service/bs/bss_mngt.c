@@ -5419,7 +5419,7 @@ VOID *bss_cdr(VOID *arg)
                 break;
             }
 
-            pthread_mutex_unlock(&g_mutexBSCDR);
+            pthread_mutex_lock(&g_mutexBSCDR);
             pMsgNode = dll_fetch(&g_stBSCDRList);
             pthread_mutex_unlock(&g_mutexBSCDR);
             if (NULL == pMsgNode)

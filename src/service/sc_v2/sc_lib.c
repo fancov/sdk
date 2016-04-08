@@ -619,10 +619,16 @@ VOID sc_lcb_init(SC_LEG_CB *pstLCB)
 
     for (ulIndex=0; ulIndex<SC_MAX_CODEC_NUM; ulIndex++)
     {
-        pstLCB->aucCodecList[ulIndex] = U8_BUTT;
+        pstLCB->aucLocalCodecList[ulIndex] = U8_BUTT;
+        pstLCB->aucPeerCodecList[ulIndex] = U8_BUTT;
     }
     pstLCB->ucCodec = U8_BUTT;
+    pstLCB->ucReadCodec = U8_BUTT;
+    pstLCB->ucWriteCodec = U8_BUTT;
     pstLCB->ucPtime = 0;
+    pstLCB->ulInPackageCnt = 0;
+    pstLCB->ulOutPackageCnt = 0;
+    pstLCB->ucLossRate = 0;
     pstLCB->bValid = DOS_FALSE;
     pstLCB->bTrace = DOS_FALSE;
     pstLCB->ulSCBNo = U32_BUTT;
@@ -3572,6 +3578,146 @@ U32 sc_send_client_contect_req(U32 ulCustomerID, U32 ulClientID, S8 *pszNumber, 
 
     return sc_pub_send_msg(szURL, szData, SC_PUB_TYPE_MARKER, NULL);
 }
+
+U8 sc_leg_get_codec_pt(S8 *pszCodecName)
+{
+    if (DOS_ADDR_INVALID(pszCodecName))
+    {
+        return U8_BUTT;
+    }
+
+    if (dos_strnicmp(pszCodecName, "G729", dos_strlen("G729")) == 0)
+    {
+        return PT_G729;
+    }
+    else if (dos_strnicmp(pszCodecName, "G723", dos_strlen("G723")) == 0)
+    {
+        return PT_G723;
+    }
+    else if (dos_strnicmp(pszCodecName, "PCMA", dos_strlen("PCMA")) == 0)
+    {
+        return PT_PCMA;
+    }
+    else if (dos_strnicmp(pszCodecName, "PCMU", dos_strlen("PCMU")) == 0)
+    {
+        return PT_PCMU;
+    }
+    else
+    {
+        return U8_BUTT;
+    }
+}
+
+U32 sc_leg_parse_codec(U8 *pucCodeList, S32 lCodeListLen, S8 *pszSDP)
+{
+    S8 *pszStart = NULL, *pszEnd = NULL;
+    S8 szTmp[4] = { 0 };
+    S32 i, lStrLen;
+    S32 lCodeIndex;
+    U32 ulCode;
+
+    if (DOS_ADDR_INVALID(pucCodeList) || DOS_ADDR_INVALID(pszSDP) || lCodeListLen <= 0)
+    {
+        sc_log(LOG_LEVEL_DEBUG, "Parse CODE fail!");
+        return DOS_FAIL;
+    }
+
+    pszStart = dos_strstr(pszSDP, "m=audio");
+    if (DOS_ADDR_INVALID(pszStart))
+    {
+        sc_log(LOG_LEVEL_DEBUG, "Cannot find the audio media line in the sdp!");
+        return DOS_FAIL;
+    }
+
+    pszEnd = dos_strstr(pszStart, "\r\n");
+    if (DOS_ADDR_INVALID(pszEnd))
+    {
+        pszEnd = dos_strstr(pszStart, "\n");
+        if (DOS_ADDR_INVALID(pszEnd))
+        {
+            pszEnd = dos_strstr(pszStart, "\r");
+        }
+    }
+
+    if (DOS_ADDR_INVALID(pszEnd))
+    {
+        sc_log(LOG_LEVEL_DEBUG, "Invalid  audiomedia line in the sdp!");
+        return DOS_FAIL;
+    }
+
+    pszStart = dos_strstr(pszStart, "RTP/AVP");
+    if (DOS_ADDR_INVALID(pszStart))
+    {
+        sc_log(LOG_LEVEL_DEBUG, "Invalid  audiomedia line in the sdp!(1)");
+        return DOS_FAIL;
+    }
+
+    if (pszStart >= pszEnd)
+    {
+        sc_log(LOG_LEVEL_DEBUG, "Invalid  audiomedia line in the sdp!(2)");
+        return DOS_FAIL;
+    }
+
+    pszStart++;
+    if (pszStart >= pszEnd)
+    {
+        sc_log(LOG_LEVEL_DEBUG, "Invalid  audiomedia line in the sdp!(3)");
+        return DOS_FAIL;
+    }
+
+    szTmp[0] = '\0';
+    lStrLen = 0;
+    lCodeIndex = 0;
+    for (i=0; i<pszEnd-pszStart; i++)
+    {
+        if (' ' == pszStart[i])
+        {
+            if (szTmp[0] == '\0')
+            {
+                continue;
+            }
+
+            if (dos_atoul(szTmp, &ulCode) < 0)
+            {
+                pucCodeList[lCodeIndex] = U8_BUTT;
+                szTmp[0] = '\0';
+                lStrLen = 0;
+
+                continue;
+            }
+
+            pucCodeList[lCodeIndex] = (U8)ulCode;
+
+            lCodeIndex++;
+            if (lCodeIndex >= lCodeListLen)
+            {
+                break;
+            }
+
+            szTmp[0] = '\0';
+            lStrLen = 0;
+            continue;
+        }
+
+        if (pszStart[i] < '0' || pszStart[i] > '9')
+        {
+            sc_log(LOG_LEVEL_DEBUG, "Invalid  audiomedia line in the sdp!(4)");
+            break;
+        }
+
+        szTmp[lStrLen] = pszStart[i];
+        lStrLen++;
+        if (lStrLen >= sizeof(szTmp))
+        {
+            sc_log(LOG_LEVEL_DEBUG, "Invalid  audiomedia line in the sdp!(5)");
+            break;
+        }
+        szTmp[lStrLen] = '\0';
+    }
+
+    return DOS_SUCC;
+}
+
 
 #ifdef __cplusplus
 }
