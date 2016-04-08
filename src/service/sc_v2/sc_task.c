@@ -633,9 +633,11 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode, U32 ul
         }
         else
         {
-            if (ulStatus < SC_AUTO_CALL_PORC2)
+            if (pstTCB->ucMode != SC_TASK_MODE_AUDIO_ONLY
+                && ulStatus == SC_AUTO_CALL_EXEC2)
             {
-                pstCallResult->ulResult = CC_RST_NOT_FOUND;
+                /* 特殊处理坐席呼叫不同的情况 */
+                pstCallResult->ulResult = CC_RST_HANGUP_NO_ANSER;
             }
             else
             {

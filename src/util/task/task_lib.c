@@ -177,6 +177,13 @@ struct tm *dos_get_localtime_struct(U32 ulTimestamp, struct tm *pstTime)
         lDayRemain = lTemp;
     }
 
+    if (lSecondRemain)
+    {
+        /* ¼ÓÒ»Ìì */
+        lDaysTotal++;
+    }
+    pstTime->tm_wday = (lDaysTotal + 3) % 7;
+
     lHour = lSecondRemain / 3600;
     lMin = (lSecondRemain % 3600) / 60;
     lSec = (lSecondRemain % 3600) % 60;
