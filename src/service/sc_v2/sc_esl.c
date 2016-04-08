@@ -129,7 +129,7 @@ U32 sc_esl_update_gateway(U32 ulAction, U32 ulID)
  */
 U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
 {
-    U32 ulRet;
+    U32 ulRet = DOS_FAIL;
     S32 lCount = 20;
     S8  szCMD[512] = {0};
 
@@ -205,7 +205,7 @@ U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
  */
 U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
 {
-    U32 ulRet;
+    U32 ulRet = DOS_FAIL;
     S8  *pszUUIDStart;
     S32 lCount = 20;
     S8  szCMD[512] = {0};
