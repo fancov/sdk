@@ -1501,7 +1501,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
         }
 
         /* 如果当前业务即将退出，就需要退栈 */
-        if (pstSCB->pstServiceList[ulCurrentSrv]->bWaitingExit)
+        if (pstSCB->pstServiceList[ulCurrentSrv] && pstSCB->pstServiceList[ulCurrentSrv]->bWaitingExit)
         {
             pstSCB->pstServiceList[ulCurrentSrv]->bWaitingExit = DOS_FALSE;
 
