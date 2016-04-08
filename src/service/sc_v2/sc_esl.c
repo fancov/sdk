@@ -206,10 +206,10 @@ U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
 U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
 {
     U32 ulRet;
-    S8  *pszReply;
-    S8  *pszReplyTextStart;
+    S8  *pszUUIDStart;
     S32 lCount = 20;
     S8  szCMD[512] = {0};
+    S8  szReplyText[1024] = { 0 };
 
     if (DOS_ADDR_INVALID(pszCmd))
     {
@@ -259,21 +259,23 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
     }
 
     /** »ñÈ¡ÏìÓ¦ */
-    pszReply = g_stESLSendHandle.last_sr_reply;
-    if (DOS_ADDR_INVALID(pszReply)|| dos_strnicmp(pszReply, "-ERR", 4) == 0)
+    if (DOS_ADDR_INVALID(g_stESLSendHandle.last_sr_reply)|| dos_strnicmp(g_stESLSendHandle.last_sr_reply, "-ERR", 4) == 0)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. reply text: %s. CMD: %s", pszReply, pszCmd);
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. reply text: %s. CMD: %s", g_stESLSendHandle.last_sr_reply, pszCmd);
 
         return DOS_FAIL;
     }
 
+    dos_strncpy(szReplyText, g_stESLSendHandle.last_sr_reply, sizeof(szReplyText));
+    szReplyText[sizeof(szReplyText) - 1] = '\0';
+
     if (DOS_ADDR_VALID(pszUUID) && ulLenght > SC_UUID_LENGTH)
     {
-        pszReplyTextStart = dos_strstr(pszReply, "Job-UUID: ");
-        if (DOS_ADDR_VALID(pszReplyTextStart))
+        pszUUIDStart = dos_strstr(szReplyText, "Job-UUID: ");
+        if (DOS_ADDR_VALID(pszUUIDStart))
         {
-            pszReplyTextStart += dos_strlen("Job-UUID: ");
-            dos_snprintf(pszUUID, ulLenght, "%s", pszReplyTextStart);
+            pszUUIDStart += dos_strlen("Job-UUID: ");
+            dos_snprintf(pszUUID, ulLenght, "%s", pszUUIDStart);
         }
         else
         {
