@@ -237,6 +237,7 @@ U32 sc_update_number_stat(U32 ulType, U32 ulCycle, S8 *pszNumber)
     U32 ulTimes;
     time_t    ulTime;
     struct tm *pstTime;
+    struct tm stTime;
     struct tm stStartTime;
     S8        szSQL[512];
 
@@ -249,7 +250,7 @@ U32 sc_update_number_stat(U32 ulType, U32 ulCycle, S8 *pszNumber)
     }
 
     ulTime = time(NULL);
-    pstTime = localtime(&ulTime);
+    pstTime = dos_get_localtime_struct(ulTime, &stTime);
 
     stStartTime.tm_sec = 0;
     stStartTime.tm_min = 0;

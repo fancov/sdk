@@ -582,9 +582,11 @@ DLLEXPORT VOID dos_vlog(S32 _lLevel, S32 _lType, const S8 *format, ...)
  * */
 S8 * dos_log_get_time(time_t _stTime, S8 *szTime, S32 lLen)
 {
-    struct tm *t = NULL;
+    struct tm *t        = NULL;
+    struct tm stTime;
 
-    t = localtime(&_stTime);
+    t = dos_get_localtime_struct(_stTime, &stTime);
+
     snprintf(szTime, lLen, "%04d-%02d-%02d %02d:%02d:%02d"
             , t->tm_year + 1900
             , t->tm_mon + 1

@@ -73,6 +73,7 @@ VOID sc_printf(const S8 *pszFormat, ...);
 VOID sc_trace_scb(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...);
 VOID sc_trace_leg(SC_LEG_CB *pstLCB, const S8 *pszFormat, ...);
 VOID sc_trace_task(SC_TASK_CB *pstLCB, const S8 *pszFormat, ...);
+VOID sc_log_digest_print_only(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...);
 
 S8 *sc_event_str(U32 ulEvent);
 S8 *sc_command_str(U32 ulCommand);

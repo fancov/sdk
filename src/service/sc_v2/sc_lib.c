@@ -173,10 +173,11 @@ U32 sc_send_gateway_update_req(U32 ulID, U32 ulAction)
 U32 sc_get_record_file_path(S8 *pszBuff, U32 ulMaxLen, U32 ulCustomerID, S8 *pszJobNum, S8 *pszCaller, S8 *pszCallee)
 {
     struct tm            *pstTime;
+    struct tm            stTime;
     time_t               timep;
 
     timep = time(NULL);
-    pstTime = localtime(&timep);
+    pstTime = dos_get_localtime_struct(timep, &stTime);
 
     if (DOS_ADDR_INVALID( pszBuff)
         || ulMaxLen <= 0)
@@ -1818,7 +1819,8 @@ U32 sc_task_check_can_call(SC_TASK_CB *pstTCB)
 U32 sc_task_check_can_call_by_time(SC_TASK_CB *pstTCB)
 {
     time_t     now;
-    struct tm  *timenow;
+    struct tm  stimenow;
+    struct tm  *pstimenow;
     U32 ulWeek, ulHour, ulMinute, ulSecond, ulIndex;
     U32 ulStartTime, ulEndTime, ulCurrentTime;
 
@@ -1830,12 +1832,12 @@ U32 sc_task_check_can_call_by_time(SC_TASK_CB *pstTCB)
     }
 
     time(&now);
-    timenow = localtime(&now);
+    pstimenow = dos_get_localtime_struct(now, &stimenow);
 
-    ulWeek = timenow->tm_wday;
-    ulHour = timenow->tm_hour;
-    ulMinute = timenow->tm_min;
-    ulSecond = timenow->tm_sec;
+    ulWeek = pstimenow->tm_wday;
+    ulHour = pstimenow->tm_hour;
+    ulMinute = pstimenow->tm_min;
+    ulSecond = pstimenow->tm_sec;
 
 
     for (ulIndex=0; ulIndex<SC_MAX_PERIOD_NUM; ulIndex++)

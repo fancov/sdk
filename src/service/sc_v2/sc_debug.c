@@ -906,7 +906,7 @@ VOID sc_show_scb_all(U32 ulIndex)
         }
 
         stTime = (time_t)pstSCB->ulAllocTime;
-        strftime(szAllocTime, sizeof(szAllocTime), "%Y-%m-%d %H:%M:%S", localtime(&stTime));
+        dos_get_localtime(stTime, szAllocTime, sizeof(szAllocTime));
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                         , "\r\n%7u%12u%12u%24s%10s%24s"
@@ -959,7 +959,7 @@ VOID sc_show_scb_detail(U32 ulIndex, U32 ulSCBID)
                     , "Index", "Cusomer", "Agent", "Alloc Time", "Trace");
     cli_out_string(ulIndex, szCmdBuff);
     stTime = (time_t)pstSCB->ulAllocTime;
-    strftime(szAllocTime, sizeof(szAllocTime), "%Y-%m-%d %H:%M:%S", localtime(&stTime));
+    dos_get_localtime(stTime, szAllocTime, sizeof(szAllocTime));
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                     , "\r\n%7u%12u%12u%24s%10s"
@@ -1024,7 +1024,7 @@ VOID sc_show_leg_all(U32 ulIndex)
         }
 
         stTime = (time_t)pstLeg->ulAllocTime;
-        strftime(szAllocTime, sizeof(szAllocTime), "%Y-%m-%d %H:%M:%S", localtime(&stTime));
+        dos_get_localtime(stTime, szAllocTime, sizeof(szAllocTime));
 
         dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                         , "\r\n%7u%7u%7u%7u%24s%10s%45s"
@@ -1077,7 +1077,7 @@ VOID sc_show_leg_detail(U32 ulIndex, U32 ulLegID)
                     , "Index", "SCBNo", "Codec", "Ptime", "Alloc Time", "Trace", "szUUID");
     cli_out_string(ulIndex, szCmdBuff);
     stTime = (time_t)pstLeg->ulAllocTime;
-    strftime(szAllocTime, sizeof(szAllocTime), "%Y-%m-%d %H:%M:%S", localtime(&stTime));
+    dos_get_localtime(stTime, szAllocTime, sizeof(szAllocTime));
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
                         , "\r\n%7u%7u%7u%7u%24s%10s%45s"
@@ -2731,6 +2731,7 @@ U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
     DLL_NODE_S                  *pstListNode = NULL, *pstListNode1 = NULL;
     SC_CWQ_NODE_ST              *pstCWQNode = NULL;
     struct tm                   *pstSWTime = NULL;
+    struct tm                   stSWTime;
     SC_INCOMING_CALL_NODE_ST    *pstIncomingNode    = NULL;
 
     S8  szBuff[256] = {0}, szTime[32] = {0};
@@ -2747,7 +2748,7 @@ U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
         {
             continue;
         }
-        pstSWTime = localtime((time_t *)&pstCWQNode->ulStartWaitingTime);
+        pstSWTime = dos_get_localtime_struct(pstCWQNode->ulStartWaitingTime, &stSWTime);
         dos_snprintf(szTime, sizeof(szTime), "%04u/%02u/%02u %02u:%02u:%02u"
                         , pstSWTime->tm_year + 1900
                         , pstSWTime->tm_mon + 1
@@ -4881,7 +4882,7 @@ S32 cli_cc_license(U32 ulIndex, S32 argc, S8 **argv)
     return 0;
 }
 
-VOID sc_log_digest_print_only(SC_SRV_CB *pstSCB, U32 ulSrvType, const S8 *pszFormat, ...)
+VOID sc_log_digest_print_only(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...)
 {
     va_list         Arg;
     U32             ulTraceTagLen = 0;
