@@ -48,6 +48,11 @@ U32 sc_get_snd_list(U32 *pulSndIndList, U32 ulSndCnt, S8 *pszBuffer, U32 ulBuffL
 
 U32 sc_esl_update_gateway(U32 ulAction, U32 ulID);
 
+
+U32 sc_leg_parse_codec(U8 *pucCodeList, S32 lCodeListLen, S8 *pszSDP);
+U8 sc_leg_get_codec_pt(S8 *pszCodecName);
+
+
 #ifdef __cplusplus
 }
 #endif /* End of __cplusplus */

@@ -146,7 +146,6 @@ U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
         if (!g_stESLSendHandle.connected)
         {
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
-            g_stESLSendHandle.event_lock = 1;
             ulRet = esl_connect_timeout(&g_stESLSendHandle, "127.0.0.1", 8021, NULL, "ClueCon", 100);
             if (ESL_SUCCESS != ulRet)
             {
@@ -162,6 +161,8 @@ U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
                 dos_task_delay(1000);
                 continue;
             }
+
+            g_stESLSendHandle.event_lock = 1;
         }
 
         break;
@@ -223,7 +224,6 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
         if (!g_stESLSendHandle.connected)
         {
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
-            g_stESLSendHandle.event_lock = 1;
             ulRet = esl_connect_timeout(&g_stESLSendHandle, "127.0.0.1", 8021, NULL, "ClueCon", 100);
             if (ESL_SUCCESS != ulRet)
             {
@@ -240,6 +240,7 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
                 continue;
             }
 
+            g_stESLSendHandle.event_lock = 1;
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connect Back to Normal. %s", __FUNCTION__);
         }
 
@@ -258,30 +259,27 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
     }
 
     /** »ñÈ¡ÏìÓ¦ */
-    if (g_stESLSendHandle.last_sr_event) {
-        pszReply = esl_event_get_header(g_stESLSendHandle.last_sr_event, "reply-text");
-        if (DOS_ADDR_INVALID(pszReply) || dos_strnicmp(pszReply, "-ERR", 4) == 0)
-        {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. reply text: %s. CMD: %s", pszReply, pszCmd);
+    pszReply = g_stESLSendHandle.last_sr_reply;
+    if (DOS_ADDR_INVALID(pszReply)|| dos_strnicmp(pszReply, "-ERR", 4) == 0)
+    {
+        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. reply text: %s. CMD: %s", pszReply, pszCmd);
 
-            return DOS_FAIL;
-        }
-
-        if (DOS_ADDR_VALID(pszUUID) && ulLenght > SC_UUID_LENGTH)
-        {
-            pszReplyTextStart = dos_strstr(pszReply, "Job-UUID: ");
-            if (DOS_ADDR_VALID(pszReplyTextStart))
-            {
-                pszReplyTextStart += dos_strlen("Job-UUID: ");
-                dos_snprintf(pszUUID, ulLenght, "%s", pszReplyTextStart);
-            }
-            else
-            {
-                pszUUID[0] = '\0';
-            }
-        }
+        return DOS_FAIL;
     }
 
+    if (DOS_ADDR_VALID(pszUUID) && ulLenght > SC_UUID_LENGTH)
+    {
+        pszReplyTextStart = dos_strstr(pszReply, "Job-UUID: ");
+        if (DOS_ADDR_VALID(pszReplyTextStart))
+        {
+            pszReplyTextStart += dos_strlen("Job-UUID: ");
+            dos_snprintf(pszUUID, ulLenght, "%s", pszReplyTextStart);
+        }
+        else
+        {
+            pszUUID[0] = '\0';
+        }
+    }
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "ESL execute command SUCC. CMD: %s", pszCmd);
 
