@@ -929,6 +929,7 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     sc_scb_set_service(pstSCB, BS_SERV_INBAND_CALL);
                 }
 
+                sc_log_digest_print_only(pstSCB, "Call access: %s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
                 ulRet = sc_call_access_code(pstSCB, pstCallingLegCB, pstCallingLegCB->stCall.stNumInfo.szOriginalCallee, DOS_FALSE);
                 goto proc_finished;
             }

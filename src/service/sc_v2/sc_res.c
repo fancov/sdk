@@ -2638,6 +2638,7 @@ U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee)
     SC_ROUTE_NODE_ST     *pstRouetEntry = NULL;
     DLL_NODE_S           *pstListNode   = NULL;
     struct tm            *pstTime;
+    struct tm            stTime;
     time_t               timep;
     U32                  ulRouteGrpID;
     U32                  ulStartTime, ulEndTime, ulCurrentTime;
@@ -2651,7 +2652,7 @@ U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee)
     }
 
     timep = time(NULL);
-    pstTime = localtime(&timep);
+    pstTime = dos_get_localtime_struct(timep, &stTime);
     if (DOS_ADDR_INVALID(pstTime))
     {
         DOS_ASSERT(0);

@@ -133,7 +133,6 @@ static VOID _assert_print(HASH_NODE_S *pNode, VOID *pulIndex)
     U32   ulIndex;
     S8 szBuff[512];
     U32 ulLen;
-    TIME_ST *pstTimeFirst, *pstTimeLast;
     S8 szTime1[32] = { 0 }, szTime2[32] = { 0 };
 
     if (!pNode || !pulIndex)
@@ -143,11 +142,8 @@ static VOID _assert_print(HASH_NODE_S *pNode, VOID *pulIndex)
 
     ulIndex = *(U32 *)pulIndex;
 
-    pstTimeFirst = localtime(&pstAssertInfoNode->stFirstTime);
-    pstTimeLast = localtime(&pstAssertInfoNode->stLastTime);
-
-    strftime(szTime1, sizeof(szTime1), "%Y-%m-%d %H:%M:%S", pstTimeFirst);
-    strftime(szTime2, sizeof(szTime2), "%Y-%m-%d %H:%M:%S", pstTimeLast);
+    dos_get_localtime(pstAssertInfoNode->stFirstTime, szTime1, sizeof(szTime1));
+    dos_get_localtime(pstAssertInfoNode->stLastTime, szTime1, sizeof(szTime2));
 
     ulLen = dos_snprintf(szBuff, sizeof(szBuff)
             , "Assert happened %4d times, first time: %s, last time: %s. File:%s, line:%d.\r\n"
