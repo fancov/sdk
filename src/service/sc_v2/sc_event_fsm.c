@@ -2595,11 +2595,15 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
 
-    pstHungupLeg = sc_lcb_get(pstHungup->ulLegNo);
-    if (DOS_ADDR_VALID(pstHungupLeg)
-        && pstHungupLeg->stCall.stTimeInfo.ulAnswerTime > 0)
+    if (pstSCB->stPreviewCall.stSCBTag.usStatus != SC_PREVIEW_CALL_PROCESS
+        && pstSCB->stPreviewCall.stSCBTag.usStatus != SC_PREVIEW_CALL_RELEASE)
     {
-        sc_send_client_contect_req(pstSCB->ulClientID, pstSCB->ulClientID, pstSCB->szClientNum, pstHungupLeg->stCall.stTimeInfo.ulAnswerTime);
+        pstHungupLeg = sc_lcb_get(pstHungup->ulLegNo);
+        if (DOS_ADDR_VALID(pstHungupLeg)
+            && pstHungupLeg->stCall.stTimeInfo.ulAnswerTime > 0)
+        {
+            sc_send_client_contect_req(pstSCB->ulClientID, pstSCB->ulClientID, pstSCB->szClientNum, pstHungupLeg->stCall.stTimeInfo.ulAnswerTime);
+        }
     }
 
     switch (pstSCB->stPreviewCall.stSCBTag.usStatus)
