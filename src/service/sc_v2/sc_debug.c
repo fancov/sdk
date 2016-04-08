@@ -5194,7 +5194,7 @@ BOOL sc_trace_check_by_scb(SC_SRV_CB *pstSCB)
     }
 
     /* 判断是否需要跟踪业务 */
-    for (i=0; i<BS_SERV_BUTT; i++)
+    for (i=0; i<SC_MAX_SERVICE_TYPE; i++)
     {
         if (pstSCB->aucServType[i] < BS_SERV_BUTT
             && g_aucServTraceFlag[pstSCB->aucServType[i]])
