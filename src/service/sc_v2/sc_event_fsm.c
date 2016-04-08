@@ -905,7 +905,7 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_IDEL:
             break;
 
-        case SC_CALL_PORC:
+        case SC_CALL_PROC:
             /*  结果地方就是呼入 */
             pstCallingLegCB = sc_lcb_get(pstSCB->stCall.ulCallingLegNo);
             if (DOS_ADDR_INVALID(pstCallingLegCB))
@@ -1132,7 +1132,7 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stCall.stSCBTag.usStatus)
     {
         case SC_CALL_IDEL:
-        case SC_CALL_PORC:
+        case SC_CALL_PROC:
         case SC_CALL_AUTH:
         case SC_CALL_AUTH2:
         case SC_CALL_EXEC:
@@ -1225,7 +1225,7 @@ U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stCall.stSCBTag.usStatus)
     {
         case SC_CALL_IDEL:
-        case SC_CALL_PORC:
+        case SC_CALL_PROC:
         case SC_CALL_AUTH:
         case SC_CALL_AUTH2:
         case SC_CALL_EXEC:
@@ -1337,7 +1337,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stCall.stSCBTag.usStatus)
     {
         case SC_CALL_IDEL:
-        case SC_CALL_PORC:
+        case SC_CALL_PROC:
         case SC_CALL_AUTH:
             /* 还没有呼叫被叫, 生成话单 */
             if (pstSCB->stCall.bIsRingTimer
@@ -1837,7 +1837,7 @@ U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_IDEL:
             break;
 
-        case SC_CALL_PORC:
+        case SC_CALL_PROC:
             break;
 
         case SC_CALL_AUTH:
@@ -2096,7 +2096,7 @@ U32 sc_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stCall.stSCBTag.usStatus)
     {
         case SC_CALL_IDEL:
-        case SC_CALL_PORC:
+        case SC_CALL_PROC:
         case SC_CALL_AUTH:
             ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, ulErrCode);
             break;
@@ -2256,7 +2256,7 @@ U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_PREVIEW_CALL_EXEC:
-        case SC_PREVIEW_CALL_PORC:
+        case SC_PREVIEW_CALL_PROC:
         case SC_PREVIEW_CALL_ALERTING:
         case SC_PREVIEW_CALL_ACTIVE:
         case SC_PREVIEW_CALL_CONNECTING:
@@ -2322,10 +2322,10 @@ U32 sc_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_PREVIEW_CALL_EXEC:
-        case SC_PREVIEW_CALL_PORC:
+        case SC_PREVIEW_CALL_PROC:
         case SC_PREVIEW_CALL_ALERTING:
             /* 迁移状态到proc */
-            pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_PORC;
+            pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_PROC;
             ulRet = DOS_SUCC;
             break;
 
@@ -2385,7 +2385,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_PREVIEW_CALL_EXEC:
-        case SC_PREVIEW_CALL_PORC:
+        case SC_PREVIEW_CALL_PROC:
         case SC_PREVIEW_CALL_ALERTING:
             /* 坐席接通之后的处理 */
             /* 1. 发起PSTN的呼叫 */
@@ -2517,7 +2517,7 @@ U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_PREVIEW_CALL_EXEC:
-        case SC_PREVIEW_CALL_PORC:
+        case SC_PREVIEW_CALL_PROC:
             pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_ALERTING;
 
             ulRet = DOS_SUCC;
@@ -2612,7 +2612,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_PREVIEW_CALL_IDEL:
         case SC_PREVIEW_CALL_AUTH:
         case SC_PREVIEW_CALL_EXEC:
-        case SC_PREVIEW_CALL_PORC:
+        case SC_PREVIEW_CALL_PROC:
         case SC_PREVIEW_CALL_ALERTING:
         case SC_PREVIEW_CALL_ACTIVE:
             /* 这个时候挂断只会是坐席的LEG，修改坐席的状态 */
@@ -3249,7 +3249,7 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             sc_scb_free(pstSCB);
             break;
 
-        case SC_PREVIEW_CALL_PORC:
+        case SC_PREVIEW_CALL_PROC:
         case SC_PREVIEW_CALL_ALERTING:
             /* 坐席没有接听，不用处理，release中会处理 */
             break;
@@ -4783,11 +4783,11 @@ U32 sc_auto_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_CALL_EXEC:
-        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             /* 迁移状态到proc */
             sc_task_concurrency_add(pstSCB->stAutoCall.ulTcbID);
-            pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_PORC;
+            pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_PROC;
             ulRet = DOS_SUCC;
             break;
 
@@ -4854,7 +4854,7 @@ U32 sc_auto_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_CALL_EXEC:
-        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_ALERTING;
             ulRet = DOS_SUCC;
@@ -5035,7 +5035,7 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_CALL_EXEC:
-        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             /* 播放语音 */
             ulTaskMode = sc_task_get_mode(pstSCB->stAutoCall.ulTcbID);
@@ -5558,7 +5558,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_IDEL:
         case SC_AUTO_CALL_AUTH:
         case SC_AUTO_CALL_EXEC:
-        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             /* 这个时候挂断只会是客户的LEG清理资源即可 */
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
@@ -6066,7 +6066,7 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             pstSCB = NULL;
             break;
 
-        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_PROC:
             /* 呼叫结果 */
             sc_task_concurrency_minus(pstSCB->stAutoCall.ulTcbID);
             pstHungupLeg = sc_lcb_get(pstErrReport->ulLegNo);
@@ -8557,10 +8557,10 @@ U32 sc_demo_task_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_CALL_EXEC:
-        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             /* 迁移状态到proc */
-            pstSCB->stDemoTask.stSCBTag.usStatus = SC_AUTO_CALL_PORC;
+            pstSCB->stDemoTask.stSCBTag.usStatus = SC_AUTO_CALL_PROC;
             ulRet = DOS_SUCC;
             break;
 
@@ -8635,7 +8635,7 @@ U32 sc_demo_task_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_CALL_EXEC:
-        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             /* 播放语音 */
             stPlaybackRsp.stMsgTag.ulMsgType = SC_CMD_PLAYBACK;
@@ -8738,7 +8738,7 @@ U32 sc_demo_task_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_CALL_EXEC:
-        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             pstSCB->stDemoTask.stSCBTag.usStatus = SC_AUTO_CALL_ALERTING;
             ulRet = DOS_SUCC;
@@ -8954,7 +8954,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_IDEL:
         case SC_AUTO_CALL_AUTH:
         case SC_AUTO_CALL_EXEC:
-        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             /* 这个时候挂断只会是客户的LEG清理资源即可 */
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
@@ -9476,10 +9476,12 @@ U32 sc_demo_task_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             sc_scb_free(pstSCB);
             break;
-        case SC_AUTO_CALL_PORC:
+
+        case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stDemoTask.ulCallingLegNo, ulErrCode);
             break;
+
         case SC_AUTO_CALL_ACTIVE:
         case SC_AUTO_CALL_AFTER_KEY:
         case SC_AUTO_CALL_AUTH2:
@@ -9488,8 +9490,10 @@ U32 sc_demo_task_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_ALERTING2:
             ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stDemoTask.ulCallingLegNo, ulErrCode);
             break;
+
         case SC_AUTO_CALL_TONE:
             break;
+
         case SC_AUTO_CALL_CONNECTED:
         case SC_AUTO_CALL_PROCESS:
         case SC_AUTO_CALL_RELEASE:
@@ -9502,6 +9506,7 @@ U32 sc_demo_task_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stDemoTask.ulCallingLegNo, ulErrCode);
             }
             break;
+
         default:
             break;
     }
@@ -9823,9 +9828,9 @@ U32 sc_call_agent_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_CALL_AGENT_EXEC:
-        case SC_CALL_AGENT_PORC:
+        case SC_CALL_AGENT_PROC:
             /* 迁移状态到proc */
-            pstSCB->stCallAgent.stSCBTag.usStatus = SC_CALL_AGENT_PORC;
+            pstSCB->stCallAgent.stSCBTag.usStatus = SC_CALL_AGENT_PROC;
             ulRet = DOS_SUCC;
             break;
 
@@ -9886,7 +9891,7 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_CALL_AGENT_EXEC:
-        case SC_CALL_AGENT_PORC:
+        case SC_CALL_AGENT_PROC:
         case SC_CALL_AGENT_ALERTING:
             /* 坐席接通之后的处理 */
             if (pstSCB->stCallAgent.ulCalleeType == SC_SRV_CALL_TYEP_AGENT)
@@ -10102,13 +10107,7 @@ U32 sc_call_agent_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     switch (pstSCB->stCallAgent.stSCBTag.usStatus)
     {
         case SC_CALL_AGENT_EXEC:
-        case SC_CALL_AGENT_PORC:
-            /* 迁移到alerting状态 */
-            //if (pstRinging->ulWithMedia)
-            //{
-            //    sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCallAgent.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
-            //}
-
+        case SC_CALL_AGENT_PROC:
             pstSCB->stCallAgent.stSCBTag.usStatus = SC_CALL_AGENT_ALERTING;
 
             ulRet = DOS_SUCC;
@@ -10177,7 +10176,7 @@ U32 sc_call_agent_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_AGENT_IDEL:
         case SC_CALL_AGENT_AUTH:
         case SC_CALL_AGENT_EXEC:
-        case SC_CALL_AGENT_PORC:
+        case SC_CALL_AGENT_PROC:
         case SC_CALL_AGENT_ALERTING:
         case SC_CALL_AGENT_ACTIVE:
         case SC_CALL_AGENT_AUTH2:
@@ -10539,7 +10538,7 @@ U32 sc_call_agent_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             sc_scb_free(pstSCB);
             break;
-        case SC_CALL_AGENT_PORC:
+        case SC_CALL_AGENT_PROC:
         case SC_CALL_AGENT_ALERTING:
             ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCallAgent.ulCalleeLegNo, ulErrCode);
             break;
@@ -10740,7 +10739,7 @@ U32 sc_auto_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_PREVIEW_AUTH2:
         case SC_AUTO_PREVIEW_EXEC:
             /* 迁移状态到proc */
-            pstSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_PORC;
+            pstSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_PROC;
             ulRet = DOS_SUCC;
             break;
 
@@ -10796,13 +10795,7 @@ U32 sc_auto_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_PREVIEW_EXEC:
-        case SC_AUTO_PREVIEW_PORC:
-            /* 迁移到alerting状态 */
-            //if (pstRinging->ulWithMedia)
-            //{
-            //    sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
-            //}
-
+        case SC_AUTO_PREVIEW_PROC:
             pstSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_ALERTING;
 
             ulRet = DOS_SUCC;
@@ -10875,7 +10868,7 @@ U32 sc_auto_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_PREVIEW_EXEC:
-        case SC_AUTO_PREVIEW_PORC:
+        case SC_AUTO_PREVIEW_PROC:
         case SC_AUTO_PREVIEW_ALERTING:
             /* 坐席接通之后的处理 */
             /* 1. 发起PSTN的呼叫 */
@@ -11163,7 +11156,7 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             DOS_ASSERT(0);
             break;
 
-        case SC_AUTO_PREVIEW_PORC:
+        case SC_AUTO_PREVIEW_PROC:
         case SC_AUTO_PREVIEW_ALERTING:
         case SC_AUTO_PREVIEW_ACTIVE:
             /* 这个时候挂断只会是坐席的LEG，修改坐席的状态 */
@@ -11638,7 +11631,7 @@ U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_IDEL:
         case SC_AUTO_CALL_AUTH:
         case SC_AUTO_CALL_EXEC:
-        case SC_AUTO_CALL_PORC:
+        case SC_AUTO_CALL_PROC:
             /* 发起呼叫失败，生成呼叫结果，释放资源 */
             pstCallingCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
             if (DOS_ADDR_VALID(pstCallingCB))
@@ -11653,6 +11646,7 @@ U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_ALERTING:
             ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
             break;
+
         case SC_AUTO_CALL_ACTIVE:
         case SC_AUTO_CALL_AFTER_KEY:
         case SC_AUTO_CALL_AUTH2:
@@ -11661,8 +11655,10 @@ U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_ALERTING2:
             ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
             break;
+
         case SC_AUTO_CALL_TONE:
             break;
+
         case SC_AUTO_CALL_CONNECTED:
         case SC_AUTO_CALL_PROCESS:
         case SC_AUTO_CALL_RELEASE:
@@ -11675,6 +11671,7 @@ U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
             }
             break;
+
         default:
             break;
     }

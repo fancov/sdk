@@ -1365,7 +1365,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
             }
 
             pstSCB->stCall.stSCBTag.bValid = DOS_TRUE;
-            pstSCB->stCall.stSCBTag.usStatus = SC_CALL_PORC;
+            pstSCB->stCall.stSCBTag.usStatus = SC_CALL_PROC;
             pstSCB->stCall.ulCallingLegNo = pstEventCallSetup->ulLegNo;
             pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stCall.stSCBTag;
             pstLCB->ulSCBNo = pstSCB->ulSCBNo;

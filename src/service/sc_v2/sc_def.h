@@ -965,7 +965,7 @@ typedef struct tagSCBTag{
 /** 基本呼叫业务状态 */
 typedef enum tagSCCallStatus{
     SC_CALL_IDEL,       /**< 状态初始化 */
-    SC_CALL_PORC,       /**< 呼叫预处理，确定客户等信息 */
+    SC_CALL_PROC,       /**< 呼叫预处理，确定客户等信息 */
     SC_CALL_AUTH,       /**< 认证 */
     SC_CALL_AUTH2,      /**< 认证被叫 */
     SC_CALL_EXEC,       /**< 开始呼叫被叫 */
@@ -1056,7 +1056,7 @@ typedef enum tagSCPreviewCallStatus{
     SC_PREVIEW_CALL_IDEL,       /**< 状态初始化 */
     SC_PREVIEW_CALL_AUTH,       /**< 状态初始化 */
     SC_PREVIEW_CALL_EXEC,       /**< 状态初始化 */
-    SC_PREVIEW_CALL_PORC,       /**< 发起到坐席的呼叫 */
+    SC_PREVIEW_CALL_PROC,       /**< 发起到坐席的呼叫 */
     SC_PREVIEW_CALL_ALERTING,   /**< 坐席在振铃了 */
     SC_PREVIEW_CALL_ACTIVE,     /**< 坐席接通 */
     SC_PREVIEW_CALL_CONNECTING, /**< 呼叫客户 */
@@ -1089,7 +1089,7 @@ typedef enum tagSCAutoCallStatus{
     SC_AUTO_CALL_IDEL,          /**< 状态初始化 */
     SC_AUTO_CALL_AUTH,
     SC_AUTO_CALL_EXEC,
-    SC_AUTO_CALL_PORC,          /**< 发起呼叫 */
+    SC_AUTO_CALL_PROC,          /**< 发起呼叫 */
     SC_AUTO_CALL_ALERTING,
     SC_AUTO_CALL_ACTIVE,        /**< 播放语音 */
     SC_AUTO_CALL_AFTER_KEY,     /**< 按键之后，加入到呼叫队列 */
@@ -1441,7 +1441,7 @@ typedef enum tagSCCallAgentStatus{
     SC_CALL_AGENT_IDEL,       /**< 状态初始化 */
     SC_CALL_AGENT_AUTH,       /**< 状态初始化 */
     SC_CALL_AGENT_EXEC,       /**< 状态初始化 */
-    SC_CALL_AGENT_PORC,       /**< 发起到坐席的呼叫 */
+    SC_CALL_AGENT_PROC,       /**< 发起到坐席的呼叫 */
     SC_CALL_AGENT_ALERTING,   /**< 坐席在振铃了 */
     SC_CALL_AGENT_ACTIVE,     /**< 坐席接通 */
     SC_CALL_AGENT_AUTH2,      /**< 另一个坐席可能绑定pstn，就需要认证 */
@@ -1495,7 +1495,7 @@ typedef enum tagSCAutoPreviewStatus{
     SC_AUTO_PREVIEW_QUEUE,      /**< 进入呼叫队列 */
     SC_AUTO_PREVIEW_AUTH2,      /**< 呼叫坐席认证 */
     SC_AUTO_PREVIEW_EXEC,       /**< 状态初始化 */
-    SC_AUTO_PREVIEW_PORC,       /**< 发起到坐席的呼叫 */
+    SC_AUTO_PREVIEW_PROC,       /**< 发起到坐席的呼叫 */
     SC_AUTO_PREVIEW_ALERTING,   /**< 坐席在振铃了 */
     SC_AUTO_PREVIEW_ACTIVE,     /**< 坐席接通 */
     SC_AUTO_PREVIEW_CONNECTING, /**< 呼叫客户 */
