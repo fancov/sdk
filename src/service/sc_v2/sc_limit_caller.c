@@ -17,7 +17,7 @@ extern DB_HANDLE_ST         *g_pstSCDBHandle;
 //pthread_mutex_t          g_mutexHashNumberlmt = PTHREAD_MUTEX_INITIALIZER;
 
 /* 使用次数统计，数据链表 */
-static DLL_S    g_stLimitStatQueue;
+DLL_S    g_stLimitStatQueue;
 
 static pthread_t        g_pthreadLimit;
 static pthread_mutex_t  g_mutexLimit = PTHREAD_MUTEX_INITIALIZER;

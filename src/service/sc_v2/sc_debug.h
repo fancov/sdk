@@ -58,6 +58,13 @@ typedef enum tagSCLogFlags{
     SC_LOG_NONE    = 0,        /*  */
 }SC_LOG_FLAG_EN;
 
+typedef struct tagSCDllQueueList{
+    DLL_S   *pstDLLHead;
+    S8      szName[64];
+    S8      szDescription[256];
+
+}SC_DLL_QUEUE_LIST_ST;
+
 /* 日志标记 */
 #define SC_LOG_SET_MOD(level, mod) (level & 0xF) | ((mod << 4) & 0x3F0)
 

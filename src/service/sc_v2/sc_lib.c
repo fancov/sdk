@@ -48,7 +48,7 @@ extern SC_SRV_CB       *g_pstSCBList;
 extern pthread_mutex_t g_mutexSCBList;
 
 /** 业务子层上报时间消息队列 */
-DLL_S                 g_stCommandQueue;
+extern DLL_S                 g_stCommandQueue;
 
 /** 业务子层上报时间消息队列锁 */
 extern pthread_mutex_t       g_mutexCommandQueue;

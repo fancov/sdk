@@ -24,7 +24,7 @@ extern "C"{
 #define SC_MAX_SQL_LEN  1024
 
 static BOOL             g_blExitFlag = DOS_TRUE;
-static DLL_S            g_stDBRequestQueue;
+DLL_S            g_stDBRequestQueue;
 static pthread_t        g_pthreadDB;
 static pthread_mutex_t  g_mutexDBRequestQueue = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t   g_condDBRequestQueue  = PTHREAD_COND_INITIALIZER;
