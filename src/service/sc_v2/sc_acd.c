@@ -60,6 +60,8 @@ pthread_mutex_t   g_mutexGroupList     = PTHREAD_MUTEX_INITIALIZER;
 /* 坐席组个数 */
 U32               g_ulGroupCount       = 0;
 
+extern U32 sc_call_ctrl_hangup_all(U32 ulAgent);
+
 U32 sc_agent_get_channel_id(SC_AGENT_INFO_ST *pstAgentInfo, S8 *pszChannel, U32 ulLen)
 {
     if (DOS_ADDR_INVALID(pstAgentInfo))
@@ -2704,13 +2706,15 @@ U32 sc_agent_work_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
                     pstCallingCB = sc_lcb_get(pstAgentQueueInfo->ulLegNo);
                     if (DOS_ADDR_VALID(pstCallingCB))
                     {
-                        sc_lcb_free(pstCallingCB);
+                        sc_call_ctrl_hangup_all(pstAgentQueueInfo->ulAgentID);
+                        //sc_lcb_free(pstCallingCB);
                     }
                     pstAgentQueueInfo->ulLegNo = U32_BUTT;
                 }
             }
             bIsPub = DOS_TRUE;
             break;
+
         default:
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
