@@ -6295,7 +6295,6 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     S32 lIndex = U32_BUTT;
     S8  szTaskName[64] = {0};
     SC_TASK_CB *pstTCB = NULL;
-    BOOL    bIsExist   = DOS_TRUE;
 
     for (blProcessOK = DOS_TRUE, lIndex = 0; lIndex < lCount; lIndex++)
     {
@@ -6549,7 +6548,6 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     pstTCB = sc_tcb_find_by_taskid(*(U32 *)pArg);
     if (DOS_ADDR_INVALID(pstTCB))
     {
-        bIsExist = DOS_FALSE;
         pstTCB  = sc_tcb_alloc();
         if (DOS_ADDR_INVALID(pstTCB))
         {
@@ -6572,13 +6570,13 @@ S32 sc_task_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     pstTCB->ucTaskStatus = ulStatus;
     pstTCB->ulAllocTime = ulCreateTime;
     pstTCB->ulCalleeCountTotal = ulCalleeCnt;
-    if (!bIsExist)
+    if (pstTCB->ulCalledCount < ulCalledCnt)
     {
         pstTCB->ulCalledCount = ulCalledCnt;
     }
     pstTCB->ulCallerGrpID = ulCallerGroupID;
     pstTCB->ulCallRate = ulCallRate;
-    if (!bIsExist)
+    if (pstTCB->ulLastCalleeIndex < ulCalledCnt)
     {
         pstTCB->ulLastCalleeIndex = ulCalledCnt;
     }
