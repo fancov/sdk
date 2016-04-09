@@ -2819,7 +2819,11 @@ VOID bss_generate_record_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
     dos_strncpy(pstCDR->szRecordFile, pstSessionLeg->szRecordFile, sizeof(pstCDR->szRecordFile));
 
     pstCDR->ulRecordTimeStamp = pstSessionLeg->ulAnswerTimeStamp;
-    if (pstSessionLeg->ulByeTimeStamp >= pstSessionLeg->ulAnswerTimeStamp)
+    if (pstSessionLeg->ulByeTimeStamp >= pstSessionLeg->ulAnswerTimeStamp
+        && pstSessionLeg->ulByeTimeStamp != 0
+        && pstSessionLeg->ulByeTimeStamp != U32_BUTT
+        && pstSessionLeg->ulAnswerTimeStamp != 0
+        && pstSessionLeg->ulAnswerTimeStamp != U32_BUTT)
     {
         pstCDR->ulTimeLen = pstSessionLeg->ulByeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
     }
@@ -2853,7 +2857,7 @@ VOID bss_generate_record_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
         if (0 == pstCDR->ulTimeLen)
         {
             /* 时间太短,保护处理 */
-            //pstCDR->ulTimeLen = 1;
+            pstCDR->ulTimeLen = 1;
         }
     }
 
@@ -2939,7 +2943,6 @@ VOID bss_generate_settle_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
     dos_strncpy(pstCDR->szCaller, pstSessionLeg->szCaller, sizeof(pstCDR->szCaller));
     dos_strncpy(pstCDR->szCallee, pstSessionLeg->szCallee, sizeof(pstCDR->szCallee));
     pstCDR->ulTimeStamp = pstSessionLeg->ulAnswerTimeStamp;
-    pstCDR->ulLen = pstSessionLeg->ulByeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
     pstCDR->aulPeerIP[0] = pstSessionLeg->aulPeerIP[0];
     pstCDR->aulPeerIP[1] = pstSessionLeg->aulPeerIP[1];
     pstCDR->aulPeerIP[2] = pstSessionLeg->aulPeerIP[2];
@@ -2947,19 +2950,32 @@ VOID bss_generate_settle_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
     pstCDR->usPeerTrunkID = pstSessionLeg->usPeerTrunkID;
     pstCDR->usTerminateCause = pstSessionLeg->usTerminateCause;
     pstCDR->ucServType = ucServType;
-
-    pstMsgNode->pHandle = (VOID *)pstCDR;
+    if (pstSessionLeg->ulByeTimeStamp >= pstSessionLeg->ulAnswerTimeStamp
+        && pstSessionLeg->ulByeTimeStamp != 0
+        && pstSessionLeg->ulByeTimeStamp != U32_BUTT
+        && pstSessionLeg->ulAnswerTimeStamp != 0
+        && pstSessionLeg->ulAnswerTimeStamp != U32_BUTT)
+    {
+        pstCDR->ulLen = pstSessionLeg->ulByeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
+    }
+    else
+    {
+        pstCDR->ulLen = 0;
+    }
 
     if (pstCDR->ulTimeStamp != 0 && 0 == pstCDR->ulLen)
     {
         /* 时间太短,保护处理 */
-        //pstCDR->ulLen = 1;
+        pstCDR->ulLen = 1;
     }
 
     if (pstCDR->ulTimeStamp == 0)
     {
         pstCDR->ulTimeStamp = pstSessionLeg->ulByeTimeStamp;
     }
+
+
+    pstMsgNode->pHandle = (VOID *)pstCDR;
 
     bs_trace(BS_TRACE_CDR, LOG_LEVEL_DEBUG,
              "Generate settle cdr, "
@@ -3021,22 +3037,12 @@ VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType, B
     pstCDR->szAgentNum[sizeof(pstCDR->szAgentNum) - 1] = '\0';
     dos_strncpy(pstCDR->szRecordFile, pstSessionLeg->szRecordFile, sizeof(pstCDR->szRecordFile));
     pstCDR->szRecordFile[sizeof(pstCDR->szRecordFile) - 1] = '\0';
-    pstCDR->ulPDDLen = pstSessionLeg->ulRingTimeStamp - pstSessionLeg->ulStartTimeStamp;
     pstCDR->ulStartTime = pstSessionLeg->ulStartTimeStamp;
     pstCDR->ulRingTime = pstSessionLeg->ulRingTimeStamp;
     pstCDR->ulAnswerTimeStamp = pstSessionLeg->ulAnswerTimeStamp;
     pstCDR->ulDTMFTime = pstSessionLeg->ulDTMFTimeStamp;
     pstCDR->ulIVRFinishTime = pstSessionLeg->ulIVRFinishTimeStamp;
-    pstCDR->ulWaitAgentTime = pstSessionLeg->ulBridgeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
     pstCDR->ucNeedCharge = (U8)blNeedCharge;
-    if (pstSessionLeg->ulAnswerTimeStamp)
-    {
-        pstCDR->ulTimeLen = pstSessionLeg->ulByeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
-    }
-    else
-    {
-        pstCDR->ulTimeLen = 0;
-    }
     pstCDR->ulHoldCnt = pstSessionLeg->ulHoldCnt;
     pstCDR->ulHoldTimeLen = pstSessionLeg->ulHoldTimeLen;
     pstCDR->aulPeerIP[0] = pstSessionLeg->aulPeerIP[0];
@@ -3051,12 +3057,49 @@ VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType, B
     pstCDR->ucPayloadType = pstSessionLeg->ucPayloadType;
     pstCDR->ucPacketLossRate = pstSessionLeg->ucPacketLossRate;
 
-    pstMsgNode->pHandle = (VOID *)pstCDR;
+    if (pstSessionLeg->ulBridgeTimeStamp >= pstSessionLeg->ulAnswerTimeStamp
+        && pstSessionLeg->ulBridgeTimeStamp != 0
+        && pstSessionLeg->ulBridgeTimeStamp != U32_BUTT
+        && pstSessionLeg->ulAnswerTimeStamp != 0
+        && pstSessionLeg->ulAnswerTimeStamp != U32_BUTT)
+    {
+        pstCDR->ulWaitAgentTime = pstSessionLeg->ulBridgeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
+    }
+    else
+    {
+        pstCDR->ulWaitAgentTime = 0;
+    }
+
+    if (pstSessionLeg->ulRingTimeStamp >= pstSessionLeg->ulStartTimeStamp
+        && pstSessionLeg->ulRingTimeStamp != 0
+        && pstSessionLeg->ulRingTimeStamp != U32_BUTT
+        && pstSessionLeg->ulStartTimeStamp != 0
+        && pstSessionLeg->ulStartTimeStamp != U32_BUTT)
+    {
+        pstCDR->ulPDDLen = pstSessionLeg->ulRingTimeStamp - pstSessionLeg->ulStartTimeStamp;
+    }
+    else
+    {
+        pstCDR->ulPDDLen = 0;
+    }
+
+    if (pstSessionLeg->ulByeTimeStamp >= pstSessionLeg->ulAnswerTimeStamp
+        && pstSessionLeg->ulByeTimeStamp != 0
+        && pstSessionLeg->ulByeTimeStamp != U32_BUTT
+        && pstSessionLeg->ulAnswerTimeStamp != 0
+        && pstSessionLeg->ulAnswerTimeStamp != U32_BUTT)
+    {
+        pstCDR->ulTimeLen = pstSessionLeg->ulByeTimeStamp - pstSessionLeg->ulAnswerTimeStamp;
+    }
+    else
+    {
+        pstCDR->ulTimeLen = 0;
+    }
 
     if (pstCDR->ulAnswerTimeStamp != 0 && 0 == pstCDR->ulTimeLen)
     {
         /* 时间太短,保护处理 */
-        //pstCDR->ulTimeLen = 1;
+        pstCDR->ulTimeLen = 1;
     }
 
     if (pstCDR->ulAnswerTimeStamp == 0)
@@ -3064,6 +3107,9 @@ VOID bss_generate_voice_cdr(BS_BILL_SESSION_LEG *pstSessionLeg, U8 ucServType, B
         /* 没有接听，将answer改为结束时间 */
         pstCDR->ulAnswerTimeStamp = pstSessionLeg->ulByeTimeStamp;
     }
+
+
+    pstMsgNode->pHandle = (VOID *)pstCDR;
 
     bs_trace(BS_TRACE_CDR, LOG_LEVEL_DEBUG,
              "Generate voice cdr, "

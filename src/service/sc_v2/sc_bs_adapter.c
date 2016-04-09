@@ -1630,8 +1630,8 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulDTMFTimeStamp = pstFristLeg->stCall.stTimeInfo.ulDTMFStartTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulBridgeTimeStamp = pstFristLeg->stCall.stTimeInfo.ulBridgeTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstFristLeg->stCall.stTimeInfo.ulByeTime;
-    //pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstFristLeg->stCall.stTimeInfo.ul;
-    //pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstFristLeg->stCall.stTimeInfo.ulStartTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstFristLeg->ucCodec;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstFristLeg->ucLossRate;
 
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldCnt = pstFristLeg->stCall.ucHoldCnt;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldTimeLen = pstFristLeg->stCall.ulHoldTotalTime;
@@ -1642,6 +1642,11 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
     pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstFristLeg->stCall.ulTrunkID) ? 0 : pstFristLeg->stCall.ulTrunkID;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstFristLeg->stCall.ulCause;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
+
+    if (0 == pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp)
+    {
+        pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = time(NULL);
+    }
 
     for (i=0; i<BS_MAX_SERVICE_TYPE_IN_SESSION; i++)
     {
@@ -1966,9 +1971,8 @@ U32 sc_send_special_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg, U32 ul
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulIVRFinishTimeStamp = pstLeg->stCall.stTimeInfo.ulIVREndTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulDTMFTimeStamp = pstLeg->stCall.stTimeInfo.ulDTMFStartTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ulBridgeTimeStamp = pstLeg->stCall.stTimeInfo.ulBridgeTime;
-
-    //pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstFristLeg->stCall.stTimeInfo.ul;
-    //pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstFristLeg->stCall.stTimeInfo.ulStartTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstLeg->ucCodec;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstLeg->ucLossRate;
     switch (ulType)
     {
         case BS_SERV_RECORDING:
@@ -1984,18 +1988,22 @@ U32 sc_send_special_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg, U32 ul
 
         default:
             pstCDRMsg->astSessionLeg[ulCurrentLeg].ulAnswerTimeStamp = pstLeg->stCall.stTimeInfo.ulAnswerTime;
-            pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstLeg->stCall.stTimeInfo.ulByeTime;
+            if (0 == pstLeg->stCall.stTimeInfo.ulByeTime)
+            {
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = time(NULL);
+            }
+            else
+            {
+                pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp = pstLeg->stCall.stTimeInfo.ulByeTime;
+            }
             break;
     }
 
     pstCDRMsg->astSessionLeg[ulCurrentLeg].aucServType[0] = ulType;
-    //pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldCnt = pstFirstSCB->usHoldCnt;
-    //pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldTimeLen = pstFirstSCB->usHoldTotalTime;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[0] = 0;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[1] = 0;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[2] = 0;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[3] = 0;
-    //pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstFirstSCB->ulTrunkID) ? 0 : pstFirstSCB->ulTrunkID;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstLeg->stCall.ulCause;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
 
@@ -2012,7 +2020,6 @@ U32 sc_send_special_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg, U32 ul
     }
 
     /* 记录当前有几个LEG */
-    //pstCDRMsg->ucLegNum = (U8)ulCurrentLeg;
 
 #if SC_BS_NEED_RESEND
     /* 将消息存放hash表的节点 */
