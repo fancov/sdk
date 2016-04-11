@@ -4959,7 +4959,12 @@ U32 sc_auto_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_ALERTING;
-            ulRet = DOS_SUCC;
+            lRes = dos_tmr_start(&pstSCB->stAutoCall.stCusTmrHandle, SC_AUTO_CALL_RINGING_TIMEOUT, sc_auto_call_ringing_timeout_callback, (U64)pstEvent->ulLegNo, TIMER_NORMAL_NO_LOOP);
+            if (lRes < 0)
+            {
+                DOS_ASSERT(0);
+                pstSCB->stAutoCall.stCusTmrHandle = NULL;
+            }
             break;
 
         case SC_AUTO_CALL_ACTIVE:
@@ -4995,11 +5000,11 @@ U32 sc_auto_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 /* 开启定时器 */
                 sc_trace_scb(pstSCB, "%s", "Start ringting timer.");
-                lRes = dos_tmr_start(&pstSCB->stAutoCall.stTmrHandle, SC_AGENT_RINGING_TIMEOUT, sc_agent_ringing_timeout_callback, (U64)pstEvent->ulLegNo, TIMER_NORMAL_NO_LOOP);
+                lRes = dos_tmr_start(&pstSCB->stAutoCall.stAgentTmrHandle, SC_AGENT_RINGING_TIMEOUT, sc_agent_ringing_timeout_callback, (U64)pstEvent->ulLegNo, TIMER_NORMAL_NO_LOOP);
                 if (lRes < 0)
                 {
                     DOS_ASSERT(0);
-                    pstSCB->stAutoCall.stTmrHandle = NULL;
+                    pstSCB->stAutoCall.stAgentTmrHandle = NULL;
                 }
             }
             break;
@@ -5028,6 +5033,7 @@ proc_finishe:
 U32 sc_auto_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_RINGING_TIMEOUT_ST   *pstEvtRingingTimeOut   = NULL;
+    U32                 ulRet              = DOS_SUCC;
 
     pstEvtRingingTimeOut = (SC_MSG_EVT_RINGING_TIMEOUT_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstEvtRingingTimeOut) || DOS_ADDR_INVALID(pstSCB))
@@ -5038,12 +5044,25 @@ U32 sc_auto_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     sc_trace_scb(pstSCB, "Processing auto call agent ringing timeout event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
 
-    return sc_ringing_timeout_proc(pstSCB);
+    switch (pstSCB->stAutoCall.stSCBTag.usStatus)
+    {
+        case SC_AUTO_CALL_ALERTING:
+            /* 客户振铃超时，挂断客户电话 */
+            sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, CC_ERR_SIP_BUSY_HERE);
+            break;
+
+        default:
+            ulRet = sc_ringing_timeout_proc(pstSCB);
+            break;
+
+    }
+    return ulRet;
 }
 
 U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_MSG_EVT_ANSWER_ST *pstEvtAnswer = NULL;
+    SC_MSG_EVT_ANSWER_ST *pstEvtAnswer     = NULL;
     U32                 ulRet              = DOS_SUCC;
     U32                 ulTaskMode         = U32_BUTT;
     SC_LEG_CB           *pstLCB            = NULL;
@@ -5080,6 +5099,12 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             /* 播放语音 */
+            if (DOS_ADDR_VALID(pstSCB->stAutoCall.stCusTmrHandle))
+            {
+                dos_tmr_stop(&pstSCB->stAutoCall.stCusTmrHandle);
+                pstSCB->stAutoCall.stCusTmrHandle = NULL;
+            }
+
             ulTaskMode = sc_task_get_mode(pstSCB->stAutoCall.ulTcbID);
             if (ulTaskMode >= SC_TASK_MODE_BUTT)
             {
@@ -5172,6 +5197,12 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_CONNECTED;
             pstEvtAnswer = (SC_MSG_EVT_ANSWER_ST *)pstMsg;
 
+            /* 关闭定时器 */
+            if (DOS_ADDR_VALID(pstSCB->stAutoCall.stAgentTmrHandle))
+            {
+                dos_tmr_stop(&pstSCB->stAutoCall.stAgentTmrHandle);
+                pstSCB->stAutoCall.stAgentTmrHandle = NULL;
+            }
             /* 应答主叫 */
             sc_req_answer_call(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
 
