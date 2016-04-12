@@ -54,7 +54,6 @@ extern DLL_S           g_stLimitStatQueue;
 extern DLL_S           g_stLogDigestQueue;
 
 U32         g_ulSCLogLevel = LOG_LEVEL_DEBUG;
-U32         g_aulCustomerTrace[SC_TRACE_CUSTOMER_SIZE] = {0, };
 S8          g_aszCallerTrace[SC_TRACE_CALLER_SIZE][SC_NUM_LENGTH] = { {0, }, };
 S8          g_aszCalleeTrace[SC_TRACE_CALLEE_SIZE][SC_NUM_LENGTH] = { {0, }, };
 U8          g_aucServTraceFlag[BS_SERV_BUTT] = { 0 };
@@ -2009,7 +2008,7 @@ VOID sc_show_sip_acc(U32 ulIndex, S32 argc, S8 **argv)
 
     cli_out_string(ulIndex, "\r\nList All the SIP User ID:");
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12s%12s%32s%32s", "Index", "Customer", "User ID", "Extension");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%12s%12s%32s%32s%10s", "Index", "Customer", "User ID", "Extension", "Trace");
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n----------------------------------------------------------------------------------------");
 
@@ -2029,11 +2028,12 @@ VOID sc_show_sip_acc(U32 ulIndex, S32 argc, S8 **argv)
             }
 
             dos_snprintf(szBuff, sizeof(szBuff)
-                        , "\r\n%12d%12d%32s%32s"
+                        , "\r\n%12d%12d%32s%32s%10s"
                         , pstUserID->ulSIPID
                         , pstUserID->ulCustomID
                         , '\0' == pstUserID->szUserID[0] ? "NULL" : pstUserID->szUserID
-                        , '\0' == pstUserID->szExtension[0] ? "NULL" : pstUserID->szExtension);
+                        , '\0' == pstUserID->szExtension[0] ? "NULL" : pstUserID->szExtension
+                        , pstUserID->bIsTrace ? "Yes" : "No");
             cli_out_string(ulIndex, szBuff);
         }
     }
@@ -2558,8 +2558,8 @@ U32 sc_show_customer(U32 ulIndex, S8 ucCondition, U32 ulID)
     DLL_NODE_S *pstNode = NULL;
     S8  szBuff[256] = {0};
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-6s%-8s%-10s%-16s"
-                    , "ID", "name", "bExist", "CallOutGroup");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-6s%-8s%-10s%-16s%-8s"
+                    , "ID", "name", "bExist", "CallOutGroup", "Trace");
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n--------------------------------------");
 
@@ -2572,9 +2572,6 @@ U32 sc_show_customer(U32 ulIndex, S8 ucCondition, U32 ulID)
         }
         pstCustomer = (SC_CUSTOMER_NODE_ST *)pstNode->pHandle;
 
-        dos_snprintf(szBuff, sizeof(szBuff), "name_len: %d\n",dos_strlen(pstCustomer->szName));
-        cli_out_string(ulIndex, szBuff);
-
         if (ucCondition == SC_SHOW_CUSTOMER_BY_ID && ulID != pstCustomer->ulID)
         {
             continue;
@@ -2585,11 +2582,12 @@ U32 sc_show_customer(U32 ulIndex, S8 ucCondition, U32 ulID)
             continue;
         }
 
-        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-6u%-8s%-10s%-16u"
+        dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-6u%-8s%-10s%-16u%-8s"
                         , pstCustomer->ulID
                         , pstCustomer->szName
-                        , DOS_FALSE == pstCustomer->bExist?"No":"Yes"
-                        , pstCustomer->usCallOutGroup);
+                        , pstCustomer->bExist ? "Yes" : "No"
+                        , pstCustomer->usCallOutGroup
+                        , pstCustomer->bTraceCall ? "Yes" : "No");
         cli_out_string(ulIndex, szBuff);
     }
     cli_out_string(ulIndex, "\r\n--------------------------------------\r\n");
@@ -2809,23 +2807,11 @@ S32 sc_track_call_by_callee(U32 ulIndex ,S8 *pszCallee)
 U32 sc_show_trace_customer(U32 ulIndex)
 {
     S8  szBuff[256] = {0};
-    U32 i = 0;
 
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n%10s%20s"
                             , "ID", "CustomerID");
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n-------------------------------------------------------------------");
-
-    for (i=0; i<SC_TRACE_CUSTOMER_SIZE; i++)
-    {
-        if (g_aulCustomerTrace[i] != 0)
-        {
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%10u%20u"
-                            , i, g_aulCustomerTrace[i]);
-
-            cli_out_string(ulIndex, szBuff);
-        }
-     }
 
     return DOS_SUCC;
 }
@@ -2969,7 +2955,7 @@ U32 sc_show_all_queue(U32 ulIndex)
     return DOS_SUCC;
 }
 
-S32 cli_cc_trace_mod(U32 ulIndex, S32 argc, S8 **argv)
+S32 sc_cli_cc_trace_mod(U32 ulIndex, S32 argc, S8 **argv)
 {
     U32 i = 0, ulMod = 0;
     BOOL bIsTrace = DOS_FALSE;
@@ -3025,12 +3011,11 @@ proc_fail:
     return DOS_FAIL;
 }
 
-S32 cli_cc_trace_customer(U32 ulIndex, S32 argc, S8 **argv)
+S32 sc_cli_cc_trace_customer(U32 ulIndex, S32 argc, S8 **argv)
 {
     BOOL bIsTrace = DOS_FALSE;
     U32 ulCustomerID = 0;
     S8  szBuff[256] = {0};
-    U32 i = 0;
 
     if (5 == argc)
     {
@@ -3049,47 +3034,13 @@ S32 cli_cc_trace_customer(U32 ulIndex, S32 argc, S8 **argv)
             return DOS_SUCC;
         }
 
-        if (bIsTrace)
+        if (sc_customer_set_trace(ulCustomerID, bIsTrace) != DOS_SUCC)
         {
-            /* 判断企业是否存在 */
-            if (!sc_customer_is_exit(ulCustomerID))
-            {
-                dos_snprintf(szBuff, sizeof(szBuff), "Customer(%u) is not a company\r\n", ulCustomerID);
-            }
-            else
-            {
-                for (i=0; i<SC_TRACE_CUSTOMER_SIZE; i++)
-                {
-                    if (g_aulCustomerTrace[i] == 0)
-                    {
-                        g_aulCustomerTrace[i] = ulCustomerID;
-                        dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) ON SUCC\r\n", ulCustomerID);
-                        break;
-                    }
-                }
-
-                if (i == SC_TRACE_CUSTOMER_SIZE)
-                {
-                    dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) ON FAIL\r\n", ulCustomerID);
-                }
-            }
+            dos_snprintf(szBuff, sizeof(szBuff), "Customer(%u) can not found\r\n", ulCustomerID);
         }
         else
         {
-            for (i=0; i<SC_TRACE_CUSTOMER_SIZE; i++)
-            {
-                if (g_aulCustomerTrace[i] == ulCustomerID)
-                {
-                    g_aulCustomerTrace[i] = 0;
-                    dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) OFF SUCC\r\n", ulCustomerID);
-                    break;
-                }
-            }
-
-            if (i == SC_TRACE_CUSTOMER_SIZE)
-            {
-                dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) OFF FAIL\r\n", ulCustomerID);
-            }
+            dos_snprintf(szBuff, sizeof(szBuff), "Trace customer(%u) %s SUCC\r\n", ulCustomerID, bIsTrace ? "ON" : "OFF");
         }
 
         cli_out_string(ulIndex, szBuff);
@@ -3097,12 +3048,82 @@ S32 cli_cc_trace_customer(U32 ulIndex, S32 argc, S8 **argv)
         return DOS_SUCC;
     }
 
-    /* 打印帮助信息 */
+    return DOS_FAIL;
+}
+
+S32 sc_cli_cc_trace_sip(U32 ulIndex, S32 argc, S8 **argv)
+{
+    BOOL bIsTrace = DOS_FALSE;
+    S8  szBuff[256] = {0};
+
+    if (5 == argc)
+    {
+        if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
+        {
+            bIsTrace = DOS_TRUE;
+        }
+
+        if (sc_sip_account_set_trace(argv[3], bIsTrace) != DOS_SUCC)
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "Sip(%s) can not found\r\n", argv[3]);
+        }
+        else
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "Trace sip(%s) %s SUCC\r\n", argv[3], bIsTrace ? "ON" : "OFF");
+        }
+
+        cli_out_string(ulIndex, szBuff);
+
+        return DOS_SUCC;
+    }
 
     return DOS_FAIL;
 }
 
-S32 cli_cc_trace_caller(U32 ulIndex, S32 argc, S8 **argv)
+S32 sc_cli_cc_trace_task(U32 ulIndex, S32 argc, S8 **argv)
+{
+    SC_TASK_CB      *pstTCB         = NULL;
+    BOOL            bIsTrace        = DOS_FALSE;
+    S8              szBuff[256]     = {0};
+    U32             ulTaskID        = 0;
+
+    if (5 == argc)
+    {
+        if (dos_strnicmp(argv[4], "on", dos_strlen("on")) == 0)
+        {
+            bIsTrace = DOS_TRUE;
+        }
+
+        if (dos_atoul(argv[3], &ulTaskID) < 0
+            || ulTaskID == 0
+            || ulTaskID == U32_BUTT)
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "Param(%s) error\r\n", argv[3]);
+            cli_out_string(ulIndex, szBuff);
+
+            return DOS_SUCC;
+        }
+
+        pstTCB = sc_tcb_find_by_taskid(ulTaskID);
+        if (DOS_ADDR_INVALID(pstTCB))
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "Task(%u) can not found\r\n", ulTaskID);
+        }
+        else
+        {
+            pstTCB->bTraceON = bIsTrace;
+            dos_snprintf(szBuff, sizeof(szBuff), "Trace task(%u) %s SUCC\r\n", ulTaskID, bIsTrace ? "ON" : "OFF");
+        }
+
+        cli_out_string(ulIndex, szBuff);
+
+        return DOS_SUCC;
+    }
+
+    return DOS_FAIL;
+}
+
+S32 sc_cli_cc_trace_caller(U32 ulIndex, S32 argc, S8 **argv)
 {
     BOOL bIsTrace = DOS_FALSE;
     U32 i = 0;
@@ -3159,7 +3180,7 @@ S32 cli_cc_trace_caller(U32 ulIndex, S32 argc, S8 **argv)
 }
 
 
-S32 cli_cc_trace_callee(U32 ulIndex, S32 argc, S8 **argv)
+S32 sc_cli_cc_trace_callee(U32 ulIndex, S32 argc, S8 **argv)
 {
     BOOL bIsTrace = DOS_FALSE;
     U32 i = 0;
@@ -3215,7 +3236,7 @@ S32 cli_cc_trace_callee(U32 ulIndex, S32 argc, S8 **argv)
     return DOS_FAIL;
 }
 
-U32 sc_cc_trace_server(U32 ulIndex, S32 argc, S8 **argv)
+U32 sc_cli_cc_trace_server(U32 ulIndex, S32 argc, S8 **argv)
 {
     U32 ulServerType = 0;
     BOOL bIsTrace = DOS_FALSE;
@@ -3251,7 +3272,7 @@ U32 sc_cc_trace_server(U32 ulIndex, S32 argc, S8 **argv)
     return DOS_FAIL;
 }
 
-U32 sc_cc_trace_agent(U32 ulIndex, S32 argc, S8 **argv)
+U32 sc_cli_cc_trace_agent(U32 ulIndex, S32 argc, S8 **argv)
 {
     U32 ulAgentID = 0;
     BOOL bIsTrace = DOS_FALSE;
@@ -3306,7 +3327,7 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
     if (dos_strnicmp(argv[2], "mod", dos_strlen("mod")) == 0)
     {
         /* 模块跟踪 */
-        lRet = cli_cc_trace_mod(ulIndex, argc, argv);
+        lRet = sc_cli_cc_trace_mod(ulIndex, argc, argv);
         if (lRet != DOS_SUCC)
         {
             /* 打印帮助信息 */
@@ -3315,7 +3336,7 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
     if (dos_strnicmp(argv[2], "customer", dos_strlen("customer")) == 0)
     {
         /* 客户跟踪 */
-        lRet = cli_cc_trace_customer(ulIndex, argc, argv);
+        lRet = sc_cli_cc_trace_customer(ulIndex, argc, argv);
         if (lRet != DOS_SUCC)
         {
             /* 打印帮助信息 */
@@ -3324,7 +3345,7 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
     else if (dos_strnicmp(argv[2], "caller", dos_strlen("caller")) == 0)
     {
         /* 主叫号码 */
-        lRet = cli_cc_trace_caller(ulIndex, argc, argv);
+        lRet = sc_cli_cc_trace_caller(ulIndex, argc, argv);
         if (lRet != DOS_SUCC)
         {
             /* 打印帮助信息 */
@@ -3334,7 +3355,7 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
     else if (dos_strnicmp(argv[2], "callee", dos_strlen("callee")) == 0)
     {
         /* 被叫号码 */
-        lRet = cli_cc_trace_callee(ulIndex, argc, argv);
+        lRet = sc_cli_cc_trace_callee(ulIndex, argc, argv);
         if (lRet != DOS_SUCC)
         {
             /* 打印帮助信息 */
@@ -3343,7 +3364,7 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
     else if (dos_strnicmp(argv[2], "server", dos_strlen("server")) == 0)
     {
         /* 服务 */
-        lRet = sc_cc_trace_server(ulIndex, argc, argv);
+        lRet = sc_cli_cc_trace_server(ulIndex, argc, argv);
         if (lRet != DOS_SUCC)
         {
             /* 打印帮助信息 */
@@ -3352,7 +3373,25 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
     else if (dos_strnicmp(argv[2], "agent", dos_strlen("agent")) == 0)
     {
         /* 坐席 */
-        lRet = sc_cc_trace_agent(ulIndex, argc, argv);
+        lRet = sc_cli_cc_trace_agent(ulIndex, argc, argv);
+        if (lRet != DOS_SUCC)
+        {
+            /* 打印帮助信息 */
+        }
+    }
+    else if (dos_strnicmp(argv[2], "sip", dos_strlen("sip")) == 0)
+    {
+        /* sip分机 */
+        lRet = sc_cli_cc_trace_sip(ulIndex, argc, argv);
+        if (lRet != DOS_SUCC)
+        {
+            /* 打印帮助信息 */
+        }
+    }
+    else if (dos_strnicmp(argv[2], "task", dos_strlen("task")) == 0)
+    {
+        /* sip分机 */
+        lRet = sc_cli_cc_trace_task(ulIndex, argc, argv);
         if (lRet != DOS_SUCC)
         {
             /* 打印帮助信息 */
@@ -5147,6 +5186,47 @@ VOID sc_printf(const S8 *pszFormat, ...)
     dos_log(LOG_LEVEL_DEBUG, LOG_TYPE_RUNINFO, szTraceStr);
 }
 
+BOOL sc_trace_check_caller(S8 *szCaller)
+{
+    S32 i = 0;
+
+    if (DOS_ADDR_INVALID(szCaller))
+    {
+        return DOS_FALSE;
+    }
+
+    for (i=0; i<SC_TRACE_CALLER_SIZE; i++)
+    {
+        if (g_aszCallerTrace[i][0] != '\0'
+            && dos_strcmp(g_aszCallerTrace[i], szCaller) == 0)
+        {
+            return DOS_TRUE;
+        }
+    }
+
+    return DOS_FALSE;
+}
+
+BOOL sc_trace_check_callee(S8 *szCallee)
+{
+    S32 i = 0;
+
+    if (DOS_ADDR_INVALID(szCallee))
+    {
+        return DOS_FALSE;
+    }
+
+    for (i=0; i<SC_TRACE_CALLEE_SIZE; i++)
+    {
+        if (g_aszCalleeTrace[i][0] != '\0'
+            && dos_strcmp(g_aszCalleeTrace[i], szCallee) == 0)
+        {
+            return DOS_TRUE;
+        }
+    }
+
+    return DOS_FALSE;
+}
 
 BOOL sc_trace_check_by_leg(SC_LEG_CB *pstLCB)
 {
@@ -5157,14 +5237,17 @@ BOOL sc_trace_check_by_leg(SC_LEG_CB *pstLCB)
         return DOS_FALSE;
     }
 
-    for (i=0; i<SC_TRACE_CUSTOMER_SIZE; i++)
+    for (i=0; i<SC_TRACE_CALLER_SIZE; i++)
     {
         if (g_aszCallerTrace[i][0] != '\0'
             && dos_strcmp(g_aszCallerTrace[i], pstLCB->stCall.stNumInfo.szOriginalCalling) == 0)
         {
             return DOS_TRUE;
         }
+    }
 
+    for (i=0; i<SC_TRACE_CALLEE_SIZE; i++)
+    {
         if (g_aszCalleeTrace[i][0] != '\0'
             && dos_strcmp(g_aszCalleeTrace[i], pstLCB->stCall.stNumInfo.szOriginalCallee) == 0)
         {
@@ -5173,107 +5256,6 @@ BOOL sc_trace_check_by_leg(SC_LEG_CB *pstLCB)
     }
 
     return DOS_FALSE;
-}
-
-/**
- * 根据scb判断是否需要进行业务或者客户跟踪
- *
- * @parma SC_SRV_CB *pstSCB 业务控制块
- *
- * return NULL
- */
-BOOL sc_trace_check_by_scb(SC_SRV_CB *pstSCB)
-{
-    S32                 i               = 0;
-    U32                 ulLegNo         = U32_BUTT;
-    SC_LEG_CB           *pstLegCB       = NULL;
-
-    if (DOS_ADDR_INVALID(pstSCB))
-    {
-        return DOS_FALSE;
-    }
-
-    /* 判断是否需要跟踪业务 */
-    for (i=0; i<SC_MAX_SERVICE_TYPE; i++)
-    {
-        if (pstSCB->aucServType[i] < BS_SERV_BUTT
-            && g_aucServTraceFlag[pstSCB->aucServType[i]])
-        {
-            return DOS_TRUE;
-        }
-    }
-
-    for (i=0; i<SC_TRACE_CUSTOMER_SIZE; i++)
-    {
-        /* 判断是否需要跟踪客户 */
-        if (pstSCB->ulCustomerID != U32_BUTT
-            && g_aulCustomerTrace[i] == pstSCB->ulCustomerID)
-        {
-            return DOS_TRUE;
-        }
-    }
-
-    if (pstSCB->ulCurrentSrv >= SC_SRV_BUTT
-        || DOS_ADDR_INVALID(pstSCB->pstServiceList[pstSCB->ulCurrentSrv])
-        || !pstSCB->pstServiceList[pstSCB->ulCurrentSrv]->bValid)
-    {
-        return DOS_FALSE;
-    }
-
-    /* 只从最新的业务中查找leg */
-    switch (pstSCB->pstServiceList[pstSCB->ulCurrentSrv]->usSrvType)
-    {
-        case SC_SRV_CALL:
-            ulLegNo = pstSCB->stCall.ulCallingLegNo;
-            break;
-        case SC_SRV_PREVIEW_CALL:
-        case SC_SRV_AUTO_PREVIEW:
-            ulLegNo = pstSCB->stPreviewCall.ulCallingLegNo;
-            break;
-        case SC_SRV_AUTO_CALL:
-            ulLegNo = pstSCB->stAutoCall.ulCallingLegNo;
-            break;
-        case SC_SRV_VOICE_VERIFY:
-            ulLegNo = pstSCB->stVoiceVerify.ulLegNo;
-            break;
-        case SC_SRV_ACCESS_CODE:
-            ulLegNo = pstSCB->stAccessCode.ulLegNo;
-            break;
-        case SC_SRV_HOLD:
-            ulLegNo = pstSCB->stHold.ulCallLegNo;
-            break;
-        case SC_SRV_TRANSFER:
-            ulLegNo = pstSCB->stTransfer.ulNotifyLegNo;
-            break;
-        case SC_SRV_INCOMING_QUEUE:
-            ulLegNo = pstSCB->stIncomingQueue.ulLegNo;
-            break;
-        case SC_SRV_INTERCEPTION:
-            ulLegNo = pstSCB->stInterception.ulLegNo;
-            break;
-        case SC_SRV_WHISPER:
-            ulLegNo = pstSCB->stWhispered.ulLegNo;
-            break;
-        case SC_SRV_MARK_CUSTOM:
-            ulLegNo = pstSCB->stMarkCustom.ulLegNo;
-            break;
-        case SC_SRV_AGENT_SIGIN:
-            ulLegNo = pstSCB->stSigin.ulLegNo;
-            break;
-        case SC_SRV_DEMO_TASK:
-            ulLegNo = pstSCB->stDemoTask.ulCallingLegNo;
-            break;
-        case SC_SRV_CALL_AGENT:
-            ulLegNo = pstSCB->stCallAgent.ulCallingLegNo;
-            break;
-        default:
-            break;
-    }
-
-    pstLegCB = sc_lcb_get(ulLegNo);
-    /* 通过leg，判断是否需要主被叫号码跟踪 */
-
-    return sc_trace_check_by_leg(pstLegCB);
 }
 
 /**
@@ -5296,7 +5278,8 @@ VOID sc_trace_scb(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...)
     va_end(Arg);
     szTraceStr[sizeof(szTraceStr) -1] = '\0';
 
-    if (sc_trace_check_by_scb(pstSCB))
+    if (DOS_ADDR_VALID(pstSCB)
+        && pstSCB->bTrace)
     {
         ulLogLevel = LOG_LEVEL_NOTIC;
     }

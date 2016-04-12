@@ -869,7 +869,7 @@ U32 sc_call_access_code(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, S8 *szNum
         /* 根据分机号，获取customer */
         if (SC_LEG_PEER_INBOUND_INTERNAL == pstCallingLegCB->stCall.ucPeerType)
         {
-            pstSCB->ulCustomerID = sc_sip_account_get_customer(pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+            pstSCB->ulCustomerID = sc_sip_account_get_customer(pstCallingLegCB->stCall.stNumInfo.szOriginalCalling, NULL);
         }
         else if (SC_LEG_PEER_INBOUND == pstCallingLegCB->stCall.ucPeerType)
         {
@@ -1042,6 +1042,28 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_trace_scb(pstSCB, "Get source is %d", ulCallSrc);
                 ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, CC_ERR_SC_NO_SERV_RIGHTS);
                 goto proc_finished;
+            }
+
+            /* 判断 客户/坐席/主被叫号码 是否需要跟踪 */
+            if (!pstSCB->bTrace)
+            {
+                pstSCB->bTrace = sc_customer_get_trace(pstSCB->ulCustomerID);
+                if (!pstSCB->bTrace
+                    && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+                    && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+                {
+                    pstSCB->bTrace = pstSCB->stCall.pstAgentCalling->pstAgentInfo->bTraceON;
+                }
+
+                if (!pstSCB->bTrace)
+                {
+                    pstSCB->bTrace = sc_trace_check_caller(pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+                }
+
+                if (!pstSCB->bTrace)
+                {
+                    pstSCB->bTrace = sc_trace_check_callee(pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+                }
             }
 
             ulCallDst = sc_leg_get_destination(pstSCB, pstCallingLegCB);
@@ -3581,7 +3603,7 @@ U32 sc_voice_verify_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Processing call ringing event for voice verify.");
+    sc_trace_scb(pstSCB, "Processing verify ringing event for voice verify. status : %u", pstSCB->stVoiceVerify.stSCBTag.usStatus);
 
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
@@ -3615,7 +3637,7 @@ U32 sc_voice_verify_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
 proc_finishe:
-    sc_trace_scb(pstSCB, "Processed call ringing event for voice verify.");
+    sc_trace_scb(pstSCB, "Processed verify ringing event for voice verify.");
 
     if (ulRet != DOS_SUCC)
     {

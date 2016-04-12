@@ -93,6 +93,7 @@ VOID sc_sip_account_init(SC_USER_ID_NODE_ST *pstUserID)
 
         pstUserID->ulCustomID = U32_BUTT;
         pstUserID->ulSIPID = U32_BUTT;
+        pstUserID->bIsTrace = DOS_FALSE;
     }
 }
 
@@ -138,7 +139,7 @@ S32 sc_sip_account_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
  *
  * @return 成功返回客户ID值，否则返回U32_BUTT
  */
-U32 sc_sip_account_get_customer(S8 *pszNum)
+U32 sc_sip_account_get_customer(S8 *pszNum, U32 *pulTrace)
 {
     SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
     HASH_NODE_S        *pstHashNode   = NULL;
@@ -174,6 +175,11 @@ U32 sc_sip_account_get_customer(S8 *pszNum)
     pstUserIDNode = pstHashNode->pHandle;
 
     ulCustomerID = pstUserIDNode->ulCustomID;
+    if (DOS_ADDR_INVALID(pulTrace))
+    {
+        *pulTrace = pstUserIDNode->bIsTrace;
+    }
+
     pthread_mutex_unlock(&g_mutexHashSIPUserID);
 
     return ulCustomerID;
@@ -706,6 +712,73 @@ U32 sc_sip_account_update_status(S8 *szUserID, SC_SIP_STATUS_TYPE_EN enStatus, U
     return DOS_SUCC;
 }
 
+U32 sc_sip_account_set_trace(S8 *szUserID, U32 ulTrace)
+{
+    SC_USER_ID_NODE_ST *pstUserID   = NULL;
+    HASH_NODE_S        *pstHashNode = NULL;
+    U32                ulHashIndex  = U32_BUTT;
+
+    ulHashIndex = sc_string_hash_func(szUserID, SC_SIP_ACCOUNT_HASH_SIZE);
+    pthread_mutex_lock(&g_mutexHashSIPUserID);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)szUserID, sc_sip_account_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexHashSIPUserID);
+
+        return DOS_FAIL;
+    }
+
+    pstUserID = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstUserID))
+    {
+        pthread_mutex_unlock(&g_mutexHashSIPUserID);
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstUserID->bIsTrace = ulTrace;
+
+    pthread_mutex_unlock(&g_mutexHashSIPUserID);
+
+    return DOS_SUCC;
+}
+
+BOOL sc_sip_account_get_trace(S8 *szUserID)
+{
+    SC_USER_ID_NODE_ST *pstUserID   = NULL;
+    HASH_NODE_S        *pstHashNode = NULL;
+    U32                ulHashIndex  = U32_BUTT;
+    BOOL               ulTrace      = DOS_FALSE;
+
+    ulHashIndex = sc_string_hash_func(szUserID, SC_SIP_ACCOUNT_HASH_SIZE);
+    pthread_mutex_lock(&g_mutexHashSIPUserID);
+    pstHashNode = hash_find_node(g_pstHashSIPUserID, ulHashIndex, (VOID *)szUserID, sc_sip_account_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexHashSIPUserID);
+
+        return DOS_FALSE;
+    }
+
+    pstUserID = pstHashNode->pHandle;
+    if (DOS_ADDR_INVALID(pstUserID))
+    {
+        pthread_mutex_unlock(&g_mutexHashSIPUserID);
+        DOS_ASSERT(0);
+
+        return DOS_FALSE;
+    }
+
+    ulTrace = pstUserID->bIsTrace;
+
+    pthread_mutex_unlock(&g_mutexHashSIPUserID);
+
+    return ulTrace;
+}
+
 
 /**
  * 初始化pstDIDNum所指向的DID号码描述结构
@@ -1127,6 +1200,7 @@ VOID sc_customer_init(SC_CUSTOMER_NODE_ST *pstCustomer)
         dos_memzero(pstCustomer, sizeof(SC_CUSTOMER_NODE_ST));
         pstCustomer->ulID = U32_BUTT;
         pstCustomer->bExist = DOS_FALSE;
+        pstCustomer->bTraceCall = DOS_FALSE;
     }
 }
 
@@ -1403,6 +1477,53 @@ BOOL sc_customer_is_exit(U32 ulCustomerID)
     pthread_mutex_unlock(&g_mutexCustomerList);
 
     return DOS_TRUE;
+}
+
+BOOL sc_customer_get_trace(U32 ulCustomerID)
+{
+    DLL_NODE_S           *pstListNode       = NULL;
+    SC_CUSTOMER_NODE_ST  *pstCustomer       = NULL;
+    BOOL                 bIsTrace           = DOS_FALSE;
+
+    pthread_mutex_lock(&g_mutexCustomerList);
+    pstListNode = dll_find(&g_stCustomerList, &ulCustomerID, sc_customer_find);
+    if (DOS_ADDR_INVALID(pstListNode)
+        || DOS_ADDR_INVALID(pstListNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexCustomerList);
+
+        return DOS_FALSE;
+    }
+
+    pstCustomer = (SC_CUSTOMER_NODE_ST *)pstListNode->pHandle;
+    bIsTrace = pstCustomer->bTraceCall;
+
+    pthread_mutex_unlock(&g_mutexCustomerList);
+
+    return bIsTrace;
+}
+
+U32 sc_customer_set_trace(U32 ulCustomerID, U32 ulTrace)
+{
+    DLL_NODE_S           *pstListNode       = NULL;
+    SC_CUSTOMER_NODE_ST  *pstCustomer       = NULL;
+
+    pthread_mutex_lock(&g_mutexCustomerList);
+    pstListNode = dll_find(&g_stCustomerList, &ulCustomerID, sc_customer_find);
+    if (DOS_ADDR_INVALID(pstListNode)
+        || DOS_ADDR_INVALID(pstListNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexCustomerList);
+
+        return DOS_FAIL;
+    }
+
+    pstCustomer = (SC_CUSTOMER_NODE_ST *)pstListNode->pHandle;
+    pstCustomer->bTraceCall = ulTrace;
+
+    pthread_mutex_unlock(&g_mutexCustomerList);
+
+    return DOS_SUCC;
 }
 
 /**

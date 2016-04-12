@@ -2444,9 +2444,9 @@ U32 sc_call_ctrl_proc(U32 ulAction, U32 ulTaskID, U32 ulAgent, U32 ulCustomerID,
 U32 sc_demo_task(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
 U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgentID);
 
+
 U32 sc_did_bind_info_get(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID);
 U32 sc_sip_account_get_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
-BOOL sc_customer_is_exit(U32 ulCustomerID);
 U32 sc_log_digest_print(const S8 *szTraceStr);
 U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller, BOOL BIsAddHead);
 U32 sc_cwq_del_call(SC_SRV_CB *pstSCB);

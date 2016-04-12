@@ -248,8 +248,9 @@ typedef struct tagSIPAcctStat
 typedef struct tagSCUserIDNode{
     U32  ulCustomID;                             /* 用户 ID */
     U32  ulSIPID;                                /* 账户 ID */
-    S8   szUserID[SC_NUM_LENGTH];         /* SIP账户 */
-    S8   szExtension[SC_NUM_LENGTH];      /* 分机号 */
+    BOOL bIsTrace;
+    S8   szUserID[SC_NUM_LENGTH];               /* SIP账户 */
+    S8   szExtension[SC_NUM_LENGTH];            /* 分机号 */
 
     SC_SIP_STATUS_TYPE_EN  enStatus;             /* 状态 */
 
@@ -565,11 +566,13 @@ U32 sc_black_list_update_proc(U32 ulAction, U32 ulBlackID);
 U32 sc_sip_account_load(U32 ulIndex);
 U32 sc_sip_account_get_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUserID, U32 ulLength);
 U32 sc_sip_account_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID);
-U32 sc_sip_account_get_customer(S8 *pszNum);
+U32 sc_sip_account_get_customer(S8 *pszNum, U32 *pulTrace);
 BOOL sc_sip_account_extension_check(S8 *pszNum, U32 ulCustomerID);
 U32 sc_sip_account_update_status(S8 *szUserID, SC_SIP_STATUS_TYPE_EN enStatus, U32 *pulSipID);
 U32 sc_sip_account_update_info2db(U32 ulPublicIP, U32 ulPrivateIP, SC_SIP_STATUS_TYPE_EN enStatus, U32 ulSipID);
 BOOL sc_sip_account_be_is_exit(U32 ulCustomID, S8 *szUserID);
+U32 sc_sip_account_set_trace(S8 *szUserID, U32 ulTrace);
+BOOL sc_sip_account_get_trace(S8 *szUserID);
 
 U32 sc_did_load(U32 ulIndex);
 U32 sc_did_update_proc(U32 ulAction, U32 ulDidID);
@@ -577,6 +580,9 @@ U32 sc_did_get_custom(S8 *pszNum);
 
 U32 sc_customer_load(U32 ulIndex);
 U32 sc_customer_update_proc(U32 ulAction, U32 ulCustomerID);
+BOOL sc_customer_is_exit(U32 ulCustomerID);
+BOOL sc_customer_get_trace(U32 ulCustomerID);
+U32 sc_customer_set_trace(U32 ulCustomerID, U32 ulTrace);
 
 U32 sc_transform_load(U32 ulIndex);
 U32 sc_transform_update_proc(U32 ulAction, U32 ulNumTransID);

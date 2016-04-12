@@ -192,7 +192,6 @@ U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     SC_SRV_CB                   *pstSCBAgent     = NULL;
     SC_LEG_CB                   *pstLegCBAgent   = NULL;
     SC_LEG_CB                   *pstCalleeLeg    = NULL;
-    U32                         ulCustomerID;
 
     if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstLegCB))
     {
@@ -203,7 +202,9 @@ U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
 
     /* 查找被叫，如果被叫已经长签了，直接连接就好，主意业务控制块合并 */
     /* 被叫有可能是分机号，SIP账户 */
-    ulCustomerID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCallee);
+#if 0
+    /* sc_leg_get_destination 中已经做过判断，这里暂时不需要了 */
+    ulCustomerID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCallee, NULL);
     if (U32_BUTT == ulCustomerID)
     {
         /* 如果不能通过SIP账户获取到用户ID，需要查看是否是分机号，同时将分机号对应的SIP账户作为真实呼叫使用的号码 */
@@ -223,6 +224,7 @@ U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
                         , sizeof(pstLegCB->stCall.stNumInfo.szRealCallee)
                         , pstLegCB->stCall.stNumInfo.szOriginalCallee);
     }
+#endif
 
     /* 维护一下主叫号码 */
     dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCalling
@@ -238,6 +240,10 @@ U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     }
 
     pstSCB->stCall.pstAgentCallee = pstAgent;
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = pstAgent->pstAgentInfo->bTraceON;
+    }
 
     if (pstAgent->pstAgentInfo->ulLegNo < SC_LEG_CB_SIZE)
     {
@@ -368,6 +374,11 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
         && AGENT_BIND_SIP == pstAgentNode->pstAgentInfo->ucBindType)
     {
         pstSCB->stCall.pstAgentCallee = pstAgentNode;
+        if (!pstSCB->bTrace)
+        {
+            pstSCB->bTrace = pstAgentNode->pstAgentInfo->bTraceON;
+        }
+
 
         /* 如果坐席绑定是sip, 判断坐席状态 */
         if (AGENT_BIND_SIP == pstAgentNode->pstAgentInfo->ucBindType)
@@ -550,6 +561,10 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
     sc_agent_call_notify(pstAgentNode->pstAgentInfo, pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
 
     pstSCB->stCall.pstAgentCallee = pstAgentNode;
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = pstAgentNode->pstAgentInfo->bTraceON;
+    }
 
     /* 判断坐席是否长签 */
     if (pstAgentNode->pstAgentInfo->bConnected)
@@ -1495,13 +1510,21 @@ U32 sc_make_call2sip(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB)
 
 U32 sc_voice_verify_proc(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt)
 {
-    SC_SRV_CB    *pstSCB = NULL;
-    SC_LEG_CB    *pstLCB = NULL;
+    SC_SRV_CB    *pstSCB    = NULL;
+    SC_LEG_CB    *pstLCB    = NULL;
+    BOOL         bIsTrace   = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pszNumber) || '\0' == pszNumber[0])
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Empty number for voice verify");
         goto fail_proc;
+    }
+
+    /* 判断是否需要跟踪 */
+    bIsTrace = sc_customer_get_trace(ulCustomer);
+    if (!bIsTrace)
+    {
+        bIsTrace = sc_trace_check_callee(pszNumber);
     }
 
     if (DOS_ADDR_INVALID(pszPassword) || '\0' == pszPassword[0])
@@ -1516,6 +1539,7 @@ U32 sc_voice_verify_proc(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulP
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc SCB fail");
         goto fail_proc;
     }
+    pstSCB->bTrace = bIsTrace;
 
     pstLCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstLCB))
@@ -1546,6 +1570,11 @@ U32 sc_voice_verify_proc(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulP
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is no caller for number verify.");
         goto fail_proc;
+    }
+
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = sc_trace_check_caller(pstLCB->stCall.stNumInfo.szOriginalCalling);
     }
 
     dos_snprintf(pstLCB->stCall.stNumInfo.szOriginalCallee, SC_NUM_LENGTH, pszNumber);
@@ -1587,6 +1616,7 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
     SC_LEG_CB        *pstAgentLCB       = NULL;
     SC_LEG_CB        *pstAgentCalleeLCB = NULL;
     U32              ulRet              = DOS_FAIL;
+    BOOL             bIsTrace           = DOS_FAIL;
 
     if (DOS_ADDR_INVALID(pstAgentNodeCallee)
         || DOS_ADDR_INVALID(pstAgentNodeCallee->pstAgentInfo))
@@ -1594,6 +1624,12 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
         return DOS_FAIL;
     }
 
+    /* 判断客户/坐席是否需要跟踪 */
+    bIsTrace = pstAgentNodeCallee->pstAgentInfo->bTraceON;
+    if (!bIsTrace)
+    {
+        bIsTrace = sc_customer_get_trace(pstAgentNodeCallee->pstAgentInfo->ulCustomerID);
+    }
     sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "Request call agent. Agent: %u, callee agent : %u", ulAgentID, pstAgentNodeCallee->pstAgentInfo->ulAgentID);
 
     /* 判断被叫坐席的状态 */
@@ -1618,6 +1654,11 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
     {
         sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_HTTP_API, SC_LOG_DISIST), "Cannot found the agent %u", ulAgentID);
         return DOS_FAIL;
+    }
+
+    if (!bIsTrace)
+    {
+        bIsTrace = pstAgentNode->pstAgentInfo->bTraceON;
     }
 
     pstAgentLCB = sc_lcb_get(pstAgentNode->pstAgentInfo->ulLegNo);
@@ -1645,6 +1686,8 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
         sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_HTTP_API, SC_LOG_DISIST), "Alloc scb fail");
         return DOS_FAIL;
     }
+
+    pstSCB->bTrace = bIsTrace;
 
     pstLCB->stCall.bValid = DOS_SUCC;
     pstLCB->stCall.ucStatus = SC_LEG_INIT;
@@ -1695,6 +1738,11 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
             sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_HTTP_API, SC_LOG_DISIST), "Get caller fail by agent(%u).", ulAgentID);
 
             goto process_fail;
+        }
+
+        if (!pstSCB->bTrace)
+        {
+            pstSCB->bTrace = sc_trace_check_caller(pstLCB->stCall.stNumInfo.szOriginalCalling);
         }
 
         /* 获取被叫坐席绑定的号码 */
@@ -1835,6 +1883,11 @@ U32 sc_call_ctrl_call_agent(U32 ulAgentID, SC_AGENT_NODE_ST *pstAgentNodeCallee)
         goto process_fail;
     }
 
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = sc_trace_check_caller(pstLCB->stCall.stNumInfo.szOriginalCalling);
+    }
+
     /* 新LEG处理一下号码 */
     dos_snprintf(pstLCB->stCall.stNumInfo.szRealCallee, sizeof(pstLCB->stCall.stNumInfo.szRealCallee), pstLCB->stCall.stNumInfo.szOriginalCallee);
     dos_snprintf(pstLCB->stCall.stNumInfo.szRealCalling, sizeof(pstLCB->stCall.stNumInfo.szRealCalling), pstLCB->stCall.stNumInfo.szOriginalCalling);
@@ -1902,7 +1955,14 @@ U32 sc_call_ctrl_call_sip(U32 ulAgentID, S8 *pszSipNumber)
     SC_LEG_CB        *pstLCB                = NULL;
     SC_LEG_CB        *pstAgentLCB           = NULL;
     U32              ulRet                  = DOS_FAIL;
+    BOOL             bIsTrace               = DOS_FALSE;
     SC_MSG_CMD_CALL_ST stCallMsg;
+
+    if (DOS_ADDR_INVALID(pszSipNumber)
+        || pszSipNumber[0] == '\0')
+    {
+        return DOS_FAIL;
+    }
 
     sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "Request call sip. Agent: %u, callee sip : %s", ulAgentID, pszSipNumber);
 
@@ -1920,6 +1980,17 @@ U32 sc_call_ctrl_call_sip(U32 ulAgentID, S8 *pszSipNumber)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Cannot found the agent %u", ulAgentID);
         return DOS_FAIL;
+    }
+
+    /* 判断是否需要跟踪 */
+    bIsTrace = pstAgentNode->pstAgentInfo->bTraceON;
+    if (!bIsTrace)
+    {
+        bIsTrace = sc_customer_get_trace(pstAgentNode->pstAgentInfo->ulCustomerID);
+        if (!bIsTrace)
+        {
+            bIsTrace = sc_sip_account_get_trace(pszSipNumber);
+        }
     }
 
     pstAgentLCB = sc_lcb_get(pstAgentNode->pstAgentInfo->ulLegNo);
@@ -1947,6 +2018,8 @@ U32 sc_call_ctrl_call_sip(U32 ulAgentID, S8 *pszSipNumber)
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Alloc scb fail");
         return DOS_FAIL;
     }
+
+    pstSCB->bTrace = bIsTrace;
 
     pstLCB->stCall.bValid = DOS_SUCC;
     pstLCB->stCall.ucStatus = SC_LEG_INIT;
@@ -1979,6 +2052,11 @@ U32 sc_call_ctrl_call_sip(U32 ulAgentID, S8 *pszSipNumber)
             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Get caller fail by agent(%u).", ulAgentID);
 
             goto process_fail;
+        }
+
+        if (!pstSCB->bTrace)
+        {
+            pstSCB->bTrace = sc_trace_check_caller(pstLCB->stCall.stNumInfo.szOriginalCalling);
         }
 
         dos_snprintf(pstLCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLCB->stCall.stNumInfo.szOriginalCallee), pszSipNumber);
@@ -2068,6 +2146,11 @@ U32 sc_call_ctrl_call_sip(U32 ulAgentID, S8 *pszSipNumber)
         goto process_fail;
     }
 
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = sc_trace_check_caller(pstLCB->stCall.stNumInfo.szOriginalCalling);
+    }
+
     /* 新LEG处理一下号码 */
     dos_snprintf(pstLCB->stCall.stNumInfo.szRealCallee, sizeof(pstLCB->stCall.stNumInfo.szRealCallee), pstLCB->stCall.stNumInfo.szOriginalCallee);
     dos_snprintf(pstLCB->stCall.stNumInfo.szRealCalling, sizeof(pstLCB->stCall.stNumInfo.szRealCalling), pstLCB->stCall.stNumInfo.szOriginalCalling);
@@ -2137,13 +2220,21 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
     SC_LEG_CB        *pstLCB       = NULL;
     SC_LEG_CB        *pstAgentLCB  = NULL;
     U32              ulRet         = DOS_FAIL;
+    BOOL             bIsTrace      = DOS_FALSE;
 
-    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "Request preview call. Agent: %u, Task: %u, Number: %u", ulAgent, ulTaskID, NULL == pszNumber ? "NULL" : pszNumber);
+    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "Request preview call. Agent: %u, Task: %d, Number: %u", ulAgent, ulTaskID, NULL == pszNumber ? "NULL" : pszNumber);
 
     if (DOS_ADDR_INVALID(pszNumber) || '\0' == pszNumber[0])
     {
         sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Request call out. Number is empty");
         return DOS_FAIL;
+    }
+
+    /* 判断客户/被叫号码是否需要跟踪 */
+    bIsTrace = sc_customer_get_trace(ulCustomerID);
+    if (!bIsTrace)
+    {
+        bIsTrace = sc_trace_check_callee(pszNumber);
     }
 
     /* 判断一下是不是国际长途 */
@@ -2170,6 +2261,12 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
         return DOS_FAIL;
     }
 
+    /* 判断坐席是否需要跟踪 */
+    if (!bIsTrace)
+    {
+        bIsTrace = pstAgentNode->pstAgentInfo->bTraceON;
+    }
+
     pstAgentLCB = sc_lcb_get(pstAgentNode->pstAgentInfo->ulLegNo);
     if (DOS_ADDR_VALID(pstAgentLCB)
         && pstAgentLCB->ulIndSCBNo == U32_BUTT)
@@ -2178,6 +2275,7 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
         sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "The agent %u is not sigin, but have a leg(%u)", ulAgent, pstAgentNode->pstAgentInfo->ulLegNo);
         return DOS_FAIL;
     }
+
 
     pstLCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstLCB))
@@ -2195,6 +2293,8 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
         sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Alloc scb fail");
         return DOS_FAIL;
     }
+
+    pstSCB->bTrace = bIsTrace;
 
     pstSCB->ulClientID = ulCientID;
     dos_snprintf(pstSCB->szClientNum, sizeof(pstSCB->szClientNum), pszNumber);
@@ -2227,6 +2327,12 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
             sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Get caller fail by agent(%u).", ulAgent);
 
             goto process_fail;
+        }
+
+        /* 判断主叫号码是否需要跟踪 */
+        if (!pstSCB->bTrace)
+        {
+            pstSCB->bTrace = sc_trace_check_caller(pstLCB->stCall.stNumInfo.szOriginalCalling);
         }
 
         dos_snprintf(pstLCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstLCB->stCall.stNumInfo.szOriginalCallee), pszNumber);
@@ -2313,6 +2419,12 @@ U32 sc_call_ctrl_call_out(U32 ulCustomerID, U32 ulAgent, U32 ulTaskID, S8 *pszNu
         sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Get caller fail by agent(%u).", ulAgent);
 
         goto process_fail;
+    }
+
+    /* 判断主叫号码是否需要跟踪 */
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = sc_trace_check_caller(pstLCB->stCall.stNumInfo.szOriginalCalling);
     }
 
     dos_snprintf(pstAgentNode->pstAgentInfo->szLastCustomerNum, SC_NUM_LENGTH, "%s", pszNumber);
@@ -2815,6 +2927,13 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
     SC_LEG_CB        *pstLCB       = NULL;
     SC_SRV_CB        *pstSCB       = NULL;
     SC_LEG_CB        *pstLCBAgent  = NULL;
+    BOOL             bIsTrace      = DOS_FALSE;
+
+    bIsTrace = sc_customer_get_trace(ulCustomerID);
+    if (!bIsTrace)
+    {
+        bIsTrace = sc_trace_check_callee(pszCallee);
+    }
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request intercept. Agent: %u, Task: %u, Number: %s", ulAgent, ulTaskID, NULL == pszCallee ? "NULL" : pszCallee);
 
@@ -2824,16 +2943,16 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
     }
 
     pstAgentNode = sc_agent_get_by_id(ulAgent);
-    if (DOS_ADDR_INVALID(pstAgentNode))
+    if (DOS_ADDR_INVALID(pstAgentNode)
+        || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Cannot found the agent %u", ulAgent);
         return DOS_FAIL;
     }
 
-    if (DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
+    if (!bIsTrace)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Agent CB Error %u", ulAgent);
-        return DOS_FAIL;
+        bIsTrace = pstAgentNode->pstAgentInfo->bTraceON;
     }
 
     if (pstAgentNode->pstAgentInfo->ulLegNo >= SC_LEG_CB_SIZE)
@@ -2853,6 +2972,8 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
     {
         return DOS_FAIL;
     }
+
+    pstSCB->bTrace = bIsTrace;
 
     pstLCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstLCB))
@@ -2886,6 +3007,11 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is no caller for number verify.");
 
         goto process_fail;
+    }
+
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = sc_trace_check_caller(pstLCB->stCall.stNumInfo.szOriginalCalling);
     }
 
     /* 被叫号码 */
@@ -2958,6 +3084,13 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
     SC_LEG_CB        *pstLCB       = NULL;
     SC_SRV_CB        *pstSCB       = NULL;
     SC_LEG_CB        *pstLCBAgent  = NULL;
+    BOOL             bIsTrace      = DOS_FALSE;
+
+    bIsTrace = sc_customer_get_trace(ulCustomerID);
+    if (!bIsTrace)
+    {
+        bIsTrace = sc_trace_check_callee(pszCallee);
+    }
 
     sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Request intercept. Agent: %u, Task: %u, Number: %s", ulAgent, ulTaskID, NULL == pszCallee ? "NULL" : pszCallee);
 
@@ -2979,6 +3112,12 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
         return DOS_FAIL;
     }
 
+    if (!bIsTrace)
+    {
+        bIsTrace = pstAgentNode->pstAgentInfo->bTraceON;
+    }
+
+
     if (pstAgentNode->pstAgentInfo->ulLegNo >= SC_LEG_CB_SIZE)
     {
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Agent not in calling %u", ulAgent);
@@ -2996,6 +3135,8 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
     {
         return DOS_FAIL;
     }
+
+    pstSCB->bTrace = bIsTrace;
 
     pstLCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstLCB))
@@ -3030,6 +3171,11 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is no caller for number verify.");
 
         goto process_fail;
+    }
+
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = sc_trace_check_caller(pstLCB->stCall.stNumInfo.szOriginalCalling);
     }
 
     /* 被叫号码 */

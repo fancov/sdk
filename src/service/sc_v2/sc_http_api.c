@@ -752,7 +752,7 @@ U32 sc_http_api_agent_call_ctrl(list_t *pstArgv)
                     }
 
                     /* 判断被叫号码是否是分机号，如果是同一个客户的分机号，就呼叫这个分机 */
-                    else if (sc_sip_account_get_customer(pszNumber) == ulCustomer)
+                    else if (sc_sip_account_get_customer(pszNumber, NULL) == ulCustomer)
                     {
                         ulRet = sc_call_ctrl_call_sip(ulAgent, pszNumber);
                         break;

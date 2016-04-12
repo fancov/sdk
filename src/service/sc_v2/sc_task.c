@@ -904,12 +904,19 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
     SC_SRV_CB                   *pstSCB                     = NULL;
     SC_LEG_CB                   *pstLegCB                   = NULL;
     U32                         ulErrNo                     = CC_ERR_NO_REASON;
+    BOOL                        bIsTrace                    = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pstTCB))
     {
         DOS_ASSERT(0);
 
         return DOS_FAIL;
+    }
+
+    bIsTrace = pstTCB->bTraceON;
+    if (!bIsTrace)
+    {
+        bIsTrace = sc_customer_get_trace(pstTCB->ulCustomID);
     }
 
     pstCallee = sc_task_get_callee(pstTCB);
@@ -921,6 +928,11 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
 
     /* 只要取到了被叫号码，就应该加一 */
     pstTCB->ulCalledCount++;
+
+    if (!bIsTrace)
+    {
+        bIsTrace = sc_trace_check_callee(pstCallee->szNumber);
+    }
 
     /* 不允许呼叫国际长途 */
     if (pstCallee->szNumber[0] == '0'
@@ -947,6 +959,11 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
         goto make_call_file;
     }
 
+    if (!bIsTrace)
+    {
+        bIsTrace = sc_trace_check_caller(szCaller);
+    }
+
     /* 申请一个scb，leg */
     pstSCB = sc_scb_alloc();
     if (DOS_ADDR_INVALID(pstSCB))
@@ -954,6 +971,8 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
         DOS_ASSERT(0);
         goto make_call_file;
     }
+
+    pstSCB->bTrace = bIsTrace;
 
     pstLegCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstLegCB))

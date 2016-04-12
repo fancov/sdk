@@ -3209,6 +3209,7 @@ U32 sc_send_event_ringing_timeout_rsp(SC_MSG_EVT_RINGING_TIMEOUT_ST *pstEvent)
 U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
 {
     SC_AGENT_NODE_ST *pstAgent = NULL;
+    BOOL              bIsTrace = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pstLegCB) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -3218,7 +3219,8 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
 
     if (SC_LEG_PEER_INBOUND_INTERNAL == pstLegCB->stCall.ucPeerType)
     {
-        pstSCB->ulCustomerID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCalling);
+        pstSCB->ulCustomerID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCalling, &bIsTrace);
+        pstSCB->bTrace = bIsTrace;
         if (pstSCB->ulCustomerID != U32_BUTT)
         {
             pstAgent = sc_agent_get_by_sip_acc(pstLegCB->stCall.stNumInfo.szOriginalCalling);
@@ -3228,6 +3230,7 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
             {
                 pstSCB->ulAgentID = pstAgent->pstAgentInfo->ulAgentID;
                 pstSCB->stCall.pstAgentCalling = pstAgent;
+
                 return SC_DIRECTION_SIP;
             }
 
@@ -3243,7 +3246,8 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
         if (U32_BUTT == pstSCB->ulCustomerID)
         {
             pstAgent = sc_agent_get_by_tt_num(pstLegCB->stCall.stNumInfo.szOriginalCalling);
-            if (DOS_ADDR_VALID(pstAgent) && DOS_ADDR_VALID(pstAgent->pstAgentInfo))
+            if (DOS_ADDR_VALID(pstAgent)
+                && DOS_ADDR_VALID(pstAgent->pstAgentInfo))
             {
                 pstSCB->ulCustomerID = pstAgent->pstAgentInfo->ulCustomerID;
                 pstSCB->ulAgentID = pstAgent->pstAgentInfo->ulAgentID;
@@ -3263,6 +3267,7 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
 U32 sc_leg_get_destination(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
 {
     U32 ulCustomID    = U32_BUTT;
+    U32 bIsTrace      = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstLegCB))
     {
@@ -3280,9 +3285,14 @@ U32 sc_leg_get_destination(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
     if (SC_LEG_PEER_INBOUND_INTERNAL == pstLegCB->stCall.ucPeerType)
     {
         /* 被叫号码是否是同一个客户下的SIP User ID */
-        ulCustomID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCallee);
+        ulCustomID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCallee, &bIsTrace);
         if (ulCustomID == pstSCB->ulCustomerID)
         {
+            if (!pstSCB->bTrace)
+            {
+                pstSCB->bTrace = bIsTrace;
+            }
+
             return SC_DIRECTION_SIP;
         }
 
