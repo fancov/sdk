@@ -3690,27 +3690,34 @@ U32 sc_leg_parse_codec(U8 *pucCodeList, S32 lCodeListLen, S8 *pszSDP)
 
     if (DOS_ADDR_INVALID(pszEnd))
     {
-        sc_log(LOG_LEVEL_DEBUG, "Invalid  audiomedia line in the sdp!");
+        sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!");
         return DOS_FAIL;
     }
 
     pszStart = dos_strstr(pszStart, "RTP/AVP");
     if (DOS_ADDR_INVALID(pszStart))
     {
-        sc_log(LOG_LEVEL_DEBUG, "Invalid  audiomedia line in the sdp!(1)");
+        sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(1)");
+        return DOS_FAIL;
+    }
+
+    pszStart = pszStart + dos_strlen("RTP/AVP");
+    if (DOS_ADDR_INVALID(pszStart))
+    {
+        sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(01)");
         return DOS_FAIL;
     }
 
     if (pszStart >= pszEnd)
     {
-        sc_log(LOG_LEVEL_DEBUG, "Invalid  audiomedia line in the sdp!(2)");
+        sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(2)");
         return DOS_FAIL;
     }
 
     pszStart++;
     if (pszStart >= pszEnd)
     {
-        sc_log(LOG_LEVEL_DEBUG, "Invalid  audiomedia line in the sdp!(3)");
+        sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(3)");
         return DOS_FAIL;
     }
 
@@ -3750,7 +3757,7 @@ U32 sc_leg_parse_codec(U8 *pucCodeList, S32 lCodeListLen, S8 *pszSDP)
 
         if (pszStart[i] < '0' || pszStart[i] > '9')
         {
-            sc_log(LOG_LEVEL_DEBUG, "Invalid  audiomedia line in the sdp!(4)");
+            sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(4)");
             break;
         }
 
@@ -3758,7 +3765,7 @@ U32 sc_leg_parse_codec(U8 *pucCodeList, S32 lCodeListLen, S8 *pszSDP)
         lStrLen++;
         if (lStrLen >= sizeof(szTmp))
         {
-            sc_log(LOG_LEVEL_DEBUG, "Invalid  audiomedia line in the sdp!(5)");
+            sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(5)");
             break;
         }
         szTmp[lStrLen] = '\0';
