@@ -1,0 +1,3 @@
+#!/bin/bash
+
+/usr/local/sbin/ipcc-snapshot/snapshot.sh
