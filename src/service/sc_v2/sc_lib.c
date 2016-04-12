@@ -982,7 +982,8 @@ VOID sc_scb_auto_call_init(SC_AUTO_CALL_ST *pstAutoCall)
     pstAutoCall->ulTaskID = 0;
     pstAutoCall->ulTcbID = U32_BUTT;
     pstAutoCall->bIsRingTimer = DOS_FALSE;
-    pstAutoCall->stTmrHandle = NULL;
+    pstAutoCall->stAgentTmrHandle = NULL;
+    pstAutoCall->stCusTmrHandle = NULL;
 
 }
 
@@ -1169,7 +1170,8 @@ VOID sc_scb_demo_task_init(SC_AUTO_CALL_ST *pstAutoCall)
     pstAutoCall->ulTaskID = 0;
     pstAutoCall->ulTcbID = U32_BUTT;
     pstAutoCall->bIsRingTimer = DOS_FALSE;
-    pstAutoCall->stTmrHandle = NULL;
+    pstAutoCall->stAgentTmrHandle = NULL;
+    pstAutoCall->stCusTmrHandle = NULL;
 }
 
 VOID sc_scb_call_agent_init(SC_SRV_CALL_AGENT_ST *pstCallAgent)
@@ -3454,6 +3456,43 @@ void sc_agent_ringing_timeout_callback(U64 arg)
     if (pstSCB->stCall.stSCBTag.usStatus == SC_CALL_ALERTING
         || pstSCB->stAutoCall.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING2
         || pstSCB->stDemoTask.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING2)
+    {
+        /* 发送超时提醒给fsm */
+        stEvtRingingTimeOut.stMsgTag.ulMsgType = SC_EVT_RINGING_TIMEOUT;
+        stEvtRingingTimeOut.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+        stEvtRingingTimeOut.ulSCBNo = pstSCB->ulSCBNo;
+        stEvtRingingTimeOut.ulLCBNo = ulLCBNo;
+        if (sc_send_event_ringing_timeout_rsp(&stEvtRingingTimeOut) != DOS_SUCC)
+        {
+            /* TODO 发送消息失败 */
+        }
+    }
+
+    return;
+}
+
+void sc_auto_call_ringing_timeout_callback(U64 arg)
+{
+    U32                 ulLCBNo    = U32_BUTT;
+    SC_LEG_CB           *pstLeg    = NULL;
+    SC_SRV_CB           *pstSCB    = NULL;
+    SC_MSG_EVT_RINGING_TIMEOUT_ST stEvtRingingTimeOut;
+
+    ulLCBNo = (U32)arg;
+
+    pstLeg = sc_lcb_get(ulLCBNo);
+    if (DOS_ADDR_INVALID(pstLeg))
+    {
+        return;
+    }
+
+    pstSCB = sc_scb_get(pstLeg->ulSCBNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return;
+    }
+
+    if (pstSCB->stAutoCall.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING)
     {
         /* 发送超时提醒给fsm */
         stEvtRingingTimeOut.stMsgTag.ulMsgType = SC_EVT_RINGING_TIMEOUT;
