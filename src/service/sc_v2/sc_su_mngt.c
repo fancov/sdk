@@ -1834,6 +1834,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         }
 
         pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
+        pstLCB->stPlayback.usStatus = SC_SU_PLAYBACK_ACTIVE;
 
         return DOS_SUCC;
     }

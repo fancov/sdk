@@ -66,7 +66,7 @@ SC_HINT_DESC_ST  astHitList[] = {
 SC_HINT_DESC_ST  astToneList[] = {
     {SC_TONE_RINGBACK,         "tone_stream://%(1000,4000,450);loops=-1"},
     {SC_TONE_DIAL,             ""},
-    {SC_TONE_BUSY,             "tone_stream://%(500,500,450);loops=-1"},
+    {SC_TONE_BUSY,             "tone_stream://%(500,500,450);loops=3"},
 
     {SC_TONE_BUTT,             ""}
 };

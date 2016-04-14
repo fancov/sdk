@@ -156,6 +156,10 @@ extern "C" {
 
 #define SC_AUTO_CALL_RINGING_TIMEOUT   35000
 
+#define SC_AUTO_CALL_AGENT_MAX_COUNT   5
+
+#define SC_AUTO_CALL_RECALL_TIME       200
+
 /**
  * 1. 没有被删除
  * 2. 已经登陆了     && (pstSiteDesc)->bLogin 这个状态不判断了
@@ -1146,6 +1150,8 @@ typedef struct tagSCAUTOCall{
 
     /* 是否是呼入到坐席组，增加定时器，8s不接电话，转另一个坐席 */
     BOOL              bIsRingTimer;
+
+    U32               ulReCallAgent;
 
     /** 坐席振铃的定时器 */
     DOS_TMR_ST        stAgentTmrHandle;
@@ -2239,6 +2245,7 @@ U32 sc_req_play_sounds(U32 ulSCBNo, U32 ulLegNo, U32 *pulSndInd, U32 ulSndCnt, U
 U32 sc_req_playback_stop(U32 ulSCBNo, U32 ulLegNo);
 U32 sc_req_hungup_with_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo);
 U32 sc_req_hold(U32 ulSCBNo, U32 ulLegNo, U32 ulFlag);
+U32 sc_req_busy_tone(U32 ulSCBNo, U32 ulLegNo);
 U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg);
 U32 sc_send_cmd_mux(SC_MSG_TAG_ST *pstMsg);

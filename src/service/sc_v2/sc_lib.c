@@ -982,6 +982,7 @@ VOID sc_scb_auto_call_init(SC_AUTO_CALL_ST *pstAutoCall)
     pstAutoCall->ulTaskID = 0;
     pstAutoCall->ulTcbID = U32_BUTT;
     pstAutoCall->bIsRingTimer = DOS_FALSE;
+    pstAutoCall->ulReCallAgent = 0;
     pstAutoCall->stAgentTmrHandle = NULL;
     pstAutoCall->stCusTmrHandle = NULL;
 
@@ -1170,6 +1171,7 @@ VOID sc_scb_demo_task_init(SC_AUTO_CALL_ST *pstAutoCall)
     pstAutoCall->ulTaskID = 0;
     pstAutoCall->ulTcbID = U32_BUTT;
     pstAutoCall->bIsRingTimer = DOS_FALSE;
+    pstAutoCall->ulReCallAgent = 0;
     pstAutoCall->stAgentTmrHandle = NULL;
     pstAutoCall->stCusTmrHandle = NULL;
 }
@@ -2744,6 +2746,39 @@ U32 sc_req_ringback(U32 ulSCBNo, U32 ulLegNo, BOOL bIsConnected, BOOL bIsEarlyMe
     {
         dos_dmem_free(pstCMDRingback);
         pstCMDRingback = NULL;
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+U32 sc_req_busy_tone(U32 ulSCBNo, U32 ulLegNo)
+{
+    SC_MSG_CMD_PLAYBACK_ST  *pstCMDPlayback = NULL;
+    U32                     ulRet           = 0;
+
+    pstCMDPlayback = (SC_MSG_CMD_PLAYBACK_ST*)dos_dmem_alloc(sizeof(SC_MSG_CMD_PLAYBACK_ST));
+    if (DOS_ADDR_INVALID(pstCMDPlayback))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCMDPlayback->stMsgTag.ulMsgType = SC_CMD_PLAYBACK;
+    pstCMDPlayback->stMsgTag.ulSCBNo = ulSCBNo;
+    pstCMDPlayback->stMsgTag.usInterErr = 0;
+    pstCMDPlayback->ulMode = 0;
+    pstCMDPlayback->ulSCBNo = ulSCBNo;
+    pstCMDPlayback->ulLegNo = ulLegNo;
+    pstCMDPlayback->ulLoopCnt = 1;
+    pstCMDPlayback->aulAudioList[0] = SC_TONE_BUSY;
+    pstCMDPlayback->enType = SC_CND_PLAYBACK_TONE;
+
+    ulRet = sc_send_command(&pstCMDPlayback->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCMDPlayback);
+        pstCMDPlayback = NULL;
         return DOS_FAIL;
     }
 

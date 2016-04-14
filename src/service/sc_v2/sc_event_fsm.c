@@ -5072,6 +5072,26 @@ U32 sc_auto_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return ulRet;
 }
 
+
+void sc_auto_call_recall_agent_callback(U64 arg)
+{
+    U32                 ulScbNo    = U32_BUTT;
+    SC_SRV_CB           *pstSCB    = NULL;
+
+    ulScbNo = (U32)arg;
+
+    pstSCB = sc_scb_get(ulScbNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return;
+    }
+
+    /* 呼叫坐席失败，重新加入队列 */
+    sc_ringing_timeout_proc(pstSCB);
+
+    return;
+}
+
 U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_ANSWER_ST *pstEvtAnswer     = NULL;
@@ -5291,17 +5311,17 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_SUCC;
     }
 
-    pstLCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
-    if (DOS_ADDR_INVALID(pstLCB))
-    {
-        sc_trace_scb(pstSCB, "There is no calling leg.");
-
-        goto proc_finishe;
-    }
-
     switch (pstSCB->stAutoCall.stSCBTag.usStatus)
     {
         case SC_AUTO_CALL_ACTIVE:
+            pstLCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
+            if (DOS_ADDR_INVALID(pstLCB))
+            {
+                sc_trace_scb(pstSCB, "There is no calling leg.");
+
+                goto proc_finishe;
+            }
+
             ulTaskMode = sc_task_get_mode(pstSCB->stAutoCall.ulTcbID);
             if (ulTaskMode >= SC_TASK_MODE_BUTT)
             {
@@ -5367,6 +5387,12 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_CONNECTED;
             break;
+
+        case SC_AUTO_CALL_RELEASE:
+            /* 坐席放忙音结束，挂断坐席的电话 */
+            sc_req_hungup(pstSCB->ulSCBNo, pstRlayback->ulLegNo, CC_ERR_NORMAL_CLEAR);
+            break;
+
         default:
             break;
     }
@@ -5916,7 +5942,8 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
               */
             /* release 时，肯定是有一条leg hungup了，现在的leg需要释放掉，判断另一条是不是坐席长签，如果不是需要挂断 */
             pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
-            if (DOS_ADDR_INVALID(pstAgentCall) || DOS_ADDR_INVALID(pstAgentCall->pstAgentInfo))
+            if (DOS_ADDR_INVALID(pstAgentCall)
+                || DOS_ADDR_INVALID(pstAgentCall->pstAgentInfo))
             {
                 /* 没有找到坐席 */
                 sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not found agent by id(%u)", pstSCB->stAutoCall.ulAgentID);
@@ -6009,15 +6036,16 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstSCB->stAutoCall.ulCallingLegNo = U32_BUTT;
             }
 
-            /* 修改坐席的状态 */
-            if (DOS_ADDR_VALID(pstAgentCall)
-                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
-            {
-                sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_CALL);
-            }
 
             if (pstOtherLeg->ulIndSCBNo != U32_BUTT)
             {
+                /* 修改坐席的状态 */
+                if (DOS_ADDR_VALID(pstAgentCall)
+                    && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_CALL);
+                }
+
                 /* 长签，继续放音 */
                 pstOtherLeg->ulSCBNo = U32_BUTT;
                 sc_req_play_sound(pstOtherLeg->ulIndSCBNo, pstOtherLeg->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
@@ -6029,14 +6057,35 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             else if (pstHungupLeg->ulIndSCBNo != U32_BUTT)
             {
+                if (DOS_ADDR_VALID(pstAgentCall)
+                    && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_CALL);
+                }
+
                 /* 长签的坐席挂断了电话，不要释放leg，解除关系就行 */
                 pstSCB->stAutoCall.ulCallingLegNo = U32_BUTT;
                 pstHungupLeg->ulSCBNo = U32_BUTT;
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_RELEASE;
             }
+            else if (pstSCB->stAutoCall.ulCallingLegNo == U32_BUTT)
+            {
+                /* 客户挂断，不修改坐席状态，坐席置忙音 */
+                sc_lcb_free(pstHungupLeg);
+                pstHungupLeg = NULL;
+
+                sc_req_busy_tone(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCalleeLegNo);
+                pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_RELEASE;
+            }
             else
             {
+                if (DOS_ADDR_VALID(pstAgentCall)
+                    && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_CALL);
+                }
+
                 sc_lcb_free(pstHungupLeg);
                 pstHungupLeg = NULL;
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
@@ -6065,6 +6114,13 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_CALL_RELEASE:
+            pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
+            if (DOS_ADDR_VALID(pstAgentCall)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+            {
+                sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_CALL);
+            }
+
             pstCalleeCB = sc_lcb_get(pstSCB->stAutoCall.ulCalleeLegNo);
             if (DOS_ADDR_VALID(pstCalleeCB))
             {
@@ -6099,6 +6155,7 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
     U32                         ulRet               = DOS_SUCC;
+    S32                         lRes                = DOS_SUCC;
     U32                         ulErrCode           = CC_ERR_NO_REASON;
     SC_LEG_CB                   *pstCallingCB       = NULL;
     SC_LEG_CB                   *pstCalleeCB        = NULL;
@@ -6209,15 +6266,29 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_CALL_EXEC2:
-            sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
-            ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
+            pstSCB->stAutoCall.ulReCallAgent++;
+            if (pstSCB->stAutoCall.ulReCallAgent > SC_AUTO_CALL_AGENT_MAX_COUNT)
+            {
+                sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
+                ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
+                break;
+            }
+            else
+            {
+                if (DOS_ADDR_VALID(pstSCB->stAutoCall.stCusTmrHandle))
+                {
+                    dos_tmr_stop(&pstSCB->stAutoCall.stCusTmrHandle);
+                    pstSCB->stAutoCall.stCusTmrHandle = NULL;
+                }
+
+                lRes = dos_tmr_start(&pstSCB->stAutoCall.stCusTmrHandle, SC_AUTO_CALL_RECALL_TIME, sc_auto_call_recall_agent_callback, (U64)pstSCB->ulSCBNo, TIMER_NORMAL_NO_LOOP);
+                if (lRes < 0)
+                {
+                    DOS_ASSERT(0);
+                    pstSCB->stAutoCall.stCusTmrHandle = NULL;
+                }
+            }
             break;
-#if 0
-            /* TODO,以后需要优化 */
-            /* 呼叫坐席失败，重新加入队列 */
-            ulRet = sc_ringing_timeout_proc(pstSCB);
-            break;
-#endif
 
         case SC_AUTO_CALL_PORC2:
         case SC_AUTO_CALL_ALERTING2:
@@ -6903,6 +6974,7 @@ U32 sc_mark_custom_playback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_req_play_sound(pstSCB->ulSCBNo, (pstLCB)->ulCBNo, SC_SND_CALL_OVER, 1, 0, 0);
             }
             break;
+
         case SC_MAKR_CUSTOM_ACTIVE:
             pstLCB = sc_lcb_get(pstRlayback->ulLegNo);
             if (DOS_ADDR_VALID(pstLCB))
@@ -6919,11 +6991,21 @@ U32 sc_mark_custom_playback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 else
                 {
                     pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ulLegNo = U32_BUTT;
-                    sc_req_hungup(pstSCB->ulSCBNo, pstLCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                    //sc_req_hungup(pstSCB->ulSCBNo, pstLCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                    sc_req_busy_tone(pstSCB->ulSCBNo, pstLCB->ulCBNo);
                     pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_RELEASE;
                 }
             }
             break;
+
+        case SC_MAKR_CUSTOM_RELEASE:
+            /* 坐席放忙音结束，挂断电话 */
+            pstLCB = sc_lcb_get(pstRlayback->ulLegNo);
+            if (DOS_ADDR_VALID(pstLCB))
+            {
+                sc_req_hungup(pstSCB->ulSCBNo, pstLCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+            }
+
         default:
             break;
     }
@@ -6942,6 +7024,7 @@ U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_MAKR_CUSTOM_IDEL:
             pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_PROC;
             break;
+
         case SC_MAKR_CUSTOM_PROC:
         case SC_MAKR_CUSTOM_ACTIVE:
         case SC_MAKR_CUSTOM_RELEASE:
@@ -6975,6 +7058,7 @@ U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             pstSCB->stMarkCustom.stSCBTag.bWaitingExit = DOS_TRUE;
             break;
+
         default:
             break;
     }
