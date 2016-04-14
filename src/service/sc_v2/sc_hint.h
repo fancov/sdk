@@ -70,7 +70,7 @@ typedef enum tagSoundType{
 typedef enum tagToneType{
     SC_TONE_RINGBACK,
     SC_TONE_DIAL,
-    SC_TONE_RING,
+    SC_TONE_BUSY,
 
     SC_TONE_BUTT
 }SC_TONE_TYPE_EN;
