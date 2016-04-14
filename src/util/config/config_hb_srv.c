@@ -287,6 +287,41 @@ S32 config_hb_get_start_cmd(U32 ulIndex, S8 *pszCmd, U32 ulLen)
 }
 
 /**
+ * 函数：config_hb_get_start_cmd
+ * 功能：获取进程的启动命令
+ * 参数：
+ * 返回值：成功返回0，失败返回－1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_get_pid_path(U32 ulIndex, S8 *pszPath, U32 ulLen)
+{
+   S8  szPath[1024] = {0};
+   S8  szNodePath[32] = {0};
+   S8* pszValue = NULL;
+
+   if(!g_pstHBSrvCfg)
+   {
+      dos_printf("%s", "get start process command failed!");
+      DOS_ASSERT(0);
+      return -1;
+   }
+   dos_snprintf(szNodePath, sizeof(szNodePath), "config/process/%u", ulIndex);
+
+   pszValue = _config_get_param(g_pstHBSrvCfg, szNodePath, "pid", szPath, sizeof(szPath));
+   if(!pszPath && *pszPath == '\0')
+   {
+      dos_printf("%s", "get start process command failed!");
+      DOS_ASSERT(0);
+      return -1;
+   }
+   dos_strncpy(pszPath, pszValue, dos_strlen(pszValue));
+   pszPath[dos_strlen(pszValue)] = '\0';
+   return 0;
+}
+
+
+/**
  * 函数：config_hb_threshold_mem
  * 功能：获取内存占用率的阀值
  * 参数：
