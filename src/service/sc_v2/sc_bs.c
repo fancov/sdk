@@ -58,27 +58,27 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 
     if (DOS_ADDR_INVALID(pstMsg))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg.");
         return DOS_FAIL;
     }
 
     if (pstMsg->usMsgLen != sizeof(BS_MSG_AUTH))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "Invalid Msg length. Length: %d", pstMsg->usMsgLen);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "Invalid Msg length. Length: %d", pstMsg->usMsgLen);
         return DOS_FAIL;
     }
 
     pstAuthMsg = (BS_MSG_AUTH *)pstMsg;
     if (DOS_ADDR_INVALID(pstAuthMsg))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg body. ");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg body. ");
         return DOS_FAIL;
     }
 
     pstLegCB = sc_lcb_get(pstAuthMsg->stMsgTag.ulCRNo);
     if (DOS_ADDR_INVALID(pstLegCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg body. ");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg body. ");
         return DOS_FAIL;
     }
 
@@ -104,7 +104,7 @@ U32 sc_bs_auth_rsp_proc(BS_MSG_TAG *pstMsg)
 
     ulRet = sc_send_event_auth_rsp(&stEvtAuth);
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Process auth response finished. CR:%u SCB: %u", pstLegCB->ulSCBNo, pstLegCB->ulSCBNo);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Process auth response finished. CR:%u SCB: %u", pstLegCB->ulSCBNo, pstLegCB->ulSCBNo);
 
     return ulRet;
 }
@@ -118,27 +118,27 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
 
     if (DOS_ADDR_INVALID(pstMsg))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg.");
         return DOS_FAIL;
     }
 
     if (pstMsg->usMsgLen != sizeof(BS_MSG_BALANCE_QUERY))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "Invalid Msg length. Length: %d", pstMsg->usMsgLen);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "Invalid Msg length. Length: %d", pstMsg->usMsgLen);
         return DOS_FAIL;
     }
 
     pstAuthMsg = (BS_MSG_BALANCE_QUERY *)pstMsg;
     if (DOS_ADDR_INVALID(pstAuthMsg))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg body. ");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg body. ");
         return DOS_FAIL;
     }
 
     pstLegCB = sc_lcb_get(pstAuthMsg->stMsgTag.ulCRNo);
     if (DOS_ADDR_INVALID(pstLegCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg body. ");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg body. ");
         return DOS_FAIL;
     }
 
@@ -152,7 +152,7 @@ U32 sc_bs_balance_enquiry_rsp_proc(BS_MSG_TAG *pstMsg)
 
     ulRet = sc_send_event_auth_rsp(&stEvtAuth);
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Process auth response finished. CR:%u SCB: %u", pstLegCB->ulSCBNo, pstLegCB->ulSCBNo);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Process auth response finished. CR:%u SCB: %u", pstLegCB->ulSCBNo, pstLegCB->ulSCBNo);
 
     return ulRet;
 }
@@ -164,26 +164,26 @@ U32 sc_bs_billing_start_rsp_proc(BS_MSG_TAG *pstMsg)
 
     if (DOS_ADDR_INVALID(pstMsg))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg.");
         return DOS_FAIL;
     }
 
     if (pstMsg->ulCRNo >= SC_SCB_SIZE)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "Invalid RC NO. Max: %d, Current: %s", SC_SCB_SIZE, pstMsg->ulCRNo);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "Invalid RC NO. Max: %d, Current: %s", SC_SCB_SIZE, pstMsg->ulCRNo);
         return DOS_FAIL;
     }
 
     pstSCB = sc_scb_get(pstMsg->ulCRNo);
     if (DOS_ADDR_INVALID(pstSCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid SCB.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid SCB.");
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Start process billing start response msg.");
+    sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Start process billing start response msg.");
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Process billing start response msg finished.");
+    sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Process billing start response msg finished.");
 
     return DOS_SUCC;
 }
@@ -194,26 +194,26 @@ U32 sc_bs_billing_update_rsp_proc(BS_MSG_TAG *pstMsg)
 
     if (DOS_ADDR_INVALID(pstMsg))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg.");
         return DOS_FAIL;
     }
 
     if (pstMsg->ulCRNo >= SC_SCB_SIZE)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid RC NO. Max: %d, Current: %s", SC_SCB_SIZE, pstMsg->ulCRNo);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid RC NO. Max: %d, Current: %s", SC_SCB_SIZE, pstMsg->ulCRNo);
         return DOS_FAIL;
     }
 
     pstSCB = sc_scb_get(pstMsg->ulCRNo);
     if (DOS_ADDR_INVALID(pstSCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid SCB.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid SCB.");
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Start process billing update response msg.");
+    sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Start process billing update response msg.");
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Process billing update response msg finished.");
+    sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Process billing update response msg finished.");
 
 #if 0
     /* 通知删除消息 */
@@ -230,12 +230,12 @@ U32 sc_bs_billing_stop_rsp_proc(BS_MSG_TAG *pstMsg)
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "Invalid Msg.");
         return DOS_FAIL;
     }
 
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Process billing stop response msg finished.ERRNO: %d", pstMsg->ucErrcode);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Process billing stop response msg finished.ERRNO: %d", pstMsg->ucErrcode);
 
 #if 0
     /* 通知删除消息 */
@@ -262,7 +262,7 @@ VOID sc_bs_hb_timeout(U64 uLIndex)
     {
         g_pstSCBSClient[uLIndex]->ulStatus = SC_BS_STATUS_LOST;
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "BS Server Lost. Index:%u", uLIndex);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "BS Server Lost. Index:%u", uLIndex);
         close(g_pstSCBSClient[uLIndex]->lSocket);
         g_pstSCBSClient[uLIndex]->lSocket = -1;
         return;
@@ -276,7 +276,7 @@ VOID sc_bs_hb_interval_timeout(U64 uLIndex)
         return;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Heartbeat between BS and SC interval timeout. Client Index : %u", uLIndex);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Heartbeat between BS and SC interval timeout. Client Index : %u", uLIndex);
 
     sc_send_hello2bs((U32)uLIndex);
     dos_tmr_start(&g_pstSCBSClient[uLIndex]->hTmrHBTimeout, SC_BS_HB_TIMEOUT, sc_bs_hb_timeout, uLIndex, TIMER_NORMAL_NO_LOOP);
@@ -289,24 +289,24 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
 
     if (DOS_ADDR_INVALID(pData) || ulLength < sizeof(BS_MSG_TAG))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Recv Invalid msg. Length:%s", ulLength);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Recv Invalid msg. Length:%s", ulLength);
         return;
     }
 
     if (ulClientIndex >= SC_MAX_BS_CLIENT)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Invalid clinet index. Index:%X", ulClientIndex);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Invalid clinet index. Index:%X", ulClientIndex);
         return;
     }
 
     pstMsgHeader = (BS_MSG_TAG *)pData;
     if (pstMsgHeader->usMsgLen != ulLength)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Recv Invalid msg. Length:%s, Length in Msg", ulLength, pstMsgHeader->usMsgLen);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Recv Invalid msg. Length:%s, Length in Msg", ulLength, pstMsgHeader->usMsgLen);
         return;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Recv BS Msg. Version: %X, Port:%d, IP:%X, Seq:%d, CR No:%d, Msg Type:%d, ErrCode: %d, Msg Length:%d"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Recv BS Msg. Version: %X, Port:%d, IP:%X, Seq:%d, CR No:%d, Msg Type:%d, ErrCode: %d, Msg Length:%d"
                     , pstMsgHeader->usVersion
                     , pstMsgHeader->usPort
                     , pstMsgHeader->aulIPAddr[0]
@@ -318,7 +318,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
 
     if (BS_MSG_INTERFACE_VERSION != pstMsgHeader->usVersion)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Recv Invalid msg. Version not match. Version:%X, Version in Msg", BS_MSG_INTERFACE_VERSION, pstMsgHeader->usVersion);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Recv Invalid msg. Version not match. Version:%X, Version in Msg", BS_MSG_INTERFACE_VERSION, pstMsgHeader->usVersion);
         return;
     }
 
@@ -387,7 +387,7 @@ VOID sc_bs_msg_proc(U8 *pData, U32 ulLength, U32 ulClientIndex)
         case BS_MSG_BILLING_STOP_REQ:
         case BS_MSG_BILLING_RELEASE_ACK:
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Recv Invalid msg. Templetely not support. %d", pstMsgHeader->ucMsgType);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Recv Invalid msg. Templetely not support. %d", pstMsgHeader->ucMsgType);
             break;
     }
 }
@@ -463,12 +463,12 @@ U32 sc_bs_connect(U32 ulIndex)
     }
     if (lRet < 0)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Bind socket fail.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Bind socket fail.");
         close(g_pstSCBSClient[ulIndex]->lSocket);
         return DOS_FAIL;;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Bind socket to addr: %s, Len: %d.", g_pstSCBSClient[0]->stAddr.stUnAddr.sun_path, lAddrLen);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "Bind socket to addr: %s, Len: %d.", g_pstSCBSClient[0]->stAddr.stUnAddr.sun_path, lAddrLen);
 
     if (BSCOMM_PROTO_TCP == g_pstSCBSClient[ulIndex]->usCommProto)
     {
@@ -520,7 +520,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
 
         if (ulActiveClientCnt <= 0)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "All the BS server Lost, re-connect after 1 second");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_BS), "%s", "All the BS server Lost, re-connect after 1 second");
             dos_task_delay(1*1000);
             continue;
         }
@@ -554,7 +554,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
         }
         else if (lRet < 0)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "Select fail. Errno:%d", errno);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "Select fail. Errno:%d", errno);
             break;
         }
 
@@ -577,7 +577,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
             {
                 DOS_ASSERT(0);
 
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_EMERG, SC_MOD_BS), "Disconnect BS for alloc memory FAIL. Index: %u", ulIndex);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_EMERG, SC_MOD_BS), "Disconnect BS for alloc memory FAIL. Index: %u", ulIndex);
 
                 close(g_pstSCBSClient[ulIndex]->lSocket);
                 g_pstSCBSClient[ulIndex]->blValid = DOS_FALSE;
@@ -623,7 +623,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
             {
                 g_pstSCBSClient[ulIndex]->ulStatus = SC_BS_STATUS_LOST;
 
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "%s", "Recv data from socket fail.");
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "%s", "Recv data from socket fail.");
                 dos_dmem_free(pBuffer);
                 pBuffer = NULL;
                 continue;
@@ -631,7 +631,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
 
             if (lRet < sizeof(BS_MSG_TAG))
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "Recv invalid data from socket fail. Length not complete. Length: %d", lRet);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "Recv invalid data from socket fail. Length not complete. Length: %d", lRet);
                 dos_dmem_free(pBuffer);
                 pBuffer = NULL;
                 continue;
@@ -642,7 +642,7 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
             {
                 DOS_ASSERT(0);
 
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "%s", "Discard msg FROM bs for alloc mem FAIL.");
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "%s", "Discard msg FROM bs for alloc mem FAIL.");
                 dos_dmem_free(pBuffer);
                 pBuffer = NULL;
                 continue;
@@ -716,7 +716,7 @@ U32 sc_bs_fsm_start()
 {
     if (pthread_create(&g_pthSCBSMsgProc, NULL, sc_bs_fsm_mainloop, NULL) < 0)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "%s", "Create BS MSG process pthread fail");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "%s", "Create BS MSG process pthread fail");
         DOS_ASSERT(0);
 
         return DOS_FAIL;
@@ -724,7 +724,7 @@ U32 sc_bs_fsm_start()
 
     if (pthread_create(&g_pthSCBSMsgRecv, NULL, sc_bs_recv_mainloop, NULL) < 0)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "%s", "Create BS MSG recv pthread fail");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "%s", "Create BS MSG recv pthread fail");
         DOS_ASSERT(0);
 
         return DOS_FAIL;
@@ -747,14 +747,14 @@ U32 sc_bs_fsm_init()
     g_pstMsgList = hash_create_table(SC_BS_MSG_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(g_pstMsgList))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "%s", "Create the hash table fail for the BS MSG.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "%s", "Create the hash table fail for the BS MSG.");
         return DOS_FAIL;
     }
 
     pszMem = (U8 *)dos_dmem_alloc(sizeof(SC_BS_CLIENT_ST) * SC_MAX_BS_CLIENT);
     if (DOS_ADDR_INVALID(pszMem))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "%s", "Alloc memory fail for the BS Client CB.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "%s", "Alloc memory fail for the BS Client CB.");
         return DOS_FAIL;
     }
     dos_memzero(pszMem, sizeof(SC_BS_CLIENT_ST) * SC_MAX_BS_CLIENT);

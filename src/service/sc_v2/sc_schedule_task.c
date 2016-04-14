@@ -86,34 +86,34 @@ static pthread_t g_pthAuditTask;
 #if SC_SCHEDULE_TEST
 U32 sc_test_startup(U32 ulType, VOID *ptr)
 {
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SCH), "Test for startup. Startup timestamp: %u", g_ulStartTimestamp);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SCH), "Test for startup. Startup timestamp: %u", g_ulStartTimestamp);
 
     return DOS_SUCC;
 }
 U32 sc_test_startup_delay(U32 ulType, VOID *ptr)
 {
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SCH), "Test for startup delay. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SCH), "Test for startup delay. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
 
     return DOS_SUCC;
 }
 
 U32 sc_test_cycle(U32 ulType, VOID *ptr)
 {
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SCH), "Test for startup cycle. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SCH), "Test for startup cycle. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
 
     return DOS_SUCC;
 }
 
 U32 sc_test_hour(U32 ulType, VOID *ptr)
 {
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SCH), "Test hour. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SCH), "Test hour. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
 
     return DOS_SUCC;
 }
 
 U32 sc_test_hour_delay(U32 ulType, VOID *ptr)
 {
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SCH), "Test hour delay. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SCH), "Test hour delay. Startup timestamp: %u, Current: %u", g_ulStartTimestamp, time(NULL));
 
     return DOS_SUCC;
 }
@@ -351,7 +351,7 @@ static VOID *sc_schedule_task(VOID *ptr)
 
                 if (pstScheduleTask)
                 {
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SCH)
+                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SCH)
                                 , "Start audit. Current Timestamp:%u, Type: %u Offset: %u, Task: %s(Handle:%p)"
                                 , ulCurrentTime
                                 , pstScheduleTask->ulType

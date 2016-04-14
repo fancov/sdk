@@ -330,11 +330,12 @@ VOID *sc_cwq_runtime(VOID *ptr)
 #endif
                 /* 获取一个坐席 */
                 pstAgentNode = sc_agent_select_by_grpid(pstCWQNode->ulAgentGrpID, pstCallNode->szCaller);
-                if (DOS_ADDR_INVALID(pstAgentNode))
+                if (DOS_ADDR_INVALID(pstAgentNode)
+                    || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
                 {
                     pstCWQNode->ulStartWaitingTime = time(0);
 
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u has no idel agent. scbNo(%u)", pstCWQNode->ulAgentGrpID, pstSCB->ulSCBNo);
+                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u has no idel agent. scbNo(%u)", pstCWQNode->ulAgentGrpID, pstSCB->ulSCBNo);
                     break;
                 }
 
@@ -355,7 +356,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
                 stEvtLeaveCallque.ulSCBNo = pstSCB->ulSCBNo;
                 stEvtLeaveCallque.pstAgentNode = pstAgentNode;
 
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u send leave call queue. AgentID(%d), scbNo(%u)", pstCWQNode->ulAgentGrpID, pstAgentNode->pstAgentInfo, pstSCB->ulSCBNo);
+                sc_log(pstAgentNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u send leave call queue. AgentID(%d), scbNo(%u)", pstCWQNode->ulAgentGrpID, pstAgentNode->pstAgentInfo, pstSCB->ulSCBNo);
 
                 if (sc_send_event_leave_call_queue_rsp(&stEvtLeaveCallque) != DOS_SUCC)
                 {

@@ -5079,12 +5079,12 @@ VOID sc_log_digest_print_only(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...)
  *
  * return NULL
  */
-VOID sc_log(U32 ulLogFlags, const S8 *pszFormat, ...)
+VOID sc_log(BOOL bTrace, U32 ulLogFlags, const S8 *pszFormat, ...)
 {
     va_list         Arg;
     U32             ulTraceTagLen = 0;
     S8              szTraceStr[1024] = {0, };
-    BOOL            bIsOutput = DOS_FALSE;
+    BOOL            bIsOutput = bTrace;
     U32             ulLevel = 0;
     U32             ulFlags = 0;
     U32             ulMod   = 0;

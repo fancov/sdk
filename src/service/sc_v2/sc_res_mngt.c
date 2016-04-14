@@ -102,7 +102,7 @@ U32 sc_res_init()
         || DOS_ADDR_INVALID(g_pstHashTTNumber)
         || DOS_ADDR_INVALID(g_pstHashServCtrl))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Alloc memort for res hash table fail");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Alloc memort for res hash table fail");
 
         return DOS_FAIL;
     }
