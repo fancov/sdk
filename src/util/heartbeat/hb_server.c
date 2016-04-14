@@ -694,7 +694,7 @@ static void * mon_restart_cycle_task(VOID *ptr)
 
         if (!g_ulCycleRestartRunning)
         {
-            break;
+            goto proc_fail;
         }
 
         if (ulTime != g_ulCycleRestartTime)
@@ -782,6 +782,7 @@ U32 mon_restart_cycle_start()
 
 static U32 mon_restart_cycle_stop()
 {
+    g_ulCycleRestartRunning = DOS_FALSE;
     return DOS_SUCC;
 }
 

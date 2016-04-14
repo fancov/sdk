@@ -13,6 +13,9 @@ extern MON_CPU_RSLT_S     * g_pstCpuRslt;
 extern MON_SYS_PART_DATA_S * g_pastPartition[MAX_PARTITION_COUNT];
 extern MON_NET_CARD_PARAM_S * g_pastNet[MAX_NETCARD_CNT];
 extern MON_PROC_STATUS_S * g_pastProc[MAX_PROC_CNT];
+extern U32 g_ulCycleRestartTime;
+extern U32 g_ulCycleRestartRunning;
+
 
 extern S32 g_ulNetCnt;
 extern U32 g_ulPartCnt;
@@ -72,6 +75,11 @@ S32 mon_command_proc(U32 ulIndex, S32 argc, S8 **argv)
         mon_show_disk(ulIndex);
         mon_show_netcard(ulIndex);
         mon_show_process(ulIndex);
+    }
+    else if (0 == dos_stricmp(argv[2], "restart"))
+    {
+        mon_show_retart_task(ulIndex);
+        return DOS_SUCC;
     }
     else
     {
@@ -254,6 +262,43 @@ VOID mon_show_process(U32 ulIndex)
     }
 
     dos_snprintf(szBuff, sizeof(szBuff), "\r\n+-------+------------+----------------+-------------+----------+---------------+-------------------+---------------+\r\n");
+    cli_out_string(ulIndex, szBuff);
+}
+
+
+VOID mon_show_retart_task(U32 ulIndex)
+{
+    S8  szBuff[1024] = {0};
+    S8  *pszType = "";
+
+    cli_out_string(ulIndex, "\r\n\r\nCycle restart task: ");
+
+    if (!g_ulCycleRestartRunning)
+    {
+        cli_out_string(ulIndex, "Off\r\n\r\n");
+        return;
+    }
+
+    cli_out_string(ulIndex, "On");
+
+    switch ((g_ulCycleRestartTime >> 24) & 0xFF)
+    {
+        case MON_SYS_RESTART_SUB_TYPE_DAILY:
+            pszType = "day";
+            break;
+        case MON_SYS_RESTART_SUB_TYPE_WEEKLY:
+            pszType = "week";
+            break;
+        case MON_SYS_RESTART_SUB_TYPE_MONTHLY:
+            pszType = "month";
+            break;
+    }
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n Time: the %uth day in every %s at %02u:%02u \n\r\n"
+                    , (g_ulCycleRestartTime >> 16) & 0xFF
+                    , pszType
+                    , (g_ulCycleRestartTime >> 8) & 0xFF
+                    , g_ulCycleRestartTime & 0xFF);
     cli_out_string(ulIndex, szBuff);
 }
 
