@@ -5121,6 +5121,7 @@ VOID sc_log(U32 ulLogFlags, const S8 *pszFormat, ...)
         bIsOutput = DOS_TRUE;
     }
 
+#if 0
     /* Ä£¿é¸ú×Ù£¬²»ÅÐ¶Ï SC_MOD_DB Ä£¿é */
     if (ulMod >= SC_MOD_BUTT || 0 == ulMod)
     {
@@ -5134,6 +5135,7 @@ VOID sc_log(U32 ulLogFlags, const S8 *pszFormat, ...)
             bIsOutput = DOS_TRUE;
         }
     }
+#endif
 
     if (!bIsOutput)
     {

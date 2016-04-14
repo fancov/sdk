@@ -887,6 +887,11 @@ U32 sc_agent_auto_preview_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgent
         pstAgentNode->pstAgentInfo->bSelected = DOS_FALSE;
     }
 
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = pstAgentNode->pstAgentInfo->bTraceON;
+    }
+
     pstCalleeLegCB = sc_lcb_get(pstSCB->stAutoPreview.ulCalleeLegNo);
     if (DOS_ADDR_INVALID(pstCalleeLegCB))
     {
@@ -2524,6 +2529,11 @@ U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "The agent is not useable.(Agent %u)", pstAgentNode->pstAgentInfo->ulAgentID);
 
         return DOS_FAIL;
+    }
+
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = pstAgentNode->pstAgentInfo->bTraceON;
     }
 
     if (pstSCB->stTransfer.stSCBTag.bValid)

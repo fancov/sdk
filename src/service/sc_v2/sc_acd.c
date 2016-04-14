@@ -169,6 +169,7 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
     SC_LEG_CB           *pstLegCB       = NULL;
     SC_SRV_CB           *pstSCB         = NULL;
     U32                 ulRet           = DOS_FAIL;
+    BOOL                bIsTrace        = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pstAgentNode)
         || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
@@ -186,6 +187,8 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
         return DOS_FAIL;
     }
 
+    bIsTrace = pstAgentInfo->bTraceON;
+
     pstLegCB = sc_lcb_get(pstAgentInfo->ulLegNo);
     if (DOS_ADDR_VALID(pstLegCB))
     {
@@ -199,6 +202,8 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    pstSCB->bTrace = bIsTrace;
 
     pstLegCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstLegCB))
@@ -227,6 +232,11 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
         sc_lcb_free(pstLegCB);
 
         return DOS_FAIL;
+    }
+
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = sc_trace_check_caller(pstLegCB->stCall.stNumInfo.szOriginalCalling);
     }
 
     switch (pstAgentInfo->ucBindType)

@@ -53,7 +53,7 @@ typedef struct tagSCModList{
 
 typedef enum tagSCLogFlags{
     SC_LOG_DISIST  = 0x1,      /* ¼ÇÂ¼ÕªÒª */
-
+    SC_LOG_TRACE   = 0x10,     /* ¸ú×Ù */
     SC_LOG_NONE    = 0,        /*  */
 }SC_LOG_FLAG_EN;
 
