@@ -5773,7 +5773,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     sc_lcb_free(pstCallingCB);
                     pstCallingCB = NULL;
                 }
-                pstSCB->stAutoCall.ulCalleeLegNo = U32_BUTT;
+                pstSCB->stAutoCall.ulCallingLegNo = U32_BUTT;
                 if (pstSCB->stAutoCall.stSCBTag.usStatus < SC_AUTO_CALL_PORC2)
                 {
                     /* 被叫没有呼叫成功，直接释放就行了 */
