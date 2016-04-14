@@ -118,7 +118,7 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
 
     pszLocalSdp = esl_event_get_header(pstEvent, "variable_rtp_local_sdp_str");
     pszSdpRecv = esl_event_get_header(pstEvent, "variable_switch_r_sdp");
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg setup event(%s).\r\nLocalSDP: %s\r\nSDP Recv: %s"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg setup event(%s).\r\nLocalSDP: %s\r\nSDP Recv: %s"
                 , esl_event_get_header(pstEvent, "Call-Direction")
                 , esl_event_get_header(pstEvent, "Channel-Name")
                 , NULL == pszLocalSdp ? "NULL" : pszLocalSdp
@@ -164,7 +164,7 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     {
         if (dos_atoul(pszLegCBNo, &ulLCBNo) < 0)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Channel vaiable is broken. %s", pszLegCBNo);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Channel vaiable is broken. %s", pszLegCBNo);
 
             return DOS_FAIL;
         }
@@ -178,7 +178,7 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
 
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Create leg without a LEG CB. Leg No:%s(%u)"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Create leg without a LEG CB. Leg No:%s(%u)"
                               , pszLegCBNo ? pszLegCBNo : "NULL"
                               , ulLCBNo);
 
@@ -189,7 +189,7 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     pszCallSrc = esl_event_get_header(pstEvent, "variable_sofia_profile_name");
     if (DOS_ADDR_INVALID(pszCallSrc))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Create leg without profile.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Create leg without profile.");
 
         goto proc_fail;
     }
@@ -198,7 +198,7 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     pszCallDirection = esl_event_get_header(pstEvent, "Call-Direction");
     if (DOS_ADDR_INVALID(pszCallDirection))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Create leg without call direction.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Create leg without call direction.");
 
         goto proc_fail;
     }
@@ -274,7 +274,7 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     if (DOS_ADDR_INVALID(pszCalling) || DOS_ADDR_INVALID(pszCallee)
         || DOS_ADDR_INVALID(pszANI) || DOS_ADDR_INVALID(pszLegUUID))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU)
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU)
                               , "Create leg without number info. Leg No:%u. Calling: %s, Callee: %s, ANI: %s"
                               , pstLCB->ulCBNo
                               , pszCalling ? pszCalling : "NULL"
@@ -364,7 +364,7 @@ U32 sc_esl_event_answer(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     pszLocalSdp = esl_event_get_header(pstEvent, "variable_rtp_local_sdp_str");
     pszSdpRecv = esl_event_get_header(pstEvent, "variable_switch_r_sdp");
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg answer event(%s).\r\nLocalSDP: %s\r\nSDP Recv: %s"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg answer event(%s).\r\nLocalSDP: %s\r\nSDP Recv: %s"
                 , esl_event_get_header(pstEvent, "Call-Direction")
                 , esl_event_get_header(pstEvent, "Channel-Name")
                 , NULL == pszLocalSdp ? "NULL" : pszLocalSdp
@@ -484,7 +484,7 @@ U32 sc_esl_event_hangup(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     pstLegCB->stCall.stTimeInfo.ulByeTime = time(NULL);
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg hangup event. (%s) Cause: %s"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg hangup event. (%s) Cause: %s"
                 , esl_event_get_header(pstEvent, "Call-Direction")
                 , esl_event_get_header(pstEvent, "Channel-Name")
                 , esl_event_get_header(pstEvent, "Hangup-Cause"));
@@ -608,7 +608,7 @@ U32 sc_esl_event_progress(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     {
         pszLocalSdp = esl_event_get_header(pstEvent, "variable_rtp_local_sdp_str");
         pszSdpRecv = esl_event_get_header(pstEvent, "variable_switch_r_sdp");
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg ringing event with media(%s).\r\nLocalSDP: %s\r\nSDP Recv: %s"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg ringing event with media(%s).\r\nLocalSDP: %s\r\nSDP Recv: %s"
                     , esl_event_get_header(pstEvent, "Call-Direction")
                     , esl_event_get_header(pstEvent, "Channel-Name")
                     , NULL == pszLocalSdp ? "NULL" : pszLocalSdp
@@ -616,7 +616,7 @@ U32 sc_esl_event_progress(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     }
     else
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg ringing event without media(%s)."
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Recv %s leg ringing event without media(%s)."
                     , esl_event_get_header(pstEvent, "Call-Direction")
                     , esl_event_get_header(pstEvent, "Channel-Name"));
     }
@@ -728,7 +728,7 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU)
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU)
                 , "Start exchange media. LEG:%u, SCB:%u, EndPoint: %s"
                 , pstLegCB->ulCBNo, pstLegCB->ulSCBNo
                 , esl_event_get_header(pstEvent, "variable_endpoint_disposition"));
@@ -761,7 +761,7 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
             sc_send_event_ringing(&stEventRinging);
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_SU), "Start exchange media for early media. LEG:%u, SCB:%u", pstLegCB->ulCBNo, pstLegCB->ulSCBNo);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_SU), "Start exchange media for early media. LEG:%u, SCB:%u", pstLegCB->ulCBNo, pstLegCB->ulSCBNo);
 
             return DOS_SUCC;
 
@@ -973,7 +973,7 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "BJ-JOB exec. Command: %s, Argv: %s", pszCommand, pszArgv);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "BJ-JOB exec. Command: %s, Argv: %s", pszCommand, pszArgv);
 
     ulLegCBNo = sc_bgjob_hash_find(pszJobUUID);
     if (ulLegCBNo > SC_LEG_CB_SIZE)
@@ -993,7 +993,7 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
     if (dos_strnicmp(pszBody, "+OK", dos_strlen("+OK")) == 0)
     {
         bIsSucc = DOS_TRUE;
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "BJ-JOB exec succ. Command: %s, Argv: %s", pszCommand, pszArgv);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "BJ-JOB exec succ. Command: %s, Argv: %s", pszCommand, pszArgv);
         //return DOS_SUCC;
     }
 
@@ -1010,7 +1010,7 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
     }
     else
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_SU), "BJ-JOB exec fail. Command: %s, Argv: %s, Reply: %s", pszCommand, pszArgv, pszBody);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_SU), "BJ-JOB exec fail. Command: %s, Argv: %s, Reply: %s", pszCommand, pszArgv, pszBody);
 
         if (dos_strnicmp(pszCommand, "originate", dos_strlen("originate")) == 0)
         {
@@ -1347,12 +1347,12 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processing call command. SCB: %u, LCB: %u", pstCMDMakeCall->ulSCBNo, pstCMDMakeCall->ulLCBNo);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processing call command. SCB: %u, LCB: %u", pstCMDMakeCall->ulSCBNo, pstCMDMakeCall->ulLCBNo);
 
     pstLegCB = sc_lcb_get(pstCMDMakeCall->ulLCBNo);
     if (DOS_ADDR_INVALID(pstLegCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Alloc lcb fail.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Alloc lcb fail.");
 
         stErrReport.stMsgTag.usInterErr = SC_ERR_ALLOC_RES_FAIL;
         goto proc_fail;
@@ -1439,7 +1439,7 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
         if (pstLegCB->stCall.ulTrunkCnt <= 0)
         {
             /** 上报错误 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "There is no trunk .");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "There is no trunk .");
             stErrReport.stMsgTag.usInterErr = SC_ERR_INVALID_MSG;
             goto proc_fail;
         }
@@ -1456,7 +1456,7 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
         if (ulLength <= 0)
         {
             /** 上报错误 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "There is no valid trunk.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "There is no valid trunk.");
             stErrReport.stMsgTag.usInterErr = SC_ERR_INVALID_MSG;
             goto proc_fail;
         }
@@ -1476,14 +1476,14 @@ U32 sc_cmd_make_call(SC_MSG_TAG_ST *pstMsg)
     if (sc_esl_execute_cmd(szCallString, szBGJOBUUID, sizeof(szBGJOBUUID)) != DOS_SUCC)
     {
         /** 上报错误 */
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Exec esl cmd fail");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "Exec esl cmd fail");
         stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
         goto proc_fail;
     }
 
     sc_bgjob_hash_add(pstLegCB->ulCBNo, szBGJOBUUID);
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "send call succ.");
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "send call succ.");
 
     return DOS_SUCC;
 
@@ -1521,13 +1521,13 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
 
     pstAnswer = (SC_MSG_CMD_RINGBACK_ST *)pstMsg;
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "request answer leg %u", pstAnswer->ulLegNo);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "request answer leg %u", pstAnswer->ulLegNo);
 
     pstLeg = sc_lcb_get(pstAnswer->ulLegNo);
     if (DOS_ADDR_INVALID(pstLeg))
     {
         stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
         goto proc_fail;
     }
 
@@ -1546,7 +1546,7 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
             if (sc_esl_execute("playback", pszArgv, pstLeg->szUUID) != DOS_SUCC)
             {
                 stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u.", pstAnswer->ulLegNo);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u.", pstAnswer->ulLegNo);
                 goto proc_fail;
             }
         }
@@ -1560,7 +1560,7 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
             if (sc_esl_execute_cmd(szCMD, NULL, 0) != DOS_SUCC)
             {
                 stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
                 goto proc_fail;
             }
         }
@@ -1569,7 +1569,7 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
             if (sc_esl_execute("ring_ready", "", pstLeg->szUUID) != DOS_SUCC)
             {
                 stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u", pstAnswer->ulLegNo);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u", pstAnswer->ulLegNo);
                 goto proc_fail;
             }
         }
@@ -1605,13 +1605,13 @@ U32 sc_cmd_answer_call(SC_MSG_TAG_ST *pstMsg)
 
     pstAnswer = (SC_MSG_CMD_ANSWER_ST *)pstMsg;
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "request answer leg %u", pstAnswer->ulLegNo);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "request answer leg %u", pstAnswer->ulLegNo);
 
     pstLeg = sc_lcb_get(pstAnswer->ulLegNo);
     if (DOS_ADDR_INVALID(pstLeg))
     {
         stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
         goto proc_fail;
     }
 
@@ -1620,7 +1620,7 @@ U32 sc_cmd_answer_call(SC_MSG_TAG_ST *pstMsg)
     if (sc_esl_execute_cmd(szCMD, szUUID, sizeof(szUUID)) != DOS_SUCC)
     {
         stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
         goto proc_fail;
     }
 
@@ -1714,7 +1714,7 @@ U32 sc_cmd_bridge_call(SC_MSG_TAG_ST *pstMsg)
 
     pstBridge = (SC_MSG_CMD_BRIDGE_ST *)pstMsg;
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "request bridge leg %u<-->%u", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "request bridge leg %u<-->%u", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
 
     pstCallingLeg = sc_lcb_get(pstBridge->ulCallingLegNo);
     pstCalleeLeg = sc_lcb_get(pstBridge->ulCalleeLegNo);
@@ -1722,14 +1722,14 @@ U32 sc_cmd_bridge_call(SC_MSG_TAG_ST *pstMsg)
     {
         stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "request bridge leg %u<-->%u. Leg not exist", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "request bridge leg %u<-->%u. Leg not exist", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
         goto proc_fail;
     }
 
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_bridge %s %s \r\n", pstCallingLeg->szUUID, pstCalleeLeg->szUUID);
     if (sc_esl_execute_cmd(szCMD, szBGJOBUUID, sizeof(szBGJOBUUID)) != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "request bridge leg %u<-->%u. exec esl cmd fail.", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "request bridge leg %u<-->%u. exec esl cmd fail.", pstBridge->ulCallingLegNo, pstBridge->ulCalleeLegNo);
 
         stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
         goto proc_fail;
@@ -1834,6 +1834,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         }
 
         pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
+        pstLCB->stPlayback.usStatus = SC_SU_PLAYBACK_ACTIVE;
 
         return DOS_SUCC;
     }
@@ -1954,7 +1955,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
 
     if (0 == pstLCB->stPlayback.ulTotal)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_SU), "there is no voice hint to play.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_SU), "there is no voice hint to play.");
 
         sc_lcb_playback_init(&pstLCB->stPlayback);
 
@@ -2478,7 +2479,7 @@ VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
         return;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processing cmd %s(%u), SCB: %u", sc_command_str(pstMsg->ulMsgType), pstMsg->ulMsgType, pstMsg->ulSCBNo);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processing cmd %s(%u), SCB: %u", sc_command_str(pstMsg->ulMsgType), pstMsg->ulMsgType, pstMsg->ulSCBNo);
 
     switch (pstMsg->ulMsgType)
     {
@@ -2543,11 +2544,11 @@ VOID sc_cmd_process(SC_MSG_TAG_ST *pstMsg)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SU), "Invalid cmd type. %u", pstMsg->ulMsgType);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_SU), "Invalid cmd type. %u", pstMsg->ulMsgType);
             break;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processed %s(%u), Ret:%s", sc_command_str(pstMsg->ulMsgType), pstMsg->ulMsgType, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Processed %s(%u), Ret:%s", sc_command_str(pstMsg->ulMsgType), pstMsg->ulMsgType, (DOS_SUCC == ulRet) ? "succ" : "FAIL");
 }
 
 /**
@@ -2618,7 +2619,7 @@ U32 sc_su_mngt_init()
     g_pstLegCB = (SC_LEG_CB *)dos_dmem_alloc(sizeof(SC_LEG_CB) * SC_LEG_CB_SIZE);
     if (DOS_ADDR_INVALID(g_pstLegCB))
     {
-        sc_log(LOG_LEVEL_EMERG, "Alloc memory for leg cb fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_EMERG, "Alloc memory for leg cb fail.");
         return DOS_FAIL;
     }
 
@@ -2631,14 +2632,14 @@ U32 sc_su_mngt_init()
     g_pstBGJobHash = hash_create_table(SC_BG_JOB_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(g_pstBGJobHash))
     {
-        sc_log(LOG_LEVEL_EMERG, "Alloc memory for bgjob hash fail .");
+        sc_log(DOS_FALSE, LOG_LEVEL_EMERG, "Alloc memory for bgjob hash fail .");
         return DOS_FAIL;
     }
 
     g_pstLCBHash = hash_create_table(SC_UUID_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(g_pstLCBHash))
     {
-        sc_log(LOG_LEVEL_EMERG, "Alloc memory for bgjob hash fail .");
+        sc_log(DOS_FALSE, LOG_LEVEL_EMERG, "Alloc memory for bgjob hash fail .");
         return DOS_FAIL;
     }
 
@@ -2656,7 +2657,7 @@ U32 sc_su_mngt_start()
 {
     if (pthread_create(&g_pthCommandThread, NULL, sc_cmd_process_runtime, NULL) < 0)
     {
-        sc_log(LOG_LEVEL_EMERG, "Start event process thread fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_EMERG, "Start event process thread fail.");
         return DOS_FAIL;
     }
 

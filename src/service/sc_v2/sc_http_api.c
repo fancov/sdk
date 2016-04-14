@@ -321,13 +321,13 @@ U32 sc_http_api_callerset_action(list_t *pstArgv)
     if (DOS_ADDR_INVALID(pszCallerSetID)
         || DOS_ADDR_INVALID(pszAction))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "%s", "CallerGrp Data is Synchronizing");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "%s", "CallerGrp Data is Synchronizing");
     }
     else
     {
         if (dos_atoul(pszCallerSetID, &ulSettingID) < 0)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "%s", "Invalid parameters.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "%s", "Invalid parameters.");
             goto invalid_params;
         }
     }
@@ -352,7 +352,7 @@ U32 sc_http_api_callerset_action(list_t *pstArgv)
 
     if (sc_caller_setting_update_proc(ulAction, ulSettingID) != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "Update Caller Setting FAIL.(ulAction:%u, ulID:%u)"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "Update Caller Setting FAIL.(ulAction:%u, ulID:%u)"
                         , ulAction, ulSettingID);
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
     }
@@ -382,7 +382,7 @@ U32 sc_http_api_callergrp_action(list_t *pstArgv)
     if (DOS_ADDR_INVALID(pszCallerGrpID)
         || DOS_ADDR_INVALID(pszAction))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "%s", "CallerGrp Data is Synchronizing");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "%s", "CallerGrp Data is Synchronizing");
     }
     else
     {
@@ -450,7 +450,7 @@ U32 sc_http_api_gateway_action(list_t *pstArgv)
     if (DOS_ADDR_INVALID(pszGateWayID)
         || DOS_ADDR_INVALID(pszAction))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "%s", "Gateway data is synchronizing...");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "%s", "Gateway data is synchronizing...");
     }
     else
     {
@@ -1022,7 +1022,7 @@ U32 sc_http_api_call_ctrl(list_t *pstArgv)
         goto invalid_request;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "Recv HTTP API CMD. CMD: %u, Action: %u, Customer: %u, Task: %u, Caller: %s"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "Recv HTTP API CMD. CMD: %u, Action: %u, Customer: %u, Task: %u, Caller: %s"
                     , ulAction, ulAgent, ulCustomer, ulTaskID
                     , pszCallee ? pszCallee : "");
 
@@ -1262,7 +1262,7 @@ U32 sc_http_api_agent(list_t *pstArgv)
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "Recv HTTP API CMD. Action: %u, AgentID: %u, sip_userid: %s"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "Recv HTTP API CMD. Action: %u, AgentID: %u, sip_userid: %s"
                     , ulAction, ulAgentID, pszUserID);
 
     if (sc_agent_http_update_proc(ulAction, ulAgentID, pszUserID) != DOS_SUCC)
@@ -1291,7 +1291,7 @@ U32 sc_http_api_route_action(list_t *pstArgv)
     if (DOS_ADDR_INVALID(pszRouteID)
         || DOS_ADDR_INVALID(pszAction))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "%s", "Route data is synchronizing...");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_HTTP_API), "%s", "Route data is synchronizing...");
     }
     else
     {
@@ -1497,7 +1497,7 @@ U32 sc_http_api_black_action(list_t *pstArgv)
         goto invalid_params;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API), "Recv HTTP API CMD. CMD: %u, Action: %u, ulBlackID: %u"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API), "Recv HTTP API CMD. CMD: %u, Action: %u, ulBlackID: %u"
                     , ulAction, ulBlackID);
 
     if (sc_black_list_update_proc(ulAction, ulBlackID) != DOS_SUCC)
@@ -1956,7 +1956,7 @@ U32 sc_http_api_stat_syn(list_t *pstArgv)
     pszType = sc_http_api_get_value(pstArgv, "type");
     if (DOS_ADDR_INVALID(pszType) || '\0' == pszType[0])
     {
-        sc_log(LOG_LEVEL_NOTIC, "%s", "Call not find the data syn type.");
+        sc_log(DOS_FALSE, LOG_LEVEL_NOTIC, "%s", "Call not find the data syn type.");
         return DOS_FAIL;
     }
 
@@ -1966,7 +1966,7 @@ U32 sc_http_api_stat_syn(list_t *pstArgv)
     }
     else
     {
-        sc_log(LOG_LEVEL_NOTIC, "Unknown data syn type. %s", pszType);
+        sc_log(DOS_FALSE, LOG_LEVEL_NOTIC, "Unknown data syn type. %s", pszType);
         return DOS_FAIL;
     }
 
@@ -2004,7 +2004,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
         goto cmd_prase_fail1;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API), "HTTP Request: %s", pstClient->stDataBuff.pszBuff);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API), "HTTP Request: %s", pstClient->stDataBuff.pszBuff);
 
     /* 获取请求的文件 */
     pStart = dos_strstr(pstClient->stDataBuff.pszBuff, "GET /");
@@ -2048,7 +2048,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
     dos_strncpy(szReqLine, pStart, pEnd - pStart);
     szReqLine[pEnd - pStart] = '\0';
 
-    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "HTTP Request Line: %s?%s", szReqBuffer, szReqLine);
+    sc_log(DOS_FALSE, SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API, SC_LOG_DISIST), "HTTP Request Line: %s?%s", szReqBuffer, szReqLine);
 
     /* 获取 key=value 字符串 */
     lKeyCnt = 0;
@@ -2077,7 +2077,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
         goto cmd_prase_fail1;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API), "%s", "Start parse the http request.");
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API), "%s", "Start parse the http request.");
 
     /* 解析key=value，并将结果存入链表 */
     dos_list_init(&pstClient->stParamList);
@@ -2088,7 +2088,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
             continue;
         }
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API), "Process Token: %s", pszKeyWord[lParamIndex]);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API), "Process Token: %s", pszKeyWord[lParamIndex]);
 
         pWord = dos_strstr(pszKeyWord[lParamIndex], "=");
         pValue = pWord;
@@ -2120,7 +2120,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
         dos_list_add_tail(&(pstClient->stParamList), &pstParamsList->stList);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API), "%s", "Parse the http request finished.");
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_HTTP_API), "%s", "Parse the http request finished.");
 
     ulRet = SC_HTTP_ERRNO_INVALID_REQUEST;
     cb = sc_http_api_find(szReqBuffer);
@@ -2130,7 +2130,7 @@ U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
     }
 
 
-    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API, SC_LOG_DISIST), "HTTP Request process finished. Return code: %d", ulRet);
+    sc_log(DOS_FALSE, SC_LOG_SET_FLAG(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API, SC_LOG_DISIST), "HTTP Request process finished. Return code: %d", ulRet);
 
     while (1)
     {

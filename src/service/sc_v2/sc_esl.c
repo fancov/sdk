@@ -145,11 +145,11 @@ U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
     {
         if (!g_stESLSendHandle.connected)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
             ulRet = esl_connect_timeout(&g_stESLSendHandle, "127.0.0.1", 8021, NULL, "ClueCon", 100);
             if (ESL_SUCCESS != ulRet)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for send event re-connect fail, return code:%d, Msg:%s. ", ulRet, g_stESLSendHandle.err);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for send event re-connect fail, return code:%d, Msg:%s. ", ulRet, g_stESLSendHandle.err);
 
                 if (lCount-- < 0)
                 {
@@ -170,7 +170,7 @@ U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
 
     if (ESL_SUCCESS != esl_execute(&g_stESLSendHandle, pszApp, pszArg, pszUUID))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. Result:%d, APP: %s, ARG : %s, UUID: %s"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. Result:%d, APP: %s, ARG : %s, UUID: %s"
                         , ulRet
                         , pszApp
                         , DOS_ADDR_VALID(pszArg) ? pszArg : "NULL"
@@ -180,7 +180,7 @@ U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "ESL execute command SUCC. APP: %s, Param: %s, UUID: %s"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "ESL execute command SUCC. APP: %s, Param: %s, UUID: %s"
                     , pszApp
                     , DOS_ADDR_VALID(pszArg) ? pszArg : "NULL"
                     , pszUUID);
@@ -223,11 +223,11 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
     {
         if (!g_stESLSendHandle.connected)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
             ulRet = esl_connect_timeout(&g_stESLSendHandle, "127.0.0.1", 8021, NULL, "ClueCon", 100);
             if (ESL_SUCCESS != ulRet)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for send event re-connect fail, return code:%d, Msg:%s. ", ulRet, g_stESLSendHandle.err);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for send event re-connect fail, return code:%d, Msg:%s. ", ulRet, g_stESLSendHandle.err);
 
                 if (lCount-- < 0)
                 {
@@ -241,7 +241,7 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
             }
 
             g_stESLSendHandle.event_lock = 1;
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connect Back to Normal. %s", __FUNCTION__);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connect Back to Normal. %s", __FUNCTION__);
         }
 
         break;
@@ -250,7 +250,7 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
     /* 发送并接受数据 */
     if (ESL_SUCCESS != esl_send_recv(&g_stESLSendHandle, pszCmd))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. Result:%d, CMD: %s"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. Result:%d, CMD: %s"
                         , ulRet
                         , pszCmd);
         esl_disconnect(&g_stESLSendHandle);
@@ -261,7 +261,7 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
     /** 获取响应 */
     if (DOS_ADDR_INVALID(g_stESLSendHandle.last_sr_reply)|| dos_strnicmp(g_stESLSendHandle.last_sr_reply, "-ERR", 4) == 0)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. reply text: %s. CMD: %s", g_stESLSendHandle.last_sr_reply, pszCmd);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. reply text: %s. CMD: %s", g_stESLSendHandle.last_sr_reply, pszCmd);
 
         return DOS_FAIL;
     }
@@ -283,7 +283,7 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
         }
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "ESL execute command SUCC. CMD: %s", pszCmd);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "ESL execute command SUCC. CMD: %s", pszCmd);
 
     return DOS_SUCC;
 }
@@ -303,7 +303,7 @@ VOID sc_esl_event_process(esl_event_t *pstEvent)
         return;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "Processing esl event. Event: %s(%d). channel name: %s"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "Processing esl event. Event: %s(%d). channel name: %s"
                           , esl_event_get_header(pstEvent, "Event-Name")
                           , pstEvent->event_id
                           , esl_event_get_header(pstEvent, "Channel-Name"));
@@ -322,7 +322,7 @@ VOID sc_esl_event_process(esl_event_t *pstEvent)
         pstLegCB = sc_lcb_hash_find(pszUUID);
         if (DOS_ADDR_INVALID(pstLegCB))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "Recv event without lcb. UUID: %s", pszUUID);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "Recv event without lcb. UUID: %s", pszUUID);
             return;
         }
 
@@ -331,7 +331,7 @@ VOID sc_esl_event_process(esl_event_t *pstEvent)
             sc_lcb_hash_delete(pszUUID);
 
             DOS_ASSERT(0);
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "Recv event with an invalid lcb.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "Recv event with an invalid lcb.");
             return;
         }
     }
@@ -396,13 +396,13 @@ VOID sc_esl_event_process(esl_event_t *pstEvent)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ESL), "Useless esl event. %s(%d)"
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ESL), "Useless esl event. %s(%d)"
                           , esl_event_get_header(pstEvent, "Event-Name")
                           , pstEvent->event_id);
             break;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "Processed esl event. Event: %s(%d). channel name: %s. Result: %s"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "Processed esl event. Event: %s(%d). channel name: %s. Result: %s"
                           , esl_event_get_header(pstEvent, "Event-Name")
                           , pstEvent->event_id
                           , esl_event_get_header(pstEvent, "Channel-Name")
@@ -456,7 +456,7 @@ VOID *sc_esl_process_runtime(VOID *ptr)
             dos_dmem_free(pstListNode);
 #if 1
             /* 感觉日志有点多，所以处理一下 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "Recv ESL event. %s(%d), Channel Name: %s"
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "Recv ESL event. %s(%d), Channel Name: %s"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id
                             , esl_event_get_header(pstEvent, "Channel-Name"));
@@ -486,7 +486,7 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
         /* 如果退出标志被置上，就准备退出了 */
         if (!g_blESLEventRunning)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "%s", "Event process exit flag has been set. the task will be exit.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "%s", "Event process exit flag has been set. the task will be exit.");
             break;
         }
 
@@ -496,12 +496,12 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
            **/
         if (!g_stESLRecvHandle.connected)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
             g_stESLRecvHandle.event_lock = 1;
             ulRet = esl_connect(&g_stESLRecvHandle, "127.0.0.1", 8021, NULL, "ClueCon");
             if (ESL_SUCCESS != ulRet)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_stESLRecvHandle.err);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_stESLRecvHandle.err);
 
                 sleep(1);
                 continue;
@@ -510,7 +510,7 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
             esl_global_set_default_logger(ESL_LOG_LEVEL_WARNING);
             esl_events(&g_stESLRecvHandle, ESL_EVENT_TYPE_PLAIN, SC_ESL_EVENT_LIST);
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connect Back to Normal. %s", __FUNCTION__);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connect Back to Normal. %s", __FUNCTION__);
         }
 
         if (bFirstConn)
@@ -523,7 +523,7 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
         {
             DOS_ASSERT(0);
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ESL), "%s", "ESL Recv event fail, continue.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ESL), "%s", "ESL Recv event fail, continue.");
 
             esl_disconnect(&g_stESLRecvHandle);
             continue;
@@ -534,11 +534,11 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
         {
             DOS_ASSERT(0);
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ESL), "%s", "ESL get event fail, continue.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ESL), "%s", "ESL get event fail, continue.");
             continue;
         }
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "recv esl event %s(%d)."
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ESL), "recv esl event %s(%d)."
                         , esl_event_get_header(pstEvent, "Event-Name")
                         , pstEvent->event_id);
 
@@ -547,7 +547,7 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
         {
             DOS_ASSERT(0);
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ESL), "ESL recv thread recv event %s(%d). Alloc memory fail. Drop"
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ESL), "ESL recv thread recv event %s(%d). Alloc memory fail. Drop"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id);
 

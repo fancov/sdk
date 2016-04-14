@@ -103,7 +103,7 @@ U32 sc_agent_status_http_get_rsp(U32 ulAgentID)
     pstAgentInfo = pstAgentNode->pstAgentInfo;
     if (sc_agent_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Get channel ID fail for agent: %u", pstAgentInfo->ulAgentID);
+        sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Get channel ID fail for agent: %u", pstAgentInfo->ulAgentID);
         return DOS_FAIL;
     }
 
@@ -138,7 +138,7 @@ U32 sc_agent_update_status_db(SC_AGENT_INFO_ST *pstAgentInfo)
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Update agent(%u), w-status(%u), s-status(%u)"
+    sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Update agent(%u), w-status(%u), s-status(%u)"
         , pstAgentInfo->ulAgentID, pstAgentInfo->ucWorkStatus, pstAgentInfo->ucServStatus);
 
     pstAgentStatus = (SC_DB_MSG_AGENT_STATUS_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_AGENT_STATUS_ST));
@@ -169,6 +169,7 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
     SC_LEG_CB           *pstLegCB       = NULL;
     SC_SRV_CB           *pstSCB         = NULL;
     U32                 ulRet           = DOS_FAIL;
+    BOOL                bIsTrace        = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pstAgentNode)
         || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
@@ -181,15 +182,17 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
     /* 判断一下坐席的状态，看看是否已经长签 */
     if (pstAgentInfo->bNeedConnected && pstAgentInfo->bConnected)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent %u request signin. But it seems already signin. Exit.", pstAgentInfo->ulAgentID);
+        sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent %u request signin. But it seems already signin. Exit.", pstAgentInfo->ulAgentID);
 
         return DOS_FAIL;
     }
 
+    bIsTrace = pstAgentInfo->bTraceON;
+
     pstLegCB = sc_lcb_get(pstAgentInfo->ulLegNo);
     if (DOS_ADDR_VALID(pstLegCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent %u request signin. But it seems in a call(LEG: %u). Exit.", pstAgentInfo->ulAgentID, pstAgentInfo->ulLegNo);
+        sc_log(bIsTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent %u request signin. But it seems in a call(LEG: %u). Exit.", pstAgentInfo->ulAgentID, pstAgentInfo->ulLegNo);
         return DOS_FAIL;
     }
 
@@ -199,6 +202,8 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    pstSCB->bTrace = bIsTrace;
 
     pstLegCB = sc_lcb_alloc();
     if (DOS_ADDR_INVALID(pstLegCB))
@@ -222,11 +227,16 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
     ulRet = sc_caller_setting_select_number(pstAgentInfo->ulCustomerID, pstAgentInfo->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstLegCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
     if (ulRet != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstAgentInfo->ulCustomerID, pstAgentInfo->ulAgentID);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstAgentInfo->ulCustomerID, pstAgentInfo->ulAgentID);
         sc_scb_free(pstSCB);
         sc_lcb_free(pstLegCB);
 
         return DOS_FAIL;
+    }
+
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = sc_trace_check_caller(pstLegCB->stCall.stNumInfo.szOriginalCalling);
     }
 
     switch (pstAgentInfo->ucBindType)
@@ -330,7 +340,7 @@ U32 sc_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo)
 
     if (sc_agent_notify_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Get channel ID fail for agent: %u", pstAgentInfo->ulAgentID);
+        sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Get channel ID fail for agent: %u", pstAgentInfo->ulAgentID);
         return DOS_FAIL;
     }
 
@@ -375,7 +385,7 @@ U32 sc_agent_call_notify(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
 
     if (sc_agent_notify_get_channel_id(pstAgentInfo, szChannel, sizeof(szChannel)) != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Get channel ID fail for agent: %u", pstAgentInfo->ulAgentID);
+        sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Get channel ID fail for agent: %u", pstAgentInfo->ulAgentID);
         return DOS_FAIL;
     }
 
@@ -649,7 +659,7 @@ U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult)
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot fine the group with the ID \"%u\" .", ulAgentGrpID);
+        sc_log(DOS_TRUE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot fine the group with the ID \"%u\" .", ulAgentGrpID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         return DOS_FAIL;
@@ -664,7 +674,7 @@ U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult)
         if (DOS_ADDR_INVALID(pstDLLNode)
             || DOS_ADDR_INVALID(pstDLLNode->pHandle))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+            sc_log(DOS_TRUE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
                             , pstGroupListNode->ulGroupID);
             continue;
         }
@@ -673,7 +683,7 @@ U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult)
         if (DOS_ADDR_INVALID(pstAgentNode)
             || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+            sc_log(DOS_TRUE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
                             , pstGroupListNode->ulGroupID);
             continue;
         }
@@ -681,7 +691,7 @@ U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult)
         if (pstAgentNode->pstAgentInfo->ulLastIdelTime
             && (time(NULL) - pstAgentNode->pstAgentInfo->ulLastIdelTime < 3))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent is in protect Agent: %u. Group: %u."
+            sc_log(pstAgentNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent is in protect Agent: %u. Group: %u."
                             , pstAgentNode->pstAgentInfo->ulAgentID
                             , pstGroupListNode->ulGroupID);
             continue;
@@ -689,7 +699,7 @@ U32 sc_agent_query_idel(U32 ulAgentGrpID, BOOL *pblResult)
 
         if (SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Found an useable agent. (Agent %u in Group %u)"
+            sc_log(pstAgentNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Found an useable agent. (Agent %u in Group %u)"
                         , pstAgentNode->pstAgentInfo->ulAgentID
                         , pstGroupListNode->ulGroupID);
 
@@ -786,7 +796,7 @@ U32 sc_agent_group_remove_agent(U32 ulGroupID, U32 ulAgentID)
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot find the group \"%u\" for the site %u.", ulGroupID, ulAgentID);
+        sc_log(DOS_TRUE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot find the group \"%u\" for the site %u.", ulGroupID, ulAgentID);
 
         pthread_mutex_unlock(&g_mutexGroupList);
         return DOS_FAIL;
@@ -798,7 +808,7 @@ U32 sc_agent_group_remove_agent(U32 ulGroupID, U32 ulAgentID)
     if (DOS_ADDR_INVALID(pstDLLNode)
         || DOS_ADDR_INVALID(pstDLLNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot find the agent %u in the group %u.", ulAgentID, ulGroupID);
+        sc_log(DOS_TRUE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot find the agent %u in the group %u.", ulAgentID, ulGroupID);
 
         pthread_mutex_unlock(&g_mutexGroupList);
         return DOS_FAIL;
@@ -818,7 +828,7 @@ U32 sc_agent_group_remove_agent(U32 ulGroupID, U32 ulAgentID)
     pstGroupNode->usCount--;
 
     pthread_mutex_unlock(&g_mutexGroupList);
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Remove agent %u from group %u SUCC.", ulAgentID, ulGroupID);
+    sc_log(DOS_TRUE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Remove agent %u from group %u SUCC.", ulAgentID, ulGroupID);
 
     return DOS_SUCC;
 }
@@ -854,7 +864,7 @@ U32 sc_agent_group_add_agent(U32 ulGroupID, SC_AGENT_INFO_ST *pstAgentInfo)
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot find the group \"%u\" for the site %s.", ulGroupID, pstAgentInfo->szUserID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot find the group \"%u\" for the site %s.", ulGroupID, pstAgentInfo->szUserID);
         return DOS_FAIL;
     }
     pstGroupNode = pstHashNode->pHandle;
@@ -862,7 +872,7 @@ U32 sc_agent_group_add_agent(U32 ulGroupID, SC_AGENT_INFO_ST *pstAgentInfo)
     pstDLLNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
     if (DOS_ADDR_INVALID(pstDLLNode))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Add agent to group FAILED, Alloc memory for list Node fail. Agent ID: %u, Group ID:%u"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Add agent to group FAILED, Alloc memory for list Node fail. Agent ID: %u, Group ID:%u"
                 , pstAgentInfo->ulAgentID
                 , ulGroupID);
         pthread_mutex_unlock(&g_mutexGroupList);
@@ -872,7 +882,7 @@ U32 sc_agent_group_add_agent(U32 ulGroupID, SC_AGENT_INFO_ST *pstAgentInfo)
     pstAgentQueueNode = (SC_AGENT_NODE_ST *)dos_dmem_alloc(sizeof(SC_AGENT_NODE_ST));
     if (DOS_ADDR_INVALID(pstAgentQueueNode))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Add agent to group FAILED, Alloc memory fail. Agent ID: %u, Group ID:%u"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Add agent to group FAILED, Alloc memory fail. Agent ID: %u, Group ID:%u"
                 , pstAgentInfo->ulAgentID
                 , ulGroupID);
 
@@ -895,7 +905,7 @@ U32 sc_agent_group_add_agent(U32 ulGroupID, SC_AGENT_INFO_ST *pstAgentInfo)
 
     pthread_mutex_unlock(&g_mutexGroupList);
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Add agent to group SUCC. Agent ID: %u, Group ID:%u, Bind Type: %u"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Add agent to group SUCC. Agent ID: %u, Group ID:%u, Bind Type: %u"
             , pstAgentInfo->ulAgentID
             , pstGroupNode->ulGroupID
             , pstAgentInfo->ucBindType);
@@ -958,7 +968,7 @@ SC_AGENT_INFO_ST *sc_agent_add(SC_AGENT_INFO_ST *pstAgentInfo)
     hash_add_node(g_pstAgentList, pstHashNode, ulHashVal, NULL);
     pthread_mutex_unlock(&g_mutexAgentList);
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Load Agent. ID: %u, Customer: %u, Group1: %u, Group2: %u"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Load Agent. ID: %u, Customer: %u, Group1: %u, Group2: %u"
                     , pstAgentInfo->ulAgentID, pstAgentInfo->ulCustomerID
                     , pstAgentInfo->aulGroupID[0], pstAgentInfo->aulGroupID[1]);
 
@@ -1035,7 +1045,7 @@ U32 sc_agent_delete(U32  ulAgentID)
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Connot find the Site %u while delete", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Connot find the Site %u while delete", ulAgentID);
         pthread_mutex_unlock(&g_mutexAgentList);
         return DOS_FAIL;
     }
@@ -1071,7 +1081,7 @@ U32 sc_agent_group_add(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroup
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Load Group. ID:%u, Customer:%u, Policy: %u, Name: %s", ulGroupID, ulCustomID, ulPolicy, pszGroupName);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Load Group. ID:%u, Customer:%u, Policy: %u, Name: %s", ulGroupID, ulCustomID, ulPolicy, pszGroupName);
 
     /* 确定队列 */
     sc_agent_hash_func4grp(ulGroupID, &ulHashVal);
@@ -1087,7 +1097,7 @@ U32 sc_agent_group_add(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroup
         pstGroupListNode->usLastUsedAgent = 0;
         pstGroupListNode->szLastEmpNo[0] = '\0';
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Group \"%u\" Already in the list. Update", ulGroupID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Group \"%u\" Already in the list. Update", ulGroupID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         return DOS_FAIL;
@@ -1099,7 +1109,7 @@ U32 sc_agent_group_add(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroup
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Add group fail. Alloc memory fail");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Add group fail. Alloc memory fail");
         return DOS_FAIL;
     }
     dos_memzero(pstGroupListNode, sizeof(SC_AGENT_GRP_NODE_ST));
@@ -1111,7 +1121,7 @@ U32 sc_agent_group_add(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroup
 
         dos_dmem_free(pstGroupListNode);
         pstGroupListNode = NULL;
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Add group fail. Alloc memory for hash node fail");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Add group fail. Alloc memory for hash node fail");
         return DOS_FAIL;
     }
 
@@ -1126,7 +1136,7 @@ U32 sc_agent_group_add(U32 ulGroupID, U32 ulCustomID, U32 ulPolicy, S8 *pszGroup
         dos_dmem_free(pstHashNode);
         pstHashNode = NULL;
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init Group caller num relation Hash Table Fail.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init Group caller num relation Hash Table Fail.");
         return DOS_FAIL;
     }
     pstGroupListNode->pstRelationList->NodeNum = 0;
@@ -1174,7 +1184,7 @@ U32 sc_agent_group_delete(U32 ulGroupID)
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Connot find the Group \"%u\".", ulGroupID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Connot find the Group \"%u\".", ulGroupID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         return DOS_FAIL;
@@ -1210,7 +1220,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListN
 
     ulRandomAgent = dos_random(pstGroupListNode->usCount);
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Select agent in random. Start find agent %u in group %u, count: %u."
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Select agent in random. Start find agent %u in group %u, count: %u."
                     , ulRandomAgent
                     , pstGroupListNode->ulGroupID
                     , pstGroupListNode->stAgentList.ulCount);
@@ -1220,7 +1230,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListN
         if (DOS_ADDR_INVALID(pstDLLNode)
             || DOS_ADDR_INVALID(pstDLLNode->pHandle))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Group: %u."
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Group: %u."
                                         , pstGroupListNode->ulGroupID);
             continue;
         }
@@ -1229,14 +1239,14 @@ SC_AGENT_NODE_ST * sc_agent_select_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListN
         if (DOS_ADDR_INVALID(pstAgentQueueNode)
             || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
                             , pstGroupListNode->ulGroupID);
             continue;
         }
 
         if (pstAgentQueueNode->ulID <= ulRandomAgent)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Found an agent. But the agent's order(%u) is less then last agent order(%u). coutinue.(Agent %d in Group %u)"
+            sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Found an agent. But the agent's order(%u) is less then last agent order(%u). coutinue.(Agent %d in Group %u)"
                             , pstAgentQueueNode->ulID
                             , ulRandomAgent
                             , pstAgentQueueNode->pstAgentInfo->ulAgentID
@@ -1246,7 +1256,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListN
 
         if (!SC_ACD_SITE_IS_USEABLE(pstAgentQueueNode->pstAgentInfo))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
+            sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
                             , pstAgentQueueNode->pstAgentInfo->ulAgentID
                             , pstGroupListNode->ulGroupID);
 
@@ -1255,7 +1265,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListN
 
         pstAgentNodeRet = pstAgentQueueNode;
         pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Found an useable agent.(Agent %u in Group %u)"
+        sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Found an useable agent.(Agent %u in Group %u)"
                         , pstAgentInfo->ulAgentID
                         , pstGroupListNode->ulGroupID);
         break;
@@ -1263,7 +1273,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListN
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Select agent in random form header. Start find agent %u in group %u, count: %u."
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Select agent in random form header. Start find agent %u in group %u, count: %u."
                         , ulRandomAgent
                         , pstGroupListNode->ulGroupID
                         , pstGroupListNode->stAgentList.ulCount);
@@ -1273,7 +1283,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListN
             if (DOS_ADDR_INVALID(pstDLLNode)
                 || DOS_ADDR_INVALID(pstDLLNode->pHandle))
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Group: %u."
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Group: %u."
                                             , pstGroupListNode->ulGroupID);
                 continue;
             }
@@ -1282,7 +1292,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListN
             if (DOS_ADDR_INVALID(pstAgentQueueNode)
                 || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
                                 , pstGroupListNode->ulGroupID);
                 continue;
             }
@@ -1290,14 +1300,14 @@ SC_AGENT_NODE_ST * sc_agent_select_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListN
             /* 邋到这里已经查找过所有的的坐席了 */
             if (pstAgentQueueNode->ulID > ulRandomAgent)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "The end of the select loop.(Group %u)"
+                sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "The end of the select loop.(Group %u)"
                                 , pstGroupListNode->ulGroupID);
                 break;
             }
 
             if (!SC_ACD_SITE_IS_USEABLE(pstAgentQueueNode->pstAgentInfo))
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
+                sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
                                 , pstAgentQueueNode->pstAgentInfo->ulAgentID
                                 , pstGroupListNode->ulGroupID);
                 continue;
@@ -1305,7 +1315,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_random(SC_AGENT_GRP_NODE_ST *pstGroupListN
 
             pstAgentNodeRet = pstAgentQueueNode;
             pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Found an uaeable agent.(Agent %u in Group %u)"
+            sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Found an uaeable agent.(Agent %u in Group %u)"
                             , pstAgentInfo->ulAgentID
                             , pstGroupListNode->ulGroupID);
 
@@ -1340,7 +1350,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_inorder(SC_AGENT_GRP_NODE_ST *pstGroupList
     szEligibleEmpNo[0] = '\0';
 
 start_find:
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Select agent in order. Start find agent %s in group %u, Count : %u"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Select agent in order. Start find agent %s in group %u, Count : %u"
                     , szLastEmpNo
                     , pstGroupListNode->ulGroupID
                     , pstGroupListNode->stAgentList.ulCount);
@@ -1350,7 +1360,7 @@ start_find:
         if (DOS_ADDR_INVALID(pstDLLNode)
             || DOS_ADDR_INVALID(pstDLLNode->pHandle))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Group: %u."
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Group: %u."
                             , pstGroupListNode->ulGroupID);
             continue;
         }
@@ -1359,7 +1369,7 @@ start_find:
         if (DOS_ADDR_INVALID(pstAgentQueueNode)
             || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
                             , pstGroupListNode->ulGroupID);
             continue;
         }
@@ -1367,7 +1377,7 @@ start_find:
         /* 找到一个比最后一个大且最小工号的坐席 */
         if (dos_strncmp(szLastEmpNo, pstAgentQueueNode->pstAgentInfo->szEmpNo, SC_EMP_NUMBER_LENGTH) >= 0)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Found an agent. But the agent's order(%s) is less then last agent order(%s). coutinue.(Agent %u in Group %u)"
+            sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Found an agent. But the agent's order(%s) is less then last agent order(%s). coutinue.(Agent %u in Group %u)"
                             , pstAgentQueueNode->pstAgentInfo->szEmpNo
                             , szLastEmpNo
                             , pstAgentQueueNode->pstAgentInfo->ulAgentID
@@ -1379,7 +1389,7 @@ start_find:
         if (!SC_ACD_SITE_IS_USEABLE(pstAgentQueueNode->pstAgentInfo))
         {
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
+            sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
                             , pstAgentQueueNode->pstAgentInfo->ulAgentID
                             , pstGroupListNode->ulGroupID);
             continue;
@@ -1397,7 +1407,7 @@ start_find:
 
         pstAgentNodeRet = pstAgentQueueNode;
         pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Found an useable agent.(Agent %u in Group %u)"
+        sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Found an useable agent.(Agent %u in Group %u)"
                         , pstAgentInfo->ulAgentID
                         , pstGroupListNode->ulGroupID);
     }
@@ -1430,7 +1440,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_call_count(SC_AGENT_GRP_NODE_ST *pstGroupL
         return NULL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Select agent by the min call count. Start find agent in group %u."
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Select agent by the min call count. Start find agent in group %u."
                     , pstGroupListNode->ulGroupID);
 
     DLL_Scan(&pstGroupListNode->stAgentList, pstDLLNode, DLL_NODE_S*)
@@ -1438,7 +1448,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_call_count(SC_AGENT_GRP_NODE_ST *pstGroupL
         if (DOS_ADDR_INVALID(pstDLLNode)
             || DOS_ADDR_INVALID(pstDLLNode->pHandle))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
                             , pstGroupListNode->ulGroupID);
             continue;
         }
@@ -1447,14 +1457,14 @@ SC_AGENT_NODE_ST * sc_agent_select_by_call_count(SC_AGENT_GRP_NODE_ST *pstGroupL
         if (DOS_ADDR_INVALID(pstAgentQueueNode)
             || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
                             , pstGroupListNode->ulGroupID);
             continue;
         }
 
         if (!SC_ACD_SITE_IS_USEABLE(pstAgentQueueNode->pstAgentInfo))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
+            sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "There found an agent. But the agent is not useable. coutinue.(Agent %u in Group %u)"
                         , pstAgentQueueNode->pstAgentInfo->ulAgentID
                         , pstGroupListNode->ulGroupID);
             continue;
@@ -1465,7 +1475,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_call_count(SC_AGENT_GRP_NODE_ST *pstGroupL
             pstAgentNode = pstAgentQueueNode;
         }
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Found an uaeable agent. Call Count: %d. (Agent %d in Group %d)"
+        sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Found an uaeable agent. Call Count: %d. (Agent %d in Group %d)"
                         , pstAgentQueueNode->pstAgentInfo->ulCallCnt
                         , pstAgentQueueNode->pstAgentInfo->ulAgentID
                         , pstGroupListNode->ulGroupID);
@@ -1500,7 +1510,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_caller(SC_AGENT_GRP_NODE_ST *pstGroupListN
         return NULL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Select agent by the calllerNum(%s). Start find agent in group %u. %p"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Select agent by the calllerNum(%s). Start find agent in group %u. %p"
                     , szCallerNum, pstGroupListNode->ulGroupID, pstGroupListNode->pstRelationList);
     /* 根据主叫号码查找对应的坐席 */
     sc_agent_hash_func4calller_relation(szCallerNum, &ulHashVal);
@@ -1508,7 +1518,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_caller(SC_AGENT_GRP_NODE_ST *pstGroupListN
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Not found the agent ulSiteID by CallerNum(%s), Group(%u)"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Not found the agent ulSiteID by CallerNum(%s), Group(%u)"
                         , szCallerNum
                         , pstGroupListNode->ulGroupID);
 
@@ -1523,7 +1533,7 @@ SC_AGENT_NODE_ST * sc_agent_select_by_caller(SC_AGENT_GRP_NODE_ST *pstGroupListN
     if (DOS_ADDR_INVALID(pstAgentHashNode)
         || DOS_ADDR_INVALID(pstAgentHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Not found the agent.(Agent %u in Group %u)"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Not found the agent.(Agent %u in Group %u)"
                     , ulAgentID
                     , pstGroupListNode->ulGroupID);
 
@@ -1533,14 +1543,14 @@ SC_AGENT_NODE_ST * sc_agent_select_by_caller(SC_AGENT_GRP_NODE_ST *pstGroupListN
     pstAgentNode = pstAgentHashNode->pHandle;
     if (!SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "There found an agent. But the agent is not useable.(Agent %u in Group %u)"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "There found an agent. But the agent is not useable.(Agent %u in Group %u)"
                 , ulAgentID
                 , pstGroupListNode->ulGroupID);
 
         goto process_call;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "There found an agent.(Agent %u in Group %u)"
+    sc_log(pstAgentNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "There found an agent.(Agent %u in Group %u)"
                 , ulAgentID
                 , pstGroupListNode->ulGroupID);
 
@@ -1551,7 +1561,7 @@ process_call:
     if (DOS_ADDR_VALID(pstAgentNode))
     {
         /* 添加或者更新 主叫号码和坐席对应关系的hash */
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Found an uaeable agent. Call Count: %d. (Agent %d in Group %d)"
+        sc_log(pstAgentNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Found an uaeable agent. Call Count: %d. (Agent %d in Group %d)"
                         , pstAgentNode->pstAgentInfo->ulCallCnt
                         , pstAgentNode->pstAgentInfo->ulAgentID
                         , pstGroupListNode->ulGroupID);
@@ -1568,7 +1578,7 @@ process_call:
         if (DOS_ADDR_INVALID(pstRelationQueueNode))
         {
             DOS_ASSERT(0);
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Add CallerNum relationship fail. Alloc memory fail");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Add CallerNum relationship fail. Alloc memory fail");
 
             goto end;
         }
@@ -1580,7 +1590,7 @@ process_call:
             {
                 DOS_ASSERT(0);
 
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Add CallerNum relationship fail. Alloc memory fail");
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Add CallerNum relationship fail. Alloc memory fail");
                 dos_dmem_free(pstRelationQueueNode);
                 pstRelationQueueNode = NULL;
 
@@ -1590,7 +1600,7 @@ process_call:
             HASH_Init_Node(pstHashNode);
             pstHashNode->pHandle = NULL;
             hash_add_node(pstGroupListNode->pstRelationList, pstHashNode, ulHashVal, NULL);
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "add into hash, ulHashVal : %d, count : %d", ulHashVal, pstGroupListNode->pstRelationList[ulHashVal].NodeNum);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "add into hash, ulHashVal : %d, count : %d", ulHashVal, pstGroupListNode->pstRelationList[ulHashVal].NodeNum);
         }
 
         pstRelationQueueNode->ulAgentID = pstAgentNode->pstAgentInfo->ulAgentID;
@@ -1615,20 +1625,20 @@ SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID)
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
         return NULL;
     }
 
     pstAgentNode = pstHashNode->pHandle;
     if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u..", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u..", ulAgentID);
         return NULL;
     }
 
     if (pstAgentNode->pstAgentInfo->bWaitingDelete)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent will be delete later. %u", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent will be delete later. %u", ulAgentID);
         return NULL;
     }
 
@@ -1655,7 +1665,7 @@ SC_AGENT_NODE_ST *sc_agent_select_by_grpid(U32 ulGroupID, S8 *szCallerNum)
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot fine the group with the ID \"%s\".", ulGroupID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot fine the group with the ID \"%s\".", ulGroupID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         return NULL;
@@ -1681,7 +1691,7 @@ SC_AGENT_NODE_ST *sc_agent_select_by_grpid(U32 ulGroupID, S8 *szCallerNum)
 
         case SC_ACD_POLICY_RECENT:
         case SC_ACD_POLICY_GROUP:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Template not support policy %d", pstGroupListNode->ucACDPolicy);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ACD), "Template not support policy %d", pstGroupListNode->ucACDPolicy);
             break;
         case SC_ACD_POLICY_MEMORY:
             pstAgentNode = sc_agent_select_by_caller(pstGroupListNode, szCallerNum);
@@ -1876,7 +1886,7 @@ U32 sc_agent_get_processing_time(U32 ulAgentID)
     {
         pthread_mutex_unlock(&g_mutexAgentList);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
         goto finished;
     }
     pthread_mutex_unlock(&g_mutexAgentList);
@@ -1885,7 +1895,7 @@ U32 sc_agent_get_processing_time(U32 ulAgentID)
     {
         pthread_mutex_unlock(&g_mutexAgentList);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Empty hash node for this agent. %u", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Empty hash node for this agent. %u", ulAgentID);
         goto finished;
     }
 
@@ -1895,7 +1905,7 @@ U32 sc_agent_get_processing_time(U32 ulAgentID)
     {
         pthread_mutex_unlock(&g_mutexAgentList);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "The hash node is empty for this agent. %u", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "The hash node is empty for this agent. %u", ulAgentID);
         goto finished;
     }
 
@@ -1930,7 +1940,7 @@ U32 sc_agent_group_has_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot fine the group with the ID \"%u\" .", ulAgentGrpID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot fine the group with the ID \"%u\" .", ulAgentGrpID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         return DOS_FAIL;
@@ -1945,7 +1955,7 @@ U32 sc_agent_group_has_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
         if (DOS_ADDR_INVALID(pstDLLNode)
             || DOS_ADDR_INVALID(pstDLLNode->pHandle))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
                             , pstGroupListNode->ulGroupID);
             continue;
         }
@@ -1954,7 +1964,7 @@ U32 sc_agent_group_has_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
         if (DOS_ADDR_INVALID(pstAgentNode)
             || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
                             , pstGroupListNode->ulGroupID);
             continue;
         }
@@ -1962,7 +1972,7 @@ U32 sc_agent_group_has_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
         if (pstAgentNode->pstAgentInfo->ulLastIdelTime
             && (time(NULL) - pstAgentNode->pstAgentInfo->ulLastIdelTime < 3))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent is in protect Agent: %u. Group: %u."
+            sc_log(pstAgentNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent is in protect Agent: %u. Group: %u."
                             , pstAgentNode->pstAgentInfo->ulAgentID
                             , pstGroupListNode->ulGroupID);
             continue;
@@ -1970,7 +1980,7 @@ U32 sc_agent_group_has_idel_agent(U32 ulAgentGrpID, BOOL *pblResult)
 
         if (SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Found an useable agent. (Agent %u in Group %u)"
+            sc_log(pstAgentNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Found an useable agent. (Agent %u in Group %u)"
                         , pstAgentNode->pstAgentInfo->ulAgentID
                         , pstGroupListNode->ulGroupID);
 
@@ -2002,7 +2012,7 @@ U32 sc_agent_group_agent_count(U32 ulGroupID)
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot fine the group with the ID \"%u\" .", ulGroupID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot fine the group with the ID \"%u\" .", ulGroupID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         return 0;
@@ -2059,7 +2069,7 @@ U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot fine the group with the ID \"%u\" .", ulGroupID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Cannot fine the group with the ID \"%u\" .", ulGroupID);
         pthread_mutex_unlock(&g_mutexGroupList);
 
         return 0;
@@ -2074,7 +2084,7 @@ U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32
         if (DOS_ADDR_INVALID(pstDLLNode)
             || DOS_ADDR_INVALID(pstDLLNode->pHandle))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
                             , pstGroupListNode->ulGroupID);
             continue;
         }
@@ -2083,7 +2093,7 @@ U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32
         if (DOS_ADDR_INVALID(pstAgentNode)
             || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Group List node has no data. Maybe the data has been deleted. Group: %u."
                             , pstGroupListNode->ulGroupID);
             continue;
         }
@@ -2167,7 +2177,7 @@ U32 sc_agent_set_ringing(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_SERV_RINGING:
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
@@ -2177,7 +2187,7 @@ U32 sc_agent_set_ringing(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to ringing. Agent: %u"
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to ringing. Agent: %u"
                     , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2206,7 +2216,7 @@ U32 sc_agent_set_ringback(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_SERV_RINGBACK:
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
@@ -2216,7 +2226,7 @@ U32 sc_agent_set_ringback(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to ring back. Agent: %u"
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to ring back. Agent: %u"
                     , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2245,7 +2255,7 @@ U32 sc_agent_set_call_out(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_SERV_CALL_OUT:
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
@@ -2255,7 +2265,7 @@ U32 sc_agent_set_call_out(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to call out.Agent: %u"
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to call out.Agent: %u"
                     , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2284,7 +2294,7 @@ U32 sc_agent_set_call_in(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_SERV_CALL_IN:
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
@@ -2294,7 +2304,7 @@ U32 sc_agent_set_call_in(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to call in.Agent: %u"
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to call in.Agent: %u"
                     , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2327,7 +2337,7 @@ U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
             bIsPub = DOS_TRUE;
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
@@ -2337,7 +2347,7 @@ U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to idle. Agent: %u"
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to idle. Agent: %u"
                     , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2366,7 +2376,7 @@ U32 sc_agent_set_proc(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_SERV_PROC:
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
@@ -2376,7 +2386,7 @@ U32 sc_agent_set_proc(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to proc.Agent: %u"
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to proc.Agent: %u"
                     , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2461,7 +2471,7 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
     /* 发起长签 */
     if (sc_agent_signin_proc(pstAgentNode) != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin FAIL. Agent: %u"
+        sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin FAIL. Agent: %u"
                         , pstAgentInfo->ulAgentID);
 
         return DOS_FAIL;
@@ -2478,7 +2488,7 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
             bIsPub = DOS_TRUE;
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentInfo->ulAgentID);
+            sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
@@ -2490,7 +2500,7 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
         sc_agent_status_notify(pstAgentInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin. Agent: %u"
+    sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signin. Agent: %u"
                     , pstAgentInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2528,7 +2538,7 @@ U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_
     ulRet = sc_caller_setting_select_number(pstAgent->pstAgentInfo->ulCustomerID, pstAgent->pstAgentInfo->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstLegCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
     if (ulRet != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstAgent->pstAgentInfo->ulCustomerID, pstAgent->pstAgentInfo->ulAgentID);
+        sc_log(pstAgent->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstAgent->pstAgentInfo->ulCustomerID, pstAgent->pstAgentInfo->ulAgentID);
 
         return DOS_FAIL;
     }
@@ -2592,7 +2602,7 @@ U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingTyp
             bIsPub = DOS_TRUE;
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
@@ -2637,7 +2647,7 @@ U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingTyp
         sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signout. Agent: %u"
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to signout. Agent: %u"
                 , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2665,7 +2675,7 @@ U32 sc_agent_work_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_WORK_BUSY:
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
     }
 
@@ -2674,7 +2684,7 @@ U32 sc_agent_work_set_busy(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to busy. Agent: %u"
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to busy. Agent: %u"
                     , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2716,7 +2726,7 @@ U32 sc_agent_work_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
     }
 
@@ -2725,7 +2735,7 @@ U32 sc_agent_work_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to idle. Agent: %u"
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to idle. Agent: %u"
                     , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2753,7 +2763,7 @@ U32 sc_agent_work_set_rest(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_WORK_AWAY:
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
     }
 
@@ -2762,7 +2772,7 @@ U32 sc_agent_work_set_rest(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to busy. Agent: %u"
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to busy. Agent: %u"
                     , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2791,7 +2801,7 @@ U32 sc_agent_work_set_login(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperating
         case SC_ACD_WORK_AWAY:
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
             break;
     }
@@ -2801,7 +2811,7 @@ U32 sc_agent_work_set_login(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperating
         sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to login. Agent: %u"
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to login. Agent: %u"
                     , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2839,7 +2849,7 @@ VOID sc_agent_work_set_logout(U64 p)
             bIsPub = DOS_TRUE;
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             break;
     }
 
@@ -2866,7 +2876,7 @@ VOID sc_agent_work_set_logout(U64 p)
     pstAgentQueueInfo->bNeedConnected = DOS_FALSE;
     pstAgentQueueInfo->bConnected = DOS_FALSE;
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to logout. Agent:%u"
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request set agnet status to logout. Agent:%u"
                 , pstAgentQueueInfo->ulAgentID);
 }
 
@@ -2893,7 +2903,7 @@ U32 sc_agent_work_set_force_logout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOp
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
+            sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent %u is in an invalid status.", pstAgentQueueInfo->ulAgentID);
             return DOS_FAIL;
     }
 
@@ -2908,7 +2918,7 @@ U32 sc_agent_work_set_force_logout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOp
         sc_agent_status_notify(pstAgentQueueInfo);
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request force logout for agnet %u. "
+    sc_log(pstAgentQueueInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Request force logout for agnet %u. "
                 , pstAgentQueueInfo->ulAgentID);
 
     return DOS_SUCC;
@@ -2993,14 +3003,14 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
     {
         pthread_mutex_unlock(&g_mutexAgentList);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
         return DOS_FAIL;
     }
     pthread_mutex_unlock(&g_mutexAgentList);
 
     if (DOS_ADDR_INVALID(pstHashNode))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Empty hash node for this agent. %u", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Empty hash node for this agent. %u", ulAgentID);
         return DOS_FAIL;
     }
 
@@ -3008,13 +3018,13 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
     if (DOS_ADDR_INVALID(pstAgentQueueNode)
         || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "The hash node is empty for this agent. %u", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "The hash node is empty for this agent. %u", ulAgentID);
         return DOS_FAIL;
     }
 
     pstAgentInfo = pstAgentQueueNode->pstAgentInfo;
     //ulOldStatus = pstAgentInfo->ucStatus;
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent status changed. Agent: %u, Action: %u", ulAgentID, ulAction);
+    sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Agent status changed. Agent: %u, Action: %u", ulAgentID, ulAction);
 
     switch(ulAction)
     {
@@ -3066,7 +3076,7 @@ U32 sc_agent_status_update(U32 ulAction, U32 ulAgentID, U32 ulOperatingType)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Invalid action for agent. Action:%u", ulAction);
+            sc_log(pstAgentQueueNode->pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Invalid action for agent. Action:%u", ulAction);
             ulResult = DOS_FAIL;
     }
 
@@ -3115,18 +3125,18 @@ U32 sc_agent_stat_save(SC_AGENT_INFO_ST *pstAgentInfo)
                     , pstAgentInfo->stStat.ulTotalDuration, pstAgentInfo->stStat.ulTimesOnline
                     , ulAvgCallDruation);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Save agent stat. agent: %u(%s), group: %u, callcnt: %u, call connected: %u, duration: %u, total time: %u"
+        sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Save agent stat. agent: %u(%s), group: %u, callcnt: %u, call connected: %u, duration: %u, total time: %u"
                     , pstAgentInfo->ulAgentID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[i]
                     , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->stStat.ulCallConnected
                     , pstAgentInfo->stStat.ulTotalDuration, pstAgentInfo->stStat.ulTimesOnline);
 
         if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, NULL) < 0)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Save agent stat fail.Agent:%u", pstAgentInfo->ulAgentID);
+            sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Save agent stat fail.Agent:%u", pstAgentInfo->ulAgentID);
         }
         else
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Save agent stat succ.Agent:%u", pstAgentInfo->ulAgentID);
+            sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Save agent stat succ.Agent:%u", pstAgentInfo->ulAgentID);
         }
     }
 
@@ -3204,7 +3214,7 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Update agent stat. Type: %u, Ageng: %u", ulType, ulAgentID);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Update agent stat. Type: %u, Ageng: %u", ulType, ulAgentID);
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -3217,7 +3227,7 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
             pthread_mutex_unlock(&g_mutexAgentList);
 
             DOS_ASSERT(0);
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Cannot find the agent with this id %u.", ulAgentID);
             return DOS_FAIL;
         }
         pthread_mutex_unlock(&g_mutexAgentList);
@@ -3225,7 +3235,7 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
         if (DOS_ADDR_INVALID(pstHashNode))
         {
             DOS_ASSERT(0);
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Empty hash node for this agent. %u", ulAgentID);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Empty hash node for this agent. %u", ulAgentID);
             return DOS_FAIL;
         }
 
@@ -3234,7 +3244,7 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
             || DOS_ADDR_INVALID(pstAgentQueueNode->pstAgentInfo))
         {
             DOS_ASSERT(0);
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "The hash node is empty for this agent. %u", ulAgentID);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "The hash node is empty for this agent. %u", ulAgentID);
             return DOS_FAIL;
         }
 
@@ -3629,7 +3639,7 @@ static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
     if (DOS_ADDR_VALID(pstHashNode)
         && DOS_ADDR_VALID(pstHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent \"%d\" exist. Update", stSiteInfo.ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Agent \"%d\" exist. Update", stSiteInfo.ulAgentID);
 
         pstAgentQueueNode = pstHashNode->pHandle;
         if (pstAgentQueueNode->pstAgentInfo)
@@ -3647,7 +3657,7 @@ static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
                         if (pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex] != stSiteInfo.aulGroupID[ulIndex])
                         {
                             /* 从别的组删除 */
-                            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent %u will be removed from Group %u."
+                            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent %u will be removed from Group %u."
                                              , pstAgentQueueNode->pstAgentInfo->ulAgentID
                                              , pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]);
 
@@ -3656,7 +3666,7 @@ static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
                             if (DOS_SUCC == ulRest)
                             {
                                 /* 添加到新的组 */
-                                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent %u will be added into Group %u."
+                                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent %u will be added into Group %u."
                                                 , stSiteInfo.aulGroupID[ulIndex]
                                                 , pstAgentQueueNode->pstAgentInfo->ulAgentID);
 
@@ -3669,7 +3679,7 @@ static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
                     /* 修改之前组ID合法，修改之后组ID不合法，就需要吧agent从之前的组里面删除掉 */
                     else
                     {
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent %u will be removed from group %u."
+                        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent %u will be removed from group %u."
                                         , pstAgentQueueNode->pstAgentInfo->ulAgentID
                                         , pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]);
                         sc_agent_group_remove_agent(pstAgentQueueNode->pstAgentInfo->aulGroupID[ulIndex]
@@ -3684,7 +3694,7 @@ static S32 sc_agent_init_cb(VOID *PTR, S32 lCount, S8 **pszData, S8 **pszField)
                         && stSiteInfo.aulGroupID[ulIndex] != 0)
                     {
                         /* 添加到新的组 */
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent %u will be add into group %u."
+                        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent %u will be add into group %u."
                                         , pstAgentQueueNode->pstAgentInfo->ulAgentID
                                         , stSiteInfo.aulGroupID[ulIndex]);
 
@@ -3904,7 +3914,7 @@ U32 sc_agent_mngt_init()
     g_pstGroupList = hash_create_table(SC_ACD_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(g_pstGroupList))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init Group Hash Table Fail.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init Group Hash Table Fail.");
 
         return DOS_FAIL;
     }
@@ -3913,7 +3923,7 @@ U32 sc_agent_mngt_init()
     g_pstAgentList = hash_create_table(SC_ACD_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(g_pstAgentList))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init Site Hash Table Fail.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init Site Hash Table Fail.");
 
         hash_delete_table(g_pstGroupList, NULL);
         g_pstGroupList = NULL;
@@ -3924,7 +3934,7 @@ U32 sc_agent_mngt_init()
 
     if (sc_agent_group_init(SC_INVALID_INDEX) != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init group list fail in ACD.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init group list fail in ACD.");
 
         hash_delete_table(g_pstAgentList, NULL);
         g_pstAgentList = NULL;
@@ -3934,11 +3944,11 @@ U32 sc_agent_mngt_init()
 
         return DOS_FAIL;
     }
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Init group list finished. Load %d agent group(s).", g_pstGroupList->NodeNum);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Init group list finished. Load %d agent group(s).", g_pstGroupList->NodeNum);
 
     if (sc_agent_init(SC_INVALID_INDEX) != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init sites list fail in ACD.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init sites list fail in ACD.");
 
         sc_agent_group_deinit();
 
@@ -3950,11 +3960,11 @@ U32 sc_agent_mngt_init()
 
         return DOS_FAIL;
     }
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Init agent list finished. Load %d agent(s).", g_pstAgentList->NodeNum);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Init agent list finished. Load %d agent(s).", g_pstAgentList->NodeNum);
 
     if (sc_agent_relationship_init() != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init ACD Data FAIL.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "%s", "Init ACD Data FAIL.");
 
         sc_agent_group_deinit();
         sc_agent_deinit();

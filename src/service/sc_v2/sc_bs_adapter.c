@@ -597,7 +597,7 @@ U32 sc_send_hello2bs(U32 ulClientIndex)
 
     if (ulClientIndex >= SC_MAX_BS_CLIENT)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Invalid client index. Max : %d, Current : %d", SC_MAX_BS_CLIENT, ulClientIndex);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Invalid client index. Max : %d, Current : %d", SC_MAX_BS_CLIENT, ulClientIndex);
         return DOS_FAIL;
     }
 
@@ -635,7 +635,7 @@ U32 sc_send_usr_auth2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Invalid SCB while send the auth msg.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Invalid SCB while send the auth msg.");
         return DOS_FAIL;
     }
 
@@ -866,7 +866,7 @@ U32 sc_send_balance_query2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Alloc memory fail.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Alloc memory fail.");
         return DOS_FAIL;
     }
 
@@ -889,7 +889,7 @@ U32 sc_send_balance_query2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Alloc memory for list node fail.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "Alloc memory for list node fail.");
         return DOS_FAIL;
     }
     pstListNode->pData = (VOID *)pstQueryMsg;
@@ -926,7 +926,7 @@ U32 sc_send_balance_query2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
         pstListNode = NULL;
 
         pthread_mutex_unlock(&g_mutexMsgList);
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Start the timer fail while send the auth msg.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Start the timer fail while send the auth msg.");
         return DOS_FAIL;
     }
 #endif
@@ -960,7 +960,7 @@ U32 sc_send_balance_query2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
         dos_dmem_free(pstQueryMsg);
         pstQueryMsg = NULL;
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Send Auth msg fail.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_BS), "%s", "Send Auth msg fail.");
         return DOS_FAIL;
     }
 
@@ -1514,7 +1514,7 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Alloc memory for the CDR msg fail.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Alloc memory for the CDR msg fail.");
         return DOS_FAIL;
     }
 
@@ -1755,7 +1755,7 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "There no leg created while send cdr msg.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "There no leg created while send cdr msg.");
         return DOS_FAIL;
     }
 
@@ -1804,7 +1804,7 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
 
         pthread_mutex_unlock(&g_mutexMsgList);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Start the timer fail while send the auth msg.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Start the timer fail while send the auth msg.");
         return DOS_FAIL;
     }
 #endif
@@ -1833,7 +1833,7 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
         dos_dmem_free(pstCDRMsg);
         pstCDRMsg = NULL;
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Send Auth msg fail.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Send Auth msg fail.");
         return DOS_FAIL;
     }
 
@@ -1873,7 +1873,7 @@ U32 sc_send_special_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg, U32 ul
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Alloc memory for the CDR msg fail.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Alloc memory for the CDR msg fail.");
         return DOS_FAIL;
     }
 
@@ -2015,7 +2015,7 @@ U32 sc_send_special_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg, U32 ul
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "There no leg created while send cdr msg.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "There no leg created while send cdr msg.");
         return DOS_FAIL;
     }
 
@@ -2063,7 +2063,7 @@ U32 sc_send_special_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg, U32 ul
 
         pthread_mutex_unlock(&g_mutexMsgList);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Start the timer fail while send the auth msg.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Start the timer fail while send the auth msg.");
         return DOS_FAIL;
     }
 #endif
@@ -2092,7 +2092,7 @@ U32 sc_send_special_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLeg, U32 ul
         dos_dmem_free(pstCDRMsg);
         pstCDRMsg = NULL;
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Send Auth msg fail.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_BS), "%s", "Send Auth msg fail.");
         return DOS_FAIL;
     }
 

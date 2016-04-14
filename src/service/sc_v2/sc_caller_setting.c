@@ -56,7 +56,7 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
 
     if (DOS_ADDR_INVALID(pszNumber))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select Number FAIL.(CustomerID:%u,SrcID:%u,SrcType:%u,pszNumber:%p,len:%u)."
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select Number FAIL.(CustomerID:%u,SrcID:%u,SrcType:%u,pszNumber:%p,len:%u)."
                         , ulCustomerID, ulSrcID, ulSrcType, pszNumber, ulLen);
         return DOS_FAIL;
     }
@@ -66,7 +66,7 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
     if (DOS_SUCC == ulRet)
     {
         /* 根据呼叫源查找 */
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get dest by src SUCC.(CustomerID:%u,SrcID:%u,SrcType:%u,DstID:%u,DstType:%u)."
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get dest by src SUCC.(CustomerID:%u,SrcID:%u,SrcType:%u,DstID:%u,DstType:%u)."
                         , ulCustomerID
                         , pstSetting?pstSetting->ulSrcID:ulSrcID
                         , pstSetting?pstSetting->ulSrcType:ulSrcType
@@ -76,24 +76,24 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
         ulRet = sc_get_number_from_dst(ulCustomerID, ulDstID, ulDstType, pszNumber, ulLen);
         if (DOS_SUCC == ulRet)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Select Caller SUCC.(CustomerID:%u,SrcID:%u,SrcType:%u,pszNumber:%s)."
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Select Caller SUCC.(CustomerID:%u,SrcID:%u,SrcType:%u,pszNumber:%s)."
                     , ulCustomerID, ulSrcID, ulSrcType, pszNumber);
             return DOS_SUCC;
         }
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get dest by src FAIL.(CustomerID:%u,SrcID:%u,SrcType:%u,DstID:%u,DstType:%u). Then find another Setting..."
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get dest by src FAIL.(CustomerID:%u,SrcID:%u,SrcType:%u,DstID:%u,DstType:%u). Then find another Setting..."
                     , ulCustomerID, ulSrcID, ulSrcType, ulDstID, ulDstType);
 
     /* 如果说呼叫源为坐席，但未匹配到，则找坐席组的设定 */
     if (SC_SRC_CALLER_TYPE_AGENT == ulSrcType)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Find Setting From Agent Group.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Find Setting From Agent Group.");
         /* 根据坐席获取坐席组id */
         pstAgent = sc_agent_get_by_id(ulSrcID);
         if (DOS_ADDR_INVALID(pstAgent) || DOS_ADDR_INVALID(pstAgent->pstAgentInfo))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Agent By ID SUCC.(AgentID:%u)", ulSrcID);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Agent By ID SUCC.(AgentID:%u)", ulSrcID);
             /* 查找有效groupid */
             for (ulLoop = 0; ulLoop < MAX_GROUP_PER_SITE; ulLoop++)
             {
@@ -102,7 +102,7 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                     continue;
                 }
                 ulAgentGrpID = pstAgent->pstAgentInfo->aulGroupID[ulLoop];
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Find a Proper Agent Group.(AgentID:%u,AgentGrpID:%u)", ulSrcID, ulAgentGrpID);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Find a Proper Agent Group.(AgentID:%u,AgentGrpID:%u)", ulSrcID, ulAgentGrpID);
                 /* 通过坐席组查找设定 */
                 HASH_Scan_Table(g_pstHashCallerSetting, ulHashIndex)
                 {
@@ -121,7 +121,7 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                             /* 查找设定匹配的目标 */
                             ulDstID = pstSetting->ulDstID;
                             ulDstType = pstSetting->ulDstType;
-                            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Find a Proper Setting of Agent Group.(AgentGrpID:%u, DstID:%u, DstType:%u)"
+                            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Find a Proper Setting of Agent Group.(AgentGrpID:%u, DstID:%u, DstType:%u)"
                                             , ulAgentGrpID, ulDstID, ulDstType);
 
                             ulRet = sc_get_number_from_dst(ulCustomerID, ulDstID, ulDstType, pszNumber, ulLen);
@@ -134,14 +134,14 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                 }
             }
         }
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Find Setting of AgentGrp FAIL.(AgentID:%u), and then find setting from ALL.", ulSrcID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Find Setting of AgentGrp FAIL.(AgentID:%u), and then find setting from ALL.", ulSrcID);
     }
 
     if (SC_SRC_CALLER_TYPE_AGENT == ulSrcType
         || SC_SRC_CALLER_TYPE_AGENT == ulSrcType)
     {
         /* 系统设定中查找 */
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Find Setting From ALL.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Find Setting From ALL.");
         HASH_Scan_Table(g_pstHashCallerSetting, ulHashIndex)
         {
             HASH_Scan_Bucket(g_pstHashCallerSetting, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -158,7 +158,7 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                 {
                     ulDstID = pstSetting->ulDstID;
                     ulDstType = pstSetting->ulDstType;
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Find a Proper setting of ALL.(DstID:%u, DstType:%u)", ulDstID, ulDstType);
+                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Find a Proper setting of ALL.(DstID:%u, DstType:%u)", ulDstID, ulDstType);
                     ulRet = sc_get_number_from_dst(ulCustomerID, ulDstID, ulDstType, pszNumber, ulLen);
                     if (DOS_SUCC == ulRet)
                     {
@@ -167,7 +167,7 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                 }
             }
         }
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "No Setting Matched the Call Source.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "No Setting Matched the Call Source.");
     }
 
     /* 未找到与呼叫源相匹配的呼叫目标，找当前呼叫源绑定的DID号码 */
@@ -179,32 +179,32 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
             ulRet = sc_get_did_by_agent(ulSrcID, pszNumber, ulLen);
             if (DOS_SUCC != ulRet)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent FAIL(AgentID:%u). Then Find a Did From AgentGroup.", ulSrcID);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent FAIL(AgentID:%u). Then Find a Did From AgentGroup.", ulSrcID);
                 /* 根据坐席id去获取坐席组id */
                 ulRet = sc_get_agentgrp_by_agentid(ulSrcID, aulAgentGrpID, MAX_GROUP_PER_SITE);
                 if (DOS_SUCC != ulRet)
                 {
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Get AgentGroupID By Agent ID FAIL, And Then find a Random Did.");
+                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Get AgentGroupID By Agent ID FAIL, And Then find a Random Did.");
                     ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
                     if (DOS_SUCC != ulRet)
                     {
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random Did FAIL,Select number FAIL.");
+                        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random Did FAIL,Select number FAIL.");
                     }
                     else
                     {
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random Did SUCC.");
+                        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random Did SUCC.");
                         return DOS_SUCC;
                     }
 
                     ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
                     if (DOS_SUCC != ulRet)
                     {
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller FAIL,Select number FAIL.");
+                        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller FAIL,Select number FAIL.");
                         return DOS_FAIL;
                     }
                     else
                     {
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller SUCC.");
+                        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller SUCC.");
                         return DOS_SUCC;
                     }
                 }
@@ -216,39 +216,39 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                     {
                         if (0 != aulAgentGrpID[1] && U32_BUTT != aulAgentGrpID[1] && aulAgentGrpID[1] != aulAgentGrpID[0])
                         {
-                            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent Group %u FAIL,And Then Did Agent Group %u.", aulAgentGrpID[0], aulAgentGrpID[1]);
+                            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent Group %u FAIL,And Then Did Agent Group %u.", aulAgentGrpID[0], aulAgentGrpID[1]);
                         }
                         else
                         {
-                            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent Group %u FAIL,And then Select a Random Did.", aulAgentGrpID[0]);
+                            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent Group %u FAIL,And then Select a Random Did.", aulAgentGrpID[0]);
                             /* 随机选择一个DID号码 */
                             ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
                             if (DOS_SUCC != ulRet)
                             {
-                                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select Did Random FAIL,Select number FAIL.");
+                                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select Did Random FAIL,Select number FAIL.");
                             }
                             else
                             {
-                                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random Did SUCC.");
+                                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random Did SUCC.");
                                 return DOS_SUCC;
                             }
 
                             ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
                             if (DOS_SUCC != ulRet)
                             {
-                                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller FAIL,Select number FAIL.");
+                                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller FAIL,Select number FAIL.");
                                 return DOS_FAIL;
                             }
                             else
                             {
-                                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller SUCC.");
+                                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller SUCC.");
                                 return DOS_SUCC;
                             }
                         }
                     }
                     else
                     {
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent Group %u SUCC.", aulAgentGrpID[0]);
+                        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent Group %u SUCC.", aulAgentGrpID[0]);
                         return DOS_SUCC;
                     }
                 }
@@ -258,41 +258,41 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
                     ulRet = sc_get_did_by_agentgrp(aulAgentGrpID[1], pszNumber, ulLen);
                     if (DOS_SUCC != ulRet)
                     {
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent Group %u FAIL,And then Select a Did Random", aulAgentGrpID[1]);
+                        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent Group %u FAIL,And then Select a Did Random", aulAgentGrpID[1]);
                         /* 预留 */
                         ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
                         if (DOS_SUCC != ulRet)
                         {
-                            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select Did Random FAIL,Select number FAIL.");
+                            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select Did Random FAIL,Select number FAIL.");
                         }
                         else
                         {
-                            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random Did SUCC.");
+                            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random Did SUCC.");
                             return DOS_SUCC;
                         }
 
                         ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
                         if (DOS_SUCC != ulRet)
                         {
-                            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller FAIL,Select number FAIL.");
+                            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller FAIL,Select number FAIL.");
                             return DOS_FAIL;
                         }
                         else
                         {
-                            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller SUCC.");
+                            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller SUCC.");
                             return DOS_SUCC;
                             }
                     }
                     else
                     {
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent Group %u SUCC.", aulAgentGrpID[1]);
+                        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent Group %u SUCC.", aulAgentGrpID[1]);
                         return DOS_SUCC;
                     }
                 }
             }
             else
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent %u SUCC.", ulSrcID);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By Agent %u SUCC.", ulSrcID);
                 return DOS_SUCC;
             }
         }
@@ -302,34 +302,34 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
             ulRet = sc_get_did_by_agentgrp(ulSrcID, pszNumber, ulLen);
             if (DOS_SUCC != ulRet)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By AgentgGrp %u FAIL,And Then Select Random Did.", ulSrcID);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By AgentgGrp %u FAIL,And Then Select Random Did.", ulSrcID);
                 /* 随机选择一个主叫号码呼叫 */
                 ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
                 if (DOS_SUCC != ulRet)
                 {
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select Did Random FAIL,Select number FAIL.");
+                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select Did Random FAIL,Select number FAIL.");
                 }
                 else
                 {
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random Did SUCC.");
+                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random Did SUCC.");
                     return DOS_SUCC;
                 }
 
                 ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
                 if (DOS_SUCC != ulRet)
                 {
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller FAIL,Select number FAIL.");
+                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller FAIL,Select number FAIL.");
                     return DOS_FAIL;
                 }
                 else
                 {
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller SUCC.");
+                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller SUCC.");
                     return DOS_SUCC;
                 }
             }
             else
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By AgentGrp %u SUCC.", ulSrcID);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Did By AgentGrp %u SUCC.", ulSrcID);
                 return DOS_SUCC;
             }
         }
@@ -339,23 +339,23 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
             ulRet = sc_select_did_random(ulCustomerID, pszNumber, ulLen);
             if (DOS_SUCC != ulRet)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select Did Random FAIL,Select number FAIL.");
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select Did Random FAIL,Select number FAIL.");
             }
             else
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random Did SUCC.");
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random Did SUCC.");
                 return DOS_SUCC;
             }
 
             ulRet = sc_select_caller_random(ulCustomerID, pszNumber, ulLen);
             if (DOS_SUCC != ulRet)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller FAIL,Select number FAIL.");
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller FAIL,Select number FAIL.");
                 return DOS_FAIL;
             }
             else
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller SUCC.");
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Select a Random caller SUCC.");
                 return DOS_SUCC;
             }
 
@@ -397,7 +397,7 @@ static U32 sc_get_number_from_dst(U32 ulCustomerID, U32 ulDstID, U32 ulDstType, 
             ulPolicy = sc_get_policy_by_grpid(ulDstID);
             if (U32_BUTT == ulPolicy)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "SC Get Policy By Caller GrpID FAIL.(Caller Group ID:%u)", ulDstID);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "SC Get Policy By Caller GrpID FAIL.(Caller Group ID:%u)", ulDstID);
                 return DOS_FAIL;
             }
             switch (ulPolicy)
@@ -423,12 +423,12 @@ static U32 sc_get_number_from_dst(U32 ulCustomerID, U32 ulDstID, U32 ulDstType, 
 
     if (ulRet != DOS_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select number Random FAIL.(ulCustomerID : %u, CallerGrpID:%u, ulDstType : %u)"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select number Random FAIL.(ulCustomerID : %u, CallerGrpID:%u, ulDstType : %u)"
             , ulCustomerID, ulDstID, ulDstType);
     }
     else
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Select number(%s) Random SUCC.(ulCustomerID : %u, CallerGrpID:%u, ulDstType : %u)"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Select number(%s) Random SUCC.(ulCustomerID : %u, CallerGrpID:%u, ulDstType : %u)"
             , pszNumber, ulCustomerID, ulDstID, ulDstType);
     }
 
@@ -553,7 +553,7 @@ static U32 sc_get_number_by_callerid(U32 ulCallerID, S8 *pszNumber, U32 ulLen)
     pstHashNode = hash_find_node(g_pstHashCaller, ulHashIndex, (VOID *)&ulCallerID, sc_caller_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get number by caller id FAIL.(CallerID:%u,pszNummber:%p,len:%u)"
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get number by caller id FAIL.(CallerID:%u,pszNummber:%p,len:%u)"
                         , ulCallerID, pszNumber, ulLen);
         DOS_ASSERT(0);
         return DOS_FAIL;
@@ -567,7 +567,7 @@ static U32 sc_get_number_by_callerid(U32 ulCallerID, S8 *pszNumber, U32 ulLen)
     dos_snprintf(pszNumber, ulLen, "%s", pstCaller->szNumber);
     pstCaller->ulTimes++;
     sc_number_lmt_stat_add(SC_NUMBER_TYPE_CFG, pstCaller->szNumber);
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Get number by caller id SUCC.(CallerID:%u,Number:%s,len:%u)"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Get number by caller id SUCC.(CallerID:%u,Number:%s,len:%u)"
                         , ulCallerID, pszNumber, ulLen);
     return DOS_SUCC;
 }
@@ -589,7 +589,7 @@ static U32 sc_get_number_by_didid(U32 ulDidID, S8* pszNumber, U32 ulLen)
 
     if (DOS_ADDR_INVALID(pszNumber))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get number by did id FAIL.(DidID:%u,pszNumber:%p,len:%u)."
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get number by did id FAIL.(DidID:%u,pszNumber:%p,len:%u)."
                         , ulDidID, pszNumber, ulLen);
         DOS_ASSERT(0);
         return DOS_FAIL;
@@ -624,7 +624,7 @@ static U32 sc_get_number_by_didid(U32 ulDidID, S8* pszNumber, U32 ulLen)
     }
     if (DOS_FALSE == bFound)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get number by did id FAIL.(DidID:%u,pszNumber:%p,Len:%u)."
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get number by did id FAIL.(DidID:%u,pszNumber:%p,Len:%u)."
                         , ulDidID, pszNumber, ulLen);
         return DOS_FAIL;
     }
@@ -692,7 +692,7 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Find Node FAIL,select number in order FAIL.(CustomerID:%u,HashIndex:%u,GrpID:%u)."
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Find Node FAIL,select number in order FAIL.(CustomerID:%u,HashIndex:%u,GrpID:%u)."
                         , ulCustomerID, ulHashIndex, ulGrpID);
         DOS_ASSERT(0);
         return DOS_FAIL;
@@ -782,7 +782,7 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
                 {
                     pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
 
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select number in order FAIL.(CustomerID:%u, GrpID:%u).", ulCustomerID, ulGrpID);
+                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select number in order FAIL.(CustomerID:%u, GrpID:%u).", ulCustomerID, ulGrpID);
                     DOS_ASSERT(0);
                     return DOS_FAIL;
                 }
@@ -816,7 +816,7 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
                 {
                     pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
 
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select number in order FAIL.(CustomerID:%u, GrpID:%u).", ulCustomerID, ulGrpID);
+                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select number in order FAIL.(CustomerID:%u, GrpID:%u).", ulCustomerID, ulGrpID);
                     DOS_ASSERT(0);
                     return DOS_FAIL;
                 }
@@ -830,10 +830,10 @@ U32 sc_select_number_in_order(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 
     }
     else
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Select number SUCC.(CustomerID:%u, GrpID:%u, pszNumber:%s).", ulCustomerID, ulGrpID, pszNumber);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Select number SUCC.(CustomerID:%u, GrpID:%u, pszNumber:%s).", ulCustomerID, ulGrpID, pszNumber);
         return DOS_SUCC;
     }
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Select number in order FAIL.(CustomerID:%u, GrpID:%u).", ulCustomerID, ulGrpID);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Select number in order FAIL.(CustomerID:%u, GrpID:%u).", ulCustomerID, ulGrpID);
 
     return DOS_FAIL;
 }
@@ -868,7 +868,7 @@ U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ul
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Hash find node FAIL,select random number FAIL.(CustomerID:%u,GrpID:%u,HashIndex:%u)."
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Hash find node FAIL,select random number FAIL.(CustomerID:%u,GrpID:%u,HashIndex:%u)."
                         , ulCustomerID, ulGrpID, ulHashIndex);
         DOS_ASSERT(0);
         return DOS_FAIL;
@@ -921,7 +921,7 @@ U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ul
                     {
                         pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
 
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "select random number FAIL.(CustomerID:%u,GrpID:%u,HashIndex:%u)"
+                        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "select random number FAIL.(CustomerID:%u,GrpID:%u,HashIndex:%u)"
                                         , ulCustomerID, ulGrpID, ulHashIndex);
                         DOS_ASSERT(0);
                         return DOS_FAIL;
@@ -941,12 +941,12 @@ U32 sc_select_number_random(U32 ulCustomerID, U32 ulGrpID, S8 *pszNumber, U32 ul
     }
     if (DOS_FALSE == bFound)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select random number FAIL.(CustomerID:%u, GrpID:%u).", ulCustomerID, ulGrpID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select random number FAIL.(CustomerID:%u, GrpID:%u).", ulCustomerID, ulGrpID);
         return DOS_FAIL;
     }
     else
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Select random number SUCC.(CustomerID:%u, GrpID:%u, pszNumber:%s).", ulCustomerID, ulGrpID, pszNumber);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Select random number SUCC.(CustomerID:%u, GrpID:%u, pszNumber:%s).", ulCustomerID, ulGrpID, pszNumber);
         return DOS_SUCC;
     }
 }
@@ -976,7 +976,7 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
     }
     /* 生成随机数 */
     lRandomNum = sc_generate_random(1, ulCount);
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "randomnum : %d", lRandomNum);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "randomnum : %d", lRandomNum);
 
     HASH_Scan_Table(g_pstHashDIDNum, ulHashIndex)
     {
@@ -1033,7 +1033,7 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
                     if (ulTick == (U32)lRandomNum)
                     {
                         /* 没有找到 */
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select random did FAIL.(CustomerID:%u)"
+                        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select random did FAIL.(CustomerID:%u)"
                             , ulCustomerID);
                         return DOS_FAIL;
                     }
@@ -1056,7 +1056,7 @@ static U32 sc_select_did_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
         }
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select random did FAIL.(CustomerID:%u)"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select random did FAIL.(CustomerID:%u)"
                     , ulCustomerID);
     return DOS_FAIL;
 }
@@ -1078,7 +1078,7 @@ static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
     }
     /* 生成随机数 */
     lRandomNum = sc_generate_random(1, ulCount);
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "randomnum : %d", lRandomNum);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "randomnum : %d", lRandomNum);
     HASH_Scan_Table(g_pstHashCaller, ulHashIndex)
     {
         HASH_Scan_Bucket(g_pstHashCaller, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -1133,7 +1133,7 @@ static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
                     if (ulTick == (U32)lRandomNum)
                     {
                         /* 没有找到 */
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select random did FAIL.(CustomerID:%u)"
+                        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select random did FAIL.(CustomerID:%u)"
                             , ulCustomerID);
                         return DOS_FAIL;
                     }
@@ -1155,7 +1155,7 @@ static U32 sc_select_caller_random(U32 ulCustomerID, S8 *pszNumber, U32 ulLen)
         }
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select random caller FAIL.(CustomerID:%u)"
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select random caller FAIL.(CustomerID:%u)"
                     , ulCustomerID);
     return DOS_FAIL;
 }
@@ -1181,7 +1181,7 @@ U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen)
         ulRet = sc_select_number_in_order(pstCallerGrp->ulCustomerID, ulGrpID, pszNumber, ulLen);
         if (DOS_SUCC != ulRet)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select number in order FAIL.(CallerGrpID:%u)", ulGrpID);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select number in order FAIL.(CallerGrpID:%u)", ulGrpID);
             DOS_ASSERT(0);
             return DOS_FAIL;
         }
@@ -1191,7 +1191,7 @@ U32  sc_get_number_by_callergrp(U32 ulGrpID, S8 *pszNumber, U32 ulLen)
         ulRet = sc_select_number_random(pstCallerGrp->ulCustomerID, ulGrpID, pszNumber, ulLen);
         if (DOS_SUCC != ulRet)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select number random FAIL.(CallerGrpID:%u)", ulGrpID);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Select number random FAIL.(CallerGrpID:%u)", ulGrpID);
             DOS_ASSERT(0);
             return DOS_FAIL;
         }
@@ -1263,10 +1263,10 @@ static U32 sc_get_numbers_of_did(U32 ulCustomerID)
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_get_numbers_of_did_cb, &ulCount, NULL);
     if (DB_ERR_SUCC != lRet)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get numbers of did FAIL.(ulCustomerID:%u)", ulCustomerID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get numbers of did FAIL.(ulCustomerID:%u)", ulCustomerID);
         return DOS_FAIL;
     }
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get numbers of did SUCC.(ulCustomerID:%u, ulCount:%u)", ulCustomerID, ulCount);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get numbers of did SUCC.(ulCustomerID:%u, ulCount:%u)", ulCustomerID, ulCount);
     return ulCount;
 }
 
@@ -1280,10 +1280,10 @@ static U32 sc_get_numbers_of_caller(U32 ulCustomerID)
     lRet = db_query(g_pstSCDBHandle, szQuery, sc_get_numbers_of_caller_cb, &ulCount, NULL);
     if (DB_ERR_SUCC != lRet)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get numbers of caller FAIL.(ulCustomerID:%u)", ulCustomerID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get numbers of caller FAIL.(ulCustomerID:%u)", ulCustomerID);
         return DOS_FAIL;
     }
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Get numbers of caller SUCC.(ulCustomerID:%u, ulCount:%u)", ulCustomerID, ulCount);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Get numbers of caller SUCC.(ulCustomerID:%u, ulCount:%u)", ulCustomerID, ulCount);
     return ulCount;
 }
 
@@ -1310,7 +1310,7 @@ static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
         return DOS_FAIL;
     }
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES)
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES)
                 , "Get agent SUCC.(ulAgentID : %u, sipID : %u)."
                 , ulAgentID, pstAgent->pstAgentInfo->ulSIPUserID);
 
@@ -1342,7 +1342,7 @@ static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
                     pstDid->ulTimes++;
                     dos_snprintf(pszNumber, ulLen, "%s", pstDid->szDIDNum);
                     sc_number_lmt_stat_add(SC_NUMBER_TYPE_DID, pstDid->szDIDNum);
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Get did by agent SUCC.(ulAgentID:%u, sipID : %u).", ulAgentID, pstAgent->pstAgentInfo->ulSIPUserID);
+                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "Get did by agent SUCC.(ulAgentID:%u, sipID : %u).", ulAgentID, pstAgent->pstAgentInfo->ulSIPUserID);
                     break;
                 }
             }
@@ -1355,12 +1355,12 @@ static U32 sc_get_did_by_agent(U32 ulAgentID, S8 *pszNumber, U32 ulLen)
     }
     if (DOS_FALSE == bFound)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get did by agent FAIL.(ulAgentID:%u).", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get did by agent FAIL.(ulAgentID:%u).", ulAgentID);
         return DOS_FAIL;
     }
     else
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get did by agent SUCC.(ulAgentID:%u).", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get did by agent SUCC.(ulAgentID:%u).", ulAgentID);
         return DOS_SUCC;
     }
 }
@@ -1409,12 +1409,12 @@ static U32 sc_get_did_by_agentgrp(U32 ulAgentGrpID, S8 *pszNumber, U32 ulLen)
     }
     if (DOS_FALSE == bFound)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get DID by agent group FAIL.(AgentGrpID:%u)", ulAgentGrpID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Get DID by agent group FAIL.(AgentGrpID:%u)", ulAgentGrpID);
         return DOS_FAIL;
     }
     else
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get DID by agent group SUCC.(AgentGrpID:%u)", ulAgentGrpID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get DID by agent group SUCC.(AgentGrpID:%u)", ulAgentGrpID);
         return DOS_SUCC;
     }
 }
@@ -1437,14 +1437,14 @@ static U32 sc_get_agentgrp_by_agentid(U32 ulAgentID, U32 *paulGroupID, U32 ulLen
     ulRet = sc_agent_hash_func4agent(ulAgentID, &ulHashIndex);
     if (DOS_SUCC != ulRet)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Cannot find agent %u!", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Cannot find agent %u!", ulAgentID);
         return DOS_FAIL;
     }
     pstHashNode = hash_find_node(g_pstAgentList, ulHashIndex , &ulAgentID, sc_agent_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode)
         || DOS_ADDR_INVALID(pstHashNode->pHandle))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "No agent %u in AgentList!", ulAgentID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "No agent %u in AgentList!", ulAgentID);
         return DOS_FAIL;
     }
     pstAgent = (SC_AGENT_INFO_ST *)pstHashNode->pHandle;

@@ -77,7 +77,7 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
 
     if (DOS_ADDR_INVALID(pstExtData->pszSUBClass) || '\0' == pstExtData->pszSUBClass)
     {
-         sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get msg type");
+         sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get msg type");
 
          goto end;
     }
@@ -89,13 +89,13 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
             || '\0' == pstExtData->pszGateway
             || dos_atoul(pstExtData->pszGateway, &ulGateWayID) < 0)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get Gateway");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get Gateway");
             goto end;
         }
 
         if (DOS_ADDR_INVALID(pstExtData->pszStatus) || '\0' == pstExtData->pszStatus)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get State");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get State");
             goto end;
         }
 
@@ -129,23 +129,23 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
         }
         else
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "Trunk state matching FAIL. %s", pstExtData->pszStatus);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "Trunk state matching FAIL. %s", pstExtData->pszStatus);
             goto end;
         }
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "Trunk state matching SUCC. %s, %u", pstExtData->pszStatus, enTrunkState);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "Trunk state matching SUCC. %s, %u", pstExtData->pszStatus, enTrunkState);
 
         /* 更新控制块状态 */
         ulResult = sc_gateway_update_status(ulGateWayID, enTrunkState);
         if (ulResult != DOS_SUCC)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "update trunk(%u) CB fail.", ulGateWayID);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "update trunk(%u) CB fail.", ulGateWayID);
         }
         /* 更新数据库状态 */
         ulResult = sc_gateway_update_status2db(ulGateWayID, enTrunkState);
         if(DB_ERR_SUCC != ulResult)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "update trunk(%u) db fail.", ulGateWayID);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "update trunk(%u) db fail.", ulGateWayID);
         }
 
         goto end;
@@ -158,7 +158,7 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
         /* 维护SIP分机的状态 */
         if (DOS_ADDR_INVALID(pstExtData->pszFromUser) || '\0' == pstExtData->pszFromUser)
         {
-             sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get userid");
+             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get userid");
              goto end;
         }
 
@@ -167,7 +167,7 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
             /* 判断 expires 字段，如果为0，则为取消注册，反之为注册消息 */
             if (DOS_ADDR_INVALID(pstExtData->pszExpire) || '\0' == pstExtData->pszExpire)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get expires");
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get expires");
                 goto end;
             }
 
@@ -189,7 +189,7 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
         ulResult = sc_sip_account_update_status(pstExtData->pszFromUser, enStatus, &ulSipID);
         if (ulResult != DOS_SUCC)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "update sip(userid : %s) status fail", pstExtData->pszFromUser);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "update sip(userid : %s) status fail", pstExtData->pszFromUser);
 
             goto end;
         }
@@ -197,7 +197,7 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
         /* 将SIP的IP地址存到表tbl_sip中 */
         if (DOS_ADDR_INVALID(pstExtData->pszNetworkIP) || '\0' == pstExtData->pszNetworkIP)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get network-ip");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get network-ip");
             ulPublicIP = 0;
         }
         else
@@ -207,7 +207,7 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
 
         if (DOS_ADDR_INVALID(pstExtData->pszContact) || '\0' == pstExtData->pszContact)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get contact");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get contact");
             ulPrivateIP = 0;
         }
         else
@@ -218,7 +218,7 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
             }
             else
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get private IP from contact");
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get private IP from contact");
                 ulPrivateIP = 0;
             }
         }
@@ -226,7 +226,7 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
         ulResult = sc_sip_account_update_info2db(ulPublicIP, ulPrivateIP, enStatus, ulSipID);
         if(DB_ERR_SUCC != ulResult)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "update sip db fail, userid is %s", pstExtData->pszFromUser);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "update sip db fail, userid is %s", pstExtData->pszFromUser);
         }
     }
 end:
@@ -341,7 +341,7 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
         /* 如果退出标志被置上，就准备退出了 */
         if (!g_blESLExtEventRunning)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "Event process exit flag has been set. the task will be exit.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "Event process exit flag has been set. the task will be exit.");
             break;
         }
 
@@ -351,13 +351,13 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
          **/
         if (!g_stESLExtRecvHandle.connected)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "ELS for event connection has been down, re-connect. %s", __FUNCTION__);
             g_stESLExtRecvHandle.event_lock = 1;
             ulRet = esl_connect(&g_stESLExtRecvHandle, "127.0.0.1", 8021, NULL, "ClueCon");
             if (ESL_SUCCESS != ulRet)
             {
                 esl_disconnect(&g_stESLExtRecvHandle);
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_stESLExtRecvHandle.err);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "ELS for event re-connect fail, return code:%d, Msg:%s. Will be retry after 1 second.", ulRet, g_stESLExtRecvHandle.err);
 
                 sleep(1);
                 continue;
@@ -366,7 +366,7 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
             esl_global_set_default_logger(ESL_LOG_LEVEL_WARNING);
             esl_events(&g_stESLExtRecvHandle, ESL_EVENT_TYPE_PLAIN, SC_ESL_EXT_EVENT_LIST);
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "ELS for event connect Back to Normal.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "ELS for event connect Back to Normal.");
         }
 
         if (bFirstConn)
@@ -378,7 +378,7 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
         ulRet = esl_recv_event(&g_stESLExtRecvHandle, 1, NULL);
         if (ESL_FAIL == ulRet)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EXT_MNGT), "%s", "ESL Recv event fail, continue.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EXT_MNGT), "%s", "ESL Recv event fail, continue.");
             esl_disconnect(&g_stESLExtRecvHandle);
             continue;
         }
@@ -388,7 +388,7 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
         {
             DOS_ASSERT(0);
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EXT_MNGT), "%s", "ESL get event fail, continue.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EXT_MNGT), "%s", "ESL get event fail, continue.");
             continue;
         }
 
@@ -397,7 +397,7 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
         {
             DOS_ASSERT(0);
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EXT_MNGT), "ESL recv thread recv event %s(%d). Alloc memory fail. Drop"
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EXT_MNGT), "ESL recv thread recv event %s(%d). Alloc memory fail. Drop"
                             , esl_event_get_header(pstEvent, "Event-Name")
                             , pstEvent->event_id);
 
@@ -407,7 +407,7 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
         pstExtData = dos_dmem_alloc(sizeof(SC_EXT_DATA_ST));
         if (DOS_ADDR_INVALID(pstExtData))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EXT_MNGT), "Alloc memory fail. %s:%u", __FILE__, __LINE__);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EXT_MNGT), "Alloc memory fail. %s:%u", __FILE__, __LINE__);
             continue;
         }
 

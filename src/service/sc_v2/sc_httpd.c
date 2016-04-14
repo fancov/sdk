@@ -445,7 +445,7 @@ U32 sc_httpd_srv_init()
         g_pstHTTPDList[ulIndex]->lListenSocket = socket(AF_INET, SOCK_STREAM, 0);
         if (g_pstHTTPDList[ulIndex]->lListenSocket < 0)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_HTTP_API), "%s", "Create http server socket fail.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_HTTP_API), "%s", "Create http server socket fail.");
             g_pstHTTPDList[ulIndex]->lListenSocket = -1;
             continue;
         }
@@ -456,7 +456,7 @@ U32 sc_httpd_srv_init()
         stListenAddr.sin_port = dos_htons(g_pstHTTPDList[ulIndex]->usPort);
         if (bind(g_pstHTTPDList[ulIndex]->lListenSocket, (struct sockaddr *)&stListenAddr, sizeof(stListenAddr)) < 0)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_HTTP_API), "%s", "HTTP server bind IP/Address fail.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_HTTP_API), "%s", "HTTP server bind IP/Address fail.");
             close(g_pstHTTPDList[ulIndex]->lListenSocket);
             g_pstHTTPDList[ulIndex]->lListenSocket = -1;
             continue;
@@ -464,13 +464,13 @@ U32 sc_httpd_srv_init()
 
         if (listen(g_pstHTTPDList[ulIndex]->lListenSocket, 5) < 0)
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_HTTP_API), "Linsten on port %d fail", g_pstHTTPDList[ulIndex]->usPort);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_HTTP_API), "Linsten on port %d fail", g_pstHTTPDList[ulIndex]->usPort);
             close(g_pstHTTPDList[ulIndex]->lListenSocket);
             g_pstHTTPDList[ulIndex]->lListenSocket = -1;
             continue;
         }
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "HTTP Server create OK. On port %u.", g_pstHTTPDList[ulIndex]->usPort);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "HTTP Server create OK. On port %u.", g_pstHTTPDList[ulIndex]->usPort);
     }
 
     /* 如果所有服务器都不好使，就认为错误了 */
@@ -542,7 +542,7 @@ VOID* sc_httpd_runtime(VOID *ptr)
             /* 如果所有服务器都宕机了，就进入重连阶段, 每隔2秒钟重连一次 */
             if (sc_httpd_srv_init() != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "%s", "All the http server lost, will be retry after 2 seconds.");
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "%s", "All the http server lost, will be retry after 2 seconds.");
 
                 sleep(2);
 

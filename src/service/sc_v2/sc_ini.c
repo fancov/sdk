@@ -240,7 +240,7 @@ U32 sc_init()
     U32   ulIndex = 0;
     U32   ulRet = DOS_SUCC;
 
-    sc_log(LOG_LEVEL_NOTIC, "Start init SC. %u", time(NULL));
+    sc_log(DOS_FALSE, LOG_LEVEL_NOTIC, "Start init SC. %u", time(NULL));
 
     dos_memzero((VOID *)&g_stSysStat, sizeof(g_stSysStat));
 
@@ -256,14 +256,14 @@ U32 sc_init()
             continue;
         }
 
-        sc_log(LOG_LEVEL_INFO, "Init %s mod.", astSCModList[ulIndex].pszName);
+        sc_log(DOS_FALSE, LOG_LEVEL_INFO, "Init %s mod.", astSCModList[ulIndex].pszName);
 
         if (DOS_ADDR_VALID(astSCModList[ulIndex].fn_init))
         {
             ulRet = astSCModList[ulIndex].fn_init();
         }
 
-        sc_log(LOG_LEVEL_INFO, "Init %s mod %s.", astSCModList[ulIndex].pszName, DOS_SUCC == ulRet ? "succ" : "FAIL");
+        sc_log(DOS_FALSE, LOG_LEVEL_INFO, "Init %s mod %s.", astSCModList[ulIndex].pszName, DOS_SUCC == ulRet ? "succ" : "FAIL");
 
         if (ulRet != DOS_SUCC)
         {
@@ -273,11 +273,11 @@ U32 sc_init()
 
     if (ulRet != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_NOTIC, "Init SC FAIL. %u", time(NULL));
+        sc_log(DOS_FALSE, LOG_LEVEL_NOTIC, "Init SC FAIL. %u", time(NULL));
         return DOS_SUCC;
     }
 
-    sc_log(LOG_LEVEL_NOTIC, "Init SC finished. %u", time(NULL));
+    sc_log(DOS_FALSE, LOG_LEVEL_NOTIC, "Init SC finished. %u", time(NULL));
 
     g_blSCInitOK = DOS_TRUE;
 
@@ -289,7 +289,7 @@ U32 sc_start()
     U32   ulIndex = 0;
     U32   ulRet = DOS_SUCC;
 
-    sc_log(LOG_LEVEL_NOTIC, "Start SC. %d", time(NULL));
+    sc_log(DOS_FALSE, LOG_LEVEL_NOTIC, "Start SC. %d", time(NULL));
 
     for (ulIndex=0; ulIndex<sizeof(astSCModList)/sizeof(SC_MOD_LIST_ST); ulIndex++)
     {
@@ -303,14 +303,14 @@ U32 sc_start()
             continue;
         }
 
-        sc_log(LOG_LEVEL_INFO, "satrt %s mod.", astSCModList[ulIndex].pszName);
+        sc_log(DOS_FALSE, LOG_LEVEL_INFO, "satrt %s mod.", astSCModList[ulIndex].pszName);
 
         if (DOS_ADDR_VALID(astSCModList[ulIndex].fn_start))
         {
             ulRet = astSCModList[ulIndex].fn_start();
         }
 
-        sc_log(LOG_LEVEL_INFO, "start %s mod %s.", astSCModList[ulIndex].pszName, DOS_SUCC == ulRet ? "succ" : "FAIL");
+        sc_log(DOS_FALSE, LOG_LEVEL_INFO, "start %s mod %s.", astSCModList[ulIndex].pszName, DOS_SUCC == ulRet ? "succ" : "FAIL");
 
         if (ulRet != DOS_SUCC)
         {
@@ -320,14 +320,14 @@ U32 sc_start()
 
     if (ulRet != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_NOTIC, "start SC FAIL. %u", time(NULL));
+        sc_log(DOS_FALSE, LOG_LEVEL_NOTIC, "start SC FAIL. %u", time(NULL));
         return DOS_SUCC;
     }
 
     sc_send_cmd_manage(SC_CMD_TYPE_MANAGE_RELOAD);
     sc_send_cmd_manage(SC_CMD_TYPE_MANAGE_HUPALL);
 
-    sc_log(LOG_LEVEL_NOTIC, "start SC finished. %u", time(NULL));
+    sc_log(DOS_FALSE, LOG_LEVEL_NOTIC, "start SC finished. %u", time(NULL));
 
     g_blSCInitOK = DOS_TRUE;
 

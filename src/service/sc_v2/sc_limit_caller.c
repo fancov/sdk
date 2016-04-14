@@ -370,7 +370,7 @@ BOOL sc_number_lmt_check(U32 ulType, U32 ulCustomerID, S8 *pszNumber)
     {
         pthread_mutex_unlock(&g_mutexHashNumberlmt);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_LIMIT)
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_LIMIT)
                 , "Number limit check for \"%s\", There is no limitation for this number."
                 , pszNumber);
         return DOS_TRUE;
@@ -379,7 +379,7 @@ BOOL sc_number_lmt_check(U32 ulType, U32 ulCustomerID, S8 *pszNumber)
     pstNumLmt = (SC_NUMBER_LMT_NODE_ST *)pstHashNodeNumLmt->pHandle;
     if (pstNumLmt->ulStatUsed < pstNumLmt->ulLimit)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_LIMIT)
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_LIMIT)
                 , "Number limit check for \"%s\". This number did not reached the limitation. Cycle: %u, Limitation: %u, Used: %u"
                 , pszNumber, pstNumLmt->ulCycle, pstNumLmt->ulLimit, pstNumLmt->ulStatUsed);
 
@@ -394,7 +394,7 @@ BOOL sc_number_lmt_check(U32 ulType, U32 ulCustomerID, S8 *pszNumber)
 
     pthread_mutex_unlock(&g_mutexHashNumberlmt);
 
-    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_LIMIT)
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_LIMIT)
             , "Number limit check for \"%s\", This number has reached the limitation. Process as handle: %u"
             , pszNumber, pstNumLmt->ulHandle);
 
@@ -622,7 +622,7 @@ U32 sc_number_lmt_load(U32 ulIndex)
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_LIMIT), "%s", "Load number limitation fail.");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_LIMIT), "%s", "Load number limitation fail.");
         return DOS_FAIL;
     }
 
@@ -686,13 +686,13 @@ void *sc_limit_stat_mainloop(void *arg)
 
         if (DOS_ADDR_INVALID(pstDLLNode))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_LIMIT), "%s", "Log digest error.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_LIMIT), "%s", "Log digest error.");
             break;
         }
 
         if (DOS_ADDR_INVALID(pstDLLNode->pHandle))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_LIMIT), "%s", "Log digest is empty.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_LIMIT), "%s", "Log digest is empty.");
             break;
         }
 
@@ -777,7 +777,7 @@ U32 sc_limit_start()
 {
     if (pthread_create(&g_pthreadLimit, NULL, sc_limit_stat_mainloop, NULL) < 0)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_LIMIT), "%s", "Create limit stat process pthread fail");
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_LIMIT), "%s", "Create limit stat process pthread fail");
 
         return DOS_FAIL;
     }

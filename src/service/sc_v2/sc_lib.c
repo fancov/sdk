@@ -301,7 +301,7 @@ U32 sc_bgjob_hash_add(U32 ulLegNo, S8 *pszUUID)
     pstHashNode = dos_dmem_alloc(sizeof(SC_BG_JOB_HASH_NODE_ST));
     if (DOS_ADDR_INVALID(pstHashNode))
     {
-        sc_log(LOG_LEVEL_ERROR, "Alloc memory fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Alloc memory fail.");
         return DOS_FAIL;
     }
 
@@ -312,7 +312,7 @@ U32 sc_bgjob_hash_add(U32 ulLegNo, S8 *pszUUID)
     hash_add_node(g_pstBGJobHash, (HASH_NODE_S *)pstHashNode, ulHashIndex, NULL);
     pthread_mutex_unlock(&g_mutexBGJobHash);
 
-    sc_log(LOG_LEVEL_DEBUG, "Add BG-JOB %s(%u) to hash table.", pszUUID, ulLegNo);
+    sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Add BG-JOB %s(%u) to hash table.", pszUUID, ulLegNo);
 
     return DOS_SUCC;
 }
@@ -355,7 +355,7 @@ U32 sc_bgjob_hash_delete(S8 *pszUUID)
 
 
 
-    sc_log(LOG_LEVEL_DEBUG, "Del BG-JOB %s(%u) to hash table.", pszUUID, ulLegNo);
+    sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Del BG-JOB %s(%u) to hash table.", pszUUID, ulLegNo);
 
     return ulLegNo;
 }
@@ -692,13 +692,13 @@ SC_LEG_CB *sc_lcb_alloc()
     }
     else
     {
-        sc_log(LOG_LEVEL_ERROR, "Alloc leg CB fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Alloc leg CB fail.");
     }
     pthread_mutex_unlock(&g_mutexLegCB);
 
     if (pstLCB)
     {
-        sc_log(LOG_LEVEL_DEBUG, "Alloc leg CB. No:%u", pstLCB->ulCBNo);
+        sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Alloc leg CB. No:%u", pstLCB->ulCBNo);
     }
 
     return pstLCB;
@@ -719,7 +719,7 @@ VOID sc_lcb_free(SC_LEG_CB *pstLCB)
         return;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Free LCB. No:%u", pstLCB->ulCBNo);
+    sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Free LCB. No:%u", pstLCB->ulCBNo);
 
     pthread_mutex_lock(&g_mutexLegCB);
     sc_lcb_init(pstLCB);
@@ -739,13 +739,13 @@ SC_LEG_CB *sc_lcb_get(U32 ulCBNo)
 {
     if (ulCBNo >= SC_LEG_CB_SIZE)
     {
-        sc_log(LOG_LEVEL_INFO, "Invalid LCB No. %u", ulCBNo);
+        sc_log(DOS_FALSE, LOG_LEVEL_INFO, "Invalid LCB No. %u", ulCBNo);
         return NULL;
     }
 
     if (!g_pstLegCB[ulCBNo].bValid)
     {
-        sc_log(LOG_LEVEL_INFO, "LCB %u not alloced.", ulCBNo);
+        sc_log(DOS_FALSE, LOG_LEVEL_INFO, "LCB %u not alloced.", ulCBNo);
         return NULL;
     }
 
@@ -872,7 +872,7 @@ U32 sc_lcb_hash_delete(S8 *pszUUID)
     {
         DOS_ASSERT(0);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
         pthread_mutex_unlock(&g_mutexLCBHash);
         return DOS_SUCC;
     }
@@ -910,7 +910,7 @@ SC_LEG_CB *sc_lcb_hash_find(S8 *pszUUID)
     pstLCBHashNode = (SC_LCB_HASH_NODE_ST *)hash_find_node(g_pstLCBHash, ulHashIndex, pszUUID, sc_lcb_hash_find_func);
     if (!pstLCBHashNode)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Connot find the SCB with the UUID %s where delete the hash node.", pszUUID);
         pthread_mutex_unlock(&g_mutexLCBHash);
         return NULL;
     }
@@ -982,6 +982,7 @@ VOID sc_scb_auto_call_init(SC_AUTO_CALL_ST *pstAutoCall)
     pstAutoCall->ulTaskID = 0;
     pstAutoCall->ulTcbID = U32_BUTT;
     pstAutoCall->bIsRingTimer = DOS_FALSE;
+    pstAutoCall->ulReCallAgent = 0;
     pstAutoCall->stAgentTmrHandle = NULL;
     pstAutoCall->stCusTmrHandle = NULL;
 
@@ -1170,6 +1171,7 @@ VOID sc_scb_demo_task_init(SC_AUTO_CALL_ST *pstAutoCall)
     pstAutoCall->ulTaskID = 0;
     pstAutoCall->ulTcbID = U32_BUTT;
     pstAutoCall->bIsRingTimer = DOS_FALSE;
+    pstAutoCall->ulReCallAgent = 0;
     pstAutoCall->stAgentTmrHandle = NULL;
     pstAutoCall->stCusTmrHandle = NULL;
 }
@@ -1330,13 +1332,13 @@ SC_SRV_CB *sc_scb_alloc()
     }
     else
     {
-        sc_log(LOG_LEVEL_ERROR, "Alloc Service CB fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Alloc Service CB fail.");
     }
     pthread_mutex_unlock(&g_mutexSCBList);
 
     if (pstSCB)
     {
-        sc_log(LOG_LEVEL_DEBUG, "Alloc Service CB. No:%u", pstSCB->ulSCBNo);
+        sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Alloc Service CB. No:%u", pstSCB->ulSCBNo);
     }
 
     return pstSCB;
@@ -1358,7 +1360,7 @@ VOID sc_scb_free(SC_SRV_CB *pstSCB)
         return;
     }
 
-    sc_log(LOG_LEVEL_DEBUG, "Free SCB. No:%u", pstSCB->ulSCBNo);
+    sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Free SCB. No:%u", pstSCB->ulSCBNo);
 
     pthread_mutex_lock(&g_mutexSCBList);
     sc_scb_init(pstSCB);
@@ -1387,13 +1389,13 @@ SC_SRV_CB *sc_scb_get(U32 ulCBNo)
 {
     if (ulCBNo >= SC_SCB_SIZE)
     {
-        sc_log(LOG_LEVEL_INFO, "Invalid SCB No.");
+        sc_log(DOS_FALSE, LOG_LEVEL_INFO, "Invalid SCB No.");
         return NULL;
     }
 
     if (!g_pstSCBList[ulCBNo].bValid)
     {
-        sc_log(LOG_LEVEL_INFO, "SCB %u not alloc.", ulCBNo);
+        sc_log(DOS_FALSE, LOG_LEVEL_INFO, "SCB %u not alloc.", ulCBNo);
         return NULL;
     }
 
@@ -1953,7 +1955,7 @@ S32 sc_task_and_callee_load(U32 ulIndex)
     pstTCB = sc_tcb_find_by_taskid(ulIndex);
     if (!pstTCB)
     {
-        sc_log(LOG_LEVEL_ERROR, "SC Find task By TaskID FAIL.(TaskID:%u) ", ulIndex);
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "SC Find task By TaskID FAIL.(TaskID:%u) ", ulIndex);
         return DOS_FAIL;
     }
 
@@ -1961,10 +1963,10 @@ S32 sc_task_and_callee_load(U32 ulIndex)
     lRet = sc_task_load_callee(pstTCB);
     if (DOS_SUCC != lRet)
     {
-        sc_log(LOG_LEVEL_ERROR, "SC Task Load Callee FAIL.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "SC Task Load Callee FAIL.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
         return DOS_FAIL;
     }
-    sc_log(LOG_LEVEL_DEBUG, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
+    sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "SC Task Load callee SUCC.(TaskID:%u, usNo:%u)", ulIndex, pstTCB->usTCBNo);
 
     return DOS_SUCC;
 }
@@ -2006,7 +2008,7 @@ U32 sc_send_command(SC_MSG_TAG_ST *pstMsg)
     pthread_cond_signal(&g_condCommandQueue);
     pthread_mutex_unlock(&g_mutexCommandQueue);
 
-    sc_log(LOG_LEVEL_DEBUG, "Send %s(%u). SCB: %u, Error: %u"
+    sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Send %s(%u). SCB: %u, Error: %u"
                 , sc_command_str(pstMsg->ulMsgType), pstMsg->ulMsgType
                 , pstMsg->ulSCBNo, pstMsg->usInterErr);
 
@@ -2039,13 +2041,13 @@ U32 sc_send_cmd_new_call(SC_MSG_TAG_ST *pstMsg)
     ulRet = sc_send_command(&pstCMDCall->stMsgTag);
     if (ulRet != DOS_SUCC)
     {
-        sc_log(LOG_LEVEL_ERROR, "Make call request send fail. SCB: %u", pstMsg->ulSCBNo);
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Make call request send fail. SCB: %u", pstMsg->ulSCBNo);
 
         dos_dmem_free(pstCMDCall);
         pstCMDCall = NULL;
     }
 
-    sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, 0, SC_LOG_DISIST), "Send new call request. SCB: %u", pstMsg->ulSCBNo);
+    sc_log(DOS_FALSE, SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, 0, SC_LOG_DISIST), "Send new call request. SCB: %u", pstMsg->ulSCBNo);
 
     return ulRet;
 }
@@ -2074,7 +2076,7 @@ U32 sc_send_cmd_playback(SC_MSG_TAG_ST *pstMsg)
     pstCMDPlayback = (SC_MSG_CMD_PLAYBACK_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_PLAYBACK_ST));
     if (DOS_ADDR_INVALID(pstCMDPlayback))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -2131,13 +2133,13 @@ U32 sc_send_cmd_record(SC_MSG_TAG_ST *pstMsg)
                                 , SC_SRV_CTRL_ATTR_INVLID
                                 , U32_BUTT))
     {
-        sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Recording service is under control, reject recoding request. Customer: %u", pstSCB->ulCustomerID);
+        sc_log(DOS_FALSE, SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Recording service is under control, reject recoding request. Customer: %u", pstSCB->ulCustomerID);
         return DOS_SUCC;
     }
 
     if (sc_scb_set_service(pstSCB, BS_SERV_RECORDING))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add record service fail.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add record service fail.");
 
         return DOS_SUCC;
     }
@@ -2285,7 +2287,7 @@ U32 sc_send_cmd_mux(SC_MSG_TAG_ST *pstMsg)
     pstCMDMux = (SC_MSG_CMD_MUX_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_MUX_ST));
     if (DOS_ADDR_INVALID(pstCMDMux))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -2315,7 +2317,7 @@ U32 sc_send_cmd_transfer(SC_MSG_TAG_ST *pstMsg)
     pstCMDTransfer = (SC_MSG_CMD_TRANSFER_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_TRANSFER_ST));
     if (DOS_ADDR_INVALID(pstCMDTransfer))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -2345,7 +2347,7 @@ U32 sc_send_cmd_manage(U32 ulType)
     pstCmd = (SC_MSG_CMD_MANAGE_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_MANAGE_ST));
     if (DOS_ADDR_INVALID(pstCmd))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -2555,7 +2557,7 @@ U32 sc_req_hungup(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo)
     {
         dos_dmem_free(pstCMDHungup);
 
-        sc_log(LOG_LEVEL_ERROR, "Send hungup request fail. SCB: %u, LCB: %u, Error: %u", ulSCBNo, ulLegNo, ulErrNo);
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send hungup request fail. SCB: %u, LCB: %u, Error: %u", ulSCBNo, ulLegNo, ulErrNo);
         return DOS_FAIL;
     }
 
@@ -2750,6 +2752,39 @@ U32 sc_req_ringback(U32 ulSCBNo, U32 ulLegNo, BOOL bIsConnected, BOOL bIsEarlyMe
     return DOS_SUCC;
 }
 
+U32 sc_req_busy_tone(U32 ulSCBNo, U32 ulLegNo)
+{
+    SC_MSG_CMD_PLAYBACK_ST  *pstCMDPlayback = NULL;
+    U32                     ulRet           = 0;
+
+    pstCMDPlayback = (SC_MSG_CMD_PLAYBACK_ST*)dos_dmem_alloc(sizeof(SC_MSG_CMD_PLAYBACK_ST));
+    if (DOS_ADDR_INVALID(pstCMDPlayback))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstCMDPlayback->stMsgTag.ulMsgType = SC_CMD_PLAYBACK;
+    pstCMDPlayback->stMsgTag.ulSCBNo = ulSCBNo;
+    pstCMDPlayback->stMsgTag.usInterErr = 0;
+    pstCMDPlayback->ulMode = 0;
+    pstCMDPlayback->ulSCBNo = ulSCBNo;
+    pstCMDPlayback->ulLegNo = ulLegNo;
+    pstCMDPlayback->ulLoopCnt = 1;
+    pstCMDPlayback->aulAudioList[0] = SC_TONE_BUSY;
+    pstCMDPlayback->enType = SC_CND_PLAYBACK_TONE;
+
+    ulRet = sc_send_command(&pstCMDPlayback->stMsgTag);
+    if (ulRet != DOS_SUCC)
+    {
+        dos_dmem_free(pstCMDPlayback);
+        pstCMDPlayback = NULL;
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
 /**
  * 向业务子层发RINGBACK命令
  *
@@ -2836,7 +2871,7 @@ U32 sc_send_event(SC_MSG_TAG_ST *pstMsg)
     pthread_cond_signal(&g_condEventQueue);
     pthread_mutex_unlock(&g_mutexEventQueue);
 
-    sc_log(LOG_LEVEL_DEBUG, "Send %s(%u). SCB: %u, Error: %u"
+    sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Send %s(%u). SCB: %u, Error: %u"
                 , sc_event_str(pstMsg->ulMsgType), pstMsg->ulMsgType
                 , pstMsg->ulSCBNo, pstMsg->usInterErr);
 
@@ -2865,7 +2900,7 @@ U32 sc_send_event_call_create(SC_MSG_EVT_CALL_ST *pstEvent)
     pstEventCall = (SC_MSG_EVT_CALL_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_CALL_ST));
     if (DOS_ADDR_INVALID(pstEventCall))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -2896,7 +2931,7 @@ U32 sc_send_event_ringing(SC_MSG_EVT_RINGING_ST *pstEvent)
     pstEventRinging = (SC_MSG_EVT_RINGING_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_RINGING_ST));
     if (DOS_ADDR_INVALID(pstEventRinging))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -2927,7 +2962,7 @@ U32 sc_send_event_answer(SC_MSG_EVT_ANSWER_ST *pstEvent)
     pstEventAnswer = (SC_MSG_EVT_ANSWER_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_ANSWER_ST));
     if (DOS_ADDR_INVALID(pstEventAnswer))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -2959,7 +2994,7 @@ U32 sc_send_event_release(SC_MSG_EVT_HUNGUP_ST *pstEvent)
     pstEventHungup = (SC_MSG_EVT_HUNGUP_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_HUNGUP_ST));
     if (DOS_ADDR_INVALID(pstEventHungup))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -3004,7 +3039,7 @@ U32 sc_send_event_dtmf(SC_MSG_EVT_DTMF_ST *pstEvent)
     pstEventDTMF = (SC_MSG_EVT_DTMF_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_DTMF_ST));
     if (DOS_ADDR_INVALID(pstEventDTMF))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -3035,7 +3070,7 @@ U32 sc_send_event_record(SC_MSG_EVT_RECORD_ST *pstEvent)
     pstEventRecord = (SC_MSG_EVT_RECORD_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_RECORD_ST));
     if (DOS_ADDR_INVALID(pstEventRecord))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -3066,7 +3101,7 @@ U32 sc_send_event_playback(SC_MSG_EVT_PLAYBACK_ST *pstEvent)
     pstEventPlayback = (SC_MSG_EVT_PLAYBACK_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_PLAYBACK_ST));
     if (DOS_ADDR_INVALID(pstEventPlayback))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -3097,7 +3132,7 @@ U32 sc_send_event_hold(SC_MSG_EVT_HOLD_ST *pstEvent)
     pstEventHold = (SC_MSG_EVT_HOLD_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_HOLD_ST));
     if (DOS_ADDR_INVALID(pstEventHold))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -3128,7 +3163,7 @@ U32 sc_send_event_err_report(SC_MSG_EVT_ERR_REPORT_ST *pstEvent)
     pstErrInfo = (SC_MSG_EVT_ERR_REPORT_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_ERR_REPORT_ST));
     if (DOS_ADDR_INVALID(pstErrInfo))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -3150,7 +3185,7 @@ U32 sc_send_event_auth_rsp(SC_MSG_EVT_AUTH_RESULT_ST *pstEvent)
     pstAuthInfo = (SC_MSG_EVT_AUTH_RESULT_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_AUTH_RESULT_ST));
     if (DOS_ADDR_INVALID(pstAuthInfo))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -3173,7 +3208,7 @@ U32 sc_send_event_leave_call_queue_rsp(SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvent)
     pstEvtLeaveCallque = (SC_MSG_EVT_LEAVE_CALLQUE_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_LEAVE_CALLQUE_ST));
     if (DOS_ADDR_INVALID(pstEvtLeaveCallque))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -3196,7 +3231,7 @@ U32 sc_send_event_ringing_timeout_rsp(SC_MSG_EVT_RINGING_TIMEOUT_ST *pstEvent)
     pstEvtRingingTimeout = (SC_MSG_EVT_RINGING_TIMEOUT_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_RINGING_TIMEOUT_ST));
     if (DOS_ADDR_INVALID(pstEvtRingingTimeout))
     {
-        sc_log(LOG_LEVEL_ERROR, "Send event fail.");
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
         return DOS_FAIL;
     }
 
@@ -3374,7 +3409,7 @@ U32 sc_get_snd_list(U32 *pulSndIndList, U32 ulSndCnt, S8 *pszBuffer, U32 ulBuffL
         {
             ulCnt = 0;
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Buffer not enought.");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Buffer not enought.");
             break;
         }
 
@@ -3572,7 +3607,7 @@ U32 sc_stat_syn(U32 ulType, VOID *ptr)
     licc_set_srv_stat(LIC_INBOUND_CALLTIME, stSysStat.ulIncomingTime);
     licc_set_srv_stat(LIC_AUTO_CALLTIME, stSysStat.ulAutoCallTime);
 
-    sc_log(LOG_LEVEL_INFO, "%s", "Stat data syn");
+    sc_log(DOS_FALSE, LOG_LEVEL_INFO, "%s", "Stat data syn");
 
     return DOS_SUCC;
 }
@@ -3592,11 +3627,11 @@ U32 sc_get_call_limitation()
         {
             ulLimitation = 0;
 
-            sc_log(LOG_LEVEL_INFO, "Get license limitation fail.. Use default: %u", ulLimitation);
+            sc_log(DOS_FALSE, LOG_LEVEL_INFO, "Get license limitation fail.. Use default: %u", ulLimitation);
             return DOS_FAIL;
         }
 
-        sc_log(LOG_LEVEL_INFO, "Get license limitation fail. Use default: %u", ulLimitation);
+        sc_log(DOS_FALSE, LOG_LEVEL_INFO, "Get license limitation fail. Use default: %u", ulLimitation);
     }
 
     return ulLimitation;
@@ -3667,14 +3702,14 @@ U32 sc_leg_parse_codec(U8 *pucCodeList, S32 lCodeListLen, S8 *pszSDP)
 
     if (DOS_ADDR_INVALID(pucCodeList) || DOS_ADDR_INVALID(pszSDP) || lCodeListLen <= 0)
     {
-        sc_log(LOG_LEVEL_DEBUG, "Parse CODE fail!");
+        sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Parse CODE fail!");
         return DOS_FAIL;
     }
 
     pszStart = dos_strstr(pszSDP, "m=audio");
     if (DOS_ADDR_INVALID(pszStart))
     {
-        sc_log(LOG_LEVEL_DEBUG, "Cannot find the audio media line in the sdp!");
+        sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Cannot find the audio media line in the sdp!");
         return DOS_FAIL;
     }
 
@@ -3690,34 +3725,34 @@ U32 sc_leg_parse_codec(U8 *pucCodeList, S32 lCodeListLen, S8 *pszSDP)
 
     if (DOS_ADDR_INVALID(pszEnd))
     {
-        sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!");
+        sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!");
         return DOS_FAIL;
     }
 
     pszStart = dos_strstr(pszStart, "RTP/AVP");
     if (DOS_ADDR_INVALID(pszStart))
     {
-        sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(1)");
+        sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(1)");
         return DOS_FAIL;
     }
 
     pszStart = pszStart + dos_strlen("RTP/AVP");
     if (DOS_ADDR_INVALID(pszStart))
     {
-        sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(01)");
+        sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(01)");
         return DOS_FAIL;
     }
 
     if (pszStart >= pszEnd)
     {
-        sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(2)");
+        sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(2)");
         return DOS_FAIL;
     }
 
     pszStart++;
     if (pszStart >= pszEnd)
     {
-        sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(3)");
+        sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(3)");
         return DOS_FAIL;
     }
 
@@ -3757,7 +3792,7 @@ U32 sc_leg_parse_codec(U8 *pucCodeList, S32 lCodeListLen, S8 *pszSDP)
 
         if (pszStart[i] < '0' || pszStart[i] > '9')
         {
-            sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(4)");
+            sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(4)");
             break;
         }
 
@@ -3765,7 +3800,7 @@ U32 sc_leg_parse_codec(U8 *pucCodeList, S32 lCodeListLen, S8 *pszSDP)
         lStrLen++;
         if (lStrLen >= sizeof(szTmp))
         {
-            sc_log(LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(5)");
+            sc_log(DOS_FALSE, LOG_LEVEL_DEBUG, "Invalid audio media line in the sdp!(5)");
             break;
         }
         szTmp[lStrLen] = '\0';

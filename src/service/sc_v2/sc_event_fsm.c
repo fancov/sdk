@@ -309,7 +309,7 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     /* 获得要转接的坐席的工号 */
     if (dos_sscanf(pstSCB->stAccessCode.szDialCache, "*%*[^*]*%[^#]s", pszEmpNum) != 1)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "POTS, format error : %s", pstSCB->stAccessCode.szDialCache);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "POTS, format error : %s", pstSCB->stAccessCode.szDialCache);
 
         return DOS_FAIL;
     }
@@ -318,12 +318,12 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     pstAgentNode = sc_agent_get_by_emp_num(pstSCB->ulCustomerID, pszEmpNum);
     if (DOS_ADDR_INVALID(pstAgentNode))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "POTS, Can not find agent. customer id(%u), empNum(%s)", pstSCB->ulCustomerID, pszEmpNum);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "POTS, Can not find agent. customer id(%u), empNum(%s)", pstSCB->ulCustomerID, pszEmpNum);
 
         /* 判断一下是不是分机号 */
         if (!sc_sip_account_be_is_exit(pstSCB->ulCustomerID, pszEmpNum))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "POTS, empNum(%s) is not sip", pszEmpNum);
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "POTS, empNum(%s) is not sip", pszEmpNum);
             return DOS_FAIL;
         }
     }
@@ -332,7 +332,7 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
         /* 判断坐席的状态 */
         if (!SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
         {
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "The agent is not useable.(Agent %u)", pstAgentNode->pstAgentInfo->ulAgentID);
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "The agent is not useable.(Agent %u)", pstAgentNode->pstAgentInfo->ulAgentID);
 
             return DOS_FAIL;
         }
@@ -557,7 +557,7 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
             if (ulRet != DOS_SUCC)
             {
                 /* TODO 没有找到主叫号码，错误处理 */
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstAgentNode->pstAgentInfo->ulCustomerID, pstAgentNode->pstAgentInfo->ulAgentID);
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL by agent(%u)", pstAgentNode->pstAgentInfo->ulCustomerID, pstAgentNode->pstAgentInfo->ulAgentID);
                 pstLegCB->ulSCBNo = pstSCB->ulSCBNo;
                 sc_lcb_free(pstPublishLeg);
 
@@ -616,7 +616,7 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
         if (ulRet != DOS_SUCC)
         {
             /* TODO 没有找到主叫号码，错误处理 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL.", pstSCB->ulSCBNo);
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Agent signin customID(%u) get caller number FAIL.", pstSCB->ulSCBNo);
             pstLegCB->ulSCBNo = pstSCB->ulSCBNo;
             sc_lcb_free(pstPublishLeg);
 
@@ -1083,7 +1083,7 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         && pstCallingLegCB->stCall.stNumInfo.szOriginalCallee[1] == '0'))
                 {
                     /* 禁止呼叫 */
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "callee is %s. Not alloc call", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+                    sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "callee is %s. Not alloc call", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
                     sc_req_hungup(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_CALLEE_NUMBER_ILLEGAL);
                     break;
                 }
@@ -2203,7 +2203,7 @@ U32 sc_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
+                sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
             }
         }
 
@@ -2278,7 +2278,7 @@ U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
          /* 注意通过偏移量，找到CC统一定义的错误码。
             需要判断坐席是否是长签，如果是长签的就不能挂断 */
         pstAgentNode = sc_agent_get_by_id(pstSCB->stPreviewCall.ulAgentID);
@@ -2387,7 +2387,7 @@ U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard auth event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard auth event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -2458,7 +2458,7 @@ U32 sc_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -2513,7 +2513,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             pstCalleeCB = sc_lcb_alloc();
             if (DOS_ADDR_INVALID(pstCalleeCB))
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc lcb fail");
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc lcb fail");
                 goto fail_proc;
             }
 
@@ -2539,7 +2539,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_make_call2pstn(pstSCB, pstCalleeCB) != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Make call to pstn fail.");
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Make call to pstn fail.");
                 /* 给主叫放提示音，并挂断 */
                 pstSCB->stPreviewCall.ulCalleeLegNo = U32_BUTT;
                 sc_lcb_free(pstCalleeCB);
@@ -2598,7 +2598,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -2676,7 +2676,7 @@ U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -2732,7 +2732,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_PREVIEW_CALL_ALERTING:
         case SC_PREVIEW_CALL_ACTIVE:
             /* 这个时候挂断只会是坐席的LEG，修改坐席的状态 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
             pstAgentCall = sc_agent_get_by_id(pstSCB->stPreviewCall.ulAgentID);
             if (DOS_ADDR_VALID(pstAgentCall)
                 && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
@@ -2882,7 +2882,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
         case SC_PREVIEW_CALL_CONNECTED:
             /* 这个时候挂断，就是正常释放的节奏，处理完就好 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent connected.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent connected.");
 
             pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
             pstCalleeCB = sc_lcb_get(pstSCB->stPreviewCall.ulCalleeLegNo);
@@ -2962,7 +2962,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (DOS_ADDR_INVALID(pstAgentCall) || DOS_ADDR_INVALID(pstAgentCall->pstAgentInfo))
             {
                 /* 没有找到坐席 */
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not found agent by id(%u)", pstSCB->stPreviewCall.ulAgentID);
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not found agent by id(%u)", pstSCB->stPreviewCall.ulAgentID);
             }
 
             /* 判断是否需要进行，客户标记。1、是客户一端先挂断的(基础呼叫中，客户只能是PSTN，坐席只能是SIP) */
@@ -3129,7 +3129,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -3332,7 +3332,7 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
+                sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
             }
         }
 
@@ -3446,7 +3446,7 @@ U32 sc_voice_verify_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         goto proc_finishe;
     }
 
@@ -3459,7 +3459,7 @@ U32 sc_voice_verify_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             ulRet = sc_make_call2pstn(pstSCB, pstLCB);
             if (ulRet != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Make call for voice verify fail.");
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Make call for voice verify fail.");
                 goto proc_finishe;
             }
 
@@ -3524,7 +3524,7 @@ U32 sc_voice_verify_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         goto proc_finishe;
     }
 
@@ -3599,7 +3599,7 @@ U32 sc_voice_verify_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         goto proc_finishe;
     }
 
@@ -3671,7 +3671,7 @@ U32 sc_voice_verify_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         goto proc_finishe;
     }
 
@@ -3733,7 +3733,7 @@ U32 sc_voice_verify_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_send_cmd_playback(&stPlaybackRsp.stMsgTag) != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
                 goto proc_finishe;
             }
 
@@ -3794,7 +3794,7 @@ U32 sc_voice_verify_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         sc_scb_free(pstSCB);
         pstSCB = NULL;
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         return DOS_FAIL;
     }
 
@@ -3861,7 +3861,7 @@ U32 sc_voice_verify_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         sc_scb_free(pstSCB);
         pstSCB = NULL;
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         return DOS_FAIL;
     }
 
@@ -4013,7 +4013,7 @@ U32 sc_interception_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard auth event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard auth event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -4078,7 +4078,7 @@ U32 sc_interception_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -4114,7 +4114,7 @@ U32 sc_interception_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
         goto proc_finishe;
     }
 
@@ -4172,14 +4172,14 @@ U32 sc_interception_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
         goto proc_finishe;
     }
 
     pstAgentLCB = sc_lcb_get(pstSCB->stInterception.ulAgentLegNo);
     if (DOS_ADDR_INVALID(pstAgentLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
         goto proc_finishe;
     }
 
@@ -4207,7 +4207,7 @@ U32 sc_interception_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_send_cmd_mux(&stInterceptRsp.stMsgTag) != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
                 goto proc_finishe;
             }
 
@@ -4260,7 +4260,7 @@ U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
         return DOS_FAIL;
     }
 
@@ -4421,7 +4421,7 @@ U32 sc_whisper_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard auth event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard auth event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -4486,7 +4486,7 @@ U32 sc_whisper_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -4521,7 +4521,7 @@ U32 sc_whisper_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stWhispered.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
         goto proc_finishe;
     }
 
@@ -4579,14 +4579,14 @@ U32 sc_whisper_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stWhispered.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
         goto proc_finishe;
     }
 
     pstAgentLCB = sc_lcb_get(pstSCB->stWhispered.ulAgentLegNo);
     if (DOS_ADDR_INVALID(pstAgentLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
         goto proc_finishe;
     }
 
@@ -4614,7 +4614,7 @@ U32 sc_whisper_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_send_cmd_mux(&stInterceptRsp.stMsgTag) != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
                 goto proc_finishe;
             }
 
@@ -4667,7 +4667,7 @@ U32 sc_whisper_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstLCB = sc_lcb_get(pstSCB->stWhispered.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for interception.");
         return DOS_FAIL;
     }
 
@@ -4793,7 +4793,7 @@ U32 sc_auto_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
 
         /* 分析呼叫结果 */
@@ -4915,7 +4915,7 @@ U32 sc_auto_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -5026,7 +5026,7 @@ U32 sc_auto_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -5065,6 +5065,26 @@ U32 sc_auto_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     }
     return ulRet;
+}
+
+
+void sc_auto_call_recall_agent_callback(U64 arg)
+{
+    U32                 ulScbNo    = U32_BUTT;
+    SC_SRV_CB           *pstSCB    = NULL;
+
+    ulScbNo = (U32)arg;
+
+    pstSCB = sc_scb_get(ulScbNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return;
+    }
+
+    /* 呼叫坐席失败，重新加入队列 */
+    sc_ringing_timeout_proc(pstSCB);
+
+    return;
 }
 
 U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
@@ -5155,7 +5175,7 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     {
                         ulRet = DOS_FAIL;
                         ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
-                        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
+                        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
                         goto proc_finishe;
                     }
 
@@ -5242,7 +5262,7 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -5286,17 +5306,17 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_SUCC;
     }
 
-    pstLCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
-    if (DOS_ADDR_INVALID(pstLCB))
-    {
-        sc_trace_scb(pstSCB, "There is no calling leg.");
-
-        goto proc_finishe;
-    }
-
     switch (pstSCB->stAutoCall.stSCBTag.usStatus)
     {
         case SC_AUTO_CALL_ACTIVE:
+            pstLCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
+            if (DOS_ADDR_INVALID(pstLCB))
+            {
+                sc_trace_scb(pstSCB, "There is no calling leg.");
+
+                goto proc_finishe;
+            }
+
             ulTaskMode = sc_task_get_mode(pstSCB->stAutoCall.ulTcbID);
             if (ulTaskMode >= SC_TASK_MODE_BUTT)
             {
@@ -5362,6 +5382,12 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_CONNECTED;
             break;
+
+        case SC_AUTO_CALL_RELEASE:
+            /* 坐席放忙音结束，挂断坐席的电话 */
+            sc_req_hungup(pstSCB->ulSCBNo, pstRlayback->ulLegNo, CC_ERR_NORMAL_CLEAR);
+            break;
+
         default:
             break;
     }
@@ -5641,7 +5667,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             /* 这个时候挂断只会是客户的LEG清理资源即可 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
 
             pstCallingCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
             if (pstCallingCB)
@@ -5654,7 +5680,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
         case SC_AUTO_CALL_ACTIVE:
             /* 客户挂断了电话，需要生成话单 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected. Need create cdr");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected. Need create cdr");
 
             /* 生成话单 */
             if (sc_scb_is_exit_service(pstSCB, BS_SERV_RECORDING))
@@ -5768,7 +5794,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     sc_lcb_free(pstCallingCB);
                     pstCallingCB = NULL;
                 }
-                pstSCB->stAutoCall.ulCalleeLegNo = U32_BUTT;
+                pstSCB->stAutoCall.ulCallingLegNo = U32_BUTT;
                 if (pstSCB->stAutoCall.stSCBTag.usStatus < SC_AUTO_CALL_PORC2)
                 {
                     /* 被叫没有呼叫成功，直接释放就行了 */
@@ -5830,7 +5856,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
         case SC_AUTO_CALL_CONNECTED:
             /* 这个时候挂断，就是正常释放的节奏，处理完就好，判断坐席的状态 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent connected.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent connected.");
             pstCallingCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
             pstCalleeCB = sc_lcb_get(pstSCB->stAutoCall.ulCalleeLegNo);
             if (DOS_ADDR_INVALID(pstCalleeCB)
@@ -5911,10 +5937,11 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
               */
             /* release 时，肯定是有一条leg hungup了，现在的leg需要释放掉，判断另一条是不是坐席长签，如果不是需要挂断 */
             pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
-            if (DOS_ADDR_INVALID(pstAgentCall) || DOS_ADDR_INVALID(pstAgentCall->pstAgentInfo))
+            if (DOS_ADDR_INVALID(pstAgentCall)
+                || DOS_ADDR_INVALID(pstAgentCall->pstAgentInfo))
             {
                 /* 没有找到坐席 */
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not found agent by id(%u)", pstSCB->stAutoCall.ulAgentID);
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not found agent by id(%u)", pstSCB->stAutoCall.ulAgentID);
             }
 
             /* 判断是否需要进行，客户标记。1、是客户一端先挂断的(基础呼叫中，客户只能是PSTN，坐席只能是SIP) */
@@ -6004,15 +6031,16 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstSCB->stAutoCall.ulCallingLegNo = U32_BUTT;
             }
 
-            /* 修改坐席的状态 */
-            if (DOS_ADDR_VALID(pstAgentCall)
-                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
-            {
-                sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_CALL);
-            }
 
             if (pstOtherLeg->ulIndSCBNo != U32_BUTT)
             {
+                /* 修改坐席的状态 */
+                if (DOS_ADDR_VALID(pstAgentCall)
+                    && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_CALL);
+                }
+
                 /* 长签，继续放音 */
                 pstOtherLeg->ulSCBNo = U32_BUTT;
                 sc_req_play_sound(pstOtherLeg->ulIndSCBNo, pstOtherLeg->ulCBNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
@@ -6024,14 +6052,35 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             else if (pstHungupLeg->ulIndSCBNo != U32_BUTT)
             {
+                if (DOS_ADDR_VALID(pstAgentCall)
+                    && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_CALL);
+                }
+
                 /* 长签的坐席挂断了电话，不要释放leg，解除关系就行 */
                 pstSCB->stAutoCall.ulCallingLegNo = U32_BUTT;
                 pstHungupLeg->ulSCBNo = U32_BUTT;
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_RELEASE;
             }
+            else if (pstSCB->stAutoCall.ulCallingLegNo == U32_BUTT)
+            {
+                /* 客户挂断，不修改坐席状态，坐席置忙音 */
+                sc_lcb_free(pstHungupLeg);
+                pstHungupLeg = NULL;
+
+                sc_req_busy_tone(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCalleeLegNo);
+                pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_RELEASE;
+            }
             else
             {
+                if (DOS_ADDR_VALID(pstAgentCall)
+                    && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+                {
+                    sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_CALL);
+                }
+
                 sc_lcb_free(pstHungupLeg);
                 pstHungupLeg = NULL;
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
@@ -6060,6 +6109,13 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_CALL_RELEASE:
+            pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
+            if (DOS_ADDR_VALID(pstAgentCall)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+            {
+                sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_CALL);
+            }
+
             pstCalleeCB = sc_lcb_get(pstSCB->stAutoCall.ulCalleeLegNo);
             if (DOS_ADDR_VALID(pstCalleeCB))
             {
@@ -6080,7 +6136,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -6094,6 +6150,7 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
     U32                         ulRet               = DOS_SUCC;
+    S32                         lRes                = DOS_SUCC;
     U32                         ulErrCode           = CC_ERR_NO_REASON;
     SC_LEG_CB                   *pstCallingCB       = NULL;
     SC_LEG_CB                   *pstCalleeCB        = NULL;
@@ -6144,7 +6201,7 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
+                sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
             }
         }
 
@@ -6204,15 +6261,29 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_CALL_EXEC2:
-            sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
-            ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
+            pstSCB->stAutoCall.ulReCallAgent++;
+            if (pstSCB->stAutoCall.ulReCallAgent > SC_AUTO_CALL_AGENT_MAX_COUNT)
+            {
+                sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
+                ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
+                break;
+            }
+            else
+            {
+                if (DOS_ADDR_VALID(pstSCB->stAutoCall.stCusTmrHandle))
+                {
+                    dos_tmr_stop(&pstSCB->stAutoCall.stCusTmrHandle);
+                    pstSCB->stAutoCall.stCusTmrHandle = NULL;
+                }
+
+                lRes = dos_tmr_start(&pstSCB->stAutoCall.stCusTmrHandle, SC_AUTO_CALL_RECALL_TIME, sc_auto_call_recall_agent_callback, (U64)pstSCB->ulSCBNo, TIMER_NORMAL_NO_LOOP);
+                if (lRes < 0)
+                {
+                    DOS_ASSERT(0);
+                    pstSCB->stAutoCall.stCusTmrHandle = NULL;
+                }
+            }
             break;
-#if 0
-            /* TODO,以后需要优化 */
-            /* 呼叫坐席失败，重新加入队列 */
-            ulRet = sc_ringing_timeout_proc(pstSCB);
-            break;
-#endif
 
         case SC_AUTO_CALL_PORC2:
         case SC_AUTO_CALL_ALERTING2:
@@ -6267,7 +6338,7 @@ U32 sc_sigin_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         /* 没有启动 长签业务 */
         sc_scb_free(pstSCB);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Scb(%u) not have sigin server.", pstSCB->ulSCBNo);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Scb(%u) not have sigin server.", pstSCB->ulSCBNo);
         return DOS_FAIL;
     }
 
@@ -6284,7 +6355,7 @@ U32 sc_sigin_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     {
         sc_scb_free(pstSCB);
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
 
         return DOS_FAIL;
@@ -6691,7 +6762,7 @@ U32 sc_incoming_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         sc_scb_free(pstSCB);
         pstSCB = NULL;
 
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
         return DOS_FAIL;
     }
 
@@ -6898,6 +6969,7 @@ U32 sc_mark_custom_playback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_req_play_sound(pstSCB->ulSCBNo, (pstLCB)->ulCBNo, SC_SND_CALL_OVER, 1, 0, 0);
             }
             break;
+
         case SC_MAKR_CUSTOM_ACTIVE:
             pstLCB = sc_lcb_get(pstRlayback->ulLegNo);
             if (DOS_ADDR_VALID(pstLCB))
@@ -6914,11 +6986,21 @@ U32 sc_mark_custom_playback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 else
                 {
                     pstSCB->stMarkCustom.pstAgentCall->pstAgentInfo->ulLegNo = U32_BUTT;
-                    sc_req_hungup(pstSCB->ulSCBNo, pstLCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                    //sc_req_hungup(pstSCB->ulSCBNo, pstLCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                    sc_req_busy_tone(pstSCB->ulSCBNo, pstLCB->ulCBNo);
                     pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_RELEASE;
                 }
             }
             break;
+
+        case SC_MAKR_CUSTOM_RELEASE:
+            /* 坐席放忙音结束，挂断电话 */
+            pstLCB = sc_lcb_get(pstRlayback->ulLegNo);
+            if (DOS_ADDR_VALID(pstLCB))
+            {
+                sc_req_hungup(pstSCB->ulSCBNo, pstLCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
+            }
+
         default:
             break;
     }
@@ -6937,6 +7019,7 @@ U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_MAKR_CUSTOM_IDEL:
             pstSCB->stMarkCustom.stSCBTag.usStatus = SC_MAKR_CUSTOM_PROC;
             break;
+
         case SC_MAKR_CUSTOM_PROC:
         case SC_MAKR_CUSTOM_ACTIVE:
         case SC_MAKR_CUSTOM_RELEASE:
@@ -6970,6 +7053,7 @@ U32 sc_mark_custom_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             pstSCB->stMarkCustom.stSCBTag.bWaitingExit = DOS_TRUE;
             break;
+
         default:
             break;
     }
@@ -7153,7 +7237,7 @@ U32 sc_access_code_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
 
         return DOS_SUCC;
@@ -7237,7 +7321,7 @@ U32 sc_access_code_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             dos_strcpy(pstSCB->stAccessCode.szDialCache, pstLCB->stCall.stNumInfo.szDial);
 
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Secondary dialing. caller : %s, DialNum : %s", pstLCB->stCall.stNumInfo.szRealCalling, pstSCB->stAccessCode.szDialCache);
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Secondary dialing. caller : %s, DialNum : %s", pstLCB->stCall.stNumInfo.szRealCalling, pstSCB->stAccessCode.szDialCache);
 
             if (dos_strcmp(pstSCB->stAccessCode.szDialCache, astSCAccessList[SC_ACCESS_HANGUP_CUSTOMER1].szCodeFormat) == 0
                  || dos_strcmp(pstSCB->stAccessCode.szDialCache, astSCAccessList[SC_ACCESS_HANGUP_CUSTOMER2].szCodeFormat) == 0)
@@ -7446,7 +7530,7 @@ U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
 
         return DOS_SUCC;
@@ -7476,7 +7560,7 @@ U32 sc_transfer_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_send_cmd_transfer(&stTransferRsp.stMsgTag) != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
                 /* TODO 错误处理 */
                 return DOS_FAIL;
             }
@@ -8605,7 +8689,7 @@ U32 sc_demo_task_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
         pstLegCB = sc_lcb_get(pstSCB->stDemoTask.ulCallingLegNo);
         if (DOS_ADDR_VALID(pstLegCB))
@@ -8706,7 +8790,7 @@ U32 sc_demo_task_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -8781,7 +8865,7 @@ U32 sc_demo_task_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (sc_send_cmd_playback(&stPlaybackRsp.stMsgTag) != DOS_SUCC)
             {
                 ulErrCode = CC_ERR_SC_SYSTEM_ABNORMAL;
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Playback request send fail.");
                 goto proc_finishe;
             }
 
@@ -8821,7 +8905,7 @@ U32 sc_demo_task_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -8908,7 +8992,7 @@ U32 sc_demo_task_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -9082,7 +9166,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_PROC:
         case SC_AUTO_CALL_ALERTING:
             /* 这个时候挂断只会是客户的LEG清理资源即可 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
 
             pstCallingCB = sc_lcb_get(pstSCB->stDemoTask.ulCallingLegNo);
             if (DOS_ADDR_VALID(pstCallingCB))
@@ -9094,7 +9178,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
         case SC_AUTO_CALL_ACTIVE:
             /* 客户挂断了电话，需要生成话单 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected. Need create cdr");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected. Need create cdr");
 
             /* 生成话单 */
             if (sc_scb_is_exit_service(pstSCB, BS_SERV_RECORDING))
@@ -9230,7 +9314,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
         case SC_AUTO_CALL_CONNECTED:
             /* 这个时候挂断，就是正常释放的节奏，处理完就好，判断坐席的状态 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent connected.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent connected.");
             pstCallingCB = sc_lcb_get(pstSCB->stDemoTask.ulCallingLegNo);
             pstCalleeCB = sc_lcb_get(pstSCB->stDemoTask.ulCalleeLegNo);
             if (pstSCB->stDemoTask.ulCalleeLegNo == pstHungup->ulLegNo)
@@ -9290,7 +9374,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (DOS_ADDR_INVALID(pstAgentCall) || DOS_ADDR_INVALID(pstAgentCall->pstAgentInfo))
             {
                 /* 没有找到坐席 */
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not found agent by id(%u)", pstSCB->stDemoTask.ulAgentID);
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not found agent by id(%u)", pstSCB->stDemoTask.ulAgentID);
             }
 
             /* 判断是否需要进行，客户标记。1、是客户一端先挂断的(基础呼叫中，客户只能是PSTN，坐席只能是SIP) */
@@ -9454,7 +9538,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -9578,7 +9662,7 @@ U32 sc_demo_task_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
+                sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
             }
         }
 
@@ -9818,7 +9902,7 @@ U32 sc_call_agent_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
          /* 注意通过偏移量，找到CC统一定义的错误码。
             需要判断坐席是否是长签，如果是长签的就不能挂断 */
         switch (pstSCB->stCallAgent.stSCBTag.usStatus)
@@ -9898,7 +9982,7 @@ U32 sc_call_agent_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard auth event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard auth event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -10060,7 +10144,7 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             pstCalleeCB = sc_lcb_alloc();
             if (DOS_ADDR_INVALID(pstCalleeCB))
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc lcb fail");
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc lcb fail");
                 goto fail_proc;
             }
 
@@ -10088,7 +10172,7 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         pstCalleeCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
                         if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
                         {
-                            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
+                            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
 
                             goto fail_proc;
                         }
@@ -10099,7 +10183,7 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         pstCalleeCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND;
                         if (sc_scb_set_service(pstSCB, BS_SERV_OUTBAND_CALL))
                         {
-                            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
+                            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add outbound service fail.");
 
                             goto fail_proc;
                         }
@@ -10128,7 +10212,7 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 if (sc_send_usr_auth2bs(pstSCB, pstCalleeCB) != DOS_SUCC)
                 {
-                    sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send auth fail.");
+                    sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Send auth fail.");
 
                     goto fail_proc;
                 }
@@ -10201,7 +10285,7 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -10257,7 +10341,7 @@ U32 sc_call_agent_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -10303,7 +10387,7 @@ U32 sc_call_agent_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_AGENT_AUTH2:
         case SC_CALL_AGENT_EXEC2:
             /* 这个时候挂断只会是坐席的LEG清理资源即可 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
             pstCallingCB = sc_lcb_get(pstSCB->stCallAgent.ulCallingLegNo);
             if (pstCallingCB)
             {
@@ -10461,7 +10545,7 @@ U32 sc_call_agent_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             pstSCB = NULL;
             break;
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -10720,7 +10804,7 @@ U32 sc_auto_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
 
         /* 分析呼叫结果 */
@@ -10870,7 +10954,7 @@ U32 sc_auto_preview_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -10940,7 +11024,7 @@ U32 sc_auto_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -10996,7 +11080,7 @@ U32 sc_auto_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             pstCalleeCB = sc_lcb_get(pstSCB->stAutoPreview.ulCalleeLegNo);
             if (DOS_ADDR_INVALID(pstCalleeCB))
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc lcb fail");
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Alloc lcb fail");
                 goto fail_proc;
             }
 
@@ -11013,7 +11097,7 @@ U32 sc_auto_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_make_call2pstn(pstSCB, pstCalleeCB) != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Make call to pstn fail.");
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Make call to pstn fail.");
                 goto fail_proc;
             }
 
@@ -11065,7 +11149,7 @@ U32 sc_auto_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call setup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -11280,7 +11364,7 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_PREVIEW_ALERTING:
         case SC_AUTO_PREVIEW_ACTIVE:
             /* 这个时候挂断只会是坐席的LEG，修改坐席的状态 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
             pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoPreview.ulAgentID);
             if (DOS_ADDR_VALID(pstAgentCall)
                 && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
@@ -11426,7 +11510,7 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
         case SC_AUTO_PREVIEW_CONNECTED:
             /* 这个时候挂断，就是正常释放的节奏，处理完就好 */
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent connected.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent connected.");
 
             pstCallingCB = sc_lcb_get(pstSCB->stAutoPreview.ulCallingLegNo);
             pstCalleeCB = sc_lcb_get(pstSCB->stAutoPreview.ulCalleeLegNo);
@@ -11505,7 +11589,7 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (DOS_ADDR_INVALID(pstAgentCall) || DOS_ADDR_INVALID(pstAgentCall->pstAgentInfo))
             {
                 /* 没有找到坐席 */
-                sc_log(SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not found agent by id(%u)", pstSCB->stAutoPreview.ulAgentID);
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not found agent by id(%u)", pstSCB->stAutoPreview.ulAgentID);
             }
 
             /* 判断是否需要进行，客户标记。1、是客户一端先挂断的(基础呼叫中，客户只能是PSTN，坐席只能是SIP) */
@@ -11671,7 +11755,7 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         default:
-            sc_log(SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
+            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Discard call hungup event.");
             ulRet = DOS_SUCC;
             break;
     }
@@ -11734,7 +11818,7 @@ U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
             {
-                sc_log(SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
+                sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_EVENT, SC_LOG_DISIST), "Send record cmd FAIL! SCBNo : %u", pstSCB->ulSCBNo);
             }
         }
 

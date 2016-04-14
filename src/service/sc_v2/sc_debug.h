@@ -53,7 +53,7 @@ typedef struct tagSCModList{
 
 typedef enum tagSCLogFlags{
     SC_LOG_DISIST  = 0x1,      /* 记录摘要 */
-
+    SC_LOG_TRACE   = 0x10,     /* 跟踪 */
     SC_LOG_NONE    = 0,        /*  */
 }SC_LOG_FLAG_EN;
 
@@ -74,7 +74,7 @@ typedef struct tagSCDllQueueList{
  |      其他标记        |   模块   | 日志级别  |
  |       22BIT          |   6BIT   |   4BIT    |
  */
-VOID sc_log(U32 ulLevel, const S8 *pszFormat, ...);
+VOID sc_log(BOOL bTrace, U32 ulLevel, const S8 *pszFormat, ...);
 VOID sc_printf(const S8 *pszFormat, ...);
 VOID sc_trace_scb(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...);
 VOID sc_trace_leg(SC_LEG_CB *pstLCB, const S8 *pszFormat, ...);
