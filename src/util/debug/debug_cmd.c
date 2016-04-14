@@ -116,7 +116,7 @@ COMMAND_GROUP_ST g_stCommandRootGrp[] = {
 
 COMMAND_ST * debug_cli_cmd_find(COMMAND_GROUP_ST *pstCmdGrp, S32 argc, S8 **argv)
 {
-    U32 ulGrpLoop, ulCmdLoop;
+    U32 ulCmdLoop;
     COMMAND_GROUP_ST *pstGrpTmp;
     COMMAND_ST       *pstCmdTmp;
 
@@ -126,25 +126,33 @@ COMMAND_ST * debug_cli_cmd_find(COMMAND_GROUP_ST *pstCmdGrp, S32 argc, S8 **argv
         return NULL;
     }
 
-    if (!pstCmdGrp)
+    if (pstCmdGrp)
     {
-        pstCmdGrp = g_stCommandRootGrp;
+        pstGrpTmp = pstCmdGrp;
+    }
+    else
+    {
+        pstGrpTmp = g_stCommandRootGrp;
     }
 
-    for (ulGrpLoop=0
-        ; pstCmdGrp && pstCmdGrp[ulGrpLoop].pstCmdSet && pstCmdGrp[ulGrpLoop].pstCmdSet > 0
-        ; ulGrpLoop++, pstCmdGrp++)
+    dos_printf("%d, %s", argc, argv[0]);
+
+    for (; pstGrpTmp; pstGrpTmp++)
     {
-        pstGrpTmp = &pstCmdGrp[ulGrpLoop];
         for (ulCmdLoop=0; ulCmdLoop<pstGrpTmp->ulSize; ulCmdLoop++)
         {
             pstCmdTmp = &pstGrpTmp->pstCmdSet[ulCmdLoop];
+
+            if (DOS_ADDR_INVALID(pstCmdTmp->pszCommand))
+            {
+                return NULL;
+            }
 
             if (dos_stricmp(pstCmdTmp->pszCommand, argv[0]) == 0)
             {
                 if (pstCmdTmp->pstGroup)
                 {
-                    return debug_cli_cmd_find(pstCmdTmp->pstGroup, argc-1, argv+1);
+                    return debug_cli_cmd_find(pstCmdTmp->pstGroup, argc-1, ++argv);
                 }
                 else
                 {

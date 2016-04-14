@@ -57,11 +57,15 @@ static S8                   g_szRecvBuf[MAX_BUFF_LENGTH];
 /* 接收外部客户端消息线程 */
 static pthread_t            g_pthSendMsgTask;
 
+
+extern DB_HANDLE_ST *                g_pstCCDBHandle;
 static U32 mon_restart_immediately();
 static U32 mon_restart_fixed(U32 ulTimeStamp);
 static U32 mon_restart_later();
 extern S32 hb_send_msg(U8 * pszBuff,U32 ulBuffLen,struct sockaddr_un * pstAddr,U32 ulAddrLen,S32 lSocket);
 extern U32 mon_system(S8 * pszCmd);
+static U32 mon_restart_cycle_setting(U32 ulTime);
+static U32 mon_restart_cycle_start();
 
 /**
  * 函数: hb_get_max_timeout()
@@ -554,6 +558,234 @@ S32 heartbeat_stop()
     return 0;
 }
 
+
+/**
+ *  函数：U32 mon_restart_immediately()
+ *  功能：立刻系统重启
+ *  返回值：成功返回DOS_SUCC.失败返回DOS_FAIL
+ */
+static U32 mon_restart_immediately()
+{
+    S8  szReboot[32] = {0};
+
+    logr_alert("System will be restart after %u minutes.", MIN_WAIT_TIME);
+
+    dos_snprintf(szReboot, sizeof(szReboot), "shutdown -r %u &", MIN_WAIT_TIME);
+    mon_system(szReboot);
+
+    return DOS_SUCC;
+}
+
+static U32 mon_cancel_restart()
+{
+    S8  szReboot[32] = {0};
+
+    dos_snprintf(szReboot, sizeof(szReboot), "shutdown -c &", MIN_WAIT_TIME);
+    mon_system(szReboot);
+
+    return DOS_SUCC;
+}
+
+/**
+ *  函数：U32 mon_restart_fixed(U32 ulTimeStamp)
+ *  功能：指定时间系统重启
+ *  参数:
+         U32 ulTimeStamp  重启时间戳
+ *  返回值：成功返回DOS_SUCC.失败返回DOS_FAIL
+ */
+static U32 mon_restart_fixed(U32 ulTimeStamp)
+{
+    time_t ulCurTimeStamp = time(0);
+    U32 ulTimeDiff = U32_BUTT;
+    S8  szReboot[32] = {0};
+
+    if (ulTimeStamp <= ulCurTimeStamp)
+    {
+        DOS_ASSERT(0);
+        hb_logr_debug("Your TimeStamp is %u, but current timestamp is %u. Please check the time.", ulTimeStamp, ulCurTimeStamp);
+        return DOS_FAIL;
+    }
+
+    ulTimeDiff = ulTimeStamp - ulCurTimeStamp;
+    /* 将秒转换为分钟 */
+    ulTimeDiff = (ulTimeDiff + ulTimeDiff % 60)/60;
+    /* 默认至少给2分钟时间 */
+    if (ulTimeDiff < MIN_WAIT_TIME)
+    {
+        ulTimeDiff = MIN_WAIT_TIME;
+    }
+
+    logr_alert("System will be restart after %u minutes.", ulTimeDiff);
+
+    dos_snprintf(szReboot, sizeof(szReboot), "shutdown -r %u &", ulTimeDiff);
+
+    mon_system(szReboot);
+
+    return DOS_SUCC;
+}
+
+/**
+ *  函数：U32 mon_restart_later()
+ *  功能：稍后系统重启(即没有业务的时候)
+ *  返回值：成功返回DOS_SUCC.失败返回DOS_FAIL
+ */
+static U32 mon_restart_later()
+{
+    U32  ulStartTime = time(0);
+    U32  ulCurTime, ulIndex = 0;
+    BOOL bCanReboot = DOS_TRUE;
+
+    while (1)
+    {
+        ulCurTime = time(0);
+        if (ulCurTime - ulStartTime >= MAX_WAIT_TIME * 60)
+        {
+            mon_system("/sbin/reboot &");
+            break;
+        }
+
+        for (ulIndex = 0; ulIndex < DOS_PROCESS_MAX_NUM; ++ulIndex)
+        {
+            if (g_pstProcessInfo[ulIndex]->ulVilad == DOS_TRUE
+                && g_pstProcessInfo[ulIndex]->ulActive == DOS_TRUE
+                && g_pstProcessInfo[ulIndex]->bRecvRebootRsp == DOS_FALSE)
+            {
+                bCanReboot = DOS_FALSE;
+                break;
+            }
+        }
+
+        if (bCanReboot)
+        {
+            mon_system("/sbin/reboot &");
+            break;
+        }
+        else
+        {
+            /* 每隔5秒钟去检查一次 */
+            sleep(5);
+        }
+    }
+
+    return DOS_SUCC;
+}
+
+U32 g_ulCycleRestartTime     = 0;
+U32 g_ulCycleRestartRunning  = 0;
+pthread_t  g_pthCycleRestartRunning;
+
+static void * mon_restart_cycle_task(VOID *ptr)
+{
+    U32 ulTime = 0;
+    U32 ulType = 0;
+    U32 ulWeekDay = 0;
+    U32 ulMonthDay = 0;
+    U32 ulHour = 0;
+    U32 ulMin = 0;
+    U32 ulCurrentTime;
+    struct tm stTime;
+
+    g_ulCycleRestartRunning = DOS_TRUE;
+    logr_alert("Restart task has been started.");
+
+    while (1)
+    {
+        dos_task_delay(1000 * 60);
+
+        if (!g_ulCycleRestartRunning)
+        {
+            break;
+        }
+
+        if (ulTime != g_ulCycleRestartTime)
+        {
+            ulTime = g_ulCycleRestartTime;
+            ulType = (ulTime >> 24) & 0xFF;
+            ulWeekDay = (ulTime >> 16) & 0xFF;
+            ulMonthDay = (ulTime >> 16) & 0xFF;
+            ulHour = (ulTime >> 8) & 0xFF;
+            ulMin = (ulTime) & 0xFF;
+        }
+
+        ulCurrentTime = time(NULL);
+        dos_get_localtime_struct(ulCurrentTime, &stTime);
+        switch (ulType)
+        {
+            case MON_SYS_RESTART_SUB_TYPE_DAILY:
+                if (stTime.tm_hour == ulHour && stTime.tm_min == ulMin)
+                {
+                    logr_alert("Daily restart time fired. Time: %02d:%02d", stTime.tm_hour, stTime.tm_min);
+                    goto proc_restart;
+                }
+                break;
+
+            case MON_SYS_RESTART_SUB_TYPE_WEEKLY:
+                if (stTime.tm_hour == ulHour && stTime.tm_min == ulMin && ulWeekDay == stTime.tm_wday)
+                {
+                    logr_alert("Daily restart time fired. Time: %02d:%02d Week: %d", stTime.tm_hour, stTime.tm_min, stTime.tm_wday);
+                    goto proc_restart;
+                }
+
+                break;
+
+            case MON_SYS_RESTART_SUB_TYPE_MONTHLY:
+                if (stTime.tm_hour == ulHour && stTime.tm_min == ulMin && ulMonthDay == stTime.tm_mday)
+                {
+                    logr_alert("Daily restart time fired. Time: %02d:%02d Day: %d", stTime.tm_hour, stTime.tm_min, stTime.tm_mday);
+                    goto proc_restart;
+                }
+
+                break;
+
+            default:
+                goto proc_fail;
+        }
+    }
+
+proc_restart:
+    logr_alert("Cycle restart timer fired.");
+
+    mon_restart_immediately();
+
+    g_ulCycleRestartRunning = DOS_FALSE;
+
+    return NULL;
+
+proc_fail:
+    g_ulCycleRestartRunning = DOS_FALSE;
+    logr_alert("Restart task has been exited.");
+    return NULL;
+}
+
+U32 mon_restart_cycle_setting(U32 ulTime)
+{
+    g_ulCycleRestartTime = ulTime;
+
+    return DOS_SUCC;
+}
+
+static U32 mon_restart_cycle_init()
+{
+    return DOS_SUCC;
+}
+
+U32 mon_restart_cycle_start()
+{
+    if (!g_ulCycleRestartRunning)
+    {
+        mon_restart_cycle_init();
+        pthread_create(&g_pthCycleRestartRunning, NULL, mon_restart_cycle_task, NULL);
+    }
+
+    return DOS_SUCC;
+}
+
+static U32 mon_restart_cycle_stop()
+{
+    return DOS_SUCC;
+}
+
+
 /**
  *  函数：U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp)
  *  功能：系统重启
@@ -562,11 +794,13 @@ S32 heartbeat_stop()
  *        U32 ulTimeStamp   --重启时刻的时间戳
  *  返回值：成功返回DOS_SUCC.失败返回DOS_FAIL
  */
-U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp)
+U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp, U32 ulStatus)
 {
     U32 ulRet = U32_BUTT;
     HEARTBEAT_DATA_ST stData;
     U32 ulIndex = 0;
+
+    hb_logr_notice("Request restart. Type: %u, Time: %X", ulStyle, ulTimeStamp);
 
     /* 为每一个进程进行一次通知 */
     for (ulIndex = 0; ulIndex < DOS_PROCESS_MAX_NUM; ulIndex++)
@@ -603,11 +837,18 @@ U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp)
         /* 指定时间重启 */
         case MON_SYS_RESTART_FIXED:
         {
-            ulRet = mon_restart_fixed(ulTimeStamp);
-            if (DOS_SUCC != ulRet)
+            if (ulStatus)
             {
-                DOS_ASSERT(0);
-                return DOS_FAIL;
+                ulRet = mon_restart_fixed(ulTimeStamp);
+                if (DOS_SUCC != ulRet)
+                {
+                    DOS_ASSERT(0);
+                    return DOS_FAIL;
+                }
+            }
+            else
+            {
+                ulRet = mon_cancel_restart();
             }
             break;
         }
@@ -622,6 +863,20 @@ U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp)
             }
             break;
         }
+        case MON_SYS_RESTART_CYCLE:
+        {
+            if (ulStatus)
+            {
+                mon_restart_cycle_setting(ulTimeStamp);
+                mon_restart_cycle_start();
+            }
+            else
+            {
+                mon_restart_cycle_stop();
+            }
+
+            break;
+        }
         default:
             break;
     }
@@ -630,98 +885,61 @@ U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp)
     return DOS_SUCC;
 }
 
-/**
- *  函数：U32 mon_restart_immediately()
- *  功能：立刻系统重启
- *  返回值：成功返回DOS_SUCC.失败返回DOS_FAIL
- */
-static U32 mon_restart_immediately()
+S32 mon_init_restart_task_cb(VOID* data, S32 lFieldCnt, S8** pszValue, S8** pszFiald)
 {
-    S8  szReboot[32] = {0};
-
-    dos_snprintf(szReboot, sizeof(szReboot), "shutdown -r %u", MIN_WAIT_TIME);
-    mon_system(szReboot);
-
-    return DOS_SUCC;
-}
-
-/**
- *  函数：U32 mon_restart_fixed(U32 ulTimeStamp)
- *  功能：指定时间系统重启
- *  参数:
-         U32 ulTimeStamp  重启时间戳
- *  返回值：成功返回DOS_SUCC.失败返回DOS_FAIL
- */
-static U32 mon_restart_fixed(U32 ulTimeStamp)
-{
-    time_t ulCurTimeStamp = time(0);
-    U32 ulTimeDiff = U32_BUTT;
-    S8  szReboot[32] = {0};
-
-    if (ulTimeStamp <= ulCurTimeStamp)
+    if (DOS_ADDR_INVALID(pszFiald) || DOS_ADDR_INVALID(pszValue) || DOS_ADDR_INVALID(data))
     {
         DOS_ASSERT(0);
-        hb_logr_debug("Your TimeStamp is %u, but current timestamp is %u. Please check the time.", ulTimeStamp, ulCurTimeStamp);
         return DOS_FAIL;
     }
 
-    ulTimeDiff = ulTimeStamp - ulCurTimeStamp;
-    /* 将秒转换为分钟 */
-    ulTimeDiff = (ulTimeDiff + ulTimeDiff % 60)/60;
-    /* 默认至少给2分钟时间 */
-    if (ulTimeDiff < MIN_WAIT_TIME)
+    if (lFieldCnt < 2
+        || DOS_ADDR_INVALID(pszFiald[0])
+        || DOS_ADDR_INVALID(pszFiald[1]))
     {
-        ulTimeDiff = MIN_WAIT_TIME;
+        DOS_ASSERT(0);
+        return DOS_FAIL;
     }
-    dos_snprintf(szReboot, sizeof(szReboot), "shutdown -r %u", ulTimeDiff);
 
+    if (DOS_ADDR_INVALID(pszValue[0])
+        || DOS_ADDR_INVALID(pszValue[1]))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
 
-    mon_system(szReboot);
-
-    return DOS_SUCC;
+    return dos_atoul(pszValue[1], (U32 *)data);
 }
 
-/**
- *  函数：U32 mon_restart_later()
- *  功能：稍后系统重启(即没有业务的时候)
- *  返回值：成功返回DOS_SUCC.失败返回DOS_FAIL
- */
-static U32 mon_restart_later()
+U32 mon_start_restart_task()
 {
-    U32  ulStartTime = time(0);
-    U32  ulCurTime, ulIndex = 0;
-    BOOL bCanReboot = DOS_TRUE;
+    S8 szBuffer[128];
+    U32 ulStatus = 0;
+    U32 ulTime = 0;
+    U32 ulRet;
 
-    while (1)
+    dos_snprintf(szBuffer, sizeof(szBuffer), "SELECT parameter_name,parameter_value FROM tbl_parameters WHERE id=16");
+    ulRet = db_query(g_pstCCDBHandle, szBuffer, mon_init_restart_task_cb, &ulStatus, NULL);
+
+    if (ulRet != DOS_SUCC)
     {
-        ulCurTime = time(0);
-        if (ulCurTime - ulStartTime >= MAX_WAIT_TIME * 60)
+        return ulRet;
+    }
+
+    if (ulStatus)
+    {
+        dos_snprintf(szBuffer, sizeof(szBuffer), "SELECT parameter_name,parameter_value FROM tbl_parameters WHERE id=15");
+        ulRet = db_query(g_pstCCDBHandle, szBuffer, mon_init_restart_task_cb, &ulTime, NULL);
+
+        if (ulRet != DOS_SUCC)
         {
-            mon_system("/sbin/reboot");
-            break;
+            return ulRet;
         }
 
-        for (ulIndex = 0; ulIndex < DOS_PROCESS_MAX_NUM; ++ulIndex)
-        {
-            if (g_pstProcessInfo[ulIndex]->ulVilad == DOS_TRUE
-                && g_pstProcessInfo[ulIndex]->ulActive == DOS_TRUE
-                && g_pstProcessInfo[ulIndex]->bRecvRebootRsp == DOS_FALSE)
-            {
-                bCanReboot = DOS_FALSE;
-                break;
-            }
-        }
+        logr_notice("Restart task found. Time: %u", ulTime);
 
-        if (bCanReboot)
-        {
-            mon_system("/sbin/reboot");
-            break;
-        }
-        else
-        {
-            /* 每隔5秒钟去检查一次 */
-            sleep(5);
-        }
+        mon_restart_cycle_setting(ulTime);
+        mon_restart_cycle_start();
     }
 
     return DOS_SUCC;

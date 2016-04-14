@@ -158,7 +158,7 @@ U32 http_api_handle_proc(HTTP_HANDLE_ST *pstHandle, U32 *pulErrNo)
         return DOS_FAIL;
     }
 
-    logr_debug("Recv http apit request. Prefix: %s, Query: %s, Conten Len:%d"
+    logr_debug("Recv http api request. Prefix: %s, Query: %s, Conten Len:%d"
                 , pstHandle->uri
                 , pstHandle->query_string
                 , pstHandle->content_len);
@@ -325,7 +325,7 @@ U32 http_api_handle_reg(S8 *pcPrefix, U32 (*handle)(HTTP_HANDLE_ST *, list_t *))
 static S32 http_event_handler(HTTP_HANDLE_ST *pstHandle, enum mg_event enEvent)
 {
     S8  acRsp[128];
-    U32 ulErrNo;
+    U32 ulErrNo = 0;
 
     if (DOS_ADDR_INVALID(pstHandle))
     {
@@ -333,6 +333,8 @@ static S32 http_event_handler(HTTP_HANDLE_ST *pstHandle, enum mg_event enEvent)
 
         return MG_FALSE;
     }
+
+    logr_debug("Http api server recv event %d", MG_REQUEST);
 
     if (MG_REQUEST == enEvent)
     {
@@ -394,6 +396,8 @@ U32 http_api_init()
         return DOS_FAIL;
     }
 
+    http_api_handle_init();
+
     g_pstMonServer = mg_create_server(NULL, http_event_handler);
     if (DOS_ADDR_INVALID(g_pstMonServer))
     {
@@ -412,8 +416,6 @@ U32 http_api_init()
 
     logr_info("Init the API Server on port %u.ACL:%s", g_usHttpApiLintenPort, szBuffer);
 
-    http_api_handle_init();
-
     return DOS_TRUE;
 }
 
@@ -430,7 +432,7 @@ U32 http_api_start()
 
 U32 http_api_stop()
 {
-    g_blRunning = DOS_FAIL;
+    g_blRunning = DOS_FALSE;
 
     return DOS_SUCC;
 }

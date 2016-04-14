@@ -53,4 +53,7 @@ VOID mon_trace(U32 ulTraceTarget, U8 ucTraceLevel, const S8 * szFormat, ...);
 
 U32 mon_init_notify_list();
 
+U32 mon_start_restart_task();
+
 #endif
+

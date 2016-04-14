@@ -113,6 +113,8 @@ U32 mon_start()
 {
     S32 lRet = 0;
 
+    mon_start_restart_task();
+
     if (mon_mail_start() != DOS_SUCC)
     {
         mon_trace(MON_TRACE_MAIL, LOG_LEVEL_ERROR, "Create warning mail pthread FAIL.");
