@@ -2825,7 +2825,6 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 pstHungupLeg = pstCalleeCB;
                 pstOtherLeg  = pstCallingCB;
-                pstCalleeCB->stCall.stTimeInfo.ulAnswerTime = pstCalleeCB->stCall.stTimeInfo.ulByeTime;
                 pstCallingCB->stCall.stTimeInfo.ulByeTime = pstCalleeCB->stCall.stTimeInfo.ulByeTime;
             }
             else
@@ -2833,7 +2832,6 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstHungupLeg = pstCallingCB;
                 pstOtherLeg  = pstCalleeCB;
                 pstCalleeCB->stCall.stTimeInfo.ulByeTime = pstCallingCB->stCall.stTimeInfo.ulByeTime;
-                pstCalleeCB->stCall.stTimeInfo.ulAnswerTime = pstCalleeCB->stCall.stTimeInfo.ulByeTime;
             }
 
             /* 生成话单 */
@@ -4329,8 +4327,6 @@ U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
         case SC_INTERCEPTION_PROC:
         case SC_INTERCEPTION_ALERTING:
-             /* 电话没有接听， */
-             pstLCB->stCall.stTimeInfo.ulAnswerTime = pstLCB->stCall.stTimeInfo.ulByeTime;
         case SC_INTERCEPTION_ACTIVE:
         case SC_INTERCEPTION_RELEASE:
             /* 发送话单 */
@@ -4740,7 +4736,6 @@ U32 sc_whisper_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
         case SC_WHISPER_PROC:
         case SC_WHISPER_ALERTING:
-            pstLCB->stCall.stTimeInfo.ulAnswerTime = pstLCB->stCall.stTimeInfo.ulByeTime;
         case SC_WHISPER_ACTIVE:
         case SC_WHISPER_RELEASE:
             /* 发送话单 */
@@ -11603,7 +11598,6 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 pstHungupLeg = pstCalleeCB;
                 pstOtherLeg  = pstCallingCB;
-                pstCalleeCB->stCall.stTimeInfo.ulAnswerTime = pstCalleeCB->stCall.stTimeInfo.ulByeTime;
                 pstCallingCB->stCall.stTimeInfo.ulByeTime = pstCalleeCB->stCall.stTimeInfo.ulByeTime;
             }
             else
@@ -11611,7 +11605,6 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstHungupLeg = pstCallingCB;
                 pstOtherLeg  = pstCalleeCB;
                 pstCalleeCB->stCall.stTimeInfo.ulByeTime = pstCallingCB->stCall.stTimeInfo.ulByeTime;
-                pstCalleeCB->stCall.stTimeInfo.ulAnswerTime = pstCalleeCB->stCall.stTimeInfo.ulByeTime;
             }
 
             /* 生成话单 */

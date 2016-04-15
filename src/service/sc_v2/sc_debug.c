@@ -4929,7 +4929,7 @@ S32 cli_cc_license(U32 ulIndex, S32 argc, S8 **argv)
 
     if (licc_load_customer_id((U8 *)szBuffer, sizeof(szBuffer)) != DOS_SUCC)
     {
-        dos_snprintf(szOutput, sizeof(szOutput), "Username: <NULL>\r\n");
+        dos_snprintf(szOutput, sizeof(szOutput), "Username: \r\n");
     }
     else
     {

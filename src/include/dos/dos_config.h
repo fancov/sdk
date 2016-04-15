@@ -273,7 +273,15 @@ S32 config_hb_get_process_cfg_cnt();
  */
 S32 config_hb_get_start_cmd(U32 ulIndex, S8 *pszCmd, U32 ulLen);
 
-
+/**
+ * 函数：config_hb_get_pid_path
+ * 功能：获取进程PID文件的路径
+ * 参数：
+ * 返回值：成功返回0，失败返回-1
+ *
+ * 说明：该函数在销毁之前不会保存当前配置到文件，如果配置有更改，请提前保存
+ */
+S32 config_hb_get_pid_path(U32 ulIndex, S8 *pszPath, U32 ulLen);
 
 /**
  * 函数：S32 config_threshold_mem(S32* plMem);

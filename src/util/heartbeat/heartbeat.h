@@ -51,9 +51,16 @@ typedef enum tagSysRestartType
     MON_SYS_RESTART_IMMEDIATELY = 0,  /* 系统马上重启 */
     MON_SYS_RESTART_FIXED,            /* 系统定时重启 */
     MON_SYS_RESTART_LATER,            /* 稍后重启(没有业务时) */
+    MON_SYS_RESTART_CYCLE,            /* 稍后重启(没有业务时) */
 
     MON_SYS_RESTART_BUTT = 16
 }MON_SYS_RESTART_TYPE;
+
+typedef enum tagSysRestartSubType{
+    MON_SYS_RESTART_SUB_TYPE_DAILY   = 0,
+    MON_SYS_RESTART_SUB_TYPE_WEEKLY,
+    MON_SYS_RESTART_SUB_TYPE_MONTHLY
+}MON_SYS_RESTART_SUB_TYPE_EN;
 
 /* 告警级别 */
 typedef enum tagMonNotifyLevel
@@ -188,7 +195,7 @@ S32 hb_recv_external_warning(VOID *pMsg);
 S32 hb_unreg_proc(PROCESS_INFO_ST *pstProcessInfo);
 S32 hb_reg_proc(PROCESS_INFO_ST *pstProcessInfo);
 VOID* hb_external_warning_proc(VOID* ptr);
-U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp);
+U32 mon_restart_system(U32 ulStyle, U32 ulTimeStamp, U32 ulStatus);
 #endif
 
 #if INCLUDE_BH_CLIENT

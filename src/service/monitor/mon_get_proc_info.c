@@ -326,7 +326,7 @@ static U32 mon_get_proc_pid_list()
     S32  lRet;
     FILE *fpPid = NULL;
     S8   szServRoot[16] = {0}, *pszRet = NULL, szPid[8] = {0};
-    S8   szPidFile[64] = {0}, szPidFileTemp[64] = {0}, *pszPos = NULL;
+    S8   szPidFile[256] = {0}, szPidFileTemp[64] = {0}, *pszPos = NULL;
 
     /* 首先获取被监控进程个数 */
     ulCfgProcCnt = config_hb_get_process_cfg_cnt();
@@ -362,14 +362,19 @@ static U32 mon_get_proc_pid_list()
             return DOS_FAIL;
         }
 
-        /* 构造进程文件路径 */
-        dos_snprintf(szPidFileTemp, sizeof(szPidFileTemp), "%s", szServRoot);
-        if ('/' != szPidFileTemp[dos_strlen(szPidFileTemp) - 1])
+        szPidFile[0] = '\0';
+        if (config_hb_get_pid_path(ulIndex, szPidFile, sizeof(szPidFile)) < 0
+            || '\0' == szPidFile[0])
         {
-            dos_strcat(szPidFileTemp, "/");
+            /* 构造进程文件路径 */
+            dos_snprintf(szPidFileTemp, sizeof(szPidFileTemp), "%s", szServRoot);
+            if ('/' != szPidFileTemp[dos_strlen(szPidFileTemp) - 1])
+            {
+                dos_strcat(szPidFileTemp, "/");
+            }
+            dos_strcat(szPidFileTemp, "var/run/pid/");
+            dos_snprintf(szPidFile, sizeof(szPidFile), "%s%s.pid", szPidFileTemp, g_pastProc[ulIndex]->szProcName);
         }
-        dos_strcat(szPidFileTemp, "var/run/pid/");
-        dos_snprintf(szPidFile, sizeof(szPidFile), "%s%s.pid", szPidFileTemp, g_pastProc[ulIndex]->szProcName);
 
         /* 获取进程id */
         fpPid = fopen(szPidFile, "r");

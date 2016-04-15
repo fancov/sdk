@@ -107,11 +107,15 @@ U32 http_api_alarm_clear(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList)
  **/
 U32 http_api_system_restart(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList)
 {
-    S8  *pszStyle = NULL, *pszTimeStamp = NULL;
+    S8  *pszStyle = NULL, *pszTimeStamp = NULL, *pszStatus = NULL;
     U32 ulStyle = U32_BUTT, ulTimeStamp = U32_BUTT, ulRet = U32_BUTT;
+    U32 ulStatus = 0;
 
     pszStyle = http_api_get_var(pstArgvList, "action");
     pszTimeStamp = http_api_get_var(pstArgvList, "time");
+    pszStatus = http_api_get_var(pstArgvList, "status");
+
+    dos_printf("Process system restart request. type: %s, time: %s", pszStyle, pszTimeStamp);
 
     if (dos_atoul(pszTimeStamp, &ulTimeStamp) < 0)
     {
@@ -137,6 +141,13 @@ U32 http_api_system_restart(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList)
             http_api_write(pstHandle, "Param \'time\' shouldn\'t be \'0\' or \'%u\' if you restart system at fixed time.<br>", U32_BUTT);
             return DOS_FAIL;
         }
+
+        if (DOS_ADDR_INVALID(pszStatus) || dos_atoul(pszStatus, &ulStatus) < 0)
+        {
+            http_api_write(pstHandle, "Invalid paramters");
+            return DOS_FAIL;
+        }
+
         http_api_write(pstHandle, "The System will be restarted in timestamp %u.<br>", ulTimeStamp);
         ulStyle = MON_SYS_RESTART_FIXED;
     }
@@ -150,13 +161,23 @@ U32 http_api_system_restart(HTTP_HANDLE_ST *pstHandle, list_t *pstArgvList)
         http_api_write(pstHandle, "%s", "The System will be restarted later.<br>");
         ulStyle = MON_SYS_RESTART_LATER;
     }
+    else if (0 == dos_strnicmp(pszStyle, "cycle", dos_strlen("cycle")))
+    {
+        if (DOS_ADDR_INVALID(pszStatus) || dos_atoul(pszStatus, &ulStatus) < 0)
+        {
+            http_api_write(pstHandle, "Invalid paramters");
+            return DOS_FAIL;
+        }
+
+        ulStyle = MON_SYS_RESTART_CYCLE;
+    }
     else
     {
         http_api_write(pstHandle, "Sorry, the server doesn\'t support param \'%s\',please check it.<br>", pszStyle);
         return DOS_FAIL;
     }
 
-    ulRet = mon_restart_system(ulStyle, ulTimeStamp);
+    ulRet = mon_restart_system(ulStyle, ulTimeStamp, ulStatus);
     if (DOS_SUCC != ulRet)
     {
         http_api_write(pstHandle, "Restart system FAIL.<br>");
