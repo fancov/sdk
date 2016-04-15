@@ -640,10 +640,11 @@ BOOL sc_sip_account_extension_check(S8 *pszNum, U32 ulCustomerID)
 
 U32 sc_sip_account_update_info2db(U32 ulPublicIP, U32 ulPrivateIP, SC_SIP_STATUS_TYPE_EN enStatus, U32 ulSipID)
 {
+    U32                 ulPrivatePort = 80;
     S8                  szSQL[512]  = { 0 };
     SC_DB_MSG_TAG_ST    *pstMsg     = NULL;
 
-    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_sip SET public_net=%u, private_net=%u, register=%d WHERE id=%u", ulPublicIP, ulPrivateIP, enStatus, ulSipID);
+    dos_snprintf(szSQL, sizeof(szSQL), "CALL proc_save_sip_status(%u, %d, %u, %u, %u);", ulSipID, enStatus, ulPublicIP, ulPrivateIP, ulPrivatePort);
 
     pstMsg = (SC_DB_MSG_TAG_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_TAG_ST));
     if (DOS_ADDR_INVALID(pstMsg))
@@ -1770,7 +1771,7 @@ U32 sc_gateway_update_status2db(U32 ulGateWayID, SC_TRUNK_STATE_TYPE_EN enTrunkS
     S8                  szSQL[512]  = { 0 };
     SC_DB_MSG_TAG_ST    *pstMsg     = NULL;
 
-    dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_gateway SET register_status=%d WHERE id=%u", enTrunkState, ulGateWayID);
+    dos_snprintf(szSQL, sizeof(szSQL), "CALL proc_save_trunk_status(%u, %d);", ulGateWayID, enTrunkState);
 
     pstMsg = (SC_DB_MSG_TAG_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_TAG_ST));
     if (DOS_ADDR_INVALID(pstMsg))
