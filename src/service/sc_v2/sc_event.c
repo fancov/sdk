@@ -425,7 +425,105 @@ U32 sc_srv_voice_verify_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
 }
 
 /**
- * 基本呼叫业务状态机处理
+ * 企业总机业务状态机处理
+ *
+ * @param SC_MSG_HEAD_ST *pstMsg 当前事件
+ * @param SC_SRV_CB *pstSCB      当前业务控制块
+ * @param SC_SRV_INFO_ST *pstSubServ 基本呼叫业务控制块
+ *
+ * return 成功返回DOS_SUCC，否则返回DOS_FALSE
+ */
+U32 sc_srv_cor_switchboard_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TAG_ST *pstSubServ)
+{
+    U32 ulRet = DOS_SUCC;
+
+     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstSubServ))
+     {
+         DOS_ASSERT(0);
+
+         return DOS_FAIL;
+     }
+
+     sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processing %s in switchboard Service, SCB:%u"
+                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo);
+
+     switch (pstMsg->ulMsgType)
+     {
+         case SC_EVT_AUTH_RESULT:
+             break;
+
+         case SC_EVT_CALL_SETUP:
+            sc_switchboard_setup(pstMsg, pstSCB);
+             break;
+
+         case SC_EVT_CALL_AMSWERED:
+            sc_switchboard_answer(pstMsg, pstSCB);
+             break;
+
+         case SC_EVT_CALL_RINGING:
+            sc_switchboard_ring(pstMsg, pstSCB);
+             break;
+
+         case SC_EVT_BRIDGE_START:
+             /* 暂时不处理 */
+             break;
+
+         case SC_EVT_BRIDGE_STOP:
+             /* 暂时不处理 */
+             break;
+
+         case SC_EVT_HOLD:
+             break;
+
+         case SC_EVT_CALL_RERLEASE:
+            sc_switchboard_release(pstMsg, pstSCB);
+             break;
+
+         case SC_EVT_CALL_STATUS:
+             /* 暂时不处理 */
+             break;
+
+         case SC_EVT_DTMF:
+             ulRet = sc_switchboard_dtmf(pstMsg, pstSCB);
+             break;
+
+         case SC_EVT_RECORD_START:
+             /* 暂时不处理 */
+             break;
+
+         case SC_EVT_RECORD_END:
+             /* 暂时不处理 */
+             break;
+
+         case SC_EVT_PLAYBACK_START:
+             /* 暂时不处理 */
+             break;
+
+         case SC_EVT_PLAYBACK_END:
+             sc_switchboard_play_end(pstMsg, pstSCB);
+             break;
+
+         case SC_EVT_LEACE_CALL_QUEUE:
+            ulRet = sc_switchboard_queue_leave(pstMsg, pstSCB);
+             break;
+
+         case SC_EVT_ERROR_PORT:
+             break;
+
+         default:
+             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Invalid event type. %u", pstMsg->ulMsgType);
+             break;
+     }
+
+     sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Processed %s in switchboard Service, SCB:%u, Ret: %s"
+                 , sc_event_str(pstMsg->ulMsgType), pstSCB->ulSCBNo
+                 , (DOS_SUCC == ulRet) ? "succ" : "FAIL");
+     return DOS_SUCC;
+}
+
+
+/**
+ * 接入码业务状态机处理
  *
  * @param SC_MSG_HEAD_ST *pstMsg 当前事件
  * @param SC_SRV_CB *pstSCB      当前业务控制块
@@ -1480,6 +1578,10 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
 
             case SC_SRV_AUTO_PREVIEW:
                 ulRet = sc_srv_auto_preview_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
+                break;
+
+            case SC_SRV_COR_SWITCHBOARD:
+                ulRet = sc_srv_cor_switchboard_proc(pstMsg, pstSCB, pstSCB->pstServiceList[ulCurrentSrv]);
                 break;
 
             default:

@@ -43,6 +43,9 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
     {"route",                    sc_http_api_route_action},
     {"gw_group",                 sc_http_api_gw_group_action},
     {"did",                      sc_http_api_did_action},
+    {"switchboard",              sc_http_api_switchboard_action},
+    {"period",                   sc_http_api_period_action},
+    {"keymap",                   sc_http_api_keymap_action},
     {"black",                    sc_http_api_black_action},
     {"caller",                   sc_http_api_caller_action},
     {"callergrp",                sc_http_api_callergrp_action},
@@ -1451,6 +1454,184 @@ U32 sc_http_api_did_action(list_t *pstArgv)
 invalid_params:
     return SC_HTTP_ERRNO_INVALID_PARAM;
 }
+
+U32 sc_http_api_switchboard_action(list_t *pstArgv)
+{
+    S8  *pszSwitchboardID = NULL, *pszAction = NULL;
+    U32  ulSwitchboardID, ulAction;
+
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    pszSwitchboardID = sc_http_api_get_value(pstArgv, "switchboard_id");
+    pszAction = sc_http_api_get_value(pstArgv, "action");
+
+    if (DOS_ADDR_INVALID(pszSwitchboardID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (dos_atoul(pszSwitchboardID, &ulSwitchboardID) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_SWITCHBOARD_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_SWITCHBOARD_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_SWITCHBOARD_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (sc_cor_switchboard_proc(ulAction, ulSwitchboardID) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    return SC_HTTP_ERRNO_SUCC;
+
+invalid_params:
+    return SC_HTTP_ERRNO_INVALID_PARAM;
+
+}
+
+
+
+U32 sc_http_api_period_action(list_t *pstArgv)
+{
+    S8  *pszPeriodID = NULL, *pszAction = NULL;
+    U32  ulPeriodID, ulAction;
+
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    pszPeriodID  = sc_http_api_get_value(pstArgv, "period_id");
+    pszAction = sc_http_api_get_value(pstArgv, "action");
+
+    if (DOS_ADDR_INVALID(pszPeriodID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (dos_atoul(pszPeriodID, &ulPeriodID) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_PERIOD_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_PERIOD_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_PERIOD_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (sc_sw_period_proc(ulAction, ulPeriodID) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    return SC_HTTP_ERRNO_SUCC;
+
+invalid_params:
+    return SC_HTTP_ERRNO_INVALID_PARAM;
+
+}
+
+
+U32 sc_http_api_keymap_action(list_t *pstArgv)
+{
+    S8  *pszKeymapID = NULL, *pszAction = NULL;
+    U32  ulKeymapID, ulAction;
+
+    if (DOS_ADDR_INVALID(pstArgv))
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_REQUEST;
+    }
+
+    pszKeymapID  = sc_http_api_get_value(pstArgv, "keymap_id");
+    pszAction = sc_http_api_get_value(pstArgv, "action");
+
+    if (DOS_ADDR_INVALID(pszKeymapID)
+        || DOS_ADDR_INVALID(pszAction))
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (dos_atoul(pszKeymapID, &ulKeymapID) < 0)
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (0 == dos_strnicmp(pszAction, "add", dos_strlen("add")))
+    {
+        ulAction = SC_API_CMD_ACTION_KEYMAP_ADD;
+    }
+    else if (0 == dos_strnicmp(pszAction, "delete", dos_strlen("delete")))
+    {
+        ulAction = SC_API_CMD_ACTION_KEYMAP_DELETE;
+    }
+    else if (0 == dos_strnicmp(pszAction, "update", dos_strlen("update")))
+    {
+        ulAction = SC_API_CMD_ACTION_KEYMAP_UPDATE;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+        goto invalid_params;
+    }
+
+    if (sc_sw_period_proc(ulAction, ulKeymapID) != DOS_SUCC)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_CMD_EXEC_FAIL;
+    }
+
+    return SC_HTTP_ERRNO_SUCC;
+
+invalid_params:
+    return SC_HTTP_ERRNO_INVALID_PARAM;
+
+}
+
 
 U32 sc_http_api_black_action(list_t *pstArgv)
 {

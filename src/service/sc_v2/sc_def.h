@@ -139,6 +139,7 @@ extern "C" {
 #define SC_MAX_CALL_PRE_SEC            120
 
 #define SC_TASK_AUDIO_PATH             "/home/ipcc/data/audio"
+#define SC_IVR_AUDIO_PATH              "/home/ipcc/data/ivraudio"
 
 #define SC_RECORD_FILE_PATH            "/home/ipcc/data/voicerecord"
 
@@ -533,6 +534,7 @@ typedef enum tagSCSrvType{
     SC_SRV_DEMO_TASK            = 12,  /**< 群呼任务demo */
     SC_SRV_CALL_AGENT           = 13,  /**< 通过web，呼叫同组坐席 */
     SC_SRV_AUTO_PREVIEW         = 14,  /**< 预览外呼群呼任务 */
+    SC_SRV_COR_SWITCHBOARD      = 15,   /**< 企业总机业务*/
 
     SC_SRV_BUTT,
 }SC_SRV_TYPE_EN;
@@ -1177,6 +1179,113 @@ typedef struct tagSCAUTOCall{
     DOS_TMR_ST        stCusTmrHandle;
 
 }SC_AUTO_CALL_ST;
+/*企业总机业务状态机*/
+typedef enum tagSCCORSwitchboardStatus{
+    SC_COR_SWITCHBOARD_IDEL,
+    SC_COR_SWITCHBOARD_PLAY_AUDIO,
+    SC_COR_SWITCHBOARD_AFTER_KEY,       /* 按键之后操作 */
+    SC_COR_SWITCHBOARD_AUTH2,           /* 认证被叫 */
+    SC_COR_SWITCHBOARD_EXEC,            /* 认证成功，开始呼叫被叫 */
+    SC_COR_SWITCHBOARD_PROC,
+    SC_COR_SWITCHBOARD_ALERTING,        /* 被叫开始振铃 */
+    SC_COR_SWITCHBOARD_TONE,
+    SC_COR_SWITCHBOARD_CONNECTED,       /* 通话 */
+    SC_COR_SWITCHBOARD_PROCESS,         /* 结束后收尾 */
+    SC_COR_SWITCHBOARD_RELEASE          /* 释放资源 */
+} SC_COR_SWITCHBOARD_STATUS_EN;
+
+
+typedef struct tagCorSWKeyMap {
+    U32  ulID;
+    U32  ulIVRPeriodID;
+    BOOL bExist;
+    U8   ucEventType;        //SC_SW_TRANSFER_TYPE_EN
+    U32  ulKey;              //按键
+    U8   ucKeyMapType;       //按键转接对象的类型  SC_SW_FORWARD_TYPE_EN
+    U32  ulKeyMap;           //agent, agent_group, sip, telephone
+
+}SC_IVR_KEY_MAP_ST;
+
+typedef struct SCCORSWPeriodTag{
+    U32         ulID;
+    U32         ulSWID;
+    U32         ulCustomerID;
+    BOOL        bExist;
+    S8          ucPlayTimes;
+
+    U8          ucPeriodValid;
+    U8          ucWeekMask;                        /* 周控制，使用位操作，第0位为星期天 */
+    U8          ucHourBegin;                       /* 开始时间，小时 */
+    U8          ucMinuteBegin;                     /* 开始时间，分钟 */
+    U8          ucSecondBegin;                     /* 开始时间，秒 */
+
+    U8          ucHourEnd;                         /* 结束时间，小时 */
+    U8          ucMinuteEnd;                       /* 结束时间，分钟 */
+    U8          ucSecondEnd;                       /* 结束时间，秒 */
+
+    /*语音文件*/
+    U32        ulIvrAudioID;
+
+    U8         ucTransferType;                        //SC_SW_TRANSFER_TYPE_EN
+
+    /*按键设定*/
+    SC_IVR_KEY_MAP_ST   *pstSWKeymapNode[16];
+    U16        ulIndex;
+}SC_SW_IVR_NODE_ST;
+
+
+typedef struct tagSCCORSwitchboard{
+    /** 基本信息 */
+    SC_SCB_TAG_ST      stSCBTag;
+   /* 第一次创建的LEG编号 */
+    U32                ulCallingLegNo;
+    /* 关联LEG编号 */
+    U32                ulCalleeLegNo;
+    /*企业总机语音方案编号*/
+    U16                usCorSWPeroidNo;
+    SC_SW_IVR_NODE_ST  *pstSWPeriodNode;
+    SC_AGENT_NODE_ST   *pstAgentCallee;
+    S8                 szExtensionNum[16];
+    S8                 szTelNum[16];
+    S8                 szTTNum[16];
+    U8                 ucIndex;
+    DOS_TMR_ST         stTmrHandle;
+    U8                 ucTimeout;
+    U8                 ucExtensionNumLength;
+
+}SC_COR_SWITCHBOARD_ST;
+
+
+typedef struct  SCCorSWNodeTag{
+    U32     ulID;
+    BOOL    bExist;
+    S8      szSWNodeName[64];
+
+    SC_SW_IVR_NODE_ST   *pstSWPeriodNode[64];
+    U8      ucIndex;
+}SC_COR_SW_NODE_ST;
+
+typedef  enum  tagSCSWEventType{
+    SC_SW_BUTTON_EVENT = 1,
+    SC_SW_TIMEOUT_EVENT,
+    SC_DIRECT_TRANSFER
+}SC_SW_EVENT_TYPE_EN;
+
+typedef enum tagSCSWTransferType{
+    SC_SW_DIRECT_TRANSFER = 1,
+    SC_SW_BUTTON_TRANSFER,
+    SC_SW_DIAL_EXTENSION
+}SC_SW_TRANSFER_TYPE_EN;
+
+typedef enum tagSCForwardType{
+    SC_SW_FORWARD_AGENT = 1,
+    SC_SW_FORWARD_AGENT_GROUP,
+    SC_SW_FORWARD_SIP,
+    SC_SW_FORWARD_TT,
+    SC_SW_FORWARD_TEL,
+    SC_SW_FORWARD_BUTT
+
+}SC_SW_FORWARD_TYPE_EN;
 
 
 /** 语音验证码业务状态机
@@ -1646,6 +1755,8 @@ typedef struct tagSCSrvCB{
     SC_SRV_CALL_AGENT_ST stCallAgent;
     /* 预览外呼群呼任务 */
     SC_AUTO_PREVIEW_ST   stAutoPreview;
+    /** 企业总机业务控制块*/
+    SC_COR_SWITCHBOARD_ST   stCorSwitchboard;
     /** 余额告警业务是否启用 */
     SC_BALANCE_WARNING_ST stBalanceWarning;
 
@@ -2015,6 +2126,9 @@ typedef struct tagSCMsgEvtLeaveCallQue{
 
     /** 业务控制块编号 */
     U32     ulSCBNo;
+    U32     ulForwardType;
+    U32     ulForwardID;
+    U8      szForwardNum[16];
 
     /** 选中的坐席 */
     SC_AGENT_NODE_ST        *pstAgentNode;
@@ -2077,7 +2191,8 @@ typedef struct tagBSMsgStat
 }SC_BS_MSG_STAT_ST;
 
 typedef struct tagCallWaitQueueNode{
-    U32                 ulAgentGrpID;                     /* 坐席组ID */
+    U32                 ulID;                            /* 坐席组 座席ID */
+    U32                 ulForwardType;
     U32                 ulStartWaitingTime;               /* 开始等待的时间 */
 
     pthread_mutex_t     mutexCWQMngt;
@@ -2174,6 +2289,8 @@ typedef struct tagTaskCB
 typedef struct tagSCInconmingCallNode
 {
     SC_SRV_CB   *pstSCB;
+    U32         ulForwardID;
+    S8          szForwardNum[16];
     S8          szCaller[SC_NUM_LENGTH];
 }SC_INCOMING_CALL_NODE_ST;
 
@@ -2224,6 +2341,20 @@ typedef struct tagSysStat{
 }SC_SYS_STAT_ST;
 
 
+typedef U32 (*http_cwq_handle)(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode);
+/**
+ * 队列
+ */
+typedef struct tagSCCwqTable
+{
+    U8               ulForwardType;     //SC_SW_FORWARD_TYPE_EN
+    http_cwq_handle  callback;
+    DLL_S            stSWCwqList;
+
+    pthread_mutex_t  mutexSWCwqList;
+
+}SC_CWQ_TABLE_ST;
+
 extern SC_SYS_STAT_ST       g_stSysStat;
 extern SC_SYS_STAT_ST       g_stSysStatLocal;
 
@@ -2254,6 +2385,7 @@ U32 sc_get_call_limitation();
 
 VOID sc_lcb_playback_init(SC_SU_PLAYBACK_ST *pstPlayback);
 
+U32 sc_ivr_check_can_call_by_time(SC_SW_IVR_NODE_ST *pstSWPeriodNode);
 
 U32 sc_send_event_call_create(SC_MSG_EVT_CALL_ST *pstEvent);
 U32 sc_send_event_err_report(SC_MSG_EVT_ERR_REPORT_ST *pstEvent);
@@ -2316,6 +2448,9 @@ U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_
 void sc_agent_mark_custom_callback(U64 arg);
 void sc_agent_ringing_timeout_callback(U64 arg);
 void sc_auto_call_ringing_timeout_callback(U64 arg);
+U32 sc_switchboard_start(SC_SRV_CB *pstSCB, U32 ulBindID);
+U32 sc_switchboard_call_agent(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAgentID, U32 *pulErrCode);
+SC_COR_SW_NODE_ST * sc_get_sw_by_id(U32 ulSWID);
 
 U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -2351,6 +2486,18 @@ U32 sc_preview_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_preview_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_preview_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+
+
+U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_switchboard_play_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_switchboard_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_switchboard_ring(SC_MSG_TAG_ST *pstMsg,  SC_SRV_CB *pstSCB);
+U32 sc_switchboard_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_switchboard_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_switchboard_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_switchboard_answer(SC_MSG_TAG_ST *pstMsg,  SC_SRV_CB *pstSCB);
+
+
 
 U32 sc_voice_verify_proc(U32 ulCustomer, S8 *pszNumber, S8 *pszPassword, U32 ulPlayCnt);
 U32 sc_voice_verify_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
@@ -2491,8 +2638,8 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
 U32 sc_did_bind_info_get(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID);
 U32 sc_sip_account_get_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
 U32 sc_log_digest_print(const S8 *szTraceStr);
-U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller, BOOL BIsAddHead);
-U32 sc_cwq_del_call(SC_SRV_CB *pstSCB);
+U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller, U8 ucForwardType, BOOL BIsAddHead);
+U32 sc_cwq_del_call(SC_SRV_CB *pstSCB, U32 ulType);
 
 U32 sc_access_balance_enquiry(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_access_agent_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);

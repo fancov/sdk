@@ -29,11 +29,10 @@ extern pthread_mutex_t   g_mutexAgentList;
 extern HASH_TABLE_S      *g_pstGroupList;
 extern pthread_mutex_t   g_mutexGroupList;
 
-extern SC_HTTPD_CB_ST        *g_pstHTTPDList[SC_MAX_HTTPD_NUM];
-extern SC_HTTP_CLIENT_CB_S   *g_pstHTTPClientList[SC_MAX_HTTP_CLIENT_NUM];
-extern SC_BS_MSG_STAT_ST stBSMsgStat;
-extern DLL_S               g_stCWQMngt;
-extern U32          g_ulCPS;
+extern SC_HTTPD_CB_ST       *g_pstHTTPDList[SC_MAX_HTTPD_NUM];
+extern SC_HTTP_CLIENT_CB_S  *g_pstHTTPClientList[SC_MAX_HTTP_CLIENT_NUM];
+extern SC_BS_MSG_STAT_ST    stBSMsgStat;
+extern U32                  g_ulCPS;
 extern SC_TASK_CB           *g_pstTaskList;
 extern pthread_mutex_t      g_mutexTaskList;
 extern BOOL                 g_blSCInitOK;
@@ -46,14 +45,16 @@ extern SC_LEG_CB       *g_pstLegCB;
 extern DLL_S           g_stCommandQueue;
 extern DLL_S           g_stEventQueue;
 extern DLL_S           g_stBSMsgList;
-extern DLL_S           g_stCWQMngt;
 extern DLL_S           g_stDBRequestQueue;
 extern DLL_S           g_stESLEventQueue;
 extern DLL_S           g_stExtMngtMsg;
 extern DLL_S           g_stLimitStatQueue;
 extern DLL_S           g_stLogDigestQueue;
 
+extern SC_CWQ_TABLE_ST g_pstSWCwqTable[];
+
 U32         g_ulSCLogLevel = LOG_LEVEL_DEBUG;
+U32         g_aulCustomerTrace[SC_TRACE_CUSTOMER_SIZE] = {0, };
 S8          g_aszCallerTrace[SC_TRACE_CALLER_SIZE][SC_NUM_LENGTH] = { {0, }, };
 S8          g_aszCalleeTrace[SC_TRACE_CALLEE_SIZE][SC_NUM_LENGTH] = { {0, }, };
 U8          g_aucServTraceFlag[BS_SERV_BUTT] = { 0 };
@@ -2745,7 +2746,7 @@ U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
 
     S8  szBuff[256] = {0}, szTime[32] = {0};
 
-    DLL_Scan(&g_stCWQMngt, pstListNode, DLL_NODE_S *)
+    DLL_Scan(&g_pstSWCwqTable[SC_SW_FORWARD_AGENT_GROUP].stSWCwqList, pstListNode, DLL_NODE_S *)
     {
         if (DOS_ADDR_INVALID(pstListNode)
             || DOS_ADDR_INVALID(pstListNode->pHandle))
@@ -2753,7 +2754,7 @@ U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
             continue;
         }
         pstCWQNode = (SC_CWQ_NODE_ST *)pstListNode->pHandle;
-        if (ulAgentGrpID != U32_BUTT && ulAgentGrpID != pstCWQNode->ulAgentGrpID)
+        if (ulAgentGrpID != U32_BUTT && ulAgentGrpID != pstCWQNode->ulID)
         {
             continue;
         }
@@ -2926,7 +2927,6 @@ U32 sc_show_all_queue(U32 ulIndex)
         {&g_stCommandQueue      , "g_stCommandQueue"        , "Send CMD from business to sub"},
         {&g_stEventQueue        , "g_stEventQueue"          , "Send event from sub to business"},
         {&g_stBSMsgList         , "g_stBSMsgList"           , "Recv msg from BS"},
-        {&g_stCWQMngt           , "g_stCWQMngt"             , "call wait queue"},
         {&g_stDBRequestQueue    , "g_stDBRequestQueue"      , "update DB"},
         {&g_stESLEventQueue     , "g_stESLEventQueue"       , "Recv event from fs"},
         {&g_stExtMngtMsg        , "g_stExtMngtMsg"          , "Recv event from fs"},
