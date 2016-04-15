@@ -1633,12 +1633,12 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPayloadType = pstFristLeg->ucCodec;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ucPacketLossRate = pstFristLeg->ucLossRate;
 
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldCnt = pstFristLeg->stCall.ucHoldCnt;
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldTimeLen = pstFristLeg->stCall.ulHoldTotalTime;
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[0] = 0;
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[1] = 0;
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[2] = 0;
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[3] = 0;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldCnt = pstSCB->stHold.ulHoldCount;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ulHoldTimeLen = pstSCB->stHold.ulHoldTotalTime;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[0] = pstFristLeg->stCall.aulPeerIP[0];
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[1] = pstFristLeg->stCall.aulPeerIP[1];
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[2] = pstFristLeg->stCall.aulPeerIP[2];
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[3] = pstFristLeg->stCall.aulPeerIP[3];
     pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstFristLeg->stCall.ulTrunkID) ? 0 : pstFristLeg->stCall.ulTrunkID;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstFristLeg->stCall.ulCause;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;

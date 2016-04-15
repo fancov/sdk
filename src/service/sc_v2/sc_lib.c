@@ -426,6 +426,10 @@ VOID sc_lcb_call_init(SC_SU_CALL_ST *pstCall)
     pstCall->ulCodecCnt = 0;
     pstCall->ulCause = 0;
 
+    pstCall->ulTrunkCnt = 0;
+    pstCall->szEIXAddr[0] = '\0';
+    pstCall->aulPeerIP[0] = 0;
+
     pstCall->stTimeInfo.ulStartTime = 0;
     pstCall->stTimeInfo.ulRingTime = 0;
     pstCall->stTimeInfo.ulAnswerTime = 0;
@@ -532,6 +536,8 @@ VOID sc_lcb_hold_init(SC_SU_HOLD_ST *pstHold)
     pstHold->bTrace = DOS_FALSE;
     pstHold->usStatus = SC_SU_HOLD_INIT;
     pstHold->usMode = 0;
+    pstHold->ulHoldTime = 0;
+    pstHold->ulUnHoldTime = 0;
 }
 
 /**
@@ -1039,6 +1045,7 @@ VOID sc_scb_hold_init(SC_CALL_HOLD_ST *pstHold)
     pstHold->stSCBTag.usStatus = SC_HOLD_IDEL;
     pstHold->ulCallLegNo = U32_BUTT;
     pstHold->ulHoldCount = 0;
+    pstHold->ulHoldTotalTime = 0;
 }
 
 VOID sc_scb_transfer_init(SC_CALL_TRANSFER_ST *pstTransfer)

@@ -1201,6 +1201,7 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 if (pstAuthRsp->ucBalanceWarning)
                 {
                     /* 余额告警 */
+                    pstSCB->stBalanceWarning.stSCBTag.bValid = DOS_TRUE;
                     return sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, SC_SND_LOW_BALANCE, 1, 0, 0);
                 }
 
@@ -1444,6 +1445,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_AGENT_NODE_ST     *pstAgentHungup    = NULL;
     S32                  i                  = 0;
     S32                  lRes               = DOS_FAIL;
+    U32                  ulReleasePart;
 
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstHungup) || DOS_ADDR_INVALID(pstSCB))
@@ -1453,6 +1455,15 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Leg %u has hungup. Legs:%u-%u, status : %u", pstHungup->ulLegNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.ulCallingLegNo, pstSCB->stCall.stSCBTag.usStatus);
+
+    if (pstHungup->ulLegNo == pstSCB->stCall.ulCallingLegNo)
+    {
+        ulReleasePart = SC_CALLING;
+    }
+    else
+    {
+        ulReleasePart = SC_CALLEE;
+    }
 
     switch (pstSCB->stCall.stSCBTag.usStatus)
     {
@@ -1811,7 +1822,8 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_call_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+    SC_MSG_EVT_HOLD_ST   *pstHold        = NULL;
+    SC_LEG_CB            *pstLeg         = NULL;
 
     pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
@@ -1838,6 +1850,20 @@ U32 sc_call_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     else
     {
         /* 如果是被UNHOLD的，已经没有HOLD业务了，单纯处理呼叫就好 */
+        pstLeg = sc_lcb_get(pstHold->ulLegNo);
+        if (DOS_ADDR_INVALID(pstLeg))
+        {
+            return DOS_FAIL;
+        }
+
+        if (pstLeg->stHold.ulHoldTime != 0
+            && pstLeg->stHold.ulUnHoldTime > pstLeg->stHold.ulHoldTime)
+        {
+            pstSCB->stHold.ulHoldTotalTime += (pstLeg->stHold.ulUnHoldTime - pstLeg->stHold.ulHoldTime);
+        }
+
+        pstLeg->stHold.ulUnHoldTime = 0;
+        pstLeg->stHold.ulHoldTime = 0;
     }
 
     return DOS_SUCC;
@@ -1961,7 +1987,10 @@ U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_CALL_AUTH:
-            ulRet = sc_outgoing_call_process(pstSCB, pstCallingLegCB);
+            if (pstSCB->stBalanceWarning.stSCBTag.bValid)
+            {
+                ulRet = sc_outgoing_call_process(pstSCB, pstCallingLegCB);
+            }
             break;
 
         case SC_CALL_EXEC:
@@ -2701,6 +2730,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_AGENT_NODE_ST        *pstAgentCall   = NULL;
     S32                     i               = 0;
     S32                     lRes            = DOS_FAIL;
+    U32                     ulReleasePart;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -2711,6 +2741,15 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
+
+    if (pstHungup->ulLegNo == pstSCB->stPreviewCall.ulCallingLegNo)
+    {
+        ulReleasePart = SC_CALLING;
+    }
+    else
+    {
+        ulReleasePart = SC_CALLEE;
+    }
 
     if (pstSCB->stPreviewCall.stSCBTag.usStatus != SC_PREVIEW_CALL_PROCESS
         && pstSCB->stPreviewCall.stSCBTag.usStatus != SC_PREVIEW_CALL_RELEASE)
@@ -3189,7 +3228,8 @@ U32 sc_preview_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+    SC_MSG_EVT_HOLD_ST   *pstHold        = NULL;
+    SC_LEG_CB            *pstLeg         = NULL;
 
     pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
@@ -3216,6 +3256,20 @@ U32 sc_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     else
     {
         /* 如果是被UNHOLD的，已经没有HOLD业务了，单纯处理呼叫就好 */
+        pstLeg = sc_lcb_get(pstHold->ulLegNo);
+        if (DOS_ADDR_INVALID(pstLeg))
+        {
+            return DOS_FAIL;
+        }
+
+        if (pstLeg->stHold.ulHoldTime != 0
+            && pstLeg->stHold.ulUnHoldTime > pstLeg->stHold.ulHoldTime)
+        {
+            pstSCB->stHold.ulHoldTotalTime += (pstLeg->stHold.ulUnHoldTime - pstLeg->stHold.ulHoldTime);
+        }
+
+        pstLeg->stHold.ulUnHoldTime = 0;
+        pstLeg->stHold.ulHoldTime = 0;
     }
 
     return DOS_SUCC;
@@ -5569,7 +5623,8 @@ U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_auto_call_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+    SC_MSG_EVT_HOLD_ST   *pstHold        = NULL;
+    SC_LEG_CB            *pstLeg         = NULL;
 
     pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
@@ -5596,6 +5651,20 @@ U32 sc_auto_call_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     else
     {
         /* 如果是被UNHOLD的，已经没有HOLD业务了，单纯处理呼叫就好 */
+        pstLeg = sc_lcb_get(pstHold->ulLegNo);
+        if (DOS_ADDR_INVALID(pstLeg))
+        {
+            return DOS_FAIL;
+        }
+
+        if (pstLeg->stHold.ulHoldTime != 0
+            && pstLeg->stHold.ulUnHoldTime > pstLeg->stHold.ulHoldTime)
+        {
+            pstSCB->stHold.ulHoldTotalTime += (pstLeg->stHold.ulUnHoldTime - pstLeg->stHold.ulHoldTime);
+        }
+
+        pstLeg->stHold.ulUnHoldTime = 0;
+        pstLeg->stHold.ulHoldTime = 0;
     }
 
     return DOS_SUCC;
@@ -5638,6 +5707,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_AGENT_NODE_ST        *pstAgentCall   = NULL;
     S32                     i               = 0;
     S32                     lRes            = DOS_FAIL;
+    U32                     ulReleasePart;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -5648,6 +5718,15 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing auto call hungup event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
+
+    if (pstHungup->ulLegNo == pstSCB->stAutoCall.ulCallingLegNo)
+    {
+        ulReleasePart = SC_CALLING;
+    }
+    else
+    {
+        ulReleasePart = SC_CALLEE;
+    }
 
     if (pstSCB->stAutoCall.ulCallingLegNo != U32_BUTT)
     {
@@ -7605,7 +7684,8 @@ U32 sc_transfer_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_transfer_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+    SC_MSG_EVT_HOLD_ST  *pstHold    = NULL;
+    SC_LEG_CB            *pstLeg    = NULL;
 
     pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
@@ -7620,6 +7700,7 @@ U32 sc_transfer_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             /* 转接过程中，hold被转接方，直接放提示音就行了 */
             sc_req_play_sound(pstSCB->ulSCBNo, pstHold->ulLegNo, SC_SND_MUSIC_HOLD, 1, 0, 0);
             break;
+
         default:
             if (pstHold->bIsHold)
             {
@@ -7639,6 +7720,20 @@ U32 sc_transfer_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             else
             {
                 /* 如果是被UNHOLD的，已经没有HOLD业务了，单纯处理呼叫就好 */
+                pstLeg = sc_lcb_get(pstHold->ulLegNo);
+                if (DOS_ADDR_INVALID(pstLeg))
+                {
+                    return DOS_FAIL;
+                }
+
+                if (pstLeg->stHold.ulHoldTime != 0
+                    && pstLeg->stHold.ulUnHoldTime > pstLeg->stHold.ulHoldTime)
+                {
+                    pstSCB->stHold.ulHoldTotalTime += (pstLeg->stHold.ulUnHoldTime - pstLeg->stHold.ulHoldTime);
+                }
+
+                pstLeg->stHold.ulUnHoldTime = 0;
+                pstLeg->stHold.ulHoldTime = 0;
             }
             break;
     }
@@ -8090,6 +8185,17 @@ U32 sc_transfer_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Processing transfer realse event. status : %u", pstSCB->stTransfer.stSCBTag.usStatus);
+
+#if 0
+    if (pstEvtCall->ulLegNo == pstSCB->stAutoCall.ulCallingLegNo)
+    {
+        ulReleasePart = SC_CALLING;
+    }
+    else
+    {
+        ulReleasePart = SC_CALLEE;
+    }
+#endif
 
     psthungLegCB = sc_lcb_get(pstEvtCall->ulLegNo);
     if (DOS_ADDR_INVALID(psthungLegCB))
@@ -9083,7 +9189,8 @@ U32 sc_demo_task_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_demo_task_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+    SC_MSG_EVT_HOLD_ST   *pstHold        = NULL;
+    SC_LEG_CB            *pstLeg         = NULL;
 
     pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
@@ -9110,6 +9217,20 @@ U32 sc_demo_task_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     else
     {
         /* 如果是被UNHOLD的，已经没有HOLD业务了，单纯处理呼叫就好 */
+        pstLeg = sc_lcb_get(pstHold->ulLegNo);
+        if (DOS_ADDR_INVALID(pstLeg))
+        {
+            return DOS_FAIL;
+        }
+
+        if (pstLeg->stHold.ulHoldTime != 0
+            && pstLeg->stHold.ulUnHoldTime > pstLeg->stHold.ulHoldTime)
+        {
+            pstSCB->stHold.ulHoldTotalTime += (pstLeg->stHold.ulUnHoldTime - pstLeg->stHold.ulHoldTime);
+        }
+
+        pstLeg->stHold.ulUnHoldTime = 0;
+        pstLeg->stHold.ulHoldTime = 0;
     }
 
     return DOS_SUCC;
@@ -9152,6 +9273,7 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_AGENT_NODE_ST        *pstAgentCall   = NULL;
     S32                     i               = 0;
     S32                     lRes            = DOS_FAIL;
+    U32                     ulReleasePart;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -9162,6 +9284,15 @@ U32 sc_demo_task_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing demo task hungup event. status : %u", pstSCB->stDemoTask.stSCBTag.usStatus);
+
+    if (pstHungup->ulLegNo == pstSCB->stDemoTask.ulCallingLegNo)
+    {
+        ulReleasePart = SC_CALLING;
+    }
+    else
+    {
+        ulReleasePart = SC_CALLEE;
+    }
 
     switch (pstSCB->stDemoTask.stSCBTag.usStatus)
     {
@@ -10370,6 +10501,8 @@ U32 sc_call_agent_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_MSG_EVT_HUNGUP_ST    *pstHungup      = NULL;
     SC_AGENT_NODE_ST        *pstOtherAgent  = NULL;
     SC_AGENT_NODE_ST        *pstHungupAgent = NULL;
+    U32                     ulReleasePart;
+
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -10380,6 +10513,15 @@ U32 sc_call_agent_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing call agent hungup event. status : %u", pstSCB->stCallAgent.stSCBTag.usStatus);
+
+    if (pstHungup->ulLegNo == pstSCB->stCallAgent.ulCallingLegNo)
+    {
+        ulReleasePart = SC_CALLING;
+    }
+    else
+    {
+        ulReleasePart = SC_CALLEE;
+    }
 
     switch (pstSCB->stCallAgent.stSCBTag.usStatus)
     {
@@ -10618,7 +10760,8 @@ U32 sc_call_agent_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_call_agent_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+    SC_MSG_EVT_HOLD_ST   *pstHold        = NULL;
+    SC_LEG_CB            *pstLeg         = NULL;
 
     pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
@@ -10645,6 +10788,20 @@ U32 sc_call_agent_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     else
     {
         /* 如果是被UNHOLD的，已经没有HOLD业务了，单纯处理呼叫就好 */
+        pstLeg = sc_lcb_get(pstHold->ulLegNo);
+        if (DOS_ADDR_INVALID(pstLeg))
+        {
+            return DOS_FAIL;
+        }
+
+        if (pstLeg->stHold.ulHoldTime != 0
+            && pstLeg->stHold.ulUnHoldTime > pstLeg->stHold.ulHoldTime)
+        {
+            pstSCB->stHold.ulHoldTotalTime += (pstLeg->stHold.ulUnHoldTime - pstLeg->stHold.ulHoldTime);
+        }
+
+        pstLeg->stHold.ulUnHoldTime = 0;
+        pstLeg->stHold.ulHoldTime = 0;
     }
 
     return DOS_SUCC;
@@ -11289,7 +11446,8 @@ U32 sc_auto_preview_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_auto_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_MSG_EVT_HOLD_ST  *pstHold = NULL;
+    SC_MSG_EVT_HOLD_ST   *pstHold        = NULL;
+    SC_LEG_CB            *pstLeg         = NULL;
 
     pstHold = (SC_MSG_EVT_HOLD_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstHold) || DOS_ADDR_INVALID(pstSCB))
@@ -11316,6 +11474,20 @@ U32 sc_auto_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     else
     {
         /* 如果是被UNHOLD的，已经没有HOLD业务了，单纯处理呼叫就好 */
+        pstLeg = sc_lcb_get(pstHold->ulLegNo);
+        if (DOS_ADDR_INVALID(pstLeg))
+        {
+            return DOS_FAIL;
+        }
+
+        if (pstLeg->stHold.ulHoldTime != 0
+            && pstLeg->stHold.ulUnHoldTime > pstLeg->stHold.ulHoldTime)
+        {
+            pstSCB->stHold.ulHoldTotalTime += (pstLeg->stHold.ulUnHoldTime - pstLeg->stHold.ulHoldTime);
+        }
+
+        pstLeg->stHold.ulUnHoldTime = 0;
+        pstLeg->stHold.ulHoldTime = 0;
     }
 
     return DOS_SUCC;
@@ -11332,6 +11504,7 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_AGENT_NODE_ST        *pstAgentCall   = NULL;
     S32                     i               = 0;
     S32                     lRes            = DOS_FAIL;
+    U32                     ulReleasePart;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -11342,6 +11515,15 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing auto preview hungup event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
+
+    if (pstHungup->ulLegNo == pstSCB->stAutoPreview.ulCallingLegNo)
+    {
+        ulReleasePart = SC_CALLING;
+    }
+    else
+    {
+        ulReleasePart = SC_CALLEE;
+    }
 
     /* 呼叫结果 */
     if (SC_AUTO_PREVIEW_PROCESS != pstSCB->stAutoPreview.stSCBTag.usStatus
