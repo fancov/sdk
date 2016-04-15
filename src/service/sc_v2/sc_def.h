@@ -738,6 +738,7 @@ typedef struct tagSCSUCall{
     U32     ulTrunkCnt;
 
     S8      szEIXAddr[SC_MAX_IP_LEN];        /**< TT号呼叫时需要EIXIP地址 */
+    U32     aulPeerIP[4];                    /**< ip地址兼容ipv6 */
 
     U32     ulRes;
 }SC_SU_CALL_ST;
@@ -832,6 +833,10 @@ typedef struct tagSCSUHold{
     U32      bRes:30;
     U16      usStatus;      /**< 当前LEG的状态 */
     U16      usMode;        /**< HOLD模式，被本端HOLD，还是被对端HOLD */
+
+    U32      ulHoldTime;           /**< hold */
+    U32      ulUnHoldTime;         /**< unhold */
+
     U32      ulRes;
 }SC_SU_HOLD_ST;
 
@@ -1438,6 +1443,9 @@ typedef struct tagSCCallHold{
 
     /* 保持 次数 */
     U32               ulHoldCount;
+
+    /**< 呼叫保持总时长 */
+    U32               ulHoldTotalTime;
 
 }SC_CALL_HOLD_ST;
 

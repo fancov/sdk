@@ -16,6 +16,8 @@
 
 #include <dos.h>
 #include <esl.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "sc_def.h"
 #include "sc_debug.h"
@@ -78,11 +80,13 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
     S8  *pszCallSrc   = NULL;
     S8  *pszTrunkIP   = NULL;
     S8  *pszGwName    = NULL;
+    S8  *pszSipUrl   = NULL;
     S8  *pszCallDirection = NULL;
     S8  *pszLegUUID       = NULL;
     S8  *pszLocalSdp      = NULL;
     S8  *pszSdpRecv       = NULL;
     S8  szCMD[128]        = { 0 };
+    S8  szIPAddr[128]     = {0};
     U32 ulLCBNo           = U32_BUTT;
     U32 ulThreshold       = -1;
     SC_LEG_CB *pstLCB     = NULL;
@@ -282,6 +286,24 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
                               , pszANI ? pszANI : "NULL");
 
         goto proc_fail;
+    }
+
+    if (DOS_ADDR_VALID(pszTrunkIP))
+    {
+        dos_strcpy(szIPAddr, pszTrunkIP);
+    }
+    else
+    {
+        pszSipUrl = esl_event_get_header(pstEvent, "variable_sip_req_uri");
+        if (DOS_ADDR_VALID(pszSipUrl))
+        {
+            dos_sscanf(pszSipUrl, "%*[^@]@%[^:]", szIPAddr);
+        }
+    }
+
+    if (szIPAddr[0] != '\0')
+    {
+        inet_pton(AF_INET, szIPAddr, (VOID *)(pstLCB->stCall.aulPeerIP));
     }
 
     sc_lcb_hash_add(pszLegUUID, pstLCB);
@@ -817,6 +839,7 @@ U32 sc_esl_event_hold(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     }
 
     pstLegCB->stHold.usStatus = SC_SU_HOLD_ACTIVE;
+    pstLegCB->stHold.ulHoldTime = time(NULL);
 
     if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
     {
@@ -858,6 +881,7 @@ U32 sc_esl_event_unhold(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     pstLegCB->stHold.usStatus = SC_SU_HOLD_INIT;
     pstLegCB->stHold.bValid = DOS_FALSE;
+    pstLegCB->stHold.ulUnHoldTime = time(NULL);
 
     if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
     {

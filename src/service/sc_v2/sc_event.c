@@ -1347,7 +1347,7 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
     {
         if (pstMsg->ulSCBNo >= SC_SCB_SIZE)
         {
-            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Call setup event. alloc new scb");
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Call setup event. alloc new scb");
 
             pstEventCallSetup = (SC_MSG_EVT_CALL_ST *)pstMsg;
             pstLCB = sc_lcb_get(pstEventCallSetup->ulLegNo);
@@ -1373,24 +1373,24 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
         }
         else
         {
-            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Call setup event with scb %u, Event type:%u", pstMsg->ulSCBNo, pstMsg->ulMsgType);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Call setup event with scb %u, Event type:%u", pstMsg->ulSCBNo, pstMsg->ulMsgType);
 
             pstSCB = sc_scb_get(pstMsg->ulSCBNo);
             if (DOS_ADDR_INVALID(pstSCB))
             {
-                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Get SCB fail. %u", pstMsg->ulSCBNo);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Get SCB fail. %u", pstMsg->ulSCBNo);
                 return;
             }
         }
     }
     else
     {
-        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Recv event with scb %u, Event type:%u", pstMsg->ulSCBNo, pstMsg->ulMsgType);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_EVENT), "Recv event with scb %u, Event type:%u", pstMsg->ulSCBNo, pstMsg->ulMsgType);
 
         pstSCB = sc_scb_get(pstMsg->ulSCBNo);
         if (DOS_ADDR_INVALID(pstSCB))
         {
-            sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Get SCB fail. %u", pstMsg->ulSCBNo);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Get SCB fail. %u", pstMsg->ulSCBNo);
             return;
         }
     }
