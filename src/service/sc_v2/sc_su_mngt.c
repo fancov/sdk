@@ -268,6 +268,8 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
 
     dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_setvar %s exec_after_bridge_app park \r\n", pszLegUUID);
     sc_esl_execute_cmd(szCMD, NULL, 0);
+    dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_setvar %s enable_heartbeat_events %d \r\n", pszLegUUID, HEARTBEAT_INTERVAL);
+    sc_esl_execute_cmd(szCMD, NULL, 0);
 
     pszGwName  = esl_event_get_header(pstEvent, "variable_sip_gateway_name");
     pszTrunkIP = esl_event_get_header(pstEvent, "Caller-Network-Addr");
@@ -1345,6 +1347,47 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     return DOS_SUCC;
 }
+
+/**
+ * 处理SESSION_HEARTBEAT事件
+ *
+ * @param esl_event_t *pstEvent ESL事件
+ * @param U32 ulLegID LEG控制块ID
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+U32 sc_esl_event_session_heartbeat(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
+{
+    SC_MSG_EVT_HEARTBEAT_ST stEventHeartbeat;
+
+    if (DOS_ADDR_INVALID(pstLegCB))
+    {
+        return DOS_FAIL;
+    }
+
+    sc_trace_leg(pstLegCB, "Processing session heartbeat event. Index: %u", pstLegCB->ulCBNo);
+
+    if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
+    {
+        stEventHeartbeat.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;
+    }
+    else
+    {
+        stEventHeartbeat.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
+    }
+    stEventHeartbeat.stMsgTag.ulMsgType = SC_EVT_HEARTBEAT;
+    stEventHeartbeat.stMsgTag.usInterErr = 0;
+    stEventHeartbeat.stMsgTag.usMsgLen = 0;
+    stEventHeartbeat.ulLegNo = pstLegCB->ulCBNo;
+    stEventHeartbeat.ulSCBNo = pstLegCB->ulSCBNo;
+
+    sc_send_event_heartbeat(&stEventHeartbeat);
+
+    sc_trace_leg(pstLegCB, "Processed session heartbeat event. Index: %u", pstLegCB->ulCBNo);
+
+    return DOS_SUCC;
+}
+
 
 /**
  * 处理业务控制层发送过来的发起呼叫消息

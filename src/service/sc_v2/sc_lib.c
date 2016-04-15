@@ -73,8 +73,7 @@ extern U32          g_ulCPS;
 extern U32          g_ulMaxConcurrency4Task;
 
 
-U32 sc_scb_check_one(SC_SRV_CB *pstSCB);
-
+U32 sc_scb_check_one(U32 ulIndex);
 
 U32 sc_send_sip_update_req(U32 ulID, U32 ulAction)
 {
@@ -937,8 +936,6 @@ U32 sc_lcb_check(U32 ulType, VOID *ptr)
     U32         ulIndex     = 0;
     U32         ulCurrentTime = 0;
     SC_LEG_CB   *pstLCB     = NULL;
-    SC_SRV_CB   *pstSCB1    = NULL;
-    SC_SRV_CB   *pstSCB2    = NULL;
 
     for (ulIndex=ulLastIndex; ulIndex<ulLastIndex+MAX_CHECK_CNT_FRE_TIME; ulIndex++)
     {
@@ -948,8 +945,8 @@ U32 sc_lcb_check(U32 ulType, VOID *ptr)
             ulLastIndex = 0;
         }
 
-        pstLCB = sc_lcb_get(ulIndex);
-        if (DOS_ADDR_INVALID(pstLCB))
+        pstLCB = &g_pstLegCB[ulIndex];
+        if (!pstLCB->bValid)
         {
             continue;
         }
@@ -963,20 +960,18 @@ U32 sc_lcb_check(U32 ulType, VOID *ptr)
         }
 
         ulNeedFree = DOS_FALSE;
-        pstSCB1 = sc_scb_get(pstLCB->ulSCBNo);
-        pstSCB2 = sc_scb_get(pstLCB->ulIndSCBNo);
 
         /* 两个都为空是有问题的 */
-        if (DOS_ADDR_INVALID(pstSCB1) && DOS_ADDR_INVALID(pstSCB2))
+        if (pstLCB->ulSCBNo >= SC_SCB_SIZE && pstLCB->ulIndSCBNo >= SC_SCB_SIZE)
         {
             sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "LCB wasted (%u). All the related scb are invalid. Free fource.", ulIndex);
             ulNeedFree = DOS_TRUE;
         }
 
         /* 主业务控制块不为空需要检查 */
-        if (DOS_ADDR_VALID(pstSCB1))
+        if (pstLCB->ulSCBNo < SC_SCB_SIZE)
         {
-            if (sc_scb_check_one(pstSCB1) != DOS_SUCC)
+            if (sc_scb_check_one(pstLCB->ulSCBNo) != DOS_SUCC)
             {
                 sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "LCB wasted (%u). The master SCB is invlid. Free fource.", ulIndex);
                 ulNeedFree = DOS_TRUE;
@@ -984,9 +979,9 @@ U32 sc_lcb_check(U32 ulType, VOID *ptr)
         }
 
         /* 独立业务控制块不为空需要检查 */
-        if (DOS_ADDR_VALID(pstSCB2))
+        if (pstLCB->ulIndSCBNo < SC_SCB_SIZE)
         {
-            if (sc_scb_check_one(pstSCB1) != DOS_SUCC)
+            if (sc_scb_check_one(pstLCB->ulIndSCBNo) != DOS_SUCC)
             {
                 sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "LCB wasted (%u). The second SCB is invlid. Free fource.", ulIndex);
                 ulNeedFree = DOS_TRUE;
@@ -1707,21 +1702,41 @@ BOOL sc_scb_is_exit_service(SC_SRV_CB *pstSCB, U32 ulService)
     return DOS_FALSE;
 }
 
-U32 sc_scb_check_one(SC_SRV_CB *pstSCB)
+U32 sc_scb_check_one(U32 ulIndex)
 {
-    U32 ulCurrentTime;
+    U32         ulCurrentTime;
+    SC_SRV_CB   *pstSCB     = NULL;
 
-    if (DOS_ADDR_INVALID(pstSCB))
+    if (ulIndex >= SC_SCB_SIZE)
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
 
+    pstSCB = &g_pstSCBList[ulIndex];
+    if (!pstSCB->bValid)
+    {
+        return DOS_SUCC;
+    }
+
     ulCurrentTime = time(NULL);
 
-    if (ulCurrentTime - pstSCB->ulLastActiveTime > CB_MAX_NO_HANDLE_TIME)
+    /* 如果连续丢掉5个心跳(1500s), 既可以释放了 */
+    if (ulCurrentTime - pstSCB->ulLastActiveTime > HEARTBEAT_INTERVAL * 5)
     {
-        sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "SCB wasted (%u). There is no event for %d seconds.", pstSCB->ulSCBNo, CB_MAX_NO_HANDLE_TIME);
+        sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "SCB exeption (%u). There is no event in second.", pstSCB->ulSCBNo, HEARTBEAT_INTERVAL * 5);
+
+        sc_scb_free(pstSCB);
+
+        return DOS_FAIL;
+    }
+
+    /* 超长话单 */
+    if (ulCurrentTime - pstSCB->ulAllocTime > CB_MAX_NO_HANDLE_TIME)
+    {
+        sc_log(DOS_FALSE, LOG_LEVEL_WARNING
+                    , "SCB exeption (%u). Alloced for %d seconds, current time: %u"
+                    , pstSCB->ulSCBNo, CB_MAX_NO_HANDLE_TIME, ulCurrentTime);
 
         sc_scb_free(pstSCB);
 
@@ -1736,7 +1751,6 @@ U32 sc_scb_check(U32 ulType, VOID *ptr)
 {
     static U32  ulLastIndex = 0;
     U32         ulIndex     = 0;
-    SC_SRV_CB   *pstSCB     = NULL;
 
     for (ulIndex=ulLastIndex; ulIndex<ulLastIndex+MAX_CHECK_CNT_FRE_TIME; ulIndex++)
     {
@@ -1746,13 +1760,7 @@ U32 sc_scb_check(U32 ulType, VOID *ptr)
             ulLastIndex = 0;
         }
 
-        pstSCB = sc_scb_get(ulIndex);
-        if (DOS_ADDR_INVALID(pstSCB))
-        {
-            continue;
-        }
-
-        sc_scb_check_one(pstSCB);
+        sc_scb_check_one(ulIndex);
     }
 
     ulLastIndex = ulLastIndex + MAX_CHECK_CNT_FRE_TIME;
@@ -3381,6 +3389,38 @@ U32 sc_send_event_ringing_timeout_rsp(SC_MSG_EVT_RINGING_TIMEOUT_ST *pstEvent)
     return sc_send_event(&pstEvtRingingTimeout->stMsgTag);
 
 }
+
+/**
+ * 向业务层发送HEARTBEAT事件
+ *
+ * @param pstMsg 消息头
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ *
+ * @note pstMsg 所指向的内存将被别的线程使用，请动态分配
+ */
+U32 sc_send_event_heartbeat(SC_MSG_EVT_HEARTBEAT_ST *pstEvent)
+{
+    SC_MSG_EVT_HEARTBEAT_ST *pstEventHeartbeat = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEventHeartbeat = (SC_MSG_EVT_HEARTBEAT_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_HEARTBEAT_ST));
+    if (DOS_ADDR_INVALID(pstEventHeartbeat))
+    {
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEventHeartbeat, pstEvent, sizeof(SC_MSG_EVT_HEARTBEAT_ST));
+
+    return sc_send_event(&pstEventHeartbeat->stMsgTag);
+}
+
 
 U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB)
 {

@@ -1395,10 +1395,16 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
         }
     }
 
+    pstSCB->ulLastActiveTime = time(NULL);
     ulSCBNo = pstMsg->ulSCBNo;
 
     sc_trace_scb(pstSCB, "Processing event %s(%u), SCB:%u, errno: %u"
                     , sc_event_str(pstMsg->ulMsgType), pstMsg->ulMsgType, pstMsg->ulSCBNo, pstMsg->usInterErr);
+
+    if (SC_EVT_HEARTBEAT == pstMsg->ulMsgType)
+    {
+        goto proc_finished;
+    }
 
     /* 使用循环处理业务栈 */
     while (1)
@@ -1519,6 +1525,8 @@ VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
             break;
         }
     }
+
+proc_finished:
 
     sc_trace_scb(pstSCB, "Processed %s. ", sc_event_str(pstMsg->ulMsgType));
 }

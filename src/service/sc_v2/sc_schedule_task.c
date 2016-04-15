@@ -149,6 +149,8 @@ static SC_SCHEDULE_TASK_ST g_stScheduleTaskList[] =
     {SC_SCHEDULE_TYPE_CYCLE,    20 * 60,                  sc_stat_syn,                "Stat data syn "},
 
     {SC_SCHEDULE_TYPE_CYCLE,    60,                       sc_task_write_stat,         "Write task stat"},
+    {SC_SCHEDULE_TYPE_CYCLE,    60,                       sc_lcb_check,               "LCB check task"},
+    {SC_SCHEDULE_TYPE_CYCLE,    60,                       sc_scb_check,               "SCB check task"},
 };
 
 

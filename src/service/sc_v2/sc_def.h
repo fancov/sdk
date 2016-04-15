@@ -29,8 +29,9 @@ extern "C" {
 #define CB_ALIVE_TIME_BEFORE_CHECK   6
 
 /** 业务控制块最大的无操作时间，状态变化视为操作 */
-#define CB_MAX_NO_HANDLE_TIME        2 * 60 * 60
+#define CB_MAX_NO_HANDLE_TIME        8 * 60 * 60
 
+#define HEARTBEAT_INTERVAL           300
 
 /**
  * 常用术语
@@ -463,6 +464,8 @@ typedef enum tagSCSUEvent{
     SC_EVT_RINGING_TIMEOUT,     /**< 坐席振铃超时 */
 
     SC_EVT_ERROR_PORT,          /**< 错误上报事件 */
+
+    SC_EVT_HEARTBEAT,           /**< 心跳事件 */
 
     SC_EVT_BUTT,
 }SC_SU_EVENT_EN;
@@ -2030,6 +2033,18 @@ typedef struct tagSCMsgEvtAgentRingTimeout{
 
 }SC_MSG_EVT_RINGING_TIMEOUT_ST;
 
+/** LEG SESSION 消息 */
+typedef struct tagSCMsgEvtHeartbeat{
+    SC_MSG_TAG_ST    stMsgTag;              /**< 消息头 */
+
+    /** 业务控制模块编号  */
+    U32     ulSCBNo;
+
+    /** LEG控制模块编号  */
+    U32     ulLegNo;
+}SC_MSG_EVT_HEARTBEAT_ST;
+
+
 /**
  * backgroup job管理的hash表节点
  */
@@ -2252,6 +2267,7 @@ U32 sc_send_event_record(SC_MSG_EVT_RECORD_ST *pstEvent);
 U32 sc_send_event_playback(SC_MSG_EVT_PLAYBACK_ST *pstEvent);
 U32 sc_send_event_leave_call_queue_rsp(SC_MSG_EVT_LEAVE_CALLQUE_ST *pstEvent);
 U32 sc_send_event_ringing_timeout_rsp(SC_MSG_EVT_RINGING_TIMEOUT_ST *pstEvent);
+U32 sc_send_event_heartbeat(SC_MSG_EVT_HEARTBEAT_ST *pstEvent);
 U32 sc_send_usr_auth2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_send_balance_query2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);
 U32 sc_send_client_contect_req(U32 ulCustomerID, U32 ulClientID, S8 *pszNumber, BOOL blCallContected);

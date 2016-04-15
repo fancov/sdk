@@ -37,7 +37,8 @@ extern "C" {
             "PLAYBACK_STOP " \
             "RECORD_START " \
             "RECORD_STOP " \
-            "DTMF "
+            "DTMF " \
+            "SESSION_HEARTBEAT "
 
 
 /** 接收ESL事件线程 */
@@ -393,6 +394,10 @@ VOID sc_esl_event_process(esl_event_t *pstEvent)
 
         case ESL_EVENT_DTMF:
             ulRet = sc_esl_event_dtmf(pstEvent, pstLegCB);
+            break;
+
+        case ESL_EVENT_SESSION_HEARTBEAT:
+            ulRet = sc_esl_event_session_heartbeat(pstEvent, pstLegCB);
             break;
 
         default:

@@ -34,7 +34,7 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB);
 
 U32 sc_esl_event_background_job(esl_event_t *pstEvent);
 U32 sc_esl_event_shutdown(esl_event_t *pstEvent);
-
+U32 sc_esl_event_session_heartbeat(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB);
 
 U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID);
 U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght);
