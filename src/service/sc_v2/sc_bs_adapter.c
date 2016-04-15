@@ -1487,7 +1487,7 @@ U32 sc_send_release_ack2bs(BS_MSG_TAG *pstMsg)
 }
 
 /* 发送终止计费消息 */
-U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB *pstSecondLeg)
+U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB *pstSecondLeg, U32 ulReleasePart)
 {
     U32                   ulCurrentLeg      = 0;
     U32                   ulTimeLen         = 0;
@@ -1641,7 +1641,7 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
     pstCDRMsg->astSessionLeg[ulCurrentLeg].aulPeerIP[3] = pstFristLeg->stCall.aulPeerIP[3];
     pstCDRMsg->astSessionLeg[ulCurrentLeg].usPeerTrunkID = (U32_BUTT == pstFristLeg->stCall.ulTrunkID) ? 0 : pstFristLeg->stCall.ulTrunkID;
     pstCDRMsg->astSessionLeg[ulCurrentLeg].usTerminateCause = pstFristLeg->stCall.ulCause;
-    pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = 0;
+    pstCDRMsg->astSessionLeg[ulCurrentLeg].ucReleasePart = ulReleasePart;
 
     if (0 == pstCDRMsg->astSessionLeg[ulCurrentLeg].ulByeTimeStamp)
     {
