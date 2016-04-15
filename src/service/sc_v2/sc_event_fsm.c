@@ -766,7 +766,8 @@ U32 sc_ringing_timeout_proc(SC_SRV_CB *pstSCB)
     sc_trace_scb(pstSCB, "Processing auto call agent ringing timeout event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
 
     if (pstSCB->stAutoCall.stSCBTag.usStatus != SC_AUTO_CALL_ALERTING2
-        && pstSCB->stAutoCall.stSCBTag.usStatus != SC_AUTO_CALL_EXEC2)
+        && pstSCB->stAutoCall.stSCBTag.usStatus != SC_AUTO_CALL_EXEC2
+        && pstSCB->stAutoCall.stSCBTag.usStatus != SC_AUTO_CALL_PORC2)
     {
         sc_trace_scb(pstSCB, "Status is not SC_AUTO_CALL_ALERTING2/SC_AUTO_CALL_EXEC2, no processing.");
         return DOS_SUCC;
@@ -818,6 +819,11 @@ U32 sc_ringing_timeout_proc(SC_SRV_CB *pstSCB)
             pstSCB->stAutoCall.ulCallingLegNo = U32_BUTT;
             sc_req_playback_stop(pstSCB->ulSCBNo, pstLegCB->ulCBNo);
             sc_req_hungup(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_SIP_BUSY_HERE);
+        }
+        else
+        {
+            sc_scb_free(pstSCB);
+            pstSCB = NULL;
         }
     }
 
@@ -1248,8 +1254,8 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     sc_trace_scb(pstSCB, "process alerting msg. calling leg: %u, callee leg: %u, status : %u"
                         , pstSCB->stCall.ulCallingLegNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.stSCBTag.usStatus);
 
-    sc_log_digest_print_only(pstSCB, "process alerting msg. calling leg: %u, callee leg: %u, status : %u"
-                        , pstSCB->stCall.ulCallingLegNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "process alerting msg. calling leg: %u, callee leg: %u, status: %u. with media: %u"
+                        , pstSCB->stCall.ulCallingLegNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.stSCBTag.usStatus, pstEvent->ulWithMedia);
 
     pstCalleeLegCB = sc_lcb_get(pstSCB->stCall.ulCalleeLegNo);
     pstCallingLegCB = sc_lcb_get(pstSCB->stCall.ulCallingLegNo);
@@ -2665,7 +2671,7 @@ U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstRinging = (SC_MSG_EVT_RINGING_ST*)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing preview call setup event event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
-    sc_log_digest_print_only(pstSCB, "Proccessing preview call setup event event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing preview call setup event event. status : %u. WithMedia : %u", pstSCB->stPreviewCall.stSCBTag.usStatus, pstRinging->ulWithMedia);
 
     switch (pstSCB->stPreviewCall.stSCBTag.usStatus)
     {
@@ -5068,7 +5074,7 @@ U32 sc_auto_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstEvent = (SC_MSG_EVT_RINGING_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "Processing auto call ringing event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
-    sc_log_digest_print_only(pstSCB, "Processing auto call ringing event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing auto call ringing event. status : %u. WithMedia: %u", pstSCB->stAutoCall.stSCBTag.usStatus, pstEvent->ulWithMedia);
 
     switch (pstSCB->stAutoCall.stSCBTag.usStatus)
     {
@@ -5875,6 +5881,26 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 break;
             }
 
+            /* 判断一下错误码，是不是坐席电话打不通 */
+            if (pstSCB->stAutoCall.stSCBTag.usStatus == SC_AUTO_CALL_PORC2
+                && SC_CALLEE == ulReleasePart
+                && pstSCB->stAutoCall.ulReCallAgent <= SC_AUTO_CALL_AGENT_MAX_COUNT)
+            {
+                /* 重新加入到呼叫队列 */
+                pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
+                if (DOS_ADDR_VALID(pstAgentCall)
+                     && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+                {
+                    pstAgentCall->pstAgentInfo->ulLegNo = U32_BUTT;
+                    sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_CALL);
+                }
+
+                sc_lcb_free(pstCalleeCB);
+                pstSCB->stAutoCall.ulCalleeLegNo = U32_BUTT;
+
+                break;
+            }
+
             if (pstHungup->ulLegNo == pstSCB->stAutoCall.ulCallingLegNo)
             {
                 /* 客户挂断的，判断是否存在坐席那条leg，如果存在，判断坐席是否长签等 */
@@ -6410,7 +6436,7 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_CALL_EXEC2:
-            pstSCB->stAutoCall.ulReCallAgent++;
+        case SC_AUTO_CALL_PORC2:
             if (pstSCB->stAutoCall.ulReCallAgent > SC_AUTO_CALL_AGENT_MAX_COUNT)
             {
                 sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
@@ -6419,6 +6445,8 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             else
             {
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Re call count : %u", pstSCB->stAutoCall.ulReCallAgent);
+                pstSCB->stAutoCall.ulReCallAgent++;
                 if (DOS_ADDR_VALID(pstSCB->stAutoCall.stCusTmrHandle))
                 {
                     dos_tmr_stop(&pstSCB->stAutoCall.stCusTmrHandle);
@@ -6434,7 +6462,6 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             break;
 
-        case SC_AUTO_CALL_PORC2:
         case SC_AUTO_CALL_ALERTING2:
             sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
             ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
@@ -7867,7 +7894,7 @@ U32 sc_transfer_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     pstEvent = (SC_MSG_EVT_RINGING_ST *)pstMsg;
 
-    sc_trace_scb(pstSCB, "Processing transfer ringing event. status : %u", pstSCB->stTransfer.stSCBTag.usStatus);
+    sc_trace_scb(pstSCB, "Processing transfer ringing event. status : %u. with media: %u", pstSCB->stTransfer.stSCBTag.usStatus, pstEvent->ulWithMedia);
 
     switch (pstSCB->stTransfer.stSCBTag.usStatus)
     {
@@ -9110,7 +9137,7 @@ U32 sc_demo_task_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     pstEvent = (SC_MSG_EVT_RINGING_ST *)pstMsg;
 
-    sc_trace_scb(pstSCB, "Processing demo task ringing event. status : %u", pstSCB->stDemoTask.stSCBTag.usStatus);
+    sc_trace_scb(pstSCB, "Processing demo task ringing event. status : %u. with media: %u", pstSCB->stDemoTask.stSCBTag.usStatus, pstEvent->ulWithMedia);
 
     switch (pstSCB->stDemoTask.stSCBTag.usStatus)
     {
@@ -10512,7 +10539,7 @@ U32 sc_call_agent_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     pstRinging = (SC_MSG_EVT_RINGING_ST*)pstMsg;
 
-    sc_trace_scb(pstSCB, "Proccessing call agent setup event event. status : %u", pstSCB->stCallAgent.stSCBTag.usStatus);
+    sc_trace_scb(pstSCB, "Proccessing call agent setup event event. status : %u. with media: %u", pstSCB->stCallAgent.stSCBTag.usStatus, pstRinging->ulWithMedia);
 
     switch (pstSCB->stCallAgent.stSCBTag.usStatus)
     {
@@ -11217,7 +11244,7 @@ U32 sc_auto_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstRinging = (SC_MSG_EVT_RINGING_ST*)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing auto preview setup event event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
-    sc_log_digest_print_only(pstSCB, "Proccessing auto preview setup event event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing auto preview setup event event. status : %u. with media:%u", pstSCB->stAutoPreview.stSCBTag.usStatus, pstRinging->ulWithMedia);
 
     switch (pstSCB->stAutoPreview.stSCBTag.usStatus)
     {

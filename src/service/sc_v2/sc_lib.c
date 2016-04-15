@@ -2808,6 +2808,8 @@ U32 sc_req_bridge_call(U32 ulSCBNo, U32 ulCallingLegNo, U32 ulCalleeLegNo)
     pstCMDBridge->ulCallingLegNo = ulCallingLegNo;
     pstCMDBridge->ulCalleeLegNo = ulCalleeLegNo;
 
+    sc_log_digest_print_only(NULL, "Bridge calling(%u) and callee(%u). scb: %u.", ulCallingLegNo, ulCalleeLegNo, ulSCBNo);
+
     ulRet = sc_send_command(&pstCMDBridge->stMsgTag);
     if (ulRet != DOS_SUCC)
     {

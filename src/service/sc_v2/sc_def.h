@@ -168,7 +168,7 @@ extern "C" {
 
 #define SC_AUTO_CALL_AGENT_MAX_COUNT   5
 
-#define SC_AUTO_CALL_RECALL_TIME       200
+#define SC_AUTO_CALL_RECALL_TIME       500
 
 /**
  * 1. Ã»ÓÐ±»É¾³ý
