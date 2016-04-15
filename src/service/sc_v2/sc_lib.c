@@ -72,6 +72,10 @@ extern pthread_mutex_t      g_mutexTaskList;
 extern U32          g_ulCPS;
 extern U32          g_ulMaxConcurrency4Task;
 
+
+U32 sc_scb_check_one(SC_SRV_CB *pstSCB);
+
+
 U32 sc_send_sip_update_req(U32 ulID, U32 ulAction)
 {
     S8 szURL[256]      = { 0, };
@@ -920,6 +924,82 @@ SC_LEG_CB *sc_lcb_hash_find(S8 *pszUUID)
     return pstLCB;
 }
 
+U32 sc_lcb_check(U32 ulType, VOID *ptr)
+{
+    static U32  ulLastIndex = 0;
+    BOOL        ulNeedFree  = DOS_FALSE;
+    U32         ulIndex     = 0;
+    U32         ulCurrentTime = 0;
+    SC_LEG_CB   *pstLCB     = NULL;
+    SC_SRV_CB   *pstSCB1    = NULL;
+    SC_SRV_CB   *pstSCB2    = NULL;
+
+    for (ulIndex=ulLastIndex; ulIndex<ulLastIndex+MAX_CHECK_CNT_FRE_TIME; ulIndex++)
+    {
+        if (ulIndex >= SC_LEG_CB_SIZE)
+        {
+            ulIndex = 0;
+            ulLastIndex = 0;
+        }
+
+        pstLCB = sc_lcb_get(ulIndex);
+        if (DOS_ADDR_INVALID(pstLCB))
+        {
+            continue;
+        }
+
+        /* 刚刚分配一段时间内的LEG需要排除在外 */
+        ulCurrentTime = time(NULL);
+        if (ulCurrentTime - pstLCB->ulAllocTime >= 0
+            && ulCurrentTime - pstLCB->ulAllocTime < CB_ALIVE_TIME_BEFORE_CHECK)
+        {
+            continue;
+        }
+
+        ulNeedFree = DOS_FALSE;
+        pstSCB1 = sc_scb_get(pstLCB->ulSCBNo);
+        pstSCB2 = sc_scb_get(pstLCB->ulIndSCBNo);
+
+        /* 两个都为空是有问题的 */
+        if (DOS_ADDR_INVALID(pstSCB1) && DOS_ADDR_INVALID(pstSCB2))
+        {
+            sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "LCB wasted (%u). All the related scb are invalid. Free fource.", ulIndex);
+            ulNeedFree = DOS_TRUE;
+        }
+
+        /* 主业务控制块不为空需要检查 */
+        if (DOS_ADDR_VALID(pstSCB1))
+        {
+            if (sc_scb_check_one(pstSCB1) != DOS_SUCC)
+            {
+                sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "LCB wasted (%u). The master SCB is invlid. Free fource.", ulIndex);
+                ulNeedFree = DOS_TRUE;
+            }
+        }
+
+        /* 独立业务控制块不为空需要检查 */
+        if (DOS_ADDR_VALID(pstSCB2))
+        {
+            if (sc_scb_check_one(pstSCB1) != DOS_SUCC)
+            {
+                sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "LCB wasted (%u). The second SCB is invlid. Free fource.", ulIndex);
+                ulNeedFree = DOS_TRUE;
+            }
+        }
+
+        if (ulNeedFree)
+        {
+            sc_lcb_free(pstLCB);
+            pstLCB = NULL;
+        }
+    }
+
+    ulLastIndex = ulLastIndex + MAX_CHECK_CNT_FRE_TIME;
+
+    return DOS_SUCC;
+
+}
+
 
 VOID sc_scb_call_init(SC_SRV_CALL_ST *pstCall)
 {
@@ -1619,6 +1699,60 @@ BOOL sc_scb_is_exit_service(SC_SRV_CB *pstSCB, U32 ulService)
 
     return DOS_FALSE;
 }
+
+U32 sc_scb_check_one(SC_SRV_CB *pstSCB)
+{
+    U32 ulCurrentTime;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    ulCurrentTime = time(NULL);
+
+    if (ulCurrentTime - pstSCB->ulLastActiveTime > CB_MAX_NO_HANDLE_TIME)
+    {
+        sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "SCB wasted (%u). There is no event for %d seconds.", pstSCB->ulSCBNo, CB_MAX_NO_HANDLE_TIME);
+
+        sc_scb_free(pstSCB);
+
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+}
+
+
+U32 sc_scb_check(U32 ulType, VOID *ptr)
+{
+    static U32  ulLastIndex = 0;
+    U32         ulIndex     = 0;
+    SC_SRV_CB   *pstSCB     = NULL;
+
+    for (ulIndex=ulLastIndex; ulIndex<ulLastIndex+MAX_CHECK_CNT_FRE_TIME; ulIndex++)
+    {
+        if (ulIndex >= SC_SCB_SIZE)
+        {
+            ulIndex = 0;
+            ulLastIndex = 0;
+        }
+
+        pstSCB = sc_scb_get(ulIndex);
+        if (DOS_ADDR_INVALID(pstSCB))
+        {
+            continue;
+        }
+
+        sc_scb_check_one(pstSCB);
+    }
+
+    ulLastIndex = ulLastIndex + MAX_CHECK_CNT_FRE_TIME;
+
+    return DOS_SUCC;
+}
+
 
 U32 sc_tcb_init(SC_TASK_CB *pstTCB)
 {

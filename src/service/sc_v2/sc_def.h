@@ -22,6 +22,15 @@ extern "C" {
 #define MAX_FAIL_CALL_CNT            100
 #define MAX_FAIL_CALL_CNT_DELAY      5
 
+/** 单次巡检的个数 */
+#define MAX_CHECK_CNT_FRE_TIME       30
+
+/** LEG控制块在分配之后不被检查的秒数 */
+#define CB_ALIVE_TIME_BEFORE_CHECK   6
+
+/** 业务控制块最大的无操作时间，状态变化视为操作 */
+#define CB_MAX_NO_HANDLE_TIME        2 * 60 * 60
+
 
 /**
  * 常用术语
@@ -1583,6 +1592,9 @@ typedef struct tagSCSrvCB{
 
     /** 分配时间 */
     U32                      ulAllocTime;
+
+    /** 最后一次业务状态变化时间 */
+    U32                      ulLastActiveTime;
 
     /** 业务类型 */
     U8                       aucServType[SC_MAX_SERVICE_TYPE];
