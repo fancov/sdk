@@ -175,7 +175,7 @@ U32 sc_sip_account_get_customer(S8 *pszNum, U32 *pulTrace)
     pstUserIDNode = pstHashNode->pHandle;
 
     ulCustomerID = pstUserIDNode->ulCustomID;
-    if (DOS_ADDR_INVALID(pulTrace))
+    if (DOS_ADDR_VALID(pulTrace))
     {
         *pulTrace = pstUserIDNode->bIsTrace;
     }

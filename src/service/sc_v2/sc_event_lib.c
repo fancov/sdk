@@ -192,6 +192,7 @@ U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     SC_SRV_CB                   *pstSCBAgent     = NULL;
     SC_LEG_CB                   *pstLegCBAgent   = NULL;
     SC_LEG_CB                   *pstCalleeLeg    = NULL;
+    U32                         ulCustomerID;
 
     if (DOS_ADDR_INVALID(pstSCB) || DOS_ADDR_INVALID(pstLegCB))
     {
@@ -202,7 +203,6 @@ U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
 
     /* 查找被叫，如果被叫已经长签了，直接连接就好，主意业务控制块合并 */
     /* 被叫有可能是分机号，SIP账户 */
-#if 0
     /* sc_leg_get_destination 中已经做过判断，这里暂时不需要了 */
     ulCustomerID = sc_sip_account_get_customer(pstLegCB->stCall.stNumInfo.szOriginalCallee, NULL);
     if (U32_BUTT == ulCustomerID)
@@ -224,7 +224,6 @@ U32 sc_internal_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
                         , sizeof(pstLegCB->stCall.stNumInfo.szRealCallee)
                         , pstLegCB->stCall.stNumInfo.szOriginalCallee);
     }
-#endif
 
     /* 维护一下主叫号码 */
     dos_snprintf(pstLegCB->stCall.stNumInfo.szRealCalling
