@@ -93,7 +93,7 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
 
     if (ulRet != DOS_SUCC)
     {
-        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API), "Get caller FAIL. customID(%u)", pstSCB->ulCustomerID);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_NOTIC, SC_MOD_HTTP_API, SC_LOG_DISIST), "Get caller FAIL. customID(%u)", pstSCB->ulCustomerID);
         sc_lcb_free(pstCalleeLegCB);
 
         return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_CALLER_NUMBER_ILLEGAL);;
@@ -115,6 +115,7 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
     if (U32_BUTT == pstSCB->stCall.ulRouteID)
     {
         sc_trace_scb(pstSCB, "no route to pstn.");
+        sc_log_digest_print_only(pstSCB, "no route to pstn.");
 
         sc_lcb_free(pstCalleeLegCB);
 
@@ -126,7 +127,7 @@ U32 sc_outgoing_call_process(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
     if (0 == pstCalleeLegCB->stCall.ulTrunkCnt)
     {
         sc_trace_scb(pstSCB, "no trunk to pstn. route id:%u", pstSCB->stCall.ulRouteID);
-
+        sc_log_digest_print_only(pstSCB, "no trunk to pstn. route id:%u", pstSCB->stCall.ulRouteID);
         sc_lcb_free(pstCalleeLegCB);
 
         return sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_NO_TRUNK);
@@ -360,7 +361,7 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
     {
         DOS_ASSERT(0);
 
-        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "DID number %s seems donot bind a SIP User ID, Reject Call.", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_NOTIC, SC_MOD_EVENT, SC_LOG_DISIST), "DID number %s seems donot bind a SIP User ID, Reject Call.", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
         *pulErrCode = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
 
         goto proc_fail;
@@ -384,7 +385,7 @@ static U32 sc_incoming_call_sip_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLeg
         {
             if (!SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
             {
-                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Agent(%u) is not can be use. s-status : %u", pstAgentNode->pstAgentInfo->ucServStatus);
+                sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_DEBUG, SC_MOD_ACD, SC_LOG_DISIST), "Agent(%u) is not can be use. s-status : %u", pstAgentNode->pstAgentInfo->ucServStatus);
                 *pulErrCode = CC_ERR_SC_USER_BUSY;
                 goto proc_fail;
             }
@@ -516,7 +517,7 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
     if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo))
     {
         /* 没有找到坐席 */
-        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_ACD), "Not found agnet by id %u", ulAgentID);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_ACD, SC_LOG_DISIST), "Not found agnet by id %u", ulAgentID);
 
         return DOS_FAIL;
     }
@@ -541,7 +542,7 @@ U32 sc_agent_call_by_id(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAge
             *pulErrCode = CC_ERR_SC_USER_BUSY;
         }
 
-        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_ACD), "Call agnet FAIL. Agent (%u) work_status : %d, serv_status : %d"
+        sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_INFO, SC_MOD_ACD, SC_LOG_DISIST), "Call agnet FAIL. Agent (%u) work_status : %d, serv_status : %d"
             , pstAgentNode->pstAgentInfo->ulAgentID, pstAgentNode->pstAgentInfo->ucWorkStatus, pstAgentNode->pstAgentInfo->ucServStatus);
 
         return DOS_FAIL;
@@ -1259,7 +1260,7 @@ U32 sc_incoming_call_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
             goto proc_finished;
         }
 
-        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Process Incoming Call, DID Number %s. Bind Type: %u, Bind ID: %u"
+        sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_NOTIC, SC_MOD_EVENT, SC_LOG_DISIST), "Process Incoming Call, DID Number %s. Bind Type: %u, Bind ID: %u"
                         , pstCallingLegCB->stCall.stNumInfo.szOriginalCallee
                         , ulBindType
                         , ulBindID);

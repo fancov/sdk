@@ -1183,6 +1183,7 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
         sc_trace_scb(pstSCB, "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log_digest_print_only(pstSCB, "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
         sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, CC_ERR_BS_HEAD + pstAuthRsp->stMsgTag.usInterErr);
         return DOS_SUCC;
@@ -1208,6 +1209,7 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 ulRet = sc_outgoing_call_process(pstSCB, pstLegCB);
             }
             break;
+
          case SC_CALL_AUTH2:
             /* 呼叫被叫 */
             pstSCB->stCall.stSCBTag.usStatus = SC_CALL_EXEC;
@@ -1219,6 +1221,7 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             ulRet = sc_make_call2pstn(pstSCB, pstCalleeLegCB);
             break;
+
          default:
             break;
     }
@@ -1243,6 +1246,9 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstEvent = (SC_MSG_EVT_RINGING_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "process alerting msg. calling leg: %u, callee leg: %u, status : %u"
+                        , pstSCB->stCall.ulCallingLegNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.stSCBTag.usStatus);
+
+    sc_log_digest_print_only(pstSCB, "process alerting msg. calling leg: %u, callee leg: %u, status : %u"
                         , pstSCB->stCall.ulCallingLegNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.stSCBTag.usStatus);
 
     pstCalleeLegCB = sc_lcb_get(pstSCB->stCall.ulCalleeLegNo);
@@ -1455,6 +1461,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Leg %u has hungup. Legs:%u-%u, status : %u", pstHungup->ulLegNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.ulCallingLegNo, pstSCB->stCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Leg %u has hungup. Legs:%u-%u, status : %u", pstHungup->ulLegNo, pstSCB->stCall.ulCalleeLegNo, pstSCB->stCall.ulCallingLegNo, pstSCB->stCall.stSCBTag.usStatus);
 
     if (pstHungup->ulLegNo == pstSCB->stCall.ulCallingLegNo)
     {
@@ -2120,6 +2127,7 @@ U32 sc_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Processing call agent ringing timeout event. status : %u", pstSCB->stCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing call agent ringing timeout event. status : %u", pstSCB->stCall.stSCBTag.usStatus);
 
     if (pstSCB->stCall.stSCBTag.usStatus != SC_CALL_ALERTING)
     {
@@ -2199,6 +2207,7 @@ U32 sc_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Processing call error event. status : %u", pstSCB->stCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing call error event. status : %u", pstSCB->stCall.stSCBTag.usStatus);
 
     if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
     {
@@ -2307,7 +2316,7 @@ U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_ERROR, SC_MOD_EVENT, SC_LOG_DISIST), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
          /* 注意通过偏移量，找到CC统一定义的错误码。
             需要判断坐席是否是长签，如果是长签的就不能挂断 */
         pstAgentNode = sc_agent_get_by_id(pstSCB->stPreviewCall.ulAgentID);
@@ -2516,6 +2525,7 @@ U32 sc_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing preview call answer event event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing preview call answer event event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
 
     pstCallingCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
     if (DOS_ADDR_INVALID(pstCallingCB))
@@ -2654,7 +2664,8 @@ U32 sc_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     pstRinging = (SC_MSG_EVT_RINGING_ST*)pstMsg;
 
-    sc_trace_scb(pstSCB, "Proccessing preview call setup event event.");
+    sc_trace_scb(pstSCB, "Proccessing preview call setup event event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing preview call setup event event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
 
     switch (pstSCB->stPreviewCall.stSCBTag.usStatus)
     {
@@ -2741,6 +2752,7 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing preview call hungup event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
 
     if (pstHungup->ulLegNo == pstSCB->stPreviewCall.ulCallingLegNo)
     {
@@ -3366,6 +3378,8 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     sc_trace_scb(pstSCB, "Proccessing preview error event. status : %u, msg type : %u, interErr : %u"
         , pstSCB->stPreviewCall.stSCBTag.usStatus, pstErrReport->stMsgTag.ulMsgType, pstErrReport->stMsgTag.usInterErr);
+    sc_log_digest_print_only(pstSCB, "Proccessing preview error event. status : %u, msg type : %u, interErr : %u"
+        , pstSCB->stPreviewCall.stSCBTag.usStatus, pstErrReport->stMsgTag.ulMsgType, pstErrReport->stMsgTag.usInterErr);
 
     if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
     {
@@ -3486,8 +3500,9 @@ U32 sc_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_voice_verify_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_LEG_CB  *pstLCB = NULL;
-    U32        ulRet = DOS_FAIL;
+    SC_LEG_CB                   *pstLCB     = NULL;
+    U32                         ulRet       = DOS_FAIL;
+    SC_MSG_EVT_AUTH_RESULT_ST   *pstAuthRsp = NULL;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -3495,12 +3510,24 @@ U32 sc_voice_verify_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Processing auth rsp event for voice verify.");
+    pstAuthRsp = (SC_MSG_EVT_AUTH_RESULT_ST *)pstMsg;
+
+    sc_trace_scb(pstSCB, "Processing auth rsp event for voice verify. status : %u", pstSCB->stVoiceVerify.stSCBTag.usStatus);
 
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
         sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "There is leg for voice verify.");
+        goto proc_finishe;
+    }
+
+
+    if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
+    {
+        sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_ERROR, SC_MOD_EVENT, SC_LOG_DISIST), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log_digest_print_only(pstSCB, "Processing auth rsp event for voice verify. error : %u", pstAuthRsp->stMsgTag.usInterErr);
+        ulRet = DOS_FAIL;
+
         goto proc_finishe;
     }
 
@@ -3545,19 +3572,15 @@ proc_finishe:
             sc_lcb_free(pstLCB);
             pstLCB = NULL;
         }
-    }
 
-    sc_trace_scb(pstSCB, "Processed auth rsp event for voice verify. Ret: %s", ulRet != DOS_SUCC ? "FAIL" : "succ");
-
-
-    if (ulRet != DOS_SUCC)
-    {
         if (pstSCB)
         {
             sc_scb_free(pstSCB);
             pstSCB = NULL;
         }
     }
+
+    sc_trace_scb(pstSCB, "Processed auth rsp event for voice verify. Ret: %s", ulRet != DOS_SUCC ? "FAIL" : "succ");
 
     return ulRet;
 }
@@ -3649,6 +3672,7 @@ U32 sc_voice_verify_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Processing verify ringing event for voice verify. status : %u", pstSCB->stVoiceVerify.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing verify ringing event for voice verify. status : %u", pstSCB->stVoiceVerify.stSCBTag.usStatus);
 
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
@@ -3720,7 +3744,8 @@ U32 sc_voice_verify_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Processing call answer event for voice verify.");
+    sc_trace_scb(pstSCB, "Processing call answer event for voice verify. status : %u", pstSCB->stVoiceVerify.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing call answer event for voice verify. status : %u", pstSCB->stVoiceVerify.stSCBTag.usStatus);
 
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
@@ -3840,7 +3865,8 @@ U32 sc_voice_verify_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Processing call release event for voice verify.");
+    sc_trace_scb(pstSCB, "Processing call release event for voice verify. status : %u", pstSCB->stVoiceVerify.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing call release event for voice verify. status : %u", pstSCB->stVoiceVerify.stSCBTag.usStatus);
 
     pstLCB = sc_lcb_get(pstSCB->stVoiceVerify.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
@@ -3968,6 +3994,7 @@ U32 sc_voice_verify_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing verify error event. status : %u", pstSCB->stVoiceVerify.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing verify error event. status : %u", pstSCB->stVoiceVerify.stSCBTag.usStatus);
 
     if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
     {
@@ -4010,8 +4037,9 @@ U32 sc_voice_verify_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_interception_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    U32  ulRet = DOS_FAIL;
-    SC_LEG_CB *pstLCB = NULL;
+    U32                         ulRet       = DOS_FAIL;
+    SC_LEG_CB                   *pstLCB     = NULL;
+    SC_MSG_EVT_AUTH_RESULT_ST   *pstAuthRsp = NULL;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -4019,13 +4047,23 @@ U32 sc_interception_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Proccessing interception auth event.");
+    sc_trace_scb(pstSCB, "Proccessing interception auth event. status : %u", pstSCB->stInterception.stSCBTag.usStatus);
 
     pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
+    }
+
+    pstAuthRsp = (SC_MSG_EVT_AUTH_RESULT_ST *)pstMsg;
+    if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
+    {
+        sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_ERROR, SC_MOD_EVENT, SC_LOG_DISIST), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log_digest_print_only(pstSCB, "Processing auth rsp event for interception. error : %u", pstAuthRsp->stMsgTag.usInterErr);
+        ulRet = DOS_FAIL;
+
+        goto proc_finishe;
     }
 
     switch (pstSCB->stInterception.stSCBTag.usStatus)
@@ -4080,6 +4118,11 @@ proc_finishe:
         {
             sc_lcb_free(pstLCB);
             pstLCB = NULL;
+        }
+
+        if (pstSCB)
+        {
+            sc_scb_free(pstSCB);
         }
     }
 
@@ -4309,7 +4352,8 @@ U32 sc_interception_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Processing interception release event.");
+    sc_trace_scb(pstSCB, "Processing interception release event. status : %u", pstSCB->stInterception.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing interception release event. status : %u", pstSCB->stInterception.stSCBTag.usStatus);
 
     pstLCB = sc_lcb_get(pstSCB->stInterception.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
@@ -4376,6 +4420,7 @@ U32 sc_interception_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing interception error event. status : %u", pstSCB->stInterception.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing interception error event. status : %u", pstSCB->stInterception.stSCBTag.usStatus);
 
     if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
     {
@@ -4418,8 +4463,9 @@ U32 sc_interception_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_whisper_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    U32  ulRet = DOS_FAIL;
-    SC_LEG_CB *pstLCB = NULL;
+    U32                         ulRet       = DOS_FAIL;
+    SC_LEG_CB                   *pstLCB     = NULL;
+    SC_MSG_EVT_AUTH_RESULT_ST   *pstAuthRsp = NULL;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -4427,13 +4473,23 @@ U32 sc_whisper_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Proccessing interception auth event.");
+    sc_trace_scb(pstSCB, "Proccessing whisper auth event. status : %u", pstSCB->stWhispered.stSCBTag.usStatus);
 
     pstLCB = sc_lcb_get(pstSCB->stWhispered.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
+    }
+
+    pstAuthRsp = (SC_MSG_EVT_AUTH_RESULT_ST *)pstMsg;
+    if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
+    {
+        sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_ERROR, SC_MOD_EVENT, SC_LOG_DISIST), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log_digest_print_only(pstSCB, "Processing auth rsp event for interception. error : %u", pstAuthRsp->stMsgTag.usInterErr);
+        ulRet = DOS_FAIL;
+
+        goto proc_finishe;
     }
 
     switch (pstSCB->stWhispered.stSCBTag.usStatus)
@@ -4488,6 +4544,12 @@ proc_finishe:
         {
             sc_lcb_free(pstLCB);
             pstLCB = NULL;
+        }
+
+        if (DOS_ADDR_VALID(pstSCB))
+        {
+            sc_scb_free(pstSCB);
+            pstSCB = NULL;
         }
     }
 
@@ -4716,7 +4778,8 @@ U32 sc_whisper_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Processing interception release event.");
+    sc_trace_scb(pstSCB, "Processing whisper release event. status : %u", pstSCB->stWhispered.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing whisper release event. status : %u", pstSCB->stWhispered.stSCBTag.usStatus);
 
     pstLCB = sc_lcb_get(pstSCB->stWhispered.ulLegNo);
     if (DOS_ADDR_INVALID(pstLCB))
@@ -4785,6 +4848,7 @@ U32 sc_whisper_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing whisper error event. status : %u", pstSCB->stWhispered.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing whisper error event. status : %u", pstSCB->stWhispered.stSCBTag.usStatus);
 
     if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
     {
@@ -4847,7 +4911,7 @@ U32 sc_auto_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_ERROR, SC_MOD_EVENT, SC_LOG_DISIST), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
 
         /* 分析呼叫结果 */
@@ -5004,6 +5068,7 @@ U32 sc_auto_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstEvent = (SC_MSG_EVT_RINGING_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "Processing auto call ringing event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing auto call ringing event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
 
     switch (pstSCB->stAutoCall.stSCBTag.usStatus)
     {
@@ -5104,6 +5169,7 @@ U32 sc_auto_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Processing auto call agent ringing timeout event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing auto call agent ringing timeout event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
 
     switch (pstSCB->stAutoCall.stSCBTag.usStatus)
     {
@@ -5351,6 +5417,7 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "process the auto call playback stop msg. status: %u", pstSCB->stAutoCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "process the auto call playback stop msg. status: %u", pstSCB->stAutoCall.stSCBTag.usStatus);
 
     pstRlayback = (SC_MSG_EVT_PLAYBACK_ST *)pstMsg;
 
@@ -5466,6 +5533,7 @@ U32 sc_auto_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Processing auto call queue event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing auto call queue event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
 
     switch (pstSCB->stAutoCall.stSCBTag.usStatus)
     {
@@ -5713,6 +5781,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing auto call hungup event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing auto call hungup event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
 
     if (pstHungup->ulLegNo == pstSCB->stAutoCall.ulCallingLegNo)
     {
@@ -6245,6 +6314,7 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing auto call error event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing auto call error event. status : %u", pstSCB->stAutoCall.stSCBTag.usStatus);
 
     if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
     {
@@ -10032,7 +10102,7 @@ U32 sc_call_agent_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
-        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
+        sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_ERROR, SC_MOD_EVENT, SC_LOG_DISIST), "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
          /* 注意通过偏移量，找到CC统一定义的错误码。
             需要判断坐席是否是长签，如果是长签的就不能挂断 */
         switch (pstSCB->stCallAgent.stSCBTag.usStatus)
@@ -10212,6 +10282,7 @@ U32 sc_call_agent_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing call agent setup event event. status : %u", pstSCB->stCallAgent.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing call agent setup event event. status : %u", pstSCB->stCallAgent.stSCBTag.usStatus);
 
     pstCallingCB = sc_lcb_get(pstSCB->stCallAgent.ulCallingLegNo);
     if (DOS_ADDR_INVALID(pstCallingCB))
@@ -10507,6 +10578,7 @@ U32 sc_call_agent_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing call agent hungup event. status : %u", pstSCB->stCallAgent.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing call agent hungup event. status : %u", pstSCB->stCallAgent.stSCBTag.usStatus);
 
     if (pstHungup->ulLegNo == pstSCB->stCallAgent.ulCallingLegNo)
     {
@@ -10868,6 +10940,7 @@ U32 sc_call_agent_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing call agent error event. status : %u", pstSCB->stCallAgent.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing call agent error event. status : %u", pstSCB->stCallAgent.stSCBTag.usStatus);
 
     if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
     {
@@ -10946,6 +11019,7 @@ U32 sc_auto_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Processing auto preview auth event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing auto preview auth event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
 
     pstAuthRsp = (SC_MSG_EVT_AUTH_RESULT_ST *)pstMsg;
 
@@ -11143,6 +11217,7 @@ U32 sc_auto_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstRinging = (SC_MSG_EVT_RINGING_ST*)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing auto preview setup event event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing auto preview setup event event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
 
     switch (pstSCB->stAutoPreview.stSCBTag.usStatus)
     {
@@ -11208,6 +11283,7 @@ U32 sc_auto_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing auto preview setup event event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing auto preview setup event event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
 
     pstCallingCB = sc_lcb_get(pstSCB->stAutoPreview.ulCallingLegNo);
     if (DOS_ADDR_INVALID(pstCallingCB))
@@ -11509,6 +11585,7 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstHungup = (SC_MSG_EVT_HUNGUP_ST *)pstMsg;
 
     sc_trace_scb(pstSCB, "Proccessing auto preview hungup event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing auto preview hungup event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
 
     if (pstHungup->ulLegNo == pstSCB->stAutoPreview.ulCallingLegNo)
     {
@@ -11964,6 +12041,7 @@ U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     sc_trace_scb(pstSCB, "Proccessing auto preview error event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Proccessing auto preview error event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
 
     if (pstErrReport->stMsgTag.usInterErr == SC_ERR_BRIDGE_SUCC)
     {

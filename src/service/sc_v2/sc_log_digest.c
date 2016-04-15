@@ -142,7 +142,7 @@ U32 sc_log_digest_print(const S8 *szTraceStr)
     {
         return DOS_FAIL;
     }
-    dos_snprintf(pszBuf, SC_LOG_DIGEST_LEN, "%s%s\r\n", szCurTime, szTraceStr);
+    dos_snprintf(pszBuf, SC_LOG_DIGEST_LEN, "%s  %s\r\n", szCurTime, szTraceStr);
 
     pstNode = dos_dmem_alloc(sizeof(DLL_NODE_S));
     if (DOS_ADDR_INVALID(pstNode))
