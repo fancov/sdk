@@ -850,7 +850,7 @@ U32 sc_ringing_timeout_proc(SC_SRV_CB *pstSCB)
     {
         /* 放音提示客户等待 */
         pstNewSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
-        //sc_req_play_sound(pstNewSCB->ulSCBNo, pstNewSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
+        sc_req_play_sound(pstNewSCB->ulSCBNo, pstNewSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
     }
 
     return DOS_SUCC;
@@ -1189,6 +1189,7 @@ U32 sc_call_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     if (pstAuthRsp->stMsgTag.usInterErr != BS_ERR_SUCC)
     {
+        pstSCB->stCall.bIsError = DOS_TRUE;
         sc_trace_scb(pstSCB, "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         sc_log_digest_print_only(pstSCB, "Release call with error code %u", pstAuthRsp->stMsgTag.usInterErr);
         /* 注意通过偏移量，找到CC统一定义的错误码 */
@@ -1243,6 +1244,7 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_LEG_CB             *pstCalleeLegCB   = NULL;
     SC_LEG_CB             *pstCallingLegCB  = NULL;
     U32                   lRes              = DOS_FAIL;
+    BOOL                  bIsConnected      = DOS_FALSE;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -1278,7 +1280,12 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 pstSCB->stCall.stSCBTag.usStatus = SC_CALL_ALERTING;
 
-                if (sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_FALSE, pstEvent->ulWithMedia) != DOS_SUCC)
+                if (pstSCB->stBalanceWarning.stSCBTag.bValid)
+                {
+                    bIsConnected = DOS_TRUE;
+                }
+
+                if (sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, bIsConnected, pstEvent->ulWithMedia) != DOS_SUCC)
                 {
                     sc_trace_scb(pstSCB, "Send ringback request fail.");
                 }
@@ -2001,7 +2008,7 @@ U32 sc_call_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_CALL_AUTH:
-            if (pstSCB->stBalanceWarning.stSCBTag.bValid)
+            if (!pstSCB->stCall.bIsError)
             {
                 ulRet = sc_outgoing_call_process(pstSCB, pstCallingLegCB);
             }
@@ -2191,7 +2198,7 @@ U32 sc_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     {
         /* 放音提示客户等待 */
         pstNewSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
-        //sc_req_play_sound(pstNewSCB->ulSCBNo, pstNewSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
+        sc_req_play_sound(pstNewSCB->ulSCBNo, pstNewSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
     }
 
     return DOS_SUCC;
@@ -4255,7 +4262,7 @@ U32 sc_switchboard_play_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                             {
                                 /* 放音提示客户等待 */
                                 pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
-                                //sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
+                                sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
                                 return  DOS_SUCC;
                             }
                         }
@@ -4320,7 +4327,7 @@ U32 sc_switchboard_play_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         {
                             /* 放音提示客户等待 */
                             pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
-                            //sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
+                            sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
                             return  DOS_SUCC;
                         }
                         break;
@@ -4650,7 +4657,7 @@ U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                              {
                                  /* 放音提示客户等待 */
                                  pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
-                                 sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
+                                 sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
                              }
                              break;
                          }
@@ -4718,7 +4725,7 @@ U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                          {
                              /* 放音提示客户等待 */
                              pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
-                             sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
+                             sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
                          }
                          break;
                     }
@@ -4785,7 +4792,7 @@ U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                             {
                                 /* 放音提示客户等待 */
                                 pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
-                                sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
+                                sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
                             }
                             break;
                         }
@@ -6776,7 +6783,7 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     {
                         /* 放音提示客户等待 */
                         pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
-                        //sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
+                        sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
                     }
 
                     break;
@@ -6926,7 +6933,7 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     {
                         /* 放音提示客户等待 */
                         pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
-                        //sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
+                        sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
                         ulRet = DOS_SUCC;
                     }
 
@@ -7101,7 +7108,7 @@ U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     {
                         /* 放音提示客户等待 */
                         pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
-                        //sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CONNECTING, 1, 0, 0);
+                        sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
                     }
                     break;
 
@@ -12546,6 +12553,7 @@ U32 sc_auto_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             else
             {
                 pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
+                sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
             }
             break;
 

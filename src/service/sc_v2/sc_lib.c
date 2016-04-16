@@ -1024,6 +1024,7 @@ VOID sc_scb_call_init(SC_SRV_CALL_ST *pstCall)
     pstCall->bIsRingTimer = DOS_FALSE;
     pstCall->stTmrHandle = NULL;
     pstCall->ulAgentGrpID = 0;
+    pstCall->bIsError = DOS_FALSE;
 }
 
 VOID sc_scb_preview_call_init(SC_PREVIEW_CALL_ST *pstPreviewCall)

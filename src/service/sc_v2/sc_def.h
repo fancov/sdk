@@ -1048,6 +1048,8 @@ typedef struct tagSCSrvCall{
 
     U32               ulAgentGrpID;
 
+    BOOL              bIsError;
+
     /** Ö÷½Ð×øÏ¯Ö¸Õë */
     SC_AGENT_NODE_ST *pstAgentCalling;
 
