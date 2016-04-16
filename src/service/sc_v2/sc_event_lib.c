@@ -1500,7 +1500,8 @@ U32 sc_incoming_call_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
                 pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stCorSwitchboard.stSCBTag;
                 pstSCB->stCorSwitchboard.ulCallingLegNo = pstSCB->stCall.ulCallingLegNo;
                 pstSCB->stCorSwitchboard.stSCBTag.usStatus = SC_COR_SWITCHBOARD_IDEL;
-                ulRet = sc_switchboard_start(pstSCB,ulBindID);
+                pstSCB->stCorSwitchboard.ulDidBindID = ulBindID;
+                ulRet = sc_req_answer_call(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo);
                 break;
 
             default:

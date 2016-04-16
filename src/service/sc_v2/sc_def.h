@@ -1211,6 +1211,7 @@ typedef struct SCCORSWPeriodTag{
     U32         ulSWID;
     U32         ulCustomerID;
     BOOL        bExist;
+    BOOL        bDefault;
     S8          ucPlayTimes;
 
     U8          ucPeriodValid;
@@ -1252,6 +1253,7 @@ typedef struct tagSCCORSwitchboard{
     DOS_TMR_ST         stTmrHandle;
     U8                 ucTimeout;
     U8                 ucExtensionNumLength;
+    U32                ulDidBindID;
 
 }SC_COR_SWITCHBOARD_ST;
 

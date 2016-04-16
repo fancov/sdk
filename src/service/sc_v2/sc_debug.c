@@ -2956,6 +2956,114 @@ U32 sc_show_all_queue(U32 ulIndex)
     return DOS_SUCC;
 }
 
+U32 sc_show_switchboard(U32 ulIndex)
+{
+    DLL_NODE_S                  *pstListNode = NULL;
+    SC_COR_SW_NODE_ST           *pstSWNode = NULL;
+
+    S8  szBuff[256] = {0};
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-8s%-16s"
+                        , "ID", "Name");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n--------------------------------------");
+    DLL_Scan(&g_stCorSwitchboardList, pstListNode, DLL_NODE_S *)
+    {
+        pstSWNode = (SC_COR_SW_NODE_ST *)pstListNode->pHandle;
+
+        if (DOS_ADDR_VALID(pstSWNode))
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-8d%-16s"
+                            , pstSWNode->ulID
+                            , pstSWNode->szSWNodeName);
+            cli_out_string(ulIndex, szBuff);
+        }
+    }
+    cli_out_string(ulIndex, "\r\n--------------------------------------\r\n");
+
+    return DOS_SUCC;
+}
+
+
+U32 sc_show_ivr_period(U32 ulIndex)
+{
+    SC_SW_IVR_NODE_ST *pstSWPeriod = NULL;
+    U32 ulHashIndex = U32_BUTT;
+    HASH_NODE_S *pstHashNode = NULL;
+    S8  szBuff[256] = {0};
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-5s%-6s%-12s%-10s%-10s%-12s%-12s%-12s%-12s"
+                    , "ID", "SWID", "CustomerID", "WeekMask", "AudioID", "StartTime", "EndTime", "KeymapNum", "FirstKeyMap");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n---------------------------------------------------------------------------------------------");
+
+    HASH_Scan_Table(g_pstHashSWPeriod, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashSWPeriod, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstSWPeriod = (SC_SW_IVR_NODE_ST *)pstHashNode->pHandle;
+
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-5d%-6d%-12d%-10u%-10d%02u:%02u:%02u   %02u:%02u:%02u%-12d%-12p"
+                            , pstSWPeriod->ulID
+                            , pstSWPeriod->ulSWID
+                            , pstSWPeriod->ulCustomerID
+                            , pstSWPeriod->ucWeekMask
+                            , pstSWPeriod->ulIvrAudioID
+                            , pstSWPeriod->ucHourBegin
+                            , pstSWPeriod->ucMinuteBegin
+                            , pstSWPeriod->ucSecondBegin
+                            , pstSWPeriod->ucHourEnd
+                            , pstSWPeriod->ucMinuteEnd
+                            , pstSWPeriod->ucSecondEnd
+                            , pstSWPeriod->ulIndex
+                            , pstSWPeriod->pstSWKeymapNode[0]);
+             cli_out_string(ulIndex, szBuff);
+        }
+    }
+    cli_out_string(ulIndex, "\r\n---------------------------------------------------------------------------------------------\r\n");
+    return DOS_SUCC;
+};
+
+
+U32 sc_show_sw_keymap(U32 ulIndex)
+{
+    DLL_NODE_S                  *pstListNode = NULL;
+    SC_IVR_KEY_MAP_ST           *pstSWKeymapNode = NULL;
+
+    S8  szBuff[256] = {0};
+
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-8s%-16s%-4s%-16s%-16s"
+                        , "ID", "PeriodID", "Key", "KeyMapType", "KeyMapID");
+    cli_out_string(ulIndex, szBuff);
+    cli_out_string(ulIndex, "\r\n--------------------------------------");
+    DLL_Scan(&g_stSWKeyMapList, pstListNode, DLL_NODE_S *)
+    {
+        pstSWKeymapNode = (SC_IVR_KEY_MAP_ST *)pstListNode->pHandle;
+
+        if (DOS_ADDR_VALID(pstSWKeymapNode))
+        {
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-8d%-16d%-4d%-16u%-16d"
+                            , pstSWKeymapNode->ulID
+                            , pstSWKeymapNode->ulIVRPeriodID
+                            , pstSWKeymapNode->ulKey
+                            , pstSWKeymapNode->ucKeyMapType
+                            , pstSWKeymapNode->ulKeyMap);
+            cli_out_string(ulIndex, szBuff);
+        }
+    }
+    cli_out_string(ulIndex, "\r\n--------------------------------------\r\n");
+
+    return DOS_SUCC;
+}
+
+
+
 S32 sc_cli_cc_trace_mod(U32 ulIndex, S32 argc, S8 **argv)
 {
     U32 i = 0, ulMod = 0;
@@ -4506,6 +4614,18 @@ S32 cli_cc_show(U32 ulIndex, S32 argc, S8 **argv)
     else if (0 == dos_stricmp(argv[2], "queue"))
     {
         sc_show_all_queue(ulIndex);
+    }
+    else if (0 == dos_stricmp(argv[2], "switchboard"))
+    {
+        sc_show_switchboard(ulIndex);
+    }
+    else if (0 == dos_stricmp(argv[2], "ivr_period"))
+    {
+        sc_show_ivr_period(ulIndex);
+    }
+    else if (0 == dos_stricmp(argv[2], "keymap"))
+    {
+        sc_show_sw_keymap(ulIndex);
     }
 
     return 0;

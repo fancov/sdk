@@ -4048,6 +4048,7 @@ U32 sc_switchboard_start(SC_SRV_CB *pstSCB, U32 ulBindID)
     U8                 ucIndex;
     SC_COR_SW_NODE_ST  *pstCorSWNode = NULL;
     SC_SW_IVR_NODE_ST  *pstCorSWIVRNode = NULL;
+    SC_SW_IVR_NODE_ST  *pstCorSWDefaultIVRNode = NULL;
     SC_LEG_CB           *pstLCB = NULL;
 
     SC_MSG_CMD_PLAYBACK_ST  stPlaybackRsp;
@@ -4070,18 +4071,25 @@ U32 sc_switchboard_start(SC_SRV_CB *pstSCB, U32 ulBindID)
 
     for (ucIndex = 0; ucIndex < pstCorSWNode->ucIndex; ucIndex++)
     {
-        if (sc_ivr_check_can_call_by_time(pstCorSWNode->pstSWPeriodNode[ucIndex]))
+        if (!pstCorSWNode->pstSWPeriodNode[ucIndex]->bDefault)
         {
-            pstCorSWIVRNode = pstCorSWNode->pstSWPeriodNode[ucIndex];
-            break;
+            if (sc_ivr_check_can_call_by_time(pstCorSWNode->pstSWPeriodNode[ucIndex]))
+            {
+                pstCorSWIVRNode = pstCorSWNode->pstSWPeriodNode[ucIndex];
+                break;
+            }
+        }
+        else
+        {
+                pstCorSWDefaultIVRNode = pstCorSWNode->pstSWPeriodNode[ucIndex];
         }
     }
 
     if (DOS_ADDR_INVALID(pstCorSWIVRNode))
     {
-        sc_trace_scb(pstSCB, "There is no available period.");
+        pstCorSWIVRNode = pstCorSWDefaultIVRNode;
+        sc_trace_scb(pstSCB, "Use the default period.");
 
-        return DOS_FAIL;
     }
 
     stPlaybackRsp.stMsgTag.ulMsgType = SC_CMD_PLAYBACK;
@@ -4214,6 +4222,11 @@ U32 sc_switchboard_play_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             switch(pstSWPeriodNode->ucTransferType)
             {
                 case SC_SW_DIRECT_TRANSFER:
+                    if (DOS_ADDR_INVALID(pstSWPeriodNode->pstSWKeymapNode[0]))
+                    {
+                        DOS_ASSERT(0);
+                        return DOS_FAIL;
+                    }
                     ulForwardID = pstSWPeriodNode->pstSWKeymapNode[0]->ulKeyMap;
                     ulForwardType = pstSWPeriodNode->pstSWKeymapNode[0]->ucKeyMapType;
                     if (ulForwardType == SC_SW_FORWARD_SIP)
@@ -4431,6 +4444,8 @@ U32 sc_switchboard_answer(SC_MSG_TAG_ST *pstMsg,  SC_SRV_CB *pstSCB)
     switch (pstSCB->stCorSwitchboard.stSCBTag.usStatus)
     {
         case SC_COR_SWITCHBOARD_IDEL:
+            sc_switchboard_start(pstSCB,pstSCB->stCorSwitchboard.ulDidBindID);
+            break;
         case SC_COR_SWITCHBOARD_PLAY_AUDIO:
         case SC_COR_SWITCHBOARD_AFTER_KEY:       /*按键之后操作*/
         case SC_COR_SWITCHBOARD_AUTH2:           /*认证被叫*/

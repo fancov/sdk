@@ -1733,6 +1733,7 @@ VOID sc_sw_period_init(SC_SW_IVR_NODE_ST *pstSWIVR)
         dos_memzero(pstSWIVR->pstSWKeymapNode, sizeof(SC_IVR_KEY_MAP_ST *)*16);
 
         pstSWIVR->bExist            = DOS_FALSE;
+        pstSWIVR->bDefault          = DOS_FALSE;
      }
 }
 
@@ -1803,8 +1804,6 @@ U32 sc_sw_period_delete(U32 ulPeriodID)
         return DOS_FALSE;
     }
 }
-
-
 
 S32 sc_sw_period_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
 {
@@ -1895,6 +1894,7 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         {
             if (dos_atoul(aszValues[lIndex], &pstSWIVRNode->ulSWID) < 0)
             {
+
                 blProcessOK = DOS_FALSE;
             }
         }
@@ -1937,6 +1937,14 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "default", dos_strlen("default")))
+        {
+            if (dos_atoul(aszValues[lIndex], (U32 *)&pstSWIVRNode->bDefault) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
     }
 
     if (!blProcessOK)
@@ -1957,26 +1965,31 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     pstSWIVRNode->ucMinuteEnd = (ulEndTime>> 8) & 0xFF;
     pstSWIVRNode->ucSecondEnd = (ulEndTime) & 0xFF;
 
-    pthread_mutex_lock(&g_mutexCorSwitchboardList);
-    pstListNode = dll_find(&g_stCorSwitchboardList, &pstSWIVRNode->ulSWID, sc_switchboard_find);
-    if (DOS_ADDR_VALID(pstListNode))
-    {
-        pstSWNode = pstListNode->pHandle;
-        pstSWNode->pstSWPeriodNode[(pstSWNode->ucIndex)++] = pstSWIVRNode;
-    }
-    else
-    {
-        //´íÎó´¦Àí
-    }
-
-    pthread_mutex_unlock(&g_mutexCorSwitchboardList);
-
-
     pthread_mutex_lock(&g_mutexHashSWPeriod);
     ulHashIndex = sc_int_hash_func(pstSWIVRNode->ulID, SC_SW_PEROID_HASH_SIZE);
     pstHashNode = hash_find_node(g_pstHashSWPeriod, ulHashIndex, (VOID *)&pstSWIVRNode->ulID, sc_sw_period_hash_find);
     if (DOS_ADDR_INVALID(pstHashNode))
     {
+
+        pthread_mutex_lock(&g_mutexCorSwitchboardList);
+        pstListNode = dll_find(&g_stCorSwitchboardList, &pstSWIVRNode->ulSWID, sc_switchboard_find);
+        if (DOS_ADDR_VALID(pstListNode))
+        {
+            pstSWNode = pstListNode->pHandle;
+            pstSWNode->pstSWPeriodNode[(pstSWNode->ucIndex)++] = pstSWIVRNode;
+        }
+        else
+        {
+            DOS_ASSERT(0);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "period load fail.");
+            pthread_mutex_unlock(&g_mutexCorSwitchboardList);
+            dos_dmem_free(pstSWIVRNode);
+            pstSWIVRNode = NULL;
+            return DOS_FAIL;
+        }
+
+        pthread_mutex_unlock(&g_mutexCorSwitchboardList);
+
         pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
         if (DOS_ADDR_INVALID(pstHashNode))
         {
@@ -1993,21 +2006,22 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         ulHashIndex = sc_int_hash_func(pstSWIVRNode->ulID, SC_SW_PEROID_HASH_SIZE);
 
         hash_add_node(g_pstHashSWPeriod, (HASH_NODE_S *)pstHashNode, ulHashIndex, NULL);
+
     }
     else
     {
-        pstSWIVRNodeTmp= pstHashNode->pHandle;
+        pstSWIVRNodeTmp = pstHashNode->pHandle;
         if (DOS_ADDR_INVALID(pstSWIVRNodeTmp))
         {
             DOS_ASSERT(0);
 
             dos_dmem_free(pstSWIVRNode);
-            pstSWIVRNode= NULL;
+            pstSWIVRNode = NULL;
 
             pthread_mutex_unlock(&g_mutexHashSWPeriod);
             return DOS_FAIL;
         }
-
+        dos_memcpy(pstSWIVRNodeTmp, pstSWIVRNode, sizeof(SC_SW_IVR_NODE_ST));
         dos_dmem_free(pstSWIVRNode);
         pstSWIVRNode= NULL;
     }
@@ -2020,24 +2034,37 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 S32 sc_sw_period_load(U32 ulIndex)
 {
     S8 szSQL[1024];
+    U32 lret;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
                     ,"SELECT a.id, a.customer_id, a.sw_id, a.sw_trfr_type, a.start_time, a.end_time, " \
-                     "a.ivr_audio_id, b.play_times FROM tbl_ivr_period a LEFT JOIN tbl_switchboard b ON a.sw_id = b.id;");
+                     "a.ivr_audio_id, a.default, b.play_times FROM tbl_ivr_period a LEFT JOIN tbl_switchboard b ON a.sw_id = b.id;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT a.id, a.customer_id, a.sw_id, a.sw_trfr_type, a.start_time, a.end_time, a.ivr_audio_id," \
-                       "b.play_times FROM tbl_ivr_period a LEFT JOIN tbl_switchboard b ON a.sw_id = b.id" \
-                      "WHERE tbl_ivr_period.id = %u;", ulIndex);
+                    , "SELECT a.id, a.customer_id, a.sw_id, a.sw_trfr_type, a.start_time, a.end_time," \
+                       "a.ivr_audio_id, a.default, b.play_times FROM tbl_ivr_period a LEFT JOIN tbl_switchboard b ON a.sw_id = b.id" \
+                      " WHERE a.id=%u;", ulIndex);
     }
 
-    db_query(g_pstSCDBHandle, szSQL, sc_sw_period_load_cb, NULL, NULL);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "period load sql :\n%s ", szSQL);
 
-    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Load ivr_period succ.");
+    lret = db_query(g_pstSCDBHandle, szSQL, sc_sw_period_load_cb, NULL, NULL);
+
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "period load ret: %d  ulIndex : %d ", lret, ulIndex);
+
+    if (0 == lret)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Load ivr_period succ.");
+    }
+    else
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Load ivr_period fail.");
+    }
+
     return DOS_SUCC;
 }
 
@@ -2182,26 +2209,29 @@ S32 sc_sw_keymap_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         return DOS_FAIL;
     }
 
-    pthread_mutex_lock(&g_mutexHashSWPeriod);
-    ulHashIndex = sc_int_hash_func(pstSWKeyMapNode->ulIVRPeriodID, SC_SW_PEROID_HASH_SIZE);
-    pstHashNode = hash_find_node(g_pstHashSWPeriod, ulHashIndex, (VOID *)&pstSWKeyMapNode->ulIVRPeriodID, sc_sw_period_hash_find);
-    if (DOS_ADDR_VALID(pstHashNode))
-    {
-        pstSWIVRNode = pstHashNode->pHandle;
-        pstSWIVRNode->pstSWKeymapNode[(pstSWIVRNode->ulIndex)++] = pstSWKeyMapNode;
-    }
-    else
-    {
-      //error
-       DOS_ASSERT(0);
-       return DOS_FAIL;
-    }
-    pthread_mutex_unlock(&g_mutexHashSWPeriod);
-
     pthread_mutex_lock(&g_mutexSWKeyMapList);
     pstListNode = dll_find(&g_stSWKeyMapList, &pstSWKeyMapNode->ulID, sc_sw_keymap_find);
     if (DOS_ADDR_INVALID(pstListNode))
     {
+        pthread_mutex_lock(&g_mutexHashSWPeriod);
+        ulHashIndex = sc_int_hash_func(pstSWKeyMapNode->ulIVRPeriodID, SC_SW_PEROID_HASH_SIZE);
+        pstHashNode = hash_find_node(g_pstHashSWPeriod, ulHashIndex, (VOID *)&pstSWKeyMapNode->ulIVRPeriodID, sc_sw_period_hash_find);
+        if (DOS_ADDR_VALID(pstHashNode))
+        {
+            pstSWIVRNode = pstHashNode->pHandle;
+            pstSWIVRNode->pstSWKeymapNode[(pstSWIVRNode->ulIndex)++] = pstSWKeyMapNode;
+        }
+        else
+        {
+            DOS_ASSERT(0);
+            dos_dmem_free(pstSWKeyMapNode);
+            pstSWKeyMapNode= NULL;
+
+            pthread_mutex_unlock(&g_mutexHashSWPeriod);
+            return DOS_FAIL;
+        }
+        pthread_mutex_unlock(&g_mutexHashSWPeriod);
+
         pstListNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
         if (DOS_ADDR_INVALID(pstListNode))
         {
@@ -2235,7 +2265,6 @@ S32 sc_sw_keymap_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 
         dos_memcpy(pstSWKeyMapNodeTmp, pstSWKeyMapNode, sizeof(SC_COR_SW_NODE_ST));
         pstSWKeyMapNodeTmp->bExist = DOS_TRUE;
-
         dos_dmem_free(pstSWKeyMapNode);
         pstSWKeyMapNode= NULL;
     }
@@ -2270,6 +2299,7 @@ U32 sc_sw_keymap_load(U32 ulIndex)
 
 U32 sc_sw_keymap_delete(U32 ulID)
 {
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Delete keymap start (ID:%u)", ulID);
     DLL_NODE_S *pstListNode = NULL;
 
     pthread_mutex_lock(&g_mutexSWKeyMapList);

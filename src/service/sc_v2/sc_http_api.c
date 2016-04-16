@@ -1513,8 +1513,6 @@ invalid_params:
 
 }
 
-
-
 U32 sc_http_api_period_action(list_t *pstArgv)
 {
     S8  *pszPeriodID = NULL, *pszAction = NULL;
@@ -1526,7 +1524,7 @@ U32 sc_http_api_period_action(list_t *pstArgv)
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    pszPeriodID  = sc_http_api_get_value(pstArgv, "period_id");
+    pszPeriodID = sc_http_api_get_value(pstArgv, "period_id");
     pszAction = sc_http_api_get_value(pstArgv, "action");
 
     if (DOS_ADDR_INVALID(pszPeriodID)
@@ -1585,7 +1583,7 @@ U32 sc_http_api_keymap_action(list_t *pstArgv)
         return SC_HTTP_ERRNO_INVALID_REQUEST;
     }
 
-    pszKeymapID  = sc_http_api_get_value(pstArgv, "keymap_id");
+    pszKeymapID = sc_http_api_get_value(pstArgv, "keymap_id");
     pszAction = sc_http_api_get_value(pstArgv, "action");
 
     if (DOS_ADDR_INVALID(pszKeymapID)
