@@ -11287,10 +11287,15 @@ U32 sc_auto_preview_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             /* 修改坐席的业务状态 */
             sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_CALL_OUT, SC_SRV_AUTO_PREVIEW);
 
-            if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCalleeLegNo, pstSCB->stAutoPreview.ulCallingLegNo) != DOS_SUCC)
+            /* 没有早期媒体，需要桥接呼叫 */
+            if (DOS_ADDR_VALID(pstCalleeCB)
+                && !pstCalleeCB->stCall.bEarlyMedia)
             {
-                sc_trace_scb(pstSCB, "Bridge call when early media fail.");
-                goto fail_proc;
+                if (sc_req_bridge_call(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCalleeLegNo, pstSCB->stAutoPreview.ulCallingLegNo) != DOS_SUCC)
+                {
+                    sc_trace_scb(pstSCB, "Bridge call when early media fail.");
+                    goto fail_proc;
+                }
             }
 
             pstSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_CONNECTED;

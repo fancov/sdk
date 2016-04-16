@@ -23,7 +23,7 @@ extern "C" {
 #define MAX_FAIL_CALL_CNT_DELAY      5
 
 /** 单次巡检的个数 */
-#define MAX_CHECK_CNT_FRE_TIME       30
+#define MAX_CHECK_CNT_FRE_TIME       1000
 
 /** LEG控制块在分配之后不被检查的秒数 */
 #define CB_ALIVE_TIME_BEFORE_CHECK   6
