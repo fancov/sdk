@@ -933,19 +933,18 @@ U32 sc_lcb_check(U32 ulType, VOID *ptr)
 {
     static U32  ulLastIndex = 0;
     BOOL        ulNeedFree  = DOS_FALSE;
-    U32         ulIndex     = 0;
+    U32         ulCount     = 0;
     U32         ulCurrentTime = 0;
     SC_LEG_CB   *pstLCB     = NULL;
 
-    for (ulIndex=ulLastIndex; ulIndex<ulLastIndex+MAX_CHECK_CNT_FRE_TIME; ulIndex++)
+    for (ulCount=0; ulCount<MAX_CHECK_CNT_FRE_TIME; ulCount++, ulLastIndex++)
     {
-        if (ulIndex >= SC_LEG_CB_SIZE)
+        if (ulLastIndex >= SC_LEG_CB_SIZE)
         {
-            ulIndex = 0;
             ulLastIndex = 0;
         }
 
-        pstLCB = &g_pstLegCB[ulIndex];
+        pstLCB = &g_pstLegCB[ulLastIndex];
         if (!pstLCB->bValid)
         {
             continue;
@@ -964,7 +963,7 @@ U32 sc_lcb_check(U32 ulType, VOID *ptr)
         /* 两个都为空是有问题的 */
         if (pstLCB->ulSCBNo >= SC_SCB_SIZE && pstLCB->ulIndSCBNo >= SC_SCB_SIZE)
         {
-            sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "LCB wasted (%u). All the related scb are invalid. Free fource.", ulIndex);
+            sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "LCB wasted (%u). All the related scb are invalid. Free fource.", ulLastIndex);
             ulNeedFree = DOS_TRUE;
         }
 
@@ -973,7 +972,7 @@ U32 sc_lcb_check(U32 ulType, VOID *ptr)
         {
             if (sc_scb_check_one(pstLCB->ulSCBNo) != DOS_SUCC)
             {
-                sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "LCB wasted (%u). The master SCB is invlid. Free fource.", ulIndex);
+                sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "LCB wasted (%u). The master SCB is invlid. Free fource.", ulLastIndex);
                 ulNeedFree = DOS_TRUE;
             }
         }
@@ -983,7 +982,7 @@ U32 sc_lcb_check(U32 ulType, VOID *ptr)
         {
             if (sc_scb_check_one(pstLCB->ulIndSCBNo) != DOS_SUCC)
             {
-                sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "LCB wasted (%u). The second SCB is invlid. Free fource.", ulIndex);
+                sc_log(DOS_FALSE, LOG_LEVEL_WARNING, "LCB wasted (%u). The second SCB is invlid. Free fource.", ulLastIndex);
                 ulNeedFree = DOS_TRUE;
             }
         }
@@ -994,8 +993,6 @@ U32 sc_lcb_check(U32 ulType, VOID *ptr)
             pstLCB = NULL;
         }
     }
-
-    ulLastIndex = ulLastIndex + MAX_CHECK_CNT_FRE_TIME;
 
     return DOS_SUCC;
 
@@ -1774,20 +1771,17 @@ U32 sc_scb_check_one(U32 ulIndex)
 U32 sc_scb_check(U32 ulType, VOID *ptr)
 {
     static U32  ulLastIndex = 0;
-    U32         ulIndex     = 0;
+    U32         ulCount     = 0;
 
-    for (ulIndex=ulLastIndex; ulIndex<ulLastIndex+MAX_CHECK_CNT_FRE_TIME; ulIndex++)
+    for (ulCount=0; ulCount<MAX_CHECK_CNT_FRE_TIME; ulCount++, ulLastIndex++)
     {
-        if (ulIndex >= SC_SCB_SIZE)
+        if (ulLastIndex >= SC_SCB_SIZE)
         {
-            ulIndex = 0;
             ulLastIndex = 0;
         }
 
-        sc_scb_check_one(ulIndex);
+        sc_scb_check_one(ulLastIndex);
     }
-
-    ulLastIndex = ulLastIndex + MAX_CHECK_CNT_FRE_TIME;
 
     return DOS_SUCC;
 }
