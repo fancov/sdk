@@ -2,103 +2,154 @@
 
 <config version="1.0">
     <process>
-	    <!--配置被监控进程的个数-->
-    	    <param name="count" value="5"/>
-    		  <0>
-			 <!--进程的最简名称-->
-    		  	 <param name="name"      value="bsd"/>
-		         <!--此value表示被监控的进程-->
-    		         <param name="startcmd"  value="service bsd start" />
-		         <!--配置文件版本，暂未使用该参数-->
-    		         <param name="version"   value="1.0"/>
-		         <!--此参数表示是否配置心跳，默认为true表配置，该参数暂未使用-->
-    		         <param name="heartbeat" value="true" />
-    		  </0>
-    		  <1>
-    		  	 <param name="name"      value="ctrl_paneld" />
-    		  	 <param name="startcmd"  value="service ctrl-paneld start" />
-    		  	 <param name="version"   value="1.0"/>
-    		  	 <param name="heartbeat" value="true" />
-    		  </1>
-	          <2>
-			 <param name="name"      value="scd" />
-    		  	 <param name="startcmd"  value="service scd start" />
-    		  	 <param name="version"   value="1.0"/>
-    		  	 <param name="heartbeat" value="true" />
-		  </2>
-	          <3>
-			 <param name="name"      value="ptsd" />
-    		  	 <param name="startcmd"  value="service ptsd start" />
-    		  	 <param name="version"   value="1.0"/>
-    		  	 <param name="heartbeat" value="true" />
-		  </3>
-	          <4>
-			 <param name="name"      value="mcd" />
-    		  	 <param name="startcmd"  value="service mcd start" />
-    		  	 <param name="version"   value="1.0"/>
-    		  	 <param name="heartbeat" value="true" />
-		  </4>
-                
+        <!--配置被监控进程的个数-->
+        <param name="count" value="9"/>
+
+        <0>
+            <!--进程的最简名称-->
+            <param name="name"      value="bsd"/>
+
+            <!--此value表示被监控的进程-->
+            <param name="startcmd"  value="service bsd start" />
+
+            <!--配置文件版本，暂未使用该参数-->
+            <param name="version"   value="1.0"/>
+
+            <!--此参数表示是否配置心跳，默认为true表配置，该参数暂未使用-->
+            <param name="heartbeat" value="true" />
+
+            <!-- 配置当前程序的PID文件名（全路径），如果不填写则使用/ipcc/var/run/pid/<process name>.pid -->
+            <param name="pid"       value="" />
+        </0>
+
+        <1>
+            <param name="name"      value="ctrl_paneld" />
+            <param name="startcmd"  value="service ctrl-paneld start" />
+            <param name="version"   value="1.0"/>
+            <param name="heartbeat" value="true" />
+            <param name="pid"       value="" />
+        </1>
+
+        <2>
+            <param name="name"      value="scd" />
+            <param name="startcmd"  value="service scd start" />
+            <param name="version"   value="1.0"/>
+            <param name="heartbeat" value="true" />
+            <param name="pid"       value="" />
+        </2>
+
+        <3>
+            <param name="name"      value="ptsd" />
+            <param name="startcmd"  value="service ptsd start" />
+            <param name="version"   value="1.0"/>
+            <param name="heartbeat" value="true" />
+            <param name="pid"       value="" />
+        </3>
+
+        <4>
+            <param name="name"      value="mcd" />
+            <param name="startcmd"  value="service mcd start" />
+            <param name="version"   value="1.0"/>
+            <param name="heartbeat" value="true" />
+            <param name="pid"       value="" />
+        </4>
+        
+        <5>
+            <param name="name"      value="freeswitch" />
+            <param name="startcmd"  value="service freeswitch start" />
+            <param name="version"   value="1.0"/>
+            <param name="heartbeat" value="false" />
+            <param name="pid"       value="/usr/local/freeswitch/run/freeswitch.pid" />
+        </5>
+        
+        <6>
+            <param name="name"      value="nginx" />
+            <param name="startcmd"  value="service nginx start" />
+            <param name="version"   value="1.0"/>
+            <param name="heartbeat" value="false" />
+            <param name="pid"       value="/usr/local/nginx/logs/nginx.pid" />
+        </6>
+        
+        <7>
+            <param name="name"      value="mysql" />
+            <param name="startcmd"  value="service mysql start" />
+            <param name="version"   value="1.0"/>
+            <param name="heartbeat" value="false" />
+            <param name="pid"       value="/usr/local/mysql/data/localhost.localdomain.pid" />
+        </7>
+        
+        <8>
+            <param name="name"      value="php-fpm" />
+            <param name="startcmd"  value="service php-fpm start" />
+            <param name="version"   value="1.0"/>
+            <param name="heartbeat" value="false" />
+            <param name="pid"       value="/usr/local/php/var/run/php-fpm.pid" />
+        </8>
     </process>
-	<!--该配置项配置资源占用阀值-->
-	<threshold>
-	        <mem>
-			  <!--系统内存最大占用率-->
-			  <param name="rate" value="90"/>
-			</mem>
-			<cpu>
-			  <!--系统自启动以来的平均CPU占用率-->
-			  <param name="avgRate"      value="90"/>
-			  <!--5s系统的平均CPU占用率-->
-			  <param name="5sAvgRate"    value="90"/>
-			  <!--1min系统的平均CPU占用率-->
-			  <param name="1minAvgRate"  value="90"/>
-			  <!--10min系统的平均CPU占用率-->
-			  <param name="10minAvgRate" value="90"/>
-			</cpu>
-			<disk>
-			  <!--分区的平均占用率-->
-			  <param name="partitionRate" value="90"/>
-			  <!--系统硬盘总占用率-->
-			  <param name="diskRate"      value="90"/>
-			</disk>
-			<net>
-			  <!--最大带宽，单位是MB/s-->
-			  <param name="maxBandWidth" value="90"/>
-			</net>
-			<proc>
-			  <!--被监控进程占用内存百分比-->
-			  <param name="memRate" value="40"/>
-			</proc>
-	</threshold>
-	<!--该模块专门定义其他模块发送到监控模块的告警消息最低级别
-	    级别的表示,例如费用不足严重程度高于important或者是important的全部告警：
-		   urgent    -- 紧急告警
-                   important -- 重要告警	
-    	           minor     -- 次要告警
-                   hint      -- 提示告警
-         -->
-	<warning>
-	    <param name="lack_fee"   value="important"/>
-		<param name="lack_gw"    value="important"/>
-		<param name="lack_route" value="minor"/>
-		<language>
-		    <!-- 该处配置当前IPCC系统的语言环境，其值如下
-   			     cn:  简体中文
-                 en:  美式英语 -->
-			<param name="lang" value="cn"/>
-		</language>
-	</warning>
-        <db>
-            <!--此处配置0表示不写数据库，大于0则写数据库-->
-            <param name="write" value="1"/>	
-        </db>
-        <mail>
-            <!--此处配置邮件server-->
-            <param name="server" value="smtp.126.com"/>
-            <!--此处配置认证邮箱账户名-->
-            <param name="username" value="hll2010nwsuaf@126.com"/>
-            <!--此处配置认证邮箱账户密码-->
-            <param name="password" value="soapbubble"/>
-        </mail>
+
+    <!--该配置项配置资源占用阀值-->
+    <threshold>
+        <mem>
+            <!--系统内存最大占用率-->
+            <param name="rate" value="90"/>
+        </mem>
+        <cpu>
+            <!--系统自启动以来的平均CPU占用率-->
+            <param name="avgRate"      value="90"/>
+            <!--5s系统的平均CPU占用率-->
+            <param name="5sAvgRate"    value="90"/>
+            <!--1min系统的平均CPU占用率-->
+            <param name="1minAvgRate"  value="90"/>
+            <!--10min系统的平均CPU占用率-->
+            <param name="10minAvgRate" value="90"/>
+        </cpu>
+        <disk>
+            <!--分区的平均占用率-->
+            <param name="partitionRate" value="90"/>
+            <!--系统硬盘总占用率-->
+            <param name="diskRate"      value="90"/>
+        </disk>
+        <net>
+            <!--最大带宽，单位是MB/s-->
+            <param name="maxBandWidth" value="90"/>
+        </net>
+        <proc>
+            <!--被监控进程占用内存百分比-->
+            <param name="memRate" value="40"/>
+        </proc>
+    </threshold>
+
+    <!-- 该模块专门定义其他模块发送到监控模块的告警消息最低级别
+        级别的表示,例如费用不足严重程度高于important或者是important的全部告警：
+        urgent    -- 紧急告警
+        important -- 重要告警    
+        minor     -- 次要告警
+        hint      -- 提示告警
+    -->
+    <warning>
+        <param name="lack_fee"   value="important"/>
+        <param name="lack_gw"    value="important"/>
+        <param name="lack_route" value="minor"/>
+
+        <language>
+            <!-- 该处配置当前IPCC系统的语言环境，其值如下
+            cn:  简体中文
+            en:  美式英语 -->
+            <param name="lang" value="cn"/>
+        </language>
+    </warning>
+
+    <db>
+        <!--此处配置0表示不写数据库，大于0则写数据库-->
+        <param name="write" value="1"/> 
+    </db>
+
+    <mail>
+        <!--此处配置邮件server-->
+        <param name="server" value="smtp.126.com"/>
+        <!--此处配置认证邮箱账户名-->
+        <param name="username" value="hll2010nwsuaf@126.com"/>
+        <!--此处配置认证邮箱账户密码-->
+        <param name="password" value="soapbubble"/>
+    </mail>
 </config>

@@ -1702,6 +1702,15 @@ VOID sc_show_agent(U32 ulIndex, U8 ucCondition, U32 ulID, S8* pszCondition)
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n==================================================================================================================================");
             cli_out_string(ulIndex, szCmdBuff);
+
+            if (ucCondition == SC_SHOW_AGENT_BY_ID)
+            {
+                if (pstAgentQueueNode->pstAgentInfo->ulLegNo != U32_BUTT)
+                {
+                    sc_show_leg_detail(ulIndex, pstAgentQueueNode->pstAgentInfo->ulLegNo);
+                }
+            }
+
             ulTotal++;
         }
     }
