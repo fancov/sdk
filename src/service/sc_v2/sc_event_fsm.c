@@ -258,9 +258,9 @@ U32 sc_access_hungup(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
     }
     else if (pstSCB->stAutoCall.stSCBTag.bValid)
     {
-        if (pstLegCB->ulCBNo == pstSCB->stAutoCall.ulCallingLegNo)
+        if (pstLegCB->ulCBNo == pstSCB->stAutoCall.ulCalleeLegNo)
         {
-            ulOtherLegNo = pstSCB->stAutoCall.ulCalleeLegNo;
+            ulOtherLegNo = pstSCB->stAutoCall.ulCallingLegNo;
         }
     }
     else if (pstSCB->stTransfer.stSCBTag.bValid)
@@ -275,6 +275,13 @@ U32 sc_access_hungup(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
         if (pstLegCB->ulCBNo == pstSCB->stAutoPreview.ulCallingLegNo)
         {
             ulOtherLegNo = pstSCB->stAutoPreview.ulCalleeLegNo;
+        }
+    }
+    else if (pstSCB->stCorSwitchboard.stSCBTag.bValid)
+    {
+        if (pstLegCB->ulCBNo == pstSCB->stCorSwitchboard.ulCalleeLegNo)
+        {
+            ulOtherLegNo = pstSCB->stCorSwitchboard.ulCallingLegNo;
         }
     }
 
@@ -4852,7 +4859,7 @@ U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
 
                 /* 只有坐席对应的leg执行接入码业务 */
-                if (pstDTMF->ulLegNo != pstSCB->stAutoCall.ulCalleeLegNo)
+                if (pstDTMF->ulLegNo != pstSCB->stCorSwitchboard.ulCalleeLegNo)
                 {
                     return DOS_SUCC;
                 }
@@ -4860,7 +4867,11 @@ U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstSCB->stAccessCode.stSCBTag.bValid = DOS_TRUE;
                 pstSCB->stAccessCode.szDialCache[0] = '\0';
                 pstSCB->stAccessCode.stSCBTag.usStatus = SC_ACCESS_CODE_OVERLAP;
-                pstSCB->stAccessCode.ulAgentID = pstSCB->stAutoCall.ulAgentID;
+                if (DOS_ADDR_VALID(pstSCB->stCorSwitchboard.pstAgentCallee)
+                     && DOS_ADDR_VALID(pstSCB->stCorSwitchboard.pstAgentCallee->pstAgentInfo))
+                {
+                    pstSCB->stAccessCode.ulAgentID = pstSCB->stCorSwitchboard.pstAgentCallee->pstAgentInfo->ulAgentID;
+                }
                 pstSCB->ulCurrentSrv++;
                 pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stAccessCode.stSCBTag;
             }
