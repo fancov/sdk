@@ -87,7 +87,7 @@ VOID *mon_res_monitor(VOID *p)
         if (DOS_SUCC != ulRet)
         {
             mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Get resource Information FAIL.");
-            exit(1);
+            continue;
         }
         mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Get resource Information SUCC.");
 
@@ -96,7 +96,7 @@ VOID *mon_res_monitor(VOID *p)
         if (DOS_SUCC != ulRet)
         {
             mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Handle Exception FAIL.");
-            exit(2);
+            continue;
         }
         mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Handle Exception SUCC.");
 
@@ -105,7 +105,7 @@ VOID *mon_res_monitor(VOID *p)
         if (DOS_SUCC != ulRet)
         {
             mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Add record to DB FAIL.");
-            exit(3);
+            continue;
         }
         mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Add record to DB SUCC.");
 
@@ -151,14 +151,14 @@ VOID* mon_warning_handle(VOID *p)
             if(DOS_SUCC != lRet)
             {
                 mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Generate Warning ID FAIL.");
-                exit(6);
+                continue;
             }
 
             ulRet = mon_warning_msg_de_queue(g_pstMsgQueue);
             if(DOS_SUCC != ulRet)
             {
                 mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Msg DeQueue FAIL.");
-                exit(4);
+                continue;
             }
        }
 
