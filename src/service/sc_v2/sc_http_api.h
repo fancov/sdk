@@ -125,6 +125,18 @@ enum tagAPICMDActionList
     SC_API_CMD_ACTION_DEMO_TASK,                         /* 群呼任务演示 */
     SC_API_CMD_ACTION_DEMO_PREVIEW,                      /* 预览外呼演示 */
 
+    SC_API_CMD_ACTION_SWITCHBOARD_ADD,
+    SC_API_CMD_ACTION_SWITCHBOARD_UPDATE,
+    SC_API_CMD_ACTION_SWITCHBOARD_DELETE,
+
+    SC_API_CMD_ACTION_KEYMAP_ADD,
+    SC_API_CMD_ACTION_KEYMAP_UPDATE,
+    SC_API_CMD_ACTION_KEYMAP_DELETE,
+
+    SC_API_CMD_ACTION_PERIOD_ADD,
+    SC_API_CMD_ACTION_PERIOD_UPDATE,
+    SC_API_CMD_ACTION_PERIOD_DELETE,
+
     SC_API_CMD_ACTION_BUTT
 };
 
@@ -214,6 +226,10 @@ U32 sc_http_api_agent_grp(list_t *pstArgv);
 U32 sc_http_api_route_action(list_t *pstArgv);
 U32 sc_http_api_gw_group_action(list_t *pstArgv);
 U32 sc_http_api_did_action(list_t *pstArgv);
+U32 sc_http_api_switchboard_action(list_t *pstArgv);
+U32 sc_http_api_period_action(list_t *pstArgv);
+U32 sc_http_api_keymap_action(list_t *pstArgv);
+
 U32 sc_http_api_black_action(list_t *pstArgv);
 U32 sc_http_api_caller_action(list_t *pstArgv);
 U32 sc_http_api_callergrp_action(list_t *pstArgv);

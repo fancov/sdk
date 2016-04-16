@@ -13,6 +13,7 @@
 #ifndef __SC_DEBUG_H__
 #define __SC_DEBUG_H__
 
+#define  SC_TRACE_CUSTOMER_SIZE  5
 #define  SC_TRACE_CALLER_SIZE    5
 #define  SC_TRACE_CALLEE_SIZE    5
 

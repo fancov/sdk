@@ -1021,6 +1021,7 @@ VOID sc_scb_call_init(SC_SRV_CALL_ST *pstCall)
     pstCall->bIsRingTimer = DOS_FALSE;
     pstCall->stTmrHandle = NULL;
     pstCall->ulAgentGrpID = 0;
+    pstCall->bIsError = DOS_FALSE;
 }
 
 VOID sc_scb_preview_call_init(SC_PREVIEW_CALL_ST *pstPreviewCall)
@@ -1294,6 +1295,28 @@ VOID sc_scb_auto_preview_init(SC_AUTO_PREVIEW_ST *pstPreviewCall)
     pstPreviewCall->ulTcbID = U32_BUTT;
 }
 
+VOID sc_scb_cor_switch_board_init(SC_COR_SWITCHBOARD_ST *pstCorSwitchboard)
+{
+    if (DOS_ADDR_INVALID(pstCorSwitchboard))
+    {
+        DOS_ASSERT(0);
+        return;
+    }
+
+    pstCorSwitchboard->stSCBTag.bTrace = DOS_FALSE;
+    pstCorSwitchboard->stSCBTag.bValid = DOS_FALSE;
+    pstCorSwitchboard->stSCBTag.usSrvType = SC_SRV_COR_SWITCHBOARD;
+    pstCorSwitchboard->stSCBTag.usStatus = SC_COR_SWITCHBOARD_IDEL;
+    pstCorSwitchboard->ulCallingLegNo = U32_BUTT;
+    pstCorSwitchboard->ulCalleeLegNo = U32_BUTT;
+    pstCorSwitchboard->pstAgentCallee = NULL;
+    pstCorSwitchboard->pstSWPeriodNode = NULL;
+    pstCorSwitchboard->szExtensionNum[0] = '\0';
+    pstCorSwitchboard->ucIndex = 0;
+    pstCorSwitchboard->szTTNum[0] = '\0';
+    pstCorSwitchboard->szTelNum[0] = '\0';
+}
+
 /**
  * 初始化也控制块
  *
@@ -1346,6 +1369,7 @@ VOID sc_scb_init(SC_SRV_CB *pstSCB)
     sc_scb_demo_task_init(&pstSCB->stDemoTask);
     sc_scb_call_agent_init(&pstSCB->stCallAgent);
     sc_scb_auto_preview_init(&pstSCB->stAutoPreview);
+    sc_scb_cor_switch_board_init(&pstSCB->stCorSwitchboard);
 }
 
 /**
@@ -2114,6 +2138,50 @@ S32 sc_task_and_callee_load(U32 ulIndex)
     return DOS_SUCC;
 }
 
+U32 sc_ivr_check_can_call_by_time(SC_SW_IVR_NODE_ST *pstSWPeriodNode)
+{
+    time_t     now;
+    struct tm   stTimenow;
+    struct tm  *timenow;
+    U32 ulWeek, ulHour, ulMinute, ulSecond;
+    U32 ulStartTime, ulEndTime, ulCurrentTime;
+
+    if (!pstSWPeriodNode)
+    {
+        DOS_ASSERT(0);
+        return DOS_FALSE;
+    }
+
+    time(&now);
+    timenow = dos_get_localtime_struct(now, &stTimenow);
+
+    ulWeek = timenow->tm_wday;
+    ulHour = timenow->tm_hour;
+    ulMinute = timenow->tm_min;
+    ulSecond = timenow->tm_sec;
+
+    if (!pstSWPeriodNode->ucPeriodValid)
+    {
+        return DOS_FALSE;
+    }
+
+    if (!((pstSWPeriodNode->ucWeekMask >> ulWeek) & 0x01))
+    {
+        return DOS_FALSE;
+    }
+
+    ulStartTime = pstSWPeriodNode->ucHourBegin * 60 * 60 + pstSWPeriodNode->ucMinuteBegin * 60 + pstSWPeriodNode->ucSecondBegin;
+    ulEndTime = pstSWPeriodNode->ucHourEnd * 60 * 60 + pstSWPeriodNode->ucMinuteEnd * 60 + pstSWPeriodNode->ucSecondEnd;
+    ulCurrentTime = ulHour * 60 * 60 + ulMinute * 60 + ulSecond;
+
+    if (ulCurrentTime >= ulStartTime && ulCurrentTime < ulEndTime)
+    {
+        return DOS_TRUE;
+    }
+
+    return DOS_FALSE;
+}
+
 /**
  * 向业务子层发送命令
  *
@@ -2801,6 +2869,8 @@ U32 sc_req_bridge_call(U32 ulSCBNo, U32 ulCallingLegNo, U32 ulCalleeLegNo)
     pstCMDBridge->ulSCBNo = ulSCBNo;
     pstCMDBridge->ulCallingLegNo = ulCallingLegNo;
     pstCMDBridge->ulCalleeLegNo = ulCalleeLegNo;
+
+    sc_log_digest_print_only(NULL, "Bridge calling(%u) and callee(%u). scb: %u.", ulCallingLegNo, ulCalleeLegNo, ulSCBNo);
 
     ulRet = sc_send_command(&pstCMDBridge->stMsgTag);
     if (ulRet != DOS_SUCC)

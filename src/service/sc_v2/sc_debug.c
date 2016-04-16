@@ -29,11 +29,10 @@ extern pthread_mutex_t   g_mutexAgentList;
 extern HASH_TABLE_S      *g_pstGroupList;
 extern pthread_mutex_t   g_mutexGroupList;
 
-extern SC_HTTPD_CB_ST        *g_pstHTTPDList[SC_MAX_HTTPD_NUM];
-extern SC_HTTP_CLIENT_CB_S   *g_pstHTTPClientList[SC_MAX_HTTP_CLIENT_NUM];
-extern SC_BS_MSG_STAT_ST stBSMsgStat;
-extern DLL_S               g_stCWQMngt;
-extern U32          g_ulCPS;
+extern SC_HTTPD_CB_ST       *g_pstHTTPDList[SC_MAX_HTTPD_NUM];
+extern SC_HTTP_CLIENT_CB_S  *g_pstHTTPClientList[SC_MAX_HTTP_CLIENT_NUM];
+extern SC_BS_MSG_STAT_ST    stBSMsgStat;
+extern U32                  g_ulCPS;
 extern SC_TASK_CB           *g_pstTaskList;
 extern pthread_mutex_t      g_mutexTaskList;
 extern BOOL                 g_blSCInitOK;
@@ -46,14 +45,16 @@ extern SC_LEG_CB       *g_pstLegCB;
 extern DLL_S           g_stCommandQueue;
 extern DLL_S           g_stEventQueue;
 extern DLL_S           g_stBSMsgList;
-extern DLL_S           g_stCWQMngt;
 extern DLL_S           g_stDBRequestQueue;
 extern DLL_S           g_stESLEventQueue;
 extern DLL_S           g_stExtMngtMsg;
 extern DLL_S           g_stLimitStatQueue;
 extern DLL_S           g_stLogDigestQueue;
 
+extern SC_CWQ_TABLE_ST g_pstSWCwqTable[];
+
 U32         g_ulSCLogLevel = LOG_LEVEL_DEBUG;
+U32         g_aulCustomerTrace[SC_TRACE_CUSTOMER_SIZE] = {0, };
 S8          g_aszCallerTrace[SC_TRACE_CALLER_SIZE][SC_NUM_LENGTH] = { {0, }, };
 S8          g_aszCalleeTrace[SC_TRACE_CALLEE_SIZE][SC_NUM_LENGTH] = { {0, }, };
 U8          g_aucServTraceFlag[BS_SERV_BUTT] = { 0 };
@@ -1701,6 +1702,15 @@ VOID sc_show_agent(U32 ulIndex, U8 ucCondition, U32 ulID, S8* pszCondition)
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n==================================================================================================================================");
             cli_out_string(ulIndex, szCmdBuff);
+
+            if (ucCondition == SC_SHOW_AGENT_BY_ID)
+            {
+                if (pstAgentQueueNode->pstAgentInfo->ulLegNo != U32_BUTT)
+                {
+                    sc_show_leg_detail(ulIndex, pstAgentQueueNode->pstAgentInfo->ulLegNo);
+                }
+            }
+
             ulTotal++;
         }
     }
@@ -2745,7 +2755,7 @@ U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
 
     S8  szBuff[256] = {0}, szTime[32] = {0};
 
-    DLL_Scan(&g_stCWQMngt, pstListNode, DLL_NODE_S *)
+    DLL_Scan(&g_pstSWCwqTable[SC_SW_FORWARD_AGENT_GROUP].stSWCwqList, pstListNode, DLL_NODE_S *)
     {
         if (DOS_ADDR_INVALID(pstListNode)
             || DOS_ADDR_INVALID(pstListNode->pHandle))
@@ -2753,7 +2763,7 @@ U32  sc_show_cwq(U32 ulIndex, U32 ulAgentGrpID)
             continue;
         }
         pstCWQNode = (SC_CWQ_NODE_ST *)pstListNode->pHandle;
-        if (ulAgentGrpID != U32_BUTT && ulAgentGrpID != pstCWQNode->ulAgentGrpID)
+        if (ulAgentGrpID != U32_BUTT && ulAgentGrpID != pstCWQNode->ulID)
         {
             continue;
         }
@@ -2926,7 +2936,6 @@ U32 sc_show_all_queue(U32 ulIndex)
         {&g_stCommandQueue      , "g_stCommandQueue"        , "Send CMD from business to sub"},
         {&g_stEventQueue        , "g_stEventQueue"          , "Send event from sub to business"},
         {&g_stBSMsgList         , "g_stBSMsgList"           , "Recv msg from BS"},
-        {&g_stCWQMngt           , "g_stCWQMngt"             , "call wait queue"},
         {&g_stDBRequestQueue    , "g_stDBRequestQueue"      , "update DB"},
         {&g_stESLEventQueue     , "g_stESLEventQueue"       , "Recv event from fs"},
         {&g_stExtMngtMsg        , "g_stExtMngtMsg"          , "Recv event from fs"},
@@ -4983,86 +4992,86 @@ VOID sc_log_digest_print_only(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...)
     S8              szTraceStr[1024] = {0, };
 
     va_start(Arg, pszFormat);
-    vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
+    ulTraceTagLen += vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
     va_end(Arg);
     szTraceStr[sizeof(szTraceStr) -1] = '\0';
 
     /* 增加scb的信息打印 */
     if (DOS_ADDR_VALID(pstSCB))
     {
-        dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, " scbNo(%d", pstSCB->ulSCBNo);
+        ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, " scbNo(%d", pstSCB->ulSCBNo);
 
         if (DOS_ADDR_INVALID(pstSCB->pstServiceList[pstSCB->ulCurrentSrv])
             || !pstSCB->pstServiceList[pstSCB->ulCurrentSrv]->bValid)
         {
-            dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, ")", pstSCB->ulSCBNo);
+            ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, ")", pstSCB->ulSCBNo);
         }
         else
         {
             switch (pstSCB->pstServiceList[pstSCB->ulCurrentSrv]->usSrvType)
             {
                 case SC_SRV_CALL:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stCall.ulCallingLegNo, pstSCB->stCall.ulCalleeLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stCall.ulCallingLegNo, pstSCB->stCall.ulCalleeLegNo);
                     break;
 
                 case SC_SRV_PREVIEW_CALL:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stPreviewCall.ulCallingLegNo, pstSCB->stPreviewCall.ulCalleeLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stPreviewCall.ulCallingLegNo, pstSCB->stPreviewCall.ulCalleeLegNo);
                     break;
 
                 case SC_SRV_AUTO_CALL:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stAutoCall.ulCallingLegNo, pstSCB->stAutoCall.ulCalleeLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stAutoCall.ulCallingLegNo, pstSCB->stAutoCall.ulCalleeLegNo);
                     break;
 
                 case SC_SRV_VOICE_VERIFY:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stVoiceVerify.ulLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stVoiceVerify.ulLegNo);
                     break;
 
                 case SC_SRV_ACCESS_CODE:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stAccessCode.ulLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stAccessCode.ulLegNo);
                     break;
 
                 case SC_SRV_HOLD:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stHold.ulCallLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stHold.ulCallLegNo);
                     break;
 
                 case SC_SRV_TRANSFER:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d-%d)", pstSCB->stTransfer.ulNotifyLegNo, pstSCB->stTransfer.ulSubLegNo, pstSCB->stTransfer.ulPublishLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d-%d)", pstSCB->stTransfer.ulNotifyLegNo, pstSCB->stTransfer.ulSubLegNo, pstSCB->stTransfer.ulPublishLegNo);
                     break;
 
                 case SC_SRV_INCOMING_QUEUE:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stIncomingQueue.ulLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stIncomingQueue.ulLegNo);
                     break;
 
                 case SC_SRV_INTERCEPTION:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stInterception.ulLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stInterception.ulLegNo);
                     break;
 
                 case SC_SRV_WHISPER:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stWhispered.ulLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stWhispered.ulLegNo);
                     break;
 
                 case SC_SRV_MARK_CUSTOM:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stMarkCustom.ulLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d)", pstSCB->stMarkCustom.ulLegNo);
                     break;
 
                 case SC_SRV_AGENT_SIGIN:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stSigin.ulLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stSigin.ulLegNo);
                     break;
 
                 case SC_SRV_DEMO_TASK:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stDemoTask.ulCallingLegNo, pstSCB->stDemoTask.ulCalleeLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stDemoTask.ulCallingLegNo, pstSCB->stDemoTask.ulCalleeLegNo);
                     break;
 
                 case SC_SRV_CALL_AGENT:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stCallAgent.ulCallingLegNo, pstSCB->stCallAgent.ulCalleeLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stCallAgent.ulCallingLegNo, pstSCB->stCallAgent.ulCalleeLegNo);
                     break;
 
                 case SC_SRV_AUTO_PREVIEW:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stAutoPreview.ulCallingLegNo, pstSCB->stAutoPreview.ulCalleeLegNo);
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, "-%d-%d)", pstSCB->stAutoPreview.ulCallingLegNo, pstSCB->stAutoPreview.ulCalleeLegNo);
                     break;
 
                 default:
-                    dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, ")");
+                    ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, ")");
                     break;
             }
         }

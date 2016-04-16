@@ -26,6 +26,12 @@ extern DLL_S                    g_stRouteList;
 extern pthread_mutex_t          g_mutexRouteList;
 extern DLL_S                    g_stCustomerList;
 extern pthread_mutex_t          g_mutexCustomerList;
+extern DLL_S                    g_stCorSwitchboardList;
+extern pthread_mutex_t          g_mutexCorSwitchboardList;
+extern DLL_S                    g_stSWKeyMapList;
+extern pthread_mutex_t          g_mutexSWKeyMapList;
+extern HASH_TABLE_S             *g_pstHashSWPeriod;
+extern pthread_mutex_t          g_mutexHashSWPeriod;
 extern HASH_TABLE_S             *g_pstHashGW;
 extern pthread_mutex_t          g_mutexHashGW;
 extern HASH_TABLE_S             *g_pstHashGWGrp;
@@ -92,6 +98,9 @@ extern pthread_mutex_t          g_mutexHashCallerSetting;
 /* 定义主叫号码设定的hash表大小 */
 #define SC_CALLER_SETTING_HASH_SIZE   128
 
+/* 定义企业总机时段hash表的大小*/
+#define SC_SW_PEROID_HASH_SIZE  32
+
 
 /* 客户类型 */
 typedef enum tagSCCustomerType
@@ -141,6 +150,8 @@ typedef enum tagSCDIDBindType{
     SC_DID_BIND_TYPE_SIP     = 1,               /* DID号码被绑定到SIP账户 */
     SC_DID_BIND_TYPE_QUEUE   = 2,               /* DID号码被绑定到坐席队列 */
     SC_DID_BIND_TYPE_AGENT   = 3,               /* DID号码绑定到坐席 */
+    SC_DID_BIND_TYPE_COR_SW  = 4,               /* DID号码绑定到企业总机 */
+
     SC_DID_BIND_TYPE_BUTT
 }SC_DID_BIND_TYPE_EN;
 
@@ -563,6 +574,17 @@ U32 sc_black_list_load(U32 ulIndex);
 BOOL sc_black_list_check(U32 ulCustomerID, S8 *pszNum);
 U32 sc_black_list_update_proc(U32 ulAction, U32 ulBlackID);
 
+U32 sc_cor_switchboard_load(U32 ulIndex);
+S32 sc_sw_period_load(U32 ulIndex);
+U32 sc_sw_keymap_load(U32 ulIndex);
+S32 sc_switchboard_find(VOID *pKey, DLL_NODE_S *pstDLLNode);
+U32 sc_sw_keymap_proc(U32 ulAction, U32 ulID);
+U32 sc_sw_period_proc(U32 ulAction, U32 ulPeriodID);
+U32 sc_cor_switchboard_proc(U32 ulAction, U32 ulSwitchboardID);
+
+
+
+
 U32 sc_sip_account_load(U32 ulIndex);
 U32 sc_sip_account_get_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUserID, U32 ulLength);
 U32 sc_sip_account_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID);
@@ -573,7 +595,7 @@ U32 sc_sip_account_update_info2db(U32 ulPublicIP, U32 ulPrivateIP, SC_SIP_STATUS
 BOOL sc_sip_account_be_is_exit(U32 ulCustomID, S8 *szUserID);
 U32 sc_sip_account_set_trace(S8 *szUserID, U32 ulTrace);
 BOOL sc_sip_account_get_trace(S8 *szUserID);
-
+SC_USER_ID_NODE_ST * sc_sip_node_get_by_extension(U32 ulCustomID, S8 *szUserID);
 U32 sc_did_load(U32 ulIndex);
 U32 sc_did_update_proc(U32 ulAction, U32 ulDidID);
 U32 sc_did_get_custom(S8 *pszNum);
@@ -583,7 +605,7 @@ U32 sc_customer_update_proc(U32 ulAction, U32 ulCustomerID);
 BOOL sc_customer_is_exit(U32 ulCustomerID);
 BOOL sc_customer_get_trace(U32 ulCustomerID);
 U32 sc_customer_set_trace(U32 ulCustomerID, U32 ulTrace);
-
+U32 sc_switchboard_update_proc(U32 ulAction, U32 ulSwitchboardID);
 U32 sc_transform_load(U32 ulIndex);
 U32 sc_transform_update_proc(U32 ulAction, U32 ulNumTransID);
 

@@ -76,11 +76,25 @@ pthread_mutex_t          g_mutexHashServCtrl = PTHREAD_MUTEX_INITIALIZER;
 HASH_TABLE_S             *g_pstHashCallerSetting = NULL;
 pthread_mutex_t          g_mutexHashCallerSetting = PTHREAD_MUTEX_INITIALIZER;
 
+/* */
+DLL_S                    g_stCorSwitchboardList;
+pthread_mutex_t          g_mutexCorSwitchboardList = PTHREAD_MUTEX_INITIALIZER;
+
+/* */
+DLL_S                    g_stSWKeyMapList;
+pthread_mutex_t          g_mutexSWKeyMapList = PTHREAD_MUTEX_INITIALIZER;
+
+HASH_TABLE_S             *g_pstHashSWPeriod = NULL;
+pthread_mutex_t          g_mutexHashSWPeriod = PTHREAD_MUTEX_INITIALIZER;
+
+
 U32 sc_res_init()
 {
     DLL_Init(&g_stRouteList);
     DLL_Init(&g_stCustomerList);
     DLL_Init(&g_stNumTransformList);
+    DLL_Init(&g_stCorSwitchboardList);
+    DLL_Init(&g_stSWKeyMapList);
 
     g_pstHashGWGrp = hash_create_table(SC_GW_GRP_HASH_SIZE, NULL);
     g_pstHashGW = hash_create_table(SC_GW_HASH_SIZE, NULL);
@@ -92,6 +106,7 @@ U32 sc_res_init()
     g_pstHashCallerGrp = hash_create_table(SC_CALLER_GRP_HASH_SIZE, NULL);
     g_pstHashCallerSetting = hash_create_table(SC_CALLER_SETTING_HASH_SIZE, NULL);
     g_pstHashServCtrl = hash_create_table(SC_SERV_CTRL_HASH_SIZE, NULL);
+    g_pstHashSWPeriod = hash_create_table(SC_SW_PEROID_HASH_SIZE, NULL);
     if (DOS_ADDR_INVALID(g_pstHashGW)
         || DOS_ADDR_INVALID(g_pstHashGWGrp)
         || DOS_ADDR_INVALID(g_pstHashDIDNum)
@@ -100,7 +115,8 @@ U32 sc_res_init()
         || DOS_ADDR_INVALID(g_pstHashCaller)
         || DOS_ADDR_INVALID(g_pstHashCallerGrp)
         || DOS_ADDR_INVALID(g_pstHashTTNumber)
-        || DOS_ADDR_INVALID(g_pstHashServCtrl))
+        || DOS_ADDR_INVALID(g_pstHashServCtrl)
+        || DOS_ADDR_INVALID(g_pstHashSWPeriod))
     {
         sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Alloc memort for res hash table fail");
 
@@ -119,6 +135,9 @@ U32 sc_res_init()
     sc_sip_account_load(SC_INVALID_INDEX);
     sc_black_list_load(SC_INVALID_INDEX);
     sc_eix_dev_load(SC_INVALID_INDEX);
+    sc_cor_switchboard_load(SC_INVALID_INDEX);
+    sc_sw_period_load(SC_INVALID_INDEX);
+    sc_sw_keymap_load(SC_INVALID_INDEX);
 
     /* 以下三项的加载顺序同样不可乱,同时必须保证之前已经加载DID号码(号码组业务逻辑) */
     sc_caller_load(SC_INVALID_INDEX);

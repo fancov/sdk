@@ -247,6 +247,70 @@ U32 sc_sip_account_get_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUse
     return DOS_FAIL;
 }
 
+
+
+
+
+SC_USER_ID_NODE_ST * sc_sip_node_get_by_extension(U32 ulCustomID, S8 *szUserID)
+{
+    SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
+    HASH_NODE_S        *pstHashNode   = NULL;
+    U32                ulHashIndex    = 0;
+
+    if (DOS_ADDR_INVALID(szUserID))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FALSE;
+    }
+
+    pthread_mutex_lock(&g_mutexHashSIPUserID);
+    HASH_Scan_Table(g_pstHashSIPUserID, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashSIPUserID, ulHashIndex, pstHashNode, HASH_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                continue;
+            }
+
+            pstUserIDNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstUserIDNode))
+            {
+                continue;
+            }
+
+            if (ulCustomID != pstUserIDNode->ulCustomID)
+            {
+                continue;
+            }
+
+            if (0 != dos_strcmp(pstUserIDNode->szUserID, szUserID))
+            {
+                continue;
+            }
+
+            pthread_mutex_unlock(&g_mutexHashSIPUserID);
+            return pstUserIDNode;
+        }
+    }
+    pthread_mutex_unlock(&g_mutexHashSIPUserID);
+    return NULL;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 BOOL sc_sip_account_be_is_exit(U32 ulCustomID, S8 *szUserID)
 {
     SC_USER_ID_NODE_ST *pstUserIDNode = NULL;
@@ -1410,6 +1474,858 @@ U32 sc_customer_load(U32 ulIndex)
 }
 
 
+VOID sc_cor_switchboard_init(SC_COR_SW_NODE_ST *pstSwitchboard)
+{
+    if (pstSwitchboard)
+    {
+        dos_memzero(pstSwitchboard, sizeof(SC_COR_SW_NODE_ST));
+        pstSwitchboard->ulID = U32_BUTT;
+        dos_strcpy(pstSwitchboard->szSWNodeName, "\0");
+        pstSwitchboard->ucIndex = 0;
+        dos_memzero(pstSwitchboard->pstSWPeriodNode, sizeof(SC_SW_IVR_NODE_ST *)*64);
+        pstSwitchboard->bExist = DOS_FALSE;
+    }
+}
+
+SC_COR_SW_NODE_ST *sc_get_sw_by_id(U32 ulSWID)
+{
+    SC_COR_SW_NODE_ST    *pstSWNode = NULL;
+    DLL_NODE_S *pstListNode = NULL;
+
+    pthread_mutex_lock(&g_mutexCorSwitchboardList);
+    pstListNode = dll_find(&g_stCorSwitchboardList, &ulSWID, sc_switchboard_find);
+    if (DOS_ADDR_INVALID(pstListNode)
+        || DOS_ADDR_INVALID(pstListNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexCorSwitchboardList);
+
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "get switchboard node by id FAIL.ID %u does not exist.", ulSWID);
+        return NULL;
+    }
+    pthread_mutex_unlock(&g_mutexCorSwitchboardList);
+
+    pstSWNode= pstListNode->pHandle;
+    return pstSWNode;
+}
+
+S32 sc_switchboard_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
+{
+    SC_COR_SW_NODE_ST *pstSwitchboardCurrent;
+    U32 ulIndex;
+
+    if (DOS_ADDR_INVALID(pKey)
+        || DOS_ADDR_INVALID(pstDLLNode)
+        || DOS_ADDR_INVALID(pstDLLNode->pHandle))
+    {
+        return DOS_FAIL;
+    }
+
+    ulIndex = *(U32 *)pKey;
+    pstSwitchboardCurrent = pstDLLNode->pHandle;
+
+    if (ulIndex == pstSwitchboardCurrent->ulID)
+    {
+        return DOS_SUCC;
+    }
+
+    return DOS_FAIL;
+}
+
+U32 sc_cor_switchboard_delete(U32 ulSwitchboardID)
+{
+    DLL_NODE_S *pstListNode = NULL;
+
+    pthread_mutex_lock(&g_mutexCorSwitchboardList);
+    pstListNode = dll_find(&g_stCorSwitchboardList, &ulSwitchboardID, sc_switchboard_find);
+    if (DOS_ADDR_INVALID(pstListNode)
+        || DOS_ADDR_INVALID(pstListNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexCorSwitchboardList);
+
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Switchboard Delete FAIL.ID %u does not exist.", ulSwitchboardID);
+        return DOS_FAIL;
+    }
+
+    dll_delete(&g_stCorSwitchboardList, pstListNode);
+    pthread_mutex_unlock(&g_mutexCorSwitchboardList);
+    dos_dmem_free(pstListNode->pHandle);
+    pstListNode->pHandle= NULL;
+    dos_dmem_free(pstListNode);
+    pstListNode = NULL;
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Delete switchboard SUCC.(ID:%u)", ulSwitchboardID);
+
+    return DOS_SUCC;
+}
+
+
+S32 sc_cor_switchboard_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    SC_COR_SW_NODE_ST *pstSwitchboard       = NULL;
+    SC_COR_SW_NODE_ST *pstSwitchboardTmp    = NULL;
+    DLL_NODE_S        *pstListNode          = NULL;
+
+    S32                     lIndex;
+    BOOL                    blProcessOK = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstSwitchboard = dos_dmem_alloc(sizeof(SC_COR_SW_NODE_ST));
+    if (DOS_ADDR_INVALID(pstSwitchboard))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_cor_switchboard_init(pstSwitchboard);
+
+    for (blProcessOK = DOS_TRUE, lIndex = 0; lIndex < lCount; lIndex++)
+    {
+        if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstSwitchboard->ulID) < 0)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+            }
+        }
+        else if ( 0 == dos_strnicmp(aszNames[lIndex], "name", dos_strlen("name")))
+        {
+            dos_strncpy(pstSwitchboard->szSWNodeName, aszValues[lIndex], sizeof(pstSwitchboard->szSWNodeName));
+        }
+    }
+
+    if (!blProcessOK)
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstSwitchboard);
+        pstSwitchboard= NULL;
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexCorSwitchboardList);
+    pstListNode = dll_find(&g_stCorSwitchboardList, &pstSwitchboard->ulID, sc_switchboard_find);
+    if (DOS_ADDR_INVALID(pstListNode))
+    {
+        pstListNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
+        if (DOS_ADDR_INVALID(pstListNode))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstSwitchboard);
+            pstSwitchboard = NULL;
+
+            pthread_mutex_unlock(&g_mutexCorSwitchboardList);
+            return DOS_FAIL;
+        }
+
+        DLL_Init_Node(pstListNode);
+        pstListNode->pHandle = pstSwitchboard;
+        pstSwitchboard->bExist = DOS_TRUE;
+        DLL_Add(&g_stCorSwitchboardList, pstListNode);
+    }
+    else
+    {
+        pstSwitchboardTmp = pstListNode->pHandle;
+        if (DOS_ADDR_INVALID(pstSwitchboardTmp))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstSwitchboard);
+            pstSwitchboard = NULL;
+
+            pthread_mutex_unlock(&g_mutexCorSwitchboardList);
+            return DOS_FAIL;
+        }
+
+        dos_memcpy(pstSwitchboardTmp, pstSwitchboard, sizeof(SC_COR_SW_NODE_ST));
+        pstSwitchboardTmp->bExist = DOS_TRUE;
+
+        dos_dmem_free(pstSwitchboard);
+        pstSwitchboard = NULL;
+    }
+    pthread_mutex_unlock(&g_mutexCorSwitchboardList);
+
+    return DOS_TRUE;
+}
+
+U32 sc_cor_switchboard_load(U32 ulIndex)
+{
+    S8 szSQL[1024];
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, name FROM tbl_switchboard;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, name FROM tbl_switchboard where tbl_switchboard.id=%u;"
+                    , ulIndex);
+    }
+
+    db_query(g_pstSCDBHandle, szSQL, sc_cor_switchboard_load_cb, NULL, NULL);
+
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Load switchboard succ.");
+
+    return DOS_SUCC;
+
+}
+
+
+U32 sc_cor_switchboard_proc(U32 ulAction, U32 ulSwitchboardID)
+{
+    U32 ulRet = U32_BUTT;
+
+    if (ulAction > SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch(ulAction)
+    {
+        case SC_API_CMD_ACTION_SWITCHBOARD_ADD:
+        case SC_API_CMD_ACTION_SWITCHBOARD_UPDATE:
+            sc_cor_switchboard_load(ulSwitchboardID);
+            break;
+        case SC_API_CMD_ACTION_SWITCHBOARD_DELETE:
+            {
+                ulRet = sc_cor_switchboard_delete(ulSwitchboardID);
+                if (ulRet != DOS_SUCC)
+                {
+                   DOS_ASSERT(0);
+                   return DOS_FAIL;
+                }
+            }
+            break;
+        default:
+            break;
+    }
+    return DOS_SUCC;
+}
+
+
+VOID sc_sw_period_init(SC_SW_IVR_NODE_ST *pstSWIVR)
+{
+     if (pstSWIVR)
+     {
+        dos_memzero(pstSWIVR, sizeof(SC_SW_IVR_NODE_ST));
+        pstSWIVR->ulID              = 0;
+        pstSWIVR->ulCustomerID      = 0;
+        pstSWIVR->ulIvrAudioID      = 0;
+        pstSWIVR->ucHourBegin       = 0;
+        pstSWIVR->ucHourEnd         = 0;
+        pstSWIVR->ucMinuteBegin     = 0;
+        pstSWIVR->ucMinuteEnd       = 0;
+        pstSWIVR->ucSecondBegin     = 0;
+        pstSWIVR->ucSecondEnd       = 0;
+        pstSWIVR->ucPeriodValid     = 0;
+        pstSWIVR->ulIndex           = 0;
+        dos_memzero(pstSWIVR->pstSWKeymapNode, sizeof(SC_IVR_KEY_MAP_ST *)*16);
+
+        pstSWIVR->bExist            = DOS_FALSE;
+     }
+}
+
+U32 sc_sw_period_delete(U32 ulPeriodID)
+{
+    HASH_NODE_S     *pstHashNode = NULL;
+    SC_SW_IVR_NODE_ST *pstSWIVR = NULL;
+    BOOL blFound = DOS_FALSE;
+    U32 ulIndex = U32_BUTT;
+
+    pthread_mutex_lock(&g_mutexHashSWPeriod);
+    HASH_Scan_Table(g_pstHashSWPeriod, ulIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashSWPeriod, ulIndex, pstHashNode, HASH_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                break;
+            }
+
+            pstSWIVR = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstSWIVR))
+            {
+                continue;
+            }
+
+            if (ulPeriodID == pstSWIVR->ulID)
+            {
+                blFound = DOS_TRUE;
+                break;
+            }
+        }
+
+        if (blFound)
+        {
+            break;
+        }
+    }
+
+    if (blFound)
+    {
+        ulIndex = sc_int_hash_func(pstSWIVR->ulID, SC_SW_PEROID_HASH_SIZE);
+
+        /* 删除节点 */
+        hash_delete_node(g_pstHashSWPeriod, pstHashNode, ulIndex);
+
+        if (pstHashNode)
+        {
+            dos_dmem_free(pstHashNode);
+            pstHashNode = NULL;
+        }
+
+        if (pstSWIVR)
+        {
+           dos_dmem_free(pstSWIVR);
+           pstSWIVR = NULL;
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexHashSWPeriod);
+
+    if (blFound)
+    {
+        return DOS_SUCC;
+    }
+    else
+    {
+        return DOS_FALSE;
+    }
+}
+
+
+
+S32 sc_sw_period_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode)
+{
+    SC_SW_IVR_NODE_ST *pstSWPeriodNode;
+    U32 ulID = 0;
+
+    if (DOS_ADDR_INVALID(pObj)
+        || DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    ulID= *(U32 *)pObj;
+    pstSWPeriodNode = pstHashNode->pHandle;
+
+    if (ulID == pstSWPeriodNode->ulID)
+    {
+        return DOS_SUCC;
+    }
+    else
+    {
+        return DOS_FAIL;
+    }
+
+}
+
+/**
+ * 加载企业总机ivr语音时数据库查询的回调函数，将数据加入企业总机IVR语音的HASH表中
+ *
+ * @param VOID *pArg: 参数
+ * @param S32 lCount: 列数量
+ * @param S8 **aszValues: 值裂变
+ * @param S8 **aszNames: 字段名列表
+ *
+ * @return 成功返回DOS_SUCC，否则返回DOS_FAIL
+ */
+S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    SC_SW_IVR_NODE_ST  *pstSWIVRNode     = NULL;
+    SC_SW_IVR_NODE_ST  *pstSWIVRNodeTmp  = NULL;
+    SC_COR_SW_NODE_ST  *pstSWNode        = NULL;
+    DLL_NODE_S         *pstListNode      = NULL;
+    HASH_NODE_S        *pstHashNode      = NULL;
+    BOOL               blProcessOK       = DOS_FALSE;
+    U32                ulHashIndex       = 0;
+    S32                lIndex            = 0;
+    U32                ulStartTime, ulEndTime;
+
+    if (DOS_ADDR_INVALID(aszNames)
+        || DOS_ADDR_INVALID(aszValues))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstSWIVRNode= (SC_SW_IVR_NODE_ST *)dos_dmem_alloc(sizeof(SC_SW_IVR_NODE_ST));
+    if (DOS_ADDR_INVALID(pstSWIVRNode))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_sw_period_init(pstSWIVRNode);
+
+    for (lIndex=0, blProcessOK=DOS_TRUE; lIndex<lCount; lIndex++)
+    {
+        if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstSWIVRNode->ulID) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "customer_id", dos_strlen("customer_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstSWIVRNode->ulCustomerID) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "sw_id", dos_strlen("sw_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstSWIVRNode->ulSWID) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "play_times", dos_strlen("play_times")))
+        {
+            if (dos_atoul(aszValues[lIndex], (U32 *)&pstSWIVRNode->ucPlayTimes) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "ivr_audio_id", dos_strlen("ivr_audio_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstSWIVRNode->ulIvrAudioID) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "start_time", dos_strlen("start_time")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulStartTime) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+            }
+        }
+
+        else if (0 == dos_strnicmp(aszNames[lIndex], "end_time", dos_strlen("end_time")))
+        {
+            if (dos_atoul(aszValues[lIndex], &ulEndTime) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "sw_trfr_type", dos_strlen("sw_trfr_type")))
+        {
+            if (dos_atoul(aszValues[lIndex], (U32 *)&pstSWIVRNode->ucTransferType) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+    }
+
+    if (!blProcessOK)
+    {
+        DOS_ASSERT(0);
+
+        dos_dmem_free(pstSWIVRNode);
+        pstSWIVRNode= NULL;
+        return DOS_FALSE;
+    }
+
+    pstSWIVRNode->ucPeriodValid= DOS_TRUE;
+    pstSWIVRNode->ucWeekMask= (ulStartTime >> 24) & 0xFF;
+    pstSWIVRNode->ucHourBegin= (ulStartTime >> 16) & 0xFF;
+    pstSWIVRNode->ucMinuteBegin= (ulStartTime >> 8) & 0xFF;
+    pstSWIVRNode->ucSecondBegin = (ulStartTime) & 0xFF;
+    pstSWIVRNode->ucHourEnd = (ulEndTime>> 16) & 0xFF;
+    pstSWIVRNode->ucMinuteEnd = (ulEndTime>> 8) & 0xFF;
+    pstSWIVRNode->ucSecondEnd = (ulEndTime) & 0xFF;
+
+    pthread_mutex_lock(&g_mutexCorSwitchboardList);
+    pstListNode = dll_find(&g_stCorSwitchboardList, &pstSWIVRNode->ulSWID, sc_switchboard_find);
+    if (DOS_ADDR_VALID(pstListNode))
+    {
+        pstSWNode = pstListNode->pHandle;
+        pstSWNode->pstSWPeriodNode[(pstSWNode->ucIndex)++] = pstSWIVRNode;
+    }
+    else
+    {
+        //错误处理
+    }
+
+    pthread_mutex_unlock(&g_mutexCorSwitchboardList);
+
+
+    pthread_mutex_lock(&g_mutexHashSWPeriod);
+    ulHashIndex = sc_int_hash_func(pstSWIVRNode->ulID, SC_SW_PEROID_HASH_SIZE);
+    pstHashNode = hash_find_node(g_pstHashSWPeriod, ulHashIndex, (VOID *)&pstSWIVRNode->ulID, sc_sw_period_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode))
+    {
+        pstHashNode = dos_dmem_alloc(sizeof(HASH_NODE_S));
+        if (DOS_ADDR_INVALID(pstHashNode))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstSWIVRNode);
+            pstSWIVRNode= NULL;
+            pthread_mutex_unlock(&g_mutexHashSWPeriod);
+            return DOS_FALSE;
+        }
+
+        HASH_Init_Node(pstHashNode);
+        pstHashNode->pHandle = pstSWIVRNode;
+        ulHashIndex = sc_int_hash_func(pstSWIVRNode->ulID, SC_SW_PEROID_HASH_SIZE);
+
+        hash_add_node(g_pstHashSWPeriod, (HASH_NODE_S *)pstHashNode, ulHashIndex, NULL);
+    }
+    else
+    {
+        pstSWIVRNodeTmp= pstHashNode->pHandle;
+        if (DOS_ADDR_INVALID(pstSWIVRNodeTmp))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstSWIVRNode);
+            pstSWIVRNode= NULL;
+
+            pthread_mutex_unlock(&g_mutexHashSWPeriod);
+            return DOS_FAIL;
+        }
+
+        dos_dmem_free(pstSWIVRNode);
+        pstSWIVRNode= NULL;
+    }
+    pthread_mutex_unlock(&g_mutexHashSWPeriod);
+
+    return DOS_SUCC;
+}
+
+
+S32 sc_sw_period_load(U32 ulIndex)
+{
+    S8 szSQL[1024];
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    ,"SELECT a.id, a.customer_id, a.sw_id, a.sw_trfr_type, a.start_time, a.end_time, " \
+                     "a.ivr_audio_id, b.play_times FROM tbl_ivr_period a LEFT JOIN tbl_switchboard b ON a.sw_id = b.id;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT a.id, a.customer_id, a.sw_id, a.sw_trfr_type, a.start_time, a.end_time, a.ivr_audio_id," \
+                       "b.play_times FROM tbl_ivr_period a LEFT JOIN tbl_switchboard b ON a.sw_id = b.id" \
+                      "WHERE tbl_ivr_period.id = %u;", ulIndex);
+    }
+
+    db_query(g_pstSCDBHandle, szSQL, sc_sw_period_load_cb, NULL, NULL);
+
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Load ivr_period succ.");
+    return DOS_SUCC;
+}
+
+U32 sc_sw_period_proc(U32 ulAction, U32 ulPeriodID)
+{
+    U32 ulRet = U32_BUTT;
+
+    if (ulAction > SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch(ulAction)
+    {
+        case SC_API_CMD_ACTION_PERIOD_ADD:
+        case SC_API_CMD_ACTION_PERIOD_UPDATE:
+            sc_sw_period_load(ulPeriodID);
+            break;
+        case SC_API_CMD_ACTION_PERIOD_DELETE:
+            {
+                ulRet = sc_sw_period_delete(ulPeriodID);
+                if (ulRet != DOS_SUCC)
+                {
+                   DOS_ASSERT(0);
+                   return DOS_FAIL;
+                }
+            }
+            break;
+        default:
+            break;
+    }
+    return DOS_SUCC;
+}
+
+
+VOID sc_cor_sw_keymap_init(SC_IVR_KEY_MAP_ST *pstSWKeyMapNode)
+{
+    if (pstSWKeyMapNode)
+    {
+        dos_memzero(pstSWKeyMapNode, sizeof(SC_IVR_KEY_MAP_ST));
+        pstSWKeyMapNode->ulID = 0;
+        pstSWKeyMapNode->ulKey = U32_BUTT;
+        pstSWKeyMapNode->ucKeyMapType = U8_BUTT;
+        pstSWKeyMapNode->ulKeyMap = U32_BUTT;
+    }
+}
+
+S32 sc_sw_keymap_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
+{
+    return DOS_FAIL;
+}
+
+S32 sc_sw_keymap_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
+{
+    SC_IVR_KEY_MAP_ST *pstSWKeyMapNode       = NULL;
+    SC_IVR_KEY_MAP_ST *pstSWKeyMapNodeTmp    = NULL;
+    SC_SW_IVR_NODE_ST *pstSWIVRNode          = NULL;
+    DLL_NODE_S        *pstListNode           = NULL;
+    HASH_NODE_S       *pstHashNode           = NULL;
+    U32               ulHashIndex            = 0;
+    S32               lIndex                 = 0;
+    BOOL              blProcessOK            = DOS_FALSE;
+
+    if (DOS_ADDR_INVALID(aszValues)
+        || DOS_ADDR_INVALID(aszNames))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    pstSWKeyMapNode= dos_dmem_alloc(sizeof(SC_IVR_KEY_MAP_ST));
+    if (DOS_ADDR_INVALID(pstSWKeyMapNode))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    sc_cor_sw_keymap_init(pstSWKeyMapNode);
+
+    for (blProcessOK = DOS_TRUE, lIndex = 0; lIndex < lCount; lIndex++)
+    {
+        if (0 == dos_strnicmp(aszNames[lIndex], "id", dos_strlen("id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstSWKeyMapNode->ulID) < 0)
+            {
+                DOS_ASSERT(0);
+
+                blProcessOK = DOS_FALSE;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "ivr_period_id", dos_strlen("ivr_period_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstSWKeyMapNode->ulIVRPeriodID) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "event_type", dos_strlen("event_type")))
+        {
+            if (dos_atoul(aszValues[lIndex], (U32 *)&pstSWKeyMapNode->ucEventType) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "button", dos_strlen("button")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstSWKeyMapNode->ulKey) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "forward_type", dos_strlen("forward_type")))
+        {
+            if (dos_atoul(aszValues[lIndex], (U32 *)&pstSWKeyMapNode->ucKeyMapType) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "forward_id", dos_strlen("forward_id")))
+        {
+            if (dos_atoul(aszValues[lIndex], &pstSWKeyMapNode->ulKeyMap) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+    }
+
+
+    if (!blProcessOK)
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstSWKeyMapNode);
+        pstSWKeyMapNode= NULL;
+        return DOS_FAIL;
+    }
+
+    pthread_mutex_lock(&g_mutexHashSWPeriod);
+    ulHashIndex = sc_int_hash_func(pstSWKeyMapNode->ulIVRPeriodID, SC_SW_PEROID_HASH_SIZE);
+    pstHashNode = hash_find_node(g_pstHashSWPeriod, ulHashIndex, (VOID *)&pstSWKeyMapNode->ulIVRPeriodID, sc_sw_period_hash_find);
+    if (DOS_ADDR_VALID(pstHashNode))
+    {
+        pstSWIVRNode = pstHashNode->pHandle;
+        pstSWIVRNode->pstSWKeymapNode[(pstSWIVRNode->ulIndex)++] = pstSWKeyMapNode;
+    }
+    else
+    {
+      //error
+       DOS_ASSERT(0);
+       return DOS_FAIL;
+    }
+    pthread_mutex_unlock(&g_mutexHashSWPeriod);
+
+    pthread_mutex_lock(&g_mutexSWKeyMapList);
+    pstListNode = dll_find(&g_stSWKeyMapList, &pstSWKeyMapNode->ulID, sc_sw_keymap_find);
+    if (DOS_ADDR_INVALID(pstListNode))
+    {
+        pstListNode = (DLL_NODE_S *)dos_dmem_alloc(sizeof(DLL_NODE_S));
+        if (DOS_ADDR_INVALID(pstListNode))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstSWKeyMapNode);
+            pstSWKeyMapNode= NULL;
+
+            pthread_mutex_unlock(&g_mutexSWKeyMapList);
+            return DOS_FAIL;
+        }
+
+        DLL_Init_Node(pstListNode);
+        pstListNode->pHandle = pstSWKeyMapNode;
+        pstSWKeyMapNode->bExist = DOS_TRUE;
+        DLL_Add(&g_stSWKeyMapList, pstListNode);
+    }
+    else
+    {
+        pstSWKeyMapNodeTmp= pstListNode->pHandle;
+        if (DOS_ADDR_INVALID(pstSWKeyMapNodeTmp))
+        {
+            DOS_ASSERT(0);
+
+            dos_dmem_free(pstSWKeyMapNode);
+            pstSWKeyMapNode= NULL;
+
+            pthread_mutex_unlock(&g_mutexSWKeyMapList);
+            return DOS_FAIL;
+        }
+
+        dos_memcpy(pstSWKeyMapNodeTmp, pstSWKeyMapNode, sizeof(SC_COR_SW_NODE_ST));
+        pstSWKeyMapNodeTmp->bExist = DOS_TRUE;
+
+        dos_dmem_free(pstSWKeyMapNode);
+        pstSWKeyMapNode= NULL;
+    }
+    pthread_mutex_unlock(&g_mutexSWKeyMapList);
+    return DOS_TRUE;
+
+}
+
+
+U32 sc_sw_keymap_load(U32 ulIndex)
+{
+    S8 szSQL[1024];
+
+    if (SC_INVALID_INDEX == ulIndex)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, button ,ivr_period_id, event_type, forward_type ,forward_id  FROM tbl_ivr_action;");
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL)
+                    , "SELECT id, button ,ivr_period_id, event_type, forward_type ,forward_id  FROM tbl_ivr_action WHERE tbl_ivr_action.id = %u;", ulIndex);
+    }
+
+    db_query(g_pstSCDBHandle, szSQL, sc_sw_keymap_load_cb, NULL, NULL);
+
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Load keymap succ.");
+
+    return DOS_SUCC;
+
+}
+
+U32 sc_sw_keymap_delete(U32 ulID)
+{
+    DLL_NODE_S *pstListNode = NULL;
+
+    pthread_mutex_lock(&g_mutexSWKeyMapList);
+    pstListNode = dll_find(&g_stSWKeyMapList, &ulID, sc_switchboard_find);
+    if (DOS_ADDR_INVALID(pstListNode)
+        || DOS_ADDR_INVALID(pstListNode->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexSWKeyMapList);
+
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "sw_keymap Delete FAIL.ID %u does not exist.", ulID);
+        return DOS_FAIL;
+    }
+
+    dll_delete(&g_stSWKeyMapList, pstListNode);
+    pthread_mutex_unlock(&g_mutexSWKeyMapList);
+    dos_dmem_free(pstListNode->pHandle);
+    pstListNode->pHandle= NULL;
+    dos_dmem_free(pstListNode);
+    pstListNode = NULL;
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Delete sw_keymap SUCC.(ID:%u)", ulID);
+
+    return DOS_SUCC;
+}
+
+U32 sc_sw_keymap_proc(U32 ulAction, U32 ulID)
+{
+    U32 ulRet = U32_BUTT;
+
+    if (ulAction > SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    switch(ulAction)
+    {
+        case SC_API_CMD_ACTION_KEYMAP_ADD:
+        case SC_API_CMD_ACTION_KEYMAP_UPDATE:
+            sc_sw_keymap_load(ulID);
+            break;
+        case SC_API_CMD_ACTION_KEYMAP_DELETE:
+            {
+                ulRet = sc_sw_keymap_delete(ulID);
+                if (ulRet != DOS_SUCC)
+                {
+                   DOS_ASSERT(0);
+                   return DOS_FAIL;
+                }
+            }
+            break;
+        default:
+            break;
+    }
+    return DOS_SUCC;
+}
+
 U32 sc_customer_get_callout_group(U32 ulCustomerID, U32 *pusCallOutGroup)
 {
     SC_CUSTOMER_NODE_ST  *pstCustomer       = NULL;
@@ -1460,6 +2376,32 @@ U32 sc_customer_update_proc(U32 ulAction, U32 ulCustomerID)
     sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Update customer SUCC.(ulAction:%u, ulID:%d)", ulAction, ulCustomerID);
 
     return DOS_SUCC;
+}
+
+U32 sc_switchboard_update_proc(U32 ulAction, U32 ulSwitchboardID)
+{
+    if (ulAction >= SC_API_CMD_ACTION_BUTT)
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    switch (ulAction)
+    {
+        case SC_API_CMD_ACTION_SWITCHBOARD_ADD:
+        case SC_API_CMD_ACTION_SWITCHBOARD_UPDATE:
+            sc_cor_switchboard_load(ulSwitchboardID);
+            break;
+        case SC_API_CMD_ACTION_SWITCHBOARD_DELETE:
+            sc_cor_switchboard_delete(ulSwitchboardID);
+            break;
+        default:
+            break;
+    }
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Update customer SUCC.(ulAction:%u, ulID:%d)", ulAction, ulSwitchboardID);
+
+    return DOS_SUCC;
+
+
 }
 
 BOOL sc_customer_is_exit(U32 ulCustomerID)
