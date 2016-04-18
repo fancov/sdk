@@ -4103,7 +4103,12 @@ U32 sc_switchboard_start(SC_SRV_CB *pstSCB, U32 ulBindID)
     {
         pstCorSWIVRNode = pstCorSWDefaultIVRNode;
         sc_trace_scb(pstSCB, "Use the default period.");
+    }
 
+    if (DOS_ADDR_INVALID(pstCorSWIVRNode))
+    {
+        sc_trace_scb(pstSCB, "Cannot find the switch board.");
+        return DOS_FAIL;
     }
 
     stPlaybackRsp.stMsgTag.ulMsgType = SC_CMD_PLAYBACK;
@@ -4355,6 +4360,7 @@ U32 sc_switchboard_play_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     break;
 
                 case SC_SW_BUTTON_TRANSFER:
+                    /* S */
                     break;
 
                 case SC_SW_DIAL_EXTENSION:

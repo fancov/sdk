@@ -477,6 +477,8 @@ const S8* sc_translate_server(U32 ulType)
             return "SC_SRV_CALL_AGENT";
         case SC_SRV_AUTO_PREVIEW:
             return "SC_SRV_AUTO_PREVIEW";
+        case SC_SRV_COR_SWITCHBOARD:
+            return "SC_SRV_SWITCHBOARD";
         default:
             return "ERROR";
     }

@@ -1617,7 +1617,7 @@ U32 sc_http_api_keymap_action(list_t *pstArgv)
         goto invalid_params;
     }
 
-    if (sc_sw_period_proc(ulAction, ulKeymapID) != DOS_SUCC)
+    if (sc_sw_keymap_proc(ulAction, ulKeymapID) != DOS_SUCC)
     {
         DOS_ASSERT(0);
         return SC_HTTP_ERRNO_CMD_EXEC_FAIL;

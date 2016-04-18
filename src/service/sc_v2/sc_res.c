@@ -2115,6 +2115,26 @@ VOID sc_cor_sw_keymap_init(SC_IVR_KEY_MAP_ST *pstSWKeyMapNode)
 
 S32 sc_sw_keymap_find(VOID *pKey, DLL_NODE_S *pstDLLNode)
 {
+    SC_IVR_KEY_MAP_ST *pstSWKeyMapNode = NULL;
+    U32               ulID;
+
+    if (DOS_ADDR_INVALID(pKey) || DOS_ADDR_INVALID(pstDLLNode))
+    {
+        return DOS_FAIL;
+    }
+
+    if (DOS_ADDR_INVALID(pstDLLNode->pHandle))
+    {
+        return DOS_FAIL;
+    }
+
+    pstSWKeyMapNode = pstDLLNode->pHandle;
+    ulID = *(U32 *)pKey;
+    if (ulID == pstSWKeyMapNode->ulID)
+    {
+        return DOS_SUCC;
+    }
+
     return DOS_FAIL;
 }
 
