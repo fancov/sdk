@@ -86,6 +86,14 @@ U32 mon_mail_connect(U32 ulIndex)
         return DOS_FAIL;
     }
 
+    if (mon_mail_init() != DOS_SUCC)
+    {
+        mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_ERROR, "analyze mail server address fail.");
+        return DOS_FAIL;
+    }
+
+    mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_DEBUG, "analyze mail server address fail. IP: %s", g_astMonMailGlobal[ulIndex].szMailIP);
+
     /* ´´½¨Ì×½Ó×Ö */
     g_astMonMailGlobal[ulIndex].lMonMailSockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (g_astMonMailGlobal[ulIndex].lMonMailSockfd < 0)
@@ -129,6 +137,7 @@ static VOID *mon_mail_recv_mainloop(VOID *ptr)
     U32 ulErrno = 0;
 
     g_blExitFlag = DOS_FALSE;
+
 
     while (1)
     {
