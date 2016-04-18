@@ -5121,7 +5121,7 @@ VOID sc_log_digest_print_only(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...)
     /* 增加scb的信息打印 */
     if (DOS_ADDR_VALID(pstSCB))
     {
-        ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, " scbNo(%d", pstSCB->ulSCBNo);
+        ulTraceTagLen += dos_snprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, " scbNo(%d-%d", pstSCB->ulCustomerID, pstSCB->ulSCBNo);
 
         if (DOS_ADDR_INVALID(pstSCB->pstServiceList[pstSCB->ulCurrentSrv])
             || !pstSCB->pstServiceList[pstSCB->ulCurrentSrv]->bValid)

@@ -100,6 +100,7 @@ static VOID *sc_log_digest_mainloop(VOID *ptr)
             {
             }
 
+            fflush(pstLogFile);
             ulFileSize += dos_strlen(pstMsg);
             dos_dmem_free(pstMsg);
             pstMsg = NULL;
