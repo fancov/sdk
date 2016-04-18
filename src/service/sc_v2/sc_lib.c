@@ -1954,6 +1954,14 @@ U32 sc_task_check_can_call(SC_TASK_CB *pstTCB)
             return DOS_FALSE;
         }
     }
+    else if (SC_TASK_MODE_CALL_AGNET_FIRST == pstTCB->ucMode)
+    {
+        sc_agent_group_stat_by_id(pstTCB->ulAgentQueueID, &ulTotalAgent, NULL, &ulIdleAgent, &ulBusyAgent);
+        if (0 == ulIdleAgent)
+        {
+            return DOS_FALSE;
+        }
+    }
     else
     {
         sc_agent_group_stat_by_id(pstTCB->ulAgentQueueID, &ulTotalAgent, NULL, &ulIdleAgent, &ulBusyAgent);
