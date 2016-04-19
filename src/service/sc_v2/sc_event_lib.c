@@ -3232,6 +3232,7 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
     {
         case AGENT_BIND_SIP:
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+            sc_scb_set_service(pstSCB, BS_SERV_INTER_CALL);
             break;
 
         case AGENT_BIND_TELE:
@@ -3256,6 +3257,7 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
 
         case AGENT_BIND_TT_NUMBER:
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
+            sc_scb_set_service(pstSCB, BS_SERV_INTER_CALL);
             break;
 
         default:
@@ -3396,6 +3398,7 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
     {
         case AGENT_BIND_SIP:
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+            sc_scb_set_service(pstSCB, BS_SERV_INTER_CALL);
             break;
 
         case AGENT_BIND_TELE:
@@ -3410,6 +3413,7 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
 
         case AGENT_BIND_TT_NUMBER:
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
+            sc_scb_set_service(pstSCB, BS_SERV_INTER_CALL);
             break;
 
         default:
