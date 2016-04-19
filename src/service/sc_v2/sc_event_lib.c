@@ -3123,6 +3123,7 @@ U32 sc_call_ctrl_hangup_all(U32 ulAgent)
         return DOS_FAIL;
     }
 
+    sc_req_playback_stop(pstSCB->ulSCBNo, pstLCBAgent->ulCBNo);
     sc_req_hungup(pstSCB->ulSCBNo, pstLCBAgent->ulCBNo, CC_ERR_SC_CLEAR_FORCE);
 
     return DOS_SUCC;
