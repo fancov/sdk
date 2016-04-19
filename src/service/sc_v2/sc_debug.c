@@ -2978,6 +2978,7 @@ U32 sc_show_switchboard(U32 ulIndex)
                         , "ID", "Name");
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n--------------------------------------");
+    pthread_mutex_lock(&g_mutexCorSwitchboardList);
     DLL_Scan(&g_stCorSwitchboardList, pstListNode, DLL_NODE_S *)
     {
         pstSWNode = (SC_COR_SW_NODE_ST *)pstListNode->pHandle;
@@ -2990,6 +2991,7 @@ U32 sc_show_switchboard(U32 ulIndex)
             cli_out_string(ulIndex, szBuff);
         }
     }
+    pthread_mutex_unlock(&g_mutexCorSwitchboardList);
     cli_out_string(ulIndex, "\r\n--------------------------------------\r\n");
 
     return DOS_SUCC;
@@ -3007,7 +3009,7 @@ U32 sc_show_ivr_period(U32 ulIndex)
                     , "ID", "SWID", "CustomerID", "WeekMask", "AudioID", "StartTime", "EndTime", "KeymapNum", "FirstKeyMap");
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n---------------------------------------------------------------------------------------------");
-
+    pthread_mutex_lock(&g_mutexHashSWPeriod);
     HASH_Scan_Table(g_pstHashSWPeriod, ulHashIndex)
     {
         HASH_Scan_Bucket(g_pstHashSWPeriod, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -3020,7 +3022,7 @@ U32 sc_show_ivr_period(U32 ulIndex)
 
             pstSWPeriod = (SC_SW_IVR_NODE_ST *)pstHashNode->pHandle;
 
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-5d%-6d%-12d%-10u%-10d%02u:%02u:%02u   %02u:%02u:%02u%-12d%-12p"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-5d%-6d%-12d%-10u%-10d%02u:%02u:%02u   %02u:%02u:%02u\t\t%-12d%-12p"
                             , pstSWPeriod->ulID
                             , pstSWPeriod->ulSWID
                             , pstSWPeriod->ulCustomerID
@@ -3037,6 +3039,7 @@ U32 sc_show_ivr_period(U32 ulIndex)
              cli_out_string(ulIndex, szBuff);
         }
     }
+    pthread_mutex_unlock(&g_mutexHashSWPeriod);
     cli_out_string(ulIndex, "\r\n---------------------------------------------------------------------------------------------\r\n");
     return DOS_SUCC;
 };
@@ -3053,6 +3056,7 @@ U32 sc_show_sw_keymap(U32 ulIndex)
                         , "ID", "PeriodID", "Key", "KeyMapType", "KeyMapID");
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n--------------------------------------");
+    pthread_mutex_lock(&g_mutexSWKeyMapList);
     DLL_Scan(&g_stSWKeyMapList, pstListNode, DLL_NODE_S *)
     {
         pstSWKeymapNode = (SC_IVR_KEY_MAP_ST *)pstListNode->pHandle;
@@ -3068,6 +3072,7 @@ U32 sc_show_sw_keymap(U32 ulIndex)
             cli_out_string(ulIndex, szBuff);
         }
     }
+    pthread_mutex_unlock(&g_mutexSWKeyMapList);
     cli_out_string(ulIndex, "\r\n--------------------------------------\r\n");
 
     return DOS_SUCC;
