@@ -77,6 +77,7 @@ U32  mon_send_email(U32 ulCustomerID, S8 *pszTitle, S8 *pszMessage, U32 ulWarnLe
     }
     /* ·¢ÓÊ¼þ */
     //lRet = mon_stream_client(stMsg.stContact.szEmail, pszTitle, pszMessage);
+    mon_trace(MON_TRACE_NOTIFY, LOG_LEVEL_DEBUG, "Send Email. %s", pszMessage);
     lRet = mon_mail_send_warning(ulWarnType, ulWarnLevel, stMsg.stContact.szEmail, pszTitle, pszMessage);
     if (DOS_SUCC != lRet)
     {

@@ -65,6 +65,7 @@ static U32 mon_init_warning_cond();
 static U32 mon_close_db_conn();
 static U32 mon_init_warning_msg();
 static U32 mon_deinit_warning_msg();
+extern U32 mon_mail_alloc_resource();
 U32 mon_add_warning_record(MON_MSG_S *pstMsg);
 
 
@@ -268,6 +269,13 @@ U32 mon_res_alloc()
     if (DOS_SUCC != ulRet)
     {
         mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init warning Msg FAIL.");
+        return DOS_FAIL;
+    }
+
+    ulRet = mon_mail_alloc_resource();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init warning Mail FAIL.");
         return DOS_FAIL;
     }
 
