@@ -1788,7 +1788,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 {
                     pstSCB->stCall.ulCallingLegNo = U32_BUTT;
                 }
-                pstHungupLeg->ulCBNo = U32_BUTT;
+                pstHungupLeg->ulSCBNo = U32_BUTT;
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 pstSCB->stCall.stSCBTag.usStatus = SC_CALL_RELEASE;
             }
