@@ -186,14 +186,6 @@ U32 mon_res_alloc()
     }
     mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_DEBUG, "Config init SUCC.");
 
-    ulRet = mon_mail_init();
-    if (ulRet != DOS_SUCC)
-    {
-        mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_ERROR, "Mail init FAIL.");
-        return DOS_FAIL;
-    }
-    mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_DEBUG, "Mail init SUCC.");
-
     ulRet = mon_init_cpu_queue();
     if (DOS_SUCC != ulRet)
     {

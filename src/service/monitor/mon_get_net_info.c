@@ -246,8 +246,11 @@ BOOL mon_is_netcard_connected(const S8 * pszNetCard)
         bRet = DOS_FALSE;
     }
 
-    fclose(pstNetFp);
-    pstNetFp = NULL;
+    if (DOS_ADDR_VALID(pstNetFp))
+    {
+        fclose(pstNetFp);
+        pstNetFp = NULL;
+    }
 
     return bRet;
 }

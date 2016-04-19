@@ -1030,6 +1030,8 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 goto proc_fail;
             }
 
+            sc_log_digest_print_only(pstSCB, "Auto Call. calling Num: %s, callee Num: %s", pstCallingLegCB->stCall.stNumInfo.szOriginalCalling, pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+
             /* 如果是接入码业务需要发起接入码业务 */
             if ('*' == pstCallingLegCB->stCall.stNumInfo.szOriginalCallee[0])
             {
