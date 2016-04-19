@@ -1639,7 +1639,17 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
             }
 
-            sc_send_billing_stop2bs(pstSCB, pstHungupLeg, NULL, ulReleasePart);
+            if (DOS_ADDR_VALID(pstAgentHungup))
+            {
+                pstOtherLeg->stCall.stTimeInfo.ulByeTime = pstHungupLeg->stCall.stTimeInfo.ulByeTime;
+                /* 尽量用客户的leg生成话单 */
+                sc_send_billing_stop2bs(pstSCB, pstOtherLeg, NULL, ulReleasePart);
+            }
+            else
+            {
+                /* 尽量用客户的leg生成话单 */
+                sc_send_billing_stop2bs(pstSCB, pstHungupLeg, NULL, ulReleasePart);
+            }
 
             /* 到这里，说明两个leg都OK */
             /*
@@ -7313,7 +7323,6 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_AUTH:
         case SC_AUTO_CALL_EXEC:
         case SC_AUTO_CALL_PROC:
-        case SC_AUTO_CALL_ALERTING:
             /* 这个时候挂断只会是客户的LEG清理资源即可 */
             sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected.");
 
@@ -7326,6 +7335,8 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             sc_scb_free(pstSCB);
             pstSCB = NULL;
             break;
+
+        case SC_AUTO_CALL_ALERTING:
         case SC_AUTO_CALL_ACTIVE:
             /* 客户挂断了电话，需要生成话单 */
             sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Hungup with agent not connected. Need create cdr");
