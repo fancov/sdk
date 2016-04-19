@@ -4771,13 +4771,17 @@ U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                     //得到分机号码，入队
 
-                    pstSCB->stCorSwitchboard.szExtensionNum[pstSCB->stCorSwitchboard.ucIndex++] = lKey + '0';
+                    if (pstSCB->stCorSwitchboard.ucIndex < SC_NUM_LENGTH)
+                    {
+                        pstSCB->stCorSwitchboard.szExtensionNum[pstSCB->stCorSwitchboard.ucIndex++] = lKey + '0';
+                    }
 
                     sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "switchboard dmtf sip num : %s ", pstSCB->stCorSwitchboard.szExtensionNum);
 
                     //if (pstSCB->stCorSwitchboard.ucIndex >= pstSCB->stCorSwitchboard.ucExtensionNumLength)
                     if (pstSCB->stCorSwitchboard.ucIndex >= 4)
                     {
+                        pstSCB->stCorSwitchboard.szExtensionNum[pstSCB->stCorSwitchboard.ucIndex] = '\0';
                         dos_snprintf(szCallee, sizeof(szCallee), pstSCB->stCorSwitchboard.szExtensionNum);
                         sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "get the sip num switchboard dmtf sip num : %s ", szCallee);
 

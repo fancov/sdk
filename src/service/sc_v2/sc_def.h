@@ -1248,9 +1248,9 @@ typedef struct tagSCCORSwitchboard{
     U16                usCorSWPeroidNo;
     SC_SW_IVR_NODE_ST  *pstSWPeriodNode;
     SC_AGENT_NODE_ST   *pstAgentCallee;
-    S8                 szExtensionNum[16];
-    S8                 szTelNum[16];
-    S8                 szTTNum[16];
+    S8                 szExtensionNum[SC_NUM_LENGTH];
+    S8                 szTelNum[SC_NUM_LENGTH];
+    S8                 szTTNum[SC_NUM_LENGTH];
     U8                 ucIndex;
     DOS_TMR_ST         stTmrHandle;
     U8                 ucTimeout;

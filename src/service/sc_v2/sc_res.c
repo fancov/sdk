@@ -1739,10 +1739,15 @@ VOID sc_sw_period_init(SC_SW_IVR_NODE_ST *pstSWIVR)
 
 U32 sc_sw_period_delete(U32 ulPeriodID)
 {
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Delete period start (ID:%u)", ulPeriodID);
     HASH_NODE_S     *pstHashNode = NULL;
     SC_SW_IVR_NODE_ST *pstSWIVR = NULL;
     BOOL blFound = DOS_FALSE;
     U32 ulIndex = U32_BUTT;
+
+    U32 ulForIndex;
+    SC_COR_SW_NODE_ST  *pstSWNode = NULL;
+    DLL_NODE_S         *pstListNode      = NULL;
 
     pthread_mutex_lock(&g_mutexHashSWPeriod);
     HASH_Scan_Table(g_pstHashSWPeriod, ulIndex)
@@ -1777,6 +1782,43 @@ U32 sc_sw_period_delete(U32 ulPeriodID)
     {
         ulIndex = sc_int_hash_func(pstSWIVR->ulID, SC_SW_PEROID_HASH_SIZE);
 
+        pthread_mutex_lock(&g_mutexCorSwitchboardList);
+        pstListNode = dll_find(&g_stCorSwitchboardList, &pstSWIVR->ulSWID, sc_switchboard_find);
+        if (DOS_ADDR_VALID(pstListNode) && DOS_ADDR_VALID(pstListNode->pHandle))
+        {
+            pstSWNode = pstListNode->pHandle;
+        }
+        else
+        {
+            DOS_ASSERT(0);
+        }
+
+        pthread_mutex_unlock(&g_mutexCorSwitchboardList);
+
+        if (DOS_ADDR_VALID(pstSWNode))
+        {
+            //修改sw里的period
+            for(ulForIndex = 0; ulForIndex < pstSWNode->ucIndex; ulForIndex++)
+            {
+                if (ulPeriodID == pstSWNode->pstSWPeriodNode[ulForIndex]->ulID)
+                {
+                    if ((ulForIndex+1) == pstSWNode->ucIndex)   // 如果删除的数据sw时段是数组里最后一个元素，直接置空，元素个数减一
+                    {
+                        pstSWNode->pstSWPeriodNode[ulForIndex] = NULL;
+                        pstSWNode->ucIndex--;
+                    }
+                    else                    //如果不是sw里时段数组里最后一个元素，将其置为最后一个元素，将最后一个元素删除
+                    {
+                        pstSWNode->pstSWPeriodNode[ulForIndex] = pstSWNode->pstSWPeriodNode[pstSWNode->ucIndex-1];
+                        pstSWNode->pstSWPeriodNode[pstSWNode->ucIndex-1] = NULL;
+                        pstSWNode->ucIndex--;
+                    }
+
+                    break;
+                }
+            }
+        }
+
         /* 删除节点 */
         hash_delete_node(g_pstHashSWPeriod, pstHashNode, ulIndex);
 
@@ -1791,6 +1833,10 @@ U32 sc_sw_period_delete(U32 ulPeriodID)
            dos_dmem_free(pstSWIVR);
            pstSWIVR = NULL;
         }
+    }
+    else
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Delete period fail not found");
     }
 
     pthread_mutex_unlock(&g_mutexHashSWPeriod);
@@ -1976,13 +2022,15 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         if (DOS_ADDR_VALID(pstListNode))
         {
             pstSWNode = pstListNode->pHandle;
-            pstSWNode->pstSWPeriodNode[(pstSWNode->ucIndex)++] = pstSWIVRNode;
+            pstSWNode->pstSWPeriodNode[pstSWNode->ucIndex] = pstSWIVRNode;
+            pstSWNode->ucIndex++;
         }
         else
         {
             DOS_ASSERT(0);
             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "period load fail.");
             pthread_mutex_unlock(&g_mutexCorSwitchboardList);
+            pthread_mutex_unlock(&g_mutexHashSWPeriod);
             dos_dmem_free(pstSWIVRNode);
             pstSWIVRNode = NULL;
             return DOS_FAIL;
@@ -2021,6 +2069,7 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             pthread_mutex_unlock(&g_mutexHashSWPeriod);
             return DOS_FAIL;
         }
+
         dos_memcpy(pstSWIVRNodeTmp, pstSWIVRNode, sizeof(SC_SW_IVR_NODE_ST));
         dos_dmem_free(pstSWIVRNode);
         pstSWIVRNode= NULL;
@@ -2239,7 +2288,19 @@ S32 sc_sw_keymap_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         if (DOS_ADDR_VALID(pstHashNode))
         {
             pstSWIVRNode = pstHashNode->pHandle;
-            pstSWIVRNode->pstSWKeymapNode[(pstSWIVRNode->ulIndex)++] = pstSWKeyMapNode;
+
+            if (pstSWIVRNode->ulIndex < sizeof(pstSWIVRNode->pstSWKeymapNode))
+            {
+                pstSWIVRNode->pstSWKeymapNode[pstSWIVRNode->ulIndex] = pstSWKeyMapNode;
+                pstSWIVRNode->ulIndex++;
+            }
+            else
+            {
+                DOS_ASSERT(0);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "The ulIndex too big beyond the allgin of the pstSWIVRNode->pstSWKeymapNode");
+                return DOS_FAIL;
+            }
+
         }
         else
         {
@@ -2283,7 +2344,8 @@ S32 sc_sw_keymap_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             return DOS_FAIL;
         }
 
-        dos_memcpy(pstSWKeyMapNodeTmp, pstSWKeyMapNode, sizeof(SC_COR_SW_NODE_ST));
+        dos_memcpy(pstSWKeyMapNodeTmp, pstSWKeyMapNode, sizeof(SC_IVR_KEY_MAP_ST));
+
         pstSWKeyMapNodeTmp->bExist = DOS_TRUE;
         dos_dmem_free(pstSWKeyMapNode);
         pstSWKeyMapNode= NULL;
@@ -2297,21 +2359,30 @@ S32 sc_sw_keymap_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
 U32 sc_sw_keymap_load(U32 ulIndex)
 {
     S8 szSQL[1024];
+    S32 lret;
 
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, button ,ivr_period_id, event_type, forward_type ,forward_id  FROM tbl_ivr_action;");
+                    , "SELECT id, button, ivr_period_id, event_type, forward_type, forward_id FROM tbl_ivr_action;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, button ,ivr_period_id, event_type, forward_type ,forward_id  FROM tbl_ivr_action WHERE tbl_ivr_action.id = %u;", ulIndex);
+                    , "SELECT id, button, ivr_period_id, event_type, forward_type, forward_id FROM tbl_ivr_action WHERE tbl_ivr_action.id = %u;", ulIndex);
     }
 
-    db_query(g_pstSCDBHandle, szSQL, sc_sw_keymap_load_cb, NULL, NULL);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", szSQL);
+    lret = db_query(g_pstSCDBHandle, szSQL, sc_sw_keymap_load_cb, NULL, NULL);
 
-    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Load keymap succ.");
+    if (0 == lret)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Load keymap succ.");
+    }
+    else
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s lret: %d", "Load keymap fali.", lret);
+    }
 
     return DOS_SUCC;
 
@@ -2321,9 +2392,14 @@ U32 sc_sw_keymap_delete(U32 ulID)
 {
     sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Delete keymap start (ID:%u)", ulID);
     DLL_NODE_S *pstListNode = NULL;
+    SC_SW_IVR_NODE_ST *pstSWIVRNode          = NULL;
+    U32 ulHashIndex = 0;
+    U32 ulIndex = 0;
+    HASH_NODE_S       *pstHashNode           = NULL;
+    SC_IVR_KEY_MAP_ST  *pstSWKeyMapNode       = NULL;
 
     pthread_mutex_lock(&g_mutexSWKeyMapList);
-    pstListNode = dll_find(&g_stSWKeyMapList, &ulID, sc_switchboard_find);
+    pstListNode = dll_find(&g_stSWKeyMapList, &ulID, sc_sw_keymap_find);
     if (DOS_ADDR_INVALID(pstListNode)
         || DOS_ADDR_INVALID(pstListNode->pHandle))
     {
@@ -2332,6 +2408,46 @@ U32 sc_sw_keymap_delete(U32 ulID)
         sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "sw_keymap Delete FAIL.ID %u does not exist.", ulID);
         return DOS_FAIL;
     }
+    pstSWKeyMapNode = pstListNode->pHandle;
+
+    pthread_mutex_lock(&g_mutexHashSWPeriod);
+    ulHashIndex = sc_int_hash_func(pstSWKeyMapNode->ulIVRPeriodID, SC_SW_PEROID_HASH_SIZE);
+    pstHashNode = hash_find_node(g_pstHashSWPeriod, ulHashIndex, (VOID *)&pstSWKeyMapNode->ulIVRPeriodID, sc_sw_period_hash_find);
+    if (DOS_ADDR_VALID(pstHashNode) && DOS_ADDR_VALID(pstHashNode->pHandle))
+    {
+        pstSWIVRNode = pstHashNode->pHandle;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+    }
+
+    pthread_mutex_unlock(&g_mutexHashSWPeriod);
+
+
+    if (DOS_ADDR_VALID(pstSWIVRNode))
+    {
+        //修改时段里的keymap
+        for(;ulIndex < pstSWIVRNode->ulIndex; ulIndex++)
+        {
+            if (ulID == pstSWIVRNode->pstSWKeymapNode[ulIndex]->ulID)
+            {
+                if ((ulIndex+1) == pstSWIVRNode->ulIndex)   // 如果删除的数据是时段数组里最后一个keymap直接置空，元素个数减一
+                {
+                    pstSWIVRNode->pstSWKeymapNode[ulIndex] = NULL;
+                    pstSWIVRNode->ulIndex--;
+                }
+                else                    //如果不是时段keymap数组里最后一个元素，将其置为最后一个元素，将最后一个元素删除
+                {
+                    pstSWIVRNode->pstSWKeymapNode[ulIndex] = pstSWIVRNode->pstSWKeymapNode[pstSWIVRNode->ulIndex-1];
+                    pstSWIVRNode->pstSWKeymapNode[pstSWIVRNode->ulIndex-1] = NULL;
+                    pstSWIVRNode->ulIndex--;
+                }
+
+                break;
+            }
+        }
+    }
 
     dll_delete(&g_stSWKeyMapList, pstListNode);
     pthread_mutex_unlock(&g_mutexSWKeyMapList);
@@ -2339,6 +2455,8 @@ U32 sc_sw_keymap_delete(U32 ulID)
     pstListNode->pHandle= NULL;
     dos_dmem_free(pstListNode);
     pstListNode = NULL;
+
+
     sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Delete sw_keymap SUCC.(ID:%u)", ulID);
 
     return DOS_SUCC;
