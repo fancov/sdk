@@ -3150,7 +3150,6 @@ U32 sc_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 /* 长签的坐席挂断了电话，不要释放leg，解除关系就行 */
                 pstHungupLeg->ulSCBNo = U32_BUTT;
                 pstSCB->stPreviewCall.ulCallingLegNo = U32_BUTT;
-                pstHungupLeg->ulCBNo = U32_BUTT;
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 pstSCB->stPreviewCall.stSCBTag.usStatus = SC_PREVIEW_CALL_RELEASE;
             }
