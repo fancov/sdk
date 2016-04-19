@@ -13628,47 +13628,50 @@ U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     switch (pstSCB->stAutoPreview.stSCBTag.usStatus)
     {
-        case SC_AUTO_CALL_IDEL:
-        case SC_AUTO_CALL_AUTH:
-        case SC_AUTO_CALL_EXEC:
-        case SC_AUTO_CALL_PROC:
+        case SC_AUTO_PREVIEW_IDEL:
+        case SC_AUTO_PREVIEW_AUTH:
+        case SC_AUTO_PREVIEW_QUEUE:
+        case SC_AUTO_PREVIEW_AUTH2:
+        case SC_AUTO_PREVIEW_EXEC:
+        case SC_AUTO_PREVIEW_PROC:
             /* 发起呼叫失败，生成呼叫结果，释放资源 */
-            pstCallingCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
+            pstCallingCB = sc_lcb_get(pstSCB->stAutoPreview.ulCallingLegNo);
             if (DOS_ADDR_VALID(pstCallingCB))
             {
                 pstCallingCB->stCall.stTimeInfo.ulByeTime = pstCallingCB->stCall.stTimeInfo.ulStartTime;
                 sc_preview_task_call_result(pstSCB, pstCallingCB->ulCBNo, ulErrCode);
                 sc_lcb_free(pstCallingCB);
             }
+
+            pstCalleeCB = sc_lcb_get(pstSCB->stAutoPreview.ulCalleeLegNo);
+            if (DOS_ADDR_VALID(pstCalleeCB))
+            {
+                sc_lcb_free(pstCalleeCB);
+                pstCalleeCB = NULL;
+            }
             sc_scb_free(pstSCB);
             break;
 
-        case SC_AUTO_CALL_ALERTING:
-            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
+        case SC_AUTO_PREVIEW_ALERTING:
+            ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, ulErrCode);
             break;
 
-        case SC_AUTO_CALL_ACTIVE:
-        case SC_AUTO_CALL_AFTER_KEY:
-        case SC_AUTO_CALL_AUTH2:
-        case SC_AUTO_CALL_EXEC2:
-        case SC_AUTO_CALL_PORC2:
-        case SC_AUTO_CALL_ALERTING2:
-            ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
+        case SC_AUTO_PREVIEW_ACTIVE:
+        case SC_AUTO_PREVIEW_CONNECTING:
+        case SC_AUTO_PREVIEW_ALERTING2:
+            ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, ulErrCode);
             break;
 
-        case SC_AUTO_CALL_TONE:
-            break;
-
-        case SC_AUTO_CALL_CONNECTED:
-        case SC_AUTO_CALL_PROCESS:
-        case SC_AUTO_CALL_RELEASE:
-            if (pstSCB->stAutoCall.ulCalleeLegNo != U32_BUTT)
+        case SC_AUTO_PREVIEW_CONNECTED:
+        case SC_AUTO_PREVIEW_PROCESS:
+        case SC_AUTO_PREVIEW_RELEASE:
+            if (pstSCB->stAutoPreview.ulCalleeLegNo != U32_BUTT)
             {
-                ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCalleeLegNo, ulErrCode);
+                ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCalleeLegNo, ulErrCode);
             }
             else
             {
-                ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
+                ulRet = sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, ulErrCode);
             }
             break;
 
