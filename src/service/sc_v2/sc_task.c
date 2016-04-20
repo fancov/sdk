@@ -939,7 +939,7 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
         && pstCallee->szNumber[1] == '0')
     {
         /* 外呼时，被叫号码以00开头，禁止呼叫 */
-        sc_log(bIsTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "callee is %s. Not alloc call", pstCallee->szNumber);
+        sc_log(bIsTrace, SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "callee is %s. Not alloc call", pstCallee->szNumber);
         ulErrNo = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
         goto make_call_file;
     }
@@ -947,14 +947,14 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
     /* 判断是否在黑名单中 */
     if (!sc_black_list_check(pstTCB->ulCustomID, pstCallee->szNumber))
     {
-        sc_log(bIsTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The destination is in black list. %s", pstCallee->szNumber);
+        sc_log(bIsTrace, SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "The destination is in black list. %s", pstCallee->szNumber);
         ulErrNo = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
         goto make_call_file;
     }
 
     if (sc_get_number_by_callergrp(pstTCB->ulCallerGrpID, szCaller, SC_NUM_LENGTH) != DOS_SUCC)
     {
-        sc_log(bIsTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Get caller from caller group(%u) FAIL.", pstTCB->ulCallerGrpID);
+        sc_log(bIsTrace, SC_LOG_SET_FLAG(LOG_LEVEL_NOTIC, SC_MOD_TASK, SC_LOG_DISIST), "Get caller from caller group(%u) FAIL.", pstTCB->ulCallerGrpID);
         ulErrNo = CC_ERR_SC_CALLER_NUMBER_ILLEGAL;
         goto make_call_file;
     }
@@ -1021,6 +1021,8 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
     {
         pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_AUTH;
     }
+
+    sc_log_digest_print_only(pstSCB, "Task(%u) callee : %s, caller : %s.", pstTCB->ulTaskID, pstCallee->szNumber, szCaller);
 
     if (sc_send_usr_auth2bs(pstSCB, pstLegCB) != DOS_SUCC)
     {
