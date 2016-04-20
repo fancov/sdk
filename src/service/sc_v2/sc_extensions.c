@@ -51,9 +51,11 @@ typedef struct tagEPData{
     S8 *pszGateway;
     S8 *pszStatus;
     S8 *pszFromUser;
+    S8 *pszUser;
     S8 *pszExpire;
     S8 *pszNetworkIP;
     S8 *pszContact;
+    S8 *pszAuthResult;
 }SC_EXT_DATA_ST;
 
 extern U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght);
@@ -65,6 +67,7 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
     U32                     ulSipID      = 0;
     U32                     ulPublicIP   = 0;
     U32                     ulPrivateIP  = 0;
+    S8                      *pszUser     = NULL;
     S8                      szPrivateIP[17] = {0};
     SC_TRUNK_STATE_TYPE_EN  enTrunkState;
     SC_SIP_STATUS_TYPE_EN   enStatus;
@@ -156,7 +159,9 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
     {
         /* TODO 维护ACD模块中坐席所对应的SIP分机的状态 */
         /* 维护SIP分机的状态 */
-        if (DOS_ADDR_INVALID(pstExtData->pszFromUser) || '\0' == pstExtData->pszFromUser)
+
+        pszUser = pstExtData->pszFromUser;
+        if (DOS_ADDR_INVALID(pszUser) || '\0' == pszUser)
         {
              sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "Not get userid");
              goto end;
@@ -177,19 +182,31 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
             }
             else
             {
-                enStatus = SC_SIP_STATUS_TYPE_REGISTER;
+                if (DOS_ADDR_VALID(pstExtData->pszAuthResult) && dos_strncmp(pstExtData->pszAuthResult, "FORBIDDEN", dos_strlen("FORBIDDEN")) == 0)
+                {
+                    enStatus = SC_SIP_STATUS_TYPE_UNREGISTER;
+                }
+                else
+                {
+                    enStatus = SC_SIP_STATUS_TYPE_REGISTER;
+                }
             }
         }
         else
         {
             /* sofia::unregister/sofia::expire */
             enStatus = SC_SIP_STATUS_TYPE_UNREGISTER;
+
+            if (dos_strcmp(pstExtData->pszSUBClass, "sofia::expire") == 0)
+            {
+                pszUser = pstExtData->pszUser;
+            }
         }
 
-        ulResult = sc_sip_account_update_status(pstExtData->pszFromUser, enStatus, &ulSipID);
+        ulResult = sc_sip_account_update_status(pszUser, enStatus, &ulSipID);
         if (ulResult != DOS_SUCC)
         {
-            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "update sip(userid : %s) status fail", pstExtData->pszFromUser);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "update sip(userid : %s) status fail", pszUser);
 
             goto end;
         }
@@ -226,7 +243,7 @@ VOID sc_esl_ext_event_process(SC_EXT_DATA_ST *pstExtData)
         ulResult = sc_sip_account_update_info2db(ulPublicIP, ulPrivateIP, enStatus, ulSipID);
         if(DB_ERR_SUCC != ulResult)
         {
-            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "update sip db fail, userid is %s", pstExtData->pszFromUser);
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "update sip db fail, userid is %s", pszUser);
         }
     }
 end:
@@ -250,6 +267,16 @@ end:
         if (pstExtData->pszFromUser)
         {
             dos_dmem_free(pstExtData->pszFromUser);
+        }
+
+        if (pstExtData->pszUser)
+        {
+            dos_dmem_free(pstExtData->pszUser);
+        }
+
+        if (pstExtData->pszAuthResult)
+        {
+            dos_dmem_free(pstExtData->pszAuthResult);
         }
 
         if (pstExtData->pszExpire)
@@ -418,6 +445,8 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
         pstExtData->pszExpire = dos_strndup(esl_event_get_header(pstEvent, "expires"), MAX_BUFFER_LEN);
         pstExtData->pszNetworkIP = dos_strndup(esl_event_get_header(pstEvent, "network-ip"), MAX_BUFFER_LEN);
         pstExtData->pszContact = dos_strndup(esl_event_get_header(pstEvent, "contact"), MAX_BUFFER_LEN);
+        pstExtData->pszAuthResult = dos_strndup(esl_event_get_header(pstEvent, "auth-result"), MAX_BUFFER_LEN);
+        pstExtData->pszUser = dos_strndup(esl_event_get_header(pstEvent, "user"), MAX_BUFFER_LEN);
 
         pthread_mutex_lock(&g_mutexExtMngtMsg);
 
