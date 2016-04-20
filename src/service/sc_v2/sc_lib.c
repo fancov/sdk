@@ -2861,14 +2861,28 @@ U32 sc_req_hungup_with_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo)
  */
 U32 sc_req_bridge_call(U32 ulSCBNo, U32 ulCallingLegNo, U32 ulCalleeLegNo)
 {
-    SC_MSG_CMD_BRIDGE_ST  *pstCMDBridge = NULL;
-    U32                   ulRet = 0;
+    SC_MSG_CMD_BRIDGE_ST  *pstCMDBridge     = NULL;
+    U32                   ulRet             = 0;
+    SC_LEG_CB             *pstCalleeLegCB   = NULL;
+    SC_LEG_CB             *pstCallingLegCB  = NULL;
 
     pstCMDBridge = (SC_MSG_CMD_BRIDGE_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_BRIDGE_ST));
     if (DOS_ADDR_INVALID(pstCMDBridge))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
+    }
+
+    pstCallingLegCB = sc_lcb_get(ulCallingLegNo);
+    if (DOS_ADDR_VALID(pstCallingLegCB))
+    {
+        pstCallingLegCB->stCall.stTimeInfo.ulBridgeTime = time(NULL);
+    }
+
+    pstCalleeLegCB = sc_lcb_get(ulCalleeLegNo);
+    if (DOS_ADDR_VALID(pstCalleeLegCB))
+    {
+        pstCalleeLegCB->stCall.stTimeInfo.ulBridgeTime = time(NULL);
     }
 
     pstCMDBridge->stMsgTag.ulMsgType = SC_CMD_BRIDGE_CALL;
