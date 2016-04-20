@@ -892,6 +892,9 @@ U32 sc_call_access_code(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, S8 *szNum
         }
     }
 
+    sc_trace_scb(pstSCB, "Access code: %s. customer: %u, secondDial: %u", szNum, pstSCB->ulCustomerID, bIsSecondDial);
+    sc_log_digest_print_only(pstSCB, "Access code: %s. secondDial: %u", szNum, bIsSecondDial);
+
     if (pstSCB->ulCustomerID == U32_BUTT)
     {
         DOS_ASSERT(0);
@@ -1093,13 +1096,14 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             /* 出局呼叫 */
             if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_PSTN == ulCallDst)
             {
+                sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Call out");
                 /* 禁止呼叫国际长途 */
                 if (pstCallingLegCB->stCall.stNumInfo.szOriginalCallee[0] == '\0'
                     || (pstCallingLegCB->stCall.stNumInfo.szOriginalCallee[0] == '0'
                         && pstCallingLegCB->stCall.stNumInfo.szOriginalCallee[1] == '0'))
                 {
                     /* 禁止呼叫 */
-                    sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "callee is %s. Not alloc call", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+                    sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Callee is %s. Not alloc call", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
                     sc_req_hungup(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_CALLEE_NUMBER_ILLEGAL);
                     break;
                 }
@@ -1114,6 +1118,7 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             /* 呼入 */
             else if (SC_DIRECTION_PSTN == ulCallSrc && SC_DIRECTION_SIP == ulCallDst)
             {
+                sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Call in");
                 pstSCB->stCall.stSCBTag.usStatus = SC_CALL_AUTH;
 
                 sc_scb_set_service(pstSCB, BS_SERV_INBAND_CALL);
@@ -1124,6 +1129,7 @@ U32 sc_call_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             /* 内部呼叫 */
             else if (SC_DIRECTION_SIP == ulCallSrc && SC_DIRECTION_SIP == ulCallDst)
             {
+                sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "Call internal");
                 pstSCB->stCall.stSCBTag.usStatus = SC_CALL_EXEC;
 
                 sc_scb_set_service(pstSCB, BS_SERV_INTER_CALL);
@@ -2345,7 +2351,7 @@ U32 sc_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Proccessing Preview auth event.");
+    sc_trace_scb(pstSCB, "Proccessing Preview auth event. status : %u", pstSCB->stPreviewCall.stSCBTag.usStatus);
 
     pstAuthRsp = (SC_MSG_EVT_AUTH_RESULT_ST *)pstMsg;
     pstLCB = sc_lcb_get(pstSCB->stPreviewCall.ulCallingLegNo);
@@ -7788,7 +7794,7 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
 
                 /* 长签的坐席挂断了电话，不要释放leg，解除关系就行 */
-                pstSCB->stAutoCall.ulCallingLegNo = U32_BUTT;
+                pstSCB->stAutoCall.ulCalleeLegNo = U32_BUTT;
                 pstHungupLeg->ulSCBNo = U32_BUTT;
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_RELEASE;
