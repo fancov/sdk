@@ -1189,6 +1189,8 @@ U32 sc_agent_auto_preview_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgent
             break;
     }
 
+    pstAgentNode->pstAgentInfo->ulLegNo = pstCallingLegCB->ulCBNo;
+
     /* 新LEG处理一下号码 */
     dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstCallingLegCB->stCall.stNumInfo.szOriginalCallee), szCallee);
     dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstCallingLegCB->stCall.stNumInfo.szOriginalCalling), pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling);
