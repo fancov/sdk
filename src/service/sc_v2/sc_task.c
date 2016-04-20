@@ -1046,6 +1046,56 @@ make_call_file:
     return DOS_FAIL;
 }
 
+U32 sc_task_mngt_query_task(U32 ulTaskID, U32 ulCustomID)
+{
+    SC_DB_MSG_TASK_STATUS_ST    *pstDBTaskStatus    = NULL;
+    SC_TASK_CB                  *pstTCB             = NULL;
+
+    if (0 == ulTaskID || U32_BUTT == ulTaskID)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_DATA;
+    }
+
+    if (0 == ulCustomID || U32_BUTT == ulCustomID)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_USR;
+    }
+
+    pstTCB = sc_tcb_find_by_taskid(ulTaskID);
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_DATA;
+    }
+
+    pstDBTaskStatus = dos_dmem_alloc(sizeof(SC_DB_MSG_TASK_STATUS_ST));
+    if (DOS_ADDR_INVALID(pstDBTaskStatus))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    dos_memzero(pstDBTaskStatus, sizeof(SC_DB_MSG_TASK_STATUS_ST));
+    pstDBTaskStatus->ulTaskID = pstTCB->ulTaskID;
+    /* 坐席个数 */
+    sc_agent_group_stat_by_id(pstTCB->ulAgentQueueID, &pstDBTaskStatus->ulTotalAgent, NULL, &pstDBTaskStatus->ulIdleAgent, NULL);
+    /* 已经呼叫的号码数 */
+    pstDBTaskStatus->ulCalledCount = pstTCB->ulCalledCount;
+    /* 当前并发数 */
+    pstDBTaskStatus->ulCurrentConcurrency = pstTCB->ulCurrentConcurrency;
+    /* 最大并发数 */
+    pstDBTaskStatus->ulMaxConcurrency = pstTCB->ulMaxConcurrency;
+
+    pstDBTaskStatus->stMsgTag.ulMsgType = SC_MSG_SACE_TASK_STATUS;
+
+    sc_send_msg2db((SC_DB_MSG_TAG_ST *)pstDBTaskStatus);
+
+    return SC_HTTP_ERRNO_SUCC;
+}
+
 /*
  * 函数: VOID *sc_task_runtime(VOID *ptr)
  * 功能: 单个呼叫任务的线程主函数
@@ -1153,6 +1203,7 @@ VOID *sc_task_runtime(VOID *ptr)
                 continue;
             }
 
+            sc_task_mngt_query_task(pstTCB->ulTaskID, pstTCB->ulCustomID);
             break;
         }
         blPauseFlag = DOS_FALSE;
@@ -1715,56 +1766,6 @@ U32 sc_task_mngt_stop_task(U32 ulTaskID, U32 ulCustomID)
     }
 
     sc_task_stop(pstTCB);
-
-    return SC_HTTP_ERRNO_SUCC;
-}
-
-U32 sc_task_mngt_query_task(U32 ulTaskID, U32 ulCustomID)
-{
-    SC_DB_MSG_TASK_STATUS_ST    *pstDBTaskStatus    = NULL;
-    SC_TASK_CB                  *pstTCB             = NULL;
-
-    if (0 == ulTaskID || U32_BUTT == ulTaskID)
-    {
-        DOS_ASSERT(0);
-        return SC_HTTP_ERRNO_INVALID_DATA;
-    }
-
-    if (0 == ulCustomID || U32_BUTT == ulCustomID)
-    {
-        DOS_ASSERT(0);
-        return SC_HTTP_ERRNO_INVALID_USR;
-    }
-
-    pstTCB = sc_tcb_find_by_taskid(ulTaskID);
-    if (!pstTCB)
-    {
-        DOS_ASSERT(0);
-        return SC_HTTP_ERRNO_INVALID_DATA;
-    }
-
-    pstDBTaskStatus = dos_dmem_alloc(sizeof(SC_DB_MSG_TASK_STATUS_ST));
-    if (DOS_ADDR_INVALID(pstDBTaskStatus))
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    dos_memzero(pstDBTaskStatus, sizeof(SC_DB_MSG_TASK_STATUS_ST));
-    pstDBTaskStatus->ulTaskID = pstTCB->ulTaskID;
-    /* 坐席个数 */
-    sc_agent_group_stat_by_id(pstTCB->ulAgentQueueID, &pstDBTaskStatus->ulTotalAgent, NULL, &pstDBTaskStatus->ulIdleAgent, NULL);
-    /* 已经呼叫的号码数 */
-    pstDBTaskStatus->ulCalledCount = pstTCB->ulCalledCount;
-    /* 当前并发数 */
-    pstDBTaskStatus->ulCurrentConcurrency = pstTCB->ulCurrentConcurrency;
-    /* 最大并发数 */
-    pstDBTaskStatus->ulMaxConcurrency = pstTCB->ulMaxConcurrency;
-
-    pstDBTaskStatus->stMsgTag.ulMsgType = SC_MSG_SACE_TASK_STATUS;
-
-    sc_send_msg2db((SC_DB_MSG_TAG_ST *)pstDBTaskStatus);
 
     return SC_HTTP_ERRNO_SUCC;
 }
