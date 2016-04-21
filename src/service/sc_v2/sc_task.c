@@ -602,6 +602,7 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode, U32 ul
             /* ²¥·ÅÓïÒôÊ±¹Ò¶Ï */
             if (0 == pstCallResult->ulIVRFinishTime)
             {
+                pstCallResult->ulAnswerTimeStamp = pstCallResult->ulRingTime;
                 pstCallResult->ulResult = CC_RST_HANGUP_WHILE_IVR;
                 goto proc_finished;
             }
@@ -688,13 +689,13 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode, U32 ul
 
 proc_finished:
 
+    if (pstCallResult->ulAnswerTimeStamp == 0)
+    {
+        pstCallResult->ulAnswerTimeStamp = time(NULL);
+    }
+
     if (CC_RST_BUTT == pstCallResult->ulResult)
     {
-        if (pstCallResult->ulAnswerTimeStamp == 0)
-        {
-            pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime ? pstCallResult->ulStartTime : time(NULL);
-        }
-
         pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
     }
 
