@@ -696,6 +696,7 @@ SC_LEG_CB *sc_lcb_alloc()
     if (DOS_ADDR_VALID(pstLCB))
     {
         sc_lcb_init(pstLCB);
+        ulIndex++;
         pstLCB->bValid = DOS_TRUE;
         pstLCB->ulAllocTime = time(NULL);
     }
@@ -1413,7 +1414,7 @@ SC_SRV_CB *sc_scb_alloc()
     if (DOS_ADDR_VALID(pstSCB))
     {
         sc_scb_init(pstSCB);
-
+        ulIndex++;
         if (g_stSysStat.ulCurrentCalls < sc_get_call_limitation())
         {
             if (g_stSysStat.ulCurrentCalls != U32_BUTT)
@@ -1870,6 +1871,7 @@ SC_TASK_CB *sc_tcb_alloc()
 
         pthread_mutex_lock(&pstTCB->mutexTaskList);
         sc_tcb_init(pstTCB);
+        ulIndex++;
         pstTCB->ucValid = 1;
         pstTCB->ulAllocTime = time(0);
         pthread_mutex_unlock(&pstTCB->mutexTaskList);
