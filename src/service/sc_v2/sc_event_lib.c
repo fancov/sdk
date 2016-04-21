@@ -3198,6 +3198,7 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
     }
     pstLCBAgent->ulOtherSCBNo = pstSCB->ulSCBNo;
 
+    pstSCB->ulCustomerID = ulCustomerID;
     pstSCB->stInterception.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stInterception.stSCBTag.usStatus = SC_INTERCEPTION_IDEL;
     pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stInterception.stSCBTag;
@@ -3363,7 +3364,7 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
     }
 
     pstLCBAgent->ulOtherSCBNo = pstSCB->ulSCBNo;
-
+    pstSCB->ulCustomerID = ulCustomerID;
     pstSCB->stWhispered.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stWhispered.stSCBTag.usStatus = SC_WHISPER_IDEL;
     pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stWhispered.stSCBTag;
