@@ -271,6 +271,9 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
     }
     pstLegCB->stCall.stNumInfo.szOriginalCallee[sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee)-1] = '\0';
 
+    /* 修改坐席状态 */
+    sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING, SC_SRV_AGENT_SIGIN);
+
     if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
     {
         /* 需要认证 */

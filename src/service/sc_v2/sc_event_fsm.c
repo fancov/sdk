@@ -8230,6 +8230,8 @@ U32 sc_sigin_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 /* 长签统计 */
                 sc_agent_stat(SC_AGENT_STAT_SIGNIN, pstSCB->stSigin.pstAgentNode->pstAgentInfo, pstSCB->stSigin.pstAgentNode->pstAgentInfo->ulAgentID, 0);
             }
+
+            sc_agent_serv_status_update(pstSCB->stSigin.pstAgentNode->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AGENT_SIGIN);
             /* 放长签音 */
             sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stSigin.ulLegNo, SC_SND_MUSIC_SIGNIN, 1, 0, 0);
 
@@ -8390,12 +8392,15 @@ U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     switch (pstSCB->stSigin.stSCBTag.usStatus)
     {
+        case SC_SIGIN_ALERTING:
         case SC_SIGIN_ACTIVE:
             if (pstSCB->stSigin.pstAgentNode->pstAgentInfo->bNeedConnected)
             {
                 /* 需要重新呼叫坐席，进行长签 */
                 pstLegCB->stPlayback.usStatus = SC_SU_PLAYBACK_INIT;
                 pstSCB->stSigin.pstAgentNode->pstAgentInfo->bConnected = DOS_FALSE;
+
+                sc_agent_serv_status_update(pstSCB->stSigin.pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING, SC_SRV_AGENT_SIGIN);
 
                 if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
                 {
@@ -8430,6 +8435,7 @@ U32 sc_sigin_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 sc_lcb_free(pstLegCB);
             }
             break;
+
         default:
             /* 释放 */
             pstSCB->stSigin.pstAgentNode->pstAgentInfo->bConnected = DOS_FALSE;
