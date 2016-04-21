@@ -249,7 +249,7 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
     }
 
     /* 发送并接受数据 */
-    if (ESL_SUCCESS != esl_send_recv(&g_stESLSendHandle, pszCmd))
+    if (ESL_SUCCESS != esl_send_recv_timed(&g_stESLSendHandle, pszCmd, 10))
     {
         sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. Result:%d, CMD: %s"
                         , ulRet
