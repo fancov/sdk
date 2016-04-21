@@ -7352,18 +7352,15 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         ulReleasePart = SC_CALLEE;
     }
 
-    if (pstSCB->stAutoCall.ulCallingLegNo != U32_BUTT)
+    if (pstSCB->stAutoCall.ulCallingLegNo != U32_BUTT
+        && ulReleasePart == SC_CALLING)
     {
         /* 呼叫结果 */
-        if (SC_AUTO_CALL_PROCESS != pstSCB->stAutoCall.stSCBTag.usStatus
-            && SC_AUTO_CALL_RELEASE != pstSCB->stAutoCall.stSCBTag.usStatus)
+        sc_task_concurrency_minus(pstSCB->stAutoCall.ulTcbID);
+        pstHungupLeg = sc_lcb_get(pstHungup->ulLegNo);
+        if (DOS_ADDR_VALID(pstHungupLeg))
         {
-            sc_task_concurrency_minus(pstSCB->stAutoCall.ulTcbID);
-            pstHungupLeg = sc_lcb_get(pstHungup->ulLegNo);
-            if (DOS_ADDR_VALID(pstHungupLeg))
-            {
-                sc_task_call_result(pstSCB, pstHungupLeg->ulCBNo, pstHungup->ulErrCode, pstSCB->stAutoCall.stSCBTag.usStatus);
-            }
+            sc_task_call_result(pstSCB, pstHungupLeg->ulCBNo, pstHungup->ulErrCode, pstSCB->stAutoCall.stSCBTag.usStatus);
         }
     }
 
@@ -7440,7 +7437,8 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             /* 判断一下错误码，是不是坐席电话打不通 */
             if (pstSCB->stAutoCall.stSCBTag.usStatus == SC_AUTO_CALL_PORC2
                 && SC_CALLEE == ulReleasePart
-                && pstSCB->stAutoCall.ulReCallAgent <= SC_AUTO_CALL_AGENT_MAX_COUNT)
+                && pstSCB->stAutoCall.ulReCallAgent <= SC_AUTO_CALL_AGENT_MAX_COUNT
+                && ulErrCode != CC_ERR_SIP_SUCC)
             {
                 /* 重新加入到呼叫队列 */
                 pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoCall.ulAgentID);
@@ -7453,6 +7451,22 @@ U32 sc_auto_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                 sc_lcb_free(pstCalleeCB);
                 pstSCB->stAutoCall.ulCalleeLegNo = U32_BUTT;
+                pstSCB->stAutoCall.ulReCallAgent++;
+
+                sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "Re call count : %u", pstSCB->stAutoCall.ulReCallAgent);
+                pstSCB->stAutoCall.ulReCallAgent++;
+                if (DOS_ADDR_VALID(pstSCB->stAutoCall.stCusTmrHandle))
+                {
+                    dos_tmr_stop(&pstSCB->stAutoCall.stCusTmrHandle);
+                    pstSCB->stAutoCall.stCusTmrHandle = NULL;
+                }
+
+                lRes = dos_tmr_start(&pstSCB->stAutoCall.stCusTmrHandle, SC_AUTO_CALL_RECALL_TIME, sc_auto_call_recall_agent_callback, (U64)pstSCB->ulSCBNo, TIMER_NORMAL_NO_LOOP);
+                if (lRes < 0)
+                {
+                    DOS_ASSERT(0);
+                    pstSCB->stAutoCall.stCusTmrHandle = NULL;
+                }
 
                 break;
             }
@@ -7997,7 +8011,6 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             break;
 
         case SC_AUTO_CALL_EXEC2:
-        case SC_AUTO_CALL_PORC2:
             if (pstSCB->stAutoCall.ulReCallAgent > SC_AUTO_CALL_AGENT_MAX_COUNT)
             {
                 sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
@@ -8023,6 +8036,7 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             }
             break;
 
+        case SC_AUTO_CALL_PORC2:
         case SC_AUTO_CALL_ALERTING2:
             sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo);
             ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, ulErrCode);
@@ -8546,10 +8560,12 @@ U32 sc_incoming_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     switch (pstSCB->stIncomingQueue.stSCBTag.usStatus)
     {
+        case SC_INQUEUE_IDEL:
         case SC_INQUEUE_ACTIVE:
             pstSCB->stIncomingQueue.ulDequeuTime = time(NULL);
             pstSCB->stIncomingQueue.stSCBTag.bWaitingExit = DOS_TRUE;
             break;
+
         default:
             break;
     }
