@@ -1339,9 +1339,14 @@ U32 sc_call_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     }
                 }
 
-                if (pstSCB->stCall.bIsRingTimer
-                    && DOS_ADDR_INVALID(pstSCB->stCall.stTmrHandle))
+                if (pstSCB->stCall.bIsRingTimer)
                 {
+                    if (DOS_ADDR_VALID(pstSCB->stCall.stTmrHandle))
+                    {
+                        dos_tmr_stop(&pstSCB->stCall.stTmrHandle);
+                        pstSCB->stCall.stTmrHandle = NULL;
+                    }
+
                     /* 开启定时器 */
                     sc_trace_scb(pstSCB, "%s", "Start ringting timer.");
                     lRes = dos_tmr_start(&pstSCB->stCall.stTmrHandle, SC_AGENT_RINGING_TIMEOUT, sc_agent_ringing_timeout_callback, (U64)pstEvent->ulLegNo, TIMER_NORMAL_NO_LOOP);
@@ -1820,6 +1825,7 @@ U32 sc_call_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 sc_lcb_free(pstHungupLeg);
                 pstHungupLeg = NULL;
+                sc_req_playback_stop(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo);
                 sc_req_hungup(pstSCB->ulSCBNo, pstOtherLeg->ulCBNo, CC_ERR_NORMAL_CLEAR);
                 pstSCB->stCall.stSCBTag.usStatus = SC_CALL_RELEASE;
             }
@@ -2133,7 +2139,7 @@ U32 sc_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     {
                         pstSCB->stCall.bIsRingTimer = DOS_TRUE;
                         sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo);
-                        //sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
+                        sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
                     }
                 }
             }
@@ -2240,7 +2246,7 @@ U32 sc_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     {
         /* 放音提示客户等待 */
         pstNewSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
-        sc_req_play_sound(pstNewSCB->ulSCBNo, pstNewSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
+        //sc_req_play_sound(pstNewSCB->ulSCBNo, pstNewSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
     }
 
     return DOS_SUCC;
