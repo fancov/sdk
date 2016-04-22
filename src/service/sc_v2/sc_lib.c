@@ -1023,6 +1023,7 @@ VOID sc_scb_call_init(SC_SRV_CALL_ST *pstCall)
     pstCall->stTmrHandle = NULL;
     pstCall->ulAgentGrpID = 0;
     pstCall->bIsError = DOS_FALSE;
+    pstCall->ulReCallAgent = 0;
 }
 
 VOID sc_scb_preview_call_init(SC_PREVIEW_CALL_ST *pstPreviewCall)

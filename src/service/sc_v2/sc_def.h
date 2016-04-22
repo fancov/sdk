@@ -167,7 +167,7 @@ extern "C" {
 
 #define SC_AUTO_CALL_RINGING_TIMEOUT   35000
 
-#define SC_AUTO_CALL_AGENT_MAX_COUNT   5
+#define SC_AUTO_CALL_AGENT_MAX_COUNT   3
 
 #define SC_AUTO_CALL_RECALL_TIME       500
 
@@ -1049,6 +1049,8 @@ typedef struct tagSCSrvCall{
     U32               ulAgentGrpID;
 
     BOOL              bIsError;
+
+    U32               ulReCallAgent;
 
     /** Ö÷½Ð×øÏ¯Ö¸Õë */
     SC_AGENT_NODE_ST *pstAgentCalling;
