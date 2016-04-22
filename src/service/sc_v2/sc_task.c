@@ -401,13 +401,13 @@ U32 sc_preview_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode
 
 proc_finished:
 
+    if (pstCallResult->ulAnswerTimeStamp == 0)
+    {
+        pstCallResult->ulAnswerTimeStamp = time(NULL);
+    }
+
     if (CC_RST_BUTT == pstCallResult->ulResult)
     {
-        if (pstCallResult->ulAnswerTimeStamp == 0)
-        {
-            pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime ? pstCallResult->ulStartTime : time(NULL);
-        }
-
         pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
     }
 

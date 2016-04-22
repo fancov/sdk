@@ -13277,8 +13277,7 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     /* ºô½Ð½á¹û */
-    if (SC_AUTO_PREVIEW_PROCESS != pstSCB->stAutoPreview.stSCBTag.usStatus
-        && SC_AUTO_PREVIEW_RELEASE != pstSCB->stAutoPreview.stSCBTag.usStatus)
+    if (ulReleasePart == SC_CALLEE)
     {
         pstHungupLeg = sc_lcb_get(pstHungup->ulLegNo);
         if (DOS_ADDR_VALID(pstHungupLeg))
