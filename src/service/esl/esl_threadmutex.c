@@ -1,4 +1,4 @@
-/* 
+/*
  * Cross Platform Thread/Mutex abstraction
  * Copyright(C) 2007 Michael Jerris
  *
@@ -13,7 +13,7 @@
  * code prove defective in any respect, you (not the initial developer or any other contributor)
  * assume the cost of any necessary servicing, repair or correction. This disclaimer of warranty
  * constitutes an essential part of this license. No use of any covered code is authorized hereunder
- * except under this disclaimer. 
+ * except under this disclaimer.
  *
  */
 
@@ -108,7 +108,7 @@ esl_status_t esl_thread_create_detached_ex(esl_thread_function_t func, void *dat
     status = ESL_SUCCESS;
     goto done;
 #else
-    
+
     if (pthread_attr_init(&thread->attribute) != 0) goto fail;
 
     if (pthread_attr_setdetachstate(&thread->attribute, PTHREAD_CREATE_DETACHED) != 0) goto failpthread;
@@ -194,6 +194,11 @@ ESL_DECLARE(esl_status_t) esl_mutex_destroy(esl_mutex_t **mutex)
 
 ESL_DECLARE(esl_status_t) esl_mutex_lock(esl_mutex_t *mutex)
 {
+    if (!mutex)
+    {
+        return ESL_FAIL;
+    }
+
 #ifdef WIN32
     EnterCriticalSection(&mutex->mutex);
 #else
@@ -205,6 +210,11 @@ ESL_DECLARE(esl_status_t) esl_mutex_lock(esl_mutex_t *mutex)
 
 ESL_DECLARE(esl_status_t) esl_mutex_trylock(esl_mutex_t *mutex)
 {
+    if (!mutex)
+    {
+        return ESL_FAIL;
+    }
+
 #ifdef WIN32
     if (!TryEnterCriticalSection(&mutex->mutex))
         return ESL_FAIL;
@@ -217,6 +227,11 @@ ESL_DECLARE(esl_status_t) esl_mutex_trylock(esl_mutex_t *mutex)
 
 ESL_DECLARE(esl_status_t) esl_mutex_unlock(esl_mutex_t *mutex)
 {
+    if (!mutex)
+    {
+        return ESL_FAIL;
+    }
+
 #ifdef WIN32
     LeaveCriticalSection(&mutex->mutex);
 #else

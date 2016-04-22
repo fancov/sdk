@@ -481,9 +481,12 @@ U32 sc_cwq_del_call(SC_SRV_CB *pstSCB, U32 ulType)
 #endif
                 dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode1);
                 DLL_Init_Node(pstDLLNode1);
-
                 dos_dmem_free(pstDLLNode1);
                 pstDLLNode1= NULL;
+
+                dos_dmem_free(pstIncomingNode);
+                pstIncomingNode = NULL;
+
                 break;
             }
         }
@@ -551,7 +554,10 @@ VOID *sc_cwq_runtime(VOID *ptr)
                         break;
                     }
 
-                    g_pstSWCwqTable[ulIndex].callback(pstCWQNode, pstDLLNode1);
+                    if (g_pstSWCwqTable[ulIndex].callback(pstCWQNode, pstDLLNode1) != DOS_SUCC)
+                    {
+                        break;
+                    }
 
                 }
                 pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);
