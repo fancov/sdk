@@ -2617,6 +2617,8 @@ U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingTyp
             break;
     }
 
+    pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_IDEL;
+
     /* 只要有呼叫都拆 */
     if ((pstAgentQueueInfo->bConnected || pstAgentQueueInfo->bNeedConnected)
         && pstAgentQueueInfo->ulLegNo <= SC_LEG_CB_SIZE)
