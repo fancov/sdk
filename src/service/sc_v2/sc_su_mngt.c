@@ -290,6 +290,11 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
         goto proc_fail;
     }
 
+    if (DOS_ADDR_VALID(pszGwName))
+    {
+        dos_atoul(pszGwName, &pstLCB->stCall.ulTrunkID);
+    }
+
     if (DOS_ADDR_VALID(pszTrunkIP))
     {
         dos_strcpy(szIPAddr, pszTrunkIP);

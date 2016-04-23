@@ -58,6 +58,7 @@ U32         g_aulCustomerTrace[SC_TRACE_CUSTOMER_SIZE] = {0, };
 S8          g_aszCallerTrace[SC_TRACE_CALLER_SIZE][SC_NUM_LENGTH] = { {0, }, };
 S8          g_aszCalleeTrace[SC_TRACE_CALLEE_SIZE][SC_NUM_LENGTH] = { {0, }, };
 U8          g_aucServTraceFlag[BS_SERV_BUTT] = { 0 };
+BOOL        g_bIsTraceAll = DOS_TRUE;
 
 S8 *g_pszSCCommandStr[] = {
     "CMD_CALL_SETUP",
@@ -3452,7 +3453,20 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
         return -1;
     }
 
-    if (dos_strnicmp(argv[2], "mod", dos_strlen("mod")) == 0)
+    if (dos_strnicmp(argv[2], "all", dos_strlen("all")) == 0)
+    {
+        if (dos_strnicmp(argv[3], "on", dos_strlen("on")) == 0)
+        {
+            g_bIsTraceAll = DOS_TRUE;
+            cli_out_string(ulIndex, "Trace all on succ\r\n");
+        }
+        else
+        {
+            g_bIsTraceAll = DOS_FALSE;
+            cli_out_string(ulIndex, "Trace all off succ\r\n");
+        }
+    }
+    else if (dos_strnicmp(argv[2], "mod", dos_strlen("mod")) == 0)
     {
         /* 模块跟踪 */
         lRet = sc_cli_cc_trace_mod(ulIndex, argc, argv);
@@ -3461,7 +3475,7 @@ S32 cli_cc_trace(U32 ulIndex, S32 argc, S8 **argv)
             /* 打印帮助信息 */
         }
     }
-    if (dos_strnicmp(argv[2], "customer", dos_strlen("customer")) == 0)
+    else if (dos_strnicmp(argv[2], "customer", dos_strlen("customer")) == 0)
     {
         /* 客户跟踪 */
         lRet = sc_cli_cc_trace_customer(ulIndex, argc, argv);
@@ -5277,6 +5291,13 @@ VOID sc_log(BOOL bTrace, U32 ulLogFlags, const S8 *pszFormat, ...)
     }
 #endif
 
+    if (bIsOutput
+        && !g_bIsTraceAll
+        && !bTrace)
+    {
+        return;
+    }
+
     if (!bIsOutput)
     {
         return;
@@ -5414,6 +5435,7 @@ VOID sc_trace_scb(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...)
     S8              szTraceStr[1024]    = {0, };
     U32             ulTraceTagLen       = 0;
     U32             ulLogLevel          = LOG_LEVEL_DEBUG;
+    BOOL            bIsOutput           = DOS_FALSE;
 
     va_start(Arg, pszFormat);
     vsnprintf(szTraceStr + ulTraceTagLen, sizeof(szTraceStr) - ulTraceTagLen, pszFormat, Arg);
@@ -5423,7 +5445,13 @@ VOID sc_trace_scb(SC_SRV_CB *pstSCB, const S8 *pszFormat, ...)
     if (DOS_ADDR_VALID(pstSCB)
         && pstSCB->bTrace)
     {
-        ulLogLevel = LOG_LEVEL_NOTIC;
+        bIsOutput = DOS_TRUE;
+    }
+
+    if (!bIsOutput
+        && !g_bIsTraceAll)
+    {
+        return;
     }
 
     dos_log(ulLogLevel, LOG_TYPE_RUNINFO, szTraceStr);

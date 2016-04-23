@@ -46,7 +46,7 @@ S32 mon_mail_dns_analyze(S8 *szDomainName, S8 szIPAddr[MON_MAIL_IP_SIZE])
     hptr = gethostbyname(szDomainName);
     if (NULL == hptr)
     {
-        mon_trace(MON_TRACE_MAIL, LOG_LEVEL_ERROR, "gethostbyname error for host:%s", szDomainName);
+        mon_trace(MON_TRACE_MAIL, LOG_LEVEL_ERROR, "gethostbyname error for host:%s, %u", szDomainName, h_errno);
         return i;
     }
 
@@ -86,13 +86,7 @@ U32 mon_mail_connect(U32 ulIndex)
         return DOS_FAIL;
     }
 
-    if (mon_mail_init() != DOS_SUCC)
-    {
-        mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_ERROR, "analyze mail server address fail.");
-        return DOS_FAIL;
-    }
-
-    mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_DEBUG, "analyze mail server address fail. IP: %s", g_astMonMailGlobal[ulIndex].szMailIP);
+    mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_DEBUG, "analyze mail server address succ. IP: %s", g_astMonMailGlobal[ulIndex].szMailIP);
 
     /* ´´½¨Ì×½Ó×Ö */
     g_astMonMailGlobal[ulIndex].lMonMailSockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -665,8 +659,7 @@ static VOID *mon_mail_send_mainloop(VOID *ptr)
                     break;
                 }
                 pthread_mutex_unlock(&g_astMonWarnCB[i].stMutex);
-                mon_trace(MON_TRACE_MAIL, LOG_LEVEL_NOTIC, "!!!!!!!!!!!!!!!!!start proce warn. type : %u"
-                    , stWarningMsg.ucWarningType);
+                mon_trace(MON_TRACE_MAIL, LOG_LEVEL_NOTIC, "start proc warn. type : %u, %s", stWarningMsg.ucWarningType, stWarningMsg.szEmail);
                 mon_mail_warn_proc(ulIndex, &stWarningMsg);
             }
         }
@@ -758,6 +751,7 @@ U32 mon_mail_alloc_resource()
 
     if (i != MON_WARNING_LEVEL_BUTT)
     {
+        DOS_ASSERT(0);
         mon_mail_free_resource();
 
         return DOS_FAIL;
@@ -877,12 +871,7 @@ U32 mon_mail_init()
     if (ulCount == 0)
     {
         DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    if (mon_mail_alloc_resource() != DOS_SUCC)
-    {
-        return DOS_FAIL;
+        return DOS_SUCC;
     }
 
     return DOS_SUCC;
@@ -899,6 +888,12 @@ U32 mon_mail_start()
         mon_trace(MON_TRACE_MAIL, LOG_LEVEL_NOTIC, "Create recv pthread fail");
         DOS_ASSERT(0);
 
+        return DOS_FAIL;
+    }
+
+    if (mon_mail_init() != DOS_SUCC)
+    {
+        mon_trace(MON_TRACE_CONFIG, LOG_LEVEL_ERROR, "analyze mail server address fail.");
         return DOS_FAIL;
     }
 

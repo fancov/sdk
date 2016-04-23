@@ -271,6 +271,9 @@ U32 sc_agent_signin_proc(SC_AGENT_NODE_ST *pstAgentNode)
     }
     pstLegCB->stCall.stNumInfo.szOriginalCallee[sizeof(pstLegCB->stCall.stNumInfo.szOriginalCallee)-1] = '\0';
 
+    /* 修改坐席状态 */
+    sc_agent_serv_status_update(pstAgentNode->pstAgentInfo, SC_ACD_SERV_RINGING, SC_SRV_AGENT_SIGIN);
+
     if (pstLegCB->stCall.ucPeerType == SC_LEG_PEER_OUTBOUND)
     {
         /* 需要认证 */
@@ -2709,6 +2712,7 @@ U32 sc_agent_work_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_WORK_IDEL:
             pstAgentQueueInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
             pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_IDEL;
+            pstAgentQueueInfo->bSelected = DOS_FALSE;
             if (!pstAgentQueueInfo->bNeedConnected)
             {
                 if (pstAgentQueueInfo->ulLegNo != U32_BUTT)

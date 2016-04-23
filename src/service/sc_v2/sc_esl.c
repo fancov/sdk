@@ -176,7 +176,6 @@ U32 sc_esl_execute(const S8 *pszApp, const S8 *pszArg, const S8 *pszUUID)
                         , pszApp
                         , DOS_ADDR_VALID(pszArg) ? pszArg : "NULL"
                         , DOS_ADDR_VALID(pszUUID) ? pszUUID : "NULL");
-        esl_disconnect(&g_stESLSendHandle);
 
         return DOS_FAIL;
     }
@@ -254,7 +253,6 @@ U32 sc_esl_execute_cmd(const S8 *pszCmd, S8 *pszUUID, U32 ulLenght)
         sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ESL execute command fail. Result:%d, CMD: %s"
                         , ulRet
                         , pszCmd);
-        esl_disconnect(&g_stESLSendHandle);
 
         return DOS_FAIL;
     }

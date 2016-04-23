@@ -696,6 +696,7 @@ SC_LEG_CB *sc_lcb_alloc()
     if (DOS_ADDR_VALID(pstLCB))
     {
         sc_lcb_init(pstLCB);
+        ulIndex++;
         pstLCB->bValid = DOS_TRUE;
         pstLCB->ulAllocTime = time(NULL);
     }
@@ -1022,6 +1023,7 @@ VOID sc_scb_call_init(SC_SRV_CALL_ST *pstCall)
     pstCall->stTmrHandle = NULL;
     pstCall->ulAgentGrpID = 0;
     pstCall->bIsError = DOS_FALSE;
+    pstCall->ulReCallAgent = 0;
 }
 
 VOID sc_scb_preview_call_init(SC_PREVIEW_CALL_ST *pstPreviewCall)
@@ -1414,7 +1416,7 @@ SC_SRV_CB *sc_scb_alloc()
     if (DOS_ADDR_VALID(pstSCB))
     {
         sc_scb_init(pstSCB);
-
+        ulIndex++;
         if (g_stSysStat.ulCurrentCalls < sc_get_call_limitation())
         {
             if (g_stSysStat.ulCurrentCalls != U32_BUTT)
@@ -1871,6 +1873,7 @@ SC_TASK_CB *sc_tcb_alloc()
 
         pthread_mutex_lock(&pstTCB->mutexTaskList);
         sc_tcb_init(pstTCB);
+        ulIndex++;
         pstTCB->ucValid = 1;
         pstTCB->ulAllocTime = time(0);
         pthread_mutex_unlock(&pstTCB->mutexTaskList);
@@ -2862,14 +2865,28 @@ U32 sc_req_hungup_with_sound(U32 ulSCBNo, U32 ulLegNo, U32 ulErrNo)
  */
 U32 sc_req_bridge_call(U32 ulSCBNo, U32 ulCallingLegNo, U32 ulCalleeLegNo)
 {
-    SC_MSG_CMD_BRIDGE_ST  *pstCMDBridge = NULL;
-    U32                   ulRet = 0;
+    SC_MSG_CMD_BRIDGE_ST  *pstCMDBridge     = NULL;
+    U32                   ulRet             = 0;
+    SC_LEG_CB             *pstCalleeLegCB   = NULL;
+    SC_LEG_CB             *pstCallingLegCB  = NULL;
 
     pstCMDBridge = (SC_MSG_CMD_BRIDGE_ST *)dos_dmem_alloc(sizeof(SC_MSG_CMD_BRIDGE_ST));
     if (DOS_ADDR_INVALID(pstCMDBridge))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
+    }
+
+    pstCallingLegCB = sc_lcb_get(ulCallingLegNo);
+    if (DOS_ADDR_VALID(pstCallingLegCB))
+    {
+        pstCallingLegCB->stCall.stTimeInfo.ulBridgeTime = time(NULL);
+    }
+
+    pstCalleeLegCB = sc_lcb_get(ulCalleeLegNo);
+    if (DOS_ADDR_VALID(pstCalleeLegCB))
+    {
+        pstCalleeLegCB->stCall.stTimeInfo.ulBridgeTime = time(NULL);
     }
 
     pstCMDBridge->stMsgTag.ulMsgType = SC_CMD_BRIDGE_CALL;

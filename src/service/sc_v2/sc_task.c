@@ -401,13 +401,13 @@ U32 sc_preview_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode
 
 proc_finished:
 
+    if (pstCallResult->ulAnswerTimeStamp == 0)
+    {
+        pstCallResult->ulAnswerTimeStamp = time(NULL);
+    }
+
     if (CC_RST_BUTT == pstCallResult->ulResult)
     {
-        if (pstCallResult->ulAnswerTimeStamp == 0)
-        {
-            pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime ? pstCallResult->ulStartTime : time(NULL);
-        }
-
         pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
     }
 
@@ -602,6 +602,7 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode, U32 ul
             /* 播放语音时挂断 */
             if (0 == pstCallResult->ulIVRFinishTime)
             {
+                pstCallResult->ulAnswerTimeStamp = pstCallResult->ulRingTime;
                 pstCallResult->ulResult = CC_RST_HANGUP_WHILE_IVR;
                 goto proc_finished;
             }
@@ -688,13 +689,13 @@ U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode, U32 ul
 
 proc_finished:
 
+    if (pstCallResult->ulAnswerTimeStamp == 0)
+    {
+        pstCallResult->ulAnswerTimeStamp = time(NULL);
+    }
+
     if (CC_RST_BUTT == pstCallResult->ulResult)
     {
-        if (pstCallResult->ulAnswerTimeStamp == 0)
-        {
-            pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime ? pstCallResult->ulStartTime : time(NULL);
-        }
-
         pstCallResult->ulResult = CC_RST_CONNECT_FAIL;
     }
 
@@ -939,7 +940,7 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
         && pstCallee->szNumber[1] == '0')
     {
         /* 外呼时，被叫号码以00开头，禁止呼叫 */
-        sc_log(bIsTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "callee is %s. Not alloc call", pstCallee->szNumber);
+        sc_log(bIsTrace, SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "callee is %s. Not alloc call", pstCallee->szNumber);
         ulErrNo = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
         goto make_call_file;
     }
@@ -947,14 +948,14 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
     /* 判断是否在黑名单中 */
     if (!sc_black_list_check(pstTCB->ulCustomID, pstCallee->szNumber))
     {
-        sc_log(bIsTrace, SC_LOG_SET_MOD(LOG_LEVEL_WARNING, SC_MOD_EVENT), "The destination is in black list. %s", pstCallee->szNumber);
+        sc_log(bIsTrace, SC_LOG_SET_FLAG(LOG_LEVEL_WARNING, SC_MOD_EVENT, SC_LOG_DISIST), "The destination is in black list. %s", pstCallee->szNumber);
         ulErrNo = CC_ERR_SC_CALLEE_NUMBER_ILLEGAL;
         goto make_call_file;
     }
 
     if (sc_get_number_by_callergrp(pstTCB->ulCallerGrpID, szCaller, SC_NUM_LENGTH) != DOS_SUCC)
     {
-        sc_log(bIsTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Get caller from caller group(%u) FAIL.", pstTCB->ulCallerGrpID);
+        sc_log(bIsTrace, SC_LOG_SET_FLAG(LOG_LEVEL_NOTIC, SC_MOD_TASK, SC_LOG_DISIST), "Get caller from caller group(%u) FAIL.", pstTCB->ulCallerGrpID);
         ulErrNo = CC_ERR_SC_CALLER_NUMBER_ILLEGAL;
         goto make_call_file;
     }
@@ -1022,6 +1023,8 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
         pstSCB->stAutoCall.stSCBTag.usStatus = SC_AUTO_CALL_AUTH;
     }
 
+    sc_log_digest_print_only(pstSCB, "Task(%u) callee : %s, caller : %s.", pstTCB->ulTaskID, pstCallee->szNumber, szCaller);
+
     if (sc_send_usr_auth2bs(pstSCB, pstLegCB) != DOS_SUCC)
     {
         goto make_call_file;
@@ -1042,6 +1045,56 @@ make_call_file:
     }
     sc_task_call_result_make_call_before(pstTCB->ulCustomID, pstTCB->ulTaskID, szCaller, pstCallee->szNumber, ulErrNo);
     return DOS_FAIL;
+}
+
+U32 sc_task_mngt_query_task(U32 ulTaskID, U32 ulCustomID)
+{
+    SC_DB_MSG_TASK_STATUS_ST    *pstDBTaskStatus    = NULL;
+    SC_TASK_CB                  *pstTCB             = NULL;
+
+    if (0 == ulTaskID || U32_BUTT == ulTaskID)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_DATA;
+    }
+
+    if (0 == ulCustomID || U32_BUTT == ulCustomID)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_USR;
+    }
+
+    pstTCB = sc_tcb_find_by_taskid(ulTaskID);
+    if (!pstTCB)
+    {
+        DOS_ASSERT(0);
+        return SC_HTTP_ERRNO_INVALID_DATA;
+    }
+
+    pstDBTaskStatus = dos_dmem_alloc(sizeof(SC_DB_MSG_TASK_STATUS_ST));
+    if (DOS_ADDR_INVALID(pstDBTaskStatus))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+
+    dos_memzero(pstDBTaskStatus, sizeof(SC_DB_MSG_TASK_STATUS_ST));
+    pstDBTaskStatus->ulTaskID = pstTCB->ulTaskID;
+    /* 坐席个数 */
+    sc_agent_group_stat_by_id(pstTCB->ulAgentQueueID, &pstDBTaskStatus->ulTotalAgent, NULL, &pstDBTaskStatus->ulIdleAgent, NULL);
+    /* 已经呼叫的号码数 */
+    pstDBTaskStatus->ulCalledCount = pstTCB->ulCalledCount;
+    /* 当前并发数 */
+    pstDBTaskStatus->ulCurrentConcurrency = pstTCB->ulCurrentConcurrency;
+    /* 最大并发数 */
+    pstDBTaskStatus->ulMaxConcurrency = pstTCB->ulMaxConcurrency;
+
+    pstDBTaskStatus->stMsgTag.ulMsgType = SC_MSG_SACE_TASK_STATUS;
+
+    sc_send_msg2db((SC_DB_MSG_TAG_ST *)pstDBTaskStatus);
+
+    return SC_HTTP_ERRNO_SUCC;
 }
 
 /*
@@ -1151,6 +1204,7 @@ VOID *sc_task_runtime(VOID *ptr)
                 continue;
             }
 
+            sc_task_mngt_query_task(pstTCB->ulTaskID, pstTCB->ulCustomID);
             break;
         }
         blPauseFlag = DOS_FALSE;
@@ -1713,56 +1767,6 @@ U32 sc_task_mngt_stop_task(U32 ulTaskID, U32 ulCustomID)
     }
 
     sc_task_stop(pstTCB);
-
-    return SC_HTTP_ERRNO_SUCC;
-}
-
-U32 sc_task_mngt_query_task(U32 ulTaskID, U32 ulCustomID)
-{
-    SC_DB_MSG_TASK_STATUS_ST    *pstDBTaskStatus    = NULL;
-    SC_TASK_CB                  *pstTCB             = NULL;
-
-    if (0 == ulTaskID || U32_BUTT == ulTaskID)
-    {
-        DOS_ASSERT(0);
-        return SC_HTTP_ERRNO_INVALID_DATA;
-    }
-
-    if (0 == ulCustomID || U32_BUTT == ulCustomID)
-    {
-        DOS_ASSERT(0);
-        return SC_HTTP_ERRNO_INVALID_USR;
-    }
-
-    pstTCB = sc_tcb_find_by_taskid(ulTaskID);
-    if (!pstTCB)
-    {
-        DOS_ASSERT(0);
-        return SC_HTTP_ERRNO_INVALID_DATA;
-    }
-
-    pstDBTaskStatus = dos_dmem_alloc(sizeof(SC_DB_MSG_TASK_STATUS_ST));
-    if (DOS_ADDR_INVALID(pstDBTaskStatus))
-    {
-        DOS_ASSERT(0);
-
-        return DOS_FAIL;
-    }
-
-    dos_memzero(pstDBTaskStatus, sizeof(SC_DB_MSG_TASK_STATUS_ST));
-    pstDBTaskStatus->ulTaskID = pstTCB->ulTaskID;
-    /* 坐席个数 */
-    sc_agent_group_stat_by_id(pstTCB->ulAgentQueueID, &pstDBTaskStatus->ulTotalAgent, NULL, &pstDBTaskStatus->ulIdleAgent, NULL);
-    /* 已经呼叫的号码数 */
-    pstDBTaskStatus->ulCalledCount = pstTCB->ulCalledCount;
-    /* 当前并发数 */
-    pstDBTaskStatus->ulCurrentConcurrency = pstTCB->ulCurrentConcurrency;
-    /* 最大并发数 */
-    pstDBTaskStatus->ulMaxConcurrency = pstTCB->ulMaxConcurrency;
-
-    pstDBTaskStatus->stMsgTag.ulMsgType = SC_MSG_SACE_TASK_STATUS;
-
-    sc_send_msg2db((SC_DB_MSG_TAG_ST *)pstDBTaskStatus);
 
     return SC_HTTP_ERRNO_SUCC;
 }

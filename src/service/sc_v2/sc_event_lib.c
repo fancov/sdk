@@ -1189,6 +1189,8 @@ U32 sc_agent_auto_preview_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgent
             break;
     }
 
+    pstAgentNode->pstAgentInfo->ulLegNo = pstCallingLegCB->ulCBNo;
+
     /* 新LEG处理一下号码 */
     dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstCallingLegCB->stCall.stNumInfo.szOriginalCallee), szCallee);
     dos_snprintf(pstCallingLegCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstCallingLegCB->stCall.stNumInfo.szOriginalCalling), pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling);
@@ -3123,6 +3125,7 @@ U32 sc_call_ctrl_hangup_all(U32 ulAgent)
         return DOS_FAIL;
     }
 
+    sc_req_playback_stop(pstSCB->ulSCBNo, pstLCBAgent->ulCBNo);
     sc_req_hungup(pstSCB->ulSCBNo, pstLCBAgent->ulCBNo, CC_ERR_SC_CLEAR_FORCE);
 
     return DOS_SUCC;
@@ -3195,6 +3198,7 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
     }
     pstLCBAgent->ulOtherSCBNo = pstSCB->ulSCBNo;
 
+    pstSCB->ulCustomerID = ulCustomerID;
     pstSCB->stInterception.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stInterception.stSCBTag.usStatus = SC_INTERCEPTION_IDEL;
     pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stInterception.stSCBTag;
@@ -3232,6 +3236,7 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
     {
         case AGENT_BIND_SIP:
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+            sc_scb_set_service(pstSCB, BS_SERV_INTER_CALL);
             break;
 
         case AGENT_BIND_TELE:
@@ -3256,6 +3261,7 @@ U32 sc_call_ctrl_intercept(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTy
 
         case AGENT_BIND_TT_NUMBER:
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
+            sc_scb_set_service(pstSCB, BS_SERV_INTER_CALL);
             break;
 
         default:
@@ -3358,7 +3364,7 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
     }
 
     pstLCBAgent->ulOtherSCBNo = pstSCB->ulSCBNo;
-
+    pstSCB->ulCustomerID = ulCustomerID;
     pstSCB->stWhispered.stSCBTag.bValid = DOS_TRUE;
     pstSCB->stWhispered.stSCBTag.usStatus = SC_WHISPER_IDEL;
     pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stWhispered.stSCBTag;
@@ -3396,6 +3402,7 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
     {
         case AGENT_BIND_SIP:
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+            sc_scb_set_service(pstSCB, BS_SERV_INTER_CALL);
             break;
 
         case AGENT_BIND_TELE:
@@ -3410,6 +3417,7 @@ U32 sc_call_ctrl_whispers(U32 ulTaskID, U32 ulAgent, U32 ulCustomerID, U32 ulTyp
 
         case AGENT_BIND_TT_NUMBER:
             pstLCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_TT;
+            sc_scb_set_service(pstSCB, BS_SERV_INTER_CALL);
             break;
 
         default:

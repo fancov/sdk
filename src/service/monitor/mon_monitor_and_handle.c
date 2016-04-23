@@ -65,6 +65,7 @@ static U32 mon_init_warning_cond();
 static U32 mon_close_db_conn();
 static U32 mon_init_warning_msg();
 static U32 mon_deinit_warning_msg();
+extern U32 mon_mail_alloc_resource();
 U32 mon_add_warning_record(MON_MSG_S *pstMsg);
 
 
@@ -81,12 +82,16 @@ VOID *mon_res_monitor(VOID *p)
 
     while (1)
     {
+        sleep(5);
+
         pthread_mutex_lock(&g_stMonMutex);
         /*  获取资源信息  */
         ulRet = mon_get_res_info();
         if (DOS_SUCC != ulRet)
         {
             mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Get resource Information FAIL.");
+
+            pthread_mutex_unlock(&g_stMonMutex);
             continue;
         }
         mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Get resource Information SUCC.");
@@ -96,6 +101,8 @@ VOID *mon_res_monitor(VOID *p)
         if (DOS_SUCC != ulRet)
         {
             mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Handle Exception FAIL.");
+
+            pthread_mutex_unlock(&g_stMonMutex);
             continue;
         }
         mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Handle Exception SUCC.");
@@ -105,13 +112,14 @@ VOID *mon_res_monitor(VOID *p)
         if (DOS_SUCC != ulRet)
         {
             mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Add record to DB FAIL.");
+
+            pthread_mutex_unlock(&g_stMonMutex);
             continue;
         }
         mon_trace(MON_TRACE_MH, LOG_LEVEL_DEBUG, "Add record to DB SUCC.");
 
         pthread_cond_signal(&g_stMonCond);
         pthread_mutex_unlock(&g_stMonMutex);
-        sleep(5);
     }
 }
 
@@ -139,6 +147,7 @@ VOID* mon_warning_handle(VOID *p)
      {
         pthread_mutex_lock(&g_stMonMutex);
         pthread_cond_wait(&g_stMonCond, &g_stMonMutex);
+
         while (1)
         {
             if (DOS_TRUE == mon_is_warning_msg_queue_empty())
@@ -268,6 +277,13 @@ U32 mon_res_alloc()
     if (DOS_SUCC != ulRet)
     {
         mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init warning Msg FAIL.");
+        return DOS_FAIL;
+    }
+
+    ulRet = mon_mail_alloc_resource();
+    if (DOS_SUCC != ulRet)
+    {
+        mon_trace(MON_TRACE_MH, LOG_LEVEL_ERROR, "Init warning Mail FAIL.");
         return DOS_FAIL;
     }
 
