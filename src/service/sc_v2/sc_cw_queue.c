@@ -113,7 +113,7 @@ U32 sc_sw_agent_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode)
         if (ulTimeNow - pstCWQNode->ulStartWaitingTime <= SC_CWQ_QUEUE_TIMEOUT)
         {
             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "There has no idel agent. scbNo(%u)", pstSCB->ulSCBNo);
-            return DOS_SUCC;
+            return DOS_FAIL;
         }
         else
         {
@@ -188,7 +188,7 @@ U32 sc_sw_agentgrp_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode
         if (ulTimeNow - pstCWQNode->ulStartWaitingTime <= SC_CWQ_QUEUE_TIMEOUT)
         {
             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u has no idel agent. scbNo(%u)", pstCWQNode->ulID, pstSCB->ulSCBNo);
-            return DOS_SUCC;
+            return DOS_FAIL;
         }
         else
         {
