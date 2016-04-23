@@ -1428,7 +1428,7 @@ U32 sc_incoming_call_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
     U32   ulBindType = U32_BUTT;
     U32   ulBindID = U32_BUTT;
     U32   ulErrCode = CC_ERR_NO_REASON;
-    U32  ulRet = DOS_FAIL;
+    U32   ulRet = DOS_FAIL;
 
     if (DOS_ADDR_INVALID(pstSCB))
     {

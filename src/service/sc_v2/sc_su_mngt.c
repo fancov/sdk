@@ -1283,6 +1283,7 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 {
     SC_MSG_EVT_PLAYBACK_ST stPlayback;
     S8             *pszTermCause = NULL;
+    S8             *pszPlayBackStatus = NULL;
     U32             usInterErr   = U16_BUTT;
 
     if (DOS_ADDR_INVALID(pstLegCB))
@@ -1323,6 +1324,16 @@ U32 sc_esl_event_playback_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
             /*  没有break，让他继续执行 */
 
         case SC_SU_PLAYBACK_RELEASE:
+            stPlayback.bIsPlayDone = DOS_FALSE;
+            pszPlayBackStatus = esl_event_get_header(pstEvent, "Playback-Status");
+            if (DOS_ADDR_VALID(pszPlayBackStatus))
+            {
+                if (0 == dos_strcmp(pszPlayBackStatus, "done"))
+                {
+                    stPlayback.bIsPlayDone = DOS_TRUE;
+                }
+            }
+
             if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
             {
                 stPlayback.stMsgTag.ulSCBNo = pstLegCB->ulIndSCBNo;

@@ -74,12 +74,15 @@ SC_CWQ_TABLE_ST *sc_sw_cwq_api_find(U8 ucForwardType)
     return NULL;
 }
 
+
 U32 sc_sw_agent_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode)
 {
-    SC_INCOMING_CALL_NODE_ST *pstCallNode    = NULL;
-    SC_SRV_CB                *pstSCB         = NULL;
-    SC_AGENT_NODE_ST         *pstAgentNode   = NULL;
+    SC_INCOMING_CALL_NODE_ST *pstCallNode            = NULL;
+    SC_SRV_CB                *pstSCB                 = NULL;
+    SC_AGENT_NODE_ST         *pstAgentNode           = NULL;
     SC_MSG_EVT_LEAVE_CALLQUE_ST  stEvtLeaveCallque;
+    U32  usInterErr                                  = SC_LEAVE_CALL_QUE_SUCC;
+    U32  ulTimeNow;
 
     if (DOS_ADDR_INVALID(pstDLLNode))
     {
@@ -96,16 +99,33 @@ U32 sc_sw_agent_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode)
 
     pstSCB = pstCallNode->pstSCB;
 
+
     /* 获取一个坐席 */
     pstAgentNode = sc_agent_get_by_id(pstCWQNode->ulID);
-    if (DOS_ADDR_INVALID(pstAgentNode))
-    {
-        pstCWQNode->ulStartWaitingTime = time(0);
-        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u has no idel agent. scbNo(%u)", pstCWQNode->ulID, pstSCB->ulSCBNo);
-        return DOS_SUCC;
-    }
 
-    pstAgentNode->pstAgentInfo->bSelected = DOS_TRUE;
+    if (DOS_ADDR_INVALID(pstAgentNode) || pstAgentNode->pstAgentInfo->ucServStatus != SC_ACD_SERV_IDEL
+        || pstAgentNode->pstAgentInfo->ucWorkStatus != SC_ACD_WORK_IDEL)
+    {
+        ulTimeNow = time(0);
+
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "ulTimeNow: %d ... pstCWQNode->ulStartWaitingTime : %d", ulTimeNow, pstCWQNode->ulStartWaitingTime);
+
+        if (ulTimeNow - pstCWQNode->ulStartWaitingTime <= SC_CWQ_QUEUE_TIMEOUT)
+        {
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "There has no idel agent. scbNo(%u)", pstSCB->ulSCBNo);
+            return DOS_SUCC;
+        }
+        else
+        {
+            usInterErr = SC_LEAVE_CALL_QUE_TIMEOUT;
+        }
+    }
+    else
+    {
+        pstAgentNode->pstAgentInfo->bSelected = DOS_TRUE;
+        stEvtLeaveCallque.pstAgentNode = pstAgentNode;
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The agent %u send leave call queue.  scbNo(%u)", pstCWQNode->ulID, pstSCB->ulSCBNo);
+    }
 
     dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode);
 
@@ -118,11 +138,8 @@ U32 sc_sw_agent_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode)
     /* 发送消息，现在可以转坐席了 */
     stEvtLeaveCallque.stMsgTag.ulMsgType = SC_EVT_LEACE_CALL_QUEUE;
     stEvtLeaveCallque.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-    stEvtLeaveCallque.stMsgTag.usInterErr = SC_LEAVE_CALL_QUE_SUCC;
+    stEvtLeaveCallque.stMsgTag.usInterErr = usInterErr;
     stEvtLeaveCallque.ulSCBNo = pstSCB->ulSCBNo;
-    stEvtLeaveCallque.pstAgentNode = pstAgentNode;
-
-    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The agent %u send leave call queue.  scbNo(%u)", pstCWQNode->ulID, pstSCB->ulSCBNo);
 
     if (sc_send_event_leave_call_queue_rsp(&stEvtLeaveCallque) != DOS_SUCC)
     {
@@ -134,12 +151,15 @@ U32 sc_sw_agent_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode)
     return DOS_SUCC;
 }
 
+
 U32 sc_sw_agentgrp_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode)
 {
-    SC_INCOMING_CALL_NODE_ST *pstCallNode    = NULL;
-    SC_SRV_CB                *pstSCB         = NULL;
-    SC_AGENT_NODE_ST         *pstAgentNode   = NULL;
+    SC_INCOMING_CALL_NODE_ST     *pstCallNode     = NULL;
+    SC_SRV_CB                    *pstSCB          = NULL;
+    SC_AGENT_NODE_ST             *pstAgentNode    = NULL;
     SC_MSG_EVT_LEAVE_CALLQUE_ST  stEvtLeaveCallque;
+    U32                          ulTimeNow;
+    S32                          usInterErr;
 
     if (DOS_ADDR_INVALID(pstDLLNode))
     {
@@ -155,18 +175,33 @@ U32 sc_sw_agentgrp_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode
     }
 
     pstSCB = pstCallNode->pstSCB;
+    usInterErr = SC_LEAVE_CALL_QUE_SUCC;
 
     /* 获取一个坐席 */
     pstAgentNode = sc_agent_select_by_grpid(pstCWQNode->ulID, pstCallNode->szCaller);
     if (DOS_ADDR_INVALID(pstAgentNode))
     {
-        pstCWQNode->ulStartWaitingTime = time(0);
+        ulTimeNow = time(0);
 
-        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u has no idel agent. scbNo(%u)", pstCWQNode->ulID, pstSCB->ulSCBNo);
-        return DOS_SUCC;
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "ulTimeNow: %d ... pstCWQNode->ulStartWaitingTime : %d", ulTimeNow, pstCWQNode->ulStartWaitingTime);
+
+        if (ulTimeNow - pstCWQNode->ulStartWaitingTime <= SC_CWQ_QUEUE_TIMEOUT)
+        {
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u has no idel agent. scbNo(%u)", pstCWQNode->ulID, pstSCB->ulSCBNo);
+            return DOS_SUCC;
+        }
+        else
+        {
+            usInterErr = SC_LEAVE_CALL_QUE_TIMEOUT;
+        }
+
     }
-
-    pstAgentNode->pstAgentInfo->bSelected = DOS_TRUE;
+    else
+    {
+        pstAgentNode->pstAgentInfo->bSelected = DOS_TRUE;
+        stEvtLeaveCallque.pstAgentNode = pstAgentNode;
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u send leave call queue. AgentID(%d), scbNo(%u)", pstCWQNode->ulID, pstAgentNode->pstAgentInfo, pstSCB->ulSCBNo);
+    }
 
     dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode);
 
@@ -179,11 +214,8 @@ U32 sc_sw_agentgrp_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode
     /* 发送消息，现在可以转坐席了 */
     stEvtLeaveCallque.stMsgTag.ulMsgType = SC_EVT_LEACE_CALL_QUEUE;
     stEvtLeaveCallque.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-    stEvtLeaveCallque.stMsgTag.usInterErr = SC_LEAVE_CALL_QUE_SUCC;
+    stEvtLeaveCallque.stMsgTag.usInterErr = usInterErr;
     stEvtLeaveCallque.ulSCBNo = pstSCB->ulSCBNo;
-    stEvtLeaveCallque.pstAgentNode = pstAgentNode;
-
-    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u send leave call queue. AgentID(%d), scbNo(%u)", pstCWQNode->ulID, pstAgentNode->pstAgentInfo, pstSCB->ulSCBNo);
 
     if (sc_send_event_leave_call_queue_rsp(&stEvtLeaveCallque) != DOS_SUCC)
     {
@@ -198,57 +230,6 @@ U32 sc_sw_agentgrp_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode
 
 U32 sc_sw_sip_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode)
 {
-    SC_INCOMING_CALL_NODE_ST *pstCallNode    = NULL;
-    SC_SRV_CB                *pstSCB         = NULL;
-    SC_AGENT_NODE_ST         *pstAgentNode   = NULL;
-    SC_MSG_EVT_LEAVE_CALLQUE_ST  stEvtLeaveCallque;
-
-    if (DOS_ADDR_INVALID(pstDLLNode))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstCallNode = pstDLLNode->pHandle;
-    if (DOS_ADDR_INVALID(pstCallNode))
-    {
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
-    pstSCB = pstCallNode->pstSCB;
-
-    if (DOS_ADDR_INVALID(pstAgentNode))
-    {
-        pstCWQNode->ulStartWaitingTime = time(0);
-        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The group %u has no idel agent. scbNo(%u)", pstCWQNode->ulID, pstSCB->ulSCBNo);
-        return DOS_SUCC;
-    }
-
-    dll_delete(&pstCWQNode->stCallWaitingQueue, pstDLLNode);
-
-    DLL_Init_Node(pstDLLNode);
-    dos_dmem_free(pstDLLNode);
-    pstDLLNode = NULL;
-    dos_dmem_free(pstCallNode);
-    pstCallNode = NULL;
-
-    /* 发送消息，现在可以转坐席了 */
-    stEvtLeaveCallque.stMsgTag.ulMsgType = SC_EVT_LEACE_CALL_QUEUE;
-    stEvtLeaveCallque.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
-    stEvtLeaveCallque.stMsgTag.usInterErr = SC_LEAVE_CALL_QUE_SUCC;
-    stEvtLeaveCallque.ulSCBNo = pstSCB->ulSCBNo;
-    stEvtLeaveCallque.pstAgentNode = pstAgentNode;
-
-    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "The agent %u send leave call queue.  scbNo(%u)", pstCWQNode->ulID, pstSCB->ulSCBNo);
-
-    if (sc_send_event_leave_call_queue_rsp(&stEvtLeaveCallque) != DOS_SUCC)
-    {
-        /* 发送消息失败 */
-        DOS_ASSERT(0);
-        return DOS_FAIL;
-    }
-
     return DOS_SUCC;
 }
 
@@ -329,6 +310,7 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulID, S8 *szCaller, U8 ucForwardType,
     if (DOS_ADDR_INVALID(pstSWCWQNode))
     {
         DOS_ASSERT(0);
+
         return DOS_FAIL;
     }
 
@@ -372,7 +354,7 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulID, S8 *szCaller, U8 ucForwardType,
 
         pstCWQNode->ulID                = ulID;
         pstCWQNode->ulForwardType       = ucForwardType;
-        pstCWQNode->ulStartWaitingTime  = 0;
+        pstCWQNode->ulStartWaitingTime  = time(0);
         DLL_Init(&pstCWQNode->stCallWaitingQueue);
         pthread_mutex_init(&pstCWQNode->mutexCWQMngt, NULL);
 
@@ -502,6 +484,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
     //SC_INCOMING_CALL_NODE_ST *pstCallNode   = NULL;
     DLL_S                   *pstCWQMngt     = NULL;
     U32                     ulIndex         = 0;
+    S32                     lret;
 
     g_blCWQWaitingExit = DOS_FALSE;
     g_blCWQRunning  = DOS_TRUE;
@@ -551,7 +534,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
                         break;
                     }
 
-                    g_pstSWCwqTable[ulIndex].callback(pstCWQNode, pstDLLNode1);
+                    lret = g_pstSWCwqTable[ulIndex].callback(pstCWQNode, pstDLLNode1);
 
                 }
                 pthread_mutex_unlock(&pstCWQNode->mutexCWQMngt);

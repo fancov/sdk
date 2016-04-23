@@ -1557,16 +1557,29 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
 
     if (pstSCB->stCall.stSCBTag.bValid)
     {
-        if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
-            && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+        if (pstSCB->stCorSwitchboard.stSCBTag.bValid)
         {
-            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCall.pstAgentCalling->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+            if (DOS_ADDR_VALID(pstSCB->stCorSwitchboard.pstAgentCallee)
+            && DOS_ADDR_VALID(pstSCB->stCorSwitchboard.pstAgentCallee->pstAgentInfo))
+            {
+                dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum,
+                    pstSCB->stCorSwitchboard.pstAgentCallee->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+            }
         }
-        else if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
-            && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+        else
         {
-            dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCall.pstAgentCallee->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+            if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling)
+                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCalling->pstAgentInfo))
+            {
+                dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCall.pstAgentCalling->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+            }
+            else if (DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee)
+                && DOS_ADDR_VALID(pstSCB->stCall.pstAgentCallee->pstAgentInfo))
+            {
+                dos_strncpy(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum, pstSCB->stCall.pstAgentCallee->pstAgentInfo->szEmpNo, sizeof(pstCDRMsg->astSessionLeg[ulCurrentLeg].szAgentNum));
+            }
         }
+
     }
     else if (pstSCB->stPreviewCall.stSCBTag.bValid)
     {

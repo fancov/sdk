@@ -1312,9 +1312,10 @@ VOID sc_scb_cor_switch_board_init(SC_COR_SWITCHBOARD_ST *pstCorSwitchboard)
     pstCorSwitchboard->pstAgentCallee = NULL;
     pstCorSwitchboard->pstSWPeriodNode = NULL;
     pstCorSwitchboard->szExtensionNum[0] = '\0';
-    pstCorSwitchboard->ucIndex = 0;
     pstCorSwitchboard->szTTNum[0] = '\0';
     pstCorSwitchboard->szTelNum[0] = '\0';
+    pstCorSwitchboard->ulDidBindID = U32_BUTT;
+    pstCorSwitchboard->ucPlayTimes = 0;
 }
 
 /**

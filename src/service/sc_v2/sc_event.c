@@ -508,6 +508,7 @@ U32 sc_srv_cor_switchboard_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB
              break;
 
          case SC_EVT_ERROR_PORT:
+            sc_switchboard_error(pstMsg, pstSCB);
              break;
 
          default:
@@ -1427,12 +1428,12 @@ U32 sc_srv_auto_preview_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
  */
 VOID sc_evt_process(SC_MSG_TAG_ST *pstMsg)
 {
-    SC_MSG_EVT_CALL_ST *pstEventCallSetup = NULL;
-    SC_SRV_CB          *pstSCB = NULL;
-    SC_LEG_CB          *pstLCB = NULL;
-    U32                ulSCBNo = U32_BUTT;
-    U32                ulRet = DOS_FAIL;
-    U32                ulCurrentSrv;
+    SC_MSG_EVT_CALL_ST  *pstEventCallSetup = NULL;
+    SC_SRV_CB           *pstSCB = NULL;
+    SC_LEG_CB           *pstLCB = NULL;
+    U32                 ulSCBNo = U32_BUTT;
+    U32                 ulRet = DOS_FAIL;
+    U32                 ulCurrentSrv;
 
     if (DOS_ADDR_INVALID(pstMsg))
     {

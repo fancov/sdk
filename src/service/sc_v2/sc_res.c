@@ -1644,8 +1644,13 @@ S32 sc_cor_switchboard_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszN
             pthread_mutex_unlock(&g_mutexCorSwitchboardList);
             return DOS_FAIL;
         }
-
+        /*
+        pstSwitchboard->ucIndex = pstSwitchboardTmp->ucIndex;
         dos_memcpy(pstSwitchboardTmp, pstSwitchboard, sizeof(SC_COR_SW_NODE_ST));
+        */
+
+        pstSwitchboardTmp->ulID = pstSwitchboard->ulID;
+        dos_strncpy(pstSwitchboardTmp->szSWNodeName, pstSwitchboard->szSWNodeName, sizeof(pstSwitchboard->szSWNodeName));
         pstSwitchboardTmp->bExist = DOS_TRUE;
 
         dos_dmem_free(pstSwitchboard);
@@ -1991,6 +1996,15 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 break;
             }
         }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "extern_num_len", dos_strlen("extern_num_len")))
+        {
+            if (dos_atoul(aszValues[lIndex], (U32 *)&pstSWIVRNode->ulExtensionNumLength) < 0)
+            {
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
+
     }
 
     if (!blProcessOK)
@@ -2070,6 +2084,22 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             return DOS_FAIL;
         }
 
+        pstSWIVRNode->ulIndex = pstSWIVRNodeTmp->ulIndex;
+        for (lIndex = 0; lIndex < pstSWIVRNodeTmp->ulIndex; lIndex++)
+        {
+            if (pstSWIVRNodeTmp->pstSWKeymapNode[lIndex])
+            {
+                pstSWIVRNode->pstSWKeymapNode[lIndex] = pstSWIVRNodeTmp->pstSWKeymapNode[lIndex];
+            }
+            else
+            {
+                DOS_ASSERT(0);
+                pthread_mutex_unlock(&g_mutexHashSWPeriod);
+                return DOS_FAIL;
+            }
+
+        }
+
         dos_memcpy(pstSWIVRNodeTmp, pstSWIVRNode, sizeof(SC_SW_IVR_NODE_ST));
         dos_dmem_free(pstSWIVRNode);
         pstSWIVRNode= NULL;
@@ -2089,13 +2119,13 @@ S32 sc_sw_period_load(U32 ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
                     ,"SELECT a.id, a.customer_id, a.sw_id, a.sw_trfr_type, a.start_time, a.end_time, " \
-                     "a.ivr_audio_id, a.default, b.play_times FROM tbl_ivr_period a LEFT JOIN tbl_switchboard b ON a.sw_id = b.id;");
+                     "a.ivr_audio_id, a.default, extern_num_len, b.play_times FROM tbl_ivr_period a LEFT JOIN tbl_switchboard b ON a.sw_id = b.id;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
                     , "SELECT a.id, a.customer_id, a.sw_id, a.sw_trfr_type, a.start_time, a.end_time," \
-                       "a.ivr_audio_id, a.default, b.play_times FROM tbl_ivr_period a LEFT JOIN tbl_switchboard b ON a.sw_id = b.id" \
+                       "a.ivr_audio_id, a.default, extern_num_len, b.play_times FROM tbl_ivr_period a LEFT JOIN tbl_switchboard b ON a.sw_id = b.id" \
                       " WHERE a.id=%u;", ulIndex);
     }
 
@@ -2298,6 +2328,8 @@ S32 sc_sw_keymap_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             {
                 DOS_ASSERT(0);
                 sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "The ulIndex too big beyond the allgin of the pstSWIVRNode->pstSWKeymapNode");
+                pthread_mutex_unlock(&g_mutexSWKeyMapList);
+                pthread_mutex_unlock(&g_mutexHashSWPeriod);
                 return DOS_FAIL;
             }
 
@@ -2309,6 +2341,7 @@ S32 sc_sw_keymap_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             pstSWKeyMapNode= NULL;
 
             pthread_mutex_unlock(&g_mutexHashSWPeriod);
+            pthread_mutex_unlock(&g_mutexSWKeyMapList);
             return DOS_FAIL;
         }
         pthread_mutex_unlock(&g_mutexHashSWPeriod);

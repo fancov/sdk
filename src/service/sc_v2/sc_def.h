@@ -171,6 +171,8 @@ extern "C" {
 
 #define SC_AUTO_CALL_RECALL_TIME       500
 
+#define SC_CWQ_QUEUE_TIMEOUT           10
+
 /**
  * 1. 没有被删除
  * 2. 已经登陆了     && (pstSiteDesc)->bLogin 这个状态不判断了
@@ -1181,6 +1183,8 @@ typedef struct tagSCAUTOCall{
     DOS_TMR_ST        stCusTmrHandle;
 
 }SC_AUTO_CALL_ST;
+
+
 /*企业总机业务状态机*/
 typedef enum tagSCCORSwitchboardStatus{
     SC_COR_SWITCHBOARD_IDEL,
@@ -1229,6 +1233,8 @@ typedef struct SCCORSWPeriodTag{
     /*语音文件*/
     U32        ulIvrAudioID;
 
+    U32        ulExtensionNumLength;
+
     U8         ucTransferType;                        //SC_SW_TRANSFER_TYPE_EN
 
     /*按键设定*/
@@ -1244,19 +1250,14 @@ typedef struct tagSCCORSwitchboard{
     U32                ulCallingLegNo;
     /* 关联LEG编号 */
     U32                ulCalleeLegNo;
-    /*企业总机语音方案编号*/
-    U16                usCorSWPeroidNo;
+    /*企业总机语音方案编节点*/
     SC_SW_IVR_NODE_ST  *pstSWPeriodNode;
     SC_AGENT_NODE_ST   *pstAgentCallee;
     S8                 szExtensionNum[SC_NUM_LENGTH];
     S8                 szTelNum[SC_NUM_LENGTH];
     S8                 szTTNum[SC_NUM_LENGTH];
-    U8                 ucIndex;
-    DOS_TMR_ST         stTmrHandle;
-    U8                 ucTimeout;
-    U8                 ucExtensionNumLength;
+    U8                 ucPlayTimes;     //给用户播放的提示音已经播放的次数
     U32                ulDidBindID;
-
 }SC_COR_SWITCHBOARD_ST;
 
 
@@ -2046,6 +2047,9 @@ typedef struct tagSCMsgEvtPlayback{
 
     /** 标示是否是开始、停止 */
     U32     ulFlag;
+
+    /** */
+    BOOL    bIsPlayDone;
 }SC_MSG_EVT_PLAYBACK_ST;
 
 typedef enum tagSCMsgEvtRecordMode{
