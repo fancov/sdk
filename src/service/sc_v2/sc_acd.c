@@ -756,6 +756,11 @@ SC_AGENT_NODE_ST *sc_agent_get_by_sip_acc(S8 *szUserID)
                 continue;
             }
 
+            if (pstAgentQueueNode->pstAgentInfo->bWaitingDelete)
+            {
+                continue;
+            }
+
             if ('\0' == pstAgentData->szUserID[0])
             {
                 continue;
@@ -1757,6 +1762,11 @@ SC_AGENT_NODE_ST *sc_agent_get_by_userid(S8 *szUserID)
                 continue;
             }
 
+            if (pstAgentQueueNode->pstAgentInfo->bWaitingDelete)
+            {
+                continue;
+            }
+
             if (pstAgentData->ucBindType != AGENT_BIND_SIP)
             {
                 continue;
@@ -1810,6 +1820,11 @@ SC_AGENT_NODE_ST *sc_agent_get_by_tt_num(S8 *szTTNumber)
             pstAgentData = pstAgentQueueNode->pstAgentInfo;
 
             if (DOS_ADDR_INVALID(pstAgentData))
+            {
+                continue;
+            }
+
+            if (pstAgentQueueNode->pstAgentInfo->bWaitingDelete)
             {
                 continue;
             }
