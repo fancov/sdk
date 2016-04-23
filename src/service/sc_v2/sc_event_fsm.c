@@ -4501,7 +4501,7 @@ U32 sc_switchboard_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 /*超时处理*/
                 sc_trace_scb(pstSCB, "Queue time out......");
                 sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCallingLegNo);
-                sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCallingLegNo, CC_ERR_NORMAL_CLEAR);
+                sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCallingLegNo, CC_ERR_SC_USER_BUSY);
 
             }
             else if (SC_LEAVE_CALL_QUE_SUCC == pstMsg->usInterErr)
@@ -4521,7 +4521,7 @@ U32 sc_switchboard_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
                 else
                 {
-                    sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCallingLegNo, CC_ERR_NORMAL_CLEAR);
+                    sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCallingLegNo, CC_ERR_SC_USER_BUSY);
                     sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCallingLegNo);
                     sc_trace_scb(pstSCB, "The agent is busy.......");
                 }
@@ -7104,7 +7104,7 @@ U32 sc_auto_call_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 /* 加入队列超时 */
                 sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo);
-                sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, CC_ERR_NORMAL_CLEAR);
+                sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stAutoPreview.ulCallingLegNo, CC_ERR_SC_USER_BUSY);
             }
             else if (SC_LEAVE_CALL_QUE_SUCC == pstMsg->usInterErr)
             {
