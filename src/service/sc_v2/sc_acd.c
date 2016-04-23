@@ -2121,6 +2121,12 @@ U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32
             (*pulWorking)++;
         }
 
+        if (pstAgentNode->pstAgentInfo->bSelected)
+        {
+            (*pulBusy)++;
+            continue;
+        }
+
         if (SC_ACD_SERV_IDEL == pstAgentNode->pstAgentInfo->ucServStatus)
         {
             /* 这个地方保护一下 */
@@ -2332,6 +2338,7 @@ U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_SERV_RINGING:
         case SC_ACD_SERV_RINGBACK:
         case SC_ACD_SERV_PROC:
+            pstAgentQueueInfo->ulLastIdelTime = time(NULL);
             pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_IDEL;
             if (!pstAgentQueueInfo->bNeedConnected)
             {

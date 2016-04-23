@@ -12779,7 +12779,7 @@ U32 sc_auto_preview_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         return DOS_FAIL;
     }
 
-    sc_trace_scb(pstSCB, "Processing auto preview queue event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
+    sc_trace_scb(pstSCB, "Processing auto preview queue event. status : %u, InterErr : %u", pstSCB->stAutoPreview.stSCBTag.usStatus, pstMsg->usInterErr);
 
     switch (pstSCB->stAutoPreview.stSCBTag.usStatus)
     {
@@ -12797,9 +12797,11 @@ U32 sc_auto_preview_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 else
                 {
                     /* 呼叫坐席 */
+                    sc_trace_scb(pstSCB, "Call agent: %u", pstEvtCall->pstAgentNode->pstAgentInfo->ulAgentID);
                     ulRet = sc_agent_auto_preview_callback(pstSCB, pstEvtCall->pstAgentNode);
                 }
             }
+
         default:
             break;
 
@@ -12877,8 +12879,9 @@ proc_finishe:
 
 U32 sc_auto_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    U32  ulRet = DOS_FAIL;
-    SC_MSG_EVT_RINGING_ST   *pstRinging;
+    U32                     ulRet           = DOS_FAIL;
+    S32                     lRes            = DOS_FAIL;
+    SC_MSG_EVT_RINGING_ST   *pstRinging     = NULL;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -12905,6 +12908,22 @@ U32 sc_auto_preview_ringing(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_PREVIEW_EXEC:
         case SC_AUTO_PREVIEW_PROC:
             pstSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_ALERTING;
+
+            /* 开启定时器 */
+            sc_trace_scb(pstSCB, "%s", "Start ringting timer.");
+
+            if (DOS_ADDR_VALID(pstSCB->stAutoPreview.stAgentTmrHandle))
+            {
+                dos_tmr_stop(&pstSCB->stAutoPreview.stAgentTmrHandle);
+                pstSCB->stAutoPreview.stAgentTmrHandle = NULL;
+            }
+
+            lRes = dos_tmr_start(&pstSCB->stAutoPreview.stAgentTmrHandle, SC_AGENT_RINGING_TIMEOUT, sc_agent_ringing_timeout_callback, (U64)pstRinging->ulLegNo, TIMER_NORMAL_NO_LOOP);
+            if (lRes < 0)
+            {
+                DOS_ASSERT(0);
+                pstSCB->stAutoCall.stAgentTmrHandle = NULL;
+            }
 
             ulRet = DOS_SUCC;
             break;
@@ -13240,6 +13259,84 @@ U32 sc_auto_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     return DOS_SUCC;
 }
 
+U32 sc_auto_preview_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_MSG_EVT_RINGING_TIMEOUT_ST   *pstEvtRingingTimeOut   = NULL;
+    SC_LEG_CB                       *pstLegCB               = NULL;
+    SC_LEG_CB                       *pstCalleeLegCB         = NULL;
+    SC_SRV_CB                       *pstNewSCB              = NULL;
+
+    pstEvtRingingTimeOut = (SC_MSG_EVT_RINGING_TIMEOUT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstEvtRingingTimeOut) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing auto preview ringing timeout event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing auto preview ringing timeout event. status : %u", pstSCB->stAutoPreview.stSCBTag.usStatus);
+
+    if (pstSCB->stAutoPreview.stSCBTag.usStatus != SC_AUTO_PREVIEW_ALERTING)
+    {
+        sc_trace_scb(pstSCB, "Status is not SC_AUTO_PREVIEW_ALERTING, no processing.");
+        return DOS_SUCC;
+    }
+
+    pstCalleeLegCB = sc_lcb_get(pstSCB->stAutoPreview.ulCalleeLegNo);
+    if (DOS_ADDR_INVALID(pstCalleeLegCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstNewSCB = sc_scb_alloc();
+    if (DOS_ADDR_INVALID(pstNewSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 拷贝 */
+    sc_scb_copy(pstNewSCB, pstSCB);
+
+    /* 挂断被叫坐席，重新加入到呼叫队列 */
+    pstLegCB = sc_lcb_get(pstSCB->stAutoPreview.ulCallingLegNo);
+    if (DOS_ADDR_VALID(pstLegCB))
+    {
+        pstSCB->stAutoPreview.ulCalleeLegNo = U32_BUTT;
+        sc_req_playback_stop(pstSCB->ulSCBNo, pstLegCB->ulCBNo);
+        sc_req_hungup(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_SIP_BUSY_HERE);
+    }
+
+    /* 将呼叫重新放回队列 */
+    pstCalleeLegCB->ulSCBNo = pstNewSCB->ulSCBNo;
+
+    pstNewSCB->stAutoPreview.ulCalleeLegNo = U32_BUTT;
+    pstNewSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_QUEUE;
+    pstNewSCB->stIncomingQueue.stSCBTag.bValid = DOS_TRUE;
+    pstNewSCB->ulCurrentSrv++;
+    pstNewSCB->pstServiceList[pstNewSCB->ulCurrentSrv] = &pstNewSCB->stIncomingQueue.stSCBTag;
+    pstNewSCB->stIncomingQueue.ulLegNo = pstNewSCB->stAutoPreview.ulCallingLegNo;
+    pstNewSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
+    pstNewSCB->stIncomingQueue.ulQueueType = SC_SW_FORWARD_AGENT_GROUP;
+    pstNewSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
+    //pstNewSCB->stAutoPreview.ulReCallAgent++;
+    if (sc_cwq_add_call(pstNewSCB, sc_task_get_agent_queue(pstSCB->stAutoPreview.ulTcbID), pstCalleeLegCB->stCall.stNumInfo.szRealCallee, pstNewSCB->stIncomingQueue.ulQueueType, DOS_TRUE) != DOS_SUCC)
+    {
+        /* 加入队列失败 */
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    else
+    {
+        /* 放音提示客户等待 */
+        pstNewSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
+        //sc_req_play_sound(pstNewSCB->ulSCBNo, pstNewSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
+    }
+
+    return DOS_SUCC;
+}
+
 U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     U32                     ulRet           = DOS_SUCC;
@@ -13295,7 +13392,29 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_PREVIEW_AUTH2:
         case SC_AUTO_PREVIEW_EXEC:
             /* 基本不可能到这里 */
-            DOS_ASSERT(0);
+            pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoPreview.ulAgentID);
+            if (DOS_ADDR_VALID(pstAgentCall)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+            {
+                sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_PREVIEW);
+                pstAgentCall->pstAgentInfo->ulLegNo = U32_BUTT;
+            }
+
+            pstCallingCB = sc_lcb_get(pstSCB->stAutoPreview.ulCallingLegNo);
+            pstCalleeCB = sc_lcb_get(pstSCB->stAutoPreview.ulCalleeLegNo);
+            if (DOS_ADDR_VALID(pstCallingCB))
+            {
+                sc_lcb_free(pstCallingCB);
+                pstCallingCB = NULL;
+            }
+
+            if (DOS_ADDR_VALID(pstCalleeCB))
+            {
+                sc_lcb_free(pstCalleeCB);
+                pstCalleeCB = NULL;
+            }
+
+            sc_scb_free(pstSCB);
             break;
 
         case SC_AUTO_PREVIEW_PROC:
@@ -13313,13 +13432,25 @@ U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             pstCallingCB = sc_lcb_get(pstSCB->stAutoPreview.ulCallingLegNo);
             pstCalleeCB = sc_lcb_get(pstSCB->stAutoPreview.ulCalleeLegNo);
-            if (pstCallingCB)
+            if (SC_AUTO_PREVIEW_ALERTING == pstSCB->stAutoPreview.stSCBTag.usStatus
+                && DOS_ADDR_INVALID(pstCalleeCB)
+                && DOS_ADDR_VALID(pstCallingCB))
+            {
+                /* 坐席振铃超时 */
+                sc_lcb_free(pstCallingCB);
+                pstCallingCB = NULL;
+                sc_scb_free(pstSCB);
+                pstSCB = NULL;
+                break;
+            }
+
+            if (DOS_ADDR_VALID(pstCallingCB))
             {
                 sc_lcb_free(pstCallingCB);
                 pstCallingCB = NULL;
             }
 
-            if (pstCalleeCB)
+            if (DOS_ADDR_VALID(pstCalleeCB))
             {
                 sc_lcb_free(pstCalleeCB);
                 pstCalleeCB = NULL;
@@ -13717,6 +13848,7 @@ U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_LEG_CB                   *pstCallingCB       = NULL;
     SC_LEG_CB                   *pstCalleeCB        = NULL;
     SC_LEG_CB                   *pstRecordLegCB     = NULL;
+    SC_AGENT_NODE_ST            *pstAgentCall       = NULL;
     SC_MSG_CMD_RECORD_ST        stRecordRsp;
 
     pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
@@ -13782,12 +13914,21 @@ U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_PREVIEW_EXEC:
         case SC_AUTO_PREVIEW_PROC:
             /* 发起呼叫失败，生成呼叫结果，释放资源 */
+            pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoPreview.ulAgentID);
+            if (DOS_ADDR_VALID(pstAgentCall)
+                && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+            {
+                sc_agent_serv_status_update(pstAgentCall->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_AUTO_PREVIEW);
+                pstAgentCall->pstAgentInfo->ulLegNo = U32_BUTT;
+            }
+
             pstCallingCB = sc_lcb_get(pstSCB->stAutoPreview.ulCallingLegNo);
             if (DOS_ADDR_VALID(pstCallingCB))
             {
                 pstCallingCB->stCall.stTimeInfo.ulByeTime = pstCallingCB->stCall.stTimeInfo.ulStartTime;
                 sc_preview_task_call_result(pstSCB, pstCallingCB->ulCBNo, ulErrCode);
                 sc_lcb_free(pstCallingCB);
+                pstCallingCB = NULL;
             }
 
             pstCalleeCB = sc_lcb_get(pstSCB->stAutoPreview.ulCalleeLegNo);
@@ -13797,6 +13938,7 @@ U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstCalleeCB = NULL;
             }
             sc_scb_free(pstSCB);
+            pstSCB = NULL;
             break;
 
         case SC_AUTO_PREVIEW_ALERTING:

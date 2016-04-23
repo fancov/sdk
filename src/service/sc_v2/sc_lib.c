@@ -1295,6 +1295,7 @@ VOID sc_scb_auto_preview_init(SC_AUTO_PREVIEW_ST *pstPreviewCall)
     pstPreviewCall->ulAgentID = 0;
     pstPreviewCall->ulTaskID = 0;
     pstPreviewCall->ulTcbID = U32_BUTT;
+    pstPreviewCall->stAgentTmrHandle = NULL;
 }
 
 VOID sc_scb_cor_switch_board_init(SC_COR_SWITCHBOARD_ST *pstCorSwitchboard)
@@ -3770,7 +3771,8 @@ void sc_agent_ringing_timeout_callback(U64 arg)
 
     if (pstSCB->stCall.stSCBTag.usStatus == SC_CALL_ALERTING
         || pstSCB->stAutoCall.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING2
-        || pstSCB->stDemoTask.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING2)
+        || pstSCB->stDemoTask.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING2
+        || pstSCB->stAutoPreview.stSCBTag.usStatus == SC_AUTO_PREVIEW_ALERTING)
     {
         /* 发送超时提醒给fsm */
         stEvtRingingTimeOut.stMsgTag.ulMsgType = SC_EVT_RINGING_TIMEOUT;

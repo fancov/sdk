@@ -1401,6 +1401,10 @@ U32 sc_srv_auto_preview_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB_TA
             ulRet = sc_auto_preview_queue_leave(pstMsg, pstSCB);
             break;
 
+        case SC_EVT_RINGING_TIMEOUT:
+            ulRet = sc_auto_preview_ringing_timeout(pstMsg, pstSCB);
+            break;
+
         case SC_EVT_ERROR_PORT:
             ulRet = sc_auto_preview_error(pstMsg, pstSCB);
             break;
