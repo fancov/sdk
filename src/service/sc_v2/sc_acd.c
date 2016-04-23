@@ -2992,6 +2992,8 @@ U32 sc_agent_http_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
     switch (ulAction)
     {
         case SC_ACD_SITE_ACTION_DELETE:
+            sc_agent_delete(ulAgentID);
+            break;
         case SC_ACD_SITE_ACTION_SIGNIN:
         case SC_ACD_SITE_ACTION_SIGNOUT:
         case SC_ACD_SITE_ACTION_ONLINE:
