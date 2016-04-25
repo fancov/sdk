@@ -109,6 +109,24 @@ S32 sc_ep_number_lmt_find(VOID *pObj, HASH_NODE_S *pstHashNode)
     return DOS_FAIL;
 }
 
+void sc_num_lmt_set_timer_zero(U32 ulType)
+{
+    switch (ulType)
+    {
+        case SC_NUM_LMT_TYPE_DID:
+            sc_did_set_times_zero();
+            break;
+
+        case SC_NUM_LMT_TYPE_CALLER:
+            sc_caller_set_times_zero();
+            break;
+
+        default:
+            DOS_ASSERT(0);
+            break;
+    }
+}
+
 /* 每天执行一次 */
 U32 sc_num_lmt_stat(U32 ulType, VOID *ptr)
 {
@@ -163,12 +181,20 @@ U32 sc_num_lmt_stat(U32 ulType, VOID *ptr)
             {
                 case SC_NUMBER_LMT_CYCLE_DAY:
                     pstNumLmt->ulStatUsed = 0;
+                    if (pstNumLmt->ulID == 0)
+                    {
+                        sc_num_lmt_set_timer_zero(pstNumLmt->ulType);
+                    }
                     break;
 
                 case SC_NUMBER_LMT_CYCLE_WEEK:
                     if (bClearWeek)
                     {
                         pstNumLmt->ulStatUsed = 0;
+                        if (pstNumLmt->ulID == 0)
+                        {
+                            sc_num_lmt_set_timer_zero(pstNumLmt->ulType);
+                        }
                     }
                     break;
 
@@ -176,6 +202,10 @@ U32 sc_num_lmt_stat(U32 ulType, VOID *ptr)
                     if (bClearMonth)
                     {
                         pstNumLmt->ulStatUsed = 0;
+                        if (pstNumLmt->ulID == 0)
+                        {
+                            sc_num_lmt_set_timer_zero(pstNumLmt->ulType);
+                        }
                     }
                     break;
 
@@ -183,6 +213,10 @@ U32 sc_num_lmt_stat(U32 ulType, VOID *ptr)
                     if (bClearYear)
                     {
                         pstNumLmt->ulStatUsed = 0;
+                        if (pstNumLmt->ulID == 0)
+                        {
+                            sc_num_lmt_set_timer_zero(pstNumLmt->ulType);
+                        }
                     }
                     break;
 
@@ -341,6 +375,87 @@ U32 sc_num_lmt_update(U32 ulType, VOID *ptr)
     return DOS_SUCC;
 }
 
+BOOL sc_number_lmt_global_check(U32 ulType, U32 ulCustomerID, S8 *pszNumber)
+{
+    U32                     ulHashIndexMunLmt  = 0;
+    U32                     ulHandleType       = 0;
+    HASH_NODE_S             *pstHashNodeNumLmt = NULL;
+    SC_NUMBER_LMT_NODE_ST   *pstNumLmt         = NULL;
+    SC_LIMIT_CALLER_STAT_ST stLimitCaller;
+    U32                     ulUseTimes         = 0;
+
+    if (DOS_ADDR_INVALID(pszNumber)
+        || '\0' == pszNumber[0]
+        || ulType >= SC_NUM_LMT_TYPE_BUTT)
+    {
+        DOS_ASSERT(0);
+
+        return DOS_TRUE;
+    }
+
+    stLimitCaller.enNumType = ulType;
+    stLimitCaller.szNumber[0] = '\0';
+
+    ulHashIndexMunLmt = 0;
+    pthread_mutex_lock(&g_mutexHashNumberlmt);
+    pstHashNodeNumLmt= hash_find_node(g_pstHashNumberlmt, ulHashIndexMunLmt, &stLimitCaller, sc_ep_number_lmt_find);
+    if (DOS_ADDR_INVALID(pstHashNodeNumLmt)
+        || DOS_ADDR_INVALID(pstHashNodeNumLmt->pHandle))
+    {
+        pthread_mutex_unlock(&g_mutexHashNumberlmt);
+
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_LIMIT)
+                , "Number limit check for \"%s\", There is no global limitation for this number."
+                , pszNumber);
+        return DOS_TRUE;
+    }
+
+    /* 存在全局的配置，需要查找did或者主叫号码 */
+    if (SC_NUMBER_TYPE_DID == ulType)
+    {
+        ulUseTimes = sc_did_get_use_times(pszNumber);
+    }
+    else
+    {
+        ulUseTimes = sc_caller_get_use_times(pszNumber);
+    }
+
+    pstNumLmt = (SC_NUMBER_LMT_NODE_ST *)pstHashNodeNumLmt->pHandle;
+    if (ulUseTimes < pstNumLmt->ulLimit)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_LIMIT)
+                , "Number limit check for \"%s\". This number did not reached the limitation. Cycle: %u, Limitation: %u, Used: %u"
+                , pszNumber, pstNumLmt->ulCycle, pstNumLmt->ulLimit, ulUseTimes);
+
+        pthread_mutex_unlock(&g_mutexHashNumberlmt);
+        /* 写入统计表 */
+        sc_save_number_stat(ulCustomerID, ulType, pszNumber, 1);
+
+        return DOS_TRUE;
+    }
+
+    ulHandleType = pstNumLmt->ulHandle;
+
+    pthread_mutex_unlock(&g_mutexHashNumberlmt);
+
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_LIMIT)
+            , "Number limit check for \"%s\", This number has reached the limitation. Process as handle: %u"
+            , pszNumber, pstNumLmt->ulHandle);
+
+    switch (ulHandleType)
+    {
+        case SC_NUM_LMT_HANDLE_REJECT:
+            return DOS_FALSE;
+            break;
+
+        default:
+            DOS_ASSERT(0);
+            return DOS_TRUE;
+    }
+
+    return DOS_TRUE;
+}
+
 BOOL sc_number_lmt_check(U32 ulType, U32 ulCustomerID, S8 *pszNumber)
 {
     U32  ulHashIndexMunLmt  = 0;
@@ -371,9 +486,10 @@ BOOL sc_number_lmt_check(U32 ulType, U32 ulCustomerID, S8 *pszNumber)
         pthread_mutex_unlock(&g_mutexHashNumberlmt);
 
         sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_LIMIT)
-                , "Number limit check for \"%s\", There is no limitation for this number."
+                , "Number limit check for \"%s\", There is no single limitation for this number."
                 , pszNumber);
-        return DOS_TRUE;
+
+        return sc_number_lmt_global_check(ulType, ulCustomerID, pszNumber);
     }
 
     pstNumLmt = (SC_NUMBER_LMT_NODE_ST *)pstHashNodeNumLmt->pHandle;
@@ -483,8 +599,9 @@ static S32 sc_load_number_lmt_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **as
             return DOS_FAIL;
     }
 
-    if (DOS_ADDR_INVALID(pszNumber)
-        || '\0' == pszNumber[0])
+    /* ulBID 为0时，pszNumber为NULL，在下面使用的时候一定要注意 */
+    if (ulBID != 0
+        && (DOS_ADDR_INVALID(pszNumber) || '\0' == pszNumber[0]))
     {
         DOS_ASSERT(0);
         return DOS_FAIL;
@@ -497,10 +614,17 @@ static S32 sc_load_number_lmt_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **as
     }
 
     stLimitCaller.enNumType = ulType;
-    dos_strncpy(stLimitCaller.szNumber, pszNumber, SC_NUM_LENGTH-1);
-    stLimitCaller.szNumber[SC_NUM_LENGTH-1] = '\0';
+    if (DOS_ADDR_VALID(pszNumber))
+    {
+        dos_strncpy(stLimitCaller.szNumber, pszNumber, SC_NUM_LENGTH-1);
+        stLimitCaller.szNumber[SC_NUM_LENGTH-1] = '\0';
+    }
+    else
+    {
+        stLimitCaller.szNumber[0] = '\0';
+    }
 
-    ulHashIndex = sc_ep_number_lmt_hash_func(pszNumber);
+    ulHashIndex = sc_ep_number_lmt_hash_func(stLimitCaller.szNumber);
     pthread_mutex_lock(&g_mutexHashNumberlmt);
     pstHashNode = hash_find_node(g_pstHashNumberlmt, ulHashIndex, &stLimitCaller, sc_ep_number_lmt_find);
     if (DOS_ADDR_VALID(pstHashNode))
@@ -515,8 +639,15 @@ static S32 sc_load_number_lmt_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **as
             pstNumLmtNode->ulCycle   = ulCycle;
             pstNumLmtNode->ulType    = ulType;
             pstNumLmtNode->ulNumberID= ulBID;
-            dos_strncpy(pstNumLmtNode->szPrefix, pszNumber, sizeof(pstNumLmtNode->szPrefix));
-            pstNumLmtNode->szPrefix[sizeof(pstNumLmtNode->szPrefix) - 1] = '\0';
+            if (DOS_ADDR_VALID(pszNumber))
+            {
+                dos_strncpy(pstNumLmtNode->szPrefix, pszNumber, sizeof(pstNumLmtNode->szPrefix));
+                pstNumLmtNode->szPrefix[sizeof(pstNumLmtNode->szPrefix) - 1] = '\0';
+            }
+            else
+            {
+                pstNumLmtNode->szPrefix[0] = '\0';
+            }
         }
         else
         {
@@ -537,8 +668,15 @@ static S32 sc_load_number_lmt_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **as
             pstNumLmtNode->ulType    = ulType;
             pstNumLmtNode->ulNumberID= ulBID;
             pstNumLmtNode->ulStatUsed = 0;
-            dos_strncpy(pstNumLmtNode->szPrefix, pszNumber, sizeof(pstNumLmtNode->szPrefix));
-            pstNumLmtNode->szPrefix[sizeof(pstNumLmtNode->szPrefix) - 1] = '\0';
+            if (DOS_ADDR_VALID(pszNumber))
+            {
+                dos_strncpy(pstNumLmtNode->szPrefix, pszNumber, sizeof(pstNumLmtNode->szPrefix));
+                pstNumLmtNode->szPrefix[sizeof(pstNumLmtNode->szPrefix) - 1] = '\0';
+            }
+            else
+            {
+                pstNumLmtNode->szPrefix[0] = '\0';
+            }
 
             pstHashNode->pHandle = pstNumLmtNode;
         }
@@ -576,8 +714,15 @@ static S32 sc_load_number_lmt_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **as
         pstNumLmtNode->ulType    = ulType;
         pstNumLmtNode->ulNumberID= ulBID;
         pstNumLmtNode->ulStatUsed = 0;
-        dos_strncpy(pstNumLmtNode->szPrefix, pszNumber, sizeof(pstNumLmtNode->szPrefix));
-        pstNumLmtNode->szPrefix[sizeof(pstNumLmtNode->szPrefix) - 1] = '\0';
+        if (DOS_ADDR_VALID(pszNumber))
+        {
+            dos_strncpy(pstNumLmtNode->szPrefix, pszNumber, sizeof(pstNumLmtNode->szPrefix));
+            pstNumLmtNode->szPrefix[sizeof(pstNumLmtNode->szPrefix) - 1] = '\0';
+        }
+        else
+        {
+            pstNumLmtNode->szPrefix[0] = '\0';
+        }
 
         HASH_Init_Node(pstHashNode);
         pstHashNode->pHandle = pstNumLmtNode;
