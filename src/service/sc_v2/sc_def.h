@@ -167,7 +167,7 @@ extern "C" {
 
 #define SC_AUTO_CALL_RINGING_TIMEOUT   35000
 
-#define SC_AUTO_CALL_AGENT_MAX_COUNT   5
+#define SC_AUTO_CALL_AGENT_MAX_COUNT   3
 
 #define SC_AUTO_CALL_RECALL_TIME       500
 
@@ -1050,6 +1050,8 @@ typedef struct tagSCSrvCall{
 
     BOOL              bIsError;
 
+    U32               ulReCallAgent;
+
     /** 主叫坐席指针 */
     SC_AGENT_NODE_ST *pstAgentCalling;
 
@@ -1679,6 +1681,9 @@ typedef struct tagSCAutoPreview{
 
     /** 群呼任务控制块ID */
     U32               ulTcbID;
+
+    /** 坐席振铃的定时器 */
+    DOS_TMR_ST        stAgentTmrHandle;
 
 }SC_AUTO_PREVIEW_ST;
 
@@ -2600,6 +2605,7 @@ U32 sc_auto_preview_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_preview_playback_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_preview_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_auto_preview_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_preview_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 

@@ -696,6 +696,7 @@ SC_LEG_CB *sc_lcb_alloc()
     if (DOS_ADDR_VALID(pstLCB))
     {
         sc_lcb_init(pstLCB);
+        ulIndex++;
         pstLCB->bValid = DOS_TRUE;
         pstLCB->ulAllocTime = time(NULL);
     }
@@ -1022,6 +1023,7 @@ VOID sc_scb_call_init(SC_SRV_CALL_ST *pstCall)
     pstCall->stTmrHandle = NULL;
     pstCall->ulAgentGrpID = 0;
     pstCall->bIsError = DOS_FALSE;
+    pstCall->ulReCallAgent = 0;
 }
 
 VOID sc_scb_preview_call_init(SC_PREVIEW_CALL_ST *pstPreviewCall)
@@ -1293,6 +1295,7 @@ VOID sc_scb_auto_preview_init(SC_AUTO_PREVIEW_ST *pstPreviewCall)
     pstPreviewCall->ulAgentID = 0;
     pstPreviewCall->ulTaskID = 0;
     pstPreviewCall->ulTcbID = U32_BUTT;
+    pstPreviewCall->stAgentTmrHandle = NULL;
 }
 
 VOID sc_scb_cor_switch_board_init(SC_COR_SWITCHBOARD_ST *pstCorSwitchboard)
@@ -1413,7 +1416,7 @@ SC_SRV_CB *sc_scb_alloc()
     if (DOS_ADDR_VALID(pstSCB))
     {
         sc_scb_init(pstSCB);
-
+        ulIndex++;
         if (g_stSysStat.ulCurrentCalls < sc_get_call_limitation())
         {
             if (g_stSysStat.ulCurrentCalls != U32_BUTT)
@@ -1870,6 +1873,7 @@ SC_TASK_CB *sc_tcb_alloc()
 
         pthread_mutex_lock(&pstTCB->mutexTaskList);
         sc_tcb_init(pstTCB);
+        ulIndex++;
         pstTCB->ucValid = 1;
         pstTCB->ulAllocTime = time(0);
         pthread_mutex_unlock(&pstTCB->mutexTaskList);
@@ -3767,7 +3771,8 @@ void sc_agent_ringing_timeout_callback(U64 arg)
 
     if (pstSCB->stCall.stSCBTag.usStatus == SC_CALL_ALERTING
         || pstSCB->stAutoCall.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING2
-        || pstSCB->stDemoTask.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING2)
+        || pstSCB->stDemoTask.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING2
+        || pstSCB->stAutoPreview.stSCBTag.usStatus == SC_AUTO_PREVIEW_ALERTING)
     {
         /* 发送超时提醒给fsm */
         stEvtRingingTimeOut.stMsgTag.ulMsgType = SC_EVT_RINGING_TIMEOUT;

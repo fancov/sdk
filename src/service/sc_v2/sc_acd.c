@@ -756,6 +756,11 @@ SC_AGENT_NODE_ST *sc_agent_get_by_sip_acc(S8 *szUserID)
                 continue;
             }
 
+            if (pstAgentQueueNode->pstAgentInfo->bWaitingDelete)
+            {
+                continue;
+            }
+
             if ('\0' == pstAgentData->szUserID[0])
             {
                 continue;
@@ -1757,6 +1762,11 @@ SC_AGENT_NODE_ST *sc_agent_get_by_userid(S8 *szUserID)
                 continue;
             }
 
+            if (pstAgentQueueNode->pstAgentInfo->bWaitingDelete)
+            {
+                continue;
+            }
+
             if (pstAgentData->ucBindType != AGENT_BIND_SIP)
             {
                 continue;
@@ -1810,6 +1820,11 @@ SC_AGENT_NODE_ST *sc_agent_get_by_tt_num(S8 *szTTNumber)
             pstAgentData = pstAgentQueueNode->pstAgentInfo;
 
             if (DOS_ADDR_INVALID(pstAgentData))
+            {
+                continue;
+            }
+
+            if (pstAgentQueueNode->pstAgentInfo->bWaitingDelete)
             {
                 continue;
             }
@@ -2121,6 +2136,12 @@ U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32
             (*pulWorking)++;
         }
 
+        if (pstAgentNode->pstAgentInfo->bSelected)
+        {
+            (*pulBusy)++;
+            continue;
+        }
+
         if (SC_ACD_SERV_IDEL == pstAgentNode->pstAgentInfo->ucServStatus)
         {
             /* 这个地方保护一下 */
@@ -2332,6 +2353,7 @@ U32 sc_agent_set_idle(SC_AGENT_INFO_ST *pstAgentQueueInfo)
         case SC_ACD_SERV_RINGING:
         case SC_ACD_SERV_RINGBACK:
         case SC_ACD_SERV_PROC:
+            pstAgentQueueInfo->ulLastIdelTime = time(NULL);
             pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_IDEL;
             if (!pstAgentQueueInfo->bNeedConnected)
             {
@@ -2609,6 +2631,8 @@ U32 sc_agent_set_signout(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulOperatingTyp
             return DOS_FAIL;
             break;
     }
+
+    pstAgentQueueInfo->ucServStatus = SC_ACD_SERV_IDEL;
 
     /* 只要有呼叫都拆 */
     if ((pstAgentQueueInfo->bConnected || pstAgentQueueInfo->bNeedConnected)
@@ -2968,6 +2992,8 @@ U32 sc_agent_http_update_proc(U32 ulAction, U32 ulAgentID, S8 *pszUserID)
     switch (ulAction)
     {
         case SC_ACD_SITE_ACTION_DELETE:
+            sc_agent_delete(ulAgentID);
+            break;
         case SC_ACD_SITE_ACTION_SIGNIN:
         case SC_ACD_SITE_ACTION_SIGNOUT:
         case SC_ACD_SITE_ACTION_ONLINE:
