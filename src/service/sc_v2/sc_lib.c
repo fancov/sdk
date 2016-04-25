@@ -1356,6 +1356,7 @@ VOID sc_scb_init(SC_SRV_CB *pstSCB)
     pstSCB->ulAllocTime = 0;
     pstSCB->ulClientID = 0;
     pstSCB->szClientNum[0] = '\0';
+    pstSCB->bIsRecorded = DOS_FALSE;
 
     sc_scb_call_init(&pstSCB->stCall);
     sc_scb_preview_call_init(&pstSCB->stPreviewCall);
@@ -2341,6 +2342,8 @@ U32 sc_send_cmd_record(SC_MSG_TAG_ST *pstMsg)
         DOS_ASSERT(0);
         return DOS_FAIL;
     }
+
+    pstSCB->bIsRecorded = DOS_TRUE;
 
     pstRecordLegCB = sc_lcb_get(pstRecordRsp->ulLegNo);
     if (DOS_ADDR_INVALID(pstSCB))
