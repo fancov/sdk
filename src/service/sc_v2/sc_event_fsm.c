@@ -13478,7 +13478,7 @@ U32 sc_auto_preview_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     /* 将呼叫重新放回队列 */
     pstCalleeLegCB->ulSCBNo = pstNewSCB->ulSCBNo;
 
-    pstNewSCB->stAutoPreview.ulCalleeLegNo = U32_BUTT;
+    pstNewSCB->stAutoPreview.ulCallingLegNo = U32_BUTT;
     pstNewSCB->stAutoPreview.stSCBTag.usStatus = SC_AUTO_PREVIEW_QUEUE;
     pstNewSCB->stIncomingQueue.stSCBTag.bValid = DOS_TRUE;
     pstNewSCB->ulCurrentSrv++;
@@ -14014,7 +14014,6 @@ U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     U32                         ulErrCode           = CC_ERR_NO_REASON;
     SC_LEG_CB                   *pstCallingCB       = NULL;
     SC_LEG_CB                   *pstCalleeCB        = NULL;
-    SC_LEG_CB                   *pstRecordLegCB     = NULL;
     SC_AGENT_NODE_ST            *pstAgentCall       = NULL;
     SC_MSG_CMD_RECORD_ST        stRecordRsp;
 
@@ -14049,7 +14048,7 @@ U32 sc_auto_preview_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             stRecordRsp.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
             stRecordRsp.stMsgTag.usInterErr = 0;
             stRecordRsp.ulSCBNo = pstSCB->ulSCBNo;
-            stRecordRsp.ulLegNo = pstRecordLegCB->ulCBNo;
+            stRecordRsp.ulLegNo = pstCalleeCB->ulCBNo;
 
             if (sc_send_cmd_record(&stRecordRsp.stMsgTag) != DOS_SUCC)
             {
