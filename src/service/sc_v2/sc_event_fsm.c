@@ -13420,10 +13420,11 @@ U32 sc_auto_preview_hold(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_auto_preview_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-    SC_MSG_EVT_RINGING_TIMEOUT_ST   *pstEvtRingingTimeOut   = NULL;
-    SC_LEG_CB                       *pstLegCB               = NULL;
-    SC_LEG_CB                       *pstCalleeLegCB         = NULL;
-    SC_SRV_CB                       *pstNewSCB              = NULL;
+    SC_MSG_EVT_RINGING_TIMEOUT_ST   *pstEvtRingingTimeOut       = NULL;
+    SC_LEG_CB                       *pstLegCB                   = NULL;
+    SC_LEG_CB                       *pstCalleeLegCB             = NULL;
+    SC_SRV_CB                       *pstNewSCB                  = NULL;
+    S8                              szAgentNum[SC_NUM_LENGTH]   = {0, };
 
     pstEvtRingingTimeOut = (SC_MSG_EVT_RINGING_TIMEOUT_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstEvtRingingTimeOut) || DOS_ADDR_INVALID(pstSCB))
@@ -13465,6 +13466,8 @@ U32 sc_auto_preview_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         pstSCB->stAutoPreview.ulCalleeLegNo = U32_BUTT;
         sc_req_playback_stop(pstSCB->ulSCBNo, pstLegCB->ulCBNo);
         sc_req_hungup(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_SIP_BUSY_HERE);
+        dos_strncpy(szAgentNum, pstLegCB->stCall.stNumInfo.szRealCallee, SC_NUM_LENGTH-1);
+        szAgentNum[SC_NUM_LENGTH-1] = '\0';
     }
 
     /* 将呼叫重新放回队列 */
@@ -13480,7 +13483,8 @@ U32 sc_auto_preview_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstNewSCB->stIncomingQueue.ulQueueType = SC_SW_FORWARD_AGENT_GROUP;
     pstNewSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
     //pstNewSCB->stAutoPreview.ulReCallAgent++;
-    if (sc_cwq_add_call(pstNewSCB, sc_task_get_agent_queue(pstSCB->stAutoPreview.ulTcbID), pstCalleeLegCB->stCall.stNumInfo.szRealCallee, pstNewSCB->stIncomingQueue.ulQueueType, DOS_TRUE) != DOS_SUCC)
+    if (sc_cwq_add_call(pstNewSCB, sc_task_get_agent_queue(pstSCB->stAutoPreview.ulTcbID), pstCalleeLegCB->stCall.stNumInfo.szRealCallee
+        , szAgentNum, pstNewSCB->stIncomingQueue.ulQueueType, DOS_TRUE) != DOS_SUCC)
     {
         /* 加入队列失败 */
         DOS_ASSERT(0);

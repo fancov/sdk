@@ -291,7 +291,6 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulID, S8 *szCaller, S8 *szCallee, U8 
     DLL_S                       *pstCWQMngt     = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB)
-        || (DOS_ADDR_INVALID(szCaller) || DOS_ADDR_INVALID(szCallee))
         || ucForwardType >= SC_SW_FORWARD_BUTT)
     {
         DOS_ASSERT(0);
@@ -381,10 +380,26 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulID, S8 *szCaller, S8 *szCallee, U8 
     }
 
     pstCallNode->pstSCB = pstSCB;
-    dos_strncpy(pstCallNode->szCaller, szCaller, SC_NUM_LENGTH-1);
-    pstCallNode->szCaller[SC_NUM_LENGTH-1] = '\0';
-    dos_strncpy(pstCallNode->szCaller, szCallee, SC_NUM_LENGTH-1);
-    pstCallNode->szCallee[SC_NUM_LENGTH-1] = '\0';
+    if (DOS_ADDR_VALID(szCaller))
+    {
+        dos_strncpy(pstCallNode->szCaller, szCaller, SC_NUM_LENGTH-1);
+        pstCallNode->szCaller[SC_NUM_LENGTH-1] = '\0';
+    }
+    else
+    {
+        pstCallNode->szCaller[0] = '\0';
+    }
+
+    if (DOS_ADDR_VALID(szCallee))
+    {
+        dos_strncpy(pstCallNode->szCaller, szCallee, SC_NUM_LENGTH-1);
+        pstCallNode->szCallee[SC_NUM_LENGTH-1] = '\0';
+    }
+    else
+    {
+        pstCallNode->szCallee[0] = '\0';
+    }
+
     pstCallNode->ulForwardID = ulID;
 
     pstDLLNode->pHandle = pstCallNode;
