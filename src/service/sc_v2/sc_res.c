@@ -1257,6 +1257,70 @@ U32 sc_did_bind_info_get(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID)
     return DOS_SUCC;
 }
 
+U32 sc_did_get_use_times(S8 *pszDidNum)
+{
+    SC_DID_NODE_ST     *pstDIDNumNode = NULL;
+    HASH_NODE_S        *pstHashNode   = NULL;
+    U32                ulHashIndex    = 0;
+    U32                 ulTimes       = 0;
+
+    if (DOS_ADDR_INVALID(pszDidNum))
+    {
+        DOS_ASSERT(0);
+
+        return 0;
+    }
+
+    ulHashIndex = sc_string_hash_func(pszDidNum, SC_DID_HASH_SIZE);
+    pthread_mutex_lock(&g_mutexHashDIDNum);
+    pstHashNode = hash_find_node(g_pstHashDIDNum, ulHashIndex, (VOID *)pszDidNum, sc_did_hash_find);
+    if (DOS_ADDR_INVALID(pstHashNode)
+        || DOS_ADDR_INVALID(pstHashNode->pHandle))
+    {
+        DOS_ASSERT(0);
+
+        pthread_mutex_unlock(&g_mutexHashDIDNum);
+        return 0;
+    }
+
+    pstDIDNumNode = pstHashNode->pHandle;
+
+    ulTimes = pstDIDNumNode->ulTimes;
+
+    pthread_mutex_unlock(&g_mutexHashDIDNum);
+
+    return ulTimes;
+}
+
+void sc_did_set_times_zero()
+{
+    HASH_NODE_S     *pstHashNode = NULL;
+    SC_DID_NODE_ST  *pstDidNode  = NULL;
+    U32 ulIndex = U32_BUTT;
+
+    pthread_mutex_lock(&g_mutexHashDIDNum);
+    HASH_Scan_Table(g_pstHashDIDNum, ulIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashDIDNum, ulIndex, pstHashNode, HASH_NODE_S*)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode))
+            {
+                break;
+            }
+
+            pstDidNode = pstHashNode->pHandle;
+            if (DOS_ADDR_INVALID(pstDidNode))
+            {
+                continue;
+            }
+
+            pstDidNode->ulTimes = 0;
+        }
+    }
+
+    pthread_mutex_unlock(&g_mutexHashDIDNum);
+}
+
 U32 sc_did_id_get_by_num(S8 *szDIDNum)
 {
     U32     ulDIDID = U32_BUTT;
@@ -1277,7 +1341,6 @@ U32 sc_did_id_get_by_num(S8 *szDIDNum)
 
     return ulDIDID;
 }
-
 
 VOID sc_customer_init(SC_CUSTOMER_NODE_ST *pstCustomer)
 {
@@ -5777,6 +5840,7 @@ U32 sc_caller_delete(U32 ulCallerID)
     U32  ulHashIndex = U32_BUTT;
     BOOL bFound = DOS_FALSE;
 
+    pthread_mutex_lock(&g_mutexHashCaller);
     HASH_Scan_Table(g_pstHashCaller, ulHashIndex)
     {
         HASH_Scan_Bucket(g_pstHashCaller, ulHashIndex, pstHashNode, HASH_NODE_S *)
@@ -5802,6 +5866,7 @@ U32 sc_caller_delete(U32 ulCallerID)
 
     if (DOS_FALSE == bFound)
     {
+        pthread_mutex_unlock(&g_mutexHashCaller);
         sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_RES), "Delete Caller FAIL.(ulID:%u)", ulCallerID);
         return DOS_FAIL;
     }
@@ -5815,6 +5880,7 @@ U32 sc_caller_delete(U32 ulCallerID)
         pstHashNode = NULL;
 
         sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Delete Caller SUCC.(ulID:%u)", ulCallerID);
+        pthread_mutex_unlock(&g_mutexHashCaller);
 
         return DOS_SUCC;
     }
@@ -6421,7 +6487,74 @@ U32 sc_caller_update_proc(U32 ulAction, U32 ulCallerID)
     return DOS_SUCC;
 }
 
+U32 sc_caller_get_use_times(S8 *szCallerNum)
+{
+    HASH_NODE_S *pstHashNode = NULL;
+    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    U32  ulHashIndex    = U32_BUTT;
+    BOOL bFound         = DOS_FALSE;
+    U32  ulTimes        = 0;
 
+    if (DOS_ADDR_INVALID(szCallerNum))
+    {
+        DOS_ASSERT(0);
+        return 0;
+    }
+
+    pthread_mutex_lock(&g_mutexHashCaller);
+    HASH_Scan_Table(g_pstHashCaller, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCaller, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstCaller = (SC_CALLER_QUERY_NODE_ST *)pstHashNode->pHandle;
+            if (0 == dos_strcmp(szCallerNum, pstCaller->szNumber))
+            {
+                ulTimes = pstCaller->ulTimes;
+                bFound = DOS_TRUE;
+                break;
+            }
+        }
+        if (DOS_TRUE == bFound)
+        {
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_mutexHashCaller);
+
+    return ulTimes;
+}
+
+void sc_caller_set_times_zero()
+{
+    HASH_NODE_S *pstHashNode = NULL;
+    SC_CALLER_QUERY_NODE_ST *pstCaller = NULL;
+    U32  ulHashIndex    = U32_BUTT;
+
+    pthread_mutex_lock(&g_mutexHashCaller);
+    HASH_Scan_Table(g_pstHashCaller, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCaller, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+
+            pstCaller = (SC_CALLER_QUERY_NODE_ST *)pstHashNode->pHandle;
+
+            pstCaller->ulTimes = 0;
+        }
+
+    }
+    pthread_mutex_unlock(&g_mutexHashCaller);
+}
 
 VOID sc_eix_dev_init(SC_TT_NODE_ST *pstTTNumber)
 {

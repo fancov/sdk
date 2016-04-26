@@ -215,8 +215,8 @@ const S8* g_pszTransformNumSelect[] =
 
 const S8* g_pszCallerType[] =
 {
-    "CALLER",
-    "DID"
+    "DID",
+    "CALLER"
 };
 
 const S8* g_pszSCTrunkStateType[] =

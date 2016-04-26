@@ -91,7 +91,8 @@ U32  sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcTyp
         sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "%s", "Find Setting From Agent Group.");
         /* 根据坐席获取坐席组id */
         pstAgent = sc_agent_get_by_id(ulSrcID);
-        if (DOS_ADDR_INVALID(pstAgent) || DOS_ADDR_INVALID(pstAgent->pstAgentInfo))
+        if (DOS_ADDR_VALID(pstAgent)
+            && DOS_ADDR_VALID(pstAgent->pstAgentInfo))
         {
             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Get Agent By ID SUCC.(AgentID:%u)", ulSrcID);
             /* 查找有效groupid */

@@ -218,7 +218,93 @@ U32 sc_preview_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode
     pstCalleeLegCB = sc_lcb_get(pstSCB->stAutoPreview.ulCalleeLegNo);
     if (DOS_ADDR_INVALID(pstCalleeLegCB))
     {
-        return DOS_FAIL;
+        pstCallingLegCB = sc_lcb_get(pstSCB->stAutoPreview.ulCallingLegNo);
+        if (DOS_ADDR_INVALID(pstCallingLegCB))
+        {
+            return DOS_FAIL;
+        }
+
+        /* 坐席振铃超时 */
+        pstCallResult = dos_dmem_alloc(sizeof(SC_DB_MSG_CALL_RESULT_ST));
+        if (DOS_ADDR_INVALID(pstCallResult))
+        {
+            DOS_ASSERT(0);
+
+            return DOS_FAIL;
+        }
+
+        sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Analysis call result for task: %u, SIP Code:%u", pstSCB->stAutoCall.ulTaskID, ulSIPRspCode);
+
+        dos_memzero(pstCallResult, sizeof(SC_DB_MSG_CALL_RESULT_ST));
+        pstCallResult->ulCustomerID = pstSCB->ulCustomerID; /* 客户ID,要求全数字,不超过10位,最高位小于4 */
+
+        /* 坐席ID,要求全数字,不超过10位,最高位小于4 */
+        if (U32_BUTT != pstSCB->stAutoPreview.ulAgentID)
+        {
+            pstCallResult->ulAgentID = pstSCB->stAutoPreview.ulAgentID;
+        }
+        else
+        {
+            pstCallResult->ulAgentID = 0;
+        }
+        pstCallResult->ulTaskID = pstSCB->stAutoPreview.ulTaskID;       /* 任务ID,要求全数字,不超过10位,最高位小于4 */
+
+        pstAgentCall = sc_agent_get_by_id(pstSCB->stAutoPreview.ulAgentID);
+        if (DOS_ADDR_VALID(pstAgentCall)
+            && DOS_ADDR_VALID(pstAgentCall->pstAgentInfo))
+        {
+            dos_snprintf(pstCallResult->szAgentNum, sizeof(pstCallResult->szAgentNum), "%s", pstAgentCall->pstAgentInfo->szEmpNo);
+        }
+
+        /* 主叫号码 */
+        if ('\0' != pstCallingLegCB->stCall.stNumInfo.szOriginalCalling[0])
+        {
+            dos_snprintf(pstCallResult->szCaller, sizeof(pstCallResult->szCaller), "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+        }
+
+        /* 被叫号码 */
+        if ('\0' != pstCallingLegCB->stCall.stNumInfo.szOriginalCallee[0])
+        {
+            dos_snprintf(pstCallResult->szCallee, sizeof(pstCallResult->szCallee), "%s", pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+        }
+
+        /* 接续时长:从发起呼叫到收到振铃 */
+        pstCallResult->ulPDDLen = pstCallingLegCB->stCall.stTimeInfo.ulRingTime - pstCallingLegCB->stCall.stTimeInfo.ulStartTime;
+        pstCallResult->ulStartTime = pstCallingLegCB->stCall.stTimeInfo.ulStartTime;
+        pstCallResult->ulRingTime = pstCallingLegCB->stCall.stTimeInfo.ulRingTime;                  /* 振铃时长,单位:秒 */
+        pstCallResult->ulAnswerTimeStamp = pstCallingLegCB->stCall.stTimeInfo.ulAnswerTime;         /* 应答时间戳 */
+        pstCallResult->ulFirstDTMFTime = pstCallingLegCB->stCall.stTimeInfo.ulDTMFStartTime;        /* 第一个二次拨号时间,单位:秒 */
+        pstCallResult->ulIVRFinishTime = pstCallingLegCB->stCall.stTimeInfo.ulIVREndTime;           /* IVR放音完成时间,单位:秒 */
+
+        /* 呼叫时长,单位:秒 */
+        pstCallResult->ulTimeLen = 0;
+
+        if (pstSCB->stIncomingQueue.ulEnqueuTime != 0)
+        {
+            if (pstSCB->stIncomingQueue.ulDequeuTime != 0)
+            {
+                pstCallResult->ulWaitAgentTime = pstSCB->stIncomingQueue.ulDequeuTime - pstSCB->stIncomingQueue.ulEnqueuTime;
+            }
+            else
+            {
+                pstCallResult->ulWaitAgentTime = time(NULL) - pstSCB->stIncomingQueue.ulEnqueuTime;
+            }
+        }
+
+        pstCallResult->ulHoldCnt = pstSCB->stHold.ulHoldCount;                  /* 保持次数 */
+        //pstCallResult->ulHoldTimeLen = pstSCB->usHoldTotalTime;              /* 保持总时长,单位:秒 */
+        //pstCallResult->usTerminateCause = pstSCB->usTerminationCause;           /* 终止原因 */
+        if (ulLegNo == pstSCB->stAutoPreview.ulCallingLegNo)
+        {
+            pstCallResult->ucReleasePart = SC_CALLING;
+        }
+        else
+        {
+            pstCallResult->ucReleasePart = SC_CALLEE;
+        }
+
+        pstCallResult->ulResult = CC_RST_AGENT_NO_ANSER;
+        goto proc_finished;
     }
 
     pstCallResult = dos_dmem_alloc(sizeof(SC_DB_MSG_CALL_RESULT_ST));
@@ -372,8 +458,14 @@ U32 sc_preview_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode
                 break;
 
             case CC_ERR_SIP_BUSY_HERE:
-                pstCallResult->ulAnswerTimeStamp = pstCallResult->ulStartTime;
-                pstCallResult->ulResult = CC_RST_BUSY;
+                if (pstCallResult->ucReleasePart == SC_CALLING)
+                {
+                    pstCallResult->ulResult = CC_RST_AGENT_NO_ANSER;
+                }
+                else
+                {
+                    pstCallResult->ulResult = CC_RST_BUSY;
+                }
                 break;
 
             case CC_ERR_SIP_REQUEST_TIMEOUT:

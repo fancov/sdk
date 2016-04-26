@@ -565,8 +565,9 @@ U32 sc_caller_group_load(U32 ulIndex);
 U32 sc_caller_load(U32 ulIndex);
 U32 sc_caller_update_proc(U32 ulAction, U32 ulCallerID);
 U32 sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, S8 *pszNumber, U32 ulLen);
+U32 sc_caller_get_use_times(S8 *szCallerNum);
+void sc_caller_set_times_zero();
 U32 sc_caller_id_get_by_num(S8 *szCallerNum);
-
 
 U32 sc_eix_dev_load(U32 ulIndex);
 U32 sc_eix_dev_get_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength);
@@ -584,9 +585,6 @@ U32 sc_sw_keymap_proc(U32 ulAction, U32 ulID);
 U32 sc_sw_period_proc(U32 ulAction, U32 ulPeriodID);
 U32 sc_cor_switchboard_proc(U32 ulAction, U32 ulSwitchboardID);
 
-
-
-
 U32 sc_sip_account_load(U32 ulIndex);
 U32 sc_sip_account_get_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUserID, U32 ulLength);
 U32 sc_sip_account_update_proc(U32 ulAction, U32 ulSipID, U32 ulCustomerID);
@@ -601,6 +599,8 @@ SC_USER_ID_NODE_ST * sc_sip_node_get_by_extension(U32 ulCustomID, S8 *szUserID);
 U32 sc_did_load(U32 ulIndex);
 U32 sc_did_update_proc(U32 ulAction, U32 ulDidID);
 U32 sc_did_get_custom(S8 *pszNum);
+U32 sc_did_get_use_times(S8 *pszDidNum);
+void sc_did_set_times_zero();
 
 U32 sc_customer_load(U32 ulIndex);
 U32 sc_customer_update_proc(U32 ulAction, U32 ulCustomerID);
