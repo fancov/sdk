@@ -8055,7 +8055,6 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     S32                         lRes                = DOS_SUCC;
     U32                         ulErrCode           = CC_ERR_NO_REASON;
     SC_LEG_CB                   *pstCallingCB       = NULL;
-    SC_LEG_CB                   *pstHungupLeg       = NULL;
     SC_MSG_CMD_RECORD_ST        stRecordRsp;
 
     pstErrReport = (SC_MSG_EVT_ERR_REPORT_ST *)pstMsg;
@@ -8113,6 +8112,10 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             {
                 pstCallingCB->stCall.stTimeInfo.ulByeTime = pstCallingCB->stCall.stTimeInfo.ulStartTime;
                 sc_task_call_result(pstSCB, pstCallingCB->ulCBNo, ulErrCode, pstSCB->stAutoCall.stSCBTag.usStatus);
+
+                pstCallingCB->stCall.ulCause = ulErrCode;
+                sc_send_billing_stop2bs(pstSCB, pstCallingCB, NULL, SC_CALLING);
+
                 sc_lcb_free(pstCallingCB);
             }
             sc_scb_free(pstSCB);
@@ -8122,17 +8125,15 @@ U32 sc_auto_call_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_AUTO_CALL_PROC:
             /* ºô½Ð½á¹û */
             sc_task_concurrency_minus(pstSCB->stAutoCall.ulTcbID);
-            pstHungupLeg = sc_lcb_get(pstErrReport->ulLegNo);
-            if (DOS_ADDR_VALID(pstHungupLeg))
-            {
-                sc_task_call_result(pstSCB, pstHungupLeg->ulCBNo, ulErrCode, pstSCB->stAutoCall.stSCBTag.usStatus);
-            }
-
             pstCallingCB = sc_lcb_get(pstSCB->stAutoCall.ulCallingLegNo);
             if (DOS_ADDR_VALID(pstCallingCB))
             {
                 pstCallingCB->stCall.stTimeInfo.ulByeTime = pstCallingCB->stCall.stTimeInfo.ulStartTime;
                 sc_task_call_result(pstSCB, pstCallingCB->ulCBNo, ulErrCode, pstSCB->stAutoCall.stSCBTag.usStatus);
+
+                pstCallingCB->stCall.ulCause = ulErrCode;
+                sc_send_billing_stop2bs(pstSCB, pstCallingCB, NULL, SC_CALLING);
+
                 sc_lcb_free(pstCallingCB);
             }
             sc_scb_free(pstSCB);
