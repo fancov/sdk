@@ -1616,6 +1616,60 @@ end:
     return pstAgentNode;
 }
 
+/*
+SC_AGENT_NODE_ST *sc_agent_select_auto(SC_AGENT_GRP_NODE_ST *pstGroupListNode, S8 *szCallerNum, S8 *szCalleeNum)
+{
+    SC_AGENT_NODE_ST      *pstAgentNode   = NULL;
+    HASH_NODE_S           *pstHashNode    = NULL;
+//    DLL_NODE_S            *pstDLLNode     = NULL;
+    SC_CALLER_SETTING_ST  *pstSetting     = NULL;
+    U32                   ulHashIndex     = U32_BUTT;
+    U32                   ulDstID         = U32_BUTT;
+
+
+    ulDstID = sc_did_id_get_by_num(szCalleeNum);
+    if (ulDstID == U32_BUTT)
+    {
+        ulDstID = sc_caller_group_get_by_caller(ulDstID);
+    }
+    if (ulDstID == U32_BUTT)
+    {
+        ulDstID = sc_caller_id_get_by_num(szCalleeNum);
+    }
+    if (ulDstID == U32_BUTT)
+    {
+
+    }
+
+    HASH_Scan_Table(g_pstHashCallerSetting, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCallerSetting, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstSetting = (SC_CALLER_SETTING_ST *)pstHashNode->pHandle;
+
+            if (SC_SRC_CALLER_TYPE_AGENTGRP == pstSetting->ulSrcType
+                || SC_SRC_CALLER_TYPE_ALL == pstSetting->ulSrcType)
+            {
+                continue;
+            }
+
+            if (ulDstID == pstSetting->ulDstID)
+            {
+
+            }
+
+        }
+
+    }
+    return pstAgentNode;
+
+}
+*/
 
 SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID)
 {
@@ -1648,7 +1702,7 @@ SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID)
     return pstAgentNode;
 }
 
-SC_AGENT_NODE_ST *sc_agent_select_by_grpid(U32 ulGroupID, S8 *szCallerNum)
+SC_AGENT_NODE_ST *sc_agent_select_by_grpid(U32 ulGroupID, S8 *szCallerNum, S8 *szCalleeNum)
 {
     SC_AGENT_NODE_ST     *pstAgentNode      = NULL;
     SC_AGENT_GRP_NODE_ST *pstGroupListNode  = NULL;
@@ -1698,6 +1752,9 @@ SC_AGENT_NODE_ST *sc_agent_select_by_grpid(U32 ulGroupID, S8 *szCallerNum)
             break;
         case SC_ACD_POLICY_MEMORY:
             pstAgentNode = sc_agent_select_by_caller(pstGroupListNode, szCallerNum);
+            break;
+        case SC_ACD_POLICY_AUTO:
+//            pstAgentNode = sc_agent_select_auto(pstGroupListNode, szCallerNum, szCalleeNum);
             break;
         default:
             break;

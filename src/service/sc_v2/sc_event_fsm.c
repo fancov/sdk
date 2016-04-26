@@ -848,7 +848,8 @@ U32 sc_ringing_timeout_proc(SC_SRV_CB *pstSCB)
     pstNewSCB->stIncomingQueue.ulQueueType = SC_SW_FORWARD_AGENT_GROUP;
     pstNewSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
     pstNewSCB->stAutoCall.ulReCallAgent++;
-    if (sc_cwq_add_call(pstNewSCB, sc_task_get_agent_queue(pstNewSCB->stAutoCall.ulTcbID), pstCallingLegCB->stCall.stNumInfo.szRealCallee, pstNewSCB->stIncomingQueue.ulQueueType, DOS_TRUE) != DOS_SUCC)
+    if (sc_cwq_add_call(pstNewSCB, sc_task_get_agent_queue(pstNewSCB->stAutoCall.ulTcbID), pstCallingLegCB->stCall.stNumInfo.szRealCallee,
+        pstCallingLegCB->stCall.stNumInfo.szRealCalling, pstNewSCB->stIncomingQueue.ulQueueType, DOS_TRUE) != DOS_SUCC)
     {
         /* 加入队列失败 */
         DOS_ASSERT(0);
@@ -2236,7 +2237,8 @@ U32 sc_call_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     pstNewSCB->stIncomingQueue.ulQueueType = SC_SW_FORWARD_AGENT_GROUP;
     pstNewSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
     pstNewSCB->stCall.ulReCallAgent++;
-    if (sc_cwq_add_call(pstNewSCB, pstNewSCB->stCall.ulAgentGrpID, pstCallingLegCB->stCall.stNumInfo.szRealCallee, pstNewSCB->stIncomingQueue.ulQueueType, DOS_TRUE) != DOS_SUCC)
+    if (sc_cwq_add_call(pstNewSCB, pstNewSCB->stCall.ulAgentGrpID, pstCallingLegCB->stCall.stNumInfo.szRealCallee,
+        pstCallingLegCB->stCall.stNumInfo.szRealCalling, pstNewSCB->stIncomingQueue.ulQueueType, DOS_TRUE) != DOS_SUCC)
     {
         /* 加入队列失败 */
         DOS_ASSERT(0);
@@ -4349,7 +4351,7 @@ U32 sc_switchboard_play_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                             pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
                             pstSCB->stIncomingQueue.ulQueueType = ulForwardType;
                             if (sc_cwq_add_call(pstSCB, ulForwardID, pstCallingLCB->stCall.stNumInfo.szRealCalling,
-                                ulForwardType, DOS_FALSE) != DOS_SUCC)
+                                pstCallingLCB->stCall.stNumInfo.szRealCallee, ulForwardType, DOS_FALSE) != DOS_SUCC)
                             {
                                  /* 加入队列失败 */
                                 DOS_ASSERT(0);
@@ -4414,7 +4416,7 @@ U32 sc_switchboard_play_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                         pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
                         pstSCB->stIncomingQueue.ulQueueType = ulForwardType;
                         if (sc_cwq_add_call(pstSCB, ulForwardID, pstCallingLCB->stCall.stNumInfo.szRealCalling,
-                            ulForwardType, DOS_FALSE) != DOS_SUCC)
+                            pstCallingLCB->stCall.stNumInfo.szRealCallee, ulForwardType, DOS_FALSE) != DOS_SUCC)
                         {
                              /* 加入队列失败 */
                             DOS_ASSERT(0);
@@ -4774,8 +4776,8 @@ U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                              pstSCB->stIncomingQueue.ulLegNo = pstSCB->stCorSwitchboard.ulCallingLegNo;
                              pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
                              pstSCB->stIncomingQueue.ulQueueType = ulForwardType;
-                             if (sc_cwq_add_call(pstSCB, ulForwardID, pstCallingLegCB->stCall.stNumInfo.szCallee,
-                                 pstSCB->stIncomingQueue.ulQueueType, ulForwardType) != DOS_SUCC)
+                             if (sc_cwq_add_call(pstSCB, ulForwardID, pstCallingLegCB->stCall.stNumInfo.szCalling,
+                                 pstCallingLegCB->stCall.stNumInfo.szCalling, pstSCB->stIncomingQueue.ulQueueType, ulForwardType) != DOS_SUCC)
                              {
                                  /* 加入队列失败 */
                                  DOS_ASSERT(0);
@@ -4842,8 +4844,8 @@ U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                          pstSCB->stIncomingQueue.ulLegNo = pstSCB->stCorSwitchboard.ulCallingLegNo;
                          pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
                          pstSCB->stIncomingQueue.ulQueueType = ulForwardType;
-                         if (sc_cwq_add_call(pstSCB, ulForwardID, pstCallingLegCB->stCall.stNumInfo.szCallee,
-                             pstSCB->stIncomingQueue.ulQueueType, ulForwardType) != DOS_SUCC)
+                         if (sc_cwq_add_call(pstSCB, ulForwardID, pstCallingLegCB->stCall.stNumInfo.szCalling,
+                             pstCallingLegCB->stCall.stNumInfo.szCallee, pstSCB->stIncomingQueue.ulQueueType, ulForwardType) != DOS_SUCC)
                          {
                              /* 加入队列失败 */
                              DOS_ASSERT(0);
@@ -4917,7 +4919,7 @@ U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                             pstSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
                             pstSCB->stIncomingQueue.ulLegNo = pstSCB->stCorSwitchboard.ulCallingLegNo;
                             pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
-                            if (sc_cwq_add_call(pstSCB, ulForwardID,
+                            if (sc_cwq_add_call(pstSCB, ulForwardID, pstCallingLegCB->stCall.stNumInfo.szCalling,
                                 pstCallingLegCB->stCall.stNumInfo.szCallee, ulForwardType, ulForwardType) != DOS_SUCC)
                             {
                                 /* 加入队列失败 */
@@ -6874,7 +6876,8 @@ U32 sc_auto_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstSCB->stIncomingQueue.ulLegNo = pstSCB->stAutoCall.ulCallingLegNo;
                     pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
                     pstSCB->stIncomingQueue.ulQueueType = SC_SW_FORWARD_AGENT_GROUP;
-                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szRealCallee, pstSCB->stIncomingQueue.ulQueueType, DOS_FALSE) != DOS_SUCC)
+                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szRealCallee,
+                        pstLCB->stCall.stNumInfo.szRealCalling, pstSCB->stIncomingQueue.ulQueueType, DOS_FALSE) != DOS_SUCC)
                     {
                         /* 加入队列失败 */
                         DOS_ASSERT(0);
@@ -7023,7 +7026,8 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstSCB->stIncomingQueue.ulLegNo = pstSCB->stAutoCall.ulCallingLegNo;
                     pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
                     pstSCB->stIncomingQueue.ulQueueType = SC_SW_FORWARD_AGENT_GROUP;
-                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szRealCallee, pstSCB->stIncomingQueue.ulQueueType, DOS_FALSE) != DOS_SUCC)
+                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szRealCallee,
+                        pstLCB->stCall.stNumInfo.szRealCalling, pstSCB->stIncomingQueue.ulQueueType, DOS_FALSE) != DOS_SUCC)
                     {
                         /* 加入队列失败 */
                         DOS_ASSERT(0);
@@ -7201,7 +7205,8 @@ U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     pstSCB->stIncomingQueue.ulLegNo = pstSCB->stAutoCall.ulCallingLegNo;
                     pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
                     pstSCB->stIncomingQueue.ulQueueType = SC_SW_FORWARD_AGENT_GROUP;
-                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szCallee, pstSCB->stIncomingQueue.ulQueueType, DOS_FALSE) != DOS_SUCC)
+                    if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoCall.ulTcbID), pstLCB->stCall.stNumInfo.szCallee,
+                        pstLCB->stCall.stNumInfo.szCalling, pstSCB->stIncomingQueue.ulQueueType, DOS_FALSE) != DOS_SUCC)
                     {
                         /* 加入队列失败 */
                         DOS_ASSERT(0);
@@ -12713,7 +12718,8 @@ U32 sc_auto_preview_auth_rsp(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             pstSCB->stIncomingQueue.ulLegNo = pstSCB->stAutoPreview.ulCalleeLegNo;
             pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
             pstSCB->stIncomingQueue.ulQueueType = SC_SW_FORWARD_AGENT_GROUP;
-            if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoPreview.ulTcbID), pstLegCB->stCall.stNumInfo.szCallee, pstSCB->stIncomingQueue.ulQueueType, DOS_FALSE) != DOS_SUCC)
+            if (sc_cwq_add_call(pstSCB, sc_task_get_agent_queue(pstSCB->stAutoPreview.ulTcbID), pstLegCB->stCall.stNumInfo.szCallee,
+                pstLegCB->stCall.stNumInfo.szCalling, pstSCB->stIncomingQueue.ulQueueType, DOS_FALSE) != DOS_SUCC)
             {
                 /* 加入队列失败 */
                 DOS_ASSERT(0);

@@ -178,7 +178,7 @@ U32 sc_sw_agentgrp_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode
     usInterErr = SC_LEAVE_CALL_QUE_SUCC;
 
     /* 获取一个坐席 */
-    pstAgentNode = sc_agent_select_by_grpid(pstCWQNode->ulID, pstCallNode->szCaller);
+    pstAgentNode = sc_agent_select_by_grpid(pstCWQNode->ulID, pstCallNode->szCaller, pstCallNode->szCallee);
     if (DOS_ADDR_INVALID(pstAgentNode))
     {
         ulTimeNow = time(0);
@@ -282,7 +282,7 @@ static S32 sc_cwq_find_dll_node(VOID *pParam, DLL_NODE_S *pstNode)
  * !!! 如果ulAgentGrpID所指定的grp不存在，会重新创建
  * !!! 该函数任务 0 和 U32_BUTT 为非法ID
  */
-U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulID, S8 *szCaller, U8 ucForwardType, BOOL bIsAddHead)
+U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulID, S8 *szCaller, S8 *szCallee, U8 ucForwardType, BOOL bIsAddHead)
 {
     SC_CWQ_NODE_ST              *pstCWQNode     = NULL;
     DLL_NODE_S                  *pstDLLNode     = NULL;
@@ -291,7 +291,7 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulID, S8 *szCaller, U8 ucForwardType,
     DLL_S                       *pstCWQMngt     = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB)
-        || (DOS_ADDR_INVALID(szCaller) && SC_SW_FORWARD_AGENT_GROUP == ucForwardType)
+        || (DOS_ADDR_INVALID(szCaller) || DOS_ADDR_INVALID(szCallee))
         || ucForwardType >= SC_SW_FORWARD_BUTT)
     {
         DOS_ASSERT(0);
@@ -383,6 +383,8 @@ U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulID, S8 *szCaller, U8 ucForwardType,
     pstCallNode->pstSCB = pstSCB;
     dos_strncpy(pstCallNode->szCaller, szCaller, SC_NUM_LENGTH-1);
     pstCallNode->szCaller[SC_NUM_LENGTH-1] = '\0';
+    dos_strncpy(pstCallNode->szCaller, szCallee, SC_NUM_LENGTH-1);
+    pstCallNode->szCallee[SC_NUM_LENGTH-1] = '\0';
     pstCallNode->ulForwardID = ulID;
 
     pstDLLNode->pHandle = pstCallNode;
@@ -489,7 +491,7 @@ VOID *sc_cwq_runtime(VOID *ptr)
     //SC_INCOMING_CALL_NODE_ST *pstCallNode   = NULL;
     DLL_S                   *pstCWQMngt     = NULL;
     U32                     ulIndex         = 0;
-    S32                     lret;
+//    S32                     lret;
 
     g_blCWQWaitingExit = DOS_FALSE;
     g_blCWQRunning  = DOS_TRUE;

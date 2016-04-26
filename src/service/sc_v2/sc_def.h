@@ -333,6 +333,7 @@ typedef enum tagSCACDPolicy{
     SC_ACD_POLICY_RECENT,                 /* 最近呼叫 */
     SC_ACD_POLICY_GROUP,                  /* 全部 */
     SC_ACD_POLICY_MEMORY,                 /* 记忆呼叫 */
+    SC_ACD_POLICY_AUTO,                    /* 智能选择*/
 
     SC_ACD_POLICY_BUTT
 }SC_ACD_POLICY_EN;
@@ -638,15 +639,15 @@ typedef struct tagACDMemoryNode{
 
 typedef struct tagACDQueryMngtNode
 {
-    U16       usID;                                /* 当前坐席组编号 */
-    U16       usCount;                             /* 当前坐席组坐席数量 */
+    U16       usID;                                /* 当前班组编号 */
+    U16       usCount;                             /* 当前班组坐席数量 */
     U16       usLastUsedAgent;                     /* 上一次接电话的坐席编号 */
     U8        ucACDPolicy;                         /* 组呼叫分配策略 */
     U8        ucWaitingDelete;                     /* 是否等待删除 */
 
     U32       ulCustomID;                          /* 当前坐席组所属 */
-    U32       ulGroupID;                           /* 坐席组在数据库中的编号 */
-    S8        szGroupName[SC_ACD_GROUP_NAME_LEN];  /* 坐席组名 */
+    U32       ulGroupID;                           /* 班组在数据库中的编号 */
+    S8        szGroupName[SC_ACD_GROUP_NAME_LEN];  /* 班组名 */
     S8        szLastEmpNo[SC_NUM_LENGTH];   /* 最后一个接电话的坐席的工号 */
 
     DLL_S     stAgentList;                         /* 坐席hash表 */
@@ -2302,6 +2303,7 @@ typedef struct tagSCInconmingCallNode
     U32         ulForwardID;
     S8          szForwardNum[16];
     S8          szCaller[SC_NUM_LENGTH];
+    S8          szCallee[SC_NUM_LENGTH];
 }SC_INCOMING_CALL_NODE_ST;
 
 typedef enum tagAccessCodeType{
@@ -2437,7 +2439,7 @@ SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID);
 SC_AGENT_NODE_ST *sc_agent_get_by_emp_num(U32 ulCustomID, S8 *pszEmpNum);
 SC_AGENT_NODE_ST *sc_agent_get_by_sip_acc(S8 *szUserID);
 SC_AGENT_NODE_ST *sc_agent_get_by_tt_num(S8 *szTTNumber);
-SC_AGENT_NODE_ST *sc_agent_select_by_grpid(U32 ulGroupID, S8 *szCallerNum);
+SC_AGENT_NODE_ST *sc_agent_select_by_grpid(U32 ulGroupID, S8 *szCallerNum, S8 *szCalleeNum);
 U32 sc_agent_hash_func4grp(U32 ulGrpID, U32 *pulHashIndex);
 S32 sc_agent_group_hash_find(VOID *pSymName, HASH_NODE_S *pNode);
 U32 sc_agent_group_stat_by_id(U32 ulGroupID, U32 *pulTotal, U32 *pulWorking, U32 *pulIdel, U32 *pulBusy);
@@ -2646,9 +2648,11 @@ U32 sc_demo_preview(U32 ulCustomerID, S8 *pszCallee, S8 *pszAgentNum, U32 ulAgen
 
 
 U32 sc_did_bind_info_get(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID);
+U32 sc_did_id_get_by_num(S8 *szDIDNum);
+
 U32 sc_sip_account_get_by_id(U32 ulSipID, S8 *pszUserID, U32 ulLength);
 U32 sc_log_digest_print(const S8 *szTraceStr);
-U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller, U8 ucForwardType, BOOL BIsAddHead);
+U32 sc_cwq_add_call(SC_SRV_CB *pstSCB, U32 ulAgentGrpID, S8 *szCaller, S8 *szCallee, U8 ucForwardType, BOOL BIsAddHead);
 U32 sc_cwq_del_call(SC_SRV_CB *pstSCB, U32 ulType);
 
 U32 sc_access_balance_enquiry(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB);

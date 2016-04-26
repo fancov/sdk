@@ -565,6 +565,8 @@ U32 sc_caller_group_load(U32 ulIndex);
 U32 sc_caller_load(U32 ulIndex);
 U32 sc_caller_update_proc(U32 ulAction, U32 ulCallerID);
 U32 sc_caller_setting_select_number(U32 ulCustomerID, U32 ulSrcID, U32 ulSrcType, S8 *pszNumber, U32 ulLen);
+U32 sc_caller_id_get_by_num(S8 *szCallerNum);
+
 
 U32 sc_eix_dev_load(U32 ulIndex);
 U32 sc_eix_dev_get_by_tt(S8 *pszTTNumber, S8 *pszEIX, U32 ulLength);

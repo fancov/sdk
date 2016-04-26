@@ -1257,6 +1257,27 @@ U32 sc_did_bind_info_get(S8 *pszDidNum, U32 *pulBindType, U32 *pulBindID)
     return DOS_SUCC;
 }
 
+U32 sc_did_id_get_by_num(S8 *szDIDNum)
+{
+    U32     ulDIDID = U32_BUTT;
+    HASH_NODE_S        *pstHashNode      = NULL;
+    U32                ulHashIndex       = 0;
+    SC_DID_NODE_ST     *pstDIDNumNode    = NULL;
+
+    pthread_mutex_lock(&g_mutexHashDIDNum);
+    ulHashIndex = sc_string_hash_func(szDIDNum, SC_DID_HASH_SIZE);
+    pstHashNode = hash_find_node(g_pstHashDIDNum, ulHashIndex, szDIDNum, sc_did_hash_find);
+    if (DOS_ADDR_VALID(pstHashNode))
+    {
+        pstDIDNumNode = pstHashNode->pHandle;
+        ulDIDID = pstDIDNumNode->ulDIDID;
+    }
+
+    pthread_mutex_unlock(&g_mutexHashDIDNum);
+
+    return ulDIDID;
+}
+
 
 VOID sc_customer_init(SC_CUSTOMER_NODE_ST *pstCustomer)
 {
@@ -5708,6 +5729,46 @@ U32 sc_caller_load(U32 ulIndex)
     return DOS_SUCC;
 }
 
+U32 sc_caller_id_get_by_num(S8 *szCallerNum)
+{
+    HASH_NODE_S              *pstHashNode   =   NULL;
+    SC_CALLER_QUERY_NODE_ST  *pstCaller     =   NULL;
+    U32                      ulHashIndex    =   U32_BUTT;
+    U32                      ulFlag         =   0;
+
+    pthread_mutex_lock(&g_mutexHashCaller);
+    HASH_Scan_Table(g_pstHashCaller, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCaller, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstCaller = (SC_CALLER_QUERY_NODE_ST *)pstHashNode->pHandle;
+            if (0 == dos_strcmp(pstCaller->szNumber, szCallerNum))
+            {
+                ulFlag = 1;
+                break;
+            }
+
+        }
+        if (ulFlag)
+        {
+            break;
+        }
+    }
+    pthread_mutex_unlock(&g_mutexHashCaller);
+
+    if (ulFlag)
+    {
+        return  pstCaller->ulIndexInDB;
+    }
+
+    return U32_BUTT;
+}
+
 
 U32 sc_caller_delete(U32 ulCallerID)
 {
@@ -6279,6 +6340,61 @@ U32 sc_caller_group_update_proc(U32 ulAction, U32 ulCallerGrpID)
 
     return DOS_SUCC;
 }
+
+
+/*
+U32 sc_caller_group_get_by_caller(U32 ulCallerID)
+{
+    SC_CALLER_GRP_NODE_ST    *pstCallerGrp    = NULL;
+    HASH_NODE_S              *pstHashNode     = NULL;
+    SC_CALLER_CACHE_NODE_ST  *pstCallerCache  = NULL;
+    DLL_NODE_S *             *pstListNode     = NULL;
+    U32                      ulHashIndex      = U32_BUTT;
+
+    pthread_mutex_lock(&g_mutexHashCallerGrp);
+
+    HASH_Scan_Table(g_pstHashCallerGrp, ulHashIndex)
+    {
+        HASH_Scan_Bucket(g_pstHashCallerGrp, ulHashIndex, pstHashNode, HASH_NODE_S *)
+        {
+            if (DOS_ADDR_INVALID(pstHashNode)
+                || DOS_ADDR_INVALID(pstHashNode->pHandle))
+            {
+                continue;
+            }
+            pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
+
+            pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
+            DLL_Scan(&pstCallerGrp->stCallerList, pstListNode, DLL_NODE_S *)
+            {
+                if (DOS_ADDR_INVALID(pstListNode)
+                    || DOS_ADDR_INVALID(pstListNode->pHandle))
+                {
+                    continue;
+                }
+                pstCallerCache = (SC_CALLER_CACHE_NODE_ST *)pstListNode->pHandle;
+                if (SC_NUMBER_TYPE_CFG == pstCallerCache->ulType)
+                {
+                    if (ulCallerID == pstCallerCache->stCallerData.pstCaller->ulIndexInDB)
+                    {
+                        pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+                        pthread_mutex_unlock(&g_mutexHashCallerGrp);
+                        return pstCallerGrp->ulID;
+                    }
+                }
+                else
+                {
+                    continue;
+                }
+
+            }
+            pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
+        }
+    }
+    pthread_mutex_unlock(&g_mutexHashCallerGrp);
+    return U32_BUTT;
+}
+*/
 
 U32 sc_caller_update_proc(U32 ulAction, U32 ulCallerID)
 {
