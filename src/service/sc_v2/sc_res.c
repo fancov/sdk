@@ -4744,6 +4744,17 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 
         return DOS_FAIL;
     }
 
+    if (pstLCB->stCall.stNumInfo.szRealCallee[0] == '\0')
+    {
+        dos_snprintf(pstLCB->stCall.stNumInfo.szRealCallee, sizeof(pstLCB->stCall.stNumInfo.szRealCallee), pstLCB->stCall.stNumInfo.szOriginalCallee);
+    }
+
+    if (pstLCB->stCall.stNumInfo.szRealCalling[0] == '\0')
+    {
+        dos_snprintf(pstLCB->stCall.stNumInfo.szRealCalling, sizeof(pstLCB->stCall.stNumInfo.szRealCalling), pstLCB->stCall.stNumInfo.szOriginalCalling);
+    }
+
+
     sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_RES), "Search number transfer rule, timing is : %d, number select : %d"
                                 , ulTiming, ulNumSelect);
 
@@ -4783,7 +4794,7 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 
         /* ÅÐ¶ÏÖ÷½ÐºÅÂëÇ°×º */
         if ('\0' != pstNumTransformEntry->szCallerPrefix[0])
         {
-            if (0 != dos_strnicmp(pstNumTransformEntry->szCallerPrefix, pstLCB->stCall.stNumInfo.szOriginalCalling, dos_strlen(pstNumTransformEntry->szCallerPrefix)))
+            if (0 != dos_strnicmp(pstNumTransformEntry->szCallerPrefix, pstLCB->stCall.stNumInfo.szRealCalling, dos_strlen(pstNumTransformEntry->szCallerPrefix)))
             {
                 continue;
             }
@@ -4792,7 +4803,7 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 
         /* ÅÐ¶Ï±»½ÐºÅÂëÇ°×º */
         if ('\0' != pstNumTransformEntry->szCalleePrefix[0])
         {
-            if (0 != dos_strnicmp(pstNumTransformEntry->szCalleePrefix, pstLCB->stCall.stNumInfo.szOriginalCallee, dos_strlen(pstNumTransformEntry->szCalleePrefix)))
+            if (0 != dos_strnicmp(pstNumTransformEntry->szCalleePrefix, pstLCB->stCall.stNumInfo.szRealCallee, dos_strlen(pstNumTransformEntry->szCalleePrefix)))
             {
                 continue;
             }
@@ -4889,16 +4900,16 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 
 
         if (SC_NUM_TRANSFORM_SELECT_CALLER == ulNumSelect)
         {
-            if (pstLCB->stCall.stNumInfo.szRealCalling[0] == '\0')
+            if (pstLCB->stCall.stNumInfo.szCalling[0] == '\0')
             {
-                dos_strcpy(pstLCB->stCall.stNumInfo.szRealCalling, pstLCB->stCall.stNumInfo.szOriginalCalling);
+                dos_strcpy(pstLCB->stCall.stNumInfo.szCalling, pstLCB->stCall.stNumInfo.szRealCalling);
             }
         }
         else
         {
-            if (pstLCB->stCall.stNumInfo.szRealCallee[0] == '\0')
+            if (pstLCB->stCall.stNumInfo.szCallee[0] == '\0')
             {
-                dos_strcpy(pstLCB->stCall.stNumInfo.szRealCallee, pstLCB->stCall.stNumInfo.szOriginalCallee);
+                dos_strcpy(pstLCB->stCall.stNumInfo.szCallee, pstLCB->stCall.stNumInfo.szRealCallee);
             }
         }
 
@@ -4910,11 +4921,11 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 
 
     if (SC_NUM_TRANSFORM_SELECT_CALLER == ulNumSelect)
     {
-        dos_strncpy(szNeedTransformNum, pstLCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
+        dos_strncpy(szNeedTransformNum, pstLCB->stCall.stNumInfo.szRealCalling, SC_NUM_LENGTH);
     }
     else
     {
-        dos_strncpy(szNeedTransformNum, pstLCB->stCall.stNumInfo.szOriginalCallee, SC_NUM_LENGTH);
+        dos_strncpy(szNeedTransformNum, pstLCB->stCall.stNumInfo.szRealCallee, SC_NUM_LENGTH);
     }
 
     szNeedTransformNum[SC_NUM_LENGTH - 1] = '\0';
@@ -5062,7 +5073,7 @@ succ:
             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "The number transfer(%d) SUCC, befor : %s ,after : %s", pstNumTransform->ulID, pstLCB->stCall.stNumInfo.szOriginalCalling, szNeedTransformNum);
         }
 
-        dos_strcpy(pstLCB->stCall.stNumInfo.szRealCalling, szNeedTransformNum);
+        dos_strcpy(pstLCB->stCall.stNumInfo.szCalling, szNeedTransformNum);
     }
     else
     {
@@ -5070,7 +5081,7 @@ succ:
         {
             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_RES), "The number transfer(%d) SUCC, befor : %s ,after : %s", pstNumTransform->ulID, pstLCB->stCall.stNumInfo.szOriginalCallee, szNeedTransformNum);
         }
-        dos_strcpy(pstLCB->stCall.stNumInfo.szRealCallee, szNeedTransformNum);
+        dos_strcpy(pstLCB->stCall.stNumInfo.szCallee, szNeedTransformNum);
     }
 
     pthread_mutex_unlock(&g_mutexNumTransformList);
@@ -5085,11 +5096,11 @@ fail:
 
     if (SC_NUM_TRANSFORM_SELECT_CALLER == ulNumSelect)
     {
-        pstLCB->stCall.stNumInfo.szRealCalling[0] = '\0';
+        pstLCB->stCall.stNumInfo.szCalling[0] = '\0';
     }
     else
     {
-        pstLCB->stCall.stNumInfo.szRealCallee[0] = '\0';
+        pstLCB->stCall.stNumInfo.szCallee[0] = '\0';
     }
 
     pthread_mutex_unlock(&g_mutexNumTransformList);
