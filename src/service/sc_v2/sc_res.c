@@ -1320,6 +1320,9 @@ void sc_did_set_times_zero()
 
     pthread_mutex_unlock(&g_mutexHashDIDNum);
 }
+/*
+    根据DID号码找到 DID再数据库中的编号
+*/
 
 U32 sc_did_id_get_by_num(S8 *szDIDNum)
 {
@@ -6407,14 +6410,12 @@ U32 sc_caller_group_update_proc(U32 ulAction, U32 ulCallerGrpID)
     return DOS_SUCC;
 }
 
-
-/*
-U32 sc_caller_group_get_by_caller(U32 ulCallerID)
+U32 sc_caller_group_get_by_caller(S8 *szCalleeNum)
 {
     SC_CALLER_GRP_NODE_ST    *pstCallerGrp    = NULL;
     HASH_NODE_S              *pstHashNode     = NULL;
     SC_CALLER_CACHE_NODE_ST  *pstCallerCache  = NULL;
-    DLL_NODE_S *             *pstListNode     = NULL;
+    DLL_NODE_S               *pstListNode     = NULL;
     U32                      ulHashIndex      = U32_BUTT;
 
     pthread_mutex_lock(&g_mutexHashCallerGrp);
@@ -6431,8 +6432,11 @@ U32 sc_caller_group_get_by_caller(U32 ulCallerID)
             pstCallerGrp = (SC_CALLER_GRP_NODE_ST *)pstHashNode->pHandle;
 
             pthread_mutex_lock(&pstCallerGrp->mutexCallerList);
+
+
             DLL_Scan(&pstCallerGrp->stCallerList, pstListNode, DLL_NODE_S *)
             {
+
                 if (DOS_ADDR_INVALID(pstListNode)
                     || DOS_ADDR_INVALID(pstListNode->pHandle))
                 {
@@ -6441,7 +6445,8 @@ U32 sc_caller_group_get_by_caller(U32 ulCallerID)
                 pstCallerCache = (SC_CALLER_CACHE_NODE_ST *)pstListNode->pHandle;
                 if (SC_NUMBER_TYPE_CFG == pstCallerCache->ulType)
                 {
-                    if (ulCallerID == pstCallerCache->stCallerData.pstCaller->ulIndexInDB)
+                    if ( 0 == dos_strcmp(szCalleeNum, pstCallerCache->stData.pstCaller->szNumber)
+                        || 0 == dos_strcmp(szCalleeNum, pstCallerCache->stData.pstDid->szDIDNum))
                     {
                         pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
                         pthread_mutex_unlock(&g_mutexHashCallerGrp);
@@ -6452,7 +6457,6 @@ U32 sc_caller_group_get_by_caller(U32 ulCallerID)
                 {
                     continue;
                 }
-
             }
             pthread_mutex_unlock(&pstCallerGrp->mutexCallerList);
         }
@@ -6460,7 +6464,7 @@ U32 sc_caller_group_get_by_caller(U32 ulCallerID)
     pthread_mutex_unlock(&g_mutexHashCallerGrp);
     return U32_BUTT;
 }
-*/
+
 
 U32 sc_caller_update_proc(U32 ulAction, U32 ulCallerID)
 {

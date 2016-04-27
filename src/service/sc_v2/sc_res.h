@@ -560,6 +560,8 @@ S32 sc_caller_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);
 S32 sc_caller_group_hash_find(VOID *pObj, HASH_NODE_S *pstHashNode);
 U32 sc_caller_setting_update_proc(U32 ulAction, U32 ulSettingID);
 U32 sc_caller_group_update_proc(U32 ulAction, U32 ulCallerGrpID);
+U32 sc_caller_group_get_by_caller(S8 *szCalleeNum);
+
 U32 sc_caller_relationship_load();
 U32 sc_caller_group_load(U32 ulIndex);
 U32 sc_caller_load(U32 ulIndex);

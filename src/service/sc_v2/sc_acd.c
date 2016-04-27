@@ -1621,29 +1621,27 @@ end:
     return pstAgentNode;
 }
 
-/*
+
 SC_AGENT_NODE_ST *sc_agent_select_auto(SC_AGENT_GRP_NODE_ST *pstGroupListNode, S8 *szCallerNum, S8 *szCalleeNum)
 {
     SC_AGENT_NODE_ST      *pstAgentNode   = NULL;
     HASH_NODE_S           *pstHashNode    = NULL;
-//    DLL_NODE_S            *pstDLLNode     = NULL;
     SC_CALLER_SETTING_ST  *pstSetting     = NULL;
     U32                   ulHashIndex     = U32_BUTT;
     U32                   ulDstID         = U32_BUTT;
 
-
     ulDstID = sc_did_id_get_by_num(szCalleeNum);
-    if (ulDstID == U32_BUTT)
-    {
-        ulDstID = sc_caller_group_get_by_caller(ulDstID);
-    }
     if (ulDstID == U32_BUTT)
     {
         ulDstID = sc_caller_id_get_by_num(szCalleeNum);
     }
     if (ulDstID == U32_BUTT)
     {
-
+        ulDstID = sc_caller_group_get_by_caller(szCalleeNum);
+    }
+    if (ulDstID == U32_BUTT)
+    {
+        goto end;
     }
 
     HASH_Scan_Table(g_pstHashCallerSetting, ulHashIndex)
@@ -1665,16 +1663,25 @@ SC_AGENT_NODE_ST *sc_agent_select_auto(SC_AGENT_GRP_NODE_ST *pstGroupListNode, S
 
             if (ulDstID == pstSetting->ulDstID)
             {
-
+                pstAgentNode = sc_agent_get_by_id(pstSetting->ulSrcID);
             }
-
         }
-
     }
-    return pstAgentNode;
+    if (DOS_ADDR_INVALID(pstAgentNode) || DOS_ADDR_INVALID(pstAgentNode->pstAgentInfo)
+        || !SC_ACD_SITE_IS_USEABLE(pstAgentNode->pstAgentInfo))
+    {
+        goto end;
+    }
+    else
+    {
+        return pstAgentNode;
+    }
 
+end:
+    pstAgentNode = sc_agent_select_by_caller(pstGroupListNode, szCallerNum);
+    return pstAgentNode;
 }
-*/
+
 
 SC_AGENT_NODE_ST *sc_agent_get_by_id(U32 ulAgentID)
 {
@@ -1759,7 +1766,7 @@ SC_AGENT_NODE_ST *sc_agent_select_by_grpid(U32 ulGroupID, S8 *szCallerNum, S8 *s
             pstAgentNode = sc_agent_select_by_caller(pstGroupListNode, szCallerNum);
             break;
         case SC_ACD_POLICY_AUTO:
-//            pstAgentNode = sc_agent_select_auto(pstGroupListNode, szCallerNum, szCalleeNum);
+            pstAgentNode = sc_agent_select_auto(pstGroupListNode, szCallerNum, szCalleeNum);
             break;
         default:
             break;
