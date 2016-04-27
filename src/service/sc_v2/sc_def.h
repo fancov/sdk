@@ -1736,9 +1736,6 @@ typedef struct tagSCSrvCB{
     /** 与坐席通话的客户的号码 */
     S8                      szClientNum[SC_NUM_LENGTH];
 
-    /** 是否录音 */
-    BOOL                    bIsRecorded;
-
     /** 基本呼叫业务控制块 */
     SC_SRV_CALL_ST       stCall;
     /** 预览外呼业务控制块 */
