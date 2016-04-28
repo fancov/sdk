@@ -138,6 +138,8 @@ static VOID *sc_pub_runtime(VOID *ptr)
     SC_PUB_MSG_ST  *pstPubData = NULL;
     SC_PUB_TASK_ST *pstTask    = NULL;
     S8             szBuffer[200] = { 0 };
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
+    struct timespec     stTimeout;
 
     pstTask = (SC_PUB_TASK_ST *)ptr;
     if (DOS_ADDR_INVALID(pstTask))
@@ -148,6 +150,18 @@ static VOID *sc_pub_runtime(VOID *ptr)
 
     pstTask->ulValid = DOS_TRUE;
 
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_pub_runtime;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_pub_runtime");
+    }
+
     while (1)
     {
         if (g_ulPublishExit)
@@ -155,8 +169,15 @@ static VOID *sc_pub_runtime(VOID *ptr)
             break;
         }
 
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         pthread_mutex_lock(&pstTask->mutexPublishCurl);
-        pthread_cond_wait(&pstTask->condPublishCurl, &pstTask->mutexPublishCurl);
+        stTimeout.tv_sec = time(0) + 5;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&pstTask->condPublishCurl, &pstTask->mutexPublishCurl, &stTimeout);
         pthread_mutex_unlock(&pstTask->mutexPublishCurl);
 
         if (0 == DLL_Count(&pstTask->stPublishQueue))
@@ -254,12 +275,26 @@ static VOID *sc_pub_runtime_master(VOID *ptr)
     DLL_NODE_S     *pstDllNode = NULL;
     SC_PUB_TASK_ST *pstTask    = NULL;
     SC_PUB_MSG_ST  *pstPubData = NULL;
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
+    struct timespec     stTimeout;
 
     pstTask = (SC_PUB_TASK_ST *)ptr;
     if (DOS_ADDR_INVALID(pstTask))
     {
         DOS_ASSERT(0);
         return NULL;
+    }
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_pub_runtime_master;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_pub_runtime_master");
     }
 
     while (1)
@@ -269,8 +304,15 @@ static VOID *sc_pub_runtime_master(VOID *ptr)
             break;
         }
 
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         pthread_mutex_lock(&pstTask->mutexPublishCurl);
-        pthread_cond_wait(&pstTask->condPublishCurl, &pstTask->mutexPublishCurl);
+        stTimeout.tv_sec = time(0) + 5;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&pstTask->condPublishCurl, &pstTask->mutexPublishCurl, &stTimeout);
         pthread_mutex_unlock(&pstTask->mutexPublishCurl);
 
         if (0 == DLL_Count(&pstTask->stPublishQueue))

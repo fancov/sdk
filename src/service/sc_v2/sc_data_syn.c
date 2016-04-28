@@ -352,9 +352,27 @@ VOID* sc_data_syn_proc_runtime(VOID *ptr)
     struct timespec stTimeout;
     SC_SYN_REQUEST_DATA_ST *pstNode;
     static BOOL blOnStartUP = DOS_TRUE;
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_data_syn_proc_runtime;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_data_syn_proc_runtime");
+    }
 
     while (1)
     {
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         /* 读取消息队列第一个数据 */
         pthread_mutex_lock(&g_mutexDataSyn);
         stTimeout.tv_sec = time(0) + 5;
@@ -424,9 +442,27 @@ VOID* sc_data_syn_runtime(VOID *ptr)
     struct sockaddr_un  stAddr, stAddrIn;
     struct timeval      stTimeout={2, 0};
     fd_set              stFDSet;
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_data_syn_runtime;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_data_syn_runtime");
+    }
 
     for (;;)
     {
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         /* Socket 文件被删除了 */
         if (g_blConnected && access(SC_DATA_SYN_SOCK_PATH, F_OK) < 0)
         {

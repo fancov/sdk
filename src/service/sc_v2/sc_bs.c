@@ -491,10 +491,22 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
     struct sockaddr_in  stAddr;
     struct sockaddr_un  stUnAddr;
     struct timeval stTimeout={1, 0};
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_bs_recv_mainloop;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_bs_recv_mainloop");
+    }
 
     while (1)
     {
-
         for (ulActiveClientCnt = 0, ulIndex = 0; ulIndex < SC_MAX_BS_CLIENT; ulIndex++)
         {
             if (g_pstSCBSClient[ulIndex]->blValid)
@@ -555,11 +567,17 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
         else if (lRet < 0)
         {
             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_BS), "Select fail. Errno:%d", errno);
-            break;
+            continue;
         }
 
         for (ulActiveClientCnt = 0, ulIndex = 0; ulIndex < SC_MAX_BS_CLIENT; ulIndex++)
         {
+
+            if (DOS_ADDR_VALID(pstPthreadMsg))
+            {
+                pstPthreadMsg->ulLastTime = time(NULL);
+            }
+
             if (!g_pstSCBSClient[ulIndex]->blValid
                 || SC_BS_STATUS_CONNECT != g_pstSCBSClient[ulIndex]->ulStatus
                 || g_pstSCBSClient[ulIndex]->lSocket <= 0)
@@ -667,9 +685,27 @@ VOID *sc_bs_fsm_mainloop(VOID *ptr)
 {
     SC_BS_MSG_NODE_ST    *pMsgNode;
     struct timespec stTimeout;
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_bs_fsm_mainloop;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_bs_fsm_mainloop");
+    }
 
     while (1)
     {
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         pMsgNode = NULL;
 
         /* 读取消息队列第一个数据 */

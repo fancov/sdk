@@ -503,10 +503,21 @@ VOID *sc_cwq_runtime(VOID *ptr)
     DLL_NODE_S              *pstDLLNode     = NULL;
     DLL_NODE_S              *pstDLLNode1    = NULL;
     SC_CWQ_NODE_ST          *pstCWQNode     = NULL;
-    //SC_INCOMING_CALL_NODE_ST *pstCallNode   = NULL;
     DLL_S                   *pstCWQMngt     = NULL;
     U32                     ulIndex         = 0;
-//    S32                     lret;
+    SC_PTHREAD_MSG_ST       *pstPthreadMsg  = NULL;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_cwq_runtime;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_cwq_runtime");
+    }
 
     g_blCWQWaitingExit = DOS_FALSE;
     g_blCWQRunning  = DOS_TRUE;
@@ -516,6 +527,11 @@ VOID *sc_cwq_runtime(VOID *ptr)
         if (g_blCWQWaitingExit)
         {
             break;
+        }
+
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
         }
 
         pthread_mutex_lock(&g_mutexCWQMngt);

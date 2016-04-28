@@ -272,6 +272,20 @@ static VOID *sc_db_runtime(VOID *ptr)
 {
     DLL_NODE_S       *pstDLLNode = NULL;
     SC_DB_MSG_TAG_ST *pstMsg     = NULL;
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
+    struct timespec stTimeout;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_db_runtime;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_db_runtime");
+    }
 
     g_blExitFlag = DOS_FALSE;
 
@@ -283,8 +297,15 @@ static VOID *sc_db_runtime(VOID *ptr)
             break;
         }
 
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         pthread_mutex_lock(&g_mutexDBRequestQueue);
-        pthread_cond_wait(&g_condDBRequestQueue, &g_mutexDBRequestQueue);
+        stTimeout.tv_sec = time(0) + 5;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&g_condDBRequestQueue, &g_mutexDBRequestQueue, &stTimeout);
         pthread_mutex_unlock(&g_mutexDBRequestQueue);
 
         if (0 == DLL_Count(&g_stDBRequestQueue))
