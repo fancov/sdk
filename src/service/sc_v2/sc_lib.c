@@ -1315,10 +1315,15 @@ VOID sc_scb_cor_switch_board_init(SC_COR_SWITCHBOARD_ST *pstCorSwitchboard)
     pstCorSwitchboard->pstAgentCallee = NULL;
     pstCorSwitchboard->pstSWPeriodNode = NULL;
     pstCorSwitchboard->szExtensionNum[0] = '\0';
+    pstCorSwitchboard->ulIndex = 0;
     pstCorSwitchboard->szTTNum[0] = '\0';
     pstCorSwitchboard->szTelNum[0] = '\0';
     pstCorSwitchboard->ulDidBindID = U32_BUTT;
+    pstCorSwitchboard->bIsRingTimer = DOS_FALSE;
+    pstCorSwitchboard->ulReCallAgent = 0;
     pstCorSwitchboard->ucPlayTimes = 0;
+    pstCorSwitchboard->stTmrHandle = NULL;
+    pstCorSwitchboard->bIsWaitInput = DOS_FALSE;
 }
 
 /**
@@ -1588,6 +1593,9 @@ U32 sc_scb_copy(SC_SRV_CB *pstDstSCB, SC_SRV_CB *pstSrcSCB)
 
             case SC_SRV_AUTO_PREVIEW:
                 pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stAutoPreview;
+                break;
+            case SC_SRV_COR_SWITCHBOARD:
+                pstSCBTag = (SC_SCB_TAG_ST *)&pstDstSCB->stCorSwitchboard;
                 break;
 
             default:
@@ -3484,6 +3492,28 @@ U32 sc_send_event_ringing_timeout_rsp(SC_MSG_EVT_RINGING_TIMEOUT_ST *pstEvent)
 
 }
 
+U32 sc_send_event_dtmf_timeout_rsp(SC_MSG_EVT_DTMF_TIMEOUT_ST *pstEvent)
+{
+    SC_MSG_EVT_DTMF_TIMEOUT_ST *pstEvtRingingTimeout = NULL;
+
+    if (DOS_ADDR_INVALID(pstEvent))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    pstEvtRingingTimeout = (SC_MSG_EVT_DTMF_TIMEOUT_ST *)dos_dmem_alloc(sizeof(SC_MSG_EVT_DTMF_TIMEOUT_ST));
+    if (DOS_ADDR_INVALID(pstEvtRingingTimeout))
+    {
+        sc_log(DOS_FALSE, LOG_LEVEL_ERROR, "Send event fail.");
+        return DOS_FAIL;
+    }
+
+    dos_memcpy(pstEvtRingingTimeout, pstEvent, sizeof(SC_MSG_EVT_DTMF_TIMEOUT_ST));
+
+    return sc_send_event(&pstEvtRingingTimeout->stMsgTag);
+}
+
 /**
  * 向业务层发送HEARTBEAT事件
  *
@@ -3776,7 +3806,8 @@ void sc_agent_ringing_timeout_callback(U64 arg)
     if (pstSCB->stCall.stSCBTag.usStatus == SC_CALL_ALERTING
         || pstSCB->stAutoCall.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING2
         || pstSCB->stDemoTask.stSCBTag.usStatus == SC_AUTO_CALL_ALERTING2
-        || pstSCB->stAutoPreview.stSCBTag.usStatus == SC_AUTO_PREVIEW_ALERTING)
+        || pstSCB->stAutoPreview.stSCBTag.usStatus == SC_AUTO_PREVIEW_ALERTING
+        || pstSCB->stCorSwitchboard.stSCBTag.usStatus == SC_COR_SWITCHBOARD_ALERTING)
     {
         /* 发送超时提醒给fsm */
         stEvtRingingTimeOut.stMsgTag.ulMsgType = SC_EVT_RINGING_TIMEOUT;
@@ -3788,9 +3819,44 @@ void sc_agent_ringing_timeout_callback(U64 arg)
             /* TODO 发送消息失败 */
         }
     }
+    return;
+}
+
+void sc_switchboard_dtmf_timeout_callback(U64 arg)
+{
+    U32                 ulLCBNo    = U32_BUTT;
+    SC_LEG_CB           *pstLeg    = NULL;
+    SC_SRV_CB           *pstSCB    = NULL;
+    SC_MSG_EVT_DTMF_TIMEOUT_ST stEvtDTMFTimeOut;
+
+    ulLCBNo = (U32)arg;
+
+    pstLeg = sc_lcb_get(ulLCBNo);
+    if (DOS_ADDR_INVALID(pstLeg))
+    {
+        return;
+    }
+
+    pstSCB = sc_scb_get(pstLeg->ulSCBNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return;
+    }
+
+    /* 发送超时提醒给fsm */
+    stEvtDTMFTimeOut.stMsgTag.ulMsgType = SC_EVT_DTMF_TIMEOUT;
+    stEvtDTMFTimeOut.stMsgTag.ulSCBNo = pstSCB->ulSCBNo;
+    stEvtDTMFTimeOut.ulSCBNo = pstSCB->ulSCBNo;
+    stEvtDTMFTimeOut.ulLCBNo = ulLCBNo;
+    if (sc_send_event_dtmf_timeout_rsp(&stEvtDTMFTimeOut) != DOS_SUCC)
+    {
+        /* TODO 发送消息失败 */
+    }
 
     return;
 }
+
+
 
 void sc_auto_call_ringing_timeout_callback(U64 arg)
 {

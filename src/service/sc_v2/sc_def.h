@@ -165,6 +165,8 @@ extern "C" {
 
 #define SC_AGENT_RINGING_TIMEOUT       10000
 
+#define SC_DTMF_TIMEOUT                3000
+
 #define SC_AUTO_CALL_RINGING_TIMEOUT   35000
 
 #define SC_AUTO_CALL_AGENT_MAX_COUNT   3
@@ -172,6 +174,8 @@ extern "C" {
 #define SC_AUTO_CALL_RECALL_TIME       500
 
 #define SC_CWQ_QUEUE_TIMEOUT           10
+
+#define SC_AGENT_QUEUE_TIMEOUT         30
 
 /**
  * 1. 没有被删除
@@ -466,6 +470,7 @@ typedef enum tagSCSUEvent{
     SC_EVT_AUTH_RESULT,         /**< 认证结果 */
     SC_EVT_LEACE_CALL_QUEUE,    /**< 出呼叫队列 */
     SC_EVT_RINGING_TIMEOUT,     /**< 坐席振铃超时 */
+    SC_EVT_DTMF_TIMEOUT,        /**< DTMF超时，收号结束 */
 
     SC_EVT_ERROR_PORT,          /**< 错误上报事件 */
 
@@ -1238,6 +1243,7 @@ typedef struct SCCORSWPeriodTag{
 
     U32        ulExtensionNumLength;
 
+    U32        ulForwardID;
     U8         ucTransferType;                        //SC_SW_TRANSFER_TYPE_EN
 
     /*按键设定*/
@@ -1257,10 +1263,19 @@ typedef struct tagSCCORSwitchboard{
     SC_SW_IVR_NODE_ST  *pstSWPeriodNode;
     SC_AGENT_NODE_ST   *pstAgentCallee;
     S8                 szExtensionNum[SC_NUM_LENGTH];
+    U32                ulIndex;
     S8                 szTelNum[SC_NUM_LENGTH];
     S8                 szTTNum[SC_NUM_LENGTH];
     U8                 ucPlayTimes;     //给用户播放的提示音已经播放的次数
     U32                ulDidBindID;
+
+    /* 是否是呼入到坐席组，增加定时器，8s不接电话，转另一个坐席 */
+    BOOL               bIsRingTimer;
+
+    U32                ulReCallAgent;
+
+    DOS_TMR_ST         stTmrHandle;
+    BOOL               bIsWaitInput;
 }SC_COR_SWITCHBOARD_ST;
 
 
@@ -2164,6 +2179,25 @@ typedef struct tagSCMsgEvtAgentRingTimeout{
 
 }SC_MSG_EVT_RINGING_TIMEOUT_ST;
 
+typedef enum tagSCDTMFTimeoutReason{
+    SC_DTMF_TIMEOUT_AFTER_GET_NUM,
+    SC_DTMF_TIMEOUT_BEFORE_GET_NUM,
+
+    SC_DTMF_TIMEOUT_BUTT
+}SC_DTMF_TIMEOUT_ERROR_EN;
+
+/** DTMF超时 */
+typedef struct tagSCMsgEvtDTMFTimeout{
+    SC_MSG_TAG_ST    stMsgTag;              /**< 消息头 */
+
+    /** 业务控制块编号 */
+    U32     ulSCBNo;
+
+    /** LEG控制块编号 */
+    U32     ulLCBNo;
+
+}SC_MSG_EVT_DTMF_TIMEOUT_ST;
+
 /** LEG SESSION 消息 */
 typedef struct tagSCMsgEvtHeartbeat{
     SC_MSG_TAG_ST    stMsgTag;              /**< 消息头 */
@@ -2307,7 +2341,7 @@ typedef struct tagSCInconmingCallNode
 {
     SC_SRV_CB   *pstSCB;
     U32         ulForwardID;
-    S8          szForwardNum[16];
+    U32         ulIncomingTime;
     S8          szCaller[SC_NUM_LENGTH];
     S8          szCallee[SC_NUM_LENGTH];
 }SC_INCOMING_CALL_NODE_ST;
@@ -2466,6 +2500,8 @@ U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_
 void sc_agent_mark_custom_callback(U64 arg);
 void sc_agent_ringing_timeout_callback(U64 arg);
 void sc_auto_call_ringing_timeout_callback(U64 arg);
+
+void sc_switchboard_dtmf_timeout_callback(U64 arg);
 U32 sc_switchboard_start(SC_SRV_CB *pstSCB, U32 ulBindID);
 U32 sc_switchboard_call_agent(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, U32 ulAgentID, U32 *pulErrCode);
 SC_COR_SW_NODE_ST * sc_get_sw_by_id(U32 ulSWID);
@@ -2514,6 +2550,9 @@ U32 sc_switchboard_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_switchboard_setup(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_switchboard_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 U32 sc_switchboard_answer(SC_MSG_TAG_ST *pstMsg,  SC_SRV_CB *pstSCB);
+U32 sc_switchboard_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_switchboard_dtmf_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
+U32 sc_switchboard_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB);
 
 
 

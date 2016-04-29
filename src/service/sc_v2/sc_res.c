@@ -248,9 +248,6 @@ U32 sc_sip_account_get_by_extension(U32 ulCustomID, S8 *pszExtension, S8 *pszUse
 }
 
 
-
-
-
 SC_USER_ID_NODE_ST * sc_sip_node_get_by_extension(U32 ulCustomID, S8 *szUserID)
 {
     SC_USER_ID_NODE_ST *pstUserIDNode = NULL;

@@ -37,6 +37,7 @@ SC_HINT_DESC_ST  astHitList[] = {
     {SC_SND_SYS_MAINTAIN,              "sys_in_maintain"},
     {SC_SND_TMP_UNAVAILABLE,           "temporarily_unavailable"},
     {SC_SND_USER_BUSY,                 "user_busy"},
+    {SC_SND_NUM_ERROR,                 "number_input_error"},
     {SC_SND_USER_LINE_FAULT,           "user_line_fault"},
     {SC_SND_USER_NOT_FOUND,            "user_not_found"},
     {SC_SND_CONNECTING,                "connecting"},

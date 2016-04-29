@@ -4363,6 +4363,13 @@ U32 sc_switchboard_play_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
     sc_trace_scb(pstSCB, "Processing audio play stop event for switchboard. %d", pstPlayback->bIsPlayDone);
 
+
+    if (pstPlayback->stMsgTag.usInterErr != U16_BUTT)
+    {
+        /* 挂断了，这里不用处理 */
+        return DOS_SUCC;
+    }
+
     pstSWPeriodNode = pstSCB->stCorSwitchboard.pstSWPeriodNode;
     if (DOS_ADDR_INVALID(pstSWPeriodNode))
     {
@@ -4509,7 +4516,7 @@ U32 sc_switchboard_play_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                 case SC_SW_BUTTON_TRANSFER:
                 case SC_SW_DIAL_EXTENSION:
-                    if (pstPlayback->bIsPlayDone)
+                    if (pstPlayback->bIsPlayDone && !pstSCB->stCorSwitchboard.bIsWaitInput)
                     {
                         if (pstSCB->stCorSwitchboard.ucPlayTimes < pstSCB->stCorSwitchboard.pstSWPeriodNode->ucPlayTimes)
                         {
@@ -4552,7 +4559,6 @@ U32 sc_switchboard_play_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
 U32 sc_switchboard_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
-
     SC_MSG_EVT_LEAVE_CALLQUE_ST     *pstEvtCall         = NULL;
     U32                             ulRet               = DOS_FAIL;
     U32                             ulErrCode           = CC_ERR_NO_REASON;
@@ -4583,15 +4589,19 @@ U32 sc_switchboard_queue_leave(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             else if (SC_LEAVE_CALL_QUE_SUCC == pstMsg->usInterErr)
             {
                 pstSCB->stCorSwitchboard.pstAgentCallee = pstEvtCall->pstAgentNode;
+                pstSCB->stCorSwitchboard.pstSWPeriodNode->ulForwardID= pstEvtCall->ulForwardID;
                 pstCallingLegCB = sc_lcb_get(pstSCB->stCorSwitchboard.ulCallingLegNo);
                 ulAgentID = pstEvtCall->pstAgentNode->pstAgentInfo->ulAgentID;
 
                 /* 呼叫坐席 */
                 ulRet = sc_switchboard_call_agent(pstSCB, pstCallingLegCB, ulAgentID, &ulErrCode);
                 if (ulRet == DOS_SUCC
-                    && pstSCB->stCall.stSCBTag.usStatus != SC_CALL_TONE)
+                    && pstSCB->stCorSwitchboard.stSCBTag.usStatus != SC_COR_SWITCHBOARD_TONE)
                 {
-                    //pstSCB->stCall.bIsRingTimer = DOS_TRUE;
+                    if (pstEvtCall->ulForwardType == SC_SW_FORWARD_AGENT_GROUP)
+                    {
+                        pstSCB->stCorSwitchboard.bIsRingTimer = DOS_TRUE;
+                    }
                     sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCallingLegNo);
                     //sc_req_ringback(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo, DOS_TRUE, DOS_FALSE);
                 }
@@ -4718,6 +4728,7 @@ U32 sc_switchboard_ring(SC_MSG_TAG_ST *pstMsg,  SC_SRV_CB *pstSCB)
     SC_MSG_EVT_RINGING_ST  *pstEvent = NULL;
     SC_LEG_CB              *pstCalleeLegCB = NULL;
     SC_LEG_CB              *pstCallingLegCB = NULL;
+    S32                    lRes;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -4769,6 +4780,23 @@ U32 sc_switchboard_ring(SC_MSG_TAG_ST *pstMsg,  SC_SRV_CB *pstSCB)
                 }
             }
 
+            if (pstSCB->stCorSwitchboard.bIsRingTimer)
+            {
+                if (DOS_ADDR_VALID(pstSCB->stCorSwitchboard.stTmrHandle))
+                {
+                    dos_tmr_stop(&pstSCB->stCorSwitchboard.stTmrHandle);
+                    pstSCB->stCall.stTmrHandle = NULL;
+                }
+
+                /* 开启定时器 */
+                sc_trace_scb(pstSCB, "%s", "Start ringting timer.");
+                lRes = dos_tmr_start(&pstSCB->stCorSwitchboard.stTmrHandle, SC_AGENT_RINGING_TIMEOUT, sc_agent_ringing_timeout_callback, (U64)pstEvent->ulLegNo, TIMER_NORMAL_NO_LOOP);
+                if (lRes < 0)
+                {
+                    DOS_ASSERT(0);
+                    pstSCB->stCall.stTmrHandle = NULL;
+                }
+            }
             break;
 
         case SC_COR_SWITCHBOARD_ALERTING:
@@ -4786,16 +4814,106 @@ proc_fail:
     return DOS_FAIL;
 }
 
-U32 sc_switchboard_timeout_callback(U64 uLParam)
+U32 sc_switchboard_ringing_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
+    SC_MSG_EVT_RINGING_TIMEOUT_ST   *pstEvtRingingTimeOut   = NULL;
+    SC_LEG_CB                       *pstLegCB               = NULL;
+    SC_LEG_CB                       *pstCallingLegCB        = NULL;
+    SC_SRV_CB                       *pstNewSCB              = NULL;
+
+    U32                             ulForwardID;
+
+    pstEvtRingingTimeOut = (SC_MSG_EVT_RINGING_TIMEOUT_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstEvtRingingTimeOut) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Processing call agent ringing timeout event. status : %u", pstSCB->stCorSwitchboard.stSCBTag.usStatus);
+    sc_log_digest_print_only(pstSCB, "Processing call agent ringing timeout event. status : %u", pstSCB->stCorSwitchboard.stSCBTag.usStatus);
+
+    if (pstSCB->stCorSwitchboard.stSCBTag.usStatus != SC_COR_SWITCHBOARD_ALERTING)
+    {
+        sc_trace_scb(pstSCB, "Status is not SC_COR_SWITCHBOARD_ALERTING, no processing.");
+        return DOS_SUCC;
+    }
+
+    pstCallingLegCB = sc_lcb_get(pstSCB->stCorSwitchboard.ulCallingLegNo);
+    if (DOS_ADDR_INVALID(pstCallingLegCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    if (pstSCB->stCorSwitchboard.ulReCallAgent >= SC_AUTO_CALL_AGENT_MAX_COUNT)
+    {
+        /* 直接挂断 */
+        sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCalleeLegNo);
+        sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCalleeLegNo, CC_ERR_SC_USER_BUSY);
+        return DOS_SUCC;
+    }
+
+    pstNewSCB = sc_scb_alloc();
+    if (DOS_ADDR_INVALID(pstNewSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 拷贝 */
+    sc_scb_copy(pstNewSCB, pstSCB);
+
+    /* 挂断被叫坐席，重新加入到呼叫队列 */
+    pstLegCB = sc_lcb_get(pstSCB->stCorSwitchboard.ulCalleeLegNo);
+    if (DOS_ADDR_VALID(pstLegCB))
+    {
+        pstSCB->stCorSwitchboard.ulCallingLegNo = U32_BUTT;
+        sc_req_playback_stop(pstSCB->ulSCBNo, pstLegCB->ulCBNo);
+        sc_req_hungup(pstSCB->ulSCBNo, pstLegCB->ulCBNo, CC_ERR_SIP_BUSY_HERE);
+    }
+
+    /* 将呼叫重新放回队列 */
+    pstCallingLegCB->ulSCBNo = pstNewSCB->ulSCBNo;
+
+    pstNewSCB->stCorSwitchboard.ulCalleeLegNo = U32_BUTT;
+    pstNewSCB->stCorSwitchboard.pstAgentCallee = NULL;
+    pstNewSCB->stCorSwitchboard.stSCBTag.usStatus = SC_COR_SWITCHBOARD_AFTER_KEY;
+    pstNewSCB->stIncomingQueue.stSCBTag.bValid = DOS_TRUE;
+    pstNewSCB->ulCurrentSrv++;
+    pstNewSCB->pstServiceList[pstNewSCB->ulCurrentSrv] = &pstNewSCB->stIncomingQueue.stSCBTag;
+    pstNewSCB->stIncomingQueue.ulLegNo = pstNewSCB->stCorSwitchboard.ulCallingLegNo;
+    pstNewSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
+    pstNewSCB->stIncomingQueue.ulQueueType = SC_SW_FORWARD_AGENT_GROUP;
+    pstNewSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
+    pstNewSCB->stCorSwitchboard.ulReCallAgent++;
+
+    ulForwardID = pstSCB->stCorSwitchboard.pstSWPeriodNode->ulForwardID;
+
+    if (sc_cwq_add_call(pstNewSCB, ulForwardID,
+        pstCallingLegCB->stCall.stNumInfo.szRealCallee,
+        pstCallingLegCB->stCall.stNumInfo.szRealCalling,
+        pstNewSCB->stIncomingQueue.ulQueueType, DOS_TRUE) != DOS_SUCC)
+    {
+        /* 加入队列失败 */
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+    else
+    {
+        /* 放音提示客户等待 */
+        pstNewSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
+    }
+
     return DOS_SUCC;
 }
+
 
 U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_DTMF_ST    *pstDTMF               = NULL;
-    SC_LEG_CB             *pstCallingLegCB       =  NULL;
-    SC_LEG_CB             *pstCalleeLegCB        =  NULL;
+    SC_LEG_CB             *pstCallingLegCB       = NULL;
+    SC_LEG_CB             *pstCalleeLegCB        = NULL;
     SC_SW_IVR_NODE_ST     *pstSWPeriodNode       = NULL;
     SC_IVR_KEY_MAP_ST     *pstSWKeymapNode       = NULL;
     U32                   ulTrfrType             = U32_BUTT;
@@ -4803,12 +4921,9 @@ U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     SC_AGENT_NODE_ST      *pstAgentNode          = NULL;
     U32                   ulErrCode              = CC_ERR_NO_REASON;
     U32                   ulIndex;
-    SC_USER_ID_NODE_ST    *pstUserIDNode         = NULL;
     U32                   ulForwardType          = 0;
     U32                   ulForwardID            = 0;
-    U32                   ulExtensionNumLength;
-    U32                   ulLen;
-    BOOL                  bFlag                  = DOS_FALSE;
+    S32                   lRes                   = 0;
 
     pstDTMF = (SC_MSG_EVT_DTMF_ST *)pstMsg;
     pstSWPeriodNode = pstSCB->stCorSwitchboard.pstSWPeriodNode;
@@ -4846,7 +4961,7 @@ U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
                         sc_trace_scb(pstSCB, "switchboard lkey : %c, uckey : %u", pstDTMF->cDTMFVal,pstSWPeriodNode->pstSWKeymapNode[ulIndex]->ulKey);
 
-                        if (pstDTMF->cDTMFVal == pstSWPeriodNode->pstSWKeymapNode[ulIndex]->ulKey + '\0')
+                        if (pstDTMF->cDTMFVal == pstSWPeriodNode->pstSWKeymapNode[ulIndex]->ulKey + '0')
                         {
                             pstSWKeymapNode = pstSWPeriodNode->pstSWKeymapNode[ulIndex];
                             ulForwardID = pstSWKeymapNode->ulKeyMap;
@@ -4970,122 +5085,50 @@ U32 sc_switchboard_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                     }
 
                 case SC_SW_DIAL_EXTENSION:
-
                     sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "switchboard dmtf lkey : %c ", pstDTMF->cDTMFVal);
 
-                    ulLen = dos_strlen(pstCallingLegCB->stCall.stNumInfo.szDial);
-
-                    dos_strcpy(pstSCB->stCorSwitchboard.szExtensionNum, pstCallingLegCB->stCall.stNumInfo.szDial);
-
-                    if (pstDTMF->cDTMFVal == '#' && ulLen > 1)
+                    if ((pstDTMF->cDTMFVal < '0' || pstDTMF->cDTMFVal > '9')
+                        && pstDTMF->cDTMFVal != '#')
                     {
-                        pstSCB->stCorSwitchboard.szExtensionNum[ulLen-1] = '\0';
-                        bFlag = DOS_TRUE;
-                    }
-                    else if (pstDTMF->cDTMFVal < '0' || pstDTMF->cDTMFVal > '9')
-                    {
-                       pstCallingLegCB->stCall.stNumInfo.szDial[0] = '\0';
-                       break;
+                        //提示用户输入有误
+                        sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCallingLegNo, SC_SND_NUM_ERROR, 1, 0, 0);
+                        pstSCB->stCorSwitchboard.stSCBTag.usStatus = SC_COR_SWITCHBOARD_PLAY_AUDIO;
+                        pstSCB->stCorSwitchboard.ucPlayTimes++;
+                        pstSCB->stCorSwitchboard.bIsWaitInput = DOS_TRUE;
+                        break;
                     }
 
-                    ulExtensionNumLength = pstSCB->stCorSwitchboard.pstSWPeriodNode->ulExtensionNumLength;
-
-                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "switchboard dtmf sip num : %s ", pstSCB->stCorSwitchboard.szExtensionNum);
-
-
-                    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "the sip num len of switchboard dmtf sip num ulLen: %d  ulExtensionNumLength : %d", ulLen, ulExtensionNumLength);
-
-                    if (ulLen >= ulExtensionNumLength || bFlag)
+                    if (pstSCB->stCorSwitchboard.ulIndex < SC_NUM_LENGTH)
                     {
-                        dos_snprintf(szCallee, sizeof(szCallee), pstSCB->stCorSwitchboard.szExtensionNum);
-
-                        pstUserIDNode = sc_sip_node_get_by_extension(pstSCB->stCorSwitchboard.pstSWPeriodNode->ulCustomerID, szCallee);
-
-                        if (DOS_ADDR_INVALID(pstUserIDNode) || !pstUserIDNode->enStatus == SC_SIP_STATUS_TYPE_REGISTER)
-                        {
-                            if (pstSCB->stCorSwitchboard.ucPlayTimes < pstSCB->stCorSwitchboard.pstSWPeriodNode->ucPlayTimes)
-                            {
-                                sc_switchboard_play_audio(pstSCB, pstCallingLegCB);
-                            }
-                            else
-                            {
-                                sc_req_hungup(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_NORMAL_CLEAR);
-                            }
-                            return DOS_FAIL;
-                        }
-
-                        pstAgentNode = sc_agent_get_by_sip_acc(pstSCB->stCorSwitchboard.szExtensionNum);
-                        if (DOS_ADDR_VALID(pstAgentNode)
-                            && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo)
-                            && AGENT_BIND_SIP == pstAgentNode->pstAgentInfo->ucBindType)
-                        {
-                            pstSCB->stCorSwitchboard.pstAgentCallee = pstAgentNode;
-                            ulForwardType = SC_SW_FORWARD_AGENT;
-                            ulForwardID = pstAgentNode->pstAgentInfo->ulAgentID;
-
-                            pstSCB->stIncomingQueue.stSCBTag.bValid = DOS_TRUE;
-                            pstSCB->ulCurrentSrv++;
-                            pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stIncomingQueue.stSCBTag;
-                            pstSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
-                            pstSCB->stIncomingQueue.ulLegNo = pstSCB->stCorSwitchboard.ulCallingLegNo;
-                            pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
-                            if (sc_cwq_add_call(pstSCB, ulForwardID, pstCallingLegCB->stCall.stNumInfo.szCalling,
-                                pstCallingLegCB->stCall.stNumInfo.szCallee, ulForwardType, ulForwardType) != DOS_SUCC)
-                            {
-                                /* 加入队列失败 */
-                                DOS_ASSERT(0);
-                            }
-                            else
-                            {
-                                /* 放音提示客户等待 */
-                                pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
-                                sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
-                            }
-                            break;
-                        }
-                        else
-                        {
-
-                            pstCalleeLegCB = sc_lcb_alloc();
-                            if (DOS_ADDR_INVALID(pstCalleeLegCB))
-                            {
-                              sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Alloc SCB fail.");
-
-                              return DOS_FAIL;
-                            }
-
-                            pstCalleeLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
-                            pstCalleeLegCB->stCall.bValid = DOS_TRUE;
-                            pstCalleeLegCB->stCall.ucStatus = SC_LEG_INIT;
-                            pstCalleeLegCB->ulSCBNo = pstSCB->ulSCBNo;
-
-                            /* 新LEG处理一下号码 */
-                            dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), szCallee);
-                            dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
-
-                            dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), szCallee);
-                            dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
-
-                            dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), szCallee);
-                            dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
-
-
-                            pstSCB->stCorSwitchboard.ulCalleeLegNo = pstCalleeLegCB->ulCBNo;
-
-                            sc_make_call2sip(pstSCB, pstCalleeLegCB);
-
-                            pstSCB->stCorSwitchboard.stSCBTag.usStatus = SC_COR_SWITCHBOARD_EXEC;
-
-                            break;
-                        }
-                        pstSCB->stCorSwitchboard.szExtensionNum[0] = '\0';
+                        pstSCB->stCorSwitchboard.szExtensionNum[pstSCB->stCorSwitchboard.ulIndex] = pstDTMF->cDTMFVal;
+                        pstSCB->stCorSwitchboard.ulIndex++;
                     }
+
+                    if (pstDTMF->cDTMFVal == '#' && pstSCB->stCorSwitchboard.ulIndex > 1)
+                    {
+                        if (pstSCB->stCorSwitchboard.stTmrHandle)
+                        {
+                            dos_tmr_stop(&pstSCB->stCorSwitchboard.stTmrHandle);
+                        }
+
+                        pstSCB->stCorSwitchboard.szExtensionNum[pstSCB->stCorSwitchboard.ulIndex-1] = '\0';
+                        sc_switchboard_dtmf_timeout_callback((U64)pstDTMF->ulLegNo);
+                        break;
+                    }
+
+                    lRes = dos_tmr_start(&pstSCB->stCorSwitchboard.stTmrHandle, SC_DTMF_TIMEOUT, sc_switchboard_dtmf_timeout_callback, (U64)pstDTMF->ulLegNo, TIMER_NORMAL_NO_LOOP);
+                    if (lRes < 0)
+                    {
+                        DOS_ASSERT(0);
+                        pstSCB->stCorSwitchboard.stTmrHandle = NULL;
+                    }
+
                     break;
-
                 default:
                     break;
             }
             break;
+
          case SC_COR_SWITCHBOARD_CONNECTED:
             /* 开启 接入码 业务 */
             if (!pstSCB->stAccessCode.stSCBTag.bValid)
@@ -5209,16 +5252,21 @@ U32 sc_switchboard_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (DOS_ADDR_INVALID(pstCalling) || DOS_ADDR_INVALID(pstCallee))
             {
                 /* 异常 */
-                DOS_ASSERT(0);
                 if (DOS_ADDR_VALID(pstCalling))
                 {
                     pstCalling->stCall.ulCause = ulErrCode;
                     sc_send_billing_stop2bs(pstSCB, pstCalling, NULL, SC_CALLEE);
                     sc_lcb_free(pstCalling);
+                    pstCalling = NULL;
                 }
-                if (DOS_ADDR_VALID(pstCallee))
+                else if (DOS_ADDR_VALID(pstCallee))
                 {
+                    if (DOS_ADDR_VALID(pstSCB->stCorSwitchboard.pstAgentCallee))
+                    {
+                        sc_agent_serv_status_update(pstSCB->stCorSwitchboard.pstAgentCallee->pstAgentInfo, SC_ACD_SERV_IDEL, SC_SRV_COR_SWITCHBOARD);
+                    }
                     sc_lcb_free(pstCallee);
+                    pstCallee = NULL;
                 }
 
                 sc_scb_free(pstSCB);
@@ -5319,7 +5367,8 @@ U32 sc_switchboard_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
                 pstSCB->stCorSwitchboard.ulCalleeLegNo = U32_BUTT;
                 pstSCB->stCorSwitchboard.stSCBTag.usStatus = SC_COR_SWITCHBOARD_RELEASE;
-                sc_req_hungup(pstSCB->ulSCBNo, pstCalling->ulCBNo, CC_ERR_NORMAL_CLEAR);
+                sc_req_playback_stop(pstSCB->ulSCBNo, pstCalling->ulCBNo);
+                sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstCalling->ulCBNo, CC_ERR_SC_USER_BUSY);
             }
             break;
 
@@ -5579,6 +5628,137 @@ U32 sc_switchboard_release(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 }
 
 
+U32 sc_switchboard_record_stop(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    /* 处理录音结束 */
+    SC_MSG_CMD_RECORD_ST *pstRecord = NULL;
+    SC_LEG_CB            *pstLCB    = NULL;
+
+    pstRecord = (SC_MSG_CMD_RECORD_ST *)pstMsg;
+    if (DOS_ADDR_INVALID(pstRecord) || DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    sc_trace_scb(pstSCB, "Proccessing switchboard call record stop event. status : %u", pstSCB->stCorSwitchboard.stSCBTag.usStatus);
+
+    pstLCB = sc_lcb_get(pstRecord->ulLegNo);
+    if (DOS_ADDR_INVALID(pstLCB))
+    {
+        return DOS_FAIL;
+    }
+
+    /* 生成录音话单 */
+    sc_send_special_billing_stop2bs(pstSCB, pstLCB, BS_SERV_RECORDING);
+    sc_scb_remove_service(pstSCB, BS_SERV_RECORDING);
+
+    return DOS_SUCC;
+}
+
+U32 sc_switchboard_dtmf_timeout(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
+{
+    SC_USER_ID_NODE_ST  *pstUserIDNode       = NULL;
+    SC_AGENT_NODE_ST    *pstAgentNode        = NULL;
+    SC_LEG_CB           *pstCallingLegCB     = NULL;
+    SC_LEG_CB           *pstCalleeLegCB      = NULL;
+    U32                 ulForwardType;
+    U32                 ulForwardID;
+    S8                  szCallee[32]         = { 0, };
+
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "switchboard dtmf sip num : %s ", pstSCB->stCorSwitchboard.szExtensionNum);
+
+    pstCallingLegCB = sc_lcb_get(pstSCB->stCorSwitchboard.ulCallingLegNo);
+    dos_snprintf(szCallee, sizeof(szCallee), pstSCB->stCorSwitchboard.szExtensionNum);
+
+    pstUserIDNode = sc_sip_node_get_by_extension(pstSCB->stCorSwitchboard.pstSWPeriodNode->ulCustomerID, szCallee);
+
+    if (DOS_ADDR_INVALID(pstUserIDNode) || !pstUserIDNode->enStatus == SC_SIP_STATUS_TYPE_REGISTER)
+    {
+        if (pstSCB->stCorSwitchboard.ucPlayTimes < pstSCB->stCorSwitchboard.pstSWPeriodNode->ucPlayTimes+1)
+        {
+            sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCallingLegNo, SC_SND_NUM_ERROR, 1, 0, 0);
+            pstSCB->stCorSwitchboard.stSCBTag.usStatus = SC_COR_SWITCHBOARD_PLAY_AUDIO;
+            pstSCB->stCorSwitchboard.ucPlayTimes++;
+            pstSCB->stCorSwitchboard.bIsWaitInput = DOS_TRUE;
+        }
+        else
+        {
+            sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo, CC_ERR_SC_CALLER_NUMBER_ILLEGAL);
+        }
+        pstSCB->stCorSwitchboard.szExtensionNum[0] = '\0';
+        pstSCB->stCorSwitchboard.ulIndex = 0;
+        return DOS_FAIL;
+    }
+
+    pstAgentNode = sc_agent_get_by_sip_acc(pstSCB->stCorSwitchboard.szExtensionNum);
+    if (DOS_ADDR_VALID(pstAgentNode)
+      && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo)
+      && AGENT_BIND_SIP == pstAgentNode->pstAgentInfo->ucBindType)
+    {
+      pstSCB->stCorSwitchboard.pstAgentCallee = pstAgentNode;
+      ulForwardType = SC_SW_FORWARD_AGENT;
+      ulForwardID = pstAgentNode->pstAgentInfo->ulAgentID;
+
+      pstSCB->stIncomingQueue.stSCBTag.bValid = DOS_TRUE;
+      pstSCB->ulCurrentSrv++;
+      pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stIncomingQueue.stSCBTag;
+      pstSCB->stIncomingQueue.ulEnqueuTime = time(NULL);
+      pstSCB->stIncomingQueue.ulLegNo = pstSCB->stCorSwitchboard.ulCallingLegNo;
+      pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_IDEL;
+      if (sc_cwq_add_call(pstSCB, ulForwardID, pstCallingLegCB->stCall.stNumInfo.szCalling,
+          pstCallingLegCB->stCall.stNumInfo.szCallee, ulForwardType, ulForwardType) != DOS_SUCC)
+      {
+          /* 加入队列失败 */
+          DOS_ASSERT(0);
+      }
+      else
+      {
+          /* 放音提示客户等待 */
+          pstSCB->stIncomingQueue.stSCBTag.usStatus = SC_INQUEUE_ACTIVE;
+          sc_req_play_sound(pstSCB->ulSCBNo, pstSCB->stIncomingQueue.ulLegNo, SC_SND_CALL_QUEUE_WAIT, 1, 0, 0);
+      }
+    }
+    else
+    {
+        pstCalleeLegCB = sc_lcb_alloc();
+        if (DOS_ADDR_INVALID(pstCalleeLegCB))
+        {
+          sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_ACD), "Alloc SCB fail.");
+          pstSCB->stCorSwitchboard.szExtensionNum[0] = '\0';
+          pstSCB->stCorSwitchboard.ulIndex = 0;
+
+          return DOS_FAIL;
+        }
+
+        pstCalleeLegCB->stCall.ucPeerType = SC_LEG_PEER_OUTBOUND_INTERNAL;
+        pstCalleeLegCB->stCall.bValid = DOS_TRUE;
+        pstCalleeLegCB->stCall.ucStatus = SC_LEG_INIT;
+        pstCalleeLegCB->ulSCBNo = pstSCB->ulSCBNo;
+
+        /* 新LEG处理一下号码 */
+        dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), szCallee);
+        dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
+
+        dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szRealCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), szCallee);
+        dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szRealCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
+
+        dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szCallee, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCallee), szCallee);
+        dos_snprintf(pstCalleeLegCB->stCall.stNumInfo.szCalling, sizeof(pstCalleeLegCB->stCall.stNumInfo.szCalling), pstCallingLegCB->stCall.stNumInfo.szRealCalling);
+
+
+        pstSCB->stCorSwitchboard.ulCalleeLegNo = pstCalleeLegCB->ulCBNo;
+
+        sc_make_call2sip(pstSCB, pstCalleeLegCB);
+
+        pstSCB->stCorSwitchboard.stSCBTag.usStatus = SC_COR_SWITCHBOARD_EXEC;
+
+    }
+    pstSCB->stCorSwitchboard.szExtensionNum[0] = '\0';
+    pstSCB->stCorSwitchboard.ulIndex = 0;
+    return DOS_SUCC;
+}
+
 U32 sc_switchboard_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     SC_MSG_EVT_ERR_REPORT_ST    *pstErrReport       = NULL;
@@ -5651,6 +5831,9 @@ U32 sc_switchboard_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_COR_SWITCHBOARD_ALERTING:        /*被叫开始振铃*/
 
             /* 呼叫被叫时失败，给主叫放提示音挂断 */
+
+             sc_trace_scb(pstSCB, "switchboard error .............................111111111111111111111111111111111111111111111111111");
+
             sc_req_playback_stop(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCallingLegNo);
             ulRet = sc_req_hungup_with_sound(pstSCB->ulSCBNo, pstSCB->stCorSwitchboard.ulCallingLegNo, ulErrCode);
             break;

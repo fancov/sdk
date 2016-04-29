@@ -492,7 +492,7 @@ U32 sc_srv_cor_switchboard_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB
              break;
 
          case SC_EVT_RECORD_END:
-             /* 暂时不处理 */
+             sc_switchboard_record_stop(pstMsg, pstSCB);
              break;
 
          case SC_EVT_PLAYBACK_START:
@@ -509,7 +509,13 @@ U32 sc_srv_cor_switchboard_proc(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB, SC_SCB
 
          case SC_EVT_ERROR_PORT:
             sc_switchboard_error(pstMsg, pstSCB);
-             break;
+            break;
+         case SC_EVT_DTMF_TIMEOUT:
+            sc_switchboard_dtmf_timeout(pstMsg, pstSCB);
+            break;
+         case SC_EVT_RINGING_TIMEOUT:
+            sc_switchboard_ringing_timeout(pstMsg, pstSCB);
+            break;
 
          default:
              sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EVENT), "Invalid event type. %u", pstMsg->ulMsgType);

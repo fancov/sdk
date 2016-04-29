@@ -96,6 +96,7 @@ S8 *g_pszSCEventStr[] = {
     "EVT_AUTH_RESULT",
     "EVT_LEACE_CALL_QUEUE",
     "EVT_RINGING_TIMEOUT",
+    "SC_EVT_DTMF_TIMEOUT",
     "EVT_ERROR_PORT",
     "EVT_HEARTBEAT",
 

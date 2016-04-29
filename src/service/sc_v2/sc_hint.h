@@ -40,6 +40,7 @@ typedef enum tagSoundType{
     SC_SND_SYS_MAINTAIN,          /**< 系统维护 */
     SC_SND_TMP_UNAVAILABLE,       /**< 你所拨打的用户暂时无法接通，请稍后再拨 */
     SC_SND_USER_BUSY,             /**< 你所拨打的用户忙，请稍后再拨 */
+    SC_SND_NUM_ERROR,             /**< 您输入的号码有误，请重新输入*/
     SC_SND_USER_LINE_FAULT,       /**< 用户线忙 */
     SC_SND_USER_NOT_FOUND,        /**< 你所拨打的用户忙不存在，请查证后再拨 */
     SC_SND_CONNECTING,            /**< 正在为你接通 */

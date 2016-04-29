@@ -1978,6 +1978,10 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         //pstLCB->stPlayback.ulTotal++;
     }
 
+
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "...................................%u", pstLCB->stPlayback.usStatus);
+
+
     /* 根据状态处理 */
     switch (pstLCB->stPlayback.usStatus)
     {
@@ -2024,12 +2028,22 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
 
         case SC_SU_PLAYBACK_RELEASE:
             /* 被手动停止了，这个地方说明，正在等待上一次最后一个playback stop事件 */
-            if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
+            if (pstPlayback->ulLoopCnt == 1)
             {
-                pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
+                if (sc_esl_execute("playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
+                {
+                    pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
 
-                /* 为了上次放音最后一个playback stop消息 */
-                //pstLCB->stPlayback.ulTotal++;
+                    /* 为了上次放音最后一个playback stop消息 */
+                    //pstLCB->stPlayback.ulTotal++;
+                }
+            }
+            else
+            {
+                if (sc_esl_execute("loop_playback", pszPlayCMDArg, pstLCB->szUUID) == DOS_SUCC)
+                {
+                    pstLCB->stPlayback.ulTotal += pstPlayback->ulLoopCnt;
+                }
             }
 
             pstLCB->stPlayback.usStatus = SC_SU_PLAYBACK_ACTIVE;
