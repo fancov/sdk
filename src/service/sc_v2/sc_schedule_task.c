@@ -161,11 +161,29 @@ static VOID *sc_schedule_task(VOID *ptr)
     U32 i, j;
     struct tm stTime;
     SC_SCHEDULE_TASK_ST *pstScheduleTask = NULL;
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
 
     g_ulWaitingStop = DOS_FALSE;
 
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_schedule_task;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_schedule_task");
+    }
+
     while (1)
     {
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         dos_task_delay(1000);
         if (g_ulWaitingStop)
         {

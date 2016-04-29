@@ -534,9 +534,27 @@ VOID* sc_httpd_runtime(VOID *ptr)
     S32                  lMacSocket, lClientSock, lRet;
     U32                  ulIndex, ulClientAddrLen;
     S8                   szRecvBuff[SC_HTTP_MAX_RECV_BUFF_LEN] = {0, };
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_httpd_runtime;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_httpd_runtime");
+    }
 
     while (1)
     {
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         if (sc_httpd_active_srv_cnt() <= 0)
         {
             /* 如果所有服务器都宕机了，就进入重连阶段, 每隔2秒钟重连一次 */

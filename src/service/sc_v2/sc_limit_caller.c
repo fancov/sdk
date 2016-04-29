@@ -806,23 +806,44 @@ U32 sc_number_lmt_delete(U32 ulIndex)
     return DOS_FAIL;
 }
 
-void *sc_limit_stat_mainloop(void *arg)
+void *sc_limit_stat_mainloop(void *ptr)
 {
     DLL_NODE_S              *pstDLLNode     = NULL;
     SC_LIMIT_CALLER_STAT_ST *pstLimit       = NULL;
     U32                     ulHashIndex     = U32_BUTT;
     HASH_NODE_S             *pstHashNode    = NULL;
     SC_NUMBER_LMT_NODE_ST   *pstNumLmtNode  = NULL;
+    SC_PTHREAD_MSG_ST       *pstPthreadMsg = NULL;
+    struct timespec         stTimeout;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_limit_stat_mainloop;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_limit_stat_mainloop");
+    }
 
     while (1)
     {
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         pthread_mutex_lock(&g_mutexLimit);
-        pthread_cond_wait(&g_condLimit, &g_mutexLimit);
+        stTimeout.tv_sec = time(0) + 5;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&g_condLimit, &g_mutexLimit, &stTimeout);
         pthread_mutex_unlock(&g_mutexLimit);
 
         if (0 == DLL_Count(&g_stLimitStatQueue))
         {
-            break;
+            continue;
         }
 
         pthread_mutex_lock(&g_mutexLimit);
@@ -832,13 +853,13 @@ void *sc_limit_stat_mainloop(void *arg)
         if (DOS_ADDR_INVALID(pstDLLNode))
         {
             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_LIMIT), "%s", "Log digest error.");
-            break;
+            continue;
         }
 
         if (DOS_ADDR_INVALID(pstDLLNode->pHandle))
         {
             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_LIMIT), "%s", "Log digest is empty.");
-            break;
+            continue;
         }
 
         pstLimit = (SC_LIMIT_CALLER_STAT_ST *)pstDLLNode->pHandle;

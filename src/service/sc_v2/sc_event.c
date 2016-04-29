@@ -1653,9 +1653,27 @@ VOID *sc_evt_process_runtime(VOID *ptr)
 {
     struct timespec     stTimeout;
     DLL_NODE_S    *pstDLLNode = NULL;
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_evt_process_runtime;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_evt_process_runtime");
+    }
 
     while (1)
     {
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         pthread_mutex_lock(&g_mutexEventQueue);
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;

@@ -29,16 +29,30 @@ static pthread_cond_t   g_condLogDigestQueue  = PTHREAD_COND_INITIALIZER;
 
 static VOID *sc_log_digest_mainloop(VOID *ptr)
 {
-    DLL_NODE_S       *pstDLLNode    = NULL;
-    S8               *pstMsg        = NULL;
-    FILE             *pstLogFile    = NULL;
-    FILE             *fp            = NULL;
-    U32              ulFileSize     = 0;
-    S8               szPsCmd[128]   = {0};
-    S8               szCurTime[32]  = {0,};
-    time_t           stTime;
+    DLL_NODE_S          *pstDLLNode    = NULL;
+    S8                  *pstMsg        = NULL;
+    FILE                *pstLogFile    = NULL;
+    FILE                *fp            = NULL;
+    U32                 ulFileSize     = 0;
+    S8                  szPsCmd[128]   = {0};
+    S8                  szCurTime[32]  = {0,};
+    time_t              stTime;
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
+    struct timespec     stTimeout;
 
     g_blExitFlag = DOS_FALSE;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_log_digest_mainloop;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_log_digest_mainloop");
+    }
 
     while (1)
     {
@@ -47,8 +61,15 @@ static VOID *sc_log_digest_mainloop(VOID *ptr)
             break;
         }
 
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         pthread_mutex_lock(&g_mutexLogDigestQueue);
-        pthread_cond_wait(&g_condLogDigestQueue, &g_mutexLogDigestQueue);
+        stTimeout.tv_sec = time(0) + 5;
+        stTimeout.tv_nsec = 0;
+        pthread_cond_timedwait(&g_condLogDigestQueue, &g_mutexLogDigestQueue, &stTimeout);
         pthread_mutex_unlock(&g_mutexLogDigestQueue);
 
         if (0 == DLL_Count(&g_stLogDigestQueue))

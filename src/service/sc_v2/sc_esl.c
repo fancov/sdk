@@ -421,9 +421,27 @@ VOID *sc_esl_process_runtime(VOID *ptr)
     struct timespec     stTimeout;
     DLL_NODE_S          *pstListNode = NULL;
     esl_event_t         *pstEvent   = NULL;
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_esl_process_runtime;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_esl_process_runtime");
+    }
 
     for (;;)
     {
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         pthread_mutex_lock(&g_mutexESLEventQueue);
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
@@ -481,8 +499,23 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
     BOOL        bFirstConn = DOS_TRUE;
     DLL_NODE_S  *pstDLLNode = NULL;
     esl_event_t *pstEvent   = NULL;
+    //SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
 
     g_blESLEventRunning = DOS_TRUE;
+
+#if 0
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_esl_recv_runtime;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_esl_recv_runtime");
+    }
+#endif
 
     for (;;)
     {
@@ -515,6 +548,11 @@ VOID *sc_esl_recv_runtime(VOID *ptr)
 
             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_ESL), "ELS for event connect Back to Normal. %s", __FUNCTION__);
         }
+
+        //if (DOS_ADDR_VALID(pstPthreadMsg))
+        //{
+        //    pstPthreadMsg->ulLastTime = time(NULL);
+        //}
 
         if (bFirstConn)
         {

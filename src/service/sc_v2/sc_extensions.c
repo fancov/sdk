@@ -303,9 +303,27 @@ VOID* sc_ext_mgnt_runtime(VOID *ptr)
     DLL_NODE_S              *pstListNode = NULL;
     struct timespec         stTimeout;
     SC_EXT_DATA_ST          *pstExtData  = NULL;
+    SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_ext_mgnt_runtime;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_ext_mgnt_runtime");
+    }
 
     for (;;)
     {
+        if (DOS_ADDR_VALID(pstPthreadMsg))
+        {
+            pstPthreadMsg->ulLastTime = time(NULL);
+        }
+
         pthread_mutex_lock(&g_mutexExtMngtMsg);
         stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
@@ -360,8 +378,23 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
     DLL_NODE_S           *pstDLLNode    = NULL;
     esl_event_t          *pstEvent      = NULL;
     SC_EXT_DATA_ST       *pstExtData    = NULL;
+    //SC_PTHREAD_MSG_ST   *pstPthreadMsg  = NULL;
 
     g_blESLExtEventRunning = DOS_TRUE;
+
+#if 0
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+    pstPthreadMsg = sc_pthread_cb_alloc();
+    if (DOS_ADDR_VALID(pstPthreadMsg))
+    {
+        pstPthreadMsg->ulPthID = pthread_self();
+        pstPthreadMsg->func = sc_ext_recv_runtime;
+        pstPthreadMsg->pParam = ptr;
+        dos_strcpy(pstPthreadMsg->szName, "sc_ext_recv_runtime");
+    }
+#endif
 
     for (;;)
     {
@@ -395,6 +428,11 @@ VOID* sc_ext_recv_runtime(VOID *ptr)
 
             sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_EXT_MNGT), "%s", "ELS for event connect Back to Normal.");
         }
+
+        //if (DOS_ADDR_VALID(pstPthreadMsg))
+        //{
+        //    pstPthreadMsg->ulLastTime = time(NULL);
+        //}
 
         if (bFirstConn)
         {
