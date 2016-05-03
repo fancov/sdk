@@ -22,8 +22,7 @@ C_FILE += $(SROUCE)/service/sc_v2/sc_acd.c \
 	$(SROUCE)/service/sc_v2/sc_res_mngt.c \
 	$(SROUCE)/service/sc_v2/sc_su_mngt.c \
 	$(SROUCE)/service/sc_v2/sc_limit_caller.c \
-	$(SROUCE)/service/sc_v2/sc_schedule_task.c \
-	$(SROUCE)/service/sc_v2/sc_pthread.c
+	$(SROUCE)/service/sc_v2/sc_schedule_task.c
 
 
 C_OBJ_FILE += sc_acd.$(SUFFIX) \
@@ -51,8 +50,7 @@ C_OBJ_FILE += sc_acd.$(SUFFIX) \
 	sc_su_mngt.$(SUFFIX) \
 	sc_task.$(SUFFIX) \
 	sc_limit_caller.$(SUFFIX) \
-	sc_schedule_task.$(SUFFIX) \
-	sc_pthread.$(SUFFIX)
+	sc_schedule_task.$(SUFFIX)
 
 
 sc_acd.$(SUFFIX) :
@@ -132,6 +130,3 @@ sc_limit_caller.$(SUFFIX) :
 	
 sc_schedule_task.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/service/sc_v2/sc_schedule_task.c  
-
-sc_pthread.$(SUFFIX) :
-	$(C_COMPILE) $(SROUCE)/service/sc_v2/sc_pthread.c  

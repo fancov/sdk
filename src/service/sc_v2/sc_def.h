@@ -33,8 +33,6 @@ extern "C" {
 
 #define HEARTBEAT_INTERVAL           300
 
-#define SC_PTHREAD_NAME_LEN          64
-
 /**
  * 常用术语
  * SU -- 业务单元
@@ -2408,21 +2406,6 @@ typedef struct tagSCCwqTable
 
 extern SC_SYS_STAT_ST       g_stSysStat;
 extern SC_SYS_STAT_ST       g_stSysStatLocal;
-
-typedef struct tagSCPthreadMsg
-{
-    BOOL        bIsValid;
-    pthread_t   ulPthID;
-    time_t      ulLastTime;
-
-    VOID        *pParam;
-    VOID        *(*func)(VOID *);
-
-    S8          szName[SC_PTHREAD_NAME_LEN];
-
-}SC_PTHREAD_MSG_ST;
-
-SC_PTHREAD_MSG_ST *sc_pthread_cb_alloc();
 
 VOID sc_scb_init(SC_SRV_CB *pstSCB);
 SC_SRV_CB *sc_scb_alloc();

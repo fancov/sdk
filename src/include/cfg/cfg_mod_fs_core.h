@@ -68,6 +68,8 @@
 
 #define INCLUDE_LICENSE_CLIENT            1
 
+#define INCLUDE_PTHREAD_CHECK             1
+
 typedef enum tagLicMods{
     LIC_EIA_AGENT = 1,
     LIC_RECORD,
