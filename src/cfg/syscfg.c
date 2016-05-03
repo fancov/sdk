@@ -52,9 +52,9 @@ static MOD_DESC_ST g_stModList[] = {
     {LIC_SMS,                  "SMS",             "sms send/recv", 1,        ""},
     {LIC_GRAPHIC_REPORT,       "GRAPH REPORT",    "graph report",  1,        ""},
 
-    {LIC_TOTAL_CALLS,          "CALLS",           "total calls",   100,       ""},
-    {LIC_AGENTS,               "AGENTS",          "total agents",  100,       ""},
-    {LIC_PTCS,                 "PTCS",            "ptc numbers",   2,        ""},
+    {LIC_TOTAL_CALLS,          "CALLS",           "total calls",   1500,     ""},
+    {LIC_AGENTS,               "AGENTS",          "total agents",  1500,     ""},
+    {LIC_PTCS,                 "PTCS",            "ptc numbers",   1500,     ""},
     {LIC_G723,                 "G723",            "G723 Calls",    5000,     ""},
     {LIC_G729,                 "G729",            "G729 Calls",    5000,     ""},
 
