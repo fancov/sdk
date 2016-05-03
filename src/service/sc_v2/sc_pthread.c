@@ -23,8 +23,8 @@ extern "C"{
 /* define marcos */
 #define SC_PTHREAD_MSG_MAX_COUNT       32
 /* 线程的最大阻塞时间 秒 */
-#define SC_PTHREAD_BIOCK_MAX_TIME      30
-#define SC_PTHREAD_CHECK_TIME          30
+#define SC_PTHREAD_BIOCK_MAX_TIME      15
+#define SC_PTHREAD_CHECK_TIME          5
 
 /* define structs */
 pthread_t            g_pthPthread;
