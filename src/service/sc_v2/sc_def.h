@@ -173,9 +173,9 @@ extern "C" {
 
 #define SC_AUTO_CALL_RECALL_TIME       500
 
-#define SC_CWQ_QUEUE_TIMEOUT           10
+#define SC_CWQ_QUEUE_TIMEOUT           300
 
-#define SC_AGENT_QUEUE_TIMEOUT         30
+#define SC_AGENT_QUEUE_TIMEOUT         300
 
 /**
  * 1. Ã»ÓÐ±»É¾³ý

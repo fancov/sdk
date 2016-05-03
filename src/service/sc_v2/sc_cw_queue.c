@@ -105,6 +105,7 @@ U32 sc_sw_agent_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode)
     if (DOS_ADDR_INVALID(pstAgentNode) || pstAgentNode->pstAgentInfo->ucServStatus != SC_ACD_SERV_IDEL
         || pstAgentNode->pstAgentInfo->ucWorkStatus != SC_ACD_WORK_IDEL)
     {
+        stEvtLeaveCallque.pstAgentNode = NULL;
         ulTimeNow = time(0);
 
         if (ulTimeNow - pstCallNode->ulIncomingTime<= SC_AGENT_QUEUE_TIMEOUT)
@@ -179,6 +180,7 @@ U32 sc_sw_agentgrp_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode
     pstAgentNode = sc_agent_select_by_grpid(pstCWQNode->ulID, pstCallNode->szCaller, pstCallNode->szCallee);
     if (DOS_ADDR_INVALID(pstAgentNode))
     {
+        stEvtLeaveCallque.pstAgentNode = NULL;
         ulTimeNow = time(0);
 
         if (ulTimeNow - pstCallNode->ulIncomingTime <= SC_CWQ_QUEUE_TIMEOUT)
@@ -190,7 +192,6 @@ U32 sc_sw_agentgrp_cwq_handle(SC_CWQ_NODE_ST *pstCWQNode, DLL_NODE_S *pstDLLNode
         {
             usInterErr = SC_LEAVE_CALL_QUE_TIMEOUT;
         }
-
     }
     else
     {
