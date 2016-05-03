@@ -1397,9 +1397,6 @@ U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_EXEC:
         case SC_CALL_ALERTING:
             pstEvtAnswer = (SC_MSG_EVT_ANSWER_ST *)pstMsg;
-
-            pstSCB->stCall.ulCalleeLegNo = pstEvtAnswer->ulLegNo;
-
             /* Ó¦´ðÖ÷½Ð */
             sc_req_answer_call(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo);
 

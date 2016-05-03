@@ -852,7 +852,7 @@ U32 sc_lcb_hash_add(S8 *pszUUID, SC_LEG_CB *pstLCB)
 
     hash_add_node(g_pstLCBHash, (HASH_NODE_S *)pstLCBHashNode, ulHashIndex, NULL);
 
-    sc_trace_leg(pstLCB, "Add SCB %d with the UUID %s to the hash table.", pstLCB->ulCBNo, pszUUID);
+    sc_trace_leg(pstLCB, "Add Leg %d with the UUID %s to the hash table.", pstLCB->ulCBNo, pszUUID);
 
     pthread_mutex_unlock(&g_mutexLCBHash);
     return DOS_SUCC;
