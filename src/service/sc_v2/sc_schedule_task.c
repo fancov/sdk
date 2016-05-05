@@ -170,7 +170,7 @@ static VOID *sc_schedule_task(VOID *ptr)
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
-    pstPthreadMsg = sc_pthread_cb_alloc();
+    pstPthreadMsg = dos_pthread_cb_alloc();
     if (DOS_ADDR_VALID(pstPthreadMsg))
     {
         pstPthreadMsg->ulPthID = pthread_self();

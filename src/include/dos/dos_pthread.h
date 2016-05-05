@@ -30,6 +30,7 @@
 #define pthread_cond_t pthread_cond_t
 #define pthread_condattr_t pthread_condattr_t
 
+#define DOS_PTHREAD_NAME_LEN          64
 
 #ifndef PTHREAD_MUTEX_INITIALIZER
 #define PTHREAD_MUTEX_INITIALIZER  { { 0, 0, 0, 0, 0, (void *) 0, 0, 0 } }
@@ -70,6 +71,25 @@ extern int pthread_cond_timedwait (pthread_cond_t *__restrict __cond,
 extern int pthread_condattr_init (pthread_condattr_t *__attr);
 
 extern int pthread_condattr_destroy (pthread_condattr_t *__attr);
+
+
+typedef struct tagSCPthreadMsg
+{
+    BOOL        bIsValid;
+    pthread_t   ulPthID;
+    time_t      ulLastTime;
+
+    VOID        *pParam;
+    VOID        *(*func)(VOID *);
+
+    S8          szName[DOS_PTHREAD_NAME_LEN];
+
+}SC_PTHREAD_MSG_ST;
+
+SC_PTHREAD_MSG_ST *dos_pthread_cb_alloc();
+
+U32 dos_pthread_init();
+U32 dos_pthread_start();
 
 #endif /* __DOS_PTHREAD_H__ */
 

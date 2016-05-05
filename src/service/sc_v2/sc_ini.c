@@ -104,9 +104,6 @@ U32 sc_schedule_init();
 U32 sc_schedule_start();
 U32 sc_schedule_stop();
 
-U32 sc_pthread_init();
-U32 sc_pthread_start();
-
 /* global variables */
 SC_MOD_LIST_ST  astSCModList[] = {
     {SC_MOD_DB,         "SC_DB",     LOG_LEVEL_NOTIC, DOS_FALSE, sc_init_db,           NULL,                   NULL},
@@ -247,7 +244,7 @@ U32 sc_init()
 
     dos_memzero((VOID *)&g_stSysStat, sizeof(g_stSysStat));
 
-    sc_pthread_init();
+    dos_pthread_init();
 
     for (ulIndex=0; ulIndex<sizeof(astSCModList)/sizeof(SC_MOD_LIST_ST); ulIndex++)
     {
@@ -296,7 +293,7 @@ U32 sc_start()
 
     sc_log(DOS_FALSE, LOG_LEVEL_NOTIC, "Start SC. %d", time(NULL));
 
-    if (sc_pthread_start() != DOS_SUCC)
+    if (dos_pthread_start() != DOS_SUCC)
     {
         sc_log(DOS_FALSE, LOG_LEVEL_NOTIC, "start SC pthread FAIL. %u", time(NULL));
         return DOS_SUCC;
