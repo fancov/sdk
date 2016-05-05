@@ -2527,6 +2527,7 @@ U32 sc_agent_serv_status_update(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulServS
             break;
 
         case SC_ACD_SERV_PROC:
+            sc_agent_stat(SC_AGENT_STAT_CALL_FINISHED, pstAgentQueueInfo, 0, 0);
             ulRet = sc_agent_set_proc(pstAgentQueueInfo);
             break;
 
@@ -2573,7 +2574,6 @@ U32 sc_agent_set_signin(SC_AGENT_NODE_ST *pstAgentNode, U32 ulOperatingType)
         case SC_ACD_WORK_AWAY:
         case SC_ACD_WORK_IDEL:
             pstAgentInfo->ucWorkStatus = SC_ACD_WORK_IDEL;
-            sc_agent_stat(SC_AGENT_STAT_ONLINE, pstAgentNode->pstAgentInfo, pstAgentNode->pstAgentInfo->ulAgentID, 0);
             bIsPub = DOS_TRUE;
             break;
         default:
@@ -3374,7 +3374,7 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
         case SC_AGENT_STAT_CALL_FINISHED:
             if (pstAgentInfo->ulLastCallTime != 0 && ulCurrentTime >= pstAgentInfo->ulLastCallTime)
             {
-                pstAgentInfo->stStat.ulTotalDuration = ulCurrentTime - pstAgentInfo->ulLastCallTime;
+                pstAgentInfo->stStat.ulTotalDuration += (ulCurrentTime - pstAgentInfo->ulLastCallTime);
             }
 
             pstAgentInfo->ulLastCallTime = 0;

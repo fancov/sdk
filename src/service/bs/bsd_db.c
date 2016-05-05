@@ -933,14 +933,15 @@ VOID bsd_save_settle_cdr(BS_INTER_MSG_CDR *pstMsg)
                       "`id`, `sp_customer_id`,`billing_rule_id`,`ctime`,"
                       "`type`,`fee`,`caller`,`callee`,`deal_times`,`peer_trunk_id`,"
                       "`terminate_cause`,`cdr_mark`,`cdr_type`,`peer_ip1`,"
-                      "`peer_ip2`,`peer_ip3`,`peer_ip4`)"
+                      "`peer_ip2`,`peer_ip3`,`peer_ip4`, `res1`)"
                     "VALUES(NULL, %u, %u, %u, %u, %u, \"%s\", \"%s\", %u"
-                        ", %u, %u, %u, %u, %u, %u, %u, %u);"
+                        ", %u, %u, %u, %u, %u, %u, %u, %u, %u);"
                     , pstCDR->ulSPID, pstCDR->ulRuleID, pstCDR->ulTimeStamp
                     , pstCDR->ucServType, pstCDR->ulFee, pstCDR->szCaller
                     , pstCDR->szCallee, pstCDR->ulTimeStamp, pstCDR->usPeerTrunkID
                     , pstCDR->usTerminateCause, pstCDR->stCDRTag.ulCDRMark, pstCDR->stCDRTag.ucCDRType
-                    , pstCDR->aulPeerIP[0], pstCDR->aulPeerIP[1], pstCDR->aulPeerIP[2], pstCDR->aulPeerIP[3]);
+                    , pstCDR->aulPeerIP[0], pstCDR->aulPeerIP[1], pstCDR->aulPeerIP[2], pstCDR->aulPeerIP[3]
+                    , pstCDR->ulLen);
 
     if (db_query(g_pstDBHandle, szQuery, NULL, NULL, NULL) < 0)
     {

@@ -126,7 +126,7 @@ U32 sc_stat_syn(U32 ulType, VOID *ptr);
 U32 sc_task_write_stat(U32 ulType, VOID *ptr);
 U32 sc_lcb_check(U32 ulType, VOID *ptr);
 U32 sc_scb_check(U32 ulType, VOID *ptr);
-
+U32 sc_agent_audit(U32 ulCycle, VOID *ptr);
 
 
 /* 注册审计任务 */
@@ -141,6 +141,8 @@ static SC_SCHEDULE_TASK_ST g_stScheduleTaskList[] =
 #endif
     {SC_SCHEDULE_TYPE_N_DAY,    1,                        sc_num_lmt_stat,            "Number usage stat"},
     {SC_SCHEDULE_TYPE_N_DAY,    1,                        sc_num_lmt_update,          "Number limitation"},
+
+    {SC_SCHEDULE_TYPE_N_2HOUR,  0,                        sc_agent_audit,             "Write agent stat"},
 
     /* 6小时写统计数据到磁盘 */
     {SC_SCHEDULE_TYPE_CYCLE,    6 * 60 * 60,              sc_stat_write,              "Write stat info"},
