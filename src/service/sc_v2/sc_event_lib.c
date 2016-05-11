@@ -1053,6 +1053,7 @@ U32 sc_agent_auto_preview_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgent
     SC_LEG_CB       *pstCalleeLegCB             = NULL;
     U32             ulErrCode                   = CC_ERR_NO_REASON;
     S8              szCallee[SC_NUM_LENGTH]     = {0,};
+    U32             ulRet                       = DOS_FAIL;
 
     if (DOS_ADDR_INVALID(pstSCB)
         || DOS_ADDR_INVALID(pstAgentNode))
@@ -1075,6 +1076,21 @@ U32 sc_agent_auto_preview_callback(SC_SRV_CB *pstSCB, SC_AGENT_NODE_ST *pstAgent
     if (DOS_ADDR_INVALID(pstCalleeLegCB))
     {
         return DOS_FAIL;
+    }
+
+    /* 根据坐席获得主叫号码 */
+    ulRet = sc_caller_setting_select_number(pstSCB->ulCustomerID, pstAgentNode->pstAgentInfo->ulAgentID, SC_SRC_CALLER_TYPE_AGENT, pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling, SC_NUM_LENGTH);
+    if (ulRet != DOS_SUCC)
+    {
+        sc_log(pstSCB->bTrace, SC_LOG_SET_FLAG(LOG_LEVEL_NOTIC, SC_MOD_TASK, SC_LOG_DISIST), "Get caller from agnent(%u) FAIL.", pstAgentNode->pstAgentInfo->ulAgentID);
+        goto process_fail;
+    }
+
+    sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_NOTIC, SC_MOD_TASK), "Get caller from agnent(%u) SUCC. %s", pstAgentNode->pstAgentInfo->ulAgentID, pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling);
+
+    if (!pstSCB->bTrace)
+    {
+        pstSCB->bTrace = sc_trace_check_caller(pstCalleeLegCB->stCall.stNumInfo.szOriginalCalling);
     }
 
     /* 判断修改坐席的状态 */

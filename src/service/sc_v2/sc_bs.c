@@ -493,9 +493,6 @@ VOID *sc_bs_recv_mainloop(VOID *ptr)
     struct timeval stTimeout={1, 0};
     SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
 
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-
     pstPthreadMsg = dos_pthread_cb_alloc();
     if (DOS_ADDR_VALID(pstPthreadMsg))
     {
@@ -686,9 +683,6 @@ VOID *sc_bs_fsm_mainloop(VOID *ptr)
     SC_BS_MSG_NODE_ST    *pMsgNode;
     struct timespec stTimeout;
     SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
-
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
     pstPthreadMsg = dos_pthread_cb_alloc();
     if (DOS_ADDR_VALID(pstPthreadMsg))

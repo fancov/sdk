@@ -305,9 +305,6 @@ VOID* sc_ext_mgnt_runtime(VOID *ptr)
     SC_EXT_DATA_ST          *pstExtData  = NULL;
     SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
 
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-
     pstPthreadMsg = dos_pthread_cb_alloc();
     if (DOS_ADDR_VALID(pstPthreadMsg))
     {

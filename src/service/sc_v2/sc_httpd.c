@@ -536,9 +536,6 @@ VOID* sc_httpd_runtime(VOID *ptr)
     S8                   szRecvBuff[SC_HTTP_MAX_RECV_BUFF_LEN] = {0, };
     SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
 
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-
     pstPthreadMsg = dos_pthread_cb_alloc();
     if (DOS_ADDR_VALID(pstPthreadMsg))
     {

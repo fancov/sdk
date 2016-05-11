@@ -167,9 +167,6 @@ static VOID *sc_schedule_task(VOID *ptr)
 
     g_ulWaitingStop = DOS_FALSE;
 
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-
     pstPthreadMsg = dos_pthread_cb_alloc();
     if (DOS_ADDR_VALID(pstPthreadMsg))
     {

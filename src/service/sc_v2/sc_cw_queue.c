@@ -506,9 +506,6 @@ VOID *sc_cwq_runtime(VOID *ptr)
     U32                     ulIndex         = 0;
     SC_PTHREAD_MSG_ST       *pstPthreadMsg  = NULL;
 
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-
     pstPthreadMsg = dos_pthread_cb_alloc();
     if (DOS_ADDR_VALID(pstPthreadMsg))
     {

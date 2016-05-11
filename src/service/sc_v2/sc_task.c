@@ -1045,16 +1045,20 @@ U32 sc_task_make_call(SC_TASK_CB *pstTCB)
         goto make_call_file;
     }
 
-    if (sc_get_number_by_callergrp(pstTCB->ulCallerGrpID, szCaller, SC_NUM_LENGTH) != DOS_SUCC)
+    if (pstTCB->ucMode != SC_TASK_MODE_CALL_AGNET_FIRST)
     {
-        sc_log(bIsTrace, SC_LOG_SET_FLAG(LOG_LEVEL_NOTIC, SC_MOD_TASK, SC_LOG_DISIST), "Get caller from caller group(%u) FAIL.", pstTCB->ulCallerGrpID);
-        ulErrNo = CC_ERR_SC_CALLER_NUMBER_ILLEGAL;
-        goto make_call_file;
-    }
+        /* 先呼叫坐席的模式，不限获得主叫号码 */
+        if (sc_get_number_by_callergrp(pstTCB->ulCallerGrpID, szCaller, SC_NUM_LENGTH) != DOS_SUCC)
+        {
+            sc_log(bIsTrace, SC_LOG_SET_FLAG(LOG_LEVEL_NOTIC, SC_MOD_TASK, SC_LOG_DISIST), "Get caller from caller group(%u) FAIL.", pstTCB->ulCallerGrpID);
+            ulErrNo = CC_ERR_SC_CALLER_NUMBER_ILLEGAL;
+            goto make_call_file;
+        }
 
-    if (!bIsTrace)
-    {
-        bIsTrace = sc_trace_check_caller(szCaller);
+        if (!bIsTrace)
+        {
+            bIsTrace = sc_trace_check_caller(szCaller);
+        }
     }
 
     /* 申请一个scb，leg */

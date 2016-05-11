@@ -816,9 +816,6 @@ void *sc_limit_stat_mainloop(void *ptr)
     SC_PTHREAD_MSG_ST       *pstPthreadMsg = NULL;
     struct timespec         stTimeout;
 
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-
     pstPthreadMsg = dos_pthread_cb_alloc();
     if (DOS_ADDR_VALID(pstPthreadMsg))
     {
