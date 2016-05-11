@@ -150,9 +150,6 @@ static VOID *sc_pub_runtime(VOID *ptr)
 
     pstTask->ulValid = DOS_TRUE;
 
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-
     pstPthreadMsg = dos_pthread_cb_alloc();
     if (DOS_ADDR_VALID(pstPthreadMsg))
     {
@@ -284,9 +281,6 @@ static VOID *sc_pub_runtime_master(VOID *ptr)
         DOS_ASSERT(0);
         return NULL;
     }
-
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
     pstPthreadMsg = dos_pthread_cb_alloc();
     if (DOS_ADDR_VALID(pstPthreadMsg))

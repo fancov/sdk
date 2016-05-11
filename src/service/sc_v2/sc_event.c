@@ -1655,9 +1655,6 @@ VOID *sc_evt_process_runtime(VOID *ptr)
     DLL_NODE_S    *pstDLLNode = NULL;
     SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
 
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-
     pstPthreadMsg = dos_pthread_cb_alloc();
     if (DOS_ADDR_VALID(pstPthreadMsg))
     {
