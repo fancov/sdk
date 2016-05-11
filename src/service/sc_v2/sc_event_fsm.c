@@ -871,6 +871,7 @@ U32 sc_call_access_code(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, S8 *szNum
     U32     i                        = 0;
     U32     ulKey                    = U32_BUTT;
     S8      szDealNum[SC_NUM_LENGTH] = {0,};
+    SC_AGENT_NODE_ST  *pstAgentNode   = NULL;
 
     if (DOS_ADDR_INVALID(pstSCB)
         || DOS_ADDR_INVALID(pstCallingLegCB)
@@ -887,10 +888,14 @@ U32 sc_call_access_code(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, S8 *szNum
         {
             pstSCB->ulCustomerID = sc_sip_account_get_customer(pstCallingLegCB->stCall.stNumInfo.szOriginalCalling, NULL);
         }
-        else if (SC_LEG_PEER_INBOUND == pstCallingLegCB->stCall.ucPeerType)
+        else
         {
             /* external可能是TT号呼入哦 */
-            pstSCB->ulCustomerID = sc_did_get_custom(pstCallingLegCB->stCall.stNumInfo.szOriginalCallee);
+            pstAgentNode = sc_agent_get_by_tt_num(pstCallingLegCB->stCall.stNumInfo.szOriginalCalling);
+            if (DOS_ADDR_VALID(pstAgentNode) && DOS_ADDR_VALID(pstAgentNode->pstAgentInfo))
+            {
+                pstSCB->ulCustomerID = pstAgentNode->pstAgentInfo->ulCustomerID;
+            }
         }
     }
 
@@ -900,6 +905,7 @@ U32 sc_call_access_code(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB, S8 *szNum
     if (pstSCB->ulCustomerID == U32_BUTT)
     {
         DOS_ASSERT(0);
+        sc_req_hungup(pstSCB->ulSCBNo, pstCallingLegCB->ulCBNo,CC_ERR_SC_CALLER_NUMBER_ILLEGAL);
         return DOS_FAIL;
     }
 

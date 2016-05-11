@@ -1780,8 +1780,8 @@ SC_AGENT_NODE_ST *sc_agent_select_by_grpid(U32 ulGroupID, S8 *szCallerNum, S8 *s
         pstGroupListNode->usLastUsedAgent = pstAgentNode->ulID;
         dos_strncmp(pstGroupListNode->szLastEmpNo, pstAgentNode->pstAgentInfo->szEmpNo, SC_EMP_NUMBER_LENGTH);
         pstGroupListNode->szLastEmpNo[SC_EMP_NUMBER_LENGTH-1] = '\0';
-        pstAgentNode->pstAgentInfo->stStat.ulCallCnt++;
-        pstAgentNode->pstAgentInfo->stStat.ulSelectCnt++;
+//        pstAgentNode->pstAgentInfo->stStat.ulCallCnt++;
+//        pstAgentNode->pstAgentInfo->stStat.ulSelectCnt++;
 
         pthread_mutex_unlock(&g_mutexGroupList);
 

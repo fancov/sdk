@@ -693,7 +693,7 @@ typedef struct tagSCSUTimeInfo{
 }SC_SU_TIME_INFO_ST;
 
 /**
- * 单个LEG中时间信息
+ * 单个LEG中号码信息
  */
 typedef struct tagSCSUNumInfo{
     S8      szOriginalCallee[SC_NUM_LENGTH]; /**< 原始被叫号码(业务发起时的) */
