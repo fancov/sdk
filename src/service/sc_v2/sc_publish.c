@@ -166,24 +166,19 @@ static VOID *sc_pub_runtime(VOID *ptr)
             break;
         }
 
-        if (DOS_ADDR_VALID(pstPthreadMsg))
-        {
-            pstPthreadMsg->ulLastTime = time(NULL);
-        }
-
         pthread_mutex_lock(&pstTask->mutexPublishCurl);
-        stTimeout.tv_sec = time(0) + 5;
+        stTimeout.tv_sec = time(0) + 1;
         stTimeout.tv_nsec = 0;
         pthread_cond_timedwait(&pstTask->condPublishCurl, &pstTask->mutexPublishCurl, &stTimeout);
         pthread_mutex_unlock(&pstTask->mutexPublishCurl);
 
-        if (0 == DLL_Count(&pstTask->stPublishQueue))
-        {
-            continue;
-        }
-
         while (1)
         {
+            if (DOS_ADDR_VALID(pstPthreadMsg))
+            {
+                pstPthreadMsg->ulLastTime = time(NULL);
+            }
+
             if (0 == DLL_Count(&pstTask->stPublishQueue))
             {
                 break;
@@ -481,6 +476,8 @@ U32 sc_pub_init()
 U32 sc_pub_start()
 {
     U32 i;
+
+    curl_global_init(CURL_GLOBAL_ALL);
 
     if (pthread_create(&g_stPubTaskList[SC_PUB_MASTER_INDEX].pthPublishCurl, NULL, sc_pub_runtime_master, &g_stPubTaskList[SC_PUB_MASTER_INDEX]) < 0)
     {
