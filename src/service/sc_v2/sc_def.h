@@ -2307,7 +2307,7 @@ typedef struct tagTaskCB
     U32        ulTaskID;                          /* 呼叫任务ID */
     U32        ulCustomID;                        /* 呼叫任务所属 */
     U32        ulCurrentConcurrency;              /* 当前并发数 */
-    U32        ulMaxConcurrency;                  /* 当前并发数 */
+    U32        ulMaxConcurrency;                  /* 最大并发数 */
     U32        ulAgentQueueID;                    /* 坐席队列编号 */
 
     U16        usSiteCount;                       /* 坐席数量 */

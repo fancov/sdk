@@ -1593,7 +1593,7 @@ proc_fail:
 U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
 {
     SC_MSG_EVT_ERR_REPORT_ST   stErrReport;
-    SC_MSG_CMD_RINGBACK_ST *pstAnswer = NULL;
+    SC_MSG_CMD_RINGBACK_ST *pstRing = NULL;
     SC_LEG_CB              *pstLeg    = NULL;
     S8                     *pszArgv   = NULL;
     S8                     szCMD[256];
@@ -1605,22 +1605,22 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
         return DOS_FAIL;
     }
 
-    pstAnswer = (SC_MSG_CMD_RINGBACK_ST *)pstMsg;
+    pstRing = (SC_MSG_CMD_RINGBACK_ST *)pstMsg;
 
-    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "request answer leg %u", pstAnswer->ulLegNo);
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "request ringback leg %u", pstRing->ulLegNo);
 
-    pstLeg = sc_lcb_get(pstAnswer->ulLegNo);
+    pstLeg = sc_lcb_get(pstRing->ulLegNo);
     if (DOS_ADDR_INVALID(pstLeg))
     {
         stErrReport.stMsgTag.usInterErr = SC_ERR_LEG_NOT_EXIST;
-        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstRing->ulLegNo);
         goto proc_fail;
     }
 
-    if (pstAnswer->ulCallConnected)
+    if (pstRing->ulCallConnected)
     {
         /* 已经接通，且没有早期媒体，就需要放回铃，否则就不要处理，等待上传桥接 */
-        if (!pstAnswer->ulEarlyMedia)
+        if (!pstRing->ulEarlyMedia)
         {
             pszArgv = sc_hine_get_tone(SC_TONE_RINGBACK);
             if (DOS_ADDR_INVALID(pszArgv))
@@ -1632,21 +1632,21 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
             if (sc_esl_execute("playback", pszArgv, pstLeg->szUUID) != DOS_SUCC)
             {
                 stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u.", pstAnswer->ulLegNo);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u.", pstRing->ulLegNo);
                 goto proc_fail;
             }
         }
     }
     else
     {
-        if (pstAnswer->ulEarlyMedia)
+        if (pstRing->ulEarlyMedia)
         {
             dos_snprintf(szCMD, sizeof(szCMD), "bgapi uuid_pre_answer %s \r\n", pstLeg->szUUID);
 
             if (sc_esl_execute_cmd(szCMD, NULL, 0) != DOS_SUCC)
             {
                 stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstAnswer->ulLegNo);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Get scb fail. %u", pstRing->ulLegNo);
                 goto proc_fail;
             }
         }
@@ -1655,7 +1655,7 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
             if (sc_esl_execute("ring_ready", "", pstLeg->szUUID) != DOS_SUCC)
             {
                 stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
-                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u", pstAnswer->ulLegNo);
+                sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "Play ringback tone. %u", pstRing->ulLegNo);
                 goto proc_fail;
             }
         }
@@ -1667,8 +1667,8 @@ U32 sc_cmd_ringback(SC_MSG_TAG_ST *pstMsg)
 
 proc_fail:
     stErrReport.stMsgTag.ulMsgType = SC_EVT_ERROR_PORT;
-    stErrReport.ulSCBNo = pstAnswer->ulSCBNo;
-    stErrReport.ulCMD = pstAnswer->stMsgTag.ulMsgType;
+    stErrReport.ulSCBNo = pstRing->ulSCBNo;
+    stErrReport.ulCMD = pstRing->stMsgTag.ulMsgType;
 
     sc_send_event_err_report(&stErrReport);
 

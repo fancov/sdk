@@ -2513,7 +2513,8 @@ U32 sc_agent_serv_status_update(SC_AGENT_INFO_ST *pstAgentQueueInfo, U32 ulServS
             ulRet = sc_agent_set_ringing(pstAgentQueueInfo);
 
             if (ulServType == SC_SRV_PREVIEW_CALL
-                || ulServType == SC_SRV_AUTO_PREVIEW)
+                || ulServType == SC_SRV_AUTO_PREVIEW
+                || ulServType == SC_SRV_AGENT_SIGIN)
             {
                 break;
             }
@@ -3408,7 +3409,7 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
             if (pstAgentInfo->ulLastSignInTime != 0
                 && ulCurrentTime >= pstAgentInfo->ulLastSignInTime)
             {
-                pstAgentInfo->stStat.ulTimesSignin += (ulCurrentTime - pstAgentInfo->ulLastSignInTime);
+                pstAgentInfo->stStat.ulTimesSignin = ulCurrentTime - pstAgentInfo->ulLastSignInTime;
             }
             else
             {

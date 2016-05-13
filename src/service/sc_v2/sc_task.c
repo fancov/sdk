@@ -2003,10 +2003,14 @@ U32 sc_task_mngt_start()
                 sc_tcb_free(pstTCB);
                 continue;
             }
-
-            /* 获取呼叫任务最大并发数 */
-            pstTCB->usSiteCount = sc_agent_group_agent_count(pstTCB->ulAgentQueueID);
-            pstTCB->ulMaxConcurrency = ceil(1.0 * (pstTCB->usSiteCount * pstTCB->ulCallRate) / 10);
+            
+            if (pstTCB->ucMode != SC_TASK_MODE_AUDIO_ONLY)
+            {
+                /* 获取呼叫任务最大并发数 */
+                pstTCB->usSiteCount = sc_agent_group_agent_count(pstTCB->ulAgentQueueID);
+                pstTCB->ulMaxConcurrency = ceil(1.0 * (pstTCB->usSiteCount * pstTCB->ulCallRate) / 10);
+            }
+            
             if (0 == pstTCB->ulMaxConcurrency)
             {
                 pstTCB->ulMaxConcurrency = SC_MAX_TASK_MAX_CONCURRENCY;
