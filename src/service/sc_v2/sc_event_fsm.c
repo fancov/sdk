@@ -1403,6 +1403,9 @@ U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
         case SC_CALL_AUTH2:
         case SC_CALL_EXEC:
         case SC_CALL_ALERTING:
+            
+            pstSCB->stCall.stSCBTag.usStatus = SC_CALL_ACTIVE;
+            
             pstEvtAnswer = (SC_MSG_EVT_ANSWER_ST *)pstMsg;
             /* Ó¦´ðÖ÷½Ð */
             sc_req_answer_call(pstSCB->ulSCBNo, pstSCB->stCall.ulCallingLegNo);
@@ -1414,8 +1417,6 @@ U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 pstSCB->stCall.stSCBTag.usStatus = SC_CALL_ACTIVE;
                 goto proc_fail;
             }
-
-
 
             if (SC_DIRECTION_PSTN == pstSCB->stCall.ulCallSrc && SC_DIRECTION_SIP == pstSCB->stCall.ulCallDst)
             {
@@ -1495,7 +1496,6 @@ U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
             }
 
-            pstSCB->stCall.stSCBTag.usStatus = SC_CALL_ACTIVE;
             break;
 
         case SC_CALL_ACTIVE:
