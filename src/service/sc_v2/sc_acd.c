@@ -3409,7 +3409,7 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
             if (pstAgentInfo->ulLastSignInTime != 0
                 && ulCurrentTime >= pstAgentInfo->ulLastSignInTime)
             {
-                pstAgentInfo->stStat.ulTimesSignin = ulCurrentTime - pstAgentInfo->ulLastSignInTime;
+                pstAgentInfo->stStat.ulTimesSignin += (ulCurrentTime - pstAgentInfo->ulLastSignInTime);
             }
             else
             {
