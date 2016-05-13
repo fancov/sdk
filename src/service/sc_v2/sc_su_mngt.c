@@ -449,11 +449,6 @@ U32 sc_esl_event_answer(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         return DOS_SUCC;
     }
 
-    if (pstLegCB->stCall.stTimeInfo.ulAnswerTime == 0)
-    {
-        pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);
-    }
-
     stSCEvent.stMsgTag.ulMsgType = SC_EVT_CALL_AMSWERED;
     //stSCEvent.stMsgTag.ulSCBNo = pstLegCB->ulSCBNo;
     if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
@@ -469,6 +464,8 @@ U32 sc_esl_event_answer(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     if (pstLegCB->stCall.ucStatus < SC_LEG_ACTIVE)
     {
+        pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);
+
         pstLegCB->stCall.ucStatus = SC_LEG_ACTIVE;
         sc_send_event_answer(&stSCEvent);
     }
@@ -804,11 +801,6 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
         }
     }
 
-    if (pstLegCB->stCall.stTimeInfo.ulAnswerTime == 0)
-    {
-        pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);
-    }
-
     stSCEvent.stMsgTag.ulMsgType = SC_EVT_CALL_AMSWERED;
     if (pstLegCB->ulIndSCBNo != U32_BUTT && pstLegCB->ulSCBNo == U32_BUTT)
     {
@@ -823,6 +815,8 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     if (pstLegCB->stCall.ucStatus < SC_LEG_ACTIVE)
     {
+        pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);
+
         pstLegCB->stCall.ucStatus = SC_LEG_ACTIVE;
         sc_send_event_answer(&stSCEvent);
     }

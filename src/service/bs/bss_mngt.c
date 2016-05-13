@@ -2963,6 +2963,20 @@ VOID bss_generate_settle_cdr(BS_BILL_SESSION_LEG *pstSessionLeg)
         pstCDR->ulLen = 0;
     }
 
+    if (pstSessionLeg->ulRingTimeStamp >= pstSessionLeg->ulStartTimeStamp
+        && pstSessionLeg->ulRingTimeStamp != 0
+        && pstSessionLeg->ulRingTimeStamp != U32_BUTT
+        && pstSessionLeg->ulStartTimeStamp != 0
+        && pstSessionLeg->ulStartTimeStamp != U32_BUTT)
+    {
+        pstCDR->ulPDDLen = pstSessionLeg->ulRingTimeStamp - pstSessionLeg->ulStartTimeStamp;
+    }
+    else
+    {
+        pstCDR->ulPDDLen = 0;
+    }
+
+
     if (pstCDR->ulTimeStamp != 0 && 0 == pstCDR->ulLen)
     {
         /* 时间太短,保护处理 */
