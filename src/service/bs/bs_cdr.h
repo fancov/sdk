@@ -207,6 +207,7 @@ typedef struct
     S8              szCaller[BS_MAX_CALL_NUM_LEN];                  /* 主叫号码 */
     S8              szCallee[BS_MAX_CALL_NUM_LEN];                  /* 被叫号码 */
     U32             ulTimeStamp;                /* 时间戳 */
+    U32             ulPDDLen;                   /* 接续时长 */
     U32             ulLen;                      /* 呼叫时长或信息长度,单位:秒/字节 */
     U32             aulPeerIP[4];               /* 对端IP地址,填写为发送侧IP;兼容IPv6 */
     U16             usPeerTrunkID;              /* 对端中继ID */
