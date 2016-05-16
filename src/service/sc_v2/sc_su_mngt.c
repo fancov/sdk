@@ -357,7 +357,7 @@ proc_fail:
         }
         else
         {
-            stErrReport.stMsgTag.ulMsgType = SC_ERR_CALL_FAIL;
+            stErrReport.stMsgTag.ulMsgType = SC_ERR_FAIL;
             stErrReport.stMsgTag.ulSCBNo = pstLCB->ulSCBNo;
             stErrReport.ulCMD = SC_CMD_BUTT;
             stErrReport.ulSCBNo = pstLCB->ulSCBNo;
@@ -813,6 +813,8 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     stSCEvent.ulSCBNo = pstLegCB->ulSCBNo;
     stSCEvent.ulLegNo = pstLegCB->ulCBNo;
 
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_SU), "##################################%d",pstLegCB->stCall.ucStatus);
+
     if (pstLegCB->stCall.ucStatus < SC_LEG_ACTIVE)
     {
         pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);
@@ -1004,6 +1006,7 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
     sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "BJ-JOB exec. Command: %s, Argv: %s", pszCommand, pszArgv);
 
     ulLegCBNo = sc_bgjob_hash_find(pszJobUUID);
+
     if (ulLegCBNo > SC_LEG_CB_SIZE)
     {
         sc_bgjob_hash_delete(pszJobUUID);
@@ -1011,10 +1014,12 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
     }
 
     sc_bgjob_hash_delete(pszJobUUID);
+    
 
     pstLCB = sc_lcb_get(ulLegCBNo);
     if (DOS_ADDR_INVALID(pstLCB))
     {
+
         return DOS_SUCC;
     }
 
@@ -1027,9 +1032,19 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
 
     if (bIsSucc)
     {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "BJ COMMAND exec SUCC");
+
         if (dos_strnicmp(pszCommand, "uuid_bridge", dos_strlen("uuid_bridge")) == 0)
         {
-            stErrReport.stMsgTag.usInterErr = SC_ERR_BRIDGE_SUCC;
+            stErrReport.ulCMD = SC_CMD_BRIDGE_CALL;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_SUCC;
+        }
+        else if (dos_strnicmp(pszCommand, "uuid_transfer", dos_strlen("uuid_transfer")) == 0)
+        {
+            sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_SU), "BJ COMMAND exec SUCC, uuid_transfer");
+
+            stErrReport.ulCMD = SC_CMD_TRANSFER;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_SUCC;
         }
         else
         {
@@ -1042,19 +1057,23 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
 
         if (dos_strnicmp(pszCommand, "originate", dos_strlen("originate")) == 0)
         {
-            stErrReport.stMsgTag.usInterErr = SC_ERR_CALL_FAIL;
+            stErrReport.ulCMD = SC_CMD_CALL;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_FAIL;
         }
         else if (dos_strnicmp(pszCommand, "uuid_bridge", dos_strlen("uuid_bridge")) == 0)
         {
-            stErrReport.stMsgTag.usInterErr = SC_ERR_BRIDGE_FAIL;
+            stErrReport.ulCMD = SC_CMD_BRIDGE_CALL;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_FAIL;
         }
         else if (dos_strnicmp(pszCommand, "uuid_break", dos_strlen("uuid_break")) == 0)
         {
-            stErrReport.stMsgTag.usInterErr = SC_ERR_BREAK_FAIL;
+            stErrReport.ulCMD = SC_CMD_RELEASE_CALL;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_FAIL;
         }
         else if (dos_strnicmp(pszCommand, "uuid_record", dos_strlen("uuid_record")) == 0)
         {
-            stErrReport.stMsgTag.usInterErr = SC_ERR_RECORD_FAIL;
+            stErrReport.ulCMD = SC_CMD_RECORD;
+            stErrReport.stMsgTag.usInterErr = SC_ERR_FAIL;
         }
         else
         {
@@ -1072,9 +1091,9 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
     {
         stErrReport.stMsgTag.ulSCBNo = pstLCB->ulSCBNo;
     }
-    stErrReport.ulCMD = SC_CMD_BUTT;
     stErrReport.ulSCBNo = pstLCB->ulSCBNo;
     stErrReport.ulLegNo = pstLCB->ulCBNo;
+
     return sc_send_event_err_report(&stErrReport);
 }
 
@@ -1882,8 +1901,8 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
         pstLCB->stPlayback.bValid = DOS_TRUE;
         pstLCB->stPlayback.usStatus = SC_SU_PLAYBACK_PROC;
         bIsAllocPlayArg = DOS_TRUE;
-        ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "1 1 %u 0 # %s pdtmf \\d+"
-                                , pstPlayback->ulLoopCnt, pstPlayback->szAudioFile);
+        ulLen = dos_snprintf(pszPlayCMDArg, SC_MAX_FILELIST_LEN, "1 1 %u %u # %s pdtmf \\d+"
+                                , pstPlayback->ulLoopCnt, pstPlayback->ulSilence, pstPlayback->szAudioFile);
         if (sc_esl_execute("play_and_get_digits", pszPlayCMDArg, pstLCB->szUUID) != DOS_SUCC)
         {
             stErrReport.stMsgTag.usInterErr = SC_ERR_EXEC_FAIL;
@@ -1918,8 +1937,7 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
 
         return DOS_SUCC;
     }
-
-    if (SC_CND_PLAYBACK_SYSTEM == pstPlayback->enType)
+    else if (SC_CND_PLAYBACK_SYSTEM == pstPlayback->enType)
     {
         /* 获取文件列表再说 */
         pszPlayCMDArg = (S8 *)dos_dmem_alloc(SC_MAX_FILELIST_LEN);
@@ -1974,10 +1992,6 @@ U32 sc_cmd_playback(SC_MSG_TAG_ST *pstMsg)
     {
         //pstLCB->stPlayback.ulTotal++;
     }
-
-
-    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_SU), "...................................%u", pstLCB->stPlayback.usStatus);
-
 
     /* 根据状态处理 */
     switch (pstLCB->stPlayback.usStatus)
@@ -2469,7 +2483,7 @@ U32 sc_cmd_transfer(SC_MSG_TAG_ST *pstMsg)
     SC_MSG_CMD_TRANSFER_ST     *pstTransfer     = NULL;
     SC_LEG_CB                  *pstLCB          = NULL;
     S8                          szCMD[256];
-    S8                          szUUID[SC_UUID_LENGTH];
+    S8                          szUUID[64] = {0};
 
     pstTransfer = (SC_MSG_CMD_TRANSFER_ST *)pstMsg;
     if (DOS_ADDR_INVALID(pstTransfer))
@@ -2498,7 +2512,7 @@ U32 sc_cmd_transfer(SC_MSG_TAG_ST *pstMsg)
         goto proc_fail;
     }
 
-    sc_lcb_hash_add(szUUID, pstLCB);
+    sc_bgjob_hash_add(pstLCB->ulCBNo, szUUID);
 
     return DOS_SUCC;
 

@@ -1514,7 +1514,7 @@ U32 sc_incoming_call_proc(SC_SRV_CB *pstSCB, SC_LEG_CB *pstCallingLegCB)
 
             case SC_DID_BIND_TYPE_COR_SW:
                 pstSCB->stCorSwitchboard.stSCBTag.bValid = DOS_TRUE;
-                pstSCB->ulCurrentSrv++;
+                pstSCB->stCall.stSCBTag.bValid = DOS_FALSE;
                 pstSCB->pstServiceList[pstSCB->ulCurrentSrv] = &pstSCB->stCorSwitchboard.stSCBTag;
                 pstSCB->stCorSwitchboard.ulCallingLegNo = pstSCB->stCall.ulCallingLegNo;
                 pstSCB->stCorSwitchboard.stSCBTag.usStatus = SC_COR_SWITCHBOARD_IDEL;

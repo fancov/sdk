@@ -480,15 +480,12 @@ typedef enum tagSCSUEvent{
 }SC_SU_EVENT_EN;
 
 typedef enum tagSCInterErr{
+    SC_ERR_SUCC,
     SC_ERR_INVALID_MSG,
     SC_ERR_ALLOC_RES_FAIL,
     SC_ERR_EXEC_FAIL,
     SC_ERR_LEG_NOT_EXIST,
-    SC_ERR_CALL_FAIL,
-    SC_ERR_BRIDGE_FAIL,
-    SC_ERR_RECORD_FAIL,
-    SC_ERR_BREAK_FAIL,
-    SC_ERR_BRIDGE_SUCC,
+    SC_ERR_FAIL,
 
     SC_ERR_BUTT
 }SC_INTER_ERR_EN;
@@ -2108,7 +2105,7 @@ typedef struct tagSCMsgEvtHold{
     U32     bIsHold;
 }SC_MSG_EVT_HOLD_ST;
 
-/** HOLD事件 */
+/** ERR_REPORT事件 */
 typedef struct tagSCMsgEvtErrReport{
     SC_MSG_TAG_ST    stMsgTag;              /**< 消息头 */
 
