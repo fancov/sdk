@@ -3898,7 +3898,7 @@ U32 sc_stat_syn(U32 ulType, VOID *ptr)
     SC_SYS_STAT_ST       stSysStat;
 
     dos_memcpy((VOID *)&stSysStat, (VOID *)&g_stSysStat, sizeof(SC_SYS_STAT_ST));
-    dos_memzero((VOID *)&stSysStat, sizeof(SC_SYS_STAT_ST));
+    dos_memzero((VOID *)&g_stSysStat, sizeof(SC_SYS_STAT_ST));
 
     if (U32_BUTT - g_stSysStatLocal.ulCurrentCalls > stSysStat.ulCurrentCalls)
     {

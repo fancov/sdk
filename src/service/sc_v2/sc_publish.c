@@ -120,6 +120,9 @@ static U32 sc_pub_publicsh(CURL **pstCurlHandle, S8 *pszURL, S8 *pszData)
     {
         DOS_ASSERT(0);
 
+        curl_easy_cleanup(*pstCurlHandle);
+        *pstCurlHandle = NULL;
+
         sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_PUBLISH), "CURL post FAIL. Data:%s.", pszData);
         return DOS_FAIL;
     }
