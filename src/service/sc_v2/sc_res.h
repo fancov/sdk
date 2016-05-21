@@ -279,6 +279,18 @@ typedef struct tagSCDIDNode{
     U32   ulTimes;                                /* 号码被命中次数,用做统计数据 */
 }SC_DID_NODE_ST;
 
+
+typedef enum tagsSCRouteServiceType{
+    SC_ROUTE_SERVICE_TYPE_ALL,
+    SC_ROUTE_SERVICE_TYPE_OUTBOUND,
+    SC_ROUTE_SERVICE_TYPE_AUTO_CALL,
+    SC_ROUTE_SERVICE_TYPE_PREVIEW_CALL,
+    SC_ROUTE_SERVICE_TYPE_VOICE_VERIFY,
+
+    SC_ROUTE_SERVICE_TYPE_BUTT
+}SC_ROUTE_SERVICE_TYPE;
+
+
 /* 路由描述节点 */
 typedef struct tagSCRouteNode
 {
@@ -291,7 +303,8 @@ typedef struct tagSCRouteNode
     U8         ucMinuteBegin;                     /* 开始时间，分钟 */
     U8         ucHourEnd;                         /* 结束时间，小时 */
     U8         ucMinuteEnd;                       /* 结束时间，分钟 */
-
+    U8         ucServiceType;                     /* 业务类型 SC_ROUTE_SERVICE_TYPE*/
+    
     S8         szCallerPrefix[SC_NUM_LENGTH];     /* 前缀长度 */
     S8         szCalleePrefix[SC_NUM_LENGTH];     /* 前缀长度 */
 

@@ -1676,7 +1676,7 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
         
         if (g_stSysStat.ulTotalTime< U32_BUTT - ulTimeLen)
         {
-            g_stSysStat.ulTotalTime.ulTime += ulTimeLen;
+            g_stSysStat.ulTotalTime += ulTimeLen;
         }
         else
         {

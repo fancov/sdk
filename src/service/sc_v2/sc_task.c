@@ -1485,8 +1485,15 @@ U32 sc_task_stop(SC_TASK_CB *pstTCB)
     pthread_mutex_lock(&pstTCB->mutexTaskList);
     pstTCB->ucTaskStatus = SC_TASK_STOP;
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
-    
-    g_stSysStat.ulCallTaskNum--;
+    if (g_stSysStat.ulCallTaskNum > 0 )
+    {
+       g_stSysStat.ulCallTaskNum--;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+    }
+
     return DOS_SUCC;
 }
 
@@ -1552,7 +1559,14 @@ U32 sc_task_pause(SC_TASK_CB *pstTCB)
     pstTCB->ucTaskStatus = SC_TASK_PAUSED;
     pthread_mutex_unlock(&pstTCB->mutexTaskList);
 
-    g_stSysStat.ulCallTaskNum--;
+    if (g_stSysStat.ulCallTaskNum > 0)
+    {
+        g_stSysStat.ulCallTaskNum--;
+    }
+    else
+    {
+        DOS_ASSERT(0);
+    }
 
     return DOS_SUCC;
 }

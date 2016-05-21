@@ -3938,6 +3938,8 @@ U32 sc_stat_syn(U32 ulType, VOID *ptr)
     dos_memcpy((VOID *)&stSysStat, (VOID *)&g_stSysStat, sizeof(SC_SYS_STAT_ST));
     dos_memzero((VOID *)&g_stSysStat, sizeof(SC_SYS_STAT_ST));
 
+    ulCurrentTime = time(NULL);
+
     if (U32_BUTT  > stSysStat.ulCurrentCalls)
     {
         g_stSysStatLocal.ulCurrentCalls = stSysStat.ulCurrentCalls;
