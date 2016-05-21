@@ -549,7 +549,7 @@ typedef struct tagSCAgentStat
     U32  ulSelectCnt;
     U32  ulCallCnt;      /* 暂时和 ulSelectCnt 保持一致 */
     U32  ulCallConnected;/* 接通的呼叫 */
-    U32  ulTotalDuration;/* 接通的呼叫 */
+    U32  ulTotalDuration;/* 通话总时长 */
 
     U32  ulIncomingCall; /* 暂时没有实现 */
     U32  ulOutgoingCall; /* 暂时没有实现 */
@@ -1099,7 +1099,7 @@ typedef struct tagSCSrvCall{
  */
 typedef enum tagSCPreviewCallStatus{
     SC_PREVIEW_CALL_IDEL,       /**< 状态初始化 */
-    SC_PREVIEW_CALL_AUTH,       /**< 状态初始化 */
+    SC_PREVIEW_CALL_AUTH,       /**< 收到认证回应 */
     SC_PREVIEW_CALL_EXEC,       /**< 状态初始化 */
     SC_PREVIEW_CALL_PROC,       /**< 发起到坐席的呼叫 */
     SC_PREVIEW_CALL_ALERTING,   /**< 坐席在振铃了 */
@@ -1538,7 +1538,7 @@ typedef struct tagSCCallTransfer{
     /** 转接sip/坐席工号 */
     U32               ulPublishType;
 
-    /** 订阅放所在的SCB */
+    /** 订阅方所在的SCB */
     U32               ulSubLegNo;
 
     /** 发布方LEG，即转接的目的地LEG */
@@ -2369,21 +2369,49 @@ typedef struct tagAccessCodeList
     U32   (*fn_init)(SC_SRV_CB *, SC_LEG_CB *); /**< 接入号处理函数 */
 }SC_ACCESS_CODE_LIST_ST;
 
+
+typedef struct tagSysCallStat{
+    U32 ulTime;                 /**< 总时长*/
+    U32 ulCalls;                /**< 总呼叫数*/
+    U32 ulCallSucc;             /**< 呼叫成功的个数*/
+    U32 ulCallBusy;             /**< 被叫忙的呼叫总数*/
+    U32 ulCallNotListen;        /**< 被叫未接听的总数*/
+    U32 ulCallRefuse;           /**< 被叫拒绝的总数*/
+    U32 ulCallNumNotExist;      /**< 呼叫的号码不存在情况的呼叫总数*/
+}SC_SYS_CALL_STAT_ST;
+
+
+typedef struct tagSysTrunkStat{
+    U32 ulTrunkID;
+    U32 ulMaxConcurrentIn;
+    U32 ulMaxConcurrentOut;
+    U32 ulCurConcurrentIn;
+    U32 ulCurConcurrentOut;    
+}SC_SYS_TRUNK_STAT_ST;
+
+
 /** 呼叫统计相关 */
 typedef struct tagSysStat{
     U32      ulCRC;
 
+    U32      ulSysStartTime;       /**< 系统开启时间，SC模块开启的时间*/
+    U32      ulHistoryMaxCalls;    /**< 历史最大并发量*/
     U32      ulCurrentCalls;       /**< 当前并发量，业务控制块分配的个数 */
-    U32      ulIncomingCalls;      /**< 当前呼入量，创建/释放LEG时处理 */
-    U32      ulOutgoingCalls;      /**< 当前呼出量，创建/释放LEG时处理 */
-
-    U32      ulTotalTime;          /**< 总时间 */
-    U32      ulOutgoingTime;       /**< 呼出 */
-    U32      ulIncomingTime;       /**< 呼入 */
-    U32      ulAutoCallTime;       /**< 自动呼叫时长 */
-    U32      ulPreviewCallTime;    /**< 预览外呼时长 */
-    U32      ulPredictiveCallTime; /**< 预测外呼时长 */
+    U32      ulRecordCalls;        /**< 当前有录音的呼叫量*/
+    U32      ulCallTaskNum;        /**< 当前呼叫任务数,正在进行的任务数*/
+    U32      ulSysRunTime;         /**< 系统运行时长，就是sc模块开启到当前的时间*/
+    
+    U32      ulTotalTime;          /**< 总呼叫时长 */
     U32      ulInternalCallTime;   /**< 内部呼叫时长 */
+    
+    SC_SYS_CALL_STAT_ST stIncomingCall;     /**< 呼入统计*/
+    SC_SYS_CALL_STAT_ST stOutgingCall;      /**< 呼出统计*/
+    SC_SYS_CALL_STAT_ST stAutoCall;         /**< 自动外呼统计*/
+    SC_SYS_CALL_STAT_ST stPreviewCall;      /**< 预览外呼统计*/
+    SC_SYS_CALL_STAT_ST stPredictiveCall;   /**< 预测外呼统计*/
+
+    SC_SYS_TRUNK_STAT_ST astSysTrunkStat[64];   /**< 中继统计*/
+
 }SC_SYS_STAT_ST;
 
 
@@ -2427,6 +2455,7 @@ U32 sc_leg_get_source(SC_SRV_CB *pstSCB, SC_LEG_CB  *pstLegCB);
 U32 sc_bgjob_hash_add(U32 ulLegNo, S8 *pszUUID);
 
 U32 sc_get_call_limitation();
+U32 sc_stat_syn(U32 ulType, VOID *ptr);
 
 VOID sc_lcb_playback_init(SC_SU_PLAYBACK_ST *pstPlayback);
 
@@ -2493,6 +2522,8 @@ U32 sc_agent_access_set_sigin(SC_AGENT_NODE_ST *pstAgent, SC_SRV_CB *pstSCB, SC_
 void sc_agent_mark_custom_callback(U64 arg);
 void sc_agent_ringing_timeout_callback(U64 arg);
 void sc_auto_call_ringing_timeout_callback(U64 arg);
+
+U32 sc_syn_sys_stat_infomation();
 
 void sc_switchboard_dtmf_timeout_callback(U64 arg);
 U32 sc_switchboard_start(SC_SRV_CB *pstSCB, U32 ulBindID);

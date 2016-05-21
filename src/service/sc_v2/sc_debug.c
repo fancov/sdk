@@ -2074,14 +2074,14 @@ VOID sc_show_sysstat(U32 ulIndex, S32 argc, S8 **argv)
                 \r\n   Predictive Call Time : %u \
                 \r\n     Internal Call Time : %u"
                 ,g_stSysStat.ulCurrentCalls
-                ,g_stSysStat.ulIncomingCalls
-                ,g_stSysStat.ulOutgoingCalls
+                ,g_stSysStat.stIncomingCall.ulCalls
+                ,g_stSysStat.stOutgingCall.ulCalls
                 ,g_stSysStat.ulTotalTime
-                ,g_stSysStat.ulOutgoingTime
-                ,g_stSysStat.ulIncomingTime
-                ,g_stSysStat.ulAutoCallTime
-                ,g_stSysStat.ulPreviewCallTime
-                ,g_stSysStat.ulPredictiveCallTime
+                ,g_stSysStat.stOutgingCall.ulTime
+                ,g_stSysStat.stIncomingCall.ulTime
+                ,g_stSysStat.stAutoCall.ulTime
+                ,g_stSysStat.stPreviewCall.ulTime
+                ,g_stSysStat.stPredictiveCall.ulTime
                 ,g_stSysStat.ulInternalCallTime);
 
     cli_out_string(ulIndex, szBuff);

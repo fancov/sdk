@@ -24,6 +24,7 @@ extern "C" {
 #include "sc_res.h"
 #include "sc_publish.h"
 #include "sc_http_api.h"
+#include "sc_db.h"
 
 /** 管理background job的HASH表 */
 extern HASH_TABLE_S          *g_pstBGJobHash;
@@ -1428,6 +1429,11 @@ SC_SRV_CB *sc_scb_alloc()
             if (g_stSysStat.ulCurrentCalls != U32_BUTT)
             {
                 g_stSysStat.ulCurrentCalls++;
+                
+                if (g_stSysStat.ulHistoryMaxCalls < g_stSysStat.ulCurrentCalls)
+                {
+                    g_stSysStat.ulHistoryMaxCalls = g_stSysStat.ulCurrentCalls;
+                }
             }
             else
             {
@@ -2373,7 +2379,7 @@ U32 sc_send_cmd_record(SC_MSG_TAG_ST *pstMsg)
     {
         sc_log(pstSCB->bTrace, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Add record service fail.");
 
-        return DOS_SUCC;
+        return DOS_FAIL;
     }
 
     if (pstSCB->stCall.stSCBTag.bValid)
@@ -3893,63 +3899,131 @@ void sc_auto_call_ringing_timeout_callback(U64 arg)
 }
 
 
+
+U32 sc_syn_sys_stat_infomation()
+{
+    S8                  szSQL[512]  = { 0 };
+    SC_DB_MSG_TAG_ST    *pstMsg     = NULL;
+
+    dos_snprintf(szSQL, sizeof(szSQL), "CALL proc_save_sys_stat;");
+
+    pstMsg = (SC_DB_MSG_TAG_ST *)dos_dmem_alloc(sizeof(SC_DB_MSG_TAG_ST));
+    if (DOS_ADDR_INVALID(pstMsg))
+    {
+        DOS_ASSERT(0);
+
+        return DOS_FAIL;
+    }
+    pstMsg->ulMsgType = SC_MSG_SAVE_SYS_STAT;
+    pstMsg->szData = dos_dmem_alloc(dos_strlen(szSQL) + 1);
+    if (DOS_ADDR_INVALID(pstMsg->szData))
+    {
+        DOS_ASSERT(0);
+        dos_dmem_free(pstMsg->szData);
+
+        return DOS_FAIL;
+    }
+
+    dos_strcpy(pstMsg->szData, szSQL);
+
+    return sc_send_msg2db(pstMsg);
+}
+
+
 U32 sc_stat_syn(U32 ulType, VOID *ptr)
 {
     SC_SYS_STAT_ST       stSysStat;
+    U32                  ulCurrentTime;
 
     dos_memcpy((VOID *)&stSysStat, (VOID *)&g_stSysStat, sizeof(SC_SYS_STAT_ST));
     dos_memzero((VOID *)&g_stSysStat, sizeof(SC_SYS_STAT_ST));
 
-    if (U32_BUTT - g_stSysStatLocal.ulCurrentCalls > stSysStat.ulCurrentCalls)
+    if (U32_BUTT  > stSysStat.ulCurrentCalls)
     {
-        g_stSysStatLocal.ulCurrentCalls       += stSysStat.ulCurrentCalls;
+        g_stSysStatLocal.ulCurrentCalls = stSysStat.ulCurrentCalls;
     }
-    if (U32_BUTT - g_stSysStatLocal.ulIncomingCalls > stSysStat.ulIncomingCalls)
+
+    if (U32_BUTT  > stSysStat.ulRecordCalls)
     {
-        g_stSysStatLocal.ulIncomingCalls      += stSysStat.ulIncomingCalls;
+        g_stSysStatLocal.ulRecordCalls = stSysStat.ulRecordCalls;
     }
-    if (U32_BUTT - g_stSysStatLocal.ulOutgoingCalls > stSysStat.ulOutgoingCalls)
+
+    if (U32_BUTT  > stSysStat.ulCallTaskNum)
     {
-        g_stSysStatLocal.ulOutgoingCalls      += stSysStat.ulOutgoingCalls;
+        g_stSysStatLocal.ulCallTaskNum= stSysStat.ulCallTaskNum;
     }
+    
+    if (U32_BUTT - g_stSysStatLocal.stIncomingCall.ulCalls > stSysStat.stIncomingCall.ulCalls)
+    {
+        g_stSysStatLocal.stIncomingCall.ulCalls      += stSysStat.stIncomingCall.ulCalls;
+    }
+    
+    if (U32_BUTT - g_stSysStatLocal.stOutgingCall.ulCalls > stSysStat.stOutgingCall.ulCalls)
+    {
+        g_stSysStatLocal.stOutgingCall.ulCalls      += stSysStat.stOutgingCall.ulCalls;
+    }
+    
     if (U32_BUTT - g_stSysStatLocal.ulTotalTime > stSysStat.ulTotalTime)
     {
         g_stSysStatLocal.ulTotalTime          += stSysStat.ulTotalTime;
     }
-    if (U32_BUTT - g_stSysStatLocal.ulOutgoingTime > stSysStat.ulOutgoingTime)
+    
+    if (U32_BUTT - g_stSysStatLocal.stOutgingCall.ulTime > stSysStat.stOutgingCall.ulTime)
     {
-        g_stSysStatLocal.ulOutgoingTime       += stSysStat.ulOutgoingTime;
+        g_stSysStatLocal.stOutgingCall.ulTime       += stSysStat.stOutgingCall.ulTime;
     }
-    if (U32_BUTT - g_stSysStatLocal.ulIncomingTime > stSysStat.ulIncomingTime)
+    
+    if (U32_BUTT - g_stSysStatLocal.stIncomingCall.ulTime > stSysStat.stIncomingCall.ulTime)
     {
-        g_stSysStatLocal.ulIncomingTime       += stSysStat.ulIncomingTime;
+        g_stSysStatLocal.stIncomingCall.ulTime       += stSysStat.stIncomingCall.ulTime;
     }
-    if (U32_BUTT - g_stSysStatLocal.ulAutoCallTime > stSysStat.ulAutoCallTime)
+    
+    if (U32_BUTT - g_stSysStatLocal.stAutoCall.ulTime > stSysStat.stAutoCall.ulTime)
     {
-        g_stSysStatLocal.ulAutoCallTime       += stSysStat.ulAutoCallTime;
+        g_stSysStatLocal.stAutoCall.ulTime       += stSysStat.stAutoCall.ulTime;
     }
-    if (U32_BUTT - g_stSysStatLocal.ulPreviewCallTime > stSysStat.ulPreviewCallTime)
+    
+    if (U32_BUTT - g_stSysStatLocal.stPreviewCall.ulTime > stSysStat.stPreviewCall.ulTime)
     {
-        g_stSysStatLocal.ulPreviewCallTime    += stSysStat.ulPreviewCallTime;
+        g_stSysStatLocal.stPreviewCall.ulTime    += stSysStat.stPreviewCall.ulTime;
     }
-    if (U32_BUTT - g_stSysStatLocal.ulPredictiveCallTime > stSysStat.ulPredictiveCallTime)
+    
+    if (U32_BUTT - g_stSysStatLocal.stPredictiveCall.ulTime > stSysStat.stPredictiveCall.ulTime)
     {
-        g_stSysStatLocal.ulPredictiveCallTime += stSysStat.ulPredictiveCallTime;
+        g_stSysStatLocal.stPredictiveCall.ulTime += stSysStat.stPredictiveCall.ulTime;
     }
+    
     if (U32_BUTT - g_stSysStatLocal.ulInternalCallTime > stSysStat.ulInternalCallTime)
     {
         g_stSysStatLocal.ulInternalCallTime   += stSysStat.ulInternalCallTime;
     }
+    
+    if (g_stSysStatLocal.ulHistoryMaxCalls < U32_BUTT && stSysStat.ulHistoryMaxCalls < U32_BUTT)
+    {
+        if (g_stSysStatLocal.ulHistoryMaxCalls < stSysStat.ulHistoryMaxCalls)
+        {
+            g_stSysStatLocal.ulHistoryMaxCalls = stSysStat.ulHistoryMaxCalls;
+        }
+    }
+
+    if (U32_BUTT  > ulCurrentTime - stSysStat.ulSysStartTime)
+    {
+        g_stSysStatLocal.ulSysRunTime = ulCurrentTime - stSysStat.ulSysStartTime;
+    }
 
     licc_set_srv_stat(LIC_TOTAL_CALLTIME, stSysStat.ulTotalTime);
-    licc_set_srv_stat(LIC_OUTBOUND_CALLTIME, stSysStat.ulOutgoingTime);
-    licc_set_srv_stat(LIC_INBOUND_CALLTIME, stSysStat.ulIncomingTime);
-    licc_set_srv_stat(LIC_AUTO_CALLTIME, stSysStat.ulAutoCallTime);
+    licc_set_srv_stat(LIC_OUTBOUND_CALLTIME, stSysStat.stOutgingCall.ulTime);
+    licc_set_srv_stat(LIC_INBOUND_CALLTIME, stSysStat.stIncomingCall.ulTime);
+    licc_set_srv_stat(LIC_AUTO_CALLTIME, stSysStat.stAutoCall.ulTime);
+
+    sc_syn_sys_stat_infomation();
 
     sc_log(DOS_FALSE, LOG_LEVEL_INFO, "%s", "Stat data syn");
 
     return DOS_SUCC;
 }
+
+
 
 U32 sc_stat_write(U32 ulType, VOID *ptr)
 {

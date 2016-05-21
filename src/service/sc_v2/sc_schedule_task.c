@@ -121,8 +121,10 @@ U32 sc_test_hour_delay(U32 ulType, VOID *ptr)
 
 U32 sc_num_lmt_stat(U32 ulType, VOID *ptr);
 U32 sc_num_lmt_update(U32 ulType, VOID *ptr);
+
+
+
 U32 sc_stat_write(U32 ulType, VOID *ptr);
-U32 sc_stat_syn(U32 ulType, VOID *ptr);
 U32 sc_task_write_stat(U32 ulType, VOID *ptr);
 U32 sc_lcb_check(U32 ulType, VOID *ptr);
 U32 sc_scb_check(U32 ulType, VOID *ptr);

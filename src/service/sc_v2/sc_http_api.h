@@ -229,6 +229,7 @@ U32 sc_http_api_did_action(list_t *pstArgv);
 U32 sc_http_api_switchboard_action(list_t *pstArgv);
 U32 sc_http_api_period_action(list_t *pstArgv);
 U32 sc_http_api_keymap_action(list_t *pstArgv);
+U32 sc_http_api_sys_stat_sync();
 
 U32 sc_http_api_black_action(list_t *pstArgv);
 U32 sc_http_api_caller_action(list_t *pstArgv);
