@@ -3751,6 +3751,15 @@ S32 sc_route_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 pstRoute->szCallerPrefix[0] = '\0';
             }
         }
+        else if (0 == dos_strnicmp(aszNames[lIndex], "service_type", dos_strlen("service_type")))
+        {
+            if (dos_atoul(aszValues[lIndex], (U32 *)&pstRoute->ucServiceType) < 0)
+            {
+                DOS_ASSERT(0);
+                blProcessOK = DOS_FALSE;
+                break;
+            }
+        }
         else if (0 == dos_strnicmp(aszNames[lIndex], "dest_type", dos_strlen("dest_type")))
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
@@ -3917,12 +3926,12 @@ U32 sc_route_load(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, seq FROM tbl_route ORDER BY tbl_route.seq ASC;");
+                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, service_type, seq FROM tbl_route ORDER BY tbl_route.seq ASC;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, seq FROM tbl_route WHERE id=%d ORDER BY tbl_route.seq ASC;"
+                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, service_type, seq FROM tbl_route WHERE id=%d ORDER BY tbl_route.seq ASC;"
                     , ulIndex);
     }
 
@@ -3992,6 +4001,7 @@ U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee)
     U32                  ulRouteGrpID;
     U32                  ulStartTime, ulEndTime, ulCurrentTime;
     U32                  ulCallOutGroup;
+    U32                  ulRouteServiceType;
 
     if (DOS_ADDR_INVALID(pszCalling) || DOS_ADDR_INVALID(pszCallee))
     {
@@ -4002,11 +4012,34 @@ U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee)
 
     timep = time(NULL);
     pstTime = dos_get_localtime_struct(timep, &stTime);
+    
     if (DOS_ADDR_INVALID(pstTime))
     {
         DOS_ASSERT(0);
 
         return U32_BUTT;
+    }
+
+    if (pstSCB->aucServType[0] == SC_SRV_CALL 
+        && SC_DIRECTION_PSTN== pstSCB->stCall.ulCallDst)
+    {
+        ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_OUTBOUND;
+    }
+    else if (pstSCB->aucServType[0] == SC_SRV_PREVIEW_CALL)
+    {
+        ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_PREVIEW_CALL;
+    }
+    else if (pstSCB->aucServType[0] == SC_SRV_AUTO_CALL)
+    {
+        ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_AUTO_CALL;
+    }
+    else if (pstSCB->aucServType[0] == SC_SRV_VOICE_VERIFY)
+    {
+        ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_VOICE_VERIFY;
+    }
+    else
+    {
+        DOS_ASSERT(0);
     }
 
     ulRouteGrpID = U32_BUTT;
@@ -4036,6 +4069,12 @@ U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee)
             }
 
             if ((U16)ulCallOutGroup != pstRouetEntry->usCallOutGroup)
+            {
+                continue;
+            }
+
+            if (pstRouetEntry->ucServiceType != ulRouteServiceType 
+                && pstRouetEntry->ucServiceType != SC_ROUTE_SERVICE_TYPE_ALL)
             {
                 continue;
             }

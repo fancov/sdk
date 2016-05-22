@@ -1673,12 +1673,21 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
         && pstFristLeg->stCall.stTimeInfo.ulAnswerTime < pstFristLeg->stCall.stTimeInfo.ulByeTime)
     {
         ulTimeLen = pstFristLeg->stCall.stTimeInfo.ulByeTime - pstFristLeg->stCall.stTimeInfo.ulAnswerTime;
+        
+        if (g_stSysStat.ulTotalTime< U32_BUTT - ulTimeLen)
+        {
+            g_stSysStat.ulTotalTime += ulTimeLen;
+        }
+        else
+        {
+            DOS_ASSERT(0);
+        }
 
         if (sc_scb_check_service(pstSCB, BS_SERV_OUTBAND_CALL) == DOS_SUCC)
         {
-            if (g_stSysStat.ulOutgoingTime < U32_BUTT - ulTimeLen)
+            if (g_stSysStat.stOutgingCall.ulTime < U32_BUTT - ulTimeLen)
             {
-                g_stSysStat.ulOutgoingTime += ulTimeLen;
+                g_stSysStat.stOutgingCall.ulTime += ulTimeLen;
             }
             else
             {
@@ -1687,9 +1696,9 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
         }
         else if (sc_scb_check_service(pstSCB, BS_SERV_INBAND_CALL) == DOS_SUCC)
         {
-            if (g_stSysStat.ulIncomingTime < U32_BUTT - ulTimeLen)
+            if (g_stSysStat.stIncomingCall.ulTime < U32_BUTT - ulTimeLen)
             {
-                g_stSysStat.ulIncomingTime += ulTimeLen;
+                g_stSysStat.stIncomingCall.ulTime += ulTimeLen;
             }
             else
             {
@@ -1698,9 +1707,9 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
         }
         else if (sc_scb_check_service(pstSCB, BS_SERV_AUTO_DIALING) == DOS_SUCC)
         {
-            if (g_stSysStat.ulAutoCallTime < U32_BUTT - ulTimeLen)
+            if (g_stSysStat.stAutoCall.ulTime< U32_BUTT - ulTimeLen)
             {
-                g_stSysStat.ulAutoCallTime += ulTimeLen;
+                g_stSysStat.stAutoCall.ulTime += ulTimeLen;
             }
             else
             {
@@ -1709,9 +1718,9 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
         }
         else if (sc_scb_check_service(pstSCB, BS_SERV_PREDICTIVE_DIALING) == DOS_SUCC)
         {
-            if (g_stSysStat.ulPredictiveCallTime < U32_BUTT - ulTimeLen)
+            if (g_stSysStat.stPredictiveCall.ulTime < U32_BUTT - ulTimeLen)
             {
-                g_stSysStat.ulPredictiveCallTime += ulTimeLen;
+                g_stSysStat.stPredictiveCall.ulTime += ulTimeLen;
             }
             else
             {
@@ -1720,20 +1729,9 @@ U32 sc_send_billing_stop2bs(SC_SRV_CB *pstSCB, SC_LEG_CB *pstFristLeg, SC_LEG_CB
         }
         else if (sc_scb_check_service(pstSCB, BS_SERV_PREVIEW_DIALING) == DOS_SUCC)
         {
-            if (g_stSysStat.ulPreviewCallTime < U32_BUTT - ulTimeLen)
+            if (g_stSysStat.stPreviewCall.ulTime < U32_BUTT - ulTimeLen)
             {
-                g_stSysStat.ulPreviewCallTime += ulTimeLen;
-            }
-            else
-            {
-                DOS_ASSERT(0);
-            }
-        }
-        else if (sc_scb_check_service(pstSCB, BS_SERV_PREVIEW_DIALING) == DOS_SUCC)
-        {
-            if (g_stSysStat.ulPreviewCallTime < U32_BUTT - ulTimeLen)
-            {
-                g_stSysStat.ulPreviewCallTime += ulTimeLen;
+                g_stSysStat.stPreviewCall.ulTime += ulTimeLen;
             }
             else
             {

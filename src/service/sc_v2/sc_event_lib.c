@@ -2721,6 +2721,7 @@ U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
         return DOS_FAIL;
     }
 
+
     pstLegCB = sc_lcb_get(pstCallingAgentNode->pstAgentInfo->ulLegNo);
     if (DOS_ADDR_INVALID(pstLegCB))
     {
@@ -2734,6 +2735,8 @@ U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
         sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_EVENT), "Can not get scb by leg(%u). agentID(%u)", pstLegCB->ulCBNo, ulAgent);
         return DOS_FAIL;
     }
+
+    pstSCB->stTransfer.ulPublishType = SC_TRANSFER_PUBLISH_AGENT;
 
     /* 根据工号找到坐席 */
     pstAgentNode = sc_agent_get_by_id(ulAgentCalled);
@@ -2932,6 +2935,19 @@ U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
                 pstSCB->stTransfer.ulSubLegNo = pstSCB->stAutoPreview.ulCallingLegNo;
                 pstSCB->stTransfer.ulSubAgentID = pstSCB->stAutoPreview.ulAgentID;
             }
+        }
+    }
+    else if (pstSCB->stCorSwitchboard.stSCBTag.bValid)
+    {
+        if (pstSCB->stCorSwitchboard.stSCBTag.usStatus == SC_COR_SWITCHBOARD_CONNECTED)
+        {
+            if (DOS_ADDR_VALID(pstSCB->stCorSwitchboard.pstAgentCallee)
+                && DOS_ADDR_VALID(pstSCB->stCorSwitchboard.pstAgentCallee->pstAgentInfo))
+            {
+                pstSCB->stTransfer.ulNotifyAgentID = pstSCB->stCorSwitchboard.pstAgentCallee->pstAgentInfo->ulAgentID;
+            }
+
+            pstSCB->stTransfer.ulSubLegNo = pstSCB->stCorSwitchboard.ulCallingLegNo;
         }
     }
 

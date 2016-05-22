@@ -228,9 +228,9 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
             {
                 pstLCB->stCall.ucPeerType = SC_LEG_PEER_INBOUND;
 
-                if (g_stSysStat.ulIncomingCalls != U32_BUTT)
+                if (g_stSysStat.stIncomingCall.ulCalls != U32_BUTT)
                 {
-                    g_stSysStat.ulIncomingCalls++;
+                    g_stSysStat.stIncomingCall.ulCalls++;
                 }
                 else
                 {
@@ -243,9 +243,9 @@ U32 sc_esl_event_create(esl_event_t *pstEvent)
 
                 g_ulOutgoingCallCnt++;
 
-                if (g_stSysStat.ulOutgoingCalls != U32_BUTT)
+                if (g_stSysStat.stOutgingCall.ulCalls != U32_BUTT)
                 {
-                    g_stSysStat.ulOutgoingCalls ++;
+                    g_stSysStat.stOutgingCall.ulCalls++;
                 }
                 else
                 {
@@ -580,9 +580,9 @@ U32 sc_esl_event_hangup(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     if (SC_LEG_PEER_INBOUND == pstLegCB->stCall.ucPeerType)
     {
-        if (g_stSysStat.ulIncomingCalls != 0)
+        if (g_stSysStat.stIncomingCall.ulCalls != 0)
         {
-            g_stSysStat.ulIncomingCalls--;
+            g_stSysStat.stIncomingCall.ulCalls--;
         }
         else
         {
@@ -597,9 +597,9 @@ U32 sc_esl_event_hangup(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
             g_ulOutgoingCallCntDelay = 0;
         }
 
-        if (g_stSysStat.ulOutgoingCalls != 0)
+        if (g_stSysStat.stOutgingCall.ulCalls != 0)
         {
-            g_stSysStat.ulOutgoingCalls--;
+            g_stSysStat.stOutgingCall.ulCalls--;
         }
         else
         {
@@ -1157,7 +1157,12 @@ U32 sc_esl_event_record_start(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     sc_send_event_record(&stRecord);
 
-    return DOS_FALSE;
+    if (g_stSysStat.ulRecordCalls < U32_BUTT)
+    {
+        g_stSysStat.ulRecordCalls++;
+    }
+    
+    return DOS_SUCC;
 
 }
 
@@ -1224,7 +1229,9 @@ U32 sc_esl_event_record_stop(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 
     sc_send_event_record(&stRecord);
 
-    return DOS_FALSE;
+    g_stSysStat.ulRecordCalls++;
+
+    return DOS_SUCC;
 }
 
 /**

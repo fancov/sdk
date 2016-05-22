@@ -57,6 +57,7 @@ SC_HTTP_REQ_REG_TABLE_SC g_pstHttpReqRegTable[] =
     {"demo",                     sc_http_api_demo_action},
     {"serv-ctrl",                sc_http_api_serv_ctrl_action},
     {"stat-syn",                 sc_http_api_stat_syn},
+    {"sys_stat",                 sc_http_api_sys_stat_sync},
 
     {"",                         NULL}
 };
@@ -2151,6 +2152,14 @@ U32 sc_http_api_stat_syn(list_t *pstArgv)
 
     return DOS_FALSE;
 }
+
+
+U32 sc_http_api_sys_stat_sync()
+{
+    sc_syn_sys_stat_infomation();
+    return DOS_SUCC;
+}
+
 
 U32 sc_http_api_process(SC_HTTP_CLIENT_CB_S *pstClient)
 {

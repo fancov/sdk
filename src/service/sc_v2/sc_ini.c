@@ -244,6 +244,8 @@ U32 sc_init()
 
     dos_memzero((VOID *)&g_stSysStat, sizeof(g_stSysStat));
 
+    g_stSysStat.ulSysStartTime = time(NULL);
+
     dos_pthread_init();
 
     for (ulIndex=0; ulIndex<sizeof(astSCModList)/sizeof(SC_MOD_LIST_ST); ulIndex++)

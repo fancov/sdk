@@ -1473,7 +1473,7 @@ U32 sc_call_answer(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
                 }
             }
 
-            /* 判断一下是够需要录音 */
+            /* 判断一下是否需要录音 */
             if (!sc_scb_is_exit_service(pstSCB, BS_SERV_RECORDING))
             {
                 return DOS_SUCC;
@@ -10665,6 +10665,7 @@ U32 sc_transfer_error(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
             if (SC_TRANSFER_PUBLISH_AGENT == pstSCB->stTransfer.ulPublishType)
             {
                 pstPublishAgentNode = sc_agent_get_by_id(pstSCB->stTransfer.ulPublishAgentID);
+
             }
 
             if (SC_ACCESS_BLIND_TRANSFER == pstSCB->stTransfer.ulType)

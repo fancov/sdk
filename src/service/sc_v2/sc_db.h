@@ -14,9 +14,25 @@ typedef enum  tagSCMsgType{
     SC_MSG_SAVE_SIP_IPADDR,
     SC_MSG_SAVE_TRUNK_STATUS,
     SC_MSG_SAVE_STAT_LIMIT_CALLER,
-    SC_MSG_SACE_TASK_STATUS
+    SC_MSG_SACE_TASK_STATUS,
+    SC_MSG_SAVE_SYS_STAT
 
 }SC_MSG_TYPE_EN;
+
+
+typedef enum tagsSCCallStat{
+    SC_DB_INCOMING_CALL,
+    SC_DB_OUTGOING_CALL
+}SC_DB_CALL_TYPE_EN;
+
+typedef enum tagsSCSysStat{
+    SC_DB_MAX_CONCURRENT = 1,
+    SC_DB_CUR_CONCURRENT,
+    SC_DB_CUR_RECORD_CALL,
+    SC_DB_CUR_CALL_TASK,
+    SC_DB_OKCC_START
+
+}SC_DB_SYS_STAT_EN;
 
 typedef struct tagSCDBMsgTag{
     U32     ulMsgType;

@@ -149,6 +149,415 @@ static U32 sc_db_save_task_status(SC_DB_MSG_TAG_ST *pstMsg)
     return DOS_SUCC;
 }
 
+
+
+static U32 sc_db_save_incoming_call_stat()
+{
+    S8                          szSQL[SC_MAX_SQL_LEN]  = {0,};
+    S32                         lRet                   = DOS_FAIL;
+    U32                         ulCount                = 0;
+    
+/**< 统计呼入*/
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT COUNT(id) FROM tbl_call_stat WHERE type=%d;",SC_DB_INCOMING_CALL);
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_is_exit_in_db_cb, &ulCount, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "Get numbers of incoming call stat FAIL.");
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 判断是否存在 */
+    if (0 == ulCount)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL),
+                    "INSERT INTO tbl_call_stat(`id`,`type`,`call_total`,`call_succ`, `call_duration`)"
+                    "VALUES(NULL, %u, %u, %u, %u)"
+                    , SC_DB_INCOMING_CALL
+                    , g_stSysStatLocal.stIncomingCall.ulCalls
+                    , g_stSysStatLocal.stIncomingCall.ulCallSucc
+                    , g_stSysStatLocal.stIncomingCall.ulTime);
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_call_stat SET call_total=%u, call_succ=%u, call_duration = %u WHERE type=%u"
+                    , g_stSysStatLocal.stIncomingCall.ulCalls
+                    , g_stSysStatLocal.stIncomingCall.ulCallSucc
+                    , g_stSysStatLocal.stIncomingCall.ulTime
+                    , SC_DB_INCOMING_CALL);
+    }
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ),"szSQL: %s",szSQL);
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, 0) != DOS_SUCC)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "%s", "Save incoming call stat FAIL.");
+
+        return DOS_FAIL;
+    }
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DB_WQ),"%s","Save incoming call stat SUCC.");
+
+    return DOS_SUCC;
+    
+}
+
+
+static U32 sc_db_save_outgoing_call_stat()
+{
+    S8                          szSQL[SC_MAX_SQL_LEN]  = {0,};
+    S32                         lRet                   = DOS_FAIL;
+    U32                         ulCount                = 0;
+    
+/**< 统计呼入*/
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT COUNT(id) FROM tbl_call_stat WHERE type=%d;",SC_DB_OUTGOING_CALL);
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_is_exit_in_db_cb, &ulCount, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "Get numbers of incoming call stat FAIL.");
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 判断是否存在 */
+    if (0 == ulCount)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL),
+                    "INSERT INTO tbl_call_stat(`id`,`type`,`call_total`,`call_succ`,`call_duration`)"
+                    "VALUES(NULL, %u, %u, %u, %u)"
+                    , SC_DB_OUTGOING_CALL
+                    , g_stSysStatLocal.stOutgingCall.ulCalls
+                    , g_stSysStatLocal.stOutgingCall.ulCallSucc
+                    , g_stSysStatLocal.stOutgingCall.ulTime);
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_call_stat SET call_total=%u, call_succ=%u, call_duration = %u WHERE type=%u"
+                    , g_stSysStatLocal.stOutgingCall.ulCalls
+                    , g_stSysStatLocal.stOutgingCall.ulCallSucc
+                    , g_stSysStatLocal.stOutgingCall.ulTime
+                    , SC_DB_OUTGOING_CALL);
+    }
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, 0) != DOS_SUCC)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "%s", "Save outgoing call stat FAIL.");
+
+        return DOS_FAIL;
+    }
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DB_WQ), "%s", "Save outgoing call stat SUCC.");
+
+    return DOS_SUCC;
+    
+}
+
+
+static U32 sc_db_save_sys_max_concurrent_stat()
+{
+    S8                          szSQL[SC_MAX_SQL_LEN]  = {0,};
+    S32                         lRet                   = DOS_FAIL;
+    U32                         ulCount                = 0;
+    
+/**< 统计历史最大并发*/
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT COUNT(id) FROM tbl_tmp_call WHERE `key`=%d;",SC_DB_MAX_CONCURRENT);
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_is_exit_in_db_cb, &ulCount, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "Get numbers of max_concurrent stat FAIL.");
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 判断是否存在 */
+    if (0 == ulCount)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL),
+                    "INSERT INTO tbl_tmp_call(`id`,`key`,`value`)"
+                    "VALUES(NULL, %u, %u)"
+                    , SC_DB_MAX_CONCURRENT
+                    , g_stSysStatLocal.ulHistoryMaxCalls);
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_tmp_call SET value=%u WHERE `key`=%u"
+                    , g_stSysStatLocal.ulHistoryMaxCalls
+                    , SC_DB_MAX_CONCURRENT);
+    }
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, 0) != DOS_SUCC)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "%s", "Save sys history_max_concurrent FAIL.");
+
+        return DOS_FAIL;
+    }
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DB_WQ), "%s", "Save sys history_max_concurrent SUCC.");
+
+    return DOS_SUCC;
+    
+}
+
+
+static U32 sc_db_save_sys_cur_concurrent_stat()
+{
+    S8                          szSQL[SC_MAX_SQL_LEN]  = {0,};
+    S32                         lRet                   = DOS_FAIL;
+    U32                         ulCount                = 0;
+    
+/**< 统计当前并发*/
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT COUNT(id) FROM tbl_tmp_call WHERE `key`=%d;",SC_DB_CUR_CONCURRENT);
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_is_exit_in_db_cb, &ulCount, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "Get numbers of max_concurrent stat FAIL.");
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 判断是否存在 */
+    if (0 == ulCount)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL),
+                    "INSERT INTO tbl_tmp_call(`id`,`key`,`value`)"
+                    "VALUES(NULL, %u, %u)"
+                    , SC_DB_CUR_CONCURRENT
+                    , g_stSysStatLocal.ulCurrentCalls);
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_tmp_call SET value=%u WHERE `key`=%u"
+                    , g_stSysStatLocal.ulCurrentCalls
+                    , SC_DB_CUR_CONCURRENT);
+    }
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, 0) != DOS_SUCC)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "%s", "Save sys cur_concurrent FAIL.");
+
+        return DOS_FAIL;
+    }
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DB_WQ), "%s", "Save sys cur_concurrent SUCC.");
+
+    return DOS_SUCC;
+    
+}
+
+
+static U32 sc_db_save_sys_record_concurrent_stat()
+{
+    S8                          szSQL[SC_MAX_SQL_LEN]  = {0,};
+    S32                         lRet                   = DOS_FAIL;
+    U32                         ulCount                = 0;
+    
+/**< 统计当前录音并发，就是有录音的呼叫的并发数*/
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT COUNT(id) FROM tbl_tmp_call WHERE `key`=%d;",SC_DB_CUR_RECORD_CALL);
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_is_exit_in_db_cb, &ulCount, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "Get numbers of record_concurrent stat FAIL.");
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 判断是否存在 */
+    if (0 == ulCount)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL),
+                    "INSERT INTO tbl_tmp_call(`id`,`key`,`value`)"
+                    "VALUES(NULL, %u, %u)"
+                    , SC_DB_CUR_RECORD_CALL
+                    , g_stSysStatLocal.ulRecordCalls);
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_tmp_call SET value=%u WHERE `key`=%u"
+                    , g_stSysStatLocal.ulRecordCalls
+                    , SC_DB_CUR_RECORD_CALL);
+    }
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, 0) != DOS_SUCC)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "%s", "Save sys cur_call_record_num FAIL.");
+
+        return DOS_FAIL;
+    }
+
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DB_WQ), "%s", "Save sys cur_call_record_num SUCC.");
+    return DOS_SUCC;
+    
+}
+
+
+static U32 sc_db_save_sys_call_task_stat()
+{
+    S8                          szSQL[SC_MAX_SQL_LEN]  = {0,};
+    S32                         lRet                   = DOS_FAIL;
+    U32                         ulCount                = 0;
+    
+/**< 统计当前并发的任务数*/
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT COUNT(id) FROM tbl_tmp_call WHERE `key`=%d;",SC_DB_CUR_CALL_TASK);
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_is_exit_in_db_cb, &ulCount, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "Get numbers of call task stat FAIL.");
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 判断是否存在 */
+    if (0 == ulCount)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL),
+                    "INSERT INTO tbl_tmp_call(`id`,`key`,`value`)"
+                    "VALUES(NULL, %u, %u)"
+                    , SC_DB_CUR_CALL_TASK
+                    , g_stSysStatLocal.ulCallTaskNum);
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_tmp_call SET value=%u WHERE `key`=%u"
+                    , g_stSysStatLocal.ulCallTaskNum
+                    , SC_DB_CUR_CALL_TASK);
+    }
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, 0) != DOS_SUCC)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "%s", "Save sys call_task num stat FAIL.");
+
+        return DOS_FAIL;
+    }
+    
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DB_WQ), "%s", "Save sys call_task num stat SUCC.");
+    return DOS_SUCC;
+    
+}
+
+
+static U32 sc_db_save_sys_start_time_stat()
+{
+    S8                          szSQL[SC_MAX_SQL_LEN]  = {0,};
+    S32                         lRet                   = DOS_FAIL;
+    U32                         ulCount                = 0;
+    
+/**< 记录系统开启时的时间*/
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT COUNT(id) FROM tbl_tmp_call WHERE `key`=%d;",SC_DB_OKCC_START);
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_is_exit_in_db_cb, &ulCount, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "Get time of sys start stat FAIL.");
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 判断是否存在 */
+    if (0 == ulCount)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL),
+                    "INSERT INTO tbl_tmp_call(`id`,`key`,`value`)"
+                    "VALUES(NULL, %u, %u)"
+                    , SC_DB_OKCC_START
+                    , g_stSysStatLocal.ulSysRunTime);
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_tmp_call SET value=%u WHERE `key`=%u"
+                    , g_stSysStatLocal.ulSysRunTime
+                    , SC_DB_OKCC_START);
+    }
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, 0) != DOS_SUCC)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "%s", "Save sys start time stat FAIL.");
+
+        return DOS_FAIL;
+    }
+    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_DB_WQ), "%s", "Save sys start time stat SUCC.");
+
+    return DOS_SUCC;
+    
+}
+
+
+#if 0
+static U32 sc_db_save_sys_trunk_stat()
+ 
+{
+    S8                          szSQL[SC_MAX_SQL_LEN]  = {0,};
+    S32                         lRet                   = DOS_FAIL;
+    U32                         ulCount                = 0;
+    
+/**< 记录系统开启时的时间*/
+    dos_snprintf(szSQL, sizeof(szSQL), "SELECT COUNT(id) FROM tbl_trunk;");
+    lRet = db_query(g_pstSCDBHandle, szSQL, sc_is_exit_in_db_cb, &ulCount, NULL);
+    if (DB_ERR_SUCC != lRet)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "Get sys trunk stat FAIL.");
+        DOS_ASSERT(0);
+        return DOS_FAIL;
+    }
+
+    /* 判断是否存在 */
+    if (0 == ulCount)
+    {
+        dos_snprintf(szSQL, sizeof(szSQL),
+                    "INSERT INTO tbl_trunk(`id`,`max_concurrent_in`,`max_concurrent_out`,`cur_concurrent_out`,`cur_concurrent_in`)"
+                    "VALUES(NULL, %u, %u, %u, %u)"
+                    , g_stSysStatLocal.ulSysStartTime);
+    }
+    else
+    {
+        dos_snprintf(szSQL, sizeof(szSQL), "UPDATE tbl_tmp_call SET value=%u WHERE key=%u"
+                    , g_stSysStatLocal.ulSysStartTime
+                    , SC_DB_OKCC_START);
+    }
+
+    if (db_query(g_pstSCDBHandle, szSQL, NULL, NULL, 0) != DOS_SUCC)
+    {
+        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_DB_WQ), "%s", "Save sys start time stat FAIL.");
+
+        return DOS_FAIL;
+    }
+
+    return DOS_SUCC;
+    
+}
+#endif
+
+static U32 sc_db_save_stat_info()
+{
+    if (!sc_db_save_incoming_call_stat())
+    {
+        DOS_ASSERT(0);
+    }
+    if (!sc_db_save_outgoing_call_stat())
+    {
+        DOS_ASSERT(0);
+    }
+    if (!sc_db_save_sys_max_concurrent_stat())
+    {
+        DOS_ASSERT(0);
+    }
+    if (!sc_db_save_sys_cur_concurrent_stat())
+    {
+        DOS_ASSERT(0);
+    }
+    if (!sc_db_save_sys_record_concurrent_stat())
+    {
+        DOS_ASSERT(0);
+    }
+    if (!sc_db_save_sys_call_task_stat())
+    {
+        DOS_ASSERT(0);
+    }
+    if (!sc_db_save_sys_start_time_stat())
+    {
+        DOS_ASSERT(0);
+    }
+ /* if (!sc_db_save_sys_trunk_stat())
+    {
+        DOS_ASSERT(0);
+    }
+ */ 
+    return DOS_SUCC;
+}
+
 static U32 sc_db_save_agent_status(SC_DB_MSG_TAG_ST *pstMsg)
 {
     SC_DB_MSG_AGENT_STATUS_ST   *pstAgentStatus        = NULL;
@@ -244,6 +653,9 @@ static VOID sc_db_request_proc(SC_DB_MSG_TAG_ST *pstMsg)
             break;
         case SC_MSG_SAVE_AGENT_STATUS:
             ulResult = sc_db_save_agent_status(pstMsg);
+            break;
+        case SC_MSG_SAVE_SYS_STAT:
+            ulResult = sc_db_save_stat_info();
             break;
         case SC_MSG_SAVE_TASK_CALLED_COUNT:
         case SC_MSG_SAVE_SIP_IPADDR:
