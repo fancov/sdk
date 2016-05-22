@@ -1014,7 +1014,7 @@ U32 sc_esl_event_background_job(esl_event_t *pstEvent)
     }
 
     sc_bgjob_hash_delete(pszJobUUID);
-    
+
 
     pstLCB = sc_lcb_get(ulLegCBNo);
     if (DOS_ADDR_INVALID(pstLCB))

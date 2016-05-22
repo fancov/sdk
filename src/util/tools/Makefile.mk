@@ -3,14 +3,16 @@ C_FILE += $(SROUCE)/util/tools/dos_endian.c \
 			$(SROUCE)/util/tools/dos_vargs.c \
 			$(SROUCE)/util/tools/dos_py.c \
 			$(SROUCE)/util/tools/dos_sysstat.c \
-			$(SROUCE)/util/tools/dos_pthread.c
+			$(SROUCE)/util/tools/dos_pthread.c \
+            $(SROUCE)/util/tools/dos_math.c
 
 C_OBJ_FILE += dos_endian.$(SUFFIX) \
 				dos_string.$(SUFFIX) \
 				dos_vargs.$(SUFFIX) \
 				dos_py.$(SUFFIX) \
 				dos_sysstat.$(SUFFIX) \
-				dos_pthread.$(SUFFIX)
+				dos_pthread.$(SUFFIX) \
+                dos_math.$(SUFFIX)
 
 dos_endian.$(SUFFIX) :
 	$(C_COMPILE) $(SROUCE)/util/tools/dos_endian.c
@@ -29,3 +31,6 @@ dos_sysstat.$(SUFFIX):
 	
 dos_pthread.$(SUFFIX):
 	$(C_COMPILE) $(SROUCE)/util/tools/dos_pthread.c
+    
+dos_math.$(SUFFIX):
+	$(C_COMPILE) $(SROUCE)/util/tools/dos_math.c

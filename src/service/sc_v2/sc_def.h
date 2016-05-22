@@ -550,6 +550,7 @@ typedef struct tagSCAgentStat
     U32  ulCallCnt;      /* 暂时和 ulSelectCnt 保持一致 */
     U32  ulCallConnected;/* 接通的呼叫 */
     U32  ulTotalDuration;/* 接通的呼叫 */
+    U32  ulTotalDurationMin;/* 接通的呼叫 分钟 */
 
     U32  ulIncomingCall; /* 暂时没有实现 */
     U32  ulOutgoingCall; /* 暂时没有实现 */

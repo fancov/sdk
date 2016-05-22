@@ -3213,12 +3213,12 @@ U32 sc_agent_stat_save(SC_AGENT_INFO_ST *pstAgentInfo)
 
         dos_snprintf(szSQL, sizeof(szSQL),
                         "INSERT INTO tbl_stat_agents(ctime, type, bid, job_number, group_id, calls, "
-                        "calls_connected, total_duration, online_time, avg_call_duration) VALUES("
-                        "%u, %u, %u, \"%s\", %u, %u, %u, %u, %u, %u)"
+                        "calls_connected, total_duration, online_time, avg_call_duration, total_duration_min) VALUES("
+                        "%u, %u, %u, \"%s\", %u, %u, %u, %u, %u, %u, %u)"
                     , time(NULL), 0, pstAgentInfo->ulAgentID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[i]
                     , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->stStat.ulCallConnected
                     , pstAgentInfo->stStat.ulTotalDuration, pstAgentInfo->stStat.ulTimesOnline
-                    , ulAvgCallDruation);
+                    , ulAvgCallDruation, pstAgentInfo->stStat.ulTotalDurationMin);
 
         sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Save agent stat. agent: %u(%s), group: %u, callcnt: %u, call connected: %u, duration: %u, total time: %u"
                     , pstAgentInfo->ulAgentID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[i]
@@ -3299,9 +3299,10 @@ U32 sc_agent_stat_audit(U32 ulCycle, VOID *ptr)
 U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32 ulParam)
 {
     SC_AGENT_NODE_ST  *pstAgentQueueNode  = NULL;
-    HASH_NODE_S            *pstHashNode = NULL;
-    U32                     ulHashIndex = 0;
+    HASH_NODE_S            *pstHashNode   = NULL;
+    U32                     ulHashIndex   = 0;
     U32                     ulCurrentTime = 0;
+    U32                     ulDuration    = 0;
 
     if (ulType >= SC_AGENT_STAT_BUTT)
     {
@@ -3375,10 +3376,13 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
         case SC_AGENT_STAT_CALL_FINISHED:
             if (pstAgentInfo->ulLastCallTime != 0 && ulCurrentTime >= pstAgentInfo->ulLastCallTime)
             {
-                pstAgentInfo->stStat.ulTotalDuration += (ulCurrentTime - pstAgentInfo->ulLastCallTime);
+                ulDuration = (ulCurrentTime - pstAgentInfo->ulLastCallTime);
+                pstAgentInfo->stStat.ulTotalDuration += ulDuration;
+                pstAgentInfo->stStat.ulTotalDurationMin += dos_ceil(ulDuration / 60);
             }
 
             pstAgentInfo->ulLastCallTime = 0;
+
             break;
 
         case SC_AGENT_STAT_ONLINE:
