@@ -4002,7 +4002,12 @@ U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee)
     U32                  ulRouteGrpID;
     U32                  ulStartTime, ulEndTime, ulCurrentTime;
     U32                  ulCallOutGroup;
-    U32                  ulRouteServiceType;
+    U32                  ulCurrentSrvType   = SC_SRV_BUTT;
+    U32                  ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_BUTT;
+    U32                  ulCurrentResult    = 0;
+    U32                  ulIndex            = 0;
+    U32                  ulBestRoute        = 0;
+    SC_ROUTE_SEARCH_RESULT_ST  astSearchResult[SC_MAX_ROUTE_NUM];
 
     if (DOS_ADDR_INVALID(pszCalling) || DOS_ADDR_INVALID(pszCallee))
     {
@@ -4021,26 +4026,26 @@ U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee)
         return U32_BUTT;
     }
 
-    if (pstSCB->aucServType[0] == SC_SRV_CALL 
-        && SC_DIRECTION_PSTN== pstSCB->stCall.ulCallDst)
+    ulCurrentSrvType = sc_scb_get_current_srv(pstSCB);
+    if (ulCurrentSrvType != SC_SRV_BUTT)
     {
-        ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_OUTBOUND;
-    }
-    else if (pstSCB->aucServType[0] == SC_SRV_PREVIEW_CALL)
-    {
-        ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_PREVIEW_CALL;
-    }
-    else if (pstSCB->aucServType[0] == SC_SRV_AUTO_CALL)
-    {
-        ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_AUTO_CALL;
-    }
-    else if (pstSCB->aucServType[0] == SC_SRV_VOICE_VERIFY)
-    {
-        ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_VOICE_VERIFY;
-    }
-    else
-    {
-        DOS_ASSERT(0);
+        if (ulCurrentSrvType == SC_SRV_CALL
+            && SC_DIRECTION_PSTN== pstSCB->stCall.ulCallDst)
+        {
+            ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_OUTBOUND;
+        }
+        else if (ulCurrentSrvType == SC_SRV_PREVIEW_CALL)
+        {
+            ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_PREVIEW_CALL;
+        }
+        else if (ulCurrentSrvType == SC_SRV_AUTO_CALL)
+        {
+            ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_AUTO_CALL;
+        }
+        else if (ulCurrentSrvType == SC_SRV_VOICE_VERIFY)
+        {
+            ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_VOICE_VERIFY;
+        }
     }
 
     ulRouteGrpID = U32_BUTT;
@@ -4051,131 +4056,180 @@ U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee)
         ulCallOutGroup = 0;
     }
 
-    sc_trace_scb(pstSCB, "usCallOutGroup : %u, custom : %u", ulCallOutGroup, pstSCB->ulCustomerID);
+    sc_trace_scb(pstSCB, "Custom : %u, Call Out Group : %u, Service Type:%u, Callee: %s, Calling: %s"
+                , pstSCB->ulCustomerID, ulCallOutGroup, ulRouteServiceType, pszCallee, pszCalling);
+
+    dos_memzero(astSearchResult, sizeof(astSearchResult));
+    ulCurrentResult = 0;
     pthread_mutex_lock(&g_mutexRouteList);
-
-    while (1)
+    DLL_Scan(&g_stRouteList, pstListNode, DLL_NODE_S *)
     {
-        DLL_Scan(&g_stRouteList, pstListNode, DLL_NODE_S *)
+        pstRouetEntry = (SC_ROUTE_NODE_ST *)pstListNode->pHandle;
+        if (DOS_ADDR_INVALID(pstRouetEntry))
         {
-            pstRouetEntry = (SC_ROUTE_NODE_ST *)pstListNode->pHandle;
-            if (DOS_ADDR_INVALID(pstRouetEntry))
+            continue;
+        }
+
+        if (!pstRouetEntry->bStatus)
+        {
+            continue;
+        }
+
+        sc_trace_scb(pstSCB, "Route(%u): %d:%d, %d:%d, CallerPrefix : %s, CalleePrefix : %s, Call Out Group : %u, Service: %u, Priority: %u"
+                        , pstRouetEntry->ulID
+                        , pstRouetEntry->ucHourBegin, pstRouetEntry->ucMinuteBegin
+                        , pstRouetEntry->ucHourEnd, pstRouetEntry->ucMinuteEnd
+                        , pstRouetEntry->szCallerPrefix, pstRouetEntry->szCalleePrefix
+                        , pstRouetEntry->usCallOutGroup, pstRouetEntry->ucServiceType
+                        , pstRouetEntry->ucPriority);
+
+        astSearchResult[ulCurrentResult].ulRouteID = pstRouetEntry->ulID;
+        astSearchResult[ulCurrentResult].ucPriority = pstRouetEntry->ucPriority;
+
+        if (0 != pstRouetEntry->usCallOutGroup)
+        {
+            if ((U16)ulCallOutGroup == pstRouetEntry->usCallOutGroup)
             {
+                astSearchResult[ulCurrentResult].ucMatchCnt++;
+            }
+            else
+            {
+                sc_trace_scb(pstSCB, "Match Route FAIL. Call Out Group Not Match. %u-%u"
+                                , ulCallOutGroup, pstRouetEntry->usCallOutGroup);
+                continue;
+            }
+        }
+
+        if (pstRouetEntry->ucServiceType != SC_ROUTE_SERVICE_TYPE_ALL)
+        {
+            if (pstRouetEntry->ucServiceType == ulRouteServiceType)
+            {
+                astSearchResult[ulCurrentResult].ucMatchCnt++;
+            }
+            else
+            {
+                sc_trace_scb(pstSCB, "Match Route FAIL. Service Type Not Match. %u-%u"
+                                , pstRouetEntry->ucServiceType, ulRouteServiceType);
+
+                continue;
+            }
+        }
+
+        /* 如果开始和结束时间都为 00:00, 则表示全天有效，不用判断时间了 */
+        if (pstRouetEntry->ucHourBegin
+            || pstRouetEntry->ucMinuteBegin
+            || pstRouetEntry->ucHourEnd
+            || pstRouetEntry->ucMinuteEnd)
+        {
+            ulStartTime = pstRouetEntry->ucHourBegin * 60 + pstRouetEntry->ucMinuteBegin;
+            ulEndTime = pstRouetEntry->ucHourEnd* 60 + pstRouetEntry->ucMinuteEnd;
+            ulCurrentTime = pstTime->tm_hour *60 + pstTime->tm_min;
+
+            if (ulCurrentTime < ulStartTime || ulCurrentTime > ulEndTime)
+            {
+                sc_trace_scb(pstSCB, "Match Route FAIL. Time not match: Peroid:%u-:%u, Current:%u"
+                                , ulStartTime, ulEndTime, ulCurrentTime);
+
                 continue;
             }
 
-            if (!pstRouetEntry->bStatus)
+            astSearchResult[ulCurrentResult].ucMatchCnt++;
+        }
+
+        if ('\0' == pstRouetEntry->szCalleePrefix[0])
+        {
+            if ('\0' == pstRouetEntry->szCallerPrefix[0])
             {
-                continue;
+                ulRouteGrpID = pstRouetEntry->ulID;
             }
-
-            if ((U16)ulCallOutGroup != pstRouetEntry->usCallOutGroup)
+            else
             {
-                continue;
-            }
-
-            if (pstRouetEntry->ucServiceType != ulRouteServiceType 
-                && pstRouetEntry->ucServiceType != SC_ROUTE_SERVICE_TYPE_ALL)
-            {
-                continue;
-            }
-
-            sc_trace_scb(pstSCB, "Search Route: %d:%d, %d:%d, CallerPrefix : %s, CalleePrefix : %s. " \
-                                 "Caller:%s, Callee:%s, customer group : %u, route group : %u"
-                            , pstRouetEntry->ucHourBegin, pstRouetEntry->ucMinuteBegin
-                            , pstRouetEntry->ucHourEnd, pstRouetEntry->ucMinuteEnd
-                            , pstRouetEntry->szCallerPrefix
-                            , pstRouetEntry->szCalleePrefix
-                            , pszCalling
-                            , pszCallee
-                            , ulCallOutGroup
-                            , pstRouetEntry->usCallOutGroup);
-
-            /* 如果开始和结束时间都为 00:00, 则表示全天有效，不用判断时间了 */
-            if (pstRouetEntry->ucHourBegin
-                || pstRouetEntry->ucMinuteBegin
-                || pstRouetEntry->ucHourEnd
-                || pstRouetEntry->ucMinuteEnd)
-            {
-                ulStartTime = pstRouetEntry->ucHourBegin * 60 + pstRouetEntry->ucMinuteBegin;
-                ulEndTime = pstRouetEntry->ucHourEnd* 60 + pstRouetEntry->ucMinuteEnd;
-                ulCurrentTime = pstTime->tm_hour *60 + pstTime->tm_min;
-
-                if (ulCurrentTime < ulStartTime || ulCurrentTime > ulEndTime)
+                if (0 == dos_strnicmp(pstRouetEntry->szCallerPrefix, pszCalling, dos_strlen(pstRouetEntry->szCallerPrefix)))
                 {
-                    sc_trace_scb(pstSCB, "Search Route(FAIL): Time not match: Peroid:%u-:%u, Current:%u"
-                                    , ulStartTime, ulEndTime, ulCurrentTime);
-
-                    continue;
-                }
-            }
-
-            if ('\0' == pstRouetEntry->szCalleePrefix[0])
-            {
-                if ('\0' == pstRouetEntry->szCallerPrefix[0])
-                {
-                    ulRouteGrpID = pstRouetEntry->ulID;
-                    break;
+                    astSearchResult[ulCurrentResult].ucMatchCnt++;
                 }
                 else
                 {
-                    if (0 == dos_strnicmp(pstRouetEntry->szCallerPrefix, pszCalling, dos_strlen(pstRouetEntry->szCallerPrefix)))
-                    {
-                        ulRouteGrpID = pstRouetEntry->ulID;
-                        break;
-                    }
+                    continue;
+                }
+            }
+        }
+        else
+        {
+            if ('\0' == pstRouetEntry->szCallerPrefix[0])
+            {
+                if (0 == dos_strnicmp(pstRouetEntry->szCalleePrefix, pszCallee, dos_strlen(pstRouetEntry->szCalleePrefix)))
+                {
+                    astSearchResult[ulCurrentResult].ucMatchCnt++;
+                }
+                else
+                {
+                    continue;
                 }
             }
             else
             {
-                if ('\0' == pstRouetEntry->szCallerPrefix[0])
+                if (0 == dos_strnicmp(pstRouetEntry->szCalleePrefix, pszCallee, dos_strlen(pstRouetEntry->szCalleePrefix))
+                    && 0 == dos_strnicmp(pstRouetEntry->szCallerPrefix, pszCalling, dos_strlen(pstRouetEntry->szCallerPrefix)))
                 {
-                    if (0 == dos_strnicmp(pstRouetEntry->szCalleePrefix, pszCallee, dos_strlen(pstRouetEntry->szCalleePrefix)))
-                    {
-                        ulRouteGrpID = pstRouetEntry->ulID;
-                        break;
-                    }
+                    astSearchResult[ulCurrentResult].ucMatchCnt++;
                 }
                 else
                 {
-                    if (0 == dos_strnicmp(pstRouetEntry->szCalleePrefix, pszCallee, dos_strlen(pstRouetEntry->szCalleePrefix))
-                        && 0 == dos_strnicmp(pstRouetEntry->szCallerPrefix, pszCalling, dos_strlen(pstRouetEntry->szCallerPrefix)))
-                    {
-                        ulRouteGrpID = pstRouetEntry->ulID;
-                        break;
-                    }
+                    continue;
                 }
             }
         }
 
-        if (U32_BUTT == ulRouteGrpID && ulCallOutGroup != 0)
+        ulCurrentResult++;
+        if (ulCurrentResult >= SC_MAX_ROUTE_NUM)
         {
-            /* 没有查找到 呼出组一样的 路由， 再循环一遍，查找通配的路由 */
-            ulCallOutGroup = 0;
-            continue;
-        }
-        else
-        {
+            sc_trace_scb(pstSCB, "Found %u routes. reach max size.", ulCurrentResult);
             break;
         }
-    }
 
-    if (DOS_ADDR_VALID(pstRouetEntry))
-    {
-        sc_trace_scb(pstSCB, "Search Route Finished. Result: %s, Route ID: %d, Dest Type:%u, Dest ID: %u"
-                        , U32_BUTT == ulRouteGrpID ? "FAIL" : "SUCC"
-                        , ulRouteGrpID
-                        , pstRouetEntry->ulDestType
-                        , pstRouetEntry->aulDestID[0]);
-    }
-    else
-    {
-        sc_trace_scb(pstSCB, "Search Route Finished. Result: %s, Route ID: %d"
-                , U32_BUTT == ulRouteGrpID ? "FAIL" : "SUCC"
-                , ulRouteGrpID);
+        astSearchResult[ulCurrentResult].ucValid = DOS_TRUE;
     }
 
     pthread_mutex_unlock(&g_mutexRouteList);
+
+    sc_trace_scb(pstSCB, "Search Route Finished. %u route can use.", ulCurrentResult);
+
+    if (0 == ulCurrentResult)
+    {
+        return U32_BUTT;
+    }
+
+    if (ulCurrentResult >= 2)
+    {
+        for (ulIndex=1, ulBestRoute=0; ulIndex<SC_MAX_ROUTE_NUM-1; ulIndex++)
+        {
+            if (!astSearchResult[ulCurrentResult].ucValid)
+            {
+                continue;
+            }
+
+            if (astSearchResult[ulIndex].ucMatchCnt > astSearchResult[ulIndex - 1].ucMatchCnt)
+            {
+                ulBestRoute = ulIndex;
+            }
+            else if (astSearchResult[ulIndex].ucMatchCnt == astSearchResult[ulIndex - 1].ucMatchCnt)
+            {
+                if (astSearchResult[ulIndex].ucPriority > astSearchResult[ulIndex - 1].ucPriority)
+                {
+                    ulBestRoute = ulIndex;
+                }
+            }
+        }
+    }
+    else
+    {
+        ulBestRoute = 0;
+    }
+
+    sc_trace_scb(pstSCB, "Select the route %u(%u) for current service.", astSearchResult[ulBestRoute].ulRouteID, ulBestRoute);
+
+    ulRouteGrpID = astSearchResult[ulBestRoute].ulRouteID;
 
     return ulRouteGrpID;
 }

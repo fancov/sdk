@@ -813,8 +813,6 @@ U32 sc_esl_event_park(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
     stSCEvent.ulSCBNo = pstLegCB->ulSCBNo;
     stSCEvent.ulLegNo = pstLegCB->ulCBNo;
 
-    sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_SU), "##################################%d",pstLegCB->stCall.ucStatus);
-
     if (pstLegCB->stCall.ucStatus < SC_LEG_ACTIVE)
     {
         pstLegCB->stCall.stTimeInfo.ulAnswerTime = time(NULL);

@@ -303,8 +303,10 @@ typedef struct tagSCRouteNode
     U8         ucMinuteBegin;                     /* 开始时间，分钟 */
     U8         ucHourEnd;                         /* 结束时间，小时 */
     U8         ucMinuteEnd;                       /* 结束时间，分钟 */
+
     U8         ucServiceType;                     /* 业务类型 SC_ROUTE_SERVICE_TYPE*/
-    
+    U8         ucRes[3];
+
     S8         szCallerPrefix[SC_NUM_LENGTH];     /* 前缀长度 */
     S8         szCalleePrefix[SC_NUM_LENGTH];     /* 前缀长度 */
 

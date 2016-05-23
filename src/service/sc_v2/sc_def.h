@@ -73,6 +73,9 @@ extern "C" {
 /** 最大中继个数 */
 #define SC_MAX_TRUCK_NUM             20
 
+/** 最大路由数 */
+#define SC_MAX_ROUTE_NUM             20
+
 /** 单次放音请求最大放音个数 */
 #define SC_MAX_AUDIO_NUM             48
 
@@ -2341,6 +2344,18 @@ typedef struct tagSCInconmingCallNode
     S8          szCallee[SC_NUM_LENGTH];
 }SC_INCOMING_CALL_NODE_ST;
 
+/** 路由搜索结果集合 */
+typedef struct tagRouteSearchResult
+{
+    U32   ulRouteID;
+
+    U8    ucValid;
+    U8    ucMatchCnt;
+    U8    ucPriority;
+    U8    ulRes;
+}SC_ROUTE_SEARCH_RESULT_ST;
+
+
 typedef enum tagAccessCodeType{
     SC_ACCESS_BALANCE_ENQUIRY   = 0,          /**< 余额查询 */
     SC_ACCESS_AGENT_ONLINE      = 1,          /**< 坐席登陆 */
@@ -2741,6 +2756,8 @@ U32 sc_transform_being(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLCB, U32 ulTrunkID, U32 
 
 U32 sc_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode, U32 ulStatus);
 U32 sc_preview_task_call_result(SC_SRV_CB *pstSCB, U32 ulLegNo, U32 ulSIPRspCode);
+
+U32 sc_scb_get_current_srv(SC_SRV_CB *pstSCB);
 
 #endif  /* end of __SC_DEF_V2_H__ */
 
