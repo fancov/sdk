@@ -467,10 +467,32 @@ DLLEXPORT VOID dos_lowercase(S8 *str)
 
 
 /**
+ *函数: S32 dos_atouc(const S8 *szStr, U8 *pnVal)
+ *功能:将字符串转换成8位无符号数字
+ *参数:
+ *返回值:成功返回0，失败返回-1
+ */
+DLLEXPORT S32 dos_atouc(const S8 *szStr, U8 *pucVal)
+{
+    if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pucVal))
+    {
+        if (dos_sscanf(szStr, "%c", pucVal) < 1)
+        {
+            *pucVal = 0;
+            return -1;
+        }
+        return 0;
+    }
+    return -1;
+}
+
+
+
+/**
  * 函数：S32 dos_atol(const S8 *szStr, S32 *pnVal)
  * 功能：将字符串转换成32位有符号数字
  * 参数：
- * 返回值：成功返回－0，失败返回－1
+ * 返回值：成功返回0，失败返回－1
  */
 DLLEXPORT S32 dos_atol(const S8 *szStr, S32 *pnVal)
 {

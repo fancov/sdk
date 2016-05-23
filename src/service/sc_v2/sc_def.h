@@ -1227,7 +1227,7 @@ typedef struct SCCORSWPeriodTag{
     U32         ulCustomerID;
     BOOL        bExist;
     BOOL        bDefault;
-    S8          ucPlayTimes;
+    U8          ucPlayTimes;
 
     U8          ucPeriodValid;
     U8          ucWeekMask;                        /* 周控制，使用位操作，第0位为星期天 */
