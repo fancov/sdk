@@ -1804,6 +1804,32 @@ U32 sc_scb_check(U32 ulType, VOID *ptr)
     return DOS_SUCC;
 }
 
+U32 sc_scb_get_current_srv(SC_SRV_CB *pstSCB)
+{
+    SC_SCB_TAG_ST     *pstSCBTag = NULL;
+
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        DOS_ASSERT(0);
+        return SC_SRV_BUTT;
+    }
+
+    if (pstSCB->ulCurrentSrv > SC_SRV_BUTT)
+    {
+        DOS_ASSERT(0);
+        return SC_SRV_BUTT;
+    }
+
+    pstSCBTag = pstSCB->pstServiceList[pstSCB->ulCurrentSrv];
+    if (!pstSCBTag->bValid)
+    {
+        DOS_ASSERT(0);
+        return SC_SRV_BUTT;
+    }
+
+    return pstSCBTag->usSrvType;
+}
+
 
 U32 sc_tcb_init(SC_TASK_CB *pstTCB)
 {
