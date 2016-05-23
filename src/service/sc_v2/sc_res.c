@@ -1989,6 +1989,7 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
     U32                ulHashIndex       = 0;
     S32                lIndex            = 0;
     U32                ulStartTime, ulEndTime;
+    U8                 ucDefault;
 
     if (DOS_ADDR_INVALID(aszNames)
         || DOS_ADDR_INVALID(aszValues))
@@ -2035,7 +2036,7 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "play_times", dos_strlen("play_times")))
         {
-            if (dos_atoul(aszValues[lIndex], (U32 *)&pstSWIVRNode->ucPlayTimes) < 0)
+            if (dos_atouc(aszValues[lIndex], &pstSWIVRNode->ucPlayTimes) < 0)
             {
                 blProcessOK = DOS_FALSE;
             }
@@ -2066,7 +2067,7 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "sw_trfr_type", dos_strlen("sw_trfr_type")))
         {
-            if (dos_atoul(aszValues[lIndex], (U32 *)&pstSWIVRNode->ucTransferType) < 0)
+            if (dos_atouc(aszValues[lIndex], &pstSWIVRNode->ucTransferType) < 0)
             {
                 blProcessOK = DOS_FALSE;
                 break;
@@ -2074,15 +2075,26 @@ S32 sc_sw_period_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "default", dos_strlen("default")))
         {
-            if (dos_atoul(aszValues[lIndex], (U32 *)&pstSWIVRNode->bDefault) < 0)
+            if (dos_atouc(aszValues[lIndex], &ucDefault) == 0)
             {
-                blProcessOK = DOS_FALSE;
-                break;
+                if (ucDefault == 0)
+                {
+                    pstSWIVRNode->bDefault = DOS_FALSE;
+                }
+                else
+                {
+                    pstSWIVRNode->bDefault = DOS_TRUE;
+                }
+            }
+            else 
+            {
+                pstSWIVRNode->bDefault = DOS_FALSE;
+                DOS_ASSERT(0);
             }
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "extern_num_len", dos_strlen("extern_num_len")))
         {
-            if (dos_atoul(aszValues[lIndex], (U32 *)&pstSWIVRNode->ulExtensionNumLength) < 0)
+            if (dos_atoul(aszValues[lIndex], &pstSWIVRNode->ulExtensionNumLength) < 0)
             {
                 blProcessOK = DOS_FALSE;
                 break;
@@ -2351,7 +2363,7 @@ S32 sc_sw_keymap_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "event_type", dos_strlen("event_type")))
         {
-            if (dos_atoul(aszValues[lIndex], (U32 *)&pstSWKeyMapNode->ucEventType) < 0)
+            if (dos_atouc(aszValues[lIndex], &pstSWKeyMapNode->ucEventType) < 0)
             {
                 blProcessOK = DOS_FALSE;
                 break;
@@ -2367,7 +2379,7 @@ S32 sc_sw_keymap_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "forward_type", dos_strlen("forward_type")))
         {
-            if (dos_atoul(aszValues[lIndex], (U32 *)&pstSWKeyMapNode->ucKeyMapType) < 0)
+            if (dos_atouc(aszValues[lIndex], &pstSWKeyMapNode->ucKeyMapType) < 0)
             {
                 blProcessOK = DOS_FALSE;
                 break;
@@ -3744,6 +3756,7 @@ S32 sc_route_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             if (aszValues[lIndex] && '\0' != aszValues[lIndex][0])
             {
                 dos_strncpy(pstRoute->szCallerPrefix, aszValues[lIndex], sizeof(pstRoute->szCallerPrefix));
+
                 pstRoute->szCallerPrefix[sizeof(pstRoute->szCallerPrefix) - 1] = '\0';
             }
             else
@@ -3753,12 +3766,12 @@ S32 sc_route_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "service_type", dos_strlen("service_type")))
         {
-            if (dos_atoul(aszValues[lIndex], (U32 *)&pstRoute->ucServiceType) < 0)
+            if (dos_atouc(aszValues[lIndex], &pstRoute->ucServiceType) < 0)
             {
                 DOS_ASSERT(0);
-
-                pstRoute->ucServiceType = SC_SRV_CALL;
+                pstRoute->ucServiceType = SC_ROUTE_SERVICE_TYPE_ALL;
             }
+            break;
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "dest_type", dos_strlen("dest_type")))
         {
@@ -3849,7 +3862,7 @@ S32 sc_route_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
         {
             if (DOS_ADDR_INVALID(aszValues[lIndex])
                 || '\0' == aszValues[lIndex][0]
-                || dos_atoul(aszValues[lIndex], (U32 *)&pstRoute->ucPriority) < 0)
+                || dos_atouc(aszValues[lIndex], &pstRoute->ucPriority) < 0)
             {
                 DOS_ASSERT(0);
                 blProcessOK = DOS_FALSE;
@@ -3926,12 +3939,12 @@ U32 sc_route_load(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, service_type, seq FROM tbl_route ORDER BY tbl_route.seq ASC;");
+                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, IFNULL(dest_id, 0), call_out_group, status, service_type, seq FROM tbl_route ORDER BY tbl_route.seq ASC;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, service_type, seq FROM tbl_route WHERE id=%d ORDER BY tbl_route.seq ASC;"
+                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, IFNULL(dest_id, 0), call_out_group, status, service_type, seq FROM tbl_route WHERE id=%d ORDER BY tbl_route.seq ASC;"
                     , ulIndex);
     }
 

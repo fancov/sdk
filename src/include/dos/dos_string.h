@@ -27,6 +27,7 @@ DLLEXPORT S8 dos_tolower(S8 ch);
 DLLEXPORT VOID dos_uppercase(S8 *str);
 DLLEXPORT VOID dos_lowercase(S8 *str);
 DLLEXPORT S32 dos_is_digit_str(S8 *str);
+DLLEXPORT S32 dos_atouc(const S8 *szStr, U8 *pucVal);
 DLLEXPORT S32 dos_atol(const S8 *szStr, S32 *pnVal);
 DLLEXPORT S32 dos_atoul(const S8 *szStr, U32 *pulVal);
 DLLEXPORT S32 dos_atoull(const S8 *szStr, U64 *pulVal);
