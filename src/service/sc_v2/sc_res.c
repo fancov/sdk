@@ -3756,8 +3756,8 @@ S32 sc_route_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
             if (dos_atoul(aszValues[lIndex], (U32 *)&pstRoute->ucServiceType) < 0)
             {
                 DOS_ASSERT(0);
-                blProcessOK = DOS_FALSE;
-                break;
+
+                pstRoute->ucServiceType = SC_SRV_CALL;
             }
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "dest_type", dos_strlen("dest_type")))
@@ -4017,7 +4017,7 @@ U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee)
 
     timep = time(NULL);
     pstTime = dos_get_localtime_struct(timep, &stTime);
-    
+
     if (DOS_ADDR_INVALID(pstTime))
     {
         DOS_ASSERT(0);

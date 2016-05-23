@@ -3187,7 +3187,7 @@ U32 sc_agent_stat_save(SC_AGENT_INFO_ST *pstAgentInfo)
 {
     S8  szSQL[512]        = { 0, };
     U32 ulAvgCallDruation = 0;
-    U32 i;
+    U32 i, ulGroupIndex;
 
     if (DOS_ADDR_INVALID(pstAgentInfo))
     {
@@ -3204,21 +3204,17 @@ U32 sc_agent_stat_save(SC_AGENT_INFO_ST *pstAgentInfo)
         ulAvgCallDruation = 0;
     }
 
-    for (i=0; i<2; i++)
-    {
-        if (0 == pstAgentInfo->aulGroupID[i] || U32_BUTT == pstAgentInfo->aulGroupID[i])
-        {
-            continue;
-        }
 
+    for (i=0,ulGroupIndex=0; i<2; i++)
+    {
         dos_snprintf(szSQL, sizeof(szSQL),
                         "INSERT INTO tbl_stat_agents(ctime, type, bid, job_number, group_id, calls, "
-                        "calls_connected, total_duration, online_time, avg_call_duration, total_duration_min) VALUES("
-                        "%u, %u, %u, \"%s\", %u, %u, %u, %u, %u, %u, %u)"
+                        "calls_connected, total_duration, online_time, avg_call_duration, total_duration_min,res2) VALUES("
+                        "%u, %u, %u, \"%s\", %u, %u, %u, %u, %u, %u, %u, %u)"
                     , time(NULL), 0, pstAgentInfo->ulAgentID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[i]
                     , pstAgentInfo->stStat.ulCallCnt, pstAgentInfo->stStat.ulCallConnected
                     , pstAgentInfo->stStat.ulTotalDuration, pstAgentInfo->stStat.ulTimesOnline
-                    , ulAvgCallDruation, pstAgentInfo->stStat.ulTotalDurationMin);
+                    , ulAvgCallDruation, pstAgentInfo->stStat.ulTotalDurationMin, ulGroupIndex);
 
         sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Save agent stat. agent: %u(%s), group: %u, callcnt: %u, call connected: %u, duration: %u, total time: %u"
                     , pstAgentInfo->ulAgentID, pstAgentInfo->szEmpNo, pstAgentInfo->aulGroupID[i]
@@ -3233,6 +3229,8 @@ U32 sc_agent_stat_save(SC_AGENT_INFO_ST *pstAgentInfo)
         {
             sc_log(pstAgentInfo->bTraceON, SC_LOG_SET_MOD(LOG_LEVEL_DEBUG, SC_MOD_ACD), "Save agent stat succ.Agent:%u", pstAgentInfo->ulAgentID);
         }
+
+        ulGroupIndex++;
     }
 
     dos_memzero(&pstAgentInfo->stStat, sizeof(pstAgentInfo->stStat));
@@ -3378,7 +3376,7 @@ U32 sc_agent_stat(U32 ulType, SC_AGENT_INFO_ST *pstAgentInfo, U32 ulAgentID, U32
             {
                 ulDuration = (ulCurrentTime - pstAgentInfo->ulLastCallTime);
                 pstAgentInfo->stStat.ulTotalDuration += ulDuration;
-                pstAgentInfo->stStat.ulTotalDurationMin += dos_ceil(ulDuration / 60);
+                pstAgentInfo->stStat.ulTotalDurationMin += dos_ceil(ulDuration / 60.0);
             }
 
             pstAgentInfo->ulLastCallTime = 0;

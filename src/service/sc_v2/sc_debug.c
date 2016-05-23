@@ -663,11 +663,11 @@ S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
 
     dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\nShow agent stat:");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%11s%9s%11s%11s%11s%11s%11s%22s%22s"
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n%11s%9s%11s%11s%11s%11s%22s%22s%22s"
                           , "ID", "Num", "Group1", "Group2", "Calls"
                           , "Connected", "Duration", "TimesSignin", "TimesOnline");
     cli_out_string(ulIndex, szCmdBuff);
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n----------------------------------------------------------------------------------------------------------------------------------");
     cli_out_string(ulIndex, szCmdBuff);
 
     pthread_mutex_lock(&g_mutexAgentList);
@@ -689,7 +689,7 @@ S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
 
 
             dos_snprintf(szCmdBuff, sizeof(szCmdBuff)
-                                  , "\r\n%11u%9s%11u%11u%11u%11u%11u%22u%22u"
+                                  , "\r\n%11u%9s%11u%11u%11u%11u%11u%11u%22u%22u"
                                   , pstAgentQueueNode->pstAgentInfo->ulAgentID
                                   , pstAgentQueueNode->pstAgentInfo->szEmpNo
                                   , pstAgentQueueNode->pstAgentInfo->aulGroupID[0]
@@ -697,6 +697,7 @@ S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
                                   , pstAgentQueueNode->pstAgentInfo->stStat.ulCallCnt
                                   , pstAgentQueueNode->pstAgentInfo->stStat.ulCallConnected
                                   , pstAgentQueueNode->pstAgentInfo->stStat.ulTotalDuration
+                                  , pstAgentQueueNode->pstAgentInfo->stStat.ulTotalDurationMin
                                   , pstAgentQueueNode->pstAgentInfo->stStat.ulTimesSignin
                                   , pstAgentQueueNode->pstAgentInfo->stStat.ulTimesOnline);
 
@@ -740,7 +741,7 @@ S32 sc_cc_show_agent_stat(U32 ulIndex, S32 argc, S8 **argv)
     }
     pthread_mutex_unlock(&g_mutexAgentList);
 
-    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n-------------------------------------------------------------------------------------------------\r\n\r\n");
+    dos_snprintf(szCmdBuff, sizeof(szCmdBuff), "\r\n----------------------------------------------------------------------------------------------------------------------------------\r\n\r\n");
     cli_out_string(ulIndex, szCmdBuff);
 
     return 0;
