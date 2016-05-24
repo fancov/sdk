@@ -176,6 +176,8 @@ extern "C" {
 
 #define SC_AUTO_CALL_RECALL_TIME       500
 
+#define SC_AUTO_CALL_WAIT_TIME_AFTER_AUDIO  10000
+
 #define SC_CWQ_QUEUE_TIMEOUT           300
 
 #define SC_AGENT_QUEUE_TIMEOUT         300
@@ -1190,6 +1192,8 @@ typedef struct tagSCAUTOCall{
 
     /** 客户振铃的定时器 */
     DOS_TMR_ST        stCusTmrHandle;
+
+    DOS_TMR_ST        stTimeoutHandle;
 
 }SC_AUTO_CALL_ST;
 

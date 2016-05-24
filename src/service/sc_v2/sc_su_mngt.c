@@ -919,7 +919,7 @@ U32 sc_esl_event_dtmf(esl_event_t *pstEvent, SC_LEG_CB *pstLegCB)
 {
     S8                 *pszDTMF = NULL;
     SC_MSG_EVT_DTMF_ST stDTMF;
-
+    
     if (DOS_ADDR_INVALID(pstLegCB))
     {
         DOS_ASSERT(0);
