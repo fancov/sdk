@@ -3026,6 +3026,8 @@ U32 sc_call_ctrl_transfer(U32 ulAgent, U32 ulAgentCalled, BOOL bIsAttend)
         pstPublishLeg->stCall.stNumInfo.szOriginalCallee[sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee)-1] = '\0';
 
         pstSCB->stTransfer.ulPublishLegNo = pstPublishLeg->ulCBNo;
+        pstAgentNode->pstAgentInfo->ulLegNo = pstPublishLeg->ulCBNo;
+
     }
 
     /* 业务切换，直接用 转接业务 替换掉第一个业务 */
