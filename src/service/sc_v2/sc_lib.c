@@ -94,11 +94,11 @@ U32 sc_send_sip_update_req(U32 ulID, U32 ulAction)
     ulPAPIPort = config_hb_get_papi_port();
     if (ulPAPIPort <= 0)
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost/index.php/papi");
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/papi");
     }
     else
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/index.php/papi", ulPAPIPort);
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1:%d/index.php/papi", ulPAPIPort);
     }
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
@@ -142,11 +142,11 @@ U32 sc_send_gateway_update_req(U32 ulID, U32 ulAction)
     ulPAPIPort = config_hb_get_papi_port();
     if (ulPAPIPort <= 0)
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost/index.php/papi");
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/papi");
     }
     else
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/index.php/papi", ulPAPIPort);
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1:%d/index.php/papi", ulPAPIPort);
     }
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */
@@ -1429,7 +1429,7 @@ SC_SRV_CB *sc_scb_alloc()
             if (g_stSysStat.ulCurrentCalls != U32_BUTT)
             {
                 g_stSysStat.ulCurrentCalls++;
-                
+
                 if (g_stSysStat.ulHistoryMaxCalls < g_stSysStat.ulCurrentCalls)
                 {
                     g_stSysStat.ulHistoryMaxCalls = g_stSysStat.ulCurrentCalls;
@@ -3980,52 +3980,52 @@ U32 sc_stat_syn(U32 ulType, VOID *ptr)
     {
         g_stSysStatLocal.ulCallTaskNum= stSysStat.ulCallTaskNum;
     }
-    
+
     if (U32_BUTT - g_stSysStatLocal.stIncomingCall.ulCalls > stSysStat.stIncomingCall.ulCalls)
     {
         g_stSysStatLocal.stIncomingCall.ulCalls      += stSysStat.stIncomingCall.ulCalls;
     }
-    
+
     if (U32_BUTT - g_stSysStatLocal.stOutgingCall.ulCalls > stSysStat.stOutgingCall.ulCalls)
     {
         g_stSysStatLocal.stOutgingCall.ulCalls      += stSysStat.stOutgingCall.ulCalls;
     }
-    
+
     if (U32_BUTT - g_stSysStatLocal.ulTotalTime > stSysStat.ulTotalTime)
     {
         g_stSysStatLocal.ulTotalTime          += stSysStat.ulTotalTime;
     }
-    
+
     if (U32_BUTT - g_stSysStatLocal.stOutgingCall.ulTime > stSysStat.stOutgingCall.ulTime)
     {
         g_stSysStatLocal.stOutgingCall.ulTime       += stSysStat.stOutgingCall.ulTime;
     }
-    
+
     if (U32_BUTT - g_stSysStatLocal.stIncomingCall.ulTime > stSysStat.stIncomingCall.ulTime)
     {
         g_stSysStatLocal.stIncomingCall.ulTime       += stSysStat.stIncomingCall.ulTime;
     }
-    
+
     if (U32_BUTT - g_stSysStatLocal.stAutoCall.ulTime > stSysStat.stAutoCall.ulTime)
     {
         g_stSysStatLocal.stAutoCall.ulTime       += stSysStat.stAutoCall.ulTime;
     }
-    
+
     if (U32_BUTT - g_stSysStatLocal.stPreviewCall.ulTime > stSysStat.stPreviewCall.ulTime)
     {
         g_stSysStatLocal.stPreviewCall.ulTime    += stSysStat.stPreviewCall.ulTime;
     }
-    
+
     if (U32_BUTT - g_stSysStatLocal.stPredictiveCall.ulTime > stSysStat.stPredictiveCall.ulTime)
     {
         g_stSysStatLocal.stPredictiveCall.ulTime += stSysStat.stPredictiveCall.ulTime;
     }
-    
+
     if (U32_BUTT - g_stSysStatLocal.ulInternalCallTime > stSysStat.ulInternalCallTime)
     {
         g_stSysStatLocal.ulInternalCallTime   += stSysStat.ulInternalCallTime;
     }
-    
+
     if (g_stSysStatLocal.ulHistoryMaxCalls < U32_BUTT && stSysStat.ulHistoryMaxCalls < U32_BUTT)
     {
         if (g_stSysStatLocal.ulHistoryMaxCalls < stSysStat.ulHistoryMaxCalls)
@@ -4078,6 +4078,25 @@ U32 sc_get_call_limitation()
     return ulLimitation;
 }
 
+U32 sc_send_test_status_req()
+{
+    S8 szURL[256]      = { 0, };
+    S8 szData[512]     = { 0, };
+    S32 ulPAPIPort     = -1;
+
+    ulPAPIPort = config_hb_get_papi_port();
+    if (ulPAPIPort <= 0)
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/pub?id=1_1100");
+    }
+    else
+    {
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/pub?id=1_1100", ulPAPIPort);
+    }
+
+    return sc_pub_send_msg(szURL, "test", SC_PUB_TYPE_STATUS, NULL);
+}
+
 U32 sc_send_client_contect_req(U32 ulCustomerID, U32 ulClientID, S8 *pszNumber, BOOL blCallContected)
 {
     S8 szURL[256]      = { 0, };
@@ -4087,11 +4106,11 @@ U32 sc_send_client_contect_req(U32 ulCustomerID, U32 ulClientID, S8 *pszNumber, 
     ulPAPIPort = config_hb_get_papi_port();
     if (ulPAPIPort <= 0)
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost/index.php/papi");
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/pub");
     }
     else
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/index.php/papi", ulPAPIPort);
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1:%d/index.php/pub", ulPAPIPort);
     }
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */

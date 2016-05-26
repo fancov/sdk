@@ -110,11 +110,11 @@ U32 sc_agent_status_http_get_rsp(U32 ulAgentID)
     ulPAPIPort = config_hb_get_papi_port();
     if (ulPAPIPort <= 0)
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/pub?id=%s", szChannel);
     }
     else
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/pub?id=%s", ulPAPIPort, szChannel);
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1:%d/pub?id=%s", ulPAPIPort, szChannel);
     }
 
     dos_snprintf(szJson, sizeof(szJson)
@@ -350,11 +350,11 @@ U32 sc_agent_status_notify(SC_AGENT_INFO_ST *pstAgentInfo)
     ulPAPIPort = config_hb_get_papi_port();
     if (ulPAPIPort <= 0)
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/pub?id=%s", szChannel);
     }
     else
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/pub?id=%s", ulPAPIPort, szChannel);
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1:%d/pub?id=%s", ulPAPIPort, szChannel);
     }
 
 
@@ -395,11 +395,11 @@ U32 sc_agent_call_notify(SC_AGENT_INFO_ST *pstAgentInfo, S8 *szCaller)
     ulPAPIPort = config_hb_get_papi_port();
     if (ulPAPIPort <= 0)
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost/pub?id=%s", szChannel);
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/pub?id=%s", szChannel);
     }
     else
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/pub?id=%s", ulPAPIPort, szChannel);
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1:%d/pub?id=%s", ulPAPIPort, szChannel);
     }
 
 
@@ -420,11 +420,11 @@ U32 sc_agent_marker_update_req(U32 ulCustomID, U32 ulAgentID, S32 lKey, S8 *szCa
     ulPAPIPort = config_hb_get_papi_port();
     if (ulPAPIPort <= 0)
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost/index.php/papi");
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1/index.php/papi");
     }
     else
     {
-        dos_snprintf(szURL, sizeof(szURL), "http://localhost:%d/index.php/papi", ulPAPIPort);
+        dos_snprintf(szURL, sizeof(szURL), "http://127.0.0.1:%d/index.php/papi", ulPAPIPort);
     }
 
     /* 格式中引号前面需要添加"\",提供给push stream做转义用 */

@@ -17,12 +17,17 @@ extern "C"{
 #include "sc_http_api.h"
 
 
+/* 定义不同类型句柄的个数 */
+#define SC_PUB_TASK_NUMBER       13
 
-#define SC_PUB_TASK_NUMBER       3
-
+/* 主任务句柄位置 */
 #define SC_PUB_MASTER_INDEX      0
+
+/* 状态句柄其实位置 */
 #define SC_PUB_STATUS_INDEX      1
-#define SC_PUB_DATA_INDEX        2
+
+/* 数据句柄的位置 */
+#define SC_PUB_DATA_INDEX        10
 
 #define SC_PUB_MAX_URL           128
 #define SC_PUB_MAX_DATA          512
@@ -79,6 +84,12 @@ static U32 sc_pub_on_succ(U32 ulType, VOID *pDesc)
     return DOS_SUCC;
 }
 
+size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
+{
+    return size * nmemb;
+}
+
+
 static U32 sc_pub_publicsh(CURL **pstCurlHandle, S8 *pszURL, S8 *pszData)
 {
     U32 ulRet;
@@ -115,6 +126,7 @@ static U32 sc_pub_publicsh(CURL **pstCurlHandle, S8 *pszURL, S8 *pszData)
         curl_easy_setopt(*pstCurlHandle, CURLOPT_POSTFIELDS, pszData);
     }
     curl_easy_setopt(*pstCurlHandle, CURLOPT_TIMEOUT, ulTimeout);
+    curl_easy_setopt(*pstCurlHandle, CURLOPT_WRITEFUNCTION, write_data);
     ulRet = curl_easy_perform(*pstCurlHandle);
     if(CURLE_OK != ulRet)
     {
@@ -123,12 +135,12 @@ static U32 sc_pub_publicsh(CURL **pstCurlHandle, S8 *pszURL, S8 *pszData)
         curl_easy_cleanup(*pstCurlHandle);
         *pstCurlHandle = NULL;
 
-        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_PUBLISH), "CURL post FAIL. Data:%s.", pszData);
+        //sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_ERROR, SC_MOD_PUBLISH), "CURL post FAIL. Data:%s.", pszData);
         return DOS_FAIL;
     }
     else
     {
-        sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_PUBLISH), "CURL post SUCC.URL:%s, Data:%s.", pszURL, pszData);
+        //sc_log(DOS_FALSE, SC_LOG_SET_MOD(LOG_LEVEL_INFO, SC_MOD_PUBLISH), "CURL post SUCC.URL:%s, Data:%s.", pszURL, pszData);
 
         return DOS_SUCC;
     }
@@ -143,6 +155,8 @@ static VOID *sc_pub_runtime(VOID *ptr)
     S8             szBuffer[200] = { 0 };
     SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
     struct timespec     stTimeout;
+    struct timeval begin;
+    struct timeval end;
 
     pstTask = (SC_PUB_TASK_ST *)ptr;
     if (DOS_ADDR_INVALID(pstTask))
@@ -272,6 +286,9 @@ static VOID *sc_pub_runtime_master(VOID *ptr)
     SC_PUB_MSG_ST  *pstPubData = NULL;
     SC_PTHREAD_MSG_ST   *pstPthreadMsg = NULL;
     struct timespec     stTimeout;
+    U32            ulDataChannelIndex = SC_PUB_DATA_INDEX;
+    U32            ulPublishChannelIndex = SC_PUB_STATUS_INDEX;
+    U32            ulIndex;
 
     pstTask = (SC_PUB_TASK_ST *)ptr;
     if (DOS_ADDR_INVALID(pstTask))
@@ -341,23 +358,35 @@ static VOID *sc_pub_runtime_master(VOID *ptr)
 
             if (SC_PUB_TYPE_STATUS == pstPubData->ulType)
             {
-                pthread_mutex_lock(&g_stPubTaskList[SC_PUB_STATUS_INDEX].mutexPublishQueue);
-                DLL_Add(&g_stPubTaskList[SC_PUB_STATUS_INDEX].stPublishQueue, pstDllNode);
-                pthread_mutex_unlock(&g_stPubTaskList[SC_PUB_STATUS_INDEX].mutexPublishQueue);
+                pthread_mutex_lock(&g_stPubTaskList[ulPublishChannelIndex].mutexPublishQueue);
+                DLL_Add(&g_stPubTaskList[ulPublishChannelIndex].stPublishQueue, pstDllNode);
+                pthread_mutex_unlock(&g_stPubTaskList[ulPublishChannelIndex].mutexPublishQueue);
 
-                pthread_mutex_lock(&g_stPubTaskList[SC_PUB_STATUS_INDEX].mutexPublishCurl);
-                pthread_cond_signal(&g_stPubTaskList[SC_PUB_STATUS_INDEX].condPublishCurl);
-                pthread_mutex_unlock(&g_stPubTaskList[SC_PUB_STATUS_INDEX].mutexPublishCurl);
+                pthread_mutex_lock(&g_stPubTaskList[ulPublishChannelIndex].mutexPublishCurl);
+                pthread_cond_signal(&g_stPubTaskList[ulPublishChannelIndex].condPublishCurl);
+                pthread_mutex_unlock(&g_stPubTaskList[ulPublishChannelIndex].mutexPublishCurl);
+
+                ulPublishChannelIndex++;
+                if (ulPublishChannelIndex >= SC_PUB_DATA_INDEX)
+                {
+                    ulPublishChannelIndex = SC_PUB_STATUS_INDEX;
+                }
             }
             else
             {
-                pthread_mutex_lock(&g_stPubTaskList[SC_PUB_DATA_INDEX].mutexPublishQueue);
-                DLL_Add(&g_stPubTaskList[SC_PUB_DATA_INDEX].stPublishQueue, pstDllNode);
-                pthread_mutex_unlock(&g_stPubTaskList[SC_PUB_DATA_INDEX].mutexPublishQueue);
+                pthread_mutex_lock(&g_stPubTaskList[ulDataChannelIndex].mutexPublishQueue);
+                DLL_Add(&g_stPubTaskList[ulDataChannelIndex].stPublishQueue, pstDllNode);
+                pthread_mutex_unlock(&g_stPubTaskList[ulDataChannelIndex].mutexPublishQueue);
 
-                pthread_mutex_lock(&g_stPubTaskList[SC_PUB_DATA_INDEX].mutexPublishCurl);
-                pthread_cond_signal(&g_stPubTaskList[SC_PUB_DATA_INDEX].condPublishCurl);
-                pthread_mutex_unlock(&g_stPubTaskList[SC_PUB_DATA_INDEX].mutexPublishCurl);
+                pthread_mutex_lock(&g_stPubTaskList[ulDataChannelIndex].mutexPublishCurl);
+                pthread_cond_signal(&g_stPubTaskList[ulDataChannelIndex].condPublishCurl);
+                pthread_mutex_unlock(&g_stPubTaskList[ulDataChannelIndex].mutexPublishCurl);
+
+                ulDataChannelIndex++;
+                if (ulDataChannelIndex >= SC_PUB_TASK_NUMBER)
+                {
+                    ulDataChannelIndex = SC_PUB_DATA_INDEX;
+                }
             }
         }
     }
