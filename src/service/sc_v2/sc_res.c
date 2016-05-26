@@ -3771,7 +3771,6 @@ S32 sc_route_load_cb(VOID *pArg, S32 lCount, S8 **aszValues, S8 **aszNames)
                 DOS_ASSERT(0);
                 pstRoute->ucServiceType = SC_ROUTE_SERVICE_TYPE_ALL;
             }
-            break;
         }
         else if (0 == dos_strnicmp(aszNames[lIndex], "dest_type", dos_strlen("dest_type")))
         {
@@ -3939,12 +3938,12 @@ U32 sc_route_load(U32 ulIndex)
     if (SC_INVALID_INDEX == ulIndex)
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, IFNULL(dest_id, 0), call_out_group, status, service_type, seq FROM tbl_route ORDER BY tbl_route.seq ASC;");
+                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, service_type, seq FROM tbl_route ORDER BY tbl_route.seq ASC;");
     }
     else
     {
         dos_snprintf(szSQL, sizeof(szSQL)
-                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, IFNULL(dest_id, 0), call_out_group, status, service_type, seq FROM tbl_route WHERE id=%d ORDER BY tbl_route.seq ASC;"
+                    , "SELECT id, name, start_time, end_time, callee_prefix, caller_prefix, dest_type, dest_id, call_out_group, status, service_type, seq FROM tbl_route WHERE id=%d ORDER BY tbl_route.seq ASC;"
                     , ulIndex);
     }
 
@@ -4041,10 +4040,12 @@ U32 sc_route_search(SC_SRV_CB *pstSCB, S8 *pszCalling, S8 *pszCallee)
     ulCurrentSrvType = sc_scb_get_current_srv(pstSCB);
     if (ulCurrentSrvType != SC_SRV_BUTT)
     {
-        if (ulCurrentSrvType == SC_SRV_CALL
-            && SC_DIRECTION_PSTN== pstSCB->stCall.ulCallDst)
+        if (ulCurrentSrvType == SC_SRV_CALL)
         {
-            ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_OUTBOUND;
+            if (SC_DIRECTION_PSTN== pstSCB->stCall.ulCallDst)
+            {
+                ulRouteServiceType = SC_ROUTE_SERVICE_TYPE_OUTBOUND;
+            }
         }
         else if (ulCurrentSrvType == SC_SRV_PREVIEW_CALL)
         {

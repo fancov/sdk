@@ -614,6 +614,7 @@ U32 sc_access_transfer(SC_SRV_CB *pstSCB, SC_LEG_CB *pstLegCB)
             pstPublishLeg->stCall.stNumInfo.szOriginalCallee[sizeof(pstPublishLeg->stCall.stNumInfo.szOriginalCallee)-1] = '\0';
 
             pstSCB->stTransfer.ulPublishLegNo = pstPublishLeg->ulCBNo;
+            pstAgentNode->pstAgentInfo->ulLegNo = pstPublishLeg->ulCBNo;
         }
     }
     else
@@ -7308,6 +7309,28 @@ proc_finishe:
     return ulRet;
 }
 
+
+VOID sc_auto_call_timeout_after_audio(U64 arg)
+{
+    U32                 ulScbNo    = U32_BUTT;
+    SC_SRV_CB           *pstSCB    = NULL;
+
+    ulScbNo = (U32)arg;
+
+    pstSCB = sc_scb_get(ulScbNo);
+    if (DOS_ADDR_INVALID(pstSCB))
+    {
+        return;
+    }
+
+
+    /* 播放语音完毕后超时挂断电话 */
+    sc_req_hungup(pstSCB->ulSCBNo, pstSCB->stAutoCall.ulCallingLegNo, CC_ERR_NORMAL_CLEAR);
+
+    return;
+
+}
+
 U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 {
     /* 判断一下群呼任务的模式，如果是呼叫后，转坐席，则转坐席，否则通话结束 */
@@ -7317,6 +7340,7 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     U32                    ulErrCode        = CC_ERR_NO_REASON;
     U32                    ulRet            = DOS_SUCC;
     SC_AGENT_NODE_ST       *pstAgentCall    = NULL;
+    S32                    lRes;
 
     if (DOS_ADDR_INVALID(pstMsg) || DOS_ADDR_INVALID(pstSCB))
     {
@@ -7358,6 +7382,14 @@ U32 sc_auto_call_palayback_end(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
 
             switch (ulTaskMode)
             {
+                case SC_TASK_MODE_KEY4AGENT:
+                case SC_TASK_MODE_KEY4AGENT1:
+                     /**播放完语音用户不按键，等待一段时间后挂断*/
+
+                    lRes = dos_tmr_start(&pstSCB->stAutoCall.stTimeoutHandle, SC_AUTO_CALL_WAIT_TIME_AFTER_AUDIO, 
+                                    sc_auto_call_timeout_after_audio, (U64)pstSCB->ulSCBNo, TIMER_NORMAL_NO_LOOP);
+                    break;
+
                 /* 需要放音的，统一先放音。在放音结束后请处理后续流程 */
                 case SC_TASK_MODE_AGENT_AFTER_AUDIO:
                     /* 转坐席 */
@@ -7519,6 +7551,8 @@ U32 sc_auto_call_dtmf(SC_MSG_TAG_ST *pstMsg, SC_SRV_CB *pstSCB)
     }
 
     lKey = pstDTMF->cDTMFVal - '0';
+    
+    sc_trace_scb(pstSCB, "Processing auto call dtmf event. status : %u   lkey: ", pstSCB->stAutoCall.stSCBTag.usStatus, lKey);
 
     switch (pstSCB->stAutoCall.stSCBTag.usStatus)
     {

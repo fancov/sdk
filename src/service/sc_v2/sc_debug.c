@@ -3011,8 +3011,8 @@ U32 sc_show_ivr_period(U32 ulIndex)
     HASH_NODE_S *pstHashNode = NULL;
     S8  szBuff[256] = {0};
 
-    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-5s%-6s%-12s%-10s%-10s%-12s%-12s%-12s%-12s%-12s"
-                    , "ID", "SWID", "CustomerID", "WeekMask", "AudioID", "StartTime", "EndTime", "KeymapNum", "FirstKeyMap", "extension_len");
+    dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-5s%-6s%-12s%-10s%-10s%-12s%-12s%-12s%-12s%-12s%-12s"
+                    , "ID", "SWID", "CustomerID", "WeekMask", "AudioID", "StartTime", "EndTime", "KeymapNum", "FirstKeyMap", "extension_len", "transfer_type");
     cli_out_string(ulIndex, szBuff);
     cli_out_string(ulIndex, "\r\n---------------------------------------------------------------------------------------------");
     pthread_mutex_lock(&g_mutexHashSWPeriod);
@@ -3028,7 +3028,7 @@ U32 sc_show_ivr_period(U32 ulIndex)
 
             pstSWPeriod = (SC_SW_IVR_NODE_ST *)pstHashNode->pHandle;
 
-            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-5d%-6d%-12d%-10u%-10d%02u:%02u:%02u   %02u:%02u:%02u\t\t%-12d%-12p%-12d"
+            dos_snprintf(szBuff, sizeof(szBuff), "\r\n%-5d%-6d%-12d%-10u%-10d%02u:%02u:%02u   %02u:%02u:%02u\t\t%-12d%-12p%-12d%-12d"
                             , pstSWPeriod->ulID
                             , pstSWPeriod->ulSWID
                             , pstSWPeriod->ulCustomerID
@@ -3042,7 +3042,8 @@ U32 sc_show_ivr_period(U32 ulIndex)
                             , pstSWPeriod->ucSecondEnd
                             , pstSWPeriod->ulIndex
                             , pstSWPeriod->pstSWKeymapNode[0]
-                            , pstSWPeriod->ulExtensionNumLength);
+                            , pstSWPeriod->ulExtensionNumLength
+                            , pstSWPeriod->ucTransferType);
              cli_out_string(ulIndex, szBuff);
         }
     }

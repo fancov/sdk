@@ -474,13 +474,16 @@ DLLEXPORT VOID dos_lowercase(S8 *str)
  */
 DLLEXPORT S32 dos_atouc(const S8 *szStr, U8 *pucVal)
 {
+    S32  lTmp;
     if (DOS_ADDR_VALID(szStr) && DOS_ADDR_VALID(pucVal))
     {
-        if (dos_sscanf(szStr, "%c", pucVal) < 1)
+        if (dos_sscanf(szStr, "%d", &lTmp) < 1)
         {
             *pucVal = 0;
             return -1;
         }
+
+        *pucVal = lTmp;
         return 0;
     }
     return -1;
